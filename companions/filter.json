@@ -1,0 +1,85 @@
+{
+  "version": 3,
+  "rules": [
+    {
+      "show": {
+        "ruleName": "Uniques",
+        "conditions": { "rarity": "unique" },
+        "tooltip": { "textColor": "RGBA(199, 179, 119, 1.0)", "borderColor": "RGBA(199, 179, 119, 1.0)" },
+        "dropSound": "Filter01",
+        "minimapIcon": { "shape": "star", "borderColor": "white", "fillColor": "gold" }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Sets",
+        "conditions": { "rarity": "set" },
+        "tooltip": { "borderColor": "RGBA(0, 255, 0, 1.0)" },
+        "dropSound": "Filter02",
+        "minimapIcon": { "shape": "star", "borderColor": "white", "fillColor": "green" }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "High runes (Mal and up)",
+        "conditions": { "code": ["r23", "r24", "r25", "r26", "r27", "r28", "r29", "r30", "r31", "r32", "r33"] },
+        "tooltip": { "textColor": "RGBA(255, 128, 0, 1.0)", "borderColor": "RGBA(255, 0, 0, 1.0)", "backgroundColor": "RGBA(40, 0, 0, 0.85)" },
+        "dropSound": "Filter03",
+        "minimapIcon": { "shape": "diamond", "borderColor": "white", "fillColor": "red", "size": 16 }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runes",
+        "conditions": { "itemType": "Rune" },
+        "tooltip": { "textColor": "RGBA(255, 128, 0, 1.0)" },
+        "dropSound": "Filter04",
+        "minimapIcon": { "shape": "diamond", "borderColor": "white", "fillColor": "orange" }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms and jewels",
+        "conditions": { "itemType": ["Charm", "Jewel"] },
+        "tooltip": { "borderColor": "RGBA(105, 105, 255, 1.0)" },
+        "dropSound": "Filter05",
+        "minimapIcon": { "shape": "circle", "borderColor": "white", "fillColor": "blue" }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Gems",
+        "conditions": { "itemType": "Gem" },
+        "minimapIcon": { "shape": "circle", "borderColor": "white", "fillColor": "purple", "size": 8 }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Ethereal bases",
+        "conditions": { "rarity": ["normal", "superior"], "ethereal": true },
+        "tooltip": { "textColor": "RGBA(170, 170, 170, 1.0)", "borderColor": "RGBA(170, 170, 170, 1.0)" },
+        "minimapIcon": { "shape": "square", "borderColor": "white", "fillColor": "gray" }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Socketed bases",
+        "conditions": { "rarity": ["normal", "superior"], "sockets": { "gte": 1 } },
+        "tooltip": { "textColor": "RGBA(170, 170, 170, 1.0)" }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Rejuvenation potions",
+        "conditions": { "itemType": "Rejuv Potion" },
+        "tooltip": { "textColor": "RGBA(200, 80, 200, 1.0)" }
+      }
+    },
+    {
+      "hide": {
+        "ruleName": "Inferior items",
+        "conditions": { "rarity": "inferior" }
+      }
+    }
+  ]
+}
