@@ -1,4 +1,4 @@
-// PD2 server skill do functions in free srvdofunc slots (skill_functions.cpp).
+// PD2 skill do functions in free srvdofunc/cltdofunc slots (skill_functions.cpp).
 #pragma once
 
 #include <D2RLPlugin/api.h>

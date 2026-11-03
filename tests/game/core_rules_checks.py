@@ -8,7 +8,8 @@ Setup (Slot4-7, game closed):
 Run:
   py testing/game_checks.py run core-rules --slot 4 --path <repo>/tests/game --module core_rules_checks
   then in town: Double Throw on the right button, right-click the ground, and run the same command again
-  (the cast check skips until a cast is in the log).
+  (the cast checks skip until a cast is in the log). The fixture sets throwaxe Town 1: a missile without it dies at
+  once in town, so nothing would be drawn. throwaxe has no ClientSend, so the axes on screen come from cltdofunc 118.
 """
 import os
 import re
@@ -17,7 +18,7 @@ from game_checks import check
 import game_ctl
 
 PLUGIN = "core-rules"
-SKILL_SLOTS = {189: "split throw"}  # srvdofunc slots core-rules installs
+SKILL_SLOTS = [("srvdofunc", 189, "split throw"), ("cltdofunc", 118, "split throw")]  # do-table slots it installs
 
 
 def _log(ctx) -> str:
@@ -32,7 +33,7 @@ def _log(ctx) -> str:
 
 @check("core-rules-loads", tags=["core-rules", "game"])
 def core_rules_loads(ctx):
-    """core-rules loads game-wide and fills every srvdofunc slot it owns."""
+    """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
     try:
         game_ctl.wait_for(lambda: re.search(rf"{PLUGIN}: skills ", _log(ctx)), 90, 2.0, "the skills part line")
@@ -41,8 +42,8 @@ def core_rules_loads(ctx):
     line = re.search(rf"{PLUGIN}: skills [^\n]*", _log(ctx)).group(0)
     n = len(SKILL_SLOTS)
     assert f"skills {n}/{n} installed" in line, line
-    for slot, name in SKILL_SLOTS.items():
-        assert f"srvdofunc {slot} {name}" in line, f"slot {slot} missing: {line}"
+    for table, slot, name in SKILL_SLOTS:
+        assert f"{table} {slot} {name}" in line, f"{table} {slot} missing: {line}"
     return line[len(PLUGIN) + 2:]
 
 
@@ -57,6 +58,20 @@ def split_throw_cast(ctx):
     assert count == expected, f"level {level}: {count} missiles, PD2 makes {expected}"
     assert created == count, f"only {created} of {count} missiles were created"
     return f"level {level}: {created} of {count} missiles"
+
+
+@check("split-throw-client-cast", tags=["core-rules"])
+def split_throw_client_cast(ctx):
+    """The client half (cltdofunc 118) drew the same number of missiles as the server half made."""
+    log = _log(ctx)
+    server = re.findall(r"split throw: skill \d+ level \d+: \d+ of (\d+) missiles", log)
+    client = re.findall(r"split throw client: skill \d+ level (\d+): (\d+) of (\d+) missiles", log)
+    if not client:
+        ctx.skip("no client-side Split Throw cast in the log yet (cast it in town, then run again)")
+    level, created, count = (int(v) for v in client[0])
+    assert server and int(server[0]) == count, f"client {count} missiles, server {server[:1]}"
+    assert created == count, f"the client created only {created} of {count} missiles"
+    return f"level {level}: client drew {created} of {count} missiles"
 
 
 @check("core-rules-no-crash", tags=["core-rules"])

@@ -20,6 +20,10 @@ using SkillTargetXYFn = int32_t (*)(Game* game, Unit* unit, int32_t* x, int32_t*
 using CreateMissileFn = Unit* (*)(Game* game, MissileParams* params) noexcept;
 using MissileCountFn = int32_t (*)(uint32_t dataFlag) noexcept;
 using SetUnitSkillFlagFn = void (*)(Unit* unit, int32_t on) noexcept;
+using PickSkillMissileFn = int32_t (*)(Unit* unit, int32_t skillId) noexcept;
+using UnitDataFlagFn = uint8_t (*)(Unit* unit) noexcept;
+using ClientSkillTargetXYFn = int32_t (*)(Unit* unit, int32_t* x, int32_t* y) noexcept;
+using ClientCreateMissileFn = Unit* (*)(MissileParams* params, int32_t zero) noexcept;
 
 struct Api {
 	GetSkillRecordFn getSkillRecord;
@@ -28,6 +32,10 @@ struct Api {
 	CreateMissileFn createMissile;
 	MissileCountFn missileCount;
 	SetUnitSkillFlagFn setUnitSkillFlag;
+	PickSkillMissileFn pickSkillMissile;
+	UnitDataFlagFn unitDataFlag;
+	ClientSkillTargetXYFn clientSkillTargetXY;
+	ClientCreateMissileFn clientCreateMissile;
 };
 extern Api api;
 // TimeDateStamp of the PE image at exeBase (0 when there is none).
@@ -67,8 +75,8 @@ inline auto EvalCalc(Game* game, Unit* unit, const uint8_t* skill, int field, in
 	return api.evalSkillCalc(DataFlag(game), unit, At<int32_t>(skill, field), skillId, level);
 }
 
-inline auto ValidMissile(Game* game, int32_t missile) noexcept -> bool {
-	return missile >= 0 && missile < api.missileCount(DataFlag(game));
+inline auto ValidMissile(uint32_t dataFlag, int32_t missile) noexcept -> bool {
+	return missile >= 0 && missile < api.missileCount(dataFlag);
 }
 
 }  // namespace d2r

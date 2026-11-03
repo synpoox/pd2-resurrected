@@ -37,6 +37,10 @@ auto Bind(uint64_t exeBase) noexcept -> bool {
 	BindOne(api.createMissile, exeBase, rva::CreateMissile);
 	BindOne(api.missileCount, exeBase, rva::MissileCount);
 	BindOne(api.setUnitSkillFlag, exeBase, rva::SetUnitSkillFlag);
+	BindOne(api.pickSkillMissile, exeBase, rva::PickSkillMissile);
+	BindOne(api.unitDataFlag, exeBase, rva::UnitDataFlag);
+	BindOne(api.clientSkillTargetXY, exeBase, rva::ClientSkillTargetXY);
+	BindOne(api.clientCreateMissile, exeBase, rva::ClientCreateMissile);
 	return true;
 }
 
