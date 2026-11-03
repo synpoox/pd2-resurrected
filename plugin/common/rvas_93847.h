@@ -25,6 +25,22 @@ inline constexpr int SrvDoFirstFree = 172;
 inline constexpr uint64_t CltDoTable = 0x235f7d0;
 inline constexpr int CltDoSlots = 130;
 inline constexpr int CltDoFirstFree = 110;
+// Server skill "start" functions (srvstfunc): 91 slots, 71-90 free. Caller 0x43b3e0; 0 from the function aborts the cast.
+inline constexpr uint64_t SrvStTable = 0x238e710;
+inline constexpr int SrvStSlots = 91;
+inline constexpr int SrvStFirstFree = 71;
+// missiles.txt pSrvDoFunc: int64_t fn(Game*, Unit* missile), 54 slots, 46-53 free.
+inline constexpr uint64_t MissileSrvDoTable = 0x2390e80;
+inline constexpr int MissileSrvDoSlots = 54;
+inline constexpr int MissileSrvDoFirstFree = 46;
+// missiles.txt pSrvHitFunc: void fn(Game*, Unit* missile, Unit* hit), 71 slots, 61-70 free.
+inline constexpr uint64_t MissileSrvHitTable = 0x2391030;
+inline constexpr int MissileSrvHitSlots = 71;
+inline constexpr int MissileSrvHitFirstFree = 61;
+// missiles.txt pCltDoFunc: void fn(Unit* missile, int32_t a2), 92 slots, 78-91 free.
+inline constexpr uint64_t MissileCltDoTable = 0x2358430;
+inline constexpr int MissileCltDoSlots = 92;
+inline constexpr int MissileCltDoFirstFree = 78;
 
 // --- Functions (signature in the comment) -------------------------------------------------------------------------
 inline constexpr uint64_t GetSkillRecord = 0x97790;    // (dataFlag, skillId) -> skills.txt record or null
@@ -39,6 +55,31 @@ inline constexpr uint64_t UnitDataFlag = 0x34a0e0;          // (unit) -> data fl
 inline constexpr uint64_t ClientSkillTargetXY = 0x214c80;   // (unit, &x, &y) -> non-zero when the skill has a point
 inline constexpr uint64_t ClientCreateMissile = 0x1b7760;   // (&MissileParams, 0) -> missile unit or null
 
+// Missiles (srvhit 4 is Exploding Arrow's hit, srvdo 7 / cltdo 7 Guided Arrow's homing, srvdo 1 / cltdo 1 the default)
+inline constexpr uint64_t SrvHitSubMissiles = 0x45ddb0;  // srvhit 4 (game, missile, hit): HitSubMissile1-4 at the missile
+inline constexpr uint64_t MissileSrvDoDefault = 0x463100;  // srvdo 1 (game, missile): move, collide, count down range
+inline constexpr uint64_t MissileSrvEnd = 0x4639a0;  // (game, missile, hit, 1): what srvdo 1 does when range runs out
+inline constexpr uint64_t MissileCltDoDefault = 0x1b5380;  // cltdo 1 (missile, a2)
+inline constexpr uint64_t MissileOwner = 0x490300;  // (game, missile) -> owner unit or null
+inline constexpr uint64_t ClientMissileOwner = 0x9a7b0;  // (missile) -> owner unit or null
+inline constexpr uint64_t MissileSrvFrames = 0x3bb1e0;  // (missile) -> range frames left (server)
+inline constexpr uint64_t MissileCltFrames = 0x3bb0f0;  // (missile) -> range frames left (client)
+inline constexpr uint64_t PathSetTargetUnit = 0x342920;  // (path, unit): path +0x70 target unit
+inline constexpr uint64_t PathSteer = 0x340e70;  // (path, unit, 0, 1): re-aim the path at its target unit
+inline constexpr uint64_t UnitDistance = 0x324fc0;  // (a, b) -> distance in subtiles
+
+// Self buff, the way Frozen Armor's srvdo 18 (0x553e60) builds its aurastate list
+inline constexpr uint64_t RemoveSkillState = 0x4370b0;  // (unit, state, 1): drop an older list of this state
+inline constexpr uint64_t NewStateList = 0x433d20;  // (&StateListRequest) -> stat list or null
+inline constexpr uint64_t AddAuraStats = 0x574480;  // (unit, list, skillRecord, skillId, level): aurastat1-6
+inline constexpr uint64_t AddAuraStatsB = 0x574600;  // same arguments, Frozen Armor calls both
+inline constexpr uint64_t SetListStat = 0x2f7c00;  // (dataFlag, list, stat, value, layer)
+inline constexpr uint64_t UnitStateKey = 0x34b6c0;  // (unit) -> value Frozen Armor passes to 0x435920
+inline constexpr uint64_t StateListKey = 0x435920;  // (dataFlag, list, key) -> stat 202 value
+inline constexpr uint64_t SendSkillState = 0x438470;  // (game, unit, skill, level, key, 1, state, &aurastat, &calc, 4)
+inline constexpr uint64_t SetUnitState = 0x3355a0;  // (unit, state, on)
+inline constexpr uint64_t SkillStateExpired = 0x5551f0;  // Frozen Armor's expiry callback: removes the state
+
 // --- Offsets ------------------------------------------------------------------------------------------------------
 inline constexpr int GameDataFlag = 0x106;  // Game: byte passed to every data-table getter
 
@@ -51,6 +92,7 @@ inline constexpr int SkCltMissileA = 0x140; // int16 cltmissilea; cltmissileb +0
 inline constexpr int SkCalc1 = 0x190;       // int32 calc index (pass to EvalCalc); calc2 +0x194, calc3 +0x198
 inline constexpr int SkCalc2 = 0x194;
 inline constexpr int SkCalc3 = 0x198;
+inline constexpr int SkAuraState = 0xa0;  // int16 aurastate; aurastat1-6 int16 from +0xa4, aurastatcalc1-6 int32 from +0xac
 
 }  // namespace d2r::rva
 
@@ -81,5 +123,20 @@ static_assert(offsetof(MissileParams, activation) == 0x54);
 static_assert(offsetof(MissileParams, missile) == 0x20);
 static_assert(offsetof(MissileParams, targetX) == 0x2c);
 static_assert(offsetof(MissileParams, skill) == 0x3c);
+
+// Argument of rva::NewStateList, laid out as Frozen Armor fills it on its stack.
+struct StateListRequest {
+	Unit* owner;               // 0x00
+	Unit* unit;                // 0x08
+	int32_t skill;             // 0x10
+	int32_t level;             // 0x14
+	int32_t frames;            // 0x18 how long the list lasts
+	int32_t minusOne;          // 0x1c always -1
+	int32_t zero;              // 0x20
+	int32_t state;             // 0x24
+	void (*expired)();         // 0x28 called when the list runs out (rva::SkillStateExpired)
+};
+static_assert(sizeof(StateListRequest) == 0x30);
+static_assert(offsetof(StateListRequest, state) == 0x24);
 
 }  // namespace d2r

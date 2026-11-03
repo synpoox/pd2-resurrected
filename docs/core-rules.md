@@ -12,7 +12,7 @@ Columns:
 - **D2R slot**: PD2's number where that slot is free in D2R. `->` marks a re-map (collision or past the table end), logged here.
   Slots 191+ need the srvdofunc overflow table (plumbing, see the research file, Q1).
 - **RVAs**: names only; the values live in the per-build header. `?` = not located yet.
-- **Tier**: Exact or Function-equivalent (glossary).
+- **Tier**: Exact or Function-equivalent (glossary). Approximation marks a part built from PD2's data before its function was read; it is replaced by an Exact build later.
 - **Size**: sessions. S under 1, M 1-2, L 3+. Every size here is an estimate from the spike, not measured.
 - **Status**: `spiked` (proven in a spike), `open` (to build), `verify` (a value inside D2R's range, or a rule whose effect is not
   yet confirmed: treat as different from D2R until checked), `data` (no plugin code expected; listed so the check is not lost),
@@ -58,7 +58,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 
 | Rule | PD2 source | Bucket | D2R slot | RVAs | Tier | Size | Status | Test | Work item |
 |---|---|---|---|---|---|---|---|---|---|
-| Split Throw | srvdo 189, cltdo 118, srvst 79 (shared, see below), shit 65; return missiles sdo 38, cdo 70 | c | srvdo 189, cltdo 118, shit 65; sdo 38 -> 46 (D2R 38 is flamewave), cdo 70 -> ? (D2R 70 is vine beast death; table size unknown) | SrvDoTable, CltDoTable, SrvHitTable, getSkillRecord, evalSkillCalc, skillTargetXY, createMissile, setUnitSkillFlag | Exact | M | server and client halves built (W2); return missiles, srvst 79 open | cast logs missile count = calc1 (`par1+min(lvl/5,par2)`); client draws them | W1, W2 |
+| Split Throw | srvdo 189, cltdo 118, srvst 79 (shared, see below), shit 65; return missiles sdo 38, cdo 70 | c | srvdo 189, cltdo 118, shit 65; sdo 38 -> 46 (D2R 38 is flamewave), cdo 70 -> 78 (D2R 70 is vine beast death; missile cltdo has 92 slots, 78-91 free) | SrvDoTable, CltDoTable, SrvHitTable, MissileSrvDoTable, MissileCltDoTable, getSkillRecord, evalSkillCalc, skillTargetXY, createMissile, setUnitSkillFlag | Exact (halves); Approximation (returns) | M | server and client halves built (W2); return missiles built as an approximation from the data (W2): shit 65 runs D2R srvhit 4, sdo 46 / cdo 78 steer home like Guided Arrow and end within 2 subtiles of the thrower | cast logs missile count = calc1 (`par1+min(lvl/5,par2)`); client draws them; out of town every axe spawned a return that reached the thrower | W1, W2 |
 | Lightning Bolt, Lightning Fury | srvdo 188, cltdo 117 | c | 188, 117 | SrvDoTable, CltDoTable, createMissile | Exact | M | verify | first check what srvdo 188 changes (Lightning Bolt has no calc columns); data only if nothing visible | W5 |
 | Inferno, Arctic Blast | srvdo 182, cltdo 111 | c | 182, 111 | SrvDoTable, CltDoTable | Exact | M | open | cast logs values from PD2's calc columns |  |
 | Charge (Paladin) | srvdo 180, cltdo 112, srvst 72, cltst 57 | c | 180, 112, srvst 72, cltst 57 -> ? (Q3) | SrvDoTable, CltDoTable, SrvStTable, SkillStart, CltStTable ? | Exact | M | open | charge logs hit damage from calc |  |
@@ -105,7 +105,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Smite start | srvst 75 | c | 75 | SrvStTable | Exact | S | open | cast logs start accepted |  |
 | Spirit Wolf, Fenris start | srvst 77 | c | 77 | SrvStTable | Exact | S | open | summon logs start accepted |  |
 | Frenzy, Tiger Strike start | srvst 78 | c | 78 | SrvStTable | Exact | S | open | cast logs start accepted | W10 |
-| Fire Claws, Split Throw start | srvst 79 | c | 79 | SrvStTable | Exact | S | open | cast logs start accepted | W2 |
+| Fire Claws, Split Throw start | srvst 79 | c | 79 | SrvStTable, Frozen Armor srvdo 18 calls | Approximation | S | built as an approximation (W2): aurastate + aurastat1-6 for a fixed 25 frames (PD2 rows have no auralencalc); D2R has no temp_skill_buff state, the test fixture uses quickness | cast logs the state and length | W2 |
 | Paladin aura client start (19 auras) | cltst 54 | c | 54 -> ? (Q3) | CltStTable ? | Exact | S | verify | aura start draws on client |  |
 | Paladin aura client do (19 auras, Force Move, SelfAura skills) | cltdo 103 | c | 103 -> 123 | CltDoTable | Exact | M | open | aura graphic draws; D2R would run Cleave's client code |  |
 | Baal Corpse Explode client start | cltst 82 | a | none (past D2R's table end: use none, per toolkit notes) | none | Exact | S | data | check the cast still shows | W3 |

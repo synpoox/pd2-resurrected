@@ -8,7 +8,8 @@ Setup (Slot4-7, game closed):
 Run:
   py testing/game_checks.py run core-rules --slot 4 --path <repo>/tests/game --module core_rules_checks
   then in town: Double Throw on the right button, right-click the ground, and run the same command again
-  (the cast checks skip until a cast is in the log). The fixture sets throwaxe Town 1: a missile without it dies at
+  (the cast checks skip until a cast is in the log). For split-throw-return, walk into Blood Moor and throw at
+  monsters (allowed in PD2 Resurrected slots). The fixture sets throwaxe Town 1: a missile without it dies at
   once in town, so nothing would be drawn. throwaxe has no ClientSend, so the axes on screen come from cltdofunc 118.
 """
 import os
@@ -18,7 +19,10 @@ from game_checks import check
 import game_ctl
 
 PLUGIN = "core-rules"
-SKILL_SLOTS = [("srvdofunc", 189, "split throw"), ("cltdofunc", 118, "split throw")]  # do-table slots it installs
+SKILL_SLOTS = [  # table slots it installs
+    ("srvdofunc", 189, "split throw"), ("cltdofunc", 118, "split throw"), ("srvstfunc", 79, "temp buff"),
+    ("pSrvHitFunc", 65, "return spawn"), ("pSrvDoFunc", 46, "return"), ("pCltDoFunc", 78, "return"),
+]
 
 
 def _log(ctx) -> str:
@@ -72,6 +76,28 @@ def split_throw_client_cast(ctx):
     assert server and int(server[0]) == count, f"client {count} missiles, server {server[:1]}"
     assert created == count, f"the client created only {created} of {count} missiles"
     return f"level {level}: client drew {created} of {count} missiles"
+
+
+@check("split-throw-temp-buff", tags=["core-rules"])
+def split_throw_temp_buff(ctx):
+    """srvstfunc 79 put the skill's aurastate on the caster at the start frame (an approximation, docs/core-rules.md)."""
+    buffs = re.findall(r"temp buff: skill \d+ level (\d+) state (\d+) for (\d+) frames", _log(ctx))
+    if not buffs:
+        ctx.skip("no temp buff in the log yet (cast Split Throw, then run again)")
+    level, state, frames = buffs[0]
+    assert int(state) > 0 and int(frames) > 0, buffs[0]
+    return f"level {level}: state {state} for {frames} frames"
+
+
+@check("split-throw-return", tags=["core-rules"])
+def split_throw_return(ctx):
+    """A Split Throw axe that hit a monster spawned its return missile (shit 65), and a return reached the thrower
+    (sdo 46). Needs a cast at monsters out of town."""
+    log = _log(ctx)
+    if "return missile: spawned on hit" not in log:
+        ctx.skip("no return missile in the log yet (hit a monster with Split Throw, then run again)")
+    assert "return missile: caught by the thrower" in log, "a return missile spawned but none reached the thrower"
+    return "spawned on hit and caught"
 
 
 @check("core-rules-no-crash", tags=["core-rules"])

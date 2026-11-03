@@ -7,6 +7,7 @@
 namespace d2r {
 
 Api api {};
+uint64_t imageBase = 0;
 
 namespace {
 template <typename Fn>
@@ -31,6 +32,7 @@ auto Bind(uint64_t exeBase) noexcept -> bool {
 	if (ImageStampOf(exeBase) != rva::ImageStamp) {
 		return false;
 	}
+	imageBase = exeBase;
 	BindOne(api.getSkillRecord, exeBase, rva::GetSkillRecord);
 	BindOne(api.evalSkillCalc, exeBase, rva::EvalSkillCalc);
 	BindOne(api.skillTargetXY, exeBase, rva::SkillTargetXY);

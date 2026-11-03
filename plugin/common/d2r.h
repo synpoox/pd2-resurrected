@@ -38,6 +38,12 @@ struct Api {
 	ClientCreateMissileFn clientCreateMissile;
 };
 extern Api api;
+// Image base Bind() accepted (0 before that). Engine<Fn>(rva) is for functions only one part calls.
+extern uint64_t imageBase;
+template <typename Fn>
+inline auto Engine(uint64_t offset) noexcept -> Fn {
+	return reinterpret_cast<Fn>(imageBase + offset);
+}
 // TimeDateStamp of the PE image at exeBase (0 when there is none).
 auto ImageStampOf(uint64_t exeBase) noexcept -> uint32_t;
 // Binds api when the image is the one rvas_*.h describes; false (api left null) on any other image.
