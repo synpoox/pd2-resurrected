@@ -246,9 +246,13 @@ def rewrite_formula(text: str, ren: dict[str, dict[str, str]]) -> str:
 def fix_props(header: list[str], row: list[str], ren: dict[str, dict[str, str]], ids: dict[str, dict[str, str]],
               props: dict[str, str]) -> None:
     """Skill and state parameters of item properties (code, [cube: chance,] param, min, max columns) in the mod's
-    names and ids."""
+    names and ids; and a cube condition's stat (op 3-26 read `param` as an itemstatcost id, D2R's data guide)."""
     def remap(table: str, v: str) -> str:
         return ids.get(table, {}).get(v, v) if v.isdigit() else ren[table].get(v.lower(), v)
+    if "op" in header and "param" in header:
+        op, par = header.index("op"), header.index("param")
+        if row[op].isdigit() and 3 <= int(row[op]) <= 26:
+            row[par] = ids.get("itemstatcost", {}).get(row[par], row[par])
     low = [c.lower() for c in header] + ["", "", ""]
     for j in range(len(header)):
         p = j + 1 if "par" in low[j + 1] else j + 2 if "chance" in low[j + 1] and "par" in low[j + 2] else None
@@ -298,7 +302,7 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
             row[j] = spell(table, d2r.header[j], pr[k], ren)
         for j, fn in derived.items():
             row[j] = fn(dict(zip(pd2.header, pr)))
-        if props:
+        if props is not None:
             fix_props(d2r.header, row, ren, ids or {}, props)
         row[d2r.key] = n
         if id_col is not None:
@@ -340,7 +344,9 @@ def context(merge_dir: Path, pd2_data: Path, d2r_data: Path) -> Context:
 def context_of(lists: dict[str, list[tuple[str, int, str]]], pd2_data: Path) -> Context:
     """The Context of id lists already read (and checked)."""
     ids = {}
-    for t in ("skills", "states"):
+    for t in ("skills", "states", "itemstatcost"):
+        if not lists[t]:  # nothing to remap (tests with no such table)
+            continue
         mod = {p.lower(): i for p, i, _ in lists[t]}
         ids[t] = {str(k): str(mod[p.lower()]) for k, p in enumerate(ident(load(pd2_data, t).names()))}
     return Context(lists, renames(lists), ids, property_kinds(load(pd2_data, "properties")))
