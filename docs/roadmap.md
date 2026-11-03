@@ -33,7 +33,7 @@ M1 plus the companions, corruption and the Amazon and Barbarian engine rules; th
 | W2 | Client-half example (core-rules) | W1 | B | #45 |
 | W4 | Investigation: PlrModes (core-rules) | none | C | #36 (PR) |
 | W5, W6 | Amazon (core-rules) | W2, P2 | B | #52, #53 |
-| W7 | Nova and orb hits (core-rules) | W1, P2 | C | #50 |
+| W7 | Nova and orb hits (core-rules) | W1, P2 | C | #50, #66 (PR); game check waits on the owner's run |
 | W8, W9 | Barbarian (core-rules) | W2, P2 | B | #54, #55 |
 | W10 | Barbarian group (core-rules) | W1, P2 | C | #51 |
 | P7 | Companions: hash-checked manifest, release-script download, hand-written `filter.json`, Pyre's 16 `Filter*` sound rows and flacs merged into our data | none | C | #39 (PR) |
