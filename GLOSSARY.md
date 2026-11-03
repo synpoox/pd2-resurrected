@@ -52,5 +52,5 @@ A PD2 behaviour that is not a table value and needs plugin code, such as a skill
 _Avoid_: patch, function number (a function number is where one engine rule plugs in)
 
 **Companion plugin**:
-A third-party D2RLoader plugin bundled with the port that stands in for a PD2 feature; what it lacks is a deviation.
+A D2RLoader plugin built outside this repo and bundled with the port that stands in for a PD2 feature; what it lacks is a deviation.
 _Avoid_: dependency, add-on, external mod
