@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pd2_ids import Table
+from pd2_ids import Table, excel
 
 
 def _nums(*spans: int | range) -> set[str]:
@@ -60,7 +60,7 @@ def apply_lines(table: str, mod: Table, d2r: Table, lines: list[tuple[str, str, 
         if n > 1:
             raise StandinError(f"{table}: '{name}' names {n} rows")
         if src == "=":
-            # shortcut: matches D2R's row by position, true for the id-merged tables; recheck when P3 merges misc/properties
+            # shortcut: matches D2R's row by position and fails on a name mismatch; name the D2R row if a table's order drifts
             i = mod.rows.index(row)
             if i >= len(d2r.rows) or d2r.rows[i][0].lower() != name.lower():
                 raise StandinError(f"{table}: '{name}' is not a D2R row, so '=' has nothing to copy: name a D2R row")
@@ -107,17 +107,17 @@ def read_lines(path: Path) -> dict[str, list[tuple[str, str, list[str], str]]]:
 
 
 def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
-    """pd2_merge rule kind for merge/standins.tsv: edit the tables the id rules wrote, then check them."""
+    """pd2_merge rule kind for merge/standins.tsv: edit the tables the id and item rules wrote, then check them."""
     lines = read_lines(rule)
     if unknown := sorted(set(lines) - set(PD2_ONLY)):
         raise StandinError(f"no stand-ins for table {', '.join(unknown)}: add it to PD2_ONLY")
     for t in sorted(set(lines) | set(PD2_ONLY)):
-        path = out_data / "global" / "excel" / f"{t}.txt"
+        path = excel(out_data) / f"{t}.txt"
         if not path.is_file():  # D2R's own table is built, so no PD2 row needs a stand-in yet
             if t in lines:
                 print(f"  standins: {t}.txt is not merged yet; its {len(lines[t])} lines wait for the rule that merges it")
             continue
-        mod, d2r = Table(path), Table(d2r_data / "global" / "excel" / f"{t}.txt")
+        mod, d2r = Table(path), Table(excel(d2r_data) / f"{t}.txt")
         apply_lines(t, mod, d2r, lines.get(t, []))
         check(t, mod, d2r)
         path.write_bytes(mod.text().encode("latin-1"))
