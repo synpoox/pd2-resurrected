@@ -23,9 +23,9 @@ Columns:
 
 ## Work items
 
-Ordered by "Order and slice core-rules into work items" (#25). A work item is about one agent session. A `verify` check is
+Ordered by "Order and slice core-rules into work items" (#25); placed into milestones, next to the P items, by [roadmap.md](roadmap.md). A work item is about one agent session. A `verify` check is
 the first step of the item that builds its row; when D2R already matches, the item shrinks to data. Each build PR merges
-when its game check, the table-diff gate and a code-review agent pass; the owner reviews W1, W2 and the alpha release.
+when its game check, the table-diff gate and a code-review agent pass; the owner reviews P1, W1, W2 and the alpha release.
 Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 (a frozen install copy); 3.4 is its own item once D2RLoader supports it.
 
 ### Alpha: Amazon and Barbarian complete, the other classes on stand-ins
@@ -34,14 +34,14 @@ Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 (a frozen install copy); 3.4 is it
 |---|---|---|
 | W1 | Plumbing: installer, per-build RVA header, Split Throw server half (srvdo 189) moved into `core-rules` with its game check | none |
 | W2 | Client-half example: Split Throw client half (cltdo 118), return missiles (sdo 38 -> 46, cdo 70 -> 78, shit 65), shared start srvst 79 | W1 |
-| W3 | Stand-ins and data rows: `merge/` rules pointing each unbuilt rule's skill at the closest D2R function, "not yet" rows on the unported list, all `data` rows | none |
+| W3 | Stand-ins and data rows: `merge/` rules pointing each unbuilt rule's skill at the closest D2R function, "not yet" rows on the unported list, all `data` rows | P1 |
 | W4 | Investigation: what PD2's `PlrModes.cpp` changes (PD2 baseline or ProjectDiablo.dll) | none |
-| W5 | Amazon: Lightning Bolt, Lightning Fury (srvdo 188, cltdo 117); starts with the 188 check | W2 |
-| W6 | Amazon group: Fire/Exploding Arrow hit, Multiple Shot dmg 17 -> 20, Power Strike client half (cltdo 22), Immolation client hit (chit 12) | W2 |
-| W7 | Nova and orb hits (shit 5, chit 4) | W1 |
-| W8 | Barbarian: Leap, Leap Attack (srvdo 153 -> free slot, cltdo 97) | W2 |
-| W9 | Barbarian: Double Throw (srvdo 154 -> 183, cltdo 98 -> 116, shit 30, dmg 16 -> free slot) | W2 |
-| W10 | Barbarian group: Bash, Find Potion/Find Item (cltst 55 -> 62), Frenzy start (srvst 78) | W1 |
+| W5 | Amazon: Lightning Bolt, Lightning Fury (srvdo 188, cltdo 117); starts with the 188 check | W2, P2 |
+| W6 | Amazon group: Fire/Exploding Arrow hit, Multiple Shot dmg 17 -> 20, Power Strike client half (cltdo 22), Immolation client hit (chit 12) | W2, P2 |
+| W7 | Nova and orb hits (shit 5, chit 4) | W1, P2 |
+| W8 | Barbarian: Leap, Leap Attack (srvdo 153 -> free slot, cltdo 97) | W2, P2 |
+| W9 | Barbarian: Double Throw (srvdo 154 -> 183, cltdo 98 -> 116, shit 30, dmg 16 -> free slot) | W2, P2 |
+| W10 | Barbarian group: Bash, Find Potion/Find Item (cltst 55 -> 62), Frenzy start (srvst 78) | W1, P2 |
 
 ### After the cut, by rows unlocked per session
 
@@ -49,7 +49,7 @@ Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 (a frozen install copy); 3.4 is it
 2. The 4 dead item events and the remaining shared hit-function groups.
 3. Remaining classes, fewest rules first: Necromancer, Paladin, Druid, Sorceress, Assassin (its L finisher split by hook point).
 4. Monster and boss kits, then cube ops.
-5. Investigations: phasing, a3q5, SkilPal/SUNITNPC, PerfectShrine, charm rule, cube op 30/31, corruption flow.
+5. Investigations: phasing, a3q5, SkilPal/SUNITNPC, PerfectShrine, charm rule, cube op 30/31.
 
 A rule that doesn't fit a slot uses a router on that table, keyed by the id its function receives; with no key it is cut
 and listed. Slot sizes and free ranges per table: [skill-function-tables](https://github.com/synpoox/pd2-resurrected/blob/research/skill-function-tables/docs/research/skill-function-tables.md).
@@ -157,7 +157,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 
 | Rule | PD2 source | Bucket | D2R slot | RVAs | Tier | Size | Status | Test | Work item |
 |---|---|---|---|---|---|---|---|---|---|
-| Item stat less than / equal (corruption outcomes, map recipes; 1,126 enabled rows) | cubemain `op` 16, 18 | a | 16, 18 | none | Exact | S | verify | recipes match D2R's data-guide meaning; `param` stat ids (361 `corruptor`, 276, 185, 458) must be remapped | map plan |
+| Item stat less than / equal (corruption outcomes, map recipes; 1,126 enabled rows) | cubemain `op` 16, 18 | a | 16, 18 | none | Exact | S | verify | recipes match D2R's data-guide meaning; `param` stat ids (361 `corruptor`, 276, 185, 458) must be remapped | P9, map plan |
 | Quest item difficulty check | cubemain `op` 28 | a | 28 | none | Exact | S | data | same as D2R's own op 28 rows | W3 |
 | Map recipes (heroic, corrupt, fortify, ears, map events; 26 rows) | cubemain `op` 30 | c | 30 | CubeRecipeSearch, CubeInputMatch | Exact | M | verify | meaning guessed (Q8); recipe accepts only what PD2 accepts | map plan |
 | Demonic cube reroll of unique and set items (16 rows) | cubemain `op` 31 | c | 31 | CubeRecipeSearch, CubeInputMatch, CubeExecutor | Exact | M | open | reroll logs new stats inside the item's ranges |  |
@@ -170,9 +170,9 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | `.set-home` start town | ProjectDiablo.dll strings | c | none | ? | Function-equivalent | S | open | reload logs the chosen town |  |
 | Character stat commands (`.kills`, `.deaths`, `.played`, `.age`, `.allstats`, `.accountstats`) | ProjectDiablo.dll strings | b | none | UnitDeath | Function-equivalent | M | open | kill a boss, `.kills` logs +1; counters need saved state |  |
 | Teleport blocked areas | ProjectDiablo.dll `TeleportBlocked` | a | levels.txt `Teleport` | none | Exact | S | verify | teleport refused in the same areas as PD2 |  |
-| Corrupted zones | ProjectDiablo.dll `pGame->nCorruptedZone`, `CorruptedZoneNotify` | b | D2R desecrated zones ? | ? | Function-equivalent | L | verify | zone rotation and bonus match PD2 (Q9) |  |
+| Corrupted zones (D2R's Terror Zones) | ProjectDiablo.dll `pGame->nCorruptedZone`, `CorruptedZoneNotify` | a | D2R Terror Zones, as they are | none | Function-equivalent | S | verify | zone rotation and bonuses compared with PD2; each difference is a deviation on the unported list |  |
 | Map events and invaders (AiThink4, `MapEventNotify*`, Invader monsters) | ProjectDiablo.dll | c | none | ? | Exact | L | verify | part of the map system (Q7) | map plan |
-| Corruption roll | stat 361 `corruptor`, prop `corruptnum`, op 16 recipes | c | none | CubeExecutor | Exact | M | verify | one cube press gives a PD2 outcome (Q10) |  |
+| Corruption | stat 361 `corruptor`, prop `corruptnum`, op 16 recipes | c | none | CubeExecutor | Exact | M | verify | one cube press gives a PD2 outcome (Q10) | P9 |
 | Loot allocation | ProjectDiablo.dll `pGame->nItemAllocation`, `LootAllocationTitle` | c | none | ? | Function-equivalent | M | verify | multiplayer phase only | later release |
 | PvP modifiers, battle-royale checks | ProjectDiablo.dll `*PVPModifiers`, `BRLevelCheck`, `BRGearCheck` | e | none | none | Function-equivalent | S | cut | online feature |  |
 | Act 3 quest 5 patch | ProjectDiablo.dll `a3q5.cpp` | c | none | ? | Exact | S | verify | effect not identified (Q6) |  |

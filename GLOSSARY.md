@@ -58,3 +58,15 @@ _Avoid_: patch, function number (a function number is where one engine rule plug
 **Companion plugin**:
 A D2RLoader plugin built outside this repo and bundled with the port that stands in for a PD2 feature; what it lacks is a deviation.
 _Avoid_: dependency, add-on, external mod
+
+**Milestone**:
+A playable point in the roadmap made of the work items it needs; the port has M1 (a new character in Act 1) and the alpha.
+_Avoid_: phase, release
+
+**Corruption**:
+PD2's one-time cube action that changes an item, for better or worse, and marks it so it cannot be done again.
+_Avoid_: corruption roll, corrupt recipe
+
+**Terror Zone**:
+D2R's rotating zone that grows harder and gives better rewards; it stands in for PD2's corrupted zones.
+_Avoid_: corrupted zone, desecrated zone
