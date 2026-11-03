@@ -5,6 +5,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Thunder Storm, Power Strike, Shattering Arrow and boss orbs burst into Project Diablo II's novas when they hit.
 - PD2's monsters, mercenaries, areas, shrines and objects are in. PD2's map areas and bigger inventory are not yet.
 - PD2's items, affixes, runewords, cube recipes and treasure classes are in. Map items do not drop yet. Breaks
   characters from earlier builds.
