@@ -1,0 +1,6 @@
+// Plugin manifest: the plugin ABI version, read by D2RLoader before it loads the DLL. Without this resource the
+// loader rejects the plugin as "an old alpha plugin" (knowledge/d2rloader.md).
+#include <D2RLPlugin/resource.h>
+#include <D2RLPlugin/version.h>
+
+D2RL_PLUGIN_MANIFEST_RESOURCE_ID RCDATA { D2RL_PLUGIN_RESOURCE_DWORD(D2RL_PLUGIN_ABI_VERSION) }
