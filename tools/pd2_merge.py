@@ -28,6 +28,7 @@ D2R_DATA = Path(os.environ.get("MODKIT_CACHE", ROOT.parent / "d2rAI-toolkit" / "
 # merge/ file name -> fn(rule file, PD2 data root, D2R data root, generated/data). Added by the work items that need them.
 RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
     **{f"ids-{t}.tsv": pd2_ids.apply for t in pd2_ids.TABLES},
+    "item-tables.txt": pd2_items.apply,
     "strings.json": pd2_strings.rule,
 }
 

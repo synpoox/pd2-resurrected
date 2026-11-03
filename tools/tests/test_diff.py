@@ -115,6 +115,36 @@ class GateTests(unittest.TestCase):
         self.write("mod", "levels", table("Name | MonLvl", "Blood Moor | 2"))
         self.assertEqual(self.gate().open(), [])
 
+    def test_item_tables_are_read_as_the_merge_writes_them(self):
+        (self.root / "merge").mkdir()
+        # repeated affix names: matched by the id list, not by name (D2R's own Virulent sits at 0)
+        (self.root / "merge/ids-magicprefix.tsv").write_text("Virulent\t1\tVirulent\nVirulent#2\t2\tVirulent\n", "utf-8")
+        for t, h in (("skills", "skill"), ("states", "state"), ("properties", "code | func1 | stat1")):
+            for side in ("pd2", "mod"):
+                self.write(side, t, table(h))
+        self.write("pd2", "magicprefix", table("Name | level", "Virulent | 5", "Virulent | 9"))
+        self.write("mod", "magicprefix", table("Name | level", "Virulent | 92", "Virulent | 5", "Virulent | 9"))
+        # renamed columns (pd2_ids.COLUMN_MAP), and a repeated column whose first holds the values
+        self.write("pd2", "armor", table("name | code | DrehyaMax | mindam | mindam", "Buckler | buc | 3 | 1 | 0"))
+        self.write("mod", "armor", table("name | code | AnyaMax | mindam", "Buckler | buc | 3 | 1"))
+        # a table merged by row keeps D2R's names; Excel's quote marks are not part of a cube recipe's name
+        self.write("pd2", "gems", table("name | code", "Saphire | gsb"))
+        self.write("mod", "gems", table("name | code", "Sapphire | gsb"))
+        self.write("pd2", "cubemain", table("description | output", '"rings, three" | amu'))
+        self.write("mod", "cubemain", table("description | output", "rings, three | amu"))
+        self.assertEqual(self.gate("P3").open(), [])
+
+    def test_item_property_skill_parameters_follow_the_skill_list(self):
+        (self.root / "merge").mkdir()
+        (self.root / "merge/ids-skills.tsv").write_text("Attack\t0\tAttack\nSplash\t430\tSplash\n", "utf-8")
+        self.write("pd2", "skills", table("skill | Id", "Attack | 0", "Splash | 358"))
+        self.write("pd2", "states", table("state | Id"))
+        for side in ("pd2", "mod"):
+            self.write(side, "properties", table("code | func1 | stat1", "oskill | 11 | item_nonclassskill"))
+        self.write("pd2", "gems", table("name | weaponMod1Code | weaponMod1Param", "Ruby | oskill | 1"))
+        self.write("mod", "gems", table("name | weaponMod1Code | weaponMod1Param", "Ruby | oskill | 430"))
+        self.assertEqual(self.gate("P3").open(), [])
+
     def test_every_unported_row_has_a_known_status(self):
         self.unported("| Something | maybe | `levels.*.*` | P4 |\n")
         with self.assertRaisesRegex(pd2_diff.GateError, "maybe"):

@@ -319,7 +319,11 @@ class Context(NamedTuple):
 
 
 def context(merge_dir: Path, pd2_data: Path, d2r_data: Path) -> Context:
-    lists = lists_for(merge_dir, pd2_data, d2r_data)
+    return context_of(lists_for(merge_dir, pd2_data, d2r_data), pd2_data)
+
+
+def context_of(lists: dict[str, list[tuple[str, int, str]]], pd2_data: Path) -> Context:
+    """The Context of id lists already read (and checked)."""
     ids = {}
     for t in ("skills", "states"):
         mod = {p.lower(): i for p, i, _ in lists[t]}
