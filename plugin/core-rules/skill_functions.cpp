@@ -318,14 +318,16 @@ auto SrvDoBash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	return VanillaSlot<SrvDoFn>(d2r::rva::SrvDoTable, d2r::rva::SrvDoMelee)(game, unit, skillId, level);
 }
 
+constexpr int32_t Bash = 126, UberTalicBash = 580;
+
 // srvdofunc 190 serves the PD2 do functions that have no free slot of their own, by skill id (docs/core-rules.md).
 auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	if (game == nullptr || unit == nullptr) {
 		return 0;
 	}
 	switch (skillId) {
-	case 126:  // Bash
-	case 580:  // UberTalicBash
+	case Bash:
+	case UberTalicBash:
 		return SrvDoBash(game, unit, skillId, level);
 	default:
 		plog::Warn("srvdo router: no function for skill %d", skillId);
@@ -336,8 +338,10 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 // Frenzy / Tiger Strike start (PD2 srvstfunc 78): inc_splash_radius on a temp_skill_buff list, from calc2 and the
 // skill's charges. Frenzy: calc2 * skill_frenzy / max(calc4, 1). Tiger Strike: calc2 * charges while under 3, else 0.
 // Other skills: calc2. Merged ids (ADR 0003): state temp_skill_buff 270, stats skill_frenzy 169, inc_splash_radius 531.
-// shortcut: PD2 keeps one permanent list and updates it; this replaces the list with a SplashFrames one each start.
-// Upgrade if a splash effect needs the list to outlive a long pause between attacks.
+// shortcut: PD2 keeps one permanent list and updates it; this replaces the list with a SplashFrames one each start,
+// which also drops Split Throw's list on the same state (srvst 79) and the reverse until the next Frenzy swing.
+// Upgrade (find D2R's get-state-list function) if a splash effect needs the list to outlive a long pause.
+constexpr int32_t Frenzy = 147, TigerStrike = 254;
 constexpr int32_t TempSkillBuff = 270;
 constexpr int32_t SkillFrenzyStat = 169;
 constexpr int32_t IncSplashRadius = 531;
@@ -357,11 +361,11 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
 	const int32_t calc2 = d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level);
 	int32_t charges = 0, value = calc2;
-	if (skillId == 147) {  // Frenzy
+	if (skillId == Frenzy) {
 		const int32_t calc4 = d2r::EvalCalc(game, unit, skill, SkCalc4, skillId, level);
 		charges = unitStat(unit, SkillFrenzyStat, 0);
 		value = calc2 * charges / (calc4 > 1 ? calc4 : 1);
-	} else if (skillId == 254) {  // Tiger Strike
+	} else if (skillId == TigerStrike) {
 		charges = unitStat(unit, At<int16_t>(skill, SkAuraStat1), 0);
 		value = charges < 3 ? calc2 * charges : 0;
 	}

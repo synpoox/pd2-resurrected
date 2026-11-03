@@ -99,7 +99,7 @@ inline constexpr uint64_t ClientSkillTargetUnit = 0x9a570;  // (unit) -> target 
 inline constexpr uint64_t QueuedHit = 0x44d660;
 inline constexpr uint64_t UnitSeed = 0x34a1e0;  // (unit) -> &seed {lo, hi}
 inline constexpr uint64_t UnitStat = 0x2f5020;  // (unit, stat, param) -> value
-inline constexpr uint64_t DataTables = 0x300a90;  // (dataFlag) -> data tables; states.txt rows at +0x298 (uint64)
+inline constexpr uint64_t DataTables = 0x300a90;  // (dataFlag) -> data tables; states.txt row count at +0x298
 
 // --- Offsets ------------------------------------------------------------------------------------------------------
 inline constexpr int GameDataFlag = 0x106;  // Game: byte passed to every data-table getter
@@ -109,7 +109,7 @@ inline constexpr int UnitPath = 0x38;  // dynamic path (x +0x2, y +0x6, uint16) 
 inline constexpr int PathTargetUnit = 0x70;  // Unit* on a dynamic path: what PathSteer aims at (set by PathSetTargetUnit)
 inline constexpr int UnitOwnerType = 0xe8;  // int32 owner unit type (MissileOwner 0x490300 reads both)
 inline constexpr int UnitOwnerId = 0xec;    // uint32 owner unit id
-inline constexpr int TablesStateCount = 0x298;
+inline constexpr int TablesStateCount = 0x298;  // uint64 states.txt row count in DataTables
 
 // Damage block QueuedHit returns: +0 hit flags (uint32), +4 result flags (uint16)
 inline constexpr int DamageResult = 0x4;
