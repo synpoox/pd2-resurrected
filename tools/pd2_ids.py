@@ -18,7 +18,8 @@ Merging a row: D2R's row, with every column PD2 also has (or COLUMN_MAP maps) se
 keep D2R's value on a D2R row and stay blank on an appended one (blank is the vanilla behaviour PD2 has), except the
 DERIVED ones. itemstatcost's descfunc and descval follow the description strings (STAT_STRINGS): a row that shows a D2R
 string takes the display D2R gives it. References to the P2 tables, including names inside formulas and item properties' skill and state
-parameters (by name or PD2 id), are rewritten to the mod's names and ids.
+parameters (by name or PD2 id), are rewritten to the mod's names and ids. PD2 function numbers that D2R reuses for
+its own functions move to the slots core-rules installs them in (FUNCS).
 PD2's cells carry Excel's quote marks, which the classic loader skipped; they are dropped, and formulas get D2R's
 spelling of negative numbers.
 """
@@ -107,6 +108,10 @@ DERIVED = {"skills": {"rightskill": lambda pd2: "0" if pd2.get("passive") == "1"
 # A row whose descstrpos and descstrneg name strings D2R's rows use takes those rows' descfunc and descval: its own D2R
 # row's when the strings are unchanged, else the D2R row with PD2's descfunc (bytime rows), else the first.
 STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval")
+# PD2 function numbers that D2R gave its own functions (srvdo 38 flamewave, cltdo 70 vine beast death): moved to the
+# free slots core-rules installs them in (plugin/core-rules/skill_functions.cpp Functions[])
+# shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own 38 or 70
+FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78"}}}
 KEY_LIMIT = {"missiles": 31}  # bytes, from D2R's data guide; the other three allow 47
 NEGATIVE = re.compile(r"(?<![\w)\]'.])-(\d+)")  # modkit tsv.NEGATIVE: D2R rejects 'x*-5'
 FORMULA_REF = re.compile(r"\b(skill|miss|stat)\('([^']*)'")
@@ -270,13 +275,14 @@ def fix_props(header: list[str], row: list[str], ren: dict[str, dict[str, str]],
 
 
 def spell(table: str, col: str, v: str, ren: dict[str, dict[str, str]]) -> str:
-    """A PD2 cell as the mod's column `col` holds it: quotes gone, references renamed, formulas in D2R's spelling."""
+    """A PD2 cell as the mod's column `col` holds it: quotes gone, references renamed, formulas in D2R's spelling,
+    function numbers moved (FUNCS)."""
     v = v.replace('"', "")
     if col in REFS.get(table, {}):
         return ren[REFS[table][col]].get(v.lower(), v)
     if col in FORMULAS.get(table, []):
         return rewrite_formula(fix_formula(v), ren)
-    return v
+    return FUNCS.get(table, {}).get(col, {}).get(v, v)
 
 
 def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, str]],
