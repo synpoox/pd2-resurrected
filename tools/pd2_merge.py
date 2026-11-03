@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Callable
 
 import pd2_ids
+import pd2_items
 
 ROOT = Path(__file__).resolve().parent.parent
 # the build the port targets, in modkit's cache (MODKIT_CACHE, as modkit reads it)
@@ -25,6 +26,7 @@ D2R_DATA = Path(os.environ.get("MODKIT_CACHE", ROOT.parent / "d2rAI-toolkit" / "
 
 # merge/ file name -> fn(rule file, PD2 data root, D2R data root, generated/data). Added by the work items that need them.
 RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {f"ids-{t}.tsv": pd2_ids.apply for t in pd2_ids.TABLES}
+RULES["item-tables.txt"] = pd2_items.apply
 
 
 class MergeError(Exception):

@@ -5,4 +5,6 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- PD2's items, affixes, runewords, cube recipes and treasure classes are in. Map items do not drop yet. Breaks
+  characters from earlier builds.
 - The mod uses D2RLoader's extended save format: characters load only with D2RLoader.
