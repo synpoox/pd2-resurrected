@@ -16,7 +16,8 @@ Seeding a new PD2 row picks, in order:
 
 Merging a row: D2R's row, with every column PD2 also has (or COLUMN_MAP maps) set to PD2's value. Columns D2R added
 keep D2R's value on a D2R row and stay blank on an appended one (blank is the vanilla behaviour PD2 has), except the
-DERIVED ones. References to the P2 tables, including names inside formulas and item properties' skill and state
+DERIVED ones. itemstatcost's descfunc and descval follow the description strings (STAT_STRINGS): a row that shows a D2R
+string takes the display D2R gives it. References to the P2 tables, including names inside formulas and item properties' skill and state
 parameters (by name or PD2 id), are rewritten to the mod's names and ids.
 PD2's cells carry Excel's quote marks, which the classic loader skipped; they are dropped, and formulas get D2R's
 spelling of negative numbers.
@@ -102,12 +103,10 @@ DERIVED = {"skills": {"rightskill": lambda pd2: "0" if pd2.get("passive") == "1"
            "setitems": {"spawnable": lambda pd2: "1"},
            "itemtypes": {"MaxSocketsLevelThreshold1": lambda pd2: "25", "MaxSocketsLevelThreshold2": lambda pd2: "40"}}
 # itemstatcost display (#67): D2R's stat strings carry the value's format code ("%+d to Strength"), where PD2's descfunc
-# and descval print the value before vanilla's "to Strength". A D2R row whose descstrpos and descstrneg are still D2R's
-# keeps D2R's descfunc and descval (string overrides keep D2R's placeholders, pd2_strings). The PD2-only rows here point
-# at D2R strings too and take descfunc 19 with a blank descval (fill the string), as D2R's own rows for those strings do.
-D2R_DISPLAY = {"itemstatcost": (("descstrpos", "descstrneg"), ("descfunc", "descval"))}
-FILL_STRING = {"itemstatcost": {"immune_stat", "mon_cooldown1", "mon_cooldown2", "mon_cooldown3",
-                                "item_mindamage_energy"}}
+# and descval print the value before vanilla's "to Strength" (string overrides keep D2R's placeholders, pd2_strings).
+# A row whose descstrpos and descstrneg name strings D2R's rows use takes those rows' descfunc and descval: its own D2R
+# row's when the strings are unchanged, else the D2R row with PD2's descfunc (bytime rows), else the first.
+STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval")
 KEY_LIMIT = {"missiles": 31}  # bytes, from D2R's data guide; the other three allow 47
 NEGATIVE = re.compile(r"(?<![\w)\]'.])-(\d+)")  # modkit tsv.NEGATIVE: D2R rejects 'x*-5'
 FORMULA_REF = re.compile(r"\b(skill|miss|stat)\('([^']*)'")
@@ -298,8 +297,12 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
     id_col = next((j for j, c in enumerate(d2r.header) if c.lower() == "*id"), None)
     out = [list(r) for r in d2r.rows]
     recs = d2r.records()
-    match, display = ([[d2r.header.index(c) for c in cs] for cs in D2R_DISPLAY[table]] if table in D2R_DISPLAY
-                      else ([], []))
+    shown: dict[tuple[str, ...], list[list[str]]] = {}  # D2R's description strings -> the displays D2R gives them
+    if table == "itemstatcost":
+        str_cols, desc_cols = ([d2r.header.index(c) for c in cs] for cs in (STAT_STRINGS, STAT_DISPLAY))
+        for r in d2r.rows:
+            if any(r[j] for j in str_cols):
+                shown.setdefault(tuple(r[j] for j in str_cols), []).append([r[j] for j in desc_cols])
     for p, i, n in sorted(lines, key=lambda line: line[1]):
         row = out[recs[i]] if i < len(recs) else [""] * len(d2r.header)
         if i >= len(recs):
@@ -309,11 +312,13 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
             if k is None:
                 continue
             row[j] = spell(table, d2r.header[j], pr[k], ren)
-        if i < len(recs) and match and all(row[j] == d2r.rows[recs[i]][j] for j in match):
-            for j in display:
-                row[j] = d2r.rows[recs[i]][j]
-        if p in FILL_STRING.get(table, ()):
-            row[display[0]], row[display[1]] = "19", ""
+        strs = tuple(row[j] for j in str_cols) if shown else ()
+        if strs in shown:
+            own = d2r.rows[recs[i]] if i < len(recs) else None
+            same = [[own[j] for j in desc_cols]] if own and strs == tuple(own[j] for j in str_cols) else []
+            pd2_func = [d for d in shown[strs] if d[0] == row[desc_cols[0]]]
+            for j, v in zip(desc_cols, (same or pd2_func or shown[strs])[0]):
+                row[j] = v
         for j, fn in derived.items():
             row[j] = fn(dict(zip(pd2.header, pr)))
         if props is not None:

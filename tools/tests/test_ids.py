@@ -84,18 +84,21 @@ class FormulaAndColumnTests(unittest.TestCase):
         self.assertEqual(merged.rows, [["A", "0-min(lvl,5)", "1", "0"], ["B", "max(1, 2)", "0", "1"]])
 
     def test_stat_display_follows_the_string(self):
-        # D2R's strings carry the value's format code, so a row with D2R's strings keeps D2R's descfunc/descval (#67)
-        d2r = table("Stat|descpriority|descfunc|descval|descstrpos|descstrneg\n"
-                    "strength|67|19||ModStr1b|ModStr1b\ntohit|5|19||ModStr1h|ModStr1h\n")
-        pd2 = table("Stat|descpriority|descfunc|descval|descstrpos|descstrneg\nstrength|68|1|1|ModStr1b|ModStr1b\n"
-                    "tohit|5|1|1|PD2Str|PD2Str\nimmune_stat|88|4|1|ModStr1b|ModStr1b\nnew_stat|1|1|1|PD2Str|PD2Str\n")
-        lines = [("strength", 0, "strength"), ("tohit", 1, "tohit"), ("immune_stat", 2, "immune_stat"),
-                 ("new_stat", 3, "new_stat")]
+        d2r = table("Stat|descpriority|descfunc|descval|descstrpos|descstrneg\nstrength|67|19||ModStr1a|ModStr1a\n"
+                    "str_bytime|1|17||ModStr1a|ModStr1a\ntohit|5|19||ModStr1h|ModStr1h\ndex|6|19||ModStr1b|ModStr1b\n")
+        pd2 = table("Stat|descpriority|descfunc|descval|descstrpos|descstrneg\nstrength|68|1|1|ModStr1a|ModStr1a\n"
+                    "str_bytime|1|17|1|ModStr1a|ModStr1a\ntohit|5|1|1|PD2Str|PD2Str\ndex|6|1|1|ModStr1a|ModStr1a\n"
+                    "new_stat|88|4|1|ModStr1a|ModStr1a\nnew_bytime|2|17|1|ModStr1a|ModStr1a\nnew_pd2|1|1|1|PD2Str|\n")
+        names = ["strength", "str_bytime", "tohit", "dex", "new_stat", "new_bytime", "new_pd2"]
+        lines = [(s, i, s) for i, s in enumerate(names)]
         merged, _ = I.merge_table("itemstatcost", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
-        self.assertEqual(merged.rows, [["strength", "68", "19", "", "ModStr1b", "ModStr1b"],
+        self.assertEqual(merged.rows, [["strength", "68", "19", "", "ModStr1a", "ModStr1a"],
+                                       ["str_bytime", "1", "17", "", "ModStr1a", "ModStr1a"],
                                        ["tohit", "5", "1", "1", "PD2Str", "PD2Str"],
-                                       ["immune_stat", "88", "19", "", "ModStr1b", "ModStr1b"],
-                                       ["new_stat", "1", "1", "1", "PD2Str", "PD2Str"]])
+                                       ["dex", "6", "19", "", "ModStr1a", "ModStr1a"],  # moved to another D2R string
+                                       ["new_stat", "88", "19", "", "ModStr1a", "ModStr1a"],
+                                       ["new_bytime", "2", "17", "", "ModStr1a", "ModStr1a"],
+                                       ["new_pd2", "1", "1", "1", "PD2Str", ""]])
 
     def test_name_length(self):
         with self.assertRaisesRegex(I.IdError, "31 bytes"):
