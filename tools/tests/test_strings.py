@@ -9,7 +9,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_strings  # noqa: E402
 
-_, mkstrings = pd2_strings.modkit()
+try:
+    _, mkstrings = pd2_strings.modkit()
+except ValueError as e:  # CI has no d2rAI-toolkit (private)
+    raise unittest.SkipTest(str(e))
 
 
 def tbl(entries: list[tuple[str, str, int, int]]) -> bytes:
