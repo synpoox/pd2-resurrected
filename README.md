@@ -33,3 +33,15 @@ Run the last one with `..\d2rAI-toolkit` on `PYTHONPATH`. Tool tests (no PD2 dat
 ```bash
 python -m unittest discover -s tools/tests
 ```
+
+## Plugins
+
+`plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules. Engine addresses live in one header per D2R build (`plugin/common/rvas_93847.h`).
+
+```powershell
+git submodule update --init
+powershell -ExecutionPolicy Bypass -File plugin\build.ps1
+powershell -ExecutionPolicy Bypass -File tools\install.ps1 -Game <D2R folder> [-Data <modkit project>]
+```
+
+Game checks for d2rAI-toolkit's `game_checks.py` are in `tests/game/` (setup and run in `core_rules_checks.py`).

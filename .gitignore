@@ -2,4 +2,6 @@
 pd2-data/
 generated/
 out/
+plugin/build/
+tests/game/fixtures/*/out/
 __pycache__/
