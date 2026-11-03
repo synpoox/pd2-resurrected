@@ -14,10 +14,14 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+import pd2_strings
+
 ROOT = Path(__file__).resolve().parent.parent
 
 # merge/ file name -> fn(rule file, pd2-data dir, generated/data dir). Added by the work items that need them.
-RULES: dict[str, Callable[[Path, Path, Path], None]] = {}
+RULES: dict[str, Callable[[Path, Path, Path], None]] = {
+    "strings.json": pd2_strings.rule,
+}
 
 
 class MergeError(Exception):
@@ -40,7 +44,10 @@ def merge(root: Path) -> list[str]:
         shutil.rmtree(out.parent)
     out.mkdir(parents=True)
     for p in files:
-        RULES[p.name](p, pd2, out)
+        try:
+            RULES[p.name](p, pd2, out)
+        except ValueError as e:  # a rule's data error, reported by rule file
+            raise MergeError(f"merge/{p.name}: {e}") from e
     return [p.name for p in files]
 
 

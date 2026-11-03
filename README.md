@@ -28,7 +28,9 @@ python tools/pd2_merge.py
 python -m modkit build .
 ```
 
-Run the last one with `..\d2rAI-toolkit` on `PYTHONPATH`. Tool tests (no PD2 data needed):
+Run the last one with `..\d2rAI-toolkit` on `PYTHONPATH`. The merge and the tool tests find modkit there too (or
+on `PYTHONPATH`); the merge reads D2R's string files from the game set in `MODKIT_GAME`. Until `generated/` holds
+excel tables, build with `--no-validate`. Tool tests (no PD2 data needed):
 
 ```bash
 python -m unittest discover -s tools/tests
