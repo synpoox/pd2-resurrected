@@ -1,0 +1,5 @@
+# PD2 data is extracted and merged locally, never committed (ADR 0002)
+pd2-data/
+generated/
+out/
+__pycache__/

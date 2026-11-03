@@ -1,0 +1,15 @@
+{
+  "note": "The PD2 baseline (GLOSSARY.md): SHA-256 of the install the port is measured against. tools/pd2_extract.py refuses any other archives; the DLLs are for reference only. Changing this file is a re-baseline (ADR 0002).",
+  "install": "C:\\Games\\PD2\\ProjectD2",
+  "archives": {
+    "pd2data.mpq": "8408a62d5b516013c7b6d28c730a256d2993cc7a3103f15eb2bf9505ab6fdea5",
+    "pd2assets.mpq": "6945dc862f2360df61ce9d21652a5587b4637b1251ae51d0d1e2ce1713588cd9",
+    "pd2maps.mpq": "e42428e61f67bfdcbe180032bd2864d8fbacf61067c88e79ec69a4fe1fb60061",
+    "pd2monchars.mpq": "ae2abade85c5f393db5d8089cb4b6566b2cfed2adea0f573bc0f4220ef733217"
+  },
+  "dlls": {
+    "ProjectDiablo.dll": "2ff6c327edce02969746b2297fb7483a1e6af8ccff189aff294bfd5cef60bbfb",
+    "PD2_EXT.dll": "963e83ab85d59eca5d635984df1133a4c89d45bb9d817cfa8dee14c69052abb6",
+    "BH.dll": "ade7508067819e2d9738fba66e0599a6a94513c7921ab905f23ea3df4fcc05b2"
+  }
+}
