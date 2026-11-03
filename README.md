@@ -46,6 +46,14 @@ item tables the loot filter needs when the build doesn't ship them. The merge an
 python -m unittest discover -s tools/tests
 ```
 
+The table-diff gate compares the merged tables with PD2's, scoped to a work item (P2, P3, P4) or milestone (M1,
+alpha). It fails on any difference that [docs/unported.md](docs/unported.md) does not list; paste its output into
+the PR:
+
+```bash
+python tools/pd2_diff.py --scope P2
+```
+
 ## Plugins
 
 `plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules. Engine addresses live in one header per D2R build (`plugin/common/rvas_93847.h`).

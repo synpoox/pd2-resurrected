@@ -1,107 +1,135 @@
 # Unported list
 
-Every deviation from the PD2 baseline, marked approximated, cut or not yet (`GLOSSARY.md`). Hand-edited. W3 seeded it
-with the engine rules from [core-rules.md](core-rules.md) that are not built; P5 adds the gaps its table-diff gate finds.
-Delete a row when its rule is built and its game check passes.
+Every deviation from the PD2 baseline, marked approximated, cut or not yet, and why (see [GLOSSARY.md](../GLOSSARY.md)).
+D2R-only content is not a deviation.
 
-## Engine rules
+`tools/pd2_diff.py` reads the **Gate** column: each backticked `table.row.column` pattern (fnmatch, any case; `*` also
+spans dots) covers the table-diff gate's deviations it matches. The gate compares the excel tables only; rows without a
+pattern (strings, engine rules, features) are checked by hand or by the game check. A work item that merges a table
+removes or narrows its row here; the gate fails while a whole-table pattern (`table.*`) still covers a merged table.
 
-**Stand-in** is what the port runs meanwhile. "Closest D2R function" rows have lines in `merge/standins.tsv`: each skill
+| Deviation | Status | Why | Gate | Work item |
+|---|---|---|---|---|
+| PD2 skill columns auratgtevent, auratgteventfunc, passiveevent, passiveeventfunc, checkfunc, nocostinstate, general | not yet | D2R's skills table has no such columns; the rules behind them come back as engine work | `skills.*.auratgtevent` `skills.*.auratgteventfunc` `skills.*.passiveevent` `skills.*.passiveeventfunc` `skills.*.checkfunc` `skills.*.nocostinstate` `skills.*.general` | core-rules |
+| PD2 state columns immed and blue | not yet | D2R's states table has no such columns | `states.*.immed` `states.*.blue` | core-rules |
+| PD2 stat columns Divide, itemspecific and the S12/S13 save widths | not yet | D2R's itemstatcost table has no such columns | `itemstatcost.*.divide` `itemstatcost.*.itemspecific` `itemstatcost.*.save bits s12` `itemstatcost.*.save add s12` `itemstatcost.*.save param bits s12` `itemstatcost.*.save bits s13` `itemstatcost.*.save adds s13` `itemstatcost.*.save param bits s13` | core-rules |
+| PD2 missile columns LevRange, Qty and SpecialSetup | not yet | D2R's missiles table has no such columns | `missiles.*.levrange` `missiles.*.qty` `missiles.*.specialsetup` | core-rules |
+| Item tables keep D2R's values | not yet | not merged yet | `armor.*` `automagic.*` `belts.*` `bodylocs.*` `books.*` `cubemain.*` `cubemod.*` `gamble.*` `gems.*` `itemratio.*` `itemtypes.*` `lowqualityitems.*` `magicprefix.*` `magicsuffix.*` `misc.*` `properties.*` `qualityitems.*` `rareprefix.*` `raresuffix.*` `runes.*` `setitems.*` `sets.*` `treasureclassex.*` `uniqueitems.*` `weapons.*` | P3 |
+| Monster, area and other tables keep D2R's values | not yet | not merged yet | `armtype.*` `automap.*` `charstats.*` `colors.*` `compcode.*` `composit.*` `difficultylevels.*` `elemtypes.*` `events.*` `experience.*` `hireling.*` `hitclass.*` `inventory.*` `levels.*` `lvlmaze.*` `lvlprest.*` `lvlsub.*` `lvltypes.*` `lvlwarp.*` `misscalc.*` `monai.*` `monequip.*` `monlvl.*` `monmode.*` `monplace.*` `monpreset.*` `monprop.*` `monseq.*` `monsounds.*` `monstats.*` `monstats2.*` `montype.*` `monumod.*` `npc.*` `objects.*` `objgroup.*` `objmode.*` `objtype.*` `overlay.*` `pettype.*` `playerclass.*` `plrmode.*` `plrtype.*` `shrines.*` `skillcalc.*` `skilldesc.*` `soundenviron.*` `sounds.*` `storepage.*` `superuniques.*` `uniqueappellation.*` `uniqueprefix.*` `uniquesuffix.*` | P4 |
+| PD2 tables cubetype and treasureclass are missing | not yet | D2R's game does not read them; each needs folding into another table or cutting | `cubetype.*` `treasureclass.*` | P3 |
+| PD2 tables aiparms, arena, chartemplate, hiredesc, miniskillicons, monitempercent, monname, uniquetitle and weaponclass are missing | not yet | D2R's game does not read them; each needs folding into another table, an engine rebuild, or cutting | `aiparms.*` `arena.*` `chartemplate.*` `hiredesc.*` `miniskillicons.*` `monitempercent.*` `monname.*` `uniquetitle.*` `weaponclass.*` | P4 |
+| Guild, arena and ladder labels keep D2R's text (20 keys, `CapsJoinMenu4` to `Guild Portal`) | cut | online features (spec #41) |  | P6 |
+| `ModStr5q`, `StrSkill110` and `StrSkill76` keep D2R's text | approximated | PD2's text changes D2R's placeholders, which can crash the game |  | P6 |
+| Map items and the PD2 map system (map stats, recipes, events, invaders) | not yet | left out of the alpha (roadmap, spec #41) |  |  |
+| New PD2-only areas | not yet | left out of the alpha (roadmap, spec #41) |  |  |
+| The Warlock redesign: the alpha ships D2R's Warlock as it is | not yet | left out of the alpha (roadmap, spec #41) |  |  |
+| The other classes' engine rules (Necromancer, Paladin, Druid, Sorceress, Assassin) | not yet | left out of the alpha (roadmap, spec #41) |  |  |
+| Everything in the core-rules order after the alpha cut (router slot, dead item events, monster and boss kits, cube ops 30/31, investigations) | not yet | left out of the alpha (roadmap, spec #41) |  |  |
+| Advanced stats panel | cut | cut by decision (spec #41) |  |  |
+| Map-event notifications | cut | cut by decision (spec #41); the map system itself is not yet |  |  |
+| Grail panel | cut | cut by decision (spec #41) |  |  |
+| PD2's display | cut | cut by decision (spec #41) |  |  |
+| Online and controller layers | cut | online play is out of scope (spec #41) |  |  |
+| PvP modifiers and battle-royale checks | cut | online features (core-rules) |  |  |
+
+## Engine rules not built yet
+
+One row per unbuilt core-rules rule ([core-rules.md](core-rules.md)); delete it when the rule is built and its game check passes. **Stand-in** is what the port runs meanwhile. "Closest D2R function" rows have lines in `merge/standins.tsv`: each skill
 or missile that would point at PD2's function number uses a D2R function that plays alike, or none. "Same number" rows
 keep PD2's number, which already holds a D2R function (a `verify` row: it may be the same rule). "D2R's own behaviour"
 rows have no table hook: D2R does what it does.
 
-| Rule | Status | Stand-in | Work item |
-|---|---|---|---|
-| Split Throw | Not yet | closest D2R function (`merge/standins.tsv`); server half built (W1) | W1, W2 |
-| Lightning Bolt, Lightning Fury | Not yet | closest D2R function (`merge/standins.tsv`) | W5 |
-| Inferno, Arctic Blast | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Charge (Paladin) | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Dragon Flight | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Holy Light | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Fire Claws | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Vengeance | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Firestorm and wall makers | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Leap, Leap Attack | Not yet | closest D2R function (`merge/standins.tsv`) | W8 |
-| Double Throw | Not yet | closest D2R function (`merge/standins.tsv`) | W9 |
-| Teleport, Blink | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Gust | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Blood Warp | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Bash | Not yet | closest D2R function (`merge/standins.tsv`) | W10 |
-| Combustion and boss novas | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Static Field | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Desecrate | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Joust | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Poison Dagger | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Hunger | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Force Move | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Find Potion, Find Item | Not yet | closest D2R function (`merge/standins.tsv`) | W10 |
-| Death novas | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Assassin charge-up finishers | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| PoisonEggSpawn | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| TorajanBossNest | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| UberDiabSummon, UberDiabRun | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| RathmaSummon | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Lucion kit | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Melee splash | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Power Strike, Lightning Strike client half | Not yet | closest D2R function (`merge/standins.tsv`) | W6 |
-| Corpse/Vine Cycler start | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Holy Sword start | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Golem start | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Smite start | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Spirit Wolf, Fenris start | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Frenzy, Tiger Strike start | Not yet | closest D2R function (`merge/standins.tsv`) | W10 |
-| Fire Claws, Split Throw start | Not yet | closest D2R function (`merge/standins.tsv`) | W2 |
-| Paladin aura client start | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Paladin aura client do | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Fire Arrow, Exploding Arrow hit | Not yet | closest D2R function (`merge/standins.tsv`) | W6 |
-| Uber immolation arrow hit | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Kanemith blaze dot hit | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Nova and orb hits (thunderstorm1, powerstrikenova1, voidbolt, rathmapoisonorb, leoricsummonnova, ZharNovaOrb, IskatuMagicOrb) | Not yet | D2R's function at the same number | W7 |
-| Summon-on-hit missiles (leoricsummonorbbolt, GuardianOfFateSummonHit, iskatubliz3, ...) | Not yet | D2R's function at the same number | after the alpha |
-| Blade fragment hit | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Throwing potions | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Psychic Hammer missile damage | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Multiple Shot arrow and bolt damage | Not yet | closest D2R function (`merge/standins.tsv`) | W6 |
-| Desert turret fireball client hit | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Immolation, Blaze and Rathma fire client hits (17 missiles) | Not yet | D2R's function at the same number | W6 |
-| Fist of the Heavens delay client hit | Not yet | D2R's function at the same number | after the alpha |
-| Blessed Hammer | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Siege beast stomp client do | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Rathma bone spear, blade fragment damage | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Skill on cast (`item_skilloncast`, 62 live item rows) | Not yet | D2R's own behaviour | after the alpha |
-| Skill on block (`item_skillonblock`, 5 live rows) | Not yet | D2R's own behaviour | after the alpha |
-| Skill while equipped (`item_skillonequip`, prop `equipped-skill`: Tempest, Blackoak Shield, Spectral Plate) | Not yet | D2R's own behaviour | after the alpha |
-| Phasing (stat `phasing` + state, from Phasing SelfAura) | Not yet | D2R's own behaviour | after the alpha |
-| Charm "only one unique" rule | Not yet | D2R's own behaviour | after the alpha |
-| Map items | Not yet | closest D2R function (`merge/standins.tsv`) | map plan |
-| Unlimited TP and ID books | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Random sorceress skill on striking | Not yet | closest D2R function (`merge/standins.tsv`) | after the alpha |
-| Item stat less than / equal (corruption outcomes, map recipes; 1,126 enabled rows) | Not yet | D2R's own behaviour | P9, map plan |
-| Map recipes (heroic, corrupt, fortify, ears, map events; 26 rows) | Not yet | D2R's own behaviour | map plan |
-| Demonic cube reroll of unique and set items (16 rows) | Not yet | D2R's own behaviour | after the alpha |
-| `.noexp` toggle | Not yet | D2R's own behaviour | after the alpha |
-| `.set-home` start town | Not yet | D2R's own behaviour | after the alpha |
-| Character stat commands (`.kills`, `.deaths`, `.played`, `.age`, `.allstats`, `.accountstats`) | Not yet | D2R's own behaviour | after the alpha |
-| Teleport blocked areas | Not yet | D2R's own behaviour | after the alpha |
-| Corrupted zones (D2R's Terror Zones) | Not yet | D2R's own behaviour | after the alpha |
-| Map events and invaders (AiThink4, `MapEventNotify*`, Invader monsters) | Not yet | D2R's own behaviour | map plan |
-| Corruption | Not yet | D2R's own behaviour | P9 |
-| Loot allocation | Not yet | D2R's own behaviour | later release |
-| PvP modifiers, battle-royale checks | Cut | none: the rule is not reproduced | - |
-| Act 3 quest 5 patch | Not yet | D2R's own behaviour | after the alpha |
-| Skill palette, NPC patches | Not yet | D2R's own behaviour | after the alpha |
-| Channel take-over: Inferno, Arctic Blast (srvdo 182) and Blade Fury (48) | Not yet | D2R's own behaviour | after the alpha |
-| Charge (srvdo 180) in the Charge/Whirlwind rule, also for skill-less requests | Not yet | D2R's own behaviour | after the alpha |
-| Run and Concentration in the end-of-action window | Not yet | D2R's own behaviour | after the alpha |
-| Get-hit/block end window, cast/sequence delay from neutral or run | Not yet | D2R's own behaviour | after the alpha |
-| Level life regen cap (30, `bloodwarp` lifts it) | Not yet | D2R's own behaviour | map plan |
-| Player death handler and two more PlrModes hooks | Not yet | D2R's own behaviour | after the alpha |
-| Perfect shrine | Not yet | D2R's own behaviour | after the alpha |
-| Stackable items / item quantity | Not yet | D2R's own behaviour | after the alpha |
-| Skill aura event 32 (Revive), 3 (Chilling Armor), 16 (Smite) | Not yet | Smite: D2R's own row (`merge/standins.tsv`); Revive, Chilling Armor: D2R's function at the same number | after the alpha |
-| State remove function 12 (`skilldelay`) | Not yet | D2R's own behaviour | after the alpha |
+| Deviation | Status | Why | Gate | Work item |
+|---|---|---|---|---|
+| Split Throw | not yet | stand-in: closest D2R function (`merge/standins.tsv`); server half built (W1) | `skills.Split Throw.cltdofunc` `skills.Split Throw.srvstfunc` `missiles.splitthrowaxe.pSrvHitFunc` `missiles.splitthrowknife.pSrvHitFunc` `missiles.splitthrowjav.pSrvHitFunc` `missiles.splitthrowglaive.pSrvHitFunc` `missiles.splitthrowpilum.pSrvHitFunc` `missiles.splitthrowaxereturn.pSrvDoFunc` `missiles.splitthrowaxereturn.pCltDoFunc` `missiles.splitthrowknifereturn.pSrvDoFunc` `missiles.splitthrowknifereturn.pCltDoFunc` `missiles.splitthrowjavreturn.pSrvDoFunc` `missiles.splitthrowjavreturn.pCltDoFunc` `missiles.splitthrowglaivereturn.pSrvDoFunc` `missiles.splitthrowglaivereturn.pCltDoFunc` `missiles.splitthrowpilumreturn.pSrvDoFunc` `missiles.splitthrowpilumreturn.pCltDoFunc` | W1, W2 |
+| Lightning Bolt, Lightning Fury | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Lightning Bolt.srvdofunc` `skills.Lightning Bolt.cltdofunc` `skills.Lightning Fury.srvdofunc` `skills.Lightning Fury.cltdofunc` | W5 |
+| Inferno, Arctic Blast | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Inferno.srvdofunc` `skills.Inferno.cltdofunc` `skills.Arctic Blast.srvdofunc` `skills.Arctic Blast.cltdofunc` | after the alpha |
+| Charge (Paladin) | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Charge.srvdofunc` `skills.Charge.cltdofunc` `skills.Charge.srvstfunc` `skills.Charge.cltstfunc` | after the alpha |
+| Dragon Flight | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Dragon Flight.srvdofunc` | after the alpha |
+| Holy Light | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Holy Light.srvdofunc` `missiles.holylightdelay.pCltHitFunc` | after the alpha |
+| Fire Claws | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Fire Claws.srvdofunc` `skills.Fire Claws.cltdofunc` `skills.Fire Claws.srvstfunc` | after the alpha |
+| Vengeance | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Vengeance.srvdofunc` | after the alpha |
+| Firestorm and wall makers | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.DiabWall.srvdofunc` `skills.Firestorm.srvdofunc` `skills.Firestorm.cltdofunc` `skills.FingermageBossDiabWall.srvdofunc` `skills.UberDiabWall.srvdofunc` `skills.KanemithFirestorm.srvdofunc` | after the alpha |
+| Leap, Leap Attack | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Leap.srvdofunc` `skills.Leap.cltdofunc` `skills.Leap Attack.srvdofunc` `skills.Leap Attack.cltdofunc` `skills.Leap Attack Korlic.srvdofunc` `skills.Leap Attack Korlic.cltdofunc` | W8 |
+| Double Throw | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Double Throw.srvdofunc` `skills.Double Throw.cltdofunc` `skills.UberMadawcDoubleThrow.srvdofunc` `skills.UberMadawcDoubleThrow.cltdofunc` `missiles.doublethrowaxe.pSrvDmgFunc` `missiles.doublethrowknife.pSrvDmgFunc` `missiles.doublethrowjav.pSrvDmgFunc` | W9 |
+| Teleport, Blink | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Teleport.srvdofunc` `skills.Blink.srvdofunc` `skills.LucionBlink.srvdofunc` `skills.LucionBlink.cltdofunc` `skills.Mon Bloodwarp.srvdofunc` | after the alpha |
+| Gust | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Gust.srvdofunc` | after the alpha |
+| Blood Warp | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Blood Warp.srvdofunc` `skills.Blood Warp.srvstfunc` `skills.Blood Warp.cltstfunc` | after the alpha |
+| Bash | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Bash.srvdofunc` `skills.UberTalicBash.srvdofunc` | W10 |
+| Combustion and boss novas | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Combustion.srvdofunc` `skills.Combustion.cltdofunc` `skills.FingermageBossNova.srvdofunc` `skills.FingermageBossNova.cltdofunc` `skills.RathmaTeethNova.srvdofunc` `skills.RathmaTeethNova.cltdofunc` `skills.RathmaOuterNova.srvdofunc` `skills.RathmaOuterNova.cltdofunc` `skills.RathmaPacman.srvdofunc` `skills.RathmaPacman.cltdofunc` `skills.LeoricSummonNova.srvdofunc` `skills.LeoricSummonNova.cltdofunc` `skills.ZharMiniBossCombustion.srvdofunc` `skills.ZharMiniBossCombustion.cltdofunc` | after the alpha |
+| Static Field | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Static Field.srvdofunc` `skills.Merc Static Field.srvdofunc` `skills.Static Field Proc.srvdofunc` | after the alpha |
+| Desecrate | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.desecrate.srvdofunc` `skills.desecrate.cltdofunc` | after the alpha |
+| Joust | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Joust.srvdofunc` | after the alpha |
+| Poison Dagger | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Poison Dagger.srvdofunc` `skills.Poison Dagger.cltdofunc` `skills.Poison Dagger.srvstfunc` `skills.BaalMinionBossBerserk.srvstfunc` `skills.Poison Dagger Spider Boss.srvdofunc` `skills.Poison Dagger Spider Boss.cltdofunc` `missiles.poisondaggercloud.pSrvHitFunc` | after the alpha |
+| Hunger | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Hunger.srvdofunc` | after the alpha |
+| Force Move | not yet | stand-in: move-only skill: a third-party plugin will provide it; until then its functions are blank | `skills.Force Move.srvdofunc` `skills.Force Move.cltdofunc` `skills.Force Move.srvstfunc` `skills.Force Move.cltstfunc` | third-party plugin |
+| Find Potion, Find Item | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Find Potion.srvdofunc` `skills.Find Potion.cltdofunc` `skills.Find Potion.srvstfunc` `skills.Find Potion.cltstfunc` `skills.Find Item.srvdofunc` `skills.Find Item.cltdofunc` `skills.Find Item.srvstfunc` `skills.Find Item.cltstfunc` | W10 |
+| Death novas | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.DollMeteor.srvdofunc` `skills.DollMeteor.cltdofunc` `skills.RathmaDeath.srvdofunc` `skills.RathmaDeath.cltdofunc` `skills.NihlathakMapDeath.cltdofunc` `skills.LucionDeath1.srvdofunc` `skills.LucionDeath1.cltdofunc` `skills.LucionDeath2.srvdofunc` `skills.LucionDeath2.cltdofunc` `skills.LucionDeath3.srvdofunc` `skills.LucionDeath3.cltdofunc` `skills.LucionDeath4.srvdofunc` `skills.LucionDeath4.cltdofunc` | after the alpha |
+| Assassin charge-up finishers | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Tiger Strike.srvdofunc` `skills.Tiger Strike.srvprgfunc1` `skills.Tiger Strike.srvprgfunc2` `skills.Tiger Strike.srvprgfunc3` `skills.Tiger Strike.cltprgfunc1` `skills.Tiger Strike.cltprgfunc2` `skills.Tiger Strike.cltprgfunc3` `skills.Tiger Strike.srvstfunc` `skills.Fists of Fire.srvdofunc` `skills.Fists of Fire.srvprgfunc1` `skills.Fists of Fire.srvprgfunc2` `skills.Fists of Fire.srvprgfunc3` `skills.Fists of Fire.cltprgfunc1` `skills.Fists of Fire.cltprgfunc2` `skills.Fists of Fire.cltprgfunc3` `skills.Cobra Strike.srvdofunc` `skills.Cobra Strike.srvprgfunc1` `skills.Cobra Strike.srvprgfunc2` `skills.Cobra Strike.srvprgfunc3` `skills.Cobra Strike.cltprgfunc1` `skills.Cobra Strike.cltprgfunc2` `skills.Cobra Strike.cltprgfunc3` `skills.Claws of Thunder.srvdofunc` `skills.Claws of Thunder.srvprgfunc1` `skills.Claws of Thunder.srvprgfunc2` `skills.Claws of Thunder.srvprgfunc3` `skills.Claws of Thunder.cltprgfunc1` `skills.Claws of Thunder.cltprgfunc2` `skills.Claws of Thunder.cltprgfunc3` `skills.Blades of Ice.srvdofunc` `skills.Blades of Ice.srvprgfunc1` `skills.Blades of Ice.srvprgfunc2` `skills.Blades of Ice.srvprgfunc3` `skills.Blades of Ice.cltprgfunc1` `skills.Blades of Ice.cltprgfunc2` `skills.Blades of Ice.cltprgfunc3` `skills.Royal Strike.srvdofunc` `skills.Royal Strike.srvprgfunc1` `skills.Royal Strike.srvprgfunc2` `skills.Royal Strike.srvprgfunc3` `skills.Royal Strike.cltprgfunc1` `skills.Royal Strike.cltprgfunc2` `skills.Royal Strike.cltprgfunc3` `skills.RakanothStrike.srvdofunc` `skills.RakanothStrike.srvprgfunc1` `skills.RakanothStrike.srvprgfunc2` `skills.RakanothStrike.srvprgfunc3` `skills.RakanothStrike.cltprgfunc1` `skills.RakanothStrike.cltprgfunc2` `skills.RakanothStrike.cltprgfunc3` `missiles.fistsoffireexplode.pCltDoFunc` `missiles.clawsofthunderbolt.pCltHitFunc` `missiles.bladesoficecubes.pCltDoFunc` | after the alpha |
+| PoisonEggSpawn | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.PoisonEggSpawn.srvdofunc` `skills.PoisonEggSpawn.cltdofunc` | after the alpha |
+| TorajanBossNest | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.TorajanBossNest.srvdofunc` | after the alpha |
+| UberDiabSummon, UberDiabRun | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.UberDiabRun.srvstfunc` `skills.UberDiabSummon.srvdofunc` | after the alpha |
+| RathmaSummon | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.RathmaSummon.srvdofunc` | after the alpha |
+| Lucion kit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.LucionNova.srvdofunc` `skills.LucionBlink.srvdofunc` `skills.LucionBlink.cltdofunc` `skills.LucionDash.srvdofunc` `skills.LucionDash.cltdofunc` `skills.LucionDash.srvstfunc` `skills.LucionDash.cltstfunc` `skills.LucionPunish.srvdofunc` | after the alpha |
+| Melee splash | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.proc_SplashDamage.srvdofunc` `skills.Golem Splash.srvdofunc` `skills.Skeleton Splash.srvdofunc` | after the alpha |
+| Power Strike, Lightning Strike client half | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Power Strike.cltdofunc` `skills.Lightning Strike.cltdofunc` `skills.Lightning Strike Cowboss.cltdofunc` `skills.Power Strike Tomb Boss.cltdofunc` `skills.Valk Power Strike.cltdofunc` | W6 |
+| Corpse/Vine Cycler start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.CorpseCycler.srvstfunc` `skills.VineCycler.srvstfunc` | after the alpha |
+| Holy Sword start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.holy sword.srvstfunc` | after the alpha |
+| Golem start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Clay Golem.srvstfunc` `skills.BloodGolem.srvstfunc` `skills.FireGolem.srvstfunc` | after the alpha |
+| Smite start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Smite.srvstfunc` | after the alpha |
+| Spirit Wolf, Fenris start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Summon Spirit Wolf.srvstfunc` `skills.Summon Fenris.srvstfunc` | after the alpha |
+| Frenzy, Tiger Strike start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Frenzy.srvstfunc` `skills.Tiger Strike.srvdofunc` `skills.Tiger Strike.srvprgfunc1` `skills.Tiger Strike.srvprgfunc2` `skills.Tiger Strike.srvprgfunc3` `skills.Tiger Strike.cltprgfunc1` `skills.Tiger Strike.cltprgfunc2` `skills.Tiger Strike.cltprgfunc3` `skills.Tiger Strike.srvstfunc` | W10 |
+| Fire Claws, Split Throw start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Fire Claws.srvdofunc` `skills.Fire Claws.cltdofunc` `skills.Fire Claws.srvstfunc` `skills.Split Throw.cltdofunc` `skills.Split Throw.srvstfunc` | W2 |
+| Paladin aura client start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Might.cltdofunc` `skills.Might.cltstfunc` `skills.Prayer.cltdofunc` `skills.Prayer.cltstfunc` `skills.Resist Fire.cltdofunc` `skills.Resist Fire.cltstfunc` `skills.Holy Fire.cltdofunc` `skills.Holy Fire.cltstfunc` `skills.Thorns.cltdofunc` `skills.Thorns.cltstfunc` `skills.Defiance.cltdofunc` `skills.Defiance.cltstfunc` `skills.Resist Cold.cltdofunc` `skills.Resist Cold.cltstfunc` `skills.Blessed Aim.cltdofunc` `skills.Blessed Aim.cltstfunc` `skills.Cleansing.cltdofunc` `skills.Cleansing.cltstfunc` `skills.Resist Lightning.cltdofunc` `skills.Resist Lightning.cltstfunc` `skills.Concentration.cltdofunc` `skills.Concentration.cltstfunc` `skills.Holy Freeze.cltdofunc` `skills.Holy Freeze.cltstfunc` `skills.Vigor.cltdofunc` `skills.Vigor.cltstfunc` `skills.Sanctuary.cltdofunc` `skills.Sanctuary.cltstfunc` `skills.Meditation.cltdofunc` `skills.Meditation.cltstfunc` `skills.Fanaticism.cltdofunc` `skills.Fanaticism.cltstfunc` `skills.Conviction.cltdofunc` `skills.Conviction.cltstfunc` `skills.Redemption.cltdofunc` `skills.Redemption.cltstfunc` `skills.Salvation.cltdofunc` `skills.Salvation.cltstfunc` `skills.Force Move.srvdofunc` `skills.Force Move.cltdofunc` `skills.Force Move.srvstfunc` `skills.Force Move.cltstfunc` `skills.Holy Fire Fire Golem.cltdofunc` `skills.Holy Fire Fire Golem.cltstfunc` `skills.Holy Freeze Korlic.cltdofunc` `skills.Holy Freeze Korlic.cltstfunc` `skills.Holy Fire Sanctuaryboss.cltdofunc` `skills.Holy Fire Sanctuaryboss.cltstfunc` `skills.Energy Shield SelfAura.cltdofunc` `skills.Energy Shield SelfAura.cltstfunc` `skills.Chilling Armor SelfAura.cltdofunc` `skills.Chilling Armor SelfAura.cltstfunc` | after the alpha |
+| Paladin aura client do | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Might.cltdofunc` `skills.Might.cltstfunc` `skills.Prayer.cltdofunc` `skills.Prayer.cltstfunc` `skills.Resist Fire.cltdofunc` `skills.Resist Fire.cltstfunc` `skills.Holy Fire.cltdofunc` `skills.Holy Fire.cltstfunc` `skills.Thorns.cltdofunc` `skills.Thorns.cltstfunc` `skills.Defiance.cltdofunc` `skills.Defiance.cltstfunc` `skills.Resist Cold.cltdofunc` `skills.Resist Cold.cltstfunc` `skills.Blessed Aim.cltdofunc` `skills.Blessed Aim.cltstfunc` `skills.Cleansing.cltdofunc` `skills.Cleansing.cltstfunc` `skills.Resist Lightning.cltdofunc` `skills.Resist Lightning.cltstfunc` `skills.Concentration.cltdofunc` `skills.Concentration.cltstfunc` `skills.Holy Freeze.cltdofunc` `skills.Holy Freeze.cltstfunc` `skills.Vigor.cltdofunc` `skills.Vigor.cltstfunc` `skills.Sanctuary.cltdofunc` `skills.Sanctuary.cltstfunc` `skills.Meditation.cltdofunc` `skills.Meditation.cltstfunc` `skills.Fanaticism.cltdofunc` `skills.Fanaticism.cltstfunc` `skills.Conviction.cltdofunc` `skills.Conviction.cltstfunc` `skills.Redemption.cltdofunc` `skills.Redemption.cltstfunc` `skills.Salvation.cltdofunc` `skills.Salvation.cltstfunc` `skills.Force Move.srvdofunc` `skills.Force Move.cltdofunc` `skills.Force Move.srvstfunc` `skills.Force Move.cltstfunc` `skills.Holy Fire Fire Golem.cltdofunc` `skills.Holy Fire Fire Golem.cltstfunc` `skills.Holy Freeze Korlic.cltdofunc` `skills.Holy Freeze Korlic.cltstfunc` `skills.Holy Fire Sanctuaryboss.cltdofunc` `skills.Holy Fire Sanctuaryboss.cltstfunc` `skills.Energy Shield SelfAura.cltdofunc` `skills.Energy Shield SelfAura.cltstfunc` `skills.Chilling Armor SelfAura.cltdofunc` `skills.Chilling Armor SelfAura.cltstfunc` | after the alpha |
+| Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.firebolt.pSrvHitFunc` `missiles.icebolt.pSrvHitFunc` `missiles.blizzard1.pSrvHitFunc` `missiles.blizzard2.pSrvHitFunc` `missiles.blizzard3.pSrvHitFunc` `missiles.blizzard4.pSrvHitFunc` `missiles.chillingarmorbolt.pSrvHitFunc` | after the alpha |
+| Fire Arrow, Exploding Arrow hit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.firearrow.pSrvHitFunc` `missiles.explodingarrow.pSrvHitFunc` | W6 |
+| Uber immolation arrow hit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.uberimmolationarrow.pSrvHitFunc` | after the alpha |
+| Kanemith blaze dot hit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.kanemithblaze2dotfiremedium.pSrvHitFunc` `missiles.kanemithblaze2dotfiresmall.pSrvHitFunc` | after the alpha |
+| Nova and orb hits (thunderstorm1, powerstrikenova1, voidbolt, rathmapoisonorb, leoricsummonnova, ZharNovaOrb, IskatuMagicOrb) | not yet | stand-in: D2R's function at the same number |  | W7 |
+| Summon-on-hit missiles (leoricsummonorbbolt, GuardianOfFateSummonHit, iskatubliz3, ...) | not yet | stand-in: D2R's function at the same number |  | after the alpha |
+| Blade fragment hit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.bladefragment1.pSrvHitFunc` `missiles.bladefragment1.pCltHitFunc` `missiles.bladefragment1.pSrvDmgFunc` | after the alpha |
+| Throwing potions | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.tpot_fire_small.pSrvHitFunc` `missiles.tpot_fire_small.pCltHitFunc` `missiles.tpot_fire_small_nova.pSrvHitFunc` `missiles.tpot_fire_medium.pSrvHitFunc` `missiles.tpot_fire_medium.pCltHitFunc` `missiles.tpot_fire_medium_nova.pSrvHitFunc` `missiles.tpot_fire_large.pSrvHitFunc` `missiles.tpot_fire_large.pCltHitFunc` `missiles.tpot_fire_large_nova.pSrvHitFunc` `missiles.tpot_gas_small.pSrvHitFunc` `missiles.tpot_gas_small.pCltHitFunc` `missiles.tpot_gas_small_nova.pSrvHitFunc` `missiles.tpot_gas_medium.pSrvHitFunc` `missiles.tpot_gas_medium.pCltHitFunc` `missiles.tpot_gas_medium_nova.pSrvHitFunc` `missiles.tpot_gas_large.pSrvHitFunc` `missiles.tpot_gas_large.pCltHitFunc` `missiles.tpot_gas_large_nova.pSrvHitFunc` `missiles.tpot_cold_small.pSrvHitFunc` `missiles.tpot_cold_small.pCltHitFunc` `missiles.tpot_cold_small_cloud.pSrvHitFunc` `missiles.tpot_cold_medium.pSrvHitFunc` `missiles.tpot_cold_medium.pCltHitFunc` `missiles.tpot_cold_medium_cloud.pSrvHitFunc` `missiles.tpot_cold_large.pSrvHitFunc` `missiles.tpot_cold_large.pCltHitFunc` `missiles.tpot_cold_large_cloud.pSrvHitFunc` `missiles.tpot_light_small.pSrvHitFunc` `missiles.tpot_light_small.pCltHitFunc` `missiles.tpot_light_small_bolt.pSrvHitFunc` `missiles.tpot_light_medium.pSrvHitFunc` `missiles.tpot_light_medium.pCltHitFunc` `missiles.tpot_light_medium_bolt.pSrvHitFunc` `missiles.tpot_light_large.pSrvHitFunc` `missiles.tpot_light_large.pCltHitFunc` `missiles.tpot_light_large_bolt.pSrvHitFunc` `missiles.sharptootharmageddoncontrol.pSrvHitFunc` `missiles.sharptootharmageddoncontrol.pCltHitFunc` `missiles.sharptootharmageddonrock.pSrvHitFunc` `missiles.sharptootharmageddonrock.pCltHitFunc` | after the alpha |
+| Psychic Hammer missile damage | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.psychichammer.pSrvDmgFunc` | after the alpha |
+| Multiple Shot arrow and bolt damage | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.multipleshotarrow.pSrvDmgFunc` `missiles.multipleshotbolt.pSrvDmgFunc` | W6 |
+| Desert turret fireball client hit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.desertfireball.pCltHitFunc` | after the alpha |
+| Immolation, Blaze and Rathma fire client hits (17 missiles) | not yet | stand-in: D2R's function at the same number |  | W6 |
+| Fist of the Heavens delay client hit | not yet | stand-in: D2R's function at the same number |  | after the alpha |
+| Blessed Hammer | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.blessedhammer.pSrvDoFunc` `missiles.blessedhammer.pCltDoFunc` | after the alpha |
+| Siege beast stomp client do | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.siege beast stomp missile.pCltDoFunc` | after the alpha |
+| Rathma bone spear, blade fragment damage | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.bladefragment1.pSrvHitFunc` `missiles.bladefragment1.pCltHitFunc` `missiles.bladefragment1.pSrvDmgFunc` `missiles.rathmabonespear.pSrvDmgFunc` | after the alpha |
+| Skill on cast (`item_skilloncast`, 62 live item rows) | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Skill on block (`item_skillonblock`, 5 live rows) | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Skill while equipped (`item_skillonequip`, prop `equipped-skill`: Tempest, Blackoak Shield, Spectral Plate) | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Phasing (stat `phasing` + state, from Phasing SelfAura) | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Charm "only one unique" rule | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Map items | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `misc.Uber Trist Map.pSpell` `misc.Uber Map.pSpell` `misc.Kurast Map.pSpell` `misc.Arcane Map.pSpell` `misc.Fortress Map.pSpell` `misc.Lava Map.pSpell` `misc.Jungle Map.pSpell` `misc.Siege Map.pSpell` `misc.Tomb Map.pSpell` `misc.Sewer Map.pSpell` `misc.River Of Blood Map.pSpell` `misc.Throne Map.pSpell` `misc.Spider Map.pSpell` `misc.Ice Map.pSpell` `misc.Graveyard Map.pSpell` `misc.Caldeum Map.pSpell` `misc.Pandemonium Map.pSpell` `misc.Monastery Map.pSpell` `misc.Desert Map.pSpell` `misc.Pvp Map.pSpell` `misc.Pvp Map 2.pSpell` `misc.Rathma Map.pSpell` `misc.Frozen Forest Map.pSpell` `misc.Torment Map.pSpell` `misc.Library Map.pSpell` `misc.Uber Ancients Map.pSpell` `misc.Westmarch Map.pSpell` `misc.Crypts Map.pSpell` `misc.Sanctuary of Sin Map.pSpell` `misc.Ruined Cistern Map.pSpell` `misc.Ashes Map.pSpell` `misc.Zhar Map.pSpell` `misc.Hellcaves Map.pSpell` `misc.Fallen Gardens Map.pSpell` `misc.KanemithMap.pSpell` `misc.Skovos Stronghold Map.pSpell` `misc.Lucion Map.pSpell` `misc.Demon Road Map.pSpell` `misc.Imperial Palace Map.pSpell` `misc.Halls of Torture Map.pSpell` `misc.Outer Void Map.pSpell` `misc.Ureh City Map.pSpell` `misc.Djinns Domain Map.pSpell` `misc.Na-Krul's Abyss Map.pSpell` `misc.Kyovoshad Map.pSpell` `misc.Dark Temple Map.pSpell` `misc.Poisoned Well Map.pSpell` `misc.Descend Map.pSpell` | map plan |
+| Unlimited TP and ID books | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `misc.TP Book Unlimited.pSpell` `misc.ID Book Unlimited.pSpell` | after the alpha |
+| Random sorceress skill on striking | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `properties.sorc-skill-rand-ctc.func1` | after the alpha |
+| Item stat less than / equal (corruption outcomes, map recipes; 1,126 enabled rows) | not yet | stand-in: D2R's own behaviour |  | P9, map plan |
+| Map recipes (heroic, corrupt, fortify, ears, map events; 26 rows) | not yet | stand-in: D2R's own behaviour |  | map plan |
+| Demonic cube reroll of unique and set items (16 rows) | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| `.noexp` toggle | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| `.set-home` start town | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Character stat commands (`.kills`, `.deaths`, `.played`, `.age`, `.allstats`, `.accountstats`) | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Teleport blocked areas | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Corrupted zones (D2R's Terror Zones) | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Map events and invaders (AiThink4, `MapEventNotify*`, Invader monsters) | not yet | stand-in: D2R's own behaviour |  | map plan |
+| Corruption | not yet | stand-in: D2R's own behaviour |  | P9 |
+| Loot allocation | not yet | stand-in: D2R's own behaviour |  | later release |
+| Act 3 quest 5 patch | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Skill palette, NPC patches | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Channel take-over: Inferno, Arctic Blast (srvdo 182) and Blade Fury (48) | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Charge (srvdo 180) in the Charge/Whirlwind rule, also for skill-less requests | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Run and Concentration in the end-of-action window | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Get-hit/block end window, cast/sequence delay from neutral or run | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Level life regen cap (30, `bloodwarp` lifts it) | not yet | stand-in: D2R's own behaviour |  | map plan |
+| Player death handler and two more PlrModes hooks | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Perfect shrine | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Stackable items / item quantity | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Skill aura event 32 (Revive), 3 (Chilling Armor), 16 (Smite) | not yet | stand-in: Smite: D2R's own row (`merge/standins.tsv`); Revive, Chilling Armor: D2R's function at the same number | `skills.Smite.auraeventfunc1` | after the alpha |
+| State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | `states.skilldelay.remfunc` | after the alpha |
+| Function numbers of the exact data rows (Monster frenzy, Baal Corpse Explode client start, `*12` server hit) | approximated | the cells differ from PD2 but run the same rule: D2R's number for it, or none where PD2's points past D2R's table (see Data rows) | `skills.MonFrenzy.srvdofunc` `skills.MonFrenzy.srvstfunc` `skills.BloodLordFrenzy.srvdofunc` `skills.Baal Corpse Explode.cltstfunc` `missiles.royalstrikechainlightning.pSrvHitFunc` `missiles.royalstrikechainlightning.pCltHitFunc` `missiles.boichaosice.pSrvHitFunc` `missiles.boichaosice.pCltHitFunc` | W3 |
 
 ## Data rows
 
