@@ -1,4 +1,5 @@
-// PD2 server skill do functions in free srvdofunc slots (skill_functions.cpp).
+// PD2 skill functions in free srvdofunc/cltdofunc/srvstfunc slots, and the install of those and the missile functions
+// (skill_functions.cpp, missile_functions.cpp).
 #pragma once
 
 #include <D2RLPlugin/api.h>
