@@ -47,6 +47,10 @@ A deviation where the port does not reproduce a PD2 rule at all.
 **Not yet**:
 A deviation the port intends to close but has not.
 
+**Engine rule**:
+A PD2 behaviour that is not a table value and needs plugin code, such as a skill function, hit function, cube op, item rule or server patch. A skill's server and client halves are one engine rule.
+_Avoid_: patch, function number (a function number is where one engine rule plugs in)
+
 **Companion plugin**:
 A third-party D2RLoader plugin bundled with the port that stands in for a PD2 feature; what it lacks is a deviation.
 _Avoid_: dependency, add-on, external mod
