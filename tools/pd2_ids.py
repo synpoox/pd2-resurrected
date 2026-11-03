@@ -173,6 +173,16 @@ def rewrite_formula(text: str, ren: dict[str, dict[str, str]]) -> str:
     return FORMULA_REF.sub(lambda m: f"{m[1]}('{ren[FORMULA_TABLE[m[1]]].get(m[2].lower(), m[2])}'", text)
 
 
+def spell(table: str, col: str, v: str, ren: dict[str, dict[str, str]]) -> str:
+    """A PD2 cell as the mod's column `col` holds it: quotes gone, references renamed, formulas in D2R's spelling."""
+    v = v.replace('"', "")
+    if col in REFS.get(table, {}):
+        return ren[REFS[table][col]].get(v.lower(), v)
+    if col in FORMULAS.get(table, []):
+        return rewrite_formula(fix_formula(v), ren)
+    return v
+
+
 def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, str]],
                 ren: dict[str, dict[str, str]]) -> tuple[Table, list[str]]:
     """The mod's table, and the PD2 columns it drops."""
@@ -181,8 +191,6 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
     cols = [(j, src.get(c, src.get(cmap.get(c, "")))) for j, c in enumerate(d2r.header)]
     used = {i for _, i in cols if i is not None}
     dropped = [c for i, c in enumerate(pd2.header) if i not in used and c.lower() not in ("id", "eol")]
-    refs = {d2r.header.index(c): t for c, t in REFS.get(table, {}).items() if c in d2r.header}
-    formulas = {d2r.header.index(c) for c in FORMULAS.get(table, []) if c in d2r.header}
     pd2_rows = {r[0].lower(): [v.replace('"', "") for v in r] for r in pd2.rows}
     derived = {d2r.header.index(c): fn for c, fn in DERIVED.get(table, {}).items() if c in d2r.header}
     out = [list(r) for r in d2r.rows]
@@ -194,12 +202,7 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
         for j, k in cols:
             if k is None:
                 continue
-            v = pr[k]
-            if j in refs:
-                v = ren[refs[j]].get(v.lower(), v)
-            elif j in formulas:
-                v = rewrite_formula(fix_formula(v), ren)
-            row[j] = v
+            row[j] = spell(table, d2r.header[j], pr[k], ren)
         for j, fn in derived.items():
             row[j] = fn(dict(zip(pd2.header, pr)))
         row[0] = n

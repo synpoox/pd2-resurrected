@@ -101,6 +101,20 @@ class GateTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(pd2_diff.main(args), 0)
 
+    def test_a_whole_table_row_must_go_once_the_table_is_merged(self):
+        self.unported("| Not merged yet | not yet | `levels.*` | P4 |\n")
+        self.write("pd2", "levels", table("Name | MonLvl", "Blood Moor | 2"))
+        self.write("d2r", "levels", table("Name | MonLvl", "Blood Moor | 1"))
+        self.assertEqual(self.gate().results[0].covered, 1)
+        self.write("mod", "levels", table("Name | MonLvl", "Blood Moor | 1"))
+        with self.assertRaisesRegex(pd2_diff.GateError, "levels.*merged"):
+            self.gate()
+
+    def test_excels_quote_marks_are_not_data(self):
+        self.write("pd2", "levels", table("Name | MonLvl", 'Blood Moor | "2"'))
+        self.write("mod", "levels", table("Name | MonLvl", "Blood Moor | 2"))
+        self.assertEqual(self.gate().open(), [])
+
     def test_every_unported_row_has_a_known_status(self):
         self.unported("| Something | maybe | `levels.*.*` | P4 |\n")
         with self.assertRaisesRegex(pd2_diff.GateError, "maybe"):

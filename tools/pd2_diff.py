@@ -1,8 +1,10 @@
 """The table-diff gate: compare the merged tables to the PD2 baseline by table, row and column name.
 
-    python tools/pd2_diff.py --scope P2|P3|P4|M1|alpha [--d2r DIR]
+    python tools/pd2_diff.py --scope P2|P3|P4|M1|alpha [--root DIR] [--d2r DIR]
 
 Reads PD2's tables from pd2-data/ and the mod's from generated/ (D2R's own table where generated/ has none yet).
+Exit 0: every deviation is on docs/unported.md; 1: some are not (listed in the report); 2: the list or an id list is
+broken.
 """
 from __future__ import annotations
 
@@ -14,7 +16,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pd2_ids
-from pd2_ids import COLUMN_MAP, FORMULAS, REFS, Table
+import pd2_merge
+from pd2_ids import COLUMN_MAP, Table
 
 ROOT = Path(__file__).resolve().parent.parent
 SHOWN = 200  # open deviations listed in the report; the counts cover the rest
@@ -60,6 +63,7 @@ def same(a: str, b: str) -> bool:
 
 def keyed(rows: list[list[str]]) -> dict[str, list[str]]:
     """Rows by lower-case name; a repeated name (Expansion, cube recipes) gets #2, #3, ... in order."""
+    # shortcut: repeats match by position, so one inserted repeat shifts the rest; key cube rows by content when P3 merges cubemain
     out: dict[str, list[str]] = {}
     for r in rows:
         k, n = r[0].lower(), 1
@@ -69,21 +73,11 @@ def keyed(rows: list[list[str]]) -> dict[str, list[str]]:
     return out
 
 
-def spelled(table: str, col: str, v: str, ren: dict[str, dict[str, str]]) -> str:
-    """A PD2 cell as the P2 merge writes it into the mod's column `col`: quotes gone, renamed references and formulas
-    in D2R's spelling (pd2_ids.merge_table)."""
-    v = v.replace('"', "")
-    if col in REFS.get(table, {}):
-        return ren[REFS[table][col]].get(v.lower(), v)
-    if col in FORMULAS.get(table, []):
-        return pd2_ids.rewrite_formula(pd2_ids.fix_formula(v), ren)
-    return v
-
-
 def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | None = None) -> Result:
     """Deviations of `mod` from `pd2`: missing columns (table.*.col), missing rows (table.row.*), changed cells.
     PD2's comment columns and eol are not data; a column D2R keeps only as a comment (*Id) is the row's position.
-    With `ren` (pd2_ids.renames, for the P2 tables) PD2's rows, columns and cells are read in the mod's spelling."""
+    With `ren` (pd2_ids.renames, for the P2 tables) PD2's rows, columns and cells are read in the mod's spelling.
+    PD2's cells carry Excel's quote marks, which the classic loader skipped: they are not data."""
     res = Result(name)
     mod_cols = {c.lower(): i for i, c in enumerate(mod.header)}
     to_mod = {p.lower(): d.lower() for d, p in COLUMN_MAP.get(name, {}).items()} if ren else {}
@@ -97,16 +91,17 @@ def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | 
                 cols.append((c, i, mod_cols[mc]))
         else:
             res.open.append((f"{name}.*.{c}", "", ""))
-    rows = ren.get(name, {}) if ren else {}
+    row_ren = ren.get(name, {}) if ren else {}
     mod_rows = keyed(mod.rows)
     for k, pr in keyed(pd2.rows).items():
-        row = pr[0] + k[len(pr[0]):]  # keeps PD2's spelling, plus any #n
-        mr = mod_rows.get(rows.get(pr[0].lower(), pr[0]).lower() + k[len(pr[0]):])
+        repeat = k[len(pr[0]):]  # "#n" on a repeated name
+        row = pr[0] + repeat  # keeps PD2's spelling
+        mr = mod_rows.get(row_ren.get(pr[0].lower(), pr[0]).lower() + repeat)
         if mr is None:
             res.open.append((f"{name}.{row}.*", "", ""))
             continue
         res.open += [(f"{name}.{row}.{c}", pr[i], mr[j]) for c, i, j in cols
-                     if not same(spelled(name, mod.header[j], pr[i], ren) if ren else pr[i], mr[j])]
+                     if not same(pd2_ids.spell(name, mod.header[j], pr[i], ren) if ren else pr[i].replace('"', ""), mr[j])]
     return res
 
 
@@ -152,11 +147,13 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
         else:
             res = compare(p.stem, Table(p), Table(src[1]), ren if p.stem in pd2_ids.TABLES else None)
             res.source = src[0]
+            if src[0] == "merged" and f"{p.stem.lower()}.*" in patterns:
+                raise GateError(f"unported.md still covers all of {p.stem}, which is merged now: narrow its row")
         results.append(triage(res, patterns))
     return Report(results)
 
 
-def cell(v: str) -> str:
+def escape_pipes(v: str) -> str:
     return v.replace("|", r"\|")
 
 
@@ -169,7 +166,7 @@ def report(rep: Report, scope: str) -> str:
     lines += [f"| {r.table} | {r.source} | {len(r.open)} | {r.covered} |" for r in rep.results]
     if opened:
         lines += ["", "| Open deviation | PD2 | Mod |", "|---|---|---|"]
-        lines += [f"| `{k}` | {cell(a)} | {cell(b)} |" for k, a, b in opened[:SHOWN]]
+        lines += [f"| `{k}` | {escape_pipes(a)} | {escape_pipes(b)} |" for k, a, b in opened[:SHOWN]]
         if len(opened) > SHOWN:
             lines += ["", f"{len(opened) - SHOWN} more not shown."]
     return "\n".join(lines)
@@ -178,12 +175,9 @@ def report(rep: Report, scope: str) -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--scope", required=True, choices=SCOPES)
-    ap.add_argument("--root", type=Path, default=ROOT)
-    ap.add_argument("--d2r", type=Path, help="D2R data root (default: pd2_merge's)")
+    ap.add_argument("--root", type=Path, default=ROOT, help="repo root holding pd2-data/, generated/ and docs/")
+    ap.add_argument("--d2r", type=Path, default=pd2_merge.D2R_DATA, help="D2R data root (default: %(default)s)")
     a = ap.parse_args(argv)
-    if a.d2r is None:
-        import pd2_merge
-        a.d2r = pd2_merge.D2R_DATA
     try:
         rep = gate(a.root, a.d2r, a.scope)
     except (GateError, pd2_ids.IdError) as e:
