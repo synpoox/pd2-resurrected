@@ -20,5 +20,29 @@ _Avoid_: new content, vanilla extras
 D2R's RotW class, the one class in the port that is designed new in PD2's style rather than ported 1:1.
 
 **Unported list**:
-The record of every PD2 rule or feature the port does not reproduce, and why.
+The record of every deviation, its status and why.
 _Avoid_: cut list, TODO list
+
+**PD2 baseline**:
+The one frozen PD2 build the port is measured against. Moving to a newer PD2 is a deliberate re-baseline.
+_Avoid_: latest PD2, current season
+
+**Exact**:
+A parity tier: the player observes the same values as in the PD2 baseline (stats, rolls, rates, formulas, names). Identifiers and file layout may differ.
+_Avoid_: 1:1, identical, byte-for-byte
+
+**Function-equivalent**:
+A parity tier: the player has the same capability as in PD2, in D2R's look and controls.
+
+**Deviation**:
+Any observable difference from the PD2 baseline. Every deviation is a row on the unported list, marked approximated, cut or not yet.
+_Avoid_: bug, known issue
+
+**Approximated**:
+A deviation where the port reproduces a PD2 rule only roughly and states how it differs.
+
+**Cut**:
+A deviation where the port does not reproduce a PD2 rule at all.
+
+**Not yet**:
+A deviation the port intends to close but has not.
