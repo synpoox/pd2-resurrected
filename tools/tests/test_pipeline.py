@@ -61,6 +61,11 @@ class MergeTests(unittest.TestCase):
             self.assertTrue((root / "generated" / "data").is_dir())
             self.assertFalse(stale.exists())
 
+    def test_every_committed_rule_file_has_a_rule_kind(self):
+        rules = Path(__file__).resolve().parents[2] / "merge"
+        files = {p.name for p in rules.glob("*") if p.is_file() and p.suffix != ".md"}
+        self.assertEqual(files - set(pd2_merge.RULES), set())
+
     def test_runs_rules_by_file_name(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = self.project(Path(tmp))

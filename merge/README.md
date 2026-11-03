@@ -9,3 +9,5 @@ Each file is read by the rule kind its name maps to in `pd2_merge.RULES`; a file
 | File | Rule kind |
 |---|---|
 | `strings.json` | `tools/pd2_strings.py`: PD2's `patchstring.tbl` into complete D2R string files (decision #29). `python tools/pd2_strings.py --assign` appends newly referenced keys with IDs from 50,000; never edit or reuse an ID. The 20 changed guild, ladder and arena labels are left out (cut features). `ModStr5q`, `StrSkill110` and `StrSkill76` keep D2R's text: PD2's drops the `%d` D2R fills in. `Runeword171PD2` carries PD2's Runeword171 (Dominion); `runes.txt` must name it |
+| `ids-<table>.tsv` | `tools/pd2_ids.py`: append-only id lists for the tables a save or D2R's code reads by row number: the P2 skill, state, stat and missile tables, and the item types, unique and set items, runewords and affixes |
+| `item-tables.txt` | `tools/pd2_items.py`: the item tables merged by key or row with no id list, and the item types and codes that never drop |

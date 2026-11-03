@@ -61,47 +61,68 @@ def same(a: str, b: str) -> bool:
     return a == b or {a, b} == {"", "0"}  # the loader reads a blank number as 0
 
 
-def keyed(rows: list[list[str]]) -> dict[str, list[str]]:
-    """Rows by lower-case name; a repeated name (Expansion, cube recipes) gets #2, #3, ... in order."""
-    # shortcut: repeats match by position, so one inserted repeat shifts the rest; key cube rows by content when P3 merges cubemain
+def keyed(rows: list[list[str]], key: int = 0) -> dict[str, list[str]]:
+    """Rows by lower-case key (Excel's quote marks dropped); a repeated key (Expansion) gets #2, #3, ... in order."""
     out: dict[str, list[str]] = {}
     for r in rows:
-        k, n = r[0].lower(), 1
+        k, n = r[key].replace('"', "").lower(), 1
         while (k if n == 1 else f"{k}#{n}") in out:
             n += 1
         out[k if n == 1 else f"{k}#{n}"] = r
     return out
 
 
-def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | None = None) -> Result:
+def pairs(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | None,
+          lists: dict[str, list[tuple[str, int, str]]]) -> list[tuple[str, list[str], list[str] | None]]:
+    """(row label, PD2 row, mod row or None) as the merge placed them: an item table with an id list by its list, one
+    merged by row by position, the rest by key."""
+    if name in pd2_ids._BY_ROW or (name in ITEM_TABLES and lists.get(name)):
+        where = ({p.lower(): i for p, i, _ in lists[name]} if name not in pd2_ids._BY_ROW else
+                 {p.lower(): k for k, p in enumerate(pd2_ids.ident(pd2.names()))})
+        recs = mod.records()
+        return [(p, pd2.rows[k], mod.rows[recs[where[p.lower()]]] if where.get(p.lower(), len(recs)) < len(recs)
+                 else None) for p, k in zip(pd2_ids.ident(pd2.names()), pd2.records())]
+    row_ren = ren.get(name, {}) if ren else {}
+    mod_rows = keyed(mod.rows, mod.key)
+    out = []
+    for k, pr in keyed(pd2.rows, pd2.key).items():
+        name_ = pr[pd2.key].replace('"', "")
+        repeat = k[len(name_):]  # "#n" on a repeated name
+        out.append((name_ + repeat, pr, mod_rows.get(row_ren.get(name_.lower(), name_).lower() + repeat)))  # PD2's spelling
+    return out
+
+
+def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | None = None,
+            lists: dict[str, list[tuple[str, int, str]]] | None = None, ctx: pd2_ids.Context | None = None) -> Result:
     """Deviations of `mod` from `pd2`: missing columns (table.*.col), missing rows (table.row.*), changed cells.
-    PD2's comment columns and eol are not data; a column D2R keeps only as a comment (*Id) is the row's position.
-    With `ren` (pd2_ids.renames, for the P2 tables) PD2's rows, columns and cells are read in the mod's spelling.
-    PD2's cells carry Excel's quote marks, which the classic loader skipped: they are not data."""
+    PD2's comment columns and eol are not data; a column D2R keeps only as a comment (*Id) is the row's position, and a
+    repeated column is read once, as the merge reads it. PD2's rows, columns and cells are read in the mod's spelling:
+    renamed by `ren` (pd2_ids.renames) and pd2_ids.COLUMN_MAP, with item properties' skill and state parameters in the
+    mod's ids (`ctx`). PD2's cells carry Excel's quote marks, which the classic loader skipped: they are not data."""
     res = Result(name)
     mod_cols = {c.lower(): i for i, c in enumerate(mod.header)}
-    to_mod = {p.lower(): d.lower() for d, p in COLUMN_MAP.get(name, {}).items()} if ren else {}
-    cols = []
+    to_mod = {p.lower(): d.lower() for d, p in COLUMN_MAP.get(name, {}).items()}
+    cols, seen = [], set()
     for i, c in enumerate(pd2.header):
         mc = to_mod.get(c.lower(), c.lower())
-        if c.startswith("*") or c.lower() == "eol" or f"*{mc}" in mod_cols:
+        if c.startswith("*") or c.lower() == "eol" or f"*{mc}" in mod_cols or (c and c.lower() in seen):
             continue
+        seen.add(c.lower())
         if mc in mod_cols:
-            if i:  # column 0 is the row name, matched as the key
+            if i != pd2.key:  # the key column is the row's name, matched as the key
                 cols.append((c, i, mod_cols[mc]))
         else:
             res.open.append((f"{name}.*.{c}", "", ""))
-    row_ren = ren.get(name, {}) if ren else {}
-    mod_rows = keyed(mod.rows)
-    for k, pr in keyed(pd2.rows).items():
-        repeat = k[len(pr[0]):]  # "#n" on a repeated name
-        row = pr[0] + repeat  # keeps PD2's spelling
-        mr = mod_rows.get(row_ren.get(pr[0].lower(), pr[0]).lower() + repeat)
+    for row, pr, mr in pairs(name, pd2, mod, ren, lists or {}):
         if mr is None:
             res.open.append((f"{name}.{row}.*", "", ""))
             continue
-        res.open += [(f"{name}.{row}.{c}", pr[i], mr[j]) for c, i, j in cols
-                     if not same(pd2_ids.spell(name, mod.header[j], pr[i], ren) if ren else pr[i].replace('"', ""), mr[j])]
+        want = list(mr)
+        for _, i, j in cols:
+            want[j] = pd2_ids.spell(name, mod.header[j], pr[i], ren) if ren else pr[i].replace('"', "")
+        if ctx:
+            pd2_ids.fix_props(mod.header, want, ctx.ren, ctx.ids, ctx.props)
+        res.open += [(f"{name}.{row}.{c}", pr[i], mr[j]) for c, i, j in cols if not same(want[j], mr[j])]
     return res
 
 
@@ -137,7 +158,8 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
         raise GateError(f"scope {scope!r} is not one of {', '.join(SCOPES)}")
     pd2_excel, mod_excel = root / "pd2-data/data/global/excel", root / "generated/data/global/excel"
     patterns = unported(root / "docs" / "unported.md")
-    ren = pd2_ids.renames({t: pd2_ids.read_list(pd2_ids.list_path(root / "merge", t)) for t in pd2_ids.TABLES})
+    lists = {t: pd2_ids.read_list(pd2_ids.list_path(root / "merge", t)) for t in pd2_ids.TABLES}
+    ren, ctx = pd2_ids.renames(lists), None
     results = []
     for p in sorted(p for p in pd2_excel.glob("*.txt") if SCOPES[scope](p.stem.lower())):
         src = next(((s, f / p.name) for s, f in (("merged", mod_excel), ("D2R", d2r / "global" / "excel"))
@@ -145,7 +167,11 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
         if src is None:
             res = Result(p.stem, [(f"{p.stem}.*.*", "", "")], source="none")
         else:
-            res = compare(p.stem, Table(p), Table(src[1]), ren if p.stem in pd2_ids.TABLES else None)
+            if p.stem in pd2_ids.PROPS and ctx is None:
+                ctx = pd2_ids.context_of(lists, root / "pd2-data/data")
+            key = pd2_ids.KEY.get(p.stem)
+            res = compare(p.stem, Table(p, key), Table(src[1], key), ren, lists,
+                          ctx if p.stem in pd2_ids.PROPS else None)
             res.source = src[0]
             if src[0] == "merged" and f"{p.stem.lower()}.*" in patterns:
                 raise GateError(f"unported.md still covers all of {p.stem}, which is merged now: narrow its row")
