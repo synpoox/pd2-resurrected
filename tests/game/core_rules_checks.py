@@ -9,8 +9,9 @@ Run:
   py testing/game_checks.py run core-rules --slot 4 --path <repo>/tests/game --module core_rules_checks
   then in town: Double Throw on the right button, right-click the ground, and run the same command again
   (the cast checks skip until a cast is in the log). For split-throw-return, walk into Blood Moor and throw at
-  monsters (allowed in PD2 Resurrected slots). The fixture sets throwaxe Town 1: a missile without it dies at
-  once in town, so nothing would be drawn. throwaxe has no ClientSend, so the axes on screen come from cltdofunc 118.
+  monsters (allowed in PD2 Resurrected slots). The fixture adds PD2's splitthrowaxe and splitthrowaxereturn rows
+  (PD2's values, cloned from throwaxe) with Town 1: a missile without it dies at once in town, so nothing would be
+  drawn. It keeps D2R's quickness state in place of PD2's temp_skill_buff, which only the merged data has (#45).
 """
 import os
 import re
@@ -23,6 +24,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 189, "split throw"), ("cltdofunc", 118, "split throw"), ("srvstfunc", 79, "temp buff"),
     ("pSrvHitFunc", 65, "return spawn"), ("pSrvDoFunc", 46, "return"), ("pCltDoFunc", 78, "return"),
 ]
+ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
 
 
 def _log(ctx) -> str:
@@ -80,13 +82,16 @@ def split_throw_client_cast(ctx):
 
 @check("split-throw-temp-buff", tags=["core-rules"])
 def split_throw_temp_buff(ctx):
-    """srvstfunc 79 put the skill's aurastate on the caster at the start frame (an approximation, docs/core-rules.md)."""
-    buffs = re.findall(r"temp buff: skill \d+ level (\d+) state (\d+) for (\d+) frames", _log(ctx))
+    """srvstfunc 79 put the skill's aurastate on the caster at the start frame with PD2's aurastat1 attackrate =
+    aurastatcalc1 par4 (Param4 10). The length is approximated (docs/core-rules.md)."""
+    buffs = re.findall(r"temp buff: skill \d+ level (\d+) state (\d+) for (\d+) frames, stat (\d+) \+(-?\d+)", _log(ctx))
     if not buffs:
         ctx.skip("no temp buff in the log yet (cast Split Throw, then run again)")
-    level, state, frames = buffs[0]
-    assert int(state) > 0 and int(frames) > 0, buffs[0]
-    return f"level {level}: state {state} for {frames} frames"
+    level, state, frames, stat, value = (int(v) for v in buffs[0])
+    assert state > 0 and frames > 0, buffs[0]
+    assert stat == ATTACKRATE, f"aurastat1 is stat {stat}, PD2 gives attackrate ({ATTACKRATE})"
+    assert value == 10, f"attack rate +{value}, PD2's par4 is 10"
+    return f"level {level}: state {state} for {frames} frames, attackrate +{value}"
 
 
 @check("split-throw-return", tags=["core-rules"])

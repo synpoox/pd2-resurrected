@@ -1,8 +1,9 @@
 // Engine addresses for D2R 3.3.0 build 93847 under D2RLoader 1.3.1 (the frozen install copy, ADR 0004).
 //
 // One header per D2R build: a new build gets its own rvas_<build>.h and d2r.h includes that one. Every value here was
-// found in the Ghidra analysis of the dumped 93847 image and used in game by the Split Throw spike
-// (spikes/split-throw/FINDINGS.md). Names match the RVA column of docs/core-rules.md.
+// found in the Ghidra analysis of the dumped 93847 image; the comment beside each says where (the Split Throw spike,
+// spikes/split-throw/FINDINGS.md, or the D2R function it was read from) and the game check that uses it. Names match
+// the RVA column of docs/core-rules.md.
 #pragma once
 
 #include <cstddef>
@@ -71,7 +72,7 @@ inline constexpr uint64_t UnitDistance = 0x324fc0;  // (a, b) -> distance in sub
 // Self buff, the way Frozen Armor's srvdo 18 (0x553e60) builds its aurastate list
 inline constexpr uint64_t RemoveSkillState = 0x4370b0;  // (unit, state, 1): drop an older list of this state
 inline constexpr uint64_t NewStateList = 0x433d20;  // (&StateListRequest) -> stat list or null
-inline constexpr uint64_t AddAuraStats = 0x574480;  // (unit, list, skillRecord, skillId, level): aurastat1-6
+inline constexpr uint64_t AddAuraStats = 0x574480;  // (unit, list, skillRecord, skillId, level): aurastat1-6 (attackrate also sets stat 69)
 inline constexpr uint64_t AddAuraStatsB = 0x574600;  // same arguments, Frozen Armor calls both
 inline constexpr uint64_t SetListStat = 0x2f7c00;  // (dataFlag, list, stat, value, layer)
 inline constexpr uint64_t UnitStateKey = 0x34b6c0;  // (unit) -> value Frozen Armor passes to 0x435920
@@ -85,6 +86,16 @@ inline constexpr int GameDataFlag = 0x106;  // Game: byte passed to every data-t
 
 inline constexpr int UnitType = 0x00;  // int32: 0 player, 1 monster, 2 object, 3 missile, 4 item, 5 tile
 inline constexpr int UnitPath = 0x38;  // dynamic path (x +0x2, y +0x6, uint16) or static path (x +0x10, y +0x14)
+inline constexpr int PathTargetUnit = 0x70;  // Unit* on a dynamic path: what PathSteer aims at (set by PathSetTargetUnit)
+
+// MissileParams::flags
+inline constexpr uint32_t MissileFromOrigin = 0x820;      // start at the origin unit, fly to targetX/targetY
+inline constexpr uint32_t MissileNotTriggering = 0x20000;  // Multiple Shot's outer missiles, the ones calc3 leaves out
+
+// Stats Frozen Armor's srvdo 18 sets on its state list (itemstatcost ids)
+inline constexpr int StatListSkill = 0x15e;  // 350: the skill that made the list
+inline constexpr int StatListLevel = 0x15f;  // 351: its level
+inline constexpr int StatListKey = 0xca;     // 202: rva::StateListKey's value
 
 // skills.txt record (748 bytes in D2R)
 inline constexpr int SkSrvMissileA = 0x68;  // int16 srvmissilea; srvmissileb +0x6a, srvmissilec +0x6c
@@ -92,7 +103,12 @@ inline constexpr int SkCltMissileA = 0x140; // int16 cltmissilea; cltmissileb +0
 inline constexpr int SkCalc1 = 0x190;       // int32 calc index (pass to EvalCalc); calc2 +0x194, calc3 +0x198
 inline constexpr int SkCalc2 = 0x194;
 inline constexpr int SkCalc3 = 0x198;
-inline constexpr int SkAuraState = 0xa0;  // int16 aurastate; aurastat1-6 int16 from +0xa4, aurastatcalc1-6 int32 from +0xac
+inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
+inline constexpr int SkAuraStat1 = 0x74;      // int16 aurastat1-6, read by AddAuraStats (0x574480)
+inline constexpr int SkAuraStatCalc1 = 0x88;  // int32 aurastatcalc1-6 (calc index, pass to EvalCalc), same reader
+// Two record fields Frozen Armor passes to SendSkillState by address; what they hold is not read yet.
+inline constexpr int SkSendStateA = 0xa4;
+inline constexpr int SkSendStateB = 0xac;
 
 }  // namespace d2r::rva
 

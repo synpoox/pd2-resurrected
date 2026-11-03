@@ -1,5 +1,5 @@
-// PD2 skill functions (skills.txt srvdofunc / cltdofunc / srvstfunc, missiles.txt pSrvDoFunc / pSrvHitFunc /
-// pCltDoFunc) in D2R's free table slots.
+// PD2 skill functions (skills.txt srvdofunc / cltdofunc / srvstfunc) in D2R's free table slots, and the install of
+// those and of the missile functions (missile_functions.cpp).
 //
 // The server calls slot `srvdofunc` of rva::SrvDoTable at the cast frame as
 //     int64_t fn(Game* game, Unit* caster, int32_t skillId, int32_t skillLevel)   -> non-zero = the skill ran.
@@ -11,6 +11,7 @@
 
 #include "d2r.h"
 #include "log.h"
+#include "missile_functions.h"
 
 #include <atomic>
 #include <cstdio>
@@ -27,8 +28,6 @@ using CltDoFn = int32_t (*)(Unit* unit, int32_t skillId, int32_t level) noexcept
 
 std::atomic<uint32_t> g_splitThrowCasts {0};
 std::atomic<uint32_t> g_splitThrowClientCasts {0};
-
-constexpr uint32_t NotTriggering = 0x20000;  // Multiple Shot sets it on the outer missiles, the ones calc3 leaves out
 
 // Multiple Shot's missile layout (D2R srvdo 8 at 0x557840, cltdo 17 at 0x2af010): `count` missiles fly from the
 // caster to points one small step apart on a line through the target, at right angles to the aim. The middle
@@ -119,7 +118,7 @@ auto SrvDoSplitThrow(Game* game, Unit* unit, int32_t skillId, int32_t level) noe
 	params.activation = d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc2, skillId, level);
 	const int32_t triggered = d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc3, skillId, level);
 	const int32_t created = LineSpread(ux, uy, tx, ty, count, triggered, [&](int32_t x, int32_t y, bool outer) {
-		params.flags = 0x820 | (outer ? NotTriggering : 0);  // start at the origin unit, fly to targetX/targetY
+		params.flags = d2r::rva::MissileFromOrigin | (outer ? d2r::rva::MissileNotTriggering : 0);
 		params.targetX = x;
 		params.targetY = y;
 		return d2r::api.createMissile(game, &params) != nullptr;
@@ -159,7 +158,7 @@ auto CltDoSplitThrow(Unit* unit, int32_t skillId, int32_t level) noexcept -> int
 
 	d2r::MissileParams params;
 	std::memset(&params, 0, sizeof(params));
-	params.flags = 0x820;  // cltdo 17 sets no NotTriggering: hits are the server's
+	params.flags = d2r::rva::MissileFromOrigin;  // cltdo 17 sets no NotTriggering: hits are the server's
 	params.owner = unit;
 	params.origin = unit;
 	params.missile = missile;
@@ -212,89 +211,23 @@ auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 	d2r::Engine<AuraStatsFn>(AddAuraStats)(unit, list, skill, skillId, level);
 	d2r::Engine<AuraStatsFn>(AddAuraStatsB)(unit, list, skill, skillId, level);
 	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
-	setStat(dataFlag, list, 0x15e, skillId, 0);  // stats 350/351: which skill and level made the list
-	setStat(dataFlag, list, 0x15f, level, 0);
+	setStat(dataFlag, list, StatListSkill, skillId, 0);
+	setStat(dataFlag, list, StatListLevel, level, 0);
 	const int32_t key = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t) noexcept>(StateListKey)(
 		dataFlag, list, d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(unit));
-	setStat(dataFlag, list, 0xca, key, 0);
+	setStat(dataFlag, list, StatListKey, key, 0);
 	using SendFn = void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t, const void*, const void*,
 	                        int32_t) noexcept;
-	d2r::Engine<SendFn>(SendSkillState)(game, unit, skillId, level, key, 1, state, skill + 0xa4, skill + 0xac, 4);
+	d2r::Engine<SendFn>(SendSkillState)(game, unit, skillId, level, key, 1, state, skill + SkSendStateA,
+	                                    skill + SkSendStateB, 4);
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
 	if (plog::Sample(g_tempBuffs)) {
-		plog::Info("temp buff: skill %d level %d state %d for %d frames, cast %u", skillId, level, state, TempBuffFrames,
-		           g_tempBuffs.load());
+		// aurastat1 and its calc value as the skill computes them, so the check can compare them with PD2's par4
+		plog::Info("temp buff: skill %d level %d state %d for %d frames, stat %d +%d, cast %u", skillId, level, state,
+		           TempBuffFrames, At<int16_t>(skill, SkAuraStat1),
+		           d2r::EvalCalc(game, unit, skill, SkAuraStatCalc1, skillId, level), g_tempBuffs.load());
 	}
 	return 1;
-}
-
-// --- Return missiles (PD2 missile pSrvHitFunc 65, pSrvDoFunc 38 / pCltDoFunc 70 on the *return rows) ---------------
-using MissileSrvDoFn = int64_t (*)(Game* game, Unit* missile) noexcept;
-using MissileSrvHitFn = void (*)(Game* game, Unit* missile, Unit* hit) noexcept;
-using MissileCltDoFn = void (*)(Unit* missile, int32_t a2) noexcept;
-
-std::atomic<uint32_t> g_returnSpawns {0};
-std::atomic<uint32_t> g_returnsCaught {0};
-
-// shit 65: on a hit, start HitSubMissile1-4 (the <name>return row) at the hit missile, as D2R's srvhit 4 does.
-// shortcut: approximation from PD2's data, srvhit 4 also explodes the sub-missile when the parent row has an
-// explosion; PD2's splitthrow rows have none. Upgrade when PD2's shit 65 is read from ProjectDiablo.dll.
-void SrvHitSpawnReturn(Game* game, Unit* missile, Unit* hit) noexcept {
-	if (game == nullptr || missile == nullptr) {
-		return;
-	}
-	d2r::Engine<MissileSrvHitFn>(d2r::rva::SrvHitSubMissiles)(game, missile, hit);
-	if (plog::Sample(g_returnSpawns)) {
-		plog::Info("return missile: spawned on hit, hit %u", g_returnSpawns.load());
-	}
-}
-
-constexpr int32_t ReturnSteerFrames = 2;  // re-aim every 2nd frame; Guided Arrow steers on its own param interval
-constexpr int32_t ReturnCatchDistance = 2;  // subtiles from the thrower that count as caught
-
-// Point the missile's path at `owner` and re-aim it every ReturnSteerFrames frames. Shared by both halves.
-void SteerHome(Unit* missile, Unit* owner, int32_t framesLeft) noexcept {
-	using namespace d2r::rva;
-	uint8_t* path = At<uint8_t*>(missile, UnitPath);
-	if (path == nullptr) {
-		return;
-	}
-	if (At<Unit*>(path, 0x70) != owner) {
-		d2r::Engine<void (*)(uint8_t*, Unit*) noexcept>(PathSetTargetUnit)(path, owner);
-	}
-	if (framesLeft % ReturnSteerFrames == 0) {
-		d2r::Engine<void (*)(uint8_t*, Unit*, int32_t, int32_t) noexcept>(PathSteer)(path, missile, 0, 1);
-	}
-}
-
-// sdo 46 (PD2 sdo 38): fly back to the thrower and end on reaching them; otherwise the default missile frame.
-// shortcut: approximation from PD2's data (Guided Arrow's steering, aimed at the owner); PD2's catch distance and
-// steering rate are guesses. Upgrade when PD2's sdo 38 is read from ProjectDiablo.dll.
-auto SrvDoReturn(Game* game, Unit* missile) noexcept -> int64_t {
-	using namespace d2r::rva;
-	const auto fallback = d2r::Engine<MissileSrvDoFn>(MissileSrvDoDefault);
-	Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
-	if (owner == nullptr) {
-		return fallback(game, missile);
-	}
-	if (d2r::Engine<int32_t (*)(Unit*, Unit*) noexcept>(UnitDistance)(missile, owner) <= ReturnCatchDistance) {
-		if (plog::Sample(g_returnsCaught)) {
-			plog::Info("return missile: caught by the thrower, catch %u", g_returnsCaught.load());
-		}
-		return d2r::Engine<int64_t (*)(Game*, Unit*, Unit*, int32_t) noexcept>(MissileSrvEnd)(game, missile, nullptr, 1);
-	}
-	SteerHome(missile, owner, d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileSrvFrames)(missile));
-	return fallback(game, missile);
-}
-
-// cdo 78 (PD2 cdo 70): the client's copy steers the same way; the server ends it.
-void CltDoReturn(Unit* missile, int32_t a2) noexcept {
-	using namespace d2r::rva;
-	Unit* owner = d2r::Engine<Unit* (*)(Unit*) noexcept>(ClientMissileOwner)(missile);
-	if (owner != nullptr) {
-		SteerHome(missile, owner, d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileCltFrames)(missile));
-	}
-	d2r::Engine<MissileCltDoFn>(MissileCltDoDefault)(missile, a2);
 }
 
 struct Table {
@@ -357,7 +290,8 @@ auto SkillFunctionCount() noexcept -> int {
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "split throw casts %u, client %u, temp buffs %u, returns spawned %u, caught %u",
-	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_returnSpawns.load(),
-	              g_returnsCaught.load());
+	char missiles[64];
+	MissileFunctionCounters(missiles, sizeof(missiles));
+	std::snprintf(out, size, "split throw casts %u, client %u, temp buffs %u, %s", g_splitThrowCasts.load(),
+	              g_splitThrowClientCasts.load(), g_tempBuffs.load(), missiles);
 }

@@ -1,18 +1,21 @@
 {"ops": [
   {"op": "set", "table": "skills", "key": "Double Throw", "bank": "excel", "set": {
-    "srvstfunc": "79", "srvdofunc": "189", "cltstfunc": "", "cltdofunc": "118",
+    "srvstfunc": "79", "srvdofunc": "189", "cltstfunc": "9", "cltdofunc": "118",
     "anim": "A1", "seqtrans": "A1", "seqnum": "", "weapsel": "", "itypea1": "", "itypeb1": "",
-    "srvmissilea": "throwaxe", "srvmissileb": "", "srvmissilec": "",
-    "cltmissilea": "throwaxe", "cltmissileb": "", "cltmissilec": "",
+    "srvmissilea": "splitthrowaxe", "srvmissileb": "", "srvmissilec": "",
+    "cltmissilea": "splitthrowaxe", "cltmissileb": "", "cltmissilec": "",
     "InTown": "1", "calc1": "par1+(min(lvl/5,par2))", "calc2": "1", "calc3": "3", "Param1": "3", "Param2": "4",
     "aurastate": "quickness", "aurastat1": "attackrate", "aurastatcalc1": "par4", "Param4": "10"
   }},
-  {"op": "set", "table": "missiles", "key": "throwaxe", "bank": "excel", "set": {
-    "Town": "1", "pSrvHitFunc": "65", "HitSubMissile1": "throwaxereturn"
+  {"op": "clone_row", "table": "missiles", "from": "throwaxe", "key": "splitthrowaxe", "bank": "excel", "set": {
+    "pCltDoFunc": "1", "pSrvDoFunc": "1", "pSrvHitFunc": "65", "HitSubMissile1": "splitthrowaxereturn",
+    "Vel": "36", "MaxVel": "36", "Accel": "-1064", "Range": "29", "SrcDamage": "128",
+    "CollideType": "3", "CollideKill": "1", "LastCollide": "1", "ClientCol": "1", "ClientSend": "1",
+    "NextHit": "1", "NextDelay": "3", "Pierce": "1", "Town": "1"
   }},
-  {"op": "clone_row", "table": "missiles", "from": "throwaxe", "key": "throwaxereturn", "bank": "excel", "set": {
-    "pSrvDoFunc": "46", "pCltDoFunc": "78", "pSrvHitFunc": "", "HitSubMissile1": "",
+  {"op": "clone_row", "table": "missiles", "from": "throwaxe", "key": "splitthrowaxereturn", "bank": "excel", "set": {
+    "pCltDoFunc": "78", "pSrvDoFunc": "46", "pSrvHitFunc": "", "HitSubMissile1": "",
     "Vel": "4", "MaxVel": "36", "Accel": "1600", "Range": "80", "SrcDamage": "38",
-    "CollideKill": "", "CollideType": "3", "ClientSend": "1", "Town": "1"
+    "CollideType": "3", "CollideKill": "", "LastCollide": "1", "ClientCol": "1", "ClientSend": "1", "Town": "1"
   }}
 ]}
