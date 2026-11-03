@@ -83,6 +83,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows, [["A", "0-min(lvl,5)", "1", "0"], ["B", "max(1, 2)", "0", "1"]])
 
+    def test_function_numbers_moved_off_d2r_slots(self):
+        d2r = table("Missile|pCltDoFunc|pSrvDoFunc\nflamewave|71|38\n")
+        pd2 = table("Missile|pCltDoFunc|pSrvDoFunc\nback|70|38\nbolt|1|1\n")
+        lines = [("back", 1, "back"), ("bolt", 2, "bolt")]
+        merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["flamewave", "71", "38"], ["back", "78", "46"], ["bolt", "1", "1"]])
+
     def test_name_length(self):
         with self.assertRaisesRegex(I.IdError, "31 bytes"):
             I.check("missiles", [("x" * 32, 0, "x" * 32)], ["x" * 32], [])
