@@ -8,11 +8,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_ids as I  # noqa: E402
 
 
-def table(text: str) -> I.Table:
+def table(text: str, key: str | None = None) -> I.Table:
     with tempfile.TemporaryDirectory() as tmp:
         p = Path(tmp) / "t.txt"
         p.write_bytes(text.replace("|", "\t").encode("latin-1"))
-        return I.Table(p)
+        return I.Table(p, key)
 
 
 class SeedTests(unittest.TestCase):
@@ -83,10 +83,74 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows, [["A", "0-min(lvl,5)", "1", "0"], ["B", "max(1, 2)", "0", "1"]])
 
+    def test_function_numbers_moved_off_d2r_slots(self):
+        d2r = table("Missile|pCltDoFunc|pSrvDoFunc\nflamewave|71|38\n")
+        pd2 = table("Missile|pCltDoFunc|pSrvDoFunc\nback|70|38\nbolt|1|1\n")
+        lines = [("back", 1, "back"), ("bolt", 2, "bolt")]
+        merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["flamewave", "71", "38"], ["back", "78", "46"], ["bolt", "1", "1"]])
+
     def test_name_length(self):
         with self.assertRaisesRegex(I.IdError, "31 bytes"):
             I.check("missiles", [("x" * 32, 0, "x" * 32)], ["x" * 32], [])
         self.assertEqual(I.seed("missiles", ["y" * 40], [], []), [("y" * 40, 0, "y" * 31)])
+
+
+class ItemTableTests(unittest.TestCase):
+    def test_expansion_rows_and_pd2_names(self):
+        # setitems: PD2 renamed a vanilla row, inserted one mid-table and appended one; D2R added one after vanilla
+        vanilla, I.VANILLA["setitems"] = I.VANILLA["setitems"], 1
+        try:
+            d2r = table("index|*ID|set\nTorch|0|A\nExpansion||\nCow Horns|1|B\nWarlock Hood|2|W\n")
+            pd2 = table("index|set\nSpire|A\nExpansion|\nDeath Band|K\nCow Horns|B\nNew One|N\n")
+            lines = I.seed("setitems", pd2.names(), d2r.names(), [])
+            self.assertEqual(lines, [("Spire", 0, "Spire"), ("Death Band", 3, "Death Band"), ("Cow Horns", 1, "Cow Horns"),
+                                     ("New One", 4, "New One")])
+            I.check("setitems", lines, pd2.names(), d2r.names())
+            merged, _ = I.merge_table("setitems", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+            self.assertEqual(merged.rows, [["Spire", "0", "A"], ["Expansion", "", ""], ["Cow Horns", "1", "B"],
+                                           ["Warlock Hood", "2", "W"], ["Death Band", "3", "K"], ["New One", "4", "N"]])
+        finally:
+            I.VANILLA["setitems"] = vanilla
+
+    def test_key_column_and_duplicate_names(self):
+        d2r = table("ItemType|Code\nNone|none\nWarlock|warl\n", "Code")
+        pd2 = table("ItemType|Code\nNone|\nMap|map\n", "Code")
+        vanilla, I.VANILLA["itemtypes"] = I.VANILLA["itemtypes"], 1  # D2R's warl ends vanilla
+        try:
+            self.assertEqual(I.seed("itemtypes", pd2.names(), d2r.names(), []), [("", 0, "none"), ("map", 2, "map")])
+        finally:
+            I.VANILLA["itemtypes"] = vanilla
+        affixes = ["Sturdy", "Sturdy", "Fine"]
+        lines = I.seed("magicprefix", affixes, [], [])
+        self.assertEqual(lines, [("Sturdy", 0, "Sturdy"), ("Sturdy#2", 1, "Sturdy"), ("Fine", 2, "Fine")])
+        I.check("magicprefix", lines, affixes, [])
+
+
+    def test_property_params_columns_and_defaults(self):
+        # skill and state parameters follow P2's remap whether PD2 names the row or gives its id; NPC columns renamed
+        props = {"oskill": "skill", "hit-skill": "skill", "skill-rand": "skillrange", "state": "state", "res": ""}
+        ids = {"skills": {"400": "430", "401": "431"}, "states": {}}
+        ren = I.renames({t: [] for t in I.TABLES})
+        ren["skills"], ren["states"] = {"impale": "Javelin and Spear Mastery"}, {"swordmastery": "blademastery"}
+        d2r = table("index|*ID|prop1|par1|min1|max1|prop2|par2|min2|max2|spawnable\n")
+        pd2 = table("index|prop1|par1|min1|max1|prop2|par2|min2|max2|enabled\n"
+                    "A|oskill|Impale|1|1|hit-skill|400|5|3|1\nB|skill-rand|10|400|401|state|swordmastery|||0\n"
+                    "C|res|400|5|5||||||\n")
+        lines = [("A", 0, "A"), ("B", 1, "B"), ("C", 2, "C")]
+        merged, _ = I.merge_table("uniqueitems", pd2, d2r, lines, ren, ids, props)
+        self.assertEqual(merged.rows, [
+            ["A", "0", "oskill", "Javelin and Spear Mastery", "1", "1", "hit-skill", "430", "5", "3", "1"],
+            ["B", "1", "skill-rand", "10", "430", "431", "state", "blademastery", "", "", "0"],
+            ["C", "2", "res", "400", "5", "5", "", "", "", "", ""]])
+        armor = I.merge_table("armor", table("code|DrehyaMax|nameable|mindam|mindam\nxyz|3|1|5|0\n"),
+                              table("code|AnyaMax|Nameable|mindam\n"), [("xyz", 0, "xyz")], ren)[0]
+        self.assertEqual(armor.rows, [["xyz", "3", "1", "5"]])  # a repeated column: the first holds the values
+        weapons = I.merge_table("weapons", table("code||speed\nxyz|15|-10\n"), table("code|speed|UICatOverride\n"),
+                                [("xyz", 0, "xyz")], ren)[0]
+        self.assertEqual(weapons.rows, [["xyz", "-10", ""]])  # PD2's unnamed column fills no D2R column
+        sets = I.merge_table("setitems", table("index|set\nS|X\n"), table("index|set|spawnable\n"), [("S", 0, "S")], ren)[0]
+        self.assertEqual(sets.rows, [["S", "X", "1"]])
 
 
 class ListFileTests(unittest.TestCase):
@@ -97,7 +161,8 @@ class ListFileTests(unittest.TestCase):
                 for t in I.TABLES:
                     p = root / side / "global" / "excel" / f"{t}.txt"
                     p.parent.mkdir(parents=True, exist_ok=True)
-                    p.write_text("name\n" + "".join(f"{n}\n" for n in names), "latin-1")
+                    p.write_text(I.KEY.get(t, "name") + "\n" + "".join(f"{n}\n" for n in names), "latin-1")
+            (root / "pd2/global/excel/properties.txt").write_text("code\tfunc1\tstat1\n", "latin-1")
             (root / "merge").mkdir()
             self.assertEqual(I.seed_lists(root / "merge", root / "pd2", root / "d2r"), {t: 2 for t in I.TABLES})
             self.assertEqual(I.seed_lists(root / "merge", root / "pd2", root / "d2r"), {t: 0 for t in I.TABLES})

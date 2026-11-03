@@ -1,0 +1,1044 @@
+# PD2 name	id	name (append-only, ADR 0003)
+of Health	0	of Health
+of Protection	1	of Protection
+of Absorption	2	of Absorption
+of Life	3	of Life
+	4	
+of Warding	5	of Warding
+of the Sentinel	6	of the Sentinel
+of Guarding	7	of Guarding
+of Negation	8	of Negation
+#2	9	
+of Piercing	10	of Piercing
+of Bashing	11	of Bashing
+of Puncturing	12	of Puncturing
+of Thorns	13	of Thorns
+of Spikes	14	of Spikes
+of Readiness	15	of Readiness
+of Alacrity	16	of Alacrity
+of Swiftness	17	of Swiftness
+of Quickness	18	of Quickness
+of Blocking	19	of Blocking
+of Deflecting	20	of Deflecting
+of the Apprentice	21	of the Apprentice
+of the Magus	22	of the Magus
+of Frost	23	of Frost
+of the Glacier	24	of the Glacier
+of Frost#2	25	of Frost
+of Warmth	26	of Warmth
+of Flame	27	of Flame
+of Fire	28	of Fire
+of Burning	29	of Burning
+of Flame#2	30	of Flame
+of Shock	31	of Shock
+of Lightning	32	of Lightning
+of Thunder	33	of Thunder
+of Shock#2	34	of Shock
+of Craftsmanship	35	of Craftsmanship
+of Quality	36	of Quality
+of Maiming	37	of Maiming
+of Slaying	38	of Slaying
+of Gore	39	of Gore
+of Carnage	40	of Carnage
+of Slaughter	41	of Slaughter
+of Maiming#2	42	of Maiming
+of Worth	43	of Worth
+of Measure	44	of Measure
+of Excellence	45	of Excellence
+of Performance	46	of Performance
+of Measure#2	47	of Measure
+of Blight	48	of Blight
+of Venom	49	of Venom
+of Pestilence	50	of Pestilence
+of Blight#2	51	of Blight
+of Dexterity	52	of Dexterity
+of Dexterity#2	53	of Dexterity
+of Skill	54	of Skill
+of Skill#2	55	of Skill
+of Accuracy	56	of Accuracy
+of Precision	57	of Precision
+of Precision#2	58	of Precision
+of Perfection	59	of Perfection
+of Balance	60	of Balance
+of Stability	61	of Stability
+#3	62	
+of Regeneration	63	of Regeneration
+of Regeneration#2	64	of Regeneration
+of Regeneration#3	65	of Regeneration
+of Regrowth	66	of Regrowth
+of Regrowth#2	67	of Regrowth
+of Vileness	68	of Vileness
+#4	69	
+of Greed	70	of Greed
+of Wealth	71	of Wealth
+of Chance	72	of Chance
+of Fortune	73	of Fortune
+of Energy	74	of Energy
+of Energy#2	75	of Energy
+of the Mind	76	of the Mind
+of Brilliance	77	of Brilliance
+of Sorcery	78	of Sorcery
+of Wizardry	79	of Wizardry
+of the Bear	80	of the Bear
+of Light	81	of Light
+of Radiance	82	of Radiance
+of the Sun	83	of the Sun
+of Life#2	84	of Life
+of the Jackal	85	of the Jackal
+of the Fox	86	of the Fox
+of the Wolf	87	of the Wolf
+of the Wolf#2	88	of the Wolf
+of the Tiger	89	of the Tiger
+of the Mammoth	90	of the Mammoth
+of the Mammoth#2	91	of the Mammoth
+of the Colosuss	92	of the Colosuss
+of the Leech	93	of the Leech
+of the Locust	94	of the Locust
+of the Bat	95	of the Bat
+of the Vampire	96	of the Vampire
+of Defiance	97	of Defiance
+of Amelioration	98	of Amelioration
+of Remedy	99	of Remedy
+#5	100	
+of Simplicity	101	of Simplicity
+of Ease	102	of Ease
+#6	103	
+of Strength	104	of Strength
+of Might	105	of Might
+of the Ox	106	of the Ox
+of the Ox#2	107	of the Ox
+of the Giant	108	of the Giant
+of the Giant#2	109	of the Giant
+of the Titan	110	of the Titan
+of Pacing	111	of Pacing
+of Haste	112	of Haste
+of Speed	113	of Speed
+of Health#2	114	of Health
+of Protection#2	115	of Protection
+of Absorption#2	116	of Absorption
+of Life#3	117	of Life
+of Life Everlasting	118	of Life Everlasting
+of Protection#3	119	of Protection
+of Absorption#3	120	of Absorption
+of Life#4	121	of Life
+of Anima	122	of Anima
+of Warding#2	123	of Warding
+of the Sentinel#2	124	of the Sentinel
+of Guarding#2	125	of Guarding
+of Negation#2	126	of Negation
+of the Sentinel#3	127	of the Sentinel
+of Guarding#3	128	of Guarding
+of Negation#3	129	of Negation
+of Coolness	130	of Coolness
+of Incombustibility	131	of Incombustibility
+of Amianthus	132	of Amianthus
+of Fire Quenching	133	of Fire Quenching
+of Coolness#2	134	of Coolness
+of Incombustibility#2	135	of Incombustibility
+of Amianthus#2	136	of Amianthus
+of Fire Quenching#2	137	of Fire Quenching
+of Faith	138	of Faith
+of Resistance	139	of Resistance
+of Insulation	140	of Insulation
+of Grounding	141	of Grounding
+of the Dynamo	142	of the Dynamo
+of Resistance#2	143	of Resistance
+of Insulation#2	144	of Insulation
+of Grounding#2	145	of Grounding
+of the Dynamo#2	146	of the Dynamo
+of Stoicism	147	of Stoicism
+of Warming	148	of Warming
+of Thawing	149	of Thawing
+of the Dunes	150	of the Dunes
+of the Sirocco	151	of the Sirocco
+of Warming#2	152	of Warming
+of Thawing#2	153	of Thawing
+of the Dunes#2	154	of the Dunes
+of the Sirocco#2	155	of the Sirocco
+of Desire	156	of Desire
+of Piercing#2	157	of Piercing
+of Bashing#2	158	of Bashing
+of Puncturing#2	159	of Puncturing
+of Thorns#2	160	of Thorns
+of Spikes#2	161	of Spikes
+of Razors	162	of Razors
+of Swords	163	of Swords
+of Malice	164	of Malice
+of Readiness#2	165	of Readiness
+of Alacrity#2	166	of Alacrity
+of Swiftness#2	167	of Swiftness
+of Quickness#2	168	of Quickness
+of Alacrity#3	169	of Alacrity
+of Fervor	170	of Fervor
+of Blocking#2	171	of Blocking
+of Deflecting#2	172	of Deflecting
+of the Apprentice#2	173	of the Apprentice
+of the Magus#2	174	of the Magus
+of Frost#3	175	of Frost
+of the Icicle	176	of the Icicle
+of the Glacier#2	177	of the Glacier
+of Winter	178	of Winter
+of Frost#4	179	of Frost
+of Frigidity	180	of Frigidity
+of Warmth#2	181	of Warmth
+of Flame#3	182	of Flame
+of Fire#2	183	of Fire
+of Burning#2	184	of Burning
+of Incineration	185	of Incineration
+of Flame#4	186	of Flame
+of Passion	187	of Passion
+of Shock#3	188	of Shock
+of Lightning#2	189	of Lightning
+of Thunder#2	190	of Thunder
+of Storms	191	of Storms
+of Shock#4	192	of Shock
+of Ennui	193	of Ennui
+of Craftsmanship#2	194	of Craftsmanship
+of Quality#2	195	of Quality
+of Maiming#3	196	of Maiming
+of Slaying#2	197	of Slaying
+of Gore#2	198	of Gore
+of Carnage#2	199	of Carnage
+of Slaughter#2	200	of Slaughter
+of Butchery	201	of Butchery
+of Evisceration	202	of Evisceration
+of Maiming#4	203	of Maiming
+of Craftsmanship#3	204	of Craftsmanship
+of Craftsmanship#4	205	of Craftsmanship
+of Craftsmanship#5	206	of Craftsmanship
+of Quality#3	207	of Quality
+of Quality#4	208	of Quality
+of Maiming#5	209	of Maiming
+of Maiming#6	210	of Maiming
+of Craftsmanship#6	211	of Craftsmanship
+of Craftsmanship#7	212	of Craftsmanship
+of Quality#5	213	of Quality
+of Quality#6	214	of Quality
+of Maiming#7	215	of Maiming
+of Craftsmanship#8	216	of Craftsmanship
+of Quality#7	217	of Quality
+of Maiming#8	218	of Maiming
+of Ire	219	of Ire
+of Wrath	220	of Wrath
+of Carnage#3	221	of Carnage
+of Worth#2	222	of Worth
+of Measure#3	223	of Measure
+of Excellence#2	224	of Excellence
+of Performance#2	225	of Performance
+of Transcendence	226	of Transcendence
+of Worth#3	227	of Worth
+of Measure#4	228	of Measure
+of Excellence#3	229	of Excellence
+of Performance#3	230	of Performance
+of Joyfulness	231	of Joyfulness
+of Bliss	232	of Bliss
+of Blight#3	233	of Blight
+of Venom#2	234	of Venom
+of Pestilence#2	235	of Pestilence
+of Anthrax	236	of Anthrax
+of Blight#4	237	of Blight
+of Envy	238	of Envy
+of Dexterity#3	239	of Dexterity
+of Skill#3	240	of Skill
+of Accuracy#2	241	of Accuracy
+of Precision#3	242	of Precision
+of Perfection#2	243	of Perfection
+of Nirvana	244	of Nirvana
+of Dexterity#4	245	of Dexterity
+of Skill#4	246	of Skill
+of Accuracy#3	247	of Accuracy
+of Precision#4	248	of Precision
+of Perfection#3	249	of Perfection
+of Dexterity#5	250	of Dexterity
+of Skill#5	251	of Skill
+of Accuracy#4	252	of Accuracy
+of Precision#5	253	of Precision
+of Dexterity#6	254	of Dexterity
+of Dexterity#7	255	of Dexterity
+of Dexterity#8	256	of Dexterity
+of Dexterity#9	257	of Dexterity
+of Dexterity#10	258	of Dexterity
+of Dexterity#11	259	of Dexterity
+of Daring	260	of Daring
+of Balance#2	261	of Balance
+of Equilibrium	262	of Equilibrium
+of Stability#2	263	of Stability
+of Balance#3	264	of Balance
+of Balance#4	265	of Balance
+of Balance#5	266	of Balance
+of Truth	267	of Truth
+of Regeneration#4	268	of Regeneration
+of Regeneration#5	269	of Regeneration
+of Regeneration#6	270	of Regeneration
+of Regrowth#3	271	of Regrowth
+of Regrowth#4	272	of Regrowth
+of Revivification	273	of Revivification
+of Honor	274	of Honor
+of Vileness#2	275	of Vileness
+of Greed#2	276	of Greed
+of Wealth#2	277	of Wealth
+of Greed#3	278	of Greed
+of Greed#4	279	of Greed
+of Greed#5	280	of Greed
+of Greed#6	281	of Greed
+of Greed#7	282	of Greed
+of Greed#8	283	of Greed
+of Avarice	284	of Avarice
+of Chance#2	285	of Chance
+of Fortune#2	286	of Fortune
+of Fortune#3	287	of Fortune
+of Luck	288	of Luck
+of Fortune#4	289	of Fortune
+of Good Luck	290	of Good Luck
+of Prosperity	291	of Prosperity
+of Energy#3	292	of Energy
+of the Mind#2	293	of the Mind
+of Brilliance#2	294	of Brilliance
+of Sorcery#2	295	of Sorcery
+of Wizardry#2	296	of Wizardry
+of Enlightenment	297	of Enlightenment
+of Energy#4	298	of Energy
+of the Mind#3	299	of the Mind
+of Brilliance#3	300	of Brilliance
+of Sorcery#3	301	of Sorcery
+of Wizardry#3	302	of Wizardry
+of Energy#5	303	of Energy
+of the Mind#4	304	of the Mind
+of Brilliance#4	305	of Brilliance
+of Sorcery#4	306	of Sorcery
+of Knowledge	307	of Knowledge
+of the Bear#2	308	of the Bear
+of Light#2	309	of Light
+of Radiance#2	310	of Radiance
+of the Sun#2	311	of the Sun
+of the Jackal#2	312	of the Jackal
+of the Fox#2	313	of the Fox
+of the Wolf#3	314	of the Wolf
+of the Tiger#2	315	of the Tiger
+of the Mammoth#3	316	of the Mammoth
+of the Colosuss#2	317	of the Colosuss
+of the Squid	318	of the Squid
+of the Whale	319	of the Whale
+of the Jackal#3	320	of the Jackal
+of the Fox#3	321	of the Fox
+of the Wolf#4	322	of the Wolf
+of the Tiger#3	323	of the Tiger
+of the Mammoth#4	324	of the Mammoth
+of the Colosuss#3	325	of the Colosuss
+of the Jackal#4	326	of the Jackal
+of the Fox#4	327	of the Fox
+of the Wolf#5	328	of the Wolf
+of the Tiger#4	329	of the Tiger
+of the Mammoth#5	330	of the Mammoth
+of Life#5	331	of Life
+of Life#6	332	of Life
+of Life#7	333	of Life
+of Substinence	334	of Substinence
+of Substinence#2	335	of Substinence
+of Substinence#3	336	of Substinence
+of Vita	337	of Vita
+of Vita#2	338	of Vita
+of Vita#3	339	of Vita
+of Life#8	340	of Life
+of Life#9	341	of Life
+of Substinence#4	342	of Substinence
+of Substinence#5	343	of Substinence
+of Vita#4	344	of Vita
+of Vita#5	345	of Vita
+of Life#10	346	of Life
+of Substinence#6	347	of Substinence
+of Vita#6	348	of Vita
+of Spirit	349	of Spirit
+of Hope	350	of Hope
+of the Leech#2	351	of the Leech
+of the Locust#2	352	of the Locust
+of the Lamprey	353	of the Lamprey
+of the Leech#3	354	of the Leech
+of the Locust#3	355	of the Locust
+of the Lamprey#2	356	of the Lamprey
+of the Leech#4	357	of the Leech
+of the Bat#2	358	of the Bat
+of the Wraith	359	of the Wraith
+of the Vampire#2	360	of the Vampire
+of the Bat#3	361	of the Bat
+of the Wraith#2	362	of the Wraith
+of the Vampire#3	363	of the Vampire
+of the Bat#4	364	of the Bat
+of Defiance#2	365	of Defiance
+of Amelioration#2	366	of Amelioration
+of Remedy#2	367	of Remedy
+of Simplicity#2	368	of Simplicity
+of Ease#2	369	of Ease
+of Freedom	370	of Freedom
+of Strength#2	371	of Strength
+of Might#2	372	of Might
+of the Ox#3	373	of the Ox
+of the Giant#3	374	of the Giant
+of the Titan#2	375	of the Titan
+of Atlus	376	of Atlus
+of Strength#3	377	of Strength
+of Might#3	378	of Might
+of the Ox#4	379	of the Ox
+of the Giant#4	380	of the Giant
+of the Titan#3	381	of the Titan
+of Strength#4	382	of Strength
+of Might#4	383	of Might
+of the Ox#5	384	of the Ox
+of the Giant#5	385	of the Giant
+of Strength#5	386	of Strength
+of Strength#6	387	of Strength
+of Strength#7	388	of Strength
+of Strength#8	389	of Strength
+of Strength#9	390	of Strength
+of Strength#10	391	of Strength
+of Virility	392	of Virility
+of Pacing#2	393	of Pacing
+of Haste#2	394	of Haste
+of Speed#2	395	of Speed
+of Traveling	396	of Traveling
+of Acceleration	397	of Acceleration
+of Inertia	398	of Inertia
+of Inertia#2	399	of Inertia
+of Inertia#3	400	of Inertia
+of Self-Repair	401	of Self-Repair
+of Fast Repair	402	of Fast Repair
+of Ages	403	of Ages
+of Replenishing	404	of Replenishing
+of Propogation	405	of Propogation
+of the Kraken	406	of the Kraken
+of Memory	407	of Memory
+of the Elephant	408	of the Elephant
+of Power	409	of Power
+of Grace	410	of Grace
+of Grace and Power	411	of Grace and Power
+of the Yeti	412	of the Yeti
+of the Phoenix	413	of the Phoenix
+of the Efreeti	414	of the Efreeti
+of the Cobra	415	of the Cobra
+of the Elements	416	of the Elements
+of Firebolts	417	of Firebolts
+of Firebolts#2	418	of Firebolts
+of Firebolts#3	419	of Firebolts
+of Charged Shield	420	of Charged Shield
+of Charged Shield#2	421	of Charged Shield
+of Charged Shield#3	422	of Charged Shield
+of Icebolt	423	of Icebolt
+of Frozen Armor	424	of Frozen Armor
+of Static Field	425	of Static Field
+of Telekinesis	426	of Telekinesis
+of Frost Shield	427	of Frost Shield
+of Ice Blast	428	of Ice Blast
+of Blaze	429	of Blaze
+of Fire Ball	430	of Fire Ball
+of Nova	431	of Nova
+of Nova#2	432	of Nova
+of Nova Shield	433	of Nova Shield
+of Nova Shield#2	434	of Nova Shield
+of Nova Shield#3	435	of Nova Shield
+of Lightning#3	436	of Lightning
+of Lightning#4	437	of Lightning
+of Shiver Armor	438	of Shiver Armor
+of Fire Wall	439	of Fire Wall
+of Enchant	440	of Enchant
+of Chain Lightning	441	of Chain Lightning
+of Chain Lightning#2	442	of Chain Lightning
+of Chain Lightning#3	443	of Chain Lightning
+of Teleport Shield	444	of Teleport Shield
+of Teleport Shield#2	445	of Teleport Shield
+of Teleport Shield#3	446	of Teleport Shield
+of Glacial Spike	447	of Glacial Spike
+of Meteor	448	of Meteor
+of Thunder Storm	449	of Thunder Storm
+of Energy Shield	450	of Energy Shield
+of Blizzard	451	of Blizzard
+of Chilling Armor	452	of Chilling Armor
+of Hydra Shield	453	of Hydra Shield
+of Frozen Orb	454	of Frozen Orb
+of Dawn	455	of Dawn
+of Sunlight	456	of Sunlight
+of Magic Arrows	457	of Magic Arrows
+of Magic Arrows#2	458	of Magic Arrows
+of Fire Arrows	459	of Fire Arrows
+of Fire Arrows#2	460	of Fire Arrows
+of Inner Sight	461	of Inner Sight
+of Inner Sight#2	462	of Inner Sight
+of Jabbing	463	of Jabbing
+of Jabbing#2	464	of Jabbing
+of Cold Arrows	465	of Cold Arrows
+of Cold Arrows#2	466	of Cold Arrows
+of Multiple Shot	467	of Multiple Shot
+of Multiple Shot#2	468	of Multiple Shot
+of Power Strike	469	of Power Strike
+of Power Strike#2	470	of Power Strike
+of Poison Jab	471	of Poison Jab
+of Poison Jab#2	472	of Poison Jab
+of Exploding Arrows	473	of Exploding Arrows
+of Exploding Arrows#2	474	of Exploding Arrows
+of Slow Missiles	475	of Slow Missiles
+of Slow Missiles#2	476	of Slow Missiles
+of Impaling Strike	477	of Impaling Strike
+of Impaling Strike#2	478	of Impaling Strike
+of Lightning Javelin	479	of Lightning Javelin
+of Lightning Javelin#2	480	of Lightning Javelin
+of Ice Arrows	481	of Ice Arrows
+of Ice Arrows#2	482	of Ice Arrows
+of Guided Arrows	483	of Guided Arrows
+of Guided Arrows#2	484	of Guided Arrows
+of Charged Strike	485	of Charged Strike
+of Charged Strike#2	486	of Charged Strike
+of Plague Jab	487	of Plague Jab
+of Plague Jab#2	488	of Plague Jab
+of Immolating Arrows	489	of Immolating Arrows
+of Immolating Arrows#2	490	of Immolating Arrows
+of Fending	491	of Fending
+of Fending#2	492	of Fending
+of Freezing Arrows	493	of Freezing Arrows
+of Freezing Arrows#2	494	of Freezing Arrows
+of Lightning Strike	495	of Lightning Strike
+of Lightning Strike#2	496	of Lightning Strike
+of Lightning Fury	497	of Lightning Fury
+of Lightning Fury#2	498	of Lightning Fury
+of Fire Bolts	499	of Fire Bolts
+of Fire Bolts#2	500	of Fire Bolts
+of Charged Bolts	501	of Charged Bolts
+of Charged Bolts#2	502	of Charged Bolts
+of Ice Bolts	503	of Ice Bolts
+of Ice Bolts#2	504	of Ice Bolts
+of Frozen Armor#2	505	of Frozen Armor
+of Frozen Armor#3	506	of Frozen Armor
+of Static Field#2	507	of Static Field
+of Static Field#3	508	of Static Field
+of Telekinesis#2	509	of Telekinesis
+of Telekinesis#3	510	of Telekinesis
+of Frost Novas	511	of Frost Novas
+of Frost Novas#2	512	of Frost Novas
+of Ice Blasts	513	of Ice Blasts
+of Ice Blasts#2	514	of Ice Blasts
+of Blazing	515	of Blazing
+of Blazing#2	516	of Blazing
+of Fire Balls	517	of Fire Balls
+of Fire Balls#2	518	of Fire Balls
+of Novas	519	of Novas
+of Novas#2	520	of Novas
+of Lightning#5	521	of Lightning
+of Lightning#6	522	of Lightning
+of Shiver Armor#2	523	of Shiver Armor
+of Shiver Armor#3	524	of Shiver Armor
+of Fire Walls	525	of Fire Walls
+of Fire Walls#2	526	of Fire Walls
+of Enchantment	527	of Enchantment
+of Enchantment#2	528	of Enchantment
+of Chain Lightning#4	529	of Chain Lightning
+of Chain Lightning#5	530	of Chain Lightning
+of Teleportation	531	of Teleportation
+of Teleportation#2	532	of Teleportation
+of Glacial Spikes	533	of Glacial Spikes
+of Glacial Spikes#2	534	of Glacial Spikes
+of Meteors	535	of Meteors
+of Meteors#2	536	of Meteors
+of Thunder Storm#2	537	of Thunder Storm
+of Thunder Storm#3	538	of Thunder Storm
+of Energy Shield#2	539	of Energy Shield
+of Energy Shield#3	540	of Energy Shield
+of Blizzards	541	of Blizzards
+of Blizzards#2	542	of Blizzards
+of Chilling Armor#2	543	of Chilling Armor
+of Chilling Armor#3	544	of Chilling Armor
+of Hydras	545	of Hydras
+of Hydras#2	546	of Hydras
+of Frozen Orbs	547	of Frozen Orbs
+of Frozen Orbs#2	548	of Frozen Orbs
+of Amplify Damage	549	of Amplify Damage
+of Amplify Damage#2	550	of Amplify Damage
+of Teeth	551	of Teeth
+of Teeth#2	552	of Teeth
+of Bone Armor	553	of Bone Armor
+of Bone Armor#2	554	of Bone Armor
+of Raise Skeletons	555	of Raise Skeletons
+of Raise Skeletons#2	556	of Raise Skeletons
+of Dim Vision	557	of Dim Vision
+of Dim Vision#2	558	of Dim Vision
+of Weaken	559	of Weaken
+of Weaken#2	560	of Weaken
+of Poison Dagger	561	of Poison Dagger
+of Poison Dagger#2	562	of Poison Dagger
+of Corpse Explosions	563	of Corpse Explosions
+of Corpse Explosions#2	564	of Corpse Explosions
+of Clay Golem Summoning	565	of Clay Golem Summoning
+of Clay Golem Summoning#2	566	of Clay Golem Summoning
+of Iron Maiden	567	of Iron Maiden
+of Iron Maiden#2	568	of Iron Maiden
+of Terror	569	of Terror
+of Terror#2	570	of Terror
+of Bone Walls	571	of Bone Walls
+of Bone Walls#2	572	of Bone Walls
+of Raise Skeletal Mages	573	of Raise Skeletal Mages
+of Raise Skeletal Mages#2	574	of Raise Skeletal Mages
+of Confusion	575	of Confusion
+of Confusion#2	576	of Confusion
+of Life Tap	577	of Life Tap
+of Life Tap#2	578	of Life Tap
+of Poison Explosion	579	of Poison Explosion
+of Poison Explosion#2	580	of Poison Explosion
+of Bone Spears	581	of Bone Spears
+of Bone Spears#2	582	of Bone Spears
+of Blood Golem Summoning	583	of Blood Golem Summoning
+of Blood Golem Summoning#2	584	of Blood Golem Summoning
+of Attraction	585	of Attraction
+of Attraction#2	586	of Attraction
+of Decrepification	587	of Decrepification
+of Decrepification#2	588	of Decrepification
+of Bone Imprisonment	589	of Bone Imprisonment
+of Bone Imprisonment#2	590	of Bone Imprisonment
+of Iron Golem Creation	591	of Iron Golem Creation
+of Iron Golem Creation#2	592	of Iron Golem Creation
+of Lower Resistance	593	of Lower Resistance
+of Lower Resistance#2	594	of Lower Resistance
+of Poison Novas	595	of Poison Novas
+of Poison Novas#2	596	of Poison Novas
+of Bone Spirits	597	of Bone Spirits
+of Bone Spirits#2	598	of Bone Spirits
+of Fire Golem Summoning	599	of Fire Golem Summoning
+of Fire Golem Summoning#2	600	of Fire Golem Summoning
+of Revivification#2	601	of Revivification
+of Revivification#3	602	of Revivification
+of Sacrifice	603	of Sacrifice
+of Sacrifice#2	604	of Sacrifice
+of Holy Bolts	605	of Holy Bolts
+of Holy Bolts#2	606	of Holy Bolts
+of Zeal	607	of Zeal
+of Zeal#2	608	of Zeal
+of Vengeance	609	of Vengeance
+of Vengeance#2	610	of Vengeance
+of Blessed Hammers	611	of Blessed Hammers
+of Blessed Hammers#2	612	of Blessed Hammers
+of Conversion	613	of Conversion
+of Conversion#2	614	of Conversion
+of Fist of the Heavens	615	of Fist of the Heavens
+of Fist of the Heavens#2	616	of Fist of the Heavens
+of Bashing#3	617	of Bashing
+of Bashing#4	618	of Bashing
+of Howling	619	of Howling
+of Howling#2	620	of Howling
+of Potion Finding	621	of Potion Finding
+of Potion Finding#2	622	of Potion Finding
+of Taunting	623	of Taunting
+of Taunting#2	624	of Taunting
+of Shouting	625	of Shouting
+of Shouting#2	626	of Shouting
+of Stunning	627	of Stunning
+of Stunning#2	628	of Stunning
+of Item Finding	629	of Item Finding
+of Item Finding#2	630	of Item Finding
+of Concentration	631	of Concentration
+of Concentration#2	632	of Concentration
+of Battle Cry	633	of Battle Cry
+of Battle Cry#2	634	of Battle Cry
+of Battle Orders	635	of Battle Orders
+of Battle Orders#2	636	of Battle Orders
+of Grim Ward	637	of Grim Ward
+of Grim Ward#2	638	of Grim Ward
+of War Cry	639	of War Cry
+of War Cry#2	640	of War Cry
+of Battle Command	641	of Battle Command
+of Battle Command#2	642	of Battle Command
+of Firestorms	643	of Firestorms
+of Firestorms#2	644	of Firestorms
+of Molten Boulders	645	of Molten Boulders
+of Molten Boulders#2	646	of Molten Boulders
+of Eruption	647	of Eruption
+of Eruption#2	648	of Eruption
+of Cyclone Armor	649	of Cyclone Armor
+of Cyclone Armor#2	650	of Cyclone Armor
+of Twister	651	of Twister
+of Twister#2	652	of Twister
+of Volcano	653	of Volcano
+of Volcano#2	654	of Volcano
+of Tornado	655	of Tornado
+of Tornado#2	656	of Tornado
+of Armageddon	657	of Armageddon
+of Armageddon#2	658	of Armageddon
+of Hurricane	659	of Hurricane
+of Hurricane#2	660	of Hurricane
+of Damage Amplification	661	of Damage Amplification
+of the Icicle#2	662	of the Icicle
+of the Glacier#3	663	of the Glacier
+of Fire#3	664	of Fire
+of Burning#3	665	of Burning
+of Lightning#7	666	of Lightning
+of Thunder#3	667	of Thunder
+of Daring#2	668	of Daring
+of Daring#3	669	of Daring
+of Knowledge#2	670	of Knowledge
+of Knowledge#3	671	of Knowledge
+of Virility#2	672	of Virility
+of Virility#3	673	of Virility
+of Readiness#3	674	of Readiness
+of Craftsmanship#9	675	of Craftsmanship
+of Quality#8	676	of Quality
+of Maiming#9	677	of Maiming
+of Craftsmanship#10	678	of Craftsmanship
+of Quality#9	679	of Quality
+of Craftsmanship#11	680	of Craftsmanship
+of Blight#5	681	of Blight
+of Venom#3	682	of Venom
+of Pestilence#3	683	of Pestilence
+of Anthrax#2	684	of Anthrax
+of Blight#6	685	of Blight
+of Venom#4	686	of Venom
+of Pestilence#4	687	of Pestilence
+of Anthrax#3	688	of Anthrax
+of Blight#7	689	of Blight
+of Venom#5	690	of Venom
+of Pestilence#5	691	of Pestilence
+of Anthrax#4	692	of Anthrax
+of Frost#5	693	of Frost
+of the Icicle#3	694	of the Icicle
+of the Glacier#4	695	of the Glacier
+of Winter#2	696	of Winter
+of Frost#6	697	of Frost
+of the Icicle#4	698	of the Icicle
+of the Glacier#5	699	of the Glacier
+of Winter#3	700	of Winter
+of Frost#7	701	of Frost
+of the Icicle#5	702	of the Icicle
+of the Glacier#6	703	of the Glacier
+of Winter#4	704	of Winter
+of Flame#5	705	of Flame
+of Fire#4	706	of Fire
+of Burning#4	707	of Burning
+of Incineration#2	708	of Incineration
+of Flame#6	709	of Flame
+of Fire#5	710	of Fire
+of Burning#5	711	of Burning
+of Incineration#3	712	of Incineration
+of Flame#7	713	of Flame
+of Fire#6	714	of Fire
+of Burning#6	715	of Burning
+of Incineration#4	716	of Incineration
+of Shock#5	717	of Shock
+of Lightning#8	718	of Lightning
+of Thunder#4	719	of Thunder
+of Storms#2	720	of Storms
+of Shock#6	721	of Shock
+of Lightning#9	722	of Lightning
+of Thunder#5	723	of Thunder
+of Storms#3	724	of Storms
+of Shock#7	725	of Shock
+of Lightning#10	726	of Lightning
+of Thunder#6	727	of Thunder
+of Storms#4	728	of Storms
+of Dexterity#12	729	of Dexterity
+of Dexterity#13	730	of Dexterity
+of Strength#11	731	of Strength
+of Strength#12	732	of Strength
+of Thorns#3	733	of Thorns
+of Frost#8	734	of Frost
+of Flame#8	735	of Flame
+of Blight#8	736	of Blight
+of Shock#8	737	of Shock
+of Regeneration#7	738	of Regeneration
+of Energy#6	739	of Energy
+of Light#3	740	of Light
+of the Leech#5	741	of the Leech
+of the Locust#4	742	of the Locust
+of the Lamprey#3	743	of the Lamprey
+of the Bat#5	744	of the Bat
+of the Wraith#3	745	of the Wraith
+of the Vampire#4	746	of the Vampire
+#7	785	
+of Sturdiness	786	of Sturdiness
+of Stability#3	787	of Stability
+of Vigor	788	of Vigor
+of Crimson	789	of Crimson
+of Crimson#2	790	of Crimson
+of Crimson#3	791	of Crimson
+of Tangerine	792	of Tangerine
+of Tangerine#2	793	of Tangerine
+of Tangerine#3	794	of Tangerine
+of Opal	795	of Opal
+of Opal#2	796	of Opal
+of Opal#3	797	of Opal
+of Azure	798	of Azure
+of Azure#2	799	of Azure
+of Azure#3	800	of Azure
+of Protection#4	801	of Protection
+of Security	802	of Security
+of Safety	803	of Safety
+of Swiftness#3	804	of Swiftness
+of Quickness#3	805	of Quickness
+of Velocity	806	of Velocity
+of Regeneration#8	807	of Regeneration
+of Renewal	808	of Renewal
+of Rebirth	809	of Rebirth
+of the Leech#6	810	of the Leech
+of the Parasite	811	of the Parasite
+of the Bloodsucker	812	of the Bloodsucker
+of Resilience	813	of Resilience
+of Hardiness	814	of Hardiness
+of Fortitude	815	of Fortitude
+of Health#3	816	of Health
+of Vitality	817	of Vitality
+of Vim	818	of Vim
+of Imbalance	819	of Imbalance
+of Inequality	820	of Inequality
+of Uneveness	821	of Uneveness
+of Warding#3	822	of Warding
+of Guarding#4	823	of Guarding
+of Preservation	824	of Preservation
+of Hindrance	825	of Hindrance
+of Aversion	826	of Aversion
+of Permeability	827	of Permeability
+of Cracking	828	of Cracking
+of Crumbling	829	of Crumbling
+of Disintegration	830	of Disintegration
+of Fumbling	831	of Fumbling
+of Bumbling	832	of Bumbling
+of Blundering	833	of Blundering
+of Defending	834	of Defending
+of Defending#2	835	of Defending
+of Protecting	836	of Protecting
+of Guardianship	837	of Guardianship
+of Savagery	838	of Savagery
+of Devastation	839	of Devastation
+of Havoc	840	of Havoc
+of Destruction	841	of Destruction
+of Desolation	842	of Desolation
+of Bleeding	843	of Bleeding
+of Siphoning	844	of Siphoning
+of Gory	845	of Gory
+of Sanguinary	846	of Sanguinary
+of Hematic	847	of Hematic
+of Chipping	848	of Chipping
+of Crumbling#2	849	of Crumbling
+of Breaking	850	of Breaking
+of Crushing	851	of Crushing
+of Pulverizing	852	of Pulverizing
+of the Apprentice#3	853	of the Apprentice
+of the Apprentice#4	854	of the Apprentice
+of the Magus#3	855	of the Magus
+of the Squid#2	856	of the Squid
+of the Whale#2	857	of the Whale
+of the Kraken#2	858	of the Kraken
+of Clarity	859	of Clarity
+of Divinity	860	of Divinity
+of the Dawn	861	of the Dawn
+of Pacing#3	862	of Pacing
+of Haste#3	863	of Haste
+of Evisceration#2	864	of Evisceration
+of Carnage#4	865	of Carnage
+of Darkness	866	of Darkness
+of Darkness#2	867	of Darkness
+of Darkness#3	868	of Darkness
+Dclone Clout	869	Dclone Clout
+Maxlevel Clout	870	Maxlevel Clout
+of the Bear#3	871	of the Bear
+of the Lamprey#4	872	of the Lamprey
+of the Vampire#5	873	of the Vampire
+of the Jeweler	874	of the Jeweler
+of the Jeweler#2	875	of the Jeweler
+of the Jeweler#3	876	of the Jeweler
+of the Smith	877	of the Smith
+of the Smith#2	878	of the Smith
+of the Smith#3	879	of the Smith
+of the Armorer	880	of the Armorer
+of the Armorer#2	881	of the Armorer
+of the Armorer#3	882	of the Armorer
+of the Crafter	883	of the Crafter
+of the Crafter#2	884	of the Crafter
+of the Crafter#3	885	of the Crafter
+of the Adventurer	886	of the Adventurer
+of Radiance#3	887	of Radiance
+of the Fox#5	888	of the Fox
+of Might#5	889	of Might
+of the Wolf#6	890	of the Wolf
+of the Wolf#7	891	of the Wolf
+of the Dawn#2	892	of the Dawn
+of Fireball	893	of Fireball
+of Fireball#2	894	of Fireball
+of Fireball#3	895	of Fireball
+of Fireball#4	896	of Fireball
+of Fireball#5	897	of Fireball
+of Fireball#6	898	of Fireball
+of Lightning#11	899	of Lightning
+of Lightning#12	900	of Lightning
+of Lightning#13	901	of Lightning
+of Lightning#14	902	of Lightning
+of Lightning#15	903	of Lightning
+of Lightning#16	904	of Lightning
+of Nova#3	905	of Nova
+of Nova#4	906	of Nova
+of Nova#5	907	of Nova
+of Nova#6	908	of Nova
+of Nova#7	909	of Nova
+of Nova#8	910	of Nova
+of Chain Lightning#6	911	of Chain Lightning
+of Chain Lightning#7	912	of Chain Lightning
+of Chain Lightning#8	913	of Chain Lightning
+of Chain Lightning#9	914	of Chain Lightning
+of Chain Lightning#10	915	of Chain Lightning
+of Chain Lightning#11	916	of Chain Lightning
+of Charged Bolt	917	of Charged Bolt
+of Charged Bolt#2	918	of Charged Bolt
+of Charged Bolt#3	919	of Charged Bolt
+of Charged Bolt#4	920	of Charged Bolt
+of Charged Bolt#5	921	of Charged Bolt
+of Charged Bolt#6	922	of Charged Bolt
+of Frost Nova	923	of Frost Nova
+of Frost Nova#2	924	of Frost Nova
+of Frost Nova#3	925	of Frost Nova
+of Frost Nova#4	926	of Frost Nova
+of Frost Nova#5	927	of Frost Nova
+of Frost Nova#6	928	of Frost Nova
+of Ice Barrage	929	of Ice Barrage
+of Ice Barrage#2	930	of Ice Barrage
+of Ice Barrage#3	931	of Ice Barrage
+of Ice Barrage#4	932	of Ice Barrage
+of Ice Barrage#5	933	of Ice Barrage
+of Ice Barrage#6	934	of Ice Barrage
+of Damage Amplification#2	935	of Damage Amplification
+of Damage Amplification#3	936	of Damage Amplification
+of Swords#2	937	of Swords
+of Gory#2	938	of Gory
+of Sanguinary#2	939	of Sanguinary
+of Hematic#2	940	of Hematic
+of Damage Amplification#4	941	of Damage Amplification
+of Damage Amplification#5	942	of Damage Amplification
+of Damage Amplification#6	943	of Damage Amplification
+of Lower Resist	944	of Lower Resist
+of Lower Resist#2	945	of Lower Resist
+of Lower Resist#3	946	of Lower Resist
+of Lower Resist#4	947	of Lower Resist
+of Lower Resist#5	948	of Lower Resist
+of Lower Resist#6	949	of Lower Resist
+of Decay	950	of Decay
+of Hypothermia	951	of Hypothermia
+of Ashes	952	of Ashes
+of Maelstrom	953	of Maelstrom
+of Life#11	954	of Life
+of Life#12	955	of Life
+of Life#13	956	of Life
+of Balance#6	957	of Balance
+of Sturdiness#2	958	of Sturdiness
+of Stability#4	959	of Stability
+of Vigor#2	960	of Vigor
+of Crimson#4	961	of Crimson
+of Crimson#5	962	of Crimson
+of Crimson#6	963	of Crimson
+of Tangerine#4	964	of Tangerine
+of Tangerine#5	965	of Tangerine
+of Tangerine#6	966	of Tangerine
+of Opal#4	967	of Opal
+of Opal#5	968	of Opal
+of Opal#6	969	of Opal
+of Azure#4	970	of Azure
+of Azure#5	971	of Azure
+of Azure#6	972	of Azure
+of Protection#5	973	of Protection
+of Security#2	974	of Security
+of Safety#2	975	of Safety
+of Swiftness#4	976	of Swiftness
+of Quickness#4	977	of Quickness
+of Velocity#2	978	of Velocity
+of Regeneration#9	979	of Regeneration
+of Renewal#2	980	of Renewal
+of Rebirth#2	981	of Rebirth
+of the Leech#7	982	of the Leech
+of the Parasite#2	983	of the Parasite
+of the Bloodsucker#2	984	of the Bloodsucker
+of Resilience#2	985	of Resilience
+of Hardiness#2	986	of Hardiness
+of Fortitude#2	987	of Fortitude
+of Health#4	988	of Health
+of Vitality#2	989	of Vitality
+of Vim#2	990	of Vim
+of Imbalance#2	991	of Imbalance
+of Inequality#2	992	of Inequality
+of Uneveness#2	993	of Uneveness
+of Warding#4	994	of Warding
+of Guarding#5	995	of Guarding
+of Preservation#2	996	of Preservation
+of Hindrance#2	997	of Hindrance
+of Aversion#2	998	of Aversion
+of Permeability#2	999	of Permeability
+of Cracking#2	1000	of Cracking
+of Crumbling#3	1001	of Crumbling
+of Disintegration#2	1002	of Disintegration
+of Fumbling#2	1003	of Fumbling
+of Bumbling#2	1004	of Bumbling
+of Blundering#2	1005	of Blundering
+of the Smith#4	1006	of the Smith
+of the Smith#5	1007	of the Smith
+of the Smith#6	1008	of the Smith
+of the Armorer#4	1009	of the Armorer
+of the Armorer#5	1010	of the Armorer
+of the Armorer#6	1011	of the Armorer
+of the Crafter#4	1012	of the Crafter
+of the Crafter#5	1013	of the Crafter
+of the Crafter#6	1014	of the Crafter
+of the Archmage	1015	of the Archmage
+of Life Everlasting#2	1016	of Life Everlasting
+of Fortification	1017	of Fortification
+of the Archmage#2	1018	of the Archmage
+of Atlus#2	1019	of Atlus
+of Energy#7	1020	of Energy
+of the Mind#5	1021	of the Mind
+of Brilliance#5	1022	of Brilliance
+of Sorcery#5	1023	of Sorcery
+of Wizardry#4	1024	of Wizardry
+of Enlightenment#2	1025	of Enlightenment
+of Balance#7	1026	of Balance
+of Overcharge	1027	of Overcharge
+of Conductivity	1028	of Conductivity
+of the Maelstrom	1029	of the Maelstrom
+of Icewind	1030	of Icewind
+of Deepfreeze	1031	of Deepfreeze
+of Hoarfrost	1032	of Hoarfrost
+of Ashes#2	1033	of Ashes
+of Searing	1034	of Searing
+of Hellfire	1035	of Hellfire
+of Overcharge#2	1036	of Overcharge
+of Conductivity#2	1037	of Conductivity
+of the Maelstrom#2	1038	of the Maelstrom
+of Icewind#2	1039	of Icewind
+of Deepfreeze#2	1040	of Deepfreeze
+of Hoarfrost#2	1041	of Hoarfrost
+of Ashes#3	1042	of Ashes
+of Searing#2	1043	of Searing
+of Hellfire#2	1044	of Hellfire
+of Disease	1045	of Disease
+of Contagion	1046	of Contagion
+of Pox	1047	of Pox
+of the Oracle	1048	of the Oracle
+of the Warlock	1049	of the Warlock
+of the Eldritch	1050	of the Eldritch
+of the Apprentice#5	1051	of the Apprentice
+of Pacing#4	1052	of Pacing
+of Haste#4	1053	of Haste
+of Speed#3	1054	of Speed
+of the Jeweler#4	1055	of the Jeweler
+of the Jeweler#5	1056	of the Jeweler
+of the Jeweler#6	1057	of the Jeweler
+of Insight	1058	of Insight
+of Focus	1059	of Focus
+of Tranquility	1060	of Tranquility
+of Insight#2	1061	of Insight
+of Focus#2	1062	of Focus
+of Tranquility#2	1063	of Tranquility
+of Regeneration#10	1064	of Regeneration
+of Regeneration#11	1065	of Regeneration
+of Regeneration#12	1066	of Regeneration
+of Regeneration#13	1067	of Regeneration
+of Regeneration#14	1068	of Regeneration
+of Regeneration#15	1069	of Regeneration
+of Control	1070	of Control
+of Discipline	1071	of Discipline
+of Momentum	1072	of Momentum
+of Evasion	1073	of Evasion
+of Protecting#2	1074	of Protecting
+of Evisceration#3	1075	of Evisceration
+of the Squid#3	1076	of the Squid
+of Acceleration#2	1077	of Acceleration
+of the Archmage#3	1078	of the Archmage
+of Frostward	1079	of Frostward
+of the Magus#4	1080	of the Magus

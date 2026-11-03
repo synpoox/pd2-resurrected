@@ -1,0 +1,485 @@
+# PD2 name	id	name (append-only, ADR 0003)
+The Gnasher	0	The Gnasher
+Deathspade	1	Deathspade
+Bladebone	2	Bladebone
+Mindrend	3	Mindrend
+Rakescar	4	Rakescar
+Fechmars Axe	5	Fechmars Axe
+Goreshovel	6	Goreshovel
+The Chieftan	7	The Chieftan
+Brainhew	8	Brainhew
+The Humongous	9	The Humongous
+Iros Torch	10	Iros Torch
+Maelstromwrath	11	Maelstromwrath
+Gravenspine	12	Gravenspine
+Umes Lament	13	Umes Lament
+Felloak	14	Felloak
+Knell Striker	15	Knell Striker
+Rusthandle	16	Rusthandle
+Stormeye	17	Stormeye
+Stoutnail	18	Stoutnail
+Crushflange	19	Crushflange
+Bloodrise	20	Bloodrise
+The Generals Tan Do Li Ga	21	The Generals Tan Do Li Ga
+Ironstone	22	Ironstone
+Bonesob	23	Bonesob
+Steeldriver	24	Steeldriver
+Rixots Keen	25	Rixots Keen
+Blood Crescent	26	Blood Crescent
+Krintizs Skewer	27	Krintizs Skewer
+Gleamscythe	28	Gleamscythe
+Azurewrath	29	Azurewrath
+Griswolds Edge	30	Griswolds Edge
+Hellplague	31	Hellplague
+Culwens Point	32	Culwens Point
+Shadowfang	33	Shadowfang
+Soulflay	34	Soulflay
+Kinemils Awl	35	Kinemils Awl
+Blacktongue	36	Blacktongue
+Ripsaw	37	Ripsaw
+The Patriarch	38	The Patriarch
+Gull	39	Gull
+The Diggler	40	The Diggler
+The Jade Tan Do	41	The Jade Tan Do
+Irices Shard	42	Irices Shard
+The Dragon Chang	43	The Dragon Chang
+Razortine	44	Razortine
+Bloodthief	45	Bloodthief
+Lance of Yaggai	46	Lance of Yaggai
+The Tannr Gorerod	47	The Tannr Gorerod
+Dimoaks Hew	48	Dimoaks Hew
+Steelgoad	49	Steelgoad
+Soul Harvest	50	Soul Harvest
+The Battlebranch	51	The Battlebranch
+Woestave	52	Woestave
+The Grim Reaper	53	The Grim Reaper
+Bane Ash	54	Bane Ash
+Serpent Lord	55	Serpent Lord
+Lazarus Spire	56	Lazarus Spire
+The Salamander	57	The Salamander
+The Iron Jang Bong	58	The Iron Jang Bong
+Pluckeye	59	Pluckeye
+Witherstring	60	Witherstring
+Rimeraven	61	Rimeraven
+Piercerib	62	Piercerib
+Pullspite	63	Pullspite
+Wizendraw	64	Wizendraw
+Hellclap	65	Hellclap
+Blastbark	66	Blastbark
+Leadcrow	67	Leadcrow
+Ichorsting	68	Ichorsting
+Hellcast	69	Hellcast
+Doomspittle	70	Doomspittle
+War Bonnet	71	War Bonnet
+Tarnhelm	72	Tarnhelm
+Coif of Glory	73	Coif of Glory
+Duskdeep	74	Duskdeep
+Wormskull	75	Wormskull
+Howltusk	76	Howltusk
+Undead Crown	77	Undead Crown
+The Face of Horror	78	The Face of Horror
+Greyform	79	Greyform
+Blinkbats Form	80	Blinkbats Form
+The Centurion	81	The Centurion
+Twitchthroe	82	Twitchthroe
+Darkglow	83	Darkglow
+Hawkmail	84	Hawkmail
+Sparking Mail	85	Sparking Mail
+Venomsward	86	Venomsward
+Iceblink	87	Iceblink
+Boneflesh	88	Boneflesh
+Rockfleece	89	Rockfleece
+Rattlecage	90	Rattlecage
+Goldskin	91	Goldskin
+Victors Silk	92	Victors Silk
+Heavenly Garb	93	Heavenly Garb
+Pelta Lunata	94	Pelta Lunata
+Umbral Disk	95	Umbral Disk
+Stormguild	96	Stormguild
+Wall of the Eyeless	97	Wall of the Eyeless
+Swordback Hold	98	Swordback Hold
+Steelclash	99	Steelclash
+Bverrit Keep	100	Bverrit Keep
+The Ward	101	The Ward
+The Hand of Broc	102	The Hand of Broc
+Bloodfist	103	Bloodfist
+Chance Guards	104	Chance Guards
+Magefist	105	Magefist
+Frostburn	106	Frostburn
+Hotspur	107	Hotspur
+Gorefoot	108	Gorefoot
+Treads of Cthon	109	Treads of Cthon
+Goblin Toe	110	Goblin Toe
+Tearhaunch	111	Tearhaunch
+Lenyms Cord	112	Lenyms Cord
+Snakecord	113	Snakecord
+Nightsmoke	114	Nightsmoke
+Goldwrap	115	Goldwrap
+Bladebuckle	116	Bladebuckle
+Nokozan Relic	117	Nokozan Relic
+The Eye of Etlich	118	The Eye of Etlich
+The Mahim-Oak Curio	119	The Mahim-Oak Curio
+Nagelring	120	Nagelring
+Manald Heal	121	Manald Heal
+The Stone of Jordan	122	The Stone of Jordan
+Amulet of the Viper	123	Amulet of the Viper
+Staff of Kings	124	Staff of Kings
+Horadric Staff	125	Horadric Staff
+Hell Forge Hammer	126	Hell Forge Hammer
+KhalimFlail	127	KhalimFlail
+SuperKhalimFlail	128	SuperKhalimFlail
+Coldkill	129	Coldkill
+Butcher's Pupil	130	Butcher's Pupil
+Islestrike	131	Islestrike
+Pompe's Wrath	132	Pompe's Wrath
+Guardian Naga	133	Guardian Naga
+Warlord's Trust	134	Warlord's Trust
+Spellsteel	135	Spellsteel
+Stormrider	136	Stormrider
+Boneslayer Blade	137	Boneslayer Blade
+The Minataur	138	The Minataur
+Suicide Branch	139	Suicide Branch
+Carin Shard	140	Carin Shard
+Arm of King Leoric	141	Arm of King Leoric
+Blackhand Key	142	Blackhand Key
+Dark Clan Crusher	143	Dark Clan Crusher
+Zakarum's Hand	144	Zakarum's Hand
+The Fetid Sprinkler	145	The Fetid Sprinkler
+Hand of Blessed Light	146	Hand of Blessed Light
+Fleshrender	147	Fleshrender
+Sureshrill Frost	148	Sureshrill Frost
+Moonfall	149	Moonfall
+Baezil's Vortex	150	Baezil's Vortex
+Earthshaker	151	Earthshaker
+Bloodtree Stump	152	Bloodtree Stump
+The Gavel of Pain	153	The Gavel of Pain
+Bloodletter	154	Bloodletter
+Coldsteel Eye	155	Coldsteel Eye
+Hexfire	156	Hexfire
+Blade of Ali Baba	157	Blade of Ali Baba
+Ginther's Rift	158	Ginther's Rift
+Headstriker	159	Headstriker
+Plague Bearer	160	Plague Bearer
+The Atlantian	161	The Atlantian
+Crainte Vomir	162	Crainte Vomir
+Bing Sz Wang	163	Bing Sz Wang
+The Vile Husk	164	The Vile Husk
+Cloudcrack	165	Cloudcrack
+Todesfaelle Flamme	166	Todesfaelle Flamme
+Swordguard	167	Swordguard
+Spineripper	168	Spineripper
+Heart Carver	169	Heart Carver
+Blackbog's Sharp	170	Blackbog's Sharp
+Stormspike	171	Stormspike
+The Impaler	172	The Impaler
+Kelpie Snare	173	Kelpie Snare
+Soulfeast Tine	174	Soulfeast Tine
+Hone Sundan	175	Hone Sundan
+Spire of Honor	176	Spire of Honor
+The Meat Scraper	177	The Meat Scraper
+Blackleach Blade	178	Blackleach Blade
+Athena's Wrath	179	Athena's Wrath
+Pierre Tombale Couant	180	Pierre Tombale Couant
+Husoldal Evo	181	Husoldal Evo
+Grim's Burning Dead	182	Grim's Burning Dead
+Razorswitch	183	Razorswitch
+Ribcracker	184	Ribcracker
+Chromatic Ire	185	Chromatic Ire
+Warpspear	186	Warpspear
+Skullcollector	187	Skullcollector
+Skystrike	188	Skystrike
+Riphook	189	Riphook
+Kuko Shakaku	190	Kuko Shakaku
+Endlesshail	191	Endlesshail
+Whichwild String	192	Whichwild String
+Cliffkiller	193	Cliffkiller
+Magewrath	194	Magewrath
+Godstrike Arch	195	Godstrike Arch
+Langer Briser	196	Langer Briser
+Pus Spiter	197	Pus Spiter
+Buriza-Do Kyanon	198	Buriza-Do Kyanon
+Demon Machine	199	Demon Machine
+Armor	200	Armor
+Peasent Crown	201	Peasent Crown
+Rockstopper	202	Rockstopper
+Stealskull	203	Stealskull
+Darksight Helm	204	Darksight Helm
+Valkiry Wing	205	Valkiry Wing
+Crown of Thieves	206	Crown of Thieves
+Blackhorn's Face	207	Blackhorn's Face
+Vampiregaze	208	Vampiregaze
+The Spirit Shroud	209	The Spirit Shroud
+Skin of the Vipermagi	210	Skin of the Vipermagi
+Skin of the Flayerd One	211	Skin of the Flayerd One
+Ironpelt	212	Ironpelt
+Spiritforge	213	Spiritforge
+Crow Caw	214	Crow Caw
+Shaftstop	215	Shaftstop
+Duriel's Shell	216	Duriel's Shell
+Skullder's Ire	217	Skullder's Ire
+Guardian Angel	218	Guardian Angel
+Toothrow	219	Toothrow
+Atma's Wail	220	Atma's Wail
+Black Hades	221	Black Hades
+Corpsemourn	222	Corpsemourn
+Que-Hegan's Wisdon	223	Que-Hegan's Wisdon
+Visceratuant	224	Visceratuant
+Mosers Blessed Circle	225	Mosers Blessed Circle
+Stormchaser	226	Stormchaser
+Tiamat's Rebuke	227	Tiamat's Rebuke
+Kerke's Sanctuary	228	Kerke's Sanctuary
+Radimant's Sphere	229	Radimant's Sphere
+Lidless Wall	230	Lidless Wall
+Lance Guard	231	Lance Guard
+Venom Grip	232	Venom Grip
+Gravepalm	233	Gravepalm
+Ghoulhide	234	Ghoulhide
+Lavagout	235	Lavagout
+Hellmouth	236	Hellmouth
+Infernostride	237	Infernostride
+Waterwalk	238	Waterwalk
+Silkweave	239	Silkweave
+Wartraveler	240	Wartraveler
+Gorerider	241	Gorerider
+String of Ears	242	String of Ears
+Razortail	243	Razortail
+Gloomstrap	244	Gloomstrap
+Snowclash	245	Snowclash
+Thudergod's Vigor	246	Thudergod's Vigor
+Elite Uniques	247	Elite Uniques
+Harlequin Crest	248	Harlequin Crest
+Veil of Steel	249	Veil of Steel
+The Gladiator's Bane	250	The Gladiator's Bane
+Arkaine's Valor	251	Arkaine's Valor
+Blackoak Shield	252	Blackoak Shield
+Stormshield	253	Stormshield
+Hellslayer	254	Hellslayer
+Messerschmidt's Reaver	255	Messerschmidt's Reaver
+Baranar's Star	256	Baranar's Star
+Schaefer's Hammer	257	Schaefer's Hammer
+The Cranium Basher	258	The Cranium Basher
+Lightsabre	259	Lightsabre
+Doombringer	260	Doombringer
+The Grandfather	261	The Grandfather
+Wizardspike	262	Wizardspike
+Constricting Ring	263	Constricting Ring
+Stormspire	264	Stormspire
+Eaglehorn	265	Eaglehorn
+Windforce	266	Windforce
+Rings	267	Rings
+Bul Katho's Wedding Band	268	Bul Katho's Wedding Band
+The Cat's Eye	269	The Cat's Eye
+The Rising Sun	270	The Rising Sun
+Crescent Moon	271	Crescent Moon
+Mara's Kaleidoscope	272	Mara's Kaleidoscope
+Atma's Scarab	273	Atma's Scarab
+Dwarf Star	274	Dwarf Star
+Raven Frost	275	Raven Frost
+Highlord's Wrath	276	Highlord's Wrath
+Saracen's Chance	277	Saracen's Chance
+Class Specific	278	Class Specific
+Arreat's Face	279	Arreat's Face
+Homunculus	280	Homunculus
+Titan's Revenge	281	Titan's Revenge
+Lycander's Aim	282	Lycander's Aim
+Lycander's Flank	283	Lycander's Flank
+The Oculus	284	The Oculus
+Herald of Zakarum	285	Herald of Zakarum
+Cutthroat1	286	Cutthroat1
+Jalal's Mane	287	Jalal's Mane
+The Scalper	288	The Scalper
+Bloodmoon	289	Bloodmoon
+Djinnslayer	290	Djinnslayer
+Deathbit	291	Deathbit
+Warshrike	292	Warshrike
+Gutsiphon	293	Gutsiphon
+Razoredge	294	Razoredge
+Gore Ripper	295	Gore Ripper
+Demonlimb	296	Demonlimb
+Steelshade	297	Steelshade
+Tomb Reaver	298	Tomb Reaver
+Deaths's Web	299	Deaths's Web
+Nature's Peace	300	Nature's Peace
+Azurewrath#2	301	Azurewrath
+Seraph's Hymn	302	Seraph's Hymn
+Zakarum's Salvation	303	Zakarum's Salvation
+Fleshripper	304	Fleshripper
+Odium	305	Odium
+Horizon's Tornado	306	Horizon's Tornado
+Stone Crusher	307	Stone Crusher
+Jadetalon	308	Jadetalon
+Shadowdancer	309	Shadowdancer
+Cerebus	310	Cerebus
+Tyrael's Might	311	Tyrael's Might
+Souldrain	312	Souldrain
+Runemaster	313	Runemaster
+Deathcleaver	314	Deathcleaver
+Executioner's Justice	315	Executioner's Justice
+Stoneraven	316	Stoneraven
+Leviathan	317	Leviathan
+Larzuk's Champion	318	Larzuk's Champion
+Wisp	319	Wisp
+Gargoyle's Bite	320	Gargoyle's Bite
+Lacerator	321	Lacerator
+Mang Song's Lesson	322	Mang Song's Lesson
+Viperfork	323	Viperfork
+Ethereal Edge	324	Ethereal Edge
+Demonhorn's Edge	325	Demonhorn's Edge
+The Reaper's Toll	326	The Reaper's Toll
+Spiritkeeper	327	Spiritkeeper
+Hellrack	328	Hellrack
+Alma Negra	329	Alma Negra
+Darkforge Spawn	330	Darkforge Spawn
+Widowmaker	331	Widowmaker
+Bloodraven's Charge	332	Bloodraven's Charge
+Ghostflame	333	Ghostflame
+Shadowkiller	334	Shadowkiller
+Gimmershred	335	Gimmershred
+Griffon's Eye	336	Griffon's Eye
+Windhammer	337	Windhammer
+Thunderstroke	338	Thunderstroke
+Armageddon Blade	339	Armageddon Blade
+Demon's Arch	340	Demon's Arch
+Boneflame	341	Boneflame
+Steelpillar	342	Steelpillar
+Nightwing's Veil	343	Nightwing's Veil
+Crown of Ages	344	Crown of Ages
+Andariel's Visage	345	Andariel's Visage
+Darkfear	346	Darkfear
+Dragonscale	347	Dragonscale
+Steel Carapice	348	Steel Carapice
+Medusa's Gaze	349	Medusa's Gaze
+Ravenlore	350	Ravenlore
+Boneshade	351	Boneshade
+Nethercrow	352	Nethercrow
+Flamebellow	353	Flamebellow
+Fathom	354	Fathom
+Wolfhowl	355	Wolfhowl
+Spirit Ward	356	Spirit Ward
+Kira's Guardian	357	Kira's Guardian
+Ormus' Robes	358	Ormus' Robes
+Gheed's Fortune	359	Gheed's Fortune
+Stormlash	360	Stormlash
+Halaberd's Reign	361	Halaberd's Reign
+Warriv's Warder	362	Warriv's Warder
+Spike Thorn	363	Spike Thorn
+Dracul's Grasp	364	Dracul's Grasp
+Frostwind	365	Frostwind
+Templar's Might	366	Templar's Might
+Eschuta's temper	367	Eschuta's temper
+Firelizard's Talons	368	Firelizard's Talons
+Sandstorm Trek	369	Sandstorm Trek
+Marrowwalk	370	Marrowwalk
+Heaven's Light	371	Heaven's Light
+Merman's Speed	372	Merman's Speed
+Arachnid Mesh	373	Arachnid Mesh
+Nosferatu's Coil	374	Nosferatu's Coil
+Metalgrid	375	Metalgrid
+Verdugo's Hearty Cord	376	Verdugo's Hearty Cord
+Sigurd's Staunch	377	Sigurd's Staunch
+Carrion Wind	378	Carrion Wind
+Giantskull	379	Giantskull
+Ironward	380	Ironward
+Annihilus	381	Annihilus
+Arioc's Needle	382	Arioc's Needle
+Cranebeak	383	Cranebeak
+Nord's Tenderizer	384	Nord's Tenderizer
+Earthshifter	385	Earthshifter
+Wraithflight	386	Wraithflight
+Bonehew	387	Bonehew
+Ondal's Wisdom	388	Ondal's Wisdom
+The Reedeemer	389	The Reedeemer
+Headhunter's Glory	390	Headhunter's Glory
+Steelrend	391	Steelrend
+Rainbow Facet	392	Rainbow Facet
+Rainbow Facet#2	393	Rainbow Facet
+Rainbow Facet#3	394	Rainbow Facet
+Rainbow Facet#4	395	Rainbow Facet
+Rainbow Facet#5	396	Rainbow Facet
+Rainbow Facet#6	397	Rainbow Facet
+Rainbow Facet#7	398	Rainbow Facet
+Rainbow Facet#8	399	Rainbow Facet
+Hellfire Torch	400	Hellfire Torch
+Itheraels Path	438	Itheraels Path
+Overlords Helm	439	Overlords Helm
+Dark Abyss	440	Dark Abyss
+Aidans Scar	441	Aidans Scar
+Hadriels Hand	442	Hadriels Hand
+True Silver	443	True Silver
+Quetzalcoatl	444	Quetzalcoatl
+Cyclopean Roar	445	Cyclopean Roar
+Sankekur's Fall	446	Sankekur's Fall
+Mage Slayer	447	Mage Slayer
+Kalans Legacy	448	Kalans Legacy
+Tempest	449	Tempest
+Dclone Trophy	450	Dclone Trophy
+Maxlevel Trophy	451	Maxlevel Trophy
+Dev Charm	452	Dev Charm
+Band of Skulls	453	Band of Skulls
+Cage of the Unsullied	454	Cage of the Unsullied
+The Third Eye	455	The Third Eye
+Magefist#2	456	Magefist
+Magefist#3	457	Magefist
+Magefist#4	458	Magefist
+Rathma Trophy	459	Rathma Trophy
+Zeraes Resolve	460	Zeraes Resolve
+Occultist	461	Occultist
+Brimstone Rain	462	Brimstone Rain
+Akarats Devotion	463	Akarats Devotion
+Martyr	464	Martyr
+Stalkers Cull	465	Stalkers Cull
+Purgatory	466	Purgatory
+Raekors Virtue	467	Raekors Virtue
+Nightmares Feast	468	Nightmares Feast
+Zhar the Mad Map	469	Zhar the Mad Map
+Warlord of Blood Map	470	Warlord of Blood Map
+Akarats Devotion#2	471	Akarats Devotion
+Cyclopean Roar#2	472	Cyclopean Roar
+Fallen Gardens Map	473	Fallen Gardens Map
+Uldyssian's Awakening	474	Uldyssian's Awakening
+Leoric's Mithril Blade	475	Leoric's Mithril Blade
+Mirror Shield	476	Mirror Shield
+Wraithskin	477	Wraithskin
+Titangrip	478	Titangrip
+Shatterblade	479	Shatterblade
+Denmother	480	Denmother
+Ebonbane	481	Ebonbane
+Whispering Mirage	482	Whispering Mirage
+Skywarden	483	Skywarden
+Skorn	484	Skorn
+Achilles Strike	485	Achilles Strike
+Wildspeaker	486	Wildspeaker
+Fenris	487	Fenris
+Sacred Totem	488	Sacred Totem
+Imperial Palace Map	489	Imperial Palace Map
+Outer Void Map	490	Outer Void Map
+Balefire	491	Balefire
+Swiftwind Needle	492	Swiftwind Needle
+Tombsong	493	Tombsong
+Aetherwing	494	Aetherwing
+Basilisk's Quill	495	Basilisk's Quill
+Doom's Finger	496	Doom's Finger
+Ramfodder	497	Ramfodder
+Anvilguard Strap	498	Anvilguard Strap
+Shatterhead	499	Shatterhead
+Abyssal Ward	500	Abyssal Ward
+Bannerlord's Call	501	Bannerlord's Call
+Frozen Sorrow	502	Frozen Sorrow
+unused	503	unused
+unused#2	504	unused
+unused#3	505	unused
+unused#4	506	unused
+unused#5	507	unused
+Crackleshot	508	Crackleshot
+Ureh City Map	509	Ureh City Map
+Arm of King Leoric#2	510	Arm of King Leoric
+Nethercrux	511	Nethercrux
+Embersworn	512	Embersworn
+Skyfall	513	Skyfall
+Sage's Defiance	514	Sage's Defiance
+Djinns Domain Map	515	Djinns Domain Map
+Giant Maimer	516	Giant Maimer
+Ephemeral	517	Ephemeral
+Crackleshot#2	518	Crackleshot
+Na-Krul's Abyss Map	519	Na-Krul's Abyss Map
+Spectral Plate	520	Spectral Plate

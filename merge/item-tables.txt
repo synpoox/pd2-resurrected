@@ -1,0 +1,32 @@
+# P3 item tables with no id list (tools/pd2_items.py): merged by key around D2R's rows; and the items that never drop.
+# merge<tab>table   |   no-drop<tab>item type or code<tab>why
+merge	weapons
+merge	armor
+merge	misc
+merge	gems
+merge	sets
+merge	properties
+merge	treasureclassex
+merge	cubemain
+merge	gamble
+merge	qualityitems
+merge	lowqualityitems
+merge	books
+merge	itemratio
+merge	uniqueprefix
+merge	uniquesuffix
+merge	uniqueappellation
+no-drop	map	PD2 map items (t1m-t3m, t1me-t5me descend from it): the map system is not in the alpha
+no-drop	t4m	tier 4 maps
+no-drop	t5m	tier 5 maps
+no-drop	pvpm	PvP maps
+no-drop	pvpd	PvP desert maps
+no-drop	ubmp	uber maps
+no-drop	upmp	Upgrade Map orb
+no-drop	fort	Fortify Map orb
+no-drop	ubtm	Uber Trist Map
+no-drop	dcma	Uber Map
+no-drop	uba	Uber Ancients Map
+no-drop	luca	Lucion Map
+no-drop	rtma	Rathma Map
+no-drop	t41	Monastery Map

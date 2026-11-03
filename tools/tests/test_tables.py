@@ -1,0 +1,86 @@
+"""pd2_tables (merge/tables.json) on synthetic tables: no PD2 install or D2R data needed."""
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import pd2_tables  # noqa: E402
+
+
+def table(*rows: str) -> bytes:
+    return "".join("\t".join(c.strip() for c in r.split("|")) + "\r\n" for r in rows).encode("latin-1")
+
+
+class TablesTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def write(self, side: str, name: str, data: bytes):
+        p = self.root / side / "global/excel" / f"{name}.txt"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(data)
+
+    def merge(self, cfg: dict) -> dict[str, list[list[str]]]:
+        rule = self.root / "tables.json"
+        rule.write_text(json.dumps(cfg), "utf-8")
+        pd2_tables.rule(rule, self.root / "pd2", self.root / "d2r", self.root / "out")
+        out = {}
+        for p in (self.root / "out/global/excel").glob("*.txt"):
+            out[p.stem] = [line.split("\t") for line in p.read_bytes().decode("latin-1").split("\r\n") if line]
+        return out
+
+    def test_rows_merge_by_name_keeping_d2r_only_rows_and_columns(self):
+        self.write("pd2", "events", table("event | *desc | x", "hitbymissile | a | 1", "domeleeattack | b | 2",
+                                          "dospellcast | c | 3"))
+        self.write("d2r", "events", table("event | *description | x | y", "hitbymissile | A | 0 | 7",
+                                          "domeleeattack | B | 0 | 8", "death | C | 9 | 9"))
+        self.assertEqual(self.merge({"events": {}})["events"], [
+            ["event", "*description", "x", "y"],
+            ["hitbymissile", "A", "1", "7"],
+            ["domeleeattack", "B", "2", "8"],
+            ["death", "C", "9", "9"],  # D2R's row keeps its number
+            ["dospellcast", "", "3", ""],  # PD2's appends after D2R's rows: events port by name
+        ])
+
+    def test_rows_pair_by_position_where_the_first_columns_differ(self):
+        self.write("pd2", "shrines", table("Shrine Type | Code | Arg0", "None | 0 | 0", "Recharge | 1 | 5",
+                                           "Booster | 2 | 9"))
+        self.write("d2r", "shrines", table("Name | Code | Arg0", "None | 0 | 0", "Refilling Shrine | 1 | 4"))
+        self.assertEqual(self.merge({"shrines": {"rows": "position"}})["shrines"], [
+            ["Name", "Code", "Arg0"], ["None", "0", "0"], ["Refilling Shrine", "1", "5"], ["", "2", "9"]])
+
+    def test_rows_pair_by_key_columns(self):
+        self.write("pd2", "hireling", table("Hireling | Id | Level | Gold", "Barbarian | 30 | 3 | 1", "Barbarian | 30 | 25 | 2"))
+        self.write("d2r", "hireling", table("Hireling | Id | Level | Gold", "Barbarian | 30 | 25 | 9", "Barbarian | 30 | 28 | 9"))
+        self.assertEqual(self.merge({"hireling": {"rows": ["Id", "Level"], "pd2_only_rows": "leave out"}})["hireling"], [
+            ["Hireling", "Id", "Level", "Gold"], ["Barbarian", "30", "25", "2"], ["Barbarian", "30", "28", "9"]])
+
+    def test_a_repeated_name_can_take_pd2s_whole_group_in_place(self):
+        self.write("pd2", "monequip", table("monster | level | item1", "shadowwarrior | 20 | axe", "shadowwarrior | 0 | club",
+                                            "fallen | 0 | sword"))
+        self.write("d2r", "monequip", table("monster | level | item1 | x", "shadowwarrior | 0 | dagger | 1",
+                                            "zombie | 0 | none | 2", "fallen | 0 | club | 3"))
+        self.assertEqual(self.merge({"monequip": {"repeats": "replace group"}})["monequip"], [
+            ["monster", "level", "item1", "x"], ["shadowwarrior", "20", "axe", "1"], ["shadowwarrior", "0", "club", ""],
+            ["zombie", "0", "none", "2"], ["fallen", "0", "sword", "3"]])
+
+    def test_named_columns_keep_d2rs_values(self):
+        self.write("pd2", "objects", table("Name | Token | Parm0", "Cain Portal | tP | 5", "Trophy | qq | 1"))
+        self.write("d2r", "objects", table("Name | Token | Parm0", "Cain Portal | tp | 4"))
+        self.assertEqual(self.merge({"objects": {"d2r_columns": ["token"]}})["objects"], [
+            ["Name", "Token", "Parm0"], ["Cain Portal", "tp", "5"], ["Trophy", "", "1"]])
+
+    def test_pd2_only_rows_can_be_left_out(self):
+        self.write("pd2", "levels", table("Name | Id", "Act 1 | 1", "Mesa | 139"))
+        self.write("d2r", "levels", table("Name | Id", "Act 1 | 1"))
+        self.assertEqual(self.merge({"levels": {"pd2_only_rows": "leave out"}})["levels"], [["Name", "Id"], ["Act 1", "1"]])
+
+
+if __name__ == "__main__":
+    unittest.main()

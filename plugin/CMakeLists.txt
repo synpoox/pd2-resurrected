@@ -37,6 +37,7 @@ set(CORE_RULES_VERSION "0.1.0" CACHE STRING "core-rules PluginInfo::version")
 add_library(core_rules SHARED
 	core-rules/plugin.cpp
 	core-rules/skill_functions.cpp
+	core-rules/missile_functions.cpp
 	core-rules/plugin.rc  # ABI manifest resource: D2RLoader rejects a plugin DLL without it
 )
 target_link_libraries(core_rules PRIVATE core_common)
