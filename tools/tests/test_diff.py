@@ -79,6 +79,16 @@ class GateTests(unittest.TestCase):
         self.write("mod", "missiles", table("Missile | Skill | SrvCalc1 | Range", "teeth | Teeth | skill('Teeth_pd2'.blvl)*(0-2) | 5"))
         self.assertEqual(self.gate("P2").open(), [("missiles.teeth.Skill", "Teeth", "Teeth")])
 
+    def test_tables_merged_by_position_compare_by_position_and_spell_references(self):
+        (self.root / "merge").mkdir()
+        (self.root / "merge/ids-skills.tsv").write_text("Teeth\t67\tTeeth_pd2\n", "utf-8")
+        (self.root / "merge/tables.json").write_text('{"shrines": {"rows": "position"}, "monstats": {}}', "utf-8")
+        self.write("pd2", "shrines", table("Shrine Type | Code", "None | 0", "Recharge | 1"))
+        self.write("mod", "shrines", table("Name | Code", "None | 0", "Refilling Shrine | 2"))
+        self.write("pd2", "monstats", table("Id | Skill1", "fallen | Teeth"))
+        self.write("mod", "monstats", table("Id | Skill1", "fallen | Teeth_pd2"))
+        self.assertEqual(self.gate().open(), [("shrines.*.Shrine Type", "", ""), ("shrines.1.Code", "1", "2")])
+
     def test_the_scope_picks_the_work_items_tables(self):
         for t in ("skills", "armor", "levels"):
             self.write("pd2", t, table("Name | x", "a | 1"))

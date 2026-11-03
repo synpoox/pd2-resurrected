@@ -5,6 +5,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- PD2's monsters, mercenaries, areas, shrines and objects are in. PD2's map areas and bigger inventory are not yet.
 - PD2's items, affixes, runewords, cube recipes and treasure classes are in. Map items do not drop yet. Breaks
   characters from earlier builds.
 - Project Diablo II's names and descriptions for items, skills, monsters and areas (English).
