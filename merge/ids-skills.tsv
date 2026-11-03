@@ -1,0 +1,615 @@
+# PD2 name	id	name (append-only, ADR 0003)
+Attack	0	Attack
+Kick	1	Kick
+Throw	2	Throw
+Unsummon	3	Unsummon
+Left Hand Throw	4	Left Hand Throw
+Left Hand Swing	5	Left Hand Swing
+Magic Arrow	6	Magic Arrow
+Fire Arrow	7	Fire Arrow
+Inner Sight	8	Inner Sight
+Critical Strike	9	Critical Strike
+Jab	10	Jab
+Cold Arrow	11	Cold Arrow
+Multiple Shot	12	Multiple Shot
+Dodge	13	Dodge
+Power Strike	14	Power Strike
+Poison Javelin	15	Poison Javelin
+Exploding Arrow	16	Exploding Arrow
+Slow Movement	17	Slow Missiles
+Avoid	18	Avoid
+Javelin and Spear Mastery	19	Impale
+Lightning Bolt	20	Lightning Bolt
+Ice Arrow	21	Ice Arrow
+Guided Arrow	22	Guided Arrow
+Penetrate	23	Penetrate
+Charged Strike	24	Charged Strike
+Plague Javelin	25	Plague Javelin
+Strafe	26	Strafe
+Immolation Arrow	27	Immolation Arrow
+Dopplezon	28	Dopplezon
+Evade	29	Evade
+Fend	30	Fend
+Freezing Arrow	31	Freezing Arrow
+Valkyrie	32	Valkyrie
+Pierce	33	Pierce
+Lightning Strike	34	Lightning Strike
+Lightning Fury	35	Lightning Fury
+Fire Bolt	36	Fire Bolt
+Warmth	37	Warmth
+Charged Bolt	38	Charged Bolt
+Ice Bolt	39	Ice Bolt
+Cold Enchant	40	Frozen Armor
+Inferno	41	Inferno
+Static Field	42	Static Field
+Telekinesis	43	Telekinesis
+Frost Nova	44	Frost Nova
+Ice Blast	45	Ice Blast
+Blaze	46	Blaze
+Fire Ball	47	Fire Ball
+Nova	48	Nova
+Lightning	49	Lightning
+Shiver Armor	50	Shiver Armor
+Fire Wall	51	Fire Wall
+Enchant	52	Enchant
+Chain Lightning	53	Chain Lightning
+Teleport	54	Teleport
+Glacial Spike	55	Glacial Spike
+Meteor	56	Meteor
+Thunder Storm	57	Thunder Storm
+Energy Shield	58	Energy Shield
+Blizzard	59	Blizzard
+Chilling Armor	60	Chilling Armor
+Fire Mastery	61	Fire Mastery
+Hydra	62	Hydra
+Lightning Mastery	63	Lightning Mastery
+Frozen Orb	64	Frozen Orb
+Cold Mastery	65	Cold Mastery
+AmpDmg	66	Amplify Damage
+Teeth	67	Teeth
+Bone Armor	68	Bone Armor
+Skeleton Mastery	69	Skeleton Mastery
+Raise Skeleton	70	Raise Skeleton
+Dim Vision	71	Dim Vision
+Weaken	72	Weaken
+Poison Dagger	73	Poison Dagger
+Corpse Explosion	74	Corpse Explosion
+Clay Golem	75	Clay Golem
+Iron Maiden	76	Iron Maiden
+Terror	77	Terror
+Bone Wall	78	Bone Wall
+Golem Mastery	79	Golem Mastery
+Raise Skeletal Mage	80	Raise Skeletal Mage
+Confuse	81	Confuse
+Life Tap	82	Life Tap
+Desecrate	83	Poison Explosion
+Bone Spear	84	Bone Spear
+BloodGolem	85	BloodGolem
+Attract	86	Attract
+Decrepify	87	Decrepify
+Bone Prison	88	Bone Prison
+Raise Skeleton Archer	89	Summon Resist
+IronGolem	90	IronGolem
+LowRes	91	Lower Resist
+Poison Nova	92	Poison Nova
+Bone Spirit	93	Bone Spirit
+FireGolem	94	FireGolem
+Revive	95	Revive
+Sacrifice	96	Sacrifice
+Smite	97	Smite
+Might	98	Might
+Prayer	99	Prayer
+Resist Fire	100	Resist Fire
+Holy Bolt	101	Holy Bolt
+Holy Fire	102	Holy Fire
+Thorns	103	Thorns
+Defiance	104	Defiance
+Resist Cold	105	Resist Cold
+Zeal	106	Zeal
+Charge	107	Charge
+Blessed Aim	108	Blessed Aim
+Cleansing	109	Cleansing
+Resist Lightning	110	Resist Lightning
+Vengeance	111	Vengeance
+Blessed Hammer	112	Blessed Hammer
+Concentration	113	Concentration
+Holy Freeze	114	Holy Freeze
+Vigor	115	Vigor
+Holy Sword	116	Conversion
+Holy Shield	117	Holy Shield
+Holy Shock	118	Holy Shock
+Sanctuary	119	Sanctuary
+Meditation	120	Meditation
+Fist of the Heavens	121	Fist of the Heavens
+Fanaticism	122	Fanaticism
+Conviction	123	Conviction
+Redemption	124	Redemption
+Salvation	125	Salvation
+Bash	126	Bash
+Sword Mastery	127	Blade Mastery
+One Hand Mastery	128	Axe Mastery
+Mace Mastery	129	Mace Mastery
+Howl	130	Howl
+Find Potion	131	Find Potion
+Leap	132	Leap
+Double Swing	133	Double Swing
+Two Hand Mastery	134	Pole Arm Mastery
+Throwing Mastery	135	Throwing Mastery
+Spear Mastery	136	Spear Mastery
+Taunt	137	Taunt
+Shout	138	Shout
+Stun	139	Stun
+Double Throw	140	Double Throw
+Combat Reflexes	141	Increased Stamina
+Find Item	142	Find Item
+Leap Attack	143	Leap Attack
+Concentrate	144	Concentrate
+Iron Skin	145	Iron Skin
+Battle Cry	146	Battle Cry
+Frenzy	147	Frenzy
+Increased Speed	148	Increased Speed
+Battle Orders	149	Battle Orders
+Grim Ward	150	Grim Ward
+Whirlwind	151	Whirlwind
+Berserk	152	Berserk
+Natural Resistance	153	Natural Resistance
+War Cry	154	War Cry
+Battle Command	155	Battle Command
+Fire Hit	156	Fire Hit
+UnHolyBolt	157	UnHolyBolt
+SkeletonRaise	158	SkeletonRaise
+MaggotEgg	159	MaggotEgg
+ShamanFire	160	ShamanFire
+MagottUp	161	MagottUp
+MagottDown	162	MagottDown
+MagottLay	163	MagottLay
+AndrialSpray	164	AndrialSpray
+Jump	165	Jump
+Swarm Move	166	Swarm Move
+Nest	167	Nest
+Quick Strike	168	Quick Strike
+VampireFireball	169	VampireFireball
+VampireFirewall	170	VampireFirewall
+VampireMeteor	171	VampireMeteor
+GargoyleTrap	172	GargoyleTrap
+SpiderLay	173	SpiderLay
+VampireHeal	174	VampireHeal
+VampireRaise	175	VampireRaise
+Submerge	176	Submerge
+FetishAura	177	FetishAura
+FetishInferno	178	FetishInferno
+ZakarumHeal	179	ZakarumHeal
+Emerge	180	Emerge
+Resurrect	181	Resurrect
+Bestow	182	Bestow
+MissileSkill1	183	MissileSkill1
+MonTeleport	184	MonTeleport
+PrimeLightning	185	PrimeLightning
+PrimeBolt	186	PrimeBolt
+PrimeBlaze	187	PrimeBlaze
+PrimeFirewall	188	PrimeFirewall
+PrimeSpike	189	PrimeSpike
+PrimeIceNova	190	PrimeIceNova
+PrimePoisonball	191	PrimePoisonball
+PrimePoisonNova	192	PrimePoisonNova
+DiabLight	193	DiabLight
+DiabCold	194	DiabCold
+DiabFire	195	DiabFire
+FingerMageSpider	196	FingerMageSpider
+DiabWall	197	DiabWall
+DiabRun	198	DiabRun
+DiabPrison	199	DiabPrison
+PoisonBallTrap	200	PoisonBallTrap
+AndyPoisonBolt	201	AndyPoisonBolt
+HireableMissile	202	HireableMissile
+DesertTurret	203	DesertTurret
+ArcaneTower	204	ArcaneTower
+MonBlizzard	205	MonBlizzard
+Mosquito	206	Mosquito
+CursedBallTrapRight	207	CursedBallTrapRight
+CursedBallTrapLeft	208	CursedBallTrapLeft
+MonFrozenArmor	209	MonFrozenArmor
+MonBoneArmor	210	MonBoneArmor
+MonBoneSpirit	211	MonBoneSpirit
+MonCurseCast	212	MonCurseCast
+HellMeteor	213	HellMeteor
+RegurgitatorEat	214	RegurgitatorEat
+MonFrenzy	215	MonFrenzy
+QueenDeath	216	QueenDeath
+Scroll of Identify	217	Scroll of Identify
+Book of Identify	218	Book of Identify
+Scroll of Townportal	219	Scroll of Townportal
+Book of Townportal	220	Book of Townportal
+Raven	221	Raven
+Plague Poppy	222	Plague Poppy
+Wearwolf	223	Wearwolf
+Shape Shifting	224	Shape Shifting
+Firestorm	225	Firestorm
+Oak Sage	226	Oak Sage
+Summon Spirit Wolf	227	Summon Spirit Wolf
+Wearbear	228	Wearbear
+Molten Boulder	229	Molten Boulder
+Arctic Blast	230	Arctic Blast
+Cycle of Life	231	Cycle of Life
+Feral Rage	232	Feral Rage
+Maul	233	Maul
+Eruption	234	Eruption
+Cyclone Armor	235	Cyclone Armor
+Heart of Wolverine	236	Heart of Wolverine
+Summon Fenris	237	Summon Fenris
+Rabies	238	Rabies
+Fire Claws	239	Fire Claws
+Twister	240	Twister
+Vines	241	Vines
+Hunger	242	Hunger
+Shock Wave	243	Shock Wave
+Volcano	244	Volcano
+Tornado	245	Tornado
+Spirit of Barbs	246	Spirit of Barbs
+Summon Grizzly	247	Summon Grizzly
+Fury	248	Fury
+Armageddon	249	Armageddon
+Hurricane	250	Hurricane
+Fire Trauma	251	Fire Trauma
+Claw Mastery	252	Claw Mastery
+Psychic Hammer	253	Psychic Hammer
+Tiger Strike	254	Tiger Strike
+Dragon Talon	255	Dragon Talon
+Shock Field	256	Shock Field
+Blade Sentinel	257	Blade Sentinel
+Quickness	258	Quickness
+Fists of Fire	259	Fists of Fire
+Dragon Claw	260	Dragon Claw
+Charged Bolt Sentry	261	Charged Bolt Sentry
+Wake of Fire Sentry	262	Wake of Fire Sentry
+Weapon Block	263	Weapon Block
+Cloak of Shadows	264	Cloak of Shadows
+Cobra Strike	265	Cobra Strike
+Blade Fury	266	Blade Fury
+Fade	267	Fade
+Shadow Warrior	268	Shadow Warrior
+Claws of Thunder	269	Claws of Thunder
+Dragon Tail	270	Dragon Tail
+Chain Lightning Sentry	271	Lightning Sentry
+Inferno Sentry	272	Inferno Sentry
+Mind Blast	273	Mind Blast
+Blades of Ice	274	Blades of Ice
+Dragon Flight	275	Dragon Flight
+Death Sentry	276	Death Sentry
+Blade Shield	277	Blade Shield
+Venom	278	Venom
+Shadow Master	279	Shadow Master
+Royal Strike	280	Royal Strike
+Wake Of Destruction Sentry	281	Wake Of Destruction Sentry
+Imp Inferno	282	Imp Inferno
+Imp Fireball	283	Imp Fireball
+Baal Taunt	284	Baal Taunt
+Baal Corpse Explode	285	Baal Corpse Explode
+Baal Monster Spawn	286	Baal Monster Spawn
+Catapult Charged Ball	287	Catapult Charged Ball
+Catapult Spike Ball	288	Catapult Spike Ball
+Suck Blood	289	Suck Blood
+Cry Help	290	Cry Help
+Healing Vortex	291	Healing Vortex
+Teleport 2	292	Teleport 2
+Self-resurrect	293	Self-resurrect
+Vine Attack	294	Vine Attack
+Overseer Whip	295	Overseer Whip
+Barbs Aura	296	Barbs Aura
+Wolverine Aura	297	Wolverine Aura
+Oak Sage Aura	298	Oak Sage Aura
+Imp Fire Missile	299	Imp Fire Missile
+Impregnate	300	Impregnate
+Siege Beast Stomp	301	Siege Beast Stomp
+MinionSpawner	302	MinionSpawner
+CatapultBlizzard	303	CatapultBlizzard
+CatapultPlague	304	CatapultPlague
+CatapultMeteor	305	CatapultMeteor
+BoltSentry	306	BoltSentry
+CorpseCycler	307	CorpseCycler
+DeathMaul	308	DeathMaul
+Defense Curse	309	Defense Curse
+Blood Mana	310	Blood Mana
+mon inferno sentry	311	mon inferno sentry
+mon death sentry	312	mon death sentry
+Sentry Chain Lightning	313	sentry lightning
+fenris rage	314	fenris rage
+Baal Tentacle	315	Baal Tentacle
+Baal Nova	316	Baal Nova
+Baal Inferno	317	Baal Inferno
+Baal Cold Missiles	318	Baal Cold Missiles
+MegademonInferno	319	MegademonInferno
+EvilHutSpawner	320	EvilHutSpawner
+CountessFirewall	321	CountessFirewall
+ImpBolt	322	ImpBolt
+Horror Arctic Blast	323	Horror Arctic Blast
+death sentry ltng	324	death sentry ltng
+VineCycler	325	VineCycler
+BearSmite	326	BearSmite
+Resurrect2	327	Resurrect2
+BloodLordFrenzy	328	BloodLordFrenzy
+Baal Teleport	329	Baal Teleport
+Imp Teleport	330	Imp Teleport
+Baal Clone Teleport	331	Baal Clone Teleport
+ZakarumLightning	332	ZakarumLightning
+VampireMissile	333	VampireMissile
+MephistoMissile	334	MephistoMissile
+DoomKnightMissile	335	DoomKnightMissile
+RogueMissile	336	RogueMissile
+HydraMissile	337	HydraMissile
+NecromageMissile	338	NecromageMissile
+MonBow	339	MonBow
+MonFireArrow	340	MonFireArrow
+MonColdArrow	341	MonColdArrow
+MonExplodingArrow	342	MonExplodingArrow
+MonFreezingArrow	343	MonFreezingArrow
+MonPowerStrike	344	MonPowerStrike
+SuccubusBolt	345	SuccubusBolt
+MephFrostNova	346	MephFrostNova
+MonIceSpear	347	MonIceSpear
+ShamanIce	348	ShamanIce
+Diablogeddon	349	Diablogeddon
+Delerium Change	350	Delerium Change
+NihlathakCorpseExplosion	351	NihlathakCorpseExplosion
+SerpentCharge	352	SerpentCharge
+Trap Nova	353	Trap Nova
+UnHolyBoltEx	354	UnHolyBoltEx
+ShamanFireEx	355	ShamanFireEx
+Imp Fire Missile Ex	356	Imp Fire Missile Ex
+Blink	429	Blink
+proc_SplashDamage	430	proc_SplashDamage
+RoguePierce	431	RoguePierce
+BattleOrdersCTA	432	BattleOrdersCTA
+ExtraDrop	433	ExtraDrop
+BloodRavenImmo	434	BloodRavenImmo
+DollMeteor	435	DollMeteor
+Holy Nova	436	Holy Nova
+Shattering Arrow	437	Shattering Arrow
+Lightning Sentry	438	Lightning Sentry_pd2
+Blood Warp	439	Blood Warp
+Deep Wounds	440	Deep Wounds
+Ice Barrage	441	Ice Barrage
+Gust	442	Gust
+Holy Light	443	Holy Light
+amatemp2	444	amatemp2
+asatemp2	445	asatemp2
+CurMas	446	CurMas
+Split Throw	447	Split Throw
+Combustion	448	Combustion
+drutemp2	449	drutemp2
+Joust	450	Joust
+amatemp3	451	amatemp3
+Blade Dance	452	Blade Dance
+Dark Pact	453	Dark Pact
+bartemp3	454	bartemp3
+Lesser Hydra	455	Lesser Hydra
+drutemp3	456	drutemp3
+Merc Fire Arrow	457	Merc Fire Arrow
+Merc Cold Arrow	458	Merc Cold Arrow
+Raven Splash	459	Raven Splash
+Vampire Form	460	Vampire Form
+Golem Splash	461	Golem Splash
+KanemithBossBlaze	462	KanemithBossBlaze
+Lesser Fade	463	Lesser Fade
+Sentry Lightning	464	Sentry Lightning_pd2
+Skeleton Splash	465	Skeleton Splash
+Force Move	466	Force Move
+Immune Aura	467	Immune Aura
+Immune Passive	468	Immune Passive
+MegademonInfernoBoss	469	MegademonInfernoBoss
+MegademonBlazeBoss	470	MegademonBlazeBoss
+MegademonArmaBoss	471	MegademonArmaBoss
+FingermageBossNova	472	FingermageBossNova
+FingermageBossDiabWall	473	FingermageBossDiabWall
+FingermageBossShockWave	474	FingermageBossShockWave
+CantorBossEruption	475	CantorBossEruption
+CantorBossTornado	476	CantorBossTornado
+UnravelerBossMultiShot	477	UnravelerBossMultiShot
+UnravelerBossBuff	478	UnravelerBossBuff
+UnravelerMinionBuff	479	UnravelerMinionBuff
+BaalMinionBossBerserk	480	BaalMinionBossBerserk
+BaalMinionBossRabies	481	BaalMinionBossRabies
+BaalMinionBossCharge	482	BaalMinionBossCharge
+BaalMinionBossNova	483	BaalMinionBossNova
+MonLeap	366	MonLeap
+MonJab	484	MonJab
+MonSmite	485	MonSmite
+MonCharge	486	MonCharge
+MonHolyFreeze	365	MonHolyFreeze
+MonGlacialSpike	487	MonGlacialSpike
+MonFrostNova	488	MonFrostNova
+MonFireBall	489	MonFireBall
+MonWeaken	490	MonWeaken
+MonHydra	491	MonHydra
+MonLightning	492	MonLightning
+Fixed Siege Beast Stomp	493	Fixed Siege Beast Stomp
+MonAmplifyDamage	494	MonAmplifyDamage
+MonWhirlwind	495	MonWhirlwind
+MonShout	496	MonShout
+MonDecrepify	497	MonDecrepify
+MonChainLightning	498	MonChainLightning
+MonChillingArmor	499	MonChillingArmor
+UberDiabloMeteor	500	UberDiabloMeteor
+UberDiabloBoulder	501	UberDiabloBoulder
+UberDiabWall	502	UberDiabWall
+UberDiabLight	503	UberDiabLight
+UberDiabCold	504	UberDiabCold
+UberDiabFire	505	UberDiabFire
+UberDiabSuperFire	506	UberDiabSuperFire
+WispBossChainLightning	507	WispBossChainLightning
+WispMinionLightning	508	WispMinionLightning
+WispTotemConviction	509	WispTotemConviction
+MonLeapAttack	367	MonLeapAttack
+FingerMageBossSpider	510	FingerMageBossSpider
+AmpDmg Proc	511	AmpDmg Proc
+Weaken Proc	512	Weaken Proc
+Iron Maiden Proc	513	Iron Maiden Proc
+Life Tap Proc	514	Life Tap Proc
+Decrepify Proc	515	Decrepify Proc
+LowRes Proc	516	LowRes Proc
+Iceboss Freezing Arrow	517	Iceboss Freezing Arrow
+Iceboss Blizzard	518	Iceboss Blizzard
+Lightning Strike Cowboss	519	Lightning Strike Cowboss
+Poison Nova Tomb Boss	520	Poison Nova Tomb Boss
+Power Strike Tomb Boss	521	Power Strike Tomb Boss
+PoisonEggSpawn	522	PoisonEggSpawn
+Hydra Throne Boss	523	Hydra Throne Boss
+HurricaneTortureBoss	524	HurricaneTortureBoss
+A3 Mastery Fire	525	A3 Mastery Fire
+A3 Mastery Cold	526	A3 Mastery Cold
+A3 Mastery Ltng	527	A3 Mastery Ltng
+Merc Static Field	528	Merc Static Field
+A3 Merc Lightning	529	A3 Merc Lightning
+A3 Merc Meteor	530	A3 Merc Meteor
+A3 Merc Fire Ball	531	A3 Merc Fire Ball
+A3 Merc Blizzard	532	A3 Merc Blizzard
+A3 Merc Ice Blast	533	A3 Merc Ice Blast
+TraitorBossBlessedAim	534	TraitorBossBlessedAim
+TraitorBossVigor	535	TraitorBossVigor
+TraitorBossConeJab	536	TraitorBossConeJab
+TraitorBossStunSpear	537	TraitorBossStunSpear
+ArcherBossArrowRain	538	ArcherBossArrowRain
+ArcherBossBoomerShot	539	ArcherBossBoomerShot
+ArcherBossCageShot	540	ArcherBossCageShot
+Mon Conviction	541	Mon Conviction
+Mon Fanaticism	542	Mon Fanaticism
+Mon Holy Shock	543	Mon Holy Shock
+Mon Holy Freeze	544	Mon Holy Freeze
+Mon Holy Fire	545	Mon Holy Fire
+Mon Might	546	Mon Might
+Mon Concentration	547	Mon Concentration
+Mon Vigor	548	Mon Vigor
+Baal Lowres	549	Baal Lowres
+Poison Dagger Spider Boss	550	Poison Dagger Spider Boss
+Delirium Form	551	Delirium Form
+Cow Form	552	Cow Form
+Skeleton Archer Bow	553	Skeleton Archer Bow
+RathmaDeath	554	RathmaDeath
+NihlathakMapMobSpawn	555	NihlathakMapMobSpawn
+NihlathakMapDeath	556	NihlathakMapDeath
+DoppleZonStrafe	557	DoppleZonStrafe
+Valk Power Strike	558	Valk Power Strike
+RathmaSummon	559	RathmaSummon
+RathmaBoneSpear	560	RathmaBoneSpear
+RathmaTeethNova	561	RathmaTeethNova
+VoidBolt	562	VoidBolt
+SummonVoidling	563	SummonVoidling
+IskatuHurricane	564	IskatuHurricane
+RathmaPoisonOrb	565	RathmaPoisonOrb
+RathmaFissure	566	RathmaFissure
+RathmaOuterNova	567	RathmaOuterNova
+Horror Arctic Blast Boss	568	Horror Arctic Blast Boss
+Frost Nova Horror Boss	569	Frost Nova Horror Boss
+Mon Holy Freeze Wide	570	Mon Holy Freeze Wide
+RathmaPacman	571	RathmaPacman
+Shock Wave Boss	572	Shock Wave Boss
+RathmaPrison	573	RathmaPrison
+RathmaColdMissiles	574	RathmaColdMissiles
+Glacial Spike Spire	575	Glacial Spike Spire
+Poison Nova Rathma	576	Poison Nova Rathma
+Teeth Rathma	577	Teeth Rathma
+UberTalicBlaze	578	UberTalicBlaze
+UberTalicWhirlwind	579	UberTalicWhirlwind
+UberTalicBash	580	UberTalicBash
+UberTalicMeteor	581	UberTalicMeteor
+Book of Unlimited Identify	582	Book of Unlimited Identify
+Book of Unlimited Townportal	583	Book of Unlimited Townportal
+BruteFireSlam	584	BruteFireSlam
+BruteMoltenBoulder	585	BruteMoltenBoulder
+BruteShockWave	586	BruteShockWave
+BruteVigor	587	BruteVigor
+UberMadawcDoubleThrow	588	UberMadawcDoubleThrow
+UberMadawcCursedAxe	589	UberMadawcCursedAxe
+UberMadawcOWAxe	590	UberMadawcOWAxe
+UberTalicSmite	591	UberTalicSmite
+UberMadawcFakeBO	592	UberMadawcFakeBO
+UberMadawcLightningStorm	593	UberMadawcLightningStorm
+Cyclone ArmorMon	594	Cyclone ArmorMon
+LeoricSummonNova	595	LeoricSummonNova
+SiegeBeastClusterbomb	596	SiegeBeastClusterbomb
+SiegeBeastFireNova	597	SiegeBeastFireNova
+SiegeBeastBuffNova	598	SiegeBeastBuffNova
+SiegeBeastOrb	599	SiegeBeastOrb
+Holy Fire Fire Golem	600	Holy Fire Fire Golem
+Holy Freeze Korlic	601	Holy Freeze Korlic
+Leap Attack Korlic	602	Leap Attack Korlic
+Holy Fire Sanctuaryboss	603	Holy Fire Sanctuaryboss
+Howl Monster	604	Howl Monster
+Bone Spear Serpent	605	Bone Spear Serpent
+Fire Ball Ashen Boss	606	Fire Ball Ashen Boss
+Fire Nova	607	Fire Nova
+ZharBarrage	608	ZharBarrage
+ZharStrike	609	ZharStrike
+ZharArmageddon	610	ZharArmageddon
+ZharNovaOrb	611	ZharNovaOrb
+ZharCloak	612	ZharCloak
+DemonPillar Fireball	613	DemonPillar Fireball
+Merc Magic Arrow	614	Merc Magic Arrow
+UberDiabRun	615	UberDiabRun
+ZharMiniBossMeteorBlizzard	616	ZharMiniBossMeteorBlizzard
+ZharMiniBossCombustion	617	ZharMiniBossCombustion
+DemonPillar Lightning	618	DemonPillar Lightning
+GuardianOfFateSummon	619	GuardianOfFateSummon
+A4 Mastery	620	A4 Mastery
+A4 AmpDmg	621	A4 AmpDmg
+WarlordMiniBoss1BaalFire	622	WarlordMiniBoss1BaalFire
+Energy Shield SelfAura	623	Energy Shield SelfAura
+Chilling Armor SelfAura	624	Chilling Armor SelfAura
+Quickness SelfAura	625	Quickness SelfAura
+Blade Shield SelfAura	626	Blade Shield SelfAura
+IskatuBlizzard	627	IskatuBlizzard
+ButcherAura	628	ButcherAura
+IskatuMagicOrb	629	IskatuMagicOrb
+RakanothStrike	630	RakanothStrike
+TorajanBossNest	631	TorajanBossNest
+KanemithFirestorm	632	KanemithFirestorm
+KanemithShockWeb	633	KanemithShockWeb
+SharptoothUnholyOrb	634	SharptoothUnholyOrb
+SharptoothChainPoison	635	SharptoothChainPoison
+SharptoothArmageddon	636	SharptoothArmageddon
+RadamentBossRoyalFire	637	RadamentBossRoyalFire
+WispBossNova	638	WispBossNova
+RadamentBossMeteor	639	RadamentBossMeteor
+LucionNova	640	LucionNova
+LucionBoneWave	641	LucionBoneWave
+LucionBlink	642	LucionBlink
+LucionRoyalFire	643	LucionRoyalFire
+LucionDash	644	LucionDash
+LucionPunish	645	LucionPunish
+EruptionDemonRoadBoss	646	EruptionDemonRoadBoss
+Tentacle	647	Tentacle
+LucionCharge	648	LucionCharge
+LucionDeath1	649	LucionDeath1
+LucionDeath2	650	LucionDeath2
+LucionDeath3	651	LucionDeath3
+LucionDeath4	652	LucionDeath4
+MonSmiteLucion	653	MonSmiteLucion
+MonLowerRes	654	MonLowerRes
+HydraFireball	655	HydraFireball
+SummonVoidlingUniqueMap	656	SummonVoidlingUniqueMap
+Bone Spear Putrid Defiler	657	Bone Spear Putrid Defiler
+SummonViperUniqueMap	658	SummonViperUniqueMap
+ChargedBoltImperialMiniBoss	659	ChargedBoltImperialMiniBoss
+ImperialMiniBossBlast	660	ImperialMiniBossBlast
+UberDiabSummon	661	UberDiabSummon
+Armageddon SelfAura	662	Armageddon SelfAura
+Shock Field Ureh Boss	663	Shock Field Ureh Boss
+Fire Trauma Ureh Boss	664	Fire Trauma Ureh Boss
+Thunder Storm SelfAura	665	Thunder Storm SelfAura
+VolcanoInvaderDruid	666	VolcanoInvaderDruid
+ArmageddonInvaderDruid	667	ArmageddonInvaderDruid
+Frozen Orb Light	668	Frozen Orb Light
+Charged Bolt Djinnboss	669	Charged Bolt Djinnboss
+DjinnBoss Poison Bolt	670	DjinnBoss Poison Bolt
+UnHolyBolt DjinnBoss	671	UnHolyBolt DjinnBoss
+Tornado Arcane Boss	672	Tornado Arcane Boss
+AndyPoisonBolt Spider Boss	673	AndyPoisonBolt Spider Boss
+Phasing SelfAura	674	Phasing SelfAura
+Multiple Shot Proc	675	Multiple Shot Proc
+Frozen OrbTombEvent	676	Frozen OrbTombEvent
+FingerMageSpiderTombEvent	677	FingerMageSpiderTombEvent
+DarkTempleBossNova	678	DarkTempleBossNova
+Static Field Proc	679	Static Field Proc
+DarkTempleNova	680	DarkTempleNova
+Inferno DescentBoss	681	Inferno DescentBoss
+Mon Bloodwarp	682	Mon Bloodwarp
