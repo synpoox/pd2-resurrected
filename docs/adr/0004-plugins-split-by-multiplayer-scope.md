@@ -21,3 +21,4 @@ Where a bundled companion plugin already covers a PD2 feature (loot filter, stas
 ## Amendments
 
 - 2026-11-03: plugins renamed from `pd2-*` to `core-*` so the names stay valid if the port moves away from PD2 branding. Nothing had been built under the old names.
+- 2026-11-03: a bundled companion may be Shared (Buff HUD is). Every release pins one version of each companion, so host and client match by construction; the "client UI never forces a match" rule binds only our own plugins.
