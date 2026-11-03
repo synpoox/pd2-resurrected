@@ -13,8 +13,8 @@ No Blizzard files, PD2 archives or extracted PD2 data are committed here ([ADR 0
 
 ## Build
 
-Needs the PD2 install named in `pd2-baseline.json` and the sibling `..\d2rAI-toolkit` with modkit's `generated/data/`
-layer (toolkit branch `modkit-generated-layer` until it merges).
+Needs the PD2 install named in `pd2-baseline.json` and the sibling `..\d2rAI-toolkit` at commit `ec17a9a` or later
+(modkit's `generated/data/` layer).
 
 ```bash
 python tools/pd2_extract.py
