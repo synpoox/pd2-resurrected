@@ -167,4 +167,4 @@ Hook-list rows that need no plugin. Checked in W3 (93847, PD2 baseline in `pd2-d
   - properties `func` 3, 8, 22, 24: 35 equal, 63 PD2-only properties use D2R's functions. `fireskill` adds `func2` 3.
   - cubemain `op` 28: PD2's 8 rows set `param` blank, 1 or 2; D2R's 6 rows leave it blank. Same function.
   - itemstatcost `descfunc`: D2R moved nearly every stat to 19, which formats the stat's string itself; PD2 keeps
-    0-4, 6-9 and 20. P3 must merge each stat's `descfunc` with the strings written for it, then check the tooltips.
+    0-4, 6-9 and 20. Merged with the strings written for it (#67): see the stat display row.
