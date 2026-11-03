@@ -20,6 +20,7 @@ from typing import Callable
 import pd2_ids
 import pd2_items
 import pd2_strings
+import pd2_tables
 
 ROOT = Path(__file__).resolve().parent.parent
 # the build the port targets, in modkit's cache (MODKIT_CACHE, as modkit reads it)
@@ -30,6 +31,7 @@ RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
     **{f"ids-{t}.tsv": pd2_ids.apply for t in pd2_ids.TABLES},
     "item-tables.txt": pd2_items.apply,
     "strings.json": pd2_strings.rule,
+    "tables.json": pd2_tables.rule,
 }
 
 

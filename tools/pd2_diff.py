@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import json
 import re
 import sys
 from dataclasses import dataclass, field
@@ -18,6 +19,7 @@ from pathlib import Path
 import pd2_ids
 import pd2_merge
 from pd2_ids import COLUMN_MAP, Table
+from pd2_tables import row_keys
 
 ROOT = Path(__file__).resolve().parent.parent
 SHOWN = 200  # open deviations listed in the report; the counts cover the rest
@@ -73,9 +75,13 @@ def keyed(rows: list[list[str]], key: int = 0) -> dict[str, list[str]]:
 
 
 def pairs(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | None,
-          lists: dict[str, list[tuple[str, int, str]]]) -> list[tuple[str, list[str], list[str] | None]]:
+          lists: dict[str, list[tuple[str, int, str]]], rows: str | list[str] = "name"
+          ) -> list[tuple[str, list[str], list[str] | None]]:
     """(row label, PD2 row, mod row or None) as the merge placed them: an item table with an id list by its list, one
-    merged by row by position, the rest by key."""
+    merged by row by position, a tables.json table by its `rows` (pd2_tables.row_keys), the rest by key."""
+    if rows != "name":
+        mod_rows = {k.lower(): r for k, r in zip(row_keys(mod, rows), mod.rows)}
+        return [(k, pr, mod_rows.get(k.lower())) for k, pr in zip(row_keys(pd2, rows), pd2.rows)]
     if name in pd2_ids._BY_ROW or (name in ITEM_TABLES and lists.get(name)):
         where = ({p.lower(): i for p, i, _ in lists[name]} if name not in pd2_ids._BY_ROW else
                  {p.lower(): k for k, p in enumerate(pd2_ids.ident(pd2.names()))})
@@ -93,12 +99,13 @@ def pairs(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | No
 
 
 def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | None = None,
-            lists: dict[str, list[tuple[str, int, str]]] | None = None, ctx: pd2_ids.Context | None = None) -> Result:
+            lists: dict[str, list[tuple[str, int, str]]] | None = None, ctx: pd2_ids.Context | None = None,
+            rows: str | list[str] = "name") -> Result:
     """Deviations of `mod` from `pd2`: missing columns (table.*.col), missing rows (table.row.*), changed cells.
     PD2's comment columns and eol are not data; a column D2R keeps only as a comment (*Id) is the row's position, and a
     repeated column is read once, as the merge reads it. PD2's rows, columns and cells are read in the mod's spelling:
     renamed by `ren` (pd2_ids.renames) and pd2_ids.COLUMN_MAP, with item properties' skill and state parameters in the
-    mod's ids (`ctx`). PD2's cells carry Excel's quote marks, which the classic loader skipped: they are not data."""
+    mod's ids (`ctx`). `rows` pairs a tables.json table's rows as its merge did. PD2's cells carry Excel's quote marks, which the classic loader skipped: they are not data."""
     res = Result(name)
     mod_cols = {c.lower(): i for i, c in enumerate(mod.header)}
     to_mod = {p.lower(): d.lower() for d, p in COLUMN_MAP.get(name, {}).items()}
@@ -109,11 +116,11 @@ def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | 
             continue
         seen.add(c.lower())
         if mc in mod_cols:
-            if i != pd2.key:  # the key column is the row's name, matched as the key
+            if i != pd2.key or rows != "name":  # the key column is the row's name, matched as the key
                 cols.append((c, i, mod_cols[mc]))
         else:
             res.open.append((f"{name}.*.{c}", "", ""))
-    for row, pr, mr in pairs(name, pd2, mod, ren, lists or {}):
+    for row, pr, mr in pairs(name, pd2, mod, ren, lists or {}, rows):
         if mr is None:
             res.open.append((f"{name}.{row}.*", "", ""))
             continue
@@ -160,6 +167,8 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
     patterns = unported(root / "docs" / "unported.md")
     lists = {t: pd2_ids.read_list(pd2_ids.list_path(root / "merge", t)) for t in pd2_ids.TABLES}
     ren, ctx = pd2_ids.renames(lists), None
+    tables = root / "merge" / "tables.json"
+    opts = json.loads(tables.read_text("utf-8")) if tables.is_file() else {}
     results = []
     for p in sorted(p for p in pd2_excel.glob("*.txt") if SCOPES[scope](p.stem.lower())):
         src = next(((s, f / p.name) for s, f in (("merged", mod_excel), ("D2R", d2r / "global" / "excel"))
@@ -170,8 +179,9 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
             if p.stem in pd2_ids.PROPS and ctx is None:
                 ctx = pd2_ids.context_of(lists, root / "pd2-data/data")
             key = pd2_ids.KEY.get(p.stem)
+            rows = opts.get(p.stem, {}).get("rows", "name") if src[0] == "merged" else "name"
             res = compare(p.stem, Table(p, key), Table(src[1], key), ren, lists,
-                          ctx if p.stem in pd2_ids.PROPS else None)
+                          ctx if p.stem in pd2_ids.PROPS else None, rows)
             res.source = src[0]
             if src[0] == "merged" and f"{p.stem.lower()}.*" in patterns:
                 raise GateError(f"unported.md still covers all of {p.stem}, which is merged now: narrow its row")

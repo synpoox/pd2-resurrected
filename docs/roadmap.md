@@ -18,7 +18,7 @@ PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-di
 | P1 | Baseline and layer: extract PD2 into the hash-pinned baseline, add the `merge/` -> `generated/` modkit layer (ADR 0002), switch on extended saves (ADR 0003) | none | A | #35 (PR) |
 | P2 | Remapped ids: skill, stat, state and missile ids remapped through append-only id lists in `merge/` | P1 | A | #40 (PR) |
 | P3 | Item tables: items, affixes, runewords, cube, treasure classes; map items blocked from dropping | P2 | A | #62 (PR) |
-| P4 | Monster and area tables: monsters, levels and the remaining tables | P2 | D | #48 |
+| P4 | Monster and area tables: monsters, levels and the remaining tables | P2 | D | #64 (PR) |
 | P5 | Table-diff gate (`pd2_diff`) and `docs/unported.md`, seeded with the gaps found so far | P1 | D | #59 (PR) |
 | P6 | Strings: the strings build ("Decide how the mod ships PD2's strings", #29) | P1 | D | #38 (PR) |
 | W3 | Stand-ins and data rows (core-rules) | P1 | C | #46 |
@@ -33,7 +33,7 @@ M1 plus the companions, corruption and the Amazon and Barbarian engine rules; th
 | W2 | Client-half example (core-rules) | W1 | B | #45 |
 | W4 | Investigation: PlrModes (core-rules) | none | C | #36 (PR) |
 | W5, W6 | Amazon (core-rules) | W2, P2 | B | #52, #53 |
-| W7 | Nova and orb hits (core-rules) | W1, P2 | C | #50 |
+| W7 | Nova and orb hits (core-rules) | W1, P2 | C | #50, #66 (PR); game check waits on the owner's run |
 | W8, W9 | Barbarian (core-rules) | W2, P2 | B | #54, #55 |
 | W10 | Barbarian group (core-rules) | W1, P2 | C | #51 |
 | P7 | Companions: hash-checked manifest, release-script download, hand-written `filter.json`, Pyre's 16 `Filter*` sound rows and flacs merged into our data | none | C | #39 (PR) |
