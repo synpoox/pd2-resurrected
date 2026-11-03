@@ -46,3 +46,7 @@ A deviation where the port does not reproduce a PD2 rule at all.
 
 **Not yet**:
 A deviation the port intends to close but has not.
+
+**Companion plugin**:
+A third-party D2RLoader plugin bundled with the port that stands in for a PD2 feature; what it lacks is a deviation.
+_Avoid_: dependency, add-on, external mod
