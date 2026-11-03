@@ -176,7 +176,13 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Loot allocation | ProjectDiablo.dll `pGame->nItemAllocation`, `LootAllocationTitle` | c | none | ? | Function-equivalent | M | verify | multiplayer phase only | later release |
 | PvP modifiers, battle-royale checks | ProjectDiablo.dll `*PVPModifiers`, `BRLevelCheck`, `BRGearCheck` | e | none | none | Function-equivalent | S | cut | online feature |  |
 | Act 3 quest 5 patch | ProjectDiablo.dll `a3q5.cpp` | c | none | ? | Exact | S | verify | effect not identified (Q6) |  |
-| Skill palette, player modes, NPC patches | ProjectDiablo.dll `SkilPal.cpp`, `PlrModes.cpp`, `SUNITNPC.CPP` | c | none | ? | Exact | M | verify | effects not identified (Q6) | W4 (PlrModes) |
+| Skill palette, NPC patches | ProjectDiablo.dll `SkilPal.cpp`, `SUNITNPC.CPP` | c | none | ? | Exact | M | verify | effects not identified (Q6) |  |
+| Channel take-over: Inferno, Arctic Blast (srvdo 182) and Blade Fury (48) | ProjectDiablo.dll gate A, [plrmodes.md](research/plrmodes.md) | c | none | PlrModeChange | Exact | S | verify | another skill starts at once mid-channel; a second Blade Fury is refused |  |
+| Charge (srvdo 180) in the Charge/Whirlwind rule, also for skill-less requests | ProjectDiablo.dll gate A, [plrmodes.md](research/plrmodes.md) | c | none | PlrModeChange | Exact | S | verify | Whirlwind and Charge take a skill-less mode change as in PD2 |  |
+| Run and Concentration in the end-of-action window | ProjectDiablo.dll gates A and B, [plrmodes.md](research/plrmodes.md) | c | none | PlrModeChange | Exact | S | verify | run queued at the end of an attack; Concentration blocks get-hit, not the next attack |  |
+| Get-hit/block end window, cast/sequence delay from neutral or run | ProjectDiablo.dll gate B, [plrmodes.md](research/plrmodes.md) | c | none | PlrModeChange | Exact | S | verify | new mode taken in the last 2 frames of get-hit; cast 5 frames after the player-data stamp |  |
+| Level life regen cap (30, `bloodwarp` lifts it) | ProjectDiablo.dll `0x102fc000`, [plrmodes.md](research/plrmodes.md) | c | none | ? | Exact | S | verify | part of the map system (Q7) | map plan |
+| Player death handler and two more PlrModes hooks | ProjectDiablo.dll `0x1036fcd0`, `0x1036e950`, `0x10374020`, [plrmodes.md](research/plrmodes.md) | c | none | ? | Exact | ? | verify | not decoded yet |  |
 | Perfect shrine | ProjectDiablo.dll `PerfectShrine` | c | none | ? | Exact | S | verify | effect not identified (Q6) |  |
 | Stackable items / item quantity | ProjectDiablo.dll `HOTKEY_ItemQuantity`; cube rows note "stackable maps" | c | none | ? | Exact | M | verify | maps stack and split as in PD2 |  |
 | Skill aura event 32 (Revive), 3 (Chilling Armor), 16 (Smite) | skills `auraeventfunc` 32, `auraeventfunc2` 3, `auraeventfunc1` 16 | c | 32, 3 if D2R's are empty or equal; 16 -> ? (only D2R's RotW bank uses 16) | ? | Exact | S | verify | event fires on the aura owner |  |

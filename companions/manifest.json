@@ -1,0 +1,57 @@
+{
+  "_note": "Pinned companion plugins (issue #15). sha256 from each release's SHA256SUMS. files: zip path -> path in the installed mod folder. Bump one companion per PR, after the coexistence check.",
+  "companions": [
+    {
+      "name": "Pyre Loot Filter",
+      "repo": "Pyre-Flies/D2R-Mods",
+      "tag": "pyre-lootfilter-1.3.1+rev.3",
+      "asset": "Pyre-Loot-Filter-1.3.1+rev.3-PyreFly.zip",
+      "sha256": "da186c3b14f914657c503c24b895d3c4f4d4cb114fdb6e47321c620e5eec610d",
+      "files": {
+        "d2rloader/plugins/pyre-lootfilter.dll": "d2rloader/plugins/pyre-lootfilter.dll",
+        "Reimagined.mpq/data/hd/global/sfx/item/": "PD2Resurrected.mpq/data/hd/global/sfx/item/"
+      }
+    },
+    {
+      "name": "Pyre Stash Search",
+      "repo": "Pyre-Flies/D2R-Mods",
+      "tag": "release-2026.10.29.1",
+      "asset": "Pyre-Stash-Search-1.3.1+rev.1-PyreFly.zip",
+      "sha256": "a85e71058700df5514e0d6295c4832b1d49da2763ba2459be92e72e3609aa1fb",
+      "files": {
+        "d2rloader/plugins/pyre-stashsearch.dll": "d2rloader/plugins/pyre-stashsearch.dll"
+      }
+    },
+    {
+      "name": "Item Roll Ranges",
+      "repo": "Pyre-Flies/D2R-Mods",
+      "tag": "release-2026.10.29.1",
+      "asset": "Item-Roll-Ranges-1.3.1+rev.56-PyreFly.zip",
+      "sha256": "8a6bb4612d83fe6c0c7253f42809702ff4521a4bf5b01d47645e31ffb3ed59e1",
+      "files": {
+        "d2rloader/plugins/Item Roll Ranges.dll": "d2rloader/plugins/Item Roll Ranges.dll"
+      }
+    },
+    {
+      "name": "Buff HUD",
+      "repo": "Pyre-Flies/d2rl-buff-hud",
+      "tag": "v1.3.1+rev.3",
+      "asset": "Buff-HUD-1.3.1+rev.3.zip",
+      "sha256": "f6f65a0d257fb95e9feaf1f997503fb200332d40febe20aa347f9a9341f283ea",
+      "files": {
+        "d2rloader/plugins/d2rl-buffhud.dll": "d2rloader/plugins/d2rl-buffhud.dll",
+        "d2rloader/plugins/d2rl-buffhud.mpq": "d2rloader/plugins/d2rl-buffhud.mpq"
+      }
+    },
+    {
+      "name": "better-xp-bar",
+      "repo": "synpoox/d2r-tools",
+      "tag": "release-2026.11.01.1",
+      "asset": "better-xp-bar-1.0.1.zip",
+      "sha256": "e9b816ab917b800038ed833ef492358ba8855457e9c66c0a7be3f8edb85d6049",
+      "files": {
+        "better-xp-bar.dll": "d2rloader/plugins/better-xp-bar.dll"
+      }
+    }
+  ]
+}

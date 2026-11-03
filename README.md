@@ -25,13 +25,33 @@ python tools/pd2_merge.py
 ```
 
 ```bash
+python tools/companions.py fetch
+```
+
+```bash
 python -m modkit build .
 ```
 
-Run the last one with `..\d2rAI-toolkit` on `PYTHONPATH`. Tool tests (no PD2 data needed):
+```bash
+python tools/companions.py install --game DIR
+```
+
+Run the last two with `..\d2rAI-toolkit` on `PYTHONPATH`. `companions.py fetch` downloads the pinned companion
+plugins in `companions/manifest.json` (checked by SHA-256, never committed) and must run after `pd2_merge.py`, which
+wipes `generated/`. `install` is `modkit install` plus the companions, our `companions/filter.json`, and the vanilla
+item tables the loot filter needs when the build doesn't ship them. The merge and the tool tests find modkit in
+`..\d2rAI-toolkit` (or on `PYTHONPATH`). Tool tests (no PD2 data needed):
 
 ```bash
 python -m unittest discover -s tools/tests
+```
+
+The table-diff gate compares the merged tables with PD2's, scoped to a work item (P2, P3, P4) or milestone (M1,
+alpha). It fails on any difference that [docs/unported.md](docs/unported.md) does not list; paste its output into
+the PR:
+
+```bash
+python tools/pd2_diff.py --scope P2
 ```
 
 ## Plugins
