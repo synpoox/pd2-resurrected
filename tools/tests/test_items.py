@@ -37,9 +37,10 @@ class KeyedTests(unittest.TestCase):
     def test_cube_pd2_recipes_then_d2r_only_ones(self):
         d2r = table('description|input 1|input 2|output|firstLadderSeason\n'
                     'old|"rin,qty=3"||amu|\nwarlock|wt1|wt2|wt3|1\n')
-        pd2 = table('description|input 1|input 2|output|ladder\n3 rings|"rin,qty=3"||amu|1\nnew|amu|amu|rin|\n')
+        pd2 = table('description|input 1|input 2|output|ladder\n3 rings|"rin,qty=3"||amu|1\n"new, odd"|amu|amu|rin|\n')
         self.assertEqual(M.merge_cube(pd2, d2r, NO_CTX).rows, [
-            ["3 rings", "rin,qty=3", "", "amu", ""], ["new", "amu", "amu", "rin", ""], ["warlock", "wt1", "wt2", "wt3", "1"]])
+            ["3 rings", "rin,qty=3", "", "amu", ""], ["new, odd", "amu", "amu", "rin", ""],
+            ["warlock", "wt1", "wt2", "wt3", "1"]])
 
     def test_cube_mod_skill_params(self):
         ren = I.renames({t: [] for t in I.TABLES})

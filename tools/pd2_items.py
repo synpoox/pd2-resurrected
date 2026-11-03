@@ -57,7 +57,7 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
     d2r_only = [r for r in d2r.rows if signature(d2r, r) not in pd2_sigs]
     empty = I.Table.__new__(I.Table)
     empty.header, empty.rows, empty.newline, empty.key = d2r.header, [], d2r.newline, 0
-    lines = [(p, k, I.base(p)) for k, p in enumerate(I.ident(pd2.names()))]
+    lines = [(p, k, I.base(p).replace('"', "")) for k, p in enumerate(I.ident(pd2.names()))]
     merged, dropped = I.merge_table("cubemain", pd2, empty, lines, ctx.ren, ctx.ids, ctx.props)
     merged.rows += [list(r) for r in d2r_only]
     merged.dropped = dropped
