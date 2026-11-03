@@ -71,6 +71,11 @@ class KeyedTests(unittest.TestCase):
         self.assertEqual(rows[0][5:], ["corrupt", "100", "100", "100", "corruptnum", "100", "3001", "3001"])
         self.assertEqual(rows[2][5:], ["corrupt", "100", "100", "100", "corruptnum", "100", "3001", "3001"])
         self.assertEqual(rows[1][5], "sock")
+        # the mark does not depend on which outcome rows are merged (no map rows here), and must stay above every threshold
+        rows = M.merge_cube(table(head + "16|361|500|weap|usetype,rar||||||||\n"), table(head), ctx).rows
+        self.assertEqual(rows[0][5:], ["corrupt", "100", "100", "100", "corruptnum", "100", "3001", "3001"])
+        with self.assertRaisesRegex(I.IdError, "3001"):
+            M.merge_cube(table(head + "16|361|3001|t1me|useitem||||||||\n"), table(head), ctx)
 
 
 class NoDropTests(unittest.TestCase):

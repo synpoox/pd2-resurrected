@@ -24,6 +24,7 @@ ITEM_TABLES = ["weapons", "armor", "misc"]
 # named, never numbered, and a row must come after the rows it names: PD2's rows in PD2's order, then D2R-only ones
 PD2_ORDER = {"treasureclassex"}
 CORRUPTED_NEW = "100"  # `corrupt` value no PD2 outcome uses (1-92); the tooltip shows only "Corrupted" (descval 0)
+CORRUPTOR_DONE = 3001  # PD2's own finished-map corruptor: above every outcome threshold (items 1000, maps 3000)
 _SIGNATURE = [*(f"input {k}" for k in range(1, 8)), "output", "output b", "output c"]
 
 
@@ -67,12 +68,14 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
 
 
 def mark_new_corrupted(cube: I.Table, corruptor: str | None) -> None:
-    """A corruption outcome that makes a new item ("destroyed -> rare") gets the corrupted mark (CORRUPTED_NEW) and a
-    corruptor above every outcome's threshold, so no corruption outcome or roll row matches it again. PD2's cube code marks it (its
-    rows have no mods for it); D2R only applies a row's mods."""
+    """A corruption outcome that makes a new item ("destroyed -> rare") gets the corrupted mark (CORRUPTED_NEW) and
+    corruptor CORRUPTOR_DONE, above every outcome's threshold, so no corruption outcome or roll row matches it again.
+    PD2's cube code marks it (its rows have no mods for it); D2R only applies a row's mods."""
     h = {c: j for j, c in enumerate(cube.header)}
     outcomes = [r for r in cube.rows if corruptor and r[h["op"]] == "16" and r[h["param"]] == corruptor]
-    final = str(max((int(r[h["value"]]) for r in outcomes), default=0) + 1)
+    if any(int(r[h["value"]]) >= CORRUPTOR_DONE for r in outcomes):
+        raise I.IdError(f"cubemain: a corruption outcome's threshold reaches the finished corruptor {CORRUPTOR_DONE}")
+    final = str(CORRUPTOR_DONE)
     for r in outcomes:
         mods = [r[h[f"mod {k}"]] for k in range(1, 6) if f"mod {k}" in h]
         if r[h["output"]] == "useitem" or "corruptnum" in mods:  # changes the item, or marks the new one itself
