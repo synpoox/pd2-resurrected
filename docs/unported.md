@@ -100,7 +100,7 @@ rows have no table hook: D2R does what it does.
 | Player death handler and two more PlrModes hooks | Not yet | D2R's own behaviour | after the alpha |
 | Perfect shrine | Not yet | D2R's own behaviour | after the alpha |
 | Stackable items / item quantity | Not yet | D2R's own behaviour | after the alpha |
-| Skill aura event 32 (Revive), 3 (Chilling Armor), 16 (Smite) | Not yet | D2R's own behaviour | after the alpha |
+| Skill aura event 32 (Revive), 3 (Chilling Armor), 16 (Smite) | Not yet | Smite: D2R's own row (`merge/standins.tsv`); Revive, Chilling Armor: D2R's function at the same number | after the alpha |
 | State remove function 12 (`skilldelay`) | Not yet | D2R's own behaviour | after the alpha |
 
 ## Data rows
@@ -108,11 +108,12 @@ rows have no table hook: D2R does what it does.
 Hook-list rows that need no plugin. Checked in W3 (93847, PD2 baseline in `pd2-data/baseline.json`):
 
 - **Exact by `merge/standins.tsv`**: Monster frenzy (srvdo 109 -> 9, srvst 64 -> 67, by `=`),
-  Baal Corpse Explode client start (cltst 82 blanked, past D2R's table end) and the `*12` server hit (blanked: PD2 reads
-  `*12` as no hit function, and a blank means the same without relying on D2R's parse). These are not deviations.
+  Baal Corpse Explode client start (cltst 82 -> D2R's own blank, past D2R's table end) and the `*12` server hit (D2R's
+  own blank or `-`: PD2 reads `*12` as no hit function, and a blank means the same without relying on D2R's parse). These are not deviations.
 - **Equal numbers**: WispBossNova (srvdo 41, cltdo 15) and Royal Fire (143, 83) keep D2R's functions at the same
   numbers. The vanilla functions reassigned to other skills keep their numbers; the merge guard passes them.
-- **Tables merged in P3**, checked against D2R's rows by key:
+- **Tables merged in P3**, checked against D2R's rows by key. Until P3 the mod ships D2R's rows, so these are not
+  deviations yet; P3 adds a row for any it keeps:
   - misc `pSpell` 1-9: 21 rows equal D2R's, 1 PD2-only row uses a value D2R uses. Herb (`hrb`) differs: PD2 9, D2R 10.
   - properties `func` 3, 8, 22, 24: 35 equal, 63 PD2-only properties use D2R's functions. `fireskill` adds `func2` 3.
   - cubemain `op` 28: PD2's 8 rows set `param` blank, 1 or 2; D2R's 6 rows leave it blank. Same function.

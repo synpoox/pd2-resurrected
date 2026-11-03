@@ -79,6 +79,9 @@ class RuleTests(unittest.TestCase):
             rule.write_text("skills\tLeap\t=\n", "utf-8")
             with self.assertRaisesRegex(S.StandinError, "line 1: want"):
                 S.apply(rule, tmp / "pd2", tmp / "d2r", tmp / "out")
+            rule.write_text("skils\tLeap\t=\tsrvdofunc\tLeap\n", "utf-8")
+            with self.assertRaisesRegex(S.StandinError, "no stand-ins for table skils"):
+                S.apply(rule, tmp / "pd2", tmp / "d2r", tmp / "out")
 
 
 class RepoFileTests(unittest.TestCase):

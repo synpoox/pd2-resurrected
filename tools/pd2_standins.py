@@ -23,6 +23,7 @@ def _nums(*spans: int | range) -> set[str]:
 # are not here: cubemain rows have no unique name, so the item tables' merge (P3) keeps those recipes off.
 PD2_ONLY = {
     "skills": {
+        "auraeventfunc1": _nums(16),  # D2R puts a RotW event at 16; PD2's is Smite's
         "srvdofunc": _nums(109, range(153, 171), range(173, 183), range(184, 187), 188),
         "cltdofunc": _nums(22, 97, 98, range(100, 106), range(109, 115), range(117, 120)),
         "srvstfunc": _nums(64, range(66, 80)),
@@ -34,7 +35,7 @@ PD2_ONLY = {
         "pSrvDoFunc": _nums(38, 40),
         "pCltDoFunc": _nums(12, range(69, 71), 72),
         "pSrvHitFunc": _nums(34, range(60, 66)) | {"*12"},
-        "pCltHitFunc": _nums(6, 11, 65, 66, 67) | {"*16"},
+        "pCltHitFunc": _nums(6, 11, 65, 66, 67) | {"*16"},  # *12/*16: PD2 text that parses as no function
         "pSrvDmgFunc": _nums(range(15, 20)),
     },
     "misc": {"pSpell": _nums(12, 13)},
@@ -59,6 +60,7 @@ def apply_lines(table: str, mod: Table, d2r: Table, lines: list[tuple[str, str, 
         if n > 1:
             raise StandinError(f"{table}: '{name}' names {n} rows")
         if src == "=":
+            # shortcut: matches D2R's row by position, true for the id-merged tables; recheck when P3 merges misc/properties
             i = mod.rows.index(row)
             if i >= len(d2r.rows) or d2r.rows[i][0].lower() != name.lower():
                 raise StandinError(f"{table}: '{name}' is not a D2R row, so '=' has nothing to copy: name a D2R row")
@@ -81,6 +83,8 @@ def check(table: str, mod: Table, d2r: Table) -> None:
     for c, bad in PD2_ONLY.get(table, {}).items():
         if c not in mod.header:
             continue
+        if c not in d2r.header:
+            raise StandinError(f"{table}: no column '{c}' in D2R's table")
         j, k = mod.header.index(c), d2r.header.index(c)
         for i, r in enumerate(mod.rows):
             if r[j] in bad and not (i < len(d2r.rows) and d2r.rows[i][k] == r[j]):
@@ -105,6 +109,8 @@ def read_lines(path: Path) -> dict[str, list[tuple[str, str, list[str], str]]]:
 def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/standins.tsv: edit the tables the id rules wrote, then check them."""
     lines = read_lines(rule)
+    if unknown := sorted(set(lines) - set(PD2_ONLY)):
+        raise StandinError(f"no stand-ins for table {', '.join(unknown)}: add it to PD2_ONLY")
     for t in sorted(set(lines) | set(PD2_ONLY)):
         path = out_data / "global" / "excel" / f"{t}.txt"
         if not path.is_file():  # D2R's own table is built, so no PD2 row needs a stand-in yet

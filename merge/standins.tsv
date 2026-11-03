@@ -91,10 +91,10 @@ skills	RathmaPacman	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	UberTalicBash	Bash	srvdofunc	Bash
 skills	UberMadawcDoubleThrow	Double Throw	srvdofunc,cltdofunc	Double Throw
 skills	LeoricSummonNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
-skills	Holy Fire Fire Golem	Might	cltdofunc,cltstfunc	Paladin aura client do; Paladin aura client start
-skills	Holy Freeze Korlic	Might	cltdofunc,cltstfunc	Paladin aura client do; Paladin aura client start
+skills	Holy Fire Fire Golem	Holy Fire	cltdofunc,cltstfunc	Paladin aura client do; Paladin aura client start
+skills	Holy Freeze Korlic	Holy Freeze	cltdofunc,cltstfunc	Paladin aura client do; Paladin aura client start
 skills	Leap Attack Korlic	Leap Attack	srvdofunc,cltdofunc	Leap, Leap Attack
-skills	Holy Fire Sanctuaryboss	Might	cltdofunc,cltstfunc	Paladin aura client do; Paladin aura client start
+skills	Holy Fire Sanctuaryboss	Holy Fire	cltdofunc,cltstfunc	Paladin aura client do; Paladin aura client start
 skills	UberDiabRun	DiabRun	srvstfunc	UberDiabSummon, UberDiabRun
 skills	ZharMiniBossCombustion	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	Energy Shield SelfAura	Might	cltdofunc,cltstfunc	Paladin aura client do; Paladin aura client start
@@ -231,3 +231,4 @@ misc	Poisoned Well Map	-	pSpell	Map items
 misc	Descend Map	-	pSpell	Map items
 properties	sorc-skill-rand-ctc	-	func1	Random sorceress skill on striking
 states	skilldelay	=	remfunc	State remove function 12
+skills	Smite	=	auraeventfunc1	Skill aura event
