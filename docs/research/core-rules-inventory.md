@@ -168,8 +168,12 @@ melee splash (223 rows), the Assassin finishers (7 skills), hit 62 and 12 (many 
   so it probably checks a single, unstacked input. Op 31 rows have no output; the op probably rerolls the input in place. Both need
   the PD2 baseline.
 - **Q9. Corrupted zones vs D2R's desecrated zones.** D2R's `pSpell` 15 and desecrated-zone config may carry most of it as data.
-- **Q10. Corruption flow.** One cube press both rolls `corruptor` and applies an outcome recipe; whether PD2's cube code re-runs the
-  recipe search after the first output is not known.
+- **Q10. Corruption flow.** Answered by P9 from the rows and D2R's recipe search (`0x529090` takes the first matching
+  row; the executor `0x5269c0` runs it once): each item group has a roll row (op 18, `corruptor` = 0: `corruptnum`
+  1-1000, the shard handed back as `output b`) ahead of its outcome rows (op 16, thresholds rising to 1000, `corruptnum`
+  1001). So D2R gives PD2's outcomes and odds in two presses. PD2's `ladder` column tags the rows (2 roll, 1 outcome,
+  3 destroyed, 4 map), which points at its cube code re-running the search after a roll row and marking the new item
+  a "destroyed" outcome makes (those rows carry no mods). P9 marks those items in the merge; one press is a later hook.
 
 ## 5. Second review: values the first pass read as vanilla or skipped
 

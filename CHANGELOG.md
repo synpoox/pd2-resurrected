@@ -5,6 +5,9 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Corruption: cube an item with a Worldstone Shard. It takes two presses for now: the first rolls the hidden
+  corruption value and hands the shard back, the second gives one of PD2's outcomes. A corrupted item can't be
+  corrupted again.
 - PD2's items, affixes, runewords, cube recipes and treasure classes are in. Map items do not drop yet. Breaks
   characters from earlier builds.
 - Project Diablo II's names and descriptions for items, skills, monsters and areas (English).

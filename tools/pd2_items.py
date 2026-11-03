@@ -23,6 +23,7 @@ import pd2_ids as I
 ITEM_TABLES = ["weapons", "armor", "misc"]
 # named, never numbered, and a row must come after the rows it names: PD2's rows in PD2's order, then D2R-only ones
 PD2_ORDER = {"treasureclassex"}
+CORRUPTED_NEW = "100"  # `corrupt` value no PD2 outcome uses (1-92); the tooltip shows only "Corrupted" (descval 0)
 _SIGNATURE = [*(f"input {k}" for k in range(1, 8)), "output", "output b", "output c"]
 
 
@@ -59,9 +60,26 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
     empty.header, empty.rows, empty.newline, empty.key = d2r.header, [], d2r.newline, 0
     lines = [(p, k, I.base(p).replace('"', "")) for k, p in enumerate(I.ident(pd2.names()))]
     merged, dropped = I.merge_table("cubemain", pd2, empty, lines, ctx.ren, ctx.ids, ctx.props)
+    mark_new_corrupted(merged, next((str(i) for p, i, _ in ctx.lists.get("itemstatcost", []) if p == "corruptor"), None))
     merged.rows += [list(r) for r in d2r_only]
     merged.dropped = dropped
     return merged
+
+
+def mark_new_corrupted(cube: I.Table, corruptor: str | None) -> None:
+    """A corruption outcome that makes a new item ("destroyed -> rare") gets the corrupted mark (CORRUPTED_NEW) and a
+    corruptor above every outcome's threshold, so no corruption outcome or roll row matches it again. PD2's cube code marks it (its
+    rows have no mods for it); D2R only applies a row's mods."""
+    h = {c: j for j, c in enumerate(cube.header)}
+    outcomes = [r for r in cube.rows if corruptor and r[h["op"]] == "16" and r[h["param"]] == corruptor]
+    final = str(max((int(r[h["value"]]) for r in outcomes), default=0) + 1)
+    for r in outcomes:
+        mods = [r[h[f"mod {k}"]] for k in range(1, 6) if f"mod {k}" in h]
+        if r[h["output"]] == "useitem" or "corruptnum" in mods:  # changes the item, or marks the new one itself
+            continue
+        free = [k for k, m in enumerate(mods, 1) if not m]
+        for k, (mod, v) in zip(free[:2], (("corrupt", CORRUPTED_NEW), ("corruptnum", final))):
+            r[h[f"mod {k}"]], r[h[f"mod {k} chance"]], r[h[f"mod {k} min"]], r[h[f"mod {k} max"]] = mod, "100", v, v
 
 
 def block_drops(tc: I.Table, items: dict[str, I.Table], itemtypes: I.Table, no_drop: set[str]) -> set[str]:

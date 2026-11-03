@@ -157,7 +157,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 
 | Rule | PD2 source | Bucket | D2R slot | RVAs | Tier | Size | Status | Test | Work item |
 |---|---|---|---|---|---|---|---|---|---|
-| Item stat less than / equal (corruption outcomes, map recipes; 1,126 enabled rows) | cubemain `op` 16, 18 | a | 16, 18 | none | Exact | S | verify | recipes match D2R's data-guide meaning; `param` stat ids (361 `corruptor`, 276, 185, 458) must be remapped | P9, map plan |
+| Item stat less than / equal (corruption outcomes, map recipes; 1,126 enabled rows) | cubemain `op` 16, 18 | a | 16, 18 | none | Exact | S | data | recipes match D2R's data-guide meaning; the merge remaps the `param` stat id of ops 3-26 (361 `corruptor` -> 414, 185, 276, 458) | P9, map plan |
 | Quest item difficulty check | cubemain `op` 28 | a | 28 | none | Exact | S | data | same as D2R's own op 28 rows | W3 |
 | Map recipes (heroic, corrupt, fortify, ears, map events; 26 rows) | cubemain `op` 30 | c | 30 | CubeRecipeSearch, CubeInputMatch | Exact | M | verify | meaning guessed (Q8); recipe accepts only what PD2 accepts | map plan |
 | Demonic cube reroll of unique and set items (16 rows) | cubemain `op` 31 | c | 31 | CubeRecipeSearch, CubeInputMatch, CubeExecutor | Exact | M | open | reroll logs new stats inside the item's ranges |  |
@@ -172,7 +172,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Teleport blocked areas | ProjectDiablo.dll `TeleportBlocked` | a | levels.txt `Teleport` | none | Exact | S | verify | teleport refused in the same areas as PD2 |  |
 | Corrupted zones (D2R's Terror Zones) | ProjectDiablo.dll `pGame->nCorruptedZone`, `CorruptedZoneNotify` | a | D2R Terror Zones, as they are | none | Function-equivalent | S | verify | zone rotation and bonuses compared with PD2; each difference is a deviation on the unported list |  |
 | Map events and invaders (AiThink4, `MapEventNotify*`, Invader monsters) | ProjectDiablo.dll | c | none | ? | Exact | L | verify | part of the map system (Q7) | map plan |
-| Corruption | stat 361 `corruptor`, prop `corruptnum`, op 16 recipes | c | none | CubeExecutor | Exact | M | verify | one cube press gives a PD2 outcome (Q10) | P9 |
+| Corruption in one press (Q10: PD2 re-runs the recipe search after a roll row and marks a destroyed item; the alpha takes two presses and the merge marks it) | stat 361 `corruptor`, prop `corruptnum`, op 16 recipes, cubemain `ladder` | c | none | CubeExecutor | Exact | M | open | one cube press gives a PD2 outcome and the corrupted mark |  |
 | Loot allocation | ProjectDiablo.dll `pGame->nItemAllocation`, `LootAllocationTitle` | c | none | ? | Function-equivalent | M | verify | multiplayer phase only | later release |
 | PvP modifiers, battle-royale checks | ProjectDiablo.dll `*PVPModifiers`, `BRLevelCheck`, `BRGearCheck` | e | none | none | Function-equivalent | S | cut | online feature |  |
 | Act 3 quest 5 patch | ProjectDiablo.dll `a3q5.cpp` | c | none | ? | Exact | S | verify | effect not identified (Q6) |  |
