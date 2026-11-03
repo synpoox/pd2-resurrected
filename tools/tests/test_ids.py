@@ -83,6 +83,20 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows, [["A", "0-min(lvl,5)", "1", "0"], ["B", "max(1, 2)", "0", "1"]])
 
+    def test_stat_display_follows_the_string(self):
+        # D2R's strings carry the value's format code, so a row with D2R's strings keeps D2R's descfunc/descval (#67)
+        d2r = table("Stat|descpriority|descfunc|descval|descstrpos|descstrneg\n"
+                    "strength|67|19||ModStr1b|ModStr1b\ntohit|5|19||ModStr1h|ModStr1h\n")
+        pd2 = table("Stat|descpriority|descfunc|descval|descstrpos|descstrneg\nstrength|68|1|1|ModStr1b|ModStr1b\n"
+                    "tohit|5|1|1|PD2Str|PD2Str\nimmune_stat|88|4|1|ModStr1b|ModStr1b\nnew_stat|1|1|1|PD2Str|PD2Str\n")
+        lines = [("strength", 0, "strength"), ("tohit", 1, "tohit"), ("immune_stat", 2, "immune_stat"),
+                 ("new_stat", 3, "new_stat")]
+        merged, _ = I.merge_table("itemstatcost", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["strength", "68", "19", "", "ModStr1b", "ModStr1b"],
+                                       ["tohit", "5", "1", "1", "PD2Str", "PD2Str"],
+                                       ["immune_stat", "88", "19", "", "ModStr1b", "ModStr1b"],
+                                       ["new_stat", "1", "1", "1", "PD2Str", "PD2Str"]])
+
     def test_name_length(self):
         with self.assertRaisesRegex(I.IdError, "31 bytes"):
             I.check("missiles", [("x" * 32, 0, "x" * 32)], ["x" * 32], [])

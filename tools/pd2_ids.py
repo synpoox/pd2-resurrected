@@ -101,6 +101,13 @@ FORMULAS = {
 DERIVED = {"skills": {"rightskill": lambda pd2: "0" if pd2.get("passive") == "1" else "1"},
            "setitems": {"spawnable": lambda pd2: "1"},
            "itemtypes": {"MaxSocketsLevelThreshold1": lambda pd2: "25", "MaxSocketsLevelThreshold2": lambda pd2: "40"}}
+# itemstatcost display (#67): D2R's stat strings carry the value's format code ("%+d to Strength"), where PD2's descfunc
+# and descval print the value before vanilla's "to Strength". A D2R row whose descstrpos and descstrneg are still D2R's
+# keeps D2R's descfunc and descval (string overrides keep D2R's placeholders, pd2_strings). The PD2-only rows here point
+# at D2R strings too and take descfunc 19 with a blank descval (fill the string), as D2R's own rows for those strings do.
+D2R_DISPLAY = {"itemstatcost": (("descstrpos", "descstrneg"), ("descfunc", "descval"))}
+FILL_STRING = {"itemstatcost": {"immune_stat", "mon_cooldown1", "mon_cooldown2", "mon_cooldown3",
+                                "item_mindamage_energy"}}
 KEY_LIMIT = {"missiles": 31}  # bytes, from D2R's data guide; the other three allow 47
 NEGATIVE = re.compile(r"(?<![\w)\]'.])-(\d+)")  # modkit tsv.NEGATIVE: D2R rejects 'x*-5'
 FORMULA_REF = re.compile(r"\b(skill|miss|stat)\('([^']*)'")
@@ -291,6 +298,8 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
     id_col = next((j for j, c in enumerate(d2r.header) if c.lower() == "*id"), None)
     out = [list(r) for r in d2r.rows]
     recs = d2r.records()
+    match, display = ([[d2r.header.index(c) for c in cs] for cs in D2R_DISPLAY[table]] if table in D2R_DISPLAY
+                      else ([], []))
     for p, i, n in sorted(lines, key=lambda line: line[1]):
         row = out[recs[i]] if i < len(recs) else [""] * len(d2r.header)
         if i >= len(recs):
@@ -300,6 +309,11 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
             if k is None:
                 continue
             row[j] = spell(table, d2r.header[j], pr[k], ren)
+        if i < len(recs) and match and all(row[j] == d2r.rows[recs[i]][j] for j in match):
+            for j in display:
+                row[j] = d2r.rows[recs[i]][j]
+        if p in FILL_STRING.get(table, ()):
+            row[display[0]], row[display[1]] = "19", ""
         for j, fn in derived.items():
             row[j] = fn(dict(zip(pd2.header, pr)))
         if props is not None:
