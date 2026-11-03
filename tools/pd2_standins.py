@@ -1,0 +1,117 @@
+"""Stand-ins: unbuilt engine rules point at the closest D2R function (W3, core-rules).
+
+merge/standins.tsv has one line per row: `table <tab> row <tab> from <tab> columns <tab> rule`. It sets the listed
+function columns of a merged row (its mod name) from `from`: `=` is D2R's own row at that id, a name is that D2R row,
+`-` blanks them. `rule` names the core-rules row it stands in for; each is a "not yet" row on docs/unported.md. Delete
+a row's line when its rule is built.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+
+from pd2_ids import Table
+
+
+def _nums(*spans: int | range) -> set[str]:
+    return {str(n) for s in spans for n in (s if isinstance(s, range) else [s])}
+
+
+# Function numbers PD2 rows must not keep: D2R's slot is empty, past the table's end, or holds a different function
+# (core-rules hook list; table sizes from docs/research/skill-function-tables.md). Not listed: numbers equal to D2R's
+# (srvdo 41/143, cltdo 15/83), built rules (srvdo 189, W1), `verify` slots that hold D2R's same-numbered function, which
+# is the stand-in (shit 5, 6, 30; chit 4, 12, 26), and temp1's sdo 39 / cdo 71 (no row reaches it). Cube ops 30/31
+# are not here: cubemain rows have no unique name, so the item tables' merge (P3) keeps those recipes off.
+PD2_ONLY = {
+    "skills": {
+        "srvdofunc": _nums(109, range(153, 171), range(173, 183), range(184, 187), 188),
+        "cltdofunc": _nums(22, 97, 98, range(100, 106), range(109, 115), range(117, 120)),
+        "srvstfunc": _nums(64, range(66, 80)),
+        "cltstfunc": _nums(range(54, 59), 82),
+        **{f"srvprgfunc{i}": _nums(171, 172) for i in (1, 2, 3)},
+        **{f"cltprgfunc{i}": _nums(106, 107) for i in (1, 2, 3)},
+    },
+    "missiles": {
+        "pSrvDoFunc": _nums(38, 40),
+        "pCltDoFunc": _nums(12, range(69, 71), 72),
+        "pSrvHitFunc": _nums(34, range(60, 66)) | {"*12"},
+        "pCltHitFunc": _nums(6, 11, 65, 66, 67) | {"*16"},
+        "pSrvDmgFunc": _nums(range(15, 20)),
+    },
+    "misc": {"pSpell": _nums(12, 13)},
+    "properties": {f"func{i}": _nums(25) for i in range(1, 8)},
+    "states": {"remfunc": _nums(12)},
+}
+
+
+class StandinError(ValueError):
+    pass
+
+
+def apply_lines(table: str, mod: Table, d2r: Table, lines: list[tuple[str, str, list[str], str]]) -> None:
+    """Set each line's columns in the merged table `mod`."""
+    rows = {r[0].lower(): r for r in mod.rows}
+    d2r_rows = {r[0].lower(): r for r in d2r.rows}
+    for name, src, cols, _rule in lines:
+        row = rows.get(name.lower())
+        if row is None:
+            raise StandinError(f"{table}: no row '{name}' in the merged table")
+        n = sum(r[0].lower() == name.lower() for r in mod.rows)
+        if n > 1:
+            raise StandinError(f"{table}: '{name}' names {n} rows")
+        if src == "=":
+            i = mod.rows.index(row)
+            if i >= len(d2r.rows) or d2r.rows[i][0].lower() != name.lower():
+                raise StandinError(f"{table}: '{name}' is not a D2R row, so '=' has nothing to copy: name a D2R row")
+            from_row = d2r.rows[i]
+        elif src == "-":
+            from_row = None
+        elif src.lower() in d2r_rows:
+            from_row = d2r_rows[src.lower()]
+        else:
+            raise StandinError(f"{table}: no D2R row '{src}'")
+        for c in cols:
+            if c not in mod.header or c not in d2r.header:
+                raise StandinError(f"{table}: no column '{c}'")
+            row[mod.header.index(c)] = from_row[d2r.header.index(c)] if from_row else ""
+
+
+def check(table: str, mod: Table, d2r: Table) -> None:
+    """No PD2 row keeps a PD2_ONLY number. A D2R row with its own value is not PD2's (the Warlock's 155 Death Mark)."""
+    left = []
+    for c, bad in PD2_ONLY.get(table, {}).items():
+        if c not in mod.header:
+            continue
+        j, k = mod.header.index(c), d2r.header.index(c)
+        for i, r in enumerate(mod.rows):
+            if r[j] in bad and not (i < len(d2r.rows) and d2r.rows[i][k] == r[j]):
+                left.append(f"{r[0]} {c} {r[j]}")
+    if left:
+        raise StandinError(f"{table}: {', '.join(left)}: no stand-in; add a merge/standins.tsv line")
+
+
+def read_lines(path: Path) -> dict[str, list[tuple[str, str, list[str], str]]]:
+    """table -> lines of merge/standins.tsv."""
+    out: dict[str, list[tuple[str, str, list[str], str]]] = {}
+    for n, line in enumerate(path.read_text("utf-8").splitlines(), 1):
+        if line and not line.startswith("#"):
+            parts = line.split("\t")
+            if len(parts) != 5 or not all(parts):
+                raise StandinError(f"line {n}: want 'table<tab>row<tab>from<tab>columns<tab>rule'")
+            t, row, src, cols, rule = parts
+            out.setdefault(t, []).append((row, src, [c.strip() for c in cols.split(",")], rule))
+    return out
+
+
+def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
+    """pd2_merge rule kind for merge/standins.tsv: edit the tables the id rules wrote, then check them."""
+    lines = read_lines(rule)
+    for t in sorted(set(lines) | set(PD2_ONLY)):
+        path = out_data / "global" / "excel" / f"{t}.txt"
+        if not path.is_file():  # D2R's own table is built, so no PD2 row needs a stand-in yet
+            if t in lines:
+                print(f"  standins: {t}.txt is not merged yet; its {len(lines[t])} lines wait for the rule that merges it")
+            continue
+        mod, d2r = Table(path), Table(d2r_data / "global" / "excel" / f"{t}.txt")
+        apply_lines(t, mod, d2r, lines.get(t, []))
+        check(t, mod, d2r)
+        path.write_bytes(mod.text().encode("latin-1"))

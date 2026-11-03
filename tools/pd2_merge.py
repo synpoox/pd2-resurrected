@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Callable
 
 import pd2_ids
+import pd2_standins
 import pd2_strings
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -27,6 +28,7 @@ D2R_DATA = Path(os.environ.get("MODKIT_CACHE", ROOT.parent / "d2rAI-toolkit" / "
 # merge/ file name -> fn(rule file, PD2 data root, D2R data root, generated/data). Added by the work items that need them.
 RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
     **{f"ids-{t}.tsv": pd2_ids.apply for t in pd2_ids.TABLES},
+    "standins.tsv": pd2_standins.apply,  # after the id rules (merge runs rule files by name)
     "strings.json": pd2_strings.rule,
 }
 
