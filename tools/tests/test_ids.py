@@ -83,6 +83,30 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows, [["A", "0-min(lvl,5)", "1", "0"], ["B", "max(1, 2)", "0", "1"]])
 
+    def test_stat_display_follows_the_string(self):
+        d2r = table("Stat|descpriority|descfunc|descval|descstrpos|descstrneg\nstrength|67|19||ModStr1a|ModStr1a\n"
+                    "str_bytime|1|17||ModStr1a|ModStr1a\ntohit|5|19||ModStr1h|ModStr1h\ndex|6|19||ModStr1b|ModStr1b\n")
+        pd2 = table("Stat|descpriority|descfunc|descval|descstrpos|descstrneg\nstrength|68|1|1|ModStr1a|ModStr1a\n"
+                    "str_bytime|1|17|1|ModStr1a|ModStr1a\ntohit|5|1|1|PD2Str|PD2Str\ndex|6|1|1|ModStr1a|ModStr1a\n"
+                    "new_stat|88|4|1|ModStr1a|ModStr1a\nnew_bytime|2|17|1|ModStr1a|ModStr1a\nnew_pd2|1|1|1|PD2Str|\n")
+        names = ["strength", "str_bytime", "tohit", "dex", "new_stat", "new_bytime", "new_pd2"]
+        lines = [(s, i, s) for i, s in enumerate(names)]
+        merged, _ = I.merge_table("itemstatcost", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["strength", "68", "19", "", "ModStr1a", "ModStr1a"],
+                                       ["str_bytime", "1", "17", "", "ModStr1a", "ModStr1a"],
+                                       ["tohit", "5", "1", "1", "PD2Str", "PD2Str"],
+                                       ["dex", "6", "19", "", "ModStr1a", "ModStr1a"],  # moved to another D2R string
+                                       ["new_stat", "88", "19", "", "ModStr1a", "ModStr1a"],
+                                       ["new_bytime", "2", "17", "", "ModStr1a", "ModStr1a"],
+                                       ["new_pd2", "1", "1", "1", "PD2Str", ""]])
+
+    def test_function_numbers_moved_off_d2r_slots(self):
+        d2r = table("Missile|pCltDoFunc|pSrvDoFunc\nflamewave|71|38\n")
+        pd2 = table("Missile|pCltDoFunc|pSrvDoFunc\nback|70|38\nbolt|1|1\n")
+        lines = [("back", 1, "back"), ("bolt", 2, "bolt")]
+        merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["flamewave", "71", "38"], ["back", "78", "46"], ["bolt", "1", "1"]])
+
     def test_name_length(self):
         with self.assertRaisesRegex(I.IdError, "31 bytes"):
             I.check("missiles", [("x" * 32, 0, "x" * 32)], ["x" * 32], [])

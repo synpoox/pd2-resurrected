@@ -16,8 +16,10 @@ Seeding a new PD2 row picks, in order:
 
 Merging a row: D2R's row, with every column PD2 also has (or COLUMN_MAP maps) set to PD2's value. Columns D2R added
 keep D2R's value on a D2R row and stay blank on an appended one (blank is the vanilla behaviour PD2 has), except the
-DERIVED ones. References to the P2 tables, including names inside formulas and item properties' skill and state
-parameters (by name or PD2 id), are rewritten to the mod's names and ids.
+DERIVED ones. itemstatcost's descfunc and descval follow the description strings (STAT_STRINGS): a row that shows a D2R
+string takes the display D2R gives it. References to the P2 tables, including names inside formulas and item properties' skill and state
+parameters (by name or PD2 id), are rewritten to the mod's names and ids. PD2 function numbers that D2R reuses for
+its own functions move to the slots core-rules installs them in (FUNCS).
 PD2's cells carry Excel's quote marks, which the classic loader skipped; they are dropped, and formulas get D2R's
 spelling of negative numbers.
 """
@@ -101,6 +103,15 @@ FORMULAS = {
 DERIVED = {"skills": {"rightskill": lambda pd2: "0" if pd2.get("passive") == "1" else "1"},
            "setitems": {"spawnable": lambda pd2: "1"},
            "itemtypes": {"MaxSocketsLevelThreshold1": lambda pd2: "25", "MaxSocketsLevelThreshold2": lambda pd2: "40"}}
+# itemstatcost display (#67): D2R's stat strings carry the value's format code ("%+d to Strength"), where PD2's descfunc
+# and descval print the value before vanilla's "to Strength" (string overrides keep D2R's placeholders, pd2_strings).
+# A row whose descstrpos and descstrneg name strings D2R's rows use takes those rows' descfunc and descval: its own D2R
+# row's when the strings are unchanged, else the D2R row with PD2's descfunc (bytime rows), else the first.
+STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval")
+# PD2 function numbers that D2R gave its own functions (srvdo 38 flamewave, cltdo 70 vine beast death): moved to the
+# free slots core-rules installs them in (plugin/core-rules/skill_functions.cpp Functions[])
+# shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own 38 or 70
+FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78"}}}
 KEY_LIMIT = {"missiles": 31}  # bytes, from D2R's data guide; the other three allow 47
 NEGATIVE = re.compile(r"(?<![\w)\]'.])-(\d+)")  # modkit tsv.NEGATIVE: D2R rejects 'x*-5'
 FORMULA_REF = re.compile(r"\b(skill|miss|stat)\('([^']*)'")
@@ -246,9 +257,13 @@ def rewrite_formula(text: str, ren: dict[str, dict[str, str]]) -> str:
 def fix_props(header: list[str], row: list[str], ren: dict[str, dict[str, str]], ids: dict[str, dict[str, str]],
               props: dict[str, str]) -> None:
     """Skill and state parameters of item properties (code, [cube: chance,] param, min, max columns) in the mod's
-    names and ids."""
+    names and ids; and a cube condition's stat (op 3-26 read `param` as an itemstatcost id, D2R's data guide)."""
     def remap(table: str, v: str) -> str:
         return ids.get(table, {}).get(v, v) if v.isdigit() else ren[table].get(v.lower(), v)
+    if "op" in header and "param" in header:
+        op, par = header.index("op"), header.index("param")
+        if row[op].isdigit() and 3 <= int(row[op]) <= 26:
+            row[par] = ids.get("itemstatcost", {}).get(row[par], row[par])
     low = [c.lower() for c in header] + ["", "", ""]
     for j in range(len(header)):
         p = j + 1 if "par" in low[j + 1] else j + 2 if "chance" in low[j + 1] and "par" in low[j + 2] else None
@@ -260,13 +275,14 @@ def fix_props(header: list[str], row: list[str], ren: dict[str, dict[str, str]],
 
 
 def spell(table: str, col: str, v: str, ren: dict[str, dict[str, str]]) -> str:
-    """A PD2 cell as the mod's column `col` holds it: quotes gone, references renamed, formulas in D2R's spelling."""
+    """A PD2 cell as the mod's column `col` holds it: quotes gone, references renamed, formulas in D2R's spelling,
+    function numbers moved (FUNCS)."""
     v = v.replace('"', "")
     if col in REFS.get(table, {}):
         return ren[REFS[table][col]].get(v.lower(), v)
     if col in FORMULAS.get(table, []):
         return rewrite_formula(fix_formula(v), ren)
-    return v
+    return FUNCS.get(table, {}).get(col, {}).get(v, v)
 
 
 def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, str]],
@@ -287,6 +303,12 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
     id_col = next((j for j, c in enumerate(d2r.header) if c.lower() == "*id"), None)
     out = [list(r) for r in d2r.rows]
     recs = d2r.records()
+    shown: dict[tuple[str, ...], list[list[str]]] = {}  # D2R's description strings -> the displays D2R gives them
+    if table == "itemstatcost":
+        str_cols, desc_cols = ([d2r.header.index(c) for c in cs] for cs in (STAT_STRINGS, STAT_DISPLAY))
+        for r in d2r.rows:
+            if any(r[j] for j in str_cols):
+                shown.setdefault(tuple(r[j] for j in str_cols), []).append([r[j] for j in desc_cols])
     for p, i, n in sorted(lines, key=lambda line: line[1]):
         row = out[recs[i]] if i < len(recs) else [""] * len(d2r.header)
         if i >= len(recs):
@@ -296,9 +318,16 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
             if k is None:
                 continue
             row[j] = spell(table, d2r.header[j], pr[k], ren)
+        strs = tuple(row[j] for j in str_cols) if shown else ()
+        if strs in shown:
+            own = d2r.rows[recs[i]] if i < len(recs) else None
+            same = [[own[j] for j in desc_cols]] if own and strs == tuple(own[j] for j in str_cols) else []
+            pd2_func = [d for d in shown[strs] if d[0] == row[desc_cols[0]]]
+            for j, v in zip(desc_cols, (same or pd2_func or shown[strs])[0]):
+                row[j] = v
         for j, fn in derived.items():
             row[j] = fn(dict(zip(pd2.header, pr)))
-        if props:
+        if props is not None:
             fix_props(d2r.header, row, ren, ids or {}, props)
         row[d2r.key] = n
         if id_col is not None:
@@ -340,7 +369,9 @@ def context(merge_dir: Path, pd2_data: Path, d2r_data: Path) -> Context:
 def context_of(lists: dict[str, list[tuple[str, int, str]]], pd2_data: Path) -> Context:
     """The Context of id lists already read (and checked)."""
     ids = {}
-    for t in ("skills", "states"):
+    for t in ("skills", "states", "itemstatcost"):
+        if not lists[t]:  # nothing to remap (tests with no such table)
+            continue
         mod = {p.lower(): i for p, i, _ in lists[t]}
         ids[t] = {str(k): str(mod[p.lower()]) for k, p in enumerate(ident(load(pd2_data, t).names()))}
     return Context(lists, renames(lists), ids, property_kinds(load(pd2_data, "properties")))

@@ -5,6 +5,8 @@ The committed rules `tools/pd2_merge.py` applies to the extracted PD2 data (`pd2
 row data. Every id the port adds is assigned here once and is append-only (ADR 0003).
 
 Each file is read by the rule kind its name maps to in `pd2_merge.RULES`; a file with no rule kind fails the merge.
+Column-level rules (references, formulas, derived columns, function-number rewrites) are constants in
+`tools/pd2_ids.py` (REFS, FORMULAS, DERIVED, FUNCS).
 
 | File | Rule kind |
 |---|---|

@@ -37,7 +37,7 @@ M1 plus the companions, corruption and the Amazon and Barbarian engine rules; th
 | W8, W9 | Barbarian (core-rules) | W2, P2 | B | #54, #55 |
 | W10 | Barbarian group (core-rules) | W1, P2 | C | #51 |
 | P7 | Companions: hash-checked manifest, release-script download, hand-written `filter.json`, Pyre's 16 `Filter*` sound rows and flacs merged into our data | none | C | #39 (PR) |
-| P9 | Corruption: starts with the outcome check (core-rules Q10), includes the cube op 16/18 check for corruption recipes | P3 | A | #56 |
+| P9 | Corruption: starts with the outcome check (core-rules Q10), includes the cube op 16/18 check for corruption recipes | P3 | A | #56, #68 (PR) |
 | P8 | Alpha release: local 7z and release notes | every item above | A | #57 |
 
 **Lanes** for four sessions: A (data) P1 -> P2 -> P3 -> P9 -> P8; B (engine) W1 -> W2 -> class items; C W4 and P7 first,

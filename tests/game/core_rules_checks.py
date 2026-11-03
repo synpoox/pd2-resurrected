@@ -11,7 +11,10 @@ Run:
   (the cast checks skip until a cast is in the log). For split-throw-return, walk into Blood Moor and throw at
   monsters (allowed in PD2 Resurrected slots). The fixture adds PD2's splitthrowaxe and splitthrowaxereturn rows
   (PD2's values, cloned from throwaxe) with Town 1: a missile without it dies at once in town, so nothing would be
-  drawn. It keeps D2R's quickness state in place of PD2's temp_skill_buff, which only the merged data has (#45).
+  drawn. It keeps D2R's quickness state in place of PD2's temp_skill_buff (merged as state 270): the merged tables
+  do not pass modkit's validation yet (skilldesc, overlay, pettype, monstats, item events and affix properties are
+  later work items), so the fixture cannot build on them. The merged P2 tables were checked on Slot4 (#45): state
+  270, attackrate 100 -> 110 -> 100 over one buff, ten casts with no crash.
 
 W10 checks (tag core-rules-w10) run on the merged data, which has PD2's rows and states:
   py -3 tools/pd2_merge.py

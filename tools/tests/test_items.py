@@ -51,6 +51,32 @@ class KeyedTests(unittest.TestCase):
         self.assertEqual(M.merge_cube(pd2, table(head), ctx).rows,
                          [["x", "amu", "oskill", "", "Javelin and Spear Mastery", "1", "1", "hit-skill", "5", "430"]])
 
+    def test_cube_stat_condition_params(self):
+        # ops 3-26 read param as an itemstatcost id (PD2's corruptor 361 is the mod's 414); other ops keep theirs
+        ctx = I.Context(NO_CTX.lists, NO_CTX.ren, {"itemstatcost": {"361": "414"}}, {})
+        head = "description|op|param|value|output\n"
+        pd2 = table(head + "roll|18|361|0|useitem\noutcome|16|361|500|useitem\nplayer|3|361|1|amu\nmap|30|361||x\n")
+        self.assertEqual([r[2] for r in M.merge_cube(pd2, table(head), ctx).rows], ["414", "414", "414", "361"])
+
+    def test_cube_corruption_that_makes_a_new_item_marks_it(self):
+        # the new item gets the corrupted mark and a corruptor above every threshold, so no corruption row matches it again
+        lists = {**NO_CTX.lists, "itemstatcost": [("corruptor", 414, "corruptor")]}
+        ctx = I.Context(lists, NO_CTX.ren, {"itemstatcost": {"361": "414"}}, {})
+        head = "op|param|value|input 1|output|mod 1|mod 1 chance|mod 1 min|mod 1 max|mod 2|mod 2 chance|mod 2 min|mod 2 max\n"
+        pd2 = table(head + "16|361|500|weap|usetype,rar||||||||\n16|361|1000|weap|useitem|sock|100|1|6|corruptnum|100|1001|1001\n"
+                    "16|361|500|t1me|t51,uni||||||||\n16|361|3000|t1me|useitem|corruptnum|100|3001|3001||||\n"
+                    "16|361|200|anni|cm1,mag|corruptnum|100|1001|1001||||\n")
+        rows = M.merge_cube(pd2, table(head), ctx).rows
+        self.assertEqual(rows[4][5:], ["corruptnum", "100", "1001", "1001", "", "", "", ""])  # marks itself
+        self.assertEqual(rows[0][5:], ["corrupt", "100", "100", "100", "corruptnum", "100", "3001", "3001"])
+        self.assertEqual(rows[2][5:], ["corrupt", "100", "100", "100", "corruptnum", "100", "3001", "3001"])
+        self.assertEqual(rows[1][5], "sock")
+        # the mark does not depend on which outcome rows are merged (no map rows here), and must stay above every threshold
+        rows = M.merge_cube(table(head + "16|361|500|weap|usetype,rar||||||||\n"), table(head), ctx).rows
+        self.assertEqual(rows[0][5:], ["corrupt", "100", "100", "100", "corruptnum", "100", "3001", "3001"])
+        with self.assertRaisesRegex(I.IdError, "3001"):
+            M.merge_cube(table(head + "16|361|3001|t1me|useitem||||||||\n"), table(head), ctx)
+
 
 class NoDropTests(unittest.TestCase):
     def test_map_items_never_drop_and_other_rates_stay(self):
