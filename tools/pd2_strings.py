@@ -11,7 +11,7 @@ generated/data/local/lng/. merge/strings.json holds key names and numbers only, 
 Text going into skills.json has its lines flipped (D2R stacks multi-line skill text top-down). The rule fails if D2R
 starts using a listed key or the low 16 bits of a listed ID.
 
-D2R's string files come from modkit's game-file cache (the sibling d2rAI-toolkit).
+D2R's string files come from the D2R data root pd2_merge passes (modkit's cache); modkit's Strings does the editing.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TBL = "data/local/lng/eng/patchstring.tbl"
+TBL = "local/lng/eng/patchstring.tbl"  # under PD2's data root
 FIRST_ID = 50000  # leaves 28,106-49,999 to Blizzard (decision #29)
 
 
@@ -52,6 +52,22 @@ def modkit():
         sys.path.insert(0, str(kit))
         from modkit import base, strings
     return base, strings
+
+
+class DataRoot:
+    """The slice of modkit's Base that Strings uses, over a folder holding data/... (D2R's files)."""
+
+    def __init__(self, data: Path):
+        self.root = data.parent
+
+    def list(self, prefix: str):
+        raise OSError("no CASC listing: Strings globs the folder")
+
+    def text(self, rel: str) -> str:
+        return (self.root / rel).read_text("utf-8-sig")
+
+    def exists(self, rel: str) -> bool:
+        return (self.root / rel).is_file()
 
 
 def flip(file: str, text: str) -> str:
@@ -93,11 +109,12 @@ def build(cfg: dict, pd2: dict[str, str], s, out_root: Path) -> list[str]:
     return s.write(out_root)
 
 
-def rule(rule_file: Path, pd2_dir: Path, out: Path) -> None:
-    """pd2_merge rule kind for merge/strings.json; out is generated/data."""
-    base, strings = modkit()
+def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
+    """pd2_merge rule kind for merge/strings.json."""
+    if not (d2r_data / "local" / "lng" / "strings").is_dir():
+        raise ValueError(f"no D2R strings under {d2r_data}: run `modkit fetch` or pass --d2r")
     cfg = json.loads(rule_file.read_text("utf-8"))
-    build(cfg, read_tbl((pd2_dir / TBL).read_bytes()), strings.Strings(base.Base()), out.parent)
+    build(cfg, read_tbl((pd2_data / TBL).read_bytes()), modkit()[1].Strings(DataRoot(d2r_data)), out_data.parent)
 
 
 def referenced(excel: Path) -> dict[str, set[tuple[str, str]]]:
@@ -158,12 +175,14 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--assign", action="store_true", required=True)
     ap.add_argument("--root", type=Path, default=ROOT)
+    ap.add_argument("--d2r", type=Path, help="D2R data root (default: pd2_merge's)")
     a = ap.parse_args(argv)
-    base, strings = modkit()
+    import pd2_merge
+    pd2_data = a.root / "pd2-data" / "data"
     cfg_file = a.root / "merge" / "strings.json"
     cfg = json.loads(cfg_file.read_text("utf-8"))
-    pd2 = read_tbl((a.root / "pd2-data" / TBL).read_bytes())
-    added = assign(cfg, pd2, a.root / "pd2-data" / "data" / "global" / "excel", strings.Strings(base.Base()))
+    strings = modkit()[1].Strings(DataRoot(a.d2r or pd2_merge.D2R_DATA))
+    added = assign(cfg, read_tbl((pd2_data / TBL).read_bytes()), pd2_data / "global" / "excel", strings)
     cfg_file.write_text(dump(cfg), "utf-8", newline="\n")
     print(f"assigned {len(added)} new string IDs ({len(cfg['ids'])} listed)")
     return 0

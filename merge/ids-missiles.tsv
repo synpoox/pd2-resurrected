@@ -1,0 +1,1068 @@
+# PD2 name	id	name (append-only, ADR 0003)
+arrow	0	arrow
+javelin	1	javelin
+bighead1	2	bighead1
+bighead2	3	bighead2
+bighead3	4	bighead3
+bighead4	5	bighead4
+bighead5	6	bighead5
+spike1	7	spike1
+spike2	8	spike2
+spike3	9	spike3
+spike4	10	spike4
+spike5	11	spike5
+firearrow	12	firearrow
+cr_arrow1	13	cr_arrow1
+cr_arrow2	14	cr_arrow2
+cr_arrow3	15	cr_arrow3
+cr_arrow4	16	cr_arrow4
+cr_arrow5	17	cr_arrow5
+blood1	18	blood1
+blood2	19	blood2
+bigblood1	20	bigblood1
+bigblood2	21	bigblood2
+shafire1	22	shafire1
+shafire2	23	shafire2
+shafire3	24	shafire3
+shafire4	25	shafire4
+shafire5	26	shafire5
+magicarrow	27	magicarrow
+icearrow	28	icearrow
+fireexplode	29	fireexplode
+iceexplode	30	iceexplode
+bolt	31	bolt
+andarielspray	32	andarielspray
+bigheadexp	33	bigheadexp
+shamanexp	34	shamanexp
+throwaxe	35	throwaxe
+throwknife	36	throwknife
+glaive	37	glaive
+poisonjav	38	poisonjav
+poisonjavcloud	39	poisonjavcloud
+coldarrow	40	coldarrow
+explodingarrow	41	explodingarrow
+explodingarrowexp	42	explodingarrowexp
+plaguejavelin	43	plaguejavelin
+oilpotion	44	oilpotion
+explosivepotion	45	explosivepotion
+fulminatingpotion	46	fulminatingpotion
+rancidgasepotion	47	rancidgasepotion
+chokinggaspoition	48	chokinggaspoition
+stranglinggaspotion	49	stranglinggaspotion
+notused50	50	notused50
+explosivepotionexp	51	explosivepotionexp
+explosivepotiondebris1	52	explosivepotiondebris1
+explosivepotiondebris2	53	explosivepotiondebris2
+explosivepotiondebris3	54	explosivepotiondebris3
+holybolt	55	holybolt
+chargedbolt	56	chargedbolt
+sanctuarybolt	57	sanctuarybolt
+firebolt	58	firebolt
+icebolt	59	icebolt
+infernoflame1	60	infernoflame1
+infernoflame2	61	infernoflame2
+fireball	62	fireball
+mummy1	63	mummy1
+mummy2	64	mummy2
+mummy3	65	mummy3
+mummy4	66	mummy4
+blaze	67	blaze
+firewallmaker	68	firewallmaker
+firewall	69	firewall
+goospit1	70	goospit1
+goospit2	71	goospit2
+goospit3	72	goospit3
+goospit4	73	goospit4
+goospit5	74	goospit5
+goosplat	75	goosplat
+sand pile	76	sand pile
+unholybolt1	77	unholybolt1
+unholybolt2	78	unholybolt2
+unholybolt3	79	unholybolt3
+unholybolt4	80	unholybolt4
+sanctuarycenter	81	sanctuarycenter
+fireexplosion	82	fireexplosion
+stuckarrow	83	stuckarrow
+footprint	84	footprint
+immolationarrow	85	immolationarrow
+guidedarrow	86	guidedarrow
+freezingarrow	87	freezingarrow
+freezingarrowexp1	88	freezingarrowexp1
+freezingarrowexp2	89	freezingarrowexp2
+nova	90	nova
+iceblast	91	iceblast
+blessedhammer	92	blessedhammer
+chainlightning	93	chainlightning
+fistofares	94	fistofares
+chillblood	95	chillblood
+glacialspike	96	glacialspike
+teleport	97	teleport
+lightningbolt	98	lightningbolt
+lightninghit	99	lightninghit
+meteor	100	meteor
+meteorcenter	101	meteorcenter
+meteortail	102	meteortail
+meteorexplode	103	meteorexplode
+firesmall	104	firesmall
+firemedium	105	firemedium
+monblizcenter	106	monblizcenter
+monbliz1	107	monbliz1
+monbliz2	108	monbliz2
+monbliz3	109	monbliz3
+monbliz4	110	monbliz4
+monblizexplode1	111	monblizexplode1
+monblizexplode2	112	monblizexplode2
+monblizexplode3	113	monblizexplode3
+teeth	114	teeth
+corpseexplosion	115	corpseexplosion
+poisoncorpseexplosion	116	poisoncorpseexplosion
+monstercorpseexplode	117	monstercorpseexplode
+poisonnova	118	poisonnova
+frostnova	119	frostnova
+rogue1	120	rogue1
+rogue2	121	rogue2
+rogue3	122	rogue3
+bat lightning bolt	123	bat lightning bolt
+bat lightning trail	124	bat lightning trail
+skmage1	125	skmage1
+skmage2	126	skmage2
+skmage3	127	skmage3
+skmage4	128	skmage4
+vampirefireball	129	vampirefireball
+vampirefirewallmaker	130	vampirefirewallmaker
+vampirefirewall	131	vampirefirewall
+vampiremeteor	132	vampiremeteor
+vampiremeteorcenter	133	vampiremeteorcenter
+vampiremeteorexp	134	vampiremeteorexp
+raven1	135	raven1
+raven2	136	raven2
+amphibiangoo1	137	amphibiangoo1
+amphibiangoo2	138	amphibiangoo2
+tentaclegoo	139	tentaclegoo
+amphibianexplode	140	amphibianexplode
+poisonpuff	141	poisonpuff
+curseeffectred	142	curseeffectred
+spidergoolay	143	spidergoolay
+fetishinferno1	144	fetishinferno1
+fetishinferno2	145	fetishinferno2
+spidergoo	146	spidergoo
+cursecast	147	cursecast
+howl	148	howl
+shout	149	shout
+dust	150	dust
+redlightmissile	151	redlightmissile
+greenlightmissile	152	greenlightmissile
+bluelightmissile	153	bluelightmissile
+whitelightmissile	154	whitelightmissile
+corpsepoisoncloud	155	corpsepoisoncloud
+chillbloodcloud	156	chillbloodcloud
+chillbloodpuff	157	chillbloodpuff
+blizzardcenter	158	blizzardcenter
+blizzard1	159	blizzard1
+blizzard2	160	blizzard2
+blizzard3	161	blizzard3
+blizzard4	162	blizzard4
+blizzardexplode1	163	blizzardexplode1
+blizzardexplode2	164	blizzardexplode2
+blizzardexplode3	165	blizzardexplode3
+thunderstorm1	166	thunderstorm1
+thunderstorm2	167	thunderstorm2
+thunderstorm3	168	thunderstorm3
+thunderstorm4	169	thunderstorm4
+monsterlight	170	monsterlight
+poisonball	171	poisonball
+diablight	172	diablight
+redemption	173	redemption
+redemptionfail	174	redemptionfail
+handofgod	175	handofgod
+diabfire	176	diabfire
+fingermagespider	177	fingermagespider
+electric throwaxe	178	electric throwaxe
+diabwallmaker	179	diabwallmaker
+diabwall	180	diabwall
+curseamplifydamage	181	curseamplifydamage
+cursedimvision	182	cursedimvision
+curseweaken	183	curseweaken
+curseironmaiden	184	curseironmaiden
+curseterror	185	curseterror
+curseattract	186	curseattract
+cursereversevampire	187	cursereversevampire
+curseconfuse	188	curseconfuse
+cursedecrepify	189	cursedecrepify
+curselowerresist	190	curselowerresist
+cursecenter	191	cursecenter
+bonespear	192	bonespear
+bonespirit	193	bonespirit
+coldunique	194	coldunique
+lightunique	195	lightunique
+skbowarrow1	196	skbowarrow1
+skbowarrow2	197	skbowarrow2
+skbowarrow3	198	skbowarrow3
+skbowarrow4	199	skbowarrow4
+skbowarrow5	200	skbowarrow5
+nova1	201	nova1
+nova2	202	nova2
+andypoisonbolt	203	andypoisonbolt
+teethexplode	204	teethexplode
+lightningjavelin	205	lightningjavelin
+lightningfury	206	lightningfury
+bonewallmaker	207	bonewallmaker
+necromage1	208	necromage1
+necromage2	209	necromage2
+necromage3	210	necromage3
+necromage4	211	necromage4
+sparkle	212	sparkle
+multipleshotarrow	213	multipleshotarrow
+multipleshotbolt	214	multipleshotbolt
+chargedstrikebolt	215	chargedstrikebolt
+bonespearexplode	216	bonespearexplode
+poisonexplosioncloud	217	poisonexplosioncloud
+bonecast	218	bonecast
+battlecry	219	battlecry
+primepoisoncloud	220	primepoisoncloud
+plaguejavcloud	221	plaguejavcloud
+rancidgascloud	222	rancidgascloud
+chokinggascloud	223	chokinggascloud
+stranglinggascloud	224	stranglinggascloud
+buglightning	225	buglightning
+pantherjav1	226	pantherjav1
+pantherjav2	227	pantherjav2
+pantherjav3	228	pantherjav3
+pantherjav4	229	pantherjav4
+immolationfire	230	immolationfire
+furylightning	231	furylightning
+lightningstrike	232	lightningstrike
+fistoftheheavensdelay	233	fistoftheheavensdelay
+fistoftheheavensbolt	234	fistoftheheavensbolt
+warcry	235	warcry
+battlecommand	236	battlecommand
+battleorders	237	battleorders
+pantherpotorange	238	pantherpotorange
+pantherpotgreen	239	pantherpotgreen
+meteorfire	240	meteorfire
+trap spike right	241	trap spike right
+trap spike left	242	trap spike left
+trap cursed skull right	243	trap cursed skull right
+trap cursed skull left	244	trap cursed skull left
+trap poison ball right	245	trap poison ball right
+trap poison ball left	246	trap poison ball left
+hydra	247	hydra
+bonespeartrail	248	bonespeartrail
+grimwardsmallstart	249	grimwardsmallstart
+grimwardsmall	250	grimwardsmall
+grimwardsmallstop	251	grimwardsmallstop
+grimwardmediumstart	252	grimwardmediumstart
+grimwardmedium	253	grimwardmedium
+grimwardmediumstop	254	grimwardmediumstop
+grimwardlargestart	255	grimwardlargestart
+grimwardlarge	256	grimwardlarge
+grimwardlargestop	257	grimwardlargestop
+zakarumlight	258	zakarumlight
+grimwardscare	259	grimwardscare
+frozenorb	260	frozenorb
+frozenorbbolt	261	frozenorbbolt
+frozenorbnova	262	frozenorbnova
+frozenorbexplode	263	frozenorbexplode
+chillingarmorbolt	264	chillingarmorbolt
+fireexplosion2	265	fireexplosion2
+blowgun	266	blowgun
+chainlightning2	267	chainlightning2
+revivesmall	268	revivesmall
+revivemedium	269	revivemedium
+revivelarge	270	revivelarge
+monglacialspike	271	monglacialspike
+icebreaksmall	272	icebreaksmall
+icebreakmedium	273	icebreakmedium
+icebreaklarge	274	icebreaklarge
+icebreaksmoke	275	icebreaksmoke
+mephisto	276	mephisto
+firehead	277	firehead
+whilrwind	278	whilrwind
+arcanelightningbolt	279	arcanelightningbolt
+frogfire	280	frogfire
+frogcold	281	frogcold
+frogpois	282	frogpois
+desertfireball	283	desertfireball
+brdeathcontrol	284	brdeathcontrol
+brdeathlightningbolt	285	brdeathlightningbolt
+brdeathlightninghit	286	brdeathlightninghit
+denofevillight	287	denofevillight
+cairnstones	288	cairnstones
+cairnstonessky	289	cairnstonessky
+cairnstonesground	290	cairnstonesground
+towermist	291	towermist
+towermisttrail	292	towermisttrail
+brdeathsmokes1	293	brdeathsmokes1
+brdeathsmokenu	294	brdeathsmokenu
+brdeathsmokedt	295	brdeathsmokedt
+brdeathspirits1	296	brdeathspirits1
+brdeathspiritnu	297	brdeathspiritnu
+brdeathspiritdt	298	brdeathspiritdt
+mephistodeathcontrol	299	mephistodeathcontrol
+mephistofirewallmaker	300	mephistofirewallmaker
+mephistofirewall	301	mephistofirewall
+mephistoflyingrocksbig	302	mephistoflyingrocksbig
+mephistoexplosionbig	303	mephistoexplosionbig
+mephistoflyingrockssmall	304	mephistoflyingrockssmall
+mephistoexplosionsmall	305	mephistoexplosionsmall
+mephistodonotdraw	306	mephistodonotdraw
+andycontrol0	307	andycontrol0
+andyfirewallmaker	308	andyfirewallmaker
+andyfirewall	309	andyfirewall
+andycolumnfirebase	310	andycolumnfirebase
+andycolumnfire	311	andycolumnfire
+andyfallingdebris1	312	andyfallingdebris1
+andyfallingdebris2	313	andyfallingdebris2
+andyfallingdebris3	314	andyfallingdebris3
+andydebrisexplosion1	315	andydebrisexplosion1
+andydebrisexplosion2	316	andydebrisexplosion2
+andydebrisexplosion3	317	andydebrisexplosion3
+andydebrisexplosion4	318	andydebrisexplosion4
+andydebrisexplosion5	319	andydebrisexplosion5
+willowisplightningbolt	320	willowisplightningbolt
+queenpoisoncloud	321	queenpoisoncloud
+dirt pile	322	dirt pile
+undeadmissile1	323	undeadmissile1
+undeadmissile2	324	undeadmissile2
+undeadmissile3	325	undeadmissile3
+undeadmissile4	326	undeadmissile4
+bonespiritexplode	327	bonespiritexplode
+dopplezonexplode	328	dopplezonexplode
+monbonespirit	329	monbonespirit
+towermistfade	330	towermistfade
+countessfirewall	331	countessfirewall
+towerchestspawner	332	towerchestspawner
+hellmeteorlaunch1	333	hellmeteorlaunch1
+hellmeteorlaunch2	334	hellmeteorlaunch2
+hellmeteorup	335	hellmeteorup
+hellmeteordown	336	hellmeteordown
+hellmeteorball	337	hellmeteorball
+horadricstaff	338	horadricstaff
+horadriclightning	339	horadriclightning
+horadriclight	340	horadriclight
+regurgitatorcorpse	341	regurgitatorcorpse
+regurgitatorcorpseexpl	342	regurgitatorcorpseexpl
+highpriestlightning	343	highpriestlightning
+icebreaksmallmelt	344	icebreaksmallmelt
+icebreaklargemelt	345	icebreaklargemelt
+leapknockback	346	leapknockback
+radamentdeath	347	radamentdeath
+radamenthandofgod	348	radamenthandofgod
+radamentholybolt	349	radamentholybolt
+taintedsuncontrol	350	taintedsuncontrol
+taintedsunflash	351	taintedsunflash
+taintedsunball	352	taintedsunball
+queendeathcenter	353	queendeathcenter
+queendeathglob	354	queendeathglob
+queendeathsplat1	355	queendeathsplat1
+queendeathsplat2	356	queendeathsplat2
+healingbolt	357	healingbolt
+mephistoholedelay	358	mephistoholedelay
+mephistoholebirth	359	mephistoholebirth
+mephistoholeneutral	360	mephistoholeneutral
+mephistoholedeath	361	mephistoholedeath
+mephistoholedead	362	mephistoholedead
+durieldeathcontrol	363	durieldeathcontrol
+durieldeathrock	364	durieldeathrock
+durieldeathdebris	365	durieldeathdebris
+durieldeathsmoke	366	durieldeathsmoke
+mephistoexplosion	367	mephistoexplosion
+orbmist	368	orbmist
+orbmisttrail	369	orbmisttrail
+orbmistfade	370	orbmistfade
+pilum	371	pilum
+diablo appears	372	diablo appears
+hfcontrol	373	hfcontrol
+hffragment1	374	hffragment1
+hffragment2	375	hffragment2
+hffragment3	376	hffragment3
+hfspirit1	377	hfspirit1
+hfreserved3	378	hfreserved3
+izual control	379	izual control
+izual mist loop	380	izual mist loop
+izual mist fade	381	izual mist fade
+izual lightning	382	izual lightning
+izual lightning trail	383	izual lightning trail
+cairn stones bolt	384	cairn stones bolt
+bomb in air	385	bomb in air
+bomb on ground	386	bomb on ground
+bomb explosion	387	bomb explosion
+shock field in air	388	shock field in air
+shock field on ground	389	shock field on ground
+throwingstar	390	throwingstar
+acidspray	391	acidspray
+blade creeper	392	blade creeper
+distraction	393	distraction
+distraction fog	394	distraction fog
+distraction puff	395	distraction puff
+distraction start	396	distraction start
+distraction end	397	distraction end
+impinfernoflame1	398	impinfernoflame1
+impinfernoflame2	399	impinfernoflame2
+baallightningbolt	400	baallightningbolt
+baallightningtrail	401	baallightningtrail
+baallightningbolt2	402	baallightningbolt2
+baallightningtrail2	403	baallightningtrail2
+impfireball	404	impfireball
+impfireballexplode	405	impfireballexplode
+catapultchargedball on	406	catapultchargedball on
+catapultchargedball	407	catapultchargedball
+catapultchargedballbolt	408	catapultchargedballbolt
+imp spawn monsters	409	imp spawn monsters
+catapult spike ball on	410	catapult spike ball on
+catapult spike ball	411	catapult spike ball
+catapult spike in air	412	catapult spike in air
+catapult spike on ground	413	catapult spike on ground
+catapult spike explosion	414	catapult spike explosion
+catapult cold ball on	415	catapult cold ball on
+catapult cold ball	416	catapult cold ball
+catapult cold explosion	417	catapult cold explosion
+catapult plague ball on	418	catapult plague ball on
+catapult plague ball	419	catapult plague ball
+catapult plague cloud	420	catapult plague cloud
+catapult meteor ball on	421	catapult meteor ball on
+catapult meteor ball	422	catapult meteor ball
+catapult meteor fire	423	catapult meteor fire
+tower death	424	tower death
+healing vortex	425	healing vortex
+suicidecorpseexplode	426	suicidecorpseexplode
+suicidefireexplode	427	suicidefireexplode
+suicideiceexplode	428	suicideiceexplode
+explodingjavalin	429	explodingjavalin
+explodingjavalinexp	430	explodingjavalinexp
+lightingtrailingjavalin	431	lightingtrailingjavalin
+lightjavalintrail	432	lightjavalintrail
+lightjavalinexplosion	433	lightjavalinexplosion
+icejavalin	434	icejavalin
+icejavalinexplode	435	icejavalinexplode
+plaguejavelin2	436	plaguejavelin2
+plaguejavlinexplode	437	plaguejavlinexplode
+advlighttrailingjav	438	advlighttrailingjav
+advlighttrailingjav2	439	advlighttrailingjav2
+advlightjavexplode	440	advlightjavexplode
+sucfireball	441	sucfireball
+sucfireballexplode	442	sucfireballexplode
+sucfireballtrail	443	sucfireballtrail
+sucshockfieldmissile	444	sucshockfieldmissile
+sucshockfieldmissileexp	445	sucshockfieldmissileexp
+sucshockfield	446	sucshockfield
+hellfiremissile	447	hellfiremissile
+hellfireexa	448	hellfireexa
+hellfireexb	449	hellfireexb
+imp charged bolt	450	imp charged bolt
+imp teleport	451	imp teleport
+moltenboulder	452	moltenboulder
+moltenboulderemerge	453	moltenboulderemerge
+moltenboulderexplode	454	moltenboulderexplode
+moltenboulderfirepath	455	moltenboulderfirepath
+moltenboulder-flyingrocks	456	moltenboulder-flyingrocks
+firestorm	457	firestorm
+firestormmaker	458	firestormmaker
+arcticblast1	459	arcticblast1
+arcticblast2	460	arcticblast2
+erruption center	461	erruption center
+erruption crack 1	462	erruption crack 1
+erruption crack 2	463	erruption crack 2
+erruption smoke 1	464	erruption smoke 1
+erruption smoke 2	465	erruption smoke 2
+vine beast walk 1	466	vine beast walk 1
+vine beast walk 2	467	vine beast walk 2
+vine beast neutral	468	vine beast neutral
+vine beast attack	469	vine beast attack
+vine beast death	470	vine beast death
+vines	471	vines
+vines trail	472	vines trail
+vines wither	473	vines wither
+plague vines	474	plague vines
+plague vines trail	475	plague vines trail
+plague vines wither	476	plague vines wither
+twister	477	twister
+tornado	478	tornado
+volcano	479	volcano
+volcano overlay fire	480	volcano overlay fire
+volcano debris 2	481	volcano debris 2
+volcano explosion	482	volcano explosion
+volcano small fire	483	volcano small fire
+dragonbreath missile	484	dragonbreath missile
+lureprojectile	485	lureprojectile
+lurecenter	486	lurecenter
+lurecloud	487	lurecloud
+impmiss1	488	impmiss1
+impmiss2	489	impmiss2
+impmiss3	490	impmiss3
+impmiss4	491	impmiss4
+impmiss5	492	impmiss5
+frozenhorror arcticblast1	493	frozenhorror arcticblast1
+frozenhorror arcticblast2	494	frozenhorror arcticblast2
+sentrychargedbolt	495	sentrychargedbolt
+sentryspikeinair	496	sentryspikeinair
+sentryspikeonground	497	sentryspikeonground
+recycler delay	498	recycler delay
+recycler vine	499	recycler vine
+recycler fade	500	recycler fade
+recycler explosion	501	recycler explosion
+death mauler	502	death mauler
+death mauler trail	503	death mauler trail
+death mauler trail fade	504	death mauler trail fade
+bladefury1	505	bladefury1
+bladefragment1	506	bladefragment1
+bladefury2	507	bladefury2
+bladefragment2	508	bladefragment2
+bladefury3	509	bladefury3
+bladefragment3	510	bladefragment3
+shockwave	511	shockwave
+lightningtalons	512	lightningtalons
+lightningtalonstrail	513	lightningtalonstrail
+phoenixtrail	514	phoenixtrail
+rabiesplague	515	rabiesplague
+rabiescontagion	516	rabiescontagion
+wake of destruction maker	517	wake of destruction maker
+wake of destruction	518	wake of destruction
+deathsentryexplode	519	deathsentryexplode
+tigerfury	520	tigerfury
+tigerfurytrail	521	tigerfurytrail
+tigerfurytrail2	522	tigerfurytrail2
+inferno sentry 1	523	inferno sentry 1
+inferno sentry 2	524	inferno sentry 2
+ancient throwing axe	525	ancient throwing axe
+sentrychainlightningbolt	526	sentrylightningbolt
+sentrychainlightninghit	527	sentrylightninghit
+anya center	528	anya center
+anya icicle	529	anya icicle
+anya iceimpact	530	anya iceimpact
+anya icesteam	531	anya icesteam
+anya icemagic	532	anya icemagic
+dragontail missile	533	dragontail missile
+dragonflight	534	dragonflight
+dragonflightmaker	535	dragonflightmaker
+progressive radius damage	536	progressive radius damage
+vine beast walk 1 fade	537	vine beast walk 1 fade
+vine beast walk 2 fade	538	vine beast walk 2 fade
+vine beast neutral fade	539	vine beast neutral fade
+vine recycler delay	540	vine recycler delay
+ancient death center	541	ancient death center
+ancient death cloud	542	ancient death cloud
+lightning charge up nova	543	lightning charge up nova
+chainlightningcharge up	544	chainlightningcharge up
+pain worm appear	545	pain worm appear
+baal taunt control	546	baal taunt control
+baal taunt lightning	547	baal taunt lightning
+baal taunt lightning trail	548	baal taunt lightning trail
+baal taunt poison	549	baal taunt poison
+baal spawn monsters	550	baal spawn monsters
+mindblast hit	551	mindblast hit
+blade shield missile	552	blade shield missile
+blade shield attachment	553	blade shield attachment
+baal inferno	554	baal inferno
+baal nova	555	baal nova
+fistsoffireexplode	556	fistsoffireexplode
+fistsoffirefirewall	557	fistsoffirefirewall
+clawsofthunderbolt	558	clawsofthunderbolt
+clawsofthundernova	559	clawsofthundernova
+bladesoficeexplode	560	bladesoficeexplode
+bladesoficecubes	561	bladesoficecubes
+bladesoficecubesmelt	562	bladesoficecubesmelt
+royalstrikemeteor	563	royalstrikemeteor
+royalstrikemeteorcenter	564	royalstrikemeteorcenter
+royalstrikemeteortail	565	royalstrikemeteortail
+royalstrikemeteorexplode	566	royalstrikemeteorexplode
+royalstrikemeteorfire	567	royalstrikemeteorfire
+royalstrikechainlightning	568	royalstrikechainlightning
+royalstrikechaosice	569	royalstrikechaosice
+world stone chip 1	570	world stone chip 1
+world stone chip 2	571	world stone chip 2
+world stone chip 3	572	world stone chip 3
+world stone chip 4	573	world stone chip 4
+highpriestlightning2	574	highpriestlightning2
+infernoflame3	575	infernoflame3
+mindblast center	576	mindblast center
+armageddoncontrol	577	armageddoncontrol
+armageddonrock	578	armageddonrock
+armageddontail	579	armageddontail
+armageddonexplosion	580	armageddonexplosion
+hurricaneswoosh	581	hurricaneswoosh
+hurricanecart	582	hurricanecart
+hurricanerock	583	hurricanerock
+hurricanesack	584	hurricanesack
+hurricanetree	585	hurricanetree
+hurricanevase	586	hurricanevase
+baalcorpseexplodedelay	587	baalcorpseexplodedelay
+baalcorpseexplodeexpl	588	baalcorpseexplodeexpl
+baal cold maker	589	baal cold maker
+baal cold trail	590	baal cold trail
+baal spawn monsters exp	591	baal spawn monsters exp
+impmiss21	592	impmiss21
+impmiss22	593	impmiss22
+impmiss23	594	impmiss23
+impmiss24	595	impmiss24
+impmiss25	596	impmiss25
+anyasteam1	597	anyasteam1
+anyasteam2	598	anyasteam2
+ancientsguide	599	ancientsguide
+ancientsmarker	600	ancientsmarker
+ancientscontrol	601	ancientscontrol
+overseercontrol	602	overseercontrol
+nihlithak1	603	nihlithak1
+nihlithak2	604	nihlithak2
+nihlithak3	605	nihlithak3
+nehlithakcontrol	606	nihlathakcontrol
+nehlithakswoosh	607	nihlathakswoosh
+nehlithakdebris1	608	nihlathakdebris1
+nehlithakdebris2	609	nihlathakdebris2
+nehlithakdebris3	610	nihlathakdebris3
+nehlithakdebris4	611	nihlathakdebris4
+nehlithakglow	612	nihlathakglow
+baalteleport	613	baalteleport
+baalclonedeath	614	baalclonedeath
+anyasteamvent	615	anyasteamvent
+anyasteam	616	anyasteam
+nehlithakhole	617	nihlathakhole
+nehlithakholelight	618	nihlathakholelight
+volcanofiretrail	619	volcanofiretrail
+nehlithakglow2	620	nihlathakglow2
+nehlithakbonechips	621	nihlathakbonechips
+baalcorpseexplodefade	622	baalcorpseexplodefade
+armageddonfire	623	armageddonfire
+icesparkle	624	icesparkle
+baalfx control	625	baalfx control
+baalfx spirit 1	626	baalfx spirit 1
+baalfx spirit 2	627	baalfx spirit 2
+baalfx spirit 3	628	baalfx spirit 3
+baalfx spirit 4	629	baalfx spirit 4
+baalfx spirit 5	630	baalfx spirit 5
+baalfx baal head appear	631	baalfx baal head appear
+baalfx baal head 1	632	baalfx baal head 1
+baalfx baal head 2	633	baalfx baal head 2
+baalfx baal head 3	634	baalfx baal head 3
+baalfx tyreal debris 1	635	baalfx tyreal debris 1
+baalfx tyreal debris 2	636	baalfx tyreal debris 2
+baalfx tyreal debris 3	637	baalfx tyreal debris 3
+baalfx tyreal debris break	638	baalfx tyreal debris break
+worldstone shake	639	worldstone shake
+blessedhammerex	640	blessedhammerex
+sentrylightningbolt2	641	sentrylightningbolt2
+sentrylightninghit2	642	sentrylightninghit2
+lightningtowernova	643	lightningtowernova
+skbowarrow6	644	skbowarrow6
+skbowarrow7	645	skbowarrow7
+skbowarrow8	646	skbowarrow8
+bighead6	647	bighead6
+viper_poisjav	648	viper_poisjav
+viper_poisjavcloud	649	viper_poisjavcloud
+viper_fire	650	viper_fire
+viper_firecloud	651	viper_firecloud
+viper_bonespear	652	viper_bonespear
+countessfirewallmaker	653	countessfirewallmaker
+baal taunt lightning control	654	baal taunt lightning control
+baal taunt poison control	655	baal taunt poison control
+explodingarrowexp2	656	explodingarrowexp2
+freezingarrowexp3	657	freezingarrowexp3
+pantherjav5	658	pantherjav5
+spike6	659	spike6
+cr_arrow6	660	cr_arrow6
+skmagepois	661	skmagepois
+skmagecold	662	skmagecold
+skmagefire	663	skmagefire
+skmageltng	664	skmageltng
+succubusmiss	665	succubusmiss
+willowisplightningbolt2	666	willowisplightningbolt2
+mummyex	667	mummyex
+goospitex	668	goospitex
+impmissex	669	impmissex
+diablogeddoncontrol	670	diablogeddoncontrol
+diablogeddonrock	671	diablogeddonrock
+diablogeddontail	672	diablogeddontail
+diablogeddonexplosion	673	diablogeddonexplosion
+diablogeddonfire	674	diablogeddonfire
+megademoninferno	675	megademoninferno
+trapfirebolt	676	trapfirebolt
+trappoisonjavcloud	677	trappoisonjavcloud
+trapnova	678	trapnova
+mephfrostnova	679	mephfrostnova
+mephlight	680	mephlight
+vampiremeteorfire	681	vampiremeteorfire
+strafearrow	682	strafearrow
+strafebolt	683	strafebolt
+siege beast stomp missile	742	siege beast stomp missile
+unused2	743	unused2
+bloodravenimmolationarrow	744	bloodravenimmolationarrow
+dollmeteor	745	dollmeteor
+dollmeteorcenter	746	dollmeteorcenter
+dollmeteortail	747	dollmeteortail
+dollmeteorexplode	748	dollmeteorexplode
+dollmeteorfire	749	dollmeteorfire
+powerstrikenova1	750	powerstrikenova1
+powerstrikenova2	751	powerstrikenova2
+holynova	752	holynova
+holylightdelay	753	holylightdelay
+icebarrage	754	icebarrage
+shatteringarrow	755	shatteringarrow
+shatteringarrowexp	756	shatteringarrowexp
+shatteringarrowexp2	757	shatteringarrowexp2
+leapattacknova	758	leapattacknova
+fireexplosion3	759	fireexplosion3
+doublethrowaxe	760	doublethrowaxe
+doublethrowknife	761	doublethrowknife
+doublethrowjav	762	doublethrowjav
+gust	763	gust
+bashknockback	764	bashknockback
+ravensplash	765	ravensplash
+ravensplash2	766	ravensplash2
+combustion	767	combustion
+hydrafireball	768	hydrafireball
+golemsplash	769	golemsplash
+golemsplash2	770	golemsplash2
+darkpactaoe	771	darkpactaoe
+poisondaggercloud	772	poisondaggercloud
+sentrylightningbolt	773	sentrylightningbolt_pd2
+sentrylightninghit	774	sentrylightninghit_pd2
+thunderstormnova	775	thunderstormnova
+fingermagebossshockwave	776	fingermagebossshockwave
+unravelershout	777	unravelershout
+unravelerbossmultishot	778	unravelerbossmultishot
+baalminionbossnova	779	baalminionbossnova
+psychichammer	780	psychichammer
+megademoninfernoMapBoss	781	megademoninfernoMapBoss
+megademonblazeMapBoss	782	megademonblazeMapBoss
+fistoftheheavensbolt2	783	fistoftheheavensbolt2
+uberimmolationarrow	784	uberimmolationarrow
+uberimmolationfire	785	uberimmolationfire
+uberfirewall - UNUSED	786	uberfirewall - UNUSED
+uberfiresmall - UNUSED	787	uberfiresmall - UNUSED
+uberfiremedium - UNUSED	788	uberfiremedium - UNUSED
+ubernova	789	ubernova
+firesmallmeteor	790	firesmallmeteor
+firemediummeteor	791	firemediummeteor
+ubermeteor	792	ubermeteor
+ubermeteorcenter	793	ubermeteorcenter
+ubermeteorexp	794	ubermeteorexp
+wispbosschainlightning	795	wispbosschainlightning
+wispminionlightningbolt	796	wispminionlightningbolt
+fingermagebossteeth	797	fingermagebossteeth
+fingermagebossspider	798	fingermagebossspider
+fingermagebosswallmaker	799	fingermagebosswallmaker
+fingermagebosswall	800	fingermagebosswall
+uberwallmaker	801	uberwallmaker
+uberwall	802	uberwall
+uberdiablight	803	uberdiablight
+uberdiabfire	804	uberdiabfire
+cobrastrikepoisonbolt	805	cobrastrikepoisonbolt
+cobrastrikepoisoncloud	806	cobrastrikepoisoncloud
+clawfirestorm	807	clawfirestorm
+clawfirestormmaker	808	clawfirestormmaker
+taunt	809	taunt
+skbowarrow1Dclone	810	skbowarrow1Dclone
+skmagepoisDclone	811	skmagepoisDclone
+skmagecoldDclone	812	skmagecoldDclone
+skmagefireDclone	813	skmagefireDclone
+skmageltngDclone	814	skmageltngDclone
+A3 Merc meteorcenter	815	A3 Merc meteorcenter
+A3 Merc meteorfire	816	A3 Merc meteorfire
+A3 Merc fireball	817	A3 Merc fireball
+traitorbossconejavelin	818	traitorbossconejavelin
+traitorbossstunspear	819	traitorbossstunspear
+archerbossarrowraincenter	820	archerbossarrowraincenter
+archerbossarrowrainarrow	821	archerbossarrowrainarrow
+archerbossteethexplode	822	archerbossteethexplode
+archerbossmultipleshot	823	archerbossmultipleshot
+archerbossmultipleshot2	824	archerbossmultipleshot2
+archerbosscageshot	825	archerbosscageshot
+archerbosscageshot2	826	archerbosscageshot2
+archerbosscagewall	827	archerbosscagewall
+archerbosscageshot3	828	archerbosscageshot3
+immolationarrow firewall	829	immolationarrow firewall
+immolationarrow fire	830	immolationarrow fire
+poisondaggercloud spiderboss	831	poisondaggercloud spiderboss
+andypoisonbolt spiderboss	832	andypoisonbolt spiderboss
+armageddoncontrol lavaboss	833	armageddoncontrol lavaboss
+tornado arcaneboss	834	tornado arcaneboss
+necroarcher	835	necroarcher
+blaze2trail	836	blaze2trail
+blaze2dotfiremedium	837	blaze2dotfiremedium
+blaze2dotfiresmall	838	blaze2dotfiresmall
+blaze2ignite	839	blaze2ignite
+blaze2ignitegfx	840	blaze2ignitegfx
+rathmacenter	841	rathmacenter
+rathmadeathorb	842	rathmadeathorb
+rathmamist	843	rathmamist
+rathmafireexplode	844	rathmafireexplode
+rathmafiremedium	845	rathmafiremedium
+rathmafiresmall	846	rathmafiresmall
+dopplestrafearrow	847	dopplestrafearrow
+rathmabonespear	848	rathmabonespear
+rathmabonespeartrail	849	rathmabonespeartrail
+rathmafiredot	850	rathmafiredot
+rathmateethnova	851	rathmateethnova
+voidbolt	852	voidbolt
+voidbolthitmissile	853	voidbolthitmissile
+rathmapoisonorb	854	rathmapoisonorb
+rathmapoisonorbhitmissile	855	rathmapoisonorbhitmissile
+unused1	856	unused1
+rathmafiremedium_short	857	rathmafiremedium_short
+rathma_fissurecenter	858	rathma_fissurecenter
+rathma_fissurecrack_1	859	rathma_fissurecrack_1
+rathma_fissurecrack_2	860	rathma_fissurecrack_2
+rathma_fissuresmoke_1	861	rathma_fissuresmoke_1
+rathma_fissuresmoke_2	862	rathma_fissuresmoke_2
+stunsplash	863	stunsplash
+voidfrogwave	864	voidfrogwave
+rathma_outernova_travel	865	rathma_outernova_travel
+rathma_outernova_trail	866	rathma_outernova_trail
+rathma_outernova_trail_fade	867	rathma_outernova_trail_fade
+rathma_outernova_end_dmg	868	rathma_outernova_end_dmg
+rathmabonespeardelay	869	rathmabonespeardelay
+rathmabonespeartraildelay	870	rathmabonespeartraildelay
+frozenhorror arcticblast1 boss	871	frozenhorror arcticblast1 boss
+frostnova boss	872	frostnova boss
+rathmapacmanstart	873	rathmapacmanstart
+rathmapacmanbolt	874	rathmapacmanbolt
+rathmapacmanbolt2	875	rathmapacmanbolt2
+shockwave boss	876	shockwave boss
+rathmacoldmaker	877	rathmacoldmaker
+rathmacoldtrail	878	rathmacoldtrail
+glacialspikeSpire	879	glacialspikeSpire
+poisonnovaRathma	880	poisonnovaRathma
+teethRathma	881	teethRathma
+mercfirearrow	882	mercfirearrow
+merccoldarrow	883	merccoldarrow
+fistsoffirenova	884	fistsoffirenova
+fistsoffireorb	885	fistsoffireorb
+fofmeteor	886	fofmeteor
+fofmeteorcenter	887	fofmeteorcenter
+fofmeteortail	888	fofmeteortail
+fofmeteorexplode	889	fofmeteorexplode
+fofmeteorfire	890	fofmeteorfire
+fistsoffireorbdelay	891	fistsoffireorbdelay
+ubermadawccursedaxe	892	ubermadawccursedaxe
+ubermadawccurseapply	893	ubermadawccurseapply
+ubermadawcowaxe	894	ubermadawcowaxe
+ubermadawcowapply	895	ubermadawcowapply
+powerstrikenova1valk	896	powerstrikenova1valk
+powerstrikenova2valk	897	powerstrikenova2valk
+ubertalictargetindicator	898	ubertalictargetindicator
+ubertalictargetindicatordelay	899	ubertalictargetindicatordelay
+bruteSlamCenter	900	bruteSlamCenter
+bruteSlamFire	901	bruteSlamFire
+bruteSlamHit	902	bruteSlamHit
+bruteSlamExplode	903	bruteSlamExplode
+bruteSlamFlyingRocks	904	bruteSlamFlyingRocks
+brutemoltenboulder	905	brutemoltenboulder
+brutemoltenboulderemerge	906	brutemoltenboulderemerge
+brutemoltenboulderexplode	907	brutemoltenboulderexplode
+brutemoltenboulderfirepath	908	brutemoltenboulderfirepath
+brutemoltenboulder-flyingrocks	909	brutemoltenboulder-flyingrocks
+bruteshockwave	910	bruteshockwave
+ubermadawcchargedaxe	911	ubermadawcchargedaxe
+ubermadawcchargedground	912	ubermadawcchargedground
+ubermadawclightningstormcenter	913	ubermadawclightningstormcenter
+ubermadawclightningstormbolt	914	ubermadawclightningstormbolt
+leoricsummonnova	915	leoricsummonnova
+leoricsummonorb	916	leoricsummonorb
+leoricsummonorbbolt	917	leoricsummonorbbolt
+siegebeastvolcano	918	siegebeastvolcano
+siegebeastvolcano overlay fire	919	siegebeastvolcano overlay fire
+siegebeastvolcano debris 2	920	siegebeastvolcano debris 2
+siegebeastvolcano explosion	921	siegebeastvolcano explosion
+siegebeastvolcano small fire	922	siegebeastvolcano small fire
+siegebeastfirenova	923	siegebeastfirenova
+siegebeastbuffnova	924	siegebeastbuffnova
+siegebeastorb	925	siegebeastorb
+siegebeastorbbolt	926	siegebeastorbbolt
+siegebeastorbnova	927	siegebeastorbnova
+siegebeastorbexplode	928	siegebeastorbexplode
+blaze2igniteUberTalic	929	blaze2igniteUberTalic
+infernodebuff	930	infernodebuff
+infernodebuff2	931	infernodebuff2
+infernodebuffapply_unused	932	infernodebuffapply_unused
+arcticblastdebuff	933	arcticblastdebuff
+arcticblastdebuff2	934	arcticblastdebuff2
+arcticblastdebuffapply_unused	935	arcticblastdebuffapply_unused
+serpentfireball	936	serpentfireball
+serpentspear	937	serpentspear
+bonespeartrailCisternBoss	938	bonespeartrailCisternBoss
+serpentfiretrail	939	serpentfiretrail
+serpentfiretrailwall	940	serpentfiretrailwall
+Fire Nova	941	Fire Nova
+fireball Ashen Boss	942	fireball Ashen Boss
+ZharUnused	943	ZharUnused
+ZharBolts	944	ZharBolts
+ZharFireball	945	ZharFireball
+ZharNovaOrb	946	ZharNovaOrb
+ZharNovaOrbHitMissile	947	ZharNovaOrbHitMissile
+Zhararmageddoncontrol	948	Zhararmageddoncontrol
+Zhararmageddonrock	949	Zhararmageddonrock
+Zhararmageddontail	950	Zhararmageddontail
+Zhararmageddonexplosion	951	Zhararmageddonexplosion
+Zharexplodingarrowexp	952	Zharexplodingarrowexp
+demonpillarfireball	953	demonpillarfireball
+demonpillarfireballexplode	954	demonpillarfireballexplode
+sacrificecorpseexplosion	955	sacrificecorpseexplosion
+ZharMiniBossBigHeadMissile	956	ZharMiniBossBigHeadMissile
+ZharMiniBossBigHeadExp	957	ZharMiniBossBigHeadExp
+ZharMiniBossMeteorBlizzardCenter	958	ZharMiniBossMeteorBlizzCenter
+ZharMiniBossMeteorBlizzard1	959	ZharMiniBossMeteorBlizzard1
+ZharMiniBossMeteorBlizzard2	960	ZharMiniBossMeteorBlizzard2
+ZharMiniBossMeteorBlizzard3	961	ZharMiniBossMeteorBlizzard3
+ZharMiniBossMeteorBlizzard4	962	ZharMiniBossMeteorBlizzard4
+ZharMiniBossMeteorBlizzardexplode1	963	ZharMiniBossMeteorBlizzExplode1
+demonpillarlightmaker	964	demonpillarlightmaker
+demonpillarlighttrail	965	demonpillarlighttrail
+GuardianOfFateSummonOrb	966	GuardianOfFateSummonOrb
+GuardianOfFateSummonHit	967	GuardianOfFateSummonHit
+warlordminiboss1baalmaker	968	warlordminiboss1baalmaker
+warlordminiboss1baaltrail	969	warlordminiboss1baaltrail
+tpot_fire_small	970	tpot_fire_small
+tpot_fire_small_explode	971	tpot_fire_small_explode
+tpot_fire_small_nova	972	tpot_fire_small_nova
+tpot_fire_medium	973	tpot_fire_medium
+tpot_fire_medium_explode	974	tpot_fire_medium_explode
+tpot_fire_medium_nova	975	tpot_fire_medium_nova
+tpot_fire_large	976	tpot_fire_large
+tpot_fire_large_explode	977	tpot_fire_large_explode
+tpot_fire_large_nova	978	tpot_fire_large_nova
+tpot_gas_small	979	tpot_gas_small
+tpot_gas_small_explode	980	tpot_gas_small_explode
+tpot_gas_small_nova	981	tpot_gas_small_nova
+tpot_gas_medium	982	tpot_gas_medium
+tpot_gas_medium_explode	983	tpot_gas_medium_explode
+tpot_gas_medium_nova	984	tpot_gas_medium_nova
+tpot_gas_large	985	tpot_gas_large
+tpot_gas_large_explode	986	tpot_gas_large_explode
+tpot_gas_large_nova	987	tpot_gas_large_nova
+tpot_cold_small	988	tpot_cold_small
+tpot_cold_small_explode	989	tpot_cold_small_explode
+tpot_cold_small_cloud	990	tpot_cold_small_cloud
+tpot_cold_medium	991	tpot_cold_medium
+tpot_cold_medium_explode	992	tpot_cold_medium_explode
+tpot_cold_medium_cloud	993	tpot_cold_medium_cloud
+tpot_cold_large	994	tpot_cold_large
+tpot_cold_large_explode	995	tpot_cold_large_explode
+tpot_cold_large_cloud	996	tpot_cold_large_cloud
+tpot_light_small	997	tpot_light_small
+tpot_light_small_explode	998	tpot_light_small_explode
+tpot_light_small_bolt	999	tpot_light_small_bolt
+tpot_light_medium	1000	tpot_light_medium
+tpot_light_medium_explode	1001	tpot_light_medium_explode
+tpot_light_medium_bolt	1002	tpot_light_medium_bolt
+tpot_light_large	1003	tpot_light_large
+tpot_light_large_explode	1004	tpot_light_large_explode
+tpot_light_large_bolt	1005	tpot_light_large_bolt
+IskatuMagicOrb	1006	IskatuMagicOrb
+IskatuNovaOrbHitMissile	1007	IskatuNovaOrbHitMissile
+iskatublizcenter	1008	iskatublizcenter
+iskatubliz1	1009	iskatubliz1
+iskatubliz2	1010	iskatubliz2
+iskatubliz3	1011	iskatubliz3
+iskatublizexplode1	1012	iskatublizexplode1
+iskatuhurricaneswoosh	1013	iskatuhurricaneswoosh
+iskatuhurricanerock	1014	iskatuhurricanerock
+iskatuhurricanetree	1015	iskatuhurricanetree
+arcticblastexplode	1016	arcticblastexplode
+arcticblasttrail	1017	arcticblasttrail
+infernotrail	1018	infernotrail
+kanemithblaze2trail	1019	kanemithblaze2trail
+kanemithblaze2dotfiremedium	1020	kanemithblaze2dotfiremedium
+kanemithblaze2dotfiresmall	1021	kanemithblaze2dotfiresmall
+kanemithblaze2ignite	1022	kanemithblaze2ignite
+kanemithblaze2ignitegfx	1023	kanemithblaze2ignitegfx
+kanemithfirestorm	1024	kanemithfirestorm
+kanemithfirestormmaker	1025	kanemithfirestormmaker
+kanemithshock field in air	1026	kanemithshock field in air
+kanemithshock field on ground	1027	kanemithshock field on ground
+sharptoothunholyorb	1028	sharptoothunholyorb
+sharptoothunholyorbbolt	1029	sharptoothunholyorbbolt
+sharptoothunholyorbnova	1030	sharptoothunholyorbnova
+sharptoothunholyorbexplode	1031	sharptoothunholyorbexplode
+sharptoothchainpoison	1032	sharptoothchainpoison
+sharptoothchainpoisontrail	1033	sharptoothchainpoisontrail
+sharptootharmageddoncontrol	1034	sharptootharmageddoncontrol
+sharptootharmageddonrock	1035	sharptootharmageddonrock
+sharptootharmageddontail	1036	sharptootharmageddontail
+sharptootharmageddonexplosion	1037	sharptootharmageddonexplosion
+sharptootharmageddonfire	1038	sharptootharmageddonfire
+radamentbossroyalfiremaker	1039	radamentbossroyalfiremaker
+radamentbossroyalfire	1040	radamentbossroyalfire
+willowispbossnova	1041	willowispbossnova
+Radamentmeteorcenter	1042	Radamentmeteorcenter
+boiwavemaker	1043	boiwavemaker
+boiwavetrail	1044	boiwavetrail
+boichaosice	1045	boichaosice
+boichillpuff	1046	boichillpuff
+cotthunderstorm	1047	cotthunderstorm
+lucionnovaslow	1048	lucionnovaslow
+lucionnovaslowhit	1049	lucionnovaslowhit
+lucionnovafast	1050	lucionnovafast
+lucionnovafasthit	1051	lucionnovafasthit
+lucionbonefingers	1052	lucionbonefingers
+lucionbonefingershit	1053	lucionbonefingershit
+lucionblinknova	1054	lucionblinknova
+lucionroyalfiremaker	1055	lucionroyalfiremaker
+lucionroyalfiredelay	1056	lucionroyalfiredelay
+lucionroyalfire	1057	lucionroyalfire
+lucionpunishtargetindicator	1058	lucionpunishtargetindicator
+lucionpunishdelay	1059	lucionpunishdelay
+meteor2	1060	meteor2
+meteorcenter2	1061	meteorcenter2
+meteortail2	1062	meteortail2
+meteorexplode2	1063	meteorexplode2
+erruption center demon road boss	1064	erruption center demonroad boss
+erruption crack 1 demon road boss	1065	erruption crack1 demonroad boss
+lucioncenter	1066	lucioncenter
+luciondeathorb	1067	luciondeathorb
+lucionmist	1068	lucionmist
+lucionmisttrail	1069	lucionmisttrail
+luciondeathcontrol	1070	luciondeathcontrol
+luciondeathlightningbolt	1071	luciondeathlightningbolt
+luciondeathlightninghit	1072	luciondeathlightninghit
+luciondashtrail	1073	luciondashtrail
+luciondashnova	1074	luciondashnova
+putriddefilerdungeonspear	1075	putriddefilerdungeonspear
+chargedboltImperialMiniBoss	1076	chargedboltImperialMiniBoss
+ImperialMiniBossArcticBlast	1077	ImperialMiniBossArcticBlast
+hurricanerocktortureboss	1078	hurricanerocktortureboss
+immolationarrowBloodraven	1079	immolationarrowBloodraven
+immolationarrow firewallBloodraven	1080	immolationarrow fwallBloodraven
+firewall Bloodraven	1081	firewall Bloodraven
+explodingarrowexp3	1082	explodingarrowexp3
+urehSerpentFireball	1083	urehSerpentFireball
+urehArcherBolt	1084	urehArcherBolt
+urehChargedGround	1085	urehChargedGround
+shock field in air Ureh Boss	1086	shock field in air Ureh Boss
+shock field on ground Ureh Boss	1087	shock field on ground Ureh Boss
+bomb in air Ureh Boss	1088	bomb in air Ureh Boss
+bomb on ground Ureh Boss	1089	bomb on ground Ureh Boss
+bomb explosion Ureh Boss	1090	bomb explosion Ureh Boss
+splitthrowaxe	1091	splitthrowaxe
+splitthrowknife	1092	splitthrowknife
+splitthrowjav	1093	splitthrowjav
+splitthrowglaive	1094	splitthrowglaive
+splitthrowpilum	1095	splitthrowpilum
+splitthrowaxereturn	1096	splitthrowaxereturn
+splitthrowknifereturn	1097	splitthrowknifereturn
+splitthrowjavreturn	1098	splitthrowjavreturn
+splitthrowglaivereturn	1099	splitthrowglaivereturn
+splitthrowpilumreturn	1100	splitthrowpilumreturn
+temp1	1101	temp1
+temp2	1102	temp2
+temp3	1103	temp3
+firearrow firewall	1104	firearrow firewall
+corruptednecrobonespear	1105	corruptednecrobonespear
+volcano invaderdruid	1106	volcano invaderdruid
+volcano debris 2 invaderdruid	1107	volcano debris 2 invaderdruid
+volcano small fire invaderdruid	1108	volcano small fire invaderdruid
+frozenorb light	1109	frozenorb light
+frozenorbbolt light	1110	frozenorbbolt light
+frozenorbnova light	1111	frozenorbnova light
+chargedbolt Djinnboss	1112	chargedbolt Djinnboss
+poisonbolt Djinboss	1113	poisonbolt Djinboss
+unholybolt Djinboss	1114	unholybolt Djinboss
+d1acidspit	1115	d1acidspit
+frozenorbTombEvent	1116	frozenorbTombEvent
+frozenorbboltTombEvent	1117	frozenorbboltTombEvent
+frozenorbnovaTombEvent	1118	frozenorbnovaTombEvent
+frozenorbexplodeTombEvent	1119	frozenorbexplodeTombEvent
+fingermagespiderTombEvent	1120	fingermagespiderTombEvent
+darktemplenova	1121	darktemplenova
+infernoDescentBoss	1122	infernoDescentBoss
+infernoDescentBoss2	1123	infernoDescentBoss2
+monster meteortail	1124	monster meteortail

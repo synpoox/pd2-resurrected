@@ -27,20 +27,6 @@ def tbl(entries: list[tuple[str, str, int, int]]) -> bytes:
             + struct.pack(f"<{n}H", *(s for *_, s in entries)) + b"".join(slots) + pool)
 
 
-class FakeBase:
-    def __init__(self, root: Path):
-        self.root = root
-
-    def list(self, prefix):
-        raise OSError("no CASC here")
-
-    def text(self, rel):
-        return (self.root / rel).read_text("utf-8-sig")
-
-    def exists(self, rel):
-        return (self.root / rel).is_file()
-
-
 def record(sid, key, text):
     return {"id": sid, "Key": key, **{lang: text for lang in mkstrings.LANGS}}
 
@@ -67,7 +53,7 @@ class StringsTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def strings(self):
-        return mkstrings.Strings(FakeBase(self.root / "d2r"))
+        return mkstrings.Strings(pd2_strings.DataRoot(self.root / "d2r" / "data"))
 
     def built(self, rel):
         return {e["Key"]: e for e in json.loads((self.root / "out" / "data/local/lng" / rel).read_text("utf-8-sig"))}

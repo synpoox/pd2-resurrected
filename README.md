@@ -25,13 +25,35 @@ python tools/pd2_merge.py
 ```
 
 ```bash
+python tools/companions.py fetch
+```
+
+```bash
 python -m modkit build .
 ```
 
-Run the last one with `..\d2rAI-toolkit` on `PYTHONPATH`. The merge and the tool tests find modkit there too (or
-on `PYTHONPATH`); the merge reads D2R's string files from the game set in `MODKIT_GAME`. Until `generated/` holds
-excel tables, build with `--no-validate`. Tool tests (no PD2 data needed):
+```bash
+python tools/companions.py install --game DIR
+```
+
+Run the last two with `..\d2rAI-toolkit` on `PYTHONPATH`. `companions.py fetch` downloads the pinned companion
+plugins in `companions/manifest.json` (checked by SHA-256, never committed) and must run after `pd2_merge.py`, which
+wipes `generated/`. `install` is `modkit install` plus the companions, our `companions/filter.json`, and the vanilla
+item tables the loot filter needs when the build doesn't ship them. The merge and the tool tests find modkit in
+`..\d2rAI-toolkit` (or on `PYTHONPATH`). Tool tests (no PD2 data needed):
 
 ```bash
 python -m unittest discover -s tools/tests
 ```
+
+## Plugins
+
+`plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules. Engine addresses live in one header per D2R build (`plugin/common/rvas_93847.h`).
+
+```powershell
+git submodule update --init
+powershell -ExecutionPolicy Bypass -File plugin\build.ps1
+powershell -ExecutionPolicy Bypass -File tools\install.ps1 -Game <D2R folder> [-Data <modkit project>]
+```
+
+Game checks for d2rAI-toolkit's `game_checks.py` are in `tests/game/` (setup and run in `core_rules_checks.py`).

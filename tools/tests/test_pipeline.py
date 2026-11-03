@@ -66,12 +66,13 @@ class MergeTests(unittest.TestCase):
             root = self.project(Path(tmp))
             (root / "merge" / "ids.json").write_text("{}")
             seen = []
-            pd2_merge.RULES["ids.json"] = lambda rule, pd2, out: seen.append((rule.name, pd2.name, out.name))
+            pd2_merge.RULES["ids.json"] = lambda rule, pd2, d2r, out: seen.append((rule.name, pd2.name, out.name))
             try:
-                self.assertEqual(pd2_merge.merge(root), ["ids.json"])
+                (root / "d2r" / "global" / "excel").mkdir(parents=True)
+                self.assertEqual(pd2_merge.merge(root, root / "d2r"), ["ids.json"])
             finally:
                 del pd2_merge.RULES["ids.json"]
-            self.assertEqual(seen, [("ids.json", "pd2-data", "data")])
+            self.assertEqual(seen, [("ids.json", "data", "data")])
 
     def test_refuses_missing_or_stale_extract_and_unknown_rules(self):
         for stamp, rule, msg in [(None, None, "no baseline stamp"), ("A", None, "another baseline"),
