@@ -5,5 +5,6 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Project Diablo II's names and descriptions for items, skills, monsters and areas (English).
 - The mod uses D2RLoader's extended save format: characters load only with D2RLoader.
 - Comes with a loot filter (with drop sounds), stash search, item roll ranges, a buff bar and an XP bar.

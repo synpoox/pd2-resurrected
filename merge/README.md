@@ -5,3 +5,7 @@ The committed rules `tools/pd2_merge.py` applies to the extracted PD2 data (`pd2
 row data. Every id the port adds is assigned here once and is append-only (ADR 0003).
 
 Each file is read by the rule kind its name maps to in `pd2_merge.RULES`; a file with no rule kind fails the merge.
+
+| File | Rule kind |
+|---|---|
+| `strings.json` | `tools/pd2_strings.py`: PD2's `patchstring.tbl` into complete D2R string files (decision #29). `python tools/pd2_strings.py --assign` appends newly referenced keys with IDs from 50,000; never edit or reuse an ID. The 20 changed guild, ladder and arena labels are left out (cut features). `ModStr5q`, `StrSkill110` and `StrSkill76` keep D2R's text: PD2's drops the `%d` D2R fills in. `Runeword171PD2` carries PD2's Runeword171 (Dominion); `runes.txt` must name it |
