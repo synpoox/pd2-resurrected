@@ -1,0 +1,81 @@
+"""Extract the PD2 baseline's data files into git-ignored pd2-data/ (ADR 0002).
+
+    python tools/pd2_extract.py [--install DIR]
+
+Refuses an install whose archives differ from pd2-baseline.json. Writes every file of pd2data.mpq to
+pd2-data/data/... (lower-case paths, forward slashes), then pd2-data/baseline.json last, a copy of the baseline it was
+checked against, which pd2_merge reads to refuse a stale extract.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import shutil
+import sys
+from pathlib import Path
+
+import mpq
+
+ROOT = Path(__file__).resolve().parent.parent
+EXTRACT = ["pd2data.mpq"]  # shortcut: tables and strings only; extract the art archives when the asset pipeline needs them
+
+
+def sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def check(install: Path, baseline: dict) -> list[str]:
+    """Problems with the install, empty when every archive matches the baseline. DLLs only warn."""
+    problems = []
+    for name, want in baseline["archives"].items():
+        p = install / name
+        if not p.is_file():
+            problems.append(f"{name}: missing from {install}")
+        elif sha256(p) != want:
+            problems.append(f"{name}: SHA-256 differs from pd2-baseline.json")
+    for name, want in baseline.get("dlls", {}).items():
+        p = install / name
+        if p.is_file() and sha256(p) != want:
+            print(f"warning: {name} differs from pd2-baseline.json (reference only)")
+    return problems
+
+
+def extract(install: Path, out: Path, baseline_file: Path) -> int:
+    baseline = json.loads(baseline_file.read_text("utf-8"))
+    problems = check(install, baseline)
+    if problems:
+        print("refusing: this install is not the PD2 baseline\n  " + "\n  ".join(problems)
+              + "\nRe-baselining is a deliberate commit to pd2-baseline.json (ADR 0002).", file=sys.stderr)
+        return 1
+    if out.exists():
+        shutil.rmtree(out)
+    count = 0
+    for archive in EXTRACT:
+        a = mpq.Archive(install / archive)
+        for name in a.names():
+            dest = out / name.replace("\\", "/").lower()
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(a.read(name))
+            count += 1
+    shutil.copyfile(baseline_file, out / "baseline.json")
+    print(f"extracted {count} files to {out}")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--install", type=Path, help="PD2 folder (default: the one named in pd2-baseline.json)")
+    ap.add_argument("--out", type=Path, default=ROOT / "pd2-data")
+    ap.add_argument("--baseline", type=Path, default=ROOT / "pd2-baseline.json")
+    a = ap.parse_args(argv)
+    install = a.install or Path(json.loads(a.baseline.read_text("utf-8"))["install"])
+    return extract(install, a.out, a.baseline)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
