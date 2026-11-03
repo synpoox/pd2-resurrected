@@ -1,0 +1,11 @@
+{
+ "_note": "PD2 skill functions whose slots D2R already fills, pointed at core-rules' slots (docs/core-rules.md). Moves into the merge rules with W3's function re-map (#46).",
+ "ops": [
+  {"op": "set", "table": "skills", "bank": "excel", "key": "Bash", "set": {"srvdofunc": "190"}},
+  {"op": "set", "table": "skills", "bank": "excel", "key": "UberTalicBash", "set": {"srvdofunc": "190"}},
+  {"op": "set", "table": "skills", "bank": "excel", "key": "Find Potion",
+   "set": {"srvstfunc": "82", "cltstfunc": "62", "srvdofunc": "69", "cltdofunc": "38"}},
+  {"op": "set", "table": "skills", "bank": "excel", "key": "Find Item",
+   "set": {"srvstfunc": "82", "cltstfunc": "62", "srvdofunc": "72", "cltdofunc": "40"}}
+ ]
+}

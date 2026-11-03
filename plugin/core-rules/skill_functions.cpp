@@ -230,6 +230,158 @@ auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 	return 1;
 }
 
+// --- W10 Barbarian group (docs/research/w10-barbarian.md) ----------------------------------------------------------
+std::atomic<uint32_t> g_finds {0};
+std::atomic<uint32_t> g_findsRefused {0};
+std::atomic<uint32_t> g_bashHits {0};
+std::atomic<uint32_t> g_bashKnockbacks {0};
+std::atomic<uint32_t> g_splashStarts {0};
+
+constexpr int32_t FindPotion = 131;
+
+// D2R's own function in table `table` slot `slot`.
+template <typename Fn>
+auto VanillaSlot(uint64_t table, int slot) noexcept -> Fn {
+	return *reinterpret_cast<Fn*>(d2r::imageBase + table + static_cast<uint64_t>(slot) * 8);
+}
+
+// PD2's Find guard: a corpse whose owner is a player (a summon or minion) can't be searched. D2R's unowned units
+// carry id 0 or -1 here; both pass.
+auto OwnedByPlayer(Unit* target) noexcept -> bool {
+	const uint32_t id = At<uint32_t>(target, d2r::rva::UnitOwnerId);
+	return At<int32_t>(target, d2r::rva::UnitOwnerType) == 0 && id != 0 && id != UINT32_MAX;
+}
+
+// Find Potion / Find Item start (PD2 srvstfunc 70, here 82): the guard, then D2R's own srvst 33 / 34.
+// shortcut: PD2's 46 bosses whose corpses can't be searched are not listed; they are map and uber bosses, which come
+// with the map plan (docs/unported.md).
+auto SrvStFind(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	Unit* target = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(d2r::rva::SkillTargetUnit)(game, unit);
+	if (target == nullptr || OwnedByPlayer(target)) {
+		g_findsRefused.fetch_add(1);
+		return 0;
+	}
+	if (plog::Sample(g_finds)) {
+		plog::Info("find: skill %d on unit type %d owner %d/%u, cast %u", skillId,
+		           At<int32_t>(target, d2r::rva::UnitType), At<int32_t>(target, d2r::rva::UnitOwnerType),
+		           At<uint32_t>(target, d2r::rva::UnitOwnerId), g_finds.load());
+	}
+	const int slot = skillId == FindPotion ? d2r::rva::SrvStFindPotion : d2r::rva::SrvStFindItem;
+	return VanillaSlot<SrvDoFn>(d2r::rva::SrvStTable, slot)(game, unit, skillId, level);
+}
+
+// Client half (PD2 cltstfunc 55, here 62): the same guard before D2R's cltst 26 / 28.
+auto CltStFind(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	if (unit == nullptr) {
+		return 0;
+	}
+	Unit* target = d2r::Engine<Unit* (*)(Unit*) noexcept>(d2r::rva::ClientSkillTargetUnit)(unit);
+	if (target == nullptr || OwnedByPlayer(target)) {
+		return 0;
+	}
+	const int slot = skillId == FindPotion ? d2r::rva::CltStFindPotion : d2r::rva::CltStFindItem;
+	return VanillaSlot<CltDoFn>(d2r::rva::CltStTable, slot)(unit, skillId, level);
+}
+
+// D2's seed step (the game inlines it), as d2r-tools better-auras does it.
+auto RandomBelow(uint32_t* seed, uint32_t n) noexcept -> uint32_t {
+	const uint64_t s = static_cast<uint64_t>(seed[0]) * 0x6ac690c5ULL + seed[1];
+	seed[0] = static_cast<uint32_t>(s);
+	seed[1] = static_cast<uint32_t>(s >> 32);
+	return seed[0] % n;
+}
+
+// Bash (PD2 srvdofunc 158): a hit knocks back half the time (PD2's Bash row has no ResultFlags). The queued hit's
+// knockback bit is set from the roll, then D2R's melee do function applies it.
+// shortcut: PD2 rolls after the first apply and only for targets with flag 0x8000; this rolls before, for every
+// target. Upgrade if knockback on bosses differs from PD2 in play.
+auto SrvDoBash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	Unit* target = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(d2r::rva::SkillTargetUnit)(game, unit);
+	if (target != nullptr) {
+		auto* damage = d2r::Engine<uint8_t* (*)(Unit*, Unit*) noexcept>(d2r::rva::QueuedHit)(unit, target);
+		if (damage != nullptr) {
+			auto& result = *reinterpret_cast<uint16_t*>(damage + d2r::rva::DamageResult);
+			result &= static_cast<uint16_t>(~d2r::rva::ResultKnockback);
+			if (result & d2r::rva::ResultHit) {
+				g_bashHits.fetch_add(1);
+				uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(d2r::rva::UnitSeed)(unit);
+				if (RandomBelow(seed, 100) < 50) {
+					result |= d2r::rva::ResultKnockback;
+					g_bashKnockbacks.fetch_add(1);
+				}
+			}
+		}
+	}
+	return VanillaSlot<SrvDoFn>(d2r::rva::SrvDoTable, d2r::rva::SrvDoMelee)(game, unit, skillId, level);
+}
+
+// srvdofunc 190 serves the PD2 do functions that have no free slot of their own, by skill id (docs/core-rules.md).
+auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	switch (skillId) {
+	case 126:  // Bash
+	case 580:  // UberTalicBash
+		return SrvDoBash(game, unit, skillId, level);
+	default:
+		plog::Warn("srvdo router: no function for skill %d", skillId);
+		return 0;
+	}
+}
+
+// Frenzy / Tiger Strike start (PD2 srvstfunc 78): inc_splash_radius on a temp_skill_buff list, from calc2 and the
+// skill's charges. Frenzy: calc2 * skill_frenzy / max(calc4, 1). Tiger Strike: calc2 * charges while under 3, else 0.
+// Other skills: calc2. Merged ids (ADR 0003): state temp_skill_buff 270, stats skill_frenzy 169, inc_splash_radius 531.
+// shortcut: PD2 keeps one permanent list and updates it; this replaces the list with a SplashFrames one each start.
+// Upgrade if a splash effect needs the list to outlive a long pause between attacks.
+constexpr int32_t TempSkillBuff = 270;
+constexpr int32_t SkillFrenzyStat = 169;
+constexpr int32_t IncSplashRadius = 531;
+constexpr int32_t SplashFrames = 25 * 60 * 10;
+
+auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(dataFlag);
+	if (skill == nullptr || tables == nullptr || At<uint64_t>(tables, TablesStateCount) <= TempSkillBuff) {
+		return 1;  // not the merged data: the attack goes on without the stat
+	}
+	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	const int32_t calc2 = d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level);
+	int32_t charges = 0, value = calc2;
+	if (skillId == 147) {  // Frenzy
+		const int32_t calc4 = d2r::EvalCalc(game, unit, skill, SkCalc4, skillId, level);
+		charges = unitStat(unit, SkillFrenzyStat, 0);
+		value = calc2 * charges / (calc4 > 1 ? calc4 : 1);
+	} else if (skillId == 254) {  // Tiger Strike
+		charges = unitStat(unit, At<int16_t>(skill, SkAuraStat1), 0);
+		value = charges < 3 ? calc2 * charges : 0;
+	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, TempSkillBuff, 1);
+	d2r::StateListRequest request {unit, unit, skillId, level, SplashFrames, -1, 0, TempSkillBuff,
+	                               d2r::Engine<void (*)()>(SkillStateExpired)};
+	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
+	if (list == nullptr) {
+		return 1;
+	}
+	d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list,
+	                                                                                      IncSplashRadius, value, 0);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, TempSkillBuff, 1);
+	if (plog::Sample(g_splashStarts)) {
+		plog::Info("splash start: skill %d level %d charges %d calc2 %d: splash radius %d, start %u", skillId, level,
+		           charges, calc2, value, g_splashStarts.load());
+	}
+	return 1;
+}
+
 struct Table {
 	const char* name;  // the skills.txt column
 	uint64_t rva;
@@ -239,6 +391,7 @@ struct Table {
 constexpr Table SrvDo {"srvdofunc", d2r::rva::SrvDoTable, d2r::rva::SrvDoSlots, d2r::rva::SrvDoFirstFree};
 constexpr Table CltDo {"cltdofunc", d2r::rva::CltDoTable, d2r::rva::CltDoSlots, d2r::rva::CltDoFirstFree};
 constexpr Table SrvSt {"srvstfunc", d2r::rva::SrvStTable, d2r::rva::SrvStSlots, d2r::rva::SrvStFirstFree};
+constexpr Table CltSt {"cltstfunc", d2r::rva::CltStTable, d2r::rva::CltStSlots, d2r::rva::CltStFirstFree};
 constexpr Table MissileSrvDo {"pSrvDoFunc", d2r::rva::MissileSrvDoTable, d2r::rva::MissileSrvDoSlots,
                               d2r::rva::MissileSrvDoFirstFree};
 constexpr Table MissileSrvHit {"pSrvHitFunc", d2r::rva::MissileSrvHitTable, d2r::rva::MissileSrvHitSlots,
@@ -257,6 +410,11 @@ const SlotFunction Functions[] = {
 	{SrvDo, 189, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoSplitThrow)), "split throw"},
 	{CltDo, 118, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoSplitThrow)), "split throw"},
 	{SrvSt, 79, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStTempBuff)), "temp buff"},
+	{SrvSt, 78, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStSplash)), "splash start"},
+	// PD2's Find slots (srvst 70, cltst 55) are D2R's; ours take free slots and patches/020 points the data there.
+	{SrvSt, 82, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStFind)), "find"},
+	{CltSt, 62, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltStFind)), "find"},
+	{SrvDo, 190, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoRouter)), "router"},
 	// PD2's return rows use sdo 38 / cdo 70, which D2R fills; ours take the first free slots and the data points there.
 	{MissileSrvHit, 65, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitSpawnReturn)), "return spawn"},
 	{MissileSrvDo, 46, reinterpret_cast<const void*>(static_cast<MissileSrvDoFn>(SrvDoReturn)), "return"},
@@ -292,6 +450,9 @@ auto SkillFunctionCount() noexcept -> int {
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	char missiles[64];
 	MissileFunctionCounters(missiles, sizeof(missiles));
-	std::snprintf(out, size, "split throw casts %u, client %u, temp buffs %u, %s", g_splitThrowCasts.load(),
-	              g_splitThrowClientCasts.load(), g_tempBuffs.load(), missiles);
+	std::snprintf(out, size,
+	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "
+	              "splash starts %u, %s",
+	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
+	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), missiles);
 }
