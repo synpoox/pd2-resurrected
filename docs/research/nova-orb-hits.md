@@ -20,13 +20,13 @@ the client uses `CltHitSubMissile1` and `cHitPar1`. So one hit makes `64 / max(p
 inside its owner lookup `0x490300` (`CheckFlagEx(unit, 0x400)` at `0x34fb00`); the client owner lookup `0x9a7b0` has it
 too.
 
-## PD2 does not patch them
+## PD2 does not change them
 
 `ProjectDiablo.dll` reaches vanilla tables through version-indexed offset entries. The entries for the two hit tables are
 `0x4a8e2c` (D2Game `0x10da48`, DLL index 6) and `0x4a9934` (D2Client `0xdda10`, DLL index 0). Their getters (`0x31d990`,
 `0x31db90`, via the resolver `0x3a5f20`) are called only from static-initializer thunks (for example `0x66e0`, `0xb60f0`)
 listed in the `.rdata` initializer tables, and nothing reads the resolved pointers (`0x105eb260`, `0x105eaffc`) after
-that. No patch record targets either function. The entry `0x3c7e0` that looks close belongs to D2COMMON (index 1).
+that. None of its call rewrites target either function. The entry `0x3c7e0` that looks close belongs to D2COMMON (index 1).
 
 DLL index order in ProjectDiablo: 0 D2CLIENT, 1 D2COMMON, 2 D2GFX, 3 D2LANG, 4 D2WIN, 5 D2NET, 6 D2GAME.
 

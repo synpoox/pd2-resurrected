@@ -26,7 +26,7 @@ class Game:
         if not self.h:
             raise OSError(f"OpenProcess({pid}) failed: {ctypes.get_last_error()}")
         mods, need = (ctypes.c_void_p * 1)(), wt.DWORD()
-        if not _psapi.EnumProcessModulesEx(self.h, mods, ctypes.sizeof(mods), ctypes.byref(need), 3):
+        if not _psapi.EnumProcessModulesEx(self.h, mods, ctypes.sizeof(mods), ctypes.byref(need), 3):  # LIST_MODULES_ALL
             raise OSError(f"EnumProcessModulesEx failed: {ctypes.get_last_error()}")
         self.base = mods[0]
         pe = self.u32(self.base + 0x3c)
