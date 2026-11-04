@@ -47,7 +47,6 @@ skills	Summon Spirit Wolf	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Summon Fenris	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Fire Claws	=	srvdofunc,cltdofunc	Fire Claws
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
-skills	Hunger	=	srvdofunc	Hunger
 skills	Dragon Flight	=	srvdofunc	Dragon Flight
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
