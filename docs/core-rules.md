@@ -39,7 +39,7 @@ Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 (a frozen install copy); 3.4 is it
 | W5 | Amazon: Lightning Bolt, Lightning Fury (srvdo 188, cltdo 117); starts with the 188 check | W2, P2 |
 | W6 | Amazon group: Fire/Exploding Arrow hit, Multiple Shot dmg 17 -> 20, Power Strike client half (cltdo 22), Immolation client hit (chit 12) | W2, P2 |
 | W7 | Nova and orb hits (shit 5, chit 4) | W1, P2 |
-| W8 | Barbarian: Leap, Leap Attack (srvdo 153 -> free slot, cltdo 97) | W2, P2 |
+| W8 | Barbarian: Leap, Leap Attack (srvdo 153 -> 172, cltdo 97 -> 115) | W2, P2 |
 | W9 | Barbarian: Double Throw (srvdo 154 -> 183, cltdo 98 -> 116, shit 30, dmg 16 -> free slot) | W2, P2 |
 | W10 | Barbarian group: Bash (srvdo router 190), Find Potion/Find Item (srvst 70 -> 82, cltst 55 -> 62), Frenzy start (srvst 78) | W1, P2 |
 
@@ -68,7 +68,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Fire Claws | srvdo 175, cltdo 110, srvst 79 (shared) | c | 175, 110 | SrvDoTable, CltDoTable | Exact | M | open | hit logs values from calc |  |
 | Vengeance | srvdo 174 | c | 174 | SrvDoTable | Exact | S | open | hit logs values from calc |  |
 | Firestorm (Druid) and wall makers (DiabWall, UberDiabWall, FingermageBossDiabWall, KanemithFirestorm) | srvdo 166, cltdo 119 (Firestorm only) | c | srvdo 166 -> 199, cltdo 119 | SrvDoTable, CltDoTable, SrvDoDispatch (overflow) | Exact | M | open | cast logs wall missiles from calc |  |
-| Leap, Leap Attack, Leap Attack Korlic | srvdo 153, cltdo 97 | c | srvdo 153 -> 172, cltdo 97 -> 115 | SrvDoTable, CltDoTable | Exact | M | open | leap logs landing point and hit | W8 |
+| Leap, Leap Attack, Leap Attack Korlic | srvdo 153, cltdo 97 | c | srvdo 153 -> 172, cltdo 97 -> 115 | SrvDoTable, CltDoTable, GetUnitSkill, LeapStart, LeapLanded, PathSetVelocity, AreaUnits, AreaKnockback, SkillMeleeHit, CltDoLeap, AddUnitEvent, RemoveUnitEvent, MonStatsRecord, UnitRoom, UnitId | Exact | M | built (W8) with approximated deviations, owed to the unported list (`docs/unported.md`): the client uses the server's speed, Leap's HitFlags 3 is not applied, each hit is D2R's melee hit (to-hit rolled, Korlic included), D2R's minimum airborne time gives way to PD2's speed. Re-map: srvdo 153 -> 172, cltdo 97 -> 115 (D2R's 153 / 97 are RotW functions), by value in `tools/pd2_ids.py` FUNCS. The leap distance is capped by aurarangecalc (D2R's landing finder reads it; empty means "Impossible") | landing logs radius = calc3 (Leap `min(par3+blvl*par4, 15)` = 12 at level 5, Leap Attack par5 = 8) and speed 0xb00 + calc2*0x50 (9216, 7616), client speed matches for both; out of town a Leap Attack landed with a monster in range (its hit rolled on it); Slot6, `tests/game/fixtures/leap` | W8 |
 | Double Throw, UberMadawcDoubleThrow | srvdo 154, cltdo 98, shit 30, dmg 16 | c | srvdo 154 -> 183, cltdo 98 -> 116, shit 30 -> 66 if different (verify), dmg 16 -> ? (D2R 16 is echoingstrike) | SrvDoTable, CltDoTable, SrvHitTable | Exact | M | open | cast logs both throws and their hits | W9 |
 | Teleport, Blink, LucionBlink, Mon Bloodwarp | srvdo 155 | c | 155 -> 187 | SrvDoTable | Exact | M | verify | teleport logs range rule; compare with D2R Teleport (srvdo 27) |  |
 | Gust (Druid) | srvdo 156 | c | 156 -> router (srvdo 190, by skill id) | SrvDoTable | Exact | M | open | cast logs values from calc |  |

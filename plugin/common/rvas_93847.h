@@ -100,9 +100,26 @@ inline constexpr uint64_t QueuedHit = 0x44d660;
 inline constexpr uint64_t UnitSeed = 0x34a1e0;  // (unit) -> &seed {lo, hi}
 inline constexpr uint64_t UnitStat = 0x2f5020;  // (unit, stat, param) -> value
 inline constexpr uint64_t DataTables = 0x300a90;  // (dataFlag) -> data tables; states.txt row count at +0x298
+// Leap, the way D2R's Leap (srvdo 77 0x568690, cltdo 43 0x22f9a0) and Leap Attack (srvdo 78 0x568920) run it
+inline constexpr uint64_t GetUnitSkill = 0x33dd40;  // (unit, skillId, 0) -> the unit's skill (flags +0x14) or null
+inline constexpr uint64_t LeapStart = 0x33e380;  // (unit, unitSkill) -> non-zero: leap path to the skill's point, type 9
+inline constexpr uint64_t PathSetVelocity = 0x342ae0;  // (path, velocity): ignored while the skill has flag 0x1000
+inline constexpr uint64_t LeapLanded = 0x56b5e0;  // (game, unit, unitSkill) -> non-zero once the unit has landed
+inline constexpr uint64_t UnitRoom = 0x34b440;  // (unit) -> its room
+// (game, unit, &AreaCenter, radius, unit mask, callback, arg, 0): callback(&AreaContext, victim) for each unit in range
+inline constexpr uint64_t AreaUnits = 0x4398b0;
+// (game, unit, 0, 0, radius, &LeapKnockback, 0, &scratch): Leap's landing knockback (srvdo 77), callback 0x43a740
+inline constexpr uint64_t AreaKnockback = 0x437820;
+inline constexpr uint64_t SkillMeleeHit = 0x56b170;  // (game, unit, skillId, level): Leap Attack's hit on the skill target
+inline constexpr uint64_t CltDoLeap = 0x22f9a0;  // D2R cltdo 43 (unit, skillId): Leap's client half
+inline constexpr uint64_t RemoveUnitEvent = 0x48b890;  // (game, unit, event, 0)
+inline constexpr uint64_t AddUnitEvent = 0x48b720;  // (game, unit, event, frame, 0, 0, 0)
+inline constexpr uint64_t MonStatsRecord = 0x976e0;  // (dataFlag, classId) -> monstats record or null
+inline constexpr uint64_t UnitId = 0x34a330;  // (unit, file, line) -> unit id
 
 // --- Offsets ------------------------------------------------------------------------------------------------------
 inline constexpr int GameDataFlag = 0x106;  // Game: byte passed to every data-table getter
+inline constexpr int GameFrame = 0x170;  // Game: int32 frame counter (unit events are timed in it)
 
 inline constexpr int UnitType = 0x00;  // int32: 0 player, 1 monster, 2 object, 3 missile, 4 item, 5 tile
 inline constexpr int UnitPath = 0x38;  // dynamic path (x +0x2, y +0x6, uint16) or static path (x +0x10, y +0x14)
@@ -115,6 +132,13 @@ inline constexpr int TablesStateCount = 0x298;  // uint64 states.txt row count i
 inline constexpr int DamageResult = 0x4;
 inline constexpr uint16_t ResultHit = 0x1;
 inline constexpr uint16_t ResultKnockback = 0x8;
+inline constexpr int UnitClassId = 0x04;  // int32: monstats row of a monster
+
+// Unit skill (rva::GetUnitSkill): flags and the target the hit looks up (0x56ad90)
+inline constexpr int USkillFlags = 0x14;  // 0x80 leap starts, 0x100 in the air, 0x1000 path velocity locked
+inline constexpr int USkillTargetType = 0x2c;  // 6 = none
+inline constexpr int USkillTargetId = 0x30;
+inline constexpr int MonVelocity = 0x6a;  // int16 monstats Velocity
 
 // MissileParams::flags
 inline constexpr uint32_t MissileFromOrigin = 0x820;      // start at the origin unit, fly to targetX/targetY
@@ -183,5 +207,38 @@ struct StateListRequest {
 };
 static_assert(sizeof(StateListRequest) == 0x30);
 static_assert(offsetof(StateListRequest, state) == 0x24);
+
+// rva::AreaUnits: the centre (x, y 0 = the unit's position) and what its callback receives.
+struct AreaCenter {
+	void* room;  // rva::UnitRoom of the unit
+	int32_t x, y;
+};
+struct AreaContext {
+	void* game;
+	Unit* unit;
+	int64_t count;  // units the callback returned non-zero for
+	void* arg;      // AreaUnits' arg
+};
+static_assert(sizeof(AreaContext) == 0x20);
+
+// The damage block D2R's Leap (srvdo 77) hands rva::AreaKnockback, filled as it fills it on its stack: hit flags 0,
+// result flags 9, an empty inline list at +0x40 (data pointer, size, capacity 16 with the inline bit) and an empty
+// tagged pointer at +0x158. The callback copies the block, so it stays as built and needs no cleanup.
+struct LeapKnockback {
+	uint32_t hitFlags = 0;     // 0x00
+	uint32_t resultFlags = 9;  // 0x04
+	uint8_t pad08[0x40 - 0x08] {};
+	void* listData = inlineList;                          // 0x40
+	uint64_t listSize = 0;                                 // 0x48
+	uint64_t listCapacity = 0x8000000000000010ull;        // 0x50
+	uint8_t inlineList[0xc0] {};                           // 0x58
+	uint8_t pad118[0x158 - 0x118] {};
+	uint64_t tagged[5] = {1, 0, 0, 0, 0};                  // 0x158
+	LeapKnockback() = default;
+	LeapKnockback(const LeapKnockback&) = delete;  // listData points into this object
+};
+static_assert(sizeof(LeapKnockback) == 0x180);
+static_assert(offsetof(LeapKnockback, listData) == 0x40);
+static_assert(offsetof(LeapKnockback, tagged) == 0x158);
 
 }  // namespace d2r
