@@ -3,7 +3,7 @@
 Milestones and the work items in each. Decided by "Order the alpha roadmap and slice it into work items" ([#33](https://github.com/synpoox/pd2-resurrected/issues/33)). A work item
 is about one agent session. `P` items are listed here; `W` items are engine rules, listed with their rows in
 [core-rules.md](core-rules.md#work-items) and only placed here. **Issue** links each item's ticket
-(sub-issues of the spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41) through M2, of [#85](https://github.com/synpoox/pd2-resurrected/issues/85) for the pre-alpha, and of the map [#143](https://github.com/synpoox/pd2-resurrected/issues/143) for the alpha), where its status lives; built items link their merged PR.
+(sub-issues of the spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41) through M2, of [#85](https://github.com/synpoox/pd2-resurrected/issues/85) for the pre-alpha, and of the map [#143](https://github.com/synpoox/pd2-resurrected/issues/143) for the alpha), where its status lives, with the PR that closed it. P1, P2, P10 and W1 had no issue, so they link their PR.
 
 Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 on a frozen install copy, testable M2 within 1-2 weeks of 2026-11-03, 5
 build sessions in parallel; the pre-alpha and the alpha have no fixed date. Build PRs merge on the game check, the table-diff gate and a code-review agent; the owner
@@ -30,16 +30,16 @@ PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-di
 
 | # | Work item | Blocked by | Lane | Issue |
 |---|---|---|---|---|
-| P1 | Baseline and layer: extract PD2 into the hash-pinned baseline, add the `merge/` -> `generated/` modkit layer (ADR 0002), switch on extended saves (ADR 0003) | none | A | [#35](https://github.com/synpoox/pd2-resurrected/issues/35) (PR) |
-| P2 | Remapped ids: skill, stat, state and missile ids remapped through append-only id lists in `merge/` | P1 | A | [#40](https://github.com/synpoox/pd2-resurrected/issues/40) (PR) |
-| P3 | Item tables: items, affixes, runewords, cube, treasure classes; map items blocked from dropping | P2 | A | [#62](https://github.com/synpoox/pd2-resurrected/issues/62) (PR) |
-| P4 | Monster and area tables: monsters, levels and the remaining tables | P2 | D | [#64](https://github.com/synpoox/pd2-resurrected/issues/64) (PR) |
-| P5 | Table-diff gate (`pd2_diff`) and `docs/unported.md`, seeded with the gaps found so far | P1 | D | [#59](https://github.com/synpoox/pd2-resurrected/issues/59) (PR) |
-| P6 | Strings: the strings build ("Decide how the mod ships PD2's strings", [#29](https://github.com/synpoox/pd2-resurrected/issues/29)) | P1 | D | [#38](https://github.com/synpoox/pd2-resurrected/issues/38) (PR) |
-| W3 | Stand-ins and data rows (core-rules) | P1 | C | [#46](https://github.com/synpoox/pd2-resurrected/issues/46), [#60](https://github.com/synpoox/pd2-resurrected/issues/60) (PR) |
-| P10 | HD missiles: every missile PD2 adds gets a `missiles.json` model (stand-in art), so none is invisible in HD | P2 | A | [#74](https://github.com/synpoox/pd2-resurrected/issues/74) (PR) |
-| P11 | Skill icons: every class's icon sheet rebuilt from PD2's art, so PD2's new skills show their icons | P1 | D | [#83](https://github.com/synpoox/pd2-resurrected/issues/83) (PR) |
-| P14 | Skill tree backgrounds: each class's tree boxes and arrows redrawn from the merged tables, so they follow PD2's skill positions | P1 | D | [#84](https://github.com/synpoox/pd2-resurrected/issues/84), [#110](https://github.com/synpoox/pd2-resurrected/issues/110) (PR) |
+| P1 | Baseline and layer: extract PD2 into the hash-pinned baseline, add the `merge/` -> `generated/` modkit layer (ADR 0002), switch on extended saves (ADR 0003) | none | A | [#35](https://github.com/synpoox/pd2-resurrected/pull/35) |
+| P2 | Remapped ids: skill, stat, state and missile ids remapped through append-only id lists in `merge/` | P1 | A | [#40](https://github.com/synpoox/pd2-resurrected/pull/40) |
+| P3 | Item tables: items, affixes, runewords, cube, treasure classes; map items blocked from dropping | P2 | A | [#47](https://github.com/synpoox/pd2-resurrected/issues/47) |
+| P4 | Monster and area tables: monsters, levels and the remaining tables | P2 | D | [#48](https://github.com/synpoox/pd2-resurrected/issues/48) |
+| P5 | Table-diff gate (`pd2_diff`) and `docs/unported.md`, seeded with the gaps found so far | P1 | D | [#49](https://github.com/synpoox/pd2-resurrected/issues/49) |
+| P6 | Strings: the strings build ("Decide how the mod ships PD2's strings", [#29](https://github.com/synpoox/pd2-resurrected/issues/29)) | P1 | D | [#43](https://github.com/synpoox/pd2-resurrected/issues/43) |
+| W3 | Stand-ins and data rows (core-rules) | P1 | C | [#46](https://github.com/synpoox/pd2-resurrected/issues/46) |
+| P10 | HD missiles: every missile PD2 adds gets a `missiles.json` model (stand-in art), so none is invisible in HD | P2 | A | [#74](https://github.com/synpoox/pd2-resurrected/pull/74) |
+| P11 | Skill icons: every class's icon sheet rebuilt from PD2's art, so PD2's new skills show their icons | P1 | D | [#79](https://github.com/synpoox/pd2-resurrected/issues/79) |
+| P14 | Skill tree backgrounds: each class's tree boxes and arrows redrawn from the merged tables, so they follow PD2's skill positions | P1 | D | [#84](https://github.com/synpoox/pd2-resurrected/issues/84) |
 
 ## M2: Amazon and Barbarian complete
 
@@ -48,15 +48,15 @@ Was the alpha until [#85](https://github.com/synpoox/pd2-resurrected/issues/85) 
 
 | # | Work item | Blocked by | Lane | Issue |
 |---|---|---|---|---|
-| W1 | Plumbing and Split Throw server half (core-rules) | none | B | [#37](https://github.com/synpoox/pd2-resurrected/issues/37) (PR) |
-| W2 | Client-half example (core-rules) | W1 | B | [#45](https://github.com/synpoox/pd2-resurrected/issues/45), [#61](https://github.com/synpoox/pd2-resurrected/issues/61) (PR), [#69](https://github.com/synpoox/pd2-resurrected/issues/69) (PR) |
-| W4 | Investigation: PlrModes (core-rules) | none | C | [#36](https://github.com/synpoox/pd2-resurrected/issues/36) (PR) |
-| W5, W6 | Amazon (core-rules) | W2, P2 | B | [#52](https://github.com/synpoox/pd2-resurrected/issues/52), [#80](https://github.com/synpoox/pd2-resurrected/issues/80) (PR), [#111](https://github.com/synpoox/pd2-resurrected/issues/111) (PR) |
-| W7 | Nova and orb hits (core-rules) | W1, P2 | C | [#50](https://github.com/synpoox/pd2-resurrected/issues/50), [#66](https://github.com/synpoox/pd2-resurrected/issues/66) (PR); game check waits on the owner's run |
-| W8, W9 | Barbarian (core-rules) | W2, P2 | B | [#82](https://github.com/synpoox/pd2-resurrected/issues/82) (PR), [#81](https://github.com/synpoox/pd2-resurrected/issues/81) (PR) |
-| W10 | Barbarian group (core-rules) | W1, P2 | C | [#71](https://github.com/synpoox/pd2-resurrected/issues/71) (PR) |
-| P7 | Companions: hash-checked manifest, release-script download, hand-written `filter.json`, Pyre's 16 `Filter*` sound rows and flacs merged into our data | none | C | [#39](https://github.com/synpoox/pd2-resurrected/issues/39) (PR) |
-| P9 | Corruption: starts with the outcome check (core-rules Q10), includes the cube op 16/18 check for corruption recipes | P3 | A | [#56](https://github.com/synpoox/pd2-resurrected/issues/56), [#68](https://github.com/synpoox/pd2-resurrected/issues/68) (PR) |
+| W1 | Plumbing and Split Throw server half (core-rules) | none | B | [#37](https://github.com/synpoox/pd2-resurrected/pull/37) |
+| W2 | Client-half example (core-rules) | W1 | B | [#45](https://github.com/synpoox/pd2-resurrected/issues/45) |
+| W4 | Investigation: PlrModes (core-rules) | none | C | [#42](https://github.com/synpoox/pd2-resurrected/issues/42) |
+| W5, W6 | Amazon (core-rules) | W2, P2 | B | [#52](https://github.com/synpoox/pd2-resurrected/issues/52), [#53](https://github.com/synpoox/pd2-resurrected/issues/53) |
+| W7 | Nova and orb hits (core-rules) | W1, P2 | C | [#50](https://github.com/synpoox/pd2-resurrected/issues/50); game check waits on the owner's run |
+| W8, W9 | Barbarian (core-rules) | W2, P2 | B | [#54](https://github.com/synpoox/pd2-resurrected/issues/54), [#55](https://github.com/synpoox/pd2-resurrected/issues/55) |
+| W10 | Barbarian group (core-rules) | W1, P2 | C | [#51](https://github.com/synpoox/pd2-resurrected/issues/51) |
+| P7 | Companions: hash-checked manifest, release-script download, hand-written `filter.json`, Pyre's 16 `Filter*` sound rows and flacs merged into our data | none | C | [#44](https://github.com/synpoox/pd2-resurrected/issues/44) |
+| P9 | Corruption: starts with the outcome check (core-rules Q10), includes the cube op 16/18 check for corruption recipes | P3 | A | [#56](https://github.com/synpoox/pd2-resurrected/issues/56) |
 | P8 | M2 release: local 7z and release notes | every item above | A | [#57](https://github.com/synpoox/pd2-resurrected/issues/57) |
 
 **Lanes** for four sessions (M2): A (data) P1 -> P2 -> P3 -> P9 -> P8; B (engine) W1 -> W2 -> class items; C W4 and P7 first,
@@ -73,16 +73,16 @@ are "not yet" rows on the unported list; the Warlock ships as D2R has it.
 
 | # | Work item | Blocked by | Lane | Issue |
 |---|---|---|---|---|
-| W11-W14 | Necromancer (core-rules); W14's get-hit window split off to W34 | none | B | [#86](https://github.com/synpoox/pd2-resurrected/issues/86), [#123](https://github.com/synpoox/pd2-resurrected/issues/123) (PR), [#192](https://github.com/synpoox/pd2-resurrected/issues/192) (PR), [#114](https://github.com/synpoox/pd2-resurrected/issues/114) (PR), [#115](https://github.com/synpoox/pd2-resurrected/issues/115) (PR), [#121](https://github.com/synpoox/pd2-resurrected/issues/121) (PR) |
-| W15-W20 | Paladin (core-rules) | none | C | [#117](https://github.com/synpoox/pd2-resurrected/issues/117) (PR), [#129](https://github.com/synpoox/pd2-resurrected/issues/129) (PR), [#135](https://github.com/synpoox/pd2-resurrected/issues/135) (PR), [#154](https://github.com/synpoox/pd2-resurrected/issues/154) (PR), [#166](https://github.com/synpoox/pd2-resurrected/issues/166) (PR), [#165](https://github.com/synpoox/pd2-resurrected/issues/165), [#184](https://github.com/synpoox/pd2-resurrected/pull/184) (PR), [#163](https://github.com/synpoox/pd2-resurrected/issues/163) (PR) |
-| W21-W24 | Druid (core-rules) | none | D | [#127](https://github.com/synpoox/pd2-resurrected/issues/127) (PR), [#136](https://github.com/synpoox/pd2-resurrected/issues/136) (PR), [#139](https://github.com/synpoox/pd2-resurrected/issues/139) (PR), [#160](https://github.com/synpoox/pd2-resurrected/issues/160) (PR) |
-| W25 | Investigation: Assassin finisher hook points (core-rules) | none | E | [#124](https://github.com/synpoox/pd2-resurrected/issues/124) (PR) |
-| W26-W28 | Sorceress (core-rules) | W21 (W27 only) | E | [#128](https://github.com/synpoox/pd2-resurrected/issues/128) (PR), [#140](https://github.com/synpoox/pd2-resurrected/issues/140) (PR), [#161](https://github.com/synpoox/pd2-resurrected/issues/161) (PR) |
-| W29-W32 | Assassin (core-rules) | W25 (W29), W29 (W30), W21 (W32) | first free class lane | [#130](https://github.com/synpoox/pd2-resurrected/issues/130) (PR), [#142](https://github.com/synpoox/pd2-resurrected/issues/142) (PR), [#162](https://github.com/synpoox/pd2-resurrected/issues/162) (PR), [#164](https://github.com/synpoox/pd2-resurrected/issues/164) (PR) |
-| W33 | **Rush:** melee splash (srvdo 163), which item_splashonhit, Frenzy, Tiger Strike and Revive's event cast (core-rules) | none | A, as a rush job | [#126](https://github.com/synpoox/pd2-resurrected/issues/126) (PR) |
-| W34 | Get-hit/block end window and cast/sequence delay, every class (core-rules), split off W14 | none | first free class lane | [#173](https://github.com/synpoox/pd2-resurrected/pull/173) (PR, part), [#120](https://github.com/synpoox/pd2-resurrected/issues/120) |
-| W35 | Melee splash: the current skill's damage and radius extras (core-rules), after W33 | W33 | first free class lane | [#187](https://github.com/synpoox/pd2-resurrected/pull/187) (PR), [#125](https://github.com/synpoox/pd2-resurrected/issues/125) |
-| P12 | Class item rules: Ormus' Robes' random sorceress skill (properties func 25 -> 26) and skill on cast for every cast-skill item, its trigger approximated on the unported list | none | A | [#108](https://github.com/synpoox/pd2-resurrected/issues/108), [#181](https://github.com/synpoox/pd2-resurrected/pull/181) (PR) |
+| W11-W14 | Necromancer (core-rules); W14's get-hit window split off to W34 | none | B | [#86](https://github.com/synpoox/pd2-resurrected/issues/86), [#122](https://github.com/synpoox/pd2-resurrected/issues/122), [#87](https://github.com/synpoox/pd2-resurrected/issues/87), [#88](https://github.com/synpoox/pd2-resurrected/issues/88), [#89](https://github.com/synpoox/pd2-resurrected/issues/89) |
+| W15-W20 | Paladin (core-rules) | none | C | [#90](https://github.com/synpoox/pd2-resurrected/issues/90), [#91](https://github.com/synpoox/pd2-resurrected/issues/91), [#92](https://github.com/synpoox/pd2-resurrected/issues/92), [#93](https://github.com/synpoox/pd2-resurrected/issues/93), [#94](https://github.com/synpoox/pd2-resurrected/issues/94), [#165](https://github.com/synpoox/pd2-resurrected/issues/165), [#95](https://github.com/synpoox/pd2-resurrected/issues/95) |
+| W21-W24 | Druid (core-rules) | none | D | [#96](https://github.com/synpoox/pd2-resurrected/issues/96), [#97](https://github.com/synpoox/pd2-resurrected/issues/97), [#98](https://github.com/synpoox/pd2-resurrected/issues/98), [#99](https://github.com/synpoox/pd2-resurrected/issues/99) |
+| W25 | Investigation: Assassin finisher hook points (core-rules) | none | E | [#100](https://github.com/synpoox/pd2-resurrected/issues/100) |
+| W26-W28 | Sorceress (core-rules) | W21 (W27 only) | E | [#101](https://github.com/synpoox/pd2-resurrected/issues/101), [#102](https://github.com/synpoox/pd2-resurrected/issues/102), [#103](https://github.com/synpoox/pd2-resurrected/issues/103) |
+| W29-W32 | Assassin (core-rules) | W25 (W29), W29 (W30), W21 (W32) | first free class lane | [#104](https://github.com/synpoox/pd2-resurrected/issues/104), [#105](https://github.com/synpoox/pd2-resurrected/issues/105), [#106](https://github.com/synpoox/pd2-resurrected/issues/106), [#107](https://github.com/synpoox/pd2-resurrected/issues/107) |
+| W33 | **Rush:** melee splash (srvdo 163), which item_splashonhit, Frenzy, Tiger Strike and Revive's event cast (core-rules) | none | A, as a rush job | [#119](https://github.com/synpoox/pd2-resurrected/issues/119) |
+| W34 | Get-hit/block end window and cast/sequence delay, every class (core-rules), split off W14 | none | first free class lane | [#120](https://github.com/synpoox/pd2-resurrected/issues/120) |
+| W35 | Melee splash: the current skill's damage and radius extras (core-rules), after W33 | W33 | first free class lane | [#125](https://github.com/synpoox/pd2-resurrected/issues/125) |
+| P12 | Class item rules: Ormus' Robes' random sorceress skill (properties func 25 -> 26) and skill on cast for every cast-skill item, its trigger approximated on the unported list | none | A | [#108](https://github.com/synpoox/pd2-resurrected/issues/108) |
 | P13 | Pre-Alpha release: local 7z and release notes | P8 and every item above | A | [#109](https://github.com/synpoox/pd2-resurrected/issues/109) |
 
 **Lanes** for five sessions: A P9 -> P8, then P12 and rush jobs, then P13; B Necromancer; C Paladin; D Druid; E W25, then
