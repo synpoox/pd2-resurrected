@@ -107,6 +107,16 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows, [["flamewave", "71", "38"], ["back", "78", "46"], ["bolt", "1", "1"]])
 
+    def test_missile_do_functions_become_the_missile_column(self):
+        cols = "skill|srvdofunc|srvmissile|srvmissilea|cltdofunc|cltmissile|cltmissilea"
+        d2r = table(f"{cols}\nAttack|1||||||\n")
+        pd2 = table(f"{cols}\nbolt|188||jav|117||jav\nkept|188|own|jav|117|own|jav\nother|5||jav|3||jav\n")
+        lines = [("bolt", 1, "bolt"), ("kept", 2, "kept"), ("other", 3, "other")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["bolt", "", "jav", "", "", "jav", ""],
+                                           ["kept", "", "own", "jav", "", "own", "jav"],
+                                           ["other", "5", "", "jav", "3", "", "jav"]])
+
     def test_name_length(self):
         with self.assertRaisesRegex(I.IdError, "31 bytes"):
             I.check("missiles", [("x" * 32, 0, "x" * 32)], ["x" * 32], [])

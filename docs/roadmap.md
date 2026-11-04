@@ -34,7 +34,7 @@ M1 plus the companions, corruption and the Amazon and Barbarian engine rules; th
 | W1 | Plumbing and Split Throw server half (core-rules) | none | B | #37 (PR) |
 | W2 | Client-half example (core-rules) | W1 | B | #45, #61, #69 (PR) |
 | W4 | Investigation: PlrModes (core-rules) | none | C | #36 (PR) |
-| W5, W6 | Amazon (core-rules) | W2, P2 | B | #52, #53 |
+| W5, W6 | Amazon (core-rules) | W2, P2 | B | #52, #80 (PR), #53 |
 | W7 | Nova and orb hits (core-rules) | W1, P2 | C | #50, #66 (PR); game check waits on the owner's run |
 | W8, W9 | Barbarian (core-rules) | W2, P2 | B | #54, #55 |
 | W10 | Barbarian group (core-rules) | W1, P2 | C | #71 (PR) |

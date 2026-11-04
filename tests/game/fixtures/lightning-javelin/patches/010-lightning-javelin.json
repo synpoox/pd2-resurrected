@@ -1,0 +1,12 @@
+{"ops": [
+  {"op": "set", "table": "skills", "key": "Lightning Bolt", "bank": "excel", "set": {
+    "srvdofunc": "", "cltdofunc": "", "srvmissile": "lightningjavelin", "srvmissilea": "",
+    "cltmissile": "lightningjavelin", "cltmissilea": "", "noammo": "1", "decquant": "", "InTown": "1"
+  }},
+  {"op": "set", "table": "skills", "key": "Lightning Fury", "bank": "excel", "set": {
+    "srvdofunc": "", "cltdofunc": "", "srvmissile": "lightningfury", "srvmissilea": "",
+    "cltmissile": "lightningfury", "cltmissilea": "", "noammo": "1", "decquant": "", "InTown": "1"
+  }},
+  {"op": "set", "table": "missiles", "key": "lightningjavelin", "bank": "excel", "set": {"Town": "1"}},
+  {"op": "set", "table": "missiles", "key": "lightningfury", "bank": "excel", "set": {"Town": "1"}}
+]}
