@@ -873,7 +873,7 @@ auto Hostile(Unit* a, Unit* b) noexcept -> bool {
 	using namespace d2r::rva;
 	const auto playerSide = [](Unit* u) {
 		const int32_t type = At<int32_t>(u, UnitType);
-		return type == 0 || (type == UnitMonster && At<int32_t>(u, UnitOwnerType) == 0);
+		return type == 0 || (type == UnitMonster && OwnedByPlayer(u));
 	};
 	if (a == b || (playerSide(a) && playerSide(b))) {
 		return false;
@@ -887,7 +887,7 @@ void PutOverlay(Unit* unit, int32_t overlay) noexcept {
 	using namespace d2r::rva;
 	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(d2r::api.unitDataFlag(unit));
 	if (overlay >= 0 && tables != nullptr && overlay < At<int64_t>(tables, TablesOverlayCount)) {
-		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetOverlay)(unit, overlay, 0);
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetOverlay)(unit, overlay, 0);
 	}
 }
 
