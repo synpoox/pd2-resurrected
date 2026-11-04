@@ -1085,8 +1085,10 @@ constexpr int32_t DiabWall = 197, Firestorm = 225, FingermageBossDiabWall = 473,
                   KanemithFirestorm = 632;  // merged ids
 
 // shortcut: PD2 seeds each maker from a counter it keeps on the caster (+0xcc, bumped per maker); D2R's callback 1
-// seeds from its argument plus a path value, so each maker gets a roll of the caster's seed. Upgrade if the walls'
-// paths look less spread than PD2's in play.
+// seeds from its argument plus a path value, so each maker gets the next value of one game-wide counter. Upgrade if
+// the walls' paths look less spread than PD2's in play.
+// shortcut: makers are capped at 64 (PD2 has no cap; no PD2 row gets near it), upgrade if a row ever needs more.
+std::atomic<int32_t> g_makerSeeds {0};
 template <typename Create>
 auto Walls(Unit* unit, const uint8_t* skill, int32_t count, int32_t skillId, int32_t level,
            int32_t tx, int32_t ty, Create create) noexcept -> int32_t {
@@ -1106,10 +1108,9 @@ auto Walls(Unit* unit, const uint8_t* skill, int32_t count, int32_t skillId, int
 	params.skill = skillId;
 	params.skillLevel = level;
 	params.callback = d2r::rva::MissileCallbackMaker;
-	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(d2r::rva::UnitSeed)(unit);
 	int32_t created = 0;
-	for (int32_t i = 0; i < std::min(count, 64); ++i) {  // a broken formula must not spawn thousands of makers
-		params.callbackArg = static_cast<int32_t>(d2r::Roll(seed));
+	for (int32_t i = 0; i < std::min(count, 64); ++i) {
+		params.callbackArg = g_makerSeeds.fetch_add(1);
 		created += create(&params) ? 1 : 0;
 	}
 	return created;
@@ -1121,12 +1122,12 @@ auto SrvDoWall(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	if (skill == nullptr) {
 		return 0;
 	}
-	d2r::api.setUnitSkillFlag(unit, 1);
 	int32_t tx = 0, ty = 0;
 	if (!d2r::ValidMissile(dataFlag, At<int16_t>(skill, d2r::rva::SkSrvMissileA)) ||
 	    d2r::api.skillTargetXY(game, unit, &tx, &ty) == 0) {
 		return 0;
 	}
+	d2r::api.setUnitSkillFlag(unit, 1);
 	const int32_t count = d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc1, skillId, level);
 	const int32_t created = Walls(unit, skill, count, skillId, level, tx, ty, [&](d2r::MissileParams* p) {
 		return d2r::api.createMissile(game, p) != nullptr;
@@ -1147,12 +1148,12 @@ auto CltDoWall(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	if (skill == nullptr) {
 		return 0;
 	}
-	d2r::api.setUnitSkillFlag(unit, 1);
 	int32_t tx = 0, ty = 0;
 	if (!d2r::ValidMissile(dataFlag, At<int16_t>(skill, d2r::rva::SkSrvMissileA)) ||
 	    d2r::api.clientSkillTargetXY(unit, &tx, &ty) == 0) {
 		return 0;
 	}
+	d2r::api.setUnitSkillFlag(unit, 1);
 	const int32_t count =
 		d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, d2r::rva::SkCalc1), skillId, level);
 	const int32_t created = Walls(unit, skill, count, skillId, level, tx, ty, [](d2r::MissileParams* p) {

@@ -37,8 +37,8 @@ from the argument plus a path value. Index 7 (`0x3b7f70`, DiabWall) is the same 
 five. D2R's Firestorm (`0x5764e0` -> `0x5769f0`) also sends its first maker through a plain create, without the
 callback, and the rest with callback 1 and their index; DiabWall (`0x578bb0`) sends all with callback 7.
 
-core-rules builds PD2's loop with callback 1 and a roll of the caster's seed as each maker's argument, so every maker
-gets a different seed on each cast, as PD2's counter gives; the values are not PD2's (`docs/unported.md`).
+core-rules builds PD2's loop with callback 1 and the next value of one game-wide counter as each maker's argument, so
+every maker gets a different seed on each cast, as PD2's counter gives; the values are not PD2's (`docs/unported.md`).
 
 ## Game check
 

@@ -6,7 +6,6 @@ private-multiplayer release a build may break characters; each break is noted he
 ### Unreleased
 
 - Firestorm works as in Project Diablo II: every one of its fire trails wanders (D2R sends the first one straight).
-  Diablo's fire walls and the other monster walls work the same way.
 - Teleport works as in Project Diablo II: for a second after each teleport your elemental masteries are
   lowered, by less as the skill levels up.
 - Melee splash works as in Project Diablo II: items that splash on hit, Frenzy and Tiger Strike's splash radius,
