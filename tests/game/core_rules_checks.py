@@ -41,6 +41,10 @@ monster), summon a Valkyrie next to monsters, and run the same command with core
 W13 checks (tag core-rules-w13), same merged data: a Necromancer with Desecrate (83), e.g. modkit save-set <save>
 level=30 --skill 83=10 --project .; then out of town: cast Desecrate on the ground, wait 20 s (PD2 hides the corpses
 after 16), and run the same command with core-rules-w13.
+
+W21 checks (tag core-rules-w21), same merged data: a Druid with Arctic Blast (230) or a Sorceress with Inferno (41),
+e.g. modkit save-set <save> level=30 --skill 230=10 --project .; then out of town: hold the skill on the ground for
+a second, and run the same command with core-rules-w21.
 """
 import json
 import os
@@ -62,6 +66,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("pSrvDmgFunc", 21, "first hit"),
     ("pSrvHitFunc", 63, "explode spread"), ("pSrvDmgFunc", 20, "pierce falloff"),
     ("cltdofunc", 121, "desecrate"),
+    ("srvdofunc", 182, "channel"), ("cltdofunc", 111, "channel"),
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
@@ -79,7 +84,7 @@ def _log(ctx) -> str:
     return text[starts[-1]:] if starts else ""
 
 
-@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w13", "game"])
+@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w13", "core-rules-w21", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -278,6 +283,42 @@ def desecrate_corpses_hide(ctx):
     return f"{hidden} corpse(s) hidden after {casts} cast(s)"
 
 
+INFERNO = 41  # D2R skill id, PD2's too; Arctic Blast is 230
+
+
+def _channel_values(skill: int, level: int) -> tuple[int, int]:
+    """PD2's calc3 (missiles) and calc1 (range, ln12 = par1 + (lvl - 1) * par2) for Inferno and Arctic Blast."""
+    if skill == INFERNO:
+        return min(2 + level // 4, 5), max(min((22 + (level - 1) * 2) // 2, 32), 1)
+    return 2, max(min((24 + (level - 1) * 2) // 2, 24), 1)
+
+
+@check("channel-cast", tags=["core-rules-w21"])
+def channel_cast(ctx):
+    """Inferno / Arctic Blast (srvdofunc 182) send PD2's calc3 missiles with range calc1."""
+    casts = re.findall(r"channel: skill (\d+) level (\d+): (\d+) of (\d+) missiles \(row \d+\), range (\d+)", _log(ctx))
+    if not casts:
+        ctx.skip("no Inferno or Arctic Blast cast in the log yet (cast it out of town, then run again)")
+    skill, level, created, count, rng = (int(v) for v in casts[0])
+    want_count, want_range = _channel_values(skill, level)
+    assert (count, rng) == (want_count, want_range), \
+        f"skill {skill} level {level}: {count} missiles range {rng}, PD2's calcs give {want_count} range {want_range}"
+    assert created == count, f"only {created} of {count} missiles created"
+    return f"skill {skill} level {level}: {created} missiles, range {rng}"
+
+
+@check("channel-client", tags=["core-rules-w21"])
+def channel_client(ctx):
+    """The client half (cltdofunc 111) ran with the same count and range; it draws each flame with chance 2 / count."""
+    casts = re.findall(r"channel client: skill (\d+) level (\d+): (\d+) of (\d+) flames drawn, range (\d+)", _log(ctx))
+    if not casts:
+        ctx.skip("no client channel cast in the log yet (cast it out of town, then run again)")
+    skill, level, drawn, count, rng = (int(v) for v in casts[0])
+    assert (count, rng) == _channel_values(skill, level), f"skill {skill} level {level}: {count} flames range {rng}"
+    assert drawn <= count, f"{drawn} flames drawn of {count}"
+    return f"skill {skill} level {level}: {drawn} of {count} flames drawn, range {rng}"
+
+
 @check("throw-hd-models", tags=["core-rules"])
 def throw_hd_models(ctx):
     """The installed data maps every fixture missile (Split Throw's or Double Throw's) to an HD model; without one
@@ -391,7 +432,7 @@ def leap_client(ctx):
     return ", ".join(f"skill {s} velocity {v}" for s, v in client.items())
 
 
-@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w13"])
+@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w13", "core-rules-w21"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

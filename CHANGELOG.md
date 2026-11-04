@@ -5,6 +5,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Inferno and Arctic Blast send Project Diablo II's line of flames (more with Inferno's level).
 - Desecrate raises corpses around its cloud as in Project Diablo II.
 - Skill trees show their boxes and arrows where Project Diablo II's skills and prerequisites are.
 - Double Throw works as in Project Diablo II: one throw that bounces between monsters.
