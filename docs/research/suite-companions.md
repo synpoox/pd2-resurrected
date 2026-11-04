@@ -35,8 +35,8 @@ Three findings change rows on main:
 | D2R 93847 data (`d2rAI-toolkit/d2r-data/93847`) | D2R's vendor panel |
 | `generated/data/global/excel/itemstatcost.txt` | the merged stat ids |
 
-This was not run in the game: nothing here was loaded next to core-rules. The coexistence result comes from reading
-both plugins' hook sites, and IR2's game check proves it.
+No agent ran these in the game. The coexistence result comes from reading both plugins' hook sites; the owner
+verifies the plugins in the game, and IR2's game check proves the bundle.
 
 ## 1. Hooks: core-rules against the suite
 
