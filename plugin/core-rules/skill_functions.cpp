@@ -8,9 +8,10 @@
 // Start functions (`srvstfunc` in rva::SrvStTable, `cltstfunc` in rva::CltStTable) take the same arguments at the
 // start frame; zero refuses the cast. srvdofunc 190 is a router: one slot shared by several PD2 do functions, picked
 // by skill id.
-// PD2's channel take-over is an inline hook on D2R's mode gate for a busy player (BusyModeGate).
-// Each slot is written with PatchWriteU64 and an expected value of eight zero bytes, so a slot D2R or another plugin
-// already uses is refused and logged, never overwritten. Slots keep PD2's own numbers where free (docs/core-rules.md).
+// PD2's channel take-over is an inline hook on D2R's mode gate for a busy player (BusyModeGate), which also logs the
+// Run/Concentration answers W19's game checks read. Each slot is written with PatchWriteU64 and an expected value of
+// eight zero bytes (D2R's own function for the slots it wraps: aura events 32 and 16, srvdo 58), so a slot D2R or
+// another plugin already uses is refused and logged, never overwritten. Slots keep PD2's own numbers where free (docs/core-rules.md).
 #include "skill_functions.h"
 
 #include "d2r.h"
@@ -2802,6 +2803,14 @@ std::atomic<uint32_t> g_bladeFuryRefusals {0};
 std::atomic<uint32_t> g_heldRequests {0};
 constexpr int32_t SrvDoBladeFury = 48;
 constexpr int32_t Uninterruptable = 54;  // states.txt uninterruptable: PD2 refuses before its own rules
+constexpr int32_t StateConcentration = 42, PlrModeRun = 3;
+constexpr uint32_t GateLogLines = 400;
+std::atomic<uint32_t> g_gateLogs {0};
+
+// The first `n` calls, for logs a game check needs several lines of (plog::Sample gives one in a hundred)
+auto First(std::atomic<uint32_t>& counter, uint32_t n) noexcept -> bool {
+	return ++counter <= n;
+}
 using GateFn = int64_t (*)(Game* game, Unit* unit, int32_t mode, void* request, int32_t flag) noexcept;
 GateFn g_gateOriginal = nullptr;
 
@@ -2842,7 +2851,21 @@ auto BusyModeGate(Game* game, Unit* unit, int32_t mode, void* request, int32_t f
 			return refused ? 1 : 0;
 		}
 	}
-	return g_gateOriginal(game, unit, mode, request, flag);
+	// PD2's run and Concentration rules are D2R's own here (docs/research/w19-holy-sword-smite.md); the log shows them
+	const bool player = unit != nullptr && At<int32_t>(unit, UnitType) == 0;  // a player
+	const int32_t from = player ? At<int32_t>(unit, UnitMode) : -1;  // before D2R's gate, which may change it
+	const int64_t result = g_gateOriginal(game, unit, mode, request, flag);
+	if (!player || g_gateLogs.load() >= GateLogLines) {
+		return result;
+	}
+	const bool concentration =
+		d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(unit, StateConcentration) != 0;
+	if (((mode == PlrModeRun && request == nullptr) || concentration) && First(g_gateLogs, GateLogLines)) {
+		plog::Info("gate: mode %d (skill %d) from mode %d, concentration %d: %lld, %u so far", mode,
+		           request != nullptr ? UnitSkillIdOf(request) : -1, from, concentration ? 1 : 0,
+		           static_cast<long long>(result), g_gateLogs.load());
+	}
+	return result;
 }
 
 // --- Charge (PD2 srvstfunc 72, srvdofunc 180; cltstfunc 57 -> 25, cltdofunc 112 -> 37) -------------------------------
@@ -3024,8 +3047,6 @@ auto AuraEventReviveSplash(Game* game, int32_t event, Unit* unit, Unit* target, 
 	return cast != 0 ? 1 : 0;
 }
 
-using AuraEventFn = int32_t (*)(Game*, int32_t, Unit*, Unit*, void*, int32_t, int32_t) noexcept;
-
 // Revive's do (srvdofunc 58): D2R's own, then Revive's aura events go on the revived monster. D2R's Revive never
 // registers them, so without this event 32 never fires. The corpse is revived in place (seen in game: same unit,
 // result 1, mode neutral), so the target before the call is the pet after it; a refused revive leaves it dead.
@@ -3047,6 +3068,88 @@ auto SrvDoRevive(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	if (plog::Sample(g_revives)) {
 		plog::Info("revive: skill %d level %d events on unit class %d, revive %u", skillId, level,
 		           At<int32_t>(target, d2r::rva::UnitClassId), g_revives.load());
+	}
+	return result;
+}
+
+// --- Holy Sword and Smite starts (PD2 srvstfunc 73, 75), Smite's event (auraeventfunc 16) ---------------------------
+// Read from ProjectDiablo.dll: srvst 73 at 0x103b6990, srvst 75 at 0x103b6a20, event 16 at 0x103469a0
+// (docs/research/w19-holy-sword-smite.md).
+std::atomic<uint32_t> g_holySwordStarts {0};
+std::atomic<uint32_t> g_smiteStarts {0};
+std::atomic<uint32_t> g_smiteEvents {0};
+constexpr int32_t SkillSmite = 97;                              // merged id, PD2's
+constexpr int32_t ItemTypeSword = 30, ItemTypeTwoHanded = 120;  // merged itemtypes rows of swor and 2han
+constexpr int32_t StatCrushingBlow = 136;                       // itemstatcost crushingblow
+
+// Holy Sword start: the weapon must be both a sword and two-handed.
+auto SrvStHolySword(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	Unit* weapon = game != nullptr && unit != nullptr
+	                   ? d2r::Engine<Unit* (*)(Unit*) noexcept>(d2r::rva::UnitWeapon)(unit)
+	                   : nullptr;
+	const auto is = [weapon](int32_t type) {
+		return d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::rva::ItemIsType)(weapon, type) != 0;
+	};
+	const bool accepted = weapon != nullptr && is(ItemTypeTwoHanded) && is(ItemTypeSword);
+	if (First(g_holySwordStarts, 20)) {
+		plog::Info("holy sword start: skill %d level %d, weapon %s: start %s, %u so far", skillId, level,
+		           weapon == nullptr ? "none" : "held", accepted ? "accepted" : "refused", g_holySwordStarts.load());
+	}
+	return accepted ? 1 : 0;
+}
+
+// Smite start: Smite's auraevent1 (domeleedamage -> 16) goes on the caster for good. PD2 adds it once, keyed as
+// item_crushingblow's event; D2R's srvst 66 registers it under the skill's id, so the event below tells the two apart.
+auto SrvStSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	d2r::Engine<SrvDoFn>(d2r::rva::RegisterSkillEvents)(game, unit, skillId, level);
+	if (plog::Sample(g_smiteStarts)) {
+		plog::Info("smite start: skill %d level %d on unit type %d: start accepted, %u so far", skillId, level,
+		           At<int32_t>(unit, d2r::rva::UnitType), g_smiteStarts.load());
+	}
+	return 1;
+}
+
+using AuraEventFn = int32_t (*)(Game*, int32_t, Unit*, Unit*, void*, int32_t, int32_t) noexcept;
+
+// Event 16, crushing blow. Off Smite it is D2R's. While the owner is using Smite, PD2 rolls once with the
+// crushingblow stat plus Smite's calc3: Smite's own event rolls that and the item event stands down. The blow is
+// D2R's (CrushingBlowApply), not PD2's formula (unported list).
+auto AuraEventCrushingBlow(Game* game, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skillId,
+                           int32_t level) noexcept -> int32_t {
+	const bool smiteEvent = skillId == SkillSmite;  // item events pass stat << 16 | layer instead
+	void* current = unit != nullptr ? d2r::Engine<void* (*)(Unit*) noexcept>(d2r::rva::CurrentSkill)(unit) : nullptr;
+	const bool smiting = current != nullptr && UnitSkillIdOf(current) == SkillSmite;
+	if (!smiting) {
+		return smiteEvent ? 0
+		                  : d2r::Engine<AuraEventFn>(d2r::rva::AuraEvent16D2R)(game, event, unit, target, damage,
+		                                                                       skillId, level);
+	}
+	if (!smiteEvent || game == nullptr || target == nullptr || damage == nullptr) {
+		return 0;
+	}
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), SkillSmite);
+	const int32_t stat = std::max(d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(
+	                                  unit, StatCrushingBlow, 0),
+	                              0);
+	const int32_t calc3 = skill != nullptr ? d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc3, SkillSmite, level) : 0;
+	const int32_t chance = stat + calc3;
+	const int32_t roll = chance > 0 ? static_cast<int32_t>(
+	                                      d2r::Roll(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(d2r::rva::UnitSeed)(unit)) % 100)
+	                                : 100;
+	int32_t result = 0;
+	if (roll < chance) {
+		d2r::CrushingBlowArgs args {damage, {4, 10, 10}, 0};  // Smite's event is domeleedamage, never 6
+		result = d2r::Engine<int32_t (*)(Game*, Unit*, Unit*, d2r::CrushingBlowArgs*) noexcept>(
+			d2r::rva::CrushingBlowApply)(game, unit, target, &args);
+	}
+	if (First(g_smiteEvents, 200)) {
+		plog::Info("smite event: event %d skill %d level %d on unit type %d, frame %d: chance %d (crushingblow %d + "
+		           "calc3 %d), roll %d, blow %d, event %u",
+		           event, skillId, level, At<int32_t>(unit, d2r::rva::UnitType), At<int32_t>(game, d2r::rva::GameFrame),
+		           chance, stat, calc3, roll, result, g_smiteEvents.load());
 	}
 	return result;
 }
@@ -3137,6 +3240,8 @@ const SlotFunction Functions[] = {
 	{CltDo, 128, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltPrgRing)), "charge ring"},
 	{MissileCltDo, 79, reinterpret_cast<const void*>(static_cast<MissileCltDoFn>(CltDoChargeExplode)), "charge explode"},
 	{MissileCltHit, 67, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitChargeBolt)), "charge bolt"},
+	{SrvSt, 73, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStHolySword)), "holy sword"},
+	{SrvSt, 75, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStSmite)), "smite"},
 };
 
 }  // namespace
@@ -3181,6 +3286,18 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		                            d2r::rva::AuraEventRevive, revive ? "" : " FAILED (slot is not D2R's event 32)");
 		used += n > 0 ? static_cast<size_t>(n) : 0;
 	}
+	// Event 16 is D2R's crushing blow, which the Smite event calls off Smite: the expected value is D2R's function.
+	const uint64_t d2rBlow = d2r::imageBase + d2r::rva::AuraEvent16D2R;
+	std::memcpy(expected, &d2rBlow, sizeof(expected));
+	const bool smite = context->PatchWriteU64(
+		d2r::rva::AuraEventTable + static_cast<uint64_t>(d2r::rva::AuraEventCrushingBlow) * 8, expected,
+		sizeof(expected), reinterpret_cast<uint64_t>(static_cast<AuraEventFn>(AuraEventCrushingBlow)));
+	installed += smite ? 1 : 0;
+	if (used < reportSize) {
+		const int n = std::snprintf(report + used, reportSize - used, "; auraeventfunc %d smite crushing blow%s",
+		                            d2r::rva::AuraEventCrushingBlow, smite ? "" : " FAILED (slot is not D2R's event 16)");
+		used += n > 0 ? static_cast<size_t>(n) : 0;
+	}
 	// Revive's do is D2R's: the expected value is D2R's function, which the wrapper calls first.
 	const uint64_t d2rRevive = d2r::imageBase + d2r::rva::SrvDoReviveD2R;
 	std::memcpy(expected, &d2rRevive, sizeof(expected));
@@ -3205,8 +3322,8 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 }
 
 auto SkillFunctionCount() noexcept -> int {
-	// + the cltdo 22 patch, aura event 32, Revive's do and the mode gate
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 4;
+	// + the cltdo 22 patch, aura events 32 and 16, Revive's do and the mode gate
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 5;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
@@ -3218,7 +3335,8 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "client %u, blood warps %u, refused %u, desecrates %u, client %u, corpses hidden %u, revives %u, "
 	              "revive events %u, splashes %u, channels %u, client %u, take-overs %u, blade fury refused %u, "
 	              "held %u, charge-up hits %u, charges %u, charge hit frames %u, holy lights %u, gusts %u, hungers %u, "
-	              "novas %u, client %u, static fields %u, vengeances %u, links %u, jousts %u, %s",
+	              "novas %u, client %u, static fields %u, vengeances %u, links %u, jousts %u, holy sword starts %u, "
+	              "smite starts %u, smite events %u, gate logs %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
@@ -3228,5 +3346,6 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              g_takeOvers.load(), g_bladeFuryRefusals.load(), g_heldRequests.load(), g_chargeHits.load(),
 	              g_charges.load(), g_chargeHitFrames.load(), g_holyLights.load(), g_gusts.load(),
 	              g_hungers.load(), g_novas.load(), g_novaClients.load(), g_staticFields.load(), g_vengeances.load(),
-	              g_vengeanceLinks.load(), g_jousts.load(), missiles);
+	              g_vengeanceLinks.load(), g_jousts.load(), g_holySwordStarts.load(), g_smiteStarts.load(),
+	              g_smiteEvents.load(), g_gateLogs.load(), missiles);
 }
