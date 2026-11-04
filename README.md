@@ -2,7 +2,7 @@
 
 A near-1:1 recreation of the latest Project Diablo II as a Diablo II: Resurrected mod (Reign of the Warlock mode only), with D2RLoader plugins for engine mechanics and a Warlock redesigned in PD2's style. Offline single-player first, then private multiplayer.
 
-**Status: building toward the alpha** ([roadmap](docs/roadmap.md)).
+**Status: building toward the pre-alpha** ([roadmap](docs/roadmap.md)).
 
 - Plan and open decisions: [map issue #1](https://github.com/synpoox/pd2-resurrected/issues/1)
 - Decisions: [`docs/adr/`](docs/adr/)
@@ -47,7 +47,7 @@ python -m unittest discover -s tools/tests
 ```
 
 The table-diff gate compares the merged tables with PD2's, scoped to a work item (P2, P3, P4) or milestone (M1,
-alpha). It fails on any difference that [docs/unported.md](docs/unported.md) does not list; paste its output into
+pre-alpha). It fails on any difference that [docs/unported.md](docs/unported.md) does not list; paste its output into
 the PR:
 
 ```bash

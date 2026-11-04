@@ -65,7 +65,7 @@ Verdict: **Yes** = supported service or documented path; **Plugin** = possible w
 | Items | New item stats | Limit | New itemstatcost row needs `Save Bits` (stock max 24) or it is lost on reload; function-28 stats need `Save Param Bits` | KB-loader, KB-lim |
 | Cube | Custom recipe conditions (`op`) | Plugin | Unknown ops pass silently; hook `0x529090` / `0x529d50` | KB-lim |
 | Cube | Transmute interception | Yes | UI message `HoradricCubePanelMessage` / `Convert` can be consumed; plugin does its own work on the game thread | KB-loader |
-| Cube | Portal output | Plugin | Opens only the Cow Level; hook the output handler | KB-lim |
+| Cube | Portal output | Data | `"Red Portal,lvl=<id>"` opens a portal to any level in the same act; only the `Cow Portal` output is fixed to the Cow Level ([Reimagined study](https://github.com/synpoox/pd2-resurrected/issues/145)) | KB-lim |
 | Skills | New server do-functions | Plugin | srvdofunc slots 172-190 free (191 total) | KB-lim, KB-addr, TPL |
 | Skills | New client do-functions | Plugin | cltdofunc 110-129 free | KB-lim |
 | Skills | Skills per class | Limit | 30 in retail save; more with the extended save format (an overhaul ran several times 30) | KB-lim, KB-save |
