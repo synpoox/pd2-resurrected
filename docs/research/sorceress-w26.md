@@ -62,4 +62,6 @@ level has 0 or 3), and no `0x83` timer packet on an extended list (as Blood Warp
 
 - `tests/game/core_rules_checks.py`, tag `core-rules-w26`: `teleport-cast` (the debuff's state, length and values
   against PD2's calc), `teleport-blocked-areas` (the merged `Teleport` column against PD2's).
+- `teleport-cast` passed on Slot6 with a Sorceress at Teleport 5, Fire Mastery 10, Cold Mastery 4: reduction 46 for
+  25 frames, fire 56 -> -71, cold 16 -> -53, lightning and poison 0 -> -46 (the skill's tooltip also reads -46%).
 - `TeleportDebuff` has compile-time checks; `tools/tests/test_ids.py` checks the 155 -> 190 merge.

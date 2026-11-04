@@ -534,10 +534,12 @@ def teleport_cast(ctx):
     assert (state, frames) == (TELEPORT_DEBUFF, 25), f"state {state} for {frames} frames, PD2: {TELEPORT_DEBUFF} for 25"
     expected = 50 - min(level - 1, 50)
     assert reduction == expected, f"level {level}: reduction {reduction}, PD2 gives {expected}"
+    seen = []
     for name, debuff, mastery in zip(("fire", "cold", "ltng", "pois"), pairs[0::2], pairs[1::2]):
         want = -(reduction + int(int(mastery) * reduction / 100))
         assert int(debuff) == want, f"{name} mastery {mastery}: debuff {debuff}, PD2 gives {want}"
-    return f"level {level}: -{reduction}% to each mastery for {frames} frames, list {lst}"
+        seen.append(f"{name} {mastery} -> {debuff}")
+    return f"level {level}, reduction {reduction}, {frames} frames, list {lst}: {', '.join(seen)}"
 
 
 @check("teleport-blocked-areas", tags=["core-rules-w26"])
