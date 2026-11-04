@@ -64,6 +64,12 @@ W21 checks (tag core-rules-w21), same merged data: a Druid with Arctic Blast (23
 e.g. modkit save-set <save> level=30 --skill 230=10 --project .; then out of town: hold the skill on the ground for
 a second, and run the same command with core-rules-w21. For the take-over checks, press another skill while
 holding it; for blade-fury-refused, an Assassin with Blade Fury (266): hold it.
+W29 checks (tag core-rules-w29), same merged data: an Assassin with the charge-up skills (Tiger Strike 254, Fists of
+Fire 259, Cobra Strike 265, Claws of Thunder 269, Blades of Ice 274, Royal Strike 280) and Dragon Talon (255) to
+release, e.g. modkit save-set <save> level=30 --skill 254=1 --skill 259=1 --skill 265=1 --skill 269=1 --skill 274=1
+--skill 280=1 --skill 255=1 --project .; then out of town hit monsters three times in a row with each of Fists of
+Fire, Cobra Strike and Blades of Ice, releasing between them with Dragon Talon (a release runs the same prg slots and
+logs the same lines), and run the same command with core-rules-w29.
 """
 import json
 import os
@@ -91,6 +97,8 @@ SKILL_SLOTS = [  # table slots it installs
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
     ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
+    ("srvdofunc", 184, "charge spread"), ("srvdofunc", 185, "charge ring"), ("srvdofunc", 186, "charge fire"),
+    ("srvdofunc", 181, "charge cold"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -113,7 +121,8 @@ def _log(ctx) -> str:
 
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                 "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33", "core-rules-w21", "game"])
+                                 "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33", "core-rules-w21",
+                                 "core-rules-w29", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -687,8 +696,111 @@ def teleport_blocked_areas(ctx):
     return f"{len(shared)} levels as in PD2; not plain: {', '.join(blocked)}"
 
 
+CHARGE_UP = re.compile(r"charge up: skill (\d+) level \d+: shared (\d+), charges (\d+) -> (\d+), steal (\d+), "
+                       r"prg (\d+) \(prgcalc (-?\d+)\)")
+COBRA, RAKANOTH = 265, 630  # merged skill ids
+# merged skill -> charge -> (srvprgfunc slot, PD2's prgcalc or None where it isn't checked), from PD2's skills.txt
+FINISHER_PRG = {
+    259: {1: (186, None), 2: (185, 64), 3: (184, 1)},  # Fists of Fire: PD2 39, 172, 171
+    265: {1: (184, 7), 3: (185, 64)},  # Cobra Strike: 171 (par5), 172
+    269: {2: (36, None), 3: (37, 4)},  # Claws of Thunder: vanilla, prgcalc3 par1
+    274: {2: (181, None), 3: (143, 6)},  # Blades of Ice: 139, vanilla 143 (par2)
+    280: {1: (40, None), 2: (143, None), 3: (41, 24)},  # Royal Strike: vanilla, prgcalc3 par5
+    630: {1: (184, 8), 3: (185, 64)},  # RakanothStrike: 171 (par5), 172
+}
+CHARGE_MISSILE = {  # merged skill -> charge -> PD2's srvmissilea/b/c
+    259: {2: "fistsoffirenova", 3: "fistsoffireorbdelay"},
+    265: {1: "cobrastrikepoisonbolt", 3: "cobrastrikepoisoncloud"},
+    274: {2: "boiwavemaker"},
+    630: {1: "bladefragment1", 3: "fistsoffireexplode"},
+}
+
+
+def _logged(ctx, pattern: str, hint: str) -> list[tuple]:
+    found = [tuple(int(v) for v in r) for r in re.findall(pattern, _log(ctx))]
+    if not found:
+        ctx.skip(f"no {hint} in the log yet (hit monsters with it three times out of town, then run again)")
+    return found
+
+
+@check("charge-up-hits", tags=["core-rules-w29"])
+def charge_up_hits(ctx):
+    """A charge-up hit (srvdofunc 190, PD2 srvdo 170) ends at the shared count + 1 (at most 3) and fires PD2's
+    srvprgfunc for that charge with its prgcalc; Cobra Strike's steal goes on before a hit that would pass 2."""
+    ups = _logged(ctx, CHARGE_UP.pattern, "charge-up skill")
+    hits = [u for u in ups if u[3] > u[2]]
+    if not hits:
+        ctx.skip("no charge-up hit in the log yet, only misses (hit monsters, then run again)")
+    for skill, shared, before, after, _, prg, calc in hits:
+        assert after == min(shared + 1, 3), f"skill {skill}: shared {shared}, {before} -> {after} charges"
+        slot, expected = FINISHER_PRG.get(skill, {}).get(after, (0, None))
+        assert prg == slot, f"skill {skill} charge {after}: prg {prg}, PD2's maps to {slot}"
+        assert expected is None or calc == expected, f"skill {skill} charge {after}: prgcalc {calc}, PD2 {expected}"
+    for skill, shared, before, _, steal, _, _ in ups:
+        want = int(skill in (COBRA, RAKANOTH) and before <= 1 and shared >= 1)
+        assert steal == want, f"skill {skill}: shared {shared}, charges {before}: steal {steal}"
+    return f"{len(hits)} hits, skills {sorted({h[0] for h in hits})}, prg {sorted({h[5] for h in hits})}"
+
+
+@check("charge-spread", tags=["core-rules-w29"])
+def charge_spread(ctx):
+    """srvprgfunc 184 (PD2 171) throws prgcalc[charge] of the charge's missile: Cobra Strike 7, RakanothStrike 8 at
+    charge 1, Fists of Fire 1 at charge 3; only Cobra Strike's carry the skill's poison."""
+    rows = _rows("missiles")
+    out = set()
+    for skill, _, charge, created, count, row, calc, poison in _logged(
+            ctx, r"charge spread: skill (\d+) level (\d+) charge (\d+): (\d+) of (\d+) missiles \(row (\d+), prgcalc "
+                 r"(-?\d+)\), poison (-?\d+)", "Cobra Strike"):
+        slot, expected = FINISHER_PRG[skill][charge]
+        assert slot == 184 and calc == expected, f"skill {skill} charge {charge}: prgcalc {calc}, PD2 {expected}"
+        assert count == min(max(calc, 1), 64), f"skill {skill}: {count} missiles for prgcalc {calc} (1-64)"
+        assert created == count, f"skill {skill}: {created} of {count} missiles created"
+        assert row == rows.index(CHARGE_MISSILE[skill][charge]), f"skill {skill} charge {charge}: missile row {row}"
+        # PD2's Cobra Strike has no poison of its own (EMin empty): only items' poison rides along
+        assert poison >= 0 if skill == COBRA else poison == 0, f"skill {skill}: poison {poison}"
+        out.add(f"{skill}/{charge}: {count}")
+    return ", ".join(sorted(out))
+
+
+@check("charge-ring", tags=["core-rules-w29"])
+def charge_ring(ctx):
+    """srvprgfunc 185 (PD2 172) rings the target with 64 of the charge's missile (Fists of Fire's nova at charge 2,
+    Cobra Strike's cloud at charge 3)."""
+    rows = _rows("missiles")
+    out = set()
+    for skill, _, charge, created, row, calc in _logged(
+            ctx, r"charge ring: skill (\d+) level (\d+) charge (\d+): (\d+) missiles \(row (\d+), prgcalc (-?\d+)\)",
+            "Fists of Fire"):
+        assert FINISHER_PRG[skill][charge] == (185, 64) and calc == 64, f"skill {skill} charge {charge}: prgcalc {calc}"
+        assert row == rows.index(CHARGE_MISSILE[skill][charge]), f"skill {skill} charge {charge}: missile row {row}"
+        assert created > 0, f"skill {skill}: no ring missile created"
+        out.add(f"{skill}/{charge}: {created} of row {row}")
+    return ", ".join(sorted(out))
+
+
+@check("charge-fire", tags=["core-rules-w29"])
+def charge_fire(ctx):
+    """srvprgfunc 186 (PD2 39) runs vanilla srvdo 38 and 39 on Fists of Fire's first charge."""
+    fires = _logged(ctx, r"charge fire: skill (\d+) level (\d+) charge (-?\d+): srvdo 38 (-?\d+), 39 (-?\d+)",
+                    "Fists of Fire")
+    for skill, _, charge, _, _ in fires:
+        assert (skill, charge) == (259, 1), f"charge fire on skill {skill} charge {charge}"
+    return f"{len(fires)} logged, srvdo 38/39 returned {fires[-1][3]}/{fires[-1][4]}"
+
+
+@check("charge-cold", tags=["core-rules-w29"])
+def charge_cold(ctx):
+    """srvprgfunc 181 (PD2 139) throws the charge's missile: Blades of Ice's second charge throws boiwavemaker."""
+    row = _rows("missiles").index("boiwavemaker")
+    colds = _logged(ctx, r"charge cold: skill (\d+) level (\d+) charge (\d+): missile row (\d+)", "Blades of Ice")
+    for skill, _, charge, missile in colds:
+        assert (skill, charge, missile) == (274, 2, row), f"skill {skill} charge {charge}: row {missile}, PD2 {row}"
+    return f"{len(colds)} logged, row {row}"
+
+
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                    "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21"])
+                                    "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
+                                    "core-rules-w29"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))
