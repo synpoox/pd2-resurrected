@@ -1,0 +1,30 @@
+{
+ "hd": {
+  "sprite": "hd/global/ui/spells/skill_trees/{}skilltree.sprite",
+  "rows": [128, 308, 484, 665, 844, 1020],
+  "columns": [111, 373, 633],
+  "box": 148,
+  "clear_below": 110
+ },
+ "hd lowend": {
+  "sprite": "hd/global/ui/spells/skill_trees/{}skilltree.lowend.sprite",
+  "rows": [64, 154, 242, 332, 422, 510],
+  "columns": [56, 186, 316],
+  "box": 74,
+  "clear_below": 55
+ },
+ "controller": {
+  "sprite": "hd/global/ui/controller/panel/spells/v2/{}skilltree.sprite",
+  "rows": [172, 361, 551, 741, 931, 1121],
+  "columns": [192, 529, 865],
+  "box": 148,
+  "clear_below": 140
+ },
+ "controller lowend": {
+  "sprite": "hd/global/ui/controller/panel/spells/v2/{}skilltree.lowend.sprite",
+  "rows": [86, 180, 275, 370, 465, 560],
+  "columns": [96, 264, 432],
+  "box": 74,
+  "clear_below": 70
+ }
+}

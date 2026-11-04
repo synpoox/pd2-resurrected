@@ -3,8 +3,9 @@
     python tools/companions.py fetch
     python tools/companions.py install --game DIR
 
-fetch downloads each release asset in companions/manifest.json, refuses one whose SHA-256 differs from the manifest,
-and unpacks only the files the manifest lists into git-ignored generated/companions/ (laid out as the installed mod
+fetch downloads each release asset in companions/manifest.json (or, for an entry with `commit` in place of `tag`, the
+file at that path in the repo at that commit), refuses one whose SHA-256 differs from the manifest, and unpacks only
+the files the manifest lists into git-ignored generated/companions/ (laid out as the installed mod
 folder), plus our companions/filter.json. No companion binary is ever committed. Run it after pd2_merge.py, which
 rebuilds generated/.
 
@@ -38,13 +39,15 @@ class CompanionError(Exception):
     pass
 
 
-def github_download(repo: str, tag: str, asset: str) -> bytes:
-    url = f"https://github.com/{repo}/releases/download/{urllib.parse.quote(tag)}/{urllib.parse.quote(asset)}"
+def github_download(repo: str, ref: str, asset: str, raw: bool = False) -> bytes:
+    """A release asset of tag `ref`, or with raw the file at path `asset` in the repo at commit `ref`."""
+    url = (f"https://raw.githubusercontent.com/{repo}/{ref}/{urllib.parse.quote(asset)}" if raw else
+           f"https://github.com/{repo}/releases/download/{urllib.parse.quote(ref)}/{urllib.parse.quote(asset)}")
     with urllib.request.urlopen(url, timeout=60) as r:
         return r.read()
 
 
-def fetch(root: Path, download: Callable[[str, str, str], bytes] = github_download) -> list[str]:
+def fetch(root: Path, download: Callable[..., bytes] = github_download) -> list[str]:
     """Rebuild root/generated/companions/ and return the files written (mod-folder relative)."""
     manifest = json.loads((root / "companions" / "manifest.json").read_text("utf-8"))
     dest = root / "generated" / "companions"
@@ -52,11 +55,18 @@ def fetch(root: Path, download: Callable[[str, str, str], bytes] = github_downlo
         shutil.rmtree(dest)
     written = []
     for c in manifest["companions"]:
-        data = download(c["repo"], c["tag"], c["asset"])
+        raw = "commit" in c
+        data = download(c["repo"], c["commit"], c["asset"], True) if raw else download(c["repo"], c["tag"], c["asset"])
         got = hashlib.sha256(data).hexdigest()
         if got != c["sha256"]:
             shutil.rmtree(dest, ignore_errors=True)
             raise CompanionError(f"{c['asset']}: SHA-256 {got} differs from the manifest")
+        if raw:  # one file: files maps the asset path to its place in the mod folder
+            rel = c["files"][c["asset"]]
+            (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+            (dest / rel).write_bytes(data)
+            written.append(rel)
+            continue
         zf = zipfile.ZipFile(io.BytesIO(data))
         names = [n for n in zf.namelist() if not n.endswith("/")]
         for src, dst in c["files"].items():

@@ -4,7 +4,6 @@ skills	Static Field	=	srvdofunc	Static Field
 skills	Teleport	=	srvdofunc	Teleport, Blink
 skills	Poison Dagger	=	srvdofunc,cltdofunc,srvstfunc	Poison Dagger
 skills	Clay Golem	=	srvstfunc	Golem start
-skills	Poison Explosion	=	srvdofunc,cltdofunc	Desecrate
 skills	BloodGolem	=	srvstfunc	Golem start
 skills	FireGolem	=	srvstfunc	Golem start
 skills	Smite	=	srvstfunc	Smite start
@@ -72,7 +71,6 @@ skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	Blink	Teleport	srvdofunc	Teleport, Blink
 skills	proc_SplashDamage	-	srvdofunc	Melee splash
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
-skills	Blood Warp	Teleport	srvdofunc,srvstfunc,cltstfunc	Blood Warp
 skills	Gust	Teleport	srvdofunc	Gust
 skills	Holy Light	Holy Bolt	srvdofunc	Holy Light
 skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start

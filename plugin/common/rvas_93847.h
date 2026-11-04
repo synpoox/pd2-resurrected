@@ -48,6 +48,8 @@ inline constexpr uint64_t SrvDoReviveD2R = 0x55e7e0;
 // srvstfunc 66: (game, unit, skill, level) -> 1, registers the skill's auraevent1-4 / auraeventfunc1-4 on unit for
 // good (no stat list, no source), through 0x588670 and 0x438230 per event
 inline constexpr uint64_t RegisterSkillEvents = 0x42fa90;
+// 0x554c40: Teleport to the skill's point; 0 when there is no room, the level forbids it or the point collides (0x804)
+inline constexpr int SrvDoTeleport = 27;
 // missiles.txt pSrvDoFunc: int64_t fn(Game*, Unit* missile), 54 slots, 46-53 free.
 inline constexpr uint64_t MissileSrvDoTable = 0x2390e80;
 inline constexpr int MissileSrvDoSlots = 54;
@@ -121,7 +123,12 @@ inline constexpr uint64_t SetUnitStat = 0x2f7d10;  // (unit, stat, value, layer)
 
 // Self buff, the way Frozen Armor's srvdo 18 (0x553e60) builds its aurastate list
 inline constexpr uint64_t RemoveSkillState = 0x4370b0;  // (unit, state, 1): drop an older list of this state
-inline constexpr uint64_t NewStateList = 0x433d20;  // (&StateListRequest) -> stat list or null
+// (&StateListRequest) -> stat list or null. An older list of the state with the same skill and level only gets
+// its timer moved and is returned as it is; a lower level returns null; any other older list is replaced.
+inline constexpr uint64_t NewStateList = 0x433d20;
+inline constexpr uint64_t UnitStateList = 0x2f5940;  // (unit, state) -> the unit's list of that state, or null
+inline constexpr uint64_t ListSkill = 0x2f56a0;  // (list) -> its skill id
+inline constexpr uint64_t ListLevel = 0x2f56e0;  // (list) -> its skill level
 inline constexpr uint64_t AddAuraStats = 0x574480;  // (unit, list, skillRecord, skillId, level): aurastat1-6 (attackrate also sets stat 69)
 inline constexpr uint64_t AddAuraStatsB = 0x574600;  // same arguments, Frozen Armor calls both
 inline constexpr uint64_t SetListStat = 0x2f7c00;  // (dataFlag, list, stat, value, layer)
@@ -158,6 +165,11 @@ inline constexpr uint64_t UnitId = 0x34a330;  // (unit, file, line) -> unit id
 // (unit, skill, level, target, 0) -> non-zero cast: a skill cast from unit at target as an event, sent to clients (aura
 // event 33 0x42f300 casts this way); refuses while the unit has state 54
 inline constexpr uint64_t CastEventSkill = 0x5896e0;
+// Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
+inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
+inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
+// (game, room, x, y, monstats id, mode, -1, 0x42) -> monster or null; counts it in its level's monster region
+inline constexpr uint64_t SpawnMonster = 0x492cf0;
 
 // --- Offsets ------------------------------------------------------------------------------------------------------
 inline constexpr int GameDataFlag = 0x106;  // Game: byte passed to every data-table getter
@@ -172,6 +184,20 @@ inline constexpr int PathTargetUnit = 0x70;  // Unit* on a dynamic path: what Pa
 inline constexpr int UnitOwnerType = 0xe8;  // int32 owner unit type (MissileOwner 0x490300 reads both)
 inline constexpr int UnitOwnerId = 0xec;    // uint32 owner unit id
 inline constexpr int TablesStateCount = 0x298;  // uint64 states.txt row count in DataTables
+inline constexpr int GameDifficulty = 0x104;  // uint8: 0 normal, 1 nightmare, 2 hell
+// Game: per-level monster regions (array indexed by level id); a region's spawned-monster count at +0x2cc (0x509520)
+inline constexpr int GameMonRegions = 0x1d0;
+inline constexpr int MonRegionCount = 0x2cc;
+// levels.txt in DataTables: records (0x18c bytes) and count; mon1-25 / nmon1-25 are int16, a negative one ends the list
+inline constexpr int TablesLevels = 0x1460;
+inline constexpr int TablesLevelCount = 0x1468;
+inline constexpr int LevelRecordSize = 0x18c;
+inline constexpr int LvlMon1 = 0x3e;
+inline constexpr int LvlNMon1 = 0x70;
+// monstats record (rva::MonStatsRecord)
+inline constexpr int MonSpawn = 0x54;     // int16 spawn, -1 for none
+inline constexpr int MonPartyMin = 0x62;  // uint8
+inline constexpr int MonPartyMax = 0x63;  // uint8
 
 // Damage block QueuedHit returns: +0 hit flags (uint32), +4 result flags (uint16)
 inline constexpr int DamageResult = 0x4;
@@ -191,6 +217,7 @@ inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Li
 // poison length 0x2c -> 0x3c in srvdmg 11).
 inline constexpr int DmgPhys = 0x18, DmgFire = 0x20, DmgLight = 0x2c, DmgMagic = 0x30, DmgCold = 0x34, DmgPoison = 0x38;
 inline constexpr int StatDamagePercent = 25;  // itemstatcost damagepercent, D2R and PD2
+inline constexpr int StatLife = 6;  // itemstatcost hitpoints (current life, in 1/256), D2R and PD2
 inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's search: 0x88583 | the 0xa783 the search adds
 
 // Leeches in the same damage block (built by 0x465d60)
@@ -221,7 +248,9 @@ inline constexpr int SkCalc3 = 0x198;
 inline constexpr int SkCalc4 = 0x19c;  // skills field table at 0x306193
 inline constexpr int SkAuraRangeCalc = 0x84;  // int32 aurarangecalc, Chain Lightning's chain range when sHitPar1 is 0
 inline constexpr int SkParam4 = 0x1c4;  // int32 Param4 (Param1 0x1b8), field table at 0x305e68
+inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
+inline constexpr int SkAuraLenCalc = 0x80;    // int32 auralencalc: 1.13c's 0x60, before aurarangecalc as there
 inline constexpr int SkAuraStat1 = 0x74;      // int16 aurastat1-6, read by AddAuraStats (0x574480)
 inline constexpr int SkAuraStatCalc1 = 0x88;  // int32 aurastatcalc1-6 (calc index, pass to EvalCalc), same reader
 // Two record fields Frozen Armor passes to SendSkillState by address; what they hold is not read yet.

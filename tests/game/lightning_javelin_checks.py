@@ -4,7 +4,7 @@ No plugin: PD2's 188/117 only create srvmissilea / cltmissilea, which D2R's do d
 cltmissile after any do function, so the merge moves the missile there (docs/research/lightning-javelins.md). The check
 counts the client missiles one cast makes, read from game memory (missile_probe.py).
 
-Setup (Slot4-7, game closed): install the fixture, the merged rows' function and missile columns on D2R's own tables,
+Setup (Slot4-8, game closed): install the fixture, the merged rows' function and missile columns on D2R's own tables,
 cast in town allowed (the full merged data does not pass modkit validation yet); install.ps1 puts the savepaths back
   powershell -File tools/install.ps1 -Game C:/D2RTestSlots/SlotN -Data tests/game/fixtures/lightning-javelin
   an Amazon holding javelins with Lightning Bolt (class skill slot 14) and Lightning Fury (slot 29), e.g.

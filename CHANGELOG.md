@@ -5,6 +5,10 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Blood Warp works as in Project Diablo II: it costs a share of your life (never all of it), then regenerates life
+  for five seconds.
+- Desecrate raises corpses around its cloud as in Project Diablo II.
+- Skill trees show their boxes and arrows where Project Diablo II's skills and prerequisites are.
 - Golem Mastery adds a golem every 5 base levels, as in Project Diablo II; a new golem replaces the oldest.
 - Double Throw works as in Project Diablo II: one throw that bounces between monsters.
 - Leap and Leap Attack work as in Project Diablo II: faster leaps, and Leap Attack hits every monster where it lands.
