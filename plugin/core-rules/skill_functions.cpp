@@ -412,6 +412,111 @@ auto SrvDoBash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	return VanillaSlot<SrvDoFn>(d2r::rva::SrvDoTable, d2r::rva::SrvDoMelee)(game, unit, skillId, level);
 }
 
+// One stat on a new `state` list for `frames`, replacing an older list of that state (Frozen Armor's way, srvdo 18).
+void TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level, int32_t frames, int32_t state,
+                   int32_t stat, int32_t value) noexcept {
+	using namespace d2r::rva;
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, state, 1);
+	d2r::StateListRequest request {unit, unit, skillId, level, frames, -1, 0, state,
+	                               d2r::Engine<void (*)()>(SkillStateExpired)};
+	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
+	if (list == nullptr) {
+		return;
+	}
+	d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, stat, value, 0);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
+}
+
+// --- Blood Warp (PD2 srvdofunc 157 -> router 190, srvstfunc 66 -> 80, cltstfunc 56 -> 63) --------------------------
+// Read from ProjectDiablo.dll: srvdo 157 at 0x103b1aa0, srvst 66 at 0x103b6460, cltst 56 at 0x103acda0
+// (docs/research/w12-blood-warp.md). The cast costs life and never kills; the cost comes back as hpregen.
+std::atomic<uint32_t> g_bloodWarps {0};
+std::atomic<uint32_t> g_bloodWarpsRefused {0};
+constexpr int32_t BloodWarp = 439;  // merged id (PD2 367)
+
+// PD2's cost, in life's 1/256: calc1 percent of current life, at least calc2. PD2 converts calc1 as unsigned and
+// truncates with cvttsd2si, so a negative calc1 (a life reduction over 12) overflows to INT32_MIN and calc2 wins.
+constexpr auto BloodWarpCost(int32_t calc1, int32_t calc2, int32_t life) noexcept -> int32_t {
+	const double v = static_cast<double>(static_cast<uint32_t>(calc1)) / 100.0 * life;
+	const int32_t cost = v > -2147483649.0 && v < 2147483648.0 ? static_cast<int32_t>(v) : INT32_MIN;
+	return cost > calc2 ? cost : calc2;
+}
+static_assert(BloodWarpCost(12, 512, 100 << 8) == 3072);     // 12% of 100 life beats the 2-life minimum
+static_assert(BloodWarpCost(12, 15360, 100 << 8) == 15360);  // calc2's 60-life cap wins
+static_assert(BloodWarpCost(-1, 512, 100 << 8) == 512);      // the overflow leaves the minimum
+
+struct LifeCost {
+	int32_t cost = 0, life = 0;  // the default refuses: the cast needs cost < life
+};
+
+auto BloodWarpLife(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level) noexcept -> LifeCost {
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return {};
+	}
+	const auto calc = [&](int field) {
+		return d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, field), skillId, level);
+	};
+	const int32_t life = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(
+		unit, d2r::rva::StatLife, 0);
+	return {BloodWarpCost(calc(d2r::rva::SkCalc1), calc(d2r::rva::SkCalc2), life), life};
+}
+
+// Start (PD2 srvstfunc 66, here 80): refuse a cast the caster can't pay for.
+auto SrvStBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	const LifeCost c = BloodWarpLife(d2r::DataFlag(game), unit, skillId, level);
+	if (c.cost >= c.life) {
+		g_bloodWarpsRefused.fetch_add(1);
+		return 0;
+	}
+	return 1;
+}
+
+// Client half (PD2 cltstfunc 56, here 63): the same check on the client's copy of the caster.
+auto CltStBloodWarp(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	if (unit == nullptr) {
+		return 0;
+	}
+	const LifeCost c = BloodWarpLife(d2r::api.unitDataFlag(unit), unit, skillId, level);
+	return c.cost < c.life ? 1 : 0;
+}
+
+// PD2 srvdofunc 157: teleport, then pay the cost (checked again at the new point) and get it back over auralencalc
+// frames as aurastat1 (hpregen) = cost / frames + 1 on an aurastate (bloodwarp) list.
+// shortcut: the teleport is D2R's srvdo 27, not PD2's teleport core (0x1036cd20, shared with Teleport's srvdo 155),
+// and the list is built the way Frozen Armor builds one, replacing an older one, where PD2 uses its timed-state
+// helper 0x1036d7d0. Upgrade with the Teleport row.
+auto SrvDoBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr || VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoTeleport)(game, unit, skillId, level) == 0) {
+		return 0;
+	}
+	const LifeCost c = BloodWarpLife(dataFlag, unit, skillId, level);
+	if (c.cost >= c.life) {
+		g_bloodWarpsRefused.fetch_add(1);
+		return 0;
+	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(unit, StatLife, c.life - c.cost, 0);
+	const int32_t frames = d2r::EvalCalc(game, unit, skill, SkAuraLenCalc, skillId, level);
+	const int32_t state = At<int16_t>(skill, SkAuraState);
+	const int32_t stat = At<int16_t>(skill, SkAuraStat1);
+	int32_t regen = 0;
+	if (frames > 0 && state > 0 && stat >= 0) {  // PD2 divides by frames unchecked
+		regen = c.cost / frames + 1;
+		TimedStatList(dataFlag, unit, skillId, level, frames, state, stat, regen);
+	}
+	if (plog::Sample(g_bloodWarps)) {
+		plog::Info("blood warp: skill %d level %d: life %d, cost %d, regen %d for %d frames (stat %d, state %d), cast %u",
+		           skillId, level, c.life, c.cost, regen, frames, stat, state, g_bloodWarps.load());
+	}
+	return 1;
+}
+
 constexpr int32_t Bash = 126, UberTalicBash = 580;
 
 // srvdofunc 190 serves the PD2 do functions that have no free slot of their own, by skill id (docs/core-rules.md).
@@ -423,6 +528,8 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	case Bash:
 	case UberTalicBash:
 		return SrvDoBash(game, unit, skillId, level);
+	case BloodWarp:
+		return SrvDoBloodWarp(game, unit, skillId, level);
 	default:
 		if (plog::Sample(g_routerMisses)) {
 			plog::Warn("srvdo router: no function for skill %d (%u so far)", skillId, g_routerMisses.load());
@@ -465,16 +572,7 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		charges = unitStat(unit, At<int16_t>(skill, SkAuraStat1), 0);
 		value = charges < 3 ? calc2 * charges : 0;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, TempSkillBuff, 1);
-	d2r::StateListRequest request {unit, unit, skillId, level, SplashFrames, -1, 0, TempSkillBuff,
-	                               d2r::Engine<void (*)()>(SkillStateExpired)};
-	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
-	if (list == nullptr) {
-		return 1;
-	}
-	d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list,
-	                                                                                      IncSplashRadius, value, 0);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, TempSkillBuff, 1);
+	TimedStatList(dataFlag, unit, skillId, level, SplashFrames, TempSkillBuff, IncSplashRadius, value);
 	if (plog::Sample(g_splashStarts)) {
 		plog::Info("splash start: skill %d level %d charges %d calc2 %d: splash radius %d, start %u", skillId, level,
 		           charges, calc2, value, g_splashStarts.load());
@@ -670,6 +768,9 @@ const SlotFunction Functions[] = {
 	{SrvSt, 82, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStFind)), "find"},
 	{CltSt, 62, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltStFind)), "find"},
 	{SrvDo, 190, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoRouter)), "router"},
+	// Blood Warp: D2R fills srvst 66 and cltst 56; its do function is in the router
+	{SrvSt, 80, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStBloodWarp)), "blood warp"},
+	{CltSt, 63, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltStBloodWarp)), "blood warp"},
 	// PD2's srvdo 153 / cltdo 97 are D2R's RotW functions; ours take free slots and the merge points there (FUNCS).
 	{SrvDo, 172, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoLeap)), "leap"},
 	{CltDo, 115, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoLeap)), "leap"},
@@ -727,8 +828,10 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	MissileFunctionCounters(missiles, sizeof(missiles));
 	std::snprintf(out, size,
 	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "
-	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, %s",
+	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, blood warps %u, "
+	              "refused %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
-	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(), missiles);
+	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(), g_bloodWarps.load(),
+	              g_bloodWarpsRefused.load(), missiles);
 }
