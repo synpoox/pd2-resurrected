@@ -13,16 +13,16 @@ repo. Table, row and string names below are short identifiers.
 - **PD2 keeps D2R's keys and mini-uber areas.** The three keys `pk1`-`pk3` still open one of Matron's Den, Forgotten
   Sands or Furnace of Pain (levels 133-135, almost unchanged from D2R). PD2 adds one more boss source per key and raises
   the drop weights.
-- **The ticket's premise is wrong in one place.** Level 156 "Pandemonium Map" is not part of this chain. It is the T3 map
-  "The Pandemonium Citadel" (`t37`, boss Dark Commander Alma), opened like any other map. This matters for UB3 and for
-  the `d2r-only-content.md` row that turns D2R's levels 133-136 off (section 7).
+- **The ticket's premise is wrong in one place.** Level 156 "Pandemonium Map" is not part of this chain. It is the map
+  area "The Pandemonium Citadel", opened by the tier 3 map item `t37` (boss Dark Commander Alma). This matters for UB3
+  and for #153's decision to turn D2R's levels 133-136 off (section 7).
 - **PD2 replaces the finale.** The organs no longer open a portal. Cube row 182 makes the Pandemonium Talisman (`ubtm`),
   a map-spell item (`pSpell` 12) that is used at the Blood Fountain in Harrogath. It opens level 185 "PD2 Pandemonium
   Finale", a copy of D2R's level 136 on a new preset (`pd2_ubertrist.ds1`). There the three primes fight with the plain
   act-boss AIs, not D2R's uber AIs.
 - **Tables versus DLL.** The tables hold the keys' drops, the recipes, the levels, the monsters, their skills and AIs,
-  and the Torch. The DLL holds what the cube's `useitem` rows do, the Talisman's opening, the area rules (pre-buffs
-  stripped, three silver portals, teleport in), the organ drops, the Torch, Black Soulstone and Prime Evil Soul drops, and
+  and the Torch's unique row. The DLL holds what the cube's `useitem` rows do, the Talisman's opening, the area rules (pre-buffs
+  stripped, three silver portals, teleport in), the organ, Torch, Black Soulstone and Prime Evil Soul drops, and
   the prime auras. None of that code is reverse-engineered yet.
 - **Existing rows** cover the Talisman's spell ("Map items"), its no-drop ("Map items never drop"), the recipe op 28,
   MonSmite (built, W19), DiabWall (built, W22) and the Torch's charm rule. The rest is new (section 7).
@@ -56,7 +56,7 @@ repo. Table, row and string names below are short identifiers.
 - **Recipe (cubemain row 179, "Pandemonium key - PD2"):** `pk1` + `pk2` + `pk3`, op 28 param 1, min diff 2 (Hell),
   output `useitem`. PD2 turned off the vanilla row 178 (output `Pandemonium Portal`). With output `useitem` and no mods,
   the table alone does nothing useful, so the DLL must open the portal. The wiki says it opens "a portal to one of the
-  mini-uber zones", random, in Harrogath, Hell only, and that a zone does not repeat in one game. That is D2R's own
+  mini-uber zones", random, in Harrogath, Hell only, and that an area does not repeat in one game. That is D2R's own
   behaviour for its own row.
 - **Areas:** levels 133 "Matron's Den", 134 "Forgotten Sands", 135 "Furnace of Pain" (strings `Pandemonium Run 1-3`).
   They differ from D2R's rows only in empty-versus-0 cells, entry files, monster levels and one monster (`cr_lancer8` ->
@@ -89,10 +89,11 @@ repo. Table, row and string names below are short identifiers.
   `useitem` and output b `ubtm`. PD2 turned off rows 180 and 181 (output `Pandemonium Finale Portal`). Output b makes the
   Talisman in the table alone. What output `useitem` does to the first organ is unchecked (it should be consumed).
 - **The item:** misc row 210, code `ubtm`, name "Uber Trist Map", shown as "Pandemonium Talisman" (string `ubtm`),
-  description `UberTristDesc` ("Recommended level 80", "Use at the blood fountain in Harrogath"). It is level 99,
+  description `UberTristDesc` (a recommended level of 80 and a pointer to the Blood Fountain). It is level 99,
   spawnable, usable, not stackable, `pSpell` 12 (the map-item spell) and `spelldesc` 1.
 - **The opening is DLL code.** `ubtm` sits in the DLL's map-item code list (near 0x37bd77) with every map code and the
-  other uber keys `dcma`, `rtma`, `uba` and `luca`. So the Talisman opens its area the way a map does. The wiki says it
+  other uber keys `dcma`, `rtma`, `uba` and `luca`. So the Talisman shares the map items' opening code, though it is an
+  uber key, not a map item. The wiki says it
   opens "for all players near the blood fountain", and that only one boss area or map can be opened per game.
 - **Area rules (wiki only):** pre-buffs are removed on entry; the player is teleported inside, and a portal opens when the
   last prime dies (Season 3); three single-use silver portals give one attempt plus three; there is no free re-entry while
@@ -102,7 +103,8 @@ repo. Table, row and string names below are short identifiers.
   uses `Tri_Town4.ds1`. The new preset is in `pd2maps.mpq` (not extracted, so its monster and object presets are
   unread). It falls under unported "New PD2-only areas".
 - **Not this chain:** level 156 "Pandemonium Map" / "The Pandemonium Citadel" (presets `Pandemonium.ds1`,
-  `Pandemonium2.ds1`, `Pandemonium3.ds1`) is opened by the T3 map item `t37` ("Pandemonium Citadel Map", misc row 229),
+  `Pandemonium2.ds1`, `Pandemonium3.ds1`) is a map area, opened by the tier 3 map item `t37` (misc row 229 "Pandemonium
+  Map", shown as "Pandemonium Citadel Map"),
   with boss string `PandemoniumBoss` "Dark Commander Alma". Its monsters are `*Pandemonium` map rows (Hell level 89, map
   TCs). It belongs to the map system (map #143), not to the uber bosses.
 
@@ -154,7 +156,7 @@ repo. Table, row and string names below are short identifiers.
 - **The DLL names the codes.** The chain's codes come up in three places: an item-code compare list at 0x2aeeb1 (`ceh`,
   `bet`, `tes`, `fed`, `toa`, `dhn`, `bey`, `mbr`, `pk1`-`pk3`), a code-pair table at 0x468a74 (keys, organs, then the
   other uber ingredients; probably the "Ubers" stash tab, `StashCategoryBossing`), and `dcho`/`dcso`/`cm2f` as immediates
-  in about 40 copies of one inlined routine. None of these is the drop code, as far as strings can tell.
+  in about 40 copies of one inlined routine.
 - Kill counters: the DLL's `.kills` command has `Uber Tristram Kills:`. Cut, as for the other uber bosses (#153).
 
 ## 7. Mapped to the existing lists
@@ -162,7 +164,7 @@ repo. Table, row and string names below are short identifiers.
 | Piece | Row | Status |
 |---|---|---|
 | Keys' drops (`pk1`-`pk3` in six Hell TCs) | none needed: PD2's TCs are already merged | existing (data) |
-| Key and organ recipes' op 28 | core-rules "Quest item difficulty check" (op 28, data) | existing |
+| Key recipe's op 28 (row 179) | core-rules "Quest item difficulty check" (op 28, data) | existing |
 | Talisman's spell (`misc.ubtm.pSpell`) | unported "Map items"; core-rules map-items row (`pSpell` 12 -> 16) | existing |
 | Talisman never drops | unported "Map items never drop" (`misc.ubtm.spawnable`, `merge/item-tables.txt`) | existing |
 | Level 185 and its preset | unported "New PD2-only areas" | existing |
@@ -172,7 +174,7 @@ repo. Table, row and string names below are short identifiers.
 | Torch's one-unique-charm rule (carry1 empty) | core-rules "Charm 'only one unique' rule" | existing |
 | Torch to Ashes, Torch reroll | cubemain data; core-rules "Demonic cube reroll" (op 31) | existing |
 | Levels 133-135 and the mini-uber spawn | D2R's own | existing (D2R), but see the conflict below |
-| Key recipe's `useitem` -> random mini-uber portal | none | **new**, or D2R's own row 2390 if PD2's row is dropped |
+| Key recipe's `useitem` -> random mini-uber portal | none | **new**, or D2R's own portal row (merged line 2390) if PD2's row is dropped |
 | Organ drops | none (D2R's own in D2R) | **new** if PD2 changed them, else D2R's |
 | Talisman opening at the Blood Fountain -> level 185 | the map-item opening (MS2) plus the uber-key gate (UB2) | **new** (UB2/UB3) |
 | Uber Tristram area rules (buffs stripped, teleport in, silver portals, no re-entry, exit portal) | none | **new**, shared with UB2 |
@@ -184,13 +186,14 @@ repo. Table, row and string names below are short identifiers.
 
 ### A conflict with the decided scope
 
-`docs/d2r-only-content.md` (and #153's `docs/uber-bosses.md`) turn off D2R's Pandemonium Event, levels 133-136, because
-"PD2's Pandemonium and Uber Tristram replace it", and UB3 names "the Pandemonium Map with the mini-ubers". The data says
+#153's decision (PR #186, not yet merged: its `docs/uber-bosses.md` and a new `docs/d2r-only-content.md` row) turns off
+D2R's Pandemonium Event, levels 133-136, because PD2's chain replaces it, and its UB3 names the Pandemonium Map with the
+mini-ubers. The data says
 PD2 uses levels 133-135 and D2R's mini-uber fights, almost unchanged, and replaces only the finale (136 -> 185). Level 156
-is a map. So the owner should decide again:
+is a map area. So the owner should decide again:
 
-- keep D2R's levels 133-135, the key portal and the mini-uber spawns, and turn off only D2R's finale (row 2391 and
-  level 136); and
+- keep D2R's levels 133-135, the key portal and the mini-uber spawns, and turn off only D2R's finale (its portal
+  row, merged line 2391, and level 136); and
 - move the Pandemonium Citadel (156, `t37`) to the map system's list.
 
 In the port's merged `cubemain` today, PD2's row 179 (line 181, `useitem`) comes before D2R's portal row (line 2390). If
