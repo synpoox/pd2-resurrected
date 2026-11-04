@@ -198,6 +198,52 @@ void SrvDmgFirstHit(Game* game, Unit* missile, Unit* hit, uint8_t* damage) noexc
 	}
 }
 
+// --- Psychic Hammer (PD2 pSrvDmgFunc 15 -> 22; docs/research/w31-dragon-flight-psychic-hammer.md) -----------------
+namespace {
+
+std::atomic<uint32_t> g_chainFalloffs {0};
+std::atomic<uint32_t> g_chainFalloffCuts {0};
+
+// PD2 dmg 15's cut: calc2 percent per hit already made, (calc1 - bounces left) of them; at 100% or more, none left.
+// PD2 multiplies in 32 bits; 64 here, the same below 2^31.
+constexpr auto ChainFalloffMagic(int32_t magic, int32_t hits, int32_t bounces, int32_t step) noexcept -> int32_t {
+	const int64_t cut = static_cast<int64_t>(hits - bounces) * step;
+	return cut > 99 ? 0 : static_cast<int32_t>((100 - cut) * magic / 100);
+}
+static_assert(ChainFalloffMagic(1000, 3, 3, 20) == 1000);  // the first hit: no cut
+static_assert(ChainFalloffMagic(1000, 3, 1, 20) == 600);   // the third: 40% less
+static_assert(ChainFalloffMagic(1000, 6, 1, 20) == 0);     // the sixth: 100%, nothing left
+static_assert(ChainFalloffMagic(999, 2, 1, 20) == 799);    // truncated
+
+}  // namespace
+
+// dmg 22 (PD2 15, ProjectDiablo.dll 0x103a6c90, Psychic Hammer): each unit the chain hits after the first takes calc2
+// percent less magic damage per earlier hit, counted as calc1 (the skill's hits) - the missile's bounces left (D2Common
+// #11018, D2R's MissileBounces). D2R's collision (0x4639a0) calls it when srvhit 12 returns 3 (bit 2: deal the damage).
+void SrvDmgChainFalloff(Game* game, Unit* missile, Unit* target, uint8_t* damage) noexcept {
+	using namespace d2r::rva;
+	if (game == nullptr || missile == nullptr || target == nullptr || damage == nullptr) {
+		return;
+	}
+	Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
+	int32_t skillId = 0, level = 0;
+	const uint8_t* skill = MissileSkillRecord(game, missile, &skillId, &level);
+	if (owner == nullptr || skill == nullptr) {
+		return;
+	}
+	const int32_t hits = d2r::EvalCalc(game, owner, skill, SkCalc1, skillId, level);
+	const int32_t bounces = d2r::Engine<MissileIntFn>(MissileBounces)(missile);
+	const int32_t step = d2r::EvalCalc(game, owner, skill, SkCalc2, skillId, level);
+	auto* magic = reinterpret_cast<int32_t*>(damage + DmgMagic);
+	const int32_t before = *magic;
+	*magic = ChainFalloffMagic(before, hits, bounces, step);
+	const bool sampleHit = plog::Sample(g_chainFalloffs);
+	if ((*magic != before && plog::Sample(g_chainFalloffCuts)) || sampleHit) {
+		plog::Info("chain falloff: skill %d level %d: calc1 %d, bounces %d, calc2 %d: magic %d -> %d, hit %u", skillId,
+		           level, hits, bounces, step, before, *magic, g_chainFalloffs.load());
+	}
+}
+
 // --- W6 Amazon group -----------------------------------------------------------------------------------------------
 namespace {
 
@@ -808,10 +854,11 @@ void CltDoBlessedHammer(Unit* missile, int32_t a2) noexcept {
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size, "returns spawned %u, caught %u, bounces %u, first hits %u, spread hits %u, explosions %u, "
 	              "falloff hits %u, state hits %u, bolt hits %u, holy light client hits %u, fist delay client hits %u, "
-	              "charge explodes %u, charge bolt hits %u, hammer frames %u, hits %u, kept %u, client frames %u",
+	              "charge explodes %u, charge bolt hits %u, hammer frames %u, hits %u, kept %u, client frames %u, "
+	              "chain falloffs %u",
 	              g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(), g_firstHits.load(),
 	              g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load(), g_stateHits.load(),
 	              g_boltHits.load(), g_holyLightHits.load(), g_fistDelayHits.load(), g_chargeExplodes.load(),
 	              g_chargeBoltHits.load(), g_hammerFrames.load(), g_hammerHits.load(), g_hammerKept.load(),
-	              g_hammerClientFrames.load());
+	              g_hammerClientFrames.load(), g_chainFalloffs.load());
 }

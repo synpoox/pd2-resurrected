@@ -24,6 +24,7 @@ void CltDoReturn(d2r::Unit* missile, int32_t a2) noexcept;                      
 // Double Throw's missiles.
 auto SrvHitBounce(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 66 (PD2 30)
 void SrvDmgFirstHit(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit, uint8_t* damage) noexcept;  // dmg 21 (PD2 16)
+void SrvDmgChainFalloff(d2r::Game* game, d2r::Unit* missile, d2r::Unit* target, uint8_t* damage) noexcept;  // dmg 22 (PD2 15)
 auto SrvHitExplodeSpread(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 63
 void SrvDmgPierceFalloff(d2r::Game* game, d2r::Unit* missile, d2r::Unit* target, uint8_t* damage) noexcept;  // dmg 20
 auto SrvHitState(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 61

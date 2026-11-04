@@ -44,7 +44,6 @@ skills	Salvation	=	cltdofunc	Paladin aura client do
 skills	Salvation	=	cltstfunc	Paladin aura client start
 skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
-skills	Dragon Flight	=	srvdofunc	Dragon Flight
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
@@ -85,7 +84,6 @@ missiles	bladefragment1	=	pSrvHitFunc,pCltHitFunc	Blade fragment hit
 missiles	bladefragment1	=	pSrvDmgFunc	Rathma bone spear, blade fragment damage
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
 missiles	siege beast stomp missile	-	pCltDoFunc	Siege beast stomp client do
-missiles	psychichammer	-	pSrvDmgFunc	Psychic Hammer missile damage
 missiles	uberimmolationarrow	immolationarrow	pSrvHitFunc	Uber immolation arrow hit
 missiles	rathmabonespear	bonespear	pSrvDmgFunc	Rathma bone spear, blade fragment damage
 missiles	tpot_fire_small	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
