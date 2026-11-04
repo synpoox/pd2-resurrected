@@ -5,6 +5,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Fire Claws works as in Project Diablo II: each claw sends a trail of fire waves (more with the skill's level).
+- Summoning a Spirit Wolf or Fenris at the limit replaces the oldest one, as in Project Diablo II.
 - Firestorm works as in Project Diablo II: every one of its fire trails wanders (D2R sends the first one straight).
 - Charge works as in Project Diablo II: it runs at Project Diablo II's speed, and the longer the charge, the wider
   its hit splashes with a splash-on-hit item.

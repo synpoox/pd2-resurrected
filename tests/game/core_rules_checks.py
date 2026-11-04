@@ -67,6 +67,10 @@ holding it; for blade-fury-refused, an Assassin with Blade Fury (266): hold it.
 W22 checks (tag core-rules-w22), same merged data: a Druid with Firestorm (225, class skill slot 4) and no +skills
 (the log gives the skill level, PD2's calc reads the base level), e.g. modkit save-set <save> level=30 --skill 4=10
 --project .; then out of town cast Firestorm a few times and run the same command with core-rules-w22.
+W24 checks (tag core-rules-w24), same merged data: a Druid with Fire Claws (239, class skill slot 18), Werewolf (223,
+slot 2) and Summon Spirit Wolf (227, slot 6) and no +skills, e.g. modkit save-set <save> level=30 --skill 18=10
+--skill 2=5 --skill 6=5 --project .; then out of town turn into a werewolf (Fire Claws needs wolf or bear form), claw
+monsters a few times, summon Spirit Wolf until it is past its petmax, and run the same command with core-rules-w24.
 W29 checks (tag core-rules-w29), same merged data: an Assassin with the charge-up skills (Tiger Strike 254, Fists of
 Fire 259, Cobra Strike 265, Claws of Thunder 269, Blades of Ice 274, Royal Strike 280) and Dragon Talon (255) to
 release, e.g. modkit save-set <save> level=30 --skill 254=1 --skill 259=1 --skill 265=1 --skill 269=1 --skill 274=1
@@ -102,6 +106,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("cltdofunc", 121, "desecrate"), ("srvstfunc", 72, "charge"), ("srvdofunc", 180, "charge"),
     ("srvdofunc", 182, "channel"), ("cltdofunc", 111, "channel"),
     ("cltdofunc", 119, "wall"),
+    ("srvdofunc", 175, "fire claws"), ("cltdofunc", 110, "fire claws"), ("srvstfunc", 77, "wolf start"),
     ("mode gate", "busy", "take-over"),  # an inline hook, not a slot
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
@@ -132,7 +137,8 @@ def _log(ctx) -> str:
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                  "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33",
-                                 "core-rules-w21", "core-rules-w22", "core-rules-w29", "core-rules-w17", "game"])
+                                 "core-rules-w21", "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17",
+                                 "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -476,6 +482,67 @@ def wall_client(ctx):
     """The client half (cltdofunc 119) draws the same makers."""
     level, created, _ = _wall_casts(ctx, "wall client")
     return f"Firestorm level {level}: client drew {created} makers"
+
+
+FIRE_CLAWS, SPIRIT_WOLF = 239, 227  # merged skill ids (PD2's too)
+SPIRIT_WOLF_PET = 11  # pettype row of spiritwolf, PD2's and merged
+
+
+def _fire_claws(ctx, pattern: str, side: str) -> list[tuple]:
+    """Logged Fire Claws lines, (level, ...) from the pattern's groups, checking each one's makers against PD2's calc2,
+    par1 + (blvl / 5) * par2 with par1 4, par2 1 (no +skills, so blvl = level)."""
+    casts = [tuple(int(v) for v in c[1:]) for c in re.findall(pattern, _log(ctx)) if int(c[0]) == FIRE_CLAWS]
+    if not casts:
+        ctx.skip(f"no {side} line for Fire Claws in the log yet (claw a monster out of town, then run again)")
+    for level, *_, created, count in casts:
+        if count == 0 and created == 0:
+            continue  # no target point or missile row: PD2 sends no makers either
+        want = 4 + level // 5
+        assert count == want, f"{side}: Fire Claws level {level}: {count} makers, PD2's calc2 gives {want}"
+        assert created == count, f"{side}: only {created} of {count} makers created"
+    return casts
+
+
+@check("fire-claws-hit", tags=["core-rules-w24"])
+def fire_claws_hit(ctx):
+    """Fire Claws (srvdofunc 175) applies the claw hit with fire damage and sends PD2's calc2 makers, all created."""
+    casts = _fire_claws(
+        ctx, r"fire claws: skill (\d+) level (\d+): hit result (-?\d+) fire (-?\d+), (\d+) of (-?\d+) makers",
+        "fire claws")
+    hits = [c for c in casts if c[1] >= 0 and c[1] & 1]
+    if not hits:
+        ctx.skip("no Fire Claws hit in the log yet, only misses (claw monsters, then run again)")
+    assert all(fire > 0 for _, _, fire, _, _ in hits), f"a Fire Claws hit without fire damage: {hits[:3]}"
+    level, _, fire, created, _ = hits[0]
+    return f"{len(hits)} hits; level {level}: fire {fire}, {created} makers"
+
+
+@check("fire-claws-client", tags=["core-rules-w24"])
+def fire_claws_client(ctx):
+    """The client half (cltdofunc 110) draws the same calc2 makers."""
+    casts = _fire_claws(ctx, r"fire claws client: skill (\d+) level (\d+): (\d+) of (-?\d+) makers",
+                        "fire claws client")
+    level, created, _ = casts[0]
+    return f"Fire Claws level {level}: client drew {created} makers"
+
+
+@check("wolf-start", tags=["core-rules-w24"])
+def wolf_start(ctx):
+    """Spirit Wolf's start (srvstfunc 77) accepts the summon with PD2's petmax, min(lvl, par3) with par3 6 (no
+    extra_spiritwolf); a summon at petmax kills the oldest wolf first."""
+    starts = [(int(lv), int(t), int(m), int(b), int(k), r) for sk, lv, t, m, b, k, r in re.findall(
+        r"wolf start: skill (\d+) level (\d+) pet type (\d+): petmax (-?\d+), (\d+) before, (\d+) killed, "
+        r"(accepted|refused)", _log(ctx)) if int(sk) == SPIRIT_WOLF]
+    if not starts:
+        ctx.skip("no Spirit Wolf start in the log yet (summon Spirit Wolf out of town, then run again)")
+    for level, pet, petmax, before, killed, result in starts:
+        assert pet == SPIRIT_WOLF_PET, f"pet type {pet}, spiritwolf is {SPIRIT_WOLF_PET}"
+        assert petmax == min(level, 6), f"level {level}: petmax {petmax}, PD2's gives {min(level, 6)}"
+        assert result == "accepted", f"level {level}: start {result} with petmax {petmax}"
+        assert killed <= max(before - petmax + 1, 0), f"{killed} of {before} wolves killed at petmax {petmax}"
+    full = [s for s in starts if s[3] >= s[2]]
+    return (f"{len(starts)} starts accepted, petmax {starts[0][2]}; "
+            f"{len(full)} at petmax killed {sum(s[4] for s in full)}")
 
 
 @check("golem-count", tags=["core-rules-w14"])
@@ -891,7 +958,7 @@ def fist_delay_hit(ctx):
 
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
-                                    "core-rules-w22", "core-rules-w29", "core-rules-w17"])
+                                    "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

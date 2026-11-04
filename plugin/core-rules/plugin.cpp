@@ -47,11 +47,11 @@ using InstallFn = void (*)(const D2RL::PluginContext* context, char* report, siz
 struct Part {
 	const char* word;
 	InstallFn install;
-	char report[1536];  // one entry per installed slot, so it grows with every rule
+	char report[2400];  // one entry per installed slot, so it grows with every rule
 };
 
 void InstallSkills(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char slots[1400] = "";
+	char slots[2300] = "";
 	const int installed = InstallSkillFunctions(context, slots, sizeof(slots));
 	std::snprintf(report, size, "%d/%d installed:%s", installed, SkillFunctionCount(), slots);
 }
@@ -81,7 +81,7 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	if (command == nullptr || command->plugin == nullptr || g_context == nullptr) {
 		return D2RL::ConsoleCommandResult::Failed;
 	}
-	char line[1100];
+	char line[2500];
 	char image[200];
 	crash_guard::Describe(image, sizeof(image), D2RL::GetBuildVersion(g_context));
 	std::snprintf(line, sizeof(line), "%s %s | %s | mod %s | file %s", PluginName, PluginVersion, image,
