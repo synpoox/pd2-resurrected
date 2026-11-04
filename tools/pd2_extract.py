@@ -2,13 +2,14 @@
 
     python tools/pd2_extract.py [--install DIR]
 
-Refuses an install whose archives differ from pd2-baseline.json. Writes every file of pd2data.mpq to
-pd2-data/data/... (lower-case paths, forward slashes), then pd2-data/baseline.json last, a copy of the baseline it was
-checked against, which pd2_merge reads to refuse a stale extract.
+Refuses an install whose archives differ from pd2-baseline.json. Writes every file of pd2data.mpq and the class skill
+icon sheets of pd2assets.mpq to pd2-data/data/... (lower-case paths, forward slashes), then pd2-data/baseline.json last,
+a copy of the baseline it was checked against, which pd2_merge reads to refuse a stale extract.
 """
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import hashlib
 import json
 import shutil
@@ -18,7 +19,8 @@ from pathlib import Path
 import mpq
 
 ROOT = Path(__file__).resolve().parent.parent
-EXTRACT = ["pd2data.mpq"]  # shortcut: tables and strings only; extract the art archives when the asset pipeline needs them
+# archive -> the files taken from it (lower-case path pattern). shortcut: art only as the asset pipeline needs it
+EXTRACT = {"pd2data.mpq": "*", "pd2assets.mpq": "data/global/ui/spells/??skillicon.dc6"}
 
 
 def sha256(path: Path) -> str:
@@ -55,10 +57,13 @@ def extract(install: Path, out: Path, baseline_file: Path) -> int:
     if out.exists():
         shutil.rmtree(out)
     count = 0
-    for archive in EXTRACT:
+    for archive, pattern in EXTRACT.items():
         a = mpq.Archive(install / archive)
         for name in a.names():
-            dest = out / name.replace("\\", "/").lower()
+            rel = name.replace("\\", "/").lower()
+            if not fnmatch.fnmatchcase(rel, pattern):
+                continue
+            dest = out / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(a.read(name))
             count += 1

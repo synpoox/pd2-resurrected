@@ -23,6 +23,7 @@ PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-di
 | P6 | Strings: the strings build ("Decide how the mod ships PD2's strings", [#29](https://github.com/synpoox/pd2-resurrected/issues/29)) | P1 | D | [#38](https://github.com/synpoox/pd2-resurrected/issues/38) (PR) |
 | W3 | Stand-ins and data rows (core-rules) | P1 | C | [#46](https://github.com/synpoox/pd2-resurrected/issues/46), [#60](https://github.com/synpoox/pd2-resurrected/issues/60) (PR) |
 | P10 | HD missiles: every missile PD2 adds gets a `missiles.json` model (stand-in art), so none is invisible in HD | P2 | A | [#74](https://github.com/synpoox/pd2-resurrected/issues/74) (PR) |
+| P11 | Skill icons: every class's icon sheet rebuilt from PD2's art, so PD2's new skills show their icons | P1 | D | [#83](https://github.com/synpoox/pd2-resurrected/issues/83) (PR) |
 
 ## M2: Amazon and Barbarian complete
 
@@ -34,9 +35,9 @@ Was the alpha until [#85](https://github.com/synpoox/pd2-resurrected/issues/85) 
 | W1 | Plumbing and Split Throw server half (core-rules) | none | B | [#37](https://github.com/synpoox/pd2-resurrected/issues/37) (PR) |
 | W2 | Client-half example (core-rules) | W1 | B | [#45](https://github.com/synpoox/pd2-resurrected/issues/45), [#61](https://github.com/synpoox/pd2-resurrected/issues/61), [#69](https://github.com/synpoox/pd2-resurrected/issues/69) (PR) |
 | W4 | Investigation: PlrModes (core-rules) | none | C | [#36](https://github.com/synpoox/pd2-resurrected/issues/36) (PR) |
-| W5, W6 | Amazon (core-rules) | W2, P2 | B | [#52](https://github.com/synpoox/pd2-resurrected/issues/52), [#53](https://github.com/synpoox/pd2-resurrected/issues/53) |
+| W5, W6 | Amazon (core-rules) | W2, P2 | B | [#52](https://github.com/synpoox/pd2-resurrected/issues/52), [#80](https://github.com/synpoox/pd2-resurrected/issues/80) (PR), [#53](https://github.com/synpoox/pd2-resurrected/issues/53) |
 | W7 | Nova and orb hits (core-rules) | W1, P2 | C | [#50](https://github.com/synpoox/pd2-resurrected/issues/50), [#66](https://github.com/synpoox/pd2-resurrected/issues/66) (PR); game check waits on the owner's run |
-| W8, W9 | Barbarian (core-rules) | W2, P2 | B | [#54](https://github.com/synpoox/pd2-resurrected/issues/54), [#55](https://github.com/synpoox/pd2-resurrected/issues/55) |
+| W8, W9 | Barbarian (core-rules) | W2, P2 | B | [#82](https://github.com/synpoox/pd2-resurrected/issues/82) (PR), [#81](https://github.com/synpoox/pd2-resurrected/issues/81) (PR) |
 | W10 | Barbarian group (core-rules) | W1, P2 | C | [#71](https://github.com/synpoox/pd2-resurrected/issues/71) (PR) |
 | P7 | Companions: hash-checked manifest, release-script download, hand-written `filter.json`, Pyre's 16 `Filter*` sound rows and flacs merged into our data | none | C | [#39](https://github.com/synpoox/pd2-resurrected/issues/39) (PR) |
 | P9 | Corruption: starts with the outcome check (core-rules Q10), includes the cube op 16/18 check for corruption recipes | P3 | A | [#56](https://github.com/synpoox/pd2-resurrected/issues/56), [#68](https://github.com/synpoox/pd2-resurrected/issues/68) (PR) |
@@ -62,10 +63,10 @@ are "not yet" rows on the unported list; the Warlock ships as D2R has it.
 | W25 | Investigation: Assassin finisher hook points (core-rules) | none | E | [#100](https://github.com/synpoox/pd2-resurrected/issues/100) |
 | W26-W28 | Sorceress (core-rules) | W21 (W27 only) | E | [#101](https://github.com/synpoox/pd2-resurrected/issues/101), [#102](https://github.com/synpoox/pd2-resurrected/issues/102), [#103](https://github.com/synpoox/pd2-resurrected/issues/103) |
 | W29-W32 | Assassin (core-rules) | W25 (W29), W29 (W30), W21 (W32) | first free class lane | [#104](https://github.com/synpoox/pd2-resurrected/issues/104), [#105](https://github.com/synpoox/pd2-resurrected/issues/105), [#106](https://github.com/synpoox/pd2-resurrected/issues/106), [#107](https://github.com/synpoox/pd2-resurrected/issues/107) |
-| P11 | "Not yet" rows for class item rules (Ormus' Robes and the like) on the unported list | none | A | [#108](https://github.com/synpoox/pd2-resurrected/issues/108) |
-| P12 | Alpha release: local 7z and release notes | P8 and every item above | A | [#109](https://github.com/synpoox/pd2-resurrected/issues/109) |
+| P12 | "Not yet" rows for class item rules (Ormus' Robes and the like) on the unported list | none | A | [#108](https://github.com/synpoox/pd2-resurrected/issues/108) |
+| P13 | Alpha release: local 7z and release notes | P8 and every item above | A | [#109](https://github.com/synpoox/pd2-resurrected/issues/109) |
 
-**Lanes** for five sessions: A P9 -> P8, then P11 and rush jobs, then P12; B Necromancer; C Paladin; D Druid; E W25, then
+**Lanes** for five sessions: A P9 -> P8, then P12 and rush jobs, then P13; B Necromancer; C Paladin; D Druid; E W25, then
 Sorceress. The Assassin build goes to the first class lane that frees up. A rule shared by two classes belongs to the
 earliest class in the order Necromancer, Paladin, Druid, Sorceress, Assassin; the later class checks it. The owner reviews
 the first PR in each class lane.

@@ -4,6 +4,8 @@ Each check reads the plugin log, <slot>/d2rloader/logs/core-rules.log; expected 
 
 Setup (Slot4-7, game closed):
   powershell -File tools/install.ps1 -Game C:/D2RTestSlots/Slot4 -Data tests/game/fixtures/split-throw
+  (or -Data tests/game/fixtures/leap and a Barbarian with Leap and Leap Attack, for the leap checks: cast both in
+  town, then Leap Attack into monsters out of town)
   a Barbarian test save with Double Throw (class skill slot 14) at level 10 in that slot's save folder
 Run:
   py testing/game_checks.py run core-rules --slot 4 --path <repo>/tests/game --module core_rules_checks
@@ -23,6 +25,13 @@ W10 checks (tag core-rules-w10) run on the merged data, which has PD2's rows and
   a Barbarian with Bash, Find Potion and Frenzy (two one-handed weapons for Frenzy)
   py testing/game_checks.py run core-rules-w10 --slot N --path <repo>/tests/game --module core_rules_checks
 then out of town: Bash monsters 30+ times, Frenzy a few times in a row, Find Potion on a corpse, and run again.
+
+Double Throw (W9) has its own fixture, tests/game/fixtures/double-throw, which sets the same row to PD2's Double
+Throw (srvdofunc 183, cltdofunc 116, PD2's calcs and params) and adds PD2's doublethrowaxe/knife/jav rows (Town 1).
+It throws only with a throwing weapon in hand (no ammo, no missile): in game, console `debug_mode`, then
+`cheat uniques 291,292` drops Deathbit (Battle Dart, column b); identify it with the scroll before equipping (unidentified,
+it is refused) - the fixture sets the Battle Dart and Francisca reqdex to 0 so the test save can wield them. Cast it out
+of town (Blood Moor) for the cast checks; double-throw-bounce needs a throw at a monster.
 """
 import json
 import os
@@ -38,7 +47,12 @@ SKILL_SLOTS = [  # table slots it installs
     ("pSrvHitFunc", 65, "return spawn"), ("pSrvDoFunc", 46, "return"), ("pCltDoFunc", 78, "return"),
     ("srvstfunc", 78, "splash start"), ("srvstfunc", 82, "find"), ("cltstfunc", 62, "find"),
     ("srvdofunc", 190, "router"),
+    ("srvdofunc", 172, "leap"), ("cltdofunc", 115, "leap"),
+    ("srvdofunc", 183, "double throw"), ("cltdofunc", 116, "double throw"), ("pSrvHitFunc", 66, "bounce"),
+    ("pSrvDmgFunc", 21, "first hit"),
 ]
+LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
+LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knockback|units in range) (\d+), velocity (\d+)")
 ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
 
 
@@ -174,18 +188,117 @@ def frenzy_splash(ctx):
     return f"level {level}, {charges} charges: splash radius {value}"
 
 
-@check("split-throw-hd-models", tags=["core-rules"])
-def split_throw_hd_models(ctx):
-    """The installed data maps both Split Throw missiles to an HD model; without one they hit but are not drawn."""
-    path = os.path.join(ctx.cfg.slot_dir(ctx.slot), "mods", ctx.cfg.mod_folder(), f"{ctx.cfg.mod_folder()}.mpq",
-                        "data", "hd", "missiles", "missiles.json")
+@check("throw-hd-models", tags=["core-rules"])
+def throw_hd_models(ctx):
+    """The installed data maps every fixture missile (Split Throw's or Double Throw's) to an HD model; without one
+    they hit but are not drawn."""
+    mpq = os.path.join(ctx.cfg.slot_dir(ctx.slot), "mods", ctx.cfg.mod_folder(), f"{ctx.cfg.mod_folder()}.mpq", "data")
+    path = os.path.join(mpq, "hd", "missiles", "missiles.json")
     if not os.path.isfile(path):
         ctx.skip(f"no installed missiles.json: {path}")
     with open(path, encoding="utf-8-sig") as f:
         models = json.load(f)
-    missing = [m for m in ("splitthrowaxe", "splitthrowaxereturn") if not models.get(m)]
+    with open(os.path.join(mpq, "global", "excel", "missiles.txt"), encoding="utf-8", errors="replace") as f:
+        rows = {line.split("	", 1)[0] for line in f}
+    names = [m for m in ("splitthrowaxe", "splitthrowaxereturn", "doublethrowaxe", "doublethrowknife",
+                         "doublethrowjav") if m in rows]
+    if not names:
+        ctx.skip("neither throw fixture is installed")
+    missing = [m for m in names if not models.get(m)]
     assert not missing, f"no HD model for {missing} in {path}"
-    return ", ".join(f"{m} {models[m]}" for m in ("splitthrowaxe", "splitthrowaxereturn"))
+    return ", ".join(f"{m} {models[m]}" for m in names)
+
+
+@check("double-throw-cast", tags=["core-rules"])
+def double_throw_cast(ctx):
+    """A Double Throw cast threw a doublethrow missile with PD2's calc2 bounces = min(par5 + lvl/par6, 8) (Param5 3,
+    Param6 3) and damagepercent = calc1 = ln12 + (Double Swing + Frenzy blvl)*par8 (Param1 45, Param2 8, Param8 6)."""
+    casts = re.findall(r"double throw: skill \d+ level (\d+): missile (\d+) \(column \d\), damage% (-?\d+), "
+                       r"bounces (-?\d+)", _log(ctx))
+    if not casts:
+        ctx.skip("no Double Throw cast in the log yet (cast it out of town, then run again)")
+    level, missile, damage, bounces = (int(v) for v in casts[0])
+    assert bounces == min(3 + level // 3, 8), f"level {level}: {bounces} bounces, PD2 gives {min(3 + level // 3, 8)}"
+    base = 45 + (level - 1) * 8
+    assert damage >= base and (damage - base) % 6 == 0, f"level {level}: damage% {damage}, PD2 gives {base} + 6 per synergy level"
+    return f"level {level}: missile {missile}, damage% {damage} ({base} + {(damage - base) // 6} synergy levels), {bounces} bounces"
+
+
+@check("double-throw-client-cast", tags=["core-rules"])
+def double_throw_client_cast(ctx):
+    """The client half (cltdofunc 116) threw its copy with the same bounces as the server's."""
+    log = _log(ctx)
+    server = re.findall(r"double throw: skill \d+ level \d+: .*?bounces (-?\d+)", log)
+    client = re.findall(r"double throw client: skill \d+ level (\d+): missile (\d+), bounces (-?\d+)", log)
+    if not client:
+        ctx.skip("no client-side Double Throw cast in the log yet (cast it out of town, then run again)")
+    level, missile, bounces = (int(v) for v in client[0])
+    assert missile > 0, f"the client threw no missile ({missile})"
+    assert server and int(server[0]) == bounces, f"client {bounces} bounces, server {server[:1]}"
+    return f"level {level}: client missile {missile}, {bounces} bounces"
+
+
+@check("double-throw-bounce", tags=["core-rules"])
+def double_throw_bounce(ctx):
+    """A doublethrow missile that hit a monster threw itself at the next one (shit 66) within PD2's range, sHitPar1 0
+    so aurarangecalc par3 = 15, with one bounce less. Needs a throw at monsters out of town."""
+    hits = re.findall(r"double throw bounce: missile \d+ range (\d+), bounces (\d+) -> (\d+)", _log(ctx))
+    if not hits:
+        ctx.skip("no bounce in the log yet (throw Double Throw at a group of monsters, then run again)")
+    rng, before, after = (int(v) for v in hits[0])
+    assert rng == 15, f"bounce range {rng}, PD2's par3 is 15"
+    assert after == before - 1, f"bounces {before} -> {after}"
+    return f"range {rng}, bounces {before} -> {after} ({len(hits)} bounces logged)"
+
+def _landings(ctx, skill: int) -> list[tuple]:
+    return [(int(m[1]), int(m[2]), m[3], int(m[4]), int(m[5])) for m in LANDED.findall(_log(ctx)) if int(m[0]) == skill]
+
+
+@check("leap-landing", tags=["core-rules"])
+def leap_landing(ctx):
+    """A Leap landed with PD2's knockback radius calc3 = min(par3+blvl*par4, 15) (Param3 7, Param4 1) and speed
+    0xb00 + calc2*0x50 (calc2 80). Assumes no +skills: blvl is the logged level."""
+    landed = _landings(ctx, LEAP)
+    if not landed:
+        ctx.skip("no Leap landing in the log yet (Leap in town, then run again)")
+    level, radius, kind, _, velocity = landed[0]
+    assert kind == "knockback", landed[0]
+    assert radius == min(7 + level, 15), f"level {level}: radius {radius}, PD2 gives {min(7 + level, 15)}"
+    assert velocity == 0xb00 + 80 * 0x50, f"velocity {velocity}, PD2 gives {0xb00 + 80 * 0x50}"
+    return f"level {level}: knockback radius {radius}, velocity {velocity}"
+
+
+@check("leap-attack-landing", tags=["core-rules"])
+def leap_attack_landing(ctx):
+    """A Leap Attack landed hitting units within calc3 = par5 (8), at speed 0xb00 + calc2*0x50 (calc2 60)."""
+    landed = _landings(ctx, LEAP_ATTACK)
+    if not landed:
+        ctx.skip("no Leap Attack landing in the log yet (Leap Attack in town, then run again)")
+    level, radius, kind, _, velocity = landed[0]
+    assert kind == "units in range" and radius == 8, f"{kind} radius {radius}, PD2 hits units within 8"
+    assert velocity == 0xb00 + 60 * 0x50, f"velocity {velocity}, PD2 gives {0xb00 + 60 * 0x50}"
+    return f"level {level}: radius {radius}, velocity {velocity}"
+
+
+@check("leap-attack-hits", tags=["core-rules"])
+def leap_attack_hits(ctx):
+    """A Leap Attack landed among monsters, so its hit was rolled on them. Needs a cast out of town."""
+    hits = [h for *_, h, _ in _landings(ctx, LEAP_ATTACK) if h > 0]
+    if not hits:
+        ctx.skip("no Leap Attack landing had units in range yet (Leap Attack into monsters out of town, then run again)")
+    return f"{len(hits)} landings rolled hits on {sum(hits)} units"
+
+
+@check("leap-client", tags=["core-rules"])
+def leap_client(ctx):
+    """The client half (cltdofunc 115) set the same speed as the server half for each leap skill."""
+    client = {int(s): int(v) for s, v in re.findall(r"leap client: skill (\d+) level \d+: velocity (\d+)", _log(ctx))}
+    if not client:
+        ctx.skip("no client-side leap in the log yet (Leap in town, then run again)")
+    for skill, velocity in client.items():
+        server = [v for *_, v in _landings(ctx, skill)]
+        assert server and server[0] == velocity, f"skill {skill}: client velocity {velocity}, server {server[:1]}"
+    return ", ".join(f"skill {s} velocity {v}" for s, v in client.items())
 
 
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10"])

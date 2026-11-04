@@ -83,6 +83,12 @@ class StringsTests(unittest.TestCase):
         self.assertEqual(runes["Runeword171PD2"]["enUS"], "Dominion")
         self.assertFalse((self.root / "out/data/local/lng/strings-legacy/item-runes.json").exists())
 
+    def test_build_writes_the_mods_own_texts(self):
+        cfg = {"overrides": [], "texts": {"OwnLine": "Own: %d per second"}, "ids": {"OwnLine": [50000, "skills.json"]}}
+        pd2_strings.build(cfg, self.pd2, self.strings(), self.root / "out")
+        self.assertEqual({self.built("strings/skills.json")["OwnLine"][la] for la in mkstrings.LANGS},
+                         {"Own: %d per second"})
+
     def test_build_refuses_unsafe_data(self):
         base = {"overrides": [], "ids": {}}
         for change, msg in [({"ids": {"r08": [50000, "ui.json"]}}, "D2R now has key"),

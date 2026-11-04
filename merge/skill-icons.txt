@@ -1,0 +1,8 @@
+# Classes whose skill icon sheets are rebuilt from PD2's DC6 (charclass codes); tools/pd2_skill_icons.py
+# Amazon keeps D2R's: PD2 ships no Amazon sheet (its game reads vanilla's). Warlock keeps D2R's: PD2 has no Warlock.
+ass
+bar
+dru
+nec
+pal
+sor

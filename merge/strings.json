@@ -63,6 +63,12 @@
   "renames": {
     "Runeword171PD2": "Runeword171"
   },
+  "texts": {
+    "StrSkillPoisonDamagePercent": "Poison Damage: %+d%%",
+    "OpenWoundsDamagePerSecond": "Open Wounds Damage: %d per second",
+    "PartyOpenWoundsDamagePerSecond": "Party Open Wounds Damage: %d per second",
+    "ThornsOpenWoundsDamagePerSecond": "Your Open Wounds Damage: %d per second"
+  },
   "ids": {
     "Runeword171PD2": [50000, "item-runes.json"],
     "Abyssal Ward": [50001, "item-names.json"],
@@ -1423,6 +1429,10 @@
     "wss": [51356, "item-names.json"],
     "wssDesc": [51357, "item-modifiers.json"],
     "zharportal_blue": [51358, "objects.json"],
-    "zharportal_red": [51359, "objects.json"]
+    "zharportal_red": [51359, "objects.json"],
+    "StrSkillPoisonDamagePercent": [51360, "skills.json"],
+    "OpenWoundsDamagePerSecond": [51361, "skills.json"],
+    "PartyOpenWoundsDamagePerSecond": [51362, "skills.json"],
+    "ThornsOpenWoundsDamagePerSecond": [51363, "skills.json"]
   }
 }

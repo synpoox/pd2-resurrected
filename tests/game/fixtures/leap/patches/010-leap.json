@@ -1,0 +1,15 @@
+{"ops": [
+  {"op": "set", "table": "skills", "key": "Leap", "bank": "excel", "set": {
+    "srvdofunc": "172", "cltdofunc": "115", "InTown": "1", "LineOfSight": "",
+    "calc1": "0", "calc2": "80", "calc3": "min(par3 + blvl * par4, 15)", "calc4": "1",
+    "Param1": "20", "Param2": "40", "Param3": "7", "Param4": "1", "Param5": "", "Param7": "",
+    "ResultFlags": "9", "HitFlags": "3"
+  }},
+  {"op": "set", "table": "skills", "key": "Leap Attack", "bank": "excel", "set": {
+    "srvstfunc": "40", "cltstfunc": "29", "srvdofunc": "172", "cltdofunc": "115", "InTown": "1",
+    "LineOfSight": "", "TargetableOnly": "", "stsuccessonly": "", "aurarangecalc": "30",
+    "calc1": "ln34+(skill('Leap'.blvl)+skill('Bash'.blvl))*par8", "calc2": "60", "calc3": "par5", "calc4": "",
+    "Param1": "4", "Param2": "30", "Param3": "80", "Param4": "18", "Param5": "8", "Param7": "", "Param8": "14",
+    "ToHit": "30", "LevToHit": "15"
+  }}
+]}

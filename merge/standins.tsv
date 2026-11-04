@@ -1,8 +1,6 @@
 # table	row	from	columns	rule (W3; delete a line when its rule is built, see tools/pd2_standins.py)
 skills	Power Strike	=	cltdofunc	Power Strike, Lightning Strike client half
-skills	Lightning Bolt	=	srvdofunc,cltdofunc	Lightning Bolt, Lightning Fury
 skills	Lightning Strike	=	cltdofunc	Power Strike, Lightning Strike client half
-skills	Lightning Fury	=	srvdofunc,cltdofunc	Lightning Bolt, Lightning Fury
 skills	Inferno	=	srvdofunc,cltdofunc	Inferno, Arctic Blast
 skills	Static Field	=	srvdofunc	Static Field
 skills	Teleport	=	srvdofunc	Teleport, Blink
@@ -53,9 +51,6 @@ skills	Redemption	=	cltdofunc	Paladin aura client do
 skills	Redemption	=	cltstfunc	Paladin aura client start
 skills	Salvation	=	cltdofunc	Paladin aura client do
 skills	Salvation	=	cltstfunc	Paladin aura client start
-skills	Leap	=	srvdofunc,cltdofunc	Leap, Leap Attack
-skills	Double Throw	=	srvdofunc,cltdofunc	Double Throw
-skills	Leap Attack	=	srvdofunc,cltdofunc	Leap, Leap Attack
 skills	DiabWall	=	srvdofunc	Firestorm and wall makers
 skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
 skills	Firestorm	=	srvdofunc,cltdofunc	Firestorm and wall makers
@@ -105,13 +100,11 @@ skills	RathmaSummon	-	srvdofunc	RathmaSummon
 skills	RathmaTeethNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	RathmaOuterNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	RathmaPacman	Nova	srvdofunc,cltdofunc	Combustion and boss novas
-skills	UberMadawcDoubleThrow	Double Throw	srvdofunc,cltdofunc	Double Throw
 skills	LeoricSummonNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	Holy Fire Fire Golem	Holy Fire	cltdofunc	Paladin aura client do
 skills	Holy Fire Fire Golem	Holy Fire	cltstfunc	Paladin aura client start
 skills	Holy Freeze Korlic	Holy Freeze	cltdofunc	Paladin aura client do
 skills	Holy Freeze Korlic	Holy Freeze	cltstfunc	Paladin aura client start
-skills	Leap Attack Korlic	Leap Attack	srvdofunc,cltdofunc	Leap, Leap Attack
 skills	Holy Fire Sanctuaryboss	Holy Fire	cltdofunc	Paladin aura client do
 skills	Holy Fire Sanctuaryboss	Holy Fire	cltstfunc	Paladin aura client start
 skills	UberDiabRun	DiabRun	srvstfunc	UberDiabSummon, UberDiabRun
@@ -156,9 +149,6 @@ missiles	bladesoficecubes	=	pCltDoFunc	Assassin charge-up finishers
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
 missiles	siege beast stomp missile	-	pCltDoFunc	Siege beast stomp client do
 missiles	holylightdelay	fistoftheheavensdelay	pCltHitFunc	Holy Light
-missiles	doublethrowaxe	-	pSrvDmgFunc	Double Throw
-missiles	doublethrowknife	-	pSrvDmgFunc	Double Throw
-missiles	doublethrowjav	-	pSrvDmgFunc	Double Throw
 missiles	poisondaggercloud	-	pSrvHitFunc	Poison Dagger
 missiles	psychichammer	-	pSrvDmgFunc	Psychic Hammer missile damage
 missiles	uberimmolationarrow	immolationarrow	pSrvHitFunc	Uber immolation arrow hit

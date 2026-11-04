@@ -5,6 +5,11 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Double Throw works as in Project Diablo II: one throw that bounces between monsters.
+- Leap and Leap Attack work as in Project Diablo II: faster leaps, and Leap Attack hits every monster where it lands.
+- Lightning Bolt and Lightning Fury work as in Project Diablo II.
+- Skill tooltips no longer show raw format codes ("Duration: %d seconds40 seconds") or a stray "an evil force" line;
+  the Mana Cost and damage lines are back ("Magic Damage: 3-5"). Percent values read "+110%" where PD2 says "+110 percent".
 - Bash knocks back half the time, and Find Potion and Find Item skip minions' corpses.
 - Item stat lines no longer show the value twice ("+1 %+d to All Skills").
 - Corruption: cube an item with a Worldstone Shard. It takes two presses for now: the first rolls the hidden

@@ -180,7 +180,105 @@ auto CltDoSplitThrow(Unit* unit, int32_t skillId, int32_t level) noexcept -> int
 	return 1;
 }
 
-// --- Split Throw's start buff (PD2 srvstfunc 79) ---------------------------------------------------------------------
+// --- Double Throw (PD2 srvdofunc 154 -> 183, cltdofunc 98 -> 116) ------------------------------------------------
+std::atomic<uint32_t> g_doubleThrowCasts {0};
+std::atomic<uint32_t> g_doubleThrowClientCasts {0};
+
+// PD2's column for the thrown weapon: throwing axe a, throwing knife b, javelin, glaive and pilum c, else a. Missile
+// rows by weapons.txt missiletype, the same in D2R and PD2 (javelin 1, throwaxe 35, throwknife 36, glaive 37, pilum 371).
+auto WeaponColumn(Unit* weapon) noexcept -> int {
+	switch (d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemMissileType)(weapon)) {
+	case 35: return 0;
+	case 36: return 1;
+	case 1: case 37: case 371: return 2;
+	default: return 0;
+	}
+}
+
+// PD2 srvdo 154 (ProjectDiablo.dll 0x103b1590): one missile of srvmissile a/b/c by the weapon, thrown the way D2R's
+// Double Throw throws (srvdo 74's 0x4333f0), with damagepercent = calc1 and calc2 bounces (missiles.txt pSrvHitFunc 30
+// -> 66 spends them). A monster (UberMadawcDoubleThrow, the same missile in all three columns) throws column a.
+auto SrvDoDoubleThrow(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	int column = 0;
+	if (At<int32_t>(unit, UnitType) == 0) {
+		Unit* weapon = d2r::Engine<Unit* (*)(Unit*) noexcept>(UnitWeapon)(unit);
+		if (weapon == nullptr) {
+			return 0;
+		}
+		column = WeaponColumn(weapon);
+	}
+	const int32_t missile = At<int16_t>(skill, SkSrvMissileA + column * 2);
+	if (!d2r::ValidMissile(dataFlag, missile)) {
+		return 0;
+	}
+	using ThrowFn = Unit* (*)(Game*, int32_t, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t,
+	                          int32_t) noexcept;
+	const int32_t key = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(unit);
+	Unit* thrown = d2r::Engine<ThrowFn>(ThrowSkillMissile)(game, missile, unit, skillId, level, key, 0, 0, 0, 0, 1);
+	if (thrown == nullptr) {
+		return 0;
+	}
+	const int32_t damage = d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level);
+	const int32_t bounces = d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(thrown, StatDamagePercent, damage, 0);
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetMissileBounces)(thrown, bounces);
+	if (plog::Sample(g_doubleThrowCasts)) {
+		plog::Info("double throw: skill %d level %d: missile %d (column %d), damage%% %d, bounces %d, cast %u", skillId,
+		           level, missile, column, damage, bounces, g_doubleThrowCasts.load());
+	}
+	return 1;
+}
+
+// PD2 cltdo 98 (0x103ab470): the same missile from cltmissile a/b/c with calc2 bounces, so the client's Chain
+// Lightning hit (missiles.txt pCltHitFunc 16) can draw each bounce.
+auto CltDoDoubleThrow(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::api.unitDataFlag(unit);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	int column = 0;  // a monster throws column a, as on the server
+	if (At<int32_t>(unit, UnitType) == 0) {
+		Unit* weapon = d2r::Engine<Unit* (*)(Unit*) noexcept>(ClientUnitWeapon)(unit);
+		if (weapon == nullptr) {
+			return 0;
+		}
+		column = WeaponColumn(weapon);
+	}
+	d2r::api.setUnitSkillFlag(unit, 1);
+	const int32_t missile = At<int16_t>(skill, SkCltMissileA + column * 2);
+	if (!d2r::ValidMissile(dataFlag, missile)) {
+		return 0;
+	}
+	const int32_t key = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(unit);
+	Unit* thrown = d2r::Engine<Unit* (*)(Unit*, int32_t, int32_t, int32_t, int32_t) noexcept>(ClientThrowSkillMissile)(
+		unit, missile, skillId, level, key);
+	if (thrown == nullptr) {
+		return 0;
+	}
+	const int32_t bounces = d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, SkCalc2), skillId, level);
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetMissileBounces)(thrown, bounces);
+	if (plog::Sample(g_doubleThrowClientCasts)) {
+		plog::Info("double throw client: skill %d level %d: missile %d, bounces %d, cast %u", skillId, level, missile,
+		           bounces, g_doubleThrowClientCasts.load());
+	}
+	return 1;
+}
+
+// --- Split Throw's start buff (PD2 srvstfunc 79)---------------------------------------------------------------------
 std::atomic<uint32_t> g_tempBuffs {0};
 
 // The skill's aurastate with its aurastat1-6 for a short time from the start frame, built the way Frozen Armor's
@@ -392,6 +490,159 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	return 1;
 }
 
+// --- Leap, Leap Attack, Leap Attack Korlic (PD2 srvdofunc 153 -> 172, cltdofunc 97 -> 115) ------------------------------
+// Read from ProjectDiablo.dll: srvdo 153 at 0x103b1300, cltdo 97 at 0x103ab280 (docs/core-rules.md). PD2's leap path is
+// D2R's (path type 9 to the skill's point); PD2 sets its own speed and, on landing, hits every unit within calc3.
+std::atomic<uint32_t> g_leaps {0};
+std::atomic<uint32_t> g_leapClients {0};
+// Each kind's first landing and client start ([0] Leap, [1] the others), and the first landing with units in range,
+// are logged too, whichever came first
+std::atomic<uint32_t> g_leapKinds[2] {};
+std::atomic<uint32_t> g_leapClientKinds[2] {};
+std::atomic<uint32_t> g_leapUnitLandings {0};
+constexpr int32_t SkillLeap = 132;  // PD2 keys the landing on this id: Leap knocks back, every other row hits
+
+using UnitSkill = uint8_t;
+
+auto UnitSkillOf(Unit* unit, int32_t skillId) noexcept -> UnitSkill* {
+	return d2r::Engine<UnitSkill* (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::GetUnitSkill)(unit, skillId, 0);
+}
+
+auto& Flags(UnitSkill* uskill) noexcept {
+	return *reinterpret_cast<uint32_t*>(uskill + d2r::rva::USkillFlags);
+}
+
+// PD2's leap speed: a monster's monstats Velocity, a player's 0xb00 + calc2 * 0x50 (calc2 is 80 or 60 plus
+// item_leap_speed / 4), never below 0xb00. D2R's LeapStart scales the run speed by calc2 % instead.
+// shortcut: PD2's client half uses 0xa00 + calc2 * 0x29; both halves take the server's speed here so the client's
+// path matches the server's. Upgrade if PD2's client speed turns out to be visible.
+auto LeapVelocity(Unit* unit, const uint8_t* skill, int32_t skillId, int32_t level) noexcept -> int32_t {
+	const uint32_t dataFlag = d2r::api.unitDataFlag(unit);
+	if (At<int32_t>(unit, d2r::rva::UnitType) == 1) {
+		const uint8_t* mon = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(d2r::rva::MonStatsRecord)(
+			dataFlag, At<int32_t>(unit, d2r::rva::UnitClassId));
+		return mon != nullptr ? At<int16_t>(mon, d2r::rva::MonVelocity) << 8 : 0;
+	}
+	const int32_t v = 0xb00 + d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, d2r::rva::SkCalc2), skillId, level) * 0x50;
+	return v > 0xb00 ? v : 0xb00;
+}
+
+void SetLeapVelocity(Unit* unit, UnitSkill* uskill, int32_t velocity) noexcept {
+	void* path = At<void*>(unit, d2r::rva::UnitPath);
+	if (path == nullptr || velocity <= 0) {
+		return;
+	}
+	const uint32_t flags = Flags(uskill);
+	Flags(uskill) = flags & ~0x1000u;  // PathSetVelocity refuses while 0x1000 is set; LeapStart clears it the same way
+	d2r::Engine<void (*)(void*, int32_t) noexcept>(d2r::rva::PathSetVelocity)(path, velocity);
+	Flags(uskill) = flags;
+}
+
+struct LeapHit {
+	UnitSkill* uskill;
+	int32_t skillId;
+	int32_t level;
+	int64_t hits;
+};
+
+// One victim of the landing: D2R's own Leap Attack hit (to-hit roll with the skill's ToHit, weapon damage + calc1 %)
+// aimed at it through the skill target and the path target, which is where 0x56ad90 looks.
+auto LeapHitOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
+	auto* hit = static_cast<LeapHit*>(area->arg);
+	++hit->hits;  // units the hit is rolled on, not hits that land
+	Unit* unit = area->unit;
+	void* path = At<void*>(unit, d2r::rva::UnitPath);
+	auto* target = reinterpret_cast<int32_t*>(hit->uskill + d2r::rva::USkillTargetType);
+	const int32_t savedType = target[0], savedId = target[1];
+	Unit* savedPathTarget = At<Unit*>(path, d2r::rva::PathTargetUnit);
+	const auto setPathTarget = d2r::Engine<void (*)(void*, Unit*) noexcept>(d2r::rva::PathSetTargetUnit);
+	target[0] = At<int32_t>(victim, d2r::rva::UnitType);
+	target[1] = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(d2r::rva::UnitId)(victim, __FILE__, __LINE__);
+	setPathTarget(path, victim);
+	d2r::Engine<void (*)(void*, Unit*, int32_t, int32_t) noexcept>(d2r::rva::SkillMeleeHit)(area->game, unit, hit->skillId,
+	                                                                                       hit->level);
+	setPathTarget(path, savedPathTarget);
+	target[0] = savedType;
+	target[1] = savedId;
+	return 1;
+}
+
+// PD2 srvdofunc 153. The unit skill's flags pick the phase: 0x80 start the leap, 0x100 in the air (land), else wait.
+auto SrvDoLeap(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), skillId);
+	UnitSkill* uskill = skill != nullptr ? UnitSkillOf(unit, skillId) : nullptr;
+	if (uskill == nullptr) {
+		return 0;
+	}
+	const uint32_t flags = Flags(uskill);
+	if ((flags & 0x100) == 0) {
+		if ((flags & 0x80) == 0) {
+			Flags(uskill) = 0x1000;
+		} else if (d2r::Engine<int8_t (*)(Unit*, UnitSkill*) noexcept>(LeapStart)(unit, uskill) != 0) {
+			SetLeapVelocity(unit, uskill, LeapVelocity(unit, skill, skillId, level));
+			d2r::Engine<int32_t (*)(void*, Unit*, int32_t, int32_t) noexcept>(PathSteer)(At<void*>(unit, UnitPath), unit, 0, 1);
+		}
+		return 1;
+	}
+	if (d2r::Engine<int32_t (*)(Game*, Unit*, UnitSkill*) noexcept>(LeapLanded)(game, unit, uskill) == 0) {
+		return 1;
+	}
+	const int32_t radius = d2r::EvalCalc(game, unit, skill, SkCalc3, skillId, level);
+	int64_t hits = 0;
+	if (radius > 0 && skillId == SkillLeap) {
+		d2r::LeapKnockback knockback;
+		uint8_t scratch[0x20] {};  // srvdo 77's second block: only its byte +0x18 (0) is read
+		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, d2r::LeapKnockback*, int32_t, void*) noexcept>(
+			AreaKnockback)(game, unit, 0, 0, radius, &knockback, 0, scratch);
+	} else if (radius > 0) {
+		d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit), 0, 0};
+		LeapHit hit {uskill, skillId, level, 0};
+		using AreaFn = void (*)(Game*, Unit*, d2r::AreaCenter*, int32_t, uint32_t, int32_t (*)(d2r::AreaContext*, Unit*),
+		                        void*, int32_t) noexcept;
+		d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, 0x8583, LeapHitOne, &hit, 0);  // PD2's unit mask
+		hits = hit.hits;
+	}
+	d2r::api.setUnitSkillFlag(unit, 1);
+	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t) noexcept>(RemoveUnitEvent)(game, unit, 1, 0);
+	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
+		game, unit, 1, At<int32_t>(game, GameFrame) + 4, 0, 0, 0);
+	const bool kindFirst = plog::Sample(g_leapKinds[skillId == SkillLeap ? 0 : 1]);
+	const bool unitsFirst = skillId != SkillLeap && hits > 0 && plog::Sample(g_leapUnitLandings);
+	if (plog::Sample(g_leaps) || kindFirst || unitsFirst) {
+		plog::Info("leap: skill %d level %d landed: radius %d, %s %lld, velocity %d, cast %u", skillId, level, radius,
+		           skillId == SkillLeap ? "knockback" : "units in range", static_cast<long long>(hits),
+		           LeapVelocity(unit, skill, skillId, level), g_leaps.load());
+	}
+	return 1;
+}
+
+// PD2 cltdofunc 97: D2R's Leap client half (cltdo 43) with PD2's speed on the start frame.
+auto CltDoLeap(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	if (unit == nullptr) {
+		return 0;
+	}
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::api.unitDataFlag(unit), skillId);
+	UnitSkill* uskill = skill != nullptr ? UnitSkillOf(unit, skillId) : nullptr;
+	if (uskill == nullptr) {
+		return 0;
+	}
+	const uint32_t flags = Flags(uskill);
+	const int32_t ran = d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::rva::CltDoLeap)(unit, skillId);
+	if ((flags & 0x2) == 0 && (flags & 0x80) != 0) {
+		const int32_t velocity = LeapVelocity(unit, skill, skillId, level);
+		SetLeapVelocity(unit, uskill, velocity);
+		const bool kindFirst = plog::Sample(g_leapClientKinds[skillId == SkillLeap ? 0 : 1]);
+		if (plog::Sample(g_leapClients) || kindFirst) {
+			plog::Info("leap client: skill %d level %d: velocity %d, cast %u", skillId, level, velocity, g_leapClients.load());
+		}
+	}
+	return ran;
+}
+
 struct Table {
 	const char* name;  // the skills.txt column
 	uint64_t rva;
@@ -408,6 +659,8 @@ constexpr Table MissileSrvHit {"pSrvHitFunc", d2r::rva::MissileSrvHitTable, d2r:
                                d2r::rva::MissileSrvHitFirstFree};
 constexpr Table MissileCltDo {"pCltDoFunc", d2r::rva::MissileCltDoTable, d2r::rva::MissileCltDoSlots,
                               d2r::rva::MissileCltDoFirstFree};
+constexpr Table MissileSrvDmg {"pSrvDmgFunc", d2r::rva::MissileSrvDmgTable, d2r::rva::MissileSrvDmgSlots,
+                               d2r::rva::MissileSrvDmgFirstFree};
 
 struct SlotFunction {
 	const Table& table;
@@ -425,10 +678,18 @@ const SlotFunction Functions[] = {
 	{SrvSt, 82, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStFind)), "find"},
 	{CltSt, 62, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltStFind)), "find"},
 	{SrvDo, 190, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoRouter)), "router"},
+	// PD2's srvdo 153 / cltdo 97 are D2R's RotW functions; ours take free slots and the merge points there (FUNCS).
+	{SrvDo, 172, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoLeap)), "leap"},
+	{CltDo, 115, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoLeap)), "leap"},
 	// PD2's return rows use sdo 38 / cdo 70, which D2R fills; ours take the first free slots and the data points there.
 	{MissileSrvHit, 65, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitSpawnReturn)), "return spawn"},
 	{MissileSrvDo, 46, reinterpret_cast<const void*>(static_cast<MissileSrvDoFn>(SrvDoReturn)), "return"},
 	{MissileCltDo, 78, reinterpret_cast<const void*>(static_cast<MissileCltDoFn>(CltDoReturn)), "return"},
+	// Double Throw: D2R fills srvdo 154 (a RotW skill), cltdo 98, shit 30 and dmg 16 (echoingstrike)
+	{SrvDo, 183, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoDoubleThrow)), "double throw"},
+	{CltDo, 116, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoDoubleThrow)), "double throw"},
+	{MissileSrvHit, 66, reinterpret_cast<const void*>(static_cast<MissileSrvHitBounceFn>(SrvHitBounce)), "bounce"},
+	{MissileSrvDmg, 21, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgFirstHit)), "first hit"},
 };
 
 }  // namespace
@@ -458,11 +719,12 @@ auto SkillFunctionCount() noexcept -> int {
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
-	char missiles[64];
+	char missiles[128];
 	MissileFunctionCounters(missiles, sizeof(missiles));
 	std::snprintf(out, size,
 	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "
-	              "splash starts %u, %s",
+	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
-	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), missiles);
+	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
+	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(), missiles);
 }
