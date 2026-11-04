@@ -53,6 +53,23 @@ W14 checks (tag core-rules-w14), same merged data: a Necromancer with Clay Golem
 (slot 13) at 10 and Revive (slot 29), no +skills, e.g. modkit save-set <save> --skill 9=1 --skill 13=10 --skill 29=10;
 then out of town: run core-rules-w14 and, while golem-count watches (30 s), summon Clay Golem four times; then kill a
 monster, Revive its corpse next to other monsters, let the revive fight, and run again.
+W16 check (tag core-rules-w16), same merged data: a Paladin with Charge (107) and no Vigor or Might, e.g. modkit
+save-set <save> level=30 --skill 107=10 --project .; then out of town Charge a few monsters from several screens away
+and run the same command with core-rules-w16.
+
+W26 checks (tag core-rules-w26), same merged data: a Sorceress with Teleport (54) and no +skills, e.g. modkit save-set
+<save> level=30 --skill 54=5 --project .; then out of town Teleport a few times and run the same command with
+core-rules-w26.
+W21 checks (tag core-rules-w21), same merged data: a Druid with Arctic Blast (230) or a Sorceress with Inferno (41),
+e.g. modkit save-set <save> level=30 --skill 230=10 --project .; then out of town: hold the skill on the ground for
+a second, and run the same command with core-rules-w21. For the take-over checks, press another skill while
+holding it; for blade-fury-refused, an Assassin with Blade Fury (266): hold it.
+W29 checks (tag core-rules-w29), same merged data: an Assassin with the charge-up skills (Tiger Strike 254, Fists of
+Fire 259, Cobra Strike 265, Claws of Thunder 269, Blades of Ice 274, Royal Strike 280) and Dragon Talon (255) to
+release, e.g. modkit save-set <save> level=30 --skill 254=1 --skill 259=1 --skill 265=1 --skill 269=1 --skill 274=1
+--skill 280=1 --skill 255=1 --project .; then out of town hit monsters three times in a row with each of Fists of
+Fire, Cobra Strike and Blades of Ice, releasing between them with Dragon Talon (a release runs the same prg slots and
+logs the same lines), and run the same command with core-rules-w29.
 W17 checks (tag core-rules-w17), same merged data: a Paladin with Holy Light and Fist of the Heavens. Holy Light is
 the Paladin's 32nd skill, past the 30 class skills a save holds, so set both in game: `debug_mode`, `cheat sklvl Holy
 Light,10`, `cheat sklvl Fist of the Heavens,10`, `cheat goto 2`, `cheat mspawn zombie1,6`; then Holy Light on a
@@ -79,17 +96,24 @@ SKILL_SLOTS = [  # table slots it installs
     ("pSrvDmgFunc", 21, "first hit"),
     ("pSrvHitFunc", 63, "explode spread"), ("pSrvDmgFunc", 20, "pierce falloff"),
     ("cltdofunc", 122, "poison dagger"), ("pSrvHitFunc", 61, "state hit"),
-    ("cltdofunc", 121, "desecrate"),
+    ("cltdofunc", 121, "desecrate"), ("srvstfunc", 72, "charge"), ("srvdofunc", 180, "charge"),
+    ("srvdofunc", 182, "channel"), ("cltdofunc", 111, "channel"),
+    ("mode gate", "busy", "take-over"),  # an inline hook, not a slot
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
     ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
     ("srvdofunc", 176, "holy light"), ("pCltHitFunc", 66, "holy light"), ("pCltHitFunc", 71, "fist delay"),
+    ("srvdofunc", 184, "charge spread"), ("srvdofunc", 185, "charge ring"), ("srvdofunc", 186, "charge fire"),
+    ("srvdofunc", 181, "charge cold"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
 LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knockback|units in range) (\d+), velocity (\d+)")
 ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
 HPREGEN = 74  # itemstatcost row of hpregen in D2R and PD2
+CHARGE = 107
+TELEPORT_DEBUFF = 233  # merged states id of teleportdebuff
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def _log(ctx) -> str:
@@ -103,7 +127,8 @@ def _log(ctx) -> str:
 
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                 "core-rules-w13", "core-rules-w14", "core-rules-w33", "core-rules-w17", "game"])
+                                 "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33", "core-rules-w21",
+                                 "core-rules-w29", "core-rules-w17", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -341,6 +366,80 @@ def desecrate_corpses_hide(ctx):
     return f"{hidden} corpse(s) hidden after {casts} cast(s)"
 
 
+INFERNO = 41  # D2R skill id, PD2's too; Arctic Blast is 230
+
+
+def _channel_values(skill: int, level: int) -> tuple[int, int]:
+    """PD2's calc3 (missiles) and calc1 (range, ln12 = par1 + (lvl - 1) * par2) for Inferno and Arctic Blast."""
+    if skill == INFERNO:
+        return min(2 + level // 4, 5), max(min((22 + (level - 1) * 2) // 2, 32), 1)
+    return 2, max(min((24 + (level - 1) * 2) // 2, 24), 1)
+
+
+@check("channel-cast", tags=["core-rules-w21"])
+def channel_cast(ctx):
+    """Inferno / Arctic Blast (srvdofunc 182) send PD2's calc3 missiles with range calc1."""
+    casts = re.findall(r"channel: skill (\d+) level (\d+): (\d+) of (\d+) missiles \(row \d+\), range (\d+)", _log(ctx))
+    if not casts:
+        ctx.skip("no Inferno or Arctic Blast cast in the log yet (cast it out of town, then run again)")
+    skill, level, created, count, rng = (int(v) for v in casts[0])
+    want_count, want_range = _channel_values(skill, level)
+    assert (count, rng) == (want_count, want_range), \
+        f"skill {skill} level {level}: {count} missiles range {rng}, PD2's calcs give {want_count} range {want_range}"
+    assert created == count, f"only {created} of {count} missiles created"
+    return f"skill {skill} level {level}: {created} missiles, range {rng}"
+
+
+@check("channel-client", tags=["core-rules-w21"])
+def channel_client(ctx):
+    """The client half (cltdofunc 111) ran with the same count and range; it draws each flame with chance 2 / count."""
+    casts = re.findall(r"channel client: skill (\d+) level (\d+): (\d+) of (\d+) flames drawn, range (\d+)", _log(ctx))
+    if not casts:
+        ctx.skip("no client channel cast in the log yet (cast it out of town, then run again)")
+    skill, level, drawn, count, rng = (int(v) for v in casts[0])
+    assert (count, rng) == _channel_values(skill, level), f"skill {skill} level {level}: {count} flames range {rng}"
+    assert drawn <= count, f"{drawn} flames drawn of {count}"
+    return f"skill {skill} level {level}: {drawn} of {count} flames drawn, range {rng}"
+
+
+def _take_overs(ctx) -> list[tuple[int, int, int, int, str]]:
+    """(current skill, its srvdo, requested skill, its srvdo, allowed / refused) per logged take-over."""
+    return [(int(a), int(b), int(c), int(d), e) for a, b, c, d, e in re.findall(
+        r"take-over: skill (\d+) \(srvdo (\d+)\) mid-channel, mode \d+ request skill (\d+) \(srvdo (\d+)\): (\w+)",
+        _log(ctx))]
+
+
+def _held(ctx) -> list[tuple[int, int, int]]:
+    """(skill, srvdo, D2R's gate result) per logged re-request of the skill being held."""
+    return [(int(a), int(b), int(c)) for a, b, c in re.findall(
+        r"held: skill (\d+) \(srvdo (\d+)\) mode \d+ to D2R's gate: (-?\d+)", _log(ctx))]
+
+
+@check("channel-take-over", tags=["core-rules-w21"])
+def channel_take_over(ctx):
+    """PD2's gate A: another skill requested mid-Inferno / Arctic Blast (srvdofunc 182) starts at once. The held skill
+    itself goes to D2R's gate (D2R re-sends it every frame), so it never shows here."""
+    rows = [r for r in _take_overs(ctx) if r[1] == 182]
+    if not rows:
+        ctx.skip("no take-over in the log yet (hold Inferno or Arctic Blast, press another skill, then run again)")
+    assert all(r[4] == "allowed" and r[2] != r[0] for r in rows), f"take-overs mid-channel: {rows[:3]}"
+    return f"skill {rows[0][0]} gave way to skill {rows[0][2]}"
+
+
+@check("blade-fury-refused", tags=["core-rules-w21"])
+def blade_fury_refused(ctx):
+    """PD2's gate A: a Blade Fury (srvdofunc 48) is not cut short by another Blade Fury; another skill is allowed. The
+    held Blade Fury's own re-request goes to D2R's gate, which must not allow it (0 would restart the channel)."""
+    rows = [r for r in _take_overs(ctx) if r[1] == 48]
+    held = [h for h in _held(ctx) if h[1] == 48]
+    if not held:
+        ctx.skip("no held Blade Fury in the log yet (hold Blade Fury out of town, then run again)")
+    assert all(h[2] != 0 for h in held), f"D2R's gate let a held Blade Fury restart: {held[:3]}"
+    assert all((r[4] == "refused") == (r[3] == 48) for r in rows), f"Blade Fury gate: {rows[:3]}"
+    return (f"{len(held)} held re-requests to D2R's gate (results {sorted({h[2] for h in held})}), "
+            f"{sum(r[4] == 'refused' for r in rows)} refused, {sum(r[4] == 'allowed' for r in rows)} allowed")
+
+
 GOLEM_MASTERY_LEVEL = 10  # the W14 save's base level (setup above)
 
 
@@ -538,6 +637,173 @@ def blood_warp_cast(ctx):
     return f"level {level}: life {life // 256}, cost {cost / 256:.1f} life, hpregen {regen} for {frames} frames, lists {sorted(set(lists))}"
 
 
+@check("charge-hit", tags=["core-rules-w16"])
+def charge_hit(ctx):
+    """A Charge (srvstfunc 72, srvdofunc 180) ran at PD2's speed base * (max(velocitypercent, 50) + Param1 150) / 100,
+    and its hit had PD2's calc1 damage% ln34 = 100 + (level - 1) * 20 (no Vigor or Might) and splash radius
+    distance / 4 * 20 from where it started."""
+    log = _log(ctx)
+    starts = re.findall(rf"charge: skill {CHARGE} level (\d+) start: velocity (\d+) \(base (\d+), velocitypercent "
+                        r"(-?\d+), param1 (\d+)\)", log)
+    hits = re.findall(rf"charge: skill {CHARGE} level (\d+) hit frame: damage% (\d+), distance (\d+), splash radius (\d+)", log)
+    if not starts or not hits:
+        ctx.skip("no Charge start and hit in the log yet (charge a monster out of town, then run again)")
+    _, velocity, base, percent, param1 = (int(v) for v in starts[0])
+    assert param1 == 150, f"Param1 {param1}, PD2's Charge has 150"
+    expected = base * (max(percent, 50) + param1) // 100
+    assert velocity == expected, f"velocity {velocity}, PD2 gives {expected}"
+    level, damage, distance, splash = (int(v) for v in hits[0])
+    assert damage == 100 + (level - 1) * 20, f"level {level}: damage% {damage}, PD2's ln34 gives {100 + (level - 1) * 20}"
+    assert splash == distance // 4 * 20, f"distance {distance}: splash radius {splash}, PD2 gives {distance // 4 * 20}"
+    return f"velocity {velocity} (base {base}), level {level}: damage% {damage}, distance {distance} -> splash {splash}"
+
+
+@check("teleport-cast", tags=["core-rules-w26"])
+def teleport_cast(ctx):
+    """A Teleport (router srvdofunc 190) gave teleportdebuff for auralencalc max(0, 25 - pvp_lld_cd) = 25 frames, each
+    mastery lowered by reduction + mastery% of it (truncated), reduction = Param2 50 - calc1 min(edmn, 50), edmn the
+    skill's EMin 0 + EMinLev1 1 per level after the first. Teleport has no srvmissilea, so no missiles."""
+    casts = re.findall(r"teleport: skill 54 level (\d+): at -?\d+,-?\d+, (\d+) missiles [^\n]*state (-?\d+) for (\d+) "
+                       r"frames \(list (\w+)\), reduction (-?\d+): fire (-?\d+)/(-?\d+) cold (-?\d+)/(-?\d+) "
+                       r"ltng (-?\d+)/(-?\d+) pois (-?\d+)/(-?\d+)", _log(ctx))
+    if not casts:
+        ctx.skip("no Teleport in the log yet (Teleport out of town, then run again)")
+    level, missiles, state, frames, lst, reduction, *pairs = casts[-1]
+    level, missiles, state, frames, reduction = (int(v) for v in (level, missiles, state, frames, reduction))
+    assert lst != "refused", f"level {level}: the debuff list was refused"
+    assert missiles == 0, f"{missiles} missiles, PD2's Teleport makes none"
+    assert (state, frames) == (TELEPORT_DEBUFF, 25), f"state {state} for {frames} frames, PD2: {TELEPORT_DEBUFF} for 25"
+    expected = 50 - min(level - 1, 50)
+    assert reduction == expected, f"level {level}: reduction {reduction}, PD2 gives {expected}"
+    seen = []
+    for name, debuff, mastery in zip(("fire", "cold", "ltng", "pois"), pairs[0::2], pairs[1::2]):
+        want = -(reduction + int(int(mastery) * reduction / 100))
+        assert int(debuff) == want, f"{name} mastery {mastery}: debuff {debuff}, PD2 gives {want}"
+        seen.append(f"{name} {mastery} -> {debuff}")
+    return f"level {level}, reduction {reduction}, {frames} frames, list {lst}: {', '.join(seen)}"
+
+
+@check("teleport-blocked-areas", tags=["core-rules-w26"])
+def teleport_blocked_areas(ctx):
+    """Teleport is refused where PD2 refuses it: the merged levels.txt Teleport column (0 refuses, 2 checks collision
+    at the point), which D2R's Teleport (srvdo 27, inside the router's teleport) reads, equals PD2's for every level
+    both have. PD2's map levels (Teleport 0 and 3) are not merged."""
+    def column(path):
+        with open(path, encoding="latin-1") as f:
+            rows = [line.rstrip("\r\n").split("\t") for line in f]
+        name, tele = rows[0].index("Name"), rows[0].index("Teleport")
+        return {r[name]: r[tele] for r in rows[1:] if len(r) > tele}
+    pd2 = column(os.path.join(REPO, "pd2-data", "data", "global", "excel", "levels.txt"))
+    mod = column(os.path.join(REPO, "generated", "data", "global", "excel", "levels.txt"))
+    shared = [n for n in mod if n in pd2]
+    differ = [(n, pd2[n], mod[n]) for n in shared if pd2[n] != mod[n]]
+    assert not differ, f"Teleport differs from PD2 (level, PD2, mod): {differ}"
+    blocked = sorted(f"{n} ({mod[n]})" for n in shared if mod[n] not in ("1", ""))
+    return f"{len(shared)} levels as in PD2; not plain: {', '.join(blocked)}"
+
+
+CHARGE_UP = re.compile(r"charge up: skill (\d+) level \d+: shared (\d+), charges (\d+) -> (\d+), steal (\d+), "
+                       r"prg (\d+) \(prgcalc (-?\d+)\)")
+COBRA, RAKANOTH = 265, 630  # merged skill ids
+# merged skill -> charge -> (srvprgfunc slot, PD2's prgcalc or None where it isn't checked), from PD2's skills.txt
+FINISHER_PRG = {
+    259: {1: (186, None), 2: (185, 64), 3: (184, 1)},  # Fists of Fire: PD2 39, 172, 171
+    265: {1: (184, 7), 3: (185, 64)},  # Cobra Strike: 171 (par5), 172
+    269: {2: (36, None), 3: (37, 4)},  # Claws of Thunder: vanilla, prgcalc3 par1
+    274: {2: (181, None), 3: (143, 6)},  # Blades of Ice: 139, vanilla 143 (par2)
+    280: {1: (40, None), 2: (143, None), 3: (41, 24)},  # Royal Strike: vanilla, prgcalc3 par5
+    630: {1: (184, 8), 3: (185, 64)},  # RakanothStrike: 171 (par5), 172
+}
+CHARGE_MISSILE = {  # merged skill -> charge -> PD2's srvmissilea/b/c
+    259: {2: "fistsoffirenova", 3: "fistsoffireorbdelay"},
+    265: {1: "cobrastrikepoisonbolt", 3: "cobrastrikepoisoncloud"},
+    274: {2: "boiwavemaker"},
+    630: {1: "bladefragment1", 3: "fistsoffireexplode"},
+}
+
+
+def _logged(ctx, pattern: str, hint: str) -> list[tuple]:
+    found = [tuple(int(v) for v in r) for r in re.findall(pattern, _log(ctx))]
+    if not found:
+        ctx.skip(f"no {hint} in the log yet (hit monsters with it three times out of town, then run again)")
+    return found
+
+
+@check("charge-up-hits", tags=["core-rules-w29"])
+def charge_up_hits(ctx):
+    """A charge-up hit (srvdofunc 190, PD2 srvdo 170) ends at the shared count + 1 (at most 3) and fires PD2's
+    srvprgfunc for that charge with its prgcalc; Cobra Strike's steal goes on before a hit that would pass 2."""
+    ups = _logged(ctx, CHARGE_UP.pattern, "charge-up skill")
+    hits = [u for u in ups if u[3] > u[2]]
+    if not hits:
+        ctx.skip("no charge-up hit in the log yet, only misses (hit monsters, then run again)")
+    for skill, shared, before, after, _, prg, calc in hits:
+        assert after == min(shared + 1, 3), f"skill {skill}: shared {shared}, {before} -> {after} charges"
+        slot, expected = FINISHER_PRG.get(skill, {}).get(after, (0, None))
+        assert prg == slot, f"skill {skill} charge {after}: prg {prg}, PD2's maps to {slot}"
+        assert expected is None or calc == expected, f"skill {skill} charge {after}: prgcalc {calc}, PD2 {expected}"
+    for skill, shared, before, _, steal, _, _ in ups:
+        want = int(skill in (COBRA, RAKANOTH) and before <= 1 and shared >= 1)
+        assert steal == want, f"skill {skill}: shared {shared}, charges {before}: steal {steal}"
+    return f"{len(hits)} hits, skills {sorted({h[0] for h in hits})}, prg {sorted({h[5] for h in hits})}"
+
+
+@check("charge-spread", tags=["core-rules-w29"])
+def charge_spread(ctx):
+    """srvprgfunc 184 (PD2 171) throws prgcalc[charge] of the charge's missile: Cobra Strike 7, RakanothStrike 8 at
+    charge 1, Fists of Fire 1 at charge 3; only Cobra Strike's carry the skill's poison."""
+    rows = _rows("missiles")
+    out = set()
+    for skill, _, charge, created, count, row, calc, poison in _logged(
+            ctx, r"charge spread: skill (\d+) level (\d+) charge (\d+): (\d+) of (\d+) missiles \(row (\d+), prgcalc "
+                 r"(-?\d+)\), poison (-?\d+)", "Cobra Strike"):
+        slot, expected = FINISHER_PRG[skill][charge]
+        assert slot == 184 and calc == expected, f"skill {skill} charge {charge}: prgcalc {calc}, PD2 {expected}"
+        assert count == min(max(calc, 1), 64), f"skill {skill}: {count} missiles for prgcalc {calc} (1-64)"
+        assert created == count, f"skill {skill}: {created} of {count} missiles created"
+        assert row == rows.index(CHARGE_MISSILE[skill][charge]), f"skill {skill} charge {charge}: missile row {row}"
+        # PD2's Cobra Strike has no poison of its own (EMin empty): only items' poison rides along
+        assert poison >= 0 if skill == COBRA else poison == 0, f"skill {skill}: poison {poison}"
+        out.add(f"{skill}/{charge}: {count}")
+    return ", ".join(sorted(out))
+
+
+@check("charge-ring", tags=["core-rules-w29"])
+def charge_ring(ctx):
+    """srvprgfunc 185 (PD2 172) rings the target with 64 of the charge's missile (Fists of Fire's nova at charge 2,
+    Cobra Strike's cloud at charge 3)."""
+    rows = _rows("missiles")
+    out = set()
+    for skill, _, charge, created, row, calc in _logged(
+            ctx, r"charge ring: skill (\d+) level (\d+) charge (\d+): (\d+) missiles \(row (\d+), prgcalc (-?\d+)\)",
+            "Fists of Fire"):
+        assert FINISHER_PRG[skill][charge] == (185, 64) and calc == 64, f"skill {skill} charge {charge}: prgcalc {calc}"
+        assert row == rows.index(CHARGE_MISSILE[skill][charge]), f"skill {skill} charge {charge}: missile row {row}"
+        assert created > 0, f"skill {skill}: no ring missile created"
+        out.add(f"{skill}/{charge}: {created} of row {row}")
+    return ", ".join(sorted(out))
+
+
+@check("charge-fire", tags=["core-rules-w29"])
+def charge_fire(ctx):
+    """srvprgfunc 186 (PD2 39) runs vanilla srvdo 38 and 39 on Fists of Fire's first charge."""
+    fires = _logged(ctx, r"charge fire: skill (\d+) level (\d+) charge (-?\d+): srvdo 38 (-?\d+), 39 (-?\d+)",
+                    "Fists of Fire")
+    for skill, _, charge, _, _ in fires:
+        assert (skill, charge) == (259, 1), f"charge fire on skill {skill} charge {charge}"
+    return f"{len(fires)} logged, srvdo 38/39 returned {fires[-1][3]}/{fires[-1][4]}"
+
+
+@check("charge-cold", tags=["core-rules-w29"])
+def charge_cold(ctx):
+    """srvprgfunc 181 (PD2 139) throws the charge's missile: Blades of Ice's second charge throws boiwavemaker."""
+    row = _rows("missiles").index("boiwavemaker")
+    colds = _logged(ctx, r"charge cold: skill (\d+) level (\d+) charge (\d+): missile row (\d+)", "Blades of Ice")
+    for skill, _, charge, missile in colds:
+        assert (skill, charge, missile) == (274, 2, row), f"skill {skill} charge {charge}: row {missile}, PD2 {row}"
+    return f"{len(colds)} logged, row {row}"
+
+
 @check("holy-light-cast", tags=["core-rules-w17"])
 def holy_light_cast(ctx):
     """Holy Light (srvdofunc 176) heals cltcalc2-cltcalc3: ln12 + Prayer blvl * par6 to ln34 + Prayer blvl * par7
@@ -588,8 +854,13 @@ def fist_delay_hit(ctx):
     return f"level {level}: radius {radius}, {bolts} bolts"
 
 
+ge {charge}: row {missile}, PD2 {row}"
+    return f"{len(colds)} logged, row {row}"
+
+
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                    "core-rules-w13", "core-rules-w14", "core-rules-w17"])
+                                    "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
+                                    "core-rules-w29", "core-rules-w17"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

@@ -1,7 +1,5 @@
 # table	row	from	columns	rule (W3; delete a line when its rule is built, see tools/pd2_standins.py)
-skills	Inferno	=	srvdofunc,cltdofunc	Inferno, Arctic Blast
 skills	Static Field	=	srvdofunc	Static Field
-skills	Teleport	=	srvdofunc	Teleport, Blink
 skills	Clay Golem	=	srvstfunc	Golem start
 skills	BloodGolem	=	srvstfunc	Golem start
 skills	FireGolem	=	srvstfunc	Golem start
@@ -20,7 +18,6 @@ skills	Defiance	=	cltdofunc	Paladin aura client do
 skills	Defiance	=	cltstfunc	Paladin aura client start
 skills	Resist Cold	=	cltdofunc	Paladin aura client do
 skills	Resist Cold	=	cltstfunc	Paladin aura client start
-skills	Charge	=	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Charge (Paladin)
 skills	Blessed Aim	=	cltdofunc	Paladin aura client do
 skills	Blessed Aim	=	cltstfunc	Paladin aura client start
 skills	Cleansing	=	cltdofunc	Paladin aura client do
@@ -51,23 +48,21 @@ skills	DiabWall	=	srvdofunc	Firestorm and wall makers
 skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
 skills	Firestorm	=	srvdofunc,cltdofunc	Firestorm and wall makers
 skills	Summon Spirit Wolf	=	srvstfunc	Spirit Wolf, Fenris start
-skills	Arctic Blast	=	srvdofunc,cltdofunc	Inferno, Arctic Blast
 skills	Summon Fenris	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Fire Claws	=	srvdofunc,cltdofunc	Fire Claws
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
 skills	Hunger	=	srvdofunc	Hunger
-skills	Tiger Strike	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Fists of Fire	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Cobra Strike	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Claws of Thunder	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Blades of Ice	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Tiger Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Fists of Fire	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Cobra Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Claws of Thunder	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Blades of Ice	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Dragon Flight	=	srvdofunc	Dragon Flight
-skills	Royal Strike	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Royal Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
-skills	Blink	Teleport	srvdofunc	Teleport, Blink
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
 skills	Gust	Teleport	srvdofunc	Gust
 skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
@@ -99,12 +94,11 @@ skills	Energy Shield SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Energy Shield SelfAura	Might	cltstfunc	Paladin aura client start
 skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Chilling Armor SelfAura	Might	cltstfunc	Paladin aura client start
-skills	RakanothStrike	Cobra Strike	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	RakanothStrike	Cobra Strike	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	TorajanBossNest	Nest	srvdofunc	TorajanBossNest
 skills	KanemithFirestorm	DiabWall	srvdofunc	Firestorm and wall makers
 skills	LucionNova	Nova	srvdofunc	Lucion kit
 skills	LucionBlink	Teleport	cltdofunc	Lucion kit
-skills	LucionBlink	Teleport	srvdofunc	Teleport, Blink
 skills	LucionDash	Charge	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Lucion kit
 skills	LucionPunish	-	srvdofunc	Lucion kit
 skills	LucionDeath1	Nova	srvdofunc,cltdofunc	Death novas
@@ -113,7 +107,8 @@ skills	LucionDeath3	Nova	srvdofunc,cltdofunc	Death novas
 skills	LucionDeath4	Nova	srvdofunc,cltdofunc	Death novas
 skills	UberDiabSummon	-	srvdofunc	UberDiabSummon, UberDiabRun
 skills	Static Field Proc	Static Field	srvdofunc	Static Field
-skills	Mon Bloodwarp	Teleport	srvdofunc	Teleport, Blink
+skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
+skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 missiles	firebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	icebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	blessedhammer	=	pSrvDoFunc,pCltDoFunc	Blessed Hammer

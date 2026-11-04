@@ -19,17 +19,17 @@ def _nums(*spans: int | range) -> set[str]:
 # Function numbers PD2 rows must not keep: D2R's slot is empty, past the table's end, or holds a different function
 # (core-rules hook list; table sizes from docs/research/skill-function-tables.md). Not listed: numbers equal to D2R's
 # (srvdo 41/143, cltdo 15/83), built rules (srvdo 189, W1; srvdo 188 and cltdo 117 become the missile columns,
-# pd2_ids.MISSILE_FUNCS, W5; shit 63, cltdo 22 patched, W6; shit 61, W11; srvdo 176, chit 66, W17), `verify` slots that hold D2R's
-# same-numbered function, which is the stand-in (shit 5, 6, 30; chit 4, 12), and temp1's sdo 39 / cdo 71 (no row
-# reaches it). Cube ops 30/31 are not here: cubemain rows have no unique name, so the item tables' merge (P3) keeps
-# those recipes off.
+# pd2_ids.MISSILE_FUNCS, W5; shit 63, cltdo 22 patched, W6; shit 61, W11; srvdo 182 / cltdo 111, W21; srvdo 176, chit 66, W17), `verify` slots
+# that hold D2R's same-numbered function, which is the stand-in (shit 5, 6, 30; chit 4, 12), and temp1's sdo 39 /
+# cdo 71 (no row reaches it). Cube ops 30/31 are not here: cubemain rows have no unique name, so the item tables' merge
+# (P3) keeps those recipes off.
 PD2_ONLY = {
     "skills": {
         "auraeventfunc1": _nums(16),  # D2R puts a RotW event at 16; PD2's is Smite's
-        "srvdofunc": _nums(109, 153, 155, 156, range(159, 163), range(164, 168), range(169, 171), range(173, 176), range(177, 183), range(184, 187)),
-        "cltdofunc": _nums(97, range(100, 104), 105, range(109, 115), 118, 119),
-        "srvstfunc": _nums(64, range(67, 70), range(71, 78), 79),
-        "cltstfunc": _nums(54, 57, 58, 82),
+        "srvdofunc": _nums(109, 153, 155, 156, range(159, 163), range(164, 168), range(169, 171), range(173, 176), range(177, 180), 181, range(184, 187)),
+        "cltdofunc": _nums(97, range(100, 104), 105, 109, 110, 113, 114, 118, 119),
+        "srvstfunc": _nums(64, range(67, 70), 71, range(73, 78), 79),
+        "cltstfunc": _nums(54, 58, 82),
         **{f"srvprgfunc{i}": _nums(171, 172) for i in (1, 2, 3)},
         **{f"cltprgfunc{i}": _nums(106, 107) for i in (1, 2, 3)},
     },

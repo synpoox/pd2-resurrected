@@ -5,6 +5,13 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Charge works as in Project Diablo II: it runs at Project Diablo II's speed, and the longer the charge, the wider
+  its hit splashes with a splash-on-hit item.
+- The Assassin's charge-up skills build charges as in Project Diablo II: charges are shared between them, and each
+  charge's effect (Fists of Fire's fire, Cobra Strike's poison, Blades of Ice's wave) fires on the hit that builds
+  it. What your client draws for each charge is still D2R's.
+- Teleport works as in Project Diablo II: for a second after each teleport your elemental masteries are
+  lowered, by less as the skill levels up.
 - Holy Light works as in Project Diablo II: it heals allies and deals magic damage to enemies around its target,
   half as much to the side the target is not on, and knocks back undead. Fist of the Heavens' holy bolts reach
   every unit around the strike, the target included.
@@ -13,6 +20,8 @@ private-multiplayer release a build may break characters; each break is noted he
 - Poison Dagger works as in Project Diablo II: each stab leaves a ring of poison clouds around the target.
 - Blood Warp works as in Project Diablo II: it costs a share of your life (never all of it), then regenerates life
   for five seconds.
+- Inferno and Arctic Blast send Project Diablo II's line of flames (more with Inferno's level).
+- Another skill starts at once while Inferno or Arctic Blast channels, and a second Blade Fury does not cut the first short, as in Project Diablo II.
 - Desecrate raises corpses around its cloud as in Project Diablo II.
 - Skill trees show their boxes and arrows where Project Diablo II's skills and prerequisites are.
 - Golem Mastery adds a golem every 5 base levels, as in Project Diablo II; a new golem replaces the oldest.

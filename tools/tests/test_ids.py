@@ -121,6 +121,23 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["Poison Dagger", "32", "190", "122"])
 
+    def test_finisher_function_numbers(self):
+        # srvdo 170 joins the router; the prg values move only in the prg columns (srvdo 39 / 139 stay D2R's)
+        cols = "skill|srvdofunc|srvprgfunc1|srvprgfunc2|srvprgfunc3"
+        d2r = table(f"{cols}\nAttack|1|||\n")
+        pd2 = table(f"{cols}\nFists of Fire|170|39|172|171\nBlades of Ice|170||139|143\nCold|139|||\n")
+        lines = [("Fists of Fire", 1, "Fists of Fire"), ("Blades of Ice", 2, "Blades of Ice"), ("Cold", 3, "Cold")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Fists of Fire", "190", "186", "185", "184"],
+                                           ["Blades of Ice", "190", "", "181", "143"], ["Cold", "139", "", "", ""]])
+
+    def test_teleport_goes_to_the_router(self):
+        d2r = table("skill|srvdofunc\nAttack|1\n")
+        pd2 = table("skill|srvdofunc\nTeleport|155\nBlink|155\n")
+        lines = [("Teleport", 1, "Teleport"), ("Blink", 2, "Blink")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Teleport", "190"], ["Blink", "190"]])
+
     def test_state_hit_parameters_take_mod_ids(self):
         # srvhit 61 reads sHitPar1 as a state and sHitPar3 / cHitPar2 as stats; other functions' parameters stay
         cols = "Missile|pSrvHitFunc|sHitPar1|sHitPar2|sHitPar3|cHitPar1|cHitPar2|cHitPar3"
@@ -139,6 +156,14 @@ class FormulaAndColumnTests(unittest.TestCase):
         lines = [("Attack", 0, "Attack"), ("Blood Warp", 1, "Blood Warp")]
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["Blood Warp", "190", "80", "63"])  # router, then the first free start slots
+
+    def test_charge_keeps_its_server_slots_and_takes_d2r_client_functions(self):
+        cols = "skill|srvdofunc|srvstfunc|cltdofunc|cltstfunc"
+        d2r = table(f"{cols}\nAttack|1|0|0|0\n")
+        pd2 = table(f"{cols}\nAttack|1|0|0|0\nCharge|180|72|112|57\n")
+        lines = [("Attack", 0, "Attack"), ("Charge", 1, "Charge")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1], ["Charge", "180", "72", "37", "25"])
 
     def test_melee_splash_joins_the_router(self):
         d2r = table("skill|srvdofunc\nAttack|1\n")
