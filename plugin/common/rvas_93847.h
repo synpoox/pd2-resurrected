@@ -53,6 +53,11 @@ inline constexpr int MissileSrvHitFirstFree = 61;
 inline constexpr uint64_t MissileCltDoTable = 0x2358430;
 inline constexpr int MissileCltDoSlots = 92;
 inline constexpr int MissileCltDoFirstFree = 78;
+// missiles.txt pSrvDmgFunc: void fn(Game*, Unit* missile, Unit* hit, Damage*), 31 slots, 18-30 free. Called by srvhit 1
+// (0x45bc40) while it builds the hit's damage.
+inline constexpr uint64_t MissileSrvDmgTable = 0x2391270;
+inline constexpr int MissileSrvDmgSlots = 31;
+inline constexpr int MissileSrvDmgFirstFree = 18;
 
 // --- Functions (signature in the comment) -------------------------------------------------------------------------
 inline constexpr uint64_t GetSkillRecord = 0x97790;    // (dataFlag, skillId) -> skills.txt record or null
@@ -79,6 +84,22 @@ inline constexpr uint64_t MissileCltFrames = 0x3bb0f0;  // (missile) -> range fr
 inline constexpr uint64_t PathSetTargetUnit = 0x342920;  // (path, unit): path +0x70 target unit
 inline constexpr uint64_t PathSteer = 0x340e70;  // (path, unit, 0, 1): re-aim the path at its target unit
 inline constexpr uint64_t UnitDistance = 0x324fc0;  // (a, b) -> distance in subtiles
+
+// Double Throw (D2R's own srvdo 74 0x567a20, cltdo 42 0x22f3f0, Chain Lightning's srvhit 12 0x45d5e0)
+inline constexpr uint64_t UnitWeapon = 0x4242b0;  // (unit) -> weapon item the server attacks with, or null
+inline constexpr uint64_t ClientUnitWeapon = 0x34b000;  // (unit) -> the client's weapon item, or null
+inline constexpr uint64_t ItemMissileType = 0x371b60;  // (item) -> weapons.txt missiletype row
+// (game, missile, unit, skill, level, UnitStateKey(unit), 0, 0, 0, 0, 1) -> missile thrown at the skill's target
+inline constexpr uint64_t ThrowSkillMissile = 0x4333f0;
+inline constexpr uint64_t ClientThrowSkillMissile = 0x213f50;  // (unit, missile, skill, level, UnitStateKey(unit))
+inline constexpr uint64_t MissileBounces = 0x3bc0a0;  // (missile) -> chain count left (Chain Lightning's)
+inline constexpr uint64_t SetMissileBounces = 0x3bd8a0;  // (missile, count)
+inline constexpr uint64_t MissileSkill = 0x3bc450;  // (missile) -> skill id
+inline constexpr uint64_t MissileLevel = 0x3bb470;  // (missile) -> skill level
+inline constexpr uint64_t MissileRecord = 0x166040;  // (dataFlag, missile row) -> missiles.txt record or null
+// (game, owner, x, y, range, flags, skip unit id, 0) -> nearest target to x/y other than the skipped unit, or null
+inline constexpr uint64_t NearestTarget = 0x4331d0;
+inline constexpr uint64_t SetUnitStat = 0x2f7d10;  // (unit, stat, value, layer)
 
 // Self buff, the way Frozen Armor's srvdo 18 (0x553e60) builds its aurastate list
 inline constexpr uint64_t RemoveSkillState = 0x4370b0;  // (unit, state, 1): drop an older list of this state
@@ -132,13 +153,21 @@ inline constexpr int TablesStateCount = 0x298;  // uint64 states.txt row count i
 inline constexpr int DamageResult = 0x4;
 inline constexpr uint16_t ResultHit = 0x1;
 inline constexpr uint16_t ResultKnockback = 0x8;
-inline constexpr int UnitClassId = 0x04;  // int32: monstats row of a monster
+inline constexpr int UnitClassId = 0x04;  // int32 row in the unit's table: monstats for a monster, missiles.txt for a missile
+inline constexpr int UnitIdField = 0x08;  // uint32, the id NearestTarget skips
 
 // Unit skill (rva::GetUnitSkill): flags and the target the hit looks up (0x56ad90)
 inline constexpr int USkillFlags = 0x14;  // 0x80 leap starts, 0x100 in the air, 0x1000 path velocity locked
 inline constexpr int USkillTargetType = 0x2c;  // 6 = none
 inline constexpr int USkillTargetId = 0x30;
 inline constexpr int MonVelocity = 0x6a;  // int16 monstats Velocity
+
+inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Lightning's chain range, 0 = the skill's)
+// Damage block a pSrvDmgFunc edits: 1.13c's 0x08-0x2c fields sit 0x10 later (phys 0x08 -> 0x18 in srvdmg 1 and 13,
+// poison length 0x2c -> 0x3c in srvdmg 11).
+inline constexpr int DmgPhys = 0x18, DmgFire = 0x20, DmgLight = 0x2c, DmgMagic = 0x30, DmgCold = 0x34, DmgPoison = 0x38;
+inline constexpr int StatDamagePercent = 25;  // itemstatcost damagepercent, D2R and PD2
+inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's search: 0x88583 | the 0xa783 the search adds
 
 // MissileParams::flags
 inline constexpr uint32_t MissileFromOrigin = 0x820;      // start at the origin unit, fly to targetX/targetY
@@ -156,6 +185,7 @@ inline constexpr int SkCalc1 = 0x190;       // int32 calc index (pass to EvalCal
 inline constexpr int SkCalc2 = 0x194;
 inline constexpr int SkCalc3 = 0x198;
 inline constexpr int SkCalc4 = 0x19c;  // skills field table at 0x306193
+inline constexpr int SkAuraRangeCalc = 0x84;  // int32 aurarangecalc, Chain Lightning's chain range when sHitPar1 is 0
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
 inline constexpr int SkAuraStat1 = 0x74;      // int16 aurastat1-6, read by AddAuraStats (0x574480)
 inline constexpr int SkAuraStatCalc1 = 0x88;  // int32 aurastatcalc1-6 (calc index, pass to EvalCalc), same reader
@@ -185,13 +215,16 @@ struct MissileParams {
 	int32_t skillLevel;       // 0x40
 	uint8_t pad44[0x54 - 0x44];
 	int32_t activation;       // 0x54 frames before the missile starts (skills.txt calc2 in Multiple Shot)
-	uint8_t rest[0xa0 - 0x58];
+	uint8_t pad58[0x68 - 0x58];
+	int32_t sourceKey;        // 0x68 UnitStateKey of the missile a chain starts from (Chain Lightning's srvhit 12)
+	uint8_t rest[0xa0 - 0x6c];
 };
 static_assert(sizeof(MissileParams) == 0xa0);
 static_assert(offsetof(MissileParams, activation) == 0x54);
 static_assert(offsetof(MissileParams, missile) == 0x20);
 static_assert(offsetof(MissileParams, targetX) == 0x2c);
 static_assert(offsetof(MissileParams, skill) == 0x3c);
+static_assert(offsetof(MissileParams, sourceKey) == 0x68);
 
 // Argument of rva::NewStateList, laid out as Frozen Armor fills it on its stack.
 struct StateListRequest {
