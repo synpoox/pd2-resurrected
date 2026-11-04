@@ -343,7 +343,7 @@ def melee_splash(ctx):
         ctx.skip("no splash in the log yet (hit a pack with item_splashonhit, or Revive and let it fight, then run again)")
     for skill, level, radius, inc, _ in casts:
         if skill == PROC_SPLASH_DAMAGE:
-            assert radius == max(6 - level + inc // 20, 0), f"level {level}, inc_splash_radius {inc}: radius {radius}"
+            assert radius == max(6 - level + int(inc / 20), 0), f"level {level}, inc_splash_radius {inc}: radius {radius}"
     hits = [c for c in casts if c[4] > 0]
     if not hits:
         ctx.skip(f"{len(casts)} splashes logged, none with units in range (splash a pack, then run again)")

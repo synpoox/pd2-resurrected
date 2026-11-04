@@ -712,9 +712,17 @@ auto CltDoDesecrate(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 // shortcut: PD2 also adds the player's current skill's damage (its elemental part, Smite's and the kicks'), adds an item
 // stat sum / 20 to calc3 and takes 1 off for some weapons (0x10381720, not decoded); upgrade with the unported row.
 std::atomic<uint32_t> g_splashes {0};
-std::atomic<uint32_t> g_splashUnitCasts {0};  // the first splash with units in range is logged too
+std::atomic<uint32_t> g_splashUnitCasts {0};  // the first splash with units hit is logged too
+// PD2 skips Revive's event 32 and two item event functions (14 and 20, skill on hit) while a splash hit fires its events
+// (the handler sets 0x105dc628 / 0x105dc6cc, read by 0x10305c30), so a splash never splashes again. This guard does that
+// for the splash itself.
+// shortcut: other skill-on-hit procs and item event 14 still run for each splashed unit; upgrade with #125.
+thread_local bool t_splashing = false;
 constexpr int32_t ProcSplashDamage = 430, GolemSplash = 461, SkeletonSplash = 465;  // merged skill ids
 constexpr int32_t IncSplashRadius = 531;
+
+using AreaFn = void (*)(Game*, Unit*, d2r::AreaCenter*, int32_t, uint32_t, int32_t (*)(d2r::AreaContext*, Unit*), void*,
+                        int32_t) noexcept;  // rva::AreaUnits
 
 struct SplashHit {
 	Unit* struck;
@@ -733,17 +741,55 @@ void ReleaseDamage(d2r::LeapKnockback& damage) noexcept {
 	void* object = (tagged & 1) != 0 ? reinterpret_cast<void*>(tagged & ~1ull) : &damage.tagged[0];
 	if (object != nullptr) {
 		(**reinterpret_cast<void (***)(void*, int32_t) noexcept>(object))(object, 0);
-		if ((tagged & 1) != 0) {
-			release(object);
+		if ((damage.tagged[0] & 1) != 0) {  // read again: the destructor may leave a heap pointer
+			release(reinterpret_cast<void*>(damage.tagged[0] & ~1ull));
 		}
+		damage.tagged[0] = 1;
 	}
 	if (static_cast<int64_t>(damage.listCapacity) >= 0) {
 		release(damage.listData);
 	}
 }
 
+// D2R's area apply (0x436e90) with a melee hit's events: PD2's apply (0x10305880, its event step 0x10305c30) fires
+// domeleedamage on the attacker and event 1 on the victim, where D2R's area apply fires 6 and 2.
+void DealSplash(Game* game, Unit* attacker, Unit* victim, d2r::LeapKnockback& damage) noexcept {
+	using namespace d2r::rva;
+	using HitFn = void (*)(Game*, Unit*, Unit*, void*) noexcept;
+	if ((damage.resultFlags & ResultHit) == 0) {
+		return;
+	}
+	const uint32_t avoided =
+		d2r::Engine<uint32_t (*)(Game*, Unit*, Unit*, int32_t, int32_t) noexcept>(AvoidRoll)(game, attacker, victim, 1, 0);
+	if ((avoided & 2) != 0) {
+		damage.resultFlags |= 0x100;
+	}
+	if ((avoided & 4) != 0) {
+		damage.resultFlags |= 0x80;
+	}
+	if ((avoided & 0x10) != 0) {
+		damage.resultFlags |= 0x8000;
+	}
+	if ((avoided & 1) != 0) {
+		damage.resultFlags |= 0x10;
+	}
+	if (avoided != 0) {
+		damage.resultFlags &= ~uint32_t {ResultHit};
+	}
+	if ((damage.resultFlags & ResultHit) != 0 &&
+	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(victim, 0x36) == 0) {
+		damage.resultFlags |= 4;
+	}
+	d2r::Engine<void (*)(Unit*, Unit*, void*) noexcept>(DamageStep)(attacker, victim, &damage);
+	if ((damage.resultFlags & ResultHit) != 0) {
+		d2r::Engine<HitFn>(DamageEffects)(game, attacker, victim, &damage);  // what HitEvents runs for an area hit
+		d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t, void*) noexcept>(HitEvents)(game, attacker, victim, 0, &damage);
+	}
+	d2r::Engine<HitFn>(DealDamage)(game, attacker, victim, &damage);
+}
+
 // One unit in range (PD2's callback 0x10303190): a hit with no to-hit roll, weapon damage at SrcDam, life leech halved
-// (at least 1), dealt the way D2R's area skills deal it.
+// (at least 1). Counts the units the hit lands on.
 auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	using namespace d2r::rva;
 	auto* hit = static_cast<SplashHit*>(area->arg);
@@ -759,27 +805,28 @@ auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	if (leech != 0) {
 		leech = std::max(leech / 2, 1u);
 	}
-	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(AreaDamage)(game, area->unit, victim, &damage);
+	DealSplash(game, area->unit, victim, damage);
+	hit->victims += (damage.resultFlags & ResultHit) != 0 ? 1 : 0;
 	ReleaseDamage(damage);
-	++hit->victims;
 	return 1;
 }
 
-// The splash around `struck`. Returns 1 as PD2 does, also when nothing is in range.
+// The splash around `struck`. Returns 1 as PD2 does, also when nothing is in range or the struck unit has no
+// position left (killed by the hit); 0 without a struck unit, or inside another splash.
 auto Splash(Game* game, Unit* unit, Unit* struck, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), skillId);
-	int32_t x = 0, y = 0;
-	if (skill == nullptr || struck == nullptr || !d2r::UnitXY(struck, &x, &y)) {
+	if (skill == nullptr || struck == nullptr || t_splashing) {
 		return 0;
 	}
 	const int32_t radius = d2r::EvalCalc(game, unit, skill, SkCalc3, skillId, level);
 	SplashHit hit {struck, At<uint8_t>(skill, SkSrcDam), 0};
-	if (radius > 0) {
+	int32_t x = 0, y = 0;
+	if (radius > 0 && d2r::UnitXY(struck, &x, &y)) {
 		d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(struck), x, y};
-		using AreaFn = void (*)(Game*, Unit*, d2r::AreaCenter*, int32_t, uint32_t, int32_t (*)(d2r::AreaContext*, Unit*),
-		                        void*, int32_t) noexcept;
-		d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, 0x8583, SplashOne, &hit, 0);  // PD2's unit mask
+		t_splashing = true;
+		d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, AreaUnitMask, SplashOne, &hit, 0);
+		t_splashing = false;
 	}
 	if (plog::Sample(g_splashes) || (hit.victims > 0 && plog::Sample(g_splashUnitCasts))) {
 		plog::Info("splash: skill %d level %d from unit type %d at unit type %d: radius %d (inc_splash_radius %d), "
@@ -981,9 +1028,7 @@ auto SrvDoLeap(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	} else if (radius > 0) {
 		d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit), 0, 0};
 		LeapHit hit {uskill, skillId, level, 0};
-		using AreaFn = void (*)(Game*, Unit*, d2r::AreaCenter*, int32_t, uint32_t, int32_t (*)(d2r::AreaContext*, Unit*),
-		                        void*, int32_t) noexcept;
-		d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, 0x8583, LeapHitOne, &hit, 0);  // PD2's unit mask
+		d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, AreaUnitMask, LeapHitOne, &hit, 0);
 		hits = hit.hits;
 	}
 	d2r::api.setUnitSkillFlag(unit, 1);
@@ -1033,6 +1078,9 @@ std::atomic<uint32_t> g_reviveSplashes {0};
 auto AuraEventReviveSplash(Game* game, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skillId,
                            int32_t level) noexcept -> int32_t {
 	(void)damage;
+	if (t_splashing) {
+		return 0;  // PD2 skips this handler for a splash's own hits
+	}
 	const bool sample = plog::Sample(g_reviveEvents);
 	if (game == nullptr || unit == nullptr || target == nullptr) {
 		if (sample) {

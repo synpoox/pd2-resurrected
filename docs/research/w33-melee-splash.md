@@ -39,10 +39,19 @@ own melee and area code:
 - Area search: `0x4398b0` (`AreaUnits`), as Leap's landing uses it, centred on the struck unit.
 - Weapon damage: `0x44c030 (game, attacker, defender, &damage, 0, srcdam)`, D2R's melee fill (Leap Attack reaches it
   through `0x44b600`). The block is Leap Attack's (`0x56b170`), and so is its cleanup.
-- Apply: `0x436e90 (game, attacker, victim, &damage)`, which D2R's area knockback callback (`0x43a740`) calls: avoid
-  rolls, then the damage. It fires no melee events, so a splash can't splash again.
+- Apply: D2R's area apply `0x436e90` (the one its area knockback callback `0x43a740` calls), copied step by step:
+  avoid rolls (`0x44b930`), `0x5889e0`, the hit's effects and events (`0x44df10`, `0x44ce80`), the damage
+  (`0x44a9b0`). D2R's area apply asks `0x44ce80` for events 6 (domissiledamage) and 2; core-rules asks for a melee hit's
+  5 (domeleedamage) and 1, as PD2's apply (`0x10305880`, event step `0x10305c30`) fires them.
+- PD2 skips some handlers while a splash hit fires its events, so a splash never splashes again. The handler sets are
+  built at start-up (`0x10111830`, `0x10111890`): Revive's event 32 (`0x10347370`) and item event functions 14 and 20
+  (`+0x38`, `+0x50` of PD2's handler table), checked by the event walker `0x10347510`. core-rules refuses a splash
+  inside a splash and skips Revive's event then. Other skill-on-hit procs and item event 14 still run per splashed
+  unit (#125).
+- Life leech: `0x44c030` fills it (`+0x120`), so halving it after the fill is PD2's rule.
 
-Revive's event 32 calls the splash directly, as PD2 does; D2R's event cast (`0x5896e0`) was refused before W33.
+Revive's event 32 calls the splash directly, as PD2 does. A struck unit with no position left (killed by the hit) gives
+no splash but still returns 1.
 
 Deviation (approximated, on the unported list): the current skill's damage, the item stat radius term, the weapon -1
 and the room check are not ported.
