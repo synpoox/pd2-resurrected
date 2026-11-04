@@ -44,6 +44,10 @@ does not work in town) Blood Warp a few times and run the same command with core
 W13 checks (tag core-rules-w13), same merged data: a Necromancer with Desecrate (83), e.g. modkit save-set <save>
 level=30 --skill 83=10 --project .; then out of town: cast Desecrate on the ground, wait 20 s (PD2 hides the corpses
 after 16), and run the same command with core-rules-w13.
+W14 checks (tag core-rules-w14), same merged data: a Necromancer with Clay Golem (class skill slot 9), Golem Mastery
+(slot 13) at 10 and Revive (slot 29), no +skills, e.g. modkit save-set <save> --skill 9=1 --skill 13=10 --skill 29=10;
+then out of town: run core-rules-w14 and, while golem-count watches (30 s), summon Clay Golem four times; then kill a
+monster, Revive its corpse next to other monsters, let the revive fight, and run again.
 """
 import json
 import os
@@ -66,8 +70,11 @@ SKILL_SLOTS = [  # table slots it installs
     ("pSrvHitFunc", 63, "explode spread"), ("pSrvDmgFunc", 20, "pierce falloff"),
     ("cltdofunc", 121, "desecrate"),
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
+    ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
+    ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
+REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
 LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knockback|units in range) (\d+), velocity (\d+)")
 ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
 HPREGEN = 74  # itemstatcost row of hpregen in D2R and PD2
@@ -83,7 +90,7 @@ def _log(ctx) -> str:
     return text[starts[-1]:] if starts else ""
 
 
-@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "core-rules-w13", "game"])
+@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "core-rules-w13", "core-rules-w14", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -282,6 +289,48 @@ def desecrate_corpses_hide(ctx):
     return f"{hidden} corpse(s) hidden after {casts} cast(s)"
 
 
+GOLEM_MASTERY_LEVEL = 10  # the W14 save's base level (setup above)
+
+
+@check("golem-count", tags=["core-rules-w14"])
+def golem_count(ctx):
+    """Golems follow PD2's count rule as data: petmax 1 + Golem Mastery blvl / 5 (+ extra_golem) caps Clay, Blood and Fire
+    Golems together, and a new one replaces the oldest. Watches the client's monsters for 30 s while golems are
+    summoned. The Iron Golem keeps its own pet type and does not take a place (docs/unported.md)."""
+    rows = _rows("monstats")
+    golems = {rows.index(n) for n in ("claygolem", "bloodgolem", "firegolem")}
+    limit = 1 + GOLEM_MASTERY_LEVEL // 5
+    ctx.ensure_running()
+    game = missile_probe.Game(ctx.game.pids()[0])
+    seen, most = set(), 0
+    end = time.monotonic() + 30
+    while time.monotonic() < end:
+        alive = {g for g, row in game.units(missile_probe.MONSTER).items() if row in golems}
+        seen |= alive
+        most = max(most, len(alive))
+        time.sleep(0.05)
+    if len(seen) <= limit:
+        ctx.skip(f"{len(seen)} golems summoned in 30 s, need {limit + 1} (summon Clay Golem while this runs)")
+    assert most == limit, f"{most} golems at once after {len(seen)} summons, PD2 keeps {limit}"
+    return f"{len(seen)} summons, at most {most} golems at once (Golem Mastery {GOLEM_MASTERY_LEVEL})"
+
+
+@check("revive-event", tags=["core-rules-w14"])
+def revive_event(ctx):
+    """Revive's aura event (auraeventfunc 32) fired on the revived monster when it hit (core-rules registers Revive's
+    events on it, D2R's Revive doesn't) and casts proc_SplashDamage (merged 430) at level 1 from it, as PD2 does."""
+    events = re.findall(r"revive event: event \d+ skill (\d+) level \d+ on unit type (\d+) class \d+ owner (-?\d+)/\d+, "
+                        r"target type (\d+): splash skill (\d+) cast (-?\d+)", _log(ctx))
+    if not events:
+        ctx.skip("no revive event in the log yet (Revive a corpse next to monsters, let it fight, then run again)")
+    skill, unit_type, _, target_type, splash, cast = (int(v) for v in events[0])
+    assert skill == REVIVE, f"event from skill {skill}, expected Revive ({REVIVE})"
+    assert unit_type == 1, f"fired on unit type {unit_type}, not a revived monster"
+    assert splash == PROC_SPLASH_DAMAGE, f"splash skill {splash}, expected proc_SplashDamage ({PROC_SPLASH_DAMAGE})"
+    # the cast is refused (0) until proc_SplashDamage has its do function (W33, docs/unported.md)
+    return f"fired on a revive hitting unit type {target_type}, splash cast {cast}"
+
+
 @check("throw-hd-models", tags=["core-rules"])
 def throw_hd_models(ctx):
     """The installed data maps every fixture missile (Split Throw's or Double Throw's) to an HD model; without one
@@ -417,7 +466,7 @@ def blood_warp_cast(ctx):
     return f"level {level}: life {life // 256}, cost {cost / 256:.1f} life, hpregen {regen} for {frames} frames, lists {sorted(set(lists))}"
 
 
-@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "core-rules-w13"])
+@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "core-rules-w13", "core-rules-w14"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

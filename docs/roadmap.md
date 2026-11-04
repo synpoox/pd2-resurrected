@@ -58,12 +58,14 @@ are "not yet" rows on the unported list; the Warlock ships as D2R has it.
 
 | # | Work item | Blocked by | Lane | Issue |
 |---|---|---|---|---|
-| W11-W14 | Necromancer (core-rules) | none | B | [#86](https://github.com/synpoox/pd2-resurrected/issues/86), [#114](https://github.com/synpoox/pd2-resurrected/issues/114) (PR), [#115](https://github.com/synpoox/pd2-resurrected/issues/115) (PR), [#89](https://github.com/synpoox/pd2-resurrected/issues/89) |
+| W11-W14 | Necromancer (core-rules); W14's get-hit window split off to W34 | none | B | [#86](https://github.com/synpoox/pd2-resurrected/issues/86), [#114](https://github.com/synpoox/pd2-resurrected/issues/114) (PR), [#115](https://github.com/synpoox/pd2-resurrected/issues/115) (PR), [#89](https://github.com/synpoox/pd2-resurrected/issues/89) |
 | W15-W20 | Paladin (core-rules) | none | C | [#117](https://github.com/synpoox/pd2-resurrected/issues/117) (PR), [#91](https://github.com/synpoox/pd2-resurrected/issues/91), [#92](https://github.com/synpoox/pd2-resurrected/issues/92), [#93](https://github.com/synpoox/pd2-resurrected/issues/93), [#94](https://github.com/synpoox/pd2-resurrected/issues/94), [#95](https://github.com/synpoox/pd2-resurrected/issues/95) |
 | W21-W24 | Druid (core-rules) | none | D | [#96](https://github.com/synpoox/pd2-resurrected/issues/96), [#97](https://github.com/synpoox/pd2-resurrected/issues/97), [#98](https://github.com/synpoox/pd2-resurrected/issues/98), [#99](https://github.com/synpoox/pd2-resurrected/issues/99) |
 | W25 | Investigation: Assassin finisher hook points (core-rules) | none | E | [#100](https://github.com/synpoox/pd2-resurrected/issues/100) |
 | W26-W28 | Sorceress (core-rules) | W21 (W27 only) | E | [#101](https://github.com/synpoox/pd2-resurrected/issues/101), [#102](https://github.com/synpoox/pd2-resurrected/issues/102), [#103](https://github.com/synpoox/pd2-resurrected/issues/103) |
 | W29-W32 | Assassin (core-rules) | W25 (W29), W29 (W30), W21 (W32) | first free class lane | [#104](https://github.com/synpoox/pd2-resurrected/issues/104), [#105](https://github.com/synpoox/pd2-resurrected/issues/105), [#106](https://github.com/synpoox/pd2-resurrected/issues/106), [#107](https://github.com/synpoox/pd2-resurrected/issues/107) |
+| W33 | **Rush:** melee splash (srvdo 163), which item_splashonhit, Frenzy, Tiger Strike and Revive's event cast (core-rules) | none | A, as a rush job | [#119](https://github.com/synpoox/pd2-resurrected/issues/119) |
+| W34 | Get-hit/block end window and cast/sequence delay, every class (core-rules), split off W14 | none | first free class lane | [#120](https://github.com/synpoox/pd2-resurrected/issues/120) |
 | P12 | "Not yet" rows for class item rules (Ormus' Robes and the like) on the unported list | none | A | [#108](https://github.com/synpoox/pd2-resurrected/issues/108) |
 | P13 | Alpha release: local 7z and release notes | P8 and every item above | A | [#109](https://github.com/synpoox/pd2-resurrected/issues/109) |
 
