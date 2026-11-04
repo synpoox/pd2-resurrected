@@ -17,4 +17,4 @@ List them with `gh issue list --label pd2-origin --state all`.
 
 | Bug | What PD2 does | Our fix | Issue | PR |
 |---|---|---|---|---|
-| Blade Fury fragment direction | A fragment's direction is a signed `% 64` (`0x103a7c70`, `0x103a6530`): when the offset takes it below direction 0 the index is negative and reads before 1.13c's 64-direction tables (the Y table's tail as x, the bytes before it as y), so the fragment flies along a short, wrong vector, roughly west where it should leave near east | the index wraps to 0-63 | [#107](https://github.com/synpoox/pd2-resurrected/issues/107) |  |
+| Blade Fury fragment direction | A fragment's direction is a signed `% 64` (`0x103a7c70`, `0x103a6530`): when the offset takes it below direction 0 the index is negative and reads before 1.13c's 64-direction tables (the Y table's tail as x, the bytes before it as y), so the fragment flies along a short, wrong vector, roughly west where it should leave near east | the index wraps to 0-63 | [#107](https://github.com/synpoox/pd2-resurrected/issues/107) | [#164](https://github.com/synpoox/pd2-resurrected/pull/164) |
