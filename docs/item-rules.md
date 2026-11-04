@@ -35,8 +35,9 @@ Out:
   - Cast Triggers takes skill on block and skill on cast. P12's listener walk is removed once it passes; Ormus' Robes
     (func 25 -> 26) stays in core-rules. If it clashes with core-rules' hooks (`0x43acb0`, event slot 16), it is forked
     into core-rules instead.
-  - Ethereal Item Rules and Item Durability give set items rolling ethereal and full ethereal durability, Progressive
-    Affixes the rare affix minimum, and Mass Identify shift-click identify on a tome; the Almanac stays IR5's (#189).
+  - Ethereal Item Rules and Item Durability give set items rolling ethereal and full ethereal durability, and Mass
+    Identify shift-click identify on a tome; the Almanac stays IR5's (#189). Progressive Affixes is not bundled (owner,
+    #237): the rare affix minimum stays IR8's.
   - Mercenary drop on hire (yinyin333333, closed source) gives a mercenary's gear back when another is hired.
   A plugin that matches PD2 closes its row; one that only comes close makes its row approximated.
 - **The dye stat** (`transform_dye`) tints the output of 35 PD2 cube rows (the Annihilus corruptions and the magic-item
@@ -53,7 +54,7 @@ Out:
 | # | Work item | Plugin | Blocked by |
 |---|---|---|---|
 | IR1 | Investigation ([#189](https://github.com/synpoox/pd2-resurrected/issues/189), done): RuffnecKk's suite plugins next to core-rules on 93847, each against PD2's rule | none | none |
-| IR2 | Companions: bundle Cast Triggers (skill on block, skill on cast; P12's listener walk removed), mercenary drop on hire and the suite plugins that pass IR1, with their config | companions, core-rules (removal) | IR1 |
+| IR2 | Companions: bundle Cast Triggers (skill on block, skill on cast; P12's listener walk removed), mercenary drop on hire and the suite plugins that pass IR1, with their config. Skill on block waits for a released Cast Triggers with `[on_block]` (1.1.1 has none) | companions, core-rules (removal) | IR1 |
 | IR3 | Combat stats: the crit rework, deadly strike multiplier and maximum, the crushing blow formula and efficiency, deep wounds and the open wounds rework, Nightmare's Feast (life-steal cap, splash per missing life), enhanced damage per ethereal item and per missing life | core-rules | none |
 | IR4 | Curses: curse effectiveness, max curses | core-rules | none |
 | IR5 | Item use and charges: unlimited TP and ID books (`pSpell` 13 -> 17), throwing potions with PD2's weapon spell columns, item casts (`ItemEffect`), replenish charges | core-rules | none |
