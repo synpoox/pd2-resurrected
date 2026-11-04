@@ -89,11 +89,22 @@ docs/unported.md):
 ## The channel check
 
 W21 built PD2's gate A for Blade Fury (srvdo 48): another skill takes over at once, a second Blade Fury does not cut
-the first short ([druid-w21](druid-w21.md)). Nothing to build; `blade-fury-refused` runs with W32's checks.
+the first short ([druid-w21](druid-w21.md)). The game check found the held channel throwing one blade per hold, on
+release, and the client drawing none: PD2's seqinput 3 makes D2R loop the sequence at frame 3, before the throw frame,
+and D2R's gate buffers (4) the held re-request, so the Assassin stays in the channel. It is W21's Inferno and Arctic
+Blast finding again (PD2's event re-timing, `0x1037a7c0`, is not ported). The row keeps D2R's seqinput 12
+(`merge/standins.tsv`): the re-request then comes after the throw, D2R's gate allows it (0) and the next sequence
+throws the next blade, at D2R's rate. A Blade Fury of another row is still refused by PD2's rule.
+`blade-fury-refused` now expects the 0.
 
 ## Checks
 
 `tests/game/core_rules_checks.py`, tag `core-rules-w32`: `blade-fragment-hit` (unit hits split at Param1 with 2 of 2
 fragments, frames from the parent's), `blade-fragment-wall` (3 fragments on the server and the client, generation +1),
-`blade-fragment-damage` (leech kept at dParam2 75%), `blade-fury-refused`, and the slots in `core-rules-loads`. Not run
-in game yet.
+`blade-fragment-damage` (leech kept at dParam2 75%), `blade-fury-refused`, and the slots in `core-rules-loads`.
+
+Run on Slot8 (2026-11-04, Hell, level 95 Assassin, Blade Fury 20 by `cheat sklvl`, god mode, Den of Evil): all six
+passed. A wall bounce made 3 of 3 fragments on the server and the client (generation 0 -> 1); a zombie hit split into 2
+of 2 fragments with 25 frames; a generation-2 fragment's damage kept 75% of the leech, rolled over dParam1 and dropped
+it; held re-requests came back 0; blades show on screen. Split fragments on another client were not checked (one
+player).

@@ -470,12 +470,14 @@ def channel_take_over(ctx):
 @check("blade-fury-refused", tags=["core-rules-w21", "core-rules-w32"])
 def blade_fury_refused(ctx):
     """PD2's gate A: a Blade Fury (srvdofunc 48) is not cut short by another Blade Fury; another skill is allowed. The
-    held Blade Fury's own re-request goes to D2R's gate, which must not allow it (0 would restart the channel)."""
+    held Blade Fury's own re-request goes to D2R's gate: with D2R's seqinput 12 (merge/standins.tsv) it comes at the
+    input frame, after the throw, and D2R allows it (0), which throws the next blade. With PD2's seqinput 3 it came
+    back 4 and the Assassin stayed in the channel without throwing (docs/research/w32-blade-fury.md)."""
     rows = [r for r in _take_overs(ctx) if r[1] == 48]
     held = [h for h in _held(ctx) if h[1] == 48]
     if not held:
         ctx.skip("no held Blade Fury in the log yet (hold Blade Fury out of town, then run again)")
-    assert all(h[2] != 0 for h in held), f"D2R's gate let a held Blade Fury restart: {held[:3]}"
+    assert all(h[2] == 0 for h in held), f"D2R's gate did not let a held Blade Fury throw again: {held[:3]}"
     assert all((r[4] == "refused") == (r[3] == 48) for r in rows), f"Blade Fury gate: {rows[:3]}"
     return (f"{len(held)} held re-requests to D2R's gate (results {sorted({h[2] for h in held})}), "
             f"{sum(r[4] == 'refused' for r in rows)} refused, {sum(r[4] == 'allowed' for r in rows)} allowed")

@@ -80,6 +80,7 @@ skills	LucionDeath4	Nova	srvdofunc,cltdofunc	Death novas
 skills	UberDiabSummon	-	srvdofunc	UberDiabSummon, UberDiabRun
 skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
+skills	Blade Fury	=	seqinput	Blade Fury: the throw frame
 missiles	blessedhammer	=	pSrvDoFunc,pCltDoFunc	Blessed Hammer
 missiles	desertfireball	=	pCltHitFunc	Desert turret fireball client hit
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
