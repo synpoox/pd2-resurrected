@@ -15,7 +15,7 @@ repo. Table, row and string names below are short identifiers.
   the drop weights.
 - **The ticket's premise is wrong in one place.** Level 156 "Pandemonium Map" is not part of this chain. It is the map
   area "The Pandemonium Citadel", opened by the tier 3 map item `t37` (boss Dark Commander Alma). This matters for UB3
-  and for #153's decision to turn D2R's levels 133-136 off (section 7).
+  and for #153's decision on D2R's levels 133-136 (section 7).
 - **PD2 replaces the finale.** The organs no longer open a portal. Cube row 182 makes the Pandemonium Talisman (`ubtm`),
   a map-spell item (`pSpell` 12) that is used at the Blood Fountain in Harrogath. It opens level 185 "PD2 Pandemonium
   Finale", a copy of D2R's level 136 on a new preset (`pd2_ubertrist.ds1`). There the three primes fight with the plain
@@ -173,7 +173,7 @@ repo. Table, row and string names below are short identifiers.
 | MonCharge, MonJab, Baal Lowres | D2R's own functions (67, 7, 30) | existing (data) |
 | Torch's one-unique-charm rule (carry1 empty) | core-rules "Charm 'only one unique' rule" | existing |
 | Torch to Ashes, Torch reroll | cubemain data; core-rules "Demonic cube reroll" (op 31) | existing |
-| Levels 133-135 and the mini-uber spawn | D2R's own | existing (D2R), but see the conflict below |
+| Levels 133-135 and the mini-uber spawn | D2R's own | existing (D2R); they stay on (section 7) |
 | Key recipe's `useitem` -> random mini-uber portal | none | **new**, or D2R's own portal row (merged line 2390) if PD2's row is dropped |
 | Organ drops | none (D2R's own in D2R) | **new** if PD2 changed them, else D2R's |
 | Talisman opening at the Blood Fountain -> level 185 | the map-item opening (MS2) plus the uber-key gate (UB2) | **new** (UB2/UB3) |
@@ -184,17 +184,13 @@ repo. Table, row and string names below are short identifiers.
 | The primes' `Uber Soul` TC column | none | **open** |
 | `.kills` Uber Tristram counter | none | cut (#153) |
 
-### A conflict with the decided scope
+### Effect on the decided scope
 
-#153's decision (PR #186, not yet merged: its `docs/uber-bosses.md` and a new `docs/d2r-only-content.md` row) turns off
-D2R's Pandemonium Event, levels 133-136, because PD2's chain replaces it, and its UB3 names the Pandemonium Map with the
-mini-ubers. The data says
-PD2 uses levels 133-135 and D2R's mini-uber fights, almost unchanged, and replaces only the finale (136 -> 185). Level 156
-is a map area. So the owner should decide again:
-
-- keep D2R's levels 133-135, the key portal and the mini-uber spawns, and turn off only D2R's finale (its portal
-  row, merged line 2391, and level 136); and
-- move the Pandemonium Citadel (156, `t37`) to the map system's list.
+#153's decision (PR #186) first turned off all of D2R's Pandemonium Event, levels 133-136, and its UB3 named the
+Pandemonium Map with the mini-ubers. The data says PD2 uses levels 133-135 and D2R's mini-uber fights, almost unchanged,
+and replaces only the finale (136 -> 185). The owner agreed, and PR #186 now turns off only D2R's Uber Tristram (its
+organ portal row, merged line 2391, and level 136). D2R's keys, the levels 133-135 and the mini-uber spawns stay on.
+Level 156, the Pandemonium Citadel (`t37`), is a map area and belongs to the map system.
 
 In the port's merged `cubemain` today, PD2's row 179 (line 181, `useitem`) comes before D2R's portal row (line 2390). If
 the cube takes the first match, cubing the keys does what PD2's bare row does, which is nothing useful without PD2's DLL,
