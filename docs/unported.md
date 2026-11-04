@@ -126,7 +126,6 @@ rows have no table hook: D2R does what it does.
 | Psychic Hammer missile damage | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.psychichammer.pSrvDmgFunc` | after the pre-alpha |
 | Multiple Shot arrow and bolt damage: the pierce count | approximated | core-rules' dmg 20 (PD2 dmg 17) counts the missile's hits on its pierce_count stat; PD2 counts pierces, so the last (not piercing) hit takes one falloff step less (docs/research/amazon-w6.md) |  | core-rules |
 | Desert turret fireball client hit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.desertfireball.pCltHitFunc` | after the pre-alpha |
-| Blessed Hammer | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.blessedhammer.pSrvDoFunc` `missiles.blessedhammer.pCltDoFunc` | after the pre-alpha |
 | Siege beast stomp client do | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.siege beast stomp missile.pCltDoFunc` | after the pre-alpha |
 | Rathma bone spear, blade fragment damage | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.bladefragment1.pSrvDmgFunc` `missiles.rathmabonespear.pSrvDmgFunc` | after the pre-alpha |
 | Skill on cast (`item_skilloncast`, 62 live item rows) | not yet | stand-in: D2R's own behaviour |  | after the pre-alpha |

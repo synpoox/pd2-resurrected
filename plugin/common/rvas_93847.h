@@ -124,6 +124,9 @@ inline constexpr uint64_t MissileSrvFrames = 0x3bb1e0;  // (missile) -> range fr
 // 1.13c's cdo 69 the same as current == total - 1, D2Common #10737 / #10534)
 inline constexpr uint64_t MissileCltFrames = 0x3bb0f0;
 inline constexpr uint64_t PathSetTargetUnit = 0x342920;  // (path, unit): path +0x70 target unit
+// (path, mask): path +0x64, what the path collides with (1.13c D2Common #11164, +0x50); missile create 0x5371a0 sets it
+// from CollideType's row of the mask table 0x2391378 (CollideType 3: 0x184)
+inline constexpr uint64_t PathSetCollisionMask = 0x342740;
 inline constexpr uint64_t PathSteer = 0x340e70;  // (path, unit, 0, 1): re-aim the path at its target unit
 inline constexpr uint64_t UnitDistance = 0x324fc0;  // (a, b) -> distance in subtiles
 // (dataFlag, missile, owner, calc, -1, -1) -> value; dmg 1 0x453490 evaluates DmgCalc1 this way
@@ -318,6 +321,11 @@ inline constexpr int UnitMode = 0x0c;  // int32 current mode (monmode for a mons
 inline constexpr int MonModeDeath = 0, MonModeDead = 12;
 inline constexpr int UnitPath = 0x38;  // dynamic path (x +0x2, y +0x6, uint16) or static path (x +0x10, y +0x14)
 inline constexpr int PathTargetUnit = 0x70;  // Unit* on a dynamic path: what PathSteer aims at (set by PathSetTargetUnit)
+inline constexpr int PathCollisionMask = 0x64;  // uint32 (set by PathSetCollisionMask)
+inline constexpr int UnitData = 0x10;  // the unit's type data; a missile's holds its range and last unit hit
+// int32 type and uint32 id (-1 none) of the last unit a LastCollide missile hit, set by D2Common 0x3bd580 in the
+// collision 0x4639a0
+inline constexpr int MdLastHitType = 0x20, MdLastHitId = 0x24;
 inline constexpr int UnitOwnerType = 0xe8;  // int32 owner unit type (MissileOwner 0x490300 reads both)
 inline constexpr int UnitOwnerId = 0xec;    // uint32 owner unit id
 inline constexpr int TablesStateCount = 0x298;  // uint64 states.txt row count in DataTables

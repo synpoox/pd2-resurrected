@@ -59,7 +59,7 @@ the earliest in the order Necromancer, Paladin, Druid, Sorceress, Assassin, and 
 | W17 | Paladin: Holy Light (srvdo 176, chit 66), Fist of the Heavens client hit (chit 26 -> 71) | none |
 | W18 | Paladin: Vengeance (srvdo 174), Joust (srvdo 162 -> 190) | none |
 | W19 | Paladin: Holy Sword start (srvst 73), Smite start (srvst 75) and event 16, Run/Concentration window | none |
-| W20 | Paladin: Blessed Hammer (sdo 40, cdo 72) | none |
+| W20 | Paladin: Blessed Hammer (sdo 40 -> 47, cdo 72 -> 80) | none |
 | W21 | Druid: Arctic Blast and Inferno (srvdo 182, cltdo 111), channel take-over | none |
 | W22 | Druid: Firestorm and the wall makers (srvdo 166 -> router 190, cltdo 119) | none |
 | W23 | Druid: Gust (router 190), Hunger (srvdo 165 -> router 190) | none |
@@ -163,7 +163,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Desert turret fireball client hit | chit 11 | c | 11 if equal, else -> 69 | CltHitTable | Exact | S | verify | client draws hit |  |
 | Immolation, Blaze and Rathma fire client hits (17 missiles) | chit 12 | a | 12: equal to D2R's (1.13c D2Client 0xbb070, D2R 0x1acda0; ProjectDiablo.dll leaves it) ([amazon-w6](research/amazon-w6.md)) | CltHitTable | Exact | S | data | client draws hit | W6 |
 | Fist of the Heavens delay client hit | chit 26 | c | 26 -> 71: D2R's 26 (0x1adcb0) differs from 1.13c D2Client 0xbad40 (PD2 leaves it vanilla); by value in `tools/pd2_ids.py` FUNCS | MissileCltHitTable, ClientAreaUnits, ClientMissileOwner, ClientFindUnit, MissileTargetType, MissileTargetId, MissileSkill, MissileLevel, UnitStateKey | Exact | S | built (W17) with an approximated deviation, on the unported list: no bolt limit (1.13c never stores the one it computes); D2R's 26 also stops at cHitPar2 / calc4 bolts and aims the struck unit's bolt at the caster ([w17-holy-light](research/w17-holy-light.md)) | the delay hit logs one bolt per unit within aurarangecalc (20) | W17 |
-| Blessed Hammer | sdo 40, cdo 72 | c | 40, 72 if D2R's are empty | SrvMisDoTable, CltMisDoTable | Exact | M | verify | hammer logs path and hits | W20 |
+| Blessed Hammer | sdo 40, cdo 72 | c | sdo 40 -> 47, cdo 72 -> 80 (D2R fills 40 and 72 with a sub-missile frame); PD2's `0x103a7410` / `0x103a6300` ([w20-blessed-hammer](research/w20-blessed-hammer.md)) | MissileSrvDoTable, MissileCltDoTable, PathSetCollisionMask, MissileSrvDoDefault, MissileCltDoDefault, MissileSrvFrames | Exact | M | built (W20): the path collides only with units (mask 0x180), so walls don't stop the hammer; no deviation | hammer logs its path (mask 0x180) and hits; Slot6, level 20 in Hell: mask 0x180 on server and client, a zombie hit, collisions kept flying | W20 |
 | Siege beast stomp client do | cdo 12 | c | 12 if empty | CltMisDoTable | Exact | S | verify | client draws stomp |  |
 | Rathma bone spear, blade fragment damage | dmg 18, dmg 19 | c | 18, 19 (D2R's table size unknown) | SrvDmgTable ? | Exact | S | verify | hit logs damage |  |
 | `*12` server hit (royalstrikechainlightning, boichaosice) | shit `*12` | a | none | none | Exact | S | data | the text parses as 0 (no hit function); confirm D2R reads it the same | W3 |
