@@ -53,10 +53,11 @@ W14 checks (tag core-rules-w14), same merged data: a Necromancer with Clay Golem
 (slot 13) at 10 and Revive (slot 29), no +skills, e.g. modkit save-set <save> --skill 9=1 --skill 13=10 --skill 29=10;
 then out of town: run core-rules-w14 and, while golem-count watches (30 s), summon Clay Golem four times; then kill a
 monster, Revive its corpse next to other monsters, let the revive fight, and run again.
-W17 checks (tag core-rules-w17), same merged data: a Paladin with Holy Light (merged skill 443) and
-Fist of the Heavens (121), e.g. modkit save-set <save> level=30 --skill 443=10 --skill 121=10 --project .;
-then out of town: Holy Light on a monster next to other monsters, Fist of the Heavens on a pack, and run the same
-command with core-rules-w17.
+W17 checks (tag core-rules-w17), same merged data: a Paladin with Holy Light and Fist of the Heavens. Holy Light is
+the Paladin's 32nd skill, past the 30 class skills a save holds, so set both in game: `debug_mode`, `cheat sklvl Holy
+Light,10`, `cheat sklvl Fist of the Heavens,10`, `cheat goto 2`, `cheat mspawn zombie1,6`; then Holy Light on a
+zombie next to others, Fist of the Heavens on the pack (not on a dropped item: the click picks it up), and run the
+same command with core-rules-w17.
 """
 import json
 import os
