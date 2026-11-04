@@ -112,6 +112,12 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # free slots core-rules installs them in (plugin/core-rules/skill_functions.cpp Functions[])
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own 38 or 70
 FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78"}}}
+# PD2's srvdo 188 / cltdo 117 (Lightning Bolt, Lightning Fury) only create srvmissile, else srvmissilea (cltmissile,
+# else cltmissilea), with the arguments D2R's do dispatcher passes for srvmissile / cltmissile after any do function
+# (docs/research/lightning-javelins.md). So the merge moves that missile into srvmissile / cltmissile and drops the
+# function number: (function column, PD2 number, missile column, fallback column).
+MISSILE_FUNCS = {"skills": [("srvdofunc", "188", "srvmissile", "srvmissilea"),
+                            ("cltdofunc", "117", "cltmissile", "cltmissilea")]}
 KEY_LIMIT = {"missiles": 31}  # bytes, from D2R's data guide; the other three allow 47
 NEGATIVE = re.compile(r"(?<![\w)\]'.])-(\d+)")  # modkit tsv.NEGATIVE: D2R rejects 'x*-5'
 FORMULA_REF = re.compile(r"\b(skill|miss|stat)\('([^']*)'")
@@ -285,6 +291,16 @@ def spell(table: str, col: str, v: str, ren: dict[str, dict[str, str]]) -> str:
     return FUNCS.get(table, {}).get(col, {}).get(v, v)
 
 
+def fix_missile_funcs(table: str, header: list[str], row: list[str]) -> None:
+    """A row with a MISSILE_FUNCS number gets the missile that function creates in the missile column instead."""
+    for func, number, col, fallback in MISSILE_FUNCS.get(table, []):
+        if func in header and row[header.index(func)] == number:
+            f, m, a = header.index(func), header.index(col), header.index(fallback)
+            row[f] = ""
+            if not row[m]:
+                row[m], row[a] = row[a], ""
+
+
 def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, str]],
                 ren: dict[str, dict[str, str]], ids: dict[str, dict[str, str]] | None = None,
                 props: dict[str, str] | None = None) -> tuple[Table, list[str]]:
@@ -327,6 +343,7 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
                 row[j] = v
         for j, fn in derived.items():
             row[j] = fn(dict(zip(pd2.header, pr)))
+        fix_missile_funcs(table, d2r.header, row)
         if props is not None:
             fix_props(d2r.header, row, ren, ids or {}, props)
         row[d2r.key] = n

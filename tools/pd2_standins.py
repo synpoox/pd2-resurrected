@@ -18,14 +18,15 @@ def _nums(*spans: int | range) -> set[str]:
 
 # Function numbers PD2 rows must not keep: D2R's slot is empty, past the table's end, or holds a different function
 # (core-rules hook list; table sizes from docs/research/skill-function-tables.md). Not listed: numbers equal to D2R's
-# (srvdo 41/143, cltdo 15/83), built rules (srvdo 189, W1), `verify` slots that hold D2R's same-numbered function, which
-# is the stand-in (shit 5, 6, 30; chit 4, 12, 26), and temp1's sdo 39 / cdo 71 (no row reaches it). Cube ops 30/31
+# (srvdo 41/143, cltdo 15/83), built rules (srvdo 189, W1; srvdo 188 and cltdo 117 become the missile columns,
+# pd2_ids.MISSILE_FUNCS, W5), `verify` slots that hold D2R's same-numbered function, which is the stand-in (shit 5, 6,
+# 30; chit 4, 12, 26), and temp1's sdo 39 / cdo 71 (no row reaches it). Cube ops 30/31
 # are not here: cubemain rows have no unique name, so the item tables' merge (P3) keeps those recipes off.
 PD2_ONLY = {
     "skills": {
         "auraeventfunc1": _nums(16),  # D2R puts a RotW event at 16; PD2's is Smite's
-        "srvdofunc": _nums(109, range(153, 171), range(173, 183), range(184, 187), 188),
-        "cltdofunc": _nums(22, 97, 98, range(100, 106), range(109, 115), range(117, 120)),
+        "srvdofunc": _nums(109, range(153, 171), range(173, 183), range(184, 187)),
+        "cltdofunc": _nums(22, 97, 98, range(100, 106), range(109, 115), 118, 119),
         "srvstfunc": _nums(64, range(66, 80)),
         "cltstfunc": _nums(range(54, 59), 82),
         **{f"srvprgfunc{i}": _nums(171, 172) for i in (1, 2, 3)},

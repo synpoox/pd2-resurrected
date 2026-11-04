@@ -79,6 +79,11 @@ class GateTests(unittest.TestCase):
         self.write("mod", "missiles", table("Missile | Skill | SrvCalc1 | Range", "teeth | Teeth | skill('Teeth_pd2'.blvl)*(0-2) | 5"))
         self.assertEqual(self.gate("P2").open(), [("missiles.teeth.Skill", "Teeth", "Teeth")])
 
+    def test_a_missile_do_function_moved_to_the_missile_column_matches(self):
+        self.write("pd2", "skills", table("skill | Id | srvdofunc | srvmissile | srvmissilea", "Bolt | 20 | 188 | | jav"))
+        self.write("mod", "skills", table("skill | *Id | srvdofunc | srvmissile | srvmissilea", "Bolt | 20 | | jav | "))
+        self.assertEqual(self.gate("P2").open(), [])
+
     def test_tables_merged_by_position_compare_by_position_and_spell_references(self):
         (self.root / "merge").mkdir()
         (self.root / "merge/ids-skills.tsv").write_text("Teeth\t67\tTeeth_pd2\n", "utf-8")

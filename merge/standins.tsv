@@ -1,8 +1,6 @@
 # table	row	from	columns	rule (W3; delete a line when its rule is built, see tools/pd2_standins.py)
 skills	Power Strike	=	cltdofunc	Power Strike, Lightning Strike client half
-skills	Lightning Bolt	=	srvdofunc,cltdofunc	Lightning Bolt, Lightning Fury
 skills	Lightning Strike	=	cltdofunc	Power Strike, Lightning Strike client half
-skills	Lightning Fury	=	srvdofunc,cltdofunc	Lightning Bolt, Lightning Fury
 skills	Inferno	=	srvdofunc,cltdofunc	Inferno, Arctic Blast
 skills	Static Field	=	srvdofunc	Static Field
 skills	Teleport	=	srvdofunc	Teleport, Blink

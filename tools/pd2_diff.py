@@ -127,6 +127,7 @@ def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | 
         want = list(mr)
         for _, i, j in cols:
             want[j] = pd2_ids.spell(name, mod.header[j], pr[i], ren) if ren else pr[i].replace('"', "")
+        pd2_ids.fix_missile_funcs(name, mod.header, want)
         if ctx:
             pd2_ids.fix_props(mod.header, want, ctx.ren, ctx.ids, ctx.props)
         res.open += [(f"{name}.{row}.{c}", pr[i], mr[j]) for c, i, j in cols if not same(want[j], mr[j])]
