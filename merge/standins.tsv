@@ -44,9 +44,7 @@ skills	Redemption	=	cltdofunc	Paladin aura client do
 skills	Redemption	=	cltstfunc	Paladin aura client start
 skills	Salvation	=	cltdofunc	Paladin aura client do
 skills	Salvation	=	cltstfunc	Paladin aura client start
-skills	DiabWall	=	srvdofunc	Firestorm and wall makers
 skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
-skills	Firestorm	=	srvdofunc,cltdofunc	Firestorm and wall makers
 skills	Summon Spirit Wolf	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Summon Fenris	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Fire Claws	=	srvdofunc,cltdofunc	Fire Claws
@@ -71,8 +69,6 @@ skills	Combustion	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	Joust	Leap Attack	srvdofunc	Joust
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
 skills	FingermageBossNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
-skills	FingermageBossDiabWall	DiabWall	srvdofunc	Firestorm and wall makers
-skills	UberDiabWall	DiabWall	srvdofunc	Firestorm and wall makers
 skills	PoisonEggSpawn	MaggotEgg	srvdofunc,cltdofunc	PoisonEggSpawn
 skills	Merc Static Field	Static Field	srvdofunc	Static Field
 skills	RathmaDeath	Nova	srvdofunc,cltdofunc	Death novas
@@ -96,7 +92,6 @@ skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Chilling Armor SelfAura	Might	cltstfunc	Paladin aura client start
 skills	RakanothStrike	Cobra Strike	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	TorajanBossNest	Nest	srvdofunc	TorajanBossNest
-skills	KanemithFirestorm	DiabWall	srvdofunc	Firestorm and wall makers
 skills	LucionNova	Nova	srvdofunc	Lucion kit
 skills	LucionBlink	Teleport	cltdofunc	Lucion kit
 skills	LucionDash	Charge	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Lucion kit
