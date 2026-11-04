@@ -51,9 +51,7 @@ skills	Redemption	=	cltdofunc	Paladin aura client do
 skills	Redemption	=	cltstfunc	Paladin aura client start
 skills	Salvation	=	cltdofunc	Paladin aura client do
 skills	Salvation	=	cltstfunc	Paladin aura client start
-skills	Leap	=	srvdofunc,cltdofunc	Leap, Leap Attack
 skills	Double Throw	=	srvdofunc,cltdofunc	Double Throw
-skills	Leap Attack	=	srvdofunc,cltdofunc	Leap, Leap Attack
 skills	DiabWall	=	srvdofunc	Firestorm and wall makers
 skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
 skills	Firestorm	=	srvdofunc,cltdofunc	Firestorm and wall makers
@@ -109,7 +107,6 @@ skills	Holy Fire Fire Golem	Holy Fire	cltdofunc	Paladin aura client do
 skills	Holy Fire Fire Golem	Holy Fire	cltstfunc	Paladin aura client start
 skills	Holy Freeze Korlic	Holy Freeze	cltdofunc	Paladin aura client do
 skills	Holy Freeze Korlic	Holy Freeze	cltstfunc	Paladin aura client start
-skills	Leap Attack Korlic	Leap Attack	srvdofunc,cltdofunc	Leap, Leap Attack
 skills	Holy Fire Sanctuaryboss	Holy Fire	cltdofunc	Paladin aura client do
 skills	Holy Fire Sanctuaryboss	Holy Fire	cltstfunc	Paladin aura client start
 skills	UberDiabRun	DiabRun	srvstfunc	UberDiabSummon, UberDiabRun

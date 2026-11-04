@@ -4,6 +4,8 @@ Each check reads the plugin log, <slot>/d2rloader/logs/core-rules.log; expected 
 
 Setup (Slot4-7, game closed):
   powershell -File tools/install.ps1 -Game C:/D2RTestSlots/Slot4 -Data tests/game/fixtures/split-throw
+  (or -Data tests/game/fixtures/leap and a Barbarian with Leap and Leap Attack, for the leap checks: cast both in
+  town, then Leap Attack into monsters out of town)
   a Barbarian test save with Double Throw (class skill slot 14) at level 10 in that slot's save folder
 Run:
   py testing/game_checks.py run core-rules --slot 4 --path <repo>/tests/game --module core_rules_checks
@@ -38,7 +40,10 @@ SKILL_SLOTS = [  # table slots it installs
     ("pSrvHitFunc", 65, "return spawn"), ("pSrvDoFunc", 46, "return"), ("pCltDoFunc", 78, "return"),
     ("srvstfunc", 78, "splash start"), ("srvstfunc", 82, "find"), ("cltstfunc", 62, "find"),
     ("srvdofunc", 190, "router"),
+    ("srvdofunc", 172, "leap"), ("cltdofunc", 115, "leap"),
 ]
+LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
+LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knockback|units hit) (\d+), velocity (\d+)")
 ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
 
 
@@ -186,6 +191,56 @@ def split_throw_hd_models(ctx):
     missing = [m for m in ("splitthrowaxe", "splitthrowaxereturn") if not models.get(m)]
     assert not missing, f"no HD model for {missing} in {path}"
     return ", ".join(f"{m} {models[m]}" for m in ("splitthrowaxe", "splitthrowaxereturn"))
+
+def _landings(ctx, skill: int) -> list[tuple]:
+    return [(int(m[1]), int(m[2]), m[3], int(m[4]), int(m[5])) for m in LANDED.findall(_log(ctx)) if int(m[0]) == skill]
+
+
+@check("leap-landing", tags=["core-rules"])
+def leap_landing(ctx):
+    """A Leap landed with PD2's knockback radius calc3 = min(par3+blvl*par4, 15) (Param3 7, Param4 1) and speed
+    0xb00 + calc2*0x50 (calc2 80). Assumes no +skills: blvl is the logged level."""
+    landed = _landings(ctx, LEAP)
+    if not landed:
+        ctx.skip("no Leap landing in the log yet (Leap in town, then run again)")
+    level, radius, kind, _, velocity = landed[0]
+    assert kind == "knockback", landed[0]
+    assert radius == min(7 + level, 15), f"level {level}: radius {radius}, PD2 gives {min(7 + level, 15)}"
+    assert velocity == 0xb00 + 80 * 0x50, f"velocity {velocity}, PD2 gives {0xb00 + 80 * 0x50}"
+    return f"level {level}: knockback radius {radius}, velocity {velocity}"
+
+
+@check("leap-attack-landing", tags=["core-rules"])
+def leap_attack_landing(ctx):
+    """A Leap Attack landed hitting units within calc3 = par5 (8), at speed 0xb00 + calc2*0x50 (calc2 60)."""
+    landed = _landings(ctx, LEAP_ATTACK)
+    if not landed:
+        ctx.skip("no Leap Attack landing in the log yet (Leap Attack in town, then run again)")
+    level, radius, kind, _, velocity = landed[0]
+    assert kind == "units hit" and radius == 8, f"{kind} radius {radius}, PD2 hits units within 8"
+    assert velocity == 0xb00 + 60 * 0x50, f"velocity {velocity}, PD2 gives {0xb00 + 60 * 0x50}"
+    return f"level {level}: radius {radius}, velocity {velocity}"
+
+
+@check("leap-attack-hits", tags=["core-rules"])
+def leap_attack_hits(ctx):
+    """A Leap Attack landing among monsters hit them. Needs a cast out of town."""
+    hits = [h for *_, h, _ in _landings(ctx, LEAP_ATTACK) if h > 0]
+    if not hits:
+        ctx.skip("no Leap Attack landing hit a unit yet (Leap Attack into monsters out of town, then run again)")
+    return f"{len(hits)} landings hit {sum(hits)} units"
+
+
+@check("leap-client", tags=["core-rules"])
+def leap_client(ctx):
+    """The client half (cltdofunc 115) set the same speed as the server half for each leap skill."""
+    client = {int(s): int(v) for s, v in re.findall(r"leap client: skill (\d+) level \d+: velocity (\d+)", _log(ctx))}
+    if not client:
+        ctx.skip("no client-side leap in the log yet (Leap in town, then run again)")
+    for skill, velocity in client.items():
+        server = [v for *_, v in _landings(ctx, skill)]
+        assert server and server[0] == velocity, f"skill {skill}: client velocity {velocity}, server {server[:1]}"
+    return ", ".join(f"skill {s} velocity {v}" for s, v in client.items())
 
 
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10"])
