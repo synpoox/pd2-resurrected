@@ -62,7 +62,7 @@ The charge count is the skill's `aurastat1` value on its `aurastate` list (`0x10
   W29 confirms it.
 - **cltprg 106 / 107**: the client halves of 171 (spread) and 172 (nova), with cltcalc[charge] and cltmissile[charge].
   RakanothStrike's client prg3 is vanilla 11, not 107.
-- **cdo 69** (fistsoffireexplode, bladesoficecubes): on the missile's last frame it creates its `CltSubMissile1`
+- **cdo 69** (fistsoffireexplode, bladesoficecubes): on the missile's first frame (W30 corrects "last") it creates its `CltSubMissile1`
   (fistsoffirefirewall, bladesoficeexplode) at the missile's position.
 - **chit 67** (clawsofthunderbolt): on a client hit it creates `HitSubMissile1` (cotthunderstorm) at the hit point.
   The sub-missile gets a calc for its length and three params copied from the missile.

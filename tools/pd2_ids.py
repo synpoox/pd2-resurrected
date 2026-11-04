@@ -118,7 +118,7 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # functions (37, 25), which do what PD2's do (docs/research/w16-charge.md). Combustion's srvdo 159 and Static Field's
 # 160 join the router too, Combustion's cltdo 100 takes 120 (docs/research/w27-static-field-combustion.md).
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
-FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78"}, "pSrvHitFunc": {"30": "66"},
+FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78", "69": "79"}, "pSrvHitFunc": {"30": "66"},
                       "pSrvDmgFunc": {"16": "21", "17": "20"}, "pCltHitFunc": {"26": "71"}},
          "skills": {"srvdofunc": {"153": "172", "154": "183", "155": "190", "156": "190", "157": "190", "159": "190",
                                   "160": "190", "161": "190", "163": "190", "164": "190", "165": "190", "166": "190",
@@ -127,7 +127,9 @@ FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78"}, "p
                     # PD2's srvst 68 calls slot 32, D2R's melee start (W11)
                     "srvstfunc": {"66": "80", "68": "32"}, "cltstfunc": {"56": "63", "57": "25"},
                     # the finishers' prg functions (W29): only these PD2 rows use these values in these columns
-                    **{f"srvprgfunc{i}": {"171": "184", "172": "185", "39": "186", "139": "181"} for i in (1, 2, 3)}}}
+                    **{f"srvprgfunc{i}": {"171": "184", "172": "185", "39": "186", "139": "181"} for i in (1, 2, 3)},
+                    # and their client halves (W30); D2R's 106 is Bind Demon
+                    **{f"cltprgfunc{i}": {"106": "127", "107": "128"} for i in (1, 2, 3)}}}
 # missiles.txt parameters a PD2 hit function reads as ids: pSrvHitFunc -> {column: the table it names}. srvhit 61
 # (Poison Dagger's cloud, the throwing potions, Kanemith's blaze dot) gives the hit unit state sHitPar1 with stats
 # sHitPar3 and cHitPar2.

@@ -556,10 +556,96 @@ auto CltHitFistDelay(Unit* missile, Unit* hit) noexcept -> int32_t {
 	return 1;
 }
 
+// --- Assassin charge-up finishers' client missiles (W30, docs/research/w30-assassin-finishers.md) ------------------
+namespace {
+
+std::atomic<uint32_t> g_chargeExplodes {0};
+std::atomic<uint32_t> g_chargeBoltHits {0};
+
+}  // namespace
+
+// cdo 79 (PD2 cdo 69, 0x103a60d0; fistsoffireexplode, bladesoficecubes): the missile's step (PD2 calls 1.13c's
+// D2Client 0xb17c0 first, D2R's cltdo 1), then on its first frame CltSubMissile1 (fistsoffirefirewall,
+// bladesoficeexplode) placed at its position (flags 3, no aim), with its skill and level; none without an owner,
+// as in PD2.
+void CltDoChargeExplode(Unit* missile, int32_t a2) noexcept {
+	using namespace d2r::rva;
+	if (missile == nullptr) {
+		return;
+	}
+	d2r::Engine<MissileCltDoFn>(MissileCltDoDefault)(missile, a2);
+	if (d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileCltFrames)(missile) != 1) {
+		return;
+	}
+	const uint8_t* row = CltMissileRecord(missile);
+	Unit* owner = d2r::Engine<Unit* (*)(Unit*) noexcept>(ClientMissileOwner)(missile);
+	const int32_t sub = row != nullptr ? At<int16_t>(row, MsCltSubMissile1) : -1;
+	d2r::MissileParams params;
+	std::memset(&params, 0, sizeof(params));
+	if (owner == nullptr || !d2r::ValidMissile(d2r::api.unitDataFlag(missile), sub) ||
+	    !d2r::UnitXY(missile, &params.x, &params.y)) {
+		return;
+	}
+	params.flags = MissileAtXY | MissileAimOffset;
+	params.owner = owner;
+	params.missile = sub;
+	params.skill = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileSkill)(missile);
+	params.skillLevel = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileLevel)(missile);
+	const bool created = d2r::api.clientCreateMissile(&params, 0) != nullptr;
+	if (plog::Sample(g_chargeExplodes)) {
+		plog::Info("charge explode client: missile row %d skill %d level %d: sub-missile %d at %d,%d%s, explode %u",
+		           At<int32_t>(missile, UnitClassId), params.skill, params.skillLevel, sub, params.x, params.y,
+		           created ? "" : " (not created)", g_chargeExplodes.load());
+	}
+}
+
+// chit 67 (PD2 0x103a6aa0; clawsofthunderbolt): CltHitSubMissile1 (cotthunderstorm) placed at the unit hit (flags 1)
+// with the row's Skill and the missile's level, raised CHitCalc1 (its z height) and moving cHitPar1-3 per frame, as
+// PD2 writes them through 1.13c's D2Client 0xc7e30 and the graphic's motion fields (D2R: SetMissileOffset/Motion).
+auto CltHitChargeBolt(Unit* missile, Unit* hit) noexcept -> int32_t {
+	using namespace d2r::rva;
+	const uint8_t* row = missile != nullptr ? CltMissileRecord(missile) : nullptr;
+	if (row == nullptr || hit == nullptr) {
+		return 1;
+	}
+	const uint32_t dataFlag = d2r::api.unitDataFlag(missile);
+	d2r::MissileParams params;
+	std::memset(&params, 0, sizeof(params));
+	params.flags = MissileAtXY;
+	params.owner = d2r::Engine<Unit* (*)(Unit*) noexcept>(ClientMissileOwner)(missile);
+	params.missile = At<int16_t>(row, MsCltHitSubMissile1);
+	params.skill = At<int16_t>(row, MsSkill);
+	params.skillLevel = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileLevel)(missile);
+	if (!d2r::ValidMissile(dataFlag, params.missile) || !d2r::UnitXY(hit, &params.x, &params.y)) {
+		return 1;
+	}
+	Unit* bolt = d2r::api.clientCreateMissile(&params, 0);
+	int32_t z = 0;
+	if (bolt != nullptr) {
+		using EvalFn = int32_t (*)(uint32_t, Unit*, Unit*, int32_t, int32_t, int32_t) noexcept;
+		// shortcut: no owner gives height 0 where PD2 still evaluates CHitCalc1 (D2R's evaluator is only known to run
+		// with one); PD2's only user has the constant 280. Upgrade if a row's CHitCalc1 reads its owner.
+		z = params.owner != nullptr ? d2r::Engine<EvalFn>(EvalMissileCalc)(dataFlag, missile, params.owner,
+		                                                                  At<int32_t>(row, MsCltHitCalc1), -1, -1)
+		                            : 0;
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetMissileOffset)(bolt, 0, 0, z);
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t, int32_t) noexcept>(SetMissileMotion)(
+			bolt, At<int32_t>(row, MsCltHitPar1), At<int32_t>(row, MsCltHitPar2), At<int32_t>(row, MsCltHitPar3), 0);
+	}
+	if (plog::Sample(g_chargeBoltHits)) {
+		plog::Info("charge bolt client hit: missile row %d skill %d level %d: sub-missile %d at %d,%d, height %d, "
+		           "motion %d,%d,%d%s, hit %u", At<int32_t>(missile, UnitClassId), params.skill, params.skillLevel,
+		           params.missile, params.x, params.y, z, At<int32_t>(row, MsCltHitPar1), At<int32_t>(row, MsCltHitPar2),
+		           At<int32_t>(row, MsCltHitPar3), bolt != nullptr ? "" : " (not created)", g_chargeBoltHits.load());
+	}
+	return 1;
+}
+
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size, "returns spawned %u, caught %u, bounces %u, first hits %u, spread hits %u, explosions %u, "
-	              "falloff hits %u, state hits %u, holy light client hits %u, fist delay client hits %u",
-	              g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(), g_firstHits.load(),
-	              g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load(), g_stateHits.load(),
-	              g_holyLightHits.load(), g_fistDelayHits.load());
+	              "falloff hits %u, state hits %u, holy light client hits %u, fist delay client hits %u, charge explodes %u, "
+	              "charge bolt hits %u", g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(),
+	              g_firstHits.load(), g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load(),
+	              g_stateHits.load(), g_holyLightHits.load(), g_fistDelayHits.load(), g_chargeExplodes.load(),
+	              g_chargeBoltHits.load());
 }

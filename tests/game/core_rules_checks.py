@@ -86,6 +86,9 @@ W27 checks (tag core-rules-w27), same merged data: a Sorceress with Static Field
 (41) and no Lightning Mastery; save-set takes class skill slots (Inferno 5, Static Field 6, Combustion 31), e.g.
 modkit save-set <save> level=30 --skill 6=10 --skill 31=10 --skill 5=10 --project .; then out of town cast Static
 Field next to monsters, cast Combustion, hold Inferno for a second, and run the same command with core-rules-w27.
+W30 checks (tag core-rules-w30), same merged data and save as W29: out of town hit monsters three times in a row with
+each of Fists of Fire, Cobra Strike, Claws of Thunder and Blades of Ice, releasing between them with Dragon Talon, and
+run the same command with core-rules-w30. Each charge's client missiles log on the client.
 """
 import json
 import os
@@ -117,6 +120,8 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 176, "holy light"), ("pCltHitFunc", 66, "holy light"), ("pCltHitFunc", 71, "fist delay"),
     ("srvdofunc", 184, "charge spread"), ("srvdofunc", 185, "charge ring"), ("srvdofunc", 186, "charge fire"),
     ("srvdofunc", 181, "charge cold"), ("cltdofunc", 120, "nova"),
+    ("cltdofunc", 127, "charge spread"), ("cltdofunc", 128, "charge ring"), ("pCltDoFunc", 79, "charge explode"),
+    ("pCltHitFunc", 67, "charge bolt"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -146,7 +151,7 @@ def _log(ctx) -> str:
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                  "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33",
                                  "core-rules-w21", "core-rules-w22", "core-rules-w29", "core-rules-w17",
-                                 "core-rules-w23", "core-rules-w27", "game"])
+                                 "core-rules-w23", "core-rules-w27", "core-rules-w30", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -942,10 +947,86 @@ def fist_delay_hit(ctx):
     return f"level {level}: radius {radius}, {bolts} bolts"
 
 
+# merged skill -> charge -> (cltprgfunc slot, PD2's cltcalc, PD2's cltmissilea/b/c), from PD2's skills.txt
+FINISHER_CLIENT = {
+    259: {2: (128, 64, "fistsoffirenova"), 3: (127, 1, "fistsoffireorbdelay")},  # Fists of Fire: PD2 107, 106
+    265: {1: (127, 7, "cobrastrikepoisonbolt"), 3: (128, 64, "cobrastrikepoisoncloud")},  # Cobra Strike: 106, 107
+    630: {1: (127, 8, "bladefragment1")},  # RakanothStrike: 106 (par5)
+}
+
+
+@check("charge-client-spread", tags=["core-rules-w30"])
+def charge_client_spread(ctx):
+    """cltprgfunc 127 (PD2 106) draws cltcalc[charge] of the charge's client missile along the spread: Cobra Strike 7
+    poison bolts at charge 1, Fists of Fire 1 orb at charge 3."""
+    rows = [r.lower() for r in _rows("missiles")]
+    out = set()
+    for skill, _, charge, created, count, row, calc in _logged(
+            ctx, r"charge spread client: skill (\d+) level (\d+) charge (\d+): (\d+) of (\d+) missiles \(row (\d+), "
+                 r"cltcalc (-?\d+)\)", "Cobra Strike"):
+        assert charge in FINISHER_CLIENT.get(skill, {}), f"skill {skill} charge {charge}: PD2 has no client prg here"
+        slot, expected, missile = FINISHER_CLIENT[skill][charge]
+        assert slot == 127 and calc == expected, f"skill {skill} charge {charge}: cltcalc {calc}, PD2 {expected}"
+        assert count == min(max(calc, 1), 64) and created == count, f"skill {skill}: {created} of {count} for {calc}"
+        assert row == rows.index(missile), f"skill {skill} charge {charge}: missile row {row}, PD2's {missile}"
+        out.add(f"{skill}/{charge}: {created}")
+    return ", ".join(sorted(out))
+
+
+@check("charge-client-ring", tags=["core-rules-w30"])
+def charge_client_ring(ctx):
+    """cltprgfunc 128 (PD2 107) rings the target with the charge's client missile (Fists of Fire's nova at charge 2,
+    Cobra Strike's cloud at charge 3), cltcalc 64."""
+    rows = [r.lower() for r in _rows("missiles")]
+    out = set()
+    for skill, _, charge, created, row, calc in _logged(
+            ctx, r"charge ring client: skill (\d+) level (\d+) charge (\d+): (\d+) missiles \(row (\d+), cltcalc "
+                 r"(-?\d+)\)", "Fists of Fire"):
+        assert charge in FINISHER_CLIENT.get(skill, {}), f"skill {skill} charge {charge}: PD2 has no client prg here"
+        slot, expected, missile = FINISHER_CLIENT[skill][charge]
+        assert slot == 128 and calc == expected, f"skill {skill} charge {charge}: cltcalc {calc}, PD2 {expected}"
+        assert row == rows.index(missile), f"skill {skill} charge {charge}: missile row {row}, PD2's {missile}"
+        assert created > 0, f"skill {skill}: no ring missile drawn"
+        out.add(f"{skill}/{charge}: {created} of row {row}")
+    return ", ".join(sorted(out))
+
+
+@check("charge-client-explode", tags=["core-rules-w30"])
+def charge_client_explode(ctx):
+    """pCltDoFunc 79 (PD2 69) places CltSubMissile1 on the explosion's first frame: fistsoffireexplode's
+    fistsoffirefirewall (Fists of Fire's first charge); bladesoficecubes' bladesoficeexplode if anything makes it."""
+    rows = [r.lower() for r in _rows("missiles")]
+    subs = {"fistsoffireexplode": "fistsoffirefirewall", "bladesoficecubes": "bladesoficeexplode"}
+    found = re.findall(r"charge explode client: missile row (\d+) skill -?\d+ level \d+: sub-missile (-?\d+) at "
+                       r"\d+,\d+( \(not created\))?", _log(ctx))
+    if not found:
+        ctx.skip("no Fists of Fire explosion in the log yet (charge it on monsters, then run again)")
+    for row, sub, failed in found:
+        name = rows[int(row)]
+        assert name in subs and rows[int(sub)] == subs[name], f"{name}: sub-missile {rows[int(sub)]}"
+        assert not failed, f"{name}: {subs[name]} not created"
+    return ", ".join(sorted({rows[int(r)] for r, _, _ in found}))
+
+
+@check("charge-client-bolt", tags=["core-rules-w30"])
+def charge_client_bolt(ctx):
+    """pCltHitFunc 67 drops clawsofthunderbolt's cotthunderstorm on the unit hit, raised CHitCalc1 280 and falling
+    cHitPar1-3 (0, 0, -81920) per frame."""
+    rows = [r.lower() for r in _rows("missiles")]
+    found = re.findall(r"charge bolt client hit: missile row (\d+) skill -?\d+ level \d+: sub-missile (-?\d+) at "
+                       r"\d+,\d+, height (-?\d+), motion (-?\d+),(-?\d+),(-?\d+)( \(not created\))?", _log(ctx))
+    if not found:
+        ctx.skip("no Claws of Thunder bolt hit in the log yet (hit monsters with its third charge, then run again)")
+    row, sub, z, mx, my, mz, failed = found[0]
+    assert rows[int(row)] == "clawsofthunderbolt" and rows[int(sub)] == "cotthunderstorm", found[0]
+    assert (int(z), int(mx), int(my), int(mz)) == (280, 0, 0, -81920) and not failed, found[0]
+    return f"{len(found)} logged: height {z}, motion {mx},{my},{mz}"
+
+
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w22", "core-rules-w29", "core-rules-w17",
-                                    "core-rules-w23"])
+                                    "core-rules-w23", "core-rules-w30"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))
