@@ -94,7 +94,7 @@ docs/unported.md):
 ## Game check
 
 `hit-window` (tag core-rules-w34). Run on Slot8 (2026-11-04, Hell, level 95 Assassin, god mode, Blood Moor, six Venom
-Lords (`megademon3`) and eight zombies, attacking and casting while they hit): all three checks passed; the window
+Lords (`megademon3`) and eight zombies, attacking and casting while they hit): all three checks passed (again on Slot6 after W19 landed: level 90 Paladin, 60/60 parts installed); the window
 lines read `1 frames left: 0` (attack, skill 4 and sequence requests). A temporary log on `0x42bfb0` saw five
 requests while the player was in get-hit, every one at 1 frame left, none earlier: the client holds them.
 A request at 1 frame left is allowed with or without the patch, so the check shows the hook and the window's results,
