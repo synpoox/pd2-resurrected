@@ -125,6 +125,7 @@ class FormulaAndColumnTests(unittest.TestCase):
         self.assertEqual(merged.rows[1:], [["cloud", "61", "282", "52", "-1", "-1", "", ""],
                                            ["blaze", "61", "44", "150", "67", "-60", "510", "-60"],
                                            ["nova", "5", "236", "1", "67", "1", "500", "1"]])
+
     def test_blood_warp_functions_moved_to_core_rules_slots(self):
         d2r = table("skill|srvdofunc|srvstfunc|cltstfunc\nAttack|1|0|0\n")
         pd2 = table("skill|srvdofunc|srvstfunc|cltstfunc\nAttack|1|0|0\nBlood Warp|157|66|56\n")

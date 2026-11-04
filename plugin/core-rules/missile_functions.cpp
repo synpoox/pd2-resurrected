@@ -49,15 +49,16 @@ void SteerHome(Unit* missile, Unit* owner, int32_t framesLeft) noexcept {
 // shit 65: on a collision, start HitSubMissile1-4 (the <name>return row) at the missile, as D2R's srvhit 4 does.
 // shortcut: approximation from PD2's data, srvhit 4 runs on any collision (ground and walls too) and explodes the
 // sub-missile when the parent row has an explosion; PD2's may differ. Upgrade when PD2's shit 65 is read from
-// ProjectDiablo.dll.
-void SrvHitSpawnReturn(Game* game, Unit* missile, Unit* hit) noexcept {
+// ProjectDiablo.dll. Returns srvhit 4's result, so the collision deals the missile's damage as srvhit 4's do.
+auto SrvHitSpawnReturn(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	if (game == nullptr || missile == nullptr) {
-		return;
+		return 1;
 	}
-	d2r::Engine<MissileSrvHitFn>(d2r::rva::SrvHitSubMissiles)(game, missile, hit);
+	const int32_t result = d2r::Engine<MissileSrvHitFn>(d2r::rva::SrvHitSubMissiles)(game, missile, hit);
 	if (plog::Sample(g_returnSpawns)) {
-		plog::Info("return missile: spawned on hit, hit %u", g_returnSpawns.load());
+		plog::Info("return missile: spawned on hit, result %d, hit %u", result, g_returnSpawns.load());
 	}
+	return result;
 }
 
 // sdo 46 (PD2 sdo 38): fly back to the thrower and end on reaching them; otherwise the default missile frame.
@@ -244,22 +245,23 @@ static_assert(PierceDamagePercent(9, 20, 20) == 20);
 // shortcut: PD2 queues a timer per explosion with its own RNG and creates srvmissile b (fireexplosion3) only to send
 // and remove it; this creates srvmissile a and b at once with `activation` = the delay and rolls on the owner's seed.
 // Upgrade if the explosions show at the wrong time or fireexplosion3 lingers in play.
-void SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept {
+// Returns srvhit 4's result: 3 (PD2's, deal the arrow's damage), or 1 without a missile row (PD2's early exits).
+auto SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr) {
-		return;
+		return 1;
 	}
-	d2r::Engine<MissileSrvHitFn>(SrvHitSubMissiles)(game, missile, hit);
+	const int32_t result = d2r::Engine<MissileSrvHitFn>(SrvHitSubMissiles)(game, missile, hit);
 	Unit* owner = hit == nullptr ? nullptr : d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
 	if (owner == nullptr) {
-		return;
+		return result;
 	}
 	const uint32_t dataFlag = d2r::DataFlag(game);
 	// PD2 takes the skill from the missile row, so a monster's Exploding Arrow spreads too.
 	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
 		dataFlag, At<int32_t>(missile, UnitClassId));
 	if (row == nullptr) {
-		return;
+		return result;
 	}
 	const int32_t skillId = At<int16_t>(row, MsSkill);
 	const int32_t level = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileLevel)(missile);
@@ -267,18 +269,18 @@ void SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept {
 	const uint8_t* explode = d2r::api.getSkillRecord(dataFlag, ExplodingArrow);
 	int32_t hx = 0, hy = 0, ox = 0, oy = 0;
 	if (skill == nullptr || explode == nullptr || !d2r::UnitXY(hit, &hx, &hy) || !d2r::UnitXY(owner, &ox, &oy)) {
-		return;
+		return result;
 	}
 	int32_t count = d2r::EvalCalc(game, owner, skill, SkCalc2, skillId, level);
 	if (count <= 0) {
-		return;
+		return result;
 	}
 	count = count > MaxExplosions ? MaxExplosions : count;
 	const Vec h {static_cast<double>(hx), static_cast<double>(hy)};
 	const Vec d = Vec {static_cast<double>(ox), static_cast<double>(oy)} - h;  // toward the owner
 	const double length = std::sqrt(d.x * d.x + d.y * d.y);
 	if (length == 0.0) {
-		return;
+		return result;
 	}
 	const Vec n = d * (1.0 / length), side {-n.y, n.x};
 	const Vec base = h - n * d2r::EvalCalc(game, owner, skill, SkCalc3, skillId, level);
@@ -312,6 +314,7 @@ void SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept {
 		plog::Info("explode spread: skill %d level %d: %d of %d explosions from frame %d, hit %u", skillId, level,
 		           created, count, start, g_spreadHits.load());
 	}
+	return result;
 }
 
 // dmg 20 (PD2 dmg 17, Multiple Shot arrows and bolts): each further unit a piercing missile hits takes DmgCalc1 percent
@@ -392,7 +395,8 @@ auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	}
 	const int32_t skillId = At<int16_t>(row, MsSkill);
 	const int32_t level = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileLevel)(missile);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(hit, state, 1);
+	// No RemoveSkillState: like PD2's timed-state helper (0x1036d7d0), NewStateList extends a same-level list and
+	// refuses a lower level, so a weaker cloud never replaces a stronger one.
 	d2r::StateListRequest request {owner, hit, skillId, level, frames, -1, 0, state,
 	                               d2r::Engine<void (*)()>(SkillStateExpired)};
 	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);

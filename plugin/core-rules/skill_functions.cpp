@@ -748,7 +748,7 @@ auto SrvDoPoisonDagger(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 	const int32_t missile = At<int16_t>(skill, SkSrvMissileA);
 	if (!d2r::ValidMissile(dataFlag, missile)) {
 		plog::Warn("poison dagger: skill %d has no valid srvmissilea (row %d)", skillId, missile);
-		return 1;
+		return ran;
 	}
 	uint8_t damage[0x180] {};  // the damage block size Leap's knockback uses (LeapKnockback)
 	d2r::Engine<void (*)(Unit*, uint8_t*, int32_t, int32_t) noexcept>(ElementalDamage)(unit, damage, skillId, level);
@@ -1097,14 +1097,14 @@ const SlotFunction Functions[] = {
 	{CltDo, 116, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoDoubleThrow)), "double throw"},
 	// Desecrate's server half is the router's (PD2's srvdo 161 has no free slot); cltdo 101 is D2R's
 	{CltDo, 121, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoDesecrate)), "desecrate"},
-	{MissileSrvHit, 66, reinterpret_cast<const void*>(static_cast<MissileSrvHitBounceFn>(SrvHitBounce)), "bounce"},
+	{MissileSrvHit, 66, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitBounce)), "bounce"},
 	{MissileSrvDmg, 21, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgFirstHit)), "first hit"},
 	{MissileSrvHit, 63, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitExplodeSpread)), "explode spread"},
 	// PD2's dmg 17 is D2R's Ring of Fire; ours takes 20 (18 and 19 stay free for PD2's own) and the data points there.
 	{MissileSrvDmg, 20, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgPierceFalloff)), "pierce falloff"},
 	// Poison Dagger: srvdo 164 goes through the router (190); D2R fills cltdo 102
 	{CltDo, 122, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoPoisonDagger)), "poison dagger"},
-	{MissileSrvHit, 61, reinterpret_cast<const void*>(static_cast<MissileSrvHitBounceFn>(SrvHitState)), "state hit"},
+	{MissileSrvHit, 61, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitState)), "state hit"},
 };
 
 }  // namespace

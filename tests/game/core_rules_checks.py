@@ -274,7 +274,7 @@ def poison_dagger_clouds(ctx):
     casts = DAGGER.findall(_log(ctx))
     if not casts:
         ctx.skip("no Poison Dagger hit in the log yet (stab a monster out of town, then run again)")
-    level, created, row, param3, poison, length = (int(v) for v in casts[0])
+    level, created, row, param3, poison, length = (int(v) for v in casts[-1])
     assert row == _rows("missiles").index("poisondaggercloud"), f"cloud row {row}"
     assert param3 == 10 and created == 11, f"{created} clouds for Param3 {param3}, PD2 makes 11"
     assert poison >= _elem_min(level), f"level {level}: poison {poison} under PD2's EMin {_elem_min(level)}"
