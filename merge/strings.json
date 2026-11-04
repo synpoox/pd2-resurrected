@@ -1433,6 +1433,9 @@
     "StrSkillPoisonDamagePercent": [51360, "skills.json"],
     "OpenWoundsDamagePerSecond": [51361, "skills.json"],
     "PartyOpenWoundsDamagePerSecond": [51362, "skills.json"],
-    "ThornsOpenWoundsDamagePerSecond": [51363, "skills.json"]
+    "ThornsOpenWoundsDamagePerSecond": [51363, "skills.json"],
+    "hiredesc_ascd": [51364, "ui.json"],
+    "hiredesc_ascl": [51365, "ui.json"],
+    "hiredesc_parw": [51366, "ui.json"]
   }
 }

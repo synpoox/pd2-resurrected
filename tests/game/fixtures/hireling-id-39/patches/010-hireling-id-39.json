@@ -1,0 +1,3 @@
+{"ops": [
+  {"op": "set", "table": "hireling", "where": {"Version": "100", "Id": "0"}, "bank": "excel", "set": {"Id": "39"}}
+]}
