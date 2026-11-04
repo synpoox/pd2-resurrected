@@ -2,9 +2,10 @@
 
     python tools/pd2_extract.py [--install DIR]
 
-Refuses an install whose archives differ from pd2-baseline.json. Writes every file of pd2data.mpq and the class skill
-icon sheets of pd2assets.mpq to pd2-data/data/... (lower-case paths, forward slashes), then pd2-data/baseline.json last,
-a copy of the baseline it was checked against, which pd2_merge reads to refuse a stale extract.
+Refuses an install whose archives differ from pd2-baseline.json. Writes every file of pd2data.mpq, the class skill
+icon sheets and the DT1 tiles of pd2assets.mpq and the DS1 maps of pd2maps.mpq (ADR 0002 amendment) to
+pd2-data/data/... (lower-case paths, forward slashes), then pd2-data/baseline.json last, a copy of the baseline it was
+checked against, which pd2_merge reads to refuse a stale extract.
 """
 from __future__ import annotations
 
@@ -19,8 +20,9 @@ from pathlib import Path
 import mpq
 
 ROOT = Path(__file__).resolve().parent.parent
-# archive -> the files taken from it (lower-case path pattern). shortcut: art only as the asset pipeline needs it
-EXTRACT = {"pd2data.mpq": "*", "pd2assets.mpq": "data/global/ui/spells/??skillicon.dc6"}
+# archive -> the files taken from it (lower-case path patterns). shortcut: art only as the asset pipeline needs it
+EXTRACT = {"pd2data.mpq": ["*"], "pd2assets.mpq": ["data/global/ui/spells/??skillicon.dc6", "data/global/tiles/*.dt1"],
+           "pd2maps.mpq": ["data/global/tiles/*.ds1"]}
 
 
 def sha256(path: Path) -> str:
@@ -57,11 +59,11 @@ def extract(install: Path, out: Path, baseline_file: Path) -> int:
     if out.exists():
         shutil.rmtree(out)
     count = 0
-    for archive, pattern in EXTRACT.items():
+    for archive, patterns in EXTRACT.items():
         a = mpq.Archive(install / archive)
         for name in a.names():
             rel = name.replace("\\", "/").lower()
-            if not fnmatch.fnmatchcase(rel, pattern):
+            if not any(fnmatch.fnmatchcase(rel, p) for p in patterns):
                 continue
             dest = out / rel
             dest.parent.mkdir(parents=True, exist_ok=True)

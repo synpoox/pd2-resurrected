@@ -1,0 +1,632 @@
+# PD2 name	id	name (append-only, ADR 0003; id '-': left out, then why)
+<reserved>	-	PD2's blank row for a 1.13c engine object (D2R's row at this id)
+<reserved>#2	-	PD2's blank row for a 1.13c engine object (D2R's row at this id)
+<reserved>#3	-	PD2's blank row for a 1.13c engine object (D2R's row at this id)
+<reserved>#4	-	PD2's blank row for a 1.13c engine object (D2R's row at this id)
+<reserved>#5	-	PD2's blank row for a 1.13c engine object (D2R's row at this id)
+<reserved>#6	-	PD2's blank row for a 1.13c engine object (D2R's row at this id)
+<reserved>#7	-	PD2's blank row for a 1.13c engine object (D2R's row at this id)
+<reserved>#8	-	PD2's blank row for a 1.13c engine object (D2R's row at this id)
+<reserved>#9	-	PD2's blank row for a 1.13c engine object (D2R's row at this id)
+<reserved>#10	-	PD2's blank row for a 1.13c engine object (D2R's row at this id)
+<reserved>#11	-	PD2's blank row for a 1.13c engine object (D2R's row at this id)
+Dummy	0	Null
+Casket	1	Casket5
+Shrine	2	DeerShrine
+Casket#2	3	Casket6
+LargeUrn	4	Urn1
+chest	5	LargeChestR
+chest#2	6	LargeChestL
+Barrel	7	Barrel
+TowerTome	8	TowerTome
+Urn	9	Urn2
+Dummy#2	10	Bench
+Barrel#2	11	BarrelExploding
+Dummy#3	12	Fountain
+Door	13	DoorGateLeft
+Door#2	14	DoorGateRight
+Door#3	15	DoorWoodenLeft
+Door#4	16	DoorWoodenRight
+StoneAlpha	17	StoneAlpha
+StoneBeta	18	StoneBeta
+StoneGamma	19	StoneGamma
+StoneDelta	20	StoneDelta
+StoneLambda	21	StoneLambda
+StoneTheta	22	StoneTheta
+Door#5	23	DoorCourtyardDoubleLeft
+Door#6	24	DoorCourtyardDoubleRight
+Door#7	25	DoorCathedralDouble
+Gibbet	26	Gibbet
+Door#8	27	DoorMonasteryDoubleRight
+HoleAnim	28	HoleInGround
+Dummy#4	29	Brazier
+Inifuss	30	InifussTree
+Dummy#5	31	BloodFountain
+Dummy#6	32	CrucifixLarge1
+Dummy#7	33	Candles1
+Dummy#8	34	Candles2
+Dummy#9	35	Standard1
+Dummy#10	36	Standard2
+Dummy#11	37	TikiTorch1
+Dummy#12	38	WallTorch1
+fire	39	RogueBonfire
+Dummy#13	40	River1
+Dummy#14	41	River2
+Dummy#15	42	River3
+Dummy#16	43	River4
+Dummy#17	44	River5
+AmbientSound	45	AmbientSound
+Crate	46	Crate
+Door#9	47	AndarielDoor
+Dummy#18	48	RogueTorch1
+Dummy#19	49	RogueTorch2
+Casket#3	50	Casket1
+Casket#4	51	Casket2
+Urn#2	52	Urn3
+Casket#5	53	Casket4
+RogueCorpse	54	RogueCorpse1
+RogueCorpse#2	55	RogueCorpse2
+RogueCorpse#3	56	RogueRollingCorpse1
+CorpseOnStick	57	RogueStakedCorpse1
+CorpseOnStick#2	58	RogueStakedCorpse2
+Portal	59	TownPortal
+Portal#2	60	PortalPermanent
+Dummy#20	61	StoneSoundOnly
+Door#10	62	DoorSmallCathedralLeft
+Door#11	63	DoorSmallCathedralRight
+Door#12	64	DoorWoodenLeft2
+Dummy#21	65	RiverSoundOnly1
+Dummy#22	66	RiverSoundOnly2
+Dummy#23	67	Ripple1
+Dummy#24	68	Ripple2
+Dummy#25	69	Ripple3
+Dummy#26	70	Ripple4
+Dummy#27	71	ForestNight1
+Dummy#28	72	ForestNight2
+Dummy#29	73	YetiDung
+TrappDoor	74	Trapdoor
+Door#13	75	DockDoor
+Dummy#30	76	SewerDrip
+Shrine#2	77	ShrineAltar
+Dummy#31	78	Town1Ambient
+Casket#6	79	Casket3
+Obelisk	80	Obelisk1
+Shrine#3	81	ForestAltar
+Dummy#32	82	BubblingBloodPool
+Shrine#4	83	HornShrine
+Shrine#5	84	HealingWell
+Shrine#6	85	BullShrine
+Dummy#33	86	SteleShrine
+Chest3	87	TombChest1
+Chest3#2	88	TombChest2
+Sarcophagus	89	MummyCasket
+Obelisk#2	90	Obelisk2
+Door#14	91	TombDoorLeft
+Door#15	92	TombDoorRight
+Shrine#7	93	InnerHellManaShrine1
+LargeUrn#2	94	Urn4
+LargeUrn#3	95	Urn5
+Shrine#8	96	InnerHellHealthShrine1
+Shrine#9	97	InnerHellMagicShrine1
+Door#16	98	TombDoorLeft2
+Door#17	99	TombDoorRight2
+Duriel's Lair	100	DurielPortal
+Dummy#34	101	Brazier3
+Dummy#35	102	FloorBrazier
+Dummy#36	103	Flies
+ArmorStand	104	ArmorStand1
+ArmorStand#2	105	ArmorStand2
+WeaponRack	106	WeaponRack1
+WeaponRack#2	107	WeaponRack2
+Malus	108	Malus
+Shrine#10	109	PalaceShrine
+not used	110	BarPatronDrinker
+well	111	Fountain1
+not used#2	112	BarPatronGesturer
+well#2	113	Fountain2
+not used#3	114	BarPatronTurner
+well#3	115	Fountain3
+Shrine#11	116	SnakeWomanShrine
+Dummy#37	117	JungleBrazier
+Well#4	118	Fountain4
+Waypoint	119	WaypointOutsideAct1
+Dummy#38	120	ShrineHealthDungeon
+jerhyn	121	JerhynPlaceholder1
+jerhyn#2	122	JerhynPlaceholder2
+Shrine#12	123	InnerHellMagicShrine2
+Shrine#13	124	InnerHellMagicShrine3
+hidden stash	125	InnerHellObject1
+skull pile	126	InnerHellObject2
+hidden stash#2	127	InnerHellObject3
+hidden stash#3	128	OuterHellObject1
+Door#18	129	HiddenDoor2
+Well#5	130	Fountain5
+Dummy#39	131	VileDoggieShow
+Well#6	132	Fountain6
+shrine#14	133	ShrineMagicArcaneSanctuary1
+shrine#15	134	DesertShrine00
+shrine#16	135	DesertShrine01
+shrine#17	136	DesertShrine02
+Well#7	137	Fountain7
+Well#8	138	Fountain8
+chest#3	139	ChestOutdoor1
+chest#4	140	ChestOutdoor2
+chest#5	141	ChestOutdoor3
+jug	142	JugOutdoor1
+jug#2	143	JugOutdoor2
+chest#6	144	ChestOutdoor4
+Waypoint#2	145	InnerHellWaypoint
+chest#7	146	Chest2
+chest#8	147	Chest3
+chest#9	148	Chest4
+taintedsunaltar	149	TaintedSunShrine
+shrine#18	150	DesertShrine03
+shrine#19	151	DesertShrine04
+orifice	152	SevenTombsReceptacle
+Door#19	153	DurielsDoor
+corpse	154	DeadPalaceGuard
+hidden stash#4	155	Rock
+Waypoint#3	156	WaypointAct2
+Waypoint#4	157	WaypointInsideAct1
+skeleton	158	Corpse3
+hidden stash#5	159	HiddenStash
+fire#2	160	FireSmall
+fire#3	161	FireMedium
+fire#4	162	FireLarge
+hiding spot	163	HidingSpot
+Shrine#20	164	ManaWell1
+Shrine#21	165	ManaWell2
+Shrine#22	166	ManaWell3
+Shrine#23	167	ManaWell4
+Shrine#24	168	ManaWell5
+hollow log	169	Log
+Shrine#25	170	JungleHealWell
+skeleton#2	171	CorpseSkeleton
+Shrine#26	172	ShrineHealth
+Shrine#27	173	ShrineMana
+loose rock	174	RockC
+loose boulder	175	RockD
+chest#10	176	Chest1B
+chest#11	177	Chest2B
+GuardCorpse	178	GuardOnAStick
+bookshelf	179	Bookshelf1
+bookshelf#2	180	Bookshelf2
+chest#12	181	JungleChest
+coffin	182	DesertCoffin
+chest#13	183	JungleChest2
+Shrine#28	184	JungleShrine2
+stash	185	JunglePillar0
+stash#2	186	JunglePillar1
+stash#3	187	JunglePillar2
+stash#4	188	JunglePillar3
+Dummy#40	189	CainPortal
+Shrine#29	190	JungleShrine3
+Shrine#30	191	JungleShrine4
+teleport pad	192	TeleportPad1
+LamTome	193	LamEsensTome
+stair	194	UnfoldingStairLeft
+stair#2	195	UnfoldingStairRight
+a trap	196	FloorTrap
+Shrine#31	197	JungleShrine5
+chest#14	198	Chest3B
+Shrine#32	199	MephistoShrine1
+Shrine#33	200	MephistoShrine2
+Shrine#34	201	MephistoShrine3
+Shrine#35	202	MephistoShrine4
+stash#5	203	MephistoPillar1
+stash#6	204	MephistoPillar2
+stash#7	205	MephistoPillar3
+Shrine#36	206	MephistoShrine5
+dummy#41	207	Rock1Act3
+Basket	208	Basket1
+Basket#2	209	Basket2
+Dummy#42	210	WaterLog1Act3
+Dummy#43	211	WaterRockGirl1Act3
+Dummy#44	212	BubblesAct3
+Dummy#45	213	WaterLog2Act3
+Dummy#46	214	WaterRock1Act3
+Dummy#47	215	WaterRockGirl2Act3
+Dummy#48	216	WaterRock2Act3
+Dummy#49	217	WaterLog3Act3
+Dummy#50	218	WebTree1
+Dummy#51	219	WebTree2
+Dummy#52	220	WebTree3
+Dummy#53	221	WebTree4
+pillar	222	Pillar2
+cocoon	223	Cocoon1
+cocoon#2	224	Cocoon2
+skullpile	225	SkullPile
+Shrine#37	226	HellShrine1
+dummy#54	227	WaterRockGirl3Act3
+dummy#55	228	BigLogAct3
+door#20	229	SlimeDoor1
+door#21	230	SlimeDoor2
+Shrine#38	231	OuterShrineHell2
+Shrine#39	232	OuterShrineHell3
+pillar#2	233	HellObject2
+dummy#56	234	BigLogAct3Se
+dummy#57	235	BigLogAct3Nw
+Shrine#40	236	HellWell
+Waypoint#5	237	WaypointAct3
+Waypoint#6	238	WaypointOutsideAct4
+body	239	BurnedBody1Act1
+chest#15	240	Chest5
+chest#16	241	Chest6
+chest#17	242	Chest7
+chest#18	243	Chest8
+ratnest	244	SewerRatNest
+body#2	245	BurningBody2Act1
+ratnest#2	246	SewerChest
+bed	247	Bed1Act1
+bed#2	248	Bed2Act1
+manashrine	249	HellManaWell1
+a trap#2	250	ExplodingCow
+gidbinn altar	251	TownAct3GidBInnAltar
+gidbinn	252	GidBInnDecoy
+Dummy#58	253	DiabloLightShaftRight
+Dummy#59	254	DiabloLightShaftLeft
+Dummy#60	255	DiabloStart
+Dummy#61	256	StoolAct1
+Dummy#62	257	Woodpile1Act1
+Dummy#63	258	Woodpile2Act1
+Dummy#64	259	SkeletonSpawnHell
+Shrine#41	260	HolyShrineAct1
+a trap#3	261	FloorTrapDesert
+Shrine#42	262	Act1CathedralShrine
+Shrine#43	263	Act1JailShrine
+Shrine#44	264	Act1JailHealthShrine
+Shrine#45	265	Act1JailManaShrine
+goo pile	266	GooPile
+bank	267	Bank
+wirt's body	268	Wirt
+dummy#65	269	GoldProxy
+corpse#2	270	GuardCorpse2Act2
+corpse#3	271	Corpse1Act3
+corpse#4	272	Corpse2Act3
+Dummy#66	273	Flame1
+hidden stash#6	274	WUmPus
+Shrine#46	275	HealthShrineCavesAct1
+Shrine#47	276	ManaShrineCavesAct1
+Shrine#48	277	MagicShrinesCavesAct1
+Shrine#49	278	ShrineManaDungeon
+Shrine#50	279	ShrineMagicSewer
+Shrine#51	280	ShrineHealthSewer
+Shrine#52	281	ShrineManaSewer
+Shrine#53	282	ShrineMagicSewer2
+dummy#67	283	TorchAct2
+sarcophagus#2	284	TombAct2
+dummy#68	285	Brazier2
+Dummy#69	286	DesertBrazierTall
+Dummy#70	287	DesertBrazierShort
+Waypoint#7	288	WaypointCellar
+bed#3	289	HaremBed
+door#22	290	DesertIronGrateDoorLeft
+door#23	291	DesertIronGrateDoorRight
+door#24	292	DesertWoodenGrateDoorLeft
+door#25	293	DesertWoodenGrateDoorRight
+door#26	294	DesertWoodenDoorLeft
+door#27	295	DesertWoodenDoorRight
+Dummy#71	296	TombWallTorchLeft
+Dummy#72	297	TombWallTorchRight
+portal#3	298	ArcaneSanctuaryPortal
+magic shrine	299	HaremShrine1
+magic shrine#2	300	HaremShrine2
+Dummy#73	301	MaggotShrineHealth
+manashrine#2	302	MaggotShrineMana
+magic shrine#3	303	ShrineMagicArcaneSanctuary2
+teleportation pad	304	TeleportPad2
+teleportation pad#2	305	TeleportPad3
+teleportation pad#3	306	TeleportPad4
+Dummy#74	307	ArcaneRune1
+Dummy#75	308	ArcaneRune2
+Dummy#76	309	ArcaneRune3
+Dummy#77	310	ArcaneRune4
+Dummy#78	311	ArcaneRune5
+Dummy#79	312	ArcaneRune6
+Dummy#80	313	ArcaneRune7
+dead guard	314	HaremGuard1
+dead guard#2	315	HaremGuard2
+dead guard#3	316	HaremGuard3
+dead guard#4	317	HaremGuard4
+eunuch	318	Eunuch
+Dummy#81	319	ShrineArcaneHealth
+manashrine#3	320	ShrineArcaneMana
+Dummy#82	321	PermanentPortal2
+Well#9	322	TombWell
+Waypoint#8	323	SewerWaypoint
+Waypoint#9	324	TravincalWaypoint
+magic shrine#4	325	ShrineMagicSewer3
+dead body	326	SewerDungeonBody
+dummy#83	327	SewerTorch
+dummy#84	328	KurastTorch
+chest#19	329	TravincalChestLargeLeft
+chest#20	330	TravincalChestLargeRight
+chest#21	331	TravincalChestMedLeft
+chest#22	332	TravincalChestMedRight
+chest#23	333	SewerChestLargeLeft
+chest#24	334	SewerChestTallLeft
+chest#25	335	SewerChestMedRight
+chest#26	336	SewerChestTallRight
+Steeg Stone	337	SteegStone
+Guild Vault	338	GuildVault
+Trophy Case	339	TrophyCase
+Message Board	340	MessageBoard
+Dummy#85	341	MephistoBridge
+portal#4	342	HellGate
+Shrine#54	343	ShrineManaKurast
+Shrine#55	344	ShrineHealthKurast
+Dummy#86	345	Hellfire1
+Dummy#87	346	Hellfire2
+Dummy#88	347	Hellfire3
+Dummy#89	348	HellLava1
+Dummy#90	349	HellLava2
+Dummy#91	350	HellLava3
+Dummy#92	351	HellLight1
+Dummy#93	352	HellLight2
+Dummy#94	353	HellLight3
+chest#27	354	HoradricCubeChest
+chest#28	355	HoradricScrollChest
+chest#29	356	StaffOfKingsChest
+Tome	357	ArcaneTome
+fire#5	358	HellBrazier1
+fire#6	359	HellBrazier2
+RockPIle	360	DungeonRockPile
+magic shrine#5	361	DungeonShrineMagic
+basket#3	362	DungeonBasket
+HungSkeleton	363	OuterHellSkeleton
+Dummy#95	364	DungeonGuy
+casket#7	365	Act3DungeonCasket
+sewer stairs	366	BeneathTheCityStairs
+sewer lever	367	BeneathTheCityLever
+darkwanderer	368	DarkWanderStart
+dummy#96	369	TrappedSoulPlaceholder
+Dummy#97	370	JungleTorch2
+chest#30	371	ForgottenTowerChest
+BoneChest	372	HellBonePile
+Dummy#98	373	SkeletonSpawnHell2
+Dummy#99	374	Fog
+Dummy#100	375	HellBridge
+Hellforge	376	SoulStoneForge
+Guild Portal	377	GuildPortal
+Dummy#101	378	HratliStart
+Dummy#102	379	HratliEnd
+TrappedSoul	380	JackInTheBox1
+TrappedSoul#2	381	JackInTheBox2
+Dummy#103	382	NatalyaStart
+TrappedSoul#3	383	DamnedV1
+TrappedSoul#4	384	DamnedV2
+Dummy#104	385	CainAct1Start
+Dummy#105	386	MephistoDoor
+chest#31	387	ArcaneChest1
+casket#8	388	ArcaneCasket1
+chest#32	389	ArcaneChest2
+chest#33	390	ArcaneChest3
+chest#34	391	ArcaneChest4
+Seal	392	DiabloSeal1
+Seal#2	393	DiabloSeal2
+Seal#3	394	DiabloSeal3
+Seal#4	395	DiabloSeal4
+Seal#5	396	DiabloSeal5
+chest#35	397	ConsolationChest
+Waypoint#10	398	WaypointAct4Town
+fissure	399	Fissure
+Dummy#106	400	HellBrazier3
+Dummy#107	401	HellSmoke
+Waypoint#11	402	WaypointDesertValley
+fire#7	403	HellBrazier4
+compellingorb	404	CompellingOrb
+chest#36	405	KhalimHeartChest
+chest#37	406	KhalimBrainChest
+chest#38	407	KhalimEyeChest
+Dummy#108	408	PandemoniumBrazier1
+Dummy#109	409	PandemoniumBrazier2
+Siege Control	410	SiegeControlEr
+ptox	411	TownTorch
+pyox	412	BurningPit
+chestR	413	ClothChestR
+Shrine3wilderness	414	ShrineWildernessExp1
+Shrine2wilderness	415	ShrineWildernessExp2
+hiddenstash	416	StoneStash
+flag wilderness	417	FlagExp
+barrel wilderness	418	Barrel2
+barrel wilderness#2	419	Barrel3
+woodchestL	420	WoodChestL
+Shrine3wilderness#2	421	ShrineAltarExp
+manashrine#4	422	ShrineManaExp
+healthshrine	423	ShrineHealthExp
+burialchestL	424	ChestBurIAll
+burialchestR	425	ChestBurialR
+well#10	426	WellExp
+Shrine2wilderness#2	427	ShrineWildernessExp3
+Shrine2wilderness#3	428	ShrineWildernessExp4
+Waypoint#12	429	WaypointExp
+ChestL	430	ClothChestL
+woodchestR	431	WoodChestR
+ChestSL	432	SnowClothChestL
+ChestSR	433	SnowClothChestR
+etorch1	434	ETorch1
+ecfra	435	Ecfra
+ettr	436	ETownTorch
+etorch2	437	ETorchB
+burningbodies	438	EBurningBodies1
+burningpit	439	EBurningPit
+tribal flag	440	EFlag
+eflg	441	EFlg
+chan	442	Chan
+jar1	443	EJar1
+jar2	444	EJar2
+jar3	445	EJar3
+swingingheads	446	ESwing
+pole	447	EPole
+animated skulland rockpile	448	EShit
+gate	449	Gate
+pileofskullsandrocks	450	EStuff2
+hellgate	451	EhGate
+banner 1	452	EBanner1
+banner 2	453	EBanner2
+explodingchest	454	ExplodingChest100
+chest#39	455	SpecialChest100
+deathpole	456	PhallicSymbol100
+Ldeathpole	457	PhallicSymbol101
+Altar	458	InsideAltar
+dummy#110	459	DrehyaInTown
+dummy#111	460	DrehyaOutsideTown
+dummy#112	461	NihlathakInTown
+dummy#113	462	NihlathakOutsideTown
+hidden stash#7	463	IceCaveObject1
+healthshrine#2	464	ShrineHealthIceCave
+manashrine#5	465	ShrineManaIceCave
+evilurn	466	IceCaveEvilUrn
+icecavejar1	467	IceCaveJar1
+icecavejar2	468	IceCaveJar2
+icecavejar3	469	IceCaveJar3
+icecavejar4	470	IceCaveJar4
+icecavejar4#2	471	IceCaveJar5
+icecaveshrine2	472	ShrineMagicIceCave
+cagedwussie1	473	CagedWussie1
+Ancient Statue 3	474	Moe
+Ancient Statue 1	475	Curly
+Ancient Statue 2	476	Larry
+deadbarbarian	477	DeadBarbarian
+clientsmoke	478	ClientSmoke1
+icecaveshrine2#2	479	ShrineMagicIceCave2
+icecave_torch1	480	IceCaveTorch1
+icecave_torch2	481	IceCaveTorch2
+ttor	482	TikiTorch2
+manashrine#6	483	ShrineBaal1
+healthshrine#3	484	ShrineBaal2
+tomb1	485	BaalTomb1
+tomb2	486	BaalTomb2
+tomb3	487	BaalTomb3
+magic shrine#6	488	ShrineBaalMagic
+torch1	489	BaalTorch1
+torch2	490	BaalTorch2
+manashrine#7	491	ShrineBaalMana
+healthshrine#4	492	ShrineBaalHealth
+well#11	493	WellSnowy
+Waypoint#13	494	WaypointBaal
+magic shrine#7	495	ShrineMagicSnow1
+Waypoint#14	496	WaypointWilderness
+magic shrine#8	497	ShrineMagicSnow2
+well#12	498	WellBaal
+magic shrine2	499	ShrineBallMagic2
+object1	500	SnowyGenericName
+woodchestL#2	501	SnowChestL
+woodchestR#2	502	SnowChestR
+magic shrine#9	503	ShrineBaalMagic3
+woodchest2L	504	SnowWoodChestL
+woodchest2R	505	SnowWoodChestR
+swingingheads#2	506	SnowSwingHeads
+debris	507	SnowDebris
+pene	508	BreakableDoor
+magic shrine#10	509	ShrineTempleMagic1
+mrpole	510	MisterPole
+Waypoint#15	511	WaypointIceCave
+magic shrine#11	512	ShrineTempleMagic2
+well#13	513	WellTemple
+torch1#2	514	Torch1Temple
+torch1#3	515	Torch2Temple
+object1#2	516	Object1Temple
+object2	517	Object2Temple
+mrbox	518	Box1
+well#14	519	WellIceCave
+magic shrine#12	520	ShrineTempleMagic3
+healthshrine#5	521	ShrineTempleHealth
+manashrine#8	522	ShrineTempleMana
+red light	523	RedLight
+tomb1L	524	TombBaal1
+tomb2L	525	TombBaal2
+tomb3L	526	TombBaal3
+ubub	527	Bubbles1
+sbub	528	Bubbles2
+tomb1#2	529	TombBaal4
+tomb1L#2	530	TombBaal5
+tomb2#2	531	TombBaal6
+tomb2L#2	532	TombBaal7
+tomb3#2	533	TombBaal8
+tomb3L#2	534	TombBaal9
+mrbox#2	535	Box2
+torch1#4	536	TorchBaal1
+torch2#2	537	TorchBaal2
+candles	538	MoreCandles
+Waypoint#16	539	TempleWaypoint
+deadperson	540	YetAnotherDeadBody
+groundtomb	541	YetAnotherTomb
+Dummy#114	542	LarzukGreetingPlace
+Dummy#115	543	LarzukStandardPlace
+groundtombL	544	GroundTomb
+deadperson2	545	DeadPerson
+ancientsaltar	546	AncientsAltar
+To The Worldstone Keep Level 1	547	AncientsGateway
+eweaponrackR	548	WeaponRackRight
+eweaponrackL	549	WeaponRackLeft
+earmorstandR	550	ArmorStandRight
+earmorstandL	551	ArmorStandLeft
+torch2#3	552	SummitTorch
+funeralpire	553	FuneralPyre
+burninglogs	554	BurningLogs
+stma	555	IceCaveSteam
+deadperson2#2	556	DeadPersonAgain
+Dummy#116	557	MaybeTheLastOne
+fana	558	AnyaYetAgain
+BBQB	559	BBQ
+btor	560	BaalTorch
+Dummy#117	561	InvisibleAncient
+Dummy#118	562	InvisibleBase
+The Worldstone Chamber	563	FinalPortal
+Glacial Caves Level 1	564	SummitDoor
+strlastcinematic	565	ReallyTheLastPortal
+Harrogath	566	NotKiddingLastPortal
+Zoo	567	DummyEx106
+Keeper	568	DummyEx107
+Throne of Destruction	569	DummyEx108
+Dummy#119	570	DummyEx109
+Dummy#120	571	Collision2
+Dummy#121	572	Collision3
+xactportal_red	587	xactportal_red
+xactportal_ghostly	588	xactportal_ghostly
+xactportal_gold	589	xactportal_gold
+empty	590	empty
+BR chest	591	BR chest
+UberAncientStatue1	592	UberAncientStatue1
+UberAncientStatue2	593	UberAncientStatue2
+UberAncientStatue3	594	UberAncientStatue3
+UberAncientAltar	595	UberAncientAltar
+TaintedSunMapEventAltar	596	TaintedSunMapEventAltar
+empty_eventmarker	597	empty_eventmarker
+xactportal_grey	598	xactportal_grey
+xactportal_green	599	xactportal_green
+xactportal_purple	600	xactportal_purple
+zharportal_blue	601	zharportal_blue
+zharportal_red	602	zharportal_red
+ZharTomeObject	603	ZharTomeObject
+preset_placeholder_A	604	preset_placeholder_A
+preset_placeholder_B	605	preset_placeholder_B
+preset_placeholder_C	606	preset_placeholder_C
+preset_placeholder_D	607	preset_placeholder_D
+preset_placeholder_E	608	preset_placeholder_E
+preset_placeholder_F	609	preset_placeholder_F
+preset_placeholder_G	610	preset_placeholder_G
+preset_placeholder_H	611	preset_placeholder_H
+preset_placeholder_I	612	preset_placeholder_I
+preset_placeholder_J	613	preset_placeholder_J
+ForceShardAltar	614	ForceShardAltar
+gidbinn altar on	615	gidbinn altar on
+blocker_teleport_xy	616	blocker_teleport_xy
+blocker_teleport_x	617	blocker_teleport_x
+blocker_teleport_y	618	blocker_teleport_y
+bossblocker_x	619	bossblocker_x
+bossblocker_y	620	bossblocker_y
+bossblocker_x_warp	621	bossblocker_x_warp
+bossblocker_y_warp	622	bossblocker_y_warp
+PVPTome1	623	PVPTome1
+Sacrifice Altar	624	Sacrifice Altar
+xactdarkportal_grey	625	xactdarkportal_grey
+LucionChest	626	LucionChest
+PVPTome2	627	PVPTome2
+InactiveStoneDesertShrine	628	InactiveStoneDesertShrine
+InactiveGidbinn	629	InactiveGidbinn
+GreenBrazier	630	GreenBrazier
+automap_door_L	631	automap_door_L
+automap_door_R	632	automap_door_R
+Trophy Case#2	633	Trophy Case

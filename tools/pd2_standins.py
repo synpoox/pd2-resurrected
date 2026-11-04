@@ -45,6 +45,7 @@ PD2_ONLY = {
     "misc": {"pSpell": _nums(12, 13)},
     "properties": {f"func{i}": _nums(25) for i in range(1, 8)},
     "states": {"remfunc": _nums(12)},
+    "objects": {"OperateFn": _nums(range(75, 81))},  # PD2's portals, altars and tomes (LP1)
 }
 
 
