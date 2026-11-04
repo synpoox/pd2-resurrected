@@ -198,6 +198,52 @@ void SrvDmgFirstHit(Game* game, Unit* missile, Unit* hit, uint8_t* damage) noexc
 	}
 }
 
+// --- Psychic Hammer (PD2 pSrvDmgFunc 15 -> 22; docs/research/w31-dragon-flight-psychic-hammer.md) -----------------
+namespace {
+
+std::atomic<uint32_t> g_chainFalloffs {0};
+std::atomic<uint32_t> g_chainFalloffCuts {0};
+
+// PD2 dmg 15's cut: calc2 percent per hit already made, (calc1 - bounces left) of them; at 100% or more, none left.
+// PD2 multiplies in 32 bits; 64 here, the same below 2^31.
+constexpr auto ChainFalloffMagic(int32_t magic, int32_t hits, int32_t bounces, int32_t step) noexcept -> int32_t {
+	const int64_t cut = static_cast<int64_t>(hits - bounces) * step;
+	return cut > 99 ? 0 : static_cast<int32_t>((100 - cut) * magic / 100);
+}
+static_assert(ChainFalloffMagic(1000, 3, 3, 20) == 1000);  // the first hit: no cut
+static_assert(ChainFalloffMagic(1000, 3, 1, 20) == 600);   // the third: 40% less
+static_assert(ChainFalloffMagic(1000, 6, 1, 20) == 0);     // the sixth: 100%, nothing left
+static_assert(ChainFalloffMagic(999, 2, 1, 20) == 799);    // truncated
+
+}  // namespace
+
+// dmg 22 (PD2 15, ProjectDiablo.dll 0x103a6c90, Psychic Hammer): each unit the chain hits after the first takes calc2
+// percent less magic damage per earlier hit, counted as calc1 (the skill's hits) - the missile's bounces left (D2Common
+// #11018, D2R's MissileBounces). D2R's collision (0x4639a0) calls it when srvhit 12 returns 3 (bit 2: deal the damage).
+void SrvDmgChainFalloff(Game* game, Unit* missile, Unit* target, uint8_t* damage) noexcept {
+	using namespace d2r::rva;
+	if (game == nullptr || missile == nullptr || target == nullptr || damage == nullptr) {
+		return;
+	}
+	Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
+	int32_t skillId = 0, level = 0;
+	const uint8_t* skill = MissileSkillRecord(game, missile, &skillId, &level);
+	if (owner == nullptr || skill == nullptr) {
+		return;
+	}
+	const int32_t hits = d2r::EvalCalc(game, owner, skill, SkCalc1, skillId, level);
+	const int32_t bounces = d2r::Engine<MissileIntFn>(MissileBounces)(missile);
+	const int32_t step = d2r::EvalCalc(game, owner, skill, SkCalc2, skillId, level);
+	auto* magic = reinterpret_cast<int32_t*>(damage + DmgMagic);
+	const int32_t before = *magic;
+	*magic = ChainFalloffMagic(before, hits, bounces, step);
+	const bool sampleHit = plog::Sample(g_chainFalloffs);
+	if ((*magic != before && plog::Sample(g_chainFalloffCuts)) || sampleHit) {
+		plog::Info("chain falloff: skill %d level %d: calc1 %d, bounces %d, calc2 %d: magic %d -> %d, hit %u", skillId,
+		           level, hits, bounces, step, before, *magic, g_chainFalloffs.load());
+	}
+}
+
 // --- W6 Amazon group -----------------------------------------------------------------------------------------------
 namespace {
 
@@ -835,6 +881,36 @@ auto FragmentParams(Unit* owner, Unit* missile, int32_t sub) noexcept -> d2r::Mi
 
 }  // namespace
 
+// --- Blessed Hammer (W20, docs/research/w20-blessed-hammer.md) ------------------------------------------------------
+namespace {
+
+std::atomic<uint32_t> g_hammerFrames {0};
+std::atomic<uint32_t> g_hammerHits {0};
+std::atomic<uint32_t> g_hammerKept {0};
+std::atomic<uint32_t> g_hammerClientFrames {0};
+
+constexpr uint32_t HammerCollisionMask = 0x180;  // players and monsters only: no wall stops the hammer
+
+// Both halves set the path's mask before the default frame, as PD2 does every frame; null without missile data or
+// a path (PD2 then skips the frame).
+auto HammerPath(Unit* missile) noexcept -> uint8_t* {
+	if (missile == nullptr || At<uint8_t*>(missile, d2r::rva::UnitData) == nullptr) {
+		return nullptr;
+	}
+	uint8_t* path = At<uint8_t*>(missile, d2r::rva::UnitPath);
+	if (path != nullptr) {
+		d2r::Engine<void (*)(uint8_t*, uint32_t) noexcept>(d2r::rva::PathSetCollisionMask)(path, HammerCollisionMask);
+	}
+	return path;
+}
+
+auto LastHitId(Unit* missile) noexcept -> uint32_t {
+	const uint8_t* data = At<uint8_t*>(missile, d2r::rva::UnitData);
+	return data != nullptr ? At<uint32_t>(data, d2r::rva::MdLastHitId) : 0xffffffffu;
+}
+
+}  // namespace
+
 // shit 69 (PD2 34, 0x103a7c70; bladefragment1): a fragment of generation cHitPar3 or more only deals its damage (3).
 // Otherwise a wall hit bounces it (WallBounce, HitSubMissile1) and returns 0; a unit hit splits it with Param1% chance
 // into sHitPar1 - 1 fragments sHitPar2 directions apart from a random one, with the parent's frames less sHitPar3 (0
@@ -973,13 +1049,63 @@ auto CltHitBladeFragment(Unit* missile, Unit* hit) noexcept -> int32_t {
 	return 1;
 }
 
+// sdo 47 (PD2 40, ProjectDiablo.dll 0x103a7410): srvdo 1 with the path colliding only with units; a frame that ends
+// on a collision (2) with range frames left goes on (1).
+auto SrvDoBlessedHammer(Game* game, Unit* missile) noexcept -> int64_t {
+	using namespace d2r::rva;
+	uint8_t* path = game != nullptr ? HammerPath(missile) : nullptr;
+	if (path == nullptr) {
+		return 0;
+	}
+	const uint32_t hitBefore = LastHitId(missile);
+	int64_t result = d2r::Engine<MissileSrvDoFn>(MissileSrvDoDefault)(game, missile);
+	// shortcut: reads the missile after srvdo 1, which ends a missile by its mode (the unit is freed later in the
+	// frame, as in 1.13c); move the reads before the call if a hammer end ever crashes here
+	const int32_t framesLeft = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileSrvFrames)(missile);
+	if (result == 2 && framesLeft > 0) {
+		result = 1;
+		if (plog::Sample(g_hammerKept)) {
+			plog::Info("blessed hammer: collision kept flying, %d frames left, kept %u", framesLeft, g_hammerKept.load());
+		}
+	}
+	const uint32_t hitAfter = LastHitId(missile);
+	if (hitAfter != hitBefore && hitAfter != 0xffffffffu && plog::Sample(g_hammerHits)) {
+		plog::Info("blessed hammer: hit unit type %d id %u at %u,%u, %d frames left, hit %u",
+		           At<int32_t>(At<uint8_t*>(missile, UnitData), MdLastHitType), hitAfter, At<uint16_t>(path, 0x2),
+		           At<uint16_t>(path, 0x6), framesLeft, g_hammerHits.load());
+	}
+	if (plog::Sample(g_hammerFrames)) {
+		plog::Info("blessed hammer: missile row %d at %u,%u mask %#x, %d frames left, result %lld, frame %u",
+		           At<int32_t>(missile, UnitClassId), At<uint16_t>(path, 0x2), At<uint16_t>(path, 0x6),
+		           At<uint32_t>(path, PathCollisionMask), framesLeft, static_cast<long long>(result),
+		           g_hammerFrames.load());
+	}
+	return result;
+}
+
+// cdo 80 (PD2 72, ProjectDiablo.dll 0x103a6300): the client's copy flies the same path: cltdo 1 with the same mask.
+void CltDoBlessedHammer(Unit* missile, int32_t a2) noexcept {
+	uint8_t* path = HammerPath(missile);
+	if (path == nullptr) {
+		return;
+	}
+	d2r::Engine<MissileCltDoFn>(d2r::rva::MissileCltDoDefault)(missile, a2);
+	if (plog::Sample(g_hammerClientFrames)) {
+		plog::Info("blessed hammer client: missile row %d at %u,%u mask %#x, frame %u",
+		           At<int32_t>(missile, d2r::rva::UnitClassId), At<uint16_t>(path, 0x2), At<uint16_t>(path, 0x6),
+		           At<uint32_t>(path, d2r::rva::PathCollisionMask), g_hammerClientFrames.load());
+	}
+}
+
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size, "returns spawned %u, caught %u, bounces %u, first hits %u, spread hits %u, explosions %u, "
 	              "falloff hits %u, state hits %u, bolt hits %u, holy light client hits %u, fist delay client hits %u, "
-	              "charge explodes %u, charge bolt hits %u, fragment walls %u, splits %u, damage %u, client walls %u",
+	              "charge explodes %u, charge bolt hits %u, hammer frames %u, hits %u, kept %u, client frames %u, "
+	              "chain falloffs %u, fragment walls %u, splits %u, damage %u, client walls %u",
 	              g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(), g_firstHits.load(),
 	              g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load(), g_stateHits.load(),
 	              g_boltHits.load(), g_holyLightHits.load(), g_fistDelayHits.load(), g_chargeExplodes.load(),
-	              g_chargeBoltHits.load(), g_fragmentWalls.load(), g_fragmentSplits.load(), g_fragmentDamage.load(),
-	              g_fragmentClientWalls.load());
+	              g_chargeBoltHits.load(), g_hammerFrames.load(), g_hammerHits.load(), g_hammerKept.load(),
+	              g_hammerClientFrames.load(), g_chainFalloffs.load(), g_fragmentWalls.load(), g_fragmentSplits.load(),
+	              g_fragmentDamage.load(), g_fragmentClientWalls.load());
 }

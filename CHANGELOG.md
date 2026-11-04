@@ -7,8 +7,11 @@ private-multiplayer release a build may break characters; each break is noted he
 
 - Blade Fury's blades work as in Project Diablo II: a blade that hits a wall bounces off it as three blades, and a
   blade that hits a monster can split in two, up to three times over.
+- Blessed Hammer works as in Project Diablo II: hammers fly through walls.
 - Fire Bolt, Ice Bolt, Blizzard and Chilling Armor's bolts work as in Project Diablo II: each hit splashes its damage
   onto every monster close to where it lands.
+- Dragon Flight works as in Project Diablo II: it teleports you and kicks in the same moment, and its damage bonus
+  is Project Diablo II's. Psychic Hammer's hammer loses damage with each monster it jumps to, as in Project Diablo II.
 - Gust works as in Project Diablo II: it teleports you, then chills and staggers the monsters around where you land.
 - Hunger works as in Project Diablo II: a werebear eats a corpse for a while of life steal, speed, open wounds and
   deep wounds.

@@ -124,6 +124,9 @@ inline constexpr uint64_t MissileSrvFrames = 0x3bb1e0;  // (missile) -> range fr
 // 1.13c's cdo 69 the same as current == total - 1, D2Common #10737 / #10534)
 inline constexpr uint64_t MissileCltFrames = 0x3bb0f0;
 inline constexpr uint64_t PathSetTargetUnit = 0x342920;  // (path, unit): path +0x70 target unit
+// (path, mask): path +0x64, what the path collides with (1.13c D2Common #11164, +0x50); missile create 0x5371a0 sets it
+// from CollideType's row of the mask table 0x2391378 (CollideType 3: 0x184)
+inline constexpr uint64_t PathSetCollisionMask = 0x342740;
 inline constexpr uint64_t PathSteer = 0x340e70;  // (path, unit, 0, 1): re-aim the path at its target unit
 inline constexpr uint64_t UnitDistance = 0x324fc0;  // (a, b) -> distance in subtiles
 // (dataFlag, missile, owner, calc, -1, -1) -> value; dmg 1 0x453490 evaluates DmgCalc1 this way
@@ -243,6 +246,9 @@ inline constexpr uint64_t SendChargePacket = 0x5396d0;
 inline constexpr uint64_t ListStatValue = 0x2f5df0;  // (dataFlag, list, stat, layer) -> value
 inline constexpr uint64_t NewStatList = 0x2f7300;  // (flags, expire frame, unit type, unit id) -> list or null
 inline constexpr uint64_t AttachStatList = 0x2f2cb0;  // (unit, list, 1)
+// Dragon Flight (W31): D2R's srvdo 52 (0x56fc80) fills its kick with this after the roll (MeleeRoll, below), on a
+// d2r::LeapKnockback block with DmgPercent set
+inline constexpr uint64_t MeleeFill = 0x573af0;  // (game, &block, unit, target, skill, level): the hit's damage
 
 // Melee splash (W33): one victim's damage, built the way PD2's area callback 0x10303190 builds it
 // (game, attacker, defender, &damage, 0, srcdam): weapon damage scaled by srcdam / 128 (0 = 128); Leap Attack's
@@ -326,6 +332,11 @@ inline constexpr int UnitMode = 0x0c;  // int32 current mode (monmode for a mons
 inline constexpr int MonModeDeath = 0, MonModeDead = 12;
 inline constexpr int UnitPath = 0x38;  // dynamic path (x +0x2, y +0x6, uint16) or static path (x +0x10, y +0x14)
 inline constexpr int PathTargetUnit = 0x70;  // Unit* on a dynamic path: what PathSteer aims at (set by PathSetTargetUnit)
+inline constexpr int PathCollisionMask = 0x64;  // uint32 (set by PathSetCollisionMask)
+inline constexpr int UnitData = 0x10;  // the unit's type data; a missile's holds its range and last unit hit
+// int32 type and uint32 id (-1 none) of the last unit a LastCollide missile hit, set by D2Common 0x3bd580 in the
+// collision 0x4639a0
+inline constexpr int MdLastHitType = 0x20, MdLastHitId = 0x24;
 inline constexpr int UnitOwnerType = 0xe8;  // int32 owner unit type (MissileOwner 0x490300 reads both)
 inline constexpr int UnitOwnerId = 0xec;    // uint32 owner unit id
 inline constexpr int TablesStateCount = 0x298;  // uint64 states.txt row count in DataTables
@@ -383,6 +394,7 @@ inline constexpr int MsCltSubMissile1 = 0x40;  // int16 CltSubMissile1 (1.13c's 
 // poison length 0x2c -> 0x3c in srvdmg 11).
 inline constexpr int DmgPhys = 0x18, DmgFire = 0x20, DmgLight = 0x2c, DmgMagic = 0x30, DmgCold = 0x34, DmgPoison = 0x38;
 inline constexpr int DmgPoisonLength = 0x3c;
+inline constexpr int DmgPercent = 0x1c;  // damage% (1.13c 0x0c), set before the melee fill (D2R's srvdo 52)
 inline constexpr int DmgColdLength = 0x118;  // ElementalDamage's cold length (1.13c's 0x30)
 inline constexpr int DmgHitClass = 0x144;    // int32 Leap Attack's hit sets from UnitHitClass
 inline constexpr int StatDamagePercent = 25;  // itemstatcost damagepercent, D2R and PD2
