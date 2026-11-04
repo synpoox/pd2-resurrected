@@ -47,13 +47,8 @@ skills	Summon Spirit Wolf	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Summon Fenris	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Fire Claws	=	srvdofunc,cltdofunc	Fire Claws
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
-skills	Tiger Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Fists of Fire	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Cobra Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Claws of Thunder	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Blades of Ice	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Hunger	=	srvdofunc	Hunger
 skills	Dragon Flight	=	srvdofunc	Dragon Flight
-skills	Royal Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
@@ -77,7 +72,6 @@ skills	Energy Shield SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Energy Shield SelfAura	Might	cltstfunc	Paladin aura client start
 skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Chilling Armor SelfAura	Might	cltstfunc	Paladin aura client start
-skills	RakanothStrike	Cobra Strike	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	TorajanBossNest	Nest	srvdofunc	TorajanBossNest
 skills	LucionNova	Nova	srvdofunc	Lucion kit
 skills	LucionBlink	Teleport	cltdofunc	Lucion kit
@@ -101,9 +95,6 @@ missiles	chillingarmorbolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling
 missiles	desertfireball	=	pCltHitFunc	Desert turret fireball client hit
 missiles	bladefragment1	=	pSrvHitFunc,pCltHitFunc	Blade fragment hit
 missiles	bladefragment1	=	pSrvDmgFunc	Rathma bone spear, blade fragment damage
-missiles	fistsoffireexplode	=	pCltDoFunc	Assassin charge-up finishers
-missiles	clawsofthunderbolt	=	pCltHitFunc	Assassin charge-up finishers
-missiles	bladesoficecubes	=	pCltDoFunc	Assassin charge-up finishers
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
 missiles	siege beast stomp missile	-	pCltDoFunc	Siege beast stomp client do
 missiles	psychichammer	-	pSrvDmgFunc	Psychic Hammer missile damage

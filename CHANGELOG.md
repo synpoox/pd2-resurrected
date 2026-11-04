@@ -16,7 +16,8 @@ private-multiplayer release a build may break characters; each break is noted he
   its hit splashes with a splash-on-hit item.
 - The Assassin's charge-up skills build charges as in Project Diablo II: charges are shared between them, and each
   charge's effect (Fists of Fire's fire, Cobra Strike's poison, Blades of Ice's wave) fires on the hit that builds
-  it. What your client draws for each charge is still D2R's.
+  it, and your client draws each charge as Project Diablo II's does (Fists of Fire's fire and nova, Cobra Strike's
+  poison bolts and cloud, Claws of Thunder's falling storm bolts).
 - Teleport works as in Project Diablo II: for a second after each teleport your elemental masteries are
   lowered, by less as the skill levels up.
 - Holy Light works as in Project Diablo II: it heals allies and deals magic damage to enemies around its target,
