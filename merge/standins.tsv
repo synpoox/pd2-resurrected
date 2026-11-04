@@ -23,7 +23,6 @@ skills	Cleansing	=	cltdofunc	Paladin aura client do
 skills	Cleansing	=	cltstfunc	Paladin aura client start
 skills	Resist Lightning	=	cltdofunc	Paladin aura client do
 skills	Resist Lightning	=	cltstfunc	Paladin aura client start
-skills	Vengeance	=	srvdofunc	Vengeance
 skills	Concentration	=	cltdofunc	Paladin aura client do
 skills	Concentration	=	cltstfunc	Paladin aura client start
 skills	Holy Freeze	=	cltdofunc	Paladin aura client do
@@ -48,7 +47,6 @@ skills	Summon Spirit Wolf	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Summon Fenris	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Fire Claws	=	srvdofunc,cltdofunc	Fire Claws
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
-skills	Hunger	=	srvdofunc	Hunger
 skills	Dragon Flight	=	srvdofunc	Dragon Flight
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
@@ -57,7 +55,6 @@ skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
 skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
 skills	Split Throw	-	cltdofunc	Split Throw
-skills	Joust	Leap Attack	srvdofunc	Joust
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
 skills	PoisonEggSpawn	MaggotEgg	srvdofunc,cltdofunc	PoisonEggSpawn
 skills	RathmaDeath	Nova	srvdofunc,cltdofunc	Death novas
