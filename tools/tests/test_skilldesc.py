@@ -56,6 +56,16 @@ class SkilldescTests(unittest.TestCase):
         self.assertEqual([r[1:6] for r in merged.rows], [["75", "StrSkill39", "", "enma", "exma"],
                                                          ["75", "StrSkill5", "", "enma", "exma"]])
 
+    def test_poison_damage_gets_d2rs_length_line_below_it(self):
+        d2r = table(("poison nova", [["36", "StrSkillPoisonLengthSingular", "StrSkill63", "edln", "25"],
+                                     ["75", "StrSkill8", "", "enms", "exms"], [], [], [], []]))
+        merged = table(("poison nova", [["1", "", "", "", ""], ["14", "", "", "", ""], ["12", "StrSkill20", "", "ln34", ""],
+                                        [], [], []]))
+        S.rewrite(merged, d2r, FMT | {"StrSkillPoisonLengthSingular", "StrSkill8"})
+        self.assertEqual(merged.rows[0][6:21], ["36", "StrSkillPoisonLengthSingular", "StrSkill63", "edln", "25",
+                                                 "75", "StrSkill8", "", "enms", "exms",
+                                                 "12", "StrSkill20", "", "ln34", ""])  # moved up a slot
+
     def test_a_line_with_no_d2r_layout_fails(self):
         merged = table(("new skill", [["47", "StrSkill20", "", "a", "b"], [], [], [], [], []]))  # D2R: never under 75
         with self.assertRaisesRegex(ValueError, "new skill descline1 47 StrSkill20"):

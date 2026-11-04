@@ -64,6 +64,9 @@ BUILTINS = {"8": {"": "StrSkill22"}, "9": {"": "StrSkill4"}, "10": _DAMAGE,
                    "ltng": "StrSkillLightningDamageAveragePerSecond"},
             "27": {"": "StrSkillFireDamageAveragePerSecond"}, "29": {"": "StrSkillRangeSingular"},
             "39": {"": "StrSkill4"}, "48": {"": "StrSkill39"}}
+# built-ins PD2 prints as one line and D2R as two: the label of D2R's line under it (poison damage "over N seconds"),
+# put in the built-in's slot with the built-in and the lines above it moving up one (the tooltip stacks lines upward)
+BELOW = {"14": "StrSkillPoisonLengthSingular"}
 
 
 def formatted(d2r_data: Path) -> set[str]:
@@ -122,7 +125,7 @@ def rewrite(t: Table, d2r: Table, fmt: set[str], elements: dict[str, str] | None
     d2r_lines = {}
     for i, j, parts in lines(d2r):
         d2r_lines.setdefault(d2r.rows[i][0].lower(), []).append([d2r.rows[i][j]] + [d2r.rows[i][p] for p in parts])
-    missing = []
+    missing, below = [], []
     for i, j, parts in lines(t):
         r = t.rows[i]
         f, a, b, ca, cb = r[j], *(r[p] for p in parts)
@@ -139,6 +142,8 @@ def rewrite(t: Table, d2r: Table, fmt: set[str], elements: dict[str, str] | None
             own = [x for x in d2r_lines.get(r[0].lower(), []) if x[1] in labels.values()]
             common = Counter(tuple(x) for ls in d2r_lines.values() for x in ls if x[1] == label)
             new = own[0] if own else list(common.most_common(1)[0][0]) if common else [""] * 5
+            if f in BELOW:
+                below.append((i, j, BELOW[f]))
         elif f in LINES:
             to, how, calc = LINES[f]
             if how == "copy":  # a PD2-only skill takes D2R's most common line for the key (lesser hydra: hydra's)
@@ -160,5 +165,23 @@ def rewrite(t: Table, d2r: Table, fmt: set[str], elements: dict[str, str] | None
         r[j], *vals = new
         for p, v in zip(parts, vals):
             r[p] = v
+    for i, j, label in below:
+        r = t.rows[i]
+        if any(r[ps[0]] == label for k, _, ps in lines(t) if k == i):
+            continue
+        common = Counter(tuple(x) for ls in d2r_lines.values() for x in ls if x[1] == label)
+        new = next((x for x in d2r_lines.get(r[0].lower(), []) if x[1] == label), common.most_common(1)[0][0])
+        p, n = LINE.match(t.header[j]).groups()
+        col = {c: k for k, c in enumerate(t.header)}
+        last = max(int(m[2]) for c in t.header if (m := LINE.match(c)) and m[1] == p)
+        slots = [[col[f"{p}{s}{k}"] for s in ("line", "texta", "textb", "calca", "calcb")] for k in range(int(n), last + 1)]
+        if r[slots[-1][0]]:
+            missing.append(f"{r[0]} {t.header[j]}: no free line for {label}")
+            continue
+        for lo, hi in reversed(list(zip(slots, slots[1:]))):
+            for x, y in zip(lo, hi):
+                r[y] = r[x]
+        for x, v in zip(slots[0], new):
+            r[x] = v
     if missing:
         raise ValueError(f"skilldesc lines with no D2R layout (pd2_skilldesc.LINES): {'; '.join(missing)}")
