@@ -114,6 +114,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows, [["fistoftheheavensdelay", "71"], ["holylightdelay", "66"]])  # D2R's 26 differs
 
+    def test_vengeance_keeps_its_slot_joust_goes_to_the_router(self):
+        d2r = table("skill|srvdofunc\nAttack|1\n")
+        pd2 = table("skill|srvdofunc\nVengeance|174\nJoust|162\n")
+        lines = [("Vengeance", 0, "Vengeance"), ("Joust", 1, "Joust")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["Vengeance", "174"], ["Joust", "190"]])  # D2R fills 162
+
     def test_poison_dagger_function_numbers(self):
         d2r = table("skill|srvstfunc|srvdofunc|cltdofunc\nAttack|1|1|1\n")
         pd2 = table("skill|srvstfunc|srvdofunc|cltdofunc\nPoison Dagger|68|164|102\n")

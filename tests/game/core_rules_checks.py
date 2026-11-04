@@ -75,6 +75,9 @@ the Paladin's 32nd skill, past the 30 class skills a save holds, so set both in 
 Light,10`, `cheat sklvl Fist of the Heavens,10`, `cheat goto 2`, `cheat mspawn zombie1,6`; then Holy Light on a
 zombie next to others, Fist of the Heavens on the pack (not on a dropped item: the click picks it up), and run the
 same command with core-rules-w17.
+W18 checks (tag core-rules-w18), same merged data: a level 90+ Paladin in Hell with Vengeance and Joust set in game
+(`debug_mode`, `cheat sklvl Vengeance,20`, `cheat sklvl Joust,10`, `cheat goto 2`, `cheat mspawn zombie1,8`); hit the
+pack with Vengeance until a link logs, Joust a zombie a few yards off, and run the same command with core-rules-w18.
 """
 import json
 import os
@@ -102,7 +105,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
     ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
-    ("srvdofunc", 176, "holy light"), ("pCltHitFunc", 66, "holy light"), ("pCltHitFunc", 71, "fist delay"),
+    ("srvdofunc", 176, "holy light"), ("srvdofunc", 174, "vengeance"), ("pCltHitFunc", 66, "holy light"), ("pCltHitFunc", 71, "fist delay"),
     ("srvdofunc", 184, "charge spread"), ("srvdofunc", 185, "charge ring"), ("srvdofunc", 186, "charge fire"),
     ("srvdofunc", 181, "charge cold"),
 ]
@@ -128,7 +131,7 @@ def _log(ctx) -> str:
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                  "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33", "core-rules-w21",
-                                 "core-rules-w29", "core-rules-w17", "game"])
+                                 "core-rules-w29", "core-rules-w17", "core-rules-w18", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -854,13 +857,50 @@ def fist_delay_hit(ctx):
     return f"level {level}: radius {radius}, {bolts} bolts"
 
 
-ge {charge}: row {missile}, PD2 {row}"
-    return f"{len(colds)} logged, row {row}"
+@check("vengeance-hit", tags=["core-rules-w18"])
+def vengeance_hit(ctx):
+    """Vengeance (srvdofunc 174) hits in melee and, on a hit, bursts fire, cold and lightning raised by calc1-3 (ln12 =
+    5 + 2 per level, plus synergies and masteries), with chain % calc4 = min(22 + 2 per level, 95), every Param5 4 frames
+    within Param6 24 of the caster, cold length ELen 80."""
+    hits = _logged(ctx, r"vengeance: skill \d+ level (\d+) melee hit: fire% (\d+) cold% (\d+) light% (\d+), base (\d+), "
+                   r"fire (\d+) cold (\d+) light (\d+), cold length (\d+), chain (\d+)% every (\d+) frames within (\d+)",
+                   "Vengeance hit")
+    for level, *pcts, base, fire, cold, light, length, chance, delay, reach in hits:
+        assert all(p >= 5 + 2 * (level - 1) for p in pcts), f"level {level}: percentages {pcts} below ln12"
+        assert min(fire, cold, light) >= base, f"each element adds the skill's roll {base}: {fire} {cold} {light}"
+        assert (chance, delay, reach, length) == (min(22 + 2 * (level - 1), 95), 4, 24, 80), hits[0]
+    level, *pcts, base, fire, cold, light, _, chance, *_ = hits[-1]
+    return f"level {level}: {pcts}%, fire {fire} cold {cold} light {light}, chain {chance}% ({len(hits)} hits)"
+
+
+@check("vengeance-link", tags=["core-rules-w18"])
+def vengeance_link(ctx):
+    """A Vengeance link (the justhit marker's expiry) bursts again around the linked unit, cold length 80 less 15 per
+    link."""
+    links = _logged(ctx, r"vengeance link: skill \d+ level (\d+) link (\d+): .*?cold length (-?\d+)", "Vengeance link")
+    for _, link, length in links:
+        assert link >= 1 and length == max(80 - 15 * link, 0), f"link {link}: cold length {length}"
+    return f"{len(links)} links, deepest {max(l for _, l, _ in links)}"
+
+
+@check("joust-cast", tags=["core-rules-w18"])
+def joust_cast(ctx):
+    """Joust (srvdofunc 190, PD2 162) hits with damage% calc1 = 40 + 8 per level and passive_critical_strike raised by
+    calc2 = 10 + 2 per level, at most 100, then joust_buff for 50 frames with velocitypercent min(3 + 2 lvl, 65)."""
+    casts = _logged(ctx, r"joust: skill \d+ level (\d+): damage% (\d+), critical strike (\d+) -> (\d+), state (\d+) for "
+                    r"(\d+) frames with stat (\d+) = (\d+)", "Joust cast")
+    for level, ed, crit, raised, state, frames, stat, value in casts:
+        assert ed == 40 + 8 * (level - 1), f"level {level}: damage% {ed}"
+        assert raised == min(crit + 10 + 2 * (level - 1), 100), f"level {level}: critical strike {crit} -> {raised}"
+        assert _rows("states")[state] == "joust_buff" and frames == 50, f"state {state} for {frames} frames"
+        assert stat == 67 and value == min(3 + 2 * level, 65), f"stat {stat} = {value}"
+    level, ed, crit, raised, *_ = casts[-1]
+    return f"level {level}: damage% {ed}, critical strike {crit} -> {raised} ({len(casts)} casts)"
 
 
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
-                                    "core-rules-w29", "core-rules-w17"])
+                                    "core-rules-w29", "core-rules-w17", "core-rules-w18"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))
