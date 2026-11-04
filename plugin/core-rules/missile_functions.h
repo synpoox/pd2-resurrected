@@ -14,6 +14,8 @@ using MissileSrvDoFn = int64_t (*)(d2r::Game* game, d2r::Unit* missile) noexcept
 using MissileSrvHitFn = int32_t (*)(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept;
 using MissileCltDoFn = void (*)(d2r::Unit* missile, int32_t a2) noexcept;
 using MissileSrvDmgFn = void (*)(d2r::Game* game, d2r::Unit* missile, d2r::Unit* target, uint8_t* damage) noexcept;
+// Zero skips the rest of the client's hit (the explosion missile), as D2R's dispatcher 0x1b8e60 reads it.
+using MissileCltHitFn = int32_t (*)(d2r::Unit* missile, d2r::Unit* hit) noexcept;
 
 auto SrvHitSpawnReturn(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 65
 auto SrvDoReturn(d2r::Game* game, d2r::Unit* missile) noexcept -> int64_t;             // sdo 46 (PD2 38)
@@ -25,5 +27,7 @@ void SrvDmgFirstHit(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit, uint8_t
 auto SrvHitExplodeSpread(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 63
 void SrvDmgPierceFalloff(d2r::Game* game, d2r::Unit* missile, d2r::Unit* target, uint8_t* damage) noexcept;  // dmg 20
 auto SrvHitState(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 61
+auto CltHitHolyLight(d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // chit 66
+auto CltHitFistDelay(d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // chit 71 (PD2 26)
 // Live counters for the status command.
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void;

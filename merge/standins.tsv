@@ -43,14 +43,11 @@ skills	Redemption	=	cltdofunc	Paladin aura client do
 skills	Redemption	=	cltstfunc	Paladin aura client start
 skills	Salvation	=	cltdofunc	Paladin aura client do
 skills	Salvation	=	cltstfunc	Paladin aura client start
-skills	DiabWall	=	srvdofunc	Firestorm and wall makers
 skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
-skills	Firestorm	=	srvdofunc,cltdofunc	Firestorm and wall makers
 skills	Summon Spirit Wolf	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Summon Fenris	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Fire Claws	=	srvdofunc,cltdofunc	Fire Claws
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
-skills	Hunger	=	srvdofunc	Hunger
 skills	Tiger Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Fists of Fire	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Cobra Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
@@ -63,14 +60,10 @@ skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
-skills	Gust	Teleport	srvdofunc	Gust
-skills	Holy Light	Holy Bolt	srvdofunc	Holy Light
 skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
 skills	Split Throw	-	cltdofunc	Split Throw
 skills	Joust	Leap Attack	srvdofunc	Joust
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
-skills	FingermageBossDiabWall	DiabWall	srvdofunc	Firestorm and wall makers
-skills	UberDiabWall	DiabWall	srvdofunc	Firestorm and wall makers
 skills	PoisonEggSpawn	MaggotEgg	srvdofunc,cltdofunc	PoisonEggSpawn
 skills	RathmaDeath	Nova	srvdofunc,cltdofunc	Death novas
 skills	NihlathakMapDeath	Nova	cltdofunc	Death novas
@@ -88,7 +81,6 @@ skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Chilling Armor SelfAura	Might	cltstfunc	Paladin aura client start
 skills	RakanothStrike	Cobra Strike	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	TorajanBossNest	Nest	srvdofunc	TorajanBossNest
-skills	KanemithFirestorm	DiabWall	srvdofunc	Firestorm and wall makers
 skills	LucionNova	Nova	srvdofunc	Lucion kit
 skills	LucionBlink	Teleport	cltdofunc	Lucion kit
 skills	LucionDash	Charge	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Lucion kit
@@ -116,7 +108,6 @@ missiles	clawsofthunderbolt	=	pCltHitFunc	Assassin charge-up finishers
 missiles	bladesoficecubes	=	pCltDoFunc	Assassin charge-up finishers
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
 missiles	siege beast stomp missile	-	pCltDoFunc	Siege beast stomp client do
-missiles	holylightdelay	fistoftheheavensdelay	pCltHitFunc	Holy Light
 missiles	psychichammer	-	pSrvDmgFunc	Psychic Hammer missile damage
 missiles	uberimmolationarrow	immolationarrow	pSrvHitFunc	Uber immolation arrow hit
 missiles	rathmabonespear	bonespear	pSrvDmgFunc	Rathma bone spear, blade fragment damage

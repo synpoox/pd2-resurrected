@@ -107,6 +107,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows, [["flamewave", "71", "38"], ["back", "78", "46"], ["bolt", "1", "1"]])
 
+    def test_holy_light_keeps_its_slots_fist_delay_hit_moves(self):
+        d2r = table("Missile|pCltHitFunc\nfistoftheheavensdelay|26\n")
+        pd2 = table("Missile|pCltHitFunc\nfistoftheheavensdelay|26\nholylightdelay|66\n")
+        lines = [("fistoftheheavensdelay", 0, "fistoftheheavensdelay"), ("holylightdelay", 1, "holylightdelay")]
+        merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["fistoftheheavensdelay", "71"], ["holylightdelay", "66"]])  # D2R's 26 differs
+
     def test_poison_dagger_function_numbers(self):
         d2r = table("skill|srvstfunc|srvdofunc|cltdofunc\nAttack|1|1|1\n")
         pd2 = table("skill|srvstfunc|srvdofunc|cltdofunc\nPoison Dagger|68|164|102\n")
@@ -130,6 +137,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         lines = [("Teleport", 1, "Teleport"), ("Blink", 2, "Blink")]
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1:], [["Teleport", "190"], ["Blink", "190"]])
+
+    def test_gust_and_hunger_go_to_the_router(self):
+        d2r = table("skill|srvdofunc\nAttack|1\n")
+        pd2 = table("skill|srvdofunc\nGust|156\nHunger|165\n")
+        lines = [("Gust", 1, "Gust"), ("Hunger", 2, "Hunger")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Gust", "190"], ["Hunger", "190"]])
 
     def test_state_hit_parameters_take_mod_ids(self):
         # srvhit 61 reads sHitPar1 as a state and sHitPar3 / cHitPar2 as stats; other functions' parameters stay
@@ -172,6 +186,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         lines = [("Attack", 0, "Attack"), ("proc_SplashDamage", 1, "proc_SplashDamage")]
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["proc_SplashDamage", "190"])  # D2R fills 163
+
+    def test_firestorm_and_wall_makers_join_the_router(self):
+        d2r = table("skill|srvdofunc|cltdofunc\nAttack|1|1\n")
+        pd2 = table("skill|srvdofunc|cltdofunc\nAttack|1|1\nFirestorm|166|119\nDiabWall|166|58\n")
+        lines = [("Attack", 0, "Attack"), ("Firestorm", 1, "Firestorm"), ("DiabWall", 2, "DiabWall")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Firestorm", "190", "119"], ["DiabWall", "190", "58"]])  # D2R fills 166
 
     def test_missile_do_functions_become_the_missile_column(self):
         cols = "skill|srvdofunc|srvmissile|srvmissilea|cltdofunc|cltmissile|cltmissilea"

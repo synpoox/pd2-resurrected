@@ -64,16 +64,28 @@ W21 checks (tag core-rules-w21), same merged data: a Druid with Arctic Blast (23
 e.g. modkit save-set <save> level=30 --skill 230=10 --project .; then out of town: hold the skill on the ground for
 a second, and run the same command with core-rules-w21. For the take-over checks, press another skill while
 holding it; for blade-fury-refused, an Assassin with Blade Fury (266): hold it.
+W22 checks (tag core-rules-w22), same merged data: a Druid with Firestorm (225, class skill slot 4) and no +skills
+(the log gives the skill level, PD2's calc reads the base level), e.g. modkit save-set <save> level=30 --skill 4=10
+--project .; then out of town cast Firestorm a few times and run the same command with core-rules-w22.
 W29 checks (tag core-rules-w29), same merged data: an Assassin with the charge-up skills (Tiger Strike 254, Fists of
 Fire 259, Cobra Strike 265, Claws of Thunder 269, Blades of Ice 274, Royal Strike 280) and Dragon Talon (255) to
 release, e.g. modkit save-set <save> level=30 --skill 254=1 --skill 259=1 --skill 265=1 --skill 269=1 --skill 274=1
 --skill 280=1 --skill 255=1 --project .; then out of town hit monsters three times in a row with each of Fists of
 Fire, Cobra Strike and Blades of Ice, releasing between them with Dragon Talon (a release runs the same prg slots and
 logs the same lines), and run the same command with core-rules-w29.
+W17 checks (tag core-rules-w17), same merged data: a Paladin with Holy Light and Fist of the Heavens. Holy Light is
+the Paladin's 32nd skill, past the 30 class skills a save holds, so set both in game: `debug_mode`, `cheat sklvl Holy
+Light,10`, `cheat sklvl Fist of the Heavens,10`, `cheat goto 2`, `cheat mspawn zombie1,6`; then Holy Light on a
+zombie next to others, Fist of the Heavens on the pack (not on a dropped item: the click picks it up), and run the
+same command with core-rules-w17.
+W23 checks (tag core-rules-w23), same merged data: a Druid with Gust (442), Werebear (228) and Hunger (242), no
++skills; save-set takes class skill slots (Werebear 7, Hunger 21, Gust 30), e.g. modkit save-set <save> --skill
+30=5 --skill 7=1 --skill 21=5 --project .; then out of town cast Gust, and in bear form kill a monster and eat its
+corpse with Hunger; run the same command with core-rules-w23.
 W27 checks (tag core-rules-w27), same merged data: a Sorceress with Static Field (42), Combustion (448) and Inferno
-(41) and no Lightning Mastery, e.g. modkit save-set <save> level=30 --skill 6=10 --skill 31=10 --skill 5=10
---project . (class skill slots 6, 31 and 5); then out of town cast Static Field next to monsters, cast Combustion, hold Inferno for a second, and run
-the same command with core-rules-w27.
+(41) and no Lightning Mastery; save-set takes class skill slots (Inferno 5, Static Field 6, Combustion 31), e.g.
+modkit save-set <save> level=30 --skill 6=10 --skill 31=10 --skill 5=10 --project .; then out of town cast Static
+Field next to monsters, cast Combustion, hold Inferno for a second, and run the same command with core-rules-w27.
 """
 import json
 import os
@@ -97,10 +109,12 @@ SKILL_SLOTS = [  # table slots it installs
     ("cltdofunc", 122, "poison dagger"), ("pSrvHitFunc", 61, "state hit"),
     ("cltdofunc", 121, "desecrate"), ("srvstfunc", 72, "charge"), ("srvdofunc", 180, "charge"),
     ("srvdofunc", 182, "channel"), ("cltdofunc", 111, "channel"),
+    ("cltdofunc", 119, "wall"),
     ("mode gate", "busy", "take-over"),  # an inline hook, not a slot
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
     ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
+    ("srvdofunc", 176, "holy light"), ("pCltHitFunc", 66, "holy light"), ("pCltHitFunc", 71, "fist delay"),
     ("srvdofunc", 184, "charge spread"), ("srvdofunc", 185, "charge ring"), ("srvdofunc", 186, "charge fire"),
     ("srvdofunc", 181, "charge cold"), ("cltdofunc", 120, "nova"),
 ]
@@ -114,6 +128,8 @@ TELEPORT_DEBUFF = 233  # merged states id of teleportdebuff
 COMBUSTION, STATIC_FIELD = 448, 42  # merged skill ids
 STATICFIELD_DEBUFF, LIGHTRESIST = 240, 41  # merged states id, itemstatcost id
 STATIC_FIELD_MIN = (55, 70, 85)  # PD2's difficultylevels StaticFieldMin: normal, nightmare, hell
+HUNGER = 246  # merged states id of hunger
+LIFE_DRAIN, VELOCITY = 60, 67  # itemstatcost lifedrainmindam, velocitypercent in D2R and PD2
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -128,8 +144,9 @@ def _log(ctx) -> str:
 
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                 "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33", "core-rules-w21",
-                                 "core-rules-w29", "core-rules-w27", "game"])
+                                 "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33",
+                                 "core-rules-w21", "core-rules-w22", "core-rules-w29", "core-rules-w17",
+                                 "core-rules-w23", "core-rules-w27", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -444,6 +461,37 @@ def blade_fury_refused(ctx):
 GOLEM_MASTERY_LEVEL = 10  # the W14 save's base level (setup above)
 
 
+FIRESTORM = 225  # merged skill id (PD2's too)
+
+
+def _wall_casts(ctx, prefix: str) -> tuple[int, int, int]:
+    """(level, makers created, makers asked) of the first logged Firestorm cast on that side; PD2's calc1 is
+    par1 + blvl / 5 with par1 3 (the check's character has no +skills, so blvl = level)."""
+    casts = [tuple(int(v) for v in c[1:]) for c in re.findall(
+        rf"{prefix}: skill (\d+) level (\d+): (\d+) of (-?\d+) makers", _log(ctx)) if int(c[0]) == FIRESTORM]
+    if not casts:
+        ctx.skip(f"no {prefix} line for Firestorm in the log yet (cast it out of town, then run again)")
+    level, created, count = casts[0]
+    want = 3 + level // 5
+    assert count == want, f"{prefix}: Firestorm level {level}: {count} makers, PD2's calc1 gives {want}"
+    assert created == count, f"{prefix}: only {created} of {count} makers created"
+    return level, created, count
+
+
+@check("wall-cast", tags=["core-rules-w22"])
+def wall_cast(ctx):
+    """Firestorm (srvdofunc 166, router 190) sends PD2's calc1 makers, all created."""
+    level, created, _ = _wall_casts(ctx, "wall")
+    return f"Firestorm level {level}: {created} makers"
+
+
+@check("wall-client", tags=["core-rules-w22"])
+def wall_client(ctx):
+    """The client half (cltdofunc 119) draws the same makers."""
+    level, created, _ = _wall_casts(ctx, "wall client")
+    return f"Firestorm level {level}: client drew {created} makers"
+
+
 @check("golem-count", tags=["core-rules-w14"])
 def golem_count(ctx):
     """Golems follow PD2's count rule as data: petmax 1 + Golem Mastery blvl / 5 (+ extra_golem) caps Clay, Blood and Fire
@@ -684,6 +732,45 @@ def teleport_cast(ctx):
     return f"level {level}, reduction {reduction}, {frames} frames, list {lst}: {', '.join(seen)}"
 
 
+@check("gust-cast", tags=["core-rules-w23"])
+def gust_cast(ctx):
+    """A Gust (router srvdofunc 190) teleported and hit the units within calc3 par3 = 4 with cold length calc1 ln12 =
+    12 (Param2 0 per level), the row's HitFlags 1, ResultFlags 5 and HitClass 2. Its srvmissilea (gust) is thrown only
+    with a throwing weapon in hand: PD2's create call (1.13c 0xa28f0 with its last argument 1) checks the weapon's
+    quantity (0xa1790), and so does D2R's ThrowSkillMissile, so either outcome is PD2's."""
+    casts = re.findall(r"gust: skill 442 level (\d+): missile (-?\d+) (thrown|not thrown), radius (-?\d+) \(calc3\), "
+                       r"cold length (-?\d+) \(calc1\), hit flags (\d+), result flags (\d+), hit class (-?\d+)",
+                       _log(ctx))
+    if not casts:
+        ctx.skip("no Gust in the log yet (cast it out of town, then run again)")
+    level, missile, thrown, *values = casts[-1]
+    radius, chill, hit_flags, result_flags, hit_class = (int(v) for v in values)
+    assert (radius, chill) == (4, 12), f"radius {radius}, cold length {chill}; PD2: 4, 12"
+    flags = (hit_flags, result_flags, hit_class)
+    assert flags == (1, 5, 2), f"hit flags, result flags, hit class {flags}; PD2: (1, 5, 2)"
+    return f"level {level}: missile {missile} {thrown}, radius {radius}, cold length {chill}"
+
+
+@check("hunger-hit", tags=["core-rules-w23"])
+def hunger_hit(ctx):
+    """A Hunger (router srvdofunc 190) ate its corpse and gave the hunger state for auralencalc 475 + lvl * 25 frames
+    with lifedrainmindam par3 + blvl / 4 = 3 + lvl / 4 and velocitypercent par4 + lvl = 19 + lvl (no +skills, so blvl =
+    lvl); item_openwounds (dm12 + 5) and deep_wounds (edmx) are logged."""
+    casts = re.findall(r"hunger: skill 242 level (\d+): corpse eaten, state (-?\d+) for (-?\d+) frames \(list (\w+)\), "
+                       r"stats (-?\d+)=(-?\d+) (-?\d+)=(-?\d+) (-?\d+)=(-?\d+) (-?\d+)=(-?\d+)", _log(ctx))
+    if not casts:
+        ctx.skip("no Hunger in the log yet (bear form, eat a corpse out of town, then run again)")
+    level, state, frames, lst, *stats = casts[-1]
+    level, state, frames = int(level), int(state), int(frames)
+    pairs = dict(zip((int(s) for s in stats[0::2]), (int(v) for v in stats[1::2])))
+    assert lst != "refused", f"level {level}: the hunger list was refused"
+    want = 475 + level * 25
+    assert (state, frames) == (HUNGER, want), f"state {state} for {frames} frames; PD2: {HUNGER} for {want}"
+    assert pairs.get(LIFE_DRAIN) == 3 + level // 4, f"lifedrainmindam {pairs.get(LIFE_DRAIN)}; PD2: {3 + level // 4}"
+    assert pairs.get(VELOCITY) == 19 + level, f"velocitypercent {pairs.get(VELOCITY)}; PD2: {19 + level}"
+    return f"level {level}: {frames} frames, list {lst}, stats {pairs}"
+
+
 @check("teleport-blocked-areas", tags=["core-rules-w26"])
 def teleport_blocked_areas(ctx):
     """Teleport is refused where PD2 refuses it: the merged levels.txt Teleport column (0 refuses, 2 checks collision
@@ -805,9 +892,60 @@ def charge_cold(ctx):
     return f"{len(colds)} logged, row {row}"
 
 
+@check("holy-light-cast", tags=["core-rules-w17"])
+def holy_light_cast(ctx):
+    """Holy Light (srvdofunc 176) heals cltcalc2-cltcalc3: ln12 + Prayer blvl * par6 to ln34 + Prayer blvl * par7
+    (Param1-4 30, 5, 50, 10; par6 5, par7 10), within aurarangecalc 6 of the target, and halves the side the target is
+    not on: the heal on an enemy, the damage on an ally."""
+    casts = re.findall(r"holy light: skill \d+ level (\d+) on an (enemy|ally): heal (\d+)-(\d+)( halved)?, "
+                       r"damage( halved)?, radius (\d+): healed (\d+), hit (\d+)", _log(ctx))
+    if not casts:
+        ctx.skip("no Holy Light cast in the log yet (cast it on a monster out of town, then run again)")
+    for level, side, lo, hi, half_heal, half_damage, radius, _, _ in casts:
+        level, lo, hi = int(level), int(lo), int(hi)
+        prayer = (lo - (30 + (level - 1) * 5)) / 5
+        assert prayer >= 0 and prayer == int(prayer), f"level {level}: heal min {lo} is not ln12 + Prayer blvl * 5"
+        assert hi == 50 + (level - 1) * 10 + int(prayer) * 10, f"level {level}, Prayer {int(prayer)}: heal max {hi}"
+        assert int(radius) == 6, f"radius {radius}, PD2's aurarangecalc is 6"
+        assert (bool(half_heal), bool(half_damage)) == (side == "enemy", side == "ally"), f"on an {side}: {casts[0]}"
+    level, side, lo, hi, *_, healed, hit = casts[-1]
+    return f"level {level} on an {side}: heal {lo}-{hi}, healed {healed}, hit {hit} ({len(casts)} casts)"
+
+
+@check("holy-light-client-hit", tags=["core-rules-w17"])
+def holy_light_client_hit(ctx):
+    """The client drew holylightdelay (D2R's cltdo 36) and its hit ran PD2's chit 66 with radius cHitPar1 6; PD2's row
+    names no CltHitSubMissile1, so the hit creates nothing more."""
+    hits = re.findall(r"holy light client hit: missile row (\d+) skill \d+ level \d+: radius (\d+), sub-missile (-?\d+), "
+                      r"(\d+) created", _log(ctx))
+    if not hits:
+        ctx.skip("no holylightdelay client hit in the log yet (cast Holy Light, then run again)")
+    row, radius, sub, created = (int(v) for v in hits[0])
+    assert _rows("missiles")[row].lower() == "holylightdelay", f"row {row} is {_rows('missiles')[row]}"
+    assert radius == 6 and sub < 0 and created == 0, hits[0]
+    return f"holylightdelay hit: radius {radius}, no sub-missile"
+
+
+@check("fist-delay-hit", tags=["core-rules-w17"])
+def fist_delay_hit(ctx):
+    """Fist of the Heavens' delay hit (pCltHitFunc 71, PD2's 1.13c 26) sends a fistoftheheavensbolt from the hit to every
+    unit within aurarangecalc 20 (cHitPar1 0), the struck unit included."""
+    hits = re.findall(r"fist delay client hit: skill \d+ level (\d+): radius (\d+), sub-missile (\d+), (\d+) bolts",
+                      _log(ctx))
+    hits = [tuple(int(v) for v in h) for h in hits]
+    if not hits:
+        ctx.skip("no Fist of the Heavens hit in the log yet (cast it on a monster out of town, then run again)")
+    level, radius, sub, bolts = hits[0]
+    assert radius == 20, f"radius {radius}, PD2's aurarangecalc is 20"
+    assert _rows("missiles")[sub].lower() == "fistoftheheavensbolt", f"sub-missile row {sub}"
+    assert bolts >= 1, "no bolt, not even to the struck unit"
+    return f"level {level}: radius {radius}, {bolts} bolts"
+
+
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
-                                    "core-rules-w29"])
+                                    "core-rules-w22", "core-rules-w29", "core-rules-w17",
+                                    "core-rules-w23"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

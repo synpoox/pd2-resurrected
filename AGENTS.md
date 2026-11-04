@@ -16,6 +16,12 @@ Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, 
 
 Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+## Testing in-game
+
+- The in-game console can toggle god mode, teleport you out of town, and spawn monsters. Use it to set up a test quickly instead of playing to the spot.
+- Always test in Hell difficulty, where monsters have enough HP to survive long enough to show what a skill does.
+- Always test on a character of level 90 or higher.
+
 ## Reverse engineering
 
 Use Ghidra, as `d2rAI-toolkit/knowledge/engine-re.md` describes. Use capstone only for quick byte checks in scripts (a hook's entry bytes).
