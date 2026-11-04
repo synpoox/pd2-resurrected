@@ -146,7 +146,14 @@ inline constexpr uint64_t DirectionX = 0x1d1b650;
 inline constexpr uint64_t DirectionY = 0x1d1b750;
 
 // Self buff, the way Frozen Armor's srvdo 18 (0x553e60) builds its aurastate list
-inline constexpr uint64_t RemoveSkillState = 0x4370b0;  // (unit, state, 1): drop an older list of this state
+// (unit, state, self) -> 1 if it removed any: removes every state of the unit in the same states.txt group as
+// `state` (the state itself too with self 1). A state with no group (0) removes nothing.
+inline constexpr uint64_t RemoveSkillState = 0x4370b0;
+// What 0x4370b0 does for each state it removes: state bit off (unit, state, 0), then the list detached (unit, list)
+// and freed (dataFlag, list)
+inline constexpr uint64_t ClearUnitState = 0x3354c0;
+inline constexpr uint64_t DetachStatList = 0x2f7920;
+inline constexpr uint64_t FreeStatList = 0x2f4180;
 // (&StateListRequest) -> stat list or null. An older list of the state with the same skill and level only gets
 // its timer moved and is returned as it is; a lower level returns null; any other older list is replaced.
 inline constexpr uint64_t NewStateList = 0x433d20;
