@@ -11,15 +11,16 @@ final ordering ticket.
 
 ## Scope
 
-In: PD2's Pandemonium chain (keys `pk1`-`pk3`, the Pandemonium Map with the mini-ubers, Horn, Eye and Brain, `ubtm`)
-through Uber Tristram; Diablo Clone (`dcma`); Rathma and Mendeln (`rtma`); Lucion (`luca`) with the Temple of the Triune
+In: PD2's Pandemonium chain (keys `pk1`-`pk3`, the mini-ubers in D2R's levels 133-135, Horn, Eye and Brain, `ubtm`)
+through Uber Tristram (level 185); Diablo Clone (`dcma`); Rathma and Mendeln (`rtma`); Lucion (`luca`) with the Temple of the Triune
 and Desecration. That covers their uber keys and tiers, areas, area rules, monsters and phase scripts, and drops.
 
 Out:
 
 - PD2's Uber Ancients (`uba`, level 168) is cut. D2R has its own Uber Ancients, which stays.
-- D2R's Pandemonium Event (levels 133-136) and its world-event Diablo Clone (`diabloclone`) are turned off, because
-  PD2's fights replace them ([d2r-only-content.md](d2r-only-content.md)).
+- D2R's Uber Tristram (the organ portal and level 136) and its world-event Diablo Clone (`diabloclone`) are turned
+  off, because PD2's fights replace them ([d2r-only-content.md](d2r-only-content.md)). D2R's keys and mini-uber levels
+  133-135 stay: PD2 uses them almost unchanged (#185).
 - The season trophies and "of Clout" uniques wait for beta run 2, since they reward a league. The uber bosses'
   `.kills` counters are cut, as the map counters were.
 
@@ -50,7 +51,7 @@ Out:
 |---|---|---|---|
 | UB1 | Investigation, Ghidra on `ProjectDiablo.dll`: the fountain opening, the area rules, the tier scaling (`uberscaling`), the phase scripts, the guaranteed drops and rolls, the key drop odds (the odds-only TCs), Desecration; the wiki-only numbers checked on the PD2 install | none | #185 |
 | UB2 | Opening: uber keys used at the Blood Fountain, the uber tiers and their scaling, the area rules (buffs stripped, mercenary killed, exit blocked, tier-0 portals), the one-per-game gate shared with maps; uber keys drop again; the key drop rule | core-maps | UB1, MS2, the level pipeline for the uber areas |
-| UB3 | Pandemonium and Uber Tristram: the mini-ubers, Horn, Eye and Brain, `ubtm`, the fight, the Black Soulstone and Hellfire Torch drops | core-maps | UB2 |
+| UB3 | Pandemonium and Uber Tristram: the keys' portal to levels 133-135, the mini-ubers, Horn, Eye and Brain, `ubtm`, level 185 and the fight, the Black Soulstone and Hellfire Torch drops | core-maps | UB2 |
 | UB4 | Diablo Clone: the phases, UberDiabSummon/Run, the adds and trapped souls, Annihilus, the 1-in-200 uniques | core-maps, core-rules (skills) | UB2 |
 | UB5 | Rathma and Mendeln: the six stages, shared life, RathmaSummon, the bone spear, the death nova, the Tainted Worldstone Shard and the other rolls | core-maps, core-rules (skills) | UB2 |
 | UB6 | Lucion: the kit, the portal phases, the death novas, the Temple and its chests, the Demonic Cube roll, the Talisman's Terror Zone source | core-maps, core-rules (skills) | UB2 |
