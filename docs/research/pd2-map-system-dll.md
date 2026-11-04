@@ -238,5 +238,6 @@ plugin in this repo calls `0x432ce0` yet.
 
 ## Game check
 
-Not run. These are static readings of PD2's DLL; checking them in PD2 itself needs the user's online PD2 account. The
-port's own game checks are in MS2-MS10.
+Not run in PD2. These are static readings of PD2's DLL. A check in PD2's single player needs a level 80+ Hell character
+with the Ancients done and map items, which we don't have. The port's game checks test the same behaviour instead: MS2
+the areas and gates, MS5 the recipes and op 30.
