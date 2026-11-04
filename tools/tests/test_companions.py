@@ -43,6 +43,20 @@ class CompanionTests(unittest.TestCase):
             self.assertEqual((out / "d2rloader/plugins/x.dll").read_bytes(), b"dll")
             self.assertFalse((out / "Other.mpq").exists())
 
+    def test_commit_entry_takes_the_raw_file(self):
+        dll = b"raw dll"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.project(Path(tmp), b"")
+            manifest = {"companions": [{"name": "Y", "repo": "o/r", "commit": "abc", "asset": "release/y.dll",
+                                        "sha256": hashlib.sha256(dll).hexdigest(),
+                                        "files": {"release/y.dll": "d2rloader/plugins/y.dll"}}]}
+            (root / "companions" / "manifest.json").write_text(json.dumps(manifest))
+            calls = []
+            written = companions.fetch(root, download=lambda *a: calls.append(a) or dll)
+            self.assertEqual(calls, [("o/r", "abc", "release/y.dll", True)])
+            self.assertEqual(sorted(written), ["d2rloader/config/filter.json", "d2rloader/plugins/y.dll"])
+            self.assertEqual((root / "generated/companions/d2rloader/plugins/y.dll").read_bytes(), dll)
+
     def test_refuses_a_hash_mismatch_or_missing_file(self):
         for zipped, sha, msg in [(make_zip({"d2rloader/plugins/x.dll": b"1", "Other.mpq/data/sfx/a": b""}), "0" * 64,
                                   "SHA-256"),

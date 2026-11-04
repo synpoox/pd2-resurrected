@@ -72,6 +72,12 @@ Sorceress. The Assassin build goes to the first class lane that frees up. A rule
 earliest class in the order Necromancer, Paladin, Druid, Sorceress, Assassin; the later class checks it. The owner reviews
 the first PR in each class lane.
 
+**Engine changes for classes:** before porting a class rule, check what it changes in play. PD2 class engine code that
+changes only input or the skill bar, not what a skill does, comes from a third-party plugin instead: auras on the left
+button (cltst 54, cltdo 103) from the [Left Click Auras](https://github.com/CelestialRayOne/d2rloader_plugins/tree/main/plugins/left-click-auras)
+companion, and Force Move. The merge keeps D2R's columns for those rows, and the unported list names the plugin. Only
+rules that change a skill's effect, damage, missiles or timing get core-rules code.
+
 **Alpha exit bar:** every PD2 class is a complete class: each of its rows has a passing game check or an approximated row
 on the unported list; a fresh character of every class levels through Acts 1-5 Normal on the merged data; the table-diff
 gate is green for the alpha scope; every companion arms on Slot4; the owner tests the local 7z alone.
