@@ -53,6 +53,15 @@ class GateTests(unittest.TestCase):
         self.assertTrue(report.ok)
         self.assertEqual(report.results[0].covered, 1)
 
+    def test_the_report_counts_unported_entries_by_status(self):
+        self.write("pd2", "levels", table("Name | MonLvl", "Blood Moor | 2"))
+        self.write("mod", "levels", table("Name | MonLvl", "Blood Moor | 5"))
+        self.unported("| Blood Moor is harder | approximated | `levels.*.monlvl` | P4 |\n"
+                      "| Maps | not yet | | P3 |\n| Ladder | not yet | | P6 |\n")
+        text = pd2_diff.report(self.gate(), "P4")
+        self.assertIn("1 table cells on the unported list", text)
+        self.assertIn("Unported list: 2 not yet, 1 approximated, 0 cut entries", text)
+
     def test_missing_rows_and_columns_are_deviations_but_d2r_only_rows_are_not(self):
         self.write("pd2", "levels", table("Name | *comment | MonLvl | Beta | eol", "Rogue Encampment | x | 1 | 0 | 0",
                                           "Expansion | | | | 0", "Abaddon | | 60 | 1 | 0", "Expansion | | | | 0"))

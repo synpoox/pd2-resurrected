@@ -23,6 +23,7 @@ PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-di
 | P6 | Strings: the strings build ("Decide how the mod ships PD2's strings", #29) | P1 | D | #38 (PR) |
 | W3 | Stand-ins and data rows (core-rules) | P1 | C | #46, #60 (PR) |
 | P10 | HD missiles: every missile PD2 adds gets a `missiles.json` model (stand-in art), so none is invisible in HD | P2 | A | #74 (PR) |
+| P11 | Skill icons: every class's icon sheet rebuilt from PD2's art, so PD2's new skills show their icons | P1 | D | #79 |
 
 ## Alpha
 
@@ -36,7 +37,7 @@ M1 plus the companions, corruption and the Amazon and Barbarian engine rules; th
 | W5, W6 | Amazon (core-rules) | W2, P2 | B | #52, #80 (PR), #53 |
 | W7 | Nova and orb hits (core-rules) | W1, P2 | C | #50, #66 (PR); game check waits on the owner's run |
 | W8, W9 | Barbarian (core-rules) | W2, P2 | B | #54, #55 |
-| W10 | Barbarian group (core-rules) | W1, P2 | C | #51, #71 (open PR) |
+| W10 | Barbarian group (core-rules) | W1, P2 | C | #71 (PR) |
 | P7 | Companions: hash-checked manifest, release-script download, hand-written `filter.json`, Pyre's 16 `Filter*` sound rows and flacs merged into our data | none | C | #39 (PR) |
 | P9 | Corruption: starts with the outcome check (core-rules Q10), includes the cube op 16/18 check for corruption recipes | P3 | A | #56, #68 (PR) |
 | P8 | Alpha release: local 7z and release notes | every item above | A | #57 |

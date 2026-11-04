@@ -51,13 +51,9 @@ skills	Redemption	=	cltdofunc	Paladin aura client do
 skills	Redemption	=	cltstfunc	Paladin aura client start
 skills	Salvation	=	cltdofunc	Paladin aura client do
 skills	Salvation	=	cltstfunc	Paladin aura client start
-skills	Bash	=	srvdofunc	Bash
-skills	Find Potion	=	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Find Potion, Find Item
 skills	Leap	=	srvdofunc,cltdofunc	Leap, Leap Attack
 skills	Double Throw	=	srvdofunc,cltdofunc	Double Throw
-skills	Find Item	=	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Find Potion, Find Item
 skills	Leap Attack	=	srvdofunc,cltdofunc	Leap, Leap Attack
-skills	Frenzy	=	srvstfunc	Frenzy, Tiger Strike start
 skills	DiabWall	=	srvdofunc	Firestorm and wall makers
 skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
 skills	Firestorm	=	srvdofunc,cltdofunc	Firestorm and wall makers
@@ -68,7 +64,6 @@ skills	Fire Claws	=	srvdofunc,cltdofunc	Fire Claws
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
 skills	Hunger	=	srvdofunc	Hunger
 skills	Tiger Strike	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Tiger Strike	=	srvstfunc	Frenzy, Tiger Strike start
 skills	Fists of Fire	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Cobra Strike	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Claws of Thunder	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
@@ -108,7 +103,6 @@ skills	RathmaSummon	-	srvdofunc	RathmaSummon
 skills	RathmaTeethNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	RathmaOuterNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	RathmaPacman	Nova	srvdofunc,cltdofunc	Combustion and boss novas
-skills	UberTalicBash	Bash	srvdofunc	Bash
 skills	UberMadawcDoubleThrow	Double Throw	srvdofunc,cltdofunc	Double Throw
 skills	LeoricSummonNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	Holy Fire Fire Golem	Holy Fire	cltdofunc	Paladin aura client do

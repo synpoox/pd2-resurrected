@@ -8,6 +8,8 @@ generated/data/local/lng/. merge/strings.json holds key names and numbers only, 
   literal_percent  overrides whose "%" is plain text the placeholder check misreads ("50% chance")
   renames    our key -> the PD2 key whose text it carries (Runeword171 means another runeword in D2R)
   ids        key -> [string ID, D2R file], append-only. New keys copy PD2's English into all 13 languages.
+  texts      key -> English the mod writes itself, for listed keys PD2 has no text for (skilldesc lines in D2R's
+             format, #73); written into all 13 languages like PD2's
 Text going into skills.json has its lines flipped (D2R stacks multi-line skill text top-down). The rule fails if D2R
 starts using a listed key or the low 16 bits of a listed ID.
 
@@ -98,9 +100,10 @@ def build(cfg: dict, pd2: dict[str, str], s, out_root: Path) -> list[str]:
         if sid & 0xFFFF in used16 or sid > 0xFFFF or sid in seen:
             raise ValueError(f"string ID {sid} ({key}) is used by D2R, repeated or above 65535")
         seen.add(sid)
-        if from_key[key] not in pd2:
+        own = cfg.get("texts", {}).get(key)
+        if own is None and from_key[key] not in pd2:
             raise ValueError(f"{key!r}: PD2 has no key {from_key[key]!r}")
-        text = flip(file, pd2[from_key[key]])
+        text = flip(file, pd2[from_key[key]] if own is None else own)
         for folder in mk.FOLDERS:
             rel = f"{folder}/{file}"
             if s.base.exists(rel):
