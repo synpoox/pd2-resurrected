@@ -54,7 +54,7 @@ the earliest in the order Necromancer, Paladin, Druid, Sorceress, Assassin, and 
 | W12 | Necromancer: Blood Warp (srvdo 157 -> 191, srvst 66 -> 80, cltst 56 -> free slot) | none |
 | W13 | Necromancer: Desecrate (srvdo 161 -> 195, cltdo 101 -> 121) | none |
 | W14 | Necromancer: Golem start (srvst 74), Revive event 32, get-hit/block end window and cast delay (every class) | none |
-| W15 | Paladin: aura client start and do (cltst 54 -> free slot, cltdo 103 -> 123) | none |
+| W15 | Paladin: aura client start and do: no port, the Left Click Auras companion covers them (owner 2026-11-04) | none |
 | W16 | Paladin: Charge (srvdo 180, cltdo 112, srvst 72, cltst 57 -> free slot) and the Charge/Whirlwind rule | none |
 | W17 | Paladin: Holy Light (srvdo 176, chit 66), Fist of the Heavens client hit (chit 26) | none |
 | W18 | Paladin: Vengeance (srvdo 174), Joust (srvdo 162 -> 196) | none |
@@ -137,8 +137,8 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Spirit Wolf, Fenris start | srvst 77 | c | 77 | SrvStTable | Exact | S | open | summon logs start accepted | W24 |
 | Frenzy, Tiger Strike start | srvst 78 | c | 78 | SrvStTable, DataTables, UnitStat, RemoveSkillState, NewStateList, SetListStat, SetUnitState, SkillStateExpired | Exact | S | built (W10) with an approximated deviation, owed to the unported list (W3): inc_splash_radius (Frenzy: calc2 * skill_frenzy / calc4; Tiger Strike: calc2 * charges under 3) goes on a temp_skill_buff list replaced each start and lasting 10 minutes, where PD2 keeps one permanent list; the replace also drops Split Throw's buff on the same state, and Split Throw's start drops the splash until the next Frenzy swing. The splash effect that reads the stat is not part of this rule | log: splash radius = PD2 dm34(lvl) * charges / 5 | W10 |
 | Fire Claws, Split Throw start | srvst 79 | c | 79 | SrvStTable, RemoveSkillState, NewStateList, AddAuraStats, AddAuraStatsB, SetListStat, UnitStateKey, StateListKey, SendSkillState, SetUnitState, SkillStateExpired | Exact | S | built (W2) with an approximated deviation, owed to the unported list (W3): aurastate + aurastat1-6 for a fixed 25 frames (PD2's rows have no auralencalc). D2R has no temp_skill_buff; the merged data appends it as state 270 (checked in game, #45), the test fixture keeps quickness until the merged tables pass validation | cast logs the state, length and aurastat1 = attackrate +par4 (10) | W2 |
-| Paladin aura client start (19 auras) | cltst 54 | c | 54 -> ? (Q3) | CltStTable ? | Exact | S | verify | aura start draws on client | W15 |
-| Paladin aura client do (19 auras, Force Move, SelfAura skills) | cltdo 103 | c | 103 -> 123 | CltDoTable | Exact | M | open | aura graphic draws; D2R would run Cleave's client code | W15 |
+| Paladin aura client start (19 auras) | cltst 54 | c | none | none | Exact | S | cut | PD2's start/do only make auras left-button skills; the Left Click Auras companion covers that | third-party plugin (Left Click Auras companion, owner 2026-11-04) |
+| Paladin aura client do (19 auras, Force Move, SelfAura skills) | cltdo 103 | c | none | none | Exact | M | cut | PD2's start/do only make auras left-button skills; the Left Click Auras companion covers that | third-party plugin (Left Click Auras companion, owner 2026-11-04) |
 | Baal Corpse Explode client start | cltst 82 | a | none (past D2R's table end: use none, per toolkit notes) | none | Exact | S | data | check the cast still shows | W3 |
 
 ## Missile functions
