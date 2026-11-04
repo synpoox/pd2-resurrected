@@ -49,6 +49,14 @@ class GateTests(unittest.TestCase):
         self.assertTrue(report.ok)
         self.assertEqual(report.open(), [])
 
+    def test_a_value_the_merge_fixes_is_not_a_deviation(self):
+        for t, h in (("skills", "skill"), ("states", "state"), ("properties", "code | func1 | stat1")):
+            for side in ("pd2", "mod"):
+                self.write(side, t, table(h))
+        self.write("pd2", "gems", table("name | weaponMod2Code", "Um Rune | Deep-Wounds"))
+        self.write("mod", "gems", table("name | weaponMod2Code", "Um Rune | deep-wounds"))
+        self.assertEqual(self.gate("P3").open(), [])
+
     def test_a_changed_cell_is_open_until_the_unported_list_names_it(self):
         self.write("pd2", "levels", table("Name | MonLvl", "Rogue Encampment | 1", "Blood Moor | 2"))
         self.write("mod", "levels", table("Name | MonLvl", "Rogue Encampment | 1", "Blood Moor | 5"))

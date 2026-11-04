@@ -109,16 +109,24 @@ class FormulaAndColumnTests(unittest.TestCase):
         self.assertEqual(merged.rows, [["singleskill", "27", "", "ItemModifierClassSkill", "ItemModifierClassSkill"],
                                        ["elemskill", "", "", "", ""]])
 
-    def test_codes_no_table_defines_are_fixed(self):
-        ren = I.renames({t: [] for t in I.TABLES})
-        cases = [("gems", "weaponMod2Code", "Deep-Wounds", "deep-wounds"),
-                 ("magicsuffix", "mod2code", "Deep-Wounds", "deep-wounds"),
-                 ("magicsuffix", "itype4", "amu", "amul"),
-                 ("magicprefix", "transformcolor", "dblue", "dblu"),
-                 ("magicprefix", "mod1code", "map-mon-extra-mag", ""),
-                 ("magicprefix", "mod1code", "res-cold-max", "res-cold-max")]
-        for table, col, pd2, mod in cases:
-            self.assertEqual(I.spell(table, col, pd2, ren), mod, (table, col, pd2))
+    def test_values_no_table_defines_are_fixed(self):
+        h = ["name", "itype4", "mod2code", "mod2min"]
+        self.assertEqual(I.fix_row("magicsuffix", h, ["of Anima", "amu", '"Deep-Wounds"', "5"]),
+                         ["of Anima", "amul", "deep-wounds", "5"])
+        self.assertEqual(I.fix_row("magicsuffix", h, ["of Bear", "amul", "res-cold", "5"]),
+                         ["of Bear", "amul", "res-cold", "5"])
+        self.assertEqual(I.fix_row("uniqueitems", ["index", "prop7"], ["Woestave", "Deep-Wounds"]), ["Woestave", "deep-wounds"])
+        h = ["name", "mod1code", "mod1min", "mod1max", "transformcolor"]
+        self.assertEqual(I.fix_row("magicprefix", h, ["Magic", "map-mon-extra-mag", "5", "10", "dblue"]),
+                         ["Magic", "", "", "", "dblu"])
+
+    def test_a_missing_description_string_drops_the_line(self):
+        d2r = table("name|code|spelldesc|spelldescstr|alternategfx\r\nAntidote Potion|yps|||yps\r\n", "code")
+        pd2 = table("name|code|spelldesc|spelldescstr|alternategfx\r\nAntidote Potion|yps|1|ItemStatsAnti|yps\r\n"
+                    "Bone Fragment|rtmf|||bonechips\r\n", "code")
+        merged, _ = I.merge_table("misc", pd2, d2r, [("yps", 0, "yps"), ("rtmf", 1, "rtmf")],
+                                  I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["Antidote Potion", "yps", "", "", "yps"], ["Bone Fragment", "rtmf", "", "", "bone"]])
 
     def test_function_numbers_moved_off_d2r_slots(self):
         d2r = table("Missile|pCltDoFunc|pSrvDoFunc\nflamewave|71|38\n")

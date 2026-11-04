@@ -125,7 +125,7 @@ def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | 
         if mr is None:
             res.open.append((f"{name}.{row}.*", "", ""))
             continue
-        want = list(mr)
+        want, pr = list(mr), pd2_ids.fix_row(name, pd2.header, pr)
         for _, i, j in cols:
             want[j] = pd2_ids.spell(name, mod.header[j], pr[i], ren) if ren else pr[i].replace('"', "")
         pd2_ids.fix_missile_funcs(name, mod.header, want)

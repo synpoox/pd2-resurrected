@@ -67,7 +67,8 @@
     "StrSkillPoisonDamagePercent": "Poison Damage: %+d%%",
     "OpenWoundsDamagePerSecond": "Open Wounds Damage: %d per second",
     "PartyOpenWoundsDamagePerSecond": "Party Open Wounds Damage: %d per second",
-    "ThornsOpenWoundsDamagePerSecond": "Your Open Wounds Damage: %d per second"
+    "ThornsOpenWoundsDamagePerSecond": "Your Open Wounds Damage: %d per second",
+    "t99": "Mesa Map"
   },
   "ids": {
     "Runeword171PD2": [50000, "item-runes.json"],
@@ -1433,6 +1434,7 @@
     "StrSkillPoisonDamagePercent": [51360, "skills.json"],
     "OpenWoundsDamagePerSecond": [51361, "skills.json"],
     "PartyOpenWoundsDamagePerSecond": [51362, "skills.json"],
-    "ThornsOpenWoundsDamagePerSecond": [51363, "skills.json"]
+    "ThornsOpenWoundsDamagePerSecond": [51363, "skills.json"],
+    "t99": [51364, "item-names.json"]
   }
 }
