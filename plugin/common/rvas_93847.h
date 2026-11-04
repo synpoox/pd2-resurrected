@@ -163,6 +163,7 @@ inline constexpr uint64_t LeapLanded = 0x56b5e0;  // (game, unit, unitSkill) -> 
 inline constexpr uint64_t UnitRoom = 0x34b440;  // (unit) -> its room
 // (game, unit, &AreaCenter, radius, unit mask, callback, arg, 0): callback(&AreaContext, victim) for each unit in range
 inline constexpr uint64_t AreaUnits = 0x4398b0;
+inline constexpr uint32_t AreaUnitMask = 0x8583;  // PD2's and AreaKnockback's default unit mask
 // (game, unit, 0, 0, radius, &LeapKnockback, 0, &scratch): Leap's landing knockback (srvdo 77), callback 0x43a740
 inline constexpr uint64_t AreaKnockback = 0x437820;
 inline constexpr uint64_t SkillMeleeHit = 0x56b170;  // (game, unit, skillId, level): Leap Attack's hit on the skill target
@@ -171,9 +172,20 @@ inline constexpr uint64_t RemoveUnitEvent = 0x48b890;  // (game, unit, event, 0)
 inline constexpr uint64_t AddUnitEvent = 0x48b720;  // (game, unit, event, frame, 0, 0, 0)
 inline constexpr uint64_t MonStatsRecord = 0x976e0;  // (dataFlag, classId) -> monstats record or null
 inline constexpr uint64_t UnitId = 0x34a330;  // (unit, file, line) -> unit id
-// (unit, skill, level, target, 0) -> non-zero cast: a skill cast from unit at target as an event, sent to clients (aura
-// event 33 0x42f300 casts this way); refuses while the unit has state 54
-inline constexpr uint64_t CastEventSkill = 0x5896e0;
+// Melee splash (W33): one victim's damage, built the way PD2's area callback 0x10303190 builds it
+// (game, attacker, defender, &damage, 0, srcdam): weapon damage scaled by srcdam / 128 (0 = 128); Leap Attack's
+// 0x44b600 fills its hit this way
+inline constexpr uint64_t WeaponDamage = 0x44c030;
+// D2R's area apply 0x436e90 (game, attacker, victim, &damage), which AreaKnockback's callback 0x43a740 calls, in steps:
+inline constexpr uint64_t AvoidRoll = 0x44b930;  // (game, attacker, victim, 1, 0) -> 1 avoided, 2/4/0x10 block kinds
+inline constexpr uint64_t UnitHasState = 0x3351b0;  // (unit, state) -> non-zero while the unit has it
+inline constexpr uint64_t DamageStep = 0x5889e0;  // (attacker, victim, &damage)
+inline constexpr uint64_t DamageEffects = 0x44df10;  // (game, attacker, victim, &damage): 0x44ce80 runs it for area hits
+// (game, attacker, victim, area, &damage): with area 0, events 5 domeleedamage (attacker) and 1 (victim), as a melee
+// hit's 0x44b2b0 calls it; with area 1, events 6 domissiledamage and 2
+inline constexpr uint64_t HitEvents = 0x44ce80;
+inline constexpr uint64_t DealDamage = 0x44a9b0;  // (game, attacker, victim, &damage)
+inline constexpr uint64_t EngineAllocator = 0x12063c0;  // () -> the allocator; vtable +0x20 frees (Leap Attack's cleanup)
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
@@ -270,6 +282,7 @@ inline constexpr int SkCalc4 = 0x19c;  // skills field table at 0x306193
 inline constexpr int SkAuraRangeCalc = 0x84;  // int32 aurarangecalc, Chain Lightning's chain range when sHitPar1 is 0
 inline constexpr int SkParam3 = 0x1c0;  // int32 Param3
 inline constexpr int SkParam4 = 0x1c4;  // int32 Param4 (Param1 0x1b8), field table at 0x305e68
+inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
 inline constexpr int SkAuraLenCalc = 0x80;    // int32 auralencalc: 1.13c's 0x60, before aurarangecalc as there
