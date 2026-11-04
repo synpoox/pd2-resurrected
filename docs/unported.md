@@ -1,7 +1,7 @@
 # Unported list
 
 Every deviation from the PD2 baseline, marked approximated, cut or not yet, and why (see [GLOSSARY.md](../GLOSSARY.md)).
-D2R-only content is not a deviation.
+D2R-only content is not a deviation. PD2's own bugs that we fixed are listed in [pd2-origin-bugs.md](pd2-origin-bugs.md).
 
 `tools/pd2_diff.py` reads the **Gate** column: each backticked `table.row.column` pattern (fnmatch, any case; `*` also
 spans dots) covers the table-diff gate's deviations it matches. The gate compares the excel tables only; rows without a
