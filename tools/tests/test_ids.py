@@ -68,6 +68,29 @@ class MergeTableTests(unittest.TestCase):
         ])
         self.assertTrue(merged.text().endswith("\r\n"))
 
+    def test_port_row_copies_an_earlier_row_with_columns_set(self):
+        d2r = table("Name|itype1|itype2|rare\r\nSturdy|shld||1\r\nDevil's|amul|circ|1\r\n")
+        pd2 = table("Name|itype1|itype2|rare\r\nSturdy|helm||1\r\nNew|ring||\r\n")
+        lines = [("Sturdy", 0, "Sturdy"), ("New", 2, "New"), ("+1 itype1=tors itype2= rare=3", 3, "Devil's")]
+        merged = I.merge_table("magicprefix", pd2, d2r, lines, {})[0]
+        self.assertEqual(merged.rows, [["Sturdy", "helm", "", "1"], ["Devil's", "amul", "circ", "1"],
+                                       ["New", "ring", "", ""], ["Devil's", "tors", "", "3"]])
+        with self.assertRaisesRegex(I.IdError, "no column 'itype9'"):
+            I.merge_table("magicprefix", pd2, d2r, [*lines[:2], ("+1 itype9=x", 3, "Devil's")], {})
+
+
+class PortRowTests(unittest.TestCase):
+    def test_check_takes_port_rows_in_the_appended_ids(self):
+        I.check("magicprefix", [("A", 0, "A"), ("B", 2, "B"), ("+0 x=1", 3, "A")], ["A", "B"], ["A", "X"])
+        self.assertEqual(I.seed("magicprefix", ["A", "B", "C"], ["A", "X"], [("A", 0, "A"), ("+0 x=1", 2, "A")]),
+                         [("B", 1, "B"), ("C", 3, "C")])  # C skips the port row's 2
+
+    def test_check_refuses_a_port_row_on_a_d2r_id_or_copying_a_later_row(self):
+        for line, msg in [(("+0 x=1", 1, "A"), "after D2R's rows"), (("+3 x=1", 2, "A"), "earlier row"),
+                          (("+-1 x=1", 2, "A"), "want"), (("+0 x", 2, "A"), "want")]:
+            with self.subTest(msg), self.assertRaisesRegex(I.IdError, msg):
+                I.check("magicprefix", [("A", 0, "A"), line], ["A"], ["A", "X"])
+
 
 class FormulaAndColumnTests(unittest.TestCase):
     def test_fix_formula(self):

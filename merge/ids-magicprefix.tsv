@@ -1,4 +1,4 @@
-# PD2 name	id	name (append-only, ADR 0003)
+# PD2 name	id	name (append-only, ADR 0003); a "+" line is a row the port adds (tools/pd2_ids.py, #233)
 	0	
 Sturdy	1	Sturdy
 Strong	2	Strong
@@ -989,3 +989,8 @@ Tempestguard's	1038	Tempestguard's
 Frostwarded	1039	Frostwarded
 Winterlord's	1040	Winterlord's
 Scintillating#7	1041	Scintillating
++711 itype1=tors itype2=shld itype3=helm frequency=10 add=20000	1042	Devil's
++712 itype1=helm itype2=tors itype3=shld etype1=circ level=75 levelreq=68 rare=3 frequency=3	1043	Arch-Devil's
++704 itype3= itype4= rare=3 frequency=10	1044	Torrid
++707 itype3= itype4= itype5= rare=3 frequency=10	1045	Forbidden
++710 itype3= itype4= rare=3 frequency=10	1046	Malevolent
