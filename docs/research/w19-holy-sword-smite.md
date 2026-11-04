@@ -44,9 +44,12 @@ crushing blow for every item, with Smite's chance added. `(game, event, unit, ta
 D2R's event 16 (`0x583150`): chance = the unit's stat `key >> 16` at layer `key & 0xffff`, roll `% 100` on its seed,
 then `0x581bd0 (game, unit, target, {damage, 4, 10, 10, event == 6})` (itself a jump outside the dump).
 
-core-rules wraps slot 16. Off Smite it is D2R's. While the unit uses Smite, Smite's own event rolls once with
-`crushingblow` + calc3 and calls D2R's blow, and the item event stands down, so a hit rolls once as in PD2. PD2's blow
-formula, calc4, stat 268 and the per-hand sum are not ported (unported list; the formula is its own core-rules row).
+D2R never calls slot 16 on a player's melee hit (a build that logged every slot 1-40 saw nothing on the Paladin's
+hits, #165), so core-rules rolls Smite's crushing blow on the hit path instead. It wraps Smite's do (srvdo 150, D2R's
+`0x564930`) to mark the thread as smiting, and hooks D2R's hit queue (`0x44b600 (game, attacker, target, damage,
+flag)`). A queued hit that landed (result `+4` has bit 1 and none of `0x8380`) while smiting rolls once with
+`crushingblow` + calc3 and calls D2R's blow (`0x581bd0`) on the damage block before it is queued. PD2's blow formula,
+calc4, stat 268 and the per-hand sum are not ported (unported list; the formula is its own core-rules row).
 
 ## Run and Concentration (gate A, PD2 `0x10373290`)
 
@@ -66,5 +69,6 @@ them. The windows are D2R's, not PD2's frame check `0x77e00` (approximated, unpo
 
 Game check (Slot 5, Hell, level 90 Paladin, Smite 20, Holy Sword 10, Concentration 20): Holy Sword's start accepted with
 Shadowfang; Smite's start accepted, and Smite deals damage (combat log 37-44 a hit); Concentration refused get-hits from
-attack mode. Smite's event never fired: a build that logged every event slot 1-40 saw nothing on the Paladin's hits
-(#165). No run request was logged mid-attack.
+attack mode. Smite's event never fired on slot 16 (#165); with the hit-queue roll, 30 Smites on Hell zombies logged 22
+landed hits at chance 25 (calc3 25 at level 20) and 8 crushing blows, one roll a hit. No run request was logged
+mid-attack.

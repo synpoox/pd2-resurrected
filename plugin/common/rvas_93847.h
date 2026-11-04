@@ -46,6 +46,17 @@ inline constexpr int SrvDoPoisonDaggerSlot = 32;  // 0x55cc50: D2R's Poison Dagg
 // skill's auraevent1-4 on the pet (nor does anything else on that path), so Revive's event 32 needs core-rules.
 inline constexpr int SrvDoRevive = 58;
 inline constexpr uint64_t SrvDoReviveD2R = 0x55e7e0;
+// srvdofunc 150, D2R's Smite do (also MonSmite's, UberTalicSmite's, MonSmiteLucion's): builds the hit on its stack,
+// QueueHit's it, then ApplyQueuedHit (0x564930 decompiled, #165)
+inline constexpr int SrvDoSmite = 150;
+inline constexpr uint64_t SrvDoSmiteD2R = 0x564930;
+// (game, attacker, target, &damage, flag): queues a hit in the attacker's list (+0x108, QueuedHit reads it); a hit
+// that landed is result & 1 with none of 0x8380
+inline constexpr uint64_t QueueHit = 0x44b600;
+// mov [rsp+0x20],rbx / push rbp / push rsi / push r14 / sub rsp,0x30 / mov rbx,r9
+inline constexpr uint8_t QueueHitEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x20, 0x55, 0x56, 0x41,
+                                            0x56, 0x48, 0x83, 0xec, 0x30, 0x49, 0x8b, 0xd9};
+inline constexpr int EventDoMeleeDamage = 5;  // the event PD2's Smite roll stands in for
 // srvstfunc 66: (game, unit, skill, level) -> 1, registers the skill's auraevent1-4 / auraeventfunc1-4 on unit for
 // good (no stat list, no source), through 0x588670 and 0x438230 per event
 inline constexpr uint64_t RegisterSkillEvents = 0x42fa90;
@@ -390,6 +401,7 @@ inline constexpr int TablesOverlayCount = 0x1230;  // int64 overlay.txt row coun
 inline constexpr int DamageResult = 0x4;
 inline constexpr uint16_t ResultHit = 0x1;
 inline constexpr uint16_t ResultKnockback = 0x8;
+inline constexpr uint16_t ResultAvoided = 0x8380;  // QueueHit's "did not land" bits
 inline constexpr int UnitClassId = 0x04;  // int32 row in the unit's table: monstats for a monster, missiles.txt for a missile
 inline constexpr int UnitIdField = 0x08;  // uint32, the id NearestTarget skips
 inline constexpr int UnitSeqAnim = 0x40;  // pointer cltdo 24 tests to pick how it rewinds an Inferno caster
