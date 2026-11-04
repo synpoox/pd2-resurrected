@@ -38,12 +38,21 @@ and Valkyrie (32), e.g. modkit save-set <save> level=30 --skill 16=10 --skill 12
 --project .; then out of town: Exploding Arrow and Multiple Shot into packs (Pierce lets arrows reach a second
 monster), summon a Valkyrie next to monsters, and run the same command with core-rules-w6.
 
+W11 checks (tag core-rules-w11), same merged data: a Necromancer with Poison Dagger (73), e.g. modkit save-set <save>
+level=30 --skill 73=10 --project .; then out of town stab monsters with a dagger a few times and run the same command
+with core-rules-w11. D2RCore's console does it without walking: `debug_mode`, `cheat uniques 39` (Gull), pick it up,
+`cheat idall`, equip, `cheat god 1`, `cheat goto 2` (Blood Moor), `cheat mspawn zombie1,3`, then Poison Strike on the
+right button and right-click a zombie. game_ctl clicks reach the world only with the harness background flag off.
 W12 check (tag core-rules-w12), same merged data: a Necromancer with Blood Warp (merged skill 439) and no item that
 lowers its life cost, e.g. modkit save-set <save> level=30 --skill 439=10 --project .; then out of town (Teleport
 does not work in town) Blood Warp a few times and run the same command with core-rules-w12.
 W13 checks (tag core-rules-w13), same merged data: a Necromancer with Desecrate (83), e.g. modkit save-set <save>
 level=30 --skill 83=10 --project .; then out of town: cast Desecrate on the ground, wait 20 s (PD2 hides the corpses
 after 16), and run the same command with core-rules-w13.
+W14 checks (tag core-rules-w14), same merged data: a Necromancer with Clay Golem (class skill slot 9), Golem Mastery
+(slot 13) at 10 and Revive (slot 29), no +skills, e.g. modkit save-set <save> --skill 9=1 --skill 13=10 --skill 29=10;
+then out of town: run core-rules-w14 and, while golem-count watches (30 s), summon Clay Golem four times; then kill a
+monster, Revive its corpse next to other monsters, let the revive fight, and run again.
 W16 check (tag core-rules-w16), same merged data: a Paladin with Charge (107) and no Vigor or Might, e.g. modkit
 save-set <save> level=30 --skill 107=10 --project .; then out of town Charge a few monsters from several screens away
 and run the same command with core-rules-w16.
@@ -67,10 +76,14 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 183, "double throw"), ("cltdofunc", 116, "double throw"), ("pSrvHitFunc", 66, "bounce"),
     ("pSrvDmgFunc", 21, "first hit"),
     ("pSrvHitFunc", 63, "explode spread"), ("pSrvDmgFunc", 20, "pierce falloff"),
+    ("cltdofunc", 122, "poison dagger"), ("pSrvHitFunc", 61, "state hit"),
     ("cltdofunc", 121, "desecrate"), ("srvstfunc", 72, "charge"), ("srvdofunc", 180, "charge"),
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
+    ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
+    ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
+REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
 LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knockback|units in range) (\d+), velocity (\d+)")
 ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
 HPREGEN = 74  # itemstatcost row of hpregen in D2R and PD2
@@ -87,8 +100,8 @@ def _log(ctx) -> str:
     return text[starts[-1]:] if starts else ""
 
 
-@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "core-rules-w13",
-                                 "core-rules-w16", "game"])
+@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
+                                 "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w33", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -255,6 +268,45 @@ def valkyrie_power_strike(ctx):
     return f"{len(sizes)} Valkyrie strike(s) drawn, {sizes[0]} missile(s) in the first"
 
 
+DAGGER = re.compile(r"poison dagger: skill 73 level (\d+): (\d+) clouds \(row (\d+), Param3 (-?\d+)\) at -?\d+,-?\d+, "
+                    r"poison (-?\d+) length (-?\d+)")
+
+
+def _elem_min(level: int) -> int:
+    """PD2's Poison Dagger EMin at `level` before synergies, shifted by HitShift 4: EMin 1, EMinLev1-5 1/4/14/24/34."""
+    per = [(8, 1), (16, 4), (22, 14), (28, 24), (10 ** 9, 34)]
+    return (1 + sum(next(v for top, v in per if n <= top) for n in range(2, level + 1))) << 4
+
+
+@check("poison-dagger-clouds", tags=["core-rules-w11"])
+def poison_dagger_clouds(ctx):
+    """A Poison Dagger hit (srvdofunc 190) rings the target with PD2's Param3 10 -> 11 poisondaggercloud missiles,
+    each given the hit's poison, which is at least PD2's EMin for the level (synergies only add)."""
+    casts = DAGGER.findall(_log(ctx))
+    if not casts:
+        ctx.skip("no Poison Dagger hit in the log yet (stab a monster out of town, then run again)")
+    level, created, row, param3, poison, length = (int(v) for v in casts[-1])
+    assert row == _rows("missiles").index("poisondaggercloud"), f"cloud row {row}"
+    assert param3 == 10 and created == 11, f"{created} clouds for Param3 {param3}, PD2 makes 11"
+    assert poison >= _elem_min(level), f"level {level}: poison {poison} under PD2's EMin {_elem_min(level)}"
+    assert length > 0, f"poison length {length}"
+    return f"level {level}: {created} clouds, poison {poison} over {length} frames"
+
+
+@check("poison-cloud-state", tags=["core-rules-w11"])
+def poison_cloud_state(ctx):
+    """A cloud's hit (pSrvHitFunc 61) gives the unit PD2's poison_strike state (sHitPar1) for 52 frames (sHitPar2)
+    and returns PD2's 2 + CollideKill: D2R's collision deals the cloud's damage only on bit 2."""
+    row = _rows("missiles").index("poisondaggercloud")
+    hits = re.findall(rf"state hit: missile row {row} skill 73 level \d+: state (\d+) for (\d+) frames.*?"
+                      r", result (-?\d+)", _log(ctx))
+    if not hits:
+        ctx.skip("no cloud hit in the log yet (stab a monster with Poison Dagger, then run again)")
+    state, frames, result = (int(v) for v in hits[-1])
+    assert state == _rows("states").index("poison_strike"), f"state {state}"
+    assert frames == 52, f"{frames} frames, PD2's sHitPar2 is 52"
+    assert result == 2, f"result {result}: D2R deals the cloud's damage on 2 (CollideKill 0)"
+    return f"state {state} for {frames} frames, result {result}"
 @check("desecrate-cast", tags=["core-rules-w13"])
 def desecrate_cast(ctx):
     """Desecrate (router srvdo 190) raised PD2's calc1 corpses, 5 at every level, and the client (cltdofunc 121) drew
@@ -285,6 +337,68 @@ def desecrate_corpses_hide(ctx):
         ctx.skip("no Desecrate cast yet (cast it out of town, wait 20 s, then run again)")
     assert hidden > 0, f"{casts} Desecrate cast(s), no corpse hidden: the state-list timer does not run on a corpse"
     return f"{hidden} corpse(s) hidden after {casts} cast(s)"
+
+
+GOLEM_MASTERY_LEVEL = 10  # the W14 save's base level (setup above)
+
+
+@check("golem-count", tags=["core-rules-w14"])
+def golem_count(ctx):
+    """Golems follow PD2's count rule as data: petmax 1 + Golem Mastery blvl / 5 (+ extra_golem) caps Clay, Blood and Fire
+    Golems together, and a new one replaces the oldest. Watches the client's monsters for 30 s while golems are
+    summoned. The Iron Golem keeps its own pet type and does not take a place (docs/unported.md)."""
+    rows = _rows("monstats")
+    golems = {rows.index(n) for n in ("claygolem", "bloodgolem", "firegolem")}
+    limit = 1 + GOLEM_MASTERY_LEVEL // 5
+    ctx.ensure_running()
+    game = missile_probe.Game(ctx.game.pids()[0])
+    seen, most = set(), 0
+    end = time.monotonic() + 30
+    while time.monotonic() < end:
+        alive = {g for g, row in game.units(missile_probe.MONSTER).items() if row in golems}
+        seen |= alive
+        most = max(most, len(alive))
+        time.sleep(0.05)
+    if len(seen) <= limit:
+        ctx.skip(f"{len(seen)} golems summoned in 30 s, need {limit + 1} (summon Clay Golem while this runs)")
+    assert most == limit, f"{most} golems at once after {len(seen)} summons, PD2 keeps {limit}"
+    return f"{len(seen)} summons, at most {most} golems at once (Golem Mastery {GOLEM_MASTERY_LEVEL})"
+
+
+@check("revive-event", tags=["core-rules-w14"])
+def revive_event(ctx):
+    """Revive's aura event (auraeventfunc 32) fired on the revived monster when it hit (core-rules registers Revive's
+    events on it, D2R's Revive doesn't) and casts proc_SplashDamage (merged 430) at level 1 from it, as PD2 does."""
+    events = re.findall(r"revive event: event \d+ skill (\d+) level \d+ on unit type (\d+) class \d+ owner (-?\d+)/\d+, "
+                        r"target type (\d+): splash skill (\d+) cast (-?\d+)", _log(ctx))
+    if not events:
+        ctx.skip("no revive event in the log yet (Revive a corpse next to monsters, let it fight, then run again)")
+    skill, unit_type, _, target_type, splash, cast = (int(v) for v in events[0])
+    assert skill == REVIVE, f"event from skill {skill}, expected Revive ({REVIVE})"
+    assert unit_type == 1, f"fired on unit type {unit_type}, not a revived monster"
+    assert splash == PROC_SPLASH_DAMAGE, f"splash skill {splash}, expected proc_SplashDamage ({PROC_SPLASH_DAMAGE})"
+    assert cast != 0, "the splash was refused (proc_SplashDamage's do function, W33)"
+    return f"fired on a revive hitting unit type {target_type}, splash cast {cast}"
+
+
+@check("melee-splash", tags=["core-rules-w33"])
+def melee_splash(ctx):
+    """A splash (proc_SplashDamage, Golem Splash, Skeleton Splash through the srvdo 190 router) hits the units within
+    calc3 of the struck unit, the struck unit aside. proc_SplashDamage's calc3 is PD2's
+    max(6 - lvl + inc_splash_radius / 20, 0)."""
+    casts = re.findall(r"splash: skill (\d+) level (\d+) from unit type \d+ at unit type \d+: radius (-?\d+) "
+                       r"\(inc_splash_radius (-?\d+)\), units hit (\d+)", _log(ctx))
+    casts = [tuple(int(v) for v in c) for c in casts]
+    if not casts:
+        ctx.skip("no splash in the log yet (hit a pack with item_splashonhit, or Revive and let it fight, then run again)")
+    for skill, level, radius, inc, _ in casts:
+        if skill == PROC_SPLASH_DAMAGE:
+            assert radius == max(6 - level + int(inc / 20), 0), f"level {level}, inc_splash_radius {inc}: radius {radius}"
+    hits = [c for c in casts if c[4] > 0]
+    if not hits:
+        ctx.skip(f"{len(casts)} splashes logged, none with units in range (splash a pack, then run again)")
+    skill, level, radius, inc, units = hits[0]
+    return f"skill {skill} level {level}: radius {radius} (inc_splash_radius {inc}), {units} units hit"
 
 
 @check("throw-hd-models", tags=["core-rules"])
@@ -443,8 +557,8 @@ def charge_hit(ctx):
     return f"velocity {velocity} (base {base}), level {level}: damage% {damage}, distance {distance} -> splash {splash}"
 
 
-@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "core-rules-w13",
-                                    "core-rules-w16"])
+@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
+                                    "core-rules-w13", "core-rules-w14", "core-rules-w16"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

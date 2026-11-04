@@ -49,15 +49,16 @@ void SteerHome(Unit* missile, Unit* owner, int32_t framesLeft) noexcept {
 // shit 65: on a collision, start HitSubMissile1-4 (the <name>return row) at the missile, as D2R's srvhit 4 does.
 // shortcut: approximation from PD2's data, srvhit 4 runs on any collision (ground and walls too) and explodes the
 // sub-missile when the parent row has an explosion; PD2's may differ. Upgrade when PD2's shit 65 is read from
-// ProjectDiablo.dll.
-void SrvHitSpawnReturn(Game* game, Unit* missile, Unit* hit) noexcept {
+// ProjectDiablo.dll. Returns srvhit 4's result, so the collision deals the missile's damage as srvhit 4's do.
+auto SrvHitSpawnReturn(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	if (game == nullptr || missile == nullptr) {
-		return;
+		return 1;
 	}
-	d2r::Engine<MissileSrvHitFn>(d2r::rva::SrvHitSubMissiles)(game, missile, hit);
+	const int32_t result = d2r::Engine<MissileSrvHitFn>(d2r::rva::SrvHitSubMissiles)(game, missile, hit);
 	if (plog::Sample(g_returnSpawns)) {
-		plog::Info("return missile: spawned on hit, hit %u", g_returnSpawns.load());
+		plog::Info("return missile: spawned on hit, result %d, hit %u", result, g_returnSpawns.load());
 	}
+	return result;
 }
 
 // sdo 46 (PD2 sdo 38): fly back to the thrower and end on reaching them; otherwise the default missile frame.
@@ -244,22 +245,23 @@ static_assert(PierceDamagePercent(9, 20, 20) == 20);
 // shortcut: PD2 queues a timer per explosion with its own RNG and creates srvmissile b (fireexplosion3) only to send
 // and remove it; this creates srvmissile a and b at once with `activation` = the delay and rolls on the owner's seed.
 // Upgrade if the explosions show at the wrong time or fireexplosion3 lingers in play.
-void SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept {
+// Returns srvhit 4's result: 3 (PD2's, deal the arrow's damage), or 1 without a missile row (PD2's early exits).
+auto SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr) {
-		return;
+		return 1;
 	}
-	d2r::Engine<MissileSrvHitFn>(SrvHitSubMissiles)(game, missile, hit);
+	const int32_t result = d2r::Engine<MissileSrvHitFn>(SrvHitSubMissiles)(game, missile, hit);
 	Unit* owner = hit == nullptr ? nullptr : d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
 	if (owner == nullptr) {
-		return;
+		return result;
 	}
 	const uint32_t dataFlag = d2r::DataFlag(game);
 	// PD2 takes the skill from the missile row, so a monster's Exploding Arrow spreads too.
 	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
 		dataFlag, At<int32_t>(missile, UnitClassId));
 	if (row == nullptr) {
-		return;
+		return result;
 	}
 	const int32_t skillId = At<int16_t>(row, MsSkill);
 	const int32_t level = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileLevel)(missile);
@@ -267,18 +269,18 @@ void SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept {
 	const uint8_t* explode = d2r::api.getSkillRecord(dataFlag, ExplodingArrow);
 	int32_t hx = 0, hy = 0, ox = 0, oy = 0;
 	if (skill == nullptr || explode == nullptr || !d2r::UnitXY(hit, &hx, &hy) || !d2r::UnitXY(owner, &ox, &oy)) {
-		return;
+		return result;
 	}
 	int32_t count = d2r::EvalCalc(game, owner, skill, SkCalc2, skillId, level);
 	if (count <= 0) {
-		return;
+		return result;
 	}
 	count = count > MaxExplosions ? MaxExplosions : count;
 	const Vec h {static_cast<double>(hx), static_cast<double>(hy)};
 	const Vec d = Vec {static_cast<double>(ox), static_cast<double>(oy)} - h;  // toward the owner
 	const double length = std::sqrt(d.x * d.x + d.y * d.y);
 	if (length == 0.0) {
-		return;
+		return result;
 	}
 	const Vec n = d * (1.0 / length), side {-n.y, n.x};
 	const Vec base = h - n * d2r::EvalCalc(game, owner, skill, SkCalc3, skillId, level);
@@ -312,6 +314,7 @@ void SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept {
 		plog::Info("explode spread: skill %d level %d: %d of %d explosions from frame %d, hit %u", skillId, level,
 		           created, count, start, g_spreadHits.load());
 	}
+	return result;
 }
 
 // dmg 20 (PD2 dmg 17, Multiple Shot arrows and bolts): each further unit a piercing missile hits takes DmgCalc1 percent
@@ -352,8 +355,75 @@ void SrvDmgPierceFalloff(Game* game, Unit* missile, Unit* target, uint8_t* damag
 	}
 }
 
+// --- W11: state on hit (Poison Dagger's cloud, the throwing potions' clouds, Kanemith's blaze dot) ---------------------
+namespace {
+
+std::atomic<uint32_t> g_stateHits {0};
+
+}  // namespace
+
+// shit 61 (PD2 0x103a84f0, through 0x1036c920): the hit unit gets state sHitPar1 for sHitPar2 frames, carrying stat
+// sHitPar3 = cHitPar1 and stat cHitPar2 = cHitPar3 (a stat of -1 or none is left out), from the missile row's Skill at
+// the missile's level. Returns PD2's 2 + CollideKill: D2R's collision (0x4639a0) deals the missile's damage only when
+// the result has bit 2, so a 0 or 1 (no hit unit or owner, a bad row) deals none.
+// shortcut: PD2 also halves a negative resist (stats 36-45) on a unit already over 99 in it, and treats states 16, 87
+// and 188 specially; none of shit 61's rows reach those states, and the halving is an approximated row on
+// docs/unported.md. Upgrade if a resist-lowering row must match PD2 on immune monsters.
+auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (game == nullptr || missile == nullptr) {
+		return 1;
+	}
+	if (hit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
+		dataFlag, At<int32_t>(missile, UnitClassId));
+	Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
+	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(dataFlag);
+	if (owner == nullptr) {
+		return 0;
+	}
+	if (row == nullptr || tables == nullptr) {
+		return 1;
+	}
+	const int32_t damage = 2 + (At<uint8_t>(row, MsCollideKill) != 0);  // PD2's result: 2 deals the hit's damage
+	const int32_t state = At<int32_t>(row, MsHitPar1), frames = At<int32_t>(row, MsHitPar2);
+	if (state < 0 || static_cast<uint64_t>(state) >= At<uint64_t>(tables, TablesStateCount) || frames <= 0) {
+		return 1;
+	}
+	const int32_t skillId = At<int16_t>(row, MsSkill);
+	const int32_t level = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileLevel)(missile);
+	// No RemoveSkillState: like PD2's timed-state helper (0x1036d7d0), NewStateList extends a same-level list and
+	// refuses a lower level, so a weaker cloud never replaces a stronger one.
+	d2r::StateListRequest request {owner, hit, skillId, level, frames, -1, 0, state,
+	                               d2r::Engine<void (*)()>(SkillStateExpired)};
+	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
+	if (list == nullptr) {
+		return damage;
+	}
+	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
+	const int32_t stats[2][2] = {{At<int32_t>(row, MsHitPar3), At<int32_t>(row, MsCltHitPar1)},
+	                             {At<int32_t>(row, MsCltHitPar2), At<int32_t>(row, MsCltHitPar3)}};
+	for (const auto& [stat, value] : stats) {
+		if (stat >= 0) {  // the merge gives these the mod's itemstatcost ids (pd2_ids.HIT_PARAMS)
+			setStat(dataFlag, list, stat, value, 0);
+		}
+	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(hit, state, 1);
+	if (plog::Sample(g_stateHits)) {
+		plog::Info("state hit: missile row %d skill %d level %d: state %d for %d frames on unit type %d, stat %d %+d, "
+		           "stat %d %+d, result %d, hit %u", At<int32_t>(missile, UnitClassId), skillId, level, state, frames,
+		           At<int32_t>(hit, UnitType), stats[0][0], stats[0][1], stats[1][0], stats[1][1], damage,
+		           g_stateHits.load());
+	}
+	return damage;
+}
+
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size, "returns spawned %u, caught %u, bounces %u, first hits %u, spread hits %u, explosions %u, "
-	              "falloff hits %u", g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(), g_firstHits.load(),
-	              g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load());
+	              "falloff hits %u, state hits %u", g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(),
+	              g_firstHits.load(), g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load(),
+	              g_stateHits.load());
 }

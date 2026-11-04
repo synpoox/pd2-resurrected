@@ -46,8 +46,8 @@ the same speed as D2R's cltst 25.
   the distance, then calls D2R's srvdo 67.
 - The merge points the client columns at D2R's 25 and 37 (`tools/pd2_ids.py` FUNCS).
 
-The splash radius does nothing until the melee splash row (srvdo 163, `inc_splash_radius`'s reader) is built; Frenzy's
-start (srvst 78) waits on it the same way.
+The radius widens a splash-on-hit item's splash: proc_SplashDamage's calc3 adds `inc_splash_radius / 20` (melee
+splash, srvdo 163, [w33-melee-splash](w33-melee-splash.md)), as with Frenzy's start (srvst 78).
 
 Deviation (approximated, on the unported list): the splash list is built on the hit frame before D2R's do function
 looks for the target, so a charge that ends without a hit gets a 3-frame list that nothing reads; the distance is

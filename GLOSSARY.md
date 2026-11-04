@@ -55,6 +55,10 @@ _Avoid_: task, ticket (those are map decisions)
 A PD2 behaviour that is not a table value and needs plugin code, such as a skill function, hit function, cube op, item rule or server patch. A skill's server and client halves are one engine rule.
 _Avoid_: patch, function number (a function number is where one engine rule plugs in)
 
+**Router slot**:
+srvdofunc 190, one D2R table slot holding a core-rules function that picks a PD2 do function by skill id; it carries the do functions that have no free slot of their own. Not part of D2RLoader.
+_Avoid_: overflow table, dispatcher
+
 **Complete class**:
 A PD2 class whose player skills reach no unbuilt engine rule, including the rules for how its skills interrupt and chain; each is built or an approximated deviation. Class-themed item rules do not count.
 _Avoid_: finished class, ported class

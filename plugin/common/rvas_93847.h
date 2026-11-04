@@ -41,6 +41,14 @@ inline constexpr int SrvStFindItem = 34;
 inline constexpr int CltStFindPotion = 26;
 inline constexpr int CltStFindItem = 28;
 inline constexpr int SrvDoMelee = 2;  // 0x430240: Bash's do function in D2R, applies the queued hit
+inline constexpr int SrvDoPoisonDaggerSlot = 32;  // 0x55cc50: D2R's Poison Dagger do function, applies the queued hit
+// srvdofunc 58, Revive: brings the skill's target corpse back in place as the caster's pet. It never registers the
+// skill's auraevent1-4 on the pet (nor does anything else on that path), so Revive's event 32 needs core-rules.
+inline constexpr int SrvDoRevive = 58;
+inline constexpr uint64_t SrvDoReviveD2R = 0x55e7e0;
+// srvstfunc 66: (game, unit, skill, level) -> 1, registers the skill's auraevent1-4 / auraeventfunc1-4 on unit for
+// good (no stat list, no source), through 0x588670 and 0x438230 per event
+inline constexpr uint64_t RegisterSkillEvents = 0x42fa90;
 // 0x554c40: Teleport to the skill's point; 0 when there is no room, the level forbids it or the point collides (0x804)
 inline constexpr int SrvDoTeleport = 27;
 // Charge, D2R's own: srvst 31 (0x564dc0) aims the charge path, srvdo 67 (0x5622c0) runs it and hits at the end
@@ -62,6 +70,12 @@ inline constexpr int MissileCltDoFirstFree = 78;
 inline constexpr uint64_t MissileSrvDmgTable = 0x2391270;
 inline constexpr int MissileSrvDmgSlots = 31;
 inline constexpr int MissileSrvDmgFirstFree = 18;
+// skills.txt auraeventfunc1-4: int32_t fn(Game*, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skill,
+// int32_t level), 41 slots (dispatcher 0x43823a, bound 40), all of 1-40 filled. Slot 32 (0x42eea0, a skill damage
+// event) is reached by no D2R row; PD2's Revive event takes it (docs/research/necromancer-w14.md).
+inline constexpr uint64_t AuraEventTable = 0x238e5c0;
+inline constexpr int AuraEventRevive = 32;
+inline constexpr uint64_t AuraEvent32D2R = 0x42eea0;
 
 // --- Functions (signature in the comment) -------------------------------------------------------------------------
 inline constexpr uint64_t GetSkillRecord = 0x97790;    // (dataFlag, skillId) -> skills.txt record or null
@@ -110,6 +124,14 @@ inline constexpr uint64_t MissileRecord = 0x166040;  // (dataFlag, missile row) 
 inline constexpr uint64_t NearestTarget = 0x4331d0;
 inline constexpr uint64_t SetUnitStat = 0x2f7d10;  // (unit, stat, value, layer)
 
+// Poison Dagger (W11, docs/research/necromancer-w11.md)
+// (unit, &damage, skillId, level): adds the skill's elemental damage to a zeroed damage block (poison +0x38 = min +
+// rand(max - min), length +0x3c). D2R's melee start (srvst 32, 0x567070) fills the queued hit with it.
+inline constexpr uint64_t ElementalDamage = 0x437d00;
+// int32[64] x and y offsets of D2's 64 directions (radius 30), the ones Nova's srvhit 5 (0x45fd20) aims at
+inline constexpr uint64_t DirectionX = 0x1d1b650;
+inline constexpr uint64_t DirectionY = 0x1d1b750;
+
 // Self buff, the way Frozen Armor's srvdo 18 (0x553e60) builds its aurastate list
 inline constexpr uint64_t RemoveSkillState = 0x4370b0;  // (unit, state, 1): drop an older list of this state
 // (&StateListRequest) -> stat list or null. An older list of the state with the same skill and level only gets
@@ -144,6 +166,7 @@ inline constexpr uint64_t LeapLanded = 0x56b5e0;  // (game, unit, unitSkill) -> 
 inline constexpr uint64_t UnitRoom = 0x34b440;  // (unit) -> its room
 // (game, unit, &AreaCenter, radius, unit mask, callback, arg, 0): callback(&AreaContext, victim) for each unit in range
 inline constexpr uint64_t AreaUnits = 0x4398b0;
+inline constexpr uint32_t AreaUnitMask = 0x8583;  // PD2's and AreaKnockback's default unit mask
 // (game, unit, 0, 0, radius, &LeapKnockback, 0, &scratch): Leap's landing knockback (srvdo 77), callback 0x43a740
 inline constexpr uint64_t AreaKnockback = 0x437820;
 inline constexpr uint64_t SkillMeleeHit = 0x56b170;  // (game, unit, skillId, level): Leap Attack's hit on the skill target
@@ -152,6 +175,20 @@ inline constexpr uint64_t RemoveUnitEvent = 0x48b890;  // (game, unit, event, 0)
 inline constexpr uint64_t AddUnitEvent = 0x48b720;  // (game, unit, event, frame, 0, 0, 0)
 inline constexpr uint64_t MonStatsRecord = 0x976e0;  // (dataFlag, classId) -> monstats record or null
 inline constexpr uint64_t UnitId = 0x34a330;  // (unit, file, line) -> unit id
+// Melee splash (W33): one victim's damage, built the way PD2's area callback 0x10303190 builds it
+// (game, attacker, defender, &damage, 0, srcdam): weapon damage scaled by srcdam / 128 (0 = 128); Leap Attack's
+// 0x44b600 fills its hit this way
+inline constexpr uint64_t WeaponDamage = 0x44c030;
+// D2R's area apply 0x436e90 (game, attacker, victim, &damage), which AreaKnockback's callback 0x43a740 calls, in steps:
+inline constexpr uint64_t AvoidRoll = 0x44b930;  // (game, attacker, victim, 1, 0) -> 1 avoided, 2/4/0x10 block kinds
+inline constexpr uint64_t UnitHasState = 0x3351b0;  // (unit, state) -> non-zero while the unit has it
+inline constexpr uint64_t DamageStep = 0x5889e0;  // (attacker, victim, &damage)
+inline constexpr uint64_t DamageEffects = 0x44df10;  // (game, attacker, victim, &damage): 0x44ce80 runs it for area hits
+// (game, attacker, victim, area, &damage): with area 0, events 5 domeleedamage (attacker) and 1 (victim), as a melee
+// hit's 0x44b2b0 calls it; with area 1, events 6 domissiledamage and 2
+inline constexpr uint64_t HitEvents = 0x44ce80;
+inline constexpr uint64_t DealDamage = 0x44a9b0;  // (game, attacker, victim, &damage)
+inline constexpr uint64_t EngineAllocator = 0x12063c0;  // () -> the allocator; vtable +0x20 frees (Leap Attack's cleanup)
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
@@ -163,6 +200,9 @@ inline constexpr int GameDataFlag = 0x106;  // Game: byte passed to every data-t
 inline constexpr int GameFrame = 0x170;  // Game: int32 frame counter (unit events are timed in it)
 
 inline constexpr int UnitType = 0x00;  // int32: 0 player, 1 monster, 2 object, 3 missile, 4 item, 5 tile
+inline constexpr int UnitMonster = 1;
+inline constexpr int UnitMode = 0x0c;  // int32 current mode (monmode for a monster)
+inline constexpr int MonModeDeath = 0, MonModeDead = 12;
 inline constexpr int UnitPath = 0x38;  // dynamic path (x +0x2, y +0x6, uint16) or static path (x +0x10, y +0x14)
 inline constexpr int PathTargetUnit = 0x70;  // Unit* on a dynamic path: what PathSteer aims at (set by PathSetTargetUnit)
 inline constexpr int UnitOwnerType = 0xe8;  // int32 owner unit type (MissileOwner 0x490300 reads both)
@@ -204,10 +244,19 @@ inline constexpr int USkillParam = 0x24;  // int32 Charge's counter, PD2's charg
 inline constexpr int MonVelocity = 0x6a;  // int16 monstats Velocity
 
 inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Lightning's chain range, 0 = the skill's)
+inline constexpr int MsHitPar2 = 0x74;  // int32 sHitPar2, sHitPar3 +0x78 (1.13c's 0x50 / 0x54 + 0x24)
+inline constexpr int MsHitPar3 = 0x78;
+inline constexpr int MsCltHitPar1 = 0x90;  // int32 cHitPar1-3 (1.13c's 0x6c-0x74 + 0x24)
+inline constexpr int MsCltHitPar2 = 0x94;
+inline constexpr int MsCltHitPar3 = 0x98;
 // Damage block a pSrvDmgFunc edits: 1.13c's 0x08-0x2c fields sit 0x10 later (phys 0x08 -> 0x18 in srvdmg 1 and 13,
 // poison length 0x2c -> 0x3c in srvdmg 11).
 inline constexpr int DmgPhys = 0x18, DmgFire = 0x20, DmgLight = 0x2c, DmgMagic = 0x30, DmgCold = 0x34, DmgPoison = 0x38;
+inline constexpr int DmgPoisonLength = 0x3c;
 inline constexpr int StatDamagePercent = 25;  // itemstatcost damagepercent, D2R and PD2
+inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58, poisonlength 59: D2R and PD2
+inline constexpr int StatPoisonMax = 58;
+inline constexpr int StatPoisonLength = 59;
 inline constexpr int StatLife = 6;  // itemstatcost hitpoints (current life, in 1/256), D2R and PD2
 inline constexpr int StatVelocityPercent = 67;  // itemstatcost velocitypercent, D2R and PD2
 inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's search: 0x88583 | the 0xa783 the search adds
@@ -220,11 +269,14 @@ inline constexpr int DamageStaminaLeech = 0x128;
 // missiles.txt record (1.13c's shifted by 0x24)
 inline constexpr int MsDParam1 = 0x9c;    // int32 dParam1
 inline constexpr int MsDmgCalc1 = 0xb4;   // int32 DmgCalc1 (calc index), read by dmg 1 0x453490
+inline constexpr int MsCollideKill = 0x1ae;  // uint8 CollideKill (1.13c's 0x186 + 0x28; the field table at 0x3c4233)
 inline constexpr int MsSkill = 0x1b6;     // int16 Skill (skills.txt row), read off a live explodingarrow row
 
 // MissileParams::flags
 inline constexpr uint32_t MissileFromOrigin = 0x820;      // start at the origin unit, fly to targetX/targetY
 inline constexpr uint32_t MissileNotTriggering = 0x20000;  // Multiple Shot's outer missiles, the ones calc3 leaves out
+inline constexpr uint32_t MissileAtXY = 0x1;  // start at x/y
+inline constexpr uint32_t MissileAimOffset = 0x2;  // targetX/targetY are offsets from the start (Nova's srvhit 5)
 
 // Stats Frozen Armor's srvdo 18 sets on its state list (itemstatcost ids)
 inline constexpr int StatListSkill = 0x15e;  // 350: the skill that made the list
@@ -240,7 +292,9 @@ inline constexpr int SkCalc3 = 0x198;
 inline constexpr int SkCalc4 = 0x19c;  // skills field table at 0x306193
 inline constexpr int SkAuraRangeCalc = 0x84;  // int32 aurarangecalc, Chain Lightning's chain range when sHitPar1 is 0
 inline constexpr int SkParam1 = 0x1b8;  // int32 Param1-8, field table at 0x305e68
+inline constexpr int SkParam3 = 0x1c0;
 inline constexpr int SkParam4 = 0x1c4;
+inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
 inline constexpr int SkAuraLenCalc = 0x80;    // int32 auralencalc: 1.13c's 0x60, before aurarangecalc as there
