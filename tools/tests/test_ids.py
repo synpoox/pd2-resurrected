@@ -121,6 +121,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1:], [["Teleport", "190"], ["Blink", "190"]])
 
+    def test_gust_and_hunger_go_to_the_router(self):
+        d2r = table("skill|srvdofunc\nAttack|1\n")
+        pd2 = table("skill|srvdofunc\nGust|156\nHunger|165\n")
+        lines = [("Gust", 1, "Gust"), ("Hunger", 2, "Hunger")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Gust", "190"], ["Hunger", "190"]])
+
     def test_state_hit_parameters_take_mod_ids(self):
         # srvhit 61 reads sHitPar1 as a state and sHitPar3 / cHitPar2 as stats; other functions' parameters stay
         cols = "Missile|pSrvHitFunc|sHitPar1|sHitPar2|sHitPar3|cHitPar1|cHitPar2|cHitPar3"

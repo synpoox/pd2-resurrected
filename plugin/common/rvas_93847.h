@@ -273,6 +273,10 @@ inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's se
 inline constexpr int DamageLifeLeech = 0x120;  // mana leech +0x124, stamina leech +0x128
 inline constexpr int DamageManaLeech = 0x124;
 inline constexpr int DamageStaminaLeech = 0x128;
+// Cold length (1.13c's 0x30) and hit class (1.13c's 0x64), as ElementalDamage (0x437d00) and Hunger (0x576630) fill
+// them
+inline constexpr int DamageColdLength = 0x118;
+inline constexpr int DamageHitClass = 0x144;
 
 // missiles.txt record (1.13c's shifted by 0x24)
 inline constexpr int MsDParam1 = 0x9c;    // int32 dParam1
@@ -306,6 +310,11 @@ inline constexpr int SkParam2 = 0x1bc;  // int32 Param2
 inline constexpr int SkParam3 = 0x1c0;  // int32 Param3
 inline constexpr int SkParam4 = 0x1c4;  // int32 Param4 (Param1 0x1b8), field table at 0x305e68
 inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170
+// uint16 ResultFlags, uint32 HitFlags, int32 HitClass (1.13c's 0x12e / 0x130 / 0x134), as D2R's Hunger (0x576630)
+// reads them into its damage block
+inline constexpr int SkResultFlags = 0x186;
+inline constexpr int SkHitFlags = 0x188;
+inline constexpr int SkHitClass = 0x18c;
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
 inline constexpr int SkAuraLenCalc = 0x80;    // int32 auralencalc: 1.13c's 0x60, before aurarangecalc as there

@@ -5,6 +5,9 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Gust works as in Project Diablo II: it teleports you, then chills and staggers the monsters around where you land.
+- Hunger works as in Project Diablo II: a werebear eats a corpse for a while of life steal, speed, open wounds and
+  deep wounds.
 - Teleport works as in Project Diablo II: for a second after each teleport your elemental masteries are
   lowered, by less as the skill levels up.
 - Melee splash works as in Project Diablo II: items that splash on hit, Frenzy and Tiger Strike's splash radius,

@@ -60,6 +60,10 @@ W21 checks (tag core-rules-w21), same merged data: a Druid with Arctic Blast (23
 e.g. modkit save-set <save> level=30 --skill 230=10 --project .; then out of town: hold the skill on the ground for
 a second, and run the same command with core-rules-w21. For the take-over checks, press another skill while
 holding it; for blade-fury-refused, an Assassin with Blade Fury (266): hold it.
+W23 checks (tag core-rules-w23), same merged data: a Druid with Gust (442), Werebear (228) and Hunger (242), no
++skills, e.g. modkit save-set <save> level=30 --skill 442=5 --skill 228=1 --skill 242=5 --project .; then out of
+town cast Gust, and in bear form kill a monster and eat its corpse with Hunger; run the same command with
+core-rules-w23.
 """
 import json
 import os
@@ -94,6 +98,8 @@ LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knock
 ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
 HPREGEN = 74  # itemstatcost row of hpregen in D2R and PD2
 TELEPORT_DEBUFF = 233  # merged states id of teleportdebuff
+HUNGER = 246  # merged states id of hunger
+LIFE_DRAIN, VELOCITY = 60, 67  # itemstatcost lifedrainmindam, velocitypercent in D2R and PD2
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -108,7 +114,8 @@ def _log(ctx) -> str:
 
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                 "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w33", "core-rules-w21", "game"])
+                                 "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w33", "core-rules-w21",
+                                 "core-rules-w23", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -642,6 +649,44 @@ def teleport_cast(ctx):
     return f"level {level}, reduction {reduction}, {frames} frames, list {lst}: {', '.join(seen)}"
 
 
+@check("gust-cast", tags=["core-rules-w23"])
+def gust_cast(ctx):
+    """A Gust (router srvdofunc 190) teleported, threw its srvmissilea (gust) and hit the units within calc3 par3 = 4
+    with cold length calc1 ln12 = 12 (Param2 0 per level), the row's HitFlags 1, ResultFlags 5 and HitClass 2."""
+    casts = re.findall(r"gust: skill 442 level (\d+): missile (-?\d+) (thrown|not thrown), radius (-?\d+) \(calc3\), "
+                       r"cold length (-?\d+) \(calc1\), hit flags (\d+), result flags (\d+), hit class (-?\d+)",
+                       _log(ctx))
+    if not casts:
+        ctx.skip("no Gust in the log yet (cast it out of town, then run again)")
+    level, missile, thrown, *values = casts[-1]
+    radius, chill, hit_flags, result_flags, hit_class = (int(v) for v in values)
+    assert thrown == "thrown", f"level {level}: missile {missile} not thrown"
+    assert (radius, chill) == (4, 12), f"radius {radius}, cold length {chill}; PD2: 4, 12"
+    flags = (hit_flags, result_flags, hit_class)
+    assert flags == (1, 5, 2), f"hit flags, result flags, hit class {flags}; PD2: (1, 5, 2)"
+    return f"level {level}: missile {missile}, radius {radius}, cold length {chill}"
+
+
+@check("hunger-hit", tags=["core-rules-w23"])
+def hunger_hit(ctx):
+    """A Hunger (router srvdofunc 190) ate its corpse and gave the hunger state for auralencalc 475 + lvl * 25 frames
+    with lifedrainmindam par3 + blvl / 4 = 3 + lvl / 4 and velocitypercent par4 + lvl = 19 + lvl (no +skills, so blvl =
+    lvl); item_openwounds (dm12 + 5) and deep_wounds (edmx) are logged."""
+    casts = re.findall(r"hunger: skill 242 level (\d+): corpse eaten, state (-?\d+) for (-?\d+) frames \(list (\w+)\), "
+                       r"stats (-?\d+)=(-?\d+) (-?\d+)=(-?\d+) (-?\d+)=(-?\d+) (-?\d+)=(-?\d+)", _log(ctx))
+    if not casts:
+        ctx.skip("no Hunger in the log yet (bear form, eat a corpse out of town, then run again)")
+    level, state, frames, lst, *stats = casts[-1]
+    level, state, frames = int(level), int(state), int(frames)
+    pairs = dict(zip((int(s) for s in stats[0::2]), (int(v) for v in stats[1::2])))
+    assert lst != "refused", f"level {level}: the hunger list was refused"
+    want = 475 + level * 25
+    assert (state, frames) == (HUNGER, want), f"state {state} for {frames} frames; PD2: {HUNGER} for {want}"
+    assert pairs.get(LIFE_DRAIN) == 3 + level // 4, f"lifedrainmindam {pairs.get(LIFE_DRAIN)}; PD2: {3 + level // 4}"
+    assert pairs.get(VELOCITY) == 19 + level, f"velocitypercent {pairs.get(VELOCITY)}; PD2: {19 + level}"
+    return f"level {level}: {frames} frames, list {lst}, stats {pairs}"
+
+
 @check("teleport-blocked-areas", tags=["core-rules-w26"])
 def teleport_blocked_areas(ctx):
     """Teleport is refused where PD2 refuses it: the merged levels.txt Teleport column (0 refuses, 2 checks collision
@@ -662,7 +707,8 @@ def teleport_blocked_areas(ctx):
 
 
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                    "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w21"])
+                                    "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w21",
+                                    "core-rules-w23"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

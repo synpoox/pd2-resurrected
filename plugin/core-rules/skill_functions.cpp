@@ -425,7 +425,7 @@ struct StatValue {
 // the same one): an older list of the same skill and level is extended and keeps its values, a lower level is
 // refused, anything else is replaced. Returns what happened, for the logs.
 auto TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level, int32_t frames, int32_t state,
-                   std::initializer_list<StatValue> stats) noexcept -> const char* {
+                   const StatValue* first, const StatValue* last) noexcept -> const char* {
 	using namespace d2r::rva;
 	void* old = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, state);
 	const auto listInt = [](uint64_t fn, void* list) { return d2r::Engine<int32_t (*)(void*) noexcept>(fn)(list); };
@@ -439,12 +439,17 @@ auto TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level
 	if (extends) {
 		return "extended";
 	}
-	for (const StatValue& s : stats) {
-		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, s.stat,
-		                                                                                          s.value, 0);
+	for (const StatValue* s = first; s != last; ++s) {
+		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, s->stat,
+		                                                                                          s->value, 0);
 	}
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
 	return "new";
+}
+
+auto TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level, int32_t frames, int32_t state,
+                   std::initializer_list<StatValue> stats) noexcept -> const char* {
+	return TimedStatList(dataFlag, unit, skillId, level, frames, state, stats.begin(), stats.end());
 }
 
 // PD2's ring (0x1036d250 server, 0x1036d370 client): one missile at every (64 / count)-th of D2's 64 directions, so
@@ -1074,6 +1079,95 @@ auto CltDoPoisonDagger(Unit* unit, int32_t skillId, int32_t level) noexcept -> i
 	return 1;
 }
 
+// --- Gust, Hunger (PD2 srvdofunc 156 and 165 -> router 190; docs/research/druid-w23.md) --------------------------
+std::atomic<uint32_t> g_gusts {0};
+std::atomic<uint32_t> g_hungers {0};
+constexpr int32_t Gust = 442, Hunger = 242;  // merged ids (PD2 370, 242)
+
+// PD2 srvdo 156 (0x103b1980): the teleport core, srvmissilea thrown at the skill's target (1.13c 0xa28f0, D2R's
+// ThrowSkillMissile), then a hit on every unit within calc3 of the new point with the row's HitFlags, ResultFlags and
+// HitClass and cold length calc1, no damage, through 1.13c's area apply 0xa10b0: D2R's 0x436e90, which AreaKnockback's
+// callback calls with a copy of the block (unit mask 0x8583, PD2's).
+auto SrvDoGust(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr || !TeleportCore(game, unit, skillId, level)) {
+		return 0;
+	}
+	const int32_t missile = At<int16_t>(skill, SkSrvMissileA);
+	bool thrown = false;
+	if (d2r::ValidMissile(dataFlag, missile)) {
+		using ThrowFn = Unit* (*)(Game*, int32_t, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t,
+		                          int32_t) noexcept;
+		const int32_t key = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(unit);
+		thrown = d2r::Engine<ThrowFn>(ThrowSkillMissile)(game, missile, unit, skillId, level, key, 0, 0, 0, 0, 1) != nullptr;
+	}
+	const int32_t chill = d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level);
+	const int32_t radius = d2r::EvalCalc(game, unit, skill, SkCalc3, skillId, level);
+	d2r::LeapKnockback hit;
+	hit.hitFlags = At<uint32_t>(skill, SkHitFlags);
+	hit.resultFlags = At<uint16_t>(skill, SkResultFlags);
+	auto* block = reinterpret_cast<uint8_t*>(&hit);
+	*reinterpret_cast<int32_t*>(block + DamageColdLength) = chill;
+	*reinterpret_cast<int32_t*>(block + DamageHitClass) = At<int32_t>(skill, SkHitClass);
+	if (radius > 0) {
+		uint8_t scratch[0x20] {};  // as Leap's landing passes it: only its byte +0x18 (0) is read
+		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, d2r::LeapKnockback*, int32_t, void*) noexcept>(
+			AreaKnockback)(game, unit, 0, 0, radius, &hit, 0, scratch);
+	}
+	if (plog::Sample(g_gusts)) {
+		plog::Info("gust: skill %d level %d: missile %d %s, radius %d (calc3), cold length %d (calc1), hit flags %u, "
+		           "result flags %u, hit class %d, cast %u, refused %u", skillId, level, missile,
+		           thrown ? "thrown" : "not thrown", radius, chill, hit.hitFlags, hit.resultFlags,
+		           At<int32_t>(skill, SkHitClass), g_gusts.load(), g_teleportsRefused.load());
+	}
+	return 1;
+}
+
+// PD2 srvdo 165 (0x103b27c0): the target (a corpse, TargetCorpse) gets corpse_nodraw, then the caster gets aurastate
+// for auralencalc frames with aurastat1-6 = aurastatcalc1-6, through PD2's state helper 0x1036c920 (the same recast
+// rule as TimedStatList's). An empty aurastat1 gives no list; a later empty one is skipped. PD2 reads the path's
+// target unit, D2R's own Hunger (srvdo 122) the skill's: the same corpse.
+// shortcut: an extended list's new timer is not sent to the client (PD2 sends packet 0x83), as for Teleport.
+// Upgrade if the client's hunger state runs out early in play.
+auto SrvDoHunger(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	Unit* corpse = skill != nullptr ? d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(SkillTargetUnit)(game, unit) : nullptr;
+	if (corpse == nullptr || corpse == unit) {
+		return 0;
+	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(corpse, CorpseNoDraw, 1);
+	d2r::api.setUnitSkillFlag(unit, 1);  // PD2 sets unit flag 0x40 on every path past the corpse
+	StatValue stats[6] {};
+	size_t count = 0;
+	for (int i = 0; i < 6; i++) {
+		const int32_t stat = At<int16_t>(skill, SkAuraStat1 + i * 2);
+		// shortcut: PD2 also skips a stat past itemstatcost; the merged rows name none. Upgrade if a row ever does.
+		if (stat < 0) {
+			if (i == 0) {
+				break;
+			}
+			continue;
+		}
+		stats[count++] = {stat, d2r::EvalCalc(game, unit, skill, SkAuraStatCalc1 + i * 4, skillId, level)};
+	}
+	const int32_t state = At<int16_t>(skill, SkAuraState);
+	const int32_t frames = d2r::EvalCalc(game, unit, skill, SkAuraLenCalc, skillId, level);
+	const char* list = "none";
+	if (count > 0 && state > 0 && frames > 0) {  // PD2's state helper refuses a length under 1
+		list = TimedStatList(dataFlag, unit, skillId, level, frames, state, stats, stats + count);
+	}
+	if (plog::Sample(g_hungers)) {
+		plog::Info("hunger: skill %d level %d: corpse eaten, state %d for %d frames (list %s), stats %d=%d %d=%d %d=%d "
+		           "%d=%d, cast %u", skillId, level, state, frames, list, stats[0].stat, stats[0].value, stats[1].stat,
+		           stats[1].value, stats[2].stat, stats[2].value, stats[3].stat, stats[3].value, g_hungers.load());
+	}
+	return 1;
+}
+
 // srvdofunc 190 serves the PD2 do functions that have no free slot of their own, by skill id (docs/core-rules.md).
 auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	if (game == nullptr || unit == nullptr) {
@@ -1099,6 +1193,10 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	case GolemSplash:
 	case SkeletonSplash:
 		return SrvDoSplash(game, unit, skillId, level);
+	case Gust:
+		return SrvDoGust(game, unit, skillId, level);
+	case Hunger:
+		return SrvDoHunger(game, unit, skillId, level);
 	default:
 		if (plog::Sample(g_routerMisses)) {
 			plog::Warn("srvdo router: no function for skill %d (%u so far)", skillId, g_routerMisses.load());
@@ -1718,12 +1816,13 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, poison daggers %u, "
 	              "client %u, blood warps %u, refused %u, desecrates %u, client %u, corpses hidden %u, revives %u, "
 	              "revive events %u, splashes %u, channels %u, client %u, take-overs %u, blade fury refused %u, "
-	              "held %u, %s",
+	              "held %u, gusts %u, hungers %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
 	              g_poisonDaggers.load(), g_poisonDaggerClients.load(), g_bloodWarps.load(), g_bloodWarpsRefused.load(),
 	              g_desecrates.load(), g_desecrateClients.load(), g_desecrateHidden.load(), g_revives.load(),
 	              g_reviveEvents.load(), g_reviveSplashes.load(), g_channels.load(), g_channelClients.load(),
-	              g_takeOvers.load(), g_bladeFuryRefusals.load(), g_heldRequests.load(), missiles);
+	              g_takeOvers.load(), g_bladeFuryRefusals.load(), g_heldRequests.load(), g_gusts.load(), g_hungers.load(),
+	              missiles);
 }
