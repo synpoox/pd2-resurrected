@@ -2057,7 +2057,7 @@ constexpr int32_t DiabWall = 197, Firestorm = 225, FingermageBossDiabWall = 473,
 // shortcut: makers are capped at 64 (PD2 has no cap; no PD2 row gets near it), upgrade if a row ever needs more.
 std::atomic<int32_t> g_makerSeeds {0};
 template <typename Create>
-auto Walls(Unit* unit, const uint8_t* skill, int32_t count, int32_t skillId, int32_t level,
+auto Walls(Unit* unit, int32_t missile, int32_t count, int32_t skillId, int32_t level,
            int32_t tx, int32_t ty, Create create) noexcept -> int32_t {
 	int32_t ux = 0, uy = 0;
 	if (!d2r::UnitXY(unit, &ux, &uy)) {
@@ -2067,7 +2067,7 @@ auto Walls(Unit* unit, const uint8_t* skill, int32_t count, int32_t skillId, int
 	std::memset(&params, 0, sizeof(params));
 	params.flags = 0x21;  // D2R's srvdo 102 / 117 and PD2's 166: start at x/y
 	params.owner = unit;
-	params.missile = At<int16_t>(skill, d2r::rva::SkSrvMissileA);
+	params.missile = missile;
 	params.x = ux;
 	params.y = uy;
 	params.targetX = tx;
@@ -2089,19 +2089,20 @@ auto SrvDoWall(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	if (skill == nullptr) {
 		return 0;
 	}
+	const int32_t missile = At<int16_t>(skill, d2r::rva::SkSrvMissileA);
 	int32_t tx = 0, ty = 0;
-	if (!d2r::ValidMissile(dataFlag, At<int16_t>(skill, d2r::rva::SkSrvMissileA)) ||
+	if (!d2r::ValidMissile(dataFlag, missile) ||
 	    d2r::api.skillTargetXY(game, unit, &tx, &ty) == 0) {
 		return 0;
 	}
 	d2r::api.setUnitSkillFlag(unit, 1);
 	const int32_t count = d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc1, skillId, level);
-	const int32_t created = Walls(unit, skill, count, skillId, level, tx, ty, [&](d2r::MissileParams* p) {
+	const int32_t created = Walls(unit, missile, count, skillId, level, tx, ty, [&](d2r::MissileParams* p) {
 		return d2r::api.createMissile(game, p) != nullptr;
 	});
 	if (plog::Sample(g_walls)) {
-		plog::Info("wall: skill %d level %d: %d of %d makers (row %d), cast %u", skillId, level, created, count,
-		           At<int16_t>(skill, d2r::rva::SkSrvMissileA), g_walls.load());
+		plog::Info("wall: skill %d level %d: %d of %d makers (row %d), cast %u", skillId, level, created, count, missile,
+		           g_walls.load());
 	}
 	return 1;
 }
@@ -2115,15 +2116,16 @@ auto CltDoWall(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	if (skill == nullptr) {
 		return 0;
 	}
+	const int32_t missile = At<int16_t>(skill, d2r::rva::SkSrvMissileA);
 	int32_t tx = 0, ty = 0;
-	if (!d2r::ValidMissile(dataFlag, At<int16_t>(skill, d2r::rva::SkSrvMissileA)) ||
+	if (!d2r::ValidMissile(dataFlag, missile) ||
 	    d2r::api.clientSkillTargetXY(unit, &tx, &ty) == 0) {
 		return 0;
 	}
 	d2r::api.setUnitSkillFlag(unit, 1);
 	const int32_t count =
 		d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, d2r::rva::SkCalc1), skillId, level);
-	const int32_t created = Walls(unit, skill, count, skillId, level, tx, ty, [](d2r::MissileParams* p) {
+	const int32_t created = Walls(unit, missile, count, skillId, level, tx, ty, [](d2r::MissileParams* p) {
 		return d2r::api.clientCreateMissile(p, 0) != nullptr;
 	});
 	if (plog::Sample(g_wallClients)) {
@@ -2131,6 +2133,148 @@ auto CltDoWall(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 		           g_wallClients.load());
 	}
 	return 1;
+}
+
+// --- Fire Claws (PD2 srvdofunc 175, cltdofunc 110; docs/research/druid-w24.md) ------------------------------------
+// Read from ProjectDiablo.dll: srvdo 175 at 0x103b3ad0, cltdo 110 at 0x103abbd0. A claw hit on the skill's target
+// unit, then calc2 makers of srvmissilea (the client: cltmissilea, aimed at the target unit) with Firestorm's maker
+// callback. The hit is D2R's Fire Claws hit: its start (srvst 58, kept as data) rolls and queues it with the skill's
+// fire damage and srvdo 2 applies it; PD2 puts the fire on its start's buff (srvst 79) and rolls the hit here.
+std::atomic<uint32_t> g_fireClaws {0};
+std::atomic<uint32_t> g_fireClawHits {0};
+std::atomic<uint32_t> g_fireClawClients {0};
+
+auto SrvDoFireClaws(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	Unit* target = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(SkillTargetUnit)(game, unit);
+	const uint8_t* hit =
+		target != nullptr ? d2r::Engine<uint8_t* (*)(Unit*, Unit*) noexcept>(QueuedHit)(unit, target) : nullptr;
+	const int32_t result = hit != nullptr ? At<uint16_t>(hit, DamageResult) : -1;
+	const int32_t fire = hit != nullptr ? At<int32_t>(hit, DmgFire) >> 8 : 0;
+	// whatever the start queued is applied, as D2R's own row does
+	VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoMelee)(game, unit, skillId, level);
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	if (target == nullptr) {
+		if (plog::Sample(g_fireClaws)) {
+			plog::Info("fire claws: skill %d level %d: no target, cast %u", skillId, level, g_fireClaws.load());
+		}
+		return 0;
+	}
+	const int32_t missile = At<int16_t>(skill, SkSrvMissileA);
+	int32_t tx = 0, ty = 0;
+	const bool aimed = d2r::ValidMissile(dataFlag, missile) && d2r::api.skillTargetXY(game, unit, &tx, &ty) != 0;
+	const int32_t count = aimed ? d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level) : 0;
+	const int32_t created = Walls(unit, missile, count, skillId, level, tx, ty, [&](d2r::MissileParams* p) {
+		return d2r::api.createMissile(game, p) != nullptr;
+	});
+	const bool sampled = plog::Sample(g_fireClaws);
+	const bool firstHits = result >= 0 && (result & 1) != 0 && plog::Sample(g_fireClawHits);  // a miss may come first
+	if (sampled || firstHits) {
+		plog::Info("fire claws: skill %d level %d: hit result %d fire %d, %d of %d makers (row %d), cast %u", skillId,
+		           level, result, fire, created, count, missile, g_fireClaws.load());
+	}
+	return aimed ? 1 : 0;
+}
+
+auto CltDoFireClaws(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	if (unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::api.unitDataFlag(unit);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	Unit* target = d2r::Engine<Unit* (*)(Unit*) noexcept>(d2r::rva::ClientSkillTargetUnit)(unit);
+	int32_t tx = 0, ty = 0;
+	if (target == nullptr || !d2r::UnitXY(target, &tx, &ty)) {
+		if (plog::Sample(g_fireClawClients)) {
+			plog::Info("fire claws client: skill %d level %d: no target, cast %u", skillId, level,
+			           g_fireClawClients.load());
+		}
+		return 0;
+	}
+	const int32_t missile = At<int16_t>(skill, d2r::rva::SkCltMissileA);
+	if (!d2r::ValidMissile(dataFlag, missile)) {
+		return 0;
+	}
+	const int32_t count =
+		d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, d2r::rva::SkCalc2), skillId, level);
+	const int32_t created = Walls(unit, missile, count, skillId, level, tx, ty, [](d2r::MissileParams* p) {
+		return d2r::api.clientCreateMissile(p, 0) != nullptr;
+	});
+	if (plog::Sample(g_fireClawClients)) {
+		plog::Info("fire claws client: skill %d level %d: %d of %d makers, cast %u", skillId, level, created, count,
+		           g_fireClawClients.load());
+	}
+	return 1;
+}
+
+// --- Spirit Wolf and Fenris start (PD2 srvstfunc 77; docs/research/druid-w24.md) ----------------------------------
+// Read from ProjectDiablo.dll: srvst 77 at 0x103b6c80, its rule 0x103747b0. A player only; pet types 11 and 12 only.
+// Once the type has a stored max: while the player has wolves of the type and their count is not under petmax, the
+// first one dies; with none left, petmax 0 refuses. D2R's do (srvdo 119) summons at least one even at petmax 0.
+std::atomic<uint32_t> g_wolfStarts {0};
+std::atomic<uint32_t> g_wolfRefusals {0};
+constexpr int32_t PetSpiritWolf = 11, PetFenris = 12;  // pettype rows, PD2's and merged
+
+auto SrvStWolves(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr || At<int32_t>(unit, UnitType) != 0) {
+		return 0;
+	}
+	const uint8_t* player = d2r::Engine<uint8_t* (*)(Unit*) noexcept>(UnitPlayerData)(unit);
+	void* pets = player != nullptr ? At<void*>(player, PlayerPets) : nullptr;
+	if (pets == nullptr) {
+		return 0;
+	}
+	const int32_t type = At<int8_t>(skill, SkPetType);
+	const bool wolves = type == PetSpiritWolf || type == PetFenris;
+	// shortcut: petmax of the cast skill at the cast level; PD2 takes the type's own skill (227, 237) at the player's
+	// level in it, the same thing for the only rows with these pet types. Upgrade if another row gets one.
+	const int32_t limit = d2r::EvalCalc(game, unit, skill, SkPetMax, skillId, level);
+	const uint8_t* entry =
+		wolves ? d2r::Engine<uint8_t* (*)(uint32_t, void*, int32_t) noexcept>(PetEntry)(dataFlag, pets, type) : nullptr;
+	const int32_t before = entry != nullptr ? At<int32_t>(entry, PetCount) : 0;
+	int32_t killed = 0;
+	bool accepted = wolves;
+	if (entry != nullptr && At<int32_t>(entry, PetMax) > 0) {
+		const auto left = [&] { return At<void*>(entry, PetHead) != nullptr; };
+		// bounded by the count before, in case a kill ever leaves the pet on the list
+		for (int32_t n = before; n > 0 && left() && At<int32_t>(entry, PetCount) >= limit; --n) {
+			Unit* pet = d2r::Engine<Unit* (*)(Game*, Unit*, int32_t, int32_t) noexcept>(FirstPet)(game, unit, type, 1);
+			if (pet == nullptr) {
+				break;
+			}
+			const int32_t id =
+				d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(UnitId)(pet, __FILE__, __LINE__);
+			d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t) noexcept>(RemovePet)(game, unit, id, 1);
+			++killed;
+		}
+		accepted = left() || limit != 0;
+	}
+	// shortcut: a refusal is silent; PD2 also has the player say "I can't" (1.13c event sound 0x13), upgrade when
+	// D2R's unit event sound is found
+	std::atomic<uint32_t>& counter = accepted ? g_wolfStarts : g_wolfRefusals;
+	if (plog::Sample(counter) || killed > 0) {  // a kill is one per cast at petmax
+		plog::Info("wolf start: skill %d level %d pet type %d: petmax %d, %d before, %d killed, %s (%u started, %u "
+		           "refused)",
+		           skillId, level, type, limit, before, killed, accepted ? "accepted" : "refused", g_wolfStarts.load(),
+		           g_wolfRefusals.load());
+	}
+	return accepted ? 1 : 0;
 }
 
 // --- Combustion and the boss novas (PD2 srvdofunc 159 -> router 190, cltdofunc 100 -> 120) ----------------------------
@@ -3131,6 +3275,9 @@ const SlotFunction Functions[] = {
 	{CltDo, 120, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoNova)), "nova"},
 	// Firestorm and the wall makers: srvdo 166 is D2R's, so the router (190) runs them; cltdo 119 is free
 	{CltDo, 119, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoWall)), "wall"},
+	{SrvDo, 175, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoFireClaws)), "fire claws"},
+	{CltDo, 110, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoFireClaws)), "fire claws"},
+	{SrvSt, 77, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStWolves)), "wolf start"},
 	// The finishers' client halves (W30): D2R fills cltdo 106 (Bind Demon), 107 and cdo 69 (corpseexplosion); chit 67
 	// is free
 	{CltDo, 127, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltPrgSpread)), "charge spread"},
@@ -3218,7 +3365,8 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "client %u, blood warps %u, refused %u, desecrates %u, client %u, corpses hidden %u, revives %u, "
 	              "revive events %u, splashes %u, channels %u, client %u, take-overs %u, blade fury refused %u, "
 	              "held %u, charge-up hits %u, charges %u, charge hit frames %u, holy lights %u, gusts %u, hungers %u, "
-	              "novas %u, client %u, static fields %u, vengeances %u, links %u, jousts %u, %s",
+	              "novas %u, client %u, static fields %u, vengeances %u, links %u, jousts %u, fire claws %u, hits %u, "
+	              "client %u, wolf starts %u, refused %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
@@ -3228,5 +3376,6 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              g_takeOvers.load(), g_bladeFuryRefusals.load(), g_heldRequests.load(), g_chargeHits.load(),
 	              g_charges.load(), g_chargeHitFrames.load(), g_holyLights.load(), g_gusts.load(),
 	              g_hungers.load(), g_novas.load(), g_novaClients.load(), g_staticFields.load(), g_vengeances.load(),
-	              g_vengeanceLinks.load(), g_jousts.load(), missiles);
+	              g_vengeanceLinks.load(), g_jousts.load(), g_fireClaws.load(), g_fireClawHits.load(),
+	              g_fireClawClients.load(), g_wolfStarts.load(), g_wolfRefusals.load(), missiles);
 }

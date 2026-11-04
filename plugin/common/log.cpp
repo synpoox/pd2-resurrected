@@ -16,9 +16,9 @@ void Write(Level level, const char* fmt, va_list args) noexcept {
 	if (g_context == nullptr || fmt == nullptr) {
 		return;
 	}
-	char body[2000];  // the skills install line lists every slot (core-rules-loads reads it whole)
+	char body[2400];  // core-rules' skills line lists every installed slot
 	std::vsnprintf(body, sizeof(body), fmt, args);
-	char line[2048];
+	char line[2500];
 	std::snprintf(line, sizeof(line), "%s: %s", g_prefix, body);
 	switch (level) {
 	case Level::Info: g_context->LogInfo(line); break;
