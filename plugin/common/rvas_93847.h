@@ -704,7 +704,7 @@ namespace d2r {
 struct CurseParams {
 	Game* game;           // 0x00
 	Unit* caster;         // 0x08
-	int32_t unread10[2];  // 0x10 not read here
+	int32_t pad10[2];     // 0x10 not read here
 	int32_t skill;        // 0x18
 	int32_t level;        // 0x1c
 	int32_t key;          // 0x20

@@ -1695,6 +1695,7 @@ def items_installed(ctx):
 
 CURSE = re.compile(r"curse: state (\d+), (\d+) curse\(s\) on the target, (\d+) slot\(s\) \(caster (\d+)\), "
                    r"(same state|replaces the oldest|added)")
+CURSE_HELD = re.compile(r"curse: state (\d+) landed, the target holds (\d+) curse\(s\)")
 CURSE_RESISTANCE = re.compile(r"curse resistance (-?\d+) \(used (-?\d+)\) on (player|monster): aurastat(\d) stat (\d+) "
                               r"(-?\d+) -> (-?\d+)")
 
@@ -1717,10 +1718,13 @@ def max_curses(ctx):
             assert count < slots, f"state {state} added to {count} curses with {slots} slots"
         elif what == "replaces the oldest":
             assert count >= slots, f"state {state} replaced a curse with {count} of {slots} slots used"
+    held = [(int(st), int(n)) for st, n in CURSE_HELD.findall(_log(ctx))]
     extra = [r for r in rows if r[4] == "added" and r[1] >= 1]
-    if not extra:
+    if not extra or not any(n >= 2 for _, n in held):
         ctx.skip("no target held a second curse yet (+1 max curses, two curses on one monster, run again)")
-    return f"{len(rows)} curse(s); state {extra[0][0]} joined {extra[0][1]} curse(s) with {extra[0][2]} slots"
+    most = max(n for _, n in held)
+    assert most <= max(r[2] for r in rows), f"a target holds {most} curses, more than any slot count logged"
+    return f"{len(rows)} curse(s); a target held {most} at once; state {extra[0][0]} joined {extra[0][1]} curse(s)"
 
 
 @check("curse-resistance", tags=["core-rules-ir4"])

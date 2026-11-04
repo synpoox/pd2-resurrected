@@ -261,7 +261,7 @@ auto MakeRoom(uint32_t dataFlag, Unit* caster, Unit* target, int32_t state, uint
 		}
 	}
 	const uint32_t n = ++g_curses;
-	if (n <= 50 || n % 100 == 0) {
+	if (n <= 20 || n % 100 == 0) {
 		plog::Info("curse: state %d, %d curse(s) on the target, %d slot(s) (caster %d), %s, %u so far", state, count,
 		           slots, own, same != nullptr ? "same state" : seen != nullptr ? "replaces the oldest" : "added", n);
 	}
@@ -290,11 +290,13 @@ auto ResistCurse(uint32_t dataFlag, Unit* target, const d2r::CurseParams* params
 		if (base == 0) {
 			continue;  // D2R set nothing for it
 		}
+		// shortcut: an aurastat1 resisted to 0 leaves the curse on with the stat at 0 (PD2 cancels it); upgrade by
+		// resisting params->values[0] before the call if a unit ever shows it
 		const int32_t used = resistance > CurseResistanceCap && (i > 0 || player) ? CurseResistanceCap : resistance;
 		const int32_t resisted = Resisted(base, used);
 		setStat(dataFlag, list, stat, resisted, 0);
 		const uint32_t n = ++g_curseResisted;
-		if (n <= 50 || n % 100 == 0) {
+		if (n <= 20 || n % 100 == 0) {
 			plog::Info("curse resistance %d (used %d) on %s: aurastat%d stat %d %d -> %d, %u so far", resistance, used,
 			           player ? "player" : "monster", i + 1, stat, base, resisted, n);
 		}
@@ -333,6 +335,17 @@ auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
 		                                                                                      StatCurseSlots, slots, 0);
 	}
 	ResistCurse(dataFlag, target, params, list, fresh);
+	const uint32_t n = g_curses.load();
+	if (n <= 20 || n % 100 == 0) {
+		int held = 0;  // read back from the target, so the game check sees what D2R kept
+		const uint8_t* owner = At<const uint8_t*>(target, UnitListOwner);
+		int guard = 0;
+		for (const uint8_t* l = owner != nullptr ? At<const uint8_t*>(owner, ListOwnerFirst) : nullptr;
+		     l != nullptr && guard < MaxCurseLists; l = At<const uint8_t*>(l, ListNext), ++guard) {
+			held += (At<uint32_t>(l, ListFlags) & ListFlagCurse) != 0 ? 1 : 0;
+		}
+		plog::Info("curse: state %d landed, the target holds %d curse(s)", state, held);
+	}
 	return applied;
 }
 
