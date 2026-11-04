@@ -41,6 +41,13 @@ inline constexpr int SrvStFindItem = 34;
 inline constexpr int CltStFindPotion = 26;
 inline constexpr int CltStFindItem = 28;
 inline constexpr int SrvDoMelee = 2;  // 0x430240: Bash's do function in D2R, applies the queued hit
+// srvdofunc 58, Revive: brings the skill's target corpse back in place as the caster's pet. It never registers the
+// skill's auraevent1-4 on the pet (nor does anything else on that path), so Revive's event 32 needs core-rules.
+inline constexpr int SrvDoRevive = 58;
+inline constexpr uint64_t SrvDoReviveD2R = 0x55e7e0;
+// srvstfunc 66: (game, unit, skill, level) -> 1, registers the skill's auraevent1-4 / auraeventfunc1-4 on unit for
+// good (no stat list, no source), through 0x588670 and 0x438230 per event
+inline constexpr uint64_t RegisterSkillEvents = 0x42fa90;
 // missiles.txt pSrvDoFunc: int64_t fn(Game*, Unit* missile), 54 slots, 46-53 free.
 inline constexpr uint64_t MissileSrvDoTable = 0x2390e80;
 inline constexpr int MissileSrvDoSlots = 54;
@@ -58,6 +65,12 @@ inline constexpr int MissileCltDoFirstFree = 78;
 inline constexpr uint64_t MissileSrvDmgTable = 0x2391270;
 inline constexpr int MissileSrvDmgSlots = 31;
 inline constexpr int MissileSrvDmgFirstFree = 18;
+// skills.txt auraeventfunc1-4: int32_t fn(Game*, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skill,
+// int32_t level), 41 slots (dispatcher 0x43823a, bound 40), all of 1-40 filled. Slot 32 (0x42eea0, a skill damage
+// event) is reached by no D2R row; PD2's Revive event takes it (docs/research/necromancer-w14.md).
+inline constexpr uint64_t AuraEventTable = 0x238e5c0;
+inline constexpr int AuraEventRevive = 32;
+inline constexpr uint64_t AuraEvent32D2R = 0x42eea0;
 
 // --- Functions (signature in the comment) -------------------------------------------------------------------------
 inline constexpr uint64_t GetSkillRecord = 0x97790;    // (dataFlag, skillId) -> skills.txt record or null
@@ -142,12 +155,18 @@ inline constexpr uint64_t RemoveUnitEvent = 0x48b890;  // (game, unit, event, 0)
 inline constexpr uint64_t AddUnitEvent = 0x48b720;  // (game, unit, event, frame, 0, 0, 0)
 inline constexpr uint64_t MonStatsRecord = 0x976e0;  // (dataFlag, classId) -> monstats record or null
 inline constexpr uint64_t UnitId = 0x34a330;  // (unit, file, line) -> unit id
+// (unit, skill, level, target, 0) -> non-zero cast: a skill cast from unit at target as an event, sent to clients (aura
+// event 33 0x42f300 casts this way); refuses while the unit has state 54
+inline constexpr uint64_t CastEventSkill = 0x5896e0;
 
 // --- Offsets ------------------------------------------------------------------------------------------------------
 inline constexpr int GameDataFlag = 0x106;  // Game: byte passed to every data-table getter
 inline constexpr int GameFrame = 0x170;  // Game: int32 frame counter (unit events are timed in it)
 
 inline constexpr int UnitType = 0x00;  // int32: 0 player, 1 monster, 2 object, 3 missile, 4 item, 5 tile
+inline constexpr int UnitMonster = 1;
+inline constexpr int UnitMode = 0x0c;  // int32 current mode (monmode for a monster)
+inline constexpr int MonModeDeath = 0, MonModeDead = 12;
 inline constexpr int UnitPath = 0x38;  // dynamic path (x +0x2, y +0x6, uint16) or static path (x +0x10, y +0x14)
 inline constexpr int PathTargetUnit = 0x70;  // Unit* on a dynamic path: what PathSteer aims at (set by PathSetTargetUnit)
 inline constexpr int UnitOwnerType = 0xe8;  // int32 owner unit type (MissileOwner 0x490300 reads both)

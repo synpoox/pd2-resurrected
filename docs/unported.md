@@ -100,10 +100,10 @@ rows have no table hook: D2R does what it does.
 | UberDiabSummon, UberDiabRun | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.UberDiabRun.srvstfunc` `skills.UberDiabSummon.srvdofunc` | after the alpha |
 | RathmaSummon | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.RathmaSummon.srvdofunc` | after the alpha |
 | Lucion kit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.LucionNova.srvdofunc` `skills.LucionBlink.cltdofunc` `skills.LucionDash.srvdofunc` `skills.LucionDash.cltdofunc` `skills.LucionDash.srvstfunc` `skills.LucionDash.cltstfunc` `skills.LucionPunish.srvdofunc` | after the alpha |
-| Melee splash | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.proc_SplashDamage.srvdofunc` `skills.Golem Splash.srvdofunc` `skills.Skeleton Splash.srvdofunc` | after the alpha |
+| Melee splash | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.proc_SplashDamage.srvdofunc` `skills.Golem Splash.srvdofunc` `skills.Skeleton Splash.srvdofunc` | W33 |
 | Corpse/Vine Cycler start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.CorpseCycler.srvstfunc` `skills.VineCycler.srvstfunc` | after the alpha |
 | Holy Sword start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.holy sword.srvstfunc` | after the alpha |
-| Golem start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Clay Golem.srvstfunc` `skills.BloodGolem.srvstfunc` `skills.FireGolem.srvstfunc` | after the alpha |
+| Golem start: the Iron Golem's place | approximated | the golem count is data: D2R's summon caps Clay, Blood and Fire Golems together by PD2's petmax and replaces the oldest, as PD2 does. The Iron Golem keeps its own pet type (irongolem) and does not take a golem place, where PD2 lowers the golem limit by one per Iron Golem and refuses the summon ("can't" message) when that leaves no place. srvstfunc 74 stays blank (docs/core-rules.md) | `skills.Clay Golem.srvstfunc` `skills.BloodGolem.srvstfunc` `skills.FireGolem.srvstfunc` | core-rules |
 | Smite start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Smite.srvstfunc` | after the alpha |
 | Spirit Wolf, Fenris start | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `skills.Summon Spirit Wolf.srvstfunc` `skills.Summon Fenris.srvstfunc` | after the alpha |
 | Frenzy, Tiger Strike start: the splash list | approximated | inc_splash_radius goes on a temp_skill_buff list replaced each start and lasting 10 minutes, where PD2 keeps one permanent list (docs/core-rules.md) |  | core-rules |
@@ -148,12 +148,13 @@ rows have no table hook: D2R does what it does.
 | Channel take-over: Inferno, Arctic Blast (srvdo 182) and Blade Fury (48) | not yet | stand-in: D2R's own behaviour |  | after the alpha |
 | Charge (srvdo 180) in the Charge/Whirlwind rule, also for skill-less requests | not yet | stand-in: D2R's own behaviour |  | after the alpha |
 | Run and Concentration in the end-of-action window | not yet | stand-in: D2R's own behaviour |  | after the alpha |
-| Get-hit/block end window, cast/sequence delay from neutral or run | not yet | stand-in: D2R's own behaviour |  | after the alpha |
+| Get-hit/block end window, cast/sequence delay from neutral or run | not yet | stand-in: D2R's own behaviour; the cast stamp PD2 reads has no writer found yet (docs/research/necromancer-w14.md) |  | W34 |
 | Level life regen cap (30, `bloodwarp` lifts it) | not yet | stand-in: D2R's own behaviour |  | map plan |
 | Player death handler and two more PlrModes hooks | not yet | stand-in: D2R's own behaviour |  | after the alpha |
 | Perfect shrine | not yet | stand-in: D2R's own behaviour |  | after the alpha |
 | Stackable items / item quantity | not yet | stand-in: D2R's own behaviour |  | after the alpha |
-| Skill aura event 32 (Revive), 3 (Chilling Armor), 16 (Smite) | not yet | stand-in: Smite: D2R's own row (`merge/standins.tsv`); Revive, Chilling Armor: D2R's function at the same number | `skills.Smite.auraeventfunc1` | after the alpha |
+| Skill aura event 3 (Chilling Armor), 16 (Smite) | not yet | stand-in: Smite: D2R's own row (`merge/standins.tsv`); Chilling Armor: D2R's function at the same number | `skills.Smite.auraeventfunc1` | W19, W28 |
+| Revive's event: the splash target | approximated | PD2 casts proc_SplashDamage with no target and lets the skill find one; D2R's event cast needs one, so core-rules passes the unit the revive hit (docs/core-rules.md) |  | core-rules |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | `states.skilldelay.remfunc` | after the alpha |
 | Function numbers of the exact data rows (Monster frenzy, Baal Corpse Explode client start, `*12` server hit) | approximated | the cells differ from PD2 but run the same rule: D2R's number for it, or none where PD2's points past D2R's table (see Data rows) | `skills.MonFrenzy.srvdofunc` `skills.MonFrenzy.srvstfunc` `skills.BloodLordFrenzy.srvdofunc` `skills.Baal Corpse Explode.cltstfunc` `missiles.royalstrikechainlightning.pSrvHitFunc` `missiles.royalstrikechainlightning.pCltHitFunc` `missiles.boichaosice.pSrvHitFunc` `missiles.boichaosice.pCltHitFunc` | W3 |
 

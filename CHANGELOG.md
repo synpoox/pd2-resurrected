@@ -5,6 +5,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Golem Mastery adds a golem every 5 base levels, as in Project Diablo II; a new golem replaces the oldest.
 - Double Throw works as in Project Diablo II: one throw that bounces between monsters.
 - Leap and Leap Attack work as in Project Diablo II: faster leaps, and Leap Attack hits every monster where it lands.
 - Lightning Bolt and Lightning Fury work as in Project Diablo II.

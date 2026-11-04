@@ -49,9 +49,16 @@ Merged id of `proc_SplashDamage`: **430** (PD2 358). Skills record: auraevent1-4
 u16 `+0xac..+0xb2` (field table `0x302380`). The aura path copies both into the state list (`0x55c840`,
 `0x55a7e0` -> `0x438370`).
 
-Open: D2R's Revive do (`0x55e7e0`) does not visibly register Revive's aura events on the revived monster (no call to
-`0x438370`); the golem do does not either, so registration is elsewhere (packed code at `0x143e2d850`). Needs a game
-check: does a revive's melee hit reach slot 32?
+Game check: D2R's Revive do (srvdo 58, `0x55e7e0`) never registers Revive's aura events on the revived monster; with
+slot 32 filled, six revives fighting fallen never reached it. Golems get theirs elsewhere. The skill-event register
+is srvst 66, `0x42fa90 (game, unit, skill, level)`: it reads auraevent1-4 / auraeventfunc1-4 of the skill and calls
+`0x588670` then `0x438230 (game, unit, event, skill, level, ..., func, ...)` per event (the `0x438370` path does the
+same for aura states). core-rules wraps srvdo 58 and calls it on the target after D2R's Revive: the corpse is revived
+in place (same unit, return 1, mode neutral; the owner fields at `+0xe8` stay 0/0 for a pet). Then a revive's melee
+hit fires event 5 (domeleedamage) into slot 32.
+
+The event's cast (`0x5896e0` -> `0x589930`) of proc_SplashDamage returns 0: the skill has no do function yet (W33).
+`0x589930` refuses a skill whose `ItemEffect` (`+0x20a`) is 0; proc_SplashDamage's is 1, so the refusal is later.
 
 ## Gate B (PD2 `0x1037bb20`)
 
