@@ -150,6 +150,14 @@ inline constexpr uint64_t SetMissileTargetDx = 0x3bda20;  // (missile, tx - ux),
 inline constexpr uint64_t MissileSkill = 0x3bc450;  // (missile) -> skill id
 inline constexpr uint64_t MissileLevel = 0x3bb470;  // (missile) -> skill level
 inline constexpr uint64_t MissileRecord = 0x166040;  // (dataFlag, missile row) -> missiles.txt record or null
+// Blade Fury's fragment (W32, docs/research/w32-blade-fury.md). MissileBounces' field is 1.13c's missile data +0x28,
+// the one PD2's fragment counts its generation in (D2Common #11018 / #10637).
+inline constexpr uint64_t MissileActivateFrame = 0x3bae80;  // (missile) -> 1.13c's data +0x08 (D2R +0x0a)
+inline constexpr uint64_t SetMissileFramesLeft = 0x3bd450;  // (missile, frames): what MissileSrvFrames reads
+inline constexpr uint64_t UnitSize = 0x34b580;  // (unit) -> collision size: a missile's row Size, 2 for a player
+// (room, x, y, mask) -> the mask's bits set at subtile x/y (0x27 with no room there), 1.13c's single-point test
+inline constexpr uint64_t CollisionAt = 0x366250;
+inline constexpr uint16_t CollisionMissile = 0x806;  // PD2's fragment tests this mask
 // (game, owner, x, y, range, flags, skip unit id, 0) -> nearest target to x/y other than the skipped unit, or null
 inline constexpr uint64_t NearestTarget = 0x4331d0;
 inline constexpr uint64_t SetUnitStat = 0x2f7d10;  // (unit, stat, value, layer)
@@ -397,7 +405,9 @@ inline constexpr int DamageColdLength = 0x118;
 inline constexpr int DamageHitClass = 0x144;  // uint32; D2R's Static Field ORs 0xd into it (0x4d, as PD2's)
 
 // missiles.txt record (1.13c's shifted by 0x24)
+inline constexpr int MsParam1 = 0x5c;     // int32 Param1 (1.13c's 0x38)
 inline constexpr int MsDParam1 = 0x9c;    // int32 dParam1
+inline constexpr int MsDParam2 = 0xa0;    // int32 dParam2 (1.13c's 0x7c)
 inline constexpr int MsDmgCalc1 = 0xb4;   // int32 DmgCalc1 (calc index), read by dmg 1 0x453490
 // uint32 HitFlags, uint16 ResultFlags (1.13c's 0xa8 / 0xac + 0x28; the field table at 0x3c2c70)
 inline constexpr int MsHitFlags = 0xd0;

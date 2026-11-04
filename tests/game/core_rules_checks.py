@@ -101,6 +101,9 @@ pack with Vengeance until a link logs, Joust a zombie a few yards off, and run t
 W30 checks (tag core-rules-w30), same merged data and save as W29: out of town hit monsters three times in a row with
 each of Fists of Fire, Cobra Strike, Claws of Thunder and Blades of Ice, releasing between them with Dragon Talon, and
 run the same command with core-rules-w30. Each charge's client missiles log on the client.
+W32 checks (tag core-rules-w32), same merged data: a level 90+ Assassin in Hell with Blade Fury (266) set in game
+(`debug_mode`, `cheat sklvl Blade Fury,20`, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); throw Blade
+Fury at the pack and at a wall or tree near it, hold it for a second, and run the same command with core-rules-w32.
 """
 import json
 import os
@@ -135,6 +138,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 181, "charge cold"), ("cltdofunc", 120, "nova"),
     ("cltdofunc", 127, "charge spread"), ("cltdofunc", 128, "charge ring"), ("pCltDoFunc", 79, "charge explode"),
     ("pCltHitFunc", 67, "charge bolt"),
+    ("pSrvHitFunc", 69, "blade fragment"), ("pCltHitFunc", 68, "blade fragment"), ("pSrvDmgFunc", 19, "blade fragment"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -165,7 +169,7 @@ def _log(ctx) -> str:
                                  "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33",
                                  "core-rules-w21", "core-rules-w22", "core-rules-w24", "core-rules-w29",
                                  "core-rules-w17", "core-rules-w23", "core-rules-w27", "core-rules-w28", "core-rules-w30",
-                                 "core-rules-w18", "game"])
+                                 "core-rules-w18", "core-rules-w32", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -463,7 +467,7 @@ def channel_take_over(ctx):
     return f"skill {rows[0][0]} gave way to skill {rows[0][2]}"
 
 
-@check("blade-fury-refused", tags=["core-rules-w21"])
+@check("blade-fury-refused", tags=["core-rules-w21", "core-rules-w32"])
 def blade_fury_refused(ctx):
     """PD2's gate A: a Blade Fury (srvdofunc 48) is not cut short by another Blade Fury; another skill is allowed. The
     held Blade Fury's own re-request goes to D2R's gate, which must not allow it (0 would restart the channel)."""
@@ -1142,7 +1146,7 @@ def charge_client_bolt(ctx):
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17",
-                                    "core-rules-w23", "core-rules-w30", "core-rules-w18"])
+                                    "core-rules-w23", "core-rules-w30", "core-rules-w18", "core-rules-w32"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))
@@ -1272,3 +1276,74 @@ def chilling_armor_event(ctx):
         got = (row["auraevent2"], row["auraeventfunc2"])
         assert got == ("damagedinmelee", "3"), f"{name}: auraevent2 {got}, PD2's damagedinmelee 3"
     return "Chilling Armor and its SelfAura keep damagedinmelee 3"
+
+
+FRAGMENT = "bladefragment1"
+FRAGMENT_HIT = re.compile(r"blade fragment hit: missile row (\d+) skill (\d+) level (\d+) generation (\d+) on unit type "
+                          r"(\d+): chance (\d+)%, (\d+) of (\d+) fragments with (\d+) frames")
+FRAGMENT_WALL = r"blade fragment {}wall: missile row (\d+) skill (\d+) level (\d+) generation (\d+) -> (\d+): (\d+) of (\d+)"
+FRAGMENT_DAMAGE = re.compile(r"blade fragment damage: missile row (\d+) generation (\d+) on unit type (\d+): physical "
+                             r"(-?\d+) \(1/256\), leech kept (\d+)% \(life (\d+)\), roll (\d+) over (\d+): ([^,]+), hit")
+
+
+def _fragment_row() -> dict[str, str]:
+    return _missile_row(os.path.join(REPO, "pd2-data", "data", "global", "excel", "missiles.txt"), FRAGMENT)
+
+
+def _fragment_rows(ctx, found: list[tuple], hint: str) -> list[tuple[int, ...]]:
+    names = _rows("missiles")
+    rows = [tuple(int(v) for v in r) for r in found]
+    rows = [r for r in rows if r[0] < len(names) and names[r[0]] == FRAGMENT]
+    if not rows:
+        ctx.skip(f"no {hint} in the log yet (throw Blade Fury at monsters and at a wall out of town, then run again)")
+    return rows
+
+
+@check("blade-fragment-hit", tags=["core-rules-w32"])
+def blade_fragment_hit(ctx):
+    """A fragment's unit hit (pSrvHitFunc 34 -> 69) splits it, with PD2's Param1 50% chance, into sHitPar1 - 1 = 2
+    fragments, below cHitPar3 3 generations."""
+    pd2 = _fragment_row()
+    hits = _fragment_rows(ctx, FRAGMENT_HIT.findall(_log(ctx)), "blade fragment unit hit")
+    for row, skill, level, gen, unit, chance, made, count, frames in hits:
+        assert skill == 266, f"skill {skill}, Blade Fury is 266"
+        assert gen < int(pd2["cHitPar3"]), f"generation {gen} hit, PD2 stops at cHitPar3 {pd2['cHitPar3']}"
+        assert chance == int(pd2["Param1"]), f"chance {chance}%, PD2's Param1 {pd2['Param1']}"
+        assert count in (0, int(pd2["sHitPar1"]) - 1), f"{count} fragments, PD2's sHitPar1 - 1"
+        assert made == count, f"{made} of {count} fragments created"
+    splits = [h for h in hits if h[7] > 0]
+    if not splits:
+        ctx.skip(f"{len(hits)} unit hit(s), none split yet (50%: hit more monsters, then run again)")
+    return f"{len(splits)} of {len(hits)} hits split into {splits[0][6]} fragments ({splits[0][8]} frames)"
+
+
+@check("blade-fragment-wall", tags=["core-rules-w32"])
+def blade_fragment_wall(ctx):
+    """A fragment that hits a wall bounces into sHitPar1 3 fragments of the next generation, on the server
+    (pSrvHitFunc 69) and on the client (pCltHitFunc 6 -> 68)."""
+    pd2 = _fragment_row()
+    text = _log(ctx)
+    for side in ("", "client "):
+        walls = _fragment_rows(ctx, re.findall(FRAGMENT_WALL.format(side), text), f"blade fragment {side}wall bounce")
+        for row, skill, level, gen, nxt, made, count in walls:
+            assert (nxt, count) == (gen + 1, int(pd2["sHitPar1"])), f"{side}wall: {gen} -> {nxt}, {count} fragments"
+            assert gen < int(pd2["cHitPar3"]), f"{side}wall: generation {gen} bounced, PD2 stops at {pd2['cHitPar3']}"
+        assert any(w[5] > 0 for w in walls), f"no {side}wall bounce created a fragment: {walls[:3]}"
+    return "wall bounces make 3 fragments on the server and the client"
+
+
+@check("blade-fragment-damage", tags=["core-rules-w32"])
+def blade_fragment_damage(ctx):
+    """A fragment's hit (pSrvDmgFunc 19) keeps dParam2 75% of its leech; a roll over dParam1 20 sets result flag 0x20
+    and drops a later generation's leech."""
+    pd2 = _fragment_row()
+    found = FRAGMENT_DAMAGE.findall(_log(ctx))
+    outcome = {tuple(int(v) for v in m[:8]): m[8] for m in found}
+    hits = _fragment_rows(ctx, [m[:8] for m in found], "blade fragment damage")
+    for hit in hits:
+        row, gen, unit, physical, keep, life, roll, over = hit
+        assert (keep, over) == (int(pd2["dParam2"]), int(pd2["dParam1"])), f"kept {keep}%, roll over {over}"
+        assert physical > 0, f"physical {physical}: the fragment dealt no damage"
+        want = "no flag" if roll <= over else "flag 0x20 and leech dropped" if gen else "flag 0x20"
+        assert outcome[hit] == want, f"generation {gen}, roll {roll} over {over}: {outcome[hit]}, PD2: {want}"
+    return f"{len(hits)} hit(s): leech kept {hits[0][4]}%, physical {hits[0][3] >> 8}"

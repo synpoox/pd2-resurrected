@@ -3264,6 +3264,11 @@ const SlotFunction Functions[] = {
 	{CltDo, 128, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltPrgRing)), "charge ring"},
 	{MissileCltDo, 79, reinterpret_cast<const void*>(static_cast<MissileCltDoFn>(CltDoChargeExplode)), "charge explode"},
 	{MissileCltHit, 67, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitChargeBolt)), "charge bolt"},
+	// Blade Fury's fragment (W32): D2R fills shit 34 (echoingstrike); chit 6 sits below D2R's free range, so it takes 68
+	// (FUNCS); dmg 19 is free
+	{MissileSrvHit, 69, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitBladeFragment)), "blade fragment"},
+	{MissileCltHit, 68, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitBladeFragment)), "blade fragment"},
+	{MissileSrvDmg, 19, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgBladeFragment)), "blade fragment"},
 };
 
 }  // namespace
