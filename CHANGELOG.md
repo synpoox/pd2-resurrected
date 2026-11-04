@@ -5,6 +5,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Charge works as in Project Diablo II: it runs at Project Diablo II's speed, and the longer the charge, the wider
+  its hit splashes with a splash-on-hit item.
 - The Assassin's charge-up skills build charges as in Project Diablo II: charges are shared between them, and each
   charge's effect (Fists of Fire's fire, Cobra Strike's poison, Blades of Ice's wave) fires on the hit that builds
   it. What your client draws for each charge is still D2R's.

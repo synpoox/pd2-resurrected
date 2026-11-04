@@ -18,7 +18,6 @@ skills	Defiance	=	cltdofunc	Paladin aura client do
 skills	Defiance	=	cltstfunc	Paladin aura client start
 skills	Resist Cold	=	cltdofunc	Paladin aura client do
 skills	Resist Cold	=	cltstfunc	Paladin aura client start
-skills	Charge	=	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Charge (Paladin)
 skills	Blessed Aim	=	cltdofunc	Paladin aura client do
 skills	Blessed Aim	=	cltstfunc	Paladin aura client start
 skills	Cleansing	=	cltdofunc	Paladin aura client do

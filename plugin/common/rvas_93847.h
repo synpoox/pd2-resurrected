@@ -51,6 +51,8 @@ inline constexpr uint64_t SrvDoReviveD2R = 0x55e7e0;
 inline constexpr uint64_t RegisterSkillEvents = 0x42fa90;
 // 0x554c40: Teleport to the skill's point; 0 when there is no room, the level forbids it or the point collides (0x804)
 inline constexpr int SrvDoTeleport = 27;
+// Charge, D2R's own: srvst 31 (0x564dc0) aims the charge path, srvdo 67 (0x5622c0) runs it and hits at the end
+inline constexpr int SrvStVanillaCharge = 31, SrvDoVanillaCharge = 67;
 inline constexpr int SrvDoInferno = 19;  // 0x554460: D2R's (vanilla) Inferno; PD2's srvdo 182 hands monsters to it
 // missiles.txt pSrvDoFunc: int64_t fn(Game*, Unit* missile), 54 slots, 46-53 free.
 inline constexpr uint64_t MissileSrvDoTable = 0x2390e80;
@@ -158,6 +160,11 @@ inline constexpr uint64_t ClientSkillTargetUnit = 0x9a570;  // (unit) -> target 
 inline constexpr uint64_t QueuedHit = 0x44d660;
 inline constexpr uint64_t UnitSeed = 0x34a1e0;  // (unit) -> &seed {lo, hi}
 inline constexpr uint64_t UnitStat = 0x2f5020;  // (unit, stat, param) -> value
+// What D2R's Charge hit (srvdo 67) asks before it strikes
+inline constexpr uint64_t FindUnit = 0x48fe80;     // (game, unit type, id) -> unit or null
+inline constexpr uint64_t UnitInReach = 0x348650;  // (unit, target, reach, 0) -> non-zero when in reach
+inline constexpr uint64_t UnitReach = 0x34aa90;    // (unit) -> 1 for a player, 3 for a monster
+inline constexpr uint64_t UnitDead = 0x34c2c0;     // (unit) -> non-zero when dying or dead
 inline constexpr uint64_t DataTables = 0x300a90;  // (dataFlag) -> data tables; states.txt row count at +0x298
 // Leap, the way D2R's Leap (srvdo 77 0x568690, cltdo 43 0x22f9a0) and Leap Attack (srvdo 78 0x568920) run it
 inline constexpr uint64_t GetUnitSkill = 0x33dd40;  // (unit, skillId, 0) -> the unit's skill (flags +0x14) or null
@@ -246,6 +253,12 @@ inline constexpr int PathTargetUnit = 0x70;  // Unit* on a dynamic path: what Pa
 inline constexpr int UnitOwnerType = 0xe8;  // int32 owner unit type (MissileOwner 0x490300 reads both)
 inline constexpr int UnitOwnerId = 0xec;    // uint32 owner unit id
 inline constexpr int TablesStateCount = 0x298;  // uint64 states.txt row count in DataTables
+// charstats.txt in DataTables: records (0xd0 bytes) and count; D2R's Charge start reads the byte at +0x3d (1.13c +0x41)
+// as the class's charge speed
+inline constexpr int TablesCharStats = 0x1240;
+inline constexpr int TablesCharStatsCount = 0x1248;
+inline constexpr int CharStatsSize = 0xd0;
+inline constexpr int CsChargeVelocity = 0x3d;
 // DataTables: the progressive states (int16 state ids) and their count (int64), read by SrvPrgDispatch
 inline constexpr int TablesProgressiveStates = 0x420;
 inline constexpr int TablesProgressiveCount = 0x428;
@@ -276,6 +289,7 @@ inline constexpr int UnitSeqAnim = 0x40;  // pointer cltdo 24 tests to pick how 
 inline constexpr int USkillFlags = 0x14;  // 0x80 leap starts, 0x100 in the air, 0x1000 path velocity locked
 inline constexpr int USkillTargetType = 0x2c;  // 6 = none
 inline constexpr int USkillTargetId = 0x30;
+inline constexpr int USkillParam = 0x24;  // int32 Charge's counter, PD2's charge distance (its D2Common skill param)
 inline constexpr int MonVelocity = 0x6a;  // int16 monstats Velocity
 
 inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Lightning's chain range, 0 = the skill's)
@@ -293,6 +307,7 @@ inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58, pois
 inline constexpr int StatPoisonMax = 58;
 inline constexpr int StatPoisonLength = 59;
 inline constexpr int StatLife = 6;  // itemstatcost hitpoints (current life, in 1/256), D2R and PD2
+inline constexpr int StatVelocityPercent = 67;  // itemstatcost velocitypercent, D2R and PD2
 inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's search: 0x88583 | the 0xa783 the search adds
 
 // Leeches in the same damage block (built by 0x465d60)
@@ -330,9 +345,10 @@ inline constexpr int SkCalc2 = 0x194;
 inline constexpr int SkCalc3 = 0x198;
 inline constexpr int SkCalc4 = 0x19c;  // skills field table at 0x306193
 inline constexpr int SkAuraRangeCalc = 0x84;  // int32 aurarangecalc, Chain Lightning's chain range when sHitPar1 is 0
-inline constexpr int SkParam2 = 0x1bc;  // int32 Param2
-inline constexpr int SkParam3 = 0x1c0;  // int32 Param3
-inline constexpr int SkParam4 = 0x1c4;  // int32 Param4 (Param1 0x1b8), field table at 0x305e68
+inline constexpr int SkParam1 = 0x1b8;  // int32 Param1-8, field table at 0x305e68
+inline constexpr int SkParam2 = 0x1bc;
+inline constexpr int SkParam3 = 0x1c0;
+inline constexpr int SkParam4 = 0x1c4;
 inline constexpr int SkSrvPrgFunc1 = 0x50;  // int16 srvprgfunc1-3, read by SrvPrgDispatch
 inline constexpr int SkPrgCalc1 = 0x58;     // int32 prgcalc1-3 (calc index), read by srvdo 37's 0x571590
 inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170

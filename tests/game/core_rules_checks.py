@@ -53,6 +53,10 @@ W14 checks (tag core-rules-w14), same merged data: a Necromancer with Clay Golem
 (slot 13) at 10 and Revive (slot 29), no +skills, e.g. modkit save-set <save> --skill 9=1 --skill 13=10 --skill 29=10;
 then out of town: run core-rules-w14 and, while golem-count watches (30 s), summon Clay Golem four times; then kill a
 monster, Revive its corpse next to other monsters, let the revive fight, and run again.
+W16 check (tag core-rules-w16), same merged data: a Paladin with Charge (107) and no Vigor or Might, e.g. modkit
+save-set <save> level=30 --skill 107=10 --project .; then out of town Charge a few monsters from several screens away
+and run the same command with core-rules-w16.
+
 W26 checks (tag core-rules-w26), same merged data: a Sorceress with Teleport (54) and no +skills, e.g. modkit save-set
 <save> level=30 --skill 54=5 --project .; then out of town Teleport a few times and run the same command with
 core-rules-w26.
@@ -87,7 +91,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("pSrvDmgFunc", 21, "first hit"),
     ("pSrvHitFunc", 63, "explode spread"), ("pSrvDmgFunc", 20, "pierce falloff"),
     ("cltdofunc", 122, "poison dagger"), ("pSrvHitFunc", 61, "state hit"),
-    ("cltdofunc", 121, "desecrate"),
+    ("cltdofunc", 121, "desecrate"), ("srvstfunc", 72, "charge"), ("srvdofunc", 180, "charge"),
     ("srvdofunc", 182, "channel"), ("cltdofunc", 111, "channel"),
     ("mode gate", "busy", "take-over"),  # an inline hook, not a slot
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
@@ -101,6 +105,7 @@ REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
 LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knockback|units in range) (\d+), velocity (\d+)")
 ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
 HPREGEN = 74  # itemstatcost row of hpregen in D2R and PD2
+CHARGE = 107
 TELEPORT_DEBUFF = 233  # merged states id of teleportdebuff
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -116,7 +121,7 @@ def _log(ctx) -> str:
 
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                 "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w33", "core-rules-w21",
+                                 "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33", "core-rules-w21",
                                  "core-rules-w29", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
@@ -626,6 +631,27 @@ def blood_warp_cast(ctx):
     return f"level {level}: life {life // 256}, cost {cost / 256:.1f} life, hpregen {regen} for {frames} frames, lists {sorted(set(lists))}"
 
 
+@check("charge-hit", tags=["core-rules-w16"])
+def charge_hit(ctx):
+    """A Charge (srvstfunc 72, srvdofunc 180) ran at PD2's speed base * (max(velocitypercent, 50) + Param1 150) / 100,
+    and its hit had PD2's calc1 damage% ln34 = 100 + (level - 1) * 20 (no Vigor or Might) and splash radius
+    distance / 4 * 20 from where it started."""
+    log = _log(ctx)
+    starts = re.findall(rf"charge: skill {CHARGE} level (\d+) start: velocity (\d+) \(base (\d+), velocitypercent "
+                        r"(-?\d+), param1 (\d+)\)", log)
+    hits = re.findall(rf"charge: skill {CHARGE} level (\d+) hit frame: damage% (\d+), distance (\d+), splash radius (\d+)", log)
+    if not starts or not hits:
+        ctx.skip("no Charge start and hit in the log yet (charge a monster out of town, then run again)")
+    _, velocity, base, percent, param1 = (int(v) for v in starts[0])
+    assert param1 == 150, f"Param1 {param1}, PD2's Charge has 150"
+    expected = base * (max(percent, 50) + param1) // 100
+    assert velocity == expected, f"velocity {velocity}, PD2 gives {expected}"
+    level, damage, distance, splash = (int(v) for v in hits[0])
+    assert damage == 100 + (level - 1) * 20, f"level {level}: damage% {damage}, PD2's ln34 gives {100 + (level - 1) * 20}"
+    assert splash == distance // 4 * 20, f"distance {distance}: splash radius {splash}, PD2 gives {distance // 4 * 20}"
+    return f"velocity {velocity} (base {base}), level {level}: damage% {damage}, distance {distance} -> splash {splash}"
+
+
 @check("teleport-cast", tags=["core-rules-w26"])
 def teleport_cast(ctx):
     """A Teleport (router srvdofunc 190) gave teleportdebuff for auralencalc max(0, 25 - pvp_lld_cd) = 25 frames, each
@@ -773,7 +799,7 @@ def charge_cold(ctx):
 
 
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                    "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w21",
+                                    "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w29"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""

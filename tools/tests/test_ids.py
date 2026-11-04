@@ -150,6 +150,14 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["Blood Warp", "190", "80", "63"])  # router, then the first free start slots
 
+    def test_charge_keeps_its_server_slots_and_takes_d2r_client_functions(self):
+        cols = "skill|srvdofunc|srvstfunc|cltdofunc|cltstfunc"
+        d2r = table(f"{cols}\nAttack|1|0|0|0\n")
+        pd2 = table(f"{cols}\nAttack|1|0|0|0\nCharge|180|72|112|57\n")
+        lines = [("Attack", 0, "Attack"), ("Charge", 1, "Charge")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1], ["Charge", "180", "72", "37", "25"])
+
     def test_melee_splash_joins_the_router(self):
         d2r = table("skill|srvdofunc\nAttack|1\n")
         pd2 = table("skill|srvdofunc\nAttack|1\nproc_SplashDamage|163\n")
