@@ -3287,6 +3287,7 @@ auto SrvDoRevive(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 std::atomic<uint32_t> g_holySwordStarts {0};
 std::atomic<uint32_t> g_smiteStarts {0};
 std::atomic<uint32_t> g_smiteEvents {0};
+std::atomic<uint32_t> g_crushingBlowCalls {0};  // every call of slot 16, Smite's or an item's (#165)
 constexpr int32_t SkillSmite = 97;                              // merged id, PD2's
 constexpr int32_t ItemTypeSword = 30, ItemTypeTwoHanded = 120;  // merged itemtypes rows of swor and 2han
 constexpr int32_t StatCrushingBlow = 136;                       // itemstatcost crushingblow
@@ -3331,6 +3332,11 @@ auto AuraEventCrushingBlow(Game* game, int32_t event, Unit* unit, Unit* target, 
 	const bool smiteEvent = skillId == SkillSmite;  // item events pass stat << 16 | layer instead
 	void* current = unit != nullptr ? d2r::Engine<void* (*)(Unit*) noexcept>(d2r::rva::CurrentSkill)(unit) : nullptr;
 	const bool smiting = current != nullptr && UnitSkillIdOf(current) == SkillSmite;
+	if (First(g_crushingBlowCalls, 40)) {
+		plog::Info("event 16: event %d key %d level %d on unit type %d, current skill %d, %u calls", event, skillId,
+		           level, unit != nullptr ? At<int32_t>(unit, d2r::rva::UnitType) : -1,
+		           current != nullptr ? UnitSkillIdOf(current) : -1, g_crushingBlowCalls.load());
+	}
 	if (!smiting) {
 		return smiteEvent ? 0
 		                  : d2r::Engine<AuraEventFn>(d2r::rva::AuraEvent16D2R)(game, event, unit, target, damage,
