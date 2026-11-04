@@ -142,7 +142,7 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # Blessed Hammer's sdo 40 / cdo 72 are D2R's too and take 47 / 80 (docs/research/w20-blessed-hammer.md).
 # Ormus' Robes' property func 25 (D2R's 25 is affix-rand) takes the free property slot 26 (P12,
 # docs/research/p12-ormus-robes.md).
-# levels' Teleport 3 (PD2's four boss maps) is not a D2R value; 1 (teleport allowed) stands in until MS1 finds what it means.
+# levels' Teleport 3 (PD2's path search, research/sorceress-w26.md) is not a D2R value; 1 (allowed) stands in until MS7.
 FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
          "levels": {"Teleport": {"3": "1"}},
          "missiles": {"pSrvDoFunc": {"38": "46", "40": "47"}, "pCltDoFunc": {"70": "78", "69": "79", "72": "80"},
