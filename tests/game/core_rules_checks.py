@@ -71,8 +71,8 @@ release, e.g. modkit save-set <save> level=30 --skill 254=1 --skill 259=1 --skil
 Fire, Cobra Strike and Blades of Ice, releasing between them with Dragon Talon (a release runs the same prg slots and
 logs the same lines), and run the same command with core-rules-w29.
 W27 checks (tag core-rules-w27), same merged data: a Sorceress with Static Field (42), Combustion (448) and Inferno
-(41) and no Lightning Mastery, e.g. modkit save-set <save> level=30 --skill 42=10 --skill 448=10 --skill 41=10
---project .; then out of town cast Static Field next to monsters, cast Combustion, hold Inferno for a second, and run
+(41) and no Lightning Mastery, e.g. modkit save-set <save> level=30 --skill 6=10 --skill 31=10 --skill 5=10
+--project . (class skill slots 6, 31 and 5); then out of town cast Static Field next to monsters, cast Combustion, hold Inferno for a second, and run
 the same command with core-rules-w27.
 """
 import json
@@ -841,8 +841,9 @@ def static_field_cast(ctx):
     """A Static Field (router srvdofunc 190) hit the units within PD2's aurarangecalc min(ln12 / 2, 14) (ln12 = Param1 8
     + Param2 1 per level after the first) for PD2's damage (static_field_damage, calc1 Param4 8, calc2 Param3 0,
     StaticFieldMin 55/70/85), then put staticfield_debuff on them for auralencalc 125 + 5 * Lightning Mastery frames
-    with lightresist from aurastatcalc1. PD2's -min((par5+(lvl<22)?lvl:...), 100) parses as (par5 + (lvl<22)) ? lvl
-    : ..., so it is -min(lvl, 100); a monster immune to lightning gets half."""
+    with lightresist from aurastatcalc1. PD2's -min((par5+(lvl<22)?lvl:...), 100): the calc parser binds ?: tighter
+    than +, so it is -min(par5 + (lvl or 22 + (lvl-22)/2), 100), Param5 4 (-14 at level 10 in game); a monster immune
+    to lightning gets half."""
     casts = [tuple(int(v) for v in c) for c in STATIC_FIELD_CAST.findall(_log(ctx))]
     hit = [c for c in casts if c[5] > 0]
     if not hit:
@@ -854,8 +855,9 @@ def static_field_cast(ctx):
     assert field_min in STATIC_FIELD_MIN, f"StaticFieldMin {field_min}, PD2's are {STATIC_FIELD_MIN}"
     want = static_field_damage(life, max_life, calc1, calc2, field_min, resist)
     assert damage == want, f"life {life} of {max_life}, resist {resist}: damage {damage}, PD2 gives {want}"
-    assert (state, stat, value) == (STATICFIELD_DEBUFF, LIGHTRESIST, -min(level, 100)), \
-        f"state {state} stat {stat} {value}, PD2: {STATICFIELD_DEBUFF} {LIGHTRESIST} {-min(level, 100)}"
+    pd2 = -min(4 + (level if level < 22 else 22 + (level - 22) // 2), 100)
+    assert (state, stat, value) == (STATICFIELD_DEBUFF, LIGHTRESIST, pd2), \
+        f"state {state} stat {stat} {value}, PD2: {STATICFIELD_DEBUFF} {LIGHTRESIST} {pd2}"
     assert frames >= 125 and (frames - 125) % 5 == 0, f"{frames} frames, PD2: 125 + 5 per Lightning Mastery level"
     if lists:
         assert first in (value, int(value / 2)), f"first new list's lightresist {first}, PD2: {value} or half"
@@ -885,6 +887,6 @@ def combustion_cast(ctx):
     excel = ("data", "global", "excel", "missiles.txt")
     pd2 = _missile_row(os.path.join(REPO, "pd2-data", *excel), "combustion")
     mod = _missile_row(os.path.join(REPO, "generated", *excel), "combustion")
-    for col in ("Vel", "MaxVel", "Range", "LevRange"):
+    for col in ("Vel", "MaxVel", "VelLev", "Range"):  # D2R has no LevRange (unported list)
         assert pd2[col] == mod[col], f"combustion {col} {mod[col]}, PD2's {pd2[col]}"
     return f"level {casts[0][0]}: 32 missiles on server and client, Vel {mod['Vel']}, Range {mod['Range']}"

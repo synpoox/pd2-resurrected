@@ -59,8 +59,9 @@ puts the list on the unit with the caster as owner; stats are set only on a new 
 it the same way) skips monsters by a monstats flag.
 
 staticfield_debuff (merged 240) is not a curse, so the helper's curse rules do not apply. PD2's aurastatcalc1
-`-min((par5+(lvl<22)?lvl:(22+((lvl-22)/2))), 100)` parses as `(par5 + (lvl<22)) ? lvl : ...`, so it is
-`-min(lvl, 100)`; auralencalc is `125 + 5 * Lightning Mastery`.
+`-min((par5+(lvl<22)?lvl:(22+((lvl-22)/2))), 100)`: the calc parser binds `?:` tighter than `+`, so it is
+`-min(par5 + (lvl < 22 ? lvl : 22 + (lvl - 22) / 2), 100)` with Param5 4 (-14 at level 10, in game and in the
+tooltip); auralencalc is `125 + 5 * Lightning Mastery`.
 
 ## core-rules
 
@@ -77,4 +78,9 @@ itemstatcost's end is not refused. D2R's online cast limit (`0x432c40`) before i
 `tests/game/core_rules_checks.py`, tag `core-rules-w27`: `static-field-cast` (radius, calcs, StaticFieldMin, the first
 unit's damage against PD2's formula, the debuff's state, stat, value and length), `combustion-cast` (32 of 32 missiles
 on server and client, the missile's Vel and Range as PD2's), and the W21 `channel-cast` / `channel-client` for
-Inferno. Not run in game yet.
+Inferno.
+
+Run on Slot7 (2026-11-04), a level 95 Sorceress with Static Field and Combustion at 10, Inferno at 20, normal
+difficulty, against four zombies in Blood Moor: Static Field hit 4 units, the first for 245 (3072 life * 8%, in
+1/256) and, after the debuff, 230 at -14 lightresist; staticfield_debuff for 125 frames on 4 new lists. Combustion
+made 32 of 32 missiles on server and client (the ring is on screen). Inferno made 5 of 5 missiles, range 30.
