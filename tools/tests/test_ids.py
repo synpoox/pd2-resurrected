@@ -114,6 +114,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["Poison Dagger", "32", "190", "122"])
 
+    def test_teleport_goes_to_the_router(self):
+        d2r = table("skill|srvdofunc\nAttack|1\n")
+        pd2 = table("skill|srvdofunc\nTeleport|155\nBlink|155\n")
+        lines = [("Teleport", 1, "Teleport"), ("Blink", 2, "Blink")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Teleport", "190"], ["Blink", "190"]])
+
     def test_state_hit_parameters_take_mod_ids(self):
         # srvhit 61 reads sHitPar1 as a state and sHitPar3 / cHitPar2 as stats; other functions' parameters stay
         cols = "Missile|pSrvHitFunc|sHitPar1|sHitPar2|sHitPar3|cHitPar1|cHitPar2|cHitPar3"
@@ -132,6 +139,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         lines = [("Attack", 0, "Attack"), ("Blood Warp", 1, "Blood Warp")]
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["Blood Warp", "190", "80", "63"])  # router, then the first free start slots
+
+    def test_melee_splash_joins_the_router(self):
+        d2r = table("skill|srvdofunc\nAttack|1\n")
+        pd2 = table("skill|srvdofunc\nAttack|1\nproc_SplashDamage|163\n")
+        lines = [("Attack", 0, "Attack"), ("proc_SplashDamage", 1, "proc_SplashDamage")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1], ["proc_SplashDamage", "190"])  # D2R fills 163
 
     def test_missile_do_functions_become_the_missile_column(self):
         cols = "skill|srvdofunc|srvmissile|srvmissilea|cltdofunc|cltmissile|cltmissilea"

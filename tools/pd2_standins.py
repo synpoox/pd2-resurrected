@@ -26,7 +26,7 @@ def _nums(*spans: int | range) -> set[str]:
 PD2_ONLY = {
     "skills": {
         "auraeventfunc1": _nums(16),  # D2R puts a RotW event at 16; PD2's is Smite's
-        "srvdofunc": _nums(109, 153, 155, 156, range(159, 168), range(169, 171), range(173, 182), range(184, 187)),
+        "srvdofunc": _nums(109, 153, 155, 156, range(159, 163), range(164, 168), range(169, 171), range(173, 182), range(184, 187)),
         "cltdofunc": _nums(97, range(100, 104), 105, 109, 110, range(112, 115), 118, 119),
         "srvstfunc": _nums(64, range(67, 70), range(71, 78), 79),
         "cltstfunc": _nums(54, 57, 58, 82),

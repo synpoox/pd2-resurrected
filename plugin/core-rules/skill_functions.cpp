@@ -22,6 +22,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <initializer_list>
 #include <iterator>
 
 namespace {
@@ -416,11 +417,15 @@ auto SrvDoBash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	return VanillaSlot<SrvDoFn>(d2r::rva::SrvDoTable, d2r::rva::SrvDoMelee)(game, unit, skillId, level);
 }
 
-// One stat on a `state` list for `frames`, by NewStateList's recast rule (PD2's timed-state helper 0x1036d7d0 has
-// the same one): an older list of the same skill and level is extended and keeps its value, a lower level is
+struct StatValue {
+	int32_t stat, value;
+};
+
+// Stats on a `state` list for `frames`, by NewStateList's recast rule (PD2's timed-state helper 0x1036d7d0 has
+// the same one): an older list of the same skill and level is extended and keeps its values, a lower level is
 // refused, anything else is replaced. Returns what happened, for the logs.
 auto TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level, int32_t frames, int32_t state,
-                   int32_t stat, int32_t value) noexcept -> const char* {
+                   std::initializer_list<StatValue> stats) noexcept -> const char* {
 	using namespace d2r::rva;
 	void* old = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, state);
 	const auto listInt = [](uint64_t fn, void* list) { return d2r::Engine<int32_t (*)(void*) noexcept>(fn)(list); };
@@ -434,9 +439,120 @@ auto TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level
 	if (extends) {
 		return "extended";
 	}
-	d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, stat, value, 0);
+	for (const StatValue& s : stats) {
+		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, s.stat,
+		                                                                                          s.value, 0);
+	}
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
 	return "new";
+}
+
+// PD2's ring (0x1036d250 server, 0x1036d370 client): one missile at every (64 / count)-th of D2's 64 directions, so
+// count 10 makes 11 and count 6 makes 7; 0 or over 64 makes 64.
+template <typename Create>
+auto Ring(int32_t count, Create create) noexcept -> int32_t {
+	if (count <= 0 || count > 64) {
+		count = 64;
+	}
+	const auto* dx = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionX);
+	const auto* dy = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionY);
+	int32_t created = 0;
+	for (int32_t i = 0; i < 64; i += 64 / count) {
+		created += create(dx[i], dy[i]) ? 1 : 0;
+	}
+	return created;
+}
+
+// --- Teleport (PD2 srvdofunc 155 -> router 190; docs/research/sorceress-w26.md) -----------------------------------
+// Read from ProjectDiablo.dll: srvdo 155 at 0x103b16d0, its teleport core at 0x1036cd20 (shared with Blood Warp).
+std::atomic<uint32_t> g_teleports {0};
+std::atomic<uint32_t> g_teleportsRefused {0};
+constexpr int32_t Teleport = 54, Blink = 429, LucionBlink = 642, MonBloodwarp = 682;  // merged ids
+constexpr int32_t DisableTele = 260;  // merged states id of disable_tele (PD2 214, Rathma's prison)
+// passive_fire/cold/ltng/pois_mastery, in the order PD2 sets them; the same itemstatcost ids in PD2 and D2R
+constexpr int32_t Masteries[] = {329, 331, 330, 332};
+
+// PD2's teleport core: refused under disable_tele, else D2R's Teleport (srvdo 27), which makes the core's level
+// checks (levels.txt Teleport 0 refuses, 2 checks collision at the point).
+// PD2's Hell-only level list (0x105de86c) is never filled, so it is left out.
+// shortcut: PD2's Teleport 3 rule (a path search on map levels) and its "TeleportBlocked" chat line on a refusal are
+// left out: no ported level has Teleport 0 or 3. Upgrade when the map plan ports a map level.
+auto TeleportCore(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> bool {
+	using namespace d2r::rva;
+	if (d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, DisableTele) != nullptr) {
+		g_teleportsRefused.fetch_add(1);
+		return false;
+	}
+	return VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoTeleport)(game, unit, skillId, level) != 0;
+}
+
+// PD2's debuff on one mastery stat: -(reduction + mastery% of it), the scaled part truncated (0x1037c4c0), so a
+// mastery doesn't win the damage back.
+constexpr auto TeleportDebuff(int32_t reduction, int32_t mastery) noexcept -> int32_t {
+	const double scaled = static_cast<double>(mastery) * reduction / 100.0;
+	return -((scaled > 2147483647.0 ? INT32_MAX : static_cast<int32_t>(scaled)) + reduction);
+}
+static_assert(TeleportDebuff(49, 0) == -49);
+static_assert(TeleportDebuff(30, 50) == -45);   // a 50% mastery is lowered by half as much again
+static_assert(TeleportDebuff(25, -10) == -23);  // -2.5 truncates to -2
+
+// PD2 srvdo 155: the core, then a ring of calc2 srvmissilea at the new point (LucionBlink's nova), then aurastate
+// (teleportdebuff) for auralencalc frames with each mastery lowered by Param2 - calc1 (TeleportDebuff). Named Pd2
+// because rva::SrvDoTeleport is D2R's slot number.
+// shortcut: an extended list's new timer is not sent to the client (PD2 sends packet 0x83), as for Blood Warp.
+// Upgrade if the client's debuff runs out early in play.
+auto SrvDoPd2Teleport(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr || !TeleportCore(game, unit, skillId, level)) {
+		return 0;
+	}
+	int32_t x = 0, y = 0;
+	d2r::UnitXY(unit, &x, &y);
+	const int32_t count = d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level);
+	const int32_t missile = At<int16_t>(skill, SkSrvMissileA);
+	int32_t created = 0;
+	if (count > 0 && d2r::ValidMissile(dataFlag, missile)) {
+		d2r::MissileParams params;
+		std::memset(&params, 0, sizeof(params));
+		params.flags = MissileAtXY | MissileAimOffset;  // PD2's 3
+		params.owner = unit;
+		params.origin = unit;
+		params.missile = missile;
+		params.x = x;
+		params.y = y;
+		params.skill = skillId;
+		params.skillLevel = level;
+		created = Ring(count, [&](int32_t dx, int32_t dy) {
+			params.targetX = dx;
+			params.targetY = dy;
+			return d2r::api.createMissile(game, &params) != nullptr;
+		});
+	}
+	const int32_t state = At<int16_t>(skill, SkAuraState);
+	const int32_t frames = state > 0 ? d2r::EvalCalc(game, unit, skill, SkAuraLenCalc, skillId, level) : 0;
+	const int32_t reduction = At<int32_t>(skill, SkParam2) - d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level);
+	int32_t mastery[std::size(Masteries)] {}, debuff[std::size(Masteries)] {};
+	const char* list = "none";
+	if (frames > 0) {  // PD2's state helper refuses a length under 1
+		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+		for (size_t i = 0; i < std::size(Masteries); i++) {
+			mastery[i] = unitStat(unit, Masteries[i], 0);
+			debuff[i] = TeleportDebuff(reduction, mastery[i]);
+		}
+		list = TimedStatList(dataFlag, unit, skillId, level, frames, state,
+		                     {{Masteries[0], debuff[0]}, {Masteries[1], debuff[1]}, {Masteries[2], debuff[2]},
+		                      {Masteries[3], debuff[3]}});
+	}
+	if (plog::Sample(g_teleports)) {
+		plog::Info("teleport: skill %d level %d: at %d,%d, %d missiles (row %d, calc2 %d), state %d for %d frames "
+		           "(list %s), reduction %d: fire %d/%d cold %d/%d ltng %d/%d pois %d/%d, cast %u, refused %u",
+		           skillId, level, x, y, created, missile, count, state, frames, list, reduction, debuff[0], mastery[0],
+		           debuff[1], mastery[1], debuff[2], mastery[2], debuff[3], mastery[3], g_teleports.load(),
+		           g_teleportsRefused.load());
+	}
+	return 1;
 }
 
 // --- Blood Warp (PD2 srvdofunc 157 -> router 190, srvstfunc 66 -> 80, cltstfunc 56 -> 63) --------------------------
@@ -504,12 +620,12 @@ auto CltStBloodWarp(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 // PD2 srvdofunc 157: teleport, then pay the cost (checked again at the new point) and get it back over auralencalc
 // frames as aurastat1 (hpregen) = cost / frames + 1 on an aurastate (bloodwarp) list. A recast at the same level
 // extends the running list and keeps its regen; a lower level pays and adds none (TimedStatList).
-// shortcut: the teleport is D2R's srvdo 27, not PD2's teleport core (0x1036cd20, shared with Teleport's srvdo 155),
-// and an extended list's new timer is not sent to the client (PD2 sends packet 0x83). Upgrade with the Teleport row.
+// shortcut: an extended list's new timer is not sent to the client (PD2 sends packet 0x83). Upgrade if the client's
+// state runs out early in play.
 auto SrvDoBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	const uint32_t dataFlag = d2r::DataFlag(game);
-	if (VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoTeleport)(game, unit, skillId, level) == 0) {
+	if (!TeleportCore(game, unit, skillId, level)) {
 		return 0;
 	}
 	const LifeCost c = BloodWarpLife(dataFlag, unit, skillId, level);  // again, at the new point
@@ -524,7 +640,7 @@ auto SrvDoBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 	const char* list = "none";
 	if (frames > 0 && state > 0 && stat >= 0) {  // PD2 divides by frames unchecked
 		regen = c.cost / frames + 1;
-		list = TimedStatList(dataFlag, unit, skillId, level, frames, state, stat, regen);
+		list = TimedStatList(dataFlag, unit, skillId, level, frames, state, {{stat, regen}});
 	}
 	if (plog::Sample(g_bloodWarps)) {
 		plog::Info("blood warp: skill %d level %d: life %d, cost %d, regen %d for %d frames (stat %d, state %d, list %s), "
@@ -706,6 +822,150 @@ auto CltDoDesecrate(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 	return 1;
 }
 
+// --- Melee splash (PD2 srvdofunc 163 -> router 190) ---------------------------------------------------------------
+// Read from ProjectDiablo.dll: srvdo 163 at 0x103b2340, its per-unit callback 0x10303190; Revive's aura event 32
+// (0x10347370) calls the do function itself (docs/research/w33-melee-splash.md). Every unit within calc3 of the struck
+// unit, the struck unit aside, takes the attacker's weapon damage at the skill's SrcDam with half the life leech, through
+// D2R's area search with PD2's unit mask.
+// shortcut: PD2 also adds the player's current skill's damage (its elemental part, Smite's and the kicks'), adds an item
+// stat sum / 20 to calc3 and takes 1 off for some weapons (0x10381720, not decoded); upgrade with the unported row.
+std::atomic<uint32_t> g_splashes {0};
+std::atomic<uint32_t> g_splashUnitCasts {0};  // the first splash with units hit is logged too
+// PD2 skips Revive's event 32 and two item event functions (14 and 20, skill on hit) while a splash hit fires its events
+// (the handler sets 0x105dc628 / 0x105dc6cc, read by 0x10305c30), so a splash never splashes again. This guard does that
+// for the splash itself.
+// shortcut: other skill-on-hit procs and item event 14 still run for each splashed unit; upgrade with #125.
+thread_local bool t_splashing = false;
+constexpr int32_t ProcSplashDamage = 430, GolemSplash = 461, SkeletonSplash = 465;  // merged skill ids
+constexpr int32_t IncSplashRadius = 531;
+
+using AreaFn = void (*)(Game*, Unit*, d2r::AreaCenter*, int32_t, uint32_t, int32_t (*)(d2r::AreaContext*, Unit*), void*,
+                        int32_t) noexcept;  // rva::AreaUnits
+
+struct SplashHit {
+	Unit* struck;
+	uint8_t srcDam;
+	int64_t victims;
+};
+
+// Leap Attack's (0x56b170) cleanup of its damage block: the tagged object at +0x158 (bit 0 set: a heap pointer or
+// none; clear: an object in place), then the list if it outgrew its inline space (capacity without the inline bit).
+void ReleaseDamage(d2r::LeapKnockback& damage) noexcept {
+	const auto release = [](void* p) {
+		void* allocator = d2r::Engine<void* (*)() noexcept>(d2r::rva::EngineAllocator)();
+		(*reinterpret_cast<void (***)(void*, void*) noexcept>(allocator))[4](allocator, p);
+	};
+	const uint64_t tagged = damage.tagged[0];
+	void* object = (tagged & 1) != 0 ? reinterpret_cast<void*>(tagged & ~1ull) : &damage.tagged[0];
+	if (object != nullptr) {
+		(**reinterpret_cast<void (***)(void*, int32_t) noexcept>(object))(object, 0);
+		if ((damage.tagged[0] & 1) != 0) {  // read again: the destructor may leave a heap pointer
+			release(reinterpret_cast<void*>(damage.tagged[0] & ~1ull));
+		}
+		damage.tagged[0] = 1;
+	}
+	if (static_cast<int64_t>(damage.listCapacity) >= 0) {
+		release(damage.listData);
+	}
+}
+
+// D2R's area apply (0x436e90) with a melee hit's events: PD2's apply (0x10305880, its event step 0x10305c30) fires
+// domeleedamage on the attacker and event 1 on the victim, where D2R's area apply fires 6 and 2.
+void DealSplash(Game* game, Unit* attacker, Unit* victim, d2r::LeapKnockback& damage) noexcept {
+	using namespace d2r::rva;
+	using HitFn = void (*)(Game*, Unit*, Unit*, void*) noexcept;
+	if ((damage.resultFlags & ResultHit) == 0) {
+		return;
+	}
+	const uint32_t avoided =
+		d2r::Engine<uint32_t (*)(Game*, Unit*, Unit*, int32_t, int32_t) noexcept>(AvoidRoll)(game, attacker, victim, 1, 0);
+	if ((avoided & 2) != 0) {
+		damage.resultFlags |= 0x100;
+	}
+	if ((avoided & 4) != 0) {
+		damage.resultFlags |= 0x80;
+	}
+	if ((avoided & 0x10) != 0) {
+		damage.resultFlags |= 0x8000;
+	}
+	if ((avoided & 1) != 0) {
+		damage.resultFlags |= 0x10;
+	}
+	if (avoided != 0) {
+		damage.resultFlags &= ~uint32_t {ResultHit};
+	}
+	if ((damage.resultFlags & ResultHit) != 0 &&
+	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(victim, 0x36) == 0) {
+		damage.resultFlags |= 4;
+	}
+	d2r::Engine<void (*)(Unit*, Unit*, void*) noexcept>(DamageStep)(attacker, victim, &damage);
+	if ((damage.resultFlags & ResultHit) != 0) {
+		d2r::Engine<HitFn>(DamageEffects)(game, attacker, victim, &damage);  // what HitEvents runs for an area hit
+		d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t, void*) noexcept>(HitEvents)(game, attacker, victim, 0, &damage);
+	}
+	d2r::Engine<HitFn>(DealDamage)(game, attacker, victim, &damage);
+}
+
+// One unit in range (PD2's callback 0x10303190): a hit with no to-hit roll, weapon damage at SrcDam, life leech halved
+// (at least 1). Counts the units the hit lands on.
+auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
+	using namespace d2r::rva;
+	auto* hit = static_cast<SplashHit*>(area->arg);
+	if (victim == hit->struck) {
+		return 0;
+	}
+	auto* game = static_cast<Game*>(area->game);
+	d2r::LeapKnockback damage;
+	damage.resultFlags = ResultHit;
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*, int32_t, uint8_t) noexcept>(WeaponDamage)(game, area->unit, victim,
+	                                                                                          &damage, 0, hit->srcDam);
+	auto& leech = *reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(&damage) + DamageLifeLeech);
+	if (leech != 0) {
+		leech = std::max(leech / 2, 1u);
+	}
+	DealSplash(game, area->unit, victim, damage);
+	hit->victims += (damage.resultFlags & ResultHit) != 0 ? 1 : 0;
+	ReleaseDamage(damage);
+	return 1;
+}
+
+// The splash around `struck`. Returns 1 as PD2 does, also when nothing is in range or the struck unit has no
+// position left (killed by the hit); 0 without a struck unit, or inside another splash.
+auto Splash(Game* game, Unit* unit, Unit* struck, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), skillId);
+	if (skill == nullptr || struck == nullptr || t_splashing) {
+		return 0;
+	}
+	const int32_t radius = d2r::EvalCalc(game, unit, skill, SkCalc3, skillId, level);
+	SplashHit hit {struck, At<uint8_t>(skill, SkSrcDam), 0};
+	int32_t x = 0, y = 0;
+	if (radius > 0 && d2r::UnitXY(struck, &x, &y)) {
+		d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(struck), x, y};
+		t_splashing = true;
+		d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, AreaUnitMask, SplashOne, &hit, 0);
+		t_splashing = false;
+	}
+	if (plog::Sample(g_splashes) || (hit.victims > 0 && plog::Sample(g_splashUnitCasts))) {
+		plog::Info("splash: skill %d level %d from unit type %d at unit type %d: radius %d (inc_splash_radius %d), "
+		           "units hit %lld, splash %u", skillId, level, At<int32_t>(unit, UnitType), At<int32_t>(struck, UnitType),
+		           radius, d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(unit, IncSplashRadius, 0),
+		           static_cast<long long>(hit.victims), g_splashes.load());
+	}
+	return 1;
+}
+
+// PD2 srvdofunc 163. PD2 splashes around its path's target; D2R's event cast (item_splashonhit) names the struck unit as
+// the skill's target, so that comes first.
+auto SrvDoSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	Unit* struck = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(d2r::rva::SkillTargetUnit)(game, unit);
+	void* path = At<void*>(unit, d2r::rva::UnitPath);
+	if (struck == nullptr && path != nullptr && At<int32_t>(unit, d2r::rva::UnitType) <= d2r::rva::UnitMonster) {
+		struck = At<Unit*>(path, d2r::rva::PathTargetUnit);
+	}
+	return Splash(game, unit, struck, skillId, level);
+}
+
 constexpr int32_t Bash = 126, UberTalicBash = 580;
 
 // --- Poison Dagger (PD2 srvdofunc 164 -> router 190, cltdofunc 102 -> 122; docs/research/necromancer-w11.md) ---------
@@ -715,21 +975,6 @@ std::atomic<uint32_t> g_poisonDaggerClients {0};
 constexpr int32_t PoisonDagger = 73, PoisonDaggerSpiderBoss = 550;
 constexpr int32_t ClientRingCount = 6;  // PD2's cltdo 102 passes 6, whatever the skill's Param3
 
-// PD2's ring (0x1036d250 server, 0x1036d370 client): one missile at every (64 / count)-th of D2's 64 directions, so
-// count 10 makes 11 and count 6 makes 7; 0 or over 64 makes 64.
-template <typename Create>
-auto Ring(int32_t count, Create create) noexcept -> int32_t {
-	if (count <= 0 || count > 64) {
-		count = 64;
-	}
-	const auto* dx = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionX);
-	const auto* dy = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionY);
-	int32_t created = 0;
-	for (int32_t i = 0; i < 64; i += 64 / count) {
-		created += create(dx[i], dy[i]) ? 1 : 0;
-	}
-	return created;
-}
 
 // PD2 srvdo 164 (ProjectDiablo.dll 0x103b25c0): the melee hit (D2R's own Poison Dagger do, slot 32, whose start
 // already put the skill's poison in the queued hit), then a ring of Param3 srvmissilea clouds around the target, each
@@ -843,8 +1088,17 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		return SrvDoPoisonDagger(game, unit, skillId, level);
 	case BloodWarp:
 		return SrvDoBloodWarp(game, unit, skillId, level);
+	case Teleport:
+	case Blink:
+	case LucionBlink:
+	case MonBloodwarp:
+		return SrvDoPd2Teleport(game, unit, skillId, level);
 	case Desecrate:
 		return SrvDoDesecrate(game, unit, skillId, level);
+	case ProcSplashDamage:
+	case GolemSplash:
+	case SkeletonSplash:
+		return SrvDoSplash(game, unit, skillId, level);
 	default:
 		if (plog::Sample(g_routerMisses)) {
 			plog::Warn("srvdo router: no function for skill %d (%u so far)", skillId, g_routerMisses.load());
@@ -862,7 +1116,6 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 constexpr int32_t Frenzy = 147, TigerStrike = 254;
 constexpr int32_t TempSkillBuff = 270;
 constexpr int32_t SkillFrenzyStat = 169;
-constexpr int32_t IncSplashRadius = 531;
 constexpr int32_t SplashFrames = 25 * 60 * 10;
 
 auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
@@ -888,7 +1141,7 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		value = charges < 3 ? calc2 * charges : 0;
 	}
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, TempSkillBuff, 1);  // always a new list
-	TimedStatList(dataFlag, unit, skillId, level, SplashFrames, TempSkillBuff, IncSplashRadius, value);
+	TimedStatList(dataFlag, unit, skillId, level, SplashFrames, TempSkillBuff, {{IncSplashRadius, value}});
 	if (plog::Sample(g_splashStarts)) {
 		plog::Info("splash start: skill %d level %d charges %d calc2 %d: splash radius %d, start %u", skillId, level,
 		           charges, calc2, value, g_splashStarts.load());
@@ -1007,9 +1260,7 @@ auto SrvDoLeap(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	} else if (radius > 0) {
 		d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit), 0, 0};
 		LeapHit hit {uskill, skillId, level, 0};
-		using AreaFn = void (*)(Game*, Unit*, d2r::AreaCenter*, int32_t, uint32_t, int32_t (*)(d2r::AreaContext*, Unit*),
-		                        void*, int32_t) noexcept;
-		d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, 0x8583, LeapHitOne, &hit, 0);  // PD2's unit mask
+		d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, AreaUnitMask, LeapHitOne, &hit, 0);
 		hits = hit.hits;
 	}
 	d2r::api.setUnitSkillFlag(unit, 1);
@@ -1267,16 +1518,18 @@ auto BusyModeGate(Game* game, Unit* unit, int32_t mode, void* request, int32_t f
 }
 
 // --- Revive's aura event (PD2 auraeventfunc 32, ProjectDiablo.dll 0x10347370) ---------------------------------------
-// Revive's row has auraevent1 domeleedamage: each melee hit of a revived monster casts proc_SplashDamage (PD2 358,
-// merged 430) at level 1 from it. PD2 casts with no target and lets the skill find one; D2R's event cast needs the
-// target, so this passes the unit the hit landed on.
+// Revive's row has auraevent1 domeleedamage: each melee hit of a revived monster runs proc_SplashDamage's do function
+// (PD2 358, merged 430) at level 1 from it, called directly as PD2 does. PD2's splash finds the struck unit on the
+// revive's path; this passes the unit the hit landed on.
 std::atomic<uint32_t> g_reviveEvents {0};
 std::atomic<uint32_t> g_reviveSplashes {0};
-constexpr int32_t ProcSplashDamage = 430;
 
 auto AuraEventReviveSplash(Game* game, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skillId,
                            int32_t level) noexcept -> int32_t {
 	(void)damage;
+	if (t_splashing) {
+		return 0;  // PD2 skips this handler for a splash's own hits
+	}
 	const bool sample = plog::Sample(g_reviveEvents);
 	if (game == nullptr || unit == nullptr || target == nullptr) {
 		if (sample) {
@@ -1285,8 +1538,7 @@ auto AuraEventReviveSplash(Game* game, int32_t event, Unit* unit, Unit* target, 
 		}
 		return 0;
 	}
-	using CastFn = int32_t (*)(Unit*, int32_t, int32_t, Unit*, int32_t) noexcept;
-	const int32_t cast = d2r::Engine<CastFn>(d2r::rva::CastEventSkill)(unit, ProcSplashDamage, 1, target, 0);
+	const auto cast = static_cast<int32_t>(Splash(game, unit, target, ProcSplashDamage, 1));
 	g_reviveSplashes.fetch_add(cast != 0 ? 1 : 0);
 	if (sample) {
 		// the unit the event fires on (a revive: type 1 owned by a player, owner type 0), so the check can tell

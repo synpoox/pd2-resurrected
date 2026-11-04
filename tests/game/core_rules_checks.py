@@ -53,11 +53,13 @@ W14 checks (tag core-rules-w14), same merged data: a Necromancer with Clay Golem
 (slot 13) at 10 and Revive (slot 29), no +skills, e.g. modkit save-set <save> --skill 9=1 --skill 13=10 --skill 29=10;
 then out of town: run core-rules-w14 and, while golem-count watches (30 s), summon Clay Golem four times; then kill a
 monster, Revive its corpse next to other monsters, let the revive fight, and run again.
+W26 checks (tag core-rules-w26), same merged data: a Sorceress with Teleport (54) and no +skills, e.g. modkit save-set
+<save> level=30 --skill 54=5 --project .; then out of town Teleport a few times and run the same command with
+core-rules-w26.
 W21 checks (tag core-rules-w21), same merged data: a Druid with Arctic Blast (230) or a Sorceress with Inferno (41),
 e.g. modkit save-set <save> level=30 --skill 230=10 --project .; then out of town: hold the skill on the ground for
 a second, and run the same command with core-rules-w21. For the take-over checks, press another skill while
-holding it; for blade-fury-refused, an Assassin with Blade Fury (266): hold it, then press it again and press another
-skill.
+holding it; for blade-fury-refused, an Assassin with Blade Fury (266): hold it.
 """
 import json
 import os
@@ -91,6 +93,8 @@ REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
 LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knockback|units in range) (\d+), velocity (\d+)")
 ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
 HPREGEN = 74  # itemstatcost row of hpregen in D2R and PD2
+TELEPORT_DEBUFF = 233  # merged states id of teleportdebuff
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def _log(ctx) -> str:
@@ -104,7 +108,7 @@ def _log(ctx) -> str:
 
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                 "core-rules-w13", "core-rules-w14", "core-rules-w21", "game"])
+                                 "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w33", "core-rules-w21", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -454,8 +458,28 @@ def revive_event(ctx):
     assert skill == REVIVE, f"event from skill {skill}, expected Revive ({REVIVE})"
     assert unit_type == 1, f"fired on unit type {unit_type}, not a revived monster"
     assert splash == PROC_SPLASH_DAMAGE, f"splash skill {splash}, expected proc_SplashDamage ({PROC_SPLASH_DAMAGE})"
-    # the cast is refused (0) until proc_SplashDamage has its do function (W33, docs/unported.md)
+    assert cast != 0, "the splash was refused (proc_SplashDamage's do function, W33)"
     return f"fired on a revive hitting unit type {target_type}, splash cast {cast}"
+
+
+@check("melee-splash", tags=["core-rules-w33"])
+def melee_splash(ctx):
+    """A splash (proc_SplashDamage, Golem Splash, Skeleton Splash through the srvdo 190 router) hits the units within
+    calc3 of the struck unit, the struck unit aside. proc_SplashDamage's calc3 is PD2's
+    max(6 - lvl + inc_splash_radius / 20, 0)."""
+    casts = re.findall(r"splash: skill (\d+) level (\d+) from unit type \d+ at unit type \d+: radius (-?\d+) "
+                       r"\(inc_splash_radius (-?\d+)\), units hit (\d+)", _log(ctx))
+    casts = [tuple(int(v) for v in c) for c in casts]
+    if not casts:
+        ctx.skip("no splash in the log yet (hit a pack with item_splashonhit, or Revive and let it fight, then run again)")
+    for skill, level, radius, inc, _ in casts:
+        if skill == PROC_SPLASH_DAMAGE:
+            assert radius == max(6 - level + int(inc / 20), 0), f"level {level}, inc_splash_radius {inc}: radius {radius}"
+    hits = [c for c in casts if c[4] > 0]
+    if not hits:
+        ctx.skip(f"{len(casts)} splashes logged, none with units in range (splash a pack, then run again)")
+    skill, level, radius, inc, units = hits[0]
+    return f"skill {skill} level {level}: radius {radius} (inc_splash_radius {inc}), {units} units hit"
 
 
 @check("throw-hd-models", tags=["core-rules"])
@@ -593,8 +617,52 @@ def blood_warp_cast(ctx):
     return f"level {level}: life {life // 256}, cost {cost / 256:.1f} life, hpregen {regen} for {frames} frames, lists {sorted(set(lists))}"
 
 
+@check("teleport-cast", tags=["core-rules-w26"])
+def teleport_cast(ctx):
+    """A Teleport (router srvdofunc 190) gave teleportdebuff for auralencalc max(0, 25 - pvp_lld_cd) = 25 frames, each
+    mastery lowered by reduction + mastery% of it (truncated), reduction = Param2 50 - calc1 min(edmn, 50), edmn the
+    skill's EMin 0 + EMinLev1 1 per level after the first. Teleport has no srvmissilea, so no missiles."""
+    casts = re.findall(r"teleport: skill 54 level (\d+): at -?\d+,-?\d+, (\d+) missiles [^\n]*state (-?\d+) for (\d+) "
+                       r"frames \(list (\w+)\), reduction (-?\d+): fire (-?\d+)/(-?\d+) cold (-?\d+)/(-?\d+) "
+                       r"ltng (-?\d+)/(-?\d+) pois (-?\d+)/(-?\d+)", _log(ctx))
+    if not casts:
+        ctx.skip("no Teleport in the log yet (Teleport out of town, then run again)")
+    level, missiles, state, frames, lst, reduction, *pairs = casts[-1]
+    level, missiles, state, frames, reduction = (int(v) for v in (level, missiles, state, frames, reduction))
+    assert lst != "refused", f"level {level}: the debuff list was refused"
+    assert missiles == 0, f"{missiles} missiles, PD2's Teleport makes none"
+    assert (state, frames) == (TELEPORT_DEBUFF, 25), f"state {state} for {frames} frames, PD2: {TELEPORT_DEBUFF} for 25"
+    expected = 50 - min(level - 1, 50)
+    assert reduction == expected, f"level {level}: reduction {reduction}, PD2 gives {expected}"
+    seen = []
+    for name, debuff, mastery in zip(("fire", "cold", "ltng", "pois"), pairs[0::2], pairs[1::2]):
+        want = -(reduction + int(int(mastery) * reduction / 100))
+        assert int(debuff) == want, f"{name} mastery {mastery}: debuff {debuff}, PD2 gives {want}"
+        seen.append(f"{name} {mastery} -> {debuff}")
+    return f"level {level}, reduction {reduction}, {frames} frames, list {lst}: {', '.join(seen)}"
+
+
+@check("teleport-blocked-areas", tags=["core-rules-w26"])
+def teleport_blocked_areas(ctx):
+    """Teleport is refused where PD2 refuses it: the merged levels.txt Teleport column (0 refuses, 2 checks collision
+    at the point), which D2R's Teleport (srvdo 27, inside the router's teleport) reads, equals PD2's for every level
+    both have. PD2's map levels (Teleport 0 and 3) are not merged."""
+    def column(path):
+        with open(path, encoding="latin-1") as f:
+            rows = [line.rstrip("\r\n").split("\t") for line in f]
+        name, tele = rows[0].index("Name"), rows[0].index("Teleport")
+        return {r[name]: r[tele] for r in rows[1:] if len(r) > tele}
+    pd2 = column(os.path.join(REPO, "pd2-data", "data", "global", "excel", "levels.txt"))
+    mod = column(os.path.join(REPO, "generated", "data", "global", "excel", "levels.txt"))
+    shared = [n for n in mod if n in pd2]
+    differ = [(n, pd2[n], mod[n]) for n in shared if pd2[n] != mod[n]]
+    assert not differ, f"Teleport differs from PD2 (level, PD2, mod): {differ}"
+    blocked = sorted(f"{n} ({mod[n]})" for n in shared if mod[n] not in ("1", ""))
+    return f"{len(shared)} levels as in PD2; not plain: {', '.join(blocked)}"
+
+
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                    "core-rules-w13", "core-rules-w14", "core-rules-w21"])
+                                    "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w21"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

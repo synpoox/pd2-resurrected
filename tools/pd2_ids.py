@@ -110,13 +110,13 @@ DERIVED = {"skills": {"rightskill": lambda pd2: "0" if pd2.get("passive") == "1"
 STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval")
 # PD2 function numbers that D2R gave its own functions (missile srvdo 38 flamewave, cltdo 70 vine beast death; skill
 # srvdo 153 / cltdo 97, RotW's, PD2's leap; Double Throw's srvdo 154, cltdo 98, shit 30, dmg 16 echoingstrike; dmg 17
-# ring of fire; Blood Warp's srvdo 157, srvst 66, cltst 56, and Desecrate's srvdo 161, past D2R's table, both
-# joining the srvdo 190 router, and its cltdo 101): moved to the free slots core-rules installs them in
+# ring of fire; Blood Warp's srvdo 157, srvst 66, cltst 56, Desecrate's srvdo 161 and melee splash's srvdo 163, past
+# D2R's table, joining the srvdo 190 router, and Desecrate's cltdo 101): moved to the free slots core-rules installs them in
 # (plugin/core-rules/skill_functions.cpp Functions[])
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
 FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78"}, "pSrvHitFunc": {"30": "66"},
                       "pSrvDmgFunc": {"16": "21", "17": "20"}},
-         "skills": {"srvdofunc": {"153": "172", "154": "183", "157": "190", "161": "190", "164": "190"},
+         "skills": {"srvdofunc": {"153": "172", "154": "183", "155": "190", "157": "190", "161": "190", "163": "190", "164": "190"},
                     "cltdofunc": {"97": "115", "98": "116", "101": "121", "102": "122"},
                     # PD2's srvst 68 calls slot 32, D2R's melee start (W11)
                     "srvstfunc": {"66": "80", "68": "32"}, "cltstfunc": {"56": "63"}}}
