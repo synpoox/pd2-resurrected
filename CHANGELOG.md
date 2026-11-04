@@ -12,6 +12,9 @@ private-multiplayer release a build may break characters; each break is noted he
   it. What your client draws for each charge is still D2R's.
 - Teleport works as in Project Diablo II: for a second after each teleport your elemental masteries are
   lowered, by less as the skill levels up.
+- Holy Light works as in Project Diablo II: it heals allies and deals magic damage to enemies around its target,
+  half as much to the side the target is not on, and knocks back undead. Fist of the Heavens' holy bolts reach
+  every unit around the strike, the target included.
 - Melee splash works as in Project Diablo II: items that splash on hit, Frenzy and Tiger Strike's splash radius,
   and revived monsters' hits damage the monsters around the one struck.
 - Poison Dagger works as in Project Diablo II: each stab leaves a ring of poison clouds around the target.

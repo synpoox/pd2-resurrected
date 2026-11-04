@@ -65,7 +65,6 @@ skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
 skills	Gust	Teleport	srvdofunc	Gust
-skills	Holy Light	Holy Bolt	srvdofunc	Holy Light
 skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
 skills	Split Throw	-	cltdofunc	Split Throw
 skills	Combustion	Nova	srvdofunc,cltdofunc	Combustion and boss novas
@@ -126,7 +125,6 @@ missiles	clawsofthunderbolt	=	pCltHitFunc	Assassin charge-up finishers
 missiles	bladesoficecubes	=	pCltDoFunc	Assassin charge-up finishers
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
 missiles	siege beast stomp missile	-	pCltDoFunc	Siege beast stomp client do
-missiles	holylightdelay	fistoftheheavensdelay	pCltHitFunc	Holy Light
 missiles	psychichammer	-	pSrvDmgFunc	Psychic Hammer missile damage
 missiles	uberimmolationarrow	immolationarrow	pSrvHitFunc	Uber immolation arrow hit
 missiles	rathmabonespear	bonespear	pSrvDmgFunc	Rathma bone spear, blade fragment damage

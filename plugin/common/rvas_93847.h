@@ -66,6 +66,11 @@ inline constexpr int MissileSrvHitFirstFree = 61;
 inline constexpr uint64_t MissileCltDoTable = 0x2358430;
 inline constexpr int MissileCltDoSlots = 92;
 inline constexpr int MissileCltDoFirstFree = 78;
+// missiles.txt pCltHitFunc: int32_t fn(Unit* missile, Unit* hit), 81 slots (dispatcher 0x1b8e60, bound dword
+// 0x2358a64), 66-80 free (and 6-8, 11, 15, 17, 20-23, 27, 35, 45, 49, 58, 59). Zero skips the hit's explosion.
+inline constexpr uint64_t MissileCltHitTable = 0x2358710;
+inline constexpr int MissileCltHitSlots = 81;
+inline constexpr int MissileCltHitFirstFree = 66;
 // missiles.txt pSrvDmgFunc: void fn(Game*, Unit* missile, Unit* hit, Damage*), 31 slots, 18-30 free. Called by srvhit 1
 // (0x45bc40) while it builds the hit's damage.
 inline constexpr uint64_t MissileSrvDmgTable = 0x2391270;
@@ -216,6 +221,21 @@ inline constexpr uint64_t DamageEffects = 0x44df10;  // (game, attacker, victim,
 // hit's 0x44b2b0 calls it; with area 1, events 6 domissiledamage and 2
 inline constexpr uint64_t HitEvents = 0x44ce80;
 inline constexpr uint64_t DealDamage = 0x44a9b0;  // (game, attacker, victim, &damage)
+// The whole area apply: the steps above with events 6 domissiledamage and 2 (1.13c's 0x10305760 in PD2's Holy Light)
+inline constexpr uint64_t AreaApply = 0x436e90;  // (game, attacker, victim, &damage)
+// Holy Light (W17, docs/research/w17-holy-light.md)
+// (unit, overlay, layer): overlay.txt row as stat 0xb2 on the given layer; 1.13c's D2Common #10689 has no layer (0).
+// Asserts on a row past the table, so check DataTables + TablesOverlayCount first, as Leap Attack (0x56b170) does.
+inline constexpr uint64_t SetOverlay = 0x349020;
+// (unit) -> alignment: stat 172 for players and monsters (0 hostile, 1 neutral, 2 ally; pets 2), 2 for other types.
+// 1.13c's D2Common #10830. D2RLoader hooks its entry: call it, never hook it (d2r-tools automap-marker notes).
+inline constexpr uint64_t UnitAlignment = 0x2f4190;
+// Client: (center unit, x, y, radius, unit mask, callback, arg, 0): callback(&ClientAreaContext, unit) for each unit
+// in range; x/y 0 = the center unit's position, radius 0 does nothing (Fist of the Heavens' clthit 26 0x1adcb0)
+inline constexpr uint64_t ClientAreaUnits = 0x2142d0;
+inline constexpr uint64_t ClientFindUnit = 0x9a5d0;  // (id, type) -> the client's unit or null
+inline constexpr uint64_t MissileTargetType = 0x3bc190;  // (missile) -> target unit type, 6 for none
+inline constexpr uint64_t MissileTargetId = 0x3bc280;  // (missile) -> target unit id
 inline constexpr uint64_t EngineAllocator = 0x12063c0;  // () -> the allocator; vtable +0x20 frees (Leap Attack's cleanup)
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
@@ -276,6 +296,9 @@ inline constexpr int LvlNMon1 = 0x70;
 inline constexpr int MonSpawn = 0x54;     // int16 spawn, -1 for none
 inline constexpr int MonPartyMin = 0x62;  // uint8
 inline constexpr int MonPartyMax = 0x63;  // uint8
+inline constexpr int MonFlags = 0x3c;  // uint32 flags; lUndead bit 11, hUndead bit 12 (monstats field table 0x39db30)
+inline constexpr uint32_t MonUndead = 0x1800;  // 1.13c's D2Common #10239 tests the same two bits
+inline constexpr int TablesOverlayCount = 0x1230;  // int64 overlay.txt row count in DataTables
 
 // Damage block QueuedHit returns: +0 hit flags (uint32), +4 result flags (uint16)
 inline constexpr int DamageResult = 0x4;
@@ -307,6 +330,7 @@ inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58, pois
 inline constexpr int StatPoisonMax = 58;
 inline constexpr int StatPoisonLength = 59;
 inline constexpr int StatLife = 6;  // itemstatcost hitpoints (current life, in 1/256), D2R and PD2
+inline constexpr int StatMaxLife = 7;  // maxhp
 inline constexpr int StatVelocityPercent = 67;  // itemstatcost velocitypercent, D2R and PD2
 inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's search: 0x88583 | the 0xa783 the search adds
 
@@ -320,6 +344,9 @@ inline constexpr int MsDParam1 = 0x9c;    // int32 dParam1
 inline constexpr int MsDmgCalc1 = 0xb4;   // int32 DmgCalc1 (calc index), read by dmg 1 0x453490
 inline constexpr int MsCollideKill = 0x1ae;  // uint8 CollideKill (1.13c's 0x186 + 0x28; the field table at 0x3c4233)
 inline constexpr int MsSkill = 0x1b6;     // int16 Skill (skills.txt row), read off a live explodingarrow row
+// int16 HitSubMissile1 and CltHitSubMissile1 (1.13c's 0x24 / 0x2c), as D2R's clthit 26 (0x1adcb0) reads them
+inline constexpr int MsHitSubMissile1 = 0x46;
+inline constexpr int MsCltHitSubMissile1 = 0x4e;
 inline constexpr int MsAnimSpeed = 0x1a0;  // uint8, the client create (0x1b7760) passes it to SetUnitAnimSpeed
 
 // MissileParams::flags
@@ -352,6 +379,10 @@ inline constexpr int SkParam4 = 0x1c4;
 inline constexpr int SkSrvPrgFunc1 = 0x50;  // int16 srvprgfunc1-3, read by SrvPrgDispatch
 inline constexpr int SkPrgCalc1 = 0x58;     // int32 prgcalc1-3 (calc index), read by srvdo 37's 0x571590
 inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170
+inline constexpr int SkSrvOverlay = 0x6e;  // int16 srvoverlay (skills field table 0x302380)
+inline constexpr int SkAuraFilter = 0x70;  // int32 aurafilter, the area unit mask (clthit 26 reads it)
+inline constexpr int SkCltCalc2 = 0x170;  // int32 cltcalc2 (calc index)
+inline constexpr int SkCltCalc3 = 0x174;
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
 inline constexpr int SkAuraLenCalc = 0x80;    // int32 auralencalc: 1.13c's 0x60, before aurarangecalc as there
@@ -424,6 +455,13 @@ struct AreaContext {
 	void* arg;      // AreaUnits' arg
 };
 static_assert(sizeof(AreaContext) == 0x20);
+// The client's (rva::ClientAreaUnits)
+struct ClientAreaContext {
+	Unit* center;
+	int32_t count;  // units the callback returned non-zero for
+	void* arg;
+};
+static_assert(offsetof(ClientAreaContext, arg) == 0x10);
 
 // The damage block D2R's Leap (srvdo 77) hands rva::AreaKnockback, filled as it fills it on its stack: hit flags 0,
 // result flags 9, an empty inline list at +0x40 (data pointer, size, capacity 16 with the inline bit) and an empty
