@@ -856,7 +856,6 @@ auto CltDoDesecrate(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 // the unported row. PD2's room check (0x1037c820) refuses only the PvP maps (levels 157, 159, 166), which are cut.
 std::atomic<uint32_t> g_splashes {0};
 std::atomic<uint32_t> g_splashUnitCasts {0};  // the first splash with units hit is logged too
-std::atomic<uint32_t> g_splashSkips {0};
 std::atomic<uint32_t> g_splashVictims {0};
 // PD2 skips Revive's event 32 and item event functions 14 (item_freeze) and 20 (skill on hit) while a splash hit fires
 // its events (the handler set 0x105dc628, read by 0x10347510), so a splash never splashes again or procs on the splashed
@@ -3459,27 +3458,6 @@ auto SrvStSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 
 using AuraEventFn = int32_t (*)(Game*, int32_t, Unit*, Unit*, void*, int32_t, int32_t) noexcept;
 
-// Item events 14 (item_freeze) and 20 (skill on hit): D2R's, skipped on a splash hit as PD2's handler set does
-auto SkipOnSplash(uint64_t d2rEvent, Game* game, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skillId,
-                  int32_t level) noexcept -> int32_t {
-	if (t_splashing) {
-		if (plog::Sample(g_splashSkips)) {
-			plog::Info("splash: item event %d (param 0x%x) skipped on a splashed unit, skip %u", event, skillId,
-			           g_splashSkips.load());
-		}
-		return 0;
-	}
-	return d2r::Engine<AuraEventFn>(d2rEvent)(game, event, unit, target, damage, skillId, level);
-}
-auto ItemEventFreeze(Game* game, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skillId,
-                     int32_t level) noexcept -> int32_t {
-	return SkipOnSplash(d2r::rva::AuraEvent14D2R, game, event, unit, target, damage, skillId, level);
-}
-auto ItemEventSkillOnHit(Game* game, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skillId,
-                         int32_t level) noexcept -> int32_t {
-	return SkipOnSplash(d2r::rva::AuraEvent20D2R, game, event, unit, target, damage, skillId, level);
-}
-
 // Event 16, crushing blow. Off Smite it is D2R's. While the owner is using Smite, PD2 rolls once with the
 // crushingblow stat plus Smite's calc3: Smite's own event rolls that and the item event stands down. The blow is
 // D2R's (CrushingBlowApply), not PD2's formula (unported list).
@@ -3680,25 +3658,6 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		                            d2r::rva::AuraEventCrushingBlow, smite ? "" : " FAILED (slot is not D2R's event 16)");
 		used += n > 0 ? static_cast<size_t>(n) : 0;
 	}
-	// Item events 14 and 20 are D2R's, wrapped to skip a splash hit: the expected values are D2R's functions.
-	struct SplashSkip {
-		int slot;
-		uint64_t d2r;
-		AuraEventFn wrapper;
-	};
-	for (const SplashSkip& s : {SplashSkip {d2r::rva::ItemEventFreeze, d2r::rva::AuraEvent14D2R, ItemEventFreeze},
-	                            SplashSkip {d2r::rva::ItemEventSkillOnHit, d2r::rva::AuraEvent20D2R, ItemEventSkillOnHit}}) {
-		const uint64_t original = d2r::imageBase + s.d2r;
-		std::memcpy(expected, &original, sizeof(expected));
-		const bool ok = context->PatchWriteU64(d2r::rva::AuraEventTable + static_cast<uint64_t>(s.slot) * 8, expected,
-		                                       sizeof(expected), reinterpret_cast<uint64_t>(s.wrapper));
-		installed += ok ? 1 : 0;
-		if (used < reportSize) {
-			const int n = std::snprintf(report + used, reportSize - used, "; itemeventfunc %d splash skip%s", s.slot,
-			                            ok ? "" : " FAILED (slot is not D2R's)");
-			used += n > 0 ? static_cast<size_t>(n) : 0;
-		}
-	}
 	// Revive's do is D2R's: the expected value is D2R's function, which the wrapper calls first.
 	const uint64_t d2rRevive = d2r::imageBase + d2r::rva::SrvDoReviveD2R;
 	std::memcpy(expected, &d2rRevive, sizeof(expected));
@@ -3746,9 +3705,9 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 }
 
 auto SkillFunctionCount() noexcept -> int {
-	// + the cltdo 22 patch, aura events 32 and 16, item events 14 and 20, Revive's do, the busy mode gate and the hit
+	// + the cltdo 22 patch, aura events 32 and 16, Revive's do, the busy mode gate and the hit
 	// window
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 8;
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 6;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {

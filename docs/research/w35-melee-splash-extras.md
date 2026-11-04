@@ -81,8 +81,12 @@ The apply passes flag 0, so the walker gets the handler set `0x105dc628` (built 
 - Radius: `UnitWeapon`, `ItemIsType` for each itemtypes row (count at DataTables +0x1350, ItemIsType's bound) and
   `UnitStat(unit, inc_splash_radius, type)`. Normal base: `ItemRecord` (0x314110) code +0x80 vs normcode +0x84 (items
   field table in 0x315fd0).
-- Skipped handlers: D2R's `AuraEventTable` slots 14 (0x583580) and 20 (0x583b30) are wrapped. They return 0 while a
-  splash is hitting (`t_splashing`).
+- Skipped handlers: nothing to port. Item event functions 14 (0x583580) and 20 (0x583b30) are reached only through
+  `AuraEventTable` slots 14 and 20 (Ghidra's other reference to 0x583b30 is `.pdata`). The splash itself runs inside
+  slot 20 (item_splashonhit), and its hits' event 5 never reaches slot 14 or 20: a test build wrapped both slots,
+  and over Frenzy and attack splashes with Bladebone (40% Teeth on striking) the wrappers never ran during a splash.
+  The walker (`0x5881e0`) jumps outside the dump, so whether it also drops other domeleedamage handlers on splashed
+  units (crushing blow, open wounds, which PD2 fires) is not known.
 
 ## Deviations (approximated, on the unported list)
 
@@ -96,5 +100,5 @@ The apply passes flag 0, so the walker gets the handler set `0x105dc628` (built 
 ## Checks
 
 `tests/game/core_rules_checks.py`, tag `core-rules-w35`: `splash-radius-extras` (radius = calc3 + weapon types / 20
-- normal base), `splash-current-skill` (a Frenzy splash at hard points with damage% > 0), `splash-skips-procs`
-(skipped events are 14 and 20). Tag `core-rules-w33`'s `melee-splash` reads the new log line.
+- normal base), `splash-current-skill` (a Frenzy splash at hard points with damage% > 0, a splashed unit's physical
+damage > 0). Tag `core-rules-w33`'s `melee-splash` reads the new log line.

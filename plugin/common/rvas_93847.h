@@ -289,11 +289,6 @@ inline constexpr int SkEType = 0x284;  // uint8 EType (1.13c's 0x1dc)
 // 0x65 / 0x68
 inline constexpr int DmgConvType = 0x149;
 inline constexpr int DmgConvPct = 0x14c;
-// Item events PD2 skips on a splashed unit: 14 item_freeze, 20 skill on hit (D2R's functions in AuraEventTable)
-inline constexpr int ItemEventFreeze = 14;
-inline constexpr uint64_t AuraEvent14D2R = 0x583580;
-inline constexpr int ItemEventSkillOnHit = 20;
-inline constexpr uint64_t AuraEvent20D2R = 0x583b30;
 // Holy Light (W17, docs/research/w17-holy-light.md)
 // (unit, overlay, layer): overlay.txt row as stat 0xb2 on the given layer; 1.13c's D2Common #10689 has no layer (0).
 // Asserts on a row past the table, so check DataTables + TablesOverlayCount first, as Leap Attack (0x56b170) does.

@@ -121,8 +121,9 @@ W34 check (tag core-rules-w34), same merged data: any level 90+ character in Hel
 attacking or casting while it hits you (get-hit and block both count), and run the same command with core-rules-w34.
 
 W35 checks (tag core-rules-w35), same merged data: a level 90+ Barbarian in Hell with Frenzy (147) and One or Two Hand
-Mastery, an item_splashonhit item (or `cheat spawn` one) and a chance-to-cast-on-hit item (`debug_mode`, `cheat god 1`,
-`cheat goto 2`, `cheat mspawn megademon3,6`); Frenzy into the pack, and run the same command with core-rules-w35.
+Mastery and an item_splashonhit item (The Gnasher, `cheat uniques 0`), at least 11 mana (`debug_mode`, `cheat god 1`,
+`cheat goto 2`, `cheat mspawn megademon3,6`). The log keeps a game's first splash only, so start the game fresh and
+Frenzy into the pack before any other splash, then run the same command with core-rules-w35.
 """
 import json
 import os
@@ -162,7 +163,6 @@ SKILL_SLOTS = [  # table slots it installs
     ("pSrvHitFunc", 69, "blade fragment"), ("pCltHitFunc", 68, "blade fragment"), ("pSrvDmgFunc", 19, "blade fragment"),
     ("srvstfunc", 73, "holy sword"), ("srvstfunc", 75, "smite"),
     ("auraeventfunc", 16, "smite crushing blow"),  # D2R's crushing blow, wrapped
-    ("itemeventfunc", 14, "splash skip"), ("itemeventfunc", 20, "splash skip"),  # D2R's item events, wrapped
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -699,22 +699,12 @@ def splash_current_skill(ctx):
     victims = re.findall(rf"splash hit: current skill {FRENZY}: phys (-?\d+) fire (-?\d+) light (-?\d+) magic (-?\d+) "
                          r"cold (-?\d+) poison (-?\d+) \(1/256\), damage% (-?\d+)", _log(ctx))
     if not victims:
-        ctx.skip("no sampled Frenzy splash hit yet (one in a hundred is logged; keep splashing, then run again)")
+        ctx.skip("no Frenzy splash hit logged (the log keeps a game's first splash: restart, Frenzy first, run again)")
     phys, *elements, hit_percent = (int(v) for v in victims[0])
     assert hit_percent == percent, f"a splashed unit's damage% {hit_percent}, the block's {percent}"
     assert phys > 0, f"a splashed unit took physical {phys}"
     return (f"Frenzy level {level}: damage% {percent}, srcdam {srcdam}, {units} units hit; a splashed unit: "
             f"phys {phys}, elemental {sum(elements)}")
-
-
-@check("splash-skips-procs", tags=["core-rules-w35"])
-def splash_skips_procs(ctx):
-    """While a splash hits, item events 14 (item_freeze) and 20 (skill on hit) don't run on the splashed units."""
-    skips = re.findall(r"splash: item event (\d+) \(param 0x[0-9a-f]+\) skipped on a splashed unit", _log(ctx))
-    if not skips:
-        ctx.skip("no skipped proc yet (splash a pack wearing a chance-to-cast-on-hit item, then run again)")
-    assert all(e in ("14", "20") for e in skips), f"skipped events {sorted(set(skips))}"
-    return f"{len(skips)} logged skips, events {sorted(set(skips))}"
 
 
 @check("throw-hd-models", tags=["core-rules"])
