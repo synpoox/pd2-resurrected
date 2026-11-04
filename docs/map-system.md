@@ -33,7 +33,10 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
   the Ancients killed, one map or uber area per game. The plugin makes the red portal itself.
   Reimagined's cube output `Red Portal,lvl=<id>` shows that a red portal reaches any Act V level, but it is not used as
   a recipe, because a recipe would change the controls and skip the gates.
-- **Which area a map opens** comes from `ProjectDiablo.dll`, read with Ghidra, never paired by name.
+- **Which area a map opens** comes from `ProjectDiablo.dll`, read with Ghidra, never paired by name. MS1 found that
+  the DLL takes it from the misc `len` column, so the port reads that column
+  ([pd2-map-system-dll.md](research/pd2-map-system-dll.md), which also holds the gates, stat routing, op 30 and the
+  event roll).
 - **Map drops:** the P3 no-drop lines in `merge/item-tables.txt` come back in the same work item that makes maps openable,
   so no build drops a map you cannot use.
 - **Stacking:** normal maps stack to 50 and split as in PD2 (`HOTKEY_ItemQuantity`). Every PD2 stackable shares this,
