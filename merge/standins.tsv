@@ -4,7 +4,6 @@ skills	Static Field	=	srvdofunc	Static Field
 skills	Teleport	=	srvdofunc	Teleport, Blink
 skills	Poison Dagger	=	srvdofunc,cltdofunc,srvstfunc	Poison Dagger
 skills	Clay Golem	=	srvstfunc	Golem start
-skills	Poison Explosion	=	srvdofunc,cltdofunc	Desecrate
 skills	BloodGolem	=	srvstfunc	Golem start
 skills	FireGolem	=	srvstfunc	Golem start
 skills	Smite	=	srvstfunc	Smite start

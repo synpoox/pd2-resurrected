@@ -52,7 +52,7 @@ the earliest in the order Necromancer, Paladin, Druid, Sorceress, Assassin, and 
 |---|---|---|
 | W11 | Necromancer: Poison Dagger (srvdo 164 -> 197, cltdo 102 -> 122, srvst 68 check, shit 61) | none |
 | W12 | Necromancer: Blood Warp (srvdo 157 -> 191, srvst 66 -> 80, cltst 56 -> free slot) | none |
-| W13 | Necromancer: Desecrate (srvdo 161 -> 195, cltdo 101 -> 121) | none |
+| W13 | Necromancer: Desecrate (srvdo 161 -> router 190, cltdo 101 -> 121) | W10 |
 | W14 | Necromancer: Golem start (srvst 74), Revive event 32, get-hit/block end window and cast delay (every class) | none |
 | W15 | Paladin: aura client start and do (cltst 54 -> free slot, cltdo 103 -> 123) | none |
 | W16 | Paladin: Charge (srvdo 180, cltdo 112, srvst 72, cltst 57 -> free slot) and the Charge/Whirlwind rule | none |
@@ -106,7 +106,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Bash, UberTalicBash | srvdo 158 | c | 158 -> 190 (router, by skill id 126/580; data set by `patches/020-skill-function-slots.json`) | SrvDoTable, SkillTargetUnit, QueuedHit, UnitSeed | Exact | S | built (W10) with an approximated deviation, owed to the unported list (W3): the 50% knockback roll is made before D2R's melee do function (srvdo 2) applies the hit, for every target; PD2 rolls after the apply, only for targets with flag 0x8000 | console counters: knockbacks / hits near 50% over 30+ hits | W10 |
 | Combustion and boss novas (Fingermage, Rathma x3, Leoric, Zhar) | srvdo 159, cltdo 100 | c | srvdo 159 -> 193, cltdo 100 -> 120 | SrvDoTable, CltDoTable, SrvDoDispatch (overflow) | Exact | M | open | cast logs nova count and radius | W27 |
 | Static Field (and Merc, Proc variants) | srvdo 160 | c | 160 -> 194 | SrvDoTable, SrvDoDispatch (overflow) | Exact | S | open | cast logs damage from calc | W27 |
-| Desecrate | srvdo 161, cltdo 101 | c | srvdo 161 -> 195, cltdo 101 -> 121 | SrvDoTable, CltDoTable, SrvDoDispatch (overflow) | Exact | M | open | cast logs cloud count | W13 |
+| Desecrate | srvdo 161, cltdo 101 | c | srvdo 161 -> 190 (router, by skill id 83), cltdo 101 -> 121, by value in `tools/pd2_ids.py` FUNCS | SrvDoTable, CltDoTable, RoomAtXY, RoomLevelId, SpawnMonster, MonStatsRecord, DataTables, UnitSeed, NewStateList, SkillStateExpired, SetUnitState | Exact | M | built (W13) with approximated deviations, owed to the unported list (`docs/unported.md`): the 16 s corpse timer is a state list, not PD2's game event; PD2's fallback-level loop is bounded at 32 tries; only the six raise-list exclusions a ported level names are listed (`docs/research/necromancer-w13.md`) | cast in the Rogue Encampment (InTown set on the test slot only, so the fallback levels ran): 5 of 5 corpses (calc1), 3 client missiles, all 5 hid after 16 s; a cast outside town is not checked yet | W13 |
 | Joust | srvdo 162 | c | 162 -> 196 | SrvDoTable, SrvDoDispatch (overflow) | Exact | M | open | cast logs hit from calc | W18 |
 | Poison Dagger (and Spider Boss; BaalMinionBossBerserk shares srvst 68) | srvdo 164, cltdo 102, srvst 68 (verify: D2R 68 is Double Swing's and Cleave's start, but PD2's Double Swing uses 32), shit 61 | c | srvdo 164 -> 197, cltdo 102 -> 122, shit 61 | SrvDoTable, CltDoTable, SrvHitTable, SrvDoDispatch (overflow) | Exact | M | open | hit logs cloud missile and poison from calc | W11 |
 | Hunger | srvdo 165 | c | 165 -> 198 | SrvDoTable, SrvDoDispatch (overflow) | Exact | S | open | hit logs values from calc | W23 |
