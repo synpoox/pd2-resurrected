@@ -719,17 +719,19 @@ def charge_up_hits(ctx):
 @check("charge-spread", tags=["core-rules-w29"])
 def charge_spread(ctx):
     """srvprgfunc 184 (PD2 171) throws prgcalc[charge] of the charge's missile: Cobra Strike 7, RakanothStrike 8 at
-    charge 1, Fists of Fire 1 at charge 3; Cobra Strike's carry its poison."""
+    charge 1, Fists of Fire 1 at charge 3; only Cobra Strike's carry the skill's poison."""
     rows = _rows("missiles")
     out = set()
     for skill, _, charge, created, count, row, calc, poison in _logged(
             ctx, r"charge spread: skill (\d+) level (\d+) charge (\d+): (\d+) of (\d+) missiles \(row (\d+), prgcalc "
                  r"(-?\d+)\), poison (-?\d+)", "Cobra Strike"):
         slot, expected = FINISHER_PRG[skill][charge]
-        assert slot == 184 and count == calc == expected, f"skill {skill} charge {charge}: {count} missiles, PD2 {expected}"
+        assert slot == 184 and calc == expected, f"skill {skill} charge {charge}: prgcalc {calc}, PD2 {expected}"
+        assert count == min(max(calc, 1), 64), f"skill {skill}: {count} missiles for prgcalc {calc} (1-64)"
         assert created == count, f"skill {skill}: {created} of {count} missiles created"
         assert row == rows.index(CHARGE_MISSILE[skill][charge]), f"skill {skill} charge {charge}: missile row {row}"
-        assert (poison > 0) == (skill == COBRA), f"skill {skill}: poison {poison}"
+        # PD2's Cobra Strike has no poison of its own (EMin empty): only items' poison rides along
+        assert poison >= 0 if skill == COBRA else poison == 0, f"skill {skill}: poison {poison}"
         out.add(f"{skill}/{charge}: {count}")
     return ", ".join(sorted(out))
 

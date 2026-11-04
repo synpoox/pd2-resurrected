@@ -993,6 +993,22 @@ void AddMissilePoison(Unit* missile, int32_t poison) noexcept {
 	setStat(missile, StatPoisonMax, unitStat(missile, StatPoisonMax, 0) + poison, 0);
 }
 
+// A skill missile's params from (x, y), owned by and launched from the unit; the caller sets the targets.
+auto SkillMissileParams(Unit* unit, int32_t flags, int32_t missile, int32_t x, int32_t y, int32_t skillId,
+                        int32_t level) noexcept -> d2r::MissileParams {
+	d2r::MissileParams params;
+	std::memset(&params, 0, sizeof(params));
+	params.flags = flags;
+	params.owner = unit;
+	params.origin = unit;
+	params.missile = missile;
+	params.x = x;
+	params.y = y;
+	params.skill = skillId;
+	params.skillLevel = level;
+	return params;
+}
+
 // PD2 srvdo 164 (ProjectDiablo.dll 0x103b25c0): the melee hit (D2R's own Poison Dagger do, slot 32, whose start
 // already put the skill's poison in the queued hit), then a ring of Param3 srvmissilea clouds around the target, each
 // with the rolled poison added to its poisonmindam and poisonmaxdam.
@@ -1016,16 +1032,7 @@ auto SrvDoPoisonDagger(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 	}
 	const int32_t poison = SkillPoison(unit, skillId, level);
 
-	d2r::MissileParams params;
-	std::memset(&params, 0, sizeof(params));
-	params.flags = MissileAtXY | MissileAimOffset;  // PD2's 3
-	params.owner = unit;
-	params.origin = unit;
-	params.missile = missile;
-	params.x = tx;
-	params.y = ty;
-	params.skill = skillId;
-	params.skillLevel = level;
+	d2r::MissileParams params = SkillMissileParams(unit, MissileAtXY | MissileAimOffset, missile, tx, ty, skillId, level);
 	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
 	const int32_t count = At<int32_t>(skill, SkParam3);
 	int32_t cloudPoison = 0, cloudLength = 0;  // as a cloud carries them, for the log
@@ -1065,16 +1072,7 @@ auto CltDoPoisonDagger(Unit* unit, int32_t skillId, int32_t level) noexcept -> i
 	if (!d2r::ValidMissile(dataFlag, missile)) {
 		return 0;
 	}
-	d2r::MissileParams params;
-	std::memset(&params, 0, sizeof(params));
-	params.flags = MissileAtXY | MissileAimOffset;
-	params.owner = unit;
-	params.origin = unit;
-	params.missile = missile;
-	params.x = tx;
-	params.y = ty;
-	params.skill = skillId;
-	params.skillLevel = level;
+	d2r::MissileParams params = SkillMissileParams(unit, MissileAtXY | MissileAimOffset, missile, tx, ty, skillId, level);
 	const int32_t created = Ring(ClientRingCount, [&](int32_t dx, int32_t dy) {
 		params.targetX = dx;
 		params.targetY = dy;
@@ -1090,8 +1088,10 @@ auto CltDoPoisonDagger(Unit* unit, int32_t skillId, int32_t level) noexcept -> i
 // --- Assassin charge-up finishers (PD2 srvdofunc 170 -> router 190, srvprg 171 -> 184, 172 -> 185, 39 -> 186,
 // 139 -> 181; docs/research/w29-assassin-finishers.md) ---------------------------------------------------------------
 // Tiger Strike, Fists of Fire, Cobra Strike, Claws of Thunder, Blades of Ice, Royal Strike, RakanothStrike (merged ids)
-constexpr int32_t ChargeUpSkills[] = {254, 259, 265, 269, 274, 280, 630};
-constexpr int32_t CobraStrike = 265;  // PD2's prg 171 / 172 add the skill's poison to Cobra's missiles only
+constexpr int32_t TigerStrike = 254, FistsOfFire = 259, CobraStrike = 265, ClawsOfThunder = 269, BladesOfIce = 274,
+                  RoyalStrike = 280, RakanothStrike = 630;
+constexpr int32_t ChargeUpSkills[] = {TigerStrike, FistsOfFire, CobraStrike, ClawsOfThunder, BladesOfIce, RoyalStrike,
+                                      RakanothStrike};
 constexpr int32_t ProgressiveSteal = 319;  // aurastat1 of Cobra Strike and RakanothStrike (the same id in PD2)
 constexpr int32_t StatLifeDrain = 60, StatManaDrain = 62;  // lifedrainmindam, manadrainmindam: D2R and PD2
 // One counter per finisher (and one for any other skill), so the log shows each finisher's first hit and prg call
@@ -1200,7 +1200,7 @@ auto SrvDoChargeUp(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 		AddStealList(game, unit, skill, skillId, level);
 	}
 	Unit* target = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(SkillTargetUnit)(game, unit);
-	VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoChargeUpSlot)(game, unit, skillId, level);
+	const int64_t ran = VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoChargeUpSlot)(game, unit, skillId, level);
 	int32_t charges = Charges(dataFlag, unit, skill);
 	int32_t prg = 0, prgCalc = 0;
 	if (charges > before && state >= 0 && stat >= 0) {
@@ -1234,7 +1234,7 @@ auto SrvDoChargeUp(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 		plog::Info("charge up: skill %d level %d: shared %d, charges %d -> %d, steal %d, prg %d (prgcalc %d), hits %u",
 		           skillId, level, shared, before, charges, steal ? 1 : 0, prg, prgCalc, g_chargeHits.load());
 	}
-	return 1;
+	return ran;
 }
 
 // The prg functions' charge (PD2 reads it with 0x1037ddf0 and runs only at 1-3) and the missile it picks.
@@ -1298,16 +1298,8 @@ auto SrvPrgSpread(Game* game, Unit* unit, int32_t skillId, int32_t level) noexce
 	}
 	const int32_t poison = skillId == CobraStrike ? SkillPoison(unit, skillId, level) : 0;
 	const int32_t count = ClampCount(m.count);
-	d2r::MissileParams params;
-	std::memset(&params, 0, sizeof(params));
-	params.flags = MissileFromOrigin | MissileFlag10000;  // PD2's 0x10820
-	params.owner = unit;
-	params.origin = unit;
-	params.missile = m.missile;
-	params.x = ux;
-	params.y = uy;
-	params.skill = skillId;
-	params.skillLevel = level;
+	d2r::MissileParams params =
+		SkillMissileParams(unit, MissileFromOrigin | MissileFlag10000, m.missile, ux, uy, skillId, level);  // PD2's 0x10820
 	params.activation = 1;  // PD2 sets 1.13c's +0x44 to 1
 	Spread s = ChargeSpread(ux, uy, tx, ty, count);
 	int32_t created = 0;
@@ -1343,16 +1335,8 @@ auto SrvPrgRing(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 		return 0;
 	}
 	const int32_t poison = skillId == CobraStrike ? SkillPoison(unit, skillId, level) : 0;
-	d2r::MissileParams params;
-	std::memset(&params, 0, sizeof(params));
-	params.flags = MissileAtXY | MissileAimOffset;  // PD2's 3
-	params.owner = unit;
-	params.origin = unit;
-	params.missile = m.missile;
-	params.x = x;
-	params.y = y;
-	params.skill = skillId;
-	params.skillLevel = level;
+	d2r::MissileParams params =
+		SkillMissileParams(unit, MissileAtXY | MissileAimOffset, m.missile, x, y, skillId, level);  // PD2's 3
 	const int32_t created = Ring(m.count, [&](int32_t dx, int32_t dy) {
 		params.targetX = dx;
 		params.targetY = dy;
@@ -1400,14 +1384,14 @@ auto SrvPrgCold(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
 	const int32_t missile = d2r::api.pickSkillMissile(unit, skillId);
 	const int32_t charge = skill != nullptr ? Charges(dataFlag, unit, skill) : 0;
-	if (charge < 1 || charge > 3 || !d2r::ValidMissile(dataFlag, missile)) {
+	if (charge < 1 || charge > 3 || missile <= 0 || !d2r::ValidMissile(dataFlag, missile)) {
 		return 0;
 	}
-	d2r::api.setUnitSkillFlag(unit, 1);
 	int32_t tx = 0, ty = 0, ux = 0, uy = 0;
 	if (d2r::api.skillTargetXY(game, unit, &tx, &ty) == 0 || !d2r::UnitXY(unit, &ux, &uy)) {
 		return 0;
 	}
+	d2r::api.setUnitSkillFlag(unit, 1);
 	using ThrowFn = Unit* (*)(Game*, int32_t, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t,
 	                          int32_t) noexcept;
 	const int32_t key = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(unit);
@@ -1448,10 +1432,15 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	case GolemSplash:
 	case SkeletonSplash:
 		return SrvDoSplash(game, unit, skillId, level);
+	case TigerStrike:
+	case FistsOfFire:
+	case CobraStrike:
+	case ClawsOfThunder:
+	case BladesOfIce:
+	case RoyalStrike:
+	case RakanothStrike:
+		return SrvDoChargeUp(game, unit, skillId, level);
 	default:
-		if (std::find(std::begin(ChargeUpSkills), std::end(ChargeUpSkills), skillId) != std::end(ChargeUpSkills)) {
-			return SrvDoChargeUp(game, unit, skillId, level);
-		}
 		if (plog::Sample(g_routerMisses)) {
 			plog::Warn("srvdo router: no function for skill %d (%u so far)", skillId, g_routerMisses.load());
 		}
@@ -1465,7 +1454,7 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 // shortcut: PD2 keeps one permanent list and updates it; this replaces the list with a SplashFrames one each start,
 // which also drops Split Throw's list on the same state (srvst 79) and the reverse until the next Frenzy swing.
 // Upgrade (find D2R's get-state-list function) if a splash effect needs the list to outlive a long pause.
-constexpr int32_t Frenzy = 147, TigerStrike = 254;
+constexpr int32_t Frenzy = 147;
 constexpr int32_t TempSkillBuff = 270;
 constexpr int32_t SkillFrenzyStat = 169;
 constexpr int32_t SplashFrames = 25 * 60 * 10;
