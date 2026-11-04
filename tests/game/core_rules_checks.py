@@ -32,6 +32,11 @@ It throws only with a throwing weapon in hand (no ammo, no missile): in game, co
 `cheat uniques 291,292` drops Deathbit (Battle Dart, column b); identify it with the scroll before equipping (unidentified,
 it is refused) - the fixture sets the Battle Dart and Francisca reqdex to 0 so the test save can wield them. Cast it out
 of town (Blood Moor) for the cast checks; double-throw-bounce needs a throw at a monster.
+
+W6 checks (tag core-rules-w6), same merged data: an Amazon with Exploding Arrow (16), Multiple Shot (12), Pierce (33)
+and Valkyrie (32), e.g. modkit save-set <save> level=30 --skill 16=10 --skill 12=10 --skill 33=20 --skill 32=10
+--project .; then out of town: Exploding Arrow and Multiple Shot into packs (Pierce lets arrows reach a second
+monster), summon a Valkyrie next to monsters, and run the same command with core-rules-w6.
 """
 import json
 import os
@@ -40,6 +45,7 @@ import time
 
 from game_checks import check
 import game_ctl
+import missile_probe
 
 PLUGIN = "core-rules"
 SKILL_SLOTS = [  # table slots it installs
@@ -50,6 +56,8 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 172, "leap"), ("cltdofunc", 115, "leap"),
     ("srvdofunc", 183, "double throw"), ("cltdofunc", 116, "double throw"), ("pSrvHitFunc", 66, "bounce"),
     ("pSrvDmgFunc", 21, "first hit"),
+    ("pSrvHitFunc", 63, "explode spread"), ("pSrvDmgFunc", 20, "pierce falloff"),
+    ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knockback|units in range) (\d+), velocity (\d+)")
@@ -66,7 +74,7 @@ def _log(ctx) -> str:
     return text[starts[-1]:] if starts else ""
 
 
-@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "game"])
+@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -188,6 +196,51 @@ def frenzy_splash(ctx):
     return f"level {level}, {charges} charges: splash radius {value}"
 
 
+def _rows(name: str) -> list[str]:
+    """Row names of the installed (built) table, in row order: a missile unit's class is its row index."""
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "out", "data",
+                        "global", "excel", f"{name}.txt")
+    with open(path, encoding="latin-1") as f:
+        return [line.split("\t", 1)[0] for line in f.read().splitlines()[1:]]
+
+
+@check("exploding-arrow-spread", tags=["core-rules-w6"])
+def exploding_arrow_spread(ctx):
+    """Exploding Arrow's hit (pSrvHitFunc 63) makes PD2's calc2 explosions, min(3 + lvl/5, 8), from frame calc4 + 2."""
+    hits = re.findall(r"explode spread: skill 16 level (\d+): (\d+) of (\d+) explosions from frame (-?\d+)", _log(ctx))
+    if not hits:
+        ctx.skip("no Exploding Arrow hit in the log yet (shoot it at a monster, then run again)")
+    level, created, count, start = (int(v) for v in hits[0])
+    assert count == min(3 + level // 5, 8), f"level {level}: {count} explosions, PD2 makes {min(3 + level // 5, 8)}"
+    assert created == count, f"{created} of {count} explosion missiles created"
+    assert start == 4, f"first explosion at frame {start}, PD2: calc4 (2) + 2"
+    return f"level {level}: {count} explosions from frame {start}"
+
+
+@check("multiple-shot-falloff", tags=["core-rules-w6"])
+def multiple_shot_falloff(ctx):
+    """Multiple Shot's damage (pSrvDmgFunc 20): the n-th unit one arrow hits takes max(20, 100 - (n-1)*20) percent."""
+    hits = [tuple(int(v) for v in h) for h in re.findall(r"pierce falloff: [^\n]*hit (\d+): (\d+)% damage", _log(ctx))]
+    if not hits:
+        ctx.skip("no second unit hit by one Multiple Shot arrow yet (Pierce, shoot into a pack, then run again)")
+    wrong = [(n, p) for n, p in hits if p != max(20, 100 - (n - 1) * 20)]
+    assert not wrong, f"hit, percent pairs off PD2's falloff: {wrong}"
+    return ", ".join(f"hit {n}: {p}%" for n, p in hits[:4])
+
+
+@check("valkyrie-power-strike", tags=["core-rules-w6"])
+def valkyrie_power_strike(ctx):
+    """The client draws a Valkyrie's Power Strike (cltdofunc 22 without D2R's local-player check): her
+    powerstrikenova1valk client missiles show up."""
+    row = _rows("missiles").index("powerstrikenova1valk")
+    ctx.ensure_running()
+    game = missile_probe.Game(ctx.game.pids()[0])
+    sizes = missile_probe.bursts(game, row, 30)
+    if not sizes:
+        ctx.skip("no Valkyrie strike in 30 s (summon her next to monsters, then run again)")
+    return f"{len(sizes)} Valkyrie strike(s) drawn, {sizes[0]} missile(s) in the first"
+
+
 @check("throw-hd-models", tags=["core-rules"])
 def throw_hd_models(ctx):
     """The installed data maps every fixture missile (Split Throw's or Double Throw's) to an HD model; without one
@@ -301,7 +354,7 @@ def leap_client(ctx):
     return ", ".join(f"skill {s} velocity {v}" for s, v in client.items())
 
 
-@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10"])
+@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

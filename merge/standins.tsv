@@ -1,6 +1,4 @@
 # table	row	from	columns	rule (W3; delete a line when its rule is built, see tools/pd2_standins.py)
-skills	Power Strike	=	cltdofunc	Power Strike, Lightning Strike client half
-skills	Lightning Strike	=	cltdofunc	Power Strike, Lightning Strike client half
 skills	Inferno	=	srvdofunc,cltdofunc	Inferno, Arctic Blast
 skills	Static Field	=	srvdofunc	Static Field
 skills	Teleport	=	srvdofunc	Teleport, Blink
@@ -88,14 +86,11 @@ skills	FingermageBossNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	FingermageBossDiabWall	DiabWall	srvdofunc	Firestorm and wall makers
 skills	BaalMinionBossBerserk	Berserk	srvstfunc	Poison Dagger
 skills	UberDiabWall	DiabWall	srvdofunc	Firestorm and wall makers
-skills	Lightning Strike Cowboss	Lightning Strike	cltdofunc	Power Strike, Lightning Strike client half
-skills	Power Strike Tomb Boss	Power Strike	cltdofunc	Power Strike, Lightning Strike client half
 skills	PoisonEggSpawn	MaggotEgg	srvdofunc,cltdofunc	PoisonEggSpawn
 skills	Merc Static Field	Static Field	srvdofunc	Static Field
 skills	Poison Dagger Spider Boss	Poison Dagger	srvdofunc,cltdofunc	Poison Dagger
 skills	RathmaDeath	Nova	srvdofunc,cltdofunc	Death novas
 skills	NihlathakMapDeath	Nova	cltdofunc	Death novas
-skills	Valk Power Strike	Power Strike	cltdofunc	Power Strike, Lightning Strike client half
 skills	RathmaSummon	-	srvdofunc	RathmaSummon
 skills	RathmaTeethNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	RathmaOuterNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
@@ -128,8 +123,6 @@ skills	LucionDeath4	Nova	srvdofunc,cltdofunc	Death novas
 skills	UberDiabSummon	-	srvdofunc	UberDiabSummon, UberDiabRun
 skills	Static Field Proc	Static Field	srvdofunc	Static Field
 skills	Mon Bloodwarp	Teleport	srvdofunc	Teleport, Blink
-missiles	firearrow	=	pSrvHitFunc	Fire Arrow, Exploding Arrow hit
-missiles	explodingarrow	=	pSrvHitFunc	Fire Arrow, Exploding Arrow hit
 missiles	firebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	icebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	blessedhammer	=	pSrvDoFunc,pCltDoFunc	Blessed Hammer
@@ -137,8 +130,6 @@ missiles	blizzard1	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor b
 missiles	blizzard2	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	blizzard3	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	blizzard4	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
-missiles	multipleshotarrow	=	pSrvDmgFunc	Multiple Shot arrow and bolt damage
-missiles	multipleshotbolt	=	pSrvDmgFunc	Multiple Shot arrow and bolt damage
 missiles	chillingarmorbolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	desertfireball	=	pCltHitFunc	Desert turret fireball client hit
 missiles	bladefragment1	=	pSrvHitFunc,pCltHitFunc	Blade fragment hit

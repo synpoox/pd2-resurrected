@@ -81,6 +81,14 @@ inline auto EvalCalc(Game* game, Unit* unit, const uint8_t* skill, int field, in
 	return api.evalSkillCalc(DataFlag(game), unit, At<int32_t>(skill, field), skillId, level);
 }
 
+// D2's seed step (the game inlines it), as d2r-tools better-auras does it. Seed from rva::UnitSeed.
+inline auto RandomBelow(uint32_t* seed, uint32_t n) noexcept -> uint32_t {
+	const uint64_t s = static_cast<uint64_t>(seed[0]) * 0x6ac690c5ULL + seed[1];
+	seed[0] = static_cast<uint32_t>(s);
+	seed[1] = static_cast<uint32_t>(s >> 32);
+	return seed[0] % n;
+}
+
 inline auto ValidMissile(uint32_t dataFlag, int32_t missile) noexcept -> bool {
 	return missile >= 0 && missile < api.missileCount(dataFlag);
 }

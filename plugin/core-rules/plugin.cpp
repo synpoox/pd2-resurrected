@@ -47,11 +47,11 @@ using InstallFn = void (*)(const D2RL::PluginContext* context, char* report, siz
 struct Part {
 	const char* word;
 	InstallFn install;
-	char report[1024];  // one entry per installed slot, so it grows with every rule
+	char report[1536];  // one entry per installed slot, so it grows with every rule
 };
 
 void InstallSkills(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char slots[960] = "";
+	char slots[1400] = "";
 	const int installed = InstallSkillFunctions(context, slots, sizeof(slots));
 	std::snprintf(report, size, "%d/%d installed:%s", installed, SkillFunctionCount(), slots);
 }
