@@ -5,7 +5,8 @@ How the port rebuilds PD2's uber bosses, decided in [#153](https://github.com/sy
 Desecration do is in the
 [inventory](https://github.com/synpoox/pd2-resurrected/blob/research/pd2-uber-bosses/docs/research/pd2-uber-bosses.md)
 (#147). PD2's Pandemonium and Uber Tristram are inventoried in
-[#185](https://github.com/synpoox/pd2-resurrected/issues/185). Terms (uber boss, uber key, uber tier, Desecration,
+[#185](https://github.com/synpoox/pd2-resurrected/issues/185). What `ProjectDiablo.dll` does for each fight (UB1) is in
+[pd2-uber-bosses-dll.md](research/pd2-uber-bosses-dll.md). Terms (uber boss, uber key, uber tier, Desecration,
 Terror Zone) are in [GLOSSARY.md](../GLOSSARY.md). The work items are placed on [roadmap.md](roadmap.md) by
 [#210](https://github.com/synpoox/pd2-resurrected/issues/210).
 
