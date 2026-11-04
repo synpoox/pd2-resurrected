@@ -426,7 +426,16 @@ auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 namespace {
 
 std::atomic<uint32_t> g_boltHits {0};
-std::atomic<uint32_t> g_boltUnitHits {0};  // the first splash with units hit is logged too
+// The first splash with units hit is logged for each missile row too, so every bolt skill shows in the log.
+std::atomic<uint64_t> g_boltRowsLogged[32] {};
+
+auto FirstUnitHit(int32_t row) noexcept -> bool {
+	if (row < 0 || row >= 32 * 64) {
+		return false;
+	}
+	const uint64_t bit = 1ull << (row % 64);
+	return (g_boltRowsLogged[row / 64].fetch_or(bit) & bit) == 0;
+}
 
 using AreaFn = void (*)(Game*, Unit*, d2r::AreaCenter*, int32_t, uint32_t, int32_t (*)(d2r::AreaContext*, Unit*), void*,
                         int32_t) noexcept;  // rva::AreaUnits
@@ -490,7 +499,7 @@ auto SrvHitBoltSplash(Game* game, Unit* missile, Unit* /*hit*/) noexcept -> int3
 	BoltSplash b {&rolled, At<uint32_t>(row, MsHitFlags), At<uint16_t>(row, MsResultFlags) | uint32_t {ResultHit}, 0};
 	d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(missile), x, y};
 	d2r::Engine<AreaFn>(AreaUnits)(game, owner, &center, radius, AreaUnitMask, BoltSplashOne, &b, 0);
-	if (plog::Sample(g_boltHits) || (b.victims > 0 && plog::Sample(g_boltUnitHits))) {
+	if (plog::Sample(g_boltHits) || (b.victims > 0 && FirstUnitHit(At<int32_t>(missile, UnitClassId)))) {
 		plog::Info("bolt hit: missile row %d skill %d level %d radius %d: fire %d cold %d (1/256), units hit %lld, "
 		           "hit %u", At<int32_t>(missile, UnitClassId), skillId, level, radius, At<int32_t>(&rolled, DmgFire),
 		           At<int32_t>(&rolled, DmgCold), static_cast<long long>(b.victims), g_boltHits.load());

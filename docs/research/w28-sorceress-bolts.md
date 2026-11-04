@@ -65,4 +65,9 @@ two differ in nothing a player sees: event 3 stays D2R's and is data.
 
 - `tests/game/core_rules_checks.py`, tag `core-rules-w28`: `bolt-splash` (radius = PD2's sHitPar1, the row's Skill,
   fire or cold damage, units hit, all four skills) and the slot in `core-rules-loads`; `chilling-armor-event`
-  asserts the merged Chilling Armor rows keep `damagedinmelee 3`. Not run in game yet.
+  asserts the merged Chilling Armor rows keep `damagedinmelee 3`.
+
+Run on Slot7 (2026-11-04), a level 95 Sorceress with Fire Bolt, Ice Bolt, Blizzard and Chilling Armor at 10, normal
+difficulty (the save has no other difficulty open), god mode, zombies in Blood Moor and quill rats for Chilling
+Armor: all three checks pass. Blizzard radius 4, 172 cold on 3 units; Ice Bolt radius 3, 43 cold on 2; Fire Bolt
+(level 11) radius 3, 52 fire on 1; chillingarmorbolt radius 4, 66 cold on 4. No crash.
