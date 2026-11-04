@@ -3,11 +3,11 @@
 Milestones and the work items in each. Decided by "Order the alpha roadmap and slice it into work items" (#33). A work item
 is about one agent session. `P` items are listed here; `W` items are engine rules, listed with their rows in
 [core-rules.md](core-rules.md#work-items) and only placed here. **Issue** links each item's ticket
-(sub-issues of the spec #41), where its status lives; built items link their merged PR.
+(sub-issues of the spec #41 through M2, and of #85 for the alpha), where its status lives; built items link their merged PR.
 
-Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 on a frozen install copy, testable alpha within 1-2 weeks of 2026-11-03, 4+
-build sessions in parallel. Build PRs merge on the game check, the table-diff gate and a code-review agent; the owner
-reviews P1, W1, W2 and the alpha release.
+Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 on a frozen install copy, testable M2 within 1-2 weeks of 2026-11-03, 5
+build sessions in parallel; the alpha has no fixed date. Build PRs merge on the game check, the table-diff gate and a code-review agent; the owner
+reviews P1, W1, W2, the first PR in each class lane, and the M2 and alpha releases.
 
 ## M1: a new character in Act 1
 
@@ -24,9 +24,10 @@ PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-di
 | W3 | Stand-ins and data rows (core-rules) | P1 | C | #46, #60 (PR) |
 | P10 | HD missiles: every missile PD2 adds gets a `missiles.json` model (stand-in art), so none is invisible in HD | P2 | A | #74 (PR) |
 
-## Alpha
+## M2: Amazon and Barbarian complete
 
 M1 plus the companions, corruption and the Amazon and Barbarian engine rules; the other classes stay on stand-ins.
+Was the alpha until #85 widened it.
 
 | # | Work item | Blocked by | Lane | Issue |
 |---|---|---|---|---|
@@ -39,18 +40,42 @@ M1 plus the companions, corruption and the Amazon and Barbarian engine rules; th
 | W10 | Barbarian group (core-rules) | W1, P2 | C | #71 (PR) |
 | P7 | Companions: hash-checked manifest, release-script download, hand-written `filter.json`, Pyre's 16 `Filter*` sound rows and flacs merged into our data | none | C | #39 (PR) |
 | P9 | Corruption: starts with the outcome check (core-rules Q10), includes the cube op 16/18 check for corruption recipes | P3 | A | #56, #68 (PR) |
-| P8 | Alpha release: local 7z and release notes | every item above | A | #57 |
+| P8 | M2 release: local 7z and release notes | every item above | A | #57 |
 
-**Lanes** for four sessions: A (data) P1 -> P2 -> P3 -> P9 -> P8; B (engine) W1 -> W2 -> class items; C W4 and P7 first,
+**Lanes** for four sessions (M2): A (data) P1 -> P2 -> P3 -> P9 -> P8; B (engine) W1 -> W2 -> class items; C W4 and P7 first,
 then W3, W7, W10; D P4, P5, P6 once P1 is in. **Critical path:** P1 -> P2 -> P3 -> P9 -> P8.
 
-**Alpha exit bar:** a fresh character of any class levels through Acts 1-5 Normal on the merged data; W1-W10 and
+**M2 exit bar:** a fresh character of any class levels through Acts 1-5 Normal on the merged data; W1-W10 and
 corruption game checks pass; the table-diff gate is green for the alpha scope; every companion arms on Slot4; the owner
 tests the local 7z alone.
 
+## Alpha: every PD2 class complete
+
+M2 plus the Necromancer, Paladin, Druid, Sorceress and Assassin as complete classes (spec #85). Class-themed item rules
+are "not yet" rows on the unported list; the Warlock ships as D2R has it.
+
+| # | Work item | Blocked by | Lane | Issue |
+|---|---|---|---|---|
+| W11-W14 | Necromancer (core-rules) | none | B | #86, #87, #88, #89 |
+| W15-W20 | Paladin (core-rules) | none | C | #90, #91, #92, #93, #94, #95 |
+| W21-W24 | Druid (core-rules) | none | D | #96, #97, #98, #99 |
+| W25 | Investigation: Assassin finisher hook points (core-rules) | none | E | #100 |
+| W26-W28 | Sorceress (core-rules) | W21 (W27 only) | E | #101, #102, #103 |
+| W29-W32 | Assassin (core-rules) | W25 (W29), W29 (W30), W21 (W32) | first free class lane | #104, #105, #106, #107 |
+| P11 | "Not yet" rows for class item rules (Ormus' Robes and the like) on the unported list | none | A | #108 |
+| P12 | Alpha release: local 7z and release notes | P8 and every item above | A | #109 |
+
+**Lanes** for five sessions: A P9 -> P8, then P11 and rush jobs, then P12; B Necromancer; C Paladin; D Druid; E W25, then
+Sorceress. The Assassin build goes to the first class lane that frees up. A rule shared by two classes belongs to the
+earliest class in the order Necromancer, Paladin, Druid, Sorceress, Assassin; the later class checks it. The owner reviews
+the first PR in each class lane.
+
+**Alpha exit bar:** every PD2 class is a complete class: each of its rows has a passing game check or an approximated row
+on the unported list; a fresh character of every class levels through Acts 1-5 Normal on the merged data; the table-diff
+gate is green for the alpha scope; every companion arms on Slot4; the owner tests the local 7z alone.
+
 **Left out of the alpha** (unported list, "not yet"): map items and the map system, new PD2-only areas, the Warlock
-redesign (the alpha ships D2R's Warlock as it is), the other classes' engine rules, everything in the core-rules order
-after the cut.
+redesign, class-themed item rules, monster-only engine rules, everything in the core-rules order after the cut.
 
 ## After the alpha
 
