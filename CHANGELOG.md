@@ -5,6 +5,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Fire Bolt, Ice Bolt, Blizzard and Chilling Armor's bolts work as in Project Diablo II: each hit splashes its damage
+  onto every monster close to where it lands.
 - Gust works as in Project Diablo II: it teleports you, then chills and staggers the monsters around where you land.
 - Hunger works as in Project Diablo II: a werebear eats a corpse for a while of life steal, speed, open wounds and
   deep wounds.
