@@ -3,8 +3,8 @@
 Task for issue #159 (map #143). Question: what D2R draws in HD for a PD2 level whose DS1 has no HD preset, and
 whether we can write a preset ourselves.
 
-Run on Slot5, 2026-11-04, build 93847, Reign of the Warlock mode. Nothing here is committed to `main`: the fixture
-holds a PD2 file (ADR 0002) and lived in a scratch folder.
+Run on Slot5, 2026-11-04, build 93847, Reign of the Warlock mode. The fixture is not committed:
+it holds a PD2 file (ADR 0002) and lived in a scratch folder.
 
 ## Setup
 
