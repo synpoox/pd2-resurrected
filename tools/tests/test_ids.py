@@ -100,6 +100,15 @@ class FormulaAndColumnTests(unittest.TestCase):
                                        ["new_bytime", "2", "17", "", "ModStr1a", "ModStr1a"],
                                        ["new_pd2", "1", "1", "1", "PD2Str", ""]])
 
+    def test_stat_keeps_d2r_strings_its_function_reads(self):
+        d2r = table("Stat|descfunc|descval|descstrpos|descstrneg\n"
+                    "singleskill|27||ItemModifierClassSkill|ItemModifierClassSkill\nelemskill|19||ModStr3i|ModStr3i\n")
+        pd2 = table("Stat|descfunc|descval|descstrpos|descstrneg\nsingleskill|27|||\nelemskill||||\n")
+        lines = [("singleskill", 0, "singleskill"), ("elemskill", 1, "elemskill")]
+        merged, _ = I.merge_table("itemstatcost", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["singleskill", "27", "", "ItemModifierClassSkill", "ItemModifierClassSkill"],
+                                       ["elemskill", "", "", "", ""]])
+
     def test_function_numbers_moved_off_d2r_slots(self):
         d2r = table("Missile|pCltDoFunc|pSrvDoFunc\nflamewave|71|38\n")
         pd2 = table("Missile|pCltDoFunc|pSrvDoFunc\nback|70|38\nbolt|1|1\nblessedhammer|72|40\n")
