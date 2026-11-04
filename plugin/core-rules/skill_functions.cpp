@@ -397,9 +397,11 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 // D2R's (path type 9 to the skill's point); PD2 sets its own speed and, on landing, hits every unit within calc3.
 std::atomic<uint32_t> g_leaps {0};
 std::atomic<uint32_t> g_leapClients {0};
-// The first knockback landing and the first landing that hits are logged too, whichever leap came first
-std::atomic<uint32_t> g_leapKnockbacks {0};
-std::atomic<uint32_t> g_leapHitLandings {0};
+// Each kind's first landing and client start ([0] Leap, [1] the others), and the first landing with units in range,
+// are logged too, whichever came first
+std::atomic<uint32_t> g_leapKinds[2] {};
+std::atomic<uint32_t> g_leapClientKinds[2] {};
+std::atomic<uint32_t> g_leapUnitLandings {0};
 constexpr int32_t SkillLeap = 132;  // PD2 keys the landing on this id: Leap knocks back, every other row hits
 
 using UnitSkill = uint8_t;
@@ -449,7 +451,7 @@ struct LeapHit {
 // aimed at it through the skill target and the path target, which is where 0x56ad90 looks.
 auto LeapHitOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	auto* hit = static_cast<LeapHit*>(area->arg);
-	++hit->hits;
+	++hit->hits;  // units the hit is rolled on, not hits that land
 	Unit* unit = area->unit;
 	void* path = At<void*>(unit, d2r::rva::UnitPath);
 	auto* target = reinterpret_cast<int32_t*>(hit->uskill + d2r::rva::USkillTargetType);
@@ -510,10 +512,11 @@ auto SrvDoLeap(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t) noexcept>(RemoveUnitEvent)(game, unit, 1, 0);
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
 		game, unit, 1, At<int32_t>(game, GameFrame) + 4, 0, 0, 0);
-	const bool kindFirst = skillId == SkillLeap ? plog::Sample(g_leapKnockbacks) : hits > 0 && plog::Sample(g_leapHitLandings);
-	if (plog::Sample(g_leaps) || kindFirst) {
+	const bool kindFirst = plog::Sample(g_leapKinds[skillId == SkillLeap ? 0 : 1]);
+	const bool unitsFirst = skillId != SkillLeap && hits > 0 && plog::Sample(g_leapUnitLandings);
+	if (plog::Sample(g_leaps) || kindFirst || unitsFirst) {
 		plog::Info("leap: skill %d level %d landed: radius %d, %s %lld, velocity %d, cast %u", skillId, level, radius,
-		           skillId == SkillLeap ? "knockback" : "units hit", static_cast<long long>(hits),
+		           skillId == SkillLeap ? "knockback" : "units in range", static_cast<long long>(hits),
 		           LeapVelocity(unit, skill, skillId, level), g_leaps.load());
 	}
 	return 1;
@@ -534,7 +537,8 @@ auto CltDoLeap(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	if ((flags & 0x2) == 0 && (flags & 0x80) != 0) {
 		const int32_t velocity = LeapVelocity(unit, skill, skillId, level);
 		SetLeapVelocity(unit, uskill, velocity);
-		if (plog::Sample(g_leapClients)) {
+		const bool kindFirst = plog::Sample(g_leapClientKinds[skillId == SkillLeap ? 0 : 1]);
+		if (plog::Sample(g_leapClients) || kindFirst) {
 			plog::Info("leap client: skill %d level %d: velocity %d, cast %u", skillId, level, velocity, g_leapClients.load());
 		}
 	}
@@ -614,7 +618,7 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	MissileFunctionCounters(missiles, sizeof(missiles));
 	std::snprintf(out, size,
 	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "
-	              "splash starts %u, leaps %u, client %u, %s",
+	              "splash starts %u, leap landings %u, client %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), missiles);

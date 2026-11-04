@@ -43,7 +43,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 172, "leap"), ("cltdofunc", 115, "leap"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
-LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knockback|units hit) (\d+), velocity (\d+)")
+LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knockback|units in range) (\d+), velocity (\d+)")
 ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
 
 
@@ -217,18 +217,18 @@ def leap_attack_landing(ctx):
     if not landed:
         ctx.skip("no Leap Attack landing in the log yet (Leap Attack in town, then run again)")
     level, radius, kind, _, velocity = landed[0]
-    assert kind == "units hit" and radius == 8, f"{kind} radius {radius}, PD2 hits units within 8"
+    assert kind == "units in range" and radius == 8, f"{kind} radius {radius}, PD2 hits units within 8"
     assert velocity == 0xb00 + 60 * 0x50, f"velocity {velocity}, PD2 gives {0xb00 + 60 * 0x50}"
     return f"level {level}: radius {radius}, velocity {velocity}"
 
 
 @check("leap-attack-hits", tags=["core-rules"])
 def leap_attack_hits(ctx):
-    """A Leap Attack landing among monsters hit them. Needs a cast out of town."""
+    """A Leap Attack landed among monsters, so its hit was rolled on them. Needs a cast out of town."""
     hits = [h for *_, h, _ in _landings(ctx, LEAP_ATTACK) if h > 0]
     if not hits:
-        ctx.skip("no Leap Attack landing hit a unit yet (Leap Attack into monsters out of town, then run again)")
-    return f"{len(hits)} landings hit {sum(hits)} units"
+        ctx.skip("no Leap Attack landing had units in range yet (Leap Attack into monsters out of town, then run again)")
+    return f"{len(hits)} landings rolled hits on {sum(hits)} units"
 
 
 @check("leap-client", tags=["core-rules"])
