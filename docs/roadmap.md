@@ -24,6 +24,7 @@ PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-di
 | W3 | Stand-ins and data rows (core-rules) | P1 | C | [#46](https://github.com/synpoox/pd2-resurrected/issues/46), [#60](https://github.com/synpoox/pd2-resurrected/issues/60) (PR) |
 | P10 | HD missiles: every missile PD2 adds gets a `missiles.json` model (stand-in art), so none is invisible in HD | P2 | A | [#74](https://github.com/synpoox/pd2-resurrected/issues/74) (PR) |
 | P11 | Skill icons: every class's icon sheet rebuilt from PD2's art, so PD2's new skills show their icons | P1 | D | [#83](https://github.com/synpoox/pd2-resurrected/issues/83) (PR) |
+| P14 | Skill tree backgrounds: each class's tree boxes and arrows redrawn from the merged tables, so they follow PD2's skill positions | P1 | D | [#84](https://github.com/synpoox/pd2-resurrected/issues/84), [#110](https://github.com/synpoox/pd2-resurrected/issues/110) (PR) |
 
 ## M2: Amazon and Barbarian complete
 
@@ -57,8 +58,8 @@ are "not yet" rows on the unported list; the Warlock ships as D2R has it.
 
 | # | Work item | Blocked by | Lane | Issue |
 |---|---|---|---|---|
-| W11-W14 | Necromancer (core-rules) | none | B | [#86](https://github.com/synpoox/pd2-resurrected/issues/86), [#87](https://github.com/synpoox/pd2-resurrected/issues/87), [#88](https://github.com/synpoox/pd2-resurrected/issues/88), [#89](https://github.com/synpoox/pd2-resurrected/issues/89) |
-| W15-W20 | Paladin (core-rules) | none | C | [#90](https://github.com/synpoox/pd2-resurrected/issues/90), [#91](https://github.com/synpoox/pd2-resurrected/issues/91), [#92](https://github.com/synpoox/pd2-resurrected/issues/92), [#93](https://github.com/synpoox/pd2-resurrected/issues/93), [#94](https://github.com/synpoox/pd2-resurrected/issues/94), [#95](https://github.com/synpoox/pd2-resurrected/issues/95) |
+| W11-W14 | Necromancer (core-rules) | none | B | [#86](https://github.com/synpoox/pd2-resurrected/issues/86), [#114](https://github.com/synpoox/pd2-resurrected/issues/114) (PR), [#115](https://github.com/synpoox/pd2-resurrected/issues/115) (PR), [#89](https://github.com/synpoox/pd2-resurrected/issues/89) |
+| W15-W20 | Paladin (core-rules) | none | C | [#117](https://github.com/synpoox/pd2-resurrected/issues/117) (PR), [#91](https://github.com/synpoox/pd2-resurrected/issues/91), [#92](https://github.com/synpoox/pd2-resurrected/issues/92), [#93](https://github.com/synpoox/pd2-resurrected/issues/93), [#94](https://github.com/synpoox/pd2-resurrected/issues/94), [#95](https://github.com/synpoox/pd2-resurrected/issues/95) |
 | W21-W24 | Druid (core-rules) | none | D | [#96](https://github.com/synpoox/pd2-resurrected/issues/96), [#97](https://github.com/synpoox/pd2-resurrected/issues/97), [#98](https://github.com/synpoox/pd2-resurrected/issues/98), [#99](https://github.com/synpoox/pd2-resurrected/issues/99) |
 | W25 | Investigation: Assassin finisher hook points (core-rules) | none | E | [#100](https://github.com/synpoox/pd2-resurrected/issues/100) |
 | W26-W28 | Sorceress (core-rules) | W21 (W27 only) | E | [#101](https://github.com/synpoox/pd2-resurrected/issues/101), [#102](https://github.com/synpoox/pd2-resurrected/issues/102), [#103](https://github.com/synpoox/pd2-resurrected/issues/103) |
@@ -70,6 +71,12 @@ are "not yet" rows on the unported list; the Warlock ships as D2R has it.
 Sorceress. The Assassin build goes to the first class lane that frees up. A rule shared by two classes belongs to the
 earliest class in the order Necromancer, Paladin, Druid, Sorceress, Assassin; the later class checks it. The owner reviews
 the first PR in each class lane.
+
+**Engine changes for classes:** before porting a class rule, check what it changes in play. PD2 class engine code that
+changes only input or the skill bar, not what a skill does, comes from a third-party plugin instead: auras on the left
+button (cltst 54, cltdo 103) from the [Left Click Auras](https://github.com/CelestialRayOne/d2rloader_plugins/tree/main/plugins/left-click-auras)
+companion, and Force Move. The merge keeps D2R's columns for those rows, and the unported list names the plugin. Only
+rules that change a skill's effect, damage, missiles or timing get core-rules code.
 
 **Alpha exit bar:** every PD2 class is a complete class: each of its rows has a passing game check or an approximated row
 on the unported list; a fresh character of every class levels through Acts 1-5 Normal on the merged data; the table-diff

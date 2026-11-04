@@ -16,9 +16,11 @@
 #include "log.h"
 #include "missile_functions.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <iterator>
 
 namespace {
 
@@ -412,6 +414,296 @@ auto SrvDoBash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	return VanillaSlot<SrvDoFn>(d2r::rva::SrvDoTable, d2r::rva::SrvDoMelee)(game, unit, skillId, level);
 }
 
+// One stat on a `state` list for `frames`, by NewStateList's recast rule (PD2's timed-state helper 0x1036d7d0 has
+// the same one): an older list of the same skill and level is extended and keeps its value, a lower level is
+// refused, anything else is replaced. Returns what happened, for the logs.
+auto TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level, int32_t frames, int32_t state,
+                   int32_t stat, int32_t value) noexcept -> const char* {
+	using namespace d2r::rva;
+	void* old = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, state);
+	const auto listInt = [](uint64_t fn, void* list) { return d2r::Engine<int32_t (*)(void*) noexcept>(fn)(list); };
+	const bool extends = old != nullptr && listInt(ListSkill, old) == skillId && listInt(ListLevel, old) == level;
+	d2r::StateListRequest request {unit, unit, skillId, level, frames, -1, 0, state,
+	                               d2r::Engine<void (*)()>(SkillStateExpired)};
+	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
+	if (list == nullptr) {
+		return "refused";
+	}
+	if (extends) {
+		return "extended";
+	}
+	d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, stat, value, 0);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
+	return "new";
+}
+
+// --- Blood Warp (PD2 srvdofunc 157 -> router 190, srvstfunc 66 -> 80, cltstfunc 56 -> 63) --------------------------
+// Read from ProjectDiablo.dll: srvdo 157 at 0x103b1aa0, srvst 66 at 0x103b6460, cltst 56 at 0x103acda0
+// (docs/research/w12-blood-warp.md). The cast costs life and never kills; the cost comes back as hpregen.
+std::atomic<uint32_t> g_bloodWarps {0};
+std::atomic<uint32_t> g_bloodWarpsRefused {0};
+constexpr int32_t BloodWarp = 439;  // merged id (PD2 367)
+
+// PD2's cost, in life's 1/256: calc1 percent of current life, at least calc2. PD2 converts calc1 as unsigned and
+// truncates with cvttsd2si, so a negative calc1 (a life reduction over 12) overflows to INT32_MIN and calc2 wins.
+constexpr auto BloodWarpCost(int32_t calc1, int32_t calc2, int32_t life) noexcept -> int32_t {
+	const double v = static_cast<double>(static_cast<uint32_t>(calc1)) / 100.0 * life;
+	const int32_t cost = v > -2147483649.0 && v < 2147483648.0 ? static_cast<int32_t>(v) : INT32_MIN;
+	return cost > calc2 ? cost : calc2;
+}
+static_assert(BloodWarpCost(12, 512, 100 << 8) == 3072);     // 12% of 100 life beats the 2-life minimum
+static_assert(BloodWarpCost(12, 15360, 100 << 8) == 15360);  // calc2's 60-life cap wins
+static_assert(BloodWarpCost(-1, 512, 100 << 8) == 512);      // the overflow leaves the minimum
+
+struct LifeCost {
+	const uint8_t* skill = nullptr;  // the skill record; null refuses
+	int32_t cost = 0, life = 0;
+	auto Payable() const noexcept -> bool { return skill != nullptr && cost < life; }  // the cast never kills
+};
+
+auto BloodWarpLife(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level) noexcept -> LifeCost {
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return {};
+	}
+	const auto calc = [&](int field) {
+		return d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, field), skillId, level);
+	};
+	const int32_t life = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(
+		unit, d2r::rva::StatLife, 0);
+	return {skill, BloodWarpCost(calc(d2r::rva::SkCalc1), calc(d2r::rva::SkCalc2), life), life};
+}
+
+// The server's check (start and do): counts the refusals.
+auto ServerPayable(const LifeCost& c) noexcept -> bool {
+	if (!c.Payable()) {
+		g_bloodWarpsRefused.fetch_add(1);
+		return false;
+	}
+	return true;
+}
+
+// Start (PD2 srvstfunc 66, here 80): refuse a cast the caster can't pay for.
+auto SrvStBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	return ServerPayable(BloodWarpLife(d2r::DataFlag(game), unit, skillId, level)) ? 1 : 0;
+}
+
+// Client half (PD2 cltstfunc 56, here 63): the same check on the client's copy of the caster.
+auto CltStBloodWarp(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	if (unit == nullptr) {
+		return 0;
+	}
+	return BloodWarpLife(d2r::api.unitDataFlag(unit), unit, skillId, level).Payable() ? 1 : 0;
+}
+
+// PD2 srvdofunc 157: teleport, then pay the cost (checked again at the new point) and get it back over auralencalc
+// frames as aurastat1 (hpregen) = cost / frames + 1 on an aurastate (bloodwarp) list. A recast at the same level
+// extends the running list and keeps its regen; a lower level pays and adds none (TimedStatList).
+// shortcut: the teleport is D2R's srvdo 27, not PD2's teleport core (0x1036cd20, shared with Teleport's srvdo 155),
+// and an extended list's new timer is not sent to the client (PD2 sends packet 0x83). Upgrade with the Teleport row.
+auto SrvDoBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	if (VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoTeleport)(game, unit, skillId, level) == 0) {
+		return 0;
+	}
+	const LifeCost c = BloodWarpLife(dataFlag, unit, skillId, level);  // again, at the new point
+	if (!ServerPayable(c)) {
+		return 0;
+	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(unit, StatLife, c.life - c.cost, 0);
+	const int32_t frames = d2r::EvalCalc(game, unit, c.skill, SkAuraLenCalc, skillId, level);
+	const int32_t state = At<int16_t>(c.skill, SkAuraState);
+	const int32_t stat = At<int16_t>(c.skill, SkAuraStat1);
+	int32_t regen = 0;
+	const char* list = "none";
+	if (frames > 0 && state > 0 && stat >= 0) {  // PD2 divides by frames unchecked
+		regen = c.cost / frames + 1;
+		list = TimedStatList(dataFlag, unit, skillId, level, frames, state, stat, regen);
+	}
+	if (plog::Sample(g_bloodWarps)) {
+		plog::Info("blood warp: skill %d level %d: life %d, cost %d, regen %d for %d frames (stat %d, state %d, list %s), "
+		           "cast %u",
+		           skillId, level, c.life, c.cost, regen, frames, stat, state, list, g_bloodWarps.load());
+	}
+	return 1;
+}
+
+// --- Desecrate (PD2 srvdofunc 161 -> router 190, cltdofunc 101 -> 121) -------------------------------------------
+// Read from ProjectDiablo.dll: srvdo 161 at 0x103b1fa0, cltdo 101 at 0x103ab630 (docs/research/necromancer-w13.md).
+std::atomic<uint32_t> g_desecrates {0};
+std::atomic<uint32_t> g_desecrateClients {0};
+std::atomic<uint32_t> g_desecrateHidden {0};
+
+constexpr int32_t Desecrate = 83;
+constexpr int32_t CorpseNoDraw = 104;  // states.txt corpse_nodraw, the same id in PD2 and D2R
+constexpr int32_t CorpseFrames = 400;  // PD2's timer: the corpse can't be used 16 seconds after it falls
+// Monsters PD2 never raises, as merged monstats ids: frogdemon1-3, ancientbarb1-3.
+// shortcut: PD2's other 45 (map, uber and Rathma monsters, *Maus, *Rat, void*) are left out because no merged level
+// lists them in mon1-25 / nmon1-25; add them when a map level is ported (docs/unported.md).
+constexpr int32_t NeverRaised[] = {247, 248, 249, 540, 541, 542};
+// Where PD2 picks monsters when the cast level has none: Black Marsh, a Tal Rasha's Tomb, Spider Forest, City of the
+// Damned, the Worldstone Chamber
+constexpr int32_t FallbackLevels[] = {6, 66, 76, 106, 132};
+constexpr int ListSize = 25;
+
+// PD2's list for a level: its 25 monsters (nmon in nightmare and hell), -1 for each one Desecrate can't raise.
+auto RaiseList(uint32_t dataFlag, const uint8_t* tables, int32_t levelId, bool normal, int16_t* list) noexcept -> bool {
+	using namespace d2r::rva;
+	if (levelId < 0 || static_cast<uint32_t>(levelId) >= At<uint32_t>(tables, TablesLevelCount)) {
+		return false;
+	}
+	const uint8_t* level = At<const uint8_t*>(tables, TablesLevels) + static_cast<int64_t>(levelId) * LevelRecordSize;
+	bool any = false, ended = false;
+	for (int i = 0; i < ListSize; ++i) {
+		int16_t mon = ended ? -1 : At<int16_t>(level, (normal ? LvlMon1 : LvlNMon1) + i * 2);
+		ended = ended || mon < 0;
+		const uint8_t* stats = mon < 0 ? nullptr
+		                               : d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(
+		                                     dataFlag, mon);
+		if (stats == nullptr || At<uint8_t>(stats, MonPartyMin) > 0 || At<uint8_t>(stats, MonPartyMax) > 0 ||
+		    At<int16_t>(stats, MonSpawn) != -1 ||
+		    std::find(std::begin(NeverRaised), std::end(NeverRaised), mon) != std::end(NeverRaised)) {
+			mon = -1;
+		}
+		list[i] = mon;
+		any = any || mon >= 0;
+	}
+	return any;
+}
+
+// The corpse's timer ran out: hide it (PD2's callback 0x1036c6d0 sets corpse_nodraw). The list never set the state, so
+// the expiry call only does D2R's list bookkeeping.
+void HideCorpse(void* list, Unit* unit, int32_t state) noexcept {
+	d2r::Engine<void (*)(void*, Unit*, int32_t) noexcept>(d2r::rva::SkillStateExpired)(list, unit, state);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetUnitState)(unit, CorpseNoDraw, 1);
+	g_desecrateHidden.fetch_add(1);
+}
+
+// calc1 corpses of monsters from the target point's level, placed around the point, owned by the caster, each hidden
+// after CorpseFrames; then srvmissilea at the point. PD2 evaluates petmax too and throws it away; so does this.
+// shortcut: PD2's timer is a game event; this is a state list on the corpse with HideCorpse as its expiry. Upgrade if
+// the game check shows corpses that never hide (docs/unported.md).
+auto SrvDoDesecrate(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(dataFlag);
+	int32_t x = 0, y = 0;
+	if (skill == nullptr || tables == nullptr || d2r::api.skillTargetXY(game, unit, &x, &y) == 0) {
+		return 0;
+	}
+	void* room = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(
+		d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit), x, y);
+	if (room == nullptr) {
+		return 0;
+	}
+	const int32_t levelId = d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room);
+	const bool normal = At<uint8_t>(game, GameDifficulty) == 0;
+	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit);
+	int16_t list[ListSize];
+	// PD2 retries random fallback levels until one has a monster; bounded here so bad data can't hang the server
+	bool any = RaiseList(dataFlag, tables, levelId, normal, list);
+	for (int tries = 0; !any && tries < 32; ++tries) {
+		any = RaiseList(dataFlag, tables, FallbackLevels[d2r::RandomBelow(seed, static_cast<uint32_t>(std::size(FallbackLevels)))], normal, list);
+	}
+	if (!any) {
+		plog::Warn("desecrate: no monster to raise for level %d", levelId);
+		return 0;
+	}
+	const int32_t count = ClampCount(d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level));
+	const int32_t mode = At<uint8_t>(skill, SkSumMode);
+	const uint32_t casterId = At<uint32_t>(unit, UnitIdField);
+	const auto spawn = d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
+		SpawnMonster);
+	auto* regions = At<uint8_t**>(game, GameMonRegions);
+	if (levelId < 0 || static_cast<uint32_t>(levelId) >= At<uint32_t>(tables, TablesLevelCount)) {
+		regions = nullptr;
+	}
+	int32_t created = 0, sx = x, sy = y;
+	for (int32_t i = 0; i < count; ++i) {
+		int16_t mon = -1;
+		while (mon < 0) {
+			mon = list[d2r::RandomBelow(seed, ListSize)];
+		}
+		if (i == 1) {
+			sx += 2, sy += 2;
+		} else if (i == 2) {
+			sx -= 2, sy += 2;
+		} else if (i > 2) {
+			sx += static_cast<int32_t>(d2r::RandomBelow(seed, 2)) - 2;
+			sy += static_cast<int32_t>(d2r::RandomBelow(seed, 2)) - 2;
+		}
+		Unit* corpse = spawn(game, room, sx, sy, mon, mode, -1, 0x42);
+		if (corpse == nullptr) {
+			break;  // PD2 stops the cast here, before the cloud
+		}
+		++created;
+		*reinterpret_cast<int32_t*>(reinterpret_cast<uint8_t*>(corpse) + UnitOwnerType) = 0;
+		*reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(corpse) + UnitOwnerId) = casterId;
+		// PD2 takes the corpse back out of its level's spawn count, so it doesn't stop the level spawning
+		if (regions != nullptr && regions[levelId] != nullptr) {
+			*reinterpret_cast<int32_t*>(regions[levelId] + MonRegionCount) -= 1;
+		}
+		d2r::StateListRequest request {corpse, corpse, skillId, level, CorpseFrames, -1, 0, CorpseNoDraw,
+		                               reinterpret_cast<void (*)()>(HideCorpse)};
+		d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
+	}
+	bool cloud = false;
+	if (created == count) {
+		d2r::MissileParams params;
+		std::memset(&params, 0, sizeof(params));
+		params.flags = 1;  // placed at x/y
+		params.owner = unit;
+		params.missile = At<int16_t>(skill, SkSrvMissileA);
+		params.x = params.targetX = x;
+		params.y = params.targetY = y;
+		params.skill = skillId;
+		params.skillLevel = level;
+		cloud = d2r::ValidMissile(dataFlag, params.missile) && d2r::api.createMissile(game, &params) != nullptr;
+		d2r::api.setUnitSkillFlag(unit, 1);
+	}
+	if (plog::Sample(g_desecrates)) {
+		plog::Info("desecrate: skill %d level %d: %d of %d corpses in level %d, cloud %d, cast %u", skillId, level,
+		           created, count, levelId, cloud ? 1 : 0, g_desecrates.load());
+	}
+	return created == count ? 1 : 0;
+}
+
+// Client half (PD2 cltdofunc 101): cltmissile a, b and c at the target point.
+auto CltDoDesecrate(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	if (unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::api.unitDataFlag(unit);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	int32_t x = 0, y = 0;
+	if (skill == nullptr || d2r::api.clientSkillTargetXY(unit, &x, &y) == 0) {
+		return 1;
+	}
+	d2r::MissileParams params;
+	std::memset(&params, 0, sizeof(params));
+	params.flags = 1;
+	params.owner = unit;
+	params.x = params.targetX = x;
+	params.y = params.targetY = y;
+	params.skill = skillId;
+	params.skillLevel = level;
+	int created = 0;
+	for (int column = 0; column < 3; ++column) {
+		params.missile = At<int16_t>(skill, d2r::rva::SkCltMissileA + column * 2);
+		created += d2r::ValidMissile(dataFlag, params.missile) && d2r::api.clientCreateMissile(&params, 0) ? 1 : 0;
+	}
+	if (plog::Sample(g_desecrateClients)) {
+		plog::Info("desecrate client: skill %d level %d: %d missiles, cast %u", skillId, level, created,
+		           g_desecrateClients.load());
+	}
+	return 1;
+}
+
 constexpr int32_t Bash = 126, UberTalicBash = 580;
 
 // --- Poison Dagger (PD2 srvdofunc 164 -> router 190, cltdofunc 102 -> 122; docs/research/necromancer-w11.md) ---------
@@ -547,6 +839,10 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	case PoisonDagger:
 	case PoisonDaggerSpiderBoss:
 		return SrvDoPoisonDagger(game, unit, skillId, level);
+	case BloodWarp:
+		return SrvDoBloodWarp(game, unit, skillId, level);
+	case Desecrate:
+		return SrvDoDesecrate(game, unit, skillId, level);
 	default:
 		if (plog::Sample(g_routerMisses)) {
 			plog::Warn("srvdo router: no function for skill %d (%u so far)", skillId, g_routerMisses.load());
@@ -589,16 +885,8 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		charges = unitStat(unit, At<int16_t>(skill, SkAuraStat1), 0);
 		value = charges < 3 ? calc2 * charges : 0;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, TempSkillBuff, 1);
-	d2r::StateListRequest request {unit, unit, skillId, level, SplashFrames, -1, 0, TempSkillBuff,
-	                               d2r::Engine<void (*)()>(SkillStateExpired)};
-	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
-	if (list == nullptr) {
-		return 1;
-	}
-	d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list,
-	                                                                                      IncSplashRadius, value, 0);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, TempSkillBuff, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, TempSkillBuff, 1);  // always a new list
+	TimedStatList(dataFlag, unit, skillId, level, SplashFrames, TempSkillBuff, IncSplashRadius, value);
 	if (plog::Sample(g_splashStarts)) {
 		plog::Info("splash start: skill %d level %d charges %d calc2 %d: splash radius %d, start %u", skillId, level,
 		           charges, calc2, value, g_splashStarts.load());
@@ -794,6 +1082,9 @@ const SlotFunction Functions[] = {
 	{SrvSt, 82, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStFind)), "find"},
 	{CltSt, 62, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltStFind)), "find"},
 	{SrvDo, 190, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoRouter)), "router"},
+	// Blood Warp: D2R fills srvst 66 and cltst 56; its do function is in the router
+	{SrvSt, 80, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStBloodWarp)), "blood warp"},
+	{CltSt, 63, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltStBloodWarp)), "blood warp"},
 	// PD2's srvdo 153 / cltdo 97 are D2R's RotW functions; ours take free slots and the merge points there (FUNCS).
 	{SrvDo, 172, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoLeap)), "leap"},
 	{CltDo, 115, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoLeap)), "leap"},
@@ -804,6 +1095,8 @@ const SlotFunction Functions[] = {
 	// Double Throw: D2R fills srvdo 154 (a RotW skill), cltdo 98, shit 30 and dmg 16 (echoingstrike)
 	{SrvDo, 183, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoDoubleThrow)), "double throw"},
 	{CltDo, 116, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoDoubleThrow)), "double throw"},
+	// Desecrate's server half is the router's (PD2's srvdo 161 has no free slot); cltdo 101 is D2R's
+	{CltDo, 121, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoDesecrate)), "desecrate"},
 	{MissileSrvHit, 66, reinterpret_cast<const void*>(static_cast<MissileSrvHitBounceFn>(SrvHitBounce)), "bounce"},
 	{MissileSrvDmg, 21, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgFirstHit)), "first hit"},
 	{MissileSrvHit, 63, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitExplodeSpread)), "explode spread"},
@@ -855,9 +1148,10 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "
 	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, poison daggers %u, "
-	              "client %u, %s",
+	              "client %u, blood warps %u, refused %u, desecrates %u, client %u, corpses hidden %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
-	              g_poisonDaggers.load(), g_poisonDaggerClients.load(), missiles);
+	              g_poisonDaggers.load(), g_poisonDaggerClients.load(), g_bloodWarps.load(), g_bloodWarpsRefused.load(),
+	              g_desecrates.load(), g_desecrateClients.load(), g_desecrateHidden.load(), missiles);
 }

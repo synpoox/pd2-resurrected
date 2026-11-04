@@ -168,6 +168,8 @@ def triage(res: Result, patterns: list[str]) -> Result:
 def gate(root: Path, d2r: Path, scope: str) -> Report:
     if scope not in SCOPES:
         raise GateError(f"scope {scope!r} is not one of {', '.join(SCOPES)}")
+    if not (d2r / "global" / "excel").is_dir():  # else every unmerged table would read as unshipped
+        raise GateError(f"no D2R tables under {d2r}: run `modkit fetch` or pass --d2r")
     pd2_excel, mod_excel = root / "pd2-data/data/global/excel", root / "generated/data/global/excel"
     patterns, entries = unported(root / "docs" / "unported.md")
     lists = {t: pd2_ids.read_list(pd2_ids.list_path(root / "merge", t)) for t in pd2_ids.TABLES}
