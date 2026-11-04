@@ -96,6 +96,13 @@ inline constexpr int MissileSrvDmgFirstFree = 18;
 inline constexpr uint64_t AuraEventTable = 0x238e5c0;
 inline constexpr int AuraEventRevive = 32;
 inline constexpr uint64_t AuraEvent32D2R = 0x42eea0;
+// Slot 16 (0x583150) is D2R's crushing blow (itemstatcost item_crushingblow, Summon Goatman): chance = the unit's stat
+// skill >> 16 at layer skill & 0xffff (item events pass stat << 16 | layer), roll % 100 on the unit's seed, then
+// CrushingBlowApply. PD2's 16 is its own crushing blow with Smite's chance added (docs/research/w19-holy-sword-smite.md).
+inline constexpr int AuraEventCrushingBlow = 16;
+inline constexpr uint64_t AuraEvent16D2R = 0x583150;
+// (game, unit, target, &CrushingBlowArgs) -> the event's result; called by D2R's event 16 after its roll
+inline constexpr uint64_t CrushingBlowApply = 0x581bd0;
 
 // --- Functions (signature in the comment) -------------------------------------------------------------------------
 inline constexpr uint64_t GetSkillRecord = 0x97790;    // (dataFlag, skillId) -> skills.txt record or null
@@ -143,6 +150,7 @@ inline constexpr uint64_t CltDoStrikeLocalOnly = 0x2aed4a;
 // Double Throw (D2R's own srvdo 74 0x567a20, cltdo 42 0x22f3f0, Chain Lightning's srvhit 12 0x45d5e0)
 inline constexpr uint64_t UnitWeapon = 0x4242b0;  // (unit) -> weapon item the server attacks with, or null
 inline constexpr uint64_t ClientUnitWeapon = 0x34b000;  // (unit) -> the client's weapon item, or null
+inline constexpr uint64_t ItemIsType = 0x373890;  // (item, itemtypes row) -> non-zero when the item is of that type
 inline constexpr uint64_t ItemMissileType = 0x371b60;  // (item) -> weapons.txt missiletype row
 // (game, missile, unit, skill, level, UnitStateKey(unit), 0, 0, 0, 0, 1) -> missile thrown at the skill's target
 inline constexpr uint64_t ThrowSkillMissile = 0x4333f0;
@@ -560,6 +568,15 @@ struct ClientAreaContext {
 	void* arg;
 };
 static_assert(offsetof(ClientAreaContext, arg) == 0x10);
+
+// Argument of rva::CrushingBlowApply, as D2R's event 16 fills it on its stack (0x583223)
+struct CrushingBlowArgs {
+	void* damage;           // 0x00 the event's damage block
+	int32_t divisors[3];    // 0x08 4, 10, 10
+	uint8_t missile;        // 0x14 the event is 6 (domissiledamage)
+};
+static_assert(offsetof(CrushingBlowArgs, divisors) == 0x08);
+static_assert(offsetof(CrushingBlowArgs, missile) == 0x14);
 
 // The damage block D2R's Leap (srvdo 77) hands rva::AreaKnockback, filled as it fills it on its stack: hit flags 0,
 // result flags 9, an empty inline list at +0x40 (data pointer, size, capacity 16 with the inline bit) and an empty
