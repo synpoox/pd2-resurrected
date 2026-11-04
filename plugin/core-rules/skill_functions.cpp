@@ -472,8 +472,9 @@ constexpr int32_t Masteries[] = {329, 331, 330, 332};
 
 // PD2's teleport core: refused under disable_tele, else D2R's Teleport (srvdo 27), which makes the core's level
 // checks (levels.txt Teleport 0 refuses, 2 checks collision at the point).
+// PD2's Hell-only level list (0x105de86c) is never filled, so it is left out.
 // shortcut: PD2's Teleport 3 rule (a path search on map levels) and its "TeleportBlocked" chat line on a refusal are
-// left out: no ported level has Teleport 0 or 3. Add them with the map plan. PD2's Hell-only level list is empty.
+// left out: no ported level has Teleport 0 or 3. Upgrade when the map plan ports a map level.
 auto TeleportCore(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> bool {
 	using namespace d2r::rva;
 	if (d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, DisableTele) != nullptr) {
@@ -494,7 +495,10 @@ static_assert(TeleportDebuff(30, 50) == -45);   // a 50% mastery is lowered by h
 static_assert(TeleportDebuff(25, -10) == -23);  // -2.5 truncates to -2
 
 // PD2 srvdo 155: the core, then a ring of calc2 srvmissilea at the new point (LucionBlink's nova), then aurastate
-// (teleportdebuff) for auralencalc frames with each mastery lowered by Param2 - calc1 (TeleportDebuff).
+// (teleportdebuff) for auralencalc frames with each mastery lowered by Param2 - calc1 (TeleportDebuff). Named Pd2
+// because rva::SrvDoTeleport is D2R's slot number.
+// shortcut: an extended list's new timer is not sent to the client (PD2 sends packet 0x83), as for Blood Warp.
+// Upgrade if the client's debuff runs out early in play.
 auto SrvDoPd2Teleport(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	const uint32_t dataFlag = d2r::DataFlag(game);
