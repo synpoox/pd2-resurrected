@@ -89,6 +89,9 @@ Field next to monsters, cast Combustion, hold Inferno for a second, and run the 
 W30 checks (tag core-rules-w30), same merged data and save as W29: out of town hit monsters three times in a row with
 each of Fists of Fire, Cobra Strike, Claws of Thunder and Blades of Ice, releasing between them with Dragon Talon, and
 run the same command with core-rules-w30. Each charge's client missiles log on the client.
+W31 checks (tag core-rules-w31), same merged data: an Assassin with Dragon Flight (275) and Psychic Hammer (253);
+out of town in a crowd, Dragon Flight onto monsters a few times and cast Psychic Hammer where it can jump (its
+hammer chains up to calc1 units within Param1 8), then run the same command with core-rules-w31.
 """
 import json
 import os
@@ -121,7 +124,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 184, "charge spread"), ("srvdofunc", 185, "charge ring"), ("srvdofunc", 186, "charge fire"),
     ("srvdofunc", 181, "charge cold"), ("cltdofunc", 120, "nova"),
     ("cltdofunc", 127, "charge spread"), ("cltdofunc", 128, "charge ring"), ("pCltDoFunc", 79, "charge explode"),
-    ("pCltHitFunc", 67, "charge bolt"),
+    ("pCltHitFunc", 67, "charge bolt"), ("srvdofunc", 178, "dragon flight"), ("pSrvDmgFunc", 22, "chain falloff"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -151,7 +154,7 @@ def _log(ctx) -> str:
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                  "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33",
                                  "core-rules-w21", "core-rules-w22", "core-rules-w29", "core-rules-w17",
-                                 "core-rules-w23", "core-rules-w27", "core-rules-w30", "game"])
+                                 "core-rules-w23", "core-rules-w27", "core-rules-w30", "core-rules-w31", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -1023,10 +1026,59 @@ def charge_client_bolt(ctx):
     return f"{len(found)} logged: height {z}, motion {mx},{my},{mz}"
 
 
+DRAGON_FLIGHT, PSYCHIC_HAMMER = 275, 253  # merged skill ids (the same in PD2)
+
+
+@check("dragon-flight-kick", tags=["core-rules-w31"])
+def dragon_flight_kick(ctx):
+    """srvdofunc 178 teleports and kicks in one cast: a hit carries PD2's calc2 damage% (ln12: 100 + 25 per level
+    after the first), a miss none; the to-hit includes progressive_tohit."""
+    found = re.findall(r"dragon flight: skill (\d+) level (\d+) at unit type (\d+): to-hit (-?\d+) \(progressive "
+                       r"(-?\d+)\), result 0x([0-9a-f]+), damage% (-?\d+)", _log(ctx))
+    if not found:
+        ctx.skip("no Dragon Flight cast in the log yet (Dragon Flight onto monsters out of town, then run again)")
+    hits = 0
+    for skill, level, _, to_hit, progressive, result, percent in found:
+        level, hit = int(level), int(result, 16) & 1
+        assert int(skill) == DRAGON_FLIGHT, f"skill {skill} on srvdo 178"
+        assert int(percent) == (100 + 25 * (level - 1) if hit else 0), f"level {level}, hit {hit}: damage% {percent}"
+        assert int(to_hit) >= int(progressive) >= 0, f"to-hit {to_hit}, progressive {progressive}"
+        hits += hit
+    if not hits:
+        ctx.skip(f"{len(found)} Dragon Flight casts logged, all misses (cast again, then run again)")
+    return f"{len(found)} casts logged, {hits} hits"
+
+
+def chain_falloff_magic(magic: int, hits: int, bounces: int, step: int) -> int:
+    """PD2's dmg 15 (ProjectDiablo.dll 0x103a6c90): calc2% less per earlier hit, (calc1 - bounces left) of them."""
+    cut = (hits - bounces) * step
+    return 0 if cut > 99 else (100 - cut) * magic // 100  # magic damage is never negative
+
+
+@check("psychic-hammer-falloff", tags=["core-rules-w31"])
+def psychic_hammer_falloff(ctx):
+    """pSrvDmgFunc 22 (PD2 15) cuts each chained hammer's magic damage by calc2 (20)% per earlier hit, calc1
+    (min(2 + lvl/10, 6)) hits in all; the first hit keeps all of it."""
+    found = re.findall(r"chain falloff: skill (\d+) level (\d+): calc1 (-?\d+), bounces (-?\d+), calc2 (-?\d+): magic "
+                       r"(-?\d+) -> (-?\d+)", _log(ctx))
+    if not found:
+        ctx.skip("no Psychic Hammer hit in the log yet (cast it on monsters out of town, then run again)")
+    cuts = 0
+    for skill, level, hits, bounces, step, before, after in (tuple(int(v) for v in f) for f in found):
+        assert skill == PSYCHIC_HAMMER, f"skill {skill} on dmg 22"
+        assert hits == min(2 + level // 10, 6) and step == 20, f"level {level}: calc1 {hits}, calc2 {step}"
+        assert 1 <= bounces <= hits, f"bounces {bounces} of {hits}"
+        assert after == chain_falloff_magic(before, hits, bounces, step), f"{before} -> {after}: {found}"
+        cuts += after != before
+    if not cuts:
+        ctx.skip(f"{len(found)} hammer hits logged, none chained (cast it in a crowd, then run again)")
+    return f"{len(found)} hits logged, {cuts} cut"
+
+
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w22", "core-rules-w29", "core-rules-w17",
-                                    "core-rules-w23", "core-rules-w30"])
+                                    "core-rules-w23", "core-rules-w30", "core-rules-w31"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

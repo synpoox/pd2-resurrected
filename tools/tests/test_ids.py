@@ -146,6 +146,19 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows, [["fistsoffireexplode", "79", ""], ["clawsofthunderbolt", "1", "67"]])
 
+    def test_psychic_hammer_damage_moves_dragon_flight_stays(self):
+        # dmg 15 is D2R's holy bolt, so PD2's moves to 22; srvdo 178 is free in D2R and keeps its number (W31)
+        d2r = table("Missile|pSrvDmgFunc\nholybolt|15\n")
+        pd2 = table("Missile|pSrvDmgFunc\npsychichammer|15\n")
+        lines = [("psychichammer", 0, "psychichammer")]
+        merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["psychichammer", "22"]])
+        d2r = table("skill|srvdofunc\nAttack|1\n")
+        pd2 = table("skill|srvdofunc\nDragon Flight|178\n")
+        lines = [("Dragon Flight", 1, "Dragon Flight")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Dragon Flight", "178"]])
+
     def test_teleport_goes_to_the_router(self):
         d2r = table("skill|srvdofunc\nAttack|1\n")
         pd2 = table("skill|srvdofunc\nTeleport|155\nBlink|155\n")

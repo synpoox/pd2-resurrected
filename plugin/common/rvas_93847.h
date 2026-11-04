@@ -225,6 +225,14 @@ inline constexpr uint64_t SendChargePacket = 0x5396d0;
 inline constexpr uint64_t ListStatValue = 0x2f5df0;  // (dataFlag, list, stat, layer) -> value
 inline constexpr uint64_t NewStatList = 0x2f7300;  // (flags, expire frame, unit type, unit id) -> list or null
 inline constexpr uint64_t AttachStatList = 0x2f2cb0;  // (unit, list, 1)
+// A melee skill hit, in the order D2R's Dragon Flight (srvdo 52 0x56fc80) runs it on its second frame (W31), on a
+// d2r::LeapKnockback block (hit flags 0; the roll's result replaces its result flags)
+inline constexpr uint64_t SkillToHit = 0x339040;  // (unit, skill, level) -> the skill's to-hit (ToHit, LevToHit)
+// (game, unit, target, to-hit, always hit, 0) -> result flags for the block (bit 0 = hit)
+inline constexpr uint64_t MeleeRoll = 0x44b720;
+inline constexpr uint64_t MeleeFill = 0x573af0;  // (game, &block, unit, target, skill, level): the hit's damage
+inline constexpr uint64_t QueueMeleeHit = 0x44b600;  // (game, unit, target, &block, 0x80): read back with QueuedHit
+inline constexpr uint64_t ApplyMeleeHit = 0x44b2b0;  // (game, unit, target, 0, 1): deals the queued hit
 
 // Melee splash (W33): one victim's damage, built the way PD2's area callback 0x10303190 builds it
 // (game, attacker, defender, &damage, 0, srcdam): weapon damage scaled by srcdam / 128 (0 = 128); Leap Attack's
@@ -353,6 +361,7 @@ inline constexpr int MsCltSubMissile1 = 0x40;  // int16 CltSubMissile1 (1.13c's 
 // poison length 0x2c -> 0x3c in srvdmg 11).
 inline constexpr int DmgPhys = 0x18, DmgFire = 0x20, DmgLight = 0x2c, DmgMagic = 0x30, DmgCold = 0x34, DmgPoison = 0x38;
 inline constexpr int DmgPoisonLength = 0x3c;
+inline constexpr int DmgPercent = 0x1c;  // damage% (1.13c 0x0c), set before the melee fill (D2R's srvdo 52)
 inline constexpr int StatDamagePercent = 25;  // itemstatcost damagepercent, D2R and PD2
 inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58, poisonlength 59: D2R and PD2
 inline constexpr int StatPoisonMax = 58;

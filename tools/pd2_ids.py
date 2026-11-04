@@ -110,7 +110,7 @@ DERIVED = {"skills": {"rightskill": lambda pd2: "0" if pd2.get("passive") == "1"
 STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval")
 # PD2 function numbers that D2R gave its own functions (missile srvdo 38 flamewave, cltdo 70 vine beast death; skill
 # srvdo 153 / cltdo 97, RotW's, PD2's leap; Double Throw's srvdo 154, cltdo 98, shit 30, dmg 16 echoingstrike; dmg 17
-# ring of fire; Teleport's srvdo 155, Gust's 156, Blood Warp's 157, srvst 66, cltst 56, Desecrate's srvdo 161, melee
+# ring of fire; Psychic Hammer's dmg 15, holy bolt's; Teleport's srvdo 155, Gust's 156, Blood Warp's 157, srvst 66, cltst 56, Desecrate's srvdo 161, melee
 # splash's 163, Poison Dagger's 164, Hunger's 165 and the wall makers' 166, past D2R's table or D2R's own, joining the
 # srvdo 190 router, and Desecrate's cltdo 101; Fist of the Heavens' chit 26, where D2R's differs from PD2's 1.13c
 # one): moved to the free slots core-rules installs them in
@@ -119,7 +119,7 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # 160 join the router too, Combustion's cltdo 100 takes 120 (docs/research/w27-static-field-combustion.md).
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
 FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78", "69": "79"}, "pSrvHitFunc": {"30": "66"},
-                      "pSrvDmgFunc": {"16": "21", "17": "20"}, "pCltHitFunc": {"26": "71"}},
+                      "pSrvDmgFunc": {"15": "22", "16": "21", "17": "20"}, "pCltHitFunc": {"26": "71"}},
          "skills": {"srvdofunc": {"153": "172", "154": "183", "155": "190", "156": "190", "157": "190", "159": "190",
                                   "160": "190", "161": "190", "163": "190", "164": "190", "165": "190", "166": "190",
                                   "170": "190"},

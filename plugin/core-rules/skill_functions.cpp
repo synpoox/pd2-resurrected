@@ -1113,6 +1113,67 @@ auto SrvDoHolyLight(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 	return 1;
 }
 
+// --- Dragon Flight (PD2 srvdofunc 178; docs/research/w31-dragon-flight-psychic-hammer.md) -------------------------
+// Read from ProjectDiablo.dll: srvdo 178 at 0x103b4180.
+std::atomic<uint32_t> g_dragonFlights {0};
+std::atomic<uint32_t> g_dragonFlightHits {0};
+constexpr int32_t ProgressiveToHit = 325;  // itemstatcost progressive_tohit: PD2 and D2R add it to the skill's to-hit
+
+// PD2 srvdofunc 178: the teleport core (refused: no kick), then one kick at the target in the same frame: to-hit =
+// the skill's + progressive_tohit, damage% = calc2 on a hit, the release (srvprgfunc for the charges) and the hit.
+// The hit is built the way D2R's Dragon Flight (srvdo 52) builds its second frame; 52 teleports on one frame and kicks
+// on the next, with damage% from calc1. PD2's closing aurastate helper (0x1036cb90) is left out: it returns at once
+// without aurastat1, and no row on 178 has one.
+// shortcut: the target is D2R's skill target (PD2 reads the path's target unit), as for Holy Light. Upgrade if a cast
+// in game kicks another unit than the one clicked (docs/unported.md).
+auto SrvDoDragonFlight(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), skillId);
+	Unit* target = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(SkillTargetUnit)(game, unit);
+	if (skill == nullptr || target == nullptr) {
+		return 0;
+	}
+	if (!TeleportCore(game, unit, skillId, level)) {
+		return 0;
+	}
+	// srvdo 52 clears it at its teleport and sets it after the kick; cleared only once the teleport went, so a refusal
+	// leaves it as it was
+	d2r::api.setUnitSkillFlag(unit, 0);
+	const int32_t progressive = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(unit, ProgressiveToHit, 0);
+	const int32_t toHit =
+		d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(SkillToHit)(unit, skillId, level) + progressive;
+	d2r::LeapKnockback damage;
+	using RollFn = uint16_t (*)(Game*, Unit*, Unit*, int32_t, uint8_t, int32_t) noexcept;
+	damage.resultFlags = d2r::Engine<RollFn>(MeleeRoll)(game, unit, target, toHit, 0, 0);  // PD2 rolls with no always-hit
+	int32_t percent = 0;
+	const bool hit = (damage.resultFlags & ResultHit) != 0;
+	if (hit) {
+		percent = d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level);
+		*reinterpret_cast<int32_t*>(reinterpret_cast<uint8_t*>(&damage) + DmgPercent) = percent;
+		d2r::Engine<void (*)(Game*, void*, Unit*, Unit*, int32_t, int32_t) noexcept>(MeleeFill)(game, &damage, unit,
+		                                                                                      target, skillId, level);
+	}
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*, uint8_t) noexcept>(QueueMeleeHit)(game, unit, target, &damage, 0x80);
+	void* queued = d2r::Engine<void* (*)(Unit*, Unit*) noexcept>(QueuedHit)(unit, target);
+	d2r::Engine<void (*)(Game*, Unit*, int32_t, void*) noexcept>(SrvPrgDispatch)(game, unit, skillId, queued);
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t, uint8_t) noexcept>(ApplyMeleeHit)(game, unit, target, 0, 1);
+	if (d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) == 0) {
+		d2r::api.setUnitSkillFlag(unit, 1);
+	}
+	const uint32_t resultFlags = damage.resultFlags;
+	ReleaseDamage(damage);
+	const bool sampleCast = plog::Sample(g_dragonFlights);
+	if ((hit && plog::Sample(g_dragonFlightHits)) || sampleCast) {
+		plog::Info("dragon flight: skill %d level %d at unit type %d: to-hit %d (progressive %d), result 0x%x, "
+		           "damage%% %d, cast %u, hits %u", skillId, level, At<int32_t>(target, UnitType), toHit, progressive,
+		           resultFlags, percent, g_dragonFlights.load(), g_dragonFlightHits.load());
+	}
+	return 1;
+}
+
 constexpr int32_t Bash = 126, UberTalicBash = 580;
 
 // --- Poison Dagger (PD2 srvdofunc 164 -> router 190, cltdofunc 102 -> 122; docs/research/necromancer-w11.md) ---------
@@ -2808,6 +2869,9 @@ const SlotFunction Functions[] = {
 	{CltDo, 128, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltPrgRing)), "charge ring"},
 	{MissileCltDo, 79, reinterpret_cast<const void*>(static_cast<MissileCltDoFn>(CltDoChargeExplode)), "charge explode"},
 	{MissileCltHit, 67, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitChargeBolt)), "charge bolt"},
+	// Dragon Flight keeps PD2's free srvdo 178; Psychic Hammer's dmg 15 is D2R's Holy Bolt, so ours takes 22 (FUNCS)
+	{SrvDo, 178, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoDragonFlight)), "dragon flight"},
+	{MissileSrvDmg, 22, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgChainFalloff)), "chain falloff"},
 };
 
 }  // namespace
@@ -2889,7 +2953,7 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "client %u, blood warps %u, refused %u, desecrates %u, client %u, corpses hidden %u, revives %u, "
 	              "revive events %u, splashes %u, channels %u, client %u, take-overs %u, blade fury refused %u, "
 	              "held %u, charge-up hits %u, charges %u, charge hit frames %u, holy lights %u, gusts %u, hungers %u, "
-	              "novas %u, client %u, static fields %u, %s",
+	              "novas %u, client %u, static fields %u, dragon flights %u, hits %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
@@ -2898,5 +2962,6 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              g_reviveEvents.load(), g_reviveSplashes.load(), g_channels.load(), g_channelClients.load(),
 	              g_takeOvers.load(), g_bladeFuryRefusals.load(), g_heldRequests.load(), g_chargeHits.load(),
 	              g_charges.load(), g_chargeHitFrames.load(), g_holyLights.load(), g_gusts.load(),
-	              g_hungers.load(), g_novas.load(), g_novaClients.load(), g_staticFields.load(), missiles);
+	              g_hungers.load(), g_novas.load(), g_novaClients.load(), g_staticFields.load(), g_dragonFlights.load(),
+	              g_dragonFlightHits.load(), missiles);
 }
