@@ -20,8 +20,8 @@ Out:
   modifier is new content for a patch after the launch.
 - Map items and recipes belong to the map system ([map-system.md](map-system.md)); uber keys, organs and the Rathma
   tomes' source to the uber bosses ([uber-bosses.md](uber-bosses.md)); item art to #143's art plan. PvP items are cut.
-- The gamble refresh button and buying back a unique charm sold by mistake are cut, unless a companion gives them
-  (IR1). Stash search and gold caps went with the stash layouts.
+- Buying back a unique charm sold by mistake is cut. The gamble refresh button is D2R's own (#189). Stash search and
+  gold caps went with the stash layouts.
 
 ## Decisions
 
@@ -35,8 +35,8 @@ Out:
   - Cast Triggers takes skill on block and skill on cast. P12's listener walk is removed once it passes; Ormus' Robes
     (func 25 -> 26) stays in core-rules. If it clashes with core-rules' hooks (`0x43acb0`, event slot 16), it is forked
     into core-rules instead.
-  - Ethereal Item Rules, Item Durability, Progressive Affixes, Mass Identify and Vendor Stock Refresh are candidates
-    for the ethereal rules, the rare affix minimum, the Almanac's identify-all and the gamble refresh.
+  - Ethereal Item Rules and Item Durability give set items rolling ethereal and full ethereal durability, Progressive
+    Affixes the rare affix minimum, and Mass Identify shift-click identify on a tome; the Almanac stays IR5's (#189).
   - Mercenary drop on hire (yinyin333333, closed source) gives a mercenary's gear back when another is hired.
   A plugin that matches PD2 closes its row; one that only comes close makes its row approximated.
 - **The dye stat** (`transform_dye`) tints the output of 35 PD2 cube rows (the Annihilus corruptions and the magic-item
@@ -59,7 +59,7 @@ Out:
 | IR5 | Item use and charges: unlimited TP and ID books (`pSpell` 13 -> 17), throwing potions with PD2's weapon spell columns, item casts (`ItemEffect`), replenish charges | core-rules | none |
 | IR6 | Cube: the demonic cube reroll (op 31), corruption in one press, stackable runes and gems (shared with MS6's map stacking) | core-rules | none |
 | IR7 | Equipped items: skill while equipped and phasing, the charm "only one unique" rule | core-rules | none |
-| IR8 | Item generation and loot: the wiki rules IR2 does not close (ethereal, rare affixes, loot placement, seal kills), the belt and no-sell data checks | core-rules | IR1 |
+| IR8 | Item generation and loot: the ethereal bonus (25%), weapon durability loss at half the rate, the wiki rules IR2 does not close (rare affix split, staffmods, loot placement, seal kills), the belt and no-sell data checks | core-rules | IR1 |
 
 ## Game check
 
