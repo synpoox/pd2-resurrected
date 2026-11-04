@@ -20,8 +20,8 @@ Q2). Of the values the seven skills use, PD2 writes:
 | missile clthit (`[0x105e1364]`, `0x103a6c50`) | 67 `0x103a6aa0` | |
 
 Two of the rewritten slots keep vanilla behaviour for the finishers. PD2 reaches vanilla code through
-version-indexed offset entries; column 0 is 1.13c (the entry `0x104a8e2c` holds D2Game `0x10da48` there). D2Game's srvdo table is at
-file offset `0x1074a8`, D2Client's cltdo table at file offset `0xdea48`.
+version-indexed offset entries; column 0 is 1.13c (the entry `0x104a8e2c` holds D2Game `0x10da48` there).
+D2Game's srvdo table is at file offset `0x1074a8`, D2Client's cltdo table at file offset `0xdea48`.
 
 - **srvdo 143**: when the skill's own srvdofunc is 143 (the Royal Fire bosses) it runs PD2's fire path; otherwise it
   tail-calls vanilla srvdo 143 (D2Game `0x94e60`). Blades of Ice's prg3 and Royal Strike's prg2 get vanilla 143.
@@ -41,9 +41,10 @@ The charge count is the skill's `aurastat1` value on its `aurastate` list (`0x10
 - **srvdo 170** (all seven skills; D2R uses 34 and 35, and 35 alternates hands before calling 34): one charge-up hit.
   1. If `0x1036ee80(unit)` returns 3, it removes every progressive state the unit has. The list of those states is
      at data tables `+0x16c`, count `+0x170`. Then it rolls the melee attack (`0x103048a0`).
-  2. On a hit (bit 0 set, and either the target passes `0x1037c820` or none of `0x8390` is set), it adds charges
-     (`0x1036efe0`) while this skill's charge count is at most that returned value. Charges are shared: a charge-up
-     skill takes over the highest count, and a hit at 3 clears all states and restarts at 1.
+  2. On a hit (bit 0 set, and either the target is a player that passes `0x1037c820` or none of `0x8390` is set), it
+     adds charges (`0x1036efe0`) while this skill's charge count is at most that returned value. `0x1036ee80` is not
+     read yet. The likely reading is that it returns the unit's highest charge count, so charges are shared: a
+     charge-up skill takes over the highest count, and a hit at 3 clears all states and restarts at 1. W29 confirms it.
   3. Cobra Strike and RakanothStrike (`aurastat1` 319, `progressive_steal`): at the 2nd charge it adds a 3-frame stat
      list with lifedrainmindam (60) and manadrainmindam (62) = calc1, and stat 25 = calc2.
   4. The melee damage (`0x1031b4a0`) follows. Then, on a hit, it calls srvprgfunc[min(charges, 3)] at once, bound
@@ -67,7 +68,8 @@ The charge count is the skill's `aurastat1` value on its `aurastate` list (`0x10
   The sub-missile gets a calc for its length and three params copied from the missile.
 
 **Release.** A finisher (Dragon Talon and the other finishers, and plain Attack: D2R srvdo 1, 42, 46, 50, 52) calls
-D2R's release dispatcher `0x56c3e0`. PD2 keeps vanilla's version of it. For each progressive state on the unit, it reads
+D2R's release dispatcher `0x56c3e0`. PD2's install routines don't replace it, but whether ProjectDiablo.dll hooks
+1.13c's copy was not checked (W29 checks it: srvdo 170 already fires prg[n] on each hit). For each progressive state on the unit, it reads
 the skill (stat 350) and level (stat 351) and takes n = min(max(charges, 1), 3). With `prgstack`, it first calls
 srvprgfunc1..n-1, setting the list's charge stat to i before each call. Then it calls srvprgfunc n, with the do signature
 and the charge-up skill's id, and sends the release packet (`0x5396d0`). The client side reads `cltprgfunc1-3`
@@ -81,7 +83,7 @@ and the charge-up skill's id, and sends the release packet (`0x5396d0`). The cli
 | srvprg 171 | FoF 3, Cobra 1, Rakanoth 1 | Charged Bolt Disk | -> 184 |
 | srvprg 172 | FoF 2, Cobra 3, Rakanoth 3 | Leap (W8, 172) | -> 185 |
 | srvprg 39 | FoF 1 | vanilla 39 (D2R's own FoF/BoI rows) | -> 186: call D2R srvdo 38, then 39 |
-| srvprg 139 | BoI 2 | Baal Cold Missiles (vanilla) | -> 181 (the monster rows keep D2R's 139) |
+| srvprg 139 | BoI 2 | Baal Cold Missiles (vanilla) | -> 181 (the four monster rows keep D2R's 139 for now: a `verify` row in core-rules) |
 | srvprg 143 | BoI 3, Royal 2 | vanilla 143 | data |
 | srvprg 36, 37, 40, 41 | CoT, Royal | vanilla | data |
 | cltprg 106 | FoF 3, Cobra 1, Rakanoth 1 | Bind Demon | -> 127 |
@@ -91,7 +93,7 @@ and the charge-up skill's id, and sends the release packet (`0x5396d0`). The cli
 | chit 67 | clawsofthunderbolt | empty | 67 |
 | srvst 23, 78 | all; Tiger Strike | vanilla; built (W10) | data; done |
 
-The router here is the router slot (glossary): srvdofunc 190 holds core-rules' `SrvDoRouter`
+The router is the router slot (glossary): srvdofunc 190 holds core-rules' `SrvDoRouter`
 (`plugin/core-rules/skill_functions.cpp`), which calls a PD2 do function by skill id. It is ours, not D2RLoader's.
 The prg functions can't share it with srvdo 170. The release dispatcher calls them with the charge-up skill's
 own id, which the router already maps to the 170 port. So they need real slots. D2R's free 172-190 are all used or
@@ -100,19 +102,19 @@ skill id, so they are still built (after the cut), as router cases instead of in
 go to the four prg functions. Until then their stand-ins (`merge/standins.tsv`) keep those monsters' srvdofunc off
 181 and 184-186. 188 is avoided: item casts need it empty (`ItemEffect`).
 
-The merge moves the values by column in `tools/pd2_ids.py` FUNCS: `srvdofunc` 170 -> 190; `srvprgfunc1-3` 171 -> 184,
-172 -> 185, 39 -> 186, 139 -> 181; `cltprgfunc1-3` 106 -> 127, 107 -> 128; missiles `pCltDoFunc` 69 -> 79. No other
-PD2 row uses those values in those columns. Baal Cold Missiles' `srvdofunc` 139 is in another column, so it does not
-move.
+The merge moves each Port value above by column in `tools/pd2_ids.py` FUNCS (`srvdofunc`, `srvprgfunc1-3`,
+`cltprgfunc1-3`, missiles `pCltDoFunc`). No other PD2 row uses those values in those columns. Baal Cold Missiles'
+`srvdofunc` 139 is in another column, so it does not move.
 
 ## Split
 
 - **W29, server half**: the srvdo 170 port in the router (build, shared charges, the steal list, the immediate prg
   call through the table), the prg ports at 184, 185, 186 and 181, and the FUNCS entries. It is checked by charge-up
   hits on a monster (the charge count after each hit, the prg slot fired) and by a Dragon Talon release (the stacked
-  prg calls). It also resolves the 139 missile helper and reads the Cobra Strike branch of 171/172, and narrows the
-  finishers' stand-ins (`merge/standins.tsv`, Tiger Strike and RakanothStrike) and their unported row to the client
-  columns. Size L.
+  prg calls). It also reads `0x1036ee80` (shared charges), checks PD2 for a hook on the release dispatcher, resolves
+  the 139 missile helper and reads the Cobra Strike branch of 171/172, adds `SrvPrgDispatch` to the RVA header, and
+  narrows the finishers' stand-ins (`merge/standins.tsv`, Tiger Strike and RakanothStrike) and their unported row to
+  the client columns. Size L.
 - **W30, client half**: cltprg 127 and 128, cdo 79 and chit 67 (with their FUNCS entries), checked by the client
   missiles each charge creates. It removes what is left of the stand-ins and the unported row. Size M.
 

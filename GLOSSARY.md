@@ -57,7 +57,7 @@ _Avoid_: patch, function number (a function number is where one engine rule plug
 
 **Router slot**:
 srvdofunc 190, one D2R table slot holding a core-rules function that picks a PD2 do function by skill id; it carries the do functions that have no free slot of their own. Not part of D2RLoader.
-_Avoid_: router (alone), overflow table, dispatcher
+_Avoid_: overflow table, dispatcher
 
 **Complete class**:
 A PD2 class whose player skills reach no unbuilt engine rule, including the rules for how its skills interrupt and chain; each is built or an approximated deviation. Class-themed item rules do not count.
