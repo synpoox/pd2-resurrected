@@ -5,7 +5,7 @@ How the port builds the PD2 item rules that have no work item yet, decided in
 What is left is in the
 [inventory](https://github.com/synpoox/pd2-resurrected/blob/research/pd2-remaining-items/docs/research/pd2-remaining-items.md)
 (#148). Each rule is a row in [core-rules.md](core-rules.md) and on [unported.md](unported.md). The work items are placed
-on [roadmap.md](roadmap.md) by #143's final ordering ticket.
+on [roadmap.md](roadmap.md) by [#210](https://github.com/synpoox/pd2-resurrected/issues/210).
 
 ## Scope
 
@@ -52,12 +52,12 @@ Out:
 
 | # | Work item | Plugin | Blocked by |
 |---|---|---|---|
-| IR1 | Investigation ([#189](https://github.com/synpoox/pd2-resurrected/issues/189)): RuffnecKk's suite plugins next to core-rules on 93847, each against PD2's rule | none | none |
+| IR1 | Investigation ([#189](https://github.com/synpoox/pd2-resurrected/issues/189), done): RuffnecKk's suite plugins next to core-rules on 93847, each against PD2's rule | none | none |
 | IR2 | Companions: bundle Cast Triggers (skill on block, skill on cast; P12's listener walk removed), mercenary drop on hire and the suite plugins that pass IR1, with their config | companions, core-rules (removal) | IR1 |
 | IR3 | Combat stats: the crit rework, deadly strike multiplier and maximum, the crushing blow formula and efficiency, deep wounds and the open wounds rework, Nightmare's Feast (life-steal cap, splash per missing life), enhanced damage per ethereal item and per missing life | core-rules | none |
 | IR4 | Curses: curse effectiveness, max curses | core-rules | none |
 | IR5 | Item use and charges: unlimited TP and ID books (`pSpell` 13 -> 17), throwing potions with PD2's weapon spell columns, item casts (`ItemEffect`), replenish charges | core-rules | none |
-| IR6 | Cube: the demonic cube reroll (op 31), corruption in one press, stackable runes and gems (shared with MS6's map stacking) | core-rules | none |
+| IR6 | Cube and stacking: the demonic cube reroll (op 31), corruption in one press, the stack split (`HOTKEY_ItemQuantity`) for every PD2 stackable (orbs, keys, organs, maps, runes, gems); the merged `stackable` rows stay PD2's; game check: the split, and runes stack in the inventory and in D2R's rune stash tab | core-rules | none |
 | IR7 | Equipped items: skill while equipped and phasing, the charm "only one unique" rule | core-rules | none |
 | IR8 | Item generation and loot: the ethereal bonus (25%), weapon durability loss at half the rate, the wiki rules IR2 does not close (rare affix split, staffmods, loot placement, seal kills), the belt and no-sell data checks | core-rules | IR1 |
 

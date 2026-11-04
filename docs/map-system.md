@@ -6,7 +6,7 @@ How the port rebuilds PD2's map system, decided in [#152](https://github.com/syn
 (#144). How D2R Reimagined built its own is in their
 [study](https://github.com/synpoox/pd2-resurrected/blob/research/reimagined-map-system/docs/research/reimagined-map-system.md)
 (#145). Terms (map item, map tier, map area, map stat, map event, invader) are in [GLOSSARY.md](../GLOSSARY.md). The
-work items are placed on [roadmap.md](roadmap.md) by #143's final ordering ticket.
+work items are placed on [roadmap.md](roadmap.md) by [#210](https://github.com/synpoox/pd2-resurrected/issues/210); MS6 was folded into IR6 there.
 
 ## Scope
 
@@ -36,13 +36,14 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
 - **Which area a map opens** comes from `ProjectDiablo.dll`, read with Ghidra, never paired by name.
 - **Map drops:** the P3 no-drop lines in `merge/item-tables.txt` come back in the same work item that makes maps openable,
   so no build drops a map you cannot use.
-- **Stacking:** normal maps stack to 50 and split as in PD2 (`HOTKEY_ItemQuantity`).
+- **Stacking:** normal maps stack to 50 and split as in PD2 (`HOTKEY_ItemQuantity`). Every PD2 stackable shares this,
+  so it is built once in IR6 ([item-rules.md](item-rules.md)), not in a map item (#210).
 - **Invaders** run their table AIs (the vanilla `BloodRaven`, `Summoner` and so on). That is an approximated deviation.
-  PD2's own invader brain (`AiThink4.cpp`) is a "not yet" row for later in the alpha.
+  PD2's own invader brain (`AiThink4.cpp`) replaces them in MS11.
 - **Plugins:** `core-maps` (Shared) holds the code that belongs only to the map system: opening maps, map stats, cube
   op 30, map events and invaders. It is a plugin of its own because the map system is large enough to be used outside
   this project ([ADR 0004](adr/0004-plugins-split-by-multiplayer-scope.md), amended). Rules the map system shares with
-  other content stay in `core-rules`: stacking and the split, the level life regen cap, the Teleport 3 path search, the
+  other content stay in `core-rules`: the level life regen cap, the Teleport 3 path search, the
   Find Item and Desecrate monster lists, and the death novas. `core-maps` never calls `core-rules`.
 - **Rules deferred to the map plan** (core-rules rows and their unported rows) join the work item that first brings in
   their levels or monsters (table below).
@@ -64,11 +65,11 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
 | MS3 | Monster and player map stats (`map_mon_*`, `map_play_*`); the level life regen cap | core-maps, core-rules (cap) | MS2 |
 | MS4 | Area map stats (`map_glob_*`): density, area level, monster rarity, extra monster groups, extra boss, fortify, drop stats | core-maps | MS2 |
 | MS5 | Map recipes: cube op 30, and one recipe per group checked in game | core-maps | MS1 |
-| MS6 | Map stacking and the stack split | core-rules | MS5 |
 | MS7 | Dungeons and unique maps: their multi-level areas, the Teleport 3 path search, the Nihlathak map death nova | core-maps, core-rules (Teleport 3, nova) | MS2, the level pipeline for those areas |
 | MS8 | Events that only spawn: Dark Wanderer, Shadow of Mendeln, Treasure Fallen, Gheed, Altar of the Catalyst, Spire of Darkness | core-maps | MS4 |
 | MS9 | Events that open areas: Horazon, Void/Tomb | core-maps | MS8, MS7 |
 | MS10 | Invaders on their table AIs (approximated), with their ears | core-maps | MS8 |
+| MS11 | PD2's invader brain (`AiThink4.cpp`) in place of the table AIs | core-maps | MS10 |
 
 ## Game check
 
