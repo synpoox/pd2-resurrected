@@ -17,5 +17,7 @@
     "pCltDoFunc": "78", "pSrvDoFunc": "46", "pSrvHitFunc": "", "HitSubMissile1": "",
     "Vel": "4", "MaxVel": "36", "Accel": "1600", "Range": "80", "SrcDamage": "38",
     "CollideType": "3", "CollideKill": "", "LastCollide": "1", "ClientCol": "1", "ClientSend": "1", "Town": "1"
-  }}
+  }},
+  {"op": "missile_hd", "missile": "splitthrowaxe", "like": "throwaxe"},
+  {"op": "missile_hd", "missile": "splitthrowaxereturn", "like": "throwaxe"}
 ]}

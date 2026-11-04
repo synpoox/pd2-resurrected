@@ -11,11 +11,13 @@ Run:
   (the cast checks skip until a cast is in the log). For split-throw-return, walk into Blood Moor and throw at
   monsters (allowed in PD2 Resurrected slots). The fixture adds PD2's splitthrowaxe and splitthrowaxereturn rows
   (PD2's values, cloned from throwaxe) with Town 1: a missile without it dies at once in town, so nothing would be
-  drawn. It keeps D2R's quickness state in place of PD2's temp_skill_buff (merged as state 270): the merged tables
+  drawn. Both also get throwaxe's HD model (missile_hd): D2R's HD renderer draws only missiles named in
+  data/hd/missiles/missiles.json, so without it they hit but are invisible. It keeps D2R's quickness state in place of PD2's temp_skill_buff (merged as state 270): the merged tables
   do not pass modkit's validation yet (skilldesc, overlay, pettype, monstats, item events and affix properties are
   later work items), so the fixture cannot build on them. The merged P2 tables were checked on Slot4 (#45): state
   270, attackrate 100 -> 110 -> 100 over one buff, ten casts with no crash.
 """
+import json
 import os
 import re
 
@@ -106,6 +108,20 @@ def split_throw_return(ctx):
         ctx.skip("no return missile in the log yet (hit a monster with Split Throw, then run again)")
     assert "return missile: caught by the thrower" in log, "a return missile spawned but none reached the thrower"
     return "spawned on hit and caught"
+
+
+@check("split-throw-hd-models", tags=["core-rules"])
+def split_throw_hd_models(ctx):
+    """The installed data maps both Split Throw missiles to an HD model; without one they hit but are not drawn."""
+    path = os.path.join(ctx.cfg.slot_dir(ctx.slot), "mods", ctx.cfg.mod_folder(), f"{ctx.cfg.mod_folder()}.mpq",
+                        "data", "hd", "missiles", "missiles.json")
+    if not os.path.isfile(path):
+        ctx.skip(f"no installed missiles.json: {path}")
+    with open(path, encoding="utf-8-sig") as f:
+        models = json.load(f)
+    missing = [m for m in ("splitthrowaxe", "splitthrowaxereturn") if not models.get(m)]
+    assert not missing, f"no HD model for {missing} in {path}"
+    return ", ".join(f"{m} {models[m]}" for m in ("splitthrowaxe", "splitthrowaxereturn"))
 
 
 @check("core-rules-no-crash", tags=["core-rules"])
