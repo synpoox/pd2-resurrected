@@ -18,7 +18,6 @@ skills	Defiance	=	cltdofunc	Paladin aura client do
 skills	Defiance	=	cltstfunc	Paladin aura client start
 skills	Resist Cold	=	cltdofunc	Paladin aura client do
 skills	Resist Cold	=	cltstfunc	Paladin aura client start
-skills	Charge	=	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Charge (Paladin)
 skills	Blessed Aim	=	cltdofunc	Paladin aura client do
 skills	Blessed Aim	=	cltstfunc	Paladin aura client start
 skills	Cleansing	=	cltdofunc	Paladin aura client do
@@ -51,20 +50,19 @@ skills	Summon Fenris	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Fire Claws	=	srvdofunc,cltdofunc	Fire Claws
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
 skills	Hunger	=	srvdofunc	Hunger
-skills	Tiger Strike	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Fists of Fire	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Cobra Strike	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Claws of Thunder	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Blades of Ice	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Tiger Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Fists of Fire	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Cobra Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Claws of Thunder	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Blades of Ice	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Dragon Flight	=	srvdofunc	Dragon Flight
-skills	Royal Strike	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Royal Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
 skills	Gust	Teleport	srvdofunc	Gust
-skills	Holy Light	Holy Bolt	srvdofunc	Holy Light
 skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
 skills	Split Throw	-	cltdofunc	Split Throw
 skills	Combustion	Nova	srvdofunc,cltdofunc	Combustion and boss novas
@@ -92,7 +90,7 @@ skills	Energy Shield SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Energy Shield SelfAura	Might	cltstfunc	Paladin aura client start
 skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Chilling Armor SelfAura	Might	cltstfunc	Paladin aura client start
-skills	RakanothStrike	Cobra Strike	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	RakanothStrike	Cobra Strike	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	TorajanBossNest	Nest	srvdofunc	TorajanBossNest
 skills	LucionNova	Nova	srvdofunc	Lucion kit
 skills	LucionBlink	Teleport	cltdofunc	Lucion kit
@@ -122,7 +120,6 @@ missiles	clawsofthunderbolt	=	pCltHitFunc	Assassin charge-up finishers
 missiles	bladesoficecubes	=	pCltDoFunc	Assassin charge-up finishers
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
 missiles	siege beast stomp missile	-	pCltDoFunc	Siege beast stomp client do
-missiles	holylightdelay	fistoftheheavensdelay	pCltHitFunc	Holy Light
 missiles	psychichammer	-	pSrvDmgFunc	Psychic Hammer missile damage
 missiles	uberimmolationarrow	immolationarrow	pSrvHitFunc	Uber immolation arrow hit
 missiles	rathmabonespear	bonespear	pSrvDmgFunc	Rathma bone spear, blade fragment damage

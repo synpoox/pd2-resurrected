@@ -13,3 +13,7 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
 
 Edit the "Label in our tracker" column to match whatever vocabulary you actually use.
+
+## Other labels
+
+- `pd2-origin`: the bug exists in PD2 itself and we fixed it in the port. Use with `bug`; each one gets a row in [pd2-origin-bugs.md](../pd2-origin-bugs.md).

@@ -107,12 +107,29 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows, [["flamewave", "71", "38"], ["back", "78", "46"], ["bolt", "1", "1"]])
 
+    def test_holy_light_keeps_its_slots_fist_delay_hit_moves(self):
+        d2r = table("Missile|pCltHitFunc\nfistoftheheavensdelay|26\n")
+        pd2 = table("Missile|pCltHitFunc\nfistoftheheavensdelay|26\nholylightdelay|66\n")
+        lines = [("fistoftheheavensdelay", 0, "fistoftheheavensdelay"), ("holylightdelay", 1, "holylightdelay")]
+        merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["fistoftheheavensdelay", "71"], ["holylightdelay", "66"]])  # D2R's 26 differs
+
     def test_poison_dagger_function_numbers(self):
         d2r = table("skill|srvstfunc|srvdofunc|cltdofunc\nAttack|1|1|1\n")
         pd2 = table("skill|srvstfunc|srvdofunc|cltdofunc\nPoison Dagger|68|164|102\n")
         lines = [("Poison Dagger", 1, "Poison Dagger")]
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["Poison Dagger", "32", "190", "122"])
+
+    def test_finisher_function_numbers(self):
+        # srvdo 170 joins the router; the prg values move only in the prg columns (srvdo 39 / 139 stay D2R's)
+        cols = "skill|srvdofunc|srvprgfunc1|srvprgfunc2|srvprgfunc3"
+        d2r = table(f"{cols}\nAttack|1|||\n")
+        pd2 = table(f"{cols}\nFists of Fire|170|39|172|171\nBlades of Ice|170||139|143\nCold|139|||\n")
+        lines = [("Fists of Fire", 1, "Fists of Fire"), ("Blades of Ice", 2, "Blades of Ice"), ("Cold", 3, "Cold")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Fists of Fire", "190", "186", "185", "184"],
+                                           ["Blades of Ice", "190", "", "181", "143"], ["Cold", "139", "", "", ""]])
 
     def test_teleport_goes_to_the_router(self):
         d2r = table("skill|srvdofunc\nAttack|1\n")
@@ -139,6 +156,14 @@ class FormulaAndColumnTests(unittest.TestCase):
         lines = [("Attack", 0, "Attack"), ("Blood Warp", 1, "Blood Warp")]
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["Blood Warp", "190", "80", "63"])  # router, then the first free start slots
+
+    def test_charge_keeps_its_server_slots_and_takes_d2r_client_functions(self):
+        cols = "skill|srvdofunc|srvstfunc|cltdofunc|cltstfunc"
+        d2r = table(f"{cols}\nAttack|1|0|0|0\n")
+        pd2 = table(f"{cols}\nAttack|1|0|0|0\nCharge|180|72|112|57\n")
+        lines = [("Attack", 0, "Attack"), ("Charge", 1, "Charge")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1], ["Charge", "180", "72", "37", "25"])
 
     def test_melee_splash_joins_the_router(self):
         d2r = table("skill|srvdofunc\nAttack|1\n")
