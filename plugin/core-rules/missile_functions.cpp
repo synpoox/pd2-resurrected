@@ -358,8 +358,8 @@ auto SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept -> int32
 	}
 	g_spreadExplosions.fetch_add(static_cast<uint32_t>(created));
 	if (plog::Sample(g_spreadHits)) {
-		plog::Info("explode spread: skill %d level %d: %d of %d explosions from frame %d, hit %u", skillId, level,
-		           created, count, start, g_spreadHits.load());
+		plog::Info("explode spread: skill %d level %d: %d of %d explosions from frame %d, result %d, hit %u",
+		           skillId, level, created, count, start, result, g_spreadHits.load());
 	}
 	return result;
 }

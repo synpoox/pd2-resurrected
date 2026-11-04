@@ -119,6 +119,12 @@ Fury at the pack and at a wall or tree near it, hold it for a second, and run th
 W34 check (tag core-rules-w34), same merged data: any level 90+ character in Hell (`debug_mode`, `cheat god 1`,
 `cheat goto 2`, `cheat mspawn megademon3,6`: zombies rarely deal enough for a get-hit); stand in the pack and keep
 attacking or casting while it hits you (get-hit and block both count), and run the same command with core-rules-w34.
+
+W35 checks (tag core-rules-w35), same merged data: a level 90+ Barbarian in Hell with Frenzy (147) and One or Two Hand
+Mastery and an item_splashonhit item (The Gnasher, `cheat uniques 0`), at least 11 mana (`debug_mode`, `cheat god 1`,
+`cheat goto 2`, `cheat mspawn megademon3,6`). The log keeps a game's first splash only, so start the game fresh and
+Frenzy into the pack before any other splash, then run the same command with core-rules-w35.
+
 P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
 drops Ormus' Robes; `cheat idall`, wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); cast spells at
 the pack until a proc logs (12% a cast, 8% for a skill with a cooldown), and run the same command with core-rules-p12.
@@ -192,7 +198,7 @@ def _log(ctx) -> str:
                                  "core-rules-w21", "core-rules-w22", "core-rules-w24", "core-rules-w29",
                                  "core-rules-w17", "core-rules-w23", "core-rules-w27", "core-rules-w28", "core-rules-w30",
                                  "core-rules-w18", "core-rules-w19", "core-rules-w20", "core-rules-w31", "core-rules-w32",
-                                 "core-rules-w34", "game"])
+                                 "core-rules-w34", "core-rules-w35", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -254,10 +260,13 @@ def split_throw_return(ctx):
     """A Split Throw axe that hit a monster spawned its return missile (shit 65), and a return reached the thrower
     (sdo 46). Needs a cast at monsters out of town."""
     log = _log(ctx)
-    if "return missile: spawned on hit" not in log:
+    results = [int(r) for r in re.findall(r"return missile: spawned on hit, result (-?\d+)", log)]
+    if not results:
         ctx.skip("no return missile in the log yet (hit a monster with Split Throw, then run again)")
+    # D2R's collision deals the axe's damage only when the srvhit result has bit 2 set (#122)
+    assert all(r & 2 for r in results), f"results {sorted(set(results))}: D2R deals the axe's damage on bit 2"
     assert "return missile: caught by the thrower" in log, "a return missile spawned but none reached the thrower"
-    return "spawned on hit and caught"
+    return f"spawned on hit (results {sorted(set(results))}) and caught"
 
 
 def dm34(level: int) -> int:
@@ -325,10 +334,12 @@ def _rows(name: str) -> list[str]:
 @check("exploding-arrow-spread", tags=["core-rules-w6"])
 def exploding_arrow_spread(ctx):
     """Exploding Arrow's hit (pSrvHitFunc 63) makes PD2's calc2 explosions, min(3 + lvl/5, 8), from frame calc4 + 2."""
-    hits = re.findall(r"explode spread: skill 16 level (\d+): (\d+) of (\d+) explosions from frame (-?\d+)", _log(ctx))
+    hits = re.findall(r"explode spread: skill 16 level (\d+): (\d+) of (\d+) explosions from frame (-?\d+), "
+                      r"result (-?\d+)", _log(ctx))
     if not hits:
         ctx.skip("no Exploding Arrow hit in the log yet (shoot it at a monster, then run again)")
-    level, created, count, start = (int(v) for v in hits[0])
+    level, created, count, start, result = (int(v) for v in hits[0])
+    assert result == 3, f"result {result}: PD2's 63 returns 3, so D2R deals the arrow's damage (bit 2)"
     assert count == min(3 + level // 5, 8), f"level {level}: {count} explosions, PD2 makes {min(3 + level // 5, 8)}"
     assert created == count, f"{created} of {count} explosion missiles created"
     assert start == 4, f"first explosion at frame {start}, PD2: calc4 (2) + 2"
@@ -640,24 +651,69 @@ def revive_event(ctx):
     return f"fired on a revive hitting unit type {target_type}, splash cast {cast}"
 
 
+SPLASH = re.compile(r"splash: skill (\d+) level (\d+) from unit type \d+ at unit type \d+: radius (-?\d+) \(calc3 (-?\d+), "
+                    r"inc_splash_radius (-?\d+), weapon types (-?\d+), normal base (\d)\), current skill (\d+) level "
+                    r"(\d+) damage% (-?\d+) srcdam (\d+), units hit (\d+)")
+FRENZY = 147  # merged skill id
+
+
+def _splashes(ctx) -> list[tuple[int, ...]]:
+    casts = [tuple(int(v) for v in c) for c in SPLASH.findall(_log(ctx))]
+    if not casts:
+        ctx.skip("no splash in the log yet (hit a pack with item_splashonhit, or Revive and let it fight, then run again)")
+    return casts
+
+
 @check("melee-splash", tags=["core-rules-w33"])
 def melee_splash(ctx):
     """A splash (proc_SplashDamage, Golem Splash, Skeleton Splash through the srvdo 190 router) hits the units within
     calc3 of the struck unit, the struck unit aside. proc_SplashDamage's calc3 is PD2's
     max(6 - lvl + inc_splash_radius / 20, 0)."""
-    casts = re.findall(r"splash: skill (\d+) level (\d+) from unit type \d+ at unit type \d+: radius (-?\d+) "
-                       r"\(inc_splash_radius (-?\d+)\), units hit (\d+)", _log(ctx))
-    casts = [tuple(int(v) for v in c) for c in casts]
-    if not casts:
-        ctx.skip("no splash in the log yet (hit a pack with item_splashonhit, or Revive and let it fight, then run again)")
-    for skill, level, radius, inc, _ in casts:
+    casts = _splashes(ctx)
+    for skill, level, _, calc3, inc, *_ in casts:
         if skill == PROC_SPLASH_DAMAGE:
-            assert radius == max(6 - level + int(inc / 20), 0), f"level {level}, inc_splash_radius {inc}: radius {radius}"
-    hits = [c for c in casts if c[4] > 0]
+            assert calc3 == max(6 - level + int(inc / 20), 0), f"level {level}, inc_splash_radius {inc}: calc3 {calc3}"
+    hits = [c for c in casts if c[-1] > 0]
     if not hits:
         ctx.skip(f"{len(casts)} splashes logged, none with units in range (splash a pack, then run again)")
-    skill, level, radius, inc, units = hits[0]
+    skill, level, radius, _, inc, *_, units = hits[0]
     return f"skill {skill} level {level}: radius {radius} (inc_splash_radius {inc}), {units} units hit"
+
+
+@check("splash-radius-extras", tags=["core-rules-w35"])
+def splash_radius_extras(ctx):
+    """PD2's radius: calc3 + the inc_splash_radius on the weapon's item type layers (One / Two Hand Mastery) / 20,
+    1 less on a normal-tier base (code == normcode)."""
+    casts = _splashes(ctx)
+    for _, _, radius, calc3, _, types, normal, *_ in casts:
+        assert radius == calc3 + int(types / 20) - normal, f"radius {radius}, calc3 {calc3}, types {types}, normal {normal}"
+    with_types = [c for c in casts if c[5] != 0]
+    if not with_types:
+        ctx.skip(f"{len(casts)} splashes, none with a mastery's inc_splash_radius (put points in One or Two Hand Mastery)")
+    _, _, radius, calc3, _, types, normal, *_ = with_types[0]
+    return f"radius {radius} = calc3 {calc3} + {types} / 20 - {normal}"
+
+
+@check("splash-current-skill", tags=["core-rules-w35"])
+def splash_current_skill(ctx):
+    """A player's splash carries its current skill: Frenzy's (147) at its hard points, with damage% from calc1 and
+    SrcDam from its row."""
+    casts = _splashes(ctx)
+    frenzy = [c for c in casts if c[7] == FRENZY and c[-1] > 0]
+    if not frenzy:
+        ctx.skip("no Frenzy splash with units hit yet (Frenzy into a pack with item_splashonhit, then run again)")
+    _, _, _, _, _, _, _, skill, level, percent, srcdam, units = frenzy[0]
+    assert level > 0, f"Frenzy at level {level}"
+    assert percent > 0, f"Frenzy's damage% {percent}: calc1 not read"
+    victims = re.findall(rf"splash hit: current skill {FRENZY}: phys (-?\d+) fire (-?\d+) light (-?\d+) magic (-?\d+) "
+                         r"cold (-?\d+) poison (-?\d+) \(1/256\), damage% (-?\d+)", _log(ctx))
+    if not victims:
+        ctx.skip("no Frenzy splash hit logged (the log keeps a game's first splash: restart, Frenzy first, run again)")
+    phys, *elements, hit_percent = (int(v) for v in victims[0])
+    assert hit_percent == percent, f"a splashed unit's damage% {hit_percent}, the block's {percent}"
+    assert phys > 0, f"a splashed unit took physical {phys}"
+    return (f"Frenzy level {level}: damage% {percent}, srcdam {srcdam}, {units} units hit; a splashed unit: "
+            f"phys {phys}, elemental {sum(elements)}")
 
 
 @check("throw-hd-models", tags=["core-rules"])
