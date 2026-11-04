@@ -25,8 +25,8 @@ def _nums(*spans: int | range) -> set[str]:
 PD2_ONLY = {
     "skills": {
         "auraeventfunc1": _nums(16),  # D2R puts a RotW event at 16; PD2's is Smite's
-        "srvdofunc": _nums(109, range(153, 158), range(159, 168), range(169, 171), range(173, 183), range(184, 187)),
-        "cltdofunc": _nums(22, 97, 98, range(100, 104), 105, range(109, 115), 118, 119),
+        "srvdofunc": _nums(109, 153, range(155, 158), range(159, 168), range(169, 171), range(173, 183), range(184, 187)),
+        "cltdofunc": _nums(22, 97, range(100, 104), 105, range(109, 115), 118, 119),
         "srvstfunc": _nums(64, range(66, 70), range(71, 78), 79),
         "cltstfunc": _nums(54, range(56, 59), 82),
         **{f"srvprgfunc{i}": _nums(171, 172) for i in (1, 2, 3)},
@@ -37,7 +37,7 @@ PD2_ONLY = {
         "pCltDoFunc": _nums(12, range(69, 71), 72),
         "pSrvHitFunc": _nums(34, range(60, 66)) | {"*12"},
         "pCltHitFunc": _nums(6, 11, 65, 66, 67) | {"*16"},  # *12/*16: PD2 text that parses as no function
-        "pSrvDmgFunc": _nums(range(15, 20)),
+        "pSrvDmgFunc": _nums(15, range(17, 20)),
     },
     "misc": {"pSpell": _nums(12, 13)},
     "properties": {f"func{i}": _nums(25) for i in range(1, 8)},

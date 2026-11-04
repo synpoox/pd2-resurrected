@@ -1,0 +1,28 @@
+{"ops": [
+  {"op": "set", "table": "skills", "key": "Double Throw", "bank": "excel", "set": {
+    "srvdofunc": "183", "cltstfunc": "", "cltdofunc": "116",
+    "anim": "A1", "seqtrans": "A1", "seqnum": "", "weapsel": "", "itypea1": "", "itypeb1": "",
+    "srvmissilea": "doublethrowaxe", "srvmissileb": "doublethrowknife", "srvmissilec": "doublethrowjav",
+    "cltmissilea": "doublethrowaxe", "cltmissileb": "doublethrowknife", "cltmissilec": "doublethrowjav",
+    "InTown": "1", "aurarangecalc": "par3",
+    "calc1": "ln12 + (skill('Double Swing'.blvl) + skill('Frenzy'.blvl))*par8", "calc2": "min(par5 + lvl / par6, 8)",
+    "calc3": "par4", "Param1": "45", "Param3": "15", "Param4": "0", "Param5": "3", "Param6": "3", "Param8": "6"
+  }},
+  {"op": "clone_row", "table": "missiles", "from": "throwaxe", "key": "doublethrowaxe", "bank": "excel", "set": {
+    "pCltHitFunc": "16", "pSrvHitFunc": "66", "pSrvDmgFunc": "21", "CltParam1": "3", "sHitPar1": "0", "cHitPar1": "0",
+    "Vel": "24", "MaxVel": "24", "NextHit": "1", "NextDelay": "1", "Size": "2", "Pierce": "", "Town": "1"
+  }},
+  {"op": "clone_row", "table": "missiles", "from": "throwknife", "key": "doublethrowknife", "bank": "excel", "set": {
+    "pCltHitFunc": "16", "pSrvHitFunc": "66", "pSrvDmgFunc": "21", "CltParam1": "3", "sHitPar1": "0", "cHitPar1": "0",
+    "Vel": "24", "MaxVel": "24", "NextHit": "1", "NextDelay": "1", "Size": "2", "Pierce": "", "Town": "1"
+  }},
+  {"op": "clone_row", "table": "missiles", "from": "javelin", "key": "doublethrowjav", "bank": "excel", "set": {
+    "pCltHitFunc": "16", "pSrvHitFunc": "66", "pSrvDmgFunc": "21", "CltParam1": "3", "sHitPar1": "0", "cHitPar1": "0",
+    "NextHit": "1", "NextDelay": "1", "Size": "2", "Pierce": "", "Town": "1"
+  }},
+  {"op": "set", "table": "weapons", "key": "Francisca", "bank": "excel", "set": {"reqdex": "0"}},
+  {"op": "set", "table": "weapons", "key": "Battle Dart", "bank": "excel", "set": {"reqdex": "0"}},
+  {"op": "missile_hd", "missile": "doublethrowaxe", "like": "throwaxe"},
+  {"op": "missile_hd", "missile": "doublethrowknife", "like": "throwknife"},
+  {"op": "missile_hd", "missile": "doublethrowjav", "like": "javelin"}
+]}

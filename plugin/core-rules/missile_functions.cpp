@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cstring>
 
 namespace {
 
@@ -83,6 +84,113 @@ void CltDoReturn(Unit* missile, int32_t a2) noexcept {
 	d2r::Engine<MissileCltDoFn>(MissileCltDoDefault)(missile, a2);
 }
 
+// --- Double Throw's missiles (PD2 pSrvHitFunc 30 -> 66, pSrvDmgFunc 16 -> 21) ------------------------------------
+namespace {
+
+std::atomic<uint32_t> g_bounces {0};
+std::atomic<uint32_t> g_firstHits {0};
+
+using MissileIntFn = int32_t (*)(Unit*) noexcept;
+
+auto MissileSkillRecord(Game* game, Unit* missile, int32_t* skillId, int32_t* level) noexcept -> const uint8_t* {
+	*skillId = d2r::Engine<MissileIntFn>(d2r::rva::MissileSkill)(missile);
+	*level = d2r::Engine<MissileIntFn>(d2r::rva::MissileLevel)(missile);
+	return d2r::api.getSkillRecord(d2r::DataFlag(game), *skillId);
+}
+
+}  // namespace
+
+// shit 66 (PD2 30, ProjectDiablo.dll 0x103a7a50): D2R's Chain Lightning hit (srvhit 12) as PD2 changed it. While the
+// missile has bounces left, throw the same missile from it at the nearest other target within sHitPar1 or the skill's
+// aurarangecalc (no minimum of 1, unlike srvhit 12), with one bounce less, and set damagepercent = calc1 on the
+// missile that hit (PD2 sets it there, not on the new one).
+// shortcut: PD2 also never bounces while the owner is in a PvP map (levels 157, 159, 166); those maps are cut.
+auto SrvHitBounce(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (game == nullptr || missile == nullptr || hit == nullptr) {
+		return 1;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
+		dataFlag, At<int32_t>(missile, UnitClassId));
+	Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
+	if (row == nullptr || owner == nullptr) {
+		return 1;
+	}
+	int32_t skillId = 0, level = 0;
+	const uint8_t* skill = MissileSkillRecord(game, missile, &skillId, &level);
+	const int32_t bounces = d2r::Engine<MissileIntFn>(MissileBounces)(missile);
+	int32_t x = 0, y = 0, tx = 0, ty = 0;
+	if (skill == nullptr || bounces <= 1 || !d2r::UnitXY(missile, &x, &y)) {
+		return 3;
+	}
+	int32_t range = At<int32_t>(row, MsHitPar1);
+	if (range < 1) {
+		range = d2r::EvalCalc(game, owner, skill, SkAuraRangeCalc, skillId, level);
+	}
+	using NearestFn = Unit* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t, uint32_t, int32_t*) noexcept;
+	Unit* target = d2r::Engine<NearestFn>(NearestTarget)(game, owner, x, y, range, NearestTargetFlags,
+	                                                       At<uint32_t>(hit, UnitIdField), nullptr);
+	if (target == nullptr || target == hit || !d2r::UnitXY(target, &tx, &ty)) {
+		return 3;
+	}
+	d2r::MissileParams params;
+	std::memset(&params, 0, sizeof(params));
+	params.flags = 0x21;  // start at x/y, as srvhit 12 sets it
+	params.owner = owner;
+	params.target = target;
+	params.missile = At<int32_t>(missile, UnitClassId);
+	params.x = x;
+	params.y = y;
+	params.targetX = tx;
+	params.targetY = ty;
+	params.skill = skillId;
+	params.skillLevel = level;
+	params.sourceKey = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(missile);  // srvhit 12 sets it too
+	Unit* next = d2r::api.createMissile(game, &params);
+	if (next == nullptr) {
+		return 3;
+	}
+	const int32_t damage = d2r::EvalCalc(game, owner, skill, SkCalc1, skillId, level);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(missile, StatDamagePercent, damage, 0);
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetMissileBounces)(next, bounces - 1);
+	if (plog::Sample(g_bounces)) {
+		plog::Info("double throw bounce: missile %d range %d, bounces %d -> %d, damage%% %d, bounce %u",
+		           params.missile, range, bounces, bounces - 1, damage, g_bounces.load());
+	}
+	return 3;
+}
+
+// dmg 21 (PD2 16, 0x103a6da0): while the missile still has all calc2 bounces (its first hit), raise the physical,
+// fire, lightning, magic, cold and poison damage by calc3 percent. PD2's rows have calc3 = par4 = 0, so it adds nothing.
+// shortcut: the fire to poison offsets assume 1.13c's +0x10 shift seen on phys and poison length (rvas_93847.h);
+// read a D2R srvdmg function that writes them when a row gives calc3 a value.
+void SrvDmgFirstHit(Game* game, Unit* missile, Unit* hit, uint8_t* damage) noexcept {
+	using namespace d2r::rva;
+	if (game == nullptr || missile == nullptr || hit == nullptr || damage == nullptr) {
+		return;
+	}
+	Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
+	int32_t skillId = 0, level = 0;
+	const uint8_t* skill = MissileSkillRecord(game, missile, &skillId, &level);
+	if (owner == nullptr || skill == nullptr) {
+		return;
+	}
+	const int32_t bounces = d2r::EvalCalc(game, owner, skill, SkCalc2, skillId, level);
+	const int32_t bonus = d2r::EvalCalc(game, owner, skill, SkCalc3, skillId, level);
+	if (bounces != d2r::Engine<MissileIntFn>(MissileBounces)(missile) || bonus <= 0) {
+		return;
+	}
+	for (int field : {DmgPhys, DmgLight, DmgCold, DmgFire, DmgMagic, DmgPoison}) {
+		auto* value = reinterpret_cast<uint32_t*>(damage + field);
+		*value = *value * static_cast<uint32_t>(bonus + 100) / 100;  // PD2's unsigned multiply and divide
+	}
+	if (plog::Sample(g_firstHits)) {
+		plog::Info("double throw first hit: +%d%%, hit %u", bonus, g_firstHits.load());
+	}
+}
+
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "returns spawned %u, caught %u", g_returnSpawns.load(), g_returnsCaught.load());
+	std::snprintf(out, size, "returns spawned %u, caught %u, bounces %u, first hits %u", g_returnSpawns.load(),
+	              g_returnsCaught.load(), g_bounces.load(), g_firstHits.load());
 }

@@ -180,7 +180,99 @@ auto CltDoSplitThrow(Unit* unit, int32_t skillId, int32_t level) noexcept -> int
 	return 1;
 }
 
-// --- Split Throw's start buff (PD2 srvstfunc 79) ---------------------------------------------------------------------
+// --- Double Throw (PD2 srvdofunc 154 -> 183, cltdofunc 98 -> 116) ------------------------------------------------
+std::atomic<uint32_t> g_doubleThrowCasts {0};
+std::atomic<uint32_t> g_doubleThrowClientCasts {0};
+
+// PD2's column for the thrown weapon: throwing axe a, throwing knife b, javelin, glaive and pilum c, else a. Missile
+// rows by weapons.txt missiletype, the same in D2R and PD2 (javelin 1, throwaxe 35, throwknife 36, glaive 37, pilum 371).
+auto WeaponColumn(Unit* weapon) noexcept -> int {
+	switch (d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemMissileType)(weapon)) {
+	case 35: return 0;
+	case 36: return 1;
+	case 1: case 37: case 371: return 2;
+	default: return 0;
+	}
+}
+
+// PD2 srvdo 154 (ProjectDiablo.dll 0x103b1590): one missile of srvmissile a/b/c by the weapon, thrown the way D2R's
+// Double Throw throws (srvdo 74's 0x4333f0), with damagepercent = calc1 and calc2 bounces (missiles.txt pSrvHitFunc 30
+// -> 66 spends them). A monster (UberMadawcDoubleThrow, the same missile in all three columns) throws column a.
+auto SrvDoDoubleThrow(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	int column = 0;
+	if (At<int32_t>(unit, UnitType) == 0) {
+		Unit* weapon = d2r::Engine<Unit* (*)(Unit*) noexcept>(UnitWeapon)(unit);
+		if (weapon == nullptr) {
+			return 0;
+		}
+		column = WeaponColumn(weapon);
+	}
+	const int32_t missile = At<int16_t>(skill, SkSrvMissileA + column * 2);
+	if (!d2r::ValidMissile(dataFlag, missile)) {
+		return 0;
+	}
+	using ThrowFn = Unit* (*)(Game*, int32_t, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t,
+	                          int32_t) noexcept;
+	const int32_t key = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(unit);
+	Unit* thrown = d2r::Engine<ThrowFn>(ThrowSkillMissile)(game, missile, unit, skillId, level, key, 0, 0, 0, 0, 1);
+	if (thrown == nullptr) {
+		return 0;
+	}
+	const int32_t damage = d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level);
+	const int32_t bounces = d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(thrown, StatDamagePercent, damage, 0);
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetMissileBounces)(thrown, bounces);
+	if (plog::Sample(g_doubleThrowCasts)) {
+		plog::Info("double throw: skill %d level %d: missile %d (column %d), damage%% %d, bounces %d, cast %u", skillId,
+		           level, missile, column, damage, bounces, g_doubleThrowCasts.load());
+	}
+	return 1;
+}
+
+// PD2 cltdo 98 (0x103ab470): the same missile from cltmissile a/b/c with calc2 bounces, so the client's Chain
+// Lightning hit (missiles.txt pCltHitFunc 16) can draw each bounce.
+auto CltDoDoubleThrow(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::api.unitDataFlag(unit);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	Unit* weapon = d2r::Engine<Unit* (*)(Unit*) noexcept>(ClientUnitWeapon)(unit);
+	if (skill == nullptr || weapon == nullptr) {
+		return 0;
+	}
+	d2r::api.setUnitSkillFlag(unit, 1);
+	const int column = WeaponColumn(weapon);
+	const int32_t missile = At<int16_t>(skill, SkCltMissileA + column * 2);
+	if (!d2r::ValidMissile(dataFlag, missile)) {
+		return 0;
+	}
+	const int32_t key = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(unit);
+	Unit* thrown = d2r::Engine<Unit* (*)(Unit*, int32_t, int32_t, int32_t, int32_t) noexcept>(ClientThrowSkillMissile)(
+		unit, missile, skillId, level, key);
+	if (thrown == nullptr) {
+		return 0;
+	}
+	const int32_t bounces = d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, SkCalc2), skillId, level);
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetMissileBounces)(thrown, bounces);
+	if (plog::Sample(g_doubleThrowClientCasts)) {
+		plog::Info("double throw client: skill %d level %d: missile %d, bounces %d, cast %u", skillId, level, missile,
+		           bounces, g_doubleThrowClientCasts.load());
+	}
+	return 1;
+}
+
+// --- Split Throw's start buff (PD2 srvstfunc 79)---------------------------------------------------------------------
 std::atomic<uint32_t> g_tempBuffs {0};
 
 // The skill's aurastate with its aurastat1-6 for a short time from the start frame, built the way Frozen Armor's
@@ -561,6 +653,8 @@ constexpr Table MissileSrvHit {"pSrvHitFunc", d2r::rva::MissileSrvHitTable, d2r:
                                d2r::rva::MissileSrvHitFirstFree};
 constexpr Table MissileCltDo {"pCltDoFunc", d2r::rva::MissileCltDoTable, d2r::rva::MissileCltDoSlots,
                               d2r::rva::MissileCltDoFirstFree};
+constexpr Table MissileSrvDmg {"pSrvDmgFunc", d2r::rva::MissileSrvDmgTable, d2r::rva::MissileSrvDmgSlots,
+                               d2r::rva::MissileSrvDmgFirstFree};
 
 struct SlotFunction {
 	const Table& table;
@@ -585,6 +679,11 @@ const SlotFunction Functions[] = {
 	{MissileSrvHit, 65, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitSpawnReturn)), "return spawn"},
 	{MissileSrvDo, 46, reinterpret_cast<const void*>(static_cast<MissileSrvDoFn>(SrvDoReturn)), "return"},
 	{MissileCltDo, 78, reinterpret_cast<const void*>(static_cast<MissileCltDoFn>(CltDoReturn)), "return"},
+	// Double Throw: D2R fills srvdo 154 (a RotW skill), cltdo 98, shit 30 and dmg 16 (echoingstrike)
+	{SrvDo, 183, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoDoubleThrow)), "double throw"},
+	{CltDo, 116, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoDoubleThrow)), "double throw"},
+	{MissileSrvHit, 66, reinterpret_cast<const void*>(static_cast<MissileSrvHitBounceFn>(SrvHitBounce)), "bounce"},
+	{MissileSrvDmg, 21, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgFirstHit)), "first hit"},
 };
 
 }  // namespace
@@ -614,12 +713,12 @@ auto SkillFunctionCount() noexcept -> int {
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
-	char missiles[64];
+	char missiles[128];
 	MissileFunctionCounters(missiles, sizeof(missiles));
 	std::snprintf(out, size,
 	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "
-	              "splash starts %u, leap landings %u, client %u, %s",
+	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
-	              g_leapClients.load(), missiles);
+	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(), missiles);
 }
