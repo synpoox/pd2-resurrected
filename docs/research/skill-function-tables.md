@@ -42,7 +42,8 @@ through a further indirection).
   Not proven in game; that proof is the first plumbing work item.
 - **Q2 (unused slots, prg).** prg values index the do tables (server and client). D2R's "unused" slots hold real functions
   reached by prg: srvdo 41 `0x56dd60` and 143 `0x56e240` (Phoenix Strike charges, Fists of Fire), cltdo 15 and 83. PD2's
-  WispBossNova (41 + 15) and Royal Fire (143 + 83) use exactly D2R's Phoenix Strike pairs, so they are data, not code.
+  WispBossNova (41 + 15) uses exactly D2R's Phoenix Strike pair, so it is data, not code. Royal Fire (143 + 83) is
+  not: PD2 rewrote both slots with a boss branch ([w25-assassin-finishers](w25-assassin-finishers.md)).
   srvdo 163 `0x520a00` and cltdo 22 `0x2aed10` are filled, but no D2R data reaches them (code-only callers), so PD2's
   splash (163) and the Power Strike client half (22) still need checking against PD2. srvdo 171 is D2R's Charged Bolt Disk, so PD2's prg 171 collides.
 - **Q3 (start tables).** srvstfunc has 91 slots (71-90 free). cltstfunc has 70 (62-69 free, 8). PD2's cltst 54-58
