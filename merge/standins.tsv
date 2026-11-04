@@ -23,7 +23,6 @@ skills	Cleansing	=	cltdofunc	Paladin aura client do
 skills	Cleansing	=	cltstfunc	Paladin aura client start
 skills	Resist Lightning	=	cltdofunc	Paladin aura client do
 skills	Resist Lightning	=	cltstfunc	Paladin aura client start
-skills	Vengeance	=	srvdofunc	Vengeance
 skills	Concentration	=	cltdofunc	Paladin aura client do
 skills	Concentration	=	cltstfunc	Paladin aura client start
 skills	Holy Freeze	=	cltdofunc	Paladin aura client do
@@ -44,11 +43,7 @@ skills	Redemption	=	cltstfunc	Paladin aura client start
 skills	Salvation	=	cltdofunc	Paladin aura client do
 skills	Salvation	=	cltstfunc	Paladin aura client start
 skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
-skills	Summon Spirit Wolf	=	srvstfunc	Spirit Wolf, Fenris start
-skills	Summon Fenris	=	srvstfunc	Spirit Wolf, Fenris start
-skills	Fire Claws	=	srvdofunc,cltdofunc	Fire Claws
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
-skills	Hunger	=	srvdofunc	Hunger
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
@@ -56,7 +51,6 @@ skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
 skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
 skills	Split Throw	-	cltdofunc	Split Throw
-skills	Joust	Leap Attack	srvdofunc	Joust
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
 skills	PoisonEggSpawn	MaggotEgg	srvdofunc,cltdofunc	PoisonEggSpawn
 skills	RathmaDeath	Nova	srvdofunc,cltdofunc	Death novas
@@ -85,14 +79,7 @@ skills	LucionDeath4	Nova	srvdofunc,cltdofunc	Death novas
 skills	UberDiabSummon	-	srvdofunc	UberDiabSummon, UberDiabRun
 skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
-missiles	firebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
-missiles	icebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	blessedhammer	=	pSrvDoFunc,pCltDoFunc	Blessed Hammer
-missiles	blizzard1	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
-missiles	blizzard2	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
-missiles	blizzard3	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
-missiles	blizzard4	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
-missiles	chillingarmorbolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	desertfireball	=	pCltHitFunc	Desert turret fireball client hit
 missiles	bladefragment1	=	pSrvHitFunc,pCltHitFunc	Blade fragment hit
 missiles	bladefragment1	=	pSrvDmgFunc	Rathma bone spear, blade fragment damage

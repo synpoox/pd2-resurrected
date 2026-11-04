@@ -5,11 +5,15 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Fire Bolt, Ice Bolt, Blizzard and Chilling Armor's bolts work as in Project Diablo II: each hit splashes its damage
+  onto every monster close to where it lands.
 - Dragon Flight works as in Project Diablo II: it teleports you and kicks in the same moment, and its damage bonus
   is Project Diablo II's. Psychic Hammer's hammer loses damage with each monster it jumps to, as in Project Diablo II.
 - Gust works as in Project Diablo II: it teleports you, then chills and staggers the monsters around where you land.
 - Hunger works as in Project Diablo II: a werebear eats a corpse for a while of life steal, speed, open wounds and
   deep wounds.
+- Fire Claws works as in Project Diablo II: each claw sends a trail of fire waves (more with the skill's level).
+- Summoning a Spirit Wolf or Fenris at the limit replaces the oldest one, as in Project Diablo II.
 - Firestorm works as in Project Diablo II: every one of its fire trails wanders (D2R sends the first one straight).
 - Static Field works as in Project Diablo II: it takes a share of current life down to Project Diablo II's floor,
   ignores some map and Rathma monsters, and lowers lightning resistance for a while (half as much on a monster
@@ -25,6 +29,10 @@ private-multiplayer release a build may break characters; each break is noted he
 - Holy Light works as in Project Diablo II: it heals allies and deals magic damage to enemies around its target,
   half as much to the side the target is not on, and knocks back undead. Fist of the Heavens' holy bolts reach
   every unit around the strike, the target included.
+- Vengeance works as in Project Diablo II: a hit bursts fire, cold and lightning from your own elemental damage
+  (Holy auras and Enchant aside) on the enemies around the target, and the burst chains on from enemy to enemy.
+- Joust works as in Project Diablo II: you teleport to the target and strike it with extra damage and critical strike
+  chance, then run faster for two seconds.
 - Melee splash works as in Project Diablo II: items that splash on hit, Frenzy and Tiger Strike's splash radius,
   and revived monsters' hits damage the monsters around the one struck.
 - Poison Dagger works as in Project Diablo II: each stab leaves a ring of poison clouds around the target.

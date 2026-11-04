@@ -58,6 +58,16 @@ inline constexpr int SrvDoInferno = 19;  // 0x554460: D2R's (vanilla) Inferno; P
 // 1 (0x3b75c0, D2R's Firestorm, srvdo 117 / cltdo 67): frames capped at 77, seed from the arg, a type 10 path; it is
 // PD2's maker callback 0x1036f220 but for the seed (DiabWall's 7 also skips the path 20% of the time)
 inline constexpr int MissileCallbackMaker = 1;
+// Player pets (D2R's PlayerPets.cpp), walked the way its pet add (0x501550, from the summon 0x4350e0) walks them
+inline constexpr uint64_t UnitPlayerData = 0x34b240;  // (player) -> player data; its pet table at +0x98
+inline constexpr int PlayerPets = 0x98;
+inline constexpr uint64_t PetEntry = 0x5013f0;  // (dataFlag, pet table, pet type) -> the type's entry (stride 0x20)
+// entry: first pet node (id +0x4, next +0x18), count, max (0x501830 stores the summon's petmax; 0x501ac0 asserts
+// count <= max)
+inline constexpr int PetHead = 0x0, PetCount = 0x8, PetMax = 0xc;
+inline constexpr uint64_t FirstPet = 0x4ff1a0;  // (game, owner, pet type, 1) -> the type's first pet, or null
+// (game, owner, pet id, 1): takes the pet off the list and kills it, as the pet add's loop over a group does
+inline constexpr uint64_t RemovePet = 0x4ffd30;
 // missiles.txt pSrvDoFunc: int64_t fn(Game*, Unit* missile), 54 slots, 46-53 free.
 inline constexpr uint64_t MissileSrvDoTable = 0x2390e80;
 inline constexpr int MissileSrvDoSlots = 54;
@@ -225,14 +235,9 @@ inline constexpr uint64_t SendChargePacket = 0x5396d0;
 inline constexpr uint64_t ListStatValue = 0x2f5df0;  // (dataFlag, list, stat, layer) -> value
 inline constexpr uint64_t NewStatList = 0x2f7300;  // (flags, expire frame, unit type, unit id) -> list or null
 inline constexpr uint64_t AttachStatList = 0x2f2cb0;  // (unit, list, 1)
-// A melee skill hit, in the order D2R's Dragon Flight (srvdo 52 0x56fc80) runs it on its second frame (W31), on a
-// d2r::LeapKnockback block (hit flags 0; the roll's result replaces its result flags)
-inline constexpr uint64_t SkillToHit = 0x339040;  // (unit, skill, level) -> the skill's to-hit (ToHit, LevToHit)
-// (game, unit, target, to-hit, always hit, 0) -> result flags for the block (bit 0 = hit)
-inline constexpr uint64_t MeleeRoll = 0x44b720;
+// Dragon Flight (W31): D2R's srvdo 52 (0x56fc80) fills its kick with this after the roll (MeleeRoll, below), on a
+// d2r::LeapKnockback block with DmgPercent set
 inline constexpr uint64_t MeleeFill = 0x573af0;  // (game, &block, unit, target, skill, level): the hit's damage
-inline constexpr uint64_t QueueMeleeHit = 0x44b600;  // (game, unit, target, &block, 0x80): read back with QueuedHit
-inline constexpr uint64_t ApplyMeleeHit = 0x44b2b0;  // (game, unit, target, 0, 1): deals the queued hit
 
 // Melee splash (W33): one victim's damage, built the way PD2's area callback 0x10303190 builds it
 // (game, attacker, defender, &damage, 0, srcdam): weapon damage scaled by srcdam / 128 (0 = 128); Leap Attack's
@@ -260,6 +265,18 @@ inline constexpr uint64_t UnitAlignment = 0x2f4190;
 // in range; x/y 0 = the center unit's position, radius 0 does nothing (Fist of the Heavens' clthit 26 0x1adcb0)
 inline constexpr uint64_t ClientAreaUnits = 0x2142d0;
 inline constexpr uint64_t ClientFindUnit = 0x9a5d0;  // (id, type) -> the client's unit or null
+// Vengeance (W18, docs/research/w18-vengeance-joust.md): the melee hit as D2R's Leap Attack hit (0x56b170) runs it
+inline constexpr uint64_t SkillToHit = 0x339040;  // (unit, skillId, level) -> attack rating for the roll
+// (game, unit, target, toHit, flag, 0) -> result flags (bit 0 hit); flag = skill byte SkRollFlags & the byte at
+// MeleeRollFlagMask
+inline constexpr uint64_t MeleeRoll = 0x44b720;
+inline constexpr uint64_t MeleeRollFlagMask = 0x1d996d0;
+inline constexpr uint64_t UnitHitClass = 0x3495d0;  // (unit) -> the value Leap Attack puts at DmgHitClass
+// (game, unit, target, &damage, srcdam): weapon damage at srcdam / 128, queued on the unit for target
+inline constexpr uint64_t QueueMeleeHit = 0x44b600;
+inline constexpr uint64_t ApplyQueuedHit = 0x44b2b0;  // (game, unit, target, 0, 1)
+// (dataFlag, unit, skillId, level, 1) -> ELen with ELevLen, the length ElementalDamage gives cold and poison
+inline constexpr uint64_t ElementalLength = 0x337da0;
 inline constexpr uint64_t MissileTargetType = 0x3bc190;  // (missile) -> target unit type, 6 for none
 inline constexpr uint64_t MissileTargetId = 0x3bc280;  // (missile) -> target unit id
 inline constexpr uint64_t EngineAllocator = 0x12063c0;  // () -> the allocator; vtable +0x20 frees (Leap Attack's cleanup)
@@ -362,6 +379,8 @@ inline constexpr int MsCltSubMissile1 = 0x40;  // int16 CltSubMissile1 (1.13c's 
 inline constexpr int DmgPhys = 0x18, DmgFire = 0x20, DmgLight = 0x2c, DmgMagic = 0x30, DmgCold = 0x34, DmgPoison = 0x38;
 inline constexpr int DmgPoisonLength = 0x3c;
 inline constexpr int DmgPercent = 0x1c;  // damage% (1.13c 0x0c), set before the melee fill (D2R's srvdo 52)
+inline constexpr int DmgColdLength = 0x118;  // ElementalDamage's cold length (1.13c's 0x30)
+inline constexpr int DmgHitClass = 0x144;    // int32 Leap Attack's hit sets from UnitHitClass
 inline constexpr int StatDamagePercent = 25;  // itemstatcost damagepercent, D2R and PD2
 inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58, poisonlength 59: D2R and PD2
 inline constexpr int StatPoisonMax = 58;
@@ -384,6 +403,9 @@ inline constexpr int DamageHitClass = 0x144;  // uint32; D2R's Static Field ORs 
 // missiles.txt record (1.13c's shifted by 0x24)
 inline constexpr int MsDParam1 = 0x9c;    // int32 dParam1
 inline constexpr int MsDmgCalc1 = 0xb4;   // int32 DmgCalc1 (calc index), read by dmg 1 0x453490
+// uint32 HitFlags, uint16 ResultFlags (1.13c's 0xa8 / 0xac + 0x28; the field table at 0x3c2c70)
+inline constexpr int MsHitFlags = 0xd0;
+inline constexpr int MsResultFlags = 0xd4;
 inline constexpr int MsCollideKill = 0x1ae;  // uint8 CollideKill (1.13c's 0x186 + 0x28; the field table at 0x3c4233)
 inline constexpr int MsSkill = 0x1b6;     // int16 Skill (skills.txt row), read off a live explodingarrow row
 // int16 HitSubMissile1 and CltHitSubMissile1 (1.13c's 0x24 / 0x2c), as D2R's clthit 26 (0x1adcb0) reads them
@@ -418,6 +440,9 @@ inline constexpr int SkParam1 = 0x1b8;  // int32 Param1-8, field table at 0x305e
 inline constexpr int SkParam2 = 0x1bc;
 inline constexpr int SkParam3 = 0x1c0;
 inline constexpr int SkParam4 = 0x1c4;
+inline constexpr int SkParam5 = 0x1c8;
+inline constexpr int SkParam6 = 0x1cc;
+inline constexpr int SkRollFlags = 0x29;  // uint8 Leap Attack's hit masks with MeleeRollFlagMask for MeleeRoll's flag
 inline constexpr int SkSrvPrgFunc1 = 0x50;  // int16 srvprgfunc1-3, read by SrvPrgDispatch
 inline constexpr int SkPrgCalc1 = 0x58;     // int32 prgcalc1-3 (calc index), read by srvdo 37's 0x571590
 inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170
@@ -432,6 +457,8 @@ inline constexpr int SkCltCalc1 = 0x16c;  // int32 cltcalc1-3 (calc index; 1.13c
 inline constexpr int SkCltCalc2 = 0x170;
 inline constexpr int SkCltCalc3 = 0x174;
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
+inline constexpr int SkPetType = 0x112;  // int8 pettype, read by Spirit Wolf's srvdo 119 (0x575990)
+inline constexpr int SkPetMax = 0x114;   // int32 petmax (calc index), which srvdo 119 hands the pet add
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
 inline constexpr int SkAuraTargetState = 0xa2;  // int16 auratargetstate (skills field table 0x302380)
 inline constexpr int SkAuraLenCalc = 0x80;    // int32 auralencalc: 1.13c's 0x60, before aurarangecalc as there
