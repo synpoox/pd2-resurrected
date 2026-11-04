@@ -5,6 +5,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Blade Fury's blades work as in Project Diablo II: a blade that hits a wall bounces off it as three blades, and a
+  blade that hits a monster can split in two, up to three times over.
 - Blessed Hammer works as in Project Diablo II: hammers fly through walls.
 - Fire Bolt, Ice Bolt, Blizzard and Chilling Armor's bolts work as in Project Diablo II: each hit splashes its damage
   onto every monster close to where it lands.

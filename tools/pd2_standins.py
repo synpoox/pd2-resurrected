@@ -21,10 +21,10 @@ def _nums(*spans: int | range) -> set[str]:
 # (srvdo 41/143, cltdo 15/83), built rules (srvdo 189, W1; srvdo 188 and cltdo 117 become the missile columns,
 # pd2_ids.MISSILE_FUNCS, W5; shit 63, cltdo 22 patched, W6; shit 61, W11; srvdo 182 / cltdo 111, W21; srvdo 176,
 # chit 66, W17; cltdo 119, W22; srvdo 174 and 162, W18; chit 67, W30; srvdo 175, cltdo 110, srvst 77, W24; shit 62,
-# W28; srvdo 178, W31; sdo 40 / cdo 72 move to 47 / 80, W20, like sdo 38 / cdo 70, W2), `verify` slots that hold D2R's
-# same-numbered function, which is the stand-in (shit 5, 6, 30; chit 4, 12), and temp1's sdo 39 / cdo 71 (no row
-# reaches it). Cube ops 30/31 are not here: cubemain rows have no unique name, so the item tables' merge (P3) keeps
-# those recipes off.
+# W28; srvdo 178, W31; sdo 40 / cdo 72 move to 47 / 80, W20, like sdo 38 / cdo 70, W2; shit 34, chit 6, dmg 19, W32),
+# `verify` slots that hold D2R's same-numbered function, which is the stand-in (shit 5, 6, 30; chit 4, 12), and temp1's
+# sdo 39 / cdo 71 (no row reaches it). Cube ops 30/31 are not here: cubemain rows have no unique name, so the item
+# tables' merge (P3) keeps those recipes off.
 PD2_ONLY = {
     "skills": {
         "auraeventfunc1": _nums(16),  # D2R puts a RotW event at 16; PD2's is Smite's
@@ -38,9 +38,9 @@ PD2_ONLY = {
     "missiles": {
         "pSrvDoFunc": _nums(38, 40),
         "pCltDoFunc": _nums(12, range(69, 71), 72),
-        "pSrvHitFunc": _nums(34, 60, 64, 65) | {"*12"},
-        "pCltHitFunc": _nums(6, 11, 65) | {"*16"},  # *12/*16: PD2 text that parses as no function
-        "pSrvDmgFunc": _nums(15, range(17, 20)),
+        "pSrvHitFunc": _nums(60, 64, 65) | {"*12"},
+        "pCltHitFunc": _nums(11, 65) | {"*16"},  # *12/*16: PD2 text that parses as no function
+        "pSrvDmgFunc": _nums(15, 17, 18),
     },
     "misc": {"pSpell": _nums(12, 13)},
     "properties": {f"func{i}": _nums(25) for i in range(1, 8)},

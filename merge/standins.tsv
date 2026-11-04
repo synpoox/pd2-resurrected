@@ -79,13 +79,12 @@ skills	LucionDeath4	Nova	srvdofunc,cltdofunc	Death novas
 skills	UberDiabSummon	-	srvdofunc	UberDiabSummon, UberDiabRun
 skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
+skills	Blade Fury	=	seqinput	Blade Fury: the throw frame
 missiles	desertfireball	=	pCltHitFunc	Desert turret fireball client hit
-missiles	bladefragment1	=	pSrvHitFunc,pCltHitFunc	Blade fragment hit
-missiles	bladefragment1	=	pSrvDmgFunc	Rathma bone spear, blade fragment damage
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
 missiles	siege beast stomp missile	-	pCltDoFunc	Siege beast stomp client do
 missiles	uberimmolationarrow	immolationarrow	pSrvHitFunc	Uber immolation arrow hit
-missiles	rathmabonespear	bonespear	pSrvDmgFunc	Rathma bone spear, blade fragment damage
+missiles	rathmabonespear	bonespear	pSrvDmgFunc	Rathma bone spear damage
 missiles	tpot_fire_small	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	tpot_fire_medium	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	tpot_fire_large	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions

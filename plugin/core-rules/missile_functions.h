@@ -35,5 +35,9 @@ void CltDoChargeExplode(d2r::Unit* missile, int32_t a2) noexcept;  // cdo 79 (PD
 auto CltHitChargeBolt(d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // chit 67
 auto SrvDoBlessedHammer(d2r::Game* game, d2r::Unit* missile) noexcept -> int64_t;  // sdo 47 (PD2 40)
 void CltDoBlessedHammer(d2r::Unit* missile, int32_t a2) noexcept;  // cdo 80 (PD2 72)
+// Blade Fury's fragment (bladefragment1).
+auto SrvHitBladeFragment(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 69 (PD2 34)
+void SrvDmgBladeFragment(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit, uint8_t* damage) noexcept;  // dmg 19
+auto CltHitBladeFragment(d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // chit 68 (PD2 6)
 // Live counters for the status command.
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void;

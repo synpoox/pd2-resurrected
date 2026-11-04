@@ -3332,6 +3332,11 @@ const SlotFunction Functions[] = {
 	// slots and the merge points there (FUNCS)
 	{MissileSrvDo, 47, reinterpret_cast<const void*>(static_cast<MissileSrvDoFn>(SrvDoBlessedHammer)), "blessed hammer"},
 	{MissileCltDo, 80, reinterpret_cast<const void*>(static_cast<MissileCltDoFn>(CltDoBlessedHammer)), "blessed hammer"},
+	// Blade Fury's fragment (W32): D2R fills shit 34 (echoingstrike); chit 6 sits below D2R's free range, so it takes 68
+	// (FUNCS); dmg 19 is free
+	{MissileSrvHit, 69, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitBladeFragment)), "blade fragment"},
+	{MissileCltHit, 68, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitBladeFragment)), "blade fragment"},
+	{MissileSrvDmg, 19, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgBladeFragment)), "blade fragment"},
 };
 
 }  // namespace
