@@ -1,5 +1,4 @@
 # table	row	from	columns	rule (W3; delete a line when its rule is built, see tools/pd2_standins.py)
-skills	Static Field	=	srvdofunc	Static Field
 skills	Clay Golem	=	srvstfunc	Golem start
 skills	BloodGolem	=	srvstfunc	Golem start
 skills	FireGolem	=	srvstfunc	Golem start
@@ -50,34 +49,20 @@ skills	Summon Fenris	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Fire Claws	=	srvdofunc,cltdofunc	Fire Claws
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
 skills	Hunger	=	srvdofunc	Hunger
-skills	Tiger Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Fists of Fire	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Cobra Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Claws of Thunder	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Blades of Ice	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Dragon Flight	=	srvdofunc	Dragon Flight
-skills	Royal Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
-skills	Gust	Teleport	srvdofunc	Gust
 skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
 skills	Split Throw	-	cltdofunc	Split Throw
-skills	Combustion	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	Joust	Leap Attack	srvdofunc	Joust
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
-skills	FingermageBossNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	PoisonEggSpawn	MaggotEgg	srvdofunc,cltdofunc	PoisonEggSpawn
-skills	Merc Static Field	Static Field	srvdofunc	Static Field
 skills	RathmaDeath	Nova	srvdofunc,cltdofunc	Death novas
 skills	NihlathakMapDeath	Nova	cltdofunc	Death novas
 skills	RathmaSummon	-	srvdofunc	RathmaSummon
-skills	RathmaTeethNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
-skills	RathmaOuterNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
-skills	RathmaPacman	Nova	srvdofunc,cltdofunc	Combustion and boss novas
-skills	LeoricSummonNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	Holy Fire Fire Golem	Holy Fire	cltdofunc	Paladin aura client do
 skills	Holy Fire Fire Golem	Holy Fire	cltstfunc	Paladin aura client start
 skills	Holy Freeze Korlic	Holy Freeze	cltdofunc	Paladin aura client do
@@ -85,12 +70,10 @@ skills	Holy Freeze Korlic	Holy Freeze	cltstfunc	Paladin aura client start
 skills	Holy Fire Sanctuaryboss	Holy Fire	cltdofunc	Paladin aura client do
 skills	Holy Fire Sanctuaryboss	Holy Fire	cltstfunc	Paladin aura client start
 skills	UberDiabRun	DiabRun	srvstfunc	UberDiabSummon, UberDiabRun
-skills	ZharMiniBossCombustion	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	Energy Shield SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Energy Shield SelfAura	Might	cltstfunc	Paladin aura client start
 skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Chilling Armor SelfAura	Might	cltstfunc	Paladin aura client start
-skills	RakanothStrike	Cobra Strike	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	TorajanBossNest	Nest	srvdofunc	TorajanBossNest
 skills	LucionNova	Nova	srvdofunc	Lucion kit
 skills	LucionBlink	Teleport	cltdofunc	Lucion kit
@@ -101,7 +84,6 @@ skills	LucionDeath2	Nova	srvdofunc,cltdofunc	Death novas
 skills	LucionDeath3	Nova	srvdofunc,cltdofunc	Death novas
 skills	LucionDeath4	Nova	srvdofunc,cltdofunc	Death novas
 skills	UberDiabSummon	-	srvdofunc	UberDiabSummon, UberDiabRun
-skills	Static Field Proc	Static Field	srvdofunc	Static Field
 skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 missiles	firebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
@@ -115,9 +97,6 @@ missiles	chillingarmorbolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling
 missiles	desertfireball	=	pCltHitFunc	Desert turret fireball client hit
 missiles	bladefragment1	=	pSrvHitFunc,pCltHitFunc	Blade fragment hit
 missiles	bladefragment1	=	pSrvDmgFunc	Rathma bone spear, blade fragment damage
-missiles	fistsoffireexplode	=	pCltDoFunc	Assassin charge-up finishers
-missiles	clawsofthunderbolt	=	pCltHitFunc	Assassin charge-up finishers
-missiles	bladesoficecubes	=	pCltDoFunc	Assassin charge-up finishers
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
 missiles	siege beast stomp missile	-	pCltDoFunc	Siege beast stomp client do
 missiles	psychichammer	-	pSrvDmgFunc	Psychic Hammer missile damage

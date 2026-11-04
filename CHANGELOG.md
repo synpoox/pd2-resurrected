@@ -5,12 +5,19 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Gust works as in Project Diablo II: it teleports you, then chills and staggers the monsters around where you land.
+- Hunger works as in Project Diablo II: a werebear eats a corpse for a while of life steal, speed, open wounds and
+  deep wounds.
 - Firestorm works as in Project Diablo II: every one of its fire trails wanders (D2R sends the first one straight).
+- Static Field works as in Project Diablo II: it takes a share of current life down to Project Diablo II's floor,
+  ignores some map and Rathma monsters, and lowers lightning resistance for a while (half as much on a monster
+  immune to lightning). Combustion and the boss novas that share it throw Project Diablo II's ring of missiles.
 - Charge works as in Project Diablo II: it runs at Project Diablo II's speed, and the longer the charge, the wider
   its hit splashes with a splash-on-hit item.
 - The Assassin's charge-up skills build charges as in Project Diablo II: charges are shared between them, and each
   charge's effect (Fists of Fire's fire, Cobra Strike's poison, Blades of Ice's wave) fires on the hit that builds
-  it. What your client draws for each charge is still D2R's.
+  it, and your client draws each charge as Project Diablo II's does (Fists of Fire's fire and nova, Cobra Strike's
+  poison bolts and cloud, Claws of Thunder's falling storm bolts).
 - Teleport works as in Project Diablo II: for a second after each teleport your elemental masteries are
   lowered, by less as the skill levels up.
 - Holy Light works as in Project Diablo II: it heals allies and deals magic damage to enemies around its target,

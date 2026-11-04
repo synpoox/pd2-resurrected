@@ -81,7 +81,7 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	if (command == nullptr || command->plugin == nullptr || g_context == nullptr) {
 		return D2RL::ConsoleCommandResult::Failed;
 	}
-	char line[1100];
+	char line[1400];
 	char image[200];
 	crash_guard::Describe(image, sizeof(image), D2RL::GetBuildVersion(g_context));
 	std::snprintf(line, sizeof(line), "%s %s | %s | mod %s | file %s", PluginName, PluginVersion, image,
