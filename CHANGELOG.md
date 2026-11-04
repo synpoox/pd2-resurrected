@@ -5,6 +5,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Desecrate raises corpses around its cloud as in Project Diablo II.
 - Double Throw works as in Project Diablo II: one throw that bounces between monsters.
 - Leap and Leap Attack work as in Project Diablo II: faster leaps, and Leap Attack hits every monster where it lands.
 - Lightning Bolt and Lightning Fury work as in Project Diablo II.
