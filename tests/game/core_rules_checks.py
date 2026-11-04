@@ -363,9 +363,13 @@ def leap_client(ctx):
 def blood_warp_cast(ctx):
     """A Blood Warp (router srvdofunc 190) cost PD2's max(calc1% of life, calc2), calc1 12 (no blood_warp_life_reduction)
     and calc2 min(ln34 * 256, 15360) (Param3 2, Param4 2), and gave it back as hpregen = cost / 125 + 1 for auralencalc
-    125 frames. Life is in 1/256."""
+    125 frames. Life is in 1/256. Every cast's list is new, extended (a recast at the same level keeps the running
+    regen, as PD2's timed-state helper does) or refused (a lower level)."""
+    log = _log(ctx)
+    lists = re.findall(r"blood warp: skill 439 [^\n]*, list (\w+)\)", log)
+    assert "none" not in lists, "a Blood Warp built no hpregen list"
     casts = re.findall(r"blood warp: skill 439 level (\d+): life (\d+), cost (\d+), regen (\d+) for (\d+) frames "
-                       r"\(stat (\d+)", _log(ctx))
+                       r"\(stat (\d+)", log)
     if not casts:
         ctx.skip("no Blood Warp in the log yet (cast it out of town, then run again)")
     level, life, cost, regen, frames, stat = (int(v) for v in casts[0])
@@ -374,7 +378,7 @@ def blood_warp_cast(ctx):
     assert cost < life, f"cost {cost} would kill at life {life}"
     assert (frames, stat) == (125, HPREGEN), f"{frames} frames of stat {stat}, PD2: 125 of hpregen ({HPREGEN})"
     assert regen == cost // 125 + 1, f"regen {regen}, PD2 gives {cost // 125 + 1}"
-    return f"level {level}: life {life // 256}, cost {cost / 256:.1f} life, hpregen {regen} for {frames} frames"
+    return f"level {level}: life {life // 256}, cost {cost / 256:.1f} life, hpregen {regen} for {frames} frames, lists {sorted(set(lists))}"
 
 
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12"])

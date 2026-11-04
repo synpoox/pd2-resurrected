@@ -412,19 +412,27 @@ auto SrvDoBash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	return VanillaSlot<SrvDoFn>(d2r::rva::SrvDoTable, d2r::rva::SrvDoMelee)(game, unit, skillId, level);
 }
 
-// One stat on a new `state` list for `frames`, replacing an older list of that state (Frozen Armor's way, srvdo 18).
-void TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level, int32_t frames, int32_t state,
-                   int32_t stat, int32_t value) noexcept {
+// One stat on a `state` list for `frames`, by NewStateList's recast rule (PD2's timed-state helper 0x1036d7d0 has
+// the same one): an older list of the same skill and level is extended and keeps its value, a lower level is
+// refused, anything else is replaced. Returns what happened, for the logs.
+auto TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level, int32_t frames, int32_t state,
+                   int32_t stat, int32_t value) noexcept -> const char* {
 	using namespace d2r::rva;
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, state, 1);
+	void* old = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, state);
+	const auto listInt = [](uint64_t fn, void* list) { return d2r::Engine<int32_t (*)(void*) noexcept>(fn)(list); };
+	const bool extends = old != nullptr && listInt(ListSkill, old) == skillId && listInt(ListLevel, old) == level;
 	d2r::StateListRequest request {unit, unit, skillId, level, frames, -1, 0, state,
 	                               d2r::Engine<void (*)()>(SkillStateExpired)};
 	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
 	if (list == nullptr) {
-		return;
+		return "refused";
+	}
+	if (extends) {
+		return "extended";
 	}
 	d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, stat, value, 0);
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
+	return "new";
 }
 
 // --- Blood Warp (PD2 srvdofunc 157 -> router 190, srvstfunc 66 -> 80, cltstfunc 56 -> 63) --------------------------
@@ -446,7 +454,9 @@ static_assert(BloodWarpCost(12, 15360, 100 << 8) == 15360);  // calc2's 60-life 
 static_assert(BloodWarpCost(-1, 512, 100 << 8) == 512);      // the overflow leaves the minimum
 
 struct LifeCost {
-	int32_t cost = 0, life = 0;  // the default refuses: the cast needs cost < life
+	const uint8_t* skill = nullptr;  // the skill record; null refuses
+	int32_t cost = 0, life = 0;
+	auto Payable() const noexcept -> bool { return skill != nullptr && cost < life; }  // the cast never kills
 };
 
 auto BloodWarpLife(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level) noexcept -> LifeCost {
@@ -459,7 +469,16 @@ auto BloodWarpLife(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level
 	};
 	const int32_t life = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(
 		unit, d2r::rva::StatLife, 0);
-	return {BloodWarpCost(calc(d2r::rva::SkCalc1), calc(d2r::rva::SkCalc2), life), life};
+	return {skill, BloodWarpCost(calc(d2r::rva::SkCalc1), calc(d2r::rva::SkCalc2), life), life};
+}
+
+// The server's check (start and do): counts the refusals.
+auto ServerPayable(const LifeCost& c) noexcept -> bool {
+	if (!c.Payable()) {
+		g_bloodWarpsRefused.fetch_add(1);
+		return false;
+	}
+	return true;
 }
 
 // Start (PD2 srvstfunc 66, here 80): refuse a cast the caster can't pay for.
@@ -467,12 +486,7 @@ auto SrvStBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 	if (game == nullptr || unit == nullptr) {
 		return 0;
 	}
-	const LifeCost c = BloodWarpLife(d2r::DataFlag(game), unit, skillId, level);
-	if (c.cost >= c.life) {
-		g_bloodWarpsRefused.fetch_add(1);
-		return 0;
-	}
-	return 1;
+	return ServerPayable(BloodWarpLife(d2r::DataFlag(game), unit, skillId, level)) ? 1 : 0;
 }
 
 // Client half (PD2 cltstfunc 56, here 63): the same check on the client's copy of the caster.
@@ -480,39 +494,38 @@ auto CltStBloodWarp(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 	if (unit == nullptr) {
 		return 0;
 	}
-	const LifeCost c = BloodWarpLife(d2r::api.unitDataFlag(unit), unit, skillId, level);
-	return c.cost < c.life ? 1 : 0;
+	return BloodWarpLife(d2r::api.unitDataFlag(unit), unit, skillId, level).Payable() ? 1 : 0;
 }
 
 // PD2 srvdofunc 157: teleport, then pay the cost (checked again at the new point) and get it back over auralencalc
-// frames as aurastat1 (hpregen) = cost / frames + 1 on an aurastate (bloodwarp) list.
+// frames as aurastat1 (hpregen) = cost / frames + 1 on an aurastate (bloodwarp) list. A recast at the same level
+// extends the running list and keeps its regen; a lower level pays and adds none (TimedStatList).
 // shortcut: the teleport is D2R's srvdo 27, not PD2's teleport core (0x1036cd20, shared with Teleport's srvdo 155),
-// and the list is built the way Frozen Armor builds one, replacing an older one, where PD2 uses its timed-state
-// helper 0x1036d7d0. Upgrade with the Teleport row.
+// and an extended list's new timer is not sent to the client (PD2 sends packet 0x83). Upgrade with the Teleport row.
 auto SrvDoBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	const uint32_t dataFlag = d2r::DataFlag(game);
-	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
-	if (skill == nullptr || VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoTeleport)(game, unit, skillId, level) == 0) {
+	if (VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoTeleport)(game, unit, skillId, level) == 0) {
 		return 0;
 	}
-	const LifeCost c = BloodWarpLife(dataFlag, unit, skillId, level);
-	if (c.cost >= c.life) {
-		g_bloodWarpsRefused.fetch_add(1);
+	const LifeCost c = BloodWarpLife(dataFlag, unit, skillId, level);  // again, at the new point
+	if (!ServerPayable(c)) {
 		return 0;
 	}
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(unit, StatLife, c.life - c.cost, 0);
-	const int32_t frames = d2r::EvalCalc(game, unit, skill, SkAuraLenCalc, skillId, level);
-	const int32_t state = At<int16_t>(skill, SkAuraState);
-	const int32_t stat = At<int16_t>(skill, SkAuraStat1);
+	const int32_t frames = d2r::EvalCalc(game, unit, c.skill, SkAuraLenCalc, skillId, level);
+	const int32_t state = At<int16_t>(c.skill, SkAuraState);
+	const int32_t stat = At<int16_t>(c.skill, SkAuraStat1);
 	int32_t regen = 0;
+	const char* list = "none";
 	if (frames > 0 && state > 0 && stat >= 0) {  // PD2 divides by frames unchecked
 		regen = c.cost / frames + 1;
-		TimedStatList(dataFlag, unit, skillId, level, frames, state, stat, regen);
+		list = TimedStatList(dataFlag, unit, skillId, level, frames, state, stat, regen);
 	}
 	if (plog::Sample(g_bloodWarps)) {
-		plog::Info("blood warp: skill %d level %d: life %d, cost %d, regen %d for %d frames (stat %d, state %d), cast %u",
-		           skillId, level, c.life, c.cost, regen, frames, stat, state, g_bloodWarps.load());
+		plog::Info("blood warp: skill %d level %d: life %d, cost %d, regen %d for %d frames (stat %d, state %d, list %s), "
+		           "cast %u",
+		           skillId, level, c.life, c.cost, regen, frames, stat, state, list, g_bloodWarps.load());
 	}
 	return 1;
 }
@@ -572,6 +585,7 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		charges = unitStat(unit, At<int16_t>(skill, SkAuraStat1), 0);
 		value = charges < 3 ? calc2 * charges : 0;
 	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, TempSkillBuff, 1);  // always a new list
 	TimedStatList(dataFlag, unit, skillId, level, SplashFrames, TempSkillBuff, IncSplashRadius, value);
 	if (plog::Sample(g_splashStarts)) {
 		plog::Info("splash start: skill %d level %d charges %d calc2 %d: splash radius %d, start %u", skillId, level,

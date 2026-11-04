@@ -28,8 +28,14 @@ as unsigned, so a reduction over 12 makes the product overflow to `INT32_MIN` an
   3. Life = life - cost (`0x10307eb0`, stat 6).
   4. A timed state through PD2's helper `0x1036d7d0` with {owner, unit, skill, level, frames = auralencalc (125),
      stat = aurastat1 (hpregen), value = cost / frames + 1, state = aurastate (bloodwarp)}. The helper's
-     curse-length branches (stats 109 / 504, states 58, 60, 89, 196) don't apply to bloodwarp; the rest of it was not
-     read.
+     curse-length branches (stats 109 / 504, states 58, 60, 89, 196) don't apply to bloodwarp. For a non-curse
+     state it looks up the unit's list of that state (`0x1030c320`):
+     - none, or another state or skill: build a new list (an old one is removed first, `0x1030c530`);
+     - same skill, higher level: replace it;
+     - same skill, lower level: return 0 and keep the old list (the life is already paid, no regen is added);
+     - same skill and level (the usual recast): only move the old list's expiry to now + frames (`0x1030c4a0`,
+       timer `0x103734a0`) and, for a player, send packet `0x83` with the new timer. The old regen value keeps
+       running.
 
 PD2's regen hook reads the bloodwarp list's value too ([plrmodes](plrmodes.md), life regen).
 
@@ -40,12 +46,19 @@ collision `0x804` at the point), then `0x491ca0`, which returns 1 on a teleport 
 on 214 (`0x1030c320(unit, 0xd6)`, likely a state), a map-related lookup when its third argument is set, and a
 free-spot search for level type 3; those belong to the Teleport row (srvdo 155), not here.
 
-core-rules (`plugin/core-rules/skill_functions.cpp`): srvst 80 / cltst 63 are the cost check; the router's Blood Warp
-calls D2R's srvdo 27, pays the cost, and builds the hpregen list the way Frozen Armor builds one (`NewStateList`,
-`SetListStat`, `SetUnitState`), dropping an older bloodwarp list first. D2R's skills record keeps auralencalc at
-`+0x80` (1.13c `+0x60`, like aurastat1 `+0x54 -> +0x74` and aurastatcalc1 `+0x68 -> +0x88`).
+D2R's `NewStateList` (`0x433d20`) has vanilla's version of the same rule: it finds the unit's list of the state
+(`0x2f5940(unit, state)`, curse states aside), compares its state, skill (`0x2f56a0`) and level (`0x2f56e0`), and on a
+match moves the expiry (`0x2f7ab0`, timer `0x48b720`) and returns the old list; a lower level returns null; anything
+else is removed and rebuilt. It sends no `0x83`.
 
-Deviation (approximated, on the unported list): D2R's teleport instead of PD2's core, and the list built D2R's way.
+core-rules (`plugin/core-rules/skill_functions.cpp`): srvst 80 / cltst 63 are the cost check; the router's Blood Warp
+calls D2R's srvdo 27, pays the cost, and calls `NewStateList` without removing the old list first. It looks the old
+list up beforehand and sets hpregen (`SetListStat`, `SetUnitState`) only on a new list, so an extended one keeps its
+value, as in PD2. D2R's skills record keeps auralencalc at `+0x80` (1.13c `+0x60`, like aurastat1 `+0x54 -> +0x74`
+and aurastatcalc1 `+0x68 -> +0x88`).
+
+Deviation (approximated, on the unported list): D2R's teleport instead of PD2's core, and no `0x83` timer packet on
+an extended list.
 
 ## Checks
 

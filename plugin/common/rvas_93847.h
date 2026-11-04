@@ -110,7 +110,12 @@ inline constexpr uint64_t SetUnitStat = 0x2f7d10;  // (unit, stat, value, layer)
 
 // Self buff, the way Frozen Armor's srvdo 18 (0x553e60) builds its aurastate list
 inline constexpr uint64_t RemoveSkillState = 0x4370b0;  // (unit, state, 1): drop an older list of this state
-inline constexpr uint64_t NewStateList = 0x433d20;  // (&StateListRequest) -> stat list or null
+// (&StateListRequest) -> stat list or null. An older list of the state with the same skill and level only gets
+// its timer moved and is returned as it is; a lower level returns null; any other older list is replaced.
+inline constexpr uint64_t NewStateList = 0x433d20;
+inline constexpr uint64_t UnitStateList = 0x2f5940;  // (unit, state) -> the unit's list of that state, or null
+inline constexpr uint64_t ListSkill = 0x2f56a0;  // (list) -> its skill id
+inline constexpr uint64_t ListLevel = 0x2f56e0;  // (list) -> its skill level
 inline constexpr uint64_t AddAuraStats = 0x574480;  // (unit, list, skillRecord, skillId, level): aurastat1-6 (attackrate also sets stat 69)
 inline constexpr uint64_t AddAuraStatsB = 0x574600;  // same arguments, Frozen Armor calls both
 inline constexpr uint64_t SetListStat = 0x2f7c00;  // (dataFlag, list, stat, value, layer)
