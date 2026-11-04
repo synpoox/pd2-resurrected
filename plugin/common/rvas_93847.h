@@ -182,6 +182,7 @@ inline constexpr int DamageStaminaLeech = 0x128;
 // missiles.txt record (1.13c's shifted by 0x24)
 inline constexpr int MsDParam1 = 0x9c;    // int32 dParam1
 inline constexpr int MsDmgCalc1 = 0xb4;   // int32 DmgCalc1 (calc index), read by dmg 1 0x453490
+inline constexpr int MsSkill = 0x1b8;     // int16 Skill (skills.txt row), field table 0x3c37d6
 
 // MissileParams::flags
 inline constexpr uint32_t MissileFromOrigin = 0x820;      // start at the origin unit, fly to targetX/targetY

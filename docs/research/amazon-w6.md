@@ -57,7 +57,7 @@ Deviation (approximated, on the unported list): without PD2's pierce hook, core-
 PD2 `0x3a8800 (game, missile, hit)`:
 
 1. HitSubMissile1-4 at the missile, as D2R's srvhit 4 does.
-2. Only on a unit hit, with the skill of the missile row and the missile's level, from the hit point H:
+2. Only on a unit hit, with the skill of the missile row (missiles.txt Skill: 1.13c `+0x194`, D2R `+0x1b8`) and the missile's level, from the hit point H:
    - n = unit vector from H toward the owner, side = (-n.y, n.x);
    - base = H - n * calc3; corners = base +- side * Param4 / 2 (a cone past the target);
    - calc2 explosions; explosion i lands in a random point of the triangle H/corners between fractions (i/2)/(calc2/2)

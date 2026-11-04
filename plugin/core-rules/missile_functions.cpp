@@ -255,7 +255,13 @@ void SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept {
 		return;
 	}
 	const uint32_t dataFlag = d2r::DataFlag(game);
-	const int32_t skillId = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileSkill)(missile);
+	// PD2 takes the skill from the missile row, so a monster's Exploding Arrow spreads too.
+	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
+		dataFlag, At<int32_t>(missile, UnitClass));
+	if (row == nullptr) {
+		return;
+	}
+	const int32_t skillId = At<int16_t>(row, MsSkill);
 	const int32_t level = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileLevel)(missile);
 	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
 	const uint8_t* explode = d2r::api.getSkillRecord(dataFlag, ExplodingArrow);
