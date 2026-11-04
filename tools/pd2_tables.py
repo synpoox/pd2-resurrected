@@ -111,9 +111,10 @@ def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> Non
             skills = Table(skills if skills.is_file() else pd2_ids.excel(d2r_data) / "skills.txt")
             col = {c.lower(): j for j, c in enumerate(skills.header)}
             elements = {r[col["skilldesc"]].lower(): r[col["etype"]] for r in skills.rows}
-            pd2_skilldesc.rewrite(merged, d2r, fmt, elements)
+            texts = pd2_skilldesc.texts(d2r_data, out_data)  # strings.json runs first
+            pd2_skilldesc.rewrite(merged, d2r, fmt, elements, texts)
             pd2_skilldesc.hide_off_tree(merged)
-            if bad := pd2_skilldesc.clashes(merged, d2r, fmt):
+            if bad := pd2_skilldesc.clashes(merged, d2r, fmt, texts):
                 raise ValueError(f"skilldesc lines D2R would print wrongly: {'; '.join(bad)}")
         dest = pd2_ids.excel(out_data) / f"{table}.txt"
         dest.parent.mkdir(parents=True, exist_ok=True)
