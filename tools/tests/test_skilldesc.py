@@ -46,6 +46,16 @@ class SkilldescTests(unittest.TestCase):
                                                 "6", "StrAttackRating", "", "toht", ""])
         self.assertEqual(merged.rows[1][26:], ["76", "Damplev", "skillname139", "par8", ""])
 
+    def test_a_skill_pd2_keeps_off_the_tree_leaves_it(self):
+        # PD2's client hides SkillRow 0; D2R draws it in the page's first cell (Blade Dance, the Barbarian's masteries)
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "skilldesc.txt"
+            p.write_bytes(b"skilldesc\tSkillPage\tSkillRow\tSkillColumn\nBlade Dance\t3\t0\t0\ntiger strike\t3\t1\t2\n"
+                          b"asatemp2\t0\t0\t0\n")
+            t = Table(p)
+        S.hide_off_tree(t)
+        self.assertEqual([r[1:] for r in t.rows], [["0", "0", "0"], ["3", "1", "2"], ["0", "0", "0"]])
+
     def test_builtin_damage_takes_d2rs_line(self):
         d2r = table(("holy bolt", [["75", "StrSkill39", "", "enma", "exma"], [], [], [], [], []]),
                     ("fire bolt", [["75", "StrSkill5", "", "enma", "exma"], [], [], [], [], []]))
