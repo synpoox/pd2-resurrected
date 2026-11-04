@@ -37,7 +37,7 @@ Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 (a frozen install copy); 3.4 is it
 | W3 | Stand-ins and data rows: `merge/` rules pointing each unbuilt rule's skill at the closest D2R function, "not yet" rows on the unported list, all `data` rows | P1 |
 | W4 | Investigation: what PD2's `PlrModes.cpp` changes (PD2 baseline or ProjectDiablo.dll) | none |
 | W5 | Amazon: Lightning Bolt, Lightning Fury (srvdo 188, cltdo 117); starts with the 188 check | W2, P2 |
-| W6 | Amazon group: Fire/Exploding Arrow hit, Multiple Shot dmg 17 -> 20, Power Strike client half (cltdo 22), Immolation client hit (chit 12) | W2, P2 |
+| W6 | Amazon group: Fire/Exploding Arrow hit (shit 63), Multiple Shot dmg 17 -> 20, Power Strike client half (cltdo 22, a 1-byte patch), Immolation client hit (chit 12, data) | W2, P2 |
 | W7 | Nova and orb hits (shit 5, chit 4) | W1, P2 |
 | W8 | Barbarian: Leap, Leap Attack (srvdo 153 -> 172, cltdo 97 -> 115) | W2, P2 |
 | W9 | Barbarian: Double Throw (srvdo 154 -> 183, cltdo 98 -> 116, shit 30 -> 66, dmg 16 -> 21) | W2, P2 |
@@ -122,7 +122,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Melee splash (proc_SplashDamage via item_splashonhit, Golem Splash, Skeleton Splash) | srvdo 163 | c | 163 if D2R's slot is empty, else -> overflow | SrvDoTable, castSkillEvent | Exact | M | verify | melee hit logs splash targets and radius (`inc_splash_radius`) |  |
 | WispBossNova | srvdo 41, cltdo 15 | c | 41, 15 if D2R's are empty or equal (D2R cltdo 15 is a "random spray" function) (equal: D2R's Phoenix Strike charge pair, see skill-function-tables) | SrvDoTable, CltDoTable | Exact | S | data | cast logs nova | W3 |
 | Royal Fire (RadamentBossRoyalFire, LucionRoyalFire) | srvdo 143, cltdo 83 | c | 143, 83 if D2R's are empty or equal (Q2) (equal: D2R's Phoenix Strike charge pair, see skill-function-tables) | SrvDoTable, CltDoTable | Exact | S | data | cast logs fire missiles | W3 |
-| Power Strike, Lightning Strike client half (and boss variants) | cltdo 22 | c | 22 if D2R's is empty or equal | CltDoTable | Exact | S | verify | client draws the strike | W6 |
+| Power Strike, Lightning Strike client half (and boss variants) | cltdo 22 | c | 22: D2R's is PD2's (1.13c D2Client 0x15660) plus a check that draws the strike only for the local player; `CltDoStrikeLocalOnly` jumps over it ([amazon-w6](research/amazon-w6.md)) | CltDoTable, CltDoStrikeLocalOnly | Exact | S | built (W6) | another player's, a Valkyrie's or a boss's strike draws on this client | W6 |
 | Monster frenzy (MonFrenzy, BloodLordFrenzy) | srvdo 109, srvst 64 | a | srvdo 109 -> 9, srvst 64 -> 67 | none | Exact | S | data | thornhulk frenzies, no town portal | W3 |
 | Vanilla functions reassigned to other skills (e.g. Magic Arrow srvdo 8, Berserk 9, War Cry 22, Psychic Hammer 26; Grim Ward srvst 34 / cltst 28 = D2R Find Item's start) | srvdo/cltdo/srvst/cltst values D2R's base bank also uses | a | same | none | Exact | S | data | assumes ProjectDiablo.dll did not change the vanilla function bodies (Q4) | W3 |
 | Corpse/Vine Cycler start (CorpseCycler, VineCycler) | srvst 67 | c | 67 -> ? (D2R moved Frenzy's start from 1.13c's 64 to 67, so PD2's 67 is a different function) | SrvStTable | Exact | S | verify | cast logs start accepted |  |
@@ -146,7 +146,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Rule | PD2 source | Bucket | D2R slot | RVAs | Tier | Size | Status | Test | Work item |
 |---|---|---|---|---|---|---|---|---|---|
 | Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit | shit 62 | c | 62 | SrvHitTable | Exact | M | open | hit logs the hit effect | W28 |
-| Fire Arrow, Exploding Arrow hit | shit 63 | c | 63 | SrvHitTable | Exact | S | open | hit logs explosion | W6 |
+| Fire Arrow, Exploding Arrow hit | shit 63 | c | 63 (D2R's is empty); PD2's 0x3a8800 read from ProjectDiablo.dll ([amazon-w6](research/amazon-w6.md)) | MissileSrvHitTable, SrvHitSubMissiles, MissileOwner, MissileRecord, MissileLevel, getSkillRecord, evalSkillCalc, createMissile, UnitSeed | Exact | M | built (W6) with an approximated deviation, owed to the unported list: the calc2 explosions are created at once with an activation delay where PD2 queues a timer each, their places roll on the owner's seed, and fireexplosion3 plays out where PD2 sends and removes it | hit logs calc2 explosions (Exploding Arrow: min(3 + lvl/5, 8)) | W6 |
 | Uber immolation arrow hit | shit 64 | c | 64 | SrvHitTable | Exact | S | open | hit logs fire |  |
 | Kanemith blaze dot hit (shares 61 with Poison Dagger) | shit 61 | c | 61 | SrvHitTable | Exact | S | open | hit logs dot | W11 |
 | Nova and orb hits (thunderstorm1, powerstrikenova1, powerstrikenova1valk, shatteringarrow, voidbolt, rathmapoisonorb, leoricsummonnova, ZharNovaOrb, IskatuMagicOrb) | shit 5, chit 4 | a | 5/4: equal to D2R's ([nova-orb-hits](research/nova-orb-hits.md)) | SrvHitTable, CltHitTable | Exact | S | data | a Thunder Storm strike leaves 64 / max(`cHitPar1`, 1) client sub-missiles (read from game memory, not a log) | W7 |
@@ -154,10 +154,10 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Blade fragment hit (bladefragment1) | shit 34, chit 6 | c | shit 34 -> 69 (D2R 34 is echoingstrike), chit 6 (empty in D2R) | SrvHitTable, CltHitTable | Exact | S | open | hit logs effect; client draws hit | W32 |
 | Throwing potions (12 `tpot_*` rows, items `tpfs` etc.) and Sharptooth's armageddon control/rock | shit 60, chit 65 | c | shit 60 -> 68 (D2R 60 is colossal throwing axe), chit 65 -> 72 (D2R 65 is miasmachains) | SrvHitTable, CltHitTable | Exact | M | open | thrown potion logs its explode/nova sub-missiles (`sHitPar1`) |  |
 | Psychic Hammer missile damage | dmg 15 | c | 15 -> ? (D2R 15 is holybolt / fistoftheheavensbolt) | SrvDmgTable ? | Exact | S | verify | hit logs damage | W31 |
-| Multiple Shot arrow and bolt damage | dmg 17 | c | 17 -> ? (D2R 17 is ringoffire) | SrvDmgTable ? | Exact | S | verify | Multiple Shot hit logs damage from PD2's calc | W6 |
+| Multiple Shot arrow and bolt damage | dmg 17 | c | 17 -> 20 (D2R 17 is ringoffire; 18 and 19 stay free for PD2's); PD2's 0x3a6ea0 read from ProjectDiablo.dll ([amazon-w6](research/amazon-w6.md)) | MissileSrvDmgTable, MissileRecord, MissileOwner, EvalMissileCalc, UnitStat, SetUnitStat | Exact | S | built (W6) with an approximated deviation, owed to the unported list: hits are counted on pierce_count (merged 522), PD2 counts pierces, so the last (not piercing) hit takes one step less | each further unit hit logs 100 - (n-1)*20 percent, at least 20 | W6 |
 | Placeholder missile `temp1` | sdo 39, cdo 71 | e | none | none | Exact | S | unreachable | no skill, missile, monster or item names it |  |
 | Desert turret fireball client hit | chit 11 | c | 11 if equal, else -> 69 | CltHitTable | Exact | S | verify | client draws hit |  |
-| Immolation, Blaze and Rathma fire client hits (17 missiles) | chit 12 | c | 12 if equal, else -> 70 | CltHitTable | Exact | S | verify | client draws hit | W6 |
+| Immolation, Blaze and Rathma fire client hits (17 missiles) | chit 12 | a | 12: equal to D2R's (1.13c D2Client 0xbb070, D2R 0x1acda0; ProjectDiablo.dll leaves it) ([amazon-w6](research/amazon-w6.md)) | CltHitTable | Exact | S | data | client draws hit | W6 |
 | Fist of the Heavens delay client hit | chit 26 | c | 26 if equal, else -> 71 | CltHitTable | Exact | S | verify | client draws hit | W17 |
 | Blessed Hammer | sdo 40, cdo 72 | c | 40, 72 if D2R's are empty | SrvMisDoTable, CltMisDoTable | Exact | M | verify | hammer logs path and hits | W20 |
 | Siege beast stomp client do | cdo 12 | c | 12 if empty | CltMisDoTable | Exact | S | verify | client draws stomp |  |

@@ -109,11 +109,11 @@ DERIVED = {"skills": {"rightskill": lambda pd2: "0" if pd2.get("passive") == "1"
 # row's when the strings are unchanged, else the D2R row with PD2's descfunc (bytime rows), else the first.
 STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval")
 # PD2 function numbers that D2R gave its own functions (missile srvdo 38 flamewave, cltdo 70 vine beast death; skill
-# srvdo 153 / cltdo 97, RotW's, PD2's leap; Double Throw's srvdo 154, cltdo 98, shit 30, dmg 16 echoingstrike): moved to
-# the free slots core-rules installs them in (plugin/core-rules/skill_functions.cpp Functions[])
+# srvdo 153 / cltdo 97, RotW's, PD2's leap; Double Throw's srvdo 154, cltdo 98, shit 30, dmg 16 echoingstrike; dmg 17
+# ring of fire): moved to the free slots core-rules installs them in (plugin/core-rules/skill_functions.cpp Functions[])
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
 FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78"}, "pSrvHitFunc": {"30": "66"},
-                      "pSrvDmgFunc": {"16": "21"}},
+                      "pSrvDmgFunc": {"16": "21", "17": "20"}},
          "skills": {"srvdofunc": {"153": "172", "154": "183"}, "cltdofunc": {"97": "115", "98": "116"}}}
 # PD2's srvdo 188 / cltdo 117 (Lightning Bolt, Lightning Fury) only create srvmissile, else srvmissilea (cltmissile,
 # else cltmissilea), with the arguments D2R's do dispatcher passes for srvmissile / cltmissile after any do function

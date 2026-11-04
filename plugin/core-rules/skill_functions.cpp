@@ -388,14 +388,6 @@ auto CltStFind(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	return VanillaSlot<CltDoFn>(d2r::rva::CltStTable, slot)(unit, skillId, level);
 }
 
-// D2's seed step (the game inlines it), as d2r-tools better-auras does it.
-auto RandomBelow(uint32_t* seed, uint32_t n) noexcept -> uint32_t {
-	const uint64_t s = static_cast<uint64_t>(seed[0]) * 0x6ac690c5ULL + seed[1];
-	seed[0] = static_cast<uint32_t>(s);
-	seed[1] = static_cast<uint32_t>(s >> 32);
-	return seed[0] % n;
-}
-
 // Bash (PD2 srvdofunc 158): a hit knocks back half the time (PD2's Bash row has no ResultFlags). The queued hit's
 // knockback bit is set from the roll, then D2R's melee do function applies it.
 // shortcut: PD2 rolls after the first apply and only for targets with flag 0x8000; this rolls before, for every
@@ -410,7 +402,7 @@ auto SrvDoBash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 			if (result & d2r::rva::ResultHit) {
 				g_bashHits.fetch_add(1);
 				uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(d2r::rva::UnitSeed)(unit);
-				if (RandomBelow(seed, 100) < 50) {
+				if (d2r::RandomBelow(seed, 100) < 50) {
 					result |= d2r::rva::ResultKnockback;
 					g_bashKnockbacks.fetch_add(1);
 				}
@@ -690,6 +682,9 @@ const SlotFunction Functions[] = {
 	{CltDo, 116, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoDoubleThrow)), "double throw"},
 	{MissileSrvHit, 66, reinterpret_cast<const void*>(static_cast<MissileSrvHitBounceFn>(SrvHitBounce)), "bounce"},
 	{MissileSrvDmg, 21, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgFirstHit)), "first hit"},
+	{MissileSrvHit, 63, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitExplodeSpread)), "explode spread"},
+	// PD2's dmg 17 is D2R's Ring of Fire; ours takes 20 (18 and 19 stay free for PD2's own) and the data points there.
+	{MissileSrvDmg, 20, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgPierceFalloff)), "pierce falloff"},
 };
 
 }  // namespace
@@ -711,11 +706,20 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 			used += n > 0 ? static_cast<size_t>(n) : 0;
 		}
 	}
+	// Power Strike's cltdo 22 is PD2's (1.13c) function plus a local-player check; jumping over the check lets every
+	// client draw everyone's strikes, as PD2 does.
+	static constexpr uint8_t Je[1] = {0x74};
+	const bool strike = context->PatchWriteU8(d2r::rva::CltDoStrikeLocalOnly, Je, sizeof(Je), 0xeb);
+	installed += strike ? 1 : 0;
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; cltdofunc 22 strike for all%s",
+		              strike ? "" : " FAILED (bytes differ)");
+	}
 	return installed;
 }
 
 auto SkillFunctionCount() noexcept -> int {
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0]));
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 1;  // + the cltdo 22 patch
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
