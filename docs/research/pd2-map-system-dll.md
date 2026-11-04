@@ -4,7 +4,7 @@ Resolves MS1 ([#216](https://github.com/synpoox/pd2-resurrected/issues/216), map
 [map-system.md](../map-system.md)). It reads `ProjectDiablo.dll` with Ghidra (project `PD2.gpr`, AGENTS.md) to settle
 what the table inventory (#144) left to the DLL: which area each map item opens, the gates, how map stats reach monsters,
 players and the area, how density and rarity scale, cube op 30, the event roll, and the levels the events open. It ends
-with whether a D2R plugin can open a red portal to a map area. Findings only: no PD2 or Blizzard code is in this repo.
+with whether a D2R plugin can open a red portal to a map area. Findings only: no PD2 or Blizzard file content is in this repo.
 
 Addresses are RVAs from the DLL's `0x10000000` base. Level ids are PD2's `levels` ids. Stat ids are PD2's
 `itemstatcost` ids (the port remaps them, `merge/ids-itemstatcost.tsv`).
@@ -20,7 +20,7 @@ Addresses are RVAs from the DLL's `0x10000000` base. Level ids are PD2's `levels
 - **Map stats are routed by the `Divide` column.** PD2 repurposes `itemstatcost.Divide` on `map_*` stats: below 1000 the
   stat goes to monsters as that vanilla stat id; `1xxx` goes to players as stat `xxx`; `2xxx` is area slot `xxx`; `3xxx`
   is phys-as-extra damage; `1024` (the default) goes to monsters unchanged. Monsters get their list on spawn, players on
-  entering a map level, both as a stat list under state 198.
+  entering a map area, both as a stat list under state 198.
 - **Density and rarity scale by `1 + v/100`.** They multiply the level's monster-region `MonDen` and its champion/unique
   pack min and max. Area level adds `v`. Fortify (skirmish mode) multiplies all three by `v/100` and adds fixed monster
   stats.
@@ -104,7 +104,7 @@ the `Divide` column. PD2 uses it as a route:
 | 2000-2999 | area list | slot `Divide - 2000` | `map_glob_density` 2000 -> slot 0 |
 | 3000-3999 | phys-as-extra handler | | the five `map_mon_phys_as_extra_*` |
 
-The 1-999 band holds 57 stats (every `map_mon_*` stat and the six class ear-drop stats), 1xxx the 22 `map_play_*`
+The 1-999 band holds 57 stats (every `map_mon_*` stat except the five phys-as-extra ones, and the six class ear-drop stats), 1xxx the 22 `map_play_*`
 stats, and 2xxx the 25 `map_glob_*` stats plus `treacherous` and `phasing`. The port must keep these `Divide` values, or carry the routing in a table of
 its own.
 
@@ -116,15 +116,15 @@ its own.
 | 1 | `map_glob_arealevel` | area level + v | `0x38b4d0`, `0x2fc400` |
 | 2 | `map_glob_monsterrarity` | champion/unique pack min and max x (1 + v/100) | `0x38b4d0` |
 | 3 | the nine `map_glob_add_mon_*` | one more monster group: v is the monstats id (13 groups at most) | `0x38b4d0` |
-| 4 | `map_glob_skirmish_mode` (fortify) | density and pack counts x v/100; monsters +100 `item_maxhp_percent`, +40 `damagepercent`, +40 to each of the four elemental masteries, +20 `passive_mag_mastery`, and stat 493 = v | `0x38b4d0` |
+| 4 | `map_glob_skirmish_mode` (fortify) | density and pack counts x v/100; monsters +100 `item_maxhp_percent`, +40 `damagepercent`, +40 to each of the four elemental masteries, +20 `passive_mag_mastery`, and `map_glob_skirmish_mode` (493) = v | `0x38b4d0` |
 | 5 | `map_glob_extra_boss` | extra boss | `0x38bfc0` |
 | 6 | `map_glob_dropcorrupted` | v% chance a drop is corrupted | drop hook `0x372180` |
 | 7-9, 15 | boss drop stats (skillers, corrupted unique, uber mats, puzzle box, facet, treasure) | boss drops | not read here |
 | 10 | `map_glob_sundermonsters` | (also the Horazon entry, section 4) | not read here |
 | 11 | `map_glob_dropsocketed` | v% chance a drop gets sockets | drop hook `0x372180` |
-| 12 | `map_glob_dropbonus` | monsters get stat 273 = v | `0x38b4d0` |
+| 12 | `map_glob_dropbonus` | monsters get `map_glob_dropbonus` (273) = v | `0x38b4d0` |
 | 13 | `map_glob_dropethereal` | v% chance a drop is ethereal | drop hook `0x372180` |
-| 14 | `treacherous`, `phasing` (ear recipes) | monsters +100 `item_maxhp_percent` and stat 276 = v | `0x38b4d0` |
+| 14 | `treacherous`, `phasing` (ear recipes) | monsters +100 `item_maxhp_percent` and `treacherous` (276) = v | `0x38b4d0` |
 
 **Where the area slots land.** `0x38b4d0` (game, level, first) writes D2Game's monster region of that level
 (`game+0xF0 + level*4`): `+0x2B8` `MonDen`, `+0x2BC` and `+0x2BD` the boss (champion/unique pack) min and max, `+0x14` the
@@ -133,17 +133,17 @@ its own.
 monster region. Density's multiplier is also kept in `game+0x262C`. Slots 4, 12 and 14 add stats to the monster list only
 on the first call.
 
-**Monsters.** On spawn (`0x38af90`, called from `0x371590` and `0x371c30`), a monster in a map level (137-210,
+**Monsters.** On spawn (`0x38af90`, called from `0x371590` and `0x371c30`), a monster in a map area (levels 137-210,
 not the guild halls 202-206; `0x37c510`) gets the monster list. A monster whose monstats `Align` byte (`+0x4C`) is set
 (allies, neutral) gets an empty list. The list is applied by `0x38aa00` as a stat list under state 198. Two cases are
 rewritten on the way:
 
 - `item_maxhp_percent` multiplies the monster's current `maxhp` by `v/100` directly.
-- Phys-as-extra (432-436) adds elemental damage computed from the monster's `mindamage` and `maxdamage`: fire 48/49,
+- Phys-as-extra (stats 432-436, extra elemental damage equal to a share of the monster's physical damage) adds elemental damage computed from the monster's `mindamage` and `maxdamage`: fire 48/49,
   lightning 50/51, magic 52/53, cold 54/55 with length 25, poison 57/58 with length 125.
 
 **Players.** A hook on the player's level change (`0x38b000`) applies the player list under state 198 when the new level
-is a map level, and removes states 198 and 212 when it is not.
+is a map area, and removes state 198 and state 212 when it is not.
 
 ## 3. Cube op 30
 
@@ -182,7 +182,7 @@ PvP set.
 
 Value 13 (Butcher's Lair, `MapEventNotifyButcher*`, level 173) and 17 are never drawn: Butcher is disabled, as #152 says.
 
-**When it spawns** (`0x36fef0`, run as rooms of a map level activate). The event waits for the level's progress:
+**When it spawns** (`0x36fef0`, run as rooms of a map area activate). The event waits for the level's progress:
 `progress = region[+0x04] x 100 / constant(level)`, where the constant is a hard-coded per-level switch (`0x38b1d0`). For
 the tiered maps it is 120-280 (for example Arreat Battlefield 139: 240, Phlegethon 145: 270, Lost Temple 158: 120);
 unknown levels use 200. What `region[+0x04]` counts was not read (kills is likely).
@@ -211,7 +211,7 @@ It also drops items in three batches whose sizes depend on the same flags, and w
 Vault: the gold portal leads to level 207, "The Bitter Depths", whose treasure classes are `Map Void`, `Map Void2` and
 `Map Void3`.
 
-**No events at all** spawn in the uber and unique-map levels (set `0x105def44`).
+**No events at all** spawn in the uber areas and unique-map areas (the set at RVA `0x5def44`).
 
 ## 5. A red portal from a D2R plugin
 
@@ -220,8 +220,8 @@ D2R's portal maker `0x432ce0` (game, unit, room, x, y, destLevel, &object, objec
 counterpart of PD2's `0x38a300`: it places the portal object, sets its destination and places the return portal.
 Object 60 is the red portal. D2R's limits that apply (toolkit `engine-limits.md`):
 
-- Portals link levels **within one act**. Harrogath and all map levels are Act V.
-- The destination setter `0x34e9d0` keeps one byte. The port's map levels (about 139-212) are below 256.
+- Portals link levels **within one act**. Harrogath and all map areas are Act V.
+- The destination setter `0x34e9d0` keeps one byte. The port's map-area level ids (about 139-212) are below 256.
 - PD2's portal objects (584 red, 585, 622 for keys) use `OperateFn` 77, past the end of D2R's 75-entry operate table.
   The port uses object 60, or its own object with a function written into a free operate slot (slot 60 is null).
 
