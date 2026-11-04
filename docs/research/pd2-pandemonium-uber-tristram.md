@@ -188,7 +188,7 @@ repo. Table, row and string names below are short identifiers.
 
 #153's decision (PR #186) first turned off all of D2R's Pandemonium Event, levels 133-136, and its UB3 named the
 Pandemonium Map with the mini-ubers. The data says PD2 uses levels 133-135 and D2R's mini-uber fights, almost unchanged,
-and replaces only the finale (136 -> 185). The owner agreed, and PR #186 now turns off only D2R's Uber Tristram (its
+and replaces only the finale (136 -> 185). The owner agreed, and the PR adding this inventory (#185) narrows #153's row to D2R's Uber Tristram (its
 organ portal row, merged line 2391, and level 136). D2R's keys, the levels 133-135 and the mini-uber spawns stay on.
 Level 156, the Pandemonium Citadel (`t37`), is a map area and belongs to the map system.
 
