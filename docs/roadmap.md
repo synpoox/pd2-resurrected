@@ -5,6 +5,8 @@ is about one agent session. `P` items are listed here; `W` items are engine rule
 [core-rules.md](core-rules.md#work-items) and only placed here. **Issue** links each item's ticket
 (sub-issues of the spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41) through M2, of [#85](https://github.com/synpoox/pd2-resurrected/issues/85) for the pre-alpha, and of the map [#143](https://github.com/synpoox/pd2-resurrected/issues/143) for the alpha), where its status lives, with the PR that closed it. P1, P2, P10 and W1 had no issue, so they link their PR.
 
+**Open items:** [M1 and M2](https://github.com/synpoox/pd2-resurrected/issues?q=is%3Aopen+parent-issue%3Asynpoox%2Fpd2-resurrected%2341), [pre-alpha](https://github.com/synpoox/pd2-resurrected/issues?q=is%3Aopen+parent-issue%3Asynpoox%2Fpd2-resurrected%2385), [alpha](https://github.com/synpoox/pd2-resurrected/issues?q=is%3Aopen+parent-issue%3Asynpoox%2Fpd2-resurrected%23143).
+
 Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 on a frozen install copy, testable M2 within 1-2 weeks of 2026-11-03, 5
 build sessions in parallel; the pre-alpha and the alpha have no fixed date. Build PRs merge on the game check, the table-diff gate and a code-review agent; the owner
 reviews P1, W1, W2, the first PR in each class lane, and the M2 and pre-alpha releases.
