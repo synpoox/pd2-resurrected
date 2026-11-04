@@ -5,6 +5,10 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Project Diablo II's class item rules reach the Warlock: Hellfire Torch and Spirit Ward can roll Warlock skills,
+  Warlock skill and skill-tree affixes roll as often as other classes', and the Warlock gets the affixes Project
+  Diablo II added for the other classes: +1 and +2 class skills on body armor, helms and shields, and +3 to a skill
+  tree on grimoires and daggers.
 - Melee splash works more as in Project Diablo II: it carries the damage of the skill you hit with (Frenzy's
   damage bonus and elemental damage, a kick's damage), One and Two Hand Mastery widen it, a normal-tier weapon
   narrows it. As in Project Diablo II, on-hit procs and freezes don't fire on the monsters it splashes onto.
