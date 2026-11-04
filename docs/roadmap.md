@@ -58,7 +58,7 @@ are "not yet" rows on the unported list; the Warlock ships as D2R has it.
 
 | # | Work item | Blocked by | Lane | Issue |
 |---|---|---|---|---|
-| W11-W14 | Necromancer (core-rules) | none | B | [#86](https://github.com/synpoox/pd2-resurrected/issues/86), [#87](https://github.com/synpoox/pd2-resurrected/issues/87), [#115](https://github.com/synpoox/pd2-resurrected/issues/115) (PR), [#89](https://github.com/synpoox/pd2-resurrected/issues/89) |
+| W11-W14 | Necromancer (core-rules) | none | B | [#86](https://github.com/synpoox/pd2-resurrected/issues/86), [#114](https://github.com/synpoox/pd2-resurrected/issues/114) (PR), [#115](https://github.com/synpoox/pd2-resurrected/issues/115) (PR), [#89](https://github.com/synpoox/pd2-resurrected/issues/89) |
 | W15-W20 | Paladin (core-rules) | none | C | [#117](https://github.com/synpoox/pd2-resurrected/issues/117) (PR), [#91](https://github.com/synpoox/pd2-resurrected/issues/91), [#92](https://github.com/synpoox/pd2-resurrected/issues/92), [#93](https://github.com/synpoox/pd2-resurrected/issues/93), [#94](https://github.com/synpoox/pd2-resurrected/issues/94), [#95](https://github.com/synpoox/pd2-resurrected/issues/95) |
 | W21-W24 | Druid (core-rules) | none | D | [#96](https://github.com/synpoox/pd2-resurrected/issues/96), [#97](https://github.com/synpoox/pd2-resurrected/issues/97), [#98](https://github.com/synpoox/pd2-resurrected/issues/98), [#99](https://github.com/synpoox/pd2-resurrected/issues/99) |
 | W25 | Investigation: Assassin finisher hook points (core-rules) | none | E | [#100](https://github.com/synpoox/pd2-resurrected/issues/100) |
