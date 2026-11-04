@@ -34,7 +34,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/skill-icons.txt."""
     dc6, hd, images = modkit()
     classes = read_lines(rule)
-    unknown = [c for c in classes if c not in hd.CLASSES or not c]
+    unknown = [c for c in classes if c not in hd.CLASSES]
     if unknown:
         raise SkillIconError(f"not a class: {', '.join(unknown)}")
     paths = {c: [Path(p).relative_to("data") for p in hd.icon_paths(c)] for c in classes}
@@ -42,7 +42,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     extra = sorted(p.name for p in (pd2_data / "global" / "ui" / "spells").glob("??skillicon.dc6") if p.name not in listed)
     if extra:
         raise SkillIconError(f"PD2 sheets not listed: {', '.join(extra)}")
-    pal = dc6.palette((d2r_data / "global" / "palette" / "units" / "pal.dat").read_bytes())
+    palette = dc6.palette((d2r_data / "global" / "palette" / "units" / "pal.dat").read_bytes())
     for c in classes:
         sprite, classic = paths[c]
         if not (pd2_data / classic).is_file():
@@ -55,9 +55,10 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             n -= 1
         if n * stride > hd.MAX_STRIP:
             raise SkillIconError(f"{c}: {n} frames is past D2R's {hd.MAX_STRIP} px strip")
-        frames = [images.crop(strip, k * stride, 0, stride, strip[1]) if k < n_hd and k < len(d2r) and pd2[k] == d2r[k]
-                  else images.scale(dc6.decode(pd2[k], pal), fw, strip[1]) for k in range(n)]
+        keep = [k < n_hd and k < len(d2r) and pd2[k] == d2r[k] for k in range(n)]
+        frames = [images.crop(strip, k * stride, 0, stride, strip[1]) if keep[k]
+                  else images.scale(dc6.decode(pd2[k], palette), fw, strip[1]) for k in range(n)]
         images.write_sprite(out_data / sprite, images.hstack(frames, stride, strip[1]), fw, n)
         (out_data / classic).parent.mkdir(parents=True, exist_ok=True)
         (out_data / classic).write_bytes((pd2_data / classic).read_bytes())
-        print(f"  skill-icons: {c} {n} HD frames ({sum(k >= n_hd or pd2[k] != d2r[k] for k in range(n))} from PD2)")
+        print(f"  skill-icons: {c} {n} HD frames ({keep.count(False)} from PD2)")
