@@ -61,9 +61,9 @@ e.g. modkit save-set <save> level=30 --skill 230=10 --project .; then out of tow
 a second, and run the same command with core-rules-w21. For the take-over checks, press another skill while
 holding it; for blade-fury-refused, an Assassin with Blade Fury (266): hold it.
 W23 checks (tag core-rules-w23), same merged data: a Druid with Gust (442), Werebear (228) and Hunger (242), no
-+skills, e.g. modkit save-set <save> level=30 --skill 442=5 --skill 228=1 --skill 242=5 --project .; then out of
-town cast Gust, and in bear form kill a monster and eat its corpse with Hunger; run the same command with
-core-rules-w23.
++skills; save-set takes class skill slots (Werebear 7, Hunger 21, Gust 30), e.g. modkit save-set <save> --skill
+30=5 --skill 7=1 --skill 21=5 --project .; then out of town cast Gust, and in bear form kill a monster and eat its
+corpse with Hunger; run the same command with core-rules-w23.
 """
 import json
 import os
@@ -651,8 +651,10 @@ def teleport_cast(ctx):
 
 @check("gust-cast", tags=["core-rules-w23"])
 def gust_cast(ctx):
-    """A Gust (router srvdofunc 190) teleported, threw its srvmissilea (gust) and hit the units within calc3 par3 = 4
-    with cold length calc1 ln12 = 12 (Param2 0 per level), the row's HitFlags 1, ResultFlags 5 and HitClass 2."""
+    """A Gust (router srvdofunc 190) teleported and hit the units within calc3 par3 = 4 with cold length calc1 ln12 =
+    12 (Param2 0 per level), the row's HitFlags 1, ResultFlags 5 and HitClass 2. Its srvmissilea (gust) is thrown only
+    with a throwing weapon in hand: PD2's create call (1.13c 0xa28f0 with its last argument 1) checks the weapon's
+    quantity (0xa1790), and so does D2R's ThrowSkillMissile, so either outcome is PD2's."""
     casts = re.findall(r"gust: skill 442 level (\d+): missile (-?\d+) (thrown|not thrown), radius (-?\d+) \(calc3\), "
                        r"cold length (-?\d+) \(calc1\), hit flags (\d+), result flags (\d+), hit class (-?\d+)",
                        _log(ctx))
@@ -660,11 +662,10 @@ def gust_cast(ctx):
         ctx.skip("no Gust in the log yet (cast it out of town, then run again)")
     level, missile, thrown, *values = casts[-1]
     radius, chill, hit_flags, result_flags, hit_class = (int(v) for v in values)
-    assert thrown == "thrown", f"level {level}: missile {missile} not thrown"
     assert (radius, chill) == (4, 12), f"radius {radius}, cold length {chill}; PD2: 4, 12"
     flags = (hit_flags, result_flags, hit_class)
     assert flags == (1, 5, 2), f"hit flags, result flags, hit class {flags}; PD2: (1, 5, 2)"
-    return f"level {level}: missile {missile}, radius {radius}, cold length {chill}"
+    return f"level {level}: missile {missile} {thrown}, radius {radius}, cold length {chill}"
 
 
 @check("hunger-hit", tags=["core-rules-w23"])

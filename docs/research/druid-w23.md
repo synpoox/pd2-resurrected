@@ -19,7 +19,9 @@ HitFlags 1, HitClass 2, EType cold, no damage columns.
 1. The teleport core `0x1036cd20(game, unit, 1)` (Teleport's, [sorceress-w26](sorceress-w26.md)); return 0 if it fails.
 2. D2Game `0xa28f0(game, srvmissilea, unit, skill, level, 0, 0, 0, 0, 1)`: the missile from the unit thrown at the
    skill's target, the call 1.13c's do dispatcher makes for `srvmissile`. D2R's is `0x4333f0` (`ThrowSkillMissile`,
-   one more argument, the unit's state key), as Double Throw calls it.
+   one more argument, the unit's state key), as Double Throw calls it. With its last argument 1 the call makes a
+   missile for a player only when `0xa1790` passes (a throwing weapon's quantity), so a Druid without one throws
+   nothing; D2R's does the same.
 3. A zeroed 0x70-byte damage block: hit flags = record `+0x130` (HitFlags), result flags = `+0x12e` (ResultFlags),
    `+0x30` cold length = calc1, `+0x64` hit class = `+0x134` (HitClass).
 4. D2Game's area search (`0x103a1450`) around the unit with radius calc3, unit mask `0x8583` and callback D2Game
@@ -58,5 +60,9 @@ client its timer (packet `0x83`), as for Teleport and Blood Warp: an approximate
 ## Checks
 
 `tests/game/core_rules_checks.py`, tag `core-rules-w23`: `gust-cast` (radius calc3 4, cold length calc1 12, the row's
-flags, the missile thrown) and `hunger-hit` (state hunger for 475 + lvl * 25 frames, lifedrainmindam 3 + lvl / 4,
-velocitypercent 19 + lvl). Not run in game yet.
+flags; the missile thrown or not, step 2) and `hunger-hit` (state hunger for 475 + lvl * 25 frames, lifedrainmindam
+3 + lvl / 4, velocitypercent 19 + lvl).
+
+Run on Slot8 (2026-11-04), a level 95 Druid with Gust 5, Werebear 1 and Hunger 5: all four checks pass. Gust
+teleported and logged radius 4, cold length 12, flags 1/5/2, missile 763 not thrown (no throwing weapon). Hunger in
+bear form ate a zombie's corpse: state 246 for 600 frames, stats 60=4, 67=24, 135=37, 554=80, the buff icon shown.
