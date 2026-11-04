@@ -115,22 +115,26 @@ def arrow(shaft: Image, head: Image, length: int) -> Image:
     return Image(head.w, n, shaft.px * (n - head.h) + head.px)
 
 
-def draw(dst: Image, a: Image, tip: tuple[float, float], d: tuple[float, float]) -> None:
-    """Lay arrow a over dst, turned to unit direction d (tail to tip), its bottom middle on tip. Bilinear."""
+def draw(dst: Image, a: Image, tip: tuple[float, float], d: tuple[float, float],
+         clip: tuple[float, float] = (-math.inf, math.inf), replace: bool = False) -> None:
+    """Lay arrow a over dst, turned to unit direction d (tail to tip), its bottom middle on tip, only where clip[0] <=
+    x < clip[1]. Bilinear. With replace, a takes the place of what is under it instead of going over it."""
     (tx, ty), (dx, dy), hw = tip, d, a.w / 2
     xs = [tx + u * dy + v * dx for u in (-hw, hw) for v in (0, -a.h)]
     ys = [ty - u * dx + v * dy for u in (-hw, hw) for v in (0, -a.h)]
     src, px = a.px, dst.px
     for y in range(max(0, math.floor(min(ys))), min(dst.h, math.ceil(max(ys)) + 1)):
-        for x in range(max(0, math.floor(min(xs))), min(dst.w, math.ceil(max(xs)) + 1)):
+        for x in range(max(0, math.floor(min(xs)), math.ceil(max(clip[0], -1))),
+                       min(dst.w, math.ceil(max(xs)) + 1, math.ceil(min(clip[1], dst.w)))):
             wx, wy = x + 0.5 - tx, y + 0.5 - ty
             sx, sy = wx * dy - wy * dx + hw - 0.5, wx * dx + wy * dy + a.h - 0.5
             x0, y0 = math.floor(sx), math.floor(sy)
             fx, fy = sx - x0, sy - y0
-            acc = [0.0, 0.0, 0.0, 0.0]  # premultiplied
+            acc, cov = [0.0, 0.0, 0.0, 0.0], 0.0  # premultiplied; how much of the pixel a covers
             for xx, yy, k in ((x0, y0, (1 - fx) * (1 - fy)), (x0 + 1, y0, fx * (1 - fy)),
                               (x0, y0 + 1, (1 - fx) * fy), (x0 + 1, y0 + 1, fx * fy)):
                 if k > 0 and 0 <= xx < a.w and 0 <= yy < a.h:
+                    cov += k
                     i = (yy * a.w + xx) * 4
                     al = src[i + 3] * k
                     if al:
@@ -141,7 +145,7 @@ def draw(dst: Image, a: Image, tip: tuple[float, float], d: tuple[float, float])
             if acc[3] < 0.5:
                 continue
             i, sa = (y * dst.w + x) * 4, acc[3] / 255
-            da = px[i + 3] / 255 * (1 - sa)  # source over destination
+            da = px[i + 3] / 255 * (1 - (cov if replace else sa))  # source over (or in place of) destination
             oa = sa + da
             for c in range(3):
                 px[i + c] = round((acc[c] / 255 + px[i + c] * da) / oa)
@@ -187,17 +191,33 @@ def redraw(strip: Image, stride: int, g: dict, pics: tuple[Image, Image, Image],
     for p in boxes:
         x, y = corner(p)
         strip.paste(box, x - m, y - m)
-    for s, t in arrows:
-        tail = None
-        if s[2] != t[2] and t[1] - s[1] > 1:  # as PD2's: a diagonal that skips rows leaves the straight arrow
-            # shortcut: a box in the source column on the row above the target would sit on the branch; none does today
-            x, y = corner(s)
-            tail = (x + b // 2, g["rows"][t[1] - 2] + b // 2)
-            if not any(a == s and u[2] == s[2] and u[1] >= t[1] for a, u in arrows):
-                n = tail[1] - y - b
-                draw(strip, Image(shaft.w, n, shaft.px * n), tail, (0, 1))
+    alpha = [shaft.px[i * 4 + 3] for i in range(shaft.w)]
+    left, right = alpha.index(max(alpha[:shaft.w // 2])), alpha.index(max(alpha[shaft.w // 2:]), shaft.w // 2)
+    core = shaft.crop(left + 1, 0, right - left - 1, 1)  # inside the shaft's dark edge lines
+
+    def branch(s, t):  # as PD2's: a diagonal that skips rows leaves the straight arrow
+        return s[2] != t[2] and t[1] - s[1] > 1
+    for s, t in sorted(arrows, key=lambda a: branch(*a)):  # straight arrows first: branches join them
+        if not branch(s, t):
+            tip, d, length = ends(corner(s), corner(t), b)
+            draw(strip, arrow(shaft, head, length), tip, d)
+            continue
+        # shortcut: a box in the source column on the row above the target would sit on the branch; none does today
+        x, y = corner(s)
+        tail = (x + b // 2, g["rows"][t[1] - 2] + b // 2)
+        bottom = min(tail[1] + b // 2, g["rows"][t[1] - 1] - gap(b) - head.h)  # above the straight arrow's head
+        if not any(a == s and u[2] == s[2] and u[1] >= t[1] for a, u in arrows):
+            n = tail[1] - y - b
+            bottom = tail[1]
+            draw(strip, Image(shaft.w, n, shaft.px * n), tail, (0, 1))
         tip, d, length = ends(corner(s), corner(t), b, tail)
-        draw(strip, arrow(shaft, head, length), tip, d)
+        near = (-math.inf, tail[0]) if d[0] < 0 else (tail[0], math.inf)
+        # its end stops inside the straight arrow, then each arrow's inside covers the other's edge lines: one shape
+        draw(strip, arrow(shaft, head, length), tip, d, (near[0] - core.w / 2, near[1] + core.w / 2))
+        n = bottom - tail[1] + b // 2
+        draw(strip, Image(core.w, n, core.px * n), (tail[0], bottom), (0, 1), replace=True)
+        n = b // 2
+        draw(strip, Image(core.w, n, core.px * n), (tail[0] + d[0] * n, tail[1] + d[1] * n), d, near, True)
     for p in boxes:  # as PD2's: arrows keep clear of the counter boxes
         x, y = corner(p)
         x, y = x - m + cx0, y - m + cy0

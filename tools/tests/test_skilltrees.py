@@ -69,6 +69,17 @@ class EndsTests(unittest.TestCase):
         self.assertAlmostEqual(tip[1] - dy * length, 250, delta=1)
 
 
+class DrawTests(unittest.TestCase):
+    def test_replace_takes_the_place_of_what_is_under_it(self):
+        a = T.Image(4, 4, bytearray((0, 0, 0, 100) * 16))
+        for replace, want in ((False, 255), (True, 100)):
+            dst = T.Image(8, 8, bytearray((255, 0, 0, 255) * 64))
+            T.draw(dst, a, (4, 6), (0, 1), replace=replace)
+            self.assertEqual(dst.px[(4 * 8 + 4) * 4 + 3], want)  # the middle of a: alpha over red, or a's own
+            T.draw(dst, a, (4, 6), (0, 1), (5, 8), replace)
+            self.assertEqual(dst.px[(4 * 8 + 4) * 4 + 3], want)  # left of the clip: untouched
+
+
 # a tiny tree: 3 frames of 130 x 200, a red tab strip, white boxes with a blue counter box at every slot, a grey
 # arrow where ARROW_FROM is
 G = {"sprite": "t/{}skilltree.sprite", "rows": [20, 50, 80, 110, 140, 170], "columns": [4, 44, 84], "box": 24,
