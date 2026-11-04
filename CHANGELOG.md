@@ -5,6 +5,9 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Gust works as in Project Diablo II: it teleports you, then chills and staggers the monsters around where you land.
+- Hunger works as in Project Diablo II: a werebear eats a corpse for a while of life steal, speed, open wounds and
+  deep wounds.
 - Firestorm works as in Project Diablo II: every one of its fire trails wanders (D2R sends the first one straight).
 - Charge works as in Project Diablo II: it runs at Project Diablo II's speed, and the longer the charge, the wider
   its hit splashes with a splash-on-hit item.

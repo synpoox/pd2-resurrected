@@ -349,6 +349,10 @@ inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's se
 inline constexpr int DamageLifeLeech = 0x120;  // mana leech +0x124, stamina leech +0x128
 inline constexpr int DamageManaLeech = 0x124;
 inline constexpr int DamageStaminaLeech = 0x128;
+// Cold length (1.13c's 0x30) and hit class (1.13c's 0x64), as ElementalDamage (0x437d00) and Hunger (0x576630) fill
+// them
+inline constexpr int DamageColdLength = 0x118;
+inline constexpr int DamageHitClass = 0x144;
 
 // missiles.txt record (1.13c's shifted by 0x24)
 inline constexpr int MsDParam1 = 0x9c;    // int32 dParam1
@@ -390,6 +394,11 @@ inline constexpr int SkParam4 = 0x1c4;
 inline constexpr int SkSrvPrgFunc1 = 0x50;  // int16 srvprgfunc1-3, read by SrvPrgDispatch
 inline constexpr int SkPrgCalc1 = 0x58;     // int32 prgcalc1-3 (calc index), read by srvdo 37's 0x571590
 inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170
+// uint16 ResultFlags, uint32 HitFlags, int32 HitClass (1.13c's 0x12e / 0x130 / 0x134), as D2R's Hunger (0x576630)
+// reads them into its damage block
+inline constexpr int SkResultFlags = 0x186;
+inline constexpr int SkHitFlags = 0x188;
+inline constexpr int SkHitClass = 0x18c;
 inline constexpr int SkSrvOverlay = 0x6e;  // int16 srvoverlay (skills field table 0x302380)
 inline constexpr int SkAuraFilter = 0x70;  // int32 aurafilter, the area unit mask (clthit 26 reads it)
 inline constexpr int SkCltCalc2 = 0x170;  // int32 cltcalc2 (calc index)
