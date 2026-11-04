@@ -36,9 +36,9 @@ in a follow-up grilling ticket, the way #148 fed #158.
   row, or converted later, one FLAC per file (open question from #5).
 - **Rows to fix on the list itself:** the Gheed event row belongs to MS8. The "other classes" row is stale, since the
   pre-alpha now builds those classes as W11-W35. The level-pipeline rows wait only for #151's work items. The missile
-  stand-in models (P10) have no row. Nor do PD2's client UI overlays, though the Buff HUD companion already covers
-  buff timers and mini skill icons, and Item Roll Ranges the tooltip stat ranges: those need only an approximated row
-  naming the companion; the skill bar, potion counter and DPS counter are left.
+  stand-in models (P10) have no row. Nor do PD2's client UI overlays: the Buff HUD companion covers buff timers, mini
+  skill icons and the skill bar, Item Roll Ranges the tooltip stat ranges, and a D2R Reimagined plugin can cover the
+  potion counter, so each needs only a row naming its plugin. Only the DPS counter needs a plugin built.
 
 ## Scope
 
@@ -151,10 +151,15 @@ Engine work from the rows above, with nothing yet in core-rules:
 - **PD2's client UI overlays**: buff timers (`bufficons.dc6`, 37 frames), mini skill icons (`skillicons_mini.dc6`, 242
   frames, and the `miniskillicons` table), PD2's skill bar, the potion counter (`potion_count_overlay`,
   `potiondots_*`), the DPS counter, and tooltip changes (stat ranges, item level). The DLL triage lists them, but the
-  unported list has no row for them. Buff timers and mini skill icons are covered by the Buff HUD companion
-  (Pyre-Flies, `companions/manifest.json`), and the stat ranges by Item Roll Ranges, presumably: an approximated row
-  each, naming the companion, as for Left Click Auras. `miniskillicons` and the two DC6 sheets are then cut with them.
-  Left for the grilling: PD2's skill bar, the potion counter and the DPS counter (D2R has its own skill bar).
+  unported list has no row for them. Owner, 2026-11-04:
+  - Buff timers, mini skill icons and the skill bar: the Buff HUD companion (Pyre-Flies, `companions/manifest.json`).
+    `miniskillicons` and the two DC6 sheets are cut with them.
+  - Tooltip stat ranges: Item Roll Ranges, presumably (not compared with PD2's).
+  - The potion counter: a plugin from D2R Reimagined can cover it (a new companion; its licence terms apply).
+  - The DPS counter: no plugin exists, so one needs building (a new plugin; PD2's DPS counter reads a damage feed, per
+    the DLL triage).
+
+  Each covered feature gets an approximated row naming its plugin, as for Left Click Auras.
 - **Monster and overlay HD stand-ins** (section 1), and **missile stand-ins** (P10, done but unlisted).
 - **The Act 4 hireling** (section 2): the row text understates it.
 
@@ -163,5 +168,5 @@ Engine work from the rows above, with nothing yet in core-rules:
 1. In game, in HD: are PD2-only monsters (a Dopplezon, the Countess) and vanilla overlays (a shrine, Battle Orders)
    invisible today? That one test decides whether two art rows are bugs to fix before the alpha.
 2. Is the Ascendant in the alpha? It needs new hireling ids, which is the biggest unknown here.
-3. PD2's skill bar, potion counter and DPS counter: cut, or a companion?
+3. Which D2R Reimagined plugin gives the potion counter, and is the DPS counter plugin in the alpha?
 4. PD2's 30 voice and effect WAVs: cut with the sounds, or convert later?
