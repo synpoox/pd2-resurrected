@@ -114,6 +114,16 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["Poison Dagger", "32", "190", "122"])
 
+    def test_finisher_function_numbers(self):
+        # srvdo 170 joins the router; the prg values move only in the prg columns (srvdo 39 / 139 stay D2R's)
+        cols = "skill|srvdofunc|srvprgfunc1|srvprgfunc2|srvprgfunc3"
+        d2r = table(f"{cols}\nAttack|1|||\n")
+        pd2 = table(f"{cols}\nFists of Fire|170|39|172|171\nBlades of Ice|170||139|143\nCold|139|||\n")
+        lines = [("Fists of Fire", 1, "Fists of Fire"), ("Blades of Ice", 2, "Blades of Ice"), ("Cold", 3, "Cold")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Fists of Fire", "190", "186", "185", "184"],
+                                           ["Blades of Ice", "190", "", "181", "143"], ["Cold", "139", "", "", ""]])
+
     def test_teleport_goes_to_the_router(self):
         d2r = table("skill|srvdofunc\nAttack|1\n")
         pd2 = table("skill|srvdofunc\nTeleport|155\nBlink|155\n")

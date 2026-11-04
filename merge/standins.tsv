@@ -53,13 +53,13 @@ skills	Summon Fenris	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Fire Claws	=	srvdofunc,cltdofunc	Fire Claws
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
 skills	Hunger	=	srvdofunc	Hunger
-skills	Tiger Strike	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Fists of Fire	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Cobra Strike	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Claws of Thunder	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
-skills	Blades of Ice	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Tiger Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Fists of Fire	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Cobra Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Claws of Thunder	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Blades of Ice	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Dragon Flight	=	srvdofunc	Dragon Flight
-skills	Royal Strike	=	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	Royal Strike	=	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
@@ -96,7 +96,7 @@ skills	Energy Shield SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Energy Shield SelfAura	Might	cltstfunc	Paladin aura client start
 skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Chilling Armor SelfAura	Might	cltstfunc	Paladin aura client start
-skills	RakanothStrike	Cobra Strike	srvdofunc,srvprgfunc1,srvprgfunc2,srvprgfunc3,cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
+skills	RakanothStrike	Cobra Strike	cltprgfunc1,cltprgfunc2,cltprgfunc3	Assassin charge-up finishers
 skills	TorajanBossNest	Nest	srvdofunc	TorajanBossNest
 skills	KanemithFirestorm	DiabWall	srvdofunc	Firestorm and wall makers
 skills	LucionNova	Nova	srvdofunc	Lucion kit
