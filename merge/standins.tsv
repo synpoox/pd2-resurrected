@@ -1,7 +1,5 @@
 # table	row	from	columns	rule (W3; delete a line when its rule is built, see tools/pd2_standins.py)
-skills	Inferno	=	srvdofunc,cltdofunc	Inferno, Arctic Blast
 skills	Static Field	=	srvdofunc	Static Field
-skills	Teleport	=	srvdofunc	Teleport, Blink
 skills	Clay Golem	=	srvstfunc	Golem start
 skills	BloodGolem	=	srvstfunc	Golem start
 skills	FireGolem	=	srvstfunc	Golem start
@@ -51,7 +49,6 @@ skills	DiabWall	=	srvdofunc	Firestorm and wall makers
 skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
 skills	Firestorm	=	srvdofunc,cltdofunc	Firestorm and wall makers
 skills	Summon Spirit Wolf	=	srvstfunc	Spirit Wolf, Fenris start
-skills	Arctic Blast	=	srvdofunc,cltdofunc	Inferno, Arctic Blast
 skills	Summon Fenris	=	srvstfunc	Spirit Wolf, Fenris start
 skills	Fire Claws	=	srvdofunc,cltdofunc	Fire Claws
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
@@ -67,8 +64,6 @@ skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
-skills	Blink	Teleport	srvdofunc	Teleport, Blink
-skills	proc_SplashDamage	-	srvdofunc	Melee splash
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
 skills	Gust	Teleport	srvdofunc	Gust
 skills	Holy Light	Holy Bolt	srvdofunc	Holy Light
@@ -76,8 +71,6 @@ skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
 skills	Split Throw	-	cltdofunc	Split Throw
 skills	Combustion	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	Joust	Leap Attack	srvdofunc	Joust
-skills	Golem Splash	-	srvdofunc	Melee splash
-skills	Skeleton Splash	-	srvdofunc	Melee splash
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
 skills	FingermageBossNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	FingermageBossDiabWall	DiabWall	srvdofunc	Firestorm and wall makers
@@ -108,7 +101,6 @@ skills	TorajanBossNest	Nest	srvdofunc	TorajanBossNest
 skills	KanemithFirestorm	DiabWall	srvdofunc	Firestorm and wall makers
 skills	LucionNova	Nova	srvdofunc	Lucion kit
 skills	LucionBlink	Teleport	cltdofunc	Lucion kit
-skills	LucionBlink	Teleport	srvdofunc	Teleport, Blink
 skills	LucionDash	Charge	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Lucion kit
 skills	LucionPunish	-	srvdofunc	Lucion kit
 skills	LucionDeath1	Nova	srvdofunc,cltdofunc	Death novas
@@ -117,7 +109,8 @@ skills	LucionDeath3	Nova	srvdofunc,cltdofunc	Death novas
 skills	LucionDeath4	Nova	srvdofunc,cltdofunc	Death novas
 skills	UberDiabSummon	-	srvdofunc	UberDiabSummon, UberDiabRun
 skills	Static Field Proc	Static Field	srvdofunc	Static Field
-skills	Mon Bloodwarp	Teleport	srvdofunc	Teleport, Blink
+skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
+skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 missiles	firebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	icebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	blessedhammer	=	pSrvDoFunc,pCltDoFunc	Blessed Hammer

@@ -71,7 +71,8 @@ through `pPath->pRoom->...->pLevel+0x1d0`, not decoded further) and the value is
 
 ## D2R 93847
 
-D2R has its own `PlrModes.cpp` (`D2Game\src\Player\PlrModes.cpp` asserts). Its mode change (`0x429d10`) is a rewrite:
+D2R has its own `PlrModes.cpp` (`D2Game\src\Player\PlrModes.cpp` asserts). Its mode change (`0x429d10`; W21 found
+this is a mode-table entry, and gate A's counterpart is `0x42bfb0` / `0x42d840`, [druid-w21](druid-w21.md)) is a rewrite:
 it switches on the current mode, reads skill flags at txt `+0x24`/`+0x27`/`+0x36` instead of `srvdofunc` numbers, has
 input windows of 2 and 6 frames, and adds a `bear` (state 140) roll next to Concentration. So D2R is not 1.13c here, and
 PD2's patches can't be carried over as code.

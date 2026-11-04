@@ -8,9 +8,15 @@ private-multiplayer release a build may break characters; each break is noted he
 - The Assassin's charge-up skills build charges as in Project Diablo II: charges are shared between them, and each
   charge's effect (Fists of Fire's fire, Cobra Strike's poison, Blades of Ice's wave) fires on the hit that builds
   it. What your client draws for each charge is still D2R's.
+- Teleport works as in Project Diablo II: for a second after each teleport your elemental masteries are
+  lowered, by less as the skill levels up.
+- Melee splash works as in Project Diablo II: items that splash on hit, Frenzy and Tiger Strike's splash radius,
+  and revived monsters' hits damage the monsters around the one struck.
 - Poison Dagger works as in Project Diablo II: each stab leaves a ring of poison clouds around the target.
 - Blood Warp works as in Project Diablo II: it costs a share of your life (never all of it), then regenerates life
   for five seconds.
+- Inferno and Arctic Blast send Project Diablo II's line of flames (more with Inferno's level).
+- Another skill starts at once while Inferno or Arctic Blast channels, and a second Blade Fury does not cut the first short, as in Project Diablo II.
 - Desecrate raises corpses around its cloud as in Project Diablo II.
 - Skill trees show their boxes and arrows where Project Diablo II's skills and prerequisites are.
 - Golem Mastery adds a golem every 5 base levels, as in Project Diablo II; a new golem replaces the oldest.
