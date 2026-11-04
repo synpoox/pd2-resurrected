@@ -247,12 +247,18 @@ auto CltDoDoubleThrow(Unit* unit, int32_t skillId, int32_t level) noexcept -> in
 	}
 	const uint32_t dataFlag = d2r::api.unitDataFlag(unit);
 	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
-	Unit* weapon = d2r::Engine<Unit* (*)(Unit*) noexcept>(ClientUnitWeapon)(unit);
-	if (skill == nullptr || weapon == nullptr) {
+	if (skill == nullptr) {
 		return 0;
 	}
+	int column = 0;  // a monster throws column a, as on the server
+	if (At<int32_t>(unit, UnitType) == 0) {
+		Unit* weapon = d2r::Engine<Unit* (*)(Unit*) noexcept>(ClientUnitWeapon)(unit);
+		if (weapon == nullptr) {
+			return 0;
+		}
+		column = WeaponColumn(weapon);
+	}
 	d2r::api.setUnitSkillFlag(unit, 1);
-	const int column = WeaponColumn(weapon);
 	const int32_t missile = At<int16_t>(skill, SkCltMissileA + column * 2);
 	if (!d2r::ValidMissile(dataFlag, missile)) {
 		return 0;
