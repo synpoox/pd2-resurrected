@@ -24,6 +24,7 @@ PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-di
 | W3 | Stand-ins and data rows (core-rules) | P1 | C | [#46](https://github.com/synpoox/pd2-resurrected/issues/46), [#60](https://github.com/synpoox/pd2-resurrected/issues/60) (PR) |
 | P10 | HD missiles: every missile PD2 adds gets a `missiles.json` model (stand-in art), so none is invisible in HD | P2 | A | [#74](https://github.com/synpoox/pd2-resurrected/issues/74) (PR) |
 | P11 | Skill icons: every class's icon sheet rebuilt from PD2's art, so PD2's new skills show their icons | P1 | D | [#83](https://github.com/synpoox/pd2-resurrected/issues/83) (PR) |
+| P14 | Skill tree backgrounds: each class's tree boxes and arrows redrawn from the merged tables, so they follow PD2's skill positions | P1 | D | [#84](https://github.com/synpoox/pd2-resurrected/issues/84), [#110](https://github.com/synpoox/pd2-resurrected/issues/110) (PR) |
 
 ## M2: Amazon and Barbarian complete
 
