@@ -46,6 +46,16 @@ class SkilldescTests(unittest.TestCase):
                                                 "6", "StrAttackRating", "", "toht", ""])
         self.assertEqual(merged.rows[1][26:], ["76", "Damplev", "skillname139", "par8", ""])
 
+    def test_builtin_damage_takes_d2rs_line(self):
+        d2r = table(("holy bolt", [["75", "StrSkill39", "", "enma", "exma"], [], [], [], [], []]),
+                    ("fire bolt", [["75", "StrSkill5", "", "enma", "exma"], [], [], [], [], []]))
+        merged = table(("holy bolt", [["10", "", "", "", ""], [], [], [], [], []]),  # printed "Magic Damage: %d-%d3-5"
+                       ("new bolt", [["10", "", "", "", ""], [], [], [], [], []]))
+        self.assertEqual(len(S.clashes(merged, d2r, FMT)), 2)
+        S.rewrite(merged, d2r, FMT, {"holy bolt": "fire", "new bolt": "fire"})  # the skill's own D2R line beats EType
+        self.assertEqual([r[1:6] for r in merged.rows], [["75", "StrSkill39", "", "enma", "exma"],
+                                                         ["75", "StrSkill5", "", "enma", "exma"]])
+
     def test_a_line_with_no_d2r_layout_fails(self):
         merged = table(("new skill", [["47", "StrSkill20", "", "a", "b"], [], [], [], [], []]))  # D2R: never under 75
         with self.assertRaisesRegex(ValueError, "new skill descline1 47 StrSkill20"):

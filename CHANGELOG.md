@@ -6,7 +6,7 @@ private-multiplayer release a build may break characters; each break is noted he
 ### Unreleased
 
 - Skill tooltips no longer show raw format codes ("Duration: %d seconds40 seconds") or a stray "an evil force" line;
-  the Mana Cost line is back. Percent values read "+110%" where PD2 says "+110 percent".
+  the Mana Cost and damage lines are back ("Magic Damage: 3-5"). Percent values read "+110%" where PD2 says "+110 percent".
 - Item stat lines no longer show the value twice ("+1 %+d to All Skills").
 - Corruption: cube an item with a Worldstone Shard. It takes two presses for now: the first rolls the hidden
   corruption value and hands the shard back, the second gives one of PD2's outcomes. A corrupted item can't be

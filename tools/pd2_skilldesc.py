@@ -3,8 +3,9 @@
 A line is a function number plus text a/b and calc a/b (descline1 + desctexta1, ...). PD2's rows keep classic
 functions that print vanilla's text and then the value ("Duration: " 40 " seconds"); D2R's strings carry the value's
 format code instead ("Duration: %d seconds"), so the merged line printed both. A line clashes when a text names a D2R
-string with a format code in a column, under a function, that D2R's own lines never use it in; or when it is PD2's
-function 1 (the built-in Mana Cost line, which D2R dropped: it prints D2R's "an evil force"). Each clashing line is
+string with a format code in a column, under a function, that D2R's own lines never use it in; or when it has no text
+under a function D2R's lines never use (PD2's built-ins: 1 Mana Cost printed D2R's "an evil force", 10 elemental
+damage printed "Magic Damage: %d-%d" and then the damage). Each clashing line is
 rewritten onto D2R's functions by LINES, the owner-approved mapping on #73; strings stay D2R's. A clash left after
 the rewrite fails the merge.
 """
@@ -49,6 +50,20 @@ KEYS = {"2": {"StrSkill4": "StrSkillDamagePercent", "StrSkill5": "StrSkillFireDa
         "4": {"StrSkill4": "StrSkillDamageFlat", "StrSkill50": "StrSkillHealFlat"},
         "52": {"StrSkill89": "StrSkillRunWalkRange", "StrSkill106": "StrSkillAttackSpeedRange",
                "EskillLifeSteal": "StrSkillLifeStealRange", "StrSkill4": "StrSkillDamagePercentRange"}}
+# PD2's built-in lines (no text: the game picks the label from the skill) -> the D2R labels that line becomes, by the
+# skill's element (skills EType; "" any): attack rating, physical damage, elemental damage, elemental length, poison
+# damage, burning damage. The skill's own D2R line with one of the function's labels is copied (PD2's EType is not
+# always the shown element: frost nova's is fire), else D2R's most common line with the element's label; a built-in
+# with no label for the skill's element (11 on a lightning skill: PD2 prints no length) is left empty
+_DAMAGE = {"fire": "StrSkill5", "cold": "StrSkill6", "ltng": "StrSkill7", "mag": "StrSkill39", "pois": "StrSkill8"}
+BUILTINS = {"8": {"": "StrSkill22"}, "9": {"": "StrSkill4"}, "10": _DAMAGE,
+            "11": {"cold": "StrSkillColdLengthSingular", "pois": "StrSkillPoisonLengthSingular"},
+            "14": {"": "StrSkill8"}, "22": {"": "StrSkillFireDamageAveragePerSecond"},
+            # damage per second, burning per second, fire wall's size, golem damage, magic damage
+            "26": {"fire": "StrSkillFireDamageAveragePerSecond", "cold": "StrSkillColdDamageAveragePerSecond",
+                   "ltng": "StrSkillLightningDamageAveragePerSecond"},
+            "27": {"": "StrSkillFireDamageAveragePerSecond"}, "29": {"": "StrSkillRangeSingular"},
+            "39": {"": "StrSkill4"}, "48": {"": "StrSkill39"}}
 
 
 def formatted(d2r_data: Path) -> set[str]:
@@ -87,17 +102,20 @@ def clashes(t: Table, d2r: Table, fmt: set[str]) -> list[str]:
     """The lines D2R's game would print wrongly: "skill column function text a text b"."""
     seen = layouts(d2r, fmt)
     used = {k[0] for k in seen if len(k) == 3}
+    funcs = {d2r.rows[i][j] for i, j, _ in lines(d2r)}
     out = []
     for i, j, (a, b, _, _) in lines(t):
         r = t.rows[i]
-        if (r[j] == "1" and not r[a]) or any(k in used and (k, r[j], col) not in seen
-                                              for k, col in ((r[a], 0), (r[b], 1))):
+        if (r[j] not in funcs and not r[a]) or any(k in used and (k, r[j], col) not in seen
+                                                    for k, col in ((r[a], 0), (r[b], 1))):
             out.append(f"{r[0]} {t.header[j]} {r[j]} {r[a]} {r[b]}")
     return out
 
 
-def rewrite(t: Table, d2r: Table, fmt: set[str]) -> None:
-    """Rewrites t's clashing lines in place by LINES; raises ValueError naming lines LINES can't place."""
+def rewrite(t: Table, d2r: Table, fmt: set[str], elements: dict[str, str] | None = None) -> None:
+    """Rewrites t's clashing lines in place by LINES; raises ValueError naming lines LINES can't place. `elements`:
+    skilldesc name (lower case) -> the skill's EType, for BUILTINS."""
+    elements = elements or {}
     seen = layouts(d2r, fmt)
     used = {k[0] for k in seen if len(k) == 3}
     bad = set(clashes(t, d2r, fmt))
@@ -115,6 +133,12 @@ def rewrite(t: Table, d2r: Table, fmt: set[str]) -> None:
         if (f, a) in FIXED:
             new = list(FIXED[(f, a)])
             new[3] = ca if new[3] is None else new[3]
+        elif f in BUILTINS and not a:
+            labels = BUILTINS[f]
+            label = labels.get(elements.get(r[0].lower(), ""), labels.get(""))
+            own = [x for x in d2r_lines.get(r[0].lower(), []) if x[1] in labels.values()]
+            common = Counter(tuple(x) for ls in d2r_lines.values() for x in ls if x[1] == label)
+            new = own[0] if own else list(common.most_common(1)[0][0]) if common else [""] * 5
         elif f in LINES:
             to, how, calc = LINES[f]
             if how == "copy":  # a PD2-only skill takes D2R's most common line for the key (lesser hydra: hydra's)

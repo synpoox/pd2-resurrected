@@ -107,7 +107,11 @@ def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> Non
         merged = merge_table(table, Table(pd2_ids.excel(pd2_data) / f"{table}.txt"), d2r, ren, **opts)
         if table == "skilldesc":
             fmt = pd2_skilldesc.formatted(d2r_data)
-            pd2_skilldesc.rewrite(merged, d2r, fmt)
+            skills = pd2_ids.excel(out_data) / "skills.txt"  # merged by ids-skills.tsv, which runs first
+            skills = Table(skills if skills.is_file() else pd2_ids.excel(d2r_data) / "skills.txt")
+            col = {c.lower(): j for j, c in enumerate(skills.header)}
+            elements = {r[col["skilldesc"]].lower(): r[col["etype"]] for r in skills.rows}
+            pd2_skilldesc.rewrite(merged, d2r, fmt, elements)
             if bad := pd2_skilldesc.clashes(merged, d2r, fmt):
                 raise ValueError(f"skilldesc lines D2R would print wrongly: {'; '.join(bad)}")
         dest = pd2_ids.excel(out_data) / f"{table}.txt"
