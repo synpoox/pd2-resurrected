@@ -6,8 +6,8 @@
 fetch downloads each release asset in companions/manifest.json (or, for an entry with `commit` in place of `tag`, the
 file at that path in the repo at that commit), refuses one whose SHA-256 differs from the manifest, and unpacks only
 the files the manifest lists into git-ignored generated/companions/ (laid out as the installed mod
-folder), plus our companions/filter.json. No companion binary is ever committed. Run it after pd2_merge.py, which
-rebuilds generated/.
+folder), plus our companions/filter.json and the plugin settings in companions/config/ (over the zip's own). No
+companion binary is ever committed. Run it after pd2_merge.py, which rebuilds generated/.
 
 install runs `modkit install` and then copies generated/companions/ over <game>/mods/<Name>/, and turns on
 `[d2rcore.items] item_stat_ranges` for Item Roll Ranges. It overwrites filter.json; other loader settings are kept.
@@ -80,10 +80,13 @@ def fetch(root: Path, download: Callable[..., bytes] = github_download) -> list[
                 (dest / rel).parent.mkdir(parents=True, exist_ok=True)
                 (dest / rel).write_bytes(zf.read(n))
                 written.append(rel)
-    (dest / "d2rloader" / "config").mkdir(parents=True, exist_ok=True)
-    shutil.copy2(root / "companions" / "filter.json", dest / "d2rloader" / "config" / "filter.json")
-    written.append("d2rloader/config/filter.json")
-    return written
+    config = dest / "d2rloader" / "config"
+    config.mkdir(parents=True, exist_ok=True)
+    # our settings for the companions, over any default a zip put there
+    for f in [root / "companions" / "filter.json", *sorted((root / "companions" / "config").glob("*"))]:
+        shutil.copy2(f, config / f.name)
+        written.append(f"d2rloader/config/{f.name}")
+    return list(dict.fromkeys(written))
 
 
 def overlay(root: Path, mod_dir: Path) -> None:

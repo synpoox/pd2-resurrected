@@ -1,5 +1,5 @@
-// PD2 item rules: Ormus' Robes' random sorceress skill (properties func 25) and skill on cast (itemeventfunc 33 on
-// the dospellcast event), item_rules.cpp.
+// PD2 item rules: Ormus' Robes' random sorceress skill (properties func 25), item_rules.cpp. Skill on cast and skill
+// on block are the Cast Triggers companion's (IR2).
 #pragma once
 
 #include <D2RLPlugin/api.h>

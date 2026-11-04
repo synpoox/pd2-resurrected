@@ -142,8 +142,8 @@ rows have no table hook: D2R does what it does.
 | Desert turret fireball client hit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.desertfireball.pCltHitFunc` | W36 |
 | Siege beast stomp client do | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.siege beast stomp missile.pCltDoFunc` | W36 |
 | Rathma bone spear damage | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.rathmabonespear.pSrvDmgFunc` | UB5 |
-| Skill on cast (`item_skilloncast`, 62 live item rows and Ormus' Robes): the trigger | approximated | PD2 raises its `dospellcast` event from a place not found (docs/research/p12-ormus-robes.md); core-rules runs the wearer's skill on cast listeners after D2R's server skill dispatcher runs a skill a player cast in cast mode (SC), so a skill in another mode (a throw, a melee attack) never procs it |  | IR2 |
-| Skill on block (`item_skillonblock`, 5 live rows) | not yet | stand-in: D2R's own behaviour |  | IR2 |
+| Skill on cast (`item_skilloncast`, 62 live item rows and Ormus' Robes): the trigger | approximated | PD2 raises its `dospellcast` event from a place not found (docs/research/p12-ormus-robes.md); the Cast Triggers companion (RuffnecKk suite 1.4.2, `companions/manifest.json`) raises `doactive` after every eligible non-channelled spell and aims the proc its own way, where PD2 casts a skill with ItemTarget 5 (Nova) at the aim point |  | IR2 |
+| Skill on block (`item_skillonblock`, 5 live rows) | not yet | stand-in: D2R's own behaviour; the released Cast Triggers (1.1.1) has no `[on_block]` trigger |  | IR2 |
 | Skill while equipped (`item_skillonequip`, prop `equipped-skill`: Tempest, Blackoak Shield, Spectral Plate) | not yet | stand-in: D2R's own behaviour |  | IR7 |
 | Phasing (stat `phasing` + state, from Phasing SelfAura) | not yet | stand-in: D2R's own behaviour |  | IR7 |
 | Charm "only one unique" rule | not yet | stand-in: D2R's own behaviour |  | IR7 |
@@ -156,12 +156,11 @@ rows have no table hook: D2R does what it does.
 | Max curses | not yet | stand-in: D2R's one curse per target |  | IR4 |
 | Replenish charges | not yet | stand-in: D2R's own behaviour; the stat does nothing |  | IR5 |
 | Dye tint: the 35 cube rows that set `transform_dye` give an untinted item | approximated | tinting needs client drawing code; how D2R Reimagined tints items is researched for a later patch (#190) |  |  |
-| Ethereal items keep full durability; set items can roll ethereal | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked against the DLL) |  | IR2, IR8 |
 | Ethereal bonus: PD2's +25% defense or damage, not D2R's +50% | not yet | stand-in: D2R's ApplyEthereal (+50%), while PD2's exceptional and elite weapons are balanced for 25% (`ProjectDiablo.dll` `0x2fb710`, #189) |  | IR8 |
 | Weapons lose durability at half the rate | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked against the DLL); Item Durability's resistance would also halve armor's (#189) |  | IR8 |
-| Rare affix minimum by item level; staffmods with no upper item level | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked) |  | IR2, IR8 |
+| Rare affix minimum by item level; staffmods with no upper item level | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked) |  | IR8 |
 | Flying-monster loot on walkable tiles; no drops from seal kills | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked) |  | IR8 |
-| A mercenary drops its gear when another is hired | not yet | stand-in: D2R's own behaviour; companion plugin mercenary drop on hire (#158) |  | IR2 |
+| Shift-click identify with a Tome of Identify | approximated | the Mass Identify companion, one charge per item; not checked against PD2's click and charges, and the Horadrim Almanac stays IR5's (#189) |  | IR2 |
 | Map items | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `misc.ubtm.pSpell` `misc.dcma.pSpell` `misc.t11.pSpell` `misc.t12.pSpell` `misc.t13.pSpell` `misc.t21.pSpell` `misc.t22.pSpell` `misc.t23.pSpell` `misc.t24.pSpell` `misc.t25.pSpell` `misc.t31.pSpell` `misc.t32.pSpell` `misc.t33.pSpell` `misc.t34.pSpell` `misc.t35.pSpell` `misc.t36.pSpell` `misc.t37.pSpell` `misc.t41.pSpell` `misc.t39.pSpell` `misc.t61.pSpell` `misc.t62.pSpell` `misc.rtma.pSpell` `misc.t38.pSpell` `misc.t42.pSpell` `misc.t14.pSpell` `misc.uba.pSpell` `misc.t26.pSpell` `misc.t15.pSpell` `misc.t43.pSpell` `misc.t16.pSpell` `misc.t3a.pSpell` `misc.t51.pSpell` `misc.t52.pSpell` `misc.t53.pSpell` `misc.t44.pSpell` `misc.t28.pSpell` `misc.luca.pSpell` `misc.t27.pSpell` `misc.t54.pSpell` `misc.t17.pSpell` `misc.t55.pSpell` `misc.t56.pSpell` `misc.t57.pSpell` `misc.t58.pSpell` `misc.t3b.pSpell` `misc.t29.pSpell` `misc.t18.pSpell` `misc.t2a.pSpell` | MS2, UB2 |
 | Unlimited TP and ID books | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `misc.rtp.pSpell` `misc.rid.pSpell` | IR5 |
 | Item stat less than / equal (corruption outcomes, map recipes; 1,126 enabled rows) | not yet | stand-in: D2R's own behaviour |  | P9, MS5 |

@@ -5,6 +5,9 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Items work more as in Project Diablo II: ethereal items keep their full durability, set items can drop ethereal,
+  hiring a new mercenary drops the old one's gear, and shift-right-clicking a Tome of Identify identifies your
+  inventory. Skill on cast items now proc from the Cast Triggers plugin. Skill on block items don't proc yet.
 - Melee splash works more as in Project Diablo II: it carries the damage of the skill you hit with (Frenzy's
   damage bonus and elemental damage, a kick's damage), One and Two Hand Mastery widen it, a normal-tier weapon
   narrows it. As in Project Diablo II, on-hit procs and freezes don't fire on the monsters it splashes onto.
