@@ -114,6 +114,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["Blood Warp", "190", "80", "63"])  # router, then the first free start slots
 
+    def test_melee_splash_joins_the_router(self):
+        d2r = table("skill|srvdofunc\nAttack|1\n")
+        pd2 = table("skill|srvdofunc\nAttack|1\nproc_SplashDamage|163\n")
+        lines = [("Attack", 0, "Attack"), ("proc_SplashDamage", 1, "proc_SplashDamage")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1], ["proc_SplashDamage", "190"])  # D2R fills 163
+
     def test_missile_do_functions_become_the_missile_column(self):
         cols = "skill|srvdofunc|srvmissile|srvmissilea|cltdofunc|cltmissile|cltmissilea"
         d2r = table(f"{cols}\nAttack|1||||||\n")

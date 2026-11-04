@@ -165,6 +165,13 @@ inline constexpr uint64_t UnitId = 0x34a330;  // (unit, file, line) -> unit id
 // (unit, skill, level, target, 0) -> non-zero cast: a skill cast from unit at target as an event, sent to clients (aura
 // event 33 0x42f300 casts this way); refuses while the unit has state 54
 inline constexpr uint64_t CastEventSkill = 0x5896e0;
+// Melee splash (W33): one victim's damage, built the way PD2's area callback 0x10303190 builds it
+// (game, attacker, defender, &damage, 0, srcdam): weapon damage scaled by srcdam / 128 (0 = 128); Leap Attack's
+// 0x44b600 fills its hit this way
+inline constexpr uint64_t WeaponDamage = 0x44c030;
+// (game, attacker, victim, &damage): avoid rolls, then the damage is dealt; AreaKnockback's callback 0x43a740 calls it
+inline constexpr uint64_t AreaDamage = 0x436e90;
+inline constexpr uint64_t EngineAllocator = 0x12063c0;  // () -> the allocator; vtable +0x20 frees (Leap Attack's cleanup)
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
@@ -248,6 +255,7 @@ inline constexpr int SkCalc3 = 0x198;
 inline constexpr int SkCalc4 = 0x19c;  // skills field table at 0x306193
 inline constexpr int SkAuraRangeCalc = 0x84;  // int32 aurarangecalc, Chain Lightning's chain range when sHitPar1 is 0
 inline constexpr int SkParam4 = 0x1c4;  // int32 Param4 (Param1 0x1b8), field table at 0x305e68
+inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
 inline constexpr int SkAuraLenCalc = 0x80;    // int32 auralencalc: 1.13c's 0x60, before aurarangecalc as there
