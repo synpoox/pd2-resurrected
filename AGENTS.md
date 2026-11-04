@@ -8,6 +8,8 @@ Every PR links the issue it solves: the body opens with `Closes #<n>`, or `Part 
 
 ### Triage labels
 
+A bug that exists in PD2 itself, and that we fix, also gets `pd2-origin` and a row in `docs/pd2-origin-bugs.md`.
+
 Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
 
 ### Domain docs
