@@ -72,7 +72,7 @@ A playable point in the roadmap made of the work items it needs; the port has M1
 _Avoid_: phase, release
 
 **Beta**:
-The milestone after the alpha, in two runs: run 1 is multiplayer over TCP/IP, run 2 is multiplayer on hosted servers with a short beta league. It also holds the Warlock's three new skills; its other contents are not yet decided.
+The milestone after the alpha, in two runs: run 1 is TCP/IP co-op, run 2 is multiplayer with a short beta league. It also holds the Warlock's three new skills and, last and at low priority, the guild halls; its other contents are not yet decided.
 _Avoid_: PD2's `Beta` build (a different, older PD2 build in the install)
 
 **Launch**:
@@ -80,7 +80,7 @@ The public release after the beta; league 1 starts with it.
 _Avoid_: release, 1.0
 
 **League**:
-A fresh-start play period on hosted servers: the short beta league, then league 1 from the launch.
+A fresh-start play period in multiplayer: the short beta league, then league 1 from the launch.
 _Avoid_: season (PD2's word), ladder
 
 **Corruption**:
@@ -94,3 +94,23 @@ _Avoid_: desecrated zone, Desecrate (the Necromancer skill)
 **Terror Zone**:
 D2R's rotating zone that grows harder and gives better rewards; it stands in for PD2's corrupted zones.
 _Avoid_: corrupted zone, desecrated zone
+
+**PD2-only area**:
+A level PD2 has and D2R does not: map areas, uber boss areas, event areas, PvP areas and guild halls.
+_Avoid_: map (a map item or a wayfinder map), zone, new area
+
+**HD preset**:
+The HD scene D2R draws for one DS1 file, found by the DS1's path; a DS1 without one plays on flat ground with invisible walls.
+_Avoid_: HD map, tile art
+
+**PvP**:
+Player versus player: players fighting each other, in PD2's PvP and battle royale areas. Not the same as multiplayer. The port has no PvP.
+_Avoid_: multiplayer, dueling
+
+**Multiplayer**:
+Players connecting to an online server the port hosts, with its economy and leagues.
+_Avoid_: online, hosted servers (say multiplayer), TCP/IP co-op
+
+**TCP/IP co-op**:
+Players joining each other's games directly over TCP/IP, with no hosted server, economy or league.
+_Avoid_: multiplayer, LAN
