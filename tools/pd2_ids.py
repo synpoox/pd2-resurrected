@@ -7,7 +7,8 @@ An id at or below D2R's last row merges the PD2 row onto that D2R row and keeps 
 name it stay valid (PD2_NAMES tables keep PD2's: there the key is the text the player sees); a higher id appends the
 row. Lines are only ever added (`pd2_merge.py --seed-ids`), never renumbered.
 A line whose PD2 name starts with `+` is a row the port adds, not a PD2 one (#233): `+<id> col=value ...` appends a copy
-of the mod's row `<id>` (an earlier one) with those columns set, at the line's id after D2R's rows.
+of the mod's row `<id>` (an earlier one) with those columns set, at the line's id after D2R's rows. It is copied at
+every merge, so it follows its source row through a PD2 re-baseline.
 
 Seeding a new PD2 row picks, in order:
   1. the same id, below the end of vanilla 1.13c (VANILLA), where both games hold the same vanilla row, often
@@ -194,6 +195,8 @@ def port_row(pd2_name: str) -> tuple[int, dict[str, str]] | None:
     if not pd2_name.startswith("+"):
         return None
     like, *sets = pd2_name[1:].split(" ")  # shortcut: a value can't hold a space; quote values if one ever must
+    if not like.isdigit() or not all("=" in kv for kv in sets):
+        raise IdError(f"port row '{pd2_name}': want '+<id> column=value ...'")
     return int(like), dict(kv.split("=", 1) for kv in sets)
 
 
@@ -389,6 +392,8 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
             like, sets = port
             row[:] = out[recs[like]] if like < len(recs) else appended[like - len(recs)]
             for c, v in sets.items():
+                if c not in d2r.header:
+                    raise IdError(f"ids-{table}.tsv: port row '{p}': {table} has no column '{c}'")
                 row[d2r.header.index(c)] = v
             row[d2r.key] = n
             if id_col is not None:
