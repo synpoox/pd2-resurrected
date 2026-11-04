@@ -248,6 +248,14 @@ inline constexpr uint64_t ClientFindUnit = 0x9a5d0;  // (id, type) -> the client
 inline constexpr uint64_t MissileTargetType = 0x3bc190;  // (missile) -> target unit type, 6 for none
 inline constexpr uint64_t MissileTargetId = 0x3bc280;  // (missile) -> target unit id
 inline constexpr uint64_t EngineAllocator = 0x12063c0;  // () -> the allocator; vtable +0x20 frees (Leap Attack's cleanup)
+// Static Field (W27), the way D2R's Static Field (srvdo 20 0x5546b0, per unit 0x5556a0) builds its hit
+// (dataFlag, difficulty) -> difficultylevels.txt record (0x84 bytes); StaticFieldMin at +0x68
+inline constexpr uint64_t DifficultyRecord = 0x300830;
+inline constexpr int DiffStaticFieldMin = 0x68;
+// (unit, &damage, etype, amount, length, &resist stat or null, &etype or null): adds amount to the etype's field
+// (2 lightning: +0x2c, hit class +0x144 = 0x40; resist stat 41)
+inline constexpr uint64_t AddElementDamage = 0x437980;
+inline constexpr int DamageFlag148 = 0x148;   // uint8 D2R's Static Field sets to 1
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
@@ -341,7 +349,8 @@ inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58, pois
 inline constexpr int StatPoisonMax = 58;
 inline constexpr int StatPoisonLength = 59;
 inline constexpr int StatLife = 6;  // itemstatcost hitpoints (current life, in 1/256), D2R and PD2
-inline constexpr int StatMaxLife = 7;  // maxhp
+inline constexpr int StatMaxLife = 7;  // maxhp, in 1/256
+inline constexpr int StatLightResist = 41;  // lightresist, D2R and PD2
 inline constexpr int StatVelocityPercent = 67;  // itemstatcost velocitypercent, D2R and PD2
 inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's search: 0x88583 | the 0xa783 the search adds
 
@@ -352,7 +361,7 @@ inline constexpr int DamageStaminaLeech = 0x128;
 // Cold length (1.13c's 0x30) and hit class (1.13c's 0x64), as ElementalDamage (0x437d00) and Hunger (0x576630) fill
 // them
 inline constexpr int DamageColdLength = 0x118;
-inline constexpr int DamageHitClass = 0x144;
+inline constexpr int DamageHitClass = 0x144;  // uint32; D2R's Static Field ORs 0xd into it (0x4d, as PD2's)
 
 // missiles.txt record (1.13c's shifted by 0x24)
 inline constexpr int MsDParam1 = 0x9c;    // int32 dParam1
@@ -405,6 +414,7 @@ inline constexpr int SkCltCalc2 = 0x170;  // int32 cltcalc2 (calc index)
 inline constexpr int SkCltCalc3 = 0x174;
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
+inline constexpr int SkAuraTargetState = 0xa2;  // int16 auratargetstate (skills field table 0x302380)
 inline constexpr int SkAuraLenCalc = 0x80;    // int32 auralencalc: 1.13c's 0x60, before aurarangecalc as there
 inline constexpr int SkAuraStat1 = 0x74;      // int16 aurastat1-6, read by AddAuraStats (0x574480)
 inline constexpr int SkAuraStatCalc1 = 0x88;  // int32 aurastatcalc1-6 (calc index, pass to EvalCalc), same reader

@@ -82,6 +82,10 @@ W23 checks (tag core-rules-w23), same merged data: a Druid with Gust (442), Were
 +skills; save-set takes class skill slots (Werebear 7, Hunger 21, Gust 30), e.g. modkit save-set <save> --skill
 30=5 --skill 7=1 --skill 21=5 --project .; then out of town cast Gust, and in bear form kill a monster and eat its
 corpse with Hunger; run the same command with core-rules-w23.
+W27 checks (tag core-rules-w27), same merged data: a Sorceress with Static Field (42), Combustion (448) and Inferno
+(41) and no Lightning Mastery; save-set takes class skill slots (Inferno 5, Static Field 6, Combustion 31), e.g.
+modkit save-set <save> level=30 --skill 6=10 --skill 31=10 --skill 5=10 --project .; then out of town cast Static
+Field next to monsters, cast Combustion, hold Inferno for a second, and run the same command with core-rules-w27.
 """
 import json
 import os
@@ -112,7 +116,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
     ("srvdofunc", 176, "holy light"), ("pCltHitFunc", 66, "holy light"), ("pCltHitFunc", 71, "fist delay"),
     ("srvdofunc", 184, "charge spread"), ("srvdofunc", 185, "charge ring"), ("srvdofunc", 186, "charge fire"),
-    ("srvdofunc", 181, "charge cold"),
+    ("srvdofunc", 181, "charge cold"), ("cltdofunc", 120, "nova"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -121,6 +125,9 @@ ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
 HPREGEN = 74  # itemstatcost row of hpregen in D2R and PD2
 CHARGE = 107
 TELEPORT_DEBUFF = 233  # merged states id of teleportdebuff
+COMBUSTION, STATIC_FIELD = 448, 42  # merged skill ids
+STATICFIELD_DEBUFF, LIGHTRESIST = 240, 41  # merged states id, itemstatcost id
+STATIC_FIELD_MIN = (55, 70, 85)  # PD2's difficultylevels StaticFieldMin: normal, nightmare, hell
 HUNGER = 246  # merged states id of hunger
 LIFE_DRAIN, VELOCITY = 60, 67  # itemstatcost lifedrainmindam, velocitypercent in D2R and PD2
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -139,7 +146,7 @@ def _log(ctx) -> str:
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                  "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33",
                                  "core-rules-w21", "core-rules-w22", "core-rules-w29", "core-rules-w17",
-                                 "core-rules-w23", "game"])
+                                 "core-rules-w23", "core-rules-w27", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -387,7 +394,7 @@ def _channel_values(skill: int, level: int) -> tuple[int, int]:
     return 2, max(min((24 + (level - 1) * 2) // 2, 24), 1)
 
 
-@check("channel-cast", tags=["core-rules-w21"])
+@check("channel-cast", tags=["core-rules-w21", "core-rules-w27"])
 def channel_cast(ctx):
     """Inferno / Arctic Blast (srvdofunc 182) send PD2's calc3 missiles with range calc1."""
     casts = re.findall(r"channel: skill (\d+) level (\d+): (\d+) of (\d+) missiles \(row \d+\), range (\d+)", _log(ctx))
@@ -401,7 +408,7 @@ def channel_cast(ctx):
     return f"skill {skill} level {level}: {created} missiles, range {rng}"
 
 
-@check("channel-client", tags=["core-rules-w21"])
+@check("channel-client", tags=["core-rules-w21", "core-rules-w27"])
 def channel_client(ctx):
     """The client half (cltdofunc 111) ran with the same count and range; it draws each flame with chance 2 / count."""
     casts = re.findall(r"channel client: skill (\d+) level (\d+): (\d+) of (\d+) flames drawn, range (\d+)", _log(ctx))
@@ -946,3 +953,78 @@ def core_rules_no_crash(ctx):
     faults = re.findall(rf"{PLUGIN}: FAULT[^\n]*", _log(ctx))
     assert not faults, faults[0]
     return "no crash"
+
+
+def static_field_damage(life: int, max_life: int, calc1: int, calc2: int, field_min: int, resist: int) -> int:
+    """PD2's per-unit damage (ProjectDiablo.dll 0x10302830), in life's 1/256, read from its disassembly: calc1% of
+    current life, at least calc2, or (100 - StaticFieldMin)% of max life when the resisted damage beats that share
+    (resisted too, never raised)."""
+    def muldiv(a, b, c):
+        return int(a * b / max(c, 1))
+    cap = muldiv(max_life, (100 - field_min) & 0xffffffff, 100)
+    damage = muldiv(life, calc1, 100)
+    limit = min(muldiv(cap, 100 - resist, 100), cap)
+    out = calc2 if (damage & 0xffffffff) < (calc2 & 0xffffffff) else damage
+    return cap if muldiv(damage, 100 - resist, 100) > limit else out
+
+
+STATIC_FIELD_CAST = re.compile(
+    rf"static field: skill {STATIC_FIELD} level (\d+): radius (-?\d+), calc1 (-?\d+), calc2 (-?\d+), min (-?\d+); units hit (\d+), "
+    r"first: life (-?\d+) of (-?\d+), lightresist (-?\d+), damage (-?\d+); state (-?\d+) for (-?\d+) frames, "
+    r"stat (-?\d+) (-?\d+), new lists (\d+) \(first (-?\d+)\)")
+
+
+@check("static-field-cast", tags=["core-rules-w27"])
+def static_field_cast(ctx):
+    """A Static Field (router srvdofunc 190) hit the units within PD2's aurarangecalc min(ln12 / 2, 14) (ln12 = Param1 8
+    + Param2 1 per level after the first) for PD2's damage (static_field_damage, calc1 Param4 8, calc2 Param3 0,
+    StaticFieldMin 55/70/85), then put staticfield_debuff on them for auralencalc 125 + 5 * Lightning Mastery frames
+    with lightresist from aurastatcalc1. PD2's -min((par5+(lvl<22)?lvl:...), 100): the calc parser binds ?: tighter
+    than +, so it is -min(par5 + (lvl or 22 + (lvl-22)/2), 100), Param5 4 (-14 at level 10 in game); a monster immune
+    to lightning gets half."""
+    casts = [tuple(int(v) for v in c) for c in STATIC_FIELD_CAST.findall(_log(ctx))]
+    hit = [c for c in casts if c[5] > 0]
+    if not hit:
+        ctx.skip("no Static Field that hit a unit in the log yet (cast it next to monsters out of town, then run again)")
+    (level, radius, calc1, calc2, field_min, units, life, max_life, resist, damage, state, frames, stat, value, lists,
+     first) = hit[0]
+    assert radius == min((8 + level - 1) // 2, 14), f"level {level}: radius {radius}"
+    assert (calc1, calc2) == (8, 0), f"calc1 {calc1}, calc2 {calc2}, PD2: 8, 0"
+    assert field_min in STATIC_FIELD_MIN, f"StaticFieldMin {field_min}, PD2's are {STATIC_FIELD_MIN}"
+    want = static_field_damage(life, max_life, calc1, calc2, field_min, resist)
+    assert damage == want, f"life {life} of {max_life}, resist {resist}: damage {damage}, PD2 gives {want}"
+    pd2 = -min(4 + (level if level < 22 else 22 + (level - 22) // 2), 100)
+    assert (state, stat, value) == (STATICFIELD_DEBUFF, LIGHTRESIST, pd2), \
+        f"state {state} stat {stat} {value}, PD2: {STATICFIELD_DEBUFF} {LIGHTRESIST} {pd2}"
+    assert frames >= 125 and (frames - 125) % 5 == 0, f"{frames} frames, PD2: 125 + 5 per Lightning Mastery level"
+    if lists:
+        assert first in (value, int(value / 2)), f"first new list's lightresist {first}, PD2: {value} or half"
+    return (f"level {level}: radius {radius}, {units} unit(s) hit, first {life >> 8}/{max_life >> 8} life, resist "
+            f"{resist}: {damage >> 8} damage; debuff {value} for {frames} frames on {lists} new list(s)")
+
+
+def _missile_row(path: str, name: str) -> dict[str, str]:
+    with open(path, encoding="latin-1") as f:
+        rows = [line.rstrip("\r\n").split("\t") for line in f]
+    return next(dict(zip(rows[0], r)) for r in rows[1:] if r and r[0] == name)
+
+
+@check("combustion-cast", tags=["core-rules-w27"])
+def combustion_cast(ctx):
+    """A Combustion (router srvdofunc 190, cltdofunc 120) made PD2's ring of calc2 = Param1 32 combustion missiles
+    around the caster on the server and the client; the ring's radius is the missile's Vel and Range, PD2's."""
+    text = _log(ctx)
+    casts = re.findall(rf"nova: skill {COMBUSTION} level (\d+): (\d+) missiles \(row (\d+), calc2 (-?\d+)\)", text)
+    clients = re.findall(rf"nova client: skill {COMBUSTION} level (\d+): (\d+) missiles \(row (\d+), calc2 (-?\d+)\)",
+                         text)
+    if not casts or not clients:
+        ctx.skip("no Combustion (server and client) in the log yet (cast it out of town, then run again)")
+    for kind, (level, created, row, count) in (("server", casts[0]), ("client", clients[0])):
+        assert (int(count), int(created)) == (32, 32), f"{kind}: {created} missiles, calc2 {count}; PD2: 32 of 32"
+        assert _rows("missiles")[int(row)] == "combustion", f"{kind}: missile row {row} is {_rows('missiles')[int(row)]}"
+    excel = ("data", "global", "excel", "missiles.txt")
+    pd2 = _missile_row(os.path.join(REPO, "pd2-data", *excel), "combustion")
+    mod = _missile_row(os.path.join(REPO, "generated", *excel), "combustion")
+    for col in ("Vel", "MaxVel", "VelLev", "Range"):  # D2R has no LevRange (unported list)
+        assert pd2[col] == mod[col], f"combustion {col} {mod[col]}, PD2's {pd2[col]}"
+    return f"level {casts[0][0]}: 32 missiles on server and client, Vel {mod['Vel']}, Range {mod['Range']}"

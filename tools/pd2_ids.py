@@ -115,13 +115,15 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # srvdo 190 router, and Desecrate's cltdo 101; Fist of the Heavens' chit 26, where D2R's differs from PD2's 1.13c
 # one): moved to the free slots core-rules installs them in
 # (plugin/core-rules/skill_functions.cpp Functions[]). Charge's cltdo 112 / cltst 57 go to D2R's Charge client
-# functions (37, 25), which do what PD2's do (docs/research/w16-charge.md).
+# functions (37, 25), which do what PD2's do (docs/research/w16-charge.md). Combustion's srvdo 159 and Static Field's
+# 160 join the router too, Combustion's cltdo 100 takes 120 (docs/research/w27-static-field-combustion.md).
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
 FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78"}, "pSrvHitFunc": {"30": "66"},
                       "pSrvDmgFunc": {"16": "21", "17": "20"}, "pCltHitFunc": {"26": "71"}},
-         "skills": {"srvdofunc": {"153": "172", "154": "183", "155": "190", "156": "190", "157": "190", "161": "190",
-                                  "163": "190", "164": "190", "165": "190", "166": "190", "170": "190"},
-                    "cltdofunc": {"97": "115", "98": "116", "101": "121", "102": "122", "112": "37"},
+         "skills": {"srvdofunc": {"153": "172", "154": "183", "155": "190", "156": "190", "157": "190", "159": "190",
+                                  "160": "190", "161": "190", "163": "190", "164": "190", "165": "190", "166": "190",
+                                  "170": "190"},
+                    "cltdofunc": {"97": "115", "98": "116", "100": "120", "101": "121", "102": "122", "112": "37"},
                     # PD2's srvst 68 calls slot 32, D2R's melee start (W11)
                     "srvstfunc": {"66": "80", "68": "32"}, "cltstfunc": {"56": "63", "57": "25"},
                     # the finishers' prg functions (W29): only these PD2 rows use these values in these columns
