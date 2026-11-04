@@ -329,11 +329,12 @@ def _take_overs(ctx) -> list[tuple[int, int, int, str]]:
 
 @check("channel-take-over", tags=["core-rules-w21"])
 def channel_take_over(ctx):
-    """PD2's gate A: a skill requested mid-Inferno / Arctic Blast (srvdofunc 182) starts at once."""
+    """PD2's gate A: another skill requested mid-Inferno / Arctic Blast (srvdofunc 182) starts at once. The held skill
+    itself goes to D2R's gate (D2R re-sends it every frame), so it never shows here."""
     rows = [r for r in _take_overs(ctx) if r[1] == 182]
     if not rows:
         ctx.skip("no take-over in the log yet (hold Inferno or Arctic Blast, press another skill, then run again)")
-    assert all(r[3] == "allowed" for r in rows), f"a request mid-channel was not allowed: {rows[:3]}"
+    assert all(r[3] == "allowed" and r[2] != r[0] for r in rows), f"take-overs mid-channel: {rows[:3]}"
     return f"skill {rows[0][0]} gave way to skill {rows[0][2]}"
 
 

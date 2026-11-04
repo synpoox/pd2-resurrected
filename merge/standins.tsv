@@ -120,6 +120,8 @@ skills	LucionDeath4	Nova	srvdofunc,cltdofunc	Death novas
 skills	UberDiabSummon	-	srvdofunc	UberDiabSummon, UberDiabRun
 skills	Static Field Proc	Static Field	srvdofunc	Static Field
 skills	Mon Bloodwarp	Teleport	srvdofunc	Teleport, Blink
+skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
+skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 missiles	firebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	icebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	blessedhammer	=	pSrvDoFunc,pCltDoFunc	Blessed Hammer

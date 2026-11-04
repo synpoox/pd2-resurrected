@@ -1003,7 +1003,9 @@ auto BusyModeGate(Game* game, Unit* unit, int32_t mode, void* request, int32_t f
 		const uint8_t* now = current != nullptr ? d2r::api.getSkillRecord(d2r::DataFlag(game), nowId) : nullptr;
 		const uint8_t* next = d2r::api.getSkillRecord(d2r::DataFlag(game), nextId);
 		const int32_t func = now != nullptr && next != nullptr ? At<uint16_t>(now, SkSrvDoFunc) : -1;
-		if (func == 182 || func == SrvDoBladeFury) {
+		// D2R re-sends a held skill every frame (PD2's client does not mid-mode); letting that through would restart
+		// the channel each frame, so the same skill again goes to D2R's gate
+		if ((func == 182 && nextId != nowId) || func == SrvDoBladeFury) {
 			const bool refused = func == SrvDoBladeFury && At<uint16_t>(next, SkSrvDoFunc) == SrvDoBladeFury;
 			auto& counter = refused ? g_bladeFuryRefusals : g_takeOvers;
 			if (plog::Sample(counter)) {
