@@ -35,7 +35,7 @@ Was the alpha until [#85](https://github.com/synpoox/pd2-resurrected/issues/85) 
 | W1 | Plumbing and Split Throw server half (core-rules) | none | B | [#37](https://github.com/synpoox/pd2-resurrected/issues/37) (PR) |
 | W2 | Client-half example (core-rules) | W1 | B | [#45](https://github.com/synpoox/pd2-resurrected/issues/45), [#61](https://github.com/synpoox/pd2-resurrected/issues/61), [#69](https://github.com/synpoox/pd2-resurrected/issues/69) (PR) |
 | W4 | Investigation: PlrModes (core-rules) | none | C | [#36](https://github.com/synpoox/pd2-resurrected/issues/36) (PR) |
-| W5, W6 | Amazon (core-rules) | W2, P2 | B | [#52](https://github.com/synpoox/pd2-resurrected/issues/52), [#80](https://github.com/synpoox/pd2-resurrected/issues/80) (PR), [#53](https://github.com/synpoox/pd2-resurrected/issues/53) |
+| W5, W6 | Amazon (core-rules) | W2, P2 | B | [#52](https://github.com/synpoox/pd2-resurrected/issues/52), [#80](https://github.com/synpoox/pd2-resurrected/issues/80) (PR), [#111](https://github.com/synpoox/pd2-resurrected/issues/111) (PR) |
 | W7 | Nova and orb hits (core-rules) | W1, P2 | C | [#50](https://github.com/synpoox/pd2-resurrected/issues/50), [#66](https://github.com/synpoox/pd2-resurrected/issues/66) (PR); game check waits on the owner's run |
 | W8, W9 | Barbarian (core-rules) | W2, P2 | B | [#82](https://github.com/synpoox/pd2-resurrected/issues/82) (PR), [#81](https://github.com/synpoox/pd2-resurrected/issues/81) (PR) |
 | W10 | Barbarian group (core-rules) | W1, P2 | C | [#71](https://github.com/synpoox/pd2-resurrected/issues/71) (PR) |
