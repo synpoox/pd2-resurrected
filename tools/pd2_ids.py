@@ -6,6 +6,8 @@ Ids count records as the game does (an `Expansion` row is not one); a repeated P
 An id at or below D2R's last row merges the PD2 row onto that D2R row and keeps D2R's name, so D2R's own files that
 name it stay valid (PD2_NAMES tables keep PD2's: there the key is the text the player sees); a higher id appends the
 row. Lines are only ever added (`pd2_merge.py --seed-ids`), never renumbered.
+A line whose PD2 name starts with `+` is a row the port adds, not a PD2 one (#233): `+<id> col=value ...` appends a copy
+of the mod's row `<id>` (an earlier one) with those columns set, at the line's id after D2R's rows.
 
 Seeding a new PD2 row picks, in order:
   1. the same id, below the end of vanilla 1.13c (VANILLA), where both games hold the same vanilla row, often
@@ -187,6 +189,14 @@ def ident(names: list[str]) -> list[str]:
     return out
 
 
+def port_row(pd2_name: str) -> tuple[int, dict[str, str]] | None:
+    """A port-added line's (row it copies, columns it sets), or None for a PD2 row's line."""
+    if not pd2_name.startswith("+"):
+        return None
+    like, *sets = pd2_name[1:].split(" ")  # shortcut: a value can't hold a space; quote values if one ever must
+    return int(like), dict(kv.split("=", 1) for kv in sets)
+
+
 def base(name: str) -> str:
     return re.sub(r"#\d+$", "", name)
 
@@ -247,7 +257,13 @@ def check(table: str, lines: list[tuple[str, int, str]], pd2: list[str], d2r: li
         if p.lower() in seen:
             raise IdError(f"{f}: PD2 row '{p}' listed twice")
         seen[p.lower()] = n
-        if p.lower() not in pd2_names:
+        port = port_row(p)
+        if port:
+            if i < len(d2r):
+                raise IdError(f"{f}: port row '{p}' must take an id after D2R's rows")
+            if port[0] >= i:
+                raise IdError(f"{f}: port row '{p}' must copy an earlier row")
+        elif p.lower() not in pd2_names:
             # shortcut: a PD2 row gone after a re-baseline fails; give its id a placeholder row when that happens
             raise IdError(f"{f}: '{p}' is not a PD2 row any more")
         if len(n.encode("latin-1")) > KEY_LIMIT.get(table, 47):
@@ -271,7 +287,7 @@ def check(table: str, lines: list[tuple[str, int, str]], pd2: list[str], d2r: li
 
 def renames(lists: dict[str, list[tuple[str, int, str]]]) -> dict[str, dict[str, str]]:
     """table -> {PD2 name (lower case): mod name} for the rows whose name changes."""
-    return {t: {base(p).lower(): n for p, _, n in ls if base(p) != n} for t, ls in lists.items()}
+    return {t: {base(p).lower(): n for p, _, n in ls if base(p) != n and not port_row(p)} for t, ls in lists.items()}
 
 
 def fix_formula(text: str) -> str:
@@ -362,10 +378,22 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
         for r in d2r.rows:
             if any(r[j] for j in str_cols):
                 shown.setdefault(tuple(r[j] for j in str_cols), []).append([r[j] for j in desc_cols])
+    appended: list[list[str]] = []
     for p, i, n in sorted(lines, key=lambda line: line[1]):
         row = out[recs[i]] if i < len(recs) else [""] * len(d2r.header)
         if i >= len(recs):
             out.append(row)
+            appended.append(row)
+        port = port_row(p)
+        if port:
+            like, sets = port
+            row[:] = out[recs[like]] if like < len(recs) else appended[like - len(recs)]
+            for c, v in sets.items():
+                row[d2r.header.index(c)] = v
+            row[d2r.key] = n
+            if id_col is not None:
+                row[id_col] = str(i)
+            continue
         pr = pd2_rows[p.lower()]
         for j, k in cols:
             if k is None:

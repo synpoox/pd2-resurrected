@@ -56,6 +56,19 @@ grimoires, the Warlock tree affixes and the Warlock skillers. What the alpha doe
 the Warlock (WL1): Hellfire Torch and Spirit Ward roll a class skill from classes 0-6 only (`randclassskill`), and
 grimoires need their corruption outcomes and class-item crafting. Annihilus rolls all skills and needs nothing.
 
+What WL1 found and did ([#233](https://github.com/synpoox/pd2-resurrected/issues/233)):
+
+- Hellfire Torch and Spirit Ward roll classes 0-7 (`patches/030-warlock-item-rules.json`), as D2R's own Torch does.
+- Corruption and crafting already reach grimoires: PD2's rows name item types (`shld,nos`, `shld,mag,noe`), and a
+  grimoire is a `shld`.
+- PD2 made class affixes ten times as common (frequency 1, 2, 4 -> 10, 20, 40); D2R's Warlock affixes take the same
+  (the patch).
+- PD2 added, for each other class, +1 class skills on body armor, shields and helms, and two kinds with `rare` 3
+  (what PD2 does with 3 is not traced): +2 class skills on the same, and +3 to each tree on the class's items. The Warlock gets the same five rows, the
+  tree ones on daggers and grimoires as its other tree affixes, at ids 1042-1046 (the `+` lines in
+  `merge/ids-magicprefix.tsv`).
+- PD2's grand-charm skillers also roll on the PvP charm (`lchp`); PvP is cut, so the Warlock's don't.
+
 ## Work items
 
 | # | Work item | Plugin | Blocked by |
