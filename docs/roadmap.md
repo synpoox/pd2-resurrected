@@ -23,6 +23,7 @@ PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-di
 | P6 | Strings: the strings build ("Decide how the mod ships PD2's strings", #29) | P1 | D | #38 (PR) |
 | W3 | Stand-ins and data rows (core-rules) | P1 | C | #46, #60 (PR) |
 | P10 | HD missiles: every missile PD2 adds gets a `missiles.json` model (stand-in art), so none is invisible in HD | P2 | A | #74 (PR) |
+| P11 | Skill icons: every class's icon sheet rebuilt from PD2's art, so PD2's new skills show their icons | P1 | D | #79 |
 
 ## Alpha
 
