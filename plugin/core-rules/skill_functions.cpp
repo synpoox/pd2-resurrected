@@ -3264,6 +3264,10 @@ const SlotFunction Functions[] = {
 	{CltDo, 128, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltPrgRing)), "charge ring"},
 	{MissileCltDo, 79, reinterpret_cast<const void*>(static_cast<MissileCltDoFn>(CltDoChargeExplode)), "charge explode"},
 	{MissileCltHit, 67, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitChargeBolt)), "charge bolt"},
+	// Blessed Hammer (W20): D2R fills sdo 40 and cdo 72 (a sub-missile once, then the default), so ours take free
+	// slots and the merge points there (FUNCS)
+	{MissileSrvDo, 47, reinterpret_cast<const void*>(static_cast<MissileSrvDoFn>(SrvDoBlessedHammer)), "blessed hammer"},
+	{MissileCltDo, 80, reinterpret_cast<const void*>(static_cast<MissileCltDoFn>(CltDoBlessedHammer)), "blessed hammer"},
 };
 
 }  // namespace
