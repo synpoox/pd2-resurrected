@@ -19,6 +19,7 @@ class GateTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         (self.root / "docs").mkdir()
+        (self.root / "d2r/data/global/excel").mkdir(parents=True)
         self.unported("")
 
     def tearDown(self):
@@ -36,6 +37,10 @@ class GateTests(unittest.TestCase):
 
     def gate(self, scope="P4"):
         return pd2_diff.gate(self.root, self.root / "d2r/data", scope)
+
+    def test_a_missing_d2r_folder_is_an_error_not_unshipped_tables(self):
+        with self.assertRaisesRegex(pd2_diff.GateError, "no D2R tables"):
+            pd2_diff.gate(self.root, self.root / "nowhere", "P4")
 
     def test_a_merged_table_equal_to_pd2_passes(self):
         self.write("pd2", "levels", table("Name | Id | MonLvl", "Rogue Encampment | 1 | 1"))
