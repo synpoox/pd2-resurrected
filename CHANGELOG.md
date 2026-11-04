@@ -10,6 +10,8 @@ private-multiplayer release a build may break characters; each break is noted he
 - Gust works as in Project Diablo II: it teleports you, then chills and staggers the monsters around where you land.
 - Hunger works as in Project Diablo II: a werebear eats a corpse for a while of life steal, speed, open wounds and
   deep wounds.
+- Fire Claws works as in Project Diablo II: each claw sends a trail of fire waves (more with the skill's level).
+- Summoning a Spirit Wolf or Fenris at the limit replaces the oldest one, as in Project Diablo II.
 - Firestorm works as in Project Diablo II: every one of its fire trails wanders (D2R sends the first one straight).
 - Static Field works as in Project Diablo II: it takes a share of current life down to Project Diablo II's floor,
   ignores some map and Rathma monsters, and lowers lightning resistance for a while (half as much on a monster
