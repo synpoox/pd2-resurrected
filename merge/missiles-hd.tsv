@@ -1,0 +1,54 @@
+# missile	like: the D2R missile whose HD model a new missile with PD2-only art (no D2R CelFile) takes; tools/pd2_missiles_hd.py
+holynova	holybolt
+rathmafiremedium	firemedium
+rathmafiresmall	firesmall
+rathmafiredot	firemedium
+rathmafiremedium_short	firemedium
+voidbolt	unholybolt1
+unused1	armageddoncontrol
+rathma_fissurecrack_1	erruption crack 1
+rathma_fissuresmoke_1	erruption smoke 1
+ubermadawccursedaxe	throwaxe
+ubermadawcowaxe	throwaxe
+ubermadawcchargedaxe	throwaxe
+urehArcherBolt	throwaxe
+bruteSlamFlyingRocks	durieldeathdebris
+brutemoltenboulder-flyingrocks	durieldeathdebris
+siegebeastbuffnova	howl
+siegebeastorbnova	teleport
+bonespeartrailCisternBoss	bonespeartrail
+ZharUnused	unholybolt1
+ZharBolts	firebolt
+Zhararmageddonrock	armageddonrock
+Zhararmageddontail	armageddontail
+Zhararmageddonexplosion	armageddonexplosion
+Zharexplodingarrowexp	explodingarrowexp
+ZharMiniBossBigHeadMissile	bighead1
+tpot_cold_small	oilpotion
+tpot_cold_small_cloud	anyasteam
+tpot_cold_medium	explosivepotion
+tpot_cold_medium_cloud	anyasteam
+tpot_cold_large	fulminatingpotion
+tpot_cold_large_cloud	anyasteam
+tpot_light_small	oilpotion
+tpot_light_medium	explosivepotion
+tpot_light_large	fulminatingpotion
+IskatuMagicOrb	fireball
+IskatuNovaOrbHitMissile	chargedbolt
+iskatubliz1	blizzard1
+iskatubliz2	blizzard2
+iskatubliz3	blizzard3
+iskatublizexplode1	blizzardexplode1
+iskatuhurricanerock	hurricanerock
+iskatuhurricanetree	hurricanetree
+infernotrail	firesmall
+kanemithblaze2dotfiremedium	firemedium
+kanemithblaze2dotfiresmall	firesmall
+kanemithfirestorm	firesmall
+kanemithfirestormmaker	firemedium
+kanemithshock field in air	volcano debris 2
+sharptoothunholyorbexplode	lightninghit
+sharptootharmageddonexplosion	armageddonexplosion
+lucionbonefingershit	death mauler
+lucionblinknova	nova
+luciondashnova	nova
