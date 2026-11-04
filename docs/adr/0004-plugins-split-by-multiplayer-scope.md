@@ -22,3 +22,4 @@ Where a bundled companion plugin already covers a PD2 feature (loot filter, stas
 
 - 2026-11-03: plugins renamed from `pd2-*` to `core-*` so the names stay valid if the port moves away from PD2 branding. Nothing had been built under the old names.
 - 2026-11-03: a bundled companion may be Shared (Buff HUD is). Every release pins one version of each companion, so host and client match by construction; the "client UI never forces a match" rule binds only our own plugins.
+- 2026-11-04: `core-maps` (Shared) holds the map system's own code (opening maps, map stats, cube op 30, map events, invaders), so it can be built and turned off on its own, and used outside this project; it never calls `core-rules`. Rules the map system shares with other content stay in `core-rules` ([map-system.md](../map-system.md), #152).

@@ -99,6 +99,30 @@ _Avoid_: corrupted zone, desecrated zone
 A level PD2 has and D2R does not: map areas, uber boss areas, event areas, PvP areas and guild halls.
 _Avoid_: map (a map item or a wayfinder map), zone, new area
 
+**Map item**:
+A PD2 item that opens a map area when used in Harrogath: a tiered map, a dungeon or a unique map. Uber keys and PvP arenas are not map items.
+_Avoid_: map
+
+**Map tier**:
+The tier a player sees on a tiered map: 1, 2 or 3. It comes from the item's type, not from its item code. Dungeons and unique maps have no tier.
+_Avoid_: T4, T5, tier from the code
+
+**Map area**:
+A PD2-only area that a map item opens.
+_Avoid_: map, map level
+
+**Map stat**:
+A modifier on a map item that changes its map area, the area's monsters or the players in it while it is open.
+_Avoid_: map mod, map affix (an affix is how a map stat rolls)
+
+**Map event**:
+A random happening inside a map area, such as a boss, a portal, a shop or a timed lair, rolled when the area opens.
+_Avoid_: map-event notification (cut; the events are not)
+
+**Invader**:
+A monster that plays a PD2 class, coming out of portals in the Corrupted Heroes map event.
+_Avoid_: corrupted hero, PK
+
 **HD preset**:
 The HD scene D2R draws for one DS1 file, found by the DS1's path; a DS1 without one plays on flat ground with invisible walls.
 _Avoid_: HD map, tile art
