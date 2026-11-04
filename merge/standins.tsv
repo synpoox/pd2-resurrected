@@ -71,7 +71,6 @@ skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	Blink	Teleport	srvdofunc	Teleport, Blink
 skills	proc_SplashDamage	-	srvdofunc	Melee splash
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
-skills	Blood Warp	Teleport	srvdofunc,srvstfunc,cltstfunc	Blood Warp
 skills	Gust	Teleport	srvdofunc	Gust
 skills	Holy Light	Holy Bolt	srvdofunc	Holy Light
 skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start

@@ -38,6 +38,9 @@ and Valkyrie (32), e.g. modkit save-set <save> level=30 --skill 16=10 --skill 12
 --project .; then out of town: Exploding Arrow and Multiple Shot into packs (Pierce lets arrows reach a second
 monster), summon a Valkyrie next to monsters, and run the same command with core-rules-w6.
 
+W12 check (tag core-rules-w12), same merged data: a Necromancer with Blood Warp (merged skill 439) and no item that
+lowers its life cost, e.g. modkit save-set <save> level=30 --skill 439=10 --project .; then out of town (Teleport
+does not work in town) Blood Warp a few times and run the same command with core-rules-w12.
 W13 checks (tag core-rules-w13), same merged data: a Necromancer with Desecrate (83), e.g. modkit save-set <save>
 level=30 --skill 83=10 --project .; then out of town: cast Desecrate on the ground, wait 20 s (PD2 hides the corpses
 after 16), and run the same command with core-rules-w13.
@@ -56,7 +59,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 189, "split throw"), ("cltdofunc", 118, "split throw"), ("srvstfunc", 79, "temp buff"),
     ("pSrvHitFunc", 65, "return spawn"), ("pSrvDoFunc", 46, "return"), ("pCltDoFunc", 78, "return"),
     ("srvstfunc", 78, "splash start"), ("srvstfunc", 82, "find"), ("cltstfunc", 62, "find"),
-    ("srvdofunc", 190, "router"),
+    ("srvdofunc", 190, "router"), ("srvstfunc", 80, "blood warp"), ("cltstfunc", 63, "blood warp"),
     ("srvdofunc", 172, "leap"), ("cltdofunc", 115, "leap"),
     ("srvdofunc", 183, "double throw"), ("cltdofunc", 116, "double throw"), ("pSrvHitFunc", 66, "bounce"),
     ("pSrvDmgFunc", 21, "first hit"),
@@ -67,6 +70,7 @@ SKILL_SLOTS = [  # table slots it installs
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knockback|units in range) (\d+), velocity (\d+)")
 ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
+HPREGEN = 74  # itemstatcost row of hpregen in D2R and PD2
 
 
 def _log(ctx) -> str:
@@ -79,7 +83,7 @@ def _log(ctx) -> str:
     return text[starts[-1]:] if starts else ""
 
 
-@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w13", "game"])
+@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "core-rules-w13", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -391,7 +395,29 @@ def leap_client(ctx):
     return ", ".join(f"skill {s} velocity {v}" for s, v in client.items())
 
 
-@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w13"])
+@check("blood-warp-cast", tags=["core-rules-w12"])
+def blood_warp_cast(ctx):
+    """A Blood Warp (router srvdofunc 190) cost PD2's max(calc1% of life, calc2), calc1 12 (no blood_warp_life_reduction)
+    and calc2 min(ln34 * 256, 15360) (Param3 2, Param4 2), and gave it back as hpregen = cost / 125 + 1 for auralencalc
+    125 frames. Life is in 1/256. Every cast's list is new, extended (a recast at the same level keeps the running
+    regen, as PD2's timed-state helper does) or refused (a lower level)."""
+    log = _log(ctx)
+    lists = re.findall(r"blood warp: skill 439 [^\n]*, list (\w+)\)", log)
+    assert "none" not in lists, "a Blood Warp built no hpregen list"
+    casts = re.findall(r"blood warp: skill 439 level (\d+): life (\d+), cost (\d+), regen (\d+) for (\d+) frames "
+                       r"\(stat (\d+)", log)
+    if not casts:
+        ctx.skip("no Blood Warp in the log yet (cast it out of town, then run again)")
+    level, life, cost, regen, frames, stat = (int(v) for v in casts[0])
+    expected = max(int(12 / 100 * life), min((2 + (level - 1) * 2) * 256, 15360))
+    assert cost == expected, f"level {level}, life {life}: cost {cost}, PD2 gives {expected}"
+    assert cost < life, f"cost {cost} would kill at life {life}"
+    assert (frames, stat) == (125, HPREGEN), f"{frames} frames of stat {stat}, PD2: 125 of hpregen ({HPREGEN})"
+    assert regen == cost // 125 + 1, f"regen {regen}, PD2 gives {cost // 125 + 1}"
+    return f"level {level}: life {life // 256}, cost {cost / 256:.1f} life, hpregen {regen} for {frames} frames, lists {sorted(set(lists))}"
+
+
+@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "core-rules-w13"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

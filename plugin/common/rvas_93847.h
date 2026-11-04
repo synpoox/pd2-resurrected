@@ -41,6 +41,8 @@ inline constexpr int SrvStFindItem = 34;
 inline constexpr int CltStFindPotion = 26;
 inline constexpr int CltStFindItem = 28;
 inline constexpr int SrvDoMelee = 2;  // 0x430240: Bash's do function in D2R, applies the queued hit
+// 0x554c40: Teleport to the skill's point; 0 when there is no room, the level forbids it or the point collides (0x804)
+inline constexpr int SrvDoTeleport = 27;
 // missiles.txt pSrvDoFunc: int64_t fn(Game*, Unit* missile), 54 slots, 46-53 free.
 inline constexpr uint64_t MissileSrvDoTable = 0x2390e80;
 inline constexpr int MissileSrvDoSlots = 54;
@@ -108,7 +110,12 @@ inline constexpr uint64_t SetUnitStat = 0x2f7d10;  // (unit, stat, value, layer)
 
 // Self buff, the way Frozen Armor's srvdo 18 (0x553e60) builds its aurastate list
 inline constexpr uint64_t RemoveSkillState = 0x4370b0;  // (unit, state, 1): drop an older list of this state
-inline constexpr uint64_t NewStateList = 0x433d20;  // (&StateListRequest) -> stat list or null
+// (&StateListRequest) -> stat list or null. An older list of the state with the same skill and level only gets
+// its timer moved and is returned as it is; a lower level returns null; any other older list is replaced.
+inline constexpr uint64_t NewStateList = 0x433d20;
+inline constexpr uint64_t UnitStateList = 0x2f5940;  // (unit, state) -> the unit's list of that state, or null
+inline constexpr uint64_t ListSkill = 0x2f56a0;  // (list) -> its skill id
+inline constexpr uint64_t ListLevel = 0x2f56e0;  // (list) -> its skill level
 inline constexpr uint64_t AddAuraStats = 0x574480;  // (unit, list, skillRecord, skillId, level): aurastat1-6 (attackrate also sets stat 69)
 inline constexpr uint64_t AddAuraStatsB = 0x574600;  // same arguments, Frozen Armor calls both
 inline constexpr uint64_t SetListStat = 0x2f7c00;  // (dataFlag, list, stat, value, layer)
@@ -191,6 +198,7 @@ inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Li
 // poison length 0x2c -> 0x3c in srvdmg 11).
 inline constexpr int DmgPhys = 0x18, DmgFire = 0x20, DmgLight = 0x2c, DmgMagic = 0x30, DmgCold = 0x34, DmgPoison = 0x38;
 inline constexpr int StatDamagePercent = 25;  // itemstatcost damagepercent, D2R and PD2
+inline constexpr int StatLife = 6;  // itemstatcost hitpoints (current life, in 1/256), D2R and PD2
 inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's search: 0x88583 | the 0xa783 the search adds
 
 // Leeches in the same damage block (built by 0x465d60)
@@ -223,6 +231,7 @@ inline constexpr int SkAuraRangeCalc = 0x84;  // int32 aurarangecalc, Chain Ligh
 inline constexpr int SkParam4 = 0x1c4;  // int32 Param4 (Param1 0x1b8), field table at 0x305e68
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
+inline constexpr int SkAuraLenCalc = 0x80;    // int32 auralencalc: 1.13c's 0x60, before aurarangecalc as there
 inline constexpr int SkAuraStat1 = 0x74;      // int16 aurastat1-6, read by AddAuraStats (0x574480)
 inline constexpr int SkAuraStatCalc1 = 0x88;  // int32 aurastatcalc1-6 (calc index, pass to EvalCalc), same reader
 // Two record fields Frozen Armor passes to SendSkillState by address; what they hold is not read yet.

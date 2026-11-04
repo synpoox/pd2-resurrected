@@ -107,6 +107,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows, [["flamewave", "71", "38"], ["back", "78", "46"], ["bolt", "1", "1"]])
 
+    def test_blood_warp_functions_moved_to_core_rules_slots(self):
+        d2r = table("skill|srvdofunc|srvstfunc|cltstfunc\nAttack|1|0|0\n")
+        pd2 = table("skill|srvdofunc|srvstfunc|cltstfunc\nAttack|1|0|0\nBlood Warp|157|66|56\n")
+        lines = [("Attack", 0, "Attack"), ("Blood Warp", 1, "Blood Warp")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1], ["Blood Warp", "190", "80", "63"])  # router, then the first free start slots
+
     def test_missile_do_functions_become_the_missile_column(self):
         cols = "skill|srvdofunc|srvmissile|srvmissilea|cltdofunc|cltmissile|cltmissilea"
         d2r = table(f"{cols}\nAttack|1||||||\n")
