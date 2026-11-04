@@ -69,6 +69,16 @@ BUILTINS = {"8": {"": "StrSkill22"}, "9": {"": "StrSkill4"}, "10": _DAMAGE,
 BELOW = {"14": "StrSkillPoisonLengthSingular"}
 
 
+def hide_off_tree(t: Table) -> None:
+    """SkillPage 0 for each row PD2 keeps out of the tree (SkillRow 0): PD2's client hides those, D2R draws them in the
+    page's first cell (Blade Dance, Avoid, the Barbarian's folded masteries)."""
+    col = {c.lower(): j for j, c in enumerate(t.header)}
+    page, row = col["skillpage"], col["skillrow"]
+    for r in t.rows:
+        if r[row] in ("", "0"):
+            r[page] = "0"
+
+
 def formatted(d2r_data: Path) -> set[str]:
     """D2R's string keys whose English text has a format code."""
     keys = set()

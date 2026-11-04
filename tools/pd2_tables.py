@@ -112,6 +112,7 @@ def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> Non
             col = {c.lower(): j for j, c in enumerate(skills.header)}
             elements = {r[col["skilldesc"]].lower(): r[col["etype"]] for r in skills.rows}
             pd2_skilldesc.rewrite(merged, d2r, fmt, elements)
+            pd2_skilldesc.hide_off_tree(merged)
             if bad := pd2_skilldesc.clashes(merged, d2r, fmt):
                 raise ValueError(f"skilldesc lines D2R would print wrongly: {'; '.join(bad)}")
         dest = pd2_ids.excel(out_data) / f"{table}.txt"
