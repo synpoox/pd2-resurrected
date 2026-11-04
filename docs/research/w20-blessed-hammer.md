@@ -56,4 +56,7 @@ written by `0x3bd580` in the collision for LastCollide rows, which blessedhammer
   log counts a hit only when the struck unit differs from the last one, so a repeat hit on the same unit is not logged.
 - `tools/tests/test_ids.py`: the merge moves 40 / 72 to 47 / 80.
 
-Not run in game yet.
+Run on Slot6 (2026-11-04), the level 90 Paladin with Blessed Hammer at 20, Hell, god mode, 8 zombies by the Den of
+Evil cave in the Blood Moor: both checks pass. The path mask reads `0x180` on server and client, a hammer hit a zombie
+(unit type 1) 1 frame out, frames ran down from 89, and collisions near the end were kept flying (2 -> 1); a hammer
+was drawn over the cave's rocks. No crash.
