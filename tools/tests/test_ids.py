@@ -158,6 +158,14 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["Charge", "180", "72", "37", "25"])
 
+    def test_static_field_and_combustion_join_the_router(self):
+        cols = "skill|srvdofunc|cltdofunc"
+        d2r = table(f"{cols}\nAttack|1|0\n")
+        pd2 = table(f"{cols}\nAttack|1|0\nStatic Field|160|\nCombustion|159|100\n")
+        lines = [("Attack", 0, "Attack"), ("Static Field", 1, "Static Field"), ("Combustion", 2, "Combustion")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Static Field", "190", ""], ["Combustion", "190", "120"]])
+
     def test_melee_splash_joins_the_router(self):
         d2r = table("skill|srvdofunc\nAttack|1\n")
         pd2 = table("skill|srvdofunc\nAttack|1\nproc_SplashDamage|163\n")

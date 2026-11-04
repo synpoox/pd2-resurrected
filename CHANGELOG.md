@@ -5,6 +5,9 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Static Field works as in Project Diablo II: it takes a share of current life down to Project Diablo II's floor,
+  ignores some map and Rathma monsters, and lowers lightning resistance for a while (half as much on a monster
+  immune to lightning). Combustion and the boss novas that share it throw Project Diablo II's ring of missiles.
 - Charge works as in Project Diablo II: it runs at Project Diablo II's speed, and the longer the charge, the wider
   its hit splashes with a splash-on-hit item.
 - The Assassin's charge-up skills build charges as in Project Diablo II: charges are shared between them, and each
