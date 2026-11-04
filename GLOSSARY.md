@@ -55,12 +55,16 @@ _Avoid_: task, ticket (those are map decisions)
 A PD2 behaviour that is not a table value and needs plugin code, such as a skill function, hit function, cube op, item rule or server patch. A skill's server and client halves are one engine rule.
 _Avoid_: patch, function number (a function number is where one engine rule plugs in)
 
+**Complete class**:
+A PD2 class whose player skills reach no unbuilt engine rule, including the rules for how its skills interrupt and chain; each is built or an approximated deviation. Class-themed item rules do not count.
+_Avoid_: finished class, ported class
+
 **Companion plugin**:
 A D2RLoader plugin built outside this repo and bundled with the port that stands in for a PD2 feature; what it lacks is a deviation.
 _Avoid_: dependency, add-on, external mod
 
 **Milestone**:
-A playable point in the roadmap made of the work items it needs; the port has M1 (a new character in Act 1) and the alpha.
+A playable point in the roadmap made of the work items it needs; the port has M1 (a new character in Act 1), M2 (companions, corruption, Amazon and Barbarian complete) and the alpha (every PD2 class complete).
 _Avoid_: phase, release
 
 **Corruption**:
