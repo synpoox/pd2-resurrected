@@ -26,6 +26,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <mutex>
+#include <span>
 
 namespace {
 
@@ -847,26 +848,46 @@ auto CltDoDesecrate(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 // --- Melee splash (PD2 srvdofunc 163 -> router 190) ---------------------------------------------------------------
 // Read from ProjectDiablo.dll: srvdo 163 at 0x103b2340, its per-unit callback 0x10303190; Revive's aura event 32
 // (0x10347370) calls the do function itself (docs/research/w33-melee-splash.md). Every unit within calc3 of the struck
-// unit, the struck unit aside, takes the attacker's weapon damage at the skill's SrcDam with half the life leech, through
-// D2R's area search with PD2's unit mask.
-// shortcut: PD2 also adds the player's current skill's damage (its elemental part, Smite's and the kicks'), adds an item
-// stat sum / 20 to calc3 and takes 1 off for some weapons (0x10381720, not decoded); upgrade with the unported row.
+// unit, the struck unit aside, takes a hit with no to-hit roll: a player's current skill's damage (W35) and the
+// attacker's weapon damage at that skill's SrcDam, with half the life leech, through D2R's area search with PD2's unit
+// mask. The radius is calc3 + the inc_splash_radius held by the weapon's item types / 20, 1 less on a normal-tier base.
+// shortcut: Smite's splash takes Smite's skill damage, not its shield damage and state 224 list (0x103060c0), and the
+// radius counts only the weapon's own item types, not PD2's off-hand rules for 1han / 2han (0x10381720); upgrade with
+// the unported row. PD2's room check (0x1037c820) refuses only the PvP maps (levels 157, 159, 166), which are cut.
 std::atomic<uint32_t> g_splashes {0};
 std::atomic<uint32_t> g_splashUnitCasts {0};  // the first splash with units hit is logged too
-// PD2 skips Revive's event 32 and two item event functions (14 and 20, skill on hit) while a splash hit fires its events
-// (the handler sets 0x105dc628 / 0x105dc6cc, read by 0x10305c30), so a splash never splashes again. This guard does that
-// for the splash itself.
-// shortcut: other skill-on-hit procs and item event 14 still run for each splashed unit; upgrade with #125.
+std::atomic<uint32_t> g_splashVictims {0};
+// PD2 skips Revive's event 32 and item event functions 14 (item_freeze) and 20 (skill on hit) while a splash hit fires
+// its events (the handler set 0x105dc628, read by 0x10347510), so a splash never splashes again or procs on the splashed
+// units. Its skill filter (0x105dc5c8, proc_SplashDamage) on events 21 and 30 only refuses a splash inside a splash,
+// which Splash does.
 thread_local bool t_splashing = false;
+auto UnitSkillIdOf(void* unitSkill) noexcept -> int32_t;
 constexpr int32_t ProcSplashDamage = 430, GolemSplash = 461, SkeletonSplash = 465;  // merged skill ids
 constexpr int32_t IncSplashRadius = 531;
+// PD2's damage% calc for the current skill (0x10305eb0): calc1 for these, calc2 for SplashCalc2; others none.
+// Merged ids: Joust 450, Blade Dance 452 (PD2 378, 380).
+constexpr int32_t SplashCalc1[] = {0, 10, 96, 97, 107, 126, 133, 144, 147, 151, 152, 232, 260, 450, 452};
+constexpr int32_t SplashCalc2[] = {30, 106, 248, 255, 265, 275};
+constexpr int32_t SplashKicks[] = {255, 270, 275};  // Dragon Talon, Tail, Flight: the queued kick's damage
+constexpr int32_t SplashConcentrate = 144;
+
+constexpr auto Among(int32_t id, std::span<const int32_t> ids) noexcept -> bool {
+	return std::find(ids.begin(), ids.end(), id) != ids.end();
+}
+static_assert(Among(147, SplashCalc1) && Among(255, SplashCalc2) && !Among(270, SplashCalc2));
 
 using AreaFn = void (*)(Game*, Unit*, d2r::AreaCenter*, int32_t, uint32_t, int32_t (*)(d2r::AreaContext*, Unit*), void*,
                         int32_t) noexcept;  // rva::AreaUnits
 
+// PD2's callback block (built by srvdo 163): the current skill's fields, or Attack's at level 1
 struct SplashHit {
 	Unit* struck;
 	uint8_t srcDam;
+	int32_t skillId, level, percent;
+	uint32_t hitFlags;
+	uint16_t resultFlags;
+	int32_t hitClass;
 	int64_t victims;
 };
 
@@ -907,8 +928,31 @@ void DealSplash(Game* game, Unit* attacker, Unit* victim, d2r::LeapKnockback& da
 	d2r::Engine<HitFn>(DealDamage)(game, attacker, victim, &damage);
 }
 
-// One unit in range (PD2's callback 0x10303190): a hit with no to-hit roll, weapon damage at SrcDam, life leech halved
-// (at least 1). Counts the units the hit lands on.
+// The queued kick's damage (PD2 copies the attacker's cached hit, 1.13c's 0x70 bytes): the block's plain fields, not its
+// list.
+void CopyKick(d2r::LeapKnockback& damage, const uint8_t* kick) noexcept {
+	auto* to = reinterpret_cast<uint8_t*>(&damage);
+	std::memcpy(to, kick, offsetof(d2r::LeapKnockback, listData));
+	std::memcpy(to + 0x118, kick + 0x118, offsetof(d2r::LeapKnockback, tagged) - 0x118);
+}
+
+// The current skill's physical damage, as 1.13c's D2Game 0x9f1a0 adds it: min + rand(max - min) on the attacker's seed
+void AddSkillPhys(Game* game, Unit* unit, uint8_t* damage, int32_t skillId, int32_t level) noexcept {
+	using namespace d2r::rva;
+	using PhysFn = int32_t (*)(uint32_t, Unit*, int32_t, int32_t, int32_t) noexcept;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const int32_t min = d2r::Engine<PhysFn>(SkillPhysMin)(dataFlag, unit, skillId, level, 0);
+	const int32_t max = d2r::Engine<PhysFn>(SkillPhysMax)(dataFlag, unit, skillId, level, 0);
+	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit);
+	const int32_t roll = max > min ? static_cast<int32_t>(d2r::RandomBelow(seed, static_cast<uint32_t>(max - min))) : 0;
+	*reinterpret_cast<int32_t*>(damage + DmgPhys) += min + roll;
+}
+
+// One unit in range (PD2's callback 0x10303190): a hit with no to-hit roll and the current skill's flags, damage% and
+// hit class, the skill's elemental and physical damage, weapon damage at SrcDam, life leech halved (at least 1). Counts
+// the units the hit lands on.
+// shortcut: PD2 also writes the skill id to a player victim's data (+0x194 of 1.13c's), not decoded; upgrade with
+// the unported row.
 auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	using namespace d2r::rva;
 	auto* hit = static_cast<SplashHit*>(area->arg);
@@ -916,18 +960,103 @@ auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 		return 0;
 	}
 	auto* game = static_cast<Game*>(area->game);
+	Unit* attacker = area->unit;
 	d2r::LeapKnockback damage;
-	damage.resultFlags = ResultHit;
-	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*, int32_t, uint8_t) noexcept>(WeaponDamage)(game, area->unit, victim,
+	auto* block = reinterpret_cast<uint8_t*>(&damage);
+	damage.resultFlags = ResultHit | hit->resultFlags;
+	damage.hitFlags = hit->hitFlags;
+	*reinterpret_cast<int32_t*>(block + DmgPercent) = hit->percent;
+	*reinterpret_cast<int32_t*>(block + DamageHitClass) = hit->hitClass;
+	const auto* kick = Among(hit->skillId, SplashKicks)
+	                       ? d2r::Engine<const uint8_t* (*)(Unit*, Unit*) noexcept>(QueuedHit)(attacker, hit->struck)
+	                       : nullptr;
+	if (kick != nullptr) {
+		CopyKick(damage, kick);
+	} else {
+		damage.hitFlags &= ~2u;
+	}
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), hit->skillId);
+	if (hit->skillId == SplashConcentrate && skill != nullptr && At<uint8_t>(skill, SkEType) != 0) {
+		block[DmgConvType] = At<uint8_t>(skill, SkEType);
+		*reinterpret_cast<int32_t*>(block + DmgConvPct) =
+			d2r::EvalCalc(game, attacker, skill, SkCalc4, hit->skillId, hit->level);
+	}
+	d2r::Engine<void (*)(Unit*, void*, int32_t, int32_t) noexcept>(ElementalDamage)(attacker, &damage, hit->skillId,
+	                                                                               hit->level);
+	AddSkillPhys(game, attacker, block, hit->skillId, hit->level);
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*, int32_t, uint8_t) noexcept>(WeaponDamage)(game, attacker, victim,
 	                                                                                          &damage, 0, hit->srcDam);
 	auto& leech = *reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(&damage) + DamageLifeLeech);
 	if (leech != 0) {
 		leech = std::max(leech / 2, 1u);
 	}
+	if (plog::Sample(g_splashVictims)) {
+		const auto field = [block](int offset) { return *reinterpret_cast<const int32_t*>(block + offset); };
+		plog::Info("splash hit: current skill %d: phys %d fire %d light %d magic %d cold %d poison %d (1/256), "
+		           "damage%% %d, kick %d, hit %u", hit->skillId, field(DmgPhys), field(DmgFire), field(DmgLight),
+		           field(DmgMagic), field(DmgCold), field(DmgPoison), field(DmgPercent), kick != nullptr ? 1 : 0,
+		           g_splashVictims.load());
+	}
 	DealSplash(game, area->unit, victim, damage);
 	hit->victims += (damage.resultFlags & ResultHit) != 0 ? 1 : 0;
 	ReleaseDamage(damage);
 	return 1;
+}
+
+// inc_splash_radius on the layers of the weapon's item types (PD2's 0x10381720 with stat 478): the masteries' passive
+// stats sit on their passiveitype's layer (One Hand Mastery 1han, Two Hand Mastery 2han)
+auto WeaponTypeSplash(Unit* unit, Unit* weapon) noexcept -> int32_t {
+	using namespace d2r::rva;
+	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(d2r::api.unitDataFlag(unit));
+	if (weapon == nullptr || tables == nullptr) {
+		return 0;
+	}
+	const auto isType = d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType);
+	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	const int64_t types = At<int64_t>(tables, TablesItemTypesCount);
+	int32_t sum = 0;
+	for (int32_t type = 1; type < types; ++type) {  // layer 0 is the stat's own, which calc3 already counts
+		if (isType(weapon, type) != 0) {
+			sum += stat(unit, IncSplashRadius, type);
+		}
+	}
+	return sum;
+}
+
+// A normal-tier base (its code is its normcode): PD2 takes 1 off the radius
+auto NormalBase(Game* game, Unit* weapon) noexcept -> bool {
+	if (weapon == nullptr) {
+		return false;
+	}
+	const auto* item = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(d2r::rva::ItemRecord)(
+		d2r::DataFlag(game), At<int32_t>(weapon, d2r::rva::UnitClassId));
+	return item != nullptr && At<uint32_t>(item, d2r::rva::ItCode) == At<uint32_t>(item, d2r::rva::ItNormCode);
+}
+
+// PD2 srvdo 163's block: a player's current skill (hard points, as 1.13c's skill +0x28) unless it is the splash
+// itself, else Attack at level 1 with SrcDam 128
+auto SplashSkill(Game* game, Unit* unit, Unit* struck, int32_t splashId) noexcept -> SplashHit {
+	using namespace d2r::rva;
+	SplashHit hit {.struck = struck, .srcDam = 0x80, .skillId = 0, .level = 1, .percent = 0, .hitFlags = 0,
+	               .resultFlags = 0, .hitClass = 0, .victims = 0};
+	void* current = At<int32_t>(unit, UnitType) == 0 ? d2r::Engine<void* (*)(Unit*) noexcept>(CurrentSkill)(unit) : nullptr;
+	const int32_t id = current != nullptr ? UnitSkillIdOf(current) : 0;
+	if (current == nullptr || id == splashId) {
+		return hit;
+	}
+	hit.skillId = id;
+	hit.level = d2r::Engine<int32_t (*)(Unit*, void*, int32_t) noexcept>(UnitSkillLevel)(unit, current, 0);
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), id);
+	if (skill == nullptr) {
+		return hit;
+	}
+	hit.srcDam = At<uint8_t>(skill, SkSrcDam);
+	hit.hitFlags = At<uint32_t>(skill, SkHitFlags);
+	hit.resultFlags = At<uint16_t>(skill, SkResultFlags);
+	hit.hitClass = At<int32_t>(skill, SkHitClass);
+	const int field = Among(id, SplashCalc1) ? SkCalc1 : Among(id, SplashCalc2) ? SkCalc2 : 0;
+	hit.percent = field != 0 ? d2r::EvalCalc(game, unit, skill, field, id, hit.level) : 0;
+	return hit;
 }
 
 // The splash around `struck`. Returns 1 as PD2 does, also when nothing is in range or the struck unit has no
@@ -938,8 +1067,12 @@ auto Splash(Game* game, Unit* unit, Unit* struck, int32_t skillId, int32_t level
 	if (skill == nullptr || struck == nullptr || t_splashing) {
 		return 0;
 	}
-	const int32_t radius = d2r::EvalCalc(game, unit, skill, SkCalc3, skillId, level);
-	SplashHit hit {struck, At<uint8_t>(skill, SkSrcDam), 0};
+	Unit* weapon = d2r::Engine<Unit* (*)(Unit*) noexcept>(UnitWeapon)(unit);
+	const int32_t calc3 = d2r::EvalCalc(game, unit, skill, SkCalc3, skillId, level);
+	const int32_t typeSplash = WeaponTypeSplash(unit, weapon);
+	const bool normal = NormalBase(game, weapon);
+	const int32_t radius = calc3 + typeSplash / 20 - (normal ? 1 : 0);
+	SplashHit hit = SplashSkill(game, unit, struck, skillId);
 	int32_t x = 0, y = 0;
 	if (radius > 0 && d2r::UnitXY(struck, &x, &y)) {
 		d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(struck), x, y};
@@ -948,9 +1081,11 @@ auto Splash(Game* game, Unit* unit, Unit* struck, int32_t skillId, int32_t level
 		t_splashing = false;
 	}
 	if (plog::Sample(g_splashes) || (hit.victims > 0 && plog::Sample(g_splashUnitCasts))) {
-		plog::Info("splash: skill %d level %d from unit type %d at unit type %d: radius %d (inc_splash_radius %d), "
-		           "units hit %lld, splash %u", skillId, level, At<int32_t>(unit, UnitType), At<int32_t>(struck, UnitType),
-		           radius, d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(unit, IncSplashRadius, 0),
+		plog::Info("splash: skill %d level %d from unit type %d at unit type %d: radius %d (calc3 %d, inc_splash_radius "
+		           "%d, weapon types %d, normal base %d), current skill %d level %d damage%% %d srcdam %u, units hit %lld, "
+		           "splash %u", skillId, level, At<int32_t>(unit, UnitType), At<int32_t>(struck, UnitType), radius, calc3,
+		           d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(unit, IncSplashRadius, 0),
+		           typeSplash, normal ? 1 : 0, hit.skillId, hit.level, hit.percent, hit.srcDam,
 		           static_cast<long long>(hit.victims), g_splashes.load());
 	}
 	return 1;
