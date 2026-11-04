@@ -273,6 +273,27 @@ inline constexpr uint64_t HitEvents = 0x44ce80;
 inline constexpr uint64_t DealDamage = 0x44a9b0;  // (game, attacker, victim, &damage)
 // The whole area apply: the steps above with events 6 domissiledamage and 2 (1.13c's 0x10305760 in PD2's Holy Light)
 inline constexpr uint64_t AreaApply = 0x436e90;  // (game, attacker, victim, &damage)
+// Melee splash, the current skill's damage (W35, docs/research/w35-melee-splash-extras.md)
+// (dataFlag, unit, skillId, level, 0) -> the skill's own physical min / max in 1/256 (MinDam/MaxDam with MinLevDam...;
+// a kick's from strength and dexterity), the pair D2R's kick fill MeleeFill reads; 1.13c's D2Game 0x9f1a0 adds
+// min + rand(max - min) to the hit's physical damage
+inline constexpr uint64_t SkillPhysMin = 0x3385b0;
+inline constexpr uint64_t SkillPhysMax = 0x338160;
+inline constexpr uint64_t UnitSkillLevel = 0x33d1e0;  // (unit, unitSkill, bonus) -> level; bonus 0 = hard points
+inline constexpr uint64_t ItemRecord = 0x314110;  // (dataFlag, item classId) -> items record (code +0x80, normcode +0x84)
+inline constexpr int ItCode = 0x80;      // uint32 code
+inline constexpr int ItNormCode = 0x84;  // uint32 normcode (items field table in 0x315fd0)
+inline constexpr int TablesItemTypesCount = 0x1350;  // int64 itemtypes.txt row count in DataTables (ItemIsType's bound)
+inline constexpr int SkEType = 0x284;  // uint8 EType (1.13c's 0x1dc)
+// Conversion D2R's melee start (srvst 32, 0x567070) sets from a skill with an EType: type and percent (calc4), 1.13c's
+// 0x65 / 0x68
+inline constexpr int DmgConvType = 0x149;
+inline constexpr int DmgConvPct = 0x14c;
+// Item events PD2 skips on a splashed unit: 14 item_freeze, 20 skill on hit (D2R's functions in AuraEventTable)
+inline constexpr int ItemEventFreeze = 14;
+inline constexpr uint64_t AuraEvent14D2R = 0x583580;
+inline constexpr int ItemEventSkillOnHit = 20;
+inline constexpr uint64_t AuraEvent20D2R = 0x583b30;
 // Holy Light (W17, docs/research/w17-holy-light.md)
 // (unit, overlay, layer): overlay.txt row as stat 0xb2 on the given layer; 1.13c's D2Common #10689 has no layer (0).
 // Asserts on a row past the table, so check DataTables + TablesOverlayCount first, as Leap Attack (0x56b170) does.

@@ -5,6 +5,9 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Melee splash works more as in Project Diablo II: it carries the damage of the skill you hit with (Frenzy's
+  damage bonus and elemental damage, a kick's damage), One and Two Hand Mastery widen it, a normal-tier weapon
+  narrows it, and on-hit procs and freezes no longer fire on the monsters it splashes onto.
 - Blade Fury's blades work as in Project Diablo II: a blade that hits a wall bounces off it as three blades, and a
   blade that hits a monster can split in two, up to three times over.
 - Wands, staves and scepters with a class skill show it ("+1 to Raise Skeleton Warrior (Necromancer Only)") instead
