@@ -6,8 +6,8 @@ Desecration do is in the
 [inventory](https://github.com/synpoox/pd2-resurrected/blob/research/pd2-uber-bosses/docs/research/pd2-uber-bosses.md)
 (#147). PD2's Pandemonium and Uber Tristram are inventoried in
 [#185](https://github.com/synpoox/pd2-resurrected/issues/185). Terms (uber boss, uber key, uber tier, Desecration,
-Terror Zone) are in [GLOSSARY.md](../GLOSSARY.md). The work items are placed on [roadmap.md](roadmap.md) by #143's
-final ordering ticket.
+Terror Zone) are in [GLOSSARY.md](../GLOSSARY.md). The work items are placed on [roadmap.md](roadmap.md) by
+[#210](https://github.com/synpoox/pd2-resurrected/issues/210).
 
 ## Scope
 
@@ -53,8 +53,8 @@ Out:
 | UB2 | Opening: uber keys used at the Blood Fountain, the uber tiers and their scaling, the area rules (buffs stripped, mercenary killed, exit blocked, tier-0 portals), the one-per-game gate shared with maps; uber keys drop again; the key drop rule | core-maps | UB1, MS2, the level pipeline for the uber areas |
 | UB3 | Pandemonium and Uber Tristram: the keys' portal to levels 133-135, the mini-ubers, Horn, Eye and Brain, `ubtm`, level 185 and the fight, the Black Soulstone and Hellfire Torch drops | core-maps | UB2 |
 | UB4 | Diablo Clone: the phases, UberDiabSummon/Run, the adds and trapped souls, Annihilus, the 1-in-200 uniques | core-maps, core-rules (skills) | UB2 |
-| UB5 | Rathma and Mendeln: the six stages, shared life, RathmaSummon, the bone spear, the death nova, the Tainted Worldstone Shard and the other rolls | core-maps, core-rules (skills) | UB2 |
-| UB6 | Lucion: the kit, the portal phases, the death novas, the Temple and its chests, the Demonic Cube roll, the Talisman's Terror Zone source | core-maps, core-rules (skills) | UB2 |
+| UB5 | Rathma and Mendeln: the six stages, shared life, RathmaSummon, the bone spear, the death nova, the cold missiles (srvdo 139, data), the Tainted Worldstone Shard and the other rolls | core-maps, core-rules (skills) | UB2 |
+| UB6 | Lucion: the kit, Royal Fire (srvdo 143, cltdo 83; Radament's too), the portal phases, the death novas, the Temple and its chests, the Demonic Cube roll, the Talisman's Terror Zone source | core-maps, core-rules (skills) | UB2 |
 | UB7 | Desecration in the cube (above), stats 206/207 | core-maps | UB6 |
 
 ## Game check
