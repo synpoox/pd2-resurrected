@@ -1536,7 +1536,7 @@ def hit_window(ctx):
     """PD2's gate B on the server: a player in get-hit (4) or block (9) takes a new mode once 2 frames or fewer are
     left to the mode-end event (D2R: 1). With more left, walk / run are buffered (4, D2R's queue) and the rest refused
     (1). A get-hit, block or knockback request is still refused (D2R's). D2R's client holds a request made in get-hit
-    and sends it with 1 frame left, so the 2-frame case is not reached in single player, and a 1-frame row passes
+    and sends it with 1 frame left (PD2's client most likely too), so the 2-frame case is not reached, and a 1-frame row passes
     without the patch too: the check guards the hook and the window's results, not the patch (docs/unported.md)."""
     rows = [tuple(int(v) for v in m) for m in HIT_WINDOW.findall(_log(ctx))]
     rows = [r for r in rows if r[0] in (GET_HIT, BLOCK)]
