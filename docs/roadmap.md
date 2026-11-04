@@ -63,8 +63,8 @@ are "not yet" rows on the unported list; the Warlock ships as D2R has it.
 | W25 | Investigation: Assassin finisher hook points (core-rules) | none | E | [#100](https://github.com/synpoox/pd2-resurrected/issues/100) |
 | W26-W28 | Sorceress (core-rules) | W21 (W27 only) | E | [#101](https://github.com/synpoox/pd2-resurrected/issues/101), [#102](https://github.com/synpoox/pd2-resurrected/issues/102), [#103](https://github.com/synpoox/pd2-resurrected/issues/103) |
 | W29-W32 | Assassin (core-rules) | W25 (W29), W29 (W30), W21 (W32) | first free class lane | [#104](https://github.com/synpoox/pd2-resurrected/issues/104), [#105](https://github.com/synpoox/pd2-resurrected/issues/105), [#106](https://github.com/synpoox/pd2-resurrected/issues/106), [#107](https://github.com/synpoox/pd2-resurrected/issues/107) |
-| W33 | **Rush:** melee splash (srvdo 163), which item_splashonhit, Frenzy, Tiger Strike and Revive's event cast (core-rules) | none | A, as a rush job | |
-| W34 | Get-hit/block end window and cast/sequence delay, every class (core-rules), split off W14 | none | first free class lane | |
+| W33 | **Rush:** melee splash (srvdo 163), which item_splashonhit, Frenzy, Tiger Strike and Revive's event cast (core-rules) | none | A, as a rush job | [#119](https://github.com/synpoox/pd2-resurrected/issues/119) |
+| W34 | Get-hit/block end window and cast/sequence delay, every class (core-rules), split off W14 | none | first free class lane | [#120](https://github.com/synpoox/pd2-resurrected/issues/120) |
 | P12 | "Not yet" rows for class item rules (Ormus' Robes and the like) on the unported list | none | A | [#108](https://github.com/synpoox/pd2-resurrected/issues/108) |
 | P13 | Alpha release: local 7z and release notes | P8 and every item above | A | [#109](https://github.com/synpoox/pd2-resurrected/issues/109) |
 
