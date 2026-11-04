@@ -7,6 +7,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 - Charge works as in Project Diablo II: it runs at Project Diablo II's speed, and the longer the charge, the wider
   its hit splashes with a splash-on-hit item.
+- Teleport works as in Project Diablo II: for a second after each teleport your elemental masteries are
+  lowered, by less as the skill levels up.
 - Melee splash works as in Project Diablo II: items that splash on hit, Frenzy and Tiger Strike's splash radius,
   and revived monsters' hits damage the monsters around the one struck.
 - Poison Dagger works as in Project Diablo II: each stab leaves a ring of poison clouds around the target.

@@ -292,6 +292,7 @@ inline constexpr int SkCalc3 = 0x198;
 inline constexpr int SkCalc4 = 0x19c;  // skills field table at 0x306193
 inline constexpr int SkAuraRangeCalc = 0x84;  // int32 aurarangecalc, Chain Lightning's chain range when sHitPar1 is 0
 inline constexpr int SkParam1 = 0x1b8;  // int32 Param1-8, field table at 0x305e68
+inline constexpr int SkParam2 = 0x1bc;
 inline constexpr int SkParam3 = 0x1c0;
 inline constexpr int SkParam4 = 0x1c4;
 inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170
