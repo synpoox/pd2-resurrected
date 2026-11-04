@@ -51,7 +51,13 @@ inline constexpr uint64_t SrvDoReviveD2R = 0x55e7e0;
 inline constexpr uint64_t RegisterSkillEvents = 0x42fa90;
 // 0x554c40: Teleport to the skill's point; 0 when there is no room, the level forbids it or the point collides (0x804)
 inline constexpr int SrvDoTeleport = 27;
+// Charge, D2R's own: srvst 31 (0x564dc0) aims the charge path, srvdo 67 (0x5622c0) runs it and hits at the end
+inline constexpr int SrvStVanillaCharge = 31, SrvDoVanillaCharge = 67;
 inline constexpr int SrvDoInferno = 19;  // 0x554460: D2R's (vanilla) Inferno; PD2's srvdo 182 hands monsters to it
+// MissileParams::callback, run by the create (0x3bac90) from the table at 0x2381f30 as fn(missile, callbackArg).
+// 1 (0x3b75c0, D2R's Firestorm, srvdo 117 / cltdo 67): frames capped at 77, seed from the arg, a type 10 path; it is
+// PD2's maker callback 0x1036f220 but for the seed (DiabWall's 7 also skips the path 20% of the time)
+inline constexpr int MissileCallbackMaker = 1;
 // missiles.txt pSrvDoFunc: int64_t fn(Game*, Unit* missile), 54 slots, 46-53 free.
 inline constexpr uint64_t MissileSrvDoTable = 0x2390e80;
 inline constexpr int MissileSrvDoSlots = 54;
@@ -64,6 +70,11 @@ inline constexpr int MissileSrvHitFirstFree = 61;
 inline constexpr uint64_t MissileCltDoTable = 0x2358430;
 inline constexpr int MissileCltDoSlots = 92;
 inline constexpr int MissileCltDoFirstFree = 78;
+// missiles.txt pCltHitFunc: int32_t fn(Unit* missile, Unit* hit), 81 slots (dispatcher 0x1b8e60, bound dword
+// 0x2358a64), 66-80 free (and 6-8, 11, 15, 17, 20-23, 27, 35, 45, 49, 58, 59). Zero skips the hit's explosion.
+inline constexpr uint64_t MissileCltHitTable = 0x2358710;
+inline constexpr int MissileCltHitSlots = 81;
+inline constexpr int MissileCltHitFirstFree = 66;
 // missiles.txt pSrvDmgFunc: void fn(Game*, Unit* missile, Unit* hit, Damage*), 31 slots, 18-30 free. Called by srvhit 1
 // (0x45bc40) while it builds the hit's damage.
 inline constexpr uint64_t MissileSrvDmgTable = 0x2391270;
@@ -83,7 +94,9 @@ inline constexpr uint64_t SkillTargetXY = 0x432b70;    // (game, unit, &x, &y) -
 inline constexpr uint64_t CreateMissile = 0x5371a0;    // (game, &MissileParams) -> missile unit or null
 inline constexpr uint64_t MissileCount = 0x1b89a0;     // (dataFlag) -> rows in missiles.txt
 inline constexpr uint64_t SetUnitSkillFlag = 0x34e790; // (unit, on): unit flags (+0x124) bit 0x40, set by do functions
-// (unit, skillId) -> srvmissile a/b/c row chosen by the equipped weapon (Double Throw srvdo 154 uses it), -1 on error
+// (unit, skillId) -> srvmissile a/b/c row by the skill's charges (1, 2, 3+), srvmissilea for a skill with no charges,
+// -1 on error. Vanilla's charge-missile helper (1.13c D2Game 0x91340, which PD2's srvprg 139/171/172 call); D2R's
+// srvdo 37 uses it.
 inline constexpr uint64_t PickSkillMissile = 0x571700;
 inline constexpr uint64_t UnitDataFlag = 0x34a0e0;          // (unit) -> data flag byte; the client's DataFlag
 inline constexpr uint64_t ClientSkillTargetXY = 0x214c80;   // (unit, &x, &y) -> non-zero when the skill has a point
@@ -115,7 +128,8 @@ inline constexpr uint64_t ItemMissileType = 0x371b60;  // (item) -> weapons.txt 
 inline constexpr uint64_t ThrowSkillMissile = 0x4333f0;
 inline constexpr uint64_t ClientThrowSkillMissile = 0x213f50;  // (unit, missile, skill, level, UnitStateKey(unit))
 inline constexpr uint64_t MissileBounces = 0x3bc0a0;  // (missile) -> chain count left (Chain Lightning's)
-inline constexpr uint64_t SetMissileBounces = 0x3bd8a0;  // (missile, count)
+inline constexpr uint64_t SetMissileBounces = 0x3bd8a0;  // (missile, count); srvdo 139 sets it to uy - ty
+inline constexpr uint64_t SetMissileTargetDx = 0x3bda20;  // (missile, tx - ux), set by srvdo 139 (0x585440)
 inline constexpr uint64_t MissileSkill = 0x3bc450;  // (missile) -> skill id
 inline constexpr uint64_t MissileLevel = 0x3bb470;  // (missile) -> skill level
 inline constexpr uint64_t MissileRecord = 0x166040;  // (dataFlag, missile row) -> missiles.txt record or null
@@ -132,7 +146,14 @@ inline constexpr uint64_t DirectionX = 0x1d1b650;
 inline constexpr uint64_t DirectionY = 0x1d1b750;
 
 // Self buff, the way Frozen Armor's srvdo 18 (0x553e60) builds its aurastate list
-inline constexpr uint64_t RemoveSkillState = 0x4370b0;  // (unit, state, 1): drop an older list of this state
+// (unit, state, self) -> 1 if it removed any: removes every state of the unit in the same states.txt group as
+// `state` (the state itself too with self 1). A state with no group (0) removes nothing.
+inline constexpr uint64_t RemoveSkillState = 0x4370b0;
+// What 0x4370b0 does for each state it removes: state bit off (unit, state, 0), then the list detached (unit, list)
+// and freed (dataFlag, list)
+inline constexpr uint64_t ClearUnitState = 0x3354c0;
+inline constexpr uint64_t DetachStatList = 0x2f7920;
+inline constexpr uint64_t FreeStatList = 0x2f4180;
 // (&StateListRequest) -> stat list or null. An older list of the state with the same skill and level only gets
 // its timer moved and is returned as it is; a lower level returns null; any other older list is replaced.
 inline constexpr uint64_t NewStateList = 0x433d20;
@@ -155,6 +176,11 @@ inline constexpr uint64_t ClientSkillTargetUnit = 0x9a570;  // (unit) -> target 
 inline constexpr uint64_t QueuedHit = 0x44d660;
 inline constexpr uint64_t UnitSeed = 0x34a1e0;  // (unit) -> &seed {lo, hi}
 inline constexpr uint64_t UnitStat = 0x2f5020;  // (unit, stat, param) -> value
+// What D2R's Charge hit (srvdo 67) asks before it strikes
+inline constexpr uint64_t FindUnit = 0x48fe80;     // (game, unit type, id) -> unit or null
+inline constexpr uint64_t UnitInReach = 0x348650;  // (unit, target, reach, 0) -> non-zero when in reach
+inline constexpr uint64_t UnitReach = 0x34aa90;    // (unit) -> 1 for a player, 3 for a monster
+inline constexpr uint64_t UnitDead = 0x34c2c0;     // (unit) -> non-zero when dying or dead
 inline constexpr uint64_t DataTables = 0x300a90;  // (dataFlag) -> data tables; states.txt row count at +0x298
 // Leap, the way D2R's Leap (srvdo 77 0x568690, cltdo 43 0x22f9a0) and Leap Attack (srvdo 78 0x568920) run it
 inline constexpr uint64_t GetUnitSkill = 0x33dd40;  // (unit, skillId, 0) -> the unit's skill (flags +0x14) or null
@@ -173,6 +199,26 @@ inline constexpr uint64_t RemoveUnitEvent = 0x48b890;  // (game, unit, event, 0)
 inline constexpr uint64_t AddUnitEvent = 0x48b720;  // (game, unit, event, frame, 0, 0, 0)
 inline constexpr uint64_t MonStatsRecord = 0x976e0;  // (dataFlag, classId) -> monstats record or null
 inline constexpr uint64_t UnitId = 0x34a330;  // (unit, file, line) -> unit id
+// (unit, skill, level, target, 0) -> non-zero cast: a skill cast from unit at target as an event, sent to clients (aura
+// event 33 0x42f300 casts this way); refuses while the unit has state 54
+inline constexpr uint64_t CastEventSkill = 0x5896e0;
+// Assassin charge-up finishers (W29, docs/research/w29-assassin-finishers.md)
+inline constexpr int SrvDoChargeUpSlot = 34;  // 0x570a70: target, roll, queue the hit, AddCharge if it hits, apply
+inline constexpr int SrvDoFireCharge1 = 38;  // 0x56ef30 and 0x571860: vanilla's later Fists of Fire charges
+inline constexpr int SrvDoFireCharge2 = 39;
+// (game, unit, skill, level, aurastate, aurastat1) -> 1: one charge on the aurastate list (made with stats 350/351
+// if none), capped at 3, timer reset to auralencalc; aurastat2 grows by aurastatcalc2. srvdo 34 calls it on a hit.
+inline constexpr uint64_t AddCharge = 0x56dae0;
+// Release dispatcher (srvdo 1, 42, 46, 50, 52 call it with the queued hit): for each progressive state, n =
+// min(max(charges, 1), 3) at max(list level, skill level); with prgstack it calls srvprgfunc1..n-1 first, setting the
+// charge stat to i, then srvprgfunc n, all as (game, unit, skill, level), and sends SendChargePacket.
+inline constexpr uint64_t SrvPrgDispatch = 0x56c3e0;
+// (unit, target, skill, level, seed, 0, charges): the release packet; PD2's srvdo 170 sends 1.13c's after each hit
+inline constexpr uint64_t SendChargePacket = 0x5396d0;
+inline constexpr uint64_t ListStatValue = 0x2f5df0;  // (dataFlag, list, stat, layer) -> value
+inline constexpr uint64_t NewStatList = 0x2f7300;  // (flags, expire frame, unit type, unit id) -> list or null
+inline constexpr uint64_t AttachStatList = 0x2f2cb0;  // (unit, list, 1)
+
 // Melee splash (W33): one victim's damage, built the way PD2's area callback 0x10303190 builds it
 // (game, attacker, defender, &damage, 0, srcdam): weapon damage scaled by srcdam / 128 (0 = 128); Leap Attack's
 // 0x44b600 fills its hit this way
@@ -186,6 +232,21 @@ inline constexpr uint64_t DamageEffects = 0x44df10;  // (game, attacker, victim,
 // hit's 0x44b2b0 calls it; with area 1, events 6 domissiledamage and 2
 inline constexpr uint64_t HitEvents = 0x44ce80;
 inline constexpr uint64_t DealDamage = 0x44a9b0;  // (game, attacker, victim, &damage)
+// The whole area apply: the steps above with events 6 domissiledamage and 2 (1.13c's 0x10305760 in PD2's Holy Light)
+inline constexpr uint64_t AreaApply = 0x436e90;  // (game, attacker, victim, &damage)
+// Holy Light (W17, docs/research/w17-holy-light.md)
+// (unit, overlay, layer): overlay.txt row as stat 0xb2 on the given layer; 1.13c's D2Common #10689 has no layer (0).
+// Asserts on a row past the table, so check DataTables + TablesOverlayCount first, as Leap Attack (0x56b170) does.
+inline constexpr uint64_t SetOverlay = 0x349020;
+// (unit) -> alignment: stat 172 for players and monsters (0 hostile, 1 neutral, 2 ally; pets 2), 2 for other types.
+// 1.13c's D2Common #10830. D2RLoader hooks its entry: call it, never hook it (d2r-tools automap-marker notes).
+inline constexpr uint64_t UnitAlignment = 0x2f4190;
+// Client: (center unit, x, y, radius, unit mask, callback, arg, 0): callback(&ClientAreaContext, unit) for each unit
+// in range; x/y 0 = the center unit's position, radius 0 does nothing (Fist of the Heavens' clthit 26 0x1adcb0)
+inline constexpr uint64_t ClientAreaUnits = 0x2142d0;
+inline constexpr uint64_t ClientFindUnit = 0x9a5d0;  // (id, type) -> the client's unit or null
+inline constexpr uint64_t MissileTargetType = 0x3bc190;  // (missile) -> target unit type, 6 for none
+inline constexpr uint64_t MissileTargetId = 0x3bc280;  // (missile) -> target unit id
 inline constexpr uint64_t EngineAllocator = 0x12063c0;  // () -> the allocator; vtable +0x20 frees (Leap Attack's cleanup)
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
@@ -223,6 +284,15 @@ inline constexpr int PathTargetUnit = 0x70;  // Unit* on a dynamic path: what Pa
 inline constexpr int UnitOwnerType = 0xe8;  // int32 owner unit type (MissileOwner 0x490300 reads both)
 inline constexpr int UnitOwnerId = 0xec;    // uint32 owner unit id
 inline constexpr int TablesStateCount = 0x298;  // uint64 states.txt row count in DataTables
+// charstats.txt in DataTables: records (0xd0 bytes) and count; D2R's Charge start reads the byte at +0x3d (1.13c +0x41)
+// as the class's charge speed
+inline constexpr int TablesCharStats = 0x1240;
+inline constexpr int TablesCharStatsCount = 0x1248;
+inline constexpr int CharStatsSize = 0xd0;
+inline constexpr int CsChargeVelocity = 0x3d;
+// DataTables: the progressive states (int16 state ids) and their count (int64), read by SrvPrgDispatch
+inline constexpr int TablesProgressiveStates = 0x420;
+inline constexpr int TablesProgressiveCount = 0x428;
 inline constexpr int GameDifficulty = 0x104;  // uint8: 0 normal, 1 nightmare, 2 hell
 // Game: per-level monster regions (array indexed by level id); a region's spawned-monster count at +0x2cc (0x509520)
 inline constexpr int GameMonRegions = 0x1d0;
@@ -237,6 +307,9 @@ inline constexpr int LvlNMon1 = 0x70;
 inline constexpr int MonSpawn = 0x54;     // int16 spawn, -1 for none
 inline constexpr int MonPartyMin = 0x62;  // uint8
 inline constexpr int MonPartyMax = 0x63;  // uint8
+inline constexpr int MonFlags = 0x3c;  // uint32 flags; lUndead bit 11, hUndead bit 12 (monstats field table 0x39db30)
+inline constexpr uint32_t MonUndead = 0x1800;  // 1.13c's D2Common #10239 tests the same two bits
+inline constexpr int TablesOverlayCount = 0x1230;  // int64 overlay.txt row count in DataTables
 
 // Damage block QueuedHit returns: +0 hit flags (uint32), +4 result flags (uint16)
 inline constexpr int DamageResult = 0x4;
@@ -250,6 +323,7 @@ inline constexpr int UnitSeqAnim = 0x40;  // pointer cltdo 24 tests to pick how 
 inline constexpr int USkillFlags = 0x14;  // 0x80 leap starts, 0x100 in the air, 0x1000 path velocity locked
 inline constexpr int USkillTargetType = 0x2c;  // 6 = none
 inline constexpr int USkillTargetId = 0x30;
+inline constexpr int USkillParam = 0x24;  // int32 Charge's counter, PD2's charge distance (its D2Common skill param)
 inline constexpr int MonVelocity = 0x6a;  // int16 monstats Velocity
 
 inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Lightning's chain range, 0 = the skill's)
@@ -267,6 +341,8 @@ inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58, pois
 inline constexpr int StatPoisonMax = 58;
 inline constexpr int StatPoisonLength = 59;
 inline constexpr int StatLife = 6;  // itemstatcost hitpoints (current life, in 1/256), D2R and PD2
+inline constexpr int StatMaxLife = 7;  // maxhp
+inline constexpr int StatVelocityPercent = 67;  // itemstatcost velocitypercent, D2R and PD2
 inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's search: 0x88583 | the 0xa783 the search adds
 
 // Leeches in the same damage block (built by 0x465d60)
@@ -283,6 +359,9 @@ inline constexpr int MsDParam1 = 0x9c;    // int32 dParam1
 inline constexpr int MsDmgCalc1 = 0xb4;   // int32 DmgCalc1 (calc index), read by dmg 1 0x453490
 inline constexpr int MsCollideKill = 0x1ae;  // uint8 CollideKill (1.13c's 0x186 + 0x28; the field table at 0x3c4233)
 inline constexpr int MsSkill = 0x1b6;     // int16 Skill (skills.txt row), read off a live explodingarrow row
+// int16 HitSubMissile1 and CltHitSubMissile1 (1.13c's 0x24 / 0x2c), as D2R's clthit 26 (0x1adcb0) reads them
+inline constexpr int MsHitSubMissile1 = 0x46;
+inline constexpr int MsCltHitSubMissile1 = 0x4e;
 inline constexpr int MsAnimSpeed = 0x1a0;  // uint8, the client create (0x1b7760) passes it to SetUnitAnimSpeed
 
 // MissileParams::flags
@@ -291,6 +370,8 @@ inline constexpr uint32_t MissileChannel = 0x8020;  // D2R's Inferno (srvdo 19, 
 inline constexpr uint32_t MissileNotTriggering = 0x20000;  // Multiple Shot's outer missiles, the ones calc3 leaves out
 inline constexpr uint32_t MissileAtXY = 0x1;  // start at x/y
 inline constexpr uint32_t MissileAimOffset = 0x2;  // targetX/targetY are offsets from the start (Nova's srvhit 5)
+// PD2's charge spread (srvprg 171) sets it; CreateMissile hands it, with params +0x64, to the missile's setup 0x3bf9b0
+inline constexpr uint32_t MissileFlag10000 = 0x10000;
 
 // Stats Frozen Armor's srvdo 18 sets on its state list (itemstatcost ids)
 inline constexpr int StatListSkill = 0x15e;  // 350: the skill that made the list
@@ -306,15 +387,22 @@ inline constexpr int SkCalc2 = 0x194;
 inline constexpr int SkCalc3 = 0x198;
 inline constexpr int SkCalc4 = 0x19c;  // skills field table at 0x306193
 inline constexpr int SkAuraRangeCalc = 0x84;  // int32 aurarangecalc, Chain Lightning's chain range when sHitPar1 is 0
-inline constexpr int SkParam2 = 0x1bc;  // int32 Param2
-inline constexpr int SkParam3 = 0x1c0;  // int32 Param3
-inline constexpr int SkParam4 = 0x1c4;  // int32 Param4 (Param1 0x1b8), field table at 0x305e68
+inline constexpr int SkParam1 = 0x1b8;  // int32 Param1-8, field table at 0x305e68
+inline constexpr int SkParam2 = 0x1bc;
+inline constexpr int SkParam3 = 0x1c0;
+inline constexpr int SkParam4 = 0x1c4;
+inline constexpr int SkSrvPrgFunc1 = 0x50;  // int16 srvprgfunc1-3, read by SrvPrgDispatch
+inline constexpr int SkPrgCalc1 = 0x58;     // int32 prgcalc1-3 (calc index), read by srvdo 37's 0x571590
 inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170
 // uint16 ResultFlags, uint32 HitFlags, int32 HitClass (1.13c's 0x12e / 0x130 / 0x134), as D2R's Hunger (0x576630)
 // reads them into its damage block
 inline constexpr int SkResultFlags = 0x186;
 inline constexpr int SkHitFlags = 0x188;
 inline constexpr int SkHitClass = 0x18c;
+inline constexpr int SkSrvOverlay = 0x6e;  // int16 srvoverlay (skills field table 0x302380)
+inline constexpr int SkAuraFilter = 0x70;  // int32 aurafilter, the area unit mask (clthit 26 reads it)
+inline constexpr int SkCltCalc2 = 0x170;  // int32 cltcalc2 (calc index)
+inline constexpr int SkCltCalc3 = 0x174;
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
 inline constexpr int SkAuraLenCalc = 0x80;    // int32 auralencalc: 1.13c's 0x60, before aurarangecalc as there
@@ -350,7 +438,10 @@ struct MissileParams {
 	int32_t range;            // 0x5c frames the missile lives (Inferno's calc1)
 	uint8_t pad60[0x68 - 0x60];
 	int32_t sourceKey;        // 0x68 UnitStateKey of the missile a chain starts from (Chain Lightning's srvhit 12)
-	uint8_t rest[0xa0 - 0x6c];
+	int32_t pad6c;
+	int32_t callback;         // 0x70 index into MissileCreateCallbacks, run on the new missile with callbackArg (0: none)
+	int32_t callbackArg;      // 0x74 (Firestorm's 1 and DiabWall's 7 take the maker's index and seed it from that)
+	uint8_t rest[0xa0 - 0x78];
 };
 static_assert(sizeof(MissileParams) == 0xa0);
 static_assert(offsetof(MissileParams, activation) == 0x54);
@@ -359,6 +450,7 @@ static_assert(offsetof(MissileParams, targetX) == 0x2c);
 static_assert(offsetof(MissileParams, skill) == 0x3c);
 static_assert(offsetof(MissileParams, sourceKey) == 0x68);
 static_assert(offsetof(MissileParams, range) == 0x5c);
+static_assert(offsetof(MissileParams, callback) == 0x70);
 
 // Argument of rva::NewStateList, laid out as Frozen Armor fills it on its stack.
 struct StateListRequest {
@@ -387,6 +479,13 @@ struct AreaContext {
 	void* arg;      // AreaUnits' arg
 };
 static_assert(sizeof(AreaContext) == 0x20);
+// The client's (rva::ClientAreaUnits)
+struct ClientAreaContext {
+	Unit* center;
+	int32_t count;  // units the callback returned non-zero for
+	void* arg;
+};
+static_assert(offsetof(ClientAreaContext, arg) == 0x10);
 
 // The damage block D2R's Leap (srvdo 77) hands rva::AreaKnockback, filled as it fills it on its stack: hit flags 0,
 // result flags 9, an empty inline list at +0x40 (data pointer, size, capacity 16 with the inline bit) and an empty

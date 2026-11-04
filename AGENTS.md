@@ -8,11 +8,19 @@ Every PR links the issue it solves: the body opens with `Closes #<n>`, or `Part 
 
 ### Triage labels
 
+A bug that exists in PD2 itself, and that we fix, also gets `pd2-origin` and a row in `docs/pd2-origin-bugs.md`.
+
 Default five-label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
 Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## Testing in-game
+
+- The in-game console can toggle god mode, teleport you out of town, and spawn monsters. Use it to set up a test quickly instead of playing to the spot.
+- Always test in Hell difficulty, where monsters have enough HP to survive long enough to show what a skill does.
+- Always test on a character of level 90 or higher.
 
 ## Reverse engineering
 
