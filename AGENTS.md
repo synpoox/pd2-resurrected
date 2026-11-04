@@ -19,7 +19,12 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 ## Testing in-game
 
 - The in-game console can toggle god mode, teleport you out of town, and spawn monsters. Use it to set up a test quickly instead of playing to the spot.
-- Spawn an item with `cheat spawn <item code>` (e.g. `cheat spawn wnd`) after `debug_mode` turns cheats on. It drops on the ground; `cheat item` does nothing.
+- Spawn items from the console after `debug_mode` turns cheats on. These are the lines the debug menu's Item Spawner sends; its window needs double-clicks, which the test harness cannot send. `cheat item` does nothing.
+  - A base item: `cheat spawn <item code>,inv 0` (e.g. `cheat spawn wnd,inv 0`) puts it in the inventory. Without `inv 0`, or with no room, it drops on the ground ("I am overburdened"). `typ=<letter>` sets the quality, but the letters don't match their names (`typ=n` rolled magic, `typ=u` rare), so read the tooltip.
+  - A unique: `cheat uniques <row>`, where the row is zero-based in the merged `uniqueitems.txt` (`out/data/global/excel/`): Gull 39, Pelta Lunata 94, Goblin Toe 110. It drops on the ground.
+  - `cheat idall` identifies every item you carry.
+- Spawned items have normal durability: a fresh Goblin Toe came at 17 of 18 and kept it through `cheat idall` and 55 attacks. A 0-durability item has its stats switched off, so hover the item before a test and spawn a fresh one if the tooltip says `Durability: 0`.
+- `cheat gold <n>` does not add gold.
 - To pick up a ground item, hold Alt so the item labels show, then click the label.
 - Always test in Hell difficulty, where monsters have enough HP to survive long enough to show what a skill does.
 - Always test on a character of level 90 or higher.
