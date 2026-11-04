@@ -106,7 +106,7 @@ def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | 
     PD2's comment columns and eol are not data; a column D2R keeps only as a comment (*Id) is the row's position, and a
     repeated column is read once, as the merge reads it. PD2's rows, columns and cells are read in the mod's spelling:
     renamed by `ren` (pd2_ids.renames) and pd2_ids.COLUMN_MAP, with item properties' skill and state parameters in the
-    mod's ids (`ctx`). `rows` pairs a tables.json table's rows as its merge did. PD2's cells carry Excel's quote marks, which the classic loader skipped: they are not data."""
+    mod's ids, as are missiles' hit parameters (`ctx`). `rows` pairs a tables.json table's rows as its merge did. PD2's cells carry Excel's quote marks, which the classic loader skipped: they are not data."""
     res = Result(name)
     mod_cols = {c.lower(): i for i, c in enumerate(mod.header)}
     to_mod = {p.lower(): d.lower() for d, p in COLUMN_MAP.get(name, {}).items()}
@@ -129,7 +129,9 @@ def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | 
         for _, i, j in cols:
             want[j] = pd2_ids.spell(name, mod.header[j], pr[i], ren) if ren else pr[i].replace('"', "")
         pd2_ids.fix_missile_funcs(name, mod.header, want)
-        if ctx:
+        if ctx and name == "missiles":
+            pd2_ids.fix_hit_params(mod.header, want, ctx.ids)
+        elif ctx:
             pd2_ids.fix_props(mod.header, want, ctx.ren, ctx.ids, ctx.props)
         res.open += [(f"{name}.{row}.{c}", pr[i], mr[j]) for c, i, j in cols if not same(want[j], mr[j])]
     return res
@@ -179,12 +181,13 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
         if src is None:
             res = Result(p.stem, [(f"{p.stem}.*.*", "", "")], source="none")
         else:
-            if p.stem in pd2_ids.PROPS and ctx is None:
+            ids_read = p.stem in pd2_ids.PROPS or p.stem == "missiles"  # property or hit parameters name ids
+            if ids_read and ctx is None:
                 ctx = pd2_ids.context_of(lists, root / "pd2-data/data")
             key = pd2_ids.KEY.get(p.stem)
             rows = opts.get(p.stem, {}).get("rows", "name") if src[0] == "merged" else "name"
             res = compare(p.stem, Table(p, key), Table(src[1], key), ren, lists,
-                          ctx if p.stem in pd2_ids.PROPS else None, rows)
+                          ctx if ids_read else None, rows)
             res.source = src[0]
             if src[0] == "merged" and f"{p.stem.lower()}.*" in patterns:
                 raise GateError(f"unported.md still covers all of {p.stem}, which is merged now: narrow its row")

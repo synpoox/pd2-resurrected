@@ -23,5 +23,6 @@ auto SrvHitBounce(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept 
 void SrvDmgFirstHit(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit, uint8_t* damage) noexcept;  // dmg 21 (PD2 16)
 void SrvHitExplodeSpread(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept;  // shit 63
 void SrvDmgPierceFalloff(d2r::Game* game, d2r::Unit* missile, d2r::Unit* target, uint8_t* damage) noexcept;  // dmg 20
+void SrvHitState(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept;  // shit 61
 // Live counters for the status command.
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void;

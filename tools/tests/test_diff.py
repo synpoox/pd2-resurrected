@@ -80,6 +80,7 @@ class GateTests(unittest.TestCase):
     def test_rows_renamed_by_the_id_lists_and_their_rewritten_references_match(self):
         (self.root / "merge").mkdir()
         (self.root / "merge/ids-skills.tsv").write_text("# PD2 name\tid\tname\nTeeth\t67\tTeeth_pd2\n", "utf-8")
+        self.write("pd2", "properties", table("code | func1"))  # missiles' hit parameters read the id context
         self.write("pd2", "missiles", table("Missile | Skill | SrvCalc1 | Range", 'teeth | Teeth | skill(\'Teeth\'.blvl)*-2 | "5"'))
         self.write("mod", "missiles", table("Missile | Skill | SrvCalc1 | Range", "teeth | Teeth_pd2 | skill('Teeth_pd2'.blvl)*(0-2) | 5"))
         self.write("pd2", "skills", table("skill | Id | srvmissile", "Teeth | 67 | teeth"))
@@ -168,6 +169,15 @@ class GateTests(unittest.TestCase):
         self.write("pd2", "gems", table("name | weaponMod1Code | weaponMod1Param", "Ruby | oskill | 1"))
         self.write("mod", "gems", table("name | weaponMod1Code | weaponMod1Param", "Ruby | oskill | 430"))
         self.assertEqual(self.gate("P3").open(), [])
+
+    def test_missile_hit_parameters_follow_the_state_list(self):
+        (self.root / "merge").mkdir()
+        (self.root / "merge/ids-states.tsv").write_text("none\t0\tnone\npoison_strike\t282\tpoison_strike\n", "utf-8")
+        self.write("pd2", "properties", table("code | func1"))
+        self.write("pd2", "states", table("state | Id", "none | 0", "poison_strike | 236"))
+        self.write("pd2", "missiles", table("Missile | pSrvHitFunc | sHitPar1", "cloud | 61 | 1"))
+        self.write("mod", "missiles", table("Missile | pSrvHitFunc | sHitPar1", "cloud | 61 | 282"))
+        self.assertEqual([o for o in self.gate("P2").open() if o[0].startswith("missiles.")], [])
 
     def test_every_unported_row_has_a_known_status(self):
         self.unported("| Something | maybe | `levels.*.*` | P4 |\n")

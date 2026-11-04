@@ -19,7 +19,7 @@ def _nums(*spans: int | range) -> set[str]:
 # Function numbers PD2 rows must not keep: D2R's slot is empty, past the table's end, or holds a different function
 # (core-rules hook list; table sizes from docs/research/skill-function-tables.md). Not listed: numbers equal to D2R's
 # (srvdo 41/143, cltdo 15/83), built rules (srvdo 189, W1; srvdo 188 and cltdo 117 become the missile columns,
-# pd2_ids.MISSILE_FUNCS, W5; shit 63, cltdo 22 patched, W6), `verify` slots that hold D2R's same-numbered function,
+# pd2_ids.MISSILE_FUNCS, W5; shit 63, cltdo 22 patched, W6; shit 61, W11), `verify` slots that hold D2R's same-numbered function,
 # which is the stand-in (shit 5, 6, 30; chit 4, 12, 26), and temp1's sdo 39 / cdo 71 (no row reaches it). Cube ops
 # 30/31 are not here: cubemain rows have no unique name, so the item tables' merge (P3) keeps those recipes off.
 PD2_ONLY = {
@@ -35,7 +35,7 @@ PD2_ONLY = {
     "missiles": {
         "pSrvDoFunc": _nums(38, 40),
         "pCltDoFunc": _nums(12, range(69, 71), 72),
-        "pSrvHitFunc": _nums(34, range(60, 63), 64, 65) | {"*12"},
+        "pSrvHitFunc": _nums(34, 60, 62, 64, 65) | {"*12"},
         "pCltHitFunc": _nums(6, 11, 65, 66, 67) | {"*16"},  # *12/*16: PD2 text that parses as no function
         "pSrvDmgFunc": _nums(15, range(17, 20)),
     },

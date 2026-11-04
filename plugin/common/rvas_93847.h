@@ -41,6 +41,7 @@ inline constexpr int SrvStFindItem = 34;
 inline constexpr int CltStFindPotion = 26;
 inline constexpr int CltStFindItem = 28;
 inline constexpr int SrvDoMelee = 2;  // 0x430240: Bash's do function in D2R, applies the queued hit
+inline constexpr int SrvDoPoisonDaggerSlot = 32;  // 0x55cc50: D2R's Poison Dagger do function, applies the queued hit
 // missiles.txt pSrvDoFunc: int64_t fn(Game*, Unit* missile), 54 slots, 46-53 free.
 inline constexpr uint64_t MissileSrvDoTable = 0x2390e80;
 inline constexpr int MissileSrvDoSlots = 54;
@@ -106,6 +107,14 @@ inline constexpr uint64_t MissileRecord = 0x166040;  // (dataFlag, missile row) 
 inline constexpr uint64_t NearestTarget = 0x4331d0;
 inline constexpr uint64_t SetUnitStat = 0x2f7d10;  // (unit, stat, value, layer)
 
+// Poison Dagger (W11, docs/research/necromancer-w11.md)
+// (unit, &damage, skillId, level): adds the skill's elemental damage to a zeroed damage block (poison +0x38 = min +
+// rand(max - min), length +0x3c). D2R's melee start (srvst 32, 0x567070) fills the queued hit with it.
+inline constexpr uint64_t ElementalDamage = 0x437d00;
+// int32[64] x and y offsets of D2's 64 directions (radius 30), the ones Nova's srvhit 5 (0x45fd20) aims at
+inline constexpr uint64_t DirectionX = 0x1d1b650;
+inline constexpr uint64_t DirectionY = 0x1d1b750;
+
 // Self buff, the way Frozen Armor's srvdo 18 (0x553e60) builds its aurastate list
 inline constexpr uint64_t RemoveSkillState = 0x4370b0;  // (unit, state, 1): drop an older list of this state
 inline constexpr uint64_t NewStateList = 0x433d20;  // (&StateListRequest) -> stat list or null
@@ -168,10 +177,18 @@ inline constexpr int USkillTargetId = 0x30;
 inline constexpr int MonVelocity = 0x6a;  // int16 monstats Velocity
 
 inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Lightning's chain range, 0 = the skill's)
+inline constexpr int MsHitPar2 = 0x74;  // int32 sHitPar2, sHitPar3 +0x78 (1.13c's 0x50 / 0x54 + 0x24)
+inline constexpr int MsHitPar3 = 0x78;
+inline constexpr int MsCltHitPar1 = 0x90;  // int32 cHitPar1-3 (1.13c's 0x6c-0x74 + 0x24)
+inline constexpr int MsCltHitPar2 = 0x94;
+inline constexpr int MsCltHitPar3 = 0x98;
 // Damage block a pSrvDmgFunc edits: 1.13c's 0x08-0x2c fields sit 0x10 later (phys 0x08 -> 0x18 in srvdmg 1 and 13,
 // poison length 0x2c -> 0x3c in srvdmg 11).
 inline constexpr int DmgPhys = 0x18, DmgFire = 0x20, DmgLight = 0x2c, DmgMagic = 0x30, DmgCold = 0x34, DmgPoison = 0x38;
+inline constexpr int DmgPoisonLength = 0x3c;
 inline constexpr int StatDamagePercent = 25;  // itemstatcost damagepercent, D2R and PD2
+inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58: D2R and PD2
+inline constexpr int StatPoisonMax = 58;
 inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's search: 0x88583 | the 0xa783 the search adds
 
 // Leeches in the same damage block (built by 0x465d60)
@@ -187,6 +204,8 @@ inline constexpr int MsSkill = 0x1b6;     // int16 Skill (skills.txt row), read 
 // MissileParams::flags
 inline constexpr uint32_t MissileFromOrigin = 0x820;      // start at the origin unit, fly to targetX/targetY
 inline constexpr uint32_t MissileNotTriggering = 0x20000;  // Multiple Shot's outer missiles, the ones calc3 leaves out
+inline constexpr uint32_t MissileAtXY = 0x1;  // start at x/y
+inline constexpr uint32_t MissileAimOffset = 0x2;  // targetX/targetY are offsets from the start (Nova's srvhit 5)
 
 // Stats Frozen Armor's srvdo 18 sets on its state list (itemstatcost ids)
 inline constexpr int StatListSkill = 0x15e;  // 350: the skill that made the list
@@ -201,6 +220,7 @@ inline constexpr int SkCalc2 = 0x194;
 inline constexpr int SkCalc3 = 0x198;
 inline constexpr int SkCalc4 = 0x19c;  // skills field table at 0x306193
 inline constexpr int SkAuraRangeCalc = 0x84;  // int32 aurarangecalc, Chain Lightning's chain range when sHitPar1 is 0
+inline constexpr int SkParam3 = 0x1c0;  // int32 Param3
 inline constexpr int SkParam4 = 0x1c4;  // int32 Param4 (Param1 0x1b8), field table at 0x305e68
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
 inline constexpr int SkAuraStat1 = 0x74;      // int16 aurastat1-6, read by AddAuraStats (0x574480)

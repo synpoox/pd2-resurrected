@@ -352,8 +352,64 @@ void SrvDmgPierceFalloff(Game* game, Unit* missile, Unit* target, uint8_t* damag
 	}
 }
 
+// --- W11: state on hit (Poison Dagger's cloud, the throwing potions' clouds, Kanemith's blaze dot) ---------------------
+namespace {
+
+std::atomic<uint32_t> g_stateHits {0};
+
+}  // namespace
+
+// shit 61 (PD2 0x103a84f0, through 0x1036c920): the hit unit gets state sHitPar1 for sHitPar2 frames, carrying stat
+// sHitPar3 = cHitPar1 and stat cHitPar2 = cHitPar3 (a stat of -1 or none is left out), from the missile row's Skill at
+// the missile's level. The cloud's damage is not here: D2R's srvdo 3 deals it after calling this.
+// shortcut: PD2 also halves a negative resist (stats 36-45) on a unit already over 99 in it, and treats states 16, 87
+// and 188 specially; none of shit 61's rows reach those states, and the halving is an approximated row on
+// docs/unported.md. Upgrade if a resist-lowering row must match PD2 on immune monsters.
+void SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept {
+	using namespace d2r::rva;
+	if (game == nullptr || missile == nullptr || hit == nullptr) {
+		return;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
+		dataFlag, At<int32_t>(missile, UnitClassId));
+	Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
+	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(dataFlag);
+	if (row == nullptr || owner == nullptr || tables == nullptr) {
+		return;
+	}
+	const int32_t state = At<int32_t>(row, MsHitPar1), frames = At<int32_t>(row, MsHitPar2);
+	if (state < 0 || static_cast<uint64_t>(state) >= At<uint64_t>(tables, TablesStateCount) || frames <= 0) {
+		return;
+	}
+	const int32_t skillId = At<int16_t>(row, MsSkill);
+	const int32_t level = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileLevel)(missile);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(hit, state, 1);
+	d2r::StateListRequest request {owner, hit, skillId, level, frames, -1, 0, state,
+	                               d2r::Engine<void (*)()>(SkillStateExpired)};
+	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
+	if (list == nullptr) {
+		return;
+	}
+	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
+	const int32_t stats[2][2] = {{At<int32_t>(row, MsHitPar3), At<int32_t>(row, MsCltHitPar1)},
+	                             {At<int32_t>(row, MsCltHitPar2), At<int32_t>(row, MsCltHitPar3)}};
+	for (const auto& [stat, value] : stats) {
+		if (stat >= 0) {  // the merge gives these the mod's itemstatcost ids (pd2_ids.HIT_PARAMS)
+			setStat(dataFlag, list, stat, value, 0);
+		}
+	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(hit, state, 1);
+	if (plog::Sample(g_stateHits)) {
+		plog::Info("state hit: missile row %d skill %d level %d: state %d for %d frames on unit type %d, stat %d %+d, "
+		           "stat %d %+d, hit %u", At<int32_t>(missile, UnitClassId), skillId, level, state, frames,
+		           At<int32_t>(hit, UnitType), stats[0][0], stats[0][1], stats[1][0], stats[1][1], g_stateHits.load());
+	}
+}
+
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size, "returns spawned %u, caught %u, bounces %u, first hits %u, spread hits %u, explosions %u, "
-	              "falloff hits %u", g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(), g_firstHits.load(),
-	              g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load());
+	              "falloff hits %u, state hits %u", g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(),
+	              g_firstHits.load(), g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load(),
+	              g_stateHits.load());
 }
