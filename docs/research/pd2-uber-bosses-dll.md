@@ -10,8 +10,8 @@ rolls, the key drop odds and Desecration. The table side is in the inventories
 
 - **The wiki's drop odds and Desecration numbers are in the DLL, and they all match.** That covers the 1-in-200 uniques, Rathma's 1 in 50/44/38,
   the Demonic Cube's 1 in 75/50, Desecration's 50/60/60% and its eight mods, and the Jawbone's 1 in 22,500. So the numbers
-  are now checked against the PD2 install's DLL and become the baseline (#153). Some phase numbers are still unread: the
-  skeleton waves at 85/60/35 and Rathma's shared life (section 9).
+  are now checked against the PD2 install's DLL and become the baseline (#153). Dclone's skeleton waves at 85/60/35 are
+  read too. Rathma's shared life is still unread (section 9).
 - **Much more is data than we thought.** Each uber key's misc `len` is the level it opens. Its `missiletype` is the portal
   object only for maps; uber keys warp the group in instead (section 2). The key odds are the odds-only TCs read as a 1-in-N roll. The Desecration pool is the amulet corruption
   cube rows. The phase scripts take their thresholds and counts from the bosses' monstats `aip` and skill columns.
@@ -21,8 +21,8 @@ rolls, the key drop odds and Desecration. The table side is in the inventories
 - **The opening is one function shared with the maps.** It checks the gates (Hell, level 80, Ancients, Harrogath, one
   area per game), checks the distance to the Blood Fountain and reads the tier from stat 185. Then it warps every
   eligible player at the fountain straight into the area. At tier 0 it adds three single-use portals for re-entry.
-- **Gaps** (section 9): the exit block, Dclone's skeleton-wave thresholds, Rathma's shared life, and the bricked amulet's
-  copy step.
+- **Gaps** (section 9): the exit block, Rathma's shared life, Dclone's heal on a player-count change, and the trigger of
+  the 15-tick immune window.
 
 ## 1. Method
 
@@ -135,12 +135,13 @@ is not read.
   20% of max life. When exactly it fires is not clear from the decompile (section 9).
 - **Cold-nova phases:** below 75%, 50% and 25% life (doubles 100 − (phase/2)×25), with stat 447 = 2, 4 or 6, its life is
   reset to that percentage. It then walks to the arena centre (15129, 6548), killing any monster standing on the centre
-  spot. There it casts skill slot 5, stat-446 times (the count comes from an `aip`). Each cast raises stat 331
-  (`passive_cold_mastery`) by an `aip` × the cast number.
-- **Skeleton waves** at stat-447 phases 1, 3 and 5. They fire when life drops below the thresholds at +0x154/+0x158/+0x15c
-  of the record from `0x1037c110` (the wiki's 85/60/35, not read).
-- It checks whether any of monsters 886-892 (Dclone's adds) are alive in the level. The wiki says the boss is immune
-  while they live, but how that flag is used is not read.
+  spot (skill slot 8, MonTeleport). There it casts skill slot 5 (UberDiabSuperFire), counting stat 446 up to `aip5` (Hell:
+  7, so six novas). Each cast *k* sets stat 331 (`passive_cold_mastery`) to (*k* + 1) × `aip6` (Hell: 25, so 50 up to 175).
+- **Skeleton waves** at stat-447 phases 1, 3 and 5. They fire when life drops below Param4, Param5 and Param6 of skill slot
+  6 (UberDiabSummon) in `skills.txt`: 85, 60 and 35, the wiki's numbers.
+- **Immunity:** each tick it checks whether any of monsters 886-892 (Dclone's adds) are alive in the level, and calls the
+  immunity toggle (`0x10380770`, section 5 intro). The boss is immune while any add lives, and also while no player is
+  within 0x17c of it; otherwise its resists are restored from `monstats`.
 - **Trapped souls** (`0x1035bc60`, monsters 790-794) die when Dclone is dead or dying. Their cast delay is the `aidel`
   minus 4×tier (at least 20) and their spread shrinks with the tier.
 
@@ -155,9 +156,10 @@ is not read.
   reads as the furthest area reached.
 - **Death:** Rathma (`0x103767d0`) and Mendeln (`0x10376760`) each open their stage portal once, at (18387, 14667) and
   (18284, 13759).
-- **Final pair:** when the first clone dies (stage 5 -> 6), `0x10376840` runs a skill effect (`0x1036d7d0`, using stat
-  485 and the dead clone's skill record) on the surviving clone. This is probably RathmaDeath's buff. From stage 6 the
-  survivor's AI runs the same call on itself while it lacks state 103 (`monfrenzy`). When the second clone dies (6 -> 7),
+- **Final pair:** when the first clone dies (stage 5 -> 6), `0x10376840` makes the surviving clone cast a skill through
+  `0x1036d7d0`. That is PD2's general cast helper (nine callers, other AIs among them), so it is not a shared-life
+  mechanic. This is probably RathmaDeath's buff. From stage 6 the survivor's AI repeats the cast while it lacks state 103
+  (`monfrenzy`). When the second clone dies (6 -> 7),
   every void knight, golem and totem in the level is killed. The wiki's shared life was not found as a separate mechanic
   (section 9).
 - Adds: each tick it checks whether void knights (968, 969, 1106, 1107) and the blood golem (938) are alive. That gates
@@ -235,9 +237,15 @@ For the port, the Talisman's corrupted-zone condition becomes "in an active Terr
   FRW, +30-40% ED, +1 all skills, +10% curse effectiveness, +2% max resists, +10% FCR, +7-10 all resists, cannot be frozen.
   Each has about 1 in 8 (18 or 19 of 149). The row's `corrupt`/`corruptnum` mods are written as properties 425/426
   (`desecrate`/`desecratenum`), which set stats 206/207.
-- **Failure (the brick):** a new rare amulet (`amu`, item level 99) replaces the old one. It gets a normal Corruption
-  and then the Desecration roll. So the rare amulet ends with two corruption-table mods. The wiki says it "keeps two
-  random corruption mods", but in this reading they are fresh rolls, not the old ones; the copy step is unread. The new amulet's affixes are fresh rolls. Nothing of the old amulet is kept (section 9).
+- **Failure (the brick):** a new rare amulet (`amu`, item level 99) replaces the old one. `0x10375340` hands it over
+  (an engine call, then a refresh of every client); nothing is read from the old amulet. The new amulet then gets two
+  rolls from `0x103649d0`:
+  - flag 0, a normal Corruption: a roll from the first corruption row's value up to 999, written as the usual
+    `corrupt`/`corruptnum` stats (270/271);
+  - flag 1, the Desecration roll above (851-999, written as 425/426).
+
+  So the brick ends with one Corruption mod and one Desecration mod, both fresh. The wiki's "keeps two random corruption
+  mods" means these two rolls, not the old amulet's mods. Its affixes are fresh rolls too.
 
 For UB7 this means the roll is a handful of lines over cube rows we already have. Only the port's trigger (a cube row
 in the Temple, an approximated row) is new.
@@ -246,14 +254,11 @@ in the Temple, an approximated row) is new.
 
 - **Exit block:** where PD2 refuses save-and-exit and death exits from the uber areas. Not found from the fields above.
   UB2 should start from `game+0x1df4` reads in the player-leave and death paths.
-- **Dclone:** the skeleton-wave thresholds at +0x154/+0x158/+0x15c of `0x1037c110`'s record, how the "adds alive" flag
-  feeds immunity, and when the 20% heal on a player-count change fires. UB4 reads them.
-- **Rathma's shared life:** the wiki's halved damage applied to both bosses was not found. The candidate is the
-  `0x1036d7d0` call in section 5. UB5 reads it.
+- **Dclone's heal:** when the 20% heal on a player-count change fires. UB4 reads it.
+- **Rathma's shared life:** the wiki's halved damage applied to both bosses was not found in the AI, the death handlers
+  or the cast helper `0x1036d7d0`. It may be in a skill function (RathmaDeath or the clones' passives). UB5 reads it.
 - **`game+0x2628` in Rathma:** it counts entries (and so feeds the tier scaling's *e*), but entering level 162 or 163 sets
   it to 2 or 4. Whether Rathma's scaling input jumps when the group moves on is unchecked. UB5 checks it.
-- **Bricked amulet:** what `0x10375340` / `0x103a2960` copy from the old amulet, and which band the first Corruption
-  uses (`0x103649d0` with flag 0). UB7 checks in game.
 - **The `0x26fe` window:** which event starts it (hook `0x102fc6c0`, reached from data at `0x1011fb79`).
 - **Tier-scaling set:** the monster set at `0x105deec4` that gets ×4 and the absorbs. UB2 lists its members.
 
@@ -263,7 +268,7 @@ in the Temple, an approximated row) is new.
 |---|---|---|
 | UB2 | opening and its warp (2), gates, fountain distance, tier-0 portals, area rules (3), tier scaling (4), key drop rule (7) | exit block, scaling set |
 | UB3 | prime and mini-uber drop handlers, Torch and Soulstone (6), level 185 opening (2) | the primes' AI overrides (`0x10357ba0`, `0x10357d50`, `0x10357f00`) |
-| UB4 | AI `0x1035b3f0`, nova phases, Annihilus and the 1-in-200 roll | skeleton-wave thresholds, adds-alive immunity |
+| UB4 | AI `0x1035b3f0`, nova phases and counts, skeleton waves, immunity rule, Annihilus and the 1-in-200 roll | the heal on a player-count change |
 | UB5 | AI `0x10358510`, thresholds, retreat, stage portals, shard and rolls | shared life, the per-event skill choices in detail |
 | UB6 | AI `0x1035dca0`, stage thresholds, portal phase, spawner, Temple portal, cube roll | the stage-5 and stage-7 skill choices in detail |
-| UB7 | the whole roll (8) | the brick's copy step |
+| UB7 | the whole roll and the brick (8) | none |
