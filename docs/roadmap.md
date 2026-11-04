@@ -3,11 +3,11 @@
 Milestones and the work items in each. Decided by "Order the alpha roadmap and slice it into work items" ([#33](https://github.com/synpoox/pd2-resurrected/issues/33)). A work item
 is about one agent session. `P` items are listed here; `W` items are engine rules, listed with their rows in
 [core-rules.md](core-rules.md#work-items) and only placed here. **Issue** links each item's ticket
-(sub-issues of the spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41) through M2, and of [#85](https://github.com/synpoox/pd2-resurrected/issues/85) for the alpha), where its status lives; built items link their merged PR.
+(sub-issues of the spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41) through M2, and of [#85](https://github.com/synpoox/pd2-resurrected/issues/85) for the pre-alpha), where its status lives; built items link their merged PR.
 
 Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 on a frozen install copy, testable M2 within 1-2 weeks of 2026-11-03, 5
-build sessions in parallel; the alpha has no fixed date. Build PRs merge on the game check, the table-diff gate and a code-review agent; the owner
-reviews P1, W1, W2, the first PR in each class lane, and the M2 and alpha releases.
+build sessions in parallel; the pre-alpha and the alpha have no fixed date. Build PRs merge on the game check, the table-diff gate and a code-review agent; the owner
+reviews P1, W1, W2, the first PR in each class lane, and the M2 and pre-alpha releases.
 
 ## M1: a new character in Act 1
 
@@ -29,7 +29,7 @@ PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-di
 ## M2: Amazon and Barbarian complete
 
 M1 plus the companions, corruption and the Amazon and Barbarian engine rules; the other classes stay on stand-ins.
-Was the alpha until [#85](https://github.com/synpoox/pd2-resurrected/issues/85) widened it.
+Was the alpha until [#85](https://github.com/synpoox/pd2-resurrected/issues/85) widened it (that milestone is now the pre-alpha).
 
 | # | Work item | Blocked by | Lane | Issue |
 |---|---|---|---|---|
@@ -48,10 +48,10 @@ Was the alpha until [#85](https://github.com/synpoox/pd2-resurrected/issues/85) 
 then W3, W7, W10; D P4, P5, P6 once P1 is in. **Critical path:** P1 -> P2 -> P3 -> P9 -> P8.
 
 **M2 exit bar:** a fresh character of any class levels through Acts 1-5 Normal on the merged data; W1-W10 and
-corruption game checks pass; the table-diff gate is green for the alpha scope; every companion arms on Slot4; the owner
+corruption game checks pass; the table-diff gate is green for the pre-alpha scope; every companion arms on Slot4; the owner
 tests the local 7z alone.
 
-## Alpha: every PD2 class complete
+## Pre-Alpha: every PD2 class complete
 
 M2 plus the Necromancer, Paladin, Druid, Sorceress and Assassin as complete classes (spec [#85](https://github.com/synpoox/pd2-resurrected/issues/85)). Class-themed item rules
 are "not yet" rows on the unported list; the Warlock ships as D2R has it.
@@ -60,14 +60,14 @@ are "not yet" rows on the unported list; the Warlock ships as D2R has it.
 |---|---|---|---|---|
 | W11-W14 | Necromancer (core-rules); W14's get-hit window split off to W34 | none | B | [#86](https://github.com/synpoox/pd2-resurrected/issues/86), [#123](https://github.com/synpoox/pd2-resurrected/issues/123) (PR), [#114](https://github.com/synpoox/pd2-resurrected/issues/114) (PR), [#115](https://github.com/synpoox/pd2-resurrected/issues/115) (PR), [#121](https://github.com/synpoox/pd2-resurrected/issues/121) (PR) |
 | W15-W20 | Paladin (core-rules) | none | C | [#117](https://github.com/synpoox/pd2-resurrected/issues/117) (PR), [#129](https://github.com/synpoox/pd2-resurrected/issues/129) (PR), [#135](https://github.com/synpoox/pd2-resurrected/issues/135) (PR), [#154](https://github.com/synpoox/pd2-resurrected/issues/154) (PR), [#94](https://github.com/synpoox/pd2-resurrected/issues/94), [#95](https://github.com/synpoox/pd2-resurrected/issues/95) |
-| W21-W24 | Druid (core-rules) | none | D | [#127](https://github.com/synpoox/pd2-resurrected/issues/127) (PR), [#136](https://github.com/synpoox/pd2-resurrected/issues/136) (PR), [#139](https://github.com/synpoox/pd2-resurrected/issues/139) (PR), [#99](https://github.com/synpoox/pd2-resurrected/issues/99) |
+| W21-W24 | Druid (core-rules) | none | D | [#127](https://github.com/synpoox/pd2-resurrected/issues/127) (PR), [#136](https://github.com/synpoox/pd2-resurrected/issues/136) (PR), [#139](https://github.com/synpoox/pd2-resurrected/issues/139) (PR), [#160](https://github.com/synpoox/pd2-resurrected/issues/160) (PR) |
 | W25 | Investigation: Assassin finisher hook points (core-rules) | none | E | [#124](https://github.com/synpoox/pd2-resurrected/issues/124) (PR) |
-| W26-W28 | Sorceress (core-rules) | W21 (W27 only) | E | [#128](https://github.com/synpoox/pd2-resurrected/issues/128) (PR), [#140](https://github.com/synpoox/pd2-resurrected/issues/140) (PR), [#103](https://github.com/synpoox/pd2-resurrected/issues/103) |
+| W26-W28 | Sorceress (core-rules) | W21 (W27 only) | E | [#128](https://github.com/synpoox/pd2-resurrected/issues/128) (PR), [#140](https://github.com/synpoox/pd2-resurrected/issues/140) (PR), [#161](https://github.com/synpoox/pd2-resurrected/issues/161) (PR) |
 | W29-W32 | Assassin (core-rules) | W25 (W29), W29 (W30), W21 (W32) | first free class lane | [#130](https://github.com/synpoox/pd2-resurrected/issues/130) (PR), [#142](https://github.com/synpoox/pd2-resurrected/issues/142) (PR), [#106](https://github.com/synpoox/pd2-resurrected/issues/106), [#107](https://github.com/synpoox/pd2-resurrected/issues/107) |
 | W33 | **Rush:** melee splash (srvdo 163), which item_splashonhit, Frenzy, Tiger Strike and Revive's event cast (core-rules) | none | A, as a rush job | [#126](https://github.com/synpoox/pd2-resurrected/issues/126) (PR) |
 | W34 | Get-hit/block end window and cast/sequence delay, every class (core-rules), split off W14 | none | first free class lane | [#120](https://github.com/synpoox/pd2-resurrected/issues/120) |
 | P12 | "Not yet" rows for class item rules (Ormus' Robes and the like) on the unported list | none | A | [#108](https://github.com/synpoox/pd2-resurrected/issues/108) |
-| P13 | Alpha release: local 7z and release notes | P8 and every item above | A | [#109](https://github.com/synpoox/pd2-resurrected/issues/109) |
+| P13 | Pre-Alpha release: local 7z and release notes | P8 and every item above | A | [#109](https://github.com/synpoox/pd2-resurrected/issues/109) |
 
 **Lanes** for five sessions: A P9 -> P8, then P12 and rush jobs, then P13; B Necromancer; C Paladin; D Druid; E W25, then
 Sorceress. The Assassin build goes to the first class lane that frees up. A rule shared by two classes belongs to the
@@ -80,13 +80,18 @@ button (cltst 54, cltdo 103) from the [Left Click Auras](https://github.com/Cele
 companion, and Force Move. The merge keeps D2R's columns for those rows, and the unported list names the plugin. Only
 rules that change a skill's effect, damage, missiles or timing get core-rules code.
 
-**Alpha exit bar:** every PD2 class is a complete class: each of its rows has a passing game check or an approximated row
+**Pre-Alpha exit bar:** every PD2 class is a complete class: each of its rows has a passing game check or an approximated row
 on the unported list; a fresh character of every class levels through Acts 1-5 Normal on the merged data; the table-diff
-gate is green for the alpha scope; every companion arms on Slot4; the owner tests the local 7z alone.
+gate is green for the pre-alpha scope; every companion arms on Slot4; the owner tests the local 7z alone.
 
-**Left out of the alpha** (unported list, "not yet"): map items and the map system, new PD2-only areas, the Warlock
+**Left out of the pre-alpha** (unported list, "not yet"; the alpha's scope): map items and the map system, new PD2-only areas, the Warlock
 redesign, class-themed item rules, monster-only engine rules, everything in the core-rules order after the cut.
 
-## After the alpha
+## Alpha: PD2 complete for single-player
 
-No milestones yet; items are ordered by rows unlocked, as in [core-rules.md](core-rules.md#after-the-cut-by-rows-unlocked-per-session).
+The pre-alpha plus every PD2 feature left out of it: the map system, the Warlock redesign, the uber bosses and their
+areas (Dclone, Lucion with Desecration, Rathma), the remaining items and item rules and the remaining unported-list rows.
+The core-rules rows after the cut join as they are, ordered by rows unlocked as in
+[core-rules.md](core-rules.md#after-the-cut-by-rows-unlocked-per-session). No work items yet: the map
+[Port the rest of PD2 for the Alpha](https://github.com/synpoox/pd2-resurrected/issues/143) charts and slices them.
+Multiplayer (servers, hosting, seasonal ladders) comes after the alpha, as its own effort.
