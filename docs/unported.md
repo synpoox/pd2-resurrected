@@ -161,10 +161,10 @@ rows have no table hook: D2R does what it does.
 | Deep wounds and the open wounds rework | not yet | stand-in: D2R's open wounds; `deep_wounds` does nothing |  | IR3 |
 | Nightmare's Feast: life-steal cap and splash per missing life | not yet | stand-in: D2R's own behaviour; the stats do nothing |  | IR3 |
 | Enhanced damage per ethereal item and per missing life | not yet | stand-in: nothing sets `equipped_eth` or `missing_hp`, so the stats add nothing |  | IR3 |
-| Curse resistance (`curse_effectiveness`): a curse resisted to 0 | approximated | PD2 cancels a curse whose aurastat1 resists to 0; core-rules resists the stats after D2R's curse function ran, so the curse lands with the stat at 0 (docs/research/ir4-curses.md) |  | IR4 |
-| Curse duration resistance (`curse_resistance`, stat 109) | not yet | D2R's rule: no curse at 100+, no cap; PD2 shortens the duration by it, at most 75 on a player (ProjectDiablo.dll `0x1036d7d0`, docs/research/ir4-curses.md) |  |  |
-| A curse on an attracted unit | not yet | D2R refuses any curse on a unit with the attract state; PD2 allows it (docs/research/ir4-curses.md) |  |  |
-| Dark Pact consuming a curse | not yet | stand-in: Dark Pact is one more curse; PD2 consumes another curse and casts a follow-up skill by the curse count (docs/research/ir4-curses.md) |  |  |
+| Curse resistance (`curse_effectiveness`): a curse resisted to 0 | approximated | PD2 cancels a curse whose aurastat1 resists to 0; core-rules resists the stats after D2R's curse function ran, so the curse lands with the stat at 0 (docs/research/ir4-curses.md) |  | #264 |
+| Curse duration resistance (`curse_resistance`, stat 109) | not yet | D2R's rule: no curse at 100+, no cap; PD2 shortens the duration by it, at most 75 on a player (ProjectDiablo.dll `0x1036d7d0`, docs/research/ir4-curses.md) |  | #264 |
+| A curse on an attracted unit | not yet | D2R refuses any curse on a unit with the attract state; PD2 allows it (docs/research/ir4-curses.md) |  | #264 |
+| Dark Pact consuming a curse | not yet | stand-in: Dark Pact is one more curse; PD2 consumes another curse and casts a follow-up skill by the curse count (docs/research/ir4-curses.md) |  | #265 |
 | Replenish charges | not yet | stand-in: D2R's own behaviour; the stat does nothing |  | IR5 |
 | Dye tint: the 35 cube rows that set `transform_dye` give an untinted item | approximated | tinting needs client drawing code; how D2R Reimagined tints items is researched for a later patch (#190) |  |  |
 | Ethereal items keep full durability; set items can roll ethereal | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked against the DLL) |  | IR2, IR8 |
