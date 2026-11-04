@@ -1,4 +1,5 @@
 # missile	like: the D2R missile whose HD model a new missile with PD2-only art (no D2R CelFile) takes; tools/pd2_missiles_hd.py
+# Temporary: the models of every rathma* and lucion* missile (hand-picked or by CelFile) are stand-ins until PD2's art is merged in
 holynova	holybolt
 rathmafiremedium	firemedium
 rathmafiresmall	firesmall
