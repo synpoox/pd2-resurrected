@@ -13,6 +13,7 @@ pairs rows by those columns' values (hireling: Version, Id, Difficulty, Level; o
 whole group of a repeated name where D2R's group was, for lists the game reads in order (monequip: a monster's gear by
 level). "d2r_columns" keep D2R's values where the games give a column different meanings (objects Token: D2R's
 graphics). Cells are spelled as pd2_ids.spell writes them: quotes gone, references to the id-listed tables renamed.
+skilldesc's description lines then move onto D2R's line functions (pd2_skilldesc).
 """
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ import json
 from pathlib import Path
 
 import pd2_ids
+import pd2_skilldesc
 from pd2_ids import Table
 
 OPTIONS = {"rows": ("name", "position"), "pd2_only_rows": ("append", "leave out"), "repeats": ("pair", "replace group")}
@@ -101,8 +103,13 @@ def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> Non
         bad = [f"{k}: {v}" for k, v in opts.items() if v not in OPTIONS.get(k, ()) and not (k in ("rows", "d2r_columns") and isinstance(v, list))]
         if bad:
             raise ValueError(f"{table}: unknown option {', '.join(bad)} (options: {OPTIONS})")
-        merged = merge_table(table, Table(pd2_ids.excel(pd2_data) / f"{table}.txt"),
-                             Table(pd2_ids.excel(d2r_data) / f"{table}.txt"), ren, **opts)
+        d2r = Table(pd2_ids.excel(d2r_data) / f"{table}.txt")
+        merged = merge_table(table, Table(pd2_ids.excel(pd2_data) / f"{table}.txt"), d2r, ren, **opts)
+        if table == "skilldesc":
+            fmt = pd2_skilldesc.formatted(d2r_data)
+            pd2_skilldesc.rewrite(merged, d2r, fmt)
+            if bad := pd2_skilldesc.clashes(merged, d2r, fmt):
+                raise ValueError(f"skilldesc lines D2R would print wrongly: {'; '.join(bad)}")
         dest = pd2_ids.excel(out_data) / f"{table}.txt"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(merged.text().encode("latin-1"))
