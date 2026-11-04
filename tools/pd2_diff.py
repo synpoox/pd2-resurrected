@@ -50,6 +50,7 @@ class Result:
 @dataclass
 class Report:
     results: list[Result]
+    entries: dict[str, int] = field(default_factory=dict)  # unported.md entries by status, whatever the scope
 
     @property
     def ok(self) -> bool:
@@ -133,10 +134,10 @@ def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | 
     return res
 
 
-def unported(path: Path) -> list[str]:
-    """The Gate patterns of docs/unported.md (`table.row.column`, fnmatch, lower case). Fails on a row whose status is
-    not one of STATUSES."""
-    patterns, cols = [], None
+def unported(path: Path) -> tuple[list[str], dict[str, int]]:
+    """The Gate patterns of docs/unported.md (`table.row.column`, fnmatch, lower case) and its entry count by status.
+    Fails on a row whose status is not one of STATUSES."""
+    patterns, cols, entries = [], None, dict.fromkeys(STATUSES, 0)
     for line in path.read_text("utf-8").splitlines():
         if not line.startswith("|") or set(line) <= set("|-: "):
             continue
@@ -148,8 +149,9 @@ def unported(path: Path) -> list[str]:
             continue
         if cells[cols[0]] not in STATUSES:
             raise GateError(f"unported.md: status {cells[cols[0]]!r} is not one of {', '.join(STATUSES)}: {line}")
+        entries[cells[cols[0]]] += 1
         patterns += [p.lower() for p in re.findall(r"`([^`]+)`", cells[cols[1]])]
-    return patterns
+    return patterns, entries
 
 
 def triage(res: Result, patterns: list[str]) -> Result:
@@ -164,7 +166,7 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
     if scope not in SCOPES:
         raise GateError(f"scope {scope!r} is not one of {', '.join(SCOPES)}")
     pd2_excel, mod_excel = root / "pd2-data/data/global/excel", root / "generated/data/global/excel"
-    patterns = unported(root / "docs" / "unported.md")
+    patterns, entries = unported(root / "docs" / "unported.md")
     lists = {t: pd2_ids.read_list(pd2_ids.list_path(root / "merge", t)) for t in pd2_ids.TABLES}
     ren, ctx = pd2_ids.renames(lists), None
     tables = root / "merge" / "tables.json"
@@ -186,7 +188,7 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
             if src[0] == "merged" and f"{p.stem.lower()}.*" in patterns:
                 raise GateError(f"unported.md still covers all of {p.stem}, which is merged now: narrow its row")
         results.append(triage(res, patterns))
-    return Report(results)
+    return Report(results, entries)
 
 
 def escape_pipes(v: str) -> str:
@@ -197,7 +199,9 @@ def report(rep: Report, scope: str) -> str:
     """The gate's result as markdown, for pasting into the PR."""
     opened = rep.open()
     lines = [f"Table-diff gate, scope {scope}: {'pass' if rep.ok else 'FAIL'}, {len(opened)} open, "
-             f"{sum(r.covered for r in rep.results)} on the unported list", "",
+             f"{sum(r.covered for r in rep.results)} table cells on the unported list",
+             "Unported list: " + ", ".join(f"{rep.entries.get(s, 0)} {s}" for s in ("not yet", "approximated", "cut")) + " entries "
+             "(the cell count is large because one entry can cover a whole table)", "",
              "| Table | Mod table | Open | Unported |", "|---|---|---|---|"]
     lines += [f"| {r.table} | {r.source} | {len(r.open)} | {r.covered} |" for r in rep.results]
     if opened:
