@@ -2,7 +2,7 @@
 
 Each check reads the plugin log, <slot>/d2rloader/logs/core-rules.log; expected values come from PD2's data.
 
-Setup (Slot4-7, game closed):
+Setup (Slot4-8, game closed):
   powershell -File tools/install.ps1 -Game C:/D2RTestSlots/Slot4 -Data tests/game/fixtures/split-throw
   (or -Data tests/game/fixtures/leap and a Barbarian with Leap and Leap Attack, for the leap checks: cast both in
   town, then Leap Attack into monsters out of town)

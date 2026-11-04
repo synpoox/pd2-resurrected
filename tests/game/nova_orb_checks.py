@@ -3,7 +3,7 @@
 No plugin: D2R's own hit functions 5/4 match PD2's (docs/research/nova-orb-hits.md), so the check counts the client
 missiles one Thunder Storm bolt leaves behind, read from game memory (missile_probe.py).
 
-Setup (Slot4-7, game closed): merge, then build and install the mod's data (install.ps1 puts the savepaths back)
+Setup (Slot4-8, game closed): merge, then build and install the mod's data (install.ps1 puts the savepaths back)
   py -3 tools/pd2_merge.py
   powershell -File tools/install.ps1 -Game C:/D2RTestSlots/SlotN -Data .
   a Sorceress with Thunder Storm (class skill slot 21) and mana to spare, e.g.
