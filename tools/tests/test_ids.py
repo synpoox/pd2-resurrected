@@ -107,6 +107,32 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows, [["flamewave", "71", "38"], ["back", "78", "46"], ["bolt", "1", "1"]])
 
+    def test_poison_dagger_function_numbers(self):
+        d2r = table("skill|srvstfunc|srvdofunc|cltdofunc\nAttack|1|1|1\n")
+        pd2 = table("skill|srvstfunc|srvdofunc|cltdofunc\nPoison Dagger|68|164|102\n")
+        lines = [("Poison Dagger", 1, "Poison Dagger")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1], ["Poison Dagger", "32", "190", "122"])
+
+    def test_state_hit_parameters_take_mod_ids(self):
+        # srvhit 61 reads sHitPar1 as a state and sHitPar3 / cHitPar2 as stats; other functions' parameters stay
+        cols = "Missile|pSrvHitFunc|sHitPar1|sHitPar2|sHitPar3|cHitPar1|cHitPar2|cHitPar3"
+        d2r = table(f"{cols}\narrow|1|||||||\n")
+        pd2 = table(f"{cols}\ncloud|61|236|52|-1|-1||\nblaze|61|44|150|67|-60|500|-60\nnova|5|236|1|67|1|500|1\n")
+        lines = [("cloud", 1, "cloud"), ("blaze", 2, "blaze"), ("nova", 3, "nova")]
+        ids = {"states": {"236": "282", "44": "44"}, "itemstatcost": {"67": "67", "500": "510"}}
+        merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}), ids)
+        self.assertEqual(merged.rows[1:], [["cloud", "61", "282", "52", "-1", "-1", "", ""],
+                                           ["blaze", "61", "44", "150", "67", "-60", "510", "-60"],
+                                           ["nova", "5", "236", "1", "67", "1", "500", "1"]])
+
+    def test_blood_warp_functions_moved_to_core_rules_slots(self):
+        d2r = table("skill|srvdofunc|srvstfunc|cltstfunc\nAttack|1|0|0\n")
+        pd2 = table("skill|srvdofunc|srvstfunc|cltstfunc\nAttack|1|0|0\nBlood Warp|157|66|56\n")
+        lines = [("Attack", 0, "Attack"), ("Blood Warp", 1, "Blood Warp")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1], ["Blood Warp", "190", "80", "63"])  # router, then the first free start slots
+
     def test_missile_do_functions_become_the_missile_column(self):
         cols = "skill|srvdofunc|srvmissile|srvmissilea|cltdofunc|cltmissile|cltmissilea"
         d2r = table(f"{cols}\nAttack|1||||||\n")

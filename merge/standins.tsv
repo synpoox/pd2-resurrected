@@ -1,7 +1,6 @@
 # table	row	from	columns	rule (W3; delete a line when its rule is built, see tools/pd2_standins.py)
 skills	Static Field	=	srvdofunc	Static Field
 skills	Teleport	=	srvdofunc	Teleport, Blink
-skills	Poison Dagger	=	srvdofunc,cltdofunc,srvstfunc	Poison Dagger
 skills	Clay Golem	=	srvstfunc	Golem start
 skills	BloodGolem	=	srvstfunc	Golem start
 skills	FireGolem	=	srvstfunc	Golem start
@@ -69,7 +68,6 @@ skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	Blink	Teleport	srvdofunc	Teleport, Blink
 skills	proc_SplashDamage	-	srvdofunc	Melee splash
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
-skills	Blood Warp	Teleport	srvdofunc,srvstfunc,cltstfunc	Blood Warp
 skills	Gust	Teleport	srvdofunc	Gust
 skills	Holy Light	Holy Bolt	srvdofunc	Holy Light
 skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
@@ -81,11 +79,9 @@ skills	Skeleton Splash	-	srvdofunc	Melee splash
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
 skills	FingermageBossNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	FingermageBossDiabWall	DiabWall	srvdofunc	Firestorm and wall makers
-skills	BaalMinionBossBerserk	Berserk	srvstfunc	Poison Dagger
 skills	UberDiabWall	DiabWall	srvdofunc	Firestorm and wall makers
 skills	PoisonEggSpawn	MaggotEgg	srvdofunc,cltdofunc	PoisonEggSpawn
 skills	Merc Static Field	Static Field	srvdofunc	Static Field
-skills	Poison Dagger Spider Boss	Poison Dagger	srvdofunc,cltdofunc	Poison Dagger
 skills	RathmaDeath	Nova	srvdofunc,cltdofunc	Death novas
 skills	NihlathakMapDeath	Nova	cltdofunc	Death novas
 skills	RathmaSummon	-	srvdofunc	RathmaSummon
@@ -139,36 +135,21 @@ missiles	bladesoficecubes	=	pCltDoFunc	Assassin charge-up finishers
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
 missiles	siege beast stomp missile	-	pCltDoFunc	Siege beast stomp client do
 missiles	holylightdelay	fistoftheheavensdelay	pCltHitFunc	Holy Light
-missiles	poisondaggercloud	-	pSrvHitFunc	Poison Dagger
 missiles	psychichammer	-	pSrvDmgFunc	Psychic Hammer missile damage
 missiles	uberimmolationarrow	immolationarrow	pSrvHitFunc	Uber immolation arrow hit
 missiles	rathmabonespear	bonespear	pSrvDmgFunc	Rathma bone spear, blade fragment damage
 missiles	tpot_fire_small	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_fire_small_nova	-	pSrvHitFunc	Throwing potions
 missiles	tpot_fire_medium	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_fire_medium_nova	-	pSrvHitFunc	Throwing potions
 missiles	tpot_fire_large	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_fire_large_nova	-	pSrvHitFunc	Throwing potions
 missiles	tpot_gas_small	rancidgasepotion	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_gas_small_nova	-	pSrvHitFunc	Throwing potions
 missiles	tpot_gas_medium	rancidgasepotion	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_gas_medium_nova	-	pSrvHitFunc	Throwing potions
 missiles	tpot_gas_large	rancidgasepotion	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_gas_large_nova	-	pSrvHitFunc	Throwing potions
 missiles	tpot_cold_small	-	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_cold_small_cloud	-	pSrvHitFunc	Throwing potions
 missiles	tpot_cold_medium	-	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_cold_medium_cloud	-	pSrvHitFunc	Throwing potions
 missiles	tpot_cold_large	-	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_cold_large_cloud	-	pSrvHitFunc	Throwing potions
 missiles	tpot_light_small	-	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_light_small_bolt	-	pSrvHitFunc	Throwing potions
 missiles	tpot_light_medium	-	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_light_medium_bolt	-	pSrvHitFunc	Throwing potions
 missiles	tpot_light_large	-	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_light_large_bolt	-	pSrvHitFunc	Throwing potions
-missiles	kanemithblaze2dotfiremedium	-	pSrvHitFunc	Kanemith blaze dot hit
-missiles	kanemithblaze2dotfiresmall	-	pSrvHitFunc	Kanemith blaze dot hit
 missiles	sharptootharmageddoncontrol	armageddoncontrol	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	sharptootharmageddonrock	armageddonrock	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	boichaosice	-	pSrvHitFunc,pCltHitFunc	`*12` server hit
