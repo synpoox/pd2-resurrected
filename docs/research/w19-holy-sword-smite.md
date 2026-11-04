@@ -63,3 +63,8 @@ them. The windows are D2R's, not PD2's frame check `0x77e00` (approximated, unpo
 
 `tests/game/core_rules_checks.py`, tag `core-rules-w19`: `holy-sword-start`, `smite-start`, `smite-event`,
 `run-queued`, `concentration-window`.
+
+Game check (Slot 5, Hell, level 90 Paladin, Smite 20, Holy Sword 10, Concentration 20): Holy Sword's start accepted with
+Shadowfang; Smite's start accepted, and Smite deals damage (combat log 37-44 a hit); Concentration refused get-hits from
+attack mode. Smite's event never fired: a build that logged every event slot 1-40 saw nothing on the Paladin's hits
+(#165). No run request was logged mid-attack.
