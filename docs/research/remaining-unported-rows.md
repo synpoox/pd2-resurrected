@@ -38,7 +38,7 @@ in a follow-up grilling ticket, the way #148 fed #158.
   pre-alpha now builds those classes as W11-W35. The level-pipeline rows wait only for #151's work items. The missile
   stand-in models (P10) have no row. Nor do PD2's client UI overlays: the Buff HUD companion covers buff timers, mini
   skill icons and the skill bar, Item Roll Ranges the tooltip stat ranges, and a D2R Reimagined plugin can cover the
-  potion counter, so each needs only a row naming its plugin. Only the DPS counter needs a plugin built.
+  potion counter, so each needs only a row naming its plugin. Only the DPS counter needs a plugin built; it is in the alpha (owner).
 
 ## Scope
 
@@ -156,7 +156,7 @@ Engine work from the rows above, with nothing yet in core-rules:
     `miniskillicons` and the two DC6 sheets are cut with them.
   - Tooltip stat ranges: Item Roll Ranges, presumably (not compared with PD2's).
   - The potion counter: a plugin from D2R Reimagined can cover it (a new companion; its licence terms apply).
-  - The DPS counter: no plugin exists, so one needs building (a new plugin; PD2's DPS counter reads a damage feed, per
+  - The DPS counter: in the alpha. No plugin exists, so one needs building (a new plugin; PD2's DPS counter reads a damage feed, per
     the DLL triage).
 
   Each covered feature gets an approximated row naming its plugin, as for Left Click Auras.
@@ -168,5 +168,5 @@ Engine work from the rows above, with nothing yet in core-rules:
 1. In game, in HD: are PD2-only monsters (a Dopplezon, the Countess) and vanilla overlays (a shrine, Battle Orders)
    invisible today? That one test decides whether two art rows are bugs to fix before the alpha.
 2. Is the Ascendant in the alpha? It needs new hireling ids, which is the biggest unknown here.
-3. Which D2R Reimagined plugin gives the potion counter, and is the DPS counter plugin in the alpha?
+3. Which D2R Reimagined plugin gives the potion counter, and do its licence terms suit the port?
 4. PD2's 30 voice and effect WAVs: cut with the sounds, or convert later?
