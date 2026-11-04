@@ -260,10 +260,13 @@ def split_throw_return(ctx):
     """A Split Throw axe that hit a monster spawned its return missile (shit 65), and a return reached the thrower
     (sdo 46). Needs a cast at monsters out of town."""
     log = _log(ctx)
-    if "return missile: spawned on hit" not in log:
+    results = [int(r) for r in re.findall(r"return missile: spawned on hit, result (-?\d+)", log)]
+    if not results:
         ctx.skip("no return missile in the log yet (hit a monster with Split Throw, then run again)")
+    # D2R's collision deals the axe's damage only when the srvhit result has bit 2 set (#122)
+    assert all(r & 2 for r in results), f"results {sorted(set(results))}: D2R deals the axe's damage on bit 2"
     assert "return missile: caught by the thrower" in log, "a return missile spawned but none reached the thrower"
-    return "spawned on hit and caught"
+    return f"spawned on hit (results {sorted(set(results))}) and caught"
 
 
 def dm34(level: int) -> int:
@@ -331,10 +334,12 @@ def _rows(name: str) -> list[str]:
 @check("exploding-arrow-spread", tags=["core-rules-w6"])
 def exploding_arrow_spread(ctx):
     """Exploding Arrow's hit (pSrvHitFunc 63) makes PD2's calc2 explosions, min(3 + lvl/5, 8), from frame calc4 + 2."""
-    hits = re.findall(r"explode spread: skill 16 level (\d+): (\d+) of (\d+) explosions from frame (-?\d+)", _log(ctx))
+    hits = re.findall(r"explode spread: skill 16 level (\d+): (\d+) of (\d+) explosions from frame (-?\d+), "
+                      r"result (-?\d+)", _log(ctx))
     if not hits:
         ctx.skip("no Exploding Arrow hit in the log yet (shoot it at a monster, then run again)")
-    level, created, count, start = (int(v) for v in hits[0])
+    level, created, count, start, result = (int(v) for v in hits[0])
+    assert result == 3, f"result {result}: PD2's 63 returns 3, so D2R deals the arrow's damage (bit 2)"
     assert count == min(3 + level // 5, 8), f"level {level}: {count} explosions, PD2 makes {min(3 + level // 5, 8)}"
     assert created == count, f"{created} of {count} explosion missiles created"
     assert start == 4, f"first explosion at frame {start}, PD2: calc4 (2) + 2"
