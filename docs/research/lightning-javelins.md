@@ -26,7 +26,9 @@ The client do table (global `0x105de71c`) gets cltdo 117 = `0x3ac8b0` and cltdo 
 
 1.13c's do dispatcher (D2Game `0xa1b1d`-`0xa1c28`) runs the row's srvdofunc and then creates `srvmissile` through the same
 `0xa28f0` with the same arguments; the client dispatcher's tail (`0xa21ee`) creates `cltmissile` through `0xa0f60`. So 188
-with an empty `srvmissile` does what an empty srvdofunc with the missile in `srvmissile` does. PD2's rows keep the
+with an empty `srvmissile` does what an empty srvdofunc with the missile in `srvmissile` does: the dispatcher also
+sets unit `+0xc4` bit `0x40` (`0xa1b57`) whenever `srvmissile` is set, before creating it, so 188's flag write is
+covered too. PD2's rows keep the
 missile in `srvmissilea` / `cltmissilea` and `srvmissile` / `cltmissile` empty.
 
 D2R 93847's dispatcher (`0x43acb0`) does the same: srvdofunc at record `+0x4e` (bound `0xbe`), then `srvmissile`

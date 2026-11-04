@@ -10,7 +10,8 @@ cast in town allowed (the full merged data does not pass modkit validation yet);
   an Amazon holding javelins with Lightning Bolt (class skill slot 14) and Lightning Fury (slot 29), e.g.
   modkit save-set <save> level=30 --skill 14=1 --skill 29=1 --project tests/game/fixtures/lightning-javelin
 Run: in town, Lightning Bolt (then Lightning Fury) on the right button, then
-  py testing/game_checks.py --path <repo>/tests/game --module lightning_javelin_checks run lightning-bolt --slot N (then lightning-fury)
+  py testing/game_checks.py run lightning-bolt --slot N --path <repo>/tests/game --module lightning_javelin_checks
+  (then lightning-fury: each check casts the skill on the right button)
 """
 import csv
 import os
