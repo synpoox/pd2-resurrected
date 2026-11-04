@@ -58,9 +58,8 @@ takes 22 (20 and 21 are W6's and W9's; 18 and 19 stay for PD2's own).
 
 PD2's Psychic Hammer: calc1 `min(2+(lvl/10), 6)` ("# hits"), calc2 20 ("dmg reduction per hit"). srvhit 12 (Chain
 Lightning's chain, 1.13c D2Game `0x3d020`, D2R `0x45d5e0`) throws the next hammer with one bounce less, so the k-th
-hit is cut by (k - 1) * 20%,
-if the first hammer starts with calc1 bounces: Psychic Hammer's srvdo 26 (D2R's own) sets that count, not read here;
-the game check asserts 1 <= bounces <= calc1 on every hit.
+hit is cut by (k - 1) * 20%: the first hammer starts with calc1 bounces (Psychic Hammer's srvdo 26, D2R's own, sets
+it; not read statically, seen in game: level 10, calc1 3, the first hit logs 3 bounces and the second 2).
 
 **Is it reached?** Only D2R's srvhit 1 (`0x45bc40`) references the dmg table in Ghidra's xrefs, but D2R's collision
 (`0x4639a0`) also calls `[0x2391270 + n*8]` (a computed call the xrefs list misses): after the row's srvhit, when its
