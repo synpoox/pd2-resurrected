@@ -421,16 +421,16 @@ struct StatValue {
 	int32_t stat, value;
 };
 
-// Stats on a `state` list for `frames`, by NewStateList's recast rule (PD2's timed-state helper 0x1036d7d0 has
-// the same one): an older list of the same skill and level is extended and keeps its values, a lower level is
-// refused, anything else is replaced. Returns what happened, for the logs.
-auto TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level, int32_t frames, int32_t state,
-                   std::initializer_list<StatValue> stats) noexcept -> const char* {
+// Stats on a `state` list `owner` puts on `unit` for `frames`, by NewStateList's recast rule (PD2's timed-state
+// helper 0x1036d7d0 has the same one): an older list of the same skill and level is extended and keeps its values, a
+// lower level is refused, anything else is replaced. Returns what happened, for the logs.
+auto TimedStatList(uint32_t dataFlag, Unit* owner, Unit* unit, int32_t skillId, int32_t level, int32_t frames,
+                   int32_t state, const StatValue* first, const StatValue* last) noexcept -> const char* {
 	using namespace d2r::rva;
 	void* old = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, state);
 	const auto listInt = [](uint64_t fn, void* list) { return d2r::Engine<int32_t (*)(void*) noexcept>(fn)(list); };
 	const bool extends = old != nullptr && listInt(ListSkill, old) == skillId && listInt(ListLevel, old) == level;
-	d2r::StateListRequest request {unit, unit, skillId, level, frames, -1, 0, state,
+	d2r::StateListRequest request {owner, unit, skillId, level, frames, -1, 0, state,
 	                               d2r::Engine<void (*)()>(SkillStateExpired)};
 	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
 	if (list == nullptr) {
@@ -439,12 +439,33 @@ auto TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level
 	if (extends) {
 		return "extended";
 	}
-	for (const StatValue& s : stats) {
-		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, s.stat,
-		                                                                                          s.value, 0);
+	for (const StatValue* s = first; s != last; ++s) {
+		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, s->stat,
+		                                                                                          s->value, 0);
 	}
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
 	return "new";
+}
+
+auto TimedStatList(uint32_t dataFlag, Unit* owner, Unit* unit, int32_t skillId, int32_t level, int32_t frames,
+                   int32_t state, std::initializer_list<StatValue> stats) noexcept -> const char* {
+	return TimedStatList(dataFlag, owner, unit, skillId, level, frames, state, stats.begin(), stats.end());
+}
+
+// A skill missile's params from (x, y), owned by and launched from the unit; the caller sets the targets.
+auto SkillMissileParams(Unit* unit, int32_t flags, int32_t missile, int32_t x, int32_t y, int32_t skillId,
+                        int32_t level) noexcept -> d2r::MissileParams {
+	d2r::MissileParams params;
+	std::memset(&params, 0, sizeof(params));
+	params.flags = flags;
+	params.owner = unit;
+	params.origin = unit;
+	params.missile = missile;
+	params.x = x;
+	params.y = y;
+	params.skill = skillId;
+	params.skillLevel = level;
+	return params;
 }
 
 // PD2's ring (0x1036d250 server, 0x1036d370 client): one missile at every (64 / count)-th of D2's 64 directions, so
@@ -461,6 +482,19 @@ auto Ring(int32_t count, Create create) noexcept -> int32_t {
 		created += create(dx[i], dy[i]) ? 1 : 0;
 	}
 	return created;
+}
+
+// PD2's server ring call (0x1036d250 with flags 3): `count` missiles of row `missile` from x/y (Ring), owned by and
+// launched from the unit. Returns how many were created.
+auto ServerRing(Game* game, Unit* unit, int32_t missile, int32_t x, int32_t y, int32_t count, int32_t skillId,
+                int32_t level) noexcept -> int32_t {
+	using namespace d2r::rva;
+	d2r::MissileParams params = SkillMissileParams(unit, MissileAtXY | MissileAimOffset, missile, x, y, skillId, level);
+	return Ring(count, [&](int32_t dx, int32_t dy) {
+		params.targetX = dx;
+		params.targetY = dy;
+		return d2r::api.createMissile(game, &params) != nullptr;
+	});
 }
 
 // --- Teleport (PD2 srvdofunc 155 -> router 190; docs/research/sorceress-w26.md) -----------------------------------
@@ -514,21 +548,7 @@ auto SrvDoPd2Teleport(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 	const int32_t missile = At<int16_t>(skill, SkSrvMissileA);
 	int32_t created = 0;
 	if (count > 0 && d2r::ValidMissile(dataFlag, missile)) {
-		d2r::MissileParams params;
-		std::memset(&params, 0, sizeof(params));
-		params.flags = MissileAtXY | MissileAimOffset;  // PD2's 3
-		params.owner = unit;
-		params.origin = unit;
-		params.missile = missile;
-		params.x = x;
-		params.y = y;
-		params.skill = skillId;
-		params.skillLevel = level;
-		created = Ring(count, [&](int32_t dx, int32_t dy) {
-			params.targetX = dx;
-			params.targetY = dy;
-			return d2r::api.createMissile(game, &params) != nullptr;
-		});
+		created = ServerRing(game, unit, missile, x, y, count, skillId, level);
 	}
 	const int32_t state = At<int16_t>(skill, SkAuraState);
 	const int32_t frames = state > 0 ? d2r::EvalCalc(game, unit, skill, SkAuraLenCalc, skillId, level) : 0;
@@ -541,7 +561,7 @@ auto SrvDoPd2Teleport(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 			mastery[i] = unitStat(unit, Masteries[i], 0);
 			debuff[i] = TeleportDebuff(reduction, mastery[i]);
 		}
-		list = TimedStatList(dataFlag, unit, skillId, level, frames, state,
+		list = TimedStatList(dataFlag, unit, unit, skillId, level, frames, state,
 		                     {{Masteries[0], debuff[0]}, {Masteries[1], debuff[1]}, {Masteries[2], debuff[2]},
 		                      {Masteries[3], debuff[3]}});
 	}
@@ -640,7 +660,7 @@ auto SrvDoBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 	const char* list = "none";
 	if (frames > 0 && state > 0 && stat >= 0) {  // PD2 divides by frames unchecked
 		regen = c.cost / frames + 1;
-		list = TimedStatList(dataFlag, unit, skillId, level, frames, state, {{stat, regen}});
+		list = TimedStatList(dataFlag, unit, unit, skillId, level, frames, state, {{stat, regen}});
 	}
 	if (plog::Sample(g_bloodWarps)) {
 		plog::Info("blood warp: skill %d level %d: life %d, cost %d, regen %d for %d frames (stat %d, state %d, list %s), "
@@ -1120,22 +1140,6 @@ void AddMissilePoison(Unit* missile, int32_t poison) noexcept {
 	setStat(missile, StatPoisonMax, unitStat(missile, StatPoisonMax, 0) + poison, 0);
 }
 
-// A skill missile's params from (x, y), owned by and launched from the unit; the caller sets the targets.
-auto SkillMissileParams(Unit* unit, int32_t flags, int32_t missile, int32_t x, int32_t y, int32_t skillId,
-                        int32_t level) noexcept -> d2r::MissileParams {
-	d2r::MissileParams params;
-	std::memset(&params, 0, sizeof(params));
-	params.flags = flags;
-	params.owner = unit;
-	params.origin = unit;
-	params.missile = missile;
-	params.x = x;
-	params.y = y;
-	params.skill = skillId;
-	params.skillLevel = level;
-	return params;
-}
-
 // PD2 srvdo 164 (ProjectDiablo.dll 0x103b25c0): the melee hit (D2R's own Poison Dagger do, slot 32, whose start
 // already put the skill's poison in the queued hit), then a ring of Param3 srvmissilea clouds around the target, each
 // with the rolled poison added to its poisonmindam and poisonmaxdam.
@@ -1208,6 +1212,95 @@ auto CltDoPoisonDagger(Unit* unit, int32_t skillId, int32_t level) noexcept -> i
 	if (plog::Sample(g_poisonDaggerClients)) {
 		plog::Info("poison dagger client: skill %d level %d: %d clouds (row %d), cast %u", skillId, level, created, missile,
 		           g_poisonDaggerClients.load());
+	}
+	return 1;
+}
+
+// --- Gust, Hunger (PD2 srvdofunc 156 and 165 -> router 190; docs/research/druid-w23.md) --------------------------
+std::atomic<uint32_t> g_gusts {0};
+std::atomic<uint32_t> g_hungers {0};
+constexpr int32_t Gust = 442, Hunger = 242;  // merged ids (PD2 370, 242)
+
+// PD2 srvdo 156 (0x103b1980): the teleport core, srvmissilea thrown at the skill's target (1.13c 0xa28f0, D2R's
+// ThrowSkillMissile), then a hit on every unit within calc3 of the new point with the row's HitFlags, ResultFlags and
+// HitClass and cold length calc1, no damage, through 1.13c's area apply 0xa10b0: D2R's 0x436e90, which AreaKnockback's
+// callback calls with a copy of the block (unit mask 0x8583, PD2's).
+auto SrvDoGust(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr || !TeleportCore(game, unit, skillId, level)) {
+		return 0;
+	}
+	const int32_t missile = At<int16_t>(skill, SkSrvMissileA);
+	bool thrown = false;
+	if (d2r::ValidMissile(dataFlag, missile)) {
+		using ThrowFn = Unit* (*)(Game*, int32_t, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t,
+		                          int32_t) noexcept;
+		const int32_t key = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(unit);
+		thrown = d2r::Engine<ThrowFn>(ThrowSkillMissile)(game, missile, unit, skillId, level, key, 0, 0, 0, 0, 1) != nullptr;
+	}
+	const int32_t chill = d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level);
+	const int32_t radius = d2r::EvalCalc(game, unit, skill, SkCalc3, skillId, level);
+	d2r::LeapKnockback hit;
+	hit.hitFlags = At<uint32_t>(skill, SkHitFlags);
+	hit.resultFlags = At<uint16_t>(skill, SkResultFlags);
+	auto* block = reinterpret_cast<uint8_t*>(&hit);
+	*reinterpret_cast<int32_t*>(block + DamageColdLength) = chill;
+	*reinterpret_cast<int32_t*>(block + DamageHitClass) = At<int32_t>(skill, SkHitClass);
+	if (radius > 0) {
+		uint8_t scratch[0x20] {};  // as Leap's landing passes it: only its byte +0x18 (0) is read
+		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, d2r::LeapKnockback*, int32_t, void*) noexcept>(
+			AreaKnockback)(game, unit, 0, 0, radius, &hit, 0, scratch);
+	}
+	if (plog::Sample(g_gusts)) {
+		plog::Info("gust: skill %d level %d: missile %d %s, radius %d (calc3), cold length %d (calc1), hit flags %u, "
+		           "result flags %u, hit class %d, cast %u, refused %u", skillId, level, missile,
+		           thrown ? "thrown" : "not thrown", radius, chill, hit.hitFlags, hit.resultFlags,
+		           At<int32_t>(skill, SkHitClass), g_gusts.load(), g_teleportsRefused.load());
+	}
+	return 1;
+}
+
+// PD2 srvdo 165 (0x103b27c0): the target (a corpse, TargetCorpse) gets corpse_nodraw, then the caster gets aurastate
+// for auralencalc frames with aurastat1-6 = aurastatcalc1-6, through PD2's state helper 0x1036c920 (the same recast
+// rule as TimedStatList's). An empty aurastat1 gives no list; a later empty one is skipped. PD2 reads the path's
+// target unit, D2R's own Hunger (srvdo 122) the skill's: the same corpse.
+// shortcut: an extended list's new timer is not sent to the client (PD2 sends packet 0x83), as for Teleport.
+// Upgrade if the client's hunger state runs out early in play.
+auto SrvDoHunger(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	Unit* corpse = skill != nullptr ? d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(SkillTargetUnit)(game, unit) : nullptr;
+	if (corpse == nullptr || corpse == unit) {
+		return 0;
+	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(corpse, CorpseNoDraw, 1);
+	d2r::api.setUnitSkillFlag(unit, 1);  // PD2 sets unit flag 0x40 on every path past the corpse
+	StatValue stats[6] {};
+	size_t count = 0;
+	for (int i = 0; i < 6; i++) {
+		const int32_t stat = At<int16_t>(skill, SkAuraStat1 + i * 2);
+		// shortcut: PD2 also skips a stat past itemstatcost; the merged rows name none. Upgrade if a row ever does.
+		if (stat < 0) {
+			if (i == 0) {
+				break;
+			}
+			continue;
+		}
+		stats[count++] = {stat, d2r::EvalCalc(game, unit, skill, SkAuraStatCalc1 + i * 4, skillId, level)};
+	}
+	const int32_t state = At<int16_t>(skill, SkAuraState);
+	const int32_t frames = d2r::EvalCalc(game, unit, skill, SkAuraLenCalc, skillId, level);
+	const char* list = "none";
+	if (count > 0 && state > 0 && frames > 0) {  // PD2's state helper refuses a length under 1
+		list = TimedStatList(dataFlag, unit, unit, skillId, level, frames, state, stats, stats + count);
+	}
+	if (plog::Sample(g_hungers)) {
+		plog::Info("hunger: skill %d level %d: corpse eaten, state %d for %d frames (list %s), stats %d=%d %d=%d %d=%d "
+		           "%d=%d, cast %u", skillId, level, state, frames, list, stats[0].stat, stats[0].value, stats[1].stat,
+		           stats[1].value, stats[2].stat, stats[2].value, stats[3].stat, stats[3].value, g_hungers.load());
 	}
 	return 1;
 }
@@ -1714,6 +1807,243 @@ auto CltDoWall(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	return 1;
 }
 
+// --- Combustion and the boss novas (PD2 srvdofunc 159 -> router 190, cltdofunc 100 -> 120) ----------------------------
+// Read from ProjectDiablo.dll: srvdo 159 at 0x103b1d00, cltdo 100 at 0x103ab580
+// (docs/research/w27-static-field-combustion.md). A ring of calc2 missiles of the skill's missile a around the caster.
+std::atomic<uint32_t> g_novas {0};
+std::atomic<uint32_t> g_novaClients {0};
+constexpr int32_t Combustion = 448, FingermageBossNova = 472, RathmaTeethNova = 561, RathmaOuterNova = 567,
+                  RathmaPacman = 571, LeoricSummonNova = 595, ZharMiniBossCombustion = 617;  // merged ids
+
+auto SrvDoNova(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	d2r::api.setUnitSkillFlag(unit, 1);
+	const int32_t missile = At<int16_t>(skill, SkSrvMissileA);
+	int32_t x = 0, y = 0;
+	if (!d2r::ValidMissile(dataFlag, missile) || !d2r::UnitXY(unit, &x, &y)) {
+		return 0;
+	}
+	const int32_t count = d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level);
+	const int32_t created = ServerRing(game, unit, missile, x, y, count, skillId, level);
+	if (plog::Sample(g_novas)) {
+		plog::Info("nova: skill %d level %d: %d missiles (row %d, calc2 %d) at %d,%d, cast %u", skillId, level, created,
+		           missile, count, x, y, g_novas.load());
+	}
+	return 1;
+}
+
+// Client half (PD2 cltdo 100): the same ring of calc2 cltmissilea.
+auto CltDoNova(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::api.unitDataFlag(unit);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	d2r::api.setUnitSkillFlag(unit, 1);
+	const int32_t missile = At<int16_t>(skill, SkCltMissileA);
+	int32_t x = 0, y = 0;
+	if (!d2r::ValidMissile(dataFlag, missile) || !d2r::UnitXY(unit, &x, &y)) {
+		return 0;
+	}
+	const int32_t count = d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, SkCalc2), skillId, level);
+	d2r::MissileParams params = SkillMissileParams(unit, MissileAtXY | MissileAimOffset, missile, x, y, skillId, level);
+	const int32_t created = Ring(count, [&](int32_t dx, int32_t dy) {
+		params.targetX = dx;
+		params.targetY = dy;
+		return d2r::api.clientCreateMissile(&params, 0) != nullptr;
+	});
+	if (plog::Sample(g_novaClients)) {
+		plog::Info("nova client: skill %d level %d: %d missiles (row %d, calc2 %d), cast %u", skillId, level, created,
+		           missile, count, g_novaClients.load());
+	}
+	return 1;
+}
+
+// --- Static Field (PD2 srvdofunc 160 -> router 190) ------------------------------------------------------------------
+// Read from ProjectDiablo.dll: srvdo 160 at 0x103b1dc0, per-unit damage 0x10302830, per-unit debuff 0x1036c920
+// (docs/research/w27-static-field-combustion.md). Two passes over the units within aurarangecalc that aurafilter
+// takes: lightning damage from current life (StaticFieldDamage), then auratargetstate with aurastat1-6 for
+// auralencalc frames.
+std::atomic<uint32_t> g_staticFields {0};
+std::atomic<uint32_t> g_staticFieldHits {0};  // the first cast that hits a unit is logged too
+constexpr int32_t StaticField = 42, MercStaticField = 528, StaticFieldProc = 679;  // merged ids
+// Monsters PD2's damage pass skips, as merged monstats ids: monhydra3, dopplezonnew, rathmaBone, rathmaPoison,
+// rathmaBoneClone, wraithMapMod
+constexpr int32_t NoStaticField[] = {806, 950, 951, 952, 953, 1129};
+// Mercenaries (D2Common #11104's hireling classes), as merged monstats ids: their resist reductions are never halved
+constexpr int32_t Hirelings[] = {271, 338, 359, 561, 562};
+
+// PD2's a * b / max(c, 1) in doubles, truncated, INT32_MAX past it (0x1037c4c0)
+constexpr auto MulDiv(int32_t a, double b, int32_t c) noexcept -> int32_t {
+	const double v = static_cast<double>(a) * b / static_cast<double>(c > 1 ? c : 1);
+	return v > 2147483647.0 ? INT32_MAX : (v < -2147483648.0 ? INT32_MIN : static_cast<int32_t>(v));
+}
+
+// D2Common #11027: current life as a percentage of max life, in whole points
+constexpr auto LifePercent(int32_t life, int32_t maxLife) noexcept -> int32_t {
+	return (maxLife >> 8) == 0 ? 0 : (life >> 8) * 100 / (maxLife >> 8);
+}
+
+// PD2's damage on one unit, in life's 1/256 (0x10302830): calc1 percent of current life, at least calc2; if that,
+// lowered by lightresist, would beat (100 - StaticFieldMin) percent of max life (itself lowered by the resist, never
+// raised), that max-life share instead. The resist is applied again when the hit lands.
+constexpr auto StaticFieldDamage(int32_t life, int32_t maxLife, int32_t calc1, int32_t calc2, int32_t fieldMin,
+                                 int32_t resist) noexcept -> int32_t {
+	const int32_t cap = MulDiv(maxLife, static_cast<double>(static_cast<uint32_t>(100 - fieldMin)), 100);
+	const int32_t damage = MulDiv(life, calc1, 100);
+	const int32_t resisted = MulDiv(damage, 100 - resist, 100);
+	const int32_t capResisted = MulDiv(cap, 100 - resist, 100);
+	const int32_t limit = capResisted > cap ? cap : capResisted;
+	const int32_t out = static_cast<uint32_t>(damage) < static_cast<uint32_t>(calc2) ? calc2 : damage;
+	return resisted > limit ? cap : out;
+}
+static_assert(StaticFieldDamage(1000 << 8, 1000 << 8, 8, 0, 85, 0) == 80 << 8);     // 8% of 1000 life
+static_assert(StaticFieldDamage(1000 << 8, 1000 << 8, 25, 0, 85, 0) == 150 << 8);   // capped at 15% of max life
+static_assert(StaticFieldDamage(100 << 8, 1000 << 8, 8, 20 << 8, 0, 0) == 20 << 8);  // calc2's minimum wins
+static_assert(StaticFieldDamage(1000 << 8, 1000 << 8, 8, 0, 85, 50) == 80 << 8);    // a resist leaves the cast as is
+static_assert(StaticFieldDamage(1000 << 8, 1000 << 8, 10, 0, 92, -50) == 80 << 8);  // 150 resisted > 80: the cap
+
+// PD2's 0x1036df10: a resist reduction (damage, magic, fire, light, cold, poison resist) on a monster that is not a
+// mercenary and already resists 100 or more is halved.
+constexpr auto ImmuneHalved(int32_t value, int32_t stat, bool monsterNotHireling, int32_t current) noexcept -> int32_t {
+	const bool resist = stat == 36 || stat == 37 || stat == 39 || stat == 41 || stat == 43 || stat == 45;
+	return resist && value < 1 && monsterNotHireling && current > 99 ? value / 2 : value;
+}
+static_assert(ImmuneHalved(-25, 41, true, 100) == -12);
+static_assert(ImmuneHalved(-25, 41, true, 99) == -25);
+static_assert(ImmuneHalved(-25, 41, false, 120) == -25);
+static_assert(ImmuneHalved(-25, 7, true, 120) == -25);
+
+struct StaticFieldHit {
+	int32_t calc1, calc2, fieldMin;
+	int32_t hits = 0;
+	int32_t life = 0, maxLife = 0, resist = 0, damage = 0;  // the first unit hit, for the log
+};
+
+constexpr size_t AuraStats = 6;  // aurastat1-6
+
+struct StaticFieldDebuff {
+	int32_t skillId, level, frames, state;
+	StatValue stats[AuraStats] {};
+	size_t count = 0;
+	int32_t lists = 0, value = 0;  // new lists, and the first one's aurastat1 value, for the log
+};
+
+// One unit in range (PD2's 0x10302830), the hit built as D2R's Static Field (0x5556a0) builds it.
+auto StaticFieldOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
+	using namespace d2r::rva;
+	auto* hit = static_cast<StaticFieldHit*>(area->arg);
+	auto* game = static_cast<Game*>(area->game);
+	if (victim == nullptr || game == nullptr || area->unit == nullptr ||
+	    std::find(std::begin(NoStaticField), std::end(NoStaticField), At<int32_t>(victim, UnitClassId)) !=
+	        std::end(NoStaticField)) {
+		return 0;
+	}
+	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	const int32_t life = unitStat(victim, StatLife, 0), maxLife = unitStat(victim, StatMaxLife, 0);
+	if (life < 0x100 || static_cast<uint32_t>(LifePercent(life, maxLife)) <= static_cast<uint32_t>(hit->fieldMin)) {
+		return 0;
+	}
+	const int32_t resist = unitStat(victim, StatLightResist, 0);
+	const int32_t amount = StaticFieldDamage(life, maxLife, hit->calc1, hit->calc2, hit->fieldMin, resist);
+	d2r::LeapKnockback damage;
+	damage.resultFlags = 0x4001;
+	constexpr uint32_t Lightning = 2;  // PD2 deals lightning whatever the row's EType
+	d2r::Engine<void (*)(Unit*, void*, uint32_t, int32_t, int32_t, void*, void*) noexcept>(AddElementDamage)(
+		area->unit, &damage, Lightning, amount, 0, nullptr, nullptr);
+	*reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(&damage) + DamageHitClass) |= 0xd;
+	*(reinterpret_cast<uint8_t*>(&damage) + DamageFlag148) = 1;
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t, void*) noexcept>(HitEvents)(game, area->unit, victim, 1, &damage);
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(DealDamage)(game, area->unit, victim, &damage);
+	ReleaseDamage(damage);
+	if (hit->hits++ == 0) {
+		hit->life = life;
+		hit->maxLife = maxLife;
+		hit->resist = resist;
+		hit->damage = amount;
+	}
+	return 1;
+}
+
+// One unit in range (PD2's 0x1036c920): the debuff list, owned by the caster.
+// shortcut: PD2's state helper (0x1036d7d0) also refuses some monsters by monstats flags; NewStateList's own checks
+// stand in (docs/unported.md). Upgrade if a monster PD2 leaves alone shows the debuff in play.
+auto StaticFieldDebuffOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
+	using namespace d2r::rva;
+	auto* debuff = static_cast<StaticFieldDebuff*>(area->arg);
+	auto* game = static_cast<Game*>(area->game);
+	if (victim == nullptr || game == nullptr || debuff->frames < 1) {
+		return 0;
+	}
+	const int32_t classId = At<int32_t>(victim, UnitClassId);
+	const bool monster = At<int32_t>(victim, UnitType) != 0 &&
+	                     std::find(std::begin(Hirelings), std::end(Hirelings), classId) == std::end(Hirelings);
+	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	StatValue stats[AuraStats] {};
+	for (size_t i = 0; i < debuff->count; i++) {
+		const StatValue& s = debuff->stats[i];
+		stats[i] = {s.stat, ImmuneHalved(s.value, s.stat, monster, unitStat(victim, s.stat, 0))};
+	}
+	const char* list = TimedStatList(d2r::DataFlag(game), area->unit, victim, debuff->skillId, debuff->level,
+	                                 debuff->frames, debuff->state, stats, stats + debuff->count);
+	if (std::strcmp(list, "new") == 0 && debuff->lists++ == 0) {
+		debuff->value = stats[0].value;
+	}
+	return 1;
+}
+
+// PD2 srvdo 160: the damage pass, then the debuff pass (with AreaUnits' flag 1, as PD2 passes it). 0 when aurastat1
+// is not a stat, after the damage, as PD2.
+// D2R's Static Field asks 0x432c40 (an online cast limit) first; PD2 has none, so neither does this.
+auto SrvDoStaticField(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	const auto* difficulty = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(DifficultyRecord)(
+		dataFlag, At<uint8_t>(game, GameDifficulty));
+	if (skill == nullptr || difficulty == nullptr) {
+		return 0;
+	}
+	const auto calc = [&](int field) { return d2r::EvalCalc(game, unit, skill, field, skillId, level); };
+	StaticFieldHit hit {calc(SkCalc1), calc(SkCalc2), At<int32_t>(difficulty, DiffStaticFieldMin)};
+	const int32_t radius = calc(SkAuraRangeCalc);
+	const auto mask = At<uint32_t>(skill, SkAuraFilter);
+	d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit), 0, 0};  // 0, 0: at the caster
+	const auto area = d2r::Engine<AreaFn>(AreaUnits);
+	area(game, unit, &center, radius, mask, StaticFieldOne, &hit, 0);
+
+	StaticFieldDebuff debuff {skillId, level, calc(SkAuraLenCalc), At<int16_t>(skill, SkAuraTargetState)};
+	for (int i = 0; i < static_cast<int>(AuraStats); i++) {
+		const int32_t stat = At<int16_t>(skill, SkAuraStat1 + i * 2);
+		if (stat < 0) {
+			if (i == 0) {
+				return 0;
+			}
+			continue;
+		}
+		debuff.stats[debuff.count++] = {stat, calc(SkAuraStatCalc1 + i * 4)};
+	}
+	area(game, unit, &center, radius, mask, StaticFieldDebuffOne, &debuff, 1);
+	if (plog::Sample(g_staticFields) || (hit.hits > 0 && plog::Sample(g_staticFieldHits))) {
+		plog::Info("static field: skill %d level %d: radius %d, calc1 %d, calc2 %d, min %d; units hit %d, first: life "
+		           "%d of %d, lightresist %d, damage %d; state %d for %d frames, stat %d %d, new lists %d (first %d), "
+		           "cast %u",
+		           skillId, level, radius, hit.calc1, hit.calc2, hit.fieldMin, hit.hits, hit.life, hit.maxLife,
+		           hit.resist, hit.damage, debuff.state, debuff.frames, debuff.stats[0].stat, debuff.stats[0].value,
+		           debuff.lists, debuff.value, g_staticFields.load());
+	}
+	return 1;
+}
+
 // srvdofunc 190 serves the PD2 do functions that have no free slot of their own, by skill id (docs/core-rules.md).
 auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	if (game == nullptr || unit == nullptr) {
@@ -1735,10 +2065,26 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		return SrvDoPd2Teleport(game, unit, skillId, level);
 	case Desecrate:
 		return SrvDoDesecrate(game, unit, skillId, level);
+	case Combustion:
+	case FingermageBossNova:
+	case RathmaTeethNova:
+	case RathmaOuterNova:
+	case RathmaPacman:
+	case LeoricSummonNova:
+	case ZharMiniBossCombustion:
+		return SrvDoNova(game, unit, skillId, level);
+	case StaticField:
+	case MercStaticField:
+	case StaticFieldProc:
+		return SrvDoStaticField(game, unit, skillId, level);
 	case ProcSplashDamage:
 	case GolemSplash:
 	case SkeletonSplash:
 		return SrvDoSplash(game, unit, skillId, level);
+	case Gust:
+		return SrvDoGust(game, unit, skillId, level);
+	case Hunger:
+		return SrvDoHunger(game, unit, skillId, level);
 	case TigerStrike:
 	case FistsOfFire:
 	case CobraStrike:
@@ -1795,7 +2141,7 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		value = charges < 3 ? calc2 * charges : 0;
 	}
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, TempSkillBuff, 1);  // always a new list
-	TimedStatList(dataFlag, unit, skillId, level, SplashFrames, TempSkillBuff, {{IncSplashRadius, value}});
+	TimedStatList(dataFlag, unit, unit, skillId, level, SplashFrames, TempSkillBuff, {{IncSplashRadius, value}});
 	if (plog::Sample(g_splashStarts)) {
 		plog::Info("splash start: skill %d level %d charges %d calc2 %d: splash radius %d, start %u", skillId, level,
 		           charges, calc2, value, g_splashStarts.load());
@@ -2301,7 +2647,7 @@ auto SrvDoCharge(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 			const int32_t splash = ChargeSplash(distance);
 			const char* list = "kept";
 			if (d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, TempSkillBuff) == nullptr) {
-				list = TimedStatList(dataFlag, unit, skillId, level, ChargeSplashFrames, TempSkillBuff,
+				list = TimedStatList(dataFlag, unit, unit, skillId, level, ChargeSplashFrames, TempSkillBuff,
 				                     {{IncSplashRadius, splash}});
 			}
 			ChargeParam(uskill) = 0;
@@ -2452,6 +2798,8 @@ const SlotFunction Functions[] = {
 	{SrvDo, 185, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvPrgRing)), "charge ring"},
 	{SrvDo, 186, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvPrgFire)), "charge fire"},
 	{SrvDo, 181, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvPrgCold)), "charge cold"},
+	// Combustion and the boss novas: srvdo 159 goes through the router (190); D2R fills cltdo 100
+	{CltDo, 120, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoNova)), "nova"},
 	// Firestorm and the wall makers: srvdo 166 is D2R's, so the router (190) runs them; cltdo 119 is free
 	{CltDo, 119, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoWall)), "wall"},
 	// The finishers' client halves (W30): D2R fills cltdo 106 (Bind Demon), 107 and cdo 69 (corpseexplosion); chit 67
@@ -2540,7 +2888,8 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, poison daggers %u, "
 	              "client %u, blood warps %u, refused %u, desecrates %u, client %u, corpses hidden %u, revives %u, "
 	              "revive events %u, splashes %u, channels %u, client %u, take-overs %u, blade fury refused %u, "
-	              "held %u, charge-up hits %u, charges %u, charge hit frames %u, holy lights %u, %s",
+	              "held %u, charge-up hits %u, charges %u, charge hit frames %u, holy lights %u, gusts %u, hungers %u, "
+	              "novas %u, client %u, static fields %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
@@ -2548,5 +2897,6 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              g_desecrates.load(), g_desecrateClients.load(), g_desecrateHidden.load(), g_revives.load(),
 	              g_reviveEvents.load(), g_reviveSplashes.load(), g_channels.load(), g_channelClients.load(),
 	              g_takeOvers.load(), g_bladeFuryRefusals.load(), g_heldRequests.load(), g_chargeHits.load(),
-	              g_charges.load(), g_chargeHitFrames.load(), g_holyLights.load(), missiles);
+	              g_charges.load(), g_chargeHitFrames.load(), g_holyLights.load(), g_gusts.load(),
+	              g_hungers.load(), g_novas.load(), g_novaClients.load(), g_staticFields.load(), missiles);
 }
