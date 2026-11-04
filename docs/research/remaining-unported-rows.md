@@ -7,8 +7,8 @@ in a follow-up grilling ticket, the way #148 fed #158.
 
 ## Answer in brief
 
-- **Most table rows can close without code.** Most of the columns and tables checked can be cut outright or close once
-  one small check passes. They are either empty in PD2, set only on rows both games share (vanilla 1.13c leftovers
+- **Most table rows can close without code.** Their columns and tables can be cut outright or close once one small
+  check passes. They are either empty in PD2, set only on rows both games share (vanilla 1.13c leftovers
   that D2R handles its own way), or tied to a cut feature (PvP, ladder, the classic editors). Belts and body locations
   match D2R apart from the classic pixel boxes of one belt, so that row closes.
 - **Five data columns need a core-rules row** (engine code): skills `checkfunc`, `nocostinstate` and `general`; missiles
@@ -31,8 +31,9 @@ in a follow-up grilling ticket, the way #148 fed #158.
   skills on one cel, the D2R skill is a monster skill or shares the picture (Attack, Town Portal), so PD2's frames can
   simply win. Item pictures follow the same upscale-and-sprite pattern as P11.
 - **Audio: the cut holds.** Of PD2's 46 WAV, the 16 drop sounds serve the loot filter, and the Pyre-Flies filter ships
-  its own 16 (P7; not compared one by one). The other 30 are boss and NPC voice lines and a few effects for areas and bosses not ported yet. They can be cut with the
-  sounds row, or converted later, one FLAC per file (open question from #5).
+  its own 16 (P7; not compared one by one). The other 30 are boss and NPC voice lines and a few effects for areas and
+  bosses not ported yet (counts from [pd2-asset-inventory.md](pd2-asset-inventory.md)). They can be cut with the sounds
+  row, or converted later, one FLAC per file (open question from #5).
 - **Rows to fix on the list itself:** the Gheed event row belongs to MS8. The "other classes" row is stale, since the
   pre-alpha now builds those classes as W11-W35. The level-pipeline rows wait only for #151's work items. The missile
   stand-in models (P10) and PD2's client UI overlays (buff timers, mini skill icons, skill bar, potion counter, tooltip
@@ -41,12 +42,17 @@ in a follow-up grilling ticket, the way #148 fed #158.
 ## Scope
 
 Every "not yet" row on [docs/unported.md](../unported.md) (at `4c8f3e3`) that names no open work item, plus the
-approximated art and hireling rows the ticket names. Left out:
+approximated art and hireling rows the ticket names. Rows whose P item is closed (P3, P4, P11) are in scope: the
+closed item no longer owns them, as #148 found for P3. Left out:
 
 - Rows naming an open W, MS, UB or IR item.
 - Rows marked "after the pre-alpha" (the core-rules rows after the cut, which join the alpha as they are).
 - The umbrella row "Everything in the core-rules order after the pre-alpha cut", for the same reason.
-- Rows whose P item is closed (P3, P4, P11) are **in** scope: the closed item no longer owns them, as #148 found for P3.
+
+The verdicts use the ticket's four outcomes (fold into a table D2R reads, core-rules row, art work, cut). Two more
+appear where the data alone can't decide: "check first", when one cheap check (in game, or one DLL read) picks
+between two outcomes, and "close the row", when PD2 and D2R already match. No column was traced in Ghidra:
+the DLL reads the ticket asks for "where needed" are named per row and left to the core-rules rows they feed.
 
 ## Sources and method
 
@@ -105,12 +111,12 @@ Only the item pictures and the shared skill icon sheet use PD2's own art.
 | | `nocostinstate` | 5 set: Werewolf, Werebear, and PD2's Vampire, Delirium and Cow forms | **Core-rules row**: casting a form while already in it costs no mana (inferred from the rows, unchecked) |
 | | `general` | 13 set: Attack, Kick, Throw, Unsummon, the left-hand skills, the `*temp*` skills, Force Move | **Core-rules row** if `ProjectDiablo.dll` reads it (one byte check). It marks the general skills, probably for PD2's skill bar or hotkeys; if only the UI reads it, **cut** with the UI overlays |
 | PD2 state columns (core-rules) | `immed`, `blue` | `blue` 4 set, all shared (freeze, cold, ...). `immed` 16 set: 13 shared aura states, plus PD2's `immune_give`, `immune_get`, `phasing` | **Cut** `blue`: vanilla rows only (D2R tints cold through its own colour columns, unchecked for these 4). **`immed` needs a check**: for the three PD2 states, whether the state applies at once rather than on the next frame. Phasing is IR work (#148), so fold the check into that row |
-| PD2 stat columns (core-rules) | `Divide`, `itemspecific`, S12/S13 save widths | `itemspecific` 6, all shared. `Divide` 507 (396 at the default 1024), a 1.13c price column beside `Add`/`Multiply`, which D2R kept. S12/S13: PD2's per-season save widths; the plain `Save Bits` of 67 shared stats differ from D2R's anyway | **Cut** `itemspecific` (vanilla). **Cut** `Divide` with the prices row below. **Cut** S12/S13: the port saves through D2R's extended saves (ADR 0003) and P2's id lists, so PD2's season layouts have nothing to read |
+| PD2 stat columns (core-rules) | `Divide`, `itemspecific`, S12/S13 save widths | `itemspecific` 6, all shared. `Divide` 507 (396 at the default 1024), a 1.13c price column beside `Add`/`Multiply`, which D2R kept. S12/S13: PD2's per-season save widths; the plain `Save Bits` of 67 shared stats differ from D2R's anyway | **Cut** `itemspecific` (vanilla). **Cut** `Divide` with the prices row below: it is this table's per-stat price divisor (1024 = 1.0), not the affix `divide` there; D2R prices items with `Add`/`Multiply` alone, so only vendor prices move (inferred, unchecked). **Cut** S12/S13: the port saves through D2R's extended saves (ADR 0003) and P2's id lists, so PD2's season layouts have nothing to read |
 | PD2 missile columns (core-rules) | `LevRange`, `Qty`, `SpecialSetup` | `LevRange` 46 set, 15 PD2-only (PD2's fire dots and meteors). `Qty` 60 set, 20 PD2-only (ammo and the throwing potions). `SpecialSetup` 20 set, 12 PD2-only (the `tpot_*` throwing potions) | **Core-rules row**, folded into existing rows: `SpecialSetup` and `Qty` on the potions go with "Throwing potions" (open). `Qty` on the other new arrows checks whether D2R's `decquant` skill column already covers ammo. `LevRange` on the new fire missiles goes with the class or map row that owns each missile |
 | PD2 columns read by PD2's DLL (core-rules) | difficultylevels `UberCodeOdds*`, `UltraCodeOdds*`, `HireableBossDamagePercent`; hireling `WType1/2` | The difficultylevels names appear in PD2's `D2Common.dll`, so these are likely 1.13c loader columns that D2R dropped rather than DLL-only ones. PD2's values: code odds Normal 0/0/0/0, Nightmare 10/20/0/0, Hell 20/40/30/40; boss damage 50/35/25. `WType` sets each hireling's weapon types; the Ascendant takes staves | **Core-rules row**: find D2R's constants for the same rules in Ghidra. Where they equal PD2's values, **cut**; otherwise hook them. `WType` goes with the Ascendant (next row) |
 | Hireling ids 30 to 38 (P4) | `hireling.*.[*]` | PD2's 156 rows include the Ascendant (Act 4, ids 30-35, kinds Dark and Light in `hiredesc`) and a second Rogue Scout set (ids 36-38). D2R's ids 30-38 are its own Desert Mercenary and Barbarian rows. The merge (135 rows) keeps D2R's and drops PD2's 36 | **New finding**: the Act 4 hireling is missing. It needs PD2's rows at new ids 39+ (whether D2R's hireling table and saves accept ids past 38 is untested), the `$2` monster's HD model (section 1), `WType`, and the `hiredesc` strings. **Engine code** plus **table data**; the grilling decides whether it is in the alpha |
 | Hireling descriptions keep D2R's HireDesc (P4) | `hireling.*.hiredesc` | `hiredesc` is a 15-row code list (`farw`, `comb`, `ascd`, `ascl`, `parw`, ...) | **Fold** into D2R's hireling strings when the Ascendant lands; otherwise **keep approximated** |
-| Belts and body locations (no work item) | `belts.*`, `bodylocs.*` | `bodylocs` is identical. `belts` matches apart from the classic pixel boxes of `uber belt` and PD2's `boxwidth`/`boxheight` columns, all classic-screen layout | **Close the row**: no gameplay difference. D2R's HD belt layout is its own |
+| Belts and body locations (no work item) | `belts.*`, `bodylocs.*` | `bodylocs` is identical. `belts` has the same rows and slot counts (`numboxes`), and differs only in the classic pixel boxes of `uber belt` and PD2's `boxwidth`/`boxheight` columns, all classic-screen layout | **Close the row**: no gameplay difference. D2R's HD belt layout is its own |
 | Quivers lose their automagic mods (P3) | `misc.auto prefix` | 6 quivers (`aqv`, `cqv` and their tiers) roll automagic groups 321-326 | **Core-rules row**: D2R's misc table has no `auto prefix`, so the roll needs an item-spawn hook. A data workaround (moving the quivers to a table with the column) would break their item type |
 | PD2 item price and quality columns (P3) | affix `transform`/`divide`, rare `add`/`multiply`/`divide`, itemtypes `Charm`/`Gem`/`CostFormula`, qualityitems' classic columns | `divide`, `add`, `multiply` 0 set. `transform` is set only where `transformcolor` is too, which D2R reads. `Gem` is shared only. `Charm` is set on 4 PD2-only rows, all PvP charms (`chap` and kin). `CostFormula` is set on 9 PD2-only armor subtypes (`bels`, `sshi`, `harm`, ...) that inherit from D2R's armor types. The qualityitems columns are D2R's dropped 1.13c ones | **Cut** all, after one check: a vendor price for one PD2-only armor subtype is sane |
 | Other PD2 item columns (P3) | armor `absorbs`/`spelloffset`/`throwable`, misc `special`/`throwable`/`normcode`/`ubercode`/`ultracode`, weapons `special`, gems `nummods`, sets `level`, runes `server`, `cubemain.ladder`, `uniqueitems.ladder`, weapons spell columns | Empty: `spelloffset`, both `throwable`s, misc `special`, runes `server`, `uniqueitems.ladder`, weapons `stat1-3`/`calc1-3`/`spelldesccalc`. Shared only: `absorbs`, weapons `special` (editor notes), `nummods`, sets `level`. `normcode`/`ubercode`/`ultracode` are the quiver tiers. Weapons `spelldesc`/`spelldescstr`: the 12 throwing potions' tooltip line. `cubemain.ladder`: 1,168 rows, values 1-4, where 2-4 mark PD2's own groups (imbues, maps, socket adds, crafting) | **Cut** the empty and shared-only columns. **Fold** the potion `spelldesc` into "Throwing potions". **`cubemain.ladder` needs a check**: if PD2 reads values 2-4 as recipe groups rather than ladder flags, recipes may be gated. The merge leaves D2R's ladder seasons empty, so every recipe works offline today, which suits single-player |
