@@ -89,9 +89,10 @@ redesign, class-themed item rules, monster-only engine rules, everything in the 
 
 ## Alpha: PD2 complete for single-player
 
-The pre-alpha plus every PD2 feature left out of it: the map system, the Warlock redesign, the uber bosses and their
+The pre-alpha plus every PD2 feature left out of it: the map system, the Warlock redesign (goals in [warlock.md](warlock.md); its three new skills wait for the beta), the uber bosses and their
 areas (Dclone, Lucion with Desecration, Rathma), the remaining items and item rules and the remaining unported-list rows.
 The core-rules rows after the cut join as they are, ordered by rows unlocked as in
 [core-rules.md](core-rules.md#after-the-cut-by-rows-unlocked-per-session). No work items yet: the map
 [Port the rest of PD2 for the Alpha](https://github.com/synpoox/pd2-resurrected/issues/143) charts and slices them.
-Multiplayer (servers, hosting, seasonal ladders) comes after the alpha, as its own effort.
+Multiplayer comes after the alpha, in the beta: run 1 over TCP/IP, run 2 on hosted servers with a short beta league,
+then the launch with league 1.

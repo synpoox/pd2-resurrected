@@ -17,7 +17,7 @@ Anything D2R has that PD2 does not (items, runewords, areas, features), other th
 _Avoid_: new content, vanilla extras
 
 **Warlock**:
-D2R's RotW class, the one class in the port that is designed new in PD2's style rather than ported 1:1.
+D2R's RotW class, the one class in the port not held to the PD2 baseline: D2R's Warlock on build 93847, changed only where a skill falls short of PD2's style, keeping its three trees.
 
 **Unported list**:
 The record of every deviation, its status and why.
@@ -68,8 +68,20 @@ A D2RLoader plugin built outside this repo and bundled with the port that stands
 _Avoid_: dependency, add-on, external mod
 
 **Milestone**:
-A playable point in the roadmap made of the work items it needs; the port has M1 (a new character in Act 1), M2 (companions, corruption, Amazon and Barbarian complete), the pre-alpha (every PD2 class complete) and the alpha (PD2 complete for single-player).
+A playable point in the roadmap made of the work items it needs; the port has M1 (a new character in Act 1), M2 (companions, corruption, Amazon and Barbarian complete), the pre-alpha (every PD2 class complete), the alpha (PD2 complete for single-player), the beta and the launch.
 _Avoid_: phase, release
+
+**Beta**:
+The milestone after the alpha, in two runs: run 1 is multiplayer over TCP/IP, run 2 is multiplayer on hosted servers with a short beta league. It also holds the Warlock's three new skills; its other contents are not yet decided.
+_Avoid_: PD2's `Beta` build (a different, older PD2 build in the install)
+
+**Launch**:
+The public release after the beta; league 1 starts with it.
+_Avoid_: release, 1.0
+
+**League**:
+A fresh-start play period on hosted servers: the short beta league, then league 1 from the launch.
+_Avoid_: season (PD2's word), ladder
 
 **Corruption**:
 PD2's one-time cube action that changes an item, for better or worse, and marks it so it cannot be done again.
