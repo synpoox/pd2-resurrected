@@ -1,8 +1,10 @@
 """Remapped ids: the tables a save or D2R's code reads by row number, merged by the append-only id lists in merge/
-(ADR 0003): skills, states, itemstatcost and missiles (P2), item types, unique and set items, runewords and affixes (P3).
+(ADR 0003): skills, states, itemstatcost and missiles (P2), item types, unique and set items, runewords and affixes (P3),
+and the level tables (LP1): levels, presets, warps, objects (objtype follows the objects list) and object groups.
 
 merge/ids-<table>.tsv has one line per PD2 row: `PD2 name <tab> id <tab> name`, the row's id and key name in the mod.
 Ids count records as the game does (an `Expansion` row is not one); a repeated PD2 name is listed as `name#2`.
+An id of `-` leaves the PD2 row out (a cut area, a placeholder row); the third column then says why.
 An id at or below D2R's last row merges the PD2 row onto that D2R row and keeps D2R's name, so D2R's own files that
 name it stay valid (PD2_NAMES tables keep PD2's: there the key is the text the player sees); a higher id appends the
 row. Lines are only ever added (`pd2_merge.py --seed-ids`), never renumbered.
@@ -32,13 +34,18 @@ from typing import NamedTuple
 TABLES = ["skills", "states", "itemstatcost", "missiles",  # P2
           # P3: item tables a save or D2R's code reads by row number
           "itemtypes", "uniqueitems", "setitems", "runes", "magicprefix", "magicsuffix", "automagic", "rareprefix",
-          "raresuffix"]
+          "raresuffix",
+          # LP1: the level tables a DS1, a save's map memory or D2R's code reads by row number
+          "levels", "lvlprest", "lvlwarp", "objects", "objgroup"]
 # records below this id are the same vanilla 1.13c row in both games. itemstatcost: none, because both games filled
 # vanilla's unused stat slots (183-213, 256-285) with different stats. itemtypes: D2R added warl at 67. setitems: PD2
 # inserted a Bul-Kathos item at 117. runes: PD2 reordered its rows, so they match by name.
 VANILLA = {"skills": 357, "states": 185, "itemstatcost": 0, "missiles": 684, "itemtypes": 67, "uniqueitems": 401,
            "setitems": 117, "runes": 0, "magicprefix": 669, "magicsuffix": 747, "automagic": 36, "rareprefix": 46,
-           "raresuffix": 155}
+           "raresuffix": 155,
+           # D2R's 137 (Colossal Summit) and its preset 1091 end the shared rows; objects 573-583 are PD2's
+           # <reserved> rows, left out; lvlwarp and objgroup: every D2R row is vanilla's
+           "levels": 137, "lvlprest": 1091, "lvlwarp": 88, "objects": 573, "objgroup": 133}
 # P3 tables pd2_items merges by key with no id list: matched by key, or row by row (the same rows in both games)
 _BY_ROW = ["gems", "qualityitems", "lowqualityitems", "books", "itemratio", "uniqueprefix", "uniquesuffix",
            "uniqueappellation"]
@@ -52,7 +59,9 @@ PD2_NAMES = {"uniqueitems", "setitems", "runes", "magicprefix", "magicsuffix", "
              "qualityitems"}
 # affix names repeat and say nothing of the row's mods, so a PD2 affix after vanilla never takes a D2R-only affix's row
 NO_NAME_MATCH = {"magicprefix", "magicsuffix", "automagic", "rareprefix", "raresuffix"}
-DUP_NAMES = {"uniqueitems", "runes", "magicprefix", "magicsuffix", "automagic", "rareprefix", "raresuffix"}  # keys may repeat
+DUP_NAMES = {"uniqueitems", "runes", "magicprefix", "magicsuffix", "automagic", "rareprefix", "raresuffix",
+             "lvlwarp", "objgroup", "lvlprest"}  # keys may repeat
+LEFT_OUT = -1  # the id read_list gives a `-` line
 _NPC = {f"{d2r}{s}": f"{pd2}{s}" for d2r, pd2 in (("Anya", "Drehya"), ("Hratli", "Hralti"))
         for s in ("Min", "Max", "MagicMin", "MagicMax", "MagicLvl")}
 # D2R column -> PD2 column, where the name differs by more than letter case
@@ -88,6 +97,15 @@ REFS = {
     "monsounds": {f"CvtSk{i}": "skills" for i in range(1, 4)},
     "skilldesc": {f"descmissile{i}": "missiles" for i in range(1, 4)},
 }
+# columns holding another id-listed table's row number (PD2's) -> that table; levels' Warp0-7 hold lvlwarp's Id column,
+# which PD2's new warps keep (pd2_levels checks they don't clash), and LevelType is lvltypes' (pd2_levels)
+NUM_REFS = {"levels": {**{f"Vis{i}": "levels" for i in range(8)}, **{f"ObjGrp{i}": "objgroup" for i in range(8)}},
+            "lvlprest": {"LevelId": "levels"},
+            "objgroup": {f"ID{i}": "objects" for i in range(8)}}
+# columns that hold the row's own id, written with the mod's (lvlwarp UniqueId: D2R's, the row number)
+ID_COLS = {"levels": "Id", "lvlprest": "Def", "lvlwarp": "UniqueId"}
+# columns a merged D2R row keeps, where the games give them different meanings (objects Token: D2R's graphics)
+KEEP_D2R = {"objects": {"Token"}}
 FORMULAS = {
     "skills": ["prgcalc1", "prgcalc2", "prgcalc3", "auralencalc", "aurarangecalc", *[f"aurastatcalc{i}" for i in range(1, 7)],
                *[f"passivecalc{i}" for i in range(1, 6)], "petmax", *[f"sumsk{i}calc" for i in range(1, 6)], "sumumod",
@@ -121,7 +139,9 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # Blessed Hammer's sdo 40 / cdo 72 are D2R's too and take 47 / 80 (docs/research/w20-blessed-hammer.md).
 # Ormus' Robes' property func 25 (D2R's 25 is affix-rand) takes the free property slot 26 (P12,
 # docs/research/p12-ormus-robes.md).
+# levels' Teleport 3 (PD2's four boss maps) is not a D2R value; 1 (teleport allowed) stands in until MS1 finds what it means.
 FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
+         "levels": {"Teleport": {"3": "1"}},
          "missiles": {"pSrvDoFunc": {"38": "46", "40": "47"}, "pCltDoFunc": {"70": "78", "69": "79", "72": "80"},
                       "pSrvHitFunc": {"30": "66", "34": "69"},
                       "pSrvDmgFunc": {"15": "22", "16": "21", "17": "20"}, "pCltHitFunc": {"26": "71", "6": "68"}},
@@ -202,9 +222,9 @@ def read_list(path: Path) -> list[tuple[str, int, str]]:
     for n, line in enumerate(path.read_text("utf-8").splitlines(), 1):
         if line and not line.startswith("# "):  # "#2" is the second blank-named row
             parts = line.split("\t")
-            if len(parts) != 3 or not parts[1].isdigit():
-                raise IdError(f"{path.name} line {n}: want 'PD2 name<tab>id<tab>name'")
-            out.append((parts[0], int(parts[1]), parts[2]))
+            if len(parts) != 3 or not (parts[1].isdigit() or parts[1] == "-"):
+                raise IdError(f"{path.name} line {n}: want 'PD2 name<tab>id<tab>name' (id '-': left out)")
+            out.append((parts[0], LEFT_OUT if parts[1] == "-" else int(parts[1]), parts[2]))
     return out
 
 
@@ -250,6 +270,8 @@ def check(table: str, lines: list[tuple[str, int, str]], pd2: list[str], d2r: li
         if p.lower() not in pd2_names:
             # shortcut: a PD2 row gone after a re-baseline fails; give its id a placeholder row when that happens
             raise IdError(f"{f}: '{p}' is not a PD2 row any more")
+        if i == LEFT_OUT:
+            continue
         if len(n.encode("latin-1")) > KEY_LIMIT.get(table, 47):
             raise IdError(f"{f}: '{n}' is longer than D2R's {KEY_LIMIT.get(table, 47)} bytes: give it a shorter name")
         if table not in PD2_NAMES and i < len(d2r) and d2r[i] != n:
@@ -258,7 +280,7 @@ def check(table: str, lines: list[tuple[str, int, str]], pd2: list[str], d2r: li
     if missing:
         raise IdError(f"{f}: PD2 rows with no id ({', '.join(missing[:5])}{', ...' if len(missing) > 5 else ''}): "
                       "run tools/pd2_merge.py --seed-ids")
-    ids = [i for _, i, _ in lines]
+    ids = [i for _, i, _ in lines if i != LEFT_OUT]
     if len(set(ids)) != len(ids):
         raise IdError(f"{f}: an id is listed twice")
     added = sorted(i for i in ids if i >= len(d2r))
@@ -271,7 +293,7 @@ def check(table: str, lines: list[tuple[str, int, str]], pd2: list[str], d2r: li
 
 def renames(lists: dict[str, list[tuple[str, int, str]]]) -> dict[str, dict[str, str]]:
     """table -> {PD2 name (lower case): mod name} for the rows whose name changes."""
-    return {t: {base(p).lower(): n for p, _, n in ls if base(p) != n} for t, ls in lists.items()}
+    return {t: {base(p).lower(): n for p, i, n in ls if base(p) != n and i != LEFT_OUT} for t, ls in lists.items()}
 
 
 def fix_formula(text: str) -> str:
@@ -353,7 +375,9 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
     dropped = [c for i, c in enumerate(pd2.header) if i not in used and c.lower() not in ("id", "eol")]
     pd2_rows = {p.lower(): [v.replace('"', "") for v in pd2.rows[k]] for p, k in zip(ident(pd2.names()), pd2.records())}
     derived = {d2r.header.index(c): fn for c, fn in DERIVED.get(table, {}).items() if c in d2r.header}
-    id_col = next((j for j, c in enumerate(d2r.header) if c.lower() == "*id"), None)
+    id_cols = [j for j, c in enumerate(d2r.header) if c.lower() == "*id" or c == ID_COLS.get(table)]
+    nums = {j: NUM_REFS[table][c] for j, c in enumerate(d2r.header) if c in NUM_REFS.get(table, {})}
+    keep = {j for j, c in enumerate(d2r.header) if c in KEEP_D2R.get(table, ())}
     out = [list(r) for r in d2r.rows]
     recs = d2r.records()
     shown: dict[tuple[str, ...], list[list[str]]] = {}  # D2R's description strings -> the displays D2R gives them
@@ -362,15 +386,19 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
         for r in d2r.rows:
             if any(r[j] for j in str_cols):
                 shown.setdefault(tuple(r[j] for j in str_cols), []).append([r[j] for j in desc_cols])
-    for p, i, n in sorted(lines, key=lambda line: line[1]):
+    for p, i, n in sorted((line for line in lines if line[1] != LEFT_OUT), key=lambda line: line[1]):
         row = out[recs[i]] if i < len(recs) else [""] * len(d2r.header)
         if i >= len(recs):
             out.append(row)
         pr = pd2_rows[p.lower()]
         for j, k in cols:
-            if k is None:
+            if k is None or (j in keep and i < len(recs)):
                 continue
             row[j] = spell(table, d2r.header[j], pr[k], ren)
+            if j in nums and row[j]:
+                if row[j] not in (ids or {}).get(nums[j], {}):
+                    raise IdError(f"{table} '{n}': {d2r.header[j]} names PD2's {nums[j]} row {row[j]}, which has no id")
+                row[j] = ids[nums[j]][row[j]]
         own = d2r.rows[recs[i]] if shown and i < len(recs) else None
         if own and not any(row[j] for j in str_cols) and row[desc_cols[0]] == own[desc_cols[0]]:
             # 1.13c's descfunc 27/28 hardcode their text; D2R's read it from the strings (#116: "an evil force")
@@ -391,11 +419,25 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
         if props is not None:
             fix_props(d2r.header, row, ren, ids or {}, props)
         row[d2r.key] = n
-        if id_col is not None:
-            row[id_col] = str(i)
+        for j in id_cols:
+            row[j] = str(i)
     merged = Table.__new__(Table)
     merged.header, merged.rows, merged.newline, merged.key = d2r.header, out, d2r.newline, d2r.key
     return merged, dropped
+
+
+def follow(lines: list[tuple[str, int, str]], pd2_keys: list[str], d2r: list[str], pd2: list[str]) -> list[tuple[str, int, str]]:
+    """Lines for a table whose rows are another table's row for row (objtype: objects): PD2 row k takes the id of the
+    other list's line for PD2 row k, and D2R's name on a merged row."""
+    at = {p.lower(): (i, n) for p, i, n in lines}
+    out = []
+    for key, name in zip(ident(pd2_keys), ident(pd2)):
+        i, _ = at[key.lower()]
+        out.append((name, i, "" if i == LEFT_OUT else d2r[i] if i < len(d2r) else base(name)))
+    return out
+
+
+FOLLOWERS = {"objects": "objtype"}  # written by the same rule, by follow()
 
 
 def excel(root: Path) -> Path:
@@ -430,11 +472,12 @@ def context(merge_dir: Path, pd2_data: Path, d2r_data: Path) -> Context:
 def context_of(lists: dict[str, list[tuple[str, int, str]]], pd2_data: Path) -> Context:
     """The Context of id lists already read (and checked)."""
     ids = {}
-    for t in ("skills", "states", "itemstatcost"):
+    for t in ("skills", "states", "itemstatcost", *{t for refs in NUM_REFS.values() for t in refs.values()}, *ID_COLS):
         if not lists[t]:  # nothing to remap (tests with no such table)
             continue
         mod = {p.lower(): i for p, i, _ in lists[t]}
-        ids[t] = {str(k): str(mod[p.lower()]) for k, p in enumerate(ident(load(pd2_data, t).names()))}
+        ids[t] = {str(k): str(mod[p.lower()]) for k, p in enumerate(ident(load(pd2_data, t).names()))
+                  if mod[p.lower()] != LEFT_OUT}  # a reference to a left-out row fails the merge
     return Context(lists, renames(lists), ids, property_kinds(load(pd2_data, "properties")))
 
 
@@ -469,6 +512,11 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     ctx = context(rule.parent, pd2_data, d2r_data)
     write(table, *merge_table(table, load(pd2_data, table), load(d2r_data, table), ctx.lists[table], ctx.ren, ctx.ids,
                               ctx.props if table in PROPS else None), out_data)
+    if table in FOLLOWERS:
+        f = FOLLOWERS[table]
+        pd2, d2r = load(pd2_data, f), load(d2r_data, f)
+        lines = follow(ctx.lists[table], load(pd2_data, table).names(), d2r.names(), pd2.names())
+        write(f, *merge_table(f, pd2, d2r, lines, ctx.ren), out_data)
 
 
 def seed_lists(merge_dir: Path, pd2_data: Path, d2r_data: Path) -> dict[str, int]:

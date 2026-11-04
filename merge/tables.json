@@ -21,18 +21,8 @@
   ]
  },
  "hitclass": {},
- "levels": {
-  "pd2_only_rows": "leave out"
- },
  "lvlmaze": {},
- "lvlprest": {
-  "pd2_only_rows": "leave out"
- },
  "lvlsub": {},
- "lvlwarp": {
-  "pd2_only_rows": "leave out",
-  "rows": "position"
- },
  "misscalc": {},
  "monai": {},
  "monequip": {
@@ -53,22 +43,7 @@
  "npc": {
   "pd2_only_rows": "leave out"
  },
- "objects": {
-  "d2r_columns": [
-   "Token"
-  ],
-  "pd2_only_rows": "leave out",
-  "rows": [
-   "Name"
-  ]
- },
- "objgroup": {
-  "pd2_only_rows": "leave out"
- },
  "objmode": {},
- "objtype": {
-  "pd2_only_rows": "leave out"
- },
  "overlay": {},
  "pettype": {},
  "playerclass": {},

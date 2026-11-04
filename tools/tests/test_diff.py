@@ -43,36 +43,36 @@ class GateTests(unittest.TestCase):
             pd2_diff.gate(self.root, self.root / "nowhere", "P4")
 
     def test_a_merged_table_equal_to_pd2_passes(self):
-        self.write("pd2", "levels", table("Name | Id | MonLvl", "Rogue Encampment | 1 | 1"))
-        self.write("mod", "levels", table("Name | Id | MonLvl", "Rogue Encampment | 1 | 1"))
+        self.write("pd2", "lvlmaze", table("Name | Id | MonLvl", "Rogue Encampment | 1 | 1"))
+        self.write("mod", "lvlmaze", table("Name | Id | MonLvl", "Rogue Encampment | 1 | 1"))
         report = self.gate()
         self.assertTrue(report.ok)
         self.assertEqual(report.open(), [])
 
     def test_a_changed_cell_is_open_until_the_unported_list_names_it(self):
-        self.write("pd2", "levels", table("Name | MonLvl", "Rogue Encampment | 1", "Blood Moor | 2"))
-        self.write("mod", "levels", table("Name | MonLvl", "Rogue Encampment | 1", "Blood Moor | 5"))
-        self.assertEqual(self.gate().open(), [("levels.Blood Moor.MonLvl", "2", "5")])
-        self.unported("| Blood Moor is harder | approximated | `levels.blood moor.monlvl` | P4 |\n")
+        self.write("pd2", "lvlmaze", table("Name | MonLvl", "Rogue Encampment | 1", "Blood Moor | 2"))
+        self.write("mod", "lvlmaze", table("Name | MonLvl", "Rogue Encampment | 1", "Blood Moor | 5"))
+        self.assertEqual(self.gate().open(), [("lvlmaze.Blood Moor.MonLvl", "2", "5")])
+        self.unported("| Blood Moor is harder | approximated | `lvlmaze.blood moor.monlvl` | P4 |\n")
         report = self.gate()
         self.assertTrue(report.ok)
         self.assertEqual(report.results[0].covered, 1)
 
     def test_the_report_counts_unported_entries_by_status(self):
-        self.write("pd2", "levels", table("Name | MonLvl", "Blood Moor | 2"))
-        self.write("mod", "levels", table("Name | MonLvl", "Blood Moor | 5"))
-        self.unported("| Blood Moor is harder | approximated | `levels.*.monlvl` | P4 |\n"
+        self.write("pd2", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))
+        self.write("mod", "lvlmaze", table("Name | MonLvl", "Blood Moor | 5"))
+        self.unported("| Blood Moor is harder | approximated | `lvlmaze.*.monlvl` | P4 |\n"
                       "| Maps | not yet | | P3 |\n| Ladder | not yet | | P6 |\n")
         text = pd2_diff.report(self.gate(), "P4")
         self.assertIn("1 table cells on the unported list", text)
         self.assertIn("Unported list: 2 not yet, 1 approximated, 0 cut entries", text)
 
     def test_missing_rows_and_columns_are_deviations_but_d2r_only_rows_are_not(self):
-        self.write("pd2", "levels", table("Name | *comment | MonLvl | Beta | eol", "Rogue Encampment | x | 1 | 0 | 0",
+        self.write("pd2", "lvlmaze", table("Name | *comment | MonLvl | Beta | eol", "Rogue Encampment | x | 1 | 0 | 0",
                                           "Expansion | | | | 0", "Abaddon | | 60 | 1 | 0", "Expansion | | | | 0"))
-        self.write("mod", "levels", table("Name | MonLvl | LevelGroup", "Rogue Encampment | 1 | 3",
+        self.write("mod", "lvlmaze", table("Name | MonLvl | LevelGroup", "Rogue Encampment | 1 | 3",
                                           "Expansion | | ", "Warlock Keep | 50 | 1", "Expansion | 0 |"))
-        self.assertEqual(self.gate().open(), [("levels.*.Beta", "", ""), ("levels.Abaddon.*", "", "")])
+        self.assertEqual(self.gate().open(), [("lvlmaze.*.Beta", "", ""), ("lvlmaze.Abaddon.*", "", "")])
 
     def test_an_unmerged_table_is_compared_with_d2rs_and_an_unshipped_one_is_a_deviation(self):
         self.write("pd2", "monstats", table("Id | Level", "fallen | 2"))
@@ -110,39 +110,39 @@ class GateTests(unittest.TestCase):
         self.assertEqual(self.gate().open(), [("shrines.*.Shrine Type", "", ""), ("shrines.1.Code", "1", "2")])
 
     def test_the_scope_picks_the_work_items_tables(self):
-        for t in ("skills", "armor", "levels"):
+        for t in ("skills", "armor", "lvlmaze"):
             self.write("pd2", t, table("Name | x", "a | 1"))
         tables = {s: [r.table for r in self.gate(s).results] for s in ("P2", "P3", "P4", "M1", "alpha")}
-        self.assertEqual(tables, {"P2": ["skills"], "P3": ["armor"], "P4": ["levels"],
-                                  "M1": ["armor", "levels", "skills"], "alpha": ["armor", "levels", "skills"]})
+        self.assertEqual(tables, {"P2": ["skills"], "P3": ["armor"], "P4": ["lvlmaze"],
+                                  "M1": ["armor", "lvlmaze", "skills"], "alpha": ["armor", "lvlmaze", "skills"]})
         with self.assertRaisesRegex(pd2_diff.GateError, "P9"):
             self.gate("P9")
 
     def test_the_command_prints_a_pasteable_report_and_fails_on_open_deviations(self):
-        self.write("pd2", "levels", table("Name | MonLvl", "Blood Moor | 2"))
-        self.write("mod", "levels", table("Name | MonLvl", "Blood Moor | 5"))
+        self.write("pd2", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))
+        self.write("mod", "lvlmaze", table("Name | MonLvl", "Blood Moor | 5"))
         args = ["--scope", "P4", "--root", str(self.root), "--d2r", str(self.root / "d2r/data")]
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             self.assertEqual(pd2_diff.main(args), 1)
-        self.assertIn("| levels | merged | 1 | 0 |", out.getvalue())
-        self.assertIn("| `levels.Blood Moor.MonLvl` | 2 | 5 |", out.getvalue())
-        self.unported("| Blood Moor is harder | approximated | `levels.*.monlvl` | P4 |\n")
+        self.assertIn("| lvlmaze | merged | 1 | 0 |", out.getvalue())
+        self.assertIn("| `lvlmaze.Blood Moor.MonLvl` | 2 | 5 |", out.getvalue())
+        self.unported("| Blood Moor is harder | approximated | `lvlmaze.*.monlvl` | P4 |\n")
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(pd2_diff.main(args), 0)
 
     def test_a_whole_table_row_must_go_once_the_table_is_merged(self):
-        self.unported("| Not merged yet | not yet | `levels.*` | P4 |\n")
-        self.write("pd2", "levels", table("Name | MonLvl", "Blood Moor | 2"))
-        self.write("d2r", "levels", table("Name | MonLvl", "Blood Moor | 1"))
+        self.unported("| Not merged yet | not yet | `lvlmaze.*` | P4 |\n")
+        self.write("pd2", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))
+        self.write("d2r", "lvlmaze", table("Name | MonLvl", "Blood Moor | 1"))
         self.assertEqual(self.gate().results[0].covered, 1)
-        self.write("mod", "levels", table("Name | MonLvl", "Blood Moor | 1"))
-        with self.assertRaisesRegex(pd2_diff.GateError, "levels.*merged"):
+        self.write("mod", "lvlmaze", table("Name | MonLvl", "Blood Moor | 1"))
+        with self.assertRaisesRegex(pd2_diff.GateError, "lvlmaze.*merged"):
             self.gate()
 
     def test_excels_quote_marks_are_not_data(self):
-        self.write("pd2", "levels", table("Name | MonLvl", 'Blood Moor | "2"'))
-        self.write("mod", "levels", table("Name | MonLvl", "Blood Moor | 2"))
+        self.write("pd2", "lvlmaze", table("Name | MonLvl", 'Blood Moor | "2"'))
+        self.write("mod", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))
         self.assertEqual(self.gate().open(), [])
 
     def test_item_tables_are_read_as_the_merge_writes_them(self):
@@ -185,7 +185,7 @@ class GateTests(unittest.TestCase):
         self.assertEqual([o for o in self.gate("P2").open() if o[0].startswith("missiles.")], [])
 
     def test_every_unported_row_has_a_known_status(self):
-        self.unported("| Something | maybe | `levels.*.*` | P4 |\n")
+        self.unported("| Something | maybe | `lvlmaze.*.*` | P4 |\n")
         with self.assertRaisesRegex(pd2_diff.GateError, "maybe"):
             self.gate()
 

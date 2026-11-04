@@ -159,3 +159,24 @@ misc	Dark Temple Map	-	pSpell	Map items
 misc	Poisoned Well Map	-	pSpell	Map items
 misc	Descend Map	-	pSpell	Map items
 states	skilldelay	=	remfunc	State remove function 12
+objects	xactportal_red	-	OperateFn	PD2 object operate functions
+objects	xactportal_ghostly	-	OperateFn	PD2 object operate functions
+objects	xactportal_gold	-	OperateFn	PD2 object operate functions
+objects	UberAncientStatue1	-	OperateFn	PD2 object operate functions
+objects	UberAncientStatue2	-	OperateFn	PD2 object operate functions
+objects	UberAncientStatue3	-	OperateFn	PD2 object operate functions
+objects	UberAncientAltar	-	OperateFn	PD2 object operate functions
+objects	TaintedSunMapEventAltar	-	OperateFn	PD2 object operate functions
+objects	xactportal_grey	-	OperateFn	PD2 object operate functions
+objects	xactportal_green	-	OperateFn	PD2 object operate functions
+objects	xactportal_purple	-	OperateFn	PD2 object operate functions
+objects	zharportal_blue	-	OperateFn	PD2 object operate functions
+objects	zharportal_red	-	OperateFn	PD2 object operate functions
+objects	ZharTomeObject	-	OperateFn	PD2 object operate functions
+objects	ForceShardAltar	-	OperateFn	PD2 object operate functions
+objects	bossblocker_x_warp	-	OperateFn	PD2 object operate functions
+objects	bossblocker_y_warp	-	OperateFn	PD2 object operate functions
+objects	PVPTome1	-	OperateFn	PD2 object operate functions
+objects	Sacrifice Altar	-	OperateFn	PD2 object operate functions
+objects	xactdarkportal_grey	-	OperateFn	PD2 object operate functions
+objects	PVPTome2	-	OperateFn	PD2 object operate functions
