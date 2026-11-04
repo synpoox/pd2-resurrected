@@ -678,4 +678,24 @@ inline constexpr int IscRecordSize = 0x144, IscItemEvent1 = 0x44;
 // The stat-layer split item events use for skill/level layers: layer >> shift is the skill, layer & mask the level
 inline constexpr int TablesSkillLayerShift = 0x14d0, TablesSkillLayerMask = 0x14d4;
 
+// Critical and deadly strike (IR3, docs/research/ir3-combat-stats.md)
+// WeaponDamage's (0x44c030) roll: from 0x44c2b4, right after the physical roll is stored at damage +0x18, to 0x44c3d9
+// it rolls the weapon mastery's crit (when a5 is 0), passive_critical_strike, then deadly strike, and doubles the
+// physical part with result flag 0x2000. Attacker in RSI, damage block in RDI, a5 in R14D; 0x44c3d9 needs R15D 0.
+// The 28 bytes replaced: test r14d,r14d / jnz / mov rcx,rsi / call UnitWeapon / test / jz / lea r9d,[r14+2] /
+// xor r8d,r8d / mov rdx,rax (nothing outside jumps into them).
+inline constexpr uint64_t WeaponCritBlock = 0x44c2b4;
+inline constexpr uint64_t WeaponCritBlockEnd = 0x44c3d9;
+inline constexpr uint8_t WeaponCritBlockBytes[] = {0x45, 0x85, 0xf6, 0x75, 0x67, 0x48, 0x8b, 0xce, 0xe8, 0xef,
+                                                   0x7f, 0xfd, 0xff, 0x48, 0x85, 0xc0, 0x74, 0x5a, 0x45, 0x8d,
+                                                   0x4e, 0x02, 0x45, 0x33, 0xc0, 0x48, 0x8b, 0xd0};
+// (unit, weapon) -> bool: a missile's crit or deadly strike, rolled by the missile fill 0x3bf9b0 (D2Common Missile.cpp)
+// and the server's 0x432f90 / 0x4333f0; a hit doubles the physical part of a missile that carries it.
+// mov [rsp+8],rbx / mov [rsp+0x10],rsi / push rdi / sub rsp,0x20
+inline constexpr uint64_t MissileCritRoll = 0x3ba820;
+inline constexpr uint8_t MissileCritRollEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x74,
+                                                   0x24, 0x10, 0x57, 0x48, 0x83, 0xec, 0x20};
+// (unit, weapon, 0, kind) -> the weapon mastery's bonus; kind 2 is the crit chance (D2RCore jumps it at its entry)
+inline constexpr uint64_t MasteryBonus = 0x33d4f0;
+
 }  // namespace d2r::rva

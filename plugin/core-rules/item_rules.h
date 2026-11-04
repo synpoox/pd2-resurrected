@@ -1,5 +1,5 @@
 // PD2 item rules: Ormus' Robes' random sorceress skill (properties func 25) and skill on cast (itemeventfunc 33 on
-// the dospellcast event), item_rules.cpp.
+// the dospellcast event), PD2's critical and deadly strike (IR3), item_rules.cpp.
 #pragma once
 
 #include <D2RLPlugin/api.h>

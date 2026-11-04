@@ -8,6 +8,8 @@
 //   rolls the stat's chance, then casts the layer's skill at the target, or at the caster's aim point. Every
 //   cast-skill item works this way, not only Ormus' Robes. PD2 raises its dospellcast event for it; where was not
 //   found, so this trigger is approximated (docs/unported.md).
+// - critical and deadly strike (IR3, docs/research/ir3-combat-stats.md): PD2's roll and multipliers in place of
+//   D2R's, in WeaponDamage's roll block (a byte patch calling WeaponStrike) and D2R's missile roll.
 #include "item_rules.h"
 
 #include "d2r.h"
@@ -15,6 +17,7 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cstring>
 #include <iterator>
 
 namespace {
@@ -191,6 +194,126 @@ auto SkillDispatch(Game* game, Unit* unit, int32_t skillId, int32_t level, int32
 	return ran;
 }
 
+// --- Critical and deadly strike (IR3, docs/research/ir3-combat-stats.md) ---
+// Merged stat ids (merge/ids-itemstatcost.tsv; PD2's 337, 141, 256, 257, 258, 210)
+constexpr uint32_t StatPassiveCrit = 337;     // passive_critical_strike
+constexpr uint32_t StatDeadlyStrike = 141;    // item_deadlystrike
+constexpr uint32_t StatCritMultiplier = 390;  // item_crit_multiplier
+constexpr uint32_t StatDsMultiplier = 391;    // item_ds_multiplier
+constexpr uint32_t StatCritChance = 392;      // item_crit_chance
+constexpr uint32_t StatMaxDeadly = 386;       // item_maxdeadlystrike
+constexpr int32_t StrikeCap = 75;
+
+std::atomic<uint32_t> g_strikeRolls {0};
+std::atomic<uint32_t> g_crits {0};
+std::atomic<uint32_t> g_deadlyStrikes {0};
+
+auto Stat(Unit* unit, uint32_t stat) noexcept -> int32_t {
+	return d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(d2r::rva::UnitStat)(unit, stat, 0);
+}
+
+struct Strike {
+	int kind = 0;  // 0 none, 1 critical strike, 2 deadly strike
+	int32_t critChance = 0, critRoll = -1, dsChance = 0, dsCap = 0, dsRoll = -1;
+};
+
+// PD2's roll (ProjectDiablo.dll 0x10304710): crit = the weapon mastery's crit + passive_critical_strike +
+// item_crit_chance, at most 75; only when it fails, deadly strike at most 75 + item_maxdeadlystrike
+auto RollStrike(Unit* unit, Unit* weapon) noexcept -> Strike {
+	using namespace d2r::rva;
+	Strike s;
+	const int32_t mastery = weapon != nullptr
+		? d2r::Engine<int32_t (*)(Unit*, Unit*, int32_t, int32_t) noexcept>(MasteryBonus)(unit, weapon, 0, 2) : 0;
+	s.critChance = mastery + Stat(unit, StatPassiveCrit) + Stat(unit, StatCritChance);
+	auto* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit);
+	if (s.critChance > 0) {
+		s.critChance = s.critChance < StrikeCap ? s.critChance : StrikeCap;
+		s.critRoll = static_cast<int32_t>(d2r::RandomBelow(seed, 100));
+		if (s.critRoll < s.critChance) {
+			s.kind = 1;
+			return s;
+		}
+	}
+	s.dsCap = StrikeCap + Stat(unit, StatMaxDeadly);
+	s.dsChance = Stat(unit, StatDeadlyStrike);
+	if (s.dsChance > 0) {
+		s.dsChance = s.dsChance < s.dsCap ? s.dsChance : s.dsCap;
+		s.dsRoll = static_cast<int32_t>(d2r::RandomBelow(seed, 100));
+		s.kind = s.dsRoll < s.dsChance ? 2 : 0;
+	}
+	return s;
+}
+
+// Every roll of a player (the game check's attacker) is logged; other units' a sample
+auto LogStrike(const char* where, Unit* unit, const Strike& s, uint32_t before, uint32_t after, int32_t multiplier) noexcept
+	-> void {
+	const uint32_t n = ++g_strikeRolls;
+	if (s.kind == 1) {
+		++g_crits;
+	} else if (s.kind == 2) {
+		++g_deadlyStrikes;
+	}
+	const int32_t type = At<int32_t>(unit, d2r::rva::UnitType);
+	if (type == 0 || n <= 20 || n % 500 == 0) {
+		plog::Info("strike: %s unit type %d kind %d, crit %d roll %d, deadly %d (cap %d) roll %d, physical %u -> %u (x%d%%), %u so far",
+		           where, type, s.kind, s.critChance, s.critRoll, s.dsChance, s.dsCap, s.dsRoll, before, after, multiplier, n);
+	}
+}
+
+// Called from WeaponDamage's patched roll block (WeaponCritBlock) in place of D2R's: PD2's roll, then the physical
+// part (damage +0x18) times 200 + item_crit_multiplier or 150 + item_ds_multiplier percent (0x103047f0), flag 0x2000.
+// a5 keeps D2R's gate on the mastery's crit (D2R adds it only when a5 is 0).
+// shortcut: PD2 adds the multiplier's per-hand item sum (0x10381720); the unit's total is used, which differs only
+// when dual wielding two multiplier weapons; upgrade if a dual-wield carrier turns up.
+auto WeaponStrike(Unit* attacker, uint8_t* damage, int32_t a5) noexcept -> void {
+	using namespace d2r::rva;
+	if (attacker == nullptr || damage == nullptr) {
+		return;
+	}
+	Unit* weapon = a5 == 0 ? d2r::Engine<Unit* (*)(Unit*) noexcept>(UnitWeapon)(attacker) : nullptr;
+	const Strike s = RollStrike(attacker, weapon);
+	const uint32_t before = At<uint32_t>(damage, 0x18);
+	int32_t multiplier = 100;
+	if (s.kind != 0) {
+		multiplier = s.kind == 1 ? 200 + Stat(attacker, StatCritMultiplier) : 150 + Stat(attacker, StatDsMultiplier);
+		const int64_t raised = static_cast<int64_t>(before) * (multiplier > 0 ? multiplier : 0) / 100;
+		*reinterpret_cast<uint32_t*>(damage + 0x18) = static_cast<uint32_t>(raised < 0x7fffffff ? raised : 0x7fffffff);
+		*reinterpret_cast<uint16_t*>(damage + 4) |= 0x2000;
+	}
+	LogStrike("weapon", attacker, s, before, At<uint32_t>(damage, 0x18), multiplier);
+}
+
+// D2R's missile roll (MissileCritRoll) with PD2's chances; the hit still doubles (D2R's; approximated, docs/research/ir3-combat-stats.md)
+auto MissileStrike(Unit* unit, Unit* weapon) noexcept -> uint64_t {
+	if (unit == nullptr) {
+		return 0;
+	}
+	const Strike s = RollStrike(unit, weapon);
+	LogStrike("missile", unit, s, 0, 0, s.kind == 0 ? 100 : 200);
+	return s.kind != 0 ? 1 : 0;
+}
+
+using MissileRollFn = uint64_t (*)(Unit*, Unit*) noexcept;
+MissileRollFn g_missileRollOriginal = nullptr;  // not called: PD2's roll replaces D2R's
+
+// WeaponCritBlock's new bytes: mov rcx,rsi / mov rdx,rdi / mov r8d,r14d / mov rax,WeaponStrike / call rax /
+// jmp WeaponCritBlockEnd / nop nop. The block's own volatile registers are set again after 0x44c3d9.
+auto WeaponCritPatch(uint8_t (&out)[28]) noexcept -> void {
+	using namespace d2r::rva;
+	static_assert(sizeof(WeaponCritBlockBytes) == 28);
+	const uint8_t head[] = {0x48, 0x8b, 0xce, 0x48, 0x8b, 0xd7, 0x45, 0x8b, 0xc6, 0x48, 0xb8};
+	std::memcpy(out, head, sizeof(head));
+	const uint64_t target = reinterpret_cast<uint64_t>(&WeaponStrike);
+	std::memcpy(out + 11, &target, 8);
+	out[19] = 0xff;
+	out[20] = 0xd0;
+	out[21] = 0xe9;
+	const int32_t rel = static_cast<int32_t>(WeaponCritBlockEnd - (WeaponCritBlock + 26));
+	std::memcpy(out + 22, &rel, 4);
+	out[26] = 0x90;
+	out[27] = 0x90;
+}
+
 }  // namespace
 
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
@@ -204,16 +327,24 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                             reinterpret_cast<uint64_t>(static_cast<PropertyFn>(PropSorcSkillRandCtc)));
 	const bool hook = context->InstallInlineHook(SrvSkillDispatch, SrvSkillDispatchEntry, sizeof(SrvSkillDispatchEntry),
 	                                             SkillDispatch, &g_dispatchOriginal);
-	std::snprintf(report, reportSize, "property func %d ormus%s; dospellcast skill on cast%s", PropertySlot,
-	              property ? "" : " FAILED (slot not empty)", hook ? "" : " FAILED (bytes differ)");
-	return (property ? 1 : 0) + (hook ? 1 : 0);
+	uint8_t critPatch[28];
+	WeaponCritPatch(critPatch);
+	const bool weaponStrike = context->PatchBytes(WeaponCritBlock, WeaponCritBlockBytes, sizeof(WeaponCritBlockBytes),
+	                                              critPatch, sizeof(critPatch));
+	const bool missileStrike = context->InstallInlineHook(MissileCritRoll, MissileCritRollEntry,
+	                                                      sizeof(MissileCritRollEntry), MissileStrike, &g_missileRollOriginal);
+	std::snprintf(report, reportSize, "property func %d ormus%s; dospellcast skill on cast%s; weapon strike%s; missile strike%s",
+	              PropertySlot, property ? "" : " FAILED (slot not empty)", hook ? "" : " FAILED (bytes differ)",
+	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)");
+	return (property ? 1 : 0) + (hook ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 2;
+	return 4;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "ormus rolls %u, spell casts %u, skill on cast rolls %u, procs %u", g_rolls.load(),
-	              g_raises.load(), g_procRolls.load(), g_procs.load());
+	std::snprintf(out, size, "ormus rolls %u, spell casts %u, skill on cast rolls %u, procs %u, strike rolls %u, crits %u, "
+	              "deadly strikes %u", g_rolls.load(), g_raises.load(), g_procRolls.load(), g_procs.load(),
+	              g_strikeRolls.load(), g_crits.load(), g_deadlyStrikes.load());
 }
