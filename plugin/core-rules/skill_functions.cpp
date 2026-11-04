@@ -1681,7 +1681,8 @@ constexpr int32_t ChargeUpSkills[] = {TigerStrike, FistsOfFire, CobraStrike, Cla
                                       RakanothStrike};
 constexpr int32_t ProgressiveSteal = 319;  // aurastat1 of Cobra Strike and RakanothStrike (the same id in PD2)
 constexpr int32_t StatLifeDrain = 60, StatManaDrain = 62;  // lifedrainmindam, manadrainmindam: D2R and PD2
-// One counter per finisher (and one for any other skill), so the log shows each finisher's first hit and prg call
+// One counter per finisher (and one for any other skill). The first 10 calls of each are logged, then sampled: the
+// W29 checks need a finisher's later hits, which build on another finisher's charges (#134).
 using FinisherCounters = std::atomic<uint32_t>[std::size(ChargeUpSkills) + 1];
 FinisherCounters g_chargeUps {};
 FinisherCounters g_chargeSpreads {};
@@ -1692,7 +1693,8 @@ std::atomic<uint32_t> g_chargeHits {0};
 
 auto FinisherSample(FinisherCounters& counters, int32_t skillId) noexcept -> bool {
 	const auto* it = std::find(std::begin(ChargeUpSkills), std::end(ChargeUpSkills), skillId);
-	return plog::Sample(counters[it - std::begin(ChargeUpSkills)]);
+	auto& counter = counters[it - std::begin(ChargeUpSkills)];
+	return plog::Sample(counter) || counter.load() <= 10;
 }
 
 auto ListStat(uint32_t dataFlag, void* list, int32_t stat) noexcept -> int32_t {
