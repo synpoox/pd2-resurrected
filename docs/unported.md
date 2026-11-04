@@ -61,7 +61,6 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Desecration: made in the cube in the Temple of the Triune, not in PD2's panel | not yet | decided in #153: D2R has no Desecration panel; UB7 keeps PD2's roll, chances, mod pool and one attempt per Lucion kill as an approximated row |  | UB7 |
 | Season trophies and "of Clout" uniques (`Dclone Trophy`, `Rathma Trophy`, `DcloneClout`, `RathmaClout`) | not yet | they reward a league, so they wait for multiplayer (#153) |  | beta run 2 |
 | The uber bosses' `.kills` counters | cut | cut by decision (#153), as the map counters were |  |  |
-| Gamble screen refresh button | cut | cut by decision (#158): a UI convenience; returns if a companion plugin gives it (IR1) |  |  |
 | Buying back a unique charm sold by mistake | cut | cut by decision (#158): a UI convenience |  |  |
 | PD2-only areas: their levels, presets, warps, objects and object groups are left out | not yet | the level pipeline (#151) imports each PD2 DS1 as it is, appends these rows after D2R's and generates an HD preset per DS1 (ADR 0005); PvP areas are cut and guild halls wait for the beta (rows below); the patterns cover every missing row of these tables, and today every row both games have pairs | `levels.*.[*]` `lvlprest.*.[*]` `lvlwarp.*.[*]` `objects.*.[*]` `objtype.*.[*]` `objgroup.*.[*]` | level pipeline |
 | PvP: PD2's PvP Map, Pvp Map 2 and BR Arena, and every PvP rule | cut | cut by decision (#151): the port has no PvP |  |  |
@@ -158,6 +157,8 @@ rows have no table hook: D2R does what it does.
 | Replenish charges | not yet | stand-in: D2R's own behaviour; the stat does nothing |  | IR5 |
 | Dye tint: the 35 cube rows that set `transform_dye` give an untinted item | approximated | tinting needs client drawing code; how D2R Reimagined tints items is researched for a later patch (#190) |  |  |
 | Ethereal items keep full durability; set items can roll ethereal | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked against the DLL) |  | IR2, IR8 |
+| Ethereal bonus: PD2's +25% defense or damage, not D2R's +50% | not yet | stand-in: D2R's ApplyEthereal (+50%), while PD2's exceptional and elite weapons are balanced for 25% (`ProjectDiablo.dll` `0x2fb710`, #189) |  | IR8 |
+| Weapons lose durability at half the rate | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked against the DLL); Item Durability's resistance would also halve armor's (#189) |  | IR8 |
 | Rare affix minimum by item level; staffmods with no upper item level | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked) |  | IR2, IR8 |
 | Flying-monster loot on walkable tiles; no drops from seal kills | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked) |  | IR8 |
 | A mercenary drops its gear when another is hired | not yet | stand-in: D2R's own behaviour; companion plugin mercenary drop on hire (#158) |  | IR2 |
