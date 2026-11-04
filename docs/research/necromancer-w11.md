@@ -52,3 +52,9 @@ clouds (resists) and is approximated on the unported list. Kanemith's blaze dot 
 is exact.
 
 Rows on shit 61: poisondaggercloud, the nine `tpot_*_nova/_cloud/_bolt` rows, kanemithblaze2dotfiremedium/small.
+
+## Checks
+
+- `tests/game/core_rules_checks.py`, tag `core-rules-w11` (Slot5, 2026-11-03): 4 passed. One level 10 stab made 11
+  poisondaggercloud missiles (row 772) with poison 261 over 50 frames (261 * 50 / 256 = 51, the tooltip's 50-53), the
+  client made 7, and the cloud hit gave a zombie poison_strike (282) for 52 frames. No crash.

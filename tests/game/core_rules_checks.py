@@ -40,7 +40,9 @@ monster), summon a Valkyrie next to monsters, and run the same command with core
 
 W11 checks (tag core-rules-w11), same merged data: a Necromancer with Poison Dagger (73), e.g. modkit save-set <save>
 level=30 --skill 73=10 --project .; then out of town stab monsters with a dagger a few times and run the same command
-with core-rules-w11.
+with core-rules-w11. D2RCore's console does it without walking: `debug_mode`, `cheat uniques 39` (Gull), pick it up,
+`cheat idall`, equip, `cheat god 1`, `cheat goto 2` (Blood Moor), `cheat mspawn zombie1,3`, then Poison Strike on the
+right button and right-click a zombie. game_ctl clicks reach the world only with the harness background flag off.
 """
 import json
 import os
