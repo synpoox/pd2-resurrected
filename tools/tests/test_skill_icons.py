@@ -21,8 +21,9 @@ def frame(colour: int) -> dc6.Frame:
     return 48, 48, 0, 0, (bytes((48,)) + bytes((colour,)) * 48 + b"\x80") * 48
 
 
-def hd_strip(colours: list[int]) -> images.Image:
-    return images.hstack([(130, 130, bytes((c, c, c, 255)) * 130 * 130) for c in colours], 132, 130)
+def strip(colours: list[int], size: int = 130) -> images.Image:
+    """An HD (130 px) or lowend (65 px) strip at D2R's stride, a frame per grey."""
+    return images.hstack([(size, size, bytes((c, c, c, 255)) * size * size) for c in colours], size + 2, size)
 
 
 class ApplyTests(unittest.TestCase):
@@ -39,18 +40,21 @@ class ApplyTests(unittest.TestCase):
     def sheets(self, d2r: list[int], hd: list[int], pd2: list[int]) -> None:
         """D2R's classic DC6 and HD strip, and PD2's DC6, for the sorceress, as palette indices per frame."""
         dc6.write(self.d2r / SPELLS / "soskillicon.dc6", [frame(c) for c in d2r])
-        images.write_sprite(self.d2r / "hd" / SPELLS / "sorceress" / "soskillicon.sprite", hd_strip(hd), 130, len(hd))
+        hd_dir = self.d2r / "hd" / SPELLS / "sorceress"
+        images.write_sprite(hd_dir / "soskillicon.sprite", strip(hd), 130, len(hd), lowend=False)
+        images.write_sprite(hd_dir / "soskillicon.lowend.sprite", strip([c - 100 for c in hd], 65), 65, len(hd),
+                            lowend=False)
         dc6.write(self.pd2 / SPELLS / "soskillicon.dc6", [frame(c) for c in pd2])
 
     def test_keeps_d2r_art_where_pd2_kept_the_frame_and_upscales_the_rest(self):
         self.sheets(d2r=[10, 20], hd=[200, 210], pd2=[10, 30, 40, 50])
         S.apply(self.rule, self.pd2, self.d2r, self.out)
-        strip, fw, frames = images.read_sprite(self.out / "hd" / SPELLS / "sorceress" / "soskillicon.sprite")
-        self.assertEqual((fw, frames, strip[0], strip[1]), (130, 4, 4 * 132, 130))
-        pixel = lambda x: strip[2][(65 * strip[0] + x) * 4]  # noqa: E731  middle row, red channel
-        self.assertEqual([pixel(k * 132 + 65) for k in range(4)], [200, 30, 40, 50])
-        low, fw, frames = images.read_sprite(self.out / "hd" / SPELLS / "sorceress" / "soskillicon.lowend.sprite")
-        self.assertEqual((fw, frames, low[0], low[1]), (65, 4, 4 * 66, 65))
+        out = self.out / "hd" / SPELLS / "sorceress"
+        for name, size, kept in [("soskillicon.sprite", 130, 200), ("soskillicon.lowend.sprite", 65, 100)]:
+            img, fw, frames = images.read_sprite(out / name)
+            self.assertEqual((fw, frames, img[0], img[1]), (size, 4, 4 * (size + 2), size))  # D2R's stride: frame + 2
+            pixel = lambda x: img[2][(size // 2 * img[0] + x) * 4]  # noqa: E731  middle row, red channel
+            self.assertEqual([pixel(k * (size + 2) + size // 2) for k in range(4)], [kept, 30, 40, 50])
         self.assertEqual((self.out / SPELLS / "soskillicon.dc6").read_bytes(),
                          (self.pd2 / SPELLS / "soskillicon.dc6").read_bytes())
 

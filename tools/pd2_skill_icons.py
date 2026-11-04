@@ -5,7 +5,7 @@ merge/skill-icons.txt lists the classes (charclass codes) whose sheet PD2 ships 
 data/global/ui/spells/<xx>skillicon.dc6). For each, the classic DC6 is PD2's file as it is, and the HD strip
 (data/hd/global/ui/spells/<class>/<xx>skillicon.sprite, with its .lowend twin) has a frame per DC6 frame: D2R's own HD
 frame where PD2's classic frame is D2R's, else PD2's frame upscaled (normal and pressed frames alike, PD2's DC6 holds
-both). Trailing vanilla frames past D2R's strip are left off (the barbarian's DC6 has 156, D2R's strip 60). A listed
+both); the .lowend twin likewise from D2R's .lowend frames, at its own stride (frame + 2, not half the HD's). Trailing vanilla frames past D2R's strip are left off (the barbarian's DC6 has 156, D2R's strip 60). A listed
 class with no PD2 sheet, or an extracted sheet whose class is not listed, fails the merge.
 """
 from __future__ import annotations
@@ -48,17 +48,20 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         if not (pd2_data / classic).is_file():
             raise SkillIconError(f"{c}: no {classic.as_posix()} in pd2-data: run tools/pd2_extract.py")
         pd2, d2r = dc6.read(pd2_data / classic), dc6.read(d2r_data / classic)
-        strip, fw, n_hd = images.read_sprite(d2r_data / sprite)
-        stride = strip[0] // n_hd
+        n_hd = images.read_sprite(d2r_data / sprite)[2]
         n = len(pd2)
         while n > n_hd and n <= len(d2r) and pd2[n - 1] == d2r[n - 1]:
             n -= 1
-        if n * stride > hd.MAX_STRIP:
-            raise SkillIconError(f"{c}: {n} frames is past D2R's {hd.MAX_STRIP} px strip")
         keep = [k < n_hd and k < len(d2r) and pd2[k] == d2r[k] for k in range(n)]
-        frames = [images.crop(strip, k * stride, 0, stride, strip[1]) if keep[k]
-                  else images.scale(dc6.decode(pd2[k], palette), fw, strip[1]) for k in range(n)]
-        images.write_sprite(out_data / sprite, images.hstack(frames, stride, strip[1]), fw, n)
+        art = [None if keep[k] else dc6.decode(pd2[k], palette) for k in range(n)]
+        for sheet in (sprite, sprite.with_name(sprite.name.replace(".sprite", ".lowend.sprite"))):
+            strip, fw, _ = images.read_sprite(d2r_data / sheet)
+            stride = strip[0] // n_hd
+            if n * stride > hd.MAX_STRIP:
+                raise SkillIconError(f"{c}: {n} frames is past D2R's {hd.MAX_STRIP} px strip")
+            frames = [images.crop(strip, k * stride, 0, stride, strip[1]) if keep[k]
+                      else images.scale(art[k], fw, strip[1]) for k in range(n)]
+            images.write_sprite(out_data / sheet, images.hstack(frames, stride, strip[1]), fw, n, lowend=False)
         (out_data / classic).parent.mkdir(parents=True, exist_ok=True)
         (out_data / classic).write_bytes((pd2_data / classic).read_bytes())
         print(f"  skill-icons: {c} {n} HD frames ({keep.count(False)} from PD2)")
