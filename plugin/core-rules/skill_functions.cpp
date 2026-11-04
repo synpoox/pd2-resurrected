@@ -1534,6 +1534,98 @@ auto SrvPrgCold(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 	return 1;
 }
 
+// --- Firestorm and the wall makers (PD2 srvdofunc 166 -> router 190, cltdofunc 119) ------------------------------
+// Read from ProjectDiablo.dll: srvdo 166 at 0x103b29d0, cltdo 119 at 0x103acb70, their maker callback 0x1036f220
+// (docs/research/druid-w22.md). calc1 makers of srvmissilea (the client reads it too), all from the caster to the
+// target, each with the maker callback; D2R's Firestorm (srvdo 117) sends its first maker without it and DiabWall's
+// (srvdo 102) skips the path one time in five.
+std::atomic<uint32_t> g_walls {0};
+std::atomic<uint32_t> g_wallClients {0};
+constexpr int32_t DiabWall = 197, Firestorm = 225, FingermageBossDiabWall = 473, UberDiabWall = 502,
+                  KanemithFirestorm = 632;  // merged ids
+
+// shortcut: PD2 seeds each maker from a counter it keeps on the caster (+0xcc, bumped per maker); D2R's callback 1
+// seeds from its argument plus a path value, so each maker gets the next value of one game-wide counter. Upgrade if
+// the walls' paths look less spread than PD2's in play.
+// shortcut: makers are capped at 64 (PD2 has no cap; no PD2 row gets near it), upgrade if a row ever needs more.
+std::atomic<int32_t> g_makerSeeds {0};
+template <typename Create>
+auto Walls(Unit* unit, const uint8_t* skill, int32_t count, int32_t skillId, int32_t level,
+           int32_t tx, int32_t ty, Create create) noexcept -> int32_t {
+	int32_t ux = 0, uy = 0;
+	if (!d2r::UnitXY(unit, &ux, &uy)) {
+		return 0;
+	}
+	d2r::MissileParams params;
+	std::memset(&params, 0, sizeof(params));
+	params.flags = 0x21;  // D2R's srvdo 102 / 117 and PD2's 166: start at x/y
+	params.owner = unit;
+	params.missile = At<int16_t>(skill, d2r::rva::SkSrvMissileA);
+	params.x = ux;
+	params.y = uy;
+	params.targetX = tx;
+	params.targetY = ty;
+	params.skill = skillId;
+	params.skillLevel = level;
+	params.callback = d2r::rva::MissileCallbackMaker;
+	int32_t created = 0;
+	for (int32_t i = 0; i < std::min(count, 64); ++i) {
+		params.callbackArg = g_makerSeeds.fetch_add(1);
+		created += create(&params) ? 1 : 0;
+	}
+	return created;
+}
+
+auto SrvDoWall(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	int32_t tx = 0, ty = 0;
+	if (!d2r::ValidMissile(dataFlag, At<int16_t>(skill, d2r::rva::SkSrvMissileA)) ||
+	    d2r::api.skillTargetXY(game, unit, &tx, &ty) == 0) {
+		return 0;
+	}
+	d2r::api.setUnitSkillFlag(unit, 1);
+	const int32_t count = d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc1, skillId, level);
+	const int32_t created = Walls(unit, skill, count, skillId, level, tx, ty, [&](d2r::MissileParams* p) {
+		return d2r::api.createMissile(game, p) != nullptr;
+	});
+	if (plog::Sample(g_walls)) {
+		plog::Info("wall: skill %d level %d: %d of %d makers (row %d), cast %u", skillId, level, created, count,
+		           At<int16_t>(skill, d2r::rva::SkSrvMissileA), g_walls.load());
+	}
+	return 1;
+}
+
+auto CltDoWall(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	if (unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::api.unitDataFlag(unit);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	int32_t tx = 0, ty = 0;
+	if (!d2r::ValidMissile(dataFlag, At<int16_t>(skill, d2r::rva::SkSrvMissileA)) ||
+	    d2r::api.clientSkillTargetXY(unit, &tx, &ty) == 0) {
+		return 0;
+	}
+	d2r::api.setUnitSkillFlag(unit, 1);
+	const int32_t count =
+		d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, d2r::rva::SkCalc1), skillId, level);
+	const int32_t created = Walls(unit, skill, count, skillId, level, tx, ty, [](d2r::MissileParams* p) {
+		return d2r::api.clientCreateMissile(p, 0) != nullptr;
+	});
+	if (plog::Sample(g_wallClients)) {
+		plog::Info("wall client: skill %d level %d: %d of %d makers, cast %u", skillId, level, created, count,
+		           g_wallClients.load());
+	}
+	return 1;
+}
+
 // srvdofunc 190 serves the PD2 do functions that have no free slot of their own, by skill id (docs/core-rules.md).
 auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	if (game == nullptr || unit == nullptr) {
@@ -1567,6 +1659,12 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	case RoyalStrike:
 	case RakanothStrike:
 		return SrvDoChargeUp(game, unit, skillId, level);
+	case Firestorm:
+	case DiabWall:
+	case UberDiabWall:
+	case FingermageBossDiabWall:
+	case KanemithFirestorm:
+		return SrvDoWall(game, unit, skillId, level);
 	default:
 		if (plog::Sample(g_routerMisses)) {
 			plog::Warn("srvdo router: no function for skill %d (%u so far)", skillId, g_routerMisses.load());
@@ -2266,6 +2364,8 @@ const SlotFunction Functions[] = {
 	{SrvDo, 185, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvPrgRing)), "charge ring"},
 	{SrvDo, 186, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvPrgFire)), "charge fire"},
 	{SrvDo, 181, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvPrgCold)), "charge cold"},
+	// Firestorm and the wall makers: srvdo 166 is D2R's, so the router (190) runs them; cltdo 119 is free
+	{CltDo, 119, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoWall)), "wall"},
 };
 
 }  // namespace

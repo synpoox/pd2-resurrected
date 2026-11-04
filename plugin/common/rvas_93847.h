@@ -54,6 +54,10 @@ inline constexpr int SrvDoTeleport = 27;
 // Charge, D2R's own: srvst 31 (0x564dc0) aims the charge path, srvdo 67 (0x5622c0) runs it and hits at the end
 inline constexpr int SrvStVanillaCharge = 31, SrvDoVanillaCharge = 67;
 inline constexpr int SrvDoInferno = 19;  // 0x554460: D2R's (vanilla) Inferno; PD2's srvdo 182 hands monsters to it
+// MissileParams::callback, run by the create (0x3bac90) from the table at 0x2381f30 as fn(missile, callbackArg).
+// 1 (0x3b75c0, D2R's Firestorm, srvdo 117 / cltdo 67): frames capped at 77, seed from the arg, a type 10 path; it is
+// PD2's maker callback 0x1036f220 but for the seed (DiabWall's 7 also skips the path 20% of the time)
+inline constexpr int MissileCallbackMaker = 1;
 // missiles.txt pSrvDoFunc: int64_t fn(Game*, Unit* missile), 54 slots, 46-53 free.
 inline constexpr uint64_t MissileSrvDoTable = 0x2390e80;
 inline constexpr int MissileSrvDoSlots = 54;
@@ -418,7 +422,10 @@ struct MissileParams {
 	int32_t range;            // 0x5c frames the missile lives (Inferno's calc1)
 	uint8_t pad60[0x68 - 0x60];
 	int32_t sourceKey;        // 0x68 UnitStateKey of the missile a chain starts from (Chain Lightning's srvhit 12)
-	uint8_t rest[0xa0 - 0x6c];
+	int32_t pad6c;
+	int32_t callback;         // 0x70 index into MissileCreateCallbacks, run on the new missile with callbackArg (0: none)
+	int32_t callbackArg;      // 0x74 (Firestorm's 1 and DiabWall's 7 take the maker's index and seed it from that)
+	uint8_t rest[0xa0 - 0x78];
 };
 static_assert(sizeof(MissileParams) == 0xa0);
 static_assert(offsetof(MissileParams, activation) == 0x54);
@@ -427,6 +434,7 @@ static_assert(offsetof(MissileParams, targetX) == 0x2c);
 static_assert(offsetof(MissileParams, skill) == 0x3c);
 static_assert(offsetof(MissileParams, sourceKey) == 0x68);
 static_assert(offsetof(MissileParams, range) == 0x5c);
+static_assert(offsetof(MissileParams, callback) == 0x70);
 
 // Argument of rva::NewStateList, laid out as Frozen Armor fills it on its stack.
 struct StateListRequest {
