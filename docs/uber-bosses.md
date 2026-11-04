@@ -51,7 +51,7 @@ Out:
 | # | Work item | Plugin | Blocked by |
 |---|---|---|---|
 | UB1 | Investigation, Ghidra on `ProjectDiablo.dll`: the fountain opening, the area rules, the tier scaling (`uberscaling`), the phase scripts, the guaranteed drops and rolls, the key drop odds (the odds-only TCs), Desecration; the wiki-only numbers checked on the PD2 install | none | #185 |
-| UB2 | Opening: uber keys used at the Blood Fountain, the uber tiers and their scaling, the area rules (buffs stripped, mercenary killed, exit blocked, tier-0 portals), the one-per-game gate shared with maps; uber keys drop again; the key drop rule | core-maps | UB1, MS2, the level pipeline for the uber areas |
+| UB2 | Opening: uber keys used at the Blood Fountain, the uber tiers and their scaling, the area rules (buffs stripped, mercenary killed, tier-0 portals), the one-per-game gate shared with maps; uber keys drop again; the key drop rule | core-maps | UB1, MS2, the level pipeline for the uber areas |
 | UB3 | Pandemonium and Uber Tristram: the keys' portal to levels 133-135, the mini-ubers, Horn, Eye and Brain, `ubtm`, level 185 and the fight, the Black Soulstone and Hellfire Torch drops | core-maps | UB2 |
 | UB4 | Diablo Clone: the phases, UberDiabSummon/Run, the adds and trapped souls, Annihilus, the 1-in-200 uniques | core-maps, core-rules (skills) | UB2 |
 | UB5 | Rathma and Mendeln: the six stages, shared life, RathmaSummon, the bone spear, the death nova, the cold missiles (srvdo 139, data), the Tainted Worldstone Shard and the other rolls | core-maps, core-rules (skills) | UB2 |

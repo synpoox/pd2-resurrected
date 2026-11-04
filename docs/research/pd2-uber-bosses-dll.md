@@ -21,8 +21,7 @@ rolls, the key drop odds and Desecration. The table side is in the inventories
 - **The opening is one function shared with the maps.** It checks the gates (Hell, level 80, Ancients, Harrogath, one
   area per game), checks the distance to the Blood Fountain and reads the tier from stat 185. Then it warps every
   eligible player at the fountain straight into the area. At tier 0 it adds three single-use portals for re-entry.
-- **Gaps** (section 9): the exit block is not in the DLL's readers of the area type or the uber levels, and Rathma's
-  scaling input after the group moves on is unchecked.
+- **No exit block:** PD2 does not block save-and-exit or death exits from the uber areas, and the DLL has no code for one.
 
 ## 1. Method
 
@@ -91,8 +90,8 @@ When a player enters an uber level (137, 161-163 from Harrogath, or 188), by the
 - **Rathma tier 0 re-entry** comes out at the current stage's spot: (0x476b, 0x35d3) after stage 1, (0x47d7, 0x3961)
   after stage 3, and (0x4e98, 0x1419) after stage 5.
 - On arrival in levels 136, 137, 161-163 or 185, the level's `Waypoint` objects are removed.
-- The **exit block** is not in this function. Tiers 1-2 open no way back, and the three tier-0 portals are the only
-  re-entry. Where save-and-exit or death is refused was not found (section 9).
+- **No exit block.** PD2 does not refuse save-and-exit or a death exit, and no reader of `game+0x1df4` or of the uber
+  level ids does. Tiers 1-2 open no way back, and the three tier-0 portals are the only re-entry.
 
 ## 4. Tier scaling (`0x10381160`, state 241 `uberscaling`)
 
@@ -155,8 +154,8 @@ controller, spawner and adds. So a boss left alone, or pulled out of every playe
 - **Life thresholds** every 10% from 90% down to 20%, with stat 446 as the event index. Mendeln alone gets 90, 70, 50 and
   30 (the healing waves), and both get 80, 60, 40 and 20. Each event casts skill slot 7 or 8.
 - **Retreat below 15%:** stage 1 -> 2 or 3 -> 4. A ghostly portal (object 585) opens at the boss, and an invisible object
-  587 marks it. While the Rathma area is active, entering level 162 or 163 sets `game+0x2628` to 2 or 4. Here the field
-  reads as the furthest area reached.
+  587 marks it. While the Rathma area is active, entering level 162 before stage 2 sets `game+0x2628` to 2, and entering
+  163 before stage 4 sets it to 4 (section 9).
 - **Death:** Rathma (`0x103767d0`) and Mendeln (`0x10376760`) each open their stage portal once, at (18387, 14667) and
   (18284, 13759).
 - **Final pair:** when the first clone dies (stage 5 -> 6), `0x10376840` makes the surviving clone cast a skill through
@@ -258,18 +257,21 @@ in the Temple, an approximated row) is new.
 
 ## 9. Open points
 
-- **Exit block:** no reader of `game+0x1df4` refuses a leave or a death. They are the opening, the area rules, the AIs,
-  the drop handlers and a state dump (`0x102fcd60`). The checks on the uber level ids (161-163, 188-189) don't refuse one
-  either. If PD2 blocks exits, it does so through something else (level data or the client). UB2 checks in game whether
-  the block exists.
-- **`game+0x2628` in Rathma:** it counts entries (and so feeds the tier scaling's *e*), but entering level 162 or 163 sets
-  it to 2 or 4. Whether Rathma's scaling input jumps when the group moves on is unchecked. UB5 checks it.
+Nothing is left to read in the DLL. What stays is the game check: these readings are from Ghidra, not from play.
+
+One reading is worth checking in game first:
+
+- **`game+0x2628` in Rathma:** the tier scaling reads its low byte as the entry count, once per monster when it spawns.
+  Portal entries into levels 161-163 add 1. On the normal path the group follows the retreat portal, so the stage is
+  already 2 or 4 and the field keeps the entry count. Only someone entering 162 before stage 2, or 163 before stage 4,
+  overwrites it with 2 or 4. That sets *e* to 1 or 3 for the monsters that spawn after, which can lower it as well as
+  raise it. UB5 checks it.
 
 ## 10. What this means for the work items
 
 | Item | Now known | Still to read |
 |---|---|---|
-| UB2 | opening and its warp (2), gates, fountain distance, tier-0 portals, area rules (3), tier scaling (4), key drop rule (7) | whether the exit block exists |
+| UB2 | opening and its warp (2), gates, fountain distance, tier-0 portals, area rules (3), tier scaling (4), key drop rule (7) | none |
 | UB3 | prime and mini-uber drop handlers, Torch and Soulstone (6), level 185 opening (2) | the primes' AI overrides (`0x10357ba0`, `0x10357d50`, `0x10357f00`) |
 | UB4 | AI `0x1035b3f0`, nova phases and counts, skeleton waves, immunity rule, Annihilus and the 1-in-200 roll | none |
 | UB5 | AI `0x10358510`, thresholds, retreat, stage portals, shard and rolls | the per-event skill choices in detail |
