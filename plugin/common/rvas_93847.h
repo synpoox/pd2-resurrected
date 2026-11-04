@@ -157,6 +157,11 @@ inline constexpr uint64_t QueuedHit = 0x44d660;
 inline constexpr uint64_t UnitSeed = 0x34a1e0;  // (unit) -> &seed {lo, hi}
 inline constexpr uint64_t UnitStat = 0x2f5020;  // (unit, stat, param) -> value
 inline constexpr uint64_t UnitCurrentSkill = 0x34ba40;  // (unit) -> the skill it is using (unit +0x100), as Charge reads it
+// What D2R's Charge hit (srvdo 67) asks before it strikes
+inline constexpr uint64_t FindUnit = 0x48fe80;     // (game, unit type, id) -> unit or null
+inline constexpr uint64_t UnitInReach = 0x348650;  // (unit, target, reach, 0) -> non-zero when in reach
+inline constexpr uint64_t UnitReach = 0x34aa90;    // (unit) -> 1 for a player, 3 for a monster
+inline constexpr uint64_t UnitDead = 0x34c2c0;     // (unit) -> non-zero when dying or dead
 inline constexpr uint64_t DataTables = 0x300a90;  // (dataFlag) -> data tables; states.txt row count at +0x298
 // Leap, the way D2R's Leap (srvdo 77 0x568690, cltdo 43 0x22f9a0) and Leap Attack (srvdo 78 0x568920) run it
 inline constexpr uint64_t GetUnitSkill = 0x33dd40;  // (unit, skillId, 0) -> the unit's skill (flags +0x14) or null

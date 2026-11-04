@@ -1355,7 +1355,8 @@ auto& ChargeParam(UnitSkill* uskill) noexcept {
 }
 
 // Start (PD2 srvstfunc 72): D2R's srvst 31, then, when it set off a charge (flags 0x1001), PD2's speed and the
-// distance to the target in the skill's param.
+// distance to the target in the skill's param. Any other start clears the param, so a charge cut short before its hit
+// leaves no distance for the next one.
 auto SrvStCharge(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	if (game == nullptr || unit == nullptr) {
@@ -1365,6 +1366,9 @@ auto SrvStCharge(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	const uint32_t dataFlag = d2r::DataFlag(game);
 	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
 	UnitSkill* uskill = CurrentSkill(unit);
+	if (uskill != nullptr) {
+		ChargeParam(uskill) = 0;
+	}
 	if (started == 0 || skill == nullptr || uskill == nullptr || (Flags(uskill) & 0x1001) != 0x1001) {
 		return started;  // refused, or in reach: D2R attacked at once, as PD2 does
 	}
@@ -1386,33 +1390,54 @@ auto SrvStCharge(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	return started;
 }
 
-// PD2 srvdofunc 180: D2R's srvdo 67, and on the hit frame (flag 1 clear) the caster first gets inc_splash_radius from
-// the charge's distance on a short temp_skill_buff list, unless it has one (Frenzy's), and the distance is spent.
-// shortcut: PD2 builds the list only when the hit goes off (target found and in reach); this builds it on the hit
-// frame before D2R's function looks, so a charge that ends without a hit gets a 3-frame list nothing reads. Upgrade once the melee
-// splash (srvdo 163) reads the list and a missed charge splashes in play.
+// Whether D2R's srvdo 67 strikes on this hit frame: its target (the skill's, else the nearest, searched as it
+// searches), in reach, with the caster alive.
+auto ChargeStrikes(Game* game, Unit* unit, UnitSkill* uskill) noexcept -> bool {
+	using namespace d2r::rva;
+	const auto* target = reinterpret_cast<const int32_t*>(uskill + USkillTargetType);
+	Unit* victim = nullptr;
+	if (target[0] != 6) {
+		victim = d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, target[0], target[1]);
+	}
+	if (victim == nullptr) {
+		using NearestFn = Unit* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t, uint32_t, int32_t*) noexcept;
+		victim = d2r::Engine<NearestFn>(NearestTarget)(game, unit, 0, 0, 3, 3, 0xffffffff, nullptr);
+	}
+	return victim != nullptr &&
+	       d2r::Engine<int32_t (*)(Unit*, Unit*, int32_t, int32_t) noexcept>(UnitInReach)(
+	           unit, victim, d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitReach)(unit), 0) != 0 &&
+	       d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) == 0;
+}
+
+// PD2 srvdofunc 180: D2R's srvdo 67, and when its hit goes off (flag 1 clear, target in reach) the caster first gets
+// inc_splash_radius from the charge's distance on a short temp_skill_buff list, unless it has one (Frenzy's), and the
+// distance is spent.
 auto SrvDoCharge(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	if (game == nullptr || unit == nullptr) {
 		return 0;
 	}
-	const uint32_t dataFlag = d2r::DataFlag(game);
-	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
-	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(dataFlag);
 	UnitSkill* uskill = CurrentSkill(unit);
-	if (skill != nullptr && uskill != nullptr && (Flags(uskill) & 1) == 0 && tables != nullptr &&
-	    At<uint64_t>(tables, TablesStateCount) > TempSkillBuff) {
-		const int32_t distance = ChargeParam(uskill);
-		const int32_t splash = ChargeSplash(distance);
-		const char* list = "kept";
-		if (d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, TempSkillBuff) == nullptr) {
-			list = TimedStatList(dataFlag, unit, skillId, level, ChargeSplashFrames, TempSkillBuff, {{IncSplashRadius, splash}});
-		}
-		ChargeParam(uskill) = 0;
-		if (plog::Sample(g_chargeHits)) {
-			plog::Info("charge: skill %d level %d hit frame: damage%% %d, distance %d, splash radius %d (list %s), hit %u",
-			           skillId, level, d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level), distance, splash, list,
-			           g_chargeHits.load());
+	if (uskill != nullptr && (Flags(uskill) & 1) == 0) {
+		const uint32_t dataFlag = d2r::DataFlag(game);
+		const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+		const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(dataFlag);
+		if (skill != nullptr && tables != nullptr && At<uint64_t>(tables, TablesStateCount) > TempSkillBuff &&
+		    ChargeStrikes(game, unit, uskill)) {
+			const int32_t distance = ChargeParam(uskill);
+			const int32_t splash = ChargeSplash(distance);
+			const char* list = "kept";
+			if (d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, TempSkillBuff) == nullptr) {
+				list = TimedStatList(dataFlag, unit, skillId, level, ChargeSplashFrames, TempSkillBuff,
+				                     {{IncSplashRadius, splash}});
+			}
+			ChargeParam(uskill) = 0;
+			if (plog::Sample(g_chargeHits)) {
+				plog::Info("charge: skill %d level %d hit frame: damage%% %d, distance %d, splash radius %d (list %s), "
+				           "hit %u",
+				           skillId, level, d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level), distance, splash,
+				           list, g_chargeHits.load());
+			}
 		}
 	}
 	return VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoVanillaCharge)(game, unit, skillId, level);

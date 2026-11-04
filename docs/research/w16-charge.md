@@ -41,17 +41,17 @@ the same speed as D2R's cltst 25.
 
 - srvst 72 calls D2R's srvst 31, then, when it set off a charge (skill flags `0x1001`), sets PD2's speed (players from
   charstats `+0x3d`, monsters from monstats Velocity, as D2R's client does) and stores the distance to the skill's
-  target point in `+0x24`.
-- srvdo 180 builds the splash list on the hit frame (unless the caster already has a `temp_skill_buff` list), spends
-  the distance, then calls D2R's srvdo 67.
+  target point in `+0x24`. Any other start clears `+0x24`, so a charge cut short leaves no distance behind.
+- srvdo 180, on the hit frame, asks what D2R's srvdo 67 asks before it strikes: its target (the skill's, `0x48fe80`,
+  else the nearest, `0x4331d0`), in reach (`0x348650` with `0x34aa90`'s reach) and the caster alive (`0x34c2c0`). When
+  the hit goes off it builds the splash list (unless the caster already has a `temp_skill_buff` list) and spends the
+  distance, then calls D2R's srvdo 67.
 - The merge points the client columns at D2R's 25 and 37 (`tools/pd2_ids.py` FUNCS).
 
 The radius widens a splash-on-hit item's splash: proc_SplashDamage's calc3 adds `inc_splash_radius / 20` (melee
 splash, srvdo 163, [w33-melee-splash](w33-melee-splash.md)), as with Frenzy's start (srvst 78).
 
-Deviation (approximated, on the unported list): the splash list is built on the hit frame before D2R's do function
-looks for the target, so a charge that ends without a hit gets a 3-frame list that nothing reads; the distance is
-measured to the skill's target point, not the path's first point; a monster's speed is its monstats Velocity.
+Deviation (approximated, on the unported list): the distance is measured to the skill's target point, not the path's first point; a monster's speed is its monstats Velocity.
 
 ## The Charge/Whirlwind rule (gate A)
 
