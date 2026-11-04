@@ -854,10 +854,6 @@ def fist_delay_hit(ctx):
     return f"level {level}: radius {radius}, {bolts} bolts"
 
 
-ge {charge}: row {missile}, PD2 {row}"
-    return f"{len(colds)} logged, row {row}"
-
-
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w29", "core-rules-w17"])

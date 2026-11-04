@@ -1267,7 +1267,10 @@ auto SharedCharges(uint32_t dataFlag, Unit* unit, bool clear) noexcept -> int32_
 			continue;
 		}
 		if (clear) {
-			d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, states[i], 1);
+			// as RemoveSkillState does per state: progressive states have no group, so it would remove nothing
+			d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, states[i], 0);
+			d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
+			d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
 			continue;
 		}
 		const uint8_t* maker = d2r::api.getSkillRecord(dataFlag, ListStat(dataFlag, list, StatListSkill));
