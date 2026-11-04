@@ -60,6 +60,9 @@ W21 checks (tag core-rules-w21), same merged data: a Druid with Arctic Blast (23
 e.g. modkit save-set <save> level=30 --skill 230=10 --project .; then out of town: hold the skill on the ground for
 a second, and run the same command with core-rules-w21. For the take-over checks, press another skill while
 holding it; for blade-fury-refused, an Assassin with Blade Fury (266): hold it.
+W22 checks (tag core-rules-w22), same merged data: a Druid with Firestorm (225, class skill slot 4) and no +skills
+(the log gives the skill level, PD2's calc reads the base level), e.g. modkit save-set <save> level=30 --skill 4=10
+--project .; then out of town cast Firestorm a few times and run the same command with core-rules-w22.
 """
 import json
 import os
@@ -83,6 +86,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("cltdofunc", 122, "poison dagger"), ("pSrvHitFunc", 61, "state hit"),
     ("cltdofunc", 121, "desecrate"),
     ("srvdofunc", 182, "channel"), ("cltdofunc", 111, "channel"),
+    ("cltdofunc", 119, "wall"),
     ("mode gate", "busy", "take-over"),  # an inline hook, not a slot
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
@@ -108,7 +112,8 @@ def _log(ctx) -> str:
 
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                 "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w33", "core-rules-w21", "game"])
+                                 "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w33", "core-rules-w21",
+                                 "core-rules-w22", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -423,6 +428,41 @@ def blade_fury_refused(ctx):
 GOLEM_MASTERY_LEVEL = 10  # the W14 save's base level (setup above)
 
 
+FIRESTORM = 225  # merged skill id (PD2's too)
+
+
+def _wall_makers(skill: int, level: int) -> int:
+    """PD2's calc1 for Firestorm: par1 + blvl / 5, par1 3 (the check's character has no +skills, so blvl = level)."""
+    return 3 + level // 5
+
+
+@check("wall-cast", tags=["core-rules-w22"])
+def wall_cast(ctx):
+    """Firestorm (srvdofunc 166, router 190) sends PD2's calc1 makers, all created."""
+    casts = [tuple(int(v) for v in c) for c in re.findall(
+        r"wall: skill (\d+) level (\d+): (\d+) of (-?\d+) makers", _log(ctx)) if int(c[0]) == FIRESTORM]
+    if not casts:
+        ctx.skip("no Firestorm cast in the log yet (cast it out of town, then run again)")
+    skill, level, created, count = casts[0]
+    want = _wall_makers(skill, level)
+    assert count == want, f"Firestorm level {level}: {count} makers, PD2's calc1 gives {want}"
+    assert created == count, f"only {created} of {count} makers created"
+    return f"Firestorm level {level}: {created} makers"
+
+
+@check("wall-client", tags=["core-rules-w22"])
+def wall_client(ctx):
+    """The client half (cltdofunc 119) draws the same makers."""
+    casts = [tuple(int(v) for v in c) for c in re.findall(
+        r"wall client: skill (\d+) level (\d+): (\d+) of (-?\d+) makers", _log(ctx)) if int(c[0]) == FIRESTORM]
+    if not casts:
+        ctx.skip("no client Firestorm cast in the log yet (cast it out of town, then run again)")
+    skill, level, created, count = casts[0]
+    assert count == _wall_makers(skill, level), f"Firestorm level {level}: {count} makers on the client"
+    assert created == count, f"the client drew {created} of {count} makers"
+    return f"Firestorm level {level}: client drew {created} makers"
+
+
 @check("golem-count", tags=["core-rules-w14"])
 def golem_count(ctx):
     """Golems follow PD2's count rule as data: petmax 1 + Golem Mastery blvl / 5 (+ extra_golem) caps Clay, Blood and Fire
@@ -662,7 +702,7 @@ def teleport_blocked_areas(ctx):
 
 
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                    "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w21"])
+                                    "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w21", "core-rules-w22"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

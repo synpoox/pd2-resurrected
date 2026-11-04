@@ -147,6 +147,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["proc_SplashDamage", "190"])  # D2R fills 163
 
+    def test_firestorm_and_wall_makers_join_the_router(self):
+        d2r = table("skill|srvdofunc|cltdofunc\nAttack|1|1\n")
+        pd2 = table("skill|srvdofunc|cltdofunc\nAttack|1|1\nFirestorm|166|119\nDiabWall|166|58\n")
+        lines = [("Attack", 0, "Attack"), ("Firestorm", 1, "Firestorm"), ("DiabWall", 2, "DiabWall")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Firestorm", "190", "119"], ["DiabWall", "190", "58"]])  # D2R fills 166
+
     def test_missile_do_functions_become_the_missile_column(self):
         cols = "skill|srvdofunc|srvmissile|srvmissilea|cltdofunc|cltmissile|cltmissilea"
         d2r = table(f"{cols}\nAttack|1||||||\n")
