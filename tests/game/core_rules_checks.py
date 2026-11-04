@@ -128,6 +128,13 @@ Frenzy into the pack before any other splash, then run the same command with cor
 P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
 drops Ormus' Robes; `cheat idall`, wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); cast spells at
 the pack until a proc logs (12% a cast, 8% for a skill with a cooldown), and run the same command with core-rules-p12.
+
+IR4 checks (tag core-rules-ir4), same merged data, Hell, level 90+:
+- max-curses: a Necromancer with two curses (Amplify Damage 66, Weaken 72) and Darkforge Spawn (`cheat uniques 331`,
+  +1 max curses; Curse Mastery does the same). `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,4`, then curse the
+  pack with one curse and then the other, and run the same command with core-rules-ir4.
+- curse-resistance: any character wearing Wraithskin (`cheat uniques 478`, 30-40 curse resistance); let a cursing
+  monster curse you (Act 4 Oblivion Knights, `cheat mspawn` of one), then run again.
 """
 import json
 import os
@@ -1677,10 +1684,55 @@ def ormus_skill_on_cast(ctx):
     return f"{len(procs)} proc(s), e.g. {rows[procs[0][2]]['skill']} level {procs[0][3]} at the {procs[0][4]}"
 
 
-@check("items-installed", tags=["core-rules-p12"])
+@check("items-installed", tags=["core-rules-p12", "core-rules-ir4"])
 def items_installed(ctx):
-    """core-rules installs its two item rules: property func 26 and the skill on cast trigger."""
+    """core-rules installs its three item rules: property func 26, the skill on cast trigger and the curse hook."""
     line = re.search(rf"{PLUGIN}: items [^\n]*", _log(ctx))
     assert line, "no items part line in the plugin log"
-    assert "items 2/2 installed" in line.group(0), line.group(0)
+    assert "items 3/3 installed" in line.group(0), line.group(0)
     return line.group(0)[len(PLUGIN) + 2:]
+
+
+CURSE = re.compile(r"curse: state (\d+), (\d+) curse\(s\) on the target, (\d+) slot\(s\) \(caster (\d+)\), "
+                   r"(same state|replaces the oldest|added)")
+CURSE_RESISTANCE = re.compile(r"curse resistance (-?\d+) \(used (-?\d+)\) on (player|monster): aurastat(\d) stat (\d+) "
+                              r"(-?\d+) -> (-?\d+)")
+
+
+def curse_resisted(value: int, resistance: int) -> int:
+    """PD2's 0x1037c4c0 as its curse code calls it: value * (100 - resistance) / 100, truncated toward zero."""
+    return int(value * (100 - resistance) / 100)
+
+
+@check("max-curses", tags=["core-rules-ir4"])
+def max_curses(ctx):
+    """A curse joins the target's curses while it holds fewer than max_curses + 1 (or the most slots a curse on it
+    was cast with); a full target loses its oldest curse; the same curse refreshes (PD2's 0x1036d7d0)."""
+    rows = [(int(st), int(n), int(slots), int(own), what) for st, n, slots, own, what in CURSE.findall(_log(ctx))]
+    if not rows:
+        ctx.skip("no curse in the log yet (curse a monster, run again)")
+    for state, count, slots, own, what in rows:
+        assert slots >= own, f"state {state}: {slots} slots below the caster's {own}"
+        if what == "added":
+            assert count < slots, f"state {state} added to {count} curses with {slots} slots"
+        elif what == "replaces the oldest":
+            assert count >= slots, f"state {state} replaced a curse with {count} of {slots} slots used"
+    extra = [r for r in rows if r[4] == "added" and r[1] >= 1]
+    if not extra:
+        ctx.skip("no target held a second curse yet (+1 max curses, two curses on one monster, run again)")
+    return f"{len(rows)} curse(s); state {extra[0][0]} joined {extra[0][1]} curse(s) with {extra[0][2]} slots"
+
+
+@check("curse-resistance", tags=["core-rules-ir4"])
+def curse_resistance(ctx):
+    """curse_effectiveness on the cursed unit scales each curse stat by (100 - resistance) / 100, at most 75 except
+    aurastat1 on a monster (PD2's 0x1036d7d0 and 0x102fad50)."""
+    rows = CURSE_RESISTANCE.findall(_log(ctx))
+    if not rows:
+        ctx.skip("no resisted curse in the log yet (wear Wraithskin, get cursed, run again)")
+    for resistance, used, who, slot, stat, base, resisted in rows:
+        resistance, used, base, resisted = int(resistance), int(used), int(base), int(resisted)
+        want_used = resistance if who == "monster" and slot == "1" else min(resistance, 75)
+        assert used == want_used, f"stat {stat} on a {who}: used {used} of {resistance}, PD2: {want_used}"
+        assert resisted == curse_resisted(base, used), f"stat {stat}: {base} -> {resisted}, PD2: {curse_resisted(base, used)}"
+    return f"{len(rows)} stat(s), e.g. stat {rows[0][4]} {rows[0][5]} -> {rows[0][6]} at {rows[0][1]}"

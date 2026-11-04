@@ -537,6 +537,7 @@ inline constexpr int SkSendStateB = 0xac;
 
 namespace d2r {
 
+struct Game;
 struct Unit;
 
 // Missile creation parameters for rva::CreateMissile. 1.10's 0x5c-byte block, shifted by 0x10 after the three pointers.
@@ -678,4 +679,42 @@ inline constexpr int IscRecordSize = 0x144, IscItemEvent1 = 0x44;
 // The stat-layer split item events use for skill/level layers: layer >> shift is the skill, layer & mask the level
 inline constexpr int TablesSkillLayerShift = 0x14d0, TablesSkillLayerMask = 0x14d4;
 
+// --- Item rules: curse resistance and max curses (docs/research/ir4-curses.md) ------------------------------------
+// D2Game\src\Skills\SkillNec.cpp: puts one curse on one unit, (target, &CurseParams) -> 1 applied. Every curse
+// skill's srvdo reaches it once per target. It calls NewStateList (whose own entry D2RCore hooks), which removes the
+// unit's first list flagged ListFlagCurse unless it is this state's, then sets aurastat2-6 on the list.
+// mov [rsp+8],rbx / mov [rsp+0x18],rbp / mov [rsp+0x20],rsi / push rdi
+inline constexpr uint64_t ApplyCurse = 0x55a7e0;
+inline constexpr uint8_t ApplyCurseEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c,
+                                              0x24, 0x18, 0x48, 0x89, 0x74, 0x24, 0x20, 0x57};
+// (game, target, stat, value) -> value: what ApplyCurse sets for each aurastat (a fifth of a resist cut on an immune)
+inline constexpr uint64_t CurseStatValue = 0x55bfb0;
+inline constexpr uint64_t StateIsCurse = 0x335a40;  // (dataFlag, state) -> non-zero for a states.txt curse
+// unit +0x88: its stat list owner (+0x1c < 0 marks one); +0x90 its first chain of lists, the one NewStateList searches
+inline constexpr int UnitListOwner = 0x88, ListOwnerMark = 0x1c, ListOwnerFirst = 0x90;
+inline constexpr int ListFlags = 0x1c, ListNext = 0x68;  // uint32 flags, next list in the chain
+inline constexpr uint32_t ListFlagTimed = 0x2, ListFlagCurse = 0x20;
+
 }  // namespace d2r::rva
+
+namespace d2r {
+
+// Argument of rva::ApplyCurse, as the curse srvdo (0x5598f0) fills it: aurastat1 travels in the NewStateList
+// request, aurastat2-6 are set on the list after it.
+struct CurseParams {
+	Game* game;           // 0x00
+	Unit* caster;         // 0x08
+	int32_t unread10[2];  // 0x10 not read here
+	int32_t skill;        // 0x18
+	int32_t level;        // 0x1c
+	int32_t key;          // 0x20
+	int32_t frames;       // 0x24
+	int32_t stats[6];     // 0x28 aurastat1-6, -1 for none
+	int32_t values[6];    // 0x40 their calcs, already worked out
+	int32_t state;        // 0x58 aurastate
+};
+static_assert(offsetof(CurseParams, stats) == 0x28);
+static_assert(offsetof(CurseParams, values) == 0x40);
+static_assert(offsetof(CurseParams, state) == 0x58);
+
+}  // namespace d2r
