@@ -23,7 +23,10 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
   - A base item: `cheat spawn <item code>,inv 0` (e.g. `cheat spawn wnd,inv 0`) puts it in the inventory. Without `inv 0`, or with no room, it drops on the ground ("I am overburdened"). `typ=<letter>` sets the quality, but the letters don't match their names (`typ=n` rolled magic, `typ=u` rare), so read the tooltip.
   - A unique: `cheat uniques <row>`, where the row is zero-based in the merged `uniqueitems.txt` (`out/data/global/excel/`): Gull 39, Pelta Lunata 94, Goblin Toe 110. It drops on the ground.
   - `cheat idall` identifies every item you carry.
-- Spawned items have normal durability: a fresh Goblin Toe came at 17 of 18 and kept it through `cheat idall` and 55 attacks. A 0-durability item has its stats switched off, so hover the item before a test and spawn a fresh one if the tooltip says `Durability: 0`.
+- Spawned items have normal durability: a fresh Goblin Toe came at 17 of 18 and kept it through `cheat idall` and 55 attacks. But every item reads `Durability: 0` after the game is saved and loaded again, and a 0-durability item has its stats switched off. So spawn fresh items after each load, and hover them before a test.
+- An unidentified item can't be equipped ("I can't use this yet"): run `cheat idall` first.
+- A red cell behind every item in the inventory means the cursor holds an item, and tooltips don't show until you put it down.
+- Escape twice saves and exits to the character screen.
 - `cheat gold <n>` does not add gold.
 - To pick up a ground item, hold Alt so the item labels show, then click the label.
 - Always test in Hell difficulty, where monsters have enough HP to survive long enough to show what a skill does.

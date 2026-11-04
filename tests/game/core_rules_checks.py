@@ -160,7 +160,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 178, "dragon flight"), ("pSrvDmgFunc", 22, "chain falloff"),
     ("pSrvHitFunc", 69, "blade fragment"), ("pCltHitFunc", 68, "blade fragment"), ("pSrvDmgFunc", 19, "blade fragment"),
     ("srvstfunc", 73, "holy sword"), ("srvstfunc", 75, "smite"),
-    ("auraeventfunc", 16, "smite crushing blow"),  # D2R's crushing blow, wrapped
+    ("srvdofunc", 150, "smite crushing blow"),  # D2R's Smite do, wrapped, and an inline hook on its hit queue
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -1131,8 +1131,8 @@ def smite_start(ctx):
 
 @check("smite-event", tags=["core-rules-w19"])
 def smite_event(ctx):
-    """Smite's aura event (domeleedamage 5 -> 16) fires on the Paladin who smites: one roll a hit, chance = the
-    crushingblow stat + calc3 (5 + blvl, at least 6)."""
+    """Smite's crushing blow rolls on the Paladin's landed hits (srvdo 150 + the hit queue, #165): one roll a hit,
+    chance = the crushingblow stat + calc3 (5 + blvl, at least 6)."""
     events = _logged(ctx, r"smite event: event (\d+) skill (\d+) level \d+ on unit type (\d+), frame (\d+): chance (\d+) "
                      r"\(crushingblow (\d+) \+ calc3 (\d+)\), roll (\d+), blow (-?\d+)", "Smite event")
     for event, skill, kind, _, chance, stat, calc3, roll, _ in events:
