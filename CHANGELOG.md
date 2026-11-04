@@ -5,19 +5,30 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Gust works as in Project Diablo II: it teleports you, then chills and staggers the monsters around where you land.
+- Hunger works as in Project Diablo II: a werebear eats a corpse for a while of life steal, speed, open wounds and
+  deep wounds.
 - Fire Claws works as in Project Diablo II: each claw sends a trail of fire waves (more with the skill's level).
 - Summoning a Spirit Wolf or Fenris at the limit replaces the oldest one, as in Project Diablo II.
 - Firestorm works as in Project Diablo II: every one of its fire trails wanders (D2R sends the first one straight).
+- Static Field works as in Project Diablo II: it takes a share of current life down to Project Diablo II's floor,
+  ignores some map and Rathma monsters, and lowers lightning resistance for a while (half as much on a monster
+  immune to lightning). Combustion and the boss novas that share it throw Project Diablo II's ring of missiles.
 - Charge works as in Project Diablo II: it runs at Project Diablo II's speed, and the longer the charge, the wider
   its hit splashes with a splash-on-hit item.
 - The Assassin's charge-up skills build charges as in Project Diablo II: charges are shared between them, and each
   charge's effect (Fists of Fire's fire, Cobra Strike's poison, Blades of Ice's wave) fires on the hit that builds
-  it. What your client draws for each charge is still D2R's.
+  it, and your client draws each charge as Project Diablo II's does (Fists of Fire's fire and nova, Cobra Strike's
+  poison bolts and cloud, Claws of Thunder's falling storm bolts).
 - Teleport works as in Project Diablo II: for a second after each teleport your elemental masteries are
   lowered, by less as the skill levels up.
 - Holy Light works as in Project Diablo II: it heals allies and deals magic damage to enemies around its target,
   half as much to the side the target is not on, and knocks back undead. Fist of the Heavens' holy bolts reach
   every unit around the strike, the target included.
+- Vengeance works as in Project Diablo II: a hit bursts fire, cold and lightning from your own elemental damage
+  (Holy auras and Enchant aside) on the enemies around the target, and the burst chains on from enemy to enemy.
+- Joust works as in Project Diablo II: you teleport to the target and strike it with extra damage and critical strike
+  chance, then run faster for two seconds.
 - Melee splash works as in Project Diablo II: items that splash on hit, Frenzy and Tiger Strike's splash radius,
   and revived monsters' hits damage the monsters around the one struck.
 - Poison Dagger works as in Project Diablo II: each stab leaves a ring of poison clouds around the target.

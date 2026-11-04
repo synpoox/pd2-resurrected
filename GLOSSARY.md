@@ -68,12 +68,16 @@ A D2RLoader plugin built outside this repo and bundled with the port that stands
 _Avoid_: dependency, add-on, external mod
 
 **Milestone**:
-A playable point in the roadmap made of the work items it needs; the port has M1 (a new character in Act 1), M2 (companions, corruption, Amazon and Barbarian complete) and the alpha (every PD2 class complete).
+A playable point in the roadmap made of the work items it needs; the port has M1 (a new character in Act 1), M2 (companions, corruption, Amazon and Barbarian complete), the pre-alpha (every PD2 class complete) and the alpha (PD2 complete for single-player).
 _Avoid_: phase, release
 
 **Corruption**:
 PD2's one-time cube action that changes an item, for better or worse, and marks it so it cannot be done again.
 _Avoid_: corruption roll, corrupt recipe
+
+**Desecration**:
+PD2's second Corruption, for amulets only and unlocked by killing Lucion. It adds one more modifier on success, and on failure turns the amulet into a rare.
+_Avoid_: desecrated zone, Desecrate (the Necromancer skill)
 
 **Terror Zone**:
 D2R's rotating zone that grows harder and gives better rewards; it stands in for PD2's corrupted zones.

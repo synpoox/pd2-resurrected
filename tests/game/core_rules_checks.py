@@ -82,6 +82,20 @@ the Paladin's 32nd skill, past the 30 class skills a save holds, so set both in 
 Light,10`, `cheat sklvl Fist of the Heavens,10`, `cheat goto 2`, `cheat mspawn zombie1,6`; then Holy Light on a
 zombie next to others, Fist of the Heavens on the pack (not on a dropped item: the click picks it up), and run the
 same command with core-rules-w17.
+W23 checks (tag core-rules-w23), same merged data: a Druid with Gust (442), Werebear (228) and Hunger (242), no
++skills; save-set takes class skill slots (Werebear 7, Hunger 21, Gust 30), e.g. modkit save-set <save> --skill
+30=5 --skill 7=1 --skill 21=5 --project .; then out of town cast Gust, and in bear form kill a monster and eat its
+corpse with Hunger; run the same command with core-rules-w23.
+W27 checks (tag core-rules-w27), same merged data: a Sorceress with Static Field (42), Combustion (448) and Inferno
+(41) and no Lightning Mastery; save-set takes class skill slots (Inferno 5, Static Field 6, Combustion 31), e.g.
+modkit save-set <save> level=30 --skill 6=10 --skill 31=10 --skill 5=10 --project .; then out of town cast Static
+Field next to monsters, cast Combustion, hold Inferno for a second, and run the same command with core-rules-w27.
+W18 checks (tag core-rules-w18), same merged data: a level 90+ Paladin in Hell with Vengeance and Joust set in game
+(`debug_mode`, `cheat sklvl Vengeance,20`, `cheat sklvl Joust,10`, `cheat goto 2`, `cheat mspawn zombie1,8`); hit the
+pack with Vengeance until a link logs, Joust a zombie a few yards off, and run the same command with core-rules-w18.
+W30 checks (tag core-rules-w30), same merged data and save as W29: out of town hit monsters three times in a row with
+each of Fists of Fire, Cobra Strike, Claws of Thunder and Blades of Ice, releasing between them with Dragon Talon, and
+run the same command with core-rules-w30. Each charge's client missiles log on the client.
 """
 import json
 import os
@@ -111,9 +125,11 @@ SKILL_SLOTS = [  # table slots it installs
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
     ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
-    ("srvdofunc", 176, "holy light"), ("pCltHitFunc", 66, "holy light"), ("pCltHitFunc", 71, "fist delay"),
+    ("srvdofunc", 176, "holy light"), ("srvdofunc", 174, "vengeance"), ("pCltHitFunc", 66, "holy light"), ("pCltHitFunc", 71, "fist delay"),
     ("srvdofunc", 184, "charge spread"), ("srvdofunc", 185, "charge ring"), ("srvdofunc", 186, "charge fire"),
-    ("srvdofunc", 181, "charge cold"),
+    ("srvdofunc", 181, "charge cold"), ("cltdofunc", 120, "nova"),
+    ("cltdofunc", 127, "charge spread"), ("cltdofunc", 128, "charge ring"), ("pCltDoFunc", 79, "charge explode"),
+    ("pCltHitFunc", 67, "charge bolt"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -122,6 +138,11 @@ ATTACKRATE = 68  # itemstatcost row of attackrate in D2R and PD2
 HPREGEN = 74  # itemstatcost row of hpregen in D2R and PD2
 CHARGE = 107
 TELEPORT_DEBUFF = 233  # merged states id of teleportdebuff
+COMBUSTION, STATIC_FIELD = 448, 42  # merged skill ids
+STATICFIELD_DEBUFF, LIGHTRESIST = 240, 41  # merged states id, itemstatcost id
+STATIC_FIELD_MIN = (55, 70, 85)  # PD2's difficultylevels StaticFieldMin: normal, nightmare, hell
+HUNGER = 246  # merged states id of hunger
+LIFE_DRAIN, VELOCITY = 60, 67  # itemstatcost lifedrainmindam, velocitypercent in D2R and PD2
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -138,7 +159,8 @@ def _log(ctx) -> str:
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                  "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33",
                                  "core-rules-w21", "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17",
-                                 "game"])
+                                 "core-rules-w23", "core-rules-w27", "core-rules-w30",
+                                 "core-rules-w18", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -386,7 +408,7 @@ def _channel_values(skill: int, level: int) -> tuple[int, int]:
     return 2, max(min((24 + (level - 1) * 2) // 2, 24), 1)
 
 
-@check("channel-cast", tags=["core-rules-w21"])
+@check("channel-cast", tags=["core-rules-w21", "core-rules-w27"])
 def channel_cast(ctx):
     """Inferno / Arctic Blast (srvdofunc 182) send PD2's calc3 missiles with range calc1."""
     casts = re.findall(r"channel: skill (\d+) level (\d+): (\d+) of (\d+) missiles \(row \d+\), range (\d+)", _log(ctx))
@@ -400,7 +422,7 @@ def channel_cast(ctx):
     return f"skill {skill} level {level}: {created} missiles, range {rng}"
 
 
-@check("channel-client", tags=["core-rules-w21"])
+@check("channel-client", tags=["core-rules-w21", "core-rules-w27"])
 def channel_client(ctx):
     """The client half (cltdofunc 111) ran with the same count and range; it draws each flame with chance 2 / count."""
     casts = re.findall(r"channel client: skill (\d+) level (\d+): (\d+) of (\d+) flames drawn, range (\d+)", _log(ctx))
@@ -785,6 +807,45 @@ def teleport_cast(ctx):
     return f"level {level}, reduction {reduction}, {frames} frames, list {lst}: {', '.join(seen)}"
 
 
+@check("gust-cast", tags=["core-rules-w23"])
+def gust_cast(ctx):
+    """A Gust (router srvdofunc 190) teleported and hit the units within calc3 par3 = 4 with cold length calc1 ln12 =
+    12 (Param2 0 per level), the row's HitFlags 1, ResultFlags 5 and HitClass 2. Its srvmissilea (gust) is thrown only
+    with a throwing weapon in hand: PD2's create call (1.13c 0xa28f0 with its last argument 1) checks the weapon's
+    quantity (0xa1790), and so does D2R's ThrowSkillMissile, so either outcome is PD2's."""
+    casts = re.findall(r"gust: skill 442 level (\d+): missile (-?\d+) (thrown|not thrown), radius (-?\d+) \(calc3\), "
+                       r"cold length (-?\d+) \(calc1\), hit flags (\d+), result flags (\d+), hit class (-?\d+)",
+                       _log(ctx))
+    if not casts:
+        ctx.skip("no Gust in the log yet (cast it out of town, then run again)")
+    level, missile, thrown, *values = casts[-1]
+    radius, chill, hit_flags, result_flags, hit_class = (int(v) for v in values)
+    assert (radius, chill) == (4, 12), f"radius {radius}, cold length {chill}; PD2: 4, 12"
+    flags = (hit_flags, result_flags, hit_class)
+    assert flags == (1, 5, 2), f"hit flags, result flags, hit class {flags}; PD2: (1, 5, 2)"
+    return f"level {level}: missile {missile} {thrown}, radius {radius}, cold length {chill}"
+
+
+@check("hunger-hit", tags=["core-rules-w23"])
+def hunger_hit(ctx):
+    """A Hunger (router srvdofunc 190) ate its corpse and gave the hunger state for auralencalc 475 + lvl * 25 frames
+    with lifedrainmindam par3 + blvl / 4 = 3 + lvl / 4 and velocitypercent par4 + lvl = 19 + lvl (no +skills, so blvl =
+    lvl); item_openwounds (dm12 + 5) and deep_wounds (edmx) are logged."""
+    casts = re.findall(r"hunger: skill 242 level (\d+): corpse eaten, state (-?\d+) for (-?\d+) frames \(list (\w+)\), "
+                       r"stats (-?\d+)=(-?\d+) (-?\d+)=(-?\d+) (-?\d+)=(-?\d+) (-?\d+)=(-?\d+)", _log(ctx))
+    if not casts:
+        ctx.skip("no Hunger in the log yet (bear form, eat a corpse out of town, then run again)")
+    level, state, frames, lst, *stats = casts[-1]
+    level, state, frames = int(level), int(state), int(frames)
+    pairs = dict(zip((int(s) for s in stats[0::2]), (int(v) for v in stats[1::2])))
+    assert lst != "refused", f"level {level}: the hunger list was refused"
+    want = 475 + level * 25
+    assert (state, frames) == (HUNGER, want), f"state {state} for {frames} frames; PD2: {HUNGER} for {want}"
+    assert pairs.get(LIFE_DRAIN) == 3 + level // 4, f"lifedrainmindam {pairs.get(LIFE_DRAIN)}; PD2: {3 + level // 4}"
+    assert pairs.get(VELOCITY) == 19 + level, f"velocitypercent {pairs.get(VELOCITY)}; PD2: {19 + level}"
+    return f"level {level}: {frames} frames, list {lst}, stats {pairs}"
+
+
 @check("teleport-blocked-areas", tags=["core-rules-w26"])
 def teleport_blocked_areas(ctx):
     """Teleport is refused where PD2 refuses it: the merged levels.txt Teleport column (0 refuses, 2 checks collision
@@ -956,9 +1017,127 @@ def fist_delay_hit(ctx):
     return f"level {level}: radius {radius}, {bolts} bolts"
 
 
+@check("vengeance-hit", tags=["core-rules-w18"])
+def vengeance_hit(ctx):
+    """Vengeance (srvdofunc 174) hits in melee and, on a hit, bursts fire, cold and lightning raised by calc1-3 (ln12 =
+    5 + 2 per level, plus synergies and masteries), with chain % calc4 = min(22 + 2 per level, 95), every Param5 4 frames
+    within Param6 24 of the caster, cold length ELen 80."""
+    hits = _logged(ctx, r"vengeance: skill \d+ level (\d+) melee hit: fire% (\d+) cold% (\d+) light% (\d+), base (\d+), "
+                   r"fire (\d+) cold (\d+) light (\d+), cold length (\d+), chain (\d+)% every (\d+) frames within (\d+)",
+                   "Vengeance hit")
+    for level, *pcts, base, fire, cold, light, length, chance, delay, reach in hits:
+        assert all(p >= 5 + 2 * (level - 1) for p in pcts), f"level {level}: percentages {pcts} below ln12"
+        assert min(fire, cold, light) >= base, f"each element adds the skill's roll {base}: {fire} {cold} {light}"
+        assert (chance, delay, reach, length) == (min(22 + 2 * (level - 1), 95), 4, 24, 80), hits[0]
+    level, pcts, (fire, cold, light), chance = hits[-1][0], hits[-1][1:4], hits[-1][5:8], hits[-1][9]
+    return f"level {level}: {pcts}%, fire {fire} cold {cold} light {light}, chain {chance}% ({len(hits)} hits)"
+
+
+@check("vengeance-link", tags=["core-rules-w18"])
+def vengeance_link(ctx):
+    """A Vengeance link (the justhit marker's expiry) bursts again around the linked unit, cold length 80 less 15 per
+    link."""
+    links = _logged(ctx, r"vengeance link: skill \d+ level (\d+) link (\d+): .*?cold length (-?\d+)", "Vengeance link")
+    for _, link, length in links:
+        assert link >= 1 and length == max(80 - 15 * link, 0), f"link {link}: cold length {length}"
+    return f"{len(links)} links, deepest {max(l for _, l, _ in links)}"
+
+
+@check("joust-cast", tags=["core-rules-w18"])
+def joust_cast(ctx):
+    """Joust (srvdofunc 190, PD2 162) hits with damage% calc1 = 40 + 8 per level and passive_critical_strike raised by
+    calc2 = 10 + 2 per level, at most 100, then joust_buff for 50 frames with velocitypercent min(3 + 2 lvl, 65)."""
+    casts = _logged(ctx, r"joust: skill \d+ level (\d+): damage% (\d+), critical strike (\d+) -> (\d+), state (\d+) for "
+                    r"(\d+) frames with stat (\d+) = (\d+)", "Joust cast")
+    for level, ed, crit, raised, state, frames, stat, value in casts:
+        assert ed == 40 + 8 * (level - 1), f"level {level}: damage% {ed}"
+        assert raised == min(crit + 10 + 2 * (level - 1), 100), f"level {level}: critical strike {crit} -> {raised}"
+        assert _rows("states")[state] == "joust_buff" and frames == 50, f"state {state} for {frames} frames"
+        assert stat == 67 and value == min(3 + 2 * level, 65), f"stat {stat} = {value}"
+    level, ed, crit, raised, *_ = casts[-1]
+    return f"level {level}: damage% {ed}, critical strike {crit} -> {raised} ({len(casts)} casts)"
+
+
+# merged skill -> charge -> (cltprgfunc slot, PD2's cltcalc, PD2's cltmissilea/b/c), from PD2's skills.txt
+FINISHER_CLIENT = {
+    259: {2: (128, 64, "fistsoffirenova"), 3: (127, 1, "fistsoffireorbdelay")},  # Fists of Fire: PD2 107, 106
+    265: {1: (127, 7, "cobrastrikepoisonbolt"), 3: (128, 64, "cobrastrikepoisoncloud")},  # Cobra Strike: 106, 107
+    630: {1: (127, 8, "bladefragment1")},  # RakanothStrike: 106 (par5)
+}
+
+
+@check("charge-client-spread", tags=["core-rules-w30"])
+def charge_client_spread(ctx):
+    """cltprgfunc 127 (PD2 106) draws cltcalc[charge] of the charge's client missile along the spread: Cobra Strike 7
+    poison bolts at charge 1, Fists of Fire 1 orb at charge 3."""
+    rows = [r.lower() for r in _rows("missiles")]
+    out = set()
+    for skill, _, charge, created, count, row, calc in _logged(
+            ctx, r"charge spread client: skill (\d+) level (\d+) charge (\d+): (\d+) of (\d+) missiles \(row (\d+), "
+                 r"cltcalc (-?\d+)\)", "Cobra Strike"):
+        assert charge in FINISHER_CLIENT.get(skill, {}), f"skill {skill} charge {charge}: PD2 has no client prg here"
+        slot, expected, missile = FINISHER_CLIENT[skill][charge]
+        assert slot == 127 and calc == expected, f"skill {skill} charge {charge}: cltcalc {calc}, PD2 {expected}"
+        assert count == min(max(calc, 1), 64) and created == count, f"skill {skill}: {created} of {count} for {calc}"
+        assert row == rows.index(missile), f"skill {skill} charge {charge}: missile row {row}, PD2's {missile}"
+        out.add(f"{skill}/{charge}: {created}")
+    return ", ".join(sorted(out))
+
+
+@check("charge-client-ring", tags=["core-rules-w30"])
+def charge_client_ring(ctx):
+    """cltprgfunc 128 (PD2 107) rings the target with the charge's client missile (Fists of Fire's nova at charge 2,
+    Cobra Strike's cloud at charge 3), cltcalc 64."""
+    rows = [r.lower() for r in _rows("missiles")]
+    out = set()
+    for skill, _, charge, created, row, calc in _logged(
+            ctx, r"charge ring client: skill (\d+) level (\d+) charge (\d+): (\d+) missiles \(row (\d+), cltcalc "
+                 r"(-?\d+)\)", "Fists of Fire"):
+        assert charge in FINISHER_CLIENT.get(skill, {}), f"skill {skill} charge {charge}: PD2 has no client prg here"
+        slot, expected, missile = FINISHER_CLIENT[skill][charge]
+        assert slot == 128 and calc == expected, f"skill {skill} charge {charge}: cltcalc {calc}, PD2 {expected}"
+        assert row == rows.index(missile), f"skill {skill} charge {charge}: missile row {row}, PD2's {missile}"
+        assert created > 0, f"skill {skill}: no ring missile drawn"
+        out.add(f"{skill}/{charge}: {created} of row {row}")
+    return ", ".join(sorted(out))
+
+
+@check("charge-client-explode", tags=["core-rules-w30"])
+def charge_client_explode(ctx):
+    """pCltDoFunc 79 (PD2 69) places CltSubMissile1 on the explosion's first frame: fistsoffireexplode's
+    fistsoffirefirewall (Fists of Fire's first charge); bladesoficecubes' bladesoficeexplode if anything makes it."""
+    rows = [r.lower() for r in _rows("missiles")]
+    subs = {"fistsoffireexplode": "fistsoffirefirewall", "bladesoficecubes": "bladesoficeexplode"}
+    found = re.findall(r"charge explode client: missile row (\d+) skill -?\d+ level \d+: sub-missile (-?\d+) at "
+                       r"\d+,\d+( \(not created\))?", _log(ctx))
+    if not found:
+        ctx.skip("no Fists of Fire explosion in the log yet (charge it on monsters, then run again)")
+    for row, sub, failed in found:
+        name = rows[int(row)]
+        assert name in subs and rows[int(sub)] == subs[name], f"{name}: sub-missile {rows[int(sub)]}"
+        assert not failed, f"{name}: {subs[name]} not created"
+    return ", ".join(sorted({rows[int(r)] for r, _, _ in found}))
+
+
+@check("charge-client-bolt", tags=["core-rules-w30"])
+def charge_client_bolt(ctx):
+    """pCltHitFunc 67 drops clawsofthunderbolt's cotthunderstorm on the unit hit, raised CHitCalc1 280 and falling
+    cHitPar1-3 (0, 0, -81920) per frame."""
+    rows = [r.lower() for r in _rows("missiles")]
+    found = re.findall(r"charge bolt client hit: missile row (\d+) skill -?\d+ level \d+: sub-missile (-?\d+) at "
+                       r"\d+,\d+, height (-?\d+), motion (-?\d+),(-?\d+),(-?\d+)( \(not created\))?", _log(ctx))
+    if not found:
+        ctx.skip("no Claws of Thunder bolt hit in the log yet (hit monsters with its third charge, then run again)")
+    row, sub, z, mx, my, mz, failed = found[0]
+    assert rows[int(row)] == "clawsofthunderbolt" and rows[int(sub)] == "cotthunderstorm", found[0]
+    assert (int(z), int(mx), int(my), int(mz)) == (280, 0, 0, -81920) and not failed, found[0]
+    return f"{len(found)} logged: height {z}, motion {mx},{my},{mz}"
+
+
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
-                                    "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17"])
+                                    "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17",
+                                    "core-rules-w23", "core-rules-w30", "core-rules-w18"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))
@@ -966,3 +1145,78 @@ def core_rules_no_crash(ctx):
     faults = re.findall(rf"{PLUGIN}: FAULT[^\n]*", _log(ctx))
     assert not faults, faults[0]
     return "no crash"
+
+
+def static_field_damage(life: int, max_life: int, calc1: int, calc2: int, field_min: int, resist: int) -> int:
+    """PD2's per-unit damage (ProjectDiablo.dll 0x10302830), in life's 1/256, read from its disassembly: calc1% of
+    current life, at least calc2, or (100 - StaticFieldMin)% of max life when the resisted damage beats that share
+    (resisted too, never raised)."""
+    def muldiv(a, b, c):
+        return int(a * b / max(c, 1))
+    cap = muldiv(max_life, (100 - field_min) & 0xffffffff, 100)
+    damage = muldiv(life, calc1, 100)
+    limit = min(muldiv(cap, 100 - resist, 100), cap)
+    out = calc2 if (damage & 0xffffffff) < (calc2 & 0xffffffff) else damage
+    return cap if muldiv(damage, 100 - resist, 100) > limit else out
+
+
+STATIC_FIELD_CAST = re.compile(
+    rf"static field: skill {STATIC_FIELD} level (\d+): radius (-?\d+), calc1 (-?\d+), calc2 (-?\d+), min (-?\d+); units hit (\d+), "
+    r"first: life (-?\d+) of (-?\d+), lightresist (-?\d+), damage (-?\d+); state (-?\d+) for (-?\d+) frames, "
+    r"stat (-?\d+) (-?\d+), new lists (\d+) \(first (-?\d+)\)")
+
+
+@check("static-field-cast", tags=["core-rules-w27"])
+def static_field_cast(ctx):
+    """A Static Field (router srvdofunc 190) hit the units within PD2's aurarangecalc min(ln12 / 2, 14) (ln12 = Param1 8
+    + Param2 1 per level after the first) for PD2's damage (static_field_damage, calc1 Param4 8, calc2 Param3 0,
+    StaticFieldMin 55/70/85), then put staticfield_debuff on them for auralencalc 125 + 5 * Lightning Mastery frames
+    with lightresist from aurastatcalc1. PD2's -min((par5+(lvl<22)?lvl:...), 100): the calc parser binds ?: tighter
+    than +, so it is -min(par5 + (lvl or 22 + (lvl-22)/2), 100), Param5 4 (-14 at level 10 in game); a monster immune
+    to lightning gets half."""
+    casts = [tuple(int(v) for v in c) for c in STATIC_FIELD_CAST.findall(_log(ctx))]
+    hit = [c for c in casts if c[5] > 0]
+    if not hit:
+        ctx.skip("no Static Field that hit a unit in the log yet (cast it next to monsters out of town, then run again)")
+    (level, radius, calc1, calc2, field_min, units, life, max_life, resist, damage, state, frames, stat, value, lists,
+     first) = hit[0]
+    assert radius == min((8 + level - 1) // 2, 14), f"level {level}: radius {radius}"
+    assert (calc1, calc2) == (8, 0), f"calc1 {calc1}, calc2 {calc2}, PD2: 8, 0"
+    assert field_min in STATIC_FIELD_MIN, f"StaticFieldMin {field_min}, PD2's are {STATIC_FIELD_MIN}"
+    want = static_field_damage(life, max_life, calc1, calc2, field_min, resist)
+    assert damage == want, f"life {life} of {max_life}, resist {resist}: damage {damage}, PD2 gives {want}"
+    pd2 = -min(4 + (level if level < 22 else 22 + (level - 22) // 2), 100)
+    assert (state, stat, value) == (STATICFIELD_DEBUFF, LIGHTRESIST, pd2), \
+        f"state {state} stat {stat} {value}, PD2: {STATICFIELD_DEBUFF} {LIGHTRESIST} {pd2}"
+    assert frames >= 125 and (frames - 125) % 5 == 0, f"{frames} frames, PD2: 125 + 5 per Lightning Mastery level"
+    if lists:
+        assert first in (value, int(value / 2)), f"first new list's lightresist {first}, PD2: {value} or half"
+    return (f"level {level}: radius {radius}, {units} unit(s) hit, first {life >> 8}/{max_life >> 8} life, resist "
+            f"{resist}: {damage >> 8} damage; debuff {value} for {frames} frames on {lists} new list(s)")
+
+
+def _missile_row(path: str, name: str) -> dict[str, str]:
+    with open(path, encoding="latin-1") as f:
+        rows = [line.rstrip("\r\n").split("\t") for line in f]
+    return next(dict(zip(rows[0], r)) for r in rows[1:] if r and r[0] == name)
+
+
+@check("combustion-cast", tags=["core-rules-w27"])
+def combustion_cast(ctx):
+    """A Combustion (router srvdofunc 190, cltdofunc 120) made PD2's ring of calc2 = Param1 32 combustion missiles
+    around the caster on the server and the client; the ring's radius is the missile's Vel and Range, PD2's."""
+    text = _log(ctx)
+    casts = re.findall(rf"nova: skill {COMBUSTION} level (\d+): (\d+) missiles \(row (\d+), calc2 (-?\d+)\)", text)
+    clients = re.findall(rf"nova client: skill {COMBUSTION} level (\d+): (\d+) missiles \(row (\d+), calc2 (-?\d+)\)",
+                         text)
+    if not casts or not clients:
+        ctx.skip("no Combustion (server and client) in the log yet (cast it out of town, then run again)")
+    for kind, (level, created, row, count) in (("server", casts[0]), ("client", clients[0])):
+        assert (int(count), int(created)) == (32, 32), f"{kind}: {created} missiles, calc2 {count}; PD2: 32 of 32"
+        assert _rows("missiles")[int(row)] == "combustion", f"{kind}: missile row {row} is {_rows('missiles')[int(row)]}"
+    excel = ("data", "global", "excel", "missiles.txt")
+    pd2 = _missile_row(os.path.join(REPO, "pd2-data", *excel), "combustion")
+    mod = _missile_row(os.path.join(REPO, "generated", *excel), "combustion")
+    for col in ("Vel", "MaxVel", "VelLev", "Range"):  # D2R has no LevRange (unported list)
+        assert pd2[col] == mod[col], f"combustion {col} {mod[col]}, PD2's {pd2[col]}"
+    return f"level {casts[0][0]}: 32 missiles on server and client, Vel {mod['Vel']}, Range {mod['Range']}"

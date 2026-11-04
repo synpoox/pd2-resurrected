@@ -1,6 +1,6 @@
 """The table-diff gate: compare the merged tables to the PD2 baseline by table, row and column name.
 
-    python tools/pd2_diff.py --scope P2|P3|P4|M1|alpha [--root DIR] [--d2r DIR]
+    python tools/pd2_diff.py --scope P2|P3|P4|M1|pre-alpha|alpha [--root DIR] [--d2r DIR]
 
 Reads PD2's tables from pd2-data/ and the mod's from generated/ (D2R's own table where generated/ has none yet).
 Exit 0: every deviation is on docs/unported.md; 1: some are not (listed in the report); 2: the list or an id list is
@@ -26,13 +26,13 @@ SHOWN = 200  # open deviations listed in the report; the counts cover the rest
 
 
 STATUSES = ("approximated", "cut", "not yet")
-# the roadmap's work items that merge tables (P2 the id-listed ones, P3 the item tables, P4 the rest); M1 and alpha all
+# the roadmap's work items that merge tables (P2 the id-listed ones, P3 the item tables, P4 the rest); M1, pre-alpha and alpha all
 ITEM_TABLES = {"armor", "weapons", "misc", "itemtypes", "magicprefix", "magicsuffix", "automagic", "rareprefix",
                "raresuffix", "uniqueitems", "sets", "setitems", "runes", "gems", "cubemain", "cubemod", "cubetype",
                "treasureclassex", "treasureclass", "qualityitems", "lowqualityitems", "itemratio", "gamble",
                "properties", "books", "belts", "bodylocs"}
 SCOPES = {"P2": lambda t: t in pd2_ids.TABLES, "P3": lambda t: t in ITEM_TABLES,
-          "P4": lambda t: t not in ITEM_TABLES and t not in pd2_ids.TABLES, "M1": lambda t: True, "alpha": lambda t: True}
+          "P4": lambda t: t not in ITEM_TABLES and t not in pd2_ids.TABLES, "M1": lambda t: True, "pre-alpha": lambda t: True, "alpha": lambda t: True}
 
 
 class GateError(Exception):

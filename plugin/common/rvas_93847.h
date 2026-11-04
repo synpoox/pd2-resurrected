@@ -120,12 +120,19 @@ inline constexpr uint64_t MissileCltDoDefault = 0x1b5380;  // cltdo 1 (missile, 
 inline constexpr uint64_t MissileOwner = 0x490300;  // (game, missile) -> owner unit or null
 inline constexpr uint64_t ClientMissileOwner = 0x9a7b0;  // (missile) -> owner unit or null
 inline constexpr uint64_t MissileSrvFrames = 0x3bb1e0;  // (missile) -> range frames left (server)
-inline constexpr uint64_t MissileCltFrames = 0x3bb0f0;  // (missile) -> range frames left (client)
+// (missile) -> frames run: the range minus MissileSrvFrames' frames left, 1 on the first step (D2R's cltdo 1 tests 1;
+// 1.13c's cdo 69 the same as current == total - 1, D2Common #10737 / #10534)
+inline constexpr uint64_t MissileCltFrames = 0x3bb0f0;
 inline constexpr uint64_t PathSetTargetUnit = 0x342920;  // (path, unit): path +0x70 target unit
 inline constexpr uint64_t PathSteer = 0x340e70;  // (path, unit, 0, 1): re-aim the path at its target unit
 inline constexpr uint64_t UnitDistance = 0x324fc0;  // (a, b) -> distance in subtiles
 // (dataFlag, missile, owner, calc, -1, -1) -> value; dmg 1 0x453490 evaluates DmgCalc1 this way
 inline constexpr uint64_t EvalMissileCalc = 0x3b4a90;
+// The client's 3D offset and motion of a missile's graphic, as D2R's Meteor (cltdo 9, 0x1b6480) sets them (1.13c's
+// D2Client 0xc7e30 and its writes to gfx +0x30 +0x10..0x18): (missile, x, y, z) << 11; (missile, x, y, z, shift),
+// shift 0 stores the values as given (1.13c's raw writes), else << 11.
+inline constexpr uint64_t SetMissileOffset = 0x193a80;
+inline constexpr uint64_t SetMissileMotion = 0x193ad0;
 // Power Strike's client do function (cltdo 22, 1.13c D2Client 0x15660) draws the strike only for the local player:
 // `je` at this address skips its early return. PD2 has no such check (W6).
 inline constexpr uint64_t CltDoStrikeLocalOnly = 0x2aed4a;
@@ -255,9 +262,29 @@ inline constexpr uint64_t UnitAlignment = 0x2f4190;
 // in range; x/y 0 = the center unit's position, radius 0 does nothing (Fist of the Heavens' clthit 26 0x1adcb0)
 inline constexpr uint64_t ClientAreaUnits = 0x2142d0;
 inline constexpr uint64_t ClientFindUnit = 0x9a5d0;  // (id, type) -> the client's unit or null
+// Vengeance (W18, docs/research/w18-vengeance-joust.md): the melee hit as D2R's Leap Attack hit (0x56b170) runs it
+inline constexpr uint64_t SkillToHit = 0x339040;  // (unit, skillId, level) -> attack rating for the roll
+// (game, unit, target, toHit, flag, 0) -> result flags (bit 0 hit); flag = skill byte SkRollFlags & the byte at
+// MeleeRollFlagMask
+inline constexpr uint64_t MeleeRoll = 0x44b720;
+inline constexpr uint64_t MeleeRollFlagMask = 0x1d996d0;
+inline constexpr uint64_t UnitHitClass = 0x3495d0;  // (unit) -> the value Leap Attack puts at DmgHitClass
+// (game, unit, target, &damage, srcdam): weapon damage at srcdam / 128, queued on the unit for target
+inline constexpr uint64_t QueueMeleeHit = 0x44b600;
+inline constexpr uint64_t ApplyQueuedHit = 0x44b2b0;  // (game, unit, target, 0, 1)
+// (dataFlag, unit, skillId, level, 1) -> ELen with ELevLen, the length ElementalDamage gives cold and poison
+inline constexpr uint64_t ElementalLength = 0x337da0;
 inline constexpr uint64_t MissileTargetType = 0x3bc190;  // (missile) -> target unit type, 6 for none
 inline constexpr uint64_t MissileTargetId = 0x3bc280;  // (missile) -> target unit id
 inline constexpr uint64_t EngineAllocator = 0x12063c0;  // () -> the allocator; vtable +0x20 frees (Leap Attack's cleanup)
+// Static Field (W27), the way D2R's Static Field (srvdo 20 0x5546b0, per unit 0x5556a0) builds its hit
+// (dataFlag, difficulty) -> difficultylevels.txt record (0x84 bytes); StaticFieldMin at +0x68
+inline constexpr uint64_t DifficultyRecord = 0x300830;
+inline constexpr int DiffStaticFieldMin = 0x68;
+// (unit, &damage, etype, amount, length, &resist stat or null, &etype or null): adds amount to the etype's field
+// (2 lightning: +0x2c, hit class +0x144 = 0x40; resist stat 41)
+inline constexpr uint64_t AddElementDamage = 0x437980;
+inline constexpr int DamageFlag148 = 0x148;   // uint8 D2R's Static Field sets to 1
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
@@ -342,16 +369,21 @@ inline constexpr int MsHitPar3 = 0x78;
 inline constexpr int MsCltHitPar1 = 0x90;  // int32 cHitPar1-3 (1.13c's 0x6c-0x74 + 0x24)
 inline constexpr int MsCltHitPar2 = 0x94;
 inline constexpr int MsCltHitPar3 = 0x98;
+inline constexpr int MsCltHitCalc1 = 0xb0;  // int32 CHitCalc1 (calc index; 1.13c's 0x8c + 0x24, before DmgCalc1)
+inline constexpr int MsCltSubMissile1 = 0x40;  // int16 CltSubMissile1 (1.13c's 0x1e; D2R's cltdo 9 reads it)
 // Damage block a pSrvDmgFunc edits: 1.13c's 0x08-0x2c fields sit 0x10 later (phys 0x08 -> 0x18 in srvdmg 1 and 13,
 // poison length 0x2c -> 0x3c in srvdmg 11).
 inline constexpr int DmgPhys = 0x18, DmgFire = 0x20, DmgLight = 0x2c, DmgMagic = 0x30, DmgCold = 0x34, DmgPoison = 0x38;
 inline constexpr int DmgPoisonLength = 0x3c;
+inline constexpr int DmgColdLength = 0x118;  // ElementalDamage's cold length (1.13c's 0x30)
+inline constexpr int DmgHitClass = 0x144;    // int32 Leap Attack's hit sets from UnitHitClass
 inline constexpr int StatDamagePercent = 25;  // itemstatcost damagepercent, D2R and PD2
 inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58, poisonlength 59: D2R and PD2
 inline constexpr int StatPoisonMax = 58;
 inline constexpr int StatPoisonLength = 59;
 inline constexpr int StatLife = 6;  // itemstatcost hitpoints (current life, in 1/256), D2R and PD2
-inline constexpr int StatMaxLife = 7;  // maxhp
+inline constexpr int StatMaxLife = 7;  // maxhp, in 1/256
+inline constexpr int StatLightResist = 41;  // lightresist, D2R and PD2
 inline constexpr int StatVelocityPercent = 67;  // itemstatcost velocitypercent, D2R and PD2
 inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's search: 0x88583 | the 0xa783 the search adds
 
@@ -359,6 +391,10 @@ inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's se
 inline constexpr int DamageLifeLeech = 0x120;  // mana leech +0x124, stamina leech +0x128
 inline constexpr int DamageManaLeech = 0x124;
 inline constexpr int DamageStaminaLeech = 0x128;
+// Cold length (1.13c's 0x30) and hit class (1.13c's 0x64), as ElementalDamage (0x437d00) and Hunger (0x576630) fill
+// them
+inline constexpr int DamageColdLength = 0x118;
+inline constexpr int DamageHitClass = 0x144;  // uint32; D2R's Static Field ORs 0xd into it (0x4d, as PD2's)
 
 // missiles.txt record (1.13c's shifted by 0x24)
 inline constexpr int MsDParam1 = 0x9c;    // int32 dParam1
@@ -397,17 +433,27 @@ inline constexpr int SkParam1 = 0x1b8;  // int32 Param1-8, field table at 0x305e
 inline constexpr int SkParam2 = 0x1bc;
 inline constexpr int SkParam3 = 0x1c0;
 inline constexpr int SkParam4 = 0x1c4;
+inline constexpr int SkParam5 = 0x1c8;
+inline constexpr int SkParam6 = 0x1cc;
+inline constexpr int SkRollFlags = 0x29;  // uint8 Leap Attack's hit masks with MeleeRollFlagMask for MeleeRoll's flag
 inline constexpr int SkSrvPrgFunc1 = 0x50;  // int16 srvprgfunc1-3, read by SrvPrgDispatch
 inline constexpr int SkPrgCalc1 = 0x58;     // int32 prgcalc1-3 (calc index), read by srvdo 37's 0x571590
 inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170
+// uint16 ResultFlags, uint32 HitFlags, int32 HitClass (1.13c's 0x12e / 0x130 / 0x134), as D2R's Hunger (0x576630)
+// reads them into its damage block
+inline constexpr int SkResultFlags = 0x186;
+inline constexpr int SkHitFlags = 0x188;
+inline constexpr int SkHitClass = 0x18c;
 inline constexpr int SkSrvOverlay = 0x6e;  // int16 srvoverlay (skills field table 0x302380)
 inline constexpr int SkAuraFilter = 0x70;  // int32 aurafilter, the area unit mask (clthit 26 reads it)
-inline constexpr int SkCltCalc2 = 0x170;  // int32 cltcalc2 (calc index)
+inline constexpr int SkCltCalc1 = 0x16c;  // int32 cltcalc1-3 (calc index; 1.13c's 0x114, PD2's cltprg 106 / 107)
+inline constexpr int SkCltCalc2 = 0x170;
 inline constexpr int SkCltCalc3 = 0x174;
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
 inline constexpr int SkPetType = 0x112;  // int8 pettype, read by Spirit Wolf's srvdo 119 (0x575990)
 inline constexpr int SkPetMax = 0x114;   // int32 petmax (calc index), which srvdo 119 hands the pet add
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
+inline constexpr int SkAuraTargetState = 0xa2;  // int16 auratargetstate (skills field table 0x302380)
 inline constexpr int SkAuraLenCalc = 0x80;    // int32 auralencalc: 1.13c's 0x60, before aurarangecalc as there
 inline constexpr int SkAuraStat1 = 0x74;      // int16 aurastat1-6, read by AddAuraStats (0x574480)
 inline constexpr int SkAuraStatCalc1 = 0x88;  // int32 aurastatcalc1-6 (calc index, pass to EvalCalc), same reader
