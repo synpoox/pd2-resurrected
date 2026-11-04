@@ -610,3 +610,44 @@ static_assert(offsetof(LeapKnockback, listData) == 0x40);
 static_assert(offsetof(LeapKnockback, tagged) == 0x158);
 
 }  // namespace d2r
+
+// --- Item rules: Ormus' Robes' property and skill on cast (docs/research/p12-ormus-robes.md) ---------------------
+namespace d2r::rva {
+
+// properties.txt func1-7: int32_t fn(dataFlag, a1, a2, item, Property*, set, stat, val, first func's result, a8, a9,
+// a10), from the property apply 0x3d4620; 37 slots (bound dword 0x2386bd8 = 37), 26-35 null
+inline constexpr uint64_t PropertyFuncTable = 0x2386ab0;
+inline constexpr int PropertyFuncSlots = 37;
+// (dataFlag, a1, a2, item, Property*, set, stat, layer, value, a8, a9, a10): put one stat on the item's list, as
+// every D2R property function does (value shifted by the stat's ValShift)
+inline constexpr uint64_t PropertySetStat = 0x3d5940;
+inline constexpr uint64_t ItemRandom = 0x3d5860;  // (item, min, max) -> min..max from the item's seed
+inline constexpr uint64_t UnitLayerStat = 0x2f5c60;  // (unit, stat, layer) -> value: what D2R's item events read
+// A unit's event listeners, seen in game (a 0x70-byte node per listener, most recent first): +0x00 event, +0x04 kind
+// (1 skill, 2 item stat), item stat nodes +0x08 layer and +0x0c stat, +0x28 the function D2RCore calls, +0x38 next
+inline constexpr int UnitEventList = 0xe0;
+inline constexpr int EventNodeEvent = 0x00, EventNodeKind = 0x04, EventNodeLayer = 0x08, EventNodeStat = 0x0c;
+inline constexpr int EventNodeNext = 0x38;
+inline constexpr int EventNodeKindItem = 2;
+// (unit, skill, level, x, y, flag) -> non-zero cast: a skill cast from unit at a point as an event; refuses while the
+// unit has state 54 (PD2's event 33 does the same through 1.13c's pair)
+inline constexpr uint64_t CastEventSkillAt = 0x589820;
+// Server skill dispatcher (D2Game\src\Skills\Skills.cpp): (game, unit, skillId, level, a5, a6, a7) -> non-zero ran;
+// calls srvdofunc. mov [rsp+0x10],rbx / mov [rsp+0x20],r9d / mov [rsp+0x18],r8d / push rbp
+inline constexpr uint64_t SrvSkillDispatch = 0x43acb0;
+inline constexpr uint8_t SrvSkillDispatchEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x44, 0x89, 0x4c,
+                                                    0x24, 0x20, 0x44, 0x89, 0x44, 0x24, 0x18, 0x55};
+inline constexpr int UnitFlags = 0x128;  // uint32, set by SetUnitFlag
+inline constexpr uint64_t SetUnitFlag = 0x34e140;  // (unit, flag, on)
+inline constexpr uint32_t UnitFlagEventCast = 0x10000000;  // D2R's item events hold it while they cast
+inline constexpr int PlayerModeCast = 10;  // SC
+inline constexpr int SkItemTarget = 0x178;  // uint8 ItemTarget (skills field table 0x302380)
+inline constexpr int SkReqLevel = 0x214;    // uint16 reqlevel
+inline constexpr int SkLocalDelay = 0x238;  // int32 compiled localdelay formula, -1 for none
+// itemstatcost in DataTables: records (0x144 bytes) and count; itemevent1 int16 at +0x44 (the registration reads it)
+inline constexpr int TablesItemStatCost = 0x1258, TablesItemStatCostCount = 0x1260;
+inline constexpr int IscRecordSize = 0x144, IscItemEvent1 = 0x44;
+// The stat-layer split item events use for skill/level layers: layer >> shift is the skill, layer & mask the level
+inline constexpr int TablesSkillLayerShift = 0x14d0, TablesSkillLayerMask = 0x14d4;
+
+}  // namespace d2r::rva
