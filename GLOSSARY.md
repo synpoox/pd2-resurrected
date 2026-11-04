@@ -99,6 +99,18 @@ _Avoid_: corrupted zone, desecrated zone
 A level PD2 has and D2R does not: map areas, uber boss areas, event areas, PvP areas and guild halls.
 _Avoid_: map (a map item or a wayfinder map), zone, new area
 
+**Uber boss**:
+One of PD2's pinnacle fights in the port: Uber Tristram, Diablo Clone, Rathma or Lucion. Each replaces D2R's fight of the same name, if D2R has one.
+_Avoid_: pinnacle boss, D2R's world-event Diablo Clone or Pandemonium Event (both off)
+
+**Uber key**:
+The item that opens an uber boss's area at the Blood Fountain in Harrogath. It is not a map item.
+_Avoid_: uber map, entry item
+
+**Uber tier**:
+The tier on an uber key, 0, 1 or 2, cycled in the cube; higher tiers make the fight harder and its drops better.
+_Avoid_: map tier
+
 **Map item**:
 A PD2 item that opens a map area when used in Harrogath: a tiered map, a dungeon or a unique map. Uber keys and PvP arenas are not map items.
 _Avoid_: map
