@@ -112,13 +112,14 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # srvdo 153 / cltdo 97, RotW's, PD2's leap; Double Throw's srvdo 154, cltdo 98, shit 30, dmg 16 echoingstrike; dmg 17
 # ring of fire; Blood Warp's srvdo 157, srvst 66, cltst 56, and Desecrate's srvdo 161, past D2R's table, both
 # joining the srvdo 190 router, and its cltdo 101): moved to the free slots core-rules installs them in
-# (plugin/core-rules/skill_functions.cpp Functions[])
+# (plugin/core-rules/skill_functions.cpp Functions[]). Charge's cltdo 112 / cltst 57 go to D2R's Charge client
+# functions (37, 25), which do what PD2's do (docs/research/w16-charge.md).
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
 FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78"}, "pSrvHitFunc": {"30": "66"},
                       "pSrvDmgFunc": {"16": "21", "17": "20"}},
          "skills": {"srvdofunc": {"153": "172", "154": "183", "157": "190", "161": "190"},
-                    "cltdofunc": {"97": "115", "98": "116", "101": "121"},
-                    "srvstfunc": {"66": "80"}, "cltstfunc": {"56": "63"}}}
+                    "cltdofunc": {"97": "115", "98": "116", "101": "121", "112": "37"},
+                    "srvstfunc": {"66": "80"}, "cltstfunc": {"56": "63", "57": "25"}}}
 # PD2's srvdo 188 / cltdo 117 (Lightning Bolt, Lightning Fury) only create srvmissile, else srvmissilea (cltmissile,
 # else cltmissilea), with the arguments D2R's do dispatcher passes for srvmissile / cltmissile after any do function
 # (docs/research/lightning-javelins.md). So the merge moves that missile into srvmissile / cltmissile and drops the
