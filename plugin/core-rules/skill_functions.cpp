@@ -1,10 +1,13 @@
-// PD2 skill functions (skills.txt srvdofunc / cltdofunc / srvstfunc) in D2R's free table slots, and the install of
-// those and of the missile functions (missile_functions.cpp).
+// PD2 skill functions (skills.txt srvdofunc / cltdofunc / srvstfunc / cltstfunc) in D2R's free table slots, and the
+// install of those and of the missile functions (missile_functions.cpp).
 //
 // The server calls slot `srvdofunc` of rva::SrvDoTable at the cast frame as
 //     int64_t fn(Game* game, Unit* caster, int32_t skillId, int32_t skillLevel)   -> non-zero = the skill ran.
 // The client calls slot `cltdofunc` of rva::CltDoTable as
 //     int32_t fn(Unit* caster, int32_t skillId, int32_t skillLevel)               -> non-zero plays the do sound.
+// Start functions (`srvstfunc` in rva::SrvStTable, `cltstfunc` in rva::CltStTable) take the same arguments at the
+// start frame; zero refuses the cast. srvdofunc 190 is a router: one slot shared by several PD2 do functions, picked
+// by skill id.
 // Each slot is written with PatchWriteU64 and an expected value of eight zero bytes, so a slot D2R or another plugin
 // already uses is refused and logged, never overwritten. Slots keep PD2's own numbers where free (docs/core-rules.md).
 #include "skill_functions.h"
@@ -236,6 +239,7 @@ std::atomic<uint32_t> g_findsRefused {0};
 std::atomic<uint32_t> g_bashHits {0};
 std::atomic<uint32_t> g_bashKnockbacks {0};
 std::atomic<uint32_t> g_splashStarts {0};
+std::atomic<uint32_t> g_routerMisses {0};
 
 constexpr int32_t FindPotion = 131;
 
@@ -330,7 +334,9 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	case UberTalicBash:
 		return SrvDoBash(game, unit, skillId, level);
 	default:
-		plog::Warn("srvdo router: no function for skill %d", skillId);
+		if (plog::Sample(g_routerMisses)) {
+			plog::Warn("srvdo router: no function for skill %d (%u so far)", skillId, g_routerMisses.load());
+		}
 		return 0;
 	}
 }

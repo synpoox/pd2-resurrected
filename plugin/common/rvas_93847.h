@@ -40,7 +40,7 @@ inline constexpr int SrvStFindPotion = 33;
 inline constexpr int SrvStFindItem = 34;
 inline constexpr int CltStFindPotion = 26;
 inline constexpr int CltStFindItem = 28;
-inline constexpr int SrvDoMelee = 2;  // 0x430240: Bash's do function in D2R, applies the queued hit (ApplyMeleeHit)
+inline constexpr int SrvDoMelee = 2;  // 0x430240: Bash's do function in D2R, applies the queued hit
 // missiles.txt pSrvDoFunc: int64_t fn(Game*, Unit* missile), 54 slots, 46-53 free.
 inline constexpr uint64_t MissileSrvDoTable = 0x2390e80;
 inline constexpr int MissileSrvDoSlots = 54;

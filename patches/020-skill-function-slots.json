@@ -1,5 +1,5 @@
 {
- "_note": "PD2 skill functions whose slots D2R already fills, pointed at core-rules' slots (docs/core-rules.md). Moves into the merge rules with W3's function re-map (#46).",
+ "_note": "PD2 skill functions whose slots D2R already fills, pointed at core-rules' slots (docs/core-rules.md). Find's do functions point at D2R's own (69/72, 38/40): approximated, PD2's run the start's guard again. Moves into the merge rules with W3's function re-map (#46).",
  "ops": [
   {"op": "set", "table": "skills", "bank": "excel", "key": "Bash", "set": {"srvdofunc": "190"}},
   {"op": "set", "table": "skills", "bank": "excel", "key": "UberTalicBash", "set": {"srvdofunc": "190"}},

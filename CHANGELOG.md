@@ -5,7 +5,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
-- Bash knocks back half the time, Find Potion and Find Item skip minions' corpses, and Frenzy builds splash.
+- Bash knocks back half the time, and Find Potion and Find Item skip minions' corpses.
 - Item stat lines no longer show the value twice ("+1 %+d to All Skills").
 - Corruption: cube an item with a Worldstone Shard. It takes two presses for now: the first rolls the hidden
   corruption value and hands the shard back, the second gives one of PD2's outcomes. A corrupted item can't be
@@ -17,3 +17,4 @@ private-multiplayer release a build may break characters; each break is noted he
 - Project Diablo II's names and descriptions for items, skills, monsters and areas (English).
 - The mod uses D2RLoader's extended save format: characters load only with D2RLoader.
 - Comes with a loot filter (with drop sounds), stash search, item roll ranges, a buff bar and an XP bar.
+- Skills not rebuilt yet play like the closest D2R skill.
