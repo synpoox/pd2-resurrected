@@ -1186,7 +1186,7 @@ auto CltDoChannel(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_
 		if (roll % count >= 2) {
 			continue;
 		}
-		params.range = range + roll % 2 - 1;
+		params.range = std::max(range + roll % 2 - 1, 1);  // a negative roll takes 2 off (signed, as in PD2)
 		params.targetX = line.x + i * line.stepX;
 		params.targetY = line.y + i * line.stepY;
 		Unit* flame = d2r::api.clientCreateMissile(&params, 0);
@@ -1220,6 +1220,7 @@ auto CltDoChannel(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_
 // channel goes on. Everything else is D2R's own gate.
 std::atomic<uint32_t> g_takeOvers {0};
 std::atomic<uint32_t> g_bladeFuryRefusals {0};
+std::atomic<uint32_t> g_heldRequests {0};
 constexpr int32_t SrvDoBladeFury = 48;
 constexpr int32_t Uninterruptable = 54;  // states.txt uninterruptable: PD2 refuses before its own rules
 using GateFn = int64_t (*)(Game* game, Unit* unit, int32_t mode, void* request, int32_t flag) noexcept;
@@ -1232,21 +1233,32 @@ auto UnitSkillIdOf(void* unitSkill) noexcept -> int32_t {
 
 auto BusyModeGate(Game* game, Unit* unit, int32_t mode, void* request, int32_t flag) noexcept -> int64_t {
 	using namespace d2r::rva;
-	if (game != nullptr && unit != nullptr && request != nullptr && mode != 0 && mode != 0x11 &&
+	void* current = game != nullptr && unit != nullptr && request != nullptr && mode != 0 && mode != 0x11
+	                    ? d2r::Engine<void* (*)(Unit*) noexcept>(CurrentSkill)(unit)
+	                    : nullptr;
+	const int32_t nowId = current != nullptr ? UnitSkillIdOf(current) : -1;
+	const uint8_t* now = current != nullptr ? d2r::api.getSkillRecord(d2r::DataFlag(game), nowId) : nullptr;
+	const int32_t func = now != nullptr ? At<uint16_t>(now, SkSrvDoFunc) : -1;
+	if ((func == 182 || func == SrvDoBladeFury) &&
 	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(unit, Uninterruptable) == 0) {
-		void* current = d2r::Engine<void* (*)(Unit*) noexcept>(CurrentSkill)(unit);
-		const int32_t nowId = current != nullptr ? UnitSkillIdOf(current) : -1, nextId = UnitSkillIdOf(request);
-		const uint8_t* now = current != nullptr ? d2r::api.getSkillRecord(d2r::DataFlag(game), nowId) : nullptr;
+		const int32_t nextId = UnitSkillIdOf(request);
+		if (nextId == nowId) {
+			// D2R re-sends a held skill every frame (PD2's client does not mid-mode); D2R's gate keeps the channel going
+			const int64_t result = g_gateOriginal(game, unit, mode, request, flag);
+			if (plog::Sample(g_heldRequests)) {
+				plog::Info("held: skill %d (srvdo %d) mode %d to D2R's gate: %lld, %u so far", nowId, func, mode,
+				           static_cast<long long>(result), g_heldRequests.load());
+			}
+			return result;
+		}
 		const uint8_t* next = d2r::api.getSkillRecord(d2r::DataFlag(game), nextId);
-		const int32_t func = now != nullptr && next != nullptr ? At<uint16_t>(now, SkSrvDoFunc) : -1;
-		// D2R re-sends a held skill every frame (PD2's client does not mid-mode); letting that through would restart
-		// the channel each frame, so the same skill again goes to D2R's gate
-		if ((func == 182 && nextId != nowId) || func == SrvDoBladeFury) {
-			const bool refused = func == SrvDoBladeFury && At<uint16_t>(next, SkSrvDoFunc) == SrvDoBladeFury;
+		if (next != nullptr) {
+			const int32_t nextFunc = At<uint16_t>(next, SkSrvDoFunc);
+			const bool refused = func == SrvDoBladeFury && nextFunc == SrvDoBladeFury;
 			auto& counter = refused ? g_bladeFuryRefusals : g_takeOvers;
 			if (plog::Sample(counter)) {
-				plog::Info("take-over: skill %d (srvdo %d) mid-channel, mode %d request skill %d: %s, %u so far", nowId,
-				           func, mode, nextId, refused ? "refused" : "allowed", counter.load());
+				plog::Info("take-over: skill %d (srvdo %d) mid-channel, mode %d request skill %d (srvdo %d): %s, %u so far",
+				           nowId, func, mode, nextId, nextFunc, refused ? "refused" : "allowed", counter.load());
 			}
 			return refused ? 1 : 0;
 		}
@@ -1453,12 +1465,13 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "
 	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, poison daggers %u, "
 	              "client %u, blood warps %u, refused %u, desecrates %u, client %u, corpses hidden %u, revives %u, "
-	              "revive events %u, splashes %u, channels %u, client %u, take-overs %u, blade fury refused %u, %s",
+	              "revive events %u, splashes %u, channels %u, client %u, take-overs %u, blade fury refused %u, "
+	              "held %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
 	              g_poisonDaggers.load(), g_poisonDaggerClients.load(), g_bloodWarps.load(), g_bloodWarpsRefused.load(),
 	              g_desecrates.load(), g_desecrateClients.load(), g_desecrateHidden.load(), g_revives.load(),
 	              g_reviveEvents.load(), g_reviveSplashes.load(), g_channels.load(), g_channelClients.load(),
-	              g_takeOvers.load(), g_bladeFuryRefusals.load(), missiles);
+	              g_takeOvers.load(), g_bladeFuryRefusals.load(), g_heldRequests.load(), missiles);
 }

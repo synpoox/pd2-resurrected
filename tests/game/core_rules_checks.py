@@ -378,9 +378,17 @@ def channel_client(ctx):
     return f"skill {skill} level {level}: {drawn} of {count} flames drawn, range {rng}"
 
 
-def _take_overs(ctx) -> list[tuple[int, int, int, str]]:
-    return [(int(a), int(b), int(c), d) for a, b, c, d in re.findall(
-        r"take-over: skill (\d+) \(srvdo (\d+)\) mid-channel, mode \d+ request skill (\d+): (\w+)", _log(ctx))]
+def _take_overs(ctx) -> list[tuple[int, int, int, int, str]]:
+    """(current skill, its srvdo, requested skill, its srvdo, allowed / refused) per logged take-over."""
+    return [(int(a), int(b), int(c), int(d), e) for a, b, c, d, e in re.findall(
+        r"take-over: skill (\d+) \(srvdo (\d+)\) mid-channel, mode \d+ request skill (\d+) \(srvdo (\d+)\): (\w+)",
+        _log(ctx))]
+
+
+def _held(ctx) -> list[tuple[int, int, int]]:
+    """(skill, srvdo, D2R's gate result) per logged re-request of the skill being held."""
+    return [(int(a), int(b), int(c)) for a, b, c in re.findall(
+        r"held: skill (\d+) \(srvdo (\d+)\) mode \d+ to D2R's gate: (-?\d+)", _log(ctx))]
 
 
 @check("channel-take-over", tags=["core-rules-w21"])
@@ -390,18 +398,22 @@ def channel_take_over(ctx):
     rows = [r for r in _take_overs(ctx) if r[1] == 182]
     if not rows:
         ctx.skip("no take-over in the log yet (hold Inferno or Arctic Blast, press another skill, then run again)")
-    assert all(r[3] == "allowed" and r[2] != r[0] for r in rows), f"take-overs mid-channel: {rows[:3]}"
+    assert all(r[4] == "allowed" and r[2] != r[0] for r in rows), f"take-overs mid-channel: {rows[:3]}"
     return f"skill {rows[0][0]} gave way to skill {rows[0][2]}"
 
 
 @check("blade-fury-refused", tags=["core-rules-w21"])
 def blade_fury_refused(ctx):
-    """PD2's gate A: a second Blade Fury mid-channel is refused; another skill is allowed."""
+    """PD2's gate A: a Blade Fury (srvdofunc 48) is not cut short by another Blade Fury; another skill is allowed. The
+    held Blade Fury's own re-request goes to D2R's gate, which must not allow it (0 would restart the channel)."""
     rows = [r for r in _take_overs(ctx) if r[1] == 48]
-    if not any(r[3] == "refused" for r in rows):
-        ctx.skip("no Blade Fury request mid-channel in the log yet (hold Blade Fury, press it again, then run again)")
-    assert all((r[3] == "refused") == (r[2] == r[0]) for r in rows), f"Blade Fury gate: {rows[:3]}"
-    return f"{sum(r[3] == 'refused' for r in rows)} refused, {sum(r[3] == 'allowed' for r in rows)} allowed"
+    held = [h for h in _held(ctx) if h[1] == 48]
+    if not held:
+        ctx.skip("no held Blade Fury in the log yet (hold Blade Fury out of town, then run again)")
+    assert all(h[2] != 0 for h in held), f"D2R's gate let a held Blade Fury restart: {held[:3]}"
+    assert all((r[4] == "refused") == (r[3] == 48) for r in rows), f"Blade Fury gate: {rows[:3]}"
+    return (f"{len(held)} held re-requests to D2R's gate (results {sorted({h[2] for h in held})}), "
+            f"{sum(r[4] == 'refused' for r in rows)} refused, {sum(r[4] == 'allowed' for r in rows)} allowed")
 
 
 GOLEM_MASTERY_LEVEL = 10  # the W14 save's base level (setup above)

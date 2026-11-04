@@ -49,7 +49,7 @@ calls `0x42d840` with the queued skill, `0x42ced0` with none.
 PD2's gate A (`0x10373290`), after its uninterruptable (state 54), dead and "flag 0 allows" steps, reads the current
 skill's srvdofunc: 182 allows any request whose skill has a record; 48 refuses a request whose skill's srvdofunc is 48
 too and allows any other. core-rules hooks `0x42d840` (entry `48 89 5c 24 08 48 89 6c 24 10 48 89 74 24 18`) and
-applies those two rules (except that a request for the held Inferno / Arctic Blast itself goes to D2R's gate, see below)
+applies those two rules (except that a request for the held skill itself goes to D2R's gate, see below)
 when the request carries a skill, the requested mode is not death or dead and the player is
 not uninterruptable; everything else goes to D2R's code. The skill id comes from `0x33e080`, srvdofunc from skills
 +0x4e. Not covered: D2R's `flag` is not PD2's (it lets a neutral or walk request through `0x42bfb0` only), so PD2's
@@ -68,4 +68,7 @@ not uninterruptable; everything else goes to D2R's code. The skill id comes from
 - D2R re-sends a held skill every frame: with "182 allows any skill" applied to it, the channel restarted ~30 times a
   second (100 take-overs in 3 s). The held skill itself now goes to D2R's gate; another skill (Firestorm, by F-key swap
   mid-hold) took over at once.
-- Blade Fury held: its own re-request was refused. An Attack swapped in mid-Blade Fury did not show in the log.
+- Blade Fury held: refusing its own per-frame re-request (PD2's rule applied to D2R's re-send) left one refusal and
+  the channel did not go on; sent to D2R's gate instead, every re-request came back 4 (buffered) and the Assassin
+  stayed in the channel. A Blade Fury of another row is still refused. An Attack swapped in mid-Blade Fury did not
+  show in the log. No blades show yet: the fragment missile is W32's.
