@@ -110,6 +110,9 @@ the same command with core-rules-w20.
 W32 checks (tag core-rules-w32), same merged data: a level 90+ Assassin in Hell with Blade Fury (266) set in game
 (`debug_mode`, `cheat sklvl Blade Fury,20`, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); throw Blade
 Fury at the pack and at a wall or tree near it, hold it for a second, and run the same command with core-rules-w32.
+P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
+drops Ormus' Robes; `cheat idall`, wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); cast spells at
+the pack until a proc logs (12% a cast, 8% for a skill with a cooldown), and run the same command with core-rules-p12.
 """
 import json
 import os
@@ -1204,7 +1207,8 @@ def psychic_hammer_falloff(ctx):
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17",
-                                    "core-rules-w23", "core-rules-w30", "core-rules-w18", "core-rules-w31", "core-rules-w32"])
+                                    "core-rules-w23", "core-rules-w30", "core-rules-w18", "core-rules-w31", "core-rules-w32",
+                                    "core-rules-p12"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))
@@ -1432,3 +1436,69 @@ def blade_fragment_damage(ctx):
         want = "no flag" if roll <= over else "flag 0x20 and leech dropped" if gen else "flag 0x20"
         assert outcome[hit] == want, f"generation {gen}, roll {roll} over {over}: {outcome[hit]}, PD2: {want}"
     return f"{len(hits)} hit(s): leech kept {hits[0][4]}%, physical {hits[0][3] >> 8}"
+
+
+ORMUS_SKILLS = {39, 45, 44, 55, 59, 441, 64, 38, 49, 48, 53, 43, 36, 47, 46, 51, 56, 455, 62, 448}  # PD2's list 8
+ORMUS_ROLL = re.compile(r"ormus: rolled skill (\d+) \+(\d+), cast on cast (\d+)% level (\d+)")
+SKILL_ON_CAST = re.compile(r"skill on cast: (\d+)% \(roll (\d+)\) skill (\d+) level (\d+) at (target|point)")
+
+
+def _skill_rows() -> list[dict[str, str]]:
+    with open(os.path.join(REPO, "generated", "data", "global", "excel", "skills.txt"), encoding="latin-1") as f:
+        rows = [line.rstrip("\r\n").split("\t") for line in f]
+    return [dict(zip(rows[0], r)) for r in rows[1:]]
+
+
+def ormus_expected(param: int, chance: int, level: int, reqlevel: int, delay: bool) -> tuple[int, int, int]:
+    """PD2's func 25 (ProjectDiablo.dll 0x103a12a0): +param to the skill; a skill with a cooldown procs at 67% of
+    the chance, and the level drops by (reqlevel - 6) / 6, truncated as C does."""
+    return param, int(chance * 67 / 100) if delay else chance, level - int((reqlevel - 6) / 6)
+
+
+def _ormus_rolls(ctx) -> list[tuple]:
+    rolls = [tuple(int(v) for v in r) for r in ORMUS_ROLL.findall(_log(ctx))]
+    if not rolls:
+        ctx.skip("no Ormus' Robes roll in the log yet (`cheat uniques 358`, pick it up, then run again)")
+    return rolls
+
+
+@check("ormus-roll", tags=["core-rules-p12"])
+def ormus_roll(ctx):
+    """Ormus' Robes (sorc-skill-rand-ctc, par 2, min 12, max 26) rolls a skill of PD2's sorceress list at +2, and
+    cast on cast at PD2's chance and level for that skill."""
+    rows = _skill_rows()
+    rolls = _ormus_rolls(ctx)
+    for skill, bonus, chance, level in rolls:
+        assert skill in ORMUS_SKILLS, f"skill {skill} is not on PD2's sorceress list"
+        row = rows[skill]
+        want = ormus_expected(2, 12, 26, int(row["reqlevel"]), int(row["localdelay"] or 0) > 0)
+        assert (bonus, chance, level) == want, f"{row['skill']}: +{bonus}, {chance}% level {level}, PD2: {want}"
+    return f"{len(rolls)} roll(s), e.g. {rows[rolls[0][0]]['skill']} +{rolls[0][1]}, {rolls[0][2]}% level {rolls[0][3]}"
+
+
+@check("ormus-skill-on-cast", tags=["core-rules-p12"])
+def ormus_skill_on_cast(ctx):
+    """Casting a spell while wearing the robes procs the robe's skill only on a roll under its chance, at PD2's chance
+    and level for that skill (the robe may come from an earlier game, so the proc is checked against the formula)."""
+    rows = _skill_rows()
+    procs = [(int(c), int(r), int(s), int(lv), at) for c, r, s, lv, at in SKILL_ON_CAST.findall(_log(ctx))]
+    if not procs:
+        ctx.skip("no skill on cast proc in the log yet (wear the robes, cast a spell out of town, run again)")
+    for chance, roll, skill, level, _ in procs:
+        assert roll < chance, f"skill {skill} procced on roll {roll}, chance {chance}%"
+        if skill not in ORMUS_SKILLS:
+            continue  # another cast-skill item: its chance and level are the item's own
+        row = rows[skill]
+        _, want_chance, want_level = ormus_expected(2, 12, 26, int(row["reqlevel"]), int(row["localdelay"] or 0) > 0)
+        assert (chance, level) == (want_chance, want_level), (
+            f"{row['skill']}: {chance}% level {level}, PD2: {want_chance}% level {want_level}")
+    return f"{len(procs)} proc(s), e.g. {rows[procs[0][2]]['skill']} level {procs[0][3]} at the {procs[0][4]}"
+
+
+@check("items-installed", tags=["core-rules-p12"])
+def items_installed(ctx):
+    """core-rules installs its two item rules: property func 26 and the skill on cast trigger."""
+    line = re.search(rf"{PLUGIN}: items [^\n]*", _log(ctx))
+    assert line, "no items part line in the plugin log"
+    assert "items 2/2 installed" in line.group(0), line.group(0)
+    return line.group(0)[len(PLUGIN) + 2:]

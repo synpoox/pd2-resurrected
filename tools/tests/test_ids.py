@@ -200,6 +200,10 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["Blood Warp", "190", "80", "63"])  # router, then the first free start slots
 
+    def test_ormus_property_function_moves_to_core_rules_slot(self):
+        self.assertEqual(I.spell("properties", "func1", "25", {}), "26")
+        self.assertEqual(I.spell("properties", "func1", "21", {}), "21")
+
     def test_charge_keeps_its_server_slots_and_takes_d2r_client_functions(self):
         cols = "skill|srvdofunc|srvstfunc|cltdofunc|cltstfunc"
         d2r = table(f"{cols}\nAttack|1|0|0|0\n")

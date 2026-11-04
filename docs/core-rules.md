@@ -80,7 +80,7 @@ the earliest in the order Necromancer, Paladin, Druid, Sorceress, Assassin, and 
 
 1. Router slot: built in W10 as srvdofunc 190 (dispatching by skill id; Bash first). Further rules join it.
 2. The 4 dead item events and the remaining shared hit-function groups.
-3. Class-themed item rules (Ormus' Robes), "not yet" on the unported list since the pre-alpha (P12).
+3. Class-themed item rules (Ormus' Robes): built in P12, with skill on cast for every cast-skill item.
 4. Monster and boss kits, then cube ops.
 5. Investigations: phasing, a3q5, SkilPal/SUNITNPC, PerfectShrine, charm rule, cube op 30/31.
 
@@ -172,7 +172,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 
 | Rule | PD2 source | Bucket | D2R slot | RVAs | Tier | Size | Status | Test | Work item |
 |---|---|---|---|---|---|---|---|---|---|
-| Skill on cast (`item_skilloncast`, 62 live item rows) | events.txt `dospellcast`, itemeventfunc 33 | c | event by name; itemeventfunc 33 not in D2R | UnitEventDispatch, SkillStart, castSkillEvent | Exact | M | open | cast with Bane Ash logs the proc at its chance |  |
+| Skill on cast (`item_skilloncast`, 62 live item rows) | events.txt `dospellcast`, itemeventfunc 33 | c | none: D2RCore runs item listeners from its own table, so core-rules walks the wearer's listener list (unit +0xe0) and runs PD2's event (`0x103473a0`) for each `item_skilloncast` node; PD2's 33 kept ([p12-ormus-robes](research/p12-ormus-robes.md)) | SrvSkillDispatch, UnitEventList, UnitLayerStat, CastEventSkill, CastEventSkillAt, SetUnitFlag, UnitSeed | Exact | M | built (P12) with an approximated deviation, owed to the unported list (`docs/unported.md`) | game check `ormus-skill-on-cast`: each proc rolled under its chance, at PD2's chance and level | P12 |
 | Skill on block (`item_skillonblock`, 5 live rows) | events.txt `doblock`, itemeventfunc 30 | c | event by name | UnitEventDispatch, block hook ? | Exact | M | open | blocked hit logs the proc |  |
 | Skill on crit (`item_skilloncrit`) | events.txt `docrit` | e | none | none | Exact | S | unreachable | no item or monster row carries the stat |  |
 | Skill on pierce (`item_skillonpierce`) | events.txt `dopierce` | e | none | none | Exact | S | unreachable | no item or monster row carries the stat |  |
@@ -186,7 +186,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Item stat descriptions | itemstatcost `descfunc` 0-4, 6-9, 20 | a | same | none | Exact | S | data | D2R's data guide documents each with the vanilla meaning; check tooltip text | W3 |
 | `item_shiny_appearance` description | itemstatcost `descfunc` 30 | e | none | none | Exact | S | unreachable | no row carries the stat; D2R's 30 means "single skill random" |  |
 | Property functions | properties `func` 3, 8, 22, 24 | a | same | none | Exact | S | data | D2R's own properties with the same codes use the same functions | W3 |
-| Random sorceress skill on striking (Ormus' Robes, prop `sorc-skill-rand-ctc`) | properties `func1` 25 | c | 25 -> 37+ (D2R 25 is `affix-rand`; table size unknown) | PropertyFuncTable | Exact | M | open | Ormus' Robes rolls one sorceress skill CTC within PD2's ranges | not yet (P12) |
+| Random sorceress skill on striking (Ormus' Robes, prop `sorc-skill-rand-ctc`) | properties `func1` 25 | c | 25 -> 26 (D2R 25 is `affix-rand`; 37 slots, 26-35 null), by value in `tools/pd2_ids.py` FUNCS; PD2's `0x103a12a0` | PropertyFuncTable, PropertySetStat, ItemRandom, SkLocalDelay, SkReqLevel | Exact | M | built (P12) | game check `ormus-roll`: skill on PD2's list, +2, chance and level by PD2's formula | P12 |
 
 ## Cube ops
 
