@@ -76,7 +76,9 @@ Fire 259, Cobra Strike 265, Claws of Thunder 269, Blades of Ice 274, Royal Strik
 release, e.g. modkit save-set <save> level=30 --skill 254=1 --skill 259=1 --skill 265=1 --skill 269=1 --skill 274=1
 --skill 280=1 --skill 255=1 --project .; then out of town hit monsters three times in a row with each of Fists of
 Fire, Cobra Strike and Blades of Ice, releasing between them with Dragon Talon (a release runs the same prg slots and
-logs the same lines), and run the same command with core-rules-w29.
+logs the same lines). Then build charges on one finisher and, before they expire, hit with another: Fists of Fire
+once or twice, then Cobra Strike (shared charges, and Cobra Strike's steal). Run the same command with
+core-rules-w29.
 W17 checks (tag core-rules-w17), same merged data: a Paladin with Holy Light and Fist of the Heavens. Holy Light is
 the Paladin's 32nd skill, past the 30 class skills a save holds, so set both in game: `debug_mode`, `cheat sklvl Holy
 Light,10`, `cheat sklvl Fist of the Heavens,10`, `cheat goto 2`, `cheat mspawn zombie1,6`; then Holy Light on a
@@ -924,7 +926,8 @@ def _logged(ctx, pattern: str, hint: str) -> list[tuple]:
 @check("charge-up-hits", tags=["core-rules-w29"])
 def charge_up_hits(ctx):
     """A charge-up hit (srvdofunc 190, PD2 srvdo 170) ends at the shared count + 1 (at most 3) and fires PD2's
-    srvprgfunc for that charge with its prgcalc; Cobra Strike's steal goes on before a hit that would pass 2."""
+    srvprgfunc for that charge with its prgcalc; Cobra Strike's steal goes on before a hit that would pass 2. Needs a
+    hit on another finisher's charges (shared above this skill's own) and a Cobra Strike hit that takes the steal."""
     ups = _logged(ctx, CHARGE_UP.pattern, "charge-up skill")
     hits = [u for u in ups if u[3] > u[2]]
     if not hits:
@@ -934,6 +937,10 @@ def charge_up_hits(ctx):
         slot, expected = FINISHER_PRG.get(skill, {}).get(after, (0, None))
         assert prg == slot, f"skill {skill} charge {after}: prg {prg}, PD2's maps to {slot}"
         assert expected is None or calc == expected, f"skill {skill} charge {after}: prgcalc {calc}, PD2 {expected}"
+    # a hit on another finisher's charges: this skill's own count alone can't make shared pass before
+    assert any(h[1] > h[2] for h in hits), "no hit built on another finisher's charges (shared > charges before); "         "build charges on one finisher, then hit with another before they expire"
+    steals = [u for u in ups if u[0] in (COBRA, RAKANOTH) and u[2] <= 1 and u[1] >= 1]
+    assert steals, "no Cobra Strike hit with shared >= 1 and at most 1 charge, so the steal is unchecked; "         "hit with Cobra Strike while another finisher holds charges"
     for skill, shared, before, _, steal, _, _ in ups:
         want = int(skill in (COBRA, RAKANOTH) and before <= 1 and shared >= 1)
         assert steal == want, f"skill {skill}: shared {shared}, charges {before}: steal {steal}"
