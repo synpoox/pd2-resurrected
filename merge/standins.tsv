@@ -66,7 +66,6 @@ skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
-skills	proc_SplashDamage	-	srvdofunc	Melee splash
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
 skills	Gust	Teleport	srvdofunc	Gust
 skills	Holy Light	Holy Bolt	srvdofunc	Holy Light
@@ -74,8 +73,6 @@ skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
 skills	Split Throw	-	cltdofunc	Split Throw
 skills	Combustion	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	Joust	Leap Attack	srvdofunc	Joust
-skills	Golem Splash	-	srvdofunc	Melee splash
-skills	Skeleton Splash	-	srvdofunc	Melee splash
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
 skills	FingermageBossNova	Nova	srvdofunc,cltdofunc	Combustion and boss novas
 skills	FingermageBossDiabWall	DiabWall	srvdofunc	Firestorm and wall makers

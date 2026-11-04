@@ -102,7 +102,7 @@ def _log(ctx) -> str:
 
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                 "core-rules-w13", "core-rules-w14", "core-rules-w26", "game"])
+                                 "core-rules-w13", "core-rules-w14", "core-rules-w26", "core-rules-w33", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -378,8 +378,28 @@ def revive_event(ctx):
     assert skill == REVIVE, f"event from skill {skill}, expected Revive ({REVIVE})"
     assert unit_type == 1, f"fired on unit type {unit_type}, not a revived monster"
     assert splash == PROC_SPLASH_DAMAGE, f"splash skill {splash}, expected proc_SplashDamage ({PROC_SPLASH_DAMAGE})"
-    # the cast is refused (0) until proc_SplashDamage has its do function (W33, docs/unported.md)
+    assert cast != 0, "the splash was refused (proc_SplashDamage's do function, W33)"
     return f"fired on a revive hitting unit type {target_type}, splash cast {cast}"
+
+
+@check("melee-splash", tags=["core-rules-w33"])
+def melee_splash(ctx):
+    """A splash (proc_SplashDamage, Golem Splash, Skeleton Splash through the srvdo 190 router) hits the units within
+    calc3 of the struck unit, the struck unit aside. proc_SplashDamage's calc3 is PD2's
+    max(6 - lvl + inc_splash_radius / 20, 0)."""
+    casts = re.findall(r"splash: skill (\d+) level (\d+) from unit type \d+ at unit type \d+: radius (-?\d+) "
+                       r"\(inc_splash_radius (-?\d+)\), units hit (\d+)", _log(ctx))
+    casts = [tuple(int(v) for v in c) for c in casts]
+    if not casts:
+        ctx.skip("no splash in the log yet (hit a pack with item_splashonhit, or Revive and let it fight, then run again)")
+    for skill, level, radius, inc, _ in casts:
+        if skill == PROC_SPLASH_DAMAGE:
+            assert radius == max(6 - level + int(inc / 20), 0), f"level {level}, inc_splash_radius {inc}: radius {radius}"
+    hits = [c for c in casts if c[4] > 0]
+    if not hits:
+        ctx.skip(f"{len(casts)} splashes logged, none with units in range (splash a pack, then run again)")
+    skill, level, radius, inc, units = hits[0]
+    return f"skill {skill} level {level}: radius {radius} (inc_splash_radius {inc}), {units} units hit"
 
 
 @check("throw-hd-models", tags=["core-rules"])
