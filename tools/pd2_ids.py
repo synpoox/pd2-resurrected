@@ -122,18 +122,22 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # 160 join the router too, Combustion's cltdo 100 takes 120 (docs/research/w27-static-field-combustion.md).
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
 # Blessed Hammer's sdo 40 / cdo 72 are D2R's too and take 47 / 80 (docs/research/w20-blessed-hammer.md).
+# The monster kits (W36, docs/research/w36-monster-kits.md): PoisonEggSpawn's cltdo 109 takes 126, TorajanBossNest's
+# srvdo 181 (the finishers' prg there) joins the router, the Cyclers' srvst 67 (D2R's Frenzy start) takes 83 and the
+# summon-on-hit shit 6 (D2R's leaves out PD2's flags) takes 67.
 # Ormus' Robes' property func 25 (D2R's 25 is affix-rand) takes the free property slot 26 (P12,
 # docs/research/p12-ormus-robes.md).
 FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
          "missiles": {"pSrvDoFunc": {"38": "46", "40": "47"}, "pCltDoFunc": {"70": "78", "69": "79", "72": "80"},
-                      "pSrvHitFunc": {"30": "66", "34": "69"},
+                      "pSrvHitFunc": {"30": "66", "34": "69", "6": "67"},
                       "pSrvDmgFunc": {"15": "22", "16": "21", "17": "20"}, "pCltHitFunc": {"26": "71", "6": "68"}},
          "skills": {"srvdofunc": {"153": "172", "154": "183", "155": "190", "156": "190", "157": "190", "159": "190",
                                   "160": "190", "161": "190", "162": "190", "163": "190", "164": "190", "165": "190",
-                                  "166": "190", "170": "190"},
-                    "cltdofunc": {"97": "115", "98": "116", "100": "120", "101": "121", "102": "122", "112": "37"},
+                                  "166": "190", "170": "190", "181": "190"},
+                    "cltdofunc": {"97": "115", "98": "116", "100": "120", "101": "121", "102": "122", "112": "37",
+                                  "109": "126"},
                     # PD2's srvst 68 calls slot 32, D2R's melee start (W11)
-                    "srvstfunc": {"66": "80", "68": "32"}, "cltstfunc": {"56": "63", "57": "25"},
+                    "srvstfunc": {"66": "80", "68": "32", "67": "83"}, "cltstfunc": {"56": "63", "57": "25"},
                     # the finishers' prg functions (W29): only these PD2 rows use these values in these columns
                     **{f"srvprgfunc{i}": {"171": "184", "172": "185", "39": "186", "139": "181"} for i in (1, 2, 3)},
                     # and their client halves (W30); D2R's 106 is Bind Demon
@@ -141,7 +145,9 @@ FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
 # missiles.txt parameters a PD2 hit function reads as ids: pSrvHitFunc -> {column: the table it names}. srvhit 61
 # (Poison Dagger's cloud, the throwing potions, Kanemith's blaze dot) gives the hit unit state sHitPar1 with stats
 # sHitPar3 and cHitPar2.
-HIT_PARAMS = {"61": {"sHitPar1": "states", "sHitPar3": "itemstatcost", "cHitPar2": "itemstatcost"}}
+# srvhit 67 (PD2's 6, the summon-on-hit missiles; keyed by the mod's number) spawns monstats row sHitPar1.
+HIT_PARAMS = {"61": {"sHitPar1": "states", "sHitPar3": "itemstatcost", "cHitPar2": "itemstatcost"},
+              "67": {"sHitPar1": "monstats"}}
 # PD2's srvdo 188 / cltdo 117 (Lightning Bolt, Lightning Fury) only create srvmissile, else srvmissilea (cltmissile,
 # else cltmissilea), with the arguments D2R's do dispatcher passes for srvmissile / cltmissile after any do function
 # (docs/research/lightning-javelins.md). So the merge moves that missile into srvmissile / cltmissile and drops the
@@ -457,17 +463,19 @@ class Context(NamedTuple):
 
 
 def context(merge_dir: Path, pd2_data: Path, d2r_data: Path) -> Context:
-    return context_of(lists_for(merge_dir, pd2_data, d2r_data), pd2_data)
+    return context_of(lists_for(merge_dir, pd2_data, d2r_data), pd2_data, d2r_data)
 
 
-def context_of(lists: dict[str, list[tuple[str, int, str]]], pd2_data: Path) -> Context:
-    """The Context of id lists already read (and checked)."""
+def context_of(lists: dict[str, list[tuple[str, int, str]]], pd2_data: Path, d2r_data: Path | None = None) -> Context:
+    """The Context of id lists already read (and checked). With D2R's data, monstats ids too (HIT_PARAMS)."""
     ids = {}
     for t in ("skills", "states", "itemstatcost"):
         if not lists[t]:  # nothing to remap (tests with no such table)
             continue
         mod = {p.lower(): i for p, i, _ in lists[t]}
         ids[t] = {str(k): str(mod[p.lower()]) for k, p in enumerate(ident(load(pd2_data, t).names()))}
+    if d2r_data is not None and (excel(d2r_data) / "monstats.txt").is_file():
+        ids["monstats"] = monstats_ids(load(pd2_data, "monstats"), load(d2r_data, "monstats"))
     return Context(lists, renames(lists), ids, property_kinds(load(pd2_data, "properties")))
 
 
@@ -494,6 +502,17 @@ def write(table: str, merged: Table, dropped: list[str], out_data: Path) -> None
     dest.write_bytes(merged.text().encode("latin-1"))
     if dropped:
         print(f"  {table}: PD2 columns D2R has no place for: {', '.join(dropped)}")
+
+
+def monstats_ids(pd2: Table, d2r: Table) -> dict[str, str]:
+    """PD2 monstats id -> the mod's. merge/tables.json merges monstats by name: D2R's rows keep their ids, PD2-only rows
+    follow D2R's last."""
+    mod = {n.lower(): i for i, n in enumerate(d2r.names())}
+    added = len(d2r.names())
+    for n in pd2.names():
+        if n.lower() not in mod:
+            mod[n.lower()], added = added, added + 1
+    return {str(k): str(mod[n.lower()]) for k, n in enumerate(pd2.names())}
 
 
 def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
