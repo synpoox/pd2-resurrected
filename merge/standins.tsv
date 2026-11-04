@@ -158,5 +158,4 @@ misc	Kyovoshad Map	-	pSpell	Map items
 misc	Dark Temple Map	-	pSpell	Map items
 misc	Poisoned Well Map	-	pSpell	Map items
 misc	Descend Map	-	pSpell	Map items
-properties	sorc-skill-rand-ctc	-	func1	Random sorceress skill on striking
 states	skilldelay	=	remfunc	State remove function 12

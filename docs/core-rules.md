@@ -18,7 +18,7 @@ Columns:
   yet confirmed: treat as different from D2R until checked), `data` (no plugin code expected; listed so the check is not lost),
   `unreachable` (no row reaches it in play; not added to the unported list), `cut`.
 - **Work item**: the build slice that carries the row (see Work items below); empty = after the pre-alpha cut (in the alpha), in the order
-  below. `map plan` rows are sliced by the PD2 map system plan; `later release` rows wait for multiplayer.
+  below. map system rows name their `MS` work item from [map-system.md](map-system.md), whose map-only code lives in `core-maps`; `later release` rows wait for multiplayer.
 - **Test**: the log assertion the `tests/game/` check makes. Expected values come from PD2's data unless noted.
 
 ## Work items
@@ -80,7 +80,7 @@ the earliest in the order Necromancer, Paladin, Druid, Sorceress, Assassin, and 
 
 1. Router slot: built in W10 as srvdofunc 190 (dispatching by skill id; Bash first). Further rules join it.
 2. The 4 dead item events and the remaining shared hit-function groups.
-3. Class-themed item rules (Ormus' Robes), "not yet" on the unported list since the pre-alpha (P12).
+3. Class-themed item rules (Ormus' Robes): built in P12, with skill on cast for every cast-skill item.
 4. Monster and boss kits, then cube ops.
 5. Investigations: phasing, a3q5, SkilPal/SUNITNPC, PerfectShrine, charm rule, cube op 30/31.
 
@@ -172,7 +172,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 
 | Rule | PD2 source | Bucket | D2R slot | RVAs | Tier | Size | Status | Test | Work item |
 |---|---|---|---|---|---|---|---|---|---|
-| Skill on cast (`item_skilloncast`, 62 live item rows) | events.txt `dospellcast`, itemeventfunc 33 | c | event by name; itemeventfunc 33 not in D2R | UnitEventDispatch, SkillStart, castSkillEvent | Exact | M | open | cast with Bane Ash logs the proc at its chance |  |
+| Skill on cast (`item_skilloncast`, 62 live item rows) | events.txt `dospellcast`, itemeventfunc 33 | c | none: D2RCore runs item listeners from its own table, so core-rules walks the wearer's listener list (unit +0xe0) and runs PD2's event (`0x103473a0`) for each `item_skilloncast` node; PD2's 33 kept ([p12-ormus-robes](research/p12-ormus-robes.md)) | SrvSkillDispatch, UnitEventList, UnitLayerStat, CastEventSkill, CastEventSkillAt, SetUnitFlag, UnitSeed | Exact | M | built (P12) with an approximated deviation, owed to the unported list (`docs/unported.md`) | game check `ormus-skill-on-cast`: each proc rolled under its chance, at PD2's chance and level | P12 |
 | Skill on block (`item_skillonblock`, 5 live rows) | events.txt `doblock`, itemeventfunc 30 | c | event by name | UnitEventDispatch, block hook ? | Exact | M | open | blocked hit logs the proc |  |
 | Skill on crit (`item_skilloncrit`) | events.txt `docrit` | e | none | none | Exact | S | unreachable | no item or monster row carries the stat |  |
 | Skill on pierce (`item_skillonpierce`) | events.txt `dopierce` | e | none | none | Exact | S | unreachable | no item or monster row carries the stat |  |
@@ -180,21 +180,21 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Skill while equipped (`item_skillonequip`, prop `equipped-skill`: Tempest, Blackoak Shield, Spectral Plate) | itemstatcost stat, properties func 22 | c | none | ? | Exact | M | verify | equip logs the SelfAura skill running |  |
 | Phasing (stat `phasing` + state, from Phasing SelfAura) | ProjectDiablo.dll `StrPhasingStatDesc` | c | none | ? | Exact | M | verify | effect not identified yet (Q6) |  |
 | Charm "only one unique" rule | ProjectDiablo.dll `CharmOnlySingleUniqueDesc`; PD2 uniqueitems `carry1` is empty on every row | a | uniqueitems `carry1` groups (D2R: Gheed's 1001, Annihilus 1002, Torch 1003, crafted Rupture charms 1004) | none | Exact | S | verify | second unique charm is refused; which PD2 charms (trophies, Dev Charm, ...) and whether one shared group is unknown |  |
-| Map items (48 items) | misc `pSpell` 12 | c | 12 -> 16 (D2R 12 is the Resist Scroll) | ItemSpellTable, ItemSpellCheck, ItemSpellUse | Exact | L | open | using a map logs the map's area and modifiers (part of the map system, Q7) | map plan |
+| Map items (48 items) | misc `pSpell` 12 | c | 12 -> 16 (D2R 12 is the Resist Scroll) | ItemSpellTable, ItemSpellCheck, ItemSpellUse | Exact | L | open | using a map logs the map's area and modifiers (part of the map system, Q7) | MS2 |
 | Unlimited TP and ID books | misc `pSpell` 13 | c | 13 -> 17 (D2R 13 is the respec token) | ItemSpellTable, ItemSpellUse | Exact | S | open | use logs a portal and the book keeps its charges |  |
 | Other item spells (potions, books, herb) | misc `pSpell` 1-9 | a | same | none | Exact | S | data | PD2 rows use them as D2R does (by item code) | W3 |
 | Item stat descriptions | itemstatcost `descfunc` 0-4, 6-9, 20 | a | same | none | Exact | S | data | D2R's data guide documents each with the vanilla meaning; check tooltip text | W3 |
 | `item_shiny_appearance` description | itemstatcost `descfunc` 30 | e | none | none | Exact | S | unreachable | no row carries the stat; D2R's 30 means "single skill random" |  |
 | Property functions | properties `func` 3, 8, 22, 24 | a | same | none | Exact | S | data | D2R's own properties with the same codes use the same functions | W3 |
-| Random sorceress skill on striking (Ormus' Robes, prop `sorc-skill-rand-ctc`) | properties `func1` 25 | c | 25 -> 37+ (D2R 25 is `affix-rand`; table size unknown) | PropertyFuncTable | Exact | M | open | Ormus' Robes rolls one sorceress skill CTC within PD2's ranges | not yet (P12) |
+| Random sorceress skill on striking (Ormus' Robes, prop `sorc-skill-rand-ctc`) | properties `func1` 25 | c | 25 -> 26 (D2R 25 is `affix-rand`; 37 slots, 26-35 null), by value in `tools/pd2_ids.py` FUNCS; PD2's `0x103a12a0` | PropertyFuncTable, PropertySetStat, ItemRandom, SkLocalDelay, SkReqLevel | Exact | M | built (P12) | game check `ormus-roll`: skill on PD2's list, +2, chance and level by PD2's formula | P12 |
 
 ## Cube ops
 
 | Rule | PD2 source | Bucket | D2R slot | RVAs | Tier | Size | Status | Test | Work item |
 |---|---|---|---|---|---|---|---|---|---|
-| Item stat less than / equal (corruption outcomes, map recipes; 1,126 enabled rows) | cubemain `op` 16, 18 | a | 16, 18 | none | Exact | S | data | recipes match D2R's data-guide meaning; the merge remaps the `param` stat id of ops 3-26 (361 `corruptor` -> 414, 185, 276, 458) | P9, map plan |
+| Item stat less than / equal (corruption outcomes, map recipes; 1,126 enabled rows) | cubemain `op` 16, 18 | a | 16, 18 | none | Exact | S | data | recipes match D2R's data-guide meaning; the merge remaps the `param` stat id of ops 3-26 (361 `corruptor` -> 414, 185, 276, 458) | P9, MS5 |
 | Quest item difficulty check | cubemain `op` 28 | a | 28 | none | Exact | S | data | same as D2R's own op 28 rows | W3 |
-| Map recipes (heroic, corrupt, fortify, ears, map events; 26 rows) | cubemain `op` 30 | c | 30 | CubeRecipeSearch, CubeInputMatch | Exact | M | verify | meaning guessed (Q8); recipe accepts only what PD2 accepts | map plan |
+| Map recipes (heroic, corrupt, fortify, ears, map events; 26 rows) | cubemain `op` 30 | c | 30 | CubeRecipeSearch, CubeInputMatch | Exact | M | verify | meaning guessed (Q8); recipe accepts only what PD2 accepts | MS5 |
 | Demonic cube reroll of unique and set items (16 rows) | cubemain `op` 31 | c | 31 | CubeRecipeSearch, CubeInputMatch, CubeExecutor | Exact | M | open | reroll logs new stats inside the item's ranges |  |
 
 ## Server rules from the DLL triage
@@ -206,7 +206,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Character stat commands (`.kills`, `.deaths`, `.played`, `.age`, `.allstats`, `.accountstats`) | ProjectDiablo.dll strings | b | none | UnitDeath | Function-equivalent | M | open | kill a boss, `.kills` logs +1; counters need saved state |  |
 | Teleport blocked areas | ProjectDiablo.dll `TeleportBlocked` | a | levels.txt `Teleport` | none | Exact | S | data (W26): the merged column equals PD2's for every merged level; PD2's Hell-only level set is never filled ([sorceress-w26](research/sorceress-w26.md)) | merged levels `Teleport` = PD2's | W26 |
 | Corrupted zones (D2R's Terror Zones) | ProjectDiablo.dll `pGame->nCorruptedZone`, `CorruptedZoneNotify` | a | D2R Terror Zones, as they are | none | Function-equivalent | S | verify | zone rotation and bonuses compared with PD2; each difference is a deviation on the unported list |  |
-| Map events and invaders (AiThink4, `MapEventNotify*`, Invader monsters) | ProjectDiablo.dll | c | none | ? | Exact | L | verify | part of the map system (Q7) | map plan |
+| Map events and invaders (AiThink4, `MapEventNotify*`, Invader monsters) | ProjectDiablo.dll | c | none | ? | Exact | L | verify | part of the map system (Q7) | MS8-MS10 |
 | Corruption in one press (Q10: PD2 re-runs the recipe search after a roll row and marks a destroyed item; the alpha takes two presses and the merge marks it) | stat 361 `corruptor`, prop `corruptnum`, op 16 recipes, cubemain `ladder` | c | none | CubeExecutor | Exact | M | open | one cube press gives a PD2 outcome and the corrupted mark |  |
 | Loot allocation | ProjectDiablo.dll `pGame->nItemAllocation`, `LootAllocationTitle` | c | none | ? | Function-equivalent | M | verify | multiplayer phase only | later release |
 | PvP modifiers, battle-royale checks | ProjectDiablo.dll `*PVPModifiers`, `BRLevelCheck`, `BRGearCheck` | e | none | none | Function-equivalent | S | cut | online feature |  |
@@ -216,10 +216,10 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Charge (srvdo 180) in the Charge/Whirlwind rule, also for skill-less requests | ProjectDiablo.dll gate A, [plrmodes.md](research/plrmodes.md) | c | none | PlrModeChange | Exact | S | approximated (W16): D2R's mode change keys on skills.txt flags, not srvdofunc, and the merged Charge and Whirlwind rows have the same flags, so Charge stays in Whirlwind's group; a skill-less request is D2R's (queued to the last 2 frames, read from the decompile), PD2's gate B window not compared ([w16-charge](research/w16-charge.md)) | Whirlwind and Charge take a skill-less mode change as in PD2 (not checked: no mode-change log) | W16 |
 | Run and Concentration in the end-of-action window | ProjectDiablo.dll gates A and B, [plrmodes.md](research/plrmodes.md) | c | none | BusyModeGate (logged only) | Exact | S | approximated (W19): D2R's busy gate `0x42d840` already buffers a run to the end of an attack and rolls Concentration only against get-hit-type requests, so no rule code; the frame windows are D2R's ([w19-holy-sword-smite](research/w19-holy-sword-smite.md)) | game checks `run-queued`, `concentration-window` on the `gate:` log lines | W19 |
 | Get-hit/block end window, cast/sequence delay from neutral or run | ProjectDiablo.dll gate B, [plrmodes.md](research/plrmodes.md), decoded in [w34-gate-b.md](research/w34-gate-b.md) | c | none | HitRecoveryGate (two immediates and a logging hook on `0x42d700`) | Exact | S | approximated (W34): the server's window is PD2's (2 frames, D2R 1), D2R's client holds a request made in get-hit and sends it with 1 frame left (PD2's 1.13c client most likely too: same UnitMode.cpp, no client patch), and get-hit/block requests and walk/run buffering stay D2R's; the cast stamp's only writer is client code (`0x102925a0`, a tick count), so PD2's single-player server most likely never delays a cast and D2R matches it with no port (no PD2 runtime read) ([w34-gate-b](research/w34-gate-b.md)) | Slot8: every request in get-hit reached the server at 1 frame left and was allowed (`hit-window`) | W34 |
-| Level life regen cap (30, `bloodwarp` lifts it) | ProjectDiablo.dll `0x102fc000`, [plrmodes.md](research/plrmodes.md) | c | none | ? | Exact | S | verify | part of the map system (Q7) | map plan |
+| Level life regen cap (30, `bloodwarp` lifts it) | ProjectDiablo.dll `0x102fc000`, [plrmodes.md](research/plrmodes.md) | c | none | ? | Exact | S | verify | part of the map system (Q7) | MS3 |
 | Player death handler and two more PlrModes hooks | ProjectDiablo.dll `0x1036fcd0`, `0x1036e950`, `0x10374020`, [plrmodes.md](research/plrmodes.md) | c | none | ? | Exact | ? | verify | not decoded yet |  |
 | Perfect shrine | ProjectDiablo.dll `PerfectShrine` | c | none | ? | Exact | S | verify | effect not identified (Q6) |  |
-| Stackable items / item quantity | ProjectDiablo.dll `HOTKEY_ItemQuantity`; cube rows note "stackable maps" | c | none | ? | Exact | M | verify | maps stack and split as in PD2 |  |
+| Stackable items / item quantity | ProjectDiablo.dll `HOTKEY_ItemQuantity`; cube rows note "stackable maps" | c | none | ? | Exact | M | verify | maps stack and split as in PD2 || MS6 |
 | Skill aura event 32 (Revive) | skills `auraeventfunc1` 32 | c | 32 (D2R's 0x42eea0 is reached by no row) and srvdo 58 wrapped | AuraEventTable, SrvDoTable, RegisterSkillEvents | Exact | S | built (W14, W33): D2R's Revive never registers a skill's aura events on the pet, so the srvdo 58 wrapper registers them (srvst 66's 0x42fa90) on the revived monster; the event runs proc_SplashDamage's do function directly at level 1, as PD2 does, around the unit it hit, where PD2's splash takes its path target (unported list) | game check `revive-event`: event 5 from skill 95 on a revived monster, splash 430 cast non-zero | W14 |
 | Skill aura event 3 (Chilling Armor) | skills `auraeventfunc2` 3 | a | 3: PD2's `0x10346020` does what D2R's `0x552a50` does ([w28-sorceress-bolts](research/w28-sorceress-bolts.md)) | none | Exact | S | data | none: verified equal to D2R's (research note); the merged rows keep PD2's damagedinmelee 3 | W28 |
 | Skill aura event 16 (Smite) | skills `auraeventfunc1` 16 | c | 16, wrapped: D2R's 16 is `item_crushingblow`'s event (`0x583150`), as PD2's | AuraEventTable, CurrentSkill, UnitStat, UnitSeed, CrushingBlowApply | Exact | S | built (W19) but not seen firing in game: slot 16 is never called on the Paladin's hits (#165). Approximated deviations, on the unported list: while the owner uses Smite, Smite's event rolls `crushingblow` + calc3 once and the item event stands down; the blow is D2R's ([w19-holy-sword-smite](research/w19-holy-sword-smite.md)) | game check `smite-event`: event 5 on the Paladin, chance = crushingblow + calc3 (5 + blvl), one a frame | W19 |

@@ -119,7 +119,10 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # 160 join the router too, Combustion's cltdo 100 takes 120 (docs/research/w27-static-field-combustion.md).
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
 # Blessed Hammer's sdo 40 / cdo 72 are D2R's too and take 47 / 80 (docs/research/w20-blessed-hammer.md).
-FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46", "40": "47"}, "pCltDoFunc": {"70": "78", "69": "79", "72": "80"},
+# Ormus' Robes' property func 25 (D2R's 25 is affix-rand) takes the free property slot 26 (P12,
+# docs/research/p12-ormus-robes.md).
+FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
+         "missiles": {"pSrvDoFunc": {"38": "46", "40": "47"}, "pCltDoFunc": {"70": "78", "69": "79", "72": "80"},
                       "pSrvHitFunc": {"30": "66", "34": "69"},
                       "pSrvDmgFunc": {"15": "22", "16": "21", "17": "20"}, "pCltHitFunc": {"26": "71", "6": "68"}},
          "skills": {"srvdofunc": {"153": "172", "154": "183", "155": "190", "156": "190", "157": "190", "159": "190",

@@ -124,6 +124,10 @@ W35 checks (tag core-rules-w35), same merged data: a level 90+ Barbarian in Hell
 Mastery and an item_splashonhit item (The Gnasher, `cheat uniques 0`), at least 11 mana (`debug_mode`, `cheat god 1`,
 `cheat goto 2`, `cheat mspawn megademon3,6`). The log keeps a game's first splash only, so start the game fresh and
 Frenzy into the pack before any other splash, then run the same command with core-rules-w35.
+
+P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
+drops Ormus' Robes; `cheat idall`, wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); cast spells at
+the pack until a proc logs (12% a cast, 8% for a skill with a cooldown), and run the same command with core-rules-p12.
 """
 import json
 import os
@@ -162,7 +166,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 178, "dragon flight"), ("pSrvDmgFunc", 22, "chain falloff"),
     ("pSrvHitFunc", 69, "blade fragment"), ("pCltHitFunc", 68, "blade fragment"), ("pSrvDmgFunc", 19, "blade fragment"),
     ("srvstfunc", 73, "holy sword"), ("srvstfunc", 75, "smite"),
-    ("auraeventfunc", 16, "smite crushing blow"),  # D2R's crushing blow, wrapped
+    ("srvdofunc", 150, "smite crushing blow"),  # D2R's Smite do, wrapped, and an inline hook on its hit queue
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -1178,8 +1182,8 @@ def smite_start(ctx):
 
 @check("smite-event", tags=["core-rules-w19"])
 def smite_event(ctx):
-    """Smite's aura event (domeleedamage 5 -> 16) fires on the Paladin who smites: one roll a hit, chance = the
-    crushingblow stat + calc3 (5 + blvl, at least 6)."""
+    """Smite's crushing blow rolls on the Paladin's landed hits (srvdo 150 + the hit queue, #165): one roll a hit,
+    chance = the crushingblow stat + calc3 (5 + blvl, at least 6)."""
     events = _logged(ctx, r"smite event: event (\d+) skill (\d+) level \d+ on unit type (\d+), frame (\d+): chance (\d+) "
                      r"\(crushingblow (\d+) \+ calc3 (\d+)\), roll (\d+), blow (-?\d+)", "Smite event")
     for event, skill, kind, _, chance, stat, calc3, roll, _ in events:
@@ -1354,7 +1358,8 @@ def psychic_hammer_falloff(ctx):
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17",
                                     "core-rules-w23", "core-rules-w30", "core-rules-w18", "core-rules-w19", "core-rules-w31",
-                                    "core-rules-w32", "core-rules-w34"])
+                                    "core-rules-w32", "core-rules-w34",
+                                    "core-rules-p12"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))
@@ -1608,3 +1613,69 @@ def hit_window(ctx):
             want = 4 if request in (2, 3, 6) else 1
         assert result == want, f"mode {mode}, request {request}, {left} frames left: {result}, expected {want}"
     return f"{len(rows)} lines: " + ", ".join(f"{r[2]} left -> {r[3]}" for r in rows[:6])
+
+
+ORMUS_SKILLS = {39, 45, 44, 55, 59, 441, 64, 38, 49, 48, 53, 43, 36, 47, 46, 51, 56, 455, 62, 448}  # PD2's list 8
+ORMUS_ROLL = re.compile(r"ormus: rolled skill (\d+) \+(\d+), cast on cast (\d+)% level (\d+)")
+SKILL_ON_CAST = re.compile(r"skill on cast: (\d+)% \(roll (\d+)\) skill (\d+) level (\d+) at (target|point)")
+
+
+def _skill_rows() -> list[dict[str, str]]:
+    with open(os.path.join(REPO, "generated", "data", "global", "excel", "skills.txt"), encoding="latin-1") as f:
+        rows = [line.rstrip("\r\n").split("\t") for line in f]
+    return [dict(zip(rows[0], r)) for r in rows[1:]]
+
+
+def ormus_expected(param: int, chance: int, level: int, reqlevel: int, delay: bool) -> tuple[int, int, int]:
+    """PD2's func 25 (ProjectDiablo.dll 0x103a12a0): +param to the skill; a skill with a cooldown procs at 67% of
+    the chance, and the level drops by (reqlevel - 6) / 6, truncated as C does."""
+    return param, int(chance * 67 / 100) if delay else chance, level - int((reqlevel - 6) / 6)
+
+
+def _ormus_rolls(ctx) -> list[tuple]:
+    rolls = [tuple(int(v) for v in r) for r in ORMUS_ROLL.findall(_log(ctx))]
+    if not rolls:
+        ctx.skip("no Ormus' Robes roll in the log yet (`cheat uniques 358`, pick it up, then run again)")
+    return rolls
+
+
+@check("ormus-roll", tags=["core-rules-p12"])
+def ormus_roll(ctx):
+    """Ormus' Robes (sorc-skill-rand-ctc, par 2, min 12, max 26) rolls a skill of PD2's sorceress list at +2, and
+    cast on cast at PD2's chance and level for that skill."""
+    rows = _skill_rows()
+    rolls = _ormus_rolls(ctx)
+    for skill, bonus, chance, level in rolls:
+        assert skill in ORMUS_SKILLS, f"skill {skill} is not on PD2's sorceress list"
+        row = rows[skill]
+        want = ormus_expected(2, 12, 26, int(row["reqlevel"]), int(row["localdelay"] or 0) > 0)
+        assert (bonus, chance, level) == want, f"{row['skill']}: +{bonus}, {chance}% level {level}, PD2: {want}"
+    return f"{len(rolls)} roll(s), e.g. {rows[rolls[0][0]]['skill']} +{rolls[0][1]}, {rolls[0][2]}% level {rolls[0][3]}"
+
+
+@check("ormus-skill-on-cast", tags=["core-rules-p12"])
+def ormus_skill_on_cast(ctx):
+    """Casting a spell while wearing the robes procs the robe's skill only on a roll under its chance, at PD2's chance
+    and level for that skill (the robe may come from an earlier game, so the proc is checked against the formula)."""
+    rows = _skill_rows()
+    procs = [(int(c), int(r), int(s), int(lv), at) for c, r, s, lv, at in SKILL_ON_CAST.findall(_log(ctx))]
+    if not procs:
+        ctx.skip("no skill on cast proc in the log yet (wear the robes, cast a spell out of town, run again)")
+    for chance, roll, skill, level, _ in procs:
+        assert roll < chance, f"skill {skill} procced on roll {roll}, chance {chance}%"
+        if skill not in ORMUS_SKILLS:
+            continue  # another cast-skill item: its chance and level are the item's own
+        row = rows[skill]
+        _, want_chance, want_level = ormus_expected(2, 12, 26, int(row["reqlevel"]), int(row["localdelay"] or 0) > 0)
+        assert (chance, level) == (want_chance, want_level), (
+            f"{row['skill']}: {chance}% level {level}, PD2: {want_chance}% level {want_level}")
+    return f"{len(procs)} proc(s), e.g. {rows[procs[0][2]]['skill']} level {procs[0][3]} at the {procs[0][4]}"
+
+
+@check("items-installed", tags=["core-rules-p12"])
+def items_installed(ctx):
+    """core-rules installs its two item rules: property func 26 and the skill on cast trigger."""
+    line = re.search(rf"{PLUGIN}: items [^\n]*", _log(ctx))
+    assert line, "no items part line in the plugin log"
+    assert "items 2/2 installed" in line.group(0), line.group(0)
+    return line.group(0)[len(PLUGIN) + 2:]

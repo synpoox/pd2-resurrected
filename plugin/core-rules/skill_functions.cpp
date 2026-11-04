@@ -3416,7 +3416,7 @@ auto SrvDoRevive(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	return result;
 }
 
-// --- Holy Sword and Smite starts (PD2 srvstfunc 73, 75), Smite's event (auraeventfunc 16) ---------------------------
+// --- Holy Sword and Smite starts (PD2 srvstfunc 73, 75), Smite's crushing blow (srvdo 150) -------------------------
 // Read from ProjectDiablo.dll: srvst 73 at 0x103b6990, srvst 75 at 0x103b6a20, event 16 at 0x103469a0
 // (docs/research/w19-holy-sword-smite.md).
 std::atomic<uint32_t> g_holySwordStarts {0};
@@ -3442,13 +3442,12 @@ auto SrvStHolySword(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 	return accepted ? 1 : 0;
 }
 
-// Smite start: Smite's auraevent1 (domeleedamage -> 16) goes on the caster for good. PD2 adds it once, keyed as
-// item_crushingblow's event; D2R's srvst 66 registers it under the skill's id, so the event below tells the two apart.
+// Smite start: PD2 adds Smite's auraevent1 (domeleedamage -> 16) here. D2R calls no aura event on a player's melee hit
+// (#165 game check: slot 16 never ran on Smite or with a crushing-blow item), so the roll rides on Smite's do instead.
 auto SrvStSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	if (game == nullptr || unit == nullptr) {
 		return 0;
 	}
-	d2r::Engine<SrvDoFn>(d2r::rva::RegisterSkillEvents)(game, unit, skillId, level);
 	if (plog::Sample(g_smiteStarts)) {
 		plog::Info("smite start: skill %d level %d on unit type %d: start accepted, %u so far", skillId, level,
 		           At<int32_t>(unit, d2r::rva::UnitType), g_smiteStarts.load());
@@ -3456,24 +3455,16 @@ auto SrvStSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 	return 1;
 }
 
+// Set while D2R's Smite do (srvdo 150) runs for the Smite row: that do queues its one hit (QueueHit) and applies it.
+thread_local int32_t t_smiteLevel = 0;
+
 using AuraEventFn = int32_t (*)(Game*, int32_t, Unit*, Unit*, void*, int32_t, int32_t) noexcept;
 
-// Event 16, crushing blow. Off Smite it is D2R's. While the owner is using Smite, PD2 rolls once with the
-// crushingblow stat plus Smite's calc3: Smite's own event rolls that and the item event stands down. The blow is
-// D2R's (CrushingBlowApply), not PD2's formula (unported list).
-auto AuraEventCrushingBlow(Game* game, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skillId,
-                           int32_t level) noexcept -> int32_t {
-	const bool smiteEvent = skillId == SkillSmite;  // item events pass stat << 16 | layer instead
-	void* current = unit != nullptr ? d2r::Engine<void* (*)(Unit*) noexcept>(d2r::rva::CurrentSkill)(unit) : nullptr;
-	const bool smiting = current != nullptr && UnitSkillIdOf(current) == SkillSmite;
-	if (!smiting) {
-		return smiteEvent ? 0
-		                  : d2r::Engine<AuraEventFn>(d2r::rva::AuraEvent16D2R)(game, event, unit, target, damage,
-		                                                                       skillId, level);
-	}
-	if (!smiteEvent || game == nullptr || target == nullptr || damage == nullptr) {
-		return 0;
-	}
+// PD2's event 16 on Smite: one roll a hit with the crushingblow stat plus calc3, on the damage block before D2R applies
+// it, as a domeleedamage event runs. The blow is D2R's (CrushingBlowApply), not PD2's formula (unported list).
+// shortcut: if D2R also rolls item crushing blow inline (outside the dump), a Smite hit rolls the item's chance twice;
+// upgrade if the game check shows more blows than crushingblow + calc3 allows.
+void SmiteCrushingBlow(Game* game, Unit* unit, Unit* target, uint8_t* damage, int32_t level) noexcept {
 	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), SkillSmite);
 	const int32_t stat = std::max(d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(
 	                                  unit, StatCrushingBlow, 0),
@@ -3485,16 +3476,38 @@ auto AuraEventCrushingBlow(Game* game, int32_t event, Unit* unit, Unit* target, 
 	                                : 100;
 	int32_t result = 0;
 	if (roll < chance) {
-		d2r::CrushingBlowArgs args {damage, {4, 10, 10}, 0};  // Smite's event is domeleedamage, never 6
+		d2r::CrushingBlowArgs args {damage, {4, 10, 10}, 0};  // domeleedamage, never 6
 		result = d2r::Engine<int32_t (*)(Game*, Unit*, Unit*, d2r::CrushingBlowArgs*) noexcept>(
 			d2r::rva::CrushingBlowApply)(game, unit, target, &args);
 	}
 	if (First(g_smiteEvents, 200)) {
 		plog::Info("smite event: event %d skill %d level %d on unit type %d, frame %d: chance %d (crushingblow %d + "
 		           "calc3 %d), roll %d, blow %d, event %u",
-		           event, skillId, level, At<int32_t>(unit, d2r::rva::UnitType), At<int32_t>(game, d2r::rva::GameFrame),
-		           chance, stat, calc3, roll, result, g_smiteEvents.load());
+		           d2r::rva::EventDoMeleeDamage, SkillSmite, level, At<int32_t>(unit, d2r::rva::UnitType),
+		           At<int32_t>(game, d2r::rva::GameFrame), chance, stat, calc3, roll, result, g_smiteEvents.load());
 	}
+}
+
+using QueueHitFn = void (*)(Game*, Unit*, Unit*, uint8_t*, uint8_t) noexcept;
+QueueHitFn g_queueHitOriginal = nullptr;
+
+// D2R's hit queue (inline hook): Smite's hit gets its crushing-blow roll when it landed (D2R's own test there).
+void QueueHitHook(Game* game, Unit* unit, Unit* target, uint8_t* damage, uint8_t flag) noexcept {
+	if (t_smiteLevel > 0 && game != nullptr && unit != nullptr && target != nullptr && damage != nullptr) {
+		const uint16_t result = At<uint16_t>(damage, d2r::rva::DamageResult);
+		if ((result & d2r::rva::ResultHit) != 0 && (result & d2r::rva::ResultAvoided) == 0) {
+			SmiteCrushingBlow(game, unit, target, damage, t_smiteLevel);
+		}
+	}
+	g_queueHitOriginal(game, unit, target, damage, flag);
+}
+
+// srvdo 150 (D2R's Smite do, also MonSmite's, UberTalicSmite's, MonSmiteLucion's): only the Smite row rolls, as only
+// its PD2 start adds the event.
+auto SrvDoSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	t_smiteLevel = skillId == SkillSmite ? std::max(level, 1) : 0;
+	const int64_t result = d2r::Engine<SrvDoFn>(d2r::rva::SrvDoSmiteD2R)(game, unit, skillId, level);
+	t_smiteLevel = 0;
 	return result;
 }
 
@@ -3646,16 +3659,19 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		                            d2r::rva::AuraEventRevive, revive ? "" : " FAILED (slot is not D2R's event 32)");
 		used += n > 0 ? static_cast<size_t>(n) : 0;
 	}
-	// Event 16 is D2R's crushing blow, which the Smite event calls off Smite: the expected value is D2R's function.
-	const uint64_t d2rBlow = d2r::imageBase + d2r::rva::AuraEvent16D2R;
-	std::memcpy(expected, &d2rBlow, sizeof(expected));
-	const bool smite = context->PatchWriteU64(
-		d2r::rva::AuraEventTable + static_cast<uint64_t>(d2r::rva::AuraEventCrushingBlow) * 8, expected,
-		sizeof(expected), reinterpret_cast<uint64_t>(static_cast<AuraEventFn>(AuraEventCrushingBlow)));
+	// The hit queue hook first (inert until the Smite wrapper runs), then Smite's do, D2R's (expected value), which the
+	// wrapper calls.
+	const uint64_t d2rSmite = d2r::imageBase + d2r::rva::SrvDoSmiteD2R;
+	std::memcpy(expected, &d2rSmite, sizeof(expected));
+	const bool smite = context->InstallInlineHook(d2r::rva::QueueHit, d2r::rva::QueueHitEntry,
+	                                              sizeof(d2r::rva::QueueHitEntry), QueueHitHook, &g_queueHitOriginal) &&
+	                   context->PatchWriteU64(d2r::rva::SrvDoTable + static_cast<uint64_t>(d2r::rva::SrvDoSmite) * 8,
+	                                          expected, sizeof(expected),
+	                                          reinterpret_cast<uint64_t>(static_cast<SrvDoFn>(SrvDoSmite)));
 	installed += smite ? 1 : 0;
 	if (used < reportSize) {
-		const int n = std::snprintf(report + used, reportSize - used, "; auraeventfunc %d smite crushing blow%s",
-		                            d2r::rva::AuraEventCrushingBlow, smite ? "" : " FAILED (slot is not D2R's event 16)");
+		const int n = std::snprintf(report + used, reportSize - used, "; srvdofunc %d smite crushing blow%s",
+		                            d2r::rva::SrvDoSmite, smite ? "" : " FAILED (slot or hit queue bytes differ)");
 		used += n > 0 ? static_cast<size_t>(n) : 0;
 	}
 	// Revive's do is D2R's: the expected value is D2R's function, which the wrapper calls first.
@@ -3705,8 +3721,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 }
 
 auto SkillFunctionCount() noexcept -> int {
-	// + the cltdo 22 patch, aura events 32 and 16, Revive's do, the busy mode gate and the hit
-	// window
+	// + the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the busy mode gate and the hit window
 	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 6;
 }
 
