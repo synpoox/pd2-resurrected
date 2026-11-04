@@ -53,6 +53,10 @@ W14 checks (tag core-rules-w14), same merged data: a Necromancer with Clay Golem
 (slot 13) at 10 and Revive (slot 29), no +skills, e.g. modkit save-set <save> --skill 9=1 --skill 13=10 --skill 29=10;
 then out of town: run core-rules-w14 and, while golem-count watches (30 s), summon Clay Golem four times; then kill a
 monster, Revive its corpse next to other monsters, let the revive fight, and run again.
+W17 checks (tag core-rules-w17), same merged data: a Paladin with Holy Light (merged skill 443) and
+Fist of the Heavens (121), e.g. modkit save-set <save> level=30 --skill 443=10 --skill 121=10 --project .;
+then out of town: Holy Light on a monster next to other monsters, Fist of the Heavens on a pack, and run the same
+command with core-rules-w17.
 """
 import json
 import os
@@ -78,6 +82,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
     ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
+    ("srvdofunc", 176, "holy light"), ("pCltHitFunc", 66, "holy light"), ("pCltHitFunc", 71, "fist delay"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -97,7 +102,7 @@ def _log(ctx) -> str:
 
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                 "core-rules-w13", "core-rules-w14", "core-rules-w33", "game"])
+                                 "core-rules-w13", "core-rules-w14", "core-rules-w33", "core-rules-w17", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -532,8 +537,58 @@ def blood_warp_cast(ctx):
     return f"level {level}: life {life // 256}, cost {cost / 256:.1f} life, hpregen {regen} for {frames} frames, lists {sorted(set(lists))}"
 
 
+@check("holy-light-cast", tags=["core-rules-w17"])
+def holy_light_cast(ctx):
+    """Holy Light (srvdofunc 176) heals cltcalc2-cltcalc3: ln12 + Prayer blvl * par6 to ln34 + Prayer blvl * par7
+    (Param1-4 30, 5, 50, 10; par6 5, par7 10), within aurarangecalc 6 of the target, and halves the side the target is
+    not on: the heal on an enemy, the damage on an ally."""
+    casts = re.findall(r"holy light: skill \d+ level (\d+) on an (enemy|ally): heal (\d+)-(\d+)( halved)?, "
+                       r"damage( halved)?, radius (\d+): healed (\d+), hit (\d+)", _log(ctx))
+    if not casts:
+        ctx.skip("no Holy Light cast in the log yet (cast it on a monster out of town, then run again)")
+    for level, side, lo, hi, half_heal, half_damage, radius, _, _ in casts:
+        level, lo, hi = int(level), int(lo), int(hi)
+        prayer = (lo - (30 + (level - 1) * 5)) / 5
+        assert prayer >= 0 and prayer == int(prayer), f"level {level}: heal min {lo} is not ln12 + Prayer blvl * 5"
+        assert hi == 50 + (level - 1) * 10 + int(prayer) * 10, f"level {level}, Prayer {int(prayer)}: heal max {hi}"
+        assert int(radius) == 6, f"radius {radius}, PD2's aurarangecalc is 6"
+        assert (bool(half_heal), bool(half_damage)) == (side == "enemy", side == "ally"), f"on an {side}: {casts[0]}"
+    level, side, lo, hi, *_, healed, hit = casts[-1]
+    return f"level {level} on an {side}: heal {lo}-{hi}, healed {healed}, hit {hit} ({len(casts)} casts)"
+
+
+@check("holy-light-client-hit", tags=["core-rules-w17"])
+def holy_light_client_hit(ctx):
+    """The client drew holylightdelay (D2R's cltdo 36) and its hit ran PD2's chit 66 with radius cHitPar1 6; PD2's row
+    names no CltHitSubMissile1, so the hit creates nothing more."""
+    hits = re.findall(r"holy light client hit: missile row (\d+) skill \d+ level \d+: radius (\d+), sub-missile (-?\d+), "
+                      r"(\d+) created", _log(ctx))
+    if not hits:
+        ctx.skip("no holylightdelay client hit in the log yet (cast Holy Light, then run again)")
+    row, radius, sub, created = (int(v) for v in hits[0])
+    assert _rows("missiles")[row].lower() == "holylightdelay", f"row {row} is {_rows('missiles')[row]}"
+    assert radius == 6 and sub < 0 and created == 0, hits[0]
+    return f"holylightdelay hit: radius {radius}, no sub-missile"
+
+
+@check("fist-delay-hit", tags=["core-rules-w17"])
+def fist_delay_hit(ctx):
+    """Fist of the Heavens' delay hit (pCltHitFunc 71, PD2's 1.13c 26) sends a fistoftheheavensbolt from the hit to every
+    unit within aurarangecalc 20 (cHitPar1 0), the struck unit included."""
+    hits = re.findall(r"fist delay client hit: skill \d+ level (\d+): radius (\d+), sub-missile (\d+), (\d+) bolts",
+                      _log(ctx))
+    hits = [tuple(int(v) for v in h) for h in hits]
+    if not hits:
+        ctx.skip("no Fist of the Heavens hit in the log yet (cast it on a monster out of town, then run again)")
+    level, radius, sub, bolts = hits[0]
+    assert radius == 20, f"radius {radius}, PD2's aurarangecalc is 20"
+    assert _rows("missiles")[sub].lower() == "fistoftheheavensbolt", f"sub-missile row {sub}"
+    assert bolts >= 1, "no bolt, not even to the struck unit"
+    return f"level {level}: radius {radius}, {bolts} bolts"
+
+
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
-                                    "core-rules-w13", "core-rules-w14"])
+                                    "core-rules-w13", "core-rules-w14", "core-rules-w17"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

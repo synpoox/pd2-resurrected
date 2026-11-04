@@ -848,6 +848,133 @@ auto SrvDoSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	return Splash(game, unit, struck, skillId, level);
 }
 
+// --- Holy Light (PD2 srvdofunc 176) ---------------------------------------------------------------------------------
+// Read from ProjectDiablo.dll: srvdo 176 at 0x103b3cc0, its per-unit callback 0x103043b0
+// (docs/research/w17-holy-light.md). Every unit within aurarangecalc of the target, the caster aside: an ally heals
+// cltcalc2-cltcalc3 life, an enemy takes the skill's magic damage; whichever side the target is not on gets half.
+std::atomic<uint32_t> g_holyLights {0};
+std::atomic<uint32_t> g_holyLightUnitCasts {0};  // the first cast with units in range is logged too
+constexpr int32_t HealOverlay = 26;  // PD2's callback puts overlay 26 on each unit it heals
+
+struct HolyLight {
+	Unit* target;
+	int32_t skillId, level;
+	int32_t healMin, healMax;  // life in 1/256
+	bool halfHeal, halfDamage;
+	int64_t healed, hit;
+};
+
+// 1.13c's D2Game 0xe0a60, which PD2 asks: alignment (D2Common #10666) decides, the same when both are hostile (0) or
+// both allies (2); a neutral unit (1) is hostile to everyone.
+// 0xe0a60 first swaps pets and missiles for their owners; a monster a player owns counts as a player here.
+// shortcut: two players (or their pets) count as allies, where 0xe0a60 asks the PvP state. Upgrade when PvP is ported
+// (later release).
+auto Hostile(Unit* a, Unit* b) noexcept -> bool {
+	using namespace d2r::rva;
+	const auto playerSide = [](Unit* u) {
+		const int32_t type = At<int32_t>(u, UnitType);
+		return type == 0 || (type == UnitMonster && At<int32_t>(u, UnitOwnerType) == 0);
+	};
+	if (a == b || (playerSide(a) && playerSide(b))) {
+		return false;
+	}
+	const auto align = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitAlignment);
+	const int32_t x = align(a), y = align(b);
+	return !(x == y && x != 1);
+}
+
+void PutOverlay(Unit* unit, int32_t overlay) noexcept {
+	using namespace d2r::rva;
+	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(d2r::api.unitDataFlag(unit));
+	if (overlay >= 0 && tables != nullptr && overlay < At<int64_t>(tables, TablesOverlayCount)) {
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetOverlay)(unit, overlay, 0);
+	}
+}
+
+// One unit in range (PD2's 0x103043b0).
+auto HolyLightOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
+	using namespace d2r::rva;
+	auto* hl = static_cast<HolyLight*>(area->arg);
+	Unit* unit = area->unit;
+	if (victim == unit) {
+		return 0;
+	}
+	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit);
+	if (!Hostile(victim, unit)) {
+		const int32_t spread = hl->healMax - hl->healMin;
+		int32_t heal = hl->healMin + (spread > 0 ? static_cast<int32_t>(d2r::RandomBelow(seed, spread)) : 0);
+		heal = std::max(hl->halfHeal ? heal / 2 : heal, 0);
+		// 1.13c D2Game 0x4df20: life + heal, at most max life
+		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+		const int32_t life = unitStat(victim, StatLife, 0), maxLife = unitStat(victim, StatMaxLife, 0);
+		if (heal > 0) {
+			d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(
+				victim, StatLife, std::min(life + heal, std::max(maxLife, life)), 0);
+		}
+		PutOverlay(victim, HealOverlay);
+		++hl->healed;
+		return 1;
+	}
+	d2r::LeapKnockback damage;
+	damage.resultFlags = ResultHit;
+	if (At<int32_t>(victim, UnitType) == UnitMonster && victim != hl->target) {
+		const uint8_t* mon = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(
+			d2r::api.unitDataFlag(victim), At<int32_t>(victim, UnitClassId));
+		if (mon != nullptr && (At<uint32_t>(mon, MonFlags) & MonUndead) != 0) {
+			damage.resultFlags |= ResultKnockback;
+		}
+	}
+	// PD2 halves the bounds and rolls between them; this halves the roll (the same up to 1/256 of a life point)
+	d2r::Engine<void (*)(Unit*, void*, int32_t, int32_t) noexcept>(ElementalDamage)(unit, &damage, hl->skillId, hl->level);
+	auto& magic = *reinterpret_cast<int32_t*>(reinterpret_cast<uint8_t*>(&damage) + DmgMagic);
+	if (hl->halfDamage) {
+		magic /= 2;
+	}
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(AreaApply)(static_cast<Game*>(area->game), unit, victim,
+	                                                                     &damage);
+	++hl->hit;
+	ReleaseDamage(damage);
+	return 1;
+}
+
+// PD2 srvdofunc 176.
+// shortcut: the cast centres on D2R's skill target; PD2 refreshes the caster's path target (1.13c D2Game 0xe07a0) and
+// reads that. Upgrade if a cast in game lands on a different unit (docs/unported.md).
+auto SrvDoHolyLight(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	Unit* target = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(SkillTargetUnit)(game, unit);
+	int32_t x = 0, y = 0;
+	if (target == nullptr || !d2r::UnitXY(target, &x, &y)) {
+		return 1;
+	}
+	const bool enemyTarget = Hostile(target, unit);
+	HolyLight hl {target, skillId, level,
+	              d2r::EvalCalc(game, unit, skill, SkCltCalc2, skillId, level) << 8,
+	              d2r::EvalCalc(game, unit, skill, SkCltCalc3, skillId, level) << 8,
+	              enemyTarget, !enemyTarget, 0, 0};
+	const int32_t radius = d2r::EvalCalc(game, unit, skill, SkAuraRangeCalc, skillId, level);
+	if (radius > 0) {
+		d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(target), x, y};
+		d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, At<uint32_t>(skill, SkAuraFilter), HolyLightOne, &hl,
+		                               0);
+	}
+	PutOverlay(target, At<int16_t>(skill, SkSrvOverlay));
+	if (plog::Sample(g_holyLights) || (hl.healed + hl.hit > 0 && plog::Sample(g_holyLightUnitCasts))) {
+		plog::Info("holy light: skill %d level %d on an %s: heal %d-%d%s, damage%s, radius %d: healed %lld, hit %lld, "
+		           "cast %u", skillId, level, enemyTarget ? "enemy" : "ally", hl.healMin >> 8, hl.healMax >> 8,
+		           hl.halfHeal ? " halved" : "", hl.halfDamage ? " halved" : "", radius,
+		           static_cast<long long>(hl.healed), static_cast<long long>(hl.hit), g_holyLights.load());
+	}
+	return 1;
+}
+
 constexpr int32_t Bash = 126, UberTalicBash = 580;
 
 // --- Poison Dagger (PD2 srvdofunc 164 -> router 190, cltdofunc 102 -> 122; docs/research/necromancer-w11.md) ---------
@@ -1271,6 +1398,8 @@ constexpr Table MissileCltDo {"pCltDoFunc", d2r::rva::MissileCltDoTable, d2r::rv
                               d2r::rva::MissileCltDoFirstFree};
 constexpr Table MissileSrvDmg {"pSrvDmgFunc", d2r::rva::MissileSrvDmgTable, d2r::rva::MissileSrvDmgSlots,
                                d2r::rva::MissileSrvDmgFirstFree};
+constexpr Table MissileCltHit {"pCltHitFunc", d2r::rva::MissileCltHitTable, d2r::rva::MissileCltHitSlots,
+                               d2r::rva::MissileCltHitFirstFree};
 
 struct SlotFunction {
 	const Table& table;
@@ -1311,6 +1440,10 @@ const SlotFunction Functions[] = {
 	// Poison Dagger: srvdo 164 goes through the router (190); D2R fills cltdo 102
 	{CltDo, 122, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoPoisonDagger)), "poison dagger"},
 	{MissileSrvHit, 61, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitState)), "state hit"},
+	{SrvDo, 176, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoHolyLight)), "holy light"},
+	{MissileCltHit, 66, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitHolyLight)), "holy light"},
+	// PD2 leaves Fist of the Heavens' chit 26 vanilla, and D2R's 26 differs from 1.13c's: ours takes 71 (FUNCS)
+	{MissileCltHit, 71, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitFistDelay)), "fist delay"},
 };
 
 }  // namespace
@@ -1376,17 +1509,17 @@ auto SkillFunctionCount() noexcept -> int {
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
-	char missiles[192];
+	char missiles[256];
 	MissileFunctionCounters(missiles, sizeof(missiles));
 	std::snprintf(out, size,
 	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "
 	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, poison daggers %u, "
 	              "client %u, blood warps %u, refused %u, desecrates %u, client %u, corpses hidden %u, revives %u, "
-	              "revive events %u, splashes %u, %s",
+	              "revive events %u, splashes %u, holy lights %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
 	              g_poisonDaggers.load(), g_poisonDaggerClients.load(), g_bloodWarps.load(), g_bloodWarpsRefused.load(),
 	              g_desecrates.load(), g_desecrateClients.load(), g_desecrateHidden.load(), g_revives.load(),
-	              g_reviveEvents.load(), g_reviveSplashes.load(), missiles);
+	              g_reviveEvents.load(), g_reviveSplashes.load(), g_holyLights.load(), missiles);
 }

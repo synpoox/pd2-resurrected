@@ -107,6 +107,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows, [["flamewave", "71", "38"], ["back", "78", "46"], ["bolt", "1", "1"]])
 
+    def test_holy_light_keeps_its_slots_fist_delay_hit_moves(self):
+        d2r = table("Missile|pCltHitFunc\nfistoftheheavensdelay|26\n")
+        pd2 = table("Missile|pCltHitFunc\nfistoftheheavensdelay|26\nholylightdelay|66\n")
+        lines = [("fistoftheheavensdelay", 0, "fistoftheheavensdelay"), ("holylightdelay", 1, "holylightdelay")]
+        merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["fistoftheheavensdelay", "71"], ["holylightdelay", "66"]])  # D2R's 26 differs
+
     def test_poison_dagger_function_numbers(self):
         d2r = table("skill|srvstfunc|srvdofunc|cltdofunc\nAttack|1|1|1\n")
         pd2 = table("skill|srvstfunc|srvdofunc|cltdofunc\nPoison Dagger|68|164|102\n")

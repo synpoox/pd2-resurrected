@@ -56,7 +56,7 @@ the earliest in the order Necromancer, Paladin, Druid, Sorceress, Assassin, and 
 | W14 | Necromancer: Golem start (srvst 74), Revive event 32; the get-hit/block window went to W34 | none |
 | W15 | Paladin: aura client start and do: no port, the Left Click Auras companion covers them (owner 2026-11-04) | none |
 | W16 | Paladin: Charge (srvdo 180, cltdo 112, srvst 72, cltst 57 -> free slot) and the Charge/Whirlwind rule | none |
-| W17 | Paladin: Holy Light (srvdo 176, chit 66), Fist of the Heavens client hit (chit 26) | none |
+| W17 | Paladin: Holy Light (srvdo 176, chit 66), Fist of the Heavens client hit (chit 26 -> 71) | none |
 | W18 | Paladin: Vengeance (srvdo 174), Joust (srvdo 162 -> 196) | none |
 | W19 | Paladin: Holy Sword start (srvst 73), Smite start (srvst 75) and event 16, Run/Concentration window | none |
 | W20 | Paladin: Blessed Hammer (sdo 40, cdo 72) | none |
@@ -97,7 +97,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Inferno, Arctic Blast | srvdo 182, cltdo 111 | c | 182, 111 | SrvDoTable, CltDoTable | Exact | M | open | cast logs values from PD2's calc columns | W21 |
 | Charge (Paladin) | srvdo 180, cltdo 112, srvst 72, cltst 57 | c | 180, 112, srvst 72, cltst 57 -> ? (Q3) | SrvDoTable, CltDoTable, SrvStTable, SkillStart, CltStTable ? | Exact | M | open | charge logs hit damage from calc | W16 |
 | Dragon Flight | srvdo 178 | c | 178 | SrvDoTable, skillTargetXY | Exact | S | open | cast logs values from calc | W31 |
-| Holy Light | srvdo 176, chit 66 | c | 176, chit 66 | SrvDoTable, CltHitTable | Exact | M | open | cast logs values from calc; client draws the delay missile | W17 |
+| Holy Light | srvdo 176, chit 66 | c | 176, chit 66 (both empty in D2R) | SrvDoTable, MissileCltHitTable, SkillTargetUnit, AreaUnits, UnitAlignment, ElementalDamage, AreaApply, UnitStat, SetUnitStat, SetOverlay, MonStatsRecord, ClientAreaUnits, ClientMissileOwner, MissileLevel, MissileRecord | Exact | M | built (W17) with approximated deviations, on the unported list: two players count as allies (PD2 asks the PvP state) and the cast centres on D2R's skill target, where PD2 reads the refreshed path target. Read from ProjectDiablo.dll ([w17-holy-light](research/w17-holy-light.md)): every unit within aurarangecalc of the target, the caster aside, heals cltcalc2-cltcalc3 (an ally) or takes the skill's magic damage through D2R's area apply (an enemy; undead other than the target are knocked back); the side the target is not on gets half. chit 66 puts CltHitSubMissile1 on the units within cHitPar1; PD2's holylightdelay names none, so its hit draws nothing more | cast logs heal = cltcalc2-cltcalc3 (`ln12 + Prayer blvl * par6`, `ln34 + Prayer blvl * par7`), the halved side and radius 6; the client draws holylightdelay (D2R's cltdo 36) and logs its chit 66 hit | W17 |
 | Fire Claws | srvdo 175, cltdo 110, srvst 79 (shared) | c | 175, 110 | SrvDoTable, CltDoTable | Exact | M | open | hit logs values from calc | W24 |
 | Vengeance | srvdo 174 | c | 174 | SrvDoTable | Exact | S | open | hit logs values from calc | W18 |
 | Firestorm (Druid) and wall makers (DiabWall, UberDiabWall, FingermageBossDiabWall, KanemithFirestorm) | srvdo 166, cltdo 119 (Firestorm only) | c | srvdo 166 -> 199, cltdo 119 | SrvDoTable, CltDoTable, SrvDoDispatch (overflow) | Exact | M | open | cast logs wall missiles from calc | W22 |
@@ -162,7 +162,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Placeholder missile `temp1` | sdo 39, cdo 71 | e | none | none | Exact | S | unreachable | no skill, missile, monster or item names it |  |
 | Desert turret fireball client hit | chit 11 | c | 11 if equal, else -> 69 | CltHitTable | Exact | S | verify | client draws hit |  |
 | Immolation, Blaze and Rathma fire client hits (17 missiles) | chit 12 | a | 12: equal to D2R's (1.13c D2Client 0xbb070, D2R 0x1acda0; ProjectDiablo.dll leaves it) ([amazon-w6](research/amazon-w6.md)) | CltHitTable | Exact | S | data | client draws hit | W6 |
-| Fist of the Heavens delay client hit | chit 26 | c | 26 if equal, else -> 71 | CltHitTable | Exact | S | verify | client draws hit | W17 |
+| Fist of the Heavens delay client hit | chit 26 | c | 26 -> 71: D2R's 26 (0x1adcb0) differs from 1.13c D2Client 0xbad40 (PD2 leaves it vanilla); by value in `tools/pd2_ids.py` FUNCS | MissileCltHitTable, ClientAreaUnits, ClientMissileOwner, ClientFindUnit, MissileTargetType, MissileTargetId, MissileSkill, MissileLevel, UnitStateKey | Exact | S | built (W17) with an approximated deviation, on the unported list: no bolt limit (1.13c never stores the one it computes); D2R's 26 also stops at cHitPar2 / calc4 bolts and aims the struck unit's bolt at the caster ([w17-holy-light](research/w17-holy-light.md)) | the delay hit logs one bolt per unit within aurarangecalc (20) | W17 |
 | Blessed Hammer | sdo 40, cdo 72 | c | 40, 72 if D2R's are empty | SrvMisDoTable, CltMisDoTable | Exact | M | verify | hammer logs path and hits | W20 |
 | Siege beast stomp client do | cdo 12 | c | 12 if empty | CltMisDoTable | Exact | S | verify | client draws stomp |  |
 | Rathma bone spear, blade fragment damage | dmg 18, dmg 19 | c | 18, 19 (D2R's table size unknown) | SrvDmgTable ? | Exact | S | verify | hit logs damage |  |
