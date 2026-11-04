@@ -22,18 +22,19 @@ SKILLS = ("skill|charclass|skilldesc|reqskill1|reqskill2|reqskill3\r\n"
           "Jab|ama|jab|||\r\n"
           "Impale|ama|impale|Jab||\r\n"
           "Fend|ama|fend|Impale|Bolt|\r\n"  # Bolt is on another page: no arrow
+          "Skewer|ama|skewer|Jab||\r\n"  # skips a row: branches off Jab -> Impale
           "Bolt|ama|bolt|||\r\n"
           "Avoid|ama|avoid|Fend||\r\n"  # off the tree: no box, no arrow
           "Blink|war|blink|||\r\n")  # the Warlock keeps D2R's tree
 DESC = ("skilldesc|SkillPage|SkillRow|SkillColumn\r\nattack|0|0|0\r\njab|3|1|1\r\nimpale|3|3|1\r\nfend|3|4|2\r\n"
-        "bolt|1|1|1\r\navoid|0|0|0\r\nblink|1|1|1\r\n")
+        "bolt|1|1|1\r\navoid|0|0|0\r\nblink|1|1|1\r\nskewer|3|3|2\r\n")
 
 
 class LayoutTests(unittest.TestCase):
     def test_boxes_and_arrows(self):
         out = T.layout(table(SKILLS), table(DESC), 6, 3)
-        self.assertEqual(out["ama"], ([(3, 1, 1), (3, 3, 1), (3, 4, 2), (1, 1, 1)],
-                                      [((3, 1, 1), (3, 3, 1)), ((3, 3, 1), (3, 4, 2))]))
+        self.assertEqual(out["ama"], ([(3, 1, 1), (3, 3, 1), (3, 4, 2), (3, 3, 2), (1, 1, 1)],
+                                      [((3, 1, 1), (3, 3, 1)), ((3, 3, 1), (3, 4, 2)), ((3, 1, 1), (3, 3, 2))]))
         self.assertEqual(out["sor"], ([], []))
         self.assertNotIn("war", out)
 
@@ -60,12 +61,20 @@ class EndsTests(unittest.TestCase):
         self.assertAlmostEqual(tip[0] + dx * T.gap(100), 100)  # top right
         self.assertLess(dx, 0)
 
+    def test_diagonal_from_a_tail_on_the_straight_arrow(self):
+        tip, (dx, dy), length = T.ends((0, 0), (300, 400), 100, tail=(50, 250))
+        self.assertAlmostEqual(tip[0] + dx * T.gap(100), 300)  # still the near top corner
+        self.assertAlmostEqual(tip[1] + dy * T.gap(100), 400)
+        self.assertAlmostEqual(tip[0] - dx * length, 50, delta=1)  # from the tail
+        self.assertAlmostEqual(tip[1] - dy * length, 250, delta=1)
 
-# a tiny tree: 3 frames of 120 x 200, a red tab strip, white boxes at every slot, a grey arrow where ARROW_FROM is
-G = {"sprite": "t/{}skilltree.sprite", "rows": [20, 50, 80, 110, 140, 170], "columns": [4, 40, 76], "box": 24,
+
+# a tiny tree: 3 frames of 130 x 200, a red tab strip, white boxes with a blue counter box at every slot, a grey
+# arrow where ARROW_FROM is
+G = {"sprite": "t/{}skilltree.sprite", "rows": [20, 50, 80, 110, 140, 170], "columns": [4, 44, 84], "box": 24,
      "clear_below": 12}
-W, H, STRIDE = 360, 200, 120
-RED, WHITE, GREY = (255, 0, 0, 255), (255, 255, 255, 255), (128, 128, 128, 255)
+W, H, STRIDE = 390, 200, 130
+RED, WHITE, BLUE, GREY = (255, 0, 0, 255), (255, 255, 255, 255), (0, 0, 255, 255), (128, 128, 128, 255)
 
 
 def d2r_tree() -> T.Image:
@@ -79,6 +88,7 @@ def d2r_tree() -> T.Image:
         for y in G["rows"]:
             for x in G["columns"]:
                 fill(f * STRIDE + x, y, 24, 24, WHITE)
+                fill(f * STRIDE + x + 26, y + 14, 6, 8, BLUE)
     page, col, r1, r2 = T.ARROW_FROM
     fill(T.frame(page) * STRIDE + G["columns"][col - 1] + 6, G["rows"][r1 - 1] + 24, 12,
          G["rows"][r2 - 1] - G["rows"][r1 - 1] - 24, GREY)
@@ -97,7 +107,7 @@ class RuleTests(unittest.TestCase):
             (out / "global" / "excel" / "skills.txt").write_bytes(SKILLS.replace("|", "\t").encode("latin-1"))
             (out / "global" / "excel" / "skilldesc.txt").write_bytes(DESC.replace("|", "\t").encode("latin-1"))
             (d2r / "t").mkdir(parents=True)
-            head = T.HEAD.pack(b"SpA1", 31, 118, W, H, 0, 3, 0, 0, W * H * 4, 4)
+            head = T.HEAD.pack(b"SpA1", 31, 128, W, H, 0, 3, 0, 0, W * H * 4, 4)
             for prefix in T.CLASSES.values():
                 (d2r / G["sprite"].format(prefix)).write_bytes(head + d2r_tree().px)
             rule.write_text(json.dumps({"hd": G}), "utf-8")
@@ -115,6 +125,10 @@ class RuleTests(unittest.TestCase):
             self.assertEqual(at(3, 2, 3)[3], 0)  # D2R's box where PD2 has no skill is gone
             self.assertEqual(at(1, 1, 1, dy=30), (0, 0, 0, 0))  # no arrow from Bolt to Fend
             self.assertEqual(at(3, 2, 1), GREY)  # Jab -> Impale over the empty row
+            self.assertGreater(at(3, 2, 1, dx=26, dy=21)[3], 0)  # Jab -> Skewer branches off it in that row
+            self.assertEqual(at(3, 3, 1, dx=28, dy=18), BLUE)  # Impale's counter box
+            self.assertEqual(at(3, 3, 1, dx=33, dy=20)[3], 0)  # Impale -> Fend keeps clear of it
+            self.assertGreater(at(3, 3, 1, dx=38, dy=26)[3], 0)  # and goes on past it
             self.assertEqual(px(img, 200, 150)[3], 0)
             sor = (out / G["sprite"].format("so")).read_bytes()[T.HEAD.size:]
             self.assertEqual(sor[(30 * W + 16) * 4:(30 * W + 16) * 4 + 4], bytes(4))  # no sor skills: no boxes

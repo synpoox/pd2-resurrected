@@ -148,11 +148,12 @@ def draw(dst: Image, a: Image, tip: tuple[float, float], d: tuple[float, float])
             px[i + 3] = round(oa * 255)
 
 
-def ends(s: tuple[int, int], t: tuple[int, int], b: int):
-    """Tip, unit direction and length of the arrow from the box at s to the box at t (top left corners)."""
-    if t[0] != s[0] and t[1] > s[1]:  # as D2R's: off the box's side above its counter box, to the near top corner
-        right = t[0] > s[0]
-        tail, head = (s[0] + b * right, s[1] + b * 3 / 10), (t[0] + b * (not right), t[1])
+def ends(s: tuple[int, int], t: tuple[int, int], b: int, tail: tuple[int, int] | None = None):
+    """Tip, unit direction and length of the arrow from the box at s to the box at t (top left corners), or from
+    tail on the straight arrow below s."""
+    if t[0] != s[0] and t[1] > s[1]:  # off the box's side (or tail) to the near top corner; high on the right side,
+        right = t[0] > s[0]  # where the counter box below cuts the arrow
+        tail, head = tail or (s[0] + b * right, s[1] + b * (1 if right else 3) / 10), (t[0] + b * (not right), t[1])
     else:  # straight down, or a way D2R's trees never point: centre to centre, cut at the boxes' edges
         dx, dy = t[0] - s[0], t[1] - s[1]
         k = b / 2 / max(abs(dx), abs(dy))
@@ -163,9 +164,22 @@ def ends(s: tuple[int, int], t: tuple[int, int], b: int):
     return (head[0] - ux * gap(b), head[1] - uy * gap(b)), (ux, uy), round(n - gap(b))
 
 
+def counter(box: Image, right: int) -> tuple[int, int, int]:
+    """The counter box's top, right and bottom in the box picture: what is right of the skill box and its shadow."""
+    xs, ys = [], []
+    for y in range(box.h):
+        for x in range(right, box.w):
+            if box.px[(y * box.w + x) * 4 + 3] > 32:  # D2R's art has faint specks around its boxes
+                xs.append(x)
+                ys.append(y)
+    return min(ys), max(xs) + 1, max(ys) + 1
+
+
 def redraw(strip: Image, stride: int, g: dict, pics: tuple[Image, Image, Image], boxes: list, arrows: list) -> None:
     box, shaft, head = pics
     b, m = g["box"], g["box"] // 24
+    cx0, (cy0, cx1, cy1) = m + b, counter(box, m + b + b // 10)
+    pad = b // 12
     strip.px[g["clear_below"] * strip.w * 4:] = bytes((strip.h - g["clear_below"]) * strip.w * 4)
 
     def corner(p: tuple[int, int, int]) -> tuple[int, int]:
@@ -174,8 +188,22 @@ def redraw(strip: Image, stride: int, g: dict, pics: tuple[Image, Image, Image],
         x, y = corner(p)
         strip.paste(box, x - m, y - m)
     for s, t in arrows:
-        tip, d, length = ends(corner(s), corner(t), b)
+        tail = None
+        if s[2] != t[2] and t[1] - s[1] > 1:  # as PD2's: a diagonal that skips rows leaves the straight arrow
+            # shortcut: a box in the source column on the row above the target would sit on the branch; none does today
+            x, y = corner(s)
+            tail = (x + b // 2, g["rows"][t[1] - 2] + b // 2)
+            if not any(a == s and u[2] == s[2] and u[1] >= t[1] for a, u in arrows):
+                n = tail[1] - y - b
+                draw(strip, Image(shaft.w, n, shaft.px * n), tail, (0, 1))
+        tip, d, length = ends(corner(s), corner(t), b, tail)
         draw(strip, arrow(shaft, head, length), tip, d)
+    for p in boxes:  # as PD2's: arrows keep clear of the counter boxes
+        x, y = corner(p)
+        x, y = x - m + cx0, y - m + cy0
+        for j in range(max(0, y - pad), min(strip.h, y + cy1 - cy0 + pad)):  # from the skill box's edge
+            strip.px[(j * strip.w + x) * 4:(j * strip.w + x + cx1 - cx0 + pad) * 4] = bytes((cx1 - cx0 + pad) * 4)
+        strip.paste(box.crop(cx0, cy0, cx1 - cx0, cy1 - cy0), x, y)
 
 
 def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:

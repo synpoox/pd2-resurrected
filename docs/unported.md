@@ -54,7 +54,7 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | The Warlock redesign: the alpha ships D2R's Warlock as it is | not yet | left out of the alpha (roadmap, spec #41) |  |  |
 | The other classes' engine rules (Necromancer, Paladin, Druid, Sorceress, Assassin) | not yet | left out of the alpha (roadmap, spec #41) |  |  |
 | Everything in the core-rules order after the alpha cut (router slot, dead item events, monster and boss kits, cube ops 30/31, investigations) | not yet | left out of the alpha (roadmap, spec #41) |  |  |
-| Skill tree backgrounds are redrawn from the tables in D2R's box and arrow art, not PD2's: arrows run straight (a diagonal goes from the box's side to the next box's near top corner, as D2R's do) and may pass under a box between | approximated | PD2's tree art is classic size and is not upscaled; the routes are generated, so their look is checked in game |  | #84 |
+| Skill tree backgrounds are redrawn from the tables in D2R's box and arrow art, not PD2's: arrows run straight, a diagonal that skips rows branches off the straight arrow below its skill (as PD2's do), and arrows keep clear of the counter boxes; an arrow may pass under a box between | approximated | PD2's tree art is classic size and is not upscaled; the routes are generated, so their look is checked in game |  | #84 |
 | Advanced stats panel | cut | cut by decision (spec #41) |  |  |
 | Map-event notifications | cut | cut by decision (spec #41); the map system itself is not yet |  |  |
 | Grail panel | cut | cut by decision (spec #41) |  |  |
