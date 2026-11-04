@@ -54,6 +54,10 @@ inline constexpr int SrvDoTeleport = 27;
 // Charge, D2R's own: srvst 31 (0x564dc0) aims the charge path, srvdo 67 (0x5622c0) runs it and hits at the end
 inline constexpr int SrvStVanillaCharge = 31, SrvDoVanillaCharge = 67;
 inline constexpr int SrvDoInferno = 19;  // 0x554460: D2R's (vanilla) Inferno; PD2's srvdo 182 hands monsters to it
+// MissileParams::callback, run by the create (0x3bac90) from the table at 0x2381f30 as fn(missile, callbackArg).
+// 1 (0x3b75c0, D2R's Firestorm, srvdo 117 / cltdo 67): frames capped at 77, seed from the arg, a type 10 path; it is
+// PD2's maker callback 0x1036f220 but for the seed (DiabWall's 7 also skips the path 20% of the time)
+inline constexpr int MissileCallbackMaker = 1;
 // missiles.txt pSrvDoFunc: int64_t fn(Game*, Unit* missile), 54 slots, 46-53 free.
 inline constexpr uint64_t MissileSrvDoTable = 0x2390e80;
 inline constexpr int MissileSrvDoSlots = 54;
@@ -142,7 +146,14 @@ inline constexpr uint64_t DirectionX = 0x1d1b650;
 inline constexpr uint64_t DirectionY = 0x1d1b750;
 
 // Self buff, the way Frozen Armor's srvdo 18 (0x553e60) builds its aurastate list
-inline constexpr uint64_t RemoveSkillState = 0x4370b0;  // (unit, state, 1): drop an older list of this state
+// (unit, state, self) -> 1 if it removed any: removes every state of the unit in the same states.txt group as
+// `state` (the state itself too with self 1). A state with no group (0) removes nothing.
+inline constexpr uint64_t RemoveSkillState = 0x4370b0;
+// What 0x4370b0 does for each state it removes: state bit off (unit, state, 0), then the list detached (unit, list)
+// and freed (dataFlag, list)
+inline constexpr uint64_t ClearUnitState = 0x3354c0;
+inline constexpr uint64_t DetachStatList = 0x2f7920;
+inline constexpr uint64_t FreeStatList = 0x2f4180;
 // (&StateListRequest) -> stat list or null. An older list of the state with the same skill and level only gets
 // its timer moved and is returned as it is; a lower level returns null; any other older list is replaced.
 inline constexpr uint64_t NewStateList = 0x433d20;
@@ -249,6 +260,14 @@ inline constexpr uint64_t ElementalLength = 0x337da0;
 inline constexpr uint64_t MissileTargetType = 0x3bc190;  // (missile) -> target unit type, 6 for none
 inline constexpr uint64_t MissileTargetId = 0x3bc280;  // (missile) -> target unit id
 inline constexpr uint64_t EngineAllocator = 0x12063c0;  // () -> the allocator; vtable +0x20 frees (Leap Attack's cleanup)
+// Static Field (W27), the way D2R's Static Field (srvdo 20 0x5546b0, per unit 0x5556a0) builds its hit
+// (dataFlag, difficulty) -> difficultylevels.txt record (0x84 bytes); StaticFieldMin at +0x68
+inline constexpr uint64_t DifficultyRecord = 0x300830;
+inline constexpr int DiffStaticFieldMin = 0x68;
+// (unit, &damage, etype, amount, length, &resist stat or null, &etype or null): adds amount to the etype's field
+// (2 lightning: +0x2c, hit class +0x144 = 0x40; resist stat 41)
+inline constexpr uint64_t AddElementDamage = 0x437980;
+inline constexpr int DamageFlag148 = 0x148;   // uint8 D2R's Static Field sets to 1
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
@@ -344,7 +363,8 @@ inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58, pois
 inline constexpr int StatPoisonMax = 58;
 inline constexpr int StatPoisonLength = 59;
 inline constexpr int StatLife = 6;  // itemstatcost hitpoints (current life, in 1/256), D2R and PD2
-inline constexpr int StatMaxLife = 7;  // maxhp
+inline constexpr int StatMaxLife = 7;  // maxhp, in 1/256
+inline constexpr int StatLightResist = 41;  // lightresist, D2R and PD2
 inline constexpr int StatVelocityPercent = 67;  // itemstatcost velocitypercent, D2R and PD2
 inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's search: 0x88583 | the 0xa783 the search adds
 
@@ -352,6 +372,10 @@ inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's se
 inline constexpr int DamageLifeLeech = 0x120;  // mana leech +0x124, stamina leech +0x128
 inline constexpr int DamageManaLeech = 0x124;
 inline constexpr int DamageStaminaLeech = 0x128;
+// Cold length (1.13c's 0x30) and hit class (1.13c's 0x64), as ElementalDamage (0x437d00) and Hunger (0x576630) fill
+// them
+inline constexpr int DamageColdLength = 0x118;
+inline constexpr int DamageHitClass = 0x144;  // uint32; D2R's Static Field ORs 0xd into it (0x4d, as PD2's)
 
 // missiles.txt record (1.13c's shifted by 0x24)
 inline constexpr int MsDParam1 = 0x9c;    // int32 dParam1
@@ -396,13 +420,18 @@ inline constexpr int SkRollFlags = 0x29;  // uint8 Leap Attack's hit masks with 
 inline constexpr int SkSrvPrgFunc1 = 0x50;  // int16 srvprgfunc1-3, read by SrvPrgDispatch
 inline constexpr int SkPrgCalc1 = 0x58;     // int32 prgcalc1-3 (calc index), read by srvdo 37's 0x571590
 inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170
+// uint16 ResultFlags, uint32 HitFlags, int32 HitClass (1.13c's 0x12e / 0x130 / 0x134), as D2R's Hunger (0x576630)
+// reads them into its damage block
+inline constexpr int SkResultFlags = 0x186;
+inline constexpr int SkHitFlags = 0x188;
+inline constexpr int SkHitClass = 0x18c;
 inline constexpr int SkSrvOverlay = 0x6e;  // int16 srvoverlay (skills field table 0x302380)
 inline constexpr int SkAuraFilter = 0x70;  // int32 aurafilter, the area unit mask (clthit 26 reads it)
 inline constexpr int SkCltCalc2 = 0x170;  // int32 cltcalc2 (calc index)
 inline constexpr int SkCltCalc3 = 0x174;
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
-inline constexpr int SkAuraTargetState = 0xa2;  // int16 auratargetstate (Leap Attack's hit reads both)
+inline constexpr int SkAuraTargetState = 0xa2;  // int16 auratargetstate (skills field table 0x302380)
 inline constexpr int SkAuraLenCalc = 0x80;    // int32 auralencalc: 1.13c's 0x60, before aurarangecalc as there
 inline constexpr int SkAuraStat1 = 0x74;      // int16 aurastat1-6, read by AddAuraStats (0x574480)
 inline constexpr int SkAuraStatCalc1 = 0x88;  // int32 aurastatcalc1-6 (calc index, pass to EvalCalc), same reader
@@ -436,7 +465,10 @@ struct MissileParams {
 	int32_t range;            // 0x5c frames the missile lives (Inferno's calc1)
 	uint8_t pad60[0x68 - 0x60];
 	int32_t sourceKey;        // 0x68 UnitStateKey of the missile a chain starts from (Chain Lightning's srvhit 12)
-	uint8_t rest[0xa0 - 0x6c];
+	int32_t pad6c;
+	int32_t callback;         // 0x70 index into MissileCreateCallbacks, run on the new missile with callbackArg (0: none)
+	int32_t callbackArg;      // 0x74 (Firestorm's 1 and DiabWall's 7 take the maker's index and seed it from that)
+	uint8_t rest[0xa0 - 0x78];
 };
 static_assert(sizeof(MissileParams) == 0xa0);
 static_assert(offsetof(MissileParams, activation) == 0x54);
@@ -445,6 +477,7 @@ static_assert(offsetof(MissileParams, targetX) == 0x2c);
 static_assert(offsetof(MissileParams, skill) == 0x3c);
 static_assert(offsetof(MissileParams, sourceKey) == 0x68);
 static_assert(offsetof(MissileParams, range) == 0x5c);
+static_assert(offsetof(MissileParams, callback) == 0x70);
 
 // Argument of rva::NewStateList, laid out as Frozen Armor fills it on its stack.
 struct StateListRequest {

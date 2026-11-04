@@ -145,6 +145,13 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1:], [["Teleport", "190"], ["Blink", "190"]])
 
+    def test_gust_and_hunger_go_to_the_router(self):
+        d2r = table("skill|srvdofunc\nAttack|1\n")
+        pd2 = table("skill|srvdofunc\nGust|156\nHunger|165\n")
+        lines = [("Gust", 1, "Gust"), ("Hunger", 2, "Hunger")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Gust", "190"], ["Hunger", "190"]])
+
     def test_state_hit_parameters_take_mod_ids(self):
         # srvhit 61 reads sHitPar1 as a state and sHitPar3 / cHitPar2 as stats; other functions' parameters stay
         cols = "Missile|pSrvHitFunc|sHitPar1|sHitPar2|sHitPar3|cHitPar1|cHitPar2|cHitPar3"
@@ -172,12 +179,27 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["Charge", "180", "72", "37", "25"])
 
+    def test_static_field_and_combustion_join_the_router(self):
+        cols = "skill|srvdofunc|cltdofunc"
+        d2r = table(f"{cols}\nAttack|1|0\n")
+        pd2 = table(f"{cols}\nAttack|1|0\nStatic Field|160|\nCombustion|159|100\n")
+        lines = [("Attack", 0, "Attack"), ("Static Field", 1, "Static Field"), ("Combustion", 2, "Combustion")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Static Field", "190", ""], ["Combustion", "190", "120"]])
+
     def test_melee_splash_joins_the_router(self):
         d2r = table("skill|srvdofunc\nAttack|1\n")
         pd2 = table("skill|srvdofunc\nAttack|1\nproc_SplashDamage|163\n")
         lines = [("Attack", 0, "Attack"), ("proc_SplashDamage", 1, "proc_SplashDamage")]
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1], ["proc_SplashDamage", "190"])  # D2R fills 163
+
+    def test_firestorm_and_wall_makers_join_the_router(self):
+        d2r = table("skill|srvdofunc|cltdofunc\nAttack|1|1\n")
+        pd2 = table("skill|srvdofunc|cltdofunc\nAttack|1|1\nFirestorm|166|119\nDiabWall|166|58\n")
+        lines = [("Attack", 0, "Attack"), ("Firestorm", 1, "Firestorm"), ("DiabWall", 2, "DiabWall")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Firestorm", "190", "119"], ["DiabWall", "190", "58"]])  # D2R fills 166
 
     def test_missile_do_functions_become_the_missile_column(self):
         cols = "skill|srvdofunc|srvmissile|srvmissilea|cltdofunc|cltmissile|cltmissilea"
