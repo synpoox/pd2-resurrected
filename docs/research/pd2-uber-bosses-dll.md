@@ -10,8 +10,8 @@ rolls, the key drop odds and Desecration. The table side is in the inventories
 
 - **The wiki's drop odds and Desecration numbers are in the DLL, and they all match.** That covers the 1-in-200 uniques, Rathma's 1 in 50/44/38,
   the Demonic Cube's 1 in 75/50, Desecration's 50/60/60% and its eight mods, and the Jawbone's 1 in 22,500. So the numbers
-  are now checked against the PD2 install's DLL and become the baseline (#153). Dclone's skeleton waves at 85/60/35 are
-  read too. Rathma's shared life is still unread (section 9).
+  are now checked against the PD2 install's DLL and become the baseline (#153). Dclone's skeleton waves at 85/60/35 and
+  Rathma's shared life are read too.
 - **Much more is data than we thought.** Each uber key's misc `len` is the level it opens. Its `missiletype` is the portal
   object only for maps; uber keys warp the group in instead (section 2). The key odds are the odds-only TCs read as a 1-in-N roll. The Desecration pool is the amulet corruption
   cube rows. The phase scripts take their thresholds and counts from the bosses' monstats `aip` and skill columns.
@@ -21,8 +21,8 @@ rolls, the key drop odds and Desecration. The table side is in the inventories
 - **The opening is one function shared with the maps.** It checks the gates (Hell, level 80, Ancients, Harrogath, one
   area per game), checks the distance to the Blood Fountain and reads the tier from stat 185. Then it warps every
   eligible player at the fountain straight into the area. At tier 0 it adds three single-use portals for re-entry.
-- **Gaps** (section 9): the exit block, Rathma's shared life, Dclone's heal on a player-count change, and the trigger of
-  the 15-tick immune window.
+- **Gaps** (section 9): the exit block is not in the DLL's readers of the area type or the uber levels, and Rathma's
+  scaling input after the group moves on is unchecked.
 
 ## 1. Method
 
@@ -99,13 +99,13 @@ When a player enters an uber level (137, 161-163 from Harrogath, or 188), by the
 `0x10371a70` runs it once on each monster in a PD2 level (levels 0x89-0xd2 except 0xca-0xce), with the tier from
 `game+0x2629`. It then sets state 241 so the scaling is not applied twice. With *e* = max(entries − 1, 0):
 
-- **Max life:** at tier 0, ×1.5. At tiers 1-2, ×4 for monsters in a set read through `0x1029c2c0` (the bosses, probably)
-  or ×3 for the rest. Then +20% of that per tier. So a set monster has ×4.8 at tier 1 and ×5.6 at tier 2.
+- **Max life:** at tier 0, ×1.5. At tiers 1-2, ×4 for the bosses (the set at `0x105deec4`: Dclone 789, Rathma
+  and Mendeln 933/934, their clones 935/936, Lucion 1112) or ×3 for the rest. Then +20% of that per tier. So a boss has ×4.8 at tier 1 and ×5.6 at tier 2.
 - **+4 to all skills** (stat 127) per tier.
-- **Set monsters only:** fire, lightning and cold absorb % (stats 142/144/148) +7×tier + 2×e, magic absorb % (146) +3×tier
+- **The bosses only:** fire, lightning and cold absorb % (stats 142/144/148) +7×tier + 2×e, magic absorb % (146) +3×tier
   + 2×e, damage resist (36) +3×e, poison length resist (110) +3×tier + 3×e.
 
-The tier scales every monster's life (×3 or ×4, then +20% per tier). Only set monsters get the absorbs. Monsters in
+The tier scales every monster's life (×3 or ×4, then +20% per tier). Only the bosses get the absorbs. Monsters in
 maps get ×1.5 too, because `game+0x2629` stays 0 there.
 That this applies to maps is a reading of the code, not checked in game.
 
@@ -126,13 +126,16 @@ matter here:
 The scripts read their numbers from the boss's monstats record: `aip1`-`aip8` per difficulty at +0x56, skills `Skill1-8`
 at +0x170 with modes at +0x180. They use stats 446/447 (`mon_cooldown1/2`) as timers and phase counters. Shared by all
 three: while `game+0x26fe` > 0 the boss is immune (all six resists set to 200 and curses removed, `0x10380770`) and idles.
-The counter goes down only while a player is in the level. A hook at `0x102fc6c0` starts that 15-tick window. Its trigger
-is not read.
+The counter goes down only while a player is in the level. A hook at `0x102fc6c0`, on D2Game's room-release pass
+(`D2Game+0x2cf30`, called when a room has gone more than 10 ticks without a player), starts that 15-tick window when the
+room holds a registered boss (`game+0x2600` to `+0x2624`) from the fight-monster set at `0x105dc078`. That set holds 30
+ids: Dclone, his adds and trapped souls, the Rathma group with its golems, totem and void knights, and Lucion with his
+controller, spawner and adds. So a boss left alone, or pulled out of every player's range, goes immune and idle.
 
 ### Diablo Clone, "Dclone" (`0x1035b3f0`)
 
-- It registers itself as the boss (`game+0x2600`). It counts the players in its level, and a step tied to that count heals
-  20% of max life. When exactly it fires is not clear from the decompile (section 9).
+- It registers itself as the boss (`game+0x2600`). Each tick it counts the players in its level and keeps the count. When
+  the count drops (a player leaves or dies), it heals 20% of max life, capped at max.
 - **Cold-nova phases:** below 75%, 50% and 25% life (doubles 100 − (phase/2)×25), with stat 447 = 2, 4 or 6, its life is
   reset to that percentage. It then walks to the arena centre (15129, 6548), killing any monster standing on the centre
   spot (skill slot 8, MonTeleport). There it casts skill slot 5 (UberDiabSuperFire), counting stat 446 up to `aip5` (Hell:
@@ -160,8 +163,11 @@ is not read.
   `0x1036d7d0`. That is PD2's general cast helper (nine callers, other AIs among them), so it is not a shared-life
   mechanic. This is probably RathmaDeath's buff. From stage 6 the survivor's AI repeats the cast while it lacks state 103
   (`monfrenzy`). When the second clone dies (6 -> 7),
-  every void knight, golem and totem in the level is killed. The wiki's shared life was not found as a separate mechanic
-  (section 9).
+  every void knight, golem and totem in the level is killed.
+- **Shared life:** in PD2's damage code (`0x10302ca0`), when a clone (935 or 936) takes damage and both boss slots are
+  set, the other clone loses the same life (stat 6), unless it is dead or dying or has state 8. Life-drain damage (stat
+  74, `0x103055b0`) is mirrored the same way through `0x10305460`. The damage is copied, not halved: the wiki's
+  "halved" is not in this code.
 - Adds: each tick it checks whether void knights (968, 969, 1106, 1107) and the blood golem (938) are alive. That gates
   which skills are used.
 
@@ -252,23 +258,20 @@ in the Temple, an approximated row) is new.
 
 ## 9. Open points
 
-- **Exit block:** where PD2 refuses save-and-exit and death exits from the uber areas. Not found from the fields above.
-  UB2 should start from `game+0x1df4` reads in the player-leave and death paths.
-- **Dclone's heal:** when the 20% heal on a player-count change fires. UB4 reads it.
-- **Rathma's shared life:** the wiki's halved damage applied to both bosses was not found in the AI, the death handlers
-  or the cast helper `0x1036d7d0`. It may be in a skill function (RathmaDeath or the clones' passives). UB5 reads it.
+- **Exit block:** no reader of `game+0x1df4` refuses a leave or a death. They are the opening, the area rules, the AIs,
+  the drop handlers and a state dump (`0x102fcd60`). The checks on the uber level ids (161-163, 188-189) don't refuse one
+  either. If PD2 blocks exits, it does so through something else (level data or the client). UB2 checks in game whether
+  the block exists.
 - **`game+0x2628` in Rathma:** it counts entries (and so feeds the tier scaling's *e*), but entering level 162 or 163 sets
   it to 2 or 4. Whether Rathma's scaling input jumps when the group moves on is unchecked. UB5 checks it.
-- **The `0x26fe` window:** which event starts it (hook `0x102fc6c0`, reached from data at `0x1011fb79`).
-- **Tier-scaling set:** the monster set at `0x105deec4` that gets ×4 and the absorbs. UB2 lists its members.
 
 ## 10. What this means for the work items
 
 | Item | Now known | Still to read |
 |---|---|---|
-| UB2 | opening and its warp (2), gates, fountain distance, tier-0 portals, area rules (3), tier scaling (4), key drop rule (7) | exit block, scaling set |
+| UB2 | opening and its warp (2), gates, fountain distance, tier-0 portals, area rules (3), tier scaling (4), key drop rule (7) | whether the exit block exists |
 | UB3 | prime and mini-uber drop handlers, Torch and Soulstone (6), level 185 opening (2) | the primes' AI overrides (`0x10357ba0`, `0x10357d50`, `0x10357f00`) |
-| UB4 | AI `0x1035b3f0`, nova phases and counts, skeleton waves, immunity rule, Annihilus and the 1-in-200 roll | the heal on a player-count change |
-| UB5 | AI `0x10358510`, thresholds, retreat, stage portals, shard and rolls | shared life, the per-event skill choices in detail |
+| UB4 | AI `0x1035b3f0`, nova phases and counts, skeleton waves, immunity rule, Annihilus and the 1-in-200 roll | none |
+| UB5 | AI `0x10358510`, thresholds, retreat, stage portals, shard and rolls | the per-event skill choices in detail |
 | UB6 | AI `0x1035dca0`, stage thresholds, portal phase, spawner, Temple portal, cube roll | the stage-5 and stage-7 skill choices in detail |
 | UB7 | the whole roll and the brick (8) | none |
