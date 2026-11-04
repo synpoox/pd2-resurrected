@@ -8,6 +8,10 @@ spans dots) covers the table-diff gate's deviations it matches. The gate compare
 pattern (strings, engine rules, features) are checked by hand or by the game check. A work item that merges a table
 removes or narrows its row here; the gate fails while a whole-table pattern (`table.*`) still covers a merged table.
 
+The gate's report counts two things. **Entries** are the rows below, by status: "not yet" entries are the work still to
+do. **Table cells** are every cell difference those rows cover. One row can cover a whole table (the sounds table alone
+is thousands of cells), so the cell count shows breadth, not work left.
+
 | Deviation | Status | Why | Gate | Work item |
 |---|---|---|---|---|
 | PD2 skill columns auratgtevent, auratgteventfunc, passiveevent, passiveeventfunc, checkfunc, nocostinstate, general | not yet | D2R's skills table has no such columns; the rules behind them come back as engine work | `skills.*.auratgtevent` `skills.*.auratgteventfunc` `skills.*.passiveevent` `skills.*.passiveeventfunc` `skills.*.checkfunc` `skills.*.nocostinstate` `skills.*.general` | core-rules |
