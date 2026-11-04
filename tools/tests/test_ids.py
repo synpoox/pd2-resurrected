@@ -131,6 +131,21 @@ class FormulaAndColumnTests(unittest.TestCase):
         self.assertEqual(merged.rows[1:], [["Fists of Fire", "190", "186", "185", "184"],
                                            ["Blades of Ice", "190", "", "181", "143"], ["Cold", "139", "", "", ""]])
 
+    def test_finisher_client_function_numbers(self):
+        # cltprg 106/107 move only in the prg columns (cltdo 106 stays D2R's Bind Demon); cdo 69 moves, chit 67 stays
+        cols = "skill|cltdofunc|cltprgfunc1|cltprgfunc2|cltprgfunc3"
+        d2r = table(f"{cols}\nAttack|1|||\n")
+        pd2 = table(f"{cols}\nFists of Fire|1|9|107|106\nCobra Strike|1|106|13|107\nBind|106|||\n")
+        lines = [("Fists of Fire", 1, "Fists of Fire"), ("Cobra Strike", 2, "Cobra Strike"), ("Bind", 3, "Bind")]
+        merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows[1:], [["Fists of Fire", "1", "9", "128", "127"],
+                                           ["Cobra Strike", "1", "127", "13", "128"], ["Bind", "106", "", "", ""]])
+        d2r = table("Missile|pCltDoFunc|pCltHitFunc\nbolt|1|\n")
+        pd2 = table("Missile|pCltDoFunc|pCltHitFunc\nfistsoffireexplode|69|\nclawsofthunderbolt|1|67\n")
+        lines = [("fistsoffireexplode", 0, "fistsoffireexplode"), ("clawsofthunderbolt", 1, "clawsofthunderbolt")]
+        merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["fistsoffireexplode", "79", ""], ["clawsofthunderbolt", "1", "67"]])
+
     def test_teleport_goes_to_the_router(self):
         d2r = table("skill|srvdofunc\nAttack|1\n")
         pd2 = table("skill|srvdofunc\nTeleport|155\nBlink|155\n")

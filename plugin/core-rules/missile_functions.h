@@ -29,5 +29,7 @@ void SrvDmgPierceFalloff(d2r::Game* game, d2r::Unit* missile, d2r::Unit* target,
 auto SrvHitState(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 61
 auto CltHitHolyLight(d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // chit 66
 auto CltHitFistDelay(d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // chit 71 (PD2 26)
+void CltDoChargeExplode(d2r::Unit* missile, int32_t a2) noexcept;  // cdo 79 (PD2 69)
+auto CltHitChargeBolt(d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // chit 67
 // Live counters for the status command.
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void;

@@ -110,12 +110,19 @@ inline constexpr uint64_t MissileCltDoDefault = 0x1b5380;  // cltdo 1 (missile, 
 inline constexpr uint64_t MissileOwner = 0x490300;  // (game, missile) -> owner unit or null
 inline constexpr uint64_t ClientMissileOwner = 0x9a7b0;  // (missile) -> owner unit or null
 inline constexpr uint64_t MissileSrvFrames = 0x3bb1e0;  // (missile) -> range frames left (server)
-inline constexpr uint64_t MissileCltFrames = 0x3bb0f0;  // (missile) -> range frames left (client)
+// (missile) -> frames run: the range minus MissileSrvFrames' frames left, 1 on the first step (D2R's cltdo 1 tests 1;
+// 1.13c's cdo 69 the same as current == total - 1, D2Common #10737 / #10534)
+inline constexpr uint64_t MissileCltFrames = 0x3bb0f0;
 inline constexpr uint64_t PathSetTargetUnit = 0x342920;  // (path, unit): path +0x70 target unit
 inline constexpr uint64_t PathSteer = 0x340e70;  // (path, unit, 0, 1): re-aim the path at its target unit
 inline constexpr uint64_t UnitDistance = 0x324fc0;  // (a, b) -> distance in subtiles
 // (dataFlag, missile, owner, calc, -1, -1) -> value; dmg 1 0x453490 evaluates DmgCalc1 this way
 inline constexpr uint64_t EvalMissileCalc = 0x3b4a90;
+// The client's 3D offset and motion of a missile's graphic, as D2R's Meteor (cltdo 9, 0x1b6480) sets them (1.13c's
+// D2Client 0xc7e30 and its writes to gfx +0x30 +0x10..0x18): (missile, x, y, z) << 11; (missile, x, y, z, shift),
+// shift 0 stores the values as given (1.13c's raw writes), else << 11.
+inline constexpr uint64_t SetMissileOffset = 0x193a80;
+inline constexpr uint64_t SetMissileMotion = 0x193ad0;
 // Power Strike's client do function (cltdo 22, 1.13c D2Client 0x15660) draws the strike only for the local player:
 // `je` at this address skips its early return. PD2 has no such check (W6).
 inline constexpr uint64_t CltDoStrikeLocalOnly = 0x2aed4a;
@@ -332,6 +339,8 @@ inline constexpr int MsHitPar3 = 0x78;
 inline constexpr int MsCltHitPar1 = 0x90;  // int32 cHitPar1-3 (1.13c's 0x6c-0x74 + 0x24)
 inline constexpr int MsCltHitPar2 = 0x94;
 inline constexpr int MsCltHitPar3 = 0x98;
+inline constexpr int MsCltHitCalc1 = 0xb0;  // int32 CHitCalc1 (calc index; 1.13c's 0x8c + 0x24, before DmgCalc1)
+inline constexpr int MsCltSubMissile1 = 0x40;  // int16 CltSubMissile1 (1.13c's 0x1e; D2R's cltdo 9 reads it)
 // Damage block a pSrvDmgFunc edits: 1.13c's 0x08-0x2c fields sit 0x10 later (phys 0x08 -> 0x18 in srvdmg 1 and 13,
 // poison length 0x2c -> 0x3c in srvdmg 11).
 inline constexpr int DmgPhys = 0x18, DmgFire = 0x20, DmgLight = 0x2c, DmgMagic = 0x30, DmgCold = 0x34, DmgPoison = 0x38;
@@ -392,7 +401,8 @@ inline constexpr int SkPrgCalc1 = 0x58;     // int32 prgcalc1-3 (calc index), re
 inline constexpr int SkSrcDam = 0x24d;  // uint8 SrcDam (0 = 128), read by Leap Attack's 0x56b170
 inline constexpr int SkSrvOverlay = 0x6e;  // int16 srvoverlay (skills field table 0x302380)
 inline constexpr int SkAuraFilter = 0x70;  // int32 aurafilter, the area unit mask (clthit 26 reads it)
-inline constexpr int SkCltCalc2 = 0x170;  // int32 cltcalc2 (calc index)
+inline constexpr int SkCltCalc1 = 0x16c;  // int32 cltcalc1-3 (calc index; 1.13c's 0x114, PD2's cltprg 106 / 107)
+inline constexpr int SkCltCalc2 = 0x170;
 inline constexpr int SkCltCalc3 = 0x174;
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate

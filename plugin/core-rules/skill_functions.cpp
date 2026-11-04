@@ -1537,6 +1537,91 @@ auto SrvPrgCold(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 	return 1;
 }
 
+// --- The finishers' client prg functions (PD2 cltprg 106 -> 127, 107 -> 128; docs/research/w30-assassin-finishers.md)
+// D2R's charge/release packet handler (0x216380) sets the list's charge before each cltprgfunc call, as 1.13c's does.
+FinisherCounters g_clientSpreads {};
+FinisherCounters g_clientRings {};
+
+// The charge, the client missile PD2's 1.13c pick (D2Client 0x40550) gives it (cltmissilea/b/c for 1/2/3) and
+// cltcalc[charge]; PD2's client prg functions run only at 1-3, as the server ones do.
+auto ClientChargeMissileOf(Unit* unit, int32_t skillId, int32_t level) noexcept -> ChargeMissile {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::api.unitDataFlag(unit);
+	ChargeMissile m;
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	m.charge = skill != nullptr ? Charges(dataFlag, unit, skill) : 0;
+	if (m.charge < 1 || m.charge > 3) {
+		return m;
+	}
+	m.missile = At<int16_t>(skill, SkCltMissileA + (m.charge - 1) * 2);
+	if (!d2r::ValidMissile(dataFlag, m.missile)) {
+		return m;
+	}
+	m.count = d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, SkCltCalc1 + (m.charge - 1) * 4), skillId,
+	                                 level);
+	m.skill = skill;
+	return m;
+}
+
+// PD2 cltprg 106 (0x103ab920), here 127: the client half of srvprg 184, cltcalc[charge] of the charge's client
+// missile from the caster along ChargeSpread to the skill's target unit (else its target point).
+auto CltPrgSpread(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (unit == nullptr) {
+		return 0;
+	}
+	const ChargeMissile m = ClientChargeMissileOf(unit, skillId, level);
+	Unit* target = d2r::Engine<Unit* (*)(Unit*) noexcept>(ClientSkillTargetUnit)(unit);
+	int32_t ux = 0, uy = 0, tx = 0, ty = 0;
+	const bool aimed = target != nullptr ? d2r::UnitXY(target, &tx, &ty)
+	                                     : d2r::api.clientSkillTargetXY(unit, &tx, &ty) != 0;
+	if (m.skill == nullptr || !aimed || !d2r::UnitXY(unit, &ux, &uy)) {
+		return 0;
+	}
+	const int32_t count = ClampCount(m.count);  // PD2's do-while makes one at 0 or less
+	d2r::MissileParams params =
+		SkillMissileParams(unit, MissileFromOrigin | MissileFlag10000, m.missile, ux, uy, skillId, level);
+	params.activation = 1;
+	Spread s = ChargeSpread(ux, uy, tx, ty, count);
+	int32_t created = 0;
+	for (int32_t i = 0; i < count; ++i, s.x += s.dx, s.y += s.dy) {
+		params.targetX = s.x;
+		params.targetY = s.y;
+		created += d2r::api.clientCreateMissile(&params, 0) != nullptr ? 1 : 0;
+	}
+	if (FinisherSample(g_clientSpreads, skillId)) {
+		plog::Info("charge spread client: skill %d level %d charge %d: %d of %d missiles (row %d, cltcalc %d)", skillId,
+		           level, m.charge, created, count, m.missile, m.count);
+	}
+	return 1;
+}
+
+// PD2 cltprg 107 (0x103aba80), here 128: the client half of srvprg 185, PD2's client ring (0x1036d370) of
+// cltcalc[charge] of the charge's client missile at the skill's target unit, or at the caster with none.
+auto CltPrgRing(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (unit == nullptr) {
+		return 0;
+	}
+	const ChargeMissile m = ClientChargeMissileOf(unit, skillId, level);
+	Unit* target = d2r::Engine<Unit* (*)(Unit*) noexcept>(ClientSkillTargetUnit)(unit);
+	int32_t x = 0, y = 0;
+	if (m.skill == nullptr || !d2r::UnitXY(target != nullptr ? target : unit, &x, &y)) {
+		return 0;
+	}
+	d2r::MissileParams params = SkillMissileParams(unit, MissileAtXY | MissileAimOffset, m.missile, x, y, skillId, level);
+	const int32_t created = Ring(m.count, [&](int32_t dx, int32_t dy) {
+		params.targetX = dx;
+		params.targetY = dy;
+		return d2r::api.clientCreateMissile(&params, 0) != nullptr;
+	});
+	if (FinisherSample(g_clientRings, skillId)) {
+		plog::Info("charge ring client: skill %d level %d charge %d: %d missiles (row %d, cltcalc %d) at %d,%d", skillId,
+		           level, m.charge, created, m.missile, m.count, x, y);
+	}
+	return 1;
+}
+
 // --- Firestorm and the wall makers (PD2 srvdofunc 166 -> router 190, cltdofunc 119) ------------------------------
 // Read from ProjectDiablo.dll: srvdo 166 at 0x103b29d0, cltdo 119 at 0x103acb70, their maker callback 0x1036f220
 // (docs/research/druid-w22.md). calc1 makers of srvmissilea (the client reads it too), all from the caster to the
@@ -2369,6 +2454,12 @@ const SlotFunction Functions[] = {
 	{SrvDo, 181, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvPrgCold)), "charge cold"},
 	// Firestorm and the wall makers: srvdo 166 is D2R's, so the router (190) runs them; cltdo 119 is free
 	{CltDo, 119, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoWall)), "wall"},
+	// The finishers' client halves (W30): D2R fills cltdo 106 (Bind Demon), 107 and cdo 69 (corpseexplosion); chit 67
+	// is free
+	{CltDo, 127, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltPrgSpread)), "charge spread"},
+	{CltDo, 128, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltPrgRing)), "charge ring"},
+	{MissileCltDo, 79, reinterpret_cast<const void*>(static_cast<MissileCltDoFn>(CltDoChargeExplode)), "charge explode"},
+	{MissileCltHit, 67, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitChargeBolt)), "charge bolt"},
 };
 
 }  // namespace
@@ -2442,7 +2533,7 @@ auto SkillFunctionCount() noexcept -> int {
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
-	char missiles[256];
+	char missiles[384];
 	MissileFunctionCounters(missiles, sizeof(missiles));
 	std::snprintf(out, size,
 	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "
