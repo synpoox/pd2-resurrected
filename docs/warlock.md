@@ -64,7 +64,10 @@ What WL1 found and did ([#233](https://github.com/synpoox/pd2-resurrected/issues
 - PD2 made class affixes ten times as common (frequency 1, 2, 4 -> 10, 20, 40); D2R's Warlock affixes take the same
   (the patch).
 - PD2 added, for each other class, +1 class skills on body armor, shields and helms, and two kinds with `rare` 3
-  (what PD2 does with 3 is not traced): +2 class skills on the same, and +3 to each tree on the class's items. The Warlock gets the same five rows, the
+  (what PD2 does with 3 is not traced): +2 class skills on the same, and +3 to each tree on the class's items.
+  What `rare` 3 means is not traced; it could be worth tracing some day. The lead: ProjectDiablo.dll's affix picker
+  (rva `0x389080`) branches on `rare` 0-3 against a value that looks like the item's quality, so 3 may limit an
+  affix to one quality. The Warlock gets the same five rows, the
   tree ones on daggers and grimoires as its other tree affixes, at ids 1042-1046 (the `+` lines in
   `merge/ids-magicprefix.tsv`).
 - PD2's grand-charm skillers also roll on the PvP charm (`lchp`); PvP is cut, so the Warlock's don't.
