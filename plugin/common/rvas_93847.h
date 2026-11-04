@@ -329,6 +329,17 @@ inline constexpr uint64_t BusyModeGate = 0x42d840;
 inline constexpr uint8_t BusyModeGateEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c,
                                                 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18};
 inline constexpr uint64_t UnitSkillId = 0x33e080;  // (unitSkill, file, line) -> skills.txt id
+// Mode-change gate for a player in get-hit, block or knockback (modes 4, 9, 0x13), called by 0x42bfb0 (game, unit,
+// requested mode, flag byte) -> 0 allow, 1 refuse, 4 buffer: PD2's gate B, get-hit half (docs/research/w34-gate-b.md)
+inline constexpr uint64_t HitRecoveryGate = 0x42d700;
+// mov [rsp+8],rbx / mov [rsp+0x10],rbp / mov [rsp+0x20],rsi
+inline constexpr uint8_t HitRecoveryGateEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c,
+                                                   0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x20};
+// The immediates of its two "mode end - game frame > 1" tests (cmp eax,1): walk / run -> buffer, the rest -> refuse
+inline constexpr uint64_t HitRecoveryWindowBuffer = 0x42d7d2;
+inline constexpr uint64_t HitRecoveryWindowRefuse = 0x42d808;
+// (game, unit, event type, 0) -> earliest frame of the unit's timer events of that type (1 = mode end), 0 for none
+inline constexpr uint64_t UnitEventFrame = 0x48b230;
 
 // --- Offsets ------------------------------------------------------------------------------------------------------
 inline constexpr int GameDataFlag = 0x106;  // Game: byte passed to every data-table getter

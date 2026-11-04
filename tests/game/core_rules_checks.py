@@ -114,6 +114,9 @@ the same command with core-rules-w20.
 W32 checks (tag core-rules-w32), same merged data: a level 90+ Assassin in Hell with Blade Fury (266) set in game
 (`debug_mode`, `cheat sklvl Blade Fury,20`, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); throw Blade
 Fury at the pack and at a wall or tree near it, hold it for a second, and run the same command with core-rules-w32.
+W34 check (tag core-rules-w34), same merged data: any level 90+ character in Hell (`debug_mode`, `cheat god 1`,
+`cheat goto 2`, `cheat mspawn megademon3,6`: zombies rarely deal enough for a get-hit); stand in the pack and keep
+attacking or casting while it hits you (get-hit and block both count), and run the same command with core-rules-w34.
 """
 import json
 import os
@@ -140,6 +143,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("cltdofunc", 119, "wall"),
     ("srvdofunc", 175, "fire claws"), ("cltdofunc", 110, "fire claws"), ("srvstfunc", 77, "wolf start"),
     ("mode gate", "busy", "take-over"),  # an inline hook, not a slot
+    ("mode gate", "hit", "window"),  # two code patches and a logging hook
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
     ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
@@ -183,7 +187,7 @@ def _log(ctx) -> str:
                                  "core-rules-w21", "core-rules-w22", "core-rules-w24", "core-rules-w29",
                                  "core-rules-w17", "core-rules-w23", "core-rules-w27", "core-rules-w28", "core-rules-w30",
                                  "core-rules-w18", "core-rules-w19", "core-rules-w20", "core-rules-w31", "core-rules-w32",
-                                 "game"])
+                                 "core-rules-w34", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -1293,7 +1297,7 @@ def psychic_hammer_falloff(ctx):
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17",
                                     "core-rules-w23", "core-rules-w30", "core-rules-w18", "core-rules-w19", "core-rules-w31",
-                                    "core-rules-w32"])
+                                    "core-rules-w32", "core-rules-w34"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))
@@ -1521,3 +1525,29 @@ def blade_fragment_damage(ctx):
         want = "no flag" if roll <= over else "flag 0x20 and leech dropped" if gen else "flag 0x20"
         assert outcome[hit] == want, f"generation {gen}, roll {roll} over {over}: {outcome[hit]}, PD2: {want}"
     return f"{len(hits)} hit(s): leech kept {hits[0][4]}%, physical {hits[0][3] >> 8}"
+
+
+HIT_WINDOW = re.compile(r"hit window: mode (\d+) request (\d+), (-?\d+) frames left: (-?\d+)")
+GET_HIT, BLOCK, KNOCKBACK = 4, 9, 0x13
+
+
+@check("hit-window", tags=["core-rules-w34"])
+def hit_window(ctx):
+    """PD2's gate B on the server: a player in get-hit (4) or block (9) takes a new mode once 2 frames or fewer are
+    left to the mode-end event (D2R: 1). With more left, walk / run are buffered (4, D2R's queue) and the rest refused
+    (1). A get-hit, block or knockback request is still refused (D2R's). D2R's client holds a request made in get-hit
+    and sends it with 1 frame left, so the 2-frame case is not reached in single player, and a 1-frame row passes
+    without the patch too: the check guards the hook and the window's results, not the patch (docs/unported.md)."""
+    rows = [tuple(int(v) for v in m) for m in HIT_WINDOW.findall(_log(ctx))]
+    rows = [r for r in rows if r[0] in (GET_HIT, BLOCK)]
+    if not rows:
+        ctx.skip("no hit-window line in the log yet (let a pack in Hell hit you while attacking, then run again)")
+    for mode, request, left, result in rows:
+        if request in (GET_HIT, BLOCK, KNOCKBACK):
+            want = 1
+        elif left <= 2:
+            want = 0
+        else:
+            want = 4 if request in (2, 3, 6) else 1
+        assert result == want, f"mode {mode}, request {request}, {left} frames left: {result}, expected {want}"
+    return f"{len(rows)} lines: " + ", ".join(f"{r[2]} left -> {r[3]}" for r in rows[:6])

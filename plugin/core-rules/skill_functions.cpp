@@ -3052,6 +3052,29 @@ auto BusyModeGate(Game* game, Unit* unit, int32_t mode, void* request, int32_t f
 	return result;
 }
 
+// --- Get-hit / block end window (PD2's gate B, ProjectDiablo.dll 0x1037bb20; docs/research/w34-gate-b.md) ----------
+// PD2 lets a player in get-hit or block take a new mode once game frame + 2 >= the mode-end event; D2R waits for + 1.
+// The install patches D2R's two tests from 1 to 2; this hook only logs what the window gave, per frames left.
+std::atomic<uint32_t> g_hitWindows[4] {};  // frames left 0, 1, 2, 3 or more
+using HitGateFn = int64_t (*)(Game* game, Unit* unit, int32_t mode, uint8_t flag) noexcept;
+HitGateFn g_hitGateOriginal = nullptr;
+
+auto HitRecoveryGate(Game* game, Unit* unit, int32_t mode, uint8_t flag) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const int64_t result = g_hitGateOriginal(game, unit, mode, flag);
+	if (game != nullptr && unit != nullptr && flag == 0 && mode != 0 && mode != 0x11) {
+		const int32_t end = d2r::Engine<int32_t (*)(Game*, Unit*, int32_t, int32_t) noexcept>(UnitEventFrame)(
+			game, unit, 1, 0);
+		const int32_t left = end - At<int32_t>(game, GameFrame);
+		auto& counter = g_hitWindows[left < 0 ? 0 : left > 3 ? 3 : left];
+		if (plog::Sample(counter)) {
+			plog::Info("hit window: mode %d request %d, %d frames left: %lld, %u so far", At<int32_t>(unit, UnitMode),
+			           mode, left, static_cast<long long>(result), counter.load());
+		}
+	}
+	return result;
+}
+
 // --- Charge (PD2 srvstfunc 72, srvdofunc 180; cltstfunc 57 -> 25, cltdofunc 112 -> 37) -------------------------------
 // Read from ProjectDiablo.dll: srvst 72 at 0x103b67e0, srvdo 180 at 0x103b4870, cltst 57 at 0x103ace50, cltdo 112 at
 // 0x103abfb0 (docs/research/w16-charge.md). PD2's charge is vanilla's with two changes on the server: the start's speed
@@ -3518,12 +3541,35 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		std::snprintf(report + used, reportSize - used, "; mode gate busy take-over%s",
 		              gate ? "" : " FAILED (bytes differ)");
 	}
+	// PD2's get-hit / block window: both "frames left > 1" tests become "> 2", then a logging hook
+	static constexpr uint8_t D2RWindow[1] = {0x01};
+	static constexpr uint8_t PD2Window[1] = {0x02};
+	const bool buffer = context->PatchWriteU8(d2r::rva::HitRecoveryWindowBuffer, D2RWindow, sizeof(D2RWindow), 0x02);
+	const bool refuse = buffer && context->PatchWriteU8(d2r::rva::HitRecoveryWindowRefuse, D2RWindow,
+	                                                    sizeof(D2RWindow), 0x02);
+	const bool window = refuse && context->InstallInlineHook(d2r::rva::HitRecoveryGate, d2r::rva::HitRecoveryGateEntry,
+	                                                         sizeof(d2r::rva::HitRecoveryGateEntry), HitRecoveryGate,
+	                                                         &g_hitGateOriginal);
+	if (!window) {  // all or nothing: put back what was patched, so D2R keeps one window for both tests
+		if (refuse) {
+			(void)context->PatchWriteU8(d2r::rva::HitRecoveryWindowRefuse, PD2Window, sizeof(PD2Window), 0x01);
+		}
+		if (buffer) {
+			(void)context->PatchWriteU8(d2r::rva::HitRecoveryWindowBuffer, PD2Window, sizeof(PD2Window), 0x01);
+		}
+	}
+	installed += window ? 1 : 0;
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; mode gate hit window%s",
+		              window ? "" : " FAILED (bytes differ)");
+	}
 	return installed;
 }
 
 auto SkillFunctionCount() noexcept -> int {
-	// + the cltdo 22 patch, aura events 32 and 16, Revive's do and the mode gate
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 5;
+	// + the cltdo 22 patch, aura events 32 and 16, Revive's do, the busy mode gate and the hit window
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 6;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
