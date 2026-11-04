@@ -41,6 +41,9 @@ monster), summon a Valkyrie next to monsters, and run the same command with core
 W12 check (tag core-rules-w12), same merged data: a Necromancer with Blood Warp (merged skill 439) and no item that
 lowers its life cost, e.g. modkit save-set <save> level=30 --skill 439=10 --project .; then out of town (Teleport
 does not work in town) Blood Warp a few times and run the same command with core-rules-w12.
+W13 checks (tag core-rules-w13), same merged data: a Necromancer with Desecrate (83), e.g. modkit save-set <save>
+level=30 --skill 83=10 --project .; then out of town: cast Desecrate on the ground, wait 20 s (PD2 hides the corpses
+after 16), and run the same command with core-rules-w13.
 """
 import json
 import os
@@ -61,6 +64,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 183, "double throw"), ("cltdofunc", 116, "double throw"), ("pSrvHitFunc", 66, "bounce"),
     ("pSrvDmgFunc", 21, "first hit"),
     ("pSrvHitFunc", 63, "explode spread"), ("pSrvDmgFunc", 20, "pierce falloff"),
+    ("cltdofunc", 121, "desecrate"),
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
@@ -79,7 +83,7 @@ def _log(ctx) -> str:
     return text[starts[-1]:] if starts else ""
 
 
-@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "game"])
+@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "core-rules-w13", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -246,6 +250,38 @@ def valkyrie_power_strike(ctx):
     return f"{len(sizes)} Valkyrie strike(s) drawn, {sizes[0]} missile(s) in the first"
 
 
+@check("desecrate-cast", tags=["core-rules-w13"])
+def desecrate_cast(ctx):
+    """Desecrate (router srvdo 190) raised PD2's calc1 corpses, 5 at every level, and the client (cltdofunc 121) drew
+    its three missiles."""
+    log = _log(ctx)
+    casts = re.findall(r"desecrate: skill 83 level (\d+): (\d+) of (\d+) corpses in level (\d+), cloud (\d)", log)
+    if not casts:
+        ctx.skip("no Desecrate cast in the log yet (cast it out of town, then run again)")
+    level, created, count, area, cloud = (int(v) for v in casts[0])
+    assert count == 5, f"level {level}: {count} corpses, PD2's calc1 makes 5"
+    assert created == count, f"only {created} of {count} corpses spawned"
+    assert cloud == 1, "no poisonexplosioncloud (srvmissilea) at the point"
+    client = re.findall(r"desecrate client: skill 83 level \d+: (\d+) missiles", log)
+    assert client and client[0] == "3", f"client missiles: {client[:1]}, PD2 draws cltmissile a, b and c"
+    return f"level {level}: {created} of {count} corpses in level {area}, the cloud, 3 client missiles"
+
+
+@check("desecrate-corpses-hide", tags=["core-rules-w13"])
+def desecrate_corpses_hide(ctx):
+    """Desecrate's corpses are hidden (corpse_nodraw) when their 16 s timer runs out."""
+    ctx.ensure_running()
+    ctx.game.console_text(PLUGIN)  # the counters line goes to the plugin log, not the console reply
+    time.sleep(0.5)
+    lines = [l for l in _log(ctx).splitlines() if "corpses hidden" in l]
+    text = lines[-1] if lines else ""
+    casts, hidden = _counter(text, "desecrates"), _counter(text, "corpses hidden")
+    if casts == 0:
+        ctx.skip("no Desecrate cast yet (cast it out of town, wait 20 s, then run again)")
+    assert hidden > 0, f"{casts} Desecrate cast(s), no corpse hidden: the state-list timer does not run on a corpse"
+    return f"{hidden} corpse(s) hidden after {casts} cast(s)"
+
+
 @check("throw-hd-models", tags=["core-rules"])
 def throw_hd_models(ctx):
     """The installed data maps every fixture missile (Split Throw's or Double Throw's) to an HD model; without one
@@ -381,7 +417,7 @@ def blood_warp_cast(ctx):
     return f"level {level}: life {life // 256}, cost {cost / 256:.1f} life, hpregen {regen} for {frames} frames, lists {sorted(set(lists))}"
 
 
-@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12"])
+@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "core-rules-w13"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))
