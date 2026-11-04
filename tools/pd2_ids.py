@@ -116,9 +116,14 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
 FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78"}, "pSrvHitFunc": {"30": "66"},
                       "pSrvDmgFunc": {"16": "21", "17": "20"}},
-         "skills": {"srvdofunc": {"153": "172", "154": "183", "157": "190", "161": "190"},
-                    "cltdofunc": {"97": "115", "98": "116", "101": "121"},
-                    "srvstfunc": {"66": "80"}, "cltstfunc": {"56": "63"}}}
+         "skills": {"srvdofunc": {"153": "172", "154": "183", "157": "190", "161": "190", "164": "190"},
+                    "cltdofunc": {"97": "115", "98": "116", "101": "121", "102": "122"},
+                    # PD2's srvst 68 calls slot 32, D2R's melee start (W11)
+                    "srvstfunc": {"66": "80", "68": "32"}, "cltstfunc": {"56": "63"}}}
+# missiles.txt parameters a PD2 hit function reads as ids: pSrvHitFunc -> {column: the table it names}. srvhit 61
+# (Poison Dagger's cloud, the throwing potions, Kanemith's blaze dot) gives the hit unit state sHitPar1 with stats
+# sHitPar3 and cHitPar2.
+HIT_PARAMS = {"61": {"sHitPar1": "states", "sHitPar3": "itemstatcost", "cHitPar2": "itemstatcost"}}
 # PD2's srvdo 188 / cltdo 117 (Lightning Bolt, Lightning Fury) only create srvmissile, else srvmissilea (cltmissile,
 # else cltmissilea), with the arguments D2R's do dispatcher passes for srvmissile / cltmissile after any do function
 # (docs/research/lightning-javelins.md). So the merge moves that missile into srvmissile / cltmissile and drops the
@@ -308,6 +313,16 @@ def fix_missile_funcs(table: str, header: list[str], row: list[str]) -> None:
                 row[m], row[a] = row[a], ""
 
 
+def fix_hit_params(header: list[str], row: list[str], ids: dict[str, dict[str, str]]) -> None:
+    """The state and stat parameters of a HIT_PARAMS function in the mod's ids."""
+    if "pSrvHitFunc" not in header:
+        return
+    for col, t in HIT_PARAMS.get(row[header.index("pSrvHitFunc")], {}).items():
+        if col in header:
+            j = header.index(col)
+            row[j] = ids.get(t, {}).get(row[j], row[j])
+
+
 def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, str]],
                 ren: dict[str, dict[str, str]], ids: dict[str, dict[str, str]] | None = None,
                 props: dict[str, str] | None = None) -> tuple[Table, list[str]]:
@@ -351,6 +366,8 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
         for j, fn in derived.items():
             row[j] = fn(dict(zip(pd2.header, pr)))
         fix_missile_funcs(table, d2r.header, row)
+        if table == "missiles" and ids:
+            fix_hit_params(d2r.header, row, ids)
         if props is not None:
             fix_props(d2r.header, row, ren, ids or {}, props)
         row[d2r.key] = n

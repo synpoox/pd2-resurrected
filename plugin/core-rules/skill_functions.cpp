@@ -706,6 +706,127 @@ auto CltDoDesecrate(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 
 constexpr int32_t Bash = 126, UberTalicBash = 580;
 
+// --- Poison Dagger (PD2 srvdofunc 164 -> router 190, cltdofunc 102 -> 122; docs/research/necromancer-w11.md) ---------
+// PD2's srvstfunc 68 only calls slot 32, D2R's melee start, so the merge points it there (pd2_ids.FUNCS).
+std::atomic<uint32_t> g_poisonDaggers {0};
+std::atomic<uint32_t> g_poisonDaggerClients {0};
+constexpr int32_t PoisonDagger = 73, PoisonDaggerSpiderBoss = 550;
+constexpr int32_t ClientRingCount = 6;  // PD2's cltdo 102 passes 6, whatever the skill's Param3
+
+// PD2's ring (0x1036d250 server, 0x1036d370 client): one missile at every (64 / count)-th of D2's 64 directions, so
+// count 10 makes 11 and count 6 makes 7; 0 or over 64 makes 64.
+template <typename Create>
+auto Ring(int32_t count, Create create) noexcept -> int32_t {
+	if (count <= 0 || count > 64) {
+		count = 64;
+	}
+	const auto* dx = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionX);
+	const auto* dy = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionY);
+	int32_t created = 0;
+	for (int32_t i = 0; i < 64; i += 64 / count) {
+		created += create(dx[i], dy[i]) ? 1 : 0;
+	}
+	return created;
+}
+
+// PD2 srvdo 164 (ProjectDiablo.dll 0x103b25c0): the melee hit (D2R's own Poison Dagger do, slot 32, whose start
+// already put the skill's poison in the queued hit), then a ring of Param3 srvmissilea clouds around the target, each
+// with the rolled poison added to its poisonmindam and poisonmaxdam.
+// shortcut: PD2 scales the poison by its rolled length over the skill's ELen; the fill sets the length to ELen, so the
+// factor is 1 here. Upgrade if a length bonus lands between the two.
+auto SrvDoPoisonDagger(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	Unit* target = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(SkillTargetUnit)(game, unit);
+	int32_t tx = 0, ty = 0;
+	const bool aimed = skill != nullptr && target != nullptr && d2r::UnitXY(target, &tx, &ty);  // before the hit kills it
+	const int64_t ran = VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoPoisonDaggerSlot)(game, unit, skillId, level);
+	if (!aimed) {
+		return ran;
+	}
+	const int32_t missile = At<int16_t>(skill, SkSrvMissileA);
+	if (!d2r::ValidMissile(dataFlag, missile)) {
+		plog::Warn("poison dagger: skill %d has no valid srvmissilea (row %d)", skillId, missile);
+		return ran;
+	}
+	uint8_t damage[0x180] {};  // the damage block size Leap's knockback uses (LeapKnockback)
+	d2r::Engine<void (*)(Unit*, uint8_t*, int32_t, int32_t) noexcept>(ElementalDamage)(unit, damage, skillId, level);
+	const int32_t poison = At<int32_t>(damage, DmgPoison);
+
+	d2r::MissileParams params;
+	std::memset(&params, 0, sizeof(params));
+	params.flags = MissileAtXY | MissileAimOffset;  // PD2's 3
+	params.owner = unit;
+	params.origin = unit;
+	params.missile = missile;
+	params.x = tx;
+	params.y = ty;
+	params.skill = skillId;
+	params.skillLevel = level;
+	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	const auto setStat = d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat);
+	const int32_t count = At<int32_t>(skill, SkParam3);
+	int32_t cloudPoison = 0, cloudLength = 0;  // as a cloud carries them, for the log
+	const int32_t created = Ring(count, [&](int32_t dx, int32_t dy) {
+		params.targetX = dx;
+		params.targetY = dy;
+		Unit* cloud = d2r::api.createMissile(game, &params);
+		if (cloud != nullptr) {
+			setStat(cloud, StatPoisonMin, unitStat(cloud, StatPoisonMin, 0) + poison, 0);
+			setStat(cloud, StatPoisonMax, unitStat(cloud, StatPoisonMax, 0) + poison, 0);
+			cloudPoison = unitStat(cloud, StatPoisonMin, 0);
+			cloudLength = unitStat(cloud, StatPoisonLength, 0);
+		}
+		return cloud != nullptr;
+	});
+	if (plog::Sample(g_poisonDaggers)) {
+		plog::Info("poison dagger: skill %d level %d: %d clouds (row %d, Param3 %d) at %d,%d, poison %d length %d, "
+		           "cast %u", skillId, level, created, missile, count, tx, ty, cloudPoison, cloudLength,
+		           g_poisonDaggers.load());
+	}
+	return 1;
+}
+
+// PD2 cltdo 102 (0x103ab760): the clouds' client copies, cltmissilea in a ring of ClientRingCount around the target.
+auto CltDoPoisonDagger(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::api.unitDataFlag(unit);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	Unit* target = d2r::Engine<Unit* (*)(Unit*) noexcept>(ClientSkillTargetUnit)(unit);
+	int32_t tx = 0, ty = 0;
+	if (skill == nullptr || target == nullptr || !d2r::UnitXY(target, &tx, &ty)) {
+		return 0;
+	}
+	const int32_t missile = At<int16_t>(skill, SkCltMissileA);
+	if (!d2r::ValidMissile(dataFlag, missile)) {
+		return 0;
+	}
+	d2r::MissileParams params;
+	std::memset(&params, 0, sizeof(params));
+	params.flags = MissileAtXY | MissileAimOffset;
+	params.owner = unit;
+	params.origin = unit;
+	params.missile = missile;
+	params.x = tx;
+	params.y = ty;
+	params.skill = skillId;
+	params.skillLevel = level;
+	const int32_t created = Ring(ClientRingCount, [&](int32_t dx, int32_t dy) {
+		params.targetX = dx;
+		params.targetY = dy;
+		return d2r::api.clientCreateMissile(&params, 0) != nullptr;
+	});
+	if (plog::Sample(g_poisonDaggerClients)) {
+		plog::Info("poison dagger client: skill %d level %d: %d clouds (row %d), cast %u", skillId, level, created, missile,
+		           g_poisonDaggerClients.load());
+	}
+	return 1;
+}
+
 // srvdofunc 190 serves the PD2 do functions that have no free slot of their own, by skill id (docs/core-rules.md).
 auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	if (game == nullptr || unit == nullptr) {
@@ -715,6 +836,9 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	case Bash:
 	case UberTalicBash:
 		return SrvDoBash(game, unit, skillId, level);
+	case PoisonDagger:
+	case PoisonDaggerSpiderBoss:
+		return SrvDoPoisonDagger(game, unit, skillId, level);
 	case BloodWarp:
 		return SrvDoBloodWarp(game, unit, skillId, level);
 	case Desecrate:
@@ -923,6 +1047,66 @@ auto CltDoLeap(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	return ran;
 }
 
+// --- Revive's aura event (PD2 auraeventfunc 32, ProjectDiablo.dll 0x10347370) ---------------------------------------
+// Revive's row has auraevent1 domeleedamage: each melee hit of a revived monster casts proc_SplashDamage (PD2 358,
+// merged 430) at level 1 from it. PD2 casts with no target and lets the skill find one; D2R's event cast needs the
+// target, so this passes the unit the hit landed on.
+std::atomic<uint32_t> g_reviveEvents {0};
+std::atomic<uint32_t> g_reviveSplashes {0};
+constexpr int32_t ProcSplashDamage = 430;
+
+auto AuraEventReviveSplash(Game* game, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skillId,
+                           int32_t level) noexcept -> int32_t {
+	(void)damage;
+	const bool sample = plog::Sample(g_reviveEvents);
+	if (game == nullptr || unit == nullptr || target == nullptr) {
+		if (sample) {
+			plog::Info("revive event: event %d skill %d level %d without a %s, event %u", event, skillId, level,
+			           game == nullptr ? "game" : unit == nullptr ? "unit" : "target", g_reviveEvents.load());
+		}
+		return 0;
+	}
+	using CastFn = int32_t (*)(Unit*, int32_t, int32_t, Unit*, int32_t) noexcept;
+	const int32_t cast = d2r::Engine<CastFn>(d2r::rva::CastEventSkill)(unit, ProcSplashDamage, 1, target, 0);
+	g_reviveSplashes.fetch_add(cast != 0 ? 1 : 0);
+	if (sample) {
+		// the unit the event fires on (a revive: type 1 owned by a player, owner type 0), so the check can tell
+		plog::Info("revive event: event %d skill %d level %d on unit type %d class %d owner %d/%u, target type %d: "
+		           "splash skill %d cast %d, event %u", event, skillId, level, At<int32_t>(unit, d2r::rva::UnitType),
+		           At<int32_t>(unit, d2r::rva::UnitClassId), At<int32_t>(unit, d2r::rva::UnitOwnerType),
+		           At<uint32_t>(unit, d2r::rva::UnitOwnerId), At<int32_t>(target, d2r::rva::UnitType), ProcSplashDamage,
+		           cast, g_reviveEvents.load());
+	}
+	return cast != 0 ? 1 : 0;
+}
+
+using AuraEventFn = int32_t (*)(Game*, int32_t, Unit*, Unit*, void*, int32_t, int32_t) noexcept;
+
+// Revive's do (srvdofunc 58): D2R's own, then Revive's aura events go on the revived monster. D2R's Revive never
+// registers them, so without this event 32 never fires. The corpse is revived in place (seen in game: same unit,
+// result 1, mode neutral), so the target before the call is the pet after it; a refused revive leaves it dead.
+std::atomic<uint32_t> g_revives {0};
+
+auto SrvDoRevive(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	Unit* target = game != nullptr && unit != nullptr
+	                   ? d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(d2r::rva::SkillTargetUnit)(game, unit)
+	                   : nullptr;
+	const int64_t result = d2r::Engine<SrvDoFn>(d2r::rva::SrvDoReviveD2R)(game, unit, skillId, level);
+	if (result == 0 || target == nullptr || At<int32_t>(target, d2r::rva::UnitType) != d2r::rva::UnitMonster) {
+		return result;
+	}
+	const int32_t mode = At<int32_t>(target, d2r::rva::UnitMode);
+	if (mode == d2r::rva::MonModeDeath || mode == d2r::rva::MonModeDead) {
+		return result;
+	}
+	d2r::Engine<SrvDoFn>(d2r::rva::RegisterSkillEvents)(game, target, skillId, level);
+	if (plog::Sample(g_revives)) {
+		plog::Info("revive: skill %d level %d events on unit class %d, revive %u", skillId, level,
+		           At<int32_t>(target, d2r::rva::UnitClassId), g_revives.load());
+	}
+	return result;
+}
+
 struct Table {
 	const char* name;  // the skills.txt column
 	uint64_t rva;
@@ -973,11 +1157,14 @@ const SlotFunction Functions[] = {
 	{CltDo, 116, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoDoubleThrow)), "double throw"},
 	// Desecrate's server half is the router's (PD2's srvdo 161 has no free slot); cltdo 101 is D2R's
 	{CltDo, 121, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoDesecrate)), "desecrate"},
-	{MissileSrvHit, 66, reinterpret_cast<const void*>(static_cast<MissileSrvHitBounceFn>(SrvHitBounce)), "bounce"},
+	{MissileSrvHit, 66, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitBounce)), "bounce"},
 	{MissileSrvDmg, 21, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgFirstHit)), "first hit"},
 	{MissileSrvHit, 63, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitExplodeSpread)), "explode spread"},
 	// PD2's dmg 17 is D2R's Ring of Fire; ours takes 20 (18 and 19 stay free for PD2's own) and the data points there.
 	{MissileSrvDmg, 20, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgPierceFalloff)), "pierce falloff"},
+	// Poison Dagger: srvdo 164 goes through the router (190); D2R fills cltdo 102
+	{CltDo, 122, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoPoisonDagger)), "poison dagger"},
+	{MissileSrvHit, 61, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitState)), "state hit"},
 };
 
 }  // namespace
@@ -1005,26 +1192,55 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	const bool strike = context->PatchWriteU8(d2r::rva::CltDoStrikeLocalOnly, Je, sizeof(Je), 0xeb);
 	installed += strike ? 1 : 0;
 	if (used < reportSize) {
-		std::snprintf(report + used, reportSize - used, "; cltdofunc 22 strike for all%s",
-		              strike ? "" : " FAILED (bytes differ)");
+		const int n = std::snprintf(report + used, reportSize - used, "; cltdofunc 22 strike for all%s",
+		                            strike ? "" : " FAILED (bytes differ)");
+		used += n > 0 ? static_cast<size_t>(n) : 0;
+	}
+	// Aura event 32 is filled by D2R but no D2R row uses it, so the expected value is D2R's own function, not null.
+	const uint64_t d2rEvent = d2r::imageBase + d2r::rva::AuraEvent32D2R;
+	uint8_t expected[8];
+	std::memcpy(expected, &d2rEvent, sizeof(expected));
+	const bool revive = context->PatchWriteU64(
+		d2r::rva::AuraEventTable + static_cast<uint64_t>(d2r::rva::AuraEventRevive) * 8, expected, sizeof(expected),
+		reinterpret_cast<uint64_t>(static_cast<AuraEventFn>(AuraEventReviveSplash)));
+	installed += revive ? 1 : 0;
+	if (used < reportSize) {
+		const int n = std::snprintf(report + used, reportSize - used, "; auraeventfunc %d revive splash%s",
+		                            d2r::rva::AuraEventRevive, revive ? "" : " FAILED (slot is not D2R's event 32)");
+		used += n > 0 ? static_cast<size_t>(n) : 0;
+	}
+	// Revive's do is D2R's: the expected value is D2R's function, which the wrapper calls first.
+	const uint64_t d2rRevive = d2r::imageBase + d2r::rva::SrvDoReviveD2R;
+	std::memcpy(expected, &d2rRevive, sizeof(expected));
+	const bool reviveDo = context->PatchWriteU64(
+		d2r::rva::SrvDoTable + static_cast<uint64_t>(d2r::rva::SrvDoRevive) * 8, expected, sizeof(expected),
+		reinterpret_cast<uint64_t>(static_cast<SrvDoFn>(SrvDoRevive)));
+	installed += reviveDo ? 1 : 0;
+	if (used < reportSize) {
+		const int n = std::snprintf(report + used, reportSize - used, "; srvdofunc %d revive events%s",
+		                            d2r::rva::SrvDoRevive, reviveDo ? "" : " FAILED (slot is not D2R's Revive)");
+		used += n > 0 ? static_cast<size_t>(n) : 0;
 	}
 	return installed;
 }
 
 auto SkillFunctionCount() noexcept -> int {
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 1;  // + the cltdo 22 patch
+	// + the cltdo 22 patch, aura event 32 and Revive's do
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 3;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
-	char missiles[128];
+	char missiles[192];
 	MissileFunctionCounters(missiles, sizeof(missiles));
 	std::snprintf(out, size,
 	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "
-	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, blood warps %u, "
-	              "refused %u, desecrates %u, client %u, corpses hidden %u, %s",
+	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, poison daggers %u, "
+	              "client %u, blood warps %u, refused %u, desecrates %u, client %u, corpses hidden %u, revives %u, "
+	              "revive events %u, splashes %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
-	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(), g_bloodWarps.load(),
-	              g_bloodWarpsRefused.load(), g_desecrates.load(), g_desecrateClients.load(), g_desecrateHidden.load(),
-	              missiles);
+	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
+	              g_poisonDaggers.load(), g_poisonDaggerClients.load(), g_bloodWarps.load(), g_bloodWarpsRefused.load(),
+	              g_desecrates.load(), g_desecrateClients.load(), g_desecrateHidden.load(), g_revives.load(),
+	              g_reviveEvents.load(), g_reviveSplashes.load(), missiles);
 }
