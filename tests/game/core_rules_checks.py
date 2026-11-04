@@ -275,15 +275,18 @@ def poison_dagger_clouds(ctx):
 
 @check("poison-cloud-state", tags=["core-rules-w11"])
 def poison_cloud_state(ctx):
-    """A cloud's hit (pSrvHitFunc 61) gives the unit PD2's poison_strike state (sHitPar1) for 52 frames (sHitPar2)."""
+    """A cloud's hit (pSrvHitFunc 61) gives the unit PD2's poison_strike state (sHitPar1) for 52 frames (sHitPar2)
+    and returns PD2's 2 + CollideKill: D2R's collision deals the cloud's damage only on bit 2."""
     row = _rows("missiles").index("poisondaggercloud")
-    hits = re.findall(rf"state hit: missile row {row} skill 73 level \d+: state (\d+) for (\d+) frames", _log(ctx))
+    hits = re.findall(rf"state hit: missile row {row} skill 73 level \d+: state (\d+) for (\d+) frames.*?"
+                      r", result (-?\d+)", _log(ctx))
     if not hits:
         ctx.skip("no cloud hit in the log yet (stab a monster with Poison Dagger, then run again)")
-    state, frames = (int(v) for v in hits[0])
+    state, frames, result = (int(v) for v in hits[-1])
     assert state == _rows("states").index("poison_strike"), f"state {state}"
     assert frames == 52, f"{frames} frames, PD2's sHitPar2 is 52"
-    return f"state {state} for {frames} frames"
+    assert result == 2, f"result {result}: D2R deals the cloud's damage on 2 (CollideKill 0)"
+    return f"state {state} for {frames} frames, result {result}"
 
 
 @check("throw-hd-models", tags=["core-rules"])

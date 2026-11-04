@@ -187,8 +187,9 @@ inline constexpr int MsCltHitPar3 = 0x98;
 inline constexpr int DmgPhys = 0x18, DmgFire = 0x20, DmgLight = 0x2c, DmgMagic = 0x30, DmgCold = 0x34, DmgPoison = 0x38;
 inline constexpr int DmgPoisonLength = 0x3c;
 inline constexpr int StatDamagePercent = 25;  // itemstatcost damagepercent, D2R and PD2
-inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58: D2R and PD2
+inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58, poisonlength 59: D2R and PD2
 inline constexpr int StatPoisonMax = 58;
+inline constexpr int StatPoisonLength = 59;
 inline constexpr uint32_t NearestTargetFlags = 0x8a783;  // Chain Lightning's search: 0x88583 | the 0xa783 the search adds
 
 // Leeches in the same damage block (built by 0x465d60)
@@ -199,6 +200,7 @@ inline constexpr int DamageStaminaLeech = 0x128;
 // missiles.txt record (1.13c's shifted by 0x24)
 inline constexpr int MsDParam1 = 0x9c;    // int32 dParam1
 inline constexpr int MsDmgCalc1 = 0xb4;   // int32 DmgCalc1 (calc index), read by dmg 1 0x453490
+inline constexpr int MsCollideKill = 0x1ae;  // uint8 CollideKill (1.13c's 0x186 + 0x28; the field table at 0x3c4233)
 inline constexpr int MsSkill = 0x1b6;     // int16 Skill (skills.txt row), read off a live explodingarrow row
 
 // MissileParams::flags

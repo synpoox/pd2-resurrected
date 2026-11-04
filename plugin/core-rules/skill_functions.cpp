@@ -475,6 +475,7 @@ auto SrvDoPoisonDagger(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
 	const auto setStat = d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat);
 	const int32_t count = At<int32_t>(skill, SkParam3);
+	int32_t cloudPoison = 0, cloudLength = 0;  // as a cloud carries them, for the log
 	const int32_t created = Ring(count, [&](int32_t dx, int32_t dy) {
 		params.targetX = dx;
 		params.targetY = dy;
@@ -482,12 +483,14 @@ auto SrvDoPoisonDagger(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 		if (cloud != nullptr) {
 			setStat(cloud, StatPoisonMin, unitStat(cloud, StatPoisonMin, 0) + poison, 0);
 			setStat(cloud, StatPoisonMax, unitStat(cloud, StatPoisonMax, 0) + poison, 0);
+			cloudPoison = unitStat(cloud, StatPoisonMin, 0);
+			cloudLength = unitStat(cloud, StatPoisonLength, 0);
 		}
 		return cloud != nullptr;
 	});
 	if (plog::Sample(g_poisonDaggers)) {
 		plog::Info("poison dagger: skill %d level %d: %d clouds (row %d, Param3 %d) at %d,%d, poison %d length %d, "
-		           "cast %u", skillId, level, created, missile, count, tx, ty, poison, At<int32_t>(damage, DmgPoisonLength),
+		           "cast %u", skillId, level, created, missile, count, tx, ty, cloudPoison, cloudLength,
 		           g_poisonDaggers.load());
 	}
 	return 1;
@@ -808,7 +811,7 @@ const SlotFunction Functions[] = {
 	{MissileSrvDmg, 20, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgPierceFalloff)), "pierce falloff"},
 	// Poison Dagger: srvdo 164 goes through the router (190); D2R fills cltdo 102
 	{CltDo, 122, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoPoisonDagger)), "poison dagger"},
-	{MissileSrvHit, 61, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitState)), "state hit"},
+	{MissileSrvHit, 61, reinterpret_cast<const void*>(static_cast<MissileSrvHitBounceFn>(SrvHitState)), "state hit"},
 };
 
 }  // namespace

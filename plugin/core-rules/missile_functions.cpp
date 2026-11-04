@@ -361,26 +361,34 @@ std::atomic<uint32_t> g_stateHits {0};
 
 // shit 61 (PD2 0x103a84f0, through 0x1036c920): the hit unit gets state sHitPar1 for sHitPar2 frames, carrying stat
 // sHitPar3 = cHitPar1 and stat cHitPar2 = cHitPar3 (a stat of -1 or none is left out), from the missile row's Skill at
-// the missile's level. The cloud's damage is not here: D2R's srvdo 3 deals it after calling this.
+// the missile's level. Returns PD2's 2 + CollideKill: D2R's collision (0x4639a0) deals the missile's damage only when
+// the result has bit 2, so a 0 or 1 (no hit unit or owner, a bad row) deals none.
 // shortcut: PD2 also halves a negative resist (stats 36-45) on a unit already over 99 in it, and treats states 16, 87
 // and 188 specially; none of shit 61's rows reach those states, and the halving is an approximated row on
 // docs/unported.md. Upgrade if a resist-lowering row must match PD2 on immune monsters.
-void SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept {
+auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	using namespace d2r::rva;
-	if (game == nullptr || missile == nullptr || hit == nullptr) {
-		return;
+	if (game == nullptr || missile == nullptr) {
+		return 1;
+	}
+	if (hit == nullptr) {
+		return 0;
 	}
 	const uint32_t dataFlag = d2r::DataFlag(game);
 	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
 		dataFlag, At<int32_t>(missile, UnitClassId));
 	Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
 	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(dataFlag);
-	if (row == nullptr || owner == nullptr || tables == nullptr) {
-		return;
+	if (owner == nullptr) {
+		return 0;
 	}
+	if (row == nullptr || tables == nullptr) {
+		return 1;
+	}
+	const int32_t damage = 2 + (At<uint8_t>(row, MsCollideKill) != 0);  // PD2's result: 2 deals the hit's damage
 	const int32_t state = At<int32_t>(row, MsHitPar1), frames = At<int32_t>(row, MsHitPar2);
 	if (state < 0 || static_cast<uint64_t>(state) >= At<uint64_t>(tables, TablesStateCount) || frames <= 0) {
-		return;
+		return 1;
 	}
 	const int32_t skillId = At<int16_t>(row, MsSkill);
 	const int32_t level = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileLevel)(missile);
@@ -389,7 +397,7 @@ void SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept {
 	                               d2r::Engine<void (*)()>(SkillStateExpired)};
 	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
 	if (list == nullptr) {
-		return;
+		return damage;
 	}
 	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
 	const int32_t stats[2][2] = {{At<int32_t>(row, MsHitPar3), At<int32_t>(row, MsCltHitPar1)},
@@ -402,9 +410,11 @@ void SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept {
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(hit, state, 1);
 	if (plog::Sample(g_stateHits)) {
 		plog::Info("state hit: missile row %d skill %d level %d: state %d for %d frames on unit type %d, stat %d %+d, "
-		           "stat %d %+d, hit %u", At<int32_t>(missile, UnitClassId), skillId, level, state, frames,
-		           At<int32_t>(hit, UnitType), stats[0][0], stats[0][1], stats[1][0], stats[1][1], g_stateHits.load());
+		           "stat %d %+d, result %d, hit %u", At<int32_t>(missile, UnitClassId), skillId, level, state, frames,
+		           At<int32_t>(hit, UnitType), stats[0][0], stats[0][1], stats[1][0], stats[1][1], damage,
+		           g_stateHits.load());
 	}
+	return damage;
 }
 
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void {

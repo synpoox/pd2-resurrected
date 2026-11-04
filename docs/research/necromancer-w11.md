@@ -39,12 +39,15 @@ count 6 (pushed as a constant), so 7 client clouds whatever Param3 is. D2R fills
 
 Needs a hit unit and the owner, then gives the hit unit (`0x1036c920`) state sHitPar1 for sHitPar2 frames from the
 missile row's Skill at the missile's level, with stat sHitPar3 = cHitPar1 and stat cHitPar2 = cHitPar3 (a stat of -1 or
-out of range is skipped). Returns `2 + (row +0x186 != 0)`; D2R ignores the hit function's result.
+out of range is skipped). Returns 1 with no game, missile, row or valid state, 0 with no hit unit or owner, else
+`2 + (row +0x186 != 0)` (1.13c's CollideKill; D2R's is `+0x1ae`, field table `0x3c4233`).
 
-D2R's cloud do function (srvdo 3, `0x466b40`) calls the hit function every Param1 frames on the unit it finds and
-then deals the cloud's damage itself, so shit 61 only adds the state. Its sHitPar1 / sHitPar3 / cHitPar2 are PD2 state
-and stat ids: the merge gives them the mod's ids (`pd2_ids.HIT_PARAMS`; poison_strike 236 -> 282, the throwing
-potions' 229-232 -> 275-278).
+The result matters: D2R's missile collision (`0x4639a0`) calls the hit function through its table and builds and applies
+the missile's damage (`0x465420`, `0x462e40`) only when the result has bit 2. A hit function that returns nothing deals
+no damage, so core-rules returns PD2's value.
+
+Its sHitPar1 / sHitPar3 / cHitPar2 are PD2 state and stat ids: the merge gives them the mod's ids
+(`pd2_ids.HIT_PARAMS`; poison_strike 236 -> 282, the throwing potions' 229-232 -> 275-278).
 
 `0x1036c920` also: halves a negative resist (stats 36-45, `0x1036df10`) on a non-player unit already over 99 in it;
 handles states 16, 87 and 188 specially. No shit 61 row uses those states; the halving touches the throwing potions'
@@ -58,3 +61,9 @@ Rows on shit 61: poisondaggercloud, the nine `tpot_*_nova/_cloud/_bolt` rows, ka
 - `tests/game/core_rules_checks.py`, tag `core-rules-w11` (Slot5, 2026-11-03): 4 passed. One level 10 stab made 11
   poisondaggercloud missiles (row 772) with poison 261 over 50 frames (261 * 50 / 256 = 51, the tooltip's 50-53), the
   client made 7, and the cloud hit gave a zombie poison_strike (282) for 52 frames. No crash.
+- Same tag (Slot5, 2026-11-04), after the hit function returned PD2's result: 4 passed. The clouds carry poison 522
+  over 50 frames (the 261 the cloud is created with plus the rolled 261, as PD2 adds them), the hit returned 2, and
+  cloud-hit zombies lost life (a temporary log showed 12 -> 5, 11 -> 4).
+
+Clouds come out on every Poison Strike attack, hit or miss: PD2's srvdo 164 runs the ring after the melee hit with no
+to-hit branch (`0x103b2795`).
