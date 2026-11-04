@@ -104,6 +104,9 @@ run the same command with core-rules-w30. Each charge's client missiles log on t
 W31 checks (tag core-rules-w31), same merged data: an Assassin with Dragon Flight (275) and Psychic Hammer (253);
 out of town in a crowd, Dragon Flight onto monsters a few times and cast Psychic Hammer where it can jump (its
 hammer chains up to calc1 units within Param1 8), then run the same command with core-rules-w31.
+W20 check (tag core-rules-w20), same merged data: a level 90+ Paladin in Hell with Blessed Hammer (`debug_mode`,
+`cheat sklvl Blessed Hammer,20`, `cheat goto 2`, `cheat mspawn zombie1,8`); cast it at the pack, by a wall, and run
+the same command with core-rules-w20.
 """
 import json
 import os
@@ -137,7 +140,8 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 184, "charge spread"), ("srvdofunc", 185, "charge ring"), ("srvdofunc", 186, "charge fire"),
     ("srvdofunc", 181, "charge cold"), ("cltdofunc", 120, "nova"),
     ("cltdofunc", 127, "charge spread"), ("cltdofunc", 128, "charge ring"), ("pCltDoFunc", 79, "charge explode"),
-    ("pCltHitFunc", 67, "charge bolt"), ("srvdofunc", 178, "dragon flight"), ("pSrvDmgFunc", 22, "chain falloff"),
+    ("pCltHitFunc", 67, "charge bolt"), ("pSrvDoFunc", 47, "blessed hammer"), ("pCltDoFunc", 80, "blessed hammer"),
+    ("srvdofunc", 178, "dragon flight"), ("pSrvDmgFunc", 22, "chain falloff"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -168,7 +172,7 @@ def _log(ctx) -> str:
                                  "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33",
                                  "core-rules-w21", "core-rules-w22", "core-rules-w24", "core-rules-w29",
                                  "core-rules-w17", "core-rules-w23", "core-rules-w27", "core-rules-w28", "core-rules-w30",
-                                 "core-rules-w18", "core-rules-w31", "game"])
+                                 "core-rules-w18", "core-rules-w20", "core-rules-w31", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -1324,3 +1328,30 @@ def chilling_armor_event(ctx):
         got = (row["auraevent2"], row["auraeventfunc2"])
         assert got == ("damagedinmelee", "3"), f"{name}: auraevent2 {got}, PD2's damagedinmelee 3"
     return "Chilling Armor and its SelfAura keep damagedinmelee 3"
+
+
+HAMMER_FRAME = re.compile(r"blessed hammer: missile row (\d+) at (\d+),(\d+) mask (\w+), (-?\d+) frames left, "
+                          r"result (-?\d+), frame \d+")
+HAMMER_HIT = re.compile(r"blessed hammer: hit unit type (\d+) id \d+ at (\d+),(\d+)")
+HAMMER_CLIENT = re.compile(r"blessed hammer client: missile row (\d+) at (\d+),(\d+) mask (\w+), frame \d+")
+
+
+@check("blessed-hammer", tags=["core-rules-w20"])
+def blessed_hammer(ctx):
+    """A Blessed Hammer flies PD2's path (sdo 47 / cdo 80, PD2 40 / 72): its path collides only with players and
+    monsters (mask 0x180, D2R's CollideType 3 is 0x184), so walls don't stop it, and it hits monsters on the way."""
+    mod = _missile_row(os.path.join(REPO, "generated", "data", "global", "excel", "missiles.txt"), "blessedhammer")
+    assert (mod["pSrvDoFunc"], mod["pCltDoFunc"]) == ("47", "80"), \
+        f"merged pSrvDoFunc/pCltDoFunc {mod['pSrvDoFunc']}/{mod['pCltDoFunc']}, want 47/80"
+    log, names = _log(ctx), _rows("missiles")
+    frames, hits, client = HAMMER_FRAME.findall(log), HAMMER_HIT.findall(log), HAMMER_CLIENT.findall(log)
+    if not frames or not hits:
+        ctx.skip("no Blessed Hammer frame and hit in the log yet (cast it at monsters out of town, then run again)")
+    for row, _x, _y, mask, *_ in frames + client:
+        assert names[int(row)] == "blessedhammer", f"missile row {row} is {names[int(row)]}"
+        assert int(mask, 0) == 0x180, f"path mask {mask}, PD2 sets 0x180"
+    points = {(x, y) for _r, x, y, *_ in frames}
+    assert len(points) > 1, f"the hammer never moved: {points}"
+    assert any(t == "1" for t, _x, _y in hits), f"no monster hit: {hits[:3]}"
+    assert client, "no client hammer frame in the log (the client half, cdo 80, never ran)"
+    return f"{len(points)} path points, {len(hits)} hit(s) logged, {len(client)} client frame(s)"

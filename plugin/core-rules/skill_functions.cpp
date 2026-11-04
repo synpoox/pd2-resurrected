@@ -3328,6 +3328,10 @@ const SlotFunction Functions[] = {
 	// Dragon Flight keeps PD2's free srvdo 178; Psychic Hammer's dmg 15 is D2R's Holy Bolt, so ours takes 22 (FUNCS)
 	{SrvDo, 178, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoDragonFlight)), "dragon flight"},
 	{MissileSrvDmg, 22, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgChainFalloff)), "chain falloff"},
+	// Blessed Hammer (W20): D2R fills sdo 40 and cdo 72 (a sub-missile once, then the default), so ours take free
+	// slots and the merge points there (FUNCS)
+	{MissileSrvDo, 47, reinterpret_cast<const void*>(static_cast<MissileSrvDoFn>(SrvDoBlessedHammer)), "blessed hammer"},
+	{MissileCltDo, 80, reinterpret_cast<const void*>(static_cast<MissileCltDoFn>(CltDoBlessedHammer)), "blessed hammer"},
 };
 
 }  // namespace
@@ -3401,7 +3405,7 @@ auto SkillFunctionCount() noexcept -> int {
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
-	char missiles[384];
+	char missiles[512];
 	MissileFunctionCounters(missiles, sizeof(missiles));
 	std::snprintf(out, size,
 	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "

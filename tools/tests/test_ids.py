@@ -102,10 +102,11 @@ class FormulaAndColumnTests(unittest.TestCase):
 
     def test_function_numbers_moved_off_d2r_slots(self):
         d2r = table("Missile|pCltDoFunc|pSrvDoFunc\nflamewave|71|38\n")
-        pd2 = table("Missile|pCltDoFunc|pSrvDoFunc\nback|70|38\nbolt|1|1\n")
-        lines = [("back", 1, "back"), ("bolt", 2, "bolt")]
+        pd2 = table("Missile|pCltDoFunc|pSrvDoFunc\nback|70|38\nbolt|1|1\nblessedhammer|72|40\n")
+        lines = [("back", 1, "back"), ("bolt", 2, "bolt"), ("blessedhammer", 3, "blessedhammer")]
         merged, _ = I.merge_table("missiles", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
-        self.assertEqual(merged.rows, [["flamewave", "71", "38"], ["back", "78", "46"], ["bolt", "1", "1"]])
+        self.assertEqual(merged.rows, [["flamewave", "71", "38"], ["back", "78", "46"], ["bolt", "1", "1"],
+                                       ["blessedhammer", "80", "47"]])
 
     def test_holy_light_keeps_its_slots_fist_delay_hit_moves(self):
         d2r = table("Missile|pCltHitFunc\nfistoftheheavensdelay|26\n")
