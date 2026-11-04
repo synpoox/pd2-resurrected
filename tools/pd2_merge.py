@@ -21,6 +21,7 @@ import pd2_ids
 import pd2_items
 import pd2_missiles_hd
 import pd2_skill_icons
+import pd2_skilltrees
 import pd2_standins
 import pd2_strings
 import pd2_tables
@@ -38,6 +39,7 @@ RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
     "standins.tsv": pd2_standins.apply,  # after the id and item rules (merge runs rule files by name)
     "strings.json": pd2_strings.rule,
     "tables.json": pd2_tables.rule,
+    "tree-backgrounds.json": pd2_skilltrees.apply,  # after tables.json (skilldesc)
 }
 
 
