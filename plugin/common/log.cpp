@@ -16,9 +16,9 @@ void Write(Level level, const char* fmt, va_list args) noexcept {
 	if (g_context == nullptr || fmt == nullptr) {
 		return;
 	}
-	char body[900];
+	char body[1536];  // fits core-rules' skills report (plugin.cpp)
 	std::vsnprintf(body, sizeof(body), fmt, args);
-	char line[1024];
+	char line[1600];
 	std::snprintf(line, sizeof(line), "%s: %s", g_prefix, body);
 	switch (level) {
 	case Level::Info: g_context->LogInfo(line); break;

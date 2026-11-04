@@ -1221,10 +1221,11 @@ struct VengeanceBurst {
 };
 
 // A link waiting on its justhit marker: the marker's expiry (VengeanceLinkDue) runs the next burst around the unit.
-// PD2 schedules a game timer instead (0x103164f0, event 7). Keyed by the marker list and the unit with its id, so a
-// record left by a list that never expired can't match a later one.
+// PD2 schedules a game timer instead (0x103164f0, event 7). Keyed by the unit with its id: D2R's expiry callback gets
+// (game, unit, state), not the list (SkillStateExpired 0x5551f0 never reads its first argument).
+// shortcut: a record whose marker went without expiring (replaced, the unit gone) fires on that unit's next marker
+// expiry; upgrade if the log shows links from units no burst marked.
 struct VengeanceLink {
-	void* list;
 	Unit* unit;
 	uint32_t unitId;
 	Game* game;
@@ -1240,13 +1241,13 @@ std::mutex g_linksLock;
 auto Burst(Game* game, Unit* caster, Unit* center, Unit* origin, const uint8_t* skill, int32_t skillId, int32_t level,
            int32_t link) noexcept -> VengeanceBurst;
 
-void VengeanceLinkDue(void* list, Unit* unit, int32_t state) noexcept {
+void VengeanceLinkDue(void* game, Unit* unit, int32_t state) noexcept {
 	using namespace d2r::rva;
 	VengeanceLink due {};
 	{
 		const std::lock_guard<std::mutex> lock(g_linksLock);
 		for (VengeanceLink& l : g_links) {
-			if (l.list == list && l.unit == unit) {
+			if (l.unit == unit) {
 				due = l;
 				l = {};
 			}
@@ -1271,7 +1272,7 @@ void VengeanceLinkDue(void* list, Unit* unit, int32_t state) noexcept {
 			}
 		}
 	}
-	d2r::Engine<void (*)(void*, Unit*, int32_t) noexcept>(SkillStateExpired)(list, unit, state);
+	d2r::Engine<void (*)(void*, Unit*, int32_t) noexcept>(SkillStateExpired)(game, unit, state);
 }
 
 // One unit in range (PD2's 0x103041f0): it takes the burst; then, unless already marked, within reach of the caster,
@@ -1310,7 +1311,7 @@ auto VengeanceOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(victim);
 	if (victim != b->origin && static_cast<int32_t>(d2r::RandomBelow(seed, 100)) < b->chance && b->link < MaxLinks) {
 		const std::lock_guard<std::mutex> lock(g_linksLock);
-		g_links[g_nextLink++ % std::size(g_links)] = {list, victim, At<uint32_t>(victim, UnitIdField), game,
+		g_links[g_nextLink++ % std::size(g_links)] = {victim, At<uint32_t>(victim, UnitIdField), game,
 		                                              At<int32_t>(caster, UnitType), At<uint32_t>(caster, UnitIdField),
 		                                              b->skillId, b->level, b->link + 1};
 		++b->linked;

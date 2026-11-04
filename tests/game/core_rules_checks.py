@@ -869,7 +869,7 @@ def vengeance_hit(ctx):
         assert all(p >= 5 + 2 * (level - 1) for p in pcts), f"level {level}: percentages {pcts} below ln12"
         assert min(fire, cold, light) >= base, f"each element adds the skill's roll {base}: {fire} {cold} {light}"
         assert (chance, delay, reach, length) == (min(22 + 2 * (level - 1), 95), 4, 24, 80), hits[0]
-    level, *pcts, base, fire, cold, light, _, chance, *_ = hits[-1]
+    level, pcts, (fire, cold, light), chance = hits[-1][0], hits[-1][1:4], hits[-1][5:8], hits[-1][9]
     return f"level {level}: {pcts}%, fire {fire} cold {cold} light {light}, chain {chance}% ({len(hits)} hits)"
 
 
