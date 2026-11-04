@@ -69,8 +69,18 @@ docs/unported.md):
 - a neutral (1) or town-neutral (5) request with flag 0 is refused outside the window; PD2 always allows it;
 - D2R's client holds a request made in get-hit and sends it when its own window opens: every request the server
   saw came at 1 frame left (below). So in single player the 2-frame window is not reached, and a player feels D2R's.
-  The client side was not found: `D2Client\src\Unit\UnitMode.cpp`'s input path (`0xf9bc0`) stores a held command in
-  the client player data (`+0x1c8`-`+0x1d4`, `0xfbef0`), and its sender `0xfabe0` has some 30 callers.
+  The client side was not found. What is ruled out:
+  - the server does not hold the request: temporary logs on `0x42d020` (StartMode, entry `4c 8b dc 4d 89 43 18 53
+    55 56 57 41 54 41 55`) saw every request made in get-hit come from the skill message handler (`0x4f8de0`, return
+    `0x4f8f66`) with 1 frame left, so the message itself arrives then. `0x4fdca0`, which `0x42d020` calls first, is
+    skill validation (its `0x4249f0` test is not a mode test), not a queue;
+  - the client's held command (`D2Client\src\Unit\UnitMode.cpp`; stored in the client player data `+0x1c8`-`+0x1d4`
+    by `0xf9680`, `0xfbef0` and the click handlers such as `0x1017b0`, released by `0xf9bc0` every client frame
+    from `0x8b3c0` and `0x94b40`) is the "move, then act" follow-up and has no frame test;
+  - the sender `0xfabe0` skips only for a skill flag (`0xffac0`), not for get-hit.
+  So the hold comes from the client's own player mode: the local get-hit animation ending, one frame before the
+  server's mode end. Not checked: whether PD2's 1.13c client holds input the same way. If it does, PD2's 2-frame
+  server window is never reached from a player's input there either, and this is no deviation.
 
 ## Game check
 
