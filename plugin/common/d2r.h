@@ -97,4 +97,25 @@ inline auto ValidMissile(uint32_t dataFlag, int32_t missile) noexcept -> bool {
 	return missile >= 0 && missile < api.missileCount(dataFlag);
 }
 
+// Leap Attack's (0x56b170) cleanup of its damage block: the tagged object at +0x158 (bit 0 set: a heap pointer or
+// none; clear: an object in place), then the list if it outgrew its inline space (capacity without the inline bit).
+inline void ReleaseDamage(LeapKnockback& damage) noexcept {
+	const auto release = [](void* p) {
+		void* allocator = Engine<void* (*)() noexcept>(rva::EngineAllocator)();
+		(*reinterpret_cast<void (***)(void*, void*) noexcept>(allocator))[4](allocator, p);
+	};
+	const uint64_t tagged = damage.tagged[0];
+	void* object = (tagged & 1) != 0 ? reinterpret_cast<void*>(tagged & ~1ull) : &damage.tagged[0];
+	if (object != nullptr) {
+		(**reinterpret_cast<void (***)(void*, int32_t) noexcept>(object))(object, 0);
+		if ((damage.tagged[0] & 1) != 0) {  // read again: the destructor may leave a heap pointer
+			release(reinterpret_cast<void*>(damage.tagged[0] & ~1ull));
+		}
+		damage.tagged[0] = 1;
+	}
+	if (static_cast<int64_t>(damage.listCapacity) >= 0) {
+		release(damage.listData);
+	}
+}
+
 }  // namespace d2r

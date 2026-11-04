@@ -67,7 +67,7 @@ the earliest in the order Necromancer, Paladin, Druid, Sorceress, Assassin, and 
 | W25 | Investigation: Assassin finisher hook points (prg slots, cdo 69, chit 67, charge build and release) | none |
 | W26 | Sorceress: Teleport (srvdo 155 -> router 190), Teleport blocked areas | none |
 | W27 | Sorceress: Static Field (srvdo 160 -> router 190), Combustion and boss novas (srvdo 159 -> router 190, cltdo 100 -> 120), Inferno check | W21 |
-| W28 | Sorceress: Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit (shit 62), Chilling Armor event 3 | none |
+| W28 | Sorceress: Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit (shit 62), Chilling Armor event 3 (data) | none |
 | W29 | Assassin: finisher server half (srvdo 170 -> router 190, srvprg 171 -> 184, 172 -> 185, 39 -> 186, 139 -> 181) | W25 |
 | W30 | Assassin: finisher client half (cltprg 106 -> 127, 107 -> 128, chit 67, cdo 69 -> 79) | W29 |
 | W31 | Assassin: Dragon Flight (srvdo 178), Psychic Hammer damage (dmg 15) | none |
@@ -149,7 +149,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 
 | Rule | PD2 source | Bucket | D2R slot | RVAs | Tier | Size | Status | Test | Work item |
 |---|---|---|---|---|---|---|---|---|---|
-| Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit | shit 62 | c | 62 | SrvHitTable | Exact | M | open | hit logs the hit effect | W28 |
+| Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit | shit 62 | c | 62 (D2R's is empty); PD2's `0x103a86d0` ([w28-sorceress-bolts](research/w28-sorceress-bolts.md)) | MissileSrvHitTable, MissileRecord, MissileOwner, MissileLevel, ElementalDamage, UnitRoom, AreaUnits, AreaApply | Exact | M | built (W28) with an approximated deviation, owed to the unported list: the splash adds no physical damage and carries no missile in its block | log: every unit within sHitPar1 (bolts 3, Blizzard and Chilling Armor 4) of the hit takes the skill's damage at the missile's level | W28 |
 | Fire Arrow, Exploding Arrow hit | shit 63 | c | 63 (D2R's is empty); PD2's 0x3a8800 read from ProjectDiablo.dll ([amazon-w6](research/amazon-w6.md)) | MissileSrvHitTable, SrvHitSubMissiles, MissileOwner, MissileRecord, MissileLevel, getSkillRecord, evalSkillCalc, createMissile, UnitSeed | Exact | M | built (W6) with an approximated deviation, owed to the unported list: the calc2 explosions are created at once with an activation delay where PD2 queues a timer each, their places roll on the owner's seed, and fireexplosion3 plays out where PD2 sends and removes it | hit logs calc2 explosions (Exploding Arrow: min(3 + lvl/5, 8)) | W6 |
 | Uber immolation arrow hit | shit 64 | c | 64 | SrvHitTable | Exact | S | open | hit logs fire |  |
 | Kanemith blaze dot hit (shares 61 with Poison Dagger) | shit 61 | c | 61 | MissileSrvHitTable | Exact | S | built (W11, Poison Dagger's shit 61; the merge gives sHitPar1 / sHitPar3 / cHitPar2 the mod's state and stat ids, `pd2_ids.HIT_PARAMS`) | hit logs state 44 with velocity and attackrate -60 | W11 |
@@ -221,5 +221,6 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Perfect shrine | ProjectDiablo.dll `PerfectShrine` | c | none | ? | Exact | S | verify | effect not identified (Q6) |  |
 | Stackable items / item quantity | ProjectDiablo.dll `HOTKEY_ItemQuantity`; cube rows note "stackable maps" | c | none | ? | Exact | M | verify | maps stack and split as in PD2 |  |
 | Skill aura event 32 (Revive) | skills `auraeventfunc1` 32 | c | 32 (D2R's 0x42eea0 is reached by no row) and srvdo 58 wrapped | AuraEventTable, SrvDoTable, RegisterSkillEvents | Exact | S | built (W14, W33): D2R's Revive never registers a skill's aura events on the pet, so the srvdo 58 wrapper registers them (srvst 66's 0x42fa90) on the revived monster; the event runs proc_SplashDamage's do function directly at level 1, as PD2 does, around the unit it hit, where PD2's splash takes its path target (unported list) | game check `revive-event`: event 5 from skill 95 on a revived monster, splash 430 cast non-zero | W14 |
-| Skill aura event 3 (Chilling Armor), 16 (Smite) | skills `auraeventfunc2` 3, `auraeventfunc1` 16 | c | 3 if D2R's is empty or equal; 16 -> ? (only D2R's RotW bank uses 16) | ? | Exact | S | verify | event fires on the aura owner | W19, W28 |
+| Skill aura event 3 (Chilling Armor) | skills `auraeventfunc2` 3 | a | 3: PD2's `0x10346020` does what D2R's `0x552a50` does ([w28-sorceress-bolts](research/w28-sorceress-bolts.md)) | none | Exact | S | data | none: verified equal to D2R's (research note); the merged rows keep PD2's damagedinmelee 3 | W28 |
+| Skill aura event 16 (Smite) | skills `auraeventfunc1` 16 | c | 16 -> ? (only D2R's RotW bank uses 16) | ? | Exact | S | verify | event fires on the aura owner | W19 |
 | State remove function 12 (`skilldelay`) | states `remfunc` 12 | c | 12 if empty | ? | Exact | S | verify | delay state ends as in PD2 |  |

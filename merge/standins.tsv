@@ -92,14 +92,7 @@ skills	LucionDeath4	Nova	srvdofunc,cltdofunc	Death novas
 skills	UberDiabSummon	-	srvdofunc	UberDiabSummon, UberDiabRun
 skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
-missiles	firebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
-missiles	icebolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	blessedhammer	=	pSrvDoFunc,pCltDoFunc	Blessed Hammer
-missiles	blizzard1	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
-missiles	blizzard2	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
-missiles	blizzard3	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
-missiles	blizzard4	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
-missiles	chillingarmorbolt	=	pSrvHitFunc	Fire Bolt, Ice Bolt, Blizzard, Chilling Armor bolt hit
 missiles	desertfireball	=	pCltHitFunc	Desert turret fireball client hit
 missiles	bladefragment1	=	pSrvHitFunc,pCltHitFunc	Blade fragment hit
 missiles	bladefragment1	=	pSrvDmgFunc	Rathma bone spear, blade fragment damage

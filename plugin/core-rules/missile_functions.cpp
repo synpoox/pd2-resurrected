@@ -422,6 +422,83 @@ auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	return damage;
 }
 
+// --- Bolt splash (PD2 shit 62, W28, docs/research/w28-sorceress-bolts.md) -------------------------------------------
+namespace {
+
+std::atomic<uint32_t> g_boltHits {0};
+std::atomic<uint32_t> g_boltUnitHits {0};  // the first splash with units hit is logged too
+
+using AreaFn = void (*)(Game*, Unit*, d2r::AreaCenter*, int32_t, uint32_t, int32_t (*)(d2r::AreaContext*, Unit*), void*,
+                        int32_t) noexcept;  // rva::AreaUnits
+
+struct BoltSplash {
+	d2r::LeapKnockback* rolled;  // the one roll every unit in range takes
+	uint32_t hitFlags, resultFlags;
+	int64_t victims;
+};
+
+// Copies the rolled block's plain fields (all but the list at 0x40 and the tagged object at 0x158) into a fresh one:
+// ElementalDamage (0x437d00) writes only 0x0c-0x3c and 0x118-0x144, and never the flags.
+void CopyRolled(const d2r::LeapKnockback& from, d2r::LeapKnockback& to) noexcept {
+	const auto* src = reinterpret_cast<const uint8_t*>(&from);
+	auto* dst = reinterpret_cast<uint8_t*>(&to);
+	std::memcpy(dst, src, offsetof(d2r::LeapKnockback, listData));
+	std::memcpy(dst + offsetof(d2r::LeapKnockback, pad118), src + offsetof(d2r::LeapKnockback, pad118),
+	            sizeof(from.pad118));
+}
+
+// One unit in range (PD2's callback 0x10304a90): a copy of the roll through the area apply.
+auto BoltSplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
+	auto* b = static_cast<BoltSplash*>(area->arg);
+	d2r::LeapKnockback damage;
+	CopyRolled(*b->rolled, damage);
+	damage.hitFlags = b->hitFlags;
+	damage.resultFlags = b->resultFlags;
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(d2r::rva::AreaApply)(static_cast<Game*>(area->game),
+	                                                                               area->unit, victim, &damage);
+	b->victims += (damage.resultFlags & d2r::rva::ResultHit) != 0 ? 1 : 0;
+	ReleaseDamage(damage);
+	return 1;
+}
+
+}  // namespace
+
+// shit 62 (PD2 0x103a86d0; Fire Bolt, Ice Bolt, Blizzard, Chilling Armor's bolt): wherever the missile hits, a unit or
+// not, every unit within sHitPar1 of the missile takes the missile row's Skill's elemental damage at the missile's
+// level + sHitPar2, rolled once, from the owner with PD2's unit mask, the row's HitFlags and ResultFlags | hit. Returns
+// 1 as PD2 does, so the collision deals no damage of its own: the struck unit takes the splash.
+// shortcut: PD2 also adds the skill's physical damage (1.13c D2Game 0x9f1a0) and puts the missile in the block
+// (1.13c +0x5c); none of shit 62's skills has MinDam/MaxDam. Upgrade if a physical row joins shit 62.
+auto SrvHitBoltSplash(Game* game, Unit* missile, Unit* /*hit*/) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (game == nullptr || missile == nullptr) {
+		return 1;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
+		dataFlag, At<int32_t>(missile, UnitClassId));
+	Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
+	int32_t x = 0, y = 0;
+	if (row == nullptr || owner == nullptr || !d2r::UnitXY(missile, &x, &y)) {
+		return 1;
+	}
+	const int32_t skillId = At<int16_t>(row, MsSkill);
+	const int32_t level = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileLevel)(missile) + At<int32_t>(row, MsHitPar2);
+	const int32_t radius = At<int32_t>(row, MsHitPar1);
+	d2r::LeapKnockback rolled;
+	d2r::Engine<void (*)(Unit*, void*, int32_t, int32_t) noexcept>(ElementalDamage)(owner, &rolled, skillId, level);
+	BoltSplash b {&rolled, At<uint32_t>(row, MsHitFlags), At<uint16_t>(row, MsResultFlags) | uint32_t {ResultHit}, 0};
+	d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(missile), x, y};
+	d2r::Engine<AreaFn>(AreaUnits)(game, owner, &center, radius, AreaUnitMask, BoltSplashOne, &b, 0);
+	if (plog::Sample(g_boltHits) || (b.victims > 0 && plog::Sample(g_boltUnitHits))) {
+		plog::Info("bolt hit: missile row %d skill %d level %d radius %d: fire %d cold %d (1/256), units hit %lld, "
+		           "hit %u", At<int32_t>(missile, UnitClassId), skillId, level, radius, At<int32_t>(&rolled, DmgFire),
+		           At<int32_t>(&rolled, DmgCold), static_cast<long long>(b.victims), g_boltHits.load());
+	}
+	ReleaseDamage(rolled);
+	return 1;
+}
+
 // --- Client hits around the hit point (W17, docs/research/w17-holy-light.md) ---------------------------------------
 namespace {
 
@@ -558,8 +635,8 @@ auto CltHitFistDelay(Unit* missile, Unit* hit) noexcept -> int32_t {
 
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size, "returns spawned %u, caught %u, bounces %u, first hits %u, spread hits %u, explosions %u, "
-	              "falloff hits %u, state hits %u, holy light client hits %u, fist delay client hits %u",
+	              "falloff hits %u, state hits %u, bolt hits %u, holy light client hits %u, fist delay client hits %u",
 	              g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(), g_firstHits.load(),
 	              g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load(), g_stateHits.load(),
-	              g_holyLightHits.load(), g_fistDelayHits.load());
+	              g_boltHits.load(), g_holyLightHits.load(), g_fistDelayHits.load());
 }

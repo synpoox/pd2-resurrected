@@ -868,27 +868,6 @@ struct SplashHit {
 	int64_t victims;
 };
 
-// Leap Attack's (0x56b170) cleanup of its damage block: the tagged object at +0x158 (bit 0 set: a heap pointer or
-// none; clear: an object in place), then the list if it outgrew its inline space (capacity without the inline bit).
-void ReleaseDamage(d2r::LeapKnockback& damage) noexcept {
-	const auto release = [](void* p) {
-		void* allocator = d2r::Engine<void* (*)() noexcept>(d2r::rva::EngineAllocator)();
-		(*reinterpret_cast<void (***)(void*, void*) noexcept>(allocator))[4](allocator, p);
-	};
-	const uint64_t tagged = damage.tagged[0];
-	void* object = (tagged & 1) != 0 ? reinterpret_cast<void*>(tagged & ~1ull) : &damage.tagged[0];
-	if (object != nullptr) {
-		(**reinterpret_cast<void (***)(void*, int32_t) noexcept>(object))(object, 0);
-		if ((damage.tagged[0] & 1) != 0) {  // read again: the destructor may leave a heap pointer
-			release(reinterpret_cast<void*>(damage.tagged[0] & ~1ull));
-		}
-		damage.tagged[0] = 1;
-	}
-	if (static_cast<int64_t>(damage.listCapacity) >= 0) {
-		release(damage.listData);
-	}
-}
-
 // D2R's area apply (0x436e90) with a melee hit's events: PD2's apply (0x10305880, its event step 0x10305c30) fires
 // domeleedamage on the attacker and event 1 on the victim, where D2R's area apply fires 6 and 2.
 void DealSplash(Game* game, Unit* attacker, Unit* victim, d2r::LeapKnockback& damage) noexcept {
@@ -2703,6 +2682,7 @@ const SlotFunction Functions[] = {
 	// Poison Dagger: srvdo 164 goes through the router (190); D2R fills cltdo 102
 	{CltDo, 122, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoPoisonDagger)), "poison dagger"},
 	{MissileSrvHit, 61, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitState)), "state hit"},
+	{MissileSrvHit, 62, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitBoltSplash)), "bolt splash"},
 	{SrvDo, 176, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoHolyLight)), "holy light"},
 	{MissileCltHit, 66, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitHolyLight)), "holy light"},
 	// PD2 leaves Fist of the Heavens' chit 26 vanilla, and D2R's 26 differs from 1.13c's: ours takes 71 (FUNCS)
