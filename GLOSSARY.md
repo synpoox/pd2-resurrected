@@ -19,6 +19,18 @@ _Avoid_: new content, vanilla extras
 **Warlock**:
 D2R's RotW class, the one class in the port not held to the PD2 baseline: D2R's Warlock on build 93847, changed only where a skill falls short of PD2's style, keeping its three trees.
 
+**Endgame gear**:
+The gear a Warlock balance test assumes: full skillers, Torch, Anni, GG corruptions, high-end runewords and chase uniques; no unique that drops from only one boss.
+_Avoid_: BiS, budget gear
+
+**Endgame build**:
+One Warlock tree's main build, played on endgame gear.
+_Avoid_: spec, main build
+
+**Reference build**:
+The PD2 build, on endgame gear, that an endgame build is measured against.
+_Avoid_: benchmark, comparison build
+
 **Unported list**:
 The record of every deviation, its status and why.
 _Avoid_: cut list, TODO list
