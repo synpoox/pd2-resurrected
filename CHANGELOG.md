@@ -5,6 +5,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Bash knocks back half the time, and Find Potion and Find Item skip minions' corpses.
 - Item stat lines no longer show the value twice ("+1 %+d to All Skills").
 - Corruption: cube an item with a Worldstone Shard. It takes two presses for now: the first rolls the hidden
   corruption value and hands the shard back, the second gives one of PD2's outcomes. A corrupted item can't be

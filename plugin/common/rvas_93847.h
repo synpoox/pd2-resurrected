@@ -30,6 +30,17 @@ inline constexpr int CltDoFirstFree = 110;
 inline constexpr uint64_t SrvStTable = 0x238e710;
 inline constexpr int SrvStSlots = 91;
 inline constexpr int SrvStFirstFree = 71;
+// Client skill "start" functions (cltstfunc): 70 slots (bound dword 0x235f7c0), 62-69 free. Dispatcher 0x218030 calls
+// int32_t fn(Unit* caster, int32_t skillId, int32_t level); 0 refuses the cast.
+inline constexpr uint64_t CltStTable = 0x235f590;
+inline constexpr int CltStSlots = 70;
+inline constexpr int CltStFirstFree = 62;
+// D2R's own slots PD2's rules call through (Find Potion / Find Item start, the plain melee do function)
+inline constexpr int SrvStFindPotion = 33;
+inline constexpr int SrvStFindItem = 34;
+inline constexpr int CltStFindPotion = 26;
+inline constexpr int CltStFindItem = 28;
+inline constexpr int SrvDoMelee = 2;  // 0x430240: Bash's do function in D2R, applies the queued hit
 // missiles.txt pSrvDoFunc: int64_t fn(Game*, Unit* missile), 54 slots, 46-53 free.
 inline constexpr uint64_t MissileSrvDoTable = 0x2390e80;
 inline constexpr int MissileSrvDoSlots = 54;
@@ -81,12 +92,29 @@ inline constexpr uint64_t SendSkillState = 0x438470;  // (game, unit, skill, lev
 inline constexpr uint64_t SetUnitState = 0x3355a0;  // (unit, state, on)
 inline constexpr uint64_t SkillStateExpired = 0x5551f0;  // Frozen Armor's expiry callback: removes the state
 
+// Melee and units (same image as d2r-tools better-auras)
+inline constexpr uint64_t SkillTargetUnit = 0x48fe20;  // (game, unit) -> the skill's target unit, null for none or self
+inline constexpr uint64_t ClientSkillTargetUnit = 0x9a570;  // (unit) -> target unit (client)
+// (attacker, defender) -> the damage block of the attacker's queued hit on defender (unit +0x108 list), or null
+inline constexpr uint64_t QueuedHit = 0x44d660;
+inline constexpr uint64_t UnitSeed = 0x34a1e0;  // (unit) -> &seed {lo, hi}
+inline constexpr uint64_t UnitStat = 0x2f5020;  // (unit, stat, param) -> value
+inline constexpr uint64_t DataTables = 0x300a90;  // (dataFlag) -> data tables; states.txt row count at +0x298
+
 // --- Offsets ------------------------------------------------------------------------------------------------------
 inline constexpr int GameDataFlag = 0x106;  // Game: byte passed to every data-table getter
 
 inline constexpr int UnitType = 0x00;  // int32: 0 player, 1 monster, 2 object, 3 missile, 4 item, 5 tile
 inline constexpr int UnitPath = 0x38;  // dynamic path (x +0x2, y +0x6, uint16) or static path (x +0x10, y +0x14)
 inline constexpr int PathTargetUnit = 0x70;  // Unit* on a dynamic path: what PathSteer aims at (set by PathSetTargetUnit)
+inline constexpr int UnitOwnerType = 0xe8;  // int32 owner unit type (MissileOwner 0x490300 reads both)
+inline constexpr int UnitOwnerId = 0xec;    // uint32 owner unit id
+inline constexpr int TablesStateCount = 0x298;  // uint64 states.txt row count in DataTables
+
+// Damage block QueuedHit returns: +0 hit flags (uint32), +4 result flags (uint16)
+inline constexpr int DamageResult = 0x4;
+inline constexpr uint16_t ResultHit = 0x1;
+inline constexpr uint16_t ResultKnockback = 0x8;
 
 // MissileParams::flags
 inline constexpr uint32_t MissileFromOrigin = 0x820;      // start at the origin unit, fly to targetX/targetY
@@ -103,6 +131,7 @@ inline constexpr int SkCltMissileA = 0x140; // int16 cltmissilea; cltmissileb +0
 inline constexpr int SkCalc1 = 0x190;       // int32 calc index (pass to EvalCalc); calc2 +0x194, calc3 +0x198
 inline constexpr int SkCalc2 = 0x194;
 inline constexpr int SkCalc3 = 0x198;
+inline constexpr int SkCalc4 = 0x19c;  // skills field table at 0x306193
 inline constexpr int SkAuraState = 0xa0;      // int16 aurastate
 inline constexpr int SkAuraStat1 = 0x74;      // int16 aurastat1-6, read by AddAuraStats (0x574480)
 inline constexpr int SkAuraStatCalc1 = 0x88;  // int32 aurastatcalc1-6 (calc index, pass to EvalCalc), same reader
