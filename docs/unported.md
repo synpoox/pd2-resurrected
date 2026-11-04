@@ -149,7 +149,7 @@ rows have no table hook: D2R does what it does.
 | Loot allocation | not yet | stand-in: D2R's own behaviour |  | later release |
 | Act 3 quest 5 patch | not yet | stand-in: D2R's own behaviour |  | after the alpha |
 | Skill palette, NPC patches | not yet | stand-in: D2R's own behaviour |  | after the alpha |
-| Channel take-over: Inferno, Arctic Blast (srvdo 182) and Blade Fury (48) | not yet | stand-in: D2R's own behaviour; D2R's gate for a skill request is not located yet (docs/research/druid-w21.md) |  | after the alpha |
+| Channel take-over: Inferno, Arctic Blast (srvdo 182) and Blade Fury (48) | approximated | core-rules applies PD2's two rules in D2R's server gate for a busy player (`0x42d840`); the client's own input handling is D2R's, and PD2's "flag 0 allows" step has no counterpart there (docs/research/druid-w21.md) |  | core-rules |
 | Charge (srvdo 180) in the Charge/Whirlwind rule, also for skill-less requests | not yet | stand-in: D2R's own behaviour |  | after the alpha |
 | Run and Concentration in the end-of-action window | not yet | stand-in: D2R's own behaviour |  | after the alpha |
 | Get-hit/block end window, cast/sequence delay from neutral or run | not yet | stand-in: D2R's own behaviour |  | after the alpha |

@@ -38,13 +38,22 @@ place, and the port does that. The ending matches cltdo 24 under state 12 (infer
 
 ## The channel take-over (gate A)
 
-[plrmodes.md](plrmodes.md) puts PD2's gate A on D2R's `0x429d10`. That function is an entry of D2R's mode table
-(`0x141d18fb8`, stride 0x18) that, for one case, requests neutral with no skill; the switch on the current mode inside
-it is D2R's gate, inlined. The path a skill request takes (queued commands, `0x4fdef0` called from `0x4fdb40`) is not
-traced yet, so the take-over and the Blade Fury refusal stay `verify` / not yet: the next step is to find the function
-that runs the same switch for a request carrying a skill, then check in game whether D2R already lets a skill start
-mid-channel.
+[plrmodes.md](plrmodes.md) put PD2's gate A on D2R's `0x429d10`. That function is an entry of D2R's mode table
+(`0x141d18fb8`, stride 0x18) that requests neutral with no skill. D2R's gate is `0x42bfb0 (game, unit, requested
+mode, the request's unit skill or null, flag)`: 0 allow, 1 refuse, 4 buffer (D2R's queued input). It switches on the
+current mode (+0xc) like PD2's, and hands a busy player (modes 7, 8, 10-16, 18) to `0x42d840` with the same arguments,
+which holds D2R's frame windows, `seqinput`, Concentration and bear rolls. `0x42de40` (the queued-command mode entry)
+calls `0x42d840` with the queued skill, `0x42ced0` with none.
+
+PD2's gate A (`0x10373290`), after its uninterruptable (state 54), dead and "flag 0 allows" steps, reads the current
+skill's srvdofunc: 182 allows any request whose skill has a record; 48 refuses a request whose skill's srvdofunc is 48
+too and allows any other. core-rules hooks `0x42d840` (entry `48 89 5c 24 08 48 89 6c 24 10 48 89 74 24 18`) and
+applies those two rules when the request carries a skill, the requested mode is not death or dead and the player is
+not uninterruptable; everything else goes to D2R's code. The skill id comes from `0x33e080`, srvdofunc from skills
++0x4e. Not covered: D2R's `flag` is not PD2's (it lets a neutral or walk request through `0x42bfb0` only), so PD2's
+"flag 0 allows" step has no place here, and the client's own input handling is left as D2R has it.
 
 ## Game check
 
-`channel-cast` and `channel-client` (tag core-rules-w21). Not run in game yet.
+`channel-cast`, `channel-client`, `channel-take-over` and `blade-fury-refused` (tag core-rules-w21). Not run in game
+yet.

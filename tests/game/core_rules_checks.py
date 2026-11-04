@@ -44,7 +44,9 @@ after 16), and run the same command with core-rules-w13.
 
 W21 checks (tag core-rules-w21), same merged data: a Druid with Arctic Blast (230) or a Sorceress with Inferno (41),
 e.g. modkit save-set <save> level=30 --skill 230=10 --project .; then out of town: hold the skill on the ground for
-a second, and run the same command with core-rules-w21.
+a second, and run the same command with core-rules-w21. For the take-over checks, press another skill while
+holding it; for blade-fury-refused, an Assassin with Blade Fury (266): hold it, then press it again and press another
+skill.
 """
 import json
 import os
@@ -67,6 +69,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("pSrvHitFunc", 63, "explode spread"), ("pSrvDmgFunc", 20, "pierce falloff"),
     ("cltdofunc", 121, "desecrate"),
     ("srvdofunc", 182, "channel"), ("cltdofunc", 111, "channel"),
+    ("mode gate", "busy", "take-over"),  # an inline hook, not a slot
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
@@ -317,6 +320,31 @@ def channel_client(ctx):
     assert (count, rng) == _channel_values(skill, level), f"skill {skill} level {level}: {count} flames range {rng}"
     assert drawn <= count, f"{drawn} flames drawn of {count}"
     return f"skill {skill} level {level}: {drawn} of {count} flames drawn, range {rng}"
+
+
+def _take_overs(ctx) -> list[tuple[int, int, int, str]]:
+    return [(int(a), int(b), int(c), d) for a, b, c, d in re.findall(
+        r"take-over: skill (\d+) \(srvdo (\d+)\) mid-channel, mode \d+ request skill (\d+): (\w+)", _log(ctx))]
+
+
+@check("channel-take-over", tags=["core-rules-w21"])
+def channel_take_over(ctx):
+    """PD2's gate A: a skill requested mid-Inferno / Arctic Blast (srvdofunc 182) starts at once."""
+    rows = [r for r in _take_overs(ctx) if r[1] == 182]
+    if not rows:
+        ctx.skip("no take-over in the log yet (hold Inferno or Arctic Blast, press another skill, then run again)")
+    assert all(r[3] == "allowed" for r in rows), f"a request mid-channel was not allowed: {rows[:3]}"
+    return f"skill {rows[0][0]} gave way to skill {rows[0][2]}"
+
+
+@check("blade-fury-refused", tags=["core-rules-w21"])
+def blade_fury_refused(ctx):
+    """PD2's gate A: a second Blade Fury mid-channel is refused; another skill is allowed."""
+    rows = [r for r in _take_overs(ctx) if r[1] == 48]
+    if not any(r[3] == "refused" for r in rows):
+        ctx.skip("no Blade Fury request mid-channel in the log yet (hold Blade Fury, press it again, then run again)")
+    assert all((r[3] == "refused") == (r[2] == r[0]) for r in rows), f"Blade Fury gate: {rows[:3]}"
+    return f"{sum(r[3] == 'refused' for r in rows)} refused, {sum(r[3] == 'allowed' for r in rows)} allowed"
 
 
 @check("throw-hd-models", tags=["core-rules"])

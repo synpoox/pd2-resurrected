@@ -8,6 +8,7 @@
 // Start functions (`srvstfunc` in rva::SrvStTable, `cltstfunc` in rva::CltStTable) take the same arguments at the
 // start frame; zero refuses the cast. srvdofunc 190 is a router: one slot shared by several PD2 do functions, picked
 // by skill id.
+// PD2's channel take-over is an inline hook on D2R's mode gate for a busy player (BusyModeGate).
 // Each slot is written with PatchWriteU64 and an expected value of eight zero bytes, so a slot D2R or another plugin
 // already uses is refused and logged, never overwritten. Slots keep PD2's own numbers where free (docs/core-rules.md).
 #include "skill_functions.h"
@@ -977,6 +978,44 @@ auto CltDoChannel(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_
 	return 1;
 }
 
+// --- The channel take-over (PD2's gate A, ProjectDiablo.dll 0x10373290; docs/research/druid-w21.md) ---------------
+// PD2 keys two rules on the busy player's current skill: Inferno / Arctic Blast (srvdofunc 182) give way at once to
+// any request that carries a skill; Blade Fury (48) gives way to any other skill and refuses another Blade Fury, so its
+// channel goes on. Everything else is D2R's own gate.
+std::atomic<uint32_t> g_takeOvers {0};
+std::atomic<uint32_t> g_bladeFuryRefusals {0};
+constexpr int32_t SrvDoBladeFury = 48;
+constexpr int32_t Uninterruptable = 54;  // states.txt uninterruptable: PD2 refuses before its own rules
+using GateFn = int64_t (*)(Game* game, Unit* unit, int32_t mode, void* request, int32_t flag) noexcept;
+GateFn g_gateOriginal = nullptr;
+
+auto UnitSkillIdOf(void* unitSkill) noexcept -> int32_t {
+	return d2r::Engine<int32_t (*)(void*, const char*, int32_t) noexcept>(d2r::rva::UnitSkillId)(unitSkill, __FILE__,
+	                                                                                             __LINE__);
+}
+
+auto BusyModeGate(Game* game, Unit* unit, int32_t mode, void* request, int32_t flag) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game != nullptr && unit != nullptr && request != nullptr && mode != 0 && mode != 0x11 &&
+	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(unit, Uninterruptable) == 0) {
+		void* current = d2r::Engine<void* (*)(Unit*) noexcept>(CurrentSkill)(unit);
+		const int32_t nowId = current != nullptr ? UnitSkillIdOf(current) : -1, nextId = UnitSkillIdOf(request);
+		const uint8_t* now = current != nullptr ? d2r::api.getSkillRecord(d2r::DataFlag(game), nowId) : nullptr;
+		const uint8_t* next = d2r::api.getSkillRecord(d2r::DataFlag(game), nextId);
+		const int32_t func = now != nullptr && next != nullptr ? At<uint16_t>(now, SkSrvDoFunc) : -1;
+		if (func == 182 || func == SrvDoBladeFury) {
+			const bool refused = func == SrvDoBladeFury && At<uint16_t>(next, SkSrvDoFunc) == SrvDoBladeFury;
+			auto& counter = refused ? g_bladeFuryRefusals : g_takeOvers;
+			if (plog::Sample(counter)) {
+				plog::Info("take-over: skill %d (srvdo %d) mid-channel, mode %d request skill %d: %s, %u so far", nowId,
+				           func, mode, nextId, refused ? "refused" : "allowed", counter.load());
+			}
+			return refused ? 1 : 0;
+		}
+	}
+	return g_gateOriginal(game, unit, mode, request, flag);
+}
+
 struct Table {
 	const char* name;  // the skills.txt column
 	uint64_t rva;
@@ -1061,11 +1100,19 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		std::snprintf(report + used, reportSize - used, "; cltdofunc 22 strike for all%s",
 		              strike ? "" : " FAILED (bytes differ)");
 	}
+	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
+	                                             sizeof(d2r::rva::BusyModeGateEntry), BusyModeGate, &g_gateOriginal);
+	installed += gate ? 1 : 0;
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; mode gate busy take-over%s",
+		              gate ? "" : " FAILED (bytes differ)");
+	}
 	return installed;
 }
 
 auto SkillFunctionCount() noexcept -> int {
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 1;  // + the cltdo 22 patch
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 2;  // + the cltdo 22 patch and the mode gate
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
@@ -1074,10 +1121,11 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "
 	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, desecrates %u, "
-	              "client %u, corpses hidden %u, channels %u, client %u, %s",
+	              "client %u, corpses hidden %u, channels %u, client %u, take-overs %u, blade fury refused %u, "
+	              "%s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(), g_desecrates.load(),
 	              g_desecrateClients.load(), g_desecrateHidden.load(), g_channels.load(),
-	              g_channelClients.load(), missiles);
+	              g_channelClients.load(), g_takeOvers.load(), g_bladeFuryRefusals.load(), missiles);
 }
