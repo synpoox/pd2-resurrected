@@ -23,6 +23,10 @@ private-multiplayer release a build may break characters; each break is noted he
 - Holy Light works as in Project Diablo II: it heals allies and deals magic damage to enemies around its target,
   half as much to the side the target is not on, and knocks back undead. Fist of the Heavens' holy bolts reach
   every unit around the strike, the target included.
+- Vengeance works as in Project Diablo II: a hit bursts fire, cold and lightning from your own elemental damage
+  (Holy auras and Enchant aside) on the enemies around the target, and the burst chains on from enemy to enemy.
+- Joust works as in Project Diablo II: you teleport to the target and strike it with extra damage and critical strike
+  chance, then run faster for two seconds.
 - Melee splash works as in Project Diablo II: items that splash on hit, Frenzy and Tiger Strike's splash radius,
   and revived monsters' hits damage the monsters around the one struck.
 - Poison Dagger works as in Project Diablo II: each stab leaves a ring of poison clouds around the target.
