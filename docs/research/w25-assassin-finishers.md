@@ -91,12 +91,14 @@ and the charge-up skill's id, and sends the release packet (`0x5396d0`). The cli
 | chit 67 | clawsofthunderbolt | empty | 67 |
 | srvst 23, 78 | all; Tiger Strike | vanilla; built (W10) | data; done |
 
-The prg functions can't share the router with srvdo 170. The release dispatcher calls them with the charge-up skill's
+The router here is the router slot (glossary): srvdofunc 190 holds core-rules' `SrvDoRouter`
+(`plugin/core-rules/skill_functions.cpp`), which calls a PD2 do function by skill id. It is ours, not D2RLoader's.
+The prg functions can't share it with srvdo 170. The release dispatcher calls them with the charge-up skill's
 own id, which the router already maps to the 170 port. So they need real slots. D2R's free 172-190 are all used or
 planned. 181 (TorajanBossNest) and 184-186 (the Lucion kit) are after-the-cut monster do functions, each with its own
-skill id, so they move to the router when they are built and give their slots to the four prg functions. Until then
-their stand-ins (`merge/standins.tsv`) keep those monsters' srvdofunc off 181 and 184-186. 188 is avoided: item casts
-need it empty (`ItemEffect`).
+skill id, so they are still built (after the cut), as router cases instead of in their own slots, and their slots
+go to the four prg functions. Until then their stand-ins (`merge/standins.tsv`) keep those monsters' srvdofunc off
+181 and 184-186. 188 is avoided: item casts need it empty (`ItemEffect`).
 
 The merge moves the values by column in `tools/pd2_ids.py` FUNCS: `srvdofunc` 170 -> 190; `srvprgfunc1-3` 171 -> 184,
 172 -> 185, 39 -> 186, 139 -> 181; `cltprgfunc1-3` 106 -> 127, 107 -> 128; missiles `pCltDoFunc` 69 -> 79. No other
