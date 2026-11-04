@@ -268,6 +268,7 @@ inline constexpr int SkCalc2 = 0x194;
 inline constexpr int SkCalc3 = 0x198;
 inline constexpr int SkCalc4 = 0x19c;  // skills field table at 0x306193
 inline constexpr int SkAuraRangeCalc = 0x84;  // int32 aurarangecalc, Chain Lightning's chain range when sHitPar1 is 0
+inline constexpr int SkParam2 = 0x1bc;  // int32 Param2
 inline constexpr int SkParam3 = 0x1c0;  // int32 Param3
 inline constexpr int SkParam4 = 0x1c4;  // int32 Param4 (Param1 0x1b8), field table at 0x305e68
 inline constexpr int SkSumMode = 0x113;  // uint8 summode (Raise Skeleton's srvdo 0x55d1c0 reads pettype at 0x112)

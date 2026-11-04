@@ -5,6 +5,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Teleport works as in Project Diablo II: for a second after each teleport your elemental masteries are
+  lowered, by less as the skill levels up.
 - Poison Dagger works as in Project Diablo II: each stab leaves a ring of poison clouds around the target.
 - Blood Warp works as in Project Diablo II: it costs a share of your life (never all of it), then regenerates life
   for five seconds.
