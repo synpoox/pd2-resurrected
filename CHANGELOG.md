@@ -5,6 +5,9 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- The Assassin's charge-up skills build charges as in Project Diablo II: charges are shared between them, and each
+  charge's effect (Fists of Fire's fire, Cobra Strike's poison, Blades of Ice's wave) fires on the hit that builds
+  it. What your client draws for each charge is still D2R's.
 - Poison Dagger works as in Project Diablo II: each stab leaves a ring of poison clouds around the target.
 - Blood Warp works as in Project Diablo II: it costs a share of your life (never all of it), then regenerates life
   for five seconds.

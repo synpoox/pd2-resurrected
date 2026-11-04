@@ -116,10 +116,12 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
 FUNCS = {"missiles": {"pSrvDoFunc": {"38": "46"}, "pCltDoFunc": {"70": "78"}, "pSrvHitFunc": {"30": "66"},
                       "pSrvDmgFunc": {"16": "21", "17": "20"}},
-         "skills": {"srvdofunc": {"153": "172", "154": "183", "157": "190", "161": "190", "164": "190"},
+         "skills": {"srvdofunc": {"153": "172", "154": "183", "157": "190", "161": "190", "164": "190", "170": "190"},
                     "cltdofunc": {"97": "115", "98": "116", "101": "121", "102": "122"},
                     # PD2's srvst 68 calls slot 32, D2R's melee start (W11)
-                    "srvstfunc": {"66": "80", "68": "32"}, "cltstfunc": {"56": "63"}}}
+                    "srvstfunc": {"66": "80", "68": "32"}, "cltstfunc": {"56": "63"},
+                    # the finishers' prg functions (W29): only these PD2 rows use these values in these columns
+                    **{f"srvprgfunc{i}": {"171": "184", "172": "185", "39": "186", "139": "181"} for i in (1, 2, 3)}}}
 # missiles.txt parameters a PD2 hit function reads as ids: pSrvHitFunc -> {column: the table it names}. srvhit 61
 # (Poison Dagger's cloud, the throwing potions, Kanemith's blaze dot) gives the hit unit state sHitPar1 with stats
 # sHitPar3 and cHitPar2.
