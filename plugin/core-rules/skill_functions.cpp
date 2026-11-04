@@ -20,6 +20,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <initializer_list>
 #include <iterator>
 
 namespace {
@@ -414,11 +415,15 @@ auto SrvDoBash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	return VanillaSlot<SrvDoFn>(d2r::rva::SrvDoTable, d2r::rva::SrvDoMelee)(game, unit, skillId, level);
 }
 
-// One stat on a `state` list for `frames`, by NewStateList's recast rule (PD2's timed-state helper 0x1036d7d0 has
-// the same one): an older list of the same skill and level is extended and keeps its value, a lower level is
+struct StatValue {
+	int32_t stat, value;
+};
+
+// Stats on a `state` list for `frames`, by NewStateList's recast rule (PD2's timed-state helper 0x1036d7d0 has
+// the same one): an older list of the same skill and level is extended and keeps its values, a lower level is
 // refused, anything else is replaced. Returns what happened, for the logs.
 auto TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level, int32_t frames, int32_t state,
-                   int32_t stat, int32_t value) noexcept -> const char* {
+                   std::initializer_list<StatValue> stats) noexcept -> const char* {
 	using namespace d2r::rva;
 	void* old = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, state);
 	const auto listInt = [](uint64_t fn, void* list) { return d2r::Engine<int32_t (*)(void*) noexcept>(fn)(list); };
@@ -432,9 +437,120 @@ auto TimedStatList(uint32_t dataFlag, Unit* unit, int32_t skillId, int32_t level
 	if (extends) {
 		return "extended";
 	}
-	d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, stat, value, 0);
+	for (const StatValue& s : stats) {
+		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, s.stat,
+		                                                                                          s.value, 0);
+	}
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
 	return "new";
+}
+
+// PD2's ring (0x1036d250 server, 0x1036d370 client): one missile at every (64 / count)-th of D2's 64 directions, so
+// count 10 makes 11 and count 6 makes 7; 0 or over 64 makes 64.
+template <typename Create>
+auto Ring(int32_t count, Create create) noexcept -> int32_t {
+	if (count <= 0 || count > 64) {
+		count = 64;
+	}
+	const auto* dx = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionX);
+	const auto* dy = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionY);
+	int32_t created = 0;
+	for (int32_t i = 0; i < 64; i += 64 / count) {
+		created += create(dx[i], dy[i]) ? 1 : 0;
+	}
+	return created;
+}
+
+// --- Teleport (PD2 srvdofunc 155 -> router 190; docs/research/sorceress-w26.md) -----------------------------------
+// Read from ProjectDiablo.dll: srvdo 155 at 0x103b16d0, its teleport core at 0x1036cd20 (shared with Blood Warp).
+std::atomic<uint32_t> g_teleports {0};
+std::atomic<uint32_t> g_teleportsRefused {0};
+constexpr int32_t Teleport = 54, Blink = 429, LucionBlink = 642, MonBloodwarp = 682;  // merged ids
+constexpr int32_t DisableTele = 260;  // merged states id of disable_tele (PD2 214, Rathma's prison)
+// passive_fire/cold/ltng/pois_mastery, in the order PD2 sets them; the same itemstatcost ids in PD2 and D2R
+constexpr int32_t Masteries[] = {329, 331, 330, 332};
+
+// PD2's teleport core: refused under disable_tele, else D2R's Teleport (srvdo 27), which makes the core's level
+// checks (levels.txt Teleport 0 refuses, 2 checks collision at the point).
+// PD2's Hell-only level list (0x105de86c) is never filled, so it is left out.
+// shortcut: PD2's Teleport 3 rule (a path search on map levels) and its "TeleportBlocked" chat line on a refusal are
+// left out: no ported level has Teleport 0 or 3. Upgrade when the map plan ports a map level.
+auto TeleportCore(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> bool {
+	using namespace d2r::rva;
+	if (d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, DisableTele) != nullptr) {
+		g_teleportsRefused.fetch_add(1);
+		return false;
+	}
+	return VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoTeleport)(game, unit, skillId, level) != 0;
+}
+
+// PD2's debuff on one mastery stat: -(reduction + mastery% of it), the scaled part truncated (0x1037c4c0), so a
+// mastery doesn't win the damage back.
+constexpr auto TeleportDebuff(int32_t reduction, int32_t mastery) noexcept -> int32_t {
+	const double scaled = static_cast<double>(mastery) * reduction / 100.0;
+	return -((scaled > 2147483647.0 ? INT32_MAX : static_cast<int32_t>(scaled)) + reduction);
+}
+static_assert(TeleportDebuff(49, 0) == -49);
+static_assert(TeleportDebuff(30, 50) == -45);   // a 50% mastery is lowered by half as much again
+static_assert(TeleportDebuff(25, -10) == -23);  // -2.5 truncates to -2
+
+// PD2 srvdo 155: the core, then a ring of calc2 srvmissilea at the new point (LucionBlink's nova), then aurastate
+// (teleportdebuff) for auralencalc frames with each mastery lowered by Param2 - calc1 (TeleportDebuff). Named Pd2
+// because rva::SrvDoTeleport is D2R's slot number.
+// shortcut: an extended list's new timer is not sent to the client (PD2 sends packet 0x83), as for Blood Warp.
+// Upgrade if the client's debuff runs out early in play.
+auto SrvDoPd2Teleport(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr || !TeleportCore(game, unit, skillId, level)) {
+		return 0;
+	}
+	int32_t x = 0, y = 0;
+	d2r::UnitXY(unit, &x, &y);
+	const int32_t count = d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level);
+	const int32_t missile = At<int16_t>(skill, SkSrvMissileA);
+	int32_t created = 0;
+	if (count > 0 && d2r::ValidMissile(dataFlag, missile)) {
+		d2r::MissileParams params;
+		std::memset(&params, 0, sizeof(params));
+		params.flags = MissileAtXY | MissileAimOffset;  // PD2's 3
+		params.owner = unit;
+		params.origin = unit;
+		params.missile = missile;
+		params.x = x;
+		params.y = y;
+		params.skill = skillId;
+		params.skillLevel = level;
+		created = Ring(count, [&](int32_t dx, int32_t dy) {
+			params.targetX = dx;
+			params.targetY = dy;
+			return d2r::api.createMissile(game, &params) != nullptr;
+		});
+	}
+	const int32_t state = At<int16_t>(skill, SkAuraState);
+	const int32_t frames = state > 0 ? d2r::EvalCalc(game, unit, skill, SkAuraLenCalc, skillId, level) : 0;
+	const int32_t reduction = At<int32_t>(skill, SkParam2) - d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level);
+	int32_t mastery[std::size(Masteries)] {}, debuff[std::size(Masteries)] {};
+	const char* list = "none";
+	if (frames > 0) {  // PD2's state helper refuses a length under 1
+		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+		for (size_t i = 0; i < std::size(Masteries); i++) {
+			mastery[i] = unitStat(unit, Masteries[i], 0);
+			debuff[i] = TeleportDebuff(reduction, mastery[i]);
+		}
+		list = TimedStatList(dataFlag, unit, skillId, level, frames, state,
+		                     {{Masteries[0], debuff[0]}, {Masteries[1], debuff[1]}, {Masteries[2], debuff[2]},
+		                      {Masteries[3], debuff[3]}});
+	}
+	if (plog::Sample(g_teleports)) {
+		plog::Info("teleport: skill %d level %d: at %d,%d, %d missiles (row %d, calc2 %d), state %d for %d frames "
+		           "(list %s), reduction %d: fire %d/%d cold %d/%d ltng %d/%d pois %d/%d, cast %u, refused %u",
+		           skillId, level, x, y, created, missile, count, state, frames, list, reduction, debuff[0], mastery[0],
+		           debuff[1], mastery[1], debuff[2], mastery[2], debuff[3], mastery[3], g_teleports.load(),
+		           g_teleportsRefused.load());
+	}
+	return 1;
 }
 
 // --- Blood Warp (PD2 srvdofunc 157 -> router 190, srvstfunc 66 -> 80, cltstfunc 56 -> 63) --------------------------
@@ -502,12 +618,12 @@ auto CltStBloodWarp(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 // PD2 srvdofunc 157: teleport, then pay the cost (checked again at the new point) and get it back over auralencalc
 // frames as aurastat1 (hpregen) = cost / frames + 1 on an aurastate (bloodwarp) list. A recast at the same level
 // extends the running list and keeps its regen; a lower level pays and adds none (TimedStatList).
-// shortcut: the teleport is D2R's srvdo 27, not PD2's teleport core (0x1036cd20, shared with Teleport's srvdo 155),
-// and an extended list's new timer is not sent to the client (PD2 sends packet 0x83). Upgrade with the Teleport row.
+// shortcut: an extended list's new timer is not sent to the client (PD2 sends packet 0x83). Upgrade if the client's
+// state runs out early in play.
 auto SrvDoBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	const uint32_t dataFlag = d2r::DataFlag(game);
-	if (VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoTeleport)(game, unit, skillId, level) == 0) {
+	if (!TeleportCore(game, unit, skillId, level)) {
 		return 0;
 	}
 	const LifeCost c = BloodWarpLife(dataFlag, unit, skillId, level);  // again, at the new point
@@ -522,7 +638,7 @@ auto SrvDoBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 	const char* list = "none";
 	if (frames > 0 && state > 0 && stat >= 0) {  // PD2 divides by frames unchecked
 		regen = c.cost / frames + 1;
-		list = TimedStatList(dataFlag, unit, skillId, level, frames, state, stat, regen);
+		list = TimedStatList(dataFlag, unit, skillId, level, frames, state, {{stat, regen}});
 	}
 	if (plog::Sample(g_bloodWarps)) {
 		plog::Info("blood warp: skill %d level %d: life %d, cost %d, regen %d for %d frames (stat %d, state %d, list %s), "
@@ -857,21 +973,6 @@ std::atomic<uint32_t> g_poisonDaggerClients {0};
 constexpr int32_t PoisonDagger = 73, PoisonDaggerSpiderBoss = 550;
 constexpr int32_t ClientRingCount = 6;  // PD2's cltdo 102 passes 6, whatever the skill's Param3
 
-// PD2's ring (0x1036d250 server, 0x1036d370 client): one missile at every (64 / count)-th of D2's 64 directions, so
-// count 10 makes 11 and count 6 makes 7; 0 or over 64 makes 64.
-template <typename Create>
-auto Ring(int32_t count, Create create) noexcept -> int32_t {
-	if (count <= 0 || count > 64) {
-		count = 64;
-	}
-	const auto* dx = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionX);
-	const auto* dy = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionY);
-	int32_t created = 0;
-	for (int32_t i = 0; i < 64; i += 64 / count) {
-		created += create(dx[i], dy[i]) ? 1 : 0;
-	}
-	return created;
-}
 
 // PD2 srvdo 164 (ProjectDiablo.dll 0x103b25c0): the melee hit (D2R's own Poison Dagger do, slot 32, whose start
 // already put the skill's poison in the queued hit), then a ring of Param3 srvmissilea clouds around the target, each
@@ -985,6 +1086,11 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		return SrvDoPoisonDagger(game, unit, skillId, level);
 	case BloodWarp:
 		return SrvDoBloodWarp(game, unit, skillId, level);
+	case Teleport:
+	case Blink:
+	case LucionBlink:
+	case MonBloodwarp:
+		return SrvDoPd2Teleport(game, unit, skillId, level);
 	case Desecrate:
 		return SrvDoDesecrate(game, unit, skillId, level);
 	case ProcSplashDamage:
@@ -1033,7 +1139,7 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		value = charges < 3 ? calc2 * charges : 0;
 	}
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, TempSkillBuff, 1);  // always a new list
-	TimedStatList(dataFlag, unit, skillId, level, SplashFrames, TempSkillBuff, IncSplashRadius, value);
+	TimedStatList(dataFlag, unit, skillId, level, SplashFrames, TempSkillBuff, {{IncSplashRadius, value}});
 	if (plog::Sample(g_splashStarts)) {
 		plog::Info("splash start: skill %d level %d charges %d calc2 %d: splash radius %d, start %u", skillId, level,
 		           charges, calc2, value, g_splashStarts.load());
