@@ -91,6 +91,12 @@ W28 check (tag core-rules-w28), same merged data: a level 90 Sorceress with Fire
 24), e.g. modkit save-set <save> level=90 --skill 0=10 --skill 3=10 --skill 23=10 --skill 24=10 --project .; then in
 Hell out of town cast Fire Bolt, Ice Bolt and Blizzard at a pack, wear Chilling Armor while a ranged monster shoots
 you, and run the same command with core-rules-w28. Chilling Armor's event 3 is D2R's own (research note w28).
+W18 checks (tag core-rules-w18), same merged data: a level 90+ Paladin in Hell with Vengeance and Joust set in game
+(`debug_mode`, `cheat sklvl Vengeance,20`, `cheat sklvl Joust,10`, `cheat goto 2`, `cheat mspawn zombie1,8`); hit the
+pack with Vengeance until a link logs, Joust a zombie a few yards off, and run the same command with core-rules-w18.
+W30 checks (tag core-rules-w30), same merged data and save as W29: out of town hit monsters three times in a row with
+each of Fists of Fire, Cobra Strike, Claws of Thunder and Blades of Ice, releasing between them with Dragon Talon, and
+run the same command with core-rules-w30. Each charge's client missiles log on the client.
 """
 import json
 import os
@@ -119,9 +125,11 @@ SKILL_SLOTS = [  # table slots it installs
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
     ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
-    ("srvdofunc", 176, "holy light"), ("pCltHitFunc", 66, "holy light"), ("pCltHitFunc", 71, "fist delay"),
+    ("srvdofunc", 176, "holy light"), ("srvdofunc", 174, "vengeance"), ("pCltHitFunc", 66, "holy light"), ("pCltHitFunc", 71, "fist delay"),
     ("srvdofunc", 184, "charge spread"), ("srvdofunc", 185, "charge ring"), ("srvdofunc", 186, "charge fire"),
     ("srvdofunc", 181, "charge cold"), ("cltdofunc", 120, "nova"),
+    ("cltdofunc", 127, "charge spread"), ("cltdofunc", 128, "charge ring"), ("pCltDoFunc", 79, "charge explode"),
+    ("pCltHitFunc", 67, "charge bolt"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -151,7 +159,8 @@ def _log(ctx) -> str:
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                  "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33",
                                  "core-rules-w21", "core-rules-w22", "core-rules-w29", "core-rules-w17",
-                                 "core-rules-w23", "core-rules-w27", "core-rules-w28", "game"])
+                                 "core-rules-w23", "core-rules-w27", "core-rules-w28", "core-rules-w30",
+                                 "core-rules-w18", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -947,10 +956,127 @@ def fist_delay_hit(ctx):
     return f"level {level}: radius {radius}, {bolts} bolts"
 
 
+@check("vengeance-hit", tags=["core-rules-w18"])
+def vengeance_hit(ctx):
+    """Vengeance (srvdofunc 174) hits in melee and, on a hit, bursts fire, cold and lightning raised by calc1-3 (ln12 =
+    5 + 2 per level, plus synergies and masteries), with chain % calc4 = min(22 + 2 per level, 95), every Param5 4 frames
+    within Param6 24 of the caster, cold length ELen 80."""
+    hits = _logged(ctx, r"vengeance: skill \d+ level (\d+) melee hit: fire% (\d+) cold% (\d+) light% (\d+), base (\d+), "
+                   r"fire (\d+) cold (\d+) light (\d+), cold length (\d+), chain (\d+)% every (\d+) frames within (\d+)",
+                   "Vengeance hit")
+    for level, *pcts, base, fire, cold, light, length, chance, delay, reach in hits:
+        assert all(p >= 5 + 2 * (level - 1) for p in pcts), f"level {level}: percentages {pcts} below ln12"
+        assert min(fire, cold, light) >= base, f"each element adds the skill's roll {base}: {fire} {cold} {light}"
+        assert (chance, delay, reach, length) == (min(22 + 2 * (level - 1), 95), 4, 24, 80), hits[0]
+    level, pcts, (fire, cold, light), chance = hits[-1][0], hits[-1][1:4], hits[-1][5:8], hits[-1][9]
+    return f"level {level}: {pcts}%, fire {fire} cold {cold} light {light}, chain {chance}% ({len(hits)} hits)"
+
+
+@check("vengeance-link", tags=["core-rules-w18"])
+def vengeance_link(ctx):
+    """A Vengeance link (the justhit marker's expiry) bursts again around the linked unit, cold length 80 less 15 per
+    link."""
+    links = _logged(ctx, r"vengeance link: skill \d+ level (\d+) link (\d+): .*?cold length (-?\d+)", "Vengeance link")
+    for _, link, length in links:
+        assert link >= 1 and length == max(80 - 15 * link, 0), f"link {link}: cold length {length}"
+    return f"{len(links)} links, deepest {max(l for _, l, _ in links)}"
+
+
+@check("joust-cast", tags=["core-rules-w18"])
+def joust_cast(ctx):
+    """Joust (srvdofunc 190, PD2 162) hits with damage% calc1 = 40 + 8 per level and passive_critical_strike raised by
+    calc2 = 10 + 2 per level, at most 100, then joust_buff for 50 frames with velocitypercent min(3 + 2 lvl, 65)."""
+    casts = _logged(ctx, r"joust: skill \d+ level (\d+): damage% (\d+), critical strike (\d+) -> (\d+), state (\d+) for "
+                    r"(\d+) frames with stat (\d+) = (\d+)", "Joust cast")
+    for level, ed, crit, raised, state, frames, stat, value in casts:
+        assert ed == 40 + 8 * (level - 1), f"level {level}: damage% {ed}"
+        assert raised == min(crit + 10 + 2 * (level - 1), 100), f"level {level}: critical strike {crit} -> {raised}"
+        assert _rows("states")[state] == "joust_buff" and frames == 50, f"state {state} for {frames} frames"
+        assert stat == 67 and value == min(3 + 2 * level, 65), f"stat {stat} = {value}"
+    level, ed, crit, raised, *_ = casts[-1]
+    return f"level {level}: damage% {ed}, critical strike {crit} -> {raised} ({len(casts)} casts)"
+
+
+# merged skill -> charge -> (cltprgfunc slot, PD2's cltcalc, PD2's cltmissilea/b/c), from PD2's skills.txt
+FINISHER_CLIENT = {
+    259: {2: (128, 64, "fistsoffirenova"), 3: (127, 1, "fistsoffireorbdelay")},  # Fists of Fire: PD2 107, 106
+    265: {1: (127, 7, "cobrastrikepoisonbolt"), 3: (128, 64, "cobrastrikepoisoncloud")},  # Cobra Strike: 106, 107
+    630: {1: (127, 8, "bladefragment1")},  # RakanothStrike: 106 (par5)
+}
+
+
+@check("charge-client-spread", tags=["core-rules-w30"])
+def charge_client_spread(ctx):
+    """cltprgfunc 127 (PD2 106) draws cltcalc[charge] of the charge's client missile along the spread: Cobra Strike 7
+    poison bolts at charge 1, Fists of Fire 1 orb at charge 3."""
+    rows = [r.lower() for r in _rows("missiles")]
+    out = set()
+    for skill, _, charge, created, count, row, calc in _logged(
+            ctx, r"charge spread client: skill (\d+) level (\d+) charge (\d+): (\d+) of (\d+) missiles \(row (\d+), "
+                 r"cltcalc (-?\d+)\)", "Cobra Strike"):
+        assert charge in FINISHER_CLIENT.get(skill, {}), f"skill {skill} charge {charge}: PD2 has no client prg here"
+        slot, expected, missile = FINISHER_CLIENT[skill][charge]
+        assert slot == 127 and calc == expected, f"skill {skill} charge {charge}: cltcalc {calc}, PD2 {expected}"
+        assert count == min(max(calc, 1), 64) and created == count, f"skill {skill}: {created} of {count} for {calc}"
+        assert row == rows.index(missile), f"skill {skill} charge {charge}: missile row {row}, PD2's {missile}"
+        out.add(f"{skill}/{charge}: {created}")
+    return ", ".join(sorted(out))
+
+
+@check("charge-client-ring", tags=["core-rules-w30"])
+def charge_client_ring(ctx):
+    """cltprgfunc 128 (PD2 107) rings the target with the charge's client missile (Fists of Fire's nova at charge 2,
+    Cobra Strike's cloud at charge 3), cltcalc 64."""
+    rows = [r.lower() for r in _rows("missiles")]
+    out = set()
+    for skill, _, charge, created, row, calc in _logged(
+            ctx, r"charge ring client: skill (\d+) level (\d+) charge (\d+): (\d+) missiles \(row (\d+), cltcalc "
+                 r"(-?\d+)\)", "Fists of Fire"):
+        assert charge in FINISHER_CLIENT.get(skill, {}), f"skill {skill} charge {charge}: PD2 has no client prg here"
+        slot, expected, missile = FINISHER_CLIENT[skill][charge]
+        assert slot == 128 and calc == expected, f"skill {skill} charge {charge}: cltcalc {calc}, PD2 {expected}"
+        assert row == rows.index(missile), f"skill {skill} charge {charge}: missile row {row}, PD2's {missile}"
+        assert created > 0, f"skill {skill}: no ring missile drawn"
+        out.add(f"{skill}/{charge}: {created} of row {row}")
+    return ", ".join(sorted(out))
+
+
+@check("charge-client-explode", tags=["core-rules-w30"])
+def charge_client_explode(ctx):
+    """pCltDoFunc 79 (PD2 69) places CltSubMissile1 on the explosion's first frame: fistsoffireexplode's
+    fistsoffirefirewall (Fists of Fire's first charge); bladesoficecubes' bladesoficeexplode if anything makes it."""
+    rows = [r.lower() for r in _rows("missiles")]
+    subs = {"fistsoffireexplode": "fistsoffirefirewall", "bladesoficecubes": "bladesoficeexplode"}
+    found = re.findall(r"charge explode client: missile row (\d+) skill -?\d+ level \d+: sub-missile (-?\d+) at "
+                       r"\d+,\d+( \(not created\))?", _log(ctx))
+    if not found:
+        ctx.skip("no Fists of Fire explosion in the log yet (charge it on monsters, then run again)")
+    for row, sub, failed in found:
+        name = rows[int(row)]
+        assert name in subs and rows[int(sub)] == subs[name], f"{name}: sub-missile {rows[int(sub)]}"
+        assert not failed, f"{name}: {subs[name]} not created"
+    return ", ".join(sorted({rows[int(r)] for r, _, _ in found}))
+
+
+@check("charge-client-bolt", tags=["core-rules-w30"])
+def charge_client_bolt(ctx):
+    """pCltHitFunc 67 drops clawsofthunderbolt's cotthunderstorm on the unit hit, raised CHitCalc1 280 and falling
+    cHitPar1-3 (0, 0, -81920) per frame."""
+    rows = [r.lower() for r in _rows("missiles")]
+    found = re.findall(r"charge bolt client hit: missile row (\d+) skill -?\d+ level \d+: sub-missile (-?\d+) at "
+                       r"\d+,\d+, height (-?\d+), motion (-?\d+),(-?\d+),(-?\d+)( \(not created\))?", _log(ctx))
+    if not found:
+        ctx.skip("no Claws of Thunder bolt hit in the log yet (hit monsters with its third charge, then run again)")
+    row, sub, z, mx, my, mz, failed = found[0]
+    assert rows[int(row)] == "clawsofthunderbolt" and rows[int(sub)] == "cotthunderstorm", found[0]
+    assert (int(z), int(mx), int(my), int(mz)) == (280, 0, 0, -81920) and not failed, found[0]
+    return f"{len(found)} logged: height {z}, motion {mx},{my},{mz}"
+
+
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w22", "core-rules-w29", "core-rules-w17",
-                                    "core-rules-w23"])
+                                    "core-rules-w23", "core-rules-w30", "core-rules-w18"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))

@@ -18,12 +18,17 @@ private-multiplayer release a build may break characters; each break is noted he
   its hit splashes with a splash-on-hit item.
 - The Assassin's charge-up skills build charges as in Project Diablo II: charges are shared between them, and each
   charge's effect (Fists of Fire's fire, Cobra Strike's poison, Blades of Ice's wave) fires on the hit that builds
-  it. What your client draws for each charge is still D2R's.
+  it, and your client draws each charge as Project Diablo II's does (Fists of Fire's fire and nova, Cobra Strike's
+  poison bolts and cloud, Claws of Thunder's falling storm bolts).
 - Teleport works as in Project Diablo II: for a second after each teleport your elemental masteries are
   lowered, by less as the skill levels up.
 - Holy Light works as in Project Diablo II: it heals allies and deals magic damage to enemies around its target,
   half as much to the side the target is not on, and knocks back undead. Fist of the Heavens' holy bolts reach
   every unit around the strike, the target included.
+- Vengeance works as in Project Diablo II: a hit bursts fire, cold and lightning from your own elemental damage
+  (Holy auras and Enchant aside) on the enemies around the target, and the burst chains on from enemy to enemy.
+- Joust works as in Project Diablo II: you teleport to the target and strike it with extra damage and critical strike
+  chance, then run faster for two seconds.
 - Melee splash works as in Project Diablo II: items that splash on hit, Frenzy and Tiger Strike's splash radius,
   and revived monsters' hits damage the monsters around the one struck.
 - Poison Dagger works as in Project Diablo II: each stab leaves a ring of poison clouds around the target.
