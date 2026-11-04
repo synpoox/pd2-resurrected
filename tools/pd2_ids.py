@@ -304,10 +304,21 @@ def fix_props(header: list[str], row: list[str], ren: dict[str, dict[str, str]],
             row[p + 1], row[p + 2] = remap("skills", row[p + 1]), remap("skills", row[p + 2])
 
 
+# PD2 codes no table defines, which D2R's loader refuses (#141): table -> column (lower case) -> {PD2 value: mod value}.
+# Deep-Wounds: properties.txt has deep-wounds and 1.13c looks codes up in any case, so the spelling keeps PD2's
+# behaviour. dblue, amu: PD2 bugs (docs/pd2-origin-bugs.md). map-mon-extra-mag: no such property in PD2 either, so
+# the mod gave nothing; dropped.
+_DEEP_WOUNDS = {"Deep-Wounds": "deep-wounds"}
+FIXES = {"gems": {"weaponmod2code": _DEEP_WOUNDS},
+         "magicsuffix": {"mod2code": _DEEP_WOUNDS, "itype4": {"amu": "amul"}},
+         "magicprefix": {"transformcolor": {"dblue": "dblu"}, "mod1code": {"map-mon-extra-mag": ""}}}
+
+
 def spell(table: str, col: str, v: str, ren: dict[str, dict[str, str]]) -> str:
     """A PD2 cell as the mod's column `col` holds it: quotes gone, references renamed, formulas in D2R's spelling,
-    function numbers moved (FUNCS)."""
+    function numbers moved (FUNCS), codes no table defines fixed (FIXES)."""
     v = v.replace('"', "")
+    v = FIXES.get(table, {}).get(col.lower(), {}).get(v, v)
     if col in REFS.get(table, {}):
         return ren[REFS[table][col]].get(v.lower(), v)
     if col in FORMULAS.get(table, []):

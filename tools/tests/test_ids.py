@@ -109,6 +109,17 @@ class FormulaAndColumnTests(unittest.TestCase):
         self.assertEqual(merged.rows, [["singleskill", "27", "", "ItemModifierClassSkill", "ItemModifierClassSkill"],
                                        ["elemskill", "", "", "", ""]])
 
+    def test_codes_no_table_defines_are_fixed(self):
+        ren = I.renames({t: [] for t in I.TABLES})
+        cases = [("gems", "weaponMod2Code", "Deep-Wounds", "deep-wounds"),
+                 ("magicsuffix", "mod2code", "Deep-Wounds", "deep-wounds"),
+                 ("magicsuffix", "itype4", "amu", "amul"),
+                 ("magicprefix", "transformcolor", "dblue", "dblu"),
+                 ("magicprefix", "mod1code", "map-mon-extra-mag", ""),
+                 ("magicprefix", "mod1code", "res-cold-max", "res-cold-max")]
+        for table, col, pd2, mod in cases:
+            self.assertEqual(I.spell(table, col, pd2, ren), mod, (table, col, pd2))
+
     def test_function_numbers_moved_off_d2r_slots(self):
         d2r = table("Missile|pCltDoFunc|pSrvDoFunc\nflamewave|71|38\n")
         pd2 = table("Missile|pCltDoFunc|pSrvDoFunc\nback|70|38\nbolt|1|1\nblessedhammer|72|40\n")
