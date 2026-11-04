@@ -95,6 +95,16 @@
       }
     },
     {
+      "name": "Progressive Affixes",
+      "repo": "RuffDood/RuffnecKk-D2RLoader-Suite",
+      "tag": "v1.4.2",
+      "asset": "RuffnecKk-progressive-affixes-v0.3.5.zip",
+      "sha256": "d3229d384abe3d199a714ec2893070267f5f0dfc0909060b6317ce45dfbe8157",
+      "files": {
+        "plugins/d2rl-ruffneckk-progressive-affixes.dll": "d2rloader/plugins/d2rl-ruffneckk-progressive-affixes.dll"
+      }
+    },
+    {
       "name": "Mass Identify",
       "repo": "RuffDood/RuffnecKk-D2RLoader-Suite",
       "tag": "v1.4.2",
