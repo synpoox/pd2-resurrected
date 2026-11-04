@@ -74,6 +74,7 @@ the earliest in the order Necromancer, Paladin, Druid, Sorceress, Assassin, and 
 | W32 | Assassin: Blade Fury fragment (shit 34 -> 69, chit 6, dmg 19), channel check | W21 |
 | W33 | **Rush.** Melee splash (srvdo 163: proc_SplashDamage, Golem Splash, Skeleton Splash): item_splashonhit, Frenzy and Tiger Strike's splash radius (W10) and Revive's event (W14) cast it | none |
 | W34 | Get-hit/block end window and cast/sequence delay (every class, PD2 gate B): find the writer of the cast stamp at PlayerData + 0x16c first ([necromancer-w14.md](research/necromancer-w14.md)) | none |
+| W35 | Melee splash: the current skill's damage (Smite, kicks, Concentrate), the radius's item stat term and weapon -1, the room check ([#125](https://github.com/synpoox/pd2-resurrected/issues/125)) | W33 |
 
 ### After the cut, by rows unlocked per session
 
