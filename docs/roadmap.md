@@ -59,13 +59,13 @@ are "not yet" rows on the unported list; the Warlock ships as D2R has it.
 | # | Work item | Blocked by | Lane | Issue |
 |---|---|---|---|---|
 | W11-W14 | Necromancer (core-rules); W14's get-hit window split off to W34 | none | B | [#86](https://github.com/synpoox/pd2-resurrected/issues/86), [#123](https://github.com/synpoox/pd2-resurrected/issues/123) (PR), [#114](https://github.com/synpoox/pd2-resurrected/issues/114) (PR), [#115](https://github.com/synpoox/pd2-resurrected/issues/115) (PR), [#121](https://github.com/synpoox/pd2-resurrected/issues/121) (PR) |
-| W15-W20 | Paladin (core-rules) | none | C | [#117](https://github.com/synpoox/pd2-resurrected/issues/117) (PR), [#129](https://github.com/synpoox/pd2-resurrected/issues/129) (PR), [#135](https://github.com/synpoox/pd2-resurrected/issues/135) (PR), [#154](https://github.com/synpoox/pd2-resurrected/issues/154) (PR), [#94](https://github.com/synpoox/pd2-resurrected/issues/94), [#163](https://github.com/synpoox/pd2-resurrected/issues/163) (PR) |
+| W15-W20 | Paladin (core-rules) | none | C | [#117](https://github.com/synpoox/pd2-resurrected/issues/117) (PR), [#129](https://github.com/synpoox/pd2-resurrected/issues/129) (PR), [#135](https://github.com/synpoox/pd2-resurrected/issues/135) (PR), [#154](https://github.com/synpoox/pd2-resurrected/issues/154) (PR), [#166](https://github.com/synpoox/pd2-resurrected/issues/166) (PR), [#165](https://github.com/synpoox/pd2-resurrected/issues/165), [#163](https://github.com/synpoox/pd2-resurrected/issues/163) (PR) |
 | W21-W24 | Druid (core-rules) | none | D | [#127](https://github.com/synpoox/pd2-resurrected/issues/127) (PR), [#136](https://github.com/synpoox/pd2-resurrected/issues/136) (PR), [#139](https://github.com/synpoox/pd2-resurrected/issues/139) (PR), [#160](https://github.com/synpoox/pd2-resurrected/issues/160) (PR) |
 | W25 | Investigation: Assassin finisher hook points (core-rules) | none | E | [#124](https://github.com/synpoox/pd2-resurrected/issues/124) (PR) |
 | W26-W28 | Sorceress (core-rules) | W21 (W27 only) | E | [#128](https://github.com/synpoox/pd2-resurrected/issues/128) (PR), [#140](https://github.com/synpoox/pd2-resurrected/issues/140) (PR), [#161](https://github.com/synpoox/pd2-resurrected/issues/161) (PR) |
 | W29-W32 | Assassin (core-rules) | W25 (W29), W29 (W30), W21 (W32) | first free class lane | [#130](https://github.com/synpoox/pd2-resurrected/issues/130) (PR), [#142](https://github.com/synpoox/pd2-resurrected/issues/142) (PR), [#162](https://github.com/synpoox/pd2-resurrected/issues/162) (PR), [#164](https://github.com/synpoox/pd2-resurrected/issues/164) (PR) |
 | W33 | **Rush:** melee splash (srvdo 163), which item_splashonhit, Frenzy, Tiger Strike and Revive's event cast (core-rules) | none | A, as a rush job | [#126](https://github.com/synpoox/pd2-resurrected/issues/126) (PR) |
-| W34 | Get-hit/block end window and cast/sequence delay, every class (core-rules), split off W14 | none | first free class lane | [#120](https://github.com/synpoox/pd2-resurrected/issues/120) |
+| W34 | Get-hit/block end window and cast/sequence delay, every class (core-rules), split off W14 | none | first free class lane | [#173](https://github.com/synpoox/pd2-resurrected/pull/173) (PR, part), [#120](https://github.com/synpoox/pd2-resurrected/issues/120) |
 | P12 | Class item rules: Ormus' Robes' random sorceress skill (properties func 25 -> 26) and skill on cast for every cast-skill item, its trigger approximated on the unported list | none | A | [#108](https://github.com/synpoox/pd2-resurrected/issues/108) |
 | P13 | Pre-Alpha release: local 7z and release notes | P8 and every item above | A | [#109](https://github.com/synpoox/pd2-resurrected/issues/109) |
 
@@ -89,9 +89,10 @@ redesign, class-themed item rules, monster-only engine rules, everything in the 
 
 ## Alpha: PD2 complete for single-player
 
-The pre-alpha plus every PD2 feature left out of it: the map system, the Warlock redesign, the uber bosses and their
+The pre-alpha plus every PD2 feature left out of it: the map system, the Warlock redesign (goals in [warlock.md](warlock.md); its three new skills wait for the beta), the uber bosses and their
 areas (Dclone, Lucion with Desecration, Rathma), the remaining items and item rules and the remaining unported-list rows.
 The core-rules rows after the cut join as they are, ordered by rows unlocked as in
 [core-rules.md](core-rules.md#after-the-cut-by-rows-unlocked-per-session). No work items yet: the map
 [Port the rest of PD2 for the Alpha](https://github.com/synpoox/pd2-resurrected/issues/143) charts and slices them.
-Multiplayer (servers, hosting, seasonal ladders) comes after the alpha, as its own effort.
+Multiplayer comes after the alpha, in the beta: run 1 over TCP/IP, run 2 on hosted servers with a short beta league,
+then the launch with league 1.

@@ -81,6 +81,22 @@ class SkilldescTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "new skill descline1 47 StrSkill20"):
             S.rewrite(merged, D2R, FMT)
 
+    def test_format_codes_d2r_never_uses_in_skilldesc(self):
+        # PD2's 51 formats "+%d Percent ..."; D2R's classic 51 prints it raw. ItemStats1o is D2R's, unused in skilldesc
+        d2r = table(("holy shield", [["75", "StrSkillSmiteDamage", "", "pnma", "pxma"], [], [], [], [], []]),
+                    ("x", [["74", "StrSkillDamagePercent", "", "a", ""], [], [], [], [], []]))
+        merged = table(("jav mastery", [["51", "deadlystrikemastery", "", "edmn", ""], [], [], [], [], []]),
+                       ("holy shield", [["49", "ItemStats1o", "", "", ""], ["7", "StrWeaponDmg", "", "75", ""],
+                                        [], [], [], []]))
+        texts = {"deadlystrikemastery": "+%d Percent Critical Strike Multiplier", "ItemStats1o": "Smite Damage: %d to %d",
+                 "StrWeaponDmg": "% Weapon Damage"}  # a literal % under a classic function prints fine
+        self.assertEqual(len(S.clashes(merged, d2r, FMT, texts)), 2)
+        S.rewrite(merged, d2r, FMT, strings=texts)
+        self.assertEqual(S.clashes(merged, d2r, FMT, texts), [])
+        self.assertEqual([r[1:11] for r in merged.rows],
+                         [["74", "deadlystrikemastery", "", "edmn", "", *[""] * 5],
+                          ["75", "StrSkillSmiteDamage", "", "pnma", "pxma", "7", "StrWeaponDmg", "", "75", ""]])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,7 +2,6 @@
 skills	Clay Golem	=	srvstfunc	Golem start
 skills	BloodGolem	=	srvstfunc	Golem start
 skills	FireGolem	=	srvstfunc	Golem start
-skills	Smite	=	srvstfunc	Smite start
 skills	Might	=	cltdofunc	Paladin aura client do
 skills	Might	=	cltstfunc	Paladin aura client start
 skills	Prayer	=	cltdofunc	Paladin aura client do
@@ -29,7 +28,6 @@ skills	Holy Freeze	=	cltdofunc	Paladin aura client do
 skills	Holy Freeze	=	cltstfunc	Paladin aura client start
 skills	Vigor	=	cltdofunc	Paladin aura client do
 skills	Vigor	=	cltstfunc	Paladin aura client start
-skills	Conversion	=	srvstfunc	Holy Sword start
 skills	Sanctuary	=	cltdofunc	Paladin aura client do
 skills	Sanctuary	=	cltstfunc	Paladin aura client start
 skills	Meditation	=	cltdofunc	Paladin aura client do
@@ -161,4 +159,3 @@ misc	Dark Temple Map	-	pSpell	Map items
 misc	Poisoned Well Map	-	pSpell	Map items
 misc	Descend Map	-	pSpell	Map items
 states	skilldelay	=	remfunc	State remove function 12
-skills	Smite	=	auraeventfunc1	Skill aura event

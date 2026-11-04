@@ -19,6 +19,8 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 ## Testing in-game
 
 - The in-game console can toggle god mode, teleport you out of town, and spawn monsters. Use it to set up a test quickly instead of playing to the spot.
+- Spawn an item with `cheat spawn <item code>` (e.g. `cheat spawn wnd`) after `debug_mode` turns cheats on. It drops on the ground; `cheat item` does nothing.
+- To pick up a ground item, hold Alt so the item labels show, then click the label.
 - Always test in Hell difficulty, where monsters have enough HP to survive long enough to show what a skill does.
 - Always test on a character of level 90 or higher.
 

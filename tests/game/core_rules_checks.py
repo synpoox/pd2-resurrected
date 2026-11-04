@@ -76,12 +76,18 @@ Fire 259, Cobra Strike 265, Claws of Thunder 269, Blades of Ice 274, Royal Strik
 release, e.g. modkit save-set <save> level=30 --skill 254=1 --skill 259=1 --skill 265=1 --skill 269=1 --skill 274=1
 --skill 280=1 --skill 255=1 --project .; then out of town hit monsters three times in a row with each of Fists of
 Fire, Cobra Strike and Blades of Ice, releasing between them with Dragon Talon (a release runs the same prg slots and
-logs the same lines), and run the same command with core-rules-w29.
+logs the same lines). Then build charges on one finisher and, before they expire, hit with another: Fists of Fire
+once or twice, then Cobra Strike (shared charges, and Cobra Strike's steal). Run the same command with
+core-rules-w29.
 W17 checks (tag core-rules-w17), same merged data: a Paladin with Holy Light and Fist of the Heavens. Holy Light is
 the Paladin's 32nd skill, past the 30 class skills a save holds, so set both in game: `debug_mode`, `cheat sklvl Holy
 Light,10`, `cheat sklvl Fist of the Heavens,10`, `cheat goto 2`, `cheat mspawn zombie1,6`; then Holy Light on a
 zombie next to others, Fist of the Heavens on the pack (not on a dropped item: the click picks it up), and run the
 same command with core-rules-w17.
+W19 checks (tag core-rules-w19), same merged data: a level 90+ Paladin in Hell with Smite (97), Holy Sword (116),
+Concentration (113) and no +skills, a shield and a two-handed sword to swap to: `debug_mode`, `cheat god 1`, `cheat
+goto 2`, `cheat mspawn zombie1,6`; Smite zombies a few times; swap to the sword and cast Holy Sword; with
+Concentration on, attack and, mid-swing, click the ground to run; then run the same command with core-rules-w19.
 W23 checks (tag core-rules-w23), same merged data: a Druid with Gust (442), Werebear (228) and Hunger (242), no
 +skills; save-set takes class skill slots (Werebear 7, Hunger 21, Gust 30), e.g. modkit save-set <save> --skill
 30=5 --skill 7=1 --skill 21=5 --project .; then out of town cast Gust, and in bear form kill a monster and eat its
@@ -110,6 +116,9 @@ the same command with core-rules-w20.
 W32 checks (tag core-rules-w32), same merged data: a level 90+ Assassin in Hell with Blade Fury (266) set in game
 (`debug_mode`, `cheat sklvl Blade Fury,20`, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); throw Blade
 Fury at the pack and at a wall or tree near it, hold it for a second, and run the same command with core-rules-w32.
+W34 check (tag core-rules-w34), same merged data: any level 90+ character in Hell (`debug_mode`, `cheat god 1`,
+`cheat goto 2`, `cheat mspawn megademon3,6`: zombies rarely deal enough for a get-hit); stand in the pack and keep
+attacking or casting while it hits you (get-hit and block both count), and run the same command with core-rules-w34.
 P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
 drops Ormus' Robes; `cheat idall`, wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); cast spells at
 the pack until a proc logs (12% a cast, 8% for a skill with a cooldown), and run the same command with core-rules-p12.
@@ -139,6 +148,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("cltdofunc", 119, "wall"),
     ("srvdofunc", 175, "fire claws"), ("cltdofunc", 110, "fire claws"), ("srvstfunc", 77, "wolf start"),
     ("mode gate", "busy", "take-over"),  # an inline hook, not a slot
+    ("mode gate", "hit", "window"),  # two code patches and a logging hook
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
     ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
@@ -149,6 +159,8 @@ SKILL_SLOTS = [  # table slots it installs
     ("pCltHitFunc", 67, "charge bolt"), ("pSrvDoFunc", 47, "blessed hammer"), ("pCltDoFunc", 80, "blessed hammer"),
     ("srvdofunc", 178, "dragon flight"), ("pSrvDmgFunc", 22, "chain falloff"),
     ("pSrvHitFunc", 69, "blade fragment"), ("pCltHitFunc", 68, "blade fragment"), ("pSrvDmgFunc", 19, "blade fragment"),
+    ("srvstfunc", 73, "holy sword"), ("srvstfunc", 75, "smite"),
+    ("auraeventfunc", 16, "smite crushing blow"),  # D2R's crushing blow, wrapped
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -179,7 +191,8 @@ def _log(ctx) -> str:
                                  "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w33",
                                  "core-rules-w21", "core-rules-w22", "core-rules-w24", "core-rules-w29",
                                  "core-rules-w17", "core-rules-w23", "core-rules-w27", "core-rules-w28", "core-rules-w30",
-                                 "core-rules-w18", "core-rules-w20", "core-rules-w31", "core-rules-w32", "game"])
+                                 "core-rules-w18", "core-rules-w19", "core-rules-w20", "core-rules-w31", "core-rules-w32",
+                                 "core-rules-w34", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -916,7 +929,8 @@ def _logged(ctx, pattern: str, hint: str) -> list[tuple]:
 @check("charge-up-hits", tags=["core-rules-w29"])
 def charge_up_hits(ctx):
     """A charge-up hit (srvdofunc 190, PD2 srvdo 170) ends at the shared count + 1 (at most 3) and fires PD2's
-    srvprgfunc for that charge with its prgcalc; Cobra Strike's steal goes on before a hit that would pass 2."""
+    srvprgfunc for that charge with its prgcalc; Cobra Strike's steal goes on before a hit that would pass 2. Needs a
+    hit on another finisher's charges (shared above this skill's own) and a Cobra Strike hit that takes the steal."""
     ups = _logged(ctx, CHARGE_UP.pattern, "charge-up skill")
     hits = [u for u in ups if u[3] > u[2]]
     if not hits:
@@ -926,6 +940,10 @@ def charge_up_hits(ctx):
         slot, expected = FINISHER_PRG.get(skill, {}).get(after, (0, None))
         assert prg == slot, f"skill {skill} charge {after}: prg {prg}, PD2's maps to {slot}"
         assert expected is None or calc == expected, f"skill {skill} charge {after}: prgcalc {calc}, PD2 {expected}"
+    # a hit on another finisher's charges: this skill's own count alone can't make shared pass before
+    assert any(h[1] > h[2] for h in hits), "no hit built on another finisher's charges (shared > charges before); "         "build charges on one finisher, then hit with another before they expire"
+    steals = [u for u in ups if u[0] in (COBRA, RAKANOTH) and u[2] <= 1 and u[1] >= 1]
+    assert steals, "no Cobra Strike hit with shared >= 1 and at most 1 charge, so the steal is unchecked; "         "hit with Cobra Strike while another finisher holds charges"
     for skill, shared, before, _, steal, _, _ in ups:
         want = int(skill in (COBRA, RAKANOTH) and before <= 1 and shared >= 1)
         assert steal == want, f"skill {skill}: shared {shared}, charges {before}: steal {steal}"
@@ -1079,6 +1097,87 @@ def joust_cast(ctx):
     return f"level {level}: damage% {ed}, critical strike {crit} -> {raised} ({len(casts)} casts)"
 
 
+SMITE = 97  # merged skill id, PD2's
+SWORD, TWO_HANDED = 30, 120  # merged itemtypes rows the plugin tests (skills.txt Holy Sword start)
+PLR_RUN, PLR_GETHIT = 3, 4  # player modes
+PLR_BUSY = {7, 8, 10, 11, 12, 13, 14, 15, 16, 18}  # attack, cast, throw, kick, skill 1-4, sequence
+
+
+@check("holy-sword-start", tags=["core-rules-w19"])
+def holy_sword_start(ctx):
+    """Holy Sword's start (srvstfunc 73) accepts a cast with a weapon that is both swor and 2han, as PD2's does."""
+    path = os.path.join(REPO, "out", "data", "global", "excel", "itemtypes.txt")
+    with open(path, encoding="latin-1") as f:
+        rows = [line.split("\t") for line in f.read().splitlines()[1:]]
+    codes = [r[1] for r in rows if r[0] != "Expansion"]  # D2R skips the Expansion row
+    assert (codes[SWORD], codes[TWO_HANDED]) == ("swor", "2han"), f"rows {SWORD}, {TWO_HANDED}: {codes[SWORD]}, " \
+                                                                  f"{codes[TWO_HANDED]}"
+    starts = re.findall(r"holy sword start: skill \d+ level \d+, weapon (\w+): start (\w+)", _log(ctx))
+    if not starts:
+        ctx.skip("no Holy Sword start in the log yet (cast it with a two-handed sword, then run again)")
+    assert ("held", "accepted") in starts, f"never accepted: {starts[:3]}"
+    return f"{sum(a == 'accepted' for _, a in starts)} of {len(starts)} starts accepted"
+
+
+@check("smite-start", tags=["core-rules-w19"])
+def smite_start(ctx):
+    """Smite's start (srvstfunc 75) accepts the cast and registers Smite's event on the caster."""
+    starts = re.findall(r"smite start: skill (\d+) level \d+ on unit type (\d+): start accepted", _log(ctx))
+    if not starts:
+        ctx.skip("no Smite start in the log yet (Smite a monster out of town, then run again)")
+    assert all(int(skill) == SMITE and int(kind) == 0 for skill, kind in starts), starts[0]
+    return f"{len(starts)} starts accepted"
+
+
+@check("smite-event", tags=["core-rules-w19"])
+def smite_event(ctx):
+    """Smite's aura event (domeleedamage 5 -> 16) fires on the Paladin who smites: one roll a hit, chance = the
+    crushingblow stat + calc3 (5 + blvl, at least 6)."""
+    events = _logged(ctx, r"smite event: event (\d+) skill (\d+) level \d+ on unit type (\d+), frame (\d+): chance (\d+) "
+                     r"\(crushingblow (\d+) \+ calc3 (\d+)\), roll (\d+), blow (-?\d+)", "Smite event")
+    for event, skill, kind, _, chance, stat, calc3, roll, _ in events:
+        assert (event, skill, kind) == (5, SMITE, 0), f"event {event} skill {skill} on unit type {kind}"
+        assert chance == stat + calc3 and calc3 >= 6, f"chance {chance} = {stat} + {calc3}"
+    frames = [e[3] for e in events]
+    assert len(frames) == len(set(frames)), f"more than one Smite event in a frame (a second registration?): {frames}"
+    blows = sum(1 for e in events if e[7] < e[4])
+    return f"{len(events)} events on the Paladin, {blows} crushing blows, chance {events[-1][4]}"
+
+
+def _gate(ctx) -> list[tuple]:
+    return [tuple(int(v) for v in r) for r in re.findall(
+        r"gate: mode (\d+) \(skill (-?\d+)\) from mode (\d+), concentration (\d): (-?\d+)", _log(ctx))]
+
+
+@check("run-queued", tags=["core-rules-w19"])
+def run_queued(ctx):
+    """A run asked for mid-attack is buffered (4) and taken at the attack's end (0): PD2's gate A adds run to the modes
+    a busy player may switch to in the end window; D2R's gate does it already."""
+    runs = [g for g in _gate(ctx) if g[0] == PLR_RUN and g[1] == -1 and g[2] in PLR_BUSY]
+    if not runs:
+        ctx.skip("no run request mid-attack in the log yet (attack, then click the ground to run, then run again)")
+    results = {g[4] for g in runs}
+    assert 1 not in results, f"a run was refused mid-attack: {runs[:5]}"
+    assert 4 in results and 0 in results, f"no buffered run taken at the end: {sorted(results)}"
+    return f"{len(runs)} run requests mid-attack: buffered, then taken"
+
+
+@check("concentration-window", tags=["core-rules-w19"])
+def concentration_window(ctx):
+    """Under Concentration a busy Paladin's get-hit can be refused (the roll) but the next attack is still taken in the
+    end window (buffered 4 / allowed 0), as PD2's gate A has it."""
+    under = [g for g in _gate(ctx) if g[3] == 1 and g[2] in PLR_BUSY]
+    gethits = [g for g in under if g[0] == PLR_GETHIT]
+    attacks = [g for g in under if g[1] != -1]
+    if not gethits or not attacks:
+        ctx.skip("no get-hit or attack request under Concentration yet (attack monsters with Concentration on, "
+                 "then run again)")
+    if not any(g[4] == 1 for g in gethits):
+        ctx.skip(f"Concentration's roll has not blocked a get-hit yet ({len(gethits)} tries): fight longer")
+    assert any(g[4] in (0, 4) for g in attacks), f"the next attack was never taken: {attacks[:5]}"
+    return f"{sum(g[4] == 1 for g in gethits)} of {len(gethits)} get-hits blocked, {len(attacks)} attack requests taken"
+
+
 # merged skill -> charge -> (cltprgfunc slot, PD2's cltcalc, PD2's cltmissilea/b/c), from PD2's skills.txt
 FINISHER_CLIENT = {
     259: {2: (128, 64, "fistsoffirenova"), 3: (127, 1, "fistsoffireorbdelay")},  # Fists of Fire: PD2 107, 106
@@ -1207,7 +1306,8 @@ def psychic_hammer_falloff(ctx):
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17",
-                                    "core-rules-w23", "core-rules-w30", "core-rules-w18", "core-rules-w31", "core-rules-w32",
+                                    "core-rules-w23", "core-rules-w30", "core-rules-w18", "core-rules-w19", "core-rules-w31",
+                                    "core-rules-w32", "core-rules-w34",
                                     "core-rules-p12"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
@@ -1436,6 +1536,32 @@ def blade_fragment_damage(ctx):
         want = "no flag" if roll <= over else "flag 0x20 and leech dropped" if gen else "flag 0x20"
         assert outcome[hit] == want, f"generation {gen}, roll {roll} over {over}: {outcome[hit]}, PD2: {want}"
     return f"{len(hits)} hit(s): leech kept {hits[0][4]}%, physical {hits[0][3] >> 8}"
+
+
+HIT_WINDOW = re.compile(r"hit window: mode (\d+) request (\d+), (-?\d+) frames left: (-?\d+)")
+GET_HIT, BLOCK, KNOCKBACK = 4, 9, 0x13
+
+
+@check("hit-window", tags=["core-rules-w34"])
+def hit_window(ctx):
+    """PD2's gate B on the server: a player in get-hit (4) or block (9) takes a new mode once 2 frames or fewer are
+    left to the mode-end event (D2R: 1). With more left, walk / run are buffered (4, D2R's queue) and the rest refused
+    (1). A get-hit, block or knockback request is still refused (D2R's). D2R's client holds a request made in get-hit
+    and sends it with 1 frame left (PD2's client most likely too), so the 2-frame case is not reached, and a 1-frame row passes
+    without the patch too: the check guards the hook and the window's results, not the patch (docs/unported.md)."""
+    rows = [tuple(int(v) for v in m) for m in HIT_WINDOW.findall(_log(ctx))]
+    rows = [r for r in rows if r[0] in (GET_HIT, BLOCK)]
+    if not rows:
+        ctx.skip("no hit-window line in the log yet (let a pack in Hell hit you while attacking, then run again)")
+    for mode, request, left, result in rows:
+        if request in (GET_HIT, BLOCK, KNOCKBACK):
+            want = 1
+        elif left <= 2:
+            want = 0
+        else:
+            want = 4 if request in (2, 3, 6) else 1
+        assert result == want, f"mode {mode}, request {request}, {left} frames left: {result}, expected {want}"
+    return f"{len(rows)} lines: " + ", ".join(f"{r[2]} left -> {r[3]}" for r in rows[:6])
 
 
 ORMUS_SKILLS = {39, 45, 44, 55, 59, 441, 64, 38, 49, 48, 53, 43, 36, 47, 46, 51, 56, 455, 62, 448}  # PD2's list 8

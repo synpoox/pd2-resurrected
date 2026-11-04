@@ -5,7 +5,9 @@ functions that print vanilla's text and then the value ("Duration: " 40 " second
 format code instead ("Duration: %d seconds"), so the merged line printed both. A line clashes when a text names a D2R
 string with a format code in a column, under a function, that D2R's own lines never use it in; or when it has no text
 under a function D2R's lines never use (PD2's built-ins: 1 Mana Cost printed D2R's "an evil force", 10 elemental
-damage printed "Magic Damage: %d-%d" and then the damage). Each clashing line is
+damage printed "Magic Damage: %d-%d" and then the damage); or when a text's string has a format code under a function
+and column D2R's lines never format (#75: D2R's classic functions print text raw, "+%d Percent ..."). Each clashing
+line is
 rewritten onto D2R's functions by LINES, the owner-approved mapping on #73; strings stay D2R's. A clash left after
 the rewrite fails the merge.
 """
@@ -19,6 +21,7 @@ from pathlib import Path
 from pd2_ids import Table
 
 LINE = re.compile(r"^(desc|dsc2|dsc3)line(\d+)$")
+CODE = re.compile(r"%(\+?\d*(\.\d+)?[diufs]|%)")  # not "2% per": PD2's literal percent signs
 # PD2 function -> D2R function, and how text a/b and calc a/b are rebuilt (key: the line's D2R string with a format
 # code, after KEYS). "d2r": text a/b as a D2R line of that function lays the key out; "swap": PD2's text b, then
 # text a (synergy: format, then skill name); "b": PD2's text b alone; "copy": the skill's own D2R line naming the key,
@@ -36,6 +39,7 @@ LINES = {
 }
 # whole lines, by PD2 function and text a
 FIXED = {("1", ""): ("36", "StrSkill3", "", "usmc", "256"),
+         ("49", "ItemStats1o"): ("75", "StrSkillSmiteDamage", "", "pnma", "pxma"),  # PD2's built-in smite damage
          ("5", "StrSkill3"): ("36", "StrSkill3", "", "usmc*2", "256"),  # PD2: usmc/128
          ("61", "StrSkill3"): ("36", "EskillPerBlade", "", "usmc", "256"),
          ("70", "StrSkeleAll"): ("74", "StrSkill96", "StrSkill42", None, ""),  # None: PD2's calc a
@@ -79,12 +83,18 @@ def hide_off_tree(t: Table) -> None:
             r[page] = "0"
 
 
+def texts(*roots: Path) -> dict[str, str]:
+    """String key -> English text, later roots overriding earlier ones."""
+    out = {}
+    for root in roots:
+        for f in sorted((root / "local" / "lng" / "strings").glob("*.json")):
+            out |= {e["Key"]: e.get("enUS", "") for e in json.loads(f.read_text("utf-8-sig"))}
+    return out
+
+
 def formatted(d2r_data: Path) -> set[str]:
     """D2R's string keys whose English text has a format code."""
-    keys = set()
-    for f in sorted((d2r_data / "local" / "lng" / "strings").glob("*.json")):
-        keys |= {e["Key"] for e in json.loads(f.read_text("utf-8-sig")) if "%" in e.get("enUS", "")}
-    return keys
+    return {k for k, v in texts(d2r_data).items() if "%" in v}
 
 
 def lines(t: Table) -> list[tuple[int, int, list[int]]]:
@@ -111,27 +121,37 @@ def layouts(d2r: Table, fmt: set[str]) -> Counter:
     return seen
 
 
-def clashes(t: Table, d2r: Table, fmt: set[str]) -> list[str]:
-    """The lines D2R's game would print wrongly: "skill column function text a text b"."""
+def clashes(t: Table, d2r: Table, fmt: set[str], strings: dict[str, str] | None = None) -> list[str]:
+    """The lines D2R's game would print wrongly: "skill column function text a text b". `strings`: the merged strings
+    (key -> English), for format codes in strings D2R never uses in skilldesc."""
+    strings = strings or {}
     seen = layouts(d2r, fmt)
     used = {k[0] for k in seen if len(k) == 3}
+    formats = {k[1:] for k in seen if len(k) == 3}  # (function, column) D2R's lines format
     funcs = {d2r.rows[i][j] for i, j, _ in lines(d2r)}
+
+    def wrong(k: str, f: str, col: int) -> bool:
+        if k in used:
+            return (k, f, col) not in seen
+        text = strings.get(k, "")
+        return bool(CODE.search(text)) != ((f, col) in formats) and "%" in text
+
     out = []
     for i, j, (a, b, _, _) in lines(t):
         r = t.rows[i]
-        if (r[j] not in funcs and not r[a]) or any(k in used and (k, r[j], col) not in seen
-                                                    for k, col in ((r[a], 0), (r[b], 1))):
+        if (r[j] not in funcs and not r[a]) or any(wrong(k, r[j], col) for k, col in ((r[a], 0), (r[b], 1))):
             out.append(f"{r[0]} {t.header[j]} {r[j]} {r[a]} {r[b]}")
     return out
 
 
-def rewrite(t: Table, d2r: Table, fmt: set[str], elements: dict[str, str] | None = None) -> None:
+def rewrite(t: Table, d2r: Table, fmt: set[str], elements: dict[str, str] | None = None,
+            strings: dict[str, str] | None = None) -> None:
     """Rewrites t's clashing lines in place by LINES; raises ValueError naming lines LINES can't place. `elements`:
-    skilldesc name (lower case) -> the skill's EType, for BUILTINS."""
+    skilldesc name (lower case) -> the skill's EType, for BUILTINS; `strings`: as for clashes."""
     elements = elements or {}
     seen = layouts(d2r, fmt)
     used = {k[0] for k in seen if len(k) == 3}
-    bad = set(clashes(t, d2r, fmt))
+    bad = set(clashes(t, d2r, fmt, strings))
     d2r_lines = {}
     for i, j, parts in lines(d2r):
         d2r_lines.setdefault(d2r.rows[i][0].lower(), []).append([d2r.rows[i][j]] + [d2r.rows[i][p] for p in parts])

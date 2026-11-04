@@ -371,7 +371,12 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
             if k is None:
                 continue
             row[j] = spell(table, d2r.header[j], pr[k], ren)
-        strs = tuple(row[j] for j in str_cols) if shown else ()
+        own = d2r.rows[recs[i]] if shown and i < len(recs) else None
+        if own and not any(row[j] for j in str_cols) and row[desc_cols[0]] == own[desc_cols[0]]:
+            # 1.13c's descfunc 27/28 hardcode their text; D2R's read it from the strings (#116: "an evil force")
+            for j in str_cols:
+                row[j] = own[j]
+        strs =tuple(row[j] for j in str_cols) if shown else ()
         if strs in shown:
             own = d2r.rows[recs[i]] if i < len(recs) else None
             same = [[own[j] for j in desc_cols]] if own and strs == tuple(own[j] for j in str_cols) else []
