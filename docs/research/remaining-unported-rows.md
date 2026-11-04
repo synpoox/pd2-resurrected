@@ -36,8 +36,9 @@ in a follow-up grilling ticket, the way #148 fed #158.
   row, or converted later, one FLAC per file (open question from #5).
 - **Rows to fix on the list itself:** the Gheed event row belongs to MS8. The "other classes" row is stale, since the
   pre-alpha now builds those classes as W11-W35. The level-pipeline rows wait only for #151's work items. The missile
-  stand-in models (P10) and PD2's client UI overlays (buff timers, mini skill icons, skill bar, potion counter, tooltip
-  ranges) have no row at all.
+  stand-in models (P10) have no row. Nor do PD2's client UI overlays, though the Buff HUD companion already covers
+  buff timers and mini skill icons, and Item Roll Ranges the tooltip stat ranges: those need only an approximated row
+  naming the companion; the skill bar, potion counter and DPS counter are left.
 
 ## Scope
 
@@ -121,7 +122,7 @@ Only the item pictures and the shared skill icon sheet use PD2's own art.
 | PD2 item price and quality columns (P3) | affix `transform`/`divide`, rare `add`/`multiply`/`divide`, itemtypes `Charm`/`Gem`/`CostFormula`, qualityitems' classic columns | `divide`, `add`, `multiply` 0 set. `transform` is set only where `transformcolor` is too, which D2R reads. `Gem` is shared only. `Charm` is set on 4 PD2-only rows, all PvP charms (`chap` and kin). `CostFormula` is set on 9 PD2-only armor subtypes (`bels`, `sshi`, `harm`, ...) that inherit from D2R's armor types. The qualityitems columns are D2R's dropped 1.13c ones | **Cut** all, after one check: a vendor price for one PD2-only armor subtype is sane |
 | Other PD2 item columns (P3) | armor `absorbs`/`spelloffset`/`throwable`, misc `special`/`throwable`/`normcode`/`ubercode`/`ultracode`, weapons `special`, gems `nummods`, sets `level`, runes `server`, `cubemain.ladder`, `uniqueitems.ladder`, weapons spell columns | Empty: `spelloffset`, both `throwable`s, misc `special`, runes `server`, `uniqueitems.ladder`, weapons `stat1-3`/`calc1-3`/`spelldesccalc`. Shared only: `absorbs`, weapons `special` (editor notes), `nummods`, sets `level`. `normcode`/`ubercode`/`ultracode` are the quiver tiers. Weapons `spelldesc`/`spelldescstr`: the 12 throwing potions' tooltip line. `cubemain.ladder`: 1,168 rows, values 1-4, where 2-4 mark PD2's own groups (imbues, maps, socket adds, crafting) | **Cut** the empty and shared-only columns. **Fold** the potion `spelldesc` into "Throwing potions". **`cubemain.ladder` needs a check**: if PD2 reads values 2-4 as recipe groups rather than ladder flags, recipes may be gated. The merge leaves D2R's ladder seasons empty, so every recipe works offline today, which suits single-player |
 | PD2 tables cubetype and treasureclass (P3) | `cubetype.*`, `treasureclass.*` | `cubetype` is a 15-row lookup of cube input codes for the editors. `treasureclass` is the classic pre-1.10 table: 1.13c and D2R read only `treasureclassex` | **Cut** both |
-| PD2 tables aiparms ... weaponclass (P4) | nine tables | `aiparms`: a comment table describing AI params. `arena`: one Deathmatch row. `chartemplate`: 30 ladder/test templates. `monitempercent`: 2 rows (20% treasure class). `monname`: 42 random boss names. `uniquetitle`: 16 rows marked "unused". `weaponclass`: the 15 animation codes D2R hardcodes. `hiredesc`: see above. `miniskillicons`: 532 rows mapping a skill id to a frame of `skillicons_mini.dc6`, with a generated `case` column, so it is source for PD2's mini skill icons UI | **Cut** eight: editor notes, classic or online leftovers, or D2R hardcodes the same set. `monitempercent` needs one check (D2R's monster drop percent equals 20). **`miniskillicons` goes with the UI overlays** below. **`hiredesc` folds** with the Ascendant |
+| PD2 tables aiparms ... weaponclass (P4) | nine tables | `aiparms`: a comment table describing AI params. `arena`: one Deathmatch row. `chartemplate`: 30 ladder/test templates. `monitempercent`: 2 rows (20% treasure class). `monname`: 42 random boss names. `uniquetitle`: 16 rows marked "unused". `weaponclass`: the 15 animation codes D2R hardcodes. `hiredesc`: see above. `miniskillicons`: 532 rows mapping a skill id to a frame of `skillicons_mini.dc6`, with a generated `case` column, so it is source for PD2's mini skill icons UI | **Cut** eight: editor notes, classic or online leftovers, or D2R hardcodes the same set. `monitempercent` needs one check (D2R's monster drop percent equals 20). **Cut `miniskillicons`**: the Buff HUD companion draws the mini skill icons (section 5). **`hiredesc` folds** with the Ascendant |
 
 ## 3. Engine code
 
@@ -150,8 +151,10 @@ Engine work from the rows above, with nothing yet in core-rules:
 - **PD2's client UI overlays**: buff timers (`bufficons.dc6`, 37 frames), mini skill icons (`skillicons_mini.dc6`, 242
   frames, and the `miniskillicons` table), PD2's skill bar, the potion counter (`potion_count_overlay`,
   `potiondots_*`), the DPS counter, and tooltip changes (stat ranges, item level). The DLL triage lists them, but the
-  unported list has no row for them. D2R has its own buff bar and skill bar, so most can be cut. The owner should
-  decide that in the grilling, as for the advanced stats panel.
+  unported list has no row for them. Buff timers and mini skill icons are covered by the Buff HUD companion
+  (Pyre-Flies, `companions/manifest.json`), and the stat ranges by Item Roll Ranges, presumably: an approximated row
+  each, naming the companion, as for Left Click Auras. `miniskillicons` and the two DC6 sheets are then cut with them.
+  Left for the grilling: PD2's skill bar, the potion counter and the DPS counter (D2R has its own skill bar).
 - **Monster and overlay HD stand-ins** (section 1), and **missile stand-ins** (P10, done but unlisted).
 - **The Act 4 hireling** (section 2): the row text understates it.
 
@@ -160,5 +163,5 @@ Engine work from the rows above, with nothing yet in core-rules:
 1. In game, in HD: are PD2-only monsters (a Dopplezon, the Countess) and vanilla overlays (a shrine, Battle Orders)
    invisible today? That one test decides whether two art rows are bugs to fix before the alpha.
 2. Is the Ascendant in the alpha? It needs new hireling ids, which is the biggest unknown here.
-3. PD2's client UI overlays: cut, or rebuild some (buff timers)?
+3. PD2's skill bar, potion counter and DPS counter: cut, or a companion?
 4. PD2's 30 voice and effect WAVs: cut with the sounds, or convert later?
