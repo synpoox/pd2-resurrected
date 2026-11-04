@@ -1047,6 +1047,66 @@ auto CltDoLeap(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	return ran;
 }
 
+// --- Revive's aura event (PD2 auraeventfunc 32, ProjectDiablo.dll 0x10347370) ---------------------------------------
+// Revive's row has auraevent1 domeleedamage: each melee hit of a revived monster casts proc_SplashDamage (PD2 358,
+// merged 430) at level 1 from it. PD2 casts with no target and lets the skill find one; D2R's event cast needs the
+// target, so this passes the unit the hit landed on.
+std::atomic<uint32_t> g_reviveEvents {0};
+std::atomic<uint32_t> g_reviveSplashes {0};
+constexpr int32_t ProcSplashDamage = 430;
+
+auto AuraEventReviveSplash(Game* game, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skillId,
+                           int32_t level) noexcept -> int32_t {
+	(void)damage;
+	const bool sample = plog::Sample(g_reviveEvents);
+	if (game == nullptr || unit == nullptr || target == nullptr) {
+		if (sample) {
+			plog::Info("revive event: event %d skill %d level %d without a %s, event %u", event, skillId, level,
+			           game == nullptr ? "game" : unit == nullptr ? "unit" : "target", g_reviveEvents.load());
+		}
+		return 0;
+	}
+	using CastFn = int32_t (*)(Unit*, int32_t, int32_t, Unit*, int32_t) noexcept;
+	const int32_t cast = d2r::Engine<CastFn>(d2r::rva::CastEventSkill)(unit, ProcSplashDamage, 1, target, 0);
+	g_reviveSplashes.fetch_add(cast != 0 ? 1 : 0);
+	if (sample) {
+		// the unit the event fires on (a revive: type 1 owned by a player, owner type 0), so the check can tell
+		plog::Info("revive event: event %d skill %d level %d on unit type %d class %d owner %d/%u, target type %d: "
+		           "splash skill %d cast %d, event %u", event, skillId, level, At<int32_t>(unit, d2r::rva::UnitType),
+		           At<int32_t>(unit, d2r::rva::UnitClassId), At<int32_t>(unit, d2r::rva::UnitOwnerType),
+		           At<uint32_t>(unit, d2r::rva::UnitOwnerId), At<int32_t>(target, d2r::rva::UnitType), ProcSplashDamage,
+		           cast, g_reviveEvents.load());
+	}
+	return cast != 0 ? 1 : 0;
+}
+
+using AuraEventFn = int32_t (*)(Game*, int32_t, Unit*, Unit*, void*, int32_t, int32_t) noexcept;
+
+// Revive's do (srvdofunc 58): D2R's own, then Revive's aura events go on the revived monster. D2R's Revive never
+// registers them, so without this event 32 never fires. The corpse is revived in place (seen in game: same unit,
+// result 1, mode neutral), so the target before the call is the pet after it; a refused revive leaves it dead.
+std::atomic<uint32_t> g_revives {0};
+
+auto SrvDoRevive(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	Unit* target = game != nullptr && unit != nullptr
+	                   ? d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(d2r::rva::SkillTargetUnit)(game, unit)
+	                   : nullptr;
+	const int64_t result = d2r::Engine<SrvDoFn>(d2r::rva::SrvDoReviveD2R)(game, unit, skillId, level);
+	if (result == 0 || target == nullptr || At<int32_t>(target, d2r::rva::UnitType) != d2r::rva::UnitMonster) {
+		return result;
+	}
+	const int32_t mode = At<int32_t>(target, d2r::rva::UnitMode);
+	if (mode == d2r::rva::MonModeDeath || mode == d2r::rva::MonModeDead) {
+		return result;
+	}
+	d2r::Engine<SrvDoFn>(d2r::rva::RegisterSkillEvents)(game, target, skillId, level);
+	if (plog::Sample(g_revives)) {
+		plog::Info("revive: skill %d level %d events on unit class %d, revive %u", skillId, level,
+		           At<int32_t>(target, d2r::rva::UnitClassId), g_revives.load());
+	}
+	return result;
+}
+
 struct Table {
 	const char* name;  // the skills.txt column
 	uint64_t rva;
@@ -1132,14 +1192,41 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	const bool strike = context->PatchWriteU8(d2r::rva::CltDoStrikeLocalOnly, Je, sizeof(Je), 0xeb);
 	installed += strike ? 1 : 0;
 	if (used < reportSize) {
-		std::snprintf(report + used, reportSize - used, "; cltdofunc 22 strike for all%s",
-		              strike ? "" : " FAILED (bytes differ)");
+		const int n = std::snprintf(report + used, reportSize - used, "; cltdofunc 22 strike for all%s",
+		                            strike ? "" : " FAILED (bytes differ)");
+		used += n > 0 ? static_cast<size_t>(n) : 0;
+	}
+	// Aura event 32 is filled by D2R but no D2R row uses it, so the expected value is D2R's own function, not null.
+	const uint64_t d2rEvent = d2r::imageBase + d2r::rva::AuraEvent32D2R;
+	uint8_t expected[8];
+	std::memcpy(expected, &d2rEvent, sizeof(expected));
+	const bool revive = context->PatchWriteU64(
+		d2r::rva::AuraEventTable + static_cast<uint64_t>(d2r::rva::AuraEventRevive) * 8, expected, sizeof(expected),
+		reinterpret_cast<uint64_t>(static_cast<AuraEventFn>(AuraEventReviveSplash)));
+	installed += revive ? 1 : 0;
+	if (used < reportSize) {
+		const int n = std::snprintf(report + used, reportSize - used, "; auraeventfunc %d revive splash%s",
+		                            d2r::rva::AuraEventRevive, revive ? "" : " FAILED (slot is not D2R's event 32)");
+		used += n > 0 ? static_cast<size_t>(n) : 0;
+	}
+	// Revive's do is D2R's: the expected value is D2R's function, which the wrapper calls first.
+	const uint64_t d2rRevive = d2r::imageBase + d2r::rva::SrvDoReviveD2R;
+	std::memcpy(expected, &d2rRevive, sizeof(expected));
+	const bool reviveDo = context->PatchWriteU64(
+		d2r::rva::SrvDoTable + static_cast<uint64_t>(d2r::rva::SrvDoRevive) * 8, expected, sizeof(expected),
+		reinterpret_cast<uint64_t>(static_cast<SrvDoFn>(SrvDoRevive)));
+	installed += reviveDo ? 1 : 0;
+	if (used < reportSize) {
+		const int n = std::snprintf(report + used, reportSize - used, "; srvdofunc %d revive events%s",
+		                            d2r::rva::SrvDoRevive, reviveDo ? "" : " FAILED (slot is not D2R's Revive)");
+		used += n > 0 ? static_cast<size_t>(n) : 0;
 	}
 	return installed;
 }
 
 auto SkillFunctionCount() noexcept -> int {
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 1;  // + the cltdo 22 patch
+	// + the cltdo 22 patch, aura event 32 and Revive's do
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 3;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
@@ -1148,10 +1235,12 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "split throw casts %u, client %u, temp buffs %u, finds %u, refused %u, bash hits %u, knockbacks %u, "
 	              "splash starts %u, leap landings %u, client %u, double throw casts %u, client %u, poison daggers %u, "
-	              "client %u, blood warps %u, refused %u, desecrates %u, client %u, corpses hidden %u, %s",
+	              "client %u, blood warps %u, refused %u, desecrates %u, client %u, corpses hidden %u, revives %u, "
+	              "revive events %u, splashes %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
 	              g_poisonDaggers.load(), g_poisonDaggerClients.load(), g_bloodWarps.load(), g_bloodWarpsRefused.load(),
-	              g_desecrates.load(), g_desecrateClients.load(), g_desecrateHidden.load(), missiles);
+	              g_desecrates.load(), g_desecrateClients.load(), g_desecrateHidden.load(), g_revives.load(),
+	              g_reviveEvents.load(), g_reviveSplashes.load(), missiles);
 }

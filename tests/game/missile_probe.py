@@ -1,7 +1,8 @@
-"""Reads the client's missile units from a running D2R 93847 game (read-only, no plugin): counts nova sub-missiles.
+"""Reads the client's units from a running D2R 93847 game (read-only, no plugin): counts nova sub-missiles and pets.
 
 The client keeps missiles in a 128-bucket hash table (unit guid & 0x7f), lists linked through unit +0x158. Found in the
-client owner lookup at RVA 0x9a7b0 of the 93847 image (see docs/research/nova-orb-hits.md).
+client owner lookup at RVA 0x9a7b0 of the 93847 image (see docs/research/nova-orb-hits.md). The client's players,
+monsters, objects and items are in tables of the same shape at 0x2a23910 + type * 0x400 (read from a running game).
 """
 import ctypes
 import ctypes.wintypes as wt
@@ -10,8 +11,10 @@ import time
 
 IMAGE_STAMP = 0x6ab3782c  # rvas_93847.h ImageStamp
 CLIENT_MISSILES = 0x2a25d10  # 128 x Unit*
-UNIT_TYPE, UNIT_CLASS, UNIT_GUID, UNIT_NEXT = 0x00, 0x04, 0x08, 0x158
-MISSILE = 3
+CLIENT_UNITS = 0x2a23910  # + type * 0x400: 128 x Unit* of players, monsters, objects, items
+UNIT_TYPE, UNIT_CLASS, UNIT_GUID, UNIT_MODE, UNIT_NEXT = 0x00, 0x04, 0x08, 0x0c, 0x158
+MONSTER_GONE = (0, 12)  # monmode death, dead: the client keeps corpses in the table
+MONSTER, MISSILE = 1, 3
 
 _k32 = ctypes.WinDLL("kernel32", use_last_error=True)
 _psapi = ctypes.WinDLL("psapi", use_last_error=True)
@@ -43,10 +46,11 @@ class Game:
     def u32(self, addr: int) -> int:
         return struct.unpack("<I", self.read(addr, 4))[0]
 
-    def missiles(self) -> dict[int, int]:
-        """guid -> missiles.txt row of every client missile now alive."""
+    def units(self, kind: int) -> dict[int, int]:
+        """guid -> class row (missiles.txt, monstats.txt, ...) of every client unit of this type now alive."""
         out = {}
-        for unit in struct.unpack("<128Q", self.read(self.base + CLIENT_MISSILES, 8 * 128)):
+        table = self.base + (CLIENT_MISSILES if kind == MISSILE else CLIENT_UNITS + kind * 8 * 128)
+        for unit in struct.unpack("<128Q", self.read(table, 8 * 128)):
             for _ in range(4096):  # a broken list must not hang the check
                 if not unit:
                     break
@@ -54,11 +58,15 @@ class Game:
                     head = self.read(unit, UNIT_NEXT + 8)
                 except OSError:
                     break  # freed while we walked it
-                kind, row, guid = struct.unpack_from("<III", head, 0)
-                if kind == MISSILE:
+                found, row, guid, mode = struct.unpack_from("<IIII", head, 0)
+                if found == kind and not (kind == MONSTER and mode in MONSTER_GONE):
                     out[guid] = row
                 unit = struct.unpack_from("<Q", head, UNIT_NEXT)[0]
         return out
+
+    def missiles(self) -> dict[int, int]:
+        """guid -> missiles.txt row of every client missile now alive."""
+        return self.units(MISSILE)
 
 
 def bursts(game: Game, row: int, seconds: float, gap: float = 0.25) -> list[int]:

@@ -53,7 +53,7 @@ the earliest in the order Necromancer, Paladin, Druid, Sorceress, Assassin, and 
 | W11 | Necromancer: Poison Dagger (srvdo 164 -> router 190, cltdo 102 -> 122, srvst 68 -> 32 as data, shit 61) | none |
 | W12 | Necromancer: Blood Warp (srvdo 157 -> router 190, srvst 66 -> 80, cltst 56 -> 63) | none |
 | W13 | Necromancer: Desecrate (srvdo 161 -> router 190, cltdo 101 -> 121) | W10 |
-| W14 | Necromancer: Golem start (srvst 74), Revive event 32, get-hit/block end window and cast delay (every class) | none |
+| W14 | Necromancer: Golem start (srvst 74), Revive event 32; the get-hit/block window went to W34 | none |
 | W15 | Paladin: aura client start and do: no port, the Left Click Auras companion covers them (owner 2026-11-04) | none |
 | W16 | Paladin: Charge (srvdo 180, cltdo 112, srvst 72, cltst 57 -> free slot) and the Charge/Whirlwind rule | none |
 | W17 | Paladin: Holy Light (srvdo 176, chit 66), Fist of the Heavens client hit (chit 26) | none |
@@ -72,6 +72,8 @@ the earliest in the order Necromancer, Paladin, Druid, Sorceress, Assassin, and 
 | W30 | Assassin: finisher client half (client prg, chit 67, cdo 69) | W29 |
 | W31 | Assassin: Dragon Flight (srvdo 178), Psychic Hammer damage (dmg 15) | none |
 | W32 | Assassin: Blade Fury fragment (shit 34 -> 69, chit 6, dmg 19), channel check | W21 |
+| W33 | **Rush.** Melee splash (srvdo 163: proc_SplashDamage, Golem Splash, Skeleton Splash): item_splashonhit, Frenzy and Tiger Strike's splash radius (W10) and Revive's event (W14) cast it | none |
+| W34 | Get-hit/block end window and cast/sequence delay (every class, PD2 gate B): find the writer of the cast stamp at PlayerData + 0x16c first ([necromancer-w14.md](research/necromancer-w14.md)) | none |
 
 ### After the cut, by rows unlocked per session
 
@@ -119,7 +121,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | PD2 monster: UberDiabSummon, UberDiabRun | srvdo 177, srvst 71 | c | 177, srvst 71 | SrvDoTable, SrvStTable | Exact | M | open | cast logs summon count |  |
 | PD2 monster: RathmaSummon | srvdo 179 | c | 179 | SrvDoTable | Exact | M | open | cast logs summon count |  |
 | PD2 monster: Lucion kit (Nova, Dash, Punish, Blink client) | srvdo 184/185/186, srvst 76, cltst 58, cltdo 113/114 | c | 184, 185, 186, srvst 76, cltst 58 (verify table size), cltdo 113, 114 | SrvDoTable, CltDoTable, SrvStTable, CltStTable ? | Exact | L | open | each Lucion skill logs on cast |  |
-| Melee splash (proc_SplashDamage via item_splashonhit, Golem Splash, Skeleton Splash) | srvdo 163 | c | 163 if D2R's slot is empty, else -> overflow | SrvDoTable, castSkillEvent | Exact | M | verify | melee hit logs splash targets and radius (`inc_splash_radius`) |  |
+| Melee splash (proc_SplashDamage via item_splashonhit, Golem Splash, Skeleton Splash) | srvdo 163 | c | 163 if D2R's slot is empty, else -> overflow | SrvDoTable, castSkillEvent | Exact | M | verify | melee hit logs splash targets and radius (`inc_splash_radius`) | W33 |
 | WispBossNova | srvdo 41, cltdo 15 | c | 41, 15 if D2R's are empty or equal (D2R cltdo 15 is a "random spray" function) (equal: D2R's Phoenix Strike charge pair, see skill-function-tables) | SrvDoTable, CltDoTable | Exact | S | data | cast logs nova | W3 |
 | Royal Fire (RadamentBossRoyalFire, LucionRoyalFire) | srvdo 143, cltdo 83 | c | 143, 83 if D2R's are empty or equal (Q2) (equal: D2R's Phoenix Strike charge pair, see skill-function-tables) | SrvDoTable, CltDoTable | Exact | S | data | cast logs fire missiles | W3 |
 | Power Strike, Lightning Strike client half (and boss variants) | cltdo 22 | c | 22: D2R's is PD2's (1.13c D2Client 0x15660) plus a check that draws the strike only for the local player; `CltDoStrikeLocalOnly` jumps over it ([amazon-w6](research/amazon-w6.md)) | CltDoTable, CltDoStrikeLocalOnly | Exact | S | built (W6) | another player's, a Valkyrie's or a boss's strike draws on this client | W6 |
@@ -132,7 +134,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Rule | PD2 source | Bucket | D2R slot | RVAs | Tier | Size | Status | Test | Work item |
 |---|---|---|---|---|---|---|---|---|---|
 | Holy Sword start | srvst 73 | c | 73 | SrvStTable, SkillStart | Exact | S | open | cast logs start accepted | W19 |
-| Golem start (Clay, Blood, Fire Golem) | srvst 74 | c | 74 | SrvStTable | Exact | S | open | summon logs golem count rule | W14 |
+| Golem start (Clay, Blood, Fire Golem) | srvst 74 | c | none: data | none | Exact | S | built (W14) as data with an approximated deviation: D2R's summon caps pets per pet type and replaces the oldest, so PD2's petmax (1 + Golem Mastery blvl / 5 + extra_golem) on the shared golem pet type is the rule; the Iron Golem keeps its own pet type and does not take a golem place, where PD2 subtracts it (unported list) | game check `golem-count`: 7 summons, at most 3 golems at Golem Mastery 10 | W14 |
 | Smite start | srvst 75 | c | 75 | SrvStTable | Exact | S | open | cast logs start accepted | W19 |
 | Spirit Wolf, Fenris start | srvst 77 | c | 77 | SrvStTable | Exact | S | open | summon logs start accepted | W24 |
 | Frenzy, Tiger Strike start | srvst 78 | c | 78 | SrvStTable, DataTables, UnitStat, RemoveSkillState, NewStateList, SetListStat, SetUnitState, SkillStateExpired | Exact | S | built (W10) with an approximated deviation, owed to the unported list (W3): inc_splash_radius (Frenzy: calc2 * skill_frenzy / calc4; Tiger Strike: calc2 * charges under 3) goes on a temp_skill_buff list replaced each start and lasting 10 minutes, where PD2 keeps one permanent list; the replace also drops Split Throw's buff on the same state, and Split Throw's start drops the splash until the next Frenzy swing. The splash effect that reads the stat is not part of this rule | log: splash radius = PD2 dm34(lvl) * charges / 5 | W10 |
@@ -211,10 +213,11 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](https:
 | Channel take-over: Inferno, Arctic Blast (srvdo 182) and Blade Fury (48) | ProjectDiablo.dll gate A, [plrmodes.md](research/plrmodes.md) | c | none | PlrModeChange | Exact | S | verify | another skill starts at once mid-channel; a second Blade Fury is refused | W21 |
 | Charge (srvdo 180) in the Charge/Whirlwind rule, also for skill-less requests | ProjectDiablo.dll gate A, [plrmodes.md](research/plrmodes.md) | c | none | PlrModeChange | Exact | S | verify | Whirlwind and Charge take a skill-less mode change as in PD2 | W16 |
 | Run and Concentration in the end-of-action window | ProjectDiablo.dll gates A and B, [plrmodes.md](research/plrmodes.md) | c | none | PlrModeChange | Exact | S | verify | run queued at the end of an attack; Concentration blocks get-hit, not the next attack | W19 |
-| Get-hit/block end window, cast/sequence delay from neutral or run | ProjectDiablo.dll gate B, [plrmodes.md](research/plrmodes.md) | c | none | PlrModeChange | Exact | S | verify | new mode taken in the last 2 frames of get-hit; cast 5 frames after the player-data stamp | W14 |
+| Get-hit/block end window, cast/sequence delay from neutral or run | ProjectDiablo.dll gate B, [plrmodes.md](research/plrmodes.md), decoded in [necromancer-w14.md](research/necromancer-w14.md) | c | none | PlrModeChange | Exact | S | verify; the cast stamp at PlayerData + 0x16c has no writer found yet | new mode taken in the last 2 frames of get-hit; cast 5 frames after the player-data stamp | W34 |
 | Level life regen cap (30, `bloodwarp` lifts it) | ProjectDiablo.dll `0x102fc000`, [plrmodes.md](research/plrmodes.md) | c | none | ? | Exact | S | verify | part of the map system (Q7) | map plan |
 | Player death handler and two more PlrModes hooks | ProjectDiablo.dll `0x1036fcd0`, `0x1036e950`, `0x10374020`, [plrmodes.md](research/plrmodes.md) | c | none | ? | Exact | ? | verify | not decoded yet |  |
 | Perfect shrine | ProjectDiablo.dll `PerfectShrine` | c | none | ? | Exact | S | verify | effect not identified (Q6) |  |
 | Stackable items / item quantity | ProjectDiablo.dll `HOTKEY_ItemQuantity`; cube rows note "stackable maps" | c | none | ? | Exact | M | verify | maps stack and split as in PD2 |  |
-| Skill aura event 32 (Revive), 3 (Chilling Armor), 16 (Smite) | skills `auraeventfunc` 32, `auraeventfunc2` 3, `auraeventfunc1` 16 | c | 32, 3 if D2R's are empty or equal; 16 -> ? (only D2R's RotW bank uses 16) | ? | Exact | S | verify | event fires on the aura owner | W14, W19, W28 |
+| Skill aura event 32 (Revive) | skills `auraeventfunc1` 32 | c | 32 (D2R's 0x42eea0 is reached by no row) and srvdo 58 wrapped | AuraEventTable, CastEventSkill, SrvDoTable, RegisterSkillEvents | Exact | S | built (W14): D2R's Revive never registers a skill's aura events on the pet, so the srvdo 58 wrapper registers them (srvst 66's 0x42fa90) on the revived monster; the event casts proc_SplashDamage at the unit it hit, where PD2 lets the skill find one (unported list). The cast is refused until the splash has its do function (W33) | game check `revive-event`: event 5 from skill 95 on a revived monster, splash 430 cast | W14 |
+| Skill aura event 3 (Chilling Armor), 16 (Smite) | skills `auraeventfunc2` 3, `auraeventfunc1` 16 | c | 3 if D2R's is empty or equal; 16 -> ? (only D2R's RotW bank uses 16) | ? | Exact | S | verify | event fires on the aura owner | W19, W28 |
 | State remove function 12 (`skilldelay`) | states `remfunc` 12 | c | 12 if empty | ? | Exact | S | verify | delay state ends as in PD2 |  |
