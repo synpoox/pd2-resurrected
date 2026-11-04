@@ -9,6 +9,20 @@ Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 on a frozen install copy, testable
 build sessions in parallel; the pre-alpha and the alpha have no fixed date. Build PRs merge on the game check, the table-diff gate and a code-review agent; the owner
 reviews P1, W1, W2, the first PR in each class lane, and the M2 and pre-alpha releases.
 
+**Names used in the roadmap and the design docs.** Each prefix is numbered on its own; the doc named holds its list.
+
+| Prefix | Meaning | Listed in |
+|---|---|---|
+| M1, M2 | Milestones before the pre-alpha (then the pre-alpha, alpha, beta and launch, by name) | this file |
+| P | Port item: data, pipeline, art or release work, not an engine rule | this file |
+| W | Engine-rule work item (core-rules plugin) | [core-rules.md](core-rules.md#work-items) |
+| IR | Item rules | [item-rules.md](item-rules.md) |
+| MS | Map system | [map-system.md](map-system.md) |
+| UB | Uber bosses | [uber-bosses.md](uber-bosses.md) |
+| WL | Warlock redesign | [warlock.md](warlock.md) |
+| UR | Remaining unported-list rows | [unported-rows.md](unported-rows.md) |
+| Q | An open research question in core-rules, not a work item | [core-rules.md](core-rules.md) |
+
 ## M1: a new character in Act 1
 
 PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-diff gate and the unported list in place.
