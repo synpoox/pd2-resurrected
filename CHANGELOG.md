@@ -7,6 +7,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 - Melee splash works as in Project Diablo II: items that splash on hit, Frenzy and Tiger Strike's splash radius,
   and revived monsters' hits damage the monsters around the one struck.
+- Poison Dagger works as in Project Diablo II: each stab leaves a ring of poison clouds around the target.
 - Blood Warp works as in Project Diablo II: it costs a share of your life (never all of it), then regenerates life
   for five seconds.
 - Desecrate raises corpses around its cloud as in Project Diablo II.

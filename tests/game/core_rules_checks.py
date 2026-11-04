@@ -38,6 +38,11 @@ and Valkyrie (32), e.g. modkit save-set <save> level=30 --skill 16=10 --skill 12
 --project .; then out of town: Exploding Arrow and Multiple Shot into packs (Pierce lets arrows reach a second
 monster), summon a Valkyrie next to monsters, and run the same command with core-rules-w6.
 
+W11 checks (tag core-rules-w11), same merged data: a Necromancer with Poison Dagger (73), e.g. modkit save-set <save>
+level=30 --skill 73=10 --project .; then out of town stab monsters with a dagger a few times and run the same command
+with core-rules-w11. D2RCore's console does it without walking: `debug_mode`, `cheat uniques 39` (Gull), pick it up,
+`cheat idall`, equip, `cheat god 1`, `cheat goto 2` (Blood Moor), `cheat mspawn zombie1,3`, then Poison Strike on the
+right button and right-click a zombie. game_ctl clicks reach the world only with the harness background flag off.
 W12 check (tag core-rules-w12), same merged data: a Necromancer with Blood Warp (merged skill 439) and no item that
 lowers its life cost, e.g. modkit save-set <save> level=30 --skill 439=10 --project .; then out of town (Teleport
 does not work in town) Blood Warp a few times and run the same command with core-rules-w12.
@@ -68,6 +73,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 183, "double throw"), ("cltdofunc", 116, "double throw"), ("pSrvHitFunc", 66, "bounce"),
     ("pSrvDmgFunc", 21, "first hit"),
     ("pSrvHitFunc", 63, "explode spread"), ("pSrvDmgFunc", 20, "pierce falloff"),
+    ("cltdofunc", 122, "poison dagger"), ("pSrvHitFunc", 61, "state hit"),
     ("cltdofunc", 121, "desecrate"),
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
@@ -90,7 +96,8 @@ def _log(ctx) -> str:
     return text[starts[-1]:] if starts else ""
 
 
-@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "core-rules-w13", "core-rules-w14", "core-rules-w33", "game"])
+@check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
+                                 "core-rules-w13", "core-rules-w14", "core-rules-w33", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -257,6 +264,45 @@ def valkyrie_power_strike(ctx):
     return f"{len(sizes)} Valkyrie strike(s) drawn, {sizes[0]} missile(s) in the first"
 
 
+DAGGER = re.compile(r"poison dagger: skill 73 level (\d+): (\d+) clouds \(row (\d+), Param3 (-?\d+)\) at -?\d+,-?\d+, "
+                    r"poison (-?\d+) length (-?\d+)")
+
+
+def _elem_min(level: int) -> int:
+    """PD2's Poison Dagger EMin at `level` before synergies, shifted by HitShift 4: EMin 1, EMinLev1-5 1/4/14/24/34."""
+    per = [(8, 1), (16, 4), (22, 14), (28, 24), (10 ** 9, 34)]
+    return (1 + sum(next(v for top, v in per if n <= top) for n in range(2, level + 1))) << 4
+
+
+@check("poison-dagger-clouds", tags=["core-rules-w11"])
+def poison_dagger_clouds(ctx):
+    """A Poison Dagger hit (srvdofunc 190) rings the target with PD2's Param3 10 -> 11 poisondaggercloud missiles,
+    each given the hit's poison, which is at least PD2's EMin for the level (synergies only add)."""
+    casts = DAGGER.findall(_log(ctx))
+    if not casts:
+        ctx.skip("no Poison Dagger hit in the log yet (stab a monster out of town, then run again)")
+    level, created, row, param3, poison, length = (int(v) for v in casts[-1])
+    assert row == _rows("missiles").index("poisondaggercloud"), f"cloud row {row}"
+    assert param3 == 10 and created == 11, f"{created} clouds for Param3 {param3}, PD2 makes 11"
+    assert poison >= _elem_min(level), f"level {level}: poison {poison} under PD2's EMin {_elem_min(level)}"
+    assert length > 0, f"poison length {length}"
+    return f"level {level}: {created} clouds, poison {poison} over {length} frames"
+
+
+@check("poison-cloud-state", tags=["core-rules-w11"])
+def poison_cloud_state(ctx):
+    """A cloud's hit (pSrvHitFunc 61) gives the unit PD2's poison_strike state (sHitPar1) for 52 frames (sHitPar2)
+    and returns PD2's 2 + CollideKill: D2R's collision deals the cloud's damage only on bit 2."""
+    row = _rows("missiles").index("poisondaggercloud")
+    hits = re.findall(rf"state hit: missile row {row} skill 73 level \d+: state (\d+) for (\d+) frames.*?"
+                      r", result (-?\d+)", _log(ctx))
+    if not hits:
+        ctx.skip("no cloud hit in the log yet (stab a monster with Poison Dagger, then run again)")
+    state, frames, result = (int(v) for v in hits[-1])
+    assert state == _rows("states").index("poison_strike"), f"state {state}"
+    assert frames == 52, f"{frames} frames, PD2's sHitPar2 is 52"
+    assert result == 2, f"result {result}: D2R deals the cloud's damage on 2 (CollideKill 0)"
+    return f"state {state} for {frames} frames, result {result}"
 @check("desecrate-cast", tags=["core-rules-w13"])
 def desecrate_cast(ctx):
     """Desecrate (router srvdo 190) raised PD2's calc1 corpses, 5 at every level, and the client (cltdofunc 121) drew
@@ -486,7 +532,8 @@ def blood_warp_cast(ctx):
     return f"level {level}: life {life // 256}, cost {cost / 256:.1f} life, hpregen {regen} for {frames} frames, lists {sorted(set(lists))}"
 
 
-@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w12", "core-rules-w13", "core-rules-w14"])
+@check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
+                                    "core-rules-w13", "core-rules-w14"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))
