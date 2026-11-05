@@ -717,6 +717,17 @@ inline constexpr int UnitListOwner = 0x88, ListOwnerMark = 0x1c, ListOwnerFirst 
 inline constexpr int ListFlags = 0x1c, ListNext = 0x68;  // uint32 flags, next list in the chain
 inline constexpr uint32_t ListFlagTimed = 0x2, ListFlagCurse = 0x20;
 
+// --- core-ui: automap for level types 36+ (LP2, #212) -------------------------------------------------------------
+// (levelType, tileType, style, sequence) -> cel or -1 (0xffffffff): the automap tile lookup. It matches AutoMap.txt
+// rows of the type's range (36 ranges, so types 36+ read past them), style 0xff any, start sequence 0xff any, else
+// start <= sequence <= end; then cels[Roll(seed) % count]. Decompiled for #212 (Ghidra, D2R.gpr); entry bytes read from
+// the 6ab3782c dump. Game check (#212): core-ui's status counters climb in a PD2-only area with the automap open.
+inline constexpr uint64_t AutomapCel = 0x32bdf0;
+inline constexpr uint8_t AutomapCelEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74,
+                                              0x24, 0x18, 0x48, 0x89, 0x7c, 0x24, 0x20};
+inline constexpr int AutomapLevelTypes = 36;  // AutoMap.txt loader 0x32cae0 matches 36 names (table 0x1cfe110)
+inline constexpr uint64_t AutomapSeedPtr = 0x2372a40;  // pointer to the {lo, hi} seed 0x32bdf0 rolls (its decompile)
+
 }  // namespace d2r::rva
 
 namespace d2r {
