@@ -5,7 +5,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### 0.1.0-alpha (2026-11-05)
 
-The first alpha: every Project Diablo II (PD2) class plays as in PD2, offline single-player. The map system, the uber
+The first alpha: every Project Diablo II (PD2) class plays as in PD2, offline single-player, with PD2's maps. The uber
 bosses and the Warlock redesign come in a later alpha.
 
 #### Getting started
@@ -19,15 +19,23 @@ bosses and the Warlock redesign come in a later alpha.
 #### Items
 
 - PD2's items, affixes, runewords, cube recipes and treasure classes.
-- Corruption: cube an item with a Worldstone Shard. For now it takes two tries: the first hands the shard back, the
-  second corrupts the item. A corrupted item can't be corrupted again.
+- Corruption: cube an item with a Worldstone Shard and press Transmute once. A corrupted item can't be corrupted
+  again.
+- Demonic Cube rerolls a unique or set item, keeping its base, sockets and ethereal state. Items with socketed items
+  in them are refused for now.
+- Cube recipes take their inputs one per cell (three T1 maps, three chipped gems, ...). Stacked inputs don't count
+  yet.
+- PD2's combat stats: critical and deadly strike, crushing blow, open wounds and deep wounds, and the life steal cap.
+- Curse resistance and extra curse slots.
+- Skill on cast procs for every item that has it; skill while equipped and Phasing work.
+- Ormus' Robes roll a random Sorceress skill.
 - The Warlock gets PD2's class item rules: Hellfire Torch and Spirit Ward can roll Warlock skills, and Warlock affixes
   roll as often as other classes'.
-- Wands, staves and scepters show their class skill instead of "an evil force".
 
 #### Monsters and areas
 
 - PD2's monsters, mercenaries, areas, shrines and objects.
+- Tyrael hires the Ascendant.
 - Cycle of Life and Vines heal everyone nearby when they eat a corpse.
 - Torajan's eggs burst in a poison nova as they hatch.
 - Minions raised by boss missiles (Leoric's guards, Iskatu's vermin, ...) drop no loot and give no experience.
@@ -37,12 +45,12 @@ bosses and the Warlock redesign come in a later alpha.
 These now work as in PD2. Skills not listed still play like the closest D2R skill.
 
 - **Every class:** melee splash (items, Frenzy, Tiger Strike, revived monsters), and another skill starts at once
-  while Inferno or Arctic Blast channels.
-- **Amazon:** Double Throw, Lightning Bolt, Lightning Fury, Exploding Arrow, Multiple Shot, Power Strike (Valkyries
-  too) and Shattering Arrow.
+  while Inferno or Arctic Blast channels. Hit recovery and block end on PD2's frame.
+- **Amazon:** Lightning Bolt, Lightning Fury, Exploding Arrow, Multiple Shot, Power Strike (Valkyries too) and
+  Shattering Arrow.
 - **Assassin:** the charge-up skills (shared charges, each effect on the hit that builds it), Dragon Flight, Psychic
   Hammer and Blade Fury.
-- **Barbarian:** Leap, Leap Attack, Bash, Find Potion and Find Item.
+- **Barbarian:** Double Throw, Split Throw, Leap, Leap Attack, Bash, Find Potion and Find Item.
 - **Druid:** Arctic Blast, Firestorm, Gust, Hunger, Fire Claws, Spirit Wolf and Fenris.
 - **Necromancer:** Poison Dagger, Blood Warp, Desecrate and Golem Mastery.
 - **Paladin:** Charge, Holy Light, Fist of the Heavens, Vengeance, Joust, Holy Sword, Smite and Blessed Hammer.
@@ -51,14 +59,25 @@ These now work as in PD2. Skills not listed still play like the closest D2R skil
 
 #### Interface and graphics
 
-- Skill trees use PD2's layout.
+- Skill trees use PD2's layout and icons.
 - Skill tooltips show the right numbers, with no stray format codes.
-- Item stat lines no longer show their value twice.
 - PD2's monsters and effects show in HD.
-- Legacy graphics no longer crash with a PD2 skill on a skill button.
 
-#### Maps (groundwork, no map items drop yet)
+#### Maps
 
+- Maps drop. Open one in Harrogath in Hell (level 80+, Rite of Passage done) for a red portal to its area; one map
+  per game.
+- A map's stats apply: monster and player stats, and area stats (density, rarity, extra monster groups, fortify,
+  area level).
+- A map can't be cubed with a recipe PD2 forbids for it.
 - Maps built on D2R's tiles draw in HD; many walls, streams and bridges are still missing.
 - Map walls show on the automap.
 - A map's corrupted, socketed and ethereal drop chances apply.
+
+#### Bugfixes
+
+- Right-clicking an Identify scroll or tome enters identify mode again.
+- Wands, staves and scepters show their class skill instead of "an evil force".
+- Item stat lines no longer show their value twice.
+- Runes and gem stacks show their own pictures instead of an Elixir's.
+- Legacy graphics no longer crash with a PD2 skill on a skill button.
