@@ -22,9 +22,9 @@ class MissileHdError(ValueError):
     pass
 
 
-def hd_key(name: str) -> str:
+def hd_key(name: str, lower: bool = True) -> str:
     """D2R's spelling of a missile name in missiles.json: bighead1 -> bighead_1, bomb in air -> bomb_in_air."""
-    return re.sub(r"([a-z])(\d)", r"\1_\2", name.lower().replace(" ", "_"))
+    return re.sub(r"([A-Za-z])(\d)", r"\1_\2", (name.lower() if lower else name).replace(" ", "_"))
 
 
 def cel(row: list[str], col: int) -> str:
@@ -45,9 +45,13 @@ def entries(mod: Table, d2r: Table, models: dict, likes: dict[str, str]) -> dict
         if not name or name.lower() in vanilla:
             continue
         key, like = hd_key(name), likes.get(name.lower())
+        # IMPORTANT: JSON keys are case-sensitive, and no vanilla missile name has a capital, so it is unproven whether
+        # D2R lower-cases one before the lookup: a name with capitals (ZharBolts) gets its model under both spellings
+        own = hd_key(name, lower=False)
         stale.discard(name.lower())
-        if key in models or key in out:
-            raise MissileHdError(f"'{name}': missiles.json already has '{key}'")
+        for k in {key, own}:
+            if k in models or k in out:
+                raise MissileHdError(f"'{name}': missiles.json already has '{k}'")
         if like is not None:
             if cel(r, c) in by_cel:
                 raise MissileHdError(f"'{name}' has a CelFile match ({by_cel[cel(r, c)].most_common(1)[0][0]}): "
@@ -59,6 +63,8 @@ def entries(mod: Table, d2r: Table, models: dict, likes: dict[str, str]) -> dict
             out[key] = by_cel[cel(r, c)].most_common(1)[0][0]
         else:
             missing.append(f"{name} ({r[c] or 'no CelFile'})")
+            continue
+        out[own] = out[key]
     if missing:
         raise MissileHdError(f"no HD model for {len(missing)} new missiles, add lines: {', '.join(missing)}")
     if stale:
@@ -84,4 +90,4 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
                   read_lines(rule))
     (out_data / HD).parent.mkdir(parents=True, exist_ok=True)
     (out_data / HD).write_text(json.dumps(models | new, separators=(",", ":")), "utf-8")
-    print(f"  missiles-hd: {len(new)} new missiles mapped")
+    print(f"  missiles-hd: {len(new)} entries for new missiles")
