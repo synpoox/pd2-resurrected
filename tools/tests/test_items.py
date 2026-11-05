@@ -112,6 +112,21 @@ class HdTests(unittest.TestCase):
             self.assertEqual(files["sets.json"], [{"gift": {"normal": "amulet/amulet", "uber": "amulet/amulet",
                                                             "ultra": "amulet/amulet"}}])
 
+    def test_a_4th_character_the_key_patch_changes_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            hd = Path(tmp)
+            (hd / "items.json").write_text(json.dumps([{"rin": {"asset": "ring/ring"}}]))
+            for f in ("uniques.json", "sets.json"):
+                (hd / f).write_text("[]")
+            d2r = {"misc": table("name|code|type|invfile\nRing|rin|ring|invrin\n", "code")}
+            ok = {"misc": table("name|code|type|invfile\nRune|r01s|ring|x\nKey|pk1z|ring|x\n", "code")}
+            self.assertEqual(M.hd_items(hd, ok, d2r, [], [])["items.json"][1:],
+                             [{"r01s": {"asset": "ring/ring"}}, {"pk1z": {"asset": "ring/ring"}}])
+            for code in ("r01S", "r01_"):
+                bad = {"misc": table(f"name|code|type|invfile\nRune|{code}|ring|x\n", "code")}
+                with self.assertRaisesRegex(I.IdError, code):
+                    M.hd_items(hd, bad, d2r, [], [])
+
 
 class RuleFileTests(unittest.TestCase):
     def test_reads_tables_and_no_drop(self):
