@@ -12,7 +12,8 @@ bosses and the Warlock redesign come in a later alpha.
 
 - You need D2RLoader: characters use its extended save format and load only through it.
 - Characters from test builds before this release don't load.
-- Comes with a loot filter (with drop sounds), stash search, item roll ranges, a buff bar and an XP bar.
+- Comes with a loot filter (with drop sounds), stash search, item roll ranges, a charm inventory, a buff bar and
+  an XP bar.
 - PD2's names and descriptions for items, skills, monsters and areas (English).
 
 #### Items
