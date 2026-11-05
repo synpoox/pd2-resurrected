@@ -13,7 +13,7 @@ it. The three DT1 PD2 ships over vanilla paths move to OVERRIDES/<path>, so D2R'
 rewritten: its monster ids to the mod's monpreset indices, its object ids to objpreset rows of its act, appended where
 the act has none for that object. The file lists the DS1 objects the rewrite leaves out, with why; any other object
 it can't resolve fails the merge. PD2's automap rows for its new level types go to core-ui's custom table (LP2): D2R's
-automap knows only types 0-35.
+automap knows only types 0-35; PD2's own automap cels go to D2R's HD tiles (pd2_automap).
 
 A DS1 object id in PD2 (1.13c D2Common 0x6fd5b560, checked in Ghidra for #211): type 1 is a monpreset index of the
 DS1's act; type 2 below 150 indexes 1.13c's object preset table as one flat array, act * 150 + id, so a negative id
@@ -25,6 +25,7 @@ from __future__ import annotations
 import struct
 from pathlib import Path
 
+import pd2_automap
 import pd2_ids
 from pd2_ids import IdError, Table, excel, ident, load, read_list
 
@@ -227,7 +228,6 @@ def col(t: Table, name: str) -> int:
 
 
 AUTOMAP_TYPES = 36  # D2R's AutoMap.txt loader (0x32cae0) knows level types 0-35; core-ui answers the rest
-CEL_MAX = 1498  # the last cel in D2R's automap atlas: a higher one stored in a character's map memory hangs the save
 # D2R's tile names in its order (table 0x1cfe350): the loader stores a row's TileName as its index here
 TILES = ["fl", "wl", "wr", "wtlr", "wtll", "wtr", "wbl", "wbr", "wld", "wrd", "wle", "wre", "co", "sh", "tr", "rf",
          "ld", "rd", "fd", "fi"]
@@ -236,10 +236,11 @@ ANY = "255"  # AutoMap.txt's -1 in Style or a sequence; core-ui's automap::Any
 BLANK = ("", "-1")  # an AutoMap.txt cell with no value: no cel, or "any" in Style or a sequence
 
 
-def automap_rows(pd2: Table) -> list[list[str]]:
+def automap_rows(pd2: Table, cels: int) -> list[list[str]]:
     """PD2's AutoMap.txt rows for level types 36 and up (LevelName is the type id), as core-ui's custom table (columns as
-    in plugin/core-ui/automap.cpp Columns): numbers only, -1 ("any") as 255, and the cels D2R's atlas holds, packed and
-    counted. PD2's own cels (#274) are dropped, so a row that mixes them with D2R's draws only D2R's."""
+    in plugin/core-ui/automap.cpp Columns): numbers only, -1 ("any") as 255, and the cels packed and counted. A cel
+    at or past `cels`, the automap tiles' frame count (pd2_automap), fails: stored in a character's map memory, it
+    hangs the next save."""
     c = {n: col(pd2, n) for n in ("LevelName", "TileName", "Style", "StartSequence", "EndSequence")}
     cel_cols = [col(pd2, f"Cel{n}") for n in range(1, 5)]
     out = [["LevelType", "TileType", "Style", "StartSequence", "EndSequence", "CelCount", "Cel1", "Cel2", "Cel3", "Cel4"]]
@@ -248,10 +249,12 @@ def automap_rows(pd2: Table) -> list[list[str]]:
             continue
         if r[c["TileName"]] not in TILES:
             raise ValueError(f"automap: tile name {r[c['TileName']]!r} is not one of D2R's")
-        cels = [v for v in (r[i] for i in cel_cols) if v not in BLANK and int(v) <= CEL_MAX]
+        drawn = [v for v in (r[i] for i in cel_cols) if v not in BLANK]
+        if past := [v for v in drawn if int(v) >= cels]:
+            raise ValueError(f"automap: cel {past[0]} is past the {cels} automap tiles")
         out.append([r[c["LevelName"]], str(TILES.index(r[c["TileName"]]))]
                    + [ANY if r[c[k]] in BLANK else r[c[k]] for k in ("Style", "StartSequence", "EndSequence")]
-                   + [str(len(cels))] + (cels + ["0"] * 4)[:4])
+                   + [str(len(drawn))] + (drawn + ["0"] * 4)[:4])
     return out
 
 
@@ -289,7 +292,7 @@ def apply_files(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> N
     d2r_types = load(d2r_data, "lvltypes")
     types, moved = merge_types(load(pd2_data, "lvltypes"), d2r_types, wanted, overrides)
     pd2_ids.write("lvltypes", types, [], out_data)
-    automap = automap_rows(load(pd2_data, "automap"))
+    automap = automap_rows(load(pd2_data, "automap"), pd2_automap.apply(pd2_data, d2r_data, out_data))
     dest = excel(out_data) / AUTOMAP_TABLE
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes("".join("\t".join(r) + "\n" for r in automap).encode("ascii"))  # D2RCore wants a final LF
