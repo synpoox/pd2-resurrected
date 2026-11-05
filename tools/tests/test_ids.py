@@ -434,6 +434,10 @@ class LevelTableTests(unittest.TestCase):
                            table("Class|Name|*ID|Token|SizeX\nChest1|chest|0|hd1|1\n"),
                            [("chest", 0, "Chest1"), ("new", 1, "new")], {})[0]
         self.assertEqual(ob.rows, [["Chest1", "chest", "0", "hd1", "3"], ["new", "new", "1", "N1", "2"]])
+        # misc keeps D2R's spellicon (the identify cursor, #311)
+        mi = I.merge_table("misc", table("code|spellicon|maxstack\nisc|-1|20\nnew|-1|1\n"),
+                           table("code|spellicon|maxstack\nisc|0|20\n"), [("isc", 0, "isc"), ("new", 1, "new")], {})[0]
+        self.assertEqual(mi.rows, [["isc", "0", "20"], ["new", "-1", "1"]])
 
     def test_objtype_follows_the_objects_list(self):
         lines = [("Dummy", 0, "Null"), ("<reserved>", I.LEFT_OUT, "placeholder"), ("chest", 2, "chest")]

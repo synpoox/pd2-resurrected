@@ -114,8 +114,9 @@ MAP_SPELL = "12"
 LEFT_OUT_LEVELS = "levels left out"  # an ids key: the PD2 level ids the port leaves out
 # columns that hold the row's own id, written with the mod's (lvlwarp UniqueId: D2R's, the row number)
 ID_COLS = {"levels": "Id", "lvlprest": "Def", "lvlwarp": "UniqueId"}
-# columns a merged D2R row keeps, where the games give them different meanings (objects Token: D2R's graphics)
-KEEP_D2R = {"objects": {"Token"}}
+# columns a merged D2R row keeps, where the games give them different meanings (objects Token: D2R's graphics; misc
+# spellicon: D2R's cursor for an item spell with a target, which PD2's -1 turns off for identify, #311)
+KEEP_D2R = {"objects": {"Token"}, "misc": {"spellicon"}}
 FORMULAS = {
     "skills": ["prgcalc1", "prgcalc2", "prgcalc3", "auralencalc", "aurarangecalc", *[f"aurastatcalc{i}" for i in range(1, 7)],
                *[f"passivecalc{i}" for i in range(1, 6)], "petmax", *[f"sumsk{i}calc" for i in range(1, 6)], "sumumod",
