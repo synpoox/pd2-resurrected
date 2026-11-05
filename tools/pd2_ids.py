@@ -123,8 +123,9 @@ FORMULAS = {
 # D2R columns computed from the PD2 row. rightskill (right-mouse list): D2R sets it to "not passive" on every class skill;
 # taken-over rows need it too, since PD2 turned some vanilla skills passive (Impale -> Javelin and Spear Mastery).
 # setitems spawnable and the itemtypes socket thresholds: the value D2R gives every one of its own rows.
-# levels DrawEdges: D2R's client gives only acts 1-3 an edge tile (0x327090), so in act 5 (Act 4) it draws a null one
-# and crashes (FUN_14021d090, #258); PD2-only act 5 levels draw none. D2R's own (134, 136) keep D2R's value.
+# levels DrawEdges, a column both games have, overrides PD2's value: D2R's client gives only acts 1-3 an edge tile
+# (0x327090), so in act 5 (Act 4) it draws a null one and crashes (FUN_14021d090, #258) near the drawn floor's end;
+# PD2-only areas in act 5 draw none. D2R's own act 5 rows (134, 136) keep PD2's value, the same as D2R's.
 DERIVED = {"skills": {"rightskill": lambda pd2: "0" if pd2.get("passive") == "1" else "1"},
            "levels": {"DrawEdges": lambda pd2: "0" if pd2.get("Act") == "4"
                       and int(pd2.get("Id") or 0) >= VANILLA["levels"] else pd2.get("DrawEdges", "")},
