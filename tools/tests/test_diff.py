@@ -199,6 +199,19 @@ class GateTests(unittest.TestCase):
         with self.assertRaisesRegex(pd2_diff.GateError, "maybe"):
             self.gate()
 
+    def test_a_separate_gate_table_covers_its_rows_and_must_name_a_listed_row(self):
+        self.write("pd2", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))
+        self.write("mod", "lvlmaze", table("Name | MonLvl", "Blood Moor | 5"))
+        status = "# Unported list\n\n| Deviation | Status | Why | Work item |\n|---|---|---|---|\n" \
+                 "| Blood Moor is harder | approximated | why | P4 |\n\n| Deviation | Gate |\n|---|---|\n"
+        (self.root / "docs/unported.md").write_text(status + "| Blood Moor is harder | `lvlmaze.*.monlvl` |\n", "utf-8")
+        report = self.gate()
+        self.assertTrue(report.ok)
+        self.assertIn("1 approximated", pd2_diff.report(report, "P4"))
+        (self.root / "docs/unported.md").write_text(status + "| Blood Moor is easier | `lvlmaze.*.monlvl` |\n", "utf-8")
+        with self.assertRaisesRegex(pd2_diff.GateError, "Blood Moor is easier"):
+            self.gate()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -20,7 +20,7 @@ Out:
   modifier is new content for a patch after the launch.
 - Map items and recipes belong to the map system ([map-system.md](map-system.md)); uber keys, organs and the Rathma
   tomes' source to the uber bosses ([uber-bosses.md](uber-bosses.md)); item art to #143's art plan. PvP items are cut.
-- Buying back a unique charm sold by mistake is cut. The gamble refresh button is D2R's own (#189). Stash search and
+- Buying back a unique charm sold by mistake was cut; the cut is reversed in UR11 (#338). The gamble refresh button is D2R's own (#189). Stash search and
   gold caps went with the stash layouts.
 
 ## Decisions
