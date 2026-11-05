@@ -58,7 +58,7 @@ Out:
 | IR4 | Curses: curse effectiveness, max curses | core-rules | none |
 | IR5 | Item use and charges: unlimited TP and ID books (`pSpell` 13 -> 17), throwing potions with PD2's weapon spell columns, item casts (`ItemEffect`), replenish charges | core-rules | none |
 | IR6 | Cube and stacking: the demonic cube reroll (op 31), corruption in one press, the stack split (`HOTKEY_ItemQuantity`) for every PD2 stackable (orbs, keys, organs, maps, runes, gems); the merged `stackable` rows stay PD2's; game check: the split, and runes stack in the inventory and in D2R's rune stash tab | core-rules | none |
-| IR7 | Equipped items: skill while equipped and phasing, the charm "only one unique" rule | core-rules | none |
+| IR7 | Equipped items: skill while equipped and phasing (the charm "only one unique" rule moved to a Charm Inventory companion plugin, owner 2026-11-04) | core-rules | none |
 | IR8 | Item generation and loot: the ethereal bonus (25%), weapon durability loss at half the rate, the wiki rules IR2 does not close (rare affix split, staffmods, loot placement, seal kills), the belt and no-sell data checks | core-rules | IR1 |
 
 ## Game check
