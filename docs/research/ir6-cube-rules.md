@@ -1,7 +1,7 @@
 # IR6: cube rules and stacking in ProjectDiablo.dll
 
 Work item IR6 ([#241](https://github.com/synpoox/pd2-resurrected/issues/241), [item-rules.md](../item-rules.md)): the
-demonic cube reroll (op 31), corruption in one press, and the stack split (`HOTKEY_ItemQuantity`). Cube recipes that
+demonic cube reroll (op 31) and corruption in one press. The stack split left IR6 (below). Cube recipes that
 count a stack by its quantity (a stack of 3 El runes making Eld) are out of IR6: [#315](https://github.com/synpoox/pd2-resurrected/issues/315).
 Findings only: no PD2 or Blizzard file content is in this repo.
 
@@ -40,7 +40,9 @@ Last, every stackable in the cube (a fixed list of item types) whose quantity (s
 
 **`HOTKEY_ItemQuantity`.** Its one code use is the key's handler at `0x102bc140`: in game, it switches D2Client UI
 state 6 on or off (through the resolved D2Client functions at `0x105e32a4` and `0x105e32b4`); otherwise it prints the
-key's help line. What UI state 6 shows was not traced: it is not a stack split by itself.
+key's help line. The key's string is "Show Item Quantity" (`patchstring.tbl`): a display toggle, not a stack split.
+PD2's split is Ctrl+left-click with a stack held, one item per click (owner); it moved to
+[#316](https://github.com/synpoox/pd2-resurrected/issues/316).
 
 ## In D2R
 
