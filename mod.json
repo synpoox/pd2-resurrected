@@ -2,7 +2,7 @@
   "name": "PD2Resurrected",
   "savepath": "PD2Resurrected/",
   "title": "PD2 Resurrected",
-  "version": "0.1.0",
+  "version": "0.1.0-pre-alpha",
   "extendedSaves": true,
   "plugins": []
 }

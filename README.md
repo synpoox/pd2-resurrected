@@ -60,6 +60,27 @@ the PR:
 python tools/pd2_diff.py --scope P2
 ```
 
+## Release
+
+`tools/release.py` packages the built mod (the whole build above, plus the plugins below) with d2rAI-toolkit's
+`release/package_release.py` and `release.toml`: `dist/PD2Resurrected-<version>.7z`, release notes with the changelog
+section and the unported list, and `SHA256SUMS`. It needs 7-Zip, and a `### <version> (<date>)` section in
+`CHANGELOG.md` for mod.json's version: rename `### Unreleased` on release day.
+
+```bash
+python tools/release.py --game DIR
+```
+
+The `release` workflow (Actions > release > Run workflow) runs the whole build and this script and keeps the 7z as
+a workflow artifact; nothing is published. It needs the PD2 install and D2R, so it runs only on a self-hosted
+Windows runner with the labels `self-hosted, windows, pd2r` (Settings > Actions > Runners > New self-hosted runner;
+add the `pd2r` label when `config.cmd` asks). That machine needs the PD2 install named in `pd2-baseline.json`, Python
+3.13 with `py`, CMake and Visual Studio, and 7-Zip. Set two repository variables (Settings > Secrets and variables >
+Actions > Variables): `D2R_TOOLKIT`, the d2rAI-toolkit checkout (its `d2r-data/` cache is reused), and `D2R_GAME`, the
+D2R folder. The repository is public, so set Settings > Actions > General > "Fork pull request workflows from
+outside collaborators" to "Require approval for all external contributors": a fork's PR could otherwise edit a
+workflow to run on this runner.
+
 ## Plugins
 
 `plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules, `core-maps` PD2's map system. Engine addresses live in one header per D2R build (`plugin/common/rvas_93847.h`).
