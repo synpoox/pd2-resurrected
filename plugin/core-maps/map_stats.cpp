@@ -11,7 +11,10 @@
 
 #include "log.h"
 
+#include <intrin.h>
+
 #include <atomic>
+#include <cstdlib>
 #include <iterator>
 #include <utility>
 #include <cstdio>
@@ -91,6 +94,7 @@ constexpr int32_t FirstMapLevel = 138;      // the port's PD2 areas, 138-201 (PD
 constexpr int32_t LastMapLevel = 201;       // PD2's map-area test 0x1037c510
 constexpr int MaxEntries = 64;  // per list; a map rolls far fewer stats
 constexpr int AreaSlots = 16;    // PD2's area slots 0-15
+constexpr int32_t StatCorrupted = 413, StatCorruptor = 414;  // PD2 360 and 361
 
 // The game counter keys of the lists: 'M', the list ('m' or 'p'), the entry and the field (0: stat << 16 | layer,
 // 1: value); entry and field 0xff hold the count.
@@ -103,14 +107,17 @@ std::atomic<uint32_t> g_routed {0};
 std::atomic<uint32_t> g_monsters {0};
 std::atomic<uint32_t> g_playersOn {0};
 std::atomic<uint32_t> g_playersOff {0};
+std::atomic<uint32_t> g_drops {0};  // map-area drops a drop chance stat changed
 std::atomic<bool> g_seenClass[2048] {};  // for the game check: each class's first spawn in a map area is logged
 
 using SpawnedFn = void (*)(void* params, Unit* monster) noexcept;
 using RegenFn = void (*)(Game* game, Unit* player, int32_t a, int32_t b) noexcept;
 using AreaLevelFn = uint64_t (*)(Game* game, int32_t level) noexcept;
+using ItemSpawnFn = Unit* (*)(Game* game, uint8_t* drop, int32_t arg) noexcept;
 SpawnedFn g_spawnedOriginal = nullptr;
 AreaLevelFn g_areaLevelOriginal = nullptr;
 RegenFn g_regenOriginal = nullptr;
+ItemSpawnFn g_itemSpawnOriginal = nullptr;
 
 auto Counter(Game* game, uint32_t key) noexcept -> int32_t* {
 	return d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(d2r::rva::GameCounter)(
@@ -396,6 +403,119 @@ auto AreaMonsterLevel(Game* game, int32_t level) noexcept -> uint64_t {
 	return static_cast<uint32_t>(static_cast<int32_t>(base) + AreaSlot(game, 1));
 }
 
+// PD2's 0x103649d0 with no forced roll: a random corruption outcome from cubemain's corruption rows (op 16 or 18 on
+// `corruptor` with a value), unless the item is corrupted. Only rows whose first input matches the item (PD2's own
+// check: class, type, quality, socketed, ethereal) and whose second is the Worldstone Shard or nothing count. The
+// group's "destroyed (rare)" row (rare usetype output, no third mod) sets the roll to value..999, so the outcome is
+// one of the rows after it and never the destroyed one; the first row whose value beats the roll puts its mods on.
+auto CorruptDrop(Game* game, Unit* item) noexcept -> bool {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	if (stat(item, StatCorrupted, 0) != 0) {
+		return false;
+	}
+	const auto record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(CubeRecipe);
+	const auto itemRecord = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ItemRecord);
+	const auto has = [item](uint64_t fn) noexcept { return d2r::Engine<int32_t (*)(Unit*) noexcept>(fn)(item) != 0; };
+	const int32_t rows = d2r::Engine<int32_t (*)(uint32_t) noexcept>(CubeRecipeCount)(dataFlag);
+	int32_t floor = 0;
+	int32_t roll = 0;
+	for (int32_t i = 0; i < rows; ++i) {
+		const uint8_t* r = record(dataFlag, i);
+		if (r == nullptr || r[CubeEnabled] == 0 || (r[CubeOp] != 16 && r[CubeOp] != 18) ||
+		    At<int32_t>(r, CubeParam) != StatCorruptor || At<int32_t>(r, CubeValue) == 0) {
+			continue;
+		}
+		const uint8_t* in = r + CubeInputs;
+		const int32_t shard = At<int32_t>(in + CubeInputSize, 2);
+		const uint8_t* shardRecord = shard > 0 ? itemRecord(dataFlag, shard) : nullptr;
+		if (shardRecord != nullptr && At<uint32_t>(shardRecord, ItCode) != 0x20737377) {  // 'wss '
+			continue;
+		}
+		const auto flags = At<uint16_t>(in, 0);
+		const int32_t id = At<int32_t>(in, 2);
+		if (((flags & 2) != 0 && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, id) == 0) ||
+		    ((flags & 1) != 0 && id != -1 && id != 0xffff && At<int32_t>(item, UnitClassId) != id) ||
+		    (in[6] != 0 && d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item) != in[6]) ||
+		    ((flags & 0x20) != 0 && has(ItemIsEthereal)) || ((flags & 0x10) != 0 && !has(ItemIsEthereal)) ||
+		    ((flags & 4) != 0 && has(ItemHasSockets)) || ((flags & 8) != 0 && !has(ItemHasSockets))) {
+			continue;
+		}
+		const int32_t value = At<int32_t>(r, CubeValue);
+		if (r[CubeOutType] == 0xff && r[CubeOutQuality] == 6 && At<int32_t>(r, CubeOutMods + 2 * CubeModSize) == -1) {
+			floor = value;
+			roll = value < 1000 ? value + std::rand() % (1000 - value) : value;  // PD2 divides by 0 at 1000
+		}
+		if (floor == 0 || roll >= value) {
+			continue;
+		}
+		for (int m = 0; m < 5; ++m) {
+			const uint8_t* mod = r + CubeOutMods + m * CubeModSize;
+			if (At<int32_t>(mod, 0) == -1) {
+				break;
+			}
+			int32_t property[4] = {At<int32_t>(mod, 0), At<int16_t>(mod, 4), At<int16_t>(mod, 6), At<int16_t>(mod, 8)};
+			d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(ApplyCubeMod)(item, property);
+		}
+		plog::Info("map drops: item %d corrupted by cubemain row %d (roll %d of %d-999)", At<int32_t>(item, UnitClassId),
+		           i, roll, floor);
+		return true;
+	}
+	return false;
+}
+
+// PD2's 0x103816c0: a socketable item that is not a throwing potion, thrown weapon or quiver (item types 38, 48, 56)
+// gets 1-2 sockets, a two-handed one 2-4, clamped to what its type allows.
+auto SocketDrop(Game* game, Unit* item) noexcept -> bool {
+	using namespace d2r::rva;
+	const uint8_t* rec = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ItemRecord)(
+		d2r::DataFlag(game), At<int32_t>(item, UnitClassId));
+	const int16_t type = rec != nullptr ? At<int16_t>(rec, ItType) : -1;
+	if (rec == nullptr || type == 38 || type == 48 || type == 56 ||
+	    d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemSocketable)(item) == 0) {
+		return false;
+	}
+	const int32_t low = rec[It2Handed] != 0 ? 2 : 1;
+	const int32_t n = low + std::rand() % (low + 1);  // 1-2 or 2-4
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetItemSockets)(item, n);
+	return true;
+}
+
+auto Chance(Game* game, int slot) noexcept -> bool {
+	// The CRT's rand state is per thread and starts at seed 1: seed each thread once, or every session rolls the same
+	static thread_local const bool seeded = (std::srand(static_cast<unsigned>(__rdtsc())), true);
+	(void)seeded;
+	const int32_t v = AreaSlot(game, slot);
+	return v > 0 && std::rand() % 100 < v;
+}
+
+// PD2's drop hook 0x10372180, on the item the TC drop (0x444680) makes for a unit in a map area: slot 13's chance to
+// make it ethereal (D2R's own ethereal roll, forced as PD2 forces it), then slot 6's to corrupt it and slot 11's to
+// socket it. Drops from anywhere else (vendors, cube, gambling, gold) pass through.
+auto OnItemSpawn(Game* game, uint8_t* drop, int32_t arg) noexcept -> Unit* {
+	using namespace d2r::rva;
+	const bool tcDrop = reinterpret_cast<uint64_t>(_ReturnAddress()) == d2r::imageBase + TcDropReturn;
+	Unit* dropper = tcDrop && drop != nullptr ? At<Unit*>(drop, DropUnit) : nullptr;
+	const bool map = game != nullptr && dropper != nullptr && InMapArea(dropper);
+	const bool ethereal = map && Chance(game, 13);
+	if (ethereal) {
+		*reinterpret_cast<uint32_t*>(drop + DropFlags) |= DropFlagEthereal;
+	}
+	Unit* item = g_itemSpawnOriginal(game, drop, arg);
+	if (map && item != nullptr) {
+		const bool madeEthereal =
+			ethereal && d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemIsEthereal)(item) != 0;  // not every item can be
+		const bool corrupted = Chance(game, 6) && CorruptDrop(game, item);
+		const bool socketed = Chance(game, 11) && SocketDrop(game, item);
+		if ((madeEthereal || corrupted || socketed) && plog::Sample(g_drops)) {
+			plog::Info("map drops: item %d ethereal %d, corrupted %d, socketed %d (%u so far)",
+			           At<int32_t>(item, UnitClassId), madeEthereal, corrupted, socketed, g_drops.load());
+		}
+	}
+	return item;
+}
+
 }  // namespace
 
 auto RouteMapStats(Game* game, Unit* item, int32_t level) noexcept -> void {
@@ -462,16 +582,19 @@ auto InstallMapStats(const D2RL::PluginContext* context, char* report, size_t re
 	const bool areaLevel = context->InstallInlineHook(AreaMonsterLevelFn, AreaMonsterLevelEntry,
 	                                                  sizeof(AreaMonsterLevelEntry), AreaMonsterLevel,
 	                                                  &g_areaLevelOriginal);
-	std::snprintf(report, reportSize, "monsters%s, players%s, area level%s", monsters ? "" : " FAILED (bytes differ)",
-	              players ? "" : " FAILED (bytes differ)", areaLevel ? "" : " FAILED (bytes differ)");
-	return (monsters ? 1 : 0) + (players ? 1 : 0) + (areaLevel ? 1 : 0);
+	const bool drops = context->InstallInlineHook(ItemSpawn, ItemSpawnEntry, sizeof(ItemSpawnEntry), OnItemSpawn,
+	                                              &g_itemSpawnOriginal);
+	const auto ok = [](bool on) noexcept { return on ? "" : " FAILED (bytes differ)"; };
+	std::snprintf(report, reportSize, "monsters%s, players%s, area level%s, drops%s", ok(monsters), ok(players),
+	              ok(areaLevel), ok(drops));
+	return (monsters ? 1 : 0) + (players ? 1 : 0) + (areaLevel ? 1 : 0) + (drops ? 1 : 0);
 }
 
 auto MapStatsCount() noexcept -> int {
-	return 3;
+	return 4;
 }
 
 auto MapStatsCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "map stats routed %u, monsters %u, player lists on %u, off %u", g_routed.load(),
-	              g_monsters.load(), g_playersOn.load(), g_playersOff.load());
+	std::snprintf(out, size, "map stats routed %u, monsters %u, player lists on %u, off %u, drops changed %u",
+	              g_routed.load(), g_monsters.load(), g_playersOn.load(), g_playersOff.load(), g_drops.load());
 }

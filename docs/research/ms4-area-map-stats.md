@@ -64,3 +64,42 @@ Not seen: a monster from the added group. About 60 packs in Ruins of Viz-Jun wit
 none, and the spawner (`0x50acf0`, `0x50b7e0`, `0x509cc0`) has no check that would turn it away; not explained. Also not
 run: the area level (it rolls only through corruption), fortify (`fort` does not spawn, #260), drop bonus and
 treacherous.
+
+## MS4b: the drop chances (#286)
+
+PD2's drop hook `0x10372180` replaces 1.13c's TC drop (D2R's `0x444680`, which keeps PD2's monster 0x187 check). For a
+unit in a map area it reads three slots, in this order (`edx` before each `0x1038a9e0` call):
+
+| Slot | PD2 | D2R |
+|---|---|---|
+| 13 ethereal | `rand() % 100 < v` sets flag 0x4 in the drop request's flags (1.13c `+0x80`) before the item is made | the same flag at `+0xc0`: D2R's quality roll `0x442d60` then makes an ethereal-capable item ethereal, as for its own 5% roll |
+| 6 corrupted | `rand() % 100 < v`, then `0x103649d0(item, 0)` | `CorruptDrop`, below |
+| 11 socketed | the item is socketable (D2Common `#10360`), `rand() % 100 < v`, then `0x103816c0` | D2R's socketable test `0x36b410`, then `0x36e880(item, n)` (`#10599`): n clamped to the type's max |
+
+The port hooks `0x43cd50(game, drop, 0)`, which makes the item from the request, and acts only when it returns to the
+TC drop (`0x44486b`), so vendors, gambling, the cube and gold pass through.
+
+**Sockets** (`0x103816c0`): not item types 38 `tpot`, 48 `thro` or 56 `misl` (`0x10364cb0` reads the item's own type);
+1-2 sockets, 2-4 when the items row is `2handed` (1.13c `+0x11c`, D2R `+0x12b`).
+
+**Corruption** (`0x103649d0`, second argument 0): nothing for an item that has `corrupted`. It walks cubemain: enabled
+rows of op 16 or 18 on `corruptor` with a value, whose second input is the Worldstone Shard (or none) and whose first
+matches the item by PD2's own test `0x103647d0` (class, type, quality, socketed, ethereal; no tier or runeword flags).
+The group's "destroyed (rare)" row is the roll row: rare `usetype` output (`0xff`; `0xfe` is `useitem`, read from PD2's
+`cubemain.bin`) and no third mod. It sets the roll to `value + rand() % (1000 - value)`, and the first row after it whose
+value beats the roll puts its mods on the item through 1.13c `#10914` (mod type 7), D2R's `0x3d3420`. So a drop is never
+destroyed. D2R's record is packed: inputs at `+0x14`, 10 bytes each; output A at `+0x5e`, quality `+0x64`, type
+`+0x67`, mods from `+0x77` (`0x529d50`, `0x5269c0`; the field table `0x3e3ff0` gives offsets 0xe lower).
+
+PD2 resolves its 1.13c targets through version tables (`0x103a5f20(dll, table[version])`, negative entries are
+ordinals); column 0 is 1.13c.
+
+**Game check** (Hell, level 95): the log read `stats 4/4 installed: ... drops`. In Na-Krul's Abyss (`cheat uniques 519`,
+slot 13 at 100), with `cheat mspawn` monsters killed, it logged `map drops: item 178 ethereal 1`. Warlord of Blood
+(`cheat uniques 470`, corrupted) and Ureh City (`cheat uniques 509`, socketed) passed in the user's own run.
+
+## Slot 5, the extra boss: not ported
+
+`0x1038bfc0` wraps 1.13c D2Game's preset spawn (`0x6fd013b0`, game, room, preset). After the normal spawn, in a map area
+with slot 5 > 0, it spawns a monster preset (type 1) a second time when its id is in a PD2 set (`0x10371290`, a lookup in
+std containers filled at start) or is 1044. Still needed: D2R's preset spawn, and the set's contents.

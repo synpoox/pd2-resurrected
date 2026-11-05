@@ -5,6 +5,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Maps with a chance for drops to be corrupted, socketed or ethereal now apply it to the items that drop in the map,
+  as in Project Diablo II.
 - The automap draws the walls Project Diablo II draws with its own automap pictures: Hellcaves, Djinns Domain and
   Na-Krul's Abyss now show their walls on the automap.
 - Project Diablo II's maps built on the original game's areas (Spider Map, Monastery Map, Pandemonium Map, ...) draw
