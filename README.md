@@ -60,6 +60,26 @@ the PR:
 python tools/pd2_diff.py --scope P2
 ```
 
+## Loot Filters
+
+The mod comes with the [Pyre Loot Filter](https://github.com/Pyre-Flies/D2R-Mods/blob/main/plugins/pyre-lootfilter/README.md)
+plugin and a default filter, [`companions/filter.json`](companions/filter.json). The filter hides, renames and
+recolors ground items, plays drop sounds and draws minimap icons. Hidden items can still be picked up by holding Ctrl.
+
+To make or edit a filter, use the [D2R Reimagined loot filter editor](https://www.d2r-reimagined.com/loot-filter):
+start from a preset or a blank filter, or browse the public filters, then save the result as `filter.json`.
+
+To install a filter by hand:
+
+1. Get a `filter.json`: one from the editor, or the default from
+   [here](https://raw.githubusercontent.com/synpoox/pd2-resurrected/main/companions/filter.json) (right-click, Save
+   as).
+2. Put it at `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter.json`, replacing the one there.
+3. The plugin reloads it as soon as the file changes, even in game. To reload it yourself, press Ctrl+Shift+F9 or
+   type `/filter reload`.
+
+`tools/companions.py install` puts the default filter back, so keep a copy of your own.
+
 ## Plugins
 
 `plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules, `core-maps` PD2's map system. Engine addresses live in one header per D2R build (`plugin/common/rvas_93847.h`).
