@@ -17,7 +17,7 @@ Columns:
 - **Status**: `spiked` (proven in a spike), `open` (to build), `verify` (a value inside D2R's range, or a rule whose effect is not
   yet confirmed: treat as different from D2R until checked), `data` (no plugin code expected; listed so the check is not lost),
   `unreachable` (no row reaches it in play; not added to the unported list), `cut`.
-- **Work item**: the build slice that carries the row (see Work items below); empty = after the pre-alpha cut (in the alpha), in the order
+- **Work item**: the build slice that carries the row (see Work items below); empty = after the alpha 0.1.0 cut (in the alpha), in the order
   below. map system rows name their `MS` work item from [map-system.md](map-system.md), whose map-only code lives in `core-maps`; uber boss rows name their `UB` work item from [uber-bosses.md](uber-bosses.md); item rule rows name their `IR` work item from [item-rules.md](item-rules.md); `later release` rows wait for multiplayer.
 - **Test**: the log assertion the `tests/game/` check makes. Expected values come from PD2's data unless noted.
 
@@ -25,7 +25,7 @@ Columns:
 
 Ordered by "Order and slice core-rules into work items" (#25); placed into milestones, next to the P items, by [roadmap.md](roadmap.md). A work item is about one agent session. A `verify` check is
 the first step of the item that builds its row; when D2R already matches, the item shrinks to data. Each build PR merges
-when its game check, the table-diff gate and a code-review agent pass; the owner reviews P1, W1, W2 and the pre-alpha release.
+when its game check, the table-diff gate and a code-review agent pass; the owner reviews P1, W1, W2 and the alpha 0.1.0 release.
 Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 (a frozen install copy); 3.4 is its own item once D2RLoader supports it.
 
 ### M2: Amazon and Barbarian complete, the other classes on stand-ins
@@ -43,7 +43,7 @@ Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 (a frozen install copy); 3.4 is it
 | W9 | Barbarian: Double Throw (srvdo 154 -> 183, cltdo 98 -> 116, shit 30 -> 66, dmg 16 -> 21) | W2, P2 |
 | W10 | Barbarian group: Bash (srvdo router 190), Find Potion/Find Item (srvst 70 -> 82, cltst 55 -> 62), Frenzy start (srvst 78) | W1, P2 |
 
-### Pre-Alpha: every PD2 class complete
+### Alpha 0.1.0: every PD2 class complete
 
 Spec #85. Owners come from PD2's `skills.txt` `charclass` and `missiles.txt` `Skill`; a rule shared by two classes belongs to
 the earliest in the order Necromancer, Paladin, Druid, Sorceress, Assassin, and the later class checks it.

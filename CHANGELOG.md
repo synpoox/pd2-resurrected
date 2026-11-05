@@ -3,7 +3,7 @@
 Player-facing changes, newest first. One section per version, heading `### <version> (<YYYY-MM-DD>)`. Until the first
 private-multiplayer release a build may break characters; each break is noted here (ADR 0003).
 
-### Unreleased
+### 0.1.0-alpha (2026-11-05)
 
 - Switching to legacy graphics no longer crashes the game when Force Move or another Project Diablo II skill with a
   new icon (Vampire Form, Cow Form, ...) is on a skill button; the button shows Project Diablo II's icon.
