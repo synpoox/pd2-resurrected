@@ -53,7 +53,7 @@ own melee and area code:
 Revive's event 32 calls the splash directly, as PD2 does. A struck unit with no position left (killed by the hit) gives
 no splash but still returns 1.
 
-Deviation (approximated, on the unported list): the current skill's damage, the item stat radius term, the weapon -1
+Deviation (approximated, on the deviation list): the current skill's damage, the item stat radius term, the weapon -1
 and the room check are not ported.
 
 ## Checks

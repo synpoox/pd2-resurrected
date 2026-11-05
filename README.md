@@ -3,7 +3,7 @@
 Project Diablo II rebuilt as a Diablo II: Resurrected mod: PD2's items, skills, monsters and rules, in D2R's
 graphics. Offline single-player for now; private multiplayer comes later.
 
-**Status: alpha 0.1.0** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [what is not ported yet](docs/unported.md)).
+**Status: alpha 0.1.0** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [how it differs from PD2](docs/deviations.md)).
 
 ## Requirements
 
@@ -35,7 +35,7 @@ A new release overwrites `filter.json`; keep a copy of yours.
 ## Cut features
 
 These PD2 features are left out on purpose. Every deviation from PD2, cut or not, is listed in
-[docs/unported.md](docs/unported.md).
+[docs/deviations.md](docs/deviations.md).
 
 - PD2's 10x8 inventory and stash pages, with the maps stash tab: D2R's layouts stay. PD2's 4x4 cube is coming back
   ([#299](https://github.com/synpoox/pd2-resurrected/issues/299)).
@@ -55,7 +55,7 @@ Found a bug? [Open an issue](https://github.com/synpoox/pd2-resurrected/issues/n
 - how to make it happen again (class, level, difficulty, area, skill or item);
 - the mod version (in the release's file name, e.g. `0.1.0-alpha`).
 
-First check the [unported list](docs/unported.md): what is on it is known and not a bug yet.
+First check the [deviation list](docs/deviations.md): what is on it is known and not a bug yet.
 
 ## For developers
 
@@ -118,7 +118,7 @@ python -m unittest discover -s tools/tests
 ```
 
 The table-diff gate compares the merged tables with PD2's, scoped to a work item (P2, P3, P4) or milestone (M1,
-alpha). It fails on any difference that [docs/unported.md](docs/unported.md) does not list; paste its output into
+alpha). It fails on any difference that [docs/deviations.md](docs/deviations.md) does not list; paste its output into
 the PR:
 
 ```bash
@@ -129,7 +129,7 @@ python tools/pd2_diff.py --scope P2
 
 `tools/release.py` packages the built mod (the whole build above, plus the plugins below) with d2rAI-toolkit's
 `release/package_release.py` and `release.toml`: `dist/PD2Resurrected-<version>.7z`, release notes with the changelog
-section and the unported list, and `SHA256SUMS`. It needs 7-Zip, and a `### <version> (<date>)` section in
+section and the deviation list, and `SHA256SUMS`. It needs 7-Zip, and a `### <version> (<date>)` section in
 `CHANGELOG.md` for mod.json's version: rename `### Unreleased` on release day.
 
 ```bash

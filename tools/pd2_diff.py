@@ -3,7 +3,7 @@
     python tools/pd2_diff.py --scope P2|P3|P4|M1|alpha [--root DIR] [--d2r DIR]
 
 Reads PD2's tables from pd2-data/ and the mod's from generated/ (D2R's own table where generated/ has none yet).
-Exit 0: every deviation is on docs/unported.md; 1: some are not (listed in the report); 2: the list or an id list is
+Exit 0: every deviation is on docs/deviations.md; 1: some are not (listed in the report); 2: the list or an id list is
 broken.
 """
 from __future__ import annotations
@@ -45,14 +45,14 @@ class GateError(Exception):
 class Result:
     table: str
     open: list[tuple[str, str, str]] = field(default_factory=list)  # (table.row.column, PD2 value, mod value)
-    covered: int = 0  # deviations the unported list names
+    covered: int = 0  # deviations the deviation list names
     source: str = "merged"  # the mod's table: merged (generated/), D2R (not merged yet) or none
 
 
 @dataclass
 class Report:
     results: list[Result]
-    entries: dict[str, int] = field(default_factory=dict)  # unported.md entries by status, whatever the scope
+    entries: dict[str, int] = field(default_factory=dict)  # deviations.md entries by status, whatever the scope
 
     @property
     def ok(self) -> bool:
@@ -145,8 +145,8 @@ def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | 
     return res
 
 
-def unported(path: Path) -> tuple[list[str], dict[str, int]]:
-    """The Gate patterns of docs/unported.md (`table.row.column`, fnmatch, lower case) and its entry count by status.
+def deviations(path: Path) -> tuple[list[str], dict[str, int]]:
+    """The Gate patterns of docs/deviations.md (`table.row.column`, fnmatch, lower case) and its entry count by status.
     A table with a Status column holds entries, one with a Gate column patterns; a Gate row in a table without Status
     names its entry by Deviation. Fails on a status not in STATUSES and on a Gate row that names no entry."""
     patterns, cols, entries = [], None, dict.fromkeys(STATUSES, 0)
@@ -163,7 +163,7 @@ def unported(path: Path) -> tuple[list[str], dict[str, int]]:
         if "Status" in cols:
             status = cells[cols["Status"]]
             if status not in STATUSES:
-                raise GateError(f"unported.md: status {status!r} is not one of {', '.join(STATUSES)}: {line}")
+                raise GateError(f"deviations.md: status {status!r} is not one of {', '.join(STATUSES)}: {line}")
             entries[status] += 1
             listed.add(cells[cols["Deviation"]])
         elif "Gate" in cols:
@@ -171,12 +171,12 @@ def unported(path: Path) -> tuple[list[str], dict[str, int]]:
         if "Gate" in cols:
             patterns += [p.lower() for p in re.findall(r"`([^`]+)`", cells[cols["Gate"]])]
     if unknown := [d for d in named if d not in listed]:
-        raise GateError(f"unported.md: Gate patterns for rows not on the list: {unknown}")
+        raise GateError(f"deviations.md: Gate patterns for rows not on the list: {unknown}")
     return patterns, entries
 
 
 def triage(res: Result, patterns: list[str]) -> Result:
-    """Moves the deviations the unported list names from open to covered."""
+    """Moves the deviations the deviation list names from open to covered."""
     kept = [d for d in res.open if not any(fnmatch.fnmatchcase(d[0].lower(), p) for p in patterns)]
     res.covered += len(res.open) - len(kept)
     res.open = kept
@@ -189,7 +189,7 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
     if not (d2r / "global" / "excel").is_dir():  # else every unmerged table would read as unshipped
         raise GateError(f"no D2R tables under {d2r}: run `modkit fetch` or pass --d2r")
     pd2_excel, mod_excel = root / "pd2-data/data/global/excel", root / "generated/data/global/excel"
-    patterns, entries = unported(root / "docs" / "unported.md")
+    patterns, entries = deviations(root / "docs" / "deviations.md")
     lists = {t: pd2_ids.read_list(pd2_ids.list_path(root / "merge", t)) for t in pd2_ids.TABLES}
     ren, ctx = pd2_ids.renames(lists), None
     tables = root / "merge" / "tables.json"
@@ -211,7 +211,7 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
                           ctx if ids_read else None, rows)
             res.source = src[0]
             if src[0] == "merged" and f"{p.stem.lower()}.*" in patterns:
-                raise GateError(f"unported.md still covers all of {p.stem}, which is merged now: narrow its row")
+                raise GateError(f"deviations.md still covers all of {p.stem}, which is merged now: narrow its row")
         results.append(triage(res, patterns))
     return Report(results, entries)
 
@@ -224,10 +224,10 @@ def report(rep: Report, scope: str) -> str:
     """The gate's result as markdown, for pasting into the PR."""
     opened = rep.open()
     lines = [f"Table-diff gate, scope {scope}: {'pass' if rep.ok else 'FAIL'}, {len(opened)} open, "
-             f"{sum(r.covered for r in rep.results)} table cells on the unported list",
-             "Unported list: " + ", ".join(f"{rep.entries.get(s, 0)} {s}" for s in ("not yet", "approximated", "cut")) + " entries "
+             f"{sum(r.covered for r in rep.results)} table cells on the deviation list",
+             "Deviation list: " + ", ".join(f"{rep.entries.get(s, 0)} {s}" for s in ("not yet", "approximated", "cut")) + " entries "
              "(the cell count is large because one entry can cover a whole table)", "",
-             "| Table | Mod table | Open | Unported |", "|---|---|---|---|"]
+             "| Table | Mod table | Open | Listed |", "|---|---|---|---|"]
     lines += [f"| {r.table} | {r.source} | {len(r.open)} | {r.covered} |" for r in rep.results]
     if opened:
         lines += ["", "| Open deviation | PD2 | Mod |", "|---|---|---|"]

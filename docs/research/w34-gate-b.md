@@ -62,7 +62,7 @@ frame later than PD2: PD2 allows at `end - frame <= 2`, D2R at `<= 1`.
 
 The install writes 2 over both immediates (`0x42d7d2`, `0x42d808`) and hooks `0x42d700` only to log the result per
 frames left (`hit window: mode m request r, n frames left: result`). What stays D2R's (approximated,
-docs/unported.md):
+docs/deviations.md):
 
 - a get-hit, block or knockback request in get-hit/block is refused; PD2 allows it in the window;
 - a walk or run request outside the window is buffered (D2R's queue) where PD2 refuses it;

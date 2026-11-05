@@ -113,13 +113,13 @@ The merge moves each Port value above by column in `tools/pd2_ids.py` FUNCS (`sr
   hits on a monster (the charge count after each hit, the prg slot fired) and by a Dragon Talon release (the stacked
   prg calls). It also reads `0x1036ee80` (shared charges), checks PD2 for a hook on the release dispatcher, resolves
   the 139 missile helper and reads the Cobra Strike branch of 171/172, adds `SrvPrgDispatch` to the RVA header, and
-  narrows the finishers' stand-ins (`merge/standins.tsv`, Tiger Strike and RakanothStrike) and their unported row to
+  narrows the finishers' stand-ins (`merge/standins.tsv`, Tiger Strike and RakanothStrike) and their deviation row to
   the client columns. Size L.
 - **W30, client half**: cltprg 127 and 128, cdo 79 and chit 67 (with their FUNCS entries), checked by the client
-  missiles each charge creates. It removes what is left of the stand-ins and the unported row. Size M.
+  missiles each charge creates. It removes what is left of the stand-ins and the deviation row. Size M.
 
 The split in core-rules stands. W30 needs W29 only for the charge packet that drives the client prg calls.
 
 Owed to other rows: the Royal Fire bosses (srvdo 143 and cltdo 83, PD2's boss branch) become a monster row after the
-cut (the after-the-cut entry on the unported list covers them). Their server half goes to the router, their client
+cut (the after-the-cut entry on the deviation list covers them). Their server half goes to the router, their client
 half to a free cltdo slot.

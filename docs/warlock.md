@@ -76,7 +76,7 @@ What WL1 found and did ([#233](https://github.com/synpoox/pd2-resurrected/issues
 
 | # | Work item | Plugin | Blocked by |
 |---|---|---|---|
-| WL1 | PD2's per-class item rules reach the Warlock: Hellfire Torch and Spirit Ward roll the Warlock (class 7) too, grimoires get corruption outcomes and class-item crafts like PD2's other class items, and any other per-class rule found is fixed or gets an unported row | none (data) | none |
+| WL1 | PD2's per-class item rules reach the Warlock: Hellfire Torch and Spirit Ward roll the Warlock (class 7) too, grimoires get corruption outcomes and class-item crafts like PD2's other class items, and any other per-class rule found is fixed or gets an deviation row | none (data) | none |
 | WL2 | Demon summoner against the Druid summoner: play session, gear list, test, skill changes in the change log | none, unless a change needs an engine rule (goal 5) | WL1, the Druid complete |
 | WL3 | Eldritch blade melee against the Sacrifice Paladin, as WL2 | as WL2 | WL1, WL2, the Paladin complete |
 | WL4 | Chaos fire against the Combustion Sorceress, as WL2 | as WL2 | WL1, WL2, the Sorceress complete |

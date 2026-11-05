@@ -55,7 +55,7 @@ refuse Teleport through the skill's `InTown`, as in D2R.
 to RathmaPrison's targets), then calls D2R's srvdo 27; Blood Warp now uses it too. The router's Teleport runs the
 core, the ring and the debuff (`TimedStatList`, now taking several stats).
 
-Deviations (approximated, on the unported list): no `TeleportBlocked` chat line, no Teleport 3 path search (no merged
+Deviations (approximated, on the deviation list): no `TeleportBlocked` chat line, no Teleport 3 path search (no merged
 level has 0 or 3), and no `0x83` timer packet on an extended list (as Blood Warp).
 
 ## Checks

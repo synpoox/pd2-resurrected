@@ -743,7 +743,7 @@ void HideCorpse(void* list, Unit* unit, int32_t state) noexcept {
 // calc1 corpses of monsters from the target point's level, placed around the point, owned by the caster, each hidden
 // after CorpseFrames; then srvmissilea at the point. PD2 evaluates petmax too and throws it away; so does this.
 // shortcut: PD2's timer is a game event; this is a state list on the corpse with HideCorpse as its expiry. Upgrade if
-// the game check shows corpses that never hide (docs/unported.md).
+// the game check shows corpses that never hide (docs/deviations.md).
 auto SrvDoDesecrate(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	const uint32_t dataFlag = d2r::DataFlag(game);
@@ -869,7 +869,7 @@ auto CltDoDesecrate(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 // mask. The radius is calc3 + the inc_splash_radius held by the weapon's item types / 20, 1 less on a normal-tier base.
 // shortcut: Smite's splash takes Smite's skill damage, not its shield damage and state 224 list (0x103060c0), and the
 // radius counts only the weapon's own item types, not PD2's off-hand rules for 1han / 2han (0x10381720); upgrade with
-// the unported row. PD2's room check (0x1037c820) refuses only the PvP maps (levels 157, 159, 166), which are cut.
+// the deviation row. PD2's room check (0x1037c820) refuses only the PvP maps (levels 157, 159, 166), which are cut.
 std::atomic<uint32_t> g_splashes {0};
 std::atomic<uint32_t> g_splashUnitCasts {0};  // the first splash with units hit is logged too
 std::atomic<uint32_t> g_splashVictims {0};
@@ -968,7 +968,7 @@ void AddSkillPhys(Game* game, Unit* unit, uint8_t* damage, int32_t skillId, int3
 // hit class, the skill's elemental and physical damage, weapon damage at SrcDam, life leech halved (at least 1). Counts
 // the units the hit lands on.
 // shortcut: PD2 also writes the skill id to a player victim's data (+0x194 of 1.13c's), not decoded; upgrade with
-// the unported row.
+// the deviation row.
 auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	using namespace d2r::rva;
 	auto* hit = static_cast<SplashHit*>(area->arg);
@@ -1209,7 +1209,7 @@ auto HolyLightOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 
 // PD2 srvdofunc 176.
 // shortcut: the cast centres on D2R's skill target; PD2 refreshes the caster's path target (1.13c D2Game 0xe07a0) and
-// reads that. Upgrade if a cast in game lands on a different unit (docs/unported.md).
+// reads that. Upgrade if a cast in game lands on a different unit (docs/deviations.md).
 auto SrvDoHolyLight(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	if (game == nullptr || unit == nullptr) {
@@ -1501,7 +1501,7 @@ auto Burst(Game* game, Unit* caster, Unit* center, Unit* origin, const uint8_t* 
 
 // PD2 srvdofunc 174: a melee hit at SrcDam 128; when it hits, a burst on the target (link 0).
 // shortcut: the hit centres on D2R's skill target; PD2 refreshes and reads the caster's path target, as Holy Light.
-// Upgrade if a hit in game lands on a different unit (docs/unported.md).
+// Upgrade if a hit in game lands on a different unit (docs/deviations.md).
 auto SrvDoVengeance(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	if (game == nullptr || unit == nullptr) {
@@ -1537,7 +1537,7 @@ auto SrvDoVengeance(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 // (D2Common #10973, #10887), as this does.
 // shortcut: the target is D2R's skill target (PD2 reads the caster's path target) and the hit is D2R's, which also
 // gives the aurastate on a hit (the list made next extends it); upgrade if a Joust in game lands elsewhere or its buff
-// differs from PD2's (docs/unported.md).
+// differs from PD2's (docs/deviations.md).
 auto SrvDoJoust(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	const uint32_t dataFlag = d2r::DataFlag(game);
@@ -1582,7 +1582,7 @@ constexpr int32_t ProgressiveToHit = 325;  // itemstatcost progressive_tohit: PD
 // on the next, with damage% from calc1. PD2's closing aurastate helper (0x1036cb90) is left out: it returns at once
 // without aurastat1, and no row on 178 has one.
 // shortcut: the target is D2R's skill target (PD2 reads the path's target unit), as for Holy Light. Upgrade if a cast
-// in game kicks another unit than the one clicked (docs/unported.md).
+// in game kicks another unit than the one clicked (docs/deviations.md).
 auto SrvDoDragonFlight(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	if (game == nullptr || unit == nullptr) {
@@ -1921,7 +1921,7 @@ void AddStealList(Game* game, Unit* unit, const uint8_t* skill, int32_t skillId,
 // where PD2 skips results 0x8390 on monsters and takes back the charges if the applied hit misses), the prg function
 // fires after the hit is applied (PD2: just before), and PD2's in-build progressive bonuses (vanilla 0x922a0 /
 // 0x91e30, which D2R only runs inside its release) are not run.
-// Upgrade with a port of srvdo 34's hit if play shows the charge counts or damage off PD2's (docs/unported.md).
+// Upgrade with a port of srvdo 34's hit if play shows the charge counts or damage off PD2's (docs/deviations.md).
 auto SrvDoChargeUp(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	const uint32_t dataFlag = d2r::DataFlag(game);
@@ -2640,7 +2640,7 @@ auto StaticFieldOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 
 // One unit in range (PD2's 0x1036c920): the debuff list, owned by the caster.
 // shortcut: PD2's state helper (0x1036d7d0) also refuses some monsters by monstats flags; NewStateList's own checks
-// stand in (docs/unported.md). Upgrade if a monster PD2 leaves alone shows the debuff in play.
+// stand in (docs/deviations.md). Upgrade if a monster PD2 leaves alone shows the debuff in play.
 auto StaticFieldDebuffOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	using namespace d2r::rva;
 	auto* debuff = static_cast<StaticFieldDebuff*>(area->arg);
@@ -3017,7 +3017,7 @@ static_assert(ChannelLine(0, 0, 10, 0, 3).stepX == 0 && ChannelLine(0, 0, 10, 0,
 static_assert(ChannelLine(0, 0, 0, 10, 2).x == 1 && ChannelLine(0, 0, 0, 10, 2).stepX == -1);
 
 // shortcut: PD2 then re-times the caster's frame and mode-end events from the next whole frame (0x1037a7c0); D2R's
-// events are left as they are. Upgrade if the channel's cast rate differs from PD2's in play (docs/unported.md).
+// events are left as they are. Upgrade if the channel's cast rate differs from PD2's in play (docs/deviations.md).
 auto SrvDoChannel(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	if (game == nullptr || unit == nullptr) {

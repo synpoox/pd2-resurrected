@@ -39,7 +39,7 @@ the cleanup. It keeps srvdo 52's skill-flag clear and set (D2R's own bookkeeping
 clearing it only after a teleport that went. The aurastate helper
 is left out (nothing to do for the only row).
 
-Deviation (approximated, on the unported list): the target is D2R's skill target, where PD2 reads the path target,
+Deviation (approximated, on the deviation list): the target is D2R's skill target, where PD2 reads the path target,
 as for Holy Light (W17); Teleport's core brings Teleport's approximations.
 
 ## dmg 15 (Psychic Hammer)

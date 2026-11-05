@@ -101,7 +101,7 @@ repo. Table, row and string names below are short identifiers.
 - **The area:** level 185 "PD2 Pandemonium Finale" (shown as "Tristram"), preset row 1141 `Act1/Tristram/pd2_ubertrist.ds1`.
   It is D2R's level 136 with another id, `OffsetY` 1100 and white lighting (`Intensity` 140, RGB 255). D2R's level 136
   uses `Tri_Town4.ds1`. The new preset is in `pd2maps.mpq` (not extracted, so its monster and object presets are
-  unread). It falls under unported "New PD2-only areas".
+  unread). It falls under deviation list "New PD2-only areas".
 - **Not this chain:** level 156 "Pandemonium Map" / "The Pandemonium Citadel" (presets `Pandemonium.ds1`,
   `Pandemonium2.ds1`, `Pandemonium3.ds1`) is a map area, opened by the tier 3 map item `t37` (misc row 229 "Pandemonium
   Map", shown as "Pandemonium Citadel Map"),
@@ -165,9 +165,9 @@ repo. Table, row and string names below are short identifiers.
 |---|---|---|
 | Keys' drops (`pk1`-`pk3` in six Hell TCs) | none needed: PD2's TCs are already merged | existing (data) |
 | Key recipe's op 28 (row 179) | core-rules "Quest item difficulty check" (op 28, data) | existing |
-| Talisman's spell (`misc.ubtm.pSpell`) | unported "Map items"; core-rules map-items row (`pSpell` 12 -> 16) | existing |
-| Talisman never drops | unported "Map items never drop" (`misc.ubtm.spawnable`, `merge/item-tables.txt`) | existing |
-| Level 185 and its preset | unported "New PD2-only areas" | existing |
+| Talisman's spell (`misc.ubtm.pSpell`) | deviation list "Map items"; core-rules map-items row (`pSpell` 12 -> 16) | existing |
+| Talisman never drops | deviation list "Map items never drop" (`misc.ubtm.spawnable`, `merge/item-tables.txt`) | existing |
+| Level 185 and its preset | deviation list "New PD2-only areas" | existing |
 | MonSmite (Uber Duriel) | core-rules Smite, srvdo 150 (built, W19) | existing |
 | DiabWall (Uber Diablo) | core-rules "Firestorm and wall makers" (built, W22) | existing |
 | MonCharge, MonJab, Baal Lowres | D2R's own functions (67, 7, 30) | existing (data) |

@@ -4,13 +4,13 @@ How the port builds the PD2 item rules that have no work item yet, decided in
 [#158](https://github.com/synpoox/pd2-resurrected/issues/158) (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)).
 What is left is in the
 [inventory](https://github.com/synpoox/pd2-resurrected/blob/research/pd2-remaining-items/docs/research/pd2-remaining-items.md)
-(#148). Each rule is a row in [core-rules.md](core-rules.md) and on [unported.md](unported.md). The work items are placed
+(#148). Each rule is a row in [core-rules.md](core-rules.md) and on [deviations.md](deviations.md). The work items are placed
 on [roadmap.md](roadmap.md) by [#210](https://github.com/synpoox/pd2-resurrected/issues/210).
 
 ## Scope
 
 In: the item-event and item-rule rows of core-rules that have no work item; the 14 PD2-only item stats that only
-`ProjectDiablo.dll` reads (new rows); the item rules found only on the PD2 wiki; the unported data rows whose P3 item is
+`ProjectDiablo.dll` reads (new rows); the item rules found only on the PD2 wiki; the deviation list's data rows whose P3 item is
 closed.
 
 Out:

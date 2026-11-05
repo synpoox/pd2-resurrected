@@ -50,7 +50,7 @@ PD2 calls no hand-alternating function (D2R's srvdo 35 alternates claws before c
 timer, +1 up to 3, aurastat2) when the queued hit has bit 0, apply (`0x44b2b0`). core-rules' `SrvDoChargeUp` does
 step 1, calls D2R's 34, and when the count went up adds charges to the shared count + 1, fires the prg function and
 sends `SendChargePacket` (`0x5396d0`). Building the hit in core-rules would mean rebuilding srvdo 34's damage block
-(an inline list and a tagged pointer with destructors), so the deviations stay (unported list, server half):
+(an inline list and a tagged pointer with destructors), so the deviations stay (deviation list, server half):
 
 - to-hit without progressive_tohit (whether D2R's `0x339040` adds stat 325 is not read);
 - a hit counts on the queued result: PD2's `0x8390` results on monsters build charges here, and a hit the fill turns

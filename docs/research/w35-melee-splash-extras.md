@@ -88,7 +88,7 @@ The apply passes flag 0, so the walker gets the handler set `0x105dc628` (built 
   The walker (`0x5881e0`) jumps outside the dump, so whether it also drops other domeleedamage handlers on splashed
   units (crushing blow, open wounds, which PD2 fires) is not known.
 
-## Deviations (approximated, on the unported list)
+## Deviations (approximated, on the deviation list)
 
 - Smite's splash takes Smite's own skill damage. PD2 deals its shield damage and adds a state 224 list with
   inc_splash_radius = skill `+0x158`.

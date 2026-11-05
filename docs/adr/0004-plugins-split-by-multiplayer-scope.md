@@ -2,7 +2,7 @@
 
 PD2's engine features are rebuilt as a few D2RLoader DLLs from one CMake project in `plugin/`, split by multiplayer scope rather than by feature: `core-rules` (Shared: skill and hit functions, cube ops, item rules, server hooks), `core-stash` (Shared, once PluginSDK supports extra pages) and `core-ui` (client-only). Shared code (per-build RVAs, helpers) is a static library linked into each. D2RLoader requires Shared plugins to match on host and client, so a client UI change must never force that match. Plugins never call each other; client-only plugins read what they need from tables or D2R's synced unit state, so they can be dropped without changing gameplay.
 
-Where a bundled companion plugin already covers a PD2 feature (loot filter, stash search, tooltip roll ranges, buff timers), the port uses it instead of building its own, and lists what it lacks on the unported list.
+Where a bundled companion plugin already covers a PD2 feature (loot filter, stash search, tooltip roll ranges, buff timers), the port uses it instead of building its own, and lists what it lacks on the deviation list.
 
 `core-stash` and `core-ui` exist only for what no companion covers; if companions cover a system fully, that plugin is never built.
 

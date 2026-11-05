@@ -69,7 +69,7 @@ tooltip); auralencalc is `125 + 5 * Lightning Mastery`.
 (`ServerRing`); `SrvDoStaticField` runs both passes through `AreaUnits`. `StaticFieldDamage` and `ImmuneHalved` have
 compile-time checks; `TimedStatList` takes the list's owner.
 
-Deviation (approximated, on the unported list): the state helper's monster refusals (monstats flags, `0x1036d7d0`)
+Deviation (approximated, on the deviation list): the state helper's monster refusals (monstats flags, `0x1036d7d0`)
 are D2R's NewStateList's; a player who gets the debuff is not sent the `0x83` timer packet; an aurastat past
 itemstatcost's end is not refused. D2R's online cast limit (`0x432c40`) before its Static Field is left out, as PD2 has none.
 

@@ -50,7 +50,7 @@ D2R's stat callback (`0x46fdd0`, `(game, unit, item, stat << 32 | layer, old, ne
 - Phasing SelfAura: on the stat's change (the callback's new value) and on each tick, the unit's path collision mask
   loses (or gets back) `0x1000` on a player, `0x3000` on a monster.
 
-Left approximated, on the [unported list](../unported.md): PD2's two other path calls and its state 13/244 refresh,
+Left approximated, on the [deviation list](../deviations.md): PD2's two other path calls and its state 13/244 refresh,
 the skill-list add, and the Phasing tooltip line.
 
 ## Game check

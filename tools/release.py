@@ -6,7 +6,7 @@ Run it after the whole build in README.md (merge, companions fetch, modkit build
 mod folder as an install lays it out (out/data, modinfo, loader metadata and config, the companions, our plugins in
 d2rloader/plugins/, the vanilla tables the loot filter reads from DIR) in dist/mod/, then runs d2rAI-toolkit's
 release/package_release.py with release.toml, and fills its notes: mod.json's description, install steps for the 7z
-(no downloader yet), the changelog's `### <version>` section and the unported list. The version defaults to
+(no downloader yet), the changelog's `### <version>` section and the deviation list. The version defaults to
 mod.json's; the changelog must have its section.
 """
 from __future__ import annotations
@@ -25,7 +25,7 @@ from typing import Callable
 from companions import ROOT, fill_tables, overlay
 
 PLUGINS = ["core-rules", "core-maps", "core-ui"]
-UNPORTED = "https://github.com/synpoox/pd2-resurrected/blob/{commit}/docs/unported.md"  # the list as built
+DEVIATIONS = "https://github.com/synpoox/pd2-resurrected/blob/{commit}/docs/deviations.md"  # the list as built
 
 
 class ReleaseError(Exception):
@@ -85,7 +85,7 @@ Into a D2R folder at the build above, with D2RLoader installed (the game must be
 
 """
 KNOWN = ("## Known issues\n\n"
-         "- What is not ported yet, or works differently from Project Diablo II: the [unported list]({url}).\n"
+         "- What is not ported yet, or works differently from Project Diablo II: the [deviation list]({url}).\n"
          "- Until the first multiplayer release, a new build may break your characters; each break is in the changes.")
 
 
@@ -98,7 +98,7 @@ def finish_notes(dist: Path, version: str, section: str, commit: str, about: str
              (r"(?s)^## Install\n.*?(?=^## Changes$)", INSTALL.format(archive=archive, folder=folder)),
              # the changelog's #### groups sit under "## Changes" here
              (r"^## Changes\n\n- TODO$", "## Changes\n\n" + re.sub(r"(?m)^#### ", "### ", section)),
-             (r"^## Known issues\n\n- TODO$", KNOWN.format(url=UNPORTED.format(commit=commit)))]
+             (r"^## Known issues\n\n- TODO$", KNOWN.format(url=DEVIATIONS.format(commit=commit)))]
     for pattern, repl in fills:
         text, n = re.subn(pattern, lambda _: repl, text, count=1, flags=re.M)
         if not n:

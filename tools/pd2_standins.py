@@ -2,7 +2,7 @@
 
 merge/standins.tsv has one line per row: `table <tab> row <tab> from <tab> columns <tab> rule`. It sets the listed
 function columns of a merged row (its mod name) from `from`: `=` is D2R's own row at that id, a name is that D2R row,
-`-` blanks them. `rule` names the core-rules row it stands in for; each is a "not yet" row on docs/unported.md. Delete
+`-` blanks them. `rule` names the core-rules row it stands in for; each is a "not yet" row on docs/deviations.md. Delete
 a row's line when its rule is built.
 """
 from __future__ import annotations

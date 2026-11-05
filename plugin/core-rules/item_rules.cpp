@@ -7,7 +7,7 @@
 //   cast (mode SC; an inline hook on D2R's server skill dispatcher), each of the player's item_skilloncast listeners
 //   rolls the stat's chance, then casts the layer's skill at the target, or at the caster's aim point. Every
 //   cast-skill item works this way, not only Ormus' Robes. PD2 raises its dospellcast event for it; where was not
-//   found, so this trigger is approximated (docs/unported.md).
+//   found, so this trigger is approximated (docs/deviations.md).
 // - curses (docs/research/ir4-curses.md): max curses (a target holds up to the caster's max_curses + 1 curses) and
 //   curse resistance (curse_effectiveness on the target scales the curse's stats), around D2R's ApplyCurse.
 // - skill while equipped and phasing (docs/research/ir7-equipped-items.md): item_skillonequip runs its skill as an

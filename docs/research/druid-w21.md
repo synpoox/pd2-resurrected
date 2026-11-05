@@ -22,7 +22,7 @@ the debuff missile.
 6. One missile per point: flags 0x8020, owner and origin the caster, range (params +0x4c, D2R +0x5c) = range.
 7. `0x1037a7c0 (game, unit)`: drops the caster's type 0 and 1 events (frame and mode end), moves its animation to the
    next whole frame and adds the frame events of the rest of the animation and a new mode end again. Not ported
-   (`docs/unported.md`).
+   (`docs/deviations.md`).
 
 ## cltdo 111 (`0x103abce0`)
 

@@ -40,7 +40,7 @@ start; the merged row keeps D2R's srvst 58 instead.
 
 srvdo 175 applies the queued hit through srvdo 2 (as core-rules' Bash does), then sends PD2's calc2 makers through
 W22's maker loop with callback 1 (D2R's Firestorm maker callback). cltdo 110 draws the same count. Approximated
-(`docs/unported.md`): the hit is rolled at the start frame, not the do frame; progressive_tohit is not added; the fire
+(`docs/deviations.md`): the hit is rolled at the start frame, not the do frame; progressive_tohit is not added; the fire
 comes from the skill's elemental damage, not from temp_skill_buff.
 
 ## srvst 77 (`0x103b6c80`)
@@ -65,7 +65,7 @@ first pet; `0x4ffd30 (game, owner, pet id, 1)` takes it off the list and kills i
 pettype at skill +0x112 and petmax at +0x114 and summons at least one.
 
 core-rules builds the rule with D2R's pet table, taking petmax from the cast skill at the cast level (the only rows
-with these pet types are the types' own skills). Approximated (`docs/unported.md`): a refusal is silent.
+with these pet types are the types' own skills). Approximated (`docs/deviations.md`): a refusal is silent.
 
 ## Game check
 

@@ -1,4 +1,4 @@
-# Unported list
+# Deviation list
 
 Every deviation from the PD2 baseline, and why (see [GLOSSARY.md](../GLOSSARY.md)). D2R-only content is not a
 deviation. PD2's own bugs that we fixed are listed in [pd2-origin-bugs.md](pd2-origin-bugs.md).

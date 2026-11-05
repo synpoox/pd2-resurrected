@@ -57,7 +57,7 @@ list up beforehand and sets hpregen (`SetListStat`, `SetUnitState`) only on a ne
 value, as in PD2. D2R's skills record keeps auralencalc at `+0x80` (1.13c `+0x60`, like aurastat1 `+0x54 -> +0x74`
 and aurastatcalc1 `+0x68 -> +0x88`).
 
-Deviation (approximated, on the unported list): D2R's teleport instead of PD2's core, and no `0x83` timer packet on
+Deviation (approximated, on the deviation list): D2R's teleport instead of PD2's core, and no `0x83` timer packet on
 an extended list.
 
 ## Checks

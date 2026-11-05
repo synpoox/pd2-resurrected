@@ -23,12 +23,12 @@ reviews P1, W1, W2, the first PR in each class lane, and the M2 and alpha 0.1.0 
 | MS | Map system | [map-system.md](map-system.md) |
 | UB | Uber bosses | [uber-bosses.md](uber-bosses.md) |
 | WL | Warlock redesign | [warlock.md](warlock.md) |
-| UR | Remaining unported-list rows | [unported-rows.md](unported-rows.md) |
+| UR | Remaining deviation-list rows | [unported-rows.md](unported-rows.md) |
 | Q | An open research question in core-rules, not a work item | [core-rules.md](core-rules.md) |
 
 ## M1: a new character in Act 1
 
-PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-diff gate and the unported list in place.
+PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-diff gate and the deviation list in place.
 
 | # | Work item | Blocked by | Lane | Issue |
 |---|---|---|---|---|
@@ -36,7 +36,7 @@ PD2's tables, strings and stand-ins merged, playable in Act 1, with the table-di
 | P2 | Remapped ids: skill, stat, state and missile ids remapped through append-only id lists in `merge/` | P1 | A | [#40](https://github.com/synpoox/pd2-resurrected/pull/40) |
 | P3 | Item tables: items, affixes, runewords, cube, treasure classes; map items blocked from dropping | P2 | A | [#47](https://github.com/synpoox/pd2-resurrected/issues/47) |
 | P4 | Monster and area tables: monsters, levels and the remaining tables | P2 | D | [#48](https://github.com/synpoox/pd2-resurrected/issues/48) |
-| P5 | Table-diff gate (`pd2_diff`) and `docs/unported.md`, seeded with the gaps found so far | P1 | D | [#49](https://github.com/synpoox/pd2-resurrected/issues/49) |
+| P5 | Table-diff gate (`pd2_diff`) and `docs/deviations.md`, seeded with the gaps found so far | P1 | D | [#49](https://github.com/synpoox/pd2-resurrected/issues/49) |
 | P6 | Strings: the strings build ("Decide how the mod ships PD2's strings", [#29](https://github.com/synpoox/pd2-resurrected/issues/29)) | P1 | D | [#43](https://github.com/synpoox/pd2-resurrected/issues/43) |
 | W3 | Stand-ins and data rows (core-rules) | P1 | C | [#46](https://github.com/synpoox/pd2-resurrected/issues/46) |
 | P10 | HD missiles: every missile PD2 adds gets a `missiles.json` model (stand-in art), so none is invisible in HD | P2 | A | [#74](https://github.com/synpoox/pd2-resurrected/pull/74) |
@@ -71,7 +71,7 @@ tests the local 7z alone.
 ## Alpha 0.1.0: every PD2 class complete
 
 M2 plus the Necromancer, Paladin, Druid, Sorceress and Assassin as complete classes (spec [#85](https://github.com/synpoox/pd2-resurrected/issues/85)). Class-themed item rules
-are "not yet" rows on the unported list; the Warlock ships as D2R has it.
+are "not yet" rows on the deviation list; the Warlock ships as D2R has it.
 
 | # | Work item | Blocked by | Lane | Issue |
 |---|---|---|---|---|
@@ -84,7 +84,7 @@ are "not yet" rows on the unported list; the Warlock ships as D2R has it.
 | W33 | **Rush:** melee splash (srvdo 163), which item_splashonhit, Frenzy, Tiger Strike and Revive's event cast (core-rules) | none | A, as a rush job | [#119](https://github.com/synpoox/pd2-resurrected/issues/119) |
 | W34 | Get-hit/block end window and cast/sequence delay, every class (core-rules), split off W14 | none | first free class lane | [#120](https://github.com/synpoox/pd2-resurrected/issues/120) |
 | W35 | Melee splash: the current skill's damage and radius extras (core-rules), after W33 | W33 | first free class lane | [#125](https://github.com/synpoox/pd2-resurrected/issues/125) |
-| P12 | Class item rules: Ormus' Robes' random sorceress skill (properties func 25 -> 26) and skill on cast for every cast-skill item, its trigger approximated on the unported list | none | A | [#108](https://github.com/synpoox/pd2-resurrected/issues/108) |
+| P12 | Class item rules: Ormus' Robes' random sorceress skill (properties func 25 -> 26) and skill on cast for every cast-skill item, its trigger approximated on the deviation list | none | A | [#108](https://github.com/synpoox/pd2-resurrected/issues/108) |
 | P13 | Alpha 0.1.0 release: local 7z and release notes | P8 and every item above | A | [#109](https://github.com/synpoox/pd2-resurrected/issues/109) |
 
 **Lanes** for five sessions: A P9 -> P8, then P12 and rush jobs, then P13; B Necromancer; C Paladin; D Druid; E W25, then
@@ -95,20 +95,20 @@ the first PR in each class lane.
 **Engine changes for classes:** before porting a class rule, check what it changes in play. PD2 class engine code that
 changes only input or the skill bar, not what a skill does, comes from a third-party plugin instead: auras on the left
 button (cltst 54, cltdo 103) from the [Left Click Auras](https://github.com/CelestialRayOne/d2rloader_plugins/tree/main/plugins/left-click-auras)
-companion, and Force Move. The merge keeps D2R's columns for those rows, and the unported list names the plugin. Only
+companion, and Force Move. The merge keeps D2R's columns for those rows, and the deviation list names the plugin. Only
 rules that change a skill's effect, damage, missiles or timing get core-rules code.
 
 **Alpha 0.1.0 exit bar:** every PD2 class is a complete class: each of its rows has a passing game check or an approximated row
-on the unported list; a fresh character of every class levels through Acts 1-5 Normal on the merged data; the table-diff
+on the deviation list; a fresh character of every class levels through Acts 1-5 Normal on the merged data; the table-diff
 gate is green for the alpha 0.1.0 scope; every companion arms on Slot4; the owner tests the local 7z alone.
 
-**Left out of alpha 0.1.0** (unported list, "not yet"; the alpha's scope): map items and the map system, new PD2-only areas, the Warlock
+**Left out of alpha 0.1.0** (deviation list, "not yet"; the alpha's scope): map items and the map system, new PD2-only areas, the Warlock
 redesign, class-themed item rules, monster-only engine rules, everything in the core-rules order after the cut.
 
 ## Alpha: PD2 complete for single-player
 
 Alpha 0.1.0 plus every PD2 feature left out of it: the map system, the Warlock redesign (goals in [warlock.md](warlock.md); its three new skills wait for the beta), the uber bosses and their
-areas (Uber Tristram, Diablo Clone, Rathma, Lucion with Desecration; designed in [uber-bosses.md](uber-bosses.md)), the remaining items and item rules and the remaining unported-list rows.
+areas (Uber Tristram, Diablo Clone, Rathma, Lucion with Desecration; designed in [uber-bosses.md](uber-bosses.md)), the remaining items and item rules and the remaining deviation-list rows.
 The core-rules rows after the cut join as W36-W38. Ordered and sliced in "Order the Alpha roadmap and slice it into work
 items" ([#210](https://github.com/synpoox/pd2-resurrected/issues/210)).
 
@@ -149,7 +149,7 @@ P15. The rest merge on the game check, the table-diff gate and a code-review age
 
 **Alpha exit bar:** the alpha 0.1.0 bar holds; the map-system, uber-boss, IR and UR game checks pass; each Warlock tree's
 endgame build meets its target; all 64 in-scope PD2-only areas load with a generated HD preset and Jungle Map runs within
-10% of a same-size D2R area's frame rate; the table-diff gate is green for the alpha scope; the unported list's "not yet"
+10% of a same-size D2R area's frame rate; the table-diff gate is green for the alpha scope; the deviation list's "not yet"
 rows are only those the beta owns (online play, guilds and guild halls, controller screens, the Warlock's three new skills, league rewards, UR10 if it moved); every
 companion arms on Slot4; the owner tests the local 7z alone.
 

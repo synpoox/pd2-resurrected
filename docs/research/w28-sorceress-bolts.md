@@ -38,7 +38,7 @@ table built by `0x3c2c70`.
 core-rules fills srvhit 62 (`SrvHitBoltSplash`): MissileOwner, ElementalDamage into one block, then D2R's AreaUnits
 around the missile with a copy of that block per unit through AreaApply, returning 1.
 
-Deviation (approximated, on the unported list): no physical damage (none of the four skills has MinDam/MaxDam) and no
+Deviation (approximated, on the deviation list): no physical damage (none of the four skills has MinDam/MaxDam) and no
 missile in the block. PD2's deal step reads block `+0x5c` for a missile kill; D2R's block has no field found for it.
 
 ## Chilling Armor's event 3: data

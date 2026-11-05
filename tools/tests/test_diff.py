@@ -20,7 +20,7 @@ class GateTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         (self.root / "docs").mkdir()
         (self.root / "d2r/data/global/excel").mkdir(parents=True)
-        self.unported("")
+        self.deviations("")
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -31,9 +31,9 @@ class GateTests(unittest.TestCase):
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(data)
 
-    def unported(self, rows: str):
-        (self.root / "docs/unported.md").write_text(
-            "# Unported list\n\n| Deviation | Status | Gate | Work item |\n|---|---|---|---|\n" + rows, "utf-8")
+    def deviations(self, rows: str):
+        (self.root / "docs/deviations.md").write_text(
+            "# Deviation list\n\n| Deviation | Status | Gate | Work item |\n|---|---|---|---|\n" + rows, "utf-8")
 
     def gate(self, scope="P4"):
         return pd2_diff.gate(self.root, self.root / "d2r/data", scope)
@@ -49,23 +49,23 @@ class GateTests(unittest.TestCase):
         self.assertTrue(report.ok)
         self.assertEqual(report.open(), [])
 
-    def test_a_changed_cell_is_open_until_the_unported_list_names_it(self):
+    def test_a_changed_cell_is_open_until_the_deviation_list_names_it(self):
         self.write("pd2", "lvlmaze", table("Name | MonLvl", "Rogue Encampment | 1", "Blood Moor | 2"))
         self.write("mod", "lvlmaze", table("Name | MonLvl", "Rogue Encampment | 1", "Blood Moor | 5"))
         self.assertEqual(self.gate().open(), [("lvlmaze.Blood Moor.MonLvl", "2", "5")])
-        self.unported("| Blood Moor is harder | approximated | `lvlmaze.blood moor.monlvl` | P4 |\n")
+        self.deviations("| Blood Moor is harder | approximated | `lvlmaze.blood moor.monlvl` | P4 |\n")
         report = self.gate()
         self.assertTrue(report.ok)
         self.assertEqual(report.results[0].covered, 1)
 
-    def test_the_report_counts_unported_entries_by_status(self):
+    def test_the_report_counts_deviation_entries_by_status(self):
         self.write("pd2", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))
         self.write("mod", "lvlmaze", table("Name | MonLvl", "Blood Moor | 5"))
-        self.unported("| Blood Moor is harder | approximated | `lvlmaze.*.monlvl` | P4 |\n"
+        self.deviations("| Blood Moor is harder | approximated | `lvlmaze.*.monlvl` | P4 |\n"
                       "| Maps | not yet | | P3 |\n| Ladder | not yet | | P6 |\n")
         text = pd2_diff.report(self.gate(), "P4")
-        self.assertIn("1 table cells on the unported list", text)
-        self.assertIn("Unported list: 2 not yet, 1 approximated, 0 cut entries", text)
+        self.assertIn("1 table cells on the deviation list", text)
+        self.assertIn("Deviation list: 2 not yet, 1 approximated, 0 cut entries", text)
 
     def test_missing_rows_and_columns_are_deviations_but_d2r_only_rows_are_not(self):
         self.write("pd2", "lvlmaze", table("Name | *comment | MonLvl | Beta | eol", "Rogue Encampment | x | 1 | 0 | 0",
@@ -127,12 +127,12 @@ class GateTests(unittest.TestCase):
             self.assertEqual(pd2_diff.main(args), 1)
         self.assertIn("| lvlmaze | merged | 1 | 0 |", out.getvalue())
         self.assertIn("| `lvlmaze.Blood Moor.MonLvl` | 2 | 5 |", out.getvalue())
-        self.unported("| Blood Moor is harder | approximated | `lvlmaze.*.monlvl` | P4 |\n")
+        self.deviations("| Blood Moor is harder | approximated | `lvlmaze.*.monlvl` | P4 |\n")
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(pd2_diff.main(args), 0)
 
     def test_a_whole_table_row_must_go_once_the_table_is_merged(self):
-        self.unported("| Not merged yet | not yet | `lvlmaze.*` | P4 |\n")
+        self.deviations("| Not merged yet | not yet | `lvlmaze.*` | P4 |\n")
         self.write("pd2", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))
         self.write("d2r", "lvlmaze", table("Name | MonLvl", "Blood Moor | 1"))
         self.assertEqual(self.gate().results[0].covered, 1)
@@ -194,21 +194,21 @@ class GateTests(unittest.TestCase):
         self.write("mod", "missiles", table("Missile | pSrvHitFunc | sHitPar1", "cloud | 61 | 282"))
         self.assertEqual([o for o in self.gate("P2").open() if o[0].startswith("missiles.")], [])
 
-    def test_every_unported_row_has_a_known_status(self):
-        self.unported("| Something | maybe | `lvlmaze.*.*` | P4 |\n")
+    def test_every_deviation_row_has_a_known_status(self):
+        self.deviations("| Something | maybe | `lvlmaze.*.*` | P4 |\n")
         with self.assertRaisesRegex(pd2_diff.GateError, "maybe"):
             self.gate()
 
     def test_a_separate_gate_table_covers_its_rows_and_must_name_a_listed_row(self):
         self.write("pd2", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))
         self.write("mod", "lvlmaze", table("Name | MonLvl", "Blood Moor | 5"))
-        status = "# Unported list\n\n| Deviation | Status | Why | Work item |\n|---|---|---|---|\n" \
+        status = "# Deviation list\n\n| Deviation | Status | Why | Work item |\n|---|---|---|---|\n" \
                  "| Blood Moor is harder | approximated | why | P4 |\n\n| Deviation | Gate |\n|---|---|\n"
-        (self.root / "docs/unported.md").write_text(status + "| Blood Moor is harder | `lvlmaze.*.monlvl` |\n", "utf-8")
+        (self.root / "docs/deviations.md").write_text(status + "| Blood Moor is harder | `lvlmaze.*.monlvl` |\n", "utf-8")
         report = self.gate()
         self.assertTrue(report.ok)
         self.assertIn("1 approximated", pd2_diff.report(report, "P4"))
-        (self.root / "docs/unported.md").write_text(status + "| Blood Moor is easier | `lvlmaze.*.monlvl` |\n", "utf-8")
+        (self.root / "docs/deviations.md").write_text(status + "| Blood Moor is easier | `lvlmaze.*.monlvl` |\n", "utf-8")
         with self.assertRaisesRegex(pd2_diff.GateError, "Blood Moor is easier"):
             self.gate()
 

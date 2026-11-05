@@ -415,7 +415,7 @@ std::atomic<uint32_t> g_stateHits {0};
 // the result has bit 2, so a 0 or 1 (no hit unit or owner, a bad row) deals none.
 // shortcut: PD2 also halves a negative resist (stats 36-45) on a unit already over 99 in it, and treats states 16, 87
 // and 188 specially; none of shit 61's rows reach those states, and the halving is an approximated row on
-// docs/unported.md. Upgrade if a resist-lowering row must match PD2 on immune monsters.
+// docs/deviations.md. Upgrade if a resist-lowering row must match PD2 on immune monsters.
 auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr) {
@@ -648,7 +648,7 @@ auto CltHitHolyLight(Unit* missile, Unit* hit) noexcept -> int32_t {
 // cHitPar1 (else the skill's aurarangecalc, at least 1). Zero when the missile's target unit is gone, as both do.
 // D2R's 26 (0x1adcb0) differs: it stops at cHitPar2 / calc4 bolts and aims the struck unit's bolt at the caster.
 // shortcut: no bolt limit; 1.13c computes cHitPar2 / calc4 and never stores it, so its callback compares against an unset
-// stack slot. Upgrade if PD2 in play shows a bolt count cap (docs/unported.md).
+// stack slot. Upgrade if PD2 in play shows a bolt count cap (docs/deviations.md).
 auto CltHitFistDelay(Unit* missile, Unit* hit) noexcept -> int32_t {
 	using namespace d2r::rva;
 	(void)hit;
@@ -916,7 +916,7 @@ auto LastHitId(Unit* missile) noexcept -> uint32_t {
 // into sHitPar1 - 1 fragments sHitPar2 directions apart from a random one, with the parent's frames less sHitPar3 (0
 // under cHitPar2), and returns 3.
 // shortcut: PD2 also sends each split fragment to every client (0x1037fe90, 1.13c D2Game 0x7b0a0); D2R's send is not
-// found, so another player sees split fragments only if D2R syncs them (docs/unported.md). Upgrade when D2R's send of a
+// found, so another player sees split fragments only if D2R syncs them (docs/deviations.md). Upgrade when D2R's send of a
 // missile to a client is found.
 // shortcut: the roll is the owner's seed, where PD2 calls the C runtime's rand(); the odds are the same. Upgrade only if
 // a check needs PD2's exact sequence.

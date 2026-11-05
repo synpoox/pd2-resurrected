@@ -76,7 +76,7 @@ wraps the index (docs/pd2-origin-bugs.md).
 
 `SrvHitBladeFragment` (shit 69), `CltHitBladeFragment` (chit 68) and `SrvDmgBladeFragment` (dmg 19) in
 `plugin/core-rules/missile_functions.cpp`; the wall bounce is one template both halves run. Deviations (approximated,
-docs/unported.md):
+docs/deviations.md):
 
 - The split fragments are created on the server only: D2R's send of a missile to a client is not found (1.13c's room
   entry, D2Game `0x9dcd0`, never sends a missile, so the send must be explicit). They hit; another client draws them

@@ -28,7 +28,7 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
 
 - **Parity: Exact.** The map tables (items, affixes, uniques, recipes, treasure classes) are already merged (P3). The
   code is built to PD2's behaviour. If a map stat cannot be reproduced, only that stat gets its own approximated row on
-  the unported list; no whole group of stats is approximated up front.
+  the deviation list; no whole group of stats is approximated up front.
 - **Opening a map:** a right-click in Harrogath, as in PD2 (misc `pSpell` 12 -> 16). PD2's gates apply: Hell, level 80+,
   the Ancients killed, one map or uber area per game. The plugin makes the red portal itself.
   Reimagined's cube output `Red Portal,lvl=<id>` shows that a red portal reaches any Act V level, but it is not used as
@@ -48,7 +48,7 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
   this project ([ADR 0004](adr/0004-plugins-split-by-multiplayer-scope.md), amended). Rules the map system shares with
   other content stay in `core-rules`: the Teleport 3 path search, the
   Find Item and Desecrate monster lists, and the death novas. `core-maps` never calls `core-rules`.
-- **Rules deferred to the map plan** (core-rules rows and their unported rows) join the work item that first brings in
+- **Rules deferred to the map plan** (core-rules rows and their deviation rows) join the work item that first brings in
   their levels or monsters (table below).
 - **D2R Reimagined:** we copy no code from them. Their GPL-3.0 code stays out (ADR 0005), and their map plugin is
   closed source. We use their engine findings as facts, with credit in the research doc: one world rectangle per Act V

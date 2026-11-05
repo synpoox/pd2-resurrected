@@ -44,7 +44,7 @@ spawn to the nest's minion list and callback. D2R's unit flags at `+0x124` are 1
 treasure class, 0x4000000 no experience.
 
 **Port.** The router (srvdo 190, skill 631) runs PD2's steps with D2R's calls. The counter is kept by core-rules, by
-game and unit id: D2R's AI data was not mapped (approximated row, on the unported list; the count is the same).
+game and unit id: D2R's AI data was not mapped (approximated row, on the deviation list; the count is the same).
 
 ## srvst 67 (Corpse/Vine Cycler start)
 

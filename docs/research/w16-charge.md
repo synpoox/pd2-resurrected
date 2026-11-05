@@ -51,7 +51,7 @@ the same speed as D2R's cltst 25.
 The radius widens a splash-on-hit item's splash: proc_SplashDamage's calc3 adds `inc_splash_radius / 20` (melee
 splash, srvdo 163, [w33-melee-splash](w33-melee-splash.md)), as with Frenzy's start (srvst 78).
 
-Deviation (approximated, on the unported list): the distance is measured to the skill's target point, not the path's first point; a monster's speed is its monstats Velocity.
+Deviation (approximated, on the deviation list): the distance is measured to the skill's target point, not the path's first point; a monster's speed is its monstats Velocity.
 
 ## The Charge/Whirlwind rule (gate A)
 
@@ -60,7 +60,7 @@ again, and PD2 also lets requests with no skill through to gate B (frame check f
 change (`0x429d10`) keys on skills.txt flags instead (skill `+0x24` & 0x10, `+0x27` & 0x80, `+0x36`), and the merged
 Charge and Whirlwind rows have the same flags, so Charge stays in Whirlwind's group with srvdo 180. A skill-less request
 during either one reads as queued until the last 2 frames of the sequence in the decompile; PD2's frame-check window
-is not compared. Not checked in game: the plugin does not log mode changes. Approximated row on the unported list.
+is not compared. Not checked in game: the plugin does not log mode changes. Approximated row on the deviation list.
 
 ## Checks
 

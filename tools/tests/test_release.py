@@ -82,7 +82,7 @@ class NotesTests(unittest.TestCase):
             self.assertNotIn("Downloader", text)  # no downloader ships yet
             self.assertTrue(text.startswith("# Mod 1.0.0\n\nThe about line.\n\n## Requirements\n"))
             self.assertIn("## Changes\n\n- A change.\n\n## Known issues\n", text)
-            self.assertIn("/blob/abc123/docs/unported.md", text)
+            self.assertIn("/blob/abc123/docs/deviations.md", text)
             self.assertIn("mods\\Mod\\Mod.mpq\\modinfo.json", text)
             self.assertTrue(text.endswith("## Checksums\n\nSee SHA256SUMS.\n"))
             for line in (dist / "SHA256SUMS").read_text().splitlines():

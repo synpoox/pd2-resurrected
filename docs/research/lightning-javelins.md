@@ -48,7 +48,7 @@ Bolt, Ice Blast, Fire Ball, Lightning, Glacial Spike, Frozen Orb, ...) and 183/1
 are empty and its dispatcher reads `ItemEffect` (`+0x20a`) only for an item cast with a value above 1 and a non-empty
 slot, so an item cast (Crackleshot's hit skill, Thunderstroke, "of Lightning Fury" charges) runs the skill's normal cast
 instead. It does not crash; the difference is the aim (PD2's 187 throws at the target unit's position) and the missile
-flag `0x10000`. Listed in `docs/unported.md`.
+flag `0x10000`. Listed in `docs/deviations.md`.
 
 ## Game check
 

@@ -28,7 +28,7 @@ Out:
 ## Decisions
 
 - **Parity: Exact**, as for the map system. If a mechanic cannot be reproduced, only that mechanic gets its own
-  approximated row on the unported list. Phase thresholds and odds known only from the wiki become the baseline only
+  approximated row on the deviation list. Phase thresholds and odds known only from the wiki become the baseline only
   after a check on the PD2 install.
 - **Opening:** an uber key is used at the Blood Fountain in Harrogath (misc `pSpell` 12 -> 16), as maps are. PD2's
   one map or uber area per game is a single gate shared with the map system.

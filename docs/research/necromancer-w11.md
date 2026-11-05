@@ -25,7 +25,7 @@ elemental damage (`0x567070` calls `0x437d00`), so the melee hit carries Poison 
 The srvdo table ends at 190 (core-rules-inventory Q1), so 164 joins the router (skill ids 73 and 550, Spider Boss).
 core-rules runs D2R's own Poison Dagger do function (srvdo 32, `0x55cc50`: skill flag, target, apply the queued hit)
 for steps 1-2, then step 4. The poison is `0x437d00` on a zeroed block: `+0x38` = min + rand(max - min), `+0x3c` = ELen.
-Since the fill's length is ELen, PD2's rescale is a factor of 1 (approximated on the unported list). D2R's direction
+Since the fill's length is ELen, PD2's rescale is a factor of 1 (approximated on the deviation list). D2R's direction
 offsets are the int32 tables at `0x1d1b650` (x) and `0x1d1b750` (y), radius 30, the ones Nova's srvhit 5 aims at.
 
 Spider Boss has no Param3, so it makes 64 clouds, as in PD2.
@@ -51,7 +51,7 @@ Its sHitPar1 / sHitPar3 / cHitPar2 are PD2 state and stat ids: the merge gives t
 
 `0x1036c920` also: halves a negative resist (stats 36-45, `0x1036df10`) on a non-player unit already over 99 in it;
 handles states 16, 87 and 188 specially. No shit 61 row uses those states; the halving touches the throwing potions'
-clouds (resists) and is approximated on the unported list. Kanemith's blaze dot (state 44, velocity and attackrate -60)
+clouds (resists) and is approximated on the deviation list. Kanemith's blaze dot (state 44, velocity and attackrate -60)
 is exact.
 
 Rows on shit 61: poisondaggercloud, the nine `tpot_*_nova/_cloud/_bolt` rows, kanemithblaze2dotfiremedium/small.

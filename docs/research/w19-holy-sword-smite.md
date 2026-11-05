@@ -49,7 +49,7 @@ hits, #165), so core-rules rolls Smite's crushing blow on the hit path instead. 
 `0x564930`) to mark the thread as smiting, and hooks D2R's hit queue (`0x44b600 (game, attacker, target, damage,
 flag)`). A queued hit that landed (result `+4` has bit 1 and none of `0x8380`) while smiting rolls once with
 `crushingblow` + calc3 and calls D2R's blow (`0x581bd0`) on the damage block before it is queued. PD2's blow formula,
-calc4, stat 268 and the per-hand sum are not ported (unported list; the formula is its own core-rules row).
+calc4, stat 268 and the per-hand sum are not ported (deviation list; the formula is its own core-rules row).
 
 ## Run and Concentration (gate A, PD2 `0x10373290`)
 
@@ -60,7 +60,7 @@ after: a run asked for mid-attack is taken at the end, which is PD2's added run.
 interruptible (`+0x27`); a request with a skill is buffered within 6 frames of the end and refused before, roll or no
 roll. So Concentration blocks get-hit and not the next attack, which is PD2's change. Neither needs code: core-rules
 logs the gate's answers for run requests and for a player under Concentration (`gate:` lines) so the game check sees
-them. The windows are D2R's, not PD2's frame check `0x77e00` (approximated, unported list).
+them. The windows are D2R's, not PD2's frame check `0x77e00` (approximated, deviation list).
 
 ## Checks
 

@@ -47,7 +47,7 @@ the cHitPar and DmgCalc fields move), `CltSubMissile1` at `+0x40` (D2R's cltdo 9
 
 The port evaluates `CHitCalc1` only when the missile has an owner on the client (D2R's missile calc is only known to
 run with one); PD2's one user has the constant 280, so that changes nothing in play (an approximated row on the
-unported list). cdo 69's owner test is PD2's own.
+deviation list). cdo 69's owner test is PD2's own.
 
 No PD2 row names bladesoficecubes as a sub-missile or skill missile, so in the data only fistsoffireexplode (Fists of
 Fire's cltmissilea, RakanothStrike's cltmissilec) reaches cdo 79; whether vanilla client code makes bladesoficecubes
@@ -57,5 +57,5 @@ by id is not read.
 
 `tools/pd2_ids.py` FUNCS: cltprgfunc1-3 106 -> 127, 107 -> 128 (only the finishers use those values there; D2R's
 cltdo 106 is Bind Demon's), missiles pCltDoFunc 69 -> 79 (D2R's 69 is corpseexplosion's; only fistsoffireexplode and
-bladesoficecubes use it in PD2). chit 67 is free in D2R and keeps its number. The stand-ins and the unported list's
+bladesoficecubes use it in PD2). chit 67 is free in D2R and keeps its number. The stand-ins and the deviation list's
 "not yet" client half row are gone.

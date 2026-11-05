@@ -49,7 +49,7 @@ cold `+0x34`, poison `+0x38`, leeches `+0x120/+0x124/+0x128`; the missile record
 (D2R dmg 1 `0x453490` evaluates it with `0x3b4a90(dataFlag, missile, owner, calc, -1, -1)`). D2R's dmg table has 31
 slots, 18-30 empty; ours takes 20 so PD2's own 18 and 19 keep their numbers.
 
-Deviation (approximated, on the unported list): without PD2's pierce hook, core-rules counts hits on pierce_count
+Deviation (approximated, on the deviation list): without PD2's pierce hook, core-rules counts hits on pierce_count
 (merged id 522) inside the function. Every hit but the last matches; the last, not piercing hit takes one step less.
 
 ## shit 63 (Fire Arrow, Exploding Arrow)
@@ -71,7 +71,7 @@ srvmissilea explodingarrowexp3, srvmissileb fireexplosion3. Fire Arrow has no ca
 Skills record offsets (1.13c / D2R): calc1-4 `0x138-0x144` / `0x190-0x19c`, Param1 `0x148` / `0x1b8`, Param4 `0x154` /
 `0x1c4` (D2R field table `0x305e68`).
 
-Deviation (approximated, on the unported list): core-rules creates all explosions at the hit with
+Deviation (approximated, on the deviation list): core-rules creates all explosions at the hit with
 MissileParams `activation` set to the delay instead of queueing timers, rolls the points on the owner's seed, and lets
 fireexplosion3 play out.
 
