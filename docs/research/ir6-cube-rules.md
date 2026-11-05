@@ -59,7 +59,12 @@ PD2's split is Ctrl+left-click with a stack held, one item per click (owner); it
   (`0x103841d0`) clears that bit for the remake and restores it after (`0x1037ff00` / `0x1037ff30`, game +0x1b24).
 - Output n's block is 0x5b bytes from record +0x5a. An output's `qty` on a stackable item sets its quantity; with flag 2
   (`sock`) it sets that many sockets (`0x375560`); flag 4 (`eth`) makes it ethereal.
-- `cheat spawn` reads at most 3 characters of the code, so PD2's 4-character codes (`imrn`, `cwss`) cannot be spawned.
+- `cheat spawn` reads at most 3 characters of the code, so PD2's 4-character codes (`imrn`, `cwss`) cannot be spawned
+  ([#323](https://github.com/synpoox/pd2-resurrected/issues/323) patches it). It takes `qty <n>` for a stack.
+- The PluginSDK item services do the reroll without these internals (core-rules): `executeTransaction` takes one
+  Demonic Cube and the old item and makes the new one with `AllowDuplicateUnique`. It returns `Busy` when called from
+  the cube executor, so the work is queued with `ThreadService::runOnGameThread`. It cannot move socketed items
+  (`SocketedItemPolicy` is reject or destroy).
 - The executor removes an input item with `0x48fa40(game, item)`: a stack is one item to D2R's cube, so a stack of
   Demonic Cubes would go whole (#315's problem).
 </content>

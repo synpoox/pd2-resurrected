@@ -89,12 +89,12 @@ def count_each_input(cube: I.Table) -> None:
 
 def remake_rerolls(cube: I.Table) -> None:
     """PD2's op 31 rows (Demonic Cube + a unique or set item) have no outputs: PD2's cube code remakes the item and
-    takes one Demonic Cube off the stack (IR6, #241). D2R's `usetype,reg` remakes the input's own unique or set row at its
-    item level; output b gives the Demonic Cube stack back, and core-rules sets its count (the executor takes the stack)."""
+    takes one Demonic Cube off the stack (IR6, #241). core-rules does that through an SDK item transaction; the rows get
+    `usetype,reg`, D2R's own remake of the input's unique or set row, so they are complete rows to D2R."""
     h = {c: j for j, c in enumerate(cube.header)}
     for r in cube.rows if "op" in h else []:
         if r[h["op"]] == "31":
-            r[h["output"]], r[h["output b"]] = "usetype,reg", "imrn,qty=1"
+            r[h["output"]] = "usetype,reg"
 
 
 def mark_new_corrupted(cube: I.Table, corruptor: str | None) -> None:

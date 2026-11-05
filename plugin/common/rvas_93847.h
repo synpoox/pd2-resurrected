@@ -791,15 +791,6 @@ inline constexpr uint64_t InventoryNextItem = 0x38aba0;   // (item) -> next item
 inline constexpr uint64_t ItemPage = 0x36cfe0;            // (item) -> item data +0x55: 0 inventory, 3 cube, 4 stash
 inline constexpr uint64_t ItemCode = 0x36ef50;            // (item) -> items.txt code as a dword ('box ' 0x20786f62)
 inline constexpr uint8_t CubePageCube = 3;
-inline constexpr uint64_t ItemRow = 0x36ce70;  // (item) -> its uniqueitems or setitems row, or -1
-// DataTables: uniqueitems records at +0x13c8 (count +0x13d0, 0x15c bytes), setitems at +0x13a8 (count +0x13b0, 0x1cc
-// bytes); each record's base item code dword at +0x28, which 0x443910 / 0x58c2f0 match against the item's
-inline constexpr int UniqueRecords = 0x13c8, SetRecords = 0x13a8, UniqueRecordSize = 0x15c, SetRecordSize = 0x1cc;
-inline constexpr int RecordBaseCode = 0x28;
-inline constexpr int GameUniquesMade = 0x3638;   // uint32 bits: unique rows made this game (0x443910 skips them)
-// Output n's block is 0x5b bytes from +0x5a; the CubeOut* fields are output A's.
-inline constexpr int CubeOutput = 0x5a, CubeOutputSize = 0x5b, CubeOutFlags = 0x5e, CubeOutQty = 0x65;
-inline constexpr uint16_t CubeOutSocket = 0x2, CubeOutEthereal = 0x4;  // `sock` (qty sockets), `eth`
 
 // --- core-ui: automap for level types 36+ (LP2, #212) -------------------------------------------------------------
 // (levelType, tileType, style, sequence) -> cel or -1 (0xffffffff): the automap tile lookup. It matches AutoMap.txt
