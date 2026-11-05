@@ -418,7 +418,7 @@ class LevelTableTests(unittest.TestCase):
 
     def test_numeric_references_id_columns_and_d2r_columns(self):
         # PD2's level 3 appends at 4 (D2R took 3): its Vis, a preset's LevelId and the Id columns follow it;
-        # an objects row keeps D2R's Token on a merged row only
+        # an objects row keeps D2R's Token and a misc row D2R's spellicon (the identify cursor, #311) on a merged row only
         ids = {"levels": {"0": "0", "1": "1", "3": "4"}, "objgroup": {"0": "0", "2": "5"}}
         lv = I.merge_table("levels", table("Name|Id|Vis0|ObjGrp0\nNull|0|0|0\nTown|1|3|0\nNew|3|1|2\n"),
                            table("Name|Id|Vis0|ObjGrp0\nNull|0|0|0\nTown|1|0|0\n"),
@@ -434,10 +434,9 @@ class LevelTableTests(unittest.TestCase):
                            table("Class|Name|*ID|Token|SizeX\nChest1|chest|0|hd1|1\n"),
                            [("chest", 0, "Chest1"), ("new", 1, "new")], {})[0]
         self.assertEqual(ob.rows, [["Chest1", "chest", "0", "hd1", "3"], ["new", "new", "1", "N1", "2"]])
-        # misc keeps D2R's spellicon (the identify cursor, #311)
-        mi = I.merge_table("misc", table("code|spellicon|maxstack\nisc|-1|20\nnew|-1|1\n"),
+        mi = I.merge_table("misc", table("code|spellicon|maxstack\nisc|-1|80\nnew|-1|1\n"),
                            table("code|spellicon|maxstack\nisc|0|20\n"), [("isc", 0, "isc"), ("new", 1, "new")], {})[0]
-        self.assertEqual(mi.rows, [["isc", "0", "20"], ["new", "-1", "1"]])
+        self.assertEqual(mi.rows, [["isc", "0", "80"], ["new", "-1", "1"]])
 
     def test_objtype_follows_the_objects_list(self):
         lines = [("Dummy", 0, "Null"), ("<reserved>", I.LEFT_OUT, "placeholder"), ("chest", 2, "chest")]
