@@ -1,0 +1,16 @@
+// Map stats on monsters and players (map_stats.cpp).
+#pragma once
+
+#include "d2r.h"
+
+#include <D2RLPlugin/api.h>
+
+#include <cstddef>
+
+// Routes an opened map's stats into this game's monster and player lists. Call before the map item is freed.
+auto RouteMapStats(d2r::Game* game, d2r::Unit* item) noexcept -> void;
+// Installs the monster spawn and player frame hooks; `report` gets one entry. Returns how many were installed.
+auto InstallMapStats(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
+auto MapStatsCount() noexcept -> int;
+// Live counters for the status command.
+auto MapStatsCounters(char* out, size_t size) noexcept -> void;
