@@ -125,9 +125,9 @@ Windows runner with the labels `self-hosted, windows, pd2r` (Settings > Actions 
 add the `pd2r` label when `config.cmd` asks). That machine needs the PD2 install named in `pd2-baseline.json`, Python
 3.13 with `py`, CMake and Visual Studio, and 7-Zip. Set two repository variables (Settings > Secrets and variables >
 Actions > Variables): `D2R_TOOLKIT`, the d2rAI-toolkit checkout (its `d2r-data/` cache is reused), and `D2R_GAME`, the
-D2R folder. The repository is private, so only its collaborators can run workflows on this runner; if it ever goes
-public, first set Settings > Actions > General > "Fork pull request workflows from outside collaborators" to "Require
-approval for all external contributors", or a fork's PR could edit a workflow to run on it.
+D2R folder. The repository is public, so Settings > Actions > General > "Fork pull request workflows from outside
+collaborators" must stay on "Require approval for all external contributors": a fork's PR could otherwise edit a
+workflow to run on this runner. Read a fork PR's workflow changes before approving its run.
 
 ## Plugins
 
