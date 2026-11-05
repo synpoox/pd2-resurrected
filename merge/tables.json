@@ -57,7 +57,11 @@
   "pd2_only_rows": "leave out"
  },
  "objmode": {},
- "overlay": {},
+ "overlay": {
+  "d2r_columns": [
+   "Character"
+  ]
+ },
  "pettype": {},
  "playerclass": {},
  "plrmode": {},
