@@ -86,7 +86,7 @@ the earliest in the order Necromancer, Paladin, Druid, Sorceress, Assassin, and 
    PerfectShrine and the death handler are W37; their builds, `.set-home` and `skilldelay` are W38 (#210).
 
 A rule that doesn't fit a slot uses a router on that table, keyed by the id its function receives; with no key it is cut
-and listed. Slot sizes and free ranges per table: [skill-function-tables](https://github.com/synpoox/pd2-resurrected/blob/research/skill-function-tables/docs/research/skill-function-tables.md).
+and listed. Slot sizes and free ranges per table: [skill-function-tables](research/skill-function-tables.md).
 
 ## Skill functions (server and client halves)
 

@@ -8,6 +8,9 @@ Every PR links the issue it solves: the body opens with `Closes #<n>`, or `Part 
 
 After a PR merges, delete its branch, on the remote and locally.
 
+`research/*` branches hold `/wayfinder` research findings. They are never merged, and never deleted: design docs and
+issue comments link to them.
+
 ### Triage labels
 
 A bug that exists in PD2 itself, and that we fix, also gets `pd2-origin` and a row in `docs/pd2-origin-bugs.md`.
