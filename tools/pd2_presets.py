@@ -12,8 +12,9 @@ layers), else the tile stays empty. The terrain is D2R's stock flat plane (TERRA
 by the tile set's biome; the preset depends on what the stock presets it copies from depend on.
 
 merge/presets-hd.tsv: `tile set <tab> biome`, one line per lvltypes Name the PD2-only presets on D2R tiles load. The
-merge fails on a PD2-only preset on D2R tiles whose tile set has no line; a preset that loads a PD2 tile
-(pd2assets/) gets none, it waits for LP4/LP5's stand-in kits. Needs D2R's tiles and presets in modkit's cache:
+merge fails on a PD2-only preset on D2R tiles whose tile set has no line, and on a line no such preset needs; a
+preset that loads a PD2 tile (pd2assets/) gets none, it waits for LP4/LP5's stand-in kits. Needs D2R's tiles and
+presets in modkit's cache, else it makes none (dev builds run without, ADR 0005):
 `python -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/`.
 """
 from __future__ import annotations
@@ -140,9 +141,12 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
             entities.append(e)
         return True
     for (x, y), key in sorted(lay.keys.items()):
-        if not place(x, y, key, "") and not [place(x, y, (key[0], (t,)), f":{k}") for k, t in enumerate(key[1])
-                                             if (key[0], (t,)) in kit.instances]:
-            missing += 1
+        if place(x, y, key, ""):
+            continue
+        alone = [(k, (key[0], (t,))) for k, t in enumerate(key[1]) if (key[0], (t,)) in kit.instances]
+        for k, single in alone:
+            place(x, y, single, f":{k}")
+        missing += not alone
     terrain = copy.deepcopy(terrain)
     terrain["id"] = len(entities) + 1
     scale = _transform(terrain)["scale"]
@@ -206,11 +210,14 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     sets = read_rule(rule)
     tiles_dir = d2r_data / "global" / "tiles"
     if not (d2r_data / PRESETS).is_dir() or not any(tiles_dir.rglob("*.dt1")):
-        raise ValueError(f"no D2R presets or DT1 under {d2r_data}: run `{FETCH}`")
+        print(f"  presets-hd: skipped, no D2R presets or DT1 under {d2r_data} (dev builds run without; `{FETCH}`)")
+        return
     presets = pd2_only_presets(out_data, len(load(d2r_data, "lvlprest").records()))
     on_d2r = [p for p in presets if not any(f.startswith("pd2assets/") for f in p[2])]
     if unruled := sorted({s for _, s, _, _ in on_d2r if s.lower() not in sets}):
         raise ValueError(f"PD2-only presets on D2R tiles in tile sets with no line: {', '.join(unruled)}")
+    if stale := sorted(set(sets) - {s.lower() for _, s, _, _ in on_d2r}):
+        raise ValueError(f"lines for tile sets no PD2-only preset on D2R tiles loads: {', '.join(stale)}")
     terrain_src = d2r_data / PRESETS / f"{TERRAIN}.json"
     if not terrain_src.is_file():
         raise ValueError(f"no {terrain_src}: run `{FETCH}`")

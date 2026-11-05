@@ -153,6 +153,22 @@ class ApplyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "with no line: Act 1 - Town"):
             P.apply(self.rule, Path(), self.d2r, self.out)
 
+    def test_a_line_no_preset_needs_fails(self):
+        self.rule.write_text("Act 1 - Town\tb.json\nAct 9 - Gone\tb.json\n")
+        with self.assertRaisesRegex(ValueError, "no PD2-only preset on D2R tiles loads: act 9 - gone"):
+            P.apply(self.rule, Path(), self.d2r, self.out)
+
+    def test_without_d2rs_presets_in_the_cache_it_makes_none(self):
+        self.rule.write_text("Act 1 - Town\tb.json\n")
+        (self.d2r / f"hd/env/preset/{P.TERRAIN}.json").unlink()
+        (self.d2r / "hd/env/preset/act1/s.json").unlink()
+        for d in ("hd/env/preset/act2/palace", "hd/env/preset/act2", "hd/env/preset/act1", "hd/env/preset"):
+            (self.d2r / d).rmdir()
+        with redirect_stdout(io.StringIO()) as log:
+            P.apply(self.rule, Path(), self.d2r, self.out)
+        self.assertIn("skipped", log.getvalue())
+        self.assertFalse((self.out / "hd").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

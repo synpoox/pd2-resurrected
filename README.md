@@ -42,8 +42,9 @@ python tools/companions.py install --game DIR
 
 Run the `modkit` fetch and the last two with `..\d2rAI-toolkit` on `PYTHONPATH`. The fetch (once per D2R build)
 caches D2R's DS1, DT1 and HD presets, which the merge harvests for the HD presets of PD2-only areas
-(`tools/pd2_presets.py`). `companions.py fetch` downloads the pinned companion plugins in `companions/manifest.json` (checked by SHA-256, never committed) and must run after `pd2_merge.py`, which
-wipes `generated/`. `install` is `modkit install` plus the companions, our `companions/filter.json`, and the vanilla
+(`tools/pd2_presets.py`). `companions.py fetch` downloads the pinned companion plugins in
+`companions/manifest.json` (checked by SHA-256, never committed) and must run after `pd2_merge.py`, which wipes
+`generated/`. `install` is `modkit install` plus the companions, our `companions/filter.json`, and the vanilla
 item tables the loot filter needs when the build doesn't ship them. The merge and the tool tests find modkit in
 `..\d2rAI-toolkit` (or on `PYTHONPATH`). Tool tests (no PD2 data needed):
 
