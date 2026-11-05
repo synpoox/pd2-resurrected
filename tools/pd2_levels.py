@@ -260,7 +260,8 @@ def automap_rows(pd2: Table, cels: int) -> list[list[str]]:
 
 
 def vanilla_automap(pd2: Table, d2r: Table, cels: int) -> Table:
-    """D2R's AutoMap.txt with PD2's rows for level types 0-35 (#275): every D2R row is one of PD2's, so PD2's rows,
+    """D2R's AutoMap.txt with PD2's rows for level types 0-35 (#275), which PD2's maps on those types (Spider Map on
+    3 Dungeon, ...) need for their own tiles; D2R's areas keep D2R's tiles. Every D2R row is one of PD2's, so PD2's rows,
     in PD2's order, under D2R's header (its comment columns are *Type1-4). PD2's rows for types 36+ (LevelName a bare
     number) go to core-ui's table instead. D2R's loader (0x32cae0) asserts on a LevelName outside its 36 and keeps one
     row range per level type, so a name D2R lacks or a type split in two fails; so does a cel past the tiles. Returns
