@@ -23,23 +23,14 @@ To update, delete `mods\PD2Resurrected\PD2Resurrected.mpq\data` first, then unpa
 
 ## Loot Filters
 
-The mod comes with the [Pyre Loot Filter](https://github.com/Pyre-Flies/D2R-Mods/blob/main/plugins/pyre-lootfilter/README.md)
-plugin and a default filter, `filter.json`. The filter hides, renames and recolors ground items, plays drop sounds
-and draws minimap icons. Hidden items can still be picked up by holding Ctrl.
+The mod ships the [Pyre Loot Filter](https://github.com/Pyre-Flies/D2R-Mods/blob/main/plugins/pyre-lootfilter/README.md)
+plugin with a default `filter.json`.
 
-To make or edit a filter, use the [D2R Reimagined loot filter editor](https://www.d2r-reimagined.com/loot-filter):
-start from a preset or a blank filter, or browse the public filters, then save the result as `filter.json`.
+- Edit or make a filter: [D2R Reimagined loot filter editor](https://www.d2r-reimagined.com/loot-filter).
+- Default filter: [filter.json](https://raw.githubusercontent.com/synpoox/pd2-resurrected/main/companions/filter.json).
+- Install: save it as `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter.json`. It reloads on save.
 
-To install a filter by hand:
-
-1. Get a `filter.json`: one from the editor, or the default from
-   [here](https://raw.githubusercontent.com/synpoox/pd2-resurrected/main/companions/filter.json) (right-click, Save
-   as).
-2. Put it at `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter.json`, replacing the one there.
-3. The plugin reloads it as soon as the file changes, even in game. To reload it yourself, press Ctrl+Shift+F9 or
-   type `/filter reload`.
-
-Unpacking a new release puts the default filter back, so keep a copy of your own.
+A new release overwrites `filter.json`; keep a copy of yours.
 
 ## Bug reports
 
