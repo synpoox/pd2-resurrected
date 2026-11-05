@@ -80,7 +80,7 @@ A D2RLoader plugin built outside this repo and bundled with the port that stands
 _Avoid_: dependency, add-on, external mod
 
 **Milestone**:
-A playable point in the roadmap made of the work items it needs; the port has M1 (a new character in Act 1), M2 (companions, corruption, Amazon and Barbarian complete), the pre-alpha (every PD2 class complete), the alpha (PD2 complete for single-player), the beta and the launch.
+A playable point in the roadmap made of the work items it needs; the port has M1 (a new character in Act 1), M2 (companions, corruption, Amazon and Barbarian complete), alpha 0.1.0 (every PD2 class complete), the alpha (PD2 complete for single-player), the beta and the launch.
 _Avoid_: phase, release
 
 **Beta**:

@@ -57,7 +57,7 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | The shared skill icon sheet (`submenu/skillicon`: class-less skills, item charges and oskills) keeps D2R's | not yet | D2R's HD strip caps it at 62 icons and PD2's item skills compete for its slots; needs its own layout decision |  | UR7 |
 | Guild, arena and ladder labels keep D2R's text (20 keys, `CapsJoinMenu4` to `Guild Portal`) | cut | online features (spec #41) |  | P6 |
 | `ModStr5q`, `StrSkill110` and `StrSkill76` keep D2R's text | approximated | PD2's text changes D2R's placeholders, which can crash the game |  | P6 |
-| Map items and the PD2 map system (area map stats, recipes, events, invaders) | not yet | left out of the pre-alpha (roadmap, spec #41); designed in `docs/map-system.md` (#152) |  | MS1-MS5, MS7-MS11 |
+| Map items and the PD2 map system (area map stats, recipes, events, invaders) | not yet | left out of alpha 0.1.0 (roadmap, spec #41); designed in `docs/map-system.md` (#152) |  | MS1-MS5, MS7-MS11 |
 | Map stats: the HUD's map stat panel | not yet | PD2 sends the client packet 0x55 with up to 24 of the opened map's stats; core-maps applies the stats but sends nothing ([ms3-map-stats](research/ms3-map-stats.md)) |  | core-maps |
 | Map stats: aligned monsters | approximated | PD2 gives a monster with a monstats `Align` (a minion or ally) an empty list under the `map` state; core-maps gives it neither ([ms3-map-stats](research/ms3-map-stats.md)) |  | core-maps |
 | Map stats: extra boss | not yet | `map_glob_extra_boss` is stored but not applied ([ms4-area-map-stats](research/ms4-area-map-stats.md), #289) |  | core-maps |
@@ -65,7 +65,7 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Butcher's Lair map event | cut | cut by decision (#152): PD2 has it disabled | `levels.butcher event map.*` `lvlprest.butcher event map.*` |  |
 | Maps stash tab and the `.kills maps/dungeons` counters | cut | cut by decision (#152): PD2's stash layouts are cut, so maps sit in the normal stash |  |  |
 | Invader AI: invaders run their table AIs (vanilla `BloodRaven`, `Summoner` and so on), not PD2's `AiThink4.cpp` | not yet | decided in #152: MS10 ports invaders on their table AIs as an approximated row; PD2's brain replaces them in MS11 |  | MS10, MS11 |
-| The uber bosses: PD2's Pandemonium and Uber Tristram, Diablo Clone, Rathma, Lucion and Desecration (opening at the Blood Fountain, uber tiers, area rules, phase scripts, drops) | not yet | left out of the pre-alpha (roadmap, spec #41); designed in `docs/uber-bosses.md` (#153) |  | UB1-UB7 |
+| The uber bosses: PD2's Pandemonium and Uber Tristram, Diablo Clone, Rathma, Lucion and Desecration (opening at the Blood Fountain, uber tiers, area rules, phase scripts, drops) | not yet | left out of alpha 0.1.0 (roadmap, spec #41); designed in `docs/uber-bosses.md` (#153) |  | UB1-UB7 |
 | Uber Ancients (`uba`, level 168, cube row 1498) | cut | cut by decision (#153): D2R's own Uber Ancients stays in its place | `levels.uber ancients.*` `lvlprest.uber ancients map.*` |  |
 | Talisman of Transgression: drops from monsters in an active Terror Zone, at PD2's `lucc` odds | not yet | decided in #153: PD2's corrupted zones are cut, so UB6 drops it in D2R's Terror Zones as an approximated row |  | UB6 |
 | Desecration: made in the cube in the Temple of the Triune, not in PD2's panel | not yet | decided in #153: D2R has no Desecration panel; UB7 keeps PD2's roll, chances, mod pool and one attempt per Lucion kill as an approximated row |  | UB7 |
@@ -82,9 +82,9 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | PvP: PD2's PvP Map, Pvp Map 2 and BR Arena, and every PvP rule | cut | cut by decision (#151): the port has no PvP | `levels.pvp map.*` `levels.pvp map 2.*` `levels.br arena.*` `lvlprest.pvp map.*` `lvlprest.pvp map 2.*` `lvlprest.br arena.*` |  |
 | Guild halls (Guild 1 to 5) | not yet | the beta's last feature, low priority (#151) | `levels.guild ?.*` `lvlprest.pd2guild?.*` `lvltypes.guild1-3.*` `lvltypes.guild4-5.*` | beta |
 | PD2's DS1 and DT1 over D2R's own paths (117 DS1 incl. Act 2 Town, Mephisto 3, Act 5 Town; `foregate`, `waypt`, `warp` DT1) and its 192 unused DS1: D2R's are kept | approximated | decided in #151: D2R's areas keep the files their HD presets match; PD2-only areas that load the 3 DT1 get PD2's at new paths |  |  |
-| The Warlock redesign: the pre-alpha ships D2R's Warlock as it is | not yet | left out of the pre-alpha (roadmap, spec #41); goals in `docs/warlock.md`, its three new skills wait for the beta |  |  |
-| The other classes' engine rules (Necromancer, Paladin, Druid, Sorceress, Assassin) | not yet | left out of the pre-alpha (roadmap, spec #41) |  | W11-W35 |
-| Everything in the core-rules order after the pre-alpha cut (router slot, dead item events, monster and boss kits, cube ops 30/31, investigations) | not yet | left out of the pre-alpha (roadmap, spec #41) |  |  |
+| The Warlock redesign: alpha 0.1.0 ships D2R's Warlock as it is | not yet | left out of alpha 0.1.0 (roadmap, spec #41); goals in `docs/warlock.md`, its three new skills wait for the beta |  |  |
+| The other classes' engine rules (Necromancer, Paladin, Druid, Sorceress, Assassin) | not yet | left out of alpha 0.1.0 (roadmap, spec #41) |  | W11-W35 |
+| Everything in the core-rules order after the alpha 0.1.0 cut (router slot, dead item events, monster and boss kits, cube ops 30/31, investigations) | not yet | left out of alpha 0.1.0 (roadmap, spec #41) |  |  |
 | Skill tree backgrounds are redrawn from the tables in D2R's box and arrow art, not PD2's: arrows run straight, a diagonal that skips rows branches off the straight arrow below its skill (as PD2's do), and arrows keep clear of the counter boxes; an arrow may pass under a box between | approximated | PD2's tree art is classic size and is not upscaled; the routes are generated, so their look is checked in game |  | #84 |
 | Advanced stats panel | cut | cut by decision (spec #41) |  |  |
 | Map-event notifications | cut | cut by decision (spec #41); the map system itself is not yet |  |  |

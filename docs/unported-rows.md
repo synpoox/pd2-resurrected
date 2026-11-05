@@ -12,7 +12,7 @@ In: every "not yet" row on the unported list that names no open work item, the a
 the gaps #196 found with no row (HD monsters and overlays, missile stand-ins, PD2's client UI overlays, the Act 4
 hireling).
 
-Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after the pre-alpha cut; the level-pipeline rows
+Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after the alpha 0.1.0 cut; the level-pipeline rows
 (#151); the Warlock redesign (#149, #195).
 
 ## Decisions
