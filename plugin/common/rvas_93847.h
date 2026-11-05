@@ -812,6 +812,28 @@ inline constexpr uint8_t ItemsJsonKeyFull[] = {0xeb, 0x0c, 0x88, 0x44, 0x24, 0x2
                                                0xc0, 0x75, 0x09, 0x66, 0xc7, 0x44, 0x24, 0x26, 0x20, 0x20, 0xeb,
                                                0x09, 0x80, 0xcc, 0x20, 0x66, 0x89, 0x44, 0x24, 0x26, 0x90};
 static_assert(sizeof(ItemsJsonKeyD2R) == sizeof(ItemsJsonKeyFull));
+// The `cheat spawn` handler 0x40f670 builds its item-code key the same way (0x40fc39-0x40fc6e: the first 3 characters,
+// spaces after a short code, a space in byte 3), then compares it with each item record's code (+0x80), so a 4-character
+// code spawns nothing (#323). The rewrite reads the code as one dword (the token sits in the handler's 128-byte stack
+// buffer), fills spaces after a 1- or 2-character code, and sets byte 3 to c[3] | 0x20 as above. On entry r8 holds the
+// lowered code and cl its first character; 0x40fc6e is the compare loop. Read from the 6ab3782c dump.
+inline constexpr uint64_t SpawnCheatKey = 0x40fc39;
+// mov [rsp+50],cl / movzx eax,byte [r8+1] / test al,al / jne +9 / mov word [rsp+51],0x2020 / jmp 0x40fc69 /
+// mov [rsp+51],al / movzx eax,byte [r8+2] / test al,al / jne +9 / mov word [rsp+52],0x2020 / jmp 0x40fc6e /
+// mov [rsp+52],al / mov byte [rsp+53],0x20
+inline constexpr uint8_t SpawnCheatKeyD2R[] = {0x41, 0x0f, 0xb6, 0x40, 0x01, 0x88, 0x4c, 0x24, 0x50, 0x84, 0xc0, 0x75,
+                                              0x09, 0x66, 0xc7, 0x44, 0x24, 0x51, 0x20, 0x20, 0xeb, 0x1a, 0x88, 0x44,
+                                              0x24, 0x51, 0x41, 0x0f, 0xb6, 0x40, 0x02, 0x84, 0xc0, 0x75, 0x09, 0x66,
+                                              0xc7, 0x44, 0x24, 0x52, 0x20, 0x20, 0xeb, 0x09, 0x88, 0x44, 0x24, 0x52,
+                                              0xc6, 0x44, 0x24, 0x53, 0x20};
+// mov eax,[r8] / mov ecx,0x20202020 / test ah,ah / je one / test eax,0xff0000 / je two / or eax,0x20000000 / jmp store /
+// one: mov cl,al / mov eax,ecx / jmp store / two: mov cx,ax / mov eax,ecx / store: mov [rsp+50],eax / 12 nops
+inline constexpr uint8_t SpawnCheatKeyFull[] = {0x41, 0x8b, 0x00, 0xb9, 0x20, 0x20, 0x20, 0x20, 0x84, 0xe4, 0x74, 0x0e,
+                                               0xa9, 0x00, 0x00, 0xff, 0x00, 0x74, 0x0d, 0x0d, 0x00, 0x00, 0x00, 0x20,
+                                               0xeb, 0x0b, 0x88, 0xc1, 0x89, 0xc8, 0xeb, 0x05, 0x66, 0x89, 0xc1, 0x89,
+                                               0xc8, 0x89, 0x44, 0x24, 0x50, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+                                               0x90, 0x90, 0x90, 0x90, 0x90};
+static_assert(sizeof(SpawnCheatKeyD2R) == sizeof(SpawnCheatKeyFull));
 
 // --- core-maps: opening a map (MS2, #217; D2Game\src\Skills\SkillItem.cpp) ----------------------------------------
 // Item spell dispatchers, (game, player, item, target): the check -> bool, then the use (whose caller frees an item
