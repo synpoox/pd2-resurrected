@@ -118,15 +118,16 @@ section and the unported list, and `SHA256SUMS`. It needs 7-Zip, and a `### <ver
 python tools/release.py --game DIR
 ```
 
-The `release` workflow (Actions > release > Run workflow) runs the whole build and this script and keeps the 7z as
-a workflow artifact; nothing is published. It needs the PD2 install and D2R, so it runs only on a self-hosted
+The `release` workflow (Actions > release > Run workflow) runs the whole build and this script, then publishes a GitHub
+release `v<version>` (a pre-release for a version like `0.1.0-alpha`) with the 7z, the notes and `SHA256SUMS`; it fails
+if that version already has a release. It needs the PD2 install and D2R, so it runs only on a self-hosted
 Windows runner with the labels `self-hosted, windows, pd2r` (Settings > Actions > Runners > New self-hosted runner;
 add the `pd2r` label when `config.cmd` asks). That machine needs the PD2 install named in `pd2-baseline.json`, Python
 3.13 with `py`, CMake and Visual Studio, and 7-Zip. Set two repository variables (Settings > Secrets and variables >
 Actions > Variables): `D2R_TOOLKIT`, the d2rAI-toolkit checkout (its `d2r-data/` cache is reused), and `D2R_GAME`, the
-D2R folder. The repository is private, so only its collaborators can run workflows on this runner; if it ever goes
-public, first set Settings > Actions > General > "Fork pull request workflows from outside collaborators" to "Require
-approval for all external contributors", or a fork's PR could edit a workflow to run on it.
+D2R folder. The repository is public, so Settings > Actions > General > "Fork pull request workflows from outside
+collaborators" must stay on "Require approval for all external contributors": a fork's PR could otherwise edit a
+workflow to run on this runner. Read a fork PR's workflow changes before approving its run.
 
 ## Plugins
 
