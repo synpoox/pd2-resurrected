@@ -22,6 +22,9 @@ SCALE = 4
 # D2R's glyph edge, the pixel rings out from it as factors of the plate under them: a thin dark line, a copper rim, a
 # faint rim (measured on every class sheet of build 93847: plate 46, then 36-50, 71-74, 51-53); the lit bevel is faint
 EDGE, BEVEL = (0.45, 1.7, 1.12), 0.5
+# PD2's glyph: what is GLYPH brighter than the plate (on the 4x upscale), cleaned of specks and pinholes under CLEAN
+# 4x px; its greys darken the metal by up to SHADING
+GLYPH, CHROMA, CLEAN, SHADING = 50, 0.25, 7, 0.15
 MIN_SIZE = 32  # Real-ESRGAN (ncnn) returns noise for a whole run that holds a smaller image (PD2's 10 px frame)
 
 
@@ -75,12 +78,13 @@ def upscale(art: Path, frames: dict, finish=None) -> dict:
     return {n: images.read_png(path[n]) for n in frames}
 
 
-def icon_style(hd_frames: list, classic_frames: list):
+def icon_style(hd_frames: list, classic_frames: list, plate_frames: list | None = None):
     """D2R's look for PD2's skill icons, from a D2R sheet's HD frames and their classic frames (one kind: normal or
     pressed). D2R repainted each icon as a silver glyph on its class's plate and frame, edged by a thin dark line and a
     copper rim outside it; an upscale alone keeps classic art's look. So the icon is rebuilt: D2R's plate and frame
-    (each pixel's median over the sheet, glyph pixels left out) and PD2's glyph (what is brighter than the plate, on
-    the crisp upscale), painted with the edge profile measured on D2R's glyphs: each ring of pixels out from a glyph's
+    (each pixel's median over plate_frames, glyph pixels left out: every class's sheet, as one class's icons share
+    motifs a median keeps, the Paladin's aura ring; the sheet itself by default) and PD2's glyph (what is grey and
+    brighter than the plate, on the crisp upscale), painted with the edge profile measured on D2R's glyphs: each ring of pixels out from a glyph's
     edge as a factor of the plate under it, each ring in as a colour. Returns finish(classic, up) -> the icon at the HD
     frame size; a classic frame not the sheet's size (PD2's 10 px placeholder) is returned upscaled as it is.
     Needs numpy and Pillow, only while new art is made: the merge reads the finished icons from merge/art."""
@@ -109,14 +113,23 @@ def icon_style(hd_frames: list, classic_frames: list):
                 prev = cur
         return out, inner, prev  # prev: the glyph n px in
 
-    def plate(frames):
-        """Each pixel's median over the frames, leaving out the pixels that differ from the darker plate (the glyphs);
-        a pixel every glyph covers takes its neighbours' plate."""
-        st = np.stack([arr(f) for f in frames])
-        glyph = np.abs(st[..., :3] - np.percentile(st, 25, axis=0)[None, ..., :3]).sum(-1) > 60
-        st[glyph] = np.nan
+    def band(shape):
+        """The band just inside an icon's frame, which glyphs leave alone, and the area inside the frame."""
+        h, w = shape
+        lo, hi = round(w * 0.09), round(w * 0.16)
+        inside = np.zeros((h, w), bool)
+        inside[lo:-lo, lo:-lo] = True
+        ring = inside.copy()
+        ring[hi:-hi, hi:-hi] = False
+        return ring, inside
+
+    def median_of(st, leave_out):
+        """Each pixel's median over the frames, leaving out the marked pixels; a pixel all of them mark takes its
+        neighbours' value."""
+        st = st.copy()
+        st[leave_out] = np.nan
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", RuntimeWarning)  # a pixel every glyph covers: filled below
+            warnings.simplefilter("ignore", RuntimeWarning)  # a pixel every frame marks: filled below
             out = np.nanmedian(st, 0)
         hole = np.isnan(out[..., 0])
         while hole.any():
@@ -129,8 +142,13 @@ def icon_style(hd_frames: list, classic_frames: list):
             hole &= ~fill
         return out
 
+    def plate(frames):
+        """D2R's bare plate and frame: each pixel's median over the frames whose glyph doesn't cover it."""
+        st = np.stack([arr(f) for f in frames])
+        return median_of(st, np.abs(st[..., :3] - np.percentile(st, 25, axis=0)[None, ..., :3]).sum(-1) > 60)
+
     depth, fine = 5, 4  # rings 5 px out and in from the glyph's edge; the glyph found at 4x
-    hd_plate, classic_plate = plate(hd_frames), plate(classic_frames)
+    hd_plate, classic_size = plate(plate_frames or hd_frames), classic_frames[0][:2]
     size = hd_plate.shape[1], hd_plate.shape[0]
     inside, metal = [[] for _ in range(depth + 1)], []
     for f in hd_frames:
@@ -146,8 +164,8 @@ def icon_style(hd_frames: list, classic_frames: list):
         warnings.simplefilter("ignore", RuntimeWarning)  # a pixel no D2R glyph covers: plain metal
         grain = np.nanmedian(np.stack(metal), 0)
     grain = np.nan_to_num(lum(grain) / np.nanmean(lum(grain)), nan=1.0)
-    grain = 1 + 0.8 * (soft(grain / 2, 0.6) * 2 - 1)  # D2R's brushed metal, mean 1, lightly smoothed
-    plate_up = np.asarray(Pil.fromarray(classic_plate.astype(np.uint8)).resize(size, Pil.BILINEAR)).astype(float)
+    # D2R's brushed metal: only its fine texture (the grain over its own blur), not the patches where few glyphs reach
+    grain = 1 + 0.8 * (soft(grain / 2, 0.6) / np.maximum(soft(grain / 2, 4), 0.05) - 1)
     big = size[0] * fine, size[1] * fine
 
     def coverage(m):
@@ -156,22 +174,30 @@ def icon_style(hd_frames: list, classic_frames: list):
 
     def finish(classic, up):
         _, _, images = modkit()
-        if arr(classic).shape != classic_plate.shape:
-            return images.scale(up, round(classic[0] * size[0] / classic_plate.shape[1]),
-                                round(classic[1] * size[1] / classic_plate.shape[0]))
-        changed = (np.abs(arr(classic)[..., :3] - classic_plate[..., :3]).sum(-1) > 90).astype(np.uint8) * 255
-        near = np.asarray(Pil.fromarray(changed).resize(big, Pil.BILINEAR).filter(ImageFilter.MaxFilter(25))) > 127
+        if classic[:2] != classic_size:
+            return images.scale(up, round(classic[0] * size[0] / classic_size[0]),
+                                round(classic[1] * size[1] / classic_size[1]))
         a = np.asarray(Pil.frombytes("RGBA", up[:2], up[2]).resize(big, Pil.BICUBIC)).astype(float)
-        under = np.asarray(Pil.fromarray(classic_plate.astype(np.uint8)).resize(big, Pil.BILINEAR)).astype(float)
-        glyph = (lum(a) - lum(under) > 90) & near
-        glyph = soft(glyph.astype(float), 3) > 0.5  # smooth the outline before ringing it
+        # The plate's brightness, from the band just inside the icon's frame, which classic glyphs leave alone (a
+        # median over the sheet is no good there: in the middle nearly every icon has its glyph)
+        edge, inside = band(big[::-1])
+        # PD2's glyphs hold greys (folds, shading): all of it brighter than the plate is metal, and the specks and
+        # pinholes a threshold leaves in a grey are cleaned away, else the plate shows through in fragments; the plate's
+        # light specks next to a glyph are tan, the glyph grey
+        grey = a[..., :3].max(-1) - a[..., :3].min(-1) < CHROMA * lum(a)
+        glyph = Pil.fromarray(((lum(a) > np.median(lum(a)[edge]) + GLYPH) & grey & inside).astype(np.uint8) * 255)
+        for step in (ImageFilter.MinFilter, ImageFilter.MaxFilter, ImageFilter.MaxFilter, ImageFilter.MinFilter):
+            glyph = glyph.filter(step(CLEAN))
+        glyph = soft(np.asarray(glyph) / 255, 3) > 0.5  # smooth the outline before ringing it
         cover = coverage(glyph)  # the glyph's share of each HD pixel
         solid = cover > 0.5
         out, inner, core = rings(solid, depth)  # D2R's rings are whole pixels: drawn at 1x
         small = np.asarray(Pil.frombytes("RGBA", up[:2], up[2]).resize(size, Pil.LANCZOS)).astype(float)
         detail = soft(lum(small) / 255, 2.0)  # PD2's shading inside the glyph, softened
-        rank = np.searchsorted(np.sort(detail[solid]), detail) / max(int(solid.sum()), 1)
-        shade = (0.94 + 0.12 * rank) * np.linspace(1.04, 0.96, size[1])[:, None] * grain
+        top = np.percentile(detail[solid], 90) if solid.any() else 1
+        floor = np.median(lum(a)[edge]) / 255
+        tone = np.clip((detail - floor) / max(top - floor, 0.05), 0, 1)
+        shade = (1 - SHADING + SHADING * tone) * np.linspace(1.04, 0.96, size[1])[:, None] * grain
         shade = 0.95 * shade / shade[solid].mean() if solid.any() else shade  # D2R's median silver
         height = soft(cover, 0.5)
         lit = np.roll(height, (-1, -1), (0, 1)) - np.roll(height, (1, 1), (0, 1))  # edges facing the top-left light

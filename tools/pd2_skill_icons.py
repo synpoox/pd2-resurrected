@@ -42,9 +42,17 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         raise SkillIconError(f"PD2 sheets not listed: {', '.join(extra)}")
     palette = dc6.palette((d2r_data / "global" / "palette" / "units" / "pal.dat").read_bytes())
     sheets = [(c, *paths[c]) for c in classes]
+    shared = Path("hd") / "global" / "ui" / "spells" / "submenu" / "skillicon.sprite"
     generic = Path("global") / "ui" / "spells" / "skillicon.dc6"
     if (pd2_data / generic).is_file():
-        sheets.append(("shared", Path("hd") / "global" / "ui" / "spells" / "submenu" / "skillicon.sprite", generic))
+        sheets.append(("shared", shared, generic))
+    every = [Path(hd.icon_paths(c)[0]).relative_to("data") for c in hd.CLASSES]  # "": the shared sheet
+    plates = {}
+
+    def hd_frames(sprite: Path, kind: int) -> list:
+        """A D2R strip's normal (kind 0) or pressed (kind 1) frames."""
+        strip, fw, n_hd = images.read_sprite(d2r_data / sprite)
+        return [images.crop(strip, j * (strip[0] // n_hd), 0, fw, strip[1]) for j in range(kind, n_hd, 2)]
     for c, sprite, classic in sheets:
         if not (pd2_data / classic).is_file():
             raise SkillIconError(f"{c}: no {classic.as_posix()} in pd2-data: run tools/pd2_extract.py")
@@ -61,11 +69,11 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             k = int(name.rsplit("/", 1)[1])  # PD2's shared sheet stops pairing normal and pressed frames at 24
             kind = int(k % 2 == 1 and pd2_art.darker_copy(frame, dc6.decode(pd2[k - 1], palette)))
             if kind not in styles:
-                strip, fw, _ = images.read_sprite(d2r_data / sprite)
-                stride = strip[0] // n_hd
+                if kind not in plates:  # every D2R sheet's: one sheet's icons share motifs (pd2_art.icon_style)
+                    plates[kind] = [f for s in every if (d2r_data / s).is_file() for f in hd_frames(s, kind)]
                 styles[kind] = pd2_art.icon_style(
-                    [images.crop(strip, j * stride, 0, fw, strip[1]) for j in range(kind, n_hd, 2)],
-                    [dc6.decode(d2r[j], palette) for j in range(kind, min(len(d2r), n_hd), 2)])
+                    hd_frames(sprite, kind), [dc6.decode(d2r[j], palette) for j in range(kind, min(len(d2r), n_hd), 2)],
+                    plates[kind])
             return styles[kind](frame, up)
         art = pd2_art.upscale(art_dir, {f"spells/{classic.stem}/{k}": dc6.decode(pd2[k], palette)
                                         for k in range(n) if not keep[k]}, finish)

@@ -38,7 +38,7 @@ class ApplyTests(unittest.TestCase):
         (self.d2r / "global" / "palette" / "units").mkdir(parents=True)
         (self.d2r / "global" / "palette" / "units" / "pal.dat").write_bytes(bytes(i for i in range(256) for _ in "bgr"))
         # the fake style keeps PD2's frame, upscaled to the HD frame's size (icon_style itself: test_art)
-        def style(hd, classic):
+        def style(hd, classic, plate_frames):
             return lambda frame, up: images.scale(up, hd[0][0] * frame[0] // classic[0][0],
                                                   hd[0][1] * frame[1] // classic[0][1])
         for patch in (mock.patch.object(A, "esrgan", fake_esrgan([])), mock.patch.object(A, "icon_style", style)):

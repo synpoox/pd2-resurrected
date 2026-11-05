@@ -81,6 +81,10 @@ class IconStyleTests(unittest.TestCase):
         self.assertEqual(pixel(20, 110), bytes((90, 60, 40)))  # D2R's plate, untouched
         dot = 10, 10, bytes(400)
         self.assertEqual(finish(dot, images.scale(dot, 40, 40))[:2], (27, 27))  # a placeholder keeps its size
+        # a motif every icon of one sheet shares (the Paladin's aura ring) stays off the plate taken from all sheets
+        motif = [plate_with_glyph(130, 17 * 130 // 48, 17 * 130 // 48, 32)] * 5
+        w, h, rgba = A.icon_style(motif, classic, plate_frames=hd + motif[:2])(pd2, up)
+        self.assertEqual(rgba[(70 * w + 62) * 4:(70 * w + 62) * 4 + 3], bytes((90, 60, 40)))
 
 
 class ItemPictureTests(unittest.TestCase):
