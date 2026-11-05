@@ -107,6 +107,10 @@ REFS = {
 NUM_REFS = {"levels": {**{f"Vis{i}": "levels" for i in range(8)}, **{f"ObjGrp{i}": "objgroup" for i in range(8)}},
             "lvlprest": {"LevelId": "levels"},
             "objgroup": {f"ID{i}": "objects" for i in range(8)}}
+# A misc row with PD2's map spell opens the level its `len` names (ProjectDiablo.dll evaluates the calc as the level id,
+# docs/research/pd2-map-system-dll.md): it takes the mod's id, blank for a left-out level (PvP, PD2's Uber Ancients).
+# Every other row's len is a duration.
+MAP_SPELL = "12"
 # columns that hold the row's own id, written with the mod's (lvlwarp UniqueId: D2R's, the row number)
 ID_COLS = {"levels": "Id", "lvlprest": "Def", "lvlwarp": "UniqueId"}
 # columns a merged D2R row keeps, where the games give them different meanings (objects Token: D2R's graphics)
@@ -148,7 +152,9 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # Ormus' Robes' property func 25 (D2R's 25 is affix-rand) takes the free property slot 26 (P12,
 # docs/research/p12-ormus-robes.md).
 # levels' Teleport 3 (PD2's path search, research/sorceress-w26.md) is not a D2R value; 1 (allowed) stands in until MS7.
+# Map items' pSpell 12 (D2R's 12 is the Resist Scroll) takes the free item spell 16 core-maps installs (MS2).
 FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
+         "misc": {"pSpell": {MAP_SPELL: "16"}},
          "levels": {"Teleport": {"3": "1"}},
          "missiles": {"pSrvDoFunc": {"38": "46", "40": "47"}, "pCltDoFunc": {"70": "78", "69": "79", "72": "80"},
                       "pSrvHitFunc": {"30": "66", "34": "69", "6": "67"},
@@ -378,6 +384,13 @@ def fix_missile_funcs(table: str, header: list[str], row: list[str]) -> None:
                 row[m], row[a] = row[a], ""
 
 
+def fix_map_level(table: str, header: list[str], row: list[str], pd2_spell: str, ids: dict[str, dict[str, str]]) -> None:
+    """A map item's len (PD2 pSpell MAP_SPELL) in the mod's level ids; blank for a left-out level."""
+    if table == "misc" and pd2_spell == MAP_SPELL and "len" in header:
+        j = header.index("len")
+        row[j] = ids.get("levels", {}).get(row[j], "")
+
+
 def fix_hit_params(header: list[str], row: list[str], ids: dict[str, dict[str, str]]) -> None:
     """The state and stat parameters of a HIT_PARAMS function in the mod's ids."""
     if "pSrvHitFunc" not in header:
@@ -441,6 +454,7 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
                 if row[j] not in (ids or {}).get(nums[j], {}):
                     raise IdError(f"{table} '{n}': {d2r.header[j]} names PD2's {nums[j]} row {row[j]}, which has no id")
                 row[j] = ids[nums[j]][row[j]]
+        fix_map_level(table, d2r.header, row, pr[src["pspell"]] if "pspell" in src else "", ids or {})
         own = d2r.rows[recs[i]] if shown and i < len(recs) else None
         if own and not any(row[j] for j in str_cols) and row[desc_cols[0]] == own[desc_cols[0]]:
             # 1.13c's descfunc 27/28 hardcode their text; D2R's read it from the strings (#116: "an evil force")

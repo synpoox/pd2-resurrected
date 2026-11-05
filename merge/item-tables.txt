@@ -16,14 +16,9 @@ merge	itemratio
 merge	uniqueprefix
 merge	uniquesuffix
 merge	uniqueappellation
-no-drop	map	PD2 map items (t1m-t3m, t1me-t5me descend from it): the map system is not in the pre-alpha
-no-drop	t4m	tier 4 maps
-no-drop	t5m	tier 5 maps
 no-drop	pvpm	PvP maps
 no-drop	pvpd	PvP desert maps
 no-drop	ubmp	uber maps
-no-drop	upmp	Upgrade Map orb
-no-drop	fort	Fortify Map orb
 no-drop	ubtm	Uber Trist Map
 no-drop	dcma	Uber Map
 no-drop	uba	Uber Ancients Map
