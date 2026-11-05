@@ -15,7 +15,8 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (no mutation service)");
 		return;
 	}
-	// One 32-byte patch through a transaction: PatchWrite writes at most 8 bytes, and half a patch would break the key.
+	// Both key patches through one transaction: PatchWrite writes at most 8 bytes, and half a patch would break a key.
+	// The second is `cheat spawn`'s key (#323), so tests can spawn PD2's 4-character items.
 	D2RL::Mutations::TransactionHandle transaction = 0;
 	if (mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
 		std::snprintf(report, size, "FAILED (no transaction)");
@@ -27,15 +28,22 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	                                              .expectedSize = sizeof(d2r::rva::ItemsJsonKeyD2R),
 	                                              .bytes = d2r::rva::ItemsJsonKeyFull,
 	                                              .size = sizeof(d2r::rva::ItemsJsonKeyFull)};
-	D2RL::Mutations::OperationHandle operation = 0;
+	const D2RL::Mutations::BytePatchRequest spawn{.structSize = D2RL::Mutations::BytePatchRequestSize,
+	                                              .rva = d2r::rva::SpawnCheatKey,
+	                                              .expected = d2r::rva::SpawnCheatKeyD2R,
+	                                              .expectedSize = sizeof(d2r::rva::SpawnCheatKeyD2R),
+	                                              .bytes = d2r::rva::SpawnCheatKeyFull,
+	                                              .size = sizeof(d2r::rva::SpawnCheatKeyFull)};
+	D2RL::Mutations::OperationHandle operation = 0, spawnOperation = 0;
 	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
 	if (mutations->stageBytePatch(context, transaction, &patch, &operation) != D2RL::Mutations::Result::Success ||
+	    mutations->stageBytePatch(context, transaction, &spawn, &spawnOperation) != D2RL::Mutations::Result::Success ||
 	    mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
 		mutations->cancelTransaction(context, transaction);
 		std::snprintf(report, size, "FAILED (bytes differ)");
 		return;
 	}
-	std::snprintf(report, size, "items.json keys keep 4 characters");
+	std::snprintf(report, size, "items.json and cheat spawn keys keep 4 characters");
 }
 
 }  // namespace item_pictures
