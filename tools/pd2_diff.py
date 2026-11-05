@@ -147,21 +147,31 @@ def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | 
 
 def unported(path: Path) -> tuple[list[str], dict[str, int]]:
     """The Gate patterns of docs/unported.md (`table.row.column`, fnmatch, lower case) and its entry count by status.
-    Fails on a row whose status is not one of STATUSES."""
+    A table with a Status column holds entries, one with a Gate column patterns; a Gate row in a table without Status
+    names its entry by Deviation. Fails on a status not in STATUSES and on a Gate row that names no entry."""
     patterns, cols, entries = [], None, dict.fromkeys(STATUSES, 0)
+    listed, named = set(), []
     for line in path.read_text("utf-8").splitlines():
         if not line.startswith("|") or set(line) <= set("|-: "):
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if "Gate" in cells and "Status" in cells:
-            cols = cells.index("Status"), cells.index("Gate")
+        if "Deviation" in cells and ("Gate" in cells or "Status" in cells):
+            cols = {c: i for i, c in enumerate(cells)}
             continue
         if cols is None:
             continue
-        if cells[cols[0]] not in STATUSES:
-            raise GateError(f"unported.md: status {cells[cols[0]]!r} is not one of {', '.join(STATUSES)}: {line}")
-        entries[cells[cols[0]]] += 1
-        patterns += [p.lower() for p in re.findall(r"`([^`]+)`", cells[cols[1]])]
+        if "Status" in cols:
+            status = cells[cols["Status"]]
+            if status not in STATUSES:
+                raise GateError(f"unported.md: status {status!r} is not one of {', '.join(STATUSES)}: {line}")
+            entries[status] += 1
+            listed.add(cells[cols["Deviation"]])
+        elif "Gate" in cols:
+            named.append(cells[cols["Deviation"]])
+        if "Gate" in cols:
+            patterns += [p.lower() for p in re.findall(r"`([^`]+)`", cells[cols["Gate"]])]
+    if unknown := [d for d in named if d not in listed]:
+        raise GateError(f"unported.md: Gate patterns for rows not on the list: {unknown}")
     return patterns, entries
 
 
