@@ -86,7 +86,8 @@ def icon_style(hd_frames: list, classic_frames: list, plate_frames: list | None 
     motifs a median keeps, the Paladin's aura ring; the sheet itself by default) and PD2's glyph (what is grey and
     brighter than the plate, on the crisp upscale), painted with the edge profile measured on D2R's glyphs: each ring
     of pixels out from a glyph's edge as a factor of the plate under it, each ring in as a colour. Returns
-    finish(classic, up) -> the icon at the HD frame size; a classic frame not the sheet's size (PD2's 10 px placeholder) is returned upscaled as it is.
+    finish(classic, up) -> the icon at the HD frame size; a classic frame not the sheet's size (PD2's 10 px
+    placeholder) is returned upscaled as it is.
     Needs numpy and Pillow, only while new art is made: the merge reads the finished icons from merge/art."""
     import numpy as np
     from PIL import Image as Pil, ImageFilter
