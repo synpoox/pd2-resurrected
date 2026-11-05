@@ -2,6 +2,9 @@
 HD renderer draws nothing for it (the monster is invisible but fights). Stand-in art (pd2-asset-inventory.md, Monster
 DCC); most are PD2's map monsters, clones of D2R monsters under a new Id.
 
+IMPORTANT: D2R reads JSON keys case-sensitively. A key must be the exact monstats `Id`: a lower-cased "hellbovinemap"
+left PD2's hellbovineMap invisible in game.
+
 A new monster takes the model of its `BaseId` when that is a D2R monster with the same `Code` (PD2's clones name their
 original there), else the model most D2R rows with its `Code` (the classic art) use. merge/monsters-hd.tsv has one line
 per monster with PD2-only art (no D2R `Code` with a model) or a wrong pick (a `Code` D2R draws with several models):
@@ -36,11 +39,11 @@ def entries(pd2: Table, d2r: Table, models: dict, likes: dict[str, str]) -> dict
     out, missing, stale = {}, [], set(likes)
     for r in pd2.rows:
         name = r[0]
-        key = name.lower()  # D2R's keys are its Ids, all lower case
-        if not name or key in code_of:
+        key = name  # IMPORTANT: D2R looks keys up case-sensitively, so the exact Id ("hellbovineMap"), never lower case
+        if not name or name.lower() in code_of:
             continue
-        like, code, base = likes.get(key), r[code_col].lower(), r[base_col].lower()
-        stale.discard(key)
+        like, code, base = likes.get(name.lower()), r[code_col].lower(), r[base_col].lower()
+        stale.discard(name.lower())
         if key in models or key in out:
             raise MonsterHdError(f"'{name}': monsters.json already has '{key}'")
         if base in models and code_of.get(base) == code:

@@ -31,6 +31,7 @@ class EntriesTests(unittest.TestCase):
     def test_celfile_match_and_lines(self):
         self.assertEqual(H.entries(table(MOD), table(D2R), MODELS, LIKES), {
             "splitthrowaxe": "missile_hand_axe", "urehchargedground": "expansion_shock_field",
+            "urehChargedGround": "expansion_shock_field",  # capitals: both spellings (JSON keys are case-sensitive)
             "zharbolts": "bighead_lightning_missile", "iskatubliz_1": "expansion_shock_field"})
 
     def test_refusals(self):
@@ -61,7 +62,7 @@ class RuleTests(unittest.TestCase):
             written = json.loads((out / H.HD).read_text("utf-8"))
         self.assertEqual(list(written)[:len(MODELS)], list(MODELS))  # D2R's entries first, dependencies leading
         self.assertEqual(written["splitthrowaxe"], "missile_hand_axe")
-        self.assertEqual(len(written), len(MODELS) + 4)
+        self.assertEqual(len(written), len(MODELS) + 5)
 
 
 if __name__ == "__main__":

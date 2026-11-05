@@ -31,8 +31,8 @@ RULE = "# monster\tlike\nZharTheMad\tbaalclone\niskatu\tskeleton1\nbonemage\tske
 class EntriesTests(unittest.TestCase):
     def test_baseid_code_and_lines(self):
         self.assertEqual(H.entries(table(MOD), table(D2R), MODELS, LIKES), {
-            "skeletonice": "skeleton1", "necroarcher": "sk_archer1", "shadow": "baal", "zharthemad": "baal",
-            "iskatu": "skeleton1", "bonemage": "skeleton1"})
+            "skeletonIce": "skeleton1", "necroarcher": "sk_archer1", "shadow": "baal", "ZharTheMad": "baal",
+            "Iskatu": "skeleton1", "bonemage": "skeleton1"})  # D2R's lookup is case-sensitive: PD2's own spelling
 
     def test_refusals(self):
         cases = [
@@ -62,7 +62,8 @@ class RuleTests(unittest.TestCase):
             H.apply(rule, pd2, d2r, out)
             written = json.loads((out / H.HD).read_text("utf-8"))
         self.assertEqual(list(written)[:len(MODELS)], list(MODELS))  # D2R's entries first
-        self.assertEqual(written["skeletonice"], "skeleton1")
+        self.assertEqual(written["skeletonIce"], "skeleton1")
+        self.assertNotIn("skeletonice", written)
         self.assertEqual(len(written), len(MODELS) + 6)
 
 
