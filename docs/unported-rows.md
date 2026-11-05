@@ -59,7 +59,7 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
 - **List fixes (UR1).** Gheed's event row names MS8. The "other classes" row points at W11-W35. Guild halls name the
   beta. New approximated rows: the missile stand-ins (P10), Buff HUD (buff timers, mini skill icons, the skill bar) and
   Item Roll Ranges (tooltip stat ranges).
-- **Client UI.** The DPS counter is a new plugin built in `synpoox/d2r-tools`, as better-xp-bar is, and pinned in
+- **Client UI.** The DPS counter is a new plugin built in `synpoox/d2r-tools` and pinned in
   `companions/manifest.json` (UR9). The potion counter is the plugin D2R Reimagined ships, which the owner provides
   (UR10). It is bundled once its licence or a permission allows it; otherwise it is built in `d2r-tools` too.
 

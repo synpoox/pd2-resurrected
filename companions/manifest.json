@@ -44,16 +44,6 @@
       }
     },
     {
-      "name": "better-xp-bar",
-      "repo": "synpoox/d2r-tools",
-      "tag": "release-2026.11.01.1",
-      "asset": "better-xp-bar-1.0.1.zip",
-      "sha256": "e9b816ab917b800038ed833ef492358ba8855457e9c66c0a7be3f8edb85d6049",
-      "files": {
-        "better-xp-bar.dll": "d2rloader/plugins/better-xp-bar.dll"
-      }
-    },
-    {
       "name": "Left Click Auras",
       "repo": "CelestialRayOne/d2rloader_plugins",
       "commit": "05a6dc4a47a3f847bbe1d4f873dba87d438ba8a8",
