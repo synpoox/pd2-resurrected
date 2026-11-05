@@ -8,6 +8,8 @@
 //   rolls the stat's chance, then casts the layer's skill at the target, or at the caster's aim point. Every
 //   cast-skill item works this way, not only Ormus' Robes. PD2 raises its dospellcast event for it; where was not
 //   found, so this trigger is approximated (docs/unported.md).
+// - curses (docs/research/ir4-curses.md): max curses (a target holds up to the caster's max_curses + 1 curses) and
+//   curse resistance (curse_effectiveness on the target scales the curse's stats), around D2R's ApplyCurse.
 #include "item_rules.h"
 
 #include "d2r.h"
@@ -191,6 +193,162 @@ auto SkillDispatch(Game* game, Unit* unit, int32_t skillId, int32_t level, int32
 	return ran;
 }
 
+// --- Curses: curse resistance and max curses (docs/research/ir4-curses.md) ---------------------------------------
+constexpr int32_t StatCurseSlots = 374;          // curse_slots, merged id (PD2 190): the slot count a curse was cast with
+constexpr int32_t StatMaxCurses = 421;           // max_curses (PD2 368)
+constexpr int32_t StatCurseResistance = 557;     // curse_effectiveness, shown as Curse Resistance (PD2 504)
+constexpr int32_t CurseResistanceCap = 75;
+constexpr int MaxCurseLists = 64;  // a unit holds a handful; more only stops a corrupt chain from spinning
+
+std::atomic<uint32_t> g_curses {0};
+std::atomic<uint32_t> g_curseResisted {0};
+
+// PD2's 0x1037c4c0 as its curse code calls it: value * (100 - resistance) / 100, truncated
+auto Resisted(int32_t value, int32_t resistance) noexcept -> int32_t {
+	const double v = static_cast<double>(value) * (100.0 - resistance) / 100.0;
+	return v > 2147483647.0 ? 2147483647 : static_cast<int32_t>(v);
+}
+
+auto StatOf(Unit* unit, int32_t stat) noexcept -> int32_t {
+	return unit != nullptr ? d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(unit, stat, 0)
+	                       : 0;
+}
+
+// PD2's slot rule (ProjectDiablo.dll 0x1036d7d0) before D2R's ApplyCurse runs. D2R's NewStateList removes the first
+// curse list it finds, so every curse list that must stay loses its curse flag until ApplyCurse returns (`hidden`).
+// Returns the caster's slot count, which the new curse keeps (stat curse_slots).
+auto MakeRoom(uint32_t dataFlag, Unit* caster, Unit* target, int32_t state, uint8_t* (&hidden)[MaxCurseLists],
+              int& hiddenCount) noexcept -> int32_t {
+	using namespace d2r::rva;
+	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);
+	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
+	const int32_t own = StatOf(caster, StatMaxCurses) + 1;
+	const uint8_t* owner = At<const uint8_t*>(target, UnitListOwner);
+	if (owner == nullptr || At<int32_t>(owner, ListOwnerMark) >= 0) {
+		return own;
+	}
+	// The most slots any curse on the target was cast with; a curse cast with fewer drops its count (PD2 does so)
+	int32_t slots = own;
+	int count = 0;
+	uint8_t* oldest = nullptr;  // the last timed curse in the chain, the one a full target loses
+	int guard = 0;
+	for (uint8_t* list = At<uint8_t*>(owner, ListOwnerFirst); list != nullptr && guard < MaxCurseLists;
+	     list = At<uint8_t*>(list, ListNext), ++guard) {
+		if ((At<uint32_t>(list, ListFlags) & ListFlagCurse) == 0) {
+			continue;
+		}
+		++count;
+		const int32_t kept = listStat(dataFlag, list, StatCurseSlots, 0);
+		if (kept != 0 && kept < slots) {
+			setStat(dataFlag, list, StatCurseSlots, 0, 0);
+		} else if (kept > slots) {
+			slots = kept;
+		}
+		if ((At<uint32_t>(list, ListFlags) & ListFlagTimed) != 0) {
+			oldest = list;
+		}
+	}
+	// The one curse list NewStateList may see: this state's own (it refreshes or replaces it), else none while a slot
+	// is free, else the oldest timed curse
+	uint8_t* same = d2r::Engine<uint8_t* (*)(Unit*, int32_t) noexcept>(UnitStateList)(target, state);
+	uint8_t* seen = same != nullptr ? same : count < slots ? nullptr : oldest;
+	guard = 0;
+	for (uint8_t* list = At<uint8_t*>(owner, ListOwnerFirst); list != nullptr && guard < MaxCurseLists;
+	     list = At<uint8_t*>(list, ListNext), ++guard) {
+		if ((At<uint32_t>(list, ListFlags) & ListFlagCurse) != 0 && list != seen) {
+			*reinterpret_cast<uint32_t*>(list + ListFlags) &= ~ListFlagCurse;
+			hidden[hiddenCount++] = list;
+		}
+	}
+	const uint32_t n = ++g_curses;
+	if (n <= 20 || n % 100 == 0) {
+		plog::Info("curse: state %d, %d curse(s) on the target, %d slot(s) (caster %d), %s, %u so far", state, count,
+		           slots, own, same != nullptr ? "same state" : seen != nullptr ? "replaces the oldest" : "added", n);
+	}
+	return own;
+}
+
+// PD2's curse resistance (stat curse_effectiveness on the cursed unit), on the list ApplyCurse just set: aurastat1,
+// which D2R sets only on a new list, at most 75 on a player (0x1036d7d0); aurastat2-6 at most 75 (0x102fad50, PD2's
+// stat setter for curse lists)
+auto ResistCurse(uint32_t dataFlag, Unit* target, const d2r::CurseParams* params, void* list, bool fresh) noexcept
+	-> void {
+	using namespace d2r::rva;
+	const int32_t resistance = StatOf(target, StatCurseResistance);
+	if (resistance == 0) {
+		return;
+	}
+	const auto value = d2r::Engine<int32_t (*)(Game*, Unit*, int32_t, int32_t) noexcept>(CurseStatValue);
+	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
+	const bool player = At<int32_t>(target, UnitType) == 0;
+	for (int i = fresh ? 0 : 1; i < 6; ++i) {
+		const int32_t stat = params->stats[i];
+		if (stat < 0) {
+			continue;
+		}
+		const int32_t base = value(params->game, target, stat, params->values[i]);
+		if (base == 0) {
+			continue;  // D2R set nothing for it
+		}
+		// shortcut: an aurastat1 resisted to 0 leaves the curse on with the stat at 0 (PD2 cancels it); upgrade by
+		// resisting params->values[0] before the call if a unit ever shows it
+		const int32_t used = resistance > CurseResistanceCap && (i > 0 || player) ? CurseResistanceCap : resistance;
+		const int32_t resisted = Resisted(base, used);
+		setStat(dataFlag, list, stat, resisted, 0);
+		const uint32_t n = ++g_curseResisted;
+		if (n <= 20 || n % 100 == 0) {
+			plog::Info("curse resistance %d (used %d) on %s: aurastat%d stat %d %d -> %d, %u so far", resistance, used,
+			           player ? "player" : "monster", i + 1, stat, base, resisted, n);
+		}
+	}
+}
+
+using ApplyCurseFn = int64_t (*)(Unit* target, d2r::CurseParams* params) noexcept;
+ApplyCurseFn g_applyCurseOriginal = nullptr;
+
+auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (target == nullptr || params == nullptr || params->game == nullptr) {
+		return g_applyCurseOriginal(target, params);
+	}
+	const uint32_t dataFlag = d2r::DataFlag(params->game);
+	const int32_t state = params->state;
+	if (state < 0 || d2r::Engine<uint32_t (*)(uint32_t, int32_t) noexcept>(StateIsCurse)(dataFlag, state) == 0) {
+		return g_applyCurseOriginal(target, params);
+	}
+	const auto stateList = d2r::Engine<uint8_t* (*)(Unit*, int32_t) noexcept>(UnitStateList);
+	uint8_t* before = stateList(target, state);
+	uint8_t* hidden[MaxCurseLists];
+	int hiddenCount = 0;
+	const int32_t slots = MakeRoom(dataFlag, params->caster, target, state, hidden, hiddenCount);
+	const int64_t applied = g_applyCurseOriginal(target, params);
+	for (int i = 0; i < hiddenCount; ++i) {
+		*reinterpret_cast<uint32_t*>(hidden[i] + ListFlags) |= ListFlagCurse;
+	}
+	uint8_t* list = applied != 0 ? stateList(target, state) : nullptr;
+	if (list == nullptr) {
+		return applied;
+	}
+	const bool fresh = list != before;
+	if (fresh && slots > StatOf(target, StatCurseSlots)) {
+		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list,
+		                                                                                      StatCurseSlots, slots, 0);
+	}
+	ResistCurse(dataFlag, target, params, list, fresh);
+	const uint32_t n = g_curses.load();
+	if (n <= 20 || n % 100 == 0) {
+		int held = 0;  // read back from the target, so the game check sees what D2R kept
+		const uint8_t* owner = At<const uint8_t*>(target, UnitListOwner);
+		int guard = 0;
+		for (const uint8_t* l = owner != nullptr ? At<const uint8_t*>(owner, ListOwnerFirst) : nullptr;
+		     l != nullptr && guard < MaxCurseLists; l = At<const uint8_t*>(l, ListNext), ++guard) {
+			held += (At<uint32_t>(l, ListFlags) & ListFlagCurse) != 0 ? 1 : 0;
+		}
+		plog::Info("curse: state %d landed, the target holds %d curse(s)", state, held);
+	}
+	return applied;
+}
+
 }  // namespace
 
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
@@ -204,16 +362,20 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                             reinterpret_cast<uint64_t>(static_cast<PropertyFn>(PropSorcSkillRandCtc)));
 	const bool hook = context->InstallInlineHook(SrvSkillDispatch, SrvSkillDispatchEntry, sizeof(SrvSkillDispatchEntry),
 	                                             SkillDispatch, &g_dispatchOriginal);
-	std::snprintf(report, reportSize, "property func %d ormus%s; dospellcast skill on cast%s", PropertySlot,
-	              property ? "" : " FAILED (slot not empty)", hook ? "" : " FAILED (bytes differ)");
-	return (property ? 1 : 0) + (hook ? 1 : 0);
+	const bool curses = context->InstallInlineHook(ApplyCurse, ApplyCurseEntry, sizeof(ApplyCurseEntry), CurseApply,
+	                                               &g_applyCurseOriginal);
+	std::snprintf(report, reportSize, "property func %d ormus%s; dospellcast skill on cast%s; curses%s", PropertySlot,
+	              property ? "" : " FAILED (slot not empty)", hook ? "" : " FAILED (bytes differ)",
+	              curses ? "" : " FAILED (bytes differ)");
+	return (property ? 1 : 0) + (hook ? 1 : 0) + (curses ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 2;
+	return 3;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "ormus rolls %u, spell casts %u, skill on cast rolls %u, procs %u", g_rolls.load(),
-	              g_raises.load(), g_procRolls.load(), g_procs.load());
+	std::snprintf(out, size, "ormus rolls %u, spell casts %u, skill on cast rolls %u, procs %u, curses %u, resisted %u",
+	              g_rolls.load(), g_raises.load(), g_procRolls.load(), g_procs.load(), g_curses.load(),
+	              g_curseResisted.load());
 }

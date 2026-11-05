@@ -1,0 +1,67 @@
+# IR4: PD2's curse stats in ProjectDiablo.dll
+
+Work item IR4 ([#239](https://github.com/synpoox/pd2-resurrected/issues/239), [item-rules.md](../item-rules.md)):
+curse effectiveness and max curses. Findings only: no PD2 or Blizzard file content is in this repo.
+
+## Method
+
+Ghidra 12.2 headless, read-only, with throwaway scripts kept outside the repo: an immediate search for the PD2 stat
+ids in `ProjectDiablo.dll` (`curse_slots` 190, `max_curses` 368, `curse_effectiveness` 504), decompiles and
+disassembly of the hits, PD2's patch table for the 1.13c call sites it redirects, and the D2R 93847 dump for the
+functions core-rules hooks. Ids below are PD2's; core-rules uses the merged ids (374, 421, 557,
+`merge/ids-itemstatcost.tsv`).
+
+## What PD2 does
+
+PD2 replaces 1.13c D2Game's state list creator (seven call sites, `+0x3acf9` ... `+0x9a22d` in its patch table, the
+necromancer curse function among them) with `0x1036d7d0`. It takes the same request D2R's `NewStateList` takes
+(caster, target, skill, level, frames, stat, value, state, callback).
+
+- **Curse resistance.** `curse_effectiveness` is read on the **cursed unit**, not the caster: PD2's strings call it
+  Curse Resistance, and the items that carry it are defensive (Wraithskin, Templar's Might, The Spirit Shroud; Overlord's
+  Helm has -20). On a curse state:
+  - the request's stat (aurastat1) becomes `value * (100 - r) / 100`, truncated (`0x1037c4c0`, doubles), with `r`
+    capped at 75 on a player and uncapped on a monster; a result of 0 cancels the curse;
+  - aurastat2-6, which the necromancer curse function sets after the list exists, go through `0x102fad50`, which PD2
+    patches over that one stat-set call (`+0x503b9`): the same formula with `r` capped at 75 for every unit;
+  - a negative `r` strengthens the curse.
+- **Max curses.** `slots = max_curses(caster) + 1`. PD2 walks the target's stat lists flagged curse (`0x20`): it counts
+  them, raises `slots` to the largest `curse_slots` any of them carries and sets a smaller non-zero `curse_slots` to 0,
+  and keeps the last timed one in the chain (the oldest) as the one to replace. Then:
+  - the target already has this state: the vanilla rule (same skill and level: timer refresh; lower level: refused;
+    otherwise replaced);
+  - fewer curses than `slots`: the curse is added;
+  - otherwise the oldest timed curse is replaced.
+  The new list gets `curse_slots = max_curses(caster) + 1` when that is more than the target's total `curse_slots`, so
+  the target keeps room for the caster's curses after the caster leaves.
+- **Also in the same function, not IR4's stats** (on the [unported list](../unported.md)):
+  - curse resistance stat 109 (`curse_resistance`) shortens the duration with the same 75 cap on players; D2R refuses a
+    curse at 100+ and has no cap;
+  - PD2 reads the attract state but no longer refuses a curse on an attracted unit; D2R does;
+  - Dark Pact (state 196, `dark_pact`) consumes one other curse and casts a follow-up skill whose level grows with the
+    curses on the target.
+
+## In the port
+
+D2R's `NewStateList` (`0x433d20`) starts with `jmp [rip+x]`: D2RCore hooks it, so core-rules cannot. The curse srvdo
+(slot 30, `0x55c840`, every player curse, Dark Pact included) hands D2R's necromancer curse function `0x55a7e0`
+(`SkillNec.cpp`, `(target, &CurseParams)`) to its area walk, once per target; `0x5598f0` and `0x568ad0` call it too.
+Its entry is D2R's own. core-rules hooks it (`item_rules.cpp`):
+
+- before: PD2's slot walk on the target's first chain of stat lists (unit `+0x88`, chain `+0x90`, flags `+0x1c`, next
+  `+0x68`). `NewStateList` removes the first curse-flagged list it finds, so every curse list that must stay loses its
+  curse flag while `0x55a7e0` runs: all of them while a slot is free, all but the oldest when full, all but this state's
+  own when the target has it;
+- after: the flags come back; a new list gets `curse_slots`; each stat `0x55a7e0` set is set again, resisted. The
+  value comes from D2R's own per-stat helper `0x55bfb0` (a fifth of a resist cut on an immune monster), so the order is
+  PD2's: the immunity cut, then resistance. aurastat1 is resisted only on a new list, as PD2 does it before the
+  refresh check.
+
+Left approximated: a curse whose resisted aurastat1 truncates to 0 still lands, with the stat at 0; PD2 cancels it.
+Only a tiny aurastat1 does that on a player (the cap leaves a quarter), and no PD2 monster carries the stat.
+
+## Game check
+
+`tests/game/core_rules_checks.py`, tag `core-rules-ir4`: `max-curses` (a curse joins only with a free slot, a full
+target loses one, and a monster holds a second curse) and `curse-resistance` (each resisted stat matches PD2's formula
+and cap).

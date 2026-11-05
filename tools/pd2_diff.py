@@ -31,6 +31,8 @@ ITEM_TABLES = {"armor", "weapons", "misc", "itemtypes", "magicprefix", "magicsuf
                "raresuffix", "uniqueitems", "sets", "setitems", "runes", "gems", "cubemain", "cubemod", "cubetype",
                "treasureclassex", "treasureclass", "qualityitems", "lowqualityitems", "itemratio", "gamble",
                "properties", "books", "belts", "bodylocs"}
+# the tables whose rows the gate pairs by their id list, as the merge placed them (names repeat in them)
+LIST_PAIRED = ITEM_TABLES | {"levels", "lvlprest", "lvlwarp", "objects", "objgroup"}
 SCOPES = {"P2": lambda t: t in pd2_ids.TABLES, "P3": lambda t: t in ITEM_TABLES,
           "P4": lambda t: t not in ITEM_TABLES and t not in pd2_ids.TABLES, "M1": lambda t: True, "pre-alpha": lambda t: True, "alpha": lambda t: True}
 
@@ -83,12 +85,12 @@ def pairs(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | No
     if rows != "name":
         mod_rows = {k.lower(): r for k, r in zip(row_keys(mod, rows), mod.rows)}
         return [(k, pr, mod_rows.get(k.lower())) for k, pr in zip(row_keys(pd2, rows), pd2.rows)]
-    if name in pd2_ids._BY_ROW or (name in ITEM_TABLES and lists.get(name)):
+    if name in pd2_ids._BY_ROW or (name in LIST_PAIRED and lists.get(name)):
         where = ({p.lower(): i for p, i, _ in lists[name]} if name not in pd2_ids._BY_ROW else
                  {p.lower(): k for k, p in enumerate(pd2_ids.ident(pd2.names()))})
         recs = mod.records()
-        return [(p, pd2.rows[k], mod.rows[recs[where[p.lower()]]] if where.get(p.lower(), len(recs)) < len(recs)
-                 else None) for p, k in zip(pd2_ids.ident(pd2.names()), pd2.records())]
+        return [(p, pd2.rows[k], mod.rows[recs[where[p.lower()]]] if 0 <= where.get(p.lower(), len(recs)) < len(recs)
+                 else None) for p, k in zip(pd2_ids.ident(pd2.names()), pd2.records())]  # LEFT_OUT: no mod row
     row_ren = ren.get(name, {}) if ren else {}
     mod_rows = keyed(mod.rows, mod.key)
     out = []
@@ -133,6 +135,10 @@ def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | 
             pd2_ids.fix_hit_params(mod.header, want, ctx.ids)
         elif ctx:
             pd2_ids.fix_props(mod.header, want, ctx.ren, ctx.ids, ctx.props)
+        for j, c in enumerate(mod.header):  # level tables' row numbers, in the mod's ids
+            t = pd2_ids.NUM_REFS.get(name, {}).get(c) or (name if pd2_ids.ID_COLS.get(name) == c else None)
+            if ctx and t:
+                want[j] = ctx.ids.get(t, {}).get(want[j], want[j])
         res.open += [(f"{name}.{row}.{c}", pr[i], mr[j]) for c, i, j in cols if not same(want[j], mr[j])]
     return res
 
@@ -183,7 +189,8 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
         if src is None:
             res = Result(p.stem, [(f"{p.stem}.*.*", "", "")], source="none")
         else:
-            ids_read = p.stem in pd2_ids.PROPS or p.stem == "missiles"  # property or hit parameters name ids
+            # property or hit parameters, or level tables' numbers, name ids
+            ids_read = p.stem in pd2_ids.PROPS or p.stem in ("missiles", *pd2_ids.NUM_REFS, *pd2_ids.ID_COLS)
             if ids_read and ctx is None:
                 ctx = pd2_ids.context_of(lists, root / "pd2-data/data", d2r)
             key = pd2_ids.KEY.get(p.stem)

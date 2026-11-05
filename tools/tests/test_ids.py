@@ -363,6 +363,46 @@ class ItemTableTests(unittest.TestCase):
         self.assertEqual(sets.rows, [["S", "X", "1"]])
 
 
+class LevelTableTests(unittest.TestCase):
+    def test_left_out_rows(self):
+        # a PD2 row the port leaves out (a cut area, a placeholder): listed with id '-', merged nowhere
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "ids-levels.tsv"
+            p.write_text("# PD2 name\tid\tname\nA\t0\tA\nPvp Map\t-\tcut: PvP\nB\t2\tB\n", "utf-8")
+            lines = I.read_list(p)
+        self.assertEqual(lines[1], ("Pvp Map", I.LEFT_OUT, "cut: PvP"))
+        I.check("levels", lines, ["A", "Pvp Map", "B"], ["A", "X"])
+        self.assertEqual(I.seed("levels", ["A", "Pvp Map", "B", "C"], ["A", "X"], lines), [("C", 3, "C")])
+        merged, _ = I.merge_table("levels", table("Name|Id\nA|0\nPvp Map|1\nB|2\n"), table("Name|Id\nA|0\nX|1\n"),
+                                  lines, I.renames({"levels": lines}))
+        self.assertEqual(merged.rows, [["A", "0"], ["X", "1"], ["B", "2"]])
+        self.assertEqual(I.renames({"levels": lines}), {"levels": {}})
+
+    def test_numeric_references_id_columns_and_d2r_columns(self):
+        # PD2's level 3 appends at 4 (D2R took 3): its Vis, a preset's LevelId and the Id columns follow it;
+        # an objects row keeps D2R's Token on a merged row only
+        ids = {"levels": {"0": "0", "1": "1", "3": "4"}, "objgroup": {"0": "0", "2": "5"}}
+        lv = I.merge_table("levels", table("Name|Id|Vis0|ObjGrp0\nNull|0|0|0\nTown|1|3|0\nNew|3|1|2\n"),
+                           table("Name|Id|Vis0|ObjGrp0\nNull|0|0|0\nTown|1|0|0\n"),
+                           [("Null", 0, "Null"), ("Town", 1, "Town"), ("New", 4, "New")], {}, ids)[0]
+        self.assertEqual(lv.rows[1], ["Town", "1", "4", "0"])
+        self.assertEqual(lv.rows[2], ["New", "4", "1", "5"])
+        pr = I.merge_table("lvlprest", table("Name|Def|LevelId\nNew 1|7|3\n"), table("Name|Def|LevelId\n"),
+                           [("New 1", 9, "New 1")], {}, ids)[0]
+        self.assertEqual(pr.rows, [["New 1", "9", "4"]])
+        with self.assertRaisesRegex(I.IdError, "Vis0 names PD2's levels row 2, which has no id"):
+            I.merge_table("levels", table("Name|Vis0\nA|2\n"), table("Name|Vis0\n"), [("A", 0, "A")], {}, ids)
+        ob = I.merge_table("objects", table("Name|Token|SizeX\nchest|C1|3\nnew|N1|2\n"),
+                           table("Class|Name|*ID|Token|SizeX\nChest1|chest|0|hd1|1\n"),
+                           [("chest", 0, "Chest1"), ("new", 1, "new")], {})[0]
+        self.assertEqual(ob.rows, [["Chest1", "chest", "0", "hd1", "3"], ["new", "new", "1", "N1", "2"]])
+
+    def test_objtype_follows_the_objects_list(self):
+        lines = [("Dummy", 0, "Null"), ("<reserved>", I.LEFT_OUT, "placeholder"), ("chest", 2, "chest")]
+        self.assertEqual(I.follow(lines, ["Dummy", "<reserved>", "chest"], ["Not Used", "Casket"], ["Not Used", "x", "Chest"]),
+                         [("Not Used", 0, "Not Used"), ("x", I.LEFT_OUT, ""), ("Chest", 2, "Chest")])
+
+
 class ListFileTests(unittest.TestCase):
     def test_seed_lists_appends_and_read_list_round_trips(self):
         with tempfile.TemporaryDirectory() as tmp:
