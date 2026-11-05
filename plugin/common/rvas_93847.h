@@ -936,6 +936,45 @@ inline constexpr uint64_t EntityPoolLock = 0x122ad60;    // (lock*) -> void
 inline constexpr uint64_t EntityPoolUnlock = 0x122ad90;  // (lock*) -> void
 inline constexpr uint64_t TlsfBlockInsert = 0x1215650;   // (control, block) -> void
 
+// Critical and deadly strike (IR3, docs/research/ir3-combat-stats.md)
+// WeaponDamage's (0x44c030) roll: from 0x44c2b4, right after the physical roll is stored at damage +0x18, to 0x44c3d9
+// it rolls the weapon mastery's crit (when a5 is 0), passive_critical_strike, then deadly strike, and doubles the
+// physical part with result flag 0x2000. Attacker in RSI, damage block in RDI, a5 in R14D; 0x44c3d9 needs R15D 0.
+// The 28 bytes replaced: test r14d,r14d / jnz / mov rcx,rsi / call UnitWeapon / test / jz / lea r9d,[r14+2] /
+// xor r8d,r8d / mov rdx,rax (nothing outside jumps into them).
+inline constexpr uint64_t WeaponCritBlock = 0x44c2b4;
+inline constexpr uint64_t WeaponCritBlockEnd = 0x44c3d9;
+inline constexpr uint8_t WeaponCritBlockBytes[] = {0x45, 0x85, 0xf6, 0x75, 0x67, 0x48, 0x8b, 0xce, 0xe8, 0xef,
+                                                   0x7f, 0xfd, 0xff, 0x48, 0x85, 0xc0, 0x74, 0x5a, 0x45, 0x8d,
+                                                   0x4e, 0x02, 0x45, 0x33, 0xc0, 0x48, 0x8b, 0xd0};
+// (unit, weapon) -> bool: a missile's crit or deadly strike, rolled by the missile fill 0x3bf9b0 (D2Common Missile.cpp)
+// and the server's 0x432f90 / 0x4333f0; a hit doubles the physical part of a missile that carries it.
+// mov [rsp+8],rbx / mov [rsp+0x10],rsi / push rdi / sub rsp,0x20
+inline constexpr uint64_t MissileCritRoll = 0x3ba820;
+inline constexpr uint8_t MissileCritRollEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x74,
+                                                   0x24, 0x10, 0x57, 0x48, 0x83, 0xec, 0x20};
+// (unit, weapon, 0, kind) -> the weapon mastery's bonus; kind 2 is the crit chance (D2RCore jumps it at its entry)
+inline constexpr uint64_t MasteryBonus = 0x33d4f0;
+
+// A statlist's base stat (statlist, stat << 16 | layer, itemstatcost record) -> value: ops 4 / 5 read their op base
+// on the owner's statlist through it (0x2f8ad0, 0x2fa430), as PD2's 0x102fa640 hooks in 1.13c. The statlist's unit
+// is at +0xa0. mov [rsp+0x10],rsi / push rdi / sub rsp,0x20 / movsxd rax,[rcx+0x1c] / mov rsi,rcx
+inline constexpr uint64_t StatListBaseStat = 0x2f9b10;
+inline constexpr uint8_t StatListBaseStatEntry[] = {0x48, 0x89, 0x74, 0x24, 0x10, 0x57, 0x48, 0x83, 0xec,
+                                                    0x20, 0x48, 0x63, 0x41, 0x1c, 0x48, 0x8b, 0xf1};
+inline constexpr uint64_t StatListUnit = 0xa0;
+inline constexpr uint64_t InventoryBodyItem = 0x3886d0;  // (inventory, bodyloc 0-12) -> the item worn there
+// (unit, amount) -> life added: life + amount up to the max, unless the unit is dead or has state 92 (1.13c's
+// 0x6fcfb570, which PD2 replaces with 0x10306ca0). Callers: the life leech 0x450c90 (attacker) and the hit's absorb
+// heal in 0x44ce80 (victim). mov [rsp+0x18],rbx / push rsi / sub rsp,0x20 / mov esi,edx / mov rbx,rcx
+inline constexpr uint64_t AddLife = 0x451820;
+inline constexpr uint8_t AddLifeEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x56, 0x48, 0x83,
+                                           0xec, 0x20, 0x8b, 0xf2, 0x48, 0x8b, 0xd9};
+inline constexpr uint64_t UnitMaxLife = 0x2f4d20;  // (unit) -> max life, 1/256
+// CrushingBlowApply's entry is jmp [rip+0x38a8872]: the qword it jumps through, which a plugin can swap
+inline constexpr uint64_t CrushingBlowApplySlot = 0x3e2a448;
+inline constexpr uint32_t MonPrimeEvil = 0x80;  // MonFlags bit 7 (1.13c's D2Common #10278 tests the same bit)
+
 }  // namespace d2r::rva
 
 namespace d2r {

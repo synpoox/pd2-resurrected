@@ -3482,7 +3482,7 @@ thread_local int32_t t_smiteLevel = 0;
 using AuraEventFn = int32_t (*)(Game*, int32_t, Unit*, Unit*, void*, int32_t, int32_t) noexcept;
 
 // PD2's event 16 on Smite: one roll a hit with the crushingblow stat plus calc3, on the damage block before D2R applies
-// it, as a domeleedamage event runs. The blow is D2R's (CrushingBlowApply), not PD2's formula (unported list).
+// it, as a domeleedamage event runs. CrushingBlowApply's slot holds PD2's blow (item_rules.cpp), without calc4.
 // shortcut: if D2R also rolls item crushing blow inline (outside the dump), a Smite hit rolls the item's chance twice;
 // upgrade if the game check shows more blows than crushingblow + calc3 allows.
 void SmiteCrushingBlow(Game* game, Unit* unit, Unit* target, uint8_t* damage, int32_t level) noexcept {

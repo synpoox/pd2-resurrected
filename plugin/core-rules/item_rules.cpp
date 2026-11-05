@@ -12,13 +12,19 @@
 //   curse resistance (curse_effectiveness on the target scales the curse's stats), around D2R's ApplyCurse.
 // - skill while equipped and phasing (docs/research/ir7-equipped-items.md): item_skillonequip runs its skill as an
 //   item aura (D2R's item_aura case and tick, fed stat 375), and Phasing SelfAura drops the unit collision bits.
+// - critical and deadly strike (IR3, docs/research/ir3-combat-stats.md): PD2's roll and multipliers in place of
+//   D2R's, in WeaponDamage's roll block (a byte patch calling WeaponStrike) and D2R's missile roll.
+// - op bases, life steal cap and crushing blow (IR3): equipped_eth / missing_hp on D2R's op-base read,
+//   lifedrain_percentcap on D2R's add-life, and PD2's blow in CrushingBlowApply's jump slot.
 #include "item_rules.h"
 
 #include "d2r.h"
 #include "log.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
+#include <cstring>
 #include <iterator>
 
 namespace {
@@ -193,6 +199,289 @@ auto SkillDispatch(Game* game, Unit* unit, int32_t skillId, int32_t level, int32
 		}
 	}
 	return ran;
+}
+
+// --- Critical and deadly strike (IR3, docs/research/ir3-combat-stats.md) ---
+// Merged stat ids (merge/ids-itemstatcost.tsv; PD2's 337, 141, 256, 257, 258, 210)
+constexpr uint32_t StatPassiveCrit = 337;     // passive_critical_strike
+constexpr uint32_t StatDeadlyStrike = 141;    // item_deadlystrike
+constexpr uint32_t StatCritMultiplier = 390;  // item_crit_multiplier
+constexpr uint32_t StatDsMultiplier = 391;    // item_ds_multiplier
+constexpr uint32_t StatCritChance = 392;      // item_crit_chance
+constexpr uint32_t StatMaxDeadly = 386;       // item_maxdeadlystrike
+constexpr int32_t StrikeCap = 75;
+
+std::atomic<uint32_t> g_strikeRolls {0};
+std::atomic<uint32_t> g_crits {0};
+std::atomic<uint32_t> g_deadlyStrikes {0};
+
+auto Stat(Unit* unit, uint32_t stat) noexcept -> int32_t {
+	return d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(d2r::rva::UnitStat)(unit, stat, 0);
+}
+
+struct Strike {
+	int kind = 0;  // 0 none, 1 critical strike, 2 deadly strike
+	int32_t critChance = 0, critRoll = -1, dsChance = 0, dsCap = 0, dsRoll = -1;
+};
+
+// PD2's roll (ProjectDiablo.dll 0x10304710): crit = the weapon mastery's crit + passive_critical_strike +
+// item_crit_chance, at most 75; only when it fails, deadly strike at most 75 + item_maxdeadlystrike
+auto RollStrike(Unit* unit, Unit* weapon) noexcept -> Strike {
+	using namespace d2r::rva;
+	Strike s;
+	const int32_t mastery = weapon != nullptr
+		? d2r::Engine<int32_t (*)(Unit*, Unit*, int32_t, int32_t) noexcept>(MasteryBonus)(unit, weapon, 0, 2) : 0;
+	s.critChance = mastery + Stat(unit, StatPassiveCrit) + Stat(unit, StatCritChance);
+	auto* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit);
+	if (s.critChance > 0) {
+		s.critChance = s.critChance < StrikeCap ? s.critChance : StrikeCap;
+		s.critRoll = static_cast<int32_t>(d2r::RandomBelow(seed, 100));
+		if (s.critRoll < s.critChance) {
+			s.kind = 1;
+			return s;
+		}
+	}
+	s.dsCap = StrikeCap + Stat(unit, StatMaxDeadly);
+	s.dsChance = Stat(unit, StatDeadlyStrike);
+	if (s.dsChance > 0) {
+		s.dsChance = s.dsChance < s.dsCap ? s.dsChance : s.dsCap;
+		s.dsRoll = static_cast<int32_t>(d2r::RandomBelow(seed, 100));
+		s.kind = s.dsRoll < s.dsChance ? 2 : 0;
+	}
+	return s;
+}
+
+// Every roll of a player (the game check's attacker) is logged; other units' a sample
+auto LogStrike(const char* where, Unit* unit, const Strike& s, uint32_t before, uint32_t after, int32_t multiplier) noexcept
+	-> void {
+	const uint32_t n = ++g_strikeRolls;
+	if (s.kind == 1) {
+		++g_crits;
+	} else if (s.kind == 2) {
+		++g_deadlyStrikes;
+	}
+	const int32_t type = At<int32_t>(unit, d2r::rva::UnitType);
+	if (type == 0 || n <= 20 || n % 500 == 0) {
+		plog::Info("strike: %s unit type %d kind %d, crit %d roll %d, deadly %d (cap %d) roll %d, physical %u -> %u (x%d%%), %u so far",
+		           where, type, s.kind, s.critChance, s.critRoll, s.dsChance, s.dsCap, s.dsRoll, before, after, multiplier, n);
+	}
+}
+
+// Called from WeaponDamage's patched roll block (WeaponCritBlock) in place of D2R's: PD2's roll, then the physical
+// part (damage +0x18) times 200 + item_crit_multiplier or 150 + item_ds_multiplier percent (0x103047f0), flag 0x2000.
+// a5 keeps D2R's gate on the mastery's crit (D2R adds it only when a5 is 0).
+// shortcut: PD2 adds the multiplier's per-hand item sum (0x10381720); the unit's total is used, which differs only
+// when dual wielding two multiplier weapons; upgrade if a dual-wield carrier turns up.
+auto WeaponStrike(Unit* attacker, uint8_t* damage, int32_t a5) noexcept -> void {
+	using namespace d2r::rva;
+	if (attacker == nullptr || damage == nullptr) {
+		return;
+	}
+	Unit* weapon = a5 == 0 ? d2r::Engine<Unit* (*)(Unit*) noexcept>(UnitWeapon)(attacker) : nullptr;
+	const Strike s = RollStrike(attacker, weapon);
+	const uint32_t before = At<uint32_t>(damage, 0x18);
+	int32_t multiplier = 100;
+	if (s.kind != 0) {
+		multiplier = s.kind == 1 ? 200 + Stat(attacker, StatCritMultiplier) : 150 + Stat(attacker, StatDsMultiplier);
+		const int64_t raised = static_cast<int64_t>(before) * (multiplier > 0 ? multiplier : 0) / 100;
+		*reinterpret_cast<uint32_t*>(damage + 0x18) = static_cast<uint32_t>(raised < 0x7fffffff ? raised : 0x7fffffff);
+		*reinterpret_cast<uint16_t*>(damage + 4) |= 0x2000;
+	}
+	LogStrike("weapon", attacker, s, before, At<uint32_t>(damage, 0x18), multiplier);
+}
+
+// D2R's missile roll (MissileCritRoll) with PD2's chances; the hit still doubles (D2R's; approximated, docs/research/ir3-combat-stats.md)
+auto MissileStrike(Unit* unit, Unit* weapon) noexcept -> uint64_t {
+	if (unit == nullptr) {
+		return 0;
+	}
+	const Strike s = RollStrike(unit, weapon);
+	LogStrike("missile", unit, s, 0, 0, s.kind == 0 ? 100 : 200);
+	return s.kind != 0 ? 1 : 0;
+}
+
+using MissileRollFn = uint64_t (*)(Unit*, Unit*) noexcept;
+MissileRollFn g_missileRollOriginal = nullptr;  // not called: PD2's roll replaces D2R's
+
+// WeaponCritBlock's new bytes: mov rcx,rsi / mov rdx,rdi / mov r8d,r14d / mov rax,WeaponStrike / call rax /
+// jmp WeaponCritBlockEnd / nop nop. The block's own volatile registers are set again after 0x44c3d9.
+auto WeaponCritPatch(uint8_t (&out)[28]) noexcept -> void {
+	using namespace d2r::rva;
+	static_assert(sizeof(WeaponCritBlockBytes) == 28);
+	const uint8_t head[] = {0x48, 0x8b, 0xce, 0x48, 0x8b, 0xd7, 0x45, 0x8b, 0xc6, 0x48, 0xb8};
+	std::memcpy(out, head, sizeof(head));
+	const uint64_t target = reinterpret_cast<uint64_t>(&WeaponStrike);
+	std::memcpy(out + 11, &target, 8);
+	out[19] = 0xff;
+	out[20] = 0xd0;
+	out[21] = 0xe9;
+	const int32_t rel = static_cast<int32_t>(WeaponCritBlockEnd - (WeaponCritBlock + 26));
+	std::memcpy(out + 22, &rel, 4);
+	out[26] = 0x90;
+	out[27] = 0x90;
+}
+
+// --- Op bases (IR3): PD2's 0x102fa640 computes two stats no one sets, for ops 4 / 5 (item_dmgpercent_pereth,
+// item_dmgpercent_permissinghppercent). Merged ids (PD2's 183, 184).
+constexpr uint32_t StatEquippedEth = 368;  // equipped_eth
+constexpr uint32_t StatMissingHp = 369;    // missing_hp
+constexpr uint32_t StatLife = 6;
+constexpr uint32_t StatMaxLife = 7;
+constexpr int32_t BodyLocFirst = 1, BodyLocLast = 10;  // worn; 11 and 12 hold the swapped weapons
+
+std::atomic<uint32_t> g_ethReads {0};
+
+using BaseStatFn = int32_t (*)(const uint8_t* statList, uint32_t statLayer, const uint8_t* record) noexcept;
+BaseStatFn g_baseStatOriginal = nullptr;
+
+// The ethereal items a player or monster wears
+auto WornEthereal(Unit* unit) noexcept -> int32_t {
+	using namespace d2r::rva;
+	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory)(unit, __FILE__, __LINE__);
+	if (inventory == nullptr) {
+		return 0;
+	}
+	const auto bodyItem = d2r::Engine<Unit* (*)(void*, int32_t) noexcept>(InventoryBodyItem);
+	const auto ethereal = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemIsEthereal);
+	int32_t count = 0;
+	for (int32_t loc = BodyLocFirst; loc <= BodyLocLast; ++loc) {
+		Unit* item = bodyItem(inventory, loc);
+		count += item != nullptr && ethereal(item) != 0 ? 1 : 0;
+	}
+	return count;
+}
+
+// PD2's 0x102fa640: equipped_eth and missing_hp of the statlist's player or monster, else D2R's read.
+// PD2's third case, inc_splash_radius + missing_hp x inc_splash_radius_permissinghp (at most 40), is only reached
+// with inc_splash_radius as an op base, which no stat has: not ported (docs/research/ir3-combat-stats.md).
+auto BaseStat(const uint8_t* statList, uint32_t statLayer, const uint8_t* record) noexcept -> int32_t {
+	const uint32_t stat = statLayer >> 16;
+	if (statList == nullptr || (stat != StatEquippedEth && stat != StatMissingHp)) {
+		return g_baseStatOriginal(statList, statLayer, record);
+	}
+	auto* unit = At<Unit*>(statList, d2r::rva::StatListUnit);
+	const int32_t type = unit != nullptr ? At<int32_t>(unit, d2r::rva::UnitType) : -1;
+	if (type != 0 && type != 1) {
+		return 0;
+	}
+	if (stat == StatMissingHp) {
+		const int64_t life = Stat(unit, StatLife), maxLife = Stat(unit, StatMaxLife);
+		return maxLife > 0 ? static_cast<int32_t>((maxLife - life) * 100 / maxLife) : 0;
+	}
+	const int32_t count = WornEthereal(unit);
+	if (plog::Sample(g_ethReads)) {
+		plog::Info("equipped_eth: unit type %d wears %d ethereal, %u reads so far", type, count, g_ethReads.load());
+	}
+	return count;
+}
+
+// --- Life steal cap (IR3, Nightmare's Feast): lifedrain_percentcap, merged id 541 (PD2's 488) ---
+constexpr uint32_t StatLifeDrainCap = 541;
+
+std::atomic<uint32_t> g_capChecks {0};
+std::atomic<uint32_t> g_capBlocks {0};
+
+using AddLifeFn = int32_t (*)(Unit*, int32_t) noexcept;
+AddLifeFn g_addLifeOriginal = nullptr;
+
+// PD2's 0x10306ca0 sets life through 0x102fbc50: with lifedrain_percentcap C, the new life is set only when it, or
+// the life before, is under (100 - C)% of the max (stat 7); else nothing is added.
+auto CappedAddLife(Unit* unit, int32_t amount) noexcept -> int32_t {
+	const int32_t cap = unit != nullptr && amount > 0 ? Stat(unit, StatLifeDrainCap) : 0;
+	if (cap == 0) {
+		return g_addLifeOriginal(unit, amount);
+	}
+	const int64_t life = Stat(unit, StatLife);
+	const int64_t maxLife = std::max(Stat(unit, StatMaxLife), 1);
+	const int64_t top = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::UnitMaxLife)(unit);
+	const int64_t after = life + amount < top ? life + amount : top;
+	const double limit = (100.0 - cap) / 100.0;
+	const bool allowed = static_cast<double>(after) / maxLife < limit || static_cast<double>(life) / maxLife < limit;
+	const uint32_t n = ++g_capChecks;
+	g_capBlocks += allowed ? 0 : 1;
+	if (n <= 20 || n % 200 == 0) {
+		plog::Info("life steal cap: unit type %d cap %d%%, life %lld -> %lld of %lld (1/256): %s, %u blocked of %u",
+		           At<int32_t>(unit, d2r::rva::UnitType), cap, static_cast<long long>(life), static_cast<long long>(after),
+		           static_cast<long long>(maxLife), allowed ? "added" : "blocked", g_capBlocks.load(), n);
+	}
+	return allowed ? g_addLifeOriginal(unit, amount) : 0;
+}
+
+// --- Crushing blow (IR3): PD2's blow (event 16, 0x103469a0) in place of D2R's CrushingBlowApply ---
+constexpr uint32_t StatDamageResist = 36;
+constexpr uint32_t StatPlayerCount = 100;   // monster_playercount
+constexpr uint32_t StatCbEfficiency = 394;  // item_crushingblow_efficiency (PD2's 268)
+constexpr int32_t OverlayCrushingBlow = 147;  // PD2's 0x93
+constexpr int32_t Hirelings[] = {271, 338, 359, 560, 561};  // 1.13c's D2Common #11104
+
+std::atomic<uint32_t> g_blows {0};
+
+// PD2's divisor: 10 on a player or hireling; on a prime evil (monstats flag) 70 + 10 per missing life percent (1.13c's
+// D2Common #11027 is the life percent); 8 on others; a monster then adds its player count's life bonus / 50.
+// shortcut: PD2's divisor 30 for its own boss lists (0x10371290, built at run time) is not ported; those bosses
+// are PD2 content not in the merged data. Upgrade with them.
+auto BlowDivisor(Game* game, Unit* target) noexcept -> double {
+	using namespace d2r::rva;
+	const int32_t type = At<int32_t>(target, UnitType);
+	if (type == 0) {
+		return 10.0;
+	}
+	if (type != 1) {
+		return 8.0;
+	}
+	const int32_t classId = At<int32_t>(target, UnitClassId);
+	for (int32_t hireling : Hirelings) {
+		if (classId == hireling) {
+			return 10.0;
+		}
+	}
+	double divisor = 8.0;
+	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(d2r::DataFlag(game), classId);
+	if (record != nullptr && (At<uint32_t>(record, MonFlags) & MonPrimeEvil) != 0) {
+		const int32_t maxLife = Stat(target, StatMaxLife) >> 8;
+		const int32_t lifePercent = maxLife != 0 ? (Stat(target, StatLife) >> 8) * 100 / maxLife : 0;
+		divisor = (100.0 - lifePercent) * 10.0 + 70.0;
+	}
+	const int32_t players = std::max(Stat(target, StatPlayerCount), 1);
+	const int32_t bonus = players < 9 ? (players > 1 ? (players - 1) * 50 : 0) : (players - 2) * 50;  // D2Game 0xaf5f0
+	return divisor + bonus / 50.0;
+}
+
+// PD2's blow: life * (1 + item_crushingblow_efficiency / 100) / divisor (x1.5 for a missile), less the target's
+// damageresist percent, nothing at 100 or more; then the kill flag and the overlay. D2R's event 16 and Smite's
+// roll (skill_functions.cpp) both call it.
+// shortcut: PD2 adds Smite's calc4 to the effectiveness and the efficiency's per-hand item sum; neither is passed in
+// here (1 and the unit's total). Upgrade with a Smite carrier of item_crushingblow_efficiency.
+auto CrushingBlow(Game* game, Unit* unit, Unit* target, d2r::CrushingBlowArgs* args) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr || target == nullptr || args == nullptr) {
+		return 0;
+	}
+	const int32_t resist = Stat(target, StatDamageResist);
+	if (resist >= 100) {
+		return 0;
+	}
+	const double divisor = BlowDivisor(game, target) * (args->missile != 0 ? 1.5 : 1.0);
+	const int32_t efficiency = Stat(unit, StatCbEfficiency);
+	const double life = static_cast<uint32_t>(Stat(target, StatLife));
+	double blow = life / (divisor / (efficiency / 100.0 + 1.0));
+	blow -= static_cast<int32_t>(static_cast<int64_t>(static_cast<int32_t>(blow)) * resist / 100);  // 0x1037c4c0
+	const int32_t after = std::max(static_cast<int32_t>(life - blow), 0);
+	d2r::Engine<void (*)(Unit*, uint32_t, int32_t, uint32_t) noexcept>(SetUnitStat)(target, StatLife, after, 0);
+	if (after < 1 && args->damage != nullptr) {
+		*reinterpret_cast<uint16_t*>(static_cast<uint8_t*>(args->damage) + DamageResult) |= 2;  // killed
+	}
+	if (blow > 0) {
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetOverlay)(target, OverlayCrushingBlow, 0);
+	}
+	const uint32_t n = ++g_blows;
+	if (n <= 20 || n % 200 == 0) {
+		plog::Info("crushing blow: unit type %d on unit type %d class %d%s: divisor %.2f, efficiency %d, resist %d, "
+		           "life %.0f -> %d (1/256), %u so far", At<int32_t>(unit, UnitType), At<int32_t>(target, UnitType),
+		           At<int32_t>(target, UnitClassId), args->missile != 0 ? " (missile)" : "", divisor, efficiency, resist,
+		           life, after, n);
+	}
+	return 1;
 }
 
 // --- Curses: curse resistance and max curses (docs/research/ir4-curses.md) ---------------------------------------
@@ -505,6 +794,21 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                             reinterpret_cast<uint64_t>(static_cast<PropertyFn>(PropSorcSkillRandCtc)));
 	const bool hook = context->InstallInlineHook(SrvSkillDispatch, SrvSkillDispatchEntry, sizeof(SrvSkillDispatchEntry),
 	                                             SkillDispatch, &g_dispatchOriginal);
+	uint8_t critPatch[28];
+	WeaponCritPatch(critPatch);
+	const bool weaponStrike = context->PatchBytes(WeaponCritBlock, WeaponCritBlockBytes, sizeof(WeaponCritBlockBytes),
+	                                              critPatch, sizeof(critPatch));
+	const bool missileStrike = context->InstallInlineHook(MissileCritRoll, MissileCritRollEntry,
+	                                                      sizeof(MissileCritRollEntry), MissileStrike, &g_missileRollOriginal);
+	const bool baseStat = context->InstallInlineHook(StatListBaseStat, StatListBaseStatEntry,
+	                                                 sizeof(StatListBaseStatEntry), BaseStat, &g_baseStatOriginal);
+	const bool lifeCap = context->InstallInlineHook(AddLife, AddLifeEntry, sizeof(AddLifeEntry),
+	                                                CappedAddLife, &g_addLifeOriginal);
+	// The slot holds whatever the image or D2RCore put there; PD2's blow replaces it whole, so it is not kept
+	const uint64_t blowSlot = *reinterpret_cast<const uint64_t*>(d2r::imageBase + CrushingBlowApplySlot);
+	using BlowFn = int32_t (*)(Game*, Unit*, Unit*, d2r::CrushingBlowArgs*) noexcept;
+	const bool blow = blowSlot != 0 && context->PatchWriteU64(CrushingBlowApplySlot, &blowSlot, sizeof(blowSlot),
+	                                                          reinterpret_cast<uint64_t>(static_cast<BlowFn>(CrushingBlow)));
 	const bool curses = context->InstallInlineHook(ApplyCurse, ApplyCurseEntry, sizeof(ApplyCurseEntry), CurseApply,
 	                                               &g_applyCurseOriginal);
 	// Both or neither: a callback without the tick would start item_skillonequip's aura and stop it at its first tick
@@ -513,20 +817,27 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool equip = tick && context->InstallInlineHook(StatCallbackInit, StatCallbackInitEntry,
 	                                                      sizeof(StatCallbackInitEntry), EquipStatCallbackInit,
 	                                                      &g_statCallbackInitOriginal);
-	std::snprintf(report, reportSize, "property func %d ormus%s; dospellcast skill on cast%s; curses%s; skill on equip%s",
-	              PropertySlot, property ? "" : " FAILED (slot not empty)", hook ? "" : " FAILED (bytes differ)",
-	              curses ? "" : " FAILED (bytes differ)", equip ? "" : " FAILED (bytes differ)");
-	return (property ? 1 : 0) + (hook ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0);
+	std::snprintf(report, reportSize, "property func %d ormus%s; dospellcast skill on cast%s; weapon strike%s; missile strike%s; "
+	              "op bases%s; life steal cap%s; crushing blow%s; curses%s; skill on equip%s", PropertySlot,
+	              property ? "" : " FAILED (slot not empty)", hook ? "" : " FAILED (bytes differ)",
+	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
+	              baseStat ? "" : " FAILED (bytes differ)", lifeCap ? "" : " FAILED (bytes differ)",
+	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
+	              equip ? "" : " FAILED (bytes differ)");
+	return (property ? 1 : 0) + (hook ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (baseStat ? 1 : 0) +
+	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 4;
+	return 9;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
-	              "ormus rolls %u, spell casts %u, skill on cast rolls %u, procs %u, curses %u, resisted %u, "
-	              "skill on equip changes %u, ticks %u, phasing %u",
-	              g_rolls.load(), g_raises.load(), g_procRolls.load(), g_procs.load(), g_curses.load(),
-	              g_curseResisted.load(), g_equipCallbacks.load(), g_equipTicks.load(), g_phasing.load());
+	              "ormus rolls %u, spell casts %u, skill on cast rolls %u, procs %u, strike rolls %u, crits %u, "
+	              "deadly strikes %u, equipped_eth reads %u, life steal cap checks %u (blocked %u), crushing blows %u, "
+	              "curses %u, resisted %u, skill on equip changes %u, ticks %u, phasing %u",
+	              g_rolls.load(), g_raises.load(), g_procRolls.load(), g_procs.load(), g_strikeRolls.load(), g_crits.load(),
+	              g_deadlyStrikes.load(), g_ethReads.load(), g_capChecks.load(), g_capBlocks.load(), g_blows.load(),
+	              g_curses.load(), g_curseResisted.load(), g_equipCallbacks.load(), g_equipTicks.load(), g_phasing.load());
 }
