@@ -363,15 +363,28 @@ auto OwnedByPlayer(Unit* target) noexcept -> bool {
 	return At<int32_t>(target, d2r::rva::UnitOwnerType) == 0 && id != 0 && id != UINT32_MAX;
 }
 
-// Find Potion / Find Item start (PD2 srvstfunc 70, here 82): the guard, then D2R's own srvst 33 / 34.
-// shortcut: PD2's 46 bosses whose corpses can't be searched are not listed; they are map and uber bosses, which come
-// with the map plan (docs/unported.md).
+// PD2's 46 bosses whose corpses can't be searched (map, uber and PD2-only-area bosses; docs/research/w10-barbarian.md),
+// as merged monstats ids.
+constexpr int32_t Unsearchable[] = {760,  763,  764,  767,  772,  817,  826,  843,  878,  887,  896,  899,
+                                    900,  901,  910,  911,  932,  980,  981,  1013, 1014, 1015, 1017, 1042,
+                                    1043, 1075, 1077, 1078, 1079, 1080, 1111, 1113, 1120, 1121, 1122, 1138,
+                                    1139, 1165, 1166, 1181, 1183, 1191, 1192, 1257, 1259, 1260};
+
+auto Searchable(Unit* target) noexcept -> bool {
+	if (OwnedByPlayer(target)) {
+		return false;
+	}
+	const int32_t mon = At<int32_t>(target, d2r::rva::UnitType) == 1 ? At<int32_t>(target, d2r::rva::UnitClassId) : -1;
+	return std::find(std::begin(Unsearchable), std::end(Unsearchable), mon) == std::end(Unsearchable);
+}
+
+// Find Potion / Find Item start (PD2 srvstfunc 70, here 82): the guards, then D2R's own srvst 33 / 34.
 auto SrvStFind(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	if (game == nullptr || unit == nullptr) {
 		return 0;
 	}
 	Unit* target = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(d2r::rva::SkillTargetUnit)(game, unit);
-	if (target == nullptr || OwnedByPlayer(target)) {
+	if (target == nullptr || !Searchable(target)) {
 		g_findsRefused.fetch_add(1);
 		return 0;
 	}
@@ -384,13 +397,13 @@ auto SrvStFind(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	return VanillaSlot<SrvDoFn>(d2r::rva::SrvStTable, slot)(game, unit, skillId, level);
 }
 
-// Client half (PD2 cltstfunc 55, here 62): the same guard before D2R's cltst 26 / 28.
+// Client half (PD2 cltstfunc 55, here 62): the same guards before D2R's cltst 26 / 28.
 auto CltStFind(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	if (unit == nullptr) {
 		return 0;
 	}
 	Unit* target = d2r::Engine<Unit* (*)(Unit*) noexcept>(d2r::rva::ClientSkillTargetUnit)(unit);
-	if (target == nullptr || OwnedByPlayer(target)) {
+	if (target == nullptr || !Searchable(target)) {
 		return 0;
 	}
 	const int slot = skillId == FindPotion ? d2r::rva::CltStFindPotion : d2r::rva::CltStFindItem;
@@ -683,10 +696,12 @@ std::atomic<uint32_t> g_desecrateHidden {0};
 constexpr int32_t Desecrate = 83;
 constexpr int32_t CorpseNoDraw = 104;  // states.txt corpse_nodraw, the same id in PD2 and D2R
 constexpr int32_t CorpseFrames = 400;  // PD2's timer: the corpse can't be used 16 seconds after it falls
-// Monsters PD2 never raises, as merged monstats ids: frogdemon1-3, ancientbarb1-3.
-// shortcut: PD2's other 45 (map, uber and Rathma monsters, *Maus, *Rat, void*) are left out because no merged level
-// lists them in mon1-25 / nmon1-25; add them when a map level is ported (docs/unported.md).
-constexpr int32_t NeverRaised[] = {247, 248, 249, 540, 541, 542};
+// Monsters PD2 never raises, as merged monstats ids: its 40 hcIdx (ProjectDiablo.dll 0x10190990 fills the set
+// 0x36d600 reads) and, by name, frogdemonThrone, firetowerMarket and every *Maus, *Rat, *Rat2 and void* monster.
+constexpr int32_t NeverRaised[] = {247,  248,  249,  540,  541,  542,  841,  862,  863,  864,  865,  866,  867,
+                                   868,  869,  933,  934,  957,  958,  959,  960,  963,  976,  985,  986,  987,
+                                   988,  989,  990,  991,  992,  993,  994,  995,  996,  997,  998,  999,  1000,
+                                   1001, 1002, 1003, 1123, 1124, 1159, 1160, 1161, 1162, 1163, 1164, 1180};
 // Where PD2 picks monsters when the cast level has none: Black Marsh, a Tal Rasha's Tomb, Spider Forest, City of the
 // Damned, the Worldstone Chamber
 constexpr int32_t FallbackLevels[] = {6, 66, 76, 106, 132};

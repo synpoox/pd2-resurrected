@@ -107,6 +107,11 @@ REFS = {
 NUM_REFS = {"levels": {**{f"Vis{i}": "levels" for i in range(8)}, **{f"ObjGrp{i}": "objgroup" for i in range(8)}},
             "lvlprest": {"LevelId": "levels"},
             "objgroup": {f"ID{i}": "objects" for i in range(8)}}
+# A misc row with PD2's map spell opens the level its `len` names (ProjectDiablo.dll evaluates the calc as the level id,
+# docs/research/pd2-map-system-dll.md): it takes the mod's id, blank for a left-out level (PvP, PD2's Uber Ancients).
+# Every other row's len is a duration.
+MAP_SPELL = "12"
+LEFT_OUT_LEVELS = "levels left out"  # an ids key: the PD2 level ids the port leaves out
 # columns that hold the row's own id, written with the mod's (lvlwarp UniqueId: D2R's, the row number)
 ID_COLS = {"levels": "Id", "lvlprest": "Def", "lvlwarp": "UniqueId"}
 # columns a merged D2R row keeps, where the games give them different meanings (objects Token: D2R's graphics)
@@ -123,7 +128,12 @@ FORMULAS = {
 # D2R columns computed from the PD2 row. rightskill (right-mouse list): D2R sets it to "not passive" on every class skill;
 # taken-over rows need it too, since PD2 turned some vanilla skills passive (Impale -> Javelin and Spear Mastery).
 # setitems spawnable and the itemtypes socket thresholds: the value D2R gives every one of its own rows.
+# levels DrawEdges, a column both games have, overrides PD2's value: D2R's client gives only acts 1-3 an edge tile
+# (0x327090), so in act 5 (Act 4) it draws a null one and crashes (FUN_14021d090, #258) near the drawn floor's end;
+# PD2-only areas in act 5 draw none. D2R's own act 5 rows (134, 136) keep PD2's value, the same as D2R's.
 DERIVED = {"skills": {"rightskill": lambda pd2: "0" if pd2.get("passive") == "1" else "1"},
+           "levels": {"DrawEdges": lambda pd2: "0" if pd2.get("Act") == "4"
+                      and int(pd2.get("Id") or 0) >= VANILLA["levels"] else pd2.get("DrawEdges", "")},
            "setitems": {"spawnable": lambda pd2: "1"},
            "itemtypes": {"MaxSocketsLevelThreshold1": lambda pd2: "25", "MaxSocketsLevelThreshold2": lambda pd2: "40"}}
 # itemstatcost display (#67): D2R's stat strings carry the value's format code ("%+d to Strength"), where PD2's descfunc
@@ -148,7 +158,9 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # Ormus' Robes' property func 25 (D2R's 25 is affix-rand) takes the free property slot 26 (P12,
 # docs/research/p12-ormus-robes.md).
 # levels' Teleport 3 (PD2's path search, research/sorceress-w26.md) is not a D2R value; 1 (allowed) stands in until MS7.
+# Map items' pSpell 12 (D2R's 12 is the Resist Scroll) takes the free item spell 16 core-maps installs (MS2).
 FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
+         "misc": {"pSpell": {MAP_SPELL: "16"}},
          "levels": {"Teleport": {"3": "1"}},
          "missiles": {"pSrvDoFunc": {"38": "46", "40": "47"}, "pCltDoFunc": {"70": "78", "69": "79", "72": "80"},
                       "pSrvHitFunc": {"30": "66", "34": "69", "6": "67"},
@@ -355,6 +367,9 @@ def fix_props(header: list[str], row: list[str], ren: dict[str, dict[str, str]],
             row[p] = remap(kind + "s", row[p])
         elif kind == "skillrange" and p + 2 < len(header):  # skill-rand: min and max are a range of skill ids
             row[p + 1], row[p + 2] = remap("skills", row[p + 1]), remap("skills", row[p + 2])
+        elif kind == "monster" and p + 2 < len(header):
+            mon = ids.get("monstats", {})
+            row[p + 1], row[p + 2] = mon.get(row[p + 1], row[p + 1]), mon.get(row[p + 2], row[p + 2])
 
 
 def spell(table: str, col: str, v: str, ren: dict[str, dict[str, str]]) -> str:
@@ -376,6 +391,18 @@ def fix_missile_funcs(table: str, header: list[str], row: list[str]) -> None:
             row[f] = ""
             if not row[m]:
                 row[m], row[a] = row[a], ""
+
+
+def fix_map_level(table: str, header: list[str], row: list[str], pd2_spell: str, ids: dict[str, dict[str, str]]) -> None:
+    """A map item's len (PD2 pSpell MAP_SPELL) in the mod's level ids; blank for a left-out level."""
+    if table == "misc" and pd2_spell == MAP_SPELL and "len" in header:
+        j = header.index("len")
+        if row[j] in ids.get("levels", {}):
+            row[j] = ids["levels"][row[j]]
+        elif row[j] in ids.get(LEFT_OUT_LEVELS, {}):
+            row[j] = ""
+        else:
+            raise IdError(f"misc '{row[0]}': len names PD2's level {row[j]!r}, which has no id")
 
 
 def fix_hit_params(header: list[str], row: list[str], ids: dict[str, dict[str, str]]) -> None:
@@ -441,6 +468,7 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
                 if row[j] not in (ids or {}).get(nums[j], {}):
                     raise IdError(f"{table} '{n}': {d2r.header[j]} names PD2's {nums[j]} row {row[j]}, which has no id")
                 row[j] = ids[nums[j]][row[j]]
+        fix_map_level(table, d2r.header, row, pr[src["pspell"]] if "pspell" in src else "", ids or {})
         own = d2r.rows[recs[i]] if shown and i < len(recs) else None
         if own and not any(row[j] for j in str_cols) and row[desc_cols[0]] == own[desc_cols[0]]:
             # 1.13c's descfunc 27/28 hardcode their text; D2R's read it from the strings (#116: "an evil force")
@@ -518,8 +546,11 @@ def context_of(lists: dict[str, list[tuple[str, int, str]]], pd2_data: Path, d2r
         if not lists[t]:  # nothing to remap (tests with no such table)
             continue
         mod = {p.lower(): i for p, i, _ in lists[t]}
-        ids[t] = {str(k): str(mod[p.lower()]) for k, p in enumerate(ident(load(pd2_data, t).names()))
+        names = ident(load(pd2_data, t).names())
+        ids[t] = {str(k): str(mod[p.lower()]) for k, p in enumerate(names)
                   if mod[p.lower()] != LEFT_OUT}  # a reference to a left-out row fails the merge
+        if t == "levels":  # except a map's (fix_map_level)
+            ids[LEFT_OUT_LEVELS] = {str(k): "" for k, p in enumerate(names) if mod[p.lower()] == LEFT_OUT}
     if d2r_data is not None and (excel(d2r_data) / "monstats.txt").is_file():
         ids["monstats"] = monstats_ids(load(pd2_data, "monstats"), load(d2r_data, "monstats"))
     return Context(lists, renames(lists), ids, property_kinds(load(pd2_data, "properties")))
@@ -527,12 +558,13 @@ def context_of(lists: dict[str, list[tuple[str, int, str]]], pd2_data: Path, d2r
 
 def property_kinds(properties: Table) -> dict[str, str]:
     """Property code -> what its parameter names: skill (the skill-event, charged and single-skill functions 11, 19,
-    22), skillrange (12, skill-rand: min-max ids) or state."""
+    22), skillrange (12, skill-rand: min-max ids), state, or monster (map-glob-add-mon-*: min-max are a monstats id)."""
     h = {c: j for j, c in enumerate(properties.header)}
     kinds = {}
     for r in properties.rows:
         func, stat = r[h["func1"]], r[h["stat1"]]
         kind = "state" if stat == "state" else "skill" if func in ("11", "19", "22") else "skillrange" if func == "12" else ""
+        kind = "monster" if stat.startswith("map_glob_add_mon_") else kind
         if kind:
             kinds[r[0]] = kind
     return kinds

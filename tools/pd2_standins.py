@@ -43,7 +43,7 @@ PD2_ONLY = {
         "pCltHitFunc": _nums(65) | {"*16"},  # *12/*16: PD2 text that parses as no function
         "pSrvDmgFunc": _nums(15, 17, 18),
     },
-    "misc": {"pSpell": _nums(12, 13)},
+    "misc": {"pSpell": _nums(13)},  # PD2's map spell 12 moves to 16, which core-maps installs (MS2)
     "properties": {f"func{i}": _nums(25) for i in range(1, 8)},
     "states": {"remfunc": _nums(12)},
     "objects": {"OperateFn": _nums(range(75, 81))},  # PD2's portals, altars and tomes (LP1)

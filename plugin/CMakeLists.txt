@@ -51,6 +51,8 @@ set(CORE_MAPS_VERSION "0.1.0" CACHE STRING "core-maps PluginInfo::version")
 add_library(core_maps SHARED
 	core-maps/plugin.cpp
 	core-maps/cube_ops.cpp
+	core-maps/map_open.cpp
+	core-maps/map_stats.cpp
 	core-maps/plugin.rc
 )
 target_link_libraries(core_maps PRIVATE core_common)
