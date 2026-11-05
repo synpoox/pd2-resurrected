@@ -1,6 +1,6 @@
-# Blade Fury's fragment (W32): shit 34 -> 69, chit 6 -> 68, dmg 19, and the channel check
+# Blade Fury's fragment ([W32](https://github.com/synpoox/pd2-resurrected/issues/107)): shit 34 -> 69, chit 6 -> 68, dmg 19, and the channel check
 
-Answers work item W32 (#107). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll`,
+Answers work item [W32](https://github.com/synpoox/pd2-resurrected/issues/107) ([#107](https://github.com/synpoox/pd2-resurrected/issues/107)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll`,
 `D2Client.dll` and `D2Common.dll` in the Ghidra project `PD2.gpr`, D2R side from the 93847 dump (`ImageStamp
 0x6ab3782c`). Addresses are D2R RVAs unless they start with `0x10`; 1.13c addresses are offsets in their DLL.
 
@@ -76,7 +76,7 @@ wraps the index (docs/pd2-origin-bugs.md).
 
 `SrvHitBladeFragment` (shit 69), `CltHitBladeFragment` (chit 68) and `SrvDmgBladeFragment` (dmg 19) in
 `plugin/core-rules/missile_functions.cpp`; the wall bounce is one template both halves run. Deviations (approximated,
-docs/unported.md):
+docs/deviations.md):
 
 - The split fragments are created on the server only: D2R's send of a missile to a client is not found (1.13c's room
   entry, D2Game `0x9dcd0`, never sends a missile, so the send must be explicit). They hit; another client draws them
@@ -88,10 +88,10 @@ docs/unported.md):
 
 ## The channel check
 
-W21 built PD2's gate A for Blade Fury (srvdo 48): another skill takes over at once, a second Blade Fury does not cut
+[W21](https://github.com/synpoox/pd2-resurrected/issues/96) built PD2's gate A for Blade Fury (srvdo 48): another skill takes over at once, a second Blade Fury does not cut
 the first short ([druid-w21](druid-w21.md)). The game check found the held channel throwing one blade per hold, on
 release, and the client drawing none: PD2's seqinput 3 makes D2R loop the sequence at frame 3, before the throw frame,
-and D2R's gate buffers (4) the held re-request, so the Assassin stays in the channel. It is W21's Inferno and Arctic
+and D2R's gate buffers (4) the held re-request, so the Assassin stays in the channel. It is [W21](https://github.com/synpoox/pd2-resurrected/issues/96)'s Inferno and Arctic
 Blast finding again (PD2's event re-timing, `0x1037a7c0`, is not ported). The row keeps D2R's seqinput 12
 (`merge/standins.tsv`): the re-request then comes after the throw, D2R's gate allows it (0) and the next sequence
 throws the next blade, at D2R's rate. A Blade Fury of another row is still refused by PD2's rule.

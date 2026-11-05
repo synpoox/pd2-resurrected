@@ -1,6 +1,6 @@
 # Lightning javelins (srvdo 188, cltdo 117)
 
-Answers work item W5 (#52): what do PD2's skill functions srvdo 188 and cltdo 117 (Lightning Bolt, Lightning Fury) do,
+Answers work item [W5](https://github.com/synpoox/pd2-resurrected/issues/52) ([#52](https://github.com/synpoox/pd2-resurrected/issues/52)): what do PD2's skill functions srvdo 188 and cltdo 117 (Lightning Bolt, Lightning Fury) do,
 and does D2R need a plugin for them? They only create the skill's missile, which D2R's do dispatcher already does from
 the missile columns, so the row is data only. Read from the PD2 baseline install `C:\Games\PD2\ProjectD2`:
 `ProjectDiablo.dll` and its 1.13c `D2Game.dll` / `D2Client.dll`. D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`).
@@ -48,7 +48,7 @@ Bolt, Ice Blast, Fire Ball, Lightning, Glacial Spike, Frozen Orb, ...) and 183/1
 are empty and its dispatcher reads `ItemEffect` (`+0x20a`) only for an item cast with a value above 1 and a non-empty
 slot, so an item cast (Crackleshot's hit skill, Thunderstroke, "of Lightning Fury" charges) runs the skill's normal cast
 instead. It does not crash; the difference is the aim (PD2's 187 throws at the target unit's position) and the missile
-flag `0x10000`. Listed in `docs/unported.md`.
+flag `0x10000`. Listed in `docs/deviations.md`.
 
 ## Game check
 

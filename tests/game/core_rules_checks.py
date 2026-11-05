@@ -642,7 +642,7 @@ def wolf_start(ctx):
 def golem_count(ctx):
     """Golems follow PD2's count rule as data: petmax 1 + Golem Mastery blvl / 5 (+ extra_golem) caps Clay, Blood and Fire
     Golems together, and a new one replaces the oldest. Watches the client's monsters for 30 s while golems are
-    summoned. The Iron Golem keeps its own pet type and does not take a place (docs/unported.md)."""
+    summoned. The Iron Golem keeps its own pet type and does not take a place (docs/deviations.md)."""
     rows = _rows("monstats")
     golems = {rows.index(n) for n in ("claygolem", "bloodgolem", "firegolem")}
     limit = 1 + GOLEM_MASTERY_LEVEL // 5
@@ -1541,7 +1541,7 @@ def combustion_cast(ctx):
     excel = ("data", "global", "excel", "missiles.txt")
     pd2 = _missile_row(os.path.join(REPO, "pd2-data", *excel), "combustion")
     mod = _missile_row(os.path.join(REPO, "generated", *excel), "combustion")
-    for col in ("Vel", "MaxVel", "VelLev", "Range"):  # D2R has no LevRange (unported list)
+    for col in ("Vel", "MaxVel", "VelLev", "Range"):  # D2R has no LevRange (deviation list)
         assert pd2[col] == mod[col], f"combustion {col} {mod[col]}, PD2's {pd2[col]}"
     return f"level {casts[0][0]}: 32 missiles on server and client, Vel {mod['Vel']}, Range {mod['Range']}"
 
@@ -1701,7 +1701,7 @@ def hit_window(ctx):
     left to the mode-end event (D2R: 1). With more left, walk / run are buffered (4, D2R's queue) and the rest refused
     (1). A get-hit, block or knockback request is still refused (D2R's). D2R's client holds a request made in get-hit
     and sends it with 1 frame left (PD2's client most likely too), so the 2-frame case is not reached, and a 1-frame row passes
-    without the patch too: the check guards the hook and the window's results, not the patch (docs/unported.md)."""
+    without the patch too: the check guards the hook and the window's results, not the patch (docs/deviations.md)."""
     rows = [tuple(int(v) for v in m) for m in HIT_WINDOW.findall(_log(ctx))]
     rows = [r for r in rows if r[0] in (GET_HIT, BLOCK)]
     if not rows:

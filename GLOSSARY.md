@@ -31,9 +31,9 @@ _Avoid_: spec, main build
 The PD2 build, on endgame gear, that an endgame build is measured against.
 _Avoid_: benchmark, comparison build
 
-**Unported list**:
+**Deviation list**:
 The record of every deviation, its status and why.
-_Avoid_: cut list, TODO list
+_Avoid_: unported list, cut list, TODO list
 
 **PD2 baseline**:
 The one frozen PD2 build the port is measured against. Moving to a newer PD2 is a deliberate re-baseline.
@@ -47,7 +47,7 @@ _Avoid_: 1:1, identical, byte-for-byte
 A parity tier: the player has the same capability as in PD2, in D2R's look and controls.
 
 **Deviation**:
-Any observable difference from the PD2 baseline. Every deviation is a row on the unported list, marked approximated, cut or not yet.
+Any observable difference from the PD2 baseline. Every deviation is a row on the deviation list, marked approximated, cut or not yet.
 _Avoid_: bug, known issue
 
 **Approximated**:

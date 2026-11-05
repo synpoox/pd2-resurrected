@@ -1,6 +1,6 @@
 # Triage of PD2's engine DLLs
 
-Answers research ticket #3 (map #1). Sorting scheme from `knowledge/porting-classic-mods.md` section 1 of the d2rAI-toolkit:
+Answers research ticket [#3](https://github.com/synpoox/pd2-resurrected/issues/3) (map [#1](https://github.com/synpoox/pd2-resurrected/issues/1)). Sorting scheme from `knowledge/porting-classic-mods.md` section 1 of the d2rAI-toolkit:
 (a) data only, (b) D2RLoader service, (c) native hook, (d) UI rebuild, (e) cut.
 
 **Method.** Static, read-only inspection of the local PD2 install: PE headers, export and import tables, printable strings (assert

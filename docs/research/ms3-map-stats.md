@@ -1,6 +1,6 @@
-# MS3: monster and player map stats in D2R
+# [MS3](https://github.com/synpoox/pd2-resurrected/issues/218): monster and player map stats in D2R
 
-Resolves MS3 ([#218](https://github.com/synpoox/pd2-resurrected/issues/218)). PD2's side is
+Resolves [MS3](https://github.com/synpoox/pd2-resurrected/issues/218) ([#218](https://github.com/synpoox/pd2-resurrected/issues/218)). PD2's side is
 [pd2-map-system-dll.md](pd2-map-system-dll.md), section 2. D2R addresses are RVAs in the 93847 dump
 (`ImageStamp 0x6ab3782c`), read in Ghidra (`D2R.gpr`). PD2's are VAs in `ProjectDiablo.dll` (`PD2.gpr`).
 
@@ -9,7 +9,7 @@ Resolves MS3 ([#218](https://github.com/synpoox/pd2-resurrected/issues/218)). PD
 PD2's wrapper `0x102fc000` around the player regen tick's `hpregen` read returns at most 30 (or the `bloodwarp` list's
 value) when `0x1037c820` is true. That function follows the player's path, room and level to the level id
 (`pLevel+0x1d0`) and jumps to `0x1037c7b0`, which is true only for levels 157, 159 and 166: the PvP arenas (the same
-test the map handler uses to send PvP maps to the Rogue Encampment). PvP is cut (#151), so the cap is cut with it.
+test the map handler uses to send PvP maps to the Rogue Encampment). PvP is cut ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)), so the cap is cut with it.
 [plrmodes.md](plrmodes.md) guessed it was for maps.
 
 ## The routing table
@@ -32,8 +32,8 @@ different). A stat that is not in the table goes to monsters as itself, which is
 - Phys-as-extra (PD2 432-436, port 485-489): `(int)(v / 100.0f * damage)` of the monster's `mindamage` and
   `maxdamage`, as lightning 50/51, cold 54/55, fire 48/49, poison 57/58 and magic 52/53. The min goes through the 0 -> 1
   rule, the max does not. Cold length 56 and poison length 59 take the stat's layer, or 25 and 125 when it is 0.
-- PvP arena stats and Horazon's resist rewrite (an area entry, MS9) are not part of MS3. The area slots' extra monster
-  stats (slots 4, 12, 14) are MS4.
+- PvP arena stats and Horazon's resist rewrite (an area entry, [MS9](https://github.com/synpoox/pd2-resurrected/issues/223)) are not part of [MS3](https://github.com/synpoox/pd2-resurrected/issues/218). The area slots' extra monster
+  stats (slots 4, 12, 14) are [MS4](https://github.com/synpoox/pd2-resurrected/issues/219).
 
 ## Where the port hooks D2R
 
@@ -57,7 +57,7 @@ Not ported here: PD2's client packet 0x55 with up to 24 of the map's stats (the 
 Slot 7, Hell, the level 95 Paladin, `cheat spawn t11,typ r,inv 0` in Harrogath:
 
 - Opening logged each stat and its route. First map: magic and gold find 22 and experience 22 to players, density and
-  rarity elsewhere (MS4), `lifedrainmindam` 7, `item_maxhp_percent` 17, `item_openwounds` 8, `damagepercent` 14 and
+  rarity elsewhere ([MS4](https://github.com/synpoox/pd2-resurrected/issues/219)), `lifedrainmindam` 7, `item_maxhp_percent` 17, `item_openwounds` 8, `damagepercent` 14 and
   `map_mon_dropweapons` 4 to monsters.
 - Entering Ruins of Viz-Jun (level 144): "player list on"; the first monster's maxhp went 10002 -> 11702 (+17%).
 - Back through the portal to Harrogath: "player list off".

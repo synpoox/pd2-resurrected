@@ -1,6 +1,6 @@
-# IR3: combat item stats
+# [IR3](https://github.com/synpoox/pd2-resurrected/issues/238): combat item stats
 
-Work item IR3 ([#238](https://github.com/synpoox/pd2-resurrected/issues/238)), design in [item-rules.md](../item-rules.md).
+Work item [IR3](https://github.com/synpoox/pd2-resurrected/issues/238) ([#238](https://github.com/synpoox/pd2-resurrected/issues/238)), design in [item-rules.md](../item-rules.md).
 PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) in Ghidra; D2R side from the 93847 dump (RVAs). PD2's stat ids are
 PD2's; the merged ids are in `merge/ids-itemstatcost.tsv`.
 
@@ -18,7 +18,7 @@ A scan of `ProjectDiablo.dll` for each stat id pushed as a constant:
 | `inc_splash_radius_permissinghp` (489) | `0x102fa640` (`0x1036c410` is a constant) |
 | `item_dmgpercent_pereth` (484) | `0x102fa930` |
 | `equipped_eth` (183) | `0x102fa640`; `0x103501b0` is the client's character screen |
-| `item_dmgpercent_permissinghppercent` (487) | none (no carrier, as #148 found) |
+| `item_dmgpercent_permissinghppercent` (487) | none (no carrier, as [#148](https://github.com/synpoox/pd2-resurrected/issues/148) found) |
 
 ## Critical and deadly strike
 
@@ -105,7 +105,7 @@ PD2's event 16 (`0x103469a0`), disassembled; constants from the DLL:
 
 D2R's event 16 (`0x583150`) rolls and calls `0x581bd0 (game, unit, target, {damage, 4, 10, 10, missile})`, whose
 entry is `jmp [0x3e2a448]`. core-rules writes `CrushingBlow` into that qword: PD2's blow for every caller (D2R's
-event and W19's Smite roll). Not ported: Smite's calc4, PD2's boss sets, the per-hand sum of the efficiency.
+event and [W19](https://github.com/synpoox/pd2-resurrected/issues/94)'s Smite roll). Not ported: Smite's calc4, PD2's boss sets, the per-hand sum of the efficiency.
 
 ## Open and deep wounds
 
@@ -138,4 +138,4 @@ pass; `items 7/7`).
 
 - Open and deep wounds: decode the rest of `0x103463f0` and port it.
 - Crushing blow and open wounds on a player's hit: check with a fresh crushing-blow item whether item events reach
-  D2R's event functions (#165).
+  D2R's event functions ([#165](https://github.com/synpoox/pd2-resurrected/issues/165)).

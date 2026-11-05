@@ -1,6 +1,6 @@
-# Firestorm and the wall makers (W22): srvdo 166, cltdo 119
+# Firestorm and the wall makers ([W22](https://github.com/synpoox/pd2-resurrected/issues/97)): srvdo 166, cltdo 119
 
-Answers work item W22 (#97). PD2 side from the baseline install `C:\Games\PD2\ProjectD2` (`ProjectDiablo.dll`, base
+Answers work item [W22](https://github.com/synpoox/pd2-resurrected/issues/97) ([#97](https://github.com/synpoox/pd2-resurrected/issues/97)). PD2 side from the baseline install `C:\Games\PD2\ProjectD2` (`ProjectDiablo.dll`, base
 0x10000000; its table fill `0x1036ba20` writes srvdo 166 at `[0x105de8fc] + 0x298` and cltdo 119 at
 `[0x105de71c] + 0x1dc`), D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`). D2R fills srvdo 166 (`0x522e70`), so
 the server half joins the router (190); D2R's cltdo 119 is empty, so the client half keeps PD2's number.
@@ -38,7 +38,7 @@ five. D2R's Firestorm (`0x5764e0` -> `0x5769f0`) also sends its first maker thro
 callback, and the rest with callback 1 and their index; DiabWall (`0x578bb0`) sends all with callback 7.
 
 core-rules builds PD2's loop with callback 1 and the next value of one game-wide counter as each maker's argument, so
-every maker gets a different seed on each cast, as PD2's counter gives; the values are not PD2's (`docs/unported.md`).
+every maker gets a different seed on each cast, as PD2's counter gives; the values are not PD2's (`docs/deviations.md`).
 
 ## Game check
 

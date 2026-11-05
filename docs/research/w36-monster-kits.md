@@ -1,6 +1,6 @@
-# Monster kits (W36)
+# Monster kits ([W36](https://github.com/synpoox/pd2-resurrected/issues/244))
 
-Answers work item W36 (#244). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and PD2's 1.13c `D2Game.dll` /
+Answers work item [W36](https://github.com/synpoox/pd2-resurrected/issues/244) ([#244](https://github.com/synpoox/pd2-resurrected/issues/244)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and PD2's 1.13c `D2Game.dll` /
 `D2Client.dll` (RVAs named so) in the PD2 Ghidra project; D2R side from the 93847 dump (RVAs). Read statically; D2R's
 table slots read from the runtime dump the way `skill-function-tables/probe_tables.py` reads them.
 
@@ -44,7 +44,7 @@ spawn to the nest's minion list and callback. D2R's unit flags at `+0x124` are 1
 treasure class, 0x4000000 no experience.
 
 **Port.** The router (srvdo 190, skill 631) runs PD2's steps with D2R's calls. The counter is kept by core-rules, by
-game and unit id: D2R's AI data was not mapped (approximated row, on the unported list; the count is the same).
+game and unit id: D2R's AI data was not mapped (approximated row, on the deviation list; the count is the same).
 
 ## srvst 67 (Corpse/Vine Cycler start)
 
@@ -82,7 +82,7 @@ but never reads `sHitPar3`. PD2's five rows set 0x4020000 (no treasure class, no
 D2R's 6 would let these spawns drop loot and give experience. Ours takes slot 67 (61-70 free; PD2 uses 61-65).
 
 `sHitPar1` is a monstats id, and the mod's monstats has D2R's rows first (17 more than 1.13c's) and PD2's after them, so
-PD2's 999 (leoricGuards) is the mod's 1016. Before W36 the merge kept 999, which is a different monster in the mod.
+PD2's 999 (leoricGuards) is the mod's 1016. Before [W36](https://github.com/synpoox/pd2-resurrected/issues/244) the merge kept 999, which is a different monster in the mod.
 `pd2_ids.HIT_PARAMS` now names `sHitPar1` of srvhit 67 a monstats id, and `pd2_ids.monstats_ids` maps PD2's ids the way
 `merge/tables.json` merges monstats (by name, D2R's rows keep their ids).
 

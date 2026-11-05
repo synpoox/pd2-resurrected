@@ -1,8 +1,8 @@
-# IR6: cube rules and stacking in ProjectDiablo.dll
+# [IR6](https://github.com/synpoox/pd2-resurrected/issues/241): cube rules and stacking in ProjectDiablo.dll
 
-Work item IR6 ([#241](https://github.com/synpoox/pd2-resurrected/issues/241), [item-rules.md](../item-rules.md)): the
-demonic cube reroll (op 31) and corruption in one press. The stack split left IR6 (below). Cube recipes that
-count a stack by its quantity (a stack of 3 El runes making Eld) are out of IR6: [#315](https://github.com/synpoox/pd2-resurrected/issues/315).
+Work item [IR6](https://github.com/synpoox/pd2-resurrected/issues/241) ([#241](https://github.com/synpoox/pd2-resurrected/issues/241), [item-rules.md](../item-rules.md)): the
+demonic cube reroll (op 31) and corruption in one press. The stack split left [IR6](https://github.com/synpoox/pd2-resurrected/issues/241) (below). Cube recipes that
+count a stack by its quantity (a stack of 3 El runes making Eld) are out of [IR6](https://github.com/synpoox/pd2-resurrected/issues/241): [#315](https://github.com/synpoox/pd2-resurrected/issues/315).
 Findings only: no PD2 or Blizzard file content is in this repo.
 
 ## Method
@@ -23,7 +23,7 @@ what happens next:
   stat 360), the walk resets the player's +0x25fc frame stamp and runs again: the outcome row fires in the same press.
 - `3` (a "destroyed" outcome): each item in the cube that fails `0x10309c60(item, 0x68)`, carried the `0x1030cc40`
   flag before the row and has neither stat 360 nor that flag now gets `0x1030cca0`. Which flag that is was not traced
-  (op 31 reads it as a choice between two item-make modes); P9's merged rows already mark these items.
+  (op 31 reads it as a choice between two item-make modes); [P9](https://github.com/synpoox/pd2-resurrected/issues/56)'s merged rows already mark these items.
 - Outcome rows (`ladder` 1 and 3) are only candidates while `0x364960` holds.
 
 Last, every stackable in the cube (a fixed list of item types) whose quantity (stat 70) is outside its `minstack` to
@@ -74,6 +74,6 @@ PD2's split is Ctrl+left-click with a stack held, one item per click (owner); it
   taken), and `ItemInfo.quantity` is 1 for such an item, the same as a stack of one. core-rules passes the quantity
   only when `GameRuleService::getTotalMaxStack` reports more than 1 (game check, Goblin Toe, 2026-11-05).
 - The executor removes an input item with `0x48fa40(game, item)`: a stack is one item to D2R's cube, so a stack of
-  Demonic Cubes would go whole (#315's problem).
+  Demonic Cubes would go whole ([#315](https://github.com/synpoox/pd2-resurrected/issues/315)'s problem).
 </content>
 </invoke>

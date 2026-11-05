@@ -1,4 +1,4 @@
-# LP3 spike: Jungle Map HD presets with a border painter (#213)
+# [LP3](https://github.com/synpoox/pd2-resurrected/issues/213) spike: Jungle Map HD presets with a border painter ([#213](https://github.com/synpoox/pd2-resurrected/issues/213))
 
 A prototype, not repo code. It builds the three Jungle Map presets (`expansion/map/jungle1-3.ds1`) in four layers and
 was judged "passable for alpha 0.1.0" in game. Porting it into `tools/pd2_presets.py` is the follow-up issue.

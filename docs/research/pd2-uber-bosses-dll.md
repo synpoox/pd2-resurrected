@@ -1,6 +1,6 @@
 # PD2's uber bosses in ProjectDiablo.dll
 
-Resolves UB1 (#226) in [uber-bosses.md](../uber-bosses.md) (#153). It reads, with Ghidra, the parts of PD2's uber bosses that
+Resolves [UB1](https://github.com/synpoox/pd2-resurrected/issues/226) ([#226](https://github.com/synpoox/pd2-resurrected/issues/226)) in [uber-bosses.md](../uber-bosses.md) ([#153](https://github.com/synpoox/pd2-resurrected/issues/153)). It reads, with Ghidra, the parts of PD2's uber bosses that
 the tables do not hold: the fountain opening, the area rules, the tier scaling, the phase scripts, the guaranteed drops and
 rolls, the key drop odds and Desecration. The table side is in the inventories
 ([#147](https://github.com/synpoox/pd2-resurrected/blob/research/pd2-uber-bosses/docs/research/pd2-uber-bosses.md),
@@ -10,7 +10,7 @@ rolls, the key drop odds and Desecration. The table side is in the inventories
 
 - **The wiki's drop odds and Desecration numbers are in the DLL, and they all match.** That covers the 1-in-200 uniques, Rathma's 1 in 50/44/38,
   the Demonic Cube's 1 in 75/50, Desecration's 50/60/60% and its eight mods, and the Jawbone's 1 in 22,500. So the numbers
-  are now checked against the PD2 install's DLL and become the baseline (#153). Dclone's skeleton waves at 85/60/35 and
+  are now checked against the PD2 install's DLL and become the baseline ([#153](https://github.com/synpoox/pd2-resurrected/issues/153)). Dclone's skeleton waves at 85/60/35 and
   Rathma's shared life are read too.
 - **Much more is data than we thought.** Each uber key's misc `len` is the level it opens. Its `missiletype` is the portal
   object only for maps; uber keys warp the group in instead (section 2). The key odds are the odds-only TCs read as a 1-in-N roll. The Desecration pool is the amulet corruption
@@ -71,7 +71,7 @@ The map-item use (misc `pSpell` 12) for maps and uber keys. In order:
 7. **Tier 0:** it spawns three object-595 portals (`xactportal_grey`) at (5076, 5119), (5068, 5108) and (5079, 5110)
    around the fountain. These are the re-entries. Tiers 1 and 2 get none.
 
-So a key's tier and target are data, and the fountain check is one distance test. UB2 builds this on MS2's map-use hook.
+So a key's tier and target are data, and the fountain check is one distance test. [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) builds this on [MS2](https://github.com/synpoox/pd2-resurrected/issues/217)'s map-use hook.
 
 ## 3. Area rules (portal entry, `0x103a9780`)
 
@@ -120,7 +120,7 @@ matter here:
 | 53 Summoner | `0x10358510` | rathmaBone, rathmaPoison and both clones |
 | 120 Overseer | `0x1035dca0` | Lucion, LucionControl, LucionSpawner |
 | 7 Brute, 74 OblivionKnight, 141 BaalMinion | `0x103578f0`, `0x1035b0a0`, `0x103580a0` | void golem, void knights, blood golem |
-| 50 Mephisto, 51 Diablo, 135 BaalCrab | `0x10357ba0`, `0x10357d50`, `0x10357f00` | the Uber Tristram primes (UB3) |
+| 50 Mephisto, 51 Diablo, 135 BaalCrab | `0x10357ba0`, `0x10357d50`, `0x10357f00` | the Uber Tristram primes ([UB3](https://github.com/synpoox/pd2-resurrected/issues/228)) |
 
 The scripts read their numbers from the boss's monstats record: `aip1`-`aip8` per difficulty at +0x56, skills `Skill1-8`
 at +0x170 with modes at +0x180. They use stats 446/447 (`mon_cooldown1/2`) as timers and phase counters. Shared by all
@@ -203,7 +203,7 @@ noted.
 | Rathma pair (935/936, last death) | `0x10376840` | Tainted Worldstone Shard (`cwss`). Portal 586 to Harrogath | all tiers: 1 in (50 − 6×tier) for one of `rid`/`rtp`/`rkey`; tiers 1-2: 1 in 200 for The Third Eye (`ram`), Cage of the Unsullied (`rar`) or Band of Skulls (`rbe`) |
 | Lucion (1112) | `0x10376560` | the Temple portal (section 5) | tiers 1-2: Demonic Cube (`imrn`) at 1 in (4 − tier)×25 = 75 or 50 |
 | Uber Tristram primes | `0x10377710` | when Mephisto, Diablo and Baal (704/705/709) are all dead: Hellfire Torch (`cm2`) and Black Soulstone (`dcho`), and a town portal (object 60) | none |
-| Uber Izual (706) | `0x10377800` | `mbr` (the other mini-ubers have their own handlers at `0x10377830`/`0x10377860`, for UB3) | none |
+| Uber Izual (706) | `0x10377800` | `mbr` (the other mini-ubers have their own handlers at `0x10377830`/`0x10377860`, for [UB3](https://github.com/synpoox/pd2-resurrected/issues/228)) | none |
 
 Solo tier-2 kills also set trophy and season flags (`0x10380a10`, states 209-240). They are cut, like the `.kills` counters.
 
@@ -226,7 +226,7 @@ With more than one player (`game+0x90`, where values above 8 count as 1), Unique
 The same function rolls the other odds-only TCs: lbox, lpp, rkey, rtp, rid, llmr, lsvl, the Uber Ancients keys, map drops
 in PD2 levels, the map-stat item drops and corrupted-zone maps. Those belong to the map system and the items.
 
-For the port, the Talisman's corrupted-zone condition becomes "in an active Terror Zone" at the same TC (#153).
+For the port, the Talisman's corrupted-zone condition becomes "in an active Terror Zone" at the same TC ([#153](https://github.com/synpoox/pd2-resurrected/issues/153)).
 
 ## 8. Desecration (`0x103961b0`, roll `0x103729e0`)
 
@@ -252,7 +252,7 @@ For the port, the Talisman's corrupted-zone condition becomes "in an active Terr
   So the brick ends with one Corruption mod and one Desecration mod, both fresh. The wiki's "keeps two random corruption
   mods" means these two rolls, not the old amulet's mods. Its affixes are fresh rolls too.
 
-For UB7 this means the roll is a handful of lines over cube rows we already have. Only the port's trigger (a cube row
+For [UB7](https://github.com/synpoox/pd2-resurrected/issues/232) this means the roll is a handful of lines over cube rows we already have. Only the port's trigger (a cube row
 in the Temple, an approximated row) is new.
 
 ## 9. Open points
@@ -265,15 +265,15 @@ One reading is worth checking in game first:
   Portal entries into levels 161-163 add 1. On the normal path the group follows the retreat portal, so the stage is
   already 2 or 4 and the field keeps the entry count. Only someone entering 162 before stage 2, or 163 before stage 4,
   overwrites it with 2 or 4. That sets *e* to 1 or 3 for the monsters that spawn after, which can lower it as well as
-  raise it. UB5 checks it.
+  raise it. [UB5](https://github.com/synpoox/pd2-resurrected/issues/230) checks it.
 
 ## 10. What this means for the work items
 
 | Item | Now known | Still to read |
 |---|---|---|
-| UB2 | opening and its warp (2), gates, fountain distance, tier-0 portals, area rules (3), tier scaling (4), key drop rule (7) | none |
-| UB3 | prime and mini-uber drop handlers, Torch and Soulstone (6), level 185 opening (2) | the primes' AI overrides (`0x10357ba0`, `0x10357d50`, `0x10357f00`) |
-| UB4 | AI `0x1035b3f0`, nova phases and counts, skeleton waves, immunity rule, Annihilus and the 1-in-200 roll | none |
-| UB5 | AI `0x10358510`, thresholds, retreat, stage portals, shard and rolls | the per-event skill choices in detail |
-| UB6 | AI `0x1035dca0`, stage thresholds, portal phase, spawner, Temple portal, cube roll | the stage-5 and stage-7 skill choices in detail |
-| UB7 | the whole roll and the brick (8) | none |
+| [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) | opening and its warp (2), gates, fountain distance, tier-0 portals, area rules (3), tier scaling (4), key drop rule (7) | none |
+| [UB3](https://github.com/synpoox/pd2-resurrected/issues/228) | prime and mini-uber drop handlers, Torch and Soulstone (6), level 185 opening (2) | the primes' AI overrides (`0x10357ba0`, `0x10357d50`, `0x10357f00`) |
+| [UB4](https://github.com/synpoox/pd2-resurrected/issues/229) | AI `0x1035b3f0`, nova phases and counts, skeleton waves, immunity rule, Annihilus and the 1-in-200 roll | none |
+| [UB5](https://github.com/synpoox/pd2-resurrected/issues/230) | AI `0x10358510`, thresholds, retreat, stage portals, shard and rolls | the per-event skill choices in detail |
+| [UB6](https://github.com/synpoox/pd2-resurrected/issues/231) | AI `0x1035dca0`, stage thresholds, portal phase, spawner, Temple portal, cube roll | the stage-5 and stage-7 skill choices in detail |
+| [UB7](https://github.com/synpoox/pd2-resurrected/issues/232) | the whole roll and the brick (8) | none |

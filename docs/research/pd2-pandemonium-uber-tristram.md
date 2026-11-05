@@ -1,8 +1,8 @@
 # Inventory of PD2's Pandemonium and Uber Tristram
 
-Resolves research ticket #185 (feeds UB1 and UB3 in `docs/uber-bosses.md`, #153). It covers PD2's Pandemonium chain: the
+Resolves research ticket [#185](https://github.com/synpoox/pd2-resurrected/issues/185) (feeds [UB1](https://github.com/synpoox/pd2-resurrected/issues/226) and [UB3](https://github.com/synpoox/pd2-resurrected/issues/228) in `docs/uber-bosses.md`, [#153](https://github.com/synpoox/pd2-resurrected/issues/153)). It covers PD2's Pandemonium chain: the
 three keys, the three mini-uber areas, the organs, the Pandemonium Talisman (`ubtm`) and Uber Tristram. The shape follows
-the uber-boss inventory (#147), which did not cover this chain. Findings only: no PD2 or Blizzard file content is in this
+the uber-boss inventory ([#147](https://github.com/synpoox/pd2-resurrected/issues/147)), which did not cover this chain. Findings only: no PD2 or Blizzard file content is in this
 repo. Table, row and string names below are short identifiers.
 
 ## Answer in brief
@@ -14,8 +14,8 @@ repo. Table, row and string names below are short identifiers.
   Sands or Furnace of Pain (levels 133-135, almost unchanged from D2R). PD2 adds one more boss source per key and raises
   the drop weights.
 - **The ticket's premise is wrong in one place.** Level 156 "Pandemonium Map" is not part of this chain. It is the map
-  area "The Pandemonium Citadel", opened by the tier 3 map item `t37` (boss Dark Commander Alma). This matters for UB3
-  and for #153's decision on D2R's levels 133-136 (section 7).
+  area "The Pandemonium Citadel", opened by the tier 3 map item `t37` (boss Dark Commander Alma). This matters for [UB3](https://github.com/synpoox/pd2-resurrected/issues/228)
+  and for [#153](https://github.com/synpoox/pd2-resurrected/issues/153)'s decision on D2R's levels 133-136 (section 7).
 - **PD2 replaces the finale.** The organs no longer open a portal. Cube row 182 makes the Pandemonium Talisman (`ubtm`),
   a map-spell item (`pSpell` 12) that is used at the Blood Fountain in Harrogath. It opens level 185 "PD2 Pandemonium
   Finale", a copy of D2R's level 136 on a new preset (`pd2_ubertrist.ds1`). There the three primes fight with the plain
@@ -25,7 +25,7 @@ repo. Table, row and string names below are short identifiers.
   stripped, three silver portals, teleport in), the organ, Torch, Black Soulstone and Prime Evil Soul drops, and
   the prime auras. None of that code is reverse-engineered yet.
 - **Existing rows** cover the Talisman's spell ("Map items"), its no-drop ("Map items never drop"), the recipe op 28,
-  MonSmite (built, W19), DiabWall (built, W22) and the Torch's charm rule. The rest is new (section 7).
+  MonSmite (built, [W19](https://github.com/synpoox/pd2-resurrected/issues/94)), DiabWall (built, [W22](https://github.com/synpoox/pd2-resurrected/issues/97)) and the Torch's charm rule. The rest is new (section 7).
 
 ## 1. Sources and method
 
@@ -74,7 +74,7 @@ repo. Table, row and string names below are short identifiers.
   Chilling Armor removed and Frost Nova raised 8 -> 28. Uber Duriel's Charge, Jab and Smite are swapped for PD2's monster
   copies (MonCharge, MonJab, MonSmite).
 - **Their skill functions:** MonCharge is srvdo 67 and MonJab srvdo 7, D2R's own Charge and Jab functions. MonSmite is
-  srvdo 150, PD2's Smite (built in core-rules, W19). So the mini-ubers need no new skill code.
+  srvdo 150, PD2's Smite (built in core-rules, [W19](https://github.com/synpoox/pd2-resurrected/issues/94)). So the mini-ubers need no new skill code.
 - **Treasure classes:** `Uber Andariel`, `Uber Duriel` and `Uber Izual` hold only `Act 5 (H) Uitem C` and
   `Act 5 (H) Cpot C` (picks -4). D2R's rows have no TC. **No organ appears in any treasure class**, so the organ drops are
   code. In D2R that code is D2R's own. Whether PD2's DLL adds to it is unchecked. Season 5 notes say "organs back to 100%
@@ -97,16 +97,16 @@ repo. Table, row and string names below are short identifiers.
   opens "for all players near the blood fountain", and that only one boss area or map can be opened per game.
 - **Area rules (wiki only):** pre-buffs are removed on entry; the player is teleported inside, and a portal opens when the
   last prime dies (Season 3); three single-use silver portals give one attempt plus three; there is no free re-entry while
-  monsters remain; the ubers do not regenerate. **New**, and the same rule set the other uber areas use (#147 section 2).
+  monsters remain; the ubers do not regenerate. **New**, and the same rule set the other uber areas use ([#147](https://github.com/synpoox/pd2-resurrected/issues/147) section 2).
 - **The area:** level 185 "PD2 Pandemonium Finale" (shown as "Tristram"), preset row 1141 `Act1/Tristram/pd2_ubertrist.ds1`.
   It is D2R's level 136 with another id, `OffsetY` 1100 and white lighting (`Intensity` 140, RGB 255). D2R's level 136
   uses `Tri_Town4.ds1`. The new preset is in `pd2maps.mpq` (not extracted, so its monster and object presets are
-  unread). It falls under unported "New PD2-only areas".
+  unread). It falls under deviation list "New PD2-only areas".
 - **Not this chain:** level 156 "Pandemonium Map" / "The Pandemonium Citadel" (presets `Pandemonium.ds1`,
   `Pandemonium2.ds1`, `Pandemonium3.ds1`) is a map area, opened by the tier 3 map item `t37` (misc row 229 "Pandemonium
   Map", shown as "Pandemonium Citadel Map"),
   with boss string `PandemoniumBoss` "Dark Commander Alma". Its monsters are `*Pandemonium` map rows (Hell level 89, map
-  TCs). It belongs to the map system (map #143), not to the uber bosses.
+  TCs). It belongs to the map system (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)), not to the uber bosses.
 
 ## 5. Uber Tristram: the primes
 
@@ -124,14 +124,14 @@ repo. Table, row and string names below are short identifiers.
   third, regen 4 -> 0, D2R's Blizzard -> MonBlizzard, Baal's Defense Curse -> Baal Lowres, Baal's Chilling Armor removed,
   Baal's melee damage up (A1 330-380 -> 500-550), most skill levels raised.
 - **Their skills are data.** All rows but three are D2R's with empty-versus-0 differences. DiabWall is srvdo 166, which
-  core-rules routes (built, W22). Baal Lowres (skill 480) is PD2-only but runs D2R's curse function (srvdo 30, the one
+  core-rules routes (built, [W22](https://github.com/synpoox/pd2-resurrected/issues/97)). Baal Lowres (skill 480) is PD2-only but runs D2R's curse function (srvdo 30, the one
   Amplify Damage uses) with missile `curselowerresist`. MonBlizzard (205) is D2R's.
 - **Auras (wiki only):** Mephisto has level 20 Conviction (-50% resistances, was -125%), Baal casts his own Lower Resist
   (-75%, about 25 seconds). The monster rows hold no Conviction. The aura source is unchecked (`monstats2`, the preset or
   the DLL); state 184 `uberminion` and 241 `uberscaling` exist.
 - **Prime Evil rules (wiki):** they deal 200% damage to minions and mercenaries and are immune to slows, Dim Vision,
   Terror, Confuse, Attract and Sanctuary's physical-resist cut. The rows carry `primeevil` 1. Which of these rules the DLL
-  adds on that flag is UB1 work.
+  adds on that flag is [UB1](https://github.com/synpoox/pd2-resurrected/issues/226) work.
 - **Minions:** vanilla's Uber Tristram minions (`skeleton8`, `sk_archer11`, `skmage_*7`, rows 726-729) are still in
   monstats. Season 3: "Uber Tristram's minions are no longer immune to any damage type".
 
@@ -142,7 +142,7 @@ repo. Table, row and string names below are short identifiers.
 | Diablo's Horn, Baal's Eye, Mephisto's Brain | `dhn`, `bey`, `mbr` | Lilith, Uber Duriel, Uber Izual (one each, 100%) | code: in no TC |
 | Hellfire Torch | unique row 401 on `cm2` | when the last prime dies | code: rarity 0, in no TC |
 | Black Soulstone | `dcho` (misc 213, "Uber Horn") | with the Torch; Season 5 patch 6 "+20%" | code: in no TC |
-| Prime Evil Soul | `dcso` (misc 214, "Uber Soul") | Hell Mephisto, Diablo (~1:21) and Baal (~1:13) | code (#147); the primes' TC columns name "Uber Soul", which is the misc name, not a TC |
+| Prime Evil Soul | `dcso` (misc 214, "Uber Soul") | Hell Mephisto, Diablo (~1:21) and Baal (~1:13) | code ([#147](https://github.com/synpoox/pd2-resurrected/issues/147)); the primes' TC columns name "Uber Soul", which is the misc name, not a TC |
 | Hellfire Ashes | `cm2f` (misc 265, "Torch Fragment") | cube 1-7 Torches, with a key (rows 1955-1961) or without (rows 2260-2266) | data |
 
 - **The primes' TC.** `ubermephisto`, `uberdiablo` and `uberbaal` have `Uber Soul` in all three Hell TC columns. No TC has
@@ -151,13 +151,13 @@ repo. Table, row and string names below are short identifiers.
 - **The Torch's row** differs from D2R's: PD2 has `randclassskill1` (+2 to a random class's skills, a PD2-only property),
   Vitality 30-60, Energy 10-20, All Resist 10-20, Light 4-8, level 120, carry1 empty. D2R has `randclassskill` 0-7 with
   all-stats, a level-5 Hydra charge and an on-hit skill, carry1 1003. The port's merged row already is PD2's.
-- **The Torch feeds Rathma:** Voidstone row 1478 (Torch) and row 1962 (Ashes), the Jawbone row 1479 (#147). The Demonic
+- **The Torch feeds Rathma:** Voidstone row 1478 (Torch) and row 1962 (Ashes), the Jawbone row 1479 ([#147](https://github.com/synpoox/pd2-resurrected/issues/147)). The Demonic
   Cube rerolls it (row 2153, op 31). The Black Soulstone feeds Dclone (`dcma`, row 198).
 - **The DLL names the codes.** The chain's codes come up in three places: an item-code compare list at 0x2aeeb1 (`ceh`,
   `bet`, `tes`, `fed`, `toa`, `dhn`, `bey`, `mbr`, `pk1`-`pk3`), a code-pair table at 0x468a74 (keys, organs, then the
   other uber ingredients; probably the "Ubers" stash tab, `StashCategoryBossing`), and `dcho`/`dcso`/`cm2f` as immediates
   in about 40 copies of one inlined routine.
-- Kill counters: the DLL's `.kills` command has `Uber Tristram Kills:`. Cut, as for the other uber bosses (#153).
+- Kill counters: the DLL's `.kills` command has `Uber Tristram Kills:`. Cut, as for the other uber bosses ([#153](https://github.com/synpoox/pd2-resurrected/issues/153)).
 
 ## 7. Mapped to the existing lists
 
@@ -165,30 +165,30 @@ repo. Table, row and string names below are short identifiers.
 |---|---|---|
 | Keys' drops (`pk1`-`pk3` in six Hell TCs) | none needed: PD2's TCs are already merged | existing (data) |
 | Key recipe's op 28 (row 179) | core-rules "Quest item difficulty check" (op 28, data) | existing |
-| Talisman's spell (`misc.ubtm.pSpell`) | unported "Map items"; core-rules map-items row (`pSpell` 12 -> 16) | existing |
-| Talisman never drops | unported "Map items never drop" (`misc.ubtm.spawnable`, `merge/item-tables.txt`) | existing |
-| Level 185 and its preset | unported "New PD2-only areas" | existing |
-| MonSmite (Uber Duriel) | core-rules Smite, srvdo 150 (built, W19) | existing |
-| DiabWall (Uber Diablo) | core-rules "Firestorm and wall makers" (built, W22) | existing |
+| Talisman's spell (`misc.ubtm.pSpell`) | deviation list "Map items"; core-rules map-items row (`pSpell` 12 -> 16) | existing |
+| Talisman never drops | deviation list "Map items never drop" (`misc.ubtm.spawnable`, `merge/item-tables.txt`) | existing |
+| Level 185 and its preset | deviation list "New PD2-only areas" | existing |
+| MonSmite (Uber Duriel) | core-rules Smite, srvdo 150 (built, [W19](https://github.com/synpoox/pd2-resurrected/issues/94)) | existing |
+| DiabWall (Uber Diablo) | core-rules "Firestorm and wall makers" (built, [W22](https://github.com/synpoox/pd2-resurrected/issues/97)) | existing |
 | MonCharge, MonJab, Baal Lowres | D2R's own functions (67, 7, 30) | existing (data) |
 | Torch's one-unique-charm rule (carry1 empty) | core-rules "Charm 'only one unique' rule" | existing |
 | Torch to Ashes, Torch reroll | cubemain data; core-rules "Demonic cube reroll" (op 31) | existing |
 | Levels 133-135 and the mini-uber spawn | D2R's own | existing (D2R); they stay on (section 7) |
 | Key recipe's `useitem` -> random mini-uber portal | none | **new**, or D2R's own portal row (merged line 2390) if PD2's row is dropped |
 | Organ drops | none (D2R's own in D2R) | **new** if PD2 changed them, else D2R's |
-| Talisman opening at the Blood Fountain -> level 185 | the map-item opening (MS2) plus the uber-key gate (UB2) | **new** (UB2/UB3) |
-| Uber Tristram area rules (buffs stripped, teleport in, silver portals, no re-entry, exit portal) | none | **new**, shared with UB2 |
-| Primes on plain AIs; any minion spawns | none | **new** (UB3), once the preset and DLL are read |
+| Talisman opening at the Blood Fountain -> level 185 | the map-item opening ([MS2](https://github.com/synpoox/pd2-resurrected/issues/217)) plus the uber-key gate ([UB2](https://github.com/synpoox/pd2-resurrected/issues/227)) | **new** ([UB2](https://github.com/synpoox/pd2-resurrected/issues/227)/[UB3](https://github.com/synpoox/pd2-resurrected/issues/228)) |
+| Uber Tristram area rules (buffs stripped, teleport in, silver portals, no re-entry, exit portal) | none | **new**, shared with [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) |
+| Primes on plain AIs; any minion spawns | none | **new** ([UB3](https://github.com/synpoox/pd2-resurrected/issues/228)), once the preset and DLL are read |
 | Prime auras (Conviction, Lower Resist) and Prime Evil rules | none | **new** |
 | Torch and Black Soulstone on the last prime's death; Prime Evil Soul from Hell primes | none | **new** |
 | The primes' `Uber Soul` TC column | none | **open** |
-| `.kills` Uber Tristram counter | none | cut (#153) |
+| `.kills` Uber Tristram counter | none | cut ([#153](https://github.com/synpoox/pd2-resurrected/issues/153)) |
 
 ### Effect on the decided scope
 
-#153's decision (PR #186) first turned off all of D2R's Pandemonium Event, levels 133-136, and its UB3 named the
+[#153](https://github.com/synpoox/pd2-resurrected/issues/153)'s decision (PR [#186](https://github.com/synpoox/pd2-resurrected/issues/186)) first turned off all of D2R's Pandemonium Event, levels 133-136, and its [UB3](https://github.com/synpoox/pd2-resurrected/issues/228) named the
 Pandemonium Map with the mini-ubers. The data says PD2 uses levels 133-135 and D2R's mini-uber fights, almost unchanged,
-and replaces only the finale (136 -> 185). The owner agreed, and the PR adding this inventory (#185) narrows #153's row to D2R's Uber Tristram (its
+and replaces only the finale (136 -> 185). The owner agreed, and the PR adding this inventory ([#185](https://github.com/synpoox/pd2-resurrected/issues/185)) narrows [#153](https://github.com/synpoox/pd2-resurrected/issues/153)'s row to D2R's Uber Tristram (its
 organ portal row, merged line 2391, and level 136). D2R's keys, the levels 133-135 and the mini-uber spawns stay on.
 Level 156, the Pandemonium Citadel (`t37`), is a map area and belongs to the map system.
 
