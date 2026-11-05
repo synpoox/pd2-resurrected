@@ -1,14 +1,14 @@
 # monster	like: the D2R monster whose HD model a new monster with PD2-only art (no D2R Code with a model) takes; tools/pd2_monsters_hd.py
 # Stand-ins: the monster's BaseId where D2R has it, else a D2R monster of the same kind (AI, look); the Invaders take a hireling or Dopplezon, as D2R has no monster model of a player class
-rathmaBone	nihlathak
-rathmaBoneClone	nihlathak
+rathmaBone	nihlathakboss
+rathmaBoneClone	nihlathakboss
 butcherMap	smith
 leoricMapBoss	skeleton1
 # The Ascendant: act3hire, as docs/unported.md says (UR3, #201)
 act4hire	act3hire
 demonpillar	trappedsoul1
 ZharTheMad	summoner
-WarlordOfBlood	doomknight3
+WarlordOfBlood	doomknight1
 Iskatu	summoner
 Lucion	mephisto
 LucionSpawner	invisospawner

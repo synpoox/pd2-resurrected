@@ -26,7 +26,7 @@ class MonsterHdError(ValueError):
 
 def entries(pd2: Table, d2r: Table, models: dict, likes: dict[str, str]) -> dict[str, str]:
     """monsters.json key -> model for every PD2 row not in D2R's table. likes: monster (lower case) -> D2R monster."""
-    c, b, dc = pd2.header.index("Code"), pd2.header.index("BaseId"), d2r.header.index("Code")
+    code_col, base_col, dc = pd2.header.index("Code"), pd2.header.index("BaseId"), d2r.header.index("Code")
     by_code: dict[str, Counter] = {}
     code_of = {}
     for r in d2r.rows:
@@ -36,15 +36,15 @@ def entries(pd2: Table, d2r: Table, models: dict, likes: dict[str, str]) -> dict
     out, missing, stale = {}, [], set(likes)
     for r in pd2.rows:
         name = r[0]
-        key = name.lower()  # D2R's keys are its lower-case Ids (missiles.json's too, which PD2's mixed case matches)
+        key = name.lower()  # D2R's keys are its Ids, all lower case
         if not name or key in code_of:
             continue
-        like, code, base = likes.get(key), r[c].lower(), r[b].lower()
+        like, code, base = likes.get(key), r[code_col].lower(), r[base_col].lower()
         stale.discard(key)
         if key in models or key in out:
             raise MonsterHdError(f"'{name}': monsters.json already has '{key}'")
         if base in models and code_of.get(base) == code:
-            auto = models[base]
+            auto = models[base]  # the model it gets with no line
         else:
             auto = by_code[code].most_common(1)[0][0] if code in by_code else None
         if like is not None:
@@ -56,7 +56,7 @@ def entries(pd2: Table, d2r: Table, models: dict, likes: dict[str, str]) -> dict
         elif auto is not None:
             out[key] = auto
         else:
-            missing.append(f"{name} ({r[c] or 'no Code'})")
+            missing.append(f"{name} ({r[code_col] or 'no Code'})")
     if missing:
         raise MonsterHdError(f"no HD model for {len(missing)} new monsters, add lines: {', '.join(missing)}")
     if stale:
