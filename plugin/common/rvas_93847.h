@@ -677,5 +677,27 @@ inline constexpr int TablesItemStatCost = 0x1258, TablesItemStatCostCount = 0x12
 inline constexpr int IscRecordSize = 0x144, IscItemEvent1 = 0x44;
 // The stat-layer split item events use for skill/level layers: layer >> shift is the skill, layer & mask the level
 inline constexpr int TablesSkillLayerShift = 0x14d0, TablesSkillLayerMask = 0x14d4;
+// NPC menus (D2Client\src\UI\npcmenu.cpp): a vector of 0x48-byte records, one per NPC with a menu. +0 uint16 NPC
+// class, +4 int32 entry count (the last entry is Cancel), +8 uint16 string id[5], +0x18 handler[5]. The client fills
+// them from npc.txt and per-NPC setters (Kashya and Qual-Kehk get Hire, Tyrael Travel To Harrogath), then opens one
+// with NpcMenuOpen.
+inline constexpr uint64_t NpcMenus = 0x2a48830, NpcMenuCount = 0x2a48838;
+inline constexpr int NpcMenuSize = 0x48, NpcMenuEntries = 0x04, NpcMenuStrings = 0x08, NpcMenuHandlers = 0x18;
+inline constexpr int NpcMenuMaxEntries = 5;
+inline constexpr int NpcMenuTyrael = 0x15;  // Tyrael's record (monster 367, tyrael2), as NpcMenuOpen picks it
+inline constexpr uint16_t StrNpcMenuHire = 0xd45;
+inline constexpr uint64_t NpcMenuHire = 0x112620;  // Hire's handler: opens HireMenuPanel, for any NPC
+// (record, resurrect) -> 1: inserts or removes Resurrect before Hire, then the menu opens.
+// push rbp / push rbx / push rdi / lea rbp,[rsp-0x47] / sub rsp,0x90
+inline constexpr uint64_t NpcMenuOpen = 0x116480;
+// The server's NPC table (D2Game\src\Unit\SUnitNpc.cpp, read by 0x3971a0): 43 entries of 0x1c bytes, +0 uint16 NPC
+// class, +7 byte "hires mercenaries" (the hire handler 0x53d350 refuses an NPC without it). Kashya, Greiz, Asheara
+// and Qual-Kehk have 1; Tyrael (entry 30) has 0.
+inline constexpr uint64_t NpcTable = 0x237ea60;
+inline constexpr int NpcTableSize = 0x1c, NpcTableHires = 7;
+inline constexpr int NpcTableTyrael = 30;
+inline constexpr uint16_t MonTyrael2 = 0x16f;
+inline constexpr uint8_t NpcMenuOpenEntry[] = {0x40, 0x55, 0x53, 0x57, 0x48, 0x8d, 0x6c, 0x24,
+                                               0xb9, 0x48, 0x81, 0xec, 0x90, 0x00, 0x00, 0x00};
 
 }  // namespace d2r::rva
