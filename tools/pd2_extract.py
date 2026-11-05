@@ -22,7 +22,8 @@ import mpq
 ROOT = Path(__file__).resolve().parent.parent
 # archive -> the files taken from it (lower-case path patterns). shortcut: art only as the asset pipeline needs it
 EXTRACT = {"pd2data.mpq": ["*"],
-           "pd2assets.mpq": ["data/global/ui/spells/??skillicon.dc6", "data/global/ui/automap/maximap*.dc6",
+           "pd2assets.mpq": ["data/global/ui/spells/??skillicon.dc6",
+                             "data/global/ui/spells/skillicon.dc6","data/global/ui/automap/maximap*.dc6",
                              "data/global/tiles/*.dt1"],
            "pd2maps.mpq": ["data/global/tiles/*.ds1"]}
 

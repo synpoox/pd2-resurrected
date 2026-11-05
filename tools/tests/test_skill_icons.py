@@ -65,6 +65,14 @@ class ApplyTests(unittest.TestCase):
         _, _, frames = images.read_sprite(self.out / "hd" / SPELLS / "sorceress" / "soskillicon.sprite")
         self.assertEqual(frames, 3)
 
+    def test_takes_pd2s_classless_sheet_for_legacy_mode_and_leaves_d2rs_hd_strip(self):
+        # legacy mode crashes on a skill button whose IconCel is past D2R's 24 frames (Force Move's 24, #294)
+        self.sheets(d2r=[10], hd=[200], pd2=[10])
+        dc6.write(self.pd2 / SPELLS / "skillicon.dc6", [frame(c) for c in range(25)])
+        S.apply(self.rule, self.pd2, self.d2r, self.out)
+        self.assertEqual(len(dc6.read(self.out / SPELLS / "skillicon.dc6")), 25)
+        self.assertFalse((self.out / "hd" / SPELLS / "submenu").exists())
+
     def test_refuses_a_listed_class_with_no_pd2_sheet_or_a_sheet_not_listed(self):
         self.sheets(d2r=[10], hd=[200], pd2=[10])
         self.rule.write_text("sor\nama\n", "utf-8")
