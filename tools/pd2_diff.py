@@ -192,7 +192,7 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
             # property or hit parameters, or level tables' numbers, name ids
             ids_read = p.stem in pd2_ids.PROPS or p.stem in ("missiles", *pd2_ids.NUM_REFS, *pd2_ids.ID_COLS)
             if ids_read and ctx is None:
-                ctx = pd2_ids.context_of(lists, root / "pd2-data/data")
+                ctx = pd2_ids.context_of(lists, root / "pd2-data/data", d2r)
             key = pd2_ids.KEY.get(p.stem)
             rows = opts.get(p.stem, {}).get("rows", "name") if src[0] == "merged" else "name"
             res = compare(p.stem, Table(p, key), Table(src[1], key), ren, lists,

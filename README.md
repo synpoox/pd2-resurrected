@@ -56,7 +56,7 @@ python tools/pd2_diff.py --scope P2
 
 ## Plugins
 
-`plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules. Engine addresses live in one header per D2R build (`plugin/common/rvas_93847.h`).
+`plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules, `core-maps` PD2's map system. Engine addresses live in one header per D2R build (`plugin/common/rvas_93847.h`).
 
 ```powershell
 git submodule update --init

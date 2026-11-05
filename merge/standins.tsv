@@ -43,14 +43,11 @@ skills	Salvation	=	cltstfunc	Paladin aura client start
 skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
-skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
-skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
 skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
 skills	Split Throw	-	cltdofunc	Split Throw
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
-skills	PoisonEggSpawn	MaggotEgg	srvdofunc,cltdofunc	PoisonEggSpawn
 skills	RathmaDeath	Nova	srvdofunc,cltdofunc	Death novas
 skills	NihlathakMapDeath	Nova	cltdofunc	Death novas
 skills	RathmaSummon	-	srvdofunc	RathmaSummon
@@ -65,7 +62,6 @@ skills	Energy Shield SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Energy Shield SelfAura	Might	cltstfunc	Paladin aura client start
 skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Chilling Armor SelfAura	Might	cltstfunc	Paladin aura client start
-skills	TorajanBossNest	Nest	srvdofunc	TorajanBossNest
 skills	LucionNova	Nova	srvdofunc	Lucion kit
 skills	LucionBlink	Teleport	cltdofunc	Lucion kit
 skills	LucionDash	Charge	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Lucion kit
@@ -78,9 +74,7 @@ skills	UberDiabSummon	-	srvdofunc	UberDiabSummon, UberDiabRun
 skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Blade Fury	=	seqinput	Blade Fury: the throw frame
-missiles	desertfireball	=	pCltHitFunc	Desert turret fireball client hit
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
-missiles	siege beast stomp missile	-	pCltDoFunc	Siege beast stomp client do
 missiles	uberimmolationarrow	immolationarrow	pSrvHitFunc	Uber immolation arrow hit
 missiles	rathmabonespear	bonespear	pSrvDmgFunc	Rathma bone spear damage
 missiles	tpot_fire_small	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions

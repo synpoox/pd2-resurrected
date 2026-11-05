@@ -338,8 +338,25 @@ inline constexpr int DamageFlag148 = 0x148;   // uint8 D2R's Static Field sets t
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
-// (game, room, x, y, monstats id, mode, -1, 0x42) -> monster or null; counts it in its level's monster region
+// (game, room, x, y, monstats id, mode, -1, 0x42) -> monster or null; counts it in its level's monster region. D2R's
+// Nest (0x57c590) passes its 1-based spawn index and 0 for the last two
 inline constexpr uint64_t SpawnMonster = 0x492cf0;
+// Monster kits (W36), the way D2R's Nest (srvdo 91, 0x57c590) and srvhit 6 (0x45ce90) spawn
+inline constexpr uint64_t ClearSpawnSpot = 0x3636d0;  // (room, x, y, 1, 0x100): Nest calls it before spawning
+inline constexpr uint64_t NestHold = 0x48e820;  // (unit, 0): Nest calls it before spawning; sets state 54 to the value
+// (game, room, monstats id, x, y, mode, 0) -> monster or null: srvhit 6's spawn at the missile
+inline constexpr uint64_t SpawnMonsterAt = 0x50a050;
+inline constexpr int UnitMainFlags = 0x124;  // uint32, 1.13c's +0xc4 flags with the same bits
+inline constexpr uint32_t UnitNoTreasure = 0x20000, UnitNoExperience = 0x4000000;  // Nest sets both on each spawn
+// The current unit skill (rva::CurrentSkill) of a nest: where and what its start (srvst 49) set it to spawn
+inline constexpr int USkillSpawnX = 0x24, USkillSpawnY = 0x28, USkillSpawnMon = 0x2c, USkillSpawnMode = 0x30;
+inline constexpr int SkSumOverlay = 0x13c;  // int16 sumoverlay (1.13c +0xe6): Nest puts it on each spawn
+// D2R's own do slots PD2's PoisonEggSpawn calls: Nova's and MaggotEgg's
+inline constexpr int SrvDoVanillaNova = 22, SrvDoMaggotEgg = 84, CltDoVanillaNova = 25, CltDoMaggotEgg = 46;
+inline constexpr int StatMana = 8, StatMaxMana = 9;  // in 1/256
+// (unit): flags it (+0x124 bit 0x2000) for its room's update list; D2R's srvst 63 calls it on the corpse it takes
+inline constexpr uint64_t QueueUnitUpdate = 0x38ebf0;
+inline constexpr int StateCorpseTaken = 118;  // the state srvst 63 (and PD2's 67) puts on the corpse it uses
 // Inferno / Arctic Blast (W21, channel-cast), the way D2R's Inferno (srvdo 19 0x554460 -> 0x551730, cltdo 24 0x2203f0)
 inline constexpr uint64_t CurrentSkill = 0x34ba40;  // (unit) -> the unit skill it is using, or null
 inline constexpr uint64_t UnitFrame = 0x349560;  // (unit) -> animation frame (+0x5c >> 8)
@@ -717,6 +734,25 @@ inline constexpr uint64_t StateIsCurse = 0x335a40;  // (dataFlag, state) -> non-
 inline constexpr int UnitListOwner = 0x88, ListOwnerMark = 0x1c, ListOwnerFirst = 0x90;
 inline constexpr int ListFlags = 0x1c, ListNext = 0x68;  // uint32 flags, next list in the chain
 inline constexpr uint32_t ListFlagTimed = 0x2, ListFlagCurse = 0x20;
+
+// --- Cube (D2Game\src\Player\PlrTrade.cpp; core-maps' op 30) --------------------------------------------------------
+// Recipe search: (result*, game, player, out*) walks cubemain in order and stores the first row that passes its filters
+// (enabled, version, ladder, difficulty, class, numinputs == items in the cube, player ops 1-14) and whose 7 inputs all
+// match: result {int32 row, uint8 found}. out is 3 x {item*, int32, int32}, zeroed before each row's inputs.
+// push rbp / push rbx / push rsi / push rdi / push r12 / push r13 / push r14 / push r15 / lea rbp,[rsp-0x78] /
+// sub rsp,0x178
+inline constexpr uint64_t CubeRecipeSearch = 0x529090;
+inline constexpr uint8_t CubeRecipeSearchEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55,
+                                                    0x41, 0x56, 0x41, 0x57, 0x48, 0x8d, 0x6c, 0x24, 0x88,
+                                                    0x48, 0x81, 0xec, 0x78, 0x01, 0x00, 0x00};
+// (game, inventory, row, input 0-6, out*, used*) -> non-zero when that input matches (an empty input does); used is
+// 0x30 int32 flags for the cube items already taken by earlier inputs, zeroed before each row
+inline constexpr uint64_t CubeInputMatch = 0x529d50;
+inline constexpr int CubeMatchUsedSlots = 0x30;
+inline constexpr uint64_t CubeRecipeCount = 0x3e3f20;  // (dataFlag) -> cubemain row count
+inline constexpr uint64_t CubeRecipe = 0x3e3f60;       // (dataFlag, row) -> 0x16c-byte record, or null
+inline constexpr int CubeEnabled = 0x0, CubeOp = 0x3;  // uint8 enabled, uint8 op
+inline constexpr uint64_t UnitInventory = 0x34a360;    // (unit, file, line) -> the unit's inventory, or null
 
 // --- core-ui: automap for level types 36+ (LP2, #212) -------------------------------------------------------------
 // (levelType, tileType, style, sequence) -> cel or -1 (0xffffffff): the automap tile lookup. It matches AutoMap.txt
