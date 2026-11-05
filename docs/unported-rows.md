@@ -77,6 +77,7 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
 | UR8 | Audio: PD2's 30 voice and effect WAVs to FLAC, after a one-file test | none (data) | none | [#206](https://github.com/synpoox/pd2-resurrected/issues/206) |
 | UR9 | The DPS counter plugin | `d2r-tools` | none | [#207](https://github.com/synpoox/pd2-resurrected/issues/207) |
 | UR10 | The potion counter companion: licence, pin, the Slot4 check, an approximated row | companion | the owner provides the plugin | [#208](https://github.com/synpoox/pd2-resurrected/issues/208) |
+| UR11 | Buy back a unique charm sold by mistake: find PD2's rule first, then build it (the cut in #158 reversed) | core-rules | none | [#338](https://github.com/synpoox/pd2-resurrected/issues/338) |
 
 ## Game check
 

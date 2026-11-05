@@ -129,6 +129,7 @@ items" ([#210](https://github.com/synpoox/pd2-resurrected/issues/210)).
 | UR1, UR4-UR6 | Unported rows ([unported-rows.md](unported-rows.md)): docs, skill columns, difficulty constants, quiver automagic | none | A | [#199](https://github.com/synpoox/pd2-resurrected/issues/199), [#202](https://github.com/synpoox/pd2-resurrected/issues/202)-[#204](https://github.com/synpoox/pd2-resurrected/issues/204) |
 | UR2, UR7, UR8 | HD monsters and overlays, art, audio | none | B | [#200](https://github.com/synpoox/pd2-resurrected/issues/200), [#205](https://github.com/synpoox/pd2-resurrected/issues/205), [#206](https://github.com/synpoox/pd2-resurrected/issues/206) |
 | UR3, UR9 | The Ascendant, the DPS counter | none | E | [#201](https://github.com/synpoox/pd2-resurrected/issues/201), [#207](https://github.com/synpoox/pd2-resurrected/issues/207) |
+| UR11 | Buying back a unique charm sold by mistake | none | E | [#338](https://github.com/synpoox/pd2-resurrected/issues/338) |
 | UR10 | Potion counter companion; off the release path, moves to the beta if the plugin has not come by P15 | the owner provides the plugin | first free lane | [#208](https://github.com/synpoox/pd2-resurrected/issues/208) |
 | P15 | Alpha release: local 7z and release notes | P13 and every item above but UR10 | A | [#247](https://github.com/synpoox/pd2-resurrected/issues/247) |
 
@@ -139,7 +140,7 @@ and P13 -> P15. Gameplay waits on LP1 alone: dev builds run without HD presets (
 **Lanes** for five sessions: A finishes alpha 0.1.0 (W7's game check, W19, W34a-c, #141 and #171, P13), then UR1, UR4,
 UR5, UR6, then P15; B LP1 first, then LP2-LP5, then UR2, UR7, UR8; C MS1 and MS5 while LP1 builds, then MS2 -> MS3 ->
 MS4 -> MS7 -> MS8 -> MS9 -> MS10 -> MS11; D UB1, WL1 and W36 while MS2 builds, then UB2-UB7, with WL2-WL4 whenever the
-owner can play; E IR2-IR8, then W37 -> W38, UR3, UR9. Overflow goes to the first free lane; MS8, MS10 and MS11 may move
+owner can play; E IR2-IR8, then W37 -> W38, UR3, UR9, UR11. Overflow goes to the first free lane; MS8, MS10 and MS11 may move
 there once MS4 is in. **Critical path:** LP1 -> MS2 -> MS4 -> MS8 -> MS9 -> MS10 -> MS11 -> P15.
 
 **Owner reviews** the first PR in each lane, LP3 (the generator decides how 64 areas look), MS2 (the first `core-maps`
@@ -149,7 +150,7 @@ P15. The rest merge on the game check, the table-diff gate and a code-review age
 **Alpha exit bar:** the alpha 0.1.0 bar holds; the map-system, uber-boss, IR and UR game checks pass; each Warlock tree's
 endgame build meets its target; all 64 in-scope PD2-only areas load with a generated HD preset and Jungle Map runs within
 10% of a same-size D2R area's frame rate; the table-diff gate is green for the alpha scope; the unported list's "not yet"
-rows are only those the beta owns (guild halls, the Warlock's three new skills, league rewards, UR10 if it moved); every
+rows are only those the beta owns (online play, guilds and guild halls, controller screens, the Warlock's three new skills, league rewards, UR10 if it moved); every
 companion arms on Slot4; the owner tests the local 7z alone.
 
 Multiplayer comes after the alpha, in the beta: run 1 over TCP/IP, run 2 on hosted servers with a short beta league,

@@ -45,9 +45,7 @@ These PD2 features are left out on purpose. Every deviation from PD2, cut or not
 - PD2's Uber Ancients: D2R's own Uber Ancients stays.
 - The Butcher's Lair map event (PD2 has it turned off).
 - Chat commands: `.kills`, `.deaths`, `.played`, `.age`, `.allstats`, `.accountstats` and `.noexp`.
-- Buying back a unique charm sold by mistake.
 - The advanced stats panel, the grail panel and PD2's display.
-- Online play, ladder, guilds and controller support.
 
 ## Bug reports
 
