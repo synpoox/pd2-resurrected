@@ -125,8 +125,9 @@ def seed_list(merge_dir: Path, pd2_data: Path, d2r_data: Path) -> int:
 
 
 # DS1 (version 18 and older), as 1.13c's loader reads it: header, file names, tile layers, then the object list
-def object_list(data: bytes) -> tuple[int, int, int, int]:
-    """(act 0-4, offset of the object count, object count, bytes per object)."""
+def ds1_header(data: bytes) -> tuple[int, int, int, int, int, int, int, int]:
+    """(version, width, height, act 0-4, tag type, offset of the tile layers, wall layers, floor layers). Width and
+    height count tiles; the layers are walls (a tile grid, then an orientation grid, per layer), floors, shadow, tags."""
     version, width, height = struct.unpack_from("<3i", data, 0)
     o, act, tag = 12, 0, 0
     if version >= 8:
@@ -149,7 +150,13 @@ def object_list(data: bytes) -> tuple[int, int, int, int]:
         if version >= 16:
             floors = struct.unpack_from("<i", data, o)[0]
             o += 4
-    o += (2 * walls + floors + 1 + (tag in (1, 2))) * (width + 1) * (height + 1) * 4
+    return version, width + 1, height + 1, act, tag, o, walls, floors
+
+
+def object_list(data: bytes) -> tuple[int, int, int, int]:
+    """(act 0-4, offset of the object count, object count, bytes per object)."""
+    version, width, height, act, tag, o, walls, floors = ds1_header(data)
+    o += (2 * walls + floors + 1 + (tag in (1, 2))) * width * height * 4
     if version < 2:
         return act, o, 0, 0
     return act, o, struct.unpack_from("<i", data, o)[0], 20 if version >= 5 else 16

@@ -9,6 +9,7 @@
 
 #include "crash_guard.h"
 #include "cube_ops.h"
+#include "entity_pool.h"
 #include "d2r.h"
 #include "log.h"
 #include "map_open.h"
@@ -71,10 +72,16 @@ void InstallStats(const D2RL::PluginContext* context, char* report, size_t size)
 	std::snprintf(report, size, "%d/%d installed: %s", installed, MapStatsCount(), rules);
 }
 
+void InstallPool(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	(void)context;
+	InstallEntityPool(report, size);
+}
+
 Part g_parts[] = {
 	{"cube", InstallCube, ""},
 	{"open", InstallMaps, ""},
 	{"stats", InstallStats, ""},
+	{"pool", InstallPool, ""},
 };
 
 void InstallParts(const D2RL::PluginContext* context) noexcept {
@@ -112,6 +119,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 		std::snprintf(line, sizeof(line), "%s %s", p.word, p.report);
 		command->plugin->WriteConsoleMessage(line);
 	}
+	std::snprintf(line, sizeof(line), "pool now %s", EntityPoolState());
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
 	CubeOpCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);  // also in the plugin log, for game checks

@@ -1,0 +1,17 @@
+# lvltypes Name	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+Act 1 - Wilderness	data/hd/env/biome/act1_outdoors.json
+Act 1 - Cave	data/hd/env/biome/act1_caves.json
+Act 1 - Catacombs	data/hd/env/biome/act1_catacombs.json
+Act 1 - Tristram	data/hd/env/biome/act1_tristram.json
+Act 2 - Sewer	data/hd/env/biome/act2_sewer.json
+Act 2 - Basement	data/hd/env/biome/act2_palace_cells.json
+Act 2 - Tomb	data/hd/env/biome/act2_tomb.json
+Act 2 - Arcane	data/hd/env/biome/act2_arcane.json
+Act 3 - Jungle	data/hd/env/biome/act3_jungle.json
+Act 3 - Kurast	data/hd/env/biome/act3_kurast.json
+Act 3 - Dungeon	data/hd/env/biome/act3_jungle_dungeon.json
+Act 3 - Sewer	data/hd/env/biome/act3_sewer.json
+Act 4 - Mesa	data/hd/env/biome/act4_mesa.json
+Act 4 - Lava	data/hd/env/biome/act4_lava.json
+Act 5 - Siege	data/hd/env/biome/expansion_siege.json
+Act 5 - Ice Caves	data/hd/env/biome/expansion_icecave.json
