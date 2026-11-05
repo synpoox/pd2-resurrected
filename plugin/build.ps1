@@ -6,4 +6,4 @@ cmake -S $PSScriptRoot -B $build -A x64
 if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)" }
 cmake --build $build --config Release
 if ($LASTEXITCODE -ne 0) { throw "cmake build failed ($LASTEXITCODE)" }
-Write-Output "built: $(Join-Path $build 'Release\core-rules.dll')"
+Write-Output "built: core-rules.dll, core-maps.dll, core-ui.dll in $(Join-Path $build 'Release')"

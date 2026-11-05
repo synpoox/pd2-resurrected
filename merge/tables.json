@@ -18,21 +18,24 @@
    "Id",
    "Difficulty",
    "Level"
-  ]
+  ],
+  "move": {
+   "Id": {
+    "30": "39",
+    "31": "40",
+    "32": "41",
+    "33": "42",
+    "34": "43",
+    "35": "44",
+    "36": "45",
+    "37": "46",
+    "38": "47"
+   }
+  }
  },
  "hitclass": {},
- "levels": {
-  "pd2_only_rows": "leave out"
- },
  "lvlmaze": {},
- "lvlprest": {
-  "pd2_only_rows": "leave out"
- },
  "lvlsub": {},
- "lvlwarp": {
-  "pd2_only_rows": "leave out",
-  "rows": "position"
- },
  "misscalc": {},
  "monai": {},
  "monequip": {
@@ -53,23 +56,12 @@
  "npc": {
   "pd2_only_rows": "leave out"
  },
- "objects": {
+ "objmode": {},
+ "overlay": {
   "d2r_columns": [
-   "Token"
-  ],
-  "pd2_only_rows": "leave out",
-  "rows": [
-   "Name"
+   "Character"
   ]
  },
- "objgroup": {
-  "pd2_only_rows": "leave out"
- },
- "objmode": {},
- "objtype": {
-  "pd2_only_rows": "leave out"
- },
- "overlay": {},
  "pettype": {},
  "playerclass": {},
  "plrmode": {},

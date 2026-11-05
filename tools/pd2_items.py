@@ -25,6 +25,7 @@ ITEM_TABLES = ["weapons", "armor", "misc"]
 PD2_ORDER = {"treasureclassex"}
 CORRUPTED_NEW = "100"  # `corrupt` value no PD2 outcome uses (1-92); the tooltip shows only "Corrupted" (descval 0)
 CORRUPTOR_DONE = 3001  # PD2's own finished-map corruptor: above every outcome threshold (items 1000, maps 3000)
+CUBE_CELLS = 12  # the cube's 3 x 4 grid
 _SIGNATURE = [*(f"input {k}" for k in range(1, 8)), "output", "output b", "output c"]
 
 
@@ -62,9 +63,27 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
     lines = [(p, k, I.base(p).replace('"', "")) for k, p in enumerate(I.ident(pd2.names()))]
     merged, dropped = I.merge_table("cubemain", pd2, empty, lines, ctx.ren, ctx.ids, ctx.props)
     mark_new_corrupted(merged, next((str(i) for p, i, _ in ctx.lists.get("itemstatcost", []) if p == "corruptor"), None))
+    count_each_input(merged)
     merged.rows += [list(r) for r in d2r_only]
     merged.dropped = dropped
     return merged
+
+
+def count_each_input(cube: I.Table) -> None:
+    """PD2's numinputs counts stacks ("t1me,qty=3" is 1); D2R's recipe search wants numinputs == items in the cube
+    (#261), so loose inputs matched no row. Each row gets the sum of its inputs' qty, except op-30 rows (core-maps
+    matches them without the count, as PD2 does) and sums past the cube's cells, which only stacks can meet (IR6, #241:
+    D2R matched a stack of 3 runes under neither count)."""
+    h = {c: j for j, c in enumerate(cube.header)}
+    if "numinputs" not in h:
+        return
+    inputs = [h[c] for c in (f"input {k}" for k in range(1, 8)) if c in h]
+    for r in cube.rows:
+        if not r[h["numinputs"]].strip() or ("op" in h and r[h["op"]] == "30"):
+            continue
+        total = sum(int(m[1]) if (m := re.search(r"qty=(\d+)", r[i])) else 1 for i in inputs if r[i].strip('"'))
+        if total <= CUBE_CELLS:
+            r[h["numinputs"]] = str(total)
 
 
 def mark_new_corrupted(cube: I.Table, corruptor: str | None) -> None:
@@ -148,6 +167,9 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table], uniques
         pi = ptab.header.index("invfile")
         for r in ptab.rows:
             code = r[ptab.key]
+            if len(code) == 4 and not ord(code[3]) & 0x20:  # core-ui sets bit 0x20 of the key's 4th byte (#310)
+                raise I.IdError(f"{t} {code}: core-ui keys items.json by {code[:3]}{chr(ord(code[3]) | 0x20)}, "
+                                "so this code would draw no picture; give it a 4th character with bit 0x20 set")
             if code and code not in asset:
                 asset[code] = by_inv.get(r[pi], first)
                 files["items.json"].append({code: {"asset": asset[code]}})

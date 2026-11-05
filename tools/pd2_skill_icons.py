@@ -65,3 +65,9 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         (out_data / classic).parent.mkdir(parents=True, exist_ok=True)
         (out_data / classic).write_bytes((pd2_data / classic).read_bytes())
         print(f"  skill-icons: {c} {n} HD frames ({keep.count(False)} from PD2)")
+    # The no-class sheet: PD2's skills point past D2R's 24 classic frames (Force Move 24, the forms up to 35), and
+    # legacy mode crashes drawing a missing frame on a skill button (#294). D2R's HD strip has 40 frames: kept.
+    generic = Path("global") / "ui" / "spells" / "skillicon.dc6"
+    if (pd2_data / generic).is_file():
+        (out_data / generic).parent.mkdir(parents=True, exist_ok=True)
+        (out_data / generic).write_bytes((pd2_data / generic).read_bytes())

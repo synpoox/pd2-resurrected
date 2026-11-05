@@ -42,6 +42,14 @@ class KeyedTests(unittest.TestCase):
             ["3 rings", "rin,qty=3", "", "amu", ""], ["new, odd", "amu", "amu", "rin", ""],
             ["warlock", "wt1", "wt2", "wt3", "1"]])
 
+    def test_cube_numinputs_counts_each_item(self):
+        # D2R wants numinputs == items in the cube; PD2 counts stacks. Op 30 and sums past the cube's 12 cells keep PD2's
+        head = "description|op|numinputs|input 1|input 2|input 3\n"
+        pd2 = table(head + '3 maps||1|"t1me,qty=3"||\nrunes||2|"key,qty=1"|"r01,qty=3"|\nok||3|t1me|t1me|t1me\n'
+                    'block|30|2|map|"ggm4,qty=3"|\nimbue|18|3|"upma,qty=50"|"rune,qty=50"|"ggm4,qty=50"\n')
+        d2r = table(head + 'vanilla||1|"gcv,qty=3"||\n')
+        self.assertEqual([r[2] for r in M.merge_cube(pd2, d2r, NO_CTX).rows], ["3", "4", "3", "2", "3", "1"])
+
     def test_cube_mod_skill_params(self):
         ren = I.renames({t: [] for t in I.TABLES})
         ren["skills"] = {"impale": "Javelin and Spear Mastery"}
@@ -111,6 +119,21 @@ class HdTests(unittest.TestCase):
                                                                       "ultra": "ring/ring"}}])
             self.assertEqual(files["sets.json"], [{"gift": {"normal": "amulet/amulet", "uber": "amulet/amulet",
                                                             "ultra": "amulet/amulet"}}])
+
+    def test_a_4th_character_the_key_patch_changes_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            hd = Path(tmp)
+            (hd / "items.json").write_text(json.dumps([{"rin": {"asset": "ring/ring"}}]))
+            for f in ("uniques.json", "sets.json"):
+                (hd / f).write_text("[]")
+            d2r = {"misc": table("name|code|type|invfile\nRing|rin|ring|invrin\n", "code")}
+            ok = {"misc": table("name|code|type|invfile\nRune|r01s|ring|x\nKey|pk1z|ring|x\n", "code")}
+            self.assertEqual(M.hd_items(hd, ok, d2r, [], [])["items.json"][1:],
+                             [{"r01s": {"asset": "ring/ring"}}, {"pk1z": {"asset": "ring/ring"}}])
+            for code in ("r01S", "r01_"):
+                bad = {"misc": table(f"name|code|type|invfile\nRune|{code}|ring|x\n", "code")}
+                with self.assertRaisesRegex(I.IdError, code):
+                    M.hd_items(hd, bad, d2r, [], [])
 
 
 class RuleFileTests(unittest.TestCase):

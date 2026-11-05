@@ -232,7 +232,7 @@ plugin in this repo calls `0x432ce0` yet.
 
 - The Horazon flags' source, its drop batches, and what `0x381510` does.
 - What `region[+0x04]` counts in the event progress.
-- Slots 5, 7-10 and 15: who reads them beyond the getter calls listed.
+- Slot 5's spawn in D2R terms. MS4 found no reader of slots 7-9 and 15, and slot 10 only in `0x38aa00` (Horazon) ([ms4-area-map-stats.md](ms4-area-map-stats.md)).
 - A resist rewrite in `0x38aa00` for players, keyed to an area entry whose value is the current level (it may belong to
   Horazon's slot-10 entry). Not decoded.
 

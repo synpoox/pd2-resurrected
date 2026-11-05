@@ -125,9 +125,28 @@ Mastery and an item_splashonhit item (The Gnasher, `cheat uniques 0`), at least 
 `cheat goto 2`, `cheat mspawn megademon3,6`). The log keeps a game's first splash only, so start the game fresh and
 Frenzy into the pack before any other splash, then run the same command with core-rules-w35.
 
+W36 checks (tag core-rules-w36), same merged data: a level 90+ Druid in Hell (`debug_mode`, `cheat god 1`,
+`cheat sklvl Cycle of Life,20`, `cheat sklvl Vines,20`, `cheat goto 2`). Kill a pack (`cheat mspawn zombie1,8`), summon
+both vines by the corpses and let each eat one; then `cheat mspawn torajanBoss,1` (his nest lays eggs that nova and hatch)
+and `cheat mspawn leoricMapBoss,1` (his orbs raise leoricGuards where they land), let them cast a while, and run the
+same command with core-rules-w36.
+
 P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
 drops Ormus' Robes; `cheat idall`, wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); cast spells at
 the pack until a proc logs (12% a cast, 8% for a skill with a cooldown), and run the same command with core-rules-p12.
+
+IR4 checks (tag core-rules-ir4), same merged data, Hell, level 90+:
+- max-curses: a Necromancer with two curses (Amplify Damage 66, Weaken 72) and Darkforge Spawn (`cheat uniques 331`,
+  +1 max curses; Curse Mastery does the same). `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,4`, then curse the
+  pack with one curse and then the other, and run the same command with core-rules-ir4.
+- curse-resistance: any character wearing Wraithskin (`cheat uniques 478`, 30-40 curse resistance); let a cursing
+  monster curse you (Act 4 Oblivion Knights, `cheat mspawn` of one), then run again.
+
+IR7 checks (tag core-rules-ir7), same merged data, Hell, level 90+:
+- skill-on-equip: `cheat uniques 252` drops Blackoak Shield (Chilling Armor SelfAura 11 when equipped); `cheat
+  idall`, equip it, wait a few seconds, unequip it, and run the same command with core-rules-ir7.
+- phasing: `cheat uniques 520` drops Spectral Plate (Phasing SelfAura); `cheat idall`, equip it, walk into a pack
+  (`cheat mspawn zombie1,4`, `cheat god 1`), take it off, and run again.
 """
 import json
 import os
@@ -167,6 +186,8 @@ SKILL_SLOTS = [  # table slots it installs
     ("pSrvHitFunc", 69, "blade fragment"), ("pCltHitFunc", 68, "blade fragment"), ("pSrvDmgFunc", 19, "blade fragment"),
     ("srvstfunc", 73, "holy sword"), ("srvstfunc", 75, "smite"),
     ("srvdofunc", 150, "smite crushing blow"),  # D2R's Smite do, wrapped, and an inline hook on its hit queue
+    ("srvdofunc", 173, "poison egg spawn"), ("cltdofunc", 126, "poison egg spawn"), ("srvstfunc", 83, "cycler start"),
+    ("pSrvHitFunc", 67, "summon"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -198,7 +219,7 @@ def _log(ctx) -> str:
                                  "core-rules-w21", "core-rules-w22", "core-rules-w24", "core-rules-w29",
                                  "core-rules-w17", "core-rules-w23", "core-rules-w27", "core-rules-w28", "core-rules-w30",
                                  "core-rules-w18", "core-rules-w19", "core-rules-w20", "core-rules-w31", "core-rules-w32",
-                                 "core-rules-w34", "core-rules-w35", "game"])
+                                 "core-rules-w34", "core-rules-w36", "core-rules-w35", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -1359,11 +1380,82 @@ def psychic_hammer_falloff(ctx):
     return f"{len(found)} hits logged, {cuts} cut"
 
 
+# W36: merged ids (docs/research/w36-monster-kits.md)
+CORPSE_CYCLER, VINE_CYCLER, POISON_EGG_SPAWN, MAGGOT_EGG, TORAJAN_NEST = 307, 325, 522, 159, 631
+TORAJAN_EGG = 897  # monstats torajanBossPoisonEgg
+NO_LOOT_NO_XP = 0x4020000  # unit flags 0x20000 and 0x4000000, PD2's sHitPar3 / Nest's
+# summon-on-hit missile -> the monstats row PD2's sHitPar1 names, in the mod's ids
+SUMMON_HITS = {917: 1016, 922: 1018, 967: 1082, 1011: 1112, 1037: 1125}
+
+
+@check("cycler-start", tags=["core-rules-w36"])
+def cycler_start(ctx):
+    """srvstfunc 83 (PD2 67): a vine takes a corpse and at once heals the units within aurarangecalc 40 by
+    calc1-calc2 of life (Cycle of Life's CorpseCycler, stat 6) or mana (Vines' VineCycler, stat 8)."""
+    found = re.findall(r"cycler start: skill (\d+) level (\d+): heal (-?\d+) \(calc1 (-?\d+), calc2 (-?\d+)\) of stat "
+                       r"(\d+), radius (\d+), units (\d+)", _log(ctx))
+    if not found:
+        ctx.skip("no Cycler start in the log yet (summon Cycle of Life or Vines by corpses, then run again)")
+    for skill, _, heal, low, high, stat, radius, _units in (tuple(int(v) for v in f) for f in found):
+        assert (skill, stat) in ((CORPSE_CYCLER, 6), (VINE_CYCLER, 8)), f"skill {skill} heals stat {stat}"
+        assert low <= heal <= max(low, high - 1), f"heal {heal} outside {low}-{high}"
+        assert radius == 40, f"radius {radius}, PD2's aurarangecalc is 40"
+    return f"{len(found)} start(s) logged: skills {sorted({int(f[0]) for f in found})}"
+
+
+@check("poison-egg-spawn", tags=["core-rules-w36"])
+def poison_egg_spawn(ctx):
+    """srvdofunc 173 runs D2R's nova with PoisonEggSpawn, then MaggotEgg's spawn; cltdofunc 126 draws both."""
+    log = _log(ctx)
+    found = re.findall(r"poison egg spawn: skill (\d+) level \d+: nova (-?\d+), then skill (\d+) spawn (-?\d+)", log)
+    if not found:
+        ctx.skip("no PoisonEggSpawn cast in the log yet (`cheat mspawn torajanBoss,1` and wait for his eggs)")
+    for skill, nova, egg, _ in (tuple(int(v) for v in f) for f in found):
+        assert (skill, egg) == (POISON_EGG_SPAWN, MAGGOT_EGG), f"skill {skill} spawned through skill {egg}"
+        assert nova != 0, "the nova did not run"
+    assert re.search(r"poison egg spawn client: skill %d " % POISON_EGG_SPAWN, log), "the client half never ran"
+    return f"{len(found)} cast(s) logged, client drew them"
+
+
+@check("torajan-nest", tags=["core-rules-w36"])
+def torajan_nest(ctx):
+    """TorajanBossNest (router srvdo 190, PD2 181) lays one torajanBossPoisonEgg a cast, at most Param1 35, each with
+    no treasure class and no experience."""
+    found = re.findall(r"torajan nest: skill (\d+) level \d+: monster (\d+) mode \d+, (\d+) of (\d+), flags 0x([0-9a-f]+)",
+                       _log(ctx))
+    if not found:
+        ctx.skip("no nest spawn in the log yet (`cheat mspawn torajanBoss,1` and wait)")
+    for skill, mon, count, cap, flags in found:
+        assert int(skill) == TORAJAN_NEST and int(mon) == TORAJAN_EGG, f"skill {skill} laid monster {mon}"
+        assert 1 <= int(count) <= int(cap) == 35, f"egg {count} of {cap}"
+        assert int(flags, 16) & NO_LOOT_NO_XP == NO_LOOT_NO_XP, f"flags 0x{flags}"
+    return f"{len(found)} egg(s) logged, last {found[-1][2]} of {found[-1][3]}"
+
+
+@check("summon-hit", tags=["core-rules-w36"])
+def summon_hit(ctx):
+    """pSrvHitFunc 67 (PD2 6) spawns PD2's sHitPar1 monster (in the mod's ids) where the missile lands, with
+    sHitPar3's flags: no treasure class, no experience."""
+    found = re.findall(r"summon hit: missile (\d+): monster (\d+) mode \d+ (spawned|not spawned), flags 0x([0-9a-f]+)",
+                       _log(ctx))
+    if not found:
+        ctx.skip("no summon hit in the log yet (`cheat mspawn leoricMapBoss,1` and let him cast)")
+    spawned = 0
+    for missile, mon, state, flags in found:
+        assert SUMMON_HITS.get(int(missile)) == int(mon), f"missile {missile} spawned monster {mon}"
+        if state == "spawned":
+            assert int(flags, 16) & NO_LOOT_NO_XP == NO_LOOT_NO_XP, f"missile {missile}: flags 0x{flags}"
+            spawned += 1
+    if not spawned:
+        ctx.skip(f"{len(found)} summon hit(s) logged, none spawned (no room where they landed?)")
+    return f"{len(found)} hit(s) logged, {spawned} spawned"
+
+
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17",
                                     "core-rules-w23", "core-rules-w30", "core-rules-w18", "core-rules-w19", "core-rules-w31",
-                                    "core-rules-w32", "core-rules-w34",
+                                    "core-rules-w32", "core-rules-w34", "core-rules-w36",
                                     "core-rules-p12"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
@@ -1677,10 +1769,109 @@ def ormus_skill_on_cast(ctx):
     return f"{len(procs)} proc(s), e.g. {rows[procs[0][2]]['skill']} level {procs[0][3]} at the {procs[0][4]}"
 
 
-@check("items-installed", tags=["core-rules-p12"])
+@check("items-installed", tags=["core-rules-p12", "core-rules-ir4", "core-rules-ir7"])
 def items_installed(ctx):
-    """core-rules installs its two item rules: property func 26 and the skill on cast trigger."""
+    """core-rules installs its four item rules: property func 26, the skill on cast trigger, the curse hook and skill
+    on equip."""
     line = re.search(rf"{PLUGIN}: items [^\n]*", _log(ctx))
     assert line, "no items part line in the plugin log"
-    assert "items 2/2 installed" in line.group(0), line.group(0)
+    assert "items 4/4 installed" in line.group(0), line.group(0)
     return line.group(0)[len(PLUGIN) + 2:]
+
+
+CURSE = re.compile(r"curse: state (\d+), (\d+) curse\(s\) on the target, (\d+) slot\(s\) \(caster (\d+)\), "
+                   r"(same state|replaces the oldest|added)")
+CURSE_HELD = re.compile(r"curse: state (\d+) landed, the target holds (\d+) curse\(s\)")
+CURSE_RESISTANCE = re.compile(r"curse resistance (-?\d+) \(used (-?\d+)\) on (player|monster): aurastat(\d) stat (\d+) "
+                              r"(-?\d+) -> (-?\d+)")
+
+
+def curse_resisted(value: int, resistance: int) -> int:
+    """PD2's 0x1037c4c0 as its curse code calls it: value * (100 - resistance) / 100, truncated toward zero."""
+    return int(value * (100 - resistance) / 100)
+
+
+@check("max-curses", tags=["core-rules-ir4"])
+def max_curses(ctx):
+    """A curse joins the target's curses while it holds fewer than max_curses + 1 (or the most slots a curse on it
+    was cast with); a full target loses its oldest curse; the same curse refreshes (PD2's 0x1036d7d0)."""
+    rows = [(int(st), int(n), int(slots), int(own), what) for st, n, slots, own, what in CURSE.findall(_log(ctx))]
+    if not rows:
+        ctx.skip("no curse in the log yet (curse a monster, run again)")
+    for state, count, slots, own, what in rows:
+        assert slots >= own, f"state {state}: {slots} slots below the caster's {own}"
+        if what == "added":
+            assert count < slots, f"state {state} added to {count} curses with {slots} slots"
+        elif what == "replaces the oldest":
+            assert count >= slots, f"state {state} replaced a curse with {count} of {slots} slots used"
+    held = [(int(st), int(n)) for st, n in CURSE_HELD.findall(_log(ctx))]
+    extra = [r for r in rows if r[4] == "added" and r[1] >= 1]
+    if not extra or not any(n >= 2 for _, n in held):
+        ctx.skip("no target held a second curse yet (+1 max curses, two curses on one monster, run again)")
+    most = max(n for _, n in held)
+    assert most <= max(r[2] for r in rows), f"a target holds {most} curses, more than any slot count logged"
+    return f"{len(rows)} curse(s); a target held {most} at once; state {extra[0][0]} joined {extra[0][1]} curse(s)"
+
+
+@check("curse-resistance", tags=["core-rules-ir4"])
+def curse_resistance(ctx):
+    """curse_effectiveness on the cursed unit scales each curse stat by (100 - resistance) / 100, at most 75 except
+    aurastat1 on a monster (PD2's 0x1036d7d0 and 0x102fad50)."""
+    rows = CURSE_RESISTANCE.findall(_log(ctx))
+    if not rows:
+        ctx.skip("no resisted curse in the log yet (wear Wraithskin, get cursed, run again)")
+    for resistance, used, who, slot, stat, base, resisted in rows:
+        resistance, used, base, resisted = int(resistance), int(used), int(base), int(resisted)
+        want_used = resistance if who == "monster" and slot == "1" else min(resistance, 75)
+        assert used == want_used, f"stat {stat} on a {who}: used {used} of {resistance}, PD2: {want_used}"
+        assert resisted == curse_resisted(base, used), f"stat {stat}: {base} -> {resisted}, PD2: {curse_resisted(base, used)}"
+    return f"{len(rows)} stat(s), e.g. stat {rows[0][4]} {rows[0][5]} -> {rows[0][6]} at {rows[0][1]}"
+
+
+SKILL_ON_EQUIP = re.compile(r"skill on equip: unit type (\d+), skill (\d+), (-?\d+) -> (-?\d+), level now (-?\d+)")
+SKILL_ON_EQUIP_TICK = re.compile(r"skill on equip tick: skill (\d+) level (\d+), state (\d+), next frame (-?\d+), (cast|held)")
+PHASING = re.compile(r"phasing: (on|off), unit type (\d+), collision mask 0x([0-9a-f]+) -> 0x([0-9a-f]+)")
+CHILLING_ARMOR_SELFAURA, PHASING_SELFAURA = 624, 674  # merged skill ids
+CHILLINGARMOR_STATE = 20  # merged states id
+
+
+@check("skill-on-equip", tags=["core-rules-ir7"])
+def skill_on_equip(ctx):
+    """item_skillonequip runs its skill as an item aura at the stat's level while the item is worn, and stops when
+    it comes off (PD2's 0x1036f640 and 0x10345cc0): Blackoak Shield's Chilling Armor SelfAura at level 11."""
+    changes = [tuple(int(v) for v in row) for row in SKILL_ON_EQUIP.findall(_log(ctx))]
+    shield = [c for c in changes if c[1] == CHILLING_ARMOR_SELFAURA]
+    if not shield:
+        ctx.skip("no Chilling Armor SelfAura change in the log yet (equip Blackoak Shield, run again)")
+    assert any(old == 0 and new == 11 for _, _, old, new, _ in shield), f"no 0 -> 11 on equip: {shield}"
+    ticks = [(int(sk), int(lv), int(st), int(nx), what) for sk, lv, st, nx, what in SKILL_ON_EQUIP_TICK.findall(_log(ctx))]
+    mine = [t for t in ticks if t[0] == CHILLING_ARMOR_SELFAURA]
+    if not mine:
+        ctx.skip("no Chilling Armor SelfAura tick yet (wear Blackoak Shield a few seconds, run again)")
+    assert all(level == 11 and state == CHILLINGARMOR_STATE for _, level, state, _, _ in mine), mine
+    assert any(what == "cast" for *_, what in mine), f"no tick cast the aura: {mine}"
+    assert all(nx > 0 for _, _, _, nx, _ in mine), f"a tick did not re-add the event: {mine}"
+    if not any(old == 11 and new == 0 for _, _, old, new, _ in shield):
+        ctx.skip("Blackoak Shield not taken off yet (unequip it, run again)")
+    return f"{len(mine)} tick(s) at level 11, state {CHILLINGARMOR_STATE}, then 11 -> 0 on unequip"
+
+
+@check("phasing", tags=["core-rules-ir7"])
+def phasing(ctx):
+    """Phasing SelfAura clears the unit collision bits of the wearer's path while worn and sets them back when it
+    comes off (PD2's 0x10380c50: 0x1c09 <-> 0xc09 on a player)."""
+    rows = [(what, int(t), int(a, 16), int(b, 16)) for what, t, a, b in PHASING.findall(_log(ctx))]
+    if not rows:
+        ctx.skip("no phasing in the log yet (equip Spectral Plate, run again)")
+    for what, unit_type, before, after in rows:
+        bits = 0x1000 if unit_type == 0 else 0x3000
+        want = before & ~bits if what == "on" else before | bits
+        assert after == want, f"phasing {what} on type {unit_type}: 0x{before:x} -> 0x{after:x}, PD2: 0x{want:x}"
+    on = [r for r in rows if r[0] == "on" and r[1] == 0]
+    if not on:
+        ctx.skip("no player phasing on yet (equip Spectral Plate, run again)")
+    assert on[0][2] == 0x1c09, f"a player's mask was 0x{on[0][2]:x} before phasing, PD2: 0x1c09"
+    if not any(r[0] == "off" for r in rows):
+        ctx.skip("Spectral Plate not taken off yet (unequip it, run again)")
+    return f"{len(rows)} change(s), e.g. {rows[0][0]} 0x{rows[0][2]:x} -> 0x{rows[0][3]:x}"
+

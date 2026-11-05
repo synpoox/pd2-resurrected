@@ -3,7 +3,7 @@ skill positions. Each D2R tree sprite (one frame per tab: the tab strip on top, 
 clear background) keeps its tab strip; below it the art is cleared and redrawn: a box at each merged skilldesc
 SkillPage / SkillRow / SkillColumn (SkillPage 0 gets none) and an arrow from each skills reqskill on the same page to
 its skill. The box and arrow pictures are cut from D2R's own Amazon tree, so no PD2 art is used. The Warlock keeps
-D2R's art: the pre-alpha ships D2R's Warlock as it is.
+D2R's art: alpha 0.1.0 ships D2R's Warlock as it is.
 
 merge/tree-backgrounds.json: per sprite kind (HD, lowend, controller and its lowend), the sprite file and where
 D2R's art draws its grid, measured on build 93847 (the art is hand-placed, so it differs from the layout JSON's

@@ -2,8 +2,9 @@
 //
 // One header per D2R build: a new build gets its own rvas_<build>.h and d2r.h includes that one. Every value here was
 // found in the Ghidra analysis of the dumped 93847 image; the comment beside each says where (the Split Throw spike,
-// spikes/split-throw/FINDINGS.md, or the D2R function it was read from) and the game check that uses it. Names match
-// the RVA column of docs/core-rules.md.
+// spikes/split-throw/FINDINGS.md, or the D2R function it was read from) and the game check that uses it. core-rules'
+// names match the RVA column of docs/core-rules.md; another plugin's values sit in a section headed by that plugin and
+// the work item that found them, which records them (core-ui: LP2, #212).
 #pragma once
 
 #include <cstddef>
@@ -242,8 +243,8 @@ inline constexpr uint32_t AreaUnitMask = 0x8583;  // PD2's and AreaKnockback's d
 inline constexpr uint64_t AreaKnockback = 0x437820;
 inline constexpr uint64_t SkillMeleeHit = 0x56b170;  // (game, unit, skillId, level): Leap Attack's hit on the skill target
 inline constexpr uint64_t CltDoLeap = 0x22f9a0;  // D2R cltdo 43 (unit, skillId): Leap's client half
-inline constexpr uint64_t RemoveUnitEvent = 0x48b890;  // (game, unit, event, 0)
-inline constexpr uint64_t AddUnitEvent = 0x48b720;  // (game, unit, event, frame, 0, 0, 0)
+inline constexpr uint64_t RemoveUnitEvent = 0x48b890;  // (game, unit, event, key): 0 for most; an item aura passes its key
+inline constexpr uint64_t AddUnitEvent = 0x48b720;  // (game, unit, event, frame, key, skill, stateKey): zeros for most; item aura ticks (0x437419) pass them
 inline constexpr uint64_t MonStatsRecord = 0x976e0;  // (dataFlag, classId) -> monstats record or null
 inline constexpr uint64_t UnitId = 0x34a330;  // (unit, file, line) -> unit id
 // (unit, skill, level, target, 0) -> non-zero cast: a skill cast from unit at target as an event, sent to clients (aura
@@ -337,8 +338,25 @@ inline constexpr int DamageFlag148 = 0x148;   // uint8 D2R's Static Field sets t
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
-// (game, room, x, y, monstats id, mode, -1, 0x42) -> monster or null; counts it in its level's monster region
+// (game, room, x, y, monstats id, mode, -1, 0x42) -> monster or null; counts it in its level's monster region. D2R's
+// Nest (0x57c590) passes its 1-based spawn index and 0 for the last two
 inline constexpr uint64_t SpawnMonster = 0x492cf0;
+// Monster kits (W36), the way D2R's Nest (srvdo 91, 0x57c590) and srvhit 6 (0x45ce90) spawn
+inline constexpr uint64_t ClearSpawnSpot = 0x3636d0;  // (room, x, y, 1, 0x100): Nest calls it before spawning
+inline constexpr uint64_t NestHold = 0x48e820;  // (unit, 0): Nest calls it before spawning; sets state 54 to the value
+// (game, room, monstats id, x, y, mode, 0) -> monster or null: srvhit 6's spawn at the missile
+inline constexpr uint64_t SpawnMonsterAt = 0x50a050;
+inline constexpr int UnitMainFlags = 0x124;  // uint32, 1.13c's +0xc4 flags with the same bits
+inline constexpr uint32_t UnitNoTreasure = 0x20000, UnitNoExperience = 0x4000000;  // Nest sets both on each spawn
+// The current unit skill (rva::CurrentSkill) of a nest: where and what its start (srvst 49) set it to spawn
+inline constexpr int USkillSpawnX = 0x24, USkillSpawnY = 0x28, USkillSpawnMon = 0x2c, USkillSpawnMode = 0x30;
+inline constexpr int SkSumOverlay = 0x13c;  // int16 sumoverlay (1.13c +0xe6): Nest puts it on each spawn
+// D2R's own do slots PD2's PoisonEggSpawn calls: Nova's and MaggotEgg's
+inline constexpr int SrvDoVanillaNova = 22, SrvDoMaggotEgg = 84, CltDoVanillaNova = 25, CltDoMaggotEgg = 46;
+inline constexpr int StatMana = 8, StatMaxMana = 9;  // in 1/256
+// (unit): flags it (+0x124 bit 0x2000) for its room's update list; D2R's srvst 63 calls it on the corpse it takes
+inline constexpr uint64_t QueueUnitUpdate = 0x38ebf0;
+inline constexpr int StateCorpseTaken = 118;  // the state srvst 63 (and PD2's 67) puts on the corpse it uses
 // Inferno / Arctic Blast (W21, channel-cast), the way D2R's Inferno (srvdo 19 0x554460 -> 0x551730, cltdo 24 0x2203f0)
 inline constexpr uint64_t CurrentSkill = 0x34ba40;  // (unit) -> the unit skill it is using, or null
 inline constexpr uint64_t UnitFrame = 0x349560;  // (unit) -> animation frame (+0x5c >> 8)
@@ -537,6 +555,7 @@ inline constexpr int SkSendStateB = 0xac;
 
 namespace d2r {
 
+struct Game;
 struct Unit;
 
 // Missile creation parameters for rva::CreateMissile. 1.10's 0x5c-byte block, shifted by 0x10 after the three pointers.
@@ -677,6 +696,245 @@ inline constexpr int TablesItemStatCost = 0x1258, TablesItemStatCostCount = 0x12
 inline constexpr int IscRecordSize = 0x144, IscItemEvent1 = 0x44;
 // The stat-layer split item events use for skill/level layers: layer >> shift is the skill, layer & mask the level
 inline constexpr int TablesSkillLayerShift = 0x14d0, TablesSkillLayerMask = 0x14d4;
+// NPC menus (D2Client\src\UI\npcmenu.cpp): a vector of 0x48-byte records, one per NPC with a menu. +0 uint16 NPC
+// class, +4 int32 entry count (the last entry is Cancel), +8 uint16 string id[5], +0x18 handler[5]. The client fills
+// them from npc.txt and per-NPC setters (Kashya and Qual-Kehk get Hire, Tyrael Travel To Harrogath), then opens one
+// with NpcMenuOpen.
+inline constexpr uint64_t NpcMenus = 0x2a48830, NpcMenuCount = 0x2a48838;
+inline constexpr int NpcMenuSize = 0x48, NpcMenuEntries = 0x04, NpcMenuStrings = 0x08, NpcMenuHandlers = 0x18;
+inline constexpr int NpcMenuMaxEntries = 5;
+inline constexpr int NpcMenuTyrael = 0x15;  // Tyrael's record (monster 367, tyrael2), as NpcMenuOpen picks it
+inline constexpr uint16_t StrNpcMenuHire = 0xd45;
+inline constexpr uint64_t NpcMenuHire = 0x112620;  // Hire's handler: opens HireMenuPanel, for any NPC
+// (record, resurrect) -> 1: inserts or removes Resurrect before Hire, then the menu opens.
+// push rbp / push rbx / push rdi / lea rbp,[rsp-0x47] / sub rsp,0x90
+inline constexpr uint64_t NpcMenuOpen = 0x116480;
+// The server's NPC table (D2Game\src\Unit\SUnitNpc.cpp, read by 0x3971a0): 43 entries of 0x1c bytes, +0 uint16 NPC
+// class, +7 byte "hires mercenaries" (the hire handler 0x53d350 refuses an NPC without it). Kashya, Greiz, Asheara
+// and Qual-Kehk have 1; Tyrael (entry 30) has 0.
+inline constexpr uint64_t NpcTable = 0x237ea60;
+inline constexpr int NpcTableSize = 0x1c, NpcTableHires = 7;
+inline constexpr int NpcTableTyrael = 30;
+inline constexpr uint16_t MonTyrael2 = 0x16f;
+inline constexpr uint8_t NpcMenuOpenEntry[] = {0x40, 0x55, 0x53, 0x57, 0x48, 0x8d, 0x6c, 0x24,
+                                               0xb9, 0x48, 0x81, 0xec, 0x90, 0x00, 0x00, 0x00};
+
+// --- Item rules: curse resistance and max curses (docs/research/ir4-curses.md) ------------------------------------
+// D2Game\src\Skills\SkillNec.cpp: puts one curse on one unit, (target, &CurseParams) -> 1 applied. Every curse
+// skill's srvdo reaches it once per target. It calls NewStateList (whose own entry D2RCore hooks), which removes the
+// unit's first list flagged ListFlagCurse unless it is this state's, then sets aurastat2-6 on the list.
+// mov [rsp+8],rbx / mov [rsp+0x18],rbp / mov [rsp+0x20],rsi / push rdi
+inline constexpr uint64_t ApplyCurse = 0x55a7e0;
+inline constexpr uint8_t ApplyCurseEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c,
+                                              0x24, 0x18, 0x48, 0x89, 0x74, 0x24, 0x20, 0x57};
+// (game, target, stat, value) -> value: what ApplyCurse sets for each aurastat (a fifth of a resist cut on an immune)
+inline constexpr uint64_t CurseStatValue = 0x55bfb0;
+inline constexpr uint64_t StateIsCurse = 0x335a40;  // (dataFlag, state) -> non-zero for a states.txt curse
+// unit +0x88: its stat list owner (+0x1c < 0 marks one); +0x90 its first chain of lists, the one NewStateList searches
+inline constexpr int UnitListOwner = 0x88, ListOwnerMark = 0x1c, ListOwnerFirst = 0x90;
+inline constexpr int ListFlags = 0x1c, ListNext = 0x68;  // uint32 flags, next list in the chain
+inline constexpr uint32_t ListFlagTimed = 0x2, ListFlagCurse = 0x20;
+
+// --- Item rules: skill while equipped and phasing (docs/research/ir7-equipped-items.md) ---------------------------
+// The server's stat callback, (game, unit, item, stat << 32 | layer (a 64-bit r9), old, new), for stats with
+// fCallback: a switch on stats 7-209 only (`lea eax,[r12-7]; cmp eax,0xca` at 0x46ff4a), item_aura (151) at
+// 0x470470. Its entry is `jmp [rip+x]`: D2RCore hooks it, so core-rules wraps the pointer instead, where it is
+// handed to StatCallbackInit.
+inline constexpr uint64_t StatCallback = 0x46fdd0;
+// (unit, flags, callback, arg): sets up the unit's stat list with its callback (unit creation 0x4252c0, 0x543120).
+// mov [rsp+0x10],rbx / mov [rsp+0x18],rsi / mov [rsp+0x20],rdi / push rbp
+inline constexpr uint64_t StatCallbackInit = 0x2f65d0;
+inline constexpr uint8_t StatCallbackInitEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74,
+                                                    0x24, 0x18, 0x48, 0x89, 0x7c, 0x24, 0x20, 0x55};
+// Unit event 9's handler, (game, unit, key, skill, stateKey): an item aura's tick. Casts the skill at item_aura's
+// level for it (stat 151, layer skill) through SrvSkillDispatch (unit flag 0x20000000 and UnitStateKey = stateKey
+// around the cast), then re-adds the event perdelay (calc +0x180, at least 5) frames on, on the frame grid; with no
+// item_aura level (or a dead unit, or no aurastate) it removes the event. The item_aura case (0x581970) starts it.
+// mov [rsp+0x20],rbx / push rbp / push rsi / push rdi / push r12 / push r14 / sub rsp,0x40
+inline constexpr uint64_t ItemAuraTick = 0x437230;
+inline constexpr uint8_t ItemAuraTickEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x20, 0x55, 0x56, 0x57,
+                                                0x41, 0x54, 0x41, 0x56, 0x48, 0x83, 0xec, 0x40};
+inline constexpr int UnitEventItemAura = 9;
+inline constexpr uint64_t SetUnitStateKey = 0x3e2b652;  // (unit, key): UnitStateKey's setter (a jmp stub)
+// int32 masks ItemAuraTick tests the skill record's byte +0x24 with: either set, the aura ticks again
+inline constexpr uint64_t SkillTickMaskA = 0x1d996e4, SkillTickMaskB = 0x1d996e8;
+inline constexpr int SkFlags24 = 0x24;
+inline constexpr int SkPerDelayCalc = 0x180;  // int32 perdelay calc index
+inline constexpr uint32_t UnitFlagItemAuraCast = 0x20000000;
+
+// --- Cube (D2Game\src\Player\PlrTrade.cpp; core-maps' op 30) --------------------------------------------------------
+// Recipe search: (result*, game, player, out*) walks cubemain in order and stores the first row that passes its filters
+// (enabled, version, ladder, difficulty, class, numinputs == items in the cube, player ops 1-14) and whose 7 inputs all
+// match: result {int32 row, uint8 found}. out is 3 x {item*, int32, int32}, zeroed before each row's inputs.
+// push rbp / push rbx / push rsi / push rdi / push r12 / push r13 / push r14 / push r15 / lea rbp,[rsp-0x78] /
+// sub rsp,0x178
+inline constexpr uint64_t CubeRecipeSearch = 0x529090;
+inline constexpr uint8_t CubeRecipeSearchEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55,
+                                                    0x41, 0x56, 0x41, 0x57, 0x48, 0x8d, 0x6c, 0x24, 0x88,
+                                                    0x48, 0x81, 0xec, 0x78, 0x01, 0x00, 0x00};
+// (game, inventory, row, input 0-6, out*, used*) -> non-zero when that input matches (an empty input does); used is
+// 0x30 int32 flags for the cube items already taken by earlier inputs, zeroed before each row
+inline constexpr uint64_t CubeInputMatch = 0x529d50;
+inline constexpr int CubeMatchUsedSlots = 0x30;
+inline constexpr uint64_t CubeRecipeCount = 0x3e3f20;  // (dataFlag) -> cubemain row count
+inline constexpr uint64_t CubeRecipe = 0x3e3f60;       // (dataFlag, row) -> 0x16c-byte record, or null
+inline constexpr int CubeEnabled = 0x0, CubeOp = 0x3;  // uint8 enabled, uint8 op
+inline constexpr uint64_t UnitInventory = 0x34a360;    // (unit, file, line) -> the unit's inventory, or null
+
+// --- core-ui: automap for level types 36+ (LP2, #212) -------------------------------------------------------------
+// (levelType, tileType, style, sequence) -> cel or -1 (0xffffffff): the automap tile lookup. It matches AutoMap.txt
+// rows of the type's range (36 ranges, so types 36+ read past them), style 0xff any, start sequence 0xff any, else
+// start <= sequence <= end; then cels[Roll(seed) % count]. Decompiled for #212 (Ghidra, D2R.gpr); entry bytes read from
+// the 6ab3782c dump. Game check (#212): core-ui's status counters climb in a PD2-only area with the automap open.
+inline constexpr uint64_t AutomapCel = 0x32bdf0;
+inline constexpr uint8_t AutomapCelEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74,
+                                              0x24, 0x18, 0x48, 0x89, 0x7c, 0x24, 0x20};
+inline constexpr int AutomapLevelTypes = 36;  // AutoMap.txt loader 0x32cae0 matches 36 names (table 0x1cfe110)
+inline constexpr uint64_t AutomapSeedPtr = 0x2372a40;  // pointer to the {lo, hi} seed 0x32bdf0 rolls (its decompile)
+
+// --- core-ui: HD pictures of 4-character item codes (#310, #298) ---------------------------------------------------
+// The items.json loader 0x6635a0 keys each entry by its code's first 3 characters plus a space (0x663a14 writes 0x20
+// to byte 3), while the picture lookup 0x662fb0 (case 4) searches by the item record's whole code dword (+0x80). So a
+// 4-character code never finds its entry (tpgs draws nothing) and overwrites the entry of the 3-character code it
+// starts with (r01s replaces r01's picture). The patch keeps byte 3: the key's last two bytes are loaded as a word and
+// byte 3 becomes c[3] | 0x20 (a 3-character code's terminator gives the space D2R wrote; every PD2 code's 4th
+// character already has bit 0x20, which tools/pd2_items.py checks). The 2-character path, which jumped to the
+// removed store, jumps to D2R's own double-space store at 0x663a07. Decompiled and read from the 6ab3782c dump (#310).
+inline constexpr uint64_t ItemsJsonKey = 0x6639f9;
+// jmp 0x663a14 / mov [rsp+25],al / movzx eax,byte [rsi+2] / test al,al / jne 0x663a10 / mov word [rsp+26],0x2020 /
+// jmp 0x663a19 / mov [rsp+26],al / mov byte [rsp+27],0x20
+inline constexpr uint8_t ItemsJsonKeyD2R[] = {0xeb, 0x19, 0x88, 0x44, 0x24, 0x25, 0x0f, 0xb6, 0x46, 0x02, 0x84,
+                                              0xc0, 0x75, 0x09, 0x66, 0xc7, 0x44, 0x24, 0x26, 0x20, 0x20, 0xeb,
+                                              0x09, 0x88, 0x44, 0x24, 0x26, 0xc6, 0x44, 0x24, 0x27, 0x20};
+// jmp 0x663a07 / mov [rsp+25],al / movzx eax,word [rsi+2] / test al,al / jne 0x663a10 / mov word [rsp+26],0x2020 /
+// jmp 0x663a19 / or ah,0x20 / mov [rsp+26],ax / nop
+inline constexpr uint8_t ItemsJsonKeyFull[] = {0xeb, 0x0c, 0x88, 0x44, 0x24, 0x25, 0x0f, 0xb7, 0x46, 0x02, 0x84,
+                                               0xc0, 0x75, 0x09, 0x66, 0xc7, 0x44, 0x24, 0x26, 0x20, 0x20, 0xeb,
+                                               0x09, 0x80, 0xcc, 0x20, 0x66, 0x89, 0x44, 0x24, 0x26, 0x90};
+static_assert(sizeof(ItemsJsonKeyD2R) == sizeof(ItemsJsonKeyFull));
+
+// --- core-maps: opening a map (MS2, #217; D2Game\src\Skills\SkillItem.cpp) ----------------------------------------
+// Item spell dispatchers, (game, player, item, target): the check -> bool, then the use (whose caller frees an item
+// whose spell flag is 0, as slot 16's empty entry is). Both index D2R's 20-entry item spell table (0x236fe30) by the
+// item's pSpell; slots 16-19 are empty. Decompiled for #217; entry bytes read from the 6ab3782c dump.
+// mov [rsp+8],rbx / mov [rsp+0x10],rbp / mov [rsp+0x18],rsi
+inline constexpr uint64_t ItemSpellCheck = 0x5817f0;
+inline constexpr uint8_t ItemSpellCheckEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c,
+                                                  0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18};
+// mov [rsp+0x18],rbx / mov [rsp+0x20],rbp / push rsi / push rdi / push r15
+inline constexpr uint64_t ItemSpellUse = 0x581680;
+inline constexpr uint8_t ItemSpellUseEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x48, 0x89, 0x6c,
+                                                0x24, 0x20, 0x56, 0x57, 0x41, 0x57};
+inline constexpr uint64_t UnitClassOf = 0x349860;  // (unit, file, line) -> class id (the dispatchers' item row)
+inline constexpr int ItemPSpell = 0x94;   // int32 misc pSpell in the items record (ItemRecord)
+inline constexpr int ItemLenCalc = 0xb0;  // uint32 misc len calc; the timed potion handler 0x57ecb0 evaluates it
+inline constexpr uint64_t ItemCalc = 0x3b4880;  // (dataFlag, player, item, calc) -> value
+// (game, player, key, level, max) -> 1 opened: the cube's "Red Portal" output (0x52aa00 passes its key, level, max).
+// The player must stand in town; it finds a free spot, makes red portal 60 to the level (same act only), and counts
+// the opening in the game's counter for key; with max > 0 it refuses once the counter reaches max. A refusal sends
+// client message 0x15.
+inline constexpr uint64_t OpenRedPortal = 0x5da800;
+// What OpenRedPortal does first, to find the portal's spot: the unit's (x, y), then a search around it, (game,
+// room, int xy[2] in/out, 3, 0x400, room** found, 5, 100); *found stays null when there is no free spot. Reads only.
+inline constexpr uint64_t UnitCoords = 0x34a040;  // (unit, int32 xy[2])
+inline constexpr uint64_t FindFreeSpot = 0x517f90;
+inline constexpr uint64_t GameCounter = 0x5d88b0;  // (game + GameCounters, &key) -> int32* counter (made if missing)
+inline constexpr int GameCounters = 0x1aac8;
+// (questRecord, quest, bit) -> non-zero when set (D2Common QuestRecord.cpp); a player's record for a difficulty is
+// at player data + 0x40 + difficulty * 8 (the item-use quest checks in 0x4734f0). Bit 0: the quest is done.
+inline constexpr uint64_t QuestFlag = 0x325c50;
+inline constexpr int PlayerQuests = 0x40;
+inline constexpr uint64_t ClientMessage = 0x491960;  // (player, message, player); 0x15 is "can't do that"
+
+// --- core-maps: map stats on monsters and players (MS3, #218) -----------------------------------------------------
+// Decompiled for #218 (Ghidra, D2R.gpr); entry bytes read from the 6ab3782c dump.
+// (spawn params, monster): D2R's per-class setup of a monster that its spawn core 0x493cc0
+// (D2Game\src\Monster\MonsterSpawn.cpp) just made; 0x493cc0 is its only caller, and 0x492cf0 and the other spawners
+// all go through 0x493cc0. The monster's stats and its monstats Align alignment (0x48e600) are set by then.
+// mov [rsp+0x18],rbx / mov [rsp+0x20],rbp / push rsi / push rdi / push r15
+inline constexpr uint64_t MonsterSpawned = 0x494a60;
+inline constexpr uint8_t MonsterSpawnedEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x48, 0x89, 0x6c,
+                                                  0x24, 0x20, 0x56, 0x57, 0x41, 0x57};
+// (game, player, a, b): the player's life regen event (unit event 3, D2Game\src\Player\PlrModes.cpp). It adds itself
+// again for the next frame first, so it runs every frame for every player, dead or alive.
+// mov [rsp+0x20],rbx / push rbp / sub rsp,0x40 / mov eax,r9d / mov dword [rsp+0x30],0
+inline constexpr uint64_t PlayerRegenEvent = 0x42e600;
+inline constexpr uint8_t PlayerRegenEventEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x20, 0x55, 0x48, 0x83, 0xec, 0x40, 0x41,
+                                                    0x8b, 0xc1, 0xc7, 0x44, 0x24, 0x30, 0x00, 0x00, 0x00, 0x00};
+inline constexpr int MonAlign = 0x87;  // uint8 monstats Align (rva::MonStatsRecord); 0x493cc0 reads it for 0x48e600
+inline constexpr uint64_t SetListState = 0x2f72f0;  // (list, state): list +0x20 = state (0x49bef0, 0x339d70 use it)
+// (unit, state, flags) -> the unit's stat list of that state and flags, or null; (item, 0, 0x40) is the item's magic
+// list. List +0x30 entries {int32 layer, stat, value, extra}, +0x38 uint64 count (d2rAI-toolkit runeword-stat-list.md)
+inline constexpr uint64_t UnitFlagList = 0x2f5b80;
+inline constexpr int ListEntries = 0x30, ListCount = 0x38;
+inline constexpr int StatMinDamage = 21, StatMaxDamage = 22;
+
+// --- core-maps: area map stats (MS4, #219; D2Game\src\Monster\MonsterRegion.cpp) ----------------------------------
+// rva::GameMonRegions: 0x5098b0 builds every level's region once per game (0x508750), from its levels row; these are
+// the fields PD2's 0x1038b4d0 rewrites, at 1.13c's offsets.
+inline constexpr int RegionCount = 0x10, RegionRarity = 0x11, RegionSpawnCount = 0x12;  // uint8: groups, sum, picks
+inline constexpr int RegionGroups = 0x14, RegionGroupSize = 0x34, RegionMaxGroups = 13;  // int16 monstats id, uint8 rarity
+inline constexpr int RegionMonDen = 0x2b8;                         // uint32 levels MonDen of the difficulty
+inline constexpr int RegionBossMin = 0x2bc, RegionBossMax = 0x2bd;  // uint8 MonUMin / MonUMax
+// (game, level id) -> the level's monster level: levels MonLvl / MonLvlEx of the difficulty (0x32c700), plus a terror
+// zone's bump (MonsterRegionAdjustMonsterLevel). Monster spawns, uniques and item levels call it; D2R never reads the
+// region's own monster level fields (+0x2dc, +0x2e0), which PD2 rewrites.
+// mov [rsp+0x10],rbx / mov [rsp+0x18],rsi / push rdi / sub rsp,0x30
+inline constexpr uint64_t AreaMonsterLevelFn = 0x508f80;
+inline constexpr uint8_t AreaMonsterLevelEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74,
+                                                    0x24, 0x18, 0x57, 0x48, 0x83, 0xec, 0x30};
+
+// --- core-maps: the drop chance area stats (MS4b, #286; D2Game\src\Items\Items.cpp) -------------------------------
+// (game, drop, 0) -> item or null: makes an item from a drop request (1.13c's, which PD2 calls through 0x1030ef80).
+// The TC drop 0x444680 (game, unit, item row, quality, index, flags) fills the request and calls it at 0x444866; PD2's
+// drop hook 0x10372180 replaces that function.
+// push rbp / push rbx / push rsi / push r12 / push r15 / lea rbp,[rsp-0x37] / sub rsp,0x90
+inline constexpr uint64_t ItemSpawn = 0x43cd50;
+inline constexpr uint8_t ItemSpawnEntry[] = {0x40, 0x55, 0x53, 0x56, 0x41, 0x54, 0x41, 0x57, 0x48, 0x8d,
+                                             0x6c, 0x24, 0xc9, 0x48, 0x81, 0xec, 0x90, 0x00, 0x00, 0x00};
+inline constexpr uint64_t TcDropReturn = 0x44486b;  // the TC drop's return address from ItemSpawn
+inline constexpr int DropUnit = 0x00;   // Unit* the dropper
+inline constexpr int DropFlags = 0xc0;  // uint32; 0x4 makes an ethereal-capable item ethereal (0x442d60), 1.13c +0x80
+inline constexpr uint32_t DropFlagEthereal = 0x4;
+inline constexpr uint64_t ItemQuality = 0x36cf60;     // (item) -> quality (6 rare)
+inline constexpr uint64_t ItemSocketable = 0x36b410;  // (item) -> non-zero: can take sockets (1.13c D2Common #10360)
+inline constexpr uint64_t SetItemSockets = 0x36e880;  // (item, n): sockets, clamped to the type's max (1.13c #10599)
+inline constexpr uint64_t ItemHasSockets = 0x36c750;  // (item) -> non-zero when socketed; cube input flags 4 / 8 test it
+inline constexpr uint64_t ItemIsEthereal = 0x3740a0;  // (item) -> non-zero when ethereal; cube input flags 0x10 / 0x20
+// (item, &property {prop, param, min, max}): a cube output mod on the item's magic list (mod type 7, 1.13c #10914)
+inline constexpr uint64_t ApplyCubeMod = 0x3d3420;
+inline constexpr int ItType = 0x12e;     // int16 items type (the type the socketable test reads)
+inline constexpr int It2Handed = 0x12b;  // uint8 items 2handed (items field table 0x315fd0)
+// cubemain record (rva::CubeRecipe), packed: param +4, value +8; input n at +0x14 + n * 10 (uint16 flags, int32 id,
+// uint8 quality at +6; 0x529d50 reads it); output A at +0x5e (uint16 flags, int32 id at +2, uint8 quality at +6, type at
+// +9: 0xff usetype, 0xfe useitem), its five mods from +0x77, 12 bytes each {int32 prop, int16 param, min, max, chance}
+// (0x5269c0). The field table 0x3e3ff0 holds these less 0xe.
+inline constexpr int CubeParam = 0x4, CubeValue = 0x8, CubeInputs = 0x14, CubeInputSize = 10;
+inline constexpr int CubeOutQuality = 0x64, CubeOutType = 0x67, CubeOutMods = 0x77, CubeModSize = 12;
+
+// --- core-maps: engine memory pools (LP3, #213) ----------------------------------------------------------------------
+// TlsfAlloctor objects (vtable 0x1d6d770): +0x20 the tlsf control, +0x28 its lock (0x14122ad60 locks, 0x14122ad90
+// unlocks). 0x1215650 is tlsf block_insert(control, block); tlsf_add_pool is inlined in 0x1215a30.
+// Entity System Pool: every HD scene entity (singleton getter 0x913f60); 0xd714e0 gives it 70 MiB (0x4600000). A PD2
+// map preset over about 34k entities runs it dry and the entity vector grow (0x6d17d0) memsets a null.
+inline constexpr uint64_t EntityPool = 0x2677438;
+// Renderer Pool: 0xf6efe0 gives it 12 MiB (0xc00000); allocations go through 0xf6f060. The full-density Jungle Map
+// ran it dry: 0xdafe30 (called from 0xeeb4d0) wrote through the null it returned.
+inline constexpr uint64_t RendererPool = 0x2810ff0;
+// JSON Pool: 0xa0a230 gives it 40 MiB (0x2800000) for parsed JSON; a 46 MB generated preset ran it dry (null write in
+// the memcpy at 0x12d36f3). ObjectPool: 0xa20bb0 gives it 50 MiB (0x3200000).
+inline constexpr uint64_t JsonPool = 0x27d1770;
+inline constexpr uint64_t ObjectPool = 0x27d7848;
+// Jobs: the job system (getter 0x9e8e70, static 0x34c3b40) holds a 10 MiB (0xa00000) TlsfAllocator at +0x1a8 (vtable
+// 0x1d95618, set up by 0x9e91e0). Same +0x20 control, but +0x28 is a spinlock: 0x9e8c30 swaps in the lock's own
+// address, spins while it is not 0 and stores 0 to release. The full-density Jungle Map ran it dry: 0xd9e740 wrote
+// through the null 0x9e8ca0 returned.
+inline constexpr uint64_t JobsPool = 0x34c3ce8;
+// Texture Cache TextureData Pool: 0xe8b100 gives it 24 MiB (0x1800000); a TlsfAlloctor like the Entity System Pool.
+inline constexpr uint64_t TexturePool = 0x27ff098;
+inline constexpr uint64_t EntityPoolLock = 0x122ad60;    // (lock*) -> void
+inline constexpr uint64_t EntityPoolUnlock = 0x122ad90;  // (lock*) -> void
+inline constexpr uint64_t TlsfBlockInsert = 0x1215650;   // (control, block) -> void
 
 // Critical and deadly strike (IR3, docs/research/ir3-combat-stats.md)
 // WeaponDamage's (0x44c030) roll: from 0x44c2b4, right after the physical roll is stored at damage +0x18, to 0x44c3d9
@@ -705,9 +963,7 @@ inline constexpr uint64_t StatListBaseStat = 0x2f9b10;
 inline constexpr uint8_t StatListBaseStatEntry[] = {0x48, 0x89, 0x74, 0x24, 0x10, 0x57, 0x48, 0x83, 0xec,
                                                     0x20, 0x48, 0x63, 0x41, 0x1c, 0x48, 0x8b, 0xf1};
 inline constexpr uint64_t StatListUnit = 0xa0;
-inline constexpr uint64_t UnitInventory = 0x34a360;      // (unit, file, line) -> inventory
 inline constexpr uint64_t InventoryBodyItem = 0x3886d0;  // (inventory, bodyloc 0-12) -> the item worn there
-inline constexpr uint64_t ItemIsEthereal = 0x3740a0;     // (item) -> item data +0x18 & 0x400000
 // (unit, amount) -> life added: life + amount up to the max, unless the unit is dead or has state 92 (1.13c's
 // 0x6fcfb570, which PD2 replaces with 0x10306ca0). Callers: the life leech 0x450c90 (attacker) and the hit's absorb
 // heal in 0x44ce80 (victim). mov [rsp+0x18],rbx / push rsi / sub rsp,0x20 / mov esi,edx / mov rbx,rcx
@@ -720,3 +976,25 @@ inline constexpr uint64_t CrushingBlowApplySlot = 0x3e2a448;
 inline constexpr uint32_t MonPrimeEvil = 0x80;  // MonFlags bit 7 (1.13c's D2Common #10278 tests the same bit)
 
 }  // namespace d2r::rva
+
+namespace d2r {
+
+// Argument of rva::ApplyCurse, as the curse srvdo (0x5598f0) fills it: aurastat1 travels in the NewStateList
+// request, aurastat2-6 are set on the list after it.
+struct CurseParams {
+	Game* game;           // 0x00
+	Unit* caster;         // 0x08
+	int32_t pad10[2];     // 0x10 not read here
+	int32_t skill;        // 0x18
+	int32_t level;        // 0x1c
+	int32_t key;          // 0x20
+	int32_t frames;       // 0x24
+	int32_t stats[6];     // 0x28 aurastat1-6, -1 for none
+	int32_t values[6];    // 0x40 their calcs, already worked out
+	int32_t state;        // 0x58 aurastate
+};
+static_assert(offsetof(CurseParams, stats) == 0x28);
+static_assert(offsetof(CurseParams, values) == 0x40);
+static_assert(offsetof(CurseParams, state) == 0x58);
+
+}  // namespace d2r

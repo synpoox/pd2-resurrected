@@ -1097,15 +1097,59 @@ void CltDoBlessedHammer(Unit* missile, int32_t a2) noexcept {
 	}
 }
 
+// --- Summon-on-hit missiles (PD2 pSrvHitFunc 6, here 67; docs/research/w36-monster-kits.md) -------------------------
+// Read from ProjectDiablo.dll: shit 6 at 0x103a7750. D2R's own srvhit 6 (0x45ce90) spawns the same monster the same
+// way but leaves out the flags, so the spawns would drop loot and give experience.
+namespace {
+std::atomic<uint32_t> g_summonHits {0};
+}  // namespace
+
+// The monstats row sHitPar1 at the missile, in mode sHitPar2 (1 when 16 or more), with sHitPar3 added to its flags
+// (PD2's rows: no treasure class and no experience). Always 1, as both games: the missile deals no damage here.
+auto SrvHitSummon(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
+	using namespace d2r::rva;
+	(void)hit;
+	if (game == nullptr || missile == nullptr) {
+		return 1;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
+		dataFlag, At<int32_t>(missile, UnitClassId));
+	if (row == nullptr) {
+		return 1;
+	}
+	const int32_t mon = At<int32_t>(row, MsHitPar1);
+	if (mon < 0 || d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(dataFlag, mon) == nullptr) {
+		return 1;
+	}
+	const auto par2 = At<uint32_t>(row, MsHitPar2), flags = At<uint32_t>(row, MsHitPar3);
+	const int32_t mode = par2 < 16 ? static_cast<int32_t>(par2) : 1;
+	int32_t x = 0, y = 0;
+	if (!d2r::UnitXY(missile, &x, &y)) {
+		return 1;
+	}
+	Unit* spawn = d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(
+		SpawnMonsterAt)(game, d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(missile), mon, x, y, mode, 0);
+	if (spawn != nullptr && flags <= 0x7fffffff) {  // PD2 adds nothing for a negative sHitPar3
+		*reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(spawn) + UnitMainFlags) |= flags;
+	}
+	if (plog::Sample(g_summonHits)) {
+		plog::Info("summon hit: missile %d: monster %d mode %d %s, flags 0x%x, hit %u", At<int32_t>(missile, UnitClassId),
+		           mon, mode, spawn != nullptr ? "spawned" : "not spawned",
+		           spawn != nullptr ? At<uint32_t>(spawn, UnitMainFlags) : 0u, g_summonHits.load());
+	}
+	return 1;
+}
+
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size, "returns spawned %u, caught %u, bounces %u, first hits %u, spread hits %u, explosions %u, "
 	              "falloff hits %u, state hits %u, bolt hits %u, holy light client hits %u, fist delay client hits %u, "
 	              "charge explodes %u, charge bolt hits %u, hammer frames %u, hits %u, kept %u, client frames %u, "
-	              "chain falloffs %u, fragment walls %u, splits %u, damage %u, client walls %u",
+	              "chain falloffs %u, fragment walls %u, splits %u, damage %u, client walls %u, summon hits %u",
 	              g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(), g_firstHits.load(),
 	              g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load(), g_stateHits.load(),
 	              g_boltHits.load(), g_holyLightHits.load(), g_fistDelayHits.load(), g_chargeExplodes.load(),
 	              g_chargeBoltHits.load(), g_hammerFrames.load(), g_hammerHits.load(), g_hammerKept.load(),
 	              g_hammerClientFrames.load(), g_chainFalloffs.load(), g_fragmentWalls.load(), g_fragmentSplits.load(),
-	              g_fragmentDamage.load(), g_fragmentClientWalls.load());
+	              g_fragmentDamage.load(), g_fragmentClientWalls.load(), g_summonHits.load());
 }

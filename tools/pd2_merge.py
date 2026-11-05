@@ -19,7 +19,11 @@ from typing import Callable
 
 import pd2_ids
 import pd2_items
+import pd2_levels
 import pd2_missiles_hd
+import pd2_monsters_hd
+import pd2_overlays_hd
+import pd2_presets
 import pd2_skill_icons
 import pd2_skilltrees
 import pd2_standins
@@ -33,13 +37,18 @@ D2R_DATA = Path(os.environ.get("MODKIT_CACHE", ROOT.parent / "d2rAI-toolkit" / "
 # merge/ file name -> fn(rule file, PD2 data root, D2R data root, generated/data). Added by the work items that need them.
 RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
     **{f"ids-{t}.tsv": pd2_ids.apply for t in pd2_ids.TABLES},
+    "ids-monpreset.tsv": pd2_levels.apply_monpreset,
     "item-tables.txt": pd2_items.apply,
+    "level-files.tsv": pd2_levels.apply_files,  # after the id rules: lvltypes, objpreset, DS1 and DT1
     "missiles-hd.tsv": pd2_missiles_hd.apply,  # after ids-missiles.tsv
+    "monsters-hd.tsv": pd2_monsters_hd.apply,
+    "presets-hd.tsv": pd2_presets.apply,  # after level-files.tsv: reads the merged levels, lvlprest, lvltypes and DS1
     "skill-icons.txt": pd2_skill_icons.apply,
     "standins.tsv": pd2_standins.apply,  # after the id and item rules (merge runs rule files by name)
     "strings.json": pd2_strings.rule,
     "tables.json": pd2_tables.rule,
     "tree-backgrounds.json": pd2_skilltrees.apply,  # after tables.json (skilldesc)
+    "vfx-overlays.tsv": pd2_overlays_hd.apply,  # after tables.json (overlay)
 }
 
 
@@ -90,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"pd2_merge: no D2R tables under {a.d2r}: run `modkit fetch` or pass --d2r", file=sys.stderr)
             return 1
         added = pd2_ids.seed_lists(a.root / "merge", a.root / "pd2-data" / "data", a.d2r)
+        added["monpreset"] = pd2_levels.seed_list(a.root / "merge", a.root / "pd2-data" / "data", a.d2r)
         print("id lines added: " + ", ".join(f"{t} {n}" for t, n in added.items()))
         return 0
     try:
