@@ -1,0 +1,45 @@
+name: release
+# The full build and the release 7z (issue #109). Runs only on the owner's self-hosted runner: it needs the PD2 install
+# in pd2-baseline.json and a D2R install, which never go to GitHub (ADR 0002). Run it by hand (Actions > release > Run
+# workflow). The 7z, notes and SHA256SUMS are kept as a workflow artifact; nothing is published. Runner setup: README.md.
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: [self-hosted, windows, pd2r]
+    env:
+      PYTHONPATH: ${{ vars.D2R_TOOLKIT }}
+      MODKIT_CACHE: ${{ vars.D2R_TOOLKIT }}\d2r-data
+      MODKIT_GAME: ${{ vars.D2R_GAME }}
+      D2R_TOOLKIT: ${{ vars.D2R_TOOLKIT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Tool tests
+        run: py -3 -m unittest discover -s tools/tests
+      - name: Plugins
+        run: powershell -ExecutionPolicy Bypass -File plugin\build.ps1
+      - name: Merged data
+        run: |
+          py -3 tools/pd2_extract.py; if ($LASTEXITCODE) { throw "pd2_extract failed" }
+          py -3 -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/; if ($LASTEXITCODE) { throw "modkit fetch failed" }
+          py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
+          py -3 tools/companions.py fetch; if ($LASTEXITCODE) { throw "companions fetch failed" }
+          py -3 -m modkit build . --no-validate; if ($LASTEXITCODE) { throw "modkit build failed" }
+      - name: Validation (known errors, #171; does not block the release)
+        continue-on-error: true
+        run: py -3 -m modkit validate .
+      - name: Package
+        run: py -3 tools/release.py --game "$env:MODKIT_GAME"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: |
+            dist/*.7z
+            dist/RELEASE_NOTES-*.md
+            dist/release-manifest.json
+            dist/SHA256SUMS
+            out/validation.md
+          retention-days: 14

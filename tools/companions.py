@@ -4,7 +4,7 @@
     python tools/companions.py install --game DIR
 
 fetch downloads each release asset in companions/manifest.json (or, for an entry with `commit` in place of `tag`, the
-file at that path in the repo at that commit), refuses one whose SHA-256 differs from the manifest, and unpacks only
+file at that path in the repo at that commit; a release asset that is not a .zip is one file too), refuses one whose SHA-256 differs from the manifest, and unpacks only
 the files the manifest lists into git-ignored generated/companions/ (laid out as the installed mod
 folder), plus our companions/filter.json. No companion binary is ever committed. Run it after pd2_merge.py, which
 rebuilds generated/.
@@ -61,7 +61,7 @@ def fetch(root: Path, download: Callable[..., bytes] = github_download) -> list[
         if got != c["sha256"]:
             shutil.rmtree(dest, ignore_errors=True)
             raise CompanionError(f"{c['asset']}: SHA-256 {got} differs from the manifest")
-        if raw:  # one file: files maps the asset path to its place in the mod folder
+        if raw or not c["asset"].endswith(".zip"):  # one file: files maps the asset path to its place in the mod folder
             rel = c["files"][c["asset"]]
             (dest / rel).parent.mkdir(parents=True, exist_ok=True)
             (dest / rel).write_bytes(data)

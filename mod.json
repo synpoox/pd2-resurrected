@@ -2,7 +2,8 @@
   "name": "PD2Resurrected",
   "savepath": "PD2Resurrected/",
   "title": "PD2 Resurrected",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha",
   "extendedSaves": true,
-  "plugins": []
+  "plugins": [],
+  "description": "Alpha 0.1.0 of Project Diablo II for Diablo II: Resurrected, offline single-player: every Project Diablo II class is complete; the map system, the uber bosses and the Warlock redesign come in a later alpha."
 }

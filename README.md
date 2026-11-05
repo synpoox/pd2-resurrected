@@ -1,8 +1,48 @@
-# pd2-resurrected
+# PD2 Resurrected
 
-A near-1:1 recreation of the latest Project Diablo II as a Diablo II: Resurrected mod (Reign of the Warlock mode only), with D2RLoader plugins for engine mechanics and a Warlock redesigned in PD2's style. Offline single-player first, then private multiplayer.
+Project Diablo II rebuilt as a Diablo II: Resurrected mod: PD2's items, skills, monsters and rules, in D2R's
+graphics. Offline single-player for now; private multiplayer comes later.
 
-**Status: building toward the pre-alpha** ([roadmap](docs/roadmap.md)).
+**Status: alpha 0.1.0** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [what is not ported yet](docs/unported.md)).
+
+## Requirements
+
+- Windows and Diablo II: Resurrected 3.3.0 (build 93847) with Reign of the Warlock.
+- [D2RLoader](https://d2rloader.net/) 1.3.1-beta. Characters load only through it.
+
+## Install
+
+1. Close the game.
+2. Unpack `PD2Resurrected-<version>.7z` into `<D2R folder>\mods\`, so that
+   `mods\PD2Resurrected\PD2Resurrected.mpq\modinfo.json` exists.
+3. Make `PD2Resurrected` D2RLoader's default mod (once): in D2RLoader's settings, or with
+   `default_mod = "PD2Resurrected"` in `<D2R folder>\d2rloader\config\d2rloader.toml`.
+4. Start `D2RLoader.exe`. Characters are saved in `Saved Games\Diablo II Resurrected\mods\PD2Resurrected\`.
+
+To update, delete `mods\PD2Resurrected\PD2Resurrected.mpq\data` first, then unpack the new release the same way.
+
+## Loot Filters
+
+The mod ships the [Pyre Loot Filter](https://github.com/Pyre-Flies/D2R-Mods/blob/main/plugins/pyre-lootfilter/README.md)
+plugin with a default `filter.json`.
+
+- Edit or make a filter: [D2R Reimagined loot filter editor](https://www.d2r-reimagined.com/loot-filter).
+- Default filter: [filter.json](https://raw.githubusercontent.com/synpoox/pd2-resurrected/main/companions/filter.json).
+- Install: save it as `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter.json`. It reloads on save.
+
+A new release overwrites `filter.json`; keep a copy of yours.
+
+## Bug reports
+
+Found a bug? [Open an issue](https://github.com/synpoox/pd2-resurrected/issues/new) and say:
+
+- what happened, and what you expected;
+- how to make it happen again (class, level, difficulty, area, skill or item);
+- the mod version (in the release's file name, e.g. `0.1.0-alpha`).
+
+First check the [unported list](docs/unported.md): what is on it is known and not a bug yet.
+
+## For developers
 
 - Plan and open decisions: [map issue #1](https://github.com/synpoox/pd2-resurrected/issues/1)
 - Decisions: [`docs/adr/`](docs/adr/)
@@ -10,6 +50,13 @@ A near-1:1 recreation of the latest Project Diablo II as a Diablo II: Resurrecte
 - Research notes: [`docs/research/`](docs/research/)
 
 No Blizzard files, PD2 archives or extracted PD2 data are committed here ([ADR 0002](docs/adr/0002-pd2-data-generated-not-committed.md)).
+
+## Contributing
+
+Pull requests are welcome. Every PR links its issue: the body opens with `Closes #<n>` (or `Part of #<n>`); open an
+issue first if there is none. Run the tool tests before you push, and add a line to `CHANGELOG.md` for anything a
+player would notice. Changes that alter gameplay need an in-game check (Hell, a level 90+ character). How agents and
+humans work here: [AGENTS.md](AGENTS.md).
 
 ## Build
 
@@ -53,12 +100,33 @@ python -m unittest discover -s tools/tests
 ```
 
 The table-diff gate compares the merged tables with PD2's, scoped to a work item (P2, P3, P4) or milestone (M1,
-pre-alpha). It fails on any difference that [docs/unported.md](docs/unported.md) does not list; paste its output into
+alpha). It fails on any difference that [docs/unported.md](docs/unported.md) does not list; paste its output into
 the PR:
 
 ```bash
 python tools/pd2_diff.py --scope P2
 ```
+
+## Release
+
+`tools/release.py` packages the built mod (the whole build above, plus the plugins below) with d2rAI-toolkit's
+`release/package_release.py` and `release.toml`: `dist/PD2Resurrected-<version>.7z`, release notes with the changelog
+section and the unported list, and `SHA256SUMS`. It needs 7-Zip, and a `### <version> (<date>)` section in
+`CHANGELOG.md` for mod.json's version: rename `### Unreleased` on release day.
+
+```bash
+python tools/release.py --game DIR
+```
+
+The `release` workflow (Actions > release > Run workflow) runs the whole build and this script and keeps the 7z as
+a workflow artifact; nothing is published. It needs the PD2 install and D2R, so it runs only on a self-hosted
+Windows runner with the labels `self-hosted, windows, pd2r` (Settings > Actions > Runners > New self-hosted runner;
+add the `pd2r` label when `config.cmd` asks). That machine needs the PD2 install named in `pd2-baseline.json`, Python
+3.13 with `py`, CMake and Visual Studio, and 7-Zip. Set two repository variables (Settings > Secrets and variables >
+Actions > Variables): `D2R_TOOLKIT`, the d2rAI-toolkit checkout (its `d2r-data/` cache is reused), and `D2R_GAME`, the
+D2R folder. The repository is private, so only its collaborators can run workflows on this runner; if it ever goes
+public, first set Settings > Actions > General > "Fork pull request workflows from outside collaborators" to "Require
+approval for all external contributors", or a fork's PR could edit a workflow to run on it.
 
 ## Plugins
 

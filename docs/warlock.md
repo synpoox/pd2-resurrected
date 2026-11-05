@@ -43,8 +43,8 @@ Hexes and Miasma stay as synergies or second builds with no target of their own.
 corruptions, high-end runewords and chase uniques from the shared drop pool, but no unique that drops from only one boss.
 Each work item writes its exact item list.
 
-**The test.** The reference build is played in the port itself (PD2's classes are complete and Exact from the
-pre-alpha), on the same spawned gear and in the same place, on a level 90+ character in Hell. Compared: kill time on a
+**The test.** The reference build is played in the port itself (PD2's classes are complete and Exact from
+alpha 0.1.0), on the same spawned gear and in the same place, on a level 90+ character in Hell. Compared: kill time on a
 fixed Hell pack, kill time on one boss, and whether the build survives the pack. Mid-pack means a kill time within about
 ±20% of the reference's; top tier means at or faster than the Combustion Sorceress. WL2 may tune the ±20%.
 
