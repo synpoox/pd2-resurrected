@@ -1,4 +1,4 @@
-// PD2's cube rules: corruption in one press (cube_rules.cpp).
+// PD2's cube rules: corruption in one press and the Demonic Cube reroll (cube_rules.cpp).
 #pragma once
 
 #include <D2RLPlugin/api.h>

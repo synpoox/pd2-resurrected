@@ -64,6 +64,7 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
     merged, dropped = I.merge_table("cubemain", pd2, empty, lines, ctx.ren, ctx.ids, ctx.props)
     mark_new_corrupted(merged, next((str(i) for p, i, _ in ctx.lists.get("itemstatcost", []) if p == "corruptor"), None))
     count_each_input(merged)
+    remake_rerolls(merged)
     merged.rows += [list(r) for r in d2r_only]
     merged.dropped = dropped
     return merged
@@ -84,6 +85,16 @@ def count_each_input(cube: I.Table) -> None:
         total = sum(int(m[1]) if (m := re.search(r"qty=(\d+)", r[i])) else 1 for i in inputs if r[i].strip('"'))
         if total <= CUBE_CELLS:
             r[h["numinputs"]] = str(total)
+
+
+def remake_rerolls(cube: I.Table) -> None:
+    """PD2's op 31 rows (Demonic Cube + a unique or set item) have no outputs: PD2's cube code remakes the item and
+    takes one Demonic Cube off the stack (IR6, #241). D2R's `usetype,reg` remakes the input's own unique or set row at its
+    item level; output b gives the Demonic Cube stack back, and core-rules sets its count (the executor takes the stack)."""
+    h = {c: j for j, c in enumerate(cube.header)}
+    for r in cube.rows if "op" in h else []:
+        if r[h["op"]] == "31":
+            r[h["output"]], r[h["output b"]] = "usetype,reg", "imrn,qty=1"
 
 
 def mark_new_corrupted(cube: I.Table, corruptor: str | None) -> None:

@@ -48,10 +48,18 @@ PD2's split is Ctrl+left-click with a stack held, one item per click (owner); it
 
 - The cubemain output parser (`0x3e5e60`) knows `qty`, `pre`, `suf`, `nor`, `hiq`, `mag`, `set`, `rar`, `uni`, `crf`,
   `tmp`, `eth`, `sock`, `mod`, `uns`, `rem`, `reg` (flag 0x40, keeps quality), `exc`, `eli`, `rep`, `rch`, `lvl`.
-  What the executor does with `reg` was not traced.
+  `reg` is the remake (below).
 - The `uniques` cheat (`0x411340`) makes an item through `0x43cd50(game, &params, 0)`: a 0xb8-byte block with the
   player (+0), the game (+0x10), the item level (+0x18), the item id (+0x20), the room (+0x30), the quality (+0x40, 7)
   and the unique row (+0x50, zero-based), two seeds (+0x58, +0x5c). It drops the item on the ground.
+- The `uniques` cheat path is not the cube's: in the executor (`0x5269c0`, at `0x52748e`) a `usetype` output with
+  `reg` (flag 0x40) takes the input's quality (`0x36cf60`), unique or set row plus 1 (`0x36ce70`, into +0x50) and item
+  level (`0x36ccf0`). The unique (`0x443910`) and expansion set (`0x58c2f0`) makers honour that 1-based row when the
+  base code matches. The unique maker skips rows already made this game (bits at game +0x3638); PD2's op 31 maker
+  (`0x103841d0`) clears that bit for the remake and restores it after (`0x1037ff00` / `0x1037ff30`, game +0x1b24).
+- Output n's block is 0x5b bytes from record +0x5a. An output's `qty` on a stackable item sets its quantity; with flag 2
+  (`sock`) it sets that many sockets (`0x375560`); flag 4 (`eth`) makes it ethereal.
+- `cheat spawn` reads at most 3 characters of the code, so PD2's 4-character codes (`imrn`, `cwss`) cannot be spawned.
 - The executor removes an input item with `0x48fa40(game, item)`: a stack is one item to D2R's cube, so a stack of
   Demonic Cubes would go whole (#315's problem).
 </content>
