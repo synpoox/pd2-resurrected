@@ -21,6 +21,16 @@ graphics. Offline single-player for now; private multiplayer comes later.
 
 To update, delete `mods\PD2Resurrected\PD2Resurrected.mpq\data` first, then unpack the new release the same way.
 
+## Bug reports
+
+Found a bug? [Open an issue](https://github.com/synpoox/pd2-resurrected/issues/new) and say:
+
+- what happened, and what you expected;
+- how to make it happen again (class, level, difficulty, area, skill or item);
+- the mod version (in the release's file name, e.g. `0.1.0-alpha`).
+
+First check the [unported list](docs/unported.md): what is on it is known and not a bug yet.
+
 ## For developers
 
 - Plan and open decisions: [map issue #1](https://github.com/synpoox/pd2-resurrected/issues/1)
@@ -29,6 +39,13 @@ To update, delete `mods\PD2Resurrected\PD2Resurrected.mpq\data` first, then unpa
 - Research notes: [`docs/research/`](docs/research/)
 
 No Blizzard files, PD2 archives or extracted PD2 data are committed here ([ADR 0002](docs/adr/0002-pd2-data-generated-not-committed.md)).
+
+## Contributing
+
+Pull requests are welcome. Every PR links its issue: the body opens with `Closes #<n>` (or `Part of #<n>`); open an
+issue first if there is none. Run the tool tests before you push, and add a line to `CHANGELOG.md` for anything a
+player would notice. Changes that alter gameplay need an in-game check (Hell, a level 90+ character). How agents and
+humans work here: [AGENTS.md](AGENTS.md).
 
 ## Build
 
