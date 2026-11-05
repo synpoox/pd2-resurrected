@@ -8,8 +8,8 @@ layout and a kit, harvested from D2R's stock DS1 and presets: each stock entity 
 position (one tile is TILE HD units, DS1 x along x, DS1 y along z), so a key collects every instance D2R drew on such
 a tile, empty ones too. build() gives each tile one of its key's instances, picked by a hash of the DS1 path and the
 tile, so props come at D2R's density. A key no stock preset has falls back to each of its tiles alone (a wall on two
-layers), else the tile stays empty. The terrain is D2R's stock flat plane (TERRAIN) scaled over the level, textured
-by the tile set's biome; the preset depends on what the stock presets it copies from depend on.
+layers), else the tile stays empty. The ground is D2R's stock flat plane (TERRAIN), one unscaled copy per
+TERRAIN_SIZE block (a scaled plane does not draw), textured by the tile set's biome; the preset depends on what the stock presets it copies from depend on.
 
 merge/presets-hd.tsv: `tile set <tab> biome`, one line per lvltypes Name the PD2-only presets on D2R tiles load. The
 merge fails on a PD2-only preset on D2R tiles whose tile set has no line, and on a line no such preset needs; a
@@ -147,10 +147,17 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
         for k, single in alone:
             place(x, y, single, f":{k}")
         missing += not alone
+    # the ground: the flat plane once per TERRAIN_SIZE block, unscaled (a scaled plane does not draw); the first copy
+    # is the preset's terrain, the rest are entities
+    for bx in range(0, lay.width * TILE, TERRAIN_SIZE):
+        for bz in range(0, lay.height * TILE, TERRAIN_SIZE):
+            if bx or bz:
+                plane = copy.deepcopy(terrain)
+                plane["id"] = len(entities) + 1
+                _transform(plane)["position"].update({"x": float(bx), "z": float(bz)})
+                entities.append(plane)
     terrain = copy.deepcopy(terrain)
     terrain["id"] = len(entities) + 1
-    scale = _transform(terrain)["scale"]
-    scale["x"], scale["z"] = lay.width * TILE / TERRAIN_SIZE, lay.height * TILE / TERRAIN_SIZE
     # shortcut: every dependency of each stock preset copied from, as a texture can't be traced to its model; trim it
     # if the frame-rate or load-time check in Jungle Map fails
     deps: dict[str, dict[str, dict]] = {}

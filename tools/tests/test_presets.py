@@ -91,7 +91,7 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(placed, [("pillar", 1, 3.0, 4.0), ("torch", 2, 4.0, 2.0), ("pillar", 3, 23.0, 4.0)])
         self.assertEqual(preset["entities"][2]["components"][2]["wallTileLocalCoord"], {"x": 2, "y": 0})
         self.assertEqual(preset["terrain"]["id"], 4)
-        self.assertEqual(preset["terrain"]["components"][0]["scale"], {"x": 30 / 170, "y": 1.0, "z": 10 / 170})
+        self.assertEqual(preset["terrain"]["components"][0]["scale"], {"x": 1.0, "y": 1.0, "z": 1.0})
         self.assertEqual(preset["biomeFilename"], "data/hd/env/biome/x.json")
         deps = {k: [d["path"] for d in v] for k, v in preset["dependencies"].items()}
         self.assertEqual(deps, {"models": ["data/hd/env/model/pillar.model",
@@ -99,6 +99,15 @@ class BuildTests(unittest.TestCase):
                                 "textures": ["data/hd/env/texture/pillar_alb.texture"],
                                 "json": ["data/hd/env/biome/x.json"]})
         self.assertEqual(TERRAIN["id"], 9)  # the stock entities are copied, not changed
+
+    def test_the_ground_is_one_unscaled_plane_per_block_since_a_scaled_plane_does_not_draw(self):
+        lay = P.Layout(20, 2, {(0, 0): ("f", (FLOOR,))})  # 200 x 20 units: two 170-unit blocks across
+        preset, _ = P.build(lay, P.Kit(), "m", "m.ds1", "b.json", TERRAIN)
+        planes = [e for e in preset["entities"] if e["name"] == "terrain"] + [preset["terrain"]]
+        self.assertEqual(sorted((e["components"][0]["position"]["x"], e["components"][0]["position"]["z"])
+                                for e in planes), [(0.0, 0.0), (170.0, 0.0)])
+        self.assertTrue(all(e["components"][0]["scale"] == {"x": 1.0, "y": 1.0, "z": 1.0} for e in planes))
+        self.assertEqual(sorted(e["id"] for e in preset["entities"] + [preset["terrain"]]), [1, 2])
 
     def test_a_key_keeps_d2rs_empty_instances_so_props_come_at_its_density(self):
         lay = P.Layout(2, 1, {(0, 0): ("w", (A,)), (1, 0): ("w", (A,))})

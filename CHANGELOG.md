@@ -5,6 +5,9 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Project Diablo II's own maps built on the original game's tiles (Jungle Map, Graveyard Map, Tomb Map, ...) draw in
+  HD graphics: ground, walls and props from the original game's areas. Many walls, streams and bridges are still
+  missing, and the tree lines of the Jungle Map are a first pass.
 - Shrine, Battle Orders, curse and aura effects show in HD again, and Project Diablo II's own effects (Uber
   Diablo's and Rathma's auras, the Tome of Possession debuffs, ...) draw a close effect from the original game.
 - Project Diablo II's own monsters show in HD: the map monsters, the map bosses, the Countess, the Dopplezon and the
