@@ -243,8 +243,8 @@ inline constexpr uint32_t AreaUnitMask = 0x8583;  // PD2's and AreaKnockback's d
 inline constexpr uint64_t AreaKnockback = 0x437820;
 inline constexpr uint64_t SkillMeleeHit = 0x56b170;  // (game, unit, skillId, level): Leap Attack's hit on the skill target
 inline constexpr uint64_t CltDoLeap = 0x22f9a0;  // D2R cltdo 43 (unit, skillId): Leap's client half
-inline constexpr uint64_t RemoveUnitEvent = 0x48b890;  // (game, unit, event, 0)
-inline constexpr uint64_t AddUnitEvent = 0x48b720;  // (game, unit, event, frame, 0, 0, 0)
+inline constexpr uint64_t RemoveUnitEvent = 0x48b890;  // (game, unit, event, key): 0 for most; an item aura passes its key
+inline constexpr uint64_t AddUnitEvent = 0x48b720;  // (game, unit, event, frame, key, skill, stateKey): zeros for most; item aura ticks (0x437419) pass them
 inline constexpr uint64_t MonStatsRecord = 0x976e0;  // (dataFlag, classId) -> monstats record or null
 inline constexpr uint64_t UnitId = 0x34a330;  // (unit, file, line) -> unit id
 // (unit, skill, level, target, 0) -> non-zero cast: a skill cast from unit at target as an event, sent to clients (aura
@@ -734,6 +734,32 @@ inline constexpr uint64_t StateIsCurse = 0x335a40;  // (dataFlag, state) -> non-
 inline constexpr int UnitListOwner = 0x88, ListOwnerMark = 0x1c, ListOwnerFirst = 0x90;
 inline constexpr int ListFlags = 0x1c, ListNext = 0x68;  // uint32 flags, next list in the chain
 inline constexpr uint32_t ListFlagTimed = 0x2, ListFlagCurse = 0x20;
+
+// --- Item rules: skill while equipped and phasing (docs/research/ir7-equipped-items.md) ---------------------------
+// The server's stat callback, (game, unit, item, stat << 16 | layer, a5, a6), for stats with fCallback: a switch on
+// stats 7-209 only (`lea eax,[r12-7]; cmp eax,0xca` at 0x46ff4a), item_aura (151) at 0x470470. Its entry is
+// `jmp [rip+x]`: D2RCore hooks it, so core-rules wraps the pointer instead, where it is handed to StatCallbackInit.
+inline constexpr uint64_t StatCallback = 0x46fdd0;
+// (unit, flags, callback, arg): sets up the unit's stat list with its callback (unit creation 0x4252c0, 0x543120).
+// mov [rsp+0x10],rbx / mov [rsp+0x18],rsi / mov [rsp+0x20],rdi / push rbp
+inline constexpr uint64_t StatCallbackInit = 0x2f65d0;
+inline constexpr uint8_t StatCallbackInitEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74,
+                                                    0x24, 0x18, 0x48, 0x89, 0x7c, 0x24, 0x20, 0x55};
+// Unit event 9's handler, (game, unit, key, skill, stateKey): an item aura's tick. Casts the skill at item_aura's
+// level for it (stat 151, layer skill) through SrvSkillDispatch (unit flag 0x20000000 and UnitStateKey = stateKey
+// around the cast), then re-adds the event perdelay (calc +0x180, at least 5) frames on, on the frame grid; with no
+// item_aura level (or a dead unit, or no aurastate) it removes the event. The item_aura case (0x581970) starts it.
+// mov [rsp+0x20],rbx / push rbp / push rsi / push rdi / push r12 / push r14 / sub rsp,0x40
+inline constexpr uint64_t ItemAuraTick = 0x437230;
+inline constexpr uint8_t ItemAuraTickEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x20, 0x55, 0x56, 0x57,
+                                                0x41, 0x54, 0x41, 0x56, 0x48, 0x83, 0xec, 0x40};
+inline constexpr int UnitEventItemAura = 9;
+inline constexpr uint64_t SetUnitStateKey = 0x3e2b652;  // (unit, key): UnitStateKey's setter (a jmp stub)
+// int32 masks ItemAuraTick tests the skill record's byte +0x24 with: either set, the aura ticks again
+inline constexpr uint64_t SkillTickMaskA = 0x1d996e4, SkillTickMaskB = 0x1d996e8;
+inline constexpr int SkFlags24 = 0x24;
+inline constexpr int SkPerDelayCalc = 0x180;  // int32 perdelay calc index
+inline constexpr uint32_t UnitFlagItemAuraCast = 0x20000000;
 
 // --- Cube (D2Game\src\Player\PlrTrade.cpp; core-maps' op 30) --------------------------------------------------------
 // Recipe search: (result*, game, player, out*) walks cubemain in order and stores the first row that passes its filters

@@ -10,6 +10,8 @@
 //   found, so this trigger is approximated (docs/unported.md).
 // - curses (docs/research/ir4-curses.md): max curses (a target holds up to the caster's max_curses + 1 curses) and
 //   curse resistance (curse_effectiveness on the target scales the curse's stats), around D2R's ApplyCurse.
+// - skill while equipped and phasing (docs/research/ir7-equipped-items.md): item_skillonequip runs its skill as an
+//   item aura (D2R's item_aura case and tick, fed stat 375), and Phasing SelfAura drops the unit collision bits.
 #include "item_rules.h"
 
 #include "d2r.h"
@@ -209,8 +211,8 @@ auto Resisted(int32_t value, int32_t resistance) noexcept -> int32_t {
 	return v > 2147483647.0 ? 2147483647 : static_cast<int32_t>(v);
 }
 
-auto StatOf(Unit* unit, int32_t stat) noexcept -> int32_t {
-	return unit != nullptr ? d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(unit, stat, 0)
+auto StatOf(Unit* unit, int32_t stat, int32_t layer = 0) noexcept -> int32_t {
+	return unit != nullptr ? d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(unit, stat, layer)
 	                       : 0;
 }
 
@@ -349,6 +351,146 @@ auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
 	return applied;
 }
 
+// --- Skill while equipped and phasing (docs/research/ir7-equipped-items.md) -------------------------------------
+// PD2 copies D2's item aura for item_skillonequip (0x1036f640, 0x10345cc0): the skill runs as an item aura at the
+// stat's level. D2R's stat callback has no case for stat 375, so core-rules hands it item_aura's case, and the aura's
+// tick reads item_skillonequip where it reads item_aura.
+constexpr int32_t StatItemAura = 151;
+constexpr int32_t StatSkillOnEquip = 375;  // item_skillonequip, merged id (PD2 191)
+constexpr int32_t SkillPhasing = 674;      // Phasing SelfAura, merged id (PD2 605): Spectral Plate
+constexpr int32_t SkillCharge = 107, SkillMonCharge = 486, SkillArmageddonSelfAura = 662;  // merged (PD2 107, 415, 593)
+// Path collision bits PD2's phasing (0x10380c50) clears and sets back: 0x1c09 <-> 0xc09 on a player, 0x3c01 <-> 0xc01
+// on a monster (a mercenary)
+constexpr uint32_t PhasingBitsPlayer = 0x1000, PhasingBitsMonster = 0x3000;
+constexpr int32_t UnitPlayer = 0;
+
+std::atomic<uint32_t> g_equipCallbacks {0};
+std::atomic<uint32_t> g_equipTicks {0};
+std::atomic<uint32_t> g_phasing {0};
+
+// PD2's 0x10380c50: while Phasing SelfAura is equipped, the unit's path leaves out the unit collision bits
+auto SetPhasing(Unit* unit, bool on) noexcept -> void {
+	using namespace d2r::rva;
+	uint8_t* path = At<uint8_t*>(unit, UnitPath);
+	const int32_t type = At<int32_t>(unit, UnitType);
+	if (path == nullptr || (type != UnitPlayer && type != UnitMonster)) {
+		return;
+	}
+	const uint32_t bits = type == UnitPlayer ? PhasingBitsPlayer : PhasingBitsMonster;
+	const uint32_t mask = At<uint32_t>(path, PathCollisionMask);
+	const uint32_t want = on ? mask & ~bits : mask | bits;
+	if (want == mask) {
+		return;
+	}
+	d2r::Engine<void (*)(uint8_t*, uint32_t) noexcept>(PathSetCollisionMask)(path, want);
+	plog::Info("phasing: %s, unit type %d, collision mask 0x%x -> 0x%x, %u so far", on ? "on" : "off", type, mask,
+	           want, ++g_phasing);
+}
+
+using StatCallbackFn = uint64_t (*)(Game* game, Unit* unit, Unit* item, uint32_t statLayer, int32_t oldValue,
+                                    int32_t newValue) noexcept;
+
+// Every unit's stat callback (see StatCallbackInit): item_skillonequip goes to D2R's as item_aura, same layer
+auto EquipStatCallback(Game* game, Unit* unit, Unit* item, uint32_t statLayer, int32_t oldValue, int32_t newValue) noexcept
+	-> uint64_t {
+	const auto original = d2r::Engine<StatCallbackFn>(d2r::rva::StatCallback);
+	if ((statLayer >> 16) != static_cast<uint32_t>(StatSkillOnEquip)) {
+		return original(game, unit, item, statLayer, oldValue, newValue);
+	}
+	const uint32_t layer = statLayer & 0xffff;
+	const uint64_t result = original(game, unit, item, (static_cast<uint32_t>(StatItemAura) << 16) | layer, oldValue,
+	                                 newValue);
+	if (unit != nullptr) {
+		if (layer == static_cast<uint32_t>(SkillPhasing)) {
+			SetPhasing(unit, newValue > 0);  // item_aura's case starts the aura at newValue (0x4705f6)
+		}
+		const uint32_t n = ++g_equipCallbacks;
+		if (n <= 20 || n % 100 == 0) {
+			plog::Info("skill on equip: unit type %d, skill %u, %d -> %d, level now %d, %u so far",
+			           At<int32_t>(unit, d2r::rva::UnitType), layer, oldValue, newValue,
+			           StatOf(unit, StatSkillOnEquip, static_cast<int32_t>(layer)), n);
+		}
+	}
+	return result;
+}
+
+using StatCallbackInitFn = uint64_t (*)(Unit* unit, uint32_t flags, void* callback, void* arg) noexcept;
+StatCallbackInitFn g_statCallbackInitOriginal = nullptr;
+
+auto EquipStatCallbackInit(Unit* unit, uint32_t flags, void* callback, void* arg) noexcept -> uint64_t {
+	if (reinterpret_cast<uint64_t>(callback) == d2r::imageBase + d2r::rva::StatCallback) {
+		callback = reinterpret_cast<void*>(static_cast<StatCallbackFn>(EquipStatCallback));
+	}
+	return g_statCallbackInitOriginal(unit, flags, callback, arg);
+}
+
+using ItemAuraTickFn = void (*)(Game* game, Unit* unit, int32_t key, int32_t skill, int32_t stateKey) noexcept;
+ItemAuraTickFn g_itemAuraTickOriginal = nullptr;
+
+// D2R's item aura tick (0x437230) at item_skillonequip's level, as PD2's 0x10345cc0 runs it; item_aura's own ticks
+// and an aura whose stat is gone (the event is removed) stay D2R's
+auto EquipAuraTick(Game* game, Unit* unit, int32_t key, int32_t skill, int32_t stateKey) noexcept -> void {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr || skill < 0 || StatOf(unit, StatItemAura, skill) > 0) {
+		g_itemAuraTickOriginal(game, unit, key, skill, stateKey);
+		return;
+	}
+	const int32_t level = StatOf(unit, StatSkillOnEquip, skill);
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* record = d2r::api.getSkillRecord(dataFlag, skill);
+	const uint8_t* tables = DataTables(dataFlag);
+	const int16_t state = record != nullptr ? At<int16_t>(record, SkAuraState) : -1;
+	if (level <= 0 || state < 0 || tables == nullptr || static_cast<uint64_t>(state) >= At<uint64_t>(tables, TablesStateCount) ||
+	    d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) != 0) {
+		g_itemAuraTickOriginal(game, unit, key, skill, stateKey);  // finds no item_aura level: removes the event
+		if (skill == SkillPhasing) {
+			SetPhasing(unit, level > 0);
+		}
+		return;
+	}
+	const auto stateKeyOf = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey);
+	const auto setStateKey = d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitStateKey);
+	const auto setFlag = d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlag);
+	const int32_t savedKey = stateKeyOf(unit);
+	setStateKey(unit, stateKey);
+	// PD2's 0x10345cc0 casts nothing while the unit charges, and Armageddon SelfAura only while it stands, walks or
+	// runs (modes 1, 2, 3 and town 5, 6)
+	const void* currentSkill = d2r::Engine<void* (*)(Unit*) noexcept>(CurrentSkill)(unit);
+	const int32_t current = currentSkill != nullptr ? d2r::Engine<int32_t (*)(const void*, const char*, int32_t) noexcept>(
+	                                                UnitSkillId)(currentSkill, __FILE__, __LINE__)
+	                                          : -1;
+	const int32_t mode = At<int32_t>(unit, UnitMode);
+	const bool moving = mode == 1 || mode == 2 || mode == 3 || mode == 5 || mode == 6;
+	const bool cast = current != SkillCharge && current != SkillMonCharge && (skill != SkillArmageddonSelfAura || moving);
+	if (cast) {
+		setFlag(unit, UnitFlagItemAuraCast, 1);
+		d2r::Engine<uint64_t (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(
+			SrvSkillDispatch)(game, unit, skill, level, 1, 1, 0);
+		setFlag(unit, UnitFlagItemAuraCast, 0);
+	}
+	const uint32_t flags = At<uint8_t>(record, SkFlags24);
+	int32_t next = -1;
+	if ((flags & At<uint32_t>(reinterpret_cast<const void*>(d2r::imageBase), static_cast<int>(SkillTickMaskB))) != 0 ||
+	    (flags & At<uint32_t>(reinterpret_cast<const void*>(d2r::imageBase), static_cast<int>(SkillTickMaskA))) != 0) {
+		const int32_t calc = d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(record, SkPerDelayCalc), skill, level);
+		const int32_t delay = calc > 5 ? calc : 5;
+		const int32_t frame = At<int32_t>(game, GameFrame) - 1 + delay;
+		next = frame - frame % delay + 1;
+		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t) noexcept>(RemoveUnitEvent)(game, unit, UnitEventItemAura, key);
+		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
+			game, unit, UnitEventItemAura, next, key, skill, stateKey);
+	}
+	setStateKey(unit, savedKey);
+	if (skill == SkillPhasing) {
+		SetPhasing(unit, true);
+	}
+	const uint32_t n = ++g_equipTicks;
+	if (n <= 20 || n % 100 == 0) {
+		plog::Info("skill on equip tick: skill %d level %d, state %d, next frame %d, %s, %u so far", skill, level, state,
+		           next, cast ? "cast" : "held", n);
+	}
+}
+
 }  // namespace
 
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
@@ -364,18 +506,26 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                             SkillDispatch, &g_dispatchOriginal);
 	const bool curses = context->InstallInlineHook(ApplyCurse, ApplyCurseEntry, sizeof(ApplyCurseEntry), CurseApply,
 	                                               &g_applyCurseOriginal);
-	std::snprintf(report, reportSize, "property func %d ormus%s; dospellcast skill on cast%s; curses%s", PropertySlot,
-	              property ? "" : " FAILED (slot not empty)", hook ? "" : " FAILED (bytes differ)",
-	              curses ? "" : " FAILED (bytes differ)");
-	return (property ? 1 : 0) + (hook ? 1 : 0) + (curses ? 1 : 0);
+	// Both or neither: a callback without the tick would start item_skillonequip's aura and stop it at its first tick
+	const bool tick = context->InstallInlineHook(ItemAuraTick, ItemAuraTickEntry, sizeof(ItemAuraTickEntry),
+	                                             EquipAuraTick, &g_itemAuraTickOriginal);
+	const bool equip = tick && context->InstallInlineHook(StatCallbackInit, StatCallbackInitEntry,
+	                                                      sizeof(StatCallbackInitEntry), EquipStatCallbackInit,
+	                                                      &g_statCallbackInitOriginal);
+	std::snprintf(report, reportSize, "property func %d ormus%s; dospellcast skill on cast%s; curses%s; skill on equip%s",
+	              PropertySlot, property ? "" : " FAILED (slot not empty)", hook ? "" : " FAILED (bytes differ)",
+	              curses ? "" : " FAILED (bytes differ)", equip ? "" : " FAILED (bytes differ)");
+	return (property ? 1 : 0) + (hook ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 3;
+	return 4;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "ormus rolls %u, spell casts %u, skill on cast rolls %u, procs %u, curses %u, resisted %u",
+	std::snprintf(out, size,
+	              "ormus rolls %u, spell casts %u, skill on cast rolls %u, procs %u, curses %u, resisted %u, "
+	              "skill on equip changes %u, ticks %u, phasing %u",
 	              g_rolls.load(), g_raises.load(), g_procRolls.load(), g_procs.load(), g_curses.load(),
-	              g_curseResisted.load());
+	              g_curseResisted.load(), g_equipCallbacks.load(), g_equipTicks.load(), g_phasing.load());
 }

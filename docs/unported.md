@@ -157,9 +157,7 @@ rows have no table hook: D2R does what it does.
 | Rathma bone spear damage | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | `missiles.rathmabonespear.pSrvDmgFunc` | UB5 |
 | Skill on cast (`item_skilloncast`, 62 live item rows and Ormus' Robes): the trigger | approximated | PD2 raises its `dospellcast` event from a place not found (docs/research/p12-ormus-robes.md); core-rules runs the wearer's skill on cast listeners after D2R's server skill dispatcher runs a skill a player cast in cast mode (SC), so a skill in another mode (a throw, a melee attack) never procs it |  | IR2 |
 | Skill on block (`item_skillonblock`, 5 live rows) | not yet | stand-in: D2R's own behaviour |  | IR2 |
-| Skill while equipped (`item_skillonequip`, prop `equipped-skill`: Tempest, Blackoak Shield, Spectral Plate) | not yet | stand-in: D2R's own behaviour |  | IR7 |
-| Phasing (stat `phasing` + state, from Phasing SelfAura) | not yet | stand-in: D2R's own behaviour |  | IR7 |
-| Charm "only one unique" rule | not yet | stand-in: D2R's own behaviour |  | IR7 |
+| Charm "only one unique" rule | not yet | stand-in: D2R's own behaviour; a Charm Inventory companion plugin takes it (owner, 2026-11-04; docs/research/ir7-equipped-items.md) |  | companion |
 | Critical strike rework (`item_crit_chance`, `item_crit_multiplier`) | not yet | stand-in: D2R's own behaviour; the stats show on the tooltip and do nothing (#148) |  | IR3 |
 | Deadly strike multiplier and maximum | not yet | stand-in: D2R's own behaviour; the stats do nothing |  | IR3 |
 | Deep wounds and the open wounds rework | not yet | stand-in: D2R's open wounds; `deep_wounds` does nothing |  | IR3 |
@@ -169,6 +167,9 @@ rows have no table hook: D2R does what it does.
 | Curse duration resistance (`curse_resistance`, stat 109) | not yet | D2R's rule: no curse at 100+, no cap; PD2 shortens the duration by it, at most 75 on a player (ProjectDiablo.dll `0x1036d7d0`, docs/research/ir4-curses.md) |  | #264 |
 | A curse on an attracted unit | not yet | D2R refuses any curse on a unit with the attract state; PD2 allows it (docs/research/ir4-curses.md) |  | #264 |
 | Dark Pact consuming a curse | not yet | stand-in: Dark Pact is one more curse; PD2 consumes another curse and casts a follow-up skill by the curse count (docs/research/ir4-curses.md) |  | #265 |
+| Skill while equipped (`item_skillonequip`): the skill list | approximated | PD2 adds the skill to the wearer (`0x1030b3d0`) and removes it; core-rules runs D2R's `item_aura` case for the stat, whose own skill handling was not checked against PD2's (docs/research/ir7-equipped-items.md) |  | IR7 |
+| Phasing: path calls and state refresh | approximated | PD2's phasing (`0x10380c50`) also makes two 1.13c path calls reached through its name resolver (on: 7 or 2; off: `0x80` or `0x100`) and runs again when state 13 or 244 changes (`0x10345ed0`); on unequip a player PD2's `0x10380d10` picks keeps `0xc09`; core-rules sets the collision mask only, and always gives the bits back (docs/research/ir7-equipped-items.md) |  | IR7 |
+| Phasing tooltip line | approximated | PD2 prints "Phasing When Equipped" (`StrPhasingStatDesc`, `0x102ee7a0`) for Phasing SelfAura level 1; D2R prints the stat's own line ("Level 1 ... When Equipped") |  | IR7 |
 | Replenish charges | not yet | stand-in: D2R's own behaviour; the stat does nothing |  | IR5 |
 | Dye tint: the 35 cube rows that set `transform_dye` give an untinted item | approximated | tinting needs client drawing code; how D2R Reimagined tints items is researched for a later patch (#190) |  |  |
 | Ethereal items keep full durability; set items can roll ethereal | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked against the DLL) |  | IR2, IR8 |

@@ -141,6 +141,12 @@ IR4 checks (tag core-rules-ir4), same merged data, Hell, level 90+:
   pack with one curse and then the other, and run the same command with core-rules-ir4.
 - curse-resistance: any character wearing Wraithskin (`cheat uniques 478`, 30-40 curse resistance); let a cursing
   monster curse you (Act 4 Oblivion Knights, `cheat mspawn` of one), then run again.
+
+IR7 checks (tag core-rules-ir7), same merged data, Hell, level 90+:
+- skill-on-equip: `cheat uniques 449` drops Tempest (Energy Shield SelfAura 16 when equipped); `cheat idall`, equip
+  it, wait a few seconds out of town (`cheat goto 2`), unequip it, and run the same command with core-rules-ir7.
+- phasing: `cheat uniques 520` drops Spectral Plate (Phasing SelfAura); `cheat idall`, equip it, walk into a pack
+  (`cheat mspawn zombie1,4`, `cheat god 1`), take it off, and run again.
 """
 import json
 import os
@@ -1819,3 +1825,52 @@ def curse_resistance(ctx):
         assert used == want_used, f"stat {stat} on a {who}: used {used} of {resistance}, PD2: {want_used}"
         assert resisted == curse_resisted(base, used), f"stat {stat}: {base} -> {resisted}, PD2: {curse_resisted(base, used)}"
     return f"{len(rows)} stat(s), e.g. stat {rows[0][4]} {rows[0][5]} -> {rows[0][6]} at {rows[0][1]}"
+
+
+SKILL_ON_EQUIP = re.compile(r"skill on equip: unit type (\d+), skill (\d+), (-?\d+) -> (-?\d+), level now (-?\d+)")
+SKILL_ON_EQUIP_TICK = re.compile(r"skill on equip tick: skill (\d+) level (\d+), state (\d+), next frame (-?\d+), (cast|held)")
+PHASING = re.compile(r"phasing: (on|off), unit type (\d+), collision mask 0x([0-9a-f]+) -> 0x([0-9a-f]+)")
+ENERGY_SHIELD_SELFAURA, PHASING_SELFAURA = 623, 674  # merged skill ids
+ENERGYSHIELD_STATE = 30  # merged states id
+
+
+@check("skill-on-equip", tags=["core-rules-ir7"])
+def skill_on_equip(ctx):
+    """item_skillonequip runs its skill as an item aura at the stat's level while the item is worn, and stops when
+    it comes off (PD2's 0x1036f640 and 0x10345cc0): Tempest's Energy Shield SelfAura at level 16."""
+    changes = [tuple(int(v) for v in row) for row in SKILL_ON_EQUIP.findall(_log(ctx))]
+    tempest = [c for c in changes if c[1] == ENERGY_SHIELD_SELFAURA]
+    if not tempest:
+        ctx.skip("no Energy Shield SelfAura change in the log yet (equip Tempest, run again)")
+    assert any(old == 0 and new == 16 for _, _, old, new, _ in tempest), f"no 0 -> 16 on equip: {tempest}"
+    ticks = [(int(sk), int(lv), int(st), int(nx), what) for sk, lv, st, nx, what in SKILL_ON_EQUIP_TICK.findall(_log(ctx))]
+    mine = [t for t in ticks if t[0] == ENERGY_SHIELD_SELFAURA]
+    if not mine:
+        ctx.skip("no Energy Shield SelfAura tick yet (wear Tempest a few seconds, run again)")
+    assert all(level == 16 and state == ENERGYSHIELD_STATE for _, level, state, _, _ in mine), mine
+    assert any(what == "cast" for *_, what in mine), f"no tick cast the aura: {mine}"
+    assert all(nx > 0 for _, _, _, nx, _ in mine), f"a tick did not re-add the event: {mine}"
+    if not any(old == 16 and new == 0 for _, _, old, new, _ in tempest):
+        ctx.skip("Tempest not taken off yet (unequip it, run again)")
+    return f"{len(mine)} tick(s) at level 16, state {ENERGYSHIELD_STATE}, then 16 -> 0 on unequip"
+
+
+@check("phasing", tags=["core-rules-ir7"])
+def phasing(ctx):
+    """Phasing SelfAura clears the unit collision bits of the wearer's path while worn and sets them back when it
+    comes off (PD2's 0x10380c50: 0x1c09 <-> 0xc09 on a player)."""
+    rows = [(what, int(t), int(a, 16), int(b, 16)) for what, t, a, b in PHASING.findall(_log(ctx))]
+    if not rows:
+        ctx.skip("no phasing in the log yet (equip Spectral Plate, run again)")
+    for what, unit_type, before, after in rows:
+        bits = 0x1000 if unit_type == 0 else 0x3000
+        want = before & ~bits if what == "on" else before | bits
+        assert after == want, f"phasing {what} on type {unit_type}: 0x{before:x} -> 0x{after:x}, PD2: 0x{want:x}"
+    on = [r for r in rows if r[0] == "on" and r[1] == 0]
+    if not on:
+        ctx.skip("no player phasing on yet (equip Spectral Plate, run again)")
+    assert on[0][2] == 0x1c09, f"a player's mask was 0x{on[0][2]:x} before phasing, PD2: 0x1c09"
+    if not any(r[0] == "off" for r in rows):
+        ctx.skip("Spectral Plate not taken off yet (unequip it, run again)")
+    return f"{len(rows)} change(s), e.g. {rows[0][0]} 0x{rows[0][2]:x} -> 0x{rows[0][3]:x}"
+
