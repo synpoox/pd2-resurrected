@@ -106,52 +106,12 @@ misc	TP Book Unlimited	Tome of Town Portal	pSpell	Unlimited TP and ID books
 misc	ID Book Unlimited	Tome of Identify	pSpell	Unlimited TP and ID books
 misc	Uber Trist Map	-	pSpell	Map items
 misc	Uber Map	-	pSpell	Map items
-misc	Kurast Map	-	pSpell	Map items
-misc	Arcane Map	-	pSpell	Map items
-misc	Fortress Map	-	pSpell	Map items
-misc	Lava Map	-	pSpell	Map items
-misc	Jungle Map	-	pSpell	Map items
-misc	Siege Map	-	pSpell	Map items
-misc	Tomb Map	-	pSpell	Map items
-misc	Sewer Map	-	pSpell	Map items
-misc	River Of Blood Map	-	pSpell	Map items
-misc	Throne Map	-	pSpell	Map items
-misc	Spider Map	-	pSpell	Map items
-misc	Ice Map	-	pSpell	Map items
-misc	Graveyard Map	-	pSpell	Map items
-misc	Caldeum Map	-	pSpell	Map items
-misc	Pandemonium Map	-	pSpell	Map items
 misc	Monastery Map	-	pSpell	Map items
-misc	Desert Map	-	pSpell	Map items
 misc	Pvp Map	-	pSpell	Map items
 misc	Pvp Map 2	-	pSpell	Map items
 misc	Rathma Map	-	pSpell	Map items
-misc	Frozen Forest Map	-	pSpell	Map items
-misc	Torment Map	-	pSpell	Map items
-misc	Library Map	-	pSpell	Map items
 misc	Uber Ancients Map	-	pSpell	Map items
-misc	Westmarch Map	-	pSpell	Map items
-misc	Crypts Map	-	pSpell	Map items
-misc	Sanctuary of Sin Map	-	pSpell	Map items
-misc	Ruined Cistern Map	-	pSpell	Map items
-misc	Ashes Map	-	pSpell	Map items
-misc	Zhar Map	-	pSpell	Map items
-misc	Hellcaves Map	-	pSpell	Map items
-misc	Fallen Gardens Map	-	pSpell	Map items
-misc	KanemithMap	-	pSpell	Map items
-misc	Skovos Stronghold Map	-	pSpell	Map items
 misc	Lucion Map	-	pSpell	Map items
-misc	Demon Road Map	-	pSpell	Map items
-misc	Imperial Palace Map	-	pSpell	Map items
-misc	Halls of Torture Map	-	pSpell	Map items
-misc	Outer Void Map	-	pSpell	Map items
-misc	Ureh City Map	-	pSpell	Map items
-misc	Djinns Domain Map	-	pSpell	Map items
-misc	Na-Krul's Abyss Map	-	pSpell	Map items
-misc	Kyovoshad Map	-	pSpell	Map items
-misc	Dark Temple Map	-	pSpell	Map items
-misc	Poisoned Well Map	-	pSpell	Map items
-misc	Descend Map	-	pSpell	Map items
 states	skilldelay	=	remfunc	State remove function 12
 objects	xactportal_red	-	OperateFn	PD2 object operate functions
 objects	xactportal_ghostly	-	OperateFn	PD2 object operate functions

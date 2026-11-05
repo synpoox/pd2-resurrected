@@ -135,6 +135,8 @@ def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | 
             pd2_ids.fix_hit_params(mod.header, want, ctx.ids)
         elif ctx:
             pd2_ids.fix_props(mod.header, want, ctx.ren, ctx.ids, ctx.props)
+            if "pSpell" in pd2.header:
+                pd2_ids.fix_map_level(name, mod.header, want, pr[pd2.header.index("pSpell")], ctx.ids)
         for j, c in enumerate(mod.header):  # level tables' row numbers, in the mod's ids
             t = pd2_ids.NUM_REFS.get(name, {}).get(c) or (name if pd2_ids.ID_COLS.get(name) == c else None)
             if ctx and t:
@@ -189,8 +191,8 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
         if src is None:
             res = Result(p.stem, [(f"{p.stem}.*.*", "", "")], source="none")
         else:
-            # property or hit parameters, or level tables' numbers, name ids
-            ids_read = p.stem in pd2_ids.PROPS or p.stem in ("missiles", *pd2_ids.NUM_REFS, *pd2_ids.ID_COLS)
+            # property or hit parameters, level tables' numbers or map items' levels, name ids
+            ids_read = p.stem in pd2_ids.PROPS or p.stem in ("missiles", "misc", *pd2_ids.NUM_REFS, *pd2_ids.ID_COLS)
             if ids_read and ctx is None:
                 ctx = pd2_ids.context_of(lists, root / "pd2-data/data", d2r)
             key = pd2_ids.KEY.get(p.stem)
