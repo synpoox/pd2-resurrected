@@ -50,6 +50,13 @@ class KeyedTests(unittest.TestCase):
         d2r = table(head + 'vanilla||1|"gcv,qty=3"||\n')
         self.assertEqual([r[2] for r in M.merge_cube(pd2, d2r, NO_CTX).rows], ["3", "4", "3", "2", "3", "1"])
 
+    def test_cube_reroll_rows_remake_the_item(self):
+        # op 31 has no outputs in PD2 (its cube code makes the item); the rows ship switched off, core-rules runs them
+        head = "enabled|op|input 1|input 2|output\n"
+        pd2 = table(head + '1|31|"ring,uni"|"imrn,qty=1"|\n1|31|"armo,set"|"imrn,qty=1"|\n1||"ring,uni"|"imrn,qty=1"|amu\n')
+        rows = M.merge_cube(pd2, table(head), NO_CTX).rows
+        self.assertEqual([(r[0], r[4]) for r in rows], [("0", "usetype,reg"), ("0", "usetype,reg"), ("1", "amu")])
+
     def test_cube_mod_skill_params(self):
         ren = I.renames({t: [] for t in I.TABLES})
         ren["skills"] = {"impale": "Javelin and Spear Mastery"}

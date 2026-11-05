@@ -39,8 +39,8 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
   event roll).
 - **Map drops:** the P3 no-drop lines in `merge/item-tables.txt` come back in the same work item that makes maps openable,
   so no build drops a map you cannot use.
-- **Stacking:** normal maps stack to 50 and split as in PD2 (`HOTKEY_ItemQuantity`). Every PD2 stackable shares this,
-  so it is built once in IR6 ([item-rules.md](item-rules.md)), not in a map item (#210).
+- **Stacking:** normal maps stack to 50 and split as in PD2 (Ctrl+left-click with the stack held). Every PD2 stackable
+  shares this, so it is built once in [#316](https://github.com/synpoox/pd2-resurrected/issues/316), not in a map item (#210).
 - **Invaders** run their table AIs (the vanilla `BloodRaven`, `Summoner` and so on). That is an approximated deviation.
   PD2's own invader brain (`AiThink4.cpp`) replaces them in MS11.
 - **Plugins:** `core-maps` (Shared) holds the code that belongs only to the map system: opening maps, map stats, cube

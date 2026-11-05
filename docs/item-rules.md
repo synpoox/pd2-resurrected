@@ -57,7 +57,7 @@ Out:
 | IR3 | Combat stats: the crit rework, deadly strike multiplier and maximum, the crushing blow formula and efficiency, deep wounds and the open wounds rework, Nightmare's Feast (life-steal cap, splash per missing life), enhanced damage per ethereal item and per missing life | core-rules | none |
 | IR4 | Curses: curse effectiveness, max curses | core-rules | none |
 | IR5 | Item use and charges: unlimited TP and ID books (`pSpell` 13 -> 17), throwing potions with PD2's weapon spell columns, item casts (`ItemEffect`), replenish charges | core-rules | none |
-| IR6 | Cube and stacking: the demonic cube reroll (op 31), corruption in one press, the stack split (`HOTKEY_ItemQuantity`) for every PD2 stackable (orbs, keys, organs, maps, runes, gems); the merged `stackable` rows stay PD2's; game check: the split, and runes stack in the inventory and in D2R's rune stash tab | core-rules | none |
+| IR6 | Cube rules: the demonic cube reroll (op 31) and corruption in one press ([ir6-cube-rules](research/ir6-cube-rules.md)). The stack split moved to [#316](https://github.com/synpoox/pd2-resurrected/issues/316) (`HOTKEY_ItemQuantity` is a display toggle), stack-counting recipes to [#315](https://github.com/synpoox/pd2-resurrected/issues/315) | core-rules | none |
 | IR7 | Equipped items: skill while equipped and phasing (the charm "only one unique" rule moved to a Charm Inventory companion plugin, owner 2026-11-04) | core-rules | none |
 | IR8 | Item generation and loot: the ethereal bonus (25%), weapon durability loss at half the rate, the wiki rules IR2 does not close (rare affix split, staffmods, loot placement, seal kills), the belt and no-sell data checks | core-rules | IR1 |
 

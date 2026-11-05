@@ -147,6 +147,11 @@ IR7 checks (tag core-rules-ir7), same merged data, Hell, level 90+:
   idall`, equip it, wait a few seconds, unequip it, and run the same command with core-rules-ir7.
 - phasing: `cheat uniques 520` drops Spectral Plate (Phasing SelfAura); `cheat idall`, equip it, walk into a pack
   (`cheat mspawn zombie1,4`, `cheat god 1`), take it off, and run again.
+
+IR6 check (tag core-rules-ir6), same merged data, Hell, level 90+:
+- corruption-one-press: `debug_mode`, `cheat spawn rin,typ m,inv 0` (a magic ring) and `cheat spawn wss,inv 0` (a
+  Worldstone Shard); put both in the cube, press Transmute once, hover the ring (it shows Corrupted), and run the
+  same command with core-rules-ir6.
 """
 import json
 import os
@@ -1875,3 +1880,36 @@ def phasing(ctx):
         ctx.skip("Spectral Plate not taken off yet (unequip it, run again)")
     return f"{len(rows)} change(s), e.g. {rows[0][0]} 0x{rows[0][2]:x} -> 0x{rows[0][3]:x}"
 
+
+ONE_PRESS = re.compile(r"corruption: one press runs outcome row (\d+)")
+
+
+def _cube_rows() -> list[dict[str, str]]:
+    with open(os.path.join(REPO, "generated", "data", "global", "excel", "cubemain.txt"), encoding="latin-1") as f:
+        rows = [line.rstrip("\r\n").split("\t") for line in f]
+    return [dict(zip(rows[0], r)) for r in rows[1:]]
+
+
+@check("cube-installed", tags=["core-rules-ir6"])
+def cube_installed(ctx):
+    """core-rules installs its cube rule: the executor hook for corruption in one press."""
+    line = re.search(rf"{PLUGIN}: cube [^\n]*", _log(ctx))
+    assert line, "no cube part line in the plugin log"
+    assert "cube 1/1 installed" in line.group(0), line.group(0)
+    return line.group(0)[len(PLUGIN) + 2:]
+
+
+@check("corruption-one-press", tags=["core-rules-ir6"])
+def corruption_one_press(ctx):
+    """After a corruption roll row, the same press runs an outcome row (PD2's 0x366f40): an op-16 row on corruptor
+    whose inputs take a Worldstone Shard."""
+    rows = [int(r) for r in ONE_PRESS.findall(_log(ctx))]
+    if not rows:
+        ctx.skip("no one-press corruption in the log yet (cube a magic ring with a Worldstone Shard, run again)")
+    cube = _cube_rows()
+    for row in rows:
+        r = cube[row]
+        inputs = [r.get(f"input {i}", "") for i in range(1, 8)]
+        assert r["op"] == "16" and r["param"] == "414", f"row {row} ({r['description']}) is not an outcome on corruptor"
+        assert any(i.startswith(("wss", "cwss")) for i in inputs), f"row {row} takes no Worldstone Shard"
+    return f"{len(rows)} press(es), e.g. outcome row {rows[0]} ({cube[rows[0]]['description']})"
