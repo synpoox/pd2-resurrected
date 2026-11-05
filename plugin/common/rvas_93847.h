@@ -734,6 +734,25 @@ inline constexpr int UnitListOwner = 0x88, ListOwnerMark = 0x1c, ListOwnerFirst 
 inline constexpr int ListFlags = 0x1c, ListNext = 0x68;  // uint32 flags, next list in the chain
 inline constexpr uint32_t ListFlagTimed = 0x2, ListFlagCurse = 0x20;
 
+// --- Cube (D2Game\src\Player\PlrTrade.cpp; core-maps' op 30) --------------------------------------------------------
+// Recipe search: (result*, game, player, out*) walks cubemain in order and stores the first row that passes its filters
+// (enabled, version, ladder, difficulty, class, numinputs == items in the cube, player ops 1-14) and whose 7 inputs all
+// match: result {int32 row, uint8 found}. out is 3 x {item*, int32, int32}, zeroed before each row's inputs.
+// push rbp / push rbx / push rsi / push rdi / push r12 / push r13 / push r14 / push r15 / lea rbp,[rsp-0x78] /
+// sub rsp,0x178
+inline constexpr uint64_t CubeRecipeSearch = 0x529090;
+inline constexpr uint8_t CubeRecipeSearchEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55,
+                                                    0x41, 0x56, 0x41, 0x57, 0x48, 0x8d, 0x6c, 0x24, 0x88,
+                                                    0x48, 0x81, 0xec, 0x78, 0x01, 0x00, 0x00};
+// (game, inventory, row, input 0-6, out*, used*) -> non-zero when that input matches (an empty input does); used is
+// 0x30 int32 flags for the cube items already taken by earlier inputs, zeroed before each row
+inline constexpr uint64_t CubeInputMatch = 0x529d50;
+inline constexpr int CubeMatchUsedSlots = 0x30;
+inline constexpr uint64_t CubeRecipeCount = 0x3e3f20;  // (dataFlag) -> cubemain row count
+inline constexpr uint64_t CubeRecipe = 0x3e3f60;       // (dataFlag, row) -> 0x16c-byte record, or null
+inline constexpr int CubeEnabled = 0x0, CubeOp = 0x3;  // uint8 enabled, uint8 op
+inline constexpr uint64_t UnitInventory = 0x34a360;    // (unit, file, line) -> the unit's inventory, or null
+
 }  // namespace d2r::rva
 
 namespace d2r {

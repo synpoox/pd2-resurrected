@@ -20,7 +20,7 @@ if (Get-Process D2R, D2RLoader -ErrorAction SilentlyContinue | Where-Object { $_
 
 $plugins = Join-Path $Game "d2rloader\plugins"
 New-Item -ItemType Directory -Force $plugins | Out-Null
-foreach ($name in @("core-rules")) {
+foreach ($name in @("core-rules", "core-maps")) {
     $dll = Join-Path $PSScriptRoot "..\plugin\build\Release\$name.dll"
     if (-not (Test-Path $dll)) { throw "$dll missing: run plugin\build.ps1 first" }
     Copy-Item $dll $plugins -Force
