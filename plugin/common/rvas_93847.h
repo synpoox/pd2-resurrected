@@ -792,6 +792,39 @@ inline constexpr uint8_t AutomapCelEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48
 inline constexpr int AutomapLevelTypes = 36;  // AutoMap.txt loader 0x32cae0 matches 36 names (table 0x1cfe110)
 inline constexpr uint64_t AutomapSeedPtr = 0x2372a40;  // pointer to the {lo, hi} seed 0x32bdf0 rolls (its decompile)
 
+// --- core-maps: opening a map (MS2, #217; D2Game\src\Skills\SkillItem.cpp) ----------------------------------------
+// Item spell dispatchers, (game, player, item, target): the check -> bool, then the use (whose caller frees an item
+// whose spell flag is 0, as slot 16's empty entry is). Both index D2R's 20-entry item spell table (0x236fe30) by the
+// item's pSpell; slots 16-19 are empty. Decompiled for #217; entry bytes read from the 6ab3782c dump.
+// mov [rsp+8],rbx / mov [rsp+0x10],rbp / mov [rsp+0x18],rsi
+inline constexpr uint64_t ItemSpellCheck = 0x5817f0;
+inline constexpr uint8_t ItemSpellCheckEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c,
+                                                  0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18};
+// mov [rsp+0x18],rbx / mov [rsp+0x20],rbp / push rsi / push rdi / push r15
+inline constexpr uint64_t ItemSpellUse = 0x581680;
+inline constexpr uint8_t ItemSpellUseEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x48, 0x89, 0x6c,
+                                                0x24, 0x20, 0x56, 0x57, 0x41, 0x57};
+inline constexpr uint64_t UnitClassOf = 0x349860;  // (unit, file, line) -> class id (the dispatchers' item row)
+inline constexpr int ItemPSpell = 0x94;   // int32 misc pSpell in the items record (ItemRecord)
+inline constexpr int ItemLenCalc = 0xb0;  // uint32 misc len calc; the timed potion handler 0x57ecb0 evaluates it
+inline constexpr uint64_t ItemCalc = 0x3b4880;  // (dataFlag, player, item, calc) -> value
+// (game, player, key, level, max) -> 1 opened: the cube's "Red Portal" output (0x52aa00 passes its key, level, max).
+// The player must stand in town; it finds a free spot, makes red portal 60 to the level (same act only), and counts
+// the opening in the game's counter for key; with max > 0 it refuses once the counter reaches max. A refusal sends
+// client message 0x15.
+inline constexpr uint64_t OpenRedPortal = 0x5da800;
+// What OpenRedPortal does first, to find the portal's spot: the unit's (x, y), then a search around it, (game,
+// room, int xy[2] in/out, 3, 0x400, room** found, 5, 100); *found stays null when there is no free spot. Reads only.
+inline constexpr uint64_t UnitCoords = 0x34a040;  // (unit, int32 xy[2])
+inline constexpr uint64_t FindFreeSpot = 0x517f90;
+inline constexpr uint64_t GameCounter = 0x5d88b0;  // (game + GameCounters, &key) -> int32* counter (made if missing)
+inline constexpr int GameCounters = 0x1aac8;
+// (questRecord, quest, bit) -> non-zero when set (D2Common QuestRecord.cpp); a player's record for a difficulty is
+// at player data + 0x40 + difficulty * 8 (the item-use quest checks in 0x4734f0). Bit 0: the quest is done.
+inline constexpr uint64_t QuestFlag = 0x325c50;
+inline constexpr int PlayerQuests = 0x40;
+inline constexpr uint64_t ClientMessage = 0x491960;  // (player, message, player); 0x15 is "can't do that"
+
 }  // namespace d2r::rva
 
 namespace d2r {

@@ -206,6 +206,15 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1:], [["Teleport", "190"], ["Blink", "190"]])
 
+    def test_pd2_only_areas_in_act_5_draw_no_edges(self):
+        d2r = table("Name|Id|Act|DrawEdges\nNull|0|0|0\nPandemonium 2|1|4|1\n")
+        pd2 = table("Name|Id|Act|DrawEdges\nNull|0|0|0\nPandemonium 2|134|4|1\nZhar Library|172|4|1\n"
+                    "Ashen Plains Map|171|4|1\nKurast|144|2|1\n")
+        names = ["Null", "Pandemonium 2", "Zhar Library", "Ashen Plains Map", "Kurast"]
+        lines = [(n, i, n) for i, n in enumerate(names)]
+        merged, _ = I.merge_table("levels", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual([r[3] for r in merged.rows], ["0", "1", "0", "0", "1"])
+
     def test_gust_and_hunger_go_to_the_router(self):
         d2r = table("skill|srvdofunc\nAttack|1\n")
         pd2 = table("skill|srvdofunc\nGust|156\nHunger|165\n")
@@ -361,6 +370,21 @@ class ItemTableTests(unittest.TestCase):
         self.assertEqual(weapons.rows, [["xyz", "-10", ""]])  # PD2's unnamed column fills no D2R column
         sets = I.merge_table("setitems", table("index|set\nS|X\n"), table("index|set|spawnable\n"), [("S", 0, "S")], ren)[0]
         self.assertEqual(sets.rows, [["S", "X", "1"]])
+
+
+    def test_map_items_take_spell_16_and_the_mod_level(self):
+        # a map (PD2 pSpell 12) opens the level its len names: the mod's id, blank when the level is left out;
+        # a potion's len is a duration and stays
+        ids = {"levels": {"142": "143", "185": "181"}, I.LEFT_OUT_LEVELS: {"157": ""}}
+        merged = I.merge_table("misc", table("code|pSpell|len\nt11|12|142\nubtm|12|185\nt61|12|157\nhp1|3|192\n"),
+                               table("code|pSpell|len\n"), [("t11", 0, "t11"), ("ubtm", 1, "ubtm"), ("t61", 2, "t61"),
+                                                            ("hp1", 3, "hp1")], {}, ids)[0]
+        self.assertEqual(merged.rows, [["t11", "16", "143"], ["ubtm", "16", "181"], ["t61", "16", ""],
+                                       ["hp1", "3", "192"]])
+        # a level that is neither the port's nor left out is an error, not a map that opens nothing
+        with self.assertRaisesRegex(I.IdError, "level '999'"):
+            I.merge_table("misc", table("code|pSpell|len\nt11|12|999\n"), table("code|pSpell|len\n"),
+                          [("t11", 0, "t11")], {}, ids)
 
 
 class LevelTableTests(unittest.TestCase):

@@ -86,22 +86,28 @@ class MonPresetTests(unittest.TestCase):
 
 
 class AutomapTests(unittest.TestCase):
-    def test_new_types_only_with_tile_numbers_any_as_255_and_cels_in_d2rs_atlas(self):
+    def test_new_types_only_with_tile_numbers_any_as_255_and_cels_packed(self):
         pd2 = table("LevelName|TileName|Style|StartSequence|EndSequence|Type1|Cel1|Type2|Cel2|Type2|Cel3|Type4|Cel4\n"
-                    "5 Lava|fl|0|1|4|x|10|||||||\n"
-                    "36|wtlr|2|-1|-1|x|1212|x|1600|x|1213||-1\n"
-                    "50|fi|11|42|-1|x|1500||-1||-1||-1\n"
+                    "5 Lava|fl|0|1|4|x|1600|||||||\n"
+                    "36|wtlr|2|-1|-1|x|1212|x|1575|x||x|1213\n"
+                    "50|fi|11|42|-1||-1||-1||-1||-1\n"
                     "Expansion||||||||||||\n")
-        self.assertEqual(L.automap_rows(pd2), [
+        self.assertEqual(L.automap_rows(pd2, 1576), [
             ["LevelType", "TileType", "Style", "StartSequence", "EndSequence", "CelCount", "Cel1", "Cel2", "Cel3", "Cel4"],
-            ["36", "3", "2", "255", "255", "2", "1212", "1213", "0", "0"],
+            ["36", "3", "2", "255", "255", "3", "1212", "1575", "1213", "0"],
             ["50", "19", "11", "42", "255", "0", "0", "0", "0", "0"],
         ])
+
+    def test_a_cel_past_the_tiles_fails(self):
+        # stored in a character's map memory, it would hang the next save
+        pd2 = table("LevelName|TileName|Style|StartSequence|EndSequence|Cel1|Cel2|Cel3|Cel4\n36|wl|0|0|0|1|1576||\n")
+        with self.assertRaisesRegex(ValueError, "1576 is past the 1576"):
+            L.automap_rows(pd2, 1576)
 
     def test_unknown_tile_name_fails(self):
         pd2 = table("LevelName|TileName|Style|StartSequence|EndSequence|Cel1|Cel2|Cel3|Cel4\n36|xx|0|0|0|1|||\n")
         with self.assertRaisesRegex(ValueError, "xx"):
-            L.automap_rows(pd2)
+            L.automap_rows(pd2, 1576)
 
 
 if __name__ == "__main__":
