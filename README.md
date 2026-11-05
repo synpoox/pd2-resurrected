@@ -118,8 +118,9 @@ section and the unported list, and `SHA256SUMS`. It needs 7-Zip, and a `### <ver
 python tools/release.py --game DIR
 ```
 
-The `release` workflow (Actions > release > Run workflow) runs the whole build and this script and keeps the 7z as
-a workflow artifact; nothing is published. It needs the PD2 install and D2R, so it runs only on a self-hosted
+The `release` workflow (Actions > release > Run workflow) runs the whole build and this script, then publishes a GitHub
+release `v<version>` (a pre-release for a version like `0.1.0-alpha`) with the 7z, the notes and `SHA256SUMS`; it fails
+if that version already has a release. It needs the PD2 install and D2R, so it runs only on a self-hosted
 Windows runner with the labels `self-hosted, windows, pd2r` (Settings > Actions > Runners > New self-hosted runner;
 add the `pd2r` label when `config.cmd` asks). That machine needs the PD2 install named in `pd2-baseline.json`, Python
 3.13 with `py`, CMake and Visual Studio, and 7-Zip. Set two repository variables (Settings > Secrets and variables >
