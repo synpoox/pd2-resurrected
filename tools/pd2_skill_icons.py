@@ -18,6 +18,7 @@ from pathlib import Path
 import pd2_art
 from pd2_art import modkit
 
+
 class SkillIconError(ValueError):
     pass
 

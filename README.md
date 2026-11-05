@@ -95,7 +95,8 @@ caches D2R's DS1, DT1 and HD presets, which the merge harvests for the HD preset
 item tables the loot filter needs when the build doesn't ship them. The merge and the tool tests find modkit in
 `..\d2rAI-toolkit` (or on `PYTHONPATH`). The HD art upscaled from PD2's (`merge/art/`) is committed; a PD2 frame
 with none needs [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN/releases) (`realesrgan-ncnn-vulkan`) in the
-sibling `..ealesrgan-ncnn-vulkan` or named by `REALESRGAN`, and numpy and Pillow for skill icons. Tool tests (no PD2 data needed):
+sibling `..\realesrgan-ncnn-vulkan` or named by `REALESRGAN`, and numpy and Pillow for skill icons.
+Tool tests (no PD2 data needed):
 
 ```bash
 python -m unittest discover -s tools/tests
