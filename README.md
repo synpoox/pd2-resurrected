@@ -1,8 +1,27 @@
-# pd2-resurrected
+# PD2 Resurrected
 
-A near-1:1 recreation of the latest Project Diablo II as a Diablo II: Resurrected mod (Reign of the Warlock mode only), with D2RLoader plugins for engine mechanics and a Warlock redesigned in PD2's style. Offline single-player first, then private multiplayer.
+Project Diablo II rebuilt as a Diablo II: Resurrected mod: PD2's items, skills, monsters and rules, in D2R's
+graphics. Offline single-player for now; private multiplayer comes later.
 
-**Status: building toward alpha 0.1.0** ([roadmap](docs/roadmap.md)).
+**Status: alpha 0.1.0** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [what is not ported yet](docs/unported.md)).
+
+## Requirements
+
+- Windows and Diablo II: Resurrected 3.3.0 (build 93847) with Reign of the Warlock.
+- [D2RLoader](https://d2rloader.net/) 1.3.1-beta. Characters load only through it.
+
+## Install
+
+1. Close the game.
+2. Unpack `PD2Resurrected-<version>.7z` into `<D2R folder>\mods\`, so that
+   `mods\PD2Resurrected\PD2Resurrected.mpq\modinfo.json` exists.
+3. Make `PD2Resurrected` D2RLoader's default mod (once): in D2RLoader's settings, or with
+   `default_mod = "PD2Resurrected"` in `<D2R folder>\d2rloader\config\d2rloader.toml`.
+4. Start `D2RLoader.exe`. Characters are saved in `Saved Games\Diablo II Resurrected\mods\PD2Resurrected\`.
+
+To update, delete `mods\PD2Resurrected\PD2Resurrected.mpq\data` first, then unpack the new release the same way.
+
+## For developers
 
 - Plan and open decisions: [map issue #1](https://github.com/synpoox/pd2-resurrected/issues/1)
 - Decisions: [`docs/adr/`](docs/adr/)

@@ -96,7 +96,8 @@ def finish_notes(dist: Path, version: str, section: str, commit: str, about: str
     archive = next(dist.glob("*.7z")).name
     fills = [(r"^.* TODO: one sentence about what this release is\.$", about),
              (r"(?s)^## Install\n.*?(?=^## Changes$)", INSTALL.format(archive=archive, folder=folder)),
-             (r"^## Changes\n\n- TODO$", f"## Changes\n\n{section}"),
+             # the changelog's #### groups sit under "## Changes" here
+             (r"^## Changes\n\n- TODO$", "## Changes\n\n" + re.sub(r"(?m)^#### ", "### ", section)),
              (r"^## Known issues\n\n- TODO$", KNOWN.format(url=UNPORTED.format(commit=commit)))]
     for pattern, repl in fills:
         text, n = re.subn(pattern, lambda _: repl, text, count=1, flags=re.M)
