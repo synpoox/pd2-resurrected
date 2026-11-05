@@ -6,6 +6,8 @@ Issues live in GitHub Issues (`gh` CLI). See `docs/agents/issue-tracker.md`.
 
 Every PR links the issue it solves: the body opens with `Closes #<n>`, or `Part of #<n>` when it does not finish the issue. If no issue exists yet, open one first.
 
+After a PR merges, delete its branch, on the remote and locally.
+
 ### Triage labels
 
 A bug that exists in PD2 itself, and that we fix, also gets `pd2-origin` and a row in `docs/pd2-origin-bugs.md`.
