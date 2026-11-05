@@ -5,6 +5,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Shrine, Battle Orders, curse and aura effects show in HD again, and Project Diablo II's own effects (Uber
+  Diablo's and Rathma's auras, the Tome of Possession debuffs, ...) draw a close effect from the original game.
 - Project Diablo II's own monsters show in HD: the map monsters, the map bosses, the Countess, the Dopplezon and the
   Invaders take the HD model of the monster they copy, or of a close one where their art is Project Diablo II's own.
 - Maps with a chance for drops to be corrupted, socketed or ethereal now apply it to the items that drop in the map,
