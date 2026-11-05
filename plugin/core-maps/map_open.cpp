@@ -13,6 +13,7 @@
 
 #include "d2r.h"
 #include "log.h"
+#include "map_stats.h"
 
 #include <atomic>
 #include <cstdio>
@@ -148,6 +149,7 @@ auto SpellUse(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> vo
 		d2r::rva::OpenRedPortal)(game, player, OpenKey, level, 1);
 	if (opened != 0) {
 		plog::Info("map: red portal to level %d, %u opened", level, ++g_opened);
+		RouteMapStats(game, item);
 	} else {
 		plog::Warn("map: no red portal to level %d (D2R refused), %u failed", level, ++g_failed);
 	}
