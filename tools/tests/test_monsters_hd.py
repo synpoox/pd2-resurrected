@@ -48,6 +48,15 @@ class EntriesTests(unittest.TestCase):
         with self.assertRaisesRegex(H.MonsterHdError, "already has 'skeleton2'"):
             H.entries(table(D2R + "skeleton2|skeleton1|SK\r\n"), table(D2R), MODELS | {"skeleton2": "skeleton1"}, {})
 
+    def test_tie_needs_a_line(self):
+        d2r = D2R + "colossal1|colossal1|0D\r\nancientbarb1|ancientbarb1|0D\r\n"
+        models = MODELS | {"colossal1": "colossal1", "ancientbarb1": "ancientbarb1"}
+        mod = d2r + "ancientbarbboss1|ancientbarbboss1|0D\r\n"
+        with self.assertRaisesRegex(H.MonsterHdError, r"ancientbarbboss1 \(0D, tie: colossal1 or ancientbarb1\)"):
+            H.entries(table(mod), table(d2r), models, {})
+        self.assertEqual(H.entries(table(mod), table(d2r), models, {"ancientbarbboss1": "ancientbarb1"}),
+                         {"ancientbarbboss1": "ancientbarb1"})
+
 
 class RuleTests(unittest.TestCase):
     def test_rule_writes_d2r_map_plus_new_monsters(self):

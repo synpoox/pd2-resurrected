@@ -45,9 +45,13 @@ def entries(mod: Table, d2r: Table, models: dict, likes: dict[str, str]) -> dict
         if not name or name.lower() in vanilla:
             continue
         key, like = hd_key(name), likes.get(name.lower())
+        # IMPORTANT: JSON keys are case-sensitive, and no vanilla missile name has a capital, so it is unproven whether
+        # D2R lower-cases one before the lookup: a name with capitals (ZharBolts) gets its model under both spellings
+        own = hd_key(name, lower=False)
         stale.discard(name.lower())
-        if key in models or key in out:
-            raise MissileHdError(f"'{name}': missiles.json already has '{key}'")
+        for k in {key, own}:
+            if k in models or k in out:
+                raise MissileHdError(f"'{name}': missiles.json already has '{k}'")
         if like is not None:
             if cel(r, c) in by_cel:
                 raise MissileHdError(f"'{name}' has a CelFile match ({by_cel[cel(r, c)].most_common(1)[0][0]}): "
@@ -60,9 +64,7 @@ def entries(mod: Table, d2r: Table, models: dict, likes: dict[str, str]) -> dict
         else:
             missing.append(f"{name} ({r[c] or 'no CelFile'})")
             continue
-        # IMPORTANT: JSON keys are case-sensitive, and no vanilla missile name has a capital, so it is unproven whether
-        # D2R lower-cases one before the lookup: a name with capitals (ZharBolts) gets its model under both spellings
-        out[hd_key(name, lower=False)] = out[key]
+        out[own] = out[key]
     if missing:
         raise MissileHdError(f"no HD model for {len(missing)} new missiles, add lines: {', '.join(missing)}")
     if stale:

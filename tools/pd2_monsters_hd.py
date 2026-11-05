@@ -7,10 +7,10 @@ left PD2's hellbovineMap invisible in game.
 
 A new monster takes the model of its `BaseId` when that is a D2R monster with the same `Code` (PD2's clones name their
 original there), else the model most D2R rows with its `Code` (the classic art) use. merge/monsters-hd.tsv has one line
-per monster with PD2-only art (no D2R `Code` with a model) or a wrong pick (a `Code` D2R draws with several models):
-`monster <tab> like`, the D2R monster whose model it takes. A new monster with no model fails the merge, so none is
-skipped silently; so does a line for a monster that is not new or that picks the model it gets anyway, so the list
-never goes stale.
+per monster with PD2-only art (no D2R `Code` with a model), a tie (a `Code` D2R draws with as many rows of two models)
+or a wrong pick: `monster <tab> like`, the D2R monster whose model it takes. A new monster with no model fails the
+merge, so none is skipped silently; so does a line for a monster that is not new or that picks the model it gets
+anyway, so the list never goes stale.
 """
 from __future__ import annotations
 
@@ -38,28 +38,32 @@ def entries(pd2: Table, d2r: Table, models: dict, likes: dict[str, str]) -> dict
             by_code.setdefault(r[dc].lower(), Counter())[models[r[0].lower()]] += 1
     out, missing, stale = {}, [], set(likes)
     for r in pd2.rows:
-        name = r[0]
-        key = name  # IMPORTANT: D2R looks keys up case-sensitively, so the exact Id ("hellbovineMap"), never lower case
-        if not name or name.lower() in code_of:
+        name = r[0]  # IMPORTANT: D2R looks keys up case-sensitively, so the key is the exact Id ("hellbovineMap")
+        low = name.lower()
+        if not name or low in code_of:
             continue
-        like, code, base = likes.get(name.lower()), r[code_col].lower(), r[base_col].lower()
-        stale.discard(name.lower())
-        if key in models or key in out:
-            raise MonsterHdError(f"'{name}': monsters.json already has '{key}'")
+        like, code, base = likes.get(low), r[code_col].lower(), r[base_col].lower()
+        stale.discard(low)
+        if name in models or name in out:
+            raise MonsterHdError(f"'{name}': monsters.json already has '{name}'")
+        top = by_code[code].most_common(2) if code in by_code else []
         if base in models and code_of.get(base) == code:
             auto = models[base]  # the model it gets with no line
-        else:
-            auto = by_code[code].most_common(1)[0][0] if code in by_code else None
+        elif len(top) == 1 or top and top[0][1] > top[1][1]:
+            auto = top[0][0]
+        else:  # no model, or a tie that only D2R's row order would break
+            auto = None
         if like is not None:
             if like.lower() not in models:
                 raise MonsterHdError(f"'{name}': '{like}' has no monsters.json entry")
             if models[like.lower()] == auto:
                 raise MonsterHdError(f"'{name}' gets {auto} anyway: delete its line")
-            out[key] = models[like.lower()]
+            out[name] = models[like.lower()]
         elif auto is not None:
-            out[key] = auto
+            out[name] = auto
         else:
-            missing.append(f"{name} ({r[code_col] or 'no Code'})")
+            tie = f", tie: {' or '.join(m for m, _ in top)}" if top else ""
+            missing.append(f"{name} ({r[code_col] or 'no Code'}{tie})")
     if missing:
         raise MonsterHdError(f"no HD model for {len(missing)} new monsters, add lines: {', '.join(missing)}")
     if stale:

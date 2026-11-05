@@ -31,3 +31,10 @@ archerBoss	cr_archer1
 dopplezonnew	roguehire
 InvaderNecromancerSkeleton	necroskeleton
 act2hireTraitorBoss	act2hire
+# A Code D2R draws with as many rows of two models: the Ancients' own model, not the colossal one
+ancientbarbboss1	ancientbarb1
+ancientbarbboss2	ancientbarb2
+ancientbarbboss3	ancientbarb3
+uberancientbarb1	ancientbarb1
+uberancientbarb2	ancientbarb2
+uberancientbarb3	ancientbarb3
