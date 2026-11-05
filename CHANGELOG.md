@@ -5,6 +5,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Switching to legacy graphics no longer crashes the game when Force Move or another Project Diablo II skill with a
+  new icon (Vampire Form, Cow Form, ...) is on a skill button; the button shows Project Diablo II's icon.
 - Project Diablo II's own maps built on the original game's tiles (Jungle Map, Graveyard Map, Tomb Map, ...) draw in
   HD graphics: ground, walls and props from the original game's areas. Many walls, streams and bridges are still
   missing, and the tree lines of the Jungle Map are a first pass.
