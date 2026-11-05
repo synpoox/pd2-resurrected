@@ -5,6 +5,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Project Diablo II's own monsters show in HD: the map monsters, the map bosses, the Countess, the Dopplezon and the
+  Invaders take the HD model of the monster they copy, or of a close one where their art is Project Diablo II's own.
 - Maps with a chance for drops to be corrupted, socketed or ethereal now apply it to the items that drop in the map,
   as in Project Diablo II.
 - The automap draws the walls Project Diablo II draws with its own automap pictures: Hellcaves, Djinns Domain and
