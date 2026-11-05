@@ -367,6 +367,9 @@ def fix_props(header: list[str], row: list[str], ren: dict[str, dict[str, str]],
             row[p] = remap(kind + "s", row[p])
         elif kind == "skillrange" and p + 2 < len(header):  # skill-rand: min and max are a range of skill ids
             row[p + 1], row[p + 2] = remap("skills", row[p + 1]), remap("skills", row[p + 2])
+        elif kind == "monster" and p + 2 < len(header):
+            mon = ids.get("monstats", {})
+            row[p + 1], row[p + 2] = mon.get(row[p + 1], row[p + 1]), mon.get(row[p + 2], row[p + 2])
 
 
 def spell(table: str, col: str, v: str, ren: dict[str, dict[str, str]]) -> str:
@@ -555,12 +558,13 @@ def context_of(lists: dict[str, list[tuple[str, int, str]]], pd2_data: Path, d2r
 
 def property_kinds(properties: Table) -> dict[str, str]:
     """Property code -> what its parameter names: skill (the skill-event, charged and single-skill functions 11, 19,
-    22), skillrange (12, skill-rand: min-max ids) or state."""
+    22), skillrange (12, skill-rand: min-max ids), state, or monster (map-glob-add-mon-*: min-max are a monstats id)."""
     h = {c: j for j, c in enumerate(properties.header)}
     kinds = {}
     for r in properties.rows:
         func, stat = r[h["func1"]], r[h["stat1"]]
         kind = "state" if stat == "state" else "skill" if func in ("11", "19", "22") else "skillrange" if func == "12" else ""
+        kind = "monster" if stat.startswith("map_glob_add_mon_") else kind
         if kind:
             kinds[r[0]] = kind
     return kinds
