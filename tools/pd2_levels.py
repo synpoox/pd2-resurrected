@@ -13,7 +13,8 @@ it. The three DT1 PD2 ships over vanilla paths move to OVERRIDES/<path>, so D2R'
 rewritten: its monster ids to the mod's monpreset indices, its object ids to objpreset rows of its act, appended where
 the act has none for that object. The file lists the DS1 objects the rewrite leaves out, with why; any other object
 it can't resolve fails the merge. PD2's automap rows for its new level types go to core-ui's custom table (LP2): D2R's
-automap knows only types 0-35; PD2's own automap cels go to D2R's HD tiles (pd2_automap).
+automap knows only types 0-35, whose rows AutoMap.txt takes from PD2 (#275); PD2's own automap cels go to D2R's HD
+tiles (pd2_automap).
 
 A DS1 object id in PD2 (1.13c D2Common 0x6fd5b560, checked in Ghidra for #211): type 1 is a monpreset index of the
 DS1's act; type 2 below 150 indexes 1.13c's object preset table as one flat array, act * 150 + id, so a negative id
@@ -258,6 +259,36 @@ def automap_rows(pd2: Table, cels: int) -> list[list[str]]:
     return out
 
 
+def vanilla_automap(pd2: Table, d2r: Table, cels: int) -> Table:
+    """D2R's AutoMap.txt with PD2's rows for level types 0-35 (#275), which PD2's maps on those types (Spider Map on
+    3 Dungeon, ...) need for their own tiles; D2R's areas keep D2R's tiles. Every D2R row is one of PD2's, so PD2's rows,
+    in PD2's order, under D2R's header (its comment columns are *Type1-4). PD2's rows for types 36+ (LevelName a bare
+    number) go to core-ui's table instead. D2R's loader (0x32cae0) asserts on a LevelName outside its 36 and keeps one
+    row range per level type, so a name D2R lacks or a type split in two fails; so does a cel past the tiles. Returns
+    `d2r` with its rows replaced."""
+    if len(d2r.header) != len(pd2.header) or any(d != p and not (d.startswith("*") and p.startswith("Type"))
+                                                 for d, p in zip(d2r.header, pd2.header)):
+        raise ValueError("automap: PD2's AutoMap.txt columns differ from D2R's")
+    known = {r[0] for r in d2r.rows}
+    cel_cols = [col(pd2, f"Cel{n}") for n in range(1, 5)]
+    rows, done = [], set()
+    for r in pd2.rows:
+        name = r[0]
+        if name.isdigit() and int(name) >= AUTOMAP_TYPES:
+            continue
+        if name not in known:
+            raise ValueError(f"automap: level name {name!r} is not one of D2R's")
+        if rows and rows[-1][0] != name:
+            done.add(rows[-1][0])
+        if name in done:
+            raise ValueError(f"automap: {name!r} rows are split; D2R reads one run per level type")
+        if past := [v for v in (r[i] for i in cel_cols) if v not in BLANK and int(v) >= cels]:
+            raise ValueError(f"automap: cel {past[0]} is past the {cels} automap tiles")
+        rows.append(r)
+    d2r.rows = rows
+    return d2r
+
+
 def apply_files(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/level-files.tsv (see the module docstring)."""
     merge_dir = rule.parent
@@ -293,7 +324,10 @@ def apply_files(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> N
     types, moved = merge_types(load(pd2_data, "lvltypes"), d2r_types, wanted, overrides)
     pd2_ids.write("lvltypes", types, [], out_data)
     cels = pd2_automap.apply(pd2_data, d2r_data, out_data)  # writes the tiles past D2R's; returns their frame count
-    automap = automap_rows(load(pd2_data, "automap"), cels)
+    pd2_rows = load(pd2_data, "automap")
+    automap = automap_rows(pd2_rows, cels)
+    vanilla = vanilla_automap(pd2_rows, load(d2r_data, "automap"), cels)
+    pd2_ids.write("automap", vanilla, [], out_data)
     dest = excel(out_data) / AUTOMAP_TABLE
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes("".join("\t".join(r) + "\n" for r in automap).encode("ascii"))  # D2RCore wants a final LF
@@ -417,4 +451,4 @@ def apply_files(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> N
         raise ValueError(f"PD2's new lvlwarp rows reuse D2R's Id {sorted(clash)}: give them an id map")
     print(f"  level-files: {len(presets)} presets, {len({f for *_, fs in presets for f in fs})} DS1, {len(files)} DT1 "
           f"named, {len(added)} object and {mon_added} monster presets added, slots moved {moved}, "
-          f"{len(automap) - 1} automap rows for types {AUTOMAP_TYPES}+")
+          f"{len(automap) - 1} automap rows for types {AUTOMAP_TYPES}+, {len(vanilla.rows)} for types 0-35")
