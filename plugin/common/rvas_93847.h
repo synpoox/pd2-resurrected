@@ -736,9 +736,10 @@ inline constexpr int ListFlags = 0x1c, ListNext = 0x68;  // uint32 flags, next l
 inline constexpr uint32_t ListFlagTimed = 0x2, ListFlagCurse = 0x20;
 
 // --- Item rules: skill while equipped and phasing (docs/research/ir7-equipped-items.md) ---------------------------
-// The server's stat callback, (game, unit, item, stat << 16 | layer, a5, a6), for stats with fCallback: a switch on
-// stats 7-209 only (`lea eax,[r12-7]; cmp eax,0xca` at 0x46ff4a), item_aura (151) at 0x470470. Its entry is
-// `jmp [rip+x]`: D2RCore hooks it, so core-rules wraps the pointer instead, where it is handed to StatCallbackInit.
+// The server's stat callback, (game, unit, item, stat << 32 | layer (a 64-bit r9), old, new), for stats with
+// fCallback: a switch on stats 7-209 only (`lea eax,[r12-7]; cmp eax,0xca` at 0x46ff4a), item_aura (151) at
+// 0x470470. Its entry is `jmp [rip+x]`: D2RCore hooks it, so core-rules wraps the pointer instead, where it is
+// handed to StatCallbackInit.
 inline constexpr uint64_t StatCallback = 0x46fdd0;
 // (unit, flags, callback, arg): sets up the unit's stat list with its callback (unit creation 0x4252c0, 0x543120).
 // mov [rsp+0x10],rbx / mov [rsp+0x18],rsi / mov [rsp+0x20],rdi / push rbp

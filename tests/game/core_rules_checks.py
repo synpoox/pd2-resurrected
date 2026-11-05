@@ -143,8 +143,8 @@ IR4 checks (tag core-rules-ir4), same merged data, Hell, level 90+:
   monster curse you (Act 4 Oblivion Knights, `cheat mspawn` of one), then run again.
 
 IR7 checks (tag core-rules-ir7), same merged data, Hell, level 90+:
-- skill-on-equip: `cheat uniques 449` drops Tempest (Energy Shield SelfAura 16 when equipped); `cheat idall`, equip
-  it, wait a few seconds out of town (`cheat goto 2`), unequip it, and run the same command with core-rules-ir7.
+- skill-on-equip: `cheat uniques 252` drops Blackoak Shield (Chilling Armor SelfAura 11 when equipped); `cheat
+  idall`, equip it, wait a few seconds, unequip it, and run the same command with core-rules-ir7.
 - phasing: `cheat uniques 520` drops Spectral Plate (Phasing SelfAura); `cheat idall`, equip it, walk into a pack
   (`cheat mspawn zombie1,4`, `cheat god 1`), take it off, and run again.
 """
@@ -1769,12 +1769,13 @@ def ormus_skill_on_cast(ctx):
     return f"{len(procs)} proc(s), e.g. {rows[procs[0][2]]['skill']} level {procs[0][3]} at the {procs[0][4]}"
 
 
-@check("items-installed", tags=["core-rules-p12", "core-rules-ir4"])
+@check("items-installed", tags=["core-rules-p12", "core-rules-ir4", "core-rules-ir7"])
 def items_installed(ctx):
-    """core-rules installs its three item rules: property func 26, the skill on cast trigger and the curse hook."""
+    """core-rules installs its four item rules: property func 26, the skill on cast trigger, the curse hook and skill
+    on equip."""
     line = re.search(rf"{PLUGIN}: items [^\n]*", _log(ctx))
     assert line, "no items part line in the plugin log"
-    assert "items 3/3 installed" in line.group(0), line.group(0)
+    assert "items 4/4 installed" in line.group(0), line.group(0)
     return line.group(0)[len(PLUGIN) + 2:]
 
 
@@ -1830,29 +1831,29 @@ def curse_resistance(ctx):
 SKILL_ON_EQUIP = re.compile(r"skill on equip: unit type (\d+), skill (\d+), (-?\d+) -> (-?\d+), level now (-?\d+)")
 SKILL_ON_EQUIP_TICK = re.compile(r"skill on equip tick: skill (\d+) level (\d+), state (\d+), next frame (-?\d+), (cast|held)")
 PHASING = re.compile(r"phasing: (on|off), unit type (\d+), collision mask 0x([0-9a-f]+) -> 0x([0-9a-f]+)")
-ENERGY_SHIELD_SELFAURA, PHASING_SELFAURA = 623, 674  # merged skill ids
-ENERGYSHIELD_STATE = 30  # merged states id
+CHILLING_ARMOR_SELFAURA, PHASING_SELFAURA = 624, 674  # merged skill ids
+CHILLINGARMOR_STATE = 20  # merged states id
 
 
 @check("skill-on-equip", tags=["core-rules-ir7"])
 def skill_on_equip(ctx):
     """item_skillonequip runs its skill as an item aura at the stat's level while the item is worn, and stops when
-    it comes off (PD2's 0x1036f640 and 0x10345cc0): Tempest's Energy Shield SelfAura at level 16."""
+    it comes off (PD2's 0x1036f640 and 0x10345cc0): Blackoak Shield's Chilling Armor SelfAura at level 11."""
     changes = [tuple(int(v) for v in row) for row in SKILL_ON_EQUIP.findall(_log(ctx))]
-    tempest = [c for c in changes if c[1] == ENERGY_SHIELD_SELFAURA]
-    if not tempest:
-        ctx.skip("no Energy Shield SelfAura change in the log yet (equip Tempest, run again)")
-    assert any(old == 0 and new == 16 for _, _, old, new, _ in tempest), f"no 0 -> 16 on equip: {tempest}"
+    shield = [c for c in changes if c[1] == CHILLING_ARMOR_SELFAURA]
+    if not shield:
+        ctx.skip("no Chilling Armor SelfAura change in the log yet (equip Blackoak Shield, run again)")
+    assert any(old == 0 and new == 11 for _, _, old, new, _ in shield), f"no 0 -> 11 on equip: {shield}"
     ticks = [(int(sk), int(lv), int(st), int(nx), what) for sk, lv, st, nx, what in SKILL_ON_EQUIP_TICK.findall(_log(ctx))]
-    mine = [t for t in ticks if t[0] == ENERGY_SHIELD_SELFAURA]
+    mine = [t for t in ticks if t[0] == CHILLING_ARMOR_SELFAURA]
     if not mine:
-        ctx.skip("no Energy Shield SelfAura tick yet (wear Tempest a few seconds, run again)")
-    assert all(level == 16 and state == ENERGYSHIELD_STATE for _, level, state, _, _ in mine), mine
+        ctx.skip("no Chilling Armor SelfAura tick yet (wear Blackoak Shield a few seconds, run again)")
+    assert all(level == 11 and state == CHILLINGARMOR_STATE for _, level, state, _, _ in mine), mine
     assert any(what == "cast" for *_, what in mine), f"no tick cast the aura: {mine}"
     assert all(nx > 0 for _, _, _, nx, _ in mine), f"a tick did not re-add the event: {mine}"
-    if not any(old == 16 and new == 0 for _, _, old, new, _ in tempest):
-        ctx.skip("Tempest not taken off yet (unequip it, run again)")
-    return f"{len(mine)} tick(s) at level 16, state {ENERGYSHIELD_STATE}, then 16 -> 0 on unequip"
+    if not any(old == 11 and new == 0 for _, _, old, new, _ in shield):
+        ctx.skip("Blackoak Shield not taken off yet (unequip it, run again)")
+    return f"{len(mine)} tick(s) at level 11, state {CHILLINGARMOR_STATE}, then 11 -> 0 on unequip"
 
 
 @check("phasing", tags=["core-rules-ir7"])

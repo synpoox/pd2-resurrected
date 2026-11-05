@@ -37,8 +37,8 @@ merged ids (`item_skillonequip` 375, Phasing SelfAura 674, Armageddon SelfAura 6
 
 ## In the port
 
-D2R's stat callback (`0x46fdd0`, `(game, unit, item, stat << 16 | layer, old, new)`) switches on stats 7-209 only, so
-stat 375 does nothing. Its entry is D2RCore's (`jmp [rip+x]`), so core-rules hooks where units get it
+D2R's stat callback (`0x46fdd0`, `(game, unit, item, stat << 32 | layer, old, new)`, r9 64-bit) switches on stats
+7-209 only, so stat 375 does nothing. Its entry is D2RCore's (`jmp [rip+x]`), so core-rules hooks where units get it
 (`0x2f65d0`, the stat list setup) and hands each unit a wrapper:
 
 - the wrapper passes stat 375 to D2R's callback as `item_aura` (151) with the same layer: D2R's `item_aura` case
@@ -55,6 +55,6 @@ the skill-list add, and the Phasing tooltip line.
 
 ## Game check
 
-`tests/game/core_rules_checks.py`, tag `core-rules-ir7`: `skill-on-equip` (Tempest's Energy Shield SelfAura starts at
-16 on equip, ticks with state energyshield, stops on unequip) and `phasing` (Spectral Plate: the player's mask
+`tests/game/core_rules_checks.py`, tag `core-rules-ir7`: `skill-on-equip` (Blackoak Shield's Chilling Armor SelfAura
+starts at 11 on equip, ticks with state chillingarmor, stops on unequip) and `phasing` (Spectral Plate: the player's mask
 `0x1c09` -> `0xc09`, back on unequip).

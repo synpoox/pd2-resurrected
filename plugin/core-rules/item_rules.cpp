@@ -387,18 +387,19 @@ auto SetPhasing(Unit* unit, bool on) noexcept -> void {
 	           want, ++g_phasing);
 }
 
-using StatCallbackFn = uint64_t (*)(Game* game, Unit* unit, Unit* item, uint32_t statLayer, int32_t oldValue,
+using StatCallbackFn = uint64_t (*)(Game* game, Unit* unit, Unit* item, uint64_t statLayer, int32_t oldValue,
                                     int32_t newValue) noexcept;
 
-// Every unit's stat callback (see StatCallbackInit): item_skillonequip goes to D2R's as item_aura, same layer
-auto EquipStatCallback(Game* game, Unit* unit, Unit* item, uint32_t statLayer, int32_t oldValue, int32_t newValue) noexcept
+// Every unit's stat callback (see StatCallbackInit): item_skillonequip goes to D2R's as item_aura, same layer. The
+// stat id is r9's high dword, the layer its low one (seen in game: 375/624 arrives as 0x17700000270)
+auto EquipStatCallback(Game* game, Unit* unit, Unit* item, uint64_t statLayer, int32_t oldValue, int32_t newValue) noexcept
 	-> uint64_t {
 	const auto original = d2r::Engine<StatCallbackFn>(d2r::rva::StatCallback);
-	if ((statLayer >> 16) != static_cast<uint32_t>(StatSkillOnEquip)) {
+	if ((statLayer >> 32) != static_cast<uint64_t>(StatSkillOnEquip)) {
 		return original(game, unit, item, statLayer, oldValue, newValue);
 	}
-	const uint32_t layer = statLayer & 0xffff;
-	const uint64_t result = original(game, unit, item, (static_cast<uint32_t>(StatItemAura) << 16) | layer, oldValue,
+	const uint32_t layer = static_cast<uint32_t>(statLayer);
+	const uint64_t result = original(game, unit, item, (static_cast<uint64_t>(StatItemAura) << 32) | layer, oldValue,
 	                                 newValue);
 	if (unit != nullptr) {
 		if (layer == static_cast<uint32_t>(SkillPhasing)) {
