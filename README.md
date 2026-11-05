@@ -93,7 +93,10 @@ caches D2R's DS1, DT1 and HD presets, which the merge harvests for the HD preset
 `companions/manifest.json` (checked by SHA-256, never committed) and must run after `pd2_merge.py`, which wipes
 `generated/`. `install` is `modkit install` plus the companions, our `companions/filter.json`, and the vanilla
 item tables the loot filter needs when the build doesn't ship them. The merge and the tool tests find modkit in
-`..\d2rAI-toolkit` (or on `PYTHONPATH`). Tool tests (no PD2 data needed):
+`..\d2rAI-toolkit` (or on `PYTHONPATH`). The HD art upscaled from PD2's (`merge/art/`) is committed; a PD2 frame
+with none needs [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN/releases) (`realesrgan-ncnn-vulkan`) in the
+sibling `..\realesrgan-ncnn-vulkan` or named by `REALESRGAN`, and numpy and Pillow for skill icons.
+Tool tests (no PD2 data needed):
 
 ```bash
 python -m unittest discover -s tools/tests
