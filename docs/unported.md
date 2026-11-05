@@ -133,7 +133,7 @@ rows have no table hook: D2R does what it does.
 | Corrupted zones | cut | cut by decision (map #143): D2R's Terror Zones stay in their place |  |
 | Level life regen cap (30, `bloodwarp` lifts it) | cut | PD2 caps it only in the PvP arenas (levels 157, 159, 166), and PvP is cut (#151) ([ms3-map-stats](research/ms3-map-stats.md)) |  |
 
-### Not yet (36)
+### Not yet (35)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -150,7 +150,6 @@ rows have no table hook: D2R does what it does.
 | Throwing potions | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | IR5 |
 | Rathma bone spear damage | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | UB5 |
 | Skill on block (`item_skillonblock`, 5 live rows) | not yet | stand-in: D2R's own behaviour | IR2 |
-| Charm "only one unique" rule | not yet | stand-in: D2R's own behaviour; a Charm Inventory companion plugin takes it (owner, 2026-11-04; docs/research/ir7-equipped-items.md) | companion |
 | Deep wounds and the open wounds rework | not yet | stand-in: D2R's open wounds; `deep_wounds` does nothing. PD2's event `0x103463f0` is only partly read ([ir3-combat-stats](research/ir3-combat-stats.md)) | IR3 |
 | Curse duration resistance (`curse_resistance`, stat 109) | not yet | D2R's rule: no curse at 100+, no cap; PD2 shortens the duration by it, at most 75 on a player (ProjectDiablo.dll `0x1036d7d0`, docs/research/ir4-curses.md) | #264 |
 | A curse on an attracted unit | not yet | D2R refuses any curse on a unit with the attract state; PD2 allows it (docs/research/ir4-curses.md) | #264 |
@@ -174,7 +173,7 @@ rows have no table hook: D2R does what it does.
 | Stackable items / item quantity | not yet | the merged `stackable`/`maxstack` rows are PD2's (runes and gems stack in the inventory and in D2R's stash tab); the split is D2R's own until [#316](https://github.com/synpoox/pd2-resurrected/issues/316) | [#316](https://github.com/synpoox/pd2-resurrected/issues/316) |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | W38 |
 
-### Approximated (57)
+### Approximated (58)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -235,6 +234,7 @@ rows have no table hook: D2R does what it does.
 | Smite's event: the key and the blow | approximated | D2R never calls aura event 16 on a player's melee hit, so Smite's roll is not an event: core-rules wraps Smite's do (srvdo 150) and hooks D2R's hit queue (`0x44b600`); each landed Smite hit rolls the `crushingblow` stat + calc3 once and calls the blow, PD2's since IR3 (calc4's effectiveness is the crushing blow row's). Game check `smite-event` (Slot 5, Hell): 22 hits, 8 blows at chance 25 (#165). Not checked: whether D2R also rolls an item's crushing blow inline on the same hit (a second roll with a crushing-blow item), and whether D2R's blow keeps PD2's damage-flag 0x20 and player-hostility tests (docs/research/w19-holy-sword-smite.md) | core-rules |
 | Revive's event: the splash target | approximated | PD2's splash centres on the revive's path target; core-rules passes the unit the revive hit (docs/core-rules.md) | core-rules |
 | Function numbers of the exact data rows (Monster frenzy, Baal Corpse Explode client start, `*12` server hit) | approximated | the cells differ from PD2 but run the same rule: D2R's number for it, or none where PD2's points past D2R's table (see Data rows) | W3 |
+| Charm "only one unique" rule | approximated | covered by the Charm Inventory companion (`companions/manifest.json`), which refuses a second unique charm (owner, 2026-11-05); which PD2 charms share a group is not compared with PD2's | companion |
 
 ## Data rows
 
