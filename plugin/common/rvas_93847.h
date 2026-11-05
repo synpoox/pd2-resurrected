@@ -780,6 +780,17 @@ inline constexpr uint64_t CubeRecipeCount = 0x3e3f20;  // (dataFlag) -> cubemain
 inline constexpr uint64_t CubeRecipe = 0x3e3f60;       // (dataFlag, row) -> 0x16c-byte record, or null
 inline constexpr int CubeEnabled = 0x0, CubeOp = 0x3;  // uint8 enabled, uint8 op
 inline constexpr uint64_t UnitInventory = 0x34a360;    // (unit, file, line) -> the unit's inventory, or null
+// The executor: (game, player, record, out*) runs the row the search found (out as the search filled it). The cube
+// packet handler 0x4f2490 calls the search and then this; the cheat transmute 0x4127c0 calls it too.
+// push rbp / push rbx / push rsi / push rdi / push r12 / push r13 / push r14 / push r15 / lea rbp,[rsp-0x15f8]
+inline constexpr uint64_t CubeExecutor = 0x5269c0;
+inline constexpr uint8_t CubeExecutorEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56,
+                                                0x41, 0x57, 0x48, 0x8d, 0xac, 0x24, 0x08, 0xea, 0xff, 0xff};
+inline constexpr uint64_t InventoryFirstItem = 0x388c10;  // (inventory) -> first item, or null
+inline constexpr uint64_t InventoryNextItem = 0x38aba0;   // (item) -> next item in its inventory, or null
+inline constexpr uint64_t ItemPage = 0x36cfe0;            // (item) -> item data +0x55: 0 inventory, 3 cube, 4 stash
+inline constexpr uint64_t ItemCode = 0x36ef50;            // (item) -> items.txt code as a dword ('box ' 0x20786f62)
+inline constexpr uint8_t CubePageCube = 3;
 
 // --- core-ui: automap for level types 36+ (LP2, #212) -------------------------------------------------------------
 // (levelType, tileType, style, sequence) -> cel or -1 (0xffffffff): the automap tile lookup. It matches AutoMap.txt
