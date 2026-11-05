@@ -792,6 +792,27 @@ inline constexpr uint8_t AutomapCelEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48
 inline constexpr int AutomapLevelTypes = 36;  // AutoMap.txt loader 0x32cae0 matches 36 names (table 0x1cfe110)
 inline constexpr uint64_t AutomapSeedPtr = 0x2372a40;  // pointer to the {lo, hi} seed 0x32bdf0 rolls (its decompile)
 
+// --- core-ui: HD pictures of 4-character item codes (#310, #298) ---------------------------------------------------
+// The items.json loader 0x6635a0 keys each entry by its code's first 3 characters plus a space (0x663a14 writes 0x20
+// to byte 3), while the picture lookup 0x662fb0 (case 4) searches by the item record's whole code dword (+0x80). So a
+// 4-character code never finds its entry (tpgs draws nothing) and overwrites the entry of the 3-character code it
+// starts with (r01s replaces r01's picture). The patch keeps byte 3: the key's last two bytes are loaded as a word and
+// byte 3 becomes c[3] | 0x20 (a 3-character code's terminator gives the space D2R wrote; every PD2 code's 4th
+// character already has bit 0x20, which tools/pd2_items.py checks). The 2-character path, which jumped to the
+// removed store, jumps to D2R's own double-space store at 0x663a07. Decompiled and read from the 6ab3782c dump (#310).
+inline constexpr uint64_t ItemsJsonKey = 0x6639f9;
+// jmp 0x663a14 / mov [rsp+25],al / movzx eax,byte [rsi+2] / test al,al / jne 0x663a10 / mov word [rsp+26],0x2020 /
+// jmp 0x663a19 / mov [rsp+26],al / mov byte [rsp+27],0x20
+inline constexpr uint8_t ItemsJsonKeyD2R[] = {0xeb, 0x19, 0x88, 0x44, 0x24, 0x25, 0x0f, 0xb6, 0x46, 0x02, 0x84,
+                                              0xc0, 0x75, 0x09, 0x66, 0xc7, 0x44, 0x24, 0x26, 0x20, 0x20, 0xeb,
+                                              0x09, 0x88, 0x44, 0x24, 0x26, 0xc6, 0x44, 0x24, 0x27, 0x20};
+// jmp 0x663a07 / mov [rsp+25],al / movzx eax,word [rsi+2] / test al,al / jne 0x663a10 / mov word [rsp+26],0x2020 /
+// jmp 0x663a19 / or ah,0x20 / mov [rsp+26],ax / nop
+inline constexpr uint8_t ItemsJsonKeyFull[] = {0xeb, 0x0c, 0x88, 0x44, 0x24, 0x25, 0x0f, 0xb7, 0x46, 0x02, 0x84,
+                                               0xc0, 0x75, 0x09, 0x66, 0xc7, 0x44, 0x24, 0x26, 0x20, 0x20, 0xeb,
+                                               0x09, 0x80, 0xcc, 0x20, 0x66, 0x89, 0x44, 0x24, 0x26, 0x90};
+static_assert(sizeof(ItemsJsonKeyD2R) == sizeof(ItemsJsonKeyFull));
+
 // --- core-maps: opening a map (MS2, #217; D2Game\src\Skills\SkillItem.cpp) ----------------------------------------
 // Item spell dispatchers, (game, player, item, target): the check -> bool, then the use (whose caller frees an item
 // whose spell flag is 0, as slot 16's empty entry is). Both index D2R's 20-entry item spell table (0x236fe30) by the

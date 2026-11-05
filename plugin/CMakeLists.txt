@@ -66,6 +66,7 @@ set(CORE_UI_VERSION "0.1.0" CACHE STRING "core-ui PluginInfo::version")
 add_library(core_ui SHARED
 	core-ui/plugin.cpp
 	core-ui/automap.cpp
+	core-ui/item_pictures.cpp
 	core-ui/plugin.rc
 )
 target_link_libraries(core_ui PRIVATE core_common)

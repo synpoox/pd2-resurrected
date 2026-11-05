@@ -148,6 +148,9 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table], uniques
         pi = ptab.header.index("invfile")
         for r in ptab.rows:
             code = r[ptab.key]
+            if len(code) == 4 and not ord(code[3]) & 0x20:  # core-ui sets bit 0x20 of the key's 4th byte (#310)
+                raise I.IdError(f"{t} {code}: core-ui keys items.json by {code[:3]}{chr(ord(code[3]) | 0x20)}, "
+                                "so this code would draw no picture; give it a 4th character with bit 0x20 set")
             if code and code not in asset:
                 asset[code] = by_inv.get(r[pi], first)
                 files["items.json"].append({code: {"asset": asset[code]}})

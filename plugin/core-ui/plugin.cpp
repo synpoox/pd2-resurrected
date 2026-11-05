@@ -4,11 +4,13 @@
 //
 // Parts, by their word for the log, the status command and core-ui-off.txt (<game>\d2rloader\config\core-ui-off.txt):
 //   automap   the automap for PD2's level types 36+ (LP2)
+//   pictures  HD pictures of PD2's 4-character item codes (#310, #298)
 #include <D2RLPlugin/api.h>
 
 #include "automap.h"
 #include "crash_guard.h"
 #include "d2r.h"
+#include "item_pictures.h"
 #include "log.h"
 #include "off_switch.h"
 
@@ -29,6 +31,7 @@ constexpr const char* PluginVersion = CORE_PLUGIN_VERSION;
 const D2RL::PluginContext* g_context = nullptr;
 char g_selfPath[520] = "?";
 char g_automap[300] = "";
+char g_pictures[200] = "";
 
 constexpr D2RL::PluginInfo Info {
 	.infoSize    = D2RL::PluginInfoSize,
@@ -37,7 +40,7 @@ constexpr D2RL::PluginInfo Info {
 	.name        = "PD2 Resurrected Core UI",
 	.version     = CORE_PLUGIN_VERSION,
 	.author      = "Synpoo",
-	.description = "Project Diablo II client features (the automap of PD2's new level types) for PD2 Resurrected.",
+	.description = "Project Diablo II client features (the automap of PD2's new level types, HD pictures of its 4-character item codes) for PD2 Resurrected.",
 	.flags       = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
 };
 
@@ -59,6 +62,8 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 		command->plugin->WriteConsoleMessage(line);
 	}
 	std::snprintf(line, sizeof(line), "automap %s", g_automap);
+	command->plugin->WriteConsoleMessage(line);
+	std::snprintf(line, sizeof(line), "pictures %s", g_pictures);
 	command->plugin->WriteConsoleMessage(line);
 	automap::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
@@ -90,15 +95,23 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	if (off_switch::Words()[0] != '\0') {
 		plog::Info("%s-off.txt leaves out: %s", PluginName, off_switch::Words());
 	}
-	if (!d2r::Bind(context->exeBase)) {
+	const bool bound = d2r::Bind(context->exeBase);
+	if (!bound) {
 		std::snprintf(g_automap, sizeof(g_automap), "off: unknown game image 0x%08x (expects 0x%08x)",
 		              d2r::ImageStampOf(context->exeBase), d2r::rva::ImageStamp);
+		std::snprintf(g_pictures, sizeof(g_pictures), "%s", g_automap);
 	} else if (off_switch::Off("automap")) {
 		std::snprintf(g_automap, sizeof(g_automap), "off: left out by %s-off.txt", PluginName);
 	} else {
 		automap::Install(context, g_automap, sizeof(g_automap));
 	}
 	plog::Info("automap %s", g_automap);
+	if (bound && off_switch::Off("pictures")) {
+		std::snprintf(g_pictures, sizeof(g_pictures), "off: left out by %s-off.txt", PluginName);
+	} else if (bound) {
+		item_pictures::Install(context, g_pictures, sizeof(g_pictures));
+	}
+	plog::Info("pictures %s", g_pictures);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand, "PD2 Resurrected Core UI: its parts and counters.");
 }
 
