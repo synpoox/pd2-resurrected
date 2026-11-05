@@ -2,8 +2,9 @@
 //
 // One header per D2R build: a new build gets its own rvas_<build>.h and d2r.h includes that one. Every value here was
 // found in the Ghidra analysis of the dumped 93847 image; the comment beside each says where (the Split Throw spike,
-// spikes/split-throw/FINDINGS.md, or the D2R function it was read from) and the game check that uses it. Names match
-// the RVA column of docs/core-rules.md.
+// spikes/split-throw/FINDINGS.md, or the D2R function it was read from) and the game check that uses it. core-rules'
+// names match the RVA column of docs/core-rules.md; another plugin's values sit in a section headed by that plugin and
+// the work item that found them, which records them (core-ui: LP2, #212).
 #pragma once
 
 #include <cstddef>
@@ -752,6 +753,17 @@ inline constexpr uint64_t CubeRecipeCount = 0x3e3f20;  // (dataFlag) -> cubemain
 inline constexpr uint64_t CubeRecipe = 0x3e3f60;       // (dataFlag, row) -> 0x16c-byte record, or null
 inline constexpr int CubeEnabled = 0x0, CubeOp = 0x3;  // uint8 enabled, uint8 op
 inline constexpr uint64_t UnitInventory = 0x34a360;    // (unit, file, line) -> the unit's inventory, or null
+
+// --- core-ui: automap for level types 36+ (LP2, #212) -------------------------------------------------------------
+// (levelType, tileType, style, sequence) -> cel or -1 (0xffffffff): the automap tile lookup. It matches AutoMap.txt
+// rows of the type's range (36 ranges, so types 36+ read past them), style 0xff any, start sequence 0xff any, else
+// start <= sequence <= end; then cels[Roll(seed) % count]. Decompiled for #212 (Ghidra, D2R.gpr); entry bytes read from
+// the 6ab3782c dump. Game check (#212): core-ui's status counters climb in a PD2-only area with the automap open.
+inline constexpr uint64_t AutomapCel = 0x32bdf0;
+inline constexpr uint8_t AutomapCelEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74,
+                                              0x24, 0x18, 0x48, 0x89, 0x7c, 0x24, 0x20};
+inline constexpr int AutomapLevelTypes = 36;  // AutoMap.txt loader 0x32cae0 matches 36 names (table 0x1cfe110)
+inline constexpr uint64_t AutomapSeedPtr = 0x2372a40;  // pointer to the {lo, hi} seed 0x32bdf0 rolls (its decompile)
 
 }  // namespace d2r::rva
 

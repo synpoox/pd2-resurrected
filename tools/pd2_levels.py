@@ -12,7 +12,8 @@ PD2-only presets select; a file whose slot D2R already fills moves to a free slo
 it. The three DT1 PD2 ships over vanilla paths move to OVERRIDES/<path>, so D2R's own areas keep D2R's. Each DS1 is
 rewritten: its monster ids to the mod's monpreset indices, its object ids to objpreset rows of its act, appended where
 the act has none for that object. The file lists the DS1 objects the rewrite leaves out, with why; any other object
-it can't resolve fails the merge.
+it can't resolve fails the merge. PD2's automap rows for its new level types go to core-ui's custom table (LP2): D2R's
+automap knows only types 0-35.
 
 A DS1 object id in PD2 (1.13c D2Common 0x6fd5b560, checked in Ghidra for #211): type 1 is a monpreset index of the
 DS1's act; type 2 below 150 indexes 1.13c's object preset table as one flat array, act * 150 + id, so a negative id
@@ -225,6 +226,35 @@ def col(t: Table, name: str) -> int:
     return t.header.index(name)
 
 
+AUTOMAP_TYPES = 36  # D2R's AutoMap.txt loader (0x32cae0) knows level types 0-35; core-ui answers the rest
+CEL_MAX = 1498  # the last cel in D2R's automap atlas: a higher one stored in a character's map memory hangs the save
+# D2R's tile names in its order (table 0x1cfe350): the loader stores a row's TileName as its index here
+TILES = ["fl", "wl", "wr", "wtlr", "wtll", "wtr", "wbl", "wbr", "wld", "wrd", "wle", "wre", "co", "sh", "tr", "rf",
+         "ld", "rd", "fd", "fi"]
+AUTOMAP_TABLE = "d2rloader/core-ui/automap.txt"  # the custom table core-ui registers (under global/excel)
+ANY = "255"  # AutoMap.txt's -1 in Style or a sequence; core-ui's automap::Any
+BLANK = ("", "-1")  # an AutoMap.txt cell with no value: no cel, or "any" in Style or a sequence
+
+
+def automap_rows(pd2: Table) -> list[list[str]]:
+    """PD2's AutoMap.txt rows for level types 36 and up (LevelName is the type id), as core-ui's custom table (columns as
+    in plugin/core-ui/automap.cpp Columns): numbers only, -1 ("any") as 255, and the cels D2R's atlas holds, packed and
+    counted. PD2's own cels (#274) are dropped, so a row that mixes them with D2R's draws only D2R's."""
+    c = {n: col(pd2, n) for n in ("LevelName", "TileName", "Style", "StartSequence", "EndSequence")}
+    cel_cols = [col(pd2, f"Cel{n}") for n in range(1, 5)]
+    out = [["LevelType", "TileType", "Style", "StartSequence", "EndSequence", "CelCount", "Cel1", "Cel2", "Cel3", "Cel4"]]
+    for r in pd2.rows:
+        if not r[c["LevelName"]].isdigit() or int(r[c["LevelName"]]) < AUTOMAP_TYPES:
+            continue
+        if r[c["TileName"]] not in TILES:
+            raise ValueError(f"automap: tile name {r[c['TileName']]!r} is not one of D2R's")
+        cels = [v for v in (r[i] for i in cel_cols) if v not in BLANK and int(v) <= CEL_MAX]
+        out.append([r[c["LevelName"]], str(TILES.index(r[c["TileName"]]))]
+                   + [ANY if r[c[k]] in BLANK else r[c[k]] for k in ("Style", "StartSequence", "EndSequence")]
+                   + [str(len(cels))] + (cels + ["0"] * 4)[:4])
+    return out
+
+
 def apply_files(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/level-files.tsv (see the module docstring)."""
     merge_dir = rule.parent
@@ -259,6 +289,10 @@ def apply_files(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> N
     d2r_types = load(d2r_data, "lvltypes")
     types, moved = merge_types(load(pd2_data, "lvltypes"), d2r_types, wanted, overrides)
     pd2_ids.write("lvltypes", types, [], out_data)
+    automap = automap_rows(load(pd2_data, "automap"))
+    dest = excel(out_data) / AUTOMAP_TABLE
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes("".join("\t".join(r) + "\n" for r in automap).encode("ascii"))  # D2RCore wants a final LF
     lp = Table(excel(out_data) / "lvlprest.txt")
     recs = lp.records()
     for i, t, mask, _ in presets:
@@ -378,4 +412,5 @@ def apply_files(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> N
     if clash:
         raise ValueError(f"PD2's new lvlwarp rows reuse D2R's Id {sorted(clash)}: give them an id map")
     print(f"  level-files: {len(presets)} presets, {len({f for *_, fs in presets for f in fs})} DS1, {len(files)} DT1 "
-          f"named, {len(added)} object and {mon_added} monster presets added, slots moved {moved}")
+          f"named, {len(added)} object and {mon_added} monster presets added, slots moved {moved}, "
+          f"{len(automap) - 1} automap rows for types {AUTOMAP_TYPES}+")

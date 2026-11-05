@@ -2,7 +2,7 @@
 # helpers) linked into each plugin DLL. Target: D2R 3.3 build 93847 + D2RLoader 1.3.1, PluginSDK in third_party/.
 #
 # Build:  powershell -ExecutionPolicy Bypass -File build.ps1
-# Output: build/Release/core-rules.dll and core-maps.dll -> tools/install.ps1 copies them to <game>/d2rloader/plugins/.
+# Output: build/Release/core-rules.dll, core-maps.dll and core-ui.dll -> tools/install.ps1 copies them to <game>/d2rloader/plugins/.
 cmake_minimum_required(VERSION 3.29)
 project(pd2_resurrected_plugins LANGUAGES CXX RC)
 
@@ -57,3 +57,15 @@ target_link_libraries(core_maps PRIVATE core_common)
 target_compile_definitions(core_maps PRIVATE CORE_PLUGIN_NAME="core-maps" CORE_PLUGIN_VERSION="${CORE_MAPS_VERSION}")
 set_target_properties(core_maps PROPERTIES OUTPUT_NAME "core-maps")
 core_options(core_maps)
+
+# Client-only: not Shared, so its version need not match between host and client.
+set(CORE_UI_VERSION "0.1.0" CACHE STRING "core-ui PluginInfo::version")
+add_library(core_ui SHARED
+	core-ui/plugin.cpp
+	core-ui/automap.cpp
+	core-ui/plugin.rc
+)
+target_link_libraries(core_ui PRIVATE core_common)
+target_compile_definitions(core_ui PRIVATE CORE_PLUGIN_NAME="core-ui" CORE_PLUGIN_VERSION="${CORE_UI_VERSION}")
+set_target_properties(core_ui PROPERTIES OUTPUT_NAME "core-ui")
+core_options(core_ui)
