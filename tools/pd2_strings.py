@@ -7,7 +7,8 @@ generated/data/local/lng/. merge/strings.json holds key names and numbers only, 
   overrides  vanilla keys PD2 changed that take PD2's text (enUS only; D2R's placeholders must stay the same)
   literal_percent  overrides whose "%" is plain text the placeholder check misreads ("50% chance")
   renames    our key -> the PD2 key whose text it carries (Runeword171 means another runeword in D2R)
-  ids        key -> [string ID, D2R file], append-only. New keys copy PD2's English into all 13 languages.
+  ids        key -> [string ID, D2R file], append-only. New keys copy PD2's English into all 13 languages; a
+             hiredesc_<code> key takes the description in PD2's hiredesc table (PD2 has no string for it).
   texts      key -> English the mod writes itself, for listed keys PD2 has no text for (skilldesc lines in D2R's
              format, #73); written into all 13 languages like PD2's
 Text going into skills.json has its lines flipped (D2R stacks multi-line skill text top-down). The rule fails if D2R
@@ -112,12 +113,18 @@ def build(cfg: dict, pd2: dict[str, str], s, out_root: Path) -> list[str]:
     return s.write(out_root)
 
 
+def pd2_texts(pd2_data: Path) -> dict[str, str]:
+    """PD2's strings by key, and hiredesc_<code> for the descriptions the moved hireling rows name (pd2_tables)."""
+    import pd2_tables
+    return {**{f"hiredesc_{c}": d for c, d in pd2_tables.hire_descs(pd2_data).items()}, **read_tbl((pd2_data / TBL).read_bytes())}
+
+
 def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/strings.json."""
     if not (d2r_data / "local" / "lng" / "strings").is_dir():
         raise ValueError(f"no D2R strings under {d2r_data}: run `modkit fetch` or pass --d2r")
     cfg = json.loads(rule_file.read_text("utf-8"))
-    build(cfg, read_tbl((pd2_data / TBL).read_bytes()), modkit()[1].Strings(DataRoot(d2r_data)), out_data.parent)
+    build(cfg, pd2_texts(pd2_data), modkit()[1].Strings(DataRoot(d2r_data)), out_data.parent)
 
 
 def referenced(excel: Path) -> dict[str, set[tuple[str, str]]]:

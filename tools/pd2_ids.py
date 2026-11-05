@@ -96,7 +96,9 @@ REFS = {
                  **{c: "missiles" for c in ["MissA1", "MissA2", "MissS1", "MissS2", "MissS3", "MissS4", "MissC", "MissSQ"]}},
     "monstats2": {"ResurrectSkill": "skills"},
     "charstats": {"StartSkill": "skills", **{f"Skill {i}": "skills" for i in range(1, 11)}},
-    "hireling": {f"Skill{i}": "skills" for i in range(1, 7)},
+    # Class and Seller name monstats rows by number, HireDesc a hiredesc code: pd2_tables renames them
+    "hireling": {**{f"Skill{i}": "skills" for i in range(1, 7)}, "Class": "monster", "Seller": "monster",
+                 "HireDesc": "hiredesc"},
     "monsounds": {f"CvtSk{i}": "skills" for i in range(1, 4)},
     "skilldesc": {f"descmissile{i}": "missiles" for i in range(1, 4)},
 }
@@ -354,7 +356,7 @@ def spell(table: str, col: str, v: str, ren: dict[str, dict[str, str]]) -> str:
     function numbers moved (FUNCS)."""
     v = v.replace('"', "")
     if col in REFS.get(table, {}):
-        return ren[REFS[table][col]].get(v.lower(), v)
+        return ren.get(REFS[table][col], {}).get(v.lower(), v)
     if col in FORMULAS.get(table, []):
         return rewrite_formula(fix_formula(v), ren)
     return FUNCS.get(table, {}).get(col, {}).get(v, v)
