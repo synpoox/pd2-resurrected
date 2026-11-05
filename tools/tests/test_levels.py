@@ -104,6 +104,36 @@ class AutomapTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "1576 is past the 1576"):
             L.automap_rows(pd2, 1576)
 
+    D2R = "LevelName|TileName|Style|StartSequence|EndSequence|*Type1|Cel1|*Type2|Cel2|*Type3|Cel3|*Type4|Cel4\n" \
+          "1 Town|fl|0|1|46|A|0||-1||-1||-1\nExpansion||||||||||||\n5 Siege|fl|0|0|0|B|1300||-1||-1||-1\n"
+    PD2 = "LevelName|TileName|Style|StartSequence|EndSequence|Type1|Cel1|Type2|Cel2|Type2|Cel3|Type4|Cel4\n"
+
+    def test_vanilla_types_take_pd2s_rows_under_d2rs_header(self):
+        pd2 = table(self.PD2 + "1 Town|fl|0|1|46|A|0||-1||-1||-1\n1 Town|wl|0|2|2|New|1471||-1||-1||-1\n"
+                    "Expansion||||||||||||\n5 Siege|fl|0|0|0|B2|1361||-1||-1||-1\n36|wl|0|0|0|x|1500||-1||-1||-1\n")
+        merged = L.vanilla_automap(pd2, table(self.D2R), 1576)
+        self.assertEqual(merged.header[5], "*Type1")
+        self.assertEqual([r[0] + "/" + r[6] for r in merged.rows],
+                         ["1 Town/0", "1 Town/1471", "Expansion/", "5 Siege/1361"])
+
+    def test_vanilla_cel_past_the_tiles_fails(self):
+        pd2 = table(self.PD2 + "1 Town|fl|0|1|46|A|1576||-1||-1||-1\n")
+        with self.assertRaisesRegex(ValueError, "1576 is past the 1576"):
+            L.vanilla_automap(pd2, table(self.D2R), 1576)
+
+    def test_level_name_d2r_lacks_fails(self):
+        # D2R's loader asserts on a LevelName outside its 36
+        pd2 = table(self.PD2 + "1 Townn|fl|0|1|46|A|0||-1||-1||-1\n")
+        with self.assertRaisesRegex(ValueError, "1 Townn"):
+            L.vanilla_automap(pd2, table(self.D2R), 1576)
+
+    def test_split_level_type_fails(self):
+        # D2R's loader keeps one row range per level type: a later run of it would hide the first
+        pd2 = table(self.PD2 + "1 Town|fl|0|1|46|A|0||-1||-1||-1\n5 Siege|fl|0|0|0|B|1300||-1||-1||-1\n"
+                    "1 Town|wl|0|2|2|C|1||-1||-1||-1\n")
+        with self.assertRaisesRegex(ValueError, "1 Town"):
+            L.vanilla_automap(pd2, table(self.D2R), 1576)
+
     def test_unknown_tile_name_fails(self):
         pd2 = table("LevelName|TileName|Style|StartSequence|EndSequence|Cel1|Cel2|Cel3|Cel4\n36|xx|0|0|0|1|||\n")
         with self.assertRaisesRegex(ValueError, "xx"):

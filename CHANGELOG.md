@@ -7,6 +7,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 - The automap draws the walls Project Diablo II draws with its own automap pictures: Hellcaves, Djinns Domain and
   Na-Krul's Abyss now show their walls on the automap.
+- The automap of the original game's areas draws as in Project Diablo II: its new map pieces in the crypts,
+  catacombs, sewers and dungeons and the Act 4 mesa now show on the automap.
 - Monster kits work as in Project Diablo II: Cycle of Life and Vines heal everyone nearby at once when they eat a
   corpse, Torajan's eggs burst in a poison nova as they hatch and his nest lays at most 35, and the minions boss
   missiles raise (Leoric's guards, Iskatu's vermin, ...) are the right monsters and drop no loot and give no
