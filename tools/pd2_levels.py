@@ -292,7 +292,8 @@ def apply_files(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> N
     d2r_types = load(d2r_data, "lvltypes")
     types, moved = merge_types(load(pd2_data, "lvltypes"), d2r_types, wanted, overrides)
     pd2_ids.write("lvltypes", types, [], out_data)
-    automap = automap_rows(load(pd2_data, "automap"), pd2_automap.apply(pd2_data, d2r_data, out_data))
+    cels = pd2_automap.apply(pd2_data, d2r_data, out_data)  # writes the tiles past D2R's; returns their frame count
+    automap = automap_rows(load(pd2_data, "automap"), cels)
     dest = excel(out_data) / AUTOMAP_TABLE
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes("".join("\t".join(r) + "\n" for r in automap).encode("ascii"))  # D2RCore wants a final LF

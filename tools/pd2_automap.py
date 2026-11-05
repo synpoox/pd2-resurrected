@@ -1,7 +1,8 @@
 """PD2's own automap cels (#274): PD2's MaxiMap.dc6 has frames past D2R's automap tiles (cels 1499 and up, drawn by
 its new level types). D2R's HD tiles are strips of 100 frames, AUTOMAP/Default00-14/Tiles in automaphd.json; the
 last one has 99. The step fills the last strip and adds strips after it, each frame PD2's classic one upscaled, lists
-the new strips in automaphd.json, and ships PD2's MaxiMap.dc6 and MaxiMapS.dc6 as they are for classic graphics.
+the new strips in automaphd.json, and ships PD2's MaxiMap.dc6 and MaxiMapS.dc6 as they are for classic graphics, whose
+layout (automap.json) loads those DC6 as its tiles: with D2R's 1499 frames, the limit below would stay 1499 there.
 
 The tiles' frame count is also the map memory's limit: D2R's automap loader (0xd4570) sums the strips' frames
 (every strip but the last must have the first's count), and the map memory loader (0xd5710) rejects a stored cel at
@@ -18,6 +19,7 @@ LAYOUT = Path("global") / "ui" / "layouts" / "automaphd.json"
 CLASSIC = Path("global") / "ui" / "automap"  # PD2's maximap.dc6 (HD art source) and maximaps.dc6
 HD = Path("hd") / "global" / "ui" / "automap"
 TILE = 16  # a classic automap cel's width; D2R's HD frame is 4x (64), its lowend 2x (32)
+# shortcut: edits the layout as text, one strip per line as D2R writes it; parse it if D2R reformats the file
 STRIP = re.compile(r'^([ \t]*)"AUTOMAP/Default(\d\d)/Tiles",', re.M)
 
 
@@ -43,7 +45,7 @@ def apply(pd2_data: Path, d2r_data: Path, out_data: Path) -> int:
     pd2 = dc6.read(pd2_data / CLASSIC / "maximap.dc6")
     layout = (d2r_data / LAYOUT).read_bytes().decode("utf-8-sig")  # not read_text: it keeps D2R's CRLF
     listed = [int(m.group(2)) for m in STRIP.finditer(layout)]
-    if listed != list(range(len(listed))) or not listed:
+    if not listed or listed != list(range(len(listed))):
         raise ValueError(f"{LAYOUT.as_posix()}: tilesDefaultFilename is not Default00..NN in order")
     per = images.read_sprite(d2r_data / sheets(0)[0])[2]
     last = listed[-1]
@@ -53,23 +55,23 @@ def apply(pd2_data: Path, d2r_data: Path, out_data: Path) -> int:
     palette = dc6.palette((d2r_data / "global" / "palette" / "units" / "pal.dat").read_bytes())
     art = {c: (pd2[c], dc6.decode(pd2[c], palette)) for c in range(d2r_cels, len(pd2))}
     strips = -(-len(pd2) // per)
-    for low in (0, 1):
-        geometry, fw, _ = images.read_sprite(d2r_data / sheets(0)[low])
+    for quality in (0, 1):  # sheets(n)[0] is the HD strip, [1] its lowend twin
+        geometry, fw, _ = images.read_sprite(d2r_data / sheets(0)[quality])
         stride, h = geometry[0] // per, geometry[1]
         k = fw // TILE
-        own = images.read_sprite(d2r_data / sheets(last)[low])[0]
+        d2r_last = images.read_sprite(d2r_data / sheets(last)[quality])[0]
         for n in range(last, strips):
             frames = []
             for c in range(n * per, min(len(pd2), (n + 1) * per)):
                 if c < d2r_cels:
-                    frames.append(images.crop(own, (c - n * per) * stride, 0, stride, h))
+                    frames.append(images.crop(d2r_last, (c - n * per) * stride, 0, stride, h))
                     continue
                 (w, fh, ox, oy, _), img = art[c]
                 big = images.scale(img, w * k, fh * k)
                 # a DC6 frame's bottom-left sits at its offset; shortcut: art past the cell is clipped (6 PD2 cels are
                 # bigger than 16x32), upgrade if a level shows them cut
                 frames.append(images.paste(images.blank(stride, h), big, ox * k, h - fh * k + oy * k))
-            images.write_sprite(out_data / sheets(n)[low], images.hstack(frames, stride, h), fw, len(frames),
+            images.write_sprite(out_data / sheets(n)[quality], images.hstack(frames, stride, h), fw, len(frames),
                                 lowend=False)
     m = list(STRIP.finditer(layout))[-1]
     eol = "\r\n" if "\r\n" in layout else "\n"
