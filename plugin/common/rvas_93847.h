@@ -786,6 +786,10 @@ inline constexpr uint64_t ItemCalc = 0x3b4880;  // (dataFlag, player, item, calc
 // the opening in the game's counter for key; with max > 0 it refuses once the counter reaches max. A refusal sends
 // client message 0x15.
 inline constexpr uint64_t OpenRedPortal = 0x5da800;
+// What OpenRedPortal does first, to find the portal's spot: the unit's (x, y), then a search around it, (game,
+// room, int xy[2] in/out, 3, 0x400, room** found, 5, 100); *found stays null when there is no free spot. Reads only.
+inline constexpr uint64_t UnitCoords = 0x34a040;  // (unit, int32 xy[2])
+inline constexpr uint64_t FindFreeSpot = 0x517f90;
 inline constexpr uint64_t GameCounter = 0x5d88b0;  // (game + GameCounters, &key) -> int32* counter (made if missing)
 inline constexpr int GameCounters = 0x1aac8;
 // (questRecord, quest, bit) -> non-zero when set (D2Common QuestRecord.cpp); a player's record for a difficulty is

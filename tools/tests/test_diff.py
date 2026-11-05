@@ -175,6 +175,16 @@ class GateTests(unittest.TestCase):
         self.write("mod", "gems", table("name | weaponMod1Code | weaponMod1Param", "Ruby | oskill | 430"))
         self.assertEqual(self.gate("P3").open(), [])
 
+    def test_a_maps_level_follows_the_level_list(self):
+        # PD2's map spell 12 is the mod's 16 (FUNCS) and its len the mod's level id; a potion's len is a duration
+        (self.root / "merge").mkdir()
+        (self.root / "merge/ids-levels.tsv").write_text("Null\t0\tNull\nRuins\t5\tRuins\n", "utf-8")
+        self.write("pd2", "properties", table("code | func1"))
+        self.write("pd2", "levels", table("Name | Id", "Null | 0", "Ruins | 1"))
+        self.write("pd2", "misc", table("name | code | pSpell | len", "Map | t11 | 12 | 1", "Potion | hp1 | 3 | 1"))
+        self.write("mod", "misc", table("name | code | pSpell | len", "Map | t11 | 16 | 5", "Potion | hp1 | 3 | 1"))
+        self.assertEqual([o for o in self.gate("P3").open() if o[0].startswith("misc.")], [])
+
     def test_missile_hit_parameters_follow_the_state_list(self):
         (self.root / "merge").mkdir()
         (self.root / "merge/ids-states.tsv").write_text("none\t0\tnone\npoison_strike\t282\tpoison_strike\n", "utf-8")

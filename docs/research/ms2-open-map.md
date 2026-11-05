@@ -26,8 +26,10 @@ core-maps hooks both dispatchers. An item whose record (`0x314110`) has pSpell (
 
 - **Check:** the level is `len` (`+0xb0`) through D2R's item calc `0x3b4880` (dataFlag, player, item, calc), as the
   timed potion handler `0x57ecb0` evaluates it. Then PD2's gates: Hell (game `+0x104`), character level 80+ (stat 12),
-  Rite of Passage done in Hell, standing in Harrogath (109), and no opening yet in this game. A refusal sends client
-  message 0x15 and keeps the map.
+  Rite of Passage done in Hell, standing in Harrogath (109), and no opening yet in this game. Last, a free spot for the
+  portal: the use's own search (the player's xy from `0x34a040`, then `0x517f90`), so a map is never used up for no
+  portal (PD2 places it unchecked). A refusal sends client message 0x15 and keeps the map. D2R's handler sends nothing
+  on a false check (it only logs a telemetry event), so the player sees one message.
 - **Use:** D2R's cube "Red Portal" output `0x5da800` (game, player, key, level, max). It needs town, finds a free spot,
   makes object 60 to the level through the portal maker `0x432ce0` (with its last argument 1, which lifts the town
   portal's level whitelist), and adds 1 to the game counter of `key` (`0x5d88b0` on game `+0x1aac8`). With max 1 it
@@ -57,6 +59,7 @@ written) that is 51 monsters, as merged monstats ids in `NeverRaised`.
 - A second map in the same game: refused ("already open"), the map stays, the client shows its refusal.
 - Hell, the Pandemonium Fortress: refused ("in level 103, not Harrogath").
 - A new game: the count starts again, and the map opens.
+- With the free-spot check: Hell, Harrogath, level 90 Paladin: the portal opens to level 144.
 - Normal, the Rogue Encampment: refused ("not Hell").
 
-Not run: the Rite of Passage refusal (every test character has it done), Find Item and Desecrate on map monsters.
+Not run: the no-free-spot refusal (no crowded spot was set up), the Rite of Passage refusal (every test character has it done), Find Item and Desecrate on map monsters.

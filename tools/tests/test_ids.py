@@ -366,12 +366,16 @@ class ItemTableTests(unittest.TestCase):
     def test_map_items_take_spell_16_and_the_mod_level(self):
         # a map (PD2 pSpell 12) opens the level its len names: the mod's id, blank when the level is left out;
         # a potion's len is a duration and stays
-        ids = {"levels": {"142": "143", "185": "181"}}
+        ids = {"levels": {"142": "143", "185": "181"}, I.LEFT_OUT_LEVELS: {"157": ""}}
         merged = I.merge_table("misc", table("code|pSpell|len\nt11|12|142\nubtm|12|185\nt61|12|157\nhp1|3|192\n"),
                                table("code|pSpell|len\n"), [("t11", 0, "t11"), ("ubtm", 1, "ubtm"), ("t61", 2, "t61"),
                                                             ("hp1", 3, "hp1")], {}, ids)[0]
         self.assertEqual(merged.rows, [["t11", "16", "143"], ["ubtm", "16", "181"], ["t61", "16", ""],
                                        ["hp1", "3", "192"]])
+        # a level that is neither the port's nor left out is an error, not a map that opens nothing
+        with self.assertRaisesRegex(I.IdError, "level '999'"):
+            I.merge_table("misc", table("code|pSpell|len\nt11|12|999\n"), table("code|pSpell|len\n"),
+                          [("t11", 0, "t11")], {}, ids)
 
 
 class LevelTableTests(unittest.TestCase):

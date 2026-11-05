@@ -4,10 +4,11 @@
 // handles spell 16 there; every other spell goes on to D2R.
 //
 // The gates, in PD2's order: Hell, character level 80+, Rite of Passage done in Hell, standing in Harrogath, and no map
-// opened yet in this game. A refused map stays in the inventory and the player gets D2R's "can't do that". The portal
-// is D2R's cube "Red Portal" output, which places object 60 by the player and counts the opening per game; its max of 1
-// on OpenKey is the one-per-game gate. PD2's uber-area exception and its refusal of levels 152, 153 and 255 belong to
-// the uber keys and the Monastery map, which keep a blank pSpell until UB2.
+// opened yet in this game; then a free spot for the portal (PD2 places it unchecked). A refused map stays in the
+// inventory and the player gets D2R's "can't do that" (D2R's caller sends none of its own). The portal is D2R's cube
+// "Red Portal" output, which places object 60 by the player and counts the opening per game; its max of 1 on OpenKey
+// is the one-per-game gate. PD2's uber-area exception and its refusal of levels 152, 153 and 255 belong to the uber
+// keys and the Monastery map, which keep a blank pSpell until UB2.
 #include "map_open.h"
 
 #include "d2r.h"
@@ -78,6 +79,21 @@ auto PlayerLevelId(Unit* player) noexcept -> int32_t {
 	return room != nullptr ? d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room) : -1;
 }
 
+// OpenRedPortal's own spot search: false when it would find no free spot, which would use the map up for nothing
+auto PortalSpotFree(Game* game, Unit* player) noexcept -> bool {
+	using namespace d2r::rva;
+	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(player);
+	if (room == nullptr) {
+		return false;
+	}
+	int32_t xy[2] = {};
+	d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(UnitCoords)(player, xy);
+	void* found = nullptr;
+	d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(FindFreeSpot)(
+		game, room, xy, 3, 0x400, &found, 5, 100);
+	return found != nullptr;
+}
+
 // True, with the reason in `why`, when PD2 would refuse this map now.
 auto Refusal(Game* game, Unit* player, int32_t level, char* why, size_t size) noexcept -> bool {
 	const int32_t charLevel = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(
@@ -95,6 +111,8 @@ auto Refusal(Game* game, Unit* player, int32_t level, char* why, size_t size) no
 		std::snprintf(why, size, "in level %d, not Harrogath", where);
 	} else if (Openings(game) > 0) {
 		std::snprintf(why, size, "a map or uber area is already open in this game");
+	} else if (!PortalSpotFree(game, player)) {
+		std::snprintf(why, size, "no free spot for the portal here");
 	} else {
 		return false;
 	}
@@ -117,8 +135,6 @@ auto SpellCheck(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> 
 	return 1;
 }
 
-// shortcut: the check passed, so the item is used up even if D2R finds no free spot for the portal (PD2 too places
-// it unchecked); add a pre-check of the spot if a game check ever loses a map that way.
 auto SpellUse(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> void {
 	const uint8_t* record = g_gated && game != nullptr && player != nullptr && item != nullptr ? IsMap(game, item)
 	                                                                                         : nullptr;

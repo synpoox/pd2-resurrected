@@ -111,6 +111,7 @@ NUM_REFS = {"levels": {**{f"Vis{i}": "levels" for i in range(8)}, **{f"ObjGrp{i}
 # docs/research/pd2-map-system-dll.md): it takes the mod's id, blank for a left-out level (PvP, PD2's Uber Ancients).
 # Every other row's len is a duration.
 MAP_SPELL = "12"
+LEFT_OUT_LEVELS = "levels left out"  # an ids key: the PD2 level ids the port leaves out
 # columns that hold the row's own id, written with the mod's (lvlwarp UniqueId: D2R's, the row number)
 ID_COLS = {"levels": "Id", "lvlprest": "Def", "lvlwarp": "UniqueId"}
 # columns a merged D2R row keeps, where the games give them different meanings (objects Token: D2R's graphics)
@@ -388,7 +389,12 @@ def fix_map_level(table: str, header: list[str], row: list[str], pd2_spell: str,
     """A map item's len (PD2 pSpell MAP_SPELL) in the mod's level ids; blank for a left-out level."""
     if table == "misc" and pd2_spell == MAP_SPELL and "len" in header:
         j = header.index("len")
-        row[j] = ids.get("levels", {}).get(row[j], "")
+        if row[j] in ids.get("levels", {}):
+            row[j] = ids["levels"][row[j]]
+        elif row[j] in ids.get(LEFT_OUT_LEVELS, {}):
+            row[j] = ""
+        else:
+            raise IdError(f"misc '{row[0]}': len names PD2's level {row[j]!r}, which has no id")
 
 
 def fix_hit_params(header: list[str], row: list[str], ids: dict[str, dict[str, str]]) -> None:
@@ -532,8 +538,11 @@ def context_of(lists: dict[str, list[tuple[str, int, str]]], pd2_data: Path, d2r
         if not lists[t]:  # nothing to remap (tests with no such table)
             continue
         mod = {p.lower(): i for p, i, _ in lists[t]}
-        ids[t] = {str(k): str(mod[p.lower()]) for k, p in enumerate(ident(load(pd2_data, t).names()))
+        names = ident(load(pd2_data, t).names())
+        ids[t] = {str(k): str(mod[p.lower()]) for k, p in enumerate(names)
                   if mod[p.lower()] != LEFT_OUT}  # a reference to a left-out row fails the merge
+        if t == "levels":  # except a map's (fix_map_level)
+            ids[LEFT_OUT_LEVELS] = {str(k): "" for k, p in enumerate(names) if mod[p.lower()] == LEFT_OUT}
     if d2r_data is not None and (excel(d2r_data) / "monstats.txt").is_file():
         ids["monstats"] = monstats_ids(load(pd2_data, "monstats"), load(d2r_data, "monstats"))
     return Context(lists, renames(lists), ids, property_kinds(load(pd2_data, "properties")))
