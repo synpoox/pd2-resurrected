@@ -40,6 +40,13 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
   monstats `Id`: a PD2 monster keyed `hellbovinemap` instead of `hellbovineMap` was invisible in game. Never lower-case
   a key built from a PD2 name unless D2R's own file shows it lower-cases that kind of name (uniques and sets: it does).
 
+## Plugin code
+
+- **Always use D2RLoader's PluginSDK (`third_party/PluginSDK`) before a native hook.** Read its `README.md` and
+  `include/D2RLPlugin/` for a service that does the job (items: `createItem`, `executeTransaction`,
+  `executeExistingItemTransaction`, `splitStack`; inventory; game rules; and others). Hook D2R code only when no service
+  covers it, and say in the code why. A byte patch goes through the SDK's MutationService.
+
 ## Reverse engineering
 
 Use Ghidra, as `d2rAI-toolkit/knowledge/engine-re.md` describes. Use capstone only for quick byte checks in scripts (a hook's entry bytes).
