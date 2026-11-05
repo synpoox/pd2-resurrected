@@ -1,6 +1,6 @@
-# Desecrate (W13): srvdo 161, cltdo 101
+# Desecrate ([W13](https://github.com/synpoox/pd2-resurrected/issues/88)): srvdo 161, cltdo 101
 
-Answers work item W13 (#88). PD2 side from the baseline install `C:\Games\PD2\ProjectD2` (`ProjectDiablo.dll`, base
+Answers work item [W13](https://github.com/synpoox/pd2-resurrected/issues/88) ([#88](https://github.com/synpoox/pd2-resurrected/issues/88)). PD2 side from the baseline install `C:\Games\PD2\ProjectD2` (`ProjectDiablo.dll`, base
 0x10000000; its table fill at `0x1036ba36` writes slot n at table + n*4), D2R side from the 93847 dump
 (`ImageStamp 0x6ab3782c`). PD2's Desecrate row merges onto D2R's Poison Explosion (skill 83).
 

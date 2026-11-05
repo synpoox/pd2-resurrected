@@ -1,6 +1,6 @@
-# Melee splash: the current skill's damage and radius extras (W35)
+# Melee splash: the current skill's damage and radius extras ([W35](https://github.com/synpoox/pd2-resurrected/issues/125))
 
-Answers work item W35 (#125), the rest of [w33-melee-splash](w33-melee-splash.md). PD2 side from `ProjectDiablo.dll`
+Answers work item [W35](https://github.com/synpoox/pd2-resurrected/issues/125) ([#125](https://github.com/synpoox/pd2-resurrected/issues/125)), the rest of [w33-melee-splash](w33-melee-splash.md). PD2 side from `ProjectDiablo.dll`
 (VAs `0x10...`) and the 1.13c `D2Game.dll` / `D2Common.dll` in PD2's Ghidra project; D2R side from the 93847 dump,
 RVAs.
 
@@ -11,7 +11,7 @@ PD2's thunks (`0x1030xxxx` that jump through `DAT_105exxxx`) resolve through per
 
 ### srvdo 163's block (`0x103b2340`)
 
-For a player (`*unit == 0`) whose current skill (`0x1030dd00` = D2Common #10511: `unit->pSkills->+0x10`) is not the
+For a player (`*unit == 0`) whose current skill (`0x1030dd00` = D2Common [#10511](https://github.com/synpoox/pd2-resurrected/issues/10511): `unit->pSkills->+0x10`) is not the
 splash, the block gets that skill's id, its level read as the skill's `+0x28`, which is its hard points, and its record's
 fields:
 
@@ -30,11 +30,11 @@ With no such skill it is Attack (0) at level 1. PD2's ids 378 and 380 are Joust 
 `calc3 + 0x10381720(unit, 478) / 20`, minus 1 when the weapon (`0x103309b0`, D2Game) has a record (`0x103072e0`)
 whose `+0x80` (code) equals `+0x84` (normcode), that is, a normal-tier base.
 
-`0x10381720` reads every layer of stat 478 (`inc_splash_radius`) from the unit's full stat list (D2Common #10702). It
-skips layer 0. It adds a layer's value when the wielded weapon (#10061) is of the item type the layer names (#10744).
+`0x10381720` reads every layer of stat 478 (`inc_splash_radius`) from the unit's full stat list (D2Common [#10702](https://github.com/synpoox/pd2-resurrected/issues/10702)). It
+skips layer 0. It adds a layer's value when the wielded weapon ([#10061](https://github.com/synpoox/pd2-resurrected/issues/10061)) is of the item type the layer names ([#10744](https://github.com/synpoox/pd2-resurrected/issues/10744)).
 The masteries put their passive stats on their passiveitype's layer: One Hand Mastery on 1han, Two Hand Mastery on
-2han. The 1han and 2han layers also check the other hand (#10417 body location, #11139 item at a body location,
-#10747 can dual wield, that is, a Barbarian or an Assassin):
+2han. The 1han and 2han layers also check the other hand ([#10417](https://github.com/synpoox/pd2-resurrected/issues/10417) body location, [#11139](https://github.com/synpoox/pd2-resurrected/issues/11139) item at a body location,
+[#10747](https://github.com/synpoox/pd2-resurrected/issues/10747) can dual wield, that is, a Barbarian or an Assassin):
 
 - 2han: counted only when the other hand is empty or holds the same item.
 - 1han: counted for a 1han weapon; for a 2han weapon held by a dual-wield class, only when the other hand holds a
@@ -56,7 +56,7 @@ Arena (`0x1037c7b0`).
    weapon damage at SrcDam.
 5. Life leech / 2 (at least 1). A player victim's data `+0x194` = the skill id. Apply: `0x10305880`, with flag 0.
 
-The 1.13c physical fill `0x9f1a0` adds `min + rand(max - min)` (D2Common #10567 / #10297 with `(unit, skill, level,
+The 1.13c physical fill `0x9f1a0` adds `min + rand(max - min)` (D2Common [#10567](https://github.com/synpoox/pd2-resurrected/issues/10567) / [#10297](https://github.com/synpoox/pd2-resurrected/issues/10297) with `(unit, skill, level,
 0)`, the unit's seed at `+0x20`) to the damage's `+0x08`.
 
 ### Handlers skipped (`0x10305c30` -> walker `0x10347510`)
@@ -95,7 +95,7 @@ The apply passes flag 0, so the walker gets the handler set `0x105dc628` (built 
 - The radius counts the layers of the weapon's own item types. PD2's off-hand rules for 1han and 2han are left out:
   D2R's item-at-body-location (0x3885e0) treats weapons in slots 5 and 6 specially and is not decoded.
 - A player victim's last-hit skill (1.13c's `+0x194`) is not written.
-- The room check is left out: it refuses only the PvP maps, which are cut, as for W9's bounce.
+- The room check is left out: it refuses only the PvP maps, which are cut, as for [W9](https://github.com/synpoox/pd2-resurrected/issues/55)'s bounce.
 
 ## Checks
 

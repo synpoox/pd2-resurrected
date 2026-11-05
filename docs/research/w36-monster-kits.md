@@ -1,6 +1,6 @@
-# Monster kits (W36)
+# Monster kits ([W36](https://github.com/synpoox/pd2-resurrected/issues/244))
 
-Answers work item W36 (#244). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and PD2's 1.13c `D2Game.dll` /
+Answers work item [W36](https://github.com/synpoox/pd2-resurrected/issues/244) ([#244](https://github.com/synpoox/pd2-resurrected/issues/244)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and PD2's 1.13c `D2Game.dll` /
 `D2Client.dll` (RVAs named so) in the PD2 Ghidra project; D2R side from the 93847 dump (RVAs). Read statically; D2R's
 table slots read from the runtime dump the way `skill-function-tables/probe_tables.py` reads them.
 
@@ -82,7 +82,7 @@ but never reads `sHitPar3`. PD2's five rows set 0x4020000 (no treasure class, no
 D2R's 6 would let these spawns drop loot and give experience. Ours takes slot 67 (61-70 free; PD2 uses 61-65).
 
 `sHitPar1` is a monstats id, and the mod's monstats has D2R's rows first (17 more than 1.13c's) and PD2's after them, so
-PD2's 999 (leoricGuards) is the mod's 1016. Before W36 the merge kept 999, which is a different monster in the mod.
+PD2's 999 (leoricGuards) is the mod's 1016. Before [W36](https://github.com/synpoox/pd2-resurrected/issues/244) the merge kept 999, which is a different monster in the mod.
 `pd2_ids.HIT_PARAMS` now names `sHitPar1` of srvhit 67 a monstats id, and `pd2_ids.monstats_ids` maps PD2's ids the way
 `merge/tables.json` merges monstats (by name, D2R's rows keep their ids).
 
@@ -90,7 +90,7 @@ PD2's 999 (leoricGuards) is the mod's 1016. Before W36 the merge kept 999, which
 
 1.13c's clthit 11 is empty, and so is D2R's; D2R's dispatcher (`0x1b8e60`) skips an empty slot. Data.
 
-1.13c's cdo 12 (D2Client `0xb2d00`): with CltParam1 and CltParam2 at least 1, and unless D2Common #10985 says no, a
+1.13c's cdo 12 (D2Client `0xb2d00`): with CltParam1 and CltParam2 at least 1, and unless D2Common [#10985](https://github.com/synpoox/pd2-resurrected/issues/10985) says no, a
 screen shake of strength CltParam1 with (CltParam2 / 3) * 1000 twice; then the default missile do (cdo 1). D2R's 12
 (`0x1b6b30`) is the same with a three-part shake, (CltParam2 / 3) * 1000, (CltParam2 - 2 * (CltParam2 / 3)) * 1000,
 (CltParam2 / 3) * 1000, then cdo 1 (`0x1b5380`). PD2's row has CltParam2 1, so 1.13c passes 0, 0 and D2R a middle part

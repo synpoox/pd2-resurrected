@@ -1,6 +1,6 @@
-# MS2: opening a map in D2R
+# [MS2](https://github.com/synpoox/pd2-resurrected/issues/217): opening a map in D2R
 
-Resolves the D2R side of MS2 ([#217](https://github.com/synpoox/pd2-resurrected/issues/217); PD2's side is
+Resolves the D2R side of [MS2](https://github.com/synpoox/pd2-resurrected/issues/217) ([#217](https://github.com/synpoox/pd2-resurrected/issues/217); PD2's side is
 [pd2-map-system-dll.md](pd2-map-system-dll.md), section 1). D2R addresses are RVAs in the 93847 dump
 (`ImageStamp 0x6ab3782c`), read in Ghidra (`D2R.gpr`); PD2's are VAs in `ProjectDiablo.dll` (`PD2.gpr`).
 
@@ -12,8 +12,8 @@ Resolves the D2R side of MS2 ([#217](https://github.com/synpoox/pd2-resurrected/
   12 row (`fix_map_level`): Ruins of Viz-Jun `t11` 143 -> 144, Descent from Mount Arreat `t2a` 210 -> 201. A left-out
   level (PvP, PD2's Uber Ancients) leaves it blank.
 - The uber keys, the PvP maps and the Monastery map keep a blank pSpell (`merge/standins.tsv`) and their no-drop lines:
-  UB2 opens the keys, PvP is cut, and PD2 refuses the Monastery map's level 152.
-- The other maps and the two map orbs (`upmp`, `fort`, used by MS5's recipes) drop again.
+  [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) opens the keys, PvP is cut, and PD2 refuses the Monastery map's level 152.
+- The other maps and the two map orbs (`upmp`, `fort`, used by [MS5](https://github.com/synpoox/pd2-resurrected/issues/220)'s recipes) drop again.
 
 ## D2R's item spells (`D2Game\src\Skills\SkillItem.cpp`)
 
@@ -33,7 +33,7 @@ core-maps hooks both dispatchers. An item whose record (`0x314110`) has pSpell (
 - **Use:** D2R's cube "Red Portal" output `0x5da800` (game, player, key, level, max). It needs town, finds a free spot,
   makes object 60 to the level through the portal maker `0x432ce0` (with its last argument 1, which lifts the town
   portal's level whitelist), and adds 1 to the game counter of `key` (`0x5d88b0` on game `+0x1aac8`). With max 1 it
-  refuses once the counter is 1: core-maps' key `'MAPS'` is the one-per-game gate, which UB2's uber areas share.
+  refuses once the counter is 1: core-maps' key `'MAPS'` is the one-per-game gate, which [UB2](https://github.com/synpoox/pd2-resurrected/issues/227)'s uber areas share.
 
 **Quest record.** `0x325c50` (record, quest, bit) tests a quest bit (`D2Common\src\QuestRecord\QuestRecord.cpp`). The
 item-use quest checks in `0x4734f0` read a player's record for a difficulty at player data (`0x34b240`) `+0x40 +

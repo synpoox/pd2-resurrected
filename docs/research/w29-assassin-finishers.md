@@ -1,10 +1,10 @@
-# Assassin charge-up finishers: server half (W29)
+# Assassin charge-up finishers: server half ([W29](https://github.com/synpoox/pd2-resurrected/issues/104))
 
-Answers work item W29 (#104), on the slots [w25-assassin-finishers](w25-assassin-finishers.md) chose. PD2 side read
+Answers work item [W29](https://github.com/synpoox/pd2-resurrected/issues/104) ([#104](https://github.com/synpoox/pd2-resurrected/issues/104)), on the slots [w25-assassin-finishers](w25-assassin-finishers.md) chose. PD2 side read
 from `ProjectDiablo.dll` (VAs `0x10...`) and PD2's 1.13c `D2Game.dll` (RVAs named "D2Game") in the PD2 Ghidra
 project, D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`); other addresses are D2R RVAs. Read statically.
 
-## What W25 left open
+## What [W25](https://github.com/synpoox/pd2-resurrected/issues/100) left open
 
 - **Shared charges (`0x1036ee80`)**: confirmed. For each progressive state (data tables `+0x16c`, count `+0x170`) the
   unit has a list of, it reads the list's skill (stat 350), that skill's `aurastat1`, and the list's value of it. It
@@ -12,7 +12,7 @@ project, D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`); other addresses
 - **Release dispatcher**: PD2 does not hook it. Its version table holds 1.13c's release (D2Game `0x91b70`) once
   (`0x104a90f4`), read by an address accessor (`0x1031b5b0`) whose one user is a call wrapper (`0x103a1b20`) that two
   PD2 do functions (`0x103af640`, `0x103b4180`) call. So the finishers release through D2R's own `SrvPrgDispatch`
-  (`0x56c3e0`), which does what 1.13c's does (W25). Both its prg calls pass the level in R9, so a prg function gets
+  (`0x56c3e0`), which does what 1.13c's does ([W25](https://github.com/synpoox/pd2-resurrected/issues/100)). Both its prg calls pass the level in R9, so a prg function gets
   `(game, unit, skill, level)` whether the release or srvdo 170 calls it.
 - **The 139 missile helper**: `[0x105e08b0]` is resolved from version table entry `0x104a91a4` to D2Game `0x91340`,
   vanilla's charge missile: a skill with charges gets srvmissilea/b/c for 1/2/3+ charges, any other skill
@@ -20,8 +20,8 @@ project, D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`); other addresses
   (`0x585440`) takes srvmissilea (`+0x68`), so the four monster rows on 139 get the same missile from both: the
   core-rules `verify` row is data.
 - **The Cobra Strike branch of 171/172** (skill 265 only, not RakanothStrike): it fills a hit's damage block for the
-  skill and adds its poison, scaled by its rolled length over ELen (D2Common #10510, version entry `0x104a8b1c`), to
-  each missile's poisonmindam and poisonmaxdam (`0x1036e500`). As in Poison Dagger (W11), the port takes the
+  skill and adds its poison, scaled by its rolled length over ELen (D2Common [#10510](https://github.com/synpoox/pd2-resurrected/issues/10510), version entry `0x104a8b1c`), to
+  each missile's poisonmindam and poisonmaxdam (`0x1036e500`). As in Poison Dagger ([W11](https://github.com/synpoox/pd2-resurrected/issues/86)), the port takes the
   skill's rolled poison from D2R's fill, whose length is ELen, so the scale is 1.
 
 ## srvdo 170 (`0x103b2c60`): router 190
@@ -85,4 +85,4 @@ All four read the charge with PD2's `0x1037ddf0` rule (the list's aurastat1 valu
 
 `tools/pd2_ids.py` FUNCS: srvdofunc 170 -> 190; srvprgfunc1-3 171 -> 184, 172 -> 185, 39 -> 186, 139 -> 181 (only
 the finishers use those values there). The stand-ins (`merge/standins.tsv`) keep only the client columns
-(cltprgfunc1-3) for W30.
+(cltprgfunc1-3) for [W30](https://github.com/synpoox/pd2-resurrected/issues/105).

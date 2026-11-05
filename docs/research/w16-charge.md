@@ -1,6 +1,6 @@
-# Paladin: Charge (W16)
+# Paladin: Charge ([W16](https://github.com/synpoox/pd2-resurrected/issues/91))
 
-Answers work item W16 (#91). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and its 1.13c `D2Common.dll` in
+Answers work item [W16](https://github.com/synpoox/pd2-resurrected/issues/91) ([#91](https://github.com/synpoox/pd2-resurrected/issues/91)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and its 1.13c `D2Common.dll` in
 Ghidra, D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`). Addresses are D2R RVAs unless they start with `0x10`
 or `0x6f`.
 

@@ -117,7 +117,7 @@ Tool tests (no PD2 data needed):
 python -m unittest discover -s tools/tests
 ```
 
-The table-diff gate compares the merged tables with PD2's, scoped to a work item (P2, P3, P4) or milestone (M1,
+The table-diff gate compares the merged tables with PD2's, scoped to a work item (P2, [P3](https://github.com/synpoox/pd2-resurrected/issues/47), [P4](https://github.com/synpoox/pd2-resurrected/issues/48)) or milestone (M1,
 alpha). It fails on any difference that [docs/deviations.md](docs/deviations.md) does not list; paste its output into
 the PR:
 

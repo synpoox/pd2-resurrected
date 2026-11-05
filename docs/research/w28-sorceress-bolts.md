@@ -1,6 +1,6 @@
-# Sorceress: bolt hits (shit 62) and Chilling Armor's event 3 (W28)
+# Sorceress: bolt hits (shit 62) and Chilling Armor's event 3 ([W28](https://github.com/synpoox/pd2-resurrected/issues/103))
 
-Answers work item W28 (#103). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll` in the
+Answers work item [W28](https://github.com/synpoox/pd2-resurrected/issues/103) ([#103](https://github.com/synpoox/pd2-resurrected/issues/103)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll` in the
 Ghidra project `PD2.gpr`, D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`). Addresses are D2R RVAs unless they
 start with `0x10`; 1.13c D2Game addresses are offsets in that DLL.
 

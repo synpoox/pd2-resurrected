@@ -1,6 +1,6 @@
-# Sorceress: Teleport and blocked areas (W26)
+# Sorceress: Teleport and blocked areas ([W26](https://github.com/synpoox/pd2-resurrected/issues/101))
 
-Answers work item W26 (#101). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) in the Ghidra project
+Answers work item [W26](https://github.com/synpoox/pd2-resurrected/issues/101) ([#101](https://github.com/synpoox/pd2-resurrected/issues/101)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) in the Ghidra project
 `PD2.gpr`, D2R side from the 93847 dump. Addresses are D2R RVAs unless they start with `0x10`.
 
 ## Where PD2 puts it
@@ -17,7 +17,7 @@ merge moves 155 to the router (srvdo 190, by skill id: merged 54, 429, 642, 682)
 2. `calc2` srvmissilea in PD2's ring (`0x1036d250`, the same ring as Poison Dagger's) around the unit's new point,
    flags 3. Only LucionBlink has one: 32 `lucionblinknova`.
 3. If `aurastate` is a state: PD2's state helper `0x1036c920`, which calls the timed-state helper `0x1036d7d0` (the
-   recast rule of the W12 note) with `auralencalc` frames and four stats, each set only on a new list:
+   recast rule of the [W12](https://github.com/synpoox/pd2-resurrected/issues/87) note) with `auralencalc` frames and four stats, each set only on a new list:
    passive_fire_mastery (329), passive_cold_mastery (331), passive_ltng_mastery (330), passive_pois_mastery (332),
    each `-(r + trunc(mastery * r / 100))` with `r = Param2 - calc1` (`0x1037c4c0`: the stat times `r` over 100 as a
    double, truncated). Only Teleport has an aurastate: `teleportdebuff`, `auralencalc` `max(0, 25 - pvp_lld_cd)`,

@@ -1,6 +1,6 @@
-# Assassin charge-up finishers: hook points (W25)
+# Assassin charge-up finishers: hook points ([W25](https://github.com/synpoox/pd2-resurrected/issues/100))
 
-Answers work item W25 (#100): which table slots the charge-up skills (Tiger Strike, Fists of Fire, Cobra Strike,
+Answers work item [W25](https://github.com/synpoox/pd2-resurrected/issues/100) ([#100](https://github.com/synpoox/pd2-resurrected/issues/100)): which table slots the charge-up skills (Tiger Strike, Fists of Fire, Cobra Strike,
 Claws of Thunder, Blades of Ice, Royal Strike, RakanothStrike) take in D2R, and how PD2 builds and releases charges.
 PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) in the PD2 Ghidra project, D2R side from the 93847 dump
 (`ImageStamp 0x6ab3782c`); addresses are D2R RVAs unless they start with `0x10` or name their 1.13c DLL ("D2Game
@@ -44,7 +44,7 @@ The charge count is the skill's `aurastat1` value on its `aurastate` list (`0x10
   2. On a hit (bit 0 set, and either the target is a player that passes `0x1037c820` or none of `0x8390` is set), it
      adds charges (`0x1036efe0`) while this skill's charge count is at most that returned value. `0x1036ee80` is not
      read yet. The likely reading is that it returns the unit's highest charge count, so charges are shared: a
-     charge-up skill takes over the highest count, and a hit at 3 clears all states and restarts at 1. W29 confirms it.
+     charge-up skill takes over the highest count, and a hit at 3 clears all states and restarts at 1. [W29](https://github.com/synpoox/pd2-resurrected/issues/104) confirms it.
   3. Cobra Strike and RakanothStrike (`aurastat1` 319, `progressive_steal`): at the 2nd charge it adds a 3-frame stat
      list with lifedrainmindam (60) and manadrainmindam (62) = calc1, and stat 25 = calc2.
   4. The melee damage (`0x1031b4a0`) follows. Then, on a hit, it calls srvprgfunc[min(charges, 3)] at once, bound
@@ -59,17 +59,17 @@ The charge count is the skill's `aurastat1` value on its `aurastate` list (`0x10
   WarlordMiniBoss1BaalFire): vanilla's cold-missile body, except that the missile comes from a D2Game helper through
   `[0x105e08b0]` (the helper is not resolved) instead of `srvmissile`. PD2's Blades of Ice row has no `srvmissile`,
   only `srvmissileb` (boiwavemaker), so the helper must pick the missile by charge. That is inferred from the data;
-  W29 confirms it.
+  [W29](https://github.com/synpoox/pd2-resurrected/issues/104) confirms it.
 - **cltprg 106 / 107**: the client halves of 171 (spread) and 172 (nova), with cltcalc[charge] and cltmissile[charge].
   RakanothStrike's client prg3 is vanilla 11, not 107.
-- **cdo 69** (fistsoffireexplode, bladesoficecubes): on the missile's first frame (W30 corrects "last") it creates its `CltSubMissile1`
+- **cdo 69** (fistsoffireexplode, bladesoficecubes): on the missile's first frame ([W30](https://github.com/synpoox/pd2-resurrected/issues/105) corrects "last") it creates its `CltSubMissile1`
   (fistsoffirefirewall, bladesoficeexplode) at the missile's position.
 - **chit 67** (clawsofthunderbolt): on a client hit it creates `HitSubMissile1` (cotthunderstorm) at the hit point.
   The sub-missile gets a calc for its length and three params copied from the missile.
 
 **Release.** A finisher (Dragon Talon and the other finishers, and plain Attack: D2R srvdo 1, 42, 46, 50, 52) calls
 D2R's release dispatcher `0x56c3e0`. PD2's install routines don't replace it, but whether ProjectDiablo.dll hooks
-1.13c's copy was not checked (W29 checks it: srvdo 170 already fires prg[n] on each hit). For each progressive state on the unit, it reads
+1.13c's copy was not checked ([W29](https://github.com/synpoox/pd2-resurrected/issues/104) checks it: srvdo 170 already fires prg[n] on each hit). For each progressive state on the unit, it reads
 the skill (stat 350) and level (stat 351) and takes n = min(max(charges, 1), 3). With `prgstack`, it first calls
 srvprgfunc1..n-1, setting the list's charge stat to i before each call. Then it calls srvprgfunc n, with the do signature
 and the charge-up skill's id, and sends the release packet (`0x5396d0`). The client side reads `cltprgfunc1-3`
@@ -81,7 +81,7 @@ and the charge-up skill's id, and sends the release packet (`0x5396d0`). The cli
 |---|---|---|---|
 | srvdo 170 | the seven skills | Korlic's Leap Attack | router 190, by skill id (254, 259, 265, 269, 274, 280, RakanothStrike 630) |
 | srvprg 171 | FoF 3, Cobra 1, Rakanoth 1 | Charged Bolt Disk | -> 184 |
-| srvprg 172 | FoF 2, Cobra 3, Rakanoth 3 | Leap (W8, 172) | -> 185 |
+| srvprg 172 | FoF 2, Cobra 3, Rakanoth 3 | Leap ([W8](https://github.com/synpoox/pd2-resurrected/issues/54), 172) | -> 185 |
 | srvprg 39 | FoF 1 | vanilla 39 (D2R's own FoF/BoI rows) | -> 186: call D2R srvdo 38, then 39 |
 | srvprg 139 | BoI 2 | Baal Cold Missiles (vanilla) | -> 181 (the four monster rows keep D2R's 139 for now: a `verify` row in core-rules) |
 | srvprg 143 | BoI 3, Royal 2 | vanilla 143 | data |
@@ -91,7 +91,7 @@ and the charge-up skill's id, and sends the release packet (`0x5396d0`). The cli
 | cltprg 9-15, 81, 83 | the rest | vanilla | data |
 | cdo 69 | fistsoffireexplode, bladesoficecubes | corpseexplosion | -> 79 (78 is the Split Throw return) |
 | chit 67 | clawsofthunderbolt | empty | 67 |
-| srvst 23, 78 | all; Tiger Strike | vanilla; built (W10) | data; done |
+| srvst 23, 78 | all; Tiger Strike | vanilla; built ([W10](https://github.com/synpoox/pd2-resurrected/issues/51)) | data; done |
 
 The router is the router slot (glossary): srvdofunc 190 holds core-rules' `SrvDoRouter`
 (`plugin/core-rules/skill_functions.cpp`), which calls a PD2 do function by skill id. It is ours, not D2RLoader's.
@@ -108,17 +108,17 @@ The merge moves each Port value above by column in `tools/pd2_ids.py` FUNCS (`sr
 
 ## Split
 
-- **W29, server half**: the srvdo 170 port in the router (build, shared charges, the steal list, the immediate prg
+- **[W29](https://github.com/synpoox/pd2-resurrected/issues/104), server half**: the srvdo 170 port in the router (build, shared charges, the steal list, the immediate prg
   call through the table), the prg ports at 184, 185, 186 and 181, and the FUNCS entries. It is checked by charge-up
   hits on a monster (the charge count after each hit, the prg slot fired) and by a Dragon Talon release (the stacked
   prg calls). It also reads `0x1036ee80` (shared charges), checks PD2 for a hook on the release dispatcher, resolves
   the 139 missile helper and reads the Cobra Strike branch of 171/172, adds `SrvPrgDispatch` to the RVA header, and
   narrows the finishers' stand-ins (`merge/standins.tsv`, Tiger Strike and RakanothStrike) and their deviation row to
   the client columns. Size L.
-- **W30, client half**: cltprg 127 and 128, cdo 79 and chit 67 (with their FUNCS entries), checked by the client
+- **[W30](https://github.com/synpoox/pd2-resurrected/issues/105), client half**: cltprg 127 and 128, cdo 79 and chit 67 (with their FUNCS entries), checked by the client
   missiles each charge creates. It removes what is left of the stand-ins and the deviation row. Size M.
 
-The split in core-rules stands. W30 needs W29 only for the charge packet that drives the client prg calls.
+The split in core-rules stands. [W30](https://github.com/synpoox/pd2-resurrected/issues/105) needs [W29](https://github.com/synpoox/pd2-resurrected/issues/104) only for the charge packet that drives the client prg calls.
 
 Owed to other rows: the Royal Fire bosses (srvdo 143 and cltdo 83, PD2's boss branch) become a monster row after the
 cut (the after-the-cut entry on the deviation list covers them). Their server half goes to the router, their client

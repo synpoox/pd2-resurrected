@@ -1,9 +1,9 @@
-# P12: Ormus' Robes and skill on cast
+# [P12](https://github.com/synpoox/pd2-resurrected/issues/108): Ormus' Robes and skill on cast
 
 PD2's Ormus' Robes (merged unique 358) carry `sorc-skill-rand-ctc` (par 2, min 12, max 26): one random sorceress
 skill at +2, and a chance to cast that skill when the wearer casts a spell. The same "on casting" half is the generic
 `cast-skill` property (properties func 11, D2R's own) on 62 live item rows, which writes the same stat,
-`item_skilloncast` (merged itemstatcost 378, PD2 200). Before P12 none of them did anything in D2R.
+`item_skilloncast` (merged itemstatcost 378, PD2 200). Before [P12](https://github.com/synpoox/pd2-resurrected/issues/108) none of them did anything in D2R.
 
 ## The property: func 25 (`0x103a12a0`)
 

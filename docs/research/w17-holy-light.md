@@ -1,6 +1,6 @@
-# Holy Light and the Fist of the Heavens hit (W17)
+# Holy Light and the Fist of the Heavens hit ([W17](https://github.com/synpoox/pd2-resurrected/issues/92))
 
-Answers work item W17 (#92). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll`,
+Answers work item [W17](https://github.com/synpoox/pd2-resurrected/issues/92) ([#92](https://github.com/synpoox/pd2-resurrected/issues/92)). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll`,
 `D2Client.dll`, `D2Common.dll` of the PD2 install in Ghidra; D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`),
 RVAs.
 
@@ -11,12 +11,12 @@ ordinal). The ones read here:
 |---|---|---|---|---|
 | `0x103a1930` | `0x104a9f5c` | D2Game `0xe0a60` | hostile? (below) | alignment `0x2f4190` + the rule |
 | `0x103a1b40` | `0x104aa7ac` | D2Game `0xe07a0` | refresh the path target | (skill target `0x48fe20`) |
-| `0x1030aef0` / `0x1030af20` | `0x1049b1c8` / `0x1049b598` | D2Common #10121 / #11091 | skill elemental min / max | ElementalDamage `0x437d00` |
-| `0x1030bfc0` | `0x1049b748` | D2Common #10239 | monster is undead | monstats `+0x3c` & `0x1800` |
+| `0x1030aef0` / `0x1030af20` | `0x1049b1c8` / `0x1049b598` | D2Common [#10121](https://github.com/synpoox/pd2-resurrected/issues/10121) / [#11091](https://github.com/synpoox/pd2-resurrected/issues/11091) | skill elemental min / max | ElementalDamage `0x437d00` |
+| `0x1030bfc0` | `0x1049b748` | D2Common [#10239](https://github.com/synpoox/pd2-resurrected/issues/10239) | monster is undead | monstats `+0x3c` & `0x1800` |
 | `0x103a1660` | `0x104aa91c` | D2Game `0x11d0` | roll below n on a seed | `d2r::RandomBelow` |
 | `0x103a1860` | `0x104a994c` | D2Game `0x4df20` | add life, at most max life | UnitStat / SetUnitStat |
 | `0x10305760` | (PD2's own) | | 1.13c's area apply | AreaApply `0x436e90` |
-| `0x1030dcd0` | `0x104a8bdc` | D2Common #10689 | set overlay (no layer) | `0x349020(unit, overlay, 0)` |
+| `0x1030dcd0` | `0x104a8bdc` | D2Common [#10689](https://github.com/synpoox/pd2-resurrected/issues/10689) | set overlay (no layer) | `0x349020(unit, overlay, 0)` |
 | `0x103a2ad0` | `0x104a98b4` | D2Client `0xa60d0` | client missile owner | `0x9a7b0` |
 | `0x103309e0` | `0x1049a7f8` | D2Client `0xa1860` | client area search | `0x2142d0` |
 | `0x10328ee0` | `0x1049b310` | D2Client `0xb30f0` | client missile create | `0x1b7760` |
@@ -41,8 +41,8 @@ that is not the target; magic (`+0x20`, D2R `+0x30`) = min + rand(max - min); PD
 deal. D2R's area apply `0x436e90` does the same steps, so core-rules calls it.
 
 Hostile (`0xe0a60`): pets and missiles are swapped for their owners; the same unit is not hostile; two players ask the
-PvP state; otherwise D2Common #10666, which reads #10830's alignment (0 hostile, 1 neutral, 2 ally, other types 2) and
-calls two units allied when both are 0 or both 2. D2R keeps #10830 as `0x2f4190`; pets carry alignment 2.
+PvP state; otherwise D2Common [#10666](https://github.com/synpoox/pd2-resurrected/issues/10666), which reads [#10830](https://github.com/synpoox/pd2-resurrected/issues/10830)'s alignment (0 hostile, 1 neutral, 2 ally, other types 2) and
+calls two units allied when both are 0 or both 2. D2R keeps [#10830](https://github.com/synpoox/pd2-resurrected/issues/10830) as `0x2f4190`; pets carry alignment 2.
 
 Holy Light's row: cltcalc2 `ln12 + Prayer blvl * par6`, cltcalc3 `ln34 + Prayer blvl * par7`, aurarangecalc 6,
 EType mag, srvoverlay valkyriestart, cltdofunc 36 (D2R's own, the same as Fist of the Heavens'), cltmissilea

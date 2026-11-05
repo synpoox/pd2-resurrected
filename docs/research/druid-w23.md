@@ -1,6 +1,6 @@
-# Gust and Hunger (W23): srvdo 156 and 165
+# Gust and Hunger ([W23](https://github.com/synpoox/pd2-resurrected/issues/98)): srvdo 156 and 165
 
-Answers work item W23 (#98). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll` /
+Answers work item [W23](https://github.com/synpoox/pd2-resurrected/issues/98) ([#98](https://github.com/synpoox/pd2-resurrected/issues/98)). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll` /
 `D2Common.dll` of the PD2 install in Ghidra, D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`), RVAs.
 
 PD2's table fill (`0x1036ba20`) writes srvdo 156 = `0x103b1980` (`+0x270`) and srvdo 165 = `0x103b27c0` (`+0x294`).

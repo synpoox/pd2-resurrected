@@ -1,6 +1,6 @@
-# Firestorm and the wall makers (W22): srvdo 166, cltdo 119
+# Firestorm and the wall makers ([W22](https://github.com/synpoox/pd2-resurrected/issues/97)): srvdo 166, cltdo 119
 
-Answers work item W22 (#97). PD2 side from the baseline install `C:\Games\PD2\ProjectD2` (`ProjectDiablo.dll`, base
+Answers work item [W22](https://github.com/synpoox/pd2-resurrected/issues/97) ([#97](https://github.com/synpoox/pd2-resurrected/issues/97)). PD2 side from the baseline install `C:\Games\PD2\ProjectD2` (`ProjectDiablo.dll`, base
 0x10000000; its table fill `0x1036ba20` writes srvdo 166 at `[0x105de8fc] + 0x298` and cltdo 119 at
 `[0x105de71c] + 0x1dc`), D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`). D2R fills srvdo 166 (`0x522e70`), so
 the server half joins the router (190); D2R's cltdo 119 is empty, so the client half keeps PD2's number.

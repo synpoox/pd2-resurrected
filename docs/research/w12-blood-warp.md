@@ -1,6 +1,6 @@
-# Necromancer: Blood Warp (W12)
+# Necromancer: Blood Warp ([W12](https://github.com/synpoox/pd2-resurrected/issues/87))
 
-Answers work item W12 (#87). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) by static disassembly
+Answers work item [W12](https://github.com/synpoox/pd2-resurrected/issues/87) ([#87](https://github.com/synpoox/pd2-resurrected/issues/87)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) by static disassembly
 (capstone), D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`). Addresses are D2R RVAs unless they start with
 `0x10`.
 

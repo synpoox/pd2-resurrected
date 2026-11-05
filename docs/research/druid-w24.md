@@ -1,6 +1,6 @@
-# Fire Claws and the Spirit Wolf start (W24): srvdo 175, cltdo 110, srvst 77
+# Fire Claws and the Spirit Wolf start ([W24](https://github.com/synpoox/pd2-resurrected/issues/99)): srvdo 175, cltdo 110, srvst 77
 
-Answers work item W24 (#99). PD2 side from the baseline install `C:\Games\PD2\ProjectD2` (`ProjectDiablo.dll`, base
+Answers work item [W24](https://github.com/synpoox/pd2-resurrected/issues/99) ([#99](https://github.com/synpoox/pd2-resurrected/issues/99)). PD2 side from the baseline install `C:\Games\PD2\ProjectD2` (`ProjectDiablo.dll`, base
 0x10000000; its table fill `0x1036ba20` writes srvdo 175 at `[0x105de8fc] + 0x2bc`, cltdo 110 at `[0x105de71c] + 0x1b8`
 and srvst 77 at `[0x105de8ec] + 0x134`), D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`). D2R leaves all three
 slots empty, so each keeps PD2's number.
@@ -24,7 +24,7 @@ spiritwolf (11) and fenris (12); Spirit Wolf's petmax
    [druid-w22](druid-w22.md)); target from the skill target point (`0x103a15c0`, return 0 without one).
 6. count makers; return 1.
 
-The fire is not in this hit: PD2's start (srvst 79, built in W2) puts it on the caster as temp_skill_buff's aurastats.
+The fire is not in this hit: PD2's start (srvst 79, built in [W2](https://github.com/synpoox/pd2-resurrected/issues/45)) puts it on the caster as temp_skill_buff's aurastats.
 
 ## cltdo 110 (`0x103abbd0`)
 
@@ -39,13 +39,13 @@ hit. D2R's generic melee start (`0x567070`) also sets the aurastate, so the fire
 start; the merged row keeps D2R's srvst 58 instead.
 
 srvdo 175 applies the queued hit through srvdo 2 (as core-rules' Bash does), then sends PD2's calc2 makers through
-W22's maker loop with callback 1 (D2R's Firestorm maker callback). cltdo 110 draws the same count. Approximated
+[W22](https://github.com/synpoox/pd2-resurrected/issues/97)'s maker loop with callback 1 (D2R's Firestorm maker callback). cltdo 110 draws the same count. Approximated
 (`docs/deviations.md`): the hit is rolled at the start frame, not the do frame; progressive_tohit is not added; the fire
 comes from the skill's elemental damage, not from temp_skill_buff.
 
 ## srvst 77 (`0x103b6c80`)
 
-Needs player data (D2Common #10920) with a pet table (+0x44). pettype = skill +0xbe; then rule `0x103747b0 (game,
+Needs player data (D2Common [#10920](https://github.com/synpoox/pd2-resurrected/issues/10920)) with a pet table (+0x44). pettype = skill +0xbe; then rule `0x103747b0 (game,
 unit, 1, pettype)`:
 
 1. Pet types other than 11 and 12 refuse.
@@ -56,7 +56,7 @@ unit, 1, pettype)`:
    `0x10319ac0 (game, unit, pet, 1)`).
 5. With none left, limit 0 refuses.
 
-A refusal calls `0x1036d1b0 (unit, 0x13, 0)`: unit +0x6e = 0x13, +0x70 = 0, D2Common #10158 (update), flag 0x400
+A refusal calls `0x1036d1b0 (unit, 0x13, 0)`: unit +0x6e = 0x13, +0x70 = 0, D2Common [#10158](https://github.com/synpoox/pd2-resurrected/issues/10158) (update), flag 0x400
 (HASEVENTSOUND), the player's "I can't".
 
 D2R's pets (PlayerPets.cpp): player data `0x34b240`, pet table +0x98; `0x5013f0 (dataFlag, table, type)` gives the

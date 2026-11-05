@@ -1,6 +1,6 @@
-# Assassin charge-up finishers: client half (W30)
+# Assassin charge-up finishers: client half ([W30](https://github.com/synpoox/pd2-resurrected/issues/105))
 
-Answers work item W30 (#105), on the slots [w25-assassin-finishers](w25-assassin-finishers.md) chose. PD2 side read
+Answers work item [W30](https://github.com/synpoox/pd2-resurrected/issues/105) ([#105](https://github.com/synpoox/pd2-resurrected/issues/105)), on the slots [w25-assassin-finishers](w25-assassin-finishers.md) chose. PD2 side read
 from `ProjectDiablo.dll` (VAs `0x10...`) and PD2's 1.13c `D2Client.dll` / `D2Common.dll` (RVAs named "D2Client",
 "D2Common") in the PD2 Ghidra project, D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`); other addresses are D2R
 RVAs. PD2 reaches vanilla code through version-table thunks (module index, offset in column 0 for 1.13c), resolved
@@ -9,7 +9,7 @@ here by reading the table entries. Read statically.
 ## How the client gets a charge
 
 D2R's handler for the charge/release packet (`0x216380`, which the server's `SendChargePacket` feeds on each
-charge-up hit and on a release) does what W25 describes for the release: it points the caster's path at the packet's
+charge-up hit and on a release) does what [W25](https://github.com/synpoox/pd2-resurrected/issues/100) describes for the release: it points the caster's path at the packet's
 target, and, with `prgstack`, calls `cltprgfunc1..n-1` through the cltdo table, setting the list's charge to i before
 each call, then `cltprgfunc n` (`(unit, skill, level)`, the cltdo signature). So a client prg function reads its
 charge from the progressive list, as the server ones do.
@@ -19,7 +19,7 @@ charge from the progressive list, as the server ones do.
 - **cltprg 106 (`0x103ab920`) -> cltdo 127**: the client half of srvprg 171. The charge (PD2's `0x1037ddf0`, run only
   at 1-3), the client missile (1.13c D2Client `0x40550` through `[0x105e0a08]`: cltmissilea/b/c for 1/2/3 charges,
   cltmissilea for a skill without), and cltcalc[charge] (1.13c `+0x114`, D2R `+0x16c`) missiles. The aim is the
-  path's target unit (D2Common #10392), else the path's target point. Params as the server's: flags `0x10820`,
+  path's target unit (D2Common [#10392](https://github.com/synpoox/pd2-resurrected/issues/10392)), else the path's target point. Params as the server's: flags `0x10820`,
   owner and origin the caster, start at the caster, 1.13c `+0x44` = 1, aim points along PD2's spread (`0x1037d780`,
   core-rules' `ChargeSpread`). A do-while: at least one missile.
 - **cltprg 107 (`0x103aba80`) -> cltdo 128**: the client half of srvprg 172. The same charge, missile and count, then
@@ -27,9 +27,9 @@ charge from the progressive list, as the server ones do.
   every 64/count-th of the 64 directions) at the target unit's position, else the caster's.
 - **cdo 69 (`0x103a60d0`) -> cdo 79** (fistsoffireexplode, bladesoficecubes): first the missile's step (1.13c
   D2Client `0xb17c0`, the body almost every vanilla client do function calls; D2R's cltdo 1), then, when the
-  missile's frame counter (D2Common #10737, data `+0x10`, counting down) equals its range (#10534, `+0xe`) - 1, its
+  missile's frame counter (D2Common [#10737](https://github.com/synpoox/pd2-resurrected/issues/10737), data `+0x10`, counting down) equals its range ([#10534](https://github.com/synpoox/pd2-resurrected/issues/10534), `+0xe`) - 1, its
   `CltSubMissile1` (fistsoffirefirewall, bladesoficeexplode) placed at its position (flags 3, no aim), with the
-  missile's skill (`+0xa`) and level (`+0xc`). That is the missile's **first** frame, not its last as W25 read it.
+  missile's skill (`+0xa`) and level (`+0xc`). That is the missile's **first** frame, not its last as [W25](https://github.com/synpoox/pd2-resurrected/issues/100) read it.
   D2R's `0x3bb0f0` returns the range minus the frames left, and D2R's own cltdo 1 tests it for 1 the same way.
 - **chit 67 (`0x103a6aa0`)** (clawsofthunderbolt): on a hit unit, `CltHitSubMissile1` (cotthunderstorm) placed at the
   unit hit (D2Client `0x1630` / `0x1660` on it; flags 1), with the row's `Skill` and the missile's level. On the new

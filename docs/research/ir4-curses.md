@@ -1,6 +1,6 @@
-# IR4: PD2's curse stats in ProjectDiablo.dll
+# [IR4](https://github.com/synpoox/pd2-resurrected/issues/239): PD2's curse stats in ProjectDiablo.dll
 
-Work item IR4 ([#239](https://github.com/synpoox/pd2-resurrected/issues/239), [item-rules.md](../item-rules.md)):
+Work item [IR4](https://github.com/synpoox/pd2-resurrected/issues/239) ([#239](https://github.com/synpoox/pd2-resurrected/issues/239), [item-rules.md](../item-rules.md)):
 curse effectiveness and max curses. Findings only: no PD2 or Blizzard file content is in this repo.
 
 ## Method
@@ -34,7 +34,7 @@ necromancer curse function among them) with `0x1036d7d0`. It takes the same requ
   - otherwise the oldest timed curse is replaced.
   The new list gets `curse_slots = max_curses(caster) + 1` when that is more than the target's total `curse_slots`, so
   the target keeps room for the caster's curses after the caster leaves.
-- **Also in the same function, not IR4's stats** (on the [deviation list](../deviations.md)):
+- **Also in the same function, not [IR4](https://github.com/synpoox/pd2-resurrected/issues/239)'s stats** (on the [deviation list](../deviations.md)):
   - curse resistance stat 109 (`curse_resistance`) shortens the duration with the same 75 cap on players; D2R refuses a
     curse at 100+ and has no cap;
   - PD2 reads the attract state but no longer refuses a curse on an attracted unit; D2R does;

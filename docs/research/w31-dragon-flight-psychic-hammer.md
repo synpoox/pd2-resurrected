@@ -1,6 +1,6 @@
-# Dragon Flight and Psychic Hammer's damage (W31)
+# Dragon Flight and Psychic Hammer's damage ([W31](https://github.com/synpoox/pd2-resurrected/issues/106))
 
-Answers work item W31 (#106). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and PD2's 1.13c `D2Game.dll`
+Answers work item [W31](https://github.com/synpoox/pd2-resurrected/issues/106) ([#106](https://github.com/synpoox/pd2-resurrected/issues/106)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and PD2's 1.13c `D2Game.dll`
 (RVAs named "D2Game") in the PD2 Ghidra project, D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`); other
 addresses are D2R RVAs. Read statically.
 
@@ -34,24 +34,24 @@ while the caster lives, and the block's cleanup. The block has `d2r::LeapKnockba
 pointer `+0x158`).
 
 **Port.** core-rules' srvdo 178 does PD2's steps in one call with D2R's calls of srvdo 52's kick: Teleport's core
-(`TeleportCore`, W26), then to-hit, roll with no always-hit, damage% = calc2, fill, queue (`0x80`), release, hit, and
+(`TeleportCore`, [W26](https://github.com/synpoox/pd2-resurrected/issues/101)), then to-hit, roll with no always-hit, damage% = calc2, fill, queue (`0x80`), release, hit, and
 the cleanup. It keeps srvdo 52's skill-flag clear and set (D2R's own bookkeeping, not in 1.13c, so not a deviation from PD2),
 clearing it only after a teleport that went. The aurastate helper
 is left out (nothing to do for the only row).
 
 Deviation (approximated, on the deviation list): the target is D2R's skill target, where PD2 reads the path target,
-as for Holy Light (W17); Teleport's core brings Teleport's approximations.
+as for Holy Light ([W17](https://github.com/synpoox/pd2-resurrected/issues/92)); Teleport's core brings Teleport's approximations.
 
 ## dmg 15 (Psychic Hammer)
 
 PD2's server missile install `0x103a7220` writes srvdmg 15-19 (D2Game table `[0x105e1648]`, `+0x3c`): 15 =
 `0x103a6c90`. Only psychichammer uses it in PD2. D2R's 15 is Holy Bolt's (holybolt, fistoftheheavensbolt), so ours
-takes 22 (20 and 21 are W6's and W9's; 18 and 19 stay for PD2's own).
+takes 22 (20 and 21 are [W6](https://github.com/synpoox/pd2-resurrected/issues/53)'s and [W9](https://github.com/synpoox/pd2-resurrected/issues/55)'s; 18 and 19 stay for PD2's own).
 
 `0x103a6c90(game, missile, target, damage)`: with the missile's row and skill valid and its owner (`0x103749f0`):
 
 - hits = calc1 of the missile's skill at its level for the owner (`+0x138`); step = calc2 (`+0x13c`);
-- left = the missile's chain count left (`0x1030b7b0`, version entry `0x1049b488` = D2Common #11018, the count
+- left = the missile's chain count left (`0x1030b7b0`, version entry `0x1049b488` = D2Common [#11018](https://github.com/synpoox/pd2-resurrected/issues/11018), the count
   srvhit 12 reads; D2R's `MissileBounces` `0x3bc0a0`);
 - cut = (hits - left) * step; at more than 99, magic damage (block `+0x20`, D2R `+0x30`) = 0, else magic * (100 -
   cut) / 100 (32-bit signed; the port multiplies in 64, the same below 2^31).

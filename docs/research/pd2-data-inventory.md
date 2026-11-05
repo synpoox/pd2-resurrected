@@ -1,6 +1,6 @@
 # Inventory of PD2's data against D2R 3.3
 
-Resolves research ticket #2 (child of map #1). Findings only: nothing here converts or ports anything, and no PD2 or Blizzard file content is copied into this repo (counts, ranges and short identifiers only).
+Resolves research ticket [#2](https://github.com/synpoox/pd2-resurrected/issues/2) (child of map [#1](https://github.com/synpoox/pd2-resurrected/issues/1)). Findings only: nothing here converts or ports anything, and no PD2 or Blizzard file content is copied into this repo (counts, ranges and short identifiers only).
 
 ## Answer in brief
 
@@ -33,7 +33,7 @@ Method: `pd2data.mpq` was read in memory with a throwaway script kept outside th
 | Engine DLL | `ProjectDiablo.dll` (5.25 MB) and `PD2_EXT.dll` (87 KB) beside replaced classic `D2*.dll` files. The classic DLLs have no version resource, so I could not confirm whether they are stock 1.13c |
 | Other injected code | `BH.dll` (UI/QoL overlay, 1.4 MB), `D2HD.dll` 2.0.0.4, `SGD2FreeRes`, `d2gl` (renderer), `PlugY.dll` 14.0.2.0 (shared stash, extra stat/skill points, etc.) |
 | Source files named by assert strings in `ProjectDiablo.dll` | Client: `Skills.cpp`, `inv.cpp`, `panel.cpp`, `showitems.cpp`, `ui.cpp`, `Msg.cpp`, `SCmd.cpp`, `Gfx.cpp`, `SoundHdr.cpp`. Common: `ItemTbls.cpp`, `Items.cpp`, `StatsEx.cpp`. Game: `AiThink4.cpp`, `Clients.cpp`, `Game.cpp`, `ItemMode.cpp`, `PlrModes.cpp`, `PlrMsg.cpp`, `SkilPal.cpp`, `Skills.cpp`, `SUnitEvent.cpp`, `Quests/a3q5.cpp`. PD2's own: `CubeFunctions`, `D2CommonFunctions`, `D2NewFunctions`, `D2ServerFunctions`, `ItemFunctions`, `SaveFunctions`, `DrawHoverItem`, `Sound/*`, and a `guild/*` set (`GuildClient/Common/Game/Showcase`) |
-| Triage use | These names are the starting list for the (a) data / (b) service / (c) hook / (d) UI / (e) cut sort in the port notes. Not done here. Guild code is online-feature and is probably map #1 out-of-scope |
+| Triage use | These names are the starting list for the (a) data / (b) service / (c) hook / (d) UI / (e) cut sort in the port notes. Not done here. Guild code is online-feature and is probably map [#1](https://github.com/synpoox/pd2-resurrected/issues/1) out-of-scope |
 | PD2_EXT.dll | 778 strings and no source paths, so I cannot say what it does from strings alone |
 
 ## 3. Tables: PD2 vs D2R

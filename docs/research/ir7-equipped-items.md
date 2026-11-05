@@ -1,8 +1,8 @@
-# IR7: skill while equipped and phasing in ProjectDiablo.dll
+# [IR7](https://github.com/synpoox/pd2-resurrected/issues/242): skill while equipped and phasing in ProjectDiablo.dll
 
-Work item IR7 ([#242](https://github.com/synpoox/pd2-resurrected/issues/242), [item-rules.md](../item-rules.md)):
-skill while equipped and phasing. The charm "only one unique" rule left IR7: a Charm Inventory companion plugin
-takes it (owner, 2026-11-04). What IR7 found about it, for that plugin: PD2's charm check (`0x10381970`, also read by
+Work item [IR7](https://github.com/synpoox/pd2-resurrected/issues/242) ([#242](https://github.com/synpoox/pd2-resurrected/issues/242), [item-rules.md](../item-rules.md)):
+skill while equipped and phasing. The charm "only one unique" rule left [IR7](https://github.com/synpoox/pd2-resurrected/issues/242): a Charm Inventory companion plugin
+takes it (owner, 2026-11-04). What [IR7](https://github.com/synpoox/pd2-resurrected/issues/242) found about it, for that plugin: PD2's charm check (`0x10381970`, also read by
 the tooltip at `0x102b2050`) switches off every unique charm in the inventory (page 0) that shares its unique row with
 another one there, so two Annihilus both stop working; nothing is refused. Findings only: no PD2 or Blizzard file
 content is in this repo.

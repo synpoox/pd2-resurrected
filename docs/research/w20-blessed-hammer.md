@@ -1,6 +1,6 @@
-# Paladin: Blessed Hammer (W20)
+# Paladin: Blessed Hammer ([W20](https://github.com/synpoox/pd2-resurrected/issues/95))
 
-Answers work item W20 (#95). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and its 1.13c `D2Game.dll`,
+Answers work item [W20](https://github.com/synpoox/pd2-resurrected/issues/95) ([#95](https://github.com/synpoox/pd2-resurrected/issues/95)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and its 1.13c `D2Game.dll`,
 `D2Client.dll` and `D2Common.dll` in the Ghidra project `PD2.gpr`, D2R side from the 93847 dump (`ImageStamp
 0x6ab3782c`). Addresses are D2R RVAs unless they start with `0x10`; 1.13c addresses are offsets in that DLL.
 
@@ -19,10 +19,10 @@ the default frame. So core-rules takes the next free slots, sdo 47 and cdo 80, a
 `(game, missile)`:
 
 1. No game, missile, missile data (1.13c unit `+0x14`) or path (`+0x2c`): return 0.
-2. D2Common #11164 (`0x348b0`) on the path with `0x180`: the path's collision mask (1.13c path `+0x50`).
+2. D2Common [#11164](https://github.com/synpoox/pd2-resurrected/issues/11164) (`0x348b0`) on the path with `0x180`: the path's collision mask (1.13c path `+0x50`).
 3. The saved vanilla frame (`[0x105e0ec4]`, filled from D2Game `0x3f320`, 1.13c's srvdo 1; it matches D2R's
    `0x463100` step for step).
-4. A result of 2 with range frames left (D2Common #10737, missile data `+0x10`) becomes 1.
+4. A result of 2 with range frames left (D2Common [#10737](https://github.com/synpoox/pd2-resurrected/issues/10737), missile data `+0x10`) becomes 1.
 
 ## cdo 72 (`0x103a6300`)
 

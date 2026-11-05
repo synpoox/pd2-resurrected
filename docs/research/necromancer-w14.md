@@ -1,6 +1,6 @@
-# Necromancer W14: Golem start, Revive event, PlrModes gate B
+# Necromancer [W14](https://github.com/synpoox/pd2-resurrected/issues/89): Golem start, Revive event, PlrModes gate B
 
-Answers work item W14 (#89), research half. PD2 side from the baseline install `C:\Games\PD2\ProjectD2`
+Answers work item [W14](https://github.com/synpoox/pd2-resurrected/issues/89) ([#89](https://github.com/synpoox/pd2-resurrected/issues/89)), research half. PD2 side from the baseline install `C:\Games\PD2\ProjectD2`
 (`ProjectDiablo.dll`, VAs `0x10...`, and its 1.13c `D2Game.dll`, RVAs), static disassembly. D2R side from the 93847 dump
 (`ImageStamp 0x6ab3782c`), RVAs. Merged ids from `generated/data` (pd2_merge on this branch).
 
@@ -8,7 +8,7 @@ Answers work item W14 (#89), research half. PD2 side from the baseline install `
 
 `ProjectDiablo.dll` fills D2Game's tables at start-up with plain stores through table pointers:
 
-- srvstfunc: `[0x105de8ec]` (`0x1036bdba`): 27, 28, 29, 37, 66-79 (78 is `0x103b6cf0`, as W10 found).
+- srvstfunc: `[0x105de8ec]` (`0x1036bdba`): 27, 28, 29, 37, 66-79 (78 is `0x103b6cf0`, as [W10](https://github.com/synpoox/pd2-resurrected/issues/51) found).
 - skill aura event functions: `[0x105de8f8]` (`0x1036c2b0`): 3, 6, 7, 15, 16, 19, 22-25, 27, 32, 33.
 
 ## Golem start (PD2 srvst 74, `0x103b69d0`)
@@ -57,7 +57,7 @@ same for aura states). core-rules wraps srvdo 58 and calls it on the target afte
 in place (same unit, return 1, mode neutral; the owner fields at `+0xe8` stay 0/0 for a pet). Then a revive's melee
 hit fires event 5 (domeleedamage) into slot 32.
 
-The event's cast (`0x5896e0` -> `0x589930`) of proc_SplashDamage returns 0: the skill has no do function yet (W33).
+The event's cast (`0x5896e0` -> `0x589930`) of proc_SplashDamage returns 0: the skill has no do function yet ([W33](https://github.com/synpoox/pd2-resurrected/issues/119)).
 `0x589930` refuses a skill whose `ItemEffect` (`+0x20a`) is 0; proc_SplashDamage's is 1, so the refusal is later.
 
 ## Gate B (PD2 `0x1037bb20`)

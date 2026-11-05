@@ -1,6 +1,6 @@
-# Melee splash (W33)
+# Melee splash ([W33](https://github.com/synpoox/pd2-resurrected/issues/119))
 
-Answers work item W33 (#119). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) in Ghidra, D2R side from the 93847
+Answers work item [W33](https://github.com/synpoox/pd2-resurrected/issues/119) ([#119](https://github.com/synpoox/pd2-resurrected/issues/119)). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) in Ghidra, D2R side from the 93847
 dump (`ImageStamp 0x6ab3782c`), RVAs.
 
 ## PD2
@@ -47,7 +47,7 @@ own melee and area code:
   built at start-up (`0x10111830`, `0x10111890`): Revive's event 32 (`0x10347370`) and item event functions 14 and 20
   (`+0x38`, `+0x50` of PD2's handler table), checked by the event walker `0x10347510`. core-rules refuses a splash
   inside a splash and skips Revive's event then. Other skill-on-hit procs and item event 14 still run per splashed
-  unit (#125).
+  unit ([#125](https://github.com/synpoox/pd2-resurrected/issues/125)).
 - Life leech: `0x44c030` fills it (`+0x120`), so halving it after the fill is PD2's rule.
 
 Revive's event 32 calls the splash directly, as PD2 does. A struck unit with no position left (killed by the hit) gives

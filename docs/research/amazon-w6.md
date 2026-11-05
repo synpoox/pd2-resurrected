@@ -1,6 +1,6 @@
-# Amazon group (W6): shit 63, dmg 17, cltdo 22, chit 12
+# Amazon group ([W6](https://github.com/synpoox/pd2-resurrected/issues/53)): shit 63, dmg 17, cltdo 22, chit 12
 
-Answers work item W6 (#53). PD2 side from the baseline install `C:\Games\PD2\ProjectD2` (1.13c `D2Game.dll` /
+Answers work item [W6](https://github.com/synpoox/pd2-resurrected/issues/53) ([#53](https://github.com/synpoox/pd2-resurrected/issues/53)). PD2 side from the baseline install `C:\Games\PD2\ProjectD2` (1.13c `D2Game.dll` /
 `D2Client.dll` plus `ProjectDiablo.dll`), D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`). Addresses are RVAs
 (ProjectDiablo.dll: offsets from its 0x10000000 base).
 
@@ -17,7 +17,7 @@ clthit and cltdo):
 | cltdo 22 | D2Client `0x15660` (vanilla) | `0x2aed10` | same plus a check: 1-byte patch |
 | clthit 12 | D2Client `0xbb070` (vanilla) | `0x1acda0` | same: data only |
 
-The same dump shows PD2 also replaces vanilla srvhit 1, 6, 7, 30, 34, 50, 52, 60 and clthit 5, 6 (not part of W6).
+The same dump shows PD2 also replaces vanilla srvhit 1, 6, 7, 30, 34, 50, 52, 60 and clthit 5, 6 (not part of [W6](https://github.com/synpoox/pd2-resurrected/issues/53)).
 srvhit 5 and clthit 4 are vanilla, which agrees with [nova-orb-hits](nova-orb-hits.md).
 
 ## chit 12 (Immolation, Blaze, Rathma fire client hits)

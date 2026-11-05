@@ -1,13 +1,13 @@
-# MS4: area map stats in D2R
+# [MS4](https://github.com/synpoox/pd2-resurrected/issues/219): area map stats in D2R
 
-Part of MS4 ([#219](https://github.com/synpoox/pd2-resurrected/issues/219)); the extra boss and the drop chances are
+Part of [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) ([#219](https://github.com/synpoox/pd2-resurrected/issues/219)); the extra boss and the drop chances are
 [#286](https://github.com/synpoox/pd2-resurrected/issues/286). PD2's side is
 [pd2-map-system-dll.md](pd2-map-system-dll.md), section 2 (the area slots). D2R addresses are RVAs in the 93847 dump,
 read in Ghidra (`D2R.gpr`). PD2's are VAs in `ProjectDiablo.dll` (`PD2.gpr`).
 
 ## Routing
 
-The 2000-2999 rows of MS3's `Routes` table ([ms3-map-stats.md](ms3-map-stats.md)) are area slots (`Divide - 2000`), in
+The 2000-2999 rows of [MS3](https://github.com/synpoox/pd2-resurrected/issues/218)'s `Routes` table ([ms3-map-stats.md](ms3-map-stats.md)) are area slots (`Divide - 2000`), in
 the port's stat ids. A scratch script checked all 28 against PD2's `itemstatcost.txt`. On opening, `RouteMapStats`
 keeps each slot's first value in the per-game counters (`AreaSlot(game, slot)`); PD2's getter `0x1038a9e0` also returns
 the first entry.
@@ -19,7 +19,7 @@ port 690, 1169 is 1186, 1111 is 1128...), so the merged map affixes name the rig
 
 `0x1038a9e0` has five callers: `0x102fc400` (area level), three in the drop hook `0x10372180` (ethereal, corrupted,
 sockets) and `0x1038bfc0` (extra boss). The region rewrite `0x1038b4d0` reads the slots itself. Nothing reads slots 7-9
-and 15 (the boss drop stats), and slot 10 is only matched in `0x1038aa00` for Horazon's entry (MS9). So leaving those
+and 15 (the boss drop stats), and slot 10 is only matched in `0x1038aa00` for Horazon's entry ([MS9](https://github.com/synpoox/pd2-resurrected/issues/223)). So leaving those
 unported keeps parity.
 
 ## D2R's monster region
@@ -49,7 +49,7 @@ unported keeps parity.
 | 12 drop bonus | the monster list gets `map_glob_dropbonus` (399) = v |
 | 14 treacherous/phasing | the monster list gets +100 `item_maxhp_percent` and `treacherous` (402) = v |
 
-Only the entry level is rewritten; PD2 also rewrites a multi-level map's other levels, which come with MS7.
+Only the entry level is rewritten; PD2 also rewrites a multi-level map's other levels, which come with [MS7](https://github.com/synpoox/pd2-resurrected/issues/221).
 
 ## Game check
 
@@ -62,10 +62,10 @@ Slot 7, Hell, the level 95 Paladin, rare maps from `cheat spawn t11,typ r,inv 0`
 
 Not seen: a monster from the added group. About 60 packs in Ruins of Viz-Jun with 1186 added (1 in 12 by weight) showed
 none, and the spawner (`0x50acf0`, `0x50b7e0`, `0x509cc0`) has no check that would turn it away; not explained. Also not
-run: the area level (it rolls only through corruption), fortify (`fort` does not spawn, #260), drop bonus and
+run: the area level (it rolls only through corruption), fortify (`fort` does not spawn, [#260](https://github.com/synpoox/pd2-resurrected/issues/260)), drop bonus and
 treacherous.
 
-## MS4b: the drop chances (#286)
+## [MS4b](https://github.com/synpoox/pd2-resurrected/issues/286): the drop chances ([#286](https://github.com/synpoox/pd2-resurrected/issues/286))
 
 PD2's drop hook `0x10372180` replaces 1.13c's TC drop (D2R's `0x444680`, which keeps PD2's monster 0x187 check). For a
 unit in a map area it reads three slots, in this order (`edx` before each `0x1038a9e0` call):

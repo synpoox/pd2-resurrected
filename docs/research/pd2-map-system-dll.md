@@ -1,8 +1,8 @@
 # PD2's map system in ProjectDiablo.dll
 
-Resolves MS1 ([#216](https://github.com/synpoox/pd2-resurrected/issues/216), map system #143, design
+Resolves [MS1](https://github.com/synpoox/pd2-resurrected/issues/216) ([#216](https://github.com/synpoox/pd2-resurrected/issues/216), map system [#143](https://github.com/synpoox/pd2-resurrected/issues/143), design
 [map-system.md](../map-system.md)). It reads `ProjectDiablo.dll` with Ghidra (project `PD2.gpr`, AGENTS.md) to settle
-what the table inventory (#144) left to the DLL: which area each map item opens, the gates, how map stats reach monsters,
+what the table inventory ([#144](https://github.com/synpoox/pd2-resurrected/issues/144)) left to the DLL: which area each map item opens, the gates, how map stats reach monsters,
 players and the area, how density and rarity scale, cube op 30, the event roll, and the levels the events open. It ends
 with whether a D2R plugin can open a red portal to a map area. Findings only: no PD2 or Blizzard file content is in this repo.
 
@@ -154,7 +154,7 @@ function returns without making anything. Op 31 calls `CubeFunctions.cpp` (`0x36
 
 So op 30 is **block always**: a matching op-30 row ends the transmute. It narrows by its inputs, as the inventory's first
 reading said (`nor` maps for heroic, corrupt, fortify, Catalyst and ears; `uni` maps for ears). Whether the input is a
-stack does not matter. D2R passes unknown ops, so without a plugin an op-30 row would run as a recipe (MS5).
+stack does not matter. D2R passes unknown ops, so without a plugin an op-30 row would run as a recipe ([MS5](https://github.com/synpoox/pd2-resurrected/issues/220)).
 
 ## 4. Map events
 
@@ -180,7 +180,7 @@ PvP set.
 | 10 | 20 | Corrupted Heroes (invaders) | `MapEventNotifyInvaders` | monster 1182 `InvaderPortal`, up to 3 |
 | 11 | 21 | Void / Tomb | `MapEventNotifyTomb` | object 586 `xactportal_gold` to level 207, and object 594 |
 
-Value 13 (Butcher's Lair, `MapEventNotifyButcher*`, level 173) and 17 are never drawn: Butcher is disabled, as #152 says.
+Value 13 (Butcher's Lair, `MapEventNotifyButcher*`, level 173) and 17 are never drawn: Butcher is disabled, as [#152](https://github.com/synpoox/pd2-resurrected/issues/152) says.
 
 **When it spawns** (`0x36fef0`, run as rooms of a map area activate). The event waits for the level's progress:
 `progress = region[+0x04] x 100 / constant(level)`, where the constant is a hard-coded per-level switch (`0x38b1d0`). For
@@ -225,19 +225,19 @@ Object 60 is the red portal. D2R's limits that apply (toolkit `engine-limits.md`
 - PD2's portal objects (584 red, 585, 622 for keys) use `OperateFn` 77, past the end of D2R's 75-entry operate table.
   The port uses object 60, or its own object with a function written into a free operate slot (slot 60 is null).
 
-Reimagined's cube output `Red Portal,lvl=<id>` shows the same route reaching Act V levels (#145). Not tested here: no
+Reimagined's cube output `Red Portal,lvl=<id>` shows the same route reaching Act V levels ([#145](https://github.com/synpoox/pd2-resurrected/issues/145)). Not tested here: no
 plugin in this repo calls `0x432ce0` yet.
 
 ## Not settled here
 
 - The Horazon flags' source, its drop batches, and what `0x381510` does.
 - What `region[+0x04]` counts in the event progress.
-- Slot 5's spawn in D2R terms. MS4 found no reader of slots 7-9 and 15, and slot 10 only in `0x38aa00` (Horazon) ([ms4-area-map-stats.md](ms4-area-map-stats.md)).
+- Slot 5's spawn in D2R terms. [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) found no reader of slots 7-9 and 15, and slot 10 only in `0x38aa00` (Horazon) ([ms4-area-map-stats.md](ms4-area-map-stats.md)).
 - A resist rewrite in `0x38aa00` for players, keyed to an area entry whose value is the current level (it may belong to
   Horazon's slot-10 entry). Not decoded.
 
 ## Game check
 
 Not run in PD2. These are static readings of PD2's DLL. A check in PD2's single player needs a level 80+ Hell character
-with the Ancients done and map items, which we don't have. The port's game checks test the same behaviour instead: MS2
-the areas and gates, MS5 the recipes and op 30.
+with the Ancients done and map items, which we don't have. The port's game checks test the same behaviour instead: [MS2](https://github.com/synpoox/pd2-resurrected/issues/217)
+the areas and gates, [MS5](https://github.com/synpoox/pd2-resurrected/issues/220) the recipes and op 30.
