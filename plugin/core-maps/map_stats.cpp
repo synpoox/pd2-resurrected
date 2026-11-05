@@ -479,11 +479,13 @@ auto SocketDrop(Game* game, Unit* item) noexcept -> bool {
 	const int32_t low = rec[It2Handed] != 0 ? 2 : 1;
 	const int32_t n = low + std::rand() % (low + 1);  // 1-2 or 2-4
 	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetItemSockets)(item, n);
-	plog::Info("map drops: item %d rolled %d sockets", At<int32_t>(item, UnitClassId), n);
 	return true;
 }
 
 auto Chance(Game* game, int slot) noexcept -> bool {
+	// The CRT's rand state is per thread and starts at seed 1: seed each thread once, or every session rolls the same
+	static thread_local const bool seeded = (std::srand(static_cast<unsigned>(__rdtsc())), true);
+	(void)seeded;
 	const int32_t v = AreaSlot(game, slot);
 	return v > 0 && std::rand() % 100 < v;
 }
@@ -502,12 +504,13 @@ auto OnItemSpawn(Game* game, uint8_t* drop, int32_t arg) noexcept -> Unit* {
 	}
 	Unit* item = g_itemSpawnOriginal(game, drop, arg);
 	if (map && item != nullptr) {
+		const bool madeEthereal =
+			ethereal && d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemIsEthereal)(item) != 0;  // not every item can be
 		const bool corrupted = Chance(game, 6) && CorruptDrop(game, item);
 		const bool socketed = Chance(game, 11) && SocketDrop(game, item);
-		if ((ethereal || corrupted || socketed) && plog::Sample(g_drops)) {
-			plog::Info("map drops: item %d ethereal %d (%d), corrupted %d, socketed %d (%u so far)",
-			           At<int32_t>(item, UnitClassId), ethereal, d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemIsEthereal)(item),
-			           corrupted, socketed, g_drops.load());
+		if ((madeEthereal || corrupted || socketed) && plog::Sample(g_drops)) {
+			plog::Info("map drops: item %d ethereal %d, corrupted %d, socketed %d (%u so far)",
+			           At<int32_t>(item, UnitClassId), madeEthereal, corrupted, socketed, g_drops.load());
 		}
 	}
 	return item;

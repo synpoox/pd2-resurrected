@@ -72,7 +72,7 @@ unit in a map area it reads three slots, in this order (`edx` before each `0x103
 
 | Slot | PD2 | D2R |
 |---|---|---|
-| 13 ethereal | `rand() % 100 < v` sets bit 4 of the drop request's flags (1.13c `+0x80`) before the item is made | the same bit at `+0xc0`: D2R's quality roll `0x442d60` then makes an ethereal-capable item ethereal, as for its own 5% roll |
+| 13 ethereal | `rand() % 100 < v` sets flag 0x4 in the drop request's flags (1.13c `+0x80`) before the item is made | the same flag at `+0xc0`: D2R's quality roll `0x442d60` then makes an ethereal-capable item ethereal, as for its own 5% roll |
 | 6 corrupted | `rand() % 100 < v`, then `0x103649d0(item, 0)` | `CorruptDrop`, below |
 | 11 socketed | the item is socketable (D2Common `#10360`), `rand() % 100 < v`, then `0x103816c0` | D2R's socketable test `0x36b410`, then `0x36e880(item, n)` (`#10599`): n clamped to the type's max |
 

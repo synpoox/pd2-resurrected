@@ -864,7 +864,7 @@ inline constexpr uint8_t AreaMonsterLevelEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10
                                                     0x24, 0x18, 0x57, 0x48, 0x83, 0xec, 0x30};
 
 // --- core-maps: the drop chance area stats (MS4b, #286; D2Game\src\Items\Items.cpp) -------------------------------
-// (game, drop, 0) -> item or null: makes an item from a drop request (1.13c's, called by PD2's drop hook 0x1030ef80).
+// (game, drop, 0) -> item or null: makes an item from a drop request (1.13c's, which PD2 calls through 0x1030ef80).
 // The TC drop 0x444680 (game, unit, item row, quality, index, flags) fills the request and calls it at 0x444866; PD2's
 // drop hook 0x10372180 replaces that function.
 // push rbp / push rbx / push rsi / push r12 / push r15 / lea rbp,[rsp-0x37] / sub rsp,0x90
@@ -873,7 +873,7 @@ inline constexpr uint8_t ItemSpawnEntry[] = {0x40, 0x55, 0x53, 0x56, 0x41, 0x54,
                                              0x6c, 0x24, 0xc9, 0x48, 0x81, 0xec, 0x90, 0x00, 0x00, 0x00};
 inline constexpr uint64_t TcDropReturn = 0x44486b;  // the TC drop's return address from ItemSpawn
 inline constexpr int DropUnit = 0x00;   // Unit* the dropper
-inline constexpr int DropFlags = 0xc0;  // uint32; bit 4 makes an ethereal-capable item ethereal (0x442d60), as 1.13c's +0x80
+inline constexpr int DropFlags = 0xc0;  // uint32; 0x4 makes an ethereal-capable item ethereal (0x442d60), 1.13c +0x80
 inline constexpr uint32_t DropFlagEthereal = 0x4;
 inline constexpr uint64_t ItemQuality = 0x36cf60;     // (item) -> quality (6 rare)
 inline constexpr uint64_t ItemSocketable = 0x36b410;  // (item) -> non-zero: can take sockets (1.13c D2Common #10360)
