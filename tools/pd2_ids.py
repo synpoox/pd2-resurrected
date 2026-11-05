@@ -1,6 +1,6 @@
 """Remapped ids: the tables a save or D2R's code reads by row number, merged by the append-only id lists in merge/
-(ADR 0003): skills, states, itemstatcost and missiles (P2), item types, unique and set items, runewords and affixes (P3 (https://github.com/synpoox/pd2-resurrected/issues/47)),
-and the level tables (LP1 (https://github.com/synpoox/pd2-resurrected/issues/211)): levels, presets, warps, objects (objtype follows the objects list) and object groups.
+(ADR 0003): skills, states, itemstatcost and missiles (P2), item types, unique and set items, runewords and affixes (P3),
+and the level tables (LP1): levels, presets, warps, objects (objtype follows the objects list) and object groups.
 
 merge/ids-<table>.tsv has one line per PD2 row: `PD2 name <tab> id <tab> name`, the row's id and key name in the mod.
 Ids count records as the game does (an `Expansion` row is not one); a repeated PD2 name is listed as `name#2`.
@@ -8,7 +8,7 @@ An id of `-` leaves the PD2 row out (a cut area, a placeholder row); the third c
 An id at or below D2R's last row merges the PD2 row onto that D2R row and keeps D2R's name, so D2R's own files that
 name it stay valid (PD2_NAMES tables keep PD2's: there the key is the text the player sees); a higher id appends the
 row. Lines are only ever added (`pd2_merge.py --seed-ids`), never renumbered.
-A line whose PD2 name starts with `+` is a row the port adds, not a PD2 one (https://github.com/synpoox/pd2-resurrected/issues/233): `+<id> col=value ...` appends a copy
+A line whose PD2 name starts with `+` is a row the port adds, not a PD2 one (#233): `+<id> col=value ...` appends a copy
 of the mod's row `<id>` (an earlier one) with those columns set, at the line's id after D2R's rows. It is copied at
 every merge, so it follows its source row through a PD2 re-baseline.
 
@@ -35,10 +35,10 @@ from pathlib import Path
 from typing import NamedTuple
 
 TABLES = ["skills", "states", "itemstatcost", "missiles",  # P2
-          # P3 (https://github.com/synpoox/pd2-resurrected/issues/47): item tables a save or D2R's code reads by row number
+          # P3: item tables a save or D2R's code reads by row number
           "itemtypes", "uniqueitems", "setitems", "runes", "magicprefix", "magicsuffix", "automagic", "rareprefix",
           "raresuffix",
-          # LP1 (https://github.com/synpoox/pd2-resurrected/issues/211): the level tables a DS1, a save's map memory or D2R's code reads by row number
+          # LP1: the level tables a DS1, a save's map memory or D2R's code reads by row number
           "levels", "lvlprest", "lvlwarp", "objects", "objgroup"]
 # records below this id are the same vanilla 1.13c row in both games. itemstatcost: none, because both games filled
 # vanilla's unused stat slots (183-213, 256-285) with different stats. itemtypes: D2R added warl at 67. setitems: PD2
@@ -49,7 +49,7 @@ VANILLA = {"skills": 357, "states": 185, "itemstatcost": 0, "missiles": 684, "it
            # D2R's 137 (Colossal Summit) and its preset 1091 end the shared rows; objects 573-583 are PD2's
            # <reserved> rows, left out; lvlwarp and objgroup: every D2R row is vanilla's
            "levels": 137, "lvlprest": 1091, "lvlwarp": 88, "objects": 573, "objgroup": 133}
-# P3 (https://github.com/synpoox/pd2-resurrected/issues/47) tables pd2_items merges by key with no id list: matched by key, or row by row (the same rows in both games)
+# P3 tables pd2_items merges by key with no id list: matched by key, or row by row (the same rows in both games)
 _BY_ROW = ["gems", "qualityitems", "lowqualityitems", "books", "itemratio", "uniqueprefix", "uniquesuffix",
            "uniqueappellation"]
 VANILLA |= {t: 0 for t in ["weapons", "armor", "misc", "sets", "properties", "treasureclassex", "gamble"]}
@@ -115,7 +115,7 @@ LEFT_OUT_LEVELS = "levels left out"  # an ids key: the PD2 level ids the port le
 # columns that hold the row's own id, written with the mod's (lvlwarp UniqueId: D2R's, the row number)
 ID_COLS = {"levels": "Id", "lvlprest": "Def", "lvlwarp": "UniqueId"}
 # columns a merged D2R row keeps, where the games give them different meanings (objects Token: D2R's graphics; misc
-# spellicon: D2R's cursor for an item spell with a target, which PD2's -1 turns off for identify, https://github.com/synpoox/pd2-resurrected/issues/311)
+# spellicon: D2R's cursor for an item spell with a target, which PD2's -1 turns off for identify, #311)
 KEEP_D2R = {"objects": {"Token"}, "misc": {"spellicon"}}
 FORMULAS = {
     "skills": ["prgcalc1", "prgcalc2", "prgcalc3", "auralencalc", "aurarangecalc", *[f"aurastatcalc{i}" for i in range(1, 7)],
@@ -130,14 +130,14 @@ FORMULAS = {
 # taken-over rows need it too, since PD2 turned some vanilla skills passive (Impale -> Javelin and Spear Mastery).
 # setitems spawnable and the itemtypes socket thresholds: the value D2R gives every one of its own rows.
 # levels DrawEdges, a column both games have, overrides PD2's value: D2R's client gives only acts 1-3 an edge tile
-# (0x327090), so in act 5 (Act 4) it draws a null one and crashes (FUN_14021d090, https://github.com/synpoox/pd2-resurrected/issues/258) near the drawn floor's end;
+# (0x327090), so in act 5 (Act 4) it draws a null one and crashes (FUN_14021d090, #258) near the drawn floor's end;
 # PD2-only areas in act 5 draw none. D2R's own act 5 rows (134, 136) keep PD2's value, the same as D2R's.
 DERIVED = {"skills": {"rightskill": lambda pd2: "0" if pd2.get("passive") == "1" else "1"},
            "levels": {"DrawEdges": lambda pd2: "0" if pd2.get("Act") == "4"
                       and int(pd2.get("Id") or 0) >= VANILLA["levels"] else pd2.get("DrawEdges", "")},
            "setitems": {"spawnable": lambda pd2: "1"},
            "itemtypes": {"MaxSocketsLevelThreshold1": lambda pd2: "25", "MaxSocketsLevelThreshold2": lambda pd2: "40"}}
-# itemstatcost display (https://github.com/synpoox/pd2-resurrected/issues/67): D2R's stat strings carry the value's format code ("%+d to Strength"), where PD2's descfunc
+# itemstatcost display (#67): D2R's stat strings carry the value's format code ("%+d to Strength"), where PD2's descfunc
 # and descval print the value before vanilla's "to Strength" (string overrides keep D2R's placeholders, pd2_strings).
 # A row whose descstrpos and descstrneg name strings D2R's rows use takes those rows' descfunc and descval: its own D2R
 # row's when the strings are unchanged, else the D2R row with PD2's descfunc (bytime rows), else the first.
@@ -153,13 +153,13 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # 160 join the router too, Combustion's cltdo 100 takes 120 (docs/research/w27-static-field-combustion.md).
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
 # Blessed Hammer's sdo 40 / cdo 72 are D2R's too and take 47 / 80 (docs/research/w20-blessed-hammer.md).
-# The monster kits (W36 (https://github.com/synpoox/pd2-resurrected/issues/244), docs/research/w36-monster-kits.md): PoisonEggSpawn's cltdo 109 takes 126, TorajanBossNest's
+# The monster kits (W36, docs/research/w36-monster-kits.md): PoisonEggSpawn's cltdo 109 takes 126, TorajanBossNest's
 # srvdo 181 (the finishers' prg there) joins the router, the Cyclers' srvst 67 (D2R's Frenzy start) takes 83 and the
 # summon-on-hit shit 6 (D2R's leaves out PD2's flags) takes 67.
-# Ormus' Robes' property func 25 (D2R's 25 is affix-rand) takes the free property slot 26 (P12 (https://github.com/synpoox/pd2-resurrected/issues/108),
+# Ormus' Robes' property func 25 (D2R's 25 is affix-rand) takes the free property slot 26 (P12,
 # docs/research/p12-ormus-robes.md).
-# levels' Teleport 3 (PD2's path search, research/sorceress-w26.md) is not a D2R value; 1 (allowed) stands in until MS7 (https://github.com/synpoox/pd2-resurrected/issues/221).
-# Map items' pSpell 12 (D2R's 12 is the Resist Scroll) takes the free item spell 16 core-maps installs (MS2 (https://github.com/synpoox/pd2-resurrected/issues/217)).
+# levels' Teleport 3 (PD2's path search, research/sorceress-w26.md) is not a D2R value; 1 (allowed) stands in until MS7.
+# Map items' pSpell 12 (D2R's 12 is the Resist Scroll) takes the free item spell 16 core-maps installs (MS2).
 FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
          "misc": {"pSpell": {MAP_SPELL: "16"}},
          "levels": {"Teleport": {"3": "1"}},
@@ -171,11 +171,11 @@ FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
                                   "166": "190", "170": "190", "181": "190"},
                     "cltdofunc": {"97": "115", "98": "116", "100": "120", "101": "121", "102": "122", "112": "37",
                                   "109": "126"},
-                    # PD2's srvst 68 calls slot 32, D2R's melee start (W11 (https://github.com/synpoox/pd2-resurrected/issues/86))
+                    # PD2's srvst 68 calls slot 32, D2R's melee start (W11)
                     "srvstfunc": {"66": "80", "68": "32", "67": "83"}, "cltstfunc": {"56": "63", "57": "25"},
-                    # the finishers' prg functions (W29 (https://github.com/synpoox/pd2-resurrected/issues/104)): only these PD2 rows use these values in these columns
+                    # the finishers' prg functions (W29): only these PD2 rows use these values in these columns
                     **{f"srvprgfunc{i}": {"171": "184", "172": "185", "39": "186", "139": "181"} for i in (1, 2, 3)},
-                    # and their client halves (W30 (https://github.com/synpoox/pd2-resurrected/issues/105)); D2R's 106 is Bind Demon
+                    # and their client halves (W30); D2R's 106 is Bind Demon
                     **{f"cltprgfunc{i}": {"106": "127", "107": "128"} for i in (1, 2, 3)}}}
 # missiles.txt parameters a PD2 hit function reads as ids: pSrvHitFunc -> {column: the table it names}. srvhit 61
 # (Poison Dagger's cloud, the throwing potions, Kanemith's blaze dot) gives the hit unit state sHitPar1 with stats
@@ -472,7 +472,7 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
         fix_map_level(table, d2r.header, row, pr[src["pspell"]] if "pspell" in src else "", ids or {})
         own = d2r.rows[recs[i]] if shown and i < len(recs) else None
         if own and not any(row[j] for j in str_cols) and row[desc_cols[0]] == own[desc_cols[0]]:
-            # 1.13c's descfunc 27/28 hardcode their text; D2R's read it from the strings (https://github.com/synpoox/pd2-resurrected/issues/116: "an evil force")
+            # 1.13c's descfunc 27/28 hardcode their text; D2R's read it from the strings (#116: "an evil force")
             for j in str_cols:
                 row[j] = own[j]
         strs =tuple(row[j] for j in str_cols) if shown else ()

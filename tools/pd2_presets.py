@@ -1,4 +1,4 @@
-"""HD presets for the PD2-only presets on D2R tiles (LP3 (https://github.com/synpoox/pd2-resurrected/issues/213), ADR 0005): one generated preset JSON per DS1.
+"""HD presets for the PD2-only presets on D2R tiles (LP3, ADR 0005): one generated preset JSON per DS1.
 
 Two halves with one seam, the Layout. layout() reads a DS1 into a layout: per tile, a key for what lies there, its
 wall tiles (one per wall layer) or, with no wall, its floor tiles. A tile is named (DT1 file, orientation, main

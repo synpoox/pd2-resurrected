@@ -1,4 +1,4 @@
-// Grows D2R's Entity System Pool and Renderer Pool so PD2's large map presets fit (LP3, https://github.com/synpoox/pd2-resurrected/issues/213).
+// Grows D2R's Entity System Pool and Renderer Pool so PD2's large map presets fit (LP3, #213).
 #pragma once
 
 #include <cstddef>

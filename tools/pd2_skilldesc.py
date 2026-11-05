@@ -1,4 +1,4 @@
-"""skilldesc's description lines (https://github.com/synpoox/pd2-resurrected/issues/73), applied by pd2_tables after the merge.
+"""skilldesc's description lines (#73), applied by pd2_tables after the merge.
 
 A line is a function number plus text a/b and calc a/b (descline1 + desctexta1, ...). PD2's rows keep classic
 functions that print vanilla's text and then the value ("Duration: " 40 " seconds"); D2R's strings carry the value's
@@ -6,9 +6,9 @@ format code instead ("Duration: %d seconds"), so the merged line printed both. A
 string with a format code in a column, under a function, that D2R's own lines never use it in; or when it has no text
 under a function D2R's lines never use (PD2's built-ins: 1 Mana Cost printed D2R's "an evil force", 10 elemental
 damage printed "Magic Damage: %d-%d" and then the damage); or when a text's string has a format code under a function
-and column D2R's lines never format (https://github.com/synpoox/pd2-resurrected/issues/75: D2R's classic functions print text raw, "+%d Percent ..."). Each clashing
+and column D2R's lines never format (#75: D2R's classic functions print text raw, "+%d Percent ..."). Each clashing
 line is
-rewritten onto D2R's functions by LINES, the owner-approved mapping on https://github.com/synpoox/pd2-resurrected/issues/73; strings stay D2R's. A clash left after
+rewritten onto D2R's functions by LINES, the owner-approved mapping on #73; strings stay D2R's. A clash left after
 the rewrite fails the merge.
 """
 from __future__ import annotations

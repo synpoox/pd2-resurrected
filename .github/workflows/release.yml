@@ -1,5 +1,5 @@
 name: release
-# The full build and the release 7z (issue https://github.com/synpoox/pd2-resurrected/issues/109). Runs only on the owner's self-hosted runner: it needs the PD2 install
+# The full build and the release 7z (issue #109). Runs only on the owner's self-hosted runner: it needs the PD2 install
 # in pd2-baseline.json and a D2R install, which never go to GitHub (ADR 0002). Run it by hand (Actions > release > Run
 # workflow). A green build publishes a GitHub release v<mod.json version>, marked Latest so the repo page shows it, with
 # the 7z and SHA256SUMS, and keeps them as a workflow artifact too. Runner setup: README.md.

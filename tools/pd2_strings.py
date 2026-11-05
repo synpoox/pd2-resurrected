@@ -1,4 +1,4 @@
-"""PD2's strings (decision https://github.com/synpoox/pd2-resurrected/issues/29): the merge/strings.json rule and the command that assigns new string IDs.
+"""PD2's strings (decision #29): the merge/strings.json rule and the command that assigns new string IDs.
 
     python tools/pd2_strings.py --assign     # append newly referenced PD2 keys to merge/strings.json
 
@@ -10,7 +10,7 @@ generated/data/local/lng/. merge/strings.json holds key names and numbers only, 
   ids        key -> [string ID, D2R file], append-only. New keys copy PD2's English into all 13 languages; a
              hiredesc_<code> key takes the description in PD2's hiredesc table (PD2 has no string for it).
   texts      key -> English the mod writes itself, for listed keys PD2 has no text for (skilldesc lines in D2R's
-             format, https://github.com/synpoox/pd2-resurrected/issues/73); written into all 13 languages like PD2's
+             format, #73); written into all 13 languages like PD2's
 Text going into skills.json has its lines flipped (D2R stacks multi-line skill text top-down). The rule fails if D2R
 starts using a listed key or the low 16 bits of a listed ID.
 
@@ -27,7 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TBL = "local/lng/eng/patchstring.tbl"  # under PD2's data root
-FIRST_ID = 50000  # leaves 28,106-49,999 to Blizzard (decision https://github.com/synpoox/pd2-resurrected/issues/29)
+FIRST_ID = 50000  # leaves 28,106-49,999 to Blizzard (decision #29)
 
 
 def read_tbl(data: bytes) -> dict[str, str]:

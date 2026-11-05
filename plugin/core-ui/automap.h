@@ -1,4 +1,4 @@
-// Automap for PD2's level types 36 and up (LP2, https://github.com/synpoox/pd2-resurrected/issues/212). D2R's automap knows 36 level types; its tile lookup
+// Automap for PD2's level types 36 and up (LP2, #212). D2R's automap knows 36 level types; its tile lookup
 // (rva::AutomapCel) reads past its tables for higher ones. The hook answers those types from PD2's AutoMap.txt rows,
 // which the build writes to the custom table data/global/excel/d2rloader/core-ui/automap.txt (tools/pd2_levels.py),
 // and leaves types 0-35 to D2R.

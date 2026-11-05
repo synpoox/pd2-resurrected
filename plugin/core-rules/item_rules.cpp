@@ -12,9 +12,9 @@
 //   curse resistance (curse_effectiveness on the target scales the curse's stats), around D2R's ApplyCurse.
 // - skill while equipped and phasing (docs/research/ir7-equipped-items.md): item_skillonequip runs its skill as an
 //   item aura (D2R's item_aura case and tick, fed stat 375), and Phasing SelfAura drops the unit collision bits.
-// - critical and deadly strike (IR3 (https://github.com/synpoox/pd2-resurrected/issues/238), docs/research/ir3-combat-stats.md): PD2's roll and multipliers in place of
+// - critical and deadly strike (IR3, docs/research/ir3-combat-stats.md): PD2's roll and multipliers in place of
 //   D2R's, in WeaponDamage's roll block (a byte patch calling WeaponStrike) and D2R's missile roll.
-// - op bases, life steal cap and crushing blow (IR3 (https://github.com/synpoox/pd2-resurrected/issues/238)): equipped_eth / missing_hp on D2R's op-base read,
+// - op bases, life steal cap and crushing blow (IR3): equipped_eth / missing_hp on D2R's op-base read,
 //   lifedrain_percentcap on D2R's add-life, and PD2's blow in CrushingBlowApply's jump slot.
 #include "item_rules.h"
 
@@ -201,7 +201,7 @@ auto SkillDispatch(Game* game, Unit* unit, int32_t skillId, int32_t level, int32
 	return ran;
 }
 
-// --- Critical and deadly strike (IR3 (https://github.com/synpoox/pd2-resurrected/issues/238), docs/research/ir3-combat-stats.md) ---
+// --- Critical and deadly strike (IR3, docs/research/ir3-combat-stats.md) ---
 // Merged stat ids (merge/ids-itemstatcost.tsv; PD2's 337, 141, 256, 257, 258, 210)
 constexpr uint32_t StatPassiveCrit = 337;     // passive_critical_strike
 constexpr uint32_t StatDeadlyStrike = 141;    // item_deadlystrike
@@ -321,7 +321,7 @@ auto WeaponCritPatch(uint8_t (&out)[28]) noexcept -> void {
 	out[27] = 0x90;
 }
 
-// --- Op bases (IR3 (https://github.com/synpoox/pd2-resurrected/issues/238)): PD2's 0x102fa640 computes two stats no one sets, for ops 4 / 5 (item_dmgpercent_pereth,
+// --- Op bases (IR3): PD2's 0x102fa640 computes two stats no one sets, for ops 4 / 5 (item_dmgpercent_pereth,
 // item_dmgpercent_permissinghppercent). Merged ids (PD2's 183, 184).
 constexpr uint32_t StatEquippedEth = 368;  // equipped_eth
 constexpr uint32_t StatMissingHp = 369;    // missing_hp
@@ -375,7 +375,7 @@ auto BaseStat(const uint8_t* statList, uint32_t statLayer, const uint8_t* record
 	return count;
 }
 
-// --- Life steal cap (IR3 (https://github.com/synpoox/pd2-resurrected/issues/238), Nightmare's Feast): lifedrain_percentcap, merged id 541 (PD2's 488) ---
+// --- Life steal cap (IR3, Nightmare's Feast): lifedrain_percentcap, merged id 541 (PD2's 488) ---
 constexpr uint32_t StatLifeDrainCap = 541;
 
 std::atomic<uint32_t> g_capChecks {0};
@@ -407,7 +407,7 @@ auto CappedAddLife(Unit* unit, int32_t amount) noexcept -> int32_t {
 	return allowed ? g_addLifeOriginal(unit, amount) : 0;
 }
 
-// --- Crushing blow (IR3 (https://github.com/synpoox/pd2-resurrected/issues/238)): PD2's blow (event 16, 0x103469a0) in place of D2R's CrushingBlowApply ---
+// --- Crushing blow (IR3): PD2's blow (event 16, 0x103469a0) in place of D2R's CrushingBlowApply ---
 constexpr uint32_t StatDamageResist = 36;
 constexpr uint32_t StatPlayerCount = 100;   // monster_playercount
 constexpr uint32_t StatCbEfficiency = 394;  // item_crushingblow_efficiency (PD2's 268)

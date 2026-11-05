@@ -1,4 +1,4 @@
-// PD2's hireling rules (UR3, https://github.com/synpoox/pd2-resurrected/issues/201):
+// PD2's hireling rules (UR3, #201):
 //
 // - Tyrael hires the Ascendant (hireling ids 39 to 44, seller tyrael2). D2R gives his menu Talk, Travel To Harrogath
 //   and Cancel, with no Hire, so before his menu opens Hire goes in after Talk, with the Hire handler Kashya's menu

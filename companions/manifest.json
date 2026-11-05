@@ -1,5 +1,5 @@
 {
-  "_note": "Pinned companion plugins (issue https://github.com/synpoox/pd2-resurrected/issues/15). sha256 from each release's SHA256SUMS (a `commit` entry: of the file at that commit, the repo has no releases). files: zip path -> path in the installed mod folder. Bump one companion per PR, after the coexistence check.",
+  "_note": "Pinned companion plugins (issue #15). sha256 from each release's SHA256SUMS (a `commit` entry: of the file at that commit, the repo has no releases). files: zip path -> path in the installed mod folder. Bump one companion per PR, after the coexistence check.",
   "companions": [
     {
       "name": "Pyre Loot Filter",

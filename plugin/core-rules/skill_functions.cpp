@@ -9,7 +9,7 @@
 // start frame; zero refuses the cast. srvdofunc 190 is a router: one slot shared by several PD2 do functions, picked
 // by skill id.
 // PD2's channel take-over is an inline hook on D2R's mode gate for a busy player (BusyModeGate), which also logs the
-// Run/Concentration answers W19 (https://github.com/synpoox/pd2-resurrected/issues/94)'s game checks read. Each slot is written with PatchWriteU64 and an expected value of
+// Run/Concentration answers W19's game checks read. Each slot is written with PatchWriteU64 and an expected value of
 // eight zero bytes (D2R's own function for the slots it wraps: aura events 32 and 16, srvdo 58), so a slot D2R or
 // another plugin already uses is refused and logged, never overwritten. Slots keep PD2's own numbers where free (docs/core-rules.md).
 #include "skill_functions.h"
@@ -340,7 +340,7 @@ auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 	return 1;
 }
 
-// --- W10 (https://github.com/synpoox/pd2-resurrected/issues/51) Barbarian group (docs/research/w10-barbarian.md) ----------------------------------------------------------
+// --- W10 Barbarian group (docs/research/w10-barbarian.md) ----------------------------------------------------------
 std::atomic<uint32_t> g_finds {0};
 std::atomic<uint32_t> g_findsRefused {0};
 std::atomic<uint32_t> g_bashHits {0};
@@ -864,7 +864,7 @@ auto CltDoDesecrate(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 // --- Melee splash (PD2 srvdofunc 163 -> router 190) ---------------------------------------------------------------
 // Read from ProjectDiablo.dll: srvdo 163 at 0x103b2340, its per-unit callback 0x10303190; Revive's aura event 32
 // (0x10347370) calls the do function itself (docs/research/w33-melee-splash.md). Every unit within calc3 of the struck
-// unit, the struck unit aside, takes a hit with no to-hit roll: a player's current skill's damage (W35 (https://github.com/synpoox/pd2-resurrected/issues/125)) and the
+// unit, the struck unit aside, takes a hit with no to-hit roll: a player's current skill's damage (W35) and the
 // attacker's weapon damage at that skill's SrcDam, with half the life leech, through D2R's area search with PD2's unit
 // mask. The radius is calc3 + the inc_splash_radius held by the weapon's item types / 20, 1 less on a normal-tier base.
 // shortcut: Smite's splash takes Smite's skill damage, not its shield damage and state 224 list (0x103060c0), and the
@@ -1833,7 +1833,7 @@ constexpr int32_t ChargeUpSkills[] = {TigerStrike, FistsOfFire, CobraStrike, Cla
 constexpr int32_t ProgressiveSteal = 319;  // aurastat1 of Cobra Strike and RakanothStrike (the same id in PD2)
 constexpr int32_t StatLifeDrain = 60, StatManaDrain = 62;  // lifedrainmindam, manadrainmindam: D2R and PD2
 // One counter per finisher (and one for any other skill). The first 10 calls of each are logged, then sampled: the
-// W29 (https://github.com/synpoox/pd2-resurrected/issues/104) checks need a finisher's later hits, which build on another finisher's charges (https://github.com/synpoox/pd2-resurrected/issues/134).
+// W29 checks need a finisher's later hits, which build on another finisher's charges (#134).
 using FinisherCounters = std::atomic<uint32_t>[std::size(ChargeUpSkills) + 1];
 FinisherCounters g_chargeUps {};
 FinisherCounters g_chargeSpreads {};
@@ -2709,7 +2709,7 @@ auto SrvDoStaticField(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 }
 
 constexpr int32_t TorajanBossNest = 631;  // merged id
-auto SrvDoTorajanNest(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t;  // W36 (https://github.com/synpoox/pd2-resurrected/issues/244), below
+auto SrvDoTorajanNest(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t;  // W36, below
 
 // srvdofunc 190 serves the PD2 do functions that have no free slot of their own, by skill id (docs/core-rules.md).
 auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
@@ -3464,7 +3464,7 @@ auto SrvStHolySword(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 }
 
 // Smite start: PD2 adds Smite's auraevent1 (domeleedamage -> 16) here. D2R calls no aura event on a player's melee hit
-// (https://github.com/synpoox/pd2-resurrected/issues/165 game check: slot 16 never ran on Smite or with a crushing-blow item), so the roll rides on Smite's do instead.
+// (#165 game check: slot 16 never ran on Smite or with a crushing-blow item), so the roll rides on Smite's do instead.
 auto SrvStSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	if (game == nullptr || unit == nullptr) {
 		return 0;
@@ -3532,7 +3532,7 @@ auto SrvDoSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 	return result;
 }
 
-// --- Monster kits (W36 (https://github.com/synpoox/pd2-resurrected/issues/244); docs/research/w36-monster-kits.md) ---------------------------------------------------------
+// --- Monster kits (W36; docs/research/w36-monster-kits.md) ---------------------------------------------------------
 // Read from ProjectDiablo.dll: srvdo 173 at 0x103b3520, cltdo 109 at 0x103abba0, srvdo 181 at 0x103b4cf0, srvst 67 at
 // 0x103b6520 with its per-unit callback 0x1036d5a0.
 std::atomic<uint32_t> g_eggSpawns {0};
@@ -3764,7 +3764,7 @@ const SlotFunction Functions[] = {
 	// PD2 leaves Fist of the Heavens' chit 26 vanilla, and D2R's 26 differs from 1.13c's: ours takes 71 (FUNCS)
 	{MissileCltHit, 71, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitFistDelay)), "fist delay"},
 	// The finishers' prg functions: the release calls them with the charge-up skill's id, which the router already
-	// gives srvdo 170, so they take the slots of after-the-cut monster functions (181, 184-186, W25 (https://github.com/synpoox/pd2-resurrected/issues/100))
+	// gives srvdo 170, so they take the slots of after-the-cut monster functions (181, 184-186, W25)
 	{SrvDo, 184, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvPrgSpread)), "charge spread"},
 	{SrvDo, 185, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvPrgRing)), "charge ring"},
 	{SrvDo, 186, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvPrgFire)), "charge fire"},
@@ -3776,7 +3776,7 @@ const SlotFunction Functions[] = {
 	{SrvDo, 175, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoFireClaws)), "fire claws"},
 	{CltDo, 110, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoFireClaws)), "fire claws"},
 	{SrvSt, 77, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStWolves)), "wolf start"},
-	// The finishers' client halves (W30 (https://github.com/synpoox/pd2-resurrected/issues/105)): D2R fills cltdo 106 (Bind Demon), 107 and cdo 69 (corpseexplosion); chit 67
+	// The finishers' client halves (W30): D2R fills cltdo 106 (Bind Demon), 107 and cdo 69 (corpseexplosion); chit 67
 	// is free
 	{CltDo, 127, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltPrgSpread)), "charge spread"},
 	{CltDo, 128, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltPrgRing)), "charge ring"},
@@ -3787,16 +3787,16 @@ const SlotFunction Functions[] = {
 	// Dragon Flight keeps PD2's free srvdo 178; Psychic Hammer's dmg 15 is D2R's Holy Bolt, so ours takes 22 (FUNCS)
 	{SrvDo, 178, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoDragonFlight)), "dragon flight"},
 	{MissileSrvDmg, 22, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgChainFalloff)), "chain falloff"},
-	// Blessed Hammer (W20 (https://github.com/synpoox/pd2-resurrected/issues/95)): D2R fills sdo 40 and cdo 72 (a sub-missile once, then the default), so ours take free
+	// Blessed Hammer (W20): D2R fills sdo 40 and cdo 72 (a sub-missile once, then the default), so ours take free
 	// slots and the merge points there (FUNCS)
 	{MissileSrvDo, 47, reinterpret_cast<const void*>(static_cast<MissileSrvDoFn>(SrvDoBlessedHammer)), "blessed hammer"},
 	{MissileCltDo, 80, reinterpret_cast<const void*>(static_cast<MissileCltDoFn>(CltDoBlessedHammer)), "blessed hammer"},
-	// Blade Fury's fragment (W32 (https://github.com/synpoox/pd2-resurrected/issues/107)): D2R fills shit 34 (echoingstrike); chit 6 sits below D2R's free range, so it takes 68
+	// Blade Fury's fragment (W32): D2R fills shit 34 (echoingstrike); chit 6 sits below D2R's free range, so it takes 68
 	// (FUNCS); dmg 19 is free
 	{MissileSrvHit, 69, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitBladeFragment)), "blade fragment"},
 	{MissileCltHit, 68, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitBladeFragment)), "blade fragment"},
 	{MissileSrvDmg, 19, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgBladeFragment)), "blade fragment"},
-	// Monster kits (W36 (https://github.com/synpoox/pd2-resurrected/issues/244)): srvdo 173 is free; D2R fills cltdo 109 and srvst 67 (Frenzy's), and PD2's srvdo 181 holds the
+	// Monster kits (W36): srvdo 173 is free; D2R fills cltdo 109 and srvst 67 (Frenzy's), and PD2's srvdo 181 holds the
 	// finishers' prg, so TorajanBossNest is the router's; shit 6 is D2R's spawn without PD2's flags, so ours takes 67
 	{SrvDo, 173, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoPoisonEggSpawn)), "poison egg spawn"},
 	{CltDo, 126, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoPoisonEggSpawn)), "poison egg spawn"},

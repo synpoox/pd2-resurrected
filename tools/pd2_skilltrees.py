@@ -1,4 +1,4 @@
-"""Skill tree backgrounds (https://github.com/synpoox/pd2-resurrected/issues/84): every class's tree art redrawn so its boxes and prerequisite arrows follow PD2's
+"""Skill tree backgrounds (#84): every class's tree art redrawn so its boxes and prerequisite arrows follow PD2's
 skill positions. Each D2R tree sprite (one frame per tab: the tab strip on top, the boxes and arrows below it on a
 clear background) keeps its tab strip; below it the art is cleared and redrawn: a box at each merged skilldesc
 SkillPage / SkillRow / SkillColumn (SkillPage 0 gets none) and an arrow from each skills reqskill on the same page to

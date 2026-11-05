@@ -26,7 +26,7 @@ SHOWN = 200  # open deviations listed in the report; the counts cover the rest
 
 
 STATUSES = ("approximated", "cut", "not yet")
-# the roadmap's work items that merge tables (P2 the id-listed ones, P3 (https://github.com/synpoox/pd2-resurrected/issues/47) the item tables, P4 (https://github.com/synpoox/pd2-resurrected/issues/48) the rest); M1 and alpha both
+# the roadmap's work items that merge tables (P2 the id-listed ones, P3 the item tables, P4 the rest); M1 and alpha both
 ITEM_TABLES = {"armor", "weapons", "misc", "itemtypes", "magicprefix", "magicsuffix", "automagic", "rareprefix",
                "raresuffix", "uniqueitems", "sets", "setitems", "runes", "gems", "cubemain", "cubemod", "cubetype",
                "treasureclassex", "treasureclass", "qualityitems", "lowqualityitems", "itemratio", "gamble",

@@ -1,4 +1,4 @@
-"""HD art from PD2's classic pictures, upscaled with Real-ESRGAN's realesrgan-x4plus model (4x): picked in https://github.com/synpoox/pd2-resurrected/issues/205 over a
+"""HD art from PD2's classic pictures, upscaled with Real-ESRGAN's realesrgan-x4plus model (4x): picked in #205 over a
 bilinear upscale for a painted look closer to D2R's own art.
 
 Its output is cached as merge/art/<name>-<hash of the classic frame>.png and committed, so the merge runs Real-ESRGAN

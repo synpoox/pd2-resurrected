@@ -1,4 +1,4 @@
-"""The tables with no id list (P3 (https://github.com/synpoox/pd2-resurrected/issues/47), P4 (https://github.com/synpoox/pd2-resurrected/issues/48)): merge/tables.json names each table the merge takes over from D2R.
+"""The tables with no id list (P3, P4): merge/tables.json names each table the merge takes over from D2R.
 
     {"<table>": {"rows": "name" | "position" | [column, ...], "pd2_only_rows": "append" | "leave out",
                  "repeats": "pair" | "replace group", "d2r_columns": [column, ...]}, ...}   (defaults first)
@@ -10,7 +10,7 @@ D2R's last row, D2R-only columns blank, so extra rows that collide with D2R's (e
 them (new PD2-only areas are not yet in the port). "rows": "position" pairs rows by their place instead, for tables
 whose row number is the id and whose name columns differ between the games (shrines); a list of columns
 pairs rows by those columns' values (hireling: Version, Id, Difficulty, Level; objects: Name). "move": {column: {PD2
-value: mod value}} renumbers PD2's rows before pairing, for ids D2R gave other rows (hireling 30-38, https://github.com/synpoox/pd2-resurrected/issues/201); a moved row
+value: mod value}} renumbers PD2's rows before pairing, for ids D2R gave other rows (hireling 30-38, #201); a moved row
 appends even under "leave out" and takes PD2's d2r_columns too, as D2R has no row of that meaning. "repeats": "replace group" puts PD2's
 whole group of a repeated name where D2R's group was, for lists the game reads in order (monequip: a monster's gear by
 level). "d2r_columns" keep D2R's values where the games give a column different meanings (objects Token: D2R's
@@ -32,7 +32,7 @@ OPTIONS = {"rows": ("name", "position"), "pd2_only_rows": ("append", "leave out"
 def row_keys(t: Table, rows: str | list[str] = "name") -> list[str]:
     """Each row's key, as the merge and the gate pair rows: its name, its number, or its key columns' values joined
     by "/"; a repeated key gets #2, #3, ... in order. Compare keys in lower case."""
-    # shortcut: repeats pair by order, so one inserted repeat shifts the rest; key cube rows by content when P3 (https://github.com/synpoox/pd2-resurrected/issues/47) merges cubemain
+    # shortcut: repeats pair by order, so one inserted repeat shifts the rest; key cube rows by content when P3 merges cubemain
     if rows == "position":
         return [str(i) for i in range(len(t.rows))]
     ix = [0] if rows == "name" else [[c.lower() for c in t.header].index(c.lower()) for c in rows]

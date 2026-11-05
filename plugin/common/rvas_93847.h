@@ -4,7 +4,7 @@
 // found in the Ghidra analysis of the dumped 93847 image; the comment beside each says where (the Split Throw spike,
 // spikes/split-throw/FINDINGS.md, or the D2R function it was read from) and the game check that uses it. core-rules'
 // names match the RVA column of docs/core-rules.md; another plugin's values sit in a section headed by that plugin and
-// the work item that found them, which records them (core-ui: LP2, https://github.com/synpoox/pd2-resurrected/issues/212).
+// the work item that found them, which records them (core-ui: LP2, #212).
 #pragma once
 
 #include <cstddef>
@@ -48,7 +48,7 @@ inline constexpr int SrvDoPoisonDaggerSlot = 32;  // 0x55cc50: D2R's Poison Dagg
 inline constexpr int SrvDoRevive = 58;
 inline constexpr uint64_t SrvDoReviveD2R = 0x55e7e0;
 // srvdofunc 150, D2R's Smite do (also MonSmite's, UberTalicSmite's, MonSmiteLucion's): builds the hit on its stack,
-// QueueHit's it, then ApplyQueuedHit (0x564930 decompiled, https://github.com/synpoox/pd2-resurrected/issues/165)
+// QueueHit's it, then ApplyQueuedHit (0x564930 decompiled, #165)
 inline constexpr int SrvDoSmite = 150;
 inline constexpr uint64_t SrvDoSmiteD2R = 0x564930;
 // (game, attacker, target, &damage, flag): queues a hit in the attacker's list (+0x108, QueuedHit reads it); a hit
@@ -156,7 +156,7 @@ inline constexpr uint64_t EvalMissileCalc = 0x3b4a90;
 inline constexpr uint64_t SetMissileOffset = 0x193a80;
 inline constexpr uint64_t SetMissileMotion = 0x193ad0;
 // Power Strike's client do function (cltdo 22, 1.13c D2Client 0x15660) draws the strike only for the local player:
-// `je` at this address skips its early return. PD2 has no such check (W6 (https://github.com/synpoox/pd2-resurrected/issues/53)).
+// `je` at this address skips its early return. PD2 has no such check (W6).
 inline constexpr uint64_t CltDoStrikeLocalOnly = 0x2aed4a;
 
 // Double Throw (D2R's own srvdo 74 0x567a20, cltdo 42 0x22f3f0, Chain Lightning's srvhit 12 0x45d5e0)
@@ -173,7 +173,7 @@ inline constexpr uint64_t SetMissileTargetDx = 0x3bda20;  // (missile, tx - ux),
 inline constexpr uint64_t MissileSkill = 0x3bc450;  // (missile) -> skill id
 inline constexpr uint64_t MissileLevel = 0x3bb470;  // (missile) -> skill level
 inline constexpr uint64_t MissileRecord = 0x166040;  // (dataFlag, missile row) -> missiles.txt record or null
-// Blade Fury's fragment (W32 (https://github.com/synpoox/pd2-resurrected/issues/107), docs/research/w32-blade-fury.md). MissileBounces' field is 1.13c's missile data +0x28,
+// Blade Fury's fragment (W32, docs/research/w32-blade-fury.md). MissileBounces' field is 1.13c's missile data +0x28,
 // the one PD2's fragment counts its generation in (D2Common #11018 / #10637).
 inline constexpr uint64_t MissileActivateFrame = 0x3bae80;  // (missile) -> 1.13c's data +0x08 (D2R +0x0a)
 inline constexpr uint64_t SetMissileFramesLeft = 0x3bd450;  // (missile, frames): what MissileSrvFrames reads
@@ -185,7 +185,7 @@ inline constexpr uint16_t CollisionMissile = 0x806;  // PD2's fragment tests thi
 inline constexpr uint64_t NearestTarget = 0x4331d0;
 inline constexpr uint64_t SetUnitStat = 0x2f7d10;  // (unit, stat, value, layer)
 
-// Poison Dagger (W11 (https://github.com/synpoox/pd2-resurrected/issues/86), docs/research/necromancer-w11.md)
+// Poison Dagger (W11, docs/research/necromancer-w11.md)
 // (unit, &damage, skillId, level): adds the skill's elemental damage to a zeroed damage block (poison +0x38 = min +
 // rand(max - min), length +0x3c). D2R's melee start (srvst 32, 0x567070) fills the queued hit with it.
 inline constexpr uint64_t ElementalDamage = 0x437d00;
@@ -250,7 +250,7 @@ inline constexpr uint64_t UnitId = 0x34a330;  // (unit, file, line) -> unit id
 // (unit, skill, level, target, 0) -> non-zero cast: a skill cast from unit at target as an event, sent to clients (aura
 // event 33 0x42f300 casts this way); refuses while the unit has state 54
 inline constexpr uint64_t CastEventSkill = 0x5896e0;
-// Assassin charge-up finishers (W29 (https://github.com/synpoox/pd2-resurrected/issues/104), docs/research/w29-assassin-finishers.md)
+// Assassin charge-up finishers (W29, docs/research/w29-assassin-finishers.md)
 inline constexpr int SrvDoChargeUpSlot = 34;  // 0x570a70: target, roll, queue the hit, AddCharge if it hits, apply
 inline constexpr int SrvDoFireCharge1 = 38;  // 0x56ef30 and 0x571860: vanilla's later Fists of Fire charges
 inline constexpr int SrvDoFireCharge2 = 39;
@@ -266,11 +266,11 @@ inline constexpr uint64_t SendChargePacket = 0x5396d0;
 inline constexpr uint64_t ListStatValue = 0x2f5df0;  // (dataFlag, list, stat, layer) -> value
 inline constexpr uint64_t NewStatList = 0x2f7300;  // (flags, expire frame, unit type, unit id) -> list or null
 inline constexpr uint64_t AttachStatList = 0x2f2cb0;  // (unit, list, 1)
-// Dragon Flight (W31 (https://github.com/synpoox/pd2-resurrected/issues/106)): D2R's srvdo 52 (0x56fc80) fills its kick with this after the roll (MeleeRoll, below), on a
+// Dragon Flight (W31): D2R's srvdo 52 (0x56fc80) fills its kick with this after the roll (MeleeRoll, below), on a
 // d2r::LeapKnockback block with DmgPercent set
 inline constexpr uint64_t MeleeFill = 0x573af0;  // (game, &block, unit, target, skill, level): the hit's damage
 
-// Melee splash (W33 (https://github.com/synpoox/pd2-resurrected/issues/119)): one victim's damage, built the way PD2's area callback 0x10303190 builds it
+// Melee splash (W33): one victim's damage, built the way PD2's area callback 0x10303190 builds it
 // (game, attacker, defender, &damage, 0, srcdam): weapon damage scaled by srcdam / 128 (0 = 128); Leap Attack's
 // 0x44b600 fills its hit this way
 inline constexpr uint64_t WeaponDamage = 0x44c030;
@@ -285,7 +285,7 @@ inline constexpr uint64_t HitEvents = 0x44ce80;
 inline constexpr uint64_t DealDamage = 0x44a9b0;  // (game, attacker, victim, &damage)
 // The whole area apply: the steps above with events 6 domissiledamage and 2 (1.13c's 0x10305760 in PD2's Holy Light)
 inline constexpr uint64_t AreaApply = 0x436e90;  // (game, attacker, victim, &damage)
-// Melee splash, the current skill's damage (W35 (https://github.com/synpoox/pd2-resurrected/issues/125), docs/research/w35-melee-splash-extras.md)
+// Melee splash, the current skill's damage (W35, docs/research/w35-melee-splash-extras.md)
 // (dataFlag, unit, skillId, level, 0) -> the skill's own physical min / max in 1/256 (MinDam/MaxDam with MinLevDam...;
 // a kick's from strength and dexterity), the pair D2R's kick fill MeleeFill reads; 1.13c's D2Game 0x9f1a0 adds
 // min + rand(max - min) to the hit's physical damage
@@ -301,7 +301,7 @@ inline constexpr int SkEType = 0x284;  // uint8 EType (1.13c's 0x1dc)
 // 0x65 / 0x68
 inline constexpr int DmgConvType = 0x149;
 inline constexpr int DmgConvPct = 0x14c;
-// Holy Light (W17 (https://github.com/synpoox/pd2-resurrected/issues/92), docs/research/w17-holy-light.md)
+// Holy Light (W17, docs/research/w17-holy-light.md)
 // (unit, overlay, layer): overlay.txt row as stat 0xb2 on the given layer; 1.13c's D2Common #10689 has no layer (0).
 // Asserts on a row past the table, so check DataTables + TablesOverlayCount first, as Leap Attack (0x56b170) does.
 inline constexpr uint64_t SetOverlay = 0x349020;
@@ -312,7 +312,7 @@ inline constexpr uint64_t UnitAlignment = 0x2f4190;
 // in range; x/y 0 = the center unit's position, radius 0 does nothing (Fist of the Heavens' clthit 26 0x1adcb0)
 inline constexpr uint64_t ClientAreaUnits = 0x2142d0;
 inline constexpr uint64_t ClientFindUnit = 0x9a5d0;  // (id, type) -> the client's unit or null
-// Vengeance (W18 (https://github.com/synpoox/pd2-resurrected/issues/93), docs/research/w18-vengeance-joust.md): the melee hit as D2R's Leap Attack hit (0x56b170) runs it
+// Vengeance (W18, docs/research/w18-vengeance-joust.md): the melee hit as D2R's Leap Attack hit (0x56b170) runs it
 inline constexpr uint64_t SkillToHit = 0x339040;  // (unit, skillId, level) -> attack rating for the roll
 // (game, unit, target, toHit, flag, 0) -> result flags (bit 0 hit); flag = skill byte SkRollFlags & the byte at
 // MeleeRollFlagMask
@@ -327,7 +327,7 @@ inline constexpr uint64_t ElementalLength = 0x337da0;
 inline constexpr uint64_t MissileTargetType = 0x3bc190;  // (missile) -> target unit type, 6 for none
 inline constexpr uint64_t MissileTargetId = 0x3bc280;  // (missile) -> target unit id
 inline constexpr uint64_t EngineAllocator = 0x12063c0;  // () -> the allocator; vtable +0x20 frees (Leap Attack's cleanup)
-// Static Field (W27 (https://github.com/synpoox/pd2-resurrected/issues/102)), the way D2R's Static Field (srvdo 20 0x5546b0, per unit 0x5556a0) builds its hit
+// Static Field (W27), the way D2R's Static Field (srvdo 20 0x5546b0, per unit 0x5556a0) builds its hit
 // (dataFlag, difficulty) -> difficultylevels.txt record (0x84 bytes); StaticFieldMin at +0x68
 inline constexpr uint64_t DifficultyRecord = 0x300830;
 inline constexpr int DiffStaticFieldMin = 0x68;
@@ -335,13 +335,13 @@ inline constexpr int DiffStaticFieldMin = 0x68;
 // (2 lightning: +0x2c, hit class +0x144 = 0x40; resist stat 41)
 inline constexpr uint64_t AddElementDamage = 0x437980;
 inline constexpr int DamageFlag148 = 0x148;   // uint8 D2R's Static Field sets to 1
-// Desecrate (W13 (https://github.com/synpoox/pd2-resurrected/issues/88)), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
+// Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
 // (game, room, x, y, monstats id, mode, -1, 0x42) -> monster or null; counts it in its level's monster region. D2R's
 // Nest (0x57c590) passes its 1-based spawn index and 0 for the last two
 inline constexpr uint64_t SpawnMonster = 0x492cf0;
-// Monster kits (W36 (https://github.com/synpoox/pd2-resurrected/issues/244)), the way D2R's Nest (srvdo 91, 0x57c590) and srvhit 6 (0x45ce90) spawn
+// Monster kits (W36), the way D2R's Nest (srvdo 91, 0x57c590) and srvhit 6 (0x45ce90) spawn
 inline constexpr uint64_t ClearSpawnSpot = 0x3636d0;  // (room, x, y, 1, 0x100): Nest calls it before spawning
 inline constexpr uint64_t NestHold = 0x48e820;  // (unit, 0): Nest calls it before spawning; sets state 54 to the value
 // (game, room, monstats id, x, y, mode, 0) -> monster or null: srvhit 6's spawn at the missile
@@ -357,7 +357,7 @@ inline constexpr int StatMana = 8, StatMaxMana = 9;  // in 1/256
 // (unit): flags it (+0x124 bit 0x2000) for its room's update list; D2R's srvst 63 calls it on the corpse it takes
 inline constexpr uint64_t QueueUnitUpdate = 0x38ebf0;
 inline constexpr int StateCorpseTaken = 118;  // the state srvst 63 (and PD2's 67) puts on the corpse it uses
-// Inferno / Arctic Blast (W21 (https://github.com/synpoox/pd2-resurrected/issues/96), channel-cast), the way D2R's Inferno (srvdo 19 0x554460 -> 0x551730, cltdo 24 0x2203f0)
+// Inferno / Arctic Blast (W21, channel-cast), the way D2R's Inferno (srvdo 19 0x554460 -> 0x551730, cltdo 24 0x2203f0)
 inline constexpr uint64_t CurrentSkill = 0x34ba40;  // (unit) -> the unit skill it is using, or null
 inline constexpr uint64_t UnitFrame = 0x349560;  // (unit) -> animation frame (+0x5c >> 8)
 inline constexpr uint64_t SetUnitFrame = 0x34da20;  // (unit, frame): +0x5c and +0x60 = frame << 8
@@ -792,25 +792,25 @@ inline constexpr uint64_t ItemPage = 0x36cfe0;            // (item) -> item data
 inline constexpr uint64_t ItemCode = 0x36ef50;            // (item) -> items.txt code as a dword ('box ' 0x20786f62)
 inline constexpr uint8_t CubePageCube = 3;
 
-// --- core-ui: automap for level types 36+ (LP2, https://github.com/synpoox/pd2-resurrected/issues/212) -------------------------------------------------------------
+// --- core-ui: automap for level types 36+ (LP2, #212) -------------------------------------------------------------
 // (levelType, tileType, style, sequence) -> cel or -1 (0xffffffff): the automap tile lookup. It matches AutoMap.txt
 // rows of the type's range (36 ranges, so types 36+ read past them), style 0xff any, start sequence 0xff any, else
-// start <= sequence <= end; then cels[Roll(seed) % count]. Decompiled for https://github.com/synpoox/pd2-resurrected/issues/212 (Ghidra, D2R.gpr); entry bytes read from
-// the 6ab3782c dump. Game check (https://github.com/synpoox/pd2-resurrected/issues/212): core-ui's status counters climb in a PD2-only area with the automap open.
+// start <= sequence <= end; then cels[Roll(seed) % count]. Decompiled for #212 (Ghidra, D2R.gpr); entry bytes read from
+// the 6ab3782c dump. Game check (#212): core-ui's status counters climb in a PD2-only area with the automap open.
 inline constexpr uint64_t AutomapCel = 0x32bdf0;
 inline constexpr uint8_t AutomapCelEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74,
                                               0x24, 0x18, 0x48, 0x89, 0x7c, 0x24, 0x20};
 inline constexpr int AutomapLevelTypes = 36;  // AutoMap.txt loader 0x32cae0 matches 36 names (table 0x1cfe110)
 inline constexpr uint64_t AutomapSeedPtr = 0x2372a40;  // pointer to the {lo, hi} seed 0x32bdf0 rolls (its decompile)
 
-// --- core-ui: HD pictures of 4-character item codes (https://github.com/synpoox/pd2-resurrected/issues/310, https://github.com/synpoox/pd2-resurrected/issues/298) ---------------------------------------------------
+// --- core-ui: HD pictures of 4-character item codes (#310, #298) ---------------------------------------------------
 // The items.json loader 0x6635a0 keys each entry by its code's first 3 characters plus a space (0x663a14 writes 0x20
 // to byte 3), while the picture lookup 0x662fb0 (case 4) searches by the item record's whole code dword (+0x80). So a
 // 4-character code never finds its entry (tpgs draws nothing) and overwrites the entry of the 3-character code it
 // starts with (r01s replaces r01's picture). The patch keeps byte 3: the key's last two bytes are loaded as a word and
 // byte 3 becomes c[3] | 0x20 (a 3-character code's terminator gives the space D2R wrote; every PD2 code's 4th
 // character already has bit 0x20, which tools/pd2_items.py checks). The 2-character path, which jumped to the
-// removed store, jumps to D2R's own double-space store at 0x663a07. Decompiled and read from the 6ab3782c dump (https://github.com/synpoox/pd2-resurrected/issues/310).
+// removed store, jumps to D2R's own double-space store at 0x663a07. Decompiled and read from the 6ab3782c dump (#310).
 inline constexpr uint64_t ItemsJsonKey = 0x6639f9;
 // jmp 0x663a14 / mov [rsp+25],al / movzx eax,byte [rsi+2] / test al,al / jne 0x663a10 / mov word [rsp+26],0x2020 /
 // jmp 0x663a19 / mov [rsp+26],al / mov byte [rsp+27],0x20
@@ -825,7 +825,7 @@ inline constexpr uint8_t ItemsJsonKeyFull[] = {0xeb, 0x0c, 0x88, 0x44, 0x24, 0x2
 static_assert(sizeof(ItemsJsonKeyD2R) == sizeof(ItemsJsonKeyFull));
 // The `cheat spawn` handler 0x40f670 builds its item-code key the same way (0x40fc39-0x40fc6e: the first 3 characters,
 // spaces after a short code, a space in byte 3), then compares it with each item record's code (+0x80), so a 4-character
-// code spawns nothing (https://github.com/synpoox/pd2-resurrected/issues/323). The rewrite reads the code as one dword (the token sits in the handler's 128-byte stack
+// code spawns nothing (#323). The rewrite reads the code as one dword (the token sits in the handler's 128-byte stack
 // buffer), fills spaces after a 1- or 2-character code, and sets byte 3 to c[3] | 0x20 as above. On entry r8 holds the
 // lowered code and cl its first character; 0x40fc6e is the compare loop. Read from the 6ab3782c dump.
 inline constexpr uint64_t SpawnCheatKey = 0x40fc39;
@@ -846,10 +846,10 @@ inline constexpr uint8_t SpawnCheatKeyFull[] = {0x41, 0x8b, 0x00, 0xb9, 0x20, 0x
                                                0x90, 0x90, 0x90, 0x90, 0x90};
 static_assert(sizeof(SpawnCheatKeyD2R) == sizeof(SpawnCheatKeyFull));
 
-// --- core-maps: opening a map (MS2, https://github.com/synpoox/pd2-resurrected/issues/217; D2Game\src\Skills\SkillItem.cpp) ----------------------------------------
+// --- core-maps: opening a map (MS2, #217; D2Game\src\Skills\SkillItem.cpp) ----------------------------------------
 // Item spell dispatchers, (game, player, item, target): the check -> bool, then the use (whose caller frees an item
 // whose spell flag is 0, as slot 16's empty entry is). Both index D2R's 20-entry item spell table (0x236fe30) by the
-// item's pSpell; slots 16-19 are empty. Decompiled for https://github.com/synpoox/pd2-resurrected/issues/217; entry bytes read from the 6ab3782c dump.
+// item's pSpell; slots 16-19 are empty. Decompiled for #217; entry bytes read from the 6ab3782c dump.
 // mov [rsp+8],rbx / mov [rsp+0x10],rbp / mov [rsp+0x18],rsi
 inline constexpr uint64_t ItemSpellCheck = 0x5817f0;
 inline constexpr uint8_t ItemSpellCheckEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c,
@@ -879,8 +879,8 @@ inline constexpr uint64_t QuestFlag = 0x325c50;
 inline constexpr int PlayerQuests = 0x40;
 inline constexpr uint64_t ClientMessage = 0x491960;  // (player, message, player); 0x15 is "can't do that"
 
-// --- core-maps: map stats on monsters and players (MS3, https://github.com/synpoox/pd2-resurrected/issues/218) -----------------------------------------------------
-// Decompiled for https://github.com/synpoox/pd2-resurrected/issues/218 (Ghidra, D2R.gpr); entry bytes read from the 6ab3782c dump.
+// --- core-maps: map stats on monsters and players (MS3, #218) -----------------------------------------------------
+// Decompiled for #218 (Ghidra, D2R.gpr); entry bytes read from the 6ab3782c dump.
 // (spawn params, monster): D2R's per-class setup of a monster that its spawn core 0x493cc0
 // (D2Game\src\Monster\MonsterSpawn.cpp) just made; 0x493cc0 is its only caller, and 0x492cf0 and the other spawners
 // all go through 0x493cc0. The monster's stats and its monstats Align alignment (0x48e600) are set by then.
@@ -902,7 +902,7 @@ inline constexpr uint64_t UnitFlagList = 0x2f5b80;
 inline constexpr int ListEntries = 0x30, ListCount = 0x38;
 inline constexpr int StatMinDamage = 21, StatMaxDamage = 22;
 
-// --- core-maps: area map stats (MS4, https://github.com/synpoox/pd2-resurrected/issues/219; D2Game\src\Monster\MonsterRegion.cpp) ----------------------------------
+// --- core-maps: area map stats (MS4, #219; D2Game\src\Monster\MonsterRegion.cpp) ----------------------------------
 // rva::GameMonRegions: 0x5098b0 builds every level's region once per game (0x508750), from its levels row; these are
 // the fields PD2's 0x1038b4d0 rewrites, at 1.13c's offsets.
 inline constexpr int RegionCount = 0x10, RegionRarity = 0x11, RegionSpawnCount = 0x12;  // uint8: groups, sum, picks
@@ -917,7 +917,7 @@ inline constexpr uint64_t AreaMonsterLevelFn = 0x508f80;
 inline constexpr uint8_t AreaMonsterLevelEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74,
                                                     0x24, 0x18, 0x57, 0x48, 0x83, 0xec, 0x30};
 
-// --- core-maps: the drop chance area stats (MS4b, https://github.com/synpoox/pd2-resurrected/issues/286; D2Game\src\Items\Items.cpp) -------------------------------
+// --- core-maps: the drop chance area stats (MS4b, #286; D2Game\src\Items\Items.cpp) -------------------------------
 // (game, drop, 0) -> item or null: makes an item from a drop request (1.13c's, which PD2 calls through 0x1030ef80).
 // The TC drop 0x444680 (game, unit, item row, quality, index, flags) fills the request and calls it at 0x444866; PD2's
 // drop hook 0x10372180 replaces that function.
@@ -945,7 +945,7 @@ inline constexpr int It2Handed = 0x12b;  // uint8 items 2handed (items field tab
 inline constexpr int CubeParam = 0x4, CubeValue = 0x8, CubeInputs = 0x14, CubeInputSize = 10;
 inline constexpr int CubeOutQuality = 0x64, CubeOutType = 0x67, CubeOutMods = 0x77, CubeModSize = 12;
 
-// --- core-maps: engine memory pools (LP3, https://github.com/synpoox/pd2-resurrected/issues/213) ----------------------------------------------------------------------
+// --- core-maps: engine memory pools (LP3, #213) ----------------------------------------------------------------------
 // TlsfAlloctor objects (vtable 0x1d6d770): +0x20 the tlsf control, +0x28 its lock (0x14122ad60 locks, 0x14122ad90
 // unlocks). 0x1215650 is tlsf block_insert(control, block); tlsf_add_pool is inlined in 0x1215a30.
 // Entity System Pool: every HD scene entity (singleton getter 0x913f60); 0xd714e0 gives it 70 MiB (0x4600000). A PD2
@@ -969,7 +969,7 @@ inline constexpr uint64_t EntityPoolLock = 0x122ad60;    // (lock*) -> void
 inline constexpr uint64_t EntityPoolUnlock = 0x122ad90;  // (lock*) -> void
 inline constexpr uint64_t TlsfBlockInsert = 0x1215650;   // (control, block) -> void
 
-// Critical and deadly strike (IR3 (https://github.com/synpoox/pd2-resurrected/issues/238), docs/research/ir3-combat-stats.md)
+// Critical and deadly strike (IR3, docs/research/ir3-combat-stats.md)
 // WeaponDamage's (0x44c030) roll: from 0x44c2b4, right after the physical roll is stored at damage +0x18, to 0x44c3d9
 // it rolls the weapon mastery's crit (when a5 is 0), passive_critical_strike, then deadly strike, and doubles the
 // physical part with result flag 0x2000. Attacker in RSI, damage block in RDI, a5 in R14D; 0x44c3d9 needs R15D 0.

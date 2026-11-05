@@ -1,4 +1,4 @@
-"""PD2's own automap cels (https://github.com/synpoox/pd2-resurrected/issues/274): PD2's MaxiMap.dc6 has frames past D2R's automap tiles (cels 1499 and up, drawn by
+"""PD2's own automap cels (#274): PD2's MaxiMap.dc6 has frames past D2R's automap tiles (cels 1499 and up, drawn by
 its new level types). D2R's HD tiles are strips of 100 frames, AUTOMAP/Default00-14/Tiles in automaphd.json; the
 last one has 99. The step fills the last strip and adds strips after it, each frame PD2's classic one upscaled, lists
 the new strips in automaphd.json, and ships PD2's MaxiMap.dc6 and MaxiMapS.dc6 as they are for classic graphics, whose

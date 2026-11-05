@@ -16,62 +16,62 @@ Run:
   drawn. Both also get throwaxe's HD model (missile_hd): D2R's HD renderer draws only missiles named in
   data/hd/missiles/missiles.json, so without it they hit but are invisible. It keeps D2R's quickness state in place of PD2's temp_skill_buff (merged as state 270): the merged tables
   do not pass modkit's validation yet (skilldesc, overlay, pettype, monstats, item events and affix properties are
-  later work items), so the fixture cannot build on them. The merged P2 tables were checked on Slot4 (https://github.com/synpoox/pd2-resurrected/issues/45): state
+  later work items), so the fixture cannot build on them. The merged P2 tables were checked on Slot4 (#45): state
   270, attackrate 100 -> 110 -> 100 over one buff, ten casts with no crash.
 
-W10 (https://github.com/synpoox/pd2-resurrected/issues/51) checks (tag core-rules-w10) run on the merged data, which has PD2's rows and states:
+W10 checks (tag core-rules-w10) run on the merged data, which has PD2's rows and states:
   py -3 tools/pd2_merge.py
   powershell -File tools/install.ps1 -Game C:/D2RTestSlots/SlotN -Data .
   a Barbarian with Bash, Find Potion and Frenzy (two one-handed weapons for Frenzy)
   py testing/game_checks.py run core-rules-w10 --slot N --path <repo>/tests/game --module core_rules_checks
 then out of town: Bash monsters 30+ times, Frenzy a few times in a row, Find Potion on a corpse, and run again.
 
-Double Throw (W9 (https://github.com/synpoox/pd2-resurrected/issues/55)) has its own fixture, tests/game/fixtures/double-throw, which sets the same row to PD2's Double
+Double Throw (W9) has its own fixture, tests/game/fixtures/double-throw, which sets the same row to PD2's Double
 Throw (srvdofunc 183, cltdofunc 116, PD2's calcs and params) and adds PD2's doublethrowaxe/knife/jav rows (Town 1).
 It throws only with a throwing weapon in hand (no ammo, no missile): in game, console `debug_mode`, then
 `cheat uniques 291,292` drops Deathbit (Battle Dart, column b); identify it with the scroll before equipping (unidentified,
 it is refused) - the fixture sets the Battle Dart and Francisca reqdex to 0 so the test save can wield them. Cast it out
 of town (Blood Moor) for the cast checks; double-throw-bounce needs a throw at a monster.
 
-W6 (https://github.com/synpoox/pd2-resurrected/issues/53) checks (tag core-rules-w6), same merged data: an Amazon with Exploding Arrow (16), Multiple Shot (12), Pierce (33)
+W6 checks (tag core-rules-w6), same merged data: an Amazon with Exploding Arrow (16), Multiple Shot (12), Pierce (33)
 and Valkyrie (32), e.g. modkit save-set <save> level=30 --skill 16=10 --skill 12=10 --skill 33=20 --skill 32=10
 --project .; then out of town: Exploding Arrow and Multiple Shot into packs (Pierce lets arrows reach a second
 monster), summon a Valkyrie next to monsters, and run the same command with core-rules-w6.
 
-W11 (https://github.com/synpoox/pd2-resurrected/issues/86) checks (tag core-rules-w11), same merged data: a Necromancer with Poison Dagger (73), e.g. modkit save-set <save>
+W11 checks (tag core-rules-w11), same merged data: a Necromancer with Poison Dagger (73), e.g. modkit save-set <save>
 level=30 --skill 73=10 --project .; then out of town stab monsters with a dagger a few times and run the same command
 with core-rules-w11. D2RCore's console does it without walking: `debug_mode`, `cheat uniques 39` (Gull), pick it up,
 `cheat idall`, equip, `cheat god 1`, `cheat goto 2` (Blood Moor), `cheat mspawn zombie1,3`, then Poison Strike on the
 right button and right-click a zombie. game_ctl clicks reach the world only with the harness background flag off.
-W12 (https://github.com/synpoox/pd2-resurrected/issues/87) check (tag core-rules-w12), same merged data: a Necromancer with Blood Warp (merged skill 439) and no item that
+W12 check (tag core-rules-w12), same merged data: a Necromancer with Blood Warp (merged skill 439) and no item that
 lowers its life cost, e.g. modkit save-set <save> level=30 --skill 439=10 --project .; then out of town (Teleport
 does not work in town) Blood Warp a few times and run the same command with core-rules-w12.
-W13 (https://github.com/synpoox/pd2-resurrected/issues/88) checks (tag core-rules-w13), same merged data: a Necromancer with Desecrate (83), e.g. modkit save-set <save>
+W13 checks (tag core-rules-w13), same merged data: a Necromancer with Desecrate (83), e.g. modkit save-set <save>
 level=30 --skill 83=10 --project .; then out of town: cast Desecrate on the ground, wait 20 s (PD2 hides the corpses
 after 16), and run the same command with core-rules-w13.
-W14 (https://github.com/synpoox/pd2-resurrected/issues/89) checks (tag core-rules-w14), same merged data: a Necromancer with Clay Golem (class skill slot 9), Golem Mastery
+W14 checks (tag core-rules-w14), same merged data: a Necromancer with Clay Golem (class skill slot 9), Golem Mastery
 (slot 13) at 10 and Revive (slot 29), no +skills, e.g. modkit save-set <save> --skill 9=1 --skill 13=10 --skill 29=10;
 then out of town: run core-rules-w14 and, while golem-count watches (30 s), summon Clay Golem four times; then kill a
 monster, Revive its corpse next to other monsters, let the revive fight, and run again.
-W16 (https://github.com/synpoox/pd2-resurrected/issues/91) check (tag core-rules-w16), same merged data: a Paladin with Charge (107) and no Vigor or Might, e.g. modkit
+W16 check (tag core-rules-w16), same merged data: a Paladin with Charge (107) and no Vigor or Might, e.g. modkit
 save-set <save> level=30 --skill 107=10 --project .; then out of town Charge a few monsters from several screens away
 and run the same command with core-rules-w16.
 
-W26 (https://github.com/synpoox/pd2-resurrected/issues/101) checks (tag core-rules-w26), same merged data: a Sorceress with Teleport (54) and no +skills, e.g. modkit save-set
+W26 checks (tag core-rules-w26), same merged data: a Sorceress with Teleport (54) and no +skills, e.g. modkit save-set
 <save> level=30 --skill 54=5 --project .; then out of town Teleport a few times and run the same command with
 core-rules-w26.
-W21 (https://github.com/synpoox/pd2-resurrected/issues/96) checks (tag core-rules-w21), same merged data: a Druid with Arctic Blast (230) or a Sorceress with Inferno (41),
+W21 checks (tag core-rules-w21), same merged data: a Druid with Arctic Blast (230) or a Sorceress with Inferno (41),
 e.g. modkit save-set <save> level=30 --skill 230=10 --project .; then out of town: hold the skill on the ground for
 a second, and run the same command with core-rules-w21. For the take-over checks, press another skill while
 holding it; for blade-fury-refused, an Assassin with Blade Fury (266): hold it.
-W22 (https://github.com/synpoox/pd2-resurrected/issues/97) checks (tag core-rules-w22), same merged data: a Druid with Firestorm (225, class skill slot 4) and no +skills
+W22 checks (tag core-rules-w22), same merged data: a Druid with Firestorm (225, class skill slot 4) and no +skills
 (the log gives the skill level, PD2's calc reads the base level), e.g. modkit save-set <save> level=30 --skill 4=10
 --project .; then out of town cast Firestorm a few times and run the same command with core-rules-w22.
-W24 (https://github.com/synpoox/pd2-resurrected/issues/99) checks (tag core-rules-w24), same merged data: a Druid with Fire Claws (239, class skill slot 18), Werewolf (223,
+W24 checks (tag core-rules-w24), same merged data: a Druid with Fire Claws (239, class skill slot 18), Werewolf (223,
 slot 2) and Summon Spirit Wolf (227, slot 6) and no +skills, e.g. modkit save-set <save> level=30 --skill 18=10
 --skill 2=5 --skill 6=5 --project .; then out of town turn into a werewolf (Fire Claws needs wolf or bear form), claw
 monsters a few times, summon Spirit Wolf until it is past its petmax, and run the same command with core-rules-w24.
-W29 (https://github.com/synpoox/pd2-resurrected/issues/104) checks (tag core-rules-w29), same merged data: an Assassin with the charge-up skills (Tiger Strike 254, Fists of
+W29 checks (tag core-rules-w29), same merged data: an Assassin with the charge-up skills (Tiger Strike 254, Fists of
 Fire 259, Cobra Strike 265, Claws of Thunder 269, Blades of Ice 274, Royal Strike 280) and Dragon Talon (255) to
 release, e.g. modkit save-set <save> level=30 --skill 254=1 --skill 259=1 --skill 265=1 --skill 269=1 --skill 274=1
 --skill 280=1 --skill 255=1 --project .; then out of town hit monsters three times in a row with each of Fists of
@@ -79,76 +79,76 @@ Fire, Cobra Strike and Blades of Ice, releasing between them with Dragon Talon (
 logs the same lines). Then build charges on one finisher and, before they expire, hit with another: Fists of Fire
 once or twice, then Cobra Strike (shared charges, and Cobra Strike's steal). Run the same command with
 core-rules-w29.
-W17 (https://github.com/synpoox/pd2-resurrected/issues/92) checks (tag core-rules-w17), same merged data: a Paladin with Holy Light and Fist of the Heavens. Holy Light is
+W17 checks (tag core-rules-w17), same merged data: a Paladin with Holy Light and Fist of the Heavens. Holy Light is
 the Paladin's 32nd skill, past the 30 class skills a save holds, so set both in game: `debug_mode`, `cheat sklvl Holy
 Light,10`, `cheat sklvl Fist of the Heavens,10`, `cheat goto 2`, `cheat mspawn zombie1,6`; then Holy Light on a
 zombie next to others, Fist of the Heavens on the pack (not on a dropped item: the click picks it up), and run the
 same command with core-rules-w17.
-W19 (https://github.com/synpoox/pd2-resurrected/issues/94) checks (tag core-rules-w19), same merged data: a level 90+ Paladin in Hell with Smite (97), Holy Sword (116),
+W19 checks (tag core-rules-w19), same merged data: a level 90+ Paladin in Hell with Smite (97), Holy Sword (116),
 Concentration (113) and no +skills, a shield and a two-handed sword to swap to: `debug_mode`, `cheat god 1`, `cheat
 goto 2`, `cheat mspawn zombie1,6`; Smite zombies a few times; swap to the sword and cast Holy Sword; with
 Concentration on, attack and, mid-swing, click the ground to run; then run the same command with core-rules-w19.
-W23 (https://github.com/synpoox/pd2-resurrected/issues/98) checks (tag core-rules-w23), same merged data: a Druid with Gust (442), Werebear (228) and Hunger (242), no
+W23 checks (tag core-rules-w23), same merged data: a Druid with Gust (442), Werebear (228) and Hunger (242), no
 +skills; save-set takes class skill slots (Werebear 7, Hunger 21, Gust 30), e.g. modkit save-set <save> --skill
 30=5 --skill 7=1 --skill 21=5 --project .; then out of town cast Gust, and in bear form kill a monster and eat its
 corpse with Hunger; run the same command with core-rules-w23.
-W27 (https://github.com/synpoox/pd2-resurrected/issues/102) checks (tag core-rules-w27), same merged data: a Sorceress with Static Field (42), Combustion (448) and Inferno
+W27 checks (tag core-rules-w27), same merged data: a Sorceress with Static Field (42), Combustion (448) and Inferno
 (41) and no Lightning Mastery; save-set takes class skill slots (Inferno 5, Static Field 6, Combustion 31), e.g.
 modkit save-set <save> level=30 --skill 6=10 --skill 31=10 --skill 5=10 --project .; then out of town cast Static
 Field next to monsters, cast Combustion, hold Inferno for a second, and run the same command with core-rules-w27.
-W28 (https://github.com/synpoox/pd2-resurrected/issues/103) check (tag core-rules-w28), same merged data: a level 90 Sorceress with Fire Bolt (36), Ice Bolt (39), Blizzard
+W28 check (tag core-rules-w28), same merged data: a level 90 Sorceress with Fire Bolt (36), Ice Bolt (39), Blizzard
 (59) and Chilling Armor (60); save-set takes class skill slots (Fire Bolt 0, Ice Bolt 3, Blizzard 23, Chilling Armor
 24), e.g. modkit save-set <save> level=90 --skill 0=10 --skill 3=10 --skill 23=10 --skill 24=10 --project .; then in
 Hell out of town cast Fire Bolt, Ice Bolt and Blizzard at a pack, wear Chilling Armor while a ranged monster shoots
 you, and run the same command with core-rules-w28. Chilling Armor's event 3 is D2R's own (research note w28).
-W18 (https://github.com/synpoox/pd2-resurrected/issues/93) checks (tag core-rules-w18), same merged data: a level 90+ Paladin in Hell with Vengeance and Joust set in game
+W18 checks (tag core-rules-w18), same merged data: a level 90+ Paladin in Hell with Vengeance and Joust set in game
 (`debug_mode`, `cheat sklvl Vengeance,20`, `cheat sklvl Joust,10`, `cheat goto 2`, `cheat mspawn zombie1,8`); hit the
 pack with Vengeance until a link logs, Joust a zombie a few yards off, and run the same command with core-rules-w18.
-W30 (https://github.com/synpoox/pd2-resurrected/issues/105) checks (tag core-rules-w30), same merged data and save as W29: out of town hit monsters three times in a row with
+W30 checks (tag core-rules-w30), same merged data and save as W29: out of town hit monsters three times in a row with
 each of Fists of Fire, Cobra Strike, Claws of Thunder and Blades of Ice, releasing between them with Dragon Talon, and
 run the same command with core-rules-w30. Each charge's client missiles log on the client.
-W31 (https://github.com/synpoox/pd2-resurrected/issues/106) checks (tag core-rules-w31), same merged data: an Assassin with Dragon Flight (275) and Psychic Hammer (253);
+W31 checks (tag core-rules-w31), same merged data: an Assassin with Dragon Flight (275) and Psychic Hammer (253);
 out of town in a crowd, Dragon Flight onto monsters a few times and cast Psychic Hammer where it can jump (its
 hammer chains up to calc1 units within Param1 8), then run the same command with core-rules-w31.
-W20 (https://github.com/synpoox/pd2-resurrected/issues/95) check (tag core-rules-w20), same merged data: a level 90+ Paladin in Hell with Blessed Hammer (`debug_mode`,
+W20 check (tag core-rules-w20), same merged data: a level 90+ Paladin in Hell with Blessed Hammer (`debug_mode`,
 `cheat sklvl Blessed Hammer,20`, `cheat goto 2`, `cheat mspawn zombie1,8`); cast it at the pack, by a wall, and run
 the same command with core-rules-w20.
-W32 (https://github.com/synpoox/pd2-resurrected/issues/107) checks (tag core-rules-w32), same merged data: a level 90+ Assassin in Hell with Blade Fury (266) set in game
+W32 checks (tag core-rules-w32), same merged data: a level 90+ Assassin in Hell with Blade Fury (266) set in game
 (`debug_mode`, `cheat sklvl Blade Fury,20`, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); throw Blade
 Fury at the pack and at a wall or tree near it, hold it for a second, and run the same command with core-rules-w32.
-W34 (https://github.com/synpoox/pd2-resurrected/issues/120) check (tag core-rules-w34), same merged data: any level 90+ character in Hell (`debug_mode`, `cheat god 1`,
+W34 check (tag core-rules-w34), same merged data: any level 90+ character in Hell (`debug_mode`, `cheat god 1`,
 `cheat goto 2`, `cheat mspawn megademon3,6`: zombies rarely deal enough for a get-hit); stand in the pack and keep
 attacking or casting while it hits you (get-hit and block both count), and run the same command with core-rules-w34.
 
-W35 (https://github.com/synpoox/pd2-resurrected/issues/125) checks (tag core-rules-w35), same merged data: a level 90+ Barbarian in Hell with Frenzy (147) and One or Two Hand
+W35 checks (tag core-rules-w35), same merged data: a level 90+ Barbarian in Hell with Frenzy (147) and One or Two Hand
 Mastery and an item_splashonhit item (The Gnasher, `cheat uniques 0`), at least 11 mana (`debug_mode`, `cheat god 1`,
 `cheat goto 2`, `cheat mspawn megademon3,6`). The log keeps a game's first splash only, so start the game fresh and
 Frenzy into the pack before any other splash, then run the same command with core-rules-w35.
 
-W36 (https://github.com/synpoox/pd2-resurrected/issues/244) checks (tag core-rules-w36), same merged data: a level 90+ Druid in Hell (`debug_mode`, `cheat god 1`,
+W36 checks (tag core-rules-w36), same merged data: a level 90+ Druid in Hell (`debug_mode`, `cheat god 1`,
 `cheat sklvl Cycle of Life,20`, `cheat sklvl Vines,20`, `cheat goto 2`). Kill a pack (`cheat mspawn zombie1,8`), summon
 both vines by the corpses and let each eat one; then `cheat mspawn torajanBoss,1` (his nest lays eggs that nova and hatch)
 and `cheat mspawn leoricMapBoss,1` (his orbs raise leoricGuards where they land), let them cast a while, and run the
 same command with core-rules-w36.
 
-P12 (https://github.com/synpoox/pd2-resurrected/issues/108) checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
+P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
 drops Ormus' Robes; `cheat idall`, wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); cast spells at
 the pack until a proc logs (12% a cast, 8% for a skill with a cooldown), and run the same command with core-rules-p12.
 
-IR4 (https://github.com/synpoox/pd2-resurrected/issues/239) checks (tag core-rules-ir4), same merged data, Hell, level 90+:
+IR4 checks (tag core-rules-ir4), same merged data, Hell, level 90+:
 - max-curses: a Necromancer with two curses (Amplify Damage 66, Weaken 72) and Darkforge Spawn (`cheat uniques 331`,
   +1 max curses; Curse Mastery does the same). `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,4`, then curse the
   pack with one curse and then the other, and run the same command with core-rules-ir4.
 - curse-resistance: any character wearing Wraithskin (`cheat uniques 478`, 30-40 curse resistance); let a cursing
   monster curse you (Act 4 Oblivion Knights, `cheat mspawn` of one), then run again.
 
-IR7 (https://github.com/synpoox/pd2-resurrected/issues/242) checks (tag core-rules-ir7), same merged data, Hell, level 90+:
+IR7 checks (tag core-rules-ir7), same merged data, Hell, level 90+:
 - skill-on-equip: `cheat uniques 252` drops Blackoak Shield (Chilling Armor SelfAura 11 when equipped); `cheat
   idall`, equip it, wait a few seconds, unequip it, and run the same command with core-rules-ir7.
 - phasing: `cheat uniques 520` drops Spectral Plate (Phasing SelfAura); `cheat idall`, equip it, walk into a pack
   (`cheat mspawn zombie1,4`, `cheat god 1`), take it off, and run again.
 
-IR6 (https://github.com/synpoox/pd2-resurrected/issues/241) check (tag core-rules-ir6), same merged data, Hell, level 90+:
+IR6 check (tag core-rules-ir6), same merged data, Hell, level 90+:
 - corruption-one-press: `debug_mode`, `cheat spawn rin,typ m,inv 0` (a magic ring) and `cheat spawn wss,inv 0` (a
   Worldstone Shard); put both in the cube, press Transmute once, hover the ring (it shows Corrupted), and run the
   same command with core-rules-ir6.
@@ -289,7 +289,7 @@ def split_throw_return(ctx):
     results = [int(r) for r in re.findall(r"return missile: spawned on hit, result (-?\d+)", log)]
     if not results:
         ctx.skip("no return missile in the log yet (hit a monster with Split Throw, then run again)")
-    # D2R's collision deals the axe's damage only when the srvhit result has bit 2 set (https://github.com/synpoox/pd2-resurrected/issues/122)
+    # D2R's collision deals the axe's damage only when the srvhit result has bit 2 set (#122)
     assert all(r & 2 for r in results), f"results {sorted(set(results))}: D2R deals the axe's damage on bit 2"
     assert "return missile: caught by the thrower" in log, "a return missile spawned but none reached the thrower"
     return f"spawned on hit (results {sorted(set(results))}) and caught"
@@ -543,7 +543,7 @@ def blade_fury_refused(ctx):
             f"{sum(r[4] == 'refused' for r in rows)} refused, {sum(r[4] == 'allowed' for r in rows)} allowed")
 
 
-GOLEM_MASTERY_LEVEL = 10  # the W14 (https://github.com/synpoox/pd2-resurrected/issues/89) save's base level (setup above)
+GOLEM_MASTERY_LEVEL = 10  # the W14 save's base level (setup above)
 
 
 FIRESTORM = 225  # merged skill id (PD2's too)
@@ -1213,7 +1213,7 @@ def smite_start(ctx):
 
 @check("smite-event", tags=["core-rules-w19"])
 def smite_event(ctx):
-    """Smite's crushing blow rolls on the Paladin's landed hits (srvdo 150 + the hit queue, https://github.com/synpoox/pd2-resurrected/issues/165): one roll a hit,
+    """Smite's crushing blow rolls on the Paladin's landed hits (srvdo 150 + the hit queue, #165): one roll a hit,
     chance = the crushingblow stat + calc3 (5 + blvl, at least 6)."""
     events = _logged(ctx, r"smite event: event (\d+) skill (\d+) level \d+ on unit type (\d+), frame (\d+): chance (\d+) "
                      r"\(crushingblow (\d+) \+ calc3 (\d+)\), roll (\d+), blow (-?\d+)", "Smite event")
@@ -1385,7 +1385,7 @@ def psychic_hammer_falloff(ctx):
     return f"{len(found)} hits logged, {cuts} cut"
 
 
-# W36 (https://github.com/synpoox/pd2-resurrected/issues/244): merged ids (docs/research/w36-monster-kits.md)
+# W36: merged ids (docs/research/w36-monster-kits.md)
 CORPSE_CYCLER, VINE_CYCLER, POISON_EGG_SPAWN, MAGGOT_EGG, TORAJAN_NEST = 307, 325, 522, 159, 631
 TORAJAN_EGG = 897  # monstats torajanBossPoisonEgg
 NO_LOOT_NO_XP = 0x4020000  # unit flags 0x20000 and 0x4000000, PD2's sHitPar3 / Nest's
