@@ -2,8 +2,9 @@
 //
 // One header per D2R build: a new build gets its own rvas_<build>.h and d2r.h includes that one. Every value here was
 // found in the Ghidra analysis of the dumped 93847 image; the comment beside each says where (the Split Throw spike,
-// spikes/split-throw/FINDINGS.md, or the D2R function it was read from) and the game check that uses it. Names match
-// the RVA column of docs/core-rules.md.
+// spikes/split-throw/FINDINGS.md, or the D2R function it was read from) and the game check that uses it. core-rules'
+// names match the RVA column of docs/core-rules.md; another plugin's values sit in a section headed by that plugin and
+// the work item that found them, which records them (core-ui: LP2, #212).
 #pragma once
 
 #include <cstddef>

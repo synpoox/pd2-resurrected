@@ -8,9 +8,11 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 
 namespace automap {
 
+inline constexpr int32_t NoCel = -1;  // the lookup's answer when nothing is drawn
 inline constexpr uint32_t Any = 255;  // in Style or StartSequence: any (AutoMap.txt's -1, a 0xff byte in D2R's rows)
 
 // One row of the custom table, in its column order (written by tools/pd2_levels.py automap_rows).
@@ -29,15 +31,15 @@ constexpr auto FindCel(const Row* rows, size_t count, int32_t levelType, int32_t
 		    (r.start != Any && (sequence < static_cast<int32_t>(r.start) || sequence > static_cast<int32_t>(r.end)))) {
 			continue;
 		}
-		if (r.celCount == 0 || r.celCount > 4) {
-			return -1;
+		if (r.celCount == 0 || r.celCount > std::size(r.cel)) {
+			return NoCel;
 		}
 		const uint64_t s = static_cast<uint64_t>(seed[0]) * 0x6ac690c5ULL + seed[1];  // d2r::Roll, as the lookup does
 		seed[0] = static_cast<uint32_t>(s);
 		seed[1] = static_cast<uint32_t>(s >> 32);
 		return static_cast<int32_t>(r.cel[seed[0] % r.celCount]);
 	}
-	return -1;
+	return NoCel;
 }
 
 // Registers the custom table and its load listener, and hooks the lookup. Returns the report for the log.

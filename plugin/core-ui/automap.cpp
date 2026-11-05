@@ -20,15 +20,15 @@ constexpr Row CheckRows[] = {
 constexpr auto Find(int32_t type, int32_t tile, uint32_t style, int32_t sequence, uint32_t lo = 0, uint32_t hi = 0)
 	-> int32_t {
 	uint32_t seed[2] = {lo, hi};
-	return FindCel(CheckRows, 4, type, tile, style, sequence, seed);
+	return FindCel(CheckRows, std::size(CheckRows), type, tile, style, sequence, seed);
 }
 static_assert(Find(36, 1, 2, 9) == 100);
-static_assert(Find(36, 1, 3, 9) == -1);  // style must match
+static_assert(Find(36, 1, 3, 9) == NoCel);  // style must match
 static_assert(Find(36, 0, 9, 5) == 200 && Find(36, 0, 9, 7) == 200);  // seed {0, 0} rolls 0: the first cel
 static_assert(Find(36, 0, 9, 6, 1) == 201);  // 0x6ac690c5 is odd: the second cel
-static_assert(Find(36, 0, 9, 4) == -1 && Find(36, 0, 9, 8) == -1);  // outside start..end
-static_assert(Find(37, 0, 0, 3) == -1);  // a matching row without cels
-static_assert(Find(38, 1, 2, 9) == -1);  // another type
+static_assert(Find(36, 0, 9, 4) == NoCel && Find(36, 0, 9, 8) == NoCel);  // outside start..end
+static_assert(Find(37, 0, 0, 3) == NoCel);  // a matching row without cels
+static_assert(Find(38, 1, 2, 9) == NoCel);  // another type
 
 struct Rows {
 	uint32_t count;
@@ -68,11 +68,11 @@ auto Lookup(int32_t levelType, int32_t tileType, uint32_t style, int32_t sequenc
 	g_answered.fetch_add(1, std::memory_order_relaxed);
 	const Rows* rows = g_rows.load(std::memory_order_acquire);
 	if (rows == nullptr) {
-		return 0xffffffffu;
+		return static_cast<uint32_t>(NoCel);
 	}
 	auto* seed = *reinterpret_cast<uint32_t**>(d2r::imageBase + d2r::rva::AutomapSeedPtr);
 	const int32_t cel = FindCel(rows->rows, rows->count, levelType, tileType, style, sequence, seed);
-	if (cel >= 0) {
+	if (cel != NoCel) {
 		g_found.fetch_add(1, std::memory_order_relaxed);
 	} else if (const uint32_t n = g_missed.fetch_add(1, std::memory_order_relaxed) + 1; n <= 20 || n % 10000 == 0) {
 		// not plog::Sample: its 1st/100th/10,000th lines would hide which rows a new level lacks, the first 20 show it
@@ -99,9 +99,7 @@ void __cdecl OnTablesLoaded(const D2RL::PluginContext* context, const D2RL::Life
 	}
 	auto* rows = new (std::nothrow) Rows{info.rowCount, new (std::nothrow) Row[info.rowCount > 0 ? info.rowCount : 1]};
 	if (rows == nullptr || rows->rows == nullptr) {
-		if (rows != nullptr) {
-			delete rows;
-		}
+		delete rows;
 		return;
 	}
 	if (info.rowCount > 0 &&

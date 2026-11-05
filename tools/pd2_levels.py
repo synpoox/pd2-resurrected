@@ -233,12 +233,13 @@ TILES = ["fl", "wl", "wr", "wtlr", "wtll", "wtr", "wbl", "wbr", "wld", "wrd", "w
          "ld", "rd", "fd", "fi"]
 AUTOMAP_TABLE = "d2rloader/core-ui/automap.txt"  # the custom table core-ui registers (under global/excel)
 ANY = "255"  # AutoMap.txt's -1 in Style or a sequence; core-ui's automap::Any
+BLANK = ("", "-1")  # an AutoMap.txt cell with no value: no cel, or "any" in Style or a sequence
 
 
 def automap_rows(pd2: Table) -> list[list[str]]:
     """PD2's AutoMap.txt rows for level types 36 and up (LevelName is the type id), as core-ui's custom table (columns as
-    in plugin/core-ui/automap.cpp Columns): numbers
-    only, -1 ("any") as 255, and the cels D2R's atlas holds first, counted (PD2's own cels have no D2R art yet)."""
+    in plugin/core-ui/automap.cpp Columns): numbers only, -1 ("any") as 255, and the cels D2R's atlas holds, packed and
+    counted. PD2's own cels (#274) are dropped, so a row that mixes them with D2R's draws only D2R's."""
     c = {n: col(pd2, n) for n in ("LevelName", "TileName", "Style", "StartSequence", "EndSequence")}
     cel_cols = [col(pd2, f"Cel{n}") for n in range(1, 5)]
     out = [["LevelType", "TileType", "Style", "StartSequence", "EndSequence", "CelCount", "Cel1", "Cel2", "Cel3", "Cel4"]]
@@ -247,9 +248,9 @@ def automap_rows(pd2: Table) -> list[list[str]]:
             continue
         if r[c["TileName"]] not in TILES:
             raise ValueError(f"automap: tile name {r[c['TileName']]!r} is not one of D2R's")
-        cels = [v for v in (r[i] for i in cel_cols) if v not in ("", "-1") and int(v) <= CEL_MAX]
+        cels = [v for v in (r[i] for i in cel_cols) if v not in BLANK and int(v) <= CEL_MAX]
         out.append([r[c["LevelName"]], str(TILES.index(r[c["TileName"]]))]
-                   + [ANY if r[c[k]] in ("", "-1") else r[c[k]] for k in ("Style", "StartSequence", "EndSequence")]
+                   + [ANY if r[c[k]] in BLANK else r[c[k]] for k in ("Style", "StartSequence", "EndSequence")]
                    + [str(len(cels))] + (cels + ["0"] * 4)[:4])
     return out
 
