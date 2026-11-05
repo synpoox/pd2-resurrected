@@ -60,7 +60,7 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Map items and the PD2 map system (area map stats, recipes, events, invaders) | not yet | left out of the pre-alpha (roadmap, spec #41); designed in `docs/map-system.md` (#152) |  | MS1-MS5, MS7-MS11 |
 | Map stats: the HUD's map stat panel | not yet | PD2 sends the client packet 0x55 with up to 24 of the opened map's stats; core-maps applies the stats but sends nothing ([ms3-map-stats](research/ms3-map-stats.md)) |  | core-maps |
 | Map stats: aligned monsters | approximated | PD2 gives a monster with a monstats `Align` (a minion or ally) an empty list under the `map` state; core-maps gives it neither ([ms3-map-stats](research/ms3-map-stats.md)) |  | core-maps |
-| Map stats: extra boss and drop chances | not yet | `map_glob_extra_boss` and the corrupted, socketed and ethereal drop chances are stored but not applied ([ms4-area-map-stats](research/ms4-area-map-stats.md), #286) |  | core-maps |
+| Map stats: extra boss | not yet | `map_glob_extra_boss` is stored but not applied ([ms4-area-map-stats](research/ms4-area-map-stats.md), #286) |  | core-maps |
 | Map stats: area stats on a multi-level map | not yet | core-maps rewrites only the entry level's monster region; PD2 rewrites the map's other levels too ([ms4-area-map-stats](research/ms4-area-map-stats.md)) |  | MS7 |
 | Butcher's Lair map event | cut | cut by decision (#152): PD2 has it disabled | `levels.butcher event map.*` `lvlprest.butcher event map.*` |  |
 | Maps stash tab and the `.kills maps/dungeons` counters | cut | cut by decision (#152): PD2's stash layouts are cut, so maps sit in the normal stash |  |  |

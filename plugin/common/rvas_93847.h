@@ -863,6 +863,34 @@ inline constexpr uint64_t AreaMonsterLevelFn = 0x508f80;
 inline constexpr uint8_t AreaMonsterLevelEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74,
                                                     0x24, 0x18, 0x57, 0x48, 0x83, 0xec, 0x30};
 
+// --- core-maps: the drop chance area stats (MS4b, #286; D2Game\src\Items\Items.cpp) -------------------------------
+// (game, drop, 0) -> item or null: makes an item from a drop request (1.13c's, called by PD2's drop hook 0x1030ef80).
+// The TC drop 0x444680 (game, unit, item row, quality, index, flags) fills the request and calls it at 0x444866; PD2's
+// drop hook 0x10372180 replaces that function.
+// push rbp / push rbx / push rsi / push r12 / push r15 / lea rbp,[rsp-0x37] / sub rsp,0x90
+inline constexpr uint64_t ItemSpawn = 0x43cd50;
+inline constexpr uint8_t ItemSpawnEntry[] = {0x40, 0x55, 0x53, 0x56, 0x41, 0x54, 0x41, 0x57, 0x48, 0x8d,
+                                             0x6c, 0x24, 0xc9, 0x48, 0x81, 0xec, 0x90, 0x00, 0x00, 0x00};
+inline constexpr uint64_t TcDropReturn = 0x44486b;  // the TC drop's return address from ItemSpawn
+inline constexpr int DropUnit = 0x00;   // Unit* the dropper
+inline constexpr int DropFlags = 0xc0;  // uint32; bit 4 makes an ethereal-capable item ethereal (0x442d60), as 1.13c's +0x80
+inline constexpr uint32_t DropFlagEthereal = 0x4;
+inline constexpr uint64_t ItemQuality = 0x36cf60;     // (item) -> quality (6 rare)
+inline constexpr uint64_t ItemSocketable = 0x36b410;  // (item) -> non-zero: can take sockets (1.13c D2Common #10360)
+inline constexpr uint64_t SetItemSockets = 0x36e880;  // (item, n): sockets, clamped to the type's max (1.13c #10599)
+inline constexpr uint64_t ItemHasSockets = 0x36c750;  // (item) -> non-zero when socketed; cube input flags 4 / 8 test it
+inline constexpr uint64_t ItemIsEthereal = 0x3740a0;  // (item) -> non-zero when ethereal; cube input flags 0x10 / 0x20
+// (item, &property {prop, param, min, max}): a cube output mod on the item's magic list (mod type 7, 1.13c #10914)
+inline constexpr uint64_t ApplyCubeMod = 0x3d3420;
+inline constexpr int ItType = 0x12e;     // int16 items type (the type the socketable test reads)
+inline constexpr int It2Handed = 0x12b;  // uint8 items 2handed (items field table 0x315fd0)
+// cubemain record (rva::CubeRecipe), packed: param +4, value +8; input n at +0x14 + n * 10 (uint16 flags, int32 id,
+// uint8 quality at +6; 0x529d50 reads it); output A at +0x5e (uint16 flags, int32 id at +2, uint8 quality at +6, type at
+// +9: 0xff usetype, 0xfe useitem), its five mods from +0x77, 12 bytes each {int32 prop, int16 param, min, max, chance}
+// (0x5269c0). The field table 0x3e3ff0 holds these less 0xe.
+inline constexpr int CubeParam = 0x4, CubeValue = 0x8, CubeInputs = 0x14, CubeInputSize = 10;
+inline constexpr int CubeOutQuality = 0x64, CubeOutType = 0x67, CubeOutMods = 0x77, CubeModSize = 12;
+
 }  // namespace d2r::rva
 
 namespace d2r {
