@@ -159,6 +159,7 @@ void RerollNow(const D2RL::PluginContext*, void*) noexcept {
 	}
 	const bool ethereal = (old.stateFlags & items::ItemStateEthereal) != 0;
 	const items::TransactionInput inputs[] {
+		// shortcut: refuses an item with socketed items, which PD2 moves to the new one; #325 keeps them
 		{.item = old.handle, .quantity = 1, .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty},
 		{.item = scan.cubes.handle, .quantity = 1, .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty}};
 	items::ItemCreateSpec spec {};
