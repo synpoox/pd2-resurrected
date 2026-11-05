@@ -94,6 +94,10 @@ destroyed. D2R's record is packed: inputs at `+0x14`, 10 bytes each; output A at
 PD2 resolves its 1.13c targets through version tables (`0x103a5f20(dll, table[version])`, negative entries are
 ordinals); column 0 is 1.13c.
 
+**Game check** (Hell, level 95): the log read `stats 4/4 installed: ... drops`. In Na-Krul's Abyss (`cheat uniques 519`,
+slot 13 at 100), with `cheat mspawn` monsters killed, it logged `map drops: item 178 ethereal 1`. Warlord of Blood
+(`cheat uniques 470`, corrupted) and Ureh City (`cheat uniques 509`, socketed) passed in the user's own run.
+
 ## Slot 5, the extra boss: not ported
 
 `0x1038bfc0` wraps 1.13c D2Game's preset spawn (`0x6fd013b0`, game, room, preset). After the normal spawn, in a map area
