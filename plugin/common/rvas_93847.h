@@ -337,8 +337,25 @@ inline constexpr int DamageFlag148 = 0x148;   // uint8 D2R's Static Field sets t
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
-// (game, room, x, y, monstats id, mode, -1, 0x42) -> monster or null; counts it in its level's monster region
+// (game, room, x, y, monstats id, mode, -1, 0x42) -> monster or null; counts it in its level's monster region. D2R's
+// Nest (0x57c590) passes its 1-based spawn index and 0 for the last two
 inline constexpr uint64_t SpawnMonster = 0x492cf0;
+// Monster kits (W36), the way D2R's Nest (srvdo 91, 0x57c590) and srvhit 6 (0x45ce90) spawn
+inline constexpr uint64_t ClearSpawnSpot = 0x3636d0;  // (room, x, y, 1, 0x100): Nest calls it before spawning
+inline constexpr uint64_t NestHold = 0x48e820;  // (unit, 0): Nest calls it before spawning; sets state 54 to the value
+// (game, room, monstats id, x, y, mode, 0) -> monster or null: srvhit 6's spawn at the missile
+inline constexpr uint64_t SpawnMonsterAt = 0x50a050;
+inline constexpr int UnitMainFlags = 0x124;  // uint32, 1.13c's +0xc4 flags with the same bits
+inline constexpr uint32_t UnitNoTreasure = 0x20000, UnitNoExperience = 0x4000000;  // Nest sets both on each spawn
+// The current unit skill (rva::CurrentSkill) of a nest: where and what its start (srvst 49) set it to spawn
+inline constexpr int USkillSpawnX = 0x24, USkillSpawnY = 0x28, USkillSpawnMon = 0x2c, USkillSpawnMode = 0x30;
+inline constexpr int SkSumOverlay = 0x13c;  // int16 sumoverlay (1.13c +0xe6): Nest puts it on each spawn
+// D2R's own do slots PD2's PoisonEggSpawn calls: Nova's and MaggotEgg's
+inline constexpr int SrvDoVanillaNova = 22, SrvDoMaggotEgg = 84, CltDoVanillaNova = 25, CltDoMaggotEgg = 46;
+inline constexpr int StatMana = 8, StatMaxMana = 9;  // in 1/256
+// (unit): flags it (+0x124 bit 0x2000) for its room's update list; D2R's srvst 63 calls it on the corpse it takes
+inline constexpr uint64_t QueueUnitUpdate = 0x38ebf0;
+inline constexpr int StateCorpseTaken = 118;  // the state srvst 63 (and PD2's 67) puts on the corpse it uses
 // Inferno / Arctic Blast (W21, channel-cast), the way D2R's Inferno (srvdo 19 0x554460 -> 0x551730, cltdo 24 0x2203f0)
 inline constexpr uint64_t CurrentSkill = 0x34ba40;  // (unit) -> the unit skill it is using, or null
 inline constexpr uint64_t UnitFrame = 0x349560;  // (unit) -> animation frame (+0x5c >> 8)

@@ -225,6 +225,30 @@ class FormulaAndColumnTests(unittest.TestCase):
                                            ["blaze", "61", "44", "150", "67", "-60", "510", "-60"],
                                            ["nova", "5", "236", "1", "67", "1", "500", "1"]])
 
+    def test_summon_hit_moves_to_67_and_names_the_mod_monster(self):
+        cols = "Missile|pSrvHitFunc|sHitPar1|sHitPar2|sHitPar3"
+        d2r = table(f"{cols}\narrow|1|||\n")
+        pd2 = table(f"{cols}\norb|6|999|8|67239936\n")
+        merged, _ = I.merge_table("missiles", pd2, d2r, [("orb", 1, "orb")], I.renames({t: [] for t in I.TABLES}),
+                                  {"monstats": {"999": "1016"}})
+        self.assertEqual(merged.rows[1], ["orb", "67", "1016", "8", "67239936"])
+
+    def test_monstats_ids_follow_the_name_merge(self):
+        # D2R's rows keep their ids (the Expansion row is not one); PD2-only rows follow D2R's last
+        d2r = table("Id|x\nskeleton1|\nExpansion|\nwarlockimp|\nmaggot|\n")
+        pd2 = table("Id|x\nskeleton1|\nExpansion|\nmaggot|\nleoricGuards|\ntorajanBoss|\n")
+        self.assertEqual(I.monstats_ids(pd2, d2r), {"0": "0", "1": "2", "2": "3", "3": "4"})
+
+    def test_monster_kit_functions_move_to_core_rules_slots(self):
+        cols = "skill|srvdofunc|srvstfunc|cltdofunc"
+        pd2 = table(f"{cols}\nPoisonEggSpawn|173|43|109\nTorajanBossNest|181|49|50\nCorpseCycler||67|\n")
+        lines = [("PoisonEggSpawn", 0, "PoisonEggSpawn"), ("TorajanBossNest", 1, "TorajanBossNest"),
+                 ("CorpseCycler", 2, "CorpseCycler")]
+        merged, _ = I.merge_table("skills", pd2, table(f"{cols}\nAttack|1||\n"), lines,
+                                  I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["PoisonEggSpawn", "173", "43", "126"], ["TorajanBossNest", "190", "49", "50"],
+                                       ["CorpseCycler", "", "83", ""]])
+
     def test_blood_warp_functions_moved_to_core_rules_slots(self):
         d2r = table("skill|srvdofunc|srvstfunc|cltstfunc\nAttack|1|0|0\n")
         pd2 = table("skill|srvdofunc|srvstfunc|cltstfunc\nAttack|1|0|0\nBlood Warp|157|66|56\n")

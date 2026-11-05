@@ -125,6 +125,12 @@ Mastery and an item_splashonhit item (The Gnasher, `cheat uniques 0`), at least 
 `cheat goto 2`, `cheat mspawn megademon3,6`). The log keeps a game's first splash only, so start the game fresh and
 Frenzy into the pack before any other splash, then run the same command with core-rules-w35.
 
+W36 checks (tag core-rules-w36), same merged data: a level 90+ Druid in Hell (`debug_mode`, `cheat god 1`,
+`cheat sklvl Cycle of Life,20`, `cheat sklvl Vines,20`, `cheat goto 2`). Kill a pack (`cheat mspawn zombie1,8`), summon
+both vines by the corpses and let each eat one; then `cheat mspawn torajanBoss,1` (his nest lays eggs that nova and hatch)
+and `cheat mspawn leoricMapBoss,1` (his orbs raise leoricGuards where they land), let them cast a while, and run the
+same command with core-rules-w36.
+
 P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
 drops Ormus' Robes; `cheat idall`, wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); cast spells at
 the pack until a proc logs (12% a cast, 8% for a skill with a cooldown), and run the same command with core-rules-p12.
@@ -174,6 +180,8 @@ SKILL_SLOTS = [  # table slots it installs
     ("pSrvHitFunc", 69, "blade fragment"), ("pCltHitFunc", 68, "blade fragment"), ("pSrvDmgFunc", 19, "blade fragment"),
     ("srvstfunc", 73, "holy sword"), ("srvstfunc", 75, "smite"),
     ("srvdofunc", 150, "smite crushing blow"),  # D2R's Smite do, wrapped, and an inline hook on its hit queue
+    ("srvdofunc", 173, "poison egg spawn"), ("cltdofunc", 126, "poison egg spawn"), ("srvstfunc", 83, "cycler start"),
+    ("pSrvHitFunc", 67, "summon"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -205,7 +213,7 @@ def _log(ctx) -> str:
                                  "core-rules-w21", "core-rules-w22", "core-rules-w24", "core-rules-w29",
                                  "core-rules-w17", "core-rules-w23", "core-rules-w27", "core-rules-w28", "core-rules-w30",
                                  "core-rules-w18", "core-rules-w19", "core-rules-w20", "core-rules-w31", "core-rules-w32",
-                                 "core-rules-w34", "core-rules-w35", "game"])
+                                 "core-rules-w34", "core-rules-w36", "core-rules-w35", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -1366,11 +1374,82 @@ def psychic_hammer_falloff(ctx):
     return f"{len(found)} hits logged, {cuts} cut"
 
 
+# W36: merged ids (docs/research/w36-monster-kits.md)
+CORPSE_CYCLER, VINE_CYCLER, POISON_EGG_SPAWN, MAGGOT_EGG, TORAJAN_NEST = 307, 325, 522, 159, 631
+TORAJAN_EGG = 897  # monstats torajanBossPoisonEgg
+NO_LOOT_NO_XP = 0x4020000  # unit flags 0x20000 and 0x4000000, PD2's sHitPar3 / Nest's
+# summon-on-hit missile -> the monstats row PD2's sHitPar1 names, in the mod's ids
+SUMMON_HITS = {917: 1016, 922: 1018, 967: 1082, 1011: 1112, 1037: 1125}
+
+
+@check("cycler-start", tags=["core-rules-w36"])
+def cycler_start(ctx):
+    """srvstfunc 83 (PD2 67): a vine takes a corpse and at once heals the units within aurarangecalc 40 by
+    calc1-calc2 of life (Cycle of Life's CorpseCycler, stat 6) or mana (Vines' VineCycler, stat 8)."""
+    found = re.findall(r"cycler start: skill (\d+) level (\d+): heal (-?\d+) \(calc1 (-?\d+), calc2 (-?\d+)\) of stat "
+                       r"(\d+), radius (\d+), units (\d+)", _log(ctx))
+    if not found:
+        ctx.skip("no Cycler start in the log yet (summon Cycle of Life or Vines by corpses, then run again)")
+    for skill, _, heal, low, high, stat, radius, _units in (tuple(int(v) for v in f) for f in found):
+        assert (skill, stat) in ((CORPSE_CYCLER, 6), (VINE_CYCLER, 8)), f"skill {skill} heals stat {stat}"
+        assert low <= heal <= max(low, high - 1), f"heal {heal} outside {low}-{high}"
+        assert radius == 40, f"radius {radius}, PD2's aurarangecalc is 40"
+    return f"{len(found)} start(s) logged: skills {sorted({int(f[0]) for f in found})}"
+
+
+@check("poison-egg-spawn", tags=["core-rules-w36"])
+def poison_egg_spawn(ctx):
+    """srvdofunc 173 runs D2R's nova with PoisonEggSpawn, then MaggotEgg's spawn; cltdofunc 126 draws both."""
+    log = _log(ctx)
+    found = re.findall(r"poison egg spawn: skill (\d+) level \d+: nova (-?\d+), then skill (\d+) spawn (-?\d+)", log)
+    if not found:
+        ctx.skip("no PoisonEggSpawn cast in the log yet (`cheat mspawn torajanBoss,1` and wait for his eggs)")
+    for skill, nova, egg, _ in (tuple(int(v) for v in f) for f in found):
+        assert (skill, egg) == (POISON_EGG_SPAWN, MAGGOT_EGG), f"skill {skill} spawned through skill {egg}"
+        assert nova != 0, "the nova did not run"
+    assert re.search(r"poison egg spawn client: skill %d " % POISON_EGG_SPAWN, log), "the client half never ran"
+    return f"{len(found)} cast(s) logged, client drew them"
+
+
+@check("torajan-nest", tags=["core-rules-w36"])
+def torajan_nest(ctx):
+    """TorajanBossNest (router srvdo 190, PD2 181) lays one torajanBossPoisonEgg a cast, at most Param1 35, each with
+    no treasure class and no experience."""
+    found = re.findall(r"torajan nest: skill (\d+) level \d+: monster (\d+) mode \d+, (\d+) of (\d+), flags 0x([0-9a-f]+)",
+                       _log(ctx))
+    if not found:
+        ctx.skip("no nest spawn in the log yet (`cheat mspawn torajanBoss,1` and wait)")
+    for skill, mon, count, cap, flags in found:
+        assert int(skill) == TORAJAN_NEST and int(mon) == TORAJAN_EGG, f"skill {skill} laid monster {mon}"
+        assert 1 <= int(count) <= int(cap) == 35, f"egg {count} of {cap}"
+        assert int(flags, 16) & NO_LOOT_NO_XP == NO_LOOT_NO_XP, f"flags 0x{flags}"
+    return f"{len(found)} egg(s) logged, last {found[-1][2]} of {found[-1][3]}"
+
+
+@check("summon-hit", tags=["core-rules-w36"])
+def summon_hit(ctx):
+    """pSrvHitFunc 67 (PD2 6) spawns PD2's sHitPar1 monster (in the mod's ids) where the missile lands, with
+    sHitPar3's flags: no treasure class, no experience."""
+    found = re.findall(r"summon hit: missile (\d+): monster (\d+) mode \d+ (spawned|not spawned), flags 0x([0-9a-f]+)",
+                       _log(ctx))
+    if not found:
+        ctx.skip("no summon hit in the log yet (`cheat mspawn leoricMapBoss,1` and let him cast)")
+    spawned = 0
+    for missile, mon, state, flags in found:
+        assert SUMMON_HITS.get(int(missile)) == int(mon), f"missile {missile} spawned monster {mon}"
+        if state == "spawned":
+            assert int(flags, 16) & NO_LOOT_NO_XP == NO_LOOT_NO_XP, f"missile {missile}: flags 0x{flags}"
+            spawned += 1
+    if not spawned:
+        ctx.skip(f"{len(found)} summon hit(s) logged, none spawned (no room where they landed?)")
+    return f"{len(found)} hit(s) logged, {spawned} spawned"
+
+
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17",
                                     "core-rules-w23", "core-rules-w30", "core-rules-w18", "core-rules-w19", "core-rules-w31",
-                                    "core-rules-w32", "core-rules-w34",
+                                    "core-rules-w32", "core-rules-w34", "core-rules-w36",
                                     "core-rules-p12"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""

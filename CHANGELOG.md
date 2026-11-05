@@ -5,6 +5,10 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
+- Monster kits work as in Project Diablo II: Cycle of Life and Vines heal everyone nearby at once when they eat a
+  corpse, Torajan's eggs burst in a poison nova as they hatch and his nest lays at most 35, and the minions boss
+  missiles raise (Leoric's guards, Iskatu's vermin, ...) are the right monsters and drop no loot and give no
+  experience.
 - Project Diablo II's class item rules reach the Warlock: Hellfire Torch and Spirit Ward can roll Warlock skills,
   Warlock skill and skill-tree affixes roll as often as other classes', and the Warlock gets the affixes Project
   Diablo II added for the other classes: +1 and +2 class skills on body armor, helms and shields, and +3 to a skill
