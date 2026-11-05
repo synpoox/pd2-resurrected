@@ -4,7 +4,7 @@
 //
 // Parts, by their word for the log, the status command and core-ui-off.txt (<game>\d2rloader\config\core-ui-off.txt):
 //   automap   the automap for PD2's level types 36+ (LP2)
-//   pictures  HD pictures of PD2's 4-character item codes (#310, #298)
+//   pictures  HD pictures of PD2's 4-character item codes (#310, #298), and `cheat spawn` of them (#323)
 #include <D2RLPlugin/api.h>
 
 #include "automap.h"
