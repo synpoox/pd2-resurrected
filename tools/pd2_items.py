@@ -89,12 +89,15 @@ def count_each_input(cube: I.Table) -> None:
 
 def remake_rerolls(cube: I.Table) -> None:
     """PD2's op 31 rows (Demonic Cube + a unique or set item) have no outputs: PD2's cube code remakes the item and
-    takes one Demonic Cube off the stack (IR6, #241). core-rules does that through an SDK item transaction; the rows get
-    `usetype,reg`, D2R's own remake of the input's unique or set row, so they are complete rows to D2R."""
+    takes one Demonic Cube off the stack (IR6, #241). core-rules does that through an SDK item transaction. The rows get
+    `usetype,reg` only so they are complete rows to D2R, and ship switched off (`enabled` 0): D2R never runs that
+    output itself, and core-rules switches the rows on when its hook and services are in."""
     h = {c: j for j, c in enumerate(cube.header)}
     for r in cube.rows if "op" in h else []:
         if r[h["op"]] == "31":
             r[h["output"]] = "usetype,reg"
+            if "enabled" in h:
+                r[h["enabled"]] = "0"
 
 
 def mark_new_corrupted(cube: I.Table, corruptor: str | None) -> None:

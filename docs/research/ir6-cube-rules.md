@@ -64,7 +64,15 @@ PD2's split is Ctrl+left-click with a stack held, one item per click (owner); it
 - The PluginSDK item services do the reroll without these internals (core-rules): `executeTransaction` takes one
   Demonic Cube and the old item and makes the new one with `AllowDuplicateUnique`. It returns `Busy` when called from
   the cube executor, so the work is queued with `ThreadService::runOnGameThread`. It cannot move socketed items
-  (`SocketedItemPolicy` is reject or destroy).
+  (`SocketedItemPolicy` is reject or destroy). `InventoryService::getLocalPlayer` is for the UI thread, and no service
+  names the player who pressed, so the executor passes the pressing unit's id to `runOnUiThread`, which checks it
+  against the client's own player (`ClientPlayer(LocalPlayerSlot())`) before queueing the transaction.
+- A cubemain record keeps its `enabled` byte at +0 and the search skips a row with 0, so the merge ships op-31 rows
+  off and core-rules sets the byte after each `DataTablesLoadedEvent` (the SDK's table views are read-only). The
+  data-table getter `0x300a90` takes data flags 0-3 and returns null for a bank that is not loaded.
+- `executeTransaction` rejects an output `quantity` on an item that does not stack (`InvalidArgument`, nothing
+  taken), and `ItemInfo.quantity` is 1 for such an item, the same as a stack of one. core-rules passes the quantity
+  only when `GameRuleService::getTotalMaxStack` reports more than 1 (game check, Goblin Toe, 2026-11-05).
 - The executor removes an input item with `0x48fa40(game, item)`: a stack is one item to D2R's cube, so a stack of
   Demonic Cubes would go whole (#315's problem).
 </content>

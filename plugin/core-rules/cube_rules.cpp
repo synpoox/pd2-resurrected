@@ -11,17 +11,22 @@
 // PD2's Demonic Cube reroll (op 31, 0x3669b0) remakes a unique or set item from its own row and takes one Demonic Cube
 // off the stack. On an op-31 row this hook does that through the PluginSDK instead of D2R's executor: one item
 // transaction takes one Demonic Cube and the old item and makes the new one in the cube, on the old item's base, row,
-// item level, sockets, ethereal and identified state (and quantity, and an ethereal item's durability, as PD2 keeps
-// them). D2R's own once-per-game rule is skipped (AllowDuplicateUnique), as PD2's 0x103841d0 does. The executor is the
-// hook point only because the SDK has no cube event; the SDK refuses item changes there (Busy), so the transaction is
-// queued for the next game update.
+// item level, sockets, ethereal and identified state, quantity and durability, as PD2 keeps them. D2R's own
+// once-per-game rule is skipped (AllowDuplicateUnique), as PD2's 0x103841d0 does. The executor is the hook point only
+// because the SDK has no cube event. The SDK refuses item changes inside it (Busy) and names the local player only on
+// the UI thread, so the press goes executor -> UI thread (which player) -> next game update (the transaction).
+//
+// The merge ships the op-31 rows switched off, so D2R never runs them itself; this file switches them on after each
+// table load, and only when its hook and the SDK services are in.
 #include "cube_rules.h"
 
 #include "d2r.h"
 #include "log.h"
 
+#include <D2RLPlugin/game_rules.h>
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
+#include <D2RLPlugin/lifecycle.h>
 #include <D2RLPlugin/threads.h>
 
 #include <atomic>
@@ -37,6 +42,8 @@ constexpr int32_t PropCorruptNum = 289;  // merged properties.txt corruptnum (D2
 constexpr int32_t StatCorrupted = 413;   // merged itemstatcost corrupted (PD2's 360)
 constexpr uint32_t CodeShard = 0x20737377, CodeCubeShard = 0x73737763;  // 'wss ', 'cwss'
 constexpr uint8_t OpReroll = 31;
+constexpr uint32_t CodeDemonicCube = D2RL::Items::MakeItemCode("imrn");
+constexpr uint32_t DataFlags = 4;  // 0x300a90 holds four data-table banks
 constexpr int OutputMods = 5;
 
 struct SearchResult {
@@ -60,24 +67,15 @@ const D2RL::PluginContext* g_context = nullptr;
 const D2RL::ItemService* g_items = nullptr;
 const D2RL::InventoryService* g_inventory = nullptr;
 const D2RL::ThreadService* g_threads = nullptr;
+const D2RL::GameRuleService* g_rules = nullptr;
+bool g_rerollReady = false;  // the hook and every service the reroll needs are in
 
-auto Inventory(Unit* unit) noexcept -> void* {
-	return d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(d2r::rva::UnitInventory)(unit, __FILE__, __LINE__);
-}
-
-auto Stat(Unit* unit, int32_t stat) noexcept -> int32_t {
-	return d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(unit, stat, 0);
-}
-
-auto Code(Unit* item) noexcept -> uint32_t {
-	return d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::ItemCode)(item);
-}
-
-// Calls `visit(item)` for each item in the player's cube until it returns false.
+// Calls `visit(item)` for each item in the player's cube until it returns false. Native, because it runs inside the
+// executor on the pressing player's unit, and the SDK names only the local player, on the UI thread.
 template <class Visit>
 auto ForCubeItems(Unit* player, Visit visit) noexcept -> void {
 	using namespace d2r::rva;
-	void* inventory = Inventory(player);
+	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory)(player, __FILE__, __LINE__);
 	if (inventory == nullptr) {
 		return;
 	}
@@ -109,10 +107,10 @@ auto IsRollRow(const uint8_t* record) noexcept -> bool {
 auto ShardReady(Unit* player) noexcept -> bool {
 	bool shard = false, corrupted = false;
 	ForCubeItems(player, [&](Unit* item) noexcept {
-		const uint32_t code = Code(item);
+		const uint32_t code = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::ItemCode)(item);
 		if (code == CodeShard || code == CodeCubeShard) {
 			shard = true;
-			corrupted = Stat(item, StatCorrupted) != 0;
+			corrupted = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(item, StatCorrupted, 0) != 0;
 		}
 		return !corrupted;
 	});
@@ -129,7 +127,7 @@ struct CubeScan {
 
 auto ScanCube(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept -> D2RL::Inventory::IterationAction {
 	auto* scan = static_cast<CubeScan*>(user);
-	if (item->code == D2RL::Items::MakeItemCode("imrn")) {
+	if (item->code == CodeDemonicCube) {
 		scan->cubes = *item;
 	} else if (item->quality == items::Quality::Set || item->quality == items::Quality::Unique) {
 		scan->target = *item;
@@ -138,76 +136,137 @@ auto ScanCube(const D2RL::PluginContext*, const items::ItemInfo* item, void* use
 	return D2RL::Inventory::IterationAction::Continue;
 }
 
-// Op 31: PD2's 0x3669b0 as one SDK item transaction (top of file), on the game thread.
-void RerollNow(const D2RL::PluginContext*, void*) noexcept {
-	// shortcut: the local player is the one who pressed in single player; a hosted game's other players need their
-	// handle from the native player. Upgrade when hosted cube use matters.
-	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
-	if (g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success) {
-		plog::Info("reroll: no local player");
-		return;
-	}
+// The SDK refuses a quantity on an item that does not stack (InvalidArgument), and ItemInfo gives such an item
+// quantity 1, the same as a stack of one.
+auto Stacks(const items::ItemInfo& item) noexcept -> bool {
+	uint32_t maximum = 0;
+	return g_rules->getTotalMaxStack(g_context, item.handle, &maximum) == D2RL::GameRules::Result::Success && maximum > 1;
+}
+
+// The old item as a new roll of the same row: everything PD2's 0x3669b0 carries over (top of file).
+auto RerollSpec(const items::ItemInfo& old) noexcept -> items::ItemCreateSpec {
+	return {.structSize = items::ItemCreateSpecSize,
+	        .flags = items::ItemCreateFlagBit(items::ItemCreateFlag::AllowDuplicateUnique),
+	        .code = old.code,
+	        .quality = old.quality,
+	        .qualityRecordId = static_cast<uint32_t>(old.qualityRecordId),
+	        .itemLevel = old.itemLevel,
+	        .seedMode = items::SeedMode::Random,
+	        .quantity = Stacks(old) ? static_cast<uint32_t>(old.quantity) : items::DefaultValue,
+	        .durability = old.maximumDurability > 0 ? static_cast<uint32_t>(old.durability) : items::DefaultValue,
+	        .socketCount = old.socketCount,
+	        .stateFlags = old.stateFlags & items::AllItemStates,
+	        .destination = {.structSize = items::ItemDestinationSize,
+	                        .container = items::ItemContainer::Cube,
+	                        .placement = items::Placement::Automatic}};
+}
+
+// Op 31 on the game thread: one SDK item transaction for the player the UI thread named.
+void RerollNow(const D2RL::PluginContext*, void* user) noexcept {
+	const auto player = reinterpret_cast<D2RL::PlayerHandle>(user);
 	CubeScan scan;
 	const D2RL::Inventory::ItemFilter filter {.structSize = D2RL::Inventory::ItemFilterSize,
 	                                          .containerMask = items::ContainerBit(items::ItemContainer::Cube)};
-	g_inventory->forEachInventoryItem(g_context, player, &filter, ScanCube, &scan);
+	if (const auto listed = g_inventory->forEachInventoryItem(g_context, player, &filter, ScanCube, &scan);
+	    listed != D2RL::Inventory::Result::Success) {
+		plog::Info("reroll: could not read the cube (%u)", static_cast<uint32_t>(listed));
+		return;
+	}
 	const items::ItemInfo& old = scan.target;
 	if (scan.targets != 1 || scan.cubes.handle == D2RL::InvalidItemHandle) {
 		plog::Info("reroll: the cube holds %d unique or set items and %s Demonic Cube", scan.targets,
 		           scan.cubes.handle != D2RL::InvalidItemHandle ? "a" : "no");
 		return;
 	}
-	const bool ethereal = (old.stateFlags & items::ItemStateEthereal) != 0;
 	const items::TransactionInput inputs[] {
 		// shortcut: refuses an item with socketed items, which PD2 moves to the new one; #325 keeps them
 		{.item = old.handle, .quantity = 1, .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty},
 		{.item = scan.cubes.handle, .quantity = 1, .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty}};
-	items::ItemCreateSpec spec {};
-	spec.structSize = items::ItemCreateSpecSize;
-	spec.flags = items::ItemCreateFlagBit(items::ItemCreateFlag::AllowDuplicateUnique);
-	spec.code = old.code;
-	spec.quality = old.quality;
-	spec.qualityRecordId = static_cast<uint32_t>(old.qualityRecordId);
-	spec.itemLevel = old.itemLevel;
-	spec.seedMode = items::SeedMode::Random;
-	spec.quantity = old.quantity > 1 ? static_cast<uint32_t>(old.quantity) : items::DefaultValue;
-	spec.durability = ethereal && old.durability > 0 ? static_cast<uint32_t>(old.durability) : items::DefaultValue;
-	spec.socketCount = old.socketCount;
-	spec.stateFlags = old.stateFlags & items::AllItemStates;
-	spec.destination = {.structSize = items::ItemDestinationSize,
-	                    .container = items::ItemContainer::Cube,
-	                    .placement = items::Placement::Automatic};
-	D2RL::ItemHandle made = D2RL::InvalidItemHandle;
+	const items::ItemCreateSpec spec = RerollSpec(old);
+	D2RL::ItemHandle newItem = D2RL::InvalidItemHandle;
 	const items::Transaction transaction {.structSize = items::TransactionSize,
 	                                      .player = player,
 	                                      .inputCount = 2,
 	                                      .outputCount = 1,
 	                                      .inputs = inputs,
 	                                      .outputs = &spec,
-	                                      .outputItems = &made,
+	                                      .outputItems = &newItem,
 	                                      .outputCapacity = 1};
 	items::TransactionResult result {.structSize = items::TransactionResultSize};
-	const items::Result done = g_items->executeTransaction(g_context, &transaction, &result);
-	items::ItemInfo now {.structSize = items::ItemInfoSize};
-	const bool read = done == items::Result::Success && g_items->getItemInfo(g_context, made, &now) == items::Result::Success;
-	plog::Info("reroll: quality %u row %d level %u ethereal %d sockets %u (filled %u), demonic cubes %d -> %d: result %u, "
-	           "new row %d (%u so far)",
-	           static_cast<uint32_t>(old.quality), old.qualityRecordId, old.itemLevel, ethereal, old.socketCount,
-	           old.socketedItemCount, scan.cubes.quantity, done == items::Result::Success ? scan.cubes.quantity - 1 : scan.cubes.quantity,
-	           static_cast<uint32_t>(done), read ? now.qualityRecordId : -1, ++g_rerolls);
+	const items::Result status = g_items->executeTransaction(g_context, &transaction, &result);
+	items::ItemInfo remade {.structSize = items::ItemInfoSize};
+	const bool remadeRead =
+		status == items::Result::Success && g_items->getItemInfo(g_context, newItem, &remade) == items::Result::Success;
+	plog::Info("reroll: quality %u row %d level %u quantity %d durability %d/%d sockets %u (filled %u), demonic cubes %d: "
+	           "result %u, new row %d quantity %d durability %d/%d (%u so far)",
+	           static_cast<uint32_t>(old.quality), old.qualityRecordId, old.itemLevel, old.quantity, old.durability,
+	           old.maximumDurability, old.socketCount, old.socketedItemCount, scan.cubes.quantity,
+	           static_cast<uint32_t>(status), remadeRead ? remade.qualityRecordId : -1, remadeRead ? remade.quantity : -1,
+	           remadeRead ? remade.durability : -1, remadeRead ? remade.maximumDurability : -1, ++g_rerolls);
 }
 
-auto Reroll() noexcept -> uint64_t {
-	if (g_items == nullptr || g_inventory == nullptr || g_threads == nullptr ||
-	    g_threads->runOnGameThread(g_context, RerollNow, nullptr) != D2RL::Threads::Result::Success) {
+// UI thread: the SDK names the local player only here. The pressing player's unit id comes from the executor; a
+// native read of the client's own player checks they are the same, since the SDK cannot name the player who pressed.
+// shortcut: refuses another player's press in a hosted game (the host has no SDK handle for them without a plugin
+// message from their client), upgrade when hosted cube use matters.
+void PickPlayer(const D2RL::PluginContext*, void* user) noexcept {
+	using namespace d2r::rva;
+	const auto pressedBy = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(user));
+	Unit* local = d2r::Engine<Unit* (*)(uint32_t) noexcept>(ClientPlayer)(d2r::Engine<uint32_t (*)() noexcept>(LocalPlayerSlot)());
+	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+	if (local == nullptr || At<uint32_t>(local, UnitIdField) != pressedBy) {
+		plog::Info("reroll: refused, pressed by player %u, not this game's own player", pressedBy);
+	} else if (g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success) {
+		plog::Info("reroll: no local player");
+	} else if (g_threads->runOnGameThread(g_context, RerollNow, reinterpret_cast<void*>(player)) !=
+	           D2RL::Threads::Result::Success) {
+		plog::Info("reroll: could not queue it");
+	}
+}
+
+// Executor, game thread: never D2R's own row (top of file), so nothing is taken unless the SDK transaction runs.
+auto Reroll(Unit* player) noexcept -> uint64_t {
+	const uint32_t id = At<uint32_t>(player, d2r::rva::UnitIdField);
+	if (!g_rerollReady ||
+	    g_threads->runOnUiThread(g_context, PickPlayer, reinterpret_cast<void*>(static_cast<uintptr_t>(id))) !=
+	        D2RL::Threads::Result::Success) {
 		plog::Info("reroll: could not queue it");
 	}
 	return 0;
 }
 
+// Switches the op-31 rows on after each table load (top of file). Native: the SDK's table views are read-only.
+void __cdecl EnableRerollRows(const D2RL::PluginContext*, const D2RL::Lifecycle::DataTablesLoadedEvent*, void*) noexcept {
+	using namespace d2r::rva;
+	int enabled = 0;
+	for (uint32_t flag = 0; flag < DataFlags; ++flag) {
+		if (d2r::Engine<void* (*)(uint32_t) noexcept>(DataTables)(flag) == nullptr) {
+			continue;
+		}
+		const int32_t rows = d2r::Engine<int32_t (*)(uint32_t) noexcept>(CubeRecipeCount)(flag);
+		for (int32_t i = 0; i < rows; ++i) {
+			auto* row = const_cast<uint8_t*>(d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(CubeRecipe)(flag, i));
+			if (row != nullptr && row[CubeOp] == OpReroll) {
+				row[CubeEnabled] = 1;
+				++enabled;
+			}
+		}
+	}
+	plog::Info("reroll: %d demonic cube rows switched on", enabled);
+}
+
+template <class Service>
+auto Query(const D2RL::PluginContext* context, const Service*& service, bool (*has)(const Service*, uint32_t),
+           uint32_t required) noexcept -> bool {
+	if (context->QueryService(&service) != D2RL::ServiceQueryResult::Success || !has(service, required)) {
+		service = nullptr;
+	}
+	return service != nullptr;
+}
+
 auto CubeExecute(Game* game, Unit* player, const uint8_t* record, MatchOut* out) noexcept -> uint64_t {
 	if (game != nullptr && player != nullptr && record != nullptr && record[d2r::rva::CubeOp] == OpReroll) {
-		return Reroll();
+		return Reroll(player);
 	}
 	const uint64_t made = g_executorOriginal(game, player, record, out);
 	if (game == nullptr || player == nullptr || record == nullptr || !IsRollRow(record)) {
@@ -241,22 +300,21 @@ auto CubeExecute(Game* game, Unit* player, const uint8_t* record, MatchOut* out)
 auto InstallCubeRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
 	g_context = context;
-	if (context->QueryService(&g_items) != D2RL::ServiceQueryResult::Success ||
-	    !D2RL::HasItemServiceField(g_items, D2RL::ItemServiceRequiredSize)) {
-		g_items = nullptr;
-	}
-	if (context->QueryService(&g_threads) != D2RL::ServiceQueryResult::Success ||
-	    !D2RL::HasThreadServiceField(g_threads, D2RL::ThreadServiceRequiredSize)) {
-		g_threads = nullptr;
-	}
-	if (context->QueryService(&g_inventory) != D2RL::ServiceQueryResult::Success ||
-	    !D2RL::HasInventoryServiceField(g_inventory, D2RL::InventoryServiceRequiredSize)) {
-		g_inventory = nullptr;
-	}
+	const D2RL::LifecycleService* lifecycle = nullptr;
+	const bool services = Query(context, g_items, D2RL::HasItemServiceField, D2RL::ItemServiceRequiredSize) &
+	                      Query(context, g_threads, D2RL::HasThreadServiceField, D2RL::ThreadServiceRequiredSize) &
+	                      Query(context, g_inventory, D2RL::HasInventoryServiceField, D2RL::InventoryServiceRequiredSize) &
+	                      Query(context, g_rules, D2RL::HasGameRuleServiceField, D2RL::GameRuleServiceRequiredSize) &
+	                      Query(context, lifecycle, D2RL::HasLifecycleServiceField, D2RL::LifecycleServiceRequiredSize);
 	const bool hook = context->InstallInlineHook(CubeExecutor, CubeExecutorEntry, sizeof(CubeExecutorEntry),
 	                                             CubeExecute, &g_executorOriginal);
+	const D2RL::Lifecycle::DataTablesLoadedListener listener {.structSize = D2RL::Lifecycle::DataTablesLoadedListenerSize,
+	                                                          .callback = EnableRerollRows};
+	D2RL::Lifecycle::ListenerHandle listening = D2RL::Lifecycle::InvalidHandle;
+	g_rerollReady = hook && services &&
+	                lifecycle->registerDataTablesLoadedListener(context, &listener, &listening) == D2RL::Lifecycle::Result::Success;
 	std::snprintf(report, reportSize, "corruption in one press, demonic cube reroll%s%s", hook ? "" : " FAILED (bytes differ)",
-	              g_items != nullptr && g_inventory != nullptr && g_threads != nullptr ? "" : " (reroll off: a service is missing)");
+	              g_rerollReady ? "" : " (reroll off: its rows stay off; a service or the table listener is missing)");
 	return hook ? 1 : 0;
 }
 
