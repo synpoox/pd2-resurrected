@@ -21,6 +21,17 @@ graphics. Offline single-player for now; private multiplayer comes later.
 
 To update, delete `mods\PD2Resurrected\PD2Resurrected.mpq\data` first, then unpack the new release the same way.
 
+## Loot Filters
+
+The mod ships the [Pyre Loot Filter](https://github.com/Pyre-Flies/D2R-Mods/blob/main/plugins/pyre-lootfilter/README.md)
+plugin with a default `filter.json`.
+
+- Edit or make a filter: [D2R Reimagined loot filter editor](https://www.d2r-reimagined.com/loot-filter).
+- Default filter: [filter.json](https://raw.githubusercontent.com/synpoox/pd2-resurrected/main/companions/filter.json).
+- Install: save it as `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter.json`. It reloads on save.
+
+A new release overwrites `filter.json`; keep a copy of yours.
+
 ## Bug reports
 
 Found a bug? [Open an issue](https://github.com/synpoox/pd2-resurrected/issues/new) and say:
