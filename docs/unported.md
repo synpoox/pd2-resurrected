@@ -41,7 +41,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | PvP modifiers and battle-royale checks | cut | online features (core-rules) |  |
 | PD2's panel art (26 panel DC6) | cut | each serves a cut feature or one D2R draws itself: the stash with its categories, search and tabs, the 10x8 inventory (`invchar6`), the grail, the trophy case, the controller, guild icons, the trade stash, buy and sell, the potion counter (decided in #198). The controller and guild icon art comes back with #340 and #339 if they need it |  |
 
-### Not yet (29)
+### Not yet (28)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -55,7 +55,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | PD2 weapon spell columns stat1-3, calc1-3, spelldesc, spelldescstr, spelldesccalc | not yet | D2R's weapons table has no such columns | IR5 |
 | PD2 misc columns normcode, ubercode, ultracode | not yet | D2R's misc table has no such columns; `ubercode` and `ultracode` carry the quiver tiers (`aqv2`, `aqv3`, `cqv2`, `cqv3`) | UR6 |
 | Guild, arena and ladder labels keep D2R's text (20 keys, `CapsJoinMenu4` to `Guild Portal`) | not yet | the guild labels come with guilds (#339) and the ladder labels with online play, both in the beta; the arena labels stay D2R's, as PvP is cut | #339, beta |
-| Map items and the PD2 map system (area map stats, recipes, events, invaders) | not yet | left out of alpha 0.1.0 (roadmap, spec #41); designed in `docs/map-system.md` (#152) | MS1-MS5, MS7-MS11 |
+| Map items and the PD2 map system (area map stats, recipes, dungeons, events, invaders) | not yet | maps drop and open since MS2 and carry monster and player map stats since MS3; the rest is designed in `docs/map-system.md` (#152) | MS4, MS5, MS7-MS11 |
 | Map stats: the HUD's map stat panel | not yet | PD2 sends the client packet 0x55 with up to 24 of the opened map's stats; core-maps applies the stats but sends nothing ([ms3-map-stats](research/ms3-map-stats.md)) | core-maps |
 | Map stats: extra boss | not yet | `map_glob_extra_boss` is stored but not applied ([ms4-area-map-stats](research/ms4-area-map-stats.md), #289) | core-maps |
 | Map stats: area stats on a multi-level map | not yet | core-maps rewrites only the entry level's monster region; PD2 rewrites the map's other levels too ([ms4-area-map-stats](research/ms4-area-map-stats.md)) | MS7 |
@@ -68,8 +68,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | PD2-only areas on PD2 tiles in HD: no HD preset, so HD draws flat ground over each DS1's walls | not yet | LP4-LP5 generate an HD preset per DS1 with D2R stand-ins for PD2's tiles (ADR 0005); the levels, presets, warps, objects, object groups and DS1 are in since LP1 (#211) | LP4 |
 | Guild halls (Guild 1 to 5) | not yet | the beta's last feature, low priority (#151) | beta |
 | The Warlock redesign: alpha 0.1.0 ships D2R's Warlock as it is | not yet | left out of alpha 0.1.0 (roadmap, spec #41); goals in `docs/warlock.md`, its three new skills wait for the beta |  |
-| The other classes' engine rules (Necromancer, Paladin, Druid, Sorceress, Assassin) | not yet | left out of alpha 0.1.0 (roadmap, spec #41) | W11-W35 |
-| Everything in the core-rules order after the alpha 0.1.0 cut (router slot, dead item events, monster and boss kits, cube ops 30/31, investigations) | not yet | left out of alpha 0.1.0 (roadmap, spec #41) |  |
+| The rest of the core-rules order after the alpha 0.1.0 cut: the 4 dead item events, monster and boss kits, PD2's unidentified server rules | not yet | the router slot (W10), cube ops 30/31 (IR6) and phasing (IR7) are built; the charm rule went to a companion | W36-W38, UB2-UB7 |
 | Map-event notifications | not yet | each map event sends its notify string when it spawns; the cut in spec #41 is reversed (#336), after MS8-MS10 build the events | #336 |
 | Online play and ladder | not yet | multiplayer comes in the beta and after it (roadmap) | beta |
 | Guilds | not yet | cut in spec #41 with the online layer; the cut is reversed and guilds come with multiplayer (#339) | #339, beta |
@@ -134,7 +133,7 @@ rows have no table hook: D2R does what it does.
 | Corrupted zones | cut | cut by decision (map #143): D2R's Terror Zones stay in their place |  |
 | Level life regen cap (30, `bloodwarp` lifts it) | cut | PD2 caps it only in the PvP arenas (levels 157, 159, 166), and PvP is cut (#151) ([ms3-map-stats](research/ms3-map-stats.md)) |  |
 
-### Not yet (39)
+### Not yet (36)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -165,17 +164,14 @@ rows have no table hook: D2R does what it does.
 | A mercenary drops its gear when another is hired | not yet | stand-in: D2R's own behaviour; companion plugin mercenary drop on hire (#158) | IR2 |
 | Uber keys, PvP maps and the Monastery map: no item spell | not yet | stand-in: blank pSpell (`merge/standins.tsv`); maps use item spell 16 since MS2 (core-maps), the uber keys join it in UB2, PvP is cut and PD2 refuses the Monastery map | UB2 |
 | Unlimited TP and ID books | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | IR5 |
-| Item stat less than / equal (corruption outcomes, map recipes; 1,126 enabled rows) | not yet | stand-in: D2R's own behaviour | P9, MS5 |
 | `.set-home` start town | not yet | stand-in: D2R's own behaviour | W38 |
 | Map events and invaders (AiThink4, `MapEventNotify*`, Invader monsters) | not yet | stand-in: D2R's own behaviour | MS8-MS11 |
-| Corruption | not yet | stand-in: D2R's own behaviour | P9 |
 | Loot allocation | not yet | stand-in: D2R's own behaviour | later release |
 | Act 3 quest 5 patch | not yet | stand-in: D2R's own behaviour | W37, W38 |
 | Skill palette, NPC patches | not yet | stand-in: D2R's own behaviour | W37, W38 |
 | Player death handler and two more PlrModes hooks | not yet | stand-in: D2R's own behaviour | W37, W38 |
 | Perfect shrine | not yet | stand-in: D2R's own behaviour | W37, W38 |
 | Stackable items / item quantity | not yet | the merged `stackable`/`maxstack` rows are PD2's (runes and gems stack in the inventory and in D2R's stash tab); the split is D2R's own until [#316](https://github.com/synpoox/pd2-resurrected/issues/316) | [#316](https://github.com/synpoox/pd2-resurrected/issues/316) |
-| Skill aura event 3 (Chilling Armor) | not yet | stand-in: D2R's function at the same number | W28 |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | W38 |
 
 ### Approximated (57)
