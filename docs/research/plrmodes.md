@@ -67,7 +67,8 @@ The end frame is the unit's earliest type-1 timer event (`0x8e490`, the mode-end
 
 PD2 wraps the `hpregen` read in the player regen tick: when `0x1037c820` is true for the player's level (a level-id test
 through `pPath->pRoom->...->pLevel+0x1d0`, not decoded further) and the value is over 30, it returns 30, or the
-`bloodwarp` (state 205) stat list's value when that state is on. A level-based regen cap, most likely for maps.
+`bloodwarp` (state 205) stat list's value when that state is on. MS3 decoded the test: it is true only in the PvP arenas
+(levels 157, 159, 166), so the cap is cut with PvP ([ms3-map-stats](ms3-map-stats.md)).
 
 ## D2R 93847
 
@@ -83,5 +84,5 @@ PD2's patches can't be carried over as code.
   already cover 4 and part of gate B), then hook `0x429d10` only for what differs. Rows added to core-rules.
 - 1-3 key on PD2's function numbers (180, 182), so they wait for the skills that use them (P2 remaps ids; W8-W10 cover
   Charge's group). Whirlwind/Blade Dance (76) and Blade Fury (48) are vanilla numbers.
-- The regen cap is part of the map system (Q7, `map plan`).
+- The regen cap is PvP only, cut with PvP (MS3).
 - Not decoded: the death handler and the two other hooks. They need their own read before any death-rule row is listed.

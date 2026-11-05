@@ -46,7 +46,7 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
 - **Plugins:** `core-maps` (Shared) holds the code that belongs only to the map system: opening maps, map stats, cube
   op 30, map events and invaders. It is a plugin of its own because the map system is large enough to be used outside
   this project ([ADR 0004](adr/0004-plugins-split-by-multiplayer-scope.md), amended). Rules the map system shares with
-  other content stay in `core-rules`: the level life regen cap, the Teleport 3 path search, the
+  other content stay in `core-rules`: the Teleport 3 path search, the
   Find Item and Desecrate monster lists, and the death novas. `core-maps` never calls `core-rules`.
 - **Rules deferred to the map plan** (core-rules rows and their unported rows) join the work item that first brings in
   their levels or monsters (table below).
@@ -65,7 +65,7 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
 |---|---|---|---|
 | MS1 | Investigation, Ghidra on `ProjectDiablo.dll`: which area each map item opens, the gate checks, how map stats are applied and how density and rarity scale, cube op 30's meaning (block always or block stacked), the event roll and the levels the Vault, Horazon and Void events open; plus whether a plugin can open a red portal to a map area | none | none |
 | MS2 | Open a map: `pSpell` 16, the gates, one per game, the red portal to its area; maps drop again; the Find Item and Desecrate lists for map-area monsters | core-maps, core-rules (lists) | MS1, the level pipeline for the tiered map areas |
-| MS3 | Monster and player map stats (`map_mon_*`, `map_play_*`); the level life regen cap | core-maps, core-rules (cap) | MS2 |
+| MS3 | Monster and player map stats (`map_mon_*`, `map_play_*`); the level life regen cap, which MS3 found applies only in the PvP arenas, so it is cut with PvP | core-maps | MS2 |
 | MS4 | Area map stats (`map_glob_*`): density, area level, monster rarity, extra monster groups, extra boss, fortify, drop stats | core-maps | MS2 |
 | MS5 | Map recipes: cube op 30, and one recipe per group checked in game | core-maps | MS1 |
 | MS7 | Dungeons and unique maps: their multi-level areas, the Teleport 3 path search, the Nihlathak map death nova | core-maps, core-rules (Teleport 3, nova) | MS2, the level pipeline for those areas |

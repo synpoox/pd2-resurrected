@@ -798,6 +798,29 @@ inline constexpr uint64_t QuestFlag = 0x325c50;
 inline constexpr int PlayerQuests = 0x40;
 inline constexpr uint64_t ClientMessage = 0x491960;  // (player, message, player); 0x15 is "can't do that"
 
+// --- core-maps: map stats on monsters and players (MS3, #218) -----------------------------------------------------
+// Decompiled for #218 (Ghidra, D2R.gpr); entry bytes read from the 6ab3782c dump.
+// (spawn params, monster): D2R's per-class setup of a monster that its spawn core 0x493cc0
+// (D2Game\src\Monster\MonsterSpawn.cpp) just made; 0x493cc0 is its only caller, and 0x492cf0 and the other spawners
+// all go through 0x493cc0. The monster's stats and its monstats Align alignment (0x48e600) are set by then.
+// mov [rsp+0x18],rbx / mov [rsp+0x20],rbp / push rsi / push rdi / push r15
+inline constexpr uint64_t MonsterSpawned = 0x494a60;
+inline constexpr uint8_t MonsterSpawnedEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x48, 0x89, 0x6c,
+                                                  0x24, 0x20, 0x56, 0x57, 0x41, 0x57};
+// (game, player, a, b): the player's life regen event (unit event 3, D2Game\src\Player\PlrModes.cpp). It adds itself
+// again for the next frame first, so it runs every frame for every player, dead or alive.
+// mov [rsp+0x20],rbx / push rbp / sub rsp,0x40 / mov eax,r9d / mov dword [rsp+0x30],0
+inline constexpr uint64_t PlayerRegenEvent = 0x42e600;
+inline constexpr uint8_t PlayerRegenEventEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x20, 0x55, 0x48, 0x83, 0xec, 0x40, 0x41,
+                                                    0x8b, 0xc1, 0xc7, 0x44, 0x24, 0x30, 0x00, 0x00, 0x00, 0x00};
+inline constexpr int MonAlign = 0x87;  // uint8 monstats Align (rva::MonStatsRecord); 0x493cc0 reads it for 0x48e600
+inline constexpr uint64_t SetListState = 0x2f72f0;  // (list, state): list +0x20 = state (0x49bef0, 0x339d70 use it)
+// (unit, state, flags) -> the unit's stat list of that state and flags, or null; (item, 0, 0x40) is the item's magic
+// list. List +0x30 entries {int32 layer, stat, value, extra}, +0x38 uint64 count (d2rAI-toolkit runeword-stat-list.md)
+inline constexpr uint64_t UnitFlagList = 0x2f5b80;
+inline constexpr int ListEntries = 0x30, ListCount = 0x38;
+inline constexpr int StatMinDamage = 21, StatMaxDamage = 22;
+
 }  // namespace d2r::rva
 
 namespace d2r {
