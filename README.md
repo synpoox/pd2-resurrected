@@ -32,6 +32,23 @@ plugin with a default `filter.json`.
 
 A new release overwrites `filter.json`; keep a copy of yours.
 
+## Cut features
+
+These PD2 features are left out on purpose. Every deviation from PD2, cut or not, is listed in
+[docs/unported.md](docs/unported.md).
+
+- PD2's 10x8 inventory and stash pages, with the maps stash tab: D2R's layouts stay. PD2's 4x4 cube is coming back
+  ([#299](https://github.com/synpoox/pd2-resurrected/issues/299)).
+- PvP: the PvP maps, the BR Arena and every PvP rule, including the arenas' life regen cap.
+- Corrupted zones: D2R's Terror Zones stand in.
+- PD2's sound tables: D2R's sounds stay.
+- PD2's Uber Ancients: D2R's own Uber Ancients stays.
+- The Butcher's Lair map event (PD2 has it turned off).
+- Chat commands: `.kills`, `.deaths`, `.played`, `.age`, `.allstats`, `.accountstats` and `.noexp`.
+- Buying back a unique charm sold by mistake.
+- The advanced stats panel, the grail panel and PD2's display.
+- Online play, ladder, guilds and controller support.
+
 ## Bug reports
 
 Found a bug? [Open an issue](https://github.com/synpoox/pd2-resurrected/issues/new) and say:
