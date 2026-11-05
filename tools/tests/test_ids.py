@@ -372,6 +372,20 @@ class ItemTableTests(unittest.TestCase):
         self.assertEqual(sets.rows, [["S", "X", "1"]])
 
 
+    def test_map_add_monster_values_take_the_mod_monstats_id(self):
+        # map-glob-add-mon-* rolls a monstats id as its value (MS4): PD2's id becomes the mod's, in min and max
+        props = I.property_kinds(table("code|func1|stat1\nmap-glob-add-mon-doll|1|map_glob_add_mon_doll\n"
+                                       "map-glob-density|1|map_glob_density\n"))
+        self.assertEqual(props, {"map-glob-add-mon-doll": "monster"})
+        ids = {"monstats": {"690": "691"}}
+        ren = I.renames({t: [] for t in I.TABLES})
+        merged, _ = I.merge_table("magicprefix", table("Name|mod1code|mod1param|mod1min|mod1max\n"
+                                                       "Stygian|map-glob-add-mon-doll||690|690\n"),
+                                  table("Name|mod1code|mod1param|mod1min|mod1max\n"), [("Stygian", 0, "Stygian")],
+                                  ren, ids, props)
+        self.assertEqual(merged.rows, [["Stygian", "map-glob-add-mon-doll", "", "691", "691"]])
+
+
     def test_map_items_take_spell_16_and_the_mod_level(self):
         # a map (PD2 pSpell 12) opens the level its len names: the mod's id, blank when the level is left out;
         # a potion's len is a duration and stays

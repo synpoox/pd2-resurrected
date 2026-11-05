@@ -12,6 +12,8 @@
 #include "log.h"
 
 #include <atomic>
+#include <iterator>
+#include <utility>
 #include <cstdio>
 
 namespace {
@@ -20,23 +22,23 @@ using d2r::At;
 using d2r::Game;
 using d2r::Unit;
 
-enum class Route : uint8_t { Monster, Player, Elsewhere, PhysAsExtra };
+enum class Route : uint8_t { Monster, Player, Area, Elsewhere, PhysAsExtra };
 
 struct Routed {
 	int16_t stat;  // the map stat (port id)
 	Route route;
-	int16_t target;  // the stat it becomes (port id), for Monster and Player
+	int16_t target;  // the stat it becomes (port id) for Monster and Player; the area slot (`Divide - 2000`) for Area
 };
 
-// Every PD2 stat whose `Divide` is not the default 1024, by port id (merge/ids-itemstatcost.tsv). Elsewhere: area stats
-// (`map_glob_*`, `treacherous`, `phasing`; MS4) and `map_force_event` (MS8).
+// Every PD2 stat whose `Divide` is not the default 1024, by port id (merge/ids-itemstatcost.tsv). Area: `map_glob_*`,
+// `treacherous` and `phasing`; Elsewhere: `map_force_event` (MS8).
 constexpr Routed Routes[] = {
-	{371, Route::Elsewhere, 0},     {372, Route::Elsewhere, 0},     {387, Route::Elsewhere, 0},
-	{388, Route::Elsewhere, 0},     {398, Route::Elsewhere, 0},     {399, Route::Elsewhere, 0},
-	{400, Route::Elsewhere, 0},     {401, Route::Elsewhere, 0},     {402, Route::Elsewhere, 0},
-	{403, Route::Monster, 119},     {404, Route::Elsewhere, 0},     {423, Route::Player, 80},
-	{424, Route::Player, 79},       {425, Route::Elsewhere, 0},     {426, Route::Player, 85},
-	{427, Route::Elsewhere, 0},     {428, Route::Elsewhere, 0},     {429, Route::Monster, 48},
+	{371, Route::Area, 7},          {372, Route::Area, 8},          {387, Route::Area, 9},
+	{388, Route::Area, 9},          {398, Route::Area, 11},         {399, Route::Area, 12},
+	{400, Route::Area, 13},         {401, Route::Area, 15},         {402, Route::Area, 14},
+	{403, Route::Monster, 119},     {404, Route::Area, 14},         {423, Route::Player, 80},
+	{424, Route::Player, 79},       {425, Route::Area, 0},          {426, Route::Player, 85},
+	{427, Route::Area, 1},          {428, Route::Area, 2},          {429, Route::Monster, 48},
 	{430, Route::Monster, 49},      {431, Route::Monster, 50},      {432, Route::Monster, 51},
 	{433, Route::Monster, 52},      {434, Route::Monster, 53},      {435, Route::Monster, 54},
 	{436, Route::Monster, 55},      {437, Route::Monster, 56},      {438, Route::Monster, 57},
@@ -55,15 +57,15 @@ constexpr Routed Routes[] = {
 	{479, Route::Monster, 25},      {480, Route::Monster, 412},     {481, Route::Player, 39},
 	{482, Route::Player, 41},       {483, Route::Player, 43},       {484, Route::Player, 45},
 	{485, Route::PhysAsExtra, 0},   {486, Route::PhysAsExtra, 0},   {487, Route::PhysAsExtra, 0},
-	{488, Route::PhysAsExtra, 0},   {489, Route::PhysAsExtra, 0},   {490, Route::Elsewhere, 0},
-	{491, Route::Elsewhere, 0},     {492, Route::Elsewhere, 0},     {493, Route::Elsewhere, 0},
-	{494, Route::Elsewhere, 0},     {495, Route::Elsewhere, 0},     {502, Route::Monster, 141},
+	{488, Route::PhysAsExtra, 0},   {489, Route::PhysAsExtra, 0},   {490, Route::Area, 3},
+	{491, Route::Area, 3},          {492, Route::Area, 3},          {493, Route::Area, 3},
+	{494, Route::Area, 3},          {495, Route::Area, 3},          {502, Route::Monster, 141},
 	{503, Route::Monster, 153},     {504, Route::Player, 93},       {505, Route::Player, 105},
 	{506, Route::Monster, 197},     {507, Route::Player, 76},       {508, Route::Player, 77},
 	{509, Route::Player, 36},       {510, Route::Player, 67},       {520, Route::Player, 89},
-	{523, Route::Elsewhere, 0},     {524, Route::Elsewhere, 0},     {546, Route::Elsewhere, 0},
-	{551, Route::Elsewhere, 0},     {552, Route::Elsewhere, 0},     {553, Route::Elsewhere, 0},
-	{556, Route::Elsewhere, 0},     {558, Route::Elsewhere, 0},     {561, Route::Elsewhere, 0},
+	{523, Route::Area, 3},          {524, Route::Area, 3},          {546, Route::Area, 4},
+	{551, Route::Area, 5},          {552, Route::Area, 3},          {553, Route::Elsewhere, 0},
+	{556, Route::Area, 6},          {558, Route::Area, 9},          {561, Route::Area, 10},
 };
 // The ear and drop stats (405-411, 547-550, 555, 559) route to themselves, as the default does.
 
@@ -81,12 +83,14 @@ constexpr Extra Extras[] = {
 	{489, 52, 53, 0, 0},     // magic
 };
 
+constexpr int32_t StatLevel = 12;
 constexpr int32_t MapState = 244;           // states `map` (PD2 198)
 constexpr int32_t MaxHpPercent = 76;        // item_maxhp_percent: on a monster, PD2 scales its maxhp instead
 constexpr int32_t MaxHpScaledMark = 485;    // PD2 marks that in the list with stat 432 (port 485) = 1
 constexpr int32_t FirstMapLevel = 138;      // the port's PD2 areas, 138-201 (PD2 137-210 without 202-206):
 constexpr int32_t LastMapLevel = 201;       // PD2's map-area test 0x1037c510
 constexpr int MaxEntries = 64;  // per list; a map rolls far fewer stats
+constexpr int AreaSlots = 16;    // PD2's area slots 0-15
 
 // The game counter keys of the lists: 'M', the list ('m' or 'p'), the entry and the field (0: stat << 16 | layer,
 // 1: value); entry and field 0xff hold the count.
@@ -99,10 +103,13 @@ std::atomic<uint32_t> g_routed {0};
 std::atomic<uint32_t> g_monsters {0};
 std::atomic<uint32_t> g_playersOn {0};
 std::atomic<uint32_t> g_playersOff {0};
+std::atomic<bool> g_seenClass[2048] {};  // for the game check: each class's first spawn in a map area is logged
 
 using SpawnedFn = void (*)(void* params, Unit* monster) noexcept;
 using RegenFn = void (*)(Game* game, Unit* player, int32_t a, int32_t b) noexcept;
+using AreaLevelFn = uint64_t (*)(Game* game, int32_t level) noexcept;
 SpawnedFn g_spawnedOriginal = nullptr;
+AreaLevelFn g_areaLevelOriginal = nullptr;
 RegenFn g_regenOriginal = nullptr;
 
 auto Counter(Game* game, uint32_t key) noexcept -> int32_t* {
@@ -247,6 +254,88 @@ auto LogTotals(Game* game, Unit* unit, char which) noexcept -> void {
 	plog::Info("map stats:   totals%s", line);
 }
 
+struct AreaEntry {
+	int32_t slot, value;
+};
+
+// An area slot's value in this game: the first entry of that slot, as PD2's getter 0x1038a9e0 reads it; 0 for none.
+auto AreaSlot(Game* game, int slot) noexcept -> int32_t {
+	const int32_t* v = Counter(game, Key('a', slot, 0));
+	return v != nullptr ? *v : 0;
+}
+
+// PD2's 0x1038b4d0 on the level's monster region (rva::GameMonRegions), in the map's stat order: density (0) and
+// rarity (2) scale by 1 + v/100, each add-monster (3) is one more group, fortify (4) scales by v/100. Fortify, drop
+// bonus (12) and treacherous (14) also add monster stats, after the routed ones. Truncations are PD2's (ftol, then a
+// byte for the pack counts). D2R never reads the region's monster level, so area level (1) is AreaMonsterLevel's.
+auto ApplyArea(Game* game, int32_t level, const AreaEntry* entries, int count) noexcept -> void {
+	using namespace d2r::rva;
+	auto* const* regions = At<uint8_t**>(game, GameMonRegions);
+	uint8_t* r = regions != nullptr && level > 0 && level <= LastMapLevel ? regions[level] : nullptr;
+	if (r == nullptr) {
+		plog::Warn("map area: no monster region for level %d", level);
+		return;
+	}
+	auto& den = *reinterpret_cast<uint32_t*>(r + RegionMonDen);
+	const auto scalePacks = [r](float by) noexcept {
+		r[RegionBossMin] = static_cast<uint8_t>(static_cast<int32_t>(static_cast<float>(r[RegionBossMin]) * by));
+		r[RegionBossMax] = static_cast<uint8_t>(static_cast<int32_t>(static_cast<float>(r[RegionBossMax]) * by));
+	};
+	plog::Info("map area: level %d before: density %u, packs %u-%u, %u groups", level, den, r[RegionBossMin],
+	           r[RegionBossMax], r[RegionCount]);
+	for (int i = 0; i < count; ++i) {
+		const int32_t v = entries[i].value;
+		switch (entries[i].slot) {
+		case 0:
+			den = static_cast<uint32_t>(static_cast<float>(den) * (static_cast<float>(v) / 100.0f + 1.0f));
+			break;
+		case 2:
+			scalePacks(static_cast<float>(v) / 100.0f + 1.0f);
+			break;
+		case 3: {
+			if (d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(d2r::DataFlag(game), v) ==
+			    nullptr) {
+				plog::Warn("map area: no monstats row %d to add", v);
+				break;
+			}
+			// PD2 overwrites the 13th group when full but still counts it; the port keeps the count at 13
+			const int slot = r[RegionSpawnCount] < RegionMaxGroups ? r[RegionSpawnCount] : RegionMaxGroups - 1;
+			uint8_t* g = r + RegionGroups + slot * RegionGroupSize;
+			const bool replacing = r[RegionCount] >= RegionMaxGroups;
+			r[RegionRarity] = static_cast<uint8_t>(r[RegionRarity] + 1 - (replacing ? g[2] : 0));
+			for (int b = 0; b < RegionGroupSize; ++b) {
+				g[b] = 0;
+			}
+			*reinterpret_cast<int16_t*>(g) = static_cast<int16_t>(v);
+			g[2] = 1;  // rarity
+			g[3] = 1;  // one component pick, all default (PD2's 0x101)
+			r[RegionCount] = static_cast<uint8_t>(replacing ? RegionMaxGroups : r[RegionCount] + 1);
+			r[RegionSpawnCount] = static_cast<uint8_t>(slot + 1);
+			break;
+		}
+		case 4:
+			den = static_cast<uint32_t>(static_cast<float>(den) * (static_cast<float>(v) / 100.0f));
+			scalePacks(static_cast<float>(v) / 100.0f);
+			for (const auto& [stat, value] : {std::pair {MaxHpPercent, 100}, {25, 40}, {329, 40}, {331, 40},
+			                                  {330, 40}, {332, 40}, {357, 20}, {546, v}}) {
+				Push(game, 'm', stat, 0, value);  // max life %, damage %, the masteries, map_glob_skirmish_mode
+			}
+			break;
+		case 12:
+			Push(game, 'm', 399, 0, v);  // map_glob_dropbonus
+			break;
+		case 14:
+			Push(game, 'm', MaxHpPercent, 0, 100);
+			Push(game, 'm', 402, 0, v);  // treacherous
+			break;
+		default:
+			break;
+		}
+	}
+	plog::Info("map area: level %d after: density %u, packs %u-%u, %u groups; area level +%d", level, den,
+	           r[RegionBossMin], r[RegionBossMax], r[RegionCount], AreaSlot(game, 1));
+}
+
 // PD2's monster spawn hook 0x1038af90: a hostile monster spawning in a map area gets the monster list. PD2 gives a
 // monster with a monstats Align an empty list under the state.
 // shortcut: an aligned monster gets no list and no state; upgrade if something reads the map state on minions
@@ -264,8 +353,15 @@ auto OnMonsterSpawned(void* params, Unit* monster) noexcept -> void {
 		return;
 	}
 	const int32_t maxhp = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(monster, StatMaxLife, 0);
+	const int32_t classId = At<int32_t>(monster, UnitClassId);
+	if (classId >= 0 && classId < static_cast<int32_t>(std::size(g_seenClass)) && !g_seenClass[classId].exchange(true)) {
+		plog::Info("map stats: first monster %d in level %d, monster level %d", classId, LevelOf(monster),
+		           d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(monster, StatLevel, 0));
+	}
 	if (Apply(game, monster, 'm') && plog::Sample(g_monsters)) {
-		plog::Info("map stats: monster %d in level %d, maxhp %d -> %d (%u so far)", At<int32_t>(monster, UnitClassId),
+		plog::Info("map stats: monster %d (monster level %d) in level %d, maxhp %d -> %d (%u so far)",
+		           At<int32_t>(monster, UnitClassId),
+		           d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(monster, StatLevel, 0),
 		           LevelOf(monster), maxhp >> 8,
 		           d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(monster, StatMaxLife, 0) >> 8,
 		           g_monsters.load());
@@ -290,17 +386,32 @@ auto PlayerFrame(Game* game, Unit* player, int32_t a, int32_t b) noexcept -> voi
 	}
 }
 
+// PD2's 0x102fc400 and the region's monster level: a map area's monster level (D2R's 0x508f80, which monster spawns,
+// uniques and item levels read) gets the map's area level on top.
+auto AreaMonsterLevel(Game* game, int32_t level) noexcept -> uint64_t {
+	const uint64_t base = g_areaLevelOriginal(game, level);
+	if (game == nullptr || level < FirstMapLevel || level > LastMapLevel) {
+		return base;
+	}
+	return static_cast<uint32_t>(static_cast<int32_t>(base) + AreaSlot(game, 1));
+}
+
 }  // namespace
 
-auto RouteMapStats(Game* game, Unit* item) noexcept -> void {
+auto RouteMapStats(Game* game, Unit* item, int32_t level) noexcept -> void {
 	using namespace d2r::rva;
 	if (game == nullptr) {
 		return;
 	}
-	// A new map replaces the last one's lists. Units that already have a list keep it until they lose it.
+	// A new map replaces the last one's lists and slots. Units that already have a list keep it until they lose it.
 	for (const char which : {'m', 'p'}) {
 		if (int32_t* count = Counter(game, Key(which, 0xff, 0xff)); count != nullptr) {
 			*count = 0;
+		}
+	}
+	for (int slot = 0; slot < AreaSlots; ++slot) {
+		if (int32_t* v = Counter(game, Key('a', slot, 0)); v != nullptr) {
+			*v = 0;
 		}
 	}
 	const uint8_t* list = d2r::Engine<const uint8_t* (*)(Unit*, int32_t, int32_t) noexcept>(UnitFlagList)(item, 0,
@@ -314,21 +425,31 @@ auto RouteMapStats(Game* game, Unit* item) noexcept -> void {
 	};
 	const auto* entries = At<const Entry*>(list, ListEntries);
 	const uint64_t count = At<uint64_t>(list, ListCount);
+	AreaEntry area[MaxEntries];
+	int areaCount = 0;
 	for (uint64_t i = 0; entries != nullptr && i < count; ++i) {
 		const Entry& e = entries[i];
 		const Routed* r = Find(e.stat);
 		const Route route = r != nullptr ? r->route : Route::Monster;
 		const int32_t target = r != nullptr && route != Route::PhysAsExtra ? r->target : e.stat;
-		const char* where = "elsewhere (area or event)";
+		const char* where = "elsewhere (event)";
 		if (route == Route::Monster || route == Route::PhysAsExtra) {
 			Push(game, 'm', target, e.layer, e.value);
 			where = "monsters";
 		} else if (route == Route::Player) {
 			Push(game, 'p', target, e.layer, e.value);
 			where = "players";
+		} else if (route == Route::Area && areaCount < MaxEntries) {
+			area[areaCount++] = {target, e.value};
+			if (int32_t* v = Counter(game, Key('a', target, 0)); v != nullptr && *v == 0) {
+				*v = e.value;
+			}
+			where = "area slot";
 		}
 		plog::Info("map stats: stat %d layer %d value %d -> %s as %d", e.stat, e.layer, e.value, where, target);
 	}
+	// shortcut: only the entry level; PD2 also rewrites the other levels of a multi-level map, which come with MS7
+	ApplyArea(game, level, area, areaCount);
 	++g_routed;
 }
 
@@ -338,13 +459,16 @@ auto InstallMapStats(const D2RL::PluginContext* context, char* report, size_t re
 	                                                 OnMonsterSpawned, &g_spawnedOriginal);
 	const bool players = context->InstallInlineHook(PlayerRegenEvent, PlayerRegenEventEntry,
 	                                                sizeof(PlayerRegenEventEntry), PlayerFrame, &g_regenOriginal);
-	std::snprintf(report, reportSize, "monsters%s, players%s", monsters ? "" : " FAILED (bytes differ)",
-	              players ? "" : " FAILED (bytes differ)");
-	return (monsters ? 1 : 0) + (players ? 1 : 0);
+	const bool areaLevel = context->InstallInlineHook(AreaMonsterLevelFn, AreaMonsterLevelEntry,
+	                                                  sizeof(AreaMonsterLevelEntry), AreaMonsterLevel,
+	                                                  &g_areaLevelOriginal);
+	std::snprintf(report, reportSize, "monsters%s, players%s, area level%s", monsters ? "" : " FAILED (bytes differ)",
+	              players ? "" : " FAILED (bytes differ)", areaLevel ? "" : " FAILED (bytes differ)");
+	return (monsters ? 1 : 0) + (players ? 1 : 0) + (areaLevel ? 1 : 0);
 }
 
 auto MapStatsCount() noexcept -> int {
-	return 2;
+	return 3;
 }
 
 auto MapStatsCounters(char* out, size_t size) noexcept -> void {

@@ -1,5 +1,5 @@
 // core-maps: PD2's map system for PD2 Resurrected (docs/map-system.md): so far cube op 30 (the map recipes' block),
-// opening a map (item spell 16) and its monster and player stats.
+// opening a map (item spell 16) and its monster, player and area stats.
 // Shared (host and client must match) and NativeHooks; a game-wide plugin in <game>\d2rloader\plugins (ADR 0004).
 // On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
 //

@@ -67,6 +67,7 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
 | MS2 | Open a map: `pSpell` 16, the gates, one per game, the red portal to its area; maps drop again; the Find Item and Desecrate lists for map-area monsters | core-maps, core-rules (lists) | MS1, the level pipeline for the tiered map areas |
 | MS3 | Monster and player map stats (`map_mon_*`, `map_play_*`); the level life regen cap, which MS3 found applies only in the PvP arenas, so it is cut with PvP | core-maps | MS2 |
 | MS4 | Area map stats (`map_glob_*`): density, area level, monster rarity, extra monster groups, extra boss, fortify, drop stats | core-maps | MS2 |
+| MS4b | The extra boss and the drop chance area stats (corrupted, socketed, ethereal), [#286](https://github.com/synpoox/pd2-resurrected/issues/286) | core-maps | MS4 |
 | MS5 | Map recipes: cube op 30, and one recipe per group checked in game | core-maps | MS1 |
 | MS7 | Dungeons and unique maps: their multi-level areas, the Teleport 3 path search, the Nihlathak map death nova | core-maps, core-rules (Teleport 3, nova) | MS2, the level pipeline for those areas |
 | MS8 | Events that only spawn: Dark Wanderer, Shadow of Mendeln, Treasure Fallen, Gheed, Altar of the Catalyst, Spire of Darkness | core-maps | MS4 |

@@ -848,6 +848,21 @@ inline constexpr uint64_t UnitFlagList = 0x2f5b80;
 inline constexpr int ListEntries = 0x30, ListCount = 0x38;
 inline constexpr int StatMinDamage = 21, StatMaxDamage = 22;
 
+// --- core-maps: area map stats (MS4, #219; D2Game\src\Monster\MonsterRegion.cpp) ----------------------------------
+// rva::GameMonRegions: 0x5098b0 builds every level's region once per game (0x508750), from its levels row; these are
+// the fields PD2's 0x1038b4d0 rewrites, at 1.13c's offsets.
+inline constexpr int RegionCount = 0x10, RegionRarity = 0x11, RegionSpawnCount = 0x12;  // uint8: groups, sum, picks
+inline constexpr int RegionGroups = 0x14, RegionGroupSize = 0x34, RegionMaxGroups = 13;  // int16 monstats id, uint8 rarity
+inline constexpr int RegionMonDen = 0x2b8;                         // uint32 levels MonDen of the difficulty
+inline constexpr int RegionBossMin = 0x2bc, RegionBossMax = 0x2bd;  // uint8 MonUMin / MonUMax
+// (game, level id) -> the level's monster level: levels MonLvl / MonLvlEx of the difficulty (0x32c700), plus a terror
+// zone's bump (MonsterRegionAdjustMonsterLevel). Monster spawns, uniques and item levels call it; D2R never reads the
+// region's own monster level fields (+0x2dc, +0x2e0), which PD2 rewrites.
+// mov [rsp+0x10],rbx / mov [rsp+0x18],rsi / push rdi / sub rsp,0x30
+inline constexpr uint64_t AreaMonsterLevelFn = 0x508f80;
+inline constexpr uint8_t AreaMonsterLevelEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74,
+                                                    0x24, 0x18, 0x57, 0x48, 0x83, 0xec, 0x30};
+
 }  // namespace d2r::rva
 
 namespace d2r {
