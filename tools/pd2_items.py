@@ -8,6 +8,9 @@ A PD2 row takes the D2R row with the same key (or, for the _BY_ROW tables, the s
 has them and PD2-only rows are appended, as pd2_ids does for the listed tables. The cube keeps PD2's recipes in PD2's
 order, then D2R's recipes PD2 has no recipe with the same inputs and outputs for.
 
+PD2's own item pictures (an invfile no D2R item uses) are upscaled into HD sprites (pd2_art) and drawn by every item,
+unique and set item that names them; the others borrow a D2R picture (hd_items).
+
 A never-dropping item leaves every treasure class: its weight goes to NoDrop, so every other item drops at PD2's rate
 (exact for one player; NoDrop shrinks with more players), and a counted (negative Picks) entry is removed. A treasure
 class holding only such items counts as one. Its items.txt row is made unspawnable too.
@@ -18,6 +21,7 @@ import json
 import re
 from pathlib import Path
 
+import pd2_art
 import pd2_ids as I
 
 ITEM_TABLES = ["weapons", "armor", "misc"]
@@ -26,6 +30,7 @@ PD2_ORDER = {"treasureclassex"}
 CORRUPTED_NEW = "100"  # `corrupt` value no PD2 outcome uses (1-92); the tooltip shows only "Corrupted" (descval 0)
 CORRUPTOR_DONE = 3001  # PD2's own finished-map corruptor: above every outcome threshold (items 1000, maps 3000)
 CUBE_CELLS = 12  # the cube's 3 x 4 grid
+HD_PER_CLASSIC = 3.5  # D2R's 98 px inventory cell over the classic 28 px
 _SIGNATURE = [*(f"input {k}" for k in range(1, 8)), "output", "output b", "output c"]
 
 
@@ -161,16 +166,50 @@ def index_key(index: str) -> str:
     return re.sub(r"[ \-]", "_", index.lower()).replace("'", "")
 
 
+def set_entry(entries: list[dict], key: str, value) -> None:
+    """items.json-style list of single-key objects: replace key's entry or append it (modkit hd.set_list_entry)."""
+    for e in entries:
+        if key in e:
+            e[key] = value
+            return
+    entries.append({key: value})
+
+
 def _entries(path: Path) -> list[dict]:
     return json.loads(path.read_text("utf-8-sig"))
 
 
-def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table], uniques: list[tuple[str, str, str | None]],
-             sets: list[tuple[str, str, str | None]]) -> dict[str, list[dict]]:
+def item_pictures(art: Path, pd2_data: Path, d2r_data: Path, out_data: Path, uses: dict[str, set[str]],
+                  d2r_inv: set[str]) -> dict[str, str]:
+    """PD2's own pictures, an invfile in uses (-> the item tables drawing it) that no D2R item uses and pd2-data has a
+    DC6 for: an HD sprite upscaled from it in each table's folder, and the DC6 for legacy mode.
+    Returns {invfile: items.json asset}."""
+    dc6, hd, images = pd2_art.modkit()
+    classic = Path("global") / "items"
+    names = sorted(n for n in uses if n not in d2r_inv and (pd2_data / classic / f"{n}.dc6").is_file())
+    pal = dc6.palette((d2r_data / "global" / "palette" / "units" / "pal.dat").read_bytes())
+    frames = {n: dc6.decode(dc6.read(pd2_data / classic / f"{n}.dc6")[0], pal) for n in names}
+    big = pd2_art.upscale(art, {f"items/{n}": f for n, f in frames.items()})
+    (out_data / classic).mkdir(parents=True, exist_ok=True)
+    for n in names:
+        w, h, _ = frames[n]
+        sprite = images.scale(big[f"items/{n}"], round(w * HD_PER_CLASSIC), round(h * HD_PER_CLASSIC))
+        for t in sorted(uses[n]):
+            images.write_sprite(out_data / "hd" / "global" / "ui" / "items" / hd.item_folder(t) / "pd2" / f"{n}.sprite",
+                                sprite)
+        (out_data / classic / f"{n}.dc6").write_bytes((pd2_data / classic / f"{n}.dc6").read_bytes())
+    return {n: f"pd2/{n}" for n in names}
+
+
+def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
+             uniques: list[tuple[str, str, str | None, str]], sets: list[tuple[str, str, str | None, str]],
+             pictures: dict[str, str] | None = None) -> dict[str, list[dict]]:
     """D2R's items.json, uniques.json and sets.json (from hd) plus an entry for every item code, unique and set item
-    that has none. A new code shows the picture of the D2R item in the same table with the same invfile, else the
-    table's first; a unique or set item shows the D2R row it was merged onto, else its base item.
-    uniques / sets: (mod name, base code, D2R name at its id or None)."""
+    that has none. An item whose invfile is in pictures (item_pictures) shows it; else a new code shows the picture
+    of the D2R item in the same table with the same invfile, else the table's first; a unique or set item shows the
+    D2R row it was merged onto, else its base item.
+    uniques / sets: (mod name, base code, D2R name at its id or None, invfile)."""
+    pictures = pictures or {}
     files = {f: _entries(hd / f) for f in ("items.json", "uniques.json", "sets.json")}
     asset = {k: v["asset"] for e in files["items.json"] for k, v in e.items()}
     for t, ptab in pd2.items():
@@ -184,13 +223,20 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table], uniques
             if len(code) == 4 and not ord(code[3]) & 0x20:  # core-ui sets bit 0x20 of the key's 4th byte (#310)
                 raise I.IdError(f"{t} {code}: core-ui keys items.json by {code[:3]}{chr(ord(code[3]) | 0x20)}, "
                                 "so this code would draw no picture; give it a 4th character with bit 0x20 set")
-            if code and code not in asset:
+            if code and r[pi].lower() in pictures:
+                asset[code] = pictures[r[pi].lower()]
+                set_entry(files["items.json"], code, {"asset": asset[code]})
+            elif code and code not in asset:
                 asset[code] = by_inv.get(r[pi], first)
                 files["items.json"].append({code: {"asset": asset[code]}})
     for f, rows in (("uniques.json", uniques), ("sets.json", sets)):
         have = {k: v for e in files[f] for k, v in e.items()}
-        for name, code, d2r_name in rows:
+        for name, code, d2r_name, inv in rows:
             key = index_key(name)
+            if inv.lower() in pictures:
+                have[key] = dict.fromkeys(("normal", "uber", "ultra"), pictures[inv.lower()])
+                set_entry(files[f], key, have[key])
+                continue
             if key in have:
                 continue
             entry = have.get(index_key(d2r_name)) if d2r_name else None
@@ -220,13 +266,26 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     for t, merged in out.items():
         I.write(t, merged, merged.dropped, out_data)
     if set(ITEM_TABLES) <= set(out):
-        def named(t: str) -> list[tuple[str, str, str | None]]:
+        def named(t: str) -> list[tuple[str, str, str | None, str]]:
             pd2, d2r = I.load(pd2_data, t), I.load(d2r_data, t).names()
-            col = pd2.header.index("code" if "code" in pd2.header else "item")
-            code = dict(zip(I.ident(pd2.names()), (pd2.rows[k][col] for k in pd2.records())))
-            return [(n, code[p], d2r[i] if i < len(d2r) else None) for p, i, n in ctx.lists[t]]
-        files = hd_items(d2r_data / "hd" / "items", {t: I.load(pd2_data, t) for t in ITEM_TABLES},
-                         {t: I.load(d2r_data, t) for t in ITEM_TABLES}, named("uniqueitems"), named("setitems"))
+            col, inv = pd2.header.index("code" if "code" in pd2.header else "item"), pd2.header.index("invfile")
+            row = dict(zip(I.ident(pd2.names()), (pd2.rows[k] for k in pd2.records())))
+            return [(n, row[p][col], d2r[i] if i < len(d2r) else None, row[p][inv]) for p, i, n in ctx.lists[t]]
+        pd2, d2r = {t: I.load(pd2_data, t) for t in ITEM_TABLES}, {t: I.load(d2r_data, t) for t in ITEM_TABLES}
+        uniques, sets = named("uniqueitems"), named("setitems")
+        table_of = {r[tab.key]: t for t, tab in pd2.items() for r in tab.rows}
+        uses: dict[str, set[str]] = {}
+        for t, tab in pd2.items():
+            for r in tab.rows:
+                uses.setdefault(r[tab.header.index("invfile")].lower(), set()).add(t)
+        for _, code, _, inv in uniques + sets:
+            if code in table_of:
+                uses.setdefault(inv.lower(), set()).add(table_of[code])
+        d2r_inv = {r[k].lower() for t in [*ITEM_TABLES, "uniqueitems", "setitems"] for tab in [I.load(d2r_data, t)]
+                   for k, c in enumerate(tab.header) if c.endswith("invfile") for r in tab.rows}
+        pictures = item_pictures(rule.parent / "art", pd2_data, d2r_data, out_data, uses, d2r_inv)
+        print(f"  item pictures: {len(pictures)} upscaled from PD2's")
+        files = hd_items(d2r_data / "hd" / "items", pd2, d2r, uniques, sets, pictures)
         for f, entries in files.items():
             dest = out_data / "hd" / "items" / f
             dest.parent.mkdir(parents=True, exist_ok=True)

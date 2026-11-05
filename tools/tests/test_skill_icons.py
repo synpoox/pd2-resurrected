@@ -3,8 +3,10 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import pd2_art as A  # noqa: E402
 import pd2_skill_icons as S  # noqa: E402
 
 try:
@@ -12,6 +14,7 @@ try:
 except ValueError as e:  # CI has no d2rAI-toolkit (private)
     raise unittest.SkipTest(str(e))
 from modkit import dc6, images  # noqa: E402
+from test_art import fake_esrgan  # noqa: E402
 
 SPELLS = Path("global") / "ui" / "spells"
 
@@ -34,6 +37,13 @@ class ApplyTests(unittest.TestCase):
         self.pd2, self.d2r, self.out = self.tmp / "pd2", self.tmp / "d2r", self.tmp / "out"
         (self.d2r / "global" / "palette" / "units").mkdir(parents=True)
         (self.d2r / "global" / "palette" / "units" / "pal.dat").write_bytes(bytes(i for i in range(256) for _ in "bgr"))
+        # the fake style keeps PD2's frame, upscaled to the HD frame's size (icon_style itself: test_art)
+        def style(hd, classic):
+            return lambda frame, up: images.scale(up, hd[0][0] * frame[0] // classic[0][0],
+                                                  hd[0][1] * frame[1] // classic[0][1])
+        for patch in (mock.patch.object(A, "esrgan", fake_esrgan([])), mock.patch.object(A, "icon_style", style)):
+            patch.start()
+            self.addCleanup(patch.stop)
         self.rule = self.tmp / "skill-icons.txt"
         self.rule.write_text("# notes\nsor\n", "utf-8")
 
@@ -65,13 +75,22 @@ class ApplyTests(unittest.TestCase):
         _, _, frames = images.read_sprite(self.out / "hd" / SPELLS / "sorceress" / "soskillicon.sprite")
         self.assertEqual(frames, 3)
 
-    def test_takes_pd2s_classless_sheet_for_legacy_mode_and_leaves_d2rs_hd_strip(self):
+    def test_rebuilds_the_shared_sheet_keeping_d2rs_hd_frames_past_pd2s(self):
         # legacy mode crashes on a skill button whose IconCel is past D2R's 24 frames (Force Move's 24, #294)
         self.sheets(d2r=[10], hd=[200], pd2=[10])
-        dc6.write(self.pd2 / SPELLS / "skillicon.dc6", [frame(c) for c in range(25)])
+        dc6.write(self.d2r / SPELLS / "skillicon.dc6", [frame(10), frame(20)])
+        hd_dir = self.d2r / "hd" / SPELLS / "submenu"
+        images.write_sprite(hd_dir / "skillicon.sprite", strip([200, 210, 220]), 130, 3, lowend=False)
+        images.write_sprite(hd_dir / "skillicon.lowend.sprite", strip([100, 110, 120], 65), 65, 3, lowend=False)
+        dot = 10, 10, 0, 0, bytes((10, *(70,) * 10, 0x80)) * 10  # PD2's 10 px placeholder frame
+        dc6.write(self.pd2 / SPELLS / "skillicon.dc6", [frame(10), dot])
         S.apply(self.rule, self.pd2, self.d2r, self.out)
-        self.assertEqual(len(dc6.read(self.out / SPELLS / "skillicon.dc6")), 25)
-        self.assertFalse((self.out / "hd" / SPELLS / "submenu").exists())
+        self.assertEqual(len(dc6.read(self.out / SPELLS / "skillicon.dc6")), 2)
+        img, fw, frames = images.read_sprite(self.out / "hd" / SPELLS / "submenu" / "skillicon.sprite")
+        self.assertEqual((fw, frames), (130, 3))
+        pixel = lambda x, y: img[2][(y * img[0] + x) * 4]  # noqa: E731  red channel
+        self.assertEqual([pixel(k * 132 + 5, 5) for k in range(3)], [200, 70, 220])
+        self.assertEqual(pixel(132 + 30, 30), 0)  # the dot keeps its size: 10 classic px -> 27 HD px
 
     def test_refuses_a_listed_class_with_no_pd2_sheet_or_a_sheet_not_listed(self):
         self.sheets(d2r=[10], hd=[200], pd2=[10])

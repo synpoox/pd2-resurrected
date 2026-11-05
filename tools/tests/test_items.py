@@ -118,9 +118,9 @@ class HdTests(unittest.TestCase):
             pd2 = {"misc": table("name|code|type|invfile\nRing|rin|ring|invrin\nBig Ring|brn|ring|invrin\n"
                                  "Odd|odd|xx|invodd\n", "code")}
             d2r = {"misc": table("name|code|type|invfile\nRing|rin|ring|invrin\nAmulet|amu|amul|invamu\n", "code")}
-            # (mod name, base code, the D2R row it was merged onto)
-            uniques = [("Nagelring", "rin", "Nagelring"), ("Big One", "brn", None)]
-            files = M.hd_items(hd, pd2, d2r, uniques, [("Gift", "amu", None)])
+            # (mod name, base code, the D2R row it was merged onto, invfile)
+            uniques = [("Nagelring", "rin", "Nagelring", ""), ("Big One", "brn", None, "")]
+            files = M.hd_items(hd, pd2, d2r, uniques, [("Gift", "amu", None, "")])
             self.assertEqual(files["items.json"][2:], [{"brn": {"asset": "ring/ring"}}, {"odd": {"asset": "ring/ring"}}])
             self.assertEqual(files["uniques.json"][1:], [{"big_one": {"normal": "ring/ring", "uber": "ring/ring",
                                                                       "ultra": "ring/ring"}}])
