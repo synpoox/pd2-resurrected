@@ -206,6 +206,15 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1:], [["Teleport", "190"], ["Blink", "190"]])
 
+    def test_pd2_only_areas_in_act_5_draw_no_edges(self):
+        d2r = table("Name|Id|Act|DrawEdges\nNull|0|0|0\nPandemonium 2|1|4|1\n")
+        pd2 = table("Name|Id|Act|DrawEdges\nNull|0|0|0\nPandemonium 2|134|4|1\nZhar Library|172|4|1\n"
+                    "Ashen Plains Map|171|4|1\nKurast|144|2|1\n")
+        names = ["Null", "Pandemonium 2", "Zhar Library", "Ashen Plains Map", "Kurast"]
+        lines = [(n, i, n) for i, n in enumerate(names)]
+        merged, _ = I.merge_table("levels", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual([r[3] for r in merged.rows], ["0", "1", "0", "0", "1"])
+
     def test_gust_and_hunger_go_to_the_router(self):
         d2r = table("skill|srvdofunc\nAttack|1\n")
         pd2 = table("skill|srvdofunc\nGust|156\nHunger|165\n")
