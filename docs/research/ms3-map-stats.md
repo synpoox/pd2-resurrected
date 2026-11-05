@@ -24,7 +24,7 @@ different). A stat that is not in the table goes to monsters as itself, which is
 
 - It makes a stat list (flags 8) with state 198 (port 244, `map`) unless the unit has one, attaches it and sets the
   state. The port uses flags 0, as D2R's own permanent lists do (`0x49bef0`, `0x48e600`).
-- The list stat setter (D2Common [#10188](https://github.com/synpoox/pd2-resurrected/issues/10188) -> [#10261](https://github.com/synpoox/pd2-resurrected/issues/10261)) sets and does not add, so two map stats with one target (for example
+- The list stat setter (D2Common #10188 -> #10261) sets and does not add, so two map stats with one target (for example
   `map_mon_att` and `map_mon_tohit`, both to-hit %) keep the later one, in stat order. D2R's `0x2f7c00` sets as well.
 - A value of 0 is stored as 1. The stat keeps its layer.
 - `item_maxhp_percent` on a monster multiplies its `maxhp` directly: `maxhp + maxhp / 100 * v` (unsigned, capped at

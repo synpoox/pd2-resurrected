@@ -1,5 +1,5 @@
 {
- "_note": "Pyre Loot Filter's 16 drop sounds (Filter01-16, issue #26); the flacs come from its release via tools/companions.py.",
+ "_note": "Pyre Loot Filter's 16 drop sounds (Filter01-16, issue https://github.com/synpoox/pd2-resurrected/issues/26); the flacs come from its release via tools/companions.py.",
  "ops": [
   {
    "op": "add_row",

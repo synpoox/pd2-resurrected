@@ -33,7 +33,7 @@ _Avoid_: benchmark, comparison build
 
 **Deviation list**:
 The record of every deviation, its status and why.
-_Avoid_: cut list, TODO list
+_Avoid_: unported list, cut list, TODO list
 
 **PD2 baseline**:
 The one frozen PD2 build the port is measured against. Moving to a newer PD2 is a deliberate re-baseline.

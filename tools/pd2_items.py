@@ -1,4 +1,4 @@
-"""Item tables with no id list (P3): merged by key around D2R's rows, the cube, map items kept from dropping, and the
+"""Item tables with no id list (P3 (https://github.com/synpoox/pd2-resurrected/issues/47)): merged by key around D2R's rows, the cube, map items kept from dropping, and the
 HD inventory pictures new items need. The rule file is merge/item-tables.txt:
 
     merge <tab> <table>                 merge PD2's table onto D2R's by key (pd2_ids.KEY / VANILLA)
@@ -77,8 +77,8 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
 
 def count_each_input(cube: I.Table) -> None:
     """PD2's numinputs counts stacks ("t1me,qty=3" is 1); D2R's recipe search wants numinputs == items in the cube
-    (#261), so loose inputs matched no row. Each row gets the sum of its inputs' qty, except op-30 rows (core-maps
-    matches them without the count, as PD2 does) and sums past the cube's cells, which only stacks can meet (IR6, #241:
+    (https://github.com/synpoox/pd2-resurrected/issues/261), so loose inputs matched no row. Each row gets the sum of its inputs' qty, except op-30 rows (core-maps
+    matches them without the count, as PD2 does) and sums past the cube's cells, which only stacks can meet (IR6, https://github.com/synpoox/pd2-resurrected/issues/241:
     D2R matched a stack of 3 runes under neither count)."""
     h = {c: j for j, c in enumerate(cube.header)}
     if "numinputs" not in h:
@@ -94,7 +94,7 @@ def count_each_input(cube: I.Table) -> None:
 
 def remake_rerolls(cube: I.Table) -> None:
     """PD2's op 31 rows (Demonic Cube + a unique or set item) have no outputs: PD2's cube code remakes the item and
-    takes one Demonic Cube off the stack (IR6, #241). core-rules does that through an SDK item transaction. The rows get
+    takes one Demonic Cube off the stack (IR6, https://github.com/synpoox/pd2-resurrected/issues/241). core-rules does that through an SDK item transaction. The rows get
     `usetype,reg` only so they are complete rows to D2R, and ship switched off (`enabled` 0): D2R never runs that
     output itself, and core-rules switches the rows on when its hook and services are in."""
     h = {c: j for j, c in enumerate(cube.header)}
@@ -220,7 +220,7 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
         pi = ptab.header.index("invfile")
         for r in ptab.rows:
             code = r[ptab.key]
-            if len(code) == 4 and not ord(code[3]) & 0x20:  # core-ui sets bit 0x20 of the key's 4th byte (#310)
+            if len(code) == 4 and not ord(code[3]) & 0x20:  # core-ui sets bit 0x20 of the key's 4th byte (https://github.com/synpoox/pd2-resurrected/issues/310)
                 raise I.IdError(f"{t} {code}: core-ui keys items.json by {code[:3]}{chr(ord(code[3]) | 0x20)}, "
                                 "so this code would draw no picture; give it a 4th character with bit 0x20 set")
             if code and r[pi].lower() in pictures:

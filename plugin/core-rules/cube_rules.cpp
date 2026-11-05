@@ -179,7 +179,7 @@ void RerollNow(const D2RL::PluginContext*, void* user) noexcept {
 		return;
 	}
 	const items::TransactionInput inputs[] {
-		// shortcut: refuses an item with socketed items, which PD2 moves to the new one; #325 keeps them
+		// shortcut: refuses an item with socketed items, which PD2 moves to the new one; https://github.com/synpoox/pd2-resurrected/issues/325 keeps them
 		{.item = old.handle, .quantity = 1, .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty},
 		{.item = scan.cubes.handle, .quantity = 1, .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty}};
 	const items::ItemCreateSpec spec = RerollSpec(old);

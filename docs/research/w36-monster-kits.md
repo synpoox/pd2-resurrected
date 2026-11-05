@@ -90,7 +90,7 @@ PD2's 999 (leoricGuards) is the mod's 1016. Before [W36](https://github.com/synp
 
 1.13c's clthit 11 is empty, and so is D2R's; D2R's dispatcher (`0x1b8e60`) skips an empty slot. Data.
 
-1.13c's cdo 12 (D2Client `0xb2d00`): with CltParam1 and CltParam2 at least 1, and unless D2Common [#10985](https://github.com/synpoox/pd2-resurrected/issues/10985) says no, a
+1.13c's cdo 12 (D2Client `0xb2d00`): with CltParam1 and CltParam2 at least 1, and unless D2Common #10985 says no, a
 screen shake of strength CltParam1 with (CltParam2 / 3) * 1000 twice; then the default missile do (cdo 1). D2R's 12
 (`0x1b6b30`) is the same with a three-part shake, (CltParam2 / 3) * 1000, (CltParam2 - 2 * (CltParam2 / 3)) * 1000,
 (CltParam2 / 3) * 1000, then cdo 1 (`0x1b5380`). PD2's row has CltParam2 1, so 1.13c passes 0, 0 and D2R a middle part

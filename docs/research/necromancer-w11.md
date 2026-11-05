@@ -16,7 +16,7 @@ elemental damage (`0x567070` calls `0x437d00`), so the melee hit carries Poison 
 1. Sets the skill flag and takes the target from the caster's path; no target returns 0.
 2. Rolls to-hit (the skill's ToHit), fills the damage and applies the melee hit (D2Game `0xded30`).
 3. Fills a second block with the skill's damage and takes its poison as `poison * rolledLength / ELen` (D2Common
-   [#10510](https://github.com/synpoox/pd2-resurrected/issues/10510) is ELen with synergies).
+   #10510 is ELen with synergies).
 4. `0x1036d250`: a ring of srvmissilea at the target's position, MissileParams flags 3 (placed at x/y, target an
    offset), one missile at every `64 / Param3`-th of D2's 64 directions (Param3 0 or over 64: 64), so Param3 10 makes 11
    missiles. Each gets the poison added to poisonmindam (57) and poisonmaxdam (58); stats 21, 22, 59 and 326 get 0.

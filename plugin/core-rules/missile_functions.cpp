@@ -1,7 +1,7 @@
 // Split Throw's return missiles: PD2 missile pSrvHitFunc 65 on the thrown rows, pSrvDoFunc 38 / pCltDoFunc 70 on the
 // <name>return rows. D2R fills sdo 38 and cdo 70, so ours sit in sdo 46 / cdo 78 and the data points there.
 //
-// W6 adds Exploding Arrow's spread (shit 63) and Multiple Shot's pierce falloff (PD2 dmg 17, here 20), both read from
+// W6 (https://github.com/synpoox/pd2-resurrected/issues/53) adds Exploding Arrow's spread (shit 63) and Multiple Shot's pierce falloff (PD2 dmg 17, here 20), both read from
 // ProjectDiablo.dll (docs/research/amazon-w6.md).
 //
 // The server calls missile srvdo as int64_t fn(Game*, Unit* missile) every frame, srvhit as
@@ -244,7 +244,7 @@ void SrvDmgChainFalloff(Game* game, Unit* missile, Unit* target, uint8_t* damage
 	}
 }
 
-// --- W6 Amazon group -----------------------------------------------------------------------------------------------
+// --- W6 (https://github.com/synpoox/pd2-resurrected/issues/53) Amazon group -----------------------------------------------------------------------------------------------
 namespace {
 
 std::atomic<uint32_t> g_spreadHits {0};
@@ -402,7 +402,7 @@ void SrvDmgPierceFalloff(Game* game, Unit* missile, Unit* target, uint8_t* damag
 	}
 }
 
-// --- W11: state on hit (Poison Dagger's cloud, the throwing potions' clouds, Kanemith's blaze dot) ---------------------
+// --- W11 (https://github.com/synpoox/pd2-resurrected/issues/86): state on hit (Poison Dagger's cloud, the throwing potions' clouds, Kanemith's blaze dot) ---------------------
 namespace {
 
 std::atomic<uint32_t> g_stateHits {0};
@@ -468,7 +468,7 @@ auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	return damage;
 }
 
-// --- Bolt splash (PD2 shit 62, W28, docs/research/w28-sorceress-bolts.md) -------------------------------------------
+// --- Bolt splash (PD2 shit 62, W28 (https://github.com/synpoox/pd2-resurrected/issues/103), docs/research/w28-sorceress-bolts.md) -------------------------------------------
 namespace {
 
 std::atomic<uint32_t> g_boltHits {0};
@@ -554,7 +554,7 @@ auto SrvHitBoltSplash(Game* game, Unit* missile, Unit* /*hit*/) noexcept -> int3
 	return 1;
 }
 
-// --- Client hits around the hit point (W17, docs/research/w17-holy-light.md) ---------------------------------------
+// --- Client hits around the hit point (W17 (https://github.com/synpoox/pd2-resurrected/issues/92), docs/research/w17-holy-light.md) ---------------------------------------
 namespace {
 
 std::atomic<uint32_t> g_holyLightHits {0};
@@ -688,7 +688,7 @@ auto CltHitFistDelay(Unit* missile, Unit* hit) noexcept -> int32_t {
 	return 1;
 }
 
-// --- Assassin charge-up finishers' client missiles (W30, docs/research/w30-assassin-finishers.md) ------------------
+// --- Assassin charge-up finishers' client missiles (W30 (https://github.com/synpoox/pd2-resurrected/issues/105), docs/research/w30-assassin-finishers.md) ------------------
 namespace {
 
 std::atomic<uint32_t> g_chargeExplodes {0};
@@ -773,7 +773,7 @@ auto CltHitChargeBolt(Unit* missile, Unit* hit) noexcept -> int32_t {
 	return 1;
 }
 
-// --- Blade Fury's fragment (PD2 shit 34 -> 69, chit 6 -> 68, dmg 19; W32, docs/research/w32-blade-fury.md) ----------
+// --- Blade Fury's fragment (PD2 shit 34 -> 69, chit 6 -> 68, dmg 19; W32 (https://github.com/synpoox/pd2-resurrected/issues/107), docs/research/w32-blade-fury.md) ----------
 namespace {
 
 std::atomic<uint32_t> g_fragmentWalls {0};
@@ -881,7 +881,7 @@ auto FragmentParams(Unit* owner, Unit* missile, int32_t sub) noexcept -> d2r::Mi
 
 }  // namespace
 
-// --- Blessed Hammer (W20, docs/research/w20-blessed-hammer.md) ------------------------------------------------------
+// --- Blessed Hammer (W20 (https://github.com/synpoox/pd2-resurrected/issues/95), docs/research/w20-blessed-hammer.md) ------------------------------------------------------
 namespace {
 
 std::atomic<uint32_t> g_hammerFrames {0};

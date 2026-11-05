@@ -72,7 +72,7 @@ class RuleTests(unittest.TestCase):
             self.assertEqual((tmp / "out" / "global" / "excel" / "skills.txt").read_bytes(),
                              b"skill\tsrvdofunc\tcltdofunc\r\nAttack\t1\t1\r\nLeap\t77\t43\r\nTeleport\t27\t\r\n"
                              b"Blink\t27\t\r\nForce Move\t\t\r\n")
-            # a table no rule merges yet (misc before P3): its lines wait, D2R's own table is built
+            # a table no rule merges yet (misc before P3 (https://github.com/synpoox/pd2-resurrected/issues/47)): its lines wait, D2R's own table is built
             rule.write_text("misc\tTP Book Unlimited\tTome of Town Portal\tpSpell\tUnlimited TP and ID books\n", "utf-8")
             S.apply(rule, tmp / "pd2", tmp / "d2r", tmp / "out")
             self.assertFalse((tmp / "out" / "global" / "excel" / "misc.txt").exists())

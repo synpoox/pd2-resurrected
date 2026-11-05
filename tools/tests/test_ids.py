@@ -187,7 +187,7 @@ class FormulaAndColumnTests(unittest.TestCase):
         self.assertEqual(merged.rows, [["fistsoffireexplode", "79", ""], ["clawsofthunderbolt", "1", "67"]])
 
     def test_psychic_hammer_damage_moves_dragon_flight_stays(self):
-        # dmg 15 is D2R's holy bolt, so PD2's moves to 22; srvdo 178 is free in D2R and keeps its number (W31)
+        # dmg 15 is D2R's holy bolt, so PD2's moves to 22; srvdo 178 is free in D2R and keeps its number (W31 (https://github.com/synpoox/pd2-resurrected/issues/106))
         d2r = table("Missile|pSrvDmgFunc\nholybolt|15\n")
         pd2 = table("Missile|pSrvDmgFunc\npsychichammer|15\n")
         lines = [("psychichammer", 0, "psychichammer")]
@@ -373,7 +373,7 @@ class ItemTableTests(unittest.TestCase):
 
 
     def test_map_add_monster_values_take_the_mod_monstats_id(self):
-        # map-glob-add-mon-* rolls a monstats id as its value (MS4): PD2's id becomes the mod's, in min and max
+        # map-glob-add-mon-* rolls a monstats id as its value (MS4 (https://github.com/synpoox/pd2-resurrected/issues/219)): PD2's id becomes the mod's, in min and max
         props = I.property_kinds(table("code|func1|stat1\nmap-glob-add-mon-doll|1|map_glob_add_mon_doll\n"
                                        "map-glob-density|1|map_glob_density\n"))
         self.assertEqual(props, {"map-glob-add-mon-doll": "monster"})
@@ -418,7 +418,7 @@ class LevelTableTests(unittest.TestCase):
 
     def test_numeric_references_id_columns_and_d2r_columns(self):
         # PD2's level 3 appends at 4 (D2R took 3): its Vis, a preset's LevelId and the Id columns follow it;
-        # an objects row keeps D2R's Token and a misc row D2R's spellicon (the identify cursor, #311) on a merged row only
+        # an objects row keeps D2R's Token and a misc row D2R's spellicon (the identify cursor, https://github.com/synpoox/pd2-resurrected/issues/311) on a merged row only
         ids = {"levels": {"0": "0", "1": "1", "3": "4"}, "objgroup": {"0": "0", "2": "5"}}
         lv = I.merge_table("levels", table("Name|Id|Vis0|ObjGrp0\nNull|0|0|0\nTown|1|3|0\nNew|3|1|2\n"),
                            table("Name|Id|Vis0|ObjGrp0\nNull|0|0|0\nTown|1|0|0\n"),

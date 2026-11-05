@@ -32,7 +32,7 @@ damage and adds a second pass.
 
 The area context is {game, caster, ?, &block}. Skips monsters of class 789, 933-936, 1112 (PD2's monhydra3,
 dopplezonnew, rathmaBone, rathmaPoison, rathmaBoneClone, wraithMapMod; merged 806, 950-953, 1129), a unit with
-life (stat 6, in 1/256) under 256, and a unit whose life percent (D2Common [#11027](https://github.com/synpoox/pd2-resurrected/issues/11027): `(life >> 8) * 100 / (max >> 8)`)
+life (stat 6, in 1/256) under 256, and a unit whose life percent (D2Common #11027: `(life >> 8) * 100 / (max >> 8)`)
 is not over StaticFieldMin (PD2: 55, 70, 85 by difficulty). `MulDiv` is `0x1037c4c0`: a * b / max(c, 1) in doubles,
 truncated, `INT32_MAX` past it.
 
@@ -54,7 +54,7 @@ the hit the way D2R's callback does (`AddElementDamage 0x437980` with etype 2, h
 The block is {skill, level, auralencalc, auratargetstate, aurastat1-6, their aurastatcalc values}; a stat that is
 not an itemstatcost row is -1, except that an invalid aurastat1 makes srvdo 160 return 0 (after the damage). Per unit:
 each value goes through `0x1036df10` (a resist reduction, stats 36/37/39/41/43/45, on a unit that is not a player,
-not a hireling (D2Common [#11104](https://github.com/synpoox/pd2-resurrected/issues/11104)) and already resists 100 or more, is halved), then the timed-state helper `0x1036d7d0`
+not a hireling (D2Common #11104) and already resists 100 or more, is halved), then the timed-state helper `0x1036d7d0`
 puts the list on the unit with the caster as owner; stats are set only on a new list. AreaUnits' flag 1 (D2R reads
 it the same way) skips monsters by a monstats flag.
 

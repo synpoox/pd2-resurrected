@@ -1,7 +1,7 @@
 // PD2's monster and player map stats (ProjectDiablo.dll; docs/research/pd2-map-system-dll.md, section 2, and
 // docs/research/ms3-map-stats.md). When a map opens, PD2 routes each of its stats by the stat's itemstatcost `Divide`
 // column: 1-999 to the monster list as that stat, 1000-1999 to the player list as `Divide - 1000`, 2000-2999 to the
-// area (MS4), 3000 to phys-as-extra, 0 nowhere, and the default 1024 to the monster list as itself. D2R has no
+// area (MS4 (https://github.com/synpoox/pd2-resurrected/issues/219)), 3000 to phys-as-extra, 0 nowhere, and the default 1024 to the monster list as itself. D2R has no
 // `Divide` column, so Routes below carries PD2's values in the port's stat ids.
 //
 // A monster that spawns in a map area gets the monster list, and a player standing in one the player list, as a stat
@@ -34,7 +34,7 @@ struct Routed {
 };
 
 // Every PD2 stat whose `Divide` is not the default 1024, by port id (merge/ids-itemstatcost.tsv). Area: `map_glob_*`,
-// `treacherous` and `phasing`; Elsewhere: `map_force_event` (MS8).
+// `treacherous` and `phasing`; Elsewhere: `map_force_event` (MS8 (https://github.com/synpoox/pd2-resurrected/issues/222)).
 constexpr Routed Routes[] = {
 	{371, Route::Area, 7},          {372, Route::Area, 8},          {387, Route::Area, 9},
 	{388, Route::Area, 9},          {398, Route::Area, 11},         {399, Route::Area, 12},
@@ -568,7 +568,7 @@ auto RouteMapStats(Game* game, Unit* item, int32_t level) noexcept -> void {
 		}
 		plog::Info("map stats: stat %d layer %d value %d -> %s as %d", e.stat, e.layer, e.value, where, target);
 	}
-	// shortcut: only the entry level; PD2 also rewrites the other levels of a multi-level map, which come with MS7
+	// shortcut: only the entry level; PD2 also rewrites the other levels of a multi-level map, which come with MS7 (https://github.com/synpoox/pd2-resurrected/issues/221)
 	ApplyArea(game, level, area, areaCount);
 	++g_routed;
 }

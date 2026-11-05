@@ -26,7 +26,7 @@ SHOWN = 200  # open deviations listed in the report; the counts cover the rest
 
 
 STATUSES = ("approximated", "cut", "not yet")
-# the roadmap's work items that merge tables (P2 the id-listed ones, P3 the item tables, P4 the rest); M1 and alpha both
+# the roadmap's work items that merge tables (P2 the id-listed ones, P3 (https://github.com/synpoox/pd2-resurrected/issues/47) the item tables, P4 (https://github.com/synpoox/pd2-resurrected/issues/48) the rest); M1 and alpha both
 ITEM_TABLES = {"armor", "weapons", "misc", "itemtypes", "magicprefix", "magicsuffix", "automagic", "rareprefix",
                "raresuffix", "uniqueitems", "sets", "setitems", "runes", "gems", "cubemain", "cubemod", "cubetype",
                "treasureclassex", "treasureclass", "qualityitems", "lowqualityitems", "itemratio", "gamble",
@@ -227,7 +227,7 @@ def report(rep: Report, scope: str) -> str:
              f"{sum(r.covered for r in rep.results)} table cells on the deviation list",
              "Deviation list: " + ", ".join(f"{rep.entries.get(s, 0)} {s}" for s in ("not yet", "approximated", "cut")) + " entries "
              "(the cell count is large because one entry can cover a whole table)", "",
-             "| Table | Mod table | Open | Listed |", "|---|---|---|---|"]
+             "| Table | Mod table | Open | On the deviation list |", "|---|---|---|---|"]
     lines += [f"| {r.table} | {r.source} | {len(r.open)} | {r.covered} |" for r in rep.results]
     if opened:
         lines += ["", "| Open deviation | PD2 | Mod |", "|---|---|---|"]

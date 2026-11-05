@@ -45,7 +45,7 @@ comes from the skill's elemental damage, not from temp_skill_buff.
 
 ## srvst 77 (`0x103b6c80`)
 
-Needs player data (D2Common [#10920](https://github.com/synpoox/pd2-resurrected/issues/10920)) with a pet table (+0x44). pettype = skill +0xbe; then rule `0x103747b0 (game,
+Needs player data (D2Common #10920) with a pet table (+0x44). pettype = skill +0xbe; then rule `0x103747b0 (game,
 unit, 1, pettype)`:
 
 1. Pet types other than 11 and 12 refuse.
@@ -56,7 +56,7 @@ unit, 1, pettype)`:
    `0x10319ac0 (game, unit, pet, 1)`).
 5. With none left, limit 0 refuses.
 
-A refusal calls `0x1036d1b0 (unit, 0x13, 0)`: unit +0x6e = 0x13, +0x70 = 0, D2Common [#10158](https://github.com/synpoox/pd2-resurrected/issues/10158) (update), flag 0x400
+A refusal calls `0x1036d1b0 (unit, 0x13, 0)`: unit +0x6e = 0x13, +0x70 = 0, D2Common #10158 (update), flag 0x400
 (HASEVENTSOUND), the player's "I can't".
 
 D2R's pets (PlayerPets.cpp): player data `0x34b240`, pet table +0x98; `0x5013f0 (dataFlag, table, type)` gives the

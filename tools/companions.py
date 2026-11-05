@@ -1,4 +1,4 @@
-"""Fetch the pinned companion plugins and install them with the mod (issue #15).
+"""Fetch the pinned companion plugins and install them with the mod (issue https://github.com/synpoox/pd2-resurrected/issues/15).
 
     python tools/companions.py fetch
     python tools/companions.py install --game DIR

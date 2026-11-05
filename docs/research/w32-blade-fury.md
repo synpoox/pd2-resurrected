@@ -18,12 +18,12 @@ ProjectDiablo.dll reaches 1.13c through lazy thunks ([druid-w23](druid-w23.md)).
 
 | PD2 call | 1.13c | What it is | D2R |
 |---|---|---|---|
-| `0x1030b7b0` / `0x1030b6c0` | D2Common [#11018](https://github.com/synpoox/pd2-resurrected/issues/11018) / [#10637](https://github.com/synpoox/pd2-resurrected/issues/10637) | missile data `+0x28` get / set: the fragment's generation | MissileBounces `0x3bc0a0` / SetMissileBounces `0x3bd8a0` (data `+0x30`); PD2's srvdo 139 sets the same field through `0x1030b6c0` |
-| `0x10309590` / `0x10309560` | [#10737](https://github.com/synpoox/pd2-resurrected/issues/10737) / [#10970](https://github.com/synpoox/pd2-resurrected/issues/10970) | data `+0x10`: frames left | MissileSrvFrames `0x3bb1e0` / `0x3bd450` (float `+0x14`, frames * 40) |
-| `0x103095f0` | [#10130](https://github.com/synpoox/pd2-resurrected/issues/10130) | data `+0x08`, the activate frame | `0x3bae80` (`+0x0a`) |
-| `0x10309500` | [#10534](https://github.com/synpoox/pd2-resurrected/issues/10534) | data `+0x0e`, the range | MissileCltFrames' `+0x10` (frames run = range - left) |
-| `0x10309650` | [#10331](https://github.com/synpoox/pd2-resurrected/issues/10331) | the unit's room | UnitRoom `0x34b440` |
-| `0x103097d0` | [#10573](https://github.com/synpoox/pd2-resurrected/issues/10573) `(room, x, y, size, mask)` | collision at a subtile with the pattern of a size: 0-1 the subtile (`0x4c570`), 2 a plus of five (`0x4c5c0`), 3 a box (`0x4c530`) | `0x366250 (room, x, y, mask)`, the single subtile |
+| `0x1030b7b0` / `0x1030b6c0` | D2Common #11018 / #10637 | missile data `+0x28` get / set: the fragment's generation | MissileBounces `0x3bc0a0` / SetMissileBounces `0x3bd8a0` (data `+0x30`); PD2's srvdo 139 sets the same field through `0x1030b6c0` |
+| `0x10309590` / `0x10309560` | #10737 / #10970 | data `+0x10`: frames left | MissileSrvFrames `0x3bb1e0` / `0x3bd450` (float `+0x14`, frames * 40) |
+| `0x103095f0` | #10130 | data `+0x08`, the activate frame | `0x3bae80` (`+0x0a`) |
+| `0x10309500` | #10534 | data `+0x0e`, the range | MissileCltFrames' `+0x10` (frames run = range - left) |
+| `0x10309650` | #10331 | the unit's room | UnitRoom `0x34b440` |
+| `0x103097d0` | #10573 `(room, x, y, size, mask)` | collision at a subtile with the pattern of a size: 0-1 the subtile (`0x4c570`), 2 a plus of five (`0x4c5c0`), 3 a box (`0x4c530`) | `0x366250 (room, x, y, mask)`, the single subtile |
 | path `+0x44` | | the unit's size | `0x34b580` (a missile's row Size `+0x1b2`, a player 2) |
 | `0x10311b20` / `0x10328ee0` | D2Game `0x6f930` / D2Client `0xb30f0` | missile create | `0x5371a0` / `0x1b7760` |
 | `0x103a5470` / `0x103a2ad0` | | missile owner, server / client | `0x490300` / `0x9a7b0` |

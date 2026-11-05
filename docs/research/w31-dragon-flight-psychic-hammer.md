@@ -51,7 +51,7 @@ takes 22 (20 and 21 are [W6](https://github.com/synpoox/pd2-resurrected/issues/5
 `0x103a6c90(game, missile, target, damage)`: with the missile's row and skill valid and its owner (`0x103749f0`):
 
 - hits = calc1 of the missile's skill at its level for the owner (`+0x138`); step = calc2 (`+0x13c`);
-- left = the missile's chain count left (`0x1030b7b0`, version entry `0x1049b488` = D2Common [#11018](https://github.com/synpoox/pd2-resurrected/issues/11018), the count
+- left = the missile's chain count left (`0x1030b7b0`, version entry `0x1049b488` = D2Common #11018, the count
   srvhit 12 reads; D2R's `MissileBounces` `0x3bc0a0`);
 - cut = (hits - left) * step; at more than 99, magic damage (block `+0x20`, D2R `+0x30`) = 0, else magic * (100 -
   cut) / 100 (32-bit signed; the port multiplies in 64, the same below 2^31).

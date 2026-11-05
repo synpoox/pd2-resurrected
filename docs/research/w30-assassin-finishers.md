@@ -19,7 +19,7 @@ charge from the progressive list, as the server ones do.
 - **cltprg 106 (`0x103ab920`) -> cltdo 127**: the client half of srvprg 171. The charge (PD2's `0x1037ddf0`, run only
   at 1-3), the client missile (1.13c D2Client `0x40550` through `[0x105e0a08]`: cltmissilea/b/c for 1/2/3 charges,
   cltmissilea for a skill without), and cltcalc[charge] (1.13c `+0x114`, D2R `+0x16c`) missiles. The aim is the
-  path's target unit (D2Common [#10392](https://github.com/synpoox/pd2-resurrected/issues/10392)), else the path's target point. Params as the server's: flags `0x10820`,
+  path's target unit (D2Common #10392), else the path's target point. Params as the server's: flags `0x10820`,
   owner and origin the caster, start at the caster, 1.13c `+0x44` = 1, aim points along PD2's spread (`0x1037d780`,
   core-rules' `ChargeSpread`). A do-while: at least one missile.
 - **cltprg 107 (`0x103aba80`) -> cltdo 128**: the client half of srvprg 172. The same charge, missile and count, then
@@ -27,7 +27,7 @@ charge from the progressive list, as the server ones do.
   every 64/count-th of the 64 directions) at the target unit's position, else the caster's.
 - **cdo 69 (`0x103a60d0`) -> cdo 79** (fistsoffireexplode, bladesoficecubes): first the missile's step (1.13c
   D2Client `0xb17c0`, the body almost every vanilla client do function calls; D2R's cltdo 1), then, when the
-  missile's frame counter (D2Common [#10737](https://github.com/synpoox/pd2-resurrected/issues/10737), data `+0x10`, counting down) equals its range ([#10534](https://github.com/synpoox/pd2-resurrected/issues/10534), `+0xe`) - 1, its
+  missile's frame counter (D2Common #10737, data `+0x10`, counting down) equals its range (#10534, `+0xe`) - 1, its
   `CltSubMissile1` (fistsoffirefirewall, bladesoficeexplode) placed at its position (flags 3, no aim), with the
   missile's skill (`+0xa`) and level (`+0xc`). That is the missile's **first** frame, not its last as [W25](https://github.com/synpoox/pd2-resurrected/issues/100) read it.
   D2R's `0x3bb0f0` returns the range minus the frames left, and D2R's own cltdo 1 tests it for 1 the same way.

@@ -56,7 +56,7 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
   - Two checks run inside [UR1](https://github.com/synpoox/pd2-resurrected/issues/199): one D2R Ghidra lookup for the monster treasure-class drop percent (`monitempercent` is
     cut if it is 20, otherwise it gets a core-rules row), and a sane vendor price for one PD2-only armor subtype (the
     price columns are cut once it passes).
-- **List fixes ([UR1](https://github.com/synpoox/pd2-resurrected/issues/199)).** Gheed's event row names [MS8](https://github.com/synpoox/pd2-resurrected/issues/222). The "other classes" row points at W11-W35. Guild halls name the
+- **List fixes ([UR1](https://github.com/synpoox/pd2-resurrected/issues/199)).** Gheed's event row names [MS8](https://github.com/synpoox/pd2-resurrected/issues/222). The "other classes" row points at [W11](https://github.com/synpoox/pd2-resurrected/issues/86)-[W35](https://github.com/synpoox/pd2-resurrected/issues/125). Guild halls name the
   beta. New approximated rows: the missile stand-ins (P10), Buff HUD (buff timers, mini skill icons, the skill bar) and
   Item Roll Ranges (tooltip stat ranges).
 - **Client UI.** The DPS counter is a new plugin built in `synpoox/d2r-tools` and pinned in

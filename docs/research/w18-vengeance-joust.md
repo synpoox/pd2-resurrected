@@ -12,8 +12,8 @@ ordinal):
 | `0x103a1d90` (`[0x105e0ed8]`) | `0x104a9cf4` | D2Game `0xdbed0` | roll with a percent (below) | `RollPercent` in core-rules |
 | `0x103a2550` (`[0x105e0864]`) | `0x104a96c4` | D2Game `0x9f210` | the skill's EMin-EMax roll, put by EType | ElementalDamage `0x437d00` |
 | `0x1030f8f0` | `0x1049b1f8` | D2Game `0xa1210` | area callback: copy the block, area apply | AreaApply `0x436e90` |
-| `0x10307e50` | `0x1049bbb8` | D2Common [#10973](https://github.com/synpoox/pd2-resurrected/issues/10973) | unit stat, total | UnitStat `0x2f5020` |
-| `0x10307eb0` | `0x104a862c` | D2Common [#10887](https://github.com/synpoox/pd2-resurrected/issues/10887) | set unit stat (base) | SetUnitStat `0x2f7d10` |
+| `0x10307e50` | `0x1049bbb8` | D2Common #10973 | unit stat, total | UnitStat `0x2f5020` |
+| `0x10307eb0` | `0x104a862c` | D2Common #10887 | set unit stat (base) | SetUnitStat `0x2f7d10` |
 | `0x1037c4c0` | (PD2's own) | | `trunc(ECX * XMM2 / EDX)`, ECX left as it was | `Percent` in core-rules |
 
 ## srvdo 174 (Vengeance)

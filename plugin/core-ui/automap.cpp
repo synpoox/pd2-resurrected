@@ -10,7 +10,7 @@
 namespace automap {
 namespace {
 
-// FindCel checks, against D2R's lookup as decompiled for #212 (rva::AutomapCel)
+// FindCel checks, against D2R's lookup as decompiled for https://github.com/synpoox/pd2-resurrected/issues/212 (rva::AutomapCel)
 constexpr Row CheckRows[] = {
 	{36, 1, 2, 255, 255, 1, {100, 0, 0, 0}},     // left wall, style 2, any sequence
 	{36, 1, 2, 255, 255, 1, {999, 0, 0, 0}},     // shadowed: the first match wins

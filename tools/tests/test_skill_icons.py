@@ -76,7 +76,7 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(frames, 3)
 
     def test_rebuilds_the_shared_sheet_keeping_d2rs_hd_frames_past_pd2s(self):
-        # legacy mode crashes on a skill button whose IconCel is past D2R's 24 frames (Force Move's 24, #294)
+        # legacy mode crashes on a skill button whose IconCel is past D2R's 24 frames (Force Move's 24, https://github.com/synpoox/pd2-resurrected/issues/294)
         self.sheets(d2r=[10], hd=[200], pd2=[10])
         dc6.write(self.d2r / SPELLS / "skillicon.dc6", [frame(10), frame(20)])
         hd_dir = self.d2r / "hd" / SPELLS / "submenu"

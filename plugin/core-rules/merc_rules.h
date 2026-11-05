@@ -1,4 +1,4 @@
-// PD2's hireling rules: Tyrael hires the Ascendant (UR3, #201), merc_rules.cpp.
+// PD2's hireling rules: Tyrael hires the Ascendant (UR3, https://github.com/synpoox/pd2-resurrected/issues/201), merc_rules.cpp.
 #pragma once
 
 #include <D2RLPlugin/api.h>

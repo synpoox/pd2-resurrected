@@ -1,4 +1,4 @@
-"""W5 game check: Lightning Bolt and Lightning Fury (PD2 srvdo 188, cltdo 117) throw PD2's missile once per cast.
+"""W5 (https://github.com/synpoox/pd2-resurrected/issues/52) game check: Lightning Bolt and Lightning Fury (PD2 srvdo 188, cltdo 117) throw PD2's missile once per cast.
 
 No plugin: PD2's 188/117 only create srvmissilea / cltmissilea, which D2R's do dispatcher creates from srvmissile /
 cltmissile after any do function, so the merge moves the missile there (docs/research/lightning-javelins.md). The check

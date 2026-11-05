@@ -1,4 +1,4 @@
-// HD pictures of 4-character item codes (#310, #298). D2R's items.json loader keys every entry by 3 characters, so a
+// HD pictures of 4-character item codes (https://github.com/synpoox/pd2-resurrected/issues/310, https://github.com/synpoox/pd2-resurrected/issues/298). D2R's items.json loader keys every entry by 3 characters, so a
 // PD2 code like tpgs or r01s finds no picture and takes r01's (rva::ItemsJsonKey). A 32-byte patch keeps the 4th.
 #pragma once
 

@@ -1,4 +1,4 @@
-"""W7 game check: nova and orb hits (missiles pSrvHitFunc 5, pCltHitFunc 4) spawn PD2's sub-missile ring.
+"""W7 (https://github.com/synpoox/pd2-resurrected/issues/50) game check: nova and orb hits (missiles pSrvHitFunc 5, pCltHitFunc 4) spawn PD2's sub-missile ring.
 
 No plugin: D2R's own hit functions 5/4 match PD2's (docs/research/nova-orb-hits.md), so the check counts the client
 missiles one Thunder Storm bolt leaves behind, read from game memory (missile_probe.py).

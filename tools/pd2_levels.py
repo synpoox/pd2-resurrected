@@ -1,4 +1,4 @@
-"""The PD2-only areas (LP1, #151): monster presets, level types, object presets, and their DS1 and DT1 files.
+"""The PD2-only areas (LP1, https://github.com/synpoox/pd2-resurrected/issues/151): monster presets, level types, object presets, and their DS1 and DT1 files.
 
 Two rule kinds, after pd2_ids has merged levels, lvlprest, lvlwarp, objects, objtype and objgroup:
 
@@ -12,11 +12,11 @@ PD2-only presets select; a file whose slot D2R already fills moves to a free slo
 it. The three DT1 PD2 ships over vanilla paths move to OVERRIDES/<path>, so D2R's own areas keep D2R's. Each DS1 is
 rewritten: its monster ids to the mod's monpreset indices, its object ids to objpreset rows of its act, appended where
 the act has none for that object. The file lists the DS1 objects the rewrite leaves out, with why; any other object
-it can't resolve fails the merge. PD2's automap rows for its new level types go to core-ui's custom table (LP2): D2R's
-automap knows only types 0-35, whose rows AutoMap.txt takes from PD2 (#275); PD2's own automap cels go to D2R's HD
+it can't resolve fails the merge. PD2's automap rows for its new level types go to core-ui's custom table (LP2 (https://github.com/synpoox/pd2-resurrected/issues/212)): D2R's
+automap knows only types 0-35, whose rows AutoMap.txt takes from PD2 (https://github.com/synpoox/pd2-resurrected/issues/275); PD2's own automap cels go to D2R's HD
 tiles (pd2_automap).
 
-A DS1 object id in PD2 (1.13c D2Common 0x6fd5b560, checked in Ghidra for #211): type 1 is a monpreset index of the
+A DS1 object id in PD2 (1.13c D2Common 0x6fd5b560, checked in Ghidra for https://github.com/synpoox/pd2-resurrected/issues/211): type 1 is a monpreset index of the
 DS1's act; type 2 below 150 indexes 1.13c's object preset table as one flat array, act * 150 + id, so a negative id
 reaches an earlier act's rows; 150 and up is objects row id - 150. D2R's objpreset.txt holds that table (its 580 rows
 below 150 match 1.13c's); ProjectDiablo.dll fills act 1's empty slots 135-149 at start-up (ACT1_SLOTS).
@@ -36,7 +36,7 @@ MONPRESET_VANILLA = {"1": 47, "2": 59, "3": 39, "4": 28, "5": 51}
 ACT1_SLOTS = {135: 616, 136: 617, 137: 613, 138: 614, 139: 615, **{140 + k: 601 + k for k in range(10)}}
 OVERRIDES = "pd2assets/v"  # where the DT1 PD2 ships over vanilla paths go (short: see PATH_MAX)
 PATH_MAX = 41  # characters D2R keeps of a lvltypes File (it cut pd2assets/vanilla/expansion/town/waypt.dt1)
-OVERRIDDEN = {"act4/fort/foregate.dt1", "expansion/town/waypt.dt1", "act1/barracks/warp.dt1"}  # those DT1 (#146)
+OVERRIDDEN = {"act4/fort/foregate.dt1", "expansion/town/waypt.dt1", "act1/barracks/warp.dt1"}  # those DT1 (https://github.com/synpoox/pd2-resurrected/issues/146)
 # 1.13c's preset table names these objects ids for the objects its engine places (random shrines and chests, the Arcane
 # Sanctuary's portal); PD2's objects.txt keeps a blank <reserved> row at each, D2R a row of its own at the same id
 ENGINE_OBJECTS = range(573, 584)
@@ -267,7 +267,7 @@ def automap_rows(pd2: Table, cels: int) -> list[list[str]]:
 
 
 def vanilla_automap(pd2: Table, d2r: Table, cels: int) -> Table:
-    """D2R's AutoMap.txt with PD2's rows for level types 0-35 (#275), which PD2's maps on those types (Spider Map on
+    """D2R's AutoMap.txt with PD2's rows for level types 0-35 (https://github.com/synpoox/pd2-resurrected/issues/275), which PD2's maps on those types (Spider Map on
     3 Dungeon, ...) need for their own tiles; D2R's areas keep D2R's tiles. Every D2R row is one of PD2's, so PD2's rows,
     in PD2's order, under D2R's header (its comment columns are *Type1-4). PD2's rows for types 36+ (LevelName a bare
     number) go to core-ui's table instead. D2R's loader (0x32cae0) asserts on a LevelName outside its 36 and keeps one

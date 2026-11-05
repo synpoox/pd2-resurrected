@@ -8,7 +8,7 @@
 // inventory and the player gets D2R's "can't do that" (D2R's caller sends none of its own). The portal is D2R's cube
 // "Red Portal" output, which places object 60 by the player and counts the opening per game; its max of 1 on OpenKey
 // is the one-per-game gate. PD2's uber-area exception and its refusal of levels 152, 153 and 255 belong to the uber
-// keys and the Monastery map, which keep a blank pSpell until UB2.
+// keys and the Monastery map, which keep a blank pSpell until UB2 (https://github.com/synpoox/pd2-resurrected/issues/227).
 #include "map_open.h"
 
 #include "d2r.h"
@@ -25,7 +25,7 @@ using d2r::Game;
 using d2r::Unit;
 
 constexpr int32_t MapSpell = 16;
-// The game counter key of map (and, with UB2, uber area) openings: PD2 allows one per game
+// The game counter key of map (and, with UB2 (https://github.com/synpoox/pd2-resurrected/issues/227), uber area) openings: PD2 allows one per game
 constexpr uint32_t OpenKey = 0x4d415053;  // 'MAPS'
 constexpr int32_t Hell = 2;
 constexpr int32_t MinCharLevel = 80;

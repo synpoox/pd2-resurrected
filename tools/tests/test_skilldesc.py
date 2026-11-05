@@ -1,4 +1,4 @@
-"""pd2_skilldesc on synthetic skilldesc tables: Grim Ward's lines as #73 found them."""
+"""pd2_skilldesc on synthetic skilldesc tables: Grim Ward's lines as https://github.com/synpoox/pd2-resurrected/issues/73 found them."""
 import sys
 import tempfile
 import unittest

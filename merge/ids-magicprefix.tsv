@@ -1,4 +1,4 @@
-# PD2 name	id	name (append-only, ADR 0003); a "+" line is a row the port adds (tools/pd2_ids.py, #233)
+# PD2 name	id	name (append-only, ADR 0003); a "+" line is a row the port adds (tools/pd2_ids.py, https://github.com/synpoox/pd2-resurrected/issues/233)
 	0	
 Sturdy	1	Sturdy
 Strong	2	Strong

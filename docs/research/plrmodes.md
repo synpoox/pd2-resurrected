@@ -82,7 +82,7 @@ PD2's patches can't be carried over as code.
 
 - Each change above is a `verify` row: first check in D2R whether it already behaves as PD2 (D2R's buffered input may
   already cover 4 and part of gate B), then hook `0x429d10` only for what differs. Rows added to core-rules.
-- 1-3 key on PD2's function numbers (180, 182), so they wait for the skills that use them (P2 remaps ids; W8-W10 cover
+- 1-3 key on PD2's function numbers (180, 182), so they wait for the skills that use them (P2 remaps ids; [W8](https://github.com/synpoox/pd2-resurrected/issues/54)-[W10](https://github.com/synpoox/pd2-resurrected/issues/51) cover
   Charge's group). Whirlwind/Blade Dance (76) and Blade Fury (48) are vanilla numbers.
 - The regen cap is PvP only, cut with PvP ([MS3](https://github.com/synpoox/pd2-resurrected/issues/218)).
 - Not decoded: the death handler and the two other hooks. They need their own read before any death-rule row is listed.

@@ -1,5 +1,5 @@
 {
- "_note": "WL1 (#233, docs/warlock.md): PD2's per-class item rules reach the Warlock. Hellfire Torch and Spirit Ward roll classes 0-7 (PD2: 0-6). D2R's Warlock affixes take PD2's tenfold class-affix frequencies; the rows PD2 added for the other classes are added in merge/ids-magicprefix.tsv (the + lines).",
+ "_note": "WL1 (https://github.com/synpoox/pd2-resurrected/issues/233, docs/warlock.md): PD2's per-class item rules reach the Warlock. Hellfire Torch and Spirit Ward roll classes 0-7 (PD2: 0-6). D2R's Warlock affixes take PD2's tenfold class-affix frequencies; the rows PD2 added for the other classes are added in merge/ids-magicprefix.tsv (the + lines).",
  "ops": [
   {"op": "set", "table": "uniqueitems", "bank": "excel", "key": "Hellfire Torch", "set": {"max1": "7"}},
   {"op": "set", "table": "uniqueitems", "bank": "excel", "key": "Spirit Ward", "set": {"max7": "7"}},

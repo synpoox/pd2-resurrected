@@ -65,7 +65,7 @@ nothing sets. PD2's stat evaluator `0x102faa90` (its copy of D2Common's) reads a
 `0x102fa640 (statlist, stat << 16, record)`:
 
 - `equipped_eth`: the owner's (player or monster) worn items (`0x10382bd0`: bodyloc not 0, 11 or 12) that are ethereal
-  (D2Common [#10225](https://github.com/synpoox/pd2-resurrected/issues/10225)).
+  (D2Common #10225).
 - `missing_hp`: `(1 - life / maxlife) * 100` (stats 6 and 7), 0 without max life.
 - `inc_splash_radius` (478): + `missing_hp` * `inc_splash_radius_permissinghp` (489), at most 40, when both are above 0.
   Only an op base reaches it, and no stat has `inc_splash_radius` as its op base, so PD2 never applies Nightmare's
@@ -94,9 +94,9 @@ D2R's add-life is `0x451820 (unit, amount)`, called by the leech `0x450c90` (the
 
 PD2's event 16 (`0x103469a0`), disassembled; constants from the DLL:
 
-- Divisor: 10 on a player; on a monster, 10 for a hireling (D2Common [#11104](https://github.com/synpoox/pd2-resurrected/issues/11104): class 271, 338, 359, 560, 561), else 8,
-  except a prime evil (monstats flag `0x80`, [#10278](https://github.com/synpoox/pd2-resurrected/issues/10278)): 30 when in PD2's boss sets (`0x10371290`, filled at run time),
-  else `(100 - life %) * 10 + 70` ([#11027](https://github.com/synpoox/pd2-resurrected/issues/11027)). A non-hireling monster then adds `0xaf5f0(monster_playercount) / 50`
+- Divisor: 10 on a player; on a monster, 10 for a hireling (D2Common #11104: class 271, 338, 359, 560, 561), else 8,
+  except a prime evil (monstats flag `0x80`, #10278): 30 when in PD2's boss sets (`0x10371290`, filled at run time),
+  else `(100 - life %) * 10 + 70` (#11027). A non-hireling monster then adds `0xaf5f0(monster_playercount) / 50`
   (D2Game's table, 0 for 1 player and +1 for each player after it, 2 less from 9). Other units: 8. Missile (event 6):
   times 2 on levels 157, 159 and 166 (PD2 levels, not in the merged data), else times 1.5.
 - Blow = life / (divisor / (`item_crushingblow_efficiency` / 100 + effectiveness)); effectiveness 1, or 1 + calc4 /

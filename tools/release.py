@@ -1,4 +1,4 @@
-"""Package a built mod as a player release: a 7z, release notes and SHA256SUMS in dist/ (issue #109).
+"""Package a built mod as a player release: a 7z, release notes and SHA256SUMS in dist/ (issue https://github.com/synpoox/pd2-resurrected/issues/109).
 
     python tools/release.py --game DIR [--version V] [--out dist]
 

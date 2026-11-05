@@ -20,7 +20,7 @@ project, D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`); other addresses
   (`0x585440`) takes srvmissilea (`+0x68`), so the four monster rows on 139 get the same missile from both: the
   core-rules `verify` row is data.
 - **The Cobra Strike branch of 171/172** (skill 265 only, not RakanothStrike): it fills a hit's damage block for the
-  skill and adds its poison, scaled by its rolled length over ELen (D2Common [#10510](https://github.com/synpoox/pd2-resurrected/issues/10510), version entry `0x104a8b1c`), to
+  skill and adds its poison, scaled by its rolled length over ELen (D2Common #10510, version entry `0x104a8b1c`), to
   each missile's poisonmindam and poisonmaxdam (`0x1036e500`). As in Poison Dagger ([W11](https://github.com/synpoox/pd2-resurrected/issues/86)), the port takes the
   skill's rolled poison from D2R's fill, whose length is ELen, so the scale is 1.
 

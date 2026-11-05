@@ -176,7 +176,7 @@ repo. Table, row and string names below are short identifiers.
 | Levels 133-135 and the mini-uber spawn | D2R's own | existing (D2R); they stay on (section 7) |
 | Key recipe's `useitem` -> random mini-uber portal | none | **new**, or D2R's own portal row (merged line 2390) if PD2's row is dropped |
 | Organ drops | none (D2R's own in D2R) | **new** if PD2 changed them, else D2R's |
-| Talisman opening at the Blood Fountain -> level 185 | the map-item opening ([MS2](https://github.com/synpoox/pd2-resurrected/issues/217)) plus the uber-key gate ([UB2](https://github.com/synpoox/pd2-resurrected/issues/227)) | **new** (UB2/UB3) |
+| Talisman opening at the Blood Fountain -> level 185 | the map-item opening ([MS2](https://github.com/synpoox/pd2-resurrected/issues/217)) plus the uber-key gate ([UB2](https://github.com/synpoox/pd2-resurrected/issues/227)) | **new** ([UB2](https://github.com/synpoox/pd2-resurrected/issues/227)/[UB3](https://github.com/synpoox/pd2-resurrected/issues/228)) |
 | Uber Tristram area rules (buffs stripped, teleport in, silver portals, no re-entry, exit portal) | none | **new**, shared with [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) |
 | Primes on plain AIs; any minion spawns | none | **new** ([UB3](https://github.com/synpoox/pd2-resurrected/issues/228)), once the preset and DLL are read |
 | Prime auras (Conviction, Lower Resist) and Prime Evil rules | none | **new** |

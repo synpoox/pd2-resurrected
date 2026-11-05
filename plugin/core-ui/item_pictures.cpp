@@ -16,7 +16,7 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		return;
 	}
 	// Both key patches through one transaction: PatchWrite writes at most 8 bytes, and half a patch would break a key.
-	// The second is `cheat spawn`'s key (#323), so tests can spawn PD2's 4-character items.
+	// The second is `cheat spawn`'s key (https://github.com/synpoox/pd2-resurrected/issues/323), so tests can spawn PD2's 4-character items.
 	D2RL::Mutations::TransactionHandle transaction = 0;
 	if (mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
 		std::snprintf(report, size, "FAILED (no transaction)");
