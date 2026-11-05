@@ -5,8 +5,9 @@
 Run it after the whole build in README.md (merge, companions fetch, modkit build, plugin\\build.ps1). It stages the
 mod folder as an install lays it out (out/data, modinfo, loader metadata and config, the companions, our plugins in
 d2rloader/plugins/, the vanilla tables the loot filter reads from DIR) in dist/mod/, then runs d2rAI-toolkit's
-release/package_release.py with release.toml. The notes get the changelog's `### <version>` section and a link to
-the unported list. The version defaults to mod.json's; the changelog must have its section.
+release/package_release.py with release.toml, and fills its notes: mod.json's description, install steps for the 7z
+(no downloader yet), the changelog's `### <version>` section and the unported list. The version defaults to
+mod.json's; the changelog must have its section.
 """
 from __future__ import annotations
 
@@ -70,12 +71,38 @@ def stage(root: Path, out: Path, read: Callable[[str], bytes]) -> Path:
     return dest
 
 
-def finish_notes(dist: Path, version: str, section: str, commit: str) -> None:
-    """Append the changelog section to package_release's notes, then refresh SHA256SUMS."""
+INSTALL = r"""## Install
+
+Into a D2R folder at the build above, with D2RLoader installed (the game must be closed):
+
+1. Unpack `{archive}` into `<D2R folder>\mods\` so that `<D2R folder>\mods\{folder}\{folder}.mpq\modinfo.json`
+   exists (Windows 11 opens .7z files; otherwise use 7-Zip, https://www.7-zip.org).
+2. Make {folder} D2RLoader's default mod (once): in D2RLoader's settings, or with `default_mod = "{folder}"` in
+   `<D2R folder>\d2rloader\config\d2rloader.toml`. Then start `D2RLoader.exe`. Characters go to
+   `Saved Games\Diablo II Resurrected\mods\{folder}\`.
+3. To update, remove `mods\{folder}\{folder}.mpq\data` before unpacking the new release, and keep
+   `mods\{folder}\d2rloader\config\d2rloader.toml` if you edited it.
+
+"""
+KNOWN = ("## Known issues\n\n"
+         "- What is not ported yet, or works differently from Project Diablo II: the [unported list]({url}).\n"
+         "- Until the first multiplayer release, a new build may break your characters; each break is in the changes.")
+
+
+def finish_notes(dist: Path, version: str, section: str, commit: str, about: str, folder: str) -> None:
+    """Fill package_release's notes skeleton (about line, 7z-only install, changes, known issues), refresh SHA256SUMS."""
     notes = dist / f"RELEASE_NOTES-{version}.md"
-    with notes.open("a", encoding="utf-8", newline="\n") as f:
-        f.write(f"\n## Changes\n\n{section}\n\nWhat is not ported yet, or works differently from Project Diablo II: "
-                f"the [unported list]({UNPORTED.format(commit=commit)}).\n")
+    text = notes.read_text("utf-8")
+    archive = next(dist.glob("*.7z")).name
+    fills = [(r"^.* TODO: one sentence about what this release is\.$", about),
+             (r"(?s)^## Install\n.*?(?=^## Changes$)", INSTALL.format(archive=archive, folder=folder)),
+             (r"^## Changes\n\n- TODO$", f"## Changes\n\n{section}"),
+             (r"^## Known issues\n\n- TODO$", KNOWN.format(url=UNPORTED.format(commit=commit)))]
+    for pattern, repl in fills:
+        text, n = re.subn(pattern, lambda _: repl, text, count=1, flags=re.M)
+        if not n:
+            raise ReleaseError(f"package_release's notes changed: no match for {pattern!r} in {notes}")
+    notes.write_text(text, encoding="utf-8", newline="\n")
     sums = dist / "SHA256SUMS"
     names = [line.split("  ", 1)[1] for line in sums.read_text("utf-8").splitlines() if line]
     sums.write_text("".join(f"{hashlib.sha256((dist / n).read_bytes()).hexdigest()}  {n}\n" for n in names),
@@ -89,7 +116,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=ROOT / "dist")
     ap.add_argument("--toolkit", type=Path, default=Path(os.environ.get("D2R_TOOLKIT", ROOT.parent / "d2rAI-toolkit")))
     a = ap.parse_args(argv)
-    version = a.version or json.loads((ROOT / "mod.json").read_text("utf-8"))["version"]
+    mod_json = json.loads((ROOT / "mod.json").read_text("utf-8"))
+    version = a.version or mod_json["version"]
     try:
         section = notes_section((ROOT / "CHANGELOG.md").read_text("utf-8"), version)
         from modkit.base import Base  # the sibling d2rAI-toolkit on PYTHONPATH
@@ -102,7 +130,11 @@ def main(argv: list[str] | None = None) -> int:
     if r.returncode:
         return r.returncode
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True).stdout
-    finish_notes(a.out, version, section, commit.strip())
+    try:
+        finish_notes(a.out, version, section, commit.strip(), mod_json["description"], mod_json["name"])
+    except ReleaseError as e:
+        print(f"release: {e}", file=sys.stderr)
+        return 1
     print(f"notes: {a.out / f'RELEASE_NOTES-{version}.md'}")
     return 0
 

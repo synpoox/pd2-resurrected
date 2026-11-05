@@ -24,6 +24,37 @@ Intro.
 """
 
 
+# package_release.py's notes skeleton, shortened (d2rAI-toolkit release/package_release.py NOTES)
+SKELETON = """# Mod 1.0.0
+
+Mod for Diablo II: Resurrected. TODO: one sentence about what this release is.
+
+## Requirements
+
+- Diablo II: Resurrected **build 93847** (D2R 3.3.0).
+
+## Install
+
+1. Run `MyMod-Downloader.exe` and choose **Install**.
+
+By hand (offline):
+
+1. Unpack it.
+
+## Changes
+
+- TODO
+
+## Known issues
+
+- TODO
+
+## Checksums
+
+See SHA256SUMS.
+"""
+
+
 class NotesTests(unittest.TestCase):
     def test_takes_only_the_versions_section(self):
         self.assertEqual(release.notes_section(CHANGELOG, "0.1.0-alpha"), "- First line.\n- Second line.")
@@ -35,21 +66,34 @@ class NotesTests(unittest.TestCase):
         with self.assertRaises(release.ReleaseError):
             release.notes_section("### Unreleased\n\n- x\n", "0.1.0-alpha")
 
-    def test_finish_notes_appends_and_keeps_sums_true(self):
+    def dist(self, tmp: str, skeleton: str = SKELETON) -> Path:
+        dist = Path(tmp)
+        (dist / "M-1.0.0.7z").write_bytes(b"7z")
+        (dist / "RELEASE_NOTES-1.0.0.md").write_text(skeleton)
+        (dist / "SHA256SUMS").write_text(f"{'0' * 64}  M-1.0.0.7z\n{'0' * 64}  RELEASE_NOTES-1.0.0.md\n")
+        return dist
+
+    def test_finish_notes_fills_the_skeleton_and_keeps_sums_true(self):
         with tempfile.TemporaryDirectory() as tmp:
-            dist = Path(tmp)
-            (dist / "M-1.0.0.7z").write_bytes(b"7z")
-            notes = dist / "RELEASE_NOTES-1.0.0.md"
-            notes.write_text("skeleton\n")
-            (dist / "SHA256SUMS").write_text(f"{'0' * 64}  M-1.0.0.7z\n{'0' * 64}  RELEASE_NOTES-1.0.0.md\n")
-            release.finish_notes(dist, "1.0.0", "- A change.", "abc123")
-            text = notes.read_text()
-            self.assertTrue(text.startswith("skeleton\n"))
-            self.assertIn("- A change.", text)
+            dist = self.dist(tmp)
+            release.finish_notes(dist, "1.0.0", "- A change.", "abc123", "The about line.", "Mod")
+            text = (dist / "RELEASE_NOTES-1.0.0.md").read_text()
+            self.assertNotIn("TODO", text)
+            self.assertNotIn("Downloader", text)  # no downloader ships yet
+            self.assertTrue(text.startswith("# Mod 1.0.0\n\nThe about line.\n\n## Requirements\n"))
+            self.assertIn("## Changes\n\n- A change.\n\n## Known issues\n", text)
             self.assertIn("/blob/abc123/docs/unported.md", text)
+            self.assertIn("mods\\Mod\\Mod.mpq\\modinfo.json", text)
+            self.assertTrue(text.endswith("## Checksums\n\nSee SHA256SUMS.\n"))
             for line in (dist / "SHA256SUMS").read_text().splitlines():
                 digest, name = line.split("  ")
                 self.assertEqual(digest, hashlib.sha256((dist / name).read_bytes()).hexdigest(), name)
+
+    def test_finish_notes_refuses_a_changed_skeleton(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dist = self.dist(tmp, SKELETON.replace("## Known issues", "## Issues"))
+            with self.assertRaises(release.ReleaseError):
+                release.finish_notes(dist, "1.0.0", "- A change.", "abc123", "About.", "Mod")
 
 
 class StageTests(unittest.TestCase):
