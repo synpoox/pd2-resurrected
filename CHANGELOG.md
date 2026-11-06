@@ -10,6 +10,8 @@ private-multiplayer release a build may break characters; each break is noted he
 - The Diablo Clone, Rathma and Lucion keys open their areas. Use one at the Blood Fountain in Harrogath (Hell,
   level 80+, Rite of Passage done): everyone at the fountain who is level 80+ goes in, without their mercenary,
   summons or buffs. One map or uber area per game. The fights themselves come later.
+- A tier-0 uber key also leaves three grey portals by the fountain. Each takes one player back in, once, by the same
+  rules (no mercenary, summons or buffs), and heals the boss by 20% of its life. The uber areas have no waypoint.
 
 ### 0.1.0-alpha (2026-11-05)
 

@@ -888,6 +888,38 @@ inline constexpr uint64_t WarpToLevel = 0x488180;
 inline constexpr int GameClients = 0x138, ClientNext = 0x628;
 inline constexpr uint64_t ClientUnit = 0x484c90;
 
+// --- core-maps: tier-0 re-entry portals and the area rules on entry (UB2, #346; D2Game\src\Objects\ObjMode.cpp) ----
+// Decompiled for #346 (Ghidra, D2R.gpr). Called, not hooked; one table slot written.
+// Object operate table: 75 slots of int32_t fn(ObjectOperate*), indexed by objects.txt OperateFn (objects record
+// +0x15e). Its dispatcher 0x592c40 skips a null slot. D2R leaves 60 null; PD2's portal operate 77 takes it (the merge's
+// pd2_ids.FUNCS). D2R's own portal operate 15 (0x58f680) needs a linked partner portal, which PD2's grey portals lack.
+inline constexpr uint64_t ObjectOperateTable = 0x23a51c0;
+inline constexpr int ObjectOperatePortal = 60;
+inline constexpr int OperateWaypoint = 23;  // 0x58fe00, the waypoints' OperateFn
+inline constexpr uint64_t ObjectRecord = 0x38fd00;  // (dataFlag, objects row) -> objects record (0x168 bytes) or null
+inline constexpr int ObjOperateFn = 0x15e;   // uint8 OperateFn
+inline constexpr int ObjOpenFrames = 0x9c;   // uint32; >> 8 is the frames the portal maker waits before event 1
+// How the portal maker 0x432ce0 makes a portal, without its return portal (0x435dd0):
+// (unit type, row, x, y, game, room, 1, 1, 0, 0) -> unit; for an object its InitFn runs (12: mode 1, the red portals')
+inline constexpr uint64_t SpawnUnit = 0x490410;
+inline constexpr uint64_t RoomAt = 0x38dfb0;          // (room, x, y) -> the room near `room` holding x/y, or null
+inline constexpr uint64_t SetObjectMode = 0x34e5f0;   // (object, mode)
+inline constexpr int UnitEventOpen = 1;               // the event that opens a portal (mode 1 -> 2)
+inline constexpr uint64_t SetPortalLevel = 0x34e9d0;  // (object, level byte): the portal's destination
+inline constexpr uint64_t PortalLevel = 0x34ad40;     // (object) -> uint16 destination
+// How operate 15 removes a used town portal: (room, unit type, unit id) tells the room's clients, (game, unit) frees
+// the unit, (room) marks the room changed
+inline constexpr uint64_t RoomUnitRemoved = 0x2ef4d0;
+inline constexpr uint64_t RemoveUnit = 0x48faa0;
+inline constexpr uint64_t RoomChanged = 0x2f0530;
+// The room walk of 0x593630 (finds an object by class near a unit): (room, &rooms, &count) the room and its
+// neighbours, (room) its first unit, (unit) the next unit in its room
+inline constexpr uint64_t NearRooms = 0x2efde0;
+inline constexpr uint64_t RoomFirstUnit = 0x2efd90;
+inline constexpr uint64_t NextUnitInRoom = 0x34b4a0;
+// The game's monsters: 128 lists by unit id & 0x7f at game +0x2630 (0x4925b0), the next unit at +0x158 (FindUnit)
+inline constexpr int GameMonsters = 0x2630, UnitListNext = 0x158;
+
 // --- core-maps: map stats on monsters and players (MS3, #218) -----------------------------------------------------
 // Decompiled for #218 (Ghidra, D2R.gpr); entry bytes read from the 6ab3782c dump.
 // (spawn params, monster): D2R's per-class setup of a monster that its spawn core 0x493cc0
