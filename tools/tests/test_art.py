@@ -113,6 +113,12 @@ class ItemPictureTests(unittest.TestCase):
                              (items / "invwss.dc6").read_bytes())
             self.assertFalse((out / "global" / "items" / "invrin.dc6").exists())
 
+    def test_an_extract_with_no_item_pictures_fails(self):  # #351: it gave "0 upscaled" and no HD pictures
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with self.assertRaisesRegex(M.I.IdError, "pd2_extract"):
+                M.item_pictures(root / "art", root / "pd2", root / "d2r", root / "out", {"invwss": {"misc"}}, set())
+
 
 class HdPictureTests(unittest.TestCase):
     def test_pd2_pictures_replace_borrowed_and_d2r_ones(self):
