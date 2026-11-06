@@ -21,9 +21,10 @@ The map spell's check and use hooks handle the keys too. A key's `len` in the ub
 - **Check:** the map gates, in PD2's order, then the Blood Fountain. PD2's `0x1037d840` returns the squared distance,
   so the user must stand with `dx² + dy² <= 0x95` from (5074, 5114): about 12 subtiles. A refusal keeps the key.
 - **Use:** PD2's `0x1038a680`. The user, then every other player in Harrogath who is level 80 or more with a squared
-  distance under 0x96, is handled in turn: pets removed, 37 states stripped, warped in. The opening fails if nobody
-  arrives. The tier (the key's stat 370) and the number who arrived go into the game's counters (keys `UBRT` and
-  `UBRE`, PD2's game `+0x2629` and `+0x2628`), and the opening counts on `MAPS`, the one-per-game gate the maps use.
+  distance under 0x96, is handled in turn: pets removed, 37 states stripped, warped in. The others are picked before
+  anyone moves. If the user does not arrive, nobody else goes and the opening fails, as in PD2. The tier (the key's
+  stat 370) and the number who arrived go into the game's counters (keys `UBRT` and `UBRE`, PD2's game `+0x2629` and
+  `+0x2628`), and the opening counts on `MAPS`, the one-per-game gate the maps use.
 
 ### D2R functions
 
@@ -43,6 +44,9 @@ The map spell's check and use hooks handle the keys too. A key's `len` in the ub
 
 - The tier-0 re-entry portals (PD2's three object-595 portals, single use) and the area rules on re-entry: the 20%
   boss heal, the entry count and the Rathma re-entry spots.
+- Removing the uber level's `Waypoint` objects on arrival (the tail of `0x1038a680`).
+- A key used up when nobody arrives: PD2 keeps it (`0x10383060` returns 0); the port's check refuses every case it can
+  foresee, but a failed warp in the use still spends the key.
 - The tier scaling (state `uberscaling`, section 4).
 - The key drop rule (section 7).
 

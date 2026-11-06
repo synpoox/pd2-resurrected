@@ -89,10 +89,13 @@ auto MapLevel(Game* game, Unit* player, Unit* item, const uint8_t* record) noexc
 		d2r::DataFlag(game), player, item, At<uint32_t>(record, d2r::rva::ItemLenCalc));
 }
 
-auto Openings(Game* game) noexcept -> int32_t {
-	uint32_t key = OpenKey;
-	const int32_t* counter = d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(d2r::rva::GameCounter)(
+auto CounterOf(Game* game, uint32_t key) noexcept -> int32_t* {
+	return d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(d2r::rva::GameCounter)(
 		reinterpret_cast<uint8_t*>(game) + d2r::rva::GameCounters, &key);
+}
+
+auto Openings(Game* game) noexcept -> int32_t {
+	const int32_t* counter = CounterOf(game, OpenKey);
 	return counter != nullptr ? *counter : 0;
 }
 
@@ -118,11 +121,6 @@ auto FountainDistance(Unit* player) noexcept -> int32_t {
 	int32_t xy[2] = {};
 	d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(d2r::rva::UnitCoords)(player, xy);
 	return (xy[0] - FountainX) * (xy[0] - FountainX) + (xy[1] - FountainY) * (xy[1] - FountainY);
-}
-
-auto CounterOf(Game* game, uint32_t key) noexcept -> int32_t* {
-	return d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(d2r::rva::GameCounter)(
-		reinterpret_cast<uint8_t*>(game) + d2r::rva::GameCounters, &key);
 }
 
 // OpenRedPortal's own spot search: false when it would find no free spot, which would use the map up for nothing
@@ -231,7 +229,10 @@ auto StripStates(Game* game, Unit* player) noexcept -> int32_t {
 }
 
 // PD2 0x1038a680: the user, then every other player in Harrogath at level 80+ within reach of the fountain, loses
-// pets and buffs and is warped in. Returns how many arrived.
+// pets and buffs and is warped in. As in PD2, nobody else goes when the user does not arrive. Returns how many
+// arrived.
+// shortcut: pets go for everyone; PD2 removes them only when 0x1037c6a0 (not read yet) says so, read it if a pet
+// ever stays in PD2
 auto WarpGroup(Game* game, Unit* user, int32_t level) noexcept -> int32_t {
 	using namespace d2r::rva;
 	int32_t arrived = 0;
@@ -244,14 +245,22 @@ auto WarpGroup(Game* game, Unit* user, int32_t level) noexcept -> int32_t {
 		           pets, states);
 		arrived += now == level ? 1 : 0;
 	};
-	warp(user);
-	for (auto* client = At<uint8_t*>(game, GameClients); client != nullptr; client = At<uint8_t*>(client, ClientNext)) {
+	// the others are picked before anyone moves, so a warp never runs while the client list is walked
+	constexpr int MaxPlayers = 8;
+	Unit* others[MaxPlayers] = {};
+	int count = 0;
+	for (auto* client = At<uint8_t*>(game, GameClients); client != nullptr && count < MaxPlayers;
+	     client = At<uint8_t*>(client, ClientNext)) {
 		Unit* player = d2r::Engine<Unit* (*)(void*, int32_t) noexcept>(ClientUnit)(client, 0);
 		if (player != nullptr && player != user && PlayerLevelId(player) == Harrogath &&
 		    d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(player, StatLevel, 0) >= MinCharLevel &&
 		    FountainDistance(player) < FountainWarp) {
-			warp(player);
+			others[count++] = player;
 		}
+	}
+	warp(user);
+	for (int i = 0; arrived > 0 && i < count; ++i) {
+		warp(others[i]);
 	}
 	return arrived;
 }
