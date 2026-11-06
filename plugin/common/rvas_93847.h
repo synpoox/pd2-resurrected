@@ -879,6 +879,15 @@ inline constexpr uint64_t QuestFlag = 0x325c50;
 inline constexpr int PlayerQuests = 0x40;
 inline constexpr uint64_t ClientMessage = 0x491960;  // (player, message, player); 0x15 is "can't do that"
 
+// --- core-maps: opening an uber fight (UB2, #227; D2Game\src\Game\Clients.cpp) ----------------------------------
+// Decompiled for #227 (Ghidra, D2R.gpr). Called, not hooked.
+// (game, player, level, 0): moves the player into the level. In the same act it finds the level's arrival spot
+// (0x2ef8b0) and teleports there (0x491ca0); else it changes act. The debug "Warping to level" handler 0x402820 calls it.
+inline constexpr uint64_t WarpToLevel = 0x488180;
+// The game's clients: a list at game +0x138, the next client at +0x628 (0x484d90 walks it); (client, 0) -> its player
+inline constexpr int GameClients = 0x138, ClientNext = 0x628;
+inline constexpr uint64_t ClientUnit = 0x484c90;
+
 // --- core-maps: map stats on monsters and players (MS3, #218) -----------------------------------------------------
 // Decompiled for #218 (Ghidra, D2R.gpr); entry bytes read from the 6ab3782c dump.
 // (spawn params, monster): D2R's per-class setup of a monster that its spawn core 0x493cc0

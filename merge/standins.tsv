@@ -105,13 +105,10 @@ missiles	splitthrowpilumreturn	-	pSrvDoFunc,pCltDoFunc	Split Throw
 misc	TP Book Unlimited	Tome of Town Portal	pSpell	Unlimited TP and ID books
 misc	ID Book Unlimited	Tome of Identify	pSpell	Unlimited TP and ID books
 misc	Uber Trist Map	-	pSpell	Map items
-misc	Uber Map	-	pSpell	Map items
 misc	Monastery Map	-	pSpell	Map items
 misc	Pvp Map	-	pSpell	Map items
 misc	Pvp Map 2	-	pSpell	Map items
-misc	Rathma Map	-	pSpell	Map items
 misc	Uber Ancients Map	-	pSpell	Map items
-misc	Lucion Map	-	pSpell	Map items
 states	skilldelay	=	remfunc	State remove function 12
 objects	xactportal_red	-	OperateFn	PD2 object operate functions
 objects	xactportal_ghostly	-	OperateFn	PD2 object operate functions
