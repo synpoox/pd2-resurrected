@@ -18,10 +18,6 @@ merge	uniquesuffix
 merge	uniqueappellation
 no-drop	pvpm	PvP maps
 no-drop	pvpd	PvP desert maps
-no-drop	ubmp	uber maps
 no-drop	ubtm	Uber Trist Map
-no-drop	dcma	Uber Map
 no-drop	uba	Uber Ancients Map
-no-drop	luca	Lucion Map
-no-drop	rtma	Rathma Map
 no-drop	t41	Monastery Map

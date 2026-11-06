@@ -60,10 +60,10 @@ The map-item use (misc `pSpell` 12) for maps and uber keys. In order:
 3. Gates: Hell only, character level 80 or more, Rite of Passage done (quest flag 0x27), and the player stands in
    Harrogath (level 109). Levels 0x98, 0x99 and 0xff are refused.
 4. **Uber keys only** (levels 136, 137, 161, 168, 185, 188; 168 is PD2's Uber Ancients, cut in the port): `0x1037d840` must report the player at most 0x95 from
-   (5074, 5114), the Blood Fountain. The tier is the item's stat 185 (`uber_difficulty`). For levels 137, 161 and 188 it
+   (5074, 5114), the Blood Fountain. `0x1037d840` returns the squared distance, so that is within about 12 subtiles (read for [UB2](https://github.com/synpoox/pd2-resurrected/issues/227)). The tier is the item's stat 185 (`uber_difficulty`). For levels 137, 161 and 188 it
    is stored in `game+0x2629`.
 5. **Uber keys warp the group straight in. No portal is opened.** The code places object 587 (invisible) at the use
-   spot. `0x1038a680` then warps every player in Harrogath who is within 0x96 of the fountain and level 80 or more. Each
+   spot. `0x1038a680` then warps every player in Harrogath whose squared distance to the fountain is under 0x96 and who is level 80 or more. Each
    player goes through the portal-entry code in section 3. The count is stored in `game+0x2628`, and the opening fails
    if it is 0. So the uber keys' `missiletype` is not used here. For 585 and 622 it matches the portals the fights open
    later (sections 5-6).
@@ -80,7 +80,7 @@ When a player enters an uber level (137, 161-163 from Harrogath, or 188), by the
 - **Entries are counted** in `game+0x2628`.
 - **The boss heals 20% of its maximum life** on each entry (Dclone, Lucion, and both Rathma and Mendeln). This is the
   entry code's own heal; Dclone's AI has a second, separate one (section 5).
-- **Pets are removed** (`0x1037fb10` with flag 0). This covers every pet type except type 3 (the Iron Golem), and the
+- **Pets are removed** (`0x1037fb10` with flag 0). This covers every pet type except type 3 (`golem` in pettype.txt; the Iron Golem is type 22 and goes too), and the
   hireling (type 7) is killed. This is the "mercenary killed" rule.
 - **37 states are stripped** (`0x1037f4a0` with flag 1): enchant, coldenchant, venomclaws, shout, battleorders,
   battlecommand, wolf, bear, fade, quickness, energyshield, shiverarmor, chillingarmor, bonearmor, cyclonearmor,

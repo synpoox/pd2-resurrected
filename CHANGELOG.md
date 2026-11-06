@@ -3,6 +3,14 @@
 Player-facing changes, newest first. One section per version, heading `### <version> (<YYYY-MM-DD>)`. Until the first
 private-multiplayer release a build may break characters; each break is noted here (ADR 0003).
 
+### Unreleased
+
+#### Uber bosses
+
+- The Diablo Clone, Rathma and Lucion keys open their areas. Use one at the Blood Fountain in Harrogath (Hell,
+  level 80+, Rite of Passage done): everyone at the fountain who is level 80+ goes in, without their mercenary,
+  summons or buffs. One map or uber area per game. The fights themselves come later.
+
 ### 0.1.0-alpha (2026-11-05)
 
 The first alpha: every Project Diablo II (PD2) class plays as in PD2, offline single-player, with PD2's maps. The uber
