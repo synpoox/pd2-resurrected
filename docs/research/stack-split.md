@@ -47,7 +47,8 @@ No D2R hook. The PluginSDK has no mouse event, and `ItemInteractionService` skip
    unit id. The UI thread's handle is the client's unit: on the game thread it is stale, and its seeds read 0. If the
    stack is there whole, `ItemService::splitStack` takes N-1 back to the cursor.
 
-D2R places the stack, so the cell and panel are D2R's own. Differences from PD2: the item left down is the original
+Tomes (`tbk `, `ibk `) never split, as in PD2. D2R places the stack, so the cell and panel are D2R's own. Differences
+from PD2: the item left down is the original
 (PD2 makes a new one); a Ctrl+click on a same-type stack merges the whole held stack (D2R's put-down), where PD2 adds
 one; a TCP/IP client gets no split (no game thread).
 
@@ -58,8 +59,10 @@ Slot 8, Hell, level 90 Paladin, inventory:
 - El Rune stack of 8: Ctrl+left-click on an empty cell left 1 there and 7 on the cursor; a second one left 1 and 6; a
   plain click put the 6 down. Tooltips: 1, 1, 6.
 - Perfect Amethyst stack of 3: Ctrl+left-click left 1 and 2 on the cursor; a plain click put the 2 down. Tooltips: 1, 2.
-- After Save and Exit and a reload: amethysts 1 and 2, El runes 8 (the three stacks merged by hand before saving).
-- Not checked: orbs, keys, organs, maps, the stash and cube, D2R's rune stash tab.
+- After Save and Exit and a reload: amethysts 1 and 2. The El runes were merged back to 8 by hand before saving and
+  read 8, so a split rune state was not reloaded.
+- Not checked: orbs, keys, organs, maps, the stash and cube, D2R's rune stash tab, tomes after the tome rule, and
+  what D2R does natively with each kind of stack.
 
 The test harness answers the game's key-state reads only in the game image and `D2RCore.dll`. Ctrl reached this
 plugin only after the harness also swapped imports in the other plugin DLLs (d2r-test-harness, local change).

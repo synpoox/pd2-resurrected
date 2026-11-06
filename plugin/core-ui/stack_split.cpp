@@ -5,9 +5,14 @@
 // splitStack moves quantity between the stack and a new cursor stack in one step, so nothing is lost or made twice.
 // PD2 instead sends its own packet 0x22 and makes a new 1-quantity item at the cell (docs/research/stack-split.md);
 // the result is the same, but the one item left down here is the original and the cursor stack is the new one.
+// In core-ui (client-only, ADR 0004) though it changes items: the result is what a put-down and a pick-up would give.
 //
 // shortcut: a TCP/IP client has no game thread (runOnGameThread is Unavailable), so it gets no split; upgrade with a
 // plugin message to the host if online play needs it.
+// shortcut: a Ctrl+click on a stack of the same item merges the whole held stack (D2R's put-down), where PD2 adds one;
+// upgrade with a native read of the clicked cell if players miss it.
+// shortcut: the job runs on the next game update and looks once; a server that has not placed the item by then skips
+// the split (logged), fine on a local game, upgrade with a retry if hosted games miss splits.
 #include "stack_split.h"
 
 #include "log.h"
@@ -29,14 +34,16 @@ namespace {
 namespace items = D2RL::Items;
 using C = items::ItemContainer;
 
-static_assert(SplitOff(5, true, 5, C::Inventory) == 4);
-static_assert(SplitOff(2, true, 2, C::Cube) == 1);
-static_assert(SplitOff(40, true, 40, C::SharedStash) == 39);
-static_assert(SplitOff(5, false, 5, C::Inventory) == 0);   // plain click: the whole stack stays down
-static_assert(SplitOff(1, true, 1, C::Inventory) == 0);    // one item: a normal put-down
-static_assert(SplitOff(5, true, 8, C::Inventory) == 0);    // not the stack that left the cursor
-static_assert(SplitOff(5, true, 5, C::Ground) == 0);       // dropped
-static_assert(SplitOff(5, true, 5, C::Belt) == 0);
+constexpr uint32_t El = items::MakeItemCode("r01");
+static_assert(SplitOff(El, 5, true, 5, C::Inventory) == 4);
+static_assert(SplitOff(El, 2, true, 2, C::Cube) == 1);
+static_assert(SplitOff(El, 40, true, 40, C::SharedStash) == 39);
+static_assert(SplitOff(El, 5, false, 5, C::Inventory) == 0);   // plain click: the whole stack stays down
+static_assert(SplitOff(El, 1, true, 1, C::Inventory) == 0);    // one item: a normal put-down
+static_assert(SplitOff(El, 5, true, 8, C::Inventory) == 0);    // not the stack that left the cursor
+static_assert(SplitOff(El, 5, true, 5, C::Ground) == 0);       // dropped
+static_assert(SplitOff(El, 5, true, 5, C::Belt) == 0);
+static_assert(SplitOff(items::MakeItemCode("tbk"), 20, true, 20, C::Inventory) == 0);  // tome of town portal
 
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::ItemService* g_items = nullptr;
@@ -75,13 +82,12 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 	items::ItemInfo placed {};
 	const D2RL::Inventory::ItemFilter filter {
 		.structSize = D2RL::Inventory::ItemFilterSize,
-		.containerMask = items::ContainerBit(C::Inventory) | items::ContainerBit(C::Cube) | items::ContainerBit(C::PersonalStash) |
-		                 items::ContainerBit(C::SharedStash) | items::ContainerBit(C::CustomPage)};
+		.containerMask = StoredGrids};
 	const auto listed = g_inventory->forEachInventoryItem(g_context, job.player, &filter, FindPlaced, &placed);
 	g_busy = false;
-	const uint32_t back = SplitOff(job.held, true, placed.quantity, placed.container);
+	const uint32_t back = SplitOff(job.code, job.held, true, placed.quantity, placed.container);
 	if (listed != D2RL::Inventory::Result::Success || back == 0) {
-		// Not found: merged into another stack, or dropped; PD2 splits on an empty cell only
+		// Not found (merged into another stack, dropped) or not split (a tome)
 		plog::Info("split: none, list %u, %d held, %d found in container %u", static_cast<uint32_t>(listed), job.held,
 		           placed.quantity, static_cast<uint32_t>(placed.container));
 		return;
@@ -154,6 +160,7 @@ auto Query(const Service*& service, bool (*has)(const Service*, uint32_t), uint3
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	g_context = context;
 	const D2RL::LifecycleService* lifecycle = nullptr;
+	// `&`, not `&&`: every service is queried, so the report never blames a missing one by mistake
 	if (!(Query(g_items, D2RL::HasItemServiceField, D2RL::ItemServiceSplitStackFieldEnd) &
 	      Query(g_inventory, D2RL::HasInventoryServiceField, D2RL::InventoryServiceRequiredSize) &
 	      Query(g_threads, D2RL::HasThreadServiceField, D2RL::ThreadServiceRequiredSize) &
