@@ -15,6 +15,22 @@ def table(text: str, key: str | None = None) -> I.Table:
         return I.Table(p, key)
 
 
+class ToolkitTests(unittest.TestCase):
+    def test_finds_the_toolkit_from_a_nested_worktree(self):
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d)
+            (base / "d2rAI-toolkit" / "modkit").mkdir(parents=True)
+            tree = base / "repo" / ".claude" / "worktrees" / "w"
+            tree.mkdir(parents=True)
+            self.assertEqual(I.toolkit(tree), base / "d2rAI-toolkit")
+            self.assertEqual(I.toolkit(base / "repo"), base / "d2rAI-toolkit")
+
+    def test_falls_back_beside_the_root(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d) / "repo"
+            self.assertEqual(I.toolkit(root), Path(d) / "d2rAI-toolkit")
+
+
 class SeedTests(unittest.TestCase):
     def test_vanilla_by_id_then_name_then_append(self):
         I.VANILLA["test"] = 2

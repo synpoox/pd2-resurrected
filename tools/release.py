@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+import pd2_ids
 from companions import ROOT, fill_tables, overlay
 
 PLUGINS = ["core-rules", "core-maps", "core-ui"]
@@ -115,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--game", type=Path, required=True, help="D2R folder (the loot filter's vanilla tables)")
     ap.add_argument("--version", help="release version (default: mod.json's)")
     ap.add_argument("--out", type=Path, default=ROOT / "dist")
-    ap.add_argument("--toolkit", type=Path, default=Path(os.environ.get("D2R_TOOLKIT", ROOT.parent / "d2rAI-toolkit")))
+    ap.add_argument("--toolkit", type=Path, default=Path(os.environ.get("D2R_TOOLKIT", pd2_ids.toolkit(ROOT))))
     a = ap.parse_args(argv)
     mod_json = json.loads((ROOT / "mod.json").read_text("utf-8"))
     version = a.version or mod_json["version"]

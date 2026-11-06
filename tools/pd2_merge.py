@@ -33,7 +33,7 @@ import pd2_tables
 
 ROOT = Path(__file__).resolve().parent.parent
 # the build the port targets, in modkit's cache (MODKIT_CACHE, as modkit reads it)
-D2R_DATA = Path(os.environ.get("MODKIT_CACHE", ROOT.parent / "d2rAI-toolkit" / "d2r-data")) / "93847" / "data"
+D2R_DATA = Path(os.environ.get("MODKIT_CACHE", pd2_ids.toolkit(ROOT) / "d2r-data")) / "93847" / "data"
 
 # merge/ file name -> fn(rule file, PD2 data root, D2R data root, generated/data). Added by the work items that need them.
 RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {

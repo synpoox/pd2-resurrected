@@ -23,6 +23,7 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 
 ## Testing in-game
 
+- Game slots (separate game copies for a test, Slot4-8 here) and how to set one up: `docs/agents/game-slots.md`.
 - The in-game console can toggle god mode, teleport you out of town, and spawn monsters. Use it to set up a test quickly instead of playing to the spot.
 - Spawn items from the console after `debug_mode` turns cheats on. These are the lines the debug menu's Item Spawner sends; its window needs double-clicks, which the test harness cannot send. `cheat item` does nothing.
   - A base item: `cheat spawn <item code>,inv 0` (e.g. `cheat spawn wnd,inv 0`) puts it in the inventory. Without `inv 0`, or with no room, it drops on the ground ("I am overburdened"). `typ <letter>` with a space sets the quality: `cheat spawn t11,typ m,inv 0` gives a magic map and `typ r` a rare one (D2R's own test lines use `typ m`). `typ=<letter>` did not change it in [MS5](https://github.com/synpoox/pd2-resurrected/issues/220)'s run, so read the tooltip.

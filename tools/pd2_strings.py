@@ -25,6 +25,8 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+import pd2_ids
+
 ROOT = Path(__file__).resolve().parent.parent
 TBL = "local/lng/eng/patchstring.tbl"  # under PD2's data root
 FIRST_ID = 50000  # leaves 28,106-49,999 to Blizzard (decision #29)
@@ -49,8 +51,8 @@ def modkit():
     try:
         from modkit import base, strings
     except ImportError:
-        kit = next((p / "d2rAI-toolkit" for p in ROOT.parents if (p / "d2rAI-toolkit" / "modkit").is_dir()), None)
-        if kit is None:
+        kit = pd2_ids.toolkit(ROOT)
+        if not (kit / "modkit").is_dir():
             raise ValueError("modkit not found: put d2rAI-toolkit on PYTHONPATH")
         sys.path.insert(0, str(kit))
         from modkit import base, strings
