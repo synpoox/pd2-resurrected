@@ -5,6 +5,7 @@
 // Parts, by their word for the log, the status command and core-ui-off.txt (<game>\d2rloader\config\core-ui-off.txt):
 //   automap   the automap for PD2's level types 36+ (LP2)
 //   pictures  HD pictures of PD2's 4-character item codes (#310, #298), and `cheat spawn` of them (#323)
+//   split     PD2's stack split: Ctrl+left-click with a stack held puts one item down (#316)
 #include <D2RLPlugin/api.h>
 
 #include "automap.h"
@@ -13,6 +14,7 @@
 #include "item_pictures.h"
 #include "log.h"
 #include "off_switch.h"
+#include "stack_split.h"
 
 #include <cstdio>
 
@@ -32,6 +34,7 @@ const D2RL::PluginContext* g_context = nullptr;
 char g_selfPath[520] = "?";
 char g_automap[300] = "";
 char g_pictures[200] = "";
+char g_split[200] = "";
 
 constexpr D2RL::PluginInfo Info {
 	.infoSize    = D2RL::PluginInfoSize,
@@ -40,7 +43,7 @@ constexpr D2RL::PluginInfo Info {
 	.name        = "PD2 Resurrected Core UI",
 	.version     = CORE_PLUGIN_VERSION,
 	.author      = "Synpoo",
-	.description = "Project Diablo II client features (the automap of PD2's new level types, HD pictures of its 4-character item codes) for PD2 Resurrected.",
+	.description = "Project Diablo II client features (the automap of PD2's new level types, HD pictures of its 4-character item codes, its stack split) for PD2 Resurrected.",
 	.flags       = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
 };
 
@@ -65,7 +68,12 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	std::snprintf(line, sizeof(line), "pictures %s", g_pictures);
 	command->plugin->WriteConsoleMessage(line);
+	std::snprintf(line, sizeof(line), "split %s", g_split);
+	command->plugin->WriteConsoleMessage(line);
 	automap::Counters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	stack_split::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
@@ -112,6 +120,13 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 		item_pictures::Install(context, g_pictures, sizeof(g_pictures));
 	}
 	plog::Info("pictures %s", g_pictures);
+	// SDK only (no RVA), so it runs on any game image
+	if (off_switch::Off("split")) {
+		std::snprintf(g_split, sizeof(g_split), "off: left out by %s-off.txt", PluginName);
+	} else {
+		stack_split::Install(context, g_split, sizeof(g_split));
+	}
+	plog::Info("split %s", g_split);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand, "PD2 Resurrected Core UI: its parts and counters.");
 }
 
