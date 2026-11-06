@@ -340,6 +340,6 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Rathma bone spear damage | `missiles.rathmabonespear.pSrvDmgFunc` |
 | Uber Tristram's key, PvP maps and the Monastery map: no item spell | `misc.ubtm.pSpell` `misc.uba.pSpell` `misc.t41.pSpell` `misc.t61.pSpell` `misc.t62.pSpell` |
 | Unlimited TP and ID books | `misc.rtp.pSpell` `misc.rid.pSpell` |
-| Demonic cube reroll of unique and set items (16 rows) | core-rules |
+| Demonic cube reroll of unique and set items (16 rows) | `cubemain.demonic cube + * (reroll stats).enabled` `cubemain.demonic cube + * (reroll stats).output` |
 | State remove function 12 (`skilldelay`) | `states.skilldelay.remfunc` |
 | Function numbers of the exact data rows (Monster frenzy, Baal Corpse Explode client start, `*12` server hit) | `skills.MonFrenzy.srvdofunc` `skills.MonFrenzy.srvstfunc` `skills.BloodLordFrenzy.srvdofunc` `skills.Baal Corpse Explode.cltstfunc` `missiles.royalstrikechainlightning.pSrvHitFunc` `missiles.royalstrikechainlightning.pCltHitFunc` `missiles.boichaosice.pSrvHitFunc` `missiles.boichaosice.pCltHitFunc` |
