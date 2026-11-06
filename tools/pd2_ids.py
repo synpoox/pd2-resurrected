@@ -34,6 +34,13 @@ import re
 from pathlib import Path
 from typing import NamedTuple
 
+
+def toolkit(root: Path) -> Path:
+    """The nearest d2rAI-toolkit beside root or one of its parents (an agent worktree sits deep inside the main
+    checkout), else the one beside root."""
+    return next((p / "d2rAI-toolkit" for p in root.parents if (p / "d2rAI-toolkit" / "modkit").is_dir()),
+                root.parent / "d2rAI-toolkit")
+
 TABLES = ["skills", "states", "itemstatcost", "missiles",  # P2
           # P3: item tables a save or D2R's code reads by row number
           "itemtypes", "uniqueitems", "setitems", "runes", "magicprefix", "magicsuffix", "automagic", "rareprefix",

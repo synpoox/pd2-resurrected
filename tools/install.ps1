@@ -2,16 +2,24 @@
 # project's data into its mods folder. The game must be closed.
 #   powershell -ExecutionPolicy Bypass -File tools\install.ps1 -Game C:\D2RTestSlots\Slot4
 #   powershell -ExecutionPolicy Bypass -File tools\install.ps1 -Game C:\D2RTestSlots\Slot4 -Data tests\game\fixtures\split-throw
+#   powershell -ExecutionPolicy Bypass -File tools\install.ps1 -Game C:\D2RTestSlots\Slot4 -Data . -NoValidate
 #
 # Plugins are game-wide (ADR 0004): <Game>\d2rloader\plugins\. -Data runs `modkit build` and `modkit install` and then
 # puts back each modinfo.json savepath, because modkit install resets it (a slot would otherwise play other saves).
+# -NoValidate builds past modkit's validation errors, as the release workflow does: main still has known ones (#171).
 param(
     [Parameter(Mandatory)] [string]$Game,
     [string]$Data = "",
-    [string]$Toolkit = ""  # d2rAI-toolkit checkout (default: next to this repository)
+    [string]$Toolkit = "",  # d2rAI-toolkit checkout (default: the nearest one beside a parent folder, so worktrees find it)
+    [switch]$NoValidate
 )
 $ErrorActionPreference = 'Stop'
-if (-not $Toolkit) { $Toolkit = Join-Path $PSScriptRoot "..\..\d2rAI-toolkit" }
+if (-not $Toolkit) {
+    $dir = Split-Path $PSScriptRoot -Parent
+    while ($dir -and -not (Test-Path (Join-Path $dir "d2rAI-toolkit\modkit"))) { $dir = Split-Path $dir -Parent }
+    if (-not $dir) { throw "d2rAI-toolkit not found beside any parent folder: pass -Toolkit" }
+    $Toolkit = Join-Path $dir "d2rAI-toolkit"
+}
 $Game = (Resolve-Path $Game).Path
 if (-not (Test-Path (Join-Path $Game "D2R.exe"))) { throw "$Game is not a D2R folder" }
 if (Get-Process D2R, D2RLoader -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($Game, 'OrdinalIgnoreCase') }) {
@@ -36,7 +44,7 @@ if ($Data) {
     foreach ($f in $modinfos) { if (Test-Path $f) { $saved[$f] = (Get-Content $f -Raw | ConvertFrom-Json).savepath } }
     Push-Location $Toolkit
     try {
-        py -3 -m modkit build $Data
+        if ($NoValidate) { py -3 -m modkit build $Data --no-validate } else { py -3 -m modkit build $Data }
         if ($LASTEXITCODE -ne 0) { throw "modkit build failed ($LASTEXITCODE)" }
         py -3 -m modkit --game $Game install $Data
         if ($LASTEXITCODE -ne 0) { throw "modkit install failed ($LASTEXITCODE)" }
