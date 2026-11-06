@@ -226,7 +226,8 @@ With more than one player (`game+0x90`, where values above 8 count as 1), Unique
 The same function rolls the other odds-only TCs: lbox, lpp, rkey, rtp, rid, llmr, lsvl, the Uber Ancients keys, map drops
 in PD2 levels, the map-stat item drops and corrupted-zone maps. Those belong to the map system and the items.
 
-For the port, the Talisman's corrupted-zone condition becomes "in an active Terror Zone" at the same TC ([#153](https://github.com/synpoox/pd2-resurrected/issues/153)).
+For the port, the Talisman's and the Worldstone Shard's corrupted-zone condition becomes "in an active Terror Zone" at
+the same TC ([#153](https://github.com/synpoox/pd2-resurrected/issues/153), [#348](https://github.com/synpoox/pd2-resurrected/issues/348)).
 
 ## 8. Desecration (`0x103961b0`, roll `0x103729e0`)
 

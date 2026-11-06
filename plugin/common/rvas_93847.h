@@ -1017,6 +1017,26 @@ inline constexpr uint64_t UnitMaxLife = 0x2f4d20;  // (unit) -> max life, 1/256
 inline constexpr uint64_t CrushingBlowApplySlot = 0x3e2a448;
 inline constexpr uint32_t MonPrimeEvil = 0x80;  // MonFlags bit 7 (1.13c's D2Common #10278 tests the same bit)
 
+// --- core-maps: the key drop rule (UB2, #348) ----------------------------------------------------------------------
+// Game from a game id: GameById(GameKey(id)); game +0x08 (u16) holds the id back. The server thread walks the same
+// table without a lock (0x406400).
+inline constexpr uint64_t GameKey = 0x4061e0;   // (u16 id) -> key, 0 for an empty slot
+inline constexpr uint64_t GameById = 0x4062f0;  // (key) -> game or null
+inline constexpr int GameIdField = 0x08;
+inline constexpr uint64_t InTerrorZone = 0x489b70;  // (game, level id) -> bool: the level is in the active Terror Zone
+inline constexpr uint64_t PlayerCount = 0x4251e0;   // (game) -> players, at least the /players setting
+inline constexpr uint64_t DataTablesOf = 0x300a90;  // (dataFlag) -> DataTables
+inline constexpr int TablesTcNames = 0xd70;         // TreasureClassEx name map, for TcIndexByName
+inline constexpr uint64_t TcIndexByName = 0xa121f0;  // (name map, name, 0) -> compiled index, > 0 when found
+inline constexpr uint64_t TcRecord = 0x397290;       // (dataFlag, u16 index, 0) -> compiled TreasureClassEx or null
+inline constexpr int TcSet = 0x2a, TcUnique = 0x2c;  // u16 Set / Unique columns
+inline constexpr uint64_t ItemRowByCode = 0x313ef0;  // (dataFlag, u32 code, 'wss ' = 0x20737377) -> items row, < 0 if none
+// (game, unit, items row, quality, set/unique row + 1, flags): drops the item by the unit at its item level, as the TC
+// roller 0x4404f0 does
+inline constexpr uint64_t DropItemAt = 0x444680;
+inline constexpr int32_t QualityNormal = 2;
+inline constexpr uint32_t MonDemon = 0x2000;  // MonFlags bit 13 (monstats field table 0x39db30)
+
 }  // namespace d2r::rva
 
 namespace d2r {

@@ -55,6 +55,7 @@ add_library(core_maps SHARED
 	core-maps/map_open.cpp
 	core-maps/map_stats.cpp
 	core-maps/entity_pool.cpp
+	core-maps/key_drops.cpp
 	core-maps/plugin.rc
 )
 target_link_libraries(core_maps PRIVATE core_common)

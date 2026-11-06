@@ -37,8 +37,8 @@ Out:
   ([ADR 0004](adr/0004-plugins-split-by-multiplayer-scope.md), amended). The boss skill functions already on
   core-rules rows (UberDiabSummon/Run, RathmaSummon, the Lucion kit, the death novas, the bone spear, the uber
   immolation arrow) stay in `core-rules` and are built in the work item of the fight that uses them.
-- **Talisman of Transgression:** PD2's corrupted zones are cut, so it drops from monsters in an active Terror Zone at
-  PD2's `lucc` odds. That is an approximated row.
+- **Talisman of Transgression and Worldstone Shard:** PD2's corrupted zones are cut, so both drop from monsters in an
+  active Terror Zone, at PD2's `lucc` and `Corrupted Zone` odds. That is an approximated row.
 - **Desecration:** made in the cube in the Temple of the Triune, one attempt per Lucion kill. D2R has no Desecration
   panel. The roll stays Exact: 50% at tier 0 and 60% at tiers 1 and 2, PD2's eight-mod pool, and on failure a rare
   that keeps two random corruption mods. Using the cube instead of the panel is an approximated row.

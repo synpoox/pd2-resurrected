@@ -518,6 +518,10 @@ auto OnItemSpawn(Game* game, uint8_t* drop, int32_t arg) noexcept -> Unit* {
 
 }  // namespace
 
+auto MapAreaSlot(Game* game, Unit* unit, int slot) noexcept -> int32_t {
+	return game != nullptr && unit != nullptr && InMapArea(unit) ? AreaSlot(game, slot) : 0;
+}
+
 auto RouteMapStats(Game* game, Unit* item, int32_t level) noexcept -> void {
 	using namespace d2r::rva;
 	if (game == nullptr) {

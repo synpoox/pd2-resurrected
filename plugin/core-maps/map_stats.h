@@ -14,5 +14,7 @@ auto RouteMapStats(d2r::Game* game, d2r::Unit* item, int32_t level) noexcept -> 
 // many were installed.
 auto InstallMapStats(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
 auto MapStatsCount() noexcept -> int;
+// The open map's area slot (PD2's `Divide - 2000`) for a unit in a map area; 0 elsewhere or for none.
+auto MapAreaSlot(d2r::Game* game, d2r::Unit* unit, int slot) noexcept -> int32_t;
 // Live counters for the status command.
 auto MapStatsCounters(char* out, size_t size) noexcept -> void;
