@@ -186,7 +186,9 @@ def item_pictures(art: Path, pd2_data: Path, d2r_data: Path, out_data: Path, use
     Returns {invfile: items.json asset}."""
     dc6, hd, images = pd2_art.modkit()
     classic = Path("global") / "items"
-    names = sorted(n for n in uses if n not in d2r_inv and (pd2_data / classic / f"{n}.dc6").is_file())
+    if not (pd2_data / classic).is_dir():  # #351: else every PD2 picture is silently dropped
+        raise I.IdError(f"{pd2_data / classic}: no item pictures; run tools/pd2_extract.py again")
+    names =sorted(n for n in uses if n not in d2r_inv and (pd2_data / classic / f"{n}.dc6").is_file())
     pal = dc6.palette((d2r_data / "global" / "palette" / "units" / "pal.dat").read_bytes())
     frames = {n: dc6.decode(dc6.read(pd2_data / classic / f"{n}.dc6")[0], pal) for n in names}
     big = pd2_art.upscale(art, {f"items/{n}": f for n, f in frames.items()})
