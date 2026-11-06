@@ -1,0 +1,25 @@
+name: gate
+
+# The table-diff gate (tools/pd2_diff.py, #352) on every PR and push to main. It needs the PD2 install and D2R's tables,
+# which never go to GitHub (ADR 0002), so it runs on the owner's self-hosted runner, as the release does; README.md has
+# the runner setup. PRs from forks don't run here: the runner only builds this repository's own branches.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  table-diff:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, windows, pd2r]
+    env:
+      PYTHONPATH: ${{ vars.D2R_TOOLKIT }}
+      MODKIT_CACHE: ${{ vars.D2R_TOOLKIT }}\d2r-data
+    steps:
+      - uses: actions/checkout@v4
+      - name: Merged data
+        run: |
+          py -3 tools/pd2_extract.py; if ($LASTEXITCODE) { throw "pd2_extract failed" }
+          py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
+      - name: Table-diff gate
+        run: py -3 tools/pd2_diff.py --scope alpha
