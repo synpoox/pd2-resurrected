@@ -42,11 +42,11 @@ class ExtractTests(unittest.TestCase):
 
 
 class MergeTests(unittest.TestCase):
-    def project(self, tmp: Path, stamp: str | None = "B") -> Path:
+    def project(self, tmp: Path, stamp: bytes | None = pd2_extract.stamp(b"B")) -> Path:
         (tmp / "pd2-baseline.json").write_text("B")
         if stamp is not None:
             (tmp / "pd2-data").mkdir()
-            (tmp / "pd2-data" / "baseline.json").write_text(stamp)
+            (tmp / "pd2-data" / "baseline.json").write_bytes(stamp)
         (tmp / "merge").mkdir()
         (tmp / "merge" / "README.md").write_text("notes")
         return tmp
@@ -80,8 +80,9 @@ class MergeTests(unittest.TestCase):
             self.assertEqual(seen, [("ids.json", "data", "data")])
 
     def test_refuses_missing_or_stale_extract_and_unknown_rules(self):
-        for stamp, rule, msg in [(None, None, "no baseline stamp"), ("A", None, "another baseline"),
-                                 ("B", "mystery.json", "no rule kind")]:
+        for stamp, rule, msg in [(None, None, "no baseline stamp"), (pd2_extract.stamp(b"A"), None, "another baseline"),
+                                 (b"B", None, "older pd2_extract"),  # the right baseline, extracted before #351
+                                 (pd2_extract.stamp(b"B"), "mystery.json", "no rule kind")]:
             with self.subTest(msg), tempfile.TemporaryDirectory() as tmp:
                 root = self.project(Path(tmp), stamp)
                 if rule:

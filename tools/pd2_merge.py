@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+import pd2_extract
 import pd2_ids
 import pd2_items
 import pd2_levels
@@ -62,8 +63,10 @@ def merge(root: Path, d2r: Path = D2R_DATA) -> list[str]:
     stamp = pd2 / "baseline.json"
     if not stamp.is_file():
         raise MergeError(f"{pd2} has no baseline stamp: run tools/pd2_extract.py")
-    if stamp.read_bytes() != (root / "pd2-baseline.json").read_bytes():
-        raise MergeError(f"{pd2} was extracted from another baseline: run tools/pd2_extract.py again")
+    baseline = (root / "pd2-baseline.json").read_bytes()
+    if stamp.read_bytes() != pd2_extract.stamp(baseline):
+        why = "an older pd2_extract" if stamp.read_bytes() == baseline else "another baseline"
+        raise MergeError(f"{pd2} was extracted by {why}: run tools/pd2_extract.py again")
     files = sorted(p for p in rules_dir.glob("*") if p.is_file() and p.suffix != ".md") if rules_dir.exists() else []
     unknown = [p.name for p in files if p.name not in RULES]
     if unknown:

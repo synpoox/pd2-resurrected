@@ -4,8 +4,8 @@
 
 Refuses an install whose archives differ from pd2-baseline.json. Writes every file of pd2data.mpq, the skill
 icon sheets, the item pictures, the automap cels and the DT1 tiles of pd2assets.mpq and the DS1 maps of pd2maps.mpq
-(ADR 0002 amendment) to pd2-data/data/... (lower-case paths, forward slashes), then pd2-data/baseline.json last, a
-copy of the baseline it was checked against, which pd2_merge reads to refuse a stale extract.
+(ADR 0002 amendment) to pd2-data/data/... (lower-case paths, forward slashes), then pd2-data/baseline.json last, the
+baseline it was checked against plus EXTRACT, which pd2_merge reads to refuse a stale extract.
 """
 from __future__ import annotations
 
@@ -27,6 +27,12 @@ EXTRACT = {"pd2data.mpq": ["*"],
                              "data/global/items/*.dc6",
                              "data/global/tiles/*.dt1"],
            "pd2maps.mpq": ["data/global/tiles/*.ds1"]}
+
+
+def stamp(baseline: bytes) -> bytes:
+    """pd2-data/baseline.json: the baseline and the patterns, so pd2_merge also refuses an extract EXTRACT has outgrown
+    (a pd2-data/ from before data/global/items/ silently lost every PD2 item picture, #351)."""
+    return baseline + b"\n" + json.dumps(EXTRACT, sort_keys=True).encode()
 
 
 def sha256(path: Path) -> str:
@@ -73,7 +79,7 @@ def extract(install: Path, out: Path, baseline_file: Path) -> int:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(a.read(name))
             count += 1
-    shutil.copyfile(baseline_file, out / "baseline.json")
+    (out / "baseline.json").write_bytes(stamp(baseline_file.read_bytes()))
     print(f"extracted {count} files to {out}")
     return 0
 
