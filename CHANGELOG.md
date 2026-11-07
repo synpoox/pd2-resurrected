@@ -17,6 +17,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 - The mercenary panel shows the mercenary's title (Rogue, Desert Mercenary, Barbarian, Ascendant) instead of
   "an evil force".
+- An item with Druid or Assassin class skills (Hellfire Torch, Spirit Ward) shows the number, e.g.
+  "+2 to Assassin Skill Levels".
 
 ### 0.1.0-alpha (2026-11-05)
 
