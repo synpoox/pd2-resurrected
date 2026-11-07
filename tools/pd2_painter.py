@@ -2,8 +2,8 @@
 set's stock presets place them.
 
 Subtile grid: 5x5 per tile, blocked = DT1 subtile flag bit 0 (Layout.flags). harvest() learns, per stock tree, its
-distance (subtiles) to the nearest blocked subtile and the direction to it (8 buckets), and how far it stood from its
-room's playable ground; paint() puts trees on the subtiles past the playable area, nearest first, the stock spacing apart,
+distance (subtiles) to the nearest blocked subtile, the direction to its room's playable ground (8 buckets) and how far
+it stood from it, so a tree on the path's camera-near side is one stock put there (low foreground trees, #454); paint() puts trees on the subtiles past the playable area, nearest first, the stock spacing apart,
 each copied from a stock tree with the same direction and distance."""
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ TREE = re.compile(r"tree_wall|treewall|treeline|small_cluster|_trees_")  # treel
 SPACING = 9  # subtiles between tree origins when the stock has fewer than two trees
 DEPTH = 30  # paint unreachable ground up to this many subtiles from the playable area
 CAP = 15  # distances to the blocked ground are capped here
+SHADE, SIDE = 15, range(-2, 3)  # a tall tree covers the ground up to 15 subtiles screen-up of it, 2 to either side
 LINE = 10  # wall tiles in an 8-connected group this big are a tree line; smaller groups stand in a clearing
 STEPS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 AROUND = [(i, j) for i in (-1, 0, 1) for j in (-1, 0, 1)]
@@ -44,35 +45,25 @@ def subtiles(tiles) -> set:
     return {(x * 5 + i, y * 5 + j) for x, y in tiles for i in range(5) for j in range(5)}
 
 
-def spread(start, w: int, h: int, depth: int, free=None) -> dict:
-    """BFS distance (subtiles) from `start` over the w x h subtile grid (or only `free`), up to depth."""
-    reach, q = {p: 0 for p in start}, collections.deque(start)
+def nearest(start, w: int, h: int, depth: int) -> tuple[dict, dict]:
+    """For every subtile of the w x h grid up to depth from `start`: the BFS distance and the start subtile reached."""
+    dist, src, q = {b: 0 for b in start}, {b: b for b in start}, collections.deque(start)
     while q:
         p = q.popleft()
-        if reach[p] >= depth:
+        if dist[p] >= depth:
             continue
         for dx, dy in STEPS:
             n = (p[0] + dx, p[1] + dy)
-            if n not in reach and (n in free if free is not None else 0 <= n[0] < w and 0 <= n[1] < h):
-                reach[n] = reach[p] + 1
-                q.append(n)
-    return reach
-
-
-def nearest_blocked(lay) -> tuple[dict, dict]:
-    """For every subtile up to CAP from the blocked ones: the distance and the blocked subtile reached."""
-    blocked = [(x * 5 + k % 5, y * 5 + k // 5) for (x, y), f in lay.flags.items() for k in range(25) if f[k] & 1]
-    dist, src, q = {b: 0 for b in blocked}, {b: b for b in blocked}, collections.deque(blocked)
-    while q:
-        p = q.popleft()
-        if dist[p] >= CAP:
-            continue
-        for dx, dy in STEPS:
-            n = (p[0] + dx, p[1] + dy)
-            if 0 <= n[0] < lay.width * 5 and 0 <= n[1] < lay.height * 5 and n not in dist:
+            if 0 <= n[0] < w and 0 <= n[1] < h and n not in dist:
                 dist[n], src[n] = dist[p] + 1, src[p]
                 q.append(n)
     return dist, src
+
+
+def nearest_blocked(lay) -> dict:
+    """For every subtile up to CAP from the blocked ones: the distance."""
+    blocked = [(x * 5 + k % 5, y * 5 + k // 5) for (x, y), f in lay.flags.items() for k in range(25) if f[k] & 1]
+    return nearest(blocked, lay.width * 5, lay.height * 5, CAP)[0]
 
 
 def bucket(p, s) -> int:
@@ -112,8 +103,8 @@ def harvest(stock) -> tuple[dict, float] | None:
     the stock spacing (median nearest-neighbour, subtiles); None when the stock has no tree."""
     out, gaps = collections.defaultdict(list), []
     for lay, preset in stock:
-        dist, src = nearest_blocked(lay)
-        reach = spread(subtiles(playable(lay)), lay.width * 5, lay.height * 5, 10 ** 6)
+        dist = nearest_blocked(lay)
+        reach, src = nearest(subtiles(playable(lay)), lay.width * 5, lay.height * 5, 10 ** 6)
         pts = []
         for e in preset["entities"]:
             t = transform(e)
@@ -146,9 +137,9 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
     kit, spacing = trees
     play = playable(lay)
     best = subtiles(play)
-    reach = spread(best, lay.width * 5, lay.height * 5, DEPTH)
+    reach, src = nearest(best, lay.width * 5, lay.height * 5, DEPTH)
     keep_off = best | subtiles(skip)
-    dist, src = nearest_blocked(lay)
+    dist = nearest_blocked(lay)
     cand = sorted((p for p, r in reach.items() if r and (p[0] // 5, p[1] // 5) in lay.keys
                    and (p[0] // 5, p[1] // 5) not in skip), key=lambda p: (reach[p], zlib.crc32(f"{seed}:{p}".encode())))
     feet = {}
@@ -164,6 +155,13 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
     def clear(p, o) -> bool:
         return not any((p[0] + dx, p[1] + dz) in keep_off for dx, dz in footprint(o))
 
+    # the camera looks along +x +y: a tall tree here is drawn over the playable ground screen-up of it, and nothing
+    # fades it (its transparency names sealed floor), so only low foreground clusters stand there (#454)
+    near = {p for p in cand if any((p[0] - k + i, p[1] - k - i) in best for k in range(1, SHADE + 1) for i in SIDE)}
+
+    def fits(p, o) -> bool:
+        return o[3] <= reach[p] and (p not in near or "foreground" in (prefab(o[0]) or ""))
+
     def run(sub: dict, singles: dict, grid) -> list:
         ents, cell = [], max(1, int(spacing))
         for p in cand:
@@ -171,7 +169,7 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
             if any(math.dist(p, o) < spacing for gx, gy in AROUND for o in grid[(g[0] + gx, g[1] + gy)]):
                 continue
             b, d = bucket(p, src.get(p)), dist.get(p, CAP)
-            ok = ([o for o in sub.get((b, dd), ()) if o[3] <= reach[p]]  # no closer to the path than the stock tree
+            ok = ([o for o in sub.get((b, dd), ()) if fits(p, o)]  # no closer to the path than the stock tree
                   for dd in sorted(range(CAP + 1), key=lambda dd: abs(dd - d)))
             options = next((oo for oo in ok if oo), None)
             if not options:
@@ -179,7 +177,7 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
             k0 = zlib.crc32(f"{seed}:{p}:t".encode())
             pick = next((o for i in range(len(options)) if clear(p, o := options[(k0 + i) % len(options)])), None)
             if pick is None:  # a band too thin for a tree cluster: a single tree model from the same direction
-                small = [o for o in singles.get(b, ()) if o[3] <= reach[p] and clear(p, o)]
+                small = [o for o in singles.get(b, ()) if fits(p, o) and clear(p, o)]
                 if not small:
                     continue
                 pick = small[k0 % len(small)]

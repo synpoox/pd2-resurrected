@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_presets as P  # noqa: E402
@@ -166,6 +167,7 @@ class LayerTests(unittest.TestCase):
                             stock=[(P.Layout(3, 3, patch), src)])
         self.assertEqual([(e["name"], at(e)) for e in preset["entities"]], [("torch", (34.0, 12.0))])
 
+    @mock.patch.object(P.painter, "SHADE", 0)  # every tree here is camera-near of the path; the next test covers that
     def test_the_painter_plants_trees_only_past_the_path_clusters_then_singles_then_canopy(self):
         blocked = {(x, 5) for x in range(30)}  # a tree line on row 5; rows 0-4 are the path, rows 6-9 outside
 
@@ -209,6 +211,23 @@ class LayerTests(unittest.TestCase):
         self.assertLess(last["single"], first["canopy"])
         self.assertIn(single, [d["path"] for d in preset["dependencies"]["models"]])
         self.assertEqual(preset, P.build(target, strays, "m", "m.ds1", "b.json", TERRAIN, **cluster)[0])
+
+    def test_only_foreground_clusters_stand_on_the_camera_near_side_of_the_path(self):
+        keys = {(x, y): self.F for x in range(8) for y in range(16)}  # rows 0-3 the path, rows 4-15 sealed, south of it
+        lay = P.Layout(8, 16, keys, {c: b"\0" * 25 for c in keys}, frozenset(c for c in keys if c[1] >= 4))
+
+        def tree(prefab):
+            return {"type": "Entity", "name": prefab, "id": 1, "components": [
+                entity(prefab, 0, 0)["components"][0], {"type": "PrefabPlacementDefinitionComponent", "prefab": prefab}]}
+        # trees south of the path: the path is up (bucket 6), no blocked subtile within reach (distance CAP)
+        kit = {(6, P.painter.CAP): [(tree(n), 0.0, 0.0, 0, {}) for n in ("pf_tree_wall01.json",
+                                                                         "pf_tree_wall01_foreground.json")]}
+        painted, _ = P.painter.paint(lay, (kit, 3.0), "m.ds1", set(), lambda path: [(0.0, 0.0)])
+        inner = [e for e, _ in painted if at(e)[0] / 2 >= P.painter.SHADE + 2]  # the path spans all of x up-screen
+        rows = {n: {int(at(e)[1] / 2) - 20 for e in inner if e["name"] == n}
+                for n in ("pf_tree_wall01.json", "pf_tree_wall01_foreground.json")}
+        self.assertTrue(rows["pf_tree_wall01_foreground.json"])
+        self.assertGreater(min(rows["pf_tree_wall01.json"]), P.painter.SHADE)  # subtiles south of the path
 
     def test_a_pasted_rooms_trees_reaching_walkable_floor_are_dropped(self):
         keys = {(x, y): self.F for x in range(4) for y in range(4)}
