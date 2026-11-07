@@ -27,6 +27,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
 - Lucion's death opens a portal to the Temple, ends his adds and drops a Demonic Cube at tiers 1-2.
 - Lucion's death also opens a portal in Harrogath back into his arena.
+- Diablo Clone drops Annihilus, and at tiers 1-2 rolls 1 in 200 for one of PD2's five Dclone uniques.
 - Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
 
 #### Maps
@@ -40,6 +41,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Fixes
 
+- Rathma's portal to Harrogath is gold, and the shard names lose a stray `*/`, as in PD2.
 - Split Throw's weapons show, split and come back to the Barbarian as in PD2.
 - Legacy graphics no longer draws the ground in D2R's own areas as red and cyan noise.
 - Legacy graphics draws PD2's maps (Mesa, Tomb Map, Graveyard Map and others) in their own colours.
