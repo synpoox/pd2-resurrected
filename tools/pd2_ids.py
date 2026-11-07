@@ -124,6 +124,9 @@ ID_COLS = {"levels": "Id", "lvlprest": "Def", "lvlwarp": "UniqueId"}
 # columns a merged D2R row keeps, where the games give them different meanings (objects Token: D2R's graphics; misc
 # spellicon: D2R's cursor for an item spell with a target, which PD2's -1 turns off for identify, #311)
 KEEP_D2R = {"objects": {"Token"}, "misc": {"spellicon"}}
+# columns D2R's file lacks but its loader reads: misc `auto prefix` (the quivers' automagic, UR6) loads at the items
+# record's +0x100, as weapons' and armor's do, since D2R parses all three with one field list (0x315fd0)
+ADD_COLUMNS = {"misc": ["auto prefix"]}
 FORMULAS = {
     "skills": ["prgcalc1", "prgcalc2", "prgcalc3", "auralencalc", "aurarangecalc", *[f"aurastatcalc{i}" for i in range(1, 7)],
                *[f"passivecalc{i}" for i in range(1, 6)], "petmax", *[f"sumsk{i}calc" for i in range(1, 6)], "sumumod",
@@ -382,6 +385,33 @@ def fix_props(header: list[str], row: list[str], ren: dict[str, dict[str, str]],
             row[p + 1], row[p + 2] = mon.get(row[p + 1], row[p + 1]), mon.get(row[p + 2], row[p + 2])
 
 
+# PD2 values no table defines, which D2R's loader refuses (#141): table -> (column, PD2 value) -> the row's new cells.
+# 1.13c finds no row for them (D2Common's loaders read these columns as lookups; a missing string key reads as 5382,
+# "An evil force"), so most keep PD2's behaviour: Deep-Wounds is deep-wounds (lookups ignore case), alternategfx is a
+# 4-byte code (1.13c keeps the first 4 letters), and a skill, stat, sound, overlay or property no table has is no
+# reference. PD2 bugs we fix (docs/pd2-origin-bugs.md): dblue, amu, and the two potions' "An evil force" description.
+_EVIL = {"spelldesc": "", "spelldescstr": ""}  # D2R's own Antidote and Thawing Potion rows have no description
+FIXES = {"magicsuffix": {("itype4", "amu"): {"itype4": "amul"}},
+         "magicprefix": {("transformcolor", "dblue"): {"transformcolor": "dblu"},
+                         ("mod1code", "map-mon-extra-mag"): {"mod1code": "", "mod1min": "", "mod1max": ""}},
+         "misc": {("alternategfx", "bonechips"): {"alternategfx": "bone"},
+                  ("alternategfx", "invmppvp"): {"alternategfx": "invm"},
+                  ("stat1", "dmg-min"): {"stat1": "", "calc1": ""}, ("stat2", "dmg-max"): {"stat2": "", "calc2": ""},
+                  ("spelldescstr", "ItemStatsAnti"): _EVIL, ("spelldescstr", "ItemStatsThaw"): _EVIL},
+         "missiles": {("Skill", "immolationarrow"): {"Skill": ""}, ("Skill", "RadamentUnholyOrb"): {"Skill": ""},
+                      ("HitSound", "firearrow firewall"): {"HitSound": ""}, ("ProgOverlay", "fireexplode"): {"ProgOverlay": ""}}}
+
+
+def fix_row(table: str, header: list[str], row: list[str]) -> list[str]:
+    """A PD2 row with FIXES applied (a copy), and Deep-Wounds in deep-wounds' spelling in any table of item properties."""
+    row = [("deep-wounds" if v.replace('"', "") == "Deep-Wounds" else v) for v in row] if table in PROPS else list(row)
+    for (col, bad), cells in FIXES.get(table, {}).items():
+        if col in header and row[header.index(col)].replace('"', "") == bad:
+            for c, v in cells.items():
+                row[header.index(c)] = v
+    return row
+
+
 def spell(table: str, col: str, v: str, ren: dict[str, dict[str, str]]) -> str:
     """A PD2 cell as the mod's column `col` holds it: quotes gone, references renamed, formulas in D2R's spelling,
     function numbers moved (FUNCS)."""
@@ -430,6 +460,11 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
                 props: dict[str, str] | None = None) -> tuple[Table, list[str]]:
     """The mod's table, and the PD2 columns it drops. ids: table -> {PD2 id: mod id}; props: property code -> the kind
     of row its parameter names (fix_props)."""
+    for c in ADD_COLUMNS.get(table, ()):
+        if c not in d2r.header and c in pd2.header:
+            d2r.header.append(c)
+            for r in d2r.rows:
+                r.append("")
     src: dict[str, int] = {}
     for i, c in enumerate(pd2.header):
         if c:  # an unnamed column (weapons) matches nothing
@@ -438,7 +473,8 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
     cols = [(j, src.get(c.lower(), src.get(cmap.get(c, "").lower()))) for j, c in enumerate(d2r.header)]
     used = {i for _, i in cols if i is not None}
     dropped = [c for i, c in enumerate(pd2.header) if i not in used and c.lower() not in ("id", "eol")]
-    pd2_rows = {p.lower(): [v.replace('"', "") for v in pd2.rows[k]] for p, k in zip(ident(pd2.names()), pd2.records())}
+    pd2_rows = {p.lower(): [v.replace('"', "") for v in fix_row(table, pd2.header, pd2.rows[k])]
+                for p, k in zip(ident(pd2.names()), pd2.records())}
     derived = {d2r.header.index(c): fn for c, fn in DERIVED.get(table, {}).items() if c in d2r.header}
     id_cols = [j for j, c in enumerate(d2r.header) if c.lower() == "*id" or c == ID_COLS.get(table)]
     nums = {j: NUM_REFS[table][c] for j, c in enumerate(d2r.header) if c in NUM_REFS.get(table, {})}
