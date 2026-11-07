@@ -11,12 +11,15 @@
 //   item aura (D2R's item_aura case and tick, fed stat 375), and Phasing SelfAura drops the unit collision bits.
 // - critical and deadly strike (IR3, docs/research/ir3-combat-stats.md): PD2's roll and multipliers in place of
 //   D2R's, in WeaponDamage's roll block (a byte patch calling WeaponStrike) and D2R's missile roll.
-// - op bases, life steal cap and crushing blow (IR3): equipped_eth / missing_hp on D2R's op-base read,
-//   lifedrain_percentcap on D2R's add-life, and PD2's blow in CrushingBlowApply's jump slot.
+// - op bases, life steal cap and crushing blow (IR3): equipped_eth / missing_hp kept as base stats from the stat
+//   callback, lifedrain_percentcap on D2R's add-life, PD2's blow in CrushingBlowApply's jump slot, and its roll on
+//   D2RCore's event dispatch.
 #include "item_rules.h"
 
 #include "d2r.h"
 #include "log.h"
+
+#include <D2RLPlugin/threads.h>
 
 #include <algorithm>
 #include <atomic>
@@ -224,10 +227,22 @@ constexpr uint32_t StatLife = 6;
 constexpr uint32_t StatMaxLife = 7;
 constexpr int32_t BodyLocFirst = 1, BodyLocLast = 10;  // worn; 11 and 12 hold the swapped weapons
 
-std::atomic<uint32_t> g_ethReads {0};
+constexpr uint32_t StatDurability = 72;
 
-using BaseStatFn = int32_t (*)(const uint8_t* statList, uint32_t statLayer, const uint8_t* record) noexcept;
-BaseStatFn g_baseStatOriginal = nullptr;
+std::atomic<uint32_t> g_ethReads {0};
+const D2RL::PluginContext* g_context = nullptr;
+const D2RL::ThreadService* g_threads = nullptr;
+
+// UI thread: the same value on the client's copy of the player, whose tooltips read it (the server never sends it)
+void MirrorOpBase(const D2RL::PluginContext*, void* user) noexcept {
+	const auto packed = reinterpret_cast<uintptr_t>(user);
+	Unit* client = d2r::Engine<Unit* (*)(int32_t, int32_t) noexcept>(d2r::rva::ClientFindUnit)(
+		static_cast<int32_t>(packed >> 32), 0);
+	if (client != nullptr) {
+		d2r::Engine<void (*)(Unit*, uint32_t, int32_t, uint32_t) noexcept>(d2r::rva::SetUnitStat)(
+			client, static_cast<uint32_t>((packed >> 16) & 0xffff), static_cast<int32_t>(packed & 0xffff), 0);
+	}
+}
 
 // The ethereal items a player or monster wears
 auto WornEthereal(Unit* unit) noexcept -> int32_t {
@@ -246,28 +261,42 @@ auto WornEthereal(Unit* unit) noexcept -> int32_t {
 	return count;
 }
 
-// PD2's 0x102fa640: equipped_eth and missing_hp of the statlist's player or monster, else D2R's read.
+// PD2's 0x102fa640 computes equipped_eth and missing_hp where an op base is read. D2RCore's stat code reads op bases
+// itself and never calls D2R's read (0x2f9b10), so core-rules keeps both as the unit's real base stats instead, and
+// D2RCore's op 4 reads them: equipped_eth when the unit's summed durability changes (an item worn or taken off:
+// patches/060-op-base-callbacks.json gives durability and hitpoints fCallback), missing_hp when life or max life does.
+// The server never sends either to the client, so a player's values are mirrored onto its client unit for tooltips.
 // PD2's third case, inc_splash_radius + missing_hp x inc_splash_radius_permissinghp (at most 40), is only reached
 // with inc_splash_radius as an op base, which no stat has: not ported (docs/research/ir3-combat-stats.md).
-auto BaseStat(const uint8_t* statList, uint32_t statLayer, const uint8_t* record) noexcept -> int32_t {
-	const uint32_t stat = statLayer >> 16;
-	if (statList == nullptr || (stat != StatEquippedEth && stat != StatMissingHp)) {
-		return g_baseStatOriginal(statList, statLayer, record);
-	}
-	auto* unit = At<Unit*>(statList, d2r::rva::StatListUnit);
-	const int32_t type = unit != nullptr ? At<int32_t>(unit, d2r::rva::UnitType) : -1;
+// shortcut: an ethereal item without durability (a throwing stack) raises no callback; the count follows at the next
+// item change. Upgrade with an equip hook if one is found.
+auto RefreshOpBase(Unit* unit, uint32_t stat) noexcept -> void {
+	const int32_t type = At<int32_t>(unit, d2r::rva::UnitType);
 	if (type != 0 && type != 1) {
-		return 0;
+		return;
 	}
-	if (stat == StatMissingHp) {
+	int32_t value = 0;
+	if (stat == StatEquippedEth) {
+		value = WornEthereal(unit);
+	} else {
 		const int64_t life = Stat(unit, StatLife), maxLife = Stat(unit, StatMaxLife);
-		return maxLife > 0 ? static_cast<int32_t>((maxLife - life) * 100 / maxLife) : 0;
+		value = maxLife > 0 && life < maxLife ? static_cast<int32_t>((maxLife - life) * 100 / maxLife) : 0;
 	}
-	const int32_t count = WornEthereal(unit);
-	if (plog::Sample(g_ethReads)) {
-		plog::Info("equipped_eth: unit type %d wears %d ethereal, %u reads so far", type, count, g_ethReads.load());
+	if (value == Stat(unit, stat)) {
+		return;
 	}
-	return count;
+	d2r::Engine<void (*)(Unit*, uint32_t, int32_t, uint32_t) noexcept>(d2r::rva::SetUnitStat)(unit, stat, value, 0);
+	if (type == 0 && g_threads != nullptr) {
+		const uintptr_t packed = static_cast<uintptr_t>(At<uint32_t>(unit, d2r::rva::UnitIdField)) << 32 |
+		                         static_cast<uintptr_t>(stat & 0xffff) << 16 | static_cast<uintptr_t>(value & 0xffff);
+		g_threads->runOnUiThread(g_context, MirrorOpBase, reinterpret_cast<void*>(packed));
+	}
+	if (stat == StatEquippedEth) {
+		const uint32_t n = ++g_ethReads;
+		if (n <= 20 || n % 200 == 0) {
+			plog::Info("equipped_eth: unit type %d wears %d ethereal, %u changes so far", type, value, n);
+		}
+	}
 }
 
 // --- Life steal cap (IR3, Nightmare's Feast): lifedrain_percentcap, merged id 541 (PD2's 488) ---
@@ -394,6 +423,64 @@ auto CrushingBlow(Game* game, Unit* unit, Unit* target, d2r::CrushingBlowArgs* a
 		           divisor, efficiency, effectiveness, resist, life, after, n);
 	}
 	return 1;
+}
+
+// PD2's event 16 roll on a hit: item_crushingblow plus its per-hand sum, % 100 on the unit's seed. D2R would roll it
+// from the item's event node (itemeventfunc 16), but that node runs D2RCore's own copy of the event table: D2R's blow
+// (a quarter of a monster's life, less its damage resist), never D2R's event 16 or CrushingBlowApply's slot (seen in
+// game, #446). core-rules hides those nodes from D2RCore's event dispatch for the call (no SDK service reaches it) and
+// rolls PD2's blow itself after it.
+// Smite rolls its own (skill_functions.cpp, srvdo 150) with calc3 added, so a Smite hit gets no second roll.
+constexpr uint32_t StatCrushingBlow = 136;
+constexpr int32_t EventMeleeDamage = 5, EventMissileDamage = 6;
+constexpr int MaxHiddenNodes = 16;  // a unit wears 12 items; more only guards a corrupt chain
+constexpr uint16_t NoEvent = 0xffff;  // no event raises it
+
+std::atomic<uint32_t> g_blowRolls {0};
+
+using DispatchFn = void (*)(Game*, int32_t, Unit*, Unit*, void*, void*) noexcept;
+DispatchFn g_dispatchOriginal = nullptr;
+
+auto DispatchEvent(Game* game, int32_t event, Unit* unit, Unit* target, void* damage, void* list) noexcept -> void {
+	using namespace d2r::rva;
+	if ((event != EventMeleeDamage && event != EventMissileDamage) || game == nullptr || unit == nullptr ||
+	    target == nullptr || damage == nullptr) {
+		g_dispatchOriginal(game, event, unit, target, damage, list);
+		return;
+	}
+	uint8_t* hidden[MaxHiddenNodes];
+	int count = 0;
+	for (auto* node = At<uint8_t*>(unit, UnitEventNodes); node != nullptr && count < MaxHiddenNodes;
+	     node = At<uint8_t*>(node, EventNodeNext)) {
+		if (At<uint16_t>(node, EventNodeEvent) == event && At<int32_t>(node, EventNodeStat) == static_cast<int32_t>(StatCrushingBlow)) {
+			*reinterpret_cast<uint16_t*>(node + EventNodeEvent) = NoEvent;
+			hidden[count++] = node;
+		}
+	}
+	g_dispatchOriginal(game, event, unit, target, damage, list);
+	for (int i = 0; i < count; ++i) {
+		*reinterpret_cast<uint16_t*>(hidden[i] + EventNodeEvent) = static_cast<uint16_t>(event);
+	}
+	const int32_t chance = Stat(unit, StatCrushingBlow) + HandStatSum(unit, StatCrushingBlow);
+	if (chance <= 0 || d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(target) != 0) {
+		return;
+	}
+	void* current = d2r::Engine<void* (*)(Unit*) noexcept>(CurrentSkill)(unit);
+	if (current != nullptr &&
+	    d2r::Engine<int32_t (*)(const void*, const char*, int32_t) noexcept>(UnitSkillId)(current, __FILE__, __LINE__) ==
+	        SkillSmite) {
+		return;
+	}
+	const int32_t roll = static_cast<int32_t>(d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit), 100));
+	const uint32_t n = ++g_blowRolls;
+	if (At<int32_t>(unit, UnitType) == 0 || n <= 20) {
+		plog::Info("crushing blow roll: unit type %d event %d, chance %d roll %d, %d item nodes hidden, %u so far",
+		           At<int32_t>(unit, UnitType), event, chance, roll, count, n);
+	}
+	if (roll < chance) {
+		d2r::CrushingBlowArgs args {damage, {4, 10, 10}, static_cast<uint8_t>(event == EventMissileDamage ? 1 : 0)};
+		CrushingBlow(game, unit, target, &args);
+	}
 }
 
 // --- Curses: curse resistance and max curses (docs/research/ir4-curses.md) ---------------------------------------
@@ -687,6 +774,18 @@ auto SetPhasing(Unit* unit, bool on) noexcept -> void {
 	           want, ++g_phasing);
 }
 
+// The game the last durability callback came from; a session change discards the queued recounts with it
+Game* g_ethGame = nullptr;
+
+void RecountEthereal(const D2RL::PluginContext*, void* user) noexcept {
+	const auto key = reinterpret_cast<uintptr_t>(user);
+	Unit* unit = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::rva::FindUnit)(
+		g_ethGame, static_cast<int32_t>(key >> 32), static_cast<uint32_t>(key));
+	if (unit != nullptr) {
+		RefreshOpBase(unit, StatEquippedEth);
+	}
+}
+
 using StatCallbackFn = uint64_t (*)(Game* game, Unit* unit, Unit* item, uint64_t statLayer, int32_t oldValue,
                                     int32_t newValue) noexcept;
 
@@ -695,8 +794,29 @@ using StatCallbackFn = uint64_t (*)(Game* game, Unit* unit, Unit* item, uint64_t
 auto EquipStatCallback(Game* game, Unit* unit, Unit* item, uint64_t statLayer, int32_t oldValue, int32_t newValue) noexcept
 	-> uint64_t {
 	const auto original = d2r::Engine<StatCallbackFn>(d2r::rva::StatCallback);
-	if ((statLayer >> 32) != static_cast<uint64_t>(StatSkillOnEquip)) {
-		return original(game, unit, item, statLayer, oldValue, newValue);
+	const uint64_t stat = statLayer >> 32;
+	if (unit != nullptr && stat == StatDurability) {  // fCallback only for the op bases: D2R has no case
+		// Counted at the next game update: while the callback runs, an item being taken off still sits in its slot
+		g_ethGame = game;
+		const uintptr_t key = static_cast<uintptr_t>(At<uint32_t>(unit, d2r::rva::UnitType)) << 32 |
+		                      At<uint32_t>(unit, d2r::rva::UnitIdField);
+		if (g_threads == nullptr ||
+		    g_threads->runOnGameThread(g_context, RecountEthereal, reinterpret_cast<void*>(key)) !=
+		        D2RL::Threads::Result::Success) {
+			RefreshOpBase(unit, StatEquippedEth);
+		}
+		return 0;
+	}
+	if (unit != nullptr && stat == StatLife) {
+		RefreshOpBase(unit, StatMissingHp);
+		return 0;
+	}
+	if (stat != static_cast<uint64_t>(StatSkillOnEquip)) {
+		const uint64_t result = original(game, unit, item, statLayer, oldValue, newValue);
+		if (unit != nullptr && stat == StatMaxLife) {
+			RefreshOpBase(unit, StatMissingHp);
+		}
+		return result;
 	}
 	const uint32_t layer = static_cast<uint32_t>(statLayer);
 	const uint64_t result = original(game, unit, item, (static_cast<uint64_t>(StatItemAura) << 32) | layer, oldValue,
@@ -825,6 +945,11 @@ auto HandStatSum(Unit* unit, uint32_t stat) noexcept -> int32_t {
 
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
+	g_context = context;
+	if (context->QueryService(&g_threads) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasThreadServiceField(g_threads, D2RL::ThreadServiceRequiredSize)) {
+		g_threads = nullptr;  // the server stats still work; only the client's tooltips miss them
+	}
 	static constexpr uint8_t Empty[8] = {};
 	using PropertyFn = int32_t (*)(uint8_t, uint32_t, uint64_t, Unit*, const void*, uint8_t, uint16_t, uint16_t,
 	                               int32_t, uint32_t, uint32_t, uint64_t) noexcept;
@@ -838,8 +963,12 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                              critPatch, sizeof(critPatch));
 	const bool missileStrike = context->InstallInlineHook(MissileCritRoll, MissileCritRollEntry,
 	                                                      sizeof(MissileCritRollEntry), MissileStrike, &g_missileRollOriginal);
-	const bool baseStat = context->InstallInlineHook(StatListBaseStat, StatListBaseStatEntry,
-	                                                 sizeof(StatListBaseStatEntry), BaseStat, &g_baseStatOriginal);
+	// D2RCore's event dispatcher is in the slot; the wrapper calls it
+	g_dispatchOriginal = *reinterpret_cast<DispatchFn const*>(d2r::imageBase + EventDispatchSlot);
+	const uint64_t dispatchSlot = reinterpret_cast<uint64_t>(g_dispatchOriginal);
+	const bool blowRoll = dispatchSlot != 0 &&
+	                      context->PatchWriteU64(EventDispatchSlot, &dispatchSlot, sizeof(dispatchSlot),
+	                                             reinterpret_cast<uint64_t>(static_cast<DispatchFn>(DispatchEvent)));
 	const bool lifeCap = context->InstallInlineHook(AddLife, AddLifeEntry, sizeof(AddLifeEntry),
 	                                                CappedAddLife, &g_addLifeOriginal);
 	// The slot holds whatever the image or D2RCore put there; PD2's blow replaces it whole, so it is not kept
@@ -856,13 +985,13 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                                      sizeof(StatCallbackInitEntry), EquipStatCallbackInit,
 	                                                      &g_statCallbackInitOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
-	              "op bases%s; life steal cap%s; crushing blow%s; curses%s; skill on equip%s", PropertySlot,
-	              property ? "" : " FAILED (slot not empty)",
+	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s",
+	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
-	              baseStat ? "" : " FAILED (bytes differ)", lifeCap ? "" : " FAILED (bytes differ)",
+	              blowRoll ? "" : " FAILED (slot write)", lifeCap ? "" : " FAILED (bytes differ)",
 	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
 	              equip ? "" : " FAILED (bytes differ)");
-	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (baseStat ? 1 : 0) +
+	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0);
 }
 
@@ -873,9 +1002,9 @@ auto ItemRuleCount() noexcept -> int {
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "ormus rolls %u, strike rolls %u, crits %u, "
-	              "deadly strikes %u, equipped_eth reads %u, life steal cap checks %u (blocked %u), crushing blows %u, "
-	              "curses %u, resisted %u, gated %u, skill on equip changes %u, ticks %u, phasing %u",
-	              g_rolls.load(), g_strikeRolls.load(), g_crits.load(),
-	              g_deadlyStrikes.load(), g_ethReads.load(), g_capChecks.load(), g_capBlocks.load(), g_blows.load(),
+	              "deadly strikes %u, equipped_eth changes %u, life steal cap checks %u (blocked %u), crushing blow rolls %u, "
+	              "crushing blows %u, curses %u, resisted %u, gated %u, skill on equip changes %u, ticks %u, phasing %u",
+	              g_rolls.load(), g_strikeRolls.load(), g_crits.load(), g_deadlyStrikes.load(), g_ethReads.load(),
+	              g_capChecks.load(), g_capBlocks.load(), g_blowRolls.load(), g_blows.load(),
 	              g_curses.load(), g_curseResisted.load(), g_curseGate.load(), g_equipCallbacks.load(), g_equipTicks.load(), g_phasing.load());
 }

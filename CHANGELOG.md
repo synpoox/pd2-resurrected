@@ -7,6 +7,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Items
 
+- Item crushing blow rolls on normal hits, and Purgatory gains damage per worn ethereal item, as in PD2.
 - Spear and two-hand masteries boost crits and crushing blow, and Smite's crushing blow hits harder, as in PD2.
 - Ethereal items get Project Diablo II's +25% defense or damage, not +50%.
 - Items follow PD2 more closely: ethereal durability, rare affixes, mercenary gear drops, Tome of Identify, skill on cast/block.
