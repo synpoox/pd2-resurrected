@@ -24,6 +24,7 @@ private-multiplayer release a build may break characters; each break is noted he
 #### Uber bosses
 
 - Uber Mephisto, Diablo and Baal summon PD2's minions: skeletons, Pit Lords, vampires and wraiths.
+- Uber Mephisto's Conviction and Uber Baal's Lower Resist work as in PD2.
 - PD2's new monsters (Lucion, Na-Krul, Iskatu and others) finish their attacks and casts and keep fighting.
 - The Pandemonium Talisman opens Uber Tristram at the Blood Fountain, like the other uber keys.
 - Cubing the three Pandemonium keys in Hell opens a red portal to a mini-uber area again.
