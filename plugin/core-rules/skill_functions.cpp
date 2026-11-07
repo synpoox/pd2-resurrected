@@ -15,6 +15,7 @@
 #include "skill_functions.h"
 
 #include "d2r.h"
+#include "item_rules.h"
 #include "log.h"
 #include "missile_functions.h"
 
@@ -3492,8 +3493,9 @@ thread_local int32_t t_smiteLevel = 0;
 
 using AuraEventFn = int32_t (*)(Game*, int32_t, Unit*, Unit*, void*, int32_t, int32_t) noexcept;
 
-// PD2's event 16 on Smite: one roll a hit with the crushingblow stat plus calc3, on the damage block before D2R applies
-// it, as a domeleedamage event runs. CrushingBlowApply's slot holds PD2's blow (item_rules.cpp), without calc4.
+// PD2's event 16 on Smite: one roll a hit with the crushingblow stat, its per-hand sum and calc3, on the damage block
+// before D2R applies it, as a domeleedamage event runs. CrushingBlowApply's slot holds PD2's blow (item_rules.cpp,
+// with Smite's calc4).
 // shortcut: if D2R also rolls item crushing blow inline (outside the dump), a Smite hit rolls the item's chance twice;
 // upgrade if the game check shows more blows than crushingblow + calc3 allows.
 void SmiteCrushingBlow(Game* game, Unit* unit, Unit* target, uint8_t* damage, int32_t level) noexcept {
@@ -3502,7 +3504,7 @@ void SmiteCrushingBlow(Game* game, Unit* unit, Unit* target, uint8_t* damage, in
 	                                  unit, StatCrushingBlow, 0),
 	                              0);
 	const int32_t calc3 = skill != nullptr ? d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc3, SkillSmite, level) : 0;
-	const int32_t chance = stat + calc3;
+	const int32_t chance = stat + HandStatSum(unit, StatCrushingBlow) + calc3;
 	const int32_t roll = chance > 0 ? static_cast<int32_t>(
 	                                      d2r::Roll(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(d2r::rva::UnitSeed)(unit)) % 100)
 	                                : 100;
