@@ -23,6 +23,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Fixes
 
+- The Ascendant mercenary equips staves only, as in PD2.
 - The mercenary panel shows the mercenary's title instead of "an evil force".
 - PD2's own items (Worldstone Shards, maps, PD2 uniques) show on the ground in HD again.
 - Legacy graphics shows PD2's own missiles again (Holy Nova and others).

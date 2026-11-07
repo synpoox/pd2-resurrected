@@ -23,7 +23,7 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
   hand-picked list for the other 24; shared overlay rows keep D2R's `Character` folder; PD2's 33 new overlays get a
   copied D2R json as stand-in. Both get an approximated row. If nothing is invisible, [UR2](https://github.com/synpoox/pd2-resurrected/issues/200) closes with no code.
 - **The Ascendant is in the alpha ([UR3](https://github.com/synpoox/pd2-resurrected/issues/201)).** PD2's Act 4 hireling (ids 30-35, Dark and Light) and its second Rogue Scout
-  set (ids 36-38) move to new hireling ids from 39, with `WType` (engine code), the `hiredesc` strings and the `$2`
+  set (ids 36-38) move to new hireling ids from 39, with `WType` (D2R's monstats arm item types, [#270](https://github.com/synpoox/pd2-resurrected/issues/270)), the `hiredesc` strings and the `$2`
   monster's HD model. [UR3](https://github.com/synpoox/pd2-resurrected/issues/201) first proves ids 39+ load, hire and survive a save and load; if they don't, the Ascendant
   becomes a cut row.
 - **PD2's 30 voice and effect WAVs are converted ([UR8](https://github.com/synpoox/pd2-resurrected/issues/206))**, all in one item, after a one-file WAV-as-FLAC test under
