@@ -20,6 +20,10 @@ Duplicated prefix (map_glob_extra_boss): `cheat spawn t25,typ m,pre 843,inv 0`, 
 enter the red portal and go to the Sewer Boss (SewerBoss; sewermap1-3.ds1 place it at subtile 399,311, 419,109 or
 54,334 of the level). Then:
   py testing/game_checks.py run core-maps --slot N --path <repo>/tests/game --module core_maps_checks
+
+Added group check (MS4 slot 3, #219): the same setup, then a Sewers of Harrogath map with the Ghastly prefix
+(map_glob_add_mon_ghost, wraithMapMod 1128): `cheat spawn t25,typ m,pre 785,inv 0`. Clear packs in the map until about
+40 have spawned (the group weighs 1 of 10), then run the same command.
 """
 import os
 import re
@@ -92,3 +96,19 @@ def extra_boss_spawn(ctx):
     boss, level = spawns[0]
     assert 138 <= int(level) <= 201, f"extra boss in level {level}, outside the map areas"
     return f"monster {boss} spawned twice in level {level}"
+
+
+@check("added-group-spawn", tags=["core-maps"])
+def added_group_spawn(ctx):
+    """A map with map_glob_add_mon_* (area slot 3) spawned a monster of the added group."""
+    log = _log(ctx)
+    added = re.findall(r"map area: level (\d+) adds monster (\d+) as group", log)
+    if not added:
+        ctx.skip("no map with an added monster group opened yet")
+    # the plugin logs each monster kind once per game run, so match the id only
+    first = set(re.findall(r"map stats: first monster (\d+) in level", log))
+    missing = sorted({m for _, m in added} - first)
+    if missing and len(first) < 8:
+        ctx.skip(f"only {len(first)} monster kinds seen yet (clear more packs, then run again)")
+    assert not missing, f"added monster never spawned: {missing}"
+    return ", ".join(f"monster {m} in level {lv}" for lv, m in added)
