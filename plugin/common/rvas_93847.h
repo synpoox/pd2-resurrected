@@ -1132,6 +1132,21 @@ inline constexpr uint32_t UnitNoDrop = 0x20000;
 // its count at +0x198.
 inline constexpr uint64_t ActSpawnSpot = 0x2ef8b0;
 inline constexpr int GameActs = 0x190, GameActCount = 0x198;
+// --- core-maps: the Outer Void's in-level portals (MS7c, #532; D2Common Drlg) -------------------------------------
+// Decompiled for #532 (Ghidra, D2R.gpr): the steps ActSpawnSpot's 0x3da650 takes from a level id to a room. Called,
+// not hooked. (dataFlag, act +0x70, level id) -> the act's level (made if missing); (dataFlag, level) builds its rooms
+// when level +0x10 (the first room ex) is null; (level, tile x, tile y) -> the room ex holding the tile; (dataFlag, room
+// ex) -> its room, made if needed. A level's origin is in tiles at +0x24/+0x28.
+inline constexpr int ActDrlg = 0x70;
+inline constexpr uint64_t LevelGet = 0x3267c0;
+inline constexpr uint64_t LevelBuild = 0x3271c0;
+inline constexpr uint64_t LevelRoomExAt = 0x3275b0;
+inline constexpr uint64_t RoomExRoom = 0x3289a0;
+inline constexpr int LevelFirstRoomEx = 0x10, LevelTileX = 0x24, LevelTileY = 0x28;
+// (game, unit, room, x, y, 0, 0): moves the unit to a free spot by x/y in room, as WarpToLevel does in its own act
+inline constexpr uint64_t TeleportUnit = 0x491ca0;
+// A room preset's subtile offsets from the room's RoomX/RoomY, as PresetSpawn reads them
+inline constexpr int PresetX = 0x8, PresetY = 0x24;
 
 // --- core-rules: the ethereal bonus (IR8, #243) --------------------------------------------------------------------
 // (item): sets the ethereal flag, then base stats times 3/2 (1.13c's D2Common #10890, which PD2 replaces with

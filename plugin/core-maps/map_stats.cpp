@@ -11,6 +11,7 @@
 
 #include "log.h"
 #include "uber_scaling.h"
+#include "unique_maps.h"
 
 #include <intrin.h>
 
@@ -560,6 +561,10 @@ constexpr int16_t ExtraBossIds[] = {
 // is one of the map bosses spawns a second time. No PluginSDK service spawns or reports room presets, so this hooks
 // D2R's preset spawn (rva::PresetSpawn).
 auto OnPresetSpawn(Game* game, void* room, const uint8_t* preset) noexcept -> void {
+	if (game != nullptr && room != nullptr && preset != nullptr &&
+	    OuterVoidPreset(game, room, const_cast<uint8_t*>(preset), g_presetSpawnOriginal)) {
+		return;
+	}
 	g_presetSpawnOriginal(game, room, preset);
 	using namespace d2r::rva;
 	if (game == nullptr || room == nullptr || preset == nullptr || At<int32_t>(preset, PresetType) != UnitMonster) {
