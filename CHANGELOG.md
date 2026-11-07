@@ -33,6 +33,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Fixes
 
+- In legacy graphics mode, the ground in D2R's own areas no longer draws as red and cyan noise.
 - The mercenary panel shows the mercenary's title (Rogue, Desert Mercenary, Barbarian, Ascendant) instead of
   "an evil force".
 - In legacy graphics mode, PD2's own missiles show again: Holy Nova, and the other missiles that used PD2-only art.
