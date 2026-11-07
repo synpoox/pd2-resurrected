@@ -40,6 +40,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
 - Map events Shadow of Mendeln, Dark Wanderer and Treasure Fallen spawn in tiered maps, as in PD2.
+- Shadow of Mendeln's Nihlathak sends mob waves, then casts his death nova and dies, as in PD2.
 - A dungeon or unique map's area stats (density, rarity, added monsters) now apply on all of its levels.
 - Wooded PD2 maps draw HD tree borders, and D2R-tile maps use whole D2R rooms.
 - Eight more PD2 maps, among them Ashen Plains and Descent, draw walls and props in HD.
