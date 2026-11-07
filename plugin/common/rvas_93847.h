@@ -1178,6 +1178,7 @@ inline constexpr uint64_t AiOverseer = 0x5c2290;  // row 120's think (Lucion, #4
 // think reads them
 inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;
 inline constexpr int MonAiDist = 0x8d;  // uint8 aidist, then (N) and (H) (monstats field table 0x39db30)
+
 // --- core-maps: the Temple's chests (UB6, #438; D2Game\src\Objects\ObjMode.cpp) ------------------------------------
 // Decompiled for #438 (Ghidra, D2R.gpr). One operate table slot wrapped (rva::ObjectOperateTable).
 // D2R's chest operate (OperateFn 4): mode 0 only; it sets mode 1 with event 1 at the open frames (or mode 2), plays
