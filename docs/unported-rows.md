@@ -23,7 +23,7 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
   hand-picked list for the other 24; shared overlay rows keep D2R's `Character` folder; PD2's 33 new overlays get a
   copied D2R json as stand-in. Both get an approximated row. If nothing is invisible, [UR2](https://github.com/synpoox/pd2-resurrected/issues/200) closes with no code.
 - **The Ascendant is in the alpha ([UR3](https://github.com/synpoox/pd2-resurrected/issues/201)).** PD2's Act 4 hireling (ids 30-35, Dark and Light) and its second Rogue Scout
-  set (ids 36-38) move to new hireling ids from 39, with `WType` (engine code), the `hiredesc` strings and the `$2`
+  set (ids 36-38) move to new hireling ids from 39, with `WType` (D2R's monstats arm item types, [#270](https://github.com/synpoox/pd2-resurrected/issues/270)), the `hiredesc` strings and the `$2`
   monster's HD model. [UR3](https://github.com/synpoox/pd2-resurrected/issues/201) first proves ids 39+ load, hire and survive a save and load; if they don't, the Ascendant
   becomes a cut row.
 - **PD2's 30 voice and effect WAVs are converted ([UR8](https://github.com/synpoox/pd2-resurrected/issues/206))**, all in one item, after a one-file WAV-as-FLAC test under
@@ -38,12 +38,13 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
     depends on. `checkfunc` folds into D2R's itype columns if every value matches what they allow; `general` is cut if
     only the UI reads it.
   - [UR5](https://github.com/synpoox/pd2-resurrected/issues/203) finds D2R's own values for the uber and ultra code odds and `HireableBossDamagePercent` in Ghidra. A rule whose
-    value equals PD2's is cut; the others are hooked.
+    value equals PD2's is cut; the others are hooked. Both were cut: D2R's `MercenaryDamagePercentVSBoss` matches, and
+    the code odds never act in PD2 (`docs/deviations.md`).
   - [UR6](https://github.com/synpoox/pd2-resurrected/issues/204) rolls the quivers' `auto prefix` groups (321-326) through an item-spawn hook. Moving the quivers to another
     table would break their item type.
   - Folded into existing rows, with no item of their own: missile `Qty` and `SpecialSetup` and the throwing potions'
-    `spelldesc` go to "Throwing potions" ([IR5](https://github.com/synpoox/pd2-resurrected/issues/240)); missile `LevRange` goes to the class or map row that owns each missile;
-    `immed` on PD2's three states goes to phasing ([IR7](https://github.com/synpoox/pd2-resurrected/issues/242)).
+    `spelldesc` go to "Throwing potions" ([IR5](https://github.com/synpoox/pd2-resurrected/issues/240)); missile `LevRange` goes to the class or map row that owns each missile.
+    States `immed` is cut: PD2's loader never reads it ([#342](https://github.com/synpoox/pd2-resurrected/issues/342), [states-immed](research/states-immed.md)).
 - **Cut, in one docs item ([UR1](https://github.com/synpoox/pd2-resurrected/issues/199)).** Columns that are empty in PD2 or set only on rows both games share: the skill event
   columns, `blue`, `itemspecific`, `Divide`, the S12/S13 save widths, the affix and rare price columns, itemtypes
   `Charm`, `Gem` and `CostFormula`, the qualityitems classic columns, and the empty or shared-only armor, misc,
