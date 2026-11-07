@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cheat Commands · D2RLoader</title>
+<style>
+:root{
+  --bg:#090806; --panel:#17120e; --panel2:#211912; --line:#5b3a1e;
+  --gold:#d6a84a; --gold2:#f0cf75; --text:#e9dfca; --muted:#a99a82;
+  --red:#9d2b20; --red2:#d85b3d; --shadow:rgba(0,0,0,.65);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; color:var(--text); background:
+  radial-gradient(ellipse at top, #332217 0%, transparent 42%),
+  linear-gradient(135deg, rgba(80,40,15,.12) 25%, transparent 25%) 0 0/8px 8px,
+  var(--bg);
+  font-family: Georgia, "Times New Roman", serif;
+}
+body:before{
+  content:""; position:fixed; inset:0; pointer-events:none; opacity:.12;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E");
+}
+header{
+  padding:42px 22px 28px; text-align:center; border-bottom:1px solid #6f4822;
+  background:linear-gradient(#24170fdd,#0d0a08e8);
+  box-shadow:0 8px 30px var(--shadow);
+}
+.eyebrow{letter-spacing:.28em;text-transform:uppercase;color:var(--muted);font-size:.72rem}
+h1{
+  margin:10px 0 4px; color:var(--gold2); font-size:clamp(2rem,5vw,4.2rem);
+  letter-spacing:.06em; text-transform:uppercase; text-shadow:0 3px 0 #3b1c0d, 0 0 18px #b56c1e88;
+}
+.subtitle{color:#c8b18a;font-size:1rem}
+.container{max-width:1300px;margin:auto;padding:22px}
+.toolbar{
+  position:sticky;top:0;z-index:5;display:flex;gap:12px;flex-wrap:wrap;
+  padding:14px;margin:0 0 18px;background:#100c09ee;border:1px solid var(--line);
+  box-shadow:0 5px 18px var(--shadow);backdrop-filter:blur(5px)
+}
+input,button{
+  border:1px solid #795027;background:#1d150f;color:var(--text);
+  font:inherit;padding:11px 13px;border-radius:3px
+}
+input{flex:1;min-width:220px}
+input:focus{outline:1px solid var(--gold);box-shadow:0 0 10px #d6a84a44}
+button{cursor:pointer;color:var(--gold2)}
+button:hover{background:#332115}
+.stats{margin-left:auto;color:var(--muted);align-self:center;font-size:.9rem}
+.table-wrap{overflow:auto;border:1px solid var(--line);box-shadow:0 8px 25px var(--shadow)}
+table{width:100%;border-collapse:collapse;min-width:760px;background:#120e0b}
+thead th{
+  position:sticky;top:0;background:linear-gradient(#4a2c16,#2a190e);
+  color:var(--gold2);text-align:left;padding:14px 15px;border-bottom:2px solid #98652b;
+  text-transform:uppercase;letter-spacing:.12em;font-size:.78rem
+}
+tbody tr{border-bottom:1px solid #3a2718}
+tbody tr:nth-child(even){background:#18110d}
+tbody tr:hover{background:#2b1b10}
+td{padding:13px 15px;vertical-align:top;line-height:1.45}
+td.command{width:22%;color:#f1c96b;font-family:"Courier New",monospace;font-weight:bold;white-space:pre-wrap}
+td.args{width:25%;color:#c5b08d;font-family:"Courier New",monospace;font-size:.9rem;white-space:pre-wrap}
+td.desc{color:#e1d6c0}
+.copy{
+  float:right;opacity:0;transition:.15s;padding:3px 7px;font-size:.72rem;
+  border:1px solid #6e4825;background:#24170e;color:var(--gold2)
+}
+tr:hover .copy{opacity:1}
+.empty{text-align:center;padding:45px;color:var(--muted);display:none}
+footer{text-align:center;color:#766650;padding:28px;font-size:.8rem}
+@media(max-width:700px){
+  .container{padding:12px}.toolbar{top:0}
+  td{padding:11px 10px}
+  .stats{width:100%;margin-left:0}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow"></div>
+  <h1>Cheat Commands</h1>
+  <div class="subtitle">For D2RLoader</div>
+</header>
+
+<main class="container">
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="Search commands, arguments, or descriptions…" aria-label="Search commands">
+    <button id="clear" type="button">Clear</button>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Command</th><th>Arguments</th><th>Description</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="empty">No commands match your search.</div>
+  </div>
+</main>
+<footer></footer>
+
+<script>
+const commands = [{"command": "bug", "arguments": "<summary>", "description": "Legacy bug-report helper: captures a JPEG screenshot and bundles it with the supplied summary."}, {"command": "verifyitems", "arguments": "—", "description": "Logs all known item units with code/name, ids, mode, owner, NPC owner, and hand/owner state."}, {"command": "debugpanel", "arguments": "—", "description": "Toggles Blizzard's debug registry, initializing its mode-specific entries when enabled and clearing them when disabled."}, {"command": "log", "arguments": "—", "description": "Toggles Blizzard's AllLog window/open flag."}, {"command": "itemspawnlevel", "arguments": "<level>", "description": "Sets the global default item-spawn level; accepts 1 through 120."}, {"command": "isl", "arguments": "<level>", "description": "Alias for itemspawnlevel."}, {"command": "clearinventory", "arguments": "—", "description": "Removes carried/equipped items through native item-location validation and destruction."}, {"command": "cli", "arguments": "—", "description": "Alias for clearinventory."}, {"command": "savecheatitems", "arguments": "<0|1>", "description": "Sets whether cheat-spawned items remain saveable; prefer the ImGui Cheat Settings toggle."}, {"command": "experience", "arguments": "<amount>", "description": "Adds the signed amount to the player's Experience stat."}, {"command": "waypoints", "arguments": "—", "description": "Unlocks every valid waypoint row for the current game version/difficulty."}, {"command": "ospawn", "arguments": "<Objects.txt row|name>[,<count>] [@ <x>,<y>]", "description": "Spawns a valid Objects.txt row at the selected location; names are resolved to rows and count defaults to 1."}, {"command": "mspawn", "arguments": "<MonStats.Id|row>[,<count>[,<ai>]] [@ <x>,<y>]", "description": "Spawns monsters using an exact MonStats.Id or numeric row id."}, {"command": "stat", "arguments": "<statName>,<amount>", "description": "Sets an ItemStatCost stat with layer/parameter 0; HP/mana stats 6–9 are shifted by 8."}, {"command": "sklvl", "arguments": "<skillName>,<level>", "description": "Looks up a skill by name and sets/adds it at the requested level."}, {"command": "skadd", "arguments": "<skillName>[,<level>]", "description": "Looks up a skill, adds it, and optionally sets its level."}, {"command": "skdel", "arguments": "<skillName>", "description": "Looks up a skill and sends the native level-0 delete update."}, {"command": "fstorm", "arguments": "—", "description": "Creates 25 hard-coded Firestorm-style missile/effect units in a 5×5 pattern around the player."}, {"command": "pcloud", "arguments": "—", "description": "Creates 49 hard-coded poison-cloud missile/effect units in a 7×7 pattern around the player."}, {"command": "sockets", "arguments": "<0-6>", "description": "Sets the forced socket count for newly generated eligible items."}, {"command": "ethereal", "arguments": "<0|1>", "description": "Toggles the forced ethereal override for newly generated eligible items."}, {"command": "nameit", "arguments": "—", "description": "Marks matching inventory items personalized and copies the player's name onto them."}, {"command": "testtreasure", "arguments": "mon=<id>,num=<count>[,...]", "description": "Runs treasure-drop tests, optionally dumps treasure records, and writes tab-separated results to a file."}, {"command": "uniques", "arguments": "[destroy,][start][,end]", "description": "Spawns forced unique items over an optional UniqueItems range."}, {"command": "sets", "arguments": "[!setIndex|destroy,][start][,end]", "description": "Spawns forced set items over an optional SetItems range."}, {"command": "champions", "arguments": "—", "description": "Toggles forced champion modifiers for eligible monsters."}, {"command": "expansion", "arguments": "<0|1|2>", "description": "WARNING: appears to persistently change character version on save; 0=Classic, 1=LoD, 2=RotW."}, {"command": "durability", "arguments": "<amount>", "description": "Sets carried inventory-grid item durability, clamped by max durability."}, {"command": "quantity", "arguments": "<amount>", "description": "Sets carried stack quantity, clamped by max stack size, and sends an update."}, {"command": "maxvar", "arguments": "<amount>", "description": "Stores the item-roll test maximum variance value."}, {"command": "findaffixes", "arguments": "<name>", "description": "Finds exact case-insensitive magic affix name matches and reports ids/levels."}, {"command": "testmagicsuffixes", "arguments": "<start>[,<end>]", "description": "Creates magic test items using suffix indexes start+1 through exclusive end."}, {"command": "testmagicprefixes", "arguments": "<start>[,<end>]", "description": "Creates magic test items using prefix indexes start+1 through exclusive end."}, {"command": "spawnallmisc", "arguments": "—", "description": "Spawns every misc item at the default item-spawn level."}, {"command": "objectstats", "arguments": "—", "description": "Reports per-group object placement attempts plus room failure and no-object totals."}, {"command": "spawnallweapons", "arguments": "—", "description": "Spawns every weapon item at the default item-spawn level."}, {"command": "spawnallarmor", "arguments": "—", "description": "Spawns every armor item at the default item-spawn level."}, {"command": "debugbreak", "arguments": "—", "description": "Legacy debugger trap: immediately executes an int3 breakpoint."}, {"command": "objectpopulate", "arguments": "<count>", "description": "Populates nearby room objects when count is in the valid object-row range."}, {"command": "objectdensity", "arguments": "<density>", "description": "Sets object population density; accepts byte values 31–127."}, {"command": "objectgroup", "arguments": "<group>", "description": "Sets/populates the current room's object group when group is positive."}, {"command": "normalitemsonly", "arguments": "<0|1>", "description": "Toggles normal-quality-only item generation."}, {"command": "lowqualityitemsonly", "arguments": "<0|1>", "description": "Toggles low-quality-only item generation."}, {"command": "hiqualityitemonly", "arguments": "<0|1>", "description": "Toggles superior/high-quality-only item generation."}, {"command": "sio", "arguments": "<0|1>", "description": "Toggles set-only item generation."}, {"command": "uio", "arguments": "<0|1>", "description": "Toggles unique-only item generation."}, {"command": "mio", "arguments": "<0|1>", "description": "Toggles magic-only item generation."}, {"command": "rio", "arguments": "<0|1>", "description": "Toggles rare-only item generation."}, {"command": "invincible", "arguments": "<0|1>", "description": "Sets the raw player no-damage/invincibility helper."}, {"command": "mongod", "arguments": "<0|1>", "description": "Sets the monster receive-no-damage flag."}, {"command": "monfreeze", "arguments": "<0|1>", "description": "Sets the monster freeze flag."}, {"command": "monai", "arguments": "[0-3]", "description": "Sets AI debug mode to 0–3, or toggles between 0 and 1 without an argument."}, {"command": "rain", "arguments": "<0|1>", "description": "Sends the client weather/debug packet; only first char 1 enables rain."}, {"command": "goto", "arguments": "<level>[,<x>[,<y>]]", "description": "Warps to a level by name/id, optionally resolving the room from x/y."}, {"command": "spawn", "arguments": "<code>[,<option>...]", "description": "Spawns items by Inventory.txt code; supports num, qty, lvl, nid, typ, pre/suf, seeds, inv, and spc."}, {"command": "spawnmode", "arguments": "—", "description": "Sets native spawn-mode so subsequent cheat input is parsed directly as item-spawn arguments."}, {"command": "multiunique", "arguments": "<count>", "description": "Stores the duplicate-unique allowance used by item uniqueness tests."}, {"command": "diabloclone", "arguments": "—", "description": "Reads Diablo Clone/world-event state and forwards it to the event update helper."}, {"command": "idall", "arguments": "—", "description": "Identifies carried inventory items in native inventory modes 1 or 3."}, {"command": "object", "arguments": "<objectId> [@ <x>,<y>]", "description": "Clamps the selected spawn location to a valid nearby room and spawns one object by id."}, {"command": "monster", "arguments": "[player] [dead] <monster|!id|unique:id|super:id|form:id> [@ <x>,<y>]", "description": "Spawns monsters with player/dead and unique/super/form test branches."}, {"command": "mspawnwithstats", "arguments": "<monster>[;option...][;stat=value...] [@ <x>,<y>]", "description": "Spawns custom-stat monster/dummy tests."}, {"command": "gold", "arguments": "<amount>", "description": "Adds signed gold, normalizing through native cap/validity checks when needed."}, {"command": "spawngoldpiles", "arguments": "<count>", "description": "Spawns count gold piles with hard-coded amount 100."}, {"command": "Player", "arguments": "<a|b|d|i|n|p|s|w>", "description": "Legacy player class/test helper."}, {"command": "playerspawn", "arguments": "<a|b|d|i|n|p|s|w>", "description": "Runs the native player-spawn test near player x+5/y."}, {"command": "spawnrand", "arguments": "<a|h|l|m|r|s|u>", "description": "Spawns a random item category: any, high, low, magic, rare, set, or unique."}, {"command": "freeze", "arguments": "<0|1|2>", "description": "Sets the global freeze mode to 0, 1, or 2."}, {"command": "item", "arguments": "<miscId>", "description": "Looks up a decimal misc.txt row id and prints item code/name."}, {"command": "allskills", "arguments": "<count>", "description": "Repeats the all-skills grant helper count times."}, {"command": "skillpoints", "arguments": "<amount>", "description": "Grants unspent skill points when amount is positive."}, {"command": "skillbonus", "arguments": "<amount>", "description": "Applies an item-style all-skills stat bonus and sends a stat update."}, {"command": "resetskills", "arguments": "—", "description": "Calls the native player skill reset helper."}, {"command": "resetstats", "arguments": "—", "description": "Calls the native player stat reset helper."}, {"command": "skillmax", "arguments": "<skillId> <maxLevel>", "description": "Writes a new Skills.txt max level when valid and maxLevel > 20."}, {"command": "questdebug", "arguments": "<0|1>", "description": "Legacy raw quest debug toggle."}, {"command": "save", "arguments": "<anything>", "description": "Saves all players when any non-empty argument is supplied."}, {"command": "easykill", "arguments": "<0|1>", "description": "Toggles the native kill-cheat flag."}, {"command": "nokillbydamage", "arguments": "<0|1>", "description": "Toggles the raw no-kill-by-damage debug flag."}, {"command": "nogethit", "arguments": "<0|1>", "description": "Toggles the raw no-get-hit reaction debug flag."}, {"command": "questcontrol", "arguments": "<command>", "description": "Runs the raw quest debug/control parser; e.g. a5q6, e4, xN."}, {"command": "quests", "arguments": "—", "description": "Completes quest progress through Act 5 Quest 6 for the current difficulty."}, {"command": "texttest", "arguments": "—", "description": "Sends a fixed test server-system-message packet to the client."}, {"command": "questalert", "arguments": "—", "description": "Legacy quest alert test scheduling a delayed SCMD_QUESTALERT notification."}, {"command": "plants", "arguments": "<0|1>", "description": "Calls the plant/object decoration helper."}, {"command": "video", "arguments": "<id>", "description": "Sends a video/cinematic id to the client helper."}, {"command": "level", "arguments": "<level>", "description": "Raises the player up to the class-clamped level through level-up side effects."}, {"command": "stamina", "arguments": "—", "description": "Sets the infinite stamina cheat flag."}, {"command": "god", "arguments": "[0|1]", "description": "Sets player no-damage, stamina cheat, and mana cheat; no argument toggles."}, {"command": "speedup", "arguments": "<amount>", "description": "Sets VelocityPercent, AttackRate, and FasterCastRate to amount."}, {"command": "attackinfo", "arguments": "<level>", "description": "Sets the Combat Log attack-info debug level."}, {"command": "statsup", "arguments": "—", "description": "Runs the stat-up helper for stats 0–3 using 25% of stat 4."}, {"command": "itemgridclear", "arguments": "[bodyLocation]", "description": "Removes inventory-mode 0 items, optionally filtered by body location."}, {"command": "itemgroundclear", "arguments": "—", "description": "Legacy raw handler that removes nearby ground items."}, {"command": "corpseclear", "arguments": "—", "description": "Legacy raw handler that removes nearby corpses/dead-unit test data."}, {"command": "pickup", "arguments": "—", "description": "Attempts native pickup for nearby room item units."}, {"command": "endinteraction", "arguments": "—", "description": "Calls the native end-interaction helper with zeroed interaction arguments."}, {"command": "ear", "arguments": "—", "description": "Spawns a PvP ear item near the player's position."}, {"command": "questfx", "arguments": "<0-19>", "description": "Plays quest effect ids 0–19."}, {"command": "townshrine", "arguments": "—", "description": "Toggles a debug flag forcing subsequently initialized shrines to type 17."}, {"command": "hireup", "arguments": "<xp>", "description": "Adds parsed experience to the player's mercenary."}, {"command": "hirelevel", "arguments": "<level>", "description": "Sets/raises mercenary level; valid range 1–98."}, {"command": "killme", "arguments": "—", "description": "Kills the player unit through the native unit death helper."}, {"command": "killhirable", "arguments": "—", "description": "Finds and kills the player's mercenary."}, {"command": "killmonster", "arguments": "—", "description": "Finds a nearby monster and kills it."}, {"command": "shrine", "arguments": "<id> [@ <x>,<y>]", "description": "Spawns object id 86, maps/clamps shrine type, and attaches Shrines.txt data."}, {"command": "cubestuff", "arguments": "<recipe> [@ <x>,<y>]", "description": "Legacy raw recipe-input spawner at the selected location."}, {"command": "cubemake", "arguments": "<recipe>[,<count>]", "description": "Creates Horadric Cube recipe output items directly; refuses recipes manipulating inputs."}, {"command": "deadfill", "arguments": "—", "description": "Spawns dead-unit test data in a 20×20 square around the player."}, {"command": "serverstate", "arguments": "—", "description": "Broadcasts raw cheat state lines: cheats enabled, spawn mode, and save-cheat-items."}, {"command": "setdupeall", "arguments": "—", "description": "Walks duplicate-eligible inventory items and marks/fixes them as duplicated."}, {"command": "nominions", "arguments": "<count>", "description": "Sets the no-minions override and records whether the previous override was nonzero."}, {"command": "resetnominions", "arguments": "—", "description": "Restores the saved 0-or-1 no-minions state."}, {"command": "fakehostile", "arguments": "<0|1>", "description": "Sets the fake-hostile warning flag."}, {"command": "widgetdebug", "arguments": "<0|1>", "description": "Sets the widget placement helper flag."}, {"command": "mapdebug", "arguments": "<0|1>", "description": "Sets the automap tile highlight/debug flag."}, {"command": "inifussanimreplay", "arguments": "—", "description": "Sets the Scroll of Inifuss animation replay flag."}, {"command": "clearspritecache", "arguments": "<0|1>", "description": "Sets the clear-sprite-cache flag."}, {"command": "advancedstatsdebug", "arguments": "—", "description": "Toggles advanced-stat tooltip debug lines."}, {"command": "useoscursor", "arguments": "<0|1>", "description": "Sets the OS cursor fallback flag."}, {"command": "crash", "arguments": "—", "description": "Calls the native intentional crash helper."}, {"command": "vfxlabels", "arguments": "<0|1>", "description": "Passes the parsed value to the VFX label toggle/helper."}, {"command": "vfxslowmissile", "arguments": "<0|1>", "description": "Sets the raw slow-missile VFX debug flag."}, {"command": "setmaxmana", "arguments": "<amount>", "description": "Sets MaxMana to amount << 8, then fills current Mana to the new max."}, {"command": "depletemana", "arguments": "<amount>", "description": "Sets current Mana to amount << 8, clamped between 0 and max Mana."}, {"command": "setmana", "arguments": "<amount>", "description": "Alias for depletemana."}, {"command": "depletehealth", "arguments": "<amount>", "description": "Sets current HitPoints to amount << 8, clamped between 0 and max HitPoints."}, {"command": "sethealth", "arguments": "<amount>", "description": "Alias for depletehealth."}, {"command": "heal", "arguments": "—", "description": "Legacy raw heal helper: sets current HitPoints to max HitPoints."}, {"command": "seed", "arguments": "<seed>", "description": "Sets game initSeed via atoi(arg), then writes the player save to a local buffer."}, {"command": "perfteststart", "arguments": "<type>", "description": "Legacy performance-test helper: starts capture and passes the raw argument pointer."}, {"command": "perfteststop", "arguments": "—", "description": "Legacy performance-test helper: stops/finalizes capture."}, {"command": "camerashakestart", "arguments": "<0|1>", "description": "Sets the raw camera-shake debug flag."}, {"command": "monsterinfo", "arguments": "<0|1>", "description": "Sets target/monster debug tooltip output."}, {"command": "pathcorrections", "arguments": "<0|1>", "description": "Sets the raw path-correction debug output flag."}, {"command": "debugdamage", "arguments": "<damage>[,<type>[,<flags>]]", "description": "Applies parsed debug damage/type/flags to the player/current unit."}, {"command": "debugdamageunit", "arguments": "<unitType>,<unitId>[,<damage>[,<type>[,<flags>]]]", "description": "Finds a server unit by type/id and applies debug damage; damage defaults to 13."}, {"command": "desecrate", "arguments": "<level>[,<param1>...[,<flag>]]", "description": "Builds debug level/encounter settings when needed, then starts a Desecrate encounter."}, {"command": "treasureinfo", "arguments": "[level]", "description": "Stores treasure-drop info level or clears the override with no argument."}, {"command": "maxMissileDamage", "arguments": "<0|1>", "description": "Clears min-missile override and sets max-missile damage rolls from atoi(arg) != 0."}, {"command": "minMissileDamage", "arguments": "<0|1>", "description": "Clears max-missile override and sets min-missile damage rolls from atoi(arg) != 0."}, {"command": "skillTestCleanup", "arguments": "—", "description": "Removes current-room units/items matched by the skill-test cleanup filter."}, {"command": "chronicleFill", "arguments": "[percent]", "description": "Runs unique, runeword, and set Chronicle discovery fillers."}, {"command": "chronicleFillUniques", "arguments": "[percent]", "description": "Marks unique Chronicle entries discovered with optional percent chance."}, {"command": "chronicleFillSets", "arguments": "[percent]", "description": "Marks set Chronicle entries discovered with optional percent chance."}, {"command": "chronicleFillRunewords", "arguments": "[percent]", "description": "Marks runeword/rune Chronicle entries discovered with optional percent chance."}, {"command": "chronicleWipe", "arguments": "—", "description": "Calls the client Chronicle wipe/reset helper."}, {"command": "chronicleRemoveUnique", "arguments": "<uniqueId>", "description": "Sends a Chronicle remove request for unique discovery type 1."}, {"command": "chronicleRemoveSet", "arguments": "<setId>", "description": "Sends a Chronicle remove request for set discovery type 0."}, {"command": "chronicleRemoveRune", "arguments": "<runeId>", "description": "Sends a Chronicle remove request for rune/runeword discovery type 2."}, {"command": "setbinddemonchance", "arguments": "<chance>", "description": "Stores the raw Bind Demon chance override value."}, {"command": "heraldsettokens", "arguments": "<tokens>", "description": "Sets Herald tokens, clamped to the current cap."}, {"command": "heraldspawn", "arguments": "<monsterId>", "description": "Validates level/monster state and spawns a Herald monster at the player."}, {"command": "setheraldtier", "arguments": "<tier>", "description": "Clamps tier to 1..current Herald tier cap and writes it to the game field."}, {"command": "treasureroller", "arguments": "mon=<id>,rol=<rolls>,ech=<echo>[,...]", "description": "Runs controlled treasure-roll tests and stores per-client roller results."}, {"command": "stashfill", "arguments": "[count]", "description": "Asynchronously fills stash space with random valid stashable weapon/armor items."}, {"command": "stashwipe", "arguments": "[stashIndex]", "description": "Clears body-location 4 items, then wipes all or one 1-based advanced stash proxy."}];
+
+const rows = document.getElementById('rows');
+const search = document.getElementById('search');
+const clear = document.getElementById('clear');
+const stats = document.getElementById('stats');
+const empty = document.getElementById('empty');
+
+function esc(value){
+  return String(value).replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[c]));
+}
+function render(){
+  const q = search.value.trim().toLowerCase();
+  const filtered = commands.filter(x =>
+    [x.command, x.arguments, x.description].some(v => v.toLowerCase().includes(q))
+  );
+  rows.innerHTML = filtered.map((x, i) => `
+    <tr>
+      <td class="command">${esc(x.command)}
+        <button class="copy" title="Copy command" data-copy="${esc(x.command.split(/\s+/)[0])}">Copy</button>
+      </td>
+      <td class="args">${esc(x.arguments)}</td>
+      <td class="desc">${esc(x.description)}</td>
+    </tr>`).join('');
+  stats.textContent = `${filtered.length} of ${commands.length} commands`;
+  empty.style.display = filtered.length ? 'none' : 'block';
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(btn.dataset.copy);
+      const old = btn.textContent; btn.textContent = 'Copied';
+      setTimeout(() => btn.textContent = old, 900);
+    });
+  });
+}
+search.addEventListener('input', render);
+clear.addEventListener('click', () => { search.value=''; render(); search.focus(); });
+render();
+</script>
+</body>
+</html>
