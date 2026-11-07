@@ -22,6 +22,7 @@ private-multiplayer release a build may break characters; each break is noted he
   rules (no mercenary, summons or buffs), and heals the boss by 20% of its life. The uber areas have no waypoint.
 - Uber fight monsters scale with the key's tier, as in PD2.
 - Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
+- Uber Tristram's last prime drops the Hellfire Torch and Black Soulstone and opens a town portal.
 
 #### Maps
 

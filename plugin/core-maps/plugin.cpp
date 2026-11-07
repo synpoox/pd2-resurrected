@@ -17,6 +17,7 @@
 #include "map_stats.h"
 #include "off_switch.h"
 #include "rathma.h"
+#include "uber_tristram.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -91,6 +92,7 @@ Part g_parts[] = {
 	{"stats", InstallStats, ""},
 	{"pool", InstallPool, ""},
 	{"keys", InstallKeys, ""},
+	{"trist", InstallTristram, ""},
 };
 
 void InstallParts(const D2RL::PluginContext* context) noexcept {
@@ -144,6 +146,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	RathmaCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	TristramCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;

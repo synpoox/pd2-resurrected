@@ -12,6 +12,7 @@
 #include "log.h"
 #include "map_stats.h"
 #include "rathma.h"
+#include "uber_tristram.h"
 
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle_events.h>
@@ -124,6 +125,7 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	}
 	g_deaths.fetch_add(1, std::memory_order_relaxed);
 	RathmaDeath(game, monster);
+	TristramDeath(game, monster);
 	const uint32_t difficulty = event->difficulty < 3 ? event->difficulty : 2;
 	const int32_t players = d2r::Engine<int32_t (*)(Game*) noexcept>(PlayerCount)(game);
 	const int64_t mult = MapAreaSlot(game, monster, SkirmishSlot) != 0 ? 2 : 1;

@@ -57,6 +57,7 @@ add_library(core_maps SHARED
 	core-maps/entity_pool.cpp
 	core-maps/key_drops.cpp
 	core-maps/rathma.cpp
+	core-maps/uber_tristram.cpp
 	core-maps/uber_scaling.cpp
 	core-maps/plugin.rc
 )

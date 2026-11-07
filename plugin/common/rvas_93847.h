@@ -1059,6 +1059,15 @@ inline constexpr uint64_t DropItemAt = 0x444680;
 inline constexpr int32_t QualityNormal = 2;
 inline constexpr uint32_t MonDemon = 0x2000;  // MonFlags bit 13 (monstats field table 0x39db30)
 
+// --- core-maps: the Uber Tristram primes' drop (UB3, #228; D2Game\src\Quests\QuestsFX.cpp) --------------------------
+// D2R's own drop on the primes' deaths (1.13c 0x6fd0aa30): it flags 704/705/709 dead in the game and, once all three
+// are, drops the Hellfire Torch and a Standard of Heroes per player. The unique-monster death switch 0x4a1480 tail-calls
+// it (0x4a1645). The patch makes it return at once, as PD2 replaces it with its own drop (0x10377710).
+inline constexpr uint64_t PrimesDrop = 0x5a8450;
+inline constexpr uint8_t PrimesDropD2R[] = {0x48, 0x89, 0x5c, 0x24, 0x20};  // mov [rsp+20],rbx
+inline constexpr uint8_t PrimesDropOff[] = {0xc3, 0x90, 0x90, 0x90, 0x90};  // ret
+static_assert(sizeof(PrimesDropD2R) == sizeof(PrimesDropOff));
+
 }  // namespace d2r::rva
 
 namespace d2r {
