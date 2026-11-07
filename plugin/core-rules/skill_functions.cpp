@@ -547,6 +547,7 @@ constexpr uint16_t BlockerMask = 0x80d;
 constexpr int32_t BlockerReach = 25;
 std::atomic<uint32_t> g_blockerChecks {0};
 std::atomic<uint32_t> g_blockerRefusals {0};
+std::atomic<uint32_t> g_blockersSeen {0};  // checks that found a blocker nearby
 
 // a strictly between b and c
 constexpr auto Between(int32_t a, int32_t b, int32_t c) noexcept -> bool {
@@ -629,9 +630,11 @@ auto BlockedByBlocker(Unit* unit, void* room, int32_t sx, int32_t sy, int32_t tx
 	if (!refused && nearest[2] != nullptr && d2r::UnitXY(nearest[2], &bx, &by)) {  // y: a line across y
 		refused = Within(by, sy, ty) && std::abs(bx - sx) < BlockerReach && walled();
 	}
-	const uint32_t checks = g_blockerChecks.fetch_add(1) + 1;
 	g_blockerRefusals.fetch_add(refused ? 1 : 0);
-	if (plog::Sample(g_blockerChecks) || refused) {
+	const bool seen = nearest[0] != nullptr || nearest[1] != nullptr || nearest[2] != nullptr;
+	const bool firstSeen = seen && plog::Sample(g_blockersSeen);
+	if (plog::Sample(g_blockerChecks) || refused || firstSeen) {  // Sample counts the check
+		const uint32_t checks = g_blockerChecks.load();
 		plog::Info("teleport 3: level %d, %d,%d -> %d,%d, blockers xy %d x %d y %d (nearest %d/%d/%d): %s "
 		           "(%u checks, %u refused)",
 		           levelId, sx, sy, tx, ty, nearest[0] != nullptr, nearest[1] != nullptr, nearest[2] != nullptr,
