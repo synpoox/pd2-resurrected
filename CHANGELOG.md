@@ -30,6 +30,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - The mercenary panel shows the mercenary's title (Rogue, Desert Mercenary, Barbarian, Ascendant) instead of
   "an evil force".
 - In legacy graphics mode, PD2's own missiles show again: Holy Nova, and the other missiles that used PD2-only art.
+- Charged potions and other PD2-only items show their own pictures, in HD and legacy, instead of a hand axe.
 - An item with Druid or Assassin class skills (Hellfire Torch, Spirit Ward) shows the number, e.g.
   "+2 to Assassin Skill Levels".
 
