@@ -54,6 +54,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - The Outer Void has PD2's three random bosses, and its portals lead deeper, then home with uber parts.
 - Monsters in maps can drop unique maps, and Horazon has a 10% chance to drop one, as in PD2.
 - Fortified maps no longer double key and unique map rolls on map bosses, as in PD2.
+- A map event's spawn sends PD2's notify line ("Evil beckons you from the Void...") in red chat.
 - Fortified, drop-bonus and item-drop maps give their extra and stat drops on kills, as in PD2.
 - Map tooltips show the map's tier, and map stats read without raw format codes.
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
