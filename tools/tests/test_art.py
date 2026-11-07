@@ -149,6 +149,18 @@ class HdPictureTests(unittest.TestCase):
             rin = {"normal": "pd2/invrin2", "uber": "pd2/invrin2", "ultra": "pd2/invrin2"}
             self.assertEqual(files["sets.json"], [{"gift": rin}])
 
+    def test_a_new_weapon_with_a_pd2_picture_does_not_borrow_the_tables_first(self):
+        # #364: v0.1.0-alpha had no PD2 pictures, so Charged Potion (tpls, invlps) fell back to weapons' first, a hand axe
+        with tempfile.TemporaryDirectory() as tmp:
+            hd = Path(tmp)
+            (hd / "items.json").write_text(json.dumps([{"hax": {"asset": "axe/hand_axe"}}]))
+            (hd / "uniques.json").write_text("[]")
+            (hd / "sets.json").write_text("[]")
+            pd2 = {"weapons": table("name|code|type|invfile\nHand Axe|hax|axe|invhax\nTPot|tpls|tpot|invlps\n", "code")}
+            d2r = {"weapons": table("name|code|type|invfile\nHand Axe|hax|axe|invhax\n", "code")}
+            items = M.hd_items(hd, pd2, d2r, [], [], {"invlps": "pd2/invlps"})["items.json"]
+            self.assertEqual(items[1], {"tpls": {"asset": "pd2/invlps"}})
+
 
 if __name__ == "__main__":
     unittest.main()
