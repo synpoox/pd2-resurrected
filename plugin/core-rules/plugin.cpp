@@ -8,6 +8,7 @@
 
 #include "crash_guard.h"
 #include "cube_rules.h"
+#include "cube_stacks.h"
 #include "d2r.h"
 #include "item_rules.h"
 #include "log.h"
@@ -72,6 +73,12 @@ void InstallCube(const D2RL::PluginContext* context, char* report, size_t size) 
 	std::snprintf(report, size, "%d/%d installed: %s", installed, CubeRuleCount(), rules);
 }
 
+void InstallStacks(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallCubeStacks(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
+}
+
 void InstallMercs(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
 	const int installed = InstallMercRules(context, rules, sizeof(rules));
@@ -89,6 +96,7 @@ Part g_parts[] = {
 	{"items", InstallItems, ""},
 	{"mercs", InstallMercs, ""},
 	{"cube", InstallCube, ""},
+	{"stacks", InstallStacks, ""},
 	{"loot", InstallLoot, ""},
 };
 
@@ -137,6 +145,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	CubeRuleCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	CubeStackCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	LootRuleCounters(line, sizeof(line));
