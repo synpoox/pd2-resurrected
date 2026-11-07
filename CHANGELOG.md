@@ -17,6 +17,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - The Horadric Cube has PD2's 4x4 grid.
 - Stacks in the inventory, cube and stash show their quantity on the picture, as in PD2 (tomes excepted).
 - Curses follow PD2's duration resistance (75 cap on players), land on attracted units, and fail when fully resisted.
+- Ctrl+left-clicking a held stack onto a stack of the same item adds one item to it, as in PD2.
 - of Anima rolls on amulets, cold prefixes tint items dark blue, and potion texts are fixed.
 
 #### Uber bosses
