@@ -1,13 +1,15 @@
 // PD2's map events that open areas (MS9; docs/research/pd2-map-system-dll.md, section 4). So far Horazon
 // (ProjectDiablo.dll 0x10377ca0): when `summonerMap` dies in a tiered map, a red portal opens where it fell, to a random
 // tiered map of its level's tier or the next (never its own level), with the open map's area stats; and it drops maps:
-// from "Map Tier 1", "Map Tier 2" and "Map Tier 3" 3/2/1 picks in a tier-1 map, 1/3/2 in tier 2, 1/2/3 in tier 3.
+// from "Map Tier 1", "Map Tier 2" and "Map Tier 3" 3/2/1 picks in a tier-1 map, 1/3/2 in tier 2, 1/2/3 in tier 3; and
+// once the portal is open, 10% for a unique map (key_drops.cpp's DropUniqueMap).
 //
 // PD2 0x103760a0 tests the dying monster's level against its three tier sets (0x105deb18, 0x105debf4, 0x105deb08), and
 // the handler pools the matching set and the next. The trigger is the SDK's monster-death listener; the portal pair
 // and the TC drop are engine calls, as no SDK service makes either.
 #include "event_portals.h"
 
+#include "key_drops.h"
 #include "log.h"
 #include "map_events.h"
 #include "map_stats.h"
@@ -167,10 +169,14 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 		*opened() += 1;
 		plog::Info("horazon: died in level %d (tier %d), red portal to level %d (%u)", event->levelId, tier + 1, level,
 		           ++g_portals);
+		// PD2 rolls rand() % 10 < 1 for 0x10381510, the unique map drop, once the portal is open
+		if (d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(monster), 10) == 0) {
+			plog::Info("horazon: 10%% unique map roll hit");
+			DropUniqueMap(game, monster);
+		}
 	} else {
 		plog::Warn("horazon: no portal from level %d to %d (%u failed)", event->levelId, level, ++g_failed);
 	}
-	// shortcut: PD2's 10% call of 0x10381510 (one of eight item drops, not read) is left out (docs/deviations.md)
 	const int32_t dropped = DropMaps(game, monster, killer, tier);
 	g_drops += static_cast<uint32_t>(dropped);
 	plog::Info("horazon: %d map picks dropped", dropped);
