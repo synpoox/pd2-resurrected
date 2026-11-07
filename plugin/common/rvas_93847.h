@@ -907,10 +907,11 @@ inline constexpr int GameCounters = 0x1aac8;
 inline constexpr uint64_t QuestFlag = 0x325c50;
 inline constexpr int PlayerQuests = 0x40;
 inline constexpr uint64_t ClientMessage = 0x491960;  // (player, message, player); 0x15 is "can't do that"
-// (game, const char text[256], colour): a chat line (packet 0x26, type 1, no sender) to every client of the game
-// (game +0x138, through 0x477a30, which breaks on text over 255 bytes). It copies all 256 bytes. The debug commands'
-// "Warping to level" (0x402820) use it with colour 2. Called, not hooked.
-inline constexpr uint64_t GameChat = 0x4016c0;
+// (*(game + GameClients), packet): sends a chat packet 0x26 (type at +1, unit type +3, unit id +4, colour +8, name
+// at +10 up to 60 bytes, text at +0x47 up to 255) to the game's clients; it breaks on longer text. D2R's own
+// GameChat (0x4016c0, the debug commands' "Warping to level") sends type 1 with unit type 2, which the client drops
+// (#520); type 4 or unit type 0 shows. Called, not hooked.
+inline constexpr uint64_t SendChat = 0x477a30;
 
 // --- core-maps: opening an uber fight (UB2, #227; D2Game\src\Game\Clients.cpp) ----------------------------------
 // Decompiled for #227 (Ghidra, D2R.gpr). Called, not hooked.
@@ -1150,6 +1151,14 @@ inline constexpr int32_t QualityNormal = 2;
 inline constexpr int GameUniquesDropped = 0x3638;
 inline constexpr uint32_t MonDemon = 0x2000;  // MonFlags bit 13 (monstats field table 0x39db30)
 
+// --- core-maps: the Uber Tristram primes' drop (UB3, #228; D2Game\src\Quests\QuestsFX.cpp) --------------------------
+// D2R's own drop on the primes' deaths (1.13c 0x6fd0aa30): it flags 704/705/709 dead in the game and, once all three
+// are, drops the Hellfire Torch and a Standard of Heroes per player. The unique-monster death switch 0x4a1480 tail-calls
+// it (0x4a1645). The patch makes it return at once, as PD2 replaces it with its own drop (0x10377710).
+inline constexpr uint64_t PrimesDrop = 0x5a8450;
+inline constexpr uint8_t PrimesDropD2R[] = {0x48, 0x89, 0x5c, 0x24, 0x20};  // mov [rsp+20],rbx
+inline constexpr uint8_t PrimesDropOff[] = {0xc3, 0x90, 0x90, 0x90, 0x90};  // ret
+static_assert(sizeof(PrimesDropD2R) == sizeof(PrimesDropOff));
 // --- core-maps: Lucion's death (UB6, #231; D2Game\src\Skills\Skills.cpp, D2Game\src\Player\PlayerPets.cpp) --------
 // Decompiled for #231 (Ghidra, D2R.gpr). Called, not hooked.
 // The portal maker is rva::PortalMaker (MS9's block below; #231 found the same 0x432ce0): with arg 9 0 it finds a free

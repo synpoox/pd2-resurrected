@@ -26,6 +26,7 @@
 #include "prime_minions.h"
 #include "rathma_ai.h"
 #include "rathma.h"
+#include "uber_tristram.h"
 #include "uber_drops.h"
 #include "unique_maps.h"
 
@@ -151,6 +152,7 @@ Part g_parts[] = {
 	{"mapevents", InstallMapEventsPart, ""},
 	{"pool", InstallPool, ""},
 	{"keys", InstallKeys, ""},
+	{"trist", InstallTristram, ""},
 	{"lucion", InstallLucionPart, ""},
 	{"primes", InstallPrimes, ""},
 	{"temple", InstallTempleChests, ""},
@@ -226,6 +228,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	RathmaCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	TristramCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	EventPortalsCounters(line, sizeof(line));

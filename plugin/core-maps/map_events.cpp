@@ -4,13 +4,13 @@
 // forced). The event spawns as the map's rooms activate (0x1036fef0), once the level's progress, rooms activated x
 // 100 / PD2's room count for the level, is far enough; it spawns at the activating room's centre.
 //
-// This slice spawns the events made of one monster: Shadow of Mendeln once, Dark Wanderer and Treasure Fallen up to
-// three times. The others are rolled and logged but spawn nothing yet: Gheed, Altar of the Catalyst and Spire of
-// Darkness (MS8), Horazon and Void/Tomb (MS9), the invaders (MS10).
+// This slice spawns Shadow of Mendeln and Gheed once (Gheed with an event marker object), Dark Wanderer and Treasure
+// Fallen up to three times. The others are rolled and logged but spawn nothing yet: Altar of the Catalyst and Spire
+// of Darkness (MS8), Horazon and Void/Tomb (MS9), the invaders (MS10).
 //
 // Each spawn sends the event's notify string to every player as a red chat line (#336; PD2 0x1037dbc0, packet 0x26
-// colour 1). The SDK's localization service gives the text; no SDK service sends a chat line, so it goes through
-// D2R's server chat broadcast (rva::GameChat).
+// type 4, colour 1). The SDK's localization service gives the text; no SDK service sends a chat line, so it goes
+// through D2R's chat packet sender (rva::SendChat).
 //
 // No PluginSDK service reports a room activating, so this hooks D2R's room monster spawn (rva::RoomPopulate), the
 // function PD2 wraps. The event and the counts live in D2R's per-game counters (rva::GameCounter), so a new game
@@ -27,6 +27,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <iterator>
 
 namespace {
@@ -54,7 +55,10 @@ constexpr int32_t Draws[12] = {0, Mendeln, Horazon, 0, DarkWanderer, TreasureFal
                                Tomb};
 // The events' monsters, PD2 922 nihlathakMap, 921 darkwandererMap and 945 treasurefallenMap in port monstats ids
 constexpr int32_t MendelnMonster = 939, DarkWandererMonster = 938, TreasureFallenMonster = 962;
+constexpr int32_t GheedMonster = 147;
+constexpr int32_t EventMarker = 597;  // PD2 object 594 empty_eventmarker: invisible, AutoMap 1499
 constexpr int32_t ModeNeutral = 1;
+constexpr int32_t UnitObject = 2;
 
 struct Tiered {
 	int16_t level;  // port level id
@@ -129,15 +133,20 @@ auto NotifyKey(int32_t event) noexcept -> const char* {
 // Every spawn sends it, as PD2's does (Dark Wanderer and Treasure Fallen up to three times)
 auto Notify(Game* game, int32_t event) noexcept -> void {
 	const char* key = NotifyKey(event);
-	char text[256] {};  // GameChat copies 256 bytes
+	char text[256] {};
 	uint32_t need = 0;
 	if (key == nullptr || g_strings == nullptr ||
 	    g_strings->getStringByKey(g_context, key, text, sizeof(text), &need) != D2RL::Localization::Result::Success) {
 		plog::Warn("map events: no notify text for event %d (%s)", event, key != nullptr ? key : "no key");
 		return;
 	}
-	constexpr uint8_t Red = 1;
-	d2r::Engine<void (*)(Game*, const char*, uint8_t) noexcept>(d2r::rva::GameChat)(game, text, Red);
+	// PD2's packet: type 4 (a line with no sender), red
+	uint8_t packet[0x147] {};
+	packet[0] = 0x26;
+	packet[1] = 4;
+	packet[8] = 1;
+	std::memcpy(packet + 0x47, text, sizeof(text) - 1);
+	d2r::Engine<void (*)(void*, uint8_t*) noexcept>(d2r::rva::SendChat)(At<void*>(game, d2r::rva::GameClients), packet);
 	plog::Info("map events: event %d notified \"%s\" (%u)", event, text, ++g_notified);
 }
 
@@ -174,21 +183,73 @@ auto Rand() noexcept -> int32_t {
 	return std::rand();
 }
 
-// PD2's 0x1038a170 at the room's centre: a free spot near it, then the monster.
-// shortcut: D2R's portal spot search stands in for PD2's 0x10389c20 (radius 12, 8 in Arcane and River of Blood,
-// collision 0x805); read 0x10389c20 if an event ever spawns in a wall
-auto SpawnAt(Game* game, void* room, int32_t monster) noexcept -> Unit* {
+// PD2's 0x10389c20 (#530): a breadth-first search over a 20 x 20 grid of 4-subtile cells around x/y (cells 10 +- 8,
+// at most 400 steps); each cell's point takes its room and must have a size x size box free of mask 0x805. The first
+// free point wins, moved by -2, -2 as PD2 moves it. True with `room` and `xy` set to that point.
+// shortcut: the box is centred on the point, as 1.13c's COLLISION_CheckMaskWithSizeXY centres it (PD2 calls it
+// through an import table not read here); read 0x103097a0's target if events spawn off by half a box
+auto FindSpot(void*& room, int32_t xy[2], int32_t size) noexcept -> bool {
 	using namespace d2r::rva;
-	int32_t xy[2] = {At<int32_t>(room, RoomX) + At<int32_t>(room, RoomWidth) / 2,
-	                 At<int32_t>(room, RoomY) + At<int32_t>(room, RoomHeight) / 2};
-	void* found = nullptr;
-	d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(FindFreeSpot)(
-		game, room, xy, 3, 0x400, &found, 5, 100);
-	if (found == nullptr) {
+	constexpr int Grid = 20, Centre = 10, Reach = 8, Step = 4, MaxSteps = 400;
+	constexpr uint16_t Mask = 0x805;
+	const auto roomAt = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY);
+	const auto at = d2r::Engine<uint64_t (*)(void*, int32_t, int32_t, uint16_t) noexcept>(CollisionAt);
+	bool seen[Grid][Grid] {};
+	int8_t queue[Grid * Grid][2];
+	int head = 0, tail = 0;
+	queue[tail][0] = Centre, queue[tail][1] = Centre, ++tail;
+	seen[Centre][Centre] = true;
+	for (int steps = 0; head < tail && steps <= MaxSteps; ++steps) {
+		const int cx = queue[head][0], cy = queue[head][1];
+		++head;
+		const int32_t x = xy[0] + (cx - Centre) * Step, y = xy[1] + (cy - Centre) * Step;
+		void* here = roomAt(room, x, y);
+		bool free = here != nullptr;
+		for (int32_t dx = -size / 2; free && dx < size - size / 2; ++dx) {
+			for (int32_t dy = -size / 2; free && dy < size - size / 2; ++dy) {
+				free = at(here, x + dx, y + dy, Mask) == 0;
+			}
+		}
+		if (free) {
+			xy[0] = x - 2, xy[1] = y - 2;
+			room = roomAt(here, xy[0], xy[1]);
+			return room != nullptr;
+		}
+		constexpr int Dirs[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+		for (const auto& d : Dirs) {
+			const int nx = cx + d[0], ny = cy + d[1];
+			if (nx >= Centre - Reach && nx < Centre + Reach && ny >= Centre - Reach && ny < Centre + Reach &&
+			    !seen[nx][ny]) {
+				seen[nx][ny] = true;
+				queue[tail][0] = static_cast<int8_t>(nx), queue[tail][1] = static_cast<int8_t>(ny), ++tail;
+			}
+		}
+	}
+	return false;
+}
+
+// PD2's 0x1038a170 at the room's centre: PD2's spot search with size 12 (8 in Arcane and River of Blood), then the
+// monster. `room` and `xy` return the spot.
+auto SpawnAt(Game* game, void*& room, int32_t (&xy)[2], int32_t level, int32_t monster) noexcept -> Unit* {
+	using namespace d2r::rva;
+	constexpr int32_t Arcane = 143, RiverOfBlood = 145;  // PD2 0x8e and 0x90 in port level ids
+	xy[0] = At<int32_t>(room, RoomX) + At<int32_t>(room, RoomWidth) / 2;
+	xy[1] = At<int32_t>(room, RoomY) + At<int32_t>(room, RoomHeight) / 2;
+	if (!FindSpot(room, xy, level == Arcane || level == RiverOfBlood ? 8 : 12)) {
 		return nullptr;
 	}
 	return d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
-		SpawnMonster)(game, found, xy[0], xy[1], monster, ModeNeutral, -1, 0x42);
+		SpawnMonster)(game, room, xy[0], xy[1], monster, ModeNeutral, -1, 0x42);
+}
+
+// PD2's 0x1038a060 with unit type 2: an object at x/y. No PluginSDK service places objects, so this calls D2R's unit
+// spawn (rva::SpawnUnit) as OpenPortalAt (map_open.cpp) does.
+auto SpawnObjectAt(Game* game, void* room, int32_t x, int32_t y, int32_t row) noexcept -> Unit* {
+	using namespace d2r::rva;
+	using SpawnFn = Unit* (*)(int32_t, int32_t, int32_t, int32_t, Game*, void*, int32_t, int32_t, int32_t,
+	                          int32_t) noexcept;
+	room = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(room, x, y);
+	return room != nullptr ? d2r::Engine<SpawnFn>(SpawnUnit)(UnitObject, row, x, y, game, room, 1, 1, 0, 0) : nullptr;
 }
 
 // PD2's 0x1036fef0, before the room's own monsters: one roll of 100 per room, against the event's rule.
@@ -199,8 +260,8 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t progress) noexcep
 	const int32_t spawns = Get(game, SpawnsKey);
 	const int32_t roll = Rand() % 100;
 	int32_t monster = -1;
-	if (event == Mendeln && spawns == 0 && roll + progress > 140) {
-		monster = MendelnMonster;
+	if ((event == Mendeln || event == Gheed) && spawns == 0 && roll + progress > 140) {
+		monster = event == Mendeln ? MendelnMonster : GheedMonster;
 	} else if ((event == DarkWanderer || event == TreasureFallen) && spawns < 3 && (spawns + 1) * 25 < progress &&
 	           roll < 25) {
 		monster = event == DarkWanderer ? DarkWandererMonster : TreasureFallenMonster;
@@ -208,7 +269,8 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t progress) noexcep
 	if (monster < 0) {
 		return;
 	}
-	if (SpawnAt(game, room, monster) == nullptr) {
+	int32_t xy[2] {};
+	if (SpawnAt(game, room, xy, level, monster) == nullptr) {
 		plog::Warn("map events: event %d found no spot for monster %d in level %d (%u)", event, monster, level,
 		           ++g_noSpot);
 		return;
@@ -216,6 +278,12 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t progress) noexcep
 	Set(game, SpawnsKey, spawns + 1);
 	plog::Info("map events: event %d spawn %d, monster %d in level %d at progress %d (%u spawned)", event, spawns + 1,
 	           monster, level, progress, ++g_spawned);
+	// PD2's Gheed branch also files the game's players into a set for its realm (0x10368480): cut, docs/deviations.md
+	if (event == Gheed) {
+		const bool marked = SpawnObjectAt(game, room, xy[0], xy[1], EventMarker) != nullptr;
+		plog::Info("map events: event %d object %d at (%d, %d)%s", event, EventMarker, xy[0], xy[1],
+		           marked ? "" : " FAILED");
+	}
 	Notify(game, event);
 }
 
