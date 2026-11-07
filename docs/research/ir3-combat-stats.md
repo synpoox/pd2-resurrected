@@ -29,10 +29,25 @@ PD2's roll `0x10304710 (weapon, unit, x)` (disassembled):
 2. Else deadly strike = `item_deadlystrike` (141), at most 75 + `item_maxdeadlystrike` (210); a hit returns 2.
 
 PD2's multiplier `0x103047f0 (unit, damage, x)`: on 1, physical (1.13c damage `+8`) times 200 + `item_crit_multiplier`
-(256) percent; on 2, 150 + `item_ds_multiplier` (257). Each multiplier adds the stat's per-hand item sum
-(`0x10381720`, [w19](w19-holy-sword-smite.md)). Result flag `0x2000`; `0x1037c4c0` does `phys * mult / max(100, 1)` in
-doubles, saturated at `0x7fffffff`. Callers: PD2's melee splash (`0x10303160`) and missile hit (`0x103045a0`). PD2's
-missile fill `0x102fe730` (its copy of D2Common's missile fill) rolls `0x10304710` on the owner.
+(256, D2Common #10910: layer 0) + its per-hand sum percent; on 2, 150 + `item_ds_multiplier` (257) + its per-hand sum.
+Result flag `0x2000`; `0x1037c4c0` does `phys * mult / max(100, 1)` in doubles, saturated at `0x7fffffff`.
+
+The per-hand sum `0x10381720 (unit, stat)` ([w35](w35-melee-splash-extras.md)) adds the stat's item-type layers that
+the wielded weapon (#10061) is of, layer 0 left out: Javelin and Spear Mastery puts `item_crit_multiplier` on `spea`,
+Two Hand Mastery `item_crushingblow` and `item_crushingblow_efficiency` on `2han`. 2han (PD2 row 114) counts only when
+the other hand (#11139 at the other of bodylocs 4 and 5) is empty or the same item; 1han (116) only when it is not the
+same item, or, for a dual-wield class (#10747), a 2han weapon beside another item.
+
+Missiles. `0x103047f0`'s only live caller is `0x10303160`, from PD2's damage builder `0x103022b0`. The missile hit
+`0x103045a0` (re-rolls on the owner at the hit, for a skill with SrcDam or Twister, Shock Wave, Tornado) and the gated
+missile roll `0x103046a0` have no caller, no pointer in the image and no pointer table entry: dead code. The live
+missile fill `0x102fe730` (its copy of D2Common's, in a hook table at `0x104a06f4`) rolls `0x10304710` on the owner
+(the first call with no weapon) and sets missile flag 2, which 1.13c's hit doubles. So PD2's missile crit or deadly
+strike is 2x, with no multiplier stats.
+
+Sacrifice: PD2's srvdo 64 (`0x103aff30`, from the table fill `0x1036ba20`) runs 1.13c's hit through a resolved pointer
+(`0x103a1b60` -> `[0x105e06b8]`) and its own self-damage block (flag `0x1000`); no PD2 strike code is on the path, so
+Sacrifice rolls no strike in PD2 either.
 
 D2R rolls in two places, each uncapped and each doubling physical:
 
@@ -50,10 +65,9 @@ core-rules (`item_rules.cpp`):
 - Replaces the first 28 bytes of `WeaponDamage`'s block (byte-checked, nothing outside jumps into them) with a call
   to `WeaponStrike (attacker, damage, a5)` and a jump to `0x44c3d9`: PD2's roll and multiplier. The volatile
   registers the block left are set again after `0x44c3d9`; R15D (0) is callee-saved.
-- Hooks `0x3ba820` with PD2's roll. A missile's hit still doubles (D2R's): PD2's 1.5x deadly strike and the
-  multiplier stats are not applied to missiles (approximated).
-- Uses the unit's total multiplier stat, not PD2's per-hand sum: the two differ only when dual wielding two
-  multiplier weapons.
+- Hooks `0x3ba820` with PD2's roll. A missile's hit doubles (D2R's), as PD2's live code does.
+- `HandStatSum` ports the per-hand sum (D2R's `UnitWeapon`, `ItemIsType` on each layer, bodylocs 4 and 5); the
+  multipliers add it. Not ported: the dual-wield 2han case of the 1han layer, which none of these stats has.
 
 Logs: `strike: <weapon|missile> unit type T kind K, crit C roll R, deadly D (cap X) roll R2, physical A -> B (xM%)`,
 every player roll and a sample of the others.
@@ -99,13 +113,16 @@ PD2's event 16 (`0x103469a0`), disassembled; constants from the DLL:
   else `(100 - life %) * 10 + 70` (#11027). A non-hireling monster then adds `0xaf5f0(monster_playercount) / 50`
   (D2Game's table, 0 for 1 player and +1 for each player after it, 2 less from 9). Other units: 8. Missile (event 6):
   times 2 on levels 157, 159 and 166 (PD2 levels, not in the merged data), else times 1.5.
-- Blow = life / (divisor / (`item_crushingblow_efficiency` / 100 + effectiveness)); effectiveness 1, or 1 + calc4 /
-  100 on Smite. Less `damageresist` (36) percent (`0x1037c4c0`), nothing at 100 or more. Life set to life - blow (at
+- Blow = life / (divisor / (efficiency / 100 + effectiveness)); efficiency = `item_crushingblow_efficiency` + its
+  per-hand sum; effectiveness 1, or 1 + calc4 / 100 when the unit's current skill (`0x1030dd00`) is Smite (97),
+  calc4 evaluated at the unit skill's `+0x28` (hard points). The chance adds the per-hand sum of `item_crushingblow`
+  (136). Less `damageresist` (36) percent (`0x1037c4c0`), nothing at 100 or more. Life set to life - blow (at
   least 0), kill flag (`damage + 4 |= 2`) at 0, overlay `0x93` (147), PD2's damage meter.
 
 D2R's event 16 (`0x583150`) rolls and calls `0x581bd0 (game, unit, target, {damage, 4, 10, 10, missile})`, whose
 entry is `jmp [0x3e2a448]`. core-rules writes `CrushingBlow` into that qword: PD2's blow for every caller (D2R's
-event and [W19](https://github.com/synpoox/pd2-resurrected/issues/94)'s Smite roll). Not ported: Smite's calc4, PD2's boss sets, the per-hand sum of the efficiency.
+event and [W19](https://github.com/synpoox/pd2-resurrected/issues/94)'s Smite roll), with Smite's calc4 (D2R's `CurrentSkill`, `UnitSkillLevel` with bonus 0) and
+the per-hand sums ([#321](https://github.com/synpoox/pd2-resurrected/issues/321)). Not ported: PD2's boss sets.
 
 ## Open and deep wounds
 
@@ -130,6 +147,8 @@ pass; `items 7/7`).
   `cheat stat` adds no item event listener, and the boots' durability icon showed red, so this does not yet show
   whether D2R's event 16 runs on a player's hit.
 - Enhanced damage per ethereal item: not checked in game (no ethereal carrier spawned).
+- Smite's effectiveness ([#321](https://github.com/synpoox/pd2-resurrected/issues/321), Slot 8, Hell, level 90 Paladin, Smite 20, zombies): each Smite blow
+  logged effectiveness 1.41 (calc4 41); life 1422848 -> 1297459 at divisor 8 and resist 50, PD2's formula.
 - Open wounds: a probe on `0x584170` logged nothing with `item_openwounds` 50 (stat only, no listener).
 - Spawn commands: `cheat uniques` rows past the "Expansion" separator row are one lower than the merged table's
   (Fleshripper 304, The Gladiator's Bane 250); Attack is the bottom-left icon of the left skill picker.
