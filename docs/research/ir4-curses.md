@@ -62,7 +62,7 @@ stat 109 cuts the frames to `frames * (100 - r) / 100`, r at most 75 on a player
 NewStateList, for a curse state, refuses at stat 109 >= 100, otherwise takes `frames * r / 100` off uncapped
 (`0x433f32`), then refuses a unit with attract (state 57, `0x433fc8`). Its entry is D2RCore's, so core-rules runs
 `0x55a7e0` with the target's stat 109 cleared on its base layer (`SetUnitStat` to `base - r`) and the PD2 frames in
-CurseParams, and with the attract bit off (`SetUnitState`); both come back after the call, the bit only while the
+CurseParams, and with the attract bit off (the state bits at stat owner `+0xaf0` that `0x2f6220` reads; `SetUnitState` writes a second array, so it does not do); both come back after the call, the bit only while the
 attract list is still there.
 
 ## Game check

@@ -534,7 +534,6 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 	-> int64_t {
 	using namespace d2r::rva;
 	const auto setStat = d2r::Engine<void (*)(Unit*, uint32_t, int32_t, uint32_t) noexcept>(SetUnitStat);
-	const auto setState = d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState);
 	void* owner = At<void*>(target, UnitListOwner);
 	int32_t base = 0;
 	bool zeroed = false;
@@ -548,9 +547,18 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 			plog::Info("curse gate: stat 109 %d did not clear (base %d), D2R's duration rule applies", duration, base);
 		}
 	}
-	const bool attracted = d2r::Engine<uint32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(target, StateAttract) != 0;
+	// The bit UnitHasState reads (SetUnitState writes another array)
+	const auto hasState = d2r::Engine<uint32_t (*)(Unit*, int32_t) noexcept>(UnitHasState);
+	auto* word = owner != nullptr && At<int32_t>(owner, ListOwnerMark) < 0
+	                 ? reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(owner) + ListOwnerStates + (StateAttract >> 5) * 4)
+	                 : nullptr;
+	const uint32_t bit = 1u << (StateAttract & 31);
+	const bool attracted = word != nullptr && hasState(target, StateAttract) != 0;
 	if (attracted) {
-		setState(target, StateAttract, 0);
+		*word &= ~bit;
+		if (hasState(target, StateAttract) != 0) {
+			plog::Info("curse gate: the attract bit did not clear");
+		}
 	}
 	const int32_t asked = params->frames;
 	params->frames = zeroed ? frames : asked;  // the srvdo's area walk reuses params for its next target
@@ -564,7 +572,7 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 	}
 	// A full target may have lost the attract curse itself to this one: then its bit stays off
 	if (attracted && d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(target, StateAttract) != nullptr) {
-		setState(target, StateAttract, 1);
+		*word |= bit;
 	}
 	if (attracted) {
 		if (const uint32_t n = ++g_curseGate; GateLog(n)) {
