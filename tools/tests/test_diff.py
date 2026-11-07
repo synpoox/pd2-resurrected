@@ -42,6 +42,10 @@ class GateTests(unittest.TestCase):
         with self.assertRaisesRegex(pd2_diff.GateError, "no D2R tables"):
             pd2_diff.gate(self.root, self.root / "nowhere", "P4")
 
+    def test_no_pd2_tables_is_an_error_not_a_pass(self):
+        with self.assertRaisesRegex(pd2_diff.GateError, r"no PD2 tables under .*pd2-data.*pd2_extract.*--root"):
+            self.gate()
+
     def test_a_merged_table_equal_to_pd2_passes(self):
         self.write("pd2", "lvlmaze", table("Name | Id | MonLvl", "Rogue Encampment | 1 | 1"))
         self.write("mod", "lvlmaze", table("Name | Id | MonLvl", "Rogue Encampment | 1 | 1"))

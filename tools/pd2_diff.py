@@ -190,6 +190,9 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
         raise GateError(f"no D2R tables under {d2r}: run `modkit fetch` or pass --d2r")
     pd2_excel, mod_excel = root / "pd2-data/data/global/excel", root / "generated/data/global/excel"
     patterns, entries = deviations(root / "docs" / "deviations.md")
+    if not any(pd2_excel.glob("*.txt")):  # else the gate compares nothing and passes
+        raise GateError(f"no PD2 tables under {pd2_excel}: run `python tools/pd2_extract.py` (the merge's first step) "
+                        "or pass --root a checkout that has them")
     lists = {t: pd2_ids.read_list(pd2_ids.list_path(root / "merge", t)) for t in pd2_ids.TABLES}
     ren, ctx = pd2_ids.renames(lists), None
     tables = root / "merge" / "tables.json"
