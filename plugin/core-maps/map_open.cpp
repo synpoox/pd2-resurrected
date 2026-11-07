@@ -334,8 +334,10 @@ auto HealBosses(Game* game, int32_t level) noexcept -> int32_t {
 				continue;
 			}
 			const int32_t max = stat(unit, StatMaxLife, 0);
-			const int32_t life = std::min(max, stat(unit, StatLife, 0) + max / 5);
+			const int32_t before = stat(unit, StatLife, 0);
+			const int32_t life = std::min(max, before + max / 5);
 			d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(unit, StatLife, life, 0);
+			plog::Info("uber: boss %d healed, life %d -> %d of %d", classId, before >> 8, life >> 8, max >> 8);
 			++healed;
 		}
 	}
