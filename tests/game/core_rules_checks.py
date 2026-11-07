@@ -151,6 +151,10 @@ IR7 checks (tag core-rules-ir7), same merged data, Hell, level 90+:
 - phasing: `cheat uniques 520` drops Spectral Plate (Phasing SelfAura); `cheat idall`, equip it, walk into a pack
   (`cheat mspawn zombie1,4`, `cheat god 1`), take it off, and run again.
 
+Death nova check (tag core-rules-death-novas, #480), same merged data, Hell, level 90+: `debug_mode`, `cheat god 1`,
+`cheat goto 2`, `cheat mspawn nihlathakMap,1` (it casts RathmaDeath, Skill2), let it cast a while, and run the same
+command with core-rules-death-novas.
+
 IR6 check (tag core-rules-ir6), same merged data, Hell, level 90+:
 - corruption-one-press: `debug_mode`, `cheat spawn rin,typ m,inv 0` (a magic ring) and `cheat spawn wss,inv 0` (a
   Worldstone Shard); put both in the cube, press Transmute once, hover the ring (it shows Corrupted), and run the
