@@ -38,12 +38,13 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
     depends on. `checkfunc` folds into D2R's itype columns if every value matches what they allow; `general` is cut if
     only the UI reads it.
   - [UR5](https://github.com/synpoox/pd2-resurrected/issues/203) finds D2R's own values for the uber and ultra code odds and `HireableBossDamagePercent` in Ghidra. A rule whose
-    value equals PD2's is cut; the others are hooked.
+    value equals PD2's is cut; the others are hooked. Both were cut: D2R's `MercenaryDamagePercentVSBoss` matches, and
+    the code odds never act in PD2 (`docs/deviations.md`).
   - [UR6](https://github.com/synpoox/pd2-resurrected/issues/204) rolls the quivers' `auto prefix` groups (321-326) with no hook: D2R loads misc, weapons and armor with one field
     list, so the merge adds the column to misc.txt and D2R's own automagic roll (`0x442d60`) reads it.
   - Folded into existing rows, with no item of their own: missile `Qty` and `SpecialSetup` and the throwing potions'
-    `spelldesc` go to "Throwing potions" ([IR5](https://github.com/synpoox/pd2-resurrected/issues/240)); missile `LevRange` goes to the class or map row that owns each missile;
-    `immed` on PD2's three states goes to phasing ([IR7](https://github.com/synpoox/pd2-resurrected/issues/242)).
+    `spelldesc` go to "Throwing potions" ([IR5](https://github.com/synpoox/pd2-resurrected/issues/240)); missile `LevRange` goes to the class or map row that owns each missile.
+    States `immed` is cut: PD2's loader never reads it ([#342](https://github.com/synpoox/pd2-resurrected/issues/342), [states-immed](research/states-immed.md)).
 - **Cut, in one docs item ([UR1](https://github.com/synpoox/pd2-resurrected/issues/199)).** Columns that are empty in PD2 or set only on rows both games share: the skill event
   columns, `blue`, `itemspecific`, `Divide`, the S12/S13 save widths, the affix and rare price columns, itemtypes
   `Charm`, `Gem` and `CostFormula`, the qualityitems classic columns, and the empty or shared-only armor, misc,
