@@ -145,8 +145,9 @@ auto Stacks(const items::ItemInfo& item) noexcept -> bool {
 
 // The old item as a new roll of the same row: everything PD2's 0x3669b0 carries over (top of file).
 auto RerollSpec(const items::ItemInfo& old) noexcept -> items::ItemCreateSpec {
+	// The flag is for Unique rows only; set items have no once-per-game rule.
 	return {.structSize = items::ItemCreateSpecSize,
-	        .flags = items::ItemCreateFlagBit(items::ItemCreateFlag::AllowDuplicateUnique),
+	        .flags = old.quality == items::Quality::Unique ? items::ItemCreateFlagBit(items::ItemCreateFlag::AllowDuplicateUnique) : 0,
 	        .code = old.code,
 	        .quality = old.quality,
 	        .qualityRecordId = static_cast<uint32_t>(old.qualityRecordId),
@@ -270,7 +271,8 @@ void RerollNow(const D2RL::PluginContext*, void* user) noexcept {
 		return;
 	}
 	const items::TransactionInput inputs[] {
-		{.item = old.handle, .quantity = 1, .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty},
+		// The whole stack (ItemInfo gives 1 for an item that does not stack): a quantity below it only debits the old one.
+		{.item = old.handle, .quantity = static_cast<uint32_t>(old.quantity), .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty},
 		{.item = scan.cubes.handle, .quantity = 1, .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty}};
 	const items::ItemCreateSpec spec = RerollSpec(old);
 	D2RL::ItemHandle newItem = D2RL::InvalidItemHandle;
