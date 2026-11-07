@@ -253,14 +253,27 @@ struct ObjectOperate {
 	int32_t classId;
 };
 
-// How operate 15 removes a used portal: the room's clients are told, then the unit is freed
-auto RemoveObject(Game* game, Unit* object) noexcept -> void {
+// How operate 15 removes a used portal: the room's clients are told, then the unit is freed. Returns its room.
+auto RemoveObject(Game* game, Unit* object) noexcept -> void* {
 	using namespace d2r::rva;
 	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(object);
 	const int32_t id = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(UnitId)(object, __FILE__, __LINE__);
 	d2r::Engine<void (*)(void*, int32_t, int32_t) noexcept>(RoomUnitRemoved)(room, UnitObject, id);
 	d2r::Engine<void (*)(Game*, Unit*) noexcept>(RemoveUnit)(game, object);
-	d2r::Engine<void (*)(void*) noexcept>(RoomChanged)(room);
+	return room;
+}
+
+// Operate 15 then clears its room's portal mark; the grey portals share a room, so it is cleared with the last one
+auto RemoveGreyPortal(Game* game, Unit* portal) noexcept -> void {
+	using namespace d2r::rva;
+	void* room = RemoveObject(game, portal);
+	for (auto* unit = d2r::Engine<Unit* (*)(void*) noexcept>(RoomFirstUnit)(room); unit != nullptr;
+	     unit = d2r::Engine<Unit* (*)(Unit*) noexcept>(NextUnitInRoom)(unit)) {
+		if (At<int32_t>(unit, UnitType) == UnitObject && At<int32_t>(unit, UnitClassId) == GreyPortal) {
+			return;
+		}
+	}
+	d2r::Engine<void (*)(void*, int32_t) noexcept>(RoomPortalMark)(room, 1);
 }
 
 // The tail of PD2 0x1038a680, and its portal entry: arriving in an uber level removes the level's `Waypoint` objects.
@@ -419,7 +432,7 @@ auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
 		return 0;
 	}
 	if (args->classId == GreyPortal) {
-		RemoveObject(game, args->object);
+		RemoveGreyPortal(game, args->object);
 	}
 	RemoveWaypoints(game, player, level);
 	return 1;
@@ -437,7 +450,7 @@ auto OpenUber(Game* game, Unit* player, Unit* item, int32_t level) noexcept -> v
 	if (arrived == 0) {
 		for (Unit* portal : portals) {
 			if (portal != nullptr) {
-				RemoveObject(game, portal);
+				RemoveGreyPortal(game, portal);
 			}
 		}
 		plog::Warn("uber: nobody reached level %d (tier %d), %u failed", level, tier, ++g_failed);
@@ -495,6 +508,8 @@ auto SpawnPortal(d2r::Game* game, void* room, int32_t row, int32_t x, int32_t y,
 	const int32_t open = At<int32_t>(game, GameFrame) + 1 + static_cast<int32_t>(At<uint32_t>(record, ObjOpenFrames) >> 8);
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
 		game, portal, UnitEventOpen, open, 0, 0, 0);
+	// as the portal maker does: without the mark the room, portal and all, is freed once no player is near
+	d2r::Engine<void (*)(void*, int32_t) noexcept>(RoomPortalMark)(room, 0);
 	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetPortalLevel)(portal, level);
 	return portal;
 }

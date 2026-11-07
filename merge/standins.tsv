@@ -41,12 +41,10 @@ skills	Redemption	=	cltstfunc	Paladin aura client start
 skills	Salvation	=	cltdofunc	Paladin aura client do
 skills	Salvation	=	cltstfunc	Paladin aura client start
 skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
-skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
+skills	Fire Claws	=	srvstfunc	Fire Claws: the hit
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
-skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
-skills	Split Throw	-	cltdofunc	Split Throw
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
 skills	RathmaDeath	Nova	srvdofunc,cltdofunc	Death novas
 skills	NihlathakMapDeath	Nova	cltdofunc	Death novas
@@ -92,16 +90,6 @@ missiles	tpot_light_large	-	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	sharptootharmageddoncontrol	armageddoncontrol	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	sharptootharmageddonrock	armageddonrock	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	boichaosice	-	pSrvHitFunc,pCltHitFunc	`*12` server hit
-missiles	splitthrowaxe	-	pSrvHitFunc	Split Throw
-missiles	splitthrowknife	-	pSrvHitFunc	Split Throw
-missiles	splitthrowjav	-	pSrvHitFunc	Split Throw
-missiles	splitthrowglaive	-	pSrvHitFunc	Split Throw
-missiles	splitthrowpilum	-	pSrvHitFunc	Split Throw
-missiles	splitthrowaxereturn	-	pSrvDoFunc,pCltDoFunc	Split Throw
-missiles	splitthrowknifereturn	-	pSrvDoFunc,pCltDoFunc	Split Throw
-missiles	splitthrowjavreturn	-	pSrvDoFunc,pCltDoFunc	Split Throw
-missiles	splitthrowglaivereturn	-	pSrvDoFunc,pCltDoFunc	Split Throw
-missiles	splitthrowpilumreturn	-	pSrvDoFunc,pCltDoFunc	Split Throw
 misc	TP Book Unlimited	Tome of Town Portal	pSpell	Unlimited TP and ID books
 misc	ID Book Unlimited	Tome of Identify	pSpell	Unlimited TP and ID books
 misc	Uber Trist Map	-	pSpell	Map items
