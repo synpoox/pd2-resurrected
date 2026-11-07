@@ -269,6 +269,23 @@ struct AreaEntry {
 	int32_t slot, value;
 };
 
+// PD2's use handler 0x383060 hard-codes the other levels of each multi-level map by its entry level (PD2 ids in the
+// comments; merge/ids-levels.tsv gives the port's). Outer Void and Na-Krul's Abyss are one level.
+struct MultiLevel {
+	int32_t entry, more[3];
+};
+constexpr MultiLevel MultiLevels[] = {
+	{163, {164}},            // Realm of Terror (164-165)
+	{168, {169}},            // Sanctuary of Sin (171-172)
+	{182, {183}},            // Steppes of Daken-Shar (186-187)
+	{172, {173, 174, 175}},  // Zhar's Sanctum (176-179)
+	{177, {178}},            // Warlord of Blood (181-182)
+	{179, {180}},            // Fallen Gardens (183-184)
+	{188, {190}},            // Imperial Palace (192, 194)
+	{191, {192}},            // City of Ureh (195-196)
+	{193, {194, 195}},       // Djinn's Domain (197-199)
+};
+
 // An area slot's value in this game: the first entry of that slot, as PD2's getter 0x1038a9e0 reads it; 0 for none.
 auto AreaSlot(Game* game, int slot) noexcept -> int32_t {
 	const int32_t* v = Counter(game, Key('a', slot, 0));
@@ -279,7 +296,8 @@ auto AreaSlot(Game* game, int slot) noexcept -> int32_t {
 // rarity (2) scale by 1 + v/100, each add-monster (3) is one more group, fortify (4) scales by v/100. Fortify, drop
 // bonus (12) and treacherous (14) also add monster stats, after the routed ones. Truncations are PD2's (ftol, then a
 // byte for the pack counts). D2R never reads the region's monster level, so area level (1) is AreaMonsterLevel's.
-auto ApplyArea(Game* game, int32_t level, const AreaEntry* entries, int count) noexcept -> void {
+// As in PD2, only the first call (the entry level) adds the monster stats.
+auto ApplyArea(Game* game, int32_t level, const AreaEntry* entries, int count, bool first) noexcept -> void {
 	using namespace d2r::rva;
 	auto* const* regions = At<uint8_t**>(game, GameMonRegions);
 	uint8_t* r = regions != nullptr && level > 0 && level <= LastMapLevel ? regions[level] : nullptr;
@@ -322,6 +340,7 @@ auto ApplyArea(Game* game, int32_t level, const AreaEntry* entries, int count) n
 			g[3] = 1;  // one component pick, all default (PD2's 0x101)
 			r[RegionCount] = static_cast<uint8_t>(replacing ? RegionMaxGroups : r[RegionCount] + 1);
 			r[RegionSpawnCount] = static_cast<uint8_t>(slot + 1);
+			plog::Info("map area: level %d adds monster %d as group %d, rarity sum %u", level, v, slot, r[RegionRarity]);
 			break;
 		}
 		case 4:
@@ -329,15 +348,21 @@ auto ApplyArea(Game* game, int32_t level, const AreaEntry* entries, int count) n
 			scalePacks(static_cast<float>(v) / 100.0f);
 			for (const auto& [stat, value] : {std::pair {MaxHpPercent, 100}, {25, 40}, {329, 40}, {331, 40},
 			                                  {330, 40}, {332, 40}, {357, 20}, {546, v}}) {
-				Push(game, 'm', stat, 0, value);  // max life %, damage %, the masteries, map_glob_skirmish_mode
+				if (first) {
+					Push(game, 'm', stat, 0, value);  // max life %, damage %, the masteries, map_glob_skirmish_mode
+				}
 			}
 			break;
 		case 12:
-			Push(game, 'm', 399, 0, v);  // map_glob_dropbonus
+			if (first) {
+				Push(game, 'm', 399, 0, v);  // map_glob_dropbonus
+			}
 			break;
 		case 14:
-			Push(game, 'm', MaxHpPercent, 0, 100);
-			Push(game, 'm', 402, 0, v);  // treacherous
+			if (first) {
+				Push(game, 'm', MaxHpPercent, 0, 100);
+				Push(game, 'm', 402, 0, v);  // treacherous
+			}
 			break;
 		default:
 			break;
@@ -611,8 +636,14 @@ auto RouteMapStats(Game* game, Unit* item, int32_t level) noexcept -> void {
 		}
 		plog::Info("map stats: stat %d layer %d value %d -> %s as %d", e.stat, e.layer, e.value, where, target);
 	}
-	// shortcut: only the entry level; PD2 also rewrites the other levels of a multi-level map, which come with MS7
-	ApplyArea(game, level, area, areaCount);
+	ApplyArea(game, level, area, areaCount, true);
+	for (const MultiLevel& m : MultiLevels) {
+		for (const int32_t more : m.more) {
+			if (m.entry == level && more != 0) {  // the other levels of a multi-level map
+				ApplyArea(game, more, area, areaCount, false);
+			}
+		}
+	}
 	++g_routed;
 }
 
