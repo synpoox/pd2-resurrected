@@ -16,6 +16,9 @@ jobs:
       PYTHONPATH: ${{ vars.D2R_TOOLKIT }}
       MODKIT_CACHE: ${{ vars.D2R_TOOLKIT }}\d2r-data
     steps:
+      - name: Drop cache junction
+        run: if (Test-Path pd2-data) { cmd /c rmdir pd2-data }
+        continue-on-error: true
       - uses: actions/checkout@v4
       - name: Merged data
         run: |
