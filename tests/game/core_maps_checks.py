@@ -1,11 +1,13 @@
 """core-maps game checks for d2rAI-toolkit's testing/ framework (game_checks.py).
 
 uber-scaling (#347, docs/research/pd2-uber-bosses-dll.md section 4) reads <slot>/d2rloader/logs/core-maps.log.
-Setup: tools/install.ps1 on the merged data, a level 90+ character in Hell with every quest done. In game:
-`debug_mode`, `cheat spawn dcma,inv 0` (a tier-0 Diablo Clone key; `cheat stat` cannot set an item's tier), stand on
-the Blood Fountain in Harrogath and use the key; in level 138 spawn fight monsters, e.g. `cheat mspawn uberdiablonew`
-and `cheat mspawn dcloneskele,3`, and a monster outside the fight set, e.g. `cheat mspawn zombie1`. Then:
-  py testing/game_checks.py run core-maps-ub2 --slot N --path <repo>/tests/game --module core_maps_checks
+Setup: tools/install.ps1 on the merged data, a level 90+ character in Hell. In game: `debug_mode`, `cheat goto 138`
+(tier 0: no key opened, so the counters read 0; tiers 1-2 need a key with stat 370, which the console cannot set),
+then `cheat mspawn uberdiablonew`, `cheat mspawn dcloneskele,3` and a monster outside the fight set, `cheat mspawn
+zombie1`. Then:
+  py testing/game_checks.py --path <repo>/tests/game --module core_maps_checks run core-maps-ub2 --slot N
+Passed on Slot5 (#347, level 95 Amazon, Hell): 14 monsters x1.5 at full life, Dclone 1053000 -> 1579500, the zombie
+not scaled.
 """
 import os
 import re
