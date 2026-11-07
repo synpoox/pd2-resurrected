@@ -77,7 +77,6 @@ The map spell's check and use hooks handle the keys too. A key's `len` in the ub
 - The boss heal finds the bosses by monster class in the level. PD2 heals the bosses its phase scripts registered.
 - A key used up when nobody arrives: PD2 keeps it (`0x10383060` returns 0); the port's check refuses every case it can
   foresee, but a failed warp in the use still spends the key.
-- The tier scaling (state `uberscaling`, section 4).
 - The key drop rule (section 7).
 
 ## Game check
