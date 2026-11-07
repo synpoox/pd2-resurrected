@@ -240,6 +240,26 @@ blink at the target.
 
 So the frenzy (states 4-6) waits for stage 3 and the Nova (7-8) for stage 2.
 
+#### Lucion's skill functions (read for [#487](https://github.com/synpoox/pd2-resurrected/issues/487))
+
+The install routine `0x1036ba20` writes srvdo 184 `0x103b5110`, 185 `0x103b52b0`, 186 `0x103b56d0` and srvst 76
+`0x103b6aa0`. Missiles are made with flags 3 (`0x10311b20`) and sent to every client (`0x1037fe90`).
+
+- **LucionNova (184)**, monsters only: srvmissileb when the caster's AI param 0 is 8 (the second Nova), else
+  srvmissilea. A ring over D2's 64 directions (D2Game `0xfb870` / `0xfb770`) from the caster, starting at direction
+  *s* & 63, where *s* = `0x10380670`(AI param 1), the cast-sequence step of `0x103805f0`. Before each missile, while
+  fewer than 5 gaps were made and 8 missiles have been fired since the last gap, the next step *s* rolls *s* % 100 <
+  15 (2 less per gap): then it skips 6 directions. Both Novas of state 7 share param 1, so they leave the same gaps.
+- **LucionPunish (186)**: calc1 srvmissilea, with no target offset, at the skill's target + (cos *a*, sin *a*) × calc2,
+  *a* = 2 × 3.2 × *i* / calc1 (the constant `0x1044fb98` is 3.2, not π). For Lucion (0x458), sub-step 2 doubles the
+  count and adds 3 to the radius; sub-step 3 triples it and adds 6.
+- **LucionDash (srvst 76, srvdo 185)**: the start picks a free spot at the target unit (else the skill's point), stores
+  it and the distance in the unit skill, and sets flag 0x80. The do function is a leap with no attack. With 0x80 it
+  sets 0x1101, collision off, path type 9 to the spot at a monster's monstats Run (1.13c `+0x34`) << 9 or a player's
+  0xb00 + calc2 × 0x50, and a ring (`0x1036d250`) of calc1 srvmissilea. In flight (0x100) it lays srvmissilec at the
+  caster (1.13c D2Game `0xa28f0`, flags 0x21). Within 2 subtiles of the spot it puts the collision back, ends the mode
+  a frame later and makes a ring of calc2 srvmissileb.
+
 #### LucionControl and LucionSpawner (`0x1035dca0`, monsters 0x459 and 0x475)
 
 Both idle 10 while `game+0x26fe` > 0. "In the frenzy" means Lucion (`game+0x2600`) is in state 5.

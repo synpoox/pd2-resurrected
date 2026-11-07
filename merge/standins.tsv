@@ -59,10 +59,8 @@ skills	Energy Shield SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Energy Shield SelfAura	Might	cltstfunc	Paladin aura client start
 skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Chilling Armor SelfAura	Might	cltstfunc	Paladin aura client start
-skills	LucionNova	Nova	srvdofunc	Lucion kit
 skills	LucionBlink	Teleport	cltdofunc	Lucion kit
-skills	LucionDash	Charge	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Lucion kit
-skills	LucionPunish	-	srvdofunc	Lucion kit
+skills	LucionDash	MonLeap	cltdofunc,cltstfunc	Lucion kit
 skills	LucionDeath1	Nova	srvdofunc,cltdofunc	Death novas
 skills	LucionDeath2	Nova	srvdofunc,cltdofunc	Death novas
 skills	LucionDeath3	Nova	srvdofunc,cltdofunc	Death novas
