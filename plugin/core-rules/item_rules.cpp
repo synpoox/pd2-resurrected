@@ -558,6 +558,9 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 	params->frames = asked;
 	if (zeroed) {
 		setStat(target, StatCurseDuration, base, 0);
+		if (const int32_t back = StatOf(target, StatCurseDuration); back != duration) {
+			plog::Info("curse gate: stat 109 came back %d, not %d (base %d)", back, duration, base);
+		}
 	}
 	// A full target may have lost the attract curse itself to this one: then its bit stays off
 	if (attracted && d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(target, StateAttract) != nullptr) {
