@@ -10,6 +10,7 @@
 #include "map_stats.h"
 
 #include "log.h"
+#include "uber_scaling.h"
 
 #include <intrin.h>
 
@@ -354,6 +355,8 @@ auto OnMonsterSpawned(void* params, Unit* monster) noexcept -> void {
 	    !InMapArea(monster)) {
 		return;
 	}
+	// PD2 scales after the map list; no map list is open while an uber fight is, so the order is moot here
+	ScaleUberMonster(game, monster);
 	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(
 		d2r::DataFlag(game), At<int32_t>(monster, UnitClassId));
 	if (record == nullptr || At<uint8_t>(record, MonAlign) != 0) {
