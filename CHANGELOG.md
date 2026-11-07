@@ -12,6 +12,8 @@ private-multiplayer release a build may break characters; each break is noted he
   hiring a new mercenary drops the old one's gear, and shift-right-clicking a Tome of Identify identifies your
   inventory. Skill on cast and skill on block items proc through the Cast Triggers plugin (1.1.12); not yet confirmed in game.
 
+- Ctrl+left-clicking a held stack onto a stack of the same item adds one item to it, as in PD2.
+
 #### Uber bosses
 
 - The Diablo Clone, Rathma and Lucion keys open their areas. Use one at the Blood Fountain in Harrogath (Hell,

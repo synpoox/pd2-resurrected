@@ -170,7 +170,7 @@ rows have no table hook: D2R does what it does.
 | Skill palette, NPC patches | not yet | stand-in: D2R's own behaviour | [W37](https://github.com/synpoox/pd2-resurrected/issues/245), [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 | Player death handler and two more PlrModes hooks | not yet | stand-in: D2R's own behaviour | [W37](https://github.com/synpoox/pd2-resurrected/issues/245), [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 | Perfect shrine | not yet | stand-in: D2R's own behaviour | [W37](https://github.com/synpoox/pd2-resurrected/issues/245), [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
-| Stackable items / item quantity | approximated | the merged `stackable`/`maxstack` rows are PD2's; the split ([stack-split](research/stack-split.md)) lets D2R put the stack down and takes N-1 back, so the item left down is the original (PD2 makes a new one), a Ctrl+click on a stack of the same item merges the whole held stack (PD2 adds one), and a TCP/IP client gets no split | [#316](https://github.com/synpoox/pd2-resurrected/issues/316) |
+| Stackable items / item quantity | approximated | the merged `stackable`/`maxstack` rows are PD2's; the split ([stack-split](research/stack-split.md)) lets D2R put the stack down and takes N-1 back, so the item left down is the original (PD2 makes a new one), a Ctrl+click onto a stack of the same item that hits its stack cap keeps D2R's partial merge (PD2 adds one), and a TCP/IP client gets no split | [#316](https://github.com/synpoox/pd2-resurrected/issues/316) |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 
 ### Approximated (60)
