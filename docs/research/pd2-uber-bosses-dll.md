@@ -261,6 +261,13 @@ noted.
 | Uber Tristram primes | `0x10377710` | when Mephisto, Diablo and Baal (704/705/709) are all dead: Hellfire Torch (`cm2`) and Black Soulstone (`dcho`), and a town portal (object 60) | none |
 | Uber Izual (706) | `0x10377800` | `mbr` (the other mini-ubers have their own handlers at `0x10377830`/`0x10377860`, for [UB3](https://github.com/synpoox/pd2-resurrected/issues/228)) | none |
 
+**The Temple's chests** ([#438](https://github.com/synpoox/pd2-resurrected/issues/438)): PD2 wraps the chest operate
+(OperateFn 4) with `0x103a94b0`. For `LucionChest` (object 623) in mode 0 it plays the chest sound (0xb), sets mode 1
+and drops treasureclassex rows 1037 and 1038 (`LucionChestLow`, then `LucionChestHigh`) through 1.13c's TC drop, at the
+item level of the player's area. Each drop is capped: at most 3 Low items, and at most 2, 3 or 4 High items at tiers 0,
+1 and 2. Both TCs have 6 picks and no NoDrop, so a chest gives up to 5, 6 or 7 items. The chest opens on event 1 after its
+open frames. Any other chest goes to the original operate.
+
 Solo tier-2 kills also set trophy and season flags (`0x10380a10`, states 209-240). They are cut, like the `.kills` counters.
 
 ## 7. Key drop rule (`0x103799d0`)

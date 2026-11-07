@@ -70,6 +70,7 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
     mark_new_corrupted(merged, next((str(i) for p, i, _ in ctx.lists.get("itemstatcost", []) if p == "corruptor"), None))
     count_each_input(merged)
     remake_rerolls(merged)
+    open_key_portal(merged)
     merged.rows += [list(r) for r in d2r_only]
     merged.dropped = dropped
     return merged
@@ -103,6 +104,18 @@ def remake_rerolls(cube: I.Table) -> None:
             r[h["output"]] = "usetype,reg"
             if "enabled" in h:
                 r[h["enabled"]] = "0"
+
+
+def open_key_portal(cube: I.Table) -> None:
+    """PD2's cube walk (0x10366f40) opens the mini-uber portal for the row with op 28, param 1 and min diff 2 (the three
+    Pandemonium keys), through 0x10366740: a copy of vanilla's portal (a random one of levels 133-135 not opened yet in
+    this game). Its output `useitem` is a placeholder; D2R's own `Pandemonium Portal` output does the same (#485)."""
+    h = {c: j for j, c in enumerate(cube.header)}
+    if not all(c in h for c in ("op", "param", "min diff", "output")):
+        return
+    for r in cube.rows:
+        if (r[h["op"]], r[h["param"]], r[h["min diff"]], r[h["output"]]) == ("28", "1", "2", "useitem"):
+            r[h["output"]] = "Pandemonium Portal"
 
 
 def mark_new_corrupted(cube: I.Table, corruptor: str | None) -> None:
