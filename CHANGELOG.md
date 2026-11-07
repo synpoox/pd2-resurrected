@@ -35,6 +35,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Lucion fights in PD2's stages: blinks, Nova, a frenzy of Punish, and spawners that call his adds.
 - Rathma and Mendeln fight by PD2's script: life events, held life, immunity, and retreat portals below 15%.
 - Mendeln, Rathma and their clones spawn in their arenas, each reached by a ghostly portal, as in PD2.
+- Rathma summons golems, a totem and void knights, and his bone spear takes a share of max life, as in PD2.
 - Diablo Clone fights in PD2's phases: three nova rounds, three skeleton waves, immune while his adds live.
 - Diablo Clone runs to the arena centre for his novas, and uber bosses left alone go idle and immune, as in PD2.
 - Diablo Clone's trapped souls rain meteors and boulders, faster and tighter by tier, and die with him.

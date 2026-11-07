@@ -1141,15 +1141,59 @@ auto SrvHitSummon(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	return 1;
 }
 
+// --- Rathma's bone spear (PD2 dmg 18, ProjectDiablo.dll 0x103a6fd0; UB5, #477) ------------------------------------------
+namespace {
+
+std::atomic<uint32_t> g_spearHits {0};
+
+}  // namespace
+
+// dmg 18: besides its own damage, the spear deals a second hit of DmgCalc1 percent of the target's max life as magic,
+// at most its life, from the missile's owner with hit flags 0x1000 (PD2 builds a fresh block and runs 1.13c's damage
+// apply 0x10305990 and its result 0x103025b0). The missile's own block is left as it is.
+void SrvDmgRathmaSpear(Game* game, Unit* missile, Unit* target, uint8_t* damage) noexcept {
+	using namespace d2r::rva;
+	if (game == nullptr || missile == nullptr || target == nullptr || damage == nullptr) {
+		return;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
+		dataFlag, At<int32_t>(missile, UnitClassId));
+	Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
+	if (row == nullptr || owner == nullptr) {
+		return;
+	}
+	using EvalFn = int32_t (*)(uint32_t, Unit*, Unit*, int32_t, int32_t, int32_t) noexcept;
+	const int32_t percent =
+		d2r::Engine<EvalFn>(EvalMissileCalc)(dataFlag, missile, owner, At<int32_t>(row, MsDmgCalc1), -1, -1);
+	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	const auto life = static_cast<uint32_t>(unitStat(target, StatLife, 0));
+	const auto maxLife = static_cast<uint32_t>(unitStat(target, StatMaxLife, 0));
+	const double share = static_cast<double>(percent) / 100.0 * static_cast<double>(maxLife);  // PD2's doubles
+	const uint32_t magic = share <= 0.0 ? 0 : share >= 4294967295.0 ? UINT32_MAX : static_cast<uint32_t>(share);
+	d2r::LeapKnockback hit;
+	hit.hitFlags = 0x1000;
+	hit.resultFlags = 0;  // PD2's block starts zeroed
+	*reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(&hit) + DmgMagic) = magic < life ? magic : life;
+	d2r::Engine<void (*)(Unit*, Unit*, void*) noexcept>(DamageStep)(owner, target, &hit);
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(DealDamage)(game, owner, target, &hit);
+	d2r::ReleaseDamage(hit);
+	if (plog::Sample(g_spearHits)) {
+		plog::Info("rathma bone spear damage: missile row %d on unit type %d: DmgCalc1 %d%% of max life %u = magic %u "
+		           "(life %u -> %d), hit %u", At<int32_t>(missile, UnitClassId), At<int32_t>(target, UnitType), percent,
+		           maxLife >> 8, magic >> 8, life >> 8, unitStat(target, StatLife, 0) >> 8, g_spearHits.load());
+	}
+}
+
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size, "returns spawned %u, caught %u, bounces %u, first hits %u, spread hits %u, explosions %u, "
 	              "falloff hits %u, state hits %u, bolt hits %u, holy light client hits %u, fist delay client hits %u, "
 	              "charge explodes %u, charge bolt hits %u, hammer frames %u, hits %u, kept %u, client frames %u, "
-	              "chain falloffs %u, fragment walls %u, splits %u, damage %u, client walls %u, summon hits %u",
+	              "chain falloffs %u, fragment walls %u, splits %u, damage %u, client walls %u, summon hits %u, rathma spear hits %u",
 	              g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(), g_firstHits.load(),
 	              g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load(), g_stateHits.load(),
 	              g_boltHits.load(), g_holyLightHits.load(), g_fistDelayHits.load(), g_chargeExplodes.load(),
 	              g_chargeBoltHits.load(), g_hammerFrames.load(), g_hammerHits.load(), g_hammerKept.load(),
 	              g_hammerClientFrames.load(), g_chainFalloffs.load(), g_fragmentWalls.load(), g_fragmentSplits.load(),
-	              g_fragmentDamage.load(), g_fragmentClientWalls.load(), g_summonHits.load());
+	              g_fragmentDamage.load(), g_fragmentClientWalls.load(), g_summonHits.load(), g_spearHits.load());
 }

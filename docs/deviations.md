@@ -149,7 +149,7 @@ rows have no table hook: D2R does what it does.
 | Corrupted zones | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): D2R's Terror Zones stay in their place |  |
 | Level life regen cap (30, `bloodwarp` lifts it) | cut | PD2 caps it only in the PvP arenas (levels 157, 159, 166), and PvP is cut ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)) ([ms3-map-stats](research/ms3-map-stats.md)) |  |
 
-### Not yet (29)
+### Not yet (27)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -157,11 +157,9 @@ rows have no table hook: D2R does what it does.
 | Force Move | not yet | stand-in: move-only skill: a third-party plugin will provide it; until then its functions are blank | third-party plugin |
 | PD2 object operate functions | not yet | stand-in: blank (`merge/standins.tsv`): boss blockers, map event altars, Zhar's tome and portals, the Uber Ancients' statues and the PvP tomes (75, 76, 78-80) do nothing when clicked. PD2's portal operate 77 (the `xactportal` objects) is built since [UB2](https://github.com/synpoox/pd2-resurrected/issues/227), as D2R's operate slot 60 | [MS2](https://github.com/synpoox/pd2-resurrected/issues/217), [MS8](https://github.com/synpoox/pd2-resurrected/issues/222) |
 | UberDiabSummon, UberDiabRun | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB4](https://github.com/synpoox/pd2-resurrected/issues/229) |
-| RathmaSummon | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB5](https://github.com/synpoox/pd2-resurrected/issues/230) |
 | Lucion kit | not yet | stand-in: closest D2R function (`merge/standins.tsv`): LucionBlink's and LucionDash's client halves (cltdo 113, 114, cltst 58; MonLeap's for the dash) | [#488](https://github.com/synpoox/pd2-resurrected/issues/488) |
 | Uber immolation arrow hit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB4](https://github.com/synpoox/pd2-resurrected/issues/229) |
 | Throwing potions | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [IR5](https://github.com/synpoox/pd2-resurrected/issues/240) |
-| Rathma bone spear damage | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB5](https://github.com/synpoox/pd2-resurrected/issues/230) |
 | Skill on block (`item_skillonblock`, 5 live rows) | not yet | stand-in until confirmed: the Cast Triggers companion (1.1.12, D2RLoader Hub) maps `[on_block] stat_id = 379` and `patches/030-cast-triggers.json` puts the stat on `doactive` / 20; it loads, but no block proc was seen in game yet (the owner confirms by hand) | [IR2](https://github.com/synpoox/pd2-resurrected/issues/237) |
 | Deep wounds and the open wounds rework | not yet | stand-in: D2R's open wounds; `deep_wounds` does nothing. PD2's event `0x103463f0` is only partly read ([ir3-combat-stats](research/ir3-combat-stats.md)) | [IR3](https://github.com/synpoox/pd2-resurrected/issues/238) |
 | Dark Pact consuming a curse | not yet | stand-in: Dark Pact is one more curse; PD2 consumes another curse and casts a follow-up skill by the curse count (docs/research/ir4-curses.md) | [#265](https://github.com/synpoox/pd2-resurrected/issues/265) |
@@ -183,7 +181,7 @@ rows have no table hook: D2R does what it does.
 | Item quantity display | approximated | the number sits at the bottom right of the picture (#359 asks for it; PD2 draws it bottom left), white with D2R's drop shadow instead of PD2's black box; tomes show no number (PD2 shows their charges; the owner's call); the stash's Gems/Materials/Runes tabs show D2R's own count instead | [#359](https://github.com/synpoox/pd2-resurrected/issues/359) |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 
-### Approximated (64)
+### Approximated (67)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -253,6 +251,7 @@ rows have no table hook: D2R does what it does.
 | Revive's event: the splash target | approximated | PD2's splash centres on the revive's path target; core-rules passes the unit the revive hit (docs/core-rules.md) | core-rules |
 | Function numbers of the exact data rows (Monster frenzy, Baal Corpse Explode client start, `*12` server hit) | approximated | the cells differ from PD2 but run the same rule: D2R's number for it, or none where PD2's points past D2R's table (see Data rows) | [W3](https://github.com/synpoox/pd2-resurrected/issues/46) |
 | Charm "only one unique" rule | approximated | covered by the Charm Inventory companion (`companions/manifest.json`), which refuses a second unique charm (owner, 2026-11-05); which PD2 charms share a group is not compared with PD2's | companion |
+| RathmaSummon: the area check and the spawn spots | approximated | srvdo 179 runs for any caster, where PD2 also needs the game's area type to be Rathma's (game `+0x1df4`); each spawn takes D2R's portal spot search near its random point, as UberDiabSummon does, where PD2 runs its own (`0x10389c20`); the points roll the caster's seed, not `rand()`; PD2's D2Game call on each spawn (`0x103a1eb0`) and a void knight's AI event 15 frames on are left out (docs/core-rules.md) | [#476](https://github.com/synpoox/pd2-resurrected/issues/476) |
 
 ## Data rows
 
@@ -347,7 +346,6 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | PD2 object operate functions | `objects.UberAncientStatue1.OperateFn` `objects.UberAncientStatue2.OperateFn` `objects.UberAncientStatue3.OperateFn` `objects.UberAncientAltar.OperateFn` `objects.TaintedSunMapEventAltar.OperateFn` `objects.zharportal_blue.OperateFn` `objects.zharportal_red.OperateFn` `objects.ZharTomeObject.OperateFn` `objects.ForceShardAltar.OperateFn` `objects.bossblocker_x_warp.OperateFn` `objects.bossblocker_y_warp.OperateFn` `objects.PVPTome1.OperateFn` `objects.Sacrifice Altar.OperateFn` `objects.PVPTome2.OperateFn` |
 | Find Potion, Find Item: do functions | `skills.Find Potion.srvdofunc` `skills.Find Potion.cltdofunc` `skills.Find Potion.srvstfunc` `skills.Find Potion.cltstfunc` `skills.Find Item.srvdofunc` `skills.Find Item.cltdofunc` `skills.Find Item.srvstfunc` `skills.Find Item.cltstfunc` |
 | UberDiabSummon, UberDiabRun | `skills.UberDiabSummon.srvdofunc` |
-| RathmaSummon | `skills.RathmaSummon.srvdofunc` |
 | Lucion kit | `skills.LucionBlink.cltdofunc` `skills.LucionDash.cltdofunc` `skills.LucionDash.cltstfunc` |
 | LucionNova, LucionDash, LucionPunish | `skills.LucionDash.srvstfunc` |
 | Melee splash: Smite's shield damage and the off-hand radius rules | `skills.proc_SplashDamage.srvdofunc` `skills.Golem Splash.srvdofunc` `skills.Skeleton Splash.srvdofunc` |
@@ -358,7 +356,6 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Uber immolation arrow hit | `missiles.uberimmolationarrow.pSrvHitFunc` |
 | Blade Fury: the throw frame | `skills.Blade Fury.seqinput` |
 | Throwing potions | `missiles.tpot_fire_small.pSrvHitFunc` `missiles.tpot_fire_small.pCltHitFunc` `missiles.tpot_fire_medium.pSrvHitFunc` `missiles.tpot_fire_medium.pCltHitFunc` `missiles.tpot_fire_large.pSrvHitFunc` `missiles.tpot_fire_large.pCltHitFunc` `missiles.tpot_gas_small.pSrvHitFunc` `missiles.tpot_gas_small.pCltHitFunc` `missiles.tpot_gas_medium.pSrvHitFunc` `missiles.tpot_gas_medium.pCltHitFunc` `missiles.tpot_gas_large.pSrvHitFunc` `missiles.tpot_gas_large.pCltHitFunc` `missiles.tpot_cold_small.pSrvHitFunc` `missiles.tpot_cold_small.pCltHitFunc` `missiles.tpot_cold_medium.pSrvHitFunc` `missiles.tpot_cold_medium.pCltHitFunc` `missiles.tpot_cold_large.pSrvHitFunc` `missiles.tpot_cold_large.pCltHitFunc` `missiles.tpot_light_small.pSrvHitFunc` `missiles.tpot_light_small.pCltHitFunc` `missiles.tpot_light_medium.pSrvHitFunc` `missiles.tpot_light_medium.pCltHitFunc` `missiles.tpot_light_large.pSrvHitFunc` `missiles.tpot_light_large.pCltHitFunc` `missiles.sharptootharmageddoncontrol.pSrvHitFunc` `missiles.sharptootharmageddoncontrol.pCltHitFunc` `missiles.sharptootharmageddonrock.pSrvHitFunc` `missiles.sharptootharmageddonrock.pCltHitFunc` |
-| Rathma bone spear damage | `missiles.rathmabonespear.pSrvDmgFunc` |
 | PvP maps and the Monastery map: no item spell | `misc.uba.pSpell` `misc.t41.pSpell` `misc.t61.pSpell` `misc.t62.pSpell` |
 | Unlimited TP and ID books | `misc.rtp.pSpell` `misc.rid.pSpell` |
 | Demonic cube reroll of unique and set items (16 rows) | `cubemain.demonic cube + * (reroll stats).enabled` `cubemain.demonic cube + * (reroll stats).output` |

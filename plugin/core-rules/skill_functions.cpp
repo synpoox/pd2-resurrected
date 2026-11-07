@@ -4012,6 +4012,134 @@ auto SrvStCycler(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	return 1;
 }
 
+// RathmaSummon (PD2 srvdofunc 179, ProjectDiablo.dll 0x103b42a0): what Rathma's AI picked (stat 447, here 500, which
+// core-maps' rathma_ai.cpp sets before the cast) spawns, around the caster at +-20 unless noted:
+//   30 void golems (937): 10 / 8 / 6 / 4 below 31 / 51 / 71 / 101 % life, 40 failed spots at most
+//   31 four blood golems (938) at the stage's spot (0x103567d0) -25 x, -25 y, +23 x, +25 y
+//   32 one totem (939), 20 failed spots at most
+//   33 void knights 1106, 969, 968, then 1107, 969, 1106 below 31 %, 1107, 968 below 51 %, 969 to 70 %: each takes the
+//      first free spot, 40 failed spots for the whole list
+std::atomic<uint32_t> g_rathmaSummons {0};
+constexpr int32_t StatRathmaPick = 500;               // mon_cooldown2 (PD2 447)
+constexpr uint32_t RathmaStageKey = 0x55425247;       // 'UBRG', core-maps' stage counter (PD2 game +0x262a)
+constexpr int32_t VoidGolem = 954, BloodGolem = 955, RathmaTotem = 956;  // merged ids (PD2 937-939)
+constexpr int32_t VoidKnights[] = {985, 986, 1123, 1124};               // merged ids (PD2 968, 969, 1106, 1107)
+
+// PD2 0x103567d0: the stage's spot
+constexpr auto RathmaSpot(int32_t stage) noexcept -> std::pair<int32_t, int32_t> {
+	return stage < 3 ? std::pair {0x476c, 0x35bf} : stage < 5 ? std::pair {0x47d3, 0x394b} : std::pair {0x4e9a, 0x1403};
+}
+
+// PD2's case 30 count by life percent
+constexpr auto VoidGolemCount(int32_t life) noexcept -> int32_t {
+	return life < 31 ? 10 : life < 51 ? 8 : life < 71 ? 6 : 4;
+}
+static_assert(VoidGolemCount(30) == 10 && VoidGolemCount(50) == 8 && VoidGolemCount(70) == 6 && VoidGolemCount(71) == 4);
+
+// PD2's case 33 list by life percent
+auto VoidKnightList(int32_t life, int32_t* out) noexcept -> int {
+	const int32_t k968 = VoidKnights[0], k969 = VoidKnights[1], k1106 = VoidKnights[2], k1107 = VoidKnights[3];
+	int n = 0;
+	for (int32_t id : {k1106, k969, k968}) {
+		out[n++] = id;
+	}
+	if (life < 31) {
+		for (int32_t id : {k1107, k969, k1106}) {
+			out[n++] = id;
+		}
+	} else if (life < 51) {
+		out[n++] = k1107;
+		out[n++] = k968;
+	} else if (life <= 70) {
+		out[n++] = k969;
+	}
+	return n;
+}
+
+// One spawn at x/y near room (updated to the room holding x/y), mode 1.
+// shortcut: D2R's portal spot search stands in for PD2's 0x10389c20, as UberDiabSummon (#469) and core-maps' map events
+// do; PD2's D2Game call on each spawn (0x103a1eb0) and, for a void knight, its AI event 15 frames on (0x103164f0) are
+// left out, as their effect is unread
+auto RathmaSpawn(Game* game, void*& room, int32_t x, int32_t y, int32_t mon) noexcept -> Unit* {
+	using namespace d2r::rva;
+	void* at = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(room, x, y);
+	if (at == nullptr) {
+		return nullptr;
+	}
+	room = at;
+	int32_t xy[2] = {x, y};
+	void* found = nullptr;
+	d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(FindFreeSpot)(
+		game, room, xy, 3, 0x400, &found, 5, 100);
+	return found == nullptr ? nullptr
+		: d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(SpawnMonster)(
+			game, found, xy[0], xy[1], mon, 1, -1, 0x42);
+}
+
+auto SrvDoRathmaSummon(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	// shortcut: PD2 also needs the game's area type to be Rathma's (game +0x1df4 == 0x2b), which the port does not keep
+	// (docs/deviations.md); only the Rathma group has the skill
+	int32_t x = 0, y = 0;
+	if (game == nullptr || unit == nullptr || d2r::api.getSkillRecord(d2r::DataFlag(game), skillId) == nullptr ||
+	    !d2r::UnitXY(unit, &x, &y)) {
+		return 0;
+	}
+	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit);
+	if (room == nullptr) {
+		return 0;
+	}
+	d2r::api.setUnitSkillFlag(unit, 1);
+	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	const int32_t life = LifePercent(unitStat(unit, StatLife, 0), unitStat(unit, StatMaxLife, 0));
+	const int32_t pick = unitStat(unit, StatRathmaPick, 0);
+	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit);
+	// shortcut: the spots roll the caster's seed, where PD2 calls the C runtime's rand(); the spread is the same
+	const auto near = [&](int32_t c) { return c - 20 + static_cast<int32_t>(d2r::RandomBelow(seed, 40)); };
+	int32_t wanted = 0, spawned = 0, failed = 0;
+	switch (pick) {
+	case 30:
+	case 32:
+		wanted = pick == 30 ? VoidGolemCount(life) : 1;
+		for (const int32_t tries = pick == 30 ? 40 : 20; spawned < wanted && failed < tries;) {
+			const int32_t sx = near(x), sy = near(y);
+			RathmaSpawn(game, room, sx, sy, pick == 30 ? VoidGolem : RathmaTotem) != nullptr ? ++spawned : ++failed;
+		}
+		break;
+	case 31: {
+		uint32_t key = RathmaStageKey;
+		const auto [cx, cy] = RathmaSpot(*d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(GameCounter)(
+			reinterpret_cast<uint8_t*>(game) + GameCounters, &key));
+		wanted = 4;
+		for (const auto& [sx, sy] : {std::pair {cx - 25, cy}, {cx, cy - 25}, {cx + 23, cy}, {cx, cy + 25}}) {
+			RathmaSpawn(game, room, sx, sy, BloodGolem) != nullptr ? ++spawned : ++failed;
+		}
+		break;
+	}
+	case 33: {
+		int32_t list[6] = {};
+		wanted = VoidKnightList(life, list);
+		for (int i = 0; i < wanted; ++i) {
+			for (; failed < 40; ++failed) {
+				const int32_t sx = near(x), sy = near(y);
+				if (RathmaSpawn(game, room, sx, sy, list[i]) != nullptr) {
+					++spawned;
+					break;
+				}
+			}
+		}
+		break;
+	}
+	default:
+		return 0;  // PD2 too
+	}
+	if (plog::Sample(g_rathmaSummons)) {
+		plog::Info("rathma summon: skill %d level %d: pick %d, life %d%%: spawned %d of %d (%d failed spots), cast %u",
+		           skillId, level, pick, life, spawned, wanted, failed, g_rathmaSummons.load());
+	}
+	return 1;
+}
+
 // --- UberDiabRun start (PD2 srvstfunc 71) ---------------------------------------------------------------------------
 // Read from ProjectDiablo.dll: srvst 71 at 0x103b6760. D2R's DiabRun start (srvst 54, 0x57dc60) takes the skill's
 // target unit and refuses the cast without one; PD2's takes the path's target unit, aims the path at its spot, and
@@ -4348,6 +4476,9 @@ const SlotFunction Functions[] = {
 	{SrvSt, 83, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStCycler)), "cycler start"},
 	{SrvSt, 71, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStUberDiabRun)), "uberdiabrun start"},
 	{MissileSrvHit, 67, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitSummon)), "summon"},
+	// Rathma (UB5): srvdo 179 and dmg 18 are free in D2R
+	{SrvDo, 179, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoRathmaSummon)), "rathma summon"},
+	{MissileSrvDmg, 18, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgRathmaSpear)), "rathma bone spear"},
 };
 
 }  // namespace

@@ -45,7 +45,6 @@ skills	Fire Claws	=	srvstfunc	Fire Claws: the hit
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
-skills	RathmaSummon	-	srvdofunc	RathmaSummon
 skills	Holy Fire Fire Golem	Holy Fire	cltdofunc	Paladin aura client do
 skills	Holy Fire Fire Golem	Holy Fire	cltstfunc	Paladin aura client start
 skills	Holy Freeze Korlic	Holy Freeze	cltdofunc	Paladin aura client do
@@ -64,7 +63,6 @@ skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Blade Fury	=	seqinput	Blade Fury: the throw frame
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
 missiles	uberimmolationarrow	immolationarrow	pSrvHitFunc	Uber immolation arrow hit
-missiles	rathmabonespear	bonespear	pSrvDmgFunc	Rathma bone spear damage
 missiles	tpot_fire_small	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	tpot_fire_medium	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	tpot_fire_large	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
