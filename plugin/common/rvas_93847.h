@@ -1,10 +1,10 @@
 // Engine addresses for D2R 3.3.0 build 93847 under D2RLoader 1.3.1 (the frozen install copy, ADR 0004).
 //
 // One header per D2R build: a new build gets its own rvas_<build>.h and d2r.h includes that one. Every value here was
-// found in the Ghidra analysis of the dumped 93847 image; the comment beside each says where (the Split Throw spike,
-// spikes/split-throw/FINDINGS.md, or the D2R function it was read from) and the game check that uses it. core-rules'
-// names match the RVA column of docs/core-rules.md; another plugin's values sit in a section headed by that plugin and
-// the work item that found them, which records them (core-ui: LP2, #212).
+// found in the Ghidra analysis of the dumped 93847 image; the comment beside each says where (the Split Throw spike's
+// FINDINGS.md on branch research/split-throw, or the D2R function it was read from) and the game check that uses it.
+// core-rules' names match the RVA column of docs/core-rules.md; another plugin's values sit in a section headed by that
+// plugin and the work item that found them, which records them (core-ui: LP2, #212).
 #pragma once
 
 #include <cstddef>
@@ -847,6 +847,17 @@ inline constexpr uint8_t SpawnCheatKeyFull[] = {0x41, 0x8b, 0x00, 0xb9, 0x20, 0x
                                                0x90, 0x90, 0x90, 0x90, 0x90};
 static_assert(sizeof(SpawnCheatKeyD2R) == sizeof(SpawnCheatKeyFull));
 
+// --- core-ui: legacy palette of the level entered (#296) -----------------------------------------------------------
+// (act byte) -> void: loads data/global/palette/act<N+1>/pal.pl2 (legacy floor, light and colormap tables) and
+// updates the palette texture. Only the load screen's end calls it with a level's palette (0xc5f80 passes
+// ActPalette), so a level entered without one (a map's portal from Harrogath) keeps the last act's. Decompiled for #296.
+inline constexpr uint64_t LoadActPalette = 0x9041a0;
+// (act byte) -> void: sets ActPalette. The client's unit placement 0x9bf00 sets it from the level record's Pal,
+// the act load 0x86bc0 from the act. The global it writes: 0x2a2adc0.
+inline constexpr uint64_t SetActPalette = 0xcd6d0;
+inline constexpr uint64_t LevelRecord = 0x32c4a0;  // (dataFlag, level id) -> levels.txt record
+inline constexpr int LvlPal = 0x0c;  // uint8 Pal (0x9bf00 reads it for SetActPalette; Teleport is +0x0e)
+
 // --- core-maps: opening a map (MS2, #217; D2Game\src\Skills\SkillItem.cpp) ----------------------------------------
 // Item spell dispatchers, (game, player, item, target): the check -> bool, then the use (whose caller frees an item
 // whose spell flag is 0, as slot 16's empty entry is). Both index D2R's 20-entry item spell table (0x236fe30) by the
@@ -909,10 +920,13 @@ inline constexpr int UnitEventOpen = 1;               // the event that opens a 
 inline constexpr uint64_t SetPortalLevel = 0x34e9d0;  // (object, level byte): the portal's destination
 inline constexpr uint64_t PortalLevel = 0x34ad40;     // (object) -> uint16 destination
 // How operate 15 removes a used town portal: (room, unit type, unit id) tells the room's clients, (game, unit) frees
-// the unit, (room) marks the room changed
+// the unit
 inline constexpr uint64_t RoomUnitRemoved = 0x2ef4d0;
 inline constexpr uint64_t RemoveUnit = 0x48faa0;
-inline constexpr uint64_t RoomChanged = 0x2f0530;
+// (room, 0) sets bit 0x400000 of the room's level-gen room (+0x18, flags +0x50; 0x328860), (room, 1) clears it. The
+// portal maker sets it on each portal's room, operate 15 clears it on removal: an unmarked room is freed with its units
+// once no player is near (#431: the grey portals were gone when the player came back)
+inline constexpr uint64_t RoomPortalMark = 0x2f0530;
 // The room walk of 0x593630 (finds an object by class near a unit): (room, &rooms, &count) the room and its
 // neighbours, (room) its first unit, (unit) the next unit in its room
 inline constexpr uint64_t NearRooms = 0x2efde0;
@@ -1050,13 +1064,8 @@ inline constexpr uint8_t MissileCritRollEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08,
 // (unit, weapon, 0, kind) -> the weapon mastery's bonus; kind 2 is the crit chance (D2RCore jumps it at its entry)
 inline constexpr uint64_t MasteryBonus = 0x33d4f0;
 
-// A statlist's base stat (statlist, stat << 16 | layer, itemstatcost record) -> value: ops 4 / 5 read their op base
-// on the owner's statlist through it (0x2f8ad0, 0x2fa430), as PD2's 0x102fa640 hooks in 1.13c. The statlist's unit
-// is at +0xa0. mov [rsp+0x10],rsi / push rdi / sub rsp,0x20 / movsxd rax,[rcx+0x1c] / mov rsi,rcx
-inline constexpr uint64_t StatListBaseStat = 0x2f9b10;
-inline constexpr uint8_t StatListBaseStatEntry[] = {0x48, 0x89, 0x74, 0x24, 0x10, 0x57, 0x48, 0x83, 0xec,
-                                                    0x20, 0x48, 0x63, 0x41, 0x1c, 0x48, 0x8b, 0xf1};
-inline constexpr uint64_t StatListUnit = 0xa0;
+// D2R's op-base read (0x2f9b10, as PD2's 0x102fa640 hooks in 1.13c) is dead: D2RCore jumps the stat getters that
+// reach it (0x2f5020 is jmp [0x3e2a218]) into its own code, which never calls it (#446).
 inline constexpr uint64_t InventoryBodyItem = 0x3886d0;  // (inventory, bodyloc 0-12) -> the item worn there
 // (unit, amount) -> life added: life + amount up to the max, unless the unit is dead or has state 92 (1.13c's
 // 0x6fcfb570, which PD2 replaces with 0x10306ca0). Callers: the life leech 0x450c90 (attacker) and the hit's absorb
@@ -1067,6 +1076,12 @@ inline constexpr uint8_t AddLifeEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x56, 0
 inline constexpr uint64_t UnitMaxLife = 0x2f4d20;  // (unit) -> max life, 1/256
 // CrushingBlowApply's entry is jmp [rip+0x38a8872]: the qword it jumps through, which a plugin can swap
 inline constexpr uint64_t CrushingBlowApplySlot = 0x3e2a448;
+// The unit event dispatcher 0x5881e0, (game, event, unit, target, damage, list), is jmp [here]: D2RCore's. The hit
+// (0x44ce80) raises domeleedamage (5) / domissiledamage (6) on the attacker through 0x44d570 before the damage lands.
+inline constexpr uint64_t EventDispatchSlot = 0x3e2a420;
+// A unit's item event nodes (docs/research/p12-ormus-robes.md): the head at unit +0xe0; node +0 event, +0xc stat,
+// +0x38 next. The node's function (+0x28) is a D2RCore trampoline into D2RCore's own event table.
+inline constexpr int UnitEventNodes = 0xe0, EventNodeEvent = 0x0, EventNodeStat = 0xc, EventNodeNext = 0x38;
 inline constexpr uint32_t MonPrimeEvil = 0x80;  // MonFlags bit 7 (1.13c's D2Common #10278 tests the same bit)
 
 // --- core-maps: the key drop rule (UB2, #348) ----------------------------------------------------------------------
