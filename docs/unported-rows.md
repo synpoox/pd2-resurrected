@@ -42,8 +42,8 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
   - [UR6](https://github.com/synpoox/pd2-resurrected/issues/204) rolls the quivers' `auto prefix` groups (321-326) through an item-spawn hook. Moving the quivers to another
     table would break their item type.
   - Folded into existing rows, with no item of their own: missile `Qty` and `SpecialSetup` and the throwing potions'
-    `spelldesc` go to "Throwing potions" ([IR5](https://github.com/synpoox/pd2-resurrected/issues/240)); missile `LevRange` goes to the class or map row that owns each missile;
-    `immed` on PD2's three states goes to phasing ([IR7](https://github.com/synpoox/pd2-resurrected/issues/242)).
+    `spelldesc` go to "Throwing potions" ([IR5](https://github.com/synpoox/pd2-resurrected/issues/240)); missile `LevRange` goes to the class or map row that owns each missile.
+    States `immed` is cut: PD2's loader never reads it ([#342](https://github.com/synpoox/pd2-resurrected/issues/342), [states-immed](research/states-immed.md)).
 - **Cut, in one docs item ([UR1](https://github.com/synpoox/pd2-resurrected/issues/199)).** Columns that are empty in PD2 or set only on rows both games share: the skill event
   columns, `blue`, `itemspecific`, `Divide`, the S12/S13 save widths, the affix and rare price columns, itemtypes
   `Charm`, `Gem` and `CostFormula`, the qualityitems classic columns, and the empty or shared-only armor, misc,

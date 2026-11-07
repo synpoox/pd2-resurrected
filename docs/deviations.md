@@ -14,12 +14,13 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 
 ## Features and data
 
-### Cut (22)
+### Cut (23)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
 | PD2 skill columns auratgtevent, auratgteventfunc, passiveevent, passiveeventfunc | cut | empty in PD2: none of its 614 rows sets them (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)) |  |
 | PD2 state column blue | cut | set on 4 states, all shared with D2R (freeze, cold, ...), which D2R tints through its own colour columns (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)) |  |
+| PD2 state column immed | cut | PD2's 1.13c states loader never reads it and no PD2 DLL names it, so it does nothing ([states-immed](research/states-immed.md)) | [#342](https://github.com/synpoox/pd2-resurrected/issues/342) |
 | PD2 stat columns Divide, itemspecific and the S12/S13 save widths | cut | `itemspecific` is set on 6 stats, all shared; `Divide` is 1.13c's per-stat price divisor, which D2R dropped (only vendor prices move), and on the map stats PD2's route, which core-maps carries in its own table ([MS3](https://github.com/synpoox/pd2-resurrected/issues/218), [ms3-map-stats](research/ms3-map-stats.md)); the port saves through D2R's extended saves (ADR 0003), so PD2's season save widths have nothing to read (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)) |  |
 | Belts and body locations keep D2R's values | cut | they match: `bodylocs` is identical, and `belts` has the same rows and slot counts, differing only in PD2's classic-screen pixel boxes, which D2R's HD belt does not use (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)) |  |
 | PD2 tables soundenviron and sounds: D2R's are kept | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): PD2's DLL drives its own sound engine, and audio is best effort | [P4](https://github.com/synpoox/pd2-resurrected/issues/48) |
@@ -41,12 +42,11 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | PvP modifiers and battle-royale checks | cut | online features (core-rules) |  |
 | PD2's panel art (26 panel DC6) | cut | each serves a cut feature or one D2R draws itself: the stash with its categories, search and tabs, the 10x8 inventory (`invchar6`), the grail, the trophy case, the controller, guild icons, the trade stash, buy and sell, the potion counter (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)). The controller and guild icon art comes back with [#340](https://github.com/synpoox/pd2-resurrected/issues/340) and [#339](https://github.com/synpoox/pd2-resurrected/issues/339) if they need it |  |
 
-### Not yet (27)
+### Not yet (26)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
 | PD2 skill columns checkfunc, nocostinstate, general | not yet | D2R's skills table has no such columns; [UR4](https://github.com/synpoox/pd2-resurrected/issues/202) reads them in `ProjectDiablo.dll`, then builds, folds or cuts each | [UR4](https://github.com/synpoox/pd2-resurrected/issues/202) |
-| PD2 state column immed | not yet | D2R's states table has no such column; set on 13 shared aura states and PD2's `immune_give`, `immune_get` and `phasing`; the three PD2 states go with phasing | [IR7](https://github.com/synpoox/pd2-resurrected/issues/242) |
 | PD2 missile columns LevRange, Qty and SpecialSetup | not yet | D2R's missiles table has no such columns | core-rules |
 | PD2's 4x4 Horadric Cube: D2R's 3x4 is kept | not yet | the cut above left it out; reversed in [#299](https://github.com/synpoox/pd2-resurrected/issues/299), which narrows the `inventory.*` pattern when it lands | [#299](https://github.com/synpoox/pd2-resurrected/issues/299) |
 | PD2 columns read by PD2's DLL: difficultylevels UberCodeOdds, UltraCodeOdds and HireableBossDamagePercent; hireling WType1 and WType2 | not yet | D2R's tables have no such columns; the rules behind them come back as engine work. WType: D2R has no weapon rule for an Act 4 hireling, so the Ascendant equips any weapon (a staff and a wand both went on in [#201](https://github.com/synpoox/pd2-resurrected/issues/201)'s game check) where PD2 allows staves only; D2R's merc weapon check is not found yet | [UR5](https://github.com/synpoox/pd2-resurrected/issues/203), [UR3](https://github.com/synpoox/pd2-resurrected/issues/201) |
