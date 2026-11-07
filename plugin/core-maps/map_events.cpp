@@ -4,9 +4,9 @@
 // forced). The event spawns as the map's rooms activate (0x1036fef0), once the level's progress, rooms activated x
 // 100 / PD2's room count for the level, is far enough; it spawns at the activating room's centre.
 //
-// This slice spawns Shadow of Mendeln and Gheed once (Gheed with an event marker object), Dark Wanderer and Treasure
-// Fallen up to three times. The others are rolled and logged but spawn nothing yet: Altar of the Catalyst and Spire
-// of Darkness (MS8), Horazon and Void/Tomb (MS9), the invaders (MS10).
+// This slice spawns Shadow of Mendeln, Horazon and Gheed once (Gheed with an event marker object), Dark Wanderer and
+// Treasure Fallen up to three times. The others are rolled and logged but spawn nothing yet: Altar of the Catalyst and
+// Spire of Darkness (MS8), Void/Tomb (MS9), the invaders (MS10). Horazon's death is event_portals.cpp's.
 //
 // Each spawn sends the event's notify string to every player as a red chat line (#336; PD2 0x1037dbc0, packet 0x26
 // type 4, colour 1). The SDK's localization service gives the text; no SDK service sends a chat line, so it goes
@@ -55,7 +55,7 @@ constexpr int32_t Draws[12] = {0, Mendeln, Horazon, 0, DarkWanderer, TreasureFal
                                Tomb};
 // The events' monsters, PD2 922 nihlathakMap, 921 darkwandererMap and 945 treasurefallenMap in port monstats ids
 constexpr int32_t MendelnMonster = 939, DarkWandererMonster = 938, TreasureFallenMonster = 962;
-constexpr int32_t GheedMonster = 147;
+constexpr int32_t GheedMonster = 147, HorazonMonster = 936;  // PD2 919 summonerMap
 constexpr int32_t EventMarker = 597;  // PD2 object 594 empty_eventmarker: invisible, AutoMap 1499
 constexpr int32_t ModeNeutral = 1;
 constexpr int32_t UnitObject = 2;
@@ -260,8 +260,8 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t progress) noexcep
 	const int32_t spawns = Get(game, SpawnsKey);
 	const int32_t roll = Rand() % 100;
 	int32_t monster = -1;
-	if ((event == Mendeln || event == Gheed) && spawns == 0 && roll + progress > 140) {
-		monster = event == Mendeln ? MendelnMonster : GheedMonster;
+	if ((event == Mendeln || event == Horazon || event == Gheed) && spawns == 0 && roll + progress > 140) {
+		monster = event == Mendeln ? MendelnMonster : event == Horazon ? HorazonMonster : GheedMonster;
 	} else if ((event == DarkWanderer || event == TreasureFallen) && spawns < 3 && (spawns + 1) * 25 < progress &&
 	           roll < 25) {
 		monster = event == DarkWanderer ? DarkWandererMonster : TreasureFallenMonster;
