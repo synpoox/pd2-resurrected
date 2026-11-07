@@ -49,7 +49,7 @@ class StringsTests(unittest.TestCase):
             p = self.root / "d2r/data/local/lng" / rel
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text("﻿" + json.dumps(rows), "utf-8")
-        self.pd2 = {"skillld1": "bottom\ntop", "r08": "ÿc8Ral Rune", "Runeword171": "Dominion",
+        self.pd2 = {"skillld1": "bottom\ntop", "r08": "ÿc8Ral Runeÿc/","Runeword171": "Dominion",
                     "NewSkill": "b\na", "NewAffix": "of Wit", "ModStr": "Chance of Strike"}
 
     def tearDown(self):
@@ -78,7 +78,7 @@ class StringsTests(unittest.TestCase):
         self.assertEqual(skills["NewSkill"]["id"], 50001)
         self.assertEqual({skills["NewSkill"][la] for la in mkstrings.LANGS}, {"a\nb"})
         self.assertEqual(legacy["NewSkill"]["id"], 50001)
-        self.assertEqual(runes["r08"]["enUS"], "ÿc8Ral Rune")
+        self.assertEqual(runes["r08"]["enUS"], "ÿc8Ral Rune")  # the trailing ÿc/ dropped
         self.assertEqual(runes["Runeword171"]["enUS"], "Hysteria")
         self.assertEqual(runes["Runeword171PD2"]["enUS"], "Dominion")
         self.assertFalse((self.root / "out/data/local/lng/strings-legacy/item-runes.json").exists())
