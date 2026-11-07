@@ -87,6 +87,9 @@ _SKILL_REFS = ["sumskill1", "sumskill2", "sumskill3", "sumskill4", "sumskill5", 
 _MISSILE_REFS = ["ExplosionMissile", "SubMissile1", "SubMissile2", "SubMissile3", "HitSubMissile1", "HitSubMissile2",
                  "HitSubMissile3", "HitSubMissile4", "CltSubMissile1", "CltSubMissile2", "CltSubMissile3",
                  "CltHitSubMissile1", "CltHitSubMissile2", "CltHitSubMissile3", "CltHitSubMissile4"]
+# monsounds columns naming a sounds row; pd2_tables renames PD2-only sounds ("sound"), as D2R's sounds table ships
+SOUND_COLS = ["Attack1", "Weapon1", "Attack2", "Weapon2", "HitSound", "DeathSound", "Skill1", "Skill2", "Skill3",
+              "Skill4", "Footstep", "FootstepLayer", "Neutral", "Init", "Taunt", "Flee"]
 # column -> referenced table, from D2R's data guide and modkit's EXPLICIT_REFS
 REFS = {
     "skills": {**{c: "skills" for c in _SKILL_REFS},
@@ -106,7 +109,7 @@ REFS = {
     # Class and Seller name monstats rows by number, HireDesc a hiredesc code: pd2_tables renames them
     "hireling": {**{f"Skill{i}": "skills" for i in range(1, 7)}, "Class": "monster", "Seller": "monster",
                  "HireDesc": "hiredesc"},
-    "monsounds": {f"CvtSk{i}": "skills" for i in range(1, 4)},
+    "monsounds": {**{f"CvtSk{i}": "skills" for i in range(1, 4)}, **{c: "sound" for c in SOUND_COLS}},
     "skilldesc": {f"descmissile{i}": "missiles" for i in range(1, 4)},
 }
 # columns holding another id-listed table's row number (PD2's) -> that table; levels' Warp0-7 hold lvlwarp's Id column,
@@ -397,13 +400,27 @@ def fix_props(header: list[str], row: list[str], ren: dict[str, dict[str, str]],
 # 4-byte code (1.13c keeps the first 4 letters), and a skill, stat, sound, overlay or property no table has is no
 # reference. PD2 bugs we fix (docs/pd2-origin-bugs.md): dblue, amu, and the two potions' "An evil force" description.
 _EVIL = {"spelldesc": "", "spelldescstr": ""}  # D2R's own Antidote and Thawing Potion rows have no description
-FIXES = {"magicsuffix": {("itype4", "amu"): {"itype4": "amul"}},
+# Map stats (#383): descfunc 6-9 print the value, then descstr2. PD2's map stats name vanilla keys there, plain text in
+# 1.13c but printf text in D2R ("%+d%% Deadly Strike"), so each points at a copy without the codes (pd2_strings builds
+# it: PD2's text, else D2R's). D2R's own stats keep the vanilla keys.
+PLAIN_STRINGS = {k: f"{k}Map" for k in [
+    "ModStr1h", "ModStr1j", "ModStr1k", "ModStr1l", "ModStr1n", "ModStr1o", "ModStr1p", "ModStr1q", "ModStr1r",
+    "ModStr1s", "ModStr1t", "ModStr2g", "ModStr2h", "ModStr2l", "ModStr2w", "ModStr2z", "Modstr2v", "ModStr3m",
+    "ModStr4h", "ModStr4i", "ModStr4m", "ModStr4p", "ModStr4v", "ModStr5c", "ModStr5g", "ModStr5i", "ModStr5k",
+    "ModStr5m", "ModStr5q", "ModStr5u", "ModStr5v", "ModStr5w", "ModStr5y", "ModitemdamColdsk", "ModitemdamFiresk",
+    "ModitemdamLtngsk", "ModitemdamPoissk", "strModMagicDamage"]}
+# Map tiers (#383): D2R fills spelldesc 2's %d from spelldesccalc, 1 on every PD2 map, so the tier comes from the map's
+# item type. Unique maps (t5m) count as tier 3, as PD2's wiki says (zone level 89, like tier 3).
+_TIER = {f"t{t}m": {"spelldescstr": "MapTierValue", "spelldesccalc": str(min(t, 3))} for t in (1, 2, 3, 5)}
+FIXES = {"itemstatcost": {("descstr2", k): {"descstr2": v} for k, v in PLAIN_STRINGS.items()},
+         "magicsuffix": {("itype4", "amu"): {"itype4": "amul"}},
          "magicprefix": {("transformcolor", "dblue"): {"transformcolor": "dblu"},
                          ("mod1code", "map-mon-extra-mag"): {"mod1code": "", "mod1min": "", "mod1max": ""}},
          "misc": {("alternategfx", "bonechips"): {"alternategfx": "bone"},
                   ("alternategfx", "invmppvp"): {"alternategfx": "invm"},
                   ("stat1", "dmg-min"): {"stat1": "", "calc1": ""}, ("stat2", "dmg-max"): {"stat2": "", "calc2": ""},
-                  ("spelldescstr", "ItemStatsAnti"): _EVIL, ("spelldescstr", "ItemStatsThaw"): _EVIL},
+                  ("spelldescstr", "ItemStatsAnti"): _EVIL, ("spelldescstr", "ItemStatsThaw"): _EVIL,
+                  **{("type", t): cells for t, cells in _TIER.items()}},
          "missiles": {("Skill", "immolationarrow"): {"Skill": ""}, ("Skill", "RadamentUnholyOrb"): {"Skill": ""},
                       ("HitSound", "firearrow firewall"): {"HitSound": ""}, ("ProgOverlay", "fireexplode"): {"ProgOverlay": ""}}}
 
@@ -414,7 +431,8 @@ def fix_row(table: str, header: list[str], row: list[str]) -> list[str]:
     for (col, bad), cells in FIXES.get(table, {}).items():
         if col in header and row[header.index(col)].replace('"', "") == bad:
             for c, v in cells.items():
-                row[header.index(c)] = v
+                if c in header:  # a table without the column (a test's few columns) has nothing to fix there
+                    row[header.index(c)] = v
     return row
 
 
