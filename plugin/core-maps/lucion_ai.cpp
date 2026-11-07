@@ -95,13 +95,8 @@ auto Idle(Game* game, Unit* unit, int32_t frames) noexcept -> void {
 auto Delay(Game* game, Unit* unit, int32_t frames) noexcept -> void {
 	d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(d2r::rva::AiSetDelay)(game, unit, frames);
 }
-// shortcut: the mod ships no animdata.d2 rows for PD2's new codes ($7, $8: Lucion, his spawner), so an attack or cast
-// mode never ends and D2R never calls the think again (game check, #437). A 20-frame timer after each brings it back;
-// remove it once those rows land (#502)
-constexpr int32_t ModeEndFrames = 20;
 auto Attack(Game* game, Unit* unit, int32_t mode, Unit* target) noexcept -> void {
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, Unit*) noexcept>(d2r::rva::AiAttack)(game, unit, mode, target);
-	Delay(game, unit, ModeEndFrames);
 }
 auto Cast(Game* game, Unit* unit, int32_t skill, int32_t mode, Unit* target, int32_t x, int32_t y) noexcept -> void {
 	if (skill < 0) {
@@ -115,7 +110,6 @@ auto Cast(Game* game, Unit* unit, int32_t skill, int32_t mode, Unit* target, int
 		           At<int32_t>(unit, d2r::rva::UnitClassId), skill, mode, x, y, target != nullptr ? " on target" : "", ok,
 		           g_casts.load());
 	}
-	Delay(game, unit, ModeEndFrames);
 }
 // PD2 sets the mode itself (D2Common); the port sends it the way AiIdle sends neutral
 auto SetMode(Game* game, Unit* unit, int32_t mode) noexcept -> void {

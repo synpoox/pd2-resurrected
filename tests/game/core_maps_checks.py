@@ -2,7 +2,8 @@
 
 uber-scaling (#347, docs/research/pd2-uber-bosses-dll.md section 4) reads <slot>/d2rloader/logs/core-maps.log.
 Setup: tools/install.ps1 on the merged data, a level 90+ character in Hell. In game: `debug_mode`, `cheat goto 138`
-(tier 0: no key opened, so the counters read 0; tiers 1-2 need a key with stat 370, which the console cannot set),
+(tier 0: no key opened, so the counters read 0; for tiers 1-2, `cheat spawn dcma,inv 0`, cube the key alone once per
+tier, and right-click it at the fountain, `cheat goto 109,5074,5114`),
 then `cheat mspawn uberdiablonew`, `cheat mspawn dcloneskele,3` and a monster outside the fight set, `cheat mspawn
 zombie1`. Then:
   py testing/game_checks.py --path <repo>/tests/game --module core_maps_checks run core-maps-ub2 --slot N
@@ -61,11 +62,14 @@ def expected_maxhp(maxhp: int, tier: int, boss: bool) -> int:
 @check("uber-scaling", tags=["core-maps-ub2"])
 def uber_scaling(ctx):
     """Each scaled fight monster has PD2's maxhp and +skills for its tier, a boss its absorbs, none scaled twice."""
-    rows = [tuple(int(v) for v in m.groups()) for m in SCALED.finditer(_log(ctx))]
+    # unit ids repeat across games, and a tier-0 re-entry remakes the minions with their rooms: one scaling per entry
+    games = re.split(r"uber: level \d+ open at tier", _log(ctx))
+    rows = [(g,) + tuple(int(v) for v in m.groups()) for g, text in enumerate(games) for m in SCALED.finditer(text)]
     if not rows:
         ctx.skip("no 'uber scaling:' line yet (open an uber area and spawn a fight monster)")
-    units = [r[1] for r in rows]
-    assert len(units) == len(set(units)), f"a unit was scaled twice: {sorted(units)}"
+    units = [(r[0], r[5], r[2]) for r in rows]
+    assert len(units) == len(set(units)), f"a unit was scaled twice in one entry: {sorted(units)}"
+    rows = [r[1:] for r in rows]
     for cls, unit, level, tier, entries, old, new, _, _, skills, absorb, magic, dr, plr in rows:
         boss = cls in BOSSES
         assert cls in FIGHT, f"monster {cls} is not an uber fight monster but was scaled"
