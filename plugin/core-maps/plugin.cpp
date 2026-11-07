@@ -25,6 +25,7 @@
 #include "prime_minions.h"
 #include "rathma.h"
 #include "uber_drops.h"
+#include "unique_maps.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -212,6 +213,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	EventPortalsCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	UniqueMapsCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	LucionAiCounters(line, sizeof(line));
