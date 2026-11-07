@@ -13,6 +13,7 @@
 #include "entity_pool.h"
 #include "event_portals.h"
 #include "d2r.h"
+#include "dclone_ai.h"
 #include "key_drops.h"
 #include "log.h"
 #include "lucion.h"
@@ -25,6 +26,7 @@
 #include "prime_minions.h"
 #include "rathma.h"
 #include "uber_drops.h"
+#include "unique_maps.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -124,6 +126,12 @@ void InstallLucion(const D2RL::PluginContext* context, char* report, size_t size
 	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
 }
 
+void InstallDclone(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallDcloneAi(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/2 installed: %s", installed, rules);
+}
+
 void InstallPool(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	(void)context;
 	InstallEntityPool(report, size);
@@ -141,6 +149,7 @@ Part g_parts[] = {
 	{"temple", InstallTempleChests, ""},
 	{"events", InstallEvents, ""},
 	{"lucionai", InstallLucion, ""},
+	{"dcloneai", InstallDclone, ""},
 };
 
 void InstallParts(const D2RL::PluginContext* context) noexcept {
@@ -214,7 +223,13 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	EventPortalsCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
+	UniqueMapsCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
 	LucionAiCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	DcloneAiCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
