@@ -1,0 +1,21 @@
+// The unique maps' boss deaths: portals and drops (unique_maps.cpp).
+#pragma once
+
+#include "d2r.h"
+
+#include <D2RLPlugin/api.h>
+
+#include <cstddef>
+
+// Called on every monster death (key_drops.cpp's listener); acts only on a unique map boss in its own map.
+auto UniqueMapDeath(d2r::Game* game, d2r::Unit* monster) noexcept -> void;
+// PD2 0x1038bfc0 in the Outer Void, from the preset spawn hook (map_stats.cpp): a placeholder monster spawns as a
+// random boss through `spawn` (true: the preset is done), a placeholder object gets a linked red portal (false).
+auto OuterVoidPreset(d2r::Game* game, void* room, uint8_t* preset,
+                     void (*spawn)(d2r::Game*, void*, const uint8_t*) noexcept) noexcept -> bool;
+// From the portal operate (map_open.cpp): an Outer Void portal linked to a spot moves the player there (true).
+auto OuterVoidWarp(d2r::Game* game, d2r::Unit* player, d2r::Unit* portal) noexcept -> bool;
+// Registers the table listener that reads the random uniques' bases. Returns false when a service is missing.
+auto InstallUniqueMaps(const D2RL::PluginContext* context) noexcept -> bool;
+// Live counters for the status command.
+auto UniqueMapsCounters(char* out, size_t size) noexcept -> void;
