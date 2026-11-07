@@ -40,5 +40,6 @@ auto SrvHitBladeFragment(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) no
 void SrvDmgBladeFragment(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit, uint8_t* damage) noexcept;  // dmg 19
 auto CltHitBladeFragment(d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // chit 68 (PD2 6)
 auto SrvHitSummon(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 67 (PD2 6)
+void SrvDmgRathmaSpear(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit, uint8_t* damage) noexcept;  // dmg 18
 // Live counters for the status command.
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void;
