@@ -79,8 +79,8 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
 def count_each_input(cube: I.Table) -> None:
     """PD2's numinputs counts stacks ("t1me,qty=3" is 1); D2R's recipe search wants numinputs == items in the cube
     (#261), so loose inputs matched no row. Each row gets the sum of its inputs' qty, except op-30 rows (core-maps
-    matches them without the count, as PD2 does) and sums past the cube's cells, which only stacks can meet (IR6, #241:
-    D2R matched a stack of 3 runes under neither count)."""
+    matches them without the count, as PD2 does). core-rules counts a stack as its quantity (#315), so the x50 rows'
+    150 is met by stacks."""
     h = {c: j for j, c in enumerate(cube.header)}
     if "numinputs" not in h:
         return
@@ -88,9 +88,8 @@ def count_each_input(cube: I.Table) -> None:
     for r in cube.rows:
         if not r[h["numinputs"]].strip() or ("op" in h and r[h["op"]] == "30"):
             continue
-        total = sum(int(m[1]) if (m := re.search(r"qty=(\d+)", r[i])) else 1 for i in inputs if r[i].strip('"'))
-        if total <= CUBE_CELLS:
-            r[h["numinputs"]] = str(total)
+        r[h["numinputs"]] = str(sum(int(m[1]) if (m := re.search(r"qty=(\d+)", r[i])) else 1
+                                    for i in inputs if r[i].strip('"')))
 
 
 def remake_rerolls(cube: I.Table) -> None:
