@@ -1232,6 +1232,18 @@ def smite_event(ctx):
     return f"{len(events)} events on the Paladin, {blows} crushing blows, chance {events[-1][4]}"
 
 
+@check("smite-blow-effectiveness", tags=["core-rules-w19", "core-rules-ir3"])
+def smite_blow_effectiveness(ctx):
+    """A Smite crushing blow takes PD2's effectiveness 1 + calc4 / 100 (calc4 edmx, above 0), item blows 1 (#321)."""
+    blows = re.findall(r"crushing blow: unit type 0 on unit type \d+ class \d+.*?efficiency (-?\d+), effectiveness "
+                       r"([\d.]+)", _log(ctx))
+    if not blows:
+        ctx.skip("no player crushing blow in the log yet (Smite monsters with cheat stat crushingblow, 100)")
+    raised = [float(e) for _, e in blows if float(e) > 1.0]
+    assert raised, f"every blow has effectiveness 1: {blows[:3]}"
+    return f"{len(blows)} blows, effectiveness {raised[-1]:.2f}"
+
+
 def _gate(ctx) -> list[tuple]:
     return [tuple(int(v) for v in r) for r in re.findall(
         r"gate: mode (\d+) \(skill (-?\d+)\) from mode (\d+), concentration (\d): (-?\d+)", _log(ctx))]
