@@ -52,7 +52,8 @@ The map spell's check and use hooks handle the keys too. A key's `len` in the ub
   removed. The other `xactportal` objects (the fights' own portals, later parts) take the same function, without
   the single use.
 - **Waypoints:** a player who arrives in level 138 or 160-162 (PD2's 137 and 161-163), by the opening or a portal,
-  has the `Waypoint` objects (operate 23) in the rooms around them removed.
+  has the `Waypoint` objects (operate 23) in the rooms around them removed. The port never spawns them: D2R spawns the arrival
+  rooms' presets after the warp, so the waypoint preset is refused at spawn (#466).
 
 ### D2R functions
 
