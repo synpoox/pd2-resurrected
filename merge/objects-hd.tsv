@@ -1,8 +1,9 @@
-# class	like: the D2R objects.json key whose HD json a PD2 object copies; tools/pd2_objects_hd.py
+# class	like	[particles]: the D2R objects.json key whose HD json a PD2 object copies; tools/pd2_objects_hd.py
 # PD2's cross-act portals draw D2R's red permanent portal until their own art is ported (#431)
 xactportal_red	portal_permanent
 xactportal_ghostly	portal_permanent
-xactportal_gold	portal_permanent
+# PD2 draws xactportal_gold gold (#461): it takes the gold effect of D2R's Chronicle town portal
+xactportal_gold	portal_permanent	data/hd/vfx/particles/objects/vfx_only/town_portal/vfx_town_portal_chronicle.particles
 xactportal_grey	portal_permanent
 xactportal_green	portal_permanent
 xactportal_purple	portal_permanent

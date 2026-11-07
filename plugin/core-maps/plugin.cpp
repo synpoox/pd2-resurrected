@@ -21,6 +21,8 @@
 #include "map_open.h"
 #include "map_stats.h"
 #include "off_switch.h"
+#include "rathma.h"
+#include "uber_drops.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -182,6 +184,12 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	LucionChestsCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	UberDropsCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	RathmaCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	EventPortalsCounters(line, sizeof(line));

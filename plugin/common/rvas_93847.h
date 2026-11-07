@@ -1,10 +1,10 @@
 // Engine addresses for D2R 3.3.0 build 93847 under D2RLoader 1.3.1 (the frozen install copy, ADR 0004).
 //
 // One header per D2R build: a new build gets its own rvas_<build>.h and d2r.h includes that one. Every value here was
-// found in the Ghidra analysis of the dumped 93847 image; the comment beside each says where (the Split Throw spike,
-// spikes/split-throw/FINDINGS.md, or the D2R function it was read from) and the game check that uses it. core-rules'
-// names match the RVA column of docs/core-rules.md; another plugin's values sit in a section headed by that plugin and
-// the work item that found them, which records them (core-ui: LP2, #212).
+// found in the Ghidra analysis of the dumped 93847 image; the comment beside each says where (the Split Throw spike's
+// FINDINGS.md on branch research/split-throw, or the D2R function it was read from) and the game check that uses it.
+// core-rules' names match the RVA column of docs/core-rules.md; another plugin's values sit in a section headed by that
+// plugin and the work item that found them, which records them (core-ui: LP2, #212).
 #pragma once
 
 #include <cstddef>
@@ -927,6 +927,11 @@ inline constexpr uint64_t RemoveUnit = 0x48faa0;
 // portal maker sets it on each portal's room, operate 15 clears it on removal: an unmarked room is freed with its units
 // once no player is near (#431: the grey portals were gone when the player came back)
 inline constexpr uint64_t RoomPortalMark = 0x2f0530;
+// The room-release pass 0x4088c0 (PD2's D2Game+0x2cf30) asks (act, room) -> nonzero for each room 10+ ticks without a
+// player; a yes frees the room and its units (0x504260 each, then 0x2f0110). Its only caller. 0 when the room is marked.
+inline constexpr uint64_t RoomReleasable = 0x2f0630;
+inline constexpr uint8_t RoomReleasableEntry[] = {0x40, 0x53, 0x48, 0x83, 0xec, 0x20, 0x83, 0xb9,
+                                                  0x80, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8b, 0xda};
 // The room walk of 0x593630 (finds an object by class near a unit): (room, &rooms, &count) the room and its
 // neighbours, (room) its first unit, (unit) the next unit in its room
 inline constexpr uint64_t NearRooms = 0x2efde0;

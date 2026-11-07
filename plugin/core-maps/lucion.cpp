@@ -106,7 +106,7 @@ auto OpenHarrogathPortal(Game* game) noexcept -> bool {
 		? d2r::Engine<void* (*)(uint32_t, void*, int32_t, int32_t, int32_t*, int32_t*, int32_t) noexcept>(ActSpawnSpot)(
 			  d2r::DataFlag(game), act, Harrogath, HarrogathSpot, &x, &y, PortalSize)
 		: nullptr;
-	if (room == nullptr || SpawnPortal(game, room, DarkPortal, x, y, Arena) == nullptr) {
+	if (room == nullptr || OpenPortalAt(game, room, DarkPortal, x, y, Arena) == nullptr) {
 		return false;
 	}
 	plog::Info("lucion: Harrogath portal at (%d, %d)", x, y);
