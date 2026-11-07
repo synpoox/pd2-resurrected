@@ -1,7 +1,7 @@
 // PD2's Overseer AI for Lucion, LucionControl and LucionSpawner (lucion_ai.cpp).
 #pragma once
 
-#include "d2r.h"
+#include "pd2_engine.h"
 
 #include <D2RLPlugin/api.h>
 

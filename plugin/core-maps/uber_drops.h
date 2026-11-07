@@ -1,7 +1,7 @@
 // PD2's uber boss death drops (uber_drops.cpp).
 #pragma once
 
-#include "d2r.h"
+#include "pd2_engine.h"
 
 #include <cstddef>
 #include <cstdint>

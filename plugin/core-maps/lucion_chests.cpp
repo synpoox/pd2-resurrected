@@ -11,7 +11,7 @@
 // opened chest ever acts differently from PD2's.
 #include "lucion_chests.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "log.h"
 
 #include <atomic>

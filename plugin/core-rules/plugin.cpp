@@ -9,7 +9,7 @@
 #include "crash_guard.h"
 #include "cube_rules.h"
 #include "cube_stacks.h"
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "item_rules.h"
 #include "log.h"
 #include "loot_rules.h"
@@ -104,7 +104,7 @@ void InstallParts(const D2RL::PluginContext* context) noexcept {
 	for (Part& p : g_parts) {
 		if (!g_imageKnown) {
 			std::snprintf(p.report, sizeof(p.report), "off: unknown game image 0x%08x (expects 0x%08x)",
-			              d2r::ImageStampOf(context->exeBase), d2r::rva::ImageStamp);
+			              build_guard::ImageStamp(static_cast<uintptr_t>(context->exeBase)), d2r::rva::ImageStamp);
 		} else if (off_switch::Off(p.word)) {
 			std::snprintf(p.report, sizeof(p.report), "off: left out by %s-off.txt", PluginName);
 		} else {
@@ -123,7 +123,7 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	}
 	char line[2500];
 	char image[200];
-	crash_guard::Describe(image, sizeof(image), D2RL::GetBuildVersion(g_context));
+	build_guard::Describe(image, sizeof(image), build_guard::ImageStamp(static_cast<uintptr_t>(g_context->exeBase)), D2RL::GetBuildVersion(g_context));
 	std::snprintf(line, sizeof(line), "%s %s | %s | mod %s | file %s", PluginName, PluginVersion, image,
 	              g_context->activeMod != nullptr ? g_context->activeMod : "?", g_selfPath);
 	command->plugin->WriteConsoleMessage(line);
@@ -173,7 +173,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 		std::snprintf(g_selfPath, sizeof(g_selfPath), "%ls", D2RL::GetPluginPath(context));
 	}
 	char image[200];
-	crash_guard::Describe(image, sizeof(image), D2RL::GetBuildVersion(context));
+	build_guard::Describe(image, sizeof(image), build_guard::ImageStamp(static_cast<uintptr_t>(context->exeBase)), D2RL::GetBuildVersion(context));
 	plog::Info("%s loaded (mod %s, %s, file %s)", PluginVersion, context->activeMod != nullptr ? context->activeMod : "?",
 	           image, g_selfPath);
 	off_switch::Read(context->pluginConfigPath);

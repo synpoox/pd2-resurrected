@@ -10,7 +10,7 @@
 // op-30 row whose inputs all match turns the result into "no recipe".
 #include "cube_ops.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "log.h"
 #include "lucion.h"
 

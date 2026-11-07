@@ -1,7 +1,7 @@
 // The unique maps' boss deaths: portals and drops (unique_maps.cpp).
 #pragma once
 
-#include "d2r.h"
+#include "pd2_engine.h"
 
 #include <D2RLPlugin/api.h>
 

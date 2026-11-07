@@ -151,7 +151,7 @@ workflow to run on this runner. Read a fork PR's workflow changes before approvi
 
 ## Plugins
 
-`plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules, `core-maps` PD2's map system. Engine addresses live in one header per D2R build (`plugin/common/rvas_93847.h`).
+`plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules, `core-maps` PD2's map system. Shared code (log, guards, the `d2r::api` binding and engine addresses other projects use) comes from d2rAI-toolkit's `shared/plugin-common`, found the way `tools/install.ps1` finds the toolkit (or `-DD2R_TOOLKIT=<checkout>`); the addresses only PD2 uses live in `plugin/common/pd2_engine.h`.
 
 ```powershell
 git submodule update --init

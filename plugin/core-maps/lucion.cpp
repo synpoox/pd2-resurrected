@@ -14,7 +14,7 @@
 // entry spot itself and the arena keeps any waypoint. Port the link if PD2's arrival spot ever differs in game.
 #include "lucion.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "log.h"
 #include "map_open.h"
 #include "map_stats.h"
