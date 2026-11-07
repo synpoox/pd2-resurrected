@@ -96,6 +96,9 @@ constexpr int32_t LastMapLevel = 201;       // PD2's map-area test 0x1037c510
 constexpr int MaxEntries = 64;  // per list; a map rolls far fewer stats
 constexpr int AreaSlots = 16;    // PD2's area slots 0-15
 constexpr int32_t StatCorrupted = 413, StatCorruptor = 414;  // PD2 360 and 361
+// merged properties.txt *Id corrupt, corruptnum, desecrate, desecratenum (PD2 271, 272, 426, 427 by row)
+constexpr int32_t PropCorrupt = 288, PropCorruptNum = 289, PropDesecrate = 443, PropDesecrateNum = 444;
+constexpr int32_t DesecrateFloor = 851;  // PD2's Desecration roll, 851-999
 
 // The game counter keys of the lists: 'M', the list ('m', 'p', or 'r' for the area entries), the entry and the field
 // (0: stat << 16 | layer, 1: value); entry and field 0xff hold the count.
@@ -434,24 +437,33 @@ auto AreaMonsterLevel(Game* game, int32_t level) noexcept -> uint64_t {
 	return static_cast<uint32_t>(static_cast<int32_t>(base) + AreaSlot(game, 1));
 }
 
-// PD2's 0x103649d0 with no forced roll: a random corruption outcome from cubemain's corruption rows (op 16 or 18 on
-// `corruptor` with a value), unless the item is corrupted. Only rows whose first input matches the item (PD2's own
-// check: class, type, quality, socketed, ethereal) and whose second is the Worldstone Shard or nothing count. The
-// group's "destroyed (rare)" row (rare usetype output, no third mod) sets the roll to value..999, so the outcome is
-// one of the rows after it and never the destroyed one; the first row whose value beats the roll puts its mods on.
-auto CorruptDrop(Game* game, Unit* item) noexcept -> bool {
+// The CRT's rand state is per thread and starts at seed 1: seed each thread once, or every session rolls the same
+auto Rand() noexcept -> int32_t {
+	static thread_local const bool seeded = (std::srand(static_cast<unsigned>(__rdtsc())), true);
+	(void)seeded;
+	return std::rand();
+}
+
+// PD2's 0x103649d0: a random corruption outcome from cubemain's corruption rows (op 16 or 18 on `corruptor` with a
+// value), unless the item is corrupted. Only rows whose first input matches the item (PD2's own check: class, type,
+// quality, socketed, ethereal) and whose second is the Worldstone Shard or nothing count. The group's "destroyed
+// (rare)" row (rare usetype output, no third mod) sets the roll to value..999, so the outcome is one of the rows after
+// it and never the destroyed one; the first row whose value beats the roll puts its mods on.
+// With `desecrate` (PD2's flag 1, Desecration) the roll is 851-999 from the start (an amulet's rows 682-689) and the
+// row's corrupt/corruptnum go on as desecrate/desecratenum; the caller checks the item.
+auto CorruptItem(Game* game, Unit* item, bool desecrate) noexcept -> bool {
 	using namespace d2r::rva;
 	const uint32_t dataFlag = d2r::DataFlag(game);
 	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
-	if (stat(item, StatCorrupted, 0) != 0) {
+	if (!desecrate && stat(item, StatCorrupted, 0) != 0) {
 		return false;
 	}
 	const auto record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(CubeRecipe);
 	const auto itemRecord = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ItemRecord);
 	const auto has = [item](uint64_t fn) noexcept { return d2r::Engine<int32_t (*)(Unit*) noexcept>(fn)(item) != 0; };
 	const int32_t rows = d2r::Engine<int32_t (*)(uint32_t) noexcept>(CubeRecipeCount)(dataFlag);
-	int32_t floor = 0;
-	int32_t roll = 0;
+	int32_t floor = desecrate ? DesecrateFloor : 0;
+	int32_t roll = desecrate ? DesecrateFloor + Rand() % (1000 - DesecrateFloor) : 0;
 	for (int32_t i = 0; i < rows; ++i) {
 		const uint8_t* r = record(dataFlag, i);
 		if (r == nullptr || r[CubeEnabled] == 0 || (r[CubeOp] != 16 && r[CubeOp] != 18) ||
@@ -474,9 +486,10 @@ auto CorruptDrop(Game* game, Unit* item) noexcept -> bool {
 			continue;
 		}
 		const int32_t value = At<int32_t>(r, CubeValue);
-		if (r[CubeOutType] == 0xff && r[CubeOutQuality] == 6 && At<int32_t>(r, CubeOutMods + 2 * CubeModSize) == -1) {
+		if (!desecrate && r[CubeOutType] == 0xff && r[CubeOutQuality] == 6 &&
+		    At<int32_t>(r, CubeOutMods + 2 * CubeModSize) == -1) {
 			floor = value;
-			roll = value < 1000 ? value + std::rand() % (1000 - value) : value;  // PD2 divides by 0 at 1000
+			roll = value < 1000 ? value + Rand() % (1000 - value) : value;  // PD2 divides by 0 at 1000
 		}
 		if (floor == 0 || roll >= value) {
 			continue;
@@ -486,11 +499,15 @@ auto CorruptDrop(Game* game, Unit* item) noexcept -> bool {
 			if (At<int32_t>(mod, 0) == -1) {
 				break;
 			}
-			int32_t property[4] = {At<int32_t>(mod, 0), At<int16_t>(mod, 4), At<int16_t>(mod, 6), At<int16_t>(mod, 8)};
+			int32_t prop = At<int32_t>(mod, 0);
+			if (desecrate) {
+				prop = prop == PropCorrupt ? PropDesecrate : prop == PropCorruptNum ? PropDesecrateNum : prop;
+			}
+			int32_t property[4] = {prop, At<int16_t>(mod, 4), At<int16_t>(mod, 6), At<int16_t>(mod, 8)};
 			d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(ApplyCubeMod)(item, property);
 		}
-		plog::Info("map drops: item %d corrupted by cubemain row %d (roll %d of %d-999)", At<int32_t>(item, UnitClassId),
-		           i, roll, floor);
+		plog::Info("%s: item %d %s by cubemain row %d (roll %d of %d-999)", desecrate ? "desecration" : "map drops",
+		           At<int32_t>(item, UnitClassId), desecrate ? "desecrated" : "corrupted", i, roll, floor);
 		return true;
 	}
 	return false;
@@ -508,17 +525,14 @@ auto SocketDrop(Game* game, Unit* item) noexcept -> bool {
 		return false;
 	}
 	const int32_t low = rec[It2Handed] != 0 ? 2 : 1;
-	const int32_t n = low + std::rand() % (low + 1);  // 1-2 or 2-4
+	const int32_t n = low + Rand() % (low + 1);  // 1-2 or 2-4
 	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetItemSockets)(item, n);
 	return true;
 }
 
 auto Chance(Game* game, int slot) noexcept -> bool {
-	// The CRT's rand state is per thread and starts at seed 1: seed each thread once, or every session rolls the same
-	static thread_local const bool seeded = (std::srand(static_cast<unsigned>(__rdtsc())), true);
-	(void)seeded;
 	const int32_t v = AreaSlot(game, slot);
-	return v > 0 && std::rand() % 100 < v;
+	return v > 0 && Rand() % 100 < v;
 }
 
 // PD2's drop hook 0x10372180, on the item the TC drop (0x444680) makes for a unit in a map area: slot 13's chance to
@@ -537,7 +551,7 @@ auto OnItemSpawn(Game* game, uint8_t* drop, int32_t arg) noexcept -> Unit* {
 	if (map && item != nullptr) {
 		const bool madeEthereal =
 			ethereal && d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemIsEthereal)(item) != 0;  // not every item can be
-		const bool corrupted = Chance(game, 6) && CorruptDrop(game, item);
+		const bool corrupted = Chance(game, 6) && CorruptItem(game, item, false);
 		const bool socketed = Chance(game, 11) && SocketDrop(game, item);
 		if ((madeEthereal || corrupted || socketed) && plog::Sample(g_drops)) {
 			plog::Info("map drops: item %d ethereal %d, corrupted %d, socketed %d (%u so far)",
@@ -620,6 +634,10 @@ constexpr StatDrop StatDrops[] = {
 std::atomic<uint32_t> g_deathDrops {0};  // extra drops and stat drops made
 
 }  // namespace
+
+auto DesecrateItem(Game* game, Unit* item) noexcept -> bool {
+	return CorruptItem(game, item, true);
+}
 
 auto MapAreaSlot(Game* game, Unit* unit, int slot) noexcept -> int32_t {
 	return game != nullptr && unit != nullptr && InMapArea(unit) ? AreaSlot(game, slot) : 0;

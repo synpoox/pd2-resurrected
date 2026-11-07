@@ -537,7 +537,7 @@ auto OpenPortalAt(Game* game, void* near, int32_t row, int32_t x, int32_t y, int
 	const int32_t open = At<int32_t>(game, GameFrame) + 1 + static_cast<int32_t>(At<uint32_t>(record, ObjOpenFrames) >> 8);
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
 		game, portal, UnitEventOpen, open, 0, 0, 0);
-	// as the portal maker does: without the mark the room, portal and all, is freed once the player warps away
+	// as the portal maker does: without the mark the room, portal and all, is freed once no player is near
 	d2r::Engine<void (*)(void*, int32_t) noexcept>(RoomPortalMark)(room, 0);
 	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetPortalLevel)(portal, level);
 	return portal;
