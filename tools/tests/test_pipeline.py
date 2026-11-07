@@ -9,20 +9,8 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import mpq  # noqa: E402
 import pd2_extract  # noqa: E402
 import pd2_merge  # noqa: E402
-
-
-class MpqTests(unittest.TestCase):
-    def test_table_keys(self):
-        # the well-known keys every MPQ reader uses for its hash and block tables
-        self.assertEqual(mpq.hash_string("(hash table)", 3), 0xC3AF3770)
-        self.assertEqual(mpq.hash_string("(block table)", 3), 0xEC83B3A3)
-
-    def test_explode(self):
-        # the test vector from zlib's contrib/blast
-        self.assertEqual(mpq.explode(bytes.fromhex("00048224258f807f")), b"AIAIAIAIAIAIA")
 
 
 class ExtractTests(unittest.TestCase):
@@ -60,7 +48,7 @@ class ExtractTests(unittest.TestCase):
                 if stamp is not None:
                     (out / "baseline.json").write_bytes(stamp)
                 log = io.StringIO()
-                with mock.patch.object(pd2_extract.mpq, "Archive", OneFile), redirect_stdout(log):
+                with mock.patch.object(pd2_extract, "open_mpq", OneFile), redirect_stdout(log):
                     self.assertEqual(pd2_extract.extract(tmp / "install", out, baseline), 0)
                 self.assertEqual((out / "keep").exists(), skips, stamp)
                 self.assertEqual("skipping" in log.getvalue(), skips, stamp)

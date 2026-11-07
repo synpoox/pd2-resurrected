@@ -88,7 +88,7 @@ class SharedExtractTests(unittest.TestCase):
                 (tmp / "b.json").write_bytes(base)
                 args = ["--install", str(tmp), "--baseline", str(tmp / "b.json")]
                 with cache_env(tmp / "cache"), mock.patch.object(pd2_extract, "ROOT", tmp / "wt"), \
-                        mock.patch.object(pd2_extract.mpq, "Archive", OneFile), redirect_stdout(io.StringIO()):
+                        mock.patch.object(pd2_extract, "open_mpq", OneFile), redirect_stdout(io.StringIO()):
                     self.assertEqual(pd2_extract.main(args), 0)
                 self.assertTrue(pd2_cache.is_link(out))
                 self.assertEqual((out / "data" / "x.txt").read_bytes(), b"x")

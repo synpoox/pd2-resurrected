@@ -19,8 +19,8 @@ import shutil
 import sys
 from pathlib import Path
 
-import mpq
 import pd2_cache
+import pd2_ids
 
 ROOT = Path(__file__).resolve().parent.parent
 # archive -> the files taken from it (lower-case path patterns). shortcut: art only as the asset pipeline needs it
@@ -30,6 +30,20 @@ EXTRACT = {"pd2data.mpq": ["*"],
                              "data/global/items/*.dc6", "data/global/missiles/*.dcc",
                              "data/global/tiles/*.dt1", "data/global/sfx/*.wav"],
            "pd2maps.mpq": ["data/global/tiles/*.ds1"]}
+
+
+def open_mpq(path: Path):
+    """The archive, read by d2rAI-toolkit's MPQ reader (PYTHONPATH, else the nearest toolkit beside a parent folder).
+    Imported here, not at the top, so the unit tests run on CI, which has no toolkit."""
+    try:
+        from shared.classic_import import mpq
+    except ImportError:
+        sys.path.insert(0, str(pd2_ids.toolkit(ROOT)))
+        try:
+            from shared.classic_import import mpq
+        except ImportError:
+            raise ValueError("d2rAI-toolkit's shared/classic_import not found: put the toolkit on PYTHONPATH") from None
+    return mpq.Archive(path)
 
 
 def stamp(baseline: bytes) -> bytes:
@@ -77,7 +91,7 @@ def extract(install: Path, out: Path, baseline_file: Path) -> int:
         shutil.rmtree(out)
     count = 0
     for archive, patterns in EXTRACT.items():
-        a = mpq.Archive(install / archive)
+        a = open_mpq(install / archive)
         for name in a.names():
             rel = name.replace("\\", "/").lower()
             if not any(fnmatch.fnmatchcase(rel, p) for p in patterns):
