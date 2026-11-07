@@ -55,8 +55,8 @@ auto Slot(int32_t row) noexcept -> uint64_t {
 
 }  // namespace
 
-auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, int32_t classId, AiThinkFn think) noexcept
-	-> bool {
+auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, uint64_t d2rThink, int32_t classId,
+                     AiThinkFn think) noexcept -> bool {
 	if (monaiRow < 0 || monaiRow >= MonAiRows || think == nullptr) {
 		return false;
 	}
@@ -70,18 +70,16 @@ auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, int32
 	}
 	Row& r = g_rows[k];
 	if (r.row < 0) {
-		// The bound image is the one rvas_*.h describes (d2r::Bind), so the slot holds D2R's think: it is the expected
-		// value, and a slot another plugin changed refuses the write
-		const uint64_t current = At<uint64_t>(reinterpret_cast<const void*>(d2r::imageBase + Slot(monaiRow)), 0);
+		// D2R's think is the expected value: a slot another plugin changed refuses the write
+		const uint64_t vanilla = d2r::imageBase + d2rThink;
 		uint8_t expected[8];
-		std::memcpy(expected, &current, sizeof(expected));
-		if (current == 0 ||
-		    !context->PatchWriteU64(Slot(monaiRow), expected, sizeof(expected), reinterpret_cast<uint64_t>(Trampolines[k]))) {
-			plog::Info("ai hooks: monai %d think not swapped", monaiRow);
+		std::memcpy(expected, &vanilla, sizeof(expected));
+		if (!context->PatchWriteU64(Slot(monaiRow), expected, sizeof(expected), reinterpret_cast<uint64_t>(Trampolines[k]))) {
+			plog::Warn("ai hooks: monai %d think not swapped (the slot is not D2R's think)", monaiRow);
 			return false;
 		}
 		r.row = monaiRow;
-		r.vanilla = reinterpret_cast<AiThinkFn>(current);
+		r.vanilla = reinterpret_cast<AiThinkFn>(vanilla);
 	}
 	if (r.count == MaxClasses) {
 		return false;

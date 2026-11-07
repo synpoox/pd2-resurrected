@@ -182,8 +182,8 @@ static_assert(NextStage(1, 84, 0) && !NextStage(1, 85, 0) && NextStage(6, 36, 1)
 
 auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -> void {
 	++g_thinks;
-	Unit* target = At<Unit*>(tick, d2r::rva::TickTarget);
-	const int32_t dist = At<int32_t>(tick, d2r::rva::TickDistance);
+	Unit* target = At<Unit*>(tick, d2r::rva::AiTickTarget);
+	const int32_t dist = At<int32_t>(tick, d2r::rva::AiTickDistance);
 	const int32_t dist2 = target != nullptr ? dist * dist : 0x7fffffff;  // PD2: squared distance to the nearest player
 	const int32_t tier = Counter(game, TierKey);
 	const int32_t aidel = m.AiDel() - tier;
@@ -256,7 +256,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		int32_t next = 1;
 		if (r < m.P(0)) {
 			const int32_t r2 = Rand(unit, 100);
-			if (At<int32_t>(tick, d2r::rva::TickInMelee) != 0 && target != nullptr) {
+			if (At<int32_t>(tick, d2r::rva::AiTickInMelee) != 0 && target != nullptr) {
 				Attack(game, unit, ModeA1, target);  // PD2 0x10356ea0: a melee swing; the state stays 1
 				return;
 			}
@@ -436,7 +436,7 @@ auto ThinkControl(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept 
 		const int32_t base = m.P(3) - tier + (frenzy ? 2 : 0);
 		const int32_t cd = Stat(unit, StatCooldown2);
 		if (cd < 1) {
-			Cast(game, unit, m.Skill(0), m.Mode(0), At<Unit*>(tick, d2r::rva::TickTarget), 0, 0);
+			Cast(game, unit, m.Skill(0), m.Mode(0), At<Unit*>(tick, d2r::rva::AiTickTarget), 0, 0);
 			SetStat(unit, StatCooldown2, r % (3 - tier) - stage / 2 + base);
 			return;
 		}
@@ -489,8 +489,8 @@ auto ThinkSpawner(Game* game, Unit* unit, const Mon& m) noexcept -> void {
 
 // The monstats record and difficulty from the tick; null when there is none (then D2R's think runs)
 auto MonOf(uint8_t* tick, Mon* m) noexcept -> bool {
-	m->rec = tick != nullptr ? At<const uint8_t*>(tick, d2r::rva::TickMonStats) : nullptr;
-	m->diff = m->rec != nullptr ? static_cast<uint8_t>(At<uint8_t>(tick, d2r::rva::TickDifficulty) % 3) : 0;
+	m->rec = tick != nullptr ? At<const uint8_t*>(tick, d2r::rva::AiTickMonStats) : nullptr;
+	m->diff = m->rec != nullptr ? static_cast<uint8_t>(At<uint8_t>(tick, d2r::rva::AiTickDifficulty) % 3) : 0;
 	return m->rec != nullptr;
 }
 
@@ -512,9 +512,10 @@ void SpawnerThink(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept 
 }  // namespace
 
 auto InstallLucionAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
-	const bool ok = RegisterAiThink(context, OverseerRow, Lucion, &Think<ThinkLucion>) &&
-	                RegisterAiThink(context, OverseerRow, LucionControl, &Think<ThinkControl>) &&
-	                RegisterAiThink(context, OverseerRow, LucionSpawner, &Think<SpawnerThink>);
+	using d2r::rva::AiOverseer;
+	const bool ok = RegisterAiThink(context, OverseerRow, AiOverseer, Lucion, &Think<ThinkLucion>) &&
+	                RegisterAiThink(context, OverseerRow, AiOverseer, LucionControl, &Think<ThinkControl>) &&
+	                RegisterAiThink(context, OverseerRow, AiOverseer, LucionSpawner, &Think<SpawnerThink>);
 	std::snprintf(report, reportSize, ok ? "monai %d (Overseer) think: Lucion, LucionControl, LucionSpawner"
 	                                     : "off: monai %d think not swapped",
 	              OverseerRow);
