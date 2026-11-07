@@ -131,13 +131,35 @@ class HdPictureTests(unittest.TestCase):
             pd2 = {"misc": table("name|code|type|invfile\nRing|rin|ring|invrin2\nShard|wss|xx|invwss\n", "code")}
             d2r = {"misc": table("name|code|type|invfile\nRing|rin|ring|invrin\n", "code")}
             pictures = {"invwss": "pd2/invwss", "invrin2": "pd2/invrin2", "invnag": "pd2/invnag"}
+            models = {}
             files = M.hd_items(hd, pd2, d2r, [("Nagelring", "rin", "Nagelring", "invnag")],
-                               [("Gift", "rin", None, "")], pictures)
+                               [("Gift", "rin", None, "")], pictures, models)
+            # the ground model each picture's item drew before: its own, the base item's, else the table's first
+            self.assertEqual(models, {"pd2/invrin2": "ring/ring", "pd2/invwss": "ring/ring", "pd2/invnag": "ring/nagel"})
+            (hd / "misc" / "ring").mkdir(parents=True)
+            (hd / "misc" / "ring" / "ring.json").write_text("{}")
+            (hd / "misc" / "ring" / "nagel.json").write_text('{"n": 1}')
+            M.ground_models(hd, hd / "out", pictures, models, {"invwss": {"misc"}, "invrin2": {"misc"},
+                                                               "invnag": {"misc", "weapons"}})
+            self.assertEqual((hd / "out" / "weapon" / "pd2" / "invnag.json").read_text(), '{"n": 1}')
+            self.assertTrue((hd / "out" / "misc" / "pd2" / "invwss.json").is_file())
             self.assertEqual(files["items.json"], [{"rin": {"asset": "pd2/invrin2"}}, {"wss": {"asset": "pd2/invwss"}}])
             nag = {"normal": "pd2/invnag", "uber": "pd2/invnag", "ultra": "pd2/invnag"}
             self.assertEqual(files["uniques.json"], [{"nagelring": nag}])
             rin = {"normal": "pd2/invrin2", "uber": "pd2/invrin2", "ultra": "pd2/invrin2"}
             self.assertEqual(files["sets.json"], [{"gift": rin}])
+
+    def test_a_new_weapon_with_a_pd2_picture_does_not_borrow_the_tables_first(self):
+        # #364: v0.1.0-alpha had no PD2 pictures, so Charged Potion (tpls, invlps) fell back to weapons' first, a hand axe
+        with tempfile.TemporaryDirectory() as tmp:
+            hd = Path(tmp)
+            (hd / "items.json").write_text(json.dumps([{"hax": {"asset": "axe/hand_axe"}}]))
+            (hd / "uniques.json").write_text("[]")
+            (hd / "sets.json").write_text("[]")
+            pd2 = {"weapons": table("name|code|type|invfile\nHand Axe|hax|axe|invhax\nTPot|tpls|tpot|invlps\n", "code")}
+            d2r = {"weapons": table("name|code|type|invfile\nHand Axe|hax|axe|invhax\n", "code")}
+            items = M.hd_items(hd, pd2, d2r, [], [], {"invlps": "pd2/invlps"})["items.json"]
+            self.assertEqual(items[1], {"tpls": {"asset": "pd2/invlps"}})
 
 
 if __name__ == "__main__":

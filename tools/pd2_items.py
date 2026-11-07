@@ -204,27 +204,36 @@ def item_pictures(art: Path, pd2_data: Path, d2r_data: Path, out_data: Path, use
 
 def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
              uniques: list[tuple[str, str, str | None, str]], sets: list[tuple[str, str, str | None, str]],
-             pictures: dict[str, str] | None = None) -> dict[str, list[dict]]:
+             pictures: dict[str, str] | None = None, models: dict[str, str] | None = None) -> dict[str, list[dict]]:
     """D2R's items.json, uniques.json and sets.json (from hd) plus an entry for every item code, unique and set item
     that has none. An item whose invfile is in pictures (item_pictures) shows it; else a new code shows the picture
     of the D2R item in the same table with the same invfile, else the table's first; a unique or set item shows the
     D2R row it was merged onto, else its base item.
-    uniques / sets: (mod name, base code, D2R name at its id or None, invfile)."""
+    uniques / sets: (mod name, base code, D2R name at its id or None, invfile).
+    models gets {picture asset: D2R asset}: the ground model the picture's first item would borrow without it (D2R
+    draws a dropped item only from its asset's model, so a sprite alone is invisible on the ground, #351)."""
     pictures = pictures or {}
+    models = {} if models is None else models
     files = {f: _entries(hd / f) for f in ("items.json", "uniques.json", "sets.json")}
     asset = {k: v["asset"] for e in files["items.json"] for k, v in e.items()}
     for t, ptab in pd2.items():
         dtab = d2r[t]
-        di = dtab.header.index("invfile")
+        di, dt = dtab.header.index("invfile"), dtab.header.index("type")
         by_inv = {r[di]: asset[r[dtab.key]] for r in dtab.rows if r[dtab.key] in asset}
+        by_type = {}
+        for r in dtab.rows:
+            if r[dtab.key] in asset:
+                by_type.setdefault(r[dt], asset[r[dtab.key]])
         first = next(asset[r[dtab.key]] for r in dtab.rows if r[dtab.key] in asset)
-        pi = ptab.header.index("invfile")
+        pi, pt = ptab.header.index("invfile"), ptab.header.index("type")
         for r in ptab.rows:
             code = r[ptab.key]
             if len(code) == 4 and not ord(code[3]) & 0x20:  # core-ui sets bit 0x20 of the key's 4th byte (#310)
                 raise I.IdError(f"{t} {code}: core-ui keys items.json by {code[:3]}{chr(ord(code[3]) | 0x20)}, "
                                 "so this code would draw no picture; give it a 4th character with bit 0x20 set")
             if code and r[pi].lower() in pictures:
+                models.setdefault(pictures[r[pi].lower()],
+                                  asset.get(code) or by_inv.get(r[pi]) or by_type.get(r[pt]) or first)
                 asset[code] = pictures[r[pi].lower()]
                 set_entry(files["items.json"], code, {"asset": asset[code]})
             elif code and code not in asset:
@@ -235,6 +244,9 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
         for name, code, d2r_name, inv in rows:
             key = index_key(name)
             if inv.lower() in pictures:
+                src = (have.get(index_key(d2r_name), {}).get("normal") if d2r_name else None) or asset.get(code)
+                if src:
+                    models.setdefault(pictures[inv.lower()], models.get(src, src))
                 have[key] = dict.fromkeys(("normal", "uber", "ultra"), pictures[inv.lower()])
                 set_entry(files[f], key, have[key])
                 continue
@@ -247,6 +259,24 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
                 have[key] = entry
                 files[f].append({key: entry})
     return files
+
+
+def ground_models(hd: Path, out: Path, pictures: dict[str, str], models: dict[str, str],
+                  uses: dict[str, set[str]]) -> None:
+    """Each PD2 picture's unit file (<folder>/pd2/<invfile>.json), a copy of its stand-in D2R asset's from hd: D2R
+    draws a dropped item only from that file's model, so without one the item is invisible on the ground (#351).
+    A picture no item draws (a unique row with no base code) gets none."""
+    item_folder = pd2_art.modkit()[1].item_folder
+    for n, a in pictures.items():
+        if a not in models:
+            continue
+        src = next((p for f in ("weapon", "armor", "misc") for p in [hd / f / f"{models[a]}.json"] if p.is_file()), None)
+        if src is None:
+            raise I.IdError(f"{n}: D2R has no unit file for {models[a]}")
+        for t in uses[n]:
+            dest = out / item_folder(t) / f"{a}.json"
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(src.read_bytes())
 
 
 def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
@@ -286,7 +316,9 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
                    for k, c in enumerate(tab.header) if c.endswith("invfile") for r in tab.rows}
         pictures = item_pictures(rule.parent / "art", pd2_data, d2r_data, out_data, uses, d2r_inv)
         print(f"  item pictures: {len(pictures)} upscaled from PD2's")
-        files = hd_items(d2r_data / "hd" / "items", pd2, d2r, uniques, sets, pictures)
+        models: dict[str, str] = {}
+        files = hd_items(d2r_data / "hd" / "items", pd2, d2r, uniques, sets, pictures, models)
+        ground_models(d2r_data / "hd" / "items", out_data / "hd" / "items", pictures, models, uses)
         for f, entries in files.items():
             dest = out_data / "hd" / "items" / f
             dest.parent.mkdir(parents=True, exist_ok=True)
