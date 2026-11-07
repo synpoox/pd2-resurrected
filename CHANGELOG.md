@@ -10,6 +10,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Items follow PD2 more closely: ethereal durability, rare affixes, mercenary gear drops, Tome of Identify, skill on cast/block.
 - A unique charm sold to a vendor by mistake can be bought back, as in PD2.
 - Quivers roll PD2's automagic again: arrows +2/10/18 max damage, bolts -2/4/6% enemy physical resistance.
+- The Horadric Cube has PD2's 4x4 grid.
 - Stacks in the inventory, cube and stash show their quantity on the picture, as in PD2 (tomes excepted).
 - Curses follow PD2's duration resistance (75 cap on players), land on attracted units, and fail when fully resisted.
 
