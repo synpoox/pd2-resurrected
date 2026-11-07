@@ -22,10 +22,13 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Uber bosses
 
+- Uber Mephisto, Diablo and Baal summon PD2's minions: skeletons, Pit Lords, vampires and wraiths.
 - PD2's new monsters (Lucion, Na-Krul, Iskatu and others) finish their attacks and casts and keep fighting.
 - The Pandemonium Talisman opens Uber Tristram at the Blood Fountain, like the other uber keys.
 - Cubing the three Pandemonium keys in Hell opens a red portal to a mini-uber area again.
+- Lilith, Uber Duriel and Uber Izual drop Diablo's Horn, Baal's Eye and Mephisto's Brain again.
 - The Diablo Clone, Rathma and Lucion keys open their uber areas at the Blood Fountain (Hell, level 80+); the fights come later.
+- The uber areas have no waypoint, also after a key's warp.
 - A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
 - Uber fight monsters scale with the key's tier, as in PD2.
 - PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
@@ -39,6 +42,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Maps
 
+- Fortified, drop-bonus and item-drop maps give their extra and stat drops on kills, as in PD2.
 - Map tooltips show the map's tier, and map stats read without raw format codes.
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
