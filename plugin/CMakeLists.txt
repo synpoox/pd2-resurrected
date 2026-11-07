@@ -41,6 +41,7 @@ add_library(core_rules SHARED
 	core-rules/item_rules.cpp
 	core-rules/merc_rules.cpp
 	core-rules/cube_rules.cpp
+	core-rules/cube_stacks.cpp
 	core-rules/loot_rules.cpp
 	core-rules/plugin.rc  # ABI manifest resource: D2RLoader rejects a plugin DLL without it
 )
