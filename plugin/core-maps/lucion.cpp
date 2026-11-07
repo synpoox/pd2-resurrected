@@ -113,16 +113,6 @@ auto OpenHarrogathPortal(Game* game) noexcept -> bool {
 	return true;
 }
 
-// PD2 0x10356e00, as D2R's pet kill 0x500fb0 sets the death mode: no drop, then mode 0
-auto KillQuietly(Game* game, Unit* monster) noexcept -> void {
-	using namespace d2r::rva;
-	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlags)(monster, UnitNoDrop, 1);
-	alignas(8) uint8_t block[0x30] = {};
-	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(MonsterModeBlock)(monster, ModeDeath, block);
-	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(UnitTarget)(game, monster);
-	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(SetMonsterMode)(game, block, 1);
-}
-
 // The adds and the controller alive in the arena, picked first so no kill runs while the lists are walked
 auto KillAdds(Game* game) noexcept -> int32_t {
 	using namespace d2r::rva;
@@ -195,6 +185,16 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 }
 
 }  // namespace
+
+// PD2 0x10356e00, as D2R's pet kill 0x500fb0 sets the death mode: no drop, then mode 0
+auto KillQuietly(Game* game, Unit* monster) noexcept -> void {
+	using namespace d2r::rva;
+	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlags)(monster, UnitNoDrop, 1);
+	alignas(8) uint8_t block[0x30] = {};
+	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(MonsterModeBlock)(monster, ModeDeath, block);
+	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(UnitTarget)(game, monster);
+	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(SetMonsterMode)(game, block, 1);
+}
 
 auto InstallLucion(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	const D2RL::LifecycleService* lifecycle = nullptr;
