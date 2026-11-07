@@ -1,6 +1,7 @@
 """The table-diff gate (pd2_diff) on synthetic tables: no PD2 install, D2R data or modkit needed."""
 import contextlib
 import io
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -70,6 +71,18 @@ class GateTests(unittest.TestCase):
         text = pd2_diff.report(self.gate(), "P4")
         self.assertIn("1 table cells on the deviation list", text)
         self.assertIn("Deviation list: 2 not yet, 1 approximated, 0 cut entries", text)
+
+    def test_the_report_names_its_commit_and_marks_uncommitted_changes(self):
+        git = ["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run([*git, "init", "-q"], check=True)
+        subprocess.run([*git, "add", "docs"], check=True)
+        subprocess.run([*git, "commit", "-qm", "x"], check=True)
+        head = subprocess.run([*git, "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
+        self.assertEqual(pd2_diff.commit_of(self.root), head)
+        self.write("pd2", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))
+        self.assertEqual(pd2_diff.commit_of(self.root), f"{head}, uncommitted changes")
+        first = pd2_diff.report(self.gate(), "P4", pd2_diff.commit_of(self.root)).splitlines()[0]
+        self.assertTrue(first.startswith(f"Table-diff gate on {head}, uncommitted changes, scope P4: FAIL, 1 open"), first)
 
     def test_missing_rows_and_columns_are_deviations_but_d2r_only_rows_are_not(self):
         self.write("pd2", "lvlmaze", table("Name | *comment | MonLvl | Beta | eol", "Rogue Encampment | x | 1 | 0 | 0",

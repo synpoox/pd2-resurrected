@@ -18,6 +18,8 @@ Infer the repo from `git remote -v`; `gh` does this automatically when run insid
 
 Every PR body opens with the issue it solves: `Closes #<n>` when merging it finishes the issue (GitHub then closes it), `Part of #<n>` when it does not. A PR with no issue gets one opened first, so the why lives in the tracker.
 
+Rerun the table-diff gate (`tools/pd2_diff.py`) after resolving a merge from main and paste the report for the PR's final commit: its first line names the commit, marked when the tree had uncommitted changes. Merge only on a report for the final commit.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
