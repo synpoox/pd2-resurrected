@@ -64,6 +64,8 @@ add_library(core_maps SHARED
 	core-maps/lucion_chests.cpp
 	core-maps/rathma.cpp
 	core-maps/unique_maps.cpp
+	core-maps/lucion_ai.cpp
+	core-maps/ai_hooks.cpp
 	core-maps/event_portals.cpp
 	core-maps/uber_scaling.cpp
 	core-maps/uber_drops.cpp
