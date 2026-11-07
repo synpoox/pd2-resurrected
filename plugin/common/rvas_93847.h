@@ -764,6 +764,19 @@ inline constexpr uint8_t CubeRecipeSearchEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57
 // 0x30 int32 flags for the cube items already taken by earlier inputs, zeroed before each row
 inline constexpr uint64_t CubeInputMatch = 0x529d50;
 inline constexpr int CubeMatchUsedSlots = 0x30;
+// It counts each matching cube item as one (qty at input +7, 0 means 1) and flags every match in used[k], k the item's
+// place among the cube items in inventory order. mov [rsp+0x20],r9d / push rbp / push rbx / push rsi / push r13 /
+// mov rbp,rsp / sub rsp,0x68 (read from the 6ab3782c dump, #315)
+inline constexpr uint8_t CubeInputMatchEntry[] = {0x44, 0x89, 0x4c, 0x24, 0x20, 0x55, 0x53, 0x56, 0x41,
+                                                  0x55, 0x48, 0x8b, 0xec, 0x48, 0x83, 0xec, 0x68};
+inline constexpr int CubeInputQty = 7;
+inline constexpr int CubeRecordSize = 0x16c, CubeNumInputs = 0xc;  // uint8 numinputs
+// The search's numinputs filter: movzx eax,[row+0xc] / cmp eax,r13d (the cube's item count) / jne next row (#315)
+inline constexpr uint64_t CubeNumInputsJump = 0x52922a;
+inline constexpr uint8_t CubeNumInputsJumpD2R[] = {0x0f, 0x85, 0xbd, 0x06, 0x00, 0x00};
+inline constexpr uint8_t CubeNumInputsJumpOff[] = {0x66, 0x0f, 0x1f, 0x44, 0x00, 0x00};  // 6-byte nop
+inline constexpr int StatQuantity = 70;
+inline constexpr uint64_t ItemLevel = 0x36ccf0;  // (item) -> item level (the matcher's out, 0x529d50)
 inline constexpr uint64_t CubeRecipeCount = 0x3e3f20;  // (dataFlag) -> cubemain row count
 inline constexpr uint64_t CubeRecipe = 0x3e3f60;       // (dataFlag, row) -> 0x16c-byte record, or null
 inline constexpr int CubeEnabled = 0x0, CubeOp = 0x3;  // uint8 enabled, uint8 op
@@ -1137,6 +1150,17 @@ inline constexpr uint32_t UnitNoDrop = 0x20000;
 inline constexpr uint64_t ActSpawnSpot = 0x2ef8b0;
 inline constexpr int GameActs = 0x190, GameActCount = 0x198;
 
+// --- core-maps: the Uber Tristram primes' minions (UB3, #483) -------------------------------------------------------
+// D2Game's AI table: one 0x20-byte row per monai row, the think function (game, monster, tick) first. The rows were
+// matched by their functions' source files (AiBaal.cpp holds row 135's). The originals PD2 wraps (0x10361150):
+// Mephisto (50), Diablo (51), BaalCrab (135).
+inline constexpr uint64_t AiTable = 0x2396ea0;
+inline constexpr int AiRowSize = 0x20;
+inline constexpr uint64_t AiMephisto = 0x5b1ca0, AiDiablo = 0x5c8d40, AiBaalCrab = 0x5a8b80;
+// The think's tick block: the target at +0x10 (1.13c +0x08), its distance at +0x20 (1.13c +0x14), as the Mephisto
+// think reads them
+inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;
+inline constexpr int MonAiDist = 0x8d;  // uint8 aidist, then (N) and (H) (monstats field table 0x39db30)
 // --- core-maps: the Temple's chests (UB6, #438; D2Game\src\Objects\ObjMode.cpp) ------------------------------------
 // Decompiled for #438 (Ghidra, D2R.gpr). One operate table slot wrapped (rva::ObjectOperateTable).
 // D2R's chest operate (OperateFn 4): mode 0 only; it sets mode 1 with event 1 at the open frames (or mode 2), plays
