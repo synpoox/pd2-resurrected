@@ -248,22 +248,24 @@ killer's player (when a player), +0x14 the uniqueitems table, +0x5C an item code
 |---|---|---|---|---|
 | 0x1E Zhar | `0x10376ea0` | ZharTheMad (1058) dies, `game+0x262a` < 4 | sets +0x262a to 4; gold portal (586) to Harrogath; a magic Grand Charm (`cm3`, quality 4) at item level 99 with one affix forced (`0x102e5110`) | portal, charm (affix not forced) |
 | 0x1E | `0x10376dc0` | a mini-boss (1061-1063) dies, +0x262a < 4 | 1 in 2: the same charm at item level 90 | yes |
-| 0x1E | `0x103aa670` (object operate, table slot 0x140) | Zhar's seals (`zharportal_blue` 598, `zharportal_red` 599) and `ZharTomeObject` 600 are used | steps +0x262a 0 -> 3, opens and links the seal portals | no |
-| 0x1F Warlord | `0x10376fb0` | WarlordOfBlood (1060) dies | gold portal; 2-3 random uniques (any with flags, rarity and level 1-99) at item level 99; kills the `demonpillar`s (1057) in his rooms | portal |
-| 0x1F | `0x1036fef0` (room activation) | a room of level 182 inside (0x25c2-0x263a, 0x5a10-0x5a88) | the room gets no monsters (the arena) | no |
+| 0x1E | `0x103aa670` (object operate, table slot 0x140) | Zhar's seals (`zharportal_blue` 598, `zharportal_red` 599) and `ZharTomeObject` 600 are used | steps +0x262a 0 -> 3, opens and links the seal portals | no ([#531](https://github.com/synpoox/pd2-resurrected/issues/531)) |
+| 0x1F Warlord | `0x10376fb0` | WarlordOfBlood (1060) dies | gold portal; 2-3 random uniques (any with flags, rarity and level 1-99) at item level 99; kills the `demonpillar`s (1057) in his room and the rooms next to it | yes (MS7c; the monster's item level) |
+| 0x1F | `0x1036fef0` (room activation) | a room of level 182 that overlaps x 0x5a10-0x5a88, y 0x25c2-0x263a (subtiles, `0x1037d900`) | the room gets no monsters (the arena) | yes (MS7c) |
 | 0x20 Fallen Gardens | `0x103774f0` | Iskatu (1094) dies | gold portal; one of the eight Rainbow Facets (unique records 392-399) at item level 99 (`0x103841d0`) | yes |
 | 0x20 | `0x10377490` | Rakanoth (1096) dies | red portal (584) to level 184, the Diamond Gate | yes |
-| 0x21 Outer Void | `0x10379170` (every death, after the switch) | a monster in one of three PD2 boss sets dies | three steps in `game+0x2628`: twice a ghostly portal (585) linked to an `empty` marker (587) deeper in the level, then the gold portal; each step drops a normal item (code from `0x1037a420`) at item level 130 | no |
-| 0x21 | `0x10371590` (monster spawn) | a monster spawned with flag 0xd5 | gets state 213's list: +5 stat 25 (damage %), +10 stats 329-332 (masteries) | no |
+| 0x21 Outer Void | `0x10379170` (every death, after the switch) | a monster in one of three PD2 boss sets dies | three steps in `game+0x2628`, each needing a death from the next set (`0x105deb54`, `0x105dea4c`, `0x105debcc`, filled by `0x10199350`, `0x10199430`, `0x10199510`): twice a ghostly portal (585) at the body linked to an `empty` marker (587) at the level's origin (levels `OffsetX/Y` x 5) plus (485, 930), then (845, 590); then the gold portal to Harrogath; each step drops a normal item at item level 130, one of `0x105debc4`'s nine (`0x10199d50`: `dcho`, `dcso`, `dcbl`, `rtmv`, `rtmo`, `cm2f`, `lucb`, `lucc`, `lucd`; `0x1037a420` is the list's index) | yes ([#532](https://github.com/synpoox/pd2-resurrected/issues/532); in-level link, item level) |
+| 0x21 | `0x10371590` (a monster brought back with its room) | the monster store's +0x4c is 0xd5, which `0x10371520` writes when a monster with state 213 is stored | gets state 213's list again: +5 stat 25 (damage %), +10 stats 329-332 (masteries) | kept instead: its room is not released ([#532](https://github.com/synpoox/pd2-resurrected/issues/532)) |
+| level 180 | `0x1038bfc0` (preset rewrite, no event test) | the Outer Void's placeholders: monsters 738-740 (`lesserhydra1`-`3`), objects 601-603 (`preset_placeholder_A`-`C`) | a monster becomes a random boss of `0x105df4cc`, `0x105df3c4` or `0x105df544` (the three death sets' ids; `rand()`), at 200/175/150% max life, it and its minions with state 213's list; an object gets a red portal (584) linked to an `empty` marker at the level's origin plus (0x18, 0x43), (0x41, 0x86) or (0xa6, 0x2c) tiles | yes ([#532](https://github.com/synpoox/pd2-resurrected/issues/532); in-level link) |
 | 0x22 Imperial Palace | `0x103775b0` | Kamyr, ImperialPalaceMiniBoss (1148), dies | red portal at the body linked to the arena's `empty` marker (`0x1038a1f0`, `0x1038a510`); a Puzzle Piece (`lpp`, quality 7) at item level 130 | portal to level 194, piece |
 | 0x22 | `0x10377670` | ImperialPalaceBoss (1166) dies | clears `game+0x2604` if it held him; gold portal; a Puzzle Box (`lbox`, quality 7) at item level 130 | portal, box |
-| 0x23 Ureh | `0x10377270` | CityofUrehBoss (1174) dies | gold portal; 3 random uniques (as Warlord's, base item flag +0x138 set) at item level 99 | portal |
+| 0x23 Ureh | `0x10377270` | CityofUrehBoss (1174) dies | gold portal; 3 random uniques (as Warlord's, and the base's `gemsockets`, items +0x138, above 0) at item level 99 | yes (MS7c; the monster's item level) |
 | 0x24 Djinn's Domain | none | | no reader tests 0x24; the Djinn bosses' deaths (`0x10378bc0`) do not read the field | |
-| 9 dungeon | `0x1038bfc0` (preset rewrite) | placing a dungeon's boss preset (`0x2e2`) | stores the boss in `game+0x2600` and its barriers (`bossblocker_x`/`_y`, 616/617) in +0x2604-0x261c; with value 9, +0x2628 0 -> 1 | no |
-| 9 | `0x10377890`, `0x103778f0`, `0x10377a30` | the stored boss (SharpToothBoss 1105, willowispboss 743, RadamentBoss 1104) dies | +0x2628 1 -> 2; removes the barriers (`0x10380590`) | no |
-| 9 | `0x1038daf0` (object function) | `bossblocker_x`, `_y`, `_x_warp`, `_y_warp` (616-619) with +0x2628 2 | removes them | no |
+| 9 dungeon | `0x1038bfc0` (preset rewrite) | placing a dungeon's boss preset (`0x2e2`) | stores the boss in `game+0x2600` and its barriers (`bossblocker_x`/`_y`, 616/617) in +0x2604-0x261c; with value 9, +0x2628 0 -> 1 | no ([#533](https://github.com/synpoox/pd2-resurrected/issues/533)) |
+| 9 | `0x10377890`, `0x103778f0`, `0x10377a30` | the stored boss (SharpToothBoss 1105, willowispboss 743, RadamentBoss 1104) dies | +0x2628 1 -> 2; removes the barriers (`0x10380590`) | no ([#533](https://github.com/synpoox/pd2-resurrected/issues/533)) |
+| 9 | `0x1038daf0` (object function) | `bossblocker_x`, `_y`, `_x_warp`, `_y_warp` (616-619) with +0x2628 2 | removes them | no ([#533](https://github.com/synpoox/pd2-resurrected/issues/533)) |
 
-Every unique map boss death also adds 1 to two counters in the killer's player data (+0x39d, +0x419). `0x102fcd60`
+Every unique map boss death also adds 1 to two counters in the killer's player data (+0x39d, +0x419), which PD2's
+`.kills` chat command reads (`0x10361a70`); the port cuts them (docs/deviations.md). `0x102fcd60`
 prints the field's value; `0x10366f40` and `0x10383060` set it.
 
 ## Not settled here

@@ -85,6 +85,16 @@ constexpr UniqueValue UniqueValues[] = {
 };
 constexpr int32_t Dungeons[] = {163, 168, 182};  // Plains of Torment, Sanctuary of Sin, Steppes (PD2 164, 171, 186)
 constexpr int32_t DungeonEvent = 9;
+// PD2 0x1036fef0: with the Warlord of Blood's value, a room of the Hellcave Fortress (port 178, PD2 182) that overlaps
+// this box (subtiles) gets no monsters, the Warlord's arena
+constexpr int32_t WarlordEvent = 0x1f, Fortress = 178;
+constexpr int32_t ArenaX0 = 0x5a10, ArenaX1 = 0x5a88, ArenaY0 = 0x25c2, ArenaY1 = 0x263a;
+// PD2's 0x1037d900 per axis: [lo, hi] meets the room's [start, start + size)
+constexpr auto Overlaps(int32_t lo, int32_t hi, int32_t start, int32_t size) noexcept -> bool {
+	return lo < start + size && hi >= start;
+}
+static_assert(Overlaps(10, 20, 20, 5) && !Overlaps(10, 20, 21, 5) && Overlaps(10, 20, 0, 11) && !Overlaps(10, 20, 0, 10));
+std::atomic<uint32_t> g_arenaRooms {0};
 
 using PopulateFn = void (*)(Game* game, void* room) noexcept;
 PopulateFn g_populateOriginal = nullptr;
@@ -218,6 +228,14 @@ auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 	}
 	if (tier != nullptr) {
 		SpawnEvent(game, room, level, Get(game, RoomsKey(level)) * 100 / tier->rooms);
+	}
+	using namespace d2r::rva;
+	if (level == Fortress && Get(game, EventKey) == WarlordEvent &&
+	    Overlaps(ArenaX0, ArenaX1, At<int32_t>(room, RoomX), At<int32_t>(room, RoomWidth)) &&
+	    Overlaps(ArenaY0, ArenaY1, At<int32_t>(room, RoomY), At<int32_t>(room, RoomHeight))) {
+		plog::Info("map events: Warlord arena room at (%d, %d) left empty (%u)", At<int32_t>(room, RoomX),
+		           At<int32_t>(room, RoomY), ++g_arenaRooms);
+		return;
 	}
 	g_populateOriginal(game, room);
 	if (tier == nullptr) {

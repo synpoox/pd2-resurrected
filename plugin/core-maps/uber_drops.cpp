@@ -67,24 +67,30 @@ auto Tier(Game* game) noexcept -> int32_t {
 }
 
 void Drop(Game* game, Unit* monster, const Unique& item, int32_t wanted = QualityUnique) noexcept {
-	using namespace d2r::rva;
-	const int32_t row =
-		d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(static_cast<uint8_t>(d2r::DataFlag(game)), item.code);
-	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
-	const auto setStat = d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat);
-	const int32_t level = stat(monster, StatLevel, 0);
-	setStat(monster, StatLevel, item.level, 0);
-	auto* made = row >= 0 ? static_cast<Unit*>(d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(
-								DropItemAt)(game, monster, row, wanted, item.row + 1, 0))
-	                      : nullptr;
-	setStat(monster, StatLevel, level, 0);
-	const int32_t quality = made != nullptr ? d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(made) : -1;
-	(quality == wanted ? g_dropped : g_failed).fetch_add(1, std::memory_order_relaxed);
-	plog::Info("uber drops: %.4s unique row %d: item row %d, %s, quality %d", reinterpret_cast<const char*>(&item.code),
-	           item.row, row, made != nullptr ? "dropped" : "NOT dropped", quality);
+	const bool ok = DropUniqueAt(game, monster, item.code, item.row, item.level, wanted);
+	(ok ? g_dropped : g_failed).fetch_add(1, std::memory_order_relaxed);
 }
 
 }  // namespace
+
+auto DropUniqueAt(Game* game, Unit* monster, uint32_t code, int32_t uniqueRow, int32_t itemLevel, int32_t wanted) noexcept
+	-> bool {
+	using namespace d2r::rva;
+	const int32_t row =
+		d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(static_cast<uint8_t>(d2r::DataFlag(game)), code);
+	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	const auto setStat = d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat);
+	const int32_t level = stat(monster, StatLevel, 0);
+	setStat(monster, StatLevel, itemLevel, 0);
+	auto* made = row >= 0 ? static_cast<Unit*>(d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(
+								DropItemAt)(game, monster, row, wanted, uniqueRow + 1, 0))
+	                      : nullptr;
+	setStat(monster, StatLevel, level, 0);
+	const int32_t quality = made != nullptr ? d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(made) : -1;
+	plog::Info("unique drop: %.4s unique row %d: item row %d, %s, quality %d", reinterpret_cast<const char*>(&code),
+	           uniqueRow, row, made != nullptr ? "dropped" : "NOT dropped", quality);
+	return quality == wanted;
+}
 
 auto UberDeathDrops(Game* game, Unit* monster, uint32_t* seed) noexcept -> void {
 	const int32_t id = At<int32_t>(monster, d2r::rva::UnitClassId);
