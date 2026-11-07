@@ -22,6 +22,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - The Diablo Clone, Rathma and Lucion keys open their uber areas at the Blood Fountain (Hell, level 80+); the fights come later.
 - A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
 - Uber fight monsters scale with the key's tier, as in PD2.
+- PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
 
 #### Maps
 
