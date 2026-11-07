@@ -95,6 +95,8 @@ std::atomic<uint32_t> g_warped {0};
 std::atomic<uint32_t> g_portals {0};
 std::atomic<uint32_t> g_entries {0};
 std::atomic<uint32_t> g_waypoints {0};
+std::atomic<uint32_t> g_bossRoomsKept {0};
+int32_t (*g_releasableOriginal)(void* act, void* room) noexcept = nullptr;
 // Set once the check hook is in: until then the use hook leaves maps to D2R, so no portal opens ungated
 std::atomic<bool> g_gated {false};
 
@@ -321,7 +323,8 @@ auto RemoveWaypoints(Game* game, Unit* player, int32_t level) noexcept -> void {
 	}
 }
 
-// PD2 0x103a9780: each entry heals the fight's bosses by 20% of their max life, capped at max
+// PD2 0x103a9780: each entry heals the fight's bosses by 20% of their max life, capped at max. They are still in the
+// game because KeepBossRoom keeps their rooms.
 // shortcut: the bosses are found by class in the level, where PD2 heals the ones its phase scripts registered; use
 // those once the fights' scripts are ported
 auto HealBosses(Game* game, int32_t level) noexcept -> int32_t {
@@ -337,12 +340,34 @@ auto HealBosses(Game* game, int32_t level) noexcept -> int32_t {
 				continue;
 			}
 			const int32_t max = stat(unit, StatMaxLife, 0);
-			const int32_t life = std::min(max, stat(unit, StatLife, 0) + max / 5);
+			const int32_t before = stat(unit, StatLife, 0);
+			const int32_t life = std::min(max, before + max / 5);
 			d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(unit, StatLife, life, 0);
+			plog::Info("uber: boss %d healed, life %d -> %d of %d", classId, before >> 8, life >> 8, max >> 8);
 			++healed;
 		}
 	}
 	return healed;
+}
+
+// PD2 0x102fc6c0, on D2Game's room-release check: a room holding a live uber boss is never released, so the boss keeps
+// its life between entries and HealBosses finds it. A hook: no SDK service covers room lifetime, and a room mark
+// (RoomPortalMark) would stay on the room the boss walks out of.
+// shortcut: PD2 also starts the boss's 15-tick immune window here (game +0x26fe); add it with the phase scripts
+auto KeepBossRoom(void* act, void* room) noexcept -> int32_t {
+	using namespace d2r::rva;
+	for (auto* unit = d2r::Engine<Unit* (*)(void*) noexcept>(RoomFirstUnit)(room); unit != nullptr;
+	     unit = d2r::Engine<Unit* (*)(Unit*) noexcept>(NextUnitInRoom)(unit)) {
+		if (At<int32_t>(unit, UnitType) == UnitMonster &&
+		    std::find(std::begin(UberBosses), std::end(UberBosses), At<int32_t>(unit, UnitClassId)) != std::end(UberBosses) &&
+		    d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) == 0) {
+			if (g_bossRoomsKept++ == 0) {
+				plog::Info("uber: boss %d keeps its room", At<int32_t>(unit, UnitClassId));
+			}
+			return 0;
+		}
+	}
+	return g_releasableOriginal(act, room);
 }
 
 // PD2 0x1038a680: the user, then every other player in Harrogath at level 80+ within reach of the fountain, loses
@@ -531,20 +556,22 @@ auto InstallMapOpen(const D2RL::PluginContext* context, char* report, size_t rep
 	const bool portal = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperatePortal) * 8,
 	                                           Empty, sizeof(Empty),
 	                                           reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperatePortal)));
-	std::snprintf(report, reportSize, "item spell %d%s, portal operate %d%s", MapSpell,
+	const bool rooms = context->InstallInlineHook(d2r::rva::RoomReleasable, RoomReleasableEntry,
+	                                              sizeof(RoomReleasableEntry), KeepBossRoom, &g_releasableOriginal);
+	std::snprintf(report, reportSize, "item spell %d%s, portal operate %d%s, boss rooms kept%s", MapSpell,
 	              check ? "" : use ? " FAILED (check bytes differ)" : " FAILED (use bytes differ)", ObjectOperatePortal,
-	              portal ? "" : " FAILED (slot not empty)");
-	return (check ? 1 : 0) + (portal ? 1 : 0);
+	              portal ? "" : " FAILED (slot not empty)", rooms ? "" : " FAILED (bytes differ)");
+	return (check ? 1 : 0) + (portal ? 1 : 0) + (rooms ? 1 : 0);
 }
 
 auto MapOpenCount() noexcept -> int {
-	return 2;
+	return 3;
 }
 
 auto MapOpenCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "map checks %u, refused %u, opened %u, failed %u; uber areas opened %u, players warped %u, grey "
-	              "portals %u, portal entries %u, waypoints removed %u",
+	              "portals %u, portal entries %u, waypoints removed %u, boss room releases refused %u",
 	              g_checks.load(), g_refused.load(), g_opened.load(), g_failed.load(), g_ubers.load(), g_warped.load(),
-	              g_portals.load(), g_entries.load(), g_waypoints.load());
+	              g_portals.load(), g_entries.load(), g_waypoints.load(), g_bossRoomsKept.load());
 }
