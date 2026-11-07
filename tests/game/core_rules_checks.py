@@ -196,6 +196,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 150, "smite crushing blow"),  # D2R's Smite do, wrapped, and an inline hook on its hit queue
     ("srvdofunc", 173, "poison egg spawn"), ("cltdofunc", 126, "poison egg spawn"), ("srvstfunc", 83, "cycler start"),
     ("pSrvHitFunc", 67, "summon"),
+    ("cltdofunc", 125, "death nova"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -227,7 +228,7 @@ def _log(ctx) -> str:
                                  "core-rules-w21", "core-rules-w22", "core-rules-w24", "core-rules-w29",
                                  "core-rules-w17", "core-rules-w23", "core-rules-w27", "core-rules-w28", "core-rules-w30",
                                  "core-rules-w18", "core-rules-w19", "core-rules-w20", "core-rules-w31", "core-rules-w32",
-                                 "core-rules-w34", "core-rules-w36", "core-rules-w35", "game"])
+                                 "core-rules-w34", "core-rules-w36", "core-rules-w35", "core-rules-death-novas", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -1448,6 +1449,24 @@ def poison_egg_spawn(ctx):
         assert nova != 0, "the nova did not run"
     assert re.search(r"poison egg spawn client: skill %d " % POISON_EGG_SPAWN, log), "the client half never ran"
     return f"{len(found)} cast(s) logged, client drew them"
+
+
+DEATH_NOVAS = {435, 554, 649, 650, 651, 652}  # merged ids: DollMeteor, RathmaDeath, LucionDeath1-4
+
+
+@check("death-nova", tags=["core-rules-death-novas"])
+def death_nova(ctx):
+    """srvdofunc 169 (router 190) and cltdofunc 125 (PD2 105) each create the skill's srvmissilea at the caster."""
+    log = _log(ctx)
+    found = re.findall(r"death nova: skill (\d+) level \d+: missile row (-?\d+) at -?\d+,-?\d+ (\w+)", log)
+    if not found:
+        ctx.skip("no death nova in the log yet (`cheat mspawn nihlathakMap,1` in Hell; it casts RathmaDeath)")
+    for skill, _, result in found:
+        assert int(skill) in DEATH_NOVAS, f"skill {skill} reached the death nova"
+        assert result == "created", f"skill {skill}'s missile was not created"
+    client = r"death nova client: skill \d+ level \d+: missile row -?\d+ created"
+    assert re.search(client, log), "the client half never drew a missile"
+    return f"{len(found)} nova(s) logged, client drew them"
 
 
 @check("torajan-nest", tags=["core-rules-w36"])
