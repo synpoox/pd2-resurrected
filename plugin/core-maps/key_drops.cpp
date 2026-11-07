@@ -81,6 +81,22 @@ constexpr int32_t UniqueMapBosses[] = {
 	247,  248,  249,  763,  764,  767,  817,  841,  911,  932,  940,  941,  943,  944,  987,  988,
 	989,  990,  1013, 1014, 1017, 1042, 1043, 1120, 1181, 1183, 1191, 1192, 1257, 1259, 1260,
 };
+// 0x103760a0's +0x48: those four sets and 0x105debb4, 0x105dea84 (map_stats.cpp ExtraBossIds without lernaeanhydra1).
+// Its skirmish mult +0x50, which every TC roll of 0x103799d0 takes (keys too), stays 1 for these.
+constexpr int32_t MapBosses[] = {
+	247,  248,  249,  760,  763,  764,  767,  817,  841,  899,  901,  911,  932,  940,  941,  943,
+	944,  980,  985,  986,  987,  988,  989,  990,  1013, 1014, 1017, 1042, 1043, 1120, 1121, 1122,
+	1123, 1124, 1166, 1181, 1183, 1191, 1192, 1200, 1201, 1202, 1203, 1257, 1259, 1260,
+};
+
+auto IsIn(int32_t id, const int32_t* ids, size_t n) noexcept -> bool {
+	for (size_t i = 0; i < n; ++i) {
+		if (ids[i] == id) {
+			return true;
+		}
+	}
+	return false;
+}
 
 std::atomic<uint32_t> g_deaths {0};
 std::atomic<uint32_t> g_uniqueMapRolls {0};
@@ -128,19 +144,14 @@ void RollUniqueMap(Game* game, Unit* monster, int32_t level, int32_t players, in
 		return;
 	}
 	const int32_t classId = At<int32_t>(monster, d2r::rva::UnitClassId);
-	bool boss = false;
-	for (const int32_t b : UniqueMapBosses) {
-		boss = boss || b == classId;
-	}
-	// PD2's mult (+0x50) stays 1 for its map bosses (+0x48)
-	const int64_t m = boss ? 1 : mult;
+	const bool boss = IsIn(classId, UniqueMapBosses, sizeof(UniqueMapBosses) / sizeof(UniqueMapBosses[0]));
 	const char* tc = boss ? "Unique Map MapBoss" : "Unique Map Monsters";
 	const int64_t odds = TcOdds(static_cast<uint8_t>(d2r::DataFlag(game)), tc, players);
 	if (plog::Sample(g_uniqueMapRolls)) {
 		plog::Info("unique maps: monster %d in level %d rolls TC \"%s\" 1 in %lld x%lld (%u rolls)", classId, level, tc, odds,
-		           m, g_uniqueMapRolls.load());
+		           mult, g_uniqueMapRolls.load());
 	}
-	if (odds > 0 && odds <= 0xffffffffLL && d2r::RandomBelow(seed, static_cast<uint32_t>(odds)) < m) {
+	if (odds > 0 && odds <= 0xffffffffLL && d2r::RandomBelow(seed, static_cast<uint32_t>(odds)) < mult) {
 		DropUniqueMap(game, monster);
 	}
 }
@@ -173,7 +184,8 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	RathmaDeath(game, monster);
 	const uint32_t difficulty = event->difficulty < 3 ? event->difficulty : 2;
 	const int32_t players = d2r::Engine<int32_t (*)(Game*) noexcept>(PlayerCount)(game);
-	const int64_t mult = MapAreaSlot(game, monster, SkirmishSlot) != 0 ? 2 : 1;
+	const bool mapBoss = IsIn(At<int32_t>(monster, UnitClassId), MapBosses, sizeof(MapBosses) / sizeof(MapBosses[0]));
+	const int64_t mult = MapAreaSlot(game, monster, SkirmishSlot) != 0 && !mapBoss ? 2 : 1;
 	auto* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(monster);
 	UberDeathDrops(game, monster, seed);
 	RollUniqueMap(game, monster, event->levelId, players, mult, seed);

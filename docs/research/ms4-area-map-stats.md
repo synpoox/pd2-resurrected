@@ -156,8 +156,13 @@ the Void); that is the dungeons' and unique maps' work ([MS7](https://github.com
 
 **Game check** (Slot5, Hell, the level 95 Amazon): the log read `stats 5/5 installed: ... extra boss`. A Sewers of
 Harrogath map with the Duplicated prefix (`cheat spawn t25,typ m,pre 843,inv 0`) opened with `stat 551 ... -> area slot
-as 5` (value 1). Not seen yet: the Sewer Boss twice. `cheat goto 142,<x>,<y>` did not move the character, so the boss
-room was not reached in the time box.
+as 5` (value 1). `cheat goto` with x and y works only from another level, in absolute coordinates.
+
+**Seen** ([#495](https://github.com/synpoox/pd2-resurrected/issues/495), Slot9, the level 95 Sorceress): a new Sewers map
+(`sewermap1.ds1`, origin 15000,10250, boss preset at 399,311) reached by `cheat goto 109` then `cheat goto 142,15395,10556`
+logged the preset spawn of monster 901 (SewerBoss) at 15399,10561, then `map area: extra boss 901 in level 142`; two
+Sewer Bosses stood at the preset. The Library map can't show it: its DS1's boss preset is a `lesserhydra1` placeholder
+(monpreset act 1, row 49) that PD2's wrapper replaces with doomknight3LibraryBoss, which is MS7's preset rewrite.
 
 ## [MS4e](https://github.com/synpoox/pd2-resurrected/issues/494): the unique map drop (`0x10381510`)
 
@@ -211,9 +216,13 @@ level 87). Each map was cubed from `cheat spawn <code>,inv 3` (the console spawn
 - **Treacherous** (magic map + `ivep`, slot 14 = 4): monster maxhp 10995 -> 21989; totals `402=4`.
 - **Area level** (magic map + Worldstone Shard: cubemain row 216 came up on the 31st corruption, `+1 to Area Level`,
   slot 1 = 1): `area level +1`, and the level's monsters spawned at monster level 88, not 87.
-- **Extra boss**: not seen yet. Sewers' boss preset lies 60-80 tiles from the portal; the Library map (`t14`, boss
-  preset at the 125x125 map's centre) is the next try. A second map opened in a game after Save and Exit was refused
-  ("already open in this game"), so each map needs a fresh game process.
+- **Extra boss**: seen in a Sewers map (slot 5 section above).
+- After Save and Exit, a new game opened a second map (`red portal to level 142, 2 opened`). An earlier run's refusal
+  ("already open in this game") did not come back.
+- Stat 489 (+13% physical as magic) reads 0 in the totals line by design: like PD2's `0x1038aa00`, `Apply` turns the
+  phys-as-extra stats 485-489 into the element's min and max damage (489: stats 52 and 53) and never sets 489 itself.
 
-Also seen: the fortified map's own `map_mon_*` stat 489 (+13% physical as magic) totalled 0 on its monsters.
+The skirmish mult (slot 4, x2 rolls) stays 1 for the map bosses and their minions, as PD2's `+0x48` does, for the
+key rolls as well as the unique map roll ([#529](https://github.com/synpoox/pd2-resurrected/issues/529)): every TC roll in
+`0x103799d0` takes `+0x50`.
 
