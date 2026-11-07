@@ -26,6 +26,7 @@
 #include "log.h"
 #include "map_events.h"
 #include "map_stats.h"
+#include "rathma.h"
 
 #include <algorithm>
 #include <atomic>
@@ -439,6 +440,9 @@ auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
 		plog::Warn("uber: portal %d leads nowhere (level %d)", args->classId, level);
 		d2r::Engine<void (*)(Unit*, int32_t, Unit*) noexcept>(ClientMessage)(player, CantEnter, player);
 		return 0;
+	}
+	if (level == PlayerLevelId(player) && RathmaArenaPortal(game, player, level)) {
+		return 1;
 	}
 	if (IsUberLevel(level) && level != UberTristram) {
 		int32_t* entries = CounterOf(game, EntryKey);

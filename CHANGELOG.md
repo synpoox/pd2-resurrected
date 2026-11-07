@@ -26,6 +26,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
 - Lucion fights in PD2's stages: blinks, Nova, a frenzy of Punish, and spawners that call his adds.
 - Rathma and Mendeln fight by PD2's script: life events, held life, immunity, and retreat portals below 15%.
+- Mendeln, Rathma and their clones spawn in their arenas, each reached by a ghostly portal, as in PD2.
 - Uber fight monsters scale with the key's tier, as in PD2.
 - PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
 - Lucion's death opens a portal to the Temple, ends his adds and drops a Demonic Cube at tiers 1-2.

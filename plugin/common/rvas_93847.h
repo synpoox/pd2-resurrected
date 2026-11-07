@@ -1188,6 +1188,18 @@ inline constexpr uint64_t PortalMaker = 0x432ce0;
 // quality roll 0x4421b0. PD2's map events call 1.13c's same function as (..., tc, 0, ilvl, 0, 0, 0, 1).
 inline constexpr uint64_t TcDrop = 0x4404f0;
 
+// --- core-maps: Rathma's stage spawns (UB5, #525; D2Common Drlg, D2Game\src\Game\Clients.cpp) -----------------------
+// Decompiled for #525 (Ghidra, D2R.gpr). Called, not hooked. How ActSpawnSpot's 0x3da650 finds and builds a room
+// anywhere in a level, as PD2's 0x10389f00 does through 1.13c D2Common:
+// (dataFlag, drlg act (act +0x70), level) -> the act's drlg level, made if missing; its room list at +0x10 is empty
+// until the level is built
+inline constexpr uint64_t DrlgLevelOf = 0x3267c0;
+inline constexpr int ActDrlg = 0x70, DrlgLevelRooms = 0x10;
+inline constexpr uint64_t DrlgRoomAt = 0x3275b0;    // (drlg level, tile x, tile y) -> its drlg room holding them, or null
+inline constexpr uint64_t DrlgRoomInit = 0x3289a0;  // (dataFlag, drlg room) -> the room, built if needed
+// (game, unit, room or null, x, y, 0, 0): WarpToLevel's teleport; with arg 6 0 it finds a free spot near x/y in room
+inline constexpr uint64_t TeleportUnit = 0x491ca0;
+
 }  // namespace d2r::rva
 
 namespace d2r {

@@ -719,6 +719,17 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 
 }  // namespace
 
+auto KillRathmaAdds(Game* game) noexcept -> int {
+	// PD2 0x10376840's list: the void knights, both golems and the totem (not the spire, which the retreat kills)
+	constexpr int32_t Adds[] = {BloodGolem, VoidGolem, Totem, 985, 986, 1123, 1124};
+	Unit* adds[32] = {};
+	const int n = FindMonsters(game, Adds, -1, adds, static_cast<int>(std::size(adds)));
+	for (int i = 0; i < n; ++i) {
+		KillQuietly(game, adds[i]);
+	}
+	return n;
+}
+
 auto InstallRathmaAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	bool ok = true;
 	for (const int32_t c : {RathmaBone, RathmaPoison, BoneClone, PoisonClone}) {

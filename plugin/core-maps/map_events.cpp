@@ -14,6 +14,7 @@
 #include "map_events.h"
 
 #include "log.h"
+#include "rathma.h"
 
 #include <intrin.h>
 
@@ -160,6 +161,9 @@ auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 	}
 	if (tier != nullptr) {
 		SpawnEvent(game, room, level, Get(game, RoomsKey(level)) * 100 / tier->rooms);
+	}
+	if (RathmaRoom(game, room, level)) {
+		return;  // PD2 0x1036fef0: an arena room spawns none of its own monsters
 	}
 	g_populateOriginal(game, room);
 	if (tier == nullptr) {
