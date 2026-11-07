@@ -32,6 +32,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Maps
 
+- The Gheed map event spawns Gheed in tiered maps, as in PD2.
 - A map event's spawn sends PD2's notify line ("Evil beckons you from the Void...") in red chat.
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.

@@ -175,7 +175,7 @@ PvP set.
 | 4 | 14 | Dark Wanderer | `MapEventNotifyDarkWanderer` | monster 921 `darkwandererMap`, up to 3 |
 | 5 | 15 | Treasure Fallen | `MapEventNotifyTreasure` | monster 945 `treasurefallenMap`, up to 3 |
 | 6 | 16 | Spire of Darkness | `MapEventNotifyTainted` | object 593 `TaintedSunMapEventAltar` and three object 374, then waves of 993-995 (`shadowofhate`, `shadowofterror`, `shadowofdestruction`) |
-| 8 | 18 | Gheed | `MapEventNotifyGheed` | monster 147 `gheed` and object 594 |
+| 8 | 18 | Gheed | `MapEventNotifyGheed` | monster 147 `gheed` and object 594 `empty_eventmarker` (invisible, AutoMap 1499) at its spot |
 | 9 | 19 | Altar of the Catalyst | `MapEventNotifyShard` | object 611 `ForceShardAltar` |
 | 10 | 20 | Corrupted Heroes (invaders) | `MapEventNotifyInvaders` | monster 1182 `InvaderPortal`, up to 3 |
 | 11 | 21 | Void / Tomb | `MapEventNotifyTomb` | object 586 `xactportal_gold` to level 207, and object 594 |
