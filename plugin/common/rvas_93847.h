@@ -1095,6 +1095,23 @@ inline constexpr uint64_t AddLife = 0x451820;
 inline constexpr uint8_t AddLifeEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x56, 0x48, 0x83,
                                            0xec, 0x20, 0x8b, 0xf2, 0x48, 0x8b, 0xd9};
 inline constexpr uint64_t UnitMaxLife = 0x2f4d20;  // (unit) -> max life, 1/256
+
+// --- core-maps: Lucion's AI (UB6, #437; D2Game\src\Ai) ----------------------------------------------------------------
+// The AI table (AiTable below, 155 rows): +0x10 an int, +0x18 a second function. ai_hooks.cpp writes its think slots.
+// More of the think's tick (AiTickTarget below): +0x24 non-zero in melee range, +0x28 the monstats record, +0x38
+// uint8 difficulty (as D2R's Overseer 0x5c2290 reads them)
+inline constexpr int AiTickInMelee = 0x24, AiTickMonStats = 0x28, AiTickDifficulty = 0x38;
+// monstats record: aidel uint8[3] (the txt field table 0x39db30), aip1-8 int16[8][3], Skill1-8 int16, Sk1-8mode uint8
+inline constexpr int MonAiDel = 0x8a, MonAiParams = 0x90, MonSkills = 0x1c4, MonSkillModes = 0x1d4;
+// (game, unit, mode, skill, target, x, y, 0) -> non-zero once cast; on failure it idles 10 (0x4a7bc0)
+inline constexpr uint64_t AiUseSkill = 0x4a7bc0;
+inline constexpr uint64_t AiIdle = 0x4a6d10;      // (game, unit, frames): mode neutral, think again after frames
+inline constexpr uint64_t AiSetDelay = 0x4a6e50;  // (game, unit, frames): think again after frames, mode kept
+inline constexpr uint64_t AiAttack = 0x4a78e0;    // (game, unit, mode, target): melee in mode 4 (A1) or 5 (A2)
+inline constexpr uint64_t AiApproach = 0x4a8740;  // (game, unit, target, 0): walk at the target
+// The mode command AiIdle sends: (unit, mode, &cmd), cmd +0x10 the unit, then (game, &cmd, 1)
+inline constexpr uint64_t ModeCmdInit = 0x4471e0, ModeCmdRun = 0x4475c0;
+inline constexpr int ModeCmdUnit = 0x10;
 // CrushingBlowApply's entry is jmp [rip+0x38a8872]: the qword it jumps through, which a plugin can swap
 inline constexpr uint64_t CrushingBlowApplySlot = 0x3e2a448;
 // The unit event dispatcher 0x5881e0, (game, event, unit, target, damage, list), is jmp [here]: D2RCore's. The hit
@@ -1156,10 +1173,12 @@ inline constexpr int GameActs = 0x190, GameActCount = 0x198;
 inline constexpr uint64_t AiTable = 0x2396ea0;
 inline constexpr int AiRowSize = 0x20;
 inline constexpr uint64_t AiMephisto = 0x5b1ca0, AiDiablo = 0x5c8d40, AiBaalCrab = 0x5a8b80;
+inline constexpr uint64_t AiOverseer = 0x5c2290;  // row 120's think (Lucion, #437)
 // The think's tick block: the target at +0x10 (1.13c +0x08), its distance at +0x20 (1.13c +0x14), as the Mephisto
 // think reads them
 inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;
 inline constexpr int MonAiDist = 0x8d;  // uint8 aidist, then (N) and (H) (monstats field table 0x39db30)
+
 // --- core-maps: the Temple's chests (UB6, #438; D2Game\src\Objects\ObjMode.cpp) ------------------------------------
 // Decompiled for #438 (Ghidra, D2R.gpr). One operate table slot wrapped (rva::ObjectOperateTable).
 // D2R's chest operate (OperateFn 4): mode 0 only; it sets mode 1 with event 1 at the open frames (or mode 2), plays
@@ -1196,6 +1215,16 @@ inline constexpr uint64_t PortalMaker = 0x432ce0;
 // its picks by the dropper; with no items array it drops all picks (max under 1 means 6). The item level feeds the
 // quality roll 0x4421b0. PD2's map events call 1.13c's same function as (..., tc, 0, ilvl, 0, 0, 0, 1).
 inline constexpr uint64_t TcDrop = 0x4404f0;
+
+// --- core-maps: the map-area death drops (MS4d; D2Game\src\Monster\MonsterMode.cpp) --------------------------------
+// Decompiled for MS4d (Ghidra, D2R.gpr). Called, not hooked.
+// (game, monster, flag, death*) -> the monster's own TC drop: its monstats TC for the difficulty and kind (champion,
+// unique, quest), dropped by 0x441300. death +0x08 is the monster, +0x10 the killer (the quest-drop test and the
+// quality roll's player). 1.13c's 0x6fc95680, which PD2 calls through 0x1030f2b0 for an extra drop; D2R's death path
+// 0x4479a0 passes flag 0, as PD2 does.
+inline constexpr uint64_t MonsterTcDrop = 0x447b80;
+inline constexpr int MonDataTypeFlags = 0x1a;     // u8 in the monster's UnitData: 0x10 minion (1.13c +0x16)
+inline constexpr uint8_t MonTypeMinion = 0x10;
 
 }  // namespace d2r::rva
 
