@@ -76,6 +76,19 @@ class TablesTests(unittest.TestCase):
         self.assertEqual(self.merge({"objects": {"d2r_columns": ["token"]}})["objects"], [
             ["Name", "Token", "Parm0"], ["Cain Portal", "tp", "5"], ["Trophy", "", "1"]])
 
+    def test_named_cells_take_the_rules_value(self):
+        self.write("pd2", "monstats", table("Id | NameStr | Level", "roguehire | Dummy | 5", "fallen | Fallen | 2",
+                                            "act4hire | dummy | 9"))
+        self.write("d2r", "monstats", table("Id | NameStr | Level", "roguehire | Rogue | 1", "fallen | Fallen1 | 1"))
+        self.assertEqual(self.merge({"monstats": {"cells": {"RogueHire": {"namestr": "Rogue"},
+                                                            "act4hire": {"NameStr": "Ascendant"}}}})["monstats"], [
+            ["Id", "NameStr", "Level"], ["roguehire", "Rogue", "5"], ["fallen", "Fallen", "2"],
+            ["act4hire", "Ascendant", "9"]])  # a PD2-only row too; other rows keep PD2's NameStr
+        with self.assertRaisesRegex(ValueError, "no row nosuch"):
+            self.merge({"monstats": {"cells": {"nosuch": {"NameStr": "x"}}}})
+        with self.assertRaisesRegex(ValueError, "no column NoCol"):
+            self.merge({"monstats": {"cells": {"fallen": {"NoCol": "x"}}}})
+
     def test_moved_ids_append_with_pd2s_hire_description_and_merged_monster_numbers(self):
         self.write("pd2", "hiredesc", table("Hireling Description | Code | *EOL", "None |  | 0", "Fire Arrow | farw | 0",
                                             "Ascendant Dark | ascd | 0"))

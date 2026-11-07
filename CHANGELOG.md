@@ -11,6 +11,11 @@ private-multiplayer release a build may break characters; each break is noted he
   level 80+, Rite of Passage done): everyone at the fountain who is level 80+ goes in, without their mercenary,
   summons or buffs. One map or uber area per game. The fights themselves come later.
 
+#### Fixes
+
+- The mercenary panel shows the mercenary's title (Rogue, Desert Mercenary, Barbarian, Ascendant) instead of
+  "an evil force".
+
 ### 0.1.0-alpha (2026-11-05)
 
 The first alpha: every Project Diablo II (PD2) class plays as in PD2, offline single-player, with PD2's maps. The uber

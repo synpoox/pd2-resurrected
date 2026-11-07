@@ -14,7 +14,9 @@ value: mod value}} renumbers PD2's rows before pairing, for ids D2R gave other r
 appends even under "leave out" and takes PD2's d2r_columns too, as D2R has no row of that meaning. "repeats": "replace group" puts PD2's
 whole group of a repeated name where D2R's group was, for lists the game reads in order (monequip: a monster's gear by
 level). "d2r_columns" keep D2R's values where the games give a column different meanings (objects Token: D2R's
-graphics). Cells are spelled as pd2_ids.spell writes them: quotes gone, references to the id-listed tables renamed.
+graphics). "cells": {row key: {column: value}} sets single cells after the merge, where one row needs a value
+neither game's column gives it (monstats NameStr of the hireling monsters: PD2's placeholders print "an evil force" on
+D2R's merc panel, #272). Cells are spelled as pd2_ids.spell writes them: quotes gone, references to the id-listed tables renamed.
 skilldesc's description lines then move onto D2R's line functions (pd2_skilldesc).
 """
 from __future__ import annotations
@@ -67,7 +69,8 @@ def regroup(pd2: Table, d2r: Table) -> Table:
 
 def merge_table(table: str, src: Table, d2r: Table, ren: dict[str, dict[str, str]],
                 rows: str | list[str] = "name", pd2_only_rows: str = "append", repeats: str = "pair",
-                d2r_columns: tuple[str, ...] = (), move: dict[str, dict[str, str]] | None = None) -> Table:
+                d2r_columns: tuple[str, ...] = (), move: dict[str, dict[str, str]] | None = None,
+                cells: dict[str, dict[str, str]] | None = None) -> Table:
     """D2R's table with PD2's rows merged in, by the table's tables.json options (see the module docstring)."""
     pd2, pd2_cols = src, {}
     for i, c in enumerate(pd2.header):
@@ -104,6 +107,15 @@ def merge_table(table: str, src: Table, d2r: Table, ren: dict[str, dict[str, str
                 row[j] = pd2_ids.spell(table, d2r.header[j], pd2.rows[i][s], ren)
     merged = Table.__new__(Table)
     merged.header, merged.rows, merged.newline = d2r.header, out, d2r.newline
+    at = {k.lower(): i for i, k in enumerate(row_keys(merged, rows))}
+    head = {c.lower(): j for j, c in enumerate(d2r.header)}
+    for k, vals in (cells or {}).items():
+        if k.lower() not in at:
+            raise ValueError(f"{table} cells: no row {k}")
+        for c, v in vals.items():
+            if c.lower() not in head:
+                raise ValueError(f"{table} cells: no column {c}")
+            out[at[k.lower()]][head[c.lower()]] = v
     return merged
 
 
@@ -143,7 +155,7 @@ def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> Non
         if table == "hireling":
             ren.update(monster=monster_numbers(pd2_data, out_data), hiredesc=hire_keys(pd2_data, d2r_data))
         bad = [f"{k}: {v}" for k, v in opts.items() if v not in OPTIONS.get(k, ()) and not (k in ("rows", "d2r_columns") and isinstance(v, list))
-               and not (k == "move" and isinstance(v, dict))]
+               and not (k in ("move", "cells") and isinstance(v, dict))]
         if bad:
             raise ValueError(f"{table}: unknown option {', '.join(bad)} (options: {OPTIONS})")
         d2r = Table(pd2_ids.excel(d2r_data) / f"{table}.txt")
