@@ -157,7 +157,7 @@ rows have no table hook: D2R does what it does.
 | Death novas | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [MS7](https://github.com/synpoox/pd2-resurrected/issues/221), [UB5](https://github.com/synpoox/pd2-resurrected/issues/230), [UB6](https://github.com/synpoox/pd2-resurrected/issues/231) |
 | UberDiabSummon, UberDiabRun | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB4](https://github.com/synpoox/pd2-resurrected/issues/229) |
 | RathmaSummon | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB5](https://github.com/synpoox/pd2-resurrected/issues/230) |
-| Lucion kit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB6](https://github.com/synpoox/pd2-resurrected/issues/231) |
+| Lucion kit | not yet | stand-in: closest D2R function (`merge/standins.tsv`): LucionBlink's and LucionDash's client halves (cltdo 113, 114, cltst 58; MonLeap's for the dash) | [#488](https://github.com/synpoox/pd2-resurrected/issues/488) |
 | Uber immolation arrow hit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB4](https://github.com/synpoox/pd2-resurrected/issues/229) |
 | Throwing potions | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [IR5](https://github.com/synpoox/pd2-resurrected/issues/240) |
 | Rathma bone spear damage | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB5](https://github.com/synpoox/pd2-resurrected/issues/230) |
@@ -182,10 +182,11 @@ rows have no table hook: D2R does what it does.
 | Item quantity display | approximated | the number sits at the bottom right of the picture (#359 asks for it; PD2 draws it bottom left), white with D2R's drop shadow instead of PD2's black box; tomes show no number (PD2 shows their charges; the owner's call); the stash's Gems/Materials/Runes tabs show D2R's own count instead | [#359](https://github.com/synpoox/pd2-resurrected/issues/359) |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 
-### Approximated (60)
+### Approximated (61)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
+| LucionNova, LucionDash, LucionPunish | approximated | core-rules' srvdo router 190 ports PD2's srvdo 184-186; the missiles are made on the server only (PD2 also sends each to the clients, `0x1037fe90`). The dash starts with D2R's Leap start (srvst 40) for PD2's srvst 76, flies and lands as D2R's leap does (PD2 lands within 2 subtiles of the spot), and leaves out PD2's frame hold in flight (`0x1037a670`) and the landing's unit flag 0x40, `0x103104e0` and `0x103a3d40` ([pd2-uber-bosses-dll](research/pd2-uber-bosses-dll.md), section 5) | [#487](https://github.com/synpoox/pd2-resurrected/issues/487) |
 | Lucion's Overseer AI: the frenzy's extras, the idle window and the target distance | approximated | core-maps ports PD2's AI (`0x1035dca0`) for Lucion, LucionControl and LucionSpawner, but leaves out the level darkening (packet 0x53) and the two sounds of the frenzy, its two unread D2Game thunks (`0x103a4c70`, `0x103a4c90`), the light radius −100 on state 146, the curse strip of the immunity, and the 15-tick idle window (`game+0x26fe`). Lucion measures the far blink by his AI target's distance, not the nearest player's, and the immunity puts back the resists it saved, not monstats'. ([pd2-uber-bosses-dll](research/pd2-uber-bosses-dll.md), section 5) | [#437](https://github.com/synpoox/pd2-resurrected/issues/437) |
 | Dclone's AI: the curse strip, the idle window and his resists | approximated | core-maps ports PD2's AI (`0x1035b3f0`) for uberdiablonew, but its immunity puts back the resists it saved, not monstats' (PD2 reads the Normal columns, 75 fire, cold, lightning and poison), does not strip curses, and leaves out the 15-tick idle window (`game+0x26fe`). PD2's per-unit player count and last pick are per-game counters (one Dclone per game). With no target and no player in his level he runs D2R's Trap-Melee think where PD2 calls an unread D2Game thunk (`0x103187c0`) ([pd2-uber-bosses-dll](research/pd2-uber-bosses-dll.md), section 5) | [#470](https://github.com/synpoox/pd2-resurrected/issues/470) |
 | The trapped souls' AI: the idle window, Dclone's slot and the dice | approximated | core-maps ports PD2's TrappedSoul AI (`0x1035bc60`) for ubertrappedsoul1-5, but leaves out the 15-tick idle window (`game+0x26fe`), finds Dclone in the soul's level instead of PD2's boss slot (`game+0x2600`), and rolls the spots on the soul's seed where PD2 calls the C runtime's `rand`. Its nihlathakMap branch (map boss 0x39a, the mob waves and RathmaDeath) is not ported: nihlathakMap keeps D2R's TrappedSoul think ([pd2-uber-bosses-dll](research/pd2-uber-bosses-dll.md), section 5) | [#472](https://github.com/synpoox/pd2-resurrected/issues/472) |
@@ -344,7 +345,8 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Death novas | `skills.DollMeteor.srvdofunc` `skills.DollMeteor.cltdofunc` `skills.RathmaDeath.srvdofunc` `skills.RathmaDeath.cltdofunc` `skills.NihlathakMapDeath.cltdofunc` `skills.LucionDeath1.srvdofunc` `skills.LucionDeath1.cltdofunc` `skills.LucionDeath2.srvdofunc` `skills.LucionDeath2.cltdofunc` `skills.LucionDeath3.srvdofunc` `skills.LucionDeath3.cltdofunc` `skills.LucionDeath4.srvdofunc` `skills.LucionDeath4.cltdofunc` |
 | UberDiabSummon, UberDiabRun | `skills.UberDiabRun.srvstfunc` `skills.UberDiabSummon.srvdofunc` |
 | RathmaSummon | `skills.RathmaSummon.srvdofunc` |
-| Lucion kit | `skills.LucionNova.srvdofunc` `skills.LucionBlink.cltdofunc` `skills.LucionDash.srvdofunc` `skills.LucionDash.cltdofunc` `skills.LucionDash.srvstfunc` `skills.LucionDash.cltstfunc` `skills.LucionPunish.srvdofunc` |
+| Lucion kit | `skills.LucionBlink.cltdofunc` `skills.LucionDash.cltdofunc` `skills.LucionDash.cltstfunc` |
+| LucionNova, LucionDash, LucionPunish | `skills.LucionDash.srvstfunc` |
 | Melee splash: Smite's shield damage and the off-hand radius rules | `skills.proc_SplashDamage.srvdofunc` `skills.Golem Splash.srvdofunc` `skills.Skeleton Splash.srvdofunc` |
 | Golem start: the Iron Golem's place | `skills.Clay Golem.srvstfunc` `skills.BloodGolem.srvstfunc` `skills.FireGolem.srvstfunc` |
 | Fire Claws: the hit | `skills.Fire Claws.srvstfunc` |
