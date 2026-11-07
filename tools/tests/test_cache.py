@@ -124,6 +124,11 @@ def rule_d(rule, pd2, d2r, out):  # like presets-hd: D2R's tiles, if fetched
     write(out / "d.txt", str(any((d2r / "global" / "tiles").rglob("*.dt1"))))
 
 
+def rule_e(rule, pd2, d2r, out):  # a D2R table copied as is (copy2 on Windows raises no audit event)
+    RUNS.append("e")
+    shutil.copy2(d2r / "global" / "excel" / "e.txt", out / "e.txt")
+
+
 class RuleCacheTests(unittest.TestCase):
     def test_a_rule_reruns_exactly_when_its_code_or_what_it_read_changed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -132,9 +137,9 @@ class RuleCacheTests(unittest.TestCase):
             write(root / "pd2-baseline.json", "B")
             (root / "pd2-data").mkdir()
             (root / "pd2-data" / "baseline.json").write_bytes(pd2_extract.stamp(b"B"))
-            for n, t in (("a", "x"), ("b", "b"), ("c", "c"), ("d", "d")):
+            for n, t in (("a", "x"), ("b", "b"), ("c", "c"), ("d", "d"), ("e", "e")):
                 write(root / "merge" / f"{n}.tsv", t)
-            (d2r / "global" / "excel").mkdir(parents=True)
+            write(d2r / "global" / "excel" / "e.txt", "1")
             (tmp / "cache").mkdir()
             gen = root / "generated" / "data"
 
@@ -145,11 +150,12 @@ class RuleCacheTests(unittest.TestCase):
                 self.assertIn("c ran", so.getvalue(), "a replay prints what the rule printed")
                 return sorted(RUNS), {p.relative_to(gen).as_posix(): p.read_text() for p in gen.rglob("*.txt")}
 
-            rules = {"a.tsv": rule_a, "b.tsv": rule_b, "c.tsv": rule_c, "d.tsv": rule_d}
+            rules = {"a.tsv": rule_a, "b.tsv": rule_b, "c.tsv": rule_c, "d.tsv": rule_d, "e.tsv": rule_e}
             with cache_env(tmp / "cache"), mock.patch.dict(pd2_merge.RULES, rules, clear=True):
                 ran, fresh = run()
-                self.assertEqual(ran, ["a", "b", "c", "d"])
-                self.assertEqual(fresh, {"a.txt": "X", "b.txt": "Xb", "sub/c.txt": "cFalse2", "d.txt": "False"})
+                self.assertEqual(ran, ["a", "b", "c", "d", "e"])
+                self.assertEqual(fresh, {"a.txt": "X", "b.txt": "Xb", "sub/c.txt": "cFalse2", "d.txt": "False",
+                                         "e.txt": "1"})
                 self.assertEqual(run(), ([], fresh), "nothing changed: every rule replays, the same files")
                 write(root / "merge" / "c.tsv", "C")
                 self.assertEqual(run()[0], ["c"], "only the changed rule")
@@ -166,10 +172,12 @@ class RuleCacheTests(unittest.TestCase):
                 self.assertEqual(run()[0], [], "files no rule reads leave every rule cached")
                 write(d2r / "global" / "tiles" / "act1" / "x.dt1", "")
                 self.assertEqual(run(), (["d"], {**out, "d.txt": "True"}), "D2R's fetched tiles rerun the rule that looks")
+                write(d2r / "global" / "excel" / "e.txt", "22")
+                self.assertEqual(run()[0], ["e"], "a changed D2R table reruns the rule that copied it")
                 with mock.patch.object(pd2_cache, "sources", lambda fn: [root / "tools" / "tests" / "test_x.py"]):
                     write(root / "tools" / "tests" / "test_x.py", "changed")
-                    self.assertEqual(run()[0], ["a", "b", "c", "d"], "changed code reruns its rules")
-                self.assertEqual(run(GITHUB_ACTIONS="true")[0], ["a", "b", "c", "d"], "CI always merges fresh")
+                    self.assertEqual(run()[0], ["a", "b", "c", "d", "e"], "changed code reruns its rules")
+                self.assertEqual(run(GITHUB_ACTIONS="true")[0], ["a", "b", "c", "d", "e"], "CI always merges fresh")
             self.assertFalse(list((tmp / "cache").rglob("*.tmp*")), "no temp folder left")
 
     def test_a_removed_file_is_removed_again_on_replay(self):

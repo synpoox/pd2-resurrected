@@ -90,15 +90,16 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None) -> list[s
     # what every rule's key holds: the stamps, modkit, the cache's own code, D2R's path (its files are traced too)
     base = cache and pd2_cache.key([root / "pd2-baseline.json", stamp, pd2_ids.toolkit(root) / "modkit",
                                     Path(pd2_cache.__file__)], str(d2r.resolve()))
+    ran = []
     try:
         for p in files:
             fn = RULES[p.name]
             try:
-                if cache:
-                    pd2_cache.rule(cache, pd2_cache.key(pd2_cache.sources(fn), base, p.name, fn.__qualname__),
-                                   {"p": root, "d": d2r}, lambda: fn(p, pd2 / "data", d2r, out))
-                else:
+                if not cache:
                     fn(p, pd2 / "data", d2r, out)
+                elif not pd2_cache.rule(cache, pd2_cache.key(pd2_cache.sources(fn), base, p.name, fn.__qualname__),
+                                        {"p": root, "d": d2r}, lambda: fn(p, pd2 / "data", d2r, out)):
+                    ran.append(p.name)
             except ValueError as e:  # a rule's data error, named by its rule file
                 raise MergeError(f"merge/{p.name}: {e}") from e
     except (pd2_ids.IdError, MergeError) as e:
@@ -107,6 +108,8 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None) -> list[s
     except BaseException:
         shutil.rmtree(out.parent)
         raise
+    if cache:
+        print(f"rule cache: {len(files) - len(ran)} of {len(files)} rules replayed; ran {', '.join(ran) or 'none'}")
     return [p.name for p in files]
 
 

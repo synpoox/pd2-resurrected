@@ -29,9 +29,10 @@ from typing import Callable
 from unittest import mock
 
 try:
+    import _winapi
     import msvcrt
 except ImportError:  # not Windows
-    msvcrt = None
+    _winapi = msvcrt = None
     import fcntl
 
 
@@ -225,6 +226,15 @@ def _hook() -> None:
             for n in names:
                 if hasattr(mod, n):
                     setattr(mod, n, _seen(getattr(mod, n)))
+        if hasattr(_winapi, "CopyFile2"):  # shutil.copy2's copy on Windows raises no audit event
+            copy = _winapi.CopyFile2
+
+            def copied(src, dst, *a):
+                if (t := _trace) is not None and not t.busy:
+                    t.see(src)
+                    t.wrote(dst)
+                return copy(src, dst, *a)
+            _winapi.CopyFile2 = copied
         _hooked = True
 
 
