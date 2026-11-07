@@ -15,10 +15,10 @@
 // their pets are removed and their buffs stripped (section 3). The key's tier is kept for the fight, and the opening
 // counts on OpenKey, the gate shared with maps. A tier-0 key also leaves PD2's three grey portals by the fountain for
 // re-entry. They take PD2's portal operate (77 in PD2, D2R's free operate slot 60 here): each runs the area rules on
-// entry, warps the player in and goes. Arriving in an uber level removes its waypoints (section 3).
+// entry, warps the player in and goes. An uber level spawns no waypoint (section 3; NoUberWaypoint).
 //
 // The Pandemonium Talisman `ubtm` (UB3) opens Uber Tristram the same way. PD2's portal entry (0x103a9780) runs the
-// area rules only for levels 137, 161-163 and 188, so a grey portal into Uber Tristram only removes the waypoints;
+// area rules only for levels 137, 161-163 and 188, so a grey portal into Uber Tristram runs none;
 // the opening's warp (0x1038a680) still strips every player it takes in.
 #include "map_open.h"
 
@@ -27,6 +27,7 @@
 #include "log.h"
 #include "map_events.h"
 #include "map_stats.h"
+#include "unique_maps.h"
 
 #include <algorithm>
 #include <atomic>
@@ -68,6 +69,7 @@ constexpr int32_t CantEnter = 0x14;  // operate 15's refusal message
 // The bosses PD2's entry heals by 20% of max life (its set 0x105deec4): Dclone, Rathma and Mendeln and their clones,
 // Lucion, in the port's monstats ids
 constexpr int32_t UberBosses[] = {806, 950, 951, 952, 953, 1129};
+constexpr int32_t MapEventState = 259;  // states `mapevent` (PD2 213): the Outer Void's bosses (unique_maps.cpp)
 // PD2 removes the waypoints on arriving in its 137, 161-163 and 185 (and D2R's Uber Tristram 136, turned off)
 constexpr int32_t NoWaypointLevels[] = {138, 160, 161, 162, UberTristram};
 // PD2 0x1037f4a0: the states stripped on entering an uber area, in the port's ids: enchant, coldenchant, venomclaws,
@@ -285,45 +287,6 @@ auto RemoveGreyPortal(Game* game, Unit* portal) noexcept -> void {
 	d2r::Engine<void (*)(void*, int32_t) noexcept>(RoomPortalMark)(room, 1);
 }
 
-// The tail of PD2 0x1038a680, and its portal entry: arriving in an uber level removes the level's `Waypoint` objects.
-// shortcut: only the player's room and its neighbours are walked, where the warp puts a player (by the level's
-// waypoint); walk every room of the level if a waypoint ever shows further off
-auto RemoveWaypoints(Game* game, Unit* player, int32_t level) noexcept -> void {
-	using namespace d2r::rva;
-	if (std::find(std::begin(NoWaypointLevels), std::end(NoWaypointLevels), level) == std::end(NoWaypointLevels)) {
-		return;
-	}
-	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(player);
-	void** rooms = nullptr;
-	uint32_t count = 0;
-	if (room != nullptr) {
-		d2r::Engine<void (*)(void*, void***, uint32_t*) noexcept>(NearRooms)(room, &rooms, &count);
-	}
-	// picked first, so no unit is freed while its room's list is walked
-	constexpr int Max = 16;
-	Unit* found[Max] = {};
-	int n = 0;
-	for (uint32_t r = 0; rooms != nullptr && r < count; ++r) {
-		for (auto* unit = d2r::Engine<Unit* (*)(void*) noexcept>(RoomFirstUnit)(rooms[r]); unit != nullptr && n < Max;
-		     unit = d2r::Engine<Unit* (*)(Unit*) noexcept>(NextUnitInRoom)(unit)) {
-			const auto* record = At<int32_t>(unit, UnitType) == UnitObject
-				? d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ObjectRecord)(
-					  d2r::DataFlag(game), At<int32_t>(unit, UnitClassId))
-				: nullptr;
-			if (record != nullptr && At<uint8_t>(record, ObjOperateFn) == OperateWaypoint) {
-				found[n++] = unit;
-			}
-		}
-	}
-	for (int i = 0; i < n; ++i) {
-		RemoveObject(game, found[i]);
-	}
-	g_waypoints += static_cast<uint32_t>(n);
-	if (n > 0) {
-		plog::Info("uber: %d waypoints removed in level %d", n, level);
-	}
-}
-
 // PD2 0x103a9780: each entry heals the fight's bosses by 20% of their max life, capped at max. They are still in the
 // game because KeepBossRoom keeps their rooms.
 // shortcut: the bosses are found by class in the level, where PD2 heals the ones its phase scripts registered; use
@@ -359,8 +322,11 @@ auto KeepBossRoom(void* act, void* room) noexcept -> int32_t {
 	using namespace d2r::rva;
 	for (auto* unit = d2r::Engine<Unit* (*)(void*) noexcept>(RoomFirstUnit)(room); unit != nullptr;
 	     unit = d2r::Engine<Unit* (*)(Unit*) noexcept>(NextUnitInRoom)(unit)) {
+		// also an Outer Void boss (state `mapevent`): PD2 puts its list back when its room comes back (0x10371520 keeps
+		// the state in D2Game's monster store, 0x10371590 remakes the list); keeping the room keeps the list
 		if (At<int32_t>(unit, UnitType) == UnitMonster &&
-		    std::find(std::begin(UberBosses), std::end(UberBosses), At<int32_t>(unit, UnitClassId)) != std::end(UberBosses) &&
+		    (std::find(std::begin(UberBosses), std::end(UberBosses), At<int32_t>(unit, UnitClassId)) != std::end(UberBosses) ||
+		     d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(unit, MapEventState) != 0) &&
 		    d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) == 0) {
 			MarkBossAlone(unit);
 			if (g_bossRoomsKept++ == 0) {
@@ -387,10 +353,7 @@ auto WarpGroup(Game* game, Unit* user, int32_t level) noexcept -> int32_t {
 		const int32_t now = PlayerLevelId(player);
 		plog::Info("uber: player warped to level %d (now in %d), %d pets removed, %d states stripped", level, now,
 		           pets, states);
-		if (now == level) {
-			++arrived;
-			RemoveWaypoints(game, player, level);
-		}
+		arrived += now == level ? 1 : 0;
 	};
 	// the others are picked before anyone moves, so a warp never runs while the client list is walked
 	constexpr int MaxPlayers = 8;
@@ -426,7 +389,7 @@ auto OpenGreyPortals(Game* game, void* near, int32_t level, Unit* (&made)[std::s
 
 // PD2's portal operate (77), in D2R's operate slot 60: the player goes to the portal's level. Into an uber level the
 // area rules run first (PD2 0x103a9780): the entry is counted, the bosses heal, pets go and buffs are stripped. A grey
-// portal is single use. The waypoints go on arrival.
+// portal is single use.
 // shortcut: Rathma's tier-0 re-entry at the stage's spot (section 3) needs the Rathma fight's stage byte; add it with
 // that fight
 auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
@@ -441,6 +404,9 @@ auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
 		plog::Warn("uber: portal %d leads nowhere (level %d)", args->classId, level);
 		d2r::Engine<void (*)(Unit*, int32_t, Unit*) noexcept>(ClientMessage)(player, CantEnter, player);
 		return 0;
+	}
+	if (OuterVoidWarp(game, player, args->object)) {
+		return 1;
 	}
 	if (IsUberLevel(level) && level != UberTristram) {
 		int32_t* entries = CounterOf(game, EntryKey);
@@ -460,7 +426,6 @@ auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
 	if (args->classId == GreyPortal) {
 		RemoveGreyPortal(game, args->object);
 	}
-	RemoveWaypoints(game, player, level);
 	return 1;
 }
 
@@ -519,6 +484,28 @@ auto SpellUse(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> vo
 
 }  // namespace
 
+// PD2 removes the `Waypoint` objects (operate 23) from the rooms around a player arriving in an uber level (tail of
+// 0x1038a680, and its portal entry). D2R spawns the arrival rooms' presets after the warp returns, so a removal there
+// finds nothing (#466): the waypoint preset is refused at spawn instead, which leaves the same level.
+auto NoUberWaypoint(Game* game, void* room, const uint8_t* preset) noexcept -> bool {
+	using namespace d2r::rva;
+	if (At<int32_t>(preset, PresetType) != UnitObject) {
+		return false;
+	}
+	const int32_t level = d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room);
+	if (std::find(std::begin(NoWaypointLevels), std::end(NoWaypointLevels), level) == std::end(NoWaypointLevels)) {
+		return false;
+	}
+	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ObjectRecord)(
+		d2r::DataFlag(game), At<int32_t>(preset, PresetId));
+	if (record == nullptr || At<uint8_t>(record, ObjOperateFn) != OperateWaypoint) {
+		return false;
+	}
+	plog::Info("uber: waypoint %d not spawned in level %d (%u so far)", At<int32_t>(preset, PresetId), level,
+	           ++g_waypoints);
+	return true;
+}
+
 // Made as the portal maker 0x432ce0 makes one, but with no return portal; it finds the room holding (x, y) from `near`
 auto OpenPortalAt(Game* game, void* near, int32_t row, int32_t x, int32_t y, int32_t level) noexcept -> Unit* {
 	using namespace d2r::rva;
@@ -573,7 +560,7 @@ auto MapOpenCount() noexcept -> int {
 auto MapOpenCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "map checks %u, refused %u, opened %u, failed %u; uber areas opened %u, players warped %u, grey "
-	              "portals %u, portal entries %u, waypoints removed %u, boss room releases refused %u",
+	              "portals %u, portal entries %u, waypoints not spawned %u, boss room releases refused %u",
 	              g_checks.load(), g_refused.load(), g_opened.load(), g_failed.load(), g_ubers.load(), g_warped.load(),
 	              g_portals.load(), g_entries.load(), g_waypoints.load(), g_bossRoomsKept.load());
 }

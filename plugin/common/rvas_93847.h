@@ -1141,6 +1141,9 @@ inline constexpr uint64_t ItemRowByCode = 0x313ef0;  // (dataFlag, u32 code, 'ws
 // roller 0x4404f0 does
 inline constexpr uint64_t DropItemAt = 0x444680;
 inline constexpr int32_t QualityNormal = 2;
+// The game's dropped-uniques mask (1.13c +0x1b24): bit `row & 31` of u32 `row >> 5`, by uniqueitems row (at most
+// 0x1000). The unique roll 0x443910 refuses a set bit, a forced row included, and sets it on a drop.
+inline constexpr int GameUniquesDropped = 0x3638;
 inline constexpr uint32_t MonDemon = 0x2000;  // MonFlags bit 13 (monstats field table 0x39db30)
 
 // --- core-maps: Lucion's death (UB6, #231; D2Game\src\Skills\Skills.cpp, D2Game\src\Player\PlayerPets.cpp) --------
@@ -1166,6 +1169,21 @@ inline constexpr uint32_t UnitNoDrop = 0x20000;
 // its count at +0x198.
 inline constexpr uint64_t ActSpawnSpot = 0x2ef8b0;
 inline constexpr int GameActs = 0x190, GameActCount = 0x198;
+// --- core-maps: the Outer Void's in-level portals (MS7c, #532; D2Common Drlg) -------------------------------------
+// Decompiled for #532 (Ghidra, D2R.gpr): the steps ActSpawnSpot's 0x3da650 takes from a level id to a room. Called,
+// not hooked. (dataFlag, act +0x70, level id) -> the act's level (made if missing); (dataFlag, level) builds its rooms
+// when level +0x10 (the first room ex) is null; (level, tile x, tile y) -> the room ex holding the tile; (dataFlag, room
+// ex) -> its room, made if needed. A level's origin is in tiles at +0x24/+0x28.
+inline constexpr int ActDrlg = 0x70;
+inline constexpr uint64_t LevelGet = 0x3267c0;
+inline constexpr uint64_t LevelBuild = 0x3271c0;
+inline constexpr uint64_t LevelRoomExAt = 0x3275b0;
+inline constexpr uint64_t RoomExRoom = 0x3289a0;
+inline constexpr int LevelFirstRoomEx = 0x10, LevelTileX = 0x24, LevelTileY = 0x28;
+// (game, unit, room, x, y, 0, 0): moves the unit to a free spot by x/y in room, as WarpToLevel does in its own act
+inline constexpr uint64_t TeleportUnit = 0x491ca0;
+// A room preset's subtile offsets from the room's RoomX/RoomY, as PresetSpawn reads them
+inline constexpr int PresetX = 0x8, PresetY = 0x24;
 
 // --- core-maps: the Uber Tristram primes' minions (UB3, #483) -------------------------------------------------------
 // D2Game's AI table: one 0x20-byte row per monai row, the think function (game, monster, tick) first. The rows were
@@ -1218,6 +1236,16 @@ inline constexpr uint64_t PortalMaker = 0x432ce0;
 // its picks by the dropper; with no items array it drops all picks (max under 1 means 6). The item level feeds the
 // quality roll 0x4421b0. PD2's map events call 1.13c's same function as (..., tc, 0, ilvl, 0, 0, 0, 1).
 inline constexpr uint64_t TcDrop = 0x4404f0;
+
+// --- core-maps: the map-area death drops (MS4d; D2Game\src\Monster\MonsterMode.cpp) --------------------------------
+// Decompiled for MS4d (Ghidra, D2R.gpr). Called, not hooked.
+// (game, monster, flag, death*) -> the monster's own TC drop: its monstats TC for the difficulty and kind (champion,
+// unique, quest), dropped by 0x441300. death +0x08 is the monster, +0x10 the killer (the quest-drop test and the
+// quality roll's player). 1.13c's 0x6fc95680, which PD2 calls through 0x1030f2b0 for an extra drop; D2R's death path
+// 0x4479a0 passes flag 0, as PD2 does.
+inline constexpr uint64_t MonsterTcDrop = 0x447b80;
+inline constexpr int MonDataTypeFlags = 0x1a;     // u8 in the monster's UnitData: 0x10 minion (1.13c +0x16)
+inline constexpr uint8_t MonTypeMinion = 0x10;
 
 }  // namespace d2r::rva
 
