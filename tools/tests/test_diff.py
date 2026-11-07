@@ -73,7 +73,7 @@ class GateTests(unittest.TestCase):
         self.assertIn("Deviation list: 2 not yet, 1 approximated, 0 cut entries", text)
 
     def test_the_report_names_its_commit_and_marks_uncommitted_changes(self):
-        git = ["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t"]
+        git = ["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
         subprocess.run([*git, "init", "-q"], check=True)
         subprocess.run([*git, "add", "docs"], check=True)
         subprocess.run([*git, "commit", "-qm", "x"], check=True)

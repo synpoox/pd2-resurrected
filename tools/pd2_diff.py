@@ -227,7 +227,10 @@ def escape_pipes(v: str) -> str:
 def commit_of(root: Path) -> str:
     """`root`'s short commit id, marked when its working tree has uncommitted changes, so a stale report shows."""
     def git(*args: str) -> str:
-        return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True).stdout.strip()
+        try:
+            return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True).stdout.strip()
+        except OSError:  # git is not installed
+            return ""
     head = git("rev-parse", "--short", "HEAD") or "no git commit"
     return f"{head}, uncommitted changes" if git("status", "--porcelain") else head
 
