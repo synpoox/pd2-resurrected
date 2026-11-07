@@ -68,6 +68,24 @@ none, and the spawner (`0x50acf0`, `0x50b7e0`, `0x509cc0`) has no check that wou
 run: the area level (it rolls only through corruption), fortify (`fort` spawns since [#310](https://github.com/synpoox/pd2-resurrected/issues/310), but no fortified map was opened yet), drop bonus and
 treacherous.
 
+**The added group, read again.** The affix values are PD2 `hcIdx` ids (PD2's `monstats.txt` has an `Expansion` row,
+so row and id part after 469): Ghastly adds `wraithMapMod` (port 1128), Rampant `baalminion3MapMod` (port 1186), both
+enabled and `isSpawn` with `MinGrp`/`MaxGrp` set and no `spawn` swap. In D2R's spawn path nothing turns the group away:
+
+- The region builder `0x509940` adds a group only when its monstats flag byte `+0x3c` passes, and raises `+0x10`,
+  `+0x11` and `+0x12` together, so `+0x12` equals the group count; the port's group lands at index `+0x10`.
+- `0x419d20` picks the pack kind: a unique pack while `+0x2c8` (packs so far) is below `+0x2bc`/`+0x2bd`, else a
+  champion (rand % 100 > 35) or a normal pack. Both kinds take their monster from `0x419e80`.
+- `0x419e80` rolls `rand % (+0x11)` over every group's `+2` rarity. It swaps the pick for its monstats `spawn`
+  (`+0x54`) only when that is set (the `isSpawn` flag, `+0x3e`), and a debug override (`0x14238d5b4`) can force one id.
+- `0x50acf0` then needs only `MinGrp`/`MaxGrp` (`+0x65`/`+0x66`) and `sparsePopulate` (`+0x67`, blank here) to spawn.
+- Both getters of the room's region (`0x2efc10`, `0x2efd00`) read the same level id, so the spawner uses the region
+  `ApplyArea` rewrote.
+
+So in a Sewers map (8 groups, rarity sum 9) one pack in 10 should be wraiths of the added group. `ApplyArea` now logs
+`map area: level L adds monster M as group G`, and the `added-group-spawn` check in `tests/game/core_maps_checks.py`
+looks for that monster among the spawned kinds.
+
 ## [MS4b](https://github.com/synpoox/pd2-resurrected/issues/286): the drop chances ([#286](https://github.com/synpoox/pd2-resurrected/issues/286))
 
 PD2's drop hook `0x10372180` replaces 1.13c's TC drop (D2R's `0x444680`, which keeps PD2's monster 0x187 check). For a
