@@ -19,7 +19,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Merged data
         run: |
-          py -3 tools/pd2_extract.py; if ($LASTEXITCODE) { throw "pd2_extract failed" }
+          $cache = "C:\pd2r-cache\pd2-data"
+          New-Item -ItemType Directory -Force $cache | Out-Null
+          New-Item -ItemType Junction -Path pd2-data -Target $cache | Out-Null
+          py -3 tools/pd2_extract.py --out $cache; if ($LASTEXITCODE) { throw "pd2_extract failed" }
           py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
       - name: Table-diff gate
         run: py -3 tools/pd2_diff.py --scope alpha
