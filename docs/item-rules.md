@@ -20,7 +20,9 @@ Out:
   modifier is new content for a patch after the launch.
 - Map items and recipes belong to the map system ([map-system.md](map-system.md)); uber keys, organs and the Rathma
   tomes' source to the uber bosses ([uber-bosses.md](uber-bosses.md)); item art to [#143](https://github.com/synpoox/pd2-resurrected/issues/143)'s art plan. PvP items are cut.
-- Buying back a unique charm sold by mistake was cut; the cut is reversed in [UR11](https://github.com/synpoox/pd2-resurrected/issues/338) ([#338](https://github.com/synpoox/pd2-resurrected/issues/338)). The gamble refresh button is D2R's own ([#189](https://github.com/synpoox/pd2-resurrected/issues/189)). Stash search and
+- Buying back a unique charm sold by mistake needs no code ([UR11](https://github.com/synpoox/pd2-resurrected/issues/338)): a vendor destroys a sold item whose uniqueitems `carry1` is set, and PD2 empties
+  `carry1` on every row (its one-unique-charm rule lives in its DLL), so the merged Gheed's, Annihilus and Torch stay in the
+  vendor's store until it refreshes, at its buy price. D2R's crafted Rupture charms keep `carry1` 1004 and still vanish. The gamble refresh button is D2R's own ([#189](https://github.com/synpoox/pd2-resurrected/issues/189)). Stash search and
   gold caps went with the stash layouts.
 
 ## Decisions
