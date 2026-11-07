@@ -71,7 +71,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | Guilds | not yet | cut in spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41) with the online layer; the cut is reversed and guilds come with multiplayer ([#339](https://github.com/synpoox/pd2-resurrected/issues/339)) | [#339](https://github.com/synpoox/pd2-resurrected/issues/339), beta |
 | Controller: PD2's own screens and binds | not yet | D2R's native controller support stands in; PD2's extra screens and binds were cut in spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41), and the cut is reversed ([#340](https://github.com/synpoox/pd2-resurrected/issues/340)) | [#340](https://github.com/synpoox/pd2-resurrected/issues/340), beta |
 
-### Approximated (46)
+### Approximated (47)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -178,6 +178,7 @@ rows have no table hook: D2R does what it does.
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
+| Rathma's and Mendeln's Summoner AI: walks, the idle window, removal | approximated | core-maps ports PD2's AI (`0x10358510`) for rathmaBone, rathmaPoison and both clones. Where PD2 walks (a random step in state 3, into the retreat portal), the port idles, as D2R's walk-to-point move is not found yet. A retreating boss dies with no drop or experience where PD2 removes him (`0x1036d1e0`). Left out: the 15-tick idle window (`game+0x26fe`), the removal of dead bone prisons, RathmaPrison's skill level (1 for Sk3lvl) and the second end of the ghostly portal (object 587). The immunity puts back the saved resists, not monstats'. The bosses' spawns as their levels' rooms activate (`0x1036fef0`, stages 1, 3 and 5) are not ported yet ([pd2-uber-bosses-dll](research/pd2-uber-bosses-dll.md), section 5) | [#474](https://github.com/synpoox/pd2-resurrected/issues/474) |
 | Lucion's Overseer AI: the frenzy's extras, the idle window and the target distance | approximated | core-maps ports PD2's AI (`0x1035dca0`) for Lucion, LucionControl and LucionSpawner, but leaves out the level darkening (packet 0x53) and the two sounds of the frenzy, its two unread D2Game thunks (`0x103a4c70`, `0x103a4c90`), the light radius −100 on state 146, the curse strip of the immunity, and the 15-tick idle window (`game+0x26fe`). Lucion measures the far blink by his AI target's distance, not the nearest player's, and the immunity puts back the resists it saved, not monstats'. ([pd2-uber-bosses-dll](research/pd2-uber-bosses-dll.md), section 5) | [#437](https://github.com/synpoox/pd2-resurrected/issues/437) |
 | Inferno, Arctic Blast: the caster's frame events | approximated | after each cast PD2 drops the caster's pending frame and mode-end events and adds them again from the next whole frame (`0x1037a7c0`); core-rules leaves D2R's events as they are, so the rows keep D2R's seqinput 10 (PD2's 3 loops D2R's client sequence before its action frame and no flame is drawn; merge/standins.tsv) (docs/research/druid-w21.md) | core-rules |
 | Inferno, Arctic Blast: the client's flames | approximated | core-rules holds another player's channelling caster in its frames as D2R's Inferno does, not for the local player; PD2 does it for every caster. PD2's call after each flame (`0x103a45c0`, with calc1) is taken to be D2R's anim-range set (docs/research/druid-w21.md) | core-rules |
