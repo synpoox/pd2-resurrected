@@ -2773,6 +2773,56 @@ auto CltDoRoyalFire(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 	return 1;
 }
 
+// --- Death novas (PD2 srvdofunc 169 -> router 190, cltdofunc 105 -> 125) ---------------------------------------------
+// Read from ProjectDiablo.dll: srvdo 169 at 0x103b2bc0, cltdo 105 at 0x103ab880 (#480). Each
+// half creates one srvmissilea at the caster (flags 1, no target); the client half reads srvmissilea too, not
+// cltmissilea, so NihlathakMapDeath (no srvmissilea) draws nothing, as in PD2.
+std::atomic<uint32_t> g_deathNovas {0};
+std::atomic<uint32_t> g_deathNovaClients {0};
+constexpr int32_t DollMeteor = 435, RathmaDeath = 554, LucionDeath1 = 649, LucionDeath2 = 650, LucionDeath3 = 651,
+                  LucionDeath4 = 652;  // merged ids
+
+auto SrvDoDeathNova(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	int32_t x = 0, y = 0;
+	if (skill == nullptr || !d2r::ValidMissile(dataFlag, At<int16_t>(skill, SkSrvMissileA)) ||
+	    !d2r::UnitXY(unit, &x, &y)) {
+		return 0;
+	}
+	d2r::MissileParams params = SkillMissileParams(unit, MissileAtXY, At<int16_t>(skill, SkSrvMissileA), x, y, skillId,
+	                                               level);
+	const bool created = d2r::api.createMissile(game, &params) != nullptr;
+	if (plog::Sample(g_deathNovas)) {
+		plog::Info("death nova: skill %d level %d: missile row %d at %d,%d %s, cast %u", skillId, level, params.missile, x,
+		           y, created ? "created" : "failed", g_deathNovas.load());
+	}
+	return created ? 1 : 0;
+}
+
+auto CltDoDeathNova(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::api.unitDataFlag(unit);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	int32_t x = 0, y = 0;
+	if (skill == nullptr || !d2r::ValidMissile(dataFlag, At<int16_t>(skill, SkSrvMissileA)) ||
+	    !d2r::UnitXY(unit, &x, &y)) {
+		return 0;
+	}
+	d2r::MissileParams params = SkillMissileParams(unit, MissileAtXY, At<int16_t>(skill, SkSrvMissileA), x, y, skillId,
+	                                               level);
+	const bool created = d2r::api.clientCreateMissile(&params, 0) != nullptr;
+	if (plog::Sample(g_deathNovaClients)) {
+		plog::Info("death nova client: skill %d level %d: missile row %d %s, cast %u", skillId, level, params.missile,
+		           created ? "created" : "failed", g_deathNovaClients.load());
+	}
+	return created ? 1 : 0;
+}
+
 // --- Static Field (PD2 srvdofunc 160 -> router 190) ------------------------------------------------------------------
 // Read from ProjectDiablo.dll: srvdo 160 at 0x103b1dc0, per-unit damage 0x10302830, per-unit debuff 0x1036c920
 // (docs/research/w27-static-field-combustion.md). Two passes over the units within aurarangecalc that aurafilter
@@ -2991,6 +3041,13 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	case RadamentBossRoyalFire:
 	case LucionRoyalFire:
 		return SrvDoRoyalFire(game, unit, skillId, level);
+	case DollMeteor:
+	case RathmaDeath:
+	case LucionDeath1:
+	case LucionDeath2:
+	case LucionDeath3:
+	case LucionDeath4:
+		return SrvDoDeathNova(game, unit, skillId, level);
 	case StaticField:
 	case MercStaticField:
 	case StaticFieldProc:
@@ -4257,6 +4314,8 @@ const SlotFunction Functions[] = {
 	{CltDo, 120, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoNova)), "nova"},
 	// Royal Fire: PD2 branches inside srvdo 143 / cltdo 83, which D2R keeps vanilla; the router and cltdo 123 take it
 	{CltDo, 123, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoRoyalFire)), "royal fire"},
+	// The death novas: srvdo 169 goes through the router (190); D2R fills cltdo 105
+	{CltDo, 125, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoDeathNova)), "death nova"},
 	// Firestorm and the wall makers: srvdo 166 is D2R's, so the router (190) runs them; cltdo 119 is free
 	{CltDo, 119, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoWall)), "wall"},
 	{SrvDo, 175, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoFireClaws)), "fire claws"},
