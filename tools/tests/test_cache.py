@@ -249,7 +249,7 @@ class RuleCacheTests(unittest.TestCase):
     def test_sources_follow_imports_beside_the_module(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
-            write(tmp / "m_one.py", "import os\nfrom m_two import f\ndef g(): pass\n")
+            write(tmp / "m_one.py", "import os\nfrom m_two import f\ndef g(): pass\ndef main():\n    import m_three\n")
             write(tmp / "m_two.py", "import m_one\ndef f(): pass\n")
             write(tmp / "m_three.py", "")
             sys.path.insert(0, str(tmp))
