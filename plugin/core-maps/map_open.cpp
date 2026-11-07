@@ -7,8 +7,8 @@
 // opened yet in this game; then a free spot for the portal (PD2 places it unchecked). A refused map stays in the
 // inventory and the player gets D2R's "can't do that" (D2R's caller sends none of its own). The portal is D2R's cube
 // "Red Portal" output, which places object 60 by the player and counts the opening per game; its max of 1 on OpenKey
-// is the one-per-game gate. PD2's uber-area exception (Uber Tristram, UB3) and its refusal of levels 152, 153 and 255
-// belong to `ubtm` and the Monastery map, which keep a blank pSpell.
+// is the one-per-game gate. PD2's refusal of levels 152, 153 and 255 belongs to the Monastery map, which keeps a blank
+// pSpell.
 //
 // Uber keys (UB2, docs/research/pd2-uber-bosses-dll.md, section 2) use the same spell: their `len` is an uber level.
 // One more gate, standing at the Blood Fountain; then no portal: every player at the fountain is warped in, after
@@ -16,6 +16,10 @@
 // counts on OpenKey, the gate shared with maps. A tier-0 key also leaves PD2's three grey portals by the fountain for
 // re-entry. They take PD2's portal operate (77 in PD2, D2R's free operate slot 60 here): each runs the area rules on
 // entry, warps the player in and goes. Arriving in an uber level removes its waypoints (section 3).
+//
+// The Pandemonium Talisman `ubtm` (UB3) opens Uber Tristram the same way. PD2's portal entry (0x103a9780) runs the
+// area rules only for levels 137, 161-163 and 188, so a grey portal into Uber Tristram only removes the waypoints;
+// the opening's warp (0x1038a680) still strips every player it takes in.
 #include "map_open.h"
 
 #include "d2r.h"
@@ -43,8 +47,10 @@ constexpr int32_t StatLevel = 12;      // itemstatcost level
 constexpr int32_t RiteOfPassage = 39;  // the Ancients
 constexpr int32_t Harrogath = 109;
 constexpr int32_t CantDoThat = 0x15;
-// Uber keys: Diablo Clone `dcma`, Rathma `rtma`, Lucion `luca` (PD2 levels 137, 161, 188 in the port's ids)
-constexpr int32_t UberLevels[] = {138, 160, 184};
+// Uber keys: Diablo Clone `dcma`, Rathma `rtma`, Lucion `luca`, Uber Tristram `ubtm` (PD2 levels 137, 161, 188, 185
+// in the port's ids)
+constexpr int32_t UberTristram = 181;
+constexpr int32_t UberLevels[] = {138, 160, 184, UberTristram};
 // PD2 0x1037d840 is a squared distance to the Blood Fountain (5074, 5114): the user must be within 0x95 of it, and
 // the warp takes every player under 0x96
 constexpr int32_t FountainX = 5074, FountainY = 5114;
@@ -61,8 +67,8 @@ constexpr int32_t CantEnter = 0x14;  // operate 15's refusal message
 // The bosses PD2's entry heals by 20% of max life (its set 0x105deec4): Dclone, Rathma and Mendeln and their clones,
 // Lucion, in the port's monstats ids
 constexpr int32_t UberBosses[] = {806, 950, 951, 952, 953, 1129};
-// PD2 removes the waypoints on arriving in its 137 and 161-163 (and 136 and 185, Uber Tristram's, UB3)
-constexpr int32_t NoWaypointLevels[] = {138, 160, 161, 162};
+// PD2 removes the waypoints on arriving in its 137, 161-163 and 185 (and D2R's Uber Tristram 136, turned off)
+constexpr int32_t NoWaypointLevels[] = {138, 160, 161, 162, UberTristram};
 // PD2 0x1037f4a0: the states stripped on entering an uber area, in the port's ids: enchant, coldenchant, venomclaws,
 // shout, battleorders, battlecommand, wolf, bear, fade, quickness, energyshield, shiverarmor, chillingarmor, bonearmor,
 // cyclonearmor, bladeshield, holyshield, holysword, thunderstorm, thawing, antidote, the ten shrine states,
@@ -89,6 +95,8 @@ std::atomic<uint32_t> g_warped {0};
 std::atomic<uint32_t> g_portals {0};
 std::atomic<uint32_t> g_entries {0};
 std::atomic<uint32_t> g_waypoints {0};
+std::atomic<uint32_t> g_bossRoomsKept {0};
+int32_t (*g_releasableOriginal)(void* act, void* room) noexcept = nullptr;
 // Set once the check hook is in: until then the use hook leaves maps to D2R, so no portal opens ungated
 std::atomic<bool> g_gated {false};
 
@@ -315,7 +323,8 @@ auto RemoveWaypoints(Game* game, Unit* player, int32_t level) noexcept -> void {
 	}
 }
 
-// PD2 0x103a9780: each entry heals the fight's bosses by 20% of their max life, capped at max
+// PD2 0x103a9780: each entry heals the fight's bosses by 20% of their max life, capped at max. They are still in the
+// game because KeepBossRoom keeps their rooms.
 // shortcut: the bosses are found by class in the level, where PD2 heals the ones its phase scripts registered; use
 // those once the fights' scripts are ported
 auto HealBosses(Game* game, int32_t level) noexcept -> int32_t {
@@ -331,12 +340,34 @@ auto HealBosses(Game* game, int32_t level) noexcept -> int32_t {
 				continue;
 			}
 			const int32_t max = stat(unit, StatMaxLife, 0);
-			const int32_t life = std::min(max, stat(unit, StatLife, 0) + max / 5);
+			const int32_t before = stat(unit, StatLife, 0);
+			const int32_t life = std::min(max, before + max / 5);
 			d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(unit, StatLife, life, 0);
+			plog::Info("uber: boss %d healed, life %d -> %d of %d", classId, before >> 8, life >> 8, max >> 8);
 			++healed;
 		}
 	}
 	return healed;
+}
+
+// PD2 0x102fc6c0, on D2Game's room-release check: a room holding a live uber boss is never released, so the boss keeps
+// its life between entries and HealBosses finds it. A hook: no SDK service covers room lifetime, and a room mark
+// (RoomPortalMark) would stay on the room the boss walks out of.
+// shortcut: PD2 also starts the boss's 15-tick immune window here (game +0x26fe); add it with the phase scripts
+auto KeepBossRoom(void* act, void* room) noexcept -> int32_t {
+	using namespace d2r::rva;
+	for (auto* unit = d2r::Engine<Unit* (*)(void*) noexcept>(RoomFirstUnit)(room); unit != nullptr;
+	     unit = d2r::Engine<Unit* (*)(Unit*) noexcept>(NextUnitInRoom)(unit)) {
+		if (At<int32_t>(unit, UnitType) == UnitMonster &&
+		    std::find(std::begin(UberBosses), std::end(UberBosses), At<int32_t>(unit, UnitClassId)) != std::end(UberBosses) &&
+		    d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) == 0) {
+			if (g_bossRoomsKept++ == 0) {
+				plog::Info("uber: boss %d keeps its room", At<int32_t>(unit, UnitClassId));
+			}
+			return 0;
+		}
+	}
+	return g_releasableOriginal(act, room);
 }
 
 // PD2 0x1038a680: the user, then every other player in Harrogath at level 80+ within reach of the fountain, loses
@@ -379,38 +410,14 @@ auto WarpGroup(Game* game, Unit* user, int32_t level) noexcept -> int32_t {
 	return arrived;
 }
 
-// PD2 0x10383060, tier 0: three grey portals to the level around the fountain, made as the portal maker 0x432ce0 makes
-// one but with no return portal. `near` is a room by the fountain; it finds each spot's room. Each portal goes in
-// `made`, null where none was made.
+// PD2 0x10383060, tier 0: three grey portals to the level around the fountain. `near` is a room by the fountain.
+// Each portal goes in `made`, null where none was made.
 auto OpenGreyPortals(Game* game, void* near, int32_t level, Unit* (&made)[std::size(GreyPortalXY)]) noexcept -> int32_t {
-	using namespace d2r::rva;
-	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ObjectRecord)(d2r::DataFlag(game),
-	                                                                                            GreyPortal);
-	using SpawnFn = Unit* (*)(int32_t, int32_t, int32_t, int32_t, Game*, void*, int32_t, int32_t, int32_t,
-	                          int32_t) noexcept;
 	int32_t count = 0;
 	for (size_t i = 0; i < std::size(GreyPortalXY); ++i) {
 		const auto& xy = GreyPortalXY[i];
-		made[i] = nullptr;
-		void* room = near != nullptr && record != nullptr
-			? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(near, xy[0], xy[1])
-			: nullptr;
-		Unit* portal = room != nullptr
-			? d2r::Engine<SpawnFn>(SpawnUnit)(UnitObject, GreyPortal, xy[0], xy[1], game, room, 1, 1, 0, 0)
-			: nullptr;
-		if (portal == nullptr) {
-			plog::Warn("uber: no grey portal at (%d, %d)", xy[0], xy[1]);
-			continue;
-		}
-		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetObjectMode)(portal, 1);
-		const int32_t open = At<int32_t>(game, GameFrame) + 1 + static_cast<int32_t>(At<uint32_t>(record, ObjOpenFrames) >> 8);
-		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
-			game, portal, UnitEventOpen, open, 0, 0, 0);
-		// as the portal maker does: without the mark the room, portal and all, is freed once the player warps away
-		d2r::Engine<void (*)(void*, int32_t) noexcept>(RoomPortalMark)(room, 0);
-		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetPortalLevel)(portal, level);
-		made[i] = portal;
-		++count;
+		made[i] = OpenPortalAt(game, near, GreyPortal, xy[0], xy[1], level);
+		count += made[i] != nullptr ? 1 : 0;
 	}
 	return count;
 }
@@ -433,7 +440,7 @@ auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
 		d2r::Engine<void (*)(Unit*, int32_t, Unit*) noexcept>(ClientMessage)(player, CantEnter, player);
 		return 0;
 	}
-	if (IsUberLevel(level)) {
+	if (IsUberLevel(level) && level != UberTristram) {
 		int32_t* entries = CounterOf(game, EntryKey);
 		*entries += 1;
 		const int32_t healed = HealBosses(game, level);
@@ -510,6 +517,32 @@ auto SpellUse(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> vo
 
 }  // namespace
 
+// Made as the portal maker 0x432ce0 makes one, but with no return portal; it finds the room holding (x, y) from `near`
+auto OpenPortalAt(Game* game, void* near, int32_t row, int32_t x, int32_t y, int32_t level) noexcept -> Unit* {
+	using namespace d2r::rva;
+	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ObjectRecord)(d2r::DataFlag(game),
+	                                                                                            row);
+	using SpawnFn = Unit* (*)(int32_t, int32_t, int32_t, int32_t, Game*, void*, int32_t, int32_t, int32_t,
+	                          int32_t) noexcept;
+	void* room = near != nullptr && record != nullptr
+		? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(near, x, y)
+		: nullptr;
+	Unit* portal = room != nullptr ? d2r::Engine<SpawnFn>(SpawnUnit)(UnitObject, row, x, y, game, room, 1, 1, 0, 0)
+	                               : nullptr;
+	if (portal == nullptr) {
+		plog::Warn("uber: no portal %d at (%d, %d)", row, x, y);
+		return nullptr;
+	}
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetObjectMode)(portal, 1);
+	const int32_t open = At<int32_t>(game, GameFrame) + 1 + static_cast<int32_t>(At<uint32_t>(record, ObjOpenFrames) >> 8);
+	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
+		game, portal, UnitEventOpen, open, 0, 0, 0);
+	// as the portal maker does: without the mark the room, portal and all, is freed once the player warps away
+	d2r::Engine<void (*)(void*, int32_t) noexcept>(RoomPortalMark)(room, 0);
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetPortalLevel)(portal, level);
+	return portal;
+}
+
 auto InstallMapOpen(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
 	// The use first: with only the check, D2R's use would take a map that passed and open nothing
@@ -523,20 +556,22 @@ auto InstallMapOpen(const D2RL::PluginContext* context, char* report, size_t rep
 	const bool portal = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperatePortal) * 8,
 	                                           Empty, sizeof(Empty),
 	                                           reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperatePortal)));
-	std::snprintf(report, reportSize, "item spell %d%s, portal operate %d%s", MapSpell,
+	const bool rooms = context->InstallInlineHook(d2r::rva::RoomReleasable, RoomReleasableEntry,
+	                                              sizeof(RoomReleasableEntry), KeepBossRoom, &g_releasableOriginal);
+	std::snprintf(report, reportSize, "item spell %d%s, portal operate %d%s, boss rooms kept%s", MapSpell,
 	              check ? "" : use ? " FAILED (check bytes differ)" : " FAILED (use bytes differ)", ObjectOperatePortal,
-	              portal ? "" : " FAILED (slot not empty)");
-	return (check ? 1 : 0) + (portal ? 1 : 0);
+	              portal ? "" : " FAILED (slot not empty)", rooms ? "" : " FAILED (bytes differ)");
+	return (check ? 1 : 0) + (portal ? 1 : 0) + (rooms ? 1 : 0);
 }
 
 auto MapOpenCount() noexcept -> int {
-	return 2;
+	return 3;
 }
 
 auto MapOpenCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "map checks %u, refused %u, opened %u, failed %u; uber areas opened %u, players warped %u, grey "
-	              "portals %u, portal entries %u, waypoints removed %u",
+	              "portals %u, portal entries %u, waypoints removed %u, boss room releases refused %u",
 	              g_checks.load(), g_refused.load(), g_opened.load(), g_failed.load(), g_ubers.load(), g_warped.load(),
-	              g_portals.load(), g_entries.load(), g_waypoints.load());
+	              g_portals.load(), g_entries.load(), g_waypoints.load(), g_bossRoomsKept.load());
 }
