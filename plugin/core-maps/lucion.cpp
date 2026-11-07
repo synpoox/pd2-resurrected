@@ -121,16 +121,6 @@ auto OpenHarrogathPortal(Game* game) noexcept -> bool {
 	return true;
 }
 
-// PD2 0x10356e00, as D2R's pet kill 0x500fb0 sets the death mode: no drop, then mode 0
-auto KillQuietly(Game* game, Unit* monster) noexcept -> void {
-	using namespace d2r::rva;
-	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlags)(monster, UnitNoDrop, 1);
-	alignas(8) uint8_t block[0x30] = {};
-	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(MonsterModeBlock)(monster, ModeDeath, block);
-	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(UnitTarget)(game, monster);
-	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(SetMonsterMode)(game, block, 1);
-}
-
 // The adds and the controller alive in the arena, picked first so no kill runs while the lists are walked
 auto KillAdds(Game* game) noexcept -> int32_t {
 	using namespace d2r::rva;
@@ -203,6 +193,16 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 }
 
 }  // namespace
+
+// PD2 0x10356e00, as D2R's pet kill 0x500fb0 sets the death mode: no drop, then mode 0
+auto KillQuietly(Game* game, Unit* monster) noexcept -> void {
+	using namespace d2r::rva;
+	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlags)(monster, UnitNoDrop, 1);
+	alignas(8) uint8_t block[0x30] = {};
+	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(MonsterModeBlock)(monster, ModeDeath, block);
+	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(UnitTarget)(game, monster);
+	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(SetMonsterMode)(game, block, 1);
+}
 
 // UB7a, Desecration (PD2's altar handler 0x103961b0 and roll 0x103729e0; docs/research/pd2-uber-bosses-dll.md, section 8)
 // on a transmute in the Temple instead of PD2's altar (docs/deviations.md). The cube holds one item, a corrupted

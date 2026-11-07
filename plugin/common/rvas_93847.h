@@ -449,6 +449,7 @@ inline constexpr int USkillTargetType = 0x2c;  // 6 = none
 inline constexpr int USkillTargetId = 0x30;
 inline constexpr int USkillParam = 0x24;  // int32 Charge's counter, PD2's charge distance (its D2Common skill param)
 inline constexpr int MonVelocity = 0x6a;  // int16 monstats Velocity
+inline constexpr int MonRun = 0x6a;  // int16 monstats Run: D2R's field table (0x39db30) has Velocity at 0x68, Run at 0x6a
 
 inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Lightning's chain range, 0 = the skill's)
 inline constexpr int MsHitPar2 = 0x74;  // int32 sHitPar2, sHitPar3 +0x78 (1.13c's 0x50 / 0x54 + 0x24)
@@ -1140,6 +1141,9 @@ inline constexpr uint64_t ItemRowByCode = 0x313ef0;  // (dataFlag, u32 code, 'ws
 // roller 0x4404f0 does
 inline constexpr uint64_t DropItemAt = 0x444680;
 inline constexpr int32_t QualityNormal = 2;
+// The game's dropped-uniques mask (1.13c +0x1b24): bit `row & 31` of u32 `row >> 5`, by uniqueitems row (at most
+// 0x1000). The unique roll 0x443910 refuses a set bit, a forced row included, and sets it on a drop.
+inline constexpr int GameUniquesDropped = 0x3638;
 inline constexpr uint32_t MonDemon = 0x2000;  // MonFlags bit 13 (monstats field table 0x39db30)
 
 // --- core-maps: Lucion's death (UB6, #231; D2Game\src\Skills\Skills.cpp, D2Game\src\Player\PlayerPets.cpp) --------
@@ -1165,6 +1169,21 @@ inline constexpr uint32_t UnitNoDrop = 0x20000;
 // its count at +0x198.
 inline constexpr uint64_t ActSpawnSpot = 0x2ef8b0;
 inline constexpr int GameActs = 0x190, GameActCount = 0x198;
+// --- core-maps: the Outer Void's in-level portals (MS7c, #532; D2Common Drlg) -------------------------------------
+// Decompiled for #532 (Ghidra, D2R.gpr): the steps ActSpawnSpot's 0x3da650 takes from a level id to a room. Called,
+// not hooked. (dataFlag, act +0x70, level id) -> the act's level (made if missing); (dataFlag, level) builds its rooms
+// when level +0x10 (the first room ex) is null; (level, tile x, tile y) -> the room ex holding the tile; (dataFlag, room
+// ex) -> its room, made if needed. A level's origin is in tiles at +0x24/+0x28.
+inline constexpr int ActDrlg = 0x70;
+inline constexpr uint64_t LevelGet = 0x3267c0;
+inline constexpr uint64_t LevelBuild = 0x3271c0;
+inline constexpr uint64_t LevelRoomExAt = 0x3275b0;
+inline constexpr uint64_t RoomExRoom = 0x3289a0;
+inline constexpr int LevelFirstRoomEx = 0x10, LevelTileX = 0x24, LevelTileY = 0x28;
+// (game, unit, room, x, y, 0, 0): moves the unit to a free spot by x/y in room, as WarpToLevel does in its own act
+inline constexpr uint64_t TeleportUnit = 0x491ca0;
+// A room preset's subtile offsets from the room's RoomX/RoomY, as PresetSpawn reads them
+inline constexpr int PresetX = 0x8, PresetY = 0x24;
 
 // --- core-maps: the Uber Tristram primes' minions (UB3, #483) -------------------------------------------------------
 // D2Game's AI table: one 0x20-byte row per monai row, the think function (game, monster, tick) first. The rows were
@@ -1174,6 +1193,7 @@ inline constexpr uint64_t AiTable = 0x2396ea0;
 inline constexpr int AiRowSize = 0x20;
 inline constexpr uint64_t AiMephisto = 0x5b1ca0, AiDiablo = 0x5c8d40, AiBaalCrab = 0x5a8b80;
 inline constexpr uint64_t AiOverseer = 0x5c2290;  // row 120's think (Lucion, #437)
+inline constexpr uint64_t AiTrapMelee = 0x5b5ca0;  // row 87's think (Dclone, #470): melee by aip1, else idle aip2
 // The think's tick block: the target at +0x10 (1.13c +0x08), its distance at +0x20 (1.13c +0x14), as the Mephisto
 // think reads them
 inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;
