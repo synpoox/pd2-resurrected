@@ -14,7 +14,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 
 ## Features and data
 
-### Cut (22)
+### Cut (23)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -40,6 +40,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | PD2's display | cut | cut by decision (spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41)) |  |
 | PvP modifiers and battle-royale checks | cut | online features (core-rules) |  |
 | PD2's panel art (26 panel DC6) | cut | each serves a cut feature or one D2R draws itself: the stash with its categories, search and tabs, the 10x8 inventory (`invchar6`), the grail, the trophy case, the controller, guild icons, the trade stash, buy and sell, the potion counter (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)). The controller and guild icon art comes back with [#340](https://github.com/synpoox/pd2-resurrected/issues/340) and [#339](https://github.com/synpoox/pd2-resurrected/issues/339) if they need it |  |
+| PD2 difficultylevels columns UberCodeOddsNormal, UberCodeOddsGood, UltraCodeOddsNormal, UltraCodeOddsGood and HireableBossDamagePercent | cut | D2R plays as PD2 without them (Ghidra, [UR5](https://github.com/synpoox/pd2-resurrected/issues/203)). `HireableBossDamagePercent` (50/35/25) is D2R's `MercenaryDamagePercentVSBoss` (record +0x48), which D2R already sets to 50/35/25. The code odds: their only reader in 1.13c, PD2's D2Game `0x6fcf2ab0` (rolls a picked base up to its `ubercode`, then `ultracode`), has no caller or pointer in any PD2 module, so they never act in PD2; D2R's loader (`0x30be50`) has no such fields in its 0x84-byte record |  |
 
 ### Not yet (27)
 
@@ -49,7 +50,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | PD2 state column immed | not yet | D2R's states table has no such column; set on 13 shared aura states and PD2's `immune_give`, `immune_get` and `phasing`; the three PD2 states go with phasing | [IR7](https://github.com/synpoox/pd2-resurrected/issues/242) |
 | PD2 missile columns LevRange, Qty and SpecialSetup | not yet | D2R's missiles table has no such columns | core-rules |
 | PD2's 4x4 Horadric Cube: D2R's 3x4 is kept | not yet | the cut above left it out; reversed in [#299](https://github.com/synpoox/pd2-resurrected/issues/299), which narrows the `inventory.*` pattern when it lands | [#299](https://github.com/synpoox/pd2-resurrected/issues/299) |
-| PD2 columns read by PD2's DLL: difficultylevels UberCodeOdds, UltraCodeOdds and HireableBossDamagePercent; hireling WType1 and WType2 | not yet | D2R's tables have no such columns; the rules behind them come back as engine work. WType: D2R has no weapon rule for an Act 4 hireling, so the Ascendant equips any weapon (a staff and a wand both went on in [#201](https://github.com/synpoox/pd2-resurrected/issues/201)'s game check) where PD2 allows staves only; D2R's merc weapon check is not found yet | [UR5](https://github.com/synpoox/pd2-resurrected/issues/203), [UR3](https://github.com/synpoox/pd2-resurrected/issues/201) |
+| PD2 hireling columns WType1 and WType2 | not yet | D2R's hireling table has no such columns: D2R has no weapon rule for an Act 4 hireling, so the Ascendant equips any weapon (a staff and a wand both went on in [#201](https://github.com/synpoox/pd2-resurrected/issues/201)'s game check) where PD2 allows staves only; D2R's merc weapon check is not found yet | [UR3](https://github.com/synpoox/pd2-resurrected/issues/201) |
 | PD2's npc row gheedEventInventory is left out | not yet | it names a monster that only PD2's DLL adds; the vendor event behind it is engine work | [MS8](https://github.com/synpoox/pd2-resurrected/issues/222) |
 | Quivers lose their PD2 automagic mods (misc `auto prefix`) | not yet | D2R's misc table has no such column | [UR6](https://github.com/synpoox/pd2-resurrected/issues/204) |
 | PD2 weapon spell columns stat1-3, calc1-3, spelldesc, spelldescstr, spelldesccalc | not yet | D2R's weapons table has no such columns | [IR5](https://github.com/synpoox/pd2-resurrected/issues/240) |
@@ -293,7 +294,8 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Hireling ids 30 to 38: PD2's Ascendant and second Rogue Scout set are at ids 39 to 47 | `hireling.*.[*]` |
 | Hireling titles: the hireling monsters keep D2R's monstats NameStr (Rogue, DesertMerc, Barbarian), and `act4hire` names the string `Ascendant` | `monstats.roguehire.namestr` `monstats.act2hire.namestr` `monstats.act4hire.namestr` `monstats.act5hire1.namestr` `monstats.act5hire2.namestr` |
 | Shrine name columns Shrine name, view name and niftyphrase | `shrines.*.shrine name` `shrines.*.view name` `shrines.*.niftyphrase` |
-| PD2 columns read by PD2's DLL: difficultylevels UberCodeOdds, UltraCodeOdds and HireableBossDamagePercent; hireling WType1 and WType2 | `difficultylevels.*.ubercodeodds*` `difficultylevels.*.ultracodeodds*` `difficultylevels.*.hireablebossdamagepercent` `hireling.*.wtype1` `hireling.*.wtype2` |
+| PD2 difficultylevels columns UberCodeOddsNormal, UberCodeOddsGood, UltraCodeOddsNormal, UltraCodeOddsGood and HireableBossDamagePercent | `difficultylevels.*.ubercodeodds*` `difficultylevels.*.ultracodeodds*` `difficultylevels.*.hireablebossdamagepercent` |
+| PD2 hireling columns WType1 and WType2 | `hireling.*.wtype1` `hireling.*.wtype2` |
 | Monster shield block: monstats NoShldBlock | `monstats.*.noshldblock` |
 | Classic columns D2R's tables dropped (Beta, Expansion, charstats tot and Percent*, objects SpawnMax to Flicker, objgroup Offset, SHRINES, WELLS, overlay Dir and Open, levels EntryFile, montype strsing, monstats2 Heart and BodyPart, monumod fInit, pettype idx, superuniques EClass, hireling Share, Head, Torso, Weapon and Shield, skilldesc ListPool, str mana and unnamed columns) | `*.*.beta` `*.*.expansion` `charstats.*.tot` `charstats.*.percent*` `charstats.*.#*` `objects.*.description - not loaded` `objects.*.spawnmax` `objects.*.trapprob` `objects.*.ntgt*` `objects.*.trans` `objects.*.operaterange` `objects.*.parm5` `objects.*.parm6` `objects.*.parm7` `objects.*.act` `objects.*.flicker` `objgroup.*.offset` `objgroup.*.shrines` `objgroup.*.wells` `overlay.*.dir` `overlay.*.open` `levels.*.entryfile` `montype.*.strsing` `monstats2.*.heart` `monstats2.*.bodypart` `monumod.*.finit` `pettype.*.idx` `superuniques.*.eclass` `hireling.*.share` `hireling.*.head` `hireling.*.torso` `hireling.*.weapon` `hireling.*.shield` `skilldesc.*.listpool` `skilldesc.*.str mana` `skilldesc.*.` |
 | PD2's npc row gheedEventInventory is left out | `npc.gheedeventinventory.*` |

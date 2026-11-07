@@ -38,6 +38,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - In legacy graphics mode, PD2's own missiles show again: Holy Nova, and the other missiles that used PD2-only art.
 - An item with Druid or Assassin class skills (Hellfire Torch, Spirit Ward) shows the number, e.g.
   "+2 to Assassin Skill Levels".
+- Mercenaries already deal PD2's reduced damage to bosses in each difficulty; no change was needed.
 
 ### 0.1.0-alpha (2026-11-05)
 

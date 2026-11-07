@@ -38,7 +38,8 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
     depends on. `checkfunc` folds into D2R's itype columns if every value matches what they allow; `general` is cut if
     only the UI reads it.
   - [UR5](https://github.com/synpoox/pd2-resurrected/issues/203) finds D2R's own values for the uber and ultra code odds and `HireableBossDamagePercent` in Ghidra. A rule whose
-    value equals PD2's is cut; the others are hooked.
+    value equals PD2's is cut; the others are hooked. Both were cut: D2R's `MercenaryDamagePercentVSBoss` matches, and
+    the code odds never act in PD2 (`docs/deviations.md`).
   - [UR6](https://github.com/synpoox/pd2-resurrected/issues/204) rolls the quivers' `auto prefix` groups (321-326) through an item-spawn hook. Moving the quivers to another
     table would break their item type.
   - Folded into existing rows, with no item of their own: missile `Qty` and `SpecialSetup` and the throwing potions'
