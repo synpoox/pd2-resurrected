@@ -46,7 +46,7 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
 - **Plugins:** `core-maps` (Shared) holds the code that belongs only to the map system: opening maps, map stats, cube
   op 30, map events and invaders. It is a plugin of its own because the map system is large enough to be used outside
   this project ([ADR 0004](adr/0004-plugins-split-by-multiplayer-scope.md), amended). Rules the map system shares with
-  other content stay in `core-rules`: the Teleport 3 path search, the
+  other content stay in `core-rules`: the Teleport 3 blocker check, the
   Find Item and Desecrate monster lists, and the death novas. `core-maps` never calls `core-rules`.
 - **Rules deferred to the map plan** (core-rules rows and their deviation rows) join the work item that first brings in
   their levels or monsters (table below).
@@ -69,7 +69,7 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
 | [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) | Area map stats (`map_glob_*`): density, area level, monster rarity, extra monster groups, extra boss, fortify, drop stats | core-maps | [MS2](https://github.com/synpoox/pd2-resurrected/issues/217) |
 | [MS4b](https://github.com/synpoox/pd2-resurrected/issues/286) | The extra boss and the drop chance area stats (corrupted, socketed, ethereal), [#286](https://github.com/synpoox/pd2-resurrected/issues/286) | core-maps | [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) |
 | [MS5](https://github.com/synpoox/pd2-resurrected/issues/220) | Map recipes: cube op 30, and one recipe per group checked in game | core-maps | [MS1](https://github.com/synpoox/pd2-resurrected/issues/216) |
-| [MS7](https://github.com/synpoox/pd2-resurrected/issues/221) | Dungeons and unique maps: their multi-level areas, the Teleport 3 path search, the Nihlathak map death nova | core-maps, core-rules (Teleport 3, nova) | [MS2](https://github.com/synpoox/pd2-resurrected/issues/217), the level pipeline for those areas |
+| [MS7](https://github.com/synpoox/pd2-resurrected/issues/221) | Dungeons and unique maps: their multi-level areas, the Teleport 3 blocker check, the Nihlathak map death nova | core-maps, core-rules (Teleport 3, nova) | [MS2](https://github.com/synpoox/pd2-resurrected/issues/217), the level pipeline for those areas |
 | [MS8](https://github.com/synpoox/pd2-resurrected/issues/222) | Events that only spawn: Dark Wanderer, Shadow of Mendeln, Treasure Fallen, Gheed, Altar of the Catalyst, Spire of Darkness | core-maps | [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) |
 | [MS9](https://github.com/synpoox/pd2-resurrected/issues/223) | Events that open areas: Horazon, Void/Tomb | core-maps | [MS8](https://github.com/synpoox/pd2-resurrected/issues/222), [MS7](https://github.com/synpoox/pd2-resurrected/issues/221) |
 | [MS10](https://github.com/synpoox/pd2-resurrected/issues/224) | Invaders on their table AIs (approximated), with their ears | core-maps | [MS8](https://github.com/synpoox/pd2-resurrected/issues/222) |
