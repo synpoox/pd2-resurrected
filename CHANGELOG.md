@@ -46,6 +46,9 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Maps
 
+- Unique map bosses leave a portal to Harrogath (or onward) and drop PD2's charms, facets and puzzle pieces.
+- The Warlord of Blood and Ureh's boss drop PD2's random uniques, and the Warlord's arena starts empty.
+- The Outer Void has PD2's three random bosses, and its portals lead deeper, then home with uber parts.
 - Fortified, drop-bonus and item-drop maps give their extra and stat drops on kills, as in PD2.
 - Map tooltips show the map's tier, and map stats read without raw format codes.
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
@@ -57,6 +60,10 @@ private-multiplayer release a build may break characters; each break is noted he
 - Eight more PD2 maps, among them Ashen Plains and Descent, draw walls and props in HD.
 - Wooded maps in HD fill the gaps in their tree lines and no longer plant trees on walkable ground.
 - Wooded maps in HD keep tall trees off the near side of paths, so they no longer hide the character.
+
+#### Sounds
+
+- Zhar the Mad attacks with his own PD2 voice.
 
 #### Fixes
 
