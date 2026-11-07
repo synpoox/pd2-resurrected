@@ -124,6 +124,9 @@ ID_COLS = {"levels": "Id", "lvlprest": "Def", "lvlwarp": "UniqueId"}
 # columns a merged D2R row keeps, where the games give them different meanings (objects Token: D2R's graphics; misc
 # spellicon: D2R's cursor for an item spell with a target, which PD2's -1 turns off for identify, #311)
 KEEP_D2R = {"objects": {"Token"}, "misc": {"spellicon"}}
+# columns D2R's file lacks but its loader reads: misc `auto prefix` (the quivers' automagic, UR6) loads at the items
+# record's +0x100, as weapons' and armor's do, since D2R parses all three with one field list (0x315fd0)
+ADD_COLUMNS = {"misc": ["auto prefix"]}
 FORMULAS = {
     "skills": ["prgcalc1", "prgcalc2", "prgcalc3", "auralencalc", "aurarangecalc", *[f"aurastatcalc{i}" for i in range(1, 7)],
                *[f"passivecalc{i}" for i in range(1, 6)], "petmax", *[f"sumsk{i}calc" for i in range(1, 6)], "sumumod",
@@ -457,6 +460,11 @@ def merge_table(table: str, pd2: Table, d2r: Table, lines: list[tuple[str, int, 
                 props: dict[str, str] | None = None) -> tuple[Table, list[str]]:
     """The mod's table, and the PD2 columns it drops. ids: table -> {PD2 id: mod id}; props: property code -> the kind
     of row its parameter names (fix_props)."""
+    for c in ADD_COLUMNS.get(table, ()):
+        if c not in d2r.header and c in pd2.header:
+            d2r.header.append(c)
+            for r in d2r.rows:
+                r.append("")
     src: dict[str, int] = {}
     for i, c in enumerate(pd2.header):
         if c:  # an unnamed column (weapons) matches nothing

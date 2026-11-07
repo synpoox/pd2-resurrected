@@ -95,6 +95,15 @@ class MergeTableTests(unittest.TestCase):
             I.merge_table("magicprefix", pd2, d2r, [*lines[:2], ("+1 itype9=x", 3, "Devil's")], {})
 
 
+    def test_misc_gains_auto_prefix(self):
+        d2r = table("name|code\r\nArrows|aqv\r\nKey|key\r\n")
+        pd2 = table("name|code|auto prefix\r\nArrows|aqv|321\r\nKey|key|\r\n")
+        lines = [("Arrows", 0, "Arrows"), ("Key", 1, "Key")]
+        merged, dropped = I.merge_table("misc", pd2, d2r, lines, {})
+        self.assertEqual((merged.header, dropped), (["name", "code", "auto prefix"], []))
+        self.assertEqual(merged.rows, [["Arrows", "aqv", "321"], ["Key", "key", ""]])
+
+
 class PortRowTests(unittest.TestCase):
     def test_check_takes_port_rows_in_the_appended_ids(self):
         I.check("magicprefix", [("A", 0, "A"), ("B", 2, "B"), ("+0 x=1", 3, "A")], ["A", "B"], ["A", "X"])
