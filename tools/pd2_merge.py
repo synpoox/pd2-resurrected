@@ -7,6 +7,7 @@
 Each merge/ file is handled by the rule kind its name maps to in RULES (`*.md` files are notes); a file with no rule
 kind fails the run, so a rule is never silently skipped. Refuses a pd2-data/ extracted from another baseline. A failed
 run leaves no generated/, so a build never picks up half a merge. D2R's own tables come from modkit's cache (--d2r).
+With a pd2_cache root, a run whose merge_key matches a finished merge copies that merge's generated/ instead (#440).
 """
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+import pd2_cache
 import pd2_extract
 import pd2_ids
 import pd2_items
@@ -24,6 +26,7 @@ import pd2_levels
 import pd2_missiles_hd
 import pd2_monsters_hd
 import pd2_overlays_hd
+import pd2_panels
 import pd2_presets
 import pd2_skill_icons
 import pd2_skilltrees
@@ -43,6 +46,7 @@ RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
     "level-files.tsv": pd2_levels.apply_files,  # after the id rules: lvltypes, objpreset, DS1 and DT1
     "missiles-hd.tsv": pd2_missiles_hd.apply,  # after ids-missiles.tsv
     "monsters-hd.tsv": pd2_monsters_hd.apply,
+    "panel-grids.json": pd2_panels.apply,
     "presets-hd.tsv": pd2_presets.apply,  # after level-files.tsv: reads the merged levels, lvlprest, lvltypes and DS1
     "skill-icons.txt": pd2_skill_icons.apply,
     "standins.tsv": pd2_standins.apply,  # after the id and item rules (merge runs rule files by name)
@@ -55,6 +59,13 @@ RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
 
 class MergeError(Exception):
     pass
+
+
+def merge_key(root: Path, d2r: Path) -> str:
+    """pd2_cache's key for root's merge: everything the merge reads but D2R's tables, which the path stands for. The
+    tools' tests are left out, so a test-only change still hits."""
+    return pd2_cache.key([root / "merge", *sorted((root / "tools").glob("*.py")), root / "pd2-baseline.json",
+                          root / "pd2-data" / "baseline.json", pd2_ids.toolkit(root) / "modkit"], str(d2r.resolve()))
 
 
 def merge(root: Path, d2r: Path = D2R_DATA) -> list[str]:
@@ -106,11 +117,18 @@ def main(argv: list[str] | None = None) -> int:
         added["monpreset"] = pd2_levels.seed_list(a.root / "merge", a.root / "pd2-data" / "data", a.d2r)
         print("id lines added: " + ", ".join(f"{t} {n}" for t, n in added.items()))
         return 0
+    cache = pd2_cache.root()
+    cached = cache and cache / "merge" / merge_key(a.root, a.d2r)
+    if cached and pd2_cache.reuse(cached, a.root / "generated"):
+        print(f"generated/ copied from {cached}: merge/, tools/, the stamps and modkit match a finished merge")
+        return 0
     try:
         applied = merge(a.root, a.d2r)
     except MergeError as e:
         print(f"pd2_merge: {e}", file=sys.stderr)
         return 1
+    if cached:
+        pd2_cache.keep(a.root / "generated", cached)
     print(f"generated/data rebuilt; rules applied: {', '.join(applied) or 'none'}")
     return 0
 

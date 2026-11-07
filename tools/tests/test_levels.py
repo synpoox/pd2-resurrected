@@ -50,6 +50,14 @@ class LevelTypeTests(unittest.TestCase):
         self.assertEqual(moved, {0: {1: 2}})
         self.assertEqual(L.move_bits(0b011, moved[0]), 0b101)
 
+    def test_a_d2r_type_given_pd2_files_splits_into_an_appended_copy(self):
+        d2r = table("Name|Id|File 1|File 2\nTown|0|a.dt1|0\nWild|1|b.dt1|0\nExpansion|||\n")
+        merged = table("Name|Id|File 1|File 2\nTown|0|a.dt1|0\nWild|1|b.dt1|PD2assets/x.dt1\nExpansion|||\n"
+                       "Map|2|PD2assets/y.dt1|0\n")
+        self.assertEqual(L.split_types(merged, d2r), {1: 3})
+        self.assertEqual(merged.rows, [["Town", "0", "a.dt1", "0"], ["Wild", "1", "b.dt1", "0"], ["Expansion", "", "", ""],
+                                       ["Map", "2", "PD2assets/y.dt1", "0"], ["Wild", "3", "b.dt1", "PD2assets/x.dt1"]])
+
     def test_a_path_past_the_games_41_characters_fails(self):
         d2r = table("Name|Id|File 1\nTown|0|a.dt1\n")
         pd2 = table("Name|Id|File 1\nTown|0|a.dt1\nMap|1|PD2assets/" + "x" * 28 + ".dt1\n")
