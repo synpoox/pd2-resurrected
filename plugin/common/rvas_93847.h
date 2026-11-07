@@ -710,6 +710,9 @@ inline constexpr uint64_t StateIsCurse = 0x335a40;  // (dataFlag, state) -> non-
 // unit +0x88: its stat list owner (+0x1c < 0 marks one); +0x90 its first chain of lists, the one NewStateList searches
 inline constexpr int UnitListOwner = 0x88, ListOwnerMark = 0x1c, ListOwnerFirst = 0x90;
 inline constexpr int ListFlags = 0x1c, ListNext = 0x68;  // uint32 flags, next list in the chain
+// owner +0xaf0: the unit's state bits (uint32 words, bit state & 31), what UnitHasState (0x2f6220) reads. SetUnitState
+// writes a second array after it, not this one.
+inline constexpr int ListOwnerStates = 0xaf0;
 inline constexpr uint32_t ListFlagTimed = 0x2, ListFlagCurse = 0x20;
 
 // --- Item rules: skill while equipped and phasing (docs/research/ir7-equipped-items.md) ---------------------------
