@@ -1068,6 +1068,10 @@ inline constexpr uint8_t ItemApplyEtherealEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x1
                                                      0xec, 0x20, 0x48, 0x8b, 0xd9, 0x48, 0x85, 0xc9};
 inline constexpr uint64_t UnitBaseStat = 0x2f48c0;  // (unit, stat, layer) -> the value on the unit's base list
 inline constexpr uint64_t SetItemFlag = 0x36d8f0;   // (item, flag, on): item data +0x18 flags (0x400000 ethereal)
+// The item decoder (0x378860, D2Common Items.cpp; client packets and save loads) resets a weapon's base damage from
+// weapons.txt and, when ethereal, times 3/2 inline: per stat 21, 22, 23, 24, 159, 160 the 16 bytes
+// lea eax,[rax+rax*2] / cdq / sub eax,edx / mov edx,<stat> / sar eax,1 / mov r8d,eax, before SetUnitStat.
+inline constexpr uint64_t DecodeEtherealDamage[] = {0x37a451, 0x37a47c, 0x37a4a7, 0x37a4d2, 0x37a4fe, 0x37a52a};
 
 // --- core-maps: the Horazon event's portal and drops (MS9, #223; D2Game\src\Items\ItemMode.cpp, Items.cpp) ----------
 // Decompiled for #223 (Ghidra, D2R.gpr). Called, not hooked.
