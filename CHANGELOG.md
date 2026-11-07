@@ -22,6 +22,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Uber bosses
 
+- Uber Mephisto, Diablo and Baal summon PD2's minions: skeletons, Pit Lords, vampires and wraiths.
 - PD2's new monsters (Lucion, Na-Krul, Iskatu and others) finish their attacks and casts and keep fighting.
 - The Pandemonium Talisman opens Uber Tristram at the Blood Fountain, like the other uber keys.
 - Cubing the three Pandemonium keys in Hell opens a red portal to a mini-uber area again.
@@ -81,7 +82,7 @@ bosses and the Warlock redesign come in a later alpha.
 - PD2's items, affixes, runewords, cube recipes and treasure classes.
 - Corruption: cube an item with a Worldstone Shard, once per item.
 - Demonic Cube rerolls a unique or set item, keeping its base, sockets, socketed items and ethereal state.
-- Cube recipes take inputs one per cell; stacked inputs don't count yet.
+- Cube recipes count a stack as its quantity (a stack of 3 El makes Eld); unused units stay in the cube.
 - PD2's combat stats: critical and deadly strike, crushing blow, open and deep wounds, life steal cap.
 - Curse resistance and extra curse slots.
 - Skill on cast procs for every item that has it; skill while equipped and Phasing work.
