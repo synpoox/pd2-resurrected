@@ -26,6 +26,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - PD2's new monsters (Lucion, Na-Krul, Iskatu and others) finish their attacks and casts and keep fighting.
 - The Pandemonium Talisman opens Uber Tristram at the Blood Fountain, like the other uber keys.
 - Cubing the three Pandemonium keys in Hell opens a red portal to a mini-uber area again.
+- Lilith, Uber Duriel and Uber Izual drop Diablo's Horn, Baal's Eye and Mephisto's Brain again.
 - The Diablo Clone, Rathma and Lucion keys open their uber areas at the Blood Fountain (Hell, level 80+); the fights come later.
 - The uber areas have no waypoint, also after a key's warp.
 - A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
