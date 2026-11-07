@@ -1,6 +1,6 @@
 # What PD2's PlrModes.cpp changes
 
-Answers work item W4 (core-rules Q6, the PlrModes part). Read from the PD2 baseline install `C:\Games\PD2\ProjectD2`:
+Answers work item [W4](https://github.com/synpoox/pd2-resurrected/issues/42) (core-rules Q6, the PlrModes part). Read from the PD2 baseline install `C:\Games\PD2\ProjectD2`:
 `ProjectDiablo.dll` (sha256 `2ff6c327…60bbfb`, same as `Live\`) and its 1.13c `D2Game.dll` (sha256 `24b293b8…14f53`,
 base `0x6fc20000`). Static disassembly only, nothing run. D2R side from the 93847 dump in `C:\ghidra-work` (Ghidra
 decompile). Addresses below are D2Game RVAs and ProjectDiablo VAs.
@@ -67,11 +67,12 @@ The end frame is the unit's earliest type-1 timer event (`0x8e490`, the mode-end
 
 PD2 wraps the `hpregen` read in the player regen tick: when `0x1037c820` is true for the player's level (a level-id test
 through `pPath->pRoom->...->pLevel+0x1d0`, not decoded further) and the value is over 30, it returns 30, or the
-`bloodwarp` (state 205) stat list's value when that state is on. A level-based regen cap, most likely for maps.
+`bloodwarp` (state 205) stat list's value when that state is on. [MS3](https://github.com/synpoox/pd2-resurrected/issues/218) decoded the test: it is true only in the PvP arenas
+(levels 157, 159, 166), so the cap is cut with PvP ([ms3-map-stats](ms3-map-stats.md)).
 
 ## D2R 93847
 
-D2R has its own `PlrModes.cpp` (`D2Game\src\Player\PlrModes.cpp` asserts). Its mode change (`0x429d10`; W21 found
+D2R has its own `PlrModes.cpp` (`D2Game\src\Player\PlrModes.cpp` asserts). Its mode change (`0x429d10`; [W21](https://github.com/synpoox/pd2-resurrected/issues/96) found
 this is a mode-table entry, and gate A's counterpart is `0x42bfb0` / `0x42d840`, [druid-w21](druid-w21.md)) is a rewrite:
 it switches on the current mode, reads skill flags at txt `+0x24`/`+0x27`/`+0x36` instead of `srvdofunc` numbers, has
 input windows of 2 and 6 frames, and adds a `bear` (state 140) roll next to Concentration. So D2R is not 1.13c here, and
@@ -81,7 +82,7 @@ PD2's patches can't be carried over as code.
 
 - Each change above is a `verify` row: first check in D2R whether it already behaves as PD2 (D2R's buffered input may
   already cover 4 and part of gate B), then hook `0x429d10` only for what differs. Rows added to core-rules.
-- 1-3 key on PD2's function numbers (180, 182), so they wait for the skills that use them (P2 remaps ids; W8-W10 cover
+- 1-3 key on PD2's function numbers (180, 182), so they wait for the skills that use them (P2 remaps ids; [W8](https://github.com/synpoox/pd2-resurrected/issues/54)-[W10](https://github.com/synpoox/pd2-resurrected/issues/51) cover
   Charge's group). Whirlwind/Blade Dance (76) and Blade Fury (48) are vanilla numbers.
-- The regen cap is part of the map system (Q7, `map plan`).
+- The regen cap is PvP only, cut with PvP ([MS3](https://github.com/synpoox/pd2-resurrected/issues/218)).
 - Not decoded: the death handler and the two other hooks. They need their own read before any death-rule row is listed.

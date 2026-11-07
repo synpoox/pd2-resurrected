@@ -415,7 +415,7 @@ std::atomic<uint32_t> g_stateHits {0};
 // the result has bit 2, so a 0 or 1 (no hit unit or owner, a bad row) deals none.
 // shortcut: PD2 also halves a negative resist (stats 36-45) on a unit already over 99 in it, and treats states 16, 87
 // and 188 specially; none of shit 61's rows reach those states, and the halving is an approximated row on
-// docs/unported.md. Upgrade if a resist-lowering row must match PD2 on immune monsters.
+// docs/deviations.md. Upgrade if a resist-lowering row must match PD2 on immune monsters.
 auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr) {
@@ -648,7 +648,7 @@ auto CltHitHolyLight(Unit* missile, Unit* hit) noexcept -> int32_t {
 // cHitPar1 (else the skill's aurarangecalc, at least 1). Zero when the missile's target unit is gone, as both do.
 // D2R's 26 (0x1adcb0) differs: it stops at cHitPar2 / calc4 bolts and aims the struck unit's bolt at the caster.
 // shortcut: no bolt limit; 1.13c computes cHitPar2 / calc4 and never stores it, so its callback compares against an unset
-// stack slot. Upgrade if PD2 in play shows a bolt count cap (docs/unported.md).
+// stack slot. Upgrade if PD2 in play shows a bolt count cap (docs/deviations.md).
 auto CltHitFistDelay(Unit* missile, Unit* hit) noexcept -> int32_t {
 	using namespace d2r::rva;
 	(void)hit;
@@ -916,7 +916,7 @@ auto LastHitId(Unit* missile) noexcept -> uint32_t {
 // into sHitPar1 - 1 fragments sHitPar2 directions apart from a random one, with the parent's frames less sHitPar3 (0
 // under cHitPar2), and returns 3.
 // shortcut: PD2 also sends each split fragment to every client (0x1037fe90, 1.13c D2Game 0x7b0a0); D2R's send is not
-// found, so another player sees split fragments only if D2R syncs them (docs/unported.md). Upgrade when D2R's send of a
+// found, so another player sees split fragments only if D2R syncs them (docs/deviations.md). Upgrade when D2R's send of a
 // missile to a client is found.
 // shortcut: the roll is the owner's seed, where PD2 calls the C runtime's rand(); the odds are the same. Upgrade only if
 // a check needs PD2's exact sequence.
@@ -1097,15 +1097,59 @@ void CltDoBlessedHammer(Unit* missile, int32_t a2) noexcept {
 	}
 }
 
+// --- Summon-on-hit missiles (PD2 pSrvHitFunc 6, here 67; docs/research/w36-monster-kits.md) -------------------------
+// Read from ProjectDiablo.dll: shit 6 at 0x103a7750. D2R's own srvhit 6 (0x45ce90) spawns the same monster the same
+// way but leaves out the flags, so the spawns would drop loot and give experience.
+namespace {
+std::atomic<uint32_t> g_summonHits {0};
+}  // namespace
+
+// The monstats row sHitPar1 at the missile, in mode sHitPar2 (1 when 16 or more), with sHitPar3 added to its flags
+// (PD2's rows: no treasure class and no experience). Always 1, as both games: the missile deals no damage here.
+auto SrvHitSummon(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
+	using namespace d2r::rva;
+	(void)hit;
+	if (game == nullptr || missile == nullptr) {
+		return 1;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
+		dataFlag, At<int32_t>(missile, UnitClassId));
+	if (row == nullptr) {
+		return 1;
+	}
+	const int32_t mon = At<int32_t>(row, MsHitPar1);
+	if (mon < 0 || d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(dataFlag, mon) == nullptr) {
+		return 1;
+	}
+	const auto par2 = At<uint32_t>(row, MsHitPar2), flags = At<uint32_t>(row, MsHitPar3);
+	const int32_t mode = par2 < 16 ? static_cast<int32_t>(par2) : 1;
+	int32_t x = 0, y = 0;
+	if (!d2r::UnitXY(missile, &x, &y)) {
+		return 1;
+	}
+	Unit* spawn = d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(
+		SpawnMonsterAt)(game, d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(missile), mon, x, y, mode, 0);
+	if (spawn != nullptr && flags <= 0x7fffffff) {  // PD2 adds nothing for a negative sHitPar3
+		*reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(spawn) + UnitMainFlags) |= flags;
+	}
+	if (plog::Sample(g_summonHits)) {
+		plog::Info("summon hit: missile %d: monster %d mode %d %s, flags 0x%x, hit %u", At<int32_t>(missile, UnitClassId),
+		           mon, mode, spawn != nullptr ? "spawned" : "not spawned",
+		           spawn != nullptr ? At<uint32_t>(spawn, UnitMainFlags) : 0u, g_summonHits.load());
+	}
+	return 1;
+}
+
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size, "returns spawned %u, caught %u, bounces %u, first hits %u, spread hits %u, explosions %u, "
 	              "falloff hits %u, state hits %u, bolt hits %u, holy light client hits %u, fist delay client hits %u, "
 	              "charge explodes %u, charge bolt hits %u, hammer frames %u, hits %u, kept %u, client frames %u, "
-	              "chain falloffs %u, fragment walls %u, splits %u, damage %u, client walls %u",
+	              "chain falloffs %u, fragment walls %u, splits %u, damage %u, client walls %u, summon hits %u",
 	              g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(), g_firstHits.load(),
 	              g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load(), g_stateHits.load(),
 	              g_boltHits.load(), g_holyLightHits.load(), g_fistDelayHits.load(), g_chargeExplodes.load(),
 	              g_chargeBoltHits.load(), g_hammerFrames.load(), g_hammerHits.load(), g_hammerKept.load(),
 	              g_hammerClientFrames.load(), g_chainFalloffs.load(), g_fragmentWalls.load(), g_fragmentSplits.load(),
-	              g_fragmentDamage.load(), g_fragmentClientWalls.load());
+	              g_fragmentDamage.load(), g_fragmentClientWalls.load(), g_summonHits.load());
 }

@@ -7,9 +7,11 @@
 #include <D2RLPlugin/api.h>
 
 #include "crash_guard.h"
+#include "cube_rules.h"
 #include "d2r.h"
 #include "item_rules.h"
 #include "log.h"
+#include "merc_rules.h"
 #include "off_switch.h"
 #include "skill_functions.h"
 
@@ -63,9 +65,23 @@ void InstallItems(const D2RL::PluginContext* context, char* report, size_t size)
 	std::snprintf(report, size, "%d/%d installed: %s", installed, ItemRuleCount(), rules);
 }
 
+void InstallCube(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallCubeRules(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, CubeRuleCount(), rules);
+}
+
+void InstallMercs(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallMercRules(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, MercRuleCount(), rules);
+}
+
 Part g_parts[] = {
 	{"skills", InstallSkills, ""},
 	{"items", InstallItems, ""},
+	{"mercs", InstallMercs, ""},
+	{"cube", InstallCube, ""},
 };
 
 void InstallParts(const D2RL::PluginContext* context) noexcept {
@@ -107,6 +123,12 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);  // also in the plugin log, for game checks and crash reports
 	ItemRuleCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	MercRuleCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	CubeRuleCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;

@@ -67,7 +67,8 @@
     "StrSkillPoisonDamagePercent": "Poison Damage: %+d%%",
     "OpenWoundsDamagePerSecond": "Open Wounds Damage: %d per second",
     "PartyOpenWoundsDamagePerSecond": "Party Open Wounds Damage: %d per second",
-    "ThornsOpenWoundsDamagePerSecond": "Your Open Wounds Damage: %d per second"
+    "ThornsOpenWoundsDamagePerSecond": "Your Open Wounds Damage: %d per second",
+    "Ascendant": "Ascendant"
   },
   "ids": {
     "Runeword171PD2": [50000, "item-runes.json"],
@@ -459,8 +460,6 @@
     "Megademon Boss": [50386, "monsters.json"],
     "Mendeln": [50387, "monsters.json"],
     "MendelnSpire": [50388, "npcs.json"],
-    "MercX401": [50389, "mercenaries.json"],
-    "MercX420": [50390, "mercenaries.json"],
     "Mesa": [50391, "levels.json"],
     "Meteordmg": [50392, "skills.json"],
     "MfSkills": [50393, "skills.json"],
@@ -1433,6 +1432,30 @@
     "StrSkillPoisonDamagePercent": [51360, "skills.json"],
     "OpenWoundsDamagePerSecond": [51361, "skills.json"],
     "PartyOpenWoundsDamagePerSecond": [51362, "skills.json"],
-    "ThornsOpenWoundsDamagePerSecond": [51363, "skills.json"]
+    "ThornsOpenWoundsDamagePerSecond": [51363, "skills.json"],
+    "hiredesc_ascd": [51364, "ui.json"],
+    "hiredesc_ascl": [51365, "ui.json"],
+    "hiredesc_parw": [51366, "ui.json"],
+    "MercX401": [51367, "mercenaries.json"],
+    "MercX402": [51368, "mercenaries.json"],
+    "MercX403": [51369, "mercenaries.json"],
+    "MercX404": [51370, "mercenaries.json"],
+    "MercX405": [51371, "mercenaries.json"],
+    "MercX406": [51372, "mercenaries.json"],
+    "MercX407": [51373, "mercenaries.json"],
+    "MercX408": [51374, "mercenaries.json"],
+    "MercX409": [51375, "mercenaries.json"],
+    "MercX410": [51376, "mercenaries.json"],
+    "MercX411": [51377, "mercenaries.json"],
+    "MercX412": [51378, "mercenaries.json"],
+    "MercX413": [51379, "mercenaries.json"],
+    "MercX414": [51380, "mercenaries.json"],
+    "MercX415": [51381, "mercenaries.json"],
+    "MercX416": [51382, "mercenaries.json"],
+    "MercX417": [51383, "mercenaries.json"],
+    "MercX418": [51384, "mercenaries.json"],
+    "MercX419": [51385, "mercenaries.json"],
+    "MercX420": [51386, "mercenaries.json"],
+    "Ascendant": [51387, "monsters.json"]
   }
 }

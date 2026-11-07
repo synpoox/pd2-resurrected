@@ -1,0 +1,18 @@
+{
+ "_note": "UR3 (#201): the moved hireling rows. act4hire (the Ascendant) uses PD2's own art ($2), which D2R lacks, so it takes the Iron Wolf's model (act3hire's code, monstats2 row and HD model). A4 AmpDmg, used only by the Ascendant, plays SC instead of S2, which that model has no animation for. PD2's second Rogue Scout set takes the Rogue's equivalentcharclass, and every moved row takes the hiring level gap and resurrect cost all D2R's rows share (PD2 has no such columns). docs/deviations.md lists the stand-in.",
+ "ops": [
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "act4hire", "set": {"Code": "IW"}},
+  {"op": "set", "table": "monstats2", "bank": "excel", "key": "act4hire", "set": {"OverlayHeight": "2", "BaseW": "1hs", "HDv": "lit", "RHv": "lsd", "SHv": "buc", "HD": "1", "RH": "1", "SH": "1", "TotalPieces": "4", "mS1": "", "mS2": "", "mS3": "", "mKB": "1", "isSel": "", "compositeDeath": "1", "localBlood": "", "Bleed": "", "Light": "5", "InfernoLen": "7", "InfernoAnim": "11"}},
+  {"op": "json", "file": "data/hd/character/monsters.json", "path": ["act4hire"], "value": "act3hire"},
+  {"op": "set", "table": "skills", "bank": "excel", "key": "A4 AmpDmg", "set": {"monanim": "SC"}},
+  {"op": "set", "table": "hireling", "bank": "excel", "where": {"Id": "39"}, "set": {"HiringMaxLevelDifference": "5", "resurrectcostmultiplier": "15", "resurrectcostdivisor": "2", "resurrectcostmax": "50000"}},
+  {"op": "set", "table": "hireling", "bank": "excel", "where": {"Id": "40"}, "set": {"HiringMaxLevelDifference": "5", "resurrectcostmultiplier": "15", "resurrectcostdivisor": "2", "resurrectcostmax": "50000"}},
+  {"op": "set", "table": "hireling", "bank": "excel", "where": {"Id": "41"}, "set": {"HiringMaxLevelDifference": "5", "resurrectcostmultiplier": "15", "resurrectcostdivisor": "2", "resurrectcostmax": "50000"}},
+  {"op": "set", "table": "hireling", "bank": "excel", "where": {"Id": "42"}, "set": {"HiringMaxLevelDifference": "5", "resurrectcostmultiplier": "15", "resurrectcostdivisor": "2", "resurrectcostmax": "50000"}},
+  {"op": "set", "table": "hireling", "bank": "excel", "where": {"Id": "43"}, "set": {"HiringMaxLevelDifference": "5", "resurrectcostmultiplier": "15", "resurrectcostdivisor": "2", "resurrectcostmax": "50000"}},
+  {"op": "set", "table": "hireling", "bank": "excel", "where": {"Id": "44"}, "set": {"HiringMaxLevelDifference": "5", "resurrectcostmultiplier": "15", "resurrectcostdivisor": "2", "resurrectcostmax": "50000"}},
+  {"op": "set", "table": "hireling", "bank": "excel", "where": {"Id": "45"}, "set": {"HiringMaxLevelDifference": "5", "resurrectcostmultiplier": "15", "resurrectcostdivisor": "2", "resurrectcostmax": "50000", "equivalentcharclass": "ama"}},
+  {"op": "set", "table": "hireling", "bank": "excel", "where": {"Id": "46"}, "set": {"HiringMaxLevelDifference": "5", "resurrectcostmultiplier": "15", "resurrectcostdivisor": "2", "resurrectcostmax": "50000", "equivalentcharclass": "ama"}},
+  {"op": "set", "table": "hireling", "bank": "excel", "where": {"Id": "47"}, "set": {"HiringMaxLevelDifference": "5", "resurrectcostmultiplier": "15", "resurrectcostdivisor": "2", "resurrectcostmax": "50000", "equivalentcharclass": "ama"}}
+ ]
+}

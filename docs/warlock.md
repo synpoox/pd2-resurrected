@@ -43,27 +43,43 @@ Hexes and Miasma stay as synergies or second builds with no target of their own.
 corruptions, high-end runewords and chase uniques from the shared drop pool, but no unique that drops from only one boss.
 Each work item writes its exact item list.
 
-**The test.** The reference build is played in the port itself (PD2's classes are complete and Exact from the
-pre-alpha), on the same spawned gear and in the same place, on a level 90+ character in Hell. Compared: kill time on a
+**The test.** The reference build is played in the port itself (PD2's classes are complete and Exact from
+alpha 0.1.0), on the same spawned gear and in the same place, on a level 90+ character in Hell. Compared: kill time on a
 fixed Hell pack, kill time on one boss, and whether the build survives the pack. Mid-pack means a kill time within about
-±20% of the reference's; top tier means at or faster than the Combustion Sorceress. WL2 may tune the ±20%.
+±20% of the reference's; top tier means at or faster than the Combustion Sorceress. [WL2](https://github.com/synpoox/pd2-resurrected/issues/234) may tune the ±20%.
 
 ## Warlock items
 
 The alpha adds no Warlock-only items. D2R's stay as they are (D2R-only content): the 15 grimoire bases, the uniques
 Measured Wrath, Ars Dul'Mephistos, Ars Tor'Baalos and Ars Al'Diablolos, Horazon's Secrets, the runeword Vigilance on
 grimoires, the Warlock tree affixes and the Warlock skillers. What the alpha does is make PD2's per-class item rules reach
-the Warlock (WL1): Hellfire Torch and Spirit Ward roll a class skill from classes 0-6 only (`randclassskill`), and
+the Warlock ([WL1](https://github.com/synpoox/pd2-resurrected/issues/233)): Hellfire Torch and Spirit Ward roll a class skill from classes 0-6 only (`randclassskill`), and
 grimoires need their corruption outcomes and class-item crafting. Annihilus rolls all skills and needs nothing.
+
+What [WL1](https://github.com/synpoox/pd2-resurrected/issues/233) found and did ([#233](https://github.com/synpoox/pd2-resurrected/issues/233)):
+
+- Hellfire Torch and Spirit Ward roll classes 0-7 (`patches/030-warlock-item-rules.json`), as D2R's own Torch does.
+- Corruption and crafting already reach grimoires: PD2's rows name item types (`shld,nos`, `shld,mag,noe`), and a
+  grimoire is a `shld`.
+- PD2 made class affixes ten times as common (frequency 1, 2, 4 -> 10, 20, 40); D2R's Warlock affixes take the same
+  (the patch).
+- PD2 added, for each other class, +1 class skills on body armor, shields and helms, and two kinds with `rare` 3
+  (what PD2 does with 3 is not traced): +2 class skills on the same, and +3 to each tree on the class's items.
+  What `rare` 3 means is not traced; it could be worth tracing some day. The lead: ProjectDiablo.dll's affix picker
+  (rva `0x389080`) branches on `rare` 0-3 against a value that looks like the item's quality, so 3 may limit an
+  affix to one quality. The Warlock gets the same five rows, the
+  tree ones on daggers and grimoires as its other tree affixes, at ids 1042-1046 (the `+` lines in
+  `merge/ids-magicprefix.tsv`).
+- PD2's grand-charm skillers also roll on the PvP charm (`lchp`); PvP is cut, so the Warlock's don't.
 
 ## Work items
 
 | # | Work item | Plugin | Blocked by |
 |---|---|---|---|
-| WL1 | PD2's per-class item rules reach the Warlock: Hellfire Torch and Spirit Ward roll the Warlock (class 7) too, grimoires get corruption outcomes and class-item crafts like PD2's other class items, and any other per-class rule found is fixed or gets an unported row | none (data) | none |
-| WL2 | Demon summoner against the Druid summoner: play session, gear list, test, skill changes in the change log | none, unless a change needs an engine rule (goal 5) | WL1, the Druid complete |
-| WL3 | Eldritch blade melee against the Sacrifice Paladin, as WL2 | as WL2 | WL1, WL2, the Paladin complete |
-| WL4 | Chaos fire against the Combustion Sorceress, as WL2 | as WL2 | WL1, WL2, the Sorceress complete |
+| [WL1](https://github.com/synpoox/pd2-resurrected/issues/233) | PD2's per-class item rules reach the Warlock: Hellfire Torch and Spirit Ward roll the Warlock (class 7) too, grimoires get corruption outcomes and class-item crafts like PD2's other class items, and any other per-class rule found is fixed or gets an deviation row | none (data) | none |
+| [WL2](https://github.com/synpoox/pd2-resurrected/issues/234) | Demon summoner against the Druid summoner: play session, gear list, test, skill changes in the change log | none, unless a change needs an engine rule (goal 5) | [WL1](https://github.com/synpoox/pd2-resurrected/issues/233), the Druid complete |
+| [WL3](https://github.com/synpoox/pd2-resurrected/issues/235) | Eldritch blade melee against the Sacrifice Paladin, as [WL2](https://github.com/synpoox/pd2-resurrected/issues/234) | as [WL2](https://github.com/synpoox/pd2-resurrected/issues/234) | [WL1](https://github.com/synpoox/pd2-resurrected/issues/233), [WL2](https://github.com/synpoox/pd2-resurrected/issues/234), the Paladin complete |
+| [WL4](https://github.com/synpoox/pd2-resurrected/issues/236) | Chaos fire against the Combustion Sorceress, as [WL2](https://github.com/synpoox/pd2-resurrected/issues/234) | as [WL2](https://github.com/synpoox/pd2-resurrected/issues/234) | [WL1](https://github.com/synpoox/pd2-resurrected/issues/233), [WL2](https://github.com/synpoox/pd2-resurrected/issues/234), the Sorceress complete |
 
 ## Changes from D2R's Warlock
 

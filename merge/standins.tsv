@@ -43,14 +43,11 @@ skills	Salvation	=	cltstfunc	Paladin aura client start
 skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
 skills	Fire Claws	=	srvstfunc	Fire Claws, Split Throw start
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
-skills	CorpseCycler	=	srvstfunc	Corpse/Vine Cycler start
-skills	VineCycler	=	srvstfunc	Corpse/Vine Cycler start
 skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
 skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
 skills	Split Throw	-	srvstfunc	Fire Claws, Split Throw start
 skills	Split Throw	-	cltdofunc	Split Throw
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
-skills	PoisonEggSpawn	MaggotEgg	srvdofunc,cltdofunc	PoisonEggSpawn
 skills	RathmaDeath	Nova	srvdofunc,cltdofunc	Death novas
 skills	NihlathakMapDeath	Nova	cltdofunc	Death novas
 skills	RathmaSummon	-	srvdofunc	RathmaSummon
@@ -65,7 +62,6 @@ skills	Energy Shield SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Energy Shield SelfAura	Might	cltstfunc	Paladin aura client start
 skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Chilling Armor SelfAura	Might	cltstfunc	Paladin aura client start
-skills	TorajanBossNest	Nest	srvdofunc	TorajanBossNest
 skills	LucionNova	Nova	srvdofunc	Lucion kit
 skills	LucionBlink	Teleport	cltdofunc	Lucion kit
 skills	LucionDash	Charge	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Lucion kit
@@ -78,9 +74,7 @@ skills	UberDiabSummon	-	srvdofunc	UberDiabSummon, UberDiabRun
 skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Blade Fury	=	seqinput	Blade Fury: the throw frame
-missiles	desertfireball	=	pCltHitFunc	Desert turret fireball client hit
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
-missiles	siege beast stomp missile	-	pCltDoFunc	Siege beast stomp client do
 missiles	uberimmolationarrow	immolationarrow	pSrvHitFunc	Uber immolation arrow hit
 missiles	rathmabonespear	bonespear	pSrvDmgFunc	Rathma bone spear damage
 missiles	tpot_fire_small	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
@@ -111,51 +105,29 @@ missiles	splitthrowpilumreturn	-	pSrvDoFunc,pCltDoFunc	Split Throw
 misc	TP Book Unlimited	Tome of Town Portal	pSpell	Unlimited TP and ID books
 misc	ID Book Unlimited	Tome of Identify	pSpell	Unlimited TP and ID books
 misc	Uber Trist Map	-	pSpell	Map items
-misc	Uber Map	-	pSpell	Map items
-misc	Kurast Map	-	pSpell	Map items
-misc	Arcane Map	-	pSpell	Map items
-misc	Fortress Map	-	pSpell	Map items
-misc	Lava Map	-	pSpell	Map items
-misc	Jungle Map	-	pSpell	Map items
-misc	Siege Map	-	pSpell	Map items
-misc	Tomb Map	-	pSpell	Map items
-misc	Sewer Map	-	pSpell	Map items
-misc	River Of Blood Map	-	pSpell	Map items
-misc	Throne Map	-	pSpell	Map items
-misc	Spider Map	-	pSpell	Map items
-misc	Ice Map	-	pSpell	Map items
-misc	Graveyard Map	-	pSpell	Map items
-misc	Caldeum Map	-	pSpell	Map items
-misc	Pandemonium Map	-	pSpell	Map items
 misc	Monastery Map	-	pSpell	Map items
-misc	Desert Map	-	pSpell	Map items
 misc	Pvp Map	-	pSpell	Map items
 misc	Pvp Map 2	-	pSpell	Map items
-misc	Rathma Map	-	pSpell	Map items
-misc	Frozen Forest Map	-	pSpell	Map items
-misc	Torment Map	-	pSpell	Map items
-misc	Library Map	-	pSpell	Map items
 misc	Uber Ancients Map	-	pSpell	Map items
-misc	Westmarch Map	-	pSpell	Map items
-misc	Crypts Map	-	pSpell	Map items
-misc	Sanctuary of Sin Map	-	pSpell	Map items
-misc	Ruined Cistern Map	-	pSpell	Map items
-misc	Ashes Map	-	pSpell	Map items
-misc	Zhar Map	-	pSpell	Map items
-misc	Hellcaves Map	-	pSpell	Map items
-misc	Fallen Gardens Map	-	pSpell	Map items
-misc	KanemithMap	-	pSpell	Map items
-misc	Skovos Stronghold Map	-	pSpell	Map items
-misc	Lucion Map	-	pSpell	Map items
-misc	Demon Road Map	-	pSpell	Map items
-misc	Imperial Palace Map	-	pSpell	Map items
-misc	Halls of Torture Map	-	pSpell	Map items
-misc	Outer Void Map	-	pSpell	Map items
-misc	Ureh City Map	-	pSpell	Map items
-misc	Djinns Domain Map	-	pSpell	Map items
-misc	Na-Krul's Abyss Map	-	pSpell	Map items
-misc	Kyovoshad Map	-	pSpell	Map items
-misc	Dark Temple Map	-	pSpell	Map items
-misc	Poisoned Well Map	-	pSpell	Map items
-misc	Descend Map	-	pSpell	Map items
 states	skilldelay	=	remfunc	State remove function 12
+objects	xactportal_red	-	OperateFn	PD2 object operate functions
+objects	xactportal_ghostly	-	OperateFn	PD2 object operate functions
+objects	xactportal_gold	-	OperateFn	PD2 object operate functions
+objects	UberAncientStatue1	-	OperateFn	PD2 object operate functions
+objects	UberAncientStatue2	-	OperateFn	PD2 object operate functions
+objects	UberAncientStatue3	-	OperateFn	PD2 object operate functions
+objects	UberAncientAltar	-	OperateFn	PD2 object operate functions
+objects	TaintedSunMapEventAltar	-	OperateFn	PD2 object operate functions
+objects	xactportal_grey	-	OperateFn	PD2 object operate functions
+objects	xactportal_green	-	OperateFn	PD2 object operate functions
+objects	xactportal_purple	-	OperateFn	PD2 object operate functions
+objects	zharportal_blue	-	OperateFn	PD2 object operate functions
+objects	zharportal_red	-	OperateFn	PD2 object operate functions
+objects	ZharTomeObject	-	OperateFn	PD2 object operate functions
+objects	ForceShardAltar	-	OperateFn	PD2 object operate functions
+objects	bossblocker_x_warp	-	OperateFn	PD2 object operate functions
+objects	bossblocker_y_warp	-	OperateFn	PD2 object operate functions
+objects	PVPTome1	-	OperateFn	PD2 object operate functions
+objects	Sacrifice Altar	-	OperateFn	PD2 object operate functions
+objects	xactdarkportal_grey	-	OperateFn	PD2 object operate functions
+objects	PVPTome2	-	OperateFn	PD2 object operate functions

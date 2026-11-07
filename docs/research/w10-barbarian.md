@@ -1,6 +1,6 @@
 # Barbarian group: Bash, Find Potion / Find Item, Frenzy start
 
-Answers work item W10 (#51). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) by static disassembly, plus a
+Answers work item [W10](https://github.com/synpoox/pd2-resurrected/issues/51) ([#51](https://github.com/synpoox/pd2-resurrected/issues/51)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) by static disassembly, plus a
 runtime read of PD2's Game.exe for its tables. D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`). Addresses are
 D2R RVAs unless they start with `0x10`.
 

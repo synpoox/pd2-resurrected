@@ -76,6 +76,41 @@ class TablesTests(unittest.TestCase):
         self.assertEqual(self.merge({"objects": {"d2r_columns": ["token"]}})["objects"], [
             ["Name", "Token", "Parm0"], ["Cain Portal", "tp", "5"], ["Trophy", "", "1"]])
 
+    def test_named_cells_take_the_rules_value(self):
+        self.write("pd2", "monstats", table("Id | NameStr | Level", "roguehire | Dummy | 5", "fallen | Fallen | 2",
+                                            "act4hire | dummy | 9"))
+        self.write("d2r", "monstats", table("Id | NameStr | Level", "roguehire | Rogue | 1", "fallen | Fallen1 | 1"))
+        self.assertEqual(self.merge({"monstats": {"cells": {"RogueHire": {"namestr": "Rogue"},
+                                                            "act4hire": {"NameStr": "Ascendant"}}}})["monstats"], [
+            ["Id", "NameStr", "Level"], ["roguehire", "Rogue", "5"], ["fallen", "Fallen", "2"],
+            ["act4hire", "Ascendant", "9"]])  # a PD2-only row too; other rows keep PD2's NameStr
+        with self.assertRaisesRegex(ValueError, "no row nosuch"):
+            self.merge({"monstats": {"cells": {"nosuch": {"NameStr": "x"}}}})
+        with self.assertRaisesRegex(ValueError, "no column NoCol"):
+            self.merge({"monstats": {"cells": {"fallen": {"NoCol": "x"}}}})
+
+    def test_moved_ids_append_with_pd2s_hire_description_and_merged_monster_numbers(self):
+        self.write("pd2", "hiredesc", table("Hireling Description | Code | *EOL", "None |  | 0", "Fire Arrow | farw | 0",
+                                            "Ascendant Dark | ascd | 0"))
+        self.write("pd2", "monstats", table("Id | hcIdx", "kashya | 0", "Expansion | ", "tyrael2 | 1", "act4hire | 2"))
+        self.write("d2r", "monstats", table("Id | *hcIdx", "kashya | 0", "Expansion | ", "tyrael2 | 1", "warlockhire | ",
+                                            "Expansion | "))
+        self.write("pd2", "hireling", table("Hireling | Id | Level | Class | Seller | HireDesc", "Rogue | 0 | 3 | 0 | 0 | farw",
+                                            "Rogue | 0 | 9 | 0 | 0 | farw", "Ascendant | 30 | 3 | 2 | 1 | ascd",
+                                            "Ascendant | 31 | 3 | 2 | 1 | farw"))
+        ui = self.root / "d2r/local/lng/strings/ui.json"
+        ui.parent.mkdir(parents=True)
+        ui.write_text(json.dumps([{"id": 3371, "Key": "strhirespecial1", "enUS": "Fire Arrow"}]), "utf-8")
+        self.write("d2r", "hireling", table("Hireling | Id | Level | Class | Seller | HireDesc", "Rogue | 0 | 3 | 0 | 0 | strhire1",
+                                            "Desert | 30 | 43 | 1 | 1 | skillname99"))
+        out = self.merge({"monstats": {}, "hireling": {"rows": ["Id", "Level"], "pd2_only_rows": "leave out",
+                                                       "d2r_columns": ["HireDesc"], "move": {"Id": {"30": "39", "31": "40"}}}})
+        self.assertEqual(out["hireling"], [
+            ["Hireling", "Id", "Level", "Class", "Seller", "HireDesc"], ["Rogue", "0", "3", "0", "0", "strhire1"],
+            ["Desert", "30", "43", "1", "1", "skillname99"],  # D2R's own id 30 is kept, PD2's Rogue 0/9 left out
+            ["Ascendant", "39", "3", "3", "1", "hiredesc_ascd"],  # act4hire follows D2R's warlockhire: monster 3
+            ["Ascendant", "40", "3", "3", "1", "strhirespecial1"]])  # D2R's own string for the same text
+
     def test_pd2_only_rows_can_be_left_out(self):
         self.write("pd2", "levels", table("Name | Id", "Act 1 | 1", "Mesa | 139"))
         self.write("d2r", "levels", table("Name | Id", "Act 1 | 1"))

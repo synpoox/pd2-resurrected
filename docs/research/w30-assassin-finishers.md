@@ -1,6 +1,6 @@
-# Assassin charge-up finishers: client half (W30)
+# Assassin charge-up finishers: client half ([W30](https://github.com/synpoox/pd2-resurrected/issues/105))
 
-Answers work item W30 (#105), on the slots [w25-assassin-finishers](w25-assassin-finishers.md) chose. PD2 side read
+Answers work item [W30](https://github.com/synpoox/pd2-resurrected/issues/105) ([#105](https://github.com/synpoox/pd2-resurrected/issues/105)), on the slots [w25-assassin-finishers](w25-assassin-finishers.md) chose. PD2 side read
 from `ProjectDiablo.dll` (VAs `0x10...`) and PD2's 1.13c `D2Client.dll` / `D2Common.dll` (RVAs named "D2Client",
 "D2Common") in the PD2 Ghidra project, D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`); other addresses are D2R
 RVAs. PD2 reaches vanilla code through version-table thunks (module index, offset in column 0 for 1.13c), resolved
@@ -9,7 +9,7 @@ here by reading the table entries. Read statically.
 ## How the client gets a charge
 
 D2R's handler for the charge/release packet (`0x216380`, which the server's `SendChargePacket` feeds on each
-charge-up hit and on a release) does what W25 describes for the release: it points the caster's path at the packet's
+charge-up hit and on a release) does what [W25](https://github.com/synpoox/pd2-resurrected/issues/100) describes for the release: it points the caster's path at the packet's
 target, and, with `prgstack`, calls `cltprgfunc1..n-1` through the cltdo table, setting the list's charge to i before
 each call, then `cltprgfunc n` (`(unit, skill, level)`, the cltdo signature). So a client prg function reads its
 charge from the progressive list, as the server ones do.
@@ -29,7 +29,7 @@ charge from the progressive list, as the server ones do.
   D2Client `0xb17c0`, the body almost every vanilla client do function calls; D2R's cltdo 1), then, when the
   missile's frame counter (D2Common #10737, data `+0x10`, counting down) equals its range (#10534, `+0xe`) - 1, its
   `CltSubMissile1` (fistsoffirefirewall, bladesoficeexplode) placed at its position (flags 3, no aim), with the
-  missile's skill (`+0xa`) and level (`+0xc`). That is the missile's **first** frame, not its last as W25 read it.
+  missile's skill (`+0xa`) and level (`+0xc`). That is the missile's **first** frame, not its last as [W25](https://github.com/synpoox/pd2-resurrected/issues/100) read it.
   D2R's `0x3bb0f0` returns the range minus the frames left, and D2R's own cltdo 1 tests it for 1 the same way.
 - **chit 67 (`0x103a6aa0`)** (clawsofthunderbolt): on a hit unit, `CltHitSubMissile1` (cotthunderstorm) placed at the
   unit hit (D2Client `0x1630` / `0x1660` on it; flags 1), with the row's `Skill` and the missile's level. On the new
@@ -47,7 +47,7 @@ the cHitPar and DmgCalc fields move), `CltSubMissile1` at `+0x40` (D2R's cltdo 9
 
 The port evaluates `CHitCalc1` only when the missile has an owner on the client (D2R's missile calc is only known to
 run with one); PD2's one user has the constant 280, so that changes nothing in play (an approximated row on the
-unported list). cdo 69's owner test is PD2's own.
+deviation list). cdo 69's owner test is PD2's own.
 
 No PD2 row names bladesoficecubes as a sub-missile or skill missile, so in the data only fistsoffireexplode (Fists of
 Fire's cltmissilea, RakanothStrike's cltmissilec) reaches cdo 79; whether vanilla client code makes bladesoficecubes
@@ -57,5 +57,5 @@ by id is not read.
 
 `tools/pd2_ids.py` FUNCS: cltprgfunc1-3 106 -> 127, 107 -> 128 (only the finishers use those values there; D2R's
 cltdo 106 is Bind Demon's), missiles pCltDoFunc 69 -> 79 (D2R's 69 is corpseexplosion's; only fistsoffireexplode and
-bladesoficecubes use it in PD2). chit 67 is free in D2R and keeps its number. The stand-ins and the unported list's
+bladesoficecubes use it in PD2). chit 67 is free in D2R and keeps its number. The stand-ins and the deviation list's
 "not yet" client half row are gone.

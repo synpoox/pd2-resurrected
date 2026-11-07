@@ -1,6 +1,6 @@
-# Gust and Hunger (W23): srvdo 156 and 165
+# Gust and Hunger ([W23](https://github.com/synpoox/pd2-resurrected/issues/98)): srvdo 156 and 165
 
-Answers work item W23 (#98). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll` /
+Answers work item [W23](https://github.com/synpoox/pd2-resurrected/issues/98) ([#98](https://github.com/synpoox/pd2-resurrected/issues/98)). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll` /
 `D2Common.dll` of the PD2 install in Ghidra, D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`), RVAs.
 
 PD2's table fill (`0x1036ba20`) writes srvdo 156 = `0x103b1980` (`+0x270`) and srvdo 165 = `0x103b27c0` (`+0x294`).
@@ -33,7 +33,7 @@ cold length at `+0x118` and the hit class at `+0x144` (ElementalDamage `0x437d00
 record's ResultFlags, HitFlags and HitClass are `+0x186`, `+0x188`, `+0x18c` (1.13c + 0x58, as calc1).
 
 core-rules: `TeleportCore`, then `ThrowSkillMissile`, then `AreaKnockback` with that block. The teleport core's
-deviations are Teleport's (on the unported list).
+deviations are Teleport's (on the deviation list).
 
 ## srvdo 165, Hunger (`0x103b27c0`)
 
@@ -55,7 +55,7 @@ Row: aurastate `hunger`, auralencalc `475+(lvl*25)`, aurastat1-4 `lifedrainminda
 D2R's own Hunger (srvdo 122, `0x576630`) takes the corpse from the skill's target (`0x48fe20`); core-rules does the
 same, then the state through `TimedStatList`. Its recast rule keeps a running list's values where PD2 adds missing
 stats; Hunger always sets the same stats, so the result is the same. A recast that extends the list doesn't send the
-client its timer (packet `0x83`), as for Teleport and Blood Warp: an approximated row on the unported list.
+client its timer (packet `0x83`), as for Teleport and Blood Warp: an approximated row on the deviation list.
 
 ## Checks
 

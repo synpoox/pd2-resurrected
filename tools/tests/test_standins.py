@@ -85,12 +85,12 @@ class RuleTests(unittest.TestCase):
 
 
 class RepoFileTests(unittest.TestCase):
-    def test_every_rule_in_standins_is_on_the_unported_list(self):
+    def test_every_rule_in_standins_is_on_the_deviation_list(self):
         root = Path(__file__).resolve().parents[2]
         lines = S.read_lines(root / "merge" / "standins.tsv")
         rules = {r.strip() for ls in lines.values() for *_, rule in ls for r in rule.split(";")}
-        unported = (root / "docs" / "unported.md").read_text("utf-8")
-        self.assertEqual(sorted(r for r in rules if r not in unported), [])
+        deviations = (root / "docs" / "deviations.md").read_text("utf-8")
+        self.assertEqual(sorted(r for r in rules if r not in deviations), [])
 
 
 if __name__ == "__main__":

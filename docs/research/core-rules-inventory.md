@@ -1,6 +1,6 @@
 # Inventory of core-rules engine rules
 
-Resolves research ticket #19 (framework from #14). The hook list it fills is [docs/core-rules.md](../core-rules.md). Findings only: no
+Resolves research ticket [#19](https://github.com/synpoox/pd2-resurrected/issues/19) (framework from [#14](https://github.com/synpoox/pd2-resurrected/issues/14)). The hook list it fills is [docs/core-rules.md](../core-rules.md). Findings only: no
 PD2 or Blizzard file content is in this repo; skill, missile, stat and recipe names below are short identifiers.
 
 ## Answer in brief
@@ -8,7 +8,7 @@ PD2 or Blizzard file content is in this repo; skill, missile, stat and recipe na
 - **98 hook-list rows** (92 in the first pass, 6 added by the second review in section 5). 78 need plugin code (bucket c: 38 S,
   36 M, 4 L), 2 are a service (b), 12 are data only (a) and are listed so their check is not lost, 5 are unreachable and 1 is cut.
   About a third are `verify`: their bucket or slot depends on a check that has not been done.
-- **Two corrections to the data inventory (#2) change the plan:**
+- **Two corrections to the data inventory ([#2](https://github.com/synpoox/pd2-resurrected/issues/2)) change the plan:**
   1. PD2's server do functions **153-170** are PD2's own (vanilla stops at 152), and D2R 3.x uses 153-171 for its own RotW
      skills. So 17 PD2 functions collide, not 3. With PD2's 15 own numbers in 173-189 that is 32 functions for 19 free slots
      (172-190). **The srvdofunc table must be extended** (a dispatcher detour for values 191+), or the plan does not fit. The same
@@ -17,12 +17,12 @@ PD2 or Blizzard file content is in this repo; skill, missile, stat and recipe na
      map items**, and 13 is D2R's respec token, used by PD2's unlimited TP/ID books. Both are engine rules (re-map to 16, 17).
 - **Unreachable:** item events `docrit`, `dopierce` and `corpsefinish` (so only 2 of the 4 event stats are live: skill on cast with
   62 item rows, skill on block with 5), `descfunc` 30, the boss skill Power Strike Tomb Boss and 5 missile rows (listed below).
-  Every function-number value from #2's section 4 has at least one reachable row.
+  Every function-number value from [#2](https://github.com/synpoox/pd2-resurrected/issues/2)'s section 4 has at least one reachable row.
 - **Values inside D2R's range checked against D2R's own data guide:** cube ops 16 and 18 (item stat less than / equal to) and every
   `descfunc` PD2 uses except 30 have the vanilla meaning in D2R, so they are data. The skill and missile values inside D2R's range
   (srvdo 41/143/163, cltdo 15/22/83, hit 5/6/30, client hit 4/11/12/26, missile do 40/72/12) could not be checked: D2R's function
   tables are filled at run time, so they stay `verify`.
-- **Server rules from #3:** confirmed by strings (`.noexp`, `.set-home`, stat commands, corrupted zones, teleport-blocked areas,
+- **Server rules from [#3](https://github.com/synpoox/pd2-resurrected/issues/3):** confirmed by strings (`.noexp`, `.set-home`, stat commands, corrupted zones, teleport-blocked areas,
   loot allocation, PvP and battle-royale checks, map events and invaders). Phasing, the charm rule, the Act 3 quest 5 patch and the
   skill palette / player mode / NPC patches exist but their effect is not identified, so they are `verify`. Pass 1 also found three
   item rules the earlier tickets missed: skill while equipped, the map item spell and the corruption roll.
@@ -31,13 +31,13 @@ PD2 or Blizzard file content is in this repo; skill, missile, stat and recipe na
 
 | Source | Used for |
 |---|---|
-| `d2rAI-toolkit/pd2-data/s14-alliance/data/global/excel/*.txt` | PD2 tables. #2 showed they are byte-identical to `pd2data.mpq` in the install, so they stand for the PD2 baseline |
+| `d2rAI-toolkit/pd2-data/s14-alliance/data/global/excel/*.txt` | PD2 tables. [#2](https://github.com/synpoox/pd2-resurrected/issues/2) showed they are byte-identical to `pd2data.mpq` in the install, so they stand for the PD2 baseline |
 | `d2rAI-toolkit/d2r-data/93847/data/global/excel/*.txt` and `base/*.txt` | D2R 3.3 build 93847 tables, RotW bank and base bank |
 | `d2rAI-toolkit/d2r-data/93847/data/global/dataguide/data/files/*.js` | Blizzard's data guide shipped with D2R: the meaning of each cube op, `descfunc` and `pSpell` value |
 | `d2rAI-toolkit/knowledge/engine-limits.md`, `d2r-93847-addresses.md`, `porting-classic-mods.md` | D2R table addresses, bounds, free slots and known D2R functions |
 | `C:\Games\PD2\ProjectD2\ProjectDiablo.dll` | Printable strings only (source file names, chat commands, game fields) |
 | `C:\Program Files\Diablo II Resurrected\D2R.exe` (3.3.93847) | PE section layout only |
-| Branches `research/pd2-data-inventory`, `research/pd2-engine-dll-triage`, `spike/srvdofunc-split-throw` | #2, #3 and #13 findings |
+| Branches `research/pd2-data-inventory`, `research/pd2-engine-dll-triage`, `spike/srvdofunc-split-throw` | [#2](https://github.com/synpoox/pd2-resurrected/issues/2), [#3](https://github.com/synpoox/pd2-resurrected/issues/3) and [#13](https://github.com/synpoox/pd2-resurrected/issues/13) findings |
 
 Throwaway scripts outside the repo read the tables as tab-separated text, skipping `Expansion` rows as D2R does.
 
@@ -66,7 +66,7 @@ Counts are live rows / all rows. Names are a sample.
 | Column | Values (PD2 rows using them) | Unreachable rows |
 |---|---|---|
 | srvdofunc 173-189 | 173 PoisonEggSpawn, 174 Vengeance, 175 Fire Claws, 176 Holy Light, 177 UberDiabSummon, 178 Dragon Flight, 179 RathmaSummon, 180 Charge, 181 TorajanBossNest, 182 Inferno + Arctic Blast, 184-186 Lucion Nova/Dash/Punish, 188 Lightning Bolt + Lightning Fury, 189 Split Throw. 183 and 187 have no rows | none |
-| srvdofunc 153-170 (missed by #2) | 153 Leap x3, 154 Double Throw x2, 155 Teleport/Blink x4, 156 Gust, 157 Blood Warp, 158 Bash, 159 Combustion + 6 boss novas, 160 Static Field x3, 161 Desecrate, 162 Joust, 164 Poison Dagger x2, 165 Hunger, 166 Firestorm + 4 walls, 167 Force Move, 168 Find Potion/Item, 169 6 death skills, 170 7 Assassin finishers | UberTalicBash (158): no monster or item uses it |
+| srvdofunc 153-170 (missed by [#2](https://github.com/synpoox/pd2-resurrected/issues/2)) | 153 Leap x3, 154 Double Throw x2, 155 Teleport/Blink x4, 156 Gust, 157 Blood Warp, 158 Bash, 159 Combustion + 6 boss novas, 160 Static Field x3, 161 Desecrate, 162 Joust, 164 Poison Dagger x2, 165 Hunger, 166 Firestorm + 4 walls, 167 Force Move, 168 Find Potion/Item, 169 6 death skills, 170 7 Assassin finishers | UberTalicBash (158): no monster or item uses it |
 | srvdofunc 41, 143, 163, 109 | 41 WispBossNova; 143 two Royal Fire bosses; 163 proc_SplashDamage (melee splash, on 223 live item rows via `item_splashonhit`), Golem Splash and Skeleton Splash (monprop); 109 MonFrenzy, BloodLordFrenzy | none |
 | cltdofunc 110-119 | 110 Fire Claws, 111 Inferno/Arctic Blast, 112 Charge, 113 LucionBlink, 114 LucionDash, 117 Lightning Bolt/Fury, 118 Split Throw, 119 Firestorm | none |
 | cltdofunc 94-109 | 94, 95 are D2R's own rows with the same name (data). 97 Leap x3, 98 Double Throw x2, 100 Combustion x7, 101 Desecrate, 102 Poison Dagger x2, 103 19 Paladin auras + Force Move + 5 more, 104 Find Potion/Item, 105 7 death skills, 109 PoisonEggSpawn. 96, 99, 106-108 have no PD2 rows | none (the Korlic and Sanctuary boss aura rows and Lucion/Doll death rows are reached through monprop) |
@@ -78,15 +78,15 @@ Counts are live rows / all rows. Names are a sample.
 | pSrvHitFunc 5, 6, 30, `*12` | 5 nine nova/orb missiles; 6 five summon-on-hit missiles; 30 three doublethrow missiles; `*12` royalstrikechainlightning, boichaosice | **shatteringarrow** (5): its skill Shattering Arrow has no skill-tree page and nothing else grants it |
 | pCltHitFunc 66, 67, 4, 6, 11, 12, 26 | 66 holylightdelay, 67 clawsofthunderbolt, 4 same nine as hit 5, 6 bladefragment1, 11 desertfireball, 12 17 fire missiles, 26 fistoftheheavensdelay | shatteringarrow (4) |
 | pSrvDoFunc 40, pCltDoFunc 12, 72 | 40 and 72 blessedhammer; 12 siege beast stomp missile | none |
-| pSrvDmgFunc 18, 19 (not in #2) | 18 rathmabonespear, 19 bladefragment1 | none |
-| auraeventfunc 32, 3; states remfunc 12 (not in #2) | 32 Revive, 3 Chilling Armor (+ SelfAura); 12 state `skilldelay` | none |
+| pSrvDmgFunc 18, 19 (not in [#2](https://github.com/synpoox/pd2-resurrected/issues/2)) | 18 rathmabonespear, 19 bladefragment1 | none |
+| auraeventfunc 32, 3; states remfunc 12 (not in [#2](https://github.com/synpoox/pd2-resurrected/issues/2)) | 32 Revive, 3 Chilling Armor (+ SelfAura); 12 state `skilldelay` | none |
 | cube op | 16: 989 enabled / 1,028; 18: 137 / 139; 28: 5 / 8; 30: 26 / 26; 31: 16 / 16 | disabled rows only |
 | descfunc | 0 corruptor, 1-4 and 6-9 (hundreds of stats), 20 six pierce/target-AC stats; 30 `item_shiny_appearance` | **descfunc 30**: `item_shiny_appearance` is on no item or monprop row |
 | events.txt extra rows | `dospellcast` -> `item_skilloncast` (62 live rows, itemeventfunc 33), `doblock` -> `item_skillonblock` (5 live rows) | **`docrit`** (`item_skilloncrit`: 0 rows), **`dopierce`** (`item_skillonpierce`: 0 rows), **`corpsefinish`** (no stat or skill listens). `map_mon_skillondeath` is also on no row |
-| misc pSpell (missed by #2) | 12: 48 map items; 13: TP Book Unlimited, ID Book Unlimited | none |
+| misc pSpell (missed by [#2](https://github.com/synpoox/pd2-resurrected/issues/2)) | 12: 48 map items; 13: TP Book Unlimited, ID Book Unlimited | none |
 | properties func 3, 8, 22, 24 | many; D2R's own properties with the same codes use the same functions | none |
 
-Server rules from #3, existence and effect (strings in ProjectDiablo.dll, plus data where it exists):
+Server rules from [#3](https://github.com/synpoox/pd2-resurrected/issues/3), existence and effect (strings in ProjectDiablo.dll, plus data where it exists):
 
 | Rule | Exists | Player sees it | Evidence |
 |---|---|---|---|
@@ -168,12 +168,12 @@ melee splash (223 rows), the Assassin finishers (7 skills), hit 62 and 12 (many 
   so it probably checks a single, unstacked input. Op 31 rows have no output; the op probably rerolls the input in place. Both need
   the PD2 baseline.
 - **Q9. Corrupted zones vs D2R's desecrated zones.** D2R's `pSpell` 15 and desecrated-zone config may carry most of it as data.
-- **Q10. Corruption flow.** Answered by P9 from the rows and D2R's recipe search (`0x529090` takes the first matching
+- **Q10. Corruption flow.** Answered by [P9](https://github.com/synpoox/pd2-resurrected/issues/56) from the rows and D2R's recipe search (`0x529090` takes the first matching
   row; the executor `0x5269c0` runs it once): each item group has a roll row (op 18, `corruptor` = 0: `corruptnum`
   1-1000, the shard handed back as `output b`) ahead of its outcome rows (op 16, thresholds rising to 1000, `corruptnum`
   1001). So D2R gives PD2's outcomes and odds in two presses. PD2's `ladder` column tags the rows (2 roll, 1 outcome,
   3 destroyed, 4 map), which points at its cube code re-running the search after a roll row and marking the new item
-  a "destroyed" outcome makes (those rows carry no mods). P9 marks those items in the merge; one press is a later hook.
+  a "destroyed" outcome makes (those rows carry no mods). [P9](https://github.com/synpoox/pd2-resurrected/issues/56) marks those items in the merge; one press is a later hook.
 
 ## 5. Second review: values the first pass read as vanilla or skipped
 

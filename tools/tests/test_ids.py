@@ -15,6 +15,22 @@ def table(text: str, key: str | None = None) -> I.Table:
         return I.Table(p, key)
 
 
+class ToolkitTests(unittest.TestCase):
+    def test_finds_the_toolkit_from_a_nested_worktree(self):
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d)
+            (base / "d2rAI-toolkit" / "modkit").mkdir(parents=True)
+            tree = base / "repo" / ".claude" / "worktrees" / "w"
+            tree.mkdir(parents=True)
+            self.assertEqual(I.toolkit(tree), base / "d2rAI-toolkit")
+            self.assertEqual(I.toolkit(base / "repo"), base / "d2rAI-toolkit")
+
+    def test_falls_back_beside_the_root(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d) / "repo"
+            self.assertEqual(I.toolkit(root), Path(d) / "d2rAI-toolkit")
+
+
 class SeedTests(unittest.TestCase):
     def test_vanilla_by_id_then_name_then_append(self):
         I.VANILLA["test"] = 2
@@ -67,6 +83,29 @@ class MergeTableTests(unittest.TestCase):
             ["New Skill", "2", "Frozen Armor", "skill('Frozen Armor'.lvl)", "0", ""],
         ])
         self.assertTrue(merged.text().endswith("\r\n"))
+
+    def test_port_row_copies_an_earlier_row_with_columns_set(self):
+        d2r = table("Name|itype1|itype2|rare\r\nSturdy|shld||1\r\nDevil's|amul|circ|1\r\n")
+        pd2 = table("Name|itype1|itype2|rare\r\nSturdy|helm||1\r\nNew|ring||\r\n")
+        lines = [("Sturdy", 0, "Sturdy"), ("New", 2, "New"), ("+1 itype1=tors itype2= rare=3", 3, "Devil's")]
+        merged = I.merge_table("magicprefix", pd2, d2r, lines, {})[0]
+        self.assertEqual(merged.rows, [["Sturdy", "helm", "", "1"], ["Devil's", "amul", "circ", "1"],
+                                       ["New", "ring", "", ""], ["Devil's", "tors", "", "3"]])
+        with self.assertRaisesRegex(I.IdError, "no column 'itype9'"):
+            I.merge_table("magicprefix", pd2, d2r, [*lines[:2], ("+1 itype9=x", 3, "Devil's")], {})
+
+
+class PortRowTests(unittest.TestCase):
+    def test_check_takes_port_rows_in_the_appended_ids(self):
+        I.check("magicprefix", [("A", 0, "A"), ("B", 2, "B"), ("+0 x=1", 3, "A")], ["A", "B"], ["A", "X"])
+        self.assertEqual(I.seed("magicprefix", ["A", "B", "C"], ["A", "X"], [("A", 0, "A"), ("+0 x=1", 2, "A")]),
+                         [("B", 1, "B"), ("C", 3, "C")])  # C skips the port row's 2
+
+    def test_check_refuses_a_port_row_on_a_d2r_id_or_copying_a_later_row(self):
+        for line, msg in [(("+0 x=1", 1, "A"), "after D2R's rows"), (("+3 x=1", 2, "A"), "earlier row"),
+                          (("+-1 x=1", 2, "A"), "want"), (("+0 x", 2, "A"), "want")]:
+            with self.subTest(msg), self.assertRaisesRegex(I.IdError, msg):
+                I.check("magicprefix", [("A", 0, "A"), line], ["A"], ["A", "X"])
 
 
 class FormulaAndColumnTests(unittest.TestCase):
@@ -183,6 +222,15 @@ class FormulaAndColumnTests(unittest.TestCase):
         merged, _ = I.merge_table("skills", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
         self.assertEqual(merged.rows[1:], [["Teleport", "190"], ["Blink", "190"]])
 
+    def test_pd2_only_areas_in_act_5_draw_no_edges(self):
+        d2r = table("Name|Id|Act|DrawEdges\nNull|0|0|0\nPandemonium 2|1|4|1\n")
+        pd2 = table("Name|Id|Act|DrawEdges\nNull|0|0|0\nPandemonium 2|134|4|1\nZhar Library|172|4|1\n"
+                    "Ashen Plains Map|171|4|1\nKurast|144|2|1\n")
+        names = ["Null", "Pandemonium 2", "Zhar Library", "Ashen Plains Map", "Kurast"]
+        lines = [(n, i, n) for i, n in enumerate(names)]
+        merged, _ = I.merge_table("levels", pd2, d2r, lines, I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual([r[3] for r in merged.rows], ["0", "1", "0", "0", "1"])
+
     def test_gust_and_hunger_go_to_the_router(self):
         d2r = table("skill|srvdofunc\nAttack|1\n")
         pd2 = table("skill|srvdofunc\nGust|156\nHunger|165\n")
@@ -201,6 +249,30 @@ class FormulaAndColumnTests(unittest.TestCase):
         self.assertEqual(merged.rows[1:], [["cloud", "61", "282", "52", "-1", "-1", "", ""],
                                            ["blaze", "61", "44", "150", "67", "-60", "510", "-60"],
                                            ["nova", "5", "236", "1", "67", "1", "500", "1"]])
+
+    def test_summon_hit_moves_to_67_and_names_the_mod_monster(self):
+        cols = "Missile|pSrvHitFunc|sHitPar1|sHitPar2|sHitPar3"
+        d2r = table(f"{cols}\narrow|1|||\n")
+        pd2 = table(f"{cols}\norb|6|999|8|67239936\n")
+        merged, _ = I.merge_table("missiles", pd2, d2r, [("orb", 1, "orb")], I.renames({t: [] for t in I.TABLES}),
+                                  {"monstats": {"999": "1016"}})
+        self.assertEqual(merged.rows[1], ["orb", "67", "1016", "8", "67239936"])
+
+    def test_monstats_ids_follow_the_name_merge(self):
+        # D2R's rows keep their ids (the Expansion row is not one); PD2-only rows follow D2R's last
+        d2r = table("Id|x\nskeleton1|\nExpansion|\nwarlockimp|\nmaggot|\n")
+        pd2 = table("Id|x\nskeleton1|\nExpansion|\nmaggot|\nleoricGuards|\ntorajanBoss|\n")
+        self.assertEqual(I.monstats_ids(pd2, d2r), {"0": "0", "1": "2", "2": "3", "3": "4"})
+
+    def test_monster_kit_functions_move_to_core_rules_slots(self):
+        cols = "skill|srvdofunc|srvstfunc|cltdofunc"
+        pd2 = table(f"{cols}\nPoisonEggSpawn|173|43|109\nTorajanBossNest|181|49|50\nCorpseCycler||67|\n")
+        lines = [("PoisonEggSpawn", 0, "PoisonEggSpawn"), ("TorajanBossNest", 1, "TorajanBossNest"),
+                 ("CorpseCycler", 2, "CorpseCycler")]
+        merged, _ = I.merge_table("skills", pd2, table(f"{cols}\nAttack|1||\n"), lines,
+                                  I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["PoisonEggSpawn", "173", "43", "126"], ["TorajanBossNest", "190", "49", "50"],
+                                       ["CorpseCycler", "", "83", ""]])
 
     def test_blood_warp_functions_moved_to_core_rules_slots(self):
         d2r = table("skill|srvdofunc|srvstfunc|cltstfunc\nAttack|1|0|0\n")
@@ -314,6 +386,78 @@ class ItemTableTests(unittest.TestCase):
         self.assertEqual(weapons.rows, [["xyz", "-10", ""]])  # PD2's unnamed column fills no D2R column
         sets = I.merge_table("setitems", table("index|set\nS|X\n"), table("index|set|spawnable\n"), [("S", 0, "S")], ren)[0]
         self.assertEqual(sets.rows, [["S", "X", "1"]])
+
+
+    def test_map_add_monster_values_take_the_mod_monstats_id(self):
+        # map-glob-add-mon-* rolls a monstats id as its value (MS4): PD2's id becomes the mod's, in min and max
+        props = I.property_kinds(table("code|func1|stat1\nmap-glob-add-mon-doll|1|map_glob_add_mon_doll\n"
+                                       "map-glob-density|1|map_glob_density\n"))
+        self.assertEqual(props, {"map-glob-add-mon-doll": "monster"})
+        ids = {"monstats": {"690": "691"}}
+        ren = I.renames({t: [] for t in I.TABLES})
+        merged, _ = I.merge_table("magicprefix", table("Name|mod1code|mod1param|mod1min|mod1max\n"
+                                                       "Stygian|map-glob-add-mon-doll||690|690\n"),
+                                  table("Name|mod1code|mod1param|mod1min|mod1max\n"), [("Stygian", 0, "Stygian")],
+                                  ren, ids, props)
+        self.assertEqual(merged.rows, [["Stygian", "map-glob-add-mon-doll", "", "691", "691"]])
+
+
+    def test_map_items_take_spell_16_and_the_mod_level(self):
+        # a map (PD2 pSpell 12) opens the level its len names: the mod's id, blank when the level is left out;
+        # a potion's len is a duration and stays
+        ids = {"levels": {"142": "143", "185": "181"}, I.LEFT_OUT_LEVELS: {"157": ""}}
+        merged = I.merge_table("misc", table("code|pSpell|len\nt11|12|142\nubtm|12|185\nt61|12|157\nhp1|3|192\n"),
+                               table("code|pSpell|len\n"), [("t11", 0, "t11"), ("ubtm", 1, "ubtm"), ("t61", 2, "t61"),
+                                                            ("hp1", 3, "hp1")], {}, ids)[0]
+        self.assertEqual(merged.rows, [["t11", "16", "143"], ["ubtm", "16", "181"], ["t61", "16", ""],
+                                       ["hp1", "3", "192"]])
+        # a level that is neither the port's nor left out is an error, not a map that opens nothing
+        with self.assertRaisesRegex(I.IdError, "level '999'"):
+            I.merge_table("misc", table("code|pSpell|len\nt11|12|999\n"), table("code|pSpell|len\n"),
+                          [("t11", 0, "t11")], {}, ids)
+
+
+class LevelTableTests(unittest.TestCase):
+    def test_left_out_rows(self):
+        # a PD2 row the port leaves out (a cut area, a placeholder): listed with id '-', merged nowhere
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "ids-levels.tsv"
+            p.write_text("# PD2 name\tid\tname\nA\t0\tA\nPvp Map\t-\tcut: PvP\nB\t2\tB\n", "utf-8")
+            lines = I.read_list(p)
+        self.assertEqual(lines[1], ("Pvp Map", I.LEFT_OUT, "cut: PvP"))
+        I.check("levels", lines, ["A", "Pvp Map", "B"], ["A", "X"])
+        self.assertEqual(I.seed("levels", ["A", "Pvp Map", "B", "C"], ["A", "X"], lines), [("C", 3, "C")])
+        merged, _ = I.merge_table("levels", table("Name|Id\nA|0\nPvp Map|1\nB|2\n"), table("Name|Id\nA|0\nX|1\n"),
+                                  lines, I.renames({"levels": lines}))
+        self.assertEqual(merged.rows, [["A", "0"], ["X", "1"], ["B", "2"]])
+        self.assertEqual(I.renames({"levels": lines}), {"levels": {}})
+
+    def test_numeric_references_id_columns_and_d2r_columns(self):
+        # PD2's level 3 appends at 4 (D2R took 3): its Vis, a preset's LevelId and the Id columns follow it;
+        # an objects row keeps D2R's Token and a misc row D2R's spellicon (the identify cursor, #311) on a merged row only
+        ids = {"levels": {"0": "0", "1": "1", "3": "4"}, "objgroup": {"0": "0", "2": "5"}}
+        lv = I.merge_table("levels", table("Name|Id|Vis0|ObjGrp0\nNull|0|0|0\nTown|1|3|0\nNew|3|1|2\n"),
+                           table("Name|Id|Vis0|ObjGrp0\nNull|0|0|0\nTown|1|0|0\n"),
+                           [("Null", 0, "Null"), ("Town", 1, "Town"), ("New", 4, "New")], {}, ids)[0]
+        self.assertEqual(lv.rows[1], ["Town", "1", "4", "0"])
+        self.assertEqual(lv.rows[2], ["New", "4", "1", "5"])
+        pr = I.merge_table("lvlprest", table("Name|Def|LevelId\nNew 1|7|3\n"), table("Name|Def|LevelId\n"),
+                           [("New 1", 9, "New 1")], {}, ids)[0]
+        self.assertEqual(pr.rows, [["New 1", "9", "4"]])
+        with self.assertRaisesRegex(I.IdError, "Vis0 names PD2's levels row 2, which has no id"):
+            I.merge_table("levels", table("Name|Vis0\nA|2\n"), table("Name|Vis0\n"), [("A", 0, "A")], {}, ids)
+        ob = I.merge_table("objects", table("Name|Token|SizeX\nchest|C1|3\nnew|N1|2\n"),
+                           table("Class|Name|*ID|Token|SizeX\nChest1|chest|0|hd1|1\n"),
+                           [("chest", 0, "Chest1"), ("new", 1, "new")], {})[0]
+        self.assertEqual(ob.rows, [["Chest1", "chest", "0", "hd1", "3"], ["new", "new", "1", "N1", "2"]])
+        mi = I.merge_table("misc", table("code|spellicon|maxstack\nisc|-1|80\nnew|-1|1\n"),
+                           table("code|spellicon|maxstack\nisc|0|20\n"), [("isc", 0, "isc"), ("new", 1, "new")], {})[0]
+        self.assertEqual(mi.rows, [["isc", "0", "80"], ["new", "-1", "1"]])
+
+    def test_objtype_follows_the_objects_list(self):
+        lines = [("Dummy", 0, "Null"), ("<reserved>", I.LEFT_OUT, "placeholder"), ("chest", 2, "chest")]
+        self.assertEqual(I.follow(lines, ["Dummy", "<reserved>", "chest"], ["Not Used", "Casket"], ["Not Used", "x", "Chest"]),
+                         [("Not Used", 0, "Not Used"), ("x", I.LEFT_OUT, ""), ("Chest", 2, "Chest")])
 
 
 class ListFileTests(unittest.TestCase):

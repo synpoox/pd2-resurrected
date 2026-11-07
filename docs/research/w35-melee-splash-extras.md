@@ -1,6 +1,6 @@
-# Melee splash: the current skill's damage and radius extras (W35)
+# Melee splash: the current skill's damage and radius extras ([W35](https://github.com/synpoox/pd2-resurrected/issues/125))
 
-Answers work item W35 (#125), the rest of [w33-melee-splash](w33-melee-splash.md). PD2 side from `ProjectDiablo.dll`
+Answers work item [W35](https://github.com/synpoox/pd2-resurrected/issues/125) ([#125](https://github.com/synpoox/pd2-resurrected/issues/125)), the rest of [w33-melee-splash](w33-melee-splash.md). PD2 side from `ProjectDiablo.dll`
 (VAs `0x10...`) and the 1.13c `D2Game.dll` / `D2Common.dll` in PD2's Ghidra project; D2R side from the 93847 dump,
 RVAs.
 
@@ -88,14 +88,14 @@ The apply passes flag 0, so the walker gets the handler set `0x105dc628` (built 
   The walker (`0x5881e0`) jumps outside the dump, so whether it also drops other domeleedamage handlers on splashed
   units (crushing blow, open wounds, which PD2 fires) is not known.
 
-## Deviations (approximated, on the unported list)
+## Deviations (approximated, on the deviation list)
 
 - Smite's splash takes Smite's own skill damage. PD2 deals its shield damage and adds a state 224 list with
   inc_splash_radius = skill `+0x158`.
 - The radius counts the layers of the weapon's own item types. PD2's off-hand rules for 1han and 2han are left out:
   D2R's item-at-body-location (0x3885e0) treats weapons in slots 5 and 6 specially and is not decoded.
 - A player victim's last-hit skill (1.13c's `+0x194`) is not written.
-- The room check is left out: it refuses only the PvP maps, which are cut, as for W9's bounce.
+- The room check is left out: it refuses only the PvP maps, which are cut, as for [W9](https://github.com/synpoox/pd2-resurrected/issues/55)'s bounce.
 
 ## Checks
 

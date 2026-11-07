@@ -1,6 +1,6 @@
 # Inventory of PD2's strings against D2R's
 
-Resolves research ticket #28 (child of map #1). Findings only: nothing here converts or ships any text, and no PD2 or Blizzard text is copied into this repo (counts, key names and a few short markers only).
+Resolves research ticket [#28](https://github.com/synpoox/pd2-resurrected/issues/28) (child of map [#1](https://github.com/synpoox/pd2-resurrected/issues/1)). Findings only: nothing here converts or ships any text, and no PD2 or Blizzard text is copied into this repo (counts, key names and a few short markers only).
 
 ## Answer in brief
 

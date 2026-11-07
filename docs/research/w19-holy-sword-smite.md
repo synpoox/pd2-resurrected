@@ -1,6 +1,6 @@
-# Holy Sword and Smite starts, Smite's event, Run/Concentration (W19)
+# Holy Sword and Smite starts, Smite's event, Run/Concentration ([W19](https://github.com/synpoox/pd2-resurrected/issues/94))
 
-Answers work item W19 (#94). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll` of the PD2
+Answers work item [W19](https://github.com/synpoox/pd2-resurrected/issues/94) ([#94](https://github.com/synpoox/pd2-resurrected/issues/94)). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll` of the PD2
 install in Ghidra; D2R side from the 93847 dump, RVAs. PD2's start table fill (`[0x105de8ec]`, in `0x1036ba20`) writes
 srvst 73 (`+0x124`) = `0x103b6990` and srvst 75 (`+0x12c`) = `0x103b6a20`; the event fill `0x1036c2b0` writes event
 16 (`[0x105de8f8] + 0x40`) = `0x103469a0`. D2R leaves srvst 73 and 75 empty, so both keep PD2's numbers.
@@ -45,11 +45,11 @@ D2R's event 16 (`0x583150`): chance = the unit's stat `key >> 16` at layer `key 
 then `0x581bd0 (game, unit, target, {damage, 4, 10, 10, event == 6})` (itself a jump outside the dump).
 
 D2R never calls slot 16 on a player's melee hit (a build that logged every slot 1-40 saw nothing on the Paladin's
-hits, #165), so core-rules rolls Smite's crushing blow on the hit path instead. It wraps Smite's do (srvdo 150, D2R's
+hits, [#165](https://github.com/synpoox/pd2-resurrected/issues/165)), so core-rules rolls Smite's crushing blow on the hit path instead. It wraps Smite's do (srvdo 150, D2R's
 `0x564930`) to mark the thread as smiting, and hooks D2R's hit queue (`0x44b600 (game, attacker, target, damage,
 flag)`). A queued hit that landed (result `+4` has bit 1 and none of `0x8380`) while smiting rolls once with
 `crushingblow` + calc3 and calls D2R's blow (`0x581bd0`) on the damage block before it is queued. PD2's blow formula,
-calc4, stat 268 and the per-hand sum are not ported (unported list; the formula is its own core-rules row).
+calc4, stat 268 and the per-hand sum are not ported (deviation list; the formula is its own core-rules row).
 
 ## Run and Concentration (gate A, PD2 `0x10373290`)
 
@@ -60,7 +60,7 @@ after: a run asked for mid-attack is taken at the end, which is PD2's added run.
 interruptible (`+0x27`); a request with a skill is buffered within 6 frames of the end and refused before, roll or no
 roll. So Concentration blocks get-hit and not the next attack, which is PD2's change. Neither needs code: core-rules
 logs the gate's answers for run requests and for a player under Concentration (`gate:` lines) so the game check sees
-them. The windows are D2R's, not PD2's frame check `0x77e00` (approximated, unported list).
+them. The windows are D2R's, not PD2's frame check `0x77e00` (approximated, deviation list).
 
 ## Checks
 
@@ -69,6 +69,6 @@ them. The windows are D2R's, not PD2's frame check `0x77e00` (approximated, unpo
 
 Game check (Slot 5, Hell, level 90 Paladin, Smite 20, Holy Sword 10, Concentration 20): Holy Sword's start accepted with
 Shadowfang; Smite's start accepted, and Smite deals damage (combat log 37-44 a hit); Concentration refused get-hits from
-attack mode. Smite's event never fired on slot 16 (#165); with the hit-queue roll, 30 Smites on Hell zombies logged 22
+attack mode. Smite's event never fired on slot 16 ([#165](https://github.com/synpoox/pd2-resurrected/issues/165)); with the hit-queue roll, 30 Smites on Hell zombies logged 22
 landed hits at chance 25 (calc3 25 at level 20) and 8 crushing blows, one roll a hit. No run request was logged
 mid-attack.

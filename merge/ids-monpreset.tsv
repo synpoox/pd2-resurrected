@@ -1,0 +1,325 @@
+# act/PD2 place	index in act	place (append-only, ADR 0003)
+1/gheed	0	gheed
+1/cain1	1	cain1
+1/akara	2	akara
+1/chicken	3	chicken
+1/rogue1	4	rogue1
+1/kashya	5	kashya
+1/cow	6	cow
+1/warriv1	7	warriv1
+1/charsi	8	charsi
+1/andariel	9	andariel
+1/place_fallen	10	place_fallen
+1/place_fallenshaman	11	place_fallenshaman
+1/place_bloodraven	12	place_bloodraven
+1/cow#2	13	cow
+1/camel	14	camel
+1/place_unique_pack	15	place_unique_pack
+1/place_npc_pack	16	place_npc_pack
+1/place_nothing	17	place_nothing
+1/place_nothing#2	18	place_nothing
+1/place_champion	19	place_champion
+1/navi	20	navi
+1/rogue1#2	21	rogue1
+1/rogue3	22	rogue3
+1/gargoyletrap	23	gargoyletrap
+1/place_fallennest	24	place_fallennest
+1/place_talkingrogue	25	place_talkingrogue
+1/place_fallen#2	26	place_fallen
+1/place_fallenshaman#2	27	place_fallenshaman
+1/trap-horzmissile	28	trap-horzmissile
+1/trap-vertmissile	29	trap-vertmissile
+1/place_group25	30	place_group25
+1/place_group50	31	place_group50
+1/place_group75	32	place_group75
+1/place_group100	33	place_group100
+1/Bishibosh	34	Bishibosh
+1/Bonebreak	35	Bonebreak
+1/Coldcrow	36	Coldcrow
+1/Rakanishu	37	Rakanishu
+1/Treehead WoodFist	38	Treehead WoodFist
+1/Griswold	39	Griswold
+1/The Countess	40	The Countess
+1/Pitspawn Fouldog	41	Pitspawn Fouldog
+1/Flamespike the Crawler	42	Flamespike the Crawler
+1/Boneash	43	Boneash
+1/The Smith	44	The Smith
+1/The Cow King	45	The Cow King
+1/Corpsefire	46	Corpsefire
+1/SkovosBoss	47	SkovosBoss
+1/place_nothing#3	48	place_nothing
+1/lesserhydra1	49	lesserhydra1
+1/lesserhydra2	50	lesserhydra2
+1/lesserhydra3	51	lesserhydra3
+1/monhydra1	52	monhydra1
+1/monhydra2	53	monhydra2
+1/monhydra3	54	monhydra3
+1/dcloneskmage_fire	55	dcloneskmage_fire
+1/dcloneskmage_ltng	56	dcloneskmage_ltng
+1/dcloneskmage_cold	57	dcloneskmage_cold
+1/dcloneskmage_pois	58	dcloneskmage_pois
+1/place_nothing#4	59	place_nothing
+2/warriv2	0	warriv2
+2/atma	1	atma
+2/drognan	2	drognan
+2/fara	3	fara
+2/place_nothing	4	place_nothing
+2/place_nothing#2	5	place_nothing
+2/place_nothing#3	6	place_nothing
+2/place_nothing#4	7	place_nothing
+2/greiz	8	greiz
+2/elzix	9	elzix
+2/lysander	10	lysander
+2/meshif1	11	meshif1
+2/geglash	12	geglash
+2/jerhyn	13	jerhyn
+2/place_unique_pack	14	place_unique_pack
+2/place_npc_pack	15	place_npc_pack
+2/place_nothing#5	16	place_nothing
+2/summoner	17	summoner
+2/Radament	18	Radament
+2/duriel	19	duriel
+2/cain2	20	cain2
+2/place_champion	21	place_champion
+2/act2male	22	act2male
+2/act2female	23	act2female
+2/act2guard1	24	act2guard1
+2/act2vendor1	25	act2vendor1
+2/act2vendor2	26	act2vendor2
+2/place_tightspotboss	27	place_tightspotboss
+2/fish	28	fish
+2/place_talkingguard	29	place_talkingguard
+2/place_dumbguard	30	place_dumbguard
+2/place_maggot	31	place_maggot
+2/place_maggotegg	32	place_maggotegg
+2/place_nothing#6	33	place_nothing
+2/gargoyletrap	34	gargoyletrap
+2/trap-horzmissile	35	trap-horzmissile
+2/trap-vertmissile	36	trap-vertmissile
+2/place_group25	37	place_group25
+2/place_group50	38	place_group50
+2/place_group75	39	place_group75
+2/place_group100	40	place_group100
+2/lightningspire	41	lightningspire
+2/firetower	42	firetower
+2/place_nothing#7	43	place_nothing
+2/place_nothing#8	44	place_nothing
+2/place_nothing#9	45	place_nothing
+2/Bloodwitch the Wild	46	Bloodwitch the Wild
+2/Fangskin	47	Fangskin
+2/Beetleburst	48	Beetleburst
+2/Leatherarm	49	Leatherarm
+2/Coldworm the Burrower	50	Coldworm the Burrower
+2/Fire Eye	51	Fire Eye
+2/Dark Elder	52	Dark Elder
+2/Ancient Kaa the Soulless	53	Ancient Kaa the Soulless
+2/act2guard4	54	act2guard4
+2/act2guard5	55	act2guard5
+2/sarcophagus	56	sarcophagus
+2/tyrael1	57	tyrael1
+2/skeleton5	58	skeleton5
+2/willowispboss	59	willowispboss
+2/fingermageboss	60	fingermageboss
+2/ArcaneBoss	61	ArcaneBoss
+2/TombBoss	62	TombBoss
+2/act2hireTraitorBoss	63	act2hireTraitorBoss
+2/MarketBoss	64	MarketBoss
+2/lernaeanhydra1	65	lernaeanhydra1
+2/lernaeanhydra2	66	lernaeanhydra2
+2/place_nothing#10	67	place_nothing
+2/place_nothing#11	68	place_nothing
+2/lesserhydra1	69	lesserhydra1
+2/lesserhydra2	70	lesserhydra2
+2/lesserhydra3	71	lesserhydra3
+2/monhydra1	72	monhydra1
+2/monhydra2	73	monhydra2
+2/monhydra3	74	monhydra3
+2/dcloneskmage_fire	75	dcloneskmage_fire
+2/dcloneskmage_ltng	76	dcloneskmage_ltng
+2/dcloneskmage_cold	77	dcloneskmage_cold
+2/dcloneskmage_pois	78	dcloneskmage_pois
+2/place_nothing#12	79	place_nothing
+3/cain3	0	cain3
+3/place_champion	1	place_champion
+3/act3male	2	act3male
+3/act3female	3	act3female
+3/asheara	4	asheara
+3/hratli	5	hratli
+3/alkor	6	alkor
+3/ormus	7	ormus
+3/meshif2	8	meshif2
+3/place_amphibian	9	place_amphibian
+3/place_tentacle_ns	10	place_tentacle_ns
+3/place_tentacle_ew	11	place_tentacle_ew
+3/place_fetishnest	12	place_fetishnest
+3/trap-horzmissile	13	trap-horzmissile
+3/trap-vertmissile	14	trap-vertmissile
+3/natalya	15	natalya
+3/place_mosquitonest	16	place_mosquitonest
+3/place_group25	17	place_group25
+3/place_group50	18	place_group50
+3/place_group75	19	place_group75
+3/place_group100	20	place_group100
+3/compellingorb	21	compellingorb
+3/mephisto	22	mephisto
+3/trap-melee	23	trap-melee
+3/mephistospirit	24	mephistospirit
+3/act3hire	25	act3hire
+3/place_fetish	26	place_fetish
+3/place_fetishshaman	27	place_fetishshaman
+3/Web Mage the Burning	28	Web Mage the Burning
+3/Witch Doctor Endugu	29	Witch Doctor Endugu
+3/Stormtree	30	Stormtree
+3/Sarina the Battlemaid	31	Sarina the Battlemaid
+3/Icehawk Riftwing	32	Icehawk Riftwing
+3/Ismail Vilehand	33	Ismail Vilehand
+3/Geleb Flamefinger	34	Geleb Flamefinger
+3/Bremm Sparkfist	35	Bremm Sparkfist
+3/Toorc Icefist	36	Toorc Icefist
+3/Wyand Voidfinger	37	Wyand Voidfinger
+3/Maffer Dragonhand	38	Maffer Dragonhand
+3/baalminionboss	39	baalminionboss
+3/unravelerboss	40	unravelerboss
+3/griswoldmap	41	griswoldmap
+3/torajanBoss	42	torajanBoss
+3/SewerBoss	43	SewerBoss
+3/SpiderBoss	44	spiderboss
+3/rathma	45	rathma
+3/spireFire	46	spireFire
+3/place_nothing	47	place_nothing
+3/place_nothing#2	48	place_nothing
+3/lesserhydra1	49	lesserhydra1
+3/lesserhydra2	50	lesserhydra2
+3/lesserhydra3	51	lesserhydra3
+3/monhydra1	52	monhydra1
+3/monhydra2	53	monhydra2
+3/monhydra3	54	monhydra3
+3/dcloneskmage_fire	55	dcloneskmage_fire
+3/dcloneskmage_ltng	56	dcloneskmage_ltng
+3/dcloneskmage_cold	57	dcloneskmage_cold
+3/dcloneskmage_pois	58	dcloneskmage_pois
+3/place_nothing#3	59	place_nothing
+4/place_champion	0	place_champion
+4/trap-horzmissile	1	trap-horzmissile
+4/trap-vertmissile	2	trap-vertmissile
+4/place_group25	3	place_group25
+4/place_group50	4	place_group50
+4/place_group75	5	place_group75
+4/place_group100	6	place_group100
+4/tyrael2	7	tyrael2
+4/window2	8	window2
+4/window1	9	window1
+4/jamella	10	jamella
+4/halbu	11	halbu
+4/hellmeteor	12	hellmeteor
+4/izual	13	izual
+4/diablo	14	diablo
+4/Winged Death	15	Winged Death
+4/The Tormentor	16	The Tormentor
+4/Taintbreeder	17	Taintbreeder
+4/Riftwraith the Cannibal	18	Riftwraith the Cannibal
+4/Infector of Souls	19	Infector of Souls
+4/Lord De Seis	20	Lord De Seis
+4/Grand Vizier of Chaos	21	Grand Vizier of Chaos
+4/trappedsoul1	22	trappedsoul1
+4/trappedsoul2	23	trappedsoul2
+4/regurgitator3	24	regurgitator3
+4/cain4	25	cain4
+4/malachai	26	malachai
+4/The Feature Creep	27	The Feature Creep
+4/megademonboss	28	megademonboss
+4/uberdiablonew	29	uberdiablonew
+4/ubertrappedsoul1	30	ubertrappedsoul1
+4/ubertrappedsoul2	31	ubertrappedsoul2
+4/ubertrappedsoul3	32	ubertrappedsoul3
+4/ubertrappedsoul4	33	ubertrappedsoul4
+4/ubertrappedsoul5	34	ubertrappedsoul5
+4/SpiderBoss	35	spiderboss
+4/fingermageboss	36	fingermageboss
+4/duntrappedsoul	37	duntrappedsoul
+4/willowispboss	38	willowispboss
+4/archerBoss	39	archerBoss
+4/siegebeastMapBoss	40	siegebeastMapBoss
+4/place_nothing	41	place_nothing
+4/lesserhydra1	42	lesserhydra1
+4/lesserhydra2	43	lesserhydra2
+4/lesserhydra3	44	lesserhydra3
+4/monhydra1	45	monhydra1
+4/monhydra2	46	monhydra2
+4/monhydra3	47	monhydra3
+4/dcloneskmage_fire	48	dcloneskmage_fire
+4/dcloneskmage_ltng	49	dcloneskmage_ltng
+4/dcloneskmage_cold	50	dcloneskmage_cold
+4/dcloneskmage_pois	51	dcloneskmage_pois
+4/place_nothing#2	52	place_nothing
+5/larzuk	0	larzuk
+5/drehya	1	drehya
+5/malah	2	malah
+5/nihlathak	3	nihlathak
+5/qual-kehk	4	qual-kehk
+5/place_impgroup	5	place_impgroup
+5/Siege Boss	6	Siege Boss
+5/tyrael3	7	tyrael3
+5/cain6	8	cain6
+5/place_imp	9	place_imp
+5/place_minion	10	place_minion
+5/place_miniongroup	11	place_miniongroup
+5/catapult2	12	catapult2
+5/catapult1	13	catapult1
+5/place_bloodlord	14	place_bloodlord
+5/catapultspotter2	15	catapultspotter2
+5/catapultspotter1	16	catapultspotter1
+5/act5barb1	17	act5barb1
+5/place_deadbarb	18	place_deadbarb
+5/place_deadminion	19	place_deadminion
+5/place_deadimp	20	place_deadimp
+5/cain6#2	21	cain6
+5/act5barb3	22	act5barb3
+5/place_reanimateddead	23	place_reanimateddead
+5/ancientstatue1	24	ancientstatue1
+5/ancientstatue2	25	ancientstatue2
+5/ancientstatue3	26	ancientstatue3
+5/Dac Farren	27	Dac Farren
+5/baalthrone	28	baalthrone
+5/baaltaunt	29	baaltaunt
+5/injuredbarb1	30	injuredbarb1
+5/injuredbarb2	31	injuredbarb2
+5/injuredbarb3	32	injuredbarb3
+5/baalcrab	33	baalcrab
+5/Axe Dweller	34	Axe Dweller
+5/Bonesaw Breaker	35	Bonesaw Breaker
+5/Megaflow Rectifier	36	Megaflow Rectifier
+5/Eyeback Unleashed	37	Eyeback Unleashed
+5/Threash Socket	38	Threash Socket
+5/Pindleskin	39	Pindleskin
+5/Snapchip Shatter	40	Snapchip Shatter
+5/Anodized Elite	41	Anodized Elite
+5/Vinvear Molech	42	Vinvear Molech
+5/Sharp Tooth Sayer	43	Sharp Tooth Sayer
+5/Magma Torquer	44	Magma Torquer
+5/Blaze Ripper	45	Blaze Ripper
+5/Frozenstein	46	Frozenstein
+5/worldstoneeffect	47	worldstoneeffect
+5/chicken	48	chicken
+5/place_champion	49	place_champion
+5/evilhut	50	evilhut
+5/BastionBoss	57	BastionBoss
+5/ThroneBoss	58	ThroneBoss
+5/SiegeBoss	59	SiegeBoss
+5/IceBoss	60	IceBoss
+5/CanyonBoss	61	CanyonBoss
+5/westmarchMapBoss	62	westmarchMapBoss
+5/AshenBoss	63	AshenBoss
+5/DemonRoadBoss	64	DemonRoadBoss
+5/place_nothing	65	place_nothing
+5/lesserhydra1	66	lesserhydra1
+5/lesserhydra2	67	lesserhydra2
+5/lesserhydra3	68	lesserhydra3
+5/monhydra1	69	monhydra1
+5/monhydra2	70	monhydra2
+5/monhydra3	71	monhydra3
+5/dcloneskmage_fire	72	dcloneskmage_fire
+5/dcloneskmage_ltng	73	dcloneskmage_ltng
+5/dcloneskmage_cold	74	dcloneskmage_cold
+5/dcloneskmage_pois	75	dcloneskmage_pois
+5/place_nothing#2	76	place_nothing

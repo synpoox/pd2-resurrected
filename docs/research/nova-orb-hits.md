@@ -1,6 +1,6 @@
 # Nova and orb hits (shit 5, chit 4)
 
-Answers work item W7 (#50): do D2R's missile hit functions 5 (server) and 4 (client) do what PD2's do? They do, so the row
+Answers work item [W7](https://github.com/synpoox/pd2-resurrected/issues/50) ([#50](https://github.com/synpoox/pd2-resurrected/issues/50)): do D2R's missile hit functions 5 (server) and 4 (client) do what PD2's do? They do, so the row
 is data only and needs no plugin. Read from the PD2 baseline install `C:\Games\PD2\ProjectD2`: `ProjectDiablo.dll` and its
 1.13c `D2Game.dll` / `D2Client.dll`. D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`). Static disassembly with
 capstone, then one game run. Addresses are RVAs.

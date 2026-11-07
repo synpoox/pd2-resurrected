@@ -1,6 +1,6 @@
-# Holy Light and the Fist of the Heavens hit (W17)
+# Holy Light and the Fist of the Heavens hit ([W17](https://github.com/synpoox/pd2-resurrected/issues/92))
 
-Answers work item W17 (#92). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll`,
+Answers work item [W17](https://github.com/synpoox/pd2-resurrected/issues/92) ([#92](https://github.com/synpoox/pd2-resurrected/issues/92)). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll`,
 `D2Client.dll`, `D2Common.dll` of the PD2 install in Ghidra; D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`),
 RVAs.
 
@@ -48,7 +48,7 @@ Holy Light's row: cltcalc2 `ln12 + Prayer blvl * par6`, cltcalc3 `ln34 + Prayer 
 EType mag, srvoverlay valkyriestart, cltdofunc 36 (D2R's own, the same as Fist of the Heavens'), cltmissilea
 holylightdelay. srvmissilea holylight is not read by srvdo 176.
 
-Deviations (approximated, on the unported list): two players count as allies; the target is D2R's skill target. Not a
+Deviations (approximated, on the deviation list): two players count as allies; the target is D2R's skill target. Not a
 deviation: core-rules halves the rolled damage, PD2 rolls between halved bounds (the same up to 1/256 of a life point).
 
 ## chit 66 (holylightdelay)
@@ -80,7 +80,7 @@ They differ:
   keeps D2R's key (1.13c's parameter block has no such field) and leaves the target unset, as 1.13c does.
 
 So core-rules builds 1.13c's function in clthit 71 (`tools/pd2_ids.py` FUNCS moves 26 there) with no limit
-(approximated, on the unported list).
+(approximated, on the deviation list).
 
 ## Checks
 

@@ -1,6 +1,6 @@
-# Gate B (W34): the get-hit/block end window and the cast stamp
+# Gate B ([W34](https://github.com/synpoox/pd2-resurrected/issues/120)): the get-hit/block end window and the cast stamp
 
-Answers work item W34 (#120). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll` in the
+Answers work item [W34](https://github.com/synpoox/pd2-resurrected/issues/120) ([#120](https://github.com/synpoox/pd2-resurrected/issues/120)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll` in the
 Ghidra project `PD2.gpr`, D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`). Addresses are D2R RVAs unless they
 start with `0x10` or `0x6f`.
 
@@ -62,7 +62,7 @@ frame later than PD2: PD2 allows at `end - frame <= 2`, D2R at `<= 1`.
 
 The install writes 2 over both immediates (`0x42d7d2`, `0x42d808`) and hooks `0x42d700` only to log the result per
 frames left (`hit window: mode m request r, n frames left: result`). What stays D2R's (approximated,
-docs/unported.md):
+docs/deviations.md):
 
 - a get-hit, block or knockback request in get-hit/block is refused; PD2 allows it in the window;
 - a walk or run request outside the window is buffered (D2R's queue) where PD2 refuses it;
@@ -94,7 +94,7 @@ docs/unported.md):
 ## Game check
 
 `hit-window` (tag core-rules-w34). Run on Slot8 (2026-11-04, Hell, level 95 Assassin, god mode, Blood Moor, six Venom
-Lords (`megademon3`) and eight zombies, attacking and casting while they hit): all three checks passed (again on Slot6 after W19 landed: level 90 Paladin, 60/60 parts installed); the window
+Lords (`megademon3`) and eight zombies, attacking and casting while they hit): all three checks passed (again on Slot6 after [W19](https://github.com/synpoox/pd2-resurrected/issues/94) landed: level 90 Paladin, 60/60 parts installed); the window
 lines read `1 frames left: 0` (attack, skill 4 and sequence requests). A temporary log on `0x42bfb0` saw five
 requests while the player was in get-hit, every one at 1 frame left, none earlier: the client holds them.
 A request at 1 frame left is allowed with or without the patch, so the check shows the hook and the window's results,
