@@ -33,6 +33,8 @@ private-multiplayer release a build may break characters; each break is noted he
 - The uber areas have no waypoint, also after a key's warp.
 - A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
 - Lucion fights in PD2's stages: blinks, Nova, a frenzy of Punish, and spawners that call his adds.
+- Rathma and Mendeln fight by PD2's script: life events, held life, immunity, and retreat portals below 15%.
+- Mendeln, Rathma and their clones spawn in their arenas, each reached by a ghostly portal, as in PD2.
 - Diablo Clone fights in PD2's phases: three nova rounds, three skeleton waves, immune while his adds live.
 - Diablo Clone runs to the arena centre for his novas, and uber bosses left alone go idle and immune, as in PD2.
 - Diablo Clone's trapped souls rain meteors and boulders, faster and tighter by tier, and die with him.
@@ -44,12 +46,14 @@ private-multiplayer release a build may break characters; each break is noted he
 - After Lucion's death, cube a corrupted amulet in the Temple to try a Desecration (50%, 60% at tiers 1-2).
 - Diablo Clone drops Annihilus, and at tiers 1-2 rolls 1 in 200 for one of PD2's five Dclone uniques.
 - Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
+- Uber Tristram's last prime drops the Hellfire Torch and Black Soulstone and opens a town portal.
 - Royal Fire (Lucion's controller, Radament's map boss) casts PD2's ring of fire, aimed into his arena for Lucion's.
 - Lucion's Nova leaves PD2's gaps, Punish rings its target, and his Dash leaps with a trail and a landing nova.
 - The Temple's Lucion chests show and drop PD2's LucionChest loot, one more item per uber tier.
 
 #### Maps
 
+- The Gheed map event spawns Gheed in tiered maps, as in PD2.
 - Unique map bosses leave a portal to Harrogath (or onward) and drop PD2's charms, facets and puzzle pieces.
 - The Warlord of Blood and Ureh's boss drop PD2's random uniques, and the Warlord's arena starts empty.
 - The Outer Void has PD2's three random bosses, and its portals lead deeper, then home with uber parts.
@@ -61,6 +65,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
 - Map events Shadow of Mendeln, Dark Wanderer and Treasure Fallen spawn in tiered maps, as in PD2.
+- Shadow of Mendeln's Nihlathak sends mob waves, then casts his death nova and dies, as in PD2.
 - A dungeon or unique map's area stats (density, rarity, added monsters) now apply on all of its levels.
 - Teleport blockers in Realm of Terror, Sanctuary of Sin and the Imperial boss map stop teleports past them, as in PD2.
 - Wooded PD2 maps draw HD tree borders, and D2R-tile maps use whole D2R rooms.

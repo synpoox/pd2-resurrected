@@ -908,10 +908,11 @@ inline constexpr int GameCounters = 0x1aac8;
 inline constexpr uint64_t QuestFlag = 0x325c50;
 inline constexpr int PlayerQuests = 0x40;
 inline constexpr uint64_t ClientMessage = 0x491960;  // (player, message, player); 0x15 is "can't do that"
-// (game, const char text[256], colour): a chat line (packet 0x26, type 1, no sender) to every client of the game
-// (game +0x138, through 0x477a30, which breaks on text over 255 bytes). It copies all 256 bytes. The debug commands'
-// "Warping to level" (0x402820) use it with colour 2. Called, not hooked.
-inline constexpr uint64_t GameChat = 0x4016c0;
+// (*(game + GameClients), packet): sends a chat packet 0x26 (type at +1, unit type +3, unit id +4, colour +8, name
+// at +10 up to 60 bytes, text at +0x47 up to 255) to the game's clients; it breaks on longer text. D2R's own
+// GameChat (0x4016c0, the debug commands' "Warping to level") sends type 1 with unit type 2, which the client drops
+// (#520); type 4 or unit type 0 shows. Called, not hooked.
+inline constexpr uint64_t SendChat = 0x477a30;
 
 // --- core-maps: opening an uber fight (UB2, #227; D2Game\src\Game\Clients.cpp) ----------------------------------
 // Decompiled for #227 (Ghidra, D2R.gpr). Called, not hooked.
@@ -1151,6 +1152,14 @@ inline constexpr int32_t QualityNormal = 2;
 inline constexpr int GameUniquesDropped = 0x3638;
 inline constexpr uint32_t MonDemon = 0x2000;  // MonFlags bit 13 (monstats field table 0x39db30)
 
+// --- core-maps: the Uber Tristram primes' drop (UB3, #228; D2Game\src\Quests\QuestsFX.cpp) --------------------------
+// D2R's own drop on the primes' deaths (1.13c 0x6fd0aa30): it flags 704/705/709 dead in the game and, once all three
+// are, drops the Hellfire Torch and a Standard of Heroes per player. The unique-monster death switch 0x4a1480 tail-calls
+// it (0x4a1645). The patch makes it return at once, as PD2 replaces it with its own drop (0x10377710).
+inline constexpr uint64_t PrimesDrop = 0x5a8450;
+inline constexpr uint8_t PrimesDropD2R[] = {0x48, 0x89, 0x5c, 0x24, 0x20};  // mov [rsp+20],rbx
+inline constexpr uint8_t PrimesDropOff[] = {0xc3, 0x90, 0x90, 0x90, 0x90};  // ret
+static_assert(sizeof(PrimesDropD2R) == sizeof(PrimesDropOff));
 // --- core-maps: Lucion's death (UB6, #231; D2Game\src\Skills\Skills.cpp, D2Game\src\Player\PlayerPets.cpp) --------
 // Decompiled for #231 (Ghidra, D2R.gpr). Called, not hooked.
 // The portal maker is rva::PortalMaker (MS9's block below; #231 found the same 0x432ce0): with arg 9 0 it finds a free
@@ -1241,6 +1250,16 @@ inline constexpr uint64_t PortalMaker = 0x432ce0;
 // its picks by the dropper; with no items array it drops all picks (max under 1 means 6). The item level feeds the
 // quality roll 0x4421b0. PD2's map events call 1.13c's same function as (..., tc, 0, ilvl, 0, 0, 0, 1).
 inline constexpr uint64_t TcDrop = 0x4404f0;
+
+// --- core-maps: Rathma's stage spawns (UB5, #525; D2Common Drlg, D2Game\src\Game\Clients.cpp) -----------------------
+// Decompiled for #525 (Ghidra, D2R.gpr). Called, not hooked. How ActSpawnSpot's 0x3da650 finds and builds a room
+// anywhere in a level, as PD2's 0x10389f00 does through 1.13c D2Common:
+// (dataFlag, drlg act (act +0x70), level) -> the act's drlg level, made if missing; its room list at +0x10 is empty
+// until the level is built. ActDrlg and TeleportUnit are the Outer Void's (#532) above.
+inline constexpr uint64_t DrlgLevelOf = 0x3267c0;
+inline constexpr int DrlgLevelRooms = 0x10;
+inline constexpr uint64_t DrlgRoomAt = 0x3275b0;    // (drlg level, tile x, tile y) -> its drlg room holding them, or null
+inline constexpr uint64_t DrlgRoomInit = 0x3289a0;  // (dataFlag, drlg room) -> the room, built if needed
 
 // --- core-maps: the map-area death drops (MS4d; D2Game\src\Monster\MonsterMode.cpp) --------------------------------
 // Decompiled for MS4d (Ghidra, D2R.gpr). Called, not hooked.

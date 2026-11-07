@@ -168,13 +168,29 @@ controller, spawner and adds. So a boss left alone, or pulled out of every playe
   - The delay after a cast: `aidel` + 10 at tier 0, else max(`aidel` − 4×(tier − 1), 20); the meteor's adds 0-7 − 4.
   - The same function's branch for monster 0x39a (nihlathakMap) runs mob waves (its `aip1` columns count the stages),
     then casts skill 2 (RathmaDeath) and kills itself; its branch for 0x421 in level 0xb6 is a third AI.
+- **nihlathakMap** (`0x1035bc60` from `0x1035c43e`, #538). Its stage is `game+0x2628`, which the Shadow of Mendeln
+  spawn sets to 1; at 0 it idles 25. With *a*, *b*, *c* the three `aip1` columns (20, 15, 10) and *i* = stage − 1:
+  - Stage 1: once its target is within 14, stage 2 and cast skill 1 (NihlathakMapMobSpawn).
+  - *i* < *a* + *b* + *c* + 1: a wave. Normal, champion and unique counts are `rand() %` the stage's row: `aip2`
+    (*i* < *a* + 1; Normal column at most 2 gives 2, empty columns 0), `aip3` (*i* < *a* + *b* + 1; at most 1 gives 1,
+    unique empty 0), else `aip4` (at most 1 gives 1); all 0 gives one normal. Each spawns 10 subtiles around it at a
+    free spot (`0x10389c20`), normal (`0x1037cd00`), champion (`0x1037cbf0`) or unique with 3-6 minions
+    (`0x1037caf0`). The monster is a random member of the set `0x105ddfe0` {−1, 923, 924, 926, 927} (zombie,
+    charger, skeleton, archer NihlMinion), −1 meaning a random member of `0x105ddf74` {928-931} (the four mages);
+    the baseline DLL holds the sets' constants at `0x10450760` / `0x10450770`. Then stage + 1, idle for `aip5`'s
+    Normal column (Nightmare's past *a* + 1, Hell's past *a* + *b* + 1), and by its seed (`0x1036f320`) % 3: skill 3
+    (MonCurseCast) on the target, skill 1 at its spot + 2, or nothing.
+  - *i* = *a* + *b* + *c* + 1: wait 100; next think skill 2 (RathmaDeath), wait 25; then it dies quietly (`0x10356e00`).
 
 ### Rathma and Mendeln (`0x10358510`)
 
 - They register as `game+0x2600` (Rathma, the bone clone) and `+0x2604` (Mendeln, the poison clone). Stage byte 0 -> 1 on
   the first tick.
-- **Life thresholds** every 10% from 90% down to 20%, with stat 446 as the event index. Mendeln alone gets 90, 70, 50 and
-  30 (the healing waves), and both get 80, 60, 40 and 20. Each event casts skill slot 7 or 8.
+- **Life thresholds** every 10% from 90% down to 20%, with stat 446 as the event index (read again for
+  [#474](https://github.com/synpoox/pd2-resurrected/issues/474)). Mendeln (rathmaPoison, not his clone) blinks to the
+  stage's spot and casts slot 7 at 90, 70, 50 and 30; both poison bosses blink there and run a cast chain (slots 6, 3,
+  then six of 2/5/1, then 4) at 80, 60, 40 and, from stage 5, 20. Rathma casts slot 7 at 80, 70, 50 and 30; his 90, 60
+  and 40 only count. At 90, 70, 50, 30 and 15 the life is set back to that mark, so one hit never skips an event.
 - **Retreat below 15%:** stage 1 -> 2 or 3 -> 4. A ghostly portal (object 585) opens at the boss, and an invisible object
   587 marks it. While the Rathma area is active, entering level 162 before stage 2 sets `game+0x2628` to 2, and entering
   163 before stage 4 sets it to 4 (section 9).
@@ -182,8 +198,9 @@ controller, spawner and adds. So a boss left alone, or pulled out of every playe
   (18284, 13759).
 - **Final pair:** when the first clone dies (stage 5 -> 6), `0x10376840` makes the surviving clone cast a skill through
   `0x1036d7d0`. That is PD2's general cast helper (nine callers, other AIs among them), so it is not a shared-life
-  mechanic. This is probably RathmaDeath's buff. From stage 6 the survivor's AI repeats the cast while it lacks state 103
-  (`monfrenzy`). When the second clone dies (6 -> 7),
+  mechanic. It is RathmaDeath's buff: the helper puts the skill's auratargetstate (monfrenzy) and aurastats on the
+  unit for auralencalc frames, and never runs its srvdo 169 (#474). From stage 6 the survivor's AI repeats it while it
+  lacks state 103 (`monfrenzy`). When the second clone dies (6 -> 7),
   every void knight, golem and totem in the level is killed.
 - **Shared life:** in PD2's damage code (`0x10302ca0`), when a clone (935 or 936) takes damage and both boss slots are
   set, the other clone loses the same life (stat 6), unless it is dead or dying or has state 8. Life-drain damage (stat
