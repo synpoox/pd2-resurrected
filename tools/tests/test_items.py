@@ -66,6 +66,13 @@ class KeyedTests(unittest.TestCase):
         self.assertEqual([r[3] for r in M.merge_cube(pd2, table(head), NO_CTX).rows],
                          ["Pandemonium Portal", "Pandemonium Finale Portal", "useitem"])
 
+    def test_cube_finale_portal_is_off(self):
+        # D2R's organ portal is off (d2r-only-content.md): the organs reach only PD2's Talisman row
+        head = "enabled|input 1|output|output b\n"
+        pd2 = table(head + "1|dhn|useitem|ubtm\n")
+        d2r = table(head + "1|dhn|Pandemonium Finale Portal|\n1|pk1|Pandemonium Portal|\n")
+        self.assertEqual([r[0] for r in M.merge_cube(pd2, d2r, NO_CTX).rows], ["1", "0", "1"])
+
     def test_cube_mod_skill_params(self):
         ren = I.renames({t: [] for t in I.TABLES})
         ren["skills"] = {"impale": "Javelin and Spear Mastery"}
