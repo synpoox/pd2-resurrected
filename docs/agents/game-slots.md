@@ -37,3 +37,5 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
 - `install.ps1` writes only the `out\data` files that differ from the slot's and touches nothing outside
   `<slot>\mods\PD2Resurrected`, so moving a slot between builds is quick.
 - Never delete a cache folder another worktree's `pd2-data` points at. CI (`GITHUB_ACTIONS`) does not use these.
+- Nothing prunes the cache. Each `merge\<key>` holds about 2 GB, so the owner deletes old ones by hand while no
+  merge is running.
