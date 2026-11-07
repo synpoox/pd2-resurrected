@@ -23,7 +23,7 @@ MODELS = {"dependencies": {}, "throwaxe": "missile_hand_axe", "ancient_throwing_
           "bighead_1": "bighead_lightning_missile", "shock_field_on_ground": "expansion_shock_field"}
 # D2R's rows, then PD2's: a CelFile match (folder prefix differs), PD2-only art, and a name D2R would underscore
 MOD = D2R + "splitthrowaxe|MissileHandAxe\r\nurehChargedGround|expansion\\shockfield\r\nzharbolts|ZharBolt\r\n" \
-            "iskatubliz1|iskatubliz\r\n"
+            "iskatubliz1|iskatubliz\r\nA3 Merc fireball|BigHead\r\n"
 LIKES = {"zharbolts": "bighead1", "iskatubliz1": "shock field on ground"}
 
 
@@ -31,6 +31,8 @@ class EntriesTests(unittest.TestCase):
     def test_celfile_match_and_lines(self):
         self.assertEqual(H.entries(table(MOD), table(D2R), MODELS, LIKES), {
             "splitthrowaxe": "missile_hand_axe", "urehchargedground": "expansion_shock_field",
+            "urehChargedGround": "expansion_shock_field",  # capitals: both spellings (JSON keys are case-sensitive)
+            "a_3_merc_fireball": "bighead_lightning_missile", "A_3_Merc_fireball": "bighead_lightning_missile",
             "zharbolts": "bighead_lightning_missile", "iskatubliz_1": "expansion_shock_field"})
 
     def test_refusals(self):
@@ -45,6 +47,8 @@ class EntriesTests(unittest.TestCase):
                 H.entries(table(MOD), table(D2R), MODELS, likes)
         with self.assertRaisesRegex(H.MissileHdError, "already has 'bighead_1'"):
             H.entries(table(D2R + "bighead_1|BigHead\r\n"), table(D2R), MODELS, {})
+        with self.assertRaisesRegex(H.MissileHdError, "already has 'Zap_1'"):  # the own-spelling key is checked too
+            H.entries(table(D2R + "Zap1|BigHead\r\n"), table(D2R), MODELS | {"Zap_1": "x"}, {})
 
 
 class RuleTests(unittest.TestCase):
@@ -57,11 +61,18 @@ class RuleTests(unittest.TestCase):
             (d2r / H.HD).parent.mkdir(parents=True)
             (d2r / H.HD).write_text(json.dumps(MODELS), "utf-8")
             rule.write_text("# missile\tlike\nzharbolts\tbighead1\niskatubliz1\tshock field on ground\n", "utf-8")
+            pd2 = Path(tmp) / "pd2" / "global" / "missiles"
+            pd2.mkdir(parents=True)
+            (pd2 / "iskatubliz.dcc").write_bytes(b"dcc")
+            (pd2 / "unused.dcc").write_bytes(b"x")
             H.apply(rule, Path(tmp) / "pd2", d2r, out)
             written = json.loads((out / H.HD).read_text("utf-8"))
+            # legacy mode: PD2's own DCC for a row that uses it, nothing else (#350)
+            self.assertEqual([p.name for p in (out / "global" / "missiles").iterdir()], ["iskatubliz.dcc"])
+            self.assertEqual((out / "global" / "missiles" / "iskatubliz.dcc").read_bytes(), b"dcc")
         self.assertEqual(list(written)[:len(MODELS)], list(MODELS))  # D2R's entries first, dependencies leading
         self.assertEqual(written["splitthrowaxe"], "missile_hand_axe")
-        self.assertEqual(len(written), len(MODELS) + 4)
+        self.assertEqual(len(written), len(MODELS) + 7)
 
 
 if __name__ == "__main__":

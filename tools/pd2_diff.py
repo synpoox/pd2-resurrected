@@ -1,9 +1,9 @@
 """The table-diff gate: compare the merged tables to the PD2 baseline by table, row and column name.
 
-    python tools/pd2_diff.py --scope P2|P3|P4|M1|pre-alpha|alpha [--root DIR] [--d2r DIR]
+    python tools/pd2_diff.py --scope P2|P3|P4|M1|alpha [--root DIR] [--d2r DIR]
 
 Reads PD2's tables from pd2-data/ and the mod's from generated/ (D2R's own table where generated/ has none yet).
-Exit 0: every deviation is on docs/unported.md; 1: some are not (listed in the report); 2: the list or an id list is
+Exit 0: every deviation is on docs/deviations.md; 1: some are not (listed in the report); 2: the list or an id list is
 broken.
 """
 from __future__ import annotations
@@ -12,6 +12,7 @@ import argparse
 import fnmatch
 import json
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -26,13 +27,15 @@ SHOWN = 200  # open deviations listed in the report; the counts cover the rest
 
 
 STATUSES = ("approximated", "cut", "not yet")
-# the roadmap's work items that merge tables (P2 the id-listed ones, P3 the item tables, P4 the rest); M1, pre-alpha and alpha all
+# the roadmap's work items that merge tables (P2 the id-listed ones, P3 the item tables, P4 the rest); M1 and alpha both
 ITEM_TABLES = {"armor", "weapons", "misc", "itemtypes", "magicprefix", "magicsuffix", "automagic", "rareprefix",
                "raresuffix", "uniqueitems", "sets", "setitems", "runes", "gems", "cubemain", "cubemod", "cubetype",
                "treasureclassex", "treasureclass", "qualityitems", "lowqualityitems", "itemratio", "gamble",
                "properties", "books", "belts", "bodylocs"}
+# the tables whose rows the gate pairs by their id list, as the merge placed them (names repeat in them)
+LIST_PAIRED = ITEM_TABLES | {"levels", "lvlprest", "lvlwarp", "objects", "objgroup"}
 SCOPES = {"P2": lambda t: t in pd2_ids.TABLES, "P3": lambda t: t in ITEM_TABLES,
-          "P4": lambda t: t not in ITEM_TABLES and t not in pd2_ids.TABLES, "M1": lambda t: True, "pre-alpha": lambda t: True, "alpha": lambda t: True}
+          "P4": lambda t: t not in ITEM_TABLES and t not in pd2_ids.TABLES, "M1": lambda t: True, "alpha": lambda t: True}
 
 
 class GateError(Exception):
@@ -43,14 +46,14 @@ class GateError(Exception):
 class Result:
     table: str
     open: list[tuple[str, str, str]] = field(default_factory=list)  # (table.row.column, PD2 value, mod value)
-    covered: int = 0  # deviations the unported list names
+    covered: int = 0  # deviations the deviation list names
     source: str = "merged"  # the mod's table: merged (generated/), D2R (not merged yet) or none
 
 
 @dataclass
 class Report:
     results: list[Result]
-    entries: dict[str, int] = field(default_factory=dict)  # unported.md entries by status, whatever the scope
+    entries: dict[str, int] = field(default_factory=dict)  # deviations.md entries by status, whatever the scope
 
     @property
     def ok(self) -> bool:
@@ -83,12 +86,12 @@ def pairs(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | No
     if rows != "name":
         mod_rows = {k.lower(): r for k, r in zip(row_keys(mod, rows), mod.rows)}
         return [(k, pr, mod_rows.get(k.lower())) for k, pr in zip(row_keys(pd2, rows), pd2.rows)]
-    if name in pd2_ids._BY_ROW or (name in ITEM_TABLES and lists.get(name)):
+    if name in pd2_ids._BY_ROW or (name in LIST_PAIRED and lists.get(name)):
         where = ({p.lower(): i for p, i, _ in lists[name]} if name not in pd2_ids._BY_ROW else
                  {p.lower(): k for k, p in enumerate(pd2_ids.ident(pd2.names()))})
         recs = mod.records()
-        return [(p, pd2.rows[k], mod.rows[recs[where[p.lower()]]] if where.get(p.lower(), len(recs)) < len(recs)
-                 else None) for p, k in zip(pd2_ids.ident(pd2.names()), pd2.records())]
+        return [(p, pd2.rows[k], mod.rows[recs[where[p.lower()]]] if 0 <= where.get(p.lower(), len(recs)) < len(recs)
+                 else None) for p, k in zip(pd2_ids.ident(pd2.names()), pd2.records())]  # LEFT_OUT: no mod row
     row_ren = ren.get(name, {}) if ren else {}
     mod_rows = keyed(mod.rows, mod.key)
     out = []
@@ -133,32 +136,48 @@ def compare(name: str, pd2: Table, mod: Table, ren: dict[str, dict[str, str]] | 
             pd2_ids.fix_hit_params(mod.header, want, ctx.ids)
         elif ctx:
             pd2_ids.fix_props(mod.header, want, ctx.ren, ctx.ids, ctx.props)
+            if "pSpell" in pd2.header:
+                pd2_ids.fix_map_level(name, mod.header, want, pr[pd2.header.index("pSpell")], ctx.ids)
+        for j, c in enumerate(mod.header):  # level tables' row numbers, in the mod's ids
+            t = pd2_ids.NUM_REFS.get(name, {}).get(c) or (name if pd2_ids.ID_COLS.get(name) == c else None)
+            if ctx and t:
+                want[j] = ctx.ids.get(t, {}).get(want[j], want[j])
         res.open += [(f"{name}.{row}.{c}", pr[i], mr[j]) for c, i, j in cols if not same(want[j], mr[j])]
     return res
 
 
-def unported(path: Path) -> tuple[list[str], dict[str, int]]:
-    """The Gate patterns of docs/unported.md (`table.row.column`, fnmatch, lower case) and its entry count by status.
-    Fails on a row whose status is not one of STATUSES."""
+def deviations(path: Path) -> tuple[list[str], dict[str, int]]:
+    """The Gate patterns of docs/deviations.md (`table.row.column`, fnmatch, lower case) and its entry count by status.
+    A table with a Status column holds entries, one with a Gate column patterns; a Gate row in a table without Status
+    names its entry by Deviation. Fails on a status not in STATUSES and on a Gate row that names no entry."""
     patterns, cols, entries = [], None, dict.fromkeys(STATUSES, 0)
+    listed, named = set(), []
     for line in path.read_text("utf-8").splitlines():
         if not line.startswith("|") or set(line) <= set("|-: "):
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if "Gate" in cells and "Status" in cells:
-            cols = cells.index("Status"), cells.index("Gate")
+        if "Deviation" in cells and ("Gate" in cells or "Status" in cells):
+            cols = {c: i for i, c in enumerate(cells)}
             continue
         if cols is None:
             continue
-        if cells[cols[0]] not in STATUSES:
-            raise GateError(f"unported.md: status {cells[cols[0]]!r} is not one of {', '.join(STATUSES)}: {line}")
-        entries[cells[cols[0]]] += 1
-        patterns += [p.lower() for p in re.findall(r"`([^`]+)`", cells[cols[1]])]
+        if "Status" in cols:
+            status = cells[cols["Status"]]
+            if status not in STATUSES:
+                raise GateError(f"deviations.md: status {status!r} is not one of {', '.join(STATUSES)}: {line}")
+            entries[status] += 1
+            listed.add(cells[cols["Deviation"]])
+        elif "Gate" in cols:
+            named.append(cells[cols["Deviation"]])
+        if "Gate" in cols:
+            patterns += [p.lower() for p in re.findall(r"`([^`]+)`", cells[cols["Gate"]])]
+    if unknown := [d for d in named if d not in listed]:
+        raise GateError(f"deviations.md: Gate patterns for rows not on the list: {unknown}")
     return patterns, entries
 
 
 def triage(res: Result, patterns: list[str]) -> Result:
-    """Moves the deviations the unported list names from open to covered."""
+    """Moves the deviations the deviation list names from open to covered."""
     kept = [d for d in res.open if not any(fnmatch.fnmatchcase(d[0].lower(), p) for p in patterns)]
     res.covered += len(res.open) - len(kept)
     res.open = kept
@@ -171,7 +190,10 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
     if not (d2r / "global" / "excel").is_dir():  # else every unmerged table would read as unshipped
         raise GateError(f"no D2R tables under {d2r}: run `modkit fetch` or pass --d2r")
     pd2_excel, mod_excel = root / "pd2-data/data/global/excel", root / "generated/data/global/excel"
-    patterns, entries = unported(root / "docs" / "unported.md")
+    patterns, entries = deviations(root / "docs" / "deviations.md")
+    if not any(pd2_excel.glob("*.txt")):  # else the gate compares nothing and passes
+        raise GateError(f"no PD2 tables under {pd2_excel}: run `python tools/pd2_extract.py` (the merge's first step) "
+                        "or pass --root a checkout that has them")
     lists = {t: pd2_ids.read_list(pd2_ids.list_path(root / "merge", t)) for t in pd2_ids.TABLES}
     ren, ctx = pd2_ids.renames(lists), None
     tables = root / "merge" / "tables.json"
@@ -183,16 +205,17 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
         if src is None:
             res = Result(p.stem, [(f"{p.stem}.*.*", "", "")], source="none")
         else:
-            ids_read = p.stem in pd2_ids.PROPS or p.stem == "missiles"  # property or hit parameters name ids
+            # property or hit parameters, level tables' numbers or map items' levels, name ids
+            ids_read = p.stem in pd2_ids.PROPS or p.stem in ("missiles", "misc", *pd2_ids.NUM_REFS, *pd2_ids.ID_COLS)
             if ids_read and ctx is None:
-                ctx = pd2_ids.context_of(lists, root / "pd2-data/data")
+                ctx = pd2_ids.context_of(lists, root / "pd2-data/data", d2r)
             key = pd2_ids.KEY.get(p.stem)
             rows = opts.get(p.stem, {}).get("rows", "name") if src[0] == "merged" else "name"
             res = compare(p.stem, Table(p, key), Table(src[1], key), ren, lists,
                           ctx if ids_read else None, rows)
             res.source = src[0]
             if src[0] == "merged" and f"{p.stem.lower()}.*" in patterns:
-                raise GateError(f"unported.md still covers all of {p.stem}, which is merged now: narrow its row")
+                raise GateError(f"deviations.md still covers all of {p.stem}, which is merged now: narrow its row")
         results.append(triage(res, patterns))
     return Report(results, entries)
 
@@ -201,14 +224,25 @@ def escape_pipes(v: str) -> str:
     return v.replace("|", r"\|")
 
 
-def report(rep: Report, scope: str) -> str:
-    """The gate's result as markdown, for pasting into the PR."""
+def commit_of(root: Path) -> str:
+    """`root`'s short commit id, marked when its working tree has uncommitted changes, so a stale report shows."""
+    def git(*args: str) -> str:
+        try:
+            return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True).stdout.strip()
+        except OSError:  # git is not installed
+            return ""
+    head = git("rev-parse", "--short", "HEAD") or "no git commit"
+    return f"{head}, uncommitted changes" if git("status", "--porcelain") else head
+
+
+def report(rep: Report, scope: str, commit: str = "") -> str:
+    """The gate's result as markdown, for pasting into the PR; the first line names the commit it ran on."""
     opened = rep.open()
-    lines = [f"Table-diff gate, scope {scope}: {'pass' if rep.ok else 'FAIL'}, {len(opened)} open, "
-             f"{sum(r.covered for r in rep.results)} table cells on the unported list",
-             "Unported list: " + ", ".join(f"{rep.entries.get(s, 0)} {s}" for s in ("not yet", "approximated", "cut")) + " entries "
+    lines = [f"Table-diff gate{f' on {commit}' if commit else ''}, scope {scope}: {'pass' if rep.ok else 'FAIL'}, "
+             f"{len(opened)} open, {sum(r.covered for r in rep.results)} table cells on the deviation list",
+             "Deviation list: " + ", ".join(f"{rep.entries.get(s, 0)} {s}" for s in ("not yet", "approximated", "cut")) + " entries "
              "(the cell count is large because one entry can cover a whole table)", "",
-             "| Table | Mod table | Open | Unported |", "|---|---|---|---|"]
+             "| Table | Mod table | Open | On the deviation list |", "|---|---|---|---|"]
     lines += [f"| {r.table} | {r.source} | {len(r.open)} | {r.covered} |" for r in rep.results]
     if opened:
         lines += ["", "| Open deviation | PD2 | Mod |", "|---|---|---|"]
@@ -229,7 +263,7 @@ def main(argv: list[str] | None = None) -> int:
     except (GateError, pd2_ids.IdError) as e:
         print(f"pd2_diff: {e}", file=sys.stderr)
         return 2
-    print(report(rep, a.scope))
+    print(report(rep, a.scope, commit_of(a.root)))
     return 0 if rep.ok else 1
 
 

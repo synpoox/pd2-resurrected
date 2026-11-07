@@ -7,8 +7,11 @@
 #include <D2RLPlugin/api.h>
 
 #include "crash_guard.h"
+#include "cube_rules.h"
 #include "d2r.h"
+#include "item_rules.h"
 #include "log.h"
+#include "merc_rules.h"
 #include "off_switch.h"
 #include "skill_functions.h"
 
@@ -47,17 +50,38 @@ using InstallFn = void (*)(const D2RL::PluginContext* context, char* report, siz
 struct Part {
 	const char* word;
 	InstallFn install;
-	char report[2400];  // one entry per installed slot, so it grows with every rule
+	char report[2700];  // one entry per installed slot, so it grows with every rule
 };
 
 void InstallSkills(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char slots[2300] = "";
+	char slots[2600] = "";
 	const int installed = InstallSkillFunctions(context, slots, sizeof(slots));
 	std::snprintf(report, size, "%d/%d installed:%s", installed, SkillFunctionCount(), slots);
 }
 
+void InstallItems(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[600] = "";
+	const int installed = InstallItemRules(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, ItemRuleCount(), rules);
+}
+
+void InstallCube(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallCubeRules(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, CubeRuleCount(), rules);
+}
+
+void InstallMercs(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallMercRules(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, MercRuleCount(), rules);
+}
+
 Part g_parts[] = {
 	{"skills", InstallSkills, ""},
+	{"items", InstallItems, ""},
+	{"mercs", InstallMercs, ""},
+	{"cube", InstallCube, ""},
 };
 
 void InstallParts(const D2RL::PluginContext* context) noexcept {
@@ -98,6 +122,15 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	SkillFunctionCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);  // also in the plugin log, for game checks and crash reports
+	ItemRuleCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	MercRuleCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	CubeRuleCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
 }
 

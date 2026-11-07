@@ -1,6 +1,6 @@
 # PD2 art, audio and map asset inventory
 
-Answers map issue #1, research ticket #5. Only counts, formats, sizes and names are recorded here. No PD2 or Blizzard
+Answers map issue [#1](https://github.com/synpoox/pd2-resurrected/issues/1), research ticket [#5](https://github.com/synpoox/pd2-resurrected/issues/5). Only counts, formats, sizes and names are recorded here. No PD2 or Blizzard
 asset is copied into this repo.
 
 ## Answer in brief

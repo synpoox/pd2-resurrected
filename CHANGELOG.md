@@ -5,68 +5,111 @@ private-multiplayer release a build may break characters; each break is noted he
 
 ### Unreleased
 
-- Blade Fury's blades work as in Project Diablo II: a blade that hits a wall bounces off it as three blades, and a
-  blade that hits a monster can split in two, up to three times over.
-- Wands, staves and scepters with a class skill show it ("+1 to Raise Skeleton Warrior (Necromancer Only)") instead
-  of "an evil force".
-- Blessed Hammer works as in Project Diablo II: hammers fly through walls.
-- Fire Bolt, Ice Bolt, Blizzard and Chilling Armor's bolts work as in Project Diablo II: each hit splashes its damage
-  onto every monster close to where it lands.
-- Dragon Flight works as in Project Diablo II: it teleports you and kicks in the same moment, and its damage bonus
-  is Project Diablo II's. Psychic Hammer's hammer loses damage with each monster it jumps to, as in Project Diablo II.
-- Holy Sword and Smite work as in Project Diablo II: Holy Sword casts only with a two-handed sword, and Smite
-  adds its crushing blow chance to your hits while you smite (the crushing blow itself is still Diablo II
-  Resurrected's).
-- Gust works as in Project Diablo II: it teleports you, then chills and staggers the monsters around where you land.
-- Hunger works as in Project Diablo II: a werebear eats a corpse for a while of life steal, speed, open wounds and
-  deep wounds.
-- Fire Claws works as in Project Diablo II: each claw sends a trail of fire waves (more with the skill's level).
-- Summoning a Spirit Wolf or Fenris at the limit replaces the oldest one, as in Project Diablo II.
-- Firestorm works as in Project Diablo II: every one of its fire trails wanders (D2R sends the first one straight).
-- Static Field works as in Project Diablo II: it takes a share of current life down to Project Diablo II's floor,
-  ignores some map and Rathma monsters, and lowers lightning resistance for a while (half as much on a monster
-  immune to lightning). Combustion and the boss novas that share it throw Project Diablo II's ring of missiles.
-- Charge works as in Project Diablo II: it runs at Project Diablo II's speed, and the longer the charge, the wider
-  its hit splashes with a splash-on-hit item.
-- The Assassin's charge-up skills build charges as in Project Diablo II: charges are shared between them, and each
-  charge's effect (Fists of Fire's fire, Cobra Strike's poison, Blades of Ice's wave) fires on the hit that builds
-  it, and your client draws each charge as Project Diablo II's does (Fists of Fire's fire and nova, Cobra Strike's
-  poison bolts and cloud, Claws of Thunder's falling storm bolts).
-- Teleport works as in Project Diablo II: for a second after each teleport your elemental masteries are
-  lowered, by less as the skill levels up.
-- Holy Light works as in Project Diablo II: it heals allies and deals magic damage to enemies around its target,
-  half as much to the side the target is not on, and knocks back undead. Fist of the Heavens' holy bolts reach
-  every unit around the strike, the target included.
-- Vengeance works as in Project Diablo II: a hit bursts fire, cold and lightning from your own elemental damage
-  (Holy auras and Enchant aside) on the enemies around the target, and the burst chains on from enemy to enemy.
-- Joust works as in Project Diablo II: you teleport to the target and strike it with extra damage and critical strike
-  chance, then run faster for two seconds.
-- Melee splash works as in Project Diablo II: items that splash on hit, Frenzy and Tiger Strike's splash radius,
-  and revived monsters' hits damage the monsters around the one struck.
-- Poison Dagger works as in Project Diablo II: each stab leaves a ring of poison clouds around the target.
-- Blood Warp works as in Project Diablo II: it costs a share of your life (never all of it), then regenerates life
-  for five seconds.
-- Inferno and Arctic Blast send Project Diablo II's line of flames (more with Inferno's level).
-- Another skill starts at once while Inferno or Arctic Blast channels, and a second Blade Fury does not cut the first short, as in Project Diablo II.
-- Desecrate raises corpses around its cloud as in Project Diablo II.
-- Skill trees show their boxes and arrows where Project Diablo II's skills and prerequisites are.
-- Golem Mastery adds a golem every 5 base levels, as in Project Diablo II; a new golem replaces the oldest.
-- Double Throw works as in Project Diablo II: one throw that bounces between monsters.
-- Leap and Leap Attack work as in Project Diablo II: faster leaps, and Leap Attack hits every monster where it lands.
-- Lightning Bolt and Lightning Fury work as in Project Diablo II.
-- Exploding Arrow spreads extra explosions, Multiple Shot loses damage per pierce, and Valkyries' Power Strike shows.
-- Skill tooltips no longer show raw format codes ("Duration: %d seconds40 seconds") or a stray "an evil force" line;
-  the Mana Cost and damage lines are back ("Magic Damage: 3-5"). Percent values read "+110%" where PD2 says "+110 percent".
-- Bash knocks back half the time, and Find Potion and Find Item skip minions' corpses.
-- Item stat lines no longer show the value twice ("+1 %+d to All Skills").
-- Corruption: cube an item with a Worldstone Shard. It takes two presses for now: the first rolls the hidden
-  corruption value and hands the shard back, the second gives one of PD2's outcomes. A corrupted item can't be
-  corrupted again.
-- Thunder Storm, Power Strike, Shattering Arrow and boss orbs burst into Project Diablo II's novas when they hit.
-- PD2's monsters, mercenaries, areas, shrines and objects are in. PD2's map areas and bigger inventory are not yet.
-- PD2's items, affixes, runewords, cube recipes and treasure classes are in. Map items do not drop yet. Breaks
-  characters from earlier builds.
-- Project Diablo II's names and descriptions for items, skills, monsters and areas (English).
-- The mod uses D2RLoader's extended save format: characters load only with D2RLoader.
-- Comes with a loot filter (with drop sounds), stash search, item roll ranges, a buff bar and an XP bar.
-- Skills not rebuilt yet play like the closest D2R skill.
+#### Items
+
+- Items work more as in Project Diablo II: ethereal items keep their full durability, set items can drop ethereal,
+  rare items get at least four affixes from item level 45 (five from 65, six from 85) and rare jewels always four,
+  hiring a new mercenary drops the old one's gear, and shift-right-clicking a Tome of Identify identifies your
+  inventory. Skill on cast and skill on block items proc through the Cast Triggers plugin (1.1.12); not yet confirmed in game.
+- of Anima rolls on amulets, Frostwarded and Winterlord's tint items dark blue, and the Antidote and Thawing Potions no
+  longer show an "An evil force" line.
+
+#### Uber bosses
+
+- The Diablo Clone, Rathma and Lucion keys open their areas. Use one at the Blood Fountain in Harrogath (Hell,
+  level 80+, Rite of Passage done): everyone at the fountain who is level 80+ goes in, without their mercenary,
+  summons or buffs. One map or uber area per game. The fights themselves come later.
+- A tier-0 uber key also leaves three grey portals by the fountain. Each takes one player back in, once, by the same
+  rules (no mercenary, summons or buffs), and heals the boss by 20% of its life. The uber areas have no waypoint.
+- Uber fight monsters scale with the key's tier, as in PD2.
+
+#### Maps
+
+- Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
+
+#### Fixes
+
+- The mercenary panel shows the mercenary's title (Rogue, Desert Mercenary, Barbarian, Ascendant) instead of
+  "an evil force".
+- In legacy graphics mode, PD2's own missiles show again: Holy Nova, and the other missiles that used PD2-only art.
+- An item with Druid or Assassin class skills (Hellfire Torch, Spirit Ward) shows the number, e.g.
+  "+2 to Assassin Skill Levels".
+
+### 0.1.0-alpha (2026-11-05)
+
+The first alpha: every Project Diablo II (PD2) class plays as in PD2, offline single-player, with PD2's maps. The uber
+bosses and the Warlock redesign come in a later alpha.
+
+#### Getting started
+
+- You need D2RLoader: characters use its extended save format and load only through it.
+- Characters from test builds before this release don't load.
+- Comes with a loot filter (with drop sounds), stash search, item roll ranges, a charm inventory, a buff bar,
+  and Paladin auras on the left mouse button.
+- PD2's names and descriptions for items, skills, monsters and areas (English).
+
+#### Items
+
+- PD2's items, affixes, runewords, cube recipes and treasure classes.
+- Corruption: cube an item with a Worldstone Shard and press Transmute once. A corrupted item can't be corrupted
+  again.
+- Demonic Cube rerolls a unique or set item, keeping its base, sockets and ethereal state. Items with socketed items
+  in them are refused for now.
+- Cube recipes take their inputs one per cell (three T1 maps, three chipped gems, ...). Stacked inputs don't count
+  yet.
+- PD2's combat stats: critical and deadly strike, crushing blow, open wounds and deep wounds, and the life steal cap.
+- Curse resistance and extra curse slots.
+- Skill on cast procs for every item that has it; skill while equipped and Phasing work.
+- Ormus' Robes roll a random Sorceress skill.
+- The Warlock gets PD2's class item rules: Hellfire Torch and Spirit Ward can roll Warlock skills, and Warlock affixes
+  roll as often as other classes'.
+
+#### Monsters and areas
+
+- PD2's monsters, mercenaries, areas, shrines and objects.
+- Tyrael hires the Ascendant.
+- Cycle of Life and Vines heal everyone nearby when they eat a corpse.
+- Torajan's eggs burst in a poison nova as they hatch.
+- Minions raised by boss missiles (Leoric's guards, Iskatu's vermin, ...) drop no loot and give no experience.
+
+#### Skills
+
+These now work as in PD2. Skills not listed still play like the closest D2R skill.
+
+- **Every class:** melee splash (items, Frenzy, Tiger Strike, revived monsters), and another skill starts at once
+  while Inferno or Arctic Blast channels. Hit recovery and block end on PD2's frame.
+- **Amazon:** Lightning Bolt, Lightning Fury, Exploding Arrow, Multiple Shot, Power Strike (Valkyries too) and
+  Shattering Arrow.
+- **Assassin:** the charge-up skills (shared charges, each effect on the hit that builds it), Dragon Flight, Psychic
+  Hammer and Blade Fury.
+- **Barbarian:** Double Throw, Split Throw, Leap, Leap Attack, Bash, Find Potion and Find Item.
+- **Druid:** Arctic Blast, Firestorm, Gust, Hunger, Fire Claws, Spirit Wolf and Fenris.
+- **Necromancer:** Poison Dagger, Blood Warp, Desecrate and Golem Mastery.
+- **Paladin:** Charge, Holy Light, Fist of the Heavens, Vengeance, Joust, Holy Sword, Smite and Blessed Hammer.
+- **Sorceress:** Fire Bolt, Ice Bolt, Blizzard, Chilling Armor, Static Field, Combustion, Teleport, Inferno and
+  Thunder Storm.
+
+#### Interface and graphics
+
+- Skill trees use PD2's layout and icons.
+- Skill tooltips show the right numbers, with no stray format codes.
+- PD2's monsters and effects show in HD.
+
+#### Maps
+
+- Maps drop. Open one in Harrogath in Hell (level 80+, Rite of Passage done) for a red portal to its area; one map
+  per game.
+- A map's stats apply: monster and player stats, and area stats (density, rarity, extra monster groups, fortify,
+  area level).
+- A map can't be cubed with a recipe PD2 forbids for it.
+- Maps built on D2R's tiles draw in HD; many walls, streams and bridges are still missing.
+- Map walls show on the automap.
+- A map's corrupted, socketed and ethereal drop chances apply.
+
+#### Bugfixes
+
+- Right-clicking an Identify scroll or tome enters identify mode again.
+- Wands, staves and scepters show their class skill instead of "an evil force".
+- Item stat lines no longer show their value twice.
+- Runes and gem stacks show their own pictures instead of an Elixir's.
+- Legacy graphics no longer crash with a PD2 skill on a skill button.

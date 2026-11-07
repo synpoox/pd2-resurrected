@@ -1,6 +1,6 @@
 # D2RLoader 1.3.1 and PluginSDK 0.4.0: capability matrix
 
-Research for issue #4 (map #1). Target: D2R 3.3 build 93847 (PE TimeDateStamp `0x6ab3782c`), D2RLoader 1.3.1.
+Research for issue [#4](https://github.com/synpoox/pd2-resurrected/issues/4) (map [#1](https://github.com/synpoox/pd2-resurrected/issues/1)). Target: D2R 3.3 build 93847 (PE TimeDateStamp `0x6ab3782c`), D2RLoader 1.3.1.
 Use this to check PD2 features: find the system in the matrix, read the verdict, follow the source.
 
 ## Sources
@@ -79,7 +79,7 @@ Verdict: **Yes** = supported service or documented path; **Plugin** = possible w
 | Events | Unit-death property events | Plugin | D2R raises only its own events; hook `0x44db20`, raise via `0x44d570` | KB-lim |
 | Spawns | Change monsters as they spawn | Plugin | Hook spawn function `0x492cf0`; confirm which path the level populator uses | KB-sys, KB-addr |
 | Spawns | Boss / herald modifiers | Yes | `ModifierPolicy` in `encounters.h`: 0-9 modifiers, 0-2 auras, 0-10000 percent damage; the game may add fewer | SDK |
-| Levels | New areas | Data + Limit | Level id <= 255; `Layer` < 100; clear `Position` on new mazes; ship every tile file; portals within one act only; automap level types fixed at 36; automap cels < 1499 | KB-lim |
+| Levels | New areas | Data + Limit | Level id <= 255; `Layer` < 100; clear `Position` on new mazes; ship every tile file; portals within one act only; automap level types fixed at 36; automap cels < the HD tiles' frame count (1499; more frames raise it, [#274](https://github.com/synpoox/pd2-resurrected/issues/274)) | KB-lim |
 | Levels | Portals to ids > 255 | Plugin | Setter clears the high byte; write it afterwards | KB-lim |
 | UI | Plugin panels and widgets | Limit | `panels.h`, `widgets.h`. On 1.3.1: no `setText` (fixed text only; show/hide works), `setWidgetEventMessage` is null (crash), buttons need a stock target `PanelManager:OpenPanel:<id>/<name>` | SDK, KB-loader |
 | UI | Overlay drawing | Yes | Display-only, after the game UI, no input | SDK |

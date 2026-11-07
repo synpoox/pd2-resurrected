@@ -1,6 +1,6 @@
-# Inferno and Arctic Blast (W21): srvdo 182, cltdo 111, the channel take-over
+# Inferno and Arctic Blast ([W21](https://github.com/synpoox/pd2-resurrected/issues/96)): srvdo 182, cltdo 111, the channel take-over
 
-Answers work item W21 (#96). PD2 side from the baseline install `C:\Games\PD2\ProjectD2` (`ProjectDiablo.dll`, base
+Answers work item [W21](https://github.com/synpoox/pd2-resurrected/issues/96) ([#96](https://github.com/synpoox/pd2-resurrected/issues/96)). PD2 side from the baseline install `C:\Games\PD2\ProjectD2` (`ProjectDiablo.dll`, base
 0x10000000; its table fill `0x1036ba20` writes cltdo n at `[0x105de71c] + n*4` and srvdo n at `[0x105de8fc] + n*4`),
 D2R side from the 93847 dump (`ImageStamp 0x6ab3782c`). D2R's slots srvdo 182 and cltdo 111 are empty, so both keep
 PD2's numbers.
@@ -22,7 +22,7 @@ the debuff missile.
 6. One missile per point: flags 0x8020, owner and origin the caster, range (params +0x4c, D2R +0x5c) = range.
 7. `0x1037a7c0 (game, unit)`: drops the caster's type 0 and 1 events (frame and mode end), moves its animation to the
    next whole frame and adds the frame events of the rest of the animation and a new mode end again. Not ported
-   (`docs/unported.md`).
+   (`docs/deviations.md`).
 
 ## cltdo 111 (`0x103abce0`)
 
@@ -71,4 +71,4 @@ not uninterruptable; everything else goes to D2R's code. The skill id comes from
 - Blade Fury held: refusing its own per-frame re-request (PD2's rule applied to D2R's re-send) left one refusal and
   the channel did not go on; sent to D2R's gate instead, every re-request came back 4 (buffered) and the Assassin
   stayed in the channel. A Blade Fury of another row is still refused. An Attack swapped in mid-Blade Fury did not
-  show in the log. No blades show yet: the fragment missile is W32's.
+  show in the log. No blades show yet: the fragment missile is [W32](https://github.com/synpoox/pd2-resurrected/issues/107)'s.

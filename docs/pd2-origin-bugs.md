@@ -2,7 +2,7 @@
 
 Bugs that exist in PD2 itself (its tables, strings or `ProjectDiablo.dll`) and that we fixed in the port instead of
 copying them. Each fix is a deliberate deviation from the PD2 baseline, so it is listed here rather than in
-[unported.md](unported.md).
+[deviations.md](deviations.md).
 
 A bug belongs here only when it shows on live PD2 too. A bug our port brought in (a D2R string that doesn't fit a PD2
 column, say) is an ordinary `bug`.

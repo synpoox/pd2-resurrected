@@ -1,6 +1,6 @@
-# Vengeance and Joust (W18)
+# Vengeance and Joust ([W18](https://github.com/synpoox/pd2-resurrected/issues/93))
 
-Answers work item W18 (#93). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll` of the PD2
+Answers work item [W18](https://github.com/synpoox/pd2-resurrected/issues/93) ([#93](https://github.com/synpoox/pd2-resurrected/issues/93)). PD2 side from `ProjectDiablo.dll` (VAs `0x10...`) and the 1.13c `D2Game.dll` of the PD2
 install in Ghidra; D2R side from the 93847 dump, RVAs. PD2's install routine `0x1036ba20` writes the 1.13c do table
 (4-byte slots): srvdo 174 (`+0x2b8`) = `0x103b3570`, srvdo 162 (`+0x288`) = `0x103b21e0`.
 
@@ -74,7 +74,7 @@ PD2's Vengeance row: calc1-3 `ln12 + (Holy Fire + Holy Freeze + Holy Shock blvl)
   raised around it, then `TimedStatList` for the aurastate. D2R's hit also gives the aurastate on a hit (`0x566bc0`);
   the list core-rules makes next extends that one.
 
-Deviations (approximated, on the unported list):
+Deviations (approximated, on the deviation list):
 
 - Vengeance's target is D2R's skill target (PD2 refreshes the caster's path target), as Holy Light.
 - Vengeance's melee hit is D2R's: a miss is not applied and the fill is D2R's (what PD2's `0x1031b4a0` adds beyond

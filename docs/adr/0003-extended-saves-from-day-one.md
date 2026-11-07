@@ -12,4 +12,4 @@ Every id the port adds (stats, skills, states, item types, anything a save store
 ## Consequences
 
 - Test items come from D2RLoader's Item Spawner; `modkit save-set` runs with `--extended`.
-- If D2RLoader inventory pages cannot hold PD2's stash, the fallback is D2R's stock stash with the gap on the unported list, not a custom file.
+- If D2RLoader inventory pages cannot hold PD2's stash, the fallback is D2R's stock stash with the gap on the deviation list, not a custom file.

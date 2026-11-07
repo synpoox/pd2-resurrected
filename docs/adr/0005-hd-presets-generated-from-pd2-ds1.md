@@ -1,0 +1,18 @@
+# HD presets for PD2-only areas are generated from their DS1
+
+D2R draws a level in HD from one HD preset per DS1, and none of the 144 DS1 that PD2-only areas use has one. Without a preset, a level plays on flat ground with invisible walls ([#159](https://github.com/synpoox/pd2-resurrected/issues/159)). The port imports each PD2 DS1 as it is, for layout and collision, and generates its HD preset at build time with its own generator: read the DS1's wall and floor cells, then place clones of D2R's stock entities from a chosen D2R tile set on those cells, over a stock flat terrain textured by a D2R biome. The committed part is the rule per tile set (which D2R kit and biome stand in for it); the presets themselves are generated, since they come from PD2 files (ADR 0002). PD2-only tiles are drawn with D2R stand-ins, each tile set an approximated deviation, until PD2's own art comes through the art pipeline.
+
+The generator has two parts with one seam between them: reading a DS1 into a layout (cells, wall kinds, floors) and building a preset from a layout with a tile set's kit. D2R Reimagined's `Kit`/`Scene` builder does the second part, so it can replace ours without touching the first if the owner later accepts GPL-3.0 for the release.
+
+## Considered Options
+
+- Copy D2R Reimagined's preset builder now: proven, but binds the release to GPL-3.0, and it builds arenas from its own layouts, not from an existing DS1.
+- Hand-author 74 scenes: closest to PD2's look per level, but scene work per level, redone on every re-baseline.
+- Ship levels without presets: no work, but flat ground with invisible walls is not fit to ship.
+
+## Consequences
+
+- The alpha ships only when every imported PD2-only area has a generated preset; dev builds may run without one.
+- Before a generated level ships, a game check in the largest one (Jungle Map, 251x251) compares frame rate with a D2R area of the same size and biome; more than 10% slower means the generator must merge entities or bake terrain first.
+- A re-baseline regenerates every preset from the new DS1, with no hand edits to redo.
+- Levels that are near-copies of a D2R room may start from D2R's preset instead, where that is cheaper.

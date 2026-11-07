@@ -9,7 +9,7 @@ Counts, generated 2026-11-04 (main plus [#172](https://github.com/synpoox/pd2-re
 | | Errors |
 |---|---|
 | On `main` | 144 |
-| Fixed in #172 (in-game test pending) | 57 |
+| Fixed in [#172](https://github.com/synpoox/pd2-resurrected/issues/172) (in-game test pending) | 57 |
 | Open ([#171](https://github.com/synpoox/pd2-resurrected/issues/171)) | 87 |
 
 Cause words:
@@ -109,7 +109,7 @@ Cause words:
 | 86 | treasureclassex | Act 1 (H) Weap A (line 954) | Item9 | `Act 5 (N) Weap C` | PD2 names a row that its own tables don't define either. 1.13c probably finds no row. | open, [#171](https://github.com/synpoox/pd2-resurrected/issues/171) |
 | 87 | treasureclassex | Act 1 (H) Armo A (line 969) | Item9 | `Act 5 (N) Armo C` | PD2 names a row that its own tables don't define either. 1.13c probably finds no row. | open, [#171](https://github.com/synpoox/pd2-resurrected/issues/171) |
 
-## Fixed in #172
+## Fixed in [#172](https://github.com/synpoox/pd2-resurrected/issues/172)
 
 In-game test pending. Not merged.
 

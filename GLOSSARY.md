@@ -19,9 +19,21 @@ _Avoid_: new content, vanilla extras
 **Warlock**:
 D2R's RotW class, the one class in the port not held to the PD2 baseline: D2R's Warlock on build 93847, changed only where a skill falls short of PD2's style, keeping its three trees.
 
-**Unported list**:
+**Endgame gear**:
+The gear a Warlock balance test assumes: full skillers, Torch, Anni, GG corruptions, high-end runewords and chase uniques; no unique that drops from only one boss.
+_Avoid_: BiS, budget gear
+
+**Endgame build**:
+One Warlock tree's main build, played on endgame gear.
+_Avoid_: spec, main build
+
+**Reference build**:
+The PD2 build, on endgame gear, that an endgame build is measured against.
+_Avoid_: benchmark, comparison build
+
+**Deviation list**:
 The record of every deviation, its status and why.
-_Avoid_: cut list, TODO list
+_Avoid_: unported list, cut list, TODO list
 
 **PD2 baseline**:
 The one frozen PD2 build the port is measured against. Moving to a newer PD2 is a deliberate re-baseline.
@@ -35,7 +47,7 @@ _Avoid_: 1:1, identical, byte-for-byte
 A parity tier: the player has the same capability as in PD2, in D2R's look and controls.
 
 **Deviation**:
-Any observable difference from the PD2 baseline. Every deviation is a row on the unported list, marked approximated, cut or not yet.
+Any observable difference from the PD2 baseline. Every deviation is a row on the deviation list, marked approximated, cut or not yet.
 _Avoid_: bug, known issue
 
 **Approximated**:
@@ -68,11 +80,11 @@ A D2RLoader plugin built outside this repo and bundled with the port that stands
 _Avoid_: dependency, add-on, external mod
 
 **Milestone**:
-A playable point in the roadmap made of the work items it needs; the port has M1 (a new character in Act 1), M2 (companions, corruption, Amazon and Barbarian complete), the pre-alpha (every PD2 class complete), the alpha (PD2 complete for single-player), the beta and the launch.
+A playable point in the roadmap made of the work items it needs; the port has M1 (a new character in Act 1), M2 (companions, corruption, Amazon and Barbarian complete), alpha 0.1.0 (every PD2 class complete), the alpha (PD2 complete for single-player), the beta and the launch.
 _Avoid_: phase, release
 
 **Beta**:
-The milestone after the alpha, in two runs: run 1 is multiplayer over TCP/IP, run 2 is multiplayer on hosted servers with a short beta league. It also holds the Warlock's three new skills; its other contents are not yet decided.
+The milestone after the alpha, in two runs: run 1 is TCP/IP co-op, run 2 is multiplayer with a short beta league. It also holds the Warlock's three new skills and, last and at low priority, the guild halls; its other contents are not yet decided.
 _Avoid_: PD2's `Beta` build (a different, older PD2 build in the install)
 
 **Launch**:
@@ -80,7 +92,7 @@ The public release after the beta; league 1 starts with it.
 _Avoid_: release, 1.0
 
 **League**:
-A fresh-start play period on hosted servers: the short beta league, then league 1 from the launch.
+A fresh-start play period in multiplayer: the short beta league, then league 1 from the launch.
 _Avoid_: season (PD2's word), ladder
 
 **Corruption**:
@@ -94,3 +106,59 @@ _Avoid_: desecrated zone, Desecrate (the Necromancer skill)
 **Terror Zone**:
 D2R's rotating zone that grows harder and gives better rewards; it stands in for PD2's corrupted zones.
 _Avoid_: corrupted zone, desecrated zone
+
+**PD2-only area**:
+A level PD2 has and D2R does not: map areas, uber boss areas, event areas, PvP areas and guild halls.
+_Avoid_: map (a map item or a wayfinder map), zone, new area
+
+**Uber boss**:
+One of PD2's pinnacle fights in the port: Uber Tristram, Diablo Clone, Rathma or Lucion. Each replaces D2R's fight of the same name, if D2R has one.
+_Avoid_: pinnacle boss, D2R's world-event Diablo Clone or Pandemonium Event (both off)
+
+**Uber key**:
+The item that opens an uber boss's area at the Blood Fountain in Harrogath. It is not a map item.
+_Avoid_: uber map, entry item
+
+**Uber tier**:
+The tier on an uber key, 0, 1 or 2, cycled in the cube; higher tiers make the fight harder and its drops better.
+_Avoid_: map tier
+
+**Map item**:
+A PD2 item that opens a map area when used in Harrogath: a tiered map, a dungeon or a unique map. Uber keys and PvP arenas are not map items.
+_Avoid_: map
+
+**Map tier**:
+The tier a player sees on a tiered map: 1, 2 or 3. It comes from the item's type, not from its item code. Dungeons and unique maps have no tier.
+_Avoid_: T4, T5, tier from the code
+
+**Map area**:
+A PD2-only area that a map item opens.
+_Avoid_: map, map level
+
+**Map stat**:
+A modifier on a map item that changes its map area, the area's monsters or the players in it while it is open.
+_Avoid_: map mod, map affix (an affix is how a map stat rolls)
+
+**Map event**:
+A random happening inside a map area, such as a boss, a portal, a shop or a timed lair, rolled when the area opens.
+_Avoid_: map-event notification (cut; the events are not)
+
+**Invader**:
+A monster that plays a PD2 class, coming out of portals in the Corrupted Heroes map event.
+_Avoid_: corrupted hero, PK
+
+**HD preset**:
+The HD scene D2R draws for one DS1 file, found by the DS1's path; a DS1 without one plays on flat ground with invisible walls.
+_Avoid_: HD map, tile art
+
+**PvP**:
+Player versus player: players fighting each other, in PD2's PvP and battle royale areas. Not the same as multiplayer. The port has no PvP.
+_Avoid_: multiplayer, dueling
+
+**Multiplayer**:
+Players connecting to an online server the port hosts, with its economy and leagues.
+_Avoid_: online, hosted servers (say multiplayer), TCP/IP co-op
+
+**TCP/IP co-op**:
+Players joining each other's games directly over TCP/IP, with no hosted server, economy or league.
+_Avoid_: multiplayer, LAN

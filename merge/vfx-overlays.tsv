@@ -1,0 +1,49 @@
+# overlay	like: the D2R overlay whose HD json a new PD2 overlay copies as a stand-in; tools/pd2_overlays_hd.py
+# Picked by look (PD2's classic Filename in brackets where it names one): same skill or effect, else same colour and kind
+teleport_debuff	teleport
+blood_warp	teleport
+grimward_bottom	shout
+bash_buff	battlecry
+staticfield_debuff	holyshockhit
+dark_pact_hit	curse_hit
+vengeance_hit	hit_holyfire
+# [CurseEffectGreen]
+poison_weakness	curselowerresist
+# [AuraDefiance]
+dclone_aura	aura_defiance_front
+# [AuraThorns]
+maxlevel_aura	aura_thorns_front
+# [AuraWhite]
+dev_aura	aura_prayer_front
+# [evilaura_gold]
+aura_magicgoldfind	fanaticismfront
+# [GolemCast]
+MendelnEvent	cast_undead
+rathma_aura	convictionfront
+# [Conversion]
+disable_tele	conversionaura
+# [AuraResistFire], [AuraResistCold]
+inferno_debuff	aura_resistfire
+arcticblast_debuff	aura_resistcold
+# [CorpseExplodeGuts]
+sacrifice_explosion	fire_explode
+# [aurared], [aurablue]
+dclone_t8_aura	aura_might_front
+rathma_t8_aura	holyfreeze
+# [AuraReflection]
+dev_glow_aura	redemptionfront
+# [AM<colour>SpellSections]: the matching element
+tpotfire_debuff	progressive_fire_1
+tpotgas_debuff	poisonhit
+tpotcold_debuff	progressive_cold_1
+tpotltng_debuff	progressive_lightning_1
+toppvp_aura	aura_fanatic
+rakanoth_steal_1	progressive_steal_1
+rakanoth_steal_2	progressive_steal_2
+rakanoth_steal_3	progressive_steal_3
+# [AuraWhite], [AuraWhite_invert]
+maxlevel_t8_aura	aura_prayer_front
+lucion_t8_aura	aura_prayer_back
+# [darkaura_grey], [aura_orange]
+lucion_aura	fetish_aura
+holygrail_aura	aura_holyfire_front

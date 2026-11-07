@@ -1,0 +1,212 @@
+# PD2 name	id	name (append-only, ADR 0003; id '-': left out, then why)
+Pvp Map	-	cut: PvP (#151)
+Pvp Map 2	-	cut: PvP (#151)
+BR Arena	-	cut: PvP (#151)
+Uber Ancients	-	cut: PD2's Uber Ancients (#153)
+Butcher Event Map	-	cut: the Butcher's Lair (#152)
+Guild 1	-	beta: guild halls (#151)
+Guild 2	-	beta: guild halls (#151)
+Guild 3	-	beta: guild halls (#151)
+Guild 4	-	beta: guild halls (#151)
+Guild 5	-	beta: guild halls (#151)
+Null	0	Null
+Act 1 - Town	1	Act 1 - Town
+Act 1 - Wilderness 1	2	Act 1 - Wilderness 1
+Act 1 - Wilderness 2	3	Act 1 - Wilderness 2
+Act 1 - Wilderness 3	4	Act 1 - Wilderness 3
+Act 1 - Wilderness 4	5	Act 1 - Wilderness 4
+Act 1 - Wilderness 5	6	Act 1 - Wilderness 5
+Act 1 - Wilderness 6	7	Act 1 - Wilderness 6
+Act 1 - Cave 1	8	Act 1 - Cave 1
+Act 1 - Cave 2	9	Act 1 - Cave 2
+Act 1 - Cave 3	10	Act 1 - Cave 3
+Act 1 - Cave 4	11	Act 1 - Cave 4
+Act 1 - Cave 5	12	Act 1 - Cave 5
+Act 1 - Cave 2 Treasure	13	Act 1 - Cave 2 Treasure
+Act 1 - Cave 3 Treasure	14	Act 1 - Cave 3 Treasure
+Act 1 - Cave 4 Treasure	15	Act 1 - Cave 4 Treasure
+Act 1 - Cave 5 Treasure	16	Act 1 - Cave 5 Treasure
+Act 1 - Graveyard	17	Act 1 - Graveyard
+Act 1 - Crypt 1 A	18	Act 1 - Crypt 1 A
+Act 1 - Crypt 2 A	19	Act 1 - Crypt 2 A
+Act 1 - Tower 2	20	Act 1 - Tower 2
+Act 1 - Crypt 3 A	21	Act 1 - Crypt 3 A
+Act 1 - Crypt 3 B	22	Act 1 - Crypt 3 B
+Act 1 - Crypt 3 C	23	Act 1 - Crypt 3 C
+Act 1 - Crypt 3 D	24	Act 1 - Crypt 3 D
+Act 1 - Crypt 3 E	25	Act 1 - Crypt 3 E
+Act 1 - Monastery	26	Act 1 - Monastery
+Act 1 - Courtyard 1	27	Act 1 - Courtyard 1
+Act 1 - Barracks	28	Act 1 - Barracks
+Act 1 - Jail 1	29	Act 1 - Jail 1
+Act 1 - Jail 2	30	Act 1 - Jail 2
+Act 1 - Jail 3	31	Act 1 - Jail 3
+Act 1 - Courtyard 2	32	Act 1 - Courtyard 2
+Act 1 - Cathedral	33	Act 1 - Cathedral
+Act 1 - Catacombs 1	34	Act 1 - Catacombs 1
+Act 1 - Catacombs 2	35	Act 1 - Catacombs 2
+Act 1 - Catacombs 3	36	Act 1 - Catacombs 3
+Act 1 - Catacombs 4	37	Act 1 - Catacombs 4
+Act 1 - Tristram	38	Act 1 - Tristram
+Act 1 - Moo Moo Farm	39	Act 1 - Moo Moo Farm
+Act 2 - Town	40	Act 2 - Town
+Act 2 - Desert 1	41	Act 2 - Desert 1
+Act 2 - Desert 2	42	Act 2 - Desert 2
+Act 2 - Desert 3	43	Act 2 - Desert 3
+Act 2 - Desert 4	44	Act 2 - Desert 4
+Act 2 - Desert 5	45	Act 2 - Desert 5
+Act 2 - Valley of the Kings	46	Act 2 - Valley of the Kings
+Act 2 - Sewer 1 A	47	Act 2 - Sewer 1 A
+Act 2 - Sewer 1 B	48	Act 2 - Sewer 1 B
+Act 2 - Sewer 1 C	49	Act 2 - Sewer 1 C
+Act 2 - Harem	50	Act 2 - Harem
+Act 2 - Corrupt Harem 1	51	Act 2 - Corrupt Harem 1
+Act 2 - Basement 1	52	Act 2 - Basement 1
+Act 2 - Basement 2	53	Act 2 - Basement 2
+Act 2 - Basement 3	54	Act 2 - Basement 3
+Act 2 - Tomb 1 A	55	Act 2 - Tomb 1 A
+Act 2 - Tomb 2 A	56	Act 2 - Tomb 2 A
+Act 2 - Tomb 2 B	57	Act 2 - Tomb 2 B
+Act 2 - Tomb 3 A	58	Act 2 - Tomb 3 A
+Act 2 - Tomb 1 Treasure	59	Act 2 - Tomb 1 Treasure
+Act 2 - Tomb 2 Treasure	60	Act 2 - Tomb 2 Treasure
+Act 2 - Tomb 3 Treasure	61	Act 2 - Tomb 3 Treasure
+Act 2 - Lair 1 A	62	Act 2 - Lair 1 A
+Act 2 - Lair 1 B	63	Act 2 - Lair 1 B
+Act 2 - Lair 1 Treasure	64	Act 2 - Lair 1 Treasure
+Act 2 - Sewer 2 A	65	Act 2 - Sewer 2 A
+Act 2 - Tomb Tal 1	66	Act 2 - Tomb Tal 1
+Act 2 - Tomb Tal 2	67	Act 2 - Tomb Tal 2
+Act 2 - Tomb Tal 3	68	Act 2 - Tomb Tal 3
+Act 2 - Tomb Tal 4	69	Act 2 - Tomb Tal 4
+Act 2 - Tomb Tal 5	70	Act 2 - Tomb Tal 5
+Act 2 - Tomb Tal 6	71	Act 2 - Tomb Tal 6
+Act 2 - Tomb Tal 7	72	Act 2 - Tomb Tal 7
+Act 2 - Duriel's Lair	73	Act 2 - Duriel's Lair
+Act 2 - Arcane	74	Act 2 - Arcane
+Act 3 - Town	75	Act 3 - Town
+Act 3 - Jungle 1	76	Act 3 - Jungle 1
+Act 3 - Jungle 2	77	Act 3 - Jungle 2
+Act 3 - Jungle 3	78	Act 3 - Jungle 3
+Act 3 - Kurast 1	79	Act 3 - Kurast 1
+Act 3 - Kurast 2	80	Act 3 - Kurast 2
+Act 3 - Kurast 3	81	Act 3 - Kurast 3
+Act 3 - Kurast 4	82	Act 3 - Kurast 4
+Act 3 - Travincal	83	Act 3 - Travincal
+Act 3 - Spider 1	84	Act 3 - Spider 1
+Act 3 - Spider 2	85	Act 3 - Spider 2
+Act 3 - Dungeon 1 A	86	Act 3 - Dungeon 1 A
+Act 3 - Dungeon 1 B	87	Act 3 - Dungeon 1 B
+Act 3 - Dungeon 2 A	88	Act 3 - Dungeon 2 A
+Act 3 - Dungeon 2 B	89	Act 3 - Dungeon 2 B
+Act 3 - Dungeon 1 Treasure	90	Act 3 - Dungeon 1 Treasure
+Act 3 - Dungeon 2 Treasure	91	Act 3 - Dungeon 2 Treasure
+Act 3 - Sewer 1	92	Act 3 - Sewer 1
+Act 3 - Sewer 2	93	Act 3 - Sewer 2
+Act 3 - Temple 1	94	Act 3 - Temple 1
+Act 3 - Temple 2	95	Act 3 - Temple 2
+Act 3 - Temple 3	96	Act 3 - Temple 3
+Act 3 - Temple 4	97	Act 3 - Temple 4
+Act 3 - Temple 5	98	Act 3 - Temple 5
+Act 3 - Temple 6	99	Act 3 - Temple 6
+Act 3 - Mephisto 1	100	Act 3 - Mephisto 1
+Act 3 - Mephisto 2	101	Act 3 - Mephisto 2
+Act 3 - Mephisto 3	102	Act 3 - Mephisto 3
+Act 4 - Town	103	Act 4 - Town
+Act 4 - Mesa 1	104	Act 4 - Mesa 1
+Act 4 - Mesa 2	105	Act 4 - Mesa 2
+Act 4 - Mesa 3	106	Act 4 - Mesa 3
+Act 4 - Lava 1	107	Act 4 - Lava 1
+Act 4 - Diablo 1	108	Act 4 - Diablo 1
+Act 5 - Town	109	Act 5 - Town
+Act 5 - Siege 1	110	Act 5 - Siege 1
+Act 5 - Barricade 1	111	Act 5 - Barricade 1
+Act 5 - Barricade 2	112	Act 5 - Barricade 2
+Act 5 - Ice Cave 1	113	Act 5 - Ice Cave 1
+Act 5 - Ice Cave 1A	114	Act 5 - Ice Cave 1A
+Act 5 - Ice Cave 2	115	Act 5 - Ice Cave 2
+Act 5 - Ice Cave 2A	116	Act 5 - Ice Cave 2A
+Act 5 - Barricade Snow	117	Act 5 - Barricade Snow
+Act 5 - Ice Cave 3	118	Act 5 - Ice Cave 3
+Act 5 - Ice Cave 3A	119	Act 5 - Ice Cave 3A
+Act 5 - Mountain Top	120	Act 5 - Mountain Top
+Act 5 - Temple Entrance	121	Act 5 - Temple Entrance
+Act 5 - Temple 1	122	Act 5 - Temple 1
+Act 5 - Temple 2	123	Act 5 - Temple 2
+Act 5 - Temple Boss	124	Act 5 - Temple Boss
+Act 5 - Hell 1	125	Act 5 - Hell 1
+Act 5 - Hell 2	126	Act 5 - Hell 2
+Act 5 - Hell 3	127	Act 5 - Hell 3
+Act 5 - Baal Temple 1	128	Act 5 - Baal Temple 1
+Act 5 - Baal Temple 2	129	Act 5 - Baal Temple 2
+Act 5 - Baal Temple 3	130	Act 5 - Baal Temple 3
+Act 5 - Throne Room	131	Act 5 - Throne Room
+Act 5 - World Stone	132	Act 5 - World Stone
+Act 5 - Pandemonium 1	133	Act 5 - Pandemonium 1
+Act 5 - Pandemonium 2	134	Act 5 - Pandemonium 2
+Act 5 - Pandemonium 3	135	Act 5 - Pandemonium 3
+Act 5 - Pandemonium Finale	136	Act 5 - Pandemonium Finale
+UberDiabloLvl	138	UberDiabloLvl
+Mesa	139	Mesa
+Siege Map	140	Siege Map
+Palace	141	Palace
+Sewers	142	Sewers
+Arcane	143	Arcane
+Kurast	144	Kurast
+River Of Blood	145	River Of Blood
+Lava	146	Lava
+Ice Map	147	Ice Map
+Desert Map	148	Desert Map
+Jungle Map	149	Jungle Map
+Fortress Map	150	Fortress Map
+Throne Map	151	Throne Map
+Tomb Map	152	Tomb Map
+Monastery Map	153	Monastery Map
+Monastery Map Basement	154	Monastery Map Basement
+Graveyard Map	155	Graveyard Map
+Caldeum Map	156	Caldeum Map
+Pandemonium Map	157	Pandemonium Map
+Spider Map	158	Spider Map
+Frozen Forest Map	159	Frozen Forest Map
+Necropolis Jungle	160	Necropolis Jungle
+Necropolis Swamp	161	Necropolis Swamp
+Necropolis Void	162	Necropolis Void
+Realm of Terror	163	Realm of Terror
+Hole of Terror	164	Hole of Terror
+Library Map	165	Library Map
+Westmarch Map	166	Westmarch Map
+Crypts Map	167	Crypts Map
+Sanctuary Of Sin Map	168	Sanctuary Of Sin Map
+Black Abyss Map	169	Black Abyss Map
+Ruined Cistern Map	170	Ruined Cistern Map
+Ashen Plains Map	171	Ashen Plains Map
+Zhar Library	172	Zhar Library
+Zhar Rivers	173	Zhar Rivers
+Zhar Ice	174	Zhar Ice
+Zhar Kurast	175	Zhar Kurast
+Outer Void Map	176	Outer Void Map
+Hellcaves	177	Hellcaves
+Hellcave Fortress	178	Hellcave Fortress
+Fallen Gardens	179	Fallen Gardens
+Diamond Gate	180	Diamond Gate
+PD2 Pandemonium Finale	181	PD2 Pandemonium Finale
+Kanemith Outside	182	Kanemith Outside
+Kanemith Dungeon	183	Kanemith Dungeon
+Lucion Arena	184	Lucion Arena
+Lucion Vault	185	Lucion Vault
+Skovos Stronghold Map	186	Skovos Stronghold Map
+Demon Road Map	187	Demon Road Map
+Imperial Palace Map	188	Imperial Palace Map
+Halls of Torture Map	189	Halls of Torture Map
+Imperial Boss Map	190	Imperial Boss Map
+Ureh City Map	191	Ureh City Map
+Nemyr Monastery Map	192	Nemyr Monastery Map
+Djinns Domain Map	193	Djinns Domain Map
+Djinns Domain Red Map	194	Djinns Domain Red Map
+Djinns Domain Boss Map	195	Djinns Domain Boss Map
+Na-Krul's Abyss Map	196	Na-Krul's Abyss Map
+Kyovoshad Map	197	Kyovoshad Map
+Tomb Event Map	198	Tomb Event Map
+Poisoned Well Map	199	Poisoned Well Map
+Dark Temple Map	200	Dark Temple Map
+Descent Map	201	Descent Map

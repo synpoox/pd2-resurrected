@@ -12,3 +12,7 @@ The mod's PD2 tables are not stored in this repo. `tools/pd2_extract.py` reads t
 - The table-diff gate and game checks run locally; a PR carries the pasted `pd2_diff` result.
 - Re-baselining PD2 is a commit that changes `pd2-baseline.json` and whatever `merge/` rules the new data breaks.
 - `modkit build` gains an optional `generated/data/` layer in d2rAI-toolkit.
+
+## Amendments
+
+- 2026-11-04 ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)): the rule covers PD2's level files too. `pd2_extract` reads the DS1 and DT1 that PD2-only areas use from `pd2maps.mpq` and `pd2assets.mpq`, under the same baseline hash check; the merge rewrites them and writes the HD presets generated from them (ADR 0005) to `generated/`. None of them is committed.

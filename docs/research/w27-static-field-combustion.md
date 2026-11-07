@@ -1,6 +1,6 @@
-# Sorceress: Static Field, Combustion and the boss novas (W27)
+# Sorceress: Static Field, Combustion and the boss novas ([W27](https://github.com/synpoox/pd2-resurrected/issues/102))
 
-Answers work item W27 (#102). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) in the Ghidra project `PD2.gpr`,
+Answers work item [W27](https://github.com/synpoox/pd2-resurrected/issues/102) ([#102](https://github.com/synpoox/pd2-resurrected/issues/102)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) in the Ghidra project `PD2.gpr`,
 D2R side from the 93847 dump. Addresses are D2R RVAs unless they start with `0x10`. The install routine `0x1036ba20`
 writes srvdo 159 = `0x103b1d00`, srvdo 160 = `0x103b1dc0` and cltdo 100 = `0x103ab580`. D2R fills all three slots
 (srvdo 159 Consume, 160 Blood Boil, cltdo 100 Flame Wave), and the dispatcher refuses srvdo values over 190, so the
@@ -69,7 +69,7 @@ tooltip); auralencalc is `125 + 5 * Lightning Mastery`.
 (`ServerRing`); `SrvDoStaticField` runs both passes through `AreaUnits`. `StaticFieldDamage` and `ImmuneHalved` have
 compile-time checks; `TimedStatList` takes the list's owner.
 
-Deviation (approximated, on the unported list): the state helper's monster refusals (monstats flags, `0x1036d7d0`)
+Deviation (approximated, on the deviation list): the state helper's monster refusals (monstats flags, `0x1036d7d0`)
 are D2R's NewStateList's; a player who gets the debuff is not sent the `0x83` timer packet; an aurastat past
 itemstatcost's end is not refused. D2R's online cast limit (`0x432c40`) before its Static Field is left out, as PD2 has none.
 
@@ -77,7 +77,7 @@ itemstatcost's end is not refused. D2R's online cast limit (`0x432c40`) before i
 
 `tests/game/core_rules_checks.py`, tag `core-rules-w27`: `static-field-cast` (radius, calcs, StaticFieldMin, the first
 unit's damage against PD2's formula, the debuff's state, stat, value and length), `combustion-cast` (32 of 32 missiles
-on server and client, the missile's Vel and Range as PD2's), and the W21 `channel-cast` / `channel-client` for
+on server and client, the missile's Vel and Range as PD2's), and the [W21](https://github.com/synpoox/pd2-resurrected/issues/96) `channel-cast` / `channel-client` for
 Inferno.
 
 Run on Slot7 (2026-11-04), a level 95 Sorceress with Static Field and Combustion at 10, Inferno at 20, normal

@@ -2,7 +2,7 @@
 
 merge/standins.tsv has one line per row: `table <tab> row <tab> from <tab> columns <tab> rule`. It sets the listed
 function columns of a merged row (its mod name) from `from`: `=` is D2R's own row at that id, a name is that D2R row,
-`-` blanks them. `rule` names the core-rules row it stands in for; each is a "not yet" row on docs/unported.md. Delete
+`-` blanks them. `rule` names the core-rules row it stands in for; each is a "not yet" row on docs/deviations.md. Delete
 a row's line when its rule is built.
 """
 from __future__ import annotations
@@ -22,13 +22,14 @@ def _nums(*spans: int | range) -> set[str]:
 # pd2_ids.MISSILE_FUNCS, W5; shit 63, cltdo 22 patched, W6; shit 61, W11; srvdo 182 / cltdo 111, W21; srvdo 176,
 # chit 66, W17; cltdo 119, W22; srvdo 174 and 162, W18; chit 67, W30; srvdo 175, cltdo 110, srvst 77, W24; shit 62,
 # W28; srvdo 178, W31; sdo 40 / cdo 72 move to 47 / 80, W20, like sdo 38 / cdo 70, W2; shit 34, chit 6, dmg 19, W32;
-# srvst 73 and 75, auraeventfunc 16 (D2R's crushing blow wrapped for Smite), W19), `verify` slots that hold D2R's
-# same-numbered function, which is the stand-in (shit 5, 6, 30; chit 4, 12), and temp1's sdo 39 / cdo 71 (no row
+# srvst 73 and 75, W19; srvdo 173, W36; auraeventfunc 16 is D2R's crushing blow, Smite's roll is on srvdo 150, #165), `verify` slots that hold D2R's
+# same-numbered function, which is the stand-in (shit 5, 30; chit 4, 12), the monster kits' cdo 12 (D2R's is 1.13c's
+# screen shake, its length an approximated row) and chit 11 (empty in both games, W36), and temp1's sdo 39 / cdo 71 (no row
 # reaches it). Cube ops 30/31 are not here: cubemain rows have no unique name, so the item tables' merge (P3) keeps
 # those recipes off.
 PD2_ONLY = {
     "skills": {
-        "srvdofunc": _nums(109, 153, 155, 156, range(159, 162), 164, 165, 167, range(169, 171), 173, 177, 179, 181, range(184, 187)),
+        "srvdofunc": _nums(109, 153, 155, 156, range(159, 162), 164, 165, 167, range(169, 171), 177, 179, 181, range(184, 187)),
         "cltdofunc": _nums(97, range(100, 104), 105, 109, 113, 114, 118),
         "srvstfunc": _nums(64, range(67, 70), 71, 74, 76, 79),
         "cltstfunc": _nums(54, 58, 82),
@@ -37,14 +38,15 @@ PD2_ONLY = {
     },
     "missiles": {
         "pSrvDoFunc": _nums(38, 40),
-        "pCltDoFunc": _nums(12, range(69, 71), 72),
+        "pCltDoFunc": _nums(range(69, 71), 72),
         "pSrvHitFunc": _nums(60, 64, 65) | {"*12"},
-        "pCltHitFunc": _nums(11, 65) | {"*16"},  # *12/*16: PD2 text that parses as no function
+        "pCltHitFunc": _nums(65) | {"*16"},  # *12/*16: PD2 text that parses as no function
         "pSrvDmgFunc": _nums(15, 17, 18),
     },
-    "misc": {"pSpell": _nums(12, 13)},
+    "misc": {"pSpell": _nums(13)},  # PD2's map spell 12 moves to 16, which core-maps installs (MS2)
     "properties": {f"func{i}": _nums(25) for i in range(1, 8)},
     "states": {"remfunc": _nums(12)},
+    "objects": {"OperateFn": _nums(range(75, 77), range(78, 81))},  # PD2's altars, tomes and Zhar's portals (LP1)
 }
 
 

@@ -57,6 +57,46 @@ class CompanionTests(unittest.TestCase):
             self.assertEqual(sorted(written), ["d2rloader/config/filter.json", "d2rloader/plugins/y.dll"])
             self.assertEqual((root / "generated/companions/d2rloader/plugins/y.dll").read_bytes(), dll)
 
+    def test_our_configs_replace_the_zip_defaults(self):
+        zipped = make_zip({"d2rloader/plugins/x.dll": b"dll", "Other.mpq/data/sfx/a": b"",
+                           "config/x.toml": b"theirs"})
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.project(Path(tmp), zipped)
+            manifest = json.loads((root / "companions" / "manifest.json").read_text())
+            manifest["companions"][0]["files"]["config/x.toml"] = "d2rloader/config/x.toml"
+            (root / "companions" / "manifest.json").write_text(json.dumps(manifest))
+            (root / "companions" / "config").mkdir()
+            (root / "companions" / "config" / "x.toml").write_text("ours")
+            written = companions.fetch(root, download=lambda *a: zipped)
+            self.assertEqual((root / "generated/companions/d2rloader/config/x.toml").read_text(), "ours")
+            self.assertEqual(written.count("d2rloader/config/x.toml"), 1)
+
+    def test_bare_release_asset_is_one_file(self):
+        mpq = b"bare mpq"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.project(Path(tmp), b"")
+            manifest = {"companions": [{"name": "Z", "repo": "o/r", "tag": "1.0", "asset": "z.mpq",
+                                        "sha256": hashlib.sha256(mpq).hexdigest(),
+                                        "files": {"z.mpq": "d2rloader/plugins/z.mpq"}}]}
+            (root / "companions" / "manifest.json").write_text(json.dumps(manifest))
+            written = companions.fetch(root, download=lambda *a: mpq)
+            self.assertEqual(sorted(written), ["d2rloader/config/filter.json", "d2rloader/plugins/z.mpq"])
+            self.assertEqual((root / "generated/companions/d2rloader/plugins/z.mpq").read_bytes(), mpq)
+
+    def test_url_entry_downloads_that_url(self):
+        zipped = make_zip({"d2rloader/plugins/x.dll": b"hub dll"})
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.project(Path(tmp), b"")
+            manifest = {"companions": [{"name": "H", "url": "https://hub/releases/1/download", "asset": "h.zip",
+                                        "sha256": hashlib.sha256(zipped).hexdigest(),
+                                        "files": {"d2rloader/plugins/x.dll": "d2rloader/plugins/h.dll"}}]}
+            (root / "companions" / "manifest.json").write_text(json.dumps(manifest))
+            calls = []
+            written = companions.fetch(root, download=lambda *a, **k: calls.append((a, k)) or zipped)
+            self.assertEqual(calls, [((None, None, "h.zip"), {"url": "https://hub/releases/1/download"})])
+            self.assertIn("d2rloader/plugins/h.dll", written)
+            self.assertEqual((root / "generated/companions/d2rloader/plugins/h.dll").read_bytes(), b"hub dll")
+
     def test_refuses_a_hash_mismatch_or_missing_file(self):
         for zipped, sha, msg in [(make_zip({"d2rloader/plugins/x.dll": b"1", "Other.mpq/data/sfx/a": b""}), "0" * 64,
                                   "SHA-256"),

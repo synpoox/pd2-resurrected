@@ -76,7 +76,9 @@ Fire 259, Cobra Strike 265, Claws of Thunder 269, Blades of Ice 274, Royal Strik
 release, e.g. modkit save-set <save> level=30 --skill 254=1 --skill 259=1 --skill 265=1 --skill 269=1 --skill 274=1
 --skill 280=1 --skill 255=1 --project .; then out of town hit monsters three times in a row with each of Fists of
 Fire, Cobra Strike and Blades of Ice, releasing between them with Dragon Talon (a release runs the same prg slots and
-logs the same lines), and run the same command with core-rules-w29.
+logs the same lines). Then build charges on one finisher and, before they expire, hit with another: Fists of Fire
+once or twice, then Cobra Strike (shared charges, and Cobra Strike's steal). Run the same command with
+core-rules-w29.
 W17 checks (tag core-rules-w17), same merged data: a Paladin with Holy Light and Fist of the Heavens. Holy Light is
 the Paladin's 32nd skill, past the 30 class skills a save holds, so set both in game: `debug_mode`, `cheat sklvl Holy
 Light,10`, `cheat sklvl Fist of the Heavens,10`, `cheat goto 2`, `cheat mspawn zombie1,6`; then Holy Light on a
@@ -114,6 +116,45 @@ the same command with core-rules-w20.
 W32 checks (tag core-rules-w32), same merged data: a level 90+ Assassin in Hell with Blade Fury (266) set in game
 (`debug_mode`, `cheat sklvl Blade Fury,20`, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); throw Blade
 Fury at the pack and at a wall or tree near it, hold it for a second, and run the same command with core-rules-w32.
+W34 check (tag core-rules-w34), same merged data: any level 90+ character in Hell (`debug_mode`, `cheat god 1`,
+`cheat goto 2`, `cheat mspawn megademon3,6`: zombies rarely deal enough for a get-hit); stand in the pack and keep
+attacking or casting while it hits you (get-hit and block both count), and run the same command with core-rules-w34.
+
+W35 checks (tag core-rules-w35), same merged data: a level 90+ Barbarian in Hell with Frenzy (147) and One or Two Hand
+Mastery and an item_splashonhit item (The Gnasher, `cheat uniques 0`), at least 11 mana (`debug_mode`, `cheat god 1`,
+`cheat goto 2`, `cheat mspawn megademon3,6`). The log keeps a game's first splash only, so start the game fresh and
+Frenzy into the pack before any other splash, then run the same command with core-rules-w35.
+
+W36 checks (tag core-rules-w36), same merged data: a level 90+ Druid in Hell (`debug_mode`, `cheat god 1`,
+`cheat sklvl Cycle of Life,20`, `cheat sklvl Vines,20`, `cheat goto 2`). Make corpses with `cheat mspawn zombie1,6`
+and `cheat killmonster` once per zombie (`cheat monster dead zombie1` crashes the game). A vine eats only while its
+owner's life or mana is below the maximum, and god mode keeps both full: `cheat god 0`, summon both vines by the
+corpses (D2R names them Carrion Vine and Solar Creeper), then `cheat depletehealth 10` and `cheat depletemana 10`.
+Mana regenerates in seconds, so repeat `cheat depletemana 10` every second or two until a VineCycler (325) line shows.
+Then `cheat god 1`, `cheat mspawn torajanBoss,1` (his nest lays eggs that nova and hatch) and `cheat mspawn leoricMapBoss,1` (his orbs raise leoricGuards where they land), let them cast a while, and run the
+same command with core-rules-w36.
+
+P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
+drops Ormus' Robes; `cheat idall`, then run the same command with core-rules-p12. Its procs are the Cast Triggers
+companion's (IR2): wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`, and cast at the pack.
+
+IR4 checks (tag core-rules-ir4), same merged data, Hell, level 90+:
+- max-curses: a Necromancer with two curses (Amplify Damage 66, Weaken 72) and Darkforge Spawn (`cheat uniques 331`,
+  +1 max curses; Curse Mastery does the same). `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,4`, then curse the
+  pack with one curse and then the other, and run the same command with core-rules-ir4.
+- curse-resistance: any character wearing Wraithskin (`cheat uniques 478`, 30-40 curse resistance); let a cursing
+  monster curse you (Act 4 Oblivion Knights, `cheat mspawn` of one), then run again.
+
+IR7 checks (tag core-rules-ir7), same merged data, Hell, level 90+:
+- skill-on-equip: `cheat uniques 252` drops Blackoak Shield (Chilling Armor SelfAura 11 when equipped); `cheat
+  idall`, equip it, wait a few seconds, unequip it, and run the same command with core-rules-ir7.
+- phasing: `cheat uniques 520` drops Spectral Plate (Phasing SelfAura); `cheat idall`, equip it, walk into a pack
+  (`cheat mspawn zombie1,4`, `cheat god 1`), take it off, and run again.
+
+IR6 check (tag core-rules-ir6), same merged data, Hell, level 90+:
+- corruption-one-press: `debug_mode`, `cheat spawn rin,typ m,inv 0` (a magic ring) and `cheat spawn wss,inv 0` (a
+  Worldstone Shard); put both in the cube, press Transmute once, hover the ring (it shows Corrupted), and run the
+  same command with core-rules-ir6.
 """
 import json
 import os
@@ -140,6 +181,7 @@ SKILL_SLOTS = [  # table slots it installs
     ("cltdofunc", 119, "wall"),
     ("srvdofunc", 175, "fire claws"), ("cltdofunc", 110, "fire claws"), ("srvstfunc", 77, "wolf start"),
     ("mode gate", "busy", "take-over"),  # an inline hook, not a slot
+    ("mode gate", "hit", "window"),  # two code patches and a logging hook
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
     ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
@@ -151,7 +193,9 @@ SKILL_SLOTS = [  # table slots it installs
     ("srvdofunc", 178, "dragon flight"), ("pSrvDmgFunc", 22, "chain falloff"),
     ("pSrvHitFunc", 69, "blade fragment"), ("pCltHitFunc", 68, "blade fragment"), ("pSrvDmgFunc", 19, "blade fragment"),
     ("srvstfunc", 73, "holy sword"), ("srvstfunc", 75, "smite"),
-    ("auraeventfunc", 16, "smite crushing blow"),  # D2R's crushing blow, wrapped
+    ("srvdofunc", 150, "smite crushing blow"),  # D2R's Smite do, wrapped, and an inline hook on its hit queue
+    ("srvdofunc", 173, "poison egg spawn"), ("cltdofunc", 126, "poison egg spawn"), ("srvstfunc", 83, "cycler start"),
+    ("pSrvHitFunc", 67, "summon"),
 ]
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
@@ -183,7 +227,7 @@ def _log(ctx) -> str:
                                  "core-rules-w21", "core-rules-w22", "core-rules-w24", "core-rules-w29",
                                  "core-rules-w17", "core-rules-w23", "core-rules-w27", "core-rules-w28", "core-rules-w30",
                                  "core-rules-w18", "core-rules-w19", "core-rules-w20", "core-rules-w31", "core-rules-w32",
-                                 "game"])
+                                 "core-rules-w34", "core-rules-w36", "core-rules-w35", "game"])
 def core_rules_loads(ctx):
     """core-rules loads game-wide and fills every do-table slot it owns."""
     ctx.ensure_running()
@@ -245,10 +289,13 @@ def split_throw_return(ctx):
     """A Split Throw axe that hit a monster spawned its return missile (shit 65), and a return reached the thrower
     (sdo 46). Needs a cast at monsters out of town."""
     log = _log(ctx)
-    if "return missile: spawned on hit" not in log:
+    results = [int(r) for r in re.findall(r"return missile: spawned on hit, result (-?\d+)", log)]
+    if not results:
         ctx.skip("no return missile in the log yet (hit a monster with Split Throw, then run again)")
+    # D2R's collision deals the axe's damage only when the srvhit result has bit 2 set (#122)
+    assert all(r & 2 for r in results), f"results {sorted(set(results))}: D2R deals the axe's damage on bit 2"
     assert "return missile: caught by the thrower" in log, "a return missile spawned but none reached the thrower"
-    return "spawned on hit and caught"
+    return f"spawned on hit (results {sorted(set(results))}) and caught"
 
 
 def dm34(level: int) -> int:
@@ -302,6 +349,9 @@ def frenzy_splash(ctx):
     level, charges, calc2, value = charged[0]
     assert calc2 == dm34(level), f"level {level}: calc2 {calc2}, PD2's dm34 gives {dm34(level)}"
     assert value == calc2 * charges // 5, f"splash radius {value}, PD2 gives {calc2} * {charges} / 5"
+    # #138: each start drops the old list, so its radius is written ("extended" kept the first start's radius)
+    kept = re.findall(r"splash start: skill 147 [^\n]*list (?!new)(\w+)", _log(ctx))
+    assert not kept, f"Frenzy start lists not rebuilt: {kept}"
     return f"level {level}, {charges} charges: splash radius {value}"
 
 
@@ -316,10 +366,12 @@ def _rows(name: str) -> list[str]:
 @check("exploding-arrow-spread", tags=["core-rules-w6"])
 def exploding_arrow_spread(ctx):
     """Exploding Arrow's hit (pSrvHitFunc 63) makes PD2's calc2 explosions, min(3 + lvl/5, 8), from frame calc4 + 2."""
-    hits = re.findall(r"explode spread: skill 16 level (\d+): (\d+) of (\d+) explosions from frame (-?\d+)", _log(ctx))
+    hits = re.findall(r"explode spread: skill 16 level (\d+): (\d+) of (\d+) explosions from frame (-?\d+), "
+                      r"result (-?\d+)", _log(ctx))
     if not hits:
         ctx.skip("no Exploding Arrow hit in the log yet (shoot it at a monster, then run again)")
-    level, created, count, start = (int(v) for v in hits[0])
+    level, created, count, start, result = (int(v) for v in hits[0])
+    assert result == 3, f"result {result}: PD2's 63 returns 3, so D2R deals the arrow's damage (bit 2)"
     assert count == min(3 + level // 5, 8), f"level {level}: {count} explosions, PD2 makes {min(3 + level // 5, 8)}"
     assert created == count, f"{created} of {count} explosion missiles created"
     assert start == 4, f"first explosion at frame {start}, PD2: calc4 (2) + 2"
@@ -596,7 +648,7 @@ def wolf_start(ctx):
 def golem_count(ctx):
     """Golems follow PD2's count rule as data: petmax 1 + Golem Mastery blvl / 5 (+ extra_golem) caps Clay, Blood and Fire
     Golems together, and a new one replaces the oldest. Watches the client's monsters for 30 s while golems are
-    summoned. The Iron Golem keeps its own pet type and does not take a place (docs/unported.md)."""
+    summoned. The Iron Golem keeps its own pet type and does not take a place (docs/deviations.md)."""
     rows = _rows("monstats")
     golems = {rows.index(n) for n in ("claygolem", "bloodgolem", "firegolem")}
     limit = 1 + GOLEM_MASTERY_LEVEL // 5
@@ -631,24 +683,69 @@ def revive_event(ctx):
     return f"fired on a revive hitting unit type {target_type}, splash cast {cast}"
 
 
+SPLASH = re.compile(r"splash: skill (\d+) level (\d+) from unit type \d+ at unit type \d+: radius (-?\d+) \(calc3 (-?\d+), "
+                    r"inc_splash_radius (-?\d+), weapon types (-?\d+), normal base (\d)\), current skill (\d+) level "
+                    r"(\d+) damage% (-?\d+) srcdam (\d+), units hit (\d+)")
+FRENZY = 147  # merged skill id
+
+
+def _splashes(ctx) -> list[tuple[int, ...]]:
+    casts = [tuple(int(v) for v in c) for c in SPLASH.findall(_log(ctx))]
+    if not casts:
+        ctx.skip("no splash in the log yet (hit a pack with item_splashonhit, or Revive and let it fight, then run again)")
+    return casts
+
+
 @check("melee-splash", tags=["core-rules-w33"])
 def melee_splash(ctx):
     """A splash (proc_SplashDamage, Golem Splash, Skeleton Splash through the srvdo 190 router) hits the units within
     calc3 of the struck unit, the struck unit aside. proc_SplashDamage's calc3 is PD2's
     max(6 - lvl + inc_splash_radius / 20, 0)."""
-    casts = re.findall(r"splash: skill (\d+) level (\d+) from unit type \d+ at unit type \d+: radius (-?\d+) "
-                       r"\(inc_splash_radius (-?\d+)\), units hit (\d+)", _log(ctx))
-    casts = [tuple(int(v) for v in c) for c in casts]
-    if not casts:
-        ctx.skip("no splash in the log yet (hit a pack with item_splashonhit, or Revive and let it fight, then run again)")
-    for skill, level, radius, inc, _ in casts:
+    casts = _splashes(ctx)
+    for skill, level, _, calc3, inc, *_ in casts:
         if skill == PROC_SPLASH_DAMAGE:
-            assert radius == max(6 - level + int(inc / 20), 0), f"level {level}, inc_splash_radius {inc}: radius {radius}"
-    hits = [c for c in casts if c[4] > 0]
+            assert calc3 == max(6 - level + int(inc / 20), 0), f"level {level}, inc_splash_radius {inc}: calc3 {calc3}"
+    hits = [c for c in casts if c[-1] > 0]
     if not hits:
         ctx.skip(f"{len(casts)} splashes logged, none with units in range (splash a pack, then run again)")
-    skill, level, radius, inc, units = hits[0]
+    skill, level, radius, _, inc, *_, units = hits[0]
     return f"skill {skill} level {level}: radius {radius} (inc_splash_radius {inc}), {units} units hit"
+
+
+@check("splash-radius-extras", tags=["core-rules-w35"])
+def splash_radius_extras(ctx):
+    """PD2's radius: calc3 + the inc_splash_radius on the weapon's item type layers (One / Two Hand Mastery) / 20,
+    1 less on a normal-tier base (code == normcode)."""
+    casts = _splashes(ctx)
+    for _, _, radius, calc3, _, types, normal, *_ in casts:
+        assert radius == calc3 + int(types / 20) - normal, f"radius {radius}, calc3 {calc3}, types {types}, normal {normal}"
+    with_types = [c for c in casts if c[5] != 0]
+    if not with_types:
+        ctx.skip(f"{len(casts)} splashes, none with a mastery's inc_splash_radius (put points in One or Two Hand Mastery)")
+    _, _, radius, calc3, _, types, normal, *_ = with_types[0]
+    return f"radius {radius} = calc3 {calc3} + {types} / 20 - {normal}"
+
+
+@check("splash-current-skill", tags=["core-rules-w35"])
+def splash_current_skill(ctx):
+    """A player's splash carries its current skill: Frenzy's (147) at its hard points, with damage% from calc1 and
+    SrcDam from its row."""
+    casts = _splashes(ctx)
+    frenzy = [c for c in casts if c[7] == FRENZY and c[-1] > 0]
+    if not frenzy:
+        ctx.skip("no Frenzy splash with units hit yet (Frenzy into a pack with item_splashonhit, then run again)")
+    _, _, _, _, _, _, _, skill, level, percent, srcdam, units = frenzy[0]
+    assert level > 0, f"Frenzy at level {level}"
+    assert percent > 0, f"Frenzy's damage% {percent}: calc1 not read"
+    victims = re.findall(rf"splash hit: current skill {FRENZY}: phys (-?\d+) fire (-?\d+) light (-?\d+) magic (-?\d+) "
+                         r"cold (-?\d+) poison (-?\d+) \(1/256\), damage% (-?\d+)", _log(ctx))
+    if not victims:
+        ctx.skip("no Frenzy splash hit logged (the log keeps a game's first splash: restart, Frenzy first, run again)")
+    phys, *elements, hit_percent = (int(v) for v in victims[0])
+    assert hit_percent == percent, f"a splashed unit's damage% {hit_percent}, the block's {percent}"
+    assert phys > 0, f"a splashed unit took physical {phys}"
+    return (f"Frenzy level {level}: damage% {percent}, srcdam {srcdam}, {units} units hit; a splashed unit: "
+            f"phys {phys}, elemental {sum(elements)}")
 
 
 @check("throw-hd-models", tags=["core-rules"])
@@ -920,7 +1017,8 @@ def _logged(ctx, pattern: str, hint: str) -> list[tuple]:
 @check("charge-up-hits", tags=["core-rules-w29"])
 def charge_up_hits(ctx):
     """A charge-up hit (srvdofunc 190, PD2 srvdo 170) ends at the shared count + 1 (at most 3) and fires PD2's
-    srvprgfunc for that charge with its prgcalc; Cobra Strike's steal goes on before a hit that would pass 2."""
+    srvprgfunc for that charge with its prgcalc; Cobra Strike's steal goes on before a hit that would pass 2. Needs a
+    hit on another finisher's charges (shared above this skill's own) and a Cobra Strike hit that takes the steal."""
     ups = _logged(ctx, CHARGE_UP.pattern, "charge-up skill")
     hits = [u for u in ups if u[3] > u[2]]
     if not hits:
@@ -930,6 +1028,10 @@ def charge_up_hits(ctx):
         slot, expected = FINISHER_PRG.get(skill, {}).get(after, (0, None))
         assert prg == slot, f"skill {skill} charge {after}: prg {prg}, PD2's maps to {slot}"
         assert expected is None or calc == expected, f"skill {skill} charge {after}: prgcalc {calc}, PD2 {expected}"
+    # a hit on another finisher's charges: this skill's own count alone can't make shared pass before
+    assert any(h[1] > h[2] for h in hits), "no hit built on another finisher's charges (shared > charges before); "         "build charges on one finisher, then hit with another before they expire"
+    steals = [u for u in ups if u[0] in (COBRA, RAKANOTH) and u[2] <= 1 and u[1] >= 1]
+    assert steals, "no Cobra Strike hit with shared >= 1 and at most 1 charge, so the steal is unchecked; "         "hit with Cobra Strike while another finisher holds charges"
     for skill, shared, before, _, steal, _, _ in ups:
         want = int(skill in (COBRA, RAKANOTH) and before <= 1 and shared >= 1)
         assert steal == want, f"skill {skill}: shared {shared}, charges {before}: steal {steal}"
@@ -1117,8 +1219,8 @@ def smite_start(ctx):
 
 @check("smite-event", tags=["core-rules-w19"])
 def smite_event(ctx):
-    """Smite's aura event (domeleedamage 5 -> 16) fires on the Paladin who smites: one roll a hit, chance = the
-    crushingblow stat + calc3 (5 + blvl, at least 6)."""
+    """Smite's crushing blow rolls on the Paladin's landed hits (srvdo 150 + the hit queue, #165): one roll a hit,
+    chance = the crushingblow stat + calc3 (5 + blvl, at least 6)."""
     events = _logged(ctx, r"smite event: event (\d+) skill (\d+) level \d+ on unit type (\d+), frame (\d+): chance (\d+) "
                      r"\(crushingblow (\d+) \+ calc3 (\d+)\), roll (\d+), blow (-?\d+)", "Smite event")
     for event, skill, kind, _, chance, stat, calc3, roll, _ in events:
@@ -1289,11 +1391,93 @@ def psychic_hammer_falloff(ctx):
     return f"{len(found)} hits logged, {cuts} cut"
 
 
+# W36: merged ids (docs/research/w36-monster-kits.md)
+CORPSE_CYCLER, VINE_CYCLER, POISON_EGG_SPAWN, MAGGOT_EGG, TORAJAN_NEST = 307, 325, 522, 159, 631
+TORAJAN_EGG = 897  # monstats torajanBossPoisonEgg
+NO_LOOT_NO_XP = 0x4020000  # unit flags 0x20000 and 0x4000000, PD2's sHitPar3 / Nest's
+# summon-on-hit missile -> the monstats row PD2's sHitPar1 names, in the mod's ids
+SUMMON_HITS = {917: 1016, 922: 1018, 967: 1082, 1011: 1112, 1037: 1125}
+
+
+@check("cycler-start", tags=["core-rules-w36"])
+def cycler_start(ctx):
+    """srvstfunc 83 (PD2 67): a vine takes a corpse and at once heals the units within aurarangecalc 40 by
+    calc1-calc2 of life (Cycle of Life's CorpseCycler, stat 6) or mana (Vines' VineCycler, stat 8); the player in
+    range gains the heal, at most up to the maximum."""
+    found = re.findall(r"cycler start: skill (\d+) level (\d+): heal (-?\d+) \(calc1 (-?\d+), calc2 (-?\d+)\) of stat "
+                       r"(\d+), radius (\d+), units (\d+), player (-?\d+) -> (-?\d+) of (-?\d+)", _log(ctx))
+    if not found:
+        ctx.skip("no Cycler start in the log yet (summon Cycle of Life or Vines by corpses, then run again)")
+    healed = set()
+    for skill, _, heal, low, high, stat, radius, units, before, after, top in (tuple(int(v) for v in f) for f in found):
+        assert (skill, stat) in ((CORPSE_CYCLER, 6), (VINE_CYCLER, 8)), f"skill {skill} heals stat {stat}"
+        assert low <= heal <= max(low, high - 1), f"heal {heal} outside {low}-{high}"
+        assert radius == 40, f"radius {radius}, PD2's aurarangecalc is 40"
+        if units and before >= 0:
+            assert after == min(before + heal, top), f"skill {skill}: {before} + {heal} -> {after} of {top}"
+            if after > before:
+                healed.add(skill)
+    missing = {CORPSE_CYCLER, VINE_CYCLER} - healed
+    if missing:
+        ctx.skip(f"{len(found)} start(s) logged; none raised the player's stat for skills {sorted(missing)} "
+                 "(`cheat god 0`, then `cheat depletehealth 10` / `cheat depletemana 10` by the vines, and run again)")
+    return f"{len(found)} start(s) logged, both vines raised the player's life and mana"
+
+
+@check("poison-egg-spawn", tags=["core-rules-w36"])
+def poison_egg_spawn(ctx):
+    """srvdofunc 173 runs D2R's nova with PoisonEggSpawn, then MaggotEgg's spawn; cltdofunc 126 draws both."""
+    log = _log(ctx)
+    found = re.findall(r"poison egg spawn: skill (\d+) level \d+: nova (-?\d+), then skill (\d+) spawn (-?\d+)", log)
+    if not found:
+        ctx.skip("no PoisonEggSpawn cast in the log yet (`cheat mspawn torajanBoss,1` and wait for his eggs)")
+    for skill, nova, egg, _ in (tuple(int(v) for v in f) for f in found):
+        assert (skill, egg) == (POISON_EGG_SPAWN, MAGGOT_EGG), f"skill {skill} spawned through skill {egg}"
+        assert nova != 0, "the nova did not run"
+    assert re.search(r"poison egg spawn client: skill %d " % POISON_EGG_SPAWN, log), "the client half never ran"
+    return f"{len(found)} cast(s) logged, client drew them"
+
+
+@check("torajan-nest", tags=["core-rules-w36"])
+def torajan_nest(ctx):
+    """TorajanBossNest (router srvdo 190, PD2 181) lays one torajanBossPoisonEgg a cast, at most Param1 35, each with
+    no treasure class and no experience."""
+    found = re.findall(r"torajan nest: skill (\d+) level \d+: monster (\d+) mode \d+, (\d+) of (\d+), flags 0x([0-9a-f]+)",
+                       _log(ctx))
+    if not found:
+        ctx.skip("no nest spawn in the log yet (`cheat mspawn torajanBoss,1` and wait)")
+    for skill, mon, count, cap, flags in found:
+        assert int(skill) == TORAJAN_NEST and int(mon) == TORAJAN_EGG, f"skill {skill} laid monster {mon}"
+        assert 1 <= int(count) <= int(cap) == 35, f"egg {count} of {cap}"
+        assert int(flags, 16) & NO_LOOT_NO_XP == NO_LOOT_NO_XP, f"flags 0x{flags}"
+    return f"{len(found)} egg(s) logged, last {found[-1][2]} of {found[-1][3]}"
+
+
+@check("summon-hit", tags=["core-rules-w36"])
+def summon_hit(ctx):
+    """pSrvHitFunc 67 (PD2 6) spawns PD2's sHitPar1 monster (in the mod's ids) where the missile lands, with
+    sHitPar3's flags: no treasure class, no experience."""
+    found = re.findall(r"summon hit: missile (\d+): monster (\d+) mode \d+ (spawned|not spawned), flags 0x([0-9a-f]+)",
+                       _log(ctx))
+    if not found:
+        ctx.skip("no summon hit in the log yet (`cheat mspawn leoricMapBoss,1` and let him cast)")
+    spawned = 0
+    for missile, mon, state, flags in found:
+        assert SUMMON_HITS.get(int(missile)) == int(mon), f"missile {missile} spawned monster {mon}"
+        if state == "spawned":
+            assert int(flags, 16) & NO_LOOT_NO_XP == NO_LOOT_NO_XP, f"missile {missile}: flags 0x{flags}"
+            spawned += 1
+    if not spawned:
+        ctx.skip(f"{len(found)} summon hit(s) logged, none spawned (no room where they landed?)")
+    return f"{len(found)} hit(s) logged, {spawned} spawned"
+
+
 @check("core-rules-no-crash", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
                                     "core-rules-w13", "core-rules-w14", "core-rules-w16", "core-rules-w26", "core-rules-w21",
                                     "core-rules-w22", "core-rules-w24", "core-rules-w29", "core-rules-w17",
                                     "core-rules-w23", "core-rules-w30", "core-rules-w18", "core-rules-w19", "core-rules-w31",
-                                    "core-rules-w32"])
+                                    "core-rules-w32", "core-rules-w34", "core-rules-w36",
+                                    "core-rules-p12"])
 def core_rules_no_crash(ctx):
     """No crash file since the run began and no FAULT line in the plugin log."""
     new = ctx.game.new_crash_files(ctx.shared.get("crash_before", []))
@@ -1373,7 +1557,7 @@ def combustion_cast(ctx):
     excel = ("data", "global", "excel", "missiles.txt")
     pd2 = _missile_row(os.path.join(REPO, "pd2-data", *excel), "combustion")
     mod = _missile_row(os.path.join(REPO, "generated", *excel), "combustion")
-    for col in ("Vel", "MaxVel", "VelLev", "Range"):  # D2R has no LevRange (unported list)
+    for col in ("Vel", "MaxVel", "VelLev", "Range"):  # D2R has no LevRange (deviation list)
         assert pd2[col] == mod[col], f"combustion {col} {mod[col]}, PD2's {pd2[col]}"
     return f"level {casts[0][0]}: 32 missiles on server and client, Vel {mod['Vel']}, Range {mod['Range']}"
 
@@ -1521,3 +1705,207 @@ def blade_fragment_damage(ctx):
         want = "no flag" if roll <= over else "flag 0x20 and leech dropped" if gen else "flag 0x20"
         assert outcome[hit] == want, f"generation {gen}, roll {roll} over {over}: {outcome[hit]}, PD2: {want}"
     return f"{len(hits)} hit(s): leech kept {hits[0][4]}%, physical {hits[0][3] >> 8}"
+
+
+HIT_WINDOW = re.compile(r"hit window: mode (\d+) request (\d+), (-?\d+) frames left: (-?\d+)")
+GET_HIT, BLOCK, KNOCKBACK = 4, 9, 0x13
+
+
+@check("hit-window", tags=["core-rules-w34"])
+def hit_window(ctx):
+    """PD2's gate B on the server: a player in get-hit (4) or block (9) takes a new mode once 2 frames or fewer are
+    left to the mode-end event (D2R: 1). With more left, walk / run are buffered (4, D2R's queue) and the rest refused
+    (1). A get-hit, block or knockback request is still refused (D2R's). D2R's client holds a request made in get-hit
+    and sends it with 1 frame left (PD2's client most likely too), so the 2-frame case is not reached, and a 1-frame row passes
+    without the patch too: the check guards the hook and the window's results, not the patch (docs/deviations.md)."""
+    rows = [tuple(int(v) for v in m) for m in HIT_WINDOW.findall(_log(ctx))]
+    rows = [r for r in rows if r[0] in (GET_HIT, BLOCK)]
+    if not rows:
+        ctx.skip("no hit-window line in the log yet (let a pack in Hell hit you while attacking, then run again)")
+    for mode, request, left, result in rows:
+        if request in (GET_HIT, BLOCK, KNOCKBACK):
+            want = 1
+        elif left <= 2:
+            want = 0
+        else:
+            want = 4 if request in (2, 3, 6) else 1
+        assert result == want, f"mode {mode}, request {request}, {left} frames left: {result}, expected {want}"
+    return f"{len(rows)} lines: " + ", ".join(f"{r[2]} left -> {r[3]}" for r in rows[:6])
+
+
+ORMUS_SKILLS = {39, 45, 44, 55, 59, 441, 64, 38, 49, 48, 53, 43, 36, 47, 46, 51, 56, 455, 62, 448}  # PD2's list 8
+ORMUS_ROLL = re.compile(r"ormus: rolled skill (\d+) \+(\d+), cast on cast (\d+)% level (\d+)")
+
+
+def _skill_rows() -> list[dict[str, str]]:
+    with open(os.path.join(REPO, "generated", "data", "global", "excel", "skills.txt"), encoding="latin-1") as f:
+        rows = [line.rstrip("\r\n").split("\t") for line in f]
+    return [dict(zip(rows[0], r)) for r in rows[1:]]
+
+
+def ormus_expected(param: int, chance: int, level: int, reqlevel: int, delay: bool) -> tuple[int, int, int]:
+    """PD2's func 25 (ProjectDiablo.dll 0x103a12a0): +param to the skill; a skill with a cooldown procs at 67% of
+    the chance, and the level drops by (reqlevel - 6) / 6, truncated as C does."""
+    return param, int(chance * 67 / 100) if delay else chance, level - int((reqlevel - 6) / 6)
+
+
+def _ormus_rolls(ctx) -> list[tuple]:
+    rolls = [tuple(int(v) for v in r) for r in ORMUS_ROLL.findall(_log(ctx))]
+    if not rolls:
+        ctx.skip("no Ormus' Robes roll in the log yet (`cheat uniques 358`, pick it up, then run again)")
+    return rolls
+
+
+@check("ormus-roll", tags=["core-rules-p12"])
+def ormus_roll(ctx):
+    """Ormus' Robes (sorc-skill-rand-ctc, par 2, min 12, max 26) rolls a skill of PD2's sorceress list at +2, and
+    cast on cast at PD2's chance and level for that skill."""
+    rows = _skill_rows()
+    rolls = _ormus_rolls(ctx)
+    for skill, bonus, chance, level in rolls:
+        assert skill in ORMUS_SKILLS, f"skill {skill} is not on PD2's sorceress list"
+        row = rows[skill]
+        want = ormus_expected(2, 12, 26, int(row["reqlevel"]), int(row["localdelay"] or 0) > 0)
+        assert (bonus, chance, level) == want, f"{row['skill']}: +{bonus}, {chance}% level {level}, PD2: {want}"
+    return f"{len(rolls)} roll(s), e.g. {rows[rolls[0][0]]['skill']} +{rolls[0][1]}, {rolls[0][2]}% level {rolls[0][3]}"
+
+
+@check("items-installed", tags=["core-rules-p12", "core-rules-ir4", "core-rules-ir7"])
+def items_installed(ctx):
+    """core-rules installs its eight item rules: property func 26, IR3's five, the curse hook and skill on equip (skill
+    on cast is the Cast Triggers companion's, IR2)."""
+    line = re.search(rf"{PLUGIN}: items [^\n]*", _log(ctx))
+    assert line, "no items part line in the plugin log"
+    assert "items 8/8 installed" in line.group(0), line.group(0)
+    return line.group(0)[len(PLUGIN) + 2:]
+
+
+CURSE = re.compile(r"curse: state (\d+), (\d+) curse\(s\) on the target, (\d+) slot\(s\) \(caster (\d+)\), "
+                   r"(same state|replaces the oldest|added)")
+CURSE_HELD = re.compile(r"curse: state (\d+) landed, the target holds (\d+) curse\(s\)")
+CURSE_RESISTANCE = re.compile(r"curse resistance (-?\d+) \(used (-?\d+)\) on (player|monster): aurastat(\d) stat (\d+) "
+                              r"(-?\d+) -> (-?\d+)")
+
+
+def curse_resisted(value: int, resistance: int) -> int:
+    """PD2's 0x1037c4c0 as its curse code calls it: value * (100 - resistance) / 100, truncated toward zero."""
+    return int(value * (100 - resistance) / 100)
+
+
+@check("max-curses", tags=["core-rules-ir4"])
+def max_curses(ctx):
+    """A curse joins the target's curses while it holds fewer than max_curses + 1 (or the most slots a curse on it
+    was cast with); a full target loses its oldest curse; the same curse refreshes (PD2's 0x1036d7d0)."""
+    rows = [(int(st), int(n), int(slots), int(own), what) for st, n, slots, own, what in CURSE.findall(_log(ctx))]
+    if not rows:
+        ctx.skip("no curse in the log yet (curse a monster, run again)")
+    for state, count, slots, own, what in rows:
+        assert slots >= own, f"state {state}: {slots} slots below the caster's {own}"
+        if what == "added":
+            assert count < slots, f"state {state} added to {count} curses with {slots} slots"
+        elif what == "replaces the oldest":
+            assert count >= slots, f"state {state} replaced a curse with {count} of {slots} slots used"
+    held = [(int(st), int(n)) for st, n in CURSE_HELD.findall(_log(ctx))]
+    extra = [r for r in rows if r[4] == "added" and r[1] >= 1]
+    if not extra or not any(n >= 2 for _, n in held):
+        ctx.skip("no target held a second curse yet (+1 max curses, two curses on one monster, run again)")
+    most = max(n for _, n in held)
+    assert most <= max(r[2] for r in rows), f"a target holds {most} curses, more than any slot count logged"
+    return f"{len(rows)} curse(s); a target held {most} at once; state {extra[0][0]} joined {extra[0][1]} curse(s)"
+
+
+@check("curse-resistance", tags=["core-rules-ir4"])
+def curse_resistance(ctx):
+    """curse_effectiveness on the cursed unit scales each curse stat by (100 - resistance) / 100, at most 75 except
+    aurastat1 on a monster (PD2's 0x1036d7d0 and 0x102fad50)."""
+    rows = CURSE_RESISTANCE.findall(_log(ctx))
+    if not rows:
+        ctx.skip("no resisted curse in the log yet (wear Wraithskin, get cursed, run again)")
+    for resistance, used, who, slot, stat, base, resisted in rows:
+        resistance, used, base, resisted = int(resistance), int(used), int(base), int(resisted)
+        want_used = resistance if who == "monster" and slot == "1" else min(resistance, 75)
+        assert used == want_used, f"stat {stat} on a {who}: used {used} of {resistance}, PD2: {want_used}"
+        assert resisted == curse_resisted(base, used), f"stat {stat}: {base} -> {resisted}, PD2: {curse_resisted(base, used)}"
+    return f"{len(rows)} stat(s), e.g. stat {rows[0][4]} {rows[0][5]} -> {rows[0][6]} at {rows[0][1]}"
+
+
+SKILL_ON_EQUIP = re.compile(r"skill on equip: unit type (\d+), skill (\d+), (-?\d+) -> (-?\d+), level now (-?\d+)")
+SKILL_ON_EQUIP_TICK = re.compile(r"skill on equip tick: skill (\d+) level (\d+), state (\d+), next frame (-?\d+), (cast|held)")
+PHASING = re.compile(r"phasing: (on|off), unit type (\d+), collision mask 0x([0-9a-f]+) -> 0x([0-9a-f]+)")
+CHILLING_ARMOR_SELFAURA, PHASING_SELFAURA = 624, 674  # merged skill ids
+CHILLINGARMOR_STATE = 20  # merged states id
+
+
+@check("skill-on-equip", tags=["core-rules-ir7"])
+def skill_on_equip(ctx):
+    """item_skillonequip runs its skill as an item aura at the stat's level while the item is worn, and stops when
+    it comes off (PD2's 0x1036f640 and 0x10345cc0): Blackoak Shield's Chilling Armor SelfAura at level 11."""
+    changes = [tuple(int(v) for v in row) for row in SKILL_ON_EQUIP.findall(_log(ctx))]
+    shield = [c for c in changes if c[1] == CHILLING_ARMOR_SELFAURA]
+    if not shield:
+        ctx.skip("no Chilling Armor SelfAura change in the log yet (equip Blackoak Shield, run again)")
+    assert any(old == 0 and new == 11 for _, _, old, new, _ in shield), f"no 0 -> 11 on equip: {shield}"
+    ticks = [(int(sk), int(lv), int(st), int(nx), what) for sk, lv, st, nx, what in SKILL_ON_EQUIP_TICK.findall(_log(ctx))]
+    mine = [t for t in ticks if t[0] == CHILLING_ARMOR_SELFAURA]
+    if not mine:
+        ctx.skip("no Chilling Armor SelfAura tick yet (wear Blackoak Shield a few seconds, run again)")
+    assert all(level == 11 and state == CHILLINGARMOR_STATE for _, level, state, _, _ in mine), mine
+    assert any(what == "cast" for *_, what in mine), f"no tick cast the aura: {mine}"
+    assert all(nx > 0 for _, _, _, nx, _ in mine), f"a tick did not re-add the event: {mine}"
+    if not any(old == 11 and new == 0 for _, _, old, new, _ in shield):
+        ctx.skip("Blackoak Shield not taken off yet (unequip it, run again)")
+    return f"{len(mine)} tick(s) at level 11, state {CHILLINGARMOR_STATE}, then 11 -> 0 on unequip"
+
+
+@check("phasing", tags=["core-rules-ir7"])
+def phasing(ctx):
+    """Phasing SelfAura clears the unit collision bits of the wearer's path while worn and sets them back when it
+    comes off (PD2's 0x10380c50: 0x1c09 <-> 0xc09 on a player)."""
+    rows = [(what, int(t), int(a, 16), int(b, 16)) for what, t, a, b in PHASING.findall(_log(ctx))]
+    if not rows:
+        ctx.skip("no phasing in the log yet (equip Spectral Plate, run again)")
+    for what, unit_type, before, after in rows:
+        bits = 0x1000 if unit_type == 0 else 0x3000
+        want = before & ~bits if what == "on" else before | bits
+        assert after == want, f"phasing {what} on type {unit_type}: 0x{before:x} -> 0x{after:x}, PD2: 0x{want:x}"
+    on = [r for r in rows if r[0] == "on" and r[1] == 0]
+    if not on:
+        ctx.skip("no player phasing on yet (equip Spectral Plate, run again)")
+    assert on[0][2] == 0x1c09, f"a player's mask was 0x{on[0][2]:x} before phasing, PD2: 0x1c09"
+    if not any(r[0] == "off" for r in rows):
+        ctx.skip("Spectral Plate not taken off yet (unequip it, run again)")
+    return f"{len(rows)} change(s), e.g. {rows[0][0]} 0x{rows[0][2]:x} -> 0x{rows[0][3]:x}"
+
+
+ONE_PRESS = re.compile(r"corruption: one press runs outcome row (\d+)")
+
+
+def _cube_rows() -> list[dict[str, str]]:
+    with open(os.path.join(REPO, "generated", "data", "global", "excel", "cubemain.txt"), encoding="latin-1") as f:
+        rows = [line.rstrip("\r\n").split("\t") for line in f]
+    return [dict(zip(rows[0], r)) for r in rows[1:]]
+
+
+@check("cube-installed", tags=["core-rules-ir6"])
+def cube_installed(ctx):
+    """core-rules installs its cube rule: the executor hook for corruption in one press."""
+    line = re.search(rf"{PLUGIN}: cube [^\n]*", _log(ctx))
+    assert line, "no cube part line in the plugin log"
+    assert "cube 1/1 installed" in line.group(0), line.group(0)
+    return line.group(0)[len(PLUGIN) + 2:]
+
+
+@check("corruption-one-press", tags=["core-rules-ir6"])
+def corruption_one_press(ctx):
+    """After a corruption roll row, the same press runs an outcome row (PD2's 0x366f40): an op-16 row on corruptor
+    whose inputs take a Worldstone Shard."""
+    rows = [int(r) for r in ONE_PRESS.findall(_log(ctx))]
+    if not rows:
+        ctx.skip("no one-press corruption in the log yet (cube a magic ring with a Worldstone Shard, run again)")
+    cube = _cube_rows()
+    for row in rows:
+        r = cube[row]
+        inputs = [r.get(f"input {i}", "") for i in range(1, 8)]
+        assert r["op"] == "16" and r["param"] == "414", f"row {row} ({r['description']}) is not an outcome on corruptor"
+        assert any(i.startswith(("wss", "cwss")) for i in inputs), f"row {row} takes no Worldstone Shard"
+    return f"{len(rows)} press(es), e.g. outcome row {rows[0]} ({cube[rows[0]]['description']})"
