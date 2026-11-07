@@ -8,6 +8,9 @@
 #include <cstddef>
 #include <cstdint>
 
+// Kills a monster without drops, as PD2's 0x10356e00 (unique_maps.cpp kills the Warlord's pillars with it).
+auto KillQuietly(d2r::Game* game, d2r::Unit* monster) noexcept -> void;
+
 // The game counter key of the Lucion fight's stage (PD2 game +0x262a): 8 once Lucion is dead, which the Temple's
 // Desecration (UB7) needs.
 inline constexpr uint32_t LucionStageKey = 0x55425253;  // 'UBRS'

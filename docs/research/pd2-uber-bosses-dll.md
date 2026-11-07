@@ -154,10 +154,20 @@ controller, spawner and adds. So a boss left alone, or pulled out of every playe
 - **Skeleton waves** at stat-447 phases 1, 3 and 5. They fire when life drops below Param4, Param5 and Param6 of skill slot
   6 (UberDiabSummon) in `skills.txt`: 85, 60 and 35, the wiki's numbers.
 - **Immunity:** each tick it checks whether any of monsters 886-892 (Dclone's adds) are alive in the level, and calls the
-  immunity toggle (`0x10380770`, section 5 intro). The boss is immune while any add lives, and also while no player is
-  within 0x17c of it; otherwise its resists are restored from `monstats`.
-- **Trapped souls** (`0x1035bc60`, monsters 790-794) die when Dclone is dead or dying. Their cast delay is the `aidel`
-  minus 4×tier (at least 20) and their spread shrinks with the tier.
+  immunity toggle (`0x10380770`, section 5 intro). The boss is immune while any add lives, before his first phase (stat 447 = 0), and while the farthest
+  player in his level is more than 0x17c away (squared subtiles); otherwise its resists are restored from `monstats`
+  (its Normal columns). #470's port read this from the disassembly.
+- **Trapped souls** (`0x1035bc60`, monsters 790-794) die when Dclone (`game+0x2600`) is dead or dying (mode 0 or 12,
+  or life 0%). #472's port read the rest from the disassembly (Hell columns, whatever the difficulty):
+  - A soul waits (idle `aidel`) while Dclone's life % is above its `aip4` + (tier − 1)×12 (souls 1-5: 100, 80, 40, 60,
+    20) or while his nova count (stat 446) is not 0.
+  - With its own stat 446 at 0 it casts skill 2 (UberDiabloBoulder) on its target and sets the stat to `aip5` (10);
+    otherwise it counts it down and casts skill 1 (UberDiabloMeteor), skipped 1 in max(`aip6` − 5×tier + 5, 5) % of the time.
+  - The meteor lands in the 50×50 square from (0x3b00, 0x197b) around the arena centre, or, for `aip8` 2 or 3 (souls 3
+    and 5), at the target spread over 24 − 8×tier subtiles.
+  - The delay after a cast: `aidel` + 10 at tier 0, else max(`aidel` − 4×(tier − 1), 20); the meteor's adds 0-7 − 4.
+  - The same function's branch for monster 0x39a (nihlathakMap) runs mob waves (its `aip1` columns count the stages),
+    then casts skill 2 (RathmaDeath) and kills itself; its branch for 0x421 in level 0xb6 is a third AI.
 
 ### Rathma and Mendeln (`0x10358510`)
 
@@ -195,12 +205,76 @@ controller, spawner and adds. So a boss left alone, or pulled out of every playe
   | 6 | 55% | +3 |
   | 7 | 35% | +3 |
 
-- **Stage 3, the portal phase:** Lucion stops (mode 10, a 25-tick delay). Four units spawn at the arena corners
-  (x 0x622d/0x6217 by y 0x17eb/0x17d5) through the same spawn call the spawner uses, probably Veiled Portals (1141).
-- **LucionControl** (1113) and **LucionSpawner** (1141) spawn adds on a timer from stage 3 or 4. Shivering Child (1114),
-  Smouldering Defiler (1115) and Anguished Mother (1140) are picked by the `aip` odds and capped by the `aip` counts.
-  Their timers shorten with the tier and the stage. While Lucion's own AI is in its mode 5, the controller's and
-  spawner's timers are halved.
+- **Stage 3, the portal phase:** Lucion goes immune and stops (mode 10, a 25-tick delay). Four LucionSpawners (1141,
+  the `ECX` of each spawn call) spawn at the arena corners (x 0x622d/0x6217 by y 0x17eb/0x17d5), with no treasure and
+  no experience. Then his state machine enters state 4 (below).
+- **LucionControl** (1113) and **LucionSpawner** (1141) are read below ([#437](https://github.com/synpoox/pd2-resurrected/issues/437)).
+
+#### Lucion's state machine (read for #437)
+
+The `aip` columns are read as one int16 list *p*0-*p*23 (aip1, aip1(N), aip1(H), aip2, ...; 1.13c monstats `+0x56`),
+whatever the difficulty, so each column is just one more number. The AI keeps three params: the next state, a counter,
+and the state it just ran (*last*). Skills are monstats `Skill1-5`: LucionBlink, LucionNova, LucionBoneWave,
+LucionPunish and MonCharge (the dash), each cast in its `SkNmode`. *aidel* is the difficulty's `aidel` minus the tier.
+
+Each tick, before the state runs: the stage goes up by at most one (table above); the sub-step `game+0x262b` counts
+down unless the state is 5; stat 446 counts down unless the state is 7 or 8. If the stage just became 3, the portal
+phase runs and the next state is 4. In state 1, a player farther than √700 subtiles (or √500, 1 time in 5) makes him
+blink at the target.
+
+| State | What it does | Next |
+|---|---|---|
+| 0 | idle 40; stage at least 1 | 6 |
+| 1 | immunity off; roll *r* < 100. *r* < *p*0: in melee range a swing (state kept); else, within 10 subtiles, 3 in 10 walk at the target and delay 15; else 9. *p*0 ≤ *r* < *p*1: 12. Else 7 if *last* ≠ 8, *r* < *p*2, stage ≥ 2 and stat 446 ≤ 0; else 4 (3 while the sub-step runs) if *last* ≠ 6, *r* < *p*3 and stage ≥ 3; else 3 (9 below stage 2 when *r* < *p*2). Idles *aidel* | as rolled |
+| 2, 11 | idle *aidel* | 1 |
+| 3 | attack in mode A2 | 1 |
+| 4 | counter 0: the portal phase again (immune, mode 10, delay 25). Counter 1: state 146 (`invis`) with light radius −100 (`0x10380950`), `0x103a4c70`, sub-step 0, the level darkened for its players (packet 0x53, `0x1037dc70`) and sound 0xa78 (`0x1037f240`); delay *aidel* | 5, counter 6 + rand 6 |
+| 5 | the frenzy, one step per tick while the counter lasts: 6 in 10 a swing (A1); else Punish at the target three times running (the sub-step 1-3), then a swing. Each swing uses up one count | 5, then 6 with the sub-step set to *p*6's low byte (Lucion: 50 ticks before the next frenzy) |
+| 6 | counter 0: darkening off, sound 0x26d, idle. Counter 1: state 146 off, `0x103a4c90`, mode 11, delay 10. Then immunity off and idle | 6, 6, 1 |
+| 7 | blink to the arena centre (0x6223, 0x17e1), delay 35 − 4×tier; then Nova at himself (the counter becomes 1 + rand 10000), delay 65 − 8×tier; then Nova again in mode 9 | 7, 7, 8 |
+| 8 | idle; stat 446 = rand(2×(3 − tier)) − stage/2 + *p*7 (Lucion: 30) | 1 |
+| 9 | Bone Wave at the target's spot | 1 |
+| 10 | blink at the target, 0 or −1 subtile off on each axis | 1 |
+| 12 | dash (MonCharge) to 3 subtiles past the target | 1 |
+| > 12 | idle *aidel* | 1 |
+
+So the frenzy (states 4-6) waits for stage 3 and the Nova (7-8) for stage 2.
+
+#### Lucion's skill functions (read for [#487](https://github.com/synpoox/pd2-resurrected/issues/487))
+
+The install routine `0x1036ba20` writes srvdo 184 `0x103b5110`, 185 `0x103b52b0`, 186 `0x103b56d0` and srvst 76
+`0x103b6aa0`. Missiles are made with flags 3 (`0x10311b20`) and sent to every client (`0x1037fe90`).
+
+- **LucionNova (184)**, monsters only: srvmissileb when the caster's AI param 0 is 8 (the second Nova), else
+  srvmissilea. A ring over D2's 64 directions (D2Game `0xfb870` / `0xfb770`) from the caster, starting at direction
+  *s* & 63, where *s* = `0x10380670`(AI param 1), the cast-sequence step of `0x103805f0`. Before each missile, while
+  fewer than 5 gaps were made and 8 missiles have been fired since the last gap, the next step *s* rolls *s* % 100 <
+  15 (2 less per gap): then it skips 6 directions. Both Novas of state 7 share param 1, so they leave the same gaps.
+- **LucionPunish (186)**: calc1 srvmissilea, with no target offset, at the skill's target + (cos *a*, sin *a*) × calc2,
+  *a* = 2 × 3.2 × *i* / calc1 (the constant `0x1044fb98` is 3.2, not π). For Lucion (0x458), sub-step 2 doubles the
+  count and adds 3 to the radius; sub-step 3 triples it and adds 6.
+- **LucionDash (srvst 76, srvdo 185)**: the start picks a free spot at the target unit (else the skill's point), stores
+  it and the distance in the unit skill, and sets flag 0x80. The do function is a leap with no attack. With 0x80 it
+  sets 0x1101, collision off, path type 9 to the spot at a monster's monstats Run (1.13c `+0x34`) << 9 or a player's
+  0xb00 + calc2 × 0x50, and a ring (`0x1036d250`) of calc1 srvmissilea. In flight (0x100) it lays srvmissilec at the
+  caster (1.13c D2Game `0xa28f0`, flags 0x21). Within 2 subtiles of the spot it puts the collision back, ends the mode
+  a frame later and makes a ring of calc2 srvmissileb.
+
+#### LucionControl and LucionSpawner (`0x1035dca0`, monsters 0x459 and 0x475)
+
+Both idle 10 while `game+0x26fe` > 0. "In the frenzy" means Lucion (`game+0x2600`) is in state 5.
+
+- **LucionControl**, from stage 3: while stat 446 < 1 and Lucion is in the frenzy, it counts the LucionSpawners in the
+  level and, below *p*2 (6) of them and on a roll < (tier − *p*0) × count + 100, spawns one at a random arena spot
+  (0x620d + rand 44, 0x17cb + rand 44), with stat 446 = rand(3 − tier) − stage/2 + *p*1 (*p*1 − 3 in the frenzy).
+  Otherwise stat 446 counts down. **From stage 4** it casts Royal Fire (Skill1) at its target when stat 447 < 1, and
+  sets stat 447 = rand(3 − tier) − stage/2 + *p*3 − tier (+2 in the frenzy). It idles its `aidel` (halved in the
+  frenzy).
+- **LucionSpawner**, from stage 3, when stat 446 < 1, spawns one add at itself: Shivering Child (1114) while fewer than
+  *p*3 − stage/2 live; at stage 5 instead Smouldering Defiler (1115) on a roll < *p*0 below *p*4 − stage/3 of them; from
+  stage 6 that, or else Anguished Mother (1140) on a roll < *p*1 below *p*5. Stat 446 = rand(3 − tier) − stage/2 + *p*6
+  (halved in the frenzy). It idles its `aidel` (one less in the frenzy).
+- Monsters 0x451 and 0x49e (a map invader portal) share the function; every other Overseer gets vanilla's AI.
 - **Death** (`0x10376560`): it spawns object 622 and a portal at (0x6221, 0x17df) to level 189, the Temple. It sets stage
   8 and kills the remaining adds in level 188.
 
@@ -295,5 +369,5 @@ One reading is worth checking in game first:
 | [UB3](https://github.com/synpoox/pd2-resurrected/issues/228) | prime and mini-uber drop handlers, Torch and Soulstone (6), level 185 opening (2) | the primes' AI overrides (`0x10357ba0`, `0x10357d50`, `0x10357f00`) |
 | [UB4](https://github.com/synpoox/pd2-resurrected/issues/229) | AI `0x1035b3f0`, nova phases and counts, skeleton waves, immunity rule, Annihilus and the 1-in-200 roll | none |
 | [UB5](https://github.com/synpoox/pd2-resurrected/issues/230) | AI `0x10358510`, thresholds, retreat, stage portals, shard and rolls | the per-event skill choices in detail |
-| [UB6](https://github.com/synpoox/pd2-resurrected/issues/231) | AI `0x1035dca0`, stage thresholds, portal phase, spawner, Temple portal, cube roll | the stage-5 and stage-7 skill choices in detail |
+| [UB6](https://github.com/synpoox/pd2-resurrected/issues/231) | AI `0x1035dca0` with its full state machine, stage thresholds, portal phase, controller and spawner, Temple portal, cube roll | `0x103a4c70` / `0x103a4c90` (D2Game thunks around the frenzy) |
 | [UB7](https://github.com/synpoox/pd2-resurrected/issues/232) | the whole roll and the brick (8) | none |
