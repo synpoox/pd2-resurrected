@@ -44,10 +44,7 @@ skills	MonFrenzy	=	srvdofunc,srvstfunc	Monster frenzy
 skills	Fire Claws	=	srvstfunc	Fire Claws: the hit
 skills	Baal Corpse Explode	=	cltstfunc	Baal Corpse Explode client start
 skills	BloodLordFrenzy	=	srvdofunc	Monster frenzy
-skills	DollMeteor	Meteor	srvdofunc,cltdofunc	Death novas
 skills	Force Move	-	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Force Move
-skills	RathmaDeath	Nova	srvdofunc,cltdofunc	Death novas
-skills	NihlathakMapDeath	Nova	cltdofunc	Death novas
 skills	RathmaSummon	-	srvdofunc	RathmaSummon
 skills	Holy Fire Fire Golem	Holy Fire	cltdofunc	Paladin aura client do
 skills	Holy Fire Fire Golem	Holy Fire	cltstfunc	Paladin aura client start
@@ -60,14 +57,8 @@ skills	Energy Shield SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Energy Shield SelfAura	Might	cltstfunc	Paladin aura client start
 skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Chilling Armor SelfAura	Might	cltstfunc	Paladin aura client start
-skills	LucionNova	Nova	srvdofunc	Lucion kit
 skills	LucionBlink	Teleport	cltdofunc	Lucion kit
-skills	LucionDash	Charge	srvdofunc,cltdofunc,srvstfunc,cltstfunc	Lucion kit
-skills	LucionPunish	-	srvdofunc	Lucion kit
-skills	LucionDeath1	Nova	srvdofunc,cltdofunc	Death novas
-skills	LucionDeath2	Nova	srvdofunc,cltdofunc	Death novas
-skills	LucionDeath3	Nova	srvdofunc,cltdofunc	Death novas
-skills	LucionDeath4	Nova	srvdofunc,cltdofunc	Death novas
+skills	LucionDash	MonLeap	cltdofunc,cltstfunc	Lucion kit
 skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Blade Fury	=	seqinput	Blade Fury: the throw frame
