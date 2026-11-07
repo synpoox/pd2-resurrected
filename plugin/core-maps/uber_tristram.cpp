@@ -1,6 +1,9 @@
 // The Uber Tristram primes' drop (ProjectDiablo.dll 0x10377710; docs/research/pd2-uber-bosses-dll.md, section 6): each
 // death of Uber Mephisto, Diablo or Baal sets a bit in the game; once all three are set PD2 drops the Hellfire Torch
 // and the Black Soulstone at item level 130 and opens a permanent town portal (object 60) to Harrogath at the body.
+// The port opens PD2's red portal (xactportal_red, operate 60) instead: D2R's town-portal operate (15) on object 60
+// refuses a portal with no linked partner ("I can't"). PD2 sets no done bit; the port does, so a cheat or a second
+// set of primes in one game drops once.
 // PD2 replaces D2R's own drop of the same three deaths (the Torch and a Standard of Heroes per player), which a
 // MutationService byte patch turns off. The drop rides key_drops' monster-death listener (the SDK's), as rathma.cpp.
 #include "uber_tristram.h"
@@ -27,9 +30,10 @@ struct Prime {
 };
 constexpr Prime Primes[] = {{704, 0x10}, {705, 0x20}, {709, 0x40}};
 constexpr int32_t AllDead = 0x70;
+constexpr int32_t Dropped = 0x80;  // the port's, not PD2's: set once the drop is made
 constexpr uint32_t DeadKey = 0x55425450;  // 'UBTP'
 constexpr int32_t Harrogath = 109;
-constexpr int32_t PermanentPortal = 60;  // PortalPermanent, as in PD2
+constexpr int32_t RedPortal = 587;  // xactportal_red (PD2 584)
 constexpr int32_t QualityUnique = 7;
 constexpr int32_t TorchRow = 400;  // Hellfire Torch, runtime uniqueitems row
 constexpr uint32_t Torch = D2RL::Items::MakeItemCode("cm2");
@@ -107,15 +111,16 @@ auto TristramDeath(Game* game, Unit* monster) noexcept -> void {
 		return;
 	}
 	*dead |= bit;
-	if ((*dead & AllDead) != AllDead) {
+	if ((*dead & (AllDead | Dropped)) != AllDead) {
 		return;
 	}
+	*dead |= Dropped;
 	Drop(game, monster, Torch, QualityUnique, TorchRow);
 	// PD2 asks quality 7 for it too; it has no unique row, so it comes out normal
 	Drop(game, monster, Soulstone, d2r::rva::QualityNormal, -1);
 	int32_t xy[2] = {};
 	d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(d2r::rva::UnitCoords)(monster, xy);
-	if (OpenPortalAt(game, d2r::Engine<void* (*)(Unit*) noexcept>(d2r::rva::UnitRoom)(monster), PermanentPortal, xy[0],
+	if (OpenPortalAt(game, d2r::Engine<void* (*)(Unit*) noexcept>(d2r::rva::UnitRoom)(monster), RedPortal, xy[0],
 	                 xy[1], Harrogath) != nullptr) {
 		++g_portals;
 	}
