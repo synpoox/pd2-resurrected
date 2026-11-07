@@ -35,6 +35,7 @@ private-multiplayer release a build may break characters; each break is noted he
 #### Fixes
 
 - Legacy graphics no longer draws the ground in D2R's own areas as red and cyan noise.
+- Legacy graphics draws PD2's maps (Mesa, Tomb Map, Graveyard Map and others) in their own colours.
 - The Ascendant mercenary equips staves only, as in PD2.
 - The mercenary panel shows the mercenary's title instead of "an evil force".
 - PD2's own items (Worldstone Shards, maps, PD2 uniques) show on the ground in HD again.

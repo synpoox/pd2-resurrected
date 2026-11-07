@@ -847,6 +847,17 @@ inline constexpr uint8_t SpawnCheatKeyFull[] = {0x41, 0x8b, 0x00, 0xb9, 0x20, 0x
                                                0x90, 0x90, 0x90, 0x90, 0x90};
 static_assert(sizeof(SpawnCheatKeyD2R) == sizeof(SpawnCheatKeyFull));
 
+// --- core-ui: legacy palette of the level entered (#296) -----------------------------------------------------------
+// (act byte) -> void: loads data/global/palette/act<N+1>/pal.pl2 (legacy floor, light and colormap tables) and
+// updates the palette texture. Only the load screen's end calls it with a level's palette (0xc5f80 passes
+// ActPalette), so a level entered without one (a map's portal from Harrogath) keeps the last act's. Decompiled for #296.
+inline constexpr uint64_t LoadActPalette = 0x9041a0;
+// (act byte) -> void: sets ActPalette. The client's unit placement 0x9bf00 sets it from the level record's Pal,
+// the act load 0x86bc0 from the act. The global it writes: 0x2a2adc0.
+inline constexpr uint64_t SetActPalette = 0xcd6d0;
+inline constexpr uint64_t LevelRecord = 0x32c4a0;  // (dataFlag, level id) -> levels.txt record
+inline constexpr int LvlPal = 0x0c;  // uint8 Pal (0x9bf00 reads it for SetActPalette; Teleport is +0x0e)
+
 // --- core-maps: opening a map (MS2, #217; D2Game\src\Skills\SkillItem.cpp) ----------------------------------------
 // Item spell dispatchers, (game, player, item, target): the check -> bool, then the use (whose caller frees an item
 // whose spell flag is 0, as slot 16's empty entry is). Both index D2R's 20-entry item spell table (0x236fe30) by the
