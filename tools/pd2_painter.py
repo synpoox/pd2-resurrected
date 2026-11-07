@@ -3,12 +3,14 @@ set's stock presets place them.
 
 Subtile grid: 5x5 per tile, blocked = DT1 subtile flag bit 0 (Layout.flags). harvest() learns, per stock tree, its
 distance (subtiles) to the nearest blocked subtile, the direction to its room's playable ground (8 buckets) and how far
-it stood from it, so a tree on the path's camera-near side is one stock put there (low foreground trees, #454); paint() puts trees on the subtiles past the playable area, nearest first, the stock spacing apart,
+it stood from it; where a tree would be drawn over the playable ground, only roots stand (#454); paint() puts trees on the subtiles past the playable area, nearest first, the stock spacing apart,
 each copied from a stock tree with the same direction and distance."""
 from __future__ import annotations
 
+import bisect
 import collections
 import copy
+import functools
 import json
 import math
 import re
@@ -18,7 +20,10 @@ TREE = re.compile(r"tree_wall|treewall|treeline|small_cluster|_trees_")  # treel
 SPACING = 9  # subtiles between tree origins when the stock has fewer than two trees
 DEPTH = 30  # paint unreachable ground up to this many subtiles from the playable area
 CAP = 15  # distances to the blocked ground are capped here
-SHADE, SIDE = 15, range(-2, 3)  # a tall tree covers the ground up to 15 subtiles screen-up of it, 2 to either side
+# a tree covers the ground screen-up of it: up to TALL subtile rows (x + y; a tile is 10) above, WIDE columns (x - y) to
+# either side, about 4 tiles high and 1 wide
+TALL, WIDE = 40, 10
+LOW = re.compile(r"jungle_roots\d+_treewall")  # the tree-wall models low enough to stand in front of the path
 LINE = 10  # wall tiles in an 8-connected group this big are a tree line; smaller groups stand in a clearing
 STEPS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 AROUND = [(i, j) for i in (-1, 0, 1) for j in (-1, 0, 1)]
@@ -155,12 +160,24 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
     def clear(p, o) -> bool:
         return not any((p[0] + dx, p[1] + dz) in keep_off for dx, dz in footprint(o))
 
-    # the camera looks along +x +y: a tall tree here is drawn over the playable ground screen-up of it, and nothing
-    # fades it (its transparency names sealed floor), so only low foreground clusters stand there (#454)
-    near = {p for p in cand if any((p[0] - k + i, p[1] - k - i) in best for k in range(1, SHADE + 1) for i in SIDE)}
+    # the camera looks along +x +y: a tree is drawn over the playable ground screen-up of it, and no stock jungle tree
+    # fades (the `_foreground` tree walls are as tall), so only roots put a piece where it would hide the player (#454)
+    cols = collections.defaultdict(list)  # screen column (x - y) -> the playable subtiles' screen rows (x + y)
+    for q in best:
+        cols[q[0] - q[1]].append(q[0] + q[1])
+    for v in cols.values():
+        v.sort()
+
+    @functools.cache
+    def shades(p) -> bool:
+        s = p[0] + p[1]
+        return any((v := cols.get(c)) and (i := bisect.bisect_left(v, s - TALL)) < len(v) and v[i] < s
+                   for c in range(p[0] - p[1] - WIDE, p[0] - p[1] + WIDE + 1))
+    low = {id(o) for v in kit.values() for o in v if LOW.search(json.dumps(o[0]["components"]))}
 
     def fits(p, o) -> bool:
-        return o[3] <= reach[p] and (p not in near or "foreground" in (prefab(o[0]) or ""))
+        return o[3] <= reach[p] and (id(o) in low
+                                     or not any(shades((p[0] + dx, p[1] + dz)) for dx, dz in footprint(o)))
 
     def run(sub: dict, singles: dict, grid) -> list:
         ents, cell = [], max(1, int(spacing))
