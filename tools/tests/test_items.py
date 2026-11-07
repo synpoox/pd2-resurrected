@@ -43,12 +43,12 @@ class KeyedTests(unittest.TestCase):
             ["warlock", "wt1", "wt2", "wt3", "1"]])
 
     def test_cube_numinputs_counts_each_item(self):
-        # D2R wants numinputs == items in the cube; PD2 counts stacks. Op 30 and sums past the cube's 12 cells keep PD2's
+        # numinputs is the sum of the inputs' qty (core-rules counts a stack as its quantity); op 30 keeps PD2's
         head = "description|op|numinputs|input 1|input 2|input 3\n"
         pd2 = table(head + '3 maps||1|"t1me,qty=3"||\nrunes||2|"key,qty=1"|"r01,qty=3"|\nok||3|t1me|t1me|t1me\n'
                     'block|30|2|map|"ggm4,qty=3"|\nimbue|18|3|"upma,qty=50"|"rune,qty=50"|"ggm4,qty=50"\n')
         d2r = table(head + 'vanilla||1|"gcv,qty=3"||\n')
-        self.assertEqual([r[2] for r in M.merge_cube(pd2, d2r, NO_CTX).rows], ["3", "4", "3", "2", "3", "1"])
+        self.assertEqual([r[2] for r in M.merge_cube(pd2, d2r, NO_CTX).rows], ["3", "4", "3", "2", "150", "1"])
 
     def test_cube_reroll_rows_remake_the_item(self):
         # op 31 has no outputs in PD2 (its cube code makes the item); the rows ship switched off, core-rules runs them

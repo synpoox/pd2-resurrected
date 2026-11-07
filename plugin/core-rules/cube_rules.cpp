@@ -19,6 +19,7 @@
 // The merge ships the op-31 rows switched off, so D2R never runs them itself; this file switches them on after each
 // table load, and only when its hook and the SDK services are in.
 #include "cube_rules.h"
+#include "cube_stacks.h"
 
 #include "d2r.h"
 #include "log.h"
@@ -268,6 +269,9 @@ auto CubeExecute(Game* game, Unit* player, const uint8_t* record, MatchOut* out)
 	if (game != nullptr && player != nullptr && record != nullptr && record[d2r::rva::CubeOp] == OpReroll) {
 		return Reroll(player);
 	}
+	if (!KeepCubeLeftovers(game, player, record)) {
+		return 0;
+	}
 	const uint64_t made = g_executorOriginal(game, player, record, out);
 	if (game == nullptr || player == nullptr || record == nullptr || !IsRollRow(record)) {
 		return made;
@@ -288,6 +292,9 @@ auto CubeExecute(Game* game, Unit* player, const uint8_t* record, MatchOut* out)
 	const uint8_t* outcome =
 		d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(d2r::rva::CubeRecipe)(d2r::DataFlag(game), result.row);
 	if (outcome == nullptr) {
+		return made;
+	}
+	if (!KeepCubeLeftovers(game, player, outcome)) {
 		return made;
 	}
 	plog::Info("corruption: one press runs outcome row %d, %u so far", result.row, ++g_onePress);
