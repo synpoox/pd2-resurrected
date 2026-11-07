@@ -11,6 +11,7 @@ private-multiplayer release a build may break characters; each break is noted he
   rare items get at least four affixes from item level 45 (five from 65, six from 85) and rare jewels always four,
   hiring a new mercenary drops the old one's gear, and shift-right-clicking a Tome of Identify identifies your
   inventory. Skill on cast and skill on block items proc through the Cast Triggers plugin (1.1.12); not yet confirmed in game.
+- The Horadric Cube has PD2's 4x4 grid.
 
 #### Uber bosses
 

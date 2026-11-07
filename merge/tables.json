@@ -38,6 +38,12 @@
   }
  },
  "hitclass": {},
+ "inventory": {
+  "only_rows": [
+   "Transmogrify Box Page 1",
+   "Transmogrify Box2"
+  ]
+ },
  "lvlmaze": {},
  "lvlsub": {},
  "misscalc": {},
