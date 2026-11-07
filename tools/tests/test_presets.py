@@ -245,7 +245,31 @@ class ApplyTests(unittest.TestCase):
                          [("torch", 12.0)])
         self.assertEqual(preset["biomeFilename"], "data/hd/env/biome/act1_town.json")
         self.assertFalse((self.out / "hd/env/preset/expansion/map/p.json").exists())
-        self.assertIn("1 presets on PD2 tiles have none", log.getvalue())
+        self.assertIn("1 presets on PD2 tiles wait for stand-ins", log.getvalue())
+
+    def test_a_preset_on_pd2_tiles_with_stand_ins_draws_the_stand_ins_stock_pieces(self):
+        # the PD2 DT1 copies tile B of act1/a/wall.dt1 and adds one D2R lacks; p.ds1 draws both
+        (self.out / "global/tiles/pd2assets").mkdir(parents=True)
+        (self.out / "global/tiles/pd2assets/x.dt1").write_bytes(dt1([B[1:], (1, 7, 7)], {(1, 7, 7)}))
+        (self.out / "global/tiles/expansion/map/p.ds1").write_bytes(ds1(2, 1, [{(0, 0): B[1:], (1, 0): (1, 7, 7)}], [{}]))
+        self.rule.write_text("Act 1 - Town\tdata/hd/env/biome/act1_town.json\nPd2 Set\tdata/hd/env/biome/b.json\n"
+                             "pd2assets/X.dt1\tact1/a/wall.dt1\n")
+        with redirect_stdout(io.StringIO()) as log:
+            P.apply(self.rule, Path(), self.d2r, self.out)
+        preset = json.loads((self.out / "hd/env/preset/expansion/map/p.json").read_text())
+        self.assertEqual([e["name"] for e in preset["entities"]], ["torch"])  # tile B's piece; the new tile stays empty
+        self.assertEqual(preset["biomeFilename"], "data/hd/env/biome/b.json")
+        self.assertIn("0 presets on PD2 tiles wait", log.getvalue())
+        lay = P.layout((self.out / "global/tiles/expansion/map/p.ds1").read_bytes(),
+                       P.stand_in(["pd2assets/x.dt1"], P.Tiles(self.d2r / "global/tiles"),
+                                  P.Tiles(self.out / "global/tiles"), {"pd2assets/x.dt1": "act1/a/wall.dt1"}))
+        self.assertEqual(lay.keys[(1, 0)], ("w", (("pd2assets/x.dt1", 1, 7, 7),)))
+        self.assertEqual(lay.flags[(1, 0)], b"\1" * 25)  # PD2's collision stays
+
+    def test_a_stand_in_line_no_preset_loads_fails(self):
+        self.rule.write_text("Act 1 - Town\tb.json\npd2assets/gone.dt1\t-\n")
+        with self.assertRaisesRegex(ValueError, "stand-in lines for DT1 no PD2-only preset loads: pd2assets/gone.dt1"):
+            P.apply(self.rule, Path(), self.d2r, self.out)
 
     def test_a_tile_set_with_no_line_fails(self):
         self.rule.write_text("# tile set\tbiome\n")
@@ -254,7 +278,7 @@ class ApplyTests(unittest.TestCase):
 
     def test_a_line_no_preset_needs_fails(self):
         self.rule.write_text("Act 1 - Town\tb.json\nAct 9 - Gone\tb.json\n")
-        with self.assertRaisesRegex(ValueError, "no PD2-only preset on D2R tiles loads: act 9 - gone"):
+        with self.assertRaisesRegex(ValueError, "on D2R tiles or stand-ins loads: act 9 - gone"):
             P.apply(self.rule, Path(), self.d2r, self.out)
 
     def test_without_d2rs_presets_in_the_cache_it_makes_none(self):
