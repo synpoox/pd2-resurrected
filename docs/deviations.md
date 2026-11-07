@@ -284,6 +284,7 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | PD2 missile columns LevRange, Qty and SpecialSetup | `missiles.*.levrange` `missiles.*.qty` `missiles.*.specialsetup` |
 | Belts and body locations keep D2R's values | `belts.*` `bodylocs.*` |
 | PD2 tables soundenviron and sounds: D2R's are kept | `soundenviron.*` `sounds.*` |
+| Monster sounds: monsounds cells naming a PD2-only sound take D2R's sound of the same file, else none | `monsounds.treasurefallen.*` `monsounds.butcher.*` `monsounds.leoric.*` `monsounds.zhar.*` `monsounds.nakrulsound.*` `monsounds.d1r_j6.*` |
 | PD2 automap rows for its level types 36-50: in core-ui's table, not AutoMap.txt | `automap.[3-9][0-9]*` |
 | Level types: D2R's areas keep D2R's files | `lvltypes.act 1 - barracks.file 1[0-5]` `lvltypes.act 2 - tomb.file 1[23]` `lvltypes.act 2 - basement.file [47]` `lvltypes.act 4 - town.file 8` `lvltypes.act 4 - mesa.file 13` `lvltypes.act 5 - siege.file 21` `lvltypes.act 5 - barricade.file 32` `lvltypes.act 5 - temple.file 2` `lvltypes.36.file 13` `lvltypes.guild4-5.file 13` `lvltypes.imperial palace.*` `lvlprest.uberdiablolvl.dt1mask` `lvlprest.palace.dt1mask` `lvlprest.frozen forest map.dt1mask` `lvlprest.imperial palace.dt1mask` |
 | PD2 inventory table: D2R's is kept | `inventory.*` |
