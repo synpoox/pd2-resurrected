@@ -1059,6 +1059,16 @@ inline constexpr uint64_t DropItemAt = 0x444680;
 inline constexpr int32_t QualityNormal = 2;
 inline constexpr uint32_t MonDemon = 0x2000;  // MonFlags bit 13 (monstats field table 0x39db30)
 
+// --- core-rules: the ethereal bonus (IR8, #243) --------------------------------------------------------------------
+// (item): sets the ethereal flag, then base stats times 3/2 (1.13c's D2Common #10890, which PD2 replaces with
+// 0x102fb710). Callers: the drop 0x442d60, the ethereal property 0x3ccc60, the cube output 0x5269c0.
+// mov [rsp+0x10],rbx / push rdi / sub rsp,0x20 / mov rbx,rcx / test rcx,rcx
+inline constexpr uint64_t ItemApplyEthereal = 0x3d3510;
+inline constexpr uint8_t ItemApplyEtherealEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x57, 0x48, 0x83,
+                                                     0xec, 0x20, 0x48, 0x8b, 0xd9, 0x48, 0x85, 0xc9};
+inline constexpr uint64_t UnitBaseStat = 0x2f48c0;  // (unit, stat, layer) -> the value on the unit's base list
+inline constexpr uint64_t SetItemFlag = 0x36d8f0;   // (item, flag, on): item data +0x18 flags (0x400000 ethereal)
+
 }  // namespace d2r::rva
 
 namespace d2r {
