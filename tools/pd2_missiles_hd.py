@@ -90,4 +90,16 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
                   read_lines(rule))
     (out_data / HD).parent.mkdir(parents=True, exist_ok=True)
     (out_data / HD).write_text(json.dumps(models | new, separators=(",", ":")), "utf-8")
-    print(f"  missiles-hd: {len(new)} entries for new missiles")
+    sprites = classic_sprites(Table(excel(out_data) / "missiles.txt"), pd2_data, out_data)
+    print(f"  missiles-hd: {len(new)} entries for new missiles, {sprites} PD2 classic sprites")
+
+
+def classic_sprites(mod: Table, pd2_data: Path, out_data: Path) -> int:
+    """Copy PD2's DCC for every row whose CelFile pd2-data has: D2R ships none of PD2's missile art, so legacy mode drew
+    nothing for these missiles (Holy Nova, #350). Returns the count."""
+    c, src, dst = mod.header.index("CelFile"), pd2_data / "global" / "missiles", out_data / "global" / "missiles"
+    names = sorted({f"{cel(r, c)}.dcc" for r in mod.rows if r[c] and (src / f"{cel(r, c)}.dcc").is_file()})
+    dst.mkdir(parents=True, exist_ok=True)
+    for n in names:
+        (dst / n).write_bytes((src / n).read_bytes())
+    return len(names)

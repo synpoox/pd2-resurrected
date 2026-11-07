@@ -61,8 +61,15 @@ class RuleTests(unittest.TestCase):
             (d2r / H.HD).parent.mkdir(parents=True)
             (d2r / H.HD).write_text(json.dumps(MODELS), "utf-8")
             rule.write_text("# missile\tlike\nzharbolts\tbighead1\niskatubliz1\tshock field on ground\n", "utf-8")
+            pd2 = Path(tmp) / "pd2" / "global" / "missiles"
+            pd2.mkdir(parents=True)
+            (pd2 / "iskatubliz.dcc").write_bytes(b"dcc")
+            (pd2 / "unused.dcc").write_bytes(b"x")
             H.apply(rule, Path(tmp) / "pd2", d2r, out)
             written = json.loads((out / H.HD).read_text("utf-8"))
+            # legacy mode: PD2's own DCC for a row that uses it, nothing else (#350)
+            self.assertEqual([p.name for p in (out / "global" / "missiles").iterdir()], ["iskatubliz.dcc"])
+            self.assertEqual((out / "global" / "missiles" / "iskatubliz.dcc").read_bytes(), b"dcc")
         self.assertEqual(list(written)[:len(MODELS)], list(MODELS))  # D2R's entries first, dependencies leading
         self.assertEqual(written["splitthrowaxe"], "missile_hand_axe")
         self.assertEqual(len(written), len(MODELS) + 7)
