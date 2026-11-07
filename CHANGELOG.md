@@ -58,7 +58,7 @@ bosses and the Warlock redesign come in a later alpha.
 
 - PD2's items, affixes, runewords, cube recipes and treasure classes.
 - Corruption: cube an item with a Worldstone Shard, once per item.
-- Demonic Cube rerolls a unique or set item (not yet one with socketed items).
+- Demonic Cube rerolls a unique or set item, keeping its base, sockets, socketed items and ethereal state.
 - Cube recipes take inputs one per cell; stacked inputs don't count yet.
 - PD2's combat stats: critical and deadly strike, crushing blow, open and deep wounds, life steal cap.
 - Curse resistance and extra curse slots.

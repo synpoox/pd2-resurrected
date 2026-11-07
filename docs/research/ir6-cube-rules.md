@@ -64,7 +64,10 @@ PD2's split is Ctrl+left-click with a stack held, one item per click (owner); it
 - The PluginSDK item services do the reroll without these internals (core-rules): `executeTransaction` takes one
   Demonic Cube and the old item and makes the new one with `AllowDuplicateUnique`. It returns `Busy` when called from
   the cube executor, so the work is queued with `ThreadService::runOnGameThread`. It cannot move socketed items
-  (`SocketedItemPolicy` is reject or destroy). `InventoryService::getLocalPlayer` is for the UI thread, and no service
+  (`SocketedItemPolicy` is reject or destroy), so core-rules moves them natively ([#325](https://github.com/synpoox/pd2-resurrected/issues/325)):
+  D2R's socket insert `0x46eb00` places a socketable with `0x3856e0` and links its stat list (`0x2f81a0`), but also
+  applies its gems.txt mods (`0x475140`), which a moved gem already has; PD2's `0x3669b0` only places them (mode 6)
+  and flags them for sending. `InventoryService::getLocalPlayer` is for the UI thread, and no service
   names the player who pressed, so the executor passes the pressing unit's id to `runOnUiThread`, which checks it
   against the client's own player (`ClientPlayer(LocalPlayerSlot())`) before queueing the transaction.
 - A cubemain record keeps its `enabled` byte at +0 and the search skips a row with 0, so the merge ships op-31 rows
