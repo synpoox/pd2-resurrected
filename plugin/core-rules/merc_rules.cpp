@@ -6,7 +6,7 @@
 //   marks which NPCs hire; Tyrael's mark is set, so his hire list (hireling rows whose Seller is tyrael2) is sent.
 #include "merc_rules.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "log.h"
 
 #include <atomic>

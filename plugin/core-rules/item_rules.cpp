@@ -16,7 +16,7 @@
 //   D2RCore's event dispatch.
 #include "item_rules.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "log.h"
 
 #include <D2RLPlugin/threads.h>
