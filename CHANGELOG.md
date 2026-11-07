@@ -36,6 +36,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Rathma and Mendeln fight by PD2's script: life events, held life, immunity, and retreat portals below 15%.
 - Mendeln, Rathma and their clones spawn in their arenas, each reached by a ghostly portal, as in PD2.
 - Diablo Clone fights in PD2's phases: three nova rounds, three skeleton waves, immune while his adds live.
+- Diablo Clone runs to the arena centre for his novas, and uber bosses left alone go idle and immune, as in PD2.
 - Diablo Clone's trapped souls rain meteors and boulders, faster and tighter by tier, and die with him.
 - Uber fight monsters scale with the key's tier, as in PD2.
 - PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.

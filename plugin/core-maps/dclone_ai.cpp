@@ -212,6 +212,12 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 			nearest = p;
 		}
 	}
+	// The idle window for a boss left alone (PD2 game+0x26fe): idle and immune, counting down while a player is here
+	if (IdleWindow(game, unit, nearest != nullptr)) {
+		Idle(game, unit, 10);
+		SetImmune(game, unit, true);
+		return;
+	}
 	const bool adds = ScanMonsters(game, unit, level, nullptr, 0, nullptr);
 	const int32_t delay = m.AiDel() - 8 * tier + 8 > 25 ? m.AiDel() - 8 * tier + 8 : 25;
 
@@ -256,10 +262,13 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	}
 
 	const int32_t novas = Stat(unit, StatCooldown1);
-	const auto runToCentre = [&]() -> bool {
-		const bool ran = Cast(game, unit, m.Skill(7), m.Mode(7), nullptr, CentreX, CentreY, 50) != 0;
+	// PD2 aims the path at the centre (0x103331e0) before the run: UberDiabRun's start (srvst 71) keeps that point
+	const auto runToCentre = [&]() {
+		plog::Info("dclone: run to the centre, %d away (squared)", Dist2(unit, CentreX, CentreY));
+		d2r::Engine<void (*)(void*, int32_t, int32_t) noexcept>(d2r::rva::PathSetTargetXY)(
+			At<void*>(unit, d2r::rva::UnitPath), CentreX, CentreY);
+		Cast(game, unit, m.Skill(7), m.Mode(7), nullptr, CentreX, CentreY, 50);
 		SetImmune(game, unit, true);
-		return ran;
 	};
 	if (novas == m.Aip(5)) {
 		SetStat(unit, StatCooldown1, novas - 1);
@@ -268,9 +277,8 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	}
 	if (novas > 0) {
 		const int32_t d = Dist2(unit, CentreX, CentreY);
-		// D2R's DiabRun to a spot with no target unit fails (game check, #470: every run to the centre returned 0, from
-		// 7 and 22 tiles away), so a failed run falls through to the teleport
-		if (d > 30 && runToCentre()) {
+		if (d > 30) {
+			runToCentre();
 			return;
 		}
 		if (d > 2) {
@@ -281,6 +289,7 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 			for (int i = 0; i < count; ++i) {
 				KillQuietly(game, onSpot[i]);
 			}
+			plog::Info("dclone: teleport onto the centre, %d away (squared), %d on the spot killed", d, count);
 			Cast(game, unit, m.Skill(8), m.Mode(8), nullptr, CentreX, CentreY, 50);
 			return;
 		}
@@ -405,6 +414,10 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	}
 
 	// The nearest live player in the level is the target when the tick has none
+	if (IdleWindow(game, nullptr, false)) {
+		Idle(game, unit, 10);
+		return;
+	}
 	Unit*& target = *reinterpret_cast<Unit**>(tick + AiTickTarget);
 	if (Unit* nearest = NearestPlayer(game, unit, level); nearest != nullptr) {
 		target = nearest;
