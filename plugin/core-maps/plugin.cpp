@@ -21,6 +21,7 @@
 #include "map_open.h"
 #include "map_stats.h"
 #include "off_switch.h"
+#include "prime_minions.h"
 #include "rathma.h"
 #include "uber_drops.h"
 
@@ -98,6 +99,12 @@ void InstallLucionPart(const D2RL::PluginContext* context, char* report, size_t 
 	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
 }
 
+void InstallPrimes(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallPrimeMinions(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
+}
+
 void InstallTempleChests(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
 	const int installed = InstallLucionChests(context, rules, sizeof(rules));
@@ -123,6 +130,7 @@ Part g_parts[] = {
 	{"pool", InstallPool, ""},
 	{"keys", InstallKeys, ""},
 	{"lucion", InstallLucionPart, ""},
+	{"primes", InstallPrimes, ""},
 	{"temple", InstallTempleChests, ""},
 	{"events", InstallEvents, ""},
 };
@@ -181,6 +189,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	LucionCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	PrimeMinionsCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	LucionChestsCounters(line, sizeof(line));
