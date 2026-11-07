@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+import pd2_animdata
 import pd2_cache
 import pd2_extract
 import pd2_ids
@@ -42,6 +43,7 @@ D2R_DATA = Path(os.environ.get("MODKIT_CACHE", pd2_ids.toolkit(ROOT) / "d2r-data
 
 # merge/ file name -> fn(rule file, PD2 data root, D2R data root, generated/data). Added by the work items that need them.
 RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
+    "animdata.tsv": pd2_animdata.apply,
     **{f"ids-{t}.tsv": pd2_ids.apply for t in pd2_ids.TABLES},
     "ids-monpreset.tsv": pd2_levels.apply_monpreset,
     "item-tables.txt": pd2_items.apply,

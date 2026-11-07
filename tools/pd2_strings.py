@@ -11,7 +11,10 @@ generated/data/local/lng/. merge/strings.json holds key names and numbers only, 
              hiredesc_<code> key takes the description in PD2's hiredesc table (PD2 has no string for it).
   texts      key -> English the mod writes itself, for listed keys PD2 has no text for (skilldesc lines in D2R's
              format, #73); written into all 13 languages like PD2's
-Text going into skills.json has its lines flipped (D2R stacks multi-line skill text top-down). The rule fails if D2R
+A key in pd2_ids.PLAIN_STRINGS' values takes its source key's text without printf codes (#383). The rule fails if a
+descfunc 6-9 stat's descstr2 text has a printf code.
+Text going into skills.json has its lines flipped (D2R stacks multi-line skill text top-down). A trailing `ÿc/` (a PD2
+colour D2R lacks) is dropped. The rule fails if D2R
 starts using a listed key or the low 16 bits of a listed ID.
 
 D2R's string files come from the D2R data root pd2_merge passes (modkit's cache); modkit's Strings does the editing.
@@ -76,6 +79,8 @@ class DataRoot:
 
 
 def flip(file: str, text: str) -> str:
+    # D2R has no colour `ÿc/` and draws it as "*/" (#461); PD2 only ends a string with it
+    text = text.removesuffix("ÿc/")
     return "\n".join(reversed(text.split("\n"))) if file == "skills.json" else text
 
 
@@ -96,6 +101,7 @@ def build(cfg: dict, pd2: dict[str, str], s, out_root: Path) -> list[str]:
                 raise ValueError(f"override {key!r} changes D2R's placeholders (crash risk)")
             e["enUS"] = new
             s.changed.add(rel)
+    plain_src = {v: k for k, v in pd2_ids.PLAIN_STRINGS.items()}
     seen: set[int] = set()
     for key, (sid, file) in sorted(cfg["ids"].items(), key=lambda kv: kv[1][0]):
         if key in d2r_keys:
@@ -103,6 +109,18 @@ def build(cfg: dict, pd2: dict[str, str], s, out_root: Path) -> list[str]:
         if sid & 0xFFFF in used16 or sid > 0xFFFF or sid in seen:
             raise ValueError(f"string ID {sid} ({key}) is used by D2R, repeated or above 65535")
         seen.add(sid)
+        if key in plain_src:  # PD2's text of the source key, else D2R's in each language, without format codes
+            src = plain_src[key]
+            d2r = next((e for rel, e in index.get(src.lower(), []) if e["Key"] == src), None)
+            if d2r is None and src not in pd2:
+                raise ValueError(f"{key!r}: neither game has key {src!r}")
+            texts = {la: plain(pd2[src] if src in pd2 else d2r[la]) for la in mk.LANGS}
+            for folder in mk.FOLDERS:
+                rel = f"{folder}/{file}"
+                if s.base.exists(rel):
+                    s.load(rel).append({"id": sid, "Key": key, **texts})
+                    s.changed.add(rel)
+            continue
         own = cfg.get("texts", {}).get(key)
         if own is None and from_key[key] not in pd2:
             raise ValueError(f"{key!r}: PD2 has no key {from_key[key]!r}")
@@ -115,10 +133,33 @@ def build(cfg: dict, pd2: dict[str, str], s, out_root: Path) -> list[str]:
     return s.write(out_root)
 
 
+def plain(text: str) -> str:
+    """text without its printf codes and the sign left beside them: "%+d%% Deadly Strike" -> "Deadly Strike"."""
+    return " ".join(w for w in modkit()[1].PLACEHOLDER.sub("", text).split(" ") if w not in ("", "+"))
+
+
 def pd2_texts(pd2_data: Path) -> dict[str, str]:
     """PD2's strings by key, and hiredesc_<code> for the descriptions the moved hireling rows name (pd2_tables)."""
     import pd2_tables
     return {**{f"hiredesc_{c}": d for c, d in pd2_tables.hire_descs(pd2_data).items()}, **read_tbl((pd2_data / TBL).read_bytes())}
+
+
+def check_stat_strings(excel: Path, lng: Path, d2r_lng: Path) -> None:
+    """Fails when a stat that prints its value before descstr2 (descfunc 6-9) names English text with a printf code."""
+    text: dict[str, str] = {}
+    for root in (lng, d2r_lng):  # the built files first: they hold the mod's text
+        for f in sorted((root / "strings").glob("*.json")):
+            for e in json.loads(f.read_text("utf-8-sig")):
+                text.setdefault(e["Key"], e["enUS"])
+    rows = (excel / "itemstatcost.txt").read_bytes().decode("latin-1").splitlines()
+    head = rows[0].split("\t")
+    bad = []
+    for r in rows[1:]:
+        f = dict(zip(head, r.split("\t")))
+        if f.get("descfunc") in ("6", "7", "8", "9") and modkit()[1].PLACEHOLDER.search(text.get(f.get("descstr2"), "")):
+            bad.append(f"{f['Stat']} ({f['descstr2']})")
+    if bad:
+        raise ValueError(f"descstr2 text with printf codes, printed raw after the value: {', '.join(bad)}")
 
 
 def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
@@ -127,6 +168,9 @@ def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> Non
         raise ValueError(f"no D2R strings under {d2r_data}: run `modkit fetch` or pass --d2r")
     cfg = json.loads(rule_file.read_text("utf-8"))
     build(cfg, pd2_texts(pd2_data), modkit()[1].Strings(DataRoot(d2r_data)), out_data.parent)
+    excel = out_data / "global" / "excel"
+    if (excel / "itemstatcost.txt").is_file():  # merged by ids-itemstatcost.tsv, which runs first
+        check_stat_strings(excel, out_data / "local" / "lng", d2r_data / "local" / "lng")
 
 
 def referenced(excel: Path) -> dict[str, set[tuple[str, str]]]:

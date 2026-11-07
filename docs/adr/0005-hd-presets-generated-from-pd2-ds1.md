@@ -6,12 +6,13 @@ The generator has two parts with one seam between them: reading a DS1 into a lay
 
 Copying stock pieces tile by tile draws props and some walls, but not PD2's tree lines, streams and bridges. So the
 build half layers three steps over the per-tile kit ([#293](https://github.com/synpoox/pd2-resurrected/issues/293), from
-the `spikes/lp3-border-painter/` spike): a stock room whose tiles match 60% or more of a spot is pasted whole, with its
+the [`lp3-border-painter` spike](https://github.com/synpoox/pd2-resurrected/tree/research/lp3-border-painter/spikes/lp3-border-painter)): a stock room whose tiles match 60% or more of a spot is pasted whole, with its
 own sculpted terrain, water and bridges; a tile whose 3x3 neighbourhood (else its cross) appears in a stock preset copies
 what that preset placed on the centre tile; and the border painter (`tools/pd2_painter.py`) drops the trees past the
 playable area and paints them again from it out, copying the tile set's stock trees by direction and distance to the
 blocked ground. Rooms and patches apply to every preset; the painter only to a DS1 that draws a `*tree*.dt1` tile, its
-tree kit harvested per tile set from the stock presets that share its DT1 files.
+tree kit harvested per tile set from the stock presets that share its DT1 files. The playable area is the ground no DS1
+cell marks unwalkable (bit `0x20000`), which also seals the plain-floor gaps of PD2's dashed tree lines.
 
 ## Considered Options
 

@@ -97,6 +97,16 @@ stats: `equipped_eth` (the unit's bodylocs 1-10, `0x3886d0`, holding an ethereal
 next game update after a durability callback (the item being taken off is still in its slot during it), `missing_hp`
 on each life or max-life callback. The server never sends them, so a player's values are also set on its client unit.
 
+D2R keeps each op's result in a stat list's full stats: `0x2fa430` recomputes a stat and walks the stats its record
+lists as op targets (`+0x54`) only when a stat of that list changes. A new op base on the owner leaves a worn item's
+op value as it was at equip time ([#320](https://github.com/synpoox/pd2-resurrected/issues/320)), and PD2's own
+refresh `0x102fa930` looks like a send of the item's stat to the client (a D2Game call given PlayerData `+0x9c`): PD2
+evaluates ops on read (`0x102faa90`). So after each count change core-rules sets `item_dmgpercent_pereth` (or
+`..._permissinghppercent`) one higher and back on the base list of each worn item that holds it;
+D2R then recomputes `item_maxdamage_percent` / `item_mindamage_percent` with the new base. Seen (Slot 2): the player's
+`item_maxdamage_percent` 0 -> 60 -> 120 -> 60. An op stat set on the player's own list (`cheat stat`) adds nothing to
+`item_maxdamage_percent`, at any base: test these stats on an item.
+
 ## Life steal cap (Nightmare's Feast)
 
 PD2 replaces D2Game's add-life (1.13c `0x6fcfb570`, its calls at `0xdbb80` in the leech and `0xde23e`) with
