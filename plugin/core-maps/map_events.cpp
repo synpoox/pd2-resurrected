@@ -4,9 +4,9 @@
 // forced). The event spawns as the map's rooms activate (0x1036fef0), once the level's progress, rooms activated x
 // 100 / PD2's room count for the level, is far enough; it spawns at the activating room's centre.
 //
-// This slice spawns the events made of one monster: Shadow of Mendeln once, Dark Wanderer and Treasure Fallen up to
-// three times. The others are rolled and logged but spawn nothing yet: Gheed, Altar of the Catalyst and Spire of
-// Darkness (MS8), Horazon and Void/Tomb (MS9), the invaders (MS10).
+// This slice spawns Shadow of Mendeln and Gheed once (Gheed with an event marker object), Dark Wanderer and Treasure
+// Fallen up to three times. The others are rolled and logged but spawn nothing yet: Altar of the Catalyst and Spire
+// of Darkness (MS8), Horazon and Void/Tomb (MS9), the invaders (MS10).
 //
 // Each spawn sends the event's notify string to every player as a red chat line (#336; PD2 0x1037dbc0, packet 0x26
 // type 4, colour 1). The SDK's localization service gives the text; no SDK service sends a chat line, so it goes
@@ -55,7 +55,10 @@ constexpr int32_t Draws[12] = {0, Mendeln, Horazon, 0, DarkWanderer, TreasureFal
                                Tomb};
 // The events' monsters, PD2 922 nihlathakMap, 921 darkwandererMap and 945 treasurefallenMap in port monstats ids
 constexpr int32_t MendelnMonster = 939, DarkWandererMonster = 938, TreasureFallenMonster = 962;
+constexpr int32_t GheedMonster = 147;
+constexpr int32_t EventMarker = 597;  // PD2 object 594 empty_eventmarker: invisible, AutoMap 1499
 constexpr int32_t ModeNeutral = 1;
+constexpr int32_t UnitObject = 2;
 
 struct Tiered {
 	int16_t level;  // port level id
@@ -226,17 +229,27 @@ auto FindSpot(void*& room, int32_t xy[2], int32_t size) noexcept -> bool {
 }
 
 // PD2's 0x1038a170 at the room's centre: PD2's spot search with size 12 (8 in Arcane and River of Blood), then the
-// monster.
-auto SpawnAt(Game* game, void* room, int32_t level, int32_t monster) noexcept -> Unit* {
+// monster. `room` and `xy` return the spot.
+auto SpawnAt(Game* game, void*& room, int32_t (&xy)[2], int32_t level, int32_t monster) noexcept -> Unit* {
 	using namespace d2r::rva;
 	constexpr int32_t Arcane = 143, RiverOfBlood = 145;  // PD2 0x8e and 0x90 in port level ids
-	int32_t xy[2] = {At<int32_t>(room, RoomX) + At<int32_t>(room, RoomWidth) / 2,
-	                 At<int32_t>(room, RoomY) + At<int32_t>(room, RoomHeight) / 2};
+	xy[0] = At<int32_t>(room, RoomX) + At<int32_t>(room, RoomWidth) / 2;
+	xy[1] = At<int32_t>(room, RoomY) + At<int32_t>(room, RoomHeight) / 2;
 	if (!FindSpot(room, xy, level == Arcane || level == RiverOfBlood ? 8 : 12)) {
 		return nullptr;
 	}
 	return d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
 		SpawnMonster)(game, room, xy[0], xy[1], monster, ModeNeutral, -1, 0x42);
+}
+
+// PD2's 0x1038a060 with unit type 2: an object at x/y. No PluginSDK service places objects, so this calls D2R's unit
+// spawn (rva::SpawnUnit) as OpenPortalAt (map_open.cpp) does.
+auto SpawnObjectAt(Game* game, void* room, int32_t x, int32_t y, int32_t row) noexcept -> Unit* {
+	using namespace d2r::rva;
+	using SpawnFn = Unit* (*)(int32_t, int32_t, int32_t, int32_t, Game*, void*, int32_t, int32_t, int32_t,
+	                          int32_t) noexcept;
+	room = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(room, x, y);
+	return room != nullptr ? d2r::Engine<SpawnFn>(SpawnUnit)(UnitObject, row, x, y, game, room, 1, 1, 0, 0) : nullptr;
 }
 
 // PD2's 0x1036fef0, before the room's own monsters: one roll of 100 per room, against the event's rule.
@@ -247,8 +260,8 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t progress) noexcep
 	const int32_t spawns = Get(game, SpawnsKey);
 	const int32_t roll = Rand() % 100;
 	int32_t monster = -1;
-	if (event == Mendeln && spawns == 0 && roll + progress > 140) {
-		monster = MendelnMonster;
+	if ((event == Mendeln || event == Gheed) && spawns == 0 && roll + progress > 140) {
+		monster = event == Mendeln ? MendelnMonster : GheedMonster;
 	} else if ((event == DarkWanderer || event == TreasureFallen) && spawns < 3 && (spawns + 1) * 25 < progress &&
 	           roll < 25) {
 		monster = event == DarkWanderer ? DarkWandererMonster : TreasureFallenMonster;
@@ -256,7 +269,8 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t progress) noexcep
 	if (monster < 0) {
 		return;
 	}
-	if (SpawnAt(game, room, level, monster) == nullptr) {
+	int32_t xy[2] {};
+	if (SpawnAt(game, room, xy, level, monster) == nullptr) {
 		plog::Warn("map events: event %d found no spot for monster %d in level %d (%u)", event, monster, level,
 		           ++g_noSpot);
 		return;
@@ -264,6 +278,12 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t progress) noexcep
 	Set(game, SpawnsKey, spawns + 1);
 	plog::Info("map events: event %d spawn %d, monster %d in level %d at progress %d (%u spawned)", event, spawns + 1,
 	           monster, level, progress, ++g_spawned);
+	// PD2's Gheed branch also files the game's players into a set for its realm (0x10368480): cut, docs/deviations.md
+	if (event == Gheed) {
+		const bool marked = SpawnObjectAt(game, room, xy[0], xy[1], EventMarker) != nullptr;
+		plog::Info("map events: event %d object %d at (%d, %d)%s", event, EventMarker, xy[0], xy[1],
+		           marked ? "" : " FAILED");
+	}
 	Notify(game, event);
 }
 
