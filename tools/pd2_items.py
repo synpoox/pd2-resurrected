@@ -70,6 +70,7 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
     mark_new_corrupted(merged, next((str(i) for p, i, _ in ctx.lists.get("itemstatcost", []) if p == "corruptor"), None))
     count_each_input(merged)
     remake_rerolls(merged)
+    open_key_portal(merged)
     merged.rows += [list(r) for r in d2r_only]
     merged.dropped = dropped
     return merged
@@ -78,8 +79,8 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
 def count_each_input(cube: I.Table) -> None:
     """PD2's numinputs counts stacks ("t1me,qty=3" is 1); D2R's recipe search wants numinputs == items in the cube
     (#261), so loose inputs matched no row. Each row gets the sum of its inputs' qty, except op-30 rows (core-maps
-    matches them without the count, as PD2 does) and sums past the cube's cells, which only stacks can meet (IR6, #241:
-    D2R matched a stack of 3 runes under neither count)."""
+    matches them without the count, as PD2 does). core-rules counts a stack as its quantity (#315), so the x50 rows'
+    150 is met by stacks."""
     h = {c: j for j, c in enumerate(cube.header)}
     if "numinputs" not in h:
         return
@@ -87,9 +88,8 @@ def count_each_input(cube: I.Table) -> None:
     for r in cube.rows:
         if not r[h["numinputs"]].strip() or ("op" in h and r[h["op"]] == "30"):
             continue
-        total = sum(int(m[1]) if (m := re.search(r"qty=(\d+)", r[i])) else 1 for i in inputs if r[i].strip('"'))
-        if total <= CUBE_CELLS:
-            r[h["numinputs"]] = str(total)
+        r[h["numinputs"]] = str(sum(int(m[1]) if (m := re.search(r"qty=(\d+)", r[i])) else 1
+                                    for i in inputs if r[i].strip('"')))
 
 
 def remake_rerolls(cube: I.Table) -> None:
@@ -103,6 +103,18 @@ def remake_rerolls(cube: I.Table) -> None:
             r[h["output"]] = "usetype,reg"
             if "enabled" in h:
                 r[h["enabled"]] = "0"
+
+
+def open_key_portal(cube: I.Table) -> None:
+    """PD2's cube walk (0x10366f40) opens the mini-uber portal for the row with op 28, param 1 and min diff 2 (the three
+    Pandemonium keys), through 0x10366740: a copy of vanilla's portal (a random one of levels 133-135 not opened yet in
+    this game). Its output `useitem` is a placeholder; D2R's own `Pandemonium Portal` output does the same (#485)."""
+    h = {c: j for j, c in enumerate(cube.header)}
+    if not all(c in h for c in ("op", "param", "min diff", "output")):
+        return
+    for r in cube.rows:
+        if (r[h["op"]], r[h["param"]], r[h["min diff"]], r[h["output"]]) == ("28", "1", "2", "useitem"):
+            r[h["output"]] = "Pandemonium Portal"
 
 
 def mark_new_corrupted(cube: I.Table, corruptor: str | None) -> None:
