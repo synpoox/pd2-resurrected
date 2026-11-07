@@ -157,6 +157,25 @@ class FormulaAndColumnTests(unittest.TestCase):
         self.assertEqual(merged.rows, [["singleskill", "27", "", "ItemModifierClassSkill", "ItemModifierClassSkill"],
                                        ["elemskill", "", "", "", ""]])
 
+    def test_values_no_table_defines_are_fixed(self):
+        h = ["name", "itype4", "mod2code", "mod2min"]
+        self.assertEqual(I.fix_row("magicsuffix", h, ["of Anima", "amu", '"Deep-Wounds"', "5"]),
+                         ["of Anima", "amul", "deep-wounds", "5"])
+        self.assertEqual(I.fix_row("magicsuffix", h, ["of Bear", "amul", "res-cold", "5"]),
+                         ["of Bear", "amul", "res-cold", "5"])
+        self.assertEqual(I.fix_row("uniqueitems", ["index", "prop7"], ["Woestave", "Deep-Wounds"]), ["Woestave", "deep-wounds"])
+        h = ["name", "mod1code", "mod1min", "mod1max", "transformcolor"]
+        self.assertEqual(I.fix_row("magicprefix", h, ["Magic", "map-mon-extra-mag", "5", "10", "dblue"]),
+                         ["Magic", "", "", "", "dblu"])
+
+    def test_a_missing_description_string_drops_the_line(self):
+        d2r = table("name|code|spelldesc|spelldescstr|alternategfx\r\nAntidote Potion|yps|||yps\r\n", "code")
+        pd2 = table("name|code|spelldesc|spelldescstr|alternategfx\r\nAntidote Potion|yps|1|ItemStatsAnti|yps\r\n"
+                    "Bone Fragment|rtmf|||bonechips\r\n", "code")
+        merged, _ = I.merge_table("misc", pd2, d2r, [("yps", 0, "yps"), ("rtmf", 1, "rtmf")],
+                                  I.renames({t: [] for t in I.TABLES}))
+        self.assertEqual(merged.rows, [["Antidote Potion", "yps", "", "", "yps"], ["Bone Fragment", "rtmf", "", "", "bone"]])
+
     def test_function_numbers_moved_off_d2r_slots(self):
         d2r = table("Missile|pCltDoFunc|pSrvDoFunc\nflamewave|71|38\n")
         pd2 = table("Missile|pCltDoFunc|pSrvDoFunc\nback|70|38\nbolt|1|1\nblessedhammer|72|40\n")
@@ -433,6 +452,13 @@ class ItemTableTests(unittest.TestCase):
                                table("Name|OperateFn\n"), [("xactportal_grey", 0, "xactportal_grey"),
                                                            ("Portal", 1, "Portal")], {}, {})[0]
         self.assertEqual(merged.rows, [["xactportal_grey", "60"], ["Portal", "15"]])
+
+    def test_pd2_portal_tokens_draw_d2r_portal(self):
+        # PD2's `#` portal tokens have no D2R art (#431): a PD2-only row draws D2R's `PP`; other tokens stay
+        merged = I.merge_table("objects", table("Name|Token\nxactdarkportal_grey|#6\nwell|WL\n"),
+                               table("Name|Token\n"), [("xactdarkportal_grey", 0, "xactdarkportal_grey"),
+                                                       ("well", 1, "well")], {}, {})[0]
+        self.assertEqual(merged.rows, [["xactdarkportal_grey", "PP"], ["well", "WL"]])
 
 
 class LevelTableTests(unittest.TestCase):

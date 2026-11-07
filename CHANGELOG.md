@@ -7,23 +7,39 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Items
 
+- Item crushing blow rolls on normal hits, and Purgatory gains damage per worn ethereal item, as in PD2.
+- Spear and two-hand masteries boost crits and crushing blow, and Smite's crushing blow hits harder, as in PD2.
+- Ethereal items get Project Diablo II's +25% defense or damage, not +50%.
 - Items follow PD2 more closely: ethereal durability, rare affixes, mercenary gear drops, Tome of Identify, skill on cast/block.
 - A unique charm sold to a vendor by mistake can be bought back, as in PD2.
 - Quivers roll PD2's automagic again: arrows +2/10/18 max damage, bolts -2/4/6% enemy physical resistance.
+- The Horadric Cube has PD2's 4x4 grid.
+- Stacks in the inventory, cube and stash show their quantity on the picture, as in PD2 (tomes excepted).
+- Curses follow PD2's duration resistance (75 cap on players), land on attracted units, and fail when fully resisted.
+- of Anima rolls on amulets, cold prefixes tint items dark blue, and potion texts are fixed.
 
 #### Uber bosses
 
+- The Pandemonium Talisman opens Uber Tristram at the Blood Fountain, like the other uber keys.
 - The Diablo Clone, Rathma and Lucion keys open their uber areas at the Blood Fountain (Hell, level 80+); the fights come later.
 - A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
 - Uber fight monsters scale with the key's tier, as in PD2.
+- PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
 
 #### Maps
 
+- Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
+- Map events Shadow of Mendeln, Dark Wanderer and Treasure Fallen spawn in tiered maps, as in PD2.
+- A dungeon or unique map's area stats (density, rarity, added monsters) now apply on all of its levels.
 - Wooded PD2 maps draw HD tree borders, and D2R-tile maps use whole D2R rooms.
+- Eight more PD2 maps, among them Ashen Plains and Descent, draw walls and props in HD.
 
 #### Fixes
 
+- Split Throw's weapons show, split and come back to the Barbarian as in PD2.
+- Legacy graphics no longer draws the ground in D2R's own areas as red and cyan noise.
+- Legacy graphics draws PD2's maps (Mesa, Tomb Map, Graveyard Map and others) in their own colours.
 - The Ascendant mercenary equips staves only, as in PD2.
 - The mercenary panel shows the mercenary's title instead of "an evil force".
 - PD2's own items (Worldstone Shards, maps, PD2 uniques) show on the ground in HD again.
@@ -48,7 +64,7 @@ bosses and the Warlock redesign come in a later alpha.
 
 - PD2's items, affixes, runewords, cube recipes and treasure classes.
 - Corruption: cube an item with a Worldstone Shard, once per item.
-- Demonic Cube rerolls a unique or set item (not yet one with socketed items).
+- Demonic Cube rerolls a unique or set item, keeping its base, sockets, socketed items and ethereal state.
 - Cube recipes take inputs one per cell; stacked inputs don't count yet.
 - PD2's combat stats: critical and deadly strike, crushing blow, open and deep wounds, life steal cap.
 - Curse resistance and extra curse slots.
