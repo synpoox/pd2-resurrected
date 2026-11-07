@@ -25,6 +25,7 @@ import pd2_items
 import pd2_levels
 import pd2_missiles_hd
 import pd2_monsters_hd
+import pd2_objects_hd
 import pd2_overlays_hd
 import pd2_panels
 import pd2_presets
@@ -47,6 +48,7 @@ RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
     "level-files.tsv": pd2_levels.apply_files,  # after the id rules: lvltypes, objpreset, DS1 and DT1
     "missiles-hd.tsv": pd2_missiles_hd.apply,  # after ids-missiles.tsv
     "monsters-hd.tsv": pd2_monsters_hd.apply,
+    "objects-hd.tsv": pd2_objects_hd.apply,  # after ids-objects.tsv
     "panel-grids.json": pd2_panels.apply,
     "presets-hd.tsv": pd2_presets.apply,  # after level-files.tsv: reads the merged levels, lvlprest, lvltypes and DS1
     "skill-icons.txt": pd2_skill_icons.apply,

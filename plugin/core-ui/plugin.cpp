@@ -7,6 +7,7 @@
 //   pictures  HD pictures of PD2's 4-character item codes (#310, #298), and `cheat spawn` of them (#323)
 //   split     PD2's stack split: Ctrl+left-click with a stack held puts one item down (#316)
 //   quantity  PD2's Show Item Quantity: each stack in an open grid shows its quantity on its picture (#359)
+//   palette   legacy graphics: a level entered without a load screen draws in its own palette (#296)
 #include <D2RLPlugin/api.h>
 
 #include "automap.h"
@@ -14,6 +15,7 @@
 #include "d2r.h"
 #include "item_pictures.h"
 #include "item_quantity.h"
+#include "level_palette.h"
 #include "log.h"
 #include "off_switch.h"
 #include "stack_split.h"
@@ -38,6 +40,7 @@ char g_automap[300] = "";
 char g_pictures[200] = "";
 char g_split[200] = "";
 char g_quantity[200] = "";
+char g_palette[200] = "";
 
 constexpr D2RL::PluginInfo Info {
 	.infoSize    = D2RL::PluginInfoSize,
@@ -46,7 +49,7 @@ constexpr D2RL::PluginInfo Info {
 	.name        = "PD2 Resurrected Core UI",
 	.version     = CORE_PLUGIN_VERSION,
 	.author      = "Synpoo",
-	.description = "Project Diablo II client features (the automap of PD2's new level types, HD pictures of its 4-character item codes, its stack split, its item quantity display) for PD2 Resurrected.",
+	.description = "Project Diablo II client features (the automap of PD2's new level types, HD pictures of its 4-character item codes, its stack split, its item quantity display, legacy level palettes) for PD2 Resurrected.",
 	.flags       = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
 };
 
@@ -75,6 +78,8 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	std::snprintf(line, sizeof(line), "quantity %s", g_quantity);
 	command->plugin->WriteConsoleMessage(line);
+	std::snprintf(line, sizeof(line), "palette %s", g_palette);
+	command->plugin->WriteConsoleMessage(line);
 	automap::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
@@ -82,6 +87,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	item_quantity::Counters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	level_palette::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
@@ -144,6 +152,14 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 		item_quantity::Install(context, g_quantity, sizeof(g_quantity));
 	}
 	plog::Info("quantity %s", g_quantity);
+	if (!bound) {
+		std::snprintf(g_palette, sizeof(g_palette), "%s", g_pictures);
+	} else if (off_switch::Off("palette")) {
+		std::snprintf(g_palette, sizeof(g_palette), "off: left out by %s-off.txt", PluginName);
+	} else {
+		level_palette::Install(context, g_palette, sizeof(g_palette));
+	}
+	plog::Info("palette %s", g_palette);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand, "PD2 Resurrected Core UI: its parts and counters.");
 }
 

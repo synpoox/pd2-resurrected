@@ -1,0 +1,9 @@
+# class	like: the D2R objects.json key whose HD json a PD2 object copies; tools/pd2_objects_hd.py
+# PD2's cross-act portals draw D2R's red permanent portal until their own art is ported (#431)
+xactportal_red	portal_permanent
+xactportal_ghostly	portal_permanent
+xactportal_gold	portal_permanent
+xactportal_grey	portal_permanent
+xactportal_green	portal_permanent
+xactportal_purple	portal_permanent
+xactdarkportal_grey	portal_permanent
