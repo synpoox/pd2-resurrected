@@ -97,8 +97,8 @@ constexpr int MaxEntries = 64;  // per list; a map rolls far fewer stats
 constexpr int AreaSlots = 16;    // PD2's area slots 0-15
 constexpr int32_t StatCorrupted = 413, StatCorruptor = 414;  // PD2 360 and 361
 
-// The game counter keys of the lists: 'M', the list ('m' or 'p'), the entry and the field (0: stat << 16 | layer,
-// 1: value); entry and field 0xff hold the count.
+// The game counter keys of the lists: 'M', the list ('m', 'p', or 'r' for the area entries), the entry and the field
+// (0: stat << 16 | layer, 1: value); entry and field 0xff hold the count.
 constexpr auto Key(char list, int entry, int field) noexcept -> uint32_t {
 	return 0x4d000000u | static_cast<uint32_t>(static_cast<uint8_t>(list)) << 16 |
 	       static_cast<uint32_t>(entry & 0xff) << 8 | static_cast<uint32_t>(field & 0xff);
@@ -279,7 +279,8 @@ auto AreaSlot(Game* game, int slot) noexcept -> int32_t {
 // rarity (2) scale by 1 + v/100, each add-monster (3) is one more group, fortify (4) scales by v/100. Fortify, drop
 // bonus (12) and treacherous (14) also add monster stats, after the routed ones. Truncations are PD2's (ftol, then a
 // byte for the pack counts). D2R never reads the region's monster level, so area level (1) is AreaMonsterLevel's.
-auto ApplyArea(Game* game, int32_t level, const AreaEntry* entries, int count) noexcept -> void {
+// The monster stats are added on the first call only (`first`), as in PD2.
+auto ApplyArea(Game* game, int32_t level, const AreaEntry* entries, int count, bool first) noexcept -> void {
 	using namespace d2r::rva;
 	auto* const* regions = At<uint8_t**>(game, GameMonRegions);
 	uint8_t* r = regions != nullptr && level > 0 && level <= LastMapLevel ? regions[level] : nullptr;
@@ -329,15 +330,21 @@ auto ApplyArea(Game* game, int32_t level, const AreaEntry* entries, int count) n
 			scalePacks(static_cast<float>(v) / 100.0f);
 			for (const auto& [stat, value] : {std::pair {MaxHpPercent, 100}, {25, 40}, {329, 40}, {331, 40},
 			                                  {330, 40}, {332, 40}, {357, 20}, {546, v}}) {
-				Push(game, 'm', stat, 0, value);  // max life %, damage %, the masteries, map_glob_skirmish_mode
+				if (first) {
+					Push(game, 'm', stat, 0, value);  // max life %, damage %, the masteries, map_glob_skirmish_mode
+				}
 			}
 			break;
 		case 12:
-			Push(game, 'm', 399, 0, v);  // map_glob_dropbonus
+			if (first) {
+				Push(game, 'm', 399, 0, v);  // map_glob_dropbonus
+			}
 			break;
 		case 14:
-			Push(game, 'm', MaxHpPercent, 0, 100);
-			Push(game, 'm', 402, 0, v);  // treacherous
+			if (first) {
+				Push(game, 'm', MaxHpPercent, 0, 100);
+				Push(game, 'm', 402, 0, v);  // treacherous
+			}
 			break;
 		default:
 			break;
@@ -567,7 +574,7 @@ auto RouteMapStats(Game* game, Unit* item, int32_t level) noexcept -> void {
 		return;
 	}
 	// A new map replaces the last one's lists and slots. Units that already have a list keep it until they lose it.
-	for (const char which : {'m', 'p'}) {
+	for (const char which : {'m', 'p', 'r'}) {
 		if (int32_t* count = Counter(game, Key(which, 0xff, 0xff)); count != nullptr) {
 			*count = 0;
 		}
@@ -604,6 +611,7 @@ auto RouteMapStats(Game* game, Unit* item, int32_t level) noexcept -> void {
 			where = "players";
 		} else if (route == Route::Area && areaCount < MaxEntries) {
 			area[areaCount++] = {target, e.value};
+			Push(game, 'r', target, 0, e.value);  // kept for ApplyMapArea
 			if (int32_t* v = Counter(game, Key('a', target, 0)); v != nullptr && *v == 0) {
 				*v = e.value;
 			}
@@ -612,8 +620,23 @@ auto RouteMapStats(Game* game, Unit* item, int32_t level) noexcept -> void {
 		plog::Info("map stats: stat %d layer %d value %d -> %s as %d", e.stat, e.layer, e.value, where, target);
 	}
 	// shortcut: only the entry level; PD2 also rewrites the other levels of a multi-level map, which come with MS7
-	ApplyArea(game, level, area, areaCount);
+	ApplyArea(game, level, area, areaCount, true);
 	++g_routed;
+}
+
+auto ApplyMapArea(Game* game, int32_t level) noexcept -> void {
+	AreaEntry area[MaxEntries];
+	int count = 0;
+	for (int32_t i = 0; game != nullptr && i < Count(game, 'r') && i < MaxEntries; ++i) {
+		const int32_t* packed = Counter(game, Key('r', i, 0));
+		const int32_t* value = Counter(game, Key('r', i, 1));
+		if (packed != nullptr && value != nullptr) {
+			area[count++] = {static_cast<int32_t>(static_cast<uint32_t>(*packed) >> 16), *value};
+		}
+	}
+	if (game != nullptr) {
+		ApplyArea(game, level, area, count, false);
+	}
 }
 
 auto InstallMapStats(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
