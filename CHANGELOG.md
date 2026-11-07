@@ -11,8 +11,7 @@ private-multiplayer release a build may break characters; each break is noted he
   rare items get at least four affixes from item level 45 (five from 65, six from 85) and rare jewels always four,
   hiring a new mercenary drops the old one's gear, and shift-right-clicking a Tome of Identify identifies your
   inventory. Skill on cast and skill on block items proc through the Cast Triggers plugin (1.1.12); not yet confirmed in game.
-- of Anima rolls on amulets, Frostwarded and Winterlord's tint items dark blue, and the Antidote and Thawing Potions no
-  longer show an "An evil force" line.
+- of Anima rolls on amulets, cold prefixes tint items dark blue, and potion texts are fixed.
 
 #### Uber bosses
 
