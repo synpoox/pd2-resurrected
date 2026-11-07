@@ -40,6 +40,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Charged potions and other PD2-only items show their own pictures, in HD and legacy, instead of a hand axe.
 - An item with Druid or Assassin class skills (Hellfire Torch, Spirit Ward) shows the number, e.g.
   "+2 to Assassin Skill Levels".
+- Mercenaries already deal PD2's reduced damage to bosses in each difficulty; no change was needed.
 
 ### 0.1.0-alpha (2026-11-05)
 
