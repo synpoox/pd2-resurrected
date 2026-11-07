@@ -77,13 +77,15 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual((lay.width, lay.height), (2, 1))
         self.assertEqual(lay.keys, {(0, 0): ("f", (FLOOR,)), (1, 0): ("w", (A, (None, 9, 9, 9)))})
 
-    def test_a_tile_keeps_its_subtile_flags_and_the_objects_their_tile(self):
-        data = ds1(2, 1, [{(1, 0): (1, 2, 3)}], [{(0, 0): (0, 1)}])
-        data = data[:-4] + struct.pack("<i", 1) + struct.pack("<5i", 2, 7, 6, 2, 0)  # one object at subtile (6, 2)
+    def test_a_tile_keeps_its_subtile_flags_and_a_cells_unwalkable_bit(self):
+        data = ds1(3, 1, [{(1, 0): (1, 2, 3)}], [{(0, 0): (0, 1), (2, 0): (0, 1)}])
+        at = len(data) - 4 - 3 * 4 - 3 * 4 + 2 * 4  # the floor cell of (2, 0), before the shadow layer
+        data = data[:at] + struct.pack("<I", cell(0, 1) | P.UNWALKABLE) + data[at + 4:]
         lay = P.layout(data, {"act1/a/wall.dt1": P.dt1_tiles(dt1([(1, 2, 3)], {(1, 2, 3)})),
                               "act1/a/floor.dt1": P.dt1_tiles(dt1([(0, 0, 1)]))})
-        self.assertEqual(lay.flags, {(0, 0): bytes(25), (1, 0): b"\1" * 25})
-        self.assertEqual(lay.objects, {(1, 0)})
+        self.assertEqual(lay.flags, {(0, 0): bytes(25), (1, 0): b"\1" * 25, (2, 0): bytes(25)})
+        self.assertEqual(lay.keys[(2, 0)], ("f", (FLOOR,)))
+        self.assertEqual(lay.unwalkable, {(2, 0)})
 
 
 class BuildTests(unittest.TestCase):
@@ -167,9 +169,10 @@ class LayerTests(unittest.TestCase):
     def test_the_painter_plants_trees_only_past_the_path_clusters_then_singles_then_canopy(self):
         blocked = {(x, 5) for x in range(30)}  # a tree line on row 5; rows 0-4 are the path, rows 6-9 outside
 
-        def lay(w, h, objects=frozenset()):
+        def lay(w, h):  # the DS1 marks rows 6-9 unwalkable
             keys = {(x, y): self.WA if (x, y) in blocked else self.F for x in range(w) for y in range(h)}
-            return P.Layout(w, h, keys, {c: (b"\1" if c in blocked else b"\0") * 25 for c in keys}, objects)
+            return P.Layout(w, h, keys, {c: (b"\1" if c in blocked else b"\0") * 25 for c in keys},
+                            frozenset(c for c in keys if c[1] >= 6))
 
         def tree(name, x, z, model, prefab=None):
             comps = [entity(name, x, z)["components"][0], {"type": "ModelDefinitionComponent", "filename": model}]
@@ -180,13 +183,13 @@ class LayerTests(unittest.TestCase):
         canopy = "data/hd/env/foliage/act3/model/act3_treeline/act3_treeline_canopy01.model"
         stock = [tree("cluster", x, z, "", "data/hd/env/foliage/act3/model/prefab/pf_tree_wall01.json")
                  for x in (10.0, 50.0, 90.0) for z in (65.0, 95.0)]
-        stock += [tree("single", x, z, single) for x in (30.0, 70.0) for z in (65.0, 95.0)]
+        stock += [tree("single", x, z, single) for x in (30.0, 70.0) for z in (55.0, 95.0)]  # one on the line
         stock += [tree("canopy", x, 80.0, canopy) for x in (30.0, 70.0)]
         kit = P.painter.harvest([(lay(10, 10), {"dependencies": {"models": [{"path": single}]}, "entities": stock})])
         strays = P.Kit()  # the per-tile kit puts a tree on every floor tile
         strays.add(P.Layout(1, 1, {(0, 0): self.F}), {"dependencies": {}, "entities": [tree("stray", 5, 5, single)]},
                    {self.F})
-        target = lay(30, 10, {(5, 2)})
+        target = lay(30, 10)
         cluster = {"trees": kit, "prefabs": lambda path: [(0.0, 0.0), (0.0, -20.0)]}  # a cluster reaches 10 subtiles up
         preset, _ = P.build(target, strays, "m", "m.ds1", "b.json", TERRAIN, **cluster)
         names = [e["name"] for e in preset["entities"]]
@@ -202,6 +205,13 @@ class LayerTests(unittest.TestCase):
         self.assertLess(last["single"], first["canopy"])
         self.assertIn(single, [d["path"] for d in preset["dependencies"]["models"]])
         self.assertEqual(preset, P.build(target, strays, "m", "m.ds1", "b.json", TERRAIN, **cluster)[0])
+
+    def test_a_dashed_lines_gap_is_playable_only_where_the_ds1_leaves_it_walkable(self):
+        keys = {(x, y): self.WA if y == 1 and x % 4 else self.F for x in range(12) for y in range(3)}
+        flags = {c: (b"\1" if k == self.WA else b"\0") * 25 for c, k in keys.items()}
+        sealed = P.Layout(12, 3, keys, flags, frozenset({(0, 1), (4, 1), (8, 1)} | {(x, 2) for x in range(12)}))
+        self.assertEqual(P.painter.playable(sealed), {c for c, k in keys.items() if c[1] == 0 or k == self.WA})
+        self.assertIn((4, 1), P.painter.playable(P.Layout(12, 3, keys, flags)))
 
     def test_only_a_ds1_drawing_a_tree_dt1_is_painted(self):
         outdoor = P.Layout(2, 1, {(0, 0): self.F, (1, 0): ("w", (("act3/jungle/treegrp.dt1", 1, 0, 0),))})

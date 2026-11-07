@@ -32,9 +32,12 @@ from pathlib import Path
 
 import pd2_painter as painter
 from pd2_ids import Table, excel, load
-from pd2_levels import SLOTS, col, ds1_header, norm, object_list
+from pd2_levels import SLOTS, col, ds1_header, norm
 
 TILE = 10  # HD units per DS1 tile
+# a DS1 cell's unwalkable bit: what blocks the plain floor in PD2's dashed tree lines and the ground past the paths
+# (jungle1: on 96% of the lines' gap tiles; D2R's stock jungle rooms stand 88% of their trees on such tiles)
+UNWALKABLE = 0x20000
 TERRAIN = "act2/palace/celse3"  # a stock preset whose terrain is a flat TERRAIN_SIZE square (D2R Reimagined's plane)
 TERRAIN_SIZE = 170
 ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is pasted where this share of its tiles match
@@ -78,7 +81,7 @@ class Layout:
     height: int
     keys: dict[tuple[int, int], Key]  # (x, y) -> key; tiles with nothing are left out
     flags: dict[tuple[int, int], bytes] = field(default_factory=dict)  # (x, y) -> its layers' subtile flags, OR'd
-    objects: frozenset = frozenset()  # the tiles a DS1 object stands on
+    unwalkable: frozenset = frozenset()  # the tiles a wall or floor cell marks unwalkable (UNWALKABLE)
 
 
 def layout(data: bytes, dt1s: dict[str, dict]) -> Layout:
@@ -101,10 +104,9 @@ def layout(data: bytes, dt1s: dict[str, dict]) -> Layout:
             keys[(i % w, i // w)] = ("w", wall) if wall else ("f", floor)
             f = [dt1s[t[0]][t[1:]] for t in wall + floor if t[0]]
             flags[(i % w, i // w)] = bytes(functools.reduce(lambda u, v: [x | y for x, y in zip(u, v)], f, bytes(25)))
-    _, at, count, size = object_list(data)
-    objects = frozenset((x // 5, y // 5) for x, y in (struct.unpack_from("<2i", data, at + 4 + k * size + 8)
-                                                       for k in range(count)))
-    return Layout(w, h, keys, flags, objects)
+    cells = [grids[2 * k] for k in range(walls)] + list(grids[2 * walls:])
+    unwalkable = frozenset((i % w, i // w) for i in range(n) if any(g[i] & UNWALKABLE for g in cells))
+    return Layout(w, h, keys, flags, unwalkable)
 
 
 def _transform(entity: dict) -> dict | None:

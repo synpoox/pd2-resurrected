@@ -3,7 +3,7 @@ set's stock presets place them.
 
 Subtile grid: 5x5 per tile, blocked = DT1 subtile flag bit 0 (Layout.flags). harvest() learns, per stock tree, its
 distance (subtiles) to the nearest blocked subtile and the direction to it (8 buckets), and how far it stood from its
-room's open ground; paint() puts trees on the subtiles past the playable area, nearest first, the stock spacing apart,
+room's playable ground; paint() puts trees on the subtiles past the playable area, nearest first, the stock spacing apart,
 each copied from a stock tree with the same direction and distance."""
 from __future__ import annotations
 
@@ -18,7 +18,6 @@ TREE = re.compile(r"tree_wall|treewall|treeline|small_cluster|_trees_")  # treel
 SPACING = 9  # subtiles between tree origins when the stock has fewer than two trees
 DEPTH = 30  # paint unreachable ground up to this many subtiles from the playable area
 CAP = 15  # distances to the blocked ground are capped here
-WALK = 10  # subtiles a player walks from the tile-level playable area
 LINE = 10  # wall tiles in an 8-connected group this big are a tree line; smaller groups stand in a clearing
 STEPS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 AROUND = [(i, j) for i in (-1, 0, 1) for j in (-1, 0, 1)]
@@ -114,9 +113,7 @@ def harvest(stock) -> tuple[dict, float] | None:
     out, gaps = collections.defaultdict(list), []
     for lay, preset in stock:
         dist, src = nearest_blocked(lay)
-        thick = dilate({c for c, k in lay.keys.items() if k[0] == "w"})
-        open_ = {c for c, k in lay.keys.items() if c not in thick and not (k[0] == "f" and blocked_floor(lay.flags[c]))}
-        reach = spread(subtiles(open_), lay.width * 5, lay.height * 5, 10 ** 6)
+        reach = spread(subtiles(playable(lay)), lay.width * 5, lay.height * 5, 10 ** 6)
         pts = []
         for e in preset["entities"]:
             t = transform(e)
@@ -137,28 +134,10 @@ def harvest(stock) -> tuple[dict, float] | None:
 
 
 def playable(lay) -> set:
-    """The tiles a player reaches. Every wall tile widened by one tile seals PD2's thin tree lines; the sealed regions
-    that hold a DS1 object, or that streams (blocked floor) run through and that don't touch the map's edge, are the
-    paths; the others are outside. The paths grow over lone trees up to the lines, take a one-tile margin and the
-    streams, then the ground a WALK-subtile walk over the subtile flags reaches. Line tiles are never playable."""
-    walls = {c for c, k in lay.keys.items() if k[0] == "w"}
-    line = lines(walls)
+    """The tiles a player reaches: those no DS1 cell marks unwalkable (Layout.unwalkable, which seals PD2's dashed
+    tree lines), and the streams (blocked floor). Line tiles are never playable."""
     water = {c for c, k in lay.keys.items() if k[0] == "f" and blocked_floor(lay.flags[c])}
-    paths, outside = set(), set()
-    for comp in components(set(lay.keys) - dilate(walls) - water):
-        near = sum((p[0] + i, p[1] + j) in water for p in comp for i, j in STEPS)
-        edge = any((p[0] + i, p[1] + j) not in lay.keys for p in comp for i, j in STEPS)
-        (paths if comp & lay.objects or (near >= 20 and not edge) else outside).update(comp)
-    free = set(lay.keys) - dilate(line) - water - outside
-    grown = set().union(*(c for c in components(free | paths) if c & paths))
-    play = grown | ((dilate(grown) - line) & set(lay.keys)) | water
-    # the tile rule misses open ground among lone trees next to a line; an unbounded walk leaks through PD2's dashed
-    # lines (their gaps are unblocked floor, what blocks them in game is not found), so the walk is bounded; never
-    # through a line tile, so an 8-connected line seals a 4-connected walk
-    free = {(x * 5 + k % 5, y * 5 + k // 5) for (x, y), f in lay.flags.items() if (x, y) not in line
-            for k in range(25) if not f[k] & 1}
-    walked = collections.Counter((x // 5, y // 5) for x, y in spread(subtiles(play) & free, 0, 0, WALK, free))
-    return (play | {c for c, n in walked.items() if n >= 5}) - line
+    return ((set(lay.keys) - lay.unwalkable) | water) - lines({c for c, k in lay.keys.items() if k[0] == "w"})
 
 
 def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tuple[list[dict], set]:
