@@ -63,7 +63,7 @@
   "cells": {
    "roguehire": {"NameStr": "Rogue"},
    "act2hire": {"NameStr": "DesertMerc"},
-   "act4hire": {"NameStr": "Ascendant"},
+   "act4hire": {"NameStr": "Ascendant", "rightArmItemType": "staf", "leftArmItemType": "none"},
    "act5hire1": {"NameStr": "Barbarian"},
    "act5hire2": {"NameStr": "Barbarian"}
   }
