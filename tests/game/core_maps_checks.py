@@ -21,6 +21,9 @@ enter the red portal and go to the Sewer Boss (SewerBoss; sewermap1-3.ds1 place 
 54,334 of the level). Then:
   py testing/game_checks.py run core-maps --slot N --path <repo>/tests/game --module core_maps_checks
 
+Multi-level area stats (MS7, #221): the same setup, then a rare dungeon (`cheat spawn t42,typ r,inv 0`, `cheat idall`)
+right-clicked in Harrogath, and the same run (multi-level-area).
+
 Added group check (MS4 slot 3, #219): the same setup, then a Sewers of Harrogath map with the Ghastly prefix
 (map_glob_add_mon_ghost, wraithMapMod 1128): `cheat spawn t25,typ m,pre 785,inv 0`. Clear packs in the map until about
 40 have spawned (the group weighs 1 of 10), then run the same command.
@@ -96,6 +99,27 @@ def extra_boss_spawn(ctx):
     boss, level = spawns[0]
     assert 138 <= int(level) <= 201, f"extra boss in level {level}, outside the map areas"
     return f"monster {boss} spawned twice in level {level}"
+
+
+# MS7 (#221): a dungeon or unique map rewrites each of its levels (port entry -> the others, map_stats.cpp MultiLevels)
+MULTI_LEVELS = {163: [164], 168: [169], 182: [183], 172: [173, 174, 175], 177: [178], 179: [180], 188: [190],
+                191: [192], 193: [194, 195]}
+AREA = re.compile(r"map area: level (\d+) (before|after): density (\d+)")
+
+
+@check("multi-level-area", tags=["core-maps"])
+def multi_level_area(ctx):
+    """Opening a dungeon or unique map rewrote the monster region of each of its levels, after the entry level."""
+    rows = [(int(m.group(1)), m.group(2), int(m.group(3))) for m in AREA.finditer(_log(ctx))]
+    entries = [i for i, (lv, when, _) in enumerate(rows) if when == "before" and lv in MULTI_LEVELS]
+    if not entries:
+        ctx.skip("no dungeon or unique map opened yet (e.g. cheat spawn t42,typ r,inv 0)")
+    i = entries[-1]
+    entry = rows[i][0]
+    got = [lv for lv, when, _ in rows[i:] if when == "after"]
+    want = [entry] + MULTI_LEVELS[entry]
+    assert got[:len(want)] == want, f"map {entry}: rewrote levels {got[:len(want)]}, want {want}"
+    return f"map {entry}: levels {want} rewritten, densities " + ", ".join(str(d) for _, _, d in rows[i:i + 2 * len(want)])
 
 
 @check("added-group-spawn", tags=["core-maps"])
