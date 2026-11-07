@@ -764,6 +764,19 @@ inline constexpr uint8_t CubeRecipeSearchEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57
 // 0x30 int32 flags for the cube items already taken by earlier inputs, zeroed before each row
 inline constexpr uint64_t CubeInputMatch = 0x529d50;
 inline constexpr int CubeMatchUsedSlots = 0x30;
+// It counts each matching cube item as one (qty at input +7, 0 means 1) and flags every match in used[k], k the item's
+// place among the cube items in inventory order. mov [rsp+0x20],r9d / push rbp / push rbx / push rsi / push r13 /
+// mov rbp,rsp / sub rsp,0x68 (read from the 6ab3782c dump, #315)
+inline constexpr uint8_t CubeInputMatchEntry[] = {0x44, 0x89, 0x4c, 0x24, 0x20, 0x55, 0x53, 0x56, 0x41,
+                                                  0x55, 0x48, 0x8b, 0xec, 0x48, 0x83, 0xec, 0x68};
+inline constexpr int CubeInputQty = 7;
+inline constexpr int CubeRecordSize = 0x16c, CubeNumInputs = 0xc;  // uint8 numinputs
+// The search's numinputs filter: movzx eax,[row+0xc] / cmp eax,r13d (the cube's item count) / jne next row (#315)
+inline constexpr uint64_t CubeNumInputsJump = 0x52922a;
+inline constexpr uint8_t CubeNumInputsJumpD2R[] = {0x0f, 0x85, 0xbd, 0x06, 0x00, 0x00};
+inline constexpr uint8_t CubeNumInputsJumpOff[] = {0x66, 0x0f, 0x1f, 0x44, 0x00, 0x00};  // 6-byte nop
+inline constexpr int StatQuantity = 70;
+inline constexpr uint64_t ItemLevel = 0x36ccf0;  // (item) -> item level (the matcher's out, 0x529d50)
 inline constexpr uint64_t CubeRecipeCount = 0x3e3f20;  // (dataFlag) -> cubemain row count
 inline constexpr uint64_t CubeRecipe = 0x3e3f60;       // (dataFlag, row) -> 0x16c-byte record, or null
 inline constexpr int CubeEnabled = 0x0, CubeOp = 0x3;  // uint8 enabled, uint8 op
