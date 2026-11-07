@@ -24,6 +24,7 @@
 #include "map_stats.h"
 #include "off_switch.h"
 #include "prime_minions.h"
+#include "rathma_ai.h"
 #include "rathma.h"
 #include "uber_drops.h"
 #include "unique_maps.h"
@@ -126,6 +127,12 @@ void InstallLucion(const D2RL::PluginContext* context, char* report, size_t size
 	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
 }
 
+void InstallRathma(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallRathmaAi(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
+}
+
 void InstallDclone(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
 	const int installed = InstallDcloneAi(context, rules, sizeof(rules));
@@ -149,6 +156,7 @@ Part g_parts[] = {
 	{"temple", InstallTempleChests, ""},
 	{"events", InstallEvents, ""},
 	{"lucionai", InstallLucion, ""},
+	{"rathmaai", InstallRathma, ""},
 	{"dcloneai", InstallDclone, ""},
 };
 
@@ -227,6 +235,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	LucionAiCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	RathmaAiCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	DcloneAiCounters(line, sizeof(line));
