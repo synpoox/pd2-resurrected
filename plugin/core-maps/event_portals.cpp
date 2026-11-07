@@ -5,7 +5,8 @@
 //
 // PD2 0x103760a0 tests the dying monster's level against its three tier sets (0x105deb18, 0x105debf4, 0x105deb08), and
 // the handler pools the matching set and the next. The trigger is the SDK's monster-death listener; the portal pair
-// and the TC drop are engine calls, as no SDK service makes either.
+// and the TC drop are engine calls, as no SDK service makes either. The listener also hands the Altar of the
+// Catalyst's guardian to map_events.cpp, and the Void/Tomb event takes its portal pair from here.
 #include "event_portals.h"
 
 #include "log.h"
@@ -25,6 +26,7 @@ using d2r::Game;
 using d2r::Unit;
 
 constexpr int32_t SummonerMap = 936;  // monstats `summonerMap` (PD2 919), port id
+constexpr int32_t AltarGuardian = 1081;  // GuardianOfFate (PD2 1064), the Altar of the Catalyst's (map_events.cpp)
 constexpr int32_t HorazonEvent = 12;
 constexpr int32_t RedPortal = 60;
 constexpr int32_t StatLevel = 12;
@@ -81,14 +83,7 @@ auto OpenPortal(Game* game, Unit* by, int32_t level) noexcept -> bool {
 	void* found = nullptr;
 	d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(FindFreeSpot)(
 		game, room, xy, 3, 0x400, &found, 5, 100);
-	Unit* portal = nullptr;
-	const bool made = found != nullptr &&
-		d2r::Engine<int32_t (*)(Game*, Unit*, void*, int32_t, int32_t, int32_t, Unit**, int32_t, int32_t, int32_t) noexcept>(
-			PortalMaker)(game, nullptr, found, xy[0], xy[1], level, &portal, RedPortal, 0, 1) != 0;
-	if (made && portal != nullptr) {
-		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetPortalLevel)(portal, level);
-	}
-	return made && portal != nullptr;
+	return found != nullptr && OpenEventPortal(game, found, xy[0], xy[1], level) != nullptr;
 }
 
 // PD2's three drop batches. `player` is the quality roll's player (its magic find).
@@ -123,8 +118,8 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	using D2RL::Lifecycle::UnitType;
 	(void)context;
 	(void)userData;
-	if (event == nullptr || event->monster.type != UnitType::Monster || event->monster.classId != SummonerMap ||
-	    event->gameId > 0xffff) {
+	if (event == nullptr || event->monster.type != UnitType::Monster ||
+	    (event->monster.classId != SummonerMap && event->monster.classId != AltarGuardian) || event->gameId > 0xffff) {
 		return;
 	}
 	const int tier = TierOf(event->levelId);
@@ -132,6 +127,10 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	const uint64_t key = d2r::Engine<uint64_t (*)(uint16_t) noexcept>(GameKey)(id);
 	Game* game = key != 0 ? d2r::Engine<Game* (*)(uint64_t) noexcept>(GameById)(key) : nullptr;
 	if (tier < 0 || game == nullptr || At<uint16_t>(game, GameIdField) != id) {
+		return;
+	}
+	if (event->monster.classId == AltarGuardian) {
+		AltarGuardianDied(game);
 		return;
 	}
 	Unit* monster = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(game, 1, event->monster.id);
@@ -177,6 +176,18 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 }
 
 }  // namespace
+
+auto OpenEventPortal(Game* game, void* room, int32_t x, int32_t y, int32_t level) noexcept -> Unit* {
+	using namespace d2r::rva;
+	Unit* portal = nullptr;
+	const bool made = room != nullptr &&
+		d2r::Engine<int32_t (*)(Game*, Unit*, void*, int32_t, int32_t, int32_t, Unit**, int32_t, int32_t, int32_t) noexcept>(
+			PortalMaker)(game, nullptr, room, x, y, level, &portal, RedPortal, 0, 1) != 0;
+	if (made && portal != nullptr) {
+		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetPortalLevel)(portal, level);
+	}
+	return made ? portal : nullptr;
+}
 
 auto InstallEventPortals(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	const D2RL::LifecycleService* lifecycle = nullptr;

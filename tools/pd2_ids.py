@@ -170,11 +170,12 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # docs/research/p12-ormus-robes.md).
 # levels' Teleport 3 (PD2's path search, research/sorceress-w26.md) is not a D2R value; 1 (allowed) stands in until MS7.
 # Map items' pSpell 12 (D2R's 12 is the Resist Scroll) takes the free item spell 16 core-maps installs (MS2).
-# PD2's portal operate 77 (the xactportals) takes D2R's free operate slot 60, which core-maps fills (UB2).
+# PD2's portal operate 77 (the xactportals) takes D2R's free operate slot 60, which core-maps fills (UB2). Its map-event
+# altar operate 79 (TaintedSunMapEventAltar, ForceShardAltar) takes the free slot 35, D2R's unused Steeg Stone's (MS8).
 # The xactportals' `#1`-`#6` graphics tokens have no art in D2R (#431): they draw D2R's red portal, `PP`, as
 # xactportal_red does, until their own art is ported.
 FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
-         "objects": {"OperateFn": {"77": "60"}, "Token": {f"#{n}": "PP" for n in range(1, 7)}},
+         "objects": {"OperateFn": {"77": "60", "79": "35"},"Token": {f"#{n}": "PP" for n in range(1, 7)}},
          "misc": {"pSpell": {MAP_SPELL: "16"}},
          "levels": {"Teleport": {"3": "1"}},
          "missiles": {"pSrvDoFunc": {"38": "46", "40": "47"}, "pCltDoFunc": {"70": "78", "69": "79", "72": "80"},

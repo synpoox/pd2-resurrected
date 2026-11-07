@@ -32,6 +32,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Maps
 
+- Map events Altar of the Catalyst, Spire of Darkness and Void/Tomb spawn their altars, waves and portal, as in PD2.
 - The Gheed map event spawns Gheed in tiered maps, as in PD2.
 - A map event's spawn sends PD2's notify line ("Evil beckons you from the Void...") in red chat.
 - The Horazon map event spawns Horazon in tiered maps; only that Horazon opens his portal, as in PD2.

@@ -1,6 +1,8 @@
 // Lucion's death (lucion.cpp).
 #pragma once
 
+#include "d2r.h"
+
 #include <D2RLPlugin/api.h>
 
 #include <cstddef>
@@ -15,3 +17,5 @@ inline constexpr int32_t LucionDeadStage = 8;
 auto InstallLucion(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
 // Live counters for the status command.
 auto LucionCounters(char* out, size_t size) noexcept -> void;
+// PD2 0x10356e00, as D2R's pet kill 0x500fb0 sets the death mode: kills the monster with no drop (mode 0)
+auto KillQuietly(d2r::Game* game, d2r::Unit* monster) noexcept -> void;

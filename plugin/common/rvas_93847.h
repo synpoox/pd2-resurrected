@@ -911,6 +911,9 @@ inline constexpr uint64_t ClientUnit = 0x484c90;
 // pd2_ids.FUNCS). D2R's own portal operate 15 (0x58f680) needs a linked partner portal, which PD2's grey portals lack.
 inline constexpr uint64_t ObjectOperateTable = 0x23a51c0;
 inline constexpr int ObjectOperatePortal = 60;
+// PD2's map-event altar operate 79 takes slot 35 (MS8, pd2_ids.FUNCS): D2R's null slot of the 1.09 Steeg Stone (337),
+// an object no level places
+inline constexpr int ObjectOperateAltar = 35;
 inline constexpr int OperateWaypoint = 23;  // 0x58fe00, the waypoints' OperateFn
 inline constexpr uint64_t ObjectRecord = 0x38fd00;  // (dataFlag, objects row) -> objects record (0x168 bytes) or null
 inline constexpr int ObjOperateFn = 0x15e;   // uint8 OperateFn

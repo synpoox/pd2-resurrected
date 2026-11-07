@@ -15,3 +15,12 @@ auto MapOpenCounters(char* out, size_t size) noexcept -> void;
 // Opens a portal object (objects row `row`, operate 60) at (x, y) to `level`; `near` is a room by the spot. Null and a
 // warning when none is made.
 auto OpenPortalAt(d2r::Game* game, void* near, int32_t row, int32_t x, int32_t y, int32_t level) noexcept -> d2r::Unit*;
+
+// The argument block D2R's operate dispatcher 0x592c40 passes an operate function (rva::ObjectOperateTable)
+struct ObjectOperate {
+	d2r::Game* game;
+	d2r::Unit* object;
+	d2r::Unit* player;
+	uint64_t seed;
+	int32_t classId;
+};

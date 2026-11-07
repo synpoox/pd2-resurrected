@@ -26,11 +26,12 @@
 #include <cstdio>
 #include <iterator>
 
+using d2r::Game;
+using d2r::Unit;
+
 namespace {
 
 using d2r::At;
-using d2r::Game;
-using d2r::Unit;
 
 constexpr int32_t Lucion = 1129;      // PD2 1112, in the port's monstats ids (PD2's + 17)
 constexpr int32_t Controller = 1130;  // LucionControl (PD2 1113): PD2 removes the unit at game +0x2604
@@ -113,7 +114,8 @@ auto OpenHarrogathPortal(Game* game) noexcept -> bool {
 	return true;
 }
 
-// PD2 0x10356e00, as D2R's pet kill 0x500fb0 sets the death mode: no drop, then mode 0
+}  // namespace
+
 auto KillQuietly(Game* game, Unit* monster) noexcept -> void {
 	using namespace d2r::rva;
 	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlags)(monster, UnitNoDrop, 1);
@@ -122,6 +124,8 @@ auto KillQuietly(Game* game, Unit* monster) noexcept -> void {
 	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(UnitTarget)(game, monster);
 	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(SetMonsterMode)(game, block, 1);
 }
+
+namespace {
 
 // The adds and the controller alive in the arena, picked first so no kill runs while the lists are walked
 auto KillAdds(Game* game) noexcept -> int32_t {
