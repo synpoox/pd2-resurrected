@@ -1107,6 +1107,9 @@ inline constexpr uint64_t ItemRowByCode = 0x313ef0;  // (dataFlag, u32 code, 'ws
 // roller 0x4404f0 does
 inline constexpr uint64_t DropItemAt = 0x444680;
 inline constexpr int32_t QualityNormal = 2;
+// The game's dropped-uniques mask (1.13c +0x1b24): bit `row & 31` of u32 `row >> 5`, by uniqueitems row (at most
+// 0x1000). The unique roll 0x443910 refuses a set bit, a forced row included, and sets it on a drop.
+inline constexpr int GameUniquesDropped = 0x3638;
 inline constexpr uint32_t MonDemon = 0x2000;  // MonFlags bit 13 (monstats field table 0x39db30)
 
 // --- core-maps: Lucion's death (UB6, #231; D2Game\src\Skills\Skills.cpp, D2Game\src\Player\PlayerPets.cpp) --------

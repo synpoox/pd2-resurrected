@@ -207,6 +207,9 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 auto DropUniqueMap(Game* game, Unit* monster) noexcept -> void {
 	auto* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(d2r::rva::UnitSeed)(monster);
 	const UniqueMap& u = UniqueMaps[d2r::RandomBelow(seed, 8)];
+	// PD2's 0x1037ff30(game, unique, 0): clear the unique's dropped bit, so a second one in this game drops unique too
+	reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(game) + d2r::rva::GameUniquesDropped)[u.row >> 5] &=
+		~(1u << (u.row & 31));
 	if (DropUniqueAt(game, monster, u.code, u.row, UniqueMapLevel)) {
 		plog::Info("unique maps: %.4s dropped (%u so far)", reinterpret_cast<const char*>(&u.code), ++g_uniqueMaps);
 	}
