@@ -449,6 +449,7 @@ inline constexpr int USkillTargetType = 0x2c;  // 6 = none
 inline constexpr int USkillTargetId = 0x30;
 inline constexpr int USkillParam = 0x24;  // int32 Charge's counter, PD2's charge distance (its D2Common skill param)
 inline constexpr int MonVelocity = 0x6a;  // int16 monstats Velocity
+inline constexpr int MonRun = 0x6a;  // int16 monstats Run: D2R's field table (0x39db30) has Velocity at 0x68, Run at 0x6a
 
 inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Lightning's chain range, 0 = the skill's)
 inline constexpr int MsHitPar2 = 0x74;  // int32 sHitPar2, sHitPar3 +0x78 (1.13c's 0x50 / 0x54 + 0x24)
