@@ -194,6 +194,12 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	Unit* target = At<Unit*>(tick, d2r::rva::AiTickTarget);
 	const int32_t dist = At<int32_t>(tick, d2r::rva::AiTickDistance);
 	const int32_t dist2 = target != nullptr ? dist * dist : 0x7fffffff;  // PD2: squared distance to the nearest player
+	// The idle window for a boss left alone (PD2 game+0x26fe): idle and immune, counting down while a player is near
+	if (IdleWindow(game, unit, target != nullptr)) {
+		SetImmune(game, unit, true);
+		Idle(game, unit, 10);
+		return;
+	}
 	const int32_t tier = Counter(game, TierKey);
 	const int32_t aidel = m.AiDel() - tier;
 	int32_t& stage = Counter(game, StageKey);
@@ -423,6 +429,10 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 // LucionControl: from stage 3 it spawns LucionSpawners in the arena while Lucion is in state 5; from stage 4 it casts
 // Royal Fire on a timer
 auto ThinkControl(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -> void {
+	if (IdleWindow(game, nullptr, false)) {
+		Idle(game, unit, 10);
+		return;
+	}
 	const int32_t stage = Counter(game, StageKey);
 	const int32_t tier = Counter(game, TierKey);
 	const int32_t level = LevelOf(unit);
@@ -463,6 +473,10 @@ auto ThinkControl(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept 
 
 // LucionSpawner: from stage 3 it spawns an add at itself on a timer, by the aip odds and caps
 auto ThinkSpawner(Game* game, Unit* unit, const Mon& m) noexcept -> void {
+	if (IdleWindow(game, nullptr, false)) {
+		Idle(game, unit, 10);
+		return;
+	}
 	const int32_t stage = Counter(game, StageKey);
 	const int32_t tier = Counter(game, TierKey);
 	const bool frenzy = Counter(game, StateKey) == 5;

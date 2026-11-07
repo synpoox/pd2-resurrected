@@ -22,6 +22,7 @@
 // the opening's warp (0x1038a680) still strips every player it takes in.
 #include "map_open.h"
 
+#include "ai_hooks.h"
 #include "d2r.h"
 #include "log.h"
 #include "map_events.h"
@@ -353,7 +354,7 @@ auto HealBosses(Game* game, int32_t level) noexcept -> int32_t {
 // PD2 0x102fc6c0, on D2Game's room-release check: a room holding a live uber boss is never released, so the boss keeps
 // its life between entries and HealBosses finds it. A hook: no SDK service covers room lifetime, and a room mark
 // (RoomPortalMark) would stay on the room the boss walks out of.
-// shortcut: PD2 also starts the boss's 15-tick immune window here (game +0x26fe); add it with the phase scripts
+// The boss is marked alone too: its next think starts PD2's 15-tick idle window (game+0x26fe, ai_hooks.h).
 auto KeepBossRoom(void* act, void* room) noexcept -> int32_t {
 	using namespace d2r::rva;
 	for (auto* unit = d2r::Engine<Unit* (*)(void*) noexcept>(RoomFirstUnit)(room); unit != nullptr;
@@ -361,6 +362,7 @@ auto KeepBossRoom(void* act, void* room) noexcept -> int32_t {
 		if (At<int32_t>(unit, UnitType) == UnitMonster &&
 		    std::find(std::begin(UberBosses), std::end(UberBosses), At<int32_t>(unit, UnitClassId)) != std::end(UberBosses) &&
 		    d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) == 0) {
+			MarkBossAlone(unit);
 			if (g_bossRoomsKept++ == 0) {
 				plog::Info("uber: boss %d keeps its room", At<int32_t>(unit, UnitClassId));
 			}

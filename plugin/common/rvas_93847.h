@@ -143,6 +143,7 @@ inline constexpr uint64_t MissileSrvFrames = 0x3bb1e0;  // (missile) -> range fr
 // 1.13c's cdo 69 the same as current == total - 1, D2Common #10737 / #10534)
 inline constexpr uint64_t MissileCltFrames = 0x3bb0f0;
 inline constexpr uint64_t PathSetTargetUnit = 0x342920;  // (path, unit): path +0x70 target unit
+inline constexpr uint64_t PathSetTargetXY = 0x342a50;  // (path, x, y): path +0x10/+0x12 target point; clears +0x70
 // (path, mask): path +0x64, what the path collides with (1.13c D2Common #11164, +0x50); missile create 0x5371a0 sets it
 // from CollideType's row of the mask table 0x2391378 (CollideType 3: 0x184)
 inline constexpr uint64_t PathSetCollisionMask = 0x342740;
