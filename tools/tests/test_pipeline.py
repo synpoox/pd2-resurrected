@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import mpq  # noqa: E402
@@ -39,6 +40,31 @@ class ExtractTests(unittest.TestCase):
             self.assertIn("pd2data.mpq: SHA-256 differs", err.getvalue())
             self.assertIn("pd2maps.mpq: missing", err.getvalue())
             self.assertFalse((tmp / "pd2-data").exists())
+
+    def test_skips_a_current_extract(self):
+        class OneFile:  # pd2data.mpq's "*" takes it
+            def __init__(self, path): pass
+            def names(self): return ["data\\x.txt"]
+            def read(self, name): return b""
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            baseline = tmp / "pd2-baseline.json"
+            baseline.write_text(json.dumps({"archives": {}}))
+            out = tmp / "pd2-data"
+            for stamp, skips in [(pd2_extract.stamp(baseline.read_bytes()), True),
+                                 (pd2_extract.stamp(b"other"), False), (None, False)]:
+                out.mkdir(exist_ok=True)
+                (out / "keep").write_bytes(b"x")
+                (out / "baseline.json").unlink(missing_ok=True)
+                if stamp is not None:
+                    (out / "baseline.json").write_bytes(stamp)
+                log = io.StringIO()
+                with mock.patch.object(pd2_extract.mpq, "Archive", OneFile), redirect_stdout(log):
+                    self.assertEqual(pd2_extract.extract(tmp / "install", out, baseline), 0)
+                self.assertEqual((out / "keep").exists(), skips, stamp)
+                self.assertEqual("skipping" in log.getvalue(), skips, stamp)
+                self.assertEqual((out / "baseline.json").read_bytes(), pd2_extract.stamp(baseline.read_bytes()))
 
 
 class MergeTests(unittest.TestCase):
