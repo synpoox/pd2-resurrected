@@ -62,6 +62,7 @@ add_library(core_maps SHARED
 	core-maps/rathma.cpp
 	core-maps/event_portals.cpp
 	core-maps/uber_scaling.cpp
+	core-maps/uber_drops.cpp
 	core-maps/plugin.rc
 )
 target_link_libraries(core_maps PRIVATE core_common)
