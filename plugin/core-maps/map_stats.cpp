@@ -9,6 +9,8 @@
 // per-game counters (rva::GameCounter), so a new game starts without them.
 #include "map_stats.h"
 
+#include "map_open.h"
+
 #include "log.h"
 #include "uber_scaling.h"
 
@@ -573,7 +575,11 @@ constexpr int16_t ExtraBossIds[] = {
 // PD2's preset wrapper 0x1038bfc0, slot 5: in a map area with map_glob_extra_boss above 0, a monster preset whose id
 // is one of the map bosses spawns a second time. No PluginSDK service spawns or reports room presets, so this hooks
 // D2R's preset spawn (rva::PresetSpawn).
+// The hook also drops the uber levels' waypoint presets (NoUberWaypoint, map_open.cpp).
 auto OnPresetSpawn(Game* game, void* room, const uint8_t* preset) noexcept -> void {
+	if (game != nullptr && room != nullptr && preset != nullptr && NoUberWaypoint(game, room, preset)) {
+		return;
+	}
 	g_presetSpawnOriginal(game, room, preset);
 	using namespace d2r::rva;
 	if (game == nullptr || room == nullptr || preset == nullptr || At<int32_t>(preset, PresetType) != UnitMonster) {
@@ -594,6 +600,45 @@ auto OnPresetSpawn(Game* game, void* room, const uint8_t* preset) noexcept -> vo
 	}
 }
 
+// PD2's boss test in 0x103760a0: the monster's class is in one of the six id sets 0x105deb54, 0x105dea4c, 0x105debcc,
+// 0x105debdc, 0x105debb4 and 0x105dea84. They hold the same ids as the extra boss sets, without lernaeanhydra1.
+auto IsMapBoss(int32_t classId) noexcept -> bool {
+	for (const int16_t b : ExtraBossIds) {
+		if (b == classId && b != 1061) {  // 1061: lernaeanhydra1 (PD2 1044), only in the extra boss test
+			return true;
+		}
+	}
+	return false;
+}
+
+// PD2's level set 0x105dea8c (Zhar's Sanctum 172-175, Uber Diablo 138, the Necropolis 160, Lucion's arena 184; PD2's
+// Uber Ancients level is cut) and Djinn's Domain (193-195): each kill there drops once more.
+constexpr int32_t ExtraDropLevels[] = {172, 173, 174, 175, 138, 160, 184, 193, 194, 195};
+
+// PD2's map-stat drops in 0x103799d0: a monster stat, and the TC row its chance drops from (port ids, PD2's in the
+// comments). The ear list is 0x1044ed20.
+struct StatDrop {
+	int16_t stat;
+	const char* tc;
+};
+constexpr StatDrop StatDrops[] = {
+	{547, "MapStat DropJewelry"},   // map_mon_dropjewelry (494), TC row 982
+	{548, "MapStat DropWeapons"},   // map_mon_dropweapons (495)
+	{549, "MapStat DropArmor"},     // map_mon_droparmor (496)
+	{550, "MapStat DropCrafting"},  // map_mon_dropcrafting (497)
+	{405, "Amazon Ear Drop"},       // zon_ear_drops (279), TC row 1114
+	{406, "Assassin Ear Drop"},     // sin_ear_drops (280)
+	{407, "Barb Ear Drop"},         // barb_ear_drops (281)
+	{411, "Druid Ear Drop"},        // map_mon_dropclassitems (285), as PD2's list pairs them
+	{408, "Necro Ear Drop"},        // necro_ear_drops (282)
+	{409, "Paladin Ear Drop"},      // paladin_ear_drops (283)
+	{410, "Sorc Ear Drop"},         // sorc_ear_drops (284)
+	{555, "MapStat DropCharms"},    // map_mon_dropcharms (502), TC row 986
+	{559, "MapStat DropJewels"},    // map_mon_dropjewels (506), TC row 988
+};
+
+std::atomic<uint32_t> g_deathDrops {0};  // extra drops and stat drops made
+
 }  // namespace
 
 auto DesecrateItem(Game* game, Unit* item) noexcept -> bool {
@@ -602,6 +647,85 @@ auto DesecrateItem(Game* game, Unit* item) noexcept -> bool {
 
 auto MapAreaSlot(Game* game, Unit* unit, int slot) noexcept -> int32_t {
 	return game != nullptr && unit != nullptr && InMapArea(unit) ? AreaSlot(game, slot) : 0;
+}
+
+auto MapRollMultiplier(Unit* monster) noexcept -> int32_t {
+	using namespace d2r::rva;
+	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	return monster != nullptr && stat(monster, 546, 0) > 0 && !IsMapBoss(At<int32_t>(monster, UnitClassId)) ? 2 : 1;
+}
+
+// PD2's map block of 0x103799d0, for a hostile monster that is not a minion dying in a map area. Extra drops (the
+// monster's own TC once more, 0x103843d0): fortify (`map_glob_skirmish_mode` on the monster) always, or 25% for a map
+// boss; the levels above; `map_glob_dropbonus`'s v%. Then each drop stat's v x MapRollMultiplier % drops its TC at the
+// monster's level. Rolls use the monster's seed, as PD2's 0x1036f320 does.
+auto MapDeathDrops(Game* game, Unit* monster, Unit* killer, uint32_t* seed) noexcept -> void {
+	using namespace d2r::rva;
+	if (game == nullptr || monster == nullptr || killer == nullptr || seed == nullptr || !InMapArea(monster)) {
+		return;
+	}
+	const auto* data = At<const uint8_t*>(monster, UnitData);
+	if (data == nullptr || (data[MonDataTypeFlags] & MonTypeMinion) != 0) {
+		return;
+	}
+	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	const int32_t classId = At<int32_t>(monster, UnitClassId);
+	const int32_t level = LevelOf(monster);
+	struct {
+		void* unused;
+		Unit* monster;
+		Unit* killer;
+	} death {nullptr, monster, killer};
+	int extra = 0;
+	const auto again = [&]() noexcept {
+		d2r::Engine<void (*)(Game*, Unit*, int32_t, void*) noexcept>(MonsterTcDrop)(game, monster, 0, &death);
+		++extra;
+	};
+	const bool boss = IsMapBoss(classId);
+	const uint32_t roll = d2r::RandomBelow(seed, 100);
+	if (stat(monster, 546, 0) > 0 && (!boss || roll < 25)) {
+		again();
+	}
+	for (const int32_t l : ExtraDropLevels) {
+		if (l == level) {
+			again();
+		}
+	}
+	const int32_t bonus = stat(monster, 399, 0);  // map_glob_dropbonus
+	if (bonus > 0 && static_cast<int32_t>(d2r::RandomBelow(seed, 100)) < bonus) {
+		again();
+	}
+	const uint8_t dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
+	const uint8_t* tables = d2r::Engine<const uint8_t* (*)(uint8_t) noexcept>(DataTablesOf)(dataFlag);
+	// shortcut: the item level is the monster's level (PD2 reads it through an import, 0x103a1b00, not traced)
+	const int32_t ilvl = stat(monster, StatLevel, 0);
+	const int32_t mult = MapRollMultiplier(monster);
+	int made = 0;
+	for (const StatDrop& d : StatDrops) {
+		const int32_t v = stat(monster, d.stat, 0);
+		if (v <= 0 || tables == nullptr || static_cast<int32_t>(d2r::RandomBelow(seed, 100)) >= v * mult) {
+			continue;
+		}
+		const int32_t index = d2r::Engine<int32_t (*)(void*, const char*, int32_t) noexcept>(TcIndexByName)(
+			At<void*>(tables, TablesTcNames), d.tc, 0);
+		const uint8_t* tc = index > 0 ? d2r::Engine<const uint8_t* (*)(uint8_t, uint16_t, int32_t) noexcept>(TcRecord)(
+											dataFlag, static_cast<uint16_t>(index), 0)
+		                              : nullptr;
+		if (tc == nullptr) {
+			plog::Warn("map drops: no TC \"%s\"", d.tc);
+			continue;
+		}
+		d2r::Engine<void (*)(Game*, Unit*, Unit*, const uint8_t*, int32_t, int32_t, int32_t, void*, int32_t*,
+		                     int32_t) noexcept>(TcDrop)(game, monster, killer, tc, 0, ilvl, 0, nullptr, nullptr, 0);
+		plog::Info("map drops: monster %d in level %d drops from \"%s\" (stat %d = %d, x%d)", classId, level, d.tc,
+		           d.stat, v, mult);
+		++made;
+	}
+	if (extra + made > 0) {
+		g_deathDrops.fetch_add(static_cast<uint32_t>(extra + made), std::memory_order_relaxed);
+		plog::Info("map drops: monster %d (type flags 0x%02x%s) in level %d: %d extra drops, %d stat drops (%u so far)",
+		           classId, data[MonDataTypeFlags], boss ? ", map boss" : "", level, extra, made, g_deathDrops.load());
+	}
 }
 
 auto RouteMapStats(Game* game, Unit* item, int32_t level) noexcept -> void {
@@ -706,7 +830,8 @@ auto MapStatsCount() noexcept -> int {
 
 auto MapStatsCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
-	              "map stats routed %u, monsters %u, player lists on %u, off %u, drops changed %u, extra bosses %u",
+	              "map stats routed %u, monsters %u, player lists on %u, off %u, drops changed %u, extra bosses %u, "
+	              "death drops %u",
 	              g_routed.load(), g_monsters.load(), g_playersOn.load(), g_playersOff.load(), g_drops.load(),
-	              g_extraBosses.load());
+	              g_extraBosses.load(), g_deathDrops.load());
 }
