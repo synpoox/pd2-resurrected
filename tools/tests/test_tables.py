@@ -76,6 +76,14 @@ class TablesTests(unittest.TestCase):
         self.assertEqual(self.merge({"objects": {"d2r_columns": ["token"]}})["objects"], [
             ["Name", "Token", "Parm0"], ["Cain Portal", "tp", "5"], ["Trophy", "", "1"]])
 
+    def test_class_skill_line_keeps_d2rs_string_with_its_number(self):
+        """PD2's ModStre8a_PD2 is "to Druid Skill Levels": D2R's descfunc 13 prints no number for it (#255)."""
+        cfg = json.loads((Path(pd2_tables.__file__).parent.parent / "merge/tables.json").read_text("utf-8"))
+        self.write("pd2", "charstats", table("class | StrAllSkills | hpadd", "Druid | ModStre8a_PD2 | 9"))
+        self.write("d2r", "charstats", table("class | StrAllSkills | hpadd", "Druid | ModStre8a | 1"))
+        self.assertEqual(self.merge({"charstats": cfg["charstats"]})["charstats"], [
+            ["class", "StrAllSkills", "hpadd"], ["Druid", "ModStre8a", "9"]])
+
     def test_named_cells_take_the_rules_value(self):
         self.write("pd2", "monstats", table("Id | NameStr | Level", "roguehire | Dummy | 5", "fallen | Fallen | 2",
                                             "act4hire | dummy | 9"))
