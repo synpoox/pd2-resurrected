@@ -19,6 +19,12 @@ import pd2_merge  # noqa: E402
 import pd2_strings  # noqa: E402
 
 
+def cache_env(cache: Path):
+    """os.environ with the cache root at cache, and without GITHUB_ACTIONS, which turns the cache off (the unit job)."""
+    env = {k: v for k, v in os.environ.items() if k != "GITHUB_ACTIONS"}
+    return mock.patch.dict(os.environ, {**env, "PD2R_CACHE": str(cache)}, clear=True)
+
+
 def write(p: Path, text: str) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text)
@@ -81,8 +87,7 @@ class SharedExtractTests(unittest.TestCase):
             for i, base in enumerate([b'{"archives": {}}', b'{"archives": {}, "v": 2}']):
                 (tmp / "b.json").write_bytes(base)
                 args = ["--install", str(tmp), "--baseline", str(tmp / "b.json")]
-                with mock.patch.dict(os.environ, {"PD2R_CACHE": str(tmp / "cache")}), \
-                        mock.patch.object(pd2_extract, "ROOT", tmp / "wt"), \
+                with cache_env(tmp / "cache"), mock.patch.object(pd2_extract, "ROOT", tmp / "wt"), \
                         mock.patch.object(pd2_extract.mpq, "Archive", OneFile), redirect_stdout(io.StringIO()):
                     self.assertEqual(pd2_extract.main(args), 0)
                 self.assertTrue(pd2_cache.is_link(out))
@@ -110,12 +115,14 @@ class MergeCacheTests(unittest.TestCase):
                 write(out / "x.txt", rule.read_text())
 
             args = ["--root", str(root), "--d2r", str(d2r)]
-            with mock.patch.dict(os.environ, {"PD2R_CACHE": str(tmp / "cache")}), \
-                    mock.patch.dict(pd2_merge.RULES, {"ids.json": rule}), redirect_stdout(io.StringIO()):
+            with cache_env(tmp / "cache"), mock.patch.dict(pd2_merge.RULES, {"ids.json": rule}), redirect_stdout(io.StringIO()):
                 for _ in range(2):
                     self.assertEqual(pd2_merge.main(args), 0)
                     self.assertEqual((root / "generated" / "data" / "x.txt").read_text(), "{}")
                 self.assertEqual(len(runs), 1, "the second run is a cache hit")
+                write(root / "tools" / "tests" / "test_x.py", "")
+                self.assertEqual(pd2_merge.main(args), 0)
+                self.assertEqual(len(runs), 1, "a test-only change still hits")
                 write(root / "merge" / "ids.json", '{"changed": 1}')
                 self.assertEqual(pd2_merge.main(args), 0)
                 self.assertEqual(len(runs), 2, "a changed merge/ is a new key")

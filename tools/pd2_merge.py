@@ -60,9 +60,10 @@ class MergeError(Exception):
 
 
 def merge_key(root: Path, d2r: Path) -> str:
-    """pd2_cache's key for root's merge: everything the merge reads but D2R's tables, which the path stands for."""
-    return pd2_cache.key([root / "merge", root / "tools", root / "pd2-baseline.json", root / "pd2-data" / "baseline.json",
-                          pd2_ids.toolkit(root) / "modkit"], str(d2r.resolve()))
+    """pd2_cache's key for root's merge: everything the merge reads but D2R's tables, which the path stands for. The
+    tools' tests are left out, so a test-only change still hits."""
+    return pd2_cache.key([root / "merge", *sorted((root / "tools").glob("*.py")), root / "pd2-baseline.json",
+                          root / "pd2-data" / "baseline.json", pd2_ids.toolkit(root) / "modkit"], str(d2r.resolve()))
 
 
 def merge(root: Path, d2r: Path = D2R_DATA) -> list[str]:
