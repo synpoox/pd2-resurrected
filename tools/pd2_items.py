@@ -72,6 +72,7 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
     remake_rerolls(merged)
     open_key_portal(merged)
     merged.rows += [list(r) for r in d2r_only]
+    close_finale_portal(merged)
     merged.dropped = dropped
     return merged
 
@@ -116,6 +117,16 @@ def open_key_portal(cube: I.Table) -> None:
     for r in cube.rows:
         if (r[h["op"]], r[h["param"]], r[h["min diff"]], r[h["output"]]) == ("28", "1", "2", "useitem"):
             r[h["output"]] = "Pandemonium Portal"
+
+
+def close_finale_portal(cube: I.Table) -> None:
+    """D2R's organ portal to its Uber Tristram (level 136) is off (docs/d2r-only-content.md, #153): PD2's organs make
+    the Pandemonium Talisman (`ubtm`, level 185) instead. Every row with output `Pandemonium Finale Portal` is disabled,
+    D2R's appended one too, so the organs reach only PD2's Talisman row (#485)."""
+    h = {c: j for j, c in enumerate(cube.header)}
+    for r in cube.rows if "enabled" in h and "output" in h else []:
+        if r[h["output"]] == "Pandemonium Finale Portal":
+            r[h["enabled"]] = "0"
 
 
 def mark_new_corrupted(cube: I.Table, corruptor: str | None) -> None:

@@ -7,6 +7,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Items
 
+- D2R's organ portal to its Uber Tristram is off: the organs make PD2's Pandemonium Talisman.
 - Item crushing blow rolls on normal hits, and Purgatory gains damage per worn ethereal item, as in PD2.
 - Spear and two-hand masteries boost crits and crushing blow, and Smite's crushing blow hits harder, as in PD2.
 - Ethereal items get Project Diablo II's +25% defense or damage, not +50%.
