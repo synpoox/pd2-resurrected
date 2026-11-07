@@ -43,13 +43,14 @@ class KeyedTests(unittest.TestCase):
             ["warlock", "wt1", "wt2", "wt3", "1"]])
 
     def test_cube_numinputs_counts_each_item(self):
-        # D2R wants numinputs == items in the cube; PD2 counts stacks. Op 30 and sums past the cube's 16 cells keep PD2's
+        # numinputs is the sum of the inputs' qty (core-rules counts a stack as its quantity); op 30 keeps PD2's
         head = "description|op|numinputs|input 1|input 2|input 3\n"
         pd2 = table(head + '3 maps||1|"t1me,qty=3"||\nrunes||2|"key,qty=1"|"r01,qty=3"|\nok||3|t1me|t1me|t1me\n'
                     'block|30|2|map|"ggm4,qty=3"|\nimbue|18|3|"upma,qty=50"|"rune,qty=50"|"ggm4,qty=50"\n'
                     'full||2|"jewf,qty=15"|jew|\npast||2|"jewf,qty=16"|jew|\n')
         d2r = table(head + 'vanilla||1|"gcv,qty=3"||\n')
-        self.assertEqual([r[2] for r in M.merge_cube(pd2, d2r, NO_CTX).rows], ["3", "4", "3", "2", "3", "16", "2", "1"])
+        self.assertEqual([r[2] for r in M.merge_cube(pd2, d2r, NO_CTX).rows],
+                         ["3", "4", "3", "2", "150", "16", "17", "1"])
 
     def test_cube_reroll_rows_remake_the_item(self):
         # op 31 has no outputs in PD2 (its cube code makes the item); the rows ship switched off, core-rules runs them
@@ -57,6 +58,13 @@ class KeyedTests(unittest.TestCase):
         pd2 = table(head + '1|31|"ring,uni"|"imrn,qty=1"|\n1|31|"armo,set"|"imrn,qty=1"|\n1||"ring,uni"|"imrn,qty=1"|amu\n')
         rows = M.merge_cube(pd2, table(head), NO_CTX).rows
         self.assertEqual([(r[0], r[4]) for r in rows], [("0", "usetype,reg"), ("0", "usetype,reg"), ("1", "amu")])
+
+    def test_cube_key_row_opens_the_portal(self):
+        # PD2's cube walk opens the portal for op 28 + param 1 + min diff 2; its `useitem` becomes D2R's portal output
+        head = "op|param|min diff|output\n"
+        pd2 = table(head + "28|1|2|useitem\n28|1|2|Pandemonium Finale Portal\n||2|useitem\n")
+        self.assertEqual([r[3] for r in M.merge_cube(pd2, table(head), NO_CTX).rows],
+                         ["Pandemonium Portal", "Pandemonium Finale Portal", "useitem"])
 
     def test_cube_mod_skill_params(self):
         ren = I.renames({t: [] for t in I.TABLES})

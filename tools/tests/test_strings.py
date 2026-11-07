@@ -101,6 +101,31 @@ class StringsTests(unittest.TestCase):
         pd2_strings.build({"overrides": ["ModStr"], "literal_percent": ["ModStr"], "ids": {}}, self.pd2,
                           self.strings(), self.root / "out")
 
+    def test_plain_copies_drop_format_codes(self):
+        self.assertEqual(pd2_strings.plain("%+d%% Deadly Strike"), "Deadly Strike")
+        self.assertEqual(pd2_strings.plain("Cold Absorb %+d%%"), "Cold Absorb")
+        self.assertEqual(pd2_strings.plain("+%d magic damage"), "magic damage")
+        pd2_strings.pd2_ids.PLAIN_STRINGS["ModStr"] = "ModStrMap"  # D2R's "%d%% Strike"; PD2 has its own text
+        pd2_strings.pd2_ids.PLAIN_STRINGS["skillld1"] = "skillld1Map"
+        self.addCleanup(lambda: [pd2_strings.pd2_ids.PLAIN_STRINGS.pop(k) for k in ("ModStr", "skillld1")])
+        pd2 = {k: v for k, v in self.pd2.items() if k != "ModStr"}
+        cfg = {"overrides": [], "ids": {"ModStrMap": [50000, "item-modifiers.json"]}}
+        pd2_strings.build(cfg, pd2, self.strings(), self.root / "out")
+        built = self.built("strings/item-modifiers.json")
+        self.assertEqual(built["ModStr"]["enUS"], "%d%% Strike")  # D2R's own key is untouched
+        self.assertEqual(built["ModStrMap"]["deDE"], "Strike")
+        pd2_strings.build(cfg, self.pd2, self.strings(), self.root / "out")
+        self.assertEqual(self.built("strings/item-modifiers.json")["ModStrMap"]["deDE"], "Chance of Strike")
+
+    def test_stat_strings_check_refuses_format_codes_after_the_value(self):
+        excel, lng = self.root / "excel", self.root / "out/data/local/lng"
+        excel.mkdir()
+        (excel / "itemstatcost.txt").write_bytes(b"Stat\tdescfunc\tdescstr2\r\nmap_mon_x\t7\tModStr\r\nother\t1\tModStr\r\n")
+        with self.assertRaisesRegex(ValueError, r"map_mon_x \(ModStr\)"):
+            pd2_strings.check_stat_strings(excel, lng, self.root / "d2r/data/local/lng")
+        (excel / "itemstatcost.txt").write_bytes(b"Stat\tdescfunc\tdescstr2\r\nother\t1\tModStr\r\n")
+        pd2_strings.check_stat_strings(excel, lng, self.root / "d2r/data/local/lng")
+
     def test_assign_numbers_referenced_new_keys_by_column(self):
         excel = self.root / "excel"
         excel.mkdir()
