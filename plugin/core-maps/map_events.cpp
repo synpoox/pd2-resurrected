@@ -9,8 +9,8 @@
 // Darkness (MS8), Horazon and Void/Tomb (MS9), the invaders (MS10).
 //
 // Each spawn sends the event's notify string to every player as a red chat line (#336; PD2 0x1037dbc0, packet 0x26
-// colour 1). The SDK's localization service gives the text; no SDK service sends a chat line, so it goes through
-// D2R's server chat broadcast (rva::GameChat).
+// type 4, colour 1). The SDK's localization service gives the text; no SDK service sends a chat line, so it goes
+// through D2R's chat packet sender (rva::SendChat).
 //
 // No PluginSDK service reports a room activating, so this hooks D2R's room monster spawn (rva::RoomPopulate), the
 // function PD2 wraps. The event and the counts live in D2R's per-game counters (rva::GameCounter), so a new game
@@ -26,6 +26,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <iterator>
 
 namespace {
@@ -102,15 +103,20 @@ auto NotifyKey(int32_t event) noexcept -> const char* {
 // Every spawn sends it, as PD2's does (Dark Wanderer and Treasure Fallen up to three times)
 auto Notify(Game* game, int32_t event) noexcept -> void {
 	const char* key = NotifyKey(event);
-	char text[256] {};  // GameChat copies 256 bytes
+	char text[256] {};
 	uint32_t need = 0;
 	if (key == nullptr || g_strings == nullptr ||
 	    g_strings->getStringByKey(g_context, key, text, sizeof(text), &need) != D2RL::Localization::Result::Success) {
 		plog::Warn("map events: no notify text for event %d (%s)", event, key != nullptr ? key : "no key");
 		return;
 	}
-	constexpr uint8_t Red = 1;
-	d2r::Engine<void (*)(Game*, const char*, uint8_t) noexcept>(d2r::rva::GameChat)(game, text, Red);
+	// PD2's packet: type 4 (a line with no sender), red
+	uint8_t packet[0x147] {};
+	packet[0] = 0x26;
+	packet[1] = 4;
+	packet[8] = 1;
+	std::memcpy(packet + 0x47, text, sizeof(text) - 1);
+	d2r::Engine<void (*)(void*, uint8_t*) noexcept>(d2r::rva::SendChat)(At<void*>(game, d2r::rva::GameClients), packet);
 	plog::Info("map events: event %d notified \"%s\" (%u)", event, text, ++g_notified);
 }
 

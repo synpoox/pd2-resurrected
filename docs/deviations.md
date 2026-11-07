@@ -70,7 +70,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | Guilds | not yet | cut in spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41) with the online layer; the cut is reversed and guilds come with multiplayer ([#339](https://github.com/synpoox/pd2-resurrected/issues/339)) | [#339](https://github.com/synpoox/pd2-resurrected/issues/339), beta |
 | Controller: PD2's own screens and binds | not yet | D2R's native controller support stands in; PD2's extra screens and binds were cut in spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41), and the cut is reversed ([#340](https://github.com/synpoox/pd2-resurrected/issues/340)) | [#340](https://github.com/synpoox/pd2-resurrected/issues/340), beta |
 
-### Approximated (46)
+### Approximated (45)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -118,7 +118,6 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | PD2-only monsters draw D2R stand-in models | approximated | each of PD2's new monsters maps to a D2R monster's HD model (`merge/monsters-hd.tsv`, `tools/pd2_monsters_hd.py`): its `BaseId`'s or its `Code`'s, and a hand-picked one for the 22 with PD2-only art (Zhar, Iskatu, Lucion, Na-Krul, the Invaders, ...) and for 7 whose `Code` D2R draws with several models (the Countess, the Dopplezon, ...); without an entry the HD renderer draws nothing for them ([#198](https://github.com/synpoox/pd2-resurrected/issues/198)) | [UR2](https://github.com/synpoox/pd2-resurrected/issues/200) |
 | PD2-only overlays draw D2R stand-ins | approximated | each of PD2's 33 new overlays copies a D2R overlay's HD json, picked by look (`merge/vfx-overlays.tsv`, `tools/pd2_overlays_hd.py`); shared overlay rows keep D2R's `Character` (the HD folder), as PD2's classic values (all, ?, Assasin, Bar) left shrines, Battle Orders, curses and auras invisible ([#198](https://github.com/synpoox/pd2-resurrected/issues/198)) | [UR2](https://github.com/synpoox/pd2-resurrected/issues/200) |
 | PD2's buff timers, mini skill icons and skill bar | approximated | covered by the Buff HUD companion (Pyre-Flies, `companions/manifest.json`); PD2's `bufficons` and `skillicons_mini` art is not ported ([#198](https://github.com/synpoox/pd2-resurrected/issues/198)) |  |
-| Map-event notifications: a red chat line through D2R's server chat message (packet 0x26 type 1, no sender), not PD2's type 4 | approximated | D2R's own chat sender (`rva::GameChat`, which its debug commands use) stands in for PD2's packet; the text and colour are PD2's. The events that spawn so far send it (Mendeln, Dark Wanderer, Treasure Fallen); each other event sends it once it spawns ([#336](https://github.com/synpoox/pd2-resurrected/issues/336)) | [MS8](https://github.com/synpoox/pd2-resurrected/issues/222)-[MS10](https://github.com/synpoox/pd2-resurrected/issues/224) |
 | PD2's tooltip stat ranges | approximated | covered by the Item Roll Ranges companion (Pyre-Flies, `companions/manifest.json`); its ranges are not compared with PD2's ([#198](https://github.com/synpoox/pd2-resurrected/issues/198)) |  |
 
 ## Engine rules
