@@ -26,6 +26,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Uber fight monsters scale with the key's tier, as in PD2.
 - PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
 - Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
+- Royal Fire (Lucion's controller, Radament's map boss) casts PD2's ring of fire, aimed into his arena for Lucion's.
 
 #### Maps
 

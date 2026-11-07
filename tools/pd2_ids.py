@@ -166,6 +166,7 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # The monster kits (W36, docs/research/w36-monster-kits.md): PoisonEggSpawn's cltdo 109 takes 126, TorajanBossNest's
 # srvdo 181 (the finishers' prg there) joins the router, the Cyclers' srvst 67 (D2R's Frenzy start) takes 83 and the
 # summon-on-hit shit 6 (D2R's leaves out PD2's flags) takes 67.
+# Royal Fire's srvdo 143 / cltdo 83 (PD2's boss branch in vanilla slots D2R keeps) join the router and take 123 (UB6).
 # Ormus' Robes' property func 25 (D2R's 25 is affix-rand) takes the free property slot 26 (P12,
 # docs/research/p12-ormus-robes.md).
 # levels' Teleport 3 (PD2's path search, research/sorceress-w26.md) is not a D2R value; 1 (allowed) stands in until MS7.
@@ -182,9 +183,9 @@ FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
                       "pSrvDmgFunc": {"15": "22", "16": "21", "17": "20"}, "pCltHitFunc": {"26": "71", "6": "68"}},
          "skills": {"srvdofunc": {"153": "172", "154": "183", "155": "190", "156": "190", "157": "190", "159": "190",
                                   "160": "190", "161": "190", "162": "190", "163": "190", "164": "190", "165": "190",
-                                  "166": "190", "170": "190", "181": "190"},
+                                  "166": "190", "170": "190", "181": "190", "143": "190"},
                     "cltdofunc": {"97": "115", "98": "116", "100": "120", "101": "121", "102": "122", "112": "37",
-                                  "109": "126"},
+                                  "109": "126", "83": "123"},
                     # PD2's srvst 68 calls slot 32, D2R's melee start (W11)
                     "srvstfunc": {"66": "80", "68": "32", "67": "83"}, "cltstfunc": {"56": "63", "57": "25"},
                     # the finishers' prg functions (W29): only these PD2 rows use these values in these columns

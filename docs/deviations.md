@@ -245,8 +245,8 @@ Hook-list rows that need no plugin. Checked in [W3](https://github.com/synpoox/p
   Baal Corpse Explode client start (cltst 82 -> D2R's own blank, past D2R's table end) and the `*12` server hit (D2R's
   own blank or `-`: PD2 reads `*12` as no hit function, and a blank means the same without relying on D2R's parse). The player sees PD2's
   rule, so these are not deviations; only their function numbers differ, and the last row above lists those cells for the gate.
-- **Equal numbers**: WispBossNova (srvdo 41, cltdo 15) and Royal Fire (143, 83) keep D2R's functions at the same
-  numbers. The vanilla functions reassigned to other skills keep their numbers; the merge guard passes them.
+- **Equal numbers**: WispBossNova (srvdo 41, cltdo 15) keeps D2R's functions at the same numbers (Royal Fire's 143
+  and 83 hold a PD2 branch, so they move: core-rules). The vanilla functions reassigned to other skills keep their numbers; the merge guard passes them.
 - **Tables [P3](https://github.com/synpoox/pd2-resurrected/issues/47) merged**, checked against D2R's rows by key (the merge now ships PD2's values in these cells):
   - misc `pSpell` 1-9: 21 rows equal D2R's, 1 PD2-only row uses a value D2R uses. Herb (`hrb`) differs: PD2 9, D2R 10;
     the mod ships PD2's 9, and whether D2R's 9 is the same function is not checked yet.

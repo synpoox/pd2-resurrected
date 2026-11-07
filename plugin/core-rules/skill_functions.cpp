@@ -501,18 +501,24 @@ auto SkillMissileParams(Unit* unit, int32_t flags, int32_t missile, int32_t x, i
 
 // PD2's ring (0x1036d250 server, 0x1036d370 client): one missile at every (64 / count)-th of D2's 64 directions, so
 // count 10 makes 11 and count 6 makes 7; 0 or over 64 makes 64.
+// RingStep: one at every step-th direction (1.13c's ring helpers, D2Game 0x93d60, take the step).
+template <typename Create>
+auto RingStep(int32_t step, Create create) noexcept -> int32_t {
+	const auto* dx = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionX);
+	const auto* dy = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionY);
+	int32_t created = 0;
+	for (int32_t i = 0; i < 64; i += step) {
+		created += create(dx[i], dy[i]) ? 1 : 0;
+	}
+	return created;
+}
+
 template <typename Create>
 auto Ring(int32_t count, Create create) noexcept -> int32_t {
 	if (count <= 0 || count > 64) {
 		count = 64;
 	}
-	const auto* dx = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionX);
-	const auto* dy = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionY);
-	int32_t created = 0;
-	for (int32_t i = 0; i < 64; i += 64 / count) {
-		created += create(dx[i], dy[i]) ? 1 : 0;
-	}
-	return created;
+	return RingStep(64 / count, create);
 }
 
 // PD2's server ring call (0x1036d250 with flags 3): `count` missiles of row `missile` from x/y (Ring), owned by and
@@ -2543,6 +2549,111 @@ auto CltDoNova(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	return 1;
 }
 
+// --- Royal Fire (PD2 srvdofunc 143 -> router 190, cltdofunc 83 -> 123) -----------------------------------------------
+// Read from ProjectDiablo.dll: srvdo 143 at 0x103b0df0, cltdo 83 at 0x103ab070; for other skills both fall back to
+// vanilla 143 / 83, which D2R keeps in those slots. A ring of srvmissilea (cltmissilea) at every calc1-th of D2's 64
+// directions (1.13c D2Game 0x93d60, D2Client 0x40f00, flags 3), from the caster, or for LucionControl from a spot in
+// Lucion's arena drawn from its cast sequence (0x103805f0 at unit +0xcc), which both sides step once per cast.
+// shortcut: each side keeps that sequence by unit id, not on the unit, and never prunes it (one entry per fight)
+std::atomic<uint32_t> g_royalFires {0};
+std::atomic<uint32_t> g_royalFireClients {0};
+constexpr int32_t RadamentBossRoyalFire = 637, LucionRoyalFire = 643;  // merged ids
+constexpr int32_t LucionControl = 1130;                                // PD2 1113 (0x459), merged id
+
+// PD2 0x103805f0: the low 20 bits a hash, the top 12 the cast count; the first cast seeds it from the unit id
+constexpr auto NextCastSeed(uint32_t v, uint32_t unitType, uint32_t unitId) noexcept -> uint32_t {
+	if (v == 0) {
+		return ((unitId & 0xfffffff) ^ (unitType << 28)) & 0xfffff;
+	}
+	const uint32_t n = v >> 20;
+	const uint32_t count = (n < 0xfff ? n + 1 : 1) << 20;
+	return (((v & 0xfffff) + count) * 0x6ac690c6u & 0xfffff) + count;
+}
+static_assert(NextCastSeed(0, 1, 0x12345678) == 0x45678 && NextCastSeed(0x45678, 1, 0) >> 20 == 1);
+
+// The controller's ring centre (x, y) in the arena; other casters cast from where they stand.
+auto RoyalFireCentre(std::map<uint32_t, uint32_t>& seeds, std::mutex& lock, Unit* unit, int32_t* x, int32_t* y)
+	noexcept -> bool {
+	using namespace d2r::rva;
+	if (At<int32_t>(unit, UnitType) != UnitMonster || At<int32_t>(unit, UnitClassId) != LucionControl) {
+		return d2r::UnitXY(unit, x, y);
+	}
+	const uint32_t id = At<uint32_t>(unit, UnitIdField);
+	uint32_t seed = 0;
+	{
+		std::lock_guard guard(lock);
+		seed = seeds[id] = NextCastSeed(seeds[id], UnitMonster, id);
+	}
+	*x = static_cast<int32_t>((seed + 0xd) % 0x28 + 0x620f);
+	*y = static_cast<int32_t>((seed + 0x13) % 0x28 + 0x17cd);
+	return true;
+}
+
+std::map<uint32_t, uint32_t> g_royalSeeds, g_royalClientSeeds;
+std::mutex g_royalSeedLock, g_royalClientSeedLock;
+
+auto SrvDoRoyalFire(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	const int32_t missile = At<int16_t>(skill, SkSrvMissileA);
+	int32_t x = 0, y = 0;
+	if (!d2r::ValidMissile(dataFlag, missile) || !RoyalFireCentre(g_royalSeeds, g_royalSeedLock, unit, &x, &y)) {
+		return 0;
+	}
+	const int32_t step = d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level);
+	if (step <= 0) {
+		return 0;  // PD2 would loop forever
+	}
+	d2r::MissileParams params = SkillMissileParams(unit, MissileAtXY | MissileAimOffset, missile, x, y, skillId, level);
+	const int32_t created = RingStep(step, [&](int32_t dx, int32_t dy) {
+		params.targetX = dx;
+		params.targetY = dy;
+		return d2r::api.createMissile(game, &params) != nullptr;
+	});
+	if (plog::Sample(g_royalFires)) {
+		plog::Info("royal fire: skill %d level %d: %d missiles (row %d, calc1 %d) at %d,%d, cast %u", skillId, level,
+		           created, missile, step, x, y, g_royalFires.load());
+	}
+	return 1;
+}
+
+auto CltDoRoyalFire(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::api.unitDataFlag(unit);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	const int32_t missile = At<int16_t>(skill, SkCltMissileA);
+	int32_t x = 0, y = 0;
+	if (!d2r::ValidMissile(dataFlag, missile) ||
+	    !RoyalFireCentre(g_royalClientSeeds, g_royalClientSeedLock, unit, &x, &y)) {
+		return 0;
+	}
+	const int32_t step = d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, SkCalc1), skillId, level);
+	if (step <= 0) {
+		return 0;
+	}
+	d2r::MissileParams params = SkillMissileParams(unit, MissileAtXY | MissileAimOffset, missile, x, y, skillId, level);
+	const int32_t created = RingStep(step, [&](int32_t dx, int32_t dy) {
+		params.targetX = dx;
+		params.targetY = dy;
+		return d2r::api.clientCreateMissile(&params, 0) != nullptr;
+	});
+	if (plog::Sample(g_royalFireClients)) {
+		plog::Info("royal fire client: skill %d level %d: %d missiles (row %d, calc1 %d) at %d,%d, cast %u", skillId,
+		           level, created, missile, step, x, y, g_royalFireClients.load());
+	}
+	return 1;
+}
+
 // --- Static Field (PD2 srvdofunc 160 -> router 190) ------------------------------------------------------------------
 // Read from ProjectDiablo.dll: srvdo 160 at 0x103b1dc0, per-unit damage 0x10302830, per-unit debuff 0x1036c920
 // (docs/research/w27-static-field-combustion.md). Two passes over the units within aurarangecalc that aurafilter
@@ -2753,6 +2864,9 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	case LeoricSummonNova:
 	case ZharMiniBossCombustion:
 		return SrvDoNova(game, unit, skillId, level);
+	case RadamentBossRoyalFire:
+	case LucionRoyalFire:
+		return SrvDoRoyalFire(game, unit, skillId, level);
 	case StaticField:
 	case MercStaticField:
 	case StaticFieldProc:
@@ -3790,6 +3904,8 @@ const SlotFunction Functions[] = {
 	{SrvDo, 181, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvPrgCold)), "charge cold"},
 	// Combustion and the boss novas: srvdo 159 goes through the router (190); D2R fills cltdo 100
 	{CltDo, 120, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoNova)), "nova"},
+	// Royal Fire: PD2 branches inside srvdo 143 / cltdo 83, which D2R keeps vanilla; the router and cltdo 123 take it
+	{CltDo, 123, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoRoyalFire)), "royal fire"},
 	// Firestorm and the wall makers: srvdo 166 is D2R's, so the router (190) runs them; cltdo 119 is free
 	{CltDo, 119, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoWall)), "wall"},
 	{SrvDo, 175, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoFireClaws)), "fire claws"},
