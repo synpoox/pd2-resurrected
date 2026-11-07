@@ -54,6 +54,7 @@ add_library(core_maps SHARED
 	core-maps/cube_ops.cpp
 	core-maps/map_open.cpp
 	core-maps/map_stats.cpp
+	core-maps/map_events.cpp
 	core-maps/entity_pool.cpp
 	core-maps/key_drops.cpp
 	core-maps/uber_scaling.cpp

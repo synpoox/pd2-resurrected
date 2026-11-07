@@ -1,5 +1,5 @@
 // core-maps: PD2's map system for PD2 Resurrected (docs/map-system.md): so far cube op 30 (the map recipes' block),
-// opening a map (item spell 16) and its monster, player and area stats, and the uber key drop rule.
+// opening a map (item spell 16) and its monster, player and area stats, its event, and the uber key drop rule.
 // Shared (host and client must match) and NativeHooks; a game-wide plugin in <game>\d2rloader\plugins (ADR 0004).
 // On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
 //
@@ -13,6 +13,7 @@
 #include "d2r.h"
 #include "key_drops.h"
 #include "log.h"
+#include "map_events.h"
 #include "map_open.h"
 #include "map_stats.h"
 #include "off_switch.h"
@@ -73,6 +74,12 @@ void InstallStats(const D2RL::PluginContext* context, char* report, size_t size)
 	std::snprintf(report, size, "%d/%d installed: %s", installed, MapStatsCount(), rules);
 }
 
+void InstallEvents(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallMapEvents(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
+}
+
 void InstallKeys(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
 	const int installed = InstallKeyDrops(context, rules, sizeof(rules));
@@ -88,6 +95,7 @@ Part g_parts[] = {
 	{"cube", InstallCube, ""},
 	{"open", InstallMaps, ""},
 	{"stats", InstallStats, ""},
+	{"events", InstallEvents, ""},
 	{"pool", InstallPool, ""},
 	{"keys", InstallKeys, ""},
 };
@@ -137,6 +145,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	MapStatsCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	MapEventsCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	KeyDropsCounters(line, sizeof(line));
