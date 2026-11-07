@@ -2,14 +2,12 @@
 
 Every cheat command D2RLoader's in-game console accepts, from D2RLoader's own list (157 commands). Type them in the console as `cheat <command> <arguments>`, after `debug_mode` turns cheats on. Agents: use these to set up a test fast instead of playing to the spot (AGENTS.md, "Testing in-game").
 
-Notes from our own runs, which override the descriptions below where they differ:
+Warnings:
 
-- Spawn items with `cheat spawn <code>,inv 0`, and a unique with `cheat uniques <row>` (AGENTS.md has the details). `cheat item` does nothing.
-- `cheat gold <n>` did not add gold in our tests, although the list says it does.
-- `cheat stat name,value`, `cheat idall` and `cheat waypoints` work as described.
 - `expansion` can change the character's version on save: do not use it on a test character you keep.
 - `debugbreak` executes an `int3` and kills the game without a debugger attached. Do not run it.
 - Item-quality toggles (`sio`, `uio`, `mio`, `rio`, `normalitemsonly`, ...) stay on until set back to 0.
+- Where this list and AGENTS.md's in-game notes differ (`gold` here adds gold; ours did not), AGENTS.md is what we saw.
 
 | Command | Arguments | Description |
 |---|---|---|
