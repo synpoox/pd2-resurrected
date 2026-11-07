@@ -129,7 +129,7 @@ void InstallLucion(const D2RL::PluginContext* context, char* report, size_t size
 void InstallDclone(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
 	const int installed = InstallDcloneAi(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
+	std::snprintf(report, size, "%d/2 installed: %s", installed, rules);
 }
 
 void InstallPool(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
