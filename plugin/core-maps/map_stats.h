@@ -18,5 +18,8 @@ auto InstallMapStats(const D2RL::PluginContext* context, char* report, size_t re
 auto MapStatsCount() noexcept -> int;
 // The open map's area slot (PD2's `Divide - 2000`) for a unit in a map area; 0 elsewhere or for none.
 auto MapAreaSlot(d2r::Game* game, d2r::Unit* unit, int slot) noexcept -> int32_t;
+// PD2's Desecration roll (0x103649d0, flag 1): one of the item's corruption rows from a roll of 851-999, its
+// corrupt/corruptnum mods as desecrate/desecratenum. Logs the row and roll; false when no row matches.
+auto DesecrateItem(d2r::Game* game, d2r::Unit* item) noexcept -> bool;
 // Live counters for the status command.
 auto MapStatsCounters(char* out, size_t size) noexcept -> void;

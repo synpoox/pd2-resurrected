@@ -58,10 +58,13 @@ add_library(core_maps SHARED
 	core-maps/map_events.cpp
 	core-maps/entity_pool.cpp
 	core-maps/key_drops.cpp
+	core-maps/lucion.cpp
+	core-maps/lucion_chests.cpp
 	core-maps/rathma.cpp
 	core-maps/uber_tristram.cpp
 	core-maps/event_portals.cpp
 	core-maps/uber_scaling.cpp
+	core-maps/uber_drops.cpp
 	core-maps/plugin.rc
 )
 target_link_libraries(core_maps PRIVATE core_common)

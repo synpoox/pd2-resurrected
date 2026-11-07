@@ -7,6 +7,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Items
 
+- Purgatory's damage follows ethereal items put on or taken off while it is worn.
 - Item crushing blow rolls on normal hits, and Purgatory gains damage per worn ethereal item, as in PD2.
 - Spear and two-hand masteries boost crits and crushing blow, and Smite's crushing blow hits harder, as in PD2.
 - Ethereal items get Project Diablo II's +25% defense or damage, not +50%.
@@ -16,29 +17,42 @@ private-multiplayer release a build may break characters; each break is noted he
 - The Horadric Cube has PD2's 4x4 grid.
 - Stacks in the inventory, cube and stash show their quantity on the picture, as in PD2 (tomes excepted).
 - Curses follow PD2's duration resistance (75 cap on players), land on attracted units, and fail when fully resisted.
+- Ctrl+left-clicking a held stack onto a stack of the same item adds one item to it, as in PD2.
 - of Anima rolls on amulets, cold prefixes tint items dark blue, and potion texts are fixed.
 
 #### Uber bosses
 
+- PD2's new monsters (Lucion, Na-Krul, Iskatu and others) finish their attacks and casts and keep fighting.
 - The Pandemonium Talisman opens Uber Tristram at the Blood Fountain, like the other uber keys.
+- Cubing the three Pandemonium keys in Hell opens a red portal to a mini-uber area again.
 - The Diablo Clone, Rathma and Lucion keys open their uber areas at the Blood Fountain (Hell, level 80+); the fights come later.
 - A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
 - Uber fight monsters scale with the key's tier, as in PD2.
 - PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
+- Lucion's death opens a portal to the Temple, ends his adds and drops a Demonic Cube at tiers 1-2.
+- Lucion's death also opens a portal in Harrogath back into his arena.
+- After Lucion's death, cube a corrupted amulet in the Temple to try a Desecration (50%, 60% at tiers 1-2).
+- Diablo Clone drops Annihilus, and at tiers 1-2 rolls 1 in 200 for one of PD2's five Dclone uniques.
 - Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
 - Uber Tristram's last prime drops the Hellfire Torch and Black Soulstone and opens a town portal.
+- The Temple's Lucion chests show and drop PD2's LucionChest loot, one more item per uber tier.
 
 #### Maps
 
+- Map tooltips show the map's tier, and map stats read without raw format codes.
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
 - Map events Shadow of Mendeln, Dark Wanderer and Treasure Fallen spawn in tiered maps, as in PD2.
 - A dungeon or unique map's area stats (density, rarity, added monsters) now apply on all of its levels.
+- Teleport blockers in Realm of Terror, Sanctuary of Sin and the Imperial boss map stop teleports past them, as in PD2.
 - Wooded PD2 maps draw HD tree borders, and D2R-tile maps use whole D2R rooms.
 - Eight more PD2 maps, among them Ashen Plains and Descent, draw walls and props in HD.
+- Wooded maps in HD fill the gaps in their tree lines and no longer plant trees on walkable ground.
+- Wooded maps in HD keep tall trees off the near side of paths, so they no longer hide the character.
 
 #### Fixes
 
+- Rathma's portal to Harrogath is gold, and the shard names lose a stray `*/`, as in PD2.
 - Split Throw's weapons show, split and come back to the Barbarian as in PD2.
 - Legacy graphics no longer draws the ground in D2R's own areas as red and cyan noise.
 - Legacy graphics draws PD2's maps (Mesa, Tomb Map, Graveyard Map and others) in their own colours.
@@ -48,6 +62,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Legacy graphics shows PD2's own missiles again (Holy Nova and others).
 - Charged potions and other PD2-only items show their own pictures instead of a hand axe.
 - Druid and Assassin class skills on items show their number ("+2 to Assassin Skill Levels").
+- Leoric's taunt no longer crashes the game.
 
 ### 0.1.0-alpha (2026-11-05)
 

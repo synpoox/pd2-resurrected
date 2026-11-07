@@ -13,6 +13,7 @@
 #include "map_stats.h"
 #include "rathma.h"
 #include "uber_tristram.h"
+#include "uber_drops.h"
 
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle_events.h>
@@ -130,6 +131,7 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	const int32_t players = d2r::Engine<int32_t (*)(Game*) noexcept>(PlayerCount)(game);
 	const int64_t mult = MapAreaSlot(game, monster, SkirmishSlot) != 0 ? 2 : 1;
 	auto* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(monster);
+	UberDeathDrops(game, monster, seed);
 	for (int i = 0; i < RollCount; ++i) {
 		const KeyRoll& r = Rolls[i];
 		if (!Applies(r.where, game, monstats, event->levelId)) {
@@ -175,7 +177,7 @@ auto InstallKeyDrops(const D2RL::PluginContext* context, char* report, size_t re
 		std::snprintf(report, reportSize, "off: monster-death listener refused");
 		return 0;
 	}
-	std::snprintf(report, reportSize, "%d rolls on every monster death", RollCount);
+	std::snprintf(report, reportSize, "%d rolls and the uber boss drops on every monster death", RollCount);
 	return 1;
 }
 

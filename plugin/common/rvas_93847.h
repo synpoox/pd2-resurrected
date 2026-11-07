@@ -338,6 +338,9 @@ inline constexpr int DamageFlag148 = 0x148;   // uint8 D2R's Static Field sets t
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
+// (unit, x, y, mask) -> non-zero when the unit, at its size, collides at x/y; D2R's Teleport (srvdo 27, 0x554c40)
+// refuses on it with mask 0x804 for levels Teleport 2, as PD2's teleport core does through its thunk 0x1030bf30
+inline constexpr uint64_t UnitCollidesAt = 0x350a20;
 // (game, room, x, y, monstats id, mode, -1, 0x42) -> monster or null; counts it in its level's monster region. D2R's
 // Nest (0x57c590) passes its 1-based spawn index and 0 for the last two
 inline constexpr uint64_t SpawnMonster = 0x492cf0;
@@ -927,6 +930,11 @@ inline constexpr uint64_t RemoveUnit = 0x48faa0;
 // portal maker sets it on each portal's room, operate 15 clears it on removal: an unmarked room is freed with its units
 // once no player is near (#431: the grey portals were gone when the player came back)
 inline constexpr uint64_t RoomPortalMark = 0x2f0530;
+// The room-release pass 0x4088c0 (PD2's D2Game+0x2cf30) asks (act, room) -> nonzero for each room 10+ ticks without a
+// player; a yes frees the room and its units (0x504260 each, then 0x2f0110). Its only caller. 0 when the room is marked.
+inline constexpr uint64_t RoomReleasable = 0x2f0630;
+inline constexpr uint8_t RoomReleasableEntry[] = {0x40, 0x53, 0x48, 0x83, 0xec, 0x20, 0x83, 0xb9,
+                                                  0x80, 0x00, 0x00, 0x00, 0x00, 0x48, 0x8b, 0xda};
 // The room walk of 0x593630 (finds an object by class near a unit): (room, &rooms, &count) the room and its
 // neighbours, (room) its first unit, (unit) the next unit in its room
 inline constexpr uint64_t NearRooms = 0x2efde0;
@@ -1112,6 +1120,42 @@ inline constexpr uint64_t PrimesDrop = 0x5a8450;
 inline constexpr uint8_t PrimesDropD2R[] = {0x48, 0x89, 0x5c, 0x24, 0x20};  // mov [rsp+20],rbx
 inline constexpr uint8_t PrimesDropOff[] = {0xc3, 0x90, 0x90, 0x90, 0x90};  // ret
 static_assert(sizeof(PrimesDropD2R) == sizeof(PrimesDropOff));
+// --- core-maps: Lucion's death (UB6, #231; D2Game\src\Skills\Skills.cpp, D2Game\src\Player\PlayerPets.cpp) --------
+// Decompiled for #231 (Ghidra, D2R.gpr). Called, not hooked.
+// The portal maker is rva::PortalMaker (MS9's block below; #231 found the same 0x432ce0): with arg 9 0 it finds a free
+// spot near (x, y) in room; the portal opens on event 1, and 0x435dd0 makes its linked return portal in the level.
+// Arg 10 1 skips the town check (it reads the player only there); the level must be in room's act.
+// 0x5da800 (rva::OpenRedPortal) calls it, then sets the portal's level (rva::SetPortalLevel).
+// How the pet kill 0x500fb0 kills a monster: (unit, mode, block) fills a 0x30-byte mode block, block +0x10 gets
+// (game, unit) -> the unit's target, then (game, block, 1) sets the mode. Mode 0 is death.
+inline constexpr uint64_t MonsterModeBlock = 0x4471e0;
+inline constexpr uint64_t UnitTarget = 0x490300;
+inline constexpr uint64_t SetMonsterMode = 0x4475c0;
+inline constexpr int32_t ModeDeath = 0;
+// (unit, flags, on): unit flags +0x124 (bit 0x10000 is dead, rva::UnitDead); 0x20000 is 1.13c's no-treasure-class
+// bit, which PD2's add kill 0x10356e00 sets
+inline constexpr uint64_t SetUnitFlags = 0x34e190;
+inline constexpr uint32_t UnitNoDrop = 0x20000;
+// D2Common's DUNGEON_FindActSpawnLocationEx (PD2 calls 1.13c's, ordinal 10816, through 0x1038a000), as WarpToLevel
+// calls it: (dataFlag, act, level, spot, int32* x, int32* y, unit size) -> the room holding the free spot near the
+// level's spot, its coordinates in x/y, or null. With the levels record's +0x90 set, spot picks a special tile of the
+// level's presets (0x3dac20; 13 the level's entry); without it, spot is unused. It builds the level if needed. The game's acts: a pointer array at +0x190,
+// its count at +0x198.
+inline constexpr uint64_t ActSpawnSpot = 0x2ef8b0;
+inline constexpr int GameActs = 0x190, GameActCount = 0x198;
+
+// --- core-maps: the Temple's chests (UB6, #438; D2Game\src\Objects\ObjMode.cpp) ------------------------------------
+// Decompiled for #438 (Ghidra, D2R.gpr). One operate table slot wrapped (rva::ObjectOperateTable).
+// D2R's chest operate (OperateFn 4): mode 0 only; it sets mode 1 with event 1 at the open frames (or mode 2), plays
+// sound 0xb for a locked chest, then drops the act's chest TC. PD2's LucionChest keeps OperateFn 4.
+inline constexpr uint64_t OperateChest = 0x58e2f0;
+inline constexpr int ObjectOperateChest = 4;
+// How the chest operate plays its unlock sound: rva::ClientMessage(player, 0xb, player), then (player) -> its client
+// (player data +0xf0, null for a non-player) and (player, client) sends the sound packet 0x2c
+inline constexpr uint64_t PlayerClient = 0x48fde0;
+inline constexpr uint64_t SoundPacket = 0x5397f0;
+inline constexpr int SoundChestOpen = 0xb;
+
 // --- core-rules: the ethereal bonus (IR8, #243) --------------------------------------------------------------------
 // (item): sets the ethereal flag, then base stats times 3/2 (1.13c's D2Common #10890, which PD2 replaces with
 // 0x102fb710). Callers: the drop 0x442d60, the ethereal property 0x3ccc60, the cube output 0x5269c0.
