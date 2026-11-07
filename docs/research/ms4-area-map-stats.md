@@ -158,3 +158,37 @@ the Void); that is the dungeons' and unique maps' work ([MS7](https://github.com
 Harrogath map with the Duplicated prefix (`cheat spawn t25,typ m,pre 843,inv 0`) opened with `stat 551 ... -> area slot
 as 5` (value 1). Not seen yet: the Sewer Boss twice. `cheat goto 142,<x>,<y>` did not move the character, so the boss
 room was not reached in the time box.
+
+## [MS4e](https://github.com/synpoox/pd2-resurrected/issues/494): the unique map drop (`0x10381510`)
+
+**The roll.** `0x103799d0`, PD2's odds-only TC rolls on a monster's death, calls `0x10381510(game, unit)` when the unit's
+level passes the map-area test `0x1037c510` and `0x10375ee0` hits TC 1020 `Unique Map Monsters` (Unique 4218, Set 10:
+1 in 42180), or TC 1021 `Unique Map MapBoss` (Unique 2250) when one of the death record's `+0x20`, `+0x28`, `+0x30` or
+`+0x38` is set. `0x103760a0` fills those from four monster id sets, the same ids as four of slot 5's sets:
+`0x105deb54` (= `0x105de938`), `0x105dea4c` (= `0x105de7d4`), `0x105debcc` (= `0x105de9c8`) and `0x105debdc`
+(= `0x105de9d8`). The mult (`+0x50`) is 2 when the monster has `map_glob_skirmish_mode` (PD2 493) and is no map boss
+(`+0x48`, which also counts `0x105debb4` and `0x105dea84`, slot 5's other two sets), else 1.
+
+**The drop.** `0x10381510` takes `0x1036f320(unit) & 7` (the unit's seed), then for each value: the map's base code from
+its level (`0x1037c880`, PD2 level in `ecx`), `0x1037ff30(game, unique, 0)` (clears the unique's bit in the game's
+dropped-uniques mask at `+0x1b24`, so it can drop again), and `0x1036ebc0(code, 7, 0x83, 0, 0, 1, 3)`: quality unique,
+item level 131, by the unit. The eight (PD2 unique id, the port's runtime `uniqueitems` row):
+
+| `& 7` | PD2 level | Unique | Map |
+|---|---|---|---|
+| 0 | 176 | 432, row 469 | Zhar the Mad (`t51`) |
+| 1 | 181 | 433, row 470 | Warlord of Blood (`t52`) |
+| 2 | 183 | 436, row 473 | Fallen Gardens (`t53`) |
+| 3 | 180 | 453, row 490 | Outer Void (`t55`) |
+| 4 | 192 | 452, row 489 | Imperial Palace (`t54`) |
+| 5 | 195 | 472, row 509 | Ureh City (`t56`) |
+| 6 | 197 | 478, row 515 | Djinn's Domain (`t57`) |
+| 7 | 200 | 482, row 519 | Na-Krul's Abyss (`t58`) |
+
+Horazon's handler `0x10377ca0` also calls it, after the portal opens, when CRT `rand() % 10 < 1`.
+
+**The port.** `RollUniqueMap` (`plugin/core-maps/key_drops.cpp`) rolls the TC by name on every map-area death (levels
+138-201), with key drops' skirmish mult (1 for the TC 1021 bosses); `DropUniqueMap` draws one of the eight by the
+monster's seed and drops it through `DropUniqueAt` (`uber_drops.cpp`, D2R's monster drop with the unique row forced, at
+item level 131). Horazon's portal calls `DropUniqueMap` on a 1 in 10 of the monster's seed. D2R's drop with a forced
+unique row does not test the dropped-uniques mask, so nothing clears it.
