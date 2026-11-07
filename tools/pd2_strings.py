@@ -11,7 +11,8 @@ generated/data/local/lng/. merge/strings.json holds key names and numbers only, 
              hiredesc_<code> key takes the description in PD2's hiredesc table (PD2 has no string for it).
   texts      key -> English the mod writes itself, for listed keys PD2 has no text for (skilldesc lines in D2R's
              format, #73); written into all 13 languages like PD2's
-Text going into skills.json has its lines flipped (D2R stacks multi-line skill text top-down). The rule fails if D2R
+Text going into skills.json has its lines flipped (D2R stacks multi-line skill text top-down). A trailing `ÿc/` (a PD2
+colour D2R lacks) is dropped. The rule fails if D2R
 starts using a listed key or the low 16 bits of a listed ID.
 
 D2R's string files come from the D2R data root pd2_merge passes (modkit's cache); modkit's Strings does the editing.
@@ -76,6 +77,8 @@ class DataRoot:
 
 
 def flip(file: str, text: str) -> str:
+    # D2R has no colour `ÿc/` and draws it as "*/" (#461); PD2 only ends a string with it
+    text = text.removesuffix("ÿc/")
     return "\n".join(reversed(text.split("\n"))) if file == "skills.json" else text
 
 
