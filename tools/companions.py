@@ -4,7 +4,8 @@
     python tools/companions.py install --game DIR
 
 fetch downloads each release asset in companions/manifest.json (or, for an entry with `commit` in place of `tag`, the
-file at that path in the repo at that commit; a release asset that is not a .zip is one file too), refuses one whose SHA-256 differs from the manifest, and unpacks only
+file at that path in the repo at that commit; for an entry with `url` and no `repo`, that file, such as a D2RLoader Hub
+release's download link; a release asset that is not a .zip is one file too), refuses one whose SHA-256 differs from the manifest, and unpacks only
 the files the manifest lists into git-ignored generated/companions/ (laid out as the installed mod
 folder), plus our companions/filter.json and the plugin settings in companions/config/ (over the zip's own). No
 companion binary is ever committed. Run it after pd2_merge.py, which rebuilds generated/.
@@ -39,11 +40,13 @@ class CompanionError(Exception):
     pass
 
 
-def github_download(repo: str, ref: str, asset: str, raw: bool = False) -> bytes:
-    """A release asset of tag `ref`, or with raw the file at path `asset` in the repo at commit `ref`."""
-    url = (f"https://raw.githubusercontent.com/{repo}/{ref}/{urllib.parse.quote(asset)}" if raw else
-           f"https://github.com/{repo}/releases/download/{urllib.parse.quote(ref)}/{urllib.parse.quote(asset)}")
-    with urllib.request.urlopen(url, timeout=60) as r:
+def github_download(repo: str | None, ref: str | None, asset: str, raw: bool = False, url: str | None = None) -> bytes:
+    """A release asset of tag `ref`, with raw the file at path `asset` in the repo at commit `ref`, or the file at url."""
+    url = url or (f"https://raw.githubusercontent.com/{repo}/{ref}/{urllib.parse.quote(asset)}" if raw else
+                  f"https://github.com/{repo}/releases/download/{urllib.parse.quote(ref)}/{urllib.parse.quote(asset)}")
+    # the Hub's Cloudflare refuses urllib's default User-Agent (403)
+    request = urllib.request.Request(url, headers={"User-Agent": "pd2-resurrected-companions"})
+    with urllib.request.urlopen(request, timeout=60) as r:
         return r.read()
 
 
@@ -56,7 +59,10 @@ def fetch(root: Path, download: Callable[..., bytes] = github_download) -> list[
     written = []
     for c in manifest["companions"]:
         raw = "commit" in c
-        data = download(c["repo"], c["commit"], c["asset"], True) if raw else download(c["repo"], c["tag"], c["asset"])
+        if "url" in c:
+            data = download(None, None, c["asset"], url=c["url"])
+        else:
+            data = download(c["repo"], c["commit"], c["asset"], True) if raw else download(c["repo"], c["tag"], c["asset"])
         got = hashlib.sha256(data).hexdigest()
         if got != c["sha256"]:
             shutil.rmtree(dest, ignore_errors=True)

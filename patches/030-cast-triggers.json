@@ -1,7 +1,9 @@
 {
- "_note": "Skill on cast for the Cast Triggers companion (IR2, #237): it raises doactive with D2R's item event 20 after a cast and fires the stats that listen there. PD2's dospellcast / 33 has no caller in D2R. item_skillonblock keeps PD2's doblock / 30 until a released Cast Triggers has [on_block] (1.1.1 does not).",
+ "_note": "Skill on cast and skill on block for the Cast Triggers companion (IR2, #237): it raises doactive with D2R's item event 20 after a cast and after a player's block (its [on_block] stat_id = 379, companions/config/ruffneckk-cast-triggers.toml) and fires the stats that listen there. PD2's dospellcast / 33 and doblock / 30 have no caller in D2R.",
  "ops": [
   {"op": "set", "table": "itemstatcost", "bank": "excel", "key": "item_skilloncast",
+   "set": {"itemevent1": "doactive", "itemeventfunc1": "20"}},
+  {"op": "set", "table": "itemstatcost", "bank": "excel", "key": "item_skillonblock",
    "set": {"itemevent1": "doactive", "itemeventfunc1": "20"}}
  ]
 }

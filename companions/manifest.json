@@ -55,10 +55,9 @@
     },
     {
       "name": "Cast Triggers",
-      "repo": "RuffDood/RuffnecKk-D2RLoader-Suite",
-      "tag": "v1.4.2",
-      "asset": "RuffnecKk-cast-triggers-v1.1.1.zip",
-      "sha256": "74351084e354f67172209673f8221d5cc15c085df5467328637051cd527a7a20",
+      "url": "https://d2rloader.net/api/v1/hub/releases/8af875b3-3607-4542-bfb5-71b5d5f6cf54/download",
+      "asset": "RuffnecKk-cast-triggers-v1.1.12.zip",
+      "sha256": "17b341ad65cbb9b2c6ac39de7273aff80e3ecb4fa8ee53e75c4c2841e129d971",
       "files": {
         "plugins/d2rl-ruffneckk-cast-triggers.dll": "d2rloader/plugins/d2rl-ruffneckk-cast-triggers.dll",
         "config/ruffneckk-cast-triggers.toml": "d2rloader/config/ruffneckk-cast-triggers.toml"
