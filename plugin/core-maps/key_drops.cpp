@@ -47,7 +47,6 @@ constexpr int RollCount = static_cast<int>(sizeof(Rolls) / sizeof(Rolls[0]));
 
 constexpr int32_t FirstRedPortal = 125, LastRedPortal = 127;  // Abaddon, the Pit of Acheron, the Infernal Pit
 constexpr int32_t FirstMapLevel = 138, LastMapLevel = 201;  // PD2's map-area test 0x1037c510, port ids
-constexpr int SkirmishSlot = 4;  // map_glob_skirmish_mode (port 546, PD2 493): its area slot doubles every roll
 
 // PD2's 0x10375ee0: N of the 1-in-N roll; 0 means no drop. More than 8 players counts as 1.
 constexpr auto Odds(int32_t unique, int32_t set, int32_t players) noexcept -> int64_t {
@@ -81,14 +80,6 @@ constexpr int32_t UniqueMapBosses[] = {
 	247,  248,  249,  763,  764,  767,  817,  841,  911,  932,  940,  941,  943,  944,  987,  988,
 	989,  990,  1013, 1014, 1017, 1042, 1043, 1120, 1181, 1183, 1191, 1192, 1257, 1259, 1260,
 };
-// 0x103760a0's +0x48: those four sets and 0x105debb4, 0x105dea84 (map_stats.cpp ExtraBossIds without lernaeanhydra1).
-// Its skirmish mult +0x50, which every TC roll of 0x103799d0 takes (keys too), stays 1 for these.
-constexpr int32_t MapBosses[] = {
-	247,  248,  249,  760,  763,  764,  767,  817,  841,  899,  901,  911,  932,  940,  941,  943,
-	944,  980,  985,  986,  987,  988,  989,  990,  1013, 1014, 1017, 1042, 1043, 1120, 1121, 1122,
-	1123, 1124, 1166, 1181, 1183, 1191, 1192, 1200, 1201, 1202, 1203, 1257, 1259, 1260,
-};
-
 auto IsIn(int32_t id, const int32_t* ids, size_t n) noexcept -> bool {
 	for (size_t i = 0; i < n; ++i) {
 		if (ids[i] == id) {
@@ -184,11 +175,20 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	RathmaDeath(game, monster);
 	const uint32_t difficulty = event->difficulty < 3 ? event->difficulty : 2;
 	const int32_t players = d2r::Engine<int32_t (*)(Game*) noexcept>(PlayerCount)(game);
-	const bool mapBoss = IsIn(At<int32_t>(monster, UnitClassId), MapBosses, sizeof(MapBosses) / sizeof(MapBosses[0]));
-	const int64_t mult = MapAreaSlot(game, monster, SkirmishSlot) != 0 && !mapBoss ? 2 : 1;
+	const int64_t mult = MapRollMultiplier(monster);  // 1 for a map boss (0x103760a0's +0x48 sets)
 	auto* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(monster);
 	UberDeathDrops(game, monster, seed);
 	RollUniqueMap(game, monster, event->levelId, players, mult, seed);
+	// The drop's killer (its quest test and magic find): a missile counts as its owner, as for D2R's own drop
+	using D2RL::Lifecycle::UnitType;
+	Unit* killer = event->killer.type != UnitType::Invalid
+	                   ? d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(
+	                         game, static_cast<int32_t>(event->killer.type), event->killer.id)
+	                   : nullptr;
+	if (killer != nullptr && event->killer.type == UnitType::Missile) {
+		killer = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, killer);
+	}
+	MapDeathDrops(game, monster, killer, seed);
 	for (int i = 0; i < RollCount; ++i) {
 		const KeyRoll& r = Rolls[i];
 		if (!Applies(r.where, game, monstats, event->levelId)) {

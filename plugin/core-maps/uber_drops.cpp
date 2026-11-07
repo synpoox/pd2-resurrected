@@ -1,5 +1,7 @@
 // PD2's uber boss deaths (ProjectDiablo.dll 0x10378d80; docs/research/pd2-uber-bosses-dll.md, section 6). So far
-// Diablo Clone's (0x103763d0): Annihilus, and at tiers 1-2 a 1-in-200 roll for one of five uniques.
+// Diablo Clone's (0x103763d0): Annihilus, and at tiers 1-2 a 1-in-200 roll for one of five uniques; and the
+// mini-ubers' organs (0x10377800, 0x10377830, 0x10377860), one each at item level 130. D2R drops the organs from its
+// `Uber Izual`, `Uber Andariel` and `Uber Duriel` TCs, which PD2's merged rows replace with items and potions (#484).
 // shortcut: PD2's gold portal to Harrogath at the body is left out; a later UB4 slice adds it.
 //
 // key_drops' monster-death listener calls it on the server thread, and the items drop by the body through D2R's own
@@ -36,6 +38,15 @@ struct Unique {
 	int32_t level;  // PD2's item level
 };
 constexpr Unique Annihilus {D2RL::Items::MakeItemCode("cm1"), 381, 130};
+// Uber Izual, Lilith and Uber Duriel (PD2 0x2c2-0x2c4, the same ids in the port): Mephisto's Brain, Diablo's Horn,
+// Baal's Eye; a normal item, no unique row
+struct Organ {
+	int32_t monster;
+	Unique item;
+};
+constexpr Organ Organs[] = {{706, {D2RL::Items::MakeItemCode("mbr"), -1, 130}},
+                            {707, {D2RL::Items::MakeItemCode("dhn"), -1, 130}},
+                            {708, {D2RL::Items::MakeItemCode("bey"), -1, 130}}};
 // Itherael's Path, Overlord's Helm, Dark Abyss, Aidan's Scar, Hadriel's Hand
 constexpr Unique Rolled[] = {
 	{D2RL::Items::MakeItemCode("utb"), 438, 131}, {D2RL::Items::MakeItemCode("uh9"), 439, 131},
@@ -55,14 +66,15 @@ auto Tier(Game* game) noexcept -> int32_t {
 	return v != nullptr ? *v : 0;
 }
 
-void Drop(Game* game, Unit* monster, const Unique& item) noexcept {
-	const bool ok = DropUniqueAt(game, monster, item.code, item.row, item.level);
+void Drop(Game* game, Unit* monster, const Unique& item, int32_t wanted = QualityUnique) noexcept {
+	const bool ok = DropUniqueAt(game, monster, item.code, item.row, item.level, wanted);
 	(ok ? g_dropped : g_failed).fetch_add(1, std::memory_order_relaxed);
 }
 
 }  // namespace
 
-auto DropUniqueAt(Game* game, Unit* monster, uint32_t code, int32_t uniqueRow, int32_t itemLevel) noexcept -> bool {
+auto DropUniqueAt(Game* game, Unit* monster, uint32_t code, int32_t uniqueRow, int32_t itemLevel, int32_t wanted) noexcept
+	-> bool {
 	using namespace d2r::rva;
 	const int32_t row =
 		d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(static_cast<uint8_t>(d2r::DataFlag(game)), code);
@@ -71,17 +83,24 @@ auto DropUniqueAt(Game* game, Unit* monster, uint32_t code, int32_t uniqueRow, i
 	const int32_t level = stat(monster, StatLevel, 0);
 	setStat(monster, StatLevel, itemLevel, 0);
 	auto* made = row >= 0 ? static_cast<Unit*>(d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(
-								DropItemAt)(game, monster, row, QualityUnique, uniqueRow + 1, 0))
+								DropItemAt)(game, monster, row, wanted, uniqueRow + 1, 0))
 	                      : nullptr;
 	setStat(monster, StatLevel, level, 0);
 	const int32_t quality = made != nullptr ? d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(made) : -1;
 	plog::Info("unique drop: %.4s unique row %d: item row %d, %s, quality %d", reinterpret_cast<const char*>(&code),
 	           uniqueRow, row, made != nullptr ? "dropped" : "NOT dropped", quality);
-	return quality == QualityUnique;
+	return quality == wanted;
 }
 
 auto UberDeathDrops(Game* game, Unit* monster, uint32_t* seed) noexcept -> void {
-	if (At<int32_t>(monster, d2r::rva::UnitClassId) != Dclone) {
+	const int32_t id = At<int32_t>(monster, d2r::rva::UnitClassId);
+	for (const Organ& o : Organs) {
+		if (id == o.monster) {
+			Drop(game, monster, o.item, d2r::rva::QualityNormal);
+			return;
+		}
+	}
+	if (id != Dclone) {
 		return;
 	}
 	const int32_t tier = Tier(game);
@@ -100,6 +119,6 @@ auto UberDeathDrops(Game* game, Unit* monster, uint32_t* seed) noexcept -> void 
 }
 
 auto UberDropsCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "uber drops: %u Diablo Clone deaths, %u uniques dropped, %u failed, %u of %u unique rolls hit",
+	std::snprintf(out, size, "uber drops: %u Diablo Clone deaths, %u items dropped, %u failed, %u of %u unique rolls hit",
 	              g_deaths.load(), g_dropped.load(), g_failed.load(), g_hits.load(), g_rolls.load());
 }

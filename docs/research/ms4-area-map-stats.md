@@ -119,6 +119,31 @@ ordinals); column 0 is 1.13c.
 slot 13 at 100), with `cheat mspawn` monsters killed, it logged `map drops: item 178 ethereal 1`. Warlord of Blood
 (`cheat uniques 470`, corrupted) and Ureh City (`cheat uniques 509`, socketed) passed in the user's own run.
 
+## [MS4d](https://github.com/synpoox/pd2-resurrected/issues/493): the map-area death drops
+
+PD2's monster-death pipeline `0x1037a330` fills a context (`0x103760a0`) and ends in `0x103799d0`, whose map block
+(after the key rolls, inside the map-area test `0x1037c510`) the port lacked. The context holds the monster's stats
+493 (fortify, `+0x4c`), 276 (treacherous, `+0x54`, read nowhere after) and 273 (drop bonus, `+0x58`), the boss flag
+`+0x48` (the class is in one of six id sets, the same ids as the extra boss sets above without lernaeanhydra1), and the
+roll multiplier `+0x50`: 2 for a fortified non-boss, else 1. For a monster that is not a minion (1.13c monster data
+`+0x16` & 0x10; D2R `+0x1a`):
+
+| Rule | PD2 | Port (`MapDeathDrops`, `plugin/core-maps/map_stats.cpp`) |
+|---|---|---|
+| Fortify | one extra drop, 25% for a map boss | the same, through D2R's monster TC drop `0x447b80` (1.13c `0x6fc95680`, PD2's `0x103843d0`) |
+| Level set `0x105dea8c` | one extra drop in Zhar's Sanctum (PD2 176-179) and the uber levels 137, 161, 168, 188 | port 172-175, 138, 160, 184 (168, the Uber Ancients, is cut) |
+| Djinn's Domain | one extra drop in PD2 197-199 | port 193-195 |
+| Drop bonus | `rand % 100 < v`: one extra drop | the same |
+| Drop stats | per stat, `rand % 100 < v x mult`: TC rows 982-988 (`MapStat Drop*`) or the class ear TCs (list `0x1044ed20`: stat, row), dropped by 1.13c's TC drop at the monster's level | the same TCs by name through `0x4404f0` |
+
+The key rolls (`key_drops.cpp`) now take their multiplier from the same rule (`MapRollMultiplier`), not from the area slot.
+Not ported here: the unique map roll (rows 1020/1021, then `0x10381510`), [MS4e](https://github.com/synpoox/pd2-resurrected/issues/494).
+
+**Game check** (Slot2, Hell, the level 95 Paladin, level 139 by `cheat goto`): a `cheat mspawnwithstats` zombie with
+`map_mon_dropweapons`, `map_glob_dropbonus` and `map_glob_skirmish_mode` at 100, killed by `cheat fstorm`, logged
+`drops from "MapStat DropWeapons" (stat 548 = 100, x2)` and `type flags 0x00 ... 2 extra drops, 1 stat drops`, and its
+drops lay on the ground. Not seen: a minion skipped, a map boss's 25%, an ear drop.
+
 ## Slot 5, the extra boss ([MS4c](https://github.com/synpoox/pd2-resurrected/issues/289))
 
 `0x1038bfc0` wraps 1.13c D2Game's preset spawn (`0x6fd013b0`, game, room, preset). After the normal spawn, in a map area
