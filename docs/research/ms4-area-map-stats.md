@@ -193,3 +193,27 @@ monster's seed and drops it through `DropUniqueAt` (`uber_drops.cpp`, D2R's mons
 item level 131). Horazon's portal calls `DropUniqueMap` on a 1 in 10 of the monster's seed. D2R's unique roll `0x443910`
 tests a forced row against the game's dropped-uniques mask too (`game+0x3638`, one bit per row, set on a drop): a second
 Ureh City in one game came out normal. So `DropUniqueMap` clears the row's bit first, as `0x1037ff30` does.
+
+**Game check** (Slot9, Hell, the level 95 Sorceress; a scratch build that forced the first 12 rolls and Horazon's 10%
+to hit, not committed): in a Sewers map a kill logged `unique maps: monster 0 in level 142 rolls TC "Unique Map
+Monsters" 1 in 42180 x1`, then `unique drop: t54 unique row 489 ... quality 7`. Before the mask fix a second Ureh City
+came out quality 2; after it a second Warlord of Blood in one game came out quality 7. In a fortified map the roll
+read `x2`. `cheat mspawn summonerMap` killed in the Sewers map logged `horazon: ... red portal to level 170`, then
+`horazon: 10% unique map roll hit` and a unique drop.
+
+## [#495](https://github.com/synpoox/pd2-resurrected/issues/495): the area stats seen in game
+
+Slot9, Hell, the level 95 Sorceress, Ruins of Viz-Jun maps (`t11`, level 144, base density 2062, packs 40-60, monster
+level 87). Each map was cubed from `cheat spawn <code>,inv 3` (the console spawns straight into the cube):
+
+- **Fortify** (magic map + `fort`, slot 4 = 50): density +30% then x0.5, 2062 -> 1340; packs 40-60 -> 20-30. Monster
+  maxhp 8846 -> 17691; monster list totals `25=40 329=40 331=40 330=40 332=40 357=20 546=50`.
+- **Treacherous** (magic map + `ivep`, slot 14 = 4): monster maxhp 10995 -> 21989; totals `402=4`.
+- **Area level** (magic map + Worldstone Shard: cubemain row 216 came up on the 31st corruption, `+1 to Area Level`,
+  slot 1 = 1): `area level +1`, and the level's monsters spawned at monster level 88, not 87.
+- **Extra boss**: not seen yet. Sewers' boss preset lies 60-80 tiles from the portal; the Library map (`t14`, boss
+  preset at the 125x125 map's centre) is the next try. A second map opened in a game after Save and Exit was refused
+  ("already open in this game"), so each map needs a fresh game process.
+
+Also seen: the fortified map's own `map_mon_*` stat 489 (+13% physical as magic) totalled 0 on its monsters.
+
