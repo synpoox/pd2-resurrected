@@ -1059,6 +1059,17 @@ inline constexpr uint64_t DropItemAt = 0x444680;
 inline constexpr int32_t QualityNormal = 2;
 inline constexpr uint32_t MonDemon = 0x2000;  // MonFlags bit 13 (monstats field table 0x39db30)
 
+// --- core-maps: the Horazon event's portal and drops (MS9, #223; D2Game\src\Items\ItemMode.cpp, Items.cpp) ----------
+// Decompiled for #223 (Ghidra, D2R.gpr). Called, not hooked.
+// (game, unit, room, x, y, destLevel, &object, objectId, 0, 1) -> non-zero: the portal pair OpenRedPortal makes. With
+// the last 1 the unit is not read (only the town refusal message uses it); the destination must be in the room's act.
+// The caller sets the destination after (SetPortalLevel), as OpenRedPortal does.
+inline constexpr uint64_t PortalMaker = 0x432ce0;
+// (game, dropper, killer, TC record, quality, item level, 0, items* or 0, count* or 0, max): rolls the TC and drops
+// its picks by the dropper; with no items array it drops all picks (max under 1 means 6). The item level feeds the
+// quality roll 0x4421b0. PD2's map events call 1.13c's same function as (..., tc, 0, ilvl, 0, 0, 0, 1).
+inline constexpr uint64_t TcDrop = 0x4404f0;
+
 }  // namespace d2r::rva
 
 namespace d2r {
