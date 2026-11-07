@@ -32,12 +32,15 @@ def ds1(w: int, h: int, walls: list[dict], floors: list[dict], files: list[str] 
     return head + body + bytes(w * h * 4) + struct.pack("<i", 0)
 
 
-def dt1(tiles: list[tuple[int, int, int]]) -> bytes:
+def dt1(tiles: list[tuple[int, int, int]], blocked: set = frozenset()) -> bytes:
+    """A DT1 of `tiles`; the ones in `blocked` block walking on all 25 subtiles."""
     out = bytearray(276 + 96 * len(tiles))
     struct.pack_into("<2i", out, 0, 7, 6)
     struct.pack_into("<2i", out, 268, len(tiles), 276)
     for k, t in enumerate(tiles):
         struct.pack_into("<3i", out, 276 + 96 * k + 20, *t)
+        if t in blocked:
+            out[276 + 96 * k + 0x28:276 + 96 * k + 0x28 + 25] = b"\1" * 25
     return bytes(out)
 
 
@@ -73,6 +76,14 @@ class LayoutTests(unittest.TestCase):
         lay = P.layout(data, dt1s)
         self.assertEqual((lay.width, lay.height), (2, 1))
         self.assertEqual(lay.keys, {(0, 0): ("f", (FLOOR,)), (1, 0): ("w", (A, (None, 9, 9, 9)))})
+
+    def test_a_tile_keeps_its_subtile_flags_and_the_objects_their_tile(self):
+        data = ds1(2, 1, [{(1, 0): (1, 2, 3)}], [{(0, 0): (0, 1)}])
+        data = data[:-4] + struct.pack("<i", 1) + struct.pack("<5i", 2, 7, 6, 2, 0)  # one object at subtile (6, 2)
+        lay = P.layout(data, {"act1/a/wall.dt1": P.dt1_tiles(dt1([(1, 2, 3)], {(1, 2, 3)})),
+                              "act1/a/floor.dt1": P.dt1_tiles(dt1([(0, 0, 1)]))})
+        self.assertEqual(lay.flags, {(0, 0): bytes(25), (1, 0): b"\1" * 25})
+        self.assertEqual(lay.objects, {(1, 0)})
 
 
 class BuildTests(unittest.TestCase):
@@ -118,6 +129,59 @@ class BuildTests(unittest.TestCase):
         preset, _ = P.build(target, kit, "m", "m.ds1", "b.json", TERRAIN)
         self.assertTrue(5 < len(preset["entities"]) < 35)
         self.assertEqual(preset, P.build(target, kit, "m", "m.ds1", "b.json", TERRAIN)[0])  # the same every build
+
+
+def at(e: dict) -> tuple[float, float]:
+    return e["components"][0]["position"]["x"], e["components"][0]["position"]["z"]
+
+
+class LayerTests(unittest.TestCase):
+    """The layers over the per-tile kit: pasted stock rooms, the patch lookup and the border painter."""
+    F, WA, WB = ("f", (FLOOR,)), ("w", (A,)), ("w", (B,))
+
+    def test_a_stock_room_matching_60_percent_is_pasted_whole_with_its_terrain(self):
+        room = P.Layout(4, 4, {(x, y): self.WA if (x, y) == (0, 0) else self.F for x in range(4) for y in range(4)})
+        keys = {(x, y): self.WB for x in range(4) for y in range(4)}
+        keys.update({(x + 4, y): k for (x, y), k in room.keys.items()})
+        keys[(7, 3)] = self.WB  # 15 of 16 tiles match
+        preset, _ = P.build(P.Layout(8, 4, keys), P.Kit(), "m", "m.ds1", "b.json", TERRAIN, stock=[(room, stock())])
+        placed = sorted((e["name"], at(e)) for e in preset["entities"])
+        self.assertEqual(placed, [("pillar", (43.0, 4.0)), ("terrain", (40.0, 0.0)), ("torch", (54.0, 2.0))])
+        pillar = next(e for e in preset["entities"] if e["name"] == "pillar")
+        self.assertEqual(pillar["components"][2]["wallTileLocalCoord"], {"x": 4, "y": 0})
+        self.assertIn("data/hd/env/texture/pillar_alb.texture",
+                      [d["path"] for d in preset["dependencies"]["textures"]])
+
+    def test_a_tile_whose_3x3_appears_in_a_stock_preset_copies_its_centre(self):
+        patch = {(x, y): ("w", ((f"p{x}{y}.dt1", 1, 0, 0),)) for x in range(3) for y in range(3)}
+        keys = {(x, y): self.WB for x in range(6) for y in range(3)}
+        keys.update({(x + 2, y): k for (x, y), k in patch.items()})
+        src = {"dependencies": {}, "entities": [entity("torch", 14.0, 12.0)]}
+        kit = P.Kit()  # the per-tile kit draws a pillar on that key
+        kit.add(P.Layout(1, 1, {(0, 0): patch[(1, 1)]}), {"dependencies": {}, "entities": [entity("pillar", 1, 1)]},
+                {patch[(1, 1)]})
+        preset, _ = P.build(P.Layout(6, 3, keys), kit, "m", "m.ds1", "b.json", TERRAIN,
+                            stock=[(P.Layout(3, 3, patch), src)])
+        self.assertEqual([(e["name"], at(e)) for e in preset["entities"]], [("torch", (34.0, 12.0))])
+
+    def test_the_painter_plants_trees_only_past_the_tree_line(self):
+        blocked = {(x, 5) for x in range(30)}
+
+        def lay(w, h, objects=frozenset()):
+            keys = {(x, y): self.WA if (x, y) in blocked else self.F for x in range(w) for y in range(h)}
+            return P.Layout(w, h, keys, {c: (b"\1" if c in blocked else b"\0") * 25 for c in keys}, objects)
+        tree = "data/hd/env/foliage/act3/model/act3_treeline/small_cluster01.model"
+        trees = [dict(entity("tree", x, z), components=[entity("tree", x, z)["components"][0],
+                                                        {"type": "ModelDefinitionComponent", "filename": tree}])
+                 for x in (10.0, 30.0, 50.0, 70.0, 90.0) for z in (65.0, 80.0, 95.0)]
+        kit = P.painter.harvest([(lay(10, 10), {"dependencies": {"models": [{"path": tree}]}, "entities": trees})])
+        target = lay(30, 10, {(5, 2)})
+        preset, _ = P.build(target, P.Kit(), "m", "m.ds1", "b.json", TERRAIN, trees=kit)
+        painted = [at(e) for e in preset["entities"] if e["name"] == "tree"]
+        self.assertGreater(len(painted), 5)
+        self.assertTrue(all(z >= 50 for _, z in painted), painted)  # rows 0-4 are the path, row 5 the line
+        self.assertIn(tree, [d["path"] for d in preset["dependencies"]["models"]])
+        self.assertEqual(preset, P.build(target, P.Kit(), "m", "m.ds1", "b.json", TERRAIN, trees=kit)[0])
 
 
 class ApplyTests(unittest.TestCase):
