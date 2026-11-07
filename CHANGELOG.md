@@ -43,6 +43,8 @@ private-multiplayer release a build may break characters; each break is noted he
 - A dungeon or unique map's area stats (density, rarity, added monsters) now apply on all of its levels.
 - Wooded PD2 maps draw HD tree borders, and D2R-tile maps use whole D2R rooms.
 - Eight more PD2 maps, among them Ashen Plains and Descent, draw walls and props in HD.
+- Wooded maps in HD fill the gaps in their tree lines and no longer plant trees on walkable ground.
+- Wooded maps in HD keep tall trees off the near side of paths, so they no longer hide the character.
 
 #### Fixes
 
