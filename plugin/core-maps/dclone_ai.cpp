@@ -84,7 +84,7 @@ auto Idle(Game* game, Unit* unit, int32_t frames) noexcept -> void {
 
 // PD2 0x103a1880 then 0x103a1910: cast, then think again after `frames`
 auto Cast(Game* game, Unit* unit, int32_t skill, int32_t mode, Unit* target, int32_t x, int32_t y,
-          int32_t frames) noexcept -> void {
+          int32_t frames) noexcept -> int32_t {
 	const int32_t ok = d2r::Engine<int32_t (*)(Game*, Unit*, uint8_t, int32_t, Unit*, int32_t, int32_t, uint8_t) noexcept>(
 		d2r::rva::AiUseSkill)(game, unit, static_cast<uint8_t>(mode), skill, target, x, y, 0);
 	if (plog::Sample(g_casts)) {
@@ -92,6 +92,7 @@ auto Cast(Game* game, Unit* unit, int32_t skill, int32_t mode, Unit* target, int
 		           target != nullptr ? " on target" : "", ok, g_casts.load());
 	}
 	d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(d2r::rva::AiSetDelay)(game, unit, frames);
+	return ok;
 }
 
 // PD2 0x10380770: on sets the six resists to 200 and state 8; off puts back what they were (PD2 reads monstats)
@@ -231,9 +232,10 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	}
 
 	const int32_t novas = Stat(unit, StatCooldown1);
-	const auto runToCentre = [&]() {
-		Cast(game, unit, m.Skill(7), m.Mode(7), nullptr, CentreX, CentreY, 50);
+	const auto runToCentre = [&]() -> bool {
+		const bool ran = Cast(game, unit, m.Skill(7), m.Mode(7), nullptr, CentreX, CentreY, 50) != 0;
 		SetImmune(game, unit, true);
+		return ran;
 	};
 	if (novas == m.Aip(5)) {
 		SetStat(unit, StatCooldown1, novas - 1);
@@ -242,8 +244,9 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	}
 	if (novas > 0) {
 		const int32_t d = Dist2(unit, CentreX, CentreY);
-		if (d > 30) {
-			runToCentre();
+		// D2R's DiabRun to a spot with no target unit fails (game check, #470: every run to the centre returned 0, from
+		// 7 and 22 tiles away), so a failed run falls through to the teleport
+		if (d > 30 && runToCentre()) {
 			return;
 		}
 		if (d > 2) {
