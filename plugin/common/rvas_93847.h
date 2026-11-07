@@ -1076,6 +1076,13 @@ inline constexpr int32_t ModeDeath = 0;
 // bit, which PD2's add kill 0x10356e00 sets
 inline constexpr uint64_t SetUnitFlags = 0x34e190;
 inline constexpr uint32_t UnitNoDrop = 0x20000;
+// D2Common's DUNGEON_FindActSpawnLocationEx (PD2 calls 1.13c's, ordinal 10816, through 0x1038a000), as WarpToLevel
+// calls it: (dataFlag, act, level, spot, int32* x, int32* y, unit size) -> the room holding the free spot near the
+// level's spot, its coordinates in x/y, or null. With the levels record's +0x90 set, spot picks a special tile of the
+// level's presets (0x3dac20; 13 the level's entry); without it, spot is unused. It builds the level if needed. The game's acts: a pointer array at +0x190,
+// its count at +0x198.
+inline constexpr uint64_t ActSpawnSpot = 0x2ef8b0;
+inline constexpr int GameActs = 0x190, GameActCount = 0x198;
 
 }  // namespace d2r::rva
 

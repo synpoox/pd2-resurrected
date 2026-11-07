@@ -3,17 +3,20 @@
 // Triune, with its return portal in the Temple; at tiers 1-2 it drops a Demonic Cube (`imrn`) at 1 in (4 - tier) x 25;
 // it sets the fight's stage to 8, which the Temple's altar needs (UB7); and it kills the adds left in the arena
 // without drops (Shivering Child, Smouldering Defiler, Anguished Mother and the spawner) and removes his controller.
+// It also opens a dark grey portal in Harrogath back into the arena (PD2 0x1038a1f0 at Harrogath's spot 1).
 //
-// The trigger is the SDK's monster-death listener, as in key_drops.cpp. No SDK service makes a portal, kills a
-// monster or drops an item at a dead monster, so those are engine calls.
+// The trigger is the SDK's monster-death listener, as in key_drops.cpp. No SDK service makes a portal, finds a level
+// spot, kills a monster or drops an item at a dead monster, so those are engine calls.
 // shortcut: the adds are found by class in the arena, where PD2 does it only once the Overseer AI has registered the
 // controller (game +0x2604); use that once the phase scripts are ported
-// shortcut: PD2 also opens a second dark grey portal in Harrogath back into the arena (0x1038a1f0 at a D2Common level
-// spot not read yet); add it once that spot is read
+// shortcut: PD2 links the Harrogath portal to an `empty` object (587, the port's 590) at the arena's entry spot less
+// (5, 5) and removes the waypoints by it (0x1038a510); here the portal's operate (map_open.cpp) warps to the arena's
+// entry spot itself and the arena keeps any waypoint. Port the link if PD2's arrival spot ever differs in game.
 #include "lucion.h"
 
 #include "d2r.h"
 #include "log.h"
+#include "map_open.h"
 
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle_events.h>
@@ -36,6 +39,8 @@ constexpr int32_t Adds[] = {1131, 1132, 1157, 1158};
 constexpr int32_t Arena = 184, Temple = 185;  // PD2's levels 188 and 189
 constexpr int32_t DarkPortal = 625;           // xactdarkportal_grey (PD2 622)
 constexpr int32_t TempleX = 0x6221, TempleY = 0x17df;
+constexpr int32_t Harrogath = 109, HarrogathSpot = 1, HarrogathAct = 4;  // PD2's 0x6d, spot 1; act V
+constexpr int32_t PortalSize = 3;  // the unit size PD2 0x1038a000 passes the spot search
 constexpr uint32_t TierKey = 0x55425254;  // 'UBRT', as map_open.cpp
 const uint32_t CubeCode = D2RL::Items::MakeItemCode("imrn");
 constexpr int MaxAdds = 128;
@@ -48,6 +53,7 @@ static_assert(CubeOdds(0) == 0 && CubeOdds(1) == 75 && CubeOdds(2) == 50 && Cube
 
 std::atomic<uint32_t> g_deaths {0};
 std::atomic<uint32_t> g_portals {0};
+std::atomic<uint32_t> g_returns {0};
 std::atomic<uint32_t> g_cubes {0};
 std::atomic<uint32_t> g_killed {0};
 
@@ -86,6 +92,21 @@ auto OpenTemplePortal(Game* game, Unit* lucion) noexcept -> bool {
 	}
 	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetPortalLevel)(portal, Temple);
 	return true;
+}
+
+// PD2 0x1038a1f0(game, 0x6d, spot 1, object 622): a dark grey portal at Harrogath's spot 1 into the arena
+auto OpenHarrogathPortal(Game* game) noexcept -> bool {
+	using namespace d2r::rva;
+	if (At<uint64_t>(game, GameActCount) <= HarrogathAct) {
+		return false;
+	}
+	void* act = At<void**>(game, GameActs)[HarrogathAct];
+	int32_t x = 0, y = 0;
+	void* room = act != nullptr
+		? d2r::Engine<void* (*)(uint32_t, void*, int32_t, int32_t, int32_t*, int32_t*, int32_t) noexcept>(ActSpawnSpot)(
+			  d2r::DataFlag(game), act, Harrogath, HarrogathSpot, &x, &y, PortalSize)
+		: nullptr;
+	return room != nullptr && SpawnPortal(game, room, DarkPortal, x, y, Arena) != nullptr;
 }
 
 // PD2 0x10356e00, as D2R's pet kill 0x500fb0 sets the death mode: no drop, then mode 0
@@ -143,6 +164,10 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	if (portal) {
 		g_portals.fetch_add(1, std::memory_order_relaxed);
 	}
+	const bool back = OpenHarrogathPortal(game);
+	if (back) {
+		g_returns.fetch_add(1, std::memory_order_relaxed);
+	}
 	const int32_t tier = *CounterOf(game, TierKey);
 	const uint32_t odds = CubeOdds(tier);
 	auto* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(lucion);
@@ -159,9 +184,10 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	*CounterOf(game, LucionStageKey) = LucionDeadStage;
 	const int32_t killed = KillAdds(game);
 	g_killed.fetch_add(static_cast<uint32_t>(killed), std::memory_order_relaxed);
-	plog::Info("lucion: dead at tier %d (%u so far): Temple portal %s, Demonic Cube 1 in %u %s, %d adds killed, stage %d",
-	           tier, deaths, portal ? "open" : "FAILED", odds, cube ? "dropped" : "not dropped", killed,
-	           LucionDeadStage);
+	plog::Info("lucion: dead at tier %d (%u so far): Temple portal %s, Harrogath portal %s, Demonic Cube 1 in %u %s, "
+	           "%d adds killed, stage %d",
+	           tier, deaths, portal ? "open" : "FAILED", back ? "open" : "FAILED", odds, cube ? "dropped" : "not dropped",
+	           killed, LucionDeadStage);
 }
 
 }  // namespace
@@ -184,12 +210,13 @@ auto InstallLucion(const D2RL::PluginContext* context, char* report, size_t repo
 		std::snprintf(report, reportSize, "off: monster-death listener refused");
 		return 0;
 	}
-	std::snprintf(report, reportSize, "Lucion's death: Temple portal, Demonic Cube roll, stage %d, adds killed",
+	std::snprintf(report, reportSize,
+	              "Lucion's death: Temple and Harrogath portals, Demonic Cube roll, stage %d, adds killed",
 	              LucionDeadStage);
 	return 1;
 }
 
 auto LucionCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "lucion: %u deaths, %u Temple portals, %u Demonic Cubes, %u adds killed", g_deaths.load(),
-	              g_portals.load(), g_cubes.load(), g_killed.load());
+	std::snprintf(out, size, "lucion: %u deaths, %u Temple portals, %u Harrogath portals, %u Demonic Cubes, %u adds killed",
+	              g_deaths.load(), g_portals.load(), g_returns.load(), g_cubes.load(), g_killed.load());
 }
