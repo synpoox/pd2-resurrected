@@ -63,6 +63,22 @@ constexpr Tiered TieredLevels[] = {
 	{140, 240}, {145, 220}, {148, 210}, {150, 180}, {155, 190}, {167, 210}, {186, 180}, {187, 260}, {197, 270},  // tier 3
 };
 static_assert(std::size(TieredLevels) == 29);
+// PD2's unique map values (0x1e-0x24) by entry level, and its dungeon set 0x105df228, in port level ids
+struct UniqueValue {
+	int16_t level;
+	int16_t value;
+};
+constexpr UniqueValue UniqueValues[] = {
+	{172, 0x1e},  // Zhar's Sanctum (PD2 176)
+	{177, 0x1f},  // Warlord of Blood (181)
+	{179, 0x20},  // Fallen Gardens (183)
+	{176, 0x21},  // Outer Void (180)
+	{188, 0x22},  // Imperial Palace (192)
+	{191, 0x23},  // City of Ureh (195)
+	{193, 0x24},  // Djinn's Domain (197)
+};
+constexpr int32_t Dungeons[] = {163, 168, 182};  // Plains of Torment, Sanctuary of Sin, Steppes (PD2 164, 171, 186)
+constexpr int32_t DungeonEvent = 9;
 
 using PopulateFn = void (*)(Game* game, void* room) noexcept;
 PopulateFn g_populateOriginal = nullptr;
@@ -175,10 +191,27 @@ auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 
 }  // namespace
 
+auto MapEvent(Game* game) noexcept -> int32_t {
+	return game != nullptr ? Get(game, EventKey) : 0;
+}
+
 auto RollMapEvent(Game* game, Unit* item, int32_t level) noexcept -> void {
 	using namespace d2r::rva;
-	// shortcut: dungeons (PD2 value 9) and unique maps (0x1e-0x24) set nothing; their values come with MS7 and MS9
-	if (game == nullptr || item == nullptr || Tier(level) == nullptr) {
+	if (game == nullptr || item == nullptr) {
+		return;
+	}
+	// PD2 0x10383060: a unique map's own value, 9 for a dungeon, 10 for any other untiered map; tiered maps roll
+	int32_t fixed = Tier(level) == nullptr ? NoEvent : 0;
+	for (const UniqueValue& u : UniqueValues) {
+		fixed = u.level == level ? u.value : fixed;
+	}
+	for (const int32_t d : Dungeons) {
+		fixed = d == level ? DungeonEvent : fixed;
+	}
+	if (fixed != 0) {
+		Set(game, EventKey, fixed);
+		Set(game, SpawnsKey, 0);
+		plog::Info("map events: level %d set event 0x%x (no roll)", level, fixed);
 		return;
 	}
 	const bool forced = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatForceEvent, 0) > 0;
