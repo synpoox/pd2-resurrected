@@ -54,6 +54,7 @@ static_assert(SoulDelay(40, 0) == 50 && SoulDelay(40, 1) == 40 && SoulDelay(40, 
 static_assert(SoulSpread(0) == 24 && SoulSpread(1) == 16 && SoulSpread(2) == 8);
 
 std::atomic<uint32_t> g_soulCasts {0};
+std::atomic<uint32_t> g_soulCastsBy[LastSoul - FirstSoul + 1][3] {};
 std::atomic<uint32_t> g_soulDeaths {0};
 std::atomic<uint32_t> g_thinks {0};
 std::atomic<uint32_t> g_phases {0};
@@ -419,7 +420,7 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 		Idle(game, unit, m.AiDel());
 		return;
 	}
-	int32_t x = 0, y = 0, spread = -1;
+	int32_t x = 0, y = 0, tx = 0, ty = 0, spread = -1;
 	if (m.Aip(8) != 2 && m.Aip(8) != 3) {
 		// A random spot in the 50x50 square around the arena centre
 		x = 0x3b00 + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
@@ -430,6 +431,8 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 			return;  // PD2 returns with no delay too
 		}
 		spread = SoulSpread(tier);
+		tx = x;
+		ty = y;
 		if (spread > 0) {
 			x += static_cast<int32_t>(d2r::RandomBelow(seed, spread)) - spread / 2;
 			y += static_cast<int32_t>(d2r::RandomBelow(seed, spread)) - spread / 2;
@@ -440,10 +443,13 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 		*reinterpret_cast<Unit**>(path + PathTargetUnit) = nullptr;
 	}
 	const int32_t wait = static_cast<int32_t>(d2r::RandomBelow(seed, 8)) + delay - 4;
-	if (plog::Sample(g_soulCasts)) {
-		plog::Info("trapped soul %d: tier %d, meteor at (%d, %d), spread %d, delay %d (aidel %d), skip %d%%, Dclone %d%% "
-		           "(%u so far)", At<int32_t>(unit, UnitClassId), tier, x, y, spread, wait, m.AiDel(), skip, dLife,
-		           g_soulCasts.load());
+	++g_soulCasts;
+	// Sampled per soul and tier, so each soul's first cast at each tier is logged
+	if (const int32_t soul = At<int32_t>(unit, UnitClassId) - FirstSoul; tier >= 0 && tier < 3 &&
+	                                                                       plog::Sample(g_soulCastsBy[soul][tier])) {
+		plog::Info("trapped soul %d: tier %d, meteor at (%d, %d), target (%d, %d) spread %d, delay %d (aidel %d), skip "
+		           "%d%%, Dclone %d%% (%u so far)", At<int32_t>(unit, UnitClassId), tier, x, y, tx, ty, spread, wait,
+		           m.AiDel(), skip, dLife, g_soulCasts.load());
 	}
 	Cast(game, unit, m.Skill(1), m.Mode(1), nullptr, x, y, wait);
 }
