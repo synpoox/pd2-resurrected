@@ -1228,6 +1228,16 @@ inline constexpr uint64_t DrlgRoomInit = 0x3289a0;  // (dataFlag, drlg room) -> 
 // (game, unit, room or null, x, y, 0, 0): WarpToLevel's teleport; with arg 6 0 it finds a free spot near x/y in room
 inline constexpr uint64_t TeleportUnit = 0x491ca0;
 
+// --- core-maps: the map-area death drops (MS4d; D2Game\src\Monster\MonsterMode.cpp) --------------------------------
+// Decompiled for MS4d (Ghidra, D2R.gpr). Called, not hooked.
+// (game, monster, flag, death*) -> the monster's own TC drop: its monstats TC for the difficulty and kind (champion,
+// unique, quest), dropped by 0x441300. death +0x08 is the monster, +0x10 the killer (the quest-drop test and the
+// quality roll's player). 1.13c's 0x6fc95680, which PD2 calls through 0x1030f2b0 for an extra drop; D2R's death path
+// 0x4479a0 passes flag 0, as PD2 does.
+inline constexpr uint64_t MonsterTcDrop = 0x447b80;
+inline constexpr int MonDataTypeFlags = 0x1a;     // u8 in the monster's UnitData: 0x10 minion (1.13c +0x16)
+inline constexpr uint8_t MonTypeMinion = 0x10;
+
 }  // namespace d2r::rva
 
 namespace d2r {
