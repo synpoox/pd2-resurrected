@@ -37,8 +37,7 @@ A new release overwrites `filter.json`; keep a copy of yours.
 These PD2 features are left out on purpose. Every deviation from PD2, cut or not, is listed in
 [docs/deviations.md](docs/deviations.md).
 
-- PD2's 10x8 inventory and stash pages, with the maps stash tab: D2R's layouts stay. PD2's 4x4 cube is coming back
-  ([#299](https://github.com/synpoox/pd2-resurrected/issues/299)).
+- PD2's 10x8 inventory and stash pages, with the maps stash tab: D2R's layouts stay. The cube has PD2's 4x4 grid.
 - PvP: the PvP maps, the BR Arena and every PvP rule, including the arenas' life regen cap.
 - Corrupted zones: D2R's Terror Zones stand in.
 - PD2's sound tables: D2R's sounds stay.
