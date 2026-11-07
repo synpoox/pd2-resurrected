@@ -1458,6 +1458,15 @@
     "MercX419": [51385, "mercenaries.json"],
     "MercX420": [51386, "mercenaries.json"],
     "Ascendant": [51387, "monsters.json"],
-    "t99": [51388, "item-names.json"]
+    "t99": [51388, "item-names.json"],
+    "MapEventNotifyMendeln": [51428, "ui.json"],
+    "MapEventNotifyHorazon": [51429, "ui.json"],
+    "MapEventNotifyDarkWanderer": [51430, "ui.json"],
+    "MapEventNotifyTreasure": [51431, "ui.json"],
+    "MapEventNotifyTainted": [51432, "ui.json"],
+    "MapEventNotifyGheed": [51433, "ui.json"],
+    "MapEventNotifyShard": [51434, "ui.json"],
+    "MapEventNotifyInvaders": [51435, "ui.json"],
+    "MapEventNotifyTomb": [51436, "ui.json"]
   }
 }
