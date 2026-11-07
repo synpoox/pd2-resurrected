@@ -55,7 +55,7 @@ skills	Holy Freeze Korlic	Holy Freeze	cltdofunc	Paladin aura client do
 skills	Holy Freeze Korlic	Holy Freeze	cltstfunc	Paladin aura client start
 skills	Holy Fire Sanctuaryboss	Holy Fire	cltdofunc	Paladin aura client do
 skills	Holy Fire Sanctuaryboss	Holy Fire	cltstfunc	Paladin aura client start
-skills	UberDiabRun	DiabRun	srvstfunc	UberDiabSummon, UberDiabRun
+skills	UberDiabRun	DiabRun	srvstfunc	UberDiabRun
 skills	Energy Shield SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Energy Shield SelfAura	Might	cltstfunc	Paladin aura client start
 skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
@@ -68,7 +68,6 @@ skills	LucionDeath1	Nova	srvdofunc,cltdofunc	Death novas
 skills	LucionDeath2	Nova	srvdofunc,cltdofunc	Death novas
 skills	LucionDeath3	Nova	srvdofunc,cltdofunc	Death novas
 skills	LucionDeath4	Nova	srvdofunc,cltdofunc	Death novas
-skills	UberDiabSummon	-	srvdofunc	UberDiabSummon, UberDiabRun
 skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Blade Fury	=	seqinput	Blade Fury: the throw frame

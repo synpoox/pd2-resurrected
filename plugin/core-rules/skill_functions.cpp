@@ -3553,6 +3553,7 @@ std::atomic<uint32_t> g_eggSpawnClients {0};
 std::atomic<uint32_t> g_nestSpawns {0};
 std::atomic<uint32_t> g_nestFull {0};
 std::atomic<uint32_t> g_cyclerStarts {0};
+std::atomic<uint32_t> g_uberSummons {0};
 constexpr int32_t MaggotEgg = 159;  // merged id (vanilla's)
 
 // PoisonEggSpawn (PD2 srvdofunc 173): D2R's nova (srvdo 22) with the cast's skill, then D2R's maggot egg spawn (srvdo 84)
@@ -3711,6 +3712,61 @@ auto SrvStCycler(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	return 1;
 }
 
+// UberDiabSummon (PD2 srvdofunc 177, ProjectDiablo.dll 0x103b3e10): Dclone's skeleton waves around his arena's centre.
+// Each wave whose threshold (Param4-6) is above the caster's life percent spawns calc1-3 monsters: the skill's summon,
+// then summon + 1, then summon + 2 + rand % 4. Dclone's AI casts it at phases 1, 3 and 5 (#470).
+constexpr int32_t DcloneArenaX = 0x3b19, DcloneArenaY = 0x1994;  // (15129, 6548)
+constexpr int32_t WaveTries = 40;  // PD2 gives up a wave after 40 spots with no spawn
+
+auto SrvDoUberDiabSummon(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint8_t* skill = game != nullptr && unit != nullptr ? d2r::api.getSkillRecord(d2r::DataFlag(game), skillId)
+	                                                          : nullptr;
+	const int32_t summon = skill != nullptr ? At<int16_t>(skill, SkSummon) : -1;
+	void* room = skill != nullptr ? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(
+		d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit), DcloneArenaX, DcloneArenaY) : nullptr;
+	if (summon < 0 || room == nullptr) {
+		return 0;
+	}
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitSkillFlag)(unit, 1);
+	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	const int64_t max = unitStat(unit, StatMaxLife, 0);
+	const int32_t life = max > 0 ? static_cast<int32_t>(int64_t {unitStat(unit, StatLife, 0)} * 100 / max) : 0;
+	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit);
+	const int32_t counts[] = {d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level),
+	                          d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level),
+	                          d2r::EvalCalc(game, unit, skill, SkCalc3, skillId, level)};
+	const int32_t below[] = {At<int32_t>(skill, SkParam4), At<int32_t>(skill, SkParam5), At<int32_t>(skill, SkParam6)};
+	int32_t spawned[3] = {};
+	for (int wave = 0; wave < 3; ++wave) {
+		for (int32_t failed = 0; life < below[wave] && spawned[wave] < counts[wave] && failed < WaveTries;) {
+			// PD2's spot: rand % 50 + 0x3b00 by rand % 50 + 0x197b, then its free-spot search
+			int32_t xy[2] = {DcloneArenaX - 25 + static_cast<int32_t>(d2r::RandomBelow(seed, 50)),
+			                 DcloneArenaY - 25 + static_cast<int32_t>(d2r::RandomBelow(seed, 50))};
+			const int32_t mon = wave < 2 ? summon + wave : summon + 2 + static_cast<int32_t>(d2r::RandomBelow(seed, 4));
+			void* at = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(room, xy[0], xy[1]);
+			void* found = nullptr;
+			// shortcut: D2R's portal spot search stands in for PD2's 0x10389c20, as core-maps' map events do; and PD2's
+			// 0x3000000 unit flags and its D2Game call on each spawn (0x103a1eb0) are not set, as their meaning is unread
+			if (at != nullptr) {
+				room = at;
+				d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(
+					FindFreeSpot)(game, room, xy, 3, 0x400, &found, 5, 100);
+			}
+			Unit* spawn = found == nullptr ? nullptr
+				: d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
+					SpawnMonster)(game, found, xy[0], xy[1], mon, 1, -1, 0x42);  // mode 1: neutral
+			spawn == nullptr ? ++failed : ++spawned[wave];
+		}
+	}
+	if (plog::Sample(g_uberSummons)) {
+		plog::Info("uber diablo summon: skill %d level %d: life %d%%, summon %d, waves below %d/%d/%d of %d/%d/%d: "
+		           "spawned %d/%d/%d, cast %u", skillId, level, life, summon, below[0], below[1], below[2], counts[0],
+		           counts[1], counts[2], spawned[0], spawned[1], spawned[2], g_uberSummons.load());
+	}
+	return 1;
+}
+
 struct Table {
 	const char* name;  // the skills.txt column
 	uint64_t rva;
@@ -3821,6 +3877,7 @@ const SlotFunction Functions[] = {
 	{CltDo, 126, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoPoisonEggSpawn)), "poison egg spawn"},
 	{SrvSt, 83, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStCycler)), "cycler start"},
 	{MissileSrvHit, 67, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitSummon)), "summon"},
+	{SrvDo, 177, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoUberDiabSummon)), "uber diablo summon"},
 };
 
 }  // namespace
