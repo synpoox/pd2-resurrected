@@ -424,7 +424,8 @@ def fix_row(table: str, header: list[str], row: list[str]) -> list[str]:
     for (col, bad), cells in FIXES.get(table, {}).items():
         if col in header and row[header.index(col)].replace('"', "") == bad:
             for c, v in cells.items():
-                row[header.index(c)] = v
+                if c in header:  # a table without the column (a test's few columns) has nothing to fix there
+                    row[header.index(c)] = v
     return row
 
 
