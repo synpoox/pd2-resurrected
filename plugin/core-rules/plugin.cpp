@@ -11,6 +11,7 @@
 #include "d2r.h"
 #include "item_rules.h"
 #include "log.h"
+#include "loot_rules.h"
 #include "merc_rules.h"
 #include "off_switch.h"
 #include "skill_functions.h"
@@ -77,11 +78,18 @@ void InstallMercs(const D2RL::PluginContext* context, char* report, size_t size)
 	std::snprintf(report, size, "%d/%d installed: %s", installed, MercRuleCount(), rules);
 }
 
+void InstallLoot(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallLootRules(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, LootRuleCount(), rules);
+}
+
 Part g_parts[] = {
 	{"skills", InstallSkills, ""},
 	{"items", InstallItems, ""},
 	{"mercs", InstallMercs, ""},
 	{"cube", InstallCube, ""},
+	{"loot", InstallLoot, ""},
 };
 
 void InstallParts(const D2RL::PluginContext* context) noexcept {
@@ -129,6 +137,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	CubeRuleCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	LootRuleCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;

@@ -1,0 +1,11 @@
+{
+ "_note": "PD2's 4x4 Horadric Cube (#299): the grid moves half a cell left over the art tools/pd2_panels.py widens (merge/panel-grids.json); merged inventory.txt gives the cube rows gridX 4.",
+ "ops": [
+  {"op": "layout", "file": "data/global/ui/layouts/horadriccubelayouthd.json", "widget": "grid",
+   "set": {"rect": {"x": 382, "y": 534}, "cellCount": {"x": 4, "y": 4}}},
+  {"op": "layout", "file": "data/global/ui/layouts/controller/horadriccubelayouthd.json", "widget": "grid", "occurrence": 1,
+   "set": {"rect": {"x": 449, "y": 448}}},
+  {"op": "layout", "file": "data/global/ui/layouts/horadriccubelayout.json", "widget": "grid",
+   "set": {"rect": {"x": 104, "y": 139}, "cellCount": {"x": 4, "y": 4}}}
+ ]
+}
