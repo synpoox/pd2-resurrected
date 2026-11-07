@@ -57,6 +57,7 @@ add_library(core_maps SHARED
 	core-maps/map_stats.cpp
 	core-maps/entity_pool.cpp
 	core-maps/key_drops.cpp
+	core-maps/event_portals.cpp
 	core-maps/uber_scaling.cpp
 	core-maps/plugin.rc
 )
@@ -71,6 +72,7 @@ add_library(core_ui SHARED
 	core-ui/plugin.cpp
 	core-ui/automap.cpp
 	core-ui/item_pictures.cpp
+	core-ui/item_quantity.cpp
 	core-ui/stack_split.cpp
 	core-ui/plugin.rc
 )
