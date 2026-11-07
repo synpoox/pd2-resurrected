@@ -322,6 +322,7 @@ auto ApplyArea(Game* game, int32_t level, const AreaEntry* entries, int count) n
 			g[3] = 1;  // one component pick, all default (PD2's 0x101)
 			r[RegionCount] = static_cast<uint8_t>(replacing ? RegionMaxGroups : r[RegionCount] + 1);
 			r[RegionSpawnCount] = static_cast<uint8_t>(slot + 1);
+			plog::Info("map area: level %d adds monster %d as group %d, rarity sum %u", level, v, slot, r[RegionRarity]);
 			break;
 		}
 		case 4:
