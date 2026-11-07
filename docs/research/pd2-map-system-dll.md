@@ -235,6 +235,37 @@ Object 60 is the red portal. D2R's limits that apply (toolkit `engine-limits.md`
 Reimagined's cube output `Red Portal,lvl=<id>` shows the same route reaching Act V levels ([#145](https://github.com/synpoox/pd2-resurrected/issues/145)). Not tested here: no
 plugin in this repo calls `0x432ce0` yet.
 
+## 6. Readers of the dungeon and unique map values
+
+[MS7b](https://github.com/synpoox/pd2-resurrected/issues/499), read in Ghidra: `FindDisp 0x1df4` over ProjectDiablo.dll
+lists every instruction on the field; these are the ones that test 9 or 0x1E-0x24. Monsters are PD2 `hcIdx` (the port's
+id is 17 more), levels PD2 ids. Most readers are entries of the monster-death switch `0x10378d80` (keyed on the dead
+monster's class), which PD2's death handler `0x1037a330` calls. Its context is: +0 game, +8 the monster, +0xC the
+killer's player (when a player), +0x14 the uniqueitems table, +0x5C an item code for the drop helper `0x1036ebc0`
+(code, quality, item level). `0x1038a300` (x, y, level, object) is the portal at the body with its return portal.
+
+| Value | Reader | When | What it does | Port |
+|---|---|---|---|---|
+| 0x1E Zhar | `0x10376ea0` | ZharTheMad (1058) dies, `game+0x262a` < 4 | sets +0x262a to 4; gold portal (586) to Harrogath; a magic Grand Charm (`cm3`, quality 4) at item level 99 with one affix forced (`0x102e5110`) | portal, charm (affix not forced) |
+| 0x1E | `0x10376dc0` | a mini-boss (1061-1063) dies, +0x262a < 4 | 1 in 2: the same charm at item level 90 | yes |
+| 0x1E | `0x103aa670` (object operate, table slot 0x140) | Zhar's seals (`zharportal_blue` 598, `zharportal_red` 599) and `ZharTomeObject` 600 are used | steps +0x262a 0 -> 3, opens and links the seal portals | no |
+| 0x1F Warlord | `0x10376fb0` | WarlordOfBlood (1060) dies | gold portal; 2-3 random uniques (any with flags, rarity and level 1-99) at item level 99; kills the `demonpillar`s (1057) in his rooms | portal |
+| 0x1F | `0x1036fef0` (room activation) | a room of level 182 inside (0x25c2-0x263a, 0x5a10-0x5a88) | the room gets no monsters (the arena) | no |
+| 0x20 Fallen Gardens | `0x103774f0` | Iskatu (1094) dies | gold portal; one of the eight Rainbow Facets (unique records 392-399) at item level 99 (`0x103841d0`) | yes |
+| 0x20 | `0x10377490` | Rakanoth (1096) dies | red portal (584) to level 184, the Diamond Gate | yes |
+| 0x21 Outer Void | `0x10379170` (every death, after the switch) | a monster in one of three PD2 boss sets dies | three steps in `game+0x2628`: twice a ghostly portal (585) linked to an `empty` marker (587) deeper in the level, then the gold portal; each step drops a normal item (code from `0x1037a420`) at item level 130 | no |
+| 0x21 | `0x10371590` (monster spawn) | a monster spawned with flag 0xd5 | gets state 213's list: +5 stat 25 (damage %), +10 stats 329-332 (masteries) | no |
+| 0x22 Imperial Palace | `0x103775b0` | Kamyr, ImperialPalaceMiniBoss (1148), dies | red portal at the body linked to the arena's `empty` marker (`0x1038a1f0`, `0x1038a510`); a Puzzle Piece (`lpp`, quality 7) at item level 130 | portal to level 194, piece |
+| 0x22 | `0x10377670` | ImperialPalaceBoss (1166) dies | clears `game+0x2604` if it held him; gold portal; a Puzzle Box (`lbox`, quality 7) at item level 130 | portal, box |
+| 0x23 Ureh | `0x10377270` | CityofUrehBoss (1174) dies | gold portal; 3 random uniques (as Warlord's, base item flag +0x138 set) at item level 99 | portal |
+| 0x24 Djinn's Domain | none | | no reader tests 0x24; the Djinn bosses' deaths (`0x10378bc0`) do not read the field | |
+| 9 dungeon | `0x1038bfc0` (preset rewrite) | placing a dungeon's boss preset (`0x2e2`) | stores the boss in `game+0x2600` and its barriers (`bossblocker_x`/`_y`, 616/617) in +0x2604-0x261c; with value 9, +0x2628 0 -> 1 | no |
+| 9 | `0x10377890`, `0x103778f0`, `0x10377a30` | the stored boss (SharpToothBoss 1105, willowispboss 743, RadamentBoss 1104) dies | +0x2628 1 -> 2; removes the barriers (`0x10380590`) | no |
+| 9 | `0x1038daf0` (object function) | `bossblocker_x`, `_y`, `_x_warp`, `_y_warp` (616-619) with +0x2628 2 | removes them | no |
+
+Every unique map boss death also adds 1 to two counters in the killer's player data (+0x39d, +0x419). `0x102fcd60`
+prints the field's value; `0x10366f40` and `0x10383060` set it.
+
 ## Not settled here
 
 - What `0x381510` does (Horazon's 10% roll).
