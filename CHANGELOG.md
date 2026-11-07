@@ -9,6 +9,8 @@ private-multiplayer release a build may break characters; each break is noted he
 
 - Items follow PD2 more closely: ethereal durability, rare affixes, mercenary gear drops, Tome of Identify, skill on cast/block.
 - A unique charm sold to a vendor by mistake can be bought back, as in PD2.
+- Quivers roll PD2's automagic again: arrows +2/10/18 max damage, bolts -2/4/6% enemy physical resistance.
+- Stacks in the inventory, cube and stash show their quantity on the picture, as in PD2 (tomes excepted).
 
 #### Uber bosses
 
@@ -20,7 +22,9 @@ private-multiplayer release a build may break characters; each break is noted he
 
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
+- A dungeon or unique map's area stats (density, rarity, added monsters) now apply on all of its levels.
 - Wooded PD2 maps draw HD tree borders, and D2R-tile maps use whole D2R rooms.
+- Eight more PD2 maps, among them Ashen Plains and Descent, draw walls and props in HD.
 
 #### Fixes
 
