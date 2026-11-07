@@ -147,10 +147,38 @@ def hire_keys(pd2_data: Path, d2r_data: Path) -> dict[str, str]:
     return {code: d2r.get(text, f"hiredesc_{code}") for code, text in hire_descs(pd2_data).items()}
 
 
+def sound_names(pd2_data: Path, d2r_data: Path) -> dict[str, str]:
+    """PD2's sound names D2R's sounds table (which ships as it is) lacks -> the D2R sound playing the same file, else
+    blank: no sound until PD2's own WAVs are ported (#206). A monsounds name past the table crashed the client (#267)."""
+    files = [pd2_ids.excel(d) / "sounds.txt" for d in (pd2_data, d2r_data)]
+    if not all(f.is_file() for f in files):
+        return {}
+    pd2, d2r = Table(files[0]), Table(files[1])
+    fcol = [c.lower() for c in d2r.header].index("filename")
+    by_file = {}
+    for r in d2r.rows:
+        by_file.setdefault(r[fcol].lower(), r[0])
+    pcol = [c.lower() for c in pd2.header].index("filename")
+    names = {r[0].lower() for r in d2r.rows}
+    return {r[0].lower(): by_file.get(r[pcol].lower().replace("/", "\\").removesuffix(".wav") + ".flac", "")
+            for r in pd2.rows if r[0].lower() not in names}
+
+
+def unknown_sounds(monsounds: Table, d2r_data: Path) -> list[str]:
+    """The merged monsounds cells naming a sound D2R's sounds table lacks."""
+    f = pd2_ids.excel(d2r_data) / "sounds.txt"
+    if not f.is_file():
+        return []
+    names = {r[0].lower() for r in Table(f).rows}
+    cols = [(j, c) for j, c in enumerate(monsounds.header) if c in pd2_ids.SOUND_COLS]
+    return [f"{r[0]} {c} {r[j]}" for r in monsounds.rows for j, c in cols if r[j] and r[j].lower() not in names]
+
+
 def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/tables.json."""
     cfg = json.loads(rule_file.read_text("utf-8"))
     ren = pd2_ids.renames({t: pd2_ids.read_list(pd2_ids.list_path(rule_file.parent, t)) for t in pd2_ids.TABLES})
+    ren["sound"] = sound_names(pd2_data, d2r_data)
     for table, opts in sorted(cfg.items(), key=lambda kv: kv[0] == "hireling"):  # after monstats: it names its rows
         if table == "hireling":
             ren.update(monster=monster_numbers(pd2_data, out_data), hiredesc=hire_keys(pd2_data, d2r_data))
@@ -171,6 +199,8 @@ def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> Non
             pd2_skilldesc.hide_off_tree(merged)
             if bad := pd2_skilldesc.clashes(merged, d2r, fmt, texts):
                 raise ValueError(f"skilldesc lines D2R would print wrongly: {'; '.join(bad)}")
+        if table == "monsounds" and (bad := unknown_sounds(merged, d2r_data)):
+            raise ValueError(f"monsounds names sounds D2R's sounds table lacks (the client crashes): {'; '.join(bad)}")
         dest = pd2_ids.excel(out_data) / f"{table}.txt"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(merged.text().encode("latin-1"))

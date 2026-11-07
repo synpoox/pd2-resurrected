@@ -38,6 +38,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - In legacy graphics mode, PD2's own missiles show again: Holy Nova, and the other missiles that used PD2-only art.
 - An item with Druid or Assassin class skills (Hellfire Torch, Spirit Ward) shows the number, e.g.
   "+2 to Assassin Skill Levels".
+- Leoric's taunt no longer crashes the game; he, Zhar, Na-Krul and the Butcher are silent until PD2's voices are ported.
 
 ### 0.1.0-alpha (2026-11-05)
 

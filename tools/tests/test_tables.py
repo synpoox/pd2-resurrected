@@ -97,6 +97,19 @@ class TablesTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no column NoCol"):
             self.merge({"monstats": {"cells": {"fallen": {"NoCol": "x"}}}})
 
+    def test_pd2_only_sounds_take_d2rs_sound_of_the_same_file_or_none(self):
+        """D2R's sounds table ships as it is, so a PD2-only sound past it crashed the client (Leoric's taunt, #267)."""
+        self.write("pd2", "sounds", table("Sound | Index | FileName", "fallen_rakanishu | 1 | monster\\fallen\\warcry1.wav",
+                                          "leoric_taunt | 2 | pd2\\leoric\\leoric_remaster.wav"))
+        self.write("d2r", "sounds", table("Sound | *Index | FileName", "fallen_warcry_1 | 1 | monster\\fallen\\warcry1.flac"))
+        self.write("pd2", "monsounds", table("Id | Neutral | Taunt", "treasurefallen | fallen_rakanishu | leoric_taunt"))
+        self.write("d2r", "monsounds", table("Id | Neutral | Taunt", "fallen | fallen_warcry_1 |"))
+        self.assertEqual(self.merge({"monsounds": {}})["monsounds"], [
+            ["Id", "Neutral", "Taunt"], ["fallen", "fallen_warcry_1", ""], ["treasurefallen", "fallen_warcry_1", ""]])
+        self.write("pd2", "monsounds", table("Id | Neutral | Taunt", "leoric | nosuch |"))
+        with self.assertRaisesRegex(ValueError, "leoric Neutral nosuch"):
+            self.merge({"monsounds": {}})
+
     def test_moved_ids_append_with_pd2s_hire_description_and_merged_monster_numbers(self):
         self.write("pd2", "hiredesc", table("Hireling Description | Code | *EOL", "None |  | 0", "Fire Arrow | farw | 0",
                                             "Ascendant Dark | ascd | 0"))
