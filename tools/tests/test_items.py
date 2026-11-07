@@ -58,6 +58,13 @@ class KeyedTests(unittest.TestCase):
         rows = M.merge_cube(pd2, table(head), NO_CTX).rows
         self.assertEqual([(r[0], r[4]) for r in rows], [("0", "usetype,reg"), ("0", "usetype,reg"), ("1", "amu")])
 
+    def test_cube_key_row_opens_the_portal(self):
+        # PD2's cube walk opens the portal for op 28 + param 1 + min diff 2; its `useitem` becomes D2R's portal output
+        head = "op|param|min diff|output\n"
+        pd2 = table(head + "28|1|2|useitem\n28|1|2|Pandemonium Finale Portal\n||2|useitem\n")
+        self.assertEqual([r[3] for r in M.merge_cube(pd2, table(head), NO_CTX).rows],
+                         ["Pandemonium Portal", "Pandemonium Finale Portal", "useitem"])
+
     def test_cube_mod_skill_params(self):
         ren = I.renames({t: [] for t in I.TABLES})
         ren["skills"] = {"impale": "Javelin and Spear Mastery"}

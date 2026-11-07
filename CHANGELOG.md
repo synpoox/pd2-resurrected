@@ -21,6 +21,7 @@ private-multiplayer release a build may break characters; each break is noted he
 #### Uber bosses
 
 - The Pandemonium Talisman opens Uber Tristram at the Blood Fountain, like the other uber keys.
+- Cubing the three Pandemonium keys in Hell opens a red portal to a mini-uber area again.
 - The Diablo Clone, Rathma and Lucion keys open their uber areas at the Blood Fountain (Hell, level 80+); the fights come later.
 - A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
 - Uber fight monsters scale with the key's tier, as in PD2.
