@@ -7,32 +7,29 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Items
 
-- Items work more as in Project Diablo II: ethereal items keep their full durability, set items can drop ethereal,
-  rare items get at least four affixes from item level 45 (five from 65, six from 85) and rare jewels always four,
-  hiring a new mercenary drops the old one's gear, and shift-right-clicking a Tome of Identify identifies your
-  inventory. Skill on cast and skill on block items proc through the Cast Triggers plugin (1.1.12); not yet confirmed in game.
+- Items follow PD2 more closely: ethereal durability, rare affixes, mercenary gear drops, Tome of Identify, skill on cast/block.
+- A unique charm sold to a vendor by mistake can be bought back, as in PD2.
 - Stacks in the inventory, cube and stash show their quantity on the picture, as in PD2.
 
 #### Uber bosses
 
-- The Diablo Clone, Rathma and Lucion keys open their areas. Use one at the Blood Fountain in Harrogath (Hell,
-  level 80+, Rite of Passage done): everyone at the fountain who is level 80+ goes in, without their mercenary,
-  summons or buffs. One map or uber area per game. The fights themselves come later.
-- A tier-0 uber key also leaves three grey portals by the fountain. Each takes one player back in, once, by the same
-  rules (no mercenary, summons or buffs), and heals the boss by 20% of its life. The uber areas have no waypoint.
+- The Diablo Clone, Rathma and Lucion keys open their uber areas at the Blood Fountain (Hell, level 80+); the fights come later.
+- A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
 - Uber fight monsters scale with the key's tier, as in PD2.
 
 #### Maps
 
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
+- Wooded PD2 maps draw HD tree borders, and D2R-tile maps use whole D2R rooms.
 
 #### Fixes
 
-- The mercenary panel shows the mercenary's title (Rogue, Desert Mercenary, Barbarian, Ascendant) instead of
-  "an evil force".
-- In legacy graphics mode, PD2's own missiles show again: Holy Nova, and the other missiles that used PD2-only art.
-- An item with Druid or Assassin class skills (Hellfire Torch, Spirit Ward) shows the number, e.g.
-  "+2 to Assassin Skill Levels".
+- The Ascendant mercenary equips staves only, as in PD2.
+- The mercenary panel shows the mercenary's title instead of "an evil force".
+- PD2's own items (Worldstone Shards, maps, PD2 uniques) show on the ground in HD again.
+- Legacy graphics shows PD2's own missiles again (Holy Nova and others).
+- Charged potions and other PD2-only items show their own pictures instead of a hand axe.
+- Druid and Assassin class skills on items show their number ("+2 to Assassin Skill Levels").
 
 ### 0.1.0-alpha (2026-11-05)
 
@@ -43,25 +40,20 @@ bosses and the Warlock redesign come in a later alpha.
 
 - You need D2RLoader: characters use its extended save format and load only through it.
 - Characters from test builds before this release don't load.
-- Comes with a loot filter (with drop sounds), stash search, item roll ranges, a charm inventory, a buff bar,
-  and Paladin auras on the left mouse button.
+- Includes a loot filter, stash search, item roll ranges, a charm inventory, a buff bar and left-click Paladin auras.
 - PD2's names and descriptions for items, skills, monsters and areas (English).
 
 #### Items
 
 - PD2's items, affixes, runewords, cube recipes and treasure classes.
-- Corruption: cube an item with a Worldstone Shard and press Transmute once. A corrupted item can't be corrupted
-  again.
-- Demonic Cube rerolls a unique or set item, keeping its base, sockets and ethereal state. Items with socketed items
-  in them are refused for now.
-- Cube recipes take their inputs one per cell (three T1 maps, three chipped gems, ...). Stacked inputs don't count
-  yet.
-- PD2's combat stats: critical and deadly strike, crushing blow, open wounds and deep wounds, and the life steal cap.
+- Corruption: cube an item with a Worldstone Shard, once per item.
+- Demonic Cube rerolls a unique or set item (not yet one with socketed items).
+- Cube recipes take inputs one per cell; stacked inputs don't count yet.
+- PD2's combat stats: critical and deadly strike, crushing blow, open and deep wounds, life steal cap.
 - Curse resistance and extra curse slots.
 - Skill on cast procs for every item that has it; skill while equipped and Phasing work.
 - Ormus' Robes roll a random Sorceress skill.
-- The Warlock gets PD2's class item rules: Hellfire Torch and Spirit Ward can roll Warlock skills, and Warlock affixes
-  roll as often as other classes'.
+- The Warlock gets PD2's class item rules (Hellfire Torch, Spirit Ward, affix rates).
 
 #### Monsters and areas
 
@@ -69,24 +61,20 @@ bosses and the Warlock redesign come in a later alpha.
 - Tyrael hires the Ascendant.
 - Cycle of Life and Vines heal everyone nearby when they eat a corpse.
 - Torajan's eggs burst in a poison nova as they hatch.
-- Minions raised by boss missiles (Leoric's guards, Iskatu's vermin, ...) drop no loot and give no experience.
+- Minions raised by boss missiles drop no loot and give no experience.
 
 #### Skills
 
 These now work as in PD2. Skills not listed still play like the closest D2R skill.
 
-- **Every class:** melee splash (items, Frenzy, Tiger Strike, revived monsters), and another skill starts at once
-  while Inferno or Arctic Blast channels. Hit recovery and block end on PD2's frame.
-- **Amazon:** Lightning Bolt, Lightning Fury, Exploding Arrow, Multiple Shot, Power Strike (Valkyries too) and
-  Shattering Arrow.
-- **Assassin:** the charge-up skills (shared charges, each effect on the hit that builds it), Dragon Flight, Psychic
-  Hammer and Blade Fury.
+- **Every class:** melee splash, skills start during Inferno and Arctic Blast, hit recovery and block end on PD2's frame.
+- **Amazon:** Lightning Bolt, Lightning Fury, Exploding Arrow, Multiple Shot, Power Strike (Valkyries too) and Shattering Arrow.
+- **Assassin:** the charge-up skills, Dragon Flight, Psychic Hammer and Blade Fury.
 - **Barbarian:** Double Throw, Split Throw, Leap, Leap Attack, Bash, Find Potion and Find Item.
 - **Druid:** Arctic Blast, Firestorm, Gust, Hunger, Fire Claws, Spirit Wolf and Fenris.
 - **Necromancer:** Poison Dagger, Blood Warp, Desecrate and Golem Mastery.
 - **Paladin:** Charge, Holy Light, Fist of the Heavens, Vengeance, Joust, Holy Sword, Smite and Blessed Hammer.
-- **Sorceress:** Fire Bolt, Ice Bolt, Blizzard, Chilling Armor, Static Field, Combustion, Teleport, Inferno and
-  Thunder Storm.
+- **Sorceress:** Fire Bolt, Ice Bolt, Blizzard, Chilling Armor, Static Field, Combustion, Teleport, Inferno and Thunder Storm.
 
 #### Interface and graphics
 
@@ -96,10 +84,8 @@ These now work as in PD2. Skills not listed still play like the closest D2R skil
 
 #### Maps
 
-- Maps drop. Open one in Harrogath in Hell (level 80+, Rite of Passage done) for a red portal to its area; one map
-  per game.
-- A map's stats apply: monster and player stats, and area stats (density, rarity, extra monster groups, fortify,
-  area level).
+- Maps drop; open one in Harrogath in Hell (level 80+) for a red portal, one map per game.
+- A map's monster, player and area stats apply.
 - A map can't be cubed with a recipe PD2 forbids for it.
 - Maps built on D2R's tiles draw in HD; many walls, streams and bridges are still missing.
 - Map walls show on the automap.

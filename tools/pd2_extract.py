@@ -66,6 +66,10 @@ def extract(install: Path, out: Path, baseline_file: Path) -> int:
         print("refusing: this install is not the PD2 baseline\n  " + "\n  ".join(problems)
               + "\nRe-baselining is a deliberate commit to pd2-baseline.json (ADR 0002).", file=sys.stderr)
         return 1
+    done = out / "baseline.json"  # written last, so it only exists after a finished extract
+    if done.is_file() and done.read_bytes() == stamp(baseline_file.read_bytes()):
+        print(f"{out} is current, skipping extract")
+        return 0
     if out.exists():
         shutil.rmtree(out)
     count = 0
