@@ -230,6 +230,7 @@ constexpr int32_t BodyLocFirst = 1, BodyLocLast = 10;  // worn; 11 and 12 hold t
 constexpr uint32_t StatDurability = 72;
 
 std::atomic<uint32_t> g_ethReads {0};
+std::atomic<uint32_t> g_missingHpRefreshes {0};
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::ThreadService* g_threads = nullptr;
 
@@ -261,6 +262,43 @@ auto WornEthereal(Unit* unit) noexcept -> int32_t {
 	return count;
 }
 
+constexpr uint32_t StatDmgPerEth = 537;        // item_dmgpercent_pereth (PD2's 484), op 4 on equipped_eth
+constexpr uint32_t StatDmgPerMissingHp = 540;  // item_dmgpercent_permissinghppercent (PD2's 487), op 4 on missing_hp
+constexpr uint32_t StatMaxDamagePercent = 17;  // item_maxdamage_percent, both ops' first target
+
+auto SetStat(Unit* unit, uint32_t stat, int32_t value) noexcept -> void {
+	d2r::Engine<void (*)(Unit*, uint32_t, int32_t, uint32_t) noexcept>(d2r::rva::SetUnitStat)(unit, stat, value, 0);
+}
+
+// D2R keeps an op's result in each stat list's full stats and recomputes it only when a stat of that list changes
+// (0x2fa430 walks the changed stat's op targets), so a new op base on the owner leaves a worn item's op value as it
+// was at equip time (#320). Moving the op stat by one and back on each worn item that holds it makes the stat code
+// recompute its targets with the new base. PD2 needs no such step: it evaluates ops on read (0x102faa90). The op adds
+// nothing from the unit's own list (`cheat stat` on the player, seen in game), so only items are walked.
+// No SDK service covers stats, so this goes through SetUnitStat rather than a hook in D2RCore's stat engine.
+auto RecomputeOp(Unit* unit, uint32_t opStat) noexcept -> int32_t {
+	using namespace d2r::rva;
+	const auto baseStat = d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitBaseStat);
+	int32_t lists = 0;
+	auto toggle = [&](Unit* holder) noexcept {
+		const int32_t base = baseStat(holder, opStat, 0);
+		SetStat(holder, opStat, base + 1);
+		SetStat(holder, opStat, base);
+		++lists;
+	};
+	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory)(unit, __FILE__, __LINE__);
+	if (inventory != nullptr) {
+		const auto bodyItem = d2r::Engine<Unit* (*)(void*, int32_t) noexcept>(InventoryBodyItem);
+		for (int32_t loc = BodyLocFirst; loc <= BodyLocLast; ++loc) {
+			Unit* item = bodyItem(inventory, loc);
+			if (item != nullptr && Stat(item, opStat) != 0) {  // an affix sits on the item's magic list, not its base one
+				toggle(item);
+			}
+		}
+	}
+	return lists;
+}
+
 // PD2's 0x102fa640 computes equipped_eth and missing_hp where an op base is read. D2RCore's stat code reads op bases
 // itself and never calls D2R's read (0x2f9b10), so core-rules keeps both as the unit's real base stats instead, and
 // D2RCore's op 4 reads them: equipped_eth when the unit's summed durability changes (an item worn or taken off:
@@ -285,7 +323,10 @@ auto RefreshOpBase(Unit* unit, uint32_t stat) noexcept -> void {
 	if (value == Stat(unit, stat)) {
 		return;
 	}
-	d2r::Engine<void (*)(Unit*, uint32_t, int32_t, uint32_t) noexcept>(d2r::rva::SetUnitStat)(unit, stat, value, 0);
+	SetStat(unit, stat, value);
+	const int32_t edBefore = Stat(unit, StatMaxDamagePercent);
+	const int32_t lists = RecomputeOp(unit, stat == StatEquippedEth ? StatDmgPerEth : StatDmgPerMissingHp);
+	const int32_t edAfter = Stat(unit, StatMaxDamagePercent);
 	if (type == 0 && g_threads != nullptr) {
 		const uintptr_t packed = static_cast<uintptr_t>(At<uint32_t>(unit, d2r::rva::UnitIdField)) << 32 |
 		                         static_cast<uintptr_t>(stat & 0xffff) << 16 | static_cast<uintptr_t>(value & 0xffff);
@@ -294,7 +335,14 @@ auto RefreshOpBase(Unit* unit, uint32_t stat) noexcept -> void {
 	if (stat == StatEquippedEth) {
 		const uint32_t n = ++g_ethReads;
 		if (n <= 20 || n % 200 == 0) {
-			plog::Info("equipped_eth: unit type %d wears %d ethereal, %u changes so far", type, value, n);
+			plog::Info("equipped_eth: unit type %d wears %d ethereal, %d op lists recomputed, item_maxdamage_percent %d "
+			           "-> %d, %u changes so far", type, value, lists, edBefore, edAfter, n);
+		}
+	} else if (lists != 0 && type == 0) {
+		const uint32_t n = ++g_missingHpRefreshes;
+		if (n <= 20 || n % 200 == 0) {
+			plog::Info("missing_hp: player at %d%%, %d op lists recomputed, item_maxdamage_percent %d -> %d, %u so far",
+			           value, lists, edBefore, edAfter, n);
 		}
 	}
 }
