@@ -32,6 +32,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Maps
 
+- Map tooltips show the map's tier, and map stats and Fortified read cleanly, without raw format codes.
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
 - Map events Shadow of Mendeln, Dark Wanderer and Treasure Fallen spawn in tiered maps, as in PD2.
