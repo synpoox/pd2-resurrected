@@ -920,10 +920,13 @@ inline constexpr int UnitEventOpen = 1;               // the event that opens a 
 inline constexpr uint64_t SetPortalLevel = 0x34e9d0;  // (object, level byte): the portal's destination
 inline constexpr uint64_t PortalLevel = 0x34ad40;     // (object) -> uint16 destination
 // How operate 15 removes a used town portal: (room, unit type, unit id) tells the room's clients, (game, unit) frees
-// the unit, (room) marks the room changed
+// the unit
 inline constexpr uint64_t RoomUnitRemoved = 0x2ef4d0;
 inline constexpr uint64_t RemoveUnit = 0x48faa0;
-inline constexpr uint64_t RoomChanged = 0x2f0530;
+// (room, 0) sets bit 0x400000 of the room's level-gen room (+0x18, flags +0x50; 0x328860), (room, 1) clears it. The
+// portal maker sets it on each portal's room, operate 15 clears it on removal: an unmarked room is freed with its units
+// once no player is near (#431: the grey portals were gone when the player came back)
+inline constexpr uint64_t RoomPortalMark = 0x2f0530;
 // The room walk of 0x593630 (finds an object by class near a unit): (room, &rooms, &count) the room and its
 // neighbours, (room) its first unit, (unit) the next unit in its room
 inline constexpr uint64_t NearRooms = 0x2efde0;
