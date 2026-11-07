@@ -24,6 +24,7 @@
 
 #include "d2r.h"
 #include "log.h"
+#include "map_events.h"
 #include "map_stats.h"
 
 #include <algorithm>
@@ -470,6 +471,7 @@ auto SpellUse(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> vo
 	if (opened != 0) {
 		plog::Info("map: red portal to level %d, %u opened", level, ++g_opened);
 		RouteMapStats(game, item, level);
+		RollMapEvent(game, item, level);
 	} else {
 		plog::Warn("map: no red portal to level %d (D2R refused), %u failed", level, ++g_failed);
 	}
