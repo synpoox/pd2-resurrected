@@ -1,9 +1,0 @@
-{"ops": [
-  {"op": "set", "table": "skills", "key": "Double Throw", "bank": "excel", "set": {
-    "srvstfunc": "", "srvdofunc": "189", "cltstfunc": "", "cltdofunc": "0",
-    "anim": "A1", "seqtrans": "A1", "seqnum": "", "weapsel": "", "itypea1": "", "itypeb1": "",
-    "srvmissilea": "throwaxe",
-    "InTown": "1", "calc1": "par1+(min(lvl/5,par2))", "Param1": "3", "Param2": "4"
-  }},
-  {"op": "set", "table": "missiles", "key": "throwaxe", "bank": "excel", "set": {"ClientSend": "1"}}
-]}

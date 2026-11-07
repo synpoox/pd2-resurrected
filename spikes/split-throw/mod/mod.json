@@ -1,8 +1,0 @@
-{
-  "name": "PD2Spike",
-  "savepath": "PD2Spike/",
-  "title": "PD2Spike",
-  "version": "0.1.0",
-  "extendedSaves": false,
-  "plugins": ["../plugin/build/Release/pd2-spike.dll"]
-}
