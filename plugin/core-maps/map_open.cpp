@@ -27,6 +27,7 @@
 #include "map_events.h"
 #include "map_stats.h"
 #include "rathma.h"
+#include "unique_maps.h"
 
 #include <algorithm>
 #include <atomic>
@@ -68,6 +69,7 @@ constexpr int32_t CantEnter = 0x14;  // operate 15's refusal message
 // The bosses PD2's entry heals by 20% of max life (its set 0x105deec4): Dclone, Rathma and Mendeln and their clones,
 // Lucion, in the port's monstats ids
 constexpr int32_t UberBosses[] = {806, 950, 951, 952, 953, 1129};
+constexpr int32_t MapEventState = 259;  // states `mapevent` (PD2 213): the Outer Void's bosses (unique_maps.cpp)
 // PD2 removes the waypoints on arriving in its 137, 161-163 and 185 (and D2R's Uber Tristram 136, turned off)
 constexpr int32_t NoWaypointLevels[] = {138, 160, 161, 162, UberTristram};
 // PD2 0x1037f4a0: the states stripped on entering an uber area, in the port's ids: enchant, coldenchant, venomclaws,
@@ -320,8 +322,11 @@ auto KeepBossRoom(void* act, void* room) noexcept -> int32_t {
 	using namespace d2r::rva;
 	for (auto* unit = d2r::Engine<Unit* (*)(void*) noexcept>(RoomFirstUnit)(room); unit != nullptr;
 	     unit = d2r::Engine<Unit* (*)(Unit*) noexcept>(NextUnitInRoom)(unit)) {
+		// also an Outer Void boss (state `mapevent`): PD2 puts its list back when its room comes back (0x10371520 keeps
+		// the state in D2Game's monster store, 0x10371590 remakes the list); keeping the room keeps the list
 		if (At<int32_t>(unit, UnitType) == UnitMonster &&
-		    std::find(std::begin(UberBosses), std::end(UberBosses), At<int32_t>(unit, UnitClassId)) != std::end(UberBosses) &&
+		    (std::find(std::begin(UberBosses), std::end(UberBosses), At<int32_t>(unit, UnitClassId)) != std::end(UberBosses) ||
+		     d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(unit, MapEventState) != 0) &&
 		    d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) == 0) {
 			if (g_bossRoomsKept++ == 0) {
 				plog::Info("uber: boss %d keeps its room", At<int32_t>(unit, UnitClassId));
@@ -400,6 +405,9 @@ auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
 		return 0;
 	}
 	if (level == PlayerLevelId(player) && RathmaArenaPortal(game, player, level)) {
+		return 1;
+	}
+	if (OuterVoidWarp(game, player, args->object)) {
 		return 1;
 	}
 	if (IsUberLevel(level) && level != UberTristram) {
