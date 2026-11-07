@@ -293,6 +293,12 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
             "specialTiles": {}}, missing
 
 
+def draws_trees(lay: Layout) -> bool:
+    """Whether a DS1 draws a tile from a tree DT1 (`trees.dt1`, `treegrp.dt1`, `treegroups.dt1`): only those are
+    painted, as an indoor tile set's stock may hold a courtyard's trees."""
+    return any(t[0] and "tree" in t[0].rsplit("/", 1)[-1] for k in lay.keys.values() for t in k[1])
+
+
 def read_rule(rule: Path) -> dict[str, str]:
     sets = {}
     for line in rule.read_text("utf-8").splitlines():
@@ -382,8 +388,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         trees = painter.harvest(own)
         for ds1 in ds1s:
             lay = layouts[ds1]
-            # painted only where the DS1 draws tree tiles: an indoor tile set's stock may hold a courtyard's trees
-            outdoor = any(t[0] and "tree" in t[0].rsplit("/", 1)[-1] for k in lay.keys.values() for t in k[1])
+            outdoor = draws_trees(lay)
             preset, missing = build(lay, kit, Path(ds1).stem, ds1, sets[tile_set.lower()], terrain, own,
                                     trees if outdoor else None, prefab)
             dest = out_data / PRESETS / Path(ds1).with_suffix(".json")

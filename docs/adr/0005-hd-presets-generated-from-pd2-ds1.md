@@ -10,8 +10,8 @@ the `spikes/lp3-border-painter/` spike): a stock room whose tiles match 60% or m
 own sculpted terrain, water and bridges; a tile whose 3x3 neighbourhood (else its cross) appears in a stock preset copies
 what that preset placed on the centre tile; and the border painter (`tools/pd2_painter.py`) drops the trees past the
 playable area and paints them again from it out, copying the tile set's stock trees by direction and distance to the
-blocked ground. The tree kit is harvested per tile set from the stock presets that share its DT1 files; a tile set with
-no stock tree is not painted.
+blocked ground. Rooms and patches apply to every preset; the painter only to a DS1 that draws a `*tree*.dt1` tile, its
+tree kit harvested per tile set from the stock presets that share its DT1 files.
 
 ## Considered Options
 

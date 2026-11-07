@@ -164,24 +164,50 @@ class LayerTests(unittest.TestCase):
                             stock=[(P.Layout(3, 3, patch), src)])
         self.assertEqual([(e["name"], at(e)) for e in preset["entities"]], [("torch", (34.0, 12.0))])
 
-    def test_the_painter_plants_trees_only_past_the_tree_line(self):
-        blocked = {(x, 5) for x in range(30)}
+    def test_the_painter_plants_trees_only_past_the_path_clusters_then_singles_then_canopy(self):
+        blocked = {(x, 5) for x in range(30)}  # a tree line on row 5; rows 0-4 are the path, rows 6-9 outside
 
         def lay(w, h, objects=frozenset()):
             keys = {(x, y): self.WA if (x, y) in blocked else self.F for x in range(w) for y in range(h)}
             return P.Layout(w, h, keys, {c: (b"\1" if c in blocked else b"\0") * 25 for c in keys}, objects)
-        tree = "data/hd/env/foliage/act3/model/act3_treeline/small_cluster01.model"
-        trees = [dict(entity("tree", x, z), components=[entity("tree", x, z)["components"][0],
-                                                        {"type": "ModelDefinitionComponent", "filename": tree}])
-                 for x in (10.0, 30.0, 50.0, 70.0, 90.0) for z in (65.0, 80.0, 95.0)]
-        kit = P.painter.harvest([(lay(10, 10), {"dependencies": {"models": [{"path": tree}]}, "entities": trees})])
+
+        def tree(name, x, z, model, prefab=None):
+            comps = [entity(name, x, z)["components"][0], {"type": "ModelDefinitionComponent", "filename": model}]
+            if prefab:
+                comps.append({"type": "PrefabPlacementDefinitionComponent", "prefab": prefab})
+            return {"type": "Entity", "name": name, "id": 1, "components": comps}
+        single = "data/hd/env/foliage/act3/model/act3_treeline/small_cluster01.model"
+        canopy = "data/hd/env/foliage/act3/model/act3_treeline/act3_treeline_canopy01.model"
+        stock = [tree("cluster", x, z, "", "data/hd/env/foliage/act3/model/prefab/pf_tree_wall01.json")
+                 for x in (10.0, 50.0, 90.0) for z in (65.0, 95.0)]
+        stock += [tree("single", x, z, single) for x in (30.0, 70.0) for z in (65.0, 95.0)]
+        stock += [tree("canopy", x, 80.0, canopy) for x in (30.0, 70.0)]
+        kit = P.painter.harvest([(lay(10, 10), {"dependencies": {"models": [{"path": single}]}, "entities": stock})])
+        strays = P.Kit()  # the per-tile kit puts a tree on every floor tile
+        strays.add(P.Layout(1, 1, {(0, 0): self.F}), {"dependencies": {}, "entities": [tree("stray", 5, 5, single)]},
+                   {self.F})
         target = lay(30, 10, {(5, 2)})
-        preset, _ = P.build(target, P.Kit(), "m", "m.ds1", "b.json", TERRAIN, trees=kit)
-        painted = [at(e) for e in preset["entities"] if e["name"] == "tree"]
-        self.assertGreater(len(painted), 5)
-        self.assertTrue(all(z >= 50 for _, z in painted), painted)  # rows 0-4 are the path, row 5 the line
-        self.assertIn(tree, [d["path"] for d in preset["dependencies"]["models"]])
-        self.assertEqual(preset, P.build(target, P.Kit(), "m", "m.ds1", "b.json", TERRAIN, trees=kit)[0])
+        cluster = {"trees": kit, "prefabs": lambda path: [(0.0, 0.0), (0.0, -20.0)]}  # a cluster reaches 10 subtiles up
+        preset, _ = P.build(target, strays, "m", "m.ds1", "b.json", TERRAIN, **cluster)
+        names = [e["name"] for e in preset["entities"]]
+        where = {n: [at(e) for e in preset["entities"] if e["name"] == n] for n in set(names)}
+        # the strays on the path stay (lone trees); those past it are dropped and painted again
+        self.assertEqual(sorted(z for _, z in where["stray"]), sorted(y * 10 + 5.0 for x in range(30) for y in range(5)))
+        for n in ("cluster", "single", "canopy"):
+            self.assertTrue(where.get(n), n)
+            self.assertTrue(all(z >= 50 for _, z in where[n]), (n, where[n]))  # on the line (row 5) or past it
+        last = {n: max(i for i, m in enumerate(names) if m == n) for n in ("cluster", "single")}
+        first = {n: min(i for i, m in enumerate(names) if m == n) for n in ("single", "canopy")}
+        self.assertLess(last["cluster"], first["single"])  # singles fill the band too thin for a cluster
+        self.assertLess(last["single"], first["canopy"])
+        self.assertIn(single, [d["path"] for d in preset["dependencies"]["models"]])
+        self.assertEqual(preset, P.build(target, strays, "m", "m.ds1", "b.json", TERRAIN, **cluster)[0])
+
+    def test_only_a_ds1_drawing_a_tree_dt1_is_painted(self):
+        outdoor = P.Layout(2, 1, {(0, 0): self.F, (1, 0): ("w", (("act3/jungle/treegrp.dt1", 1, 0, 0),))})
+        indoor = P.Layout(2, 1, {(0, 0): self.F, (1, 0): self.WA, (2, 0): ("w", ((None, 1, 0, 0),))})
+        self.assertTrue(P.draws_trees(outdoor))
+        self.assertFalse(P.draws_trees(indoor))
 
 
 class ApplyTests(unittest.TestCase):
