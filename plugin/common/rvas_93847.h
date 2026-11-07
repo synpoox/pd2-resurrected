@@ -1153,6 +1153,17 @@ inline constexpr uint32_t UnitNoDrop = 0x20000;
 inline constexpr uint64_t ActSpawnSpot = 0x2ef8b0;
 inline constexpr int GameActs = 0x190, GameActCount = 0x198;
 
+// --- core-maps: the Uber Tristram primes' minions (UB3, #483) -------------------------------------------------------
+// D2Game's AI table: one 0x20-byte row per monai row, the think function (game, monster, tick) first. The rows were
+// matched by their functions' source files (AiBaal.cpp holds row 135's). The originals PD2 wraps (0x10361150):
+// Mephisto (50), Diablo (51), BaalCrab (135).
+inline constexpr uint64_t AiTable = 0x2396ea0;
+inline constexpr int AiRowSize = 0x20;
+inline constexpr uint64_t AiMephisto = 0x5b1ca0, AiDiablo = 0x5c8d40, AiBaalCrab = 0x5a8b80;
+// The think's tick block: the target at +0x10 (1.13c +0x08), its distance at +0x20 (1.13c +0x14), as the Mephisto
+// think reads them
+inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;
+inline constexpr int MonAiDist = 0x8d;  // uint8 aidist, then (N) and (H) (monstats field table 0x39db30)
 // --- core-maps: the Temple's chests (UB6, #438; D2Game\src\Objects\ObjMode.cpp) ------------------------------------
 // Decompiled for #438 (Ghidra, D2R.gpr). One operate table slot wrapped (rva::ObjectOperateTable).
 // D2R's chest operate (OperateFn 4): mode 0 only; it sets mode 1 with event 1 at the open frames (or mode 2), plays
