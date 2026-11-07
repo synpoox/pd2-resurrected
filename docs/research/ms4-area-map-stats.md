@@ -1,7 +1,7 @@
 # [MS4](https://github.com/synpoox/pd2-resurrected/issues/219): area map stats in D2R
 
-Part of [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) ([#219](https://github.com/synpoox/pd2-resurrected/issues/219)); the extra boss and the drop chances are
-[#286](https://github.com/synpoox/pd2-resurrected/issues/286). PD2's side is
+Part of [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) ([#219](https://github.com/synpoox/pd2-resurrected/issues/219)); the drop chances are
+[#286](https://github.com/synpoox/pd2-resurrected/issues/286) and the extra boss [#289](https://github.com/synpoox/pd2-resurrected/issues/289). PD2's side is
 [pd2-map-system-dll.md](pd2-map-system-dll.md), section 2 (the area slots). D2R addresses are RVAs in the 93847 dump,
 read in Ghidra (`D2R.gpr`). PD2's are VAs in `ProjectDiablo.dll` (`PD2.gpr`).
 
@@ -62,7 +62,7 @@ Slot 7, Hell, the level 95 Paladin, rare maps from `cheat spawn t11,typ r,inv 0`
 
 Not seen: a monster from the added group. About 60 packs in Ruins of Viz-Jun with 1186 added (1 in 12 by weight) showed
 none, and the spawner (`0x50acf0`, `0x50b7e0`, `0x509cc0`) has no check that would turn it away; not explained. Also not
-run: the area level (it rolls only through corruption), fortify (`fort` does not spawn, [#260](https://github.com/synpoox/pd2-resurrected/issues/260)), drop bonus and
+run: the area level (it rolls only through corruption), fortify (`fort` spawns since [#310](https://github.com/synpoox/pd2-resurrected/issues/310), but no fortified map was opened yet), drop bonus and
 treacherous.
 
 ## [MS4b](https://github.com/synpoox/pd2-resurrected/issues/286): the drop chances ([#286](https://github.com/synpoox/pd2-resurrected/issues/286))
@@ -98,8 +98,42 @@ ordinals); column 0 is 1.13c.
 slot 13 at 100), with `cheat mspawn` monsters killed, it logged `map drops: item 178 ethereal 1`. Warlord of Blood
 (`cheat uniques 470`, corrupted) and Ureh City (`cheat uniques 509`, socketed) passed in the user's own run.
 
-## Slot 5, the extra boss: not ported
+## Slot 5, the extra boss ([MS4c](https://github.com/synpoox/pd2-resurrected/issues/289))
 
 `0x1038bfc0` wraps 1.13c D2Game's preset spawn (`0x6fd013b0`, game, room, preset). After the normal spawn, in a map area
-with slot 5 > 0, it spawns a monster preset (type 1) a second time when its id is in a PD2 set (`0x10371290`, a lookup in
-std containers filled at start) or is 1044. Still needed: D2R's preset spawn, and the set's contents.
+with slot 5 > 0, it spawns a monster preset (type 1) a second time when its id is in a PD2 set (`0x10371290`) or is
+1044.
+
+**The set.** `0x10371290` tests the id (in `ecx`) against six std containers, `0x105de938`, `0x105de7d4`, `0x105de9c8`,
+`0x105de9d8`, `0x105de9b0` and `0x105de818`, each filled at start from an int array by `0x10190e30`, `0x10190f10`,
+`0x10190ff0`, `0x101910b0`, `0x10191110` and `0x101911f0` (constants at `0x104506f0`-`0x10450870` and immediates). In
+PD2 monstats ids, then the port's (`tools/pd2_ids.py` `monstats_ids`):
+
+| Set | PD2 ids | Monsters |
+|---|---|---|
+| `0x105de938` | 1026, 800, 1025, 894, 923, 924, 926, 927, 1242, 997 | lernaeanhydra2, ArcaneBoss, AshenBoss, archerBoss, the four NihlMinions, PoisonedWellBoss, doomknight3LibraryBoss |
+| `0x105de7d4` | 746, 996, 750, 915, 1166, 1164, 1175, 1174, 1240, 1243 | megademonboss, westmarchMapBoss, unravelerboss, spiderboss, ImperialPalaceBoss and its minion, CityofUrehMiniBoss, CityofUrehBoss, DarkTempleBoss, DescentBoss |
+| `0x105de9c8` | 247, 248, 249, 824, 970-973 | frogdemon1-3, frogdemonThrone, voidKnightCorridor, overseerRat, unraveler3Rat, skeleton4Rat |
+| `0x105de9d8` | 747, 1000, 1103 | fingermageboss, siegebeastMapBoss, KanemithBoss |
+| `0x105de9b0` | 743, 1104, 1105 | willowispboss, RadamentBoss, SharpToothBoss |
+| `0x105de818` | 968, 969, 1106, 1107, 884, 963, 882, 1149, 1183-1186 | the four voidKnights, SewerBoss, CanyonBoss, ThroneBoss, TortureHallsBoss, the four Invaders |
+| (immediate) | 1044 | lernaeanhydra1 |
+
+Port ids: 247-249, 760, 763, 764, 767, 817, 841, 899, 901, 911, 932, 940, 941, 943, 944, 980, 985-990, 1013, 1014, 1017,
+1042, 1043, 1061, 1120-1124, 1166, 1181, 1183, 1191, 1192, 1200-1203, 1257, 1259, 1260 (checked against the merged
+`monstats.txt` by name).
+
+**D2R's preset spawn** is `0x4926b0(game, room, preset)` (`D2Game\src\Unit\SUnit.cpp`), the only callee of the room's
+preset loop `0x48f190` (1.13c `0x6fd01430`: the same 0x85-0x88 uber level cases, preset ids 0x18d, 0x192, 0x10c, 0x1a,
+0x10d). It calls `0x48dc50` (1.13c `0x6fd012d0`), which sends type 1 to `0x50a050` (1.13c `0x6fc67cf0`; "Preset monster
+could not be added"). The preset record moved: id `+4`, x `+8`, unit type `+0x20`, y `+0x24` (1.13c `+0x14`, `+0x18`).
+
+`OnPresetSpawn` (`plugin/core-maps/map_stats.cpp`) hooks `0x4926b0`: after the spawn, a type 1 preset in a map area
+(levels 138-201, from the room) whose id is in the set gets a second spawn when slot 5 > 0. No PluginSDK service spawns
+presets. PD2's wrapper also rewrites or adds presets in about 20 of its levels (PD2 ids 152-199: the dungeons, the unique maps,
+the Void); that is the dungeons' and unique maps' work ([MS7](https://github.com/synpoox/pd2-resurrected/issues/221)), not slot 5.
+
+**Game check** (Slot5, Hell, the level 95 Amazon): the log read `stats 5/5 installed: ... extra boss`. A Sewers of
+Harrogath map with the Duplicated prefix (`cheat spawn t25,typ m,pre 843,inv 0`) opened with `stat 551 ... -> area slot
+as 5` (value 1). Not seen yet: the Sewer Boss twice. `cheat goto 142,<x>,<y>` did not move the character, so the boss
+room was not reached in the time box.

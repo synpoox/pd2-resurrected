@@ -10,14 +10,22 @@ private-multiplayer release a build may break characters; each break is noted he
 - The Diablo Clone, Rathma and Lucion keys open their areas. Use one at the Blood Fountain in Harrogath (Hell,
   level 80+, Rite of Passage done): everyone at the fountain who is level 80+ goes in, without their mercenary,
   summons or buffs. One map or uber area per game. The fights themselves come later.
+- A tier-0 uber key also leaves three grey portals by the fountain. Each takes one player back in, once, by the same
+  rules (no mercenary, summons or buffs), and heals the boss by 20% of its life. The uber areas have no waypoint.
 - The uber key's tier scales the fight's monsters as in PD2: 1.5 times the life at tier 0; at tiers 1 and 2, three
   times (four for the bosses) plus 20% per tier, and +4 to all skills per tier. The bosses also gain elemental and
   magic absorb by tier and by how often the group has entered.
+
+#### Maps
+
+- Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
 
 #### Fixes
 
 - The mercenary panel shows the mercenary's title (Rogue, Desert Mercenary, Barbarian, Ascendant) instead of
   "an evil force".
+- An item with Druid or Assassin class skills (Hellfire Torch, Spirit Ward) shows the number, e.g.
+  "+2 to Assassin Skill Levels".
 
 ### 0.1.0-alpha (2026-11-05)
 
