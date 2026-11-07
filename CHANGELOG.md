@@ -8,6 +8,7 @@ private-multiplayer release a build may break characters; each break is noted he
 #### Items
 
 - Items follow PD2 more closely: ethereal durability, rare affixes, mercenary gear drops, Tome of Identify, skill on cast/block.
+- A unique charm sold to a vendor by mistake can be bought back, as in PD2.
 
 #### Uber bosses
 
@@ -23,7 +24,9 @@ private-multiplayer release a build may break characters; each break is noted he
 #### Fixes
 
 - The mercenary panel shows the mercenary's title instead of "an evil force".
+- PD2's own items (Worldstone Shards, maps, PD2 uniques) show on the ground in HD again.
 - Legacy graphics shows PD2's own missiles again (Holy Nova and others).
+- Charged potions and other PD2-only items show their own pictures instead of a hand axe.
 - Druid and Assassin class skills on items show their number ("+2 to Assassin Skill Levels").
 
 ### 0.1.0-alpha (2026-11-05)
