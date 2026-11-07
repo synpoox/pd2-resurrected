@@ -6,6 +6,15 @@
 #include <D2RLPlugin/api.h>
 
 #include <cstddef>
+#include <cstdint>
+
+namespace d2r {
+struct Unit;
+}
+
+// PD2's per-hand item stat sum (ProjectDiablo.dll 0x10381720): the stat's item-type layers that the wielded weapon
+// counts (the masteries' passive stats sit on their passiveitype's layer); layer 0 is not counted.
+auto HandStatSum(d2r::Unit* unit, uint32_t stat) noexcept -> int32_t;
 
 // Installs the item rules; `report` gets one entry per rule. Returns how many were installed.
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;

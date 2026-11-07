@@ -1232,6 +1232,18 @@ def smite_event(ctx):
     return f"{len(events)} events on the Paladin, {blows} crushing blows, chance {events[-1][4]}"
 
 
+@check("smite-blow-effectiveness", tags=["core-rules-w19", "core-rules-ir3"])
+def smite_blow_effectiveness(ctx):
+    """A Smite crushing blow takes PD2's effectiveness 1 + calc4 / 100 (calc4 edmx, above 0), item blows 1 (#321)."""
+    blows = re.findall(r"crushing blow: unit type 0 on unit type \d+ class \d+.*?efficiency (-?\d+), effectiveness "
+                       r"([\d.]+)", _log(ctx))
+    if not blows:
+        ctx.skip("no player crushing blow in the log yet (Smite monsters with cheat stat crushingblow, 100)")
+    raised = [float(e) for _, e in blows if float(e) > 1.0]
+    assert raised, f"every blow has effectiveness 1: {blows[:3]}"
+    return f"{len(blows)} blows, effectiveness {raised[-1]:.2f}"
+
+
 def _gate(ctx) -> list[tuple]:
     return [tuple(int(v) for v in r) for r in re.findall(
         r"gate: mode (\d+) \(skill (-?\d+)\) from mode (\d+), concentration (\d): (-?\d+)", _log(ctx))]
@@ -1827,6 +1839,56 @@ def curse_resistance(ctx):
         assert used == want_used, f"stat {stat} on a {who}: used {used} of {resistance}, PD2: {want_used}"
         assert resisted == curse_resisted(base, used), f"stat {stat}: {base} -> {resisted}, PD2: {curse_resisted(base, used)}"
     return f"{len(rows)} stat(s), e.g. stat {rows[0][4]} {rows[0][5]} -> {rows[0][6]} at {rows[0][1]}"
+
+
+GATE_ZERO = re.compile(r"curse gate: state (\d+) cancelled on (player|monster), aurastat1 stat (\d+) (-?\d+) resists to 0 "
+                       r"at (-?\d+) \(used (-?\d+)\)")
+GATE_DURATION = re.compile(r"curse gate: state (\d+) on (player|monster), curse_resistance (-?\d+) \(used (-?\d+)\): "
+                           r"(-?\d+) -> (-?\d+) frames(, cancelled)?")
+GATE_ATTRACT = re.compile(r"curse gate: state (\d+) on an attracted (player|monster), (landed|refused)")
+
+
+def _gate_used(who: str, resistance: int) -> int:
+    return min(resistance, 75) if who == "player" else resistance
+
+
+@check("curse-resisted-to-0", tags=["core-rules-ir4"])
+def curse_resisted_to_0(ctx):
+    """A curse whose aurastat1 resists to 0 (curse_effectiveness) is cancelled (PD2's 0x1036d7d0)."""
+    rows = GATE_ZERO.findall(_log(ctx))
+    if not rows:
+        ctx.skip("no curse resisted to 0 yet (cheat stat curse_effectiveness, 100 on a monster's target, run again)")
+    for state, who, stat, base, resistance, used in rows:
+        assert int(used) == _gate_used(who, int(resistance)), f"state {state} on a {who}: used {used} of {resistance}"
+        assert curse_resisted(int(base), int(used)) == 0, f"state {state}: {base} at {used} is not 0"
+    return f"{len(rows)} cancelled, e.g. state {rows[0][0]} stat {rows[0][2]} {rows[0][3]} at {rows[0][4]}"
+
+
+@check("curse-duration", tags=["core-rules-ir4"])
+def curse_duration(ctx):
+    """curse_resistance (stat 109) cuts a curse's frames to frames * (100 - r) / 100, r at most 75 on a player and
+    uncapped on a monster; 0 frames cancel it (PD2's 0x1036d7d0)."""
+    rows = GATE_DURATION.findall(_log(ctx))
+    if not rows:
+        ctx.skip("no curse on a unit with curse_resistance yet (cheat stat curse_resistance, 90, get cursed, run again)")
+    for state, who, r, used, frames, cut, cancelled in rows:
+        assert int(used) == _gate_used(who, int(r)), f"state {state} on a {who}: used {used} of {r}"
+        want = curse_resisted(int(frames), int(used))
+        assert int(cut) == want, f"state {state}: {frames} -> {cut} frames, PD2: {want}"
+        assert bool(cancelled) == (want <= 0), f"state {state}: {cut} frames, cancelled {bool(cancelled)}"
+    capped = [r for r in rows if r[1] == "player" and int(r[2]) > 75]
+    return f"{len(rows)} curse(s), {len(capped)} capped on a player, e.g. {rows[0][4]} -> {rows[0][5]} at {rows[0][2]}"
+
+
+@check("curse-attract", tags=["core-rules-ir4"])
+def curse_attract(ctx):
+    """A curse lands on a unit holding Attract (PD2 no longer refuses it)."""
+    rows = GATE_ATTRACT.findall(_log(ctx))
+    if not rows:
+        ctx.skip("no curse on an attracted unit yet (Attract a monster, curse it again, run again)")
+    landed = [r for r in rows if r[2] == "landed"]
+    assert landed, f"{len(rows)} curse(s) on an attracted unit, none landed"
+    return f"{len(landed)} of {len(rows)} landed, e.g. state {landed[0][0]}"
 
 
 SKILL_ON_EQUIP = re.compile(r"skill on equip: unit type (\d+), skill (\d+), (-?\d+) -> (-?\d+), level now (-?\d+)")
