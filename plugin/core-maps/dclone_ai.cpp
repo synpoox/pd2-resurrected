@@ -2,7 +2,7 @@
 // the heal when a player leaves, the immunity while his adds live, the three cold-nova phases at the arena centre, the
 // three skeleton waves (UberDiabSummon, srvdo 177) and his attack picks. Every other Trap-Melee monster keeps D2R's think.
 // The trapped souls' AI (0x1035bc60, monai row 99, #472) is here too: they cast while Dclone lives and die with him.
-// That PD2 function's nihlathakMap branch (map boss 0x39a) is not ported: its waves need PD2's map mob lists.
+// That PD2 function's nihlathakMap branch (map boss 0x39a, #538) is here too: stages of mob waves, then RathmaDeath.
 //
 // Dclone registers on monai row 87 through ai_hooks (no SDK service runs monster AI; see ai_hooks.cpp). PD2 keeps the
 // player count in a per-unit map and the last pick in the AI control; Dclone is one per game, so the port keeps both in
@@ -109,7 +109,9 @@ auto Cast(Game* game, Unit* unit, int32_t skill, int32_t mode, Unit* target, int
 		plog::Info("dclone ai: cast skill %d mode %d at (%d, %d)%s -> %d (%u so far)", skill, mode, x, y,
 		           target != nullptr ? " on target" : "", ok, g_casts.load());
 	}
-	d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(d2r::rva::AiSetDelay)(game, unit, frames);
+	if (frames > 0) {  // 0: PD2 casts without 0x103a1910
+		d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(d2r::rva::AiSetDelay)(game, unit, frames);
+	}
 	return ok;
 }
 
@@ -169,6 +171,10 @@ struct Mon {
 	auto Mode(int slot) const noexcept -> int32_t { return At<uint8_t>(rec, d2r::rva::MonSkillModes + slot - 1); }
 	// aip1-8 are int16[8][3]; PD2 reads the Hell column
 	auto Aip(int n) const noexcept -> int32_t { return At<int16_t>(rec, d2r::rva::MonAiParams + 2 * (3 * (n - 1) + 2)); }
+	// One difficulty column (0 Normal, 1 Nightmare, 2 Hell), unsigned as PD2 reads it
+	auto Aip(int n, int col) const noexcept -> int32_t {
+		return At<uint16_t>(rec, d2r::rva::MonAiParams + 2 * (3 * (n - 1) + col));
+	}
 	auto AiDel() const noexcept -> int32_t { return At<uint8_t>(rec, d2r::rva::MonAiDel + 2); }
 };
 
@@ -205,6 +211,12 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 			nearestD = d;
 			nearest = p;
 		}
+	}
+	// The idle window for a boss left alone (PD2 game+0x26fe): idle and immune, counting down while a player is here
+	if (IdleWindow(game, unit, nearest != nullptr)) {
+		Idle(game, unit, 10);
+		SetImmune(game, unit, true);
+		return;
 	}
 	const bool adds = ScanMonsters(game, unit, level, nullptr, 0, nullptr);
 	const int32_t delay = m.AiDel() - 8 * tier + 8 > 25 ? m.AiDel() - 8 * tier + 8 : 25;
@@ -250,10 +262,13 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	}
 
 	const int32_t novas = Stat(unit, StatCooldown1);
-	const auto runToCentre = [&]() -> bool {
-		const bool ran = Cast(game, unit, m.Skill(7), m.Mode(7), nullptr, CentreX, CentreY, 50) != 0;
+	// PD2 aims the path at the centre (0x103331e0) before the run: UberDiabRun's start (srvst 71) keeps that point
+	const auto runToCentre = [&]() {
+		plog::Info("dclone: run to the centre, %d away (squared)", Dist2(unit, CentreX, CentreY));
+		d2r::Engine<void (*)(void*, int32_t, int32_t) noexcept>(d2r::rva::PathSetTargetXY)(
+			At<void*>(unit, d2r::rva::UnitPath), CentreX, CentreY);
+		Cast(game, unit, m.Skill(7), m.Mode(7), nullptr, CentreX, CentreY, 50);
 		SetImmune(game, unit, true);
-		return ran;
 	};
 	if (novas == m.Aip(5)) {
 		SetStat(unit, StatCooldown1, novas - 1);
@@ -262,9 +277,8 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	}
 	if (novas > 0) {
 		const int32_t d = Dist2(unit, CentreX, CentreY);
-		// D2R's DiabRun to a spot with no target unit fails (game check, #470: every run to the centre returned 0, from
-		// 7 and 22 tiles away), so a failed run falls through to the teleport
-		if (d > 30 && runToCentre()) {
+		if (d > 30) {
+			runToCentre();
 			return;
 		}
 		if (d > 2) {
@@ -275,6 +289,7 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 			for (int i = 0; i < count; ++i) {
 				KillQuietly(game, onSpot[i]);
 			}
+			plog::Info("dclone: teleport onto the centre, %d away (squared), %d on the spot killed", d, count);
 			Cast(game, unit, m.Skill(8), m.Mode(8), nullptr, CentreX, CentreY, 50);
 			return;
 		}
@@ -363,6 +378,22 @@ auto FindDclone(Game* game, int32_t level) noexcept -> Unit* {
 	return nullptr;
 }
 
+auto NearestPlayer(Game* game, Unit* unit, int32_t level) noexcept -> Unit* {
+	using namespace d2r::rva;
+	int32_t sx = 0, sy = 0;
+	d2r::UnitXY(unit, &sx, &sy);
+	Unit* nearest = nullptr;
+	int32_t best = 0x7fffffff;
+	for (auto* client = At<uint8_t*>(game, GameClients); client != nullptr; client = At<uint8_t*>(client, ClientNext)) {
+		Unit* p = d2r::Engine<Unit* (*)(void*, int32_t) noexcept>(ClientUnit)(client, 0);
+		if (p != nullptr && !Dead(p) && LevelOf(p) == level && Dist2(p, sx, sy) < best) {
+			best = Dist2(p, sx, sy);
+			nearest = p;
+		}
+	}
+	return nearest;
+}
+
 auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	using namespace d2r::rva;
 	Mon m {tick != nullptr ? At<const uint8_t*>(tick, AiTickMonStats) : nullptr};
@@ -383,19 +414,12 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	}
 
 	// The nearest live player in the level is the target when the tick has none
-	int32_t sx = 0, sy = 0;
-	d2r::UnitXY(unit, &sx, &sy);
-	Unit* nearest = nullptr;
-	int32_t best = 0x7fffffff;
-	for (auto* client = At<uint8_t*>(game, GameClients); client != nullptr; client = At<uint8_t*>(client, ClientNext)) {
-		Unit* p = d2r::Engine<Unit* (*)(void*, int32_t) noexcept>(ClientUnit)(client, 0);
-		if (p != nullptr && !Dead(p) && LevelOf(p) == level && Dist2(p, sx, sy) < best) {
-			best = Dist2(p, sx, sy);
-			nearest = p;
-		}
+	if (IdleWindow(game, nullptr, false)) {
+		Idle(game, unit, 10);
+		return;
 	}
 	Unit*& target = *reinterpret_cast<Unit**>(tick + AiTickTarget);
-	if (nearest != nullptr) {
+	if (Unit* nearest = NearestPlayer(game, unit, level); nearest != nullptr) {
 		target = nearest;
 	}
 
@@ -454,6 +478,138 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	Cast(game, unit, m.Skill(1), m.Mode(1), nullptr, x, y, wait);
 }
 
+// --- nihlathakMap (PD2 0x1035bc60, its branch for monster 0x39a) ---------------------------------------------------
+// The stage is PD2's game+0x2628, map_events.cpp's spawn count: the Shadow of Mendeln spawn sets it to 1.
+constexpr uint32_t StageKey = 0x4d45564e;  // 'MEVN', as map_events.cpp
+constexpr int32_t NihlathakMap = 939;      // PD2 922
+// PD2's two sets (0x105ddfe0 {-1, 923, 924, 926, 927}, 0x105ddf74 {928-931}): a wave monster is one of five picks,
+// zombie, charger, skeleton, archer, or (the -1) one of the four mages
+constexpr int32_t NihlMobs[] = {940, 941, 943, 944};   // zombie, charger, skele, archerNihlMinion
+constexpr int32_t NihlMages[] = {945, 946, 947, 948};  // mFire, mLtng, mCold, mPoisNihlMinion
+
+// The aip row that gives stage `stage`'s wave counts (2, 3 or 4), 0 past the waves; a0-a2 are aip1's three columns
+constexpr auto NihlWaveRow(int32_t stage, int32_t a0, int32_t a1, int32_t a2) noexcept -> int32_t {
+	const int32_t i = stage - 1;
+	return i < a0 + 1 ? 2 : i < a0 + a1 + 1 ? 3 : i < a0 + a1 + a2 + 1 ? 4 : 0;
+}
+// nihlathakMap's aip1 is 20, 15, 10: waves at stages 2-46, the pause at 47, the nova at 48, death at 49
+static_assert(NihlWaveRow(2, 20, 15, 10) == 2 && NihlWaveRow(21, 20, 15, 10) == 2 && NihlWaveRow(22, 20, 15, 10) == 3 &&
+              NihlWaveRow(37, 20, 15, 10) == 4 && NihlWaveRow(46, 20, 15, 10) == 4 && NihlWaveRow(47, 20, 15, 10) == 0);
+
+std::atomic<uint32_t> g_nihlStages {0};
+std::atomic<uint32_t> g_nihlSpawned {0};
+std::atomic<uint32_t> g_nihlNovas {0};
+std::atomic<uint32_t> g_nihlDeaths {0};
+
+// shortcut: champion and unique picks (PD2 0x1037cbf0 / 0x1037caf0: mods and 3-6 minions) spawn as normal monsters,
+// and the spot search is D2R's portal one, not PD2's 0x10389c20; port D2R's unique maker if a wave must match PD2's
+auto SpawnWaveMonster(Game* game, Unit* unit, int32_t ux, int32_t uy, uint32_t* seed) noexcept -> bool {
+	using namespace d2r::rva;
+	int32_t xy[2] = {ux - 10 + static_cast<int32_t>(d2r::RandomBelow(seed, 20)),
+	                 uy - 10 + static_cast<int32_t>(d2r::RandomBelow(seed, 20))};
+	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit);
+	room = room != nullptr ? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(room, xy[0], xy[1]) : nullptr;
+	void* found = nullptr;
+	if (room != nullptr) {
+		d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(
+			FindFreeSpot)(game, room, xy, 3, 0x400, &found, 5, 100);
+	}
+	if (found == nullptr) {
+		return false;
+	}
+	const uint32_t pick = d2r::RandomBelow(seed, 5);
+	const int32_t monster = pick < 4 ? NihlMobs[pick] : NihlMages[d2r::RandomBelow(seed, 4)];
+	return d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
+		SpawnMonster)(game, found, xy[0], xy[1], monster, 1, -1, 0x42) != nullptr;
+}
+
+auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
+	using namespace d2r::rva;
+	Mon m {tick != nullptr ? At<const uint8_t*>(tick, AiTickMonStats) : nullptr};
+	if (m.rec == nullptr) {
+		VanillaAiThink(TrappedSoulRow)(game, unit, tick);
+		return;
+	}
+	const int32_t stage = Counter(game, StageKey);
+	if (stage == 0) {  // not spawned by its map event
+		Idle(game, unit, 25);
+		return;
+	}
+	Unit*& target = *reinterpret_cast<Unit**>(tick + AiTickTarget);
+	if (target == nullptr) {
+		target = NearestPlayer(game, unit, LevelOf(unit));
+	}
+	int32_t ux = 0, uy = 0;
+	d2r::UnitXY(unit, &ux, &uy);
+	const int32_t a0 = m.Aip(1, 0), a1 = m.Aip(1, 1), a2 = m.Aip(1, 2);
+	const int32_t last = a0 + a1 + a2 + 1, i = stage - 1;
+	if (plog::Sample(g_nihlStages)) {
+		plog::Info("nihlathakMap: stage %d of %d (%u thinks)", stage, last + 3, g_nihlStages.load());
+	}
+	// PD2 casts these with no target at (0, 0); the port casts at the caster, where srvdo 169 puts the nova anyway
+	if (stage == 1) {
+		// Wake when a player comes within 14
+		if (target == nullptr || Dist2(target, ux, uy) >= 15 * 15) {
+			Idle(game, unit, 25);
+			return;
+		}
+		Counter(game, StageKey) = 2;
+		plog::Info("nihlathakMap: a player is near, stage 1 -> 2, skill %d", m.Skill(1));
+		Cast(game, unit, m.Skill(1), m.Mode(1), nullptr, ux, uy, 0);
+		return;
+	}
+	if (i == last) {
+		Counter(game, StageKey) = stage + 1;
+		plog::Info("nihlathakMap: waves done, waiting 100");
+		d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(AiSetDelay)(game, unit, 100);
+		return;
+	}
+	if (i == last + 1) {
+		++g_nihlNovas;
+		plog::Info("nihlathakMap: casts skill %d (RathmaDeath) at (%d, %d) (%u novas)", m.Skill(2), ux, uy,
+		           g_nihlNovas.load());
+		Cast(game, unit, m.Skill(2), m.Mode(2), nullptr, ux, uy, 0);
+		Counter(game, StageKey) = stage + 1;
+		d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(AiSetDelay)(game, unit, 25);
+		return;
+	}
+	if (i > last + 1) {
+		++g_nihlDeaths;
+		plog::Info("nihlathakMap: after the nova, it dies (%u deaths)", g_nihlDeaths.load());
+		KillQuietly(game, unit);
+		return;
+	}
+
+	// A wave: counts of normal, champion and unique picks from the stage's aip row
+	const int32_t row = NihlWaveRow(stage, a0, a1, a2);
+	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit);
+	const auto roll = [&](int col, int32_t floor) -> int32_t {
+		const int32_t n = m.Aip(row, col);
+		return n > floor ? static_cast<int32_t>(d2r::RandomBelow(seed, static_cast<uint32_t>(n))) : floor;
+	};
+	int32_t normal = row == 2 ? roll(0, 2) : roll(0, 1);
+	const int32_t champions = row == 2 ? roll(1, 0) : roll(1, 1);
+	const int32_t uniques = row == 4 ? roll(2, 1) : roll(2, 0);
+	normal += normal + champions + uniques < 1 ? 1 : 0;
+	int spawned = 0;
+	for (int32_t k = 0; k < normal + champions + uniques; ++k) {
+		spawned += SpawnWaveMonster(game, unit, ux, uy, seed) ? 1 : 0;
+	}
+	g_nihlSpawned += spawned;
+	// The pause: aip5's Normal column, Nightmare's past aip1's first column, Hell's past the first two
+	const int32_t delay = m.Aip(5, i > a0 + a1 + 1 ? 2 : i > a0 + 1 ? 1 : 0);
+	plog::Info("nihlathakMap: stage %d, wave of aip%d: %d normal, %d champion, %d unique, %d spawned (%u so far), "
+	           "delay %d", stage, row, normal, champions, uniques, spawned, g_nihlSpawned.load(), delay);
+	Counter(game, StageKey) = stage + 1;
+	Idle(game, unit, delay);
+	const uint32_t r = d2r::RandomBelow(seed, 3);
+	if (r == 0) {
+		Cast(game, unit, m.Skill(3), m.Mode(3), target, 0, 0, 0);
+	} else if (r == 1) {
+		Cast(game, unit, m.Skill(1), m.Mode(1), nullptr, ux + 2, uy + 2, 0);
+	}
+}
+
 void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	Mon m {tick != nullptr ? At<const uint8_t*>(tick, d2r::rva::AiTickMonStats) : nullptr};
 	// PD2 hands a monstats row with no Hell aip3 to 0x103187c0 (a D2Game thunk); the port to D2R's Trap-Melee think
@@ -472,15 +628,18 @@ auto InstallDcloneAi(const D2RL::PluginContext* context, char* report, size_t re
 	for (int32_t id = FirstSoul; id <= LastSoul; ++id) {
 		souls += RegisterAiThink(context, TrappedSoulRow, d2r::rva::AiTrappedSoul, id, &ThinkSoul) ? 1 : 0;
 	}
-	std::snprintf(report, reportSize, "monai %d (Trap-Melee) think: uberdiablonew %s; monai %d (TrappedSoul): %d/5 souls",
-	              TrapMeleeRow, ok ? "on" : "off", TrappedSoulRow, souls);
-	return (ok ? 1 : 0) + (souls == 5 ? 1 : 0);
+	const bool nihl = RegisterAiThink(context, TrappedSoulRow, d2r::rva::AiTrappedSoul, NihlathakMap, &ThinkNihlathak);
+	std::snprintf(report, reportSize,
+	              "monai %d (Trap-Melee) think: uberdiablonew %s; monai %d (TrappedSoul): %d/5 souls, nihlathakMap %s",
+	              TrapMeleeRow, ok ? "on" : "off", TrappedSoulRow, souls, nihl ? "on" : "off");
+	return (ok ? 1 : 0) + (souls == 5 && nihl ? 1 : 0);
 }
 
 auto DcloneAiCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "dclone ai: %u thinks, %u nova phases, %u novas, %u waves, %u heals, %u casts; souls: %u meteors, %u "
-	              "deaths",
+	              "deaths; nihlathakMap: %u thinks, %u spawned, %u novas, %u deaths",
 	              g_thinks.load(), g_phases.load(), g_novas.load(), g_waves.load(), g_heals.load(), g_casts.load(),
-	              g_soulCasts.load(), g_soulDeaths.load());
+	              g_soulCasts.load(), g_soulDeaths.load(), g_nihlStages.load(), g_nihlSpawned.load(), g_nihlNovas.load(),
+	              g_nihlDeaths.load());
 }

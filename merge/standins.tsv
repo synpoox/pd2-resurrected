@@ -51,7 +51,6 @@ skills	Holy Freeze Korlic	Holy Freeze	cltdofunc	Paladin aura client do
 skills	Holy Freeze Korlic	Holy Freeze	cltstfunc	Paladin aura client start
 skills	Holy Fire Sanctuaryboss	Holy Fire	cltdofunc	Paladin aura client do
 skills	Holy Fire Sanctuaryboss	Holy Fire	cltstfunc	Paladin aura client start
-skills	UberDiabRun	DiabRun	srvstfunc	UberDiabSummon, UberDiabRun
 skills	Energy Shield SelfAura	Might	cltdofunc	Paladin aura client do
 skills	Energy Shield SelfAura	Might	cltstfunc	Paladin aura client start
 skills	Chilling Armor SelfAura	Might	cltdofunc	Paladin aura client do
