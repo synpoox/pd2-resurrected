@@ -5,7 +5,8 @@
 //   chance min and level max, both adjusted by the skill as PD2 does.
 //   The Cast Triggers companion fires item_skilloncast (IR2, patches/030-cast-triggers.json).
 // - curses (docs/research/ir4-curses.md): max curses (a target holds up to the caster's max_curses + 1 curses) and
-//   curse resistance (curse_effectiveness on the target scales the curse's stats), around D2R's ApplyCurse.
+//   curse resistance (curse_effectiveness on the target scales the curse's stats), around D2R's ApplyCurse; PD2's
+//   gate (#264): resisted-to-0 cancels, stat 109 cuts the duration (cap 75 on a player), attract no longer refuses.
 // - skill while equipped and phasing (docs/research/ir7-equipped-items.md): item_skillonequip runs its skill as an
 //   item aura (D2R's item_aura case and tick, fed stat 375), and Phasing SelfAura drops the unit collision bits.
 // - critical and deadly strike (IR3, docs/research/ir3-combat-stats.md): PD2's roll and multipliers in place of
@@ -378,11 +379,14 @@ auto CrushingBlow(Game* game, Unit* unit, Unit* target, d2r::CrushingBlowArgs* a
 constexpr int32_t StatCurseSlots = 374;          // curse_slots, merged id (PD2 190): the slot count a curse was cast with
 constexpr int32_t StatMaxCurses = 421;           // max_curses (PD2 368)
 constexpr int32_t StatCurseResistance = 557;     // curse_effectiveness, shown as Curse Resistance (PD2 504)
+constexpr int32_t StatCurseDuration = 109;      // curse_resistance: cuts a curse's duration (same id merged and PD2)
+constexpr int32_t StateAttract = 57;             // attract (merged id; D2R's NewStateList tests 0x39)
 constexpr int32_t CurseResistanceCap = 75;
 constexpr int MaxCurseLists = 64;  // a unit holds a handful; more only stops a corrupt chain from spinning
 
 std::atomic<uint32_t> g_curses {0};
 std::atomic<uint32_t> g_curseResisted {0};
+std::atomic<uint32_t> g_curseGate {0};
 
 // PD2's 0x1037c4c0 as its curse code calls it: value * (100 - resistance) / 100, truncated
 auto Resisted(int32_t value, int32_t resistance) noexcept -> int32_t {
@@ -471,8 +475,6 @@ auto ResistCurse(uint32_t dataFlag, Unit* target, const d2r::CurseParams* params
 		if (base == 0) {
 			continue;  // D2R set nothing for it
 		}
-		// shortcut: an aurastat1 resisted to 0 leaves the curse on with the stat at 0 (PD2 cancels it); upgrade by
-		// resisting params->values[0] before the call if a unit ever shows it
 		const int32_t used = resistance > CurseResistanceCap && (i > 0 || player) ? CurseResistanceCap : resistance;
 		const int32_t resisted = Resisted(base, used);
 		setStat(dataFlag, list, stat, resisted, 0);
@@ -484,8 +486,91 @@ auto ResistCurse(uint32_t dataFlag, Unit* target, const d2r::CurseParams* params
 	}
 }
 
+auto GateLog(uint32_t n) noexcept -> bool {
+	return n <= 20 || n % 100 == 0;
+}
+
+// PD2's curse gate (0x1036d7d0) ahead of D2R's: a curse whose aurastat1 resists to 0 is cancelled, and stat 109 cuts
+// the duration by PD2's formula (at most 75 on a player), a duration of 0 cancelling it. Returns false to cancel;
+// `frames` is the duration to hand D2R, `duration` the target's stat 109.
+auto CurseGate(const d2r::CurseParams* params, Unit* target, int32_t& frames, int32_t& duration) noexcept -> bool {
+	const bool player = At<int32_t>(target, d2r::rva::UnitType) == 0;
+	const auto capped = [player](int32_t r) { return player && r > CurseResistanceCap ? CurseResistanceCap : r; };
+	const int32_t resistance = StatOf(target, StatCurseResistance);
+	if (resistance != 0 && params->stats[0] >= 0) {
+		const int32_t base = d2r::Engine<int32_t (*)(Game*, Unit*, int32_t, int32_t) noexcept>(d2r::rva::CurseStatValue)(
+			params->game, target, params->stats[0], params->values[0]);
+		if (base != 0 && Resisted(base, capped(resistance)) == 0) {
+			if (const uint32_t n = ++g_curseGate; GateLog(n)) {
+				plog::Info("curse gate: state %d cancelled on %s, aurastat1 stat %d %d resists to 0 at %d (used %d), "
+				           "%u so far", params->state, player ? "player" : "monster", params->stats[0], base, resistance,
+				           capped(resistance), n);
+			}
+			return false;
+		}
+	}
+	frames = params->frames;
+	duration = StatOf(target, StatCurseDuration);
+	if (duration == 0 || frames <= 0) {
+		return true;
+	}
+	frames = Resisted(params->frames, capped(duration));
+	if (const uint32_t n = ++g_curseGate; GateLog(n)) {
+		plog::Info("curse gate: state %d on %s, curse_resistance %d (used %d): %d -> %d frames%s, %u so far",
+		           params->state, player ? "player" : "monster", duration, capped(duration), params->frames, frames,
+		           frames <= 0 ? ", cancelled" : "", n);
+	}
+	return frames > 0;
+}
+
 using ApplyCurseFn = int64_t (*)(Unit* target, d2r::CurseParams* params) noexcept;
 ApplyCurseFn g_applyCurseOriginal = nullptr;
+
+// D2R's NewStateList (0x433d20, its entry D2RCore's, so not hookable here) refuses a curse at stat 109 >= 100, cuts
+// the duration by it uncapped, and refuses a curse on a unit with attract. PD2 does neither, so the call runs with
+// the target's stat 109 zeroed on its base layer (the gate already cut `frames`) and its attract bit off. Both come
+// back before this returns; nothing else runs in between (one game thread).
+auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int32_t frames, int32_t duration) noexcept
+	-> int64_t {
+	using namespace d2r::rva;
+	const auto setStat = d2r::Engine<void (*)(Unit*, uint32_t, int32_t, uint32_t) noexcept>(SetUnitStat);
+	const auto setState = d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState);
+	void* owner = At<void*>(target, UnitListOwner);
+	int32_t base = 0;
+	bool zeroed = false;
+	if (duration != 0 && owner != nullptr) {
+		base = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue)(dataFlag, owner,
+		                                                                                          StatCurseDuration, 0);
+		setStat(target, StatCurseDuration, base - duration, 0);
+		zeroed = StatOf(target, StatCurseDuration) == 0;
+		if (!zeroed) {  // stat 109 not where it was looked for: D2R's own rule applies, on the uncut duration
+			setStat(target, StatCurseDuration, base, 0);
+			plog::Info("curse gate: stat 109 %d did not clear (base %d), D2R's duration rule applies", duration, base);
+		}
+	}
+	const bool attracted = d2r::Engine<uint32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(target, StateAttract) != 0;
+	if (attracted) {
+		setState(target, StateAttract, 0);
+	}
+	const int32_t asked = params->frames;
+	params->frames = zeroed ? frames : asked;  // the srvdo's area walk reuses params for its next target
+	const int64_t applied = g_applyCurseOriginal(target, params);
+	params->frames = asked;
+	if (zeroed) {
+		setStat(target, StatCurseDuration, base, 0);
+	}
+	// A full target may have lost the attract curse itself to this one: then its bit stays off
+	if (attracted && d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(target, StateAttract) != nullptr) {
+		setState(target, StateAttract, 1);
+	}
+	if (attracted) {
+		if (const uint32_t n = ++g_curseGate; GateLog(n)) {
+			plog::Info("curse gate: state %d on an attracted %s, %s, %u so far", params->state,
+			           At<int32_t>(target, UnitType) == 0 ? "player" : "monster", applied != 0 ? "landed" : "refused", n);
+		}
+	}
+	return applied;
+}
 
 auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
 	using namespace d2r::rva;
@@ -497,12 +582,16 @@ auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
 	if (state < 0 || d2r::Engine<uint32_t (*)(uint32_t, int32_t) noexcept>(StateIsCurse)(dataFlag, state) == 0) {
 		return g_applyCurseOriginal(target, params);
 	}
+	int32_t frames = 0, duration = 0;
+	if (!CurseGate(params, target, frames, duration)) {
+		return 0;
+	}
 	const auto stateList = d2r::Engine<uint8_t* (*)(Unit*, int32_t) noexcept>(UnitStateList);
 	uint8_t* before = stateList(target, state);
 	uint8_t* hidden[MaxCurseLists];
 	int hiddenCount = 0;
 	const int32_t slots = MakeRoom(dataFlag, params->caster, target, state, hidden, hiddenCount);
-	const int64_t applied = g_applyCurseOriginal(target, params);
+	const int64_t applied = ApplyUngated(target, params, dataFlag, frames, duration);
 	for (int i = 0; i < hiddenCount; ++i) {
 		*reinterpret_cast<uint32_t*>(hidden[i] + ListFlags) |= ListFlagCurse;
 	}
@@ -724,8 +813,8 @@ auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "ormus rolls %u, strike rolls %u, crits %u, "
 	              "deadly strikes %u, equipped_eth reads %u, life steal cap checks %u (blocked %u), crushing blows %u, "
-	              "curses %u, resisted %u, skill on equip changes %u, ticks %u, phasing %u",
+	              "curses %u, resisted %u, gated %u, skill on equip changes %u, ticks %u, phasing %u",
 	              g_rolls.load(), g_strikeRolls.load(), g_crits.load(),
 	              g_deadlyStrikes.load(), g_ethReads.load(), g_capChecks.load(), g_capBlocks.load(), g_blows.load(),
-	              g_curses.load(), g_curseResisted.load(), g_equipCallbacks.load(), g_equipTicks.load(), g_phasing.load());
+	              g_curses.load(), g_curseResisted.load(), g_curseGate.load(), g_equipCallbacks.load(), g_equipTicks.load(), g_phasing.load());
 }
