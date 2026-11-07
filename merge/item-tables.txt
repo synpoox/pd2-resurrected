@@ -18,6 +18,5 @@ merge	uniquesuffix
 merge	uniqueappellation
 no-drop	pvpm	PvP maps
 no-drop	pvpd	PvP desert maps
-no-drop	ubtm	Uber Trist Map
 no-drop	uba	Uber Ancients Map
 no-drop	t41	Monastery Map
