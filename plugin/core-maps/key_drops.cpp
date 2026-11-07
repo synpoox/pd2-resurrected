@@ -46,7 +46,6 @@ constexpr KeyRoll Rolls[] = {
 constexpr int RollCount = static_cast<int>(sizeof(Rolls) / sizeof(Rolls[0]));
 
 constexpr int32_t FirstRedPortal = 125, LastRedPortal = 127;  // Abaddon, the Pit of Acheron, the Infernal Pit
-constexpr int SkirmishSlot = 4;  // map_glob_skirmish_mode (port 546, PD2 493): its area slot doubles every roll
 
 // PD2's 0x10375ee0: N of the 1-in-N roll; 0 means no drop. More than 8 players counts as 1.
 constexpr auto Odds(int32_t unique, int32_t set, int32_t players) noexcept -> int64_t {
@@ -129,9 +128,19 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	UniqueMapDeath(game, monster);
 	const uint32_t difficulty = event->difficulty < 3 ? event->difficulty : 2;
 	const int32_t players = d2r::Engine<int32_t (*)(Game*) noexcept>(PlayerCount)(game);
-	const int64_t mult = MapAreaSlot(game, monster, SkirmishSlot) != 0 ? 2 : 1;
+	const int64_t mult = MapRollMultiplier(monster);
 	auto* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(monster);
 	UberDeathDrops(game, monster, seed);
+	// The drop's killer (its quest test and magic find): a missile counts as its owner, as for D2R's own drop
+	using D2RL::Lifecycle::UnitType;
+	Unit* killer = event->killer.type != UnitType::Invalid
+	                   ? d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(
+	                         game, static_cast<int32_t>(event->killer.type), event->killer.id)
+	                   : nullptr;
+	if (killer != nullptr && event->killer.type == UnitType::Missile) {
+		killer = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, killer);
+	}
+	MapDeathDrops(game, monster, killer, seed);
 	for (int i = 0; i < RollCount; ++i) {
 		const KeyRoll& r = Rolls[i];
 		if (!Applies(r.where, game, monstats, event->levelId)) {
