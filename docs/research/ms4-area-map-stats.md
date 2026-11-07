@@ -51,7 +51,8 @@ unported keeps parity.
 
 Since [MS7](https://github.com/synpoox/pd2-resurrected/issues/221), a multi-level map's other levels are rewritten too, after the entry level, as PD2's
 `0x383060` does (its list is in [pd2-map-system-dll.md](pd2-map-system-dll.md), section 1; `MultiLevels` holds the
-port ids). Only the entry level's call adds the fortify, drop bonus and treacherous monster stats.
+port ids). Only the entry level's call adds the fortify, drop bonus and treacherous monster stats. Game check (Slot6,
+Hell, level 95 Barbarian): a rare Plains of Torment (`t42`, density +94) took levels 163 and 164 from 2475 to 4801.
 
 ## Game check
 
