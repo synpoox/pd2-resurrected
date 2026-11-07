@@ -15,6 +15,7 @@
 #include "d2r.h"
 #include "key_drops.h"
 #include "log.h"
+#include "lucion_ai.h"
 #include "map_events.h"
 #include "map_open.h"
 #include "map_stats.h"
@@ -95,6 +96,12 @@ void InstallEvents(const D2RL::PluginContext* context, char* report, size_t size
 	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
 }
 
+void InstallLucion(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallLucionAi(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
+}
+
 void InstallPool(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	(void)context;
 	InstallEntityPool(report, size);
@@ -108,6 +115,7 @@ Part g_parts[] = {
 	{"pool", InstallPool, ""},
 	{"keys", InstallKeys, ""},
 	{"events", InstallEvents, ""},
+	{"lucion", InstallLucion, ""},
 };
 
 void InstallParts(const D2RL::PluginContext* context) noexcept {
@@ -167,6 +175,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	EventPortalsCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	LucionAiCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;

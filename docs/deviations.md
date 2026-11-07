@@ -173,10 +173,11 @@ rows have no table hook: D2R does what it does.
 | Item quantity display | approximated | the number sits at the bottom right of the picture (#359 asks for it; PD2 draws it bottom left), white with D2R's drop shadow instead of PD2's black box; tomes show no number (PD2 shows their charges; the owner's call); the stash's Gems/Materials/Runes tabs show D2R's own count instead | [#359](https://github.com/synpoox/pd2-resurrected/issues/359) |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 
-### Approximated (59)
+### Approximated (60)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
+| Lucion's Overseer AI: the frenzy's extras, the idle window and the target distance | approximated | core-maps ports PD2's AI (`0x1035dca0`) for Lucion, LucionControl and LucionSpawner, but leaves out the level darkening (packet 0x53) and the two sounds of the frenzy, its two unread D2Game thunks (`0x103a4c70`, `0x103a4c90`), the light radius −100 on state 146, the curse strip of the immunity, and the 15-tick idle window (`game+0x26fe`). Lucion measures the far blink by his AI target's distance, not the nearest player's, and the immunity puts back the resists it saved, not monstats' ([pd2-uber-bosses-dll](research/pd2-uber-bosses-dll.md), section 5) | [#437](https://github.com/synpoox/pd2-resurrected/issues/437) |
 | Inferno, Arctic Blast: the caster's frame events | approximated | after each cast PD2 drops the caster's pending frame and mode-end events and adds them again from the next whole frame (`0x1037a7c0`); core-rules leaves D2R's events as they are, so the rows keep D2R's seqinput 10 (PD2's 3 loops D2R's client sequence before its action frame and no flame is drawn; merge/standins.tsv) (docs/research/druid-w21.md) | core-rules |
 | Inferno, Arctic Blast: the client's flames | approximated | core-rules holds another player's channelling caster in its frames as D2R's Inferno does, not for the local player; PD2 does it for every caster. PD2's call after each flame (`0x103a45c0`, with calc1) is taken to be D2R's anim-range set (docs/research/druid-w21.md) | core-rules |
 | Charge: the splash distance and a monster's speed | approximated | The distance is measured to the skill's target point, PD2's to its path's first point; a monster's charge speed is its monstats Velocity, where PD2 reads charstats at the monster's id (docs/core-rules.md) | core-rules |

@@ -1079,6 +1079,28 @@ inline constexpr uint64_t AddLife = 0x451820;
 inline constexpr uint8_t AddLifeEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x56, 0x48, 0x83,
                                            0xec, 0x20, 0x8b, 0xf2, 0x48, 0x8b, 0xd9};
 inline constexpr uint64_t UnitMaxLife = 0x2f4d20;  // (unit) -> max life, 1/256
+
+// --- core-maps: Lucion's AI (UB6, #437; D2Game\src\Ai) ----------------------------------------------------------------
+// The AI table, one 32-byte row per monai.txt row (155): +0 the think function (game, unit, tick), +0x10 an int, +0x18
+// a second function. Found by the references to AiThink4.cpp's functions; row 120 (Overseer) is at +0xf00.
+inline constexpr uint64_t AiTable = 0x2396ea0;
+inline constexpr int AiRowSize = 0x20, AiOverseerRow = 120;
+inline constexpr uint64_t AiOverseerD2R = 0x5c2290;  // D2R's Overseer think, the expected value of row 120
+// The think's tick: +0x10 the target (or null), +0x20 int distance to it, +0x24 non-zero in melee range, +0x28 the
+// monstats record, +0x38 uint8 difficulty (all as D2R's Overseer 0x5c2290 reads them)
+inline constexpr int TickTarget = 0x10, TickDistance = 0x20, TickInMelee = 0x24, TickMonStats = 0x28,
+                     TickDifficulty = 0x38;
+// monstats record: aidel uint8[3] (the txt field table 0x39db30), aip1-8 int16[8][3], Skill1-8 int16, Sk1-8mode uint8
+inline constexpr int MonAiDel = 0x8a, MonAiParams = 0x90, MonSkills = 0x1c4, MonSkillModes = 0x1d4;
+// (game, unit, mode, skill, target, x, y, 0) -> non-zero once cast; on failure it idles 10 (0x4a7bc0)
+inline constexpr uint64_t AiUseSkill = 0x4a7bc0;
+inline constexpr uint64_t AiIdle = 0x4a6d10;      // (game, unit, frames): mode neutral, think again after frames
+inline constexpr uint64_t AiSetDelay = 0x4a6e50;  // (game, unit, frames): think again after frames, mode kept
+inline constexpr uint64_t AiAttack = 0x4a78e0;    // (game, unit, mode, target): melee in mode 4 (A1) or 5 (A2)
+inline constexpr uint64_t AiApproach = 0x4a8740;  // (game, unit, target, 0): walk at the target
+// The mode command AiIdle sends: (unit, mode, &cmd), cmd +0x10 the unit, then (game, &cmd, 1)
+inline constexpr uint64_t ModeCmdInit = 0x4471e0, ModeCmdRun = 0x4475c0;
+inline constexpr int ModeCmdUnit = 0x10;
 // CrushingBlowApply's entry is jmp [rip+0x38a8872]: the qword it jumps through, which a plugin can swap
 inline constexpr uint64_t CrushingBlowApplySlot = 0x3e2a448;
 // The unit event dispatcher 0x5881e0, (game, event, unit, target, damage, list), is jmp [here]: D2RCore's. The hit
