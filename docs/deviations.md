@@ -174,7 +174,7 @@ rows have no table hook: D2R does what it does.
 | Item quantity display | approximated | the number sits at the bottom right of the picture (#359 asks for it; PD2 draws it bottom left), white with D2R's drop shadow instead of PD2's black box; tomes show no number (PD2 shows their charges; the owner's call); the stash's Gems/Materials/Runes tabs show D2R's own count instead | [#359](https://github.com/synpoox/pd2-resurrected/issues/359) |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 
-### Approximated (59)
+### Approximated (58)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
