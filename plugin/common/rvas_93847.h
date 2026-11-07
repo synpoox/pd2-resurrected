@@ -907,6 +907,10 @@ inline constexpr int GameCounters = 0x1aac8;
 inline constexpr uint64_t QuestFlag = 0x325c50;
 inline constexpr int PlayerQuests = 0x40;
 inline constexpr uint64_t ClientMessage = 0x491960;  // (player, message, player); 0x15 is "can't do that"
+// (game, const char text[256], colour): a chat line (packet 0x26, type 1, no sender) to every client of the game
+// (game +0x138, through 0x477a30, which breaks on text over 255 bytes). It copies all 256 bytes. The debug commands'
+// "Warping to level" (0x402820) use it with colour 2. Called, not hooked.
+inline constexpr uint64_t GameChat = 0x4016c0;
 
 // --- core-maps: opening an uber fight (UB2, #227; D2Game\src\Game\Clients.cpp) ----------------------------------
 // Decompiled for #227 (Ghidra, D2R.gpr). Called, not hooked.
@@ -1194,6 +1198,7 @@ inline constexpr int AiRowSize = 0x20;
 inline constexpr uint64_t AiMephisto = 0x5b1ca0, AiDiablo = 0x5c8d40, AiBaalCrab = 0x5a8b80;
 inline constexpr uint64_t AiOverseer = 0x5c2290;  // row 120's think (Lucion, #437)
 inline constexpr uint64_t AiTrapMelee = 0x5b5ca0;  // row 87's think (Dclone, #470): melee by aip1, else idle aip2
+inline constexpr uint64_t AiTrappedSoul = 0x5cfb20;  // row 99's think (the trapped souls, #472), read from the table
 // The think's tick block: the target at +0x10 (1.13c +0x08), its distance at +0x20 (1.13c +0x14), as the Mephisto
 // think reads them
 inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;

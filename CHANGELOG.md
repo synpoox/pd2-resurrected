@@ -35,10 +35,12 @@ private-multiplayer release a build may break characters; each break is noted he
 - Lucion fights in PD2's stages: blinks, Nova, a frenzy of Punish, and spawners that call his adds.
 - Rathma and Mendeln fight by PD2's script: life events, held life, immunity, and retreat portals below 15%.
 - Diablo Clone fights in PD2's phases: three nova rounds, three skeleton waves, immune while his adds live.
+- Diablo Clone's trapped souls rain meteors and boulders, faster and tighter by tier, and die with him.
 - Uber fight monsters scale with the key's tier, as in PD2.
 - PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
 - Lucion's death opens a portal to the Temple, ends his adds and drops a Demonic Cube at tiers 1-2.
 - Lucion's death also opens a portal in Harrogath back into his arena.
+- The death novas of Rathma, Lucion, the Nihlathak map boss and DollMeteor show, as in PD2.
 - After Lucion's death, cube a corrupted amulet in the Temple to try a Desecration (50%, 60% at tiers 1-2).
 - Diablo Clone drops Annihilus, and at tiers 1-2 rolls 1 in 200 for one of PD2's five Dclone uniques.
 - Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
@@ -53,6 +55,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - The Outer Void has PD2's three random bosses, and its portals lead deeper, then home with uber parts.
 - Monsters in maps can drop unique maps, and Horazon has a 10% chance to drop one, as in PD2.
 - Fortified maps no longer double key and unique map rolls on map bosses, as in PD2.
+- A map event's spawn sends PD2's notify line ("Evil beckons you from the Void...") in red chat.
 - Fortified, drop-bonus and item-drop maps give their extra and stat drops on kills, as in PD2.
 - Map tooltips show the map's tier, and map stats read without raw format codes.
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
