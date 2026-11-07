@@ -154,8 +154,9 @@ controller, spawner and adds. So a boss left alone, or pulled out of every playe
 - **Skeleton waves** at stat-447 phases 1, 3 and 5. They fire when life drops below Param4, Param5 and Param6 of skill slot
   6 (UberDiabSummon) in `skills.txt`: 85, 60 and 35, the wiki's numbers.
 - **Immunity:** each tick it checks whether any of monsters 886-892 (Dclone's adds) are alive in the level, and calls the
-  immunity toggle (`0x10380770`, section 5 intro). The boss is immune while any add lives, and also while no player is
-  within 0x17c of it; otherwise its resists are restored from `monstats`.
+  immunity toggle (`0x10380770`, section 5 intro). The boss is immune while any add lives, before his first phase (stat 447 = 0), and while the farthest
+  player in his level is more than 0x17c away (squared subtiles); otherwise its resists are restored from `monstats`
+  (its Normal columns). #470's port read this from the disassembly.
 - **Trapped souls** (`0x1035bc60`, monsters 790-794) die when Dclone is dead or dying. Their cast delay is the `aidel`
   minus 4×tier (at least 20) and their spread shrinks with the tier.
 
