@@ -45,6 +45,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Maps
 
+- Unique map bosses leave a portal to Harrogath (or onward) and drop PD2's charms, facets and puzzle pieces.
 - A map event's spawn sends PD2's notify line ("Evil beckons you from the Void...") in red chat.
 - Fortified, drop-bonus and item-drop maps give their extra and stat drops on kills, as in PD2.
 - Map tooltips show the map's tier, and map stats read without raw format codes.
