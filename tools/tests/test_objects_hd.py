@@ -37,6 +37,13 @@ class ObjectHdTests(unittest.TestCase):
         hd = run("xactportal_gold\tportal_permanent\tgold.particles\n", D2R_OBJECTS + "xactportal_gold\tx\r\n")
         self.assertEqual((hd / "vfx_only" / "xactportal_gold.json").read_text(), PERMANENT.replace("red", "gold"))
 
+    def test_camel_class_gets_d2r_key(self):
+        hd = run("LucionChest\tportal_permanent\n", D2R_OBJECTS + "LucionChest\tLucionChest\r\n")
+        self.assertEqual(json.loads((hd / "objects.json").read_text())["lucion_chest"], {"asset_path": "vfx_only"})
+        self.assertTrue((hd / "vfx_only" / "lucion_chest.json").is_file())
+        self.assertEqual([H.key(c) for c in ("PortalPermanent", "Chest1B", "TownAct3GidBInnAltar", "SpecialChest100")],
+                         ["portal_permanent", "chest_1_b", "town_act_3_gid_b_inn_altar", "special_chest_100"])
+
     def test_bad_lines_fail(self):
         with self.assertRaisesRegex(H.ObjectHdError, "not a PD2-only"):
             run("PortalPermanent\tportal_permanent\n", D2R_OBJECTS)
