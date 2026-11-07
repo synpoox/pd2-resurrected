@@ -167,7 +167,9 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # docs/research/p12-ormus-robes.md).
 # levels' Teleport 3 (PD2's path search, research/sorceress-w26.md) is not a D2R value; 1 (allowed) stands in until MS7.
 # Map items' pSpell 12 (D2R's 12 is the Resist Scroll) takes the free item spell 16 core-maps installs (MS2).
+# PD2's portal operate 77 (the xactportals) takes D2R's free operate slot 60, which core-maps fills (UB2).
 FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
+         "objects": {"OperateFn": {"77": "60"}},
          "misc": {"pSpell": {MAP_SPELL: "16"}},
          "levels": {"Teleport": {"3": "1"}},
          "missiles": {"pSrvDoFunc": {"38": "46", "40": "47"}, "pCltDoFunc": {"70": "78", "69": "79", "72": "80"},

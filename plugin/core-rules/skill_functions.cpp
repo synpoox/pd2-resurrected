@@ -287,6 +287,19 @@ auto CltDoDoubleThrow(Unit* unit, int32_t skillId, int32_t level) noexcept -> in
 	return 1;
 }
 
+// The unit's list on `state` dropped, state off and list freed, as RemoveSkillState (0x4370b0) does per state. That
+// one removes by states.txt group and does nothing for a state with none (temp_skill_buff, the progressive states).
+void DropStateList(uint32_t dataFlag, Unit* unit, int32_t state) noexcept {
+	using namespace d2r::rva;
+	void* list = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, state);
+	if (list == nullptr) {
+		return;
+	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, state, 0);
+	d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
+	d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
+}
+
 // --- Split Throw's start buff (PD2 srvstfunc 79)---------------------------------------------------------------------
 std::atomic<uint32_t> g_tempBuffs {0};
 
@@ -310,7 +323,7 @@ auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 	if (state <= 0) {
 		return 1;  // no aurastate: the cast goes on without a buff
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, state, 1);
+	DropStateList(dataFlag, unit, state);  // always a new list: NewStateList keeps a same-level one as it is
 	d2r::StateListRequest request {unit, unit, skillId, level, TempBuffFrames, -1, 0, state,
 	                               d2r::Engine<void (*)()>(SkillStateExpired)};
 	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
@@ -1880,10 +1893,7 @@ auto SharedCharges(uint32_t dataFlag, Unit* unit, bool clear) noexcept -> int32_
 			continue;
 		}
 		if (clear) {
-			// as RemoveSkillState does per state: progressive states have no group, so it would remove nothing
-			d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, states[i], 0);
-			d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
-			d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
+			DropStateList(dataFlag, unit, states[i]);
 			continue;
 		}
 		const uint8_t* maker = d2r::api.getSkillRecord(dataFlag, ListStat(dataFlag, list, StatListSkill));
@@ -2811,11 +2821,12 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		charges = unitStat(unit, At<int16_t>(skill, SkAuraStat1), 0);
 		value = charges < 3 ? calc2 * charges : 0;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, TempSkillBuff, 1);  // always a new list
-	TimedStatList(dataFlag, unit, unit, skillId, level, SplashFrames, TempSkillBuff, {{IncSplashRadius, value}});
+	DropStateList(dataFlag, unit, TempSkillBuff);  // always a new list
+	const char* made =
+		TimedStatList(dataFlag, unit, unit, skillId, level, SplashFrames, TempSkillBuff, {{IncSplashRadius, value}});
 	if (plog::Sample(g_splashStarts)) {
-		plog::Info("splash start: skill %d level %d charges %d calc2 %d: splash radius %d, start %u", skillId, level,
-		           charges, calc2, value, g_splashStarts.load());
+		plog::Info("splash start: skill %d level %d charges %d calc2 %d: splash radius %d, list %s, start %u", skillId,
+		           level, charges, calc2, value, made, g_splashStarts.load());
 	}
 	return 1;
 }
@@ -3641,6 +3652,7 @@ struct CyclerHeal {
 	int32_t heal;  // whole points
 	int32_t stat;  // 6 life or 8 mana
 	int32_t healed;
+	int32_t before, after, max;  // a player's stat in whole points, for the game check (#268)
 };
 
 // One unit in range (PD2's 0x1036d5a0): the stat + heal, at most its maximum.
@@ -3649,8 +3661,12 @@ auto CyclerHealOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	auto* c = static_cast<CyclerHeal*>(area->arg);
 	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
 	const int32_t max = unitStat(victim, c->stat == StatMana ? StatMaxMana : StatMaxLife, 0);
+	const int32_t before = unitStat(victim, c->stat, 0);
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(
-		victim, c->stat, std::min(unitStat(victim, c->stat, 0) + c->heal * 256, max), 0);
+		victim, c->stat, std::min(before + c->heal * 256, max), 0);
+	if (At<int32_t>(victim, UnitType) == 0) {  // a player
+		c->before = before >> 8, c->after = unitStat(victim, c->stat, 0) >> 8, c->max = max >> 8;
+	}
 	++c->healed;
 	return 1;
 }
@@ -3673,7 +3689,7 @@ auto SrvStCycler(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	d2r::Engine<void (*)(Unit*) noexcept>(QueueUnitUpdate)(corpse);
 	const auto calc = [&](int field) { return d2r::EvalCalc(game, unit, skill, field, skillId, level); };
 	const int32_t radius = calc(SkAuraRangeCalc), low = calc(SkCalc1), high = calc(SkCalc2);
-	CyclerHeal c {low, calc(SkCalc3), 0};
+	CyclerHeal c {low, calc(SkCalc3), 0, -1, -1, -1};
 	if (c.stat != StatLife && c.stat != StatMana) {
 		return 0;  // PD2 too: the corpse stays taken
 	}
@@ -3687,7 +3703,8 @@ auto SrvStCycler(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		unit, corpse, skillId, 1, 0, 0, 0);  // PD2 and D2R's srvst 63 both end with this packet
 	if (plog::Sample(g_cyclerStarts)) {
 		plog::Info("cycler start: skill %d level %d: heal %d (calc1 %d, calc2 %d) of stat %d, radius %d, units %d, "
-		           "cast %u", skillId, level, c.heal, low, high, c.stat, radius, c.healed, g_cyclerStarts.load());
+		           "player %d -> %d of %d, cast %u", skillId, level, c.heal, low, high, c.stat, radius, c.healed,
+		           c.before, c.after, c.max, g_cyclerStarts.load());
 	}
 	return 1;
 }

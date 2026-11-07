@@ -1,6 +1,10 @@
 {
  "armtype": {},
- "charstats": {},
+ "charstats": {
+  "d2r_columns": [
+   "StrAllSkills"
+  ]
+ },
  "colors": {},
  "compcode": {},
  "composit": {},
