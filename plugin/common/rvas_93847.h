@@ -775,6 +775,23 @@ inline constexpr uint64_t InventoryNextItem = 0x38aba0;   // (item) -> next item
 inline constexpr uint64_t ItemPage = 0x36cfe0;            // (item) -> item data +0x55: 0 inventory, 3 cube, 4 stash
 inline constexpr uint64_t ItemCode = 0x36ef50;            // (item) -> items.txt code as a dword ('box ' 0x20786f62)
 inline constexpr uint8_t CubePageCube = 3;
+// Socketed items (#325), from the socket-insert path 0x46eb00 (D2Game\src\Items\ItemMode.cpp) and PD2's 0x3669b0. A
+// socketed item lives in its parent's inventory, its stat list linked under the parent's. 0x46eb00 also applies the
+// gems.txt mods (0x475140), which a moved gem already carries, so the reroll does the placement and link alone.
+inline constexpr uint64_t CreateInventory = 0x3861c0;      // (item): gives the item an empty inventory
+inline constexpr uint64_t InventoryRemove = 0x38ba30;      // (item) -> non-zero: out of whatever inventory holds it
+inline constexpr uint64_t PlaceInSocket = 0x3856e0;        // (parent's inventory, item, 1) -> non-zero: in a socket
+inline constexpr uint64_t StatListUnlink = 0x2f8290;       // (unused, unit): its stat list off its parent's
+inline constexpr uint64_t StatListLink = 0x2f81a0;         // (parent, unit, 1): its stat list under the parent's
+inline constexpr uint64_t SetItemStorePage = 0x36d730;     // (item, page): item data +0x54
+inline constexpr uint64_t SetItemPage = 0x36de20;          // (item, page): item data +0x55 (ItemPage); 0xff socketed
+inline constexpr uint64_t ItemStorePage = 0x36ca10;        // (item) -> item data +0x54
+inline constexpr uint64_t UnitXY = 0x34a110;               // (unit) -> uint32: x low 16 bits, y high 16
+// (game, player, item, item flags, command flags, mode, +0x55, +0x54, xy) sends the item to the clients with those
+// values set for the send, then restores them (InvMode.cpp 0x536410 picks the packet by the flags). The cursor socket
+// handler 0x4f9f40 refreshes the parent with item flag 1; PD2's 0x3669b0 marks the moved items with command flag 2.
+inline constexpr uint64_t SendItem = 0x535f60;
+inline constexpr int ItemModeSocketed = 6;
 
 // --- core-ui: automap for level types 36+ (LP2, #212) -------------------------------------------------------------
 // (levelType, tileType, style, sequence) -> cel or -1 (0xffffffff): the automap tile lookup. It matches AutoMap.txt
