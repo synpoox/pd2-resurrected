@@ -147,6 +147,8 @@ pass; `items 7/7`).
   `cheat stat` adds no item event listener, and the boots' durability icon showed red, so this does not yet show
   whether D2R's event 16 runs on a player's hit.
 - Enhanced damage per ethereal item: not checked in game (no ethereal carrier spawned).
+- Smite's effectiveness ([#321](https://github.com/synpoox/pd2-resurrected/issues/321), Slot 8, Hell, level 90 Paladin, Smite 20, zombies): each Smite blow
+  logged effectiveness 1.41 (calc4 41); life 1422848 -> 1297459 at divisor 8 and resist 50, PD2's formula.
 - Open wounds: a probe on `0x584170` logged nothing with `item_openwounds` 50 (stat only, no listener).
 - Spawn commands: `cheat uniques` rows past the "Expansion" separator row are one lower than the merged table's
   (Fleshripper 304, The Gladiator's Bane 250); Attack is the bottom-left icon of the left skill picker.
