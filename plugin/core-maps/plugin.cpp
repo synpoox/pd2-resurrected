@@ -16,11 +16,13 @@
 #include "key_drops.h"
 #include "log.h"
 #include "lucion.h"
+#include "lucion_ai.h"
 #include "lucion_chests.h"
 #include "map_events.h"
 #include "map_open.h"
 #include "map_stats.h"
 #include "off_switch.h"
+#include "prime_minions.h"
 #include "rathma.h"
 #include "uber_drops.h"
 
@@ -98,6 +100,12 @@ void InstallLucionPart(const D2RL::PluginContext* context, char* report, size_t 
 	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
 }
 
+void InstallPrimes(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallPrimeMinions(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
+}
+
 void InstallTempleChests(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
 	const int installed = InstallLucionChests(context, rules, sizeof(rules));
@@ -107,6 +115,12 @@ void InstallTempleChests(const D2RL::PluginContext* context, char* report, size_
 void InstallEvents(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
 	const int installed = InstallEventPortals(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
+}
+
+void InstallLucion(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallLucionAi(context, rules, sizeof(rules));
 	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
 }
 
@@ -123,8 +137,10 @@ Part g_parts[] = {
 	{"pool", InstallPool, ""},
 	{"keys", InstallKeys, ""},
 	{"lucion", InstallLucionPart, ""},
+	{"primes", InstallPrimes, ""},
 	{"temple", InstallTempleChests, ""},
 	{"events", InstallEvents, ""},
+	{"lucionai", InstallLucion, ""},
 };
 
 void InstallParts(const D2RL::PluginContext* context) noexcept {
@@ -183,6 +199,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	LucionCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
+	PrimeMinionsCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
 	LucionChestsCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
@@ -193,6 +212,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	EventPortalsCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	LucionAiCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
