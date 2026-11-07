@@ -34,6 +34,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Fixes
 
+- Split Throw's weapons show, split and come back to the Barbarian as in PD2.
 - Legacy graphics no longer draws the ground in D2R's own areas as red and cyan noise.
 - Legacy graphics draws PD2's maps (Mesa, Tomb Map, Graveyard Map and others) in their own colours.
 - The Ascendant mercenary equips staves only, as in PD2.
