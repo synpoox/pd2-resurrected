@@ -126,12 +126,17 @@ repo. Table, row and string names below are short identifiers.
 - **Their skills are data.** All rows but three are D2R's with empty-versus-0 differences. DiabWall is srvdo 166, which
   core-rules routes (built, [W22](https://github.com/synpoox/pd2-resurrected/issues/97)). Baal Lowres (skill 480) is PD2-only but runs D2R's curse function (srvdo 30, the one
   Amplify Damage uses) with missile `curselowerresist`. MonBlizzard (205) is D2R's.
-- **Auras (wiki only):** Mephisto has level 20 Conviction (-50% resistances, was -125%), Baal casts his own Lower Resist
-  (-75%, about 25 seconds). The monster rows hold no Conviction. The aura source is unchecked (`monstats2`, the preset or
-  the DLL); state 184 `uberminion` and 241 `uberscaling` exist.
-- **Prime Evil rules (wiki):** they deal 200% damage to minions and mercenaries and are immune to slows, Dim Vision,
-  Terror, Confuse, Attract and Sanctuary's physical-resist cut. The rows carry `primeevil` 1. Which of these rules the DLL
-  adds on that flag is [UB1](https://github.com/synpoox/pd2-resurrected/issues/226) work.
+- **Auras ([#486](https://github.com/synpoox/pd2-resurrected/issues/486)):** Mephisto's level 20 Conviction is engine
+  code, not data: PD2's aura picker (`ProjectDiablo.dll 0x1036f8e0`) gives monster 704 Conviction (skill 123) level 20,
+  as 1.13c D2Game does (`0x6fc44cd0`). D2R has the same case (`0x495cd0`, through umod 30 of its boss-mod switch
+  `0x494a60`), so the port needs nothing. Baal's Lower Resist is his `Baal Lowres` skill (data): -75% to all four
+  resists for `ln34` = 500 frames (20 s), not the wiki's 25 s. Game check (Hell, level 95 Paladin, level 181, `mspawn`):
+  Mephisto's aura took fire, cold and lightning resists 0 -> -50% and defense 37 -> 14, poison unchanged; Baal's curse
+  took poison 0 -> -75% for about 20 s and came back.
+- **Prime Evil rules:** the damage to minions and mercenaries is D2R's `difficultylevels` data
+  (`PrimeEvilDamagePercentVSPet` 400, `PrimeEvilDamagePercentVSMercenary` 200; 1.13c hard-codes it, value not traced).
+  No ProjectDiablo.dll code compares the primes' ids for the immunities (slows, Dim Vision, Terror, Confuse, Attract,
+  Sanctuary's physical-resist cut), so they are the engine's `primeevil`/`boss` rules, which D2R keeps. Not game-checked.
 - **Minions:** vanilla's Uber Tristram minions (`skeleton8`, `sk_archer11`, `skmage_*7`, rows 726-729) are still in
   monstats. Season 3: "Uber Tristram's minions are no longer immune to any damage type".
 
@@ -179,7 +184,7 @@ repo. Table, row and string names below are short identifiers.
 | Talisman opening at the Blood Fountain -> level 185 | the map-item opening ([MS2](https://github.com/synpoox/pd2-resurrected/issues/217)) plus the uber-key gate ([UB2](https://github.com/synpoox/pd2-resurrected/issues/227)) | **new** ([UB2](https://github.com/synpoox/pd2-resurrected/issues/227)/[UB3](https://github.com/synpoox/pd2-resurrected/issues/228)) |
 | Uber Tristram area rules (buffs stripped, teleport in, silver portals, no re-entry, exit portal) | none | **new**, shared with [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) |
 | Primes on plain AIs; any minion spawns | none | **new** ([UB3](https://github.com/synpoox/pd2-resurrected/issues/228)), once the preset and DLL are read |
-| Prime auras (Conviction, Lower Resist) and Prime Evil rules | none | **new** |
+| Prime auras (Conviction, Lower Resist) and Prime Evil rules | D2R's own code and merged data ([#486](https://github.com/synpoox/pd2-resurrected/issues/486)) | existing |
 | Torch and Black Soulstone on the last prime's death; Prime Evil Soul from Hell primes | none | **new** |
 | The primes' `Uber Soul` TC column | none | **open** |
 | `.kills` Uber Tristram counter | none | cut ([#153](https://github.com/synpoox/pd2-resurrected/issues/153)) |
@@ -202,8 +207,7 @@ and D2R's portal never opens. A game check (cube the keys in Hell Harrogath) set
   output, or PD2's? Ghidra on `ProjectDiablo.dll` (`PD2.gpr`), from `CubeFunctions.cpp`'s routines and the compare list at
   0x2aeeb1.
 - What does `pd2_ubertrist.ds1` place: the primes, their minions, the exit portal? It needs `pd2maps.mpq` extracted.
-- Where do Mephisto's Conviction and Baal's Lower Resist come from, and is the Torch's drop still D2R's (vanilla's
-  "level 136, last prime dead") code pointed at 185?
+- Is the Torch's drop still D2R's (vanilla's "level 136, last prime dead") code pointed at 185?
 - Does the engine read `Uber Soul` in the primes' TC columns?
 - The wiki's Uber Tristram page is marked outdated. Its numbers (auras, portals, odds) need a game check on the PD2 install
   before they count as the port's baseline.

@@ -60,8 +60,11 @@ add_library(core_maps SHARED
 	core-maps/entity_pool.cpp
 	core-maps/key_drops.cpp
 	core-maps/lucion.cpp
+	core-maps/prime_minions.cpp
 	core-maps/lucion_chests.cpp
 	core-maps/rathma.cpp
+	core-maps/lucion_ai.cpp
+	core-maps/ai_hooks.cpp
 	core-maps/event_portals.cpp
 	core-maps/uber_scaling.cpp
 	core-maps/uber_drops.cpp
