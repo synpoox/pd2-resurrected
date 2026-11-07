@@ -19,6 +19,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
 | PD2 skill columns auratgtevent, auratgteventfunc, passiveevent, passiveeventfunc | cut | empty in PD2: none of its 614 rows sets them (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)) |  |
+| PD2 skill columns checkfunc, nocostinstate | cut | PD2 never loads them: its `skills.bin` record is vanilla 1.13c's 572 bytes with no byte holding either column, and no PD2 binary (`ProjectDiablo.dll`, D2Common, D2Game, D2Client) names them. They are notes for PD2's editors on behaviour its code runs (weapon, ammo and book checks; no mana cost to leave a shape-shift) ([UR4](https://github.com/synpoox/pd2-resurrected/issues/202)) |  |
 | PD2 state column blue | cut | set on 4 states, all shared with D2R (freeze, cold, ...), which D2R tints through its own colour columns (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)) |  |
 | PD2 stat columns Divide, itemspecific and the S12/S13 save widths | cut | `itemspecific` is set on 6 stats, all shared; `Divide` is 1.13c's per-stat price divisor, which D2R dropped (only vendor prices move), and on the map stats PD2's route, which core-maps carries in its own table ([MS3](https://github.com/synpoox/pd2-resurrected/issues/218), [ms3-map-stats](research/ms3-map-stats.md)); the port saves through D2R's extended saves (ADR 0003), so PD2's season save widths have nothing to read (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)) |  |
 | Belts and body locations keep D2R's values | cut | they match: `bodylocs` is identical, and `belts` has the same rows and slot counts, differing only in PD2's classic-screen pixel boxes, which D2R's HD belt does not use (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)) |  |
@@ -45,7 +46,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
-| PD2 skill columns checkfunc, nocostinstate, general | not yet | D2R's skills table has no such columns; [UR4](https://github.com/synpoox/pd2-resurrected/issues/202) reads them in `ProjectDiablo.dll`, then builds, folds or cuts each | [UR4](https://github.com/synpoox/pd2-resurrected/issues/202) |
+| PD2 skill column general | not yet | D2R's skills table has no such column; PD2's D2Common loads it as vanilla 1.13c does (bit 35 of the flags, record byte 8 bit 3), set on the six vanilla general skills, PD2's six attack templates and Force Move. [UR4](https://github.com/synpoox/pd2-resurrected/issues/202) finds what reads it, then cuts it or builds a rule | [UR4](https://github.com/synpoox/pd2-resurrected/issues/202) |
 | PD2 state column immed | not yet | D2R's states table has no such column; set on 13 shared aura states and PD2's `immune_give`, `immune_get` and `phasing`; the three PD2 states go with phasing | [IR7](https://github.com/synpoox/pd2-resurrected/issues/242) |
 | PD2 missile columns LevRange, Qty and SpecialSetup | not yet | D2R's missiles table has no such columns | core-rules |
 | PD2's 4x4 Horadric Cube: D2R's 3x4 is kept | not yet | the cut above left it out; reversed in [#299](https://github.com/synpoox/pd2-resurrected/issues/299), which narrows the `inventory.*` pattern when it lands | [#299](https://github.com/synpoox/pd2-resurrected/issues/299) |
@@ -272,7 +273,8 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Deviation | Gate |
 |---|---|
 | PD2 skill columns auratgtevent, auratgteventfunc, passiveevent, passiveeventfunc | `skills.*.auratgtevent` `skills.*.auratgteventfunc` `skills.*.passiveevent` `skills.*.passiveeventfunc` |
-| PD2 skill columns checkfunc, nocostinstate, general | `skills.*.checkfunc` `skills.*.nocostinstate` `skills.*.general` |
+| PD2 skill columns checkfunc, nocostinstate | `skills.*.checkfunc` `skills.*.nocostinstate` |
+| PD2 skill column general | `skills.*.general` |
 | PD2 state column blue | `states.*.blue` |
 | PD2 state column immed | `states.*.immed` |
 | PD2 stat columns Divide, itemspecific and the S12/S13 save widths | `itemstatcost.*.divide` `itemstatcost.*.itemspecific` `itemstatcost.*.save bits s12` `itemstatcost.*.save add s12` `itemstatcost.*.save param bits s12` `itemstatcost.*.save bits s13` `itemstatcost.*.save adds s13` `itemstatcost.*.save param bits s13` |
