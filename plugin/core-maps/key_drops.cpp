@@ -173,8 +173,7 @@ auto InstallKeyDrops(const D2RL::PluginContext* context, char* report, size_t re
 		std::snprintf(report, reportSize, "off: monster-death listener refused");
 		return 0;
 	}
-	std::snprintf(report, reportSize, "%d rolls on every monster death; uber boss drops %s", RollCount,
-	              InstallUberDrops(context) ? "on" : "off (an item, inventory or thread service is missing)");
+	std::snprintf(report, reportSize, "%d rolls and the uber boss drops on every monster death", RollCount);
 	return 1;
 }
 

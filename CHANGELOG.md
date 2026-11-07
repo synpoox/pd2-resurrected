@@ -20,7 +20,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - A tier-0 uber key also leaves three grey portals by the fountain. Each takes one player back in, once, by the same
   rules (no mercenary, summons or buffs), and heals the boss by 20% of its life. The uber areas have no waypoint.
 - Uber fight monsters scale with the key's tier, as in PD2.
-- Diablo Clone drops Annihilus (tiers 1-2: a 1-in-200 unique) and opens a gold portal to Harrogath.
+- Diablo Clone drops Annihilus, and at tiers 1-2 rolls 1 in 200 for one of PD2's five Dclone uniques.
 
 #### Maps
 
