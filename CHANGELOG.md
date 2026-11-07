@@ -35,7 +35,9 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Fixes
 
+- Split Throw's weapons show, split and come back to the Barbarian as in PD2.
 - Legacy graphics no longer draws the ground in D2R's own areas as red and cyan noise.
+- Legacy graphics draws PD2's maps (Mesa, Tomb Map, Graveyard Map and others) in their own colours.
 - The Ascendant mercenary equips staves only, as in PD2.
 - The mercenary panel shows the mercenary's title instead of "an evil force".
 - PD2's own items (Worldstone Shards, maps, PD2 uniques) show on the ground in HD again.
@@ -59,7 +61,7 @@ bosses and the Warlock redesign come in a later alpha.
 
 - PD2's items, affixes, runewords, cube recipes and treasure classes.
 - Corruption: cube an item with a Worldstone Shard, once per item.
-- Demonic Cube rerolls a unique or set item (not yet one with socketed items).
+- Demonic Cube rerolls a unique or set item, keeping its base, sockets, socketed items and ethereal state.
 - Cube recipes take inputs one per cell; stacked inputs don't count yet.
 - PD2's combat stats: critical and deadly strike, crushing blow, open and deep wounds, life steal cap.
 - Curse resistance and extra curse slots.

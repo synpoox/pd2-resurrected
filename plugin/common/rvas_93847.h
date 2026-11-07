@@ -775,6 +775,23 @@ inline constexpr uint64_t InventoryNextItem = 0x38aba0;   // (item) -> next item
 inline constexpr uint64_t ItemPage = 0x36cfe0;            // (item) -> item data +0x55: 0 inventory, 3 cube, 4 stash
 inline constexpr uint64_t ItemCode = 0x36ef50;            // (item) -> items.txt code as a dword ('box ' 0x20786f62)
 inline constexpr uint8_t CubePageCube = 3;
+// Socketed items (#325), from the socket-insert path 0x46eb00 (D2Game\src\Items\ItemMode.cpp) and PD2's 0x3669b0. A
+// socketed item lives in its parent's inventory, its stat list linked under the parent's. 0x46eb00 also applies the
+// gems.txt mods (0x475140), which a moved gem already carries, so the reroll does the placement and link alone.
+inline constexpr uint64_t CreateInventory = 0x3861c0;      // (item): gives the item an empty inventory
+inline constexpr uint64_t InventoryRemove = 0x38ba30;      // (item) -> non-zero: out of whatever inventory holds it
+inline constexpr uint64_t PlaceInSocket = 0x3856e0;        // (parent's inventory, item, 1) -> non-zero: in a socket
+inline constexpr uint64_t StatListUnlink = 0x2f8290;       // (unused, unit): its stat list off its parent's
+inline constexpr uint64_t StatListLink = 0x2f81a0;         // (parent, unit, 1): its stat list under the parent's
+inline constexpr uint64_t SetItemStorePage = 0x36d730;     // (item, page): item data +0x54
+inline constexpr uint64_t SetItemPage = 0x36de20;          // (item, page): item data +0x55 (ItemPage); 0xff socketed
+inline constexpr uint64_t ItemStorePage = 0x36ca10;        // (item) -> item data +0x54
+inline constexpr uint64_t UnitXY = 0x34a110;               // (unit) -> uint32: x low 16 bits, y high 16
+// (game, player, item, item flags, command flags, mode, +0x55, +0x54, xy) sends the item to the clients with those
+// values set for the send, then restores them (InvMode.cpp 0x536410 picks the packet by the flags). The cursor socket
+// handler 0x4f9f40 refreshes the parent with item flag 1; PD2's 0x3669b0 marks the moved items with command flag 2.
+inline constexpr uint64_t SendItem = 0x535f60;
+inline constexpr int ItemModeSocketed = 6;
 
 // --- core-ui: automap for level types 36+ (LP2, #212) -------------------------------------------------------------
 // (levelType, tileType, style, sequence) -> cel or -1 (0xffffffff): the automap tile lookup. It matches AutoMap.txt
@@ -829,6 +846,17 @@ inline constexpr uint8_t SpawnCheatKeyFull[] = {0x41, 0x8b, 0x00, 0xb9, 0x20, 0x
                                                0xc8, 0x89, 0x44, 0x24, 0x50, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
                                                0x90, 0x90, 0x90, 0x90, 0x90};
 static_assert(sizeof(SpawnCheatKeyD2R) == sizeof(SpawnCheatKeyFull));
+
+// --- core-ui: legacy palette of the level entered (#296) -----------------------------------------------------------
+// (act byte) -> void: loads data/global/palette/act<N+1>/pal.pl2 (legacy floor, light and colormap tables) and
+// updates the palette texture. Only the load screen's end calls it with a level's palette (0xc5f80 passes
+// ActPalette), so a level entered without one (a map's portal from Harrogath) keeps the last act's. Decompiled for #296.
+inline constexpr uint64_t LoadActPalette = 0x9041a0;
+// (act byte) -> void: sets ActPalette. The client's unit placement 0x9bf00 sets it from the level record's Pal,
+// the act load 0x86bc0 from the act. The global it writes: 0x2a2adc0.
+inline constexpr uint64_t SetActPalette = 0xcd6d0;
+inline constexpr uint64_t LevelRecord = 0x32c4a0;  // (dataFlag, level id) -> levels.txt record
+inline constexpr int LvlPal = 0x0c;  // uint8 Pal (0x9bf00 reads it for SetActPalette; Teleport is +0x0e)
 
 // --- core-maps: opening a map (MS2, #217; D2Game\src\Skills\SkillItem.cpp) ----------------------------------------
 // Item spell dispatchers, (game, player, item, target): the check -> bool, then the use (whose caller frees an item
