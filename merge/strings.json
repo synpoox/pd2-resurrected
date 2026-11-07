@@ -1460,15 +1460,6 @@
     "MercX420": [51386, "mercenaries.json"],
     "Ascendant": [51387, "monsters.json"],
     "t99": [51388, "item-names.json"],
-    "MapEventNotifyMendeln": [51428, "ui.json"],
-    "MapEventNotifyHorazon": [51429, "ui.json"],
-    "MapEventNotifyDarkWanderer": [51430, "ui.json"],
-    "MapEventNotifyTreasure": [51431, "ui.json"],
-    "MapEventNotifyTainted": [51432, "ui.json"],
-    "MapEventNotifyGheed": [51433, "ui.json"],
-    "MapEventNotifyShard": [51434, "ui.json"],
-    "MapEventNotifyInvaders": [51435, "ui.json"],
-    "MapEventNotifyTomb": [51436, "ui.json"],
     "ModStr1hMap": [51389, "item-modifiers.json"],
     "ModStr1jMap": [51390, "item-modifiers.json"],
     "ModStr1kMap": [51391, "item-modifiers.json"],
@@ -1507,6 +1498,15 @@
     "ModitemdamLtngskMap": [51424, "item-modifiers.json"],
     "ModitemdamPoisskMap": [51425, "item-modifiers.json"],
     "strModMagicDamageMap": [51426, "item-modifiers.json"],
-    "MapTierValue": [51427, "item-modifiers.json"]
+    "MapTierValue": [51427, "item-modifiers.json"],
+    "MapEventNotifyMendeln": [51428, "ui.json"],
+    "MapEventNotifyHorazon": [51429, "ui.json"],
+    "MapEventNotifyDarkWanderer": [51430, "ui.json"],
+    "MapEventNotifyTreasure": [51431, "ui.json"],
+    "MapEventNotifyTainted": [51432, "ui.json"],
+    "MapEventNotifyGheed": [51433, "ui.json"],
+    "MapEventNotifyShard": [51434, "ui.json"],
+    "MapEventNotifyInvaders": [51435, "ui.json"],
+    "MapEventNotifyTomb": [51436, "ui.json"]
   }
 }
