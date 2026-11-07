@@ -8,6 +8,7 @@ private-multiplayer release a build may break characters; each break is noted he
 #### Items
 
 - Purgatory's damage follows ethereal items put on or taken off while it is worn.
+- D2R's organ portal to its Uber Tristram is off: the organs make PD2's Pandemonium Talisman.
 - Item crushing blow rolls on normal hits, and Purgatory gains damage per worn ethereal item, as in PD2.
 - Spear and two-hand masteries boost crits and crushing blow, and Smite's crushing blow hits harder, as in PD2.
 - Ethereal items get Project Diablo II's +25% defense or damage, not +50%.
@@ -23,10 +24,13 @@ private-multiplayer release a build may break characters; each break is noted he
 #### Uber bosses
 
 - Uber Mephisto, Diablo and Baal summon PD2's minions: skeletons, Pit Lords, vampires and wraiths.
+- Uber Mephisto's Conviction and Uber Baal's Lower Resist work as in PD2.
 - PD2's new monsters (Lucion, Na-Krul, Iskatu and others) finish their attacks and casts and keep fighting.
 - The Pandemonium Talisman opens Uber Tristram at the Blood Fountain, like the other uber keys.
 - Cubing the three Pandemonium keys in Hell opens a red portal to a mini-uber area again.
+- Lilith, Uber Duriel and Uber Izual drop Diablo's Horn, Baal's Eye and Mephisto's Brain again.
 - The Diablo Clone, Rathma and Lucion keys open their uber areas at the Blood Fountain (Hell, level 80+); the fights come later.
+- The uber areas have no waypoint, also after a key's warp.
 - A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
 - Lucion fights in PD2's stages: blinks, Nova, a frenzy of Punish, and spawners that call his adds.
 - Diablo Clone fights in PD2's phases: three nova rounds, three skeleton waves, immune while his adds live.
@@ -43,6 +47,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Maps
 
+- Fortified, drop-bonus and item-drop maps give their extra and stat drops on kills, as in PD2.
 - Map tooltips show the map's tier, and map stats read without raw format codes.
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
