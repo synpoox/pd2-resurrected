@@ -543,14 +543,130 @@ constexpr int32_t DisableTele = 260;  // merged states id of disable_tele (PD2 2
 // passive_fire/cold/ltng/pois_mastery, in the order PD2 sets them; the same itemstatcost ids in PD2 and D2R
 constexpr int32_t Masteries[] = {329, 331, 330, 332};
 
-// PD2's teleport core: refused under disable_tele, else D2R's Teleport (srvdo 27), which makes the core's level
-// checks (levels.txt Teleport 0 refuses, 2 checks collision at the point).
+// --- Teleport 3: PD2's teleport blockers (MS7, #221; PD2's teleport core 0x1036cd20, blocker search 0x10380050) ---
+// PD2's levels with Teleport 3, in port ids (merge/ids-levels.tsv): Monastery Map 153, Realm of Terror 163, Sanctuary
+// Of Sin Map 168, Imperial Boss Map 190. The merge writes their Teleport as 1, which D2R accepts (3 it does not).
+constexpr int32_t BlockerLevels[] = {153, 163, 168, 190};
+// objects.txt blocker_teleport_xy / _x / _y, PD2 613-615, in port ids (merge/ids-objects.tsv)
+constexpr int32_t BlockerXY = 616, BlockerX = 617, BlockerY = 618;
+constexpr uint16_t BlockerMask = 0x80d;
+constexpr int32_t BlockerReach = 25;
+std::atomic<uint32_t> g_blockerChecks {0};
+std::atomic<uint32_t> g_blockerRefusals {0};
+std::atomic<uint32_t> g_blockersSeen {0};  // checks that found a blocker nearby
+
+// a strictly between b and c
+constexpr auto Between(int32_t a, int32_t b, int32_t c) noexcept -> bool {
+	return (a > b && a < c) || (a < b && a > c);
+}
+// a in [min(b, c), max(b, c)]
+constexpr auto Within(int32_t a, int32_t b, int32_t c) noexcept -> bool {
+	return a >= std::min(b, c) && a <= std::max(b, c);
+}
+static_assert(Between(5, 0, 10) && Between(5, 10, 0) && !Between(0, 0, 10));
+static_assert(Within(0, 0, 10) && Within(10, 10, 0) && !Within(11, 0, 10));
+
+// PD2's D2Common thunk 0x103097a0 (room, x, y, 3, 3, mask) > 0: the mask's bits in the 3 x 3 box around x/y.
+// shortcut: the box is taken as centred on x/y (the thunk's ordinal is not resolved); upgrade if it reads x..x+2.
+auto BoxCollides(void* room, int32_t x, int32_t y) noexcept -> bool {
+	const auto at = d2r::Engine<uint64_t (*)(void*, int32_t, int32_t, uint16_t) noexcept>(d2r::rva::CollisionAt);
+	for (int32_t dy = -1; dy <= 1; ++dy) {
+		for (int32_t dx = -1; dx <= 1; ++dx) {
+			if (at(room, x + dx, y + dy, BlockerMask) != 0) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+// The Teleport 3 part of PD2's teleport core 0x1036cd20: the nearest blocker of each class in the rooms around the
+// caster and around the target (0x10380050), then, for each found, PD2's test of whether the jump passes it; one that
+// does refuses the teleport when the target is in or next to a wall (mask 0x80d). Returns true to refuse.
+// shortcut: PD2 first moves its copy of the target to a free spot (D2Common thunk 0x10309800, mask 0x80d), tests that
+// one; this tests the target itself, so a target inside a wall refuses where PD2 may move it clear. Upgrade if a
+// teleport next to a blocker refuses in play where PD2 lets it through.
+auto BlockedByBlocker(Unit* unit, void* room, int32_t sx, int32_t sy, int32_t tx, int32_t ty) noexcept
+	-> bool {
+	using namespace d2r::rva;
+	const int32_t levelId = d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room);
+	if (std::find(std::begin(BlockerLevels), std::end(BlockerLevels), levelId) == std::end(BlockerLevels)) {
+		return false;
+	}
+	const auto nearRooms = d2r::Engine<void (*)(void*, void***, uint32_t*) noexcept>(NearRooms);
+	const auto firstUnit = d2r::Engine<Unit* (*)(void*) noexcept>(RoomFirstUnit);
+	const auto nextUnit = d2r::Engine<Unit* (*)(Unit*) noexcept>(NextUnitInRoom);
+	const auto distance = d2r::Engine<int32_t (*)(Unit*, Unit*) noexcept>(UnitDistance);
+	void* targetRoom = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(room, tx, ty);
+	Unit* nearest[3] = {};
+	int32_t best[3] = {INT32_MAX, INT32_MAX, INT32_MAX};
+	for (void* around : {room, targetRoom}) {
+		void** rooms = nullptr;
+		uint32_t count = 0;
+		if (around != nullptr) {
+			nearRooms(around, &rooms, &count);
+		}
+		for (uint32_t r = 0; rooms != nullptr && r < count; ++r) {
+			for (Unit* u = firstUnit(rooms[r]); u != nullptr; u = nextUnit(u)) {
+				const int32_t cls = At<int32_t>(u, UnitClassId);
+				if (u == unit || At<int32_t>(u, UnitType) != 2 /* object */ || cls < BlockerXY || cls > BlockerY) {
+					continue;
+				}
+				const int32_t d = distance(unit, u);
+				if (d < best[cls - BlockerXY]) {
+					best[cls - BlockerXY] = d;
+					nearest[cls - BlockerXY] = u;
+				}
+			}
+		}
+	}
+	const auto walled = [&] {
+		return d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t, uint16_t) noexcept>(UnitCollidesAt)(unit, tx, ty,
+		                                                                                             BlockerMask) != 0 ||
+		       BoxCollides(targetRoom != nullptr ? targetRoom : room, tx, ty);
+	};
+	int32_t bx = 0, by = 0;
+	bool refused = false;
+	if (nearest[0] != nullptr && d2r::UnitXY(nearest[0], &bx, &by)) {  // xy: unless the jump passes it on both axes
+		refused = !(Between(bx, sx, tx) && Between(by, sy, ty)) && best[0] < BlockerReach && walled();
+	}
+	if (!refused && nearest[1] != nullptr && d2r::UnitXY(nearest[1], &bx, &by)) {  // x: a line across x
+		refused = Within(bx, sx, tx) && std::abs(by - sy) < BlockerReach && walled();
+	}
+	if (!refused && nearest[2] != nullptr && d2r::UnitXY(nearest[2], &bx, &by)) {  // y: a line across y
+		refused = Within(by, sy, ty) && std::abs(bx - sx) < BlockerReach && walled();
+	}
+	g_blockerRefusals.fetch_add(refused ? 1 : 0);
+	const bool seen = nearest[0] != nullptr || nearest[1] != nullptr || nearest[2] != nullptr;
+	const bool firstSeen = seen && plog::Sample(g_blockersSeen);
+	if (plog::Sample(g_blockerChecks) || refused || firstSeen) {  // Sample counts the check
+		const uint32_t checks = g_blockerChecks.load();
+		plog::Info("teleport 3: level %d, %d,%d -> %d,%d, blockers xy %d x %d y %d (nearest %d/%d/%d): %s "
+		           "(%u checks, %u refused)",
+		           levelId, sx, sy, tx, ty, nearest[0] != nullptr, nearest[1] != nullptr, nearest[2] != nullptr,
+		           best[0] == INT32_MAX ? -1 : best[0], best[1] == INT32_MAX ? -1 : best[1],
+		           best[2] == INT32_MAX ? -1 : best[2], refused ? "refused" : "allowed", checks,
+		           g_blockerRefusals.load());
+	}
+	return refused;
+}
+
+// PD2's teleport core: refused under disable_tele or by a Teleport 3 blocker, else D2R's Teleport (srvdo 27), which
+// makes the core's level checks (levels.txt Teleport 0 refuses, 2 checks collision at the point).
 // PD2's Hell-only level list (0x105de86c) is never filled, so it is left out.
-// shortcut: PD2's Teleport 3 rule (a path search on map levels) and its "TeleportBlocked" chat line on a refusal are
-// left out: no ported level has Teleport 0 or 3. Upgrade when the map plan ports a map level.
+// shortcut: PD2's "TeleportBlocked" chat line on a Teleport 0 refusal is left out: no ported level has Teleport 0.
+// Upgrade when one does.
 auto TeleportCore(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> bool {
 	using namespace d2r::rva;
 	if (d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, DisableTele) != nullptr) {
+		g_teleportsRefused.fetch_add(1);
+		return false;
+	}
+	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit);
+	int32_t sx = 0, sy = 0, tx = 0, ty = 0;
+	if (room != nullptr && d2r::UnitXY(unit, &sx, &sy) &&
+	    d2r::Engine<int32_t (*)(Game*, Unit*, int32_t*, int32_t*) noexcept>(SkillTargetXY)(game, unit, &tx, &ty) != 0 &&
+	    BlockedByBlocker(unit, room, sx, sy, tx, ty)) {
 		g_teleportsRefused.fetch_add(1);
 		return false;
 	}
