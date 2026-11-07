@@ -39,8 +39,8 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
     only the UI reads it.
   - [UR5](https://github.com/synpoox/pd2-resurrected/issues/203) finds D2R's own values for the uber and ultra code odds and `HireableBossDamagePercent` in Ghidra. A rule whose
     value equals PD2's is cut; the others are hooked.
-  - [UR6](https://github.com/synpoox/pd2-resurrected/issues/204) rolls the quivers' `auto prefix` groups (321-326) through an item-spawn hook. Moving the quivers to another
-    table would break their item type.
+  - [UR6](https://github.com/synpoox/pd2-resurrected/issues/204) rolls the quivers' `auto prefix` groups (321-326) with no hook: D2R loads misc, weapons and armor with one field
+    list, so the merge adds the column to misc.txt and D2R's own automagic roll (`0x442d60`) reads it.
   - Folded into existing rows, with no item of their own: missile `Qty` and `SpecialSetup` and the throwing potions'
     `spelldesc` go to "Throwing potions" ([IR5](https://github.com/synpoox/pd2-resurrected/issues/240)); missile `LevRange` goes to the class or map row that owns each missile;
     `immed` on PD2's three states goes to phasing ([IR7](https://github.com/synpoox/pd2-resurrected/issues/242)).
@@ -72,7 +72,7 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
 | [UR3](https://github.com/synpoox/pd2-resurrected/issues/201) | The Ascendant and the second Rogue Scout set at hireling ids 39+: the id check first, then `WType`, `hiredesc` and the HD model | core-rules | none | [#201](https://github.com/synpoox/pd2-resurrected/issues/201) |
 | [UR4](https://github.com/synpoox/pd2-resurrected/issues/202) | Skill columns `checkfunc`, `nocostinstate`, `general`: read in `ProjectDiablo.dll`, then built, folded or cut | core-rules | none | [#202](https://github.com/synpoox/pd2-resurrected/issues/202) |
 | [UR5](https://github.com/synpoox/pd2-resurrected/issues/203) | Difficulty constants: the uber and ultra code odds, the hireling boss damage | core-rules | none | [#203](https://github.com/synpoox/pd2-resurrected/issues/203) |
-| [UR6](https://github.com/synpoox/pd2-resurrected/issues/204) | Quiver automagic: an item-spawn hook for misc items' `auto prefix` | core-rules | none | [#204](https://github.com/synpoox/pd2-resurrected/issues/204) |
+| [UR6](https://github.com/synpoox/pd2-resurrected/issues/204) | Quiver automagic: misc items' `auto prefix`, a column the merge adds | none (data) | none | [#204](https://github.com/synpoox/pd2-resurrected/issues/204) |
 | [UR7](https://github.com/synpoox/pd2-resurrected/issues/205) | Art: PD2's item pictures and the shared skill icon sheet, upscaled | none (data) | none | [#205](https://github.com/synpoox/pd2-resurrected/issues/205) |
 | [UR8](https://github.com/synpoox/pd2-resurrected/issues/206) | Audio: PD2's 30 voice and effect WAVs to FLAC, after a one-file test | none (data) | none | [#206](https://github.com/synpoox/pd2-resurrected/issues/206) |
 | [UR9](https://github.com/synpoox/pd2-resurrected/issues/207) | The DPS counter plugin | `d2r-tools` | none | [#207](https://github.com/synpoox/pd2-resurrected/issues/207) |
