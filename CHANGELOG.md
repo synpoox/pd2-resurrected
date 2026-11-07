@@ -42,6 +42,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
 - Map events Shadow of Mendeln, Dark Wanderer and Treasure Fallen spawn in tiered maps, as in PD2.
 - A dungeon or unique map's area stats (density, rarity, added monsters) now apply on all of its levels.
+- Teleport blockers in Realm of Terror, Sanctuary of Sin and the Imperial boss map stop teleports past them, as in PD2.
 - Wooded PD2 maps draw HD tree borders, and D2R-tile maps use whole D2R rooms.
 - Eight more PD2 maps, among them Ashen Plains and Descent, draw walls and props in HD.
 - Wooded maps in HD fill the gaps in their tree lines and no longer plant trees on walkable ground.

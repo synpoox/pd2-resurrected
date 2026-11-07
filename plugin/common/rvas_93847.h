@@ -338,6 +338,9 @@ inline constexpr int DamageFlag148 = 0x148;   // uint8 D2R's Static Field sets t
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
+// (unit, x, y, mask) -> non-zero when the unit, at its size, collides at x/y; D2R's Teleport (srvdo 27, 0x554c40)
+// refuses on it with mask 0x804 for levels Teleport 2, as PD2's teleport core does through its thunk 0x1030bf30
+inline constexpr uint64_t UnitCollidesAt = 0x350a20;
 // (game, room, x, y, monstats id, mode, -1, 0x42) -> monster or null; counts it in its level's monster region. D2R's
 // Nest (0x57c590) passes its 1-based spawn index and 0 for the last two
 inline constexpr uint64_t SpawnMonster = 0x492cf0;
