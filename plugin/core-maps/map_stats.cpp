@@ -9,6 +9,8 @@
 // per-game counters (rva::GameCounter), so a new game starts without them.
 #include "map_stats.h"
 
+#include "map_open.h"
+
 #include "log.h"
 #include "uber_scaling.h"
 
@@ -559,7 +561,11 @@ constexpr int16_t ExtraBossIds[] = {
 // PD2's preset wrapper 0x1038bfc0, slot 5: in a map area with map_glob_extra_boss above 0, a monster preset whose id
 // is one of the map bosses spawns a second time. No PluginSDK service spawns or reports room presets, so this hooks
 // D2R's preset spawn (rva::PresetSpawn).
+// The hook also drops the uber levels' waypoint presets (NoUberWaypoint, map_open.cpp).
 auto OnPresetSpawn(Game* game, void* room, const uint8_t* preset) noexcept -> void {
+	if (game != nullptr && room != nullptr && preset != nullptr && NoUberWaypoint(game, room, preset)) {
+		return;
+	}
 	g_presetSpawnOriginal(game, room, preset);
 	using namespace d2r::rva;
 	if (game == nullptr || room == nullptr || preset == nullptr || At<int32_t>(preset, PresetType) != UnitMonster) {
