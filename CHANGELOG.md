@@ -60,7 +60,6 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Fixes
 
-- Map events find a spot to spawn with PD2's own search, so they no longer fail to appear.
 - Rathma's portal to Harrogath is gold, and the shard names lose a stray `*/`, as in PD2.
 - Split Throw's weapons show, split and come back to the Barbarian as in PD2.
 - Legacy graphics no longer draws the ground in D2R's own areas as red and cyan noise.
