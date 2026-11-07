@@ -16,6 +16,7 @@
 #include "map_open.h"
 #include "map_stats.h"
 #include "off_switch.h"
+#include "rathma.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -140,6 +141,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	KeyDropsCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	RathmaCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
