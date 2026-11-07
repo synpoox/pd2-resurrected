@@ -36,9 +36,12 @@ from pathlib import Path
 
 import pd2_painter as painter
 from pd2_ids import Table, excel, load
-from pd2_levels import SLOTS, col, ds1_header, norm, object_list
+from pd2_levels import SLOTS, col, ds1_header, norm
 
 TILE = 10  # HD units per DS1 tile
+# a DS1 cell's unwalkable bit: what blocks the plain floor in PD2's dashed tree lines and the ground past the paths
+# (jungle1: on 96% of the lines' gap tiles; D2R's stock jungle rooms stand 88% of their trees on such tiles)
+UNWALKABLE = 0x20000
 TERRAIN = "act2/palace/celse3"  # a stock preset whose terrain is a flat TERRAIN_SIZE square (D2R Reimagined's plane)
 TERRAIN_SIZE = 170
 ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is pasted where this share of its tiles match
@@ -82,7 +85,7 @@ class Layout:
     height: int
     keys: dict[tuple[int, int], Key]  # (x, y) -> key; tiles with nothing are left out
     flags: dict[tuple[int, int], bytes] = field(default_factory=dict)  # (x, y) -> its layers' subtile flags, OR'd
-    objects: frozenset = frozenset()  # the tiles a DS1 object stands on
+    unwalkable: frozenset = frozenset()  # the tiles a wall or floor cell marks unwalkable (UNWALKABLE)
 
 
 def layout(data: bytes, dt1s: dict[str, dict]) -> Layout:
@@ -105,10 +108,9 @@ def layout(data: bytes, dt1s: dict[str, dict]) -> Layout:
             keys[(i % w, i // w)] = ("w", wall) if wall else ("f", floor)
             f = [dt1s[t[0]][t[1:]] for t in wall + floor if t[0]]
             flags[(i % w, i // w)] = bytes(functools.reduce(lambda u, v: [x | y for x, y in zip(u, v)], f, bytes(25)))
-    _, at, count, size = object_list(data)
-    objects = frozenset((x // 5, y // 5) for x, y in (struct.unpack_from("<2i", data, at + 4 + k * size + 8)
-                                                       for k in range(count)))
-    return Layout(w, h, keys, flags, objects)
+    cells = [grids[2 * k] for k in range(walls)] + list(grids[2 * walls:])
+    unwalkable = frozenset((i % w, i // w) for i in range(n) if any(g[i] & UNWALKABLE for g in cells))
+    return Layout(w, h, keys, flags, unwalkable)
 
 
 def _transform(entity: dict) -> dict | None:
@@ -268,9 +270,19 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
         def tile(e: dict) -> tuple[int, int]:
             return int(_transform(e)["position"]["x"] // TILE), int(_transform(e)["position"]["z"] // TILE)
         near = painter.dilate(painter.dilate({tile(e) for e, _ in painted}))
-        # a lone tree on the path stays; so does a line's where no painted tree stands within two tiles (a line with
-        # playable ground on both sides leaves the painter no room)
-        loose = [e for e in loose if not painter.is_tree(e) or tile(e) in play or tile(e) in line - near]
+        # walkable floor: no stock tree, kit or pasted room, puts a piece on it, as one there hides the player (#396)
+        ground = {c for c in play - lay.unwalkable if lay.keys[c][0] != "w"}
+
+        def on_ground(e: dict) -> bool:
+            p = _transform(e)["position"]
+            return any((int((p["x"] + x) // TILE), int((p["z"] + z) // TILE)) in ground
+                       for x, z in painter.pieces(e, prefabs))
+        entities = [e for e in entities if not painter.is_tree(e) or not on_ground(e)]
+        # a lone tree (a wall tile on the path) stays, and a stream's; so does a line's where no painted tree stands
+        # within two tiles (a line with playable ground on both sides leaves the painter no room)
+        loose = [e for e in loose if not painter.is_tree(e)
+                 or not on_ground(e) and (tile(e) in play or tile(e) in line - near)]
+        assert not any(on_ground(e) for e, _ in painted), f"{name}: a painted tree reaches walkable floor"
         for e, of in painted:
             loose.append(e)
             depend(of)
