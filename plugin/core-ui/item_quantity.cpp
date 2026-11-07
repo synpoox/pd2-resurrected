@@ -1,329 +1,168 @@
-// The quantity display, all through the PluginSDK (no D2R hook): WidgetService gives each open grid's screen rect (HD
-// and legacy layouts both name it `grid`), InventoryService the player's items and their cells, DataTableService the
-// items table (stackable flag and size in cells), and OverlayService draws the numbers after the game UI.
+// The quantity display, by a native hook (AGENTS.md: SDK first). Why a hook: D2RLoader 1.3.1's WidgetService has no
+// getWidgetScreenRect (64 bytes; core-ui logged `widget 1 (size 64, needs 208)`) and its OverlayService draws nothing,
+// so the SDK cannot place or draw the number (#359). The D2RLoader dev says the screen-rect call is coming; then this
+// file can go back to the SDK version (WidgetService + InventoryService + OverlayService, commit e8da7c5 of PR #402).
+// Everything native sits in this file.
 //
-// PD2 (its D2GL renderer, config 6, which `HOTKEY_ItemQuantity` toggles) draws the item's quantity stat whenever it is
-// not 0, so on every stackable item (stat 70 exists only on those), in white over a 60%-black box, at the bottom left of
-// the picture. Here the number goes at the bottom right (#359 asks for it) and the rest is PD2's.
+// The hook replaces D2R's item draw 0x2a72d0 (widget, item), which every item widget calls once per item: it does
+// what D2R does (picture rect from the grid's vtable, then the picture), then for a stackable item draws its quantity
+// stat (70) with D2R's text draw 0x902e20, in the picture rect aligned right and bottom. Drawn inside the grid's own
+// draw, so tooltips and the cursor item cover it, as they cover the picture.
 //
-// Blocked on D2RLoader 1.3.1-beta (slot 2, 2026-11-06): its WidgetService is 64 bytes (no getWidgetState, getText or
-// getWidgetScreenRect), so the part reports FAILED and stays off; and its overlay draws nothing on screen (the
-// callback runs and the calls return Success). It switches on by itself on a loader that has both.
-//
-// shortcut: vendor grids (NPC items: InventoryService lists the player's own) and D2RLoader custom pages (their panel
-// names are the page owner's) show no number; upgrade with a native read of the drawn grid if players miss them.
-// shortcut: the overlay draws over the game UI, so a tooltip or the cursor item over a stack still shows its number;
-// upgrade with a native draw inside the grid if that bothers players.
+// PD2 (its D2GL renderer, config 6, which `HOTKEY_ItemQuantity` toggles) draws the quantity of every grid item that has
+// one, in white over a 60%-black box, at the bottom left. Here: bottom right (#359 asks for it), white with D2R's drop
+// shadow instead of the box (docs/deviations.md).
 #include "item_quantity.h"
 
+#include "d2r.h"
 #include "log.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#include <D2RLPlugin/data_tables.h>
-#include <D2RLPlugin/inventory.h>
-#include <D2RLPlugin/lifecycle_events.h>
-#include <D2RLPlugin/overlay.h>
-#include <D2RLPlugin/threads.h>
-#include <D2RLPlugin/widgets.h>
-
 #include <atomic>
 #include <cstdio>
-#include <cstring>
 
 namespace item_quantity {
 
 namespace {
 
-namespace items = D2RL::Items;
-namespace widgets = D2RL::Widgets;
-using C = items::ItemContainer;
+using d2r::Unit;
 
-static_assert(SpotOf(100, 200, 50, 0, 0, 1, 1, 4).right == 146 && SpotOf(100, 200, 50, 0, 0, 1, 1, 4).bottom == 246);
-static_assert(SpotOf(0, 0, 10, 2, 1, 1, 3, 0).right == 30 && SpotOf(0, 0, 10, 2, 1, 1, 3, 0).bottom == 40);
-static_assert(PageOf("Shared 2") == 1 && PageOf("3 / 7") == 2 && PageOf("Shared") == UINT32_MAX && PageOf(nullptr) == UINT32_MAX);
+static_assert(TextRect({100, 200, 98, 196}, 6).width == 92 && TextRect({100, 200, 98, 196}, 6).height == 190);
+static_assert(TextRect({100, 200, 98, 196}, 6).x == 100 && TextRect({100, 200, 98, 196}, 6).y == 200);
 
-// The compiled items record (build 93847): +0x80 code, +0x11e inventory width and height in cells (D2Common Items.cpp's
-// socket cap at 0x36e880), +0x142 stackable (the save writer 0x37d140 writes 9 quantity bits only when it is set).
-constexpr uint32_t RecordCode = 0x80, RecordWidth = 0x11e, RecordHeight = 0x11f, RecordStackable = 0x142;
+// Grid item draw (widget, item); its first 15 bytes: test rdx,rdx / jz +0xd7 / push rsi / push rdi / sub rsp,0x68.
+// The hook never calls the original, so the relative jz in them needs no trampoline.
+constexpr uint64_t GridItemDraw = 0x2a72d0;
+constexpr uint8_t GridItemDrawEntry[] = {0x48, 0x85, 0xd2, 0x0f, 0x84, 0xd7, 0x00, 0x00, 0x00, 0x56, 0x57, 0x48, 0x83, 0xec, 0x68};
+// What 0x2a72d0 calls, in its order
+constexpr uint64_t WidgetScale = 0x1e6750;  // (parent widget) -> UI scale; null parent: the float at 0x1cba904
+constexpr uint64_t BaseScale = 0x1cba904;
+constexpr uint64_t ItemCells = 0x371850;    // (item, u8* width, u8* height, file, line): items record +0x11e/+0x11f
+constexpr uint32_t ItemInfoSlot = 0xc0 / 8;   // grid vtable: (widget, out, item) -> first qword: the item's cell
+constexpr uint32_t PlacementSlot = 0xf8 / 8;  // (widget, int32 rect[4] out, height << 32 | width, cell) -> rect
+constexpr uint64_t ItemPicture = 0x15bb80;  // (item, y << 32 | x, scale, out)
+// D2R's text draw (TextBoxWidget::Draw 0x86d410 calls it): (text, int32 rect[4] screen px, D2WinFont*, scale)
+constexpr uint64_t DrawText = 0x902e20;
+// Numbers only on InventoryGridWidget (inventory, cube, stash pages, trade and vendor grids, HD and legacy layouts):
+// the stash's Gems/Materials/Runes tabs (AdvancedStashSlotWidget, vtable 0x1cf4678) draw D2R's own count, and the
+// equipment slots, belt and others are not grids.
+constexpr uint64_t InventoryGridVtable = 0x1cf3800;
+constexpr int32_t StatQuantity = 70;
+constexpr uint32_t RecordStackable = 0x142;  // items record: the save writer 0x37d140 writes quantity only when set
 
-struct Shape {
-	uint8_t stackable, width, height;
+// D2WinFont, 0xa4 bytes: the defaults its builder 0x86d1b0 writes, then the fields set here (offsets from the style
+// reflection at 0x8bd030: pointSize +4, fontColor +8 (r, g, b, a ints), alignment +0x28 (h, v; left 0, center 1,
+// right 2, from 0x8ba810), dropShadow offset +0x70 and colour +0x78). Last int: the font preset, 0xe for none.
+struct Font {
+	int32_t v[0x29];
 };
-constexpr uint32_t MaxClasses = 4096;
-Shape g_shapes[MaxClasses] {};
-std::atomic<uint32_t> g_classes {0};  // set once g_shapes holds that many rows (game thread writes, UI thread reads)
-std::atomic<bool> g_loading {false};
+static_assert(sizeof(Font) == 0xa4);
+constexpr int32_t PointSize = 30;  // HD cell is 98 layout units; the HUD's small text is 22
+constexpr auto MakeFont() noexcept -> Font {
+	Font f {};
+	f.v[1] = PointSize;
+	for (int i = 2; i <= 9; ++i) {
+		f.v[i] = 0xff;  // fontColor white (PD2's font colour 0), and the colour after it at its default
+	}
+	f.v[0xa] = 2;   // h: right
+	f.v[0xb] = 2;   // v: bottom
+	f.v[0xc] = 0x3f800000;  // 1.0f, as the builder
+	f.v[0xd] = 0x3f800000;
+	f.v[0x10] = -1;
+	f.v[0x11] = 0x100;
+	f.v[0x1c] = 3;  // drop shadow offset x, y
+	f.v[0x1d] = 3;
+	f.v[0x21] = 200;  // shadow colour 0, 0, 0, 200 (the builder's default)
+	f.v[0x25] = 0xff;
+	f.v[0x28] = 0xe;
+	return f;
+}
+constexpr Font QuantityFont = MakeFont();
+static_assert(QuantityFont.v[1] == PointSize && QuantityFont.v[0xa] == 2 && QuantityFont.v[0x28] == 0xe);
 
-// One stack's number on screen
-struct Label {
-	float right, bottom, size;
-	char text[8];
-	uint32_t length;
-};
-constexpr uint32_t MaxLabels = 512;
-Label g_ui[MaxLabels];  // UI thread builds here, then copies under the lock
-uint32_t g_uiCount = 0;
-Label g_drawn[MaxLabels];
-uint32_t g_drawnCount = 0;
-SRWLOCK g_lock = SRWLOCK_INIT;
+using ScaleFn = float (*)(void* parent) noexcept;
+using CellsFn = void (*)(Unit* item, uint8_t* width, uint8_t* height, const char* file, int32_t line) noexcept;
+using InfoFn = uint64_t* (*)(void* widget, void* out, Unit* item) noexcept;
+using PlaceFn = int32_t* (*)(void* widget, int32_t* rect, uint64_t size, uint64_t cell) noexcept;
+using PictureFn = void (*)(Unit* item, uint64_t position, float scale, void* out) noexcept;
+using DrawTextFn = void (*)(const char* text, const int32_t* rect, const Font* font, float scale) noexcept;
 
-// One open grid, as the UI tick found it
-struct Grid {
-	const char* panel;
-	C container;
-	int32_t columns;
-	bool stash;
-};
-constexpr Grid Grids[] = {
-	{"PlayerInventoryExpansionLayout", C::Inventory, 10, false},
-	{"PlayerInventoryOriginalLayout", C::Inventory, 10, false},
-	{"HoradricCubeLayout", C::Cube, 3, false},
-	{"BankExpansionLayout", C::PersonalStash, 10, true},
-	{"BankOriginalLayout", C::PersonalStash, 6, true},
-};
-struct Open {
-	C container;
-	uint32_t page;  // shared stash page, else 0
-	float left, top, cell;
-};
-Open g_open[8];
-uint32_t g_openCount = 0;
-
-const D2RL::PluginContext* g_context = nullptr;
-const D2RL::InventoryService* g_inventory = nullptr;
-const D2RL::ThreadService* g_threads = nullptr;
-const D2RL::WidgetService* g_widgets = nullptr;
-const D2RL::OverlayService* g_overlay = nullptr;
-const D2RL::DataTableService* g_tables = nullptr;
-bool g_watching = false;
-uint32_t g_ticks = 0, g_frames = 0, g_lastGrids = 0, g_lastLabels = 0;  // the status line reads them racily
-char g_lastRect[160] = "none yet";
+std::atomic<uint32_t> g_drawn {0}, g_numbers {0}, g_faults {0};
+std::atomic<bool> g_on {true};  // off after a fault in the number draw: pictures still draw
 
 template <class T>
-auto At(const uint8_t* row, uint32_t offset) noexcept -> T {
-	T value;
-	std::memcpy(&value, row + offset, sizeof(T));
-	return value;
+auto Slot(void* object, uint32_t slot) noexcept -> T {
+	return reinterpret_cast<T>((*reinterpret_cast<void***>(object))[slot]);
 }
 
-// Game thread: the stackable flag and size of every items row, once.
-void LoadShapes(const D2RL::PluginContext*, void*) noexcept {
-	D2RL::DataTables::TableView view {.structSize = D2RL::DataTables::TableViewSize};
-	const auto result = g_tables->getTable(g_context, D2RL::DataTables::Bank::Rotw, D2RL::DataTables::TableId::Items, &view);
-	if (result != D2RL::DataTables::Result::Success || view.rows == nullptr || view.rowSize <= RecordStackable) {
-		g_loading = false;
-		plog::Info("quantity: no items table (result %u, row size %u)", static_cast<uint32_t>(result), view.rowSize);
+// The number of a stack (0: none) and its text rect
+auto Quantity(Unit* item) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (d2r::At<int32_t>(item, UnitType) != 4) {
+		return 0;
+	}
+	const int32_t row = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(UnitClassOf)(item, __FILE__, __LINE__);
+	const uint8_t flag = d2r::Engine<uint8_t (*)(Unit*) noexcept>(UnitDataFlag)(item);
+	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ItemRecord)(flag, row);
+	if (record == nullptr || record[RecordStackable] == 0) {
+		return 0;
+	}
+	return d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatQuantity, 0);
+}
+
+void DrawNumber(Unit* item, const int32_t* picture, uint8_t height, float scale) noexcept {
+	__try {
+		const int32_t quantity = Quantity(item);
+		if (quantity <= 0) {
+			return;
+		}
+		char text[12];
+		std::snprintf(text, sizeof(text), "%d", quantity);
+		const int32_t pad = height != 0 ? picture[3] / height * 6 / 100 : 0;
+		const Rect r = TextRect({picture[0], picture[1], picture[2], picture[3]}, pad);
+		const int32_t rect[4] = {r.x, r.y, r.width, r.height};
+		d2r::Engine<DrawTextFn>(DrawText)(text, rect, &QuantityFont, scale);
+		g_numbers.fetch_add(1, std::memory_order_relaxed);
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+		g_on = false;
+		g_faults.fetch_add(1);
+	}
+}
+
+// 0x2a72d0, as D2R does it, then the number
+void Draw(void* widget, Unit* item) noexcept {
+	if (item == nullptr) {
 		return;
 	}
-	const uint32_t count = view.rowCount < MaxClasses ? view.rowCount : MaxClasses;
-	uint32_t stackables = 0;
-	for (uint32_t i = 0; i < count; ++i) {
-		const auto* row = static_cast<const uint8_t*>(view.rows) + static_cast<size_t>(i) * view.rowSize;
-		g_shapes[i] = {row[RecordStackable], row[RecordWidth], row[RecordHeight]};
-		stackables += row[RecordStackable] != 0 ? 1 : 0;
-		const uint32_t code = At<uint32_t>(row, RecordCode);
-		if (code == items::MakeItemCode("r01") || code == items::MakeItemCode("jav") || code == items::MakeItemCode("rin") ||
-		    code == items::MakeItemCode("tbk")) {
-			plog::Info("quantity: row %u code %.4s stackable %u size %ux%u", i, reinterpret_cast<const char*>(row + RecordCode),
-			           row[RecordStackable], row[RecordWidth], row[RecordHeight]);
-		}
+	auto* parent = d2r::At<void*>(widget, 0x30);
+	float scale = parent != nullptr ? d2r::Engine<ScaleFn>(WidgetScale)(parent) : d2r::At<float>(reinterpret_cast<void*>(d2r::imageBase), static_cast<int>(BaseScale));
+	scale *= d2r::At<float>(widget, 0x80);
+	uint8_t width = 0, height = 0;
+	d2r::Engine<CellsFn>(ItemCells)(item, &width, &height, __FILE__, __LINE__);
+	uint64_t info[4] {};
+	const uint64_t cell = *Slot<InfoFn>(widget, ItemInfoSlot)(widget, info, item);
+	int32_t picture[4] {};
+	Slot<PlaceFn>(widget, PlacementSlot)(widget, picture, static_cast<uint64_t>(height) << 32 | width, cell);
+	uint8_t out[8] {};
+	d2r::Engine<PictureFn>(ItemPicture)(item, static_cast<uint64_t>(static_cast<uint32_t>(picture[1])) << 32 | static_cast<uint32_t>(picture[0]), scale, out);
+	g_drawn.fetch_add(1, std::memory_order_relaxed);
+	if (g_on.load(std::memory_order_relaxed) && d2r::At<uint64_t>(widget, 0) == d2r::imageBase + InventoryGridVtable) {
+		DrawNumber(item, picture, height, scale);
 	}
-	g_classes = count;
-	plog::Info("quantity: %u items rows (row size %u), %u stackable", count, view.rowSize, stackables);
-}
-
-auto Visible(widgets::WidgetHandle widget) noexcept -> bool {
-	widgets::State state {};
-	return g_widgets->getWidgetState(g_context, widget, &state) == widgets::Result::Success && state.visible;
-}
-
-// UI thread: which grids are open, and where.
-void FindGrids() noexcept {
-	g_openCount = 0;
-	for (const Grid& grid : Grids) {
-		widgets::WidgetHandle panel = widgets::InvalidHandle, cells = widgets::InvalidHandle;
-		if (g_widgets->findPanel(g_context, grid.panel, &panel) != widgets::Result::Success || !Visible(panel) ||
-		    g_widgets->findWidget(g_context, panel, "grid", &cells) != widgets::Result::Success || !Visible(cells)) {
-			continue;
-		}
-		widgets::ScreenRect rect {};
-		if (g_widgets->getWidgetScreenRect(g_context, cells, &rect) != widgets::Result::Success || rect.width <= 0) {
-			continue;
-		}
-		Open open {grid.container, 0, rect.x, rect.y, rect.width / static_cast<float>(grid.columns)};
-		if (grid.stash) {
-			widgets::WidgetHandle shared = widgets::InvalidHandle, label = widgets::InvalidHandle;
-			if (g_widgets->findWidget(g_context, panel, "SharedStashTabContainer", &shared) == widgets::Result::Success &&
-			    Visible(shared)) {
-				char text[64] = "";
-				uint32_t needed = 0;
-				open.container = C::SharedStash;
-				open.page = g_widgets->findWidget(g_context, shared, "CurrentSharedStashText", &label) == widgets::Result::Success &&
-				                    g_widgets->getText(g_context, label, text, sizeof(text), &needed) == widgets::Result::Success
-				                ? PageOf(text)
-				                : 0;
-			}
-		}
-		std::snprintf(g_lastRect, sizeof(g_lastRect), "%s %.0f,%.0f %.0fx%.0f cell %.1f container %u page %u", grid.panel,
-		              rect.x, rect.y, rect.width, rect.height, open.cell, static_cast<uint32_t>(open.container), open.page);
-		if (g_openCount < std::size(g_open)) {
-			g_open[g_openCount++] = open;
-		}
-	}
-}
-
-auto AddLabel(const D2RL::PluginContext*, const items::ItemInfo* item, void*) noexcept -> D2RL::Inventory::IterationAction {
-	if (item->classId >= g_classes.load(std::memory_order_acquire) || g_shapes[item->classId].stackable == 0 ||
-	    g_uiCount >= MaxLabels) {
-		return D2RL::Inventory::IterationAction::Continue;
-	}
-	const Shape shape = g_shapes[item->classId];
-	for (uint32_t i = 0; i < g_openCount; ++i) {
-		const Open& open = g_open[i];
-		if (open.container != item->container || (open.container == C::SharedStash && open.page != item->sharedStashPage)) {
-			continue;
-		}
-		const Spot spot = SpotOf(open.left, open.top, open.cell, item->x, item->y, shape.width, shape.height, open.cell * 0.06f);
-		Label& label = g_ui[g_uiCount++];
-		label.right = spot.right;
-		label.bottom = spot.bottom;
-		label.size = open.cell * 0.34f;
-		const int written = std::snprintf(label.text, sizeof(label.text), "%d", item->quantity);
-		label.length = written > 0 ? static_cast<uint32_t>(written) : 0;
-		break;
-	}
-	return D2RL::Inventory::IterationAction::Continue;
-}
-
-void Watch(const D2RL::PluginContext*, void*) noexcept {
-	g_watching = g_threads->runOnUiThread(g_context, Watch, nullptr) == D2RL::Threads::Result::Success;  // again next update
-	++g_ticks;
-	g_uiCount = 0;
-	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
-	if (g_classes.load(std::memory_order_acquire) != 0 &&
-	    g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success) {
-		FindGrids();
-		if (g_openCount != 0) {
-			uint32_t mask = 0;
-			for (uint32_t i = 0; i < g_openCount; ++i) {
-				mask |= items::ContainerBit(g_open[i].container);
-			}
-			const D2RL::Inventory::ItemFilter filter {.structSize = D2RL::Inventory::ItemFilterSize, .containerMask = mask};
-			g_inventory->forEachInventoryItem(g_context, player, &filter, AddLabel, nullptr);
-		}
-	}
-	if (g_openCount != g_lastGrids || g_uiCount != g_lastLabels) {
-		plog::Info("quantity: %u grids open, %u numbers; last grid %s", g_openCount, g_uiCount, g_lastRect);
-		g_lastGrids = g_openCount;
-		g_lastLabels = g_uiCount;
-	}
-	AcquireSRWLockExclusive(&g_lock);
-	std::memcpy(g_drawn, g_ui, sizeof(Label) * g_uiCount);
-	g_drawnCount = g_uiCount;
-	ReleaseSRWLockExclusive(&g_lock);
-}
-
-// Overlay thread: draws what the last UI tick found.
-void __cdecl Draw(const D2RL::PluginContext* context, const D2RL::Overlay::Frame* frame, void*) noexcept {
-	++g_frames;
-	AcquireSRWLockShared(&g_lock);
-	for (uint32_t i = 0; i < g_drawnCount; ++i) {
-		const Label& label = g_drawn[i];
-		const D2RL::Overlay::MeasureTextRequest measure {.structSize = D2RL::Overlay::MeasureTextRequestSize,
-		                                                 .canvas = frame->canvas,
-		                                                 .textSize = label.size,
-		                                                 .text = label.text,
-		                                                 .textLength = label.length};
-		D2RL::Overlay::TextMetrics metrics {.structSize = D2RL::Overlay::TextMetricsSize};
-		if (g_overlay->measureText(context, &measure, &metrics) != D2RL::Overlay::Result::Success) {
-			continue;
-		}
-		const float left = label.right - metrics.width, top = label.bottom - metrics.height;
-		const D2RL::Overlay::FilledRectangleRequest box {.structSize = D2RL::Overlay::FilledRectangleRequestSize,
-		                                                 .canvas = frame->canvas,
-		                                                 .rect = {left - 2, top, label.right + 2, label.bottom},
-		                                                 .color = {0, 0, 0, 0.6f}};  // PD2's 0x99 alpha black
-		g_overlay->drawFilledRectangle(context, &box);
-		const D2RL::Overlay::TextRequest text {.structSize = D2RL::Overlay::TextRequestSize,
-		                                       .canvas = frame->canvas,
-		                                       .position = {left, top},
-		                                       .color = {1, 1, 1, 1},  // PD2's font color 0, white
-		                                       .textSize = label.size,
-		                                       .text = label.text,
-		                                       .textLength = label.length};
-		g_overlay->drawText(context, &text);
-	}
-	ReleaseSRWLockShared(&g_lock);
-}
-
-// UI thread. The SDK refuses UI work queued during plugin load, so the watch starts with the first game.
-void __cdecl Start(const D2RL::PluginContext* context, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {
-	if (g_classes.load() == 0 && !g_loading.exchange(true) &&
-	    g_threads->runOnGameThread(context, LoadShapes, nullptr) != D2RL::Threads::Result::Success) {
-		g_loading = false;
-		plog::Info("quantity: could not queue the items table read");
-	}
-	if (!g_watching) {
-		Watch(context, nullptr);
-	}
-}
-
-template <class Service>
-auto Query(const Service*& service, bool (*has)(const Service*, uint32_t), uint32_t required) noexcept -> bool {
-	if (g_context->QueryService(&service) != D2RL::ServiceQueryResult::Success || !has(service, required)) {
-		service = nullptr;
-	}
-	return service != nullptr;
-}
-
-auto HasTables(const D2RL::DataTableService* service, uint32_t size) noexcept -> bool {
-	return service != nullptr && service->serviceVersion == D2RL::DataTableService::AbiVersion && service->serviceSize >= size;
 }
 
 }  // namespace
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	g_context = context;
-	const D2RL::LifecycleService* lifecycle = nullptr;
-	// `&`, not `&&`: every service is queried, so the report never blames a missing one by mistake
-	if (!(Query(g_inventory, D2RL::HasInventoryServiceField, D2RL::InventoryServiceRequiredSize) &
-	      Query(g_threads, D2RL::HasThreadServiceField, D2RL::ThreadServiceRequiredSize) &
-	      Query(g_widgets, D2RL::HasWidgetServiceField, D2RL::WidgetServiceGetWidgetScreenRectFieldEnd) &
-	      Query(g_overlay, D2RL::HasOverlayServiceField, D2RL::OverlayServiceRequiredSize) &
-	      Query(g_tables, HasTables, static_cast<uint32_t>(sizeof(D2RL::DataTableService))) &
-	      Query(lifecycle, D2RL::HasLifecycleServiceField, D2RL::LifecycleServiceRequiredSize))) {
-		const D2RL::WidgetService* widgetService = nullptr;
-		(void)context->QueryService(&widgetService);
-		std::snprintf(report, size, "FAILED (missing: inventory %d, thread %d, widget %d (size %u, needs %u), overlay %d, data table %d, lifecycle %d)",
-		              g_inventory == nullptr, g_threads == nullptr, g_widgets == nullptr,
-		              widgetService != nullptr ? widgetService->serviceSize : 0, D2RL::WidgetServiceGetWidgetScreenRectFieldEnd,
-		              g_overlay == nullptr, g_tables == nullptr, lifecycle == nullptr);
-		return;
-	}
-	const D2RL::Overlay::CallbackRegistration draw {.structSize = D2RL::Overlay::CallbackRegistrationSize,
-	                                                .phase = D2RL::Overlay::Phase::AfterGameUi,
-	                                                .callback = Draw};
-	D2RL::Overlay::CallbackHandle drawing = D2RL::Overlay::InvalidCallbackHandle;
-	if (g_overlay->registerFrameCallback(context, &draw, &drawing) != D2RL::Overlay::Result::Success) {
-		std::snprintf(report, size, "FAILED (no overlay callback)");
-		return;
-	}
-	const D2RL::Lifecycle::GameplayEventListener listener {.structSize = D2RL::Lifecycle::GameplayEventListenerSize,
-	                                                       .kind = D2RL::Lifecycle::GameplayEventKind::LocalPlayerReady,
-	                                                       .callback = Start};
-	D2RL::Lifecycle::ListenerHandle handle = D2RL::Lifecycle::InvalidHandle;
-	if (lifecycle->registerGameplayEventListener(context, &listener, &handle) != D2RL::Lifecycle::Result::Success) {
-		std::snprintf(report, size, "FAILED (no player-ready listener)");
-		return;
-	}
-	std::snprintf(report, size, "stacks in the inventory, cube and stash show their quantity");
+	const bool hook = context->InstallInlineHook(GridItemDraw, GridItemDrawEntry, sizeof(GridItemDrawEntry), Draw);
+	std::snprintf(report, size, hook ? "stacks in item grids show their quantity" : "FAILED (grid item draw bytes differ)");
 }
 
 void Counters(char* out, size_t size) noexcept {
-	std::snprintf(out, size, "quantity: %u items rows, watch updates %u, frames %u, %u grids open, %u numbers; last grid %s",
-	              g_classes.load(), g_ticks, g_frames, g_lastGrids, g_lastLabels, g_lastRect);
+	std::snprintf(out, size, "quantity: %u items drawn, %u numbers, %u faults%s", g_drawn.load(), g_numbers.load(),
+	              g_faults.load(), g_on.load() ? "" : " (numbers off)");
 }
 
 }  // namespace item_quantity

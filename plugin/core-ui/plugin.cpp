@@ -135,7 +135,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 		stack_split::Install(context, g_split, sizeof(g_split));
 	}
 	plog::Info("split %s", g_split);
-	// SDK only, but it reads items-record offsets of this build, so it needs the known image
+	// a native hook (the SDK cannot place or draw it on D2RLoader 1.3.1, #359), so it needs the known image
 	if (!bound) {
 		std::snprintf(g_quantity, sizeof(g_quantity), "%s", g_pictures);
 	} else if (off_switch::Off("quantity")) {
