@@ -1159,6 +1159,7 @@ inline constexpr int AiRowSize = 0x20;
 inline constexpr uint64_t AiMephisto = 0x5b1ca0, AiDiablo = 0x5c8d40, AiBaalCrab = 0x5a8b80;
 inline constexpr uint64_t AiOverseer = 0x5c2290;  // row 120's think (Lucion, #437)
 inline constexpr uint64_t AiTrapMelee = 0x5b5ca0;  // row 87's think (Dclone, #470): melee by aip1, else idle aip2
+inline constexpr uint64_t AiTrappedSoul = 0x5cfb20;  // row 99's think (the trapped souls, #472), read from the table
 // The think's tick block: the target at +0x10 (1.13c +0x08), its distance at +0x20 (1.13c +0x14), as the Mephisto
 // think reads them
 inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;

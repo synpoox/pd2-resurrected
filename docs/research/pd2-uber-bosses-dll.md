@@ -157,8 +157,17 @@ controller, spawner and adds. So a boss left alone, or pulled out of every playe
   immunity toggle (`0x10380770`, section 5 intro). The boss is immune while any add lives, before his first phase (stat 447 = 0), and while the farthest
   player in his level is more than 0x17c away (squared subtiles); otherwise its resists are restored from `monstats`
   (its Normal columns). #470's port read this from the disassembly.
-- **Trapped souls** (`0x1035bc60`, monsters 790-794) die when Dclone is dead or dying. Their cast delay is the `aidel`
-  minus 4×tier (at least 20) and their spread shrinks with the tier.
+- **Trapped souls** (`0x1035bc60`, monsters 790-794) die when Dclone (`game+0x2600`) is dead or dying (mode 0 or 12,
+  or life 0%). #472's port read the rest from the disassembly (Hell columns, whatever the difficulty):
+  - A soul waits (idle `aidel`) while Dclone's life % is above its `aip4` + (tier − 1)×12 (souls 1-5: 100, 80, 40, 60,
+    20) or while his nova count (stat 446) is not 0.
+  - With its own stat 446 at 0 it casts skill 2 (UberDiabloBoulder) on its target and sets the stat to `aip5` (10);
+    otherwise it counts it down and casts skill 1 (UberDiabloMeteor), skipped 1 in max(`aip6` − 5×tier + 5, 5) % of the time.
+  - The meteor lands in the 50×50 square from (0x3b00, 0x197b) around the arena centre, or, for `aip8` 2 or 3 (souls 3
+    and 5), at the target spread over 24 − 8×tier subtiles.
+  - The delay after a cast: `aidel` + 10 at tier 0, else max(`aidel` − 4×(tier − 1), 20); the meteor's adds 0-7 − 4.
+  - The same function's branch for monster 0x39a (nihlathakMap) runs mob waves (its `aip1` columns count the stages),
+    then casts skill 2 (RathmaDeath) and kills itself; its branch for 0x421 in level 0xb6 is a third AI.
 
 ### Rathma and Mendeln (`0x10358510`)
 
