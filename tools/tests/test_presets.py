@@ -186,16 +186,20 @@ class LayerTests(unittest.TestCase):
         stock += [tree("single", x, z, single) for x in (30.0, 70.0) for z in (55.0, 95.0)]  # one on the line
         stock += [tree("canopy", x, 80.0, canopy) for x in (30.0, 70.0)]
         kit = P.painter.harvest([(lay(10, 10), {"dependencies": {"models": [{"path": single}]}, "entities": stock})])
-        strays = P.Kit()  # the per-tile kit puts a tree on every floor tile
+        strays = P.Kit()  # the per-tile kit puts a tree on every floor tile and on a lone wall tile
         strays.add(P.Layout(1, 1, {(0, 0): self.F}), {"dependencies": {}, "entities": [tree("stray", 5, 5, single)]},
                    {self.F})
+        strays.add(P.Layout(1, 1, {(0, 0): self.WB}), {"dependencies": {}, "entities": [tree("lone", 5, 5, single)]},
+                   {self.WB})
         target = lay(30, 10)
+        target.keys[(12, 2)], target.flags[(12, 2)] = self.WB, b"\1" * 25  # a lone tree on the path
         cluster = {"trees": kit, "prefabs": lambda path: [(0.0, 0.0), (0.0, -20.0)]}  # a cluster reaches 10 subtiles up
         preset, _ = P.build(target, strays, "m", "m.ds1", "b.json", TERRAIN, **cluster)
         names = [e["name"] for e in preset["entities"]]
         where = {n: [at(e) for e in preset["entities"] if e["name"] == n] for n in set(names)}
-        # the strays on the path stay (lone trees); those past it are dropped and painted again
-        self.assertEqual(sorted(z for _, z in where["stray"]), sorted(y * 10 + 5.0 for x in range(30) for y in range(5)))
+        # no tree stands on the path's floor (#396), only the lone tree's; the strays past it are dropped and painted again
+        self.assertNotIn("stray", where)
+        self.assertEqual(where["lone"], [(125.0, 25.0)])
         for n in ("cluster", "single", "canopy"):
             self.assertTrue(where.get(n), n)
             self.assertTrue(all(z >= 50 for _, z in where[n]), (n, where[n]))  # on the line (row 5) or past it
@@ -205,6 +209,18 @@ class LayerTests(unittest.TestCase):
         self.assertLess(last["single"], first["canopy"])
         self.assertIn(single, [d["path"] for d in preset["dependencies"]["models"]])
         self.assertEqual(preset, P.build(target, strays, "m", "m.ds1", "b.json", TERRAIN, **cluster)[0])
+
+    def test_a_pasted_rooms_trees_reaching_walkable_floor_are_dropped(self):
+        keys = {(x, y): self.F for x in range(4) for y in range(4)}
+        room = P.Layout(4, 4, keys, {c: b"\0" * 25 for c in keys}, frozenset({(3, 3)}))  # the DS1 seals (3, 3)
+        trees = [{"type": "Entity", "name": n, "id": 1, "components": [
+            entity(n, x, z)["components"][0], {"type": "ModelDefinitionComponent", "filename": "a/small_cluster01.model"}]
+            + ([{"type": "PrefabPlacementDefinitionComponent", "prefab": "a/pf_tree_wall01.json"}] if n == "spill" else [])}
+            for n, x, z in (("on_floor", 15.0, 15.0), ("sealed", 35.0, 35.0), ("spill", 35.0, 35.0))]
+        src = {"dependencies": {}, "entities": trees + [entity("torch", 14.0, 2.0)]}
+        preset, _ = P.build(room, P.Kit(), "m", "m.ds1", "b.json", TERRAIN, stock=[(room, src)], trees=({}, 9.0),
+                            prefabs=lambda path: [(0.0, 0.0), (-20.0, 0.0)])  # the prefab reaches 2 tiles west
+        self.assertEqual(sorted(e["name"] for e in preset["entities"]), ["sealed", "torch"])
 
     def test_a_dashed_lines_gap_is_playable_only_where_the_ds1_leaves_it_walkable(self):
         keys = {(x, y): self.WA if y == 1 and x % 4 else self.F for x in range(12) for y in range(3)}

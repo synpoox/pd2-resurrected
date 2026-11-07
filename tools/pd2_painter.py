@@ -153,18 +153,16 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
                    and (p[0] // 5, p[1] // 5) not in skip), key=lambda p: (reach[p], zlib.crc32(f"{seed}:{p}".encode())))
     feet = {}
 
-    def footprint(e) -> frozenset:
-        """Subtile offsets from the origin subtile its pieces cover (a prefab spreads over tiles)."""
-        if id(e) not in feet:
-            t, pf = transform(e), prefab(e)
-            sc, q = t.get("scale") or {"x": 1, "z": 1}, t.get("orientation") or {"x": 0, "y": 0, "z": 0, "w": 1}
-            feet[id(e)] = frozenset((math.floor(v[0] / 2), math.floor(v[2] / 2))
-                                    for x, z in (prefabs(pf) if pf else [(0.0, 0.0)])
-                                    for v in [rotate(q, (x * sc["x"], 0.0, z * sc["z"]))])
-        return feet[id(e)]
+    def footprint(o) -> frozenset:
+        """Subtile offsets from the origin subtile a kit tree's pieces cover (a prefab spreads over tiles), counting
+        its offset within that subtile (o[1], o[2])."""
+        if id(o) not in feet:
+            feet[id(o)] = frozenset((math.floor((o[1] + x) / 2), math.floor((o[2] + z) / 2))
+                                    for x, z in pieces(o[0], prefabs))
+        return feet[id(o)]
 
     def clear(p, o) -> bool:
-        return not any((p[0] + dx, p[1] + dz) in keep_off for dx, dz in footprint(o[0]))
+        return not any((p[0] + dx, p[1] + dz) in keep_off for dx, dz in footprint(o))
 
     def run(sub: dict, singles: dict, grid) -> list:
         ents, cell = [], max(1, int(spacing))
@@ -207,6 +205,14 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
     out += run(single, singles, walls)
     out += run(canopy, {}, collections.defaultdict(list))
     return out, play
+
+
+def pieces(e: dict, prefabs) -> list[tuple[float, float]]:
+    """The (x, z) offsets from the entity's position of its pieces (a prefab's, scaled and turned; else its own)."""
+    t, pf = transform(e), prefab(e)
+    sc, q = t.get("scale") or {"x": 1, "z": 1}, t.get("orientation") or {"x": 0, "y": 0, "z": 0, "w": 1}
+    return [(v[0], v[2]) for x, z in (prefabs(pf) if pf else [(0.0, 0.0)])
+            for v in [rotate(q, (x * sc["x"], 0.0, z * sc["z"]))]]
 
 
 def rotate(q: dict, v: tuple) -> tuple:

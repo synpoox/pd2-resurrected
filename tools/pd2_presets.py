@@ -270,9 +270,19 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
         def tile(e: dict) -> tuple[int, int]:
             return int(_transform(e)["position"]["x"] // TILE), int(_transform(e)["position"]["z"] // TILE)
         near = painter.dilate(painter.dilate({tile(e) for e, _ in painted}))
-        # a lone tree on the path stays; so does a line's where no painted tree stands within two tiles (a line with
-        # playable ground on both sides leaves the painter no room)
-        loose = [e for e in loose if not painter.is_tree(e) or tile(e) in play or tile(e) in line - near]
+        # walkable floor: no stock tree, kit or pasted room, puts a piece on it, as one there hides the player (#396)
+        ground = {c for c in play - lay.unwalkable if lay.keys[c][0] != "w"}
+
+        def on_ground(e: dict) -> bool:
+            p = _transform(e)["position"]
+            return any((int((p["x"] + x) // TILE), int((p["z"] + z) // TILE)) in ground
+                       for x, z in painter.pieces(e, prefabs))
+        entities = [e for e in entities if not painter.is_tree(e) or not on_ground(e)]
+        # a lone tree (a wall tile on the path) stays, and a stream's; so does a line's where no painted tree stands
+        # within two tiles (a line with playable ground on both sides leaves the painter no room)
+        loose = [e for e in loose if not painter.is_tree(e)
+                 or not on_ground(e) and (tile(e) in play or tile(e) in line - near)]
+        assert not any(on_ground(e) for e, _ in painted), f"{name}: a painted tree reaches walkable floor"
         for e, of in painted:
             loose.append(e)
             depend(of)
