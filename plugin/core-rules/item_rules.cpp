@@ -110,6 +110,8 @@ auto Stat(Unit* unit, uint32_t stat) noexcept -> int32_t {
 	return d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(d2r::rva::UnitStat)(unit, stat, 0);
 }
 
+constexpr int32_t ItemType2han = 120, ItemType1han = 122;  // merged itemtypes rows (PD2's 114, 116)
+
 struct Strike {
 	int kind = 0;  // 0 none, 1 critical strike, 2 deadly strike
 	int32_t critChance = 0, critRoll = -1, dsChance = 0, dsCap = 0, dsRoll = -1;
@@ -159,10 +161,9 @@ auto LogStrike(const char* where, Unit* unit, const Strike& s, uint32_t before, 
 }
 
 // Called from WeaponDamage's patched roll block (WeaponCritBlock) in place of D2R's: PD2's roll, then the physical
-// part (damage +0x18) times 200 + item_crit_multiplier or 150 + item_ds_multiplier percent (0x103047f0), flag 0x2000.
+// part (damage +0x18) times 200 + item_crit_multiplier or 150 + item_ds_multiplier percent, each plus the stat's
+// per-hand sum (0x103047f0: Javelin and Spear Mastery's crit multiplier sits on the spea layer), flag 0x2000.
 // a5 keeps D2R's gate on the mastery's crit (D2R adds it only when a5 is 0).
-// shortcut: PD2 adds the multiplier's per-hand item sum (0x10381720); the unit's total is used, which differs only
-// when dual wielding two multiplier weapons; upgrade if a dual-wield carrier turns up.
 auto WeaponStrike(Unit* attacker, uint8_t* damage, int32_t a5) noexcept -> void {
 	using namespace d2r::rva;
 	if (attacker == nullptr || damage == nullptr) {
@@ -173,7 +174,8 @@ auto WeaponStrike(Unit* attacker, uint8_t* damage, int32_t a5) noexcept -> void 
 	const uint32_t before = At<uint32_t>(damage, 0x18);
 	int32_t multiplier = 100;
 	if (s.kind != 0) {
-		multiplier = s.kind == 1 ? 200 + Stat(attacker, StatCritMultiplier) : 150 + Stat(attacker, StatDsMultiplier);
+		const uint32_t stat = s.kind == 1 ? StatCritMultiplier : StatDsMultiplier;
+		multiplier = (s.kind == 1 ? 200 : 150) + Stat(attacker, stat) + HandStatSum(attacker, stat);
 		const int64_t raised = static_cast<int64_t>(before) * (multiplier > 0 ? multiplier : 0) / 100;
 		*reinterpret_cast<uint32_t*>(damage + 0x18) = static_cast<uint32_t>(raised < 0x7fffffff ? raised : 0x7fffffff);
 		*reinterpret_cast<uint16_t*>(damage + 4) |= 0x2000;
@@ -181,7 +183,9 @@ auto WeaponStrike(Unit* attacker, uint8_t* damage, int32_t a5) noexcept -> void 
 	LogStrike("weapon", attacker, s, before, At<uint32_t>(damage, 0x18), multiplier);
 }
 
-// D2R's missile roll (MissileCritRoll) with PD2's chances; the hit still doubles (D2R's; approximated, docs/research/ir3-combat-stats.md)
+// D2R's missile roll (MissileCritRoll) with PD2's chances; the hit doubles, as in PD2, whose live missile fill
+// (0x102fe730) rolls the same way and whose multiplier for missiles (0x103045a0) nothing calls
+// (docs/research/ir3-combat-stats.md)
 auto MissileStrike(Unit* unit, Unit* weapon) noexcept -> uint64_t {
 	if (unit == nullptr) {
 		return 0;
@@ -338,11 +342,27 @@ auto BlowDivisor(Game* game, Unit* target) noexcept -> double {
 	return divisor + bonus / 50.0;
 }
 
-// PD2's blow: life * (1 + item_crushingblow_efficiency / 100) / divisor (x1.5 for a missile), less the target's
-// damageresist percent, nothing at 100 or more; then the kill flag and the overlay. D2R's event 16 and Smite's
-// roll (skill_functions.cpp) both call it.
-// shortcut: PD2 adds Smite's calc4 to the effectiveness and the efficiency's per-hand item sum; neither is passed in
-// here (1 and the unit's total). Upgrade with a Smite carrier of item_crushingblow_efficiency.
+constexpr int32_t SkillSmite = 97;
+
+// PD2's effectiveness: 1, plus Smite's calc4 / 100 while the unit's current skill is Smite, at the unit skill's hard
+// points (1.13c's skill +0x28)
+auto BlowEffectiveness(Game* game, Unit* unit) noexcept -> double {
+	using namespace d2r::rva;
+	void* current = d2r::Engine<void* (*)(Unit*) noexcept>(CurrentSkill)(unit);
+	if (current == nullptr ||
+	    d2r::Engine<int32_t (*)(const void*, const char*, int32_t) noexcept>(UnitSkillId)(current, __FILE__, __LINE__) !=
+	        SkillSmite) {
+		return 1.0;
+	}
+	const uint8_t* record = d2r::api.getSkillRecord(d2r::DataFlag(game), SkillSmite);
+	const int32_t level = d2r::Engine<int32_t (*)(Unit*, void*, int32_t) noexcept>(UnitSkillLevel)(unit, current, 0);
+	return record != nullptr ? 1.0 + d2r::EvalCalc(game, unit, record, SkCalc4, SkillSmite, level) / 100.0 : 1.0;
+}
+
+// PD2's blow: life / (divisor / (efficiency / 100 + effectiveness)) (divisor x1.5 for a missile), efficiency =
+// item_crushingblow_efficiency + its per-hand sum (Two Hand Mastery's 2han layer), less the target's damageresist
+// percent, nothing at 100 or more; then the kill flag and the overlay. D2R's event 16 and Smite's roll
+// (skill_functions.cpp) both call it.
 auto CrushingBlow(Game* game, Unit* unit, Unit* target, d2r::CrushingBlowArgs* args) noexcept -> int32_t {
 	using namespace d2r::rva;
 	if (game == nullptr || unit == nullptr || target == nullptr || args == nullptr) {
@@ -353,9 +373,10 @@ auto CrushingBlow(Game* game, Unit* unit, Unit* target, d2r::CrushingBlowArgs* a
 		return 0;
 	}
 	const double divisor = BlowDivisor(game, target) * (args->missile != 0 ? 1.5 : 1.0);
-	const int32_t efficiency = Stat(unit, StatCbEfficiency);
+	const int32_t efficiency = Stat(unit, StatCbEfficiency) + HandStatSum(unit, StatCbEfficiency);
+	const double effectiveness = BlowEffectiveness(game, unit);
 	const double life = static_cast<uint32_t>(Stat(target, StatLife));
-	double blow = life / (divisor / (efficiency / 100.0 + 1.0));
+	double blow = life / (divisor / (efficiency / 100.0 + effectiveness));
 	blow -= static_cast<int32_t>(static_cast<int64_t>(static_cast<int32_t>(blow)) * resist / 100);  // 0x1037c4c0
 	const int32_t after = std::max(static_cast<int32_t>(life - blow), 0);
 	d2r::Engine<void (*)(Unit*, uint32_t, int32_t, uint32_t) noexcept>(SetUnitStat)(target, StatLife, after, 0);
@@ -367,10 +388,10 @@ auto CrushingBlow(Game* game, Unit* unit, Unit* target, d2r::CrushingBlowArgs* a
 	}
 	const uint32_t n = ++g_blows;
 	if (n <= 20 || n % 200 == 0) {
-		plog::Info("crushing blow: unit type %d on unit type %d class %d%s: divisor %.2f, efficiency %d, resist %d, "
-		           "life %.0f -> %d (1/256), %u so far", At<int32_t>(unit, UnitType), At<int32_t>(target, UnitType),
-		           At<int32_t>(target, UnitClassId), args->missile != 0 ? " (missile)" : "", divisor, efficiency, resist,
-		           life, after, n);
+		plog::Info("crushing blow: unit type %d on unit type %d class %d%s: divisor %.2f, efficiency %d, "
+		           "effectiveness %.2f, resist %d, life %.0f -> %d (1/256), %u so far", At<int32_t>(unit, UnitType),
+		           At<int32_t>(target, UnitType), At<int32_t>(target, UnitClassId), args->missile != 0 ? " (missile)" : "",
+		           divisor, efficiency, effectiveness, resist, life, after, n);
 	}
 	return 1;
 }
@@ -772,6 +793,35 @@ auto EquipAuraTick(Game* game, Unit* unit, int32_t key, int32_t skill, int32_t s
 }
 
 }  // namespace
+
+// PD2's 0x10381720: each item-type layer of the stat that the wielded weapon is of; 2han counts only with the other
+// hand empty or holding the same item, 1han only when the other hand holds another item or none
+// shortcut: PD2 also counts the 1han layer for a dual-wield class's 2han weapon beside another item; no stat this sum
+// is used for has a 1han layer (skills passiveitype), upgrade if one gets it.
+auto HandStatSum(Unit* unit, uint32_t stat) noexcept -> int32_t {
+	using namespace d2r::rva;
+	Unit* weapon = unit != nullptr ? d2r::Engine<Unit* (*)(Unit*) noexcept>(UnitWeapon)(unit) : nullptr;
+	const uint8_t* tables = weapon != nullptr ? ::DataTables(d2r::api.unitDataFlag(unit)) : nullptr;
+	if (tables == nullptr) {
+		return 0;
+	}
+	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory)(unit, __FILE__, __LINE__);
+	const auto bodyItem = d2r::Engine<Unit* (*)(void*, int32_t) noexcept>(InventoryBodyItem);
+	Unit* right = inventory != nullptr ? bodyItem(inventory, 4) : nullptr;  // bodylocs 4 and 5 are the hands
+	Unit* other = right == weapon && inventory != nullptr ? bodyItem(inventory, 5) : right;
+	const auto isType = d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType);
+	const int64_t types = At<int64_t>(tables, TablesItemTypesCount);
+	int32_t sum = 0;
+	for (int32_t type = 1; type < types; ++type) {
+		if (isType(weapon, type) == 0) {
+			continue;
+		}
+		const bool counted = type == ItemType2han ? other == nullptr || other == weapon
+		                     : type == ItemType1han ? other != weapon : true;
+		sum += counted ? StatOf(unit, static_cast<int32_t>(stat), type) : 0;
+	}
+	return sum;
+}
 
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
