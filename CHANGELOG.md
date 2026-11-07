@@ -60,6 +60,10 @@ private-multiplayer release a build may break characters; each break is noted he
 - Wooded maps in HD fill the gaps in their tree lines and no longer plant trees on walkable ground.
 - Wooded maps in HD keep tall trees off the near side of paths, so they no longer hide the character.
 
+#### Sounds
+
+- Zhar the Mad attacks with his own PD2 voice.
+
 #### Fixes
 
 - Rathma's portal to Harrogath is gold, and the shard names lose a stray `*/`, as in PD2.
