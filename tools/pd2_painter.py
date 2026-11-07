@@ -2,13 +2,15 @@
 set's stock presets place them.
 
 Subtile grid: 5x5 per tile, blocked = DT1 subtile flag bit 0 (Layout.flags). harvest() learns, per stock tree, its
-distance (subtiles) to the nearest blocked subtile and the direction to it (8 buckets), and how far it stood from its
-room's open ground; paint() puts trees on the subtiles past the playable area, nearest first, the stock spacing apart,
+distance (subtiles) to the nearest blocked subtile, the direction to its room's playable ground (8 buckets) and how far
+it stood from it; where a tree would be drawn over the playable ground, only roots stand (#454); paint() puts trees on the subtiles past the playable area, nearest first, the stock spacing apart,
 each copied from a stock tree with the same direction and distance."""
 from __future__ import annotations
 
+import bisect
 import collections
 import copy
+import functools
 import json
 import math
 import re
@@ -18,7 +20,10 @@ TREE = re.compile(r"tree_wall|treewall|treeline|small_cluster|_trees_")  # treel
 SPACING = 9  # subtiles between tree origins when the stock has fewer than two trees
 DEPTH = 30  # paint unreachable ground up to this many subtiles from the playable area
 CAP = 15  # distances to the blocked ground are capped here
-WALK = 10  # subtiles a player walks from the tile-level playable area
+# a tree covers the ground screen-up of it: up to TALL subtile rows (x + y; a tile is 10) above, WIDE columns (x - y) to
+# either side, about 4 tiles high and 1 wide
+TALL, WIDE = 40, 10
+LOW = re.compile(r"jungle_roots\d+_treewall")  # the tree-wall models low enough to stand in front of the path
 LINE = 10  # wall tiles in an 8-connected group this big are a tree line; smaller groups stand in a clearing
 STEPS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 AROUND = [(i, j) for i in (-1, 0, 1) for j in (-1, 0, 1)]
@@ -45,35 +50,25 @@ def subtiles(tiles) -> set:
     return {(x * 5 + i, y * 5 + j) for x, y in tiles for i in range(5) for j in range(5)}
 
 
-def spread(start, w: int, h: int, depth: int, free=None) -> dict:
-    """BFS distance (subtiles) from `start` over the w x h subtile grid (or only `free`), up to depth."""
-    reach, q = {p: 0 for p in start}, collections.deque(start)
+def nearest(start, w: int, h: int, depth: int) -> tuple[dict, dict]:
+    """For every subtile of the w x h grid up to depth from `start`: the BFS distance and the start subtile reached."""
+    dist, src, q = {b: 0 for b in start}, {b: b for b in start}, collections.deque(start)
     while q:
         p = q.popleft()
-        if reach[p] >= depth:
+        if dist[p] >= depth:
             continue
         for dx, dy in STEPS:
             n = (p[0] + dx, p[1] + dy)
-            if n not in reach and (n in free if free is not None else 0 <= n[0] < w and 0 <= n[1] < h):
-                reach[n] = reach[p] + 1
-                q.append(n)
-    return reach
-
-
-def nearest_blocked(lay) -> tuple[dict, dict]:
-    """For every subtile up to CAP from the blocked ones: the distance and the blocked subtile reached."""
-    blocked = [(x * 5 + k % 5, y * 5 + k // 5) for (x, y), f in lay.flags.items() for k in range(25) if f[k] & 1]
-    dist, src, q = {b: 0 for b in blocked}, {b: b for b in blocked}, collections.deque(blocked)
-    while q:
-        p = q.popleft()
-        if dist[p] >= CAP:
-            continue
-        for dx, dy in STEPS:
-            n = (p[0] + dx, p[1] + dy)
-            if 0 <= n[0] < lay.width * 5 and 0 <= n[1] < lay.height * 5 and n not in dist:
+            if 0 <= n[0] < w and 0 <= n[1] < h and n not in dist:
                 dist[n], src[n] = dist[p] + 1, src[p]
                 q.append(n)
     return dist, src
+
+
+def nearest_blocked(lay) -> dict:
+    """For every subtile up to CAP from the blocked ones: the distance."""
+    blocked = [(x * 5 + k % 5, y * 5 + k // 5) for (x, y), f in lay.flags.items() for k in range(25) if f[k] & 1]
+    return nearest(blocked, lay.width * 5, lay.height * 5, CAP)[0]
 
 
 def bucket(p, s) -> int:
@@ -113,10 +108,8 @@ def harvest(stock) -> tuple[dict, float] | None:
     the stock spacing (median nearest-neighbour, subtiles); None when the stock has no tree."""
     out, gaps = collections.defaultdict(list), []
     for lay, preset in stock:
-        dist, src = nearest_blocked(lay)
-        thick = dilate({c for c, k in lay.keys.items() if k[0] == "w"})
-        open_ = {c for c, k in lay.keys.items() if c not in thick and not (k[0] == "f" and blocked_floor(lay.flags[c]))}
-        reach = spread(subtiles(open_), lay.width * 5, lay.height * 5, 10 ** 6)
+        dist = nearest_blocked(lay)
+        reach, src = nearest(subtiles(playable(lay)), lay.width * 5, lay.height * 5, 10 ** 6)
         pts = []
         for e in preset["entities"]:
             t = transform(e)
@@ -137,28 +130,10 @@ def harvest(stock) -> tuple[dict, float] | None:
 
 
 def playable(lay) -> set:
-    """The tiles a player reaches. Every wall tile widened by one tile seals PD2's thin tree lines; the sealed regions
-    that hold a DS1 object, or that streams (blocked floor) run through and that don't touch the map's edge, are the
-    paths; the others are outside. The paths grow over lone trees up to the lines, take a one-tile margin and the
-    streams, then the ground a WALK-subtile walk over the subtile flags reaches. Line tiles are never playable."""
-    walls = {c for c, k in lay.keys.items() if k[0] == "w"}
-    line = lines(walls)
+    """The tiles a player reaches: those no DS1 cell marks unwalkable (Layout.unwalkable, which seals PD2's dashed
+    tree lines), and the streams (blocked floor). Line tiles are never playable."""
     water = {c for c, k in lay.keys.items() if k[0] == "f" and blocked_floor(lay.flags[c])}
-    paths, outside = set(), set()
-    for comp in components(set(lay.keys) - dilate(walls) - water):
-        near = sum((p[0] + i, p[1] + j) in water for p in comp for i, j in STEPS)
-        edge = any((p[0] + i, p[1] + j) not in lay.keys for p in comp for i, j in STEPS)
-        (paths if comp & lay.objects or (near >= 20 and not edge) else outside).update(comp)
-    free = set(lay.keys) - dilate(line) - water - outside
-    grown = set().union(*(c for c in components(free | paths) if c & paths))
-    play = grown | ((dilate(grown) - line) & set(lay.keys)) | water
-    # the tile rule misses open ground among lone trees next to a line; an unbounded walk leaks through PD2's dashed
-    # lines (their gaps are unblocked floor, what blocks them in game is not found), so the walk is bounded; never
-    # through a line tile, so an 8-connected line seals a 4-connected walk
-    free = {(x * 5 + k % 5, y * 5 + k // 5) for (x, y), f in lay.flags.items() if (x, y) not in line
-            for k in range(25) if not f[k] & 1}
-    walked = collections.Counter((x // 5, y // 5) for x, y in spread(subtiles(play) & free, 0, 0, WALK, free))
-    return (play | {c for c, n in walked.items() if n >= 5}) - line
+    return ((set(lay.keys) - lay.unwalkable) | water) - lines({c for c, k in lay.keys.items() if k[0] == "w"})
 
 
 def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tuple[list[dict], set]:
@@ -167,25 +142,42 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
     kit, spacing = trees
     play = playable(lay)
     best = subtiles(play)
-    reach = spread(best, lay.width * 5, lay.height * 5, DEPTH)
+    reach, src = nearest(best, lay.width * 5, lay.height * 5, DEPTH)
     keep_off = best | subtiles(skip)
-    dist, src = nearest_blocked(lay)
+    dist = nearest_blocked(lay)
     cand = sorted((p for p, r in reach.items() if r and (p[0] // 5, p[1] // 5) in lay.keys
                    and (p[0] // 5, p[1] // 5) not in skip), key=lambda p: (reach[p], zlib.crc32(f"{seed}:{p}".encode())))
     feet = {}
 
-    def footprint(e) -> frozenset:
-        """Subtile offsets from the origin subtile its pieces cover (a prefab spreads over tiles)."""
-        if id(e) not in feet:
-            t, pf = transform(e), prefab(e)
-            sc, q = t.get("scale") or {"x": 1, "z": 1}, t.get("orientation") or {"x": 0, "y": 0, "z": 0, "w": 1}
-            feet[id(e)] = frozenset((math.floor(v[0] / 2), math.floor(v[2] / 2))
-                                    for x, z in (prefabs(pf) if pf else [(0.0, 0.0)])
-                                    for v in [rotate(q, (x * sc["x"], 0.0, z * sc["z"]))])
-        return feet[id(e)]
+    def footprint(o) -> frozenset:
+        """Subtile offsets from the origin subtile a kit tree's pieces cover (a prefab spreads over tiles), counting
+        its offset within that subtile (o[1], o[2])."""
+        if id(o) not in feet:
+            feet[id(o)] = frozenset((math.floor((o[1] + x) / 2), math.floor((o[2] + z) / 2))
+                                    for x, z in pieces(o[0], prefabs))
+        return feet[id(o)]
 
     def clear(p, o) -> bool:
-        return not any((p[0] + dx, p[1] + dz) in keep_off for dx, dz in footprint(o[0]))
+        return not any((p[0] + dx, p[1] + dz) in keep_off for dx, dz in footprint(o))
+
+    # the camera looks along +x +y: a tree is drawn over the playable ground screen-up of it, and no stock jungle tree
+    # fades (the `_foreground` tree walls are as tall), so only roots put a piece where it would hide the player (#454)
+    cols = collections.defaultdict(list)  # screen column (x - y) -> the playable subtiles' screen rows (x + y)
+    for q in best:
+        cols[q[0] - q[1]].append(q[0] + q[1])
+    for v in cols.values():
+        v.sort()
+
+    @functools.cache
+    def shades(p) -> bool:
+        s = p[0] + p[1]
+        return any((v := cols.get(c)) and (i := bisect.bisect_left(v, s - TALL)) < len(v) and v[i] < s
+                   for c in range(p[0] - p[1] - WIDE, p[0] - p[1] + WIDE + 1))
+    low = {id(o) for v in kit.values() for o in v if LOW.search(json.dumps(o[0]["components"]))}
+
+    def fits(p, o) -> bool:
+        return o[3] <= reach[p] and (id(o) in low
+                                     or not any(shades((p[0] + dx, p[1] + dz)) for dx, dz in footprint(o)))
 
     def run(sub: dict, singles: dict, grid) -> list:
         ents, cell = [], max(1, int(spacing))
@@ -194,7 +186,7 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
             if any(math.dist(p, o) < spacing for gx, gy in AROUND for o in grid[(g[0] + gx, g[1] + gy)]):
                 continue
             b, d = bucket(p, src.get(p)), dist.get(p, CAP)
-            ok = ([o for o in sub.get((b, dd), ()) if o[3] <= reach[p]]  # no closer to the path than the stock tree
+            ok = ([o for o in sub.get((b, dd), ()) if fits(p, o)]  # no closer to the path than the stock tree
                   for dd in sorted(range(CAP + 1), key=lambda dd: abs(dd - d)))
             options = next((oo for oo in ok if oo), None)
             if not options:
@@ -202,7 +194,7 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
             k0 = zlib.crc32(f"{seed}:{p}:t".encode())
             pick = next((o for i in range(len(options)) if clear(p, o := options[(k0 + i) % len(options)])), None)
             if pick is None:  # a band too thin for a tree cluster: a single tree model from the same direction
-                small = [o for o in singles.get(b, ()) if o[3] <= reach[p] and clear(p, o)]
+                small = [o for o in singles.get(b, ()) if fits(p, o) and clear(p, o)]
                 if not small:
                     continue
                 pick = small[k0 % len(small)]
@@ -228,6 +220,14 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
     out += run(single, singles, walls)
     out += run(canopy, {}, collections.defaultdict(list))
     return out, play
+
+
+def pieces(e: dict, prefabs) -> list[tuple[float, float]]:
+    """The (x, z) offsets from the entity's position of its pieces (a prefab's, scaled and turned; else its own)."""
+    t, pf = transform(e), prefab(e)
+    sc, q = t.get("scale") or {"x": 1, "z": 1}, t.get("orientation") or {"x": 0, "y": 0, "z": 0, "w": 1}
+    return [(v[0], v[2]) for x, z in (prefabs(pf) if pf else [(0.0, 0.0)])
+            for v in [rotate(q, (x * sc["x"], 0.0, z * sc["z"]))]]
 
 
 def rotate(q: dict, v: tuple) -> tuple:

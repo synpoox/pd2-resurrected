@@ -17,6 +17,7 @@
 #include "d2r.h"
 #include "log.h"
 #include "map_open.h"
+#include "map_stats.h"
 
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle_events.h>
@@ -56,6 +57,13 @@ std::atomic<uint32_t> g_portals {0};
 std::atomic<uint32_t> g_returns {0};
 std::atomic<uint32_t> g_cubes {0};
 std::atomic<uint32_t> g_killed {0};
+std::atomic<uint32_t> g_attempts {0};
+std::atomic<uint32_t> g_desecrated {0};
+
+constexpr int32_t AttemptedStage = 9;  // PD2's roll sets 9: one attempt per kill
+constexpr int32_t TypeAmulet = 12;     // itemtypes amul
+// merged itemstatcost corrupted, desecrated, mirrored (PD2 360, 206, 486)
+constexpr int32_t StatCorrupted = 413, StatDesecrated = 382, StatMirrored = 539;
 
 auto CounterOf(Game* game, uint32_t key) noexcept -> int32_t* {
 	return d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(d2r::rva::GameCounter)(
@@ -196,6 +204,57 @@ auto KillQuietly(Game* game, Unit* monster) noexcept -> void {
 	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(SetMonsterMode)(game, block, 1);
 }
 
+// UB7a, Desecration (PD2's altar handler 0x103961b0 and roll 0x103729e0; docs/research/pd2-uber-bosses-dll.md, section 8)
+// on a transmute in the Temple instead of PD2's altar (docs/deviations.md). The cube holds one item, a corrupted
+// amulet that is not desecrated or mirrored, and Lucion is dead (stage 8): the attempt sets the stage to 9, then
+// succeeds at 50% (60% at tiers 1-2) with one of rows 682-689 as desecrate/desecratenum. Native: it runs inside the
+// recipe search on the pressing player's cube, where the SDK refuses item changes, and the SDK cannot add a mod to an
+// existing item. shortcut: a failed roll leaves the amulet as it was; the brick is UB7b (#509).
+auto Desecrate(Game* game, Unit* player) noexcept -> bool {
+	using namespace d2r::rva;
+	if (game == nullptr || player == nullptr || LevelOf(player) != Temple) {
+		return false;
+	}
+	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory)(player, __FILE__, __LINE__);
+	if (inventory == nullptr) {
+		return false;
+	}
+	Unit* item = nullptr;
+	int count = 0;
+	const auto next = d2r::Engine<Unit* (*)(Unit*) noexcept>(InventoryNextItem);
+	for (Unit* i = d2r::Engine<Unit* (*)(void*) noexcept>(InventoryFirstItem)(inventory); i != nullptr; i = next(i)) {
+		if (d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(i) == CubePageCube) {
+			item = i;
+			++count;
+		}
+	}
+	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	if (count != 1 || d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, TypeAmulet) == 0 ||
+	    stat(item, StatCorrupted, 0) == 0 || stat(item, StatDesecrated, 0) != 0 || stat(item, StatMirrored, 0) != 0) {
+		return false;
+	}
+	int32_t* stage = CounterOf(game, LucionStageKey);
+	if (*stage != LucionDeadStage) {
+		plog::Info("desecration: a corrupted amulet in the Temple, but the stage is %d, not %d", *stage, LucionDeadStage);
+		return false;
+	}
+	*stage = AttemptedStage;
+	const int32_t tier = *CounterOf(game, TierKey);
+	const int32_t chance = tier == 1 || tier == 2 ? 60 : 50;
+	const auto roll = static_cast<int32_t>(d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(player), 100));
+	const bool success = roll < chance && DesecrateItem(game, item);
+	if (success) {
+		// Refresh the amulet on the client, as core-rules' reroll refreshes an item (item flag 1)
+		d2r::Engine<void (*)(Game*, Unit*, Unit*, uint32_t, uint32_t, int32_t, uint8_t, uint8_t, uint32_t) noexcept>(SendItem)(
+			game, player, item, 1, 0, At<int32_t>(item, UnitMode), d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(item),
+			d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemStorePage)(item), d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitXY)(item));
+		g_desecrated.fetch_add(1, std::memory_order_relaxed);
+	}
+	plog::Info("desecration: attempt %u at tier %d, roll %d of 100 against %d: %s, stage %d", ++g_attempts, tier, roll,
+	           chance, success ? "desecrated" : "failed (the brick is UB7b)", AttemptedStage);
+	return true;
+}
+
 auto InstallLucion(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	const D2RL::LifecycleService* lifecycle = nullptr;
 	if (context->QueryService(&lifecycle) != D2RL::ServiceQueryResult::Success ||
@@ -221,6 +280,9 @@ auto InstallLucion(const D2RL::PluginContext* context, char* report, size_t repo
 }
 
 auto LucionCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "lucion: %u deaths, %u Temple portals, %u Harrogath portals, %u Demonic Cubes, %u adds killed",
-	              g_deaths.load(), g_portals.load(), g_returns.load(), g_cubes.load(), g_killed.load());
+	std::snprintf(out, size,
+	              "lucion: %u deaths, %u Temple portals, %u Harrogath portals, %u Demonic Cubes, %u adds killed, "
+	              "%u desecration attempts, %u desecrated",
+	              g_deaths.load(), g_portals.load(), g_returns.load(), g_cubes.load(), g_killed.load(), g_attempts.load(),
+	              g_desecrated.load());
 }
