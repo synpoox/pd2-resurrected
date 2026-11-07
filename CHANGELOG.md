@@ -30,6 +30,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - PD2's wooded maps on D2R tiles (Jungle, Kurast, Graveyard, Siege, Necropolis Jungle and Swamp, Pandemonium Finale)
   draw tree lines along their borders in HD, and every map on D2R tiles uses whole D2R rooms, with their own ground,
   water and bridges, where its layout matches one.
+- Eight more PD2 maps, among them Ashen Plains and Descent, draw walls and props in HD.
 
 #### Fixes
 
