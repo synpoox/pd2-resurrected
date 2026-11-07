@@ -48,6 +48,8 @@ private-multiplayer release a build may break characters; each break is noted he
 - Unique map bosses leave a portal to Harrogath (or onward) and drop PD2's charms, facets and puzzle pieces.
 - The Warlord of Blood and Ureh's boss drop PD2's random uniques, and the Warlord's arena starts empty.
 - The Outer Void has PD2's three random bosses, and its portals lead deeper, then home with uber parts.
+- Monsters in maps can drop unique maps, and Horazon has a 10% chance to drop one, as in PD2.
+- Fortified maps no longer double key and unique map rolls on map bosses, as in PD2.
 - Fortified, drop-bonus and item-drop maps give their extra and stat drops on kills, as in PD2.
 - Map tooltips show the map's tier, and map stats read without raw format codes.
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
