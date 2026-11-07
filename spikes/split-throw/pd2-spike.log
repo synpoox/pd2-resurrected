@@ -1,9 +1,0 @@
-﻿[2026-11-03 02:09:04.304] [INFO] [Plugin:pd2-spike] pd2-spike: 0.1.0 loaded (mod PD2Spike, D2R 3.3.0, image 0x6ab3782c (expects 0x6ab3782c, match), file C:\D2RTestSlots\Slot2\mods\PD2Spike\d2rloader\plugins\pd2-spike.dll)
-[2026-11-03 02:09:04.310] [INFO] [Plugin:pd2-spike] pd2-spike: envguard ok (checked again once the game-wide plugins have loaded)
-[2026-11-03 02:09:04.460] [INFO] [Plugin:pd2-spike] pd2-spike: soundguard on: record readers 5 of 5 hooked; table check after each table load
-[2026-11-03 02:09:04.467] [INFO] [Plugin:pd2-spike] pd2-spike: typeids ok: 25 of 25 sites, the mod's ids are D2R's
-[2026-11-03 02:09:04.473] [INFO] [Plugin:pd2-spike] pd2-spike: skills 2/2 installed: srvdofunc 172 missile fan; srvdofunc 189 split throw (spike)
-[2026-11-03 02:09:04.502] [INFO] [Plugin:pd2-spike] pd2-spike: hook on: whirlwind hit delay 0x56ac00 counted
-[2026-11-03 02:09:19.322] [INFO] [Plugin:pd2-spike] pd2-spike: environment ok
-[2026-11-03 02:09:19.330] [INFO] [Plugin:pd2-spike] pd2-spike: other plugins: multispec.dll (game-wide), no-pet-collision.dll (game-wide), player-bars.dll (game-wide), test-harness.dll (game-wide)
-[2026-11-03 02:10:06.796] [INFO] [Plugin:pd2-spike] pd2-spike: skill 140 level 10: 5 of 5 missiles (row 35), spread 30
