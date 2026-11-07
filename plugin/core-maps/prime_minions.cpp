@@ -2,10 +2,11 @@
 // writes a wrapper for each into D2Game's AI table (ProjectDiablo.dll 0x10361150): Mephisto 0x10357ba0, Diablo
 // 0x10357d50, BaalCrab 0x10357f00. Each runs on the AI tick, rolls for one minion near the prime, then calls the
 // original think. The same AI rows run the act bosses, so a wrapper acts only for its prime's class.
-// No PluginSDK service runs code on a monster's AI tick or spawns a monster, so the three AI table slots are written
-// (PatchWriteU64, D2R's think as the expected value), and the spawn is the engine's, as map_events.cpp does it.
+// No PluginSDK service runs code on a monster's AI tick or spawns a monster, so the wrappers register on the three AI
+// rows through ai_hooks.cpp (one table write per row), and the spawn is the engine's, as map_events.cpp does it.
 #include "prime_minions.h"
 
+#include "ai_hooks.h"
 #include "log.h"
 
 #include <intrin.h>
@@ -23,8 +24,6 @@ using d2r::At;
 using d2r::Game;
 using d2r::Unit;
 
-using ThinkFn = void (*)(Game* game, Unit* monster, uint8_t* tick) noexcept;
-
 // PD2's prime ids (the port keeps vanilla's monstats rows at their ids)
 constexpr int32_t UberMephisto = 704, UberDiablo = 705, UberBaal = 709;
 // PD2's sets 0x105ddebc, 0x105dde74 and 0x105ddfa8 (filled at start by 0x10167bd0, 0x10167c40, 0x10167c90)
@@ -40,13 +39,12 @@ struct Prime {
 	size_t count;
 	bool needsTarget;
 	int32_t cap;  // spawns while fewer of its minions live
-	ThinkFn original;
 };
 
 Prime g_primes[] = {
-	{UberMephisto, MephistoMinions, std::size(MephistoMinions), true, 40, nullptr},
-	{UberDiablo, DiabloMinions, std::size(DiabloMinions), true, 15, nullptr},
-	{UberBaal, BaalMinions, std::size(BaalMinions), false, 20, nullptr},
+	{UberMephisto, MephistoMinions, std::size(MephistoMinions), true, 40},
+	{UberDiablo, DiabloMinions, std::size(DiabloMinions), true, 15},
+	{UberBaal, BaalMinions, std::size(BaalMinions), false, 20},
 };
 
 std::atomic<uint32_t> g_ticks {0};
@@ -120,12 +118,15 @@ auto Summon(Game* game, Unit* boss, const Prime& prime, const uint8_t* tick) noe
 	}
 }
 
+constexpr int32_t AiRows[] = {50, 51, 135};
+constexpr uint64_t D2RThinks[] = {d2r::rva::AiMephisto, d2r::rva::AiDiablo, d2r::rva::AiBaalCrab};
+
+// ai_hooks hands only the prime's class here
 template <size_t I>
 auto Think(Game* game, Unit* monster, uint8_t* tick) noexcept -> void {
 	using namespace d2r::rva;
 	const Prime& prime = g_primes[I];
-	if (game != nullptr && monster != nullptr && tick != nullptr && At<int32_t>(monster, UnitClassId) == prime.classId &&
-	    (!prime.needsTarget || At<void*>(tick, AiTickTarget) != nullptr)) {
+	if (game != nullptr && tick != nullptr && (!prime.needsTarget || At<void*>(tick, AiTickTarget) != nullptr)) {
 		++g_ticks;
 		const int32_t live = LiveMinions(prime, monster);
 		const int32_t roll = Rand() % 100;
@@ -135,28 +136,18 @@ auto Think(Game* game, Unit* monster, uint8_t* tick) noexcept -> void {
 			Summon(game, monster, prime, tick);
 		}
 	}
-	prime.original(game, monster, tick);
+	VanillaAiThink(AiRows[I])(game, monster, tick);
 }
 
-constexpr ThinkFn Wrappers[] = {Think<0>, Think<1>, Think<2>};
-constexpr int32_t AiRows[] = {50, 51, 135};
-constexpr uint64_t D2RThinks[] = {d2r::rva::AiMephisto, d2r::rva::AiDiablo, d2r::rva::AiBaalCrab};
+constexpr AiThinkFn Wrappers[] = {Think<0>, Think<1>, Think<2>};
 static_assert(std::size(Wrappers) == std::size(g_primes) && std::size(AiRows) == std::size(g_primes));
 
 }  // namespace
 
 auto InstallPrimeMinions(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
-	using namespace d2r::rva;
 	int installed = 0;
 	for (size_t i = 0; i < std::size(g_primes); ++i) {
-		const uint64_t d2rThink = d2r::imageBase + D2RThinks[i];
-		uint8_t expected[8];
-		std::memcpy(expected, &d2rThink, sizeof(expected));
-		g_primes[i].original = reinterpret_cast<ThinkFn>(d2rThink);
-		installed += context->PatchWriteU64(AiTable + static_cast<uint64_t>(AiRows[i]) * AiRowSize, expected,
-		                                    sizeof(expected), reinterpret_cast<uint64_t>(Wrappers[i]))
-			? 1
-			: 0;
+		installed += RegisterAiThink(context, AiRows[i], D2RThinks[i], g_primes[i].classId, Wrappers[i]) ? 1 : 0;
 	}
 	std::snprintf(report, reportSize, "prime minions on AI rows 50, 51, 135%s",
 	              installed == static_cast<int>(std::size(g_primes)) ? "" : " FAILED (a slot is not D2R's think)");
