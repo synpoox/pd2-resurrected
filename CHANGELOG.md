@@ -11,6 +11,10 @@ private-multiplayer release a build may break characters; each break is noted he
   level 80+, Rite of Passage done): everyone at the fountain who is level 80+ goes in, without their mercenary,
   summons or buffs. One map or uber area per game. The fights themselves come later.
 
+#### Maps
+
+- Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
+
 #### Fixes
 
 - The mercenary panel shows the mercenary's title (Rogue, Desert Mercenary, Barbarian, Ascendant) instead of

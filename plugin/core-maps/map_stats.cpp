@@ -108,13 +108,16 @@ std::atomic<uint32_t> g_monsters {0};
 std::atomic<uint32_t> g_playersOn {0};
 std::atomic<uint32_t> g_playersOff {0};
 std::atomic<uint32_t> g_drops {0};  // map-area drops a drop chance stat changed
+std::atomic<uint32_t> g_extraBosses {0};  // presets the extra boss stat spawned a second time
 std::atomic<bool> g_seenClass[2048] {};  // for the game check: each class's first spawn in a map area is logged
 
 using SpawnedFn = void (*)(void* params, Unit* monster) noexcept;
 using RegenFn = void (*)(Game* game, Unit* player, int32_t a, int32_t b) noexcept;
 using AreaLevelFn = uint64_t (*)(Game* game, int32_t level) noexcept;
 using ItemSpawnFn = Unit* (*)(Game* game, uint8_t* drop, int32_t arg) noexcept;
+using PresetSpawnFn = void (*)(Game* game, void* room, const uint8_t* preset) noexcept;
 SpawnedFn g_spawnedOriginal = nullptr;
+PresetSpawnFn g_presetSpawnOriginal = nullptr;
 AreaLevelFn g_areaLevelOriginal = nullptr;
 RegenFn g_regenOriginal = nullptr;
 ItemSpawnFn g_itemSpawnOriginal = nullptr;
@@ -516,6 +519,39 @@ auto OnItemSpawn(Game* game, uint8_t* drop, int32_t arg) noexcept -> Unit* {
 	return item;
 }
 
+// PD2's six id sets (0x105de938, 0x105de7d4, 0x105de9c8, 0x105de9d8, 0x105de9b0, 0x105de818, filled at start by
+// 0x10190e30-0x101911f0) and 1044 (lernaeanhydra1), which 0x10371290 tests: the map bosses and their minions, as port
+// monstats ids (tools/pd2_ids.py monstats_ids).
+constexpr int16_t ExtraBossIds[] = {
+	247,  248,  249,  760,  763,  764,  767,  817,  841,  899,  901,  911,  932,  940,  941,  943,
+	944,  980,  985,  986,  987,  988,  989,  990,  1013, 1014, 1017, 1042, 1043, 1061, 1120, 1121,
+	1122, 1123, 1124, 1166, 1181, 1183, 1191, 1192, 1200, 1201, 1202, 1203, 1257, 1259, 1260,
+};
+
+// PD2's preset wrapper 0x1038bfc0, slot 5: in a map area with map_glob_extra_boss above 0, a monster preset whose id
+// is one of the map bosses spawns a second time. No PluginSDK service spawns or reports room presets, so this hooks
+// D2R's preset spawn (rva::PresetSpawn).
+auto OnPresetSpawn(Game* game, void* room, const uint8_t* preset) noexcept -> void {
+	g_presetSpawnOriginal(game, room, preset);
+	using namespace d2r::rva;
+	if (game == nullptr || room == nullptr || preset == nullptr || At<int32_t>(preset, PresetType) != UnitMonster) {
+		return;
+	}
+	const int32_t level = d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room);
+	const int32_t id = At<int32_t>(preset, PresetId);
+	bool boss = false;
+	for (const int16_t b : ExtraBossIds) {
+		boss = boss || b == id;
+	}
+	if (level < FirstMapLevel || level > LastMapLevel || !boss || AreaSlot(game, 5) <= 0) {
+		return;
+	}
+	g_presetSpawnOriginal(game, room, preset);
+	if (plog::Sample(g_extraBosses)) {
+		plog::Info("map area: extra boss %d in level %d (%u so far)", id, level, g_extraBosses.load());
+	}
+}
+
 }  // namespace
 
 auto MapAreaSlot(Game* game, Unit* unit, int slot) noexcept -> int32_t {
@@ -588,17 +624,21 @@ auto InstallMapStats(const D2RL::PluginContext* context, char* report, size_t re
 	                                                  &g_areaLevelOriginal);
 	const bool drops = context->InstallInlineHook(ItemSpawn, ItemSpawnEntry, sizeof(ItemSpawnEntry), OnItemSpawn,
 	                                              &g_itemSpawnOriginal);
+	const bool bosses = context->InstallInlineHook(PresetSpawn, PresetSpawnEntry, sizeof(PresetSpawnEntry),
+	                                               OnPresetSpawn, &g_presetSpawnOriginal);
 	const auto ok = [](bool on) noexcept { return on ? "" : " FAILED (bytes differ)"; };
-	std::snprintf(report, reportSize, "monsters%s, players%s, area level%s, drops%s", ok(monsters), ok(players),
-	              ok(areaLevel), ok(drops));
-	return (monsters ? 1 : 0) + (players ? 1 : 0) + (areaLevel ? 1 : 0) + (drops ? 1 : 0);
+	std::snprintf(report, reportSize, "monsters%s, players%s, area level%s, drops%s, extra boss%s", ok(monsters),
+	              ok(players), ok(areaLevel), ok(drops), ok(bosses));
+	return (monsters ? 1 : 0) + (players ? 1 : 0) + (areaLevel ? 1 : 0) + (drops ? 1 : 0) + (bosses ? 1 : 0);
 }
 
 auto MapStatsCount() noexcept -> int {
-	return 4;
+	return 5;
 }
 
 auto MapStatsCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "map stats routed %u, monsters %u, player lists on %u, off %u, drops changed %u",
-	              g_routed.load(), g_monsters.load(), g_playersOn.load(), g_playersOff.load(), g_drops.load());
+	std::snprintf(out, size,
+	              "map stats routed %u, monsters %u, player lists on %u, off %u, drops changed %u, extra bosses %u",
+	              g_routed.load(), g_monsters.load(), g_playersOn.load(), g_playersOff.load(), g_drops.load(),
+	              g_extraBosses.load());
 }
