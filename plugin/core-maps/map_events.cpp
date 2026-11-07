@@ -174,21 +174,63 @@ auto Rand() noexcept -> int32_t {
 	return std::rand();
 }
 
-// PD2's 0x1038a170 at the room's centre: a free spot near it, then the monster.
-// shortcut: D2R's portal spot search stands in for PD2's 0x10389c20 (radius 12, 8 in Arcane and River of Blood,
-// collision 0x805); read 0x10389c20 if an event ever spawns in a wall
-auto SpawnAt(Game* game, void* room, int32_t monster) noexcept -> Unit* {
+// PD2's 0x10389c20 (#530): a breadth-first search over a 20 x 20 grid of 4-subtile cells around x/y (cells 10 +- 8,
+// at most 400 steps); each cell's point takes its room and must have a size x size box free of mask 0x805. The first
+// free point wins, moved by -2, -2 as PD2 moves it. True with `room` and `xy` set to that point.
+// shortcut: the box is centred on the point, as 1.13c's COLLISION_CheckMaskWithSizeXY centres it (PD2 calls it
+// through an import table not read here); read 0x103097a0's target if events spawn off by half a box
+auto FindSpot(void*& room, int32_t xy[2], int32_t size) noexcept -> bool {
 	using namespace d2r::rva;
+	constexpr int Grid = 20, Centre = 10, Reach = 8, Step = 4, MaxSteps = 400;
+	constexpr uint16_t Mask = 0x805;
+	const auto roomAt = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY);
+	const auto at = d2r::Engine<uint64_t (*)(void*, int32_t, int32_t, uint16_t) noexcept>(CollisionAt);
+	bool seen[Grid][Grid] {};
+	int8_t queue[Grid * Grid][2];
+	int head = 0, tail = 0;
+	queue[tail][0] = Centre, queue[tail][1] = Centre, ++tail;
+	seen[Centre][Centre] = true;
+	for (int steps = 0; head < tail && steps <= MaxSteps; ++steps) {
+		const int cx = queue[head][0], cy = queue[head][1];
+		++head;
+		const int32_t x = xy[0] + (cx - Centre) * Step, y = xy[1] + (cy - Centre) * Step;
+		void* here = roomAt(room, x, y);
+		bool free = here != nullptr;
+		for (int32_t dx = -size / 2; free && dx < size - size / 2; ++dx) {
+			for (int32_t dy = -size / 2; free && dy < size - size / 2; ++dy) {
+				free = at(here, x + dx, y + dy, Mask) == 0;
+			}
+		}
+		if (free) {
+			xy[0] = x - 2, xy[1] = y - 2;
+			room = roomAt(here, xy[0], xy[1]);
+			return room != nullptr;
+		}
+		constexpr int Dirs[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+		for (const auto& d : Dirs) {
+			const int nx = cx + d[0], ny = cy + d[1];
+			if (nx >= Centre - Reach && nx < Centre + Reach && ny >= Centre - Reach && ny < Centre + Reach &&
+			    !seen[nx][ny]) {
+				seen[nx][ny] = true;
+				queue[tail][0] = static_cast<int8_t>(nx), queue[tail][1] = static_cast<int8_t>(ny), ++tail;
+			}
+		}
+	}
+	return false;
+}
+
+// PD2's 0x1038a170 at the room's centre: PD2's spot search with size 12 (8 in Arcane and River of Blood), then the
+// monster.
+auto SpawnAt(Game* game, void* room, int32_t level, int32_t monster) noexcept -> Unit* {
+	using namespace d2r::rva;
+	constexpr int32_t Arcane = 143, RiverOfBlood = 145;  // PD2 0x8e and 0x90 in port level ids
 	int32_t xy[2] = {At<int32_t>(room, RoomX) + At<int32_t>(room, RoomWidth) / 2,
 	                 At<int32_t>(room, RoomY) + At<int32_t>(room, RoomHeight) / 2};
-	void* found = nullptr;
-	d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(FindFreeSpot)(
-		game, room, xy, 3, 0x400, &found, 5, 100);
-	if (found == nullptr) {
+	if (!FindSpot(room, xy, level == Arcane || level == RiverOfBlood ? 8 : 12)) {
 		return nullptr;
 	}
 	return d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
-		SpawnMonster)(game, found, xy[0], xy[1], monster, ModeNeutral, -1, 0x42);
+		SpawnMonster)(game, room, xy[0], xy[1], monster, ModeNeutral, -1, 0x42);
 }
 
 // PD2's 0x1036fef0, before the room's own monsters: one roll of 100 per room, against the event's rule.
@@ -208,7 +250,7 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t progress) noexcep
 	if (monster < 0) {
 		return;
 	}
-	if (SpawnAt(game, room, monster) == nullptr) {
+	if (SpawnAt(game, room, level, monster) == nullptr) {
 		plog::Warn("map events: event %d found no spot for monster %d in level %d (%u)", event, monster, level,
 		           ++g_noSpot);
 		return;
