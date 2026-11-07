@@ -48,6 +48,8 @@ private-multiplayer release a build may break characters; each break is noted he
 - The Gheed map event spawns Gheed in tiered maps, as in PD2.
 - A map event's spawn sends PD2's notify line ("Evil beckons you from the Void...") in red chat.
 - The Horazon map event spawns Horazon in tiered maps; only that Horazon opens his portal, as in PD2.
+- Unique map bosses leave a portal to Harrogath (or onward) and drop PD2's charms, facets and puzzle pieces.
+- The Warlord of Blood and Ureh's boss drop PD2's random uniques, and the Warlord's arena starts empty.
 - Fortified, drop-bonus and item-drop maps give their extra and stat drops on kills, as in PD2.
 - Map tooltips show the map's tier, and map stats read without raw format codes.
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
@@ -62,7 +64,6 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Fixes
 
-- Map events find a spot to spawn with PD2's own search, so they no longer fail to appear.
 - Rathma's portal to Harrogath is gold, and the shard names lose a stray `*/`, as in PD2.
 - Split Throw's weapons show, split and come back to the Barbarian as in PD2.
 - Legacy graphics no longer draws the ground in D2R's own areas as red and cyan noise.
