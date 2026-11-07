@@ -979,6 +979,16 @@ inline constexpr uint64_t PresetSpawn = 0x4926b0;
 inline constexpr uint8_t PresetSpawnEntry[] = {0x40, 0x53, 0x56, 0x57, 0x48, 0x81, 0xec, 0x80, 0x00, 0x00, 0x00};
 inline constexpr int PresetId = 0x4, PresetType = 0x20;
 
+// --- core-maps: map events that only spawn (MS8, #222; D2Game\src\Monster\MonsterRegion.cpp) -----------------------
+// (game, room): spawns a room's monsters as it activates (1.13c D2Game 0x6fc67a20, which PD2's event spawner
+// 0x1036fef0 wraps). Its first call (1.13c 0x6fc66cd0) counts the room in its level's monster region at +0x04, the
+// count PD2's event progress reads.
+// mov r11,rsp / push rbx / push rsi / sub rsp,0xb8
+inline constexpr uint64_t RoomPopulate = 0x50acf0;
+inline constexpr uint8_t RoomPopulateEntry[] = {0x4c, 0x8b, 0xdc, 0x53, 0x56, 0x48, 0x81, 0xec, 0xb8, 0x00, 0x00, 0x00};
+// A room's subtile rect, as 0x2f0680 (does the room hold x/y) reads it: int32 x, y, width, height
+inline constexpr int RoomX = 0x80, RoomY = 0x84, RoomWidth = 0x88, RoomHeight = 0x8c;
+
 // --- core-maps: engine memory pools (LP3, #213) ----------------------------------------------------------------------
 // TlsfAlloctor objects (vtable 0x1d6d770): +0x20 the tlsf control, +0x28 its lock (0x14122ad60 locks, 0x14122ad90
 // unlocks). 0x1215650 is tlsf block_insert(control, block); tlsf_add_pool is inlined in 0x1215a30.
