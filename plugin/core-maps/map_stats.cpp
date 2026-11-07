@@ -97,8 +97,8 @@ constexpr int MaxEntries = 64;  // per list; a map rolls far fewer stats
 constexpr int AreaSlots = 16;    // PD2's area slots 0-15
 constexpr int32_t StatCorrupted = 413, StatCorruptor = 414;  // PD2 360 and 361
 
-// The game counter keys of the lists: 'M', the list ('m' or 'p'), the entry and the field (0: stat << 16 | layer,
-// 1: value); entry and field 0xff hold the count.
+// The game counter keys of the lists: 'M', the list ('m', 'p', or 'r' for the area entries), the entry and the field
+// (0: stat << 16 | layer, 1: value); entry and field 0xff hold the count.
 constexpr auto Key(char list, int entry, int field) noexcept -> uint32_t {
 	return 0x4d000000u | static_cast<uint32_t>(static_cast<uint8_t>(list)) << 16 |
 	       static_cast<uint32_t>(entry & 0xff) << 8 | static_cast<uint32_t>(field & 0xff);
@@ -592,7 +592,7 @@ auto RouteMapStats(Game* game, Unit* item, int32_t level) noexcept -> void {
 		return;
 	}
 	// A new map replaces the last one's lists and slots. Units that already have a list keep it until they lose it.
-	for (const char which : {'m', 'p'}) {
+	for (const char which : {'m', 'p', 'r'}) {
 		if (int32_t* count = Counter(game, Key(which, 0xff, 0xff)); count != nullptr) {
 			*count = 0;
 		}
@@ -629,6 +629,7 @@ auto RouteMapStats(Game* game, Unit* item, int32_t level) noexcept -> void {
 			where = "players";
 		} else if (route == Route::Area && areaCount < MaxEntries) {
 			area[areaCount++] = {target, e.value};
+			Push(game, 'r', target, 0, e.value);  // kept for ApplyMapArea
 			if (int32_t* v = Counter(game, Key('a', target, 0)); v != nullptr && *v == 0) {
 				*v = e.value;
 			}
@@ -645,6 +646,21 @@ auto RouteMapStats(Game* game, Unit* item, int32_t level) noexcept -> void {
 		}
 	}
 	++g_routed;
+}
+
+auto ApplyMapArea(Game* game, int32_t level) noexcept -> void {
+	AreaEntry area[MaxEntries];
+	int count = 0;
+	for (int32_t i = 0; game != nullptr && i < Count(game, 'r') && i < MaxEntries; ++i) {
+		const int32_t* packed = Counter(game, Key('r', i, 0));
+		const int32_t* value = Counter(game, Key('r', i, 1));
+		if (packed != nullptr && value != nullptr) {
+			area[count++] = {static_cast<int32_t>(static_cast<uint32_t>(*packed) >> 16), *value};
+		}
+	}
+	if (game != nullptr) {
+		ApplyArea(game, level, area, count, false);
+	}
 }
 
 auto InstallMapStats(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {

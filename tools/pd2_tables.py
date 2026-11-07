@@ -17,6 +17,8 @@ level). "d2r_columns" keep D2R's values where the games give a column different 
 graphics). "cells": {row key: {column: value}} sets single cells after the merge, where one row needs a value
 neither game's column gives it (monstats NameStr of the hireling monsters: PD2's placeholders print "an evil force" on
 D2R's merc panel, #272). Cells are spelled as pd2_ids.spell writes them: quotes gone, references to the id-listed tables renamed.
+"only_rows": [row key, ...] merges only those PD2 rows; every other row stays D2R's and PD2-only rows are left out
+(inventory: the cube's grid, #299, while the stash pages stay D2R's).
 skilldesc's description lines then move onto D2R's line functions (pd2_skilldesc).
 """
 from __future__ import annotations
@@ -70,8 +72,16 @@ def regroup(pd2: Table, d2r: Table) -> Table:
 def merge_table(table: str, src: Table, d2r: Table, ren: dict[str, dict[str, str]],
                 rows: str | list[str] = "name", pd2_only_rows: str = "append", repeats: str = "pair",
                 d2r_columns: tuple[str, ...] = (), move: dict[str, dict[str, str]] | None = None,
-                cells: dict[str, dict[str, str]] | None = None) -> Table:
+                cells: dict[str, dict[str, str]] | None = None, only_rows: list[str] | None = None) -> Table:
     """D2R's table with PD2's rows merged in, by the table's tables.json options (see the module docstring)."""
+    if only_rows is not None:
+        keep, full = {k.lower() for k in only_rows}, src
+        src = Table.__new__(Table)
+        src.header, src.newline = full.header, full.newline
+        src.rows = [r for r, k in zip(full.rows, row_keys(full, rows)) if k.lower() in keep]
+        if missing := keep - {k.lower() for k in row_keys(src, rows)}:
+            raise ValueError(f"{table} only_rows: PD2 has no row {', '.join(sorted(missing))}")
+        pd2_only_rows = "leave out"
     pd2, pd2_cols = src, {}
     for i, c in enumerate(pd2.header):
         if c:  # an unnamed column matches nothing; a repeated column's first holds the values
@@ -154,7 +164,8 @@ def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> Non
     for table, opts in sorted(cfg.items(), key=lambda kv: kv[0] == "hireling"):  # after monstats: it names its rows
         if table == "hireling":
             ren.update(monster=monster_numbers(pd2_data, out_data), hiredesc=hire_keys(pd2_data, d2r_data))
-        bad = [f"{k}: {v}" for k, v in opts.items() if v not in OPTIONS.get(k, ()) and not (k in ("rows", "d2r_columns") and isinstance(v, list))
+        bad = [f"{k}: {v}" for k, v in opts.items() if v not in OPTIONS.get(k, ())
+               and not (k in ("rows", "d2r_columns", "only_rows") and isinstance(v, list))
                and not (k in ("move", "cells") and isinstance(v, dict))]
         if bad:
             raise ValueError(f"{table}: unknown option {', '.join(bad)} (options: {OPTIONS})")
