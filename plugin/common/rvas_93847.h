@@ -338,6 +338,9 @@ inline constexpr int DamageFlag148 = 0x148;   // uint8 D2R's Static Field sets t
 // Desecrate (W13), the way D2R's summon helper 0x4350e0 (Bone Wall, Raise Skeleton) spawns and 0x509520 counts
 inline constexpr uint64_t RoomAtXY = 0x38dfb0;  // (room, x, y) -> the room holding x/y near room, or null
 inline constexpr uint64_t RoomLevelId = 0x2efc10;  // (room) -> levels.txt id
+// (unit, x, y, mask) -> non-zero when the unit, at its size, collides at x/y; D2R's Teleport (srvdo 27, 0x554c40)
+// refuses on it with mask 0x804 for levels Teleport 2, as PD2's teleport core does through its thunk 0x1030bf30
+inline constexpr uint64_t UnitCollidesAt = 0x350a20;
 // (game, room, x, y, monstats id, mode, -1, 0x42) -> monster or null; counts it in its level's monster region. D2R's
 // Nest (0x57c590) passes its 1-based spawn index and 0 for the last two
 inline constexpr uint64_t SpawnMonster = 0x492cf0;
@@ -760,6 +763,19 @@ inline constexpr uint8_t CubeRecipeSearchEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57
 // 0x30 int32 flags for the cube items already taken by earlier inputs, zeroed before each row
 inline constexpr uint64_t CubeInputMatch = 0x529d50;
 inline constexpr int CubeMatchUsedSlots = 0x30;
+// It counts each matching cube item as one (qty at input +7, 0 means 1) and flags every match in used[k], k the item's
+// place among the cube items in inventory order. mov [rsp+0x20],r9d / push rbp / push rbx / push rsi / push r13 /
+// mov rbp,rsp / sub rsp,0x68 (read from the 6ab3782c dump, #315)
+inline constexpr uint8_t CubeInputMatchEntry[] = {0x44, 0x89, 0x4c, 0x24, 0x20, 0x55, 0x53, 0x56, 0x41,
+                                                  0x55, 0x48, 0x8b, 0xec, 0x48, 0x83, 0xec, 0x68};
+inline constexpr int CubeInputQty = 7;
+inline constexpr int CubeRecordSize = 0x16c, CubeNumInputs = 0xc;  // uint8 numinputs
+// The search's numinputs filter: movzx eax,[row+0xc] / cmp eax,r13d (the cube's item count) / jne next row (#315)
+inline constexpr uint64_t CubeNumInputsJump = 0x52922a;
+inline constexpr uint8_t CubeNumInputsJumpD2R[] = {0x0f, 0x85, 0xbd, 0x06, 0x00, 0x00};
+inline constexpr uint8_t CubeNumInputsJumpOff[] = {0x66, 0x0f, 0x1f, 0x44, 0x00, 0x00};  // 6-byte nop
+inline constexpr int StatQuantity = 70;
+inline constexpr uint64_t ItemLevel = 0x36ccf0;  // (item) -> item level (the matcher's out, 0x529d50)
 inline constexpr uint64_t CubeRecipeCount = 0x3e3f20;  // (dataFlag) -> cubemain row count
 inline constexpr uint64_t CubeRecipe = 0x3e3f60;       // (dataFlag, row) -> 0x16c-byte record, or null
 inline constexpr int CubeEnabled = 0x0, CubeOp = 0x3;  // uint8 enabled, uint8 op
@@ -1164,6 +1180,18 @@ inline constexpr uint64_t AiTrappedSoul = 0x5cfb20;  // row 99's think (the trap
 // think reads them
 inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;
 inline constexpr int MonAiDist = 0x8d;  // uint8 aidist, then (N) and (H) (monstats field table 0x39db30)
+
+// --- core-maps: the Temple's chests (UB6, #438; D2Game\src\Objects\ObjMode.cpp) ------------------------------------
+// Decompiled for #438 (Ghidra, D2R.gpr). One operate table slot wrapped (rva::ObjectOperateTable).
+// D2R's chest operate (OperateFn 4): mode 0 only; it sets mode 1 with event 1 at the open frames (or mode 2), plays
+// sound 0xb for a locked chest, then drops the act's chest TC. PD2's LucionChest keeps OperateFn 4.
+inline constexpr uint64_t OperateChest = 0x58e2f0;
+inline constexpr int ObjectOperateChest = 4;
+// How the chest operate plays its unlock sound: rva::ClientMessage(player, 0xb, player), then (player) -> its client
+// (player data +0xf0, null for a non-player) and (player, client) sends the sound packet 0x2c
+inline constexpr uint64_t PlayerClient = 0x48fde0;
+inline constexpr uint64_t SoundPacket = 0x5397f0;
+inline constexpr int SoundChestOpen = 0xb;
 
 // --- core-rules: the ethereal bonus (IR8, #243) --------------------------------------------------------------------
 // (item): sets the ethereal flag, then base stats times 3/2 (1.13c's D2Common #10890, which PD2 replaces with
