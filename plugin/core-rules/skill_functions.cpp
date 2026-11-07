@@ -287,6 +287,19 @@ auto CltDoDoubleThrow(Unit* unit, int32_t skillId, int32_t level) noexcept -> in
 	return 1;
 }
 
+// The unit's list on `state` dropped, state off and list freed, as RemoveSkillState (0x4370b0) does per state. That
+// one removes by states.txt group and does nothing for a state with none (temp_skill_buff, the progressive states).
+void DropStateList(uint32_t dataFlag, Unit* unit, int32_t state) noexcept {
+	using namespace d2r::rva;
+	void* list = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, state);
+	if (list == nullptr) {
+		return;
+	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, state, 0);
+	d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
+	d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
+}
+
 // --- Split Throw's start buff (PD2 srvstfunc 79)---------------------------------------------------------------------
 std::atomic<uint32_t> g_tempBuffs {0};
 
@@ -310,7 +323,7 @@ auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 	if (state <= 0) {
 		return 1;  // no aurastate: the cast goes on without a buff
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, state, 1);
+	DropStateList(dataFlag, unit, state);  // always a new list: NewStateList keeps a same-level one as it is
 	d2r::StateListRequest request {unit, unit, skillId, level, TempBuffFrames, -1, 0, state,
 	                               d2r::Engine<void (*)()>(SkillStateExpired)};
 	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
@@ -1880,10 +1893,7 @@ auto SharedCharges(uint32_t dataFlag, Unit* unit, bool clear) noexcept -> int32_
 			continue;
 		}
 		if (clear) {
-			// as RemoveSkillState does per state: progressive states have no group, so it would remove nothing
-			d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, states[i], 0);
-			d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
-			d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
+			DropStateList(dataFlag, unit, states[i]);
 			continue;
 		}
 		const uint8_t* maker = d2r::api.getSkillRecord(dataFlag, ListStat(dataFlag, list, StatListSkill));
@@ -2811,11 +2821,12 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		charges = unitStat(unit, At<int16_t>(skill, SkAuraStat1), 0);
 		value = charges < 3 ? calc2 * charges : 0;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(RemoveSkillState)(unit, TempSkillBuff, 1);  // always a new list
-	TimedStatList(dataFlag, unit, unit, skillId, level, SplashFrames, TempSkillBuff, {{IncSplashRadius, value}});
+	DropStateList(dataFlag, unit, TempSkillBuff);  // always a new list
+	const char* made =
+		TimedStatList(dataFlag, unit, unit, skillId, level, SplashFrames, TempSkillBuff, {{IncSplashRadius, value}});
 	if (plog::Sample(g_splashStarts)) {
-		plog::Info("splash start: skill %d level %d charges %d calc2 %d: splash radius %d, start %u", skillId, level,
-		           charges, calc2, value, g_splashStarts.load());
+		plog::Info("splash start: skill %d level %d charges %d calc2 %d: splash radius %d, list %s, start %u", skillId,
+		           level, charges, calc2, value, made, g_splashStarts.load());
 	}
 	return 1;
 }

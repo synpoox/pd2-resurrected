@@ -349,6 +349,9 @@ def frenzy_splash(ctx):
     level, charges, calc2, value = charged[0]
     assert calc2 == dm34(level), f"level {level}: calc2 {calc2}, PD2's dm34 gives {dm34(level)}"
     assert value == calc2 * charges // 5, f"splash radius {value}, PD2 gives {calc2} * {charges} / 5"
+    # #138: each start drops the old list, so its radius is written ("extended" kept the first start's radius)
+    kept = re.findall(r"splash start: skill 147 [^\n]*list (?!new)(\w+)", _log(ctx))
+    assert not kept, f"Frenzy start lists not rebuilt: {kept}"
     return f"level {level}, {charges} charges: splash radius {value}"
 
 
