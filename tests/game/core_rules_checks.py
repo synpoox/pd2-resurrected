@@ -135,8 +135,8 @@ Then `cheat god 1`, `cheat mspawn torajanBoss,1` (his nest lays eggs that nova a
 same command with core-rules-w36.
 
 P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
-drops Ormus' Robes; `cheat idall`, wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); cast spells at
-the pack until a proc logs (12% a cast, 8% for a skill with a cooldown), and run the same command with core-rules-p12.
+drops Ormus' Robes; `cheat idall`, then run the same command with core-rules-p12. Its procs are the Cast Triggers
+companion's (IR2): wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`, and cast at the pack.
 
 IR4 checks (tag core-rules-ir4), same merged data, Hell, level 90+:
 - max-curses: a Necromancer with two curses (Amplify Damage 66, Weaken 72) and Darkforge Spawn (`cheat uniques 331`,
@@ -1735,7 +1735,6 @@ def hit_window(ctx):
 
 ORMUS_SKILLS = {39, 45, 44, 55, 59, 441, 64, 38, 49, 48, 53, 43, 36, 47, 46, 51, 56, 455, 62, 448}  # PD2's list 8
 ORMUS_ROLL = re.compile(r"ormus: rolled skill (\d+) \+(\d+), cast on cast (\d+)% level (\d+)")
-SKILL_ON_CAST = re.compile(r"skill on cast: (\d+)% \(roll (\d+)\) skill (\d+) level (\d+) at (target|point)")
 
 
 def _skill_rows() -> list[dict[str, str]]:
@@ -1771,32 +1770,13 @@ def ormus_roll(ctx):
     return f"{len(rolls)} roll(s), e.g. {rows[rolls[0][0]]['skill']} +{rolls[0][1]}, {rolls[0][2]}% level {rolls[0][3]}"
 
 
-@check("ormus-skill-on-cast", tags=["core-rules-p12"])
-def ormus_skill_on_cast(ctx):
-    """Casting a spell while wearing the robes procs the robe's skill only on a roll under its chance, at PD2's chance
-    and level for that skill (the robe may come from an earlier game, so the proc is checked against the formula)."""
-    rows = _skill_rows()
-    procs = [(int(c), int(r), int(s), int(lv), at) for c, r, s, lv, at in SKILL_ON_CAST.findall(_log(ctx))]
-    if not procs:
-        ctx.skip("no skill on cast proc in the log yet (wear the robes, cast a spell out of town, run again)")
-    for chance, roll, skill, level, _ in procs:
-        assert roll < chance, f"skill {skill} procced on roll {roll}, chance {chance}%"
-        if skill not in ORMUS_SKILLS:
-            continue  # another cast-skill item: its chance and level are the item's own
-        row = rows[skill]
-        _, want_chance, want_level = ormus_expected(2, 12, 26, int(row["reqlevel"]), int(row["localdelay"] or 0) > 0)
-        assert (chance, level) == (want_chance, want_level), (
-            f"{row['skill']}: {chance}% level {level}, PD2: {want_chance}% level {want_level}")
-    return f"{len(procs)} proc(s), e.g. {rows[procs[0][2]]['skill']} level {procs[0][3]} at the {procs[0][4]}"
-
-
 @check("items-installed", tags=["core-rules-p12", "core-rules-ir4", "core-rules-ir7"])
 def items_installed(ctx):
-    """core-rules installs its four item rules: property func 26, the skill on cast trigger, the curse hook and skill
-    on equip."""
+    """core-rules installs its eight item rules: property func 26, IR3's five, the curse hook and skill on equip (skill
+    on cast is the Cast Triggers companion's, IR2)."""
     line = re.search(rf"{PLUGIN}: items [^\n]*", _log(ctx))
     assert line, "no items part line in the plugin log"
-    assert "items 4/4 installed" in line.group(0), line.group(0)
+    assert "items 8/8 installed" in line.group(0), line.group(0)
     return line.group(0)[len(PLUGIN) + 2:]
 
 
