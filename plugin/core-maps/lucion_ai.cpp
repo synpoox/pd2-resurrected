@@ -2,14 +2,13 @@
 // 1112), LucionControl (1113) and LucionSpawner (1141): Lucion's stages and state machine, the portal phase, the
 // controller's spawner waves and Royal Fire, the spawner's adds. Every other Overseer monster keeps D2R's think.
 //
-// A native table write: no PluginSDK service runs or replaces a monster's AI (data_tables only reads monai.txt), so
-// the port swaps monai row 120's think in D2R's AI table (rva::AiTable) through the SDK's PatchWriteU64, with D2R's
-// own Overseer as the expected value, and calls it for the other monsters.
+// The three register on monai row 120 through ai_hooks (no SDK service runs monster AI; see ai_hooks.cpp).
 //
 // PD2 keeps the fight in game fields (stage +0x262a, sub-step +0x262b) and Lucion's AI params; the port keeps them in
 // D2R's per-game counters (rva::GameCounter), like map_open's tier. Lucion is one per game, so his params are too.
 #include "lucion_ai.h"
 
+#include "ai_hooks.h"
 #include "log.h"
 
 #include <atomic>
@@ -44,8 +43,7 @@ constexpr int32_t ImmuneStats[] = {39, 43, 41, 45, 37, 36};
 constexpr int32_t Corners[][2] = {{0x622d, 0x17eb}, {0x622d, 0x17d5}, {0x6217, 0x17d5}, {0x6217, 0x17eb}};
 constexpr int32_t CentreX = 0x6223, CentreY = 0x17e1;
 
-using ThinkFn = void (*)(Game*, Unit*, uint8_t*) noexcept;
-ThinkFn g_overseer = nullptr;
+constexpr int32_t OverseerRow = 120;  // monai.txt
 
 std::atomic<uint32_t> g_thinks {0};
 std::atomic<uint32_t> g_stages {0};
@@ -489,36 +487,37 @@ auto ThinkSpawner(Game* game, Unit* unit, const Mon& m) noexcept -> void {
 	Idle(game, unit, aidel);
 }
 
+// The monstats record and difficulty from the tick; null when there is none (then D2R's think runs)
+auto MonOf(uint8_t* tick, Mon* m) noexcept -> bool {
+	m->rec = tick != nullptr ? At<const uint8_t*>(tick, d2r::rva::TickMonStats) : nullptr;
+	m->diff = m->rec != nullptr ? static_cast<uint8_t>(At<uint8_t>(tick, d2r::rva::TickDifficulty) % 3) : 0;
+	return m->rec != nullptr;
+}
+
+template <auto Port>
 void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
-	const int32_t classId = unit != nullptr ? At<int32_t>(unit, d2r::rva::UnitClassId) : -1;
-	const uint8_t* rec = tick != nullptr ? At<const uint8_t*>(tick, d2r::rva::TickMonStats) : nullptr;
-	if (rec == nullptr || (classId != Lucion && classId != LucionControl && classId != LucionSpawner)) {
-		g_overseer(game, unit, tick);
+	Mon m {};
+	if (!MonOf(tick, &m)) {
+		VanillaAiThink(OverseerRow)(game, unit, tick);
 		return;
 	}
-	const Mon m {rec, static_cast<uint8_t>(At<uint8_t>(tick, d2r::rva::TickDifficulty) % 3)};
-	if (classId == Lucion) {
-		ThinkLucion(game, unit, tick, m);
-	} else if (classId == LucionControl) {
-		ThinkControl(game, unit, tick, m);
-	} else {
-		ThinkSpawner(game, unit, m);
-	}
+	Port(game, unit, tick, m);
+}
+
+void SpawnerThink(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept {
+	(void)tick;
+	ThinkSpawner(game, unit, m);
 }
 
 }  // namespace
 
 auto InstallLucionAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
-	using namespace d2r::rva;
-	const uint64_t d2rOverseer = d2r::imageBase + AiOverseerD2R;
-	uint8_t expected[8];
-	std::memcpy(expected, &d2rOverseer, sizeof(expected));
-	g_overseer = reinterpret_cast<ThinkFn>(d2rOverseer);
-	const bool ok = context->PatchWriteU64(AiTable + static_cast<uint64_t>(AiOverseerRow) * AiRowSize, expected,
-	                                       sizeof(expected), reinterpret_cast<uint64_t>(&Think));
+	const bool ok = RegisterAiThink(context, OverseerRow, Lucion, &Think<ThinkLucion>) &&
+	                RegisterAiThink(context, OverseerRow, LucionControl, &Think<ThinkControl>) &&
+	                RegisterAiThink(context, OverseerRow, LucionSpawner, &Think<SpawnerThink>);
 	std::snprintf(report, reportSize, ok ? "monai %d (Overseer) think: Lucion, LucionControl, LucionSpawner"
-	                                     : "off: monai %d think is not D2R's Overseer",
-	              AiOverseerRow);
+	                                     : "off: monai %d think not swapped",
+	              OverseerRow);
 	return ok ? 1 : 0;
 }
 
