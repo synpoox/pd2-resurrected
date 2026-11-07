@@ -41,6 +41,7 @@ add_library(core_rules SHARED
 	core-rules/item_rules.cpp
 	core-rules/merc_rules.cpp
 	core-rules/cube_rules.cpp
+	core-rules/loot_rules.cpp
 	core-rules/plugin.rc  # ABI manifest resource: D2RLoader rejects a plugin DLL without it
 )
 target_link_libraries(core_rules PRIVATE core_common)
@@ -54,9 +55,11 @@ add_library(core_maps SHARED
 	core-maps/cube_ops.cpp
 	core-maps/map_open.cpp
 	core-maps/map_stats.cpp
+	core-maps/map_events.cpp
 	core-maps/entity_pool.cpp
 	core-maps/key_drops.cpp
 	core-maps/rathma.cpp
+	core-maps/event_portals.cpp
 	core-maps/uber_scaling.cpp
 	core-maps/plugin.rc
 )
@@ -71,6 +74,7 @@ add_library(core_ui SHARED
 	core-ui/plugin.cpp
 	core-ui/automap.cpp
 	core-ui/item_pictures.cpp
+	core-ui/item_quantity.cpp
 	core-ui/stack_split.cpp
 	core-ui/plugin.rc
 )

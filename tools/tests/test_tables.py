@@ -124,6 +124,14 @@ class TablesTests(unittest.TestCase):
         self.write("d2r", "levels", table("Name | Id", "Act 1 | 1"))
         self.assertEqual(self.merge({"levels": {"pd2_only_rows": "leave out"}})["levels"], [["Name", "Id"], ["Act 1", "1"]])
 
+    def test_only_named_rows_merge(self):
+        self.write("pd2", "inventory", table("class | gridX", "Amazon | 10", "Transmogrify Box2 | 4", "Trophy | 10"))
+        self.write("d2r", "inventory", table("class | gridX", "Amazon | 9", "Transmogrify Box2 | 3", "Warlock | 10"))
+        self.assertEqual(self.merge({"inventory": {"only_rows": ["transmogrify box2"]}})["inventory"], [
+            ["class", "gridX"], ["Amazon", "9"], ["Transmogrify Box2", "4"], ["Warlock", "10"]])
+        with self.assertRaisesRegex(ValueError, "no row nosuch"):
+            self.merge({"inventory": {"only_rows": ["nosuch"]}})
+
 
 if __name__ == "__main__":
     unittest.main()

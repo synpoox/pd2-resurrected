@@ -5,7 +5,9 @@
 Refuses an install whose archives differ from pd2-baseline.json. Writes every file of pd2data.mpq, the skill
 icon sheets, the item pictures, the missile DCC, the automap cels and the DT1 tiles of pd2assets.mpq and the DS1 maps of pd2maps.mpq
 (ADR 0002 amendment) to pd2-data/data/... (lower-case paths, forward slashes), then pd2-data/baseline.json last, the
-baseline it was checked against plus EXTRACT, which pd2_merge reads to refuse a stale extract.
+baseline it was checked against plus EXTRACT, which pd2_merge reads to refuse a stale extract. With a pd2_cache root
+and no --out, pd2-data/ is a junction to the cache's extract for this stamp, so worktrees share one; a run holds the
+cache's lock, so extracts never run at once (#440).
 """
 from __future__ import annotations
 
@@ -18,6 +20,7 @@ import sys
 from pathlib import Path
 
 import mpq
+import pd2_cache
 
 ROOT = Path(__file__).resolve().parent.parent
 # archive -> the files taken from it (lower-case path patterns). shortcut: art only as the asset pipeline needs it
@@ -66,6 +69,10 @@ def extract(install: Path, out: Path, baseline_file: Path) -> int:
         print("refusing: this install is not the PD2 baseline\n  " + "\n  ".join(problems)
               + "\nRe-baselining is a deliberate commit to pd2-baseline.json (ADR 0002).", file=sys.stderr)
         return 1
+    done = out / "baseline.json"  # written last, so it only exists after a finished extract
+    if done.is_file() and done.read_bytes() == stamp(baseline_file.read_bytes()):
+        print(f"{out} is current, skipping extract")
+        return 0
     if out.exists():
         shutil.rmtree(out)
     count = 0
@@ -87,11 +94,23 @@ def extract(install: Path, out: Path, baseline_file: Path) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--install", type=Path, help="PD2 folder (default: the one named in pd2-baseline.json)")
-    ap.add_argument("--out", type=Path, default=ROOT / "pd2-data")
+    ap.add_argument("--out", type=Path, help="output folder (default: pd2-data/, a junction to the shared cache's "
+                                                  "extract when pd2_cache has a cache root)")
     ap.add_argument("--baseline", type=Path, default=ROOT / "pd2-baseline.json")
     a = ap.parse_args(argv)
     install = a.install or Path(json.loads(a.baseline.read_text("utf-8"))["install"])
-    return extract(install, a.out, a.baseline)
+    out, cache = a.out or ROOT / "pd2-data", pd2_cache.root()
+    with pd2_cache.lock((cache or out.parent) / "pd2_extract.lock"):
+        if a.out or not cache or (out.exists() and not pd2_cache.is_link(out)):
+            if not a.out and cache:
+                print(f"{out} is a folder, not the shared extract: delete it to use {cache / 'extract'}")
+            return extract(install, out, a.baseline)
+        shared = cache / "extract" / hashlib.sha256(stamp(a.baseline.read_bytes())).hexdigest()[:16]
+        rc = extract(install, shared, a.baseline)
+        if rc == 0:
+            pd2_cache.point(out, shared)
+            print(f"{out} -> {shared}")
+        return rc
 
 
 if __name__ == "__main__":
