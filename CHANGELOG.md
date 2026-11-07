@@ -17,6 +17,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - The Horadric Cube has PD2's 4x4 grid.
 - Stacks in the inventory, cube and stash show their quantity on the picture, as in PD2 (tomes excepted).
 - Curses follow PD2's duration resistance (75 cap on players), land on attracted units, and fail when fully resisted.
+- Ctrl+left-clicking a held stack onto a stack of the same item adds one item to it, as in PD2.
 - of Anima rolls on amulets, cold prefixes tint items dark blue, and potion texts are fixed.
 
 #### Uber bosses
@@ -79,7 +80,7 @@ bosses and the Warlock redesign come in a later alpha.
 - PD2's items, affixes, runewords, cube recipes and treasure classes.
 - Corruption: cube an item with a Worldstone Shard, once per item.
 - Demonic Cube rerolls a unique or set item, keeping its base, sockets, socketed items and ethereal state.
-- Cube recipes take inputs one per cell; stacked inputs don't count yet.
+- Cube recipes count a stack as its quantity (a stack of 3 El makes Eld); unused units stay in the cube.
 - PD2's combat stats: critical and deadly strike, crushing blow, open and deep wounds, life steal cap.
 - Curse resistance and extra curse slots.
 - Skill on cast procs for every item that has it; skill while equipped and Phasing work.
