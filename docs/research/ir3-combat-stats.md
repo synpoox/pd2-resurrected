@@ -90,9 +90,12 @@ PD2 also hooks an item stat-change callback (`0x102fa930`) that sets `item_dmgpe
 when an item of a player changes, so the cached op values follow equipment changes.
 
 D2R reads an op base through `0x2f9b10 (statlist, stat << 16 | layer, record)` (from `0x2f8ad0` and `0x2fa430`; the
-statlist's unit at `+0xa0`). core-rules hooks it: `equipped_eth` counts the unit's bodylocs 1-10 (`0x3886d0`) holding an
-ethereal item (`0x3740a0`), `missing_hp` as PD2, the rest D2R's read. Not ported: PD2's refresh callback. D2R caches op
-values, so whether an item's damage follows a later equipment change is not checked.
+statlist's unit at `+0xa0`). D2RCore replaces D2R's stat getters (`0x2f5020` is `jmp [0x3e2a218]`), so that read is
+never called: a hook on it logged 0 calls ([#446](https://github.com/synpoox/pd2-resurrected/issues/446)). D2RCore's
+op 4 reads the real base stat (`cheat stat equipped_eth,2` gave Purgatory +120%). So core-rules keeps both as base
+stats: `equipped_eth` (the unit's bodylocs 1-10, `0x3886d0`, holding an ethereal item, `0x3740a0`) is recounted at the
+next game update after a durability callback (the item being taken off is still in its slot during it), `missing_hp`
+on each life or max-life callback. The server never sends them, so a player's values are also set on its client unit.
 
 ## Life steal cap (Nightmare's Feast)
 
@@ -145,8 +148,13 @@ pass; `items 7/7`).
   and at full life (god mode) all 50 were blocked. A steal added below 75% life was not seen.
 - Crushing blow: with Goblin Toe (25%) and `item_crushingblow` 40, no blow was logged on the player's Attack hits.
   `cheat stat` adds no item event listener, and the boots' durability icon showed red, so this does not yet show
-  whether D2R's event 16 runs on a player's hit.
-- Enhanced damage per ethereal item: not checked in game (no ethereal carrier spawned).
+  whether D2R's event 16 runs on a player's hit. Cause ([#446](https://github.com/synpoox/pd2-resurrected/issues/446)):
+  D2RCore's event dispatcher (`0x5881e0` = `jmp [0x3e2a420]`) runs the item event nodes (unit `+0xe0`) through its
+  own event copy and applies D2R's quarter-life blow silently. core-rules wraps that slot, hides the crushing-blow nodes
+  on events 5 and 6 and rolls the chance itself. Slot 11, Hell, The Cranium Basher (75%): rolls at chance 75, blows at
+  divisor 8 less 7% resist (life 1557248 -> 1376217), life unchanged inside D2RCore's dispatch.
+- Enhanced damage per ethereal item ([#446](https://github.com/synpoox/pd2-resurrected/issues/446), Slot 11, Hell):
+  Purgatory's tooltip read +0%, +60% with an ethereal helm worn, +0% after taking it off. Damage not measured.
 - Smite's effectiveness ([#321](https://github.com/synpoox/pd2-resurrected/issues/321), Slot 8, Hell, level 90 Paladin, Smite 20, zombies): each Smite blow
   logged effectiveness 1.41 (calc4 41); life 1422848 -> 1297459 at divisor 8 and resist 50, PD2's formula.
 - Open wounds: a probe on `0x584170` logged nothing with `item_openwounds` 50 (stat only, no listener).
@@ -156,5 +164,5 @@ pass; `items 7/7`).
 ## Open
 
 - Open and deep wounds: decode the rest of `0x103463f0` and port it.
-- Crushing blow and open wounds on a player's hit: check with a fresh crushing-blow item whether item events reach
-  D2R's event functions ([#165](https://github.com/synpoox/pd2-resurrected/issues/165)).
+- Open wounds on a player's hit: D2RCore runs item events through its own copy (see crushing blow above), so PD2's
+  open wounds needs the same dispatcher wrap ([#165](https://github.com/synpoox/pd2-resurrected/issues/165)).

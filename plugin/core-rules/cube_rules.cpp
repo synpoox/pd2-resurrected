@@ -11,7 +11,7 @@
 // PD2's Demonic Cube reroll (op 31, 0x3669b0) remakes a unique or set item from its own row and takes one Demonic Cube
 // off the stack. On an op-31 row this hook does that through the PluginSDK instead of D2R's executor: one item
 // transaction takes one Demonic Cube and the old item and makes the new one in the cube, on the old item's base, row,
-// item level, sockets, ethereal and identified state, quantity and durability, as PD2 keeps them. D2R's own
+// item level, sockets, socketed items, ethereal and identified state, quantity and durability, as PD2 keeps them. D2R's own
 // once-per-game rule is skipped (AllowDuplicateUnique), as PD2's 0x103841d0 does. The executor is the hook point only
 // because the SDK has no cube event. The SDK refuses item changes inside it (Busy) and names the local player only on
 // the UI thread, so the press goes executor -> UI thread (which player) -> next game update (the transaction).
@@ -145,8 +145,9 @@ auto Stacks(const items::ItemInfo& item) noexcept -> bool {
 
 // The old item as a new roll of the same row: everything PD2's 0x3669b0 carries over (top of file).
 auto RerollSpec(const items::ItemInfo& old) noexcept -> items::ItemCreateSpec {
+	// The flag is for Unique rows only; set items have no once-per-game rule.
 	return {.structSize = items::ItemCreateSpecSize,
-	        .flags = items::ItemCreateFlagBit(items::ItemCreateFlag::AllowDuplicateUnique),
+	        .flags = old.quality == items::Quality::Unique ? items::ItemCreateFlagBit(items::ItemCreateFlag::AllowDuplicateUnique) : 0,
 	        .code = old.code,
 	        .quality = old.quality,
 	        .qualityRecordId = static_cast<uint32_t>(old.qualityRecordId),
@@ -159,6 +160,92 @@ auto RerollSpec(const items::ItemInfo& old) noexcept -> items::ItemCreateSpec {
 	        .destination = {.structSize = items::ItemDestinationSize,
 	                        .container = items::ItemContainer::Cube,
 	                        .placement = items::Placement::Automatic}};
+}
+
+// The old item's socketed items move to the new one, as PD2's 0x3669b0 moves them. Native: the SDK's socket policies
+// only refuse or destroy them. They come out of the old item before the transaction, so it is an empty input, and go
+// into the new item after it, or back into the old one if it fails. The item pointers come from editNativeItem.
+constexpr int MaxSocketed = 6;
+
+struct Socketed {
+	Unit* items[MaxSocketed] {};
+	int count = 0;
+	bool ok = false;
+};
+
+// Takes them out (inventory and stat list); takes none when there are more than MaxSocketed.
+void TakeSocketed(const D2RL::PluginContext*, void* native, void* user) noexcept {
+	using namespace d2r::rva;
+	auto& taken = *static_cast<Socketed*>(user);
+	auto* item = static_cast<Unit*>(native);
+	if (void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory)(item, __FILE__, __LINE__)) {
+		const auto next = d2r::Engine<Unit* (*)(Unit*) noexcept>(InventoryNextItem);
+		for (Unit* s = d2r::Engine<Unit* (*)(void*) noexcept>(InventoryFirstItem)(inventory); s != nullptr; s = next(s)) {
+			if (taken.count == MaxSocketed) {
+				return;
+			}
+			taken.items[taken.count++] = s;
+		}
+	}
+	for (int i = 0; i < taken.count; ++i) {
+		d2r::Engine<void (*)(Unit*, Unit*) noexcept>(StatListUnlink)(nullptr, taken.items[i]);
+		d2r::Engine<int32_t (*)(Unit*) noexcept>(InventoryRemove)(taken.items[i]);
+	}
+	taken.ok = true;
+}
+
+Game* g_pressGame = nullptr;  // the executor's game and player, for SendItem (single player: one game at a time)
+Unit* g_pressPlayer = nullptr;
+
+void Send(Unit* item, uint32_t itemFlags, uint32_t commandFlags) noexcept {
+	using namespace d2r::rva;
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, uint32_t, uint32_t, int32_t, uint8_t, uint8_t, uint32_t) noexcept>(SendItem)(
+		g_pressGame, g_pressPlayer, item, itemFlags, commandFlags, At<int32_t>(item, UnitMode),
+		d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(item), d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemStorePage)(item),
+		d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitXY)(item));
+}
+
+struct PutBack {
+	const Socketed* taken;
+	bool send;  // the client saw them leave (the new item); a put-back into the old item tells it nothing
+	int placed = 0;
+};
+
+// Into the parent's sockets in their old order, as 0x46eb00 places them, without its gems.txt mods (rvas_93847.h).
+void PutSocketed(const D2RL::PluginContext*, void* native, void* user) noexcept {
+	using namespace d2r::rva;
+	auto& put = *static_cast<PutBack*>(user);
+	auto* parent = static_cast<Unit*>(native);
+	const auto inventoryOf = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory);
+	if (inventoryOf(parent, __FILE__, __LINE__) == nullptr) {
+		d2r::Engine<void (*)(Unit*) noexcept>(CreateInventory)(parent);
+	}
+	void* inventory = inventoryOf(parent, __FILE__, __LINE__);
+	for (int i = 0; inventory != nullptr && i < put.taken->count; ++i) {
+		Unit* s = put.taken->items[i];
+		if (d2r::Engine<int32_t (*)(void*, Unit*, int32_t) noexcept>(PlaceInSocket)(inventory, s, 1) == 0) {
+			continue;
+		}
+		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetObjectMode)(s, ItemModeSocketed);
+		d2r::Engine<void (*)(Unit*, uint8_t) noexcept>(SetItemStorePage)(s, 0);
+		d2r::Engine<void (*)(Unit*, uint8_t) noexcept>(SetItemPage)(s, 0xff);
+		d2r::Engine<void (*)(Unit*, Unit*, int32_t) noexcept>(StatListLink)(parent, s, 1);
+		++put.placed;
+		if (put.send) {
+			Send(s, 0, 2);
+		}
+	}
+	if (put.send) {
+		Send(parent, 1, 0);
+	}
+}
+
+auto Put(D2RL::ItemHandle parent, const Socketed& taken, bool send) noexcept -> int {
+	PutBack put {.taken = &taken, .send = send};
+	if (taken.count > 0 && g_items->editNativeItem(g_context, parent, PutSocketed, &put) != items::Result::Success) {
+		return -1;
+	}
+	return put.placed;
 }
 
 // Op 31 on the game thread: one SDK item transaction for the player the UI thread named.
@@ -178,9 +265,14 @@ void RerollNow(const D2RL::PluginContext*, void* user) noexcept {
 		           scan.cubes.handle != D2RL::InvalidItemHandle ? "a" : "no");
 		return;
 	}
+	Socketed taken;
+	if (g_items->editNativeItem(g_context, old.handle, TakeSocketed, &taken) != items::Result::Success || !taken.ok) {
+		plog::Info("reroll: refused, could not take out the socketed items (more than %d?)", MaxSocketed);
+		return;
+	}
 	const items::TransactionInput inputs[] {
-		// shortcut: refuses an item with socketed items, which PD2 moves to the new one; #325 keeps them
-		{.item = old.handle, .quantity = 1, .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty},
+		// The whole stack (ItemInfo gives 1 for an item that does not stack): a quantity below it only debits the old one.
+		{.item = old.handle, .quantity = static_cast<uint32_t>(old.quantity), .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty},
 		{.item = scan.cubes.handle, .quantity = 1, .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty}};
 	const items::ItemCreateSpec spec = RerollSpec(old);
 	D2RL::ItemHandle newItem = D2RL::InvalidItemHandle;
@@ -194,15 +286,19 @@ void RerollNow(const D2RL::PluginContext*, void* user) noexcept {
 	                                      .outputCapacity = 1};
 	items::TransactionResult result {.structSize = items::TransactionResultSize};
 	const items::Result status = g_items->executeTransaction(g_context, &transaction, &result);
+	// Into the new item, or back into the old one, which the failed transaction left as it was.
+	// shortcut: one that PlaceInSocket refuses stays out of any inventory (the log's placed count shows it); unlikely,
+	// since the new item has the old one's socket count. Upgrade if a log ever shows fewer placed than taken.
+	const int placed = Put(status == items::Result::Success ? newItem : old.handle, taken, status == items::Result::Success);
 	items::ItemInfo remade {.structSize = items::ItemInfoSize};
 	const bool remadeRead =
 		status == items::Result::Success && g_items->getItemInfo(g_context, newItem, &remade) == items::Result::Success;
-	plog::Info("reroll: quality %u row %d level %u quantity %d durability %d/%d sockets %u (filled %u), demonic cubes %d: "
-	           "result %u, new row %d quantity %d durability %d/%d (%u so far)",
+	plog::Info("reroll: quality %u row %d level %u quantity %d durability %d/%d sockets %u (filled %d), demonic cubes %d: "
+	           "result %u, new row %d quantity %d durability %d/%d, %d of them placed (%u so far)",
 	           static_cast<uint32_t>(old.quality), old.qualityRecordId, old.itemLevel, old.quantity, old.durability,
-	           old.maximumDurability, old.socketCount, old.socketedItemCount, scan.cubes.quantity,
-	           static_cast<uint32_t>(status), remadeRead ? remade.qualityRecordId : -1, remadeRead ? remade.quantity : -1,
-	           remadeRead ? remade.durability : -1, remadeRead ? remade.maximumDurability : -1, ++g_rerolls);
+	           old.maximumDurability, old.socketCount, taken.count, scan.cubes.quantity, static_cast<uint32_t>(status),
+	           remadeRead ? remade.qualityRecordId : -1, remadeRead ? remade.quantity : -1,
+	           remadeRead ? remade.durability : -1, remadeRead ? remade.maximumDurability : -1, placed, ++g_rerolls);
 }
 
 // UI thread: the SDK names the local player only here. The pressing player's unit id comes from the executor; a
@@ -225,8 +321,10 @@ void PickPlayer(const D2RL::PluginContext*, void* user) noexcept {
 }
 
 // Executor, game thread: never D2R's own row (top of file), so nothing is taken unless the SDK transaction runs.
-auto Reroll(Unit* player) noexcept -> uint64_t {
+auto Reroll(Game* game, Unit* player) noexcept -> uint64_t {
 	const uint32_t id = At<uint32_t>(player, d2r::rva::UnitIdField);
+	g_pressGame = game;
+	g_pressPlayer = player;
 	if (!g_rerollReady ||
 	    g_threads->runOnUiThread(g_context, PickPlayer, reinterpret_cast<void*>(static_cast<uintptr_t>(id))) !=
 	        D2RL::Threads::Result::Success) {
@@ -266,7 +364,7 @@ auto Query(const D2RL::PluginContext* context, const Service*& service, bool (*h
 
 auto CubeExecute(Game* game, Unit* player, const uint8_t* record, MatchOut* out) noexcept -> uint64_t {
 	if (game != nullptr && player != nullptr && record != nullptr && record[d2r::rva::CubeOp] == OpReroll) {
-		return Reroll(player);
+		return Reroll(game, player);
 	}
 	const uint64_t made = g_executorOriginal(game, player, record, out);
 	if (game == nullptr || player == nullptr || record == nullptr || !IsRollRow(record)) {

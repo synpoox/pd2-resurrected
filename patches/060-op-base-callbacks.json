@@ -1,0 +1,7 @@
+{
+ "_note": "equipped_eth and missing_hp as real stats (#446): D2RCore never calls D2R's op-base read, so core-rules sets both on the server from the stat callback. durability changes when an item is worn or taken off, hitpoints when life does (plugin/core-rules/item_rules.cpp, RefreshOpBase).",
+ "ops": [
+  {"op": "set", "table": "itemstatcost", "bank": "excel", "key": "durability", "set": {"fCallback": "1"}},
+  {"op": "set", "table": "itemstatcost", "bank": "excel", "key": "hitpoints", "set": {"fCallback": "1"}}
+ ]
+}
