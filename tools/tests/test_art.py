@@ -131,8 +131,18 @@ class HdPictureTests(unittest.TestCase):
             pd2 = {"misc": table("name|code|type|invfile\nRing|rin|ring|invrin2\nShard|wss|xx|invwss\n", "code")}
             d2r = {"misc": table("name|code|type|invfile\nRing|rin|ring|invrin\n", "code")}
             pictures = {"invwss": "pd2/invwss", "invrin2": "pd2/invrin2", "invnag": "pd2/invnag"}
+            models = {}
             files = M.hd_items(hd, pd2, d2r, [("Nagelring", "rin", "Nagelring", "invnag")],
-                               [("Gift", "rin", None, "")], pictures)
+                               [("Gift", "rin", None, "")], pictures, models)
+            # the ground model each picture's item drew before: its own, the base item's, else the table's first
+            self.assertEqual(models, {"pd2/invrin2": "ring/ring", "pd2/invwss": "ring/ring", "pd2/invnag": "ring/nagel"})
+            (hd / "misc" / "ring").mkdir(parents=True)
+            (hd / "misc" / "ring" / "ring.json").write_text("{}")
+            (hd / "misc" / "ring" / "nagel.json").write_text('{"n": 1}')
+            M.ground_models(hd, hd / "out", pictures, models, {"invwss": {"misc"}, "invrin2": {"misc"},
+                                                               "invnag": {"misc", "weapons"}})
+            self.assertEqual((hd / "out" / "weapon" / "pd2" / "invnag.json").read_text(), '{"n": 1}')
+            self.assertTrue((hd / "out" / "misc" / "pd2" / "invwss.json").is_file())
             self.assertEqual(files["items.json"], [{"rin": {"asset": "pd2/invrin2"}}, {"wss": {"asset": "pd2/invwss"}}])
             nag = {"normal": "pd2/invnag", "uber": "pd2/invnag", "ultra": "pd2/invnag"}
             self.assertEqual(files["uniques.json"], [{"nagelring": nag}])
