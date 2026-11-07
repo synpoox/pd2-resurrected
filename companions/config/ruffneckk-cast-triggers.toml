@@ -1,0 +1,67 @@
+# Cast Triggers â€” modder configuration
+# See README.md for item properties and tooltips. Restart after changes.
+# Stat mappings use ItemStatCost.txt *ID; 0 disables that mapping.
+# Use unique nonzero IDs from your mod. Never renumber saved-item stats.
+# Items choose the triggered spell, chance and level; this file chooses triggers.
+# Commented examples are inactive.
+
+enabled = true
+
+[on_cast]
+# [] = all eligible non-channelled spells. Example: [47, 54] = Fire Ball/Teleport.
+include_skill_ids = []
+# Exclusions win. Example: [54] excludes Teleport.
+exclude_skill_ids = []
+
+[on_kill]
+# Example: 196 extends standard item_skillonkill to player spell kills.
+# Check your mod's ID. Triggered missile kills can trigger On Kill again.
+stat_id = 0
+
+[while_channeling]
+enabled = true
+# First chance roll is immediate; this spaces later rolls during channeling.
+# 10 = 0.4s, 25 = 1s, 50 = 2s. Does not delay other trigger families.
+interval_frames = 50
+# Map your separate fixed/source-level channel stats. Both 0 = no channel procs.
+fixed_stat_id = 0
+same_level_stat_id = 0
+# Example: [41] = Inferno only; [] = all eligible channelled spells.
+include_skill_ids = []
+exclude_skill_ids = []
+
+# Optional: a separate property triggered only by Frost Nova (44).
+# The item can choose another spell, e.g. Fire Ball (47), 100% chance, level 12.
+# Set at least one mapping to your stat ID before uncommenting this block.
+# [[source_skill_triggers]]
+# name = "frost_nova"
+# source_skill_ids = [44]
+# fixed_stat_id = 0
+# same_level_stat_id = 0
+
+[combat_triggers]
+# Map each property's stat ID. The item must also have the combat modifier
+# needed to produce the outcome; an on-Crushing-Blow proc does not grant CB.
+# Attack Attempt includes misses. Critical Strike excludes Deadly Strike.
+attack_attempt_stat_id = 0
+critical_strike_stat_id = 0
+crushing_blow_stat_id = 0
+open_wounds_stat_id = 0
+
+[on_block]
+# Map your block-proc stat. Example item: 100% level 1 Frost Nova (44).
+# Requires an actual shield block or Weapon Block, not simply casting a skill.
+# PD2 Resurrected: item_skillonblock, merged id 379 (patches/030-cast-triggers.json sets it to doactive / 20)
+stat_id = 379
+
+[diagnostics]
+# true: restart, test, then run cast-triggers in the console for event details.
+enabled = false
+
+[proc_presentation]
+# CelestialRayOne's Cast on Cast corrections, integrated with permission.
+# Original mechanics credited upstream to ESR.
+# Remove the separate Cast on Cast DLL.
+server_proc_aim = true        # Correct actual item-proc missile aiming.
+client_proc_aim = true        # Match displayed procs to their intended target.
+client_missile_rewind = true  # Draw the first frame one movement step back.

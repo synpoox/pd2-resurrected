@@ -126,14 +126,17 @@ Mastery and an item_splashonhit item (The Gnasher, `cheat uniques 0`), at least 
 Frenzy into the pack before any other splash, then run the same command with core-rules-w35.
 
 W36 checks (tag core-rules-w36), same merged data: a level 90+ Druid in Hell (`debug_mode`, `cheat god 1`,
-`cheat sklvl Cycle of Life,20`, `cheat sklvl Vines,20`, `cheat goto 2`). Kill a pack (`cheat mspawn zombie1,8`), summon
-both vines by the corpses and let each eat one; then `cheat mspawn torajanBoss,1` (his nest lays eggs that nova and hatch)
-and `cheat mspawn leoricMapBoss,1` (his orbs raise leoricGuards where they land), let them cast a while, and run the
+`cheat sklvl Cycle of Life,20`, `cheat sklvl Vines,20`, `cheat goto 2`). Make corpses with `cheat mspawn zombie1,6`
+and `cheat killmonster` once per zombie (`cheat monster dead zombie1` crashes the game). A vine eats only while its
+owner's life or mana is below the maximum, and god mode keeps both full: `cheat god 0`, summon both vines by the
+corpses (D2R names them Carrion Vine and Solar Creeper), then `cheat depletehealth 10` and `cheat depletemana 10`.
+Mana regenerates in seconds, so repeat `cheat depletemana 10` every second or two until a VineCycler (325) line shows.
+Then `cheat god 1`, `cheat mspawn torajanBoss,1` (his nest lays eggs that nova and hatch) and `cheat mspawn leoricMapBoss,1` (his orbs raise leoricGuards where they land), let them cast a while, and run the
 same command with core-rules-w36.
 
 P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
-drops Ormus' Robes; `cheat idall`, wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`); cast spells at
-the pack until a proc logs (12% a cast, 8% for a skill with a cooldown), and run the same command with core-rules-p12.
+drops Ormus' Robes; `cheat idall`, then run the same command with core-rules-p12. Its procs are the Cast Triggers
+companion's (IR2): wear it, `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,8`, and cast at the pack.
 
 IR4 checks (tag core-rules-ir4), same merged data, Hell, level 90+:
 - max-curses: a Necromancer with two curses (Amplify Damage 66, Weaken 72) and Darkforge Spawn (`cheat uniques 331`,
@@ -346,6 +349,9 @@ def frenzy_splash(ctx):
     level, charges, calc2, value = charged[0]
     assert calc2 == dm34(level), f"level {level}: calc2 {calc2}, PD2's dm34 gives {dm34(level)}"
     assert value == calc2 * charges // 5, f"splash radius {value}, PD2 gives {calc2} * {charges} / 5"
+    # #138: each start drops the old list, so its radius is written ("extended" kept the first start's radius)
+    kept = re.findall(r"splash start: skill 147 [^\n]*list (?!new)(\w+)", _log(ctx))
+    assert not kept, f"Frenzy start lists not rebuilt: {kept}"
     return f"level {level}, {charges} charges: splash radius {value}"
 
 
@@ -1396,16 +1402,26 @@ SUMMON_HITS = {917: 1016, 922: 1018, 967: 1082, 1011: 1112, 1037: 1125}
 @check("cycler-start", tags=["core-rules-w36"])
 def cycler_start(ctx):
     """srvstfunc 83 (PD2 67): a vine takes a corpse and at once heals the units within aurarangecalc 40 by
-    calc1-calc2 of life (Cycle of Life's CorpseCycler, stat 6) or mana (Vines' VineCycler, stat 8)."""
+    calc1-calc2 of life (Cycle of Life's CorpseCycler, stat 6) or mana (Vines' VineCycler, stat 8); the player in
+    range gains the heal, at most up to the maximum."""
     found = re.findall(r"cycler start: skill (\d+) level (\d+): heal (-?\d+) \(calc1 (-?\d+), calc2 (-?\d+)\) of stat "
-                       r"(\d+), radius (\d+), units (\d+)", _log(ctx))
+                       r"(\d+), radius (\d+), units (\d+), player (-?\d+) -> (-?\d+) of (-?\d+)", _log(ctx))
     if not found:
         ctx.skip("no Cycler start in the log yet (summon Cycle of Life or Vines by corpses, then run again)")
-    for skill, _, heal, low, high, stat, radius, _units in (tuple(int(v) for v in f) for f in found):
+    healed = set()
+    for skill, _, heal, low, high, stat, radius, units, before, after, top in (tuple(int(v) for v in f) for f in found):
         assert (skill, stat) in ((CORPSE_CYCLER, 6), (VINE_CYCLER, 8)), f"skill {skill} heals stat {stat}"
         assert low <= heal <= max(low, high - 1), f"heal {heal} outside {low}-{high}"
         assert radius == 40, f"radius {radius}, PD2's aurarangecalc is 40"
-    return f"{len(found)} start(s) logged: skills {sorted({int(f[0]) for f in found})}"
+        if units and before >= 0:
+            assert after == min(before + heal, top), f"skill {skill}: {before} + {heal} -> {after} of {top}"
+            if after > before:
+                healed.add(skill)
+    missing = {CORPSE_CYCLER, VINE_CYCLER} - healed
+    if missing:
+        ctx.skip(f"{len(found)} start(s) logged; none raised the player's stat for skills {sorted(missing)} "
+                 "(`cheat god 0`, then `cheat depletehealth 10` / `cheat depletemana 10` by the vines, and run again)")
+    return f"{len(found)} start(s) logged, both vines raised the player's life and mana"
 
 
 @check("poison-egg-spawn", tags=["core-rules-w36"])
@@ -1719,7 +1735,6 @@ def hit_window(ctx):
 
 ORMUS_SKILLS = {39, 45, 44, 55, 59, 441, 64, 38, 49, 48, 53, 43, 36, 47, 46, 51, 56, 455, 62, 448}  # PD2's list 8
 ORMUS_ROLL = re.compile(r"ormus: rolled skill (\d+) \+(\d+), cast on cast (\d+)% level (\d+)")
-SKILL_ON_CAST = re.compile(r"skill on cast: (\d+)% \(roll (\d+)\) skill (\d+) level (\d+) at (target|point)")
 
 
 def _skill_rows() -> list[dict[str, str]]:
@@ -1755,32 +1770,13 @@ def ormus_roll(ctx):
     return f"{len(rolls)} roll(s), e.g. {rows[rolls[0][0]]['skill']} +{rolls[0][1]}, {rolls[0][2]}% level {rolls[0][3]}"
 
 
-@check("ormus-skill-on-cast", tags=["core-rules-p12"])
-def ormus_skill_on_cast(ctx):
-    """Casting a spell while wearing the robes procs the robe's skill only on a roll under its chance, at PD2's chance
-    and level for that skill (the robe may come from an earlier game, so the proc is checked against the formula)."""
-    rows = _skill_rows()
-    procs = [(int(c), int(r), int(s), int(lv), at) for c, r, s, lv, at in SKILL_ON_CAST.findall(_log(ctx))]
-    if not procs:
-        ctx.skip("no skill on cast proc in the log yet (wear the robes, cast a spell out of town, run again)")
-    for chance, roll, skill, level, _ in procs:
-        assert roll < chance, f"skill {skill} procced on roll {roll}, chance {chance}%"
-        if skill not in ORMUS_SKILLS:
-            continue  # another cast-skill item: its chance and level are the item's own
-        row = rows[skill]
-        _, want_chance, want_level = ormus_expected(2, 12, 26, int(row["reqlevel"]), int(row["localdelay"] or 0) > 0)
-        assert (chance, level) == (want_chance, want_level), (
-            f"{row['skill']}: {chance}% level {level}, PD2: {want_chance}% level {want_level}")
-    return f"{len(procs)} proc(s), e.g. {rows[procs[0][2]]['skill']} level {procs[0][3]} at the {procs[0][4]}"
-
-
 @check("items-installed", tags=["core-rules-p12", "core-rules-ir4", "core-rules-ir7"])
 def items_installed(ctx):
-    """core-rules installs its four item rules: property func 26, the skill on cast trigger, the curse hook and skill
-    on equip."""
+    """core-rules installs its eight item rules: property func 26, IR3's five, the curse hook and skill on equip (skill
+    on cast is the Cast Triggers companion's, IR2)."""
     line = re.search(rf"{PLUGIN}: items [^\n]*", _log(ctx))
     assert line, "no items part line in the plugin log"
-    assert "items 4/4 installed" in line.group(0), line.group(0)
+    assert "items 8/8 installed" in line.group(0), line.group(0)
     return line.group(0)[len(PLUGIN) + 2:]
 
 

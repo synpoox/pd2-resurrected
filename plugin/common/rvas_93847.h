@@ -658,7 +658,7 @@ static_assert(offsetof(LeapKnockback, tagged) == 0x158);
 
 }  // namespace d2r
 
-// --- Item rules: Ormus' Robes' property and skill on cast (docs/research/p12-ormus-robes.md) ---------------------
+// --- Item rules: Ormus' Robes' property (docs/research/p12-ormus-robes.md) ------------------------------------------
 namespace d2r::rva {
 
 // properties.txt func1-7: int32_t fn(dataFlag, a1, a2, item, Property*, set, stat, val, first func's result, a8, a9,
@@ -669,31 +669,8 @@ inline constexpr int PropertyFuncSlots = 37;
 // every D2R property function does (value shifted by the stat's ValShift)
 inline constexpr uint64_t PropertySetStat = 0x3d5940;
 inline constexpr uint64_t ItemRandom = 0x3d5860;  // (item, min, max) -> min..max from the item's seed
-inline constexpr uint64_t UnitLayerStat = 0x2f5c60;  // (unit, stat, layer) -> value: what D2R's item events read
-// A unit's event listeners, seen in game (a 0x70-byte node per listener, most recent first): +0x00 event, +0x04 kind
-// (1 skill, 2 item stat), item stat nodes +0x08 layer and +0x0c stat, +0x28 the function D2RCore calls, +0x38 next
-inline constexpr int UnitEventList = 0xe0;
-inline constexpr int EventNodeEvent = 0x00, EventNodeKind = 0x04, EventNodeLayer = 0x08, EventNodeStat = 0x0c;
-inline constexpr int EventNodeNext = 0x38;
-inline constexpr int EventNodeKindItem = 2;
-// (unit, skill, level, x, y, flag) -> non-zero cast: a skill cast from unit at a point as an event; refuses while the
-// unit has state 54 (PD2's event 33 does the same through 1.13c's pair)
-inline constexpr uint64_t CastEventSkillAt = 0x589820;
-// Server skill dispatcher (D2Game\src\Skills\Skills.cpp): (game, unit, skillId, level, a5, a6, a7) -> non-zero ran;
-// calls srvdofunc. mov [rsp+0x10],rbx / mov [rsp+0x20],r9d / mov [rsp+0x18],r8d / push rbp
-inline constexpr uint64_t SrvSkillDispatch = 0x43acb0;
-inline constexpr uint8_t SrvSkillDispatchEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x44, 0x89, 0x4c,
-                                                    0x24, 0x20, 0x44, 0x89, 0x44, 0x24, 0x18, 0x55};
-inline constexpr int UnitFlags = 0x128;  // uint32, set by SetUnitFlag
-inline constexpr uint64_t SetUnitFlag = 0x34e140;  // (unit, flag, on)
-inline constexpr uint32_t UnitFlagEventCast = 0x10000000;  // D2R's item events hold it while they cast
-inline constexpr int PlayerModeCast = 10;  // SC
-inline constexpr int SkItemTarget = 0x178;  // uint8 ItemTarget (skills field table 0x302380)
 inline constexpr int SkReqLevel = 0x214;    // uint16 reqlevel
 inline constexpr int SkLocalDelay = 0x238;  // int32 compiled localdelay formula, -1 for none
-// itemstatcost in DataTables: records (0x144 bytes) and count; itemevent1 int16 at +0x44 (the registration reads it)
-inline constexpr int TablesItemStatCost = 0x1258, TablesItemStatCostCount = 0x1260;
-inline constexpr int IscRecordSize = 0x144, IscItemEvent1 = 0x44;
 // The stat-layer split item events use for skill/level layers: layer >> shift is the skill, layer & mask the level
 inline constexpr int TablesSkillLayerShift = 0x14d0, TablesSkillLayerMask = 0x14d4;
 // NPC menus (D2Client\src\UI\npcmenu.cpp): a vector of 0x48-byte records, one per NPC with a menu. +0 uint16 NPC
@@ -761,6 +738,10 @@ inline constexpr uint64_t SkillTickMaskA = 0x1d996e4, SkillTickMaskB = 0x1d996e8
 inline constexpr int SkFlags24 = 0x24;
 inline constexpr int SkPerDelayCalc = 0x180;  // int32 perdelay calc index
 inline constexpr uint32_t UnitFlagItemAuraCast = 0x20000000;
+inline constexpr uint64_t SetUnitFlag = 0x34e140;  // (unit, flag, on)
+// Server skill dispatcher (D2Game\src\Skills\Skills.cpp): (game, unit, skillId, level, a5, a6, a7) -> non-zero ran;
+// calls srvdofunc. Called, not hooked: the Cast Triggers companion hooks it.
+inline constexpr uint64_t SrvSkillDispatch = 0x43acb0;
 
 // --- Cube (D2Game\src\Player\PlrTrade.cpp; core-maps' op 30) --------------------------------------------------------
 // Recipe search: (result*, game, player, out*) walks cubemain in order and stores the first row that passes its filters
@@ -888,6 +869,38 @@ inline constexpr uint64_t WarpToLevel = 0x488180;
 inline constexpr int GameClients = 0x138, ClientNext = 0x628;
 inline constexpr uint64_t ClientUnit = 0x484c90;
 
+// --- core-maps: tier-0 re-entry portals and the area rules on entry (UB2, #346; D2Game\src\Objects\ObjMode.cpp) ----
+// Decompiled for #346 (Ghidra, D2R.gpr). Called, not hooked; one table slot written.
+// Object operate table: 75 slots of int32_t fn(ObjectOperate*), indexed by objects.txt OperateFn (objects record
+// +0x15e). Its dispatcher 0x592c40 skips a null slot. D2R leaves 60 null; PD2's portal operate 77 takes it (the merge's
+// pd2_ids.FUNCS). D2R's own portal operate 15 (0x58f680) needs a linked partner portal, which PD2's grey portals lack.
+inline constexpr uint64_t ObjectOperateTable = 0x23a51c0;
+inline constexpr int ObjectOperatePortal = 60;
+inline constexpr int OperateWaypoint = 23;  // 0x58fe00, the waypoints' OperateFn
+inline constexpr uint64_t ObjectRecord = 0x38fd00;  // (dataFlag, objects row) -> objects record (0x168 bytes) or null
+inline constexpr int ObjOperateFn = 0x15e;   // uint8 OperateFn
+inline constexpr int ObjOpenFrames = 0x9c;   // uint32; >> 8 is the frames the portal maker waits before event 1
+// How the portal maker 0x432ce0 makes a portal, without its return portal (0x435dd0):
+// (unit type, row, x, y, game, room, 1, 1, 0, 0) -> unit; for an object its InitFn runs (12: mode 1, the red portals')
+inline constexpr uint64_t SpawnUnit = 0x490410;
+inline constexpr uint64_t RoomAt = 0x38dfb0;          // (room, x, y) -> the room near `room` holding x/y, or null
+inline constexpr uint64_t SetObjectMode = 0x34e5f0;   // (object, mode)
+inline constexpr int UnitEventOpen = 1;               // the event that opens a portal (mode 1 -> 2)
+inline constexpr uint64_t SetPortalLevel = 0x34e9d0;  // (object, level byte): the portal's destination
+inline constexpr uint64_t PortalLevel = 0x34ad40;     // (object) -> uint16 destination
+// How operate 15 removes a used town portal: (room, unit type, unit id) tells the room's clients, (game, unit) frees
+// the unit, (room) marks the room changed
+inline constexpr uint64_t RoomUnitRemoved = 0x2ef4d0;
+inline constexpr uint64_t RemoveUnit = 0x48faa0;
+inline constexpr uint64_t RoomChanged = 0x2f0530;
+// The room walk of 0x593630 (finds an object by class near a unit): (room, &rooms, &count) the room and its
+// neighbours, (room) its first unit, (unit) the next unit in its room
+inline constexpr uint64_t NearRooms = 0x2efde0;
+inline constexpr uint64_t RoomFirstUnit = 0x2efd90;
+inline constexpr uint64_t NextUnitInRoom = 0x34b4a0;
+// The game's monsters: 128 lists by unit id & 0x7f at game +0x2630 (0x4925b0), the next unit at +0x158 (FindUnit)
+inline constexpr int GameMonsters = 0x2630, UnitListNext = 0x158;
+
 // --- core-maps: map stats on monsters and players (MS3, #218) -----------------------------------------------------
 // Decompiled for #218 (Ghidra, D2R.gpr); entry bytes read from the 6ab3782c dump.
 // (spawn params, monster): D2R's per-class setup of a monster that its spawn core 0x493cc0
@@ -953,6 +966,15 @@ inline constexpr int It2Handed = 0x12b;  // uint8 items 2handed (items field tab
 // (0x5269c0). The field table 0x3e3ff0 holds these less 0xe.
 inline constexpr int CubeParam = 0x4, CubeValue = 0x8, CubeInputs = 0x14, CubeInputSize = 10;
 inline constexpr int CubeOutQuality = 0x64, CubeOutType = 0x67, CubeOutMods = 0x77, CubeModSize = 12;
+
+// --- core-maps: the extra boss area stat (MS4c, #289; D2Game\src\Unit\SUnit.cpp) -----------------------------------
+// (game, room, preset): spawns one room preset unit (1.13c D2Game 0x6fd013b0, which PD2's 0x1038bfc0 wraps) through
+// 0x48dc50 (1.13c 0x6fd012d0; type 1 goes to 0x50a050). The room's preset loop 0x48f190 (1.13c 0x6fd01430) is its
+// only caller. Preset: +4 int32 id (a monstats id for a monster), +0x20 int32 unit type.
+// push rbx / push rsi / push rdi / sub rsp,0x80
+inline constexpr uint64_t PresetSpawn = 0x4926b0;
+inline constexpr uint8_t PresetSpawnEntry[] = {0x40, 0x53, 0x56, 0x57, 0x48, 0x81, 0xec, 0x80, 0x00, 0x00, 0x00};
+inline constexpr int PresetId = 0x4, PresetType = 0x20;
 
 // --- core-maps: engine memory pools (LP3, #213) ----------------------------------------------------------------------
 // TlsfAlloctor objects (vtable 0x1d6d770): +0x20 the tlsf control, +0x28 its lock (0x14122ad60 locks, 0x14122ad90

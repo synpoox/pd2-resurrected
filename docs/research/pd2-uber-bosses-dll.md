@@ -95,18 +95,30 @@ When a player enters an uber level (137, 161-163 from Harrogath, or 188), by the
 
 ## 4. Tier scaling (`0x10381160`, state 241 `uberscaling`)
 
-`0x10371a70` runs it once on each monster in a PD2 level (levels 0x89-0xd2 except 0xca-0xce), with the tier from
-`game+0x2629`. It then sets state 241 so the scaling is not applied twice. With *e* = max(entries − 1, 0):
+PD2's monster spawn hook (`0x10371c30`) runs the map stats (`0x1038af90`), then `0x10371a70`. That runs the scaling on
+each monster spawning in a PD2 level (levels 0x89-0xd2 except 0xca-0xce) without state 241, with the tier from
+`game+0x2629`. **The scaling only takes the 30 monsters of the uber fights** (the set at `0x105def0c`: Dclone 789, his
+skeletons 886-891 and trapped souls 790-794, Rathma and Mendeln 933-936, their golems, totem and spire 937-939 and 966,
+the void knights 968, 969, 1106 and 1107, Lucion 1112 with 1113-1115, 1140 and 1141). It puts its stats in a stat list
+(flags 8) under state 241, attaches it, sets the new maxhp as the base stat and sets state 241, so no monster is scaled
+twice. With *e* = max(entries − 1, 0), entries being the byte at `game+0x2628`:
 
-- **Max life:** at tier 0, ×1.5. At tiers 1-2, ×4 for the bosses (the set at `0x105deec4`: Dclone 789, Rathma
-  and Mendeln 933/934, their clones 935/936, Lucion 1112) or ×3 for the rest. Then +20% of that per tier. So a boss has ×4.8 at tier 1 and ×5.6 at tier 2.
+- **Max life:** from the total maxhp, at tier 0, ×1.5 (×3 / 2, 64-bit). At tiers 1-2, ×4 for the bosses (the set at
+  `0x105deec4`: Dclone 789, Rathma and Mendeln 933/934, their clones 935/936, Lucion 1112) or ×3 for the rest. Then
+  + tier × trunc(that × 20 / 100), capped at 0x7fffffff. So a boss has ×4.8 at tier 1 and ×5.6 at tier 2.
 - **+4 to all skills** (stat 127) per tier.
 - **The bosses only:** fire, lightning and cold absorb % (stats 142/144/148) +7×tier + 2×e, magic absorb % (146) +3×tier
-  + 2×e, damage resist (36) +3×e, poison length resist (110) +3×tier + 3×e.
+  + 2×e, damage resist (36) +3×e, poison length resist (110) +3×tier + e.
+- Then it calls `0x1030bd80` (a D2Common thunk on the unit, not identified) and gives the list a removal callback
+  (`0x10312350`).
 
-The tier scales every monster's life (×3 or ×4, then +20% per tier). Only the bosses get the absorbs. Monsters in
-maps get ×1.5 too, because `game+0x2629` stays 0 there.
-That this applies to maps is a reading of the code, not checked in game.
+So monsters in maps are not scaled: they are not in the set. [#347](https://github.com/synpoox/pd2-resurrected/issues/347)
+corrected three points of the first reading: the set, the poison length resist (+e, not +3×e) and the maps (the
+issue's "maps get ×1.5 too" is wrong; the game check on Slot5 showed a zombie in level 138 left unscaled).
+
+The Ghidra project's `ProjectDiablo.dll` is not byte for byte the baseline's (`pd2-baseline.json`): the same code
+sits at shifted addresses and reads shifted constants. The numbers above (20.0 at `0x1044fbe8`, the sets) were read
+from the baseline file with capstone, at the addresses its own instructions name.
 
 ## 5. Phase scripts
 

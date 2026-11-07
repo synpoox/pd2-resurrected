@@ -1,5 +1,5 @@
 {
-  "_note": "Pinned companion plugins (issue #15). sha256 from each release's SHA256SUMS (a `commit` entry: of the file at that commit, the repo has no releases). files: zip path -> path in the installed mod folder. Bump one companion per PR, after the coexistence check.",
+  "_note": "Pinned companion plugins (issue #15). sha256 from each release's SHA256SUMS (a `commit` entry: of the file at that commit, the repo has no releases). Our settings for a companion are in companions/config/, copied over the zip's. files: zip path -> path in the installed mod folder. Bump one companion per PR, after the coexistence check.",
   "companions": [
     {
       "name": "Pyre Loot Filter",
@@ -51,6 +51,67 @@
       "sha256": "b3cca36e851e419e16848ea27de8630e1819c2c4fb43d890d971c31c99772f8e",
       "files": {
         "release/d2rl-celestialrayone-left-click-auras.dll": "d2rloader/plugins/d2rl-celestialrayone-left-click-auras.dll"
+      }
+    },
+    {
+      "name": "Cast Triggers",
+      "url": "https://d2rloader.net/api/v1/hub/releases/8af875b3-3607-4542-bfb5-71b5d5f6cf54/download",
+      "asset": "RuffnecKk-cast-triggers-v1.1.12.zip",
+      "sha256": "17b341ad65cbb9b2c6ac39de7273aff80e3ecb4fa8ee53e75c4c2841e129d971",
+      "files": {
+        "plugins/d2rl-ruffneckk-cast-triggers.dll": "d2rloader/plugins/d2rl-ruffneckk-cast-triggers.dll",
+        "config/ruffneckk-cast-triggers.toml": "d2rloader/config/ruffneckk-cast-triggers.toml"
+      }
+    },
+    {
+      "name": "Ethereal Item Rules",
+      "repo": "RuffDood/RuffnecKk-D2RLoader-Suite",
+      "tag": "v1.4.2",
+      "asset": "RuffnecKk-ethereal-item-rules-v1.0.3.zip",
+      "sha256": "d48a200d792df6740a78fcc6c73bd916bca5dc24cc732bba19c3bad17b49d6c2",
+      "files": {
+        "plugins/d2rl-ruffneckk-ethereal-item-rules.dll": "d2rloader/plugins/d2rl-ruffneckk-ethereal-item-rules.dll"
+      }
+    },
+    {
+      "name": "Item Durability",
+      "repo": "RuffDood/RuffnecKk-D2RLoader-Suite",
+      "tag": "v1.4.2",
+      "asset": "RuffnecKk-item-durability-v1.2.5.zip",
+      "sha256": "4e59a3a6c713f89e2a488c85a325d58fd6e93e691baaa88d5248846f58e654be",
+      "files": {
+        "plugins/d2rl-ruffneckk-item-durability.dll": "d2rloader/plugins/d2rl-ruffneckk-item-durability.dll"
+      }
+    },
+    {
+      "name": "Progressive Affixes",
+      "repo": "RuffDood/RuffnecKk-D2RLoader-Suite",
+      "tag": "v1.4.2",
+      "asset": "RuffnecKk-progressive-affixes-v0.3.5.zip",
+      "sha256": "d3229d384abe3d199a714ec2893070267f5f0dfc0909060b6317ce45dfbe8157",
+      "files": {
+        "plugins/d2rl-ruffneckk-progressive-affixes.dll": "d2rloader/plugins/d2rl-ruffneckk-progressive-affixes.dll"
+      }
+    },
+    {
+      "name": "Mass Identify",
+      "repo": "RuffDood/RuffnecKk-D2RLoader-Suite",
+      "tag": "v1.4.2",
+      "asset": "RuffnecKk-mass-identify-v2.1.1.zip",
+      "sha256": "c726b218f7b30f602d95155b2da5bb94ecce6b525b05270e8f9d3c68d72b358e",
+      "files": {
+        "plugins/d2rl-ruffneckk-mass-identify.dll": "d2rloader/plugins/d2rl-ruffneckk-mass-identify.dll",
+        "config/ruffneckk-mass-identify.toml": "d2rloader/config/ruffneckk-mass-identify.toml"
+      }
+    },
+    {
+      "name": "Mercenary Drop On Hire",
+      "repo": "yinyin333333/D2RL-yin-Junk-Room",
+      "commit": "6bfd66747104d158730f952b9448d9d857d58758",
+      "asset": "for d2rloader/mercenary drop on hire/d2rl-mercenary-drop-on-hire.dll",
+      "sha256": "b3a0f58cece53201426feb561c99cd34e2aeb29d9e196a2cd2f9e10b673b1715",
+      "files": {
+        "for d2rloader/mercenary drop on hire/d2rl-mercenary-drop-on-hire.dll": "d2rloader/plugins/d2rl-mercenary-drop-on-hire.dll"
       }
     },
     {
