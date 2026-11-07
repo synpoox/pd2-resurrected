@@ -6,8 +6,9 @@ Refuses an install whose archives differ from pd2-baseline.json. Writes every fi
 icon sheets, the item pictures, the missile DCC, the automap cels, animdata.d2 and the DT1 tiles of pd2assets.mpq and the DS1 maps of pd2maps.mpq
 (ADR 0002 amendment) to pd2-data/data/... (lower-case paths, forward slashes), then pd2-data/baseline.json last, the
 baseline it was checked against plus EXTRACT, which pd2_merge reads to refuse a stale extract. With a pd2_cache root
-and no --out, pd2-data/ is a junction to the cache's extract for this stamp, so worktrees share one; a run holds the
-cache's lock, so extracts never run at once (#440).
+and no --out, or with --shared DIR (CI), pd2-data/ is a junction to the cache's extract for this stamp, so worktrees
+and runners share one; a run holds the cache's lock, so extracts never run at once (#440). An extract is written
+beside its folder and renamed into place, so a reader never sees half of one, and one per stamp is never rewritten.
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ import argparse
 import fnmatch
 import hashlib
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -73,20 +75,32 @@ def extract(install: Path, out: Path, baseline_file: Path) -> int:
     if done.is_file() and done.read_bytes() == stamp(baseline_file.read_bytes()):
         print(f"{out} is current, skipping extract")
         return 0
-    if out.exists():
-        shutil.rmtree(out)
+    # extract beside out and swap it in by renames, so a run reading out never sees a part-written or missing file (#558)
+    tmp, old = (out.with_name(f"{out.name}.{s}{os.getpid()}") for s in ("tmp", "old"))
     count = 0
-    for archive, patterns in EXTRACT.items():
-        a = mpq.Archive(install / archive)
-        for name in a.names():
-            rel = name.replace("\\", "/").lower()
-            if not any(fnmatch.fnmatchcase(rel, p) for p in patterns):
-                continue
-            dest = out / rel
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_bytes(a.read(name))
-            count += 1
-    (out / "baseline.json").write_bytes(stamp(baseline_file.read_bytes()))
+    try:
+        for archive, patterns in EXTRACT.items():
+            a = mpq.Archive(install / archive)
+            for name in a.names():
+                rel = name.replace("\\", "/").lower()
+                if not any(fnmatch.fnmatchcase(rel, p) for p in patterns):
+                    continue
+                dest = tmp / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(a.read(name))
+                count += 1
+        (tmp / "baseline.json").write_bytes(stamp(baseline_file.read_bytes()))
+        if out.exists():
+            os.rename(out, old)  # fails while another run holds a file open in it: that run keeps its extract
+        try:
+            os.rename(tmp, out)
+        except OSError:
+            if old.exists():
+                os.rename(old, out)
+            raise
+    finally:
+        for p in (tmp, old):
+            shutil.rmtree(p, ignore_errors=True)
     print(f"extracted {count} files to {out}")
     return 0
 
@@ -97,9 +111,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, help="output folder (default: pd2-data/, a junction to the shared cache's "
                                                   "extract when pd2_cache has a cache root)")
     ap.add_argument("--baseline", type=Path, default=ROOT / "pd2-baseline.json")
+    ap.add_argument("--shared", type=Path, help="share extracts under this folder, one per stamp, as with a pd2_cache "
+                                                "root (CI's runners, which have none)")
     a = ap.parse_args(argv)
     install = a.install or Path(json.loads(a.baseline.read_text("utf-8"))["install"])
-    out, cache = a.out or ROOT / "pd2-data", pd2_cache.root()
+    out, cache = a.out or ROOT / "pd2-data", a.shared or pd2_cache.root()
     with pd2_cache.lock((cache or out.parent) / "pd2_extract.lock"):
         if a.out or not cache or (out.exists() and not pd2_cache.is_link(out)):
             if not a.out and cache:

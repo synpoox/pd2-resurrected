@@ -129,6 +129,56 @@ def rule_e(rule, pd2, d2r, out):  # a D2R table copied as is (copy2 on Windows r
     shutil.copy2(d2r / "global" / "excel" / "e.txt", out / "e.txt")
 
 
+class ExtractSwapTests(unittest.TestCase):
+    def test_a_reader_sees_the_old_extract_whole_until_the_new_one_is_renamed_in(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            out, seen = tmp / "pd2-data", []
+
+            class Checked:  # while the new extract is written, out still holds the old one, whole
+                def __init__(self, path): pass
+                def names(self): return ["data\\x.txt", "data\\y.txt"]
+
+                def read(self, name):
+                    seen.append(sorted(p.name for p in out.rglob("*.txt")) + [(out / "baseline.json").read_bytes()])
+                    return b"new"
+
+            write(out / "data" / "x.txt", "old")
+            write(out / "data" / "y.txt", "old")
+            (out / "baseline.json").write_bytes(b"older stamp")
+            (tmp / "b.json").write_bytes(b'{"archives": {}}')
+            with mock.patch.object(pd2_extract.mpq, "Archive", Checked), redirect_stdout(io.StringIO()):
+                self.assertEqual(pd2_extract.extract(tmp, out, tmp / "b.json"), 0)
+            self.assertTrue(seen)
+            self.assertTrue(all(s == ["x.txt", "y.txt", b"older stamp"] for s in seen))
+            self.assertEqual((out / "data" / "x.txt").read_bytes(), b"new")
+            self.assertEqual(sorted(p.name for p in tmp.iterdir()), ["b.json", "pd2-data"], "no tmp or old folder left")
+
+    def test_shared_keeps_one_extract_per_stamp_on_ci(self):
+        class OneFile:
+            def __init__(self, path): pass
+            def names(self): return ["data\\x.txt"]
+            def read(self, name): return b"x"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            out = tmp / "wt" / "pd2-data"
+            out.parent.mkdir()
+            seen = []
+            for base in [b'{"archives": {}}', b'{"archives": {}, "v": 2}']:
+                (tmp / "b.json").write_bytes(base)
+                args = ["--install", str(tmp), "--baseline", str(tmp / "b.json"), "--shared", str(tmp / "shared")]
+                with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}), \
+                        mock.patch.object(pd2_extract, "ROOT", tmp / "wt"), \
+                        mock.patch.object(pd2_extract.mpq, "Archive", OneFile), redirect_stdout(io.StringIO()):
+                    self.assertEqual(pd2_extract.main(args), 0)
+                seen.append(Path(os.path.realpath(out)))
+            self.assertNotEqual(seen[0], seen[1], "another stamp, another folder")
+            self.assertEqual((seen[0] / "baseline.json").read_bytes(), pd2_extract.stamp(b'{"archives": {}}'),
+                             "the first stamp's extract is left as it was, for the runs still reading it")
+            os.rmdir(out) if os.name == "nt" else out.unlink()
+
+
 class RuleCacheTests(unittest.TestCase):
     def test_a_rule_reruns_exactly_when_its_code_or_what_it_read_changed(self):
         with tempfile.TemporaryDirectory() as tmp:
