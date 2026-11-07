@@ -49,7 +49,9 @@ unported keeps parity.
 | 12 drop bonus | the monster list gets `map_glob_dropbonus` (399) = v |
 | 14 treacherous/phasing | the monster list gets +100 `item_maxhp_percent` and `treacherous` (402) = v |
 
-Only the entry level is rewritten; PD2 also rewrites a multi-level map's other levels, which come with [MS7](https://github.com/synpoox/pd2-resurrected/issues/221).
+Since [MS7](https://github.com/synpoox/pd2-resurrected/issues/221), a multi-level map's other levels are rewritten too, after the entry level, as PD2's
+`0x383060` does (its list is in [pd2-map-system-dll.md](pd2-map-system-dll.md), section 1; `MultiLevels` holds the
+port ids). Only the entry level's call adds the fortify, drop bonus and treacherous monster stats.
 
 ## Game check
 

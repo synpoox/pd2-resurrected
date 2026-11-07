@@ -27,6 +27,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Maps
 
+- A dungeon or unique map's area stats (density, rarity, added monsters) now apply on all of its levels.
 - PD2's wooded maps on D2R tiles (Jungle, Kurast, Graveyard, Siege, Necropolis Jungle and Swamp, Pandemonium Finale)
   draw tree lines along their borders in HD, and every map on D2R tiles uses whole D2R rooms, with their own ground,
   water and bridges, where its layout matches one.
