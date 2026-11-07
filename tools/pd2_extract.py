@@ -3,7 +3,7 @@
     python tools/pd2_extract.py [--install DIR]
 
 Refuses an install whose archives differ from pd2-baseline.json. Writes every file of pd2data.mpq, the skill
-icon sheets, the item pictures, the missile DCC, the automap cels and the DT1 tiles of pd2assets.mpq and the DS1 maps of pd2maps.mpq
+icon sheets, the item pictures, the missile DCC, the automap cels, the DT1 tiles and the WAVs of pd2assets.mpq and the DS1 maps of pd2maps.mpq
 (ADR 0002 amendment) to pd2-data/data/... (lower-case paths, forward slashes), then pd2-data/baseline.json last, the
 baseline it was checked against plus EXTRACT, which pd2_merge reads to refuse a stale extract.
 """
@@ -25,7 +25,7 @@ EXTRACT = {"pd2data.mpq": ["*"],
            "pd2assets.mpq": ["data/global/ui/spells/??skillicon.dc6",
                              "data/global/ui/spells/skillicon.dc6", "data/global/ui/automap/maximap*.dc6",
                              "data/global/items/*.dc6", "data/global/missiles/*.dcc",
-                             "data/global/tiles/*.dt1"],
+                             "data/global/tiles/*.dt1", "data/global/sfx/*.wav"],
            "pd2maps.mpq": ["data/global/tiles/*.ds1"]}
 
 

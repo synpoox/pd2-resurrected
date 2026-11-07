@@ -31,6 +31,10 @@ private-multiplayer release a build may break characters; each break is noted he
   draw tree lines along their borders in HD, and every map on D2R tiles uses whole D2R rooms, with their own ground,
   water and bridges, where its layout matches one.
 
+#### Sounds
+
+- Zhar the Mad attacks with his own PD2 voice.
+
 #### Fixes
 
 - The mercenary panel shows the mercenary's title (Rogue, Desert Mercenary, Barbarian, Ascendant) instead of
