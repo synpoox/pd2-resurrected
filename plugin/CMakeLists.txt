@@ -60,6 +60,7 @@ add_library(core_maps SHARED
 	core-maps/key_drops.cpp
 	core-maps/lucion.cpp
 	core-maps/prime_minions.cpp
+	core-maps/lucion_chests.cpp
 	core-maps/rathma.cpp
 	core-maps/lucion_ai.cpp
 	core-maps/dclone_ai.cpp
