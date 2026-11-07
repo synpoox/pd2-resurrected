@@ -70,6 +70,7 @@ add_library(core_ui SHARED
 	core-ui/plugin.cpp
 	core-ui/automap.cpp
 	core-ui/item_pictures.cpp
+	core-ui/item_quantity.cpp
 	core-ui/stack_split.cpp
 	core-ui/plugin.rc
 )
