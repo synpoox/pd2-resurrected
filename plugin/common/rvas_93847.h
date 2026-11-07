@@ -986,6 +986,15 @@ inline constexpr int It2Handed = 0x12b;  // uint8 items 2handed (items field tab
 inline constexpr int CubeParam = 0x4, CubeValue = 0x8, CubeInputs = 0x14, CubeInputSize = 10;
 inline constexpr int CubeOutQuality = 0x64, CubeOutType = 0x67, CubeOutMods = 0x77, CubeModSize = 12;
 
+// --- core-maps: the extra boss area stat (MS4c, #289; D2Game\src\Unit\SUnit.cpp) -----------------------------------
+// (game, room, preset): spawns one room preset unit (1.13c D2Game 0x6fd013b0, which PD2's 0x1038bfc0 wraps) through
+// 0x48dc50 (1.13c 0x6fd012d0; type 1 goes to 0x50a050). The room's preset loop 0x48f190 (1.13c 0x6fd01430) is its
+// only caller. Preset: +4 int32 id (a monstats id for a monster), +0x20 int32 unit type.
+// push rbx / push rsi / push rdi / sub rsp,0x80
+inline constexpr uint64_t PresetSpawn = 0x4926b0;
+inline constexpr uint8_t PresetSpawnEntry[] = {0x40, 0x53, 0x56, 0x57, 0x48, 0x81, 0xec, 0x80, 0x00, 0x00, 0x00};
+inline constexpr int PresetId = 0x4, PresetType = 0x20;
+
 // --- core-maps: engine memory pools (LP3, #213) ----------------------------------------------------------------------
 // TlsfAlloctor objects (vtable 0x1d6d770): +0x20 the tlsf control, +0x28 its lock (0x14122ad60 locks, 0x14122ad90
 // unlocks). 0x1215650 is tlsf block_insert(control, block); tlsf_add_pool is inlined in 0x1215a30.

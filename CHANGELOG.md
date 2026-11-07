@@ -13,6 +13,10 @@ private-multiplayer release a build may break characters; each break is noted he
 - A tier-0 uber key also leaves three grey portals by the fountain. Each takes one player back in, once, by the same
   rules (no mercenary, summons or buffs), and heals the boss by 20% of its life. The uber areas have no waypoint.
 
+#### Maps
+
+- Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
+
 #### Fixes
 
 - The mercenary panel shows the mercenary's title (Rogue, Desert Mercenary, Barbarian, Ascendant) instead of
