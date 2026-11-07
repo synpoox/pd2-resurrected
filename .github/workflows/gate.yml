@@ -15,6 +15,7 @@ jobs:
     env:
       PYTHONPATH: ${{ vars.D2R_TOOLKIT }}
       MODKIT_CACHE: ${{ vars.D2R_TOOLKIT }}\d2r-data
+      MODKIT_GAME: ${{ vars.D2R_GAME }}
     steps:
       - name: Drop cache junction
         run: if (Test-Path pd2-data) { cmd /c rmdir pd2-data }
@@ -26,6 +27,7 @@ jobs:
           New-Item -ItemType Directory -Force $cache | Out-Null
           New-Item -ItemType Junction -Path pd2-data -Target $cache | Out-Null
           py -3 tools/pd2_extract.py --out $cache; if ($LASTEXITCODE) { throw "pd2_extract failed" }
+          py -3 -m modkit fetch --prefix data/global/animdata.d2; if ($LASTEXITCODE) { throw "modkit fetch failed" }
           py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
       - name: Table-diff gate
         run: py -3 tools/pd2_diff.py --scope alpha
