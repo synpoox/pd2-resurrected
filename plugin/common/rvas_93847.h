@@ -1109,6 +1109,23 @@ inline constexpr uint64_t DropItemAt = 0x444680;
 inline constexpr int32_t QualityNormal = 2;
 inline constexpr uint32_t MonDemon = 0x2000;  // MonFlags bit 13 (monstats field table 0x39db30)
 
+// --- core-maps: Lucion's death (UB6, #231; D2Game\src\Skills\Skills.cpp, D2Game\src\Player\PlayerPets.cpp) --------
+// Decompiled for #231 (Ghidra, D2R.gpr). Called, not hooked.
+// The portal maker is rva::PortalMaker (MS9's block below; #231 found the same 0x432ce0): with arg 9 0 it finds a free
+// spot near (x, y) in room; the portal opens on event 1, and 0x435dd0 makes its linked return portal in the level.
+// Arg 10 1 skips the town check (it reads the player only there); the level must be in room's act.
+// 0x5da800 (rva::OpenRedPortal) calls it, then sets the portal's level (rva::SetPortalLevel).
+// How the pet kill 0x500fb0 kills a monster: (unit, mode, block) fills a 0x30-byte mode block, block +0x10 gets
+// (game, unit) -> the unit's target, then (game, block, 1) sets the mode. Mode 0 is death.
+inline constexpr uint64_t MonsterModeBlock = 0x4471e0;
+inline constexpr uint64_t UnitTarget = 0x490300;
+inline constexpr uint64_t SetMonsterMode = 0x4475c0;
+inline constexpr int32_t ModeDeath = 0;
+// (unit, flags, on): unit flags +0x124 (bit 0x10000 is dead, rva::UnitDead); 0x20000 is 1.13c's no-treasure-class
+// bit, which PD2's add kill 0x10356e00 sets
+inline constexpr uint64_t SetUnitFlags = 0x34e190;
+inline constexpr uint32_t UnitNoDrop = 0x20000;
+
 // --- core-rules: the ethereal bonus (IR8, #243) --------------------------------------------------------------------
 // (item): sets the ethereal flag, then base stats times 3/2 (1.13c's D2Common #10890, which PD2 replaces with
 // 0x102fb710). Callers: the drop 0x442d60, the ethereal property 0x3ccc60, the cube output 0x5269c0.
