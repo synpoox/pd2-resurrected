@@ -45,6 +45,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - After Lucion's death, cube a corrupted amulet in the Temple to try a Desecration (50%, 60% at tiers 1-2).
 - Diablo Clone drops Annihilus, and at tiers 1-2 rolls 1 in 200 for one of PD2's five Dclone uniques.
 - Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
+- Uber Tristram's last prime drops the Hellfire Torch and Black Soulstone and opens a town portal.
 - Royal Fire (Lucion's controller, Radament's map boss) casts PD2's ring of fire, aimed into his arena for Lucion's.
 - Lucion's Nova leaves PD2's gaps, Punish rings its target, and his Dash leaps with a trail and a landing nova.
 - The Temple's Lucion chests show and drop PD2's LucionChest loot, one more item per uber tier.
