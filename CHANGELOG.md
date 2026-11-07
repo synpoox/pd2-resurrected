@@ -7,6 +7,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Items
 
+- Spear and two-hand masteries boost crits and crushing blow, and Smite's crushing blow hits harder, as in PD2.
 - Items work more as in Project Diablo II: ethereal items keep their full durability, set items can drop ethereal,
   rare items get at least four affixes from item level 45 (five from 65, six from 85) and rare jewels always four,
   hiring a new mercenary drops the old one's gear, and shift-right-clicking a Tome of Identify identifies your
