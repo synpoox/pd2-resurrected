@@ -57,6 +57,7 @@ add_library(core_maps SHARED
 	core-maps/entity_pool.cpp
 	core-maps/key_drops.cpp
 	core-maps/uber_scaling.cpp
+	core-maps/uber_drops.cpp
 	core-maps/plugin.rc
 )
 target_link_libraries(core_maps PRIVATE core_common)

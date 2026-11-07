@@ -365,35 +365,17 @@ auto WarpGroup(Game* game, Unit* user, int32_t level) noexcept -> int32_t {
 	return arrived;
 }
 
-// PD2 0x10383060, tier 0: three grey portals to the level around the fountain, made as the portal maker 0x432ce0 makes
-// one but with no return portal. `near` is a room by the fountain; it finds each spot's room. Each portal goes in
-// `made`, null where none was made.
+// PD2 0x10383060, tier 0: three grey portals to the level around the fountain. `near` is a room by the fountain. Each
+// portal goes in `made`, null where none was made.
 auto OpenGreyPortals(Game* game, void* near, int32_t level, Unit* (&made)[std::size(GreyPortalXY)]) noexcept -> int32_t {
-	using namespace d2r::rva;
-	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ObjectRecord)(d2r::DataFlag(game),
-	                                                                                            GreyPortal);
-	using SpawnFn = Unit* (*)(int32_t, int32_t, int32_t, int32_t, Game*, void*, int32_t, int32_t, int32_t,
-	                          int32_t) noexcept;
 	int32_t count = 0;
 	for (size_t i = 0; i < std::size(GreyPortalXY); ++i) {
 		const auto& xy = GreyPortalXY[i];
-		made[i] = nullptr;
-		void* room = near != nullptr && record != nullptr
-			? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(near, xy[0], xy[1])
-			: nullptr;
-		Unit* portal = room != nullptr
-			? d2r::Engine<SpawnFn>(SpawnUnit)(UnitObject, GreyPortal, xy[0], xy[1], game, room, 1, 1, 0, 0)
-			: nullptr;
-		if (portal == nullptr) {
+		made[i] = OpenPortal(game, near, GreyPortal, xy[0], xy[1], level);
+		if (made[i] == nullptr) {
 			plog::Warn("uber: no grey portal at (%d, %d)", xy[0], xy[1]);
 			continue;
 		}
-		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetObjectMode)(portal, 1);
-		const int32_t open = At<int32_t>(game, GameFrame) + 1 + static_cast<int32_t>(At<uint32_t>(record, ObjOpenFrames) >> 8);
-		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
-			game, portal, UnitEventOpen, open, 0, 0, 0);
-		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetPortalLevel)(portal, level);
-		made[i] = portal;
 		++count;
 	}
 	return count;
@@ -514,6 +496,29 @@ auto InstallMapOpen(const D2RL::PluginContext* context, char* report, size_t rep
 
 auto MapOpenCount() noexcept -> int {
 	return 2;
+}
+
+// Made as the portal maker 0x432ce0 makes one, but with no return portal
+auto OpenPortal(Game* game, void* near, int32_t object, int32_t x, int32_t y, int32_t level) noexcept -> Unit* {
+	using namespace d2r::rva;
+	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ObjectRecord)(d2r::DataFlag(game),
+	                                                                                            object);
+	using SpawnFn = Unit* (*)(int32_t, int32_t, int32_t, int32_t, Game*, void*, int32_t, int32_t, int32_t,
+	                          int32_t) noexcept;
+	void* room = near != nullptr && record != nullptr
+		? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(near, x, y)
+		: nullptr;
+	Unit* portal = room != nullptr ? d2r::Engine<SpawnFn>(SpawnUnit)(UnitObject, object, x, y, game, room, 1, 1, 0, 0)
+	                               : nullptr;
+	if (portal == nullptr) {
+		return nullptr;
+	}
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetObjectMode)(portal, 1);
+	const int32_t open = At<int32_t>(game, GameFrame) + 1 + static_cast<int32_t>(At<uint32_t>(record, ObjOpenFrames) >> 8);
+	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
+		game, portal, UnitEventOpen, open, 0, 0, 0);
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetPortalLevel)(portal, level);
+	return portal;
 }
 
 auto MapOpenCounters(char* out, size_t size) noexcept -> void {
