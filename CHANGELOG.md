@@ -25,6 +25,12 @@ private-multiplayer release a build may break characters; each break is noted he
 
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
 
+#### Maps
+
+- PD2's wooded maps on D2R tiles (Jungle, Kurast, Graveyard, Siege, Necropolis Jungle and Swamp, Pandemonium Finale)
+  draw tree lines along their borders in HD, and every map on D2R tiles uses whole D2R rooms, with their own ground,
+  water and bridges, where its layout matches one.
+
 #### Fixes
 
 - The mercenary panel shows the mercenary's title (Rogue, Desert Mercenary, Barbarian, Ascendant) instead of
