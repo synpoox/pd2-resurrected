@@ -18,6 +18,7 @@
 #include "map_events.h"
 
 #include "log.h"
+#include "rathma.h"
 
 #include <D2RLPlugin/localization.h>
 
@@ -296,6 +297,9 @@ auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 	}
 	if (tier != nullptr) {
 		SpawnEvent(game, room, level, Get(game, RoomsKey(level)) * 100 / tier->rooms);
+	}
+	if (RathmaRoom(game, room, level)) {
+		return;  // PD2 0x1036fef0: an arena room spawns none of its own monsters
 	}
 	using namespace d2r::rva;
 	if (level == Fortress && Get(game, EventKey) == WarlordEvent &&

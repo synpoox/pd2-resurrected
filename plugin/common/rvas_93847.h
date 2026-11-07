@@ -1250,6 +1250,16 @@ inline constexpr uint64_t PortalMaker = 0x432ce0;
 // quality roll 0x4421b0. PD2's map events call 1.13c's same function as (..., tc, 0, ilvl, 0, 0, 0, 1).
 inline constexpr uint64_t TcDrop = 0x4404f0;
 
+// --- core-maps: Rathma's stage spawns (UB5, #525; D2Common Drlg, D2Game\src\Game\Clients.cpp) -----------------------
+// Decompiled for #525 (Ghidra, D2R.gpr). Called, not hooked. How ActSpawnSpot's 0x3da650 finds and builds a room
+// anywhere in a level, as PD2's 0x10389f00 does through 1.13c D2Common:
+// (dataFlag, drlg act (act +0x70), level) -> the act's drlg level, made if missing; its room list at +0x10 is empty
+// until the level is built. ActDrlg and TeleportUnit are the Outer Void's (#532) above.
+inline constexpr uint64_t DrlgLevelOf = 0x3267c0;
+inline constexpr int DrlgLevelRooms = 0x10;
+inline constexpr uint64_t DrlgRoomAt = 0x3275b0;    // (drlg level, tile x, tile y) -> its drlg room holding them, or null
+inline constexpr uint64_t DrlgRoomInit = 0x3289a0;  // (dataFlag, drlg room) -> the room, built if needed
+
 // --- core-maps: the map-area death drops (MS4d; D2Game\src\Monster\MonsterMode.cpp) --------------------------------
 // Decompiled for MS4d (Ghidra, D2R.gpr). Called, not hooked.
 // (game, monster, flag, death*) -> the monster's own TC drop: its monstats TC for the difficulty and kind (champion,
