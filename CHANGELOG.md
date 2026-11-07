@@ -31,6 +31,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Lucion's death also opens a portal in Harrogath back into his arena.
 - Diablo Clone drops Annihilus, and at tiers 1-2 rolls 1 in 200 for one of PD2's five Dclone uniques.
 - Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
+- The Temple's Lucion chests show and drop PD2's LucionChest loot, one more item per uber tier.
 
 #### Maps
 
