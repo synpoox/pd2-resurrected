@@ -1,6 +1,8 @@
 // PD2's Dclone AI (ProjectDiablo.dll 0x1035b3f0; docs/research/pd2-uber-bosses-dll.md, section 5) for uberdiablonew:
 // the heal when a player leaves, the immunity while his adds live, the three cold-nova phases at the arena centre, the
 // three skeleton waves (UberDiabSummon, srvdo 177) and his attack picks. Every other Trap-Melee monster keeps D2R's think.
+// The trapped souls' AI (0x1035bc60, monai row 99, #472) is here too: they cast while Dclone lives and die with him.
+// That PD2 function's nihlathakMap branch (map boss 0x39a) is not ported: its waves need PD2's map mob lists.
 //
 // Dclone registers on monai row 87 through ai_hooks (no SDK service runs monster AI; see ai_hooks.cpp). PD2 keeps the
 // player count in a per-unit map and the last pick in the AI control; Dclone is one per game, so the port keeps both in
@@ -36,8 +38,24 @@ constexpr uint32_t LastKey = 0x5542444c;     // 'UBDL': the last pick (0 cast or
 constexpr uint32_t ImmuneKey = 0x55424449;   // 'UBDI': 1 while immune (the six resists below are saved)
 constexpr uint32_t ResistKeys[] = {0x55424430, 0x55424431, 0x55424432, 0x55424433, 0x55424434, 0x55424435};
 
-constexpr int32_t TrapMeleeRow = 87;  // monai.txt
+constexpr int32_t TrapMeleeRow = 87, TrappedSoulRow = 99;  // monai.txt
+constexpr int32_t FirstSoul = 807, LastSoul = 811;           // ubertrappedsoul1-5 (PD2 790-794)
+constexpr int32_t ModeDead = 12;                             // monmode DD
 
+// The souls' cast delay: aidel + 10 at tier 0, else aidel - 4 x (tier - 1), at least 20 (PD2 0x1035c186)
+constexpr auto SoulDelay(int32_t aidel, int32_t tier) noexcept -> int32_t {
+	return tier == 0 ? aidel + 10 : (aidel - 4 * tier + 4 > 20 ? aidel - 4 * tier + 4 : 20);
+}
+// The aimed souls' (aip8 2 or 3) spread around the target, 0 for none
+constexpr auto SoulSpread(int32_t tier) noexcept -> int32_t {
+	return tier < 3 ? 24 - 8 * tier : 0;
+}
+static_assert(SoulDelay(40, 0) == 50 && SoulDelay(40, 1) == 40 && SoulDelay(40, 2) == 36 && SoulDelay(22, 2) == 20);
+static_assert(SoulSpread(0) == 24 && SoulSpread(1) == 16 && SoulSpread(2) == 8);
+
+std::atomic<uint32_t> g_soulCasts {0};
+std::atomic<uint32_t> g_soulCastsBy[LastSoul - FirstSoul + 1][3] {};
+std::atomic<uint32_t> g_soulDeaths {0};
 std::atomic<uint32_t> g_thinks {0};
 std::atomic<uint32_t> g_phases {0};
 std::atomic<uint32_t> g_novas {0};
@@ -331,6 +349,111 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	last = slot == 4 ? 1 : 0;
 }
 
+// PD2 0x1035bc60, the ubertrappedsoul1-5 branch. PD2 finds Dclone through its boss slot (game+0x2600); the port looks
+// for him in the soul's level, and, as PD2 with an empty slot, leaves a soul without him to D2R's TrappedSoul think.
+auto FindDclone(Game* game, int32_t level) noexcept -> Unit* {
+	using namespace d2r::rva;
+	for (int bucket = 0; bucket < 128; ++bucket) {
+		for (auto* u = At<Unit*>(game, GameMonsters + bucket * 8); u != nullptr; u = At<Unit*>(u, UnitListNext)) {
+			if (At<int32_t>(u, UnitClassId) == Dclone && LevelOf(u) == level) {
+				return u;
+			}
+		}
+	}
+	return nullptr;
+}
+
+auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
+	using namespace d2r::rva;
+	Mon m {tick != nullptr ? At<const uint8_t*>(tick, AiTickMonStats) : nullptr};
+	const int32_t level = LevelOf(unit);
+	Unit* dclone = m.rec != nullptr ? FindDclone(game, level) : nullptr;
+	if (dclone == nullptr) {
+		VanillaAiThink(TrappedSoulRow)(game, unit, tick);
+		return;
+	}
+	const int32_t dMode = At<int32_t>(dclone, UnitMode);
+	const int32_t dLife = LifePercent(dclone);
+	if (dMode == ModeDeath || dMode == ModeDead || dLife <= 0) {
+		++g_soulDeaths;
+		plog::Info("trapped soul %d: Dclone is dead or dying (mode %d, life %d%%), the soul dies (%u so far)",
+		           At<int32_t>(unit, UnitClassId), dMode, dLife, g_soulDeaths.load());
+		KillQuietly(game, unit);
+		return;
+	}
+
+	// The nearest live player in the level is the target when the tick has none
+	int32_t sx = 0, sy = 0;
+	d2r::UnitXY(unit, &sx, &sy);
+	Unit* nearest = nullptr;
+	int32_t best = 0x7fffffff;
+	for (auto* client = At<uint8_t*>(game, GameClients); client != nullptr; client = At<uint8_t*>(client, ClientNext)) {
+		Unit* p = d2r::Engine<Unit* (*)(void*, int32_t) noexcept>(ClientUnit)(client, 0);
+		if (p != nullptr && !Dead(p) && LevelOf(p) == level && Dist2(p, sx, sy) < best) {
+			best = Dist2(p, sx, sy);
+			nearest = p;
+		}
+	}
+	Unit*& target = *reinterpret_cast<Unit**>(tick + AiTickTarget);
+	if (nearest != nullptr) {
+		target = nearest;
+	}
+
+	const int32_t tier = Counter(game, TierKey);
+	const int32_t delay = SoulDelay(m.AiDel(), tier);
+	const int32_t skip = m.Aip(6) - 5 * tier + 5 > 5 ? m.Aip(6) - 5 * tier + 5 : 5;
+	// Each soul waits for Dclone's life to drop below its aip4 (+12 per tier above 1), and for his novas to end
+	if (dLife > m.Aip(4) + (tier - 1) * 12 || Stat(dclone, StatCooldown1) != 0) {
+		Idle(game, unit, m.AiDel());
+		return;
+	}
+	const int32_t burst = Stat(unit, StatCooldown1);
+	if (burst <= 0) {
+		// The boulder on the target, then aip5 meteors
+		Cast(game, unit, m.Skill(2), m.Mode(2), target, 0, 0, delay);
+		SetStat(unit, StatCooldown1, m.Aip(5));
+		return;
+	}
+	SetStat(unit, StatCooldown1, burst - 1);
+	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit);
+	if (static_cast<int32_t>(d2r::RandomBelow(seed, 100)) < skip) {
+		Idle(game, unit, m.AiDel());
+		return;
+	}
+	int32_t x = 0, y = 0, tx = 0, ty = 0, spread = -1;
+	if (m.Aip(8) != 2 && m.Aip(8) != 3) {
+		// A random spot in the 50x50 square around the arena centre
+		x = 0x3b00 + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
+		y = 0x197b + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
+	} else {
+		// At the target, spread over 24 - 8 x tier subtiles
+		if (target == nullptr || !d2r::UnitXY(target, &x, &y)) {
+			return;  // PD2 returns with no delay too
+		}
+		spread = SoulSpread(tier);
+		tx = x;
+		ty = y;
+		if (spread > 0) {
+			x += static_cast<int32_t>(d2r::RandomBelow(seed, spread)) - spread / 2;
+			y += static_cast<int32_t>(d2r::RandomBelow(seed, spread)) - spread / 2;
+		}
+	}
+	target = nullptr;
+	if (auto* path = At<uint8_t*>(unit, UnitPath); path != nullptr) {
+		*reinterpret_cast<Unit**>(path + PathTargetUnit) = nullptr;
+	}
+	const int32_t wait = static_cast<int32_t>(d2r::RandomBelow(seed, 8)) + delay - 4;
+	++g_soulCasts;
+	// Sampled per soul and tier, so each soul's first cast at each tier is logged
+	if (const int32_t soul = At<int32_t>(unit, UnitClassId) - FirstSoul; tier >= 0 && tier < 3 &&
+	                                                                       plog::Sample(g_soulCastsBy[soul][tier])) {
+		plog::Info("trapped soul %d: tier %d, meteor at (%d, %d), target (%d, %d) spread %d, delay %d (aidel %d), skip "
+		           "%d%%, Dclone %d%% (%u so far)", At<int32_t>(unit, UnitClassId), tier, x, y, tx, ty, spread, wait,
+		           m.AiDel(), skip, dLife, g_soulCasts.load());
+	}
+	Cast(game, unit, m.Skill(1), m.Mode(1), nullptr, x, y, wait);
+}
+
 void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	Mon m {tick != nullptr ? At<const uint8_t*>(tick, d2r::rva::AiTickMonStats) : nullptr};
 	// PD2 hands a monstats row with no Hell aip3 to 0x103187c0 (a D2Game thunk); the port to D2R's Trap-Melee think
@@ -345,12 +468,19 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 
 auto InstallDcloneAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	const bool ok = RegisterAiThink(context, TrapMeleeRow, d2r::rva::AiTrapMelee, Dclone, &Think);
-	std::snprintf(report, reportSize, ok ? "monai %d (Trap-Melee) think: uberdiablonew" : "off: monai %d think not swapped",
-	              TrapMeleeRow);
-	return ok ? 1 : 0;
+	int souls = 0;
+	for (int32_t id = FirstSoul; id <= LastSoul; ++id) {
+		souls += RegisterAiThink(context, TrappedSoulRow, d2r::rva::AiTrappedSoul, id, &ThinkSoul) ? 1 : 0;
+	}
+	std::snprintf(report, reportSize, "monai %d (Trap-Melee) think: uberdiablonew %s; monai %d (TrappedSoul): %d/5 souls",
+	              TrapMeleeRow, ok ? "on" : "off", TrappedSoulRow, souls);
+	return (ok ? 1 : 0) + (souls == 5 ? 1 : 0);
 }
 
 auto DcloneAiCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "dclone ai: %u thinks, %u nova phases, %u novas, %u waves, %u heals, %u casts",
-	              g_thinks.load(), g_phases.load(), g_novas.load(), g_waves.load(), g_heals.load(), g_casts.load());
+	std::snprintf(out, size,
+	              "dclone ai: %u thinks, %u nova phases, %u novas, %u waves, %u heals, %u casts; souls: %u meteors, %u "
+	              "deaths",
+	              g_thinks.load(), g_phases.load(), g_novas.load(), g_waves.load(), g_heals.load(), g_casts.load(),
+	              g_soulCasts.load(), g_soulDeaths.load());
 }

@@ -6,7 +6,11 @@
 //
 // This slice spawns the events made of one monster: Shadow of Mendeln once, Dark Wanderer and Treasure Fallen up to
 // three times. The others are rolled and logged but spawn nothing yet: Gheed, Altar of the Catalyst and Spire of
-// Darkness (MS8), Horazon and Void/Tomb (MS9), the invaders (MS10). Their notify strings come with #336.
+// Darkness (MS8), Horazon and Void/Tomb (MS9), the invaders (MS10).
+//
+// Each spawn sends the event's notify string to every player as a red chat line (#336; PD2 0x1037dbc0, packet 0x26
+// colour 1). The SDK's localization service gives the text; no SDK service sends a chat line, so it goes through
+// D2R's server chat broadcast (rva::GameChat).
 //
 // No PluginSDK service reports a room activating, so this hooks D2R's room monster spawn (rva::RoomPopulate), the
 // function PD2 wraps. The event and the counts live in D2R's per-game counters (rva::GameCounter), so a new game
@@ -15,6 +19,8 @@
 
 #include "log.h"
 #include "rathma.h"
+
+#include <D2RLPlugin/localization.h>
 
 #include <intrin.h>
 
@@ -99,6 +105,41 @@ std::atomic<uint32_t> g_rolled[12] {};  // by event - 10
 std::atomic<uint32_t> g_rooms {0};  // rooms activated anywhere
 std::atomic<uint32_t> g_spawned {0};
 std::atomic<uint32_t> g_noSpot {0};
+std::atomic<uint32_t> g_notified {0};
+
+const D2RL::PluginContext* g_context = nullptr;
+const D2RL::LocalizationService* g_strings = nullptr;
+
+// PD2's notify string by event (docs/research/pd2-map-system-dll.md, section 4)
+auto NotifyKey(int32_t event) noexcept -> const char* {
+	switch (event) {
+	case Mendeln: return "d2r:MapEventNotifyMendeln";
+	case Horazon: return "d2r:MapEventNotifyHorazon";
+	case DarkWanderer: return "d2r:MapEventNotifyDarkWanderer";
+	case TreasureFallen: return "d2r:MapEventNotifyTreasure";
+	case Spire: return "d2r:MapEventNotifyTainted";
+	case Gheed: return "d2r:MapEventNotifyGheed";
+	case Altar: return "d2r:MapEventNotifyShard";
+	case Invaders: return "d2r:MapEventNotifyInvaders";
+	case Tomb: return "d2r:MapEventNotifyTomb";
+	default: return nullptr;
+	}
+}
+
+// Every spawn sends it, as PD2's does (Dark Wanderer and Treasure Fallen up to three times)
+auto Notify(Game* game, int32_t event) noexcept -> void {
+	const char* key = NotifyKey(event);
+	char text[256] {};  // GameChat copies 256 bytes
+	uint32_t need = 0;
+	if (key == nullptr || g_strings == nullptr ||
+	    g_strings->getStringByKey(g_context, key, text, sizeof(text), &need) != D2RL::Localization::Result::Success) {
+		plog::Warn("map events: no notify text for event %d (%s)", event, key != nullptr ? key : "no key");
+		return;
+	}
+	constexpr uint8_t Red = 1;
+	d2r::Engine<void (*)(Game*, const char*, uint8_t) noexcept>(d2r::rva::GameChat)(game, text, Red);
+	plog::Info("map events: event %d notified \"%s\" (%u)", event, text, ++g_notified);
+}
 
 auto Counter(Game* game, uint32_t key) noexcept -> int32_t* {
 	return d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(d2r::rva::GameCounter)(
@@ -175,6 +216,7 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t progress) noexcep
 	Set(game, SpawnsKey, spawns + 1);
 	plog::Info("map events: event %d spawn %d, monster %d in level %d at progress %d (%u spawned)", event, spawns + 1,
 	           monster, level, progress, ++g_spawned);
+	Notify(game, event);
 }
 
 auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
@@ -256,9 +298,15 @@ auto RollMapEvent(Game* game, Unit* item, int32_t level) noexcept -> void {
 
 auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
+	g_context = context;
+	if (context->QueryService(&g_strings) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasLocalizationServiceField(g_strings, D2RL::LocalizationServiceRequiredSize)) {
+		g_strings = nullptr;  // the events still spawn, without their chat line
+	}
 	const bool rooms = context->InstallInlineHook(RoomPopulate, RoomPopulateEntry, sizeof(RoomPopulateEntry),
 	                                              OnRoomPopulate, &g_populateOriginal);
-	std::snprintf(report, reportSize, "room activation%s", rooms ? "" : " FAILED (bytes differ)");
+	std::snprintf(report, reportSize, "room activation%s%s", rooms ? "" : " FAILED (bytes differ)",
+	              g_strings != nullptr ? "" : ", no notify (no localization service)");
 	return rooms ? 1 : 0;
 }
 
@@ -268,7 +316,7 @@ auto MapEventsCounters(char* out, size_t size) noexcept -> void {
 		n += n > 0 && static_cast<size_t>(n) < size ? std::snprintf(out + n, size - n, " %u", r.load()) : 0;
 	}
 	if (n > 0 && static_cast<size_t>(n) < size) {
-		std::snprintf(out + n, size - n, "), %u rooms activated, %u spawned, %u without a spot", g_rooms.load(), g_spawned.load(),
-		              g_noSpot.load());
+		std::snprintf(out + n, size - n, "), %u rooms activated, %u spawned, %u without a spot, %u notified", g_rooms.load(),
+		              g_spawned.load(), g_noSpot.load(), g_notified.load());
 	}
 }

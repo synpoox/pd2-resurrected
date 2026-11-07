@@ -164,6 +164,7 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # (plugin/core-rules/skill_functions.cpp Functions[]). Charge's cltdo 112 / cltst 57 go to D2R's Charge client
 # functions (37, 25), which do what PD2's do (docs/research/w16-charge.md). Combustion's srvdo 159 and Static Field's
 # 160 join the router too, Combustion's cltdo 100 takes 120 (docs/research/w27-static-field-combustion.md).
+# The death novas' srvdo 169 joins the router and their cltdo 105 (D2R's) takes 125 (#480).
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
 # Blessed Hammer's sdo 40 / cdo 72 are D2R's too and take 47 / 80 (docs/research/w20-blessed-hammer.md).
 # The monster kits (W36, docs/research/w36-monster-kits.md): PoisonEggSpawn's cltdo 109 takes 126, TorajanBossNest's
@@ -188,10 +189,10 @@ FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
                       "pSrvDmgFunc": {"15": "22", "16": "21", "17": "20"}, "pCltHitFunc": {"26": "71", "6": "68"}},
          "skills": {"srvdofunc": {"153": "172", "154": "183", "155": "190", "156": "190", "157": "190", "159": "190",
                                   "160": "190", "161": "190", "162": "190", "163": "190", "164": "190", "165": "190",
-                                  "166": "190", "170": "190", "181": "190", "143": "190", "184": "190",
+                                  "166": "190", "169": "190", "170": "190", "181": "190", "143": "190", "184": "190",
                                   "185": "190", "186": "190"},
                     "cltdofunc": {"97": "115", "98": "116", "100": "120", "101": "121", "102": "122", "112": "37",
-                                  "109": "126", "83": "123"},
+                                  "109": "126", "105": "125", "83": "123"},
                     # PD2's srvst 68 calls slot 32, D2R's melee start (W11)
                     "srvstfunc": {"66": "80", "68": "32", "67": "83", "76": "40"}, "cltstfunc": {"56": "63", "57": "25"},
                     # the finishers' prg functions (W29): only these PD2 rows use these values in these columns
