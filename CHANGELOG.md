@@ -32,6 +32,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - The Diablo Clone, Rathma and Lucion keys open their uber areas at the Blood Fountain (Hell, level 80+); the fights come later.
 - The uber areas have no waypoint, also after a key's warp.
 - A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
+- Lucion fights in PD2's stages: blinks, Nova, a frenzy of Punish, and spawners that call his adds.
 - Uber fight monsters scale with the key's tier, as in PD2.
 - PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
 - Lucion's death opens a portal to the Temple, ends his adds and drops a Demonic Cube at tiers 1-2.
@@ -39,6 +40,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - After Lucion's death, cube a corrupted amulet in the Temple to try a Desecration (50%, 60% at tiers 1-2).
 - Diablo Clone drops Annihilus, and at tiers 1-2 rolls 1 in 200 for one of PD2's five Dclone uniques.
 - Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
+- Royal Fire (Lucion's controller, Radament's map boss) casts PD2's ring of fire, aimed into his arena for Lucion's.
 - The Temple's Lucion chests show and drop PD2's LucionChest loot, one more item per uber tier.
 
 #### Maps
