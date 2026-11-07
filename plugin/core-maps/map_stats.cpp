@@ -13,6 +13,7 @@
 
 #include "log.h"
 #include "uber_scaling.h"
+#include "unique_maps.h"
 
 #include <intrin.h>
 
@@ -577,7 +578,9 @@ constexpr int16_t ExtraBossIds[] = {
 // D2R's preset spawn (rva::PresetSpawn).
 // The hook also drops the uber levels' waypoint presets (NoUberWaypoint, map_open.cpp).
 auto OnPresetSpawn(Game* game, void* room, const uint8_t* preset) noexcept -> void {
-	if (game != nullptr && room != nullptr && preset != nullptr && NoUberWaypoint(game, room, preset)) {
+	if (game != nullptr && room != nullptr && preset != nullptr &&
+	    (NoUberWaypoint(game, room, preset) ||
+	     OuterVoidPreset(game, room, const_cast<uint8_t*>(preset), g_presetSpawnOriginal))) {
 		return;
 	}
 	g_presetSpawnOriginal(game, room, preset);
