@@ -1079,6 +1079,23 @@ inline constexpr uint64_t AddLife = 0x451820;
 inline constexpr uint8_t AddLifeEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x56, 0x48, 0x83,
                                            0xec, 0x20, 0x8b, 0xf2, 0x48, 0x8b, 0xd9};
 inline constexpr uint64_t UnitMaxLife = 0x2f4d20;  // (unit) -> max life, 1/256
+
+// --- core-maps: Lucion's AI (UB6, #437; D2Game\src\Ai) ----------------------------------------------------------------
+// The AI table (AiTable below, 155 rows): +0x10 an int, +0x18 a second function. ai_hooks.cpp writes its think slots.
+// More of the think's tick (AiTickTarget below): +0x24 non-zero in melee range, +0x28 the monstats record, +0x38
+// uint8 difficulty (as D2R's Overseer 0x5c2290 reads them)
+inline constexpr int AiTickInMelee = 0x24, AiTickMonStats = 0x28, AiTickDifficulty = 0x38;
+// monstats record: aidel uint8[3] (the txt field table 0x39db30), aip1-8 int16[8][3], Skill1-8 int16, Sk1-8mode uint8
+inline constexpr int MonAiDel = 0x8a, MonAiParams = 0x90, MonSkills = 0x1c4, MonSkillModes = 0x1d4;
+// (game, unit, mode, skill, target, x, y, 0) -> non-zero once cast; on failure it idles 10 (0x4a7bc0)
+inline constexpr uint64_t AiUseSkill = 0x4a7bc0;
+inline constexpr uint64_t AiIdle = 0x4a6d10;      // (game, unit, frames): mode neutral, think again after frames
+inline constexpr uint64_t AiSetDelay = 0x4a6e50;  // (game, unit, frames): think again after frames, mode kept
+inline constexpr uint64_t AiAttack = 0x4a78e0;    // (game, unit, mode, target): melee in mode 4 (A1) or 5 (A2)
+inline constexpr uint64_t AiApproach = 0x4a8740;  // (game, unit, target, 0): walk at the target
+// The mode command AiIdle sends: (unit, mode, &cmd), cmd +0x10 the unit, then (game, &cmd, 1)
+inline constexpr uint64_t ModeCmdInit = 0x4471e0, ModeCmdRun = 0x4475c0;
+inline constexpr int ModeCmdUnit = 0x10;
 // CrushingBlowApply's entry is jmp [rip+0x38a8872]: the qword it jumps through, which a plugin can swap
 inline constexpr uint64_t CrushingBlowApplySlot = 0x3e2a448;
 // The unit event dispatcher 0x5881e0, (game, event, unit, target, damage, list), is jmp [here]: D2RCore's. The hit
@@ -1108,6 +1125,43 @@ inline constexpr uint64_t ItemRowByCode = 0x313ef0;  // (dataFlag, u32 code, 'ws
 inline constexpr uint64_t DropItemAt = 0x444680;
 inline constexpr int32_t QualityNormal = 2;
 inline constexpr uint32_t MonDemon = 0x2000;  // MonFlags bit 13 (monstats field table 0x39db30)
+
+// --- core-maps: Lucion's death (UB6, #231; D2Game\src\Skills\Skills.cpp, D2Game\src\Player\PlayerPets.cpp) --------
+// Decompiled for #231 (Ghidra, D2R.gpr). Called, not hooked.
+// The portal maker is rva::PortalMaker (MS9's block below; #231 found the same 0x432ce0): with arg 9 0 it finds a free
+// spot near (x, y) in room; the portal opens on event 1, and 0x435dd0 makes its linked return portal in the level.
+// Arg 10 1 skips the town check (it reads the player only there); the level must be in room's act.
+// 0x5da800 (rva::OpenRedPortal) calls it, then sets the portal's level (rva::SetPortalLevel).
+// How the pet kill 0x500fb0 kills a monster: (unit, mode, block) fills a 0x30-byte mode block, block +0x10 gets
+// (game, unit) -> the unit's target, then (game, block, 1) sets the mode. Mode 0 is death.
+inline constexpr uint64_t MonsterModeBlock = 0x4471e0;
+inline constexpr uint64_t UnitTarget = 0x490300;
+inline constexpr uint64_t SetMonsterMode = 0x4475c0;
+inline constexpr int32_t ModeDeath = 0;
+// (unit, flags, on): unit flags +0x124 (bit 0x10000 is dead, rva::UnitDead); 0x20000 is 1.13c's no-treasure-class
+// bit, which PD2's add kill 0x10356e00 sets
+inline constexpr uint64_t SetUnitFlags = 0x34e190;
+inline constexpr uint32_t UnitNoDrop = 0x20000;
+// D2Common's DUNGEON_FindActSpawnLocationEx (PD2 calls 1.13c's, ordinal 10816, through 0x1038a000), as WarpToLevel
+// calls it: (dataFlag, act, level, spot, int32* x, int32* y, unit size) -> the room holding the free spot near the
+// level's spot, its coordinates in x/y, or null. With the levels record's +0x90 set, spot picks a special tile of the
+// level's presets (0x3dac20; 13 the level's entry); without it, spot is unused. It builds the level if needed. The game's acts: a pointer array at +0x190,
+// its count at +0x198.
+inline constexpr uint64_t ActSpawnSpot = 0x2ef8b0;
+inline constexpr int GameActs = 0x190, GameActCount = 0x198;
+
+// --- core-maps: the Uber Tristram primes' minions (UB3, #483) -------------------------------------------------------
+// D2Game's AI table: one 0x20-byte row per monai row, the think function (game, monster, tick) first. The rows were
+// matched by their functions' source files (AiBaal.cpp holds row 135's). The originals PD2 wraps (0x10361150):
+// Mephisto (50), Diablo (51), BaalCrab (135).
+inline constexpr uint64_t AiTable = 0x2396ea0;
+inline constexpr int AiRowSize = 0x20;
+inline constexpr uint64_t AiMephisto = 0x5b1ca0, AiDiablo = 0x5c8d40, AiBaalCrab = 0x5a8b80;
+inline constexpr uint64_t AiOverseer = 0x5c2290;  // row 120's think (Lucion, #437)
+// The think's tick block: the target at +0x10 (1.13c +0x08), its distance at +0x20 (1.13c +0x14), as the Mephisto
+// think reads them
+inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;
+inline constexpr int MonAiDist = 0x8d;  // uint8 aidist, then (N) and (H) (monstats field table 0x39db30)
 
 // --- core-rules: the ethereal bonus (IR8, #243) --------------------------------------------------------------------
 // (item): sets the ethereal flag, then base stats times 3/2 (1.13c's D2Common #10890, which PD2 replaces with

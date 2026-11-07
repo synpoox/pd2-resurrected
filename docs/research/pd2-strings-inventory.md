@@ -140,7 +140,7 @@ These strings are hard-coded English with colour codes and printf formats. They 
 
 - Whether D2R matches string keys case-sensitively (decides whether the 4 case-only keys add or override).
 - Which entry wins for the 5 duplicate keys with different text, in classic and in D2R.
-- Whether `ÿc/` and `ÿc:` render in D2R.
+- Whether `ÿc:` renders in D2R. (`ÿc/` does not: D2R draws it as `*/`, so the strings rule drops a trailing one, #461.)
 - The 256 unreferenced new keys: built by code or dead. Strings alone cannot tell; disassembly could.
 - Whether the DLLs fetch strings by numeric ID (classic's other lookup path). Printable strings do not show numeric lookups.
 - "Lands in" for new keys is a majority vote per column; a few columns had little D2R evidence (`Misc.spelldescstr` has 2 D2R examples).
