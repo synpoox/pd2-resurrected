@@ -12,9 +12,7 @@ private-multiplayer release a build may break characters; each break is noted he
   summons or buffs. One map or uber area per game. The fights themselves come later.
 - A tier-0 uber key also leaves three grey portals by the fountain. Each takes one player back in, once, by the same
   rules (no mercenary, summons or buffs), and heals the boss by 20% of its life. The uber areas have no waypoint.
-- The uber key's tier scales the fight's monsters as in PD2: 1.5 times the life at tier 0; at tiers 1 and 2, three
-  times (four for the bosses) plus 20% per tier, and +4 to all skills per tier. The bosses also gain elemental and
-  magic absorb by tier and by how often the group has entered.
+- Uber fight monsters scale with the key's tier, as in PD2.
 
 #### Maps
 
