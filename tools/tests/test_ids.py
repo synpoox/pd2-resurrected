@@ -453,6 +453,13 @@ class ItemTableTests(unittest.TestCase):
                                                            ("Portal", 1, "Portal")], {}, {})[0]
         self.assertEqual(merged.rows, [["xactportal_grey", "60"], ["Portal", "15"]])
 
+    def test_pd2_portal_tokens_draw_d2r_portal(self):
+        # PD2's `#` portal tokens have no D2R art (#431): a PD2-only row draws D2R's `PP`; other tokens stay
+        merged = I.merge_table("objects", table("Name|Token\nxactdarkportal_grey|#6\nwell|WL\n"),
+                               table("Name|Token\n"), [("xactdarkportal_grey", 0, "xactdarkportal_grey"),
+                                                       ("well", 1, "well")], {}, {})[0]
+        self.assertEqual(merged.rows, [["xactdarkportal_grey", "PP"], ["well", "WL"]])
+
 
 class LevelTableTests(unittest.TestCase):
     def test_left_out_rows(self):
