@@ -12,6 +12,7 @@
 
 #include "d2r.h"
 #include "log.h"
+#include "lucion.h"
 
 #include <atomic>
 #include <cstdio>
@@ -86,6 +87,10 @@ auto RecipeSearch(SearchResult* result, Game* game, Unit* player, MatchOut* out)
 		return;
 	}
 	++g_searches;
+	if (Desecrate(game, player)) {
+		result->found = 0;  // the Temple's Desecration replaces any row (lucion.cpp)
+		return;
+	}
 	const int32_t count = d2r::Engine<int32_t (*)(uint32_t) noexcept>(d2r::rva::CubeRecipeCount)(d2r::DataFlag(game));
 	const int32_t last = result->found != 0 ? result->row : count - 1;
 	const int32_t block = BlockingRow(game, player, last);
