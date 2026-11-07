@@ -185,7 +185,9 @@ Value 13 (Butcher's Lair, `MapEventNotifyButcher*`, level 173) and 17 are never 
 **When it spawns** (`0x36fef0`, run as rooms of a map area activate). The event waits for the level's progress:
 `progress = region[+0x04] x 100 / constant(level)`, where the constant is a hard-coded per-level switch (`0x38b1d0`). For
 the tiered maps it is 120-280 (for example Arreat Battlefield 139: 240, Phlegethon 145: 270, Lost Temple 158: 120);
-unknown levels use 200. What `region[+0x04]` counts was not read (kills is likely).
+unknown levels use 200. `region[+0x04]` counts the level's rooms activated so far: 1.13c D2Game's room monster spawn
+(`0x6fc67a20`, which PD2's spawner wraps and calls last) first calls `0x6fc66cd0`, which adds 1 to it
+([MS8](https://github.com/synpoox/pd2-resurrected/issues/222)). So the constant is a room count.
 
 - One-shot events (Mendeln, Horazon, Gheed, Altar, Void/Tomb): spawn once when `rand() % 100 + progress > 140`.
 - Dark Wanderer and Treasure Fallen: the n-th of 3 spawns when `n x 25 < progress` and `rand() % 100 < 25`.
@@ -203,9 +205,14 @@ lists, which match the misc `len` tiers exactly:
 - T3 {139, 144, 147, 149, 154, 170, 190, 191, 201}
 
 Three flags on the event context pick the lists: T1 and T2, T2 and T3, or T3 alone. That fits the wiki's "same or higher
-tier", but the source of the flags was not read. It draws a level other than the current one, adds an area entry (slot
-10, value = the level), applies the area stats to that level (`0x38b4d0`), and opens a red portal (object 60) to it.
-It also drops items in three batches whose sizes depend on the same flags, and with a 10% roll it calls `0x381510`.
+tier". The flags are the dying monster's level: `0x3760a0` sets them when it is in the T1 set (`0x105deb18`), the
+T2 set (`0x105debf4`) or the T3 set (`0x105deb08`), the same sets the pool is built from ([MS9](https://github.com/synpoox/pd2-resurrected/issues/223)). The handler
+runs only while the event is Horazon's and `game+0x2628` is 1, which its portal raises, so once per game. It draws a
+level other than the current one, adds an area entry (slot 10, value = the level), applies the area stats to that
+level (`0x38b4d0` with first = 0, so no monster stats are added again), and opens a red portal (object 60) to it at
+the monster (`0x38a300`). With a 10% roll it calls `0x381510`. Then it drops from treasureclassex rows 54-56 (`Map Tier
+1`, `Map Tier 2`, `Map Tier 3`; `0x37f430` adds the row to the compiled TC base): 3, 2 and 1 picks in a T1 map, 1, 3
+and 2 in T2, 1, 2 and 3 in T3, through 1.13c's TC drop (`0x30f120`).
 
 **Void / Tomb.** One event. `MapEventNotifyVoid` has no code reference, so there is no separate Void event or Treasure
 Vault: the gold portal leads to level 207, "The Bitter Depths", whose treasure classes are `Map Void`, `Map Void2` and
@@ -230,8 +237,7 @@ plugin in this repo calls `0x432ce0` yet.
 
 ## Not settled here
 
-- The Horazon flags' source, its drop batches, and what `0x381510` does.
-- What `region[+0x04]` counts in the event progress.
+- What `0x381510` does (Horazon's 10% roll).
 - Slot 5's spawn in D2R terms. [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) found no reader of slots 7-9 and 15, and slot 10 only in `0x38aa00` (Horazon) ([ms4-area-map-stats.md](ms4-area-map-stats.md)).
 - A resist rewrite in `0x38aa00` for players, keyed to an area entry whose value is the current level (it may belong to
   Horazon's slot-10 entry). Not decoded.

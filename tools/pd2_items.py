@@ -29,7 +29,7 @@ ITEM_TABLES = ["weapons", "armor", "misc"]
 PD2_ORDER = {"treasureclassex"}
 CORRUPTED_NEW = "100"  # `corrupt` value no PD2 outcome uses (1-92); the tooltip shows only "Corrupted" (descval 0)
 CORRUPTOR_DONE = 3001  # PD2's own finished-map corruptor: above every outcome threshold (items 1000, maps 3000)
-CUBE_CELLS = 12  # the cube's 3 x 4 grid
+CUBE_CELLS = 16  # the cube's 4 x 4 grid, PD2's (#299)
 HD_PER_CLASSIC = 3.5  # D2R's 98 px inventory cell over the classic 28 px
 _SIGNATURE = [*(f"input {k}" for k in range(1, 8)), "output", "output b", "output c"]
 
