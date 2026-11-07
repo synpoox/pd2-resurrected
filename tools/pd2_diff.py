@@ -12,6 +12,7 @@ import argparse
 import fnmatch
 import json
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -190,6 +191,9 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
         raise GateError(f"no D2R tables under {d2r}: run `modkit fetch` or pass --d2r")
     pd2_excel, mod_excel = root / "pd2-data/data/global/excel", root / "generated/data/global/excel"
     patterns, entries = deviations(root / "docs" / "deviations.md")
+    if not any(pd2_excel.glob("*.txt")):  # else the gate compares nothing and passes
+        raise GateError(f"no PD2 tables under {pd2_excel}: run `python tools/pd2_extract.py` (the merge's first step) "
+                        "or pass --root a checkout that has them")
     lists = {t: pd2_ids.read_list(pd2_ids.list_path(root / "merge", t)) for t in pd2_ids.TABLES}
     ren, ctx = pd2_ids.renames(lists), None
     tables = root / "merge" / "tables.json"
@@ -220,11 +224,22 @@ def escape_pipes(v: str) -> str:
     return v.replace("|", r"\|")
 
 
-def report(rep: Report, scope: str) -> str:
-    """The gate's result as markdown, for pasting into the PR."""
+def commit_of(root: Path) -> str:
+    """`root`'s short commit id, marked when its working tree has uncommitted changes, so a stale report shows."""
+    def git(*args: str) -> str:
+        try:
+            return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True).stdout.strip()
+        except OSError:  # git is not installed
+            return ""
+    head = git("rev-parse", "--short", "HEAD") or "no git commit"
+    return f"{head}, uncommitted changes" if git("status", "--porcelain") else head
+
+
+def report(rep: Report, scope: str, commit: str = "") -> str:
+    """The gate's result as markdown, for pasting into the PR; the first line names the commit it ran on."""
     opened = rep.open()
-    lines = [f"Table-diff gate, scope {scope}: {'pass' if rep.ok else 'FAIL'}, {len(opened)} open, "
-             f"{sum(r.covered for r in rep.results)} table cells on the deviation list",
+    lines = [f"Table-diff gate{f' on {commit}' if commit else ''}, scope {scope}: {'pass' if rep.ok else 'FAIL'}, "
+             f"{len(opened)} open, {sum(r.covered for r in rep.results)} table cells on the deviation list",
              "Deviation list: " + ", ".join(f"{rep.entries.get(s, 0)} {s}" for s in ("not yet", "approximated", "cut")) + " entries "
              "(the cell count is large because one entry can cover a whole table)", "",
              "| Table | Mod table | Open | On the deviation list |", "|---|---|---|---|"]
@@ -248,7 +263,7 @@ def main(argv: list[str] | None = None) -> int:
     except (GateError, pd2_ids.IdError) as e:
         print(f"pd2_diff: {e}", file=sys.stderr)
         return 2
-    print(report(rep, a.scope))
+    print(report(rep, a.scope, commit_of(a.root)))
     return 0 if rep.ok else 1
 
 

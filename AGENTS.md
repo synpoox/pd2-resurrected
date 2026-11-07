@@ -6,6 +6,9 @@ Issues live in GitHub Issues (`gh` CLI). See `docs/agents/issue-tracker.md`.
 
 Every PR links the issue it solves: the body opens with `Closes #<n>`, or `Part of #<n>` when it does not finish the issue. If no issue exists yet, open one first.
 
+Rerun the table-diff gate (`tools/pd2_diff.py`) after resolving a merge from main, and paste the report for the PR's
+final commit (its first line names the commit). Merge only on a report for the final commit. Untracked files count as uncommitted changes; the gate CI job's report names GitHub's merge commit, not the PR head.
+
 After a PR merges, delete its branch, on the remote and locally.
 
 `research/*` branches hold `/wayfinder` research findings. They are never merged, and never deleted: design docs and
