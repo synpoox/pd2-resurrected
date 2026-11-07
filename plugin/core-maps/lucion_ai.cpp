@@ -95,17 +95,27 @@ auto Idle(Game* game, Unit* unit, int32_t frames) noexcept -> void {
 auto Delay(Game* game, Unit* unit, int32_t frames) noexcept -> void {
 	d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(d2r::rva::AiSetDelay)(game, unit, frames);
 }
+// shortcut: the mod ships no animdata.d2 rows for PD2's new codes ($7, $8: Lucion, his spawner), so an attack or cast
+// mode never ends and D2R never calls the think again (game check, #437). A 20-frame timer after each brings it back;
+// remove it once those rows land (#502)
+constexpr int32_t ModeEndFrames = 20;
 auto Attack(Game* game, Unit* unit, int32_t mode, Unit* target) noexcept -> void {
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, Unit*) noexcept>(d2r::rva::AiAttack)(game, unit, mode, target);
+	Delay(game, unit, ModeEndFrames);
 }
 auto Cast(Game* game, Unit* unit, int32_t skill, int32_t mode, Unit* target, int32_t x, int32_t y) noexcept -> void {
 	if (skill < 0) {
 		Idle(game, unit, 10);
 		return;
 	}
-	++g_casts;
-	d2r::Engine<int32_t (*)(Game*, Unit*, uint8_t, int32_t, Unit*, int32_t, int32_t, uint8_t) noexcept>(
+	const int32_t ok = d2r::Engine<int32_t (*)(Game*, Unit*, uint8_t, int32_t, Unit*, int32_t, int32_t, uint8_t) noexcept>(
 		d2r::rva::AiUseSkill)(game, unit, static_cast<uint8_t>(mode), skill, target, x, y, 0);
+	if (plog::Sample(g_casts)) {
+		plog::Info("lucion ai: class %d cast skill %d mode %d at (%d, %d)%s -> %d (%u so far)",
+		           At<int32_t>(unit, d2r::rva::UnitClassId), skill, mode, x, y, target != nullptr ? " on target" : "", ok,
+		           g_casts.load());
+	}
+	Delay(game, unit, ModeEndFrames);
 }
 // PD2 sets the mode itself (D2Common); the port sends it the way AiIdle sends neutral
 auto SetMode(Game* game, Unit* unit, int32_t mode) noexcept -> void {
@@ -181,7 +191,6 @@ constexpr auto NextStage(int32_t stage, int32_t life, int32_t tier) noexcept -> 
 static_assert(NextStage(1, 84, 0) && !NextStage(1, 85, 0) && NextStage(6, 36, 1) && !NextStage(7, 1, 0));
 
 auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -> void {
-	++g_thinks;
 	Unit* target = At<Unit*>(tick, d2r::rva::AiTickTarget);
 	const int32_t dist = At<int32_t>(tick, d2r::rva::AiTickDistance);
 	const int32_t dist2 = target != nullptr ? dist * dist : 0x7fffffff;  // PD2: squared distance to the nearest player
@@ -194,7 +203,14 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	const int32_t state = stateRef;
 	const int32_t param = paramRef;
 	const int32_t last = Counter(game, LastKey);
+	if (plog::Sample(g_thinks)) {
+		plog::Info("lucion: unit %u thinks (%u so far), state %d, stage %d, life %d%%", At<uint32_t>(unit, d2r::rva::UnitIdField),
+		           g_thinks.load(), state, stage, LifePercent(unit));
+	}
 	const auto store = [&](int32_t next, int32_t p) {
+		if (next != state && (next == 4 || next == 5 || next == 6 || next == 7 || next == 9 || next == 12)) {
+			plog::Info("lucion: state %d -> %d (stage %d)", state, next, stage);
+		}
 		stateRef = next;
 		paramRef = p;
 		Counter(game, LastKey) = state;

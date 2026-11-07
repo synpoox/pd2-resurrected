@@ -132,7 +132,7 @@ Part g_parts[] = {
 	{"lucion", InstallLucionPart, ""},
 	{"primes", InstallPrimes, ""},
 	{"events", InstallEvents, ""},
-	{"lucion", InstallLucion, ""},
+	{"lucionai", InstallLucion, ""},
 };
 
 void InstallParts(const D2RL::PluginContext* context) noexcept {
