@@ -20,6 +20,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - A tier-0 uber key also leaves three grey portals by the fountain. Each takes one player back in, once, by the same
   rules (no mercenary, summons or buffs), and heals the boss by 20% of its life. The uber areas have no waypoint.
 - Uber fight monsters scale with the key's tier, as in PD2.
+- Lucion's death opens a portal to the Temple, ends his adds and drops a Demonic Cube at tiers 1-2.
 
 #### Maps
 

@@ -1,5 +1,5 @@
 // core-maps: PD2's map system for PD2 Resurrected (docs/map-system.md): so far cube op 30 (the map recipes' block),
-// opening a map (item spell 16) and its monster, player and area stats, and the uber key drop rule.
+// opening a map (item spell 16) and its monster, player and area stats, the uber key drop rule and Lucion's death.
 // Shared (host and client must match) and NativeHooks; a game-wide plugin in <game>\d2rloader\plugins (ADR 0004).
 // On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
 //
@@ -13,6 +13,7 @@
 #include "d2r.h"
 #include "key_drops.h"
 #include "log.h"
+#include "lucion.h"
 #include "map_open.h"
 #include "map_stats.h"
 #include "off_switch.h"
@@ -79,6 +80,12 @@ void InstallKeys(const D2RL::PluginContext* context, char* report, size_t size) 
 	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
 }
 
+void InstallLucionPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallLucion(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
+}
+
 void InstallPool(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	(void)context;
 	InstallEntityPool(report, size);
@@ -90,6 +97,7 @@ Part g_parts[] = {
 	{"stats", InstallStats, ""},
 	{"pool", InstallPool, ""},
 	{"keys", InstallKeys, ""},
+	{"lucion", InstallLucionPart, ""},
 };
 
 void InstallParts(const D2RL::PluginContext* context) noexcept {
@@ -140,6 +148,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	KeyDropsCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	LucionCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
