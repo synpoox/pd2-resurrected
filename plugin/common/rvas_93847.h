@@ -907,10 +907,11 @@ inline constexpr int GameCounters = 0x1aac8;
 inline constexpr uint64_t QuestFlag = 0x325c50;
 inline constexpr int PlayerQuests = 0x40;
 inline constexpr uint64_t ClientMessage = 0x491960;  // (player, message, player); 0x15 is "can't do that"
-// (game, const char text[256], colour): a chat line (packet 0x26, type 1, no sender) to every client of the game
-// (game +0x138, through 0x477a30, which breaks on text over 255 bytes). It copies all 256 bytes. The debug commands'
-// "Warping to level" (0x402820) use it with colour 2. Called, not hooked.
-inline constexpr uint64_t GameChat = 0x4016c0;
+// (*(game + GameClients), packet): sends a chat packet 0x26 (type at +1, unit type +3, unit id +4, colour +8, name
+// at +10 up to 60 bytes, text at +0x47 up to 255) to the game's clients; it breaks on longer text. D2R's own
+// GameChat (0x4016c0, the debug commands' "Warping to level") sends type 1 with unit type 2, which the client drops
+// (#520); type 4 or unit type 0 shows. Called, not hooked.
+inline constexpr uint64_t SendChat = 0x477a30;
 
 // --- core-maps: opening an uber fight (UB2, #227; D2Game\src\Game\Clients.cpp) ----------------------------------
 // Decompiled for #227 (Ghidra, D2R.gpr). Called, not hooked.
