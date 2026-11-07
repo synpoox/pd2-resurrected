@@ -67,7 +67,8 @@
     "StrSkillPoisonDamagePercent": "Poison Damage: %+d%%",
     "OpenWoundsDamagePerSecond": "Open Wounds Damage: %d per second",
     "PartyOpenWoundsDamagePerSecond": "Party Open Wounds Damage: %d per second",
-    "ThornsOpenWoundsDamagePerSecond": "Your Open Wounds Damage: %d per second"
+    "ThornsOpenWoundsDamagePerSecond": "Your Open Wounds Damage: %d per second",
+    "Ascendant": "Ascendant"
   },
   "ids": {
     "Runeword171PD2": [50000, "item-runes.json"],
@@ -1454,6 +1455,7 @@
     "MercX417": [51383, "mercenaries.json"],
     "MercX418": [51384, "mercenaries.json"],
     "MercX419": [51385, "mercenaries.json"],
-    "MercX420": [51386, "mercenaries.json"]
+    "MercX420": [51386, "mercenaries.json"],
+    "Ascendant": [51387, "monsters.json"]
   }
 }

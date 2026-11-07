@@ -74,7 +74,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | Guilds | not yet | cut in spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41) with the online layer; the cut is reversed and guilds come with multiplayer ([#339](https://github.com/synpoox/pd2-resurrected/issues/339)) | [#339](https://github.com/synpoox/pd2-resurrected/issues/339), beta |
 | Controller: PD2's own screens and binds | not yet | D2R's native controller support stands in; PD2's extra screens and binds were cut in spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41), and the cut is reversed ([#340](https://github.com/synpoox/pd2-resurrected/issues/340)) | [#340](https://github.com/synpoox/pd2-resurrected/issues/340), beta |
 
-### Approximated (37)
+### Approximated (38)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -88,6 +88,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | Object graphics: objects keep D2R's Token | approximated | D2R changed 30 objects' graphics tokens and has HD models only for its own; visual, best effort | [P4](https://github.com/synpoox/pd2-resurrected/issues/48) |
 | Hireling descriptions: D2R's hirelings keep D2R's HireDesc | approximated | PD2's HireDesc names rows of its hiredesc table, D2R's names strings: D2R's rows keep their strings, and the rows moved to ids 39 to 47 name D2R's own string where the English matches (`strhirespecial1`, Fire Arrow), else `hiredesc_<code>`, which holds PD2's description | [UR3](https://github.com/synpoox/pd2-resurrected/issues/201) |
 | Hireling ids 30 to 38: PD2's Ascendant and second Rogue Scout set are at ids 39 to 47 | approximated | D2R gave ids 30 to 38 to its own Act 2 and Act 5 brackets, so PD2's rows at those ids move up by 9 ([#201](https://github.com/synpoox/pd2-resurrected/issues/201): a Rogue at id 39 and at id 47 hired, saved and loaded in game); rows both games have take PD2's values | [P4](https://github.com/synpoox/pd2-resurrected/issues/48), [UR3](https://github.com/synpoox/pd2-resurrected/issues/201) |
+| Hireling titles: the hireling monsters keep D2R's monstats NameStr (Rogue, DesertMerc, Barbarian), and `act4hire` names the string `Ascendant` | approximated | D2R's merc panel prints the monster's NameStr after the level; PD2's placeholders (Dummy, Guard, dummy) printed "an evil force" there ([#272](https://github.com/synpoox/pd2-resurrected/issues/272)). PD2 has no title string for the Ascendant, so the mod writes one (`merge/strings.json` texts) | [#272](https://github.com/synpoox/pd2-resurrected/issues/272) |
 | Shrine name columns Shrine name, view name and niftyphrase | approximated | D2R names shrines with its own string keys (StringName, StringPhrase); PD2's columns are classic leftovers | [P4](https://github.com/synpoox/pd2-resurrected/issues/48) |
 | The Ascendant (hireling ids 39 to 44) looks like the Iron Wolf, and its Amplify Damage plays the cast animation | approximated | its monster `act4hire` (classic token `$2`) has no D2R animation files or HD model, so it takes act3hire's model, and that model has no S2 animation; D2R's Tyrael menu has no Hire entry, so core-rules adds one and marks Tyrael as a hiring NPC in the server's NPC table, whose quest gate (Terror's End) is D2R's own | [UR3](https://github.com/synpoox/pd2-resurrected/issues/201) |
 | Monster shield block: monstats NoShldBlock | approximated | D2R replaced it with ShieldBlockOverride, which takes different values; D2R's is kept | [P4](https://github.com/synpoox/pd2-resurrected/issues/48) |
@@ -288,6 +289,7 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Object graphics: objects keep D2R's Token | `objects.*.token` |
 | Hireling descriptions: D2R's hirelings keep D2R's HireDesc | `hireling.*.hiredesc` |
 | Hireling ids 30 to 38: PD2's Ascendant and second Rogue Scout set are at ids 39 to 47 | `hireling.*.[*]` |
+| Hireling titles: the hireling monsters keep D2R's monstats NameStr (Rogue, DesertMerc, Barbarian), and `act4hire` names the string `Ascendant` | `monstats.roguehire.namestr` `monstats.act2hire.namestr` `monstats.act4hire.namestr` `monstats.act5hire1.namestr` `monstats.act5hire2.namestr` |
 | Shrine name columns Shrine name, view name and niftyphrase | `shrines.*.shrine name` `shrines.*.view name` `shrines.*.niftyphrase` |
 | PD2 columns read by PD2's DLL: difficultylevels UberCodeOdds, UltraCodeOdds and HireableBossDamagePercent; hireling WType1 and WType2 | `difficultylevels.*.ubercodeodds*` `difficultylevels.*.ultracodeodds*` `difficultylevels.*.hireablebossdamagepercent` `hireling.*.wtype1` `hireling.*.wtype2` |
 | Monster shield block: monstats NoShldBlock | `monstats.*.noshldblock` |

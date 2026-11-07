@@ -49,7 +49,15 @@
   "repeats": "replace group"
  },
  "monsounds": {},
- "monstats": {},
+ "monstats": {
+  "cells": {
+   "roguehire": {"NameStr": "Rogue"},
+   "act2hire": {"NameStr": "DesertMerc"},
+   "act4hire": {"NameStr": "Ascendant"},
+   "act5hire1": {"NameStr": "Barbarian"},
+   "act5hire2": {"NameStr": "Barbarian"}
+  }
+ },
  "monstats2": {},
  "montype": {},
  "monumod": {},
