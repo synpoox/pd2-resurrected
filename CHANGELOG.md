@@ -51,6 +51,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Legacy graphics shows PD2's own missiles again (Holy Nova and others).
 - Charged potions and other PD2-only items show their own pictures instead of a hand axe.
 - Druid and Assassin class skills on items show their number ("+2 to Assassin Skill Levels").
+- Leoric's taunt no longer crashes the game.
 
 ### 0.1.0-alpha (2026-11-05)
 
