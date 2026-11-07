@@ -62,7 +62,7 @@ Slot 7, Hell, the level 95 Paladin, rare maps from `cheat spawn t11,typ r,inv 0`
 
 Not seen: a monster from the added group. About 60 packs in Ruins of Viz-Jun with 1186 added (1 in 12 by weight) showed
 none, and the spawner (`0x50acf0`, `0x50b7e0`, `0x509cc0`) has no check that would turn it away; not explained. Also not
-run: the area level (it rolls only through corruption), fortify (`fort` does not spawn, [#260](https://github.com/synpoox/pd2-resurrected/issues/260)), drop bonus and
+run: the area level (it rolls only through corruption), fortify (`fort` spawns since [#310](https://github.com/synpoox/pd2-resurrected/issues/310), but no fortified map was opened yet), drop bonus and
 treacherous.
 
 ## [MS4b](https://github.com/synpoox/pd2-resurrected/issues/286): the drop chances ([#286](https://github.com/synpoox/pd2-resurrected/issues/286))
