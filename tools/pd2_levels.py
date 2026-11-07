@@ -9,7 +9,8 @@ both games (D2R's act 5 rows 51+ are D2R's own); higher PD2 rows append to their
 merge/level-files.tsv: writes lvltypes, objpreset and the files of the PD2-only presets (the lvlprest rows the id
 list appends). lvltypes takes PD2's new types (ids kept: D2R's end before them) and, in D2R's types, the DT1 files the
 PD2-only presets select; a file whose slot D2R already fills moves to a free slot, and those presets' Dt1Mask bit with
-it. The three DT1 PD2 ships over vanilla paths move to OVERRIDES/<path>, so D2R's own areas keep D2R's. Each DS1 is
+it. The PD2-only levels on such a D2R type then move to a copy of it, appended, and D2R's areas keep D2R's row (#296).
+The three DT1 PD2 ships over vanilla paths move to OVERRIDES/<path>, so D2R's own areas keep D2R's. Each DS1 is
 rewritten: its monster ids to the mod's monpreset indices, its object ids to objpreset rows of its act, appended where
 the act has none for that object. The file lists the DS1 objects the rewrite leaves out, with why; any other object
 it can't resolve fails the merge. PD2's automap rows for its new level types go to core-ui's custom table (LP2): D2R's
@@ -224,6 +225,23 @@ def merge_types(pd2: Table, d2r: Table, wanted: dict[int, int], overrides: set[s
     return merged, moved
 
 
+def split_types(types: Table, d2r: Table) -> dict[int, int]:
+    """Gives each D2R type the PD2 files went into a copy of its own, appended, and puts D2R's row back (#296): D2R's
+    legacy graphics draw a level's floor from every file its type names, so D2R's areas drew PD2's tiles (Cold Plains
+    took a5_rotatedriver.dt1's) in the act's palette. Returns D2R type -> its copy's id, for the PD2-only levels."""
+    recs, d2r_recs = types.records(), d2r.records()
+    split = {}
+    for t, (k, dk) in enumerate(zip(recs, d2r_recs)):
+        if types.rows[k] != d2r.rows[dk]:
+            split[t] = len(types.records())
+            copy = list(types.rows[k])
+            if "Id" in types.header:
+                copy[types.header.index("Id")] = str(split[t])
+            types.rows.append(copy)
+            types.rows[k] = list(d2r.rows[dk])
+    return split
+
+
 def move_bits(mask: int, moves: dict[int, int]) -> int:
     for s, to in moves.items():
         if mask >> s & 1:
@@ -329,10 +347,29 @@ def apply_files(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> N
         wanted[t] = wanted.get(t, 0) | mask
     d2r_types = load(d2r_data, "lvltypes")
     types, moved = merge_types(load(pd2_data, "lvltypes"), d2r_types, wanted, overrides)
+    split = split_types(types, d2r_types)
+    presets = [(i, split.get(t, t), mask, f) for i, t, mask, f in presets]
+    moved = {split.get(t, t): m for t, m in moved.items()}
     pd2_ids.write("lvltypes", types, [], out_data)
+    lv = Table(excel(out_data) / "levels.txt")
+    lt = col(lv, "LevelType")
+    for k in lv.records()[len(load(d2r_data, "levels").records()):]:  # the PD2-only levels
+        if lv.rows[k][lt] and int(lv.rows[k][lt]) in split:
+            lv.rows[k][lt] = str(split[int(lv.rows[k][lt])])
+    pd2_ids.write("levels", lv, [], out_data)
     cels = pd2_automap.apply(pd2_data, d2r_data, out_data)  # writes the tiles past D2R's; returns their frame count
     pd2_rows = load(pd2_data, "automap")
-    automap = automap_rows(pd2_rows, cels)
+    # the copies' automap: their D2R type's rows ("Act 1 - Wilderness" is AutoMap.txt's "1 Wilderness"), at the copy's id
+    names = {}
+    for t, n in split.items():
+        act, _, rest = d2r_types.rows[d2r_types.records()[t]][0].removeprefix("Act ").partition(" - ")
+        names[f"{act} {rest.split()[0]}"] = n
+    if lost := set(names) - {r[0] for r in pd2_rows.rows}:
+        raise ValueError(f"automap: no AutoMap.txt rows for {sorted(lost)}")
+    copies = Table.__new__(Table)
+    copies.header, copies.rows = pd2_rows.header, pd2_rows.rows + [[str(names[r[0]])] + r[1:] for r in pd2_rows.rows
+                                                                   if r[0] in names]
+    automap = automap_rows(copies, cels)
     vanilla = vanilla_automap(pd2_rows, load(d2r_data, "automap"), cels)
     pd2_ids.write("automap", vanilla, [], out_data)
     dest = excel(out_data) / AUTOMAP_TABLE

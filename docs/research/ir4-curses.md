@@ -57,11 +57,16 @@ Its entry is D2R's own. core-rules hooks it (`item_rules.cpp`):
   PD2's: the immunity cut, then resistance. aurastat1 is resisted only on a new list, as PD2 does it before the
   refresh check.
 
-Left approximated: a curse whose resisted aurastat1 truncates to 0 still lands, with the stat at 0; PD2 cancels it.
-Only a tiny aurastat1 does that on a player (the cap leaves a quarter), and no PD2 monster carries the stat.
+PD2's gate ([#264](https://github.com/synpoox/pd2-resurrected/issues/264)), before the slot walk: a curse whose aurastat1 resists to 0 (the cap above) is cancelled;
+stat 109 cuts the frames to `frames * (100 - r) / 100`, r at most 75 on a player, and 0 frames cancel it. D2R's
+NewStateList, for a curse state, refuses at stat 109 >= 100, otherwise takes `frames * r / 100` off uncapped
+(`0x433f32`), then refuses a unit with attract (state 57, `0x433fc8`). Its entry is D2RCore's, so core-rules runs
+`0x55a7e0` with the target's stat 109 cleared on its base layer (`SetUnitStat` to `base - r`) and the PD2 frames in
+CurseParams, and with the attract bit off (the state bits at stat owner `+0xaf0` that `0x2f6220` reads; `SetUnitState` writes a second array, so it does not do); both come back after the call, the bit only while the
+attract list is still there.
 
 ## Game check
 
 `tests/game/core_rules_checks.py`, tag `core-rules-ir4`: `max-curses` (a curse joins only with a free slot, a full
 target loses one, and a monster holds a second curse) and `curse-resistance` (each resisted stat matches PD2's formula
-and cap).
+and cap), `curse-resisted-to-0`, `curse-duration` (PD2's frames and the 75 cap on a player) and `curse-attract`.

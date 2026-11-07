@@ -9,6 +9,8 @@ Every PR links the issue it solves: the body opens with `Closes #<n>`, or `Part 
 Rerun the table-diff gate (`tools/pd2_diff.py`) after resolving a merge from main, and paste the report for the PR's
 final commit (its first line names the commit). Merge only on a report for the final commit. Untracked files count as uncommitted changes; the gate CI job's report names GitHub's merge commit, not the PR head.
 
+Each CHANGELOG entry is one short line (one sentence, under ~100 chars), unless it is a huge feature.
+
 After a PR merges, delete its branch, on the remote and locally.
 
 `research/*` branches hold `/wayfinder` research findings. They are never merged, and never deleted: design docs and
@@ -27,6 +29,8 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 ## Testing in-game
 
 - Game slots (separate game copies for a test, Slot4-8 here) and how to set one up: `docs/agents/game-slots.md`.
+- `pd2_extract.py` and `pd2_merge.py` reuse the machine-wide cache in `C:\pd2r-cache` (game-slots.md, "Shared cache"):
+  run them as usual, and don't copy `pd2-data/`, `generated/` or `out/` between worktrees.
 - The in-game console can toggle god mode, teleport you out of town, and spawn monsters. Use it to set up a test quickly instead of playing to the spot.
 - **Read `docs/agents/cheat-commands.md` before any in-game test.** It lists every D2RLoader console cheat command (spawn items, monsters and objects, set stats and skills, go to any level, unlock waypoints, god mode, and more). They are the fastest way to set up a test: use them instead of playing to the spot.
 - **Agents may run any in-game check, console-driven or not**, but prefer the console (clicking and movement are hard for agents). If a check runs past 10 minutes with no significant progress on what it checks, the agent stops, unlocks its slot, and a new `ready-for-human` issue hands the game check to the owner, with the steps left and what the agent already verified.
