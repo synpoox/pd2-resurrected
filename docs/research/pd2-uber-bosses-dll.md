@@ -173,8 +173,11 @@ controller, spawner and adds. So a boss left alone, or pulled out of every playe
 
 - They register as `game+0x2600` (Rathma, the bone clone) and `+0x2604` (Mendeln, the poison clone). Stage byte 0 -> 1 on
   the first tick.
-- **Life thresholds** every 10% from 90% down to 20%, with stat 446 as the event index. Mendeln alone gets 90, 70, 50 and
-  30 (the healing waves), and both get 80, 60, 40 and 20. Each event casts skill slot 7 or 8.
+- **Life thresholds** every 10% from 90% down to 20%, with stat 446 as the event index (read again for
+  [#474](https://github.com/synpoox/pd2-resurrected/issues/474)). Mendeln (rathmaPoison, not his clone) blinks to the
+  stage's spot and casts slot 7 at 90, 70, 50 and 30; both poison bosses blink there and run a cast chain (slots 6, 3,
+  then six of 2/5/1, then 4) at 80, 60, 40 and, from stage 5, 20. Rathma casts slot 7 at 80, 70, 50 and 30; his 90, 60
+  and 40 only count. At 90, 70, 50, 30 and 15 the life is set back to that mark, so one hit never skips an event.
 - **Retreat below 15%:** stage 1 -> 2 or 3 -> 4. A ghostly portal (object 585) opens at the boss, and an invisible object
   587 marks it. While the Rathma area is active, entering level 162 before stage 2 sets `game+0x2628` to 2, and entering
   163 before stage 4 sets it to 4 (section 9).
@@ -182,8 +185,9 @@ controller, spawner and adds. So a boss left alone, or pulled out of every playe
   (18284, 13759).
 - **Final pair:** when the first clone dies (stage 5 -> 6), `0x10376840` makes the surviving clone cast a skill through
   `0x1036d7d0`. That is PD2's general cast helper (nine callers, other AIs among them), so it is not a shared-life
-  mechanic. This is probably RathmaDeath's buff. From stage 6 the survivor's AI repeats the cast while it lacks state 103
-  (`monfrenzy`). When the second clone dies (6 -> 7),
+  mechanic. It is RathmaDeath's buff: the helper puts the skill's auratargetstate (monfrenzy) and aurastats on the
+  unit for auralencalc frames, and never runs its srvdo 169 (#474). From stage 6 the survivor's AI repeats it while it
+  lacks state 103 (`monfrenzy`). When the second clone dies (6 -> 7),
   every void knight, golem and totem in the level is killed.
 - **Shared life:** in PD2's damage code (`0x10302ca0`), when a clone (935 or 936) takes damage and both boss slots are
   set, the other clone loses the same life (stat 6), unless it is dead or dying or has state 8. Life-drain damage (stat
