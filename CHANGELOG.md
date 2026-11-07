@@ -14,6 +14,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Uber bosses
 
+- The Pandemonium Talisman opens Uber Tristram at the Blood Fountain, like the other uber keys.
 - The Diablo Clone, Rathma and Lucion keys open their areas. Use one at the Blood Fountain in Harrogath (Hell,
   level 80+, Rite of Passage done): everyone at the fountain who is level 80+ goes in, without their mercenary,
   summons or buffs. One map or uber area per game. The fights themselves come later.

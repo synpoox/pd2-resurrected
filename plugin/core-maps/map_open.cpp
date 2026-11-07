@@ -7,8 +7,8 @@
 // opened yet in this game; then a free spot for the portal (PD2 places it unchecked). A refused map stays in the
 // inventory and the player gets D2R's "can't do that" (D2R's caller sends none of its own). The portal is D2R's cube
 // "Red Portal" output, which places object 60 by the player and counts the opening per game; its max of 1 on OpenKey
-// is the one-per-game gate. PD2's uber-area exception (Uber Tristram, UB3) and its refusal of levels 152, 153 and 255
-// belong to `ubtm` and the Monastery map, which keep a blank pSpell.
+// is the one-per-game gate. PD2's refusal of levels 152, 153 and 255 belongs to the Monastery map, which keeps a blank
+// pSpell.
 //
 // Uber keys (UB2, docs/research/pd2-uber-bosses-dll.md, section 2) use the same spell: their `len` is an uber level.
 // One more gate, standing at the Blood Fountain; then no portal: every player at the fountain is warped in, after
@@ -16,6 +16,10 @@
 // counts on OpenKey, the gate shared with maps. A tier-0 key also leaves PD2's three grey portals by the fountain for
 // re-entry. They take PD2's portal operate (77 in PD2, D2R's free operate slot 60 here): each runs the area rules on
 // entry, warps the player in and goes. Arriving in an uber level removes its waypoints (section 3).
+//
+// The Pandemonium Talisman `ubtm` (UB3) opens Uber Tristram the same way. PD2's portal entry (0x103a9780) runs the
+// area rules only for levels 137, 161-163 and 188, so a grey portal into Uber Tristram only removes the waypoints;
+// the opening's warp (0x1038a680) still strips every player it takes in.
 #include "map_open.h"
 
 #include "d2r.h"
@@ -42,8 +46,10 @@ constexpr int32_t StatLevel = 12;      // itemstatcost level
 constexpr int32_t RiteOfPassage = 39;  // the Ancients
 constexpr int32_t Harrogath = 109;
 constexpr int32_t CantDoThat = 0x15;
-// Uber keys: Diablo Clone `dcma`, Rathma `rtma`, Lucion `luca` (PD2 levels 137, 161, 188 in the port's ids)
-constexpr int32_t UberLevels[] = {138, 160, 184};
+// Uber keys: Diablo Clone `dcma`, Rathma `rtma`, Lucion `luca`, Uber Tristram `ubtm` (PD2 levels 137, 161, 188, 185
+// in the port's ids)
+constexpr int32_t UberTristram = 181;
+constexpr int32_t UberLevels[] = {138, 160, 184, UberTristram};
 // PD2 0x1037d840 is a squared distance to the Blood Fountain (5074, 5114): the user must be within 0x95 of it, and
 // the warp takes every player under 0x96
 constexpr int32_t FountainX = 5074, FountainY = 5114;
@@ -60,8 +66,8 @@ constexpr int32_t CantEnter = 0x14;  // operate 15's refusal message
 // The bosses PD2's entry heals by 20% of max life (its set 0x105deec4): Dclone, Rathma and Mendeln and their clones,
 // Lucion, in the port's monstats ids
 constexpr int32_t UberBosses[] = {806, 950, 951, 952, 953, 1129};
-// PD2 removes the waypoints on arriving in its 137 and 161-163 (and 136 and 185, Uber Tristram's, UB3)
-constexpr int32_t NoWaypointLevels[] = {138, 160, 161, 162};
+// PD2 removes the waypoints on arriving in its 137, 161-163 and 185 (and D2R's Uber Tristram 136, turned off)
+constexpr int32_t NoWaypointLevels[] = {138, 160, 161, 162, UberTristram};
 // PD2 0x1037f4a0: the states stripped on entering an uber area, in the port's ids: enchant, coldenchant, venomclaws,
 // shout, battleorders, battlecommand, wolf, bear, fade, quickness, energyshield, shiverarmor, chillingarmor, bonearmor,
 // cyclonearmor, bladeshield, holyshield, holysword, thunderstorm, thawing, antidote, the ten shrine states,
@@ -417,7 +423,7 @@ auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
 		d2r::Engine<void (*)(Unit*, int32_t, Unit*) noexcept>(ClientMessage)(player, CantEnter, player);
 		return 0;
 	}
-	if (IsUberLevel(level)) {
+	if (IsUberLevel(level) && level != UberTristram) {
 		int32_t* entries = CounterOf(game, EntryKey);
 		*entries += 1;
 		const int32_t healed = HealBosses(game, level);
