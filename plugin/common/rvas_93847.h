@@ -1128,6 +1128,18 @@ inline constexpr uint32_t UnitNoDrop = 0x20000;
 inline constexpr uint64_t ActSpawnSpot = 0x2ef8b0;
 inline constexpr int GameActs = 0x190, GameActCount = 0x198;
 
+// --- core-maps: the Temple's chests (UB6, #438; D2Game\src\Objects\ObjMode.cpp) ------------------------------------
+// Decompiled for #438 (Ghidra, D2R.gpr). One operate table slot wrapped (rva::ObjectOperateTable).
+// D2R's chest operate (OperateFn 4): mode 0 only; it sets mode 1 with event 1 at the open frames (or mode 2), plays
+// sound 0xb for a locked chest, then drops the act's chest TC. PD2's LucionChest keeps OperateFn 4.
+inline constexpr uint64_t OperateChest = 0x58e2f0;
+inline constexpr int ObjectOperateChest = 4;
+// How the chest operate plays its unlock sound: rva::ClientMessage(player, 0xb, player), then (player) -> its client
+// (player data +0xf0, null for a non-player) and (player, client) sends the sound packet 0x2c
+inline constexpr uint64_t PlayerClient = 0x48fde0;
+inline constexpr uint64_t SoundPacket = 0x5397f0;
+inline constexpr int SoundChestOpen = 0xb;
+
 // --- core-rules: the ethereal bonus (IR8, #243) --------------------------------------------------------------------
 // (item): sets the ethereal flag, then base stats times 3/2 (1.13c's D2Common #10890, which PD2 replaces with
 // 0x102fb710). Callers: the drop 0x442d60, the ethereal property 0x3ccc60, the cube output 0x5269c0.

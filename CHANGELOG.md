@@ -26,6 +26,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
 - Lucion's death opens a portal to the Temple, ends his adds and drops a Demonic Cube at tiers 1-2.
 - Lucion's death also opens a portal in Harrogath back into his arena.
+- The Temple's Lucion chests show and drop PD2's LucionChest loot, one more item per uber tier.
 
 #### Maps
 

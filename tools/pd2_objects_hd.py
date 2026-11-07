@@ -3,12 +3,14 @@
 works but draws nothing (#431: the xact portals).
 
 merge/objects-hd.tsv has one line per drawn PD2 object: `class <tab> like`, the D2R objects.json key whose json it
-copies as a stand-in. The class is the exact key (PD2's are lower case with `_`, as D2R's keys are). A line for a class
-that is not a PD2-only objects row, or a like D2R lacks, fails the merge. Runs after ids-objects.tsv (by name).
+copies as a stand-in. The class is the objects.txt `Class`; its key is `key(class)`, D2R's snake case (every D2R row's
+key follows it: `ConsolationChest` is `consolation_chest`, `Chest1B` is `chest_1_b`). A line for a class that is not a
+PD2-only objects row, or a like D2R lacks, fails the merge. Runs after ids-objects.tsv (by name).
 """
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from pd2_ids import Table, excel
@@ -18,6 +20,12 @@ HD = Path("hd") / "objects"
 
 class ObjectHdError(ValueError):
     pass
+
+
+def key(cls: str) -> str:
+    """D2R's objects.json key of an objects.txt Class: `_` between words and between letters and digits, lower case."""
+    return re.sub(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])|(?<=[A-Z])(?=[A-Z][a-z])", "_",
+                  cls).lower()
 
 
 def read_lines(path: Path) -> dict[str, str]:
@@ -45,7 +53,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             raise ObjectHdError(f"'{cls}': '{like}' has no D2R object json")
         folder = folders[like]["asset_path"]
         (out_data / HD / folder).mkdir(parents=True, exist_ok=True)
-        (out_data / HD / folder / f"{cls}.json").write_bytes(src.read_bytes())
-        folders[cls] = {"asset_path": folder}
+        (out_data / HD / folder / f"{key(cls)}.json").write_bytes(src.read_bytes())
+        folders[key(cls)] = {"asset_path": folder}
     (out_data / HD / "objects.json").write_text(json.dumps(folders, indent=1), "utf-8")
     print(f"  objects-hd: {len(likes)} new objects drawn")
