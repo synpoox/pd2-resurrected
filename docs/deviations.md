@@ -14,7 +14,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 
 ## Features and data
 
-### Cut (23)
+### Cut (25)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -71,7 +71,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | Guilds | not yet | cut in spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41) with the online layer; the cut is reversed and guilds come with multiplayer ([#339](https://github.com/synpoox/pd2-resurrected/issues/339)) | [#339](https://github.com/synpoox/pd2-resurrected/issues/339), beta |
 | Controller: PD2's own screens and binds | not yet | D2R's native controller support stands in; PD2's extra screens and binds were cut in spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41), and the cut is reversed ([#340](https://github.com/synpoox/pd2-resurrected/issues/340)) | [#340](https://github.com/synpoox/pd2-resurrected/issues/340), beta |
 
-### Approximated (42)
+### Approximated (44)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -137,7 +137,7 @@ rows have no table hook: D2R does what it does.
 | Corrupted zones | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): D2R's Terror Zones stay in their place |  |
 | Level life regen cap (30, `bloodwarp` lifts it) | cut | PD2 caps it only in the PvP arenas (levels 157, 159, 166), and PvP is cut ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)) ([ms3-map-stats](research/ms3-map-stats.md)) |  |
 
-### Not yet (33)
+### Not yet (32)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -174,7 +174,7 @@ rows have no table hook: D2R does what it does.
 | Item quantity display | approximated | the number sits at the bottom right of the picture (#359 asks for it; PD2 draws it bottom left), white with D2R's drop shadow instead of PD2's black box; tomes show no number (PD2 shows their charges; the owner's call); the stash's Gems/Materials/Runes tabs show D2R's own count instead | [#359](https://github.com/synpoox/pd2-resurrected/issues/359) |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 
-### Approximated (59)
+### Approximated (58)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
