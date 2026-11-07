@@ -113,7 +113,8 @@ twice. With *e* = max(entries − 1, 0), entries being the byte at `game+0x2628`
   (`0x10312350`).
 
 So monsters in maps are not scaled: they are not in the set. [#347](https://github.com/synpoox/pd2-resurrected/issues/347)
-corrected three points of the first reading: the set, the poison length resist (+e, not +3×e) and the maps.
+corrected three points of the first reading: the set, the poison length resist (+e, not +3×e) and the maps (the
+issue's "maps get ×1.5 too" is wrong; the game check on Slot5 showed a zombie in level 138 left unscaled).
 
 The Ghidra project's `ProjectDiablo.dll` is not byte for byte the baseline's (`pd2-baseline.json`): the same code
 sits at shifted addresses and reads shifted constants. The numbers above (20.0 at `0x1044fbe8`, the sets) were read

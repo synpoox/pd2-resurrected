@@ -34,7 +34,7 @@ def _log(ctx) -> str:
 
 
 def expected_maxhp(maxhp: int, tier: int, boss: bool) -> int:
-    """PD2's 0x10381160 in whole life points (the log's), so within 3 of the 1/256 result."""
+    """PD2's 0x10381160 in whole life points (the log's): the dropped fraction of a point grows by up to the factor (5.6), so within 6."""
     p = maxhp * 3 // 2 if tier < 1 else maxhp * (4 if boss else 3)
     return p + tier * (p * 20 // 100)
 
@@ -50,7 +50,7 @@ def uber_scaling(ctx):
     for cls, unit, level, tier, entries, old, new, _, _, skills, absorb, magic, dr, plr in rows:
         boss = cls in BOSSES
         assert cls in FIGHT, f"monster {cls} is not an uber fight monster but was scaled"
-        assert abs(new - expected_maxhp(old, tier, boss)) <= 3, f"monster {cls}: maxhp {old} -> {new} at tier {tier}"
+        assert abs(new - expected_maxhp(old, tier, boss)) <= 6, f"monster {cls}: maxhp {old} -> {new} at tier {tier}"
         assert skills >= 4 * tier, f"monster {cls}: skills +{skills} at tier {tier}"
         e = max(entries - 1, 0)
         if boss:
