@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <utility>
 
@@ -33,11 +34,25 @@ Row g_rows[MaxRows];
 // The test aid's request (RequestBossLife): -1 for none
 std::atomic<int32_t> g_lifePercent {-1};
 std::atomic<int32_t> g_lifeClass {0};
+// When it was made (steady clock, ms): a request no boss of its class took within LifeRequestMs is dropped, so it
+// never lands in a later game
+std::atomic<int64_t> g_lifeAt {0};
+constexpr int64_t LifeRequestMs = 10000;
+
+auto NowMs() noexcept -> int64_t {
+	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch())
+		.count();
+}
 
 // Sets a ported boss's life on its own think, on the server thread, so the console thread never writes a unit
 auto ApplyLifeRequest(Unit* unit, int32_t classId) noexcept -> void {
 	const int32_t want = g_lifeClass.load();
-	if (g_lifePercent.load() < 0 || (want != 0 && want != classId)) {
+	if (g_lifePercent.load() < 0 || want != classId) {
+		return;
+	}
+	if (NowMs() - g_lifeAt.load() > LifeRequestMs) {
+		g_lifePercent.store(-1);
+		plog::Info("ai hooks: test aid: the request for class %d expired unused", want);
 		return;
 	}
 	const int32_t percent = g_lifePercent.exchange(-1);
@@ -118,6 +133,7 @@ auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, uint6
 
 auto RequestBossLife(int32_t percent, int32_t classId) noexcept -> void {
 	g_lifeClass.store(classId);
+	g_lifeAt.store(NowMs());
 	g_lifePercent.store(std::clamp(percent, 0, 100));
 }
 
