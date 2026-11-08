@@ -188,8 +188,8 @@ FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
          "misc": {"pSpell": {MAP_SPELL: "16"}},
          "levels": {"Teleport": {"3": "1"}},
          "missiles": {"pSrvDoFunc": {"38": "46", "40": "47"}, "pCltDoFunc": {"70": "78", "69": "79", "72": "80"},
-                      "pSrvHitFunc": {"30": "66", "34": "69", "6": "67"},
-                      "pSrvDmgFunc": {"15": "22", "16": "21", "17": "20"}, "pCltHitFunc": {"26": "71", "6": "68"}},
+                      "pSrvHitFunc": {"30": "66", "34": "69", "6": "67", "60": "68"},
+                      "pSrvDmgFunc": {"15": "22", "16": "21", "17": "20"}, "pCltHitFunc": {"26": "71", "6": "68", "65": "72"}},
          "skills": {"srvdofunc": {"153": "172", "154": "183", "155": "190", "156": "190", "157": "190", "159": "190",
                                   "160": "190", "161": "190", "162": "190", "163": "190", "164": "190", "165": "190",
                                   "166": "190", "169": "190", "170": "190", "181": "190", "143": "190", "184": "190",
@@ -205,9 +205,10 @@ FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
 # missiles.txt parameters a PD2 hit function reads as ids: pSrvHitFunc -> {column: the table it names}. srvhit 61
 # (Poison Dagger's cloud, the throwing potions, Kanemith's blaze dot) gives the hit unit state sHitPar1 with stats
 # sHitPar3 and cHitPar2.
-# srvhit 67 (PD2's 6, the summon-on-hit missiles; keyed by the mod's number) spawns monstats row sHitPar1.
+# srvhit 67 (PD2's 6, the summon-on-hit missiles; keyed by the mod's number) spawns monstats row sHitPar1, and srvhit
+# 68 (PD2's 60, the throwing potions and Sharptooth's Armageddon) row sHitPar3.
 HIT_PARAMS = {"61": {"sHitPar1": "states", "sHitPar3": "itemstatcost", "cHitPar2": "itemstatcost"},
-              "67": {"sHitPar1": "monstats"}}
+              "67": {"sHitPar1": "monstats"}, "68": {"sHitPar3": "monstats"}}
 # PD2's srvdo 188 / cltdo 117 (Lightning Bolt, Lightning Fury) only create srvmissile, else srvmissilea (cltmissile,
 # else cltmissilea), with the arguments D2R's do dispatcher passes for srvmissile / cltmissile after any do function
 # (docs/research/lightning-javelins.md). So the merge moves that missile into srvmissile / cltmissile and drops the

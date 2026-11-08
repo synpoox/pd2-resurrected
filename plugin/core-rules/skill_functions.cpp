@@ -4660,6 +4660,9 @@ const SlotFunction Functions[] = {
 	// Rathma (UB5): srvdo 179 and dmg 18 are free in D2R
 	{SrvDo, 179, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoRathmaSummon)), "rathma summon"},
 	{MissileSrvDmg, 18, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgRathmaSpear)), "rathma bone spear"},
+	// The throwing potions (IR5): D2R fills shit 60 and chit 65, so ours take the free 68 and 72 (FUNCS)
+	{MissileSrvHit, 68, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitThrowPotion)), "throw potion"},
+	{MissileCltHit, 72, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitThrowPotion)), "throw potion"},
 };
 
 }  // namespace

@@ -41,5 +41,8 @@ void SrvDmgBladeFragment(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit, ui
 auto CltHitBladeFragment(d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // chit 68 (PD2 6)
 auto SrvHitSummon(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 67 (PD2 6)
 void SrvDmgRathmaSpear(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit, uint8_t* damage) noexcept;  // dmg 18
+// The throwing potions (IR5).
+auto SrvHitThrowPotion(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 68 (PD2 60)
+auto CltHitThrowPotion(d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // chit 72 (PD2 65)
 // Live counters for the status command.
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void;
