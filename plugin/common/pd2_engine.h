@@ -198,9 +198,8 @@ inline constexpr uint64_t UnitStateKey = 0x34b6c0;  // (unit) -> value Frozen Ar
 inline constexpr uint64_t StateListKey = 0x435920;  // (dataFlag, list, key) -> stat 202 value
 inline constexpr uint64_t SendSkillState = 0x438470;  // (game, unit, skill, level, key, 1, state, &aurastat, &calc, 4)
 // (unit, state, on): only the state's gfx/update bit, in the second array after owner +0xaf0 (0x2f62d0), then
-// QueueUnitUpdate. Not the state: UnitHasState never reads it. Alone it is right only after a list carrying the state
-// was attached (NewStateList, or SetListState + AttachStatList), as D2R's 0x553650; a bare state takes SetStateBit
-// first (#623).
+// QueueUnitUpdate. Not the state: UnitHasState never reads it. Alone it is right only after NewStateList, as D2R's
+// 0x553650; a bare state, or a list attached with SetListState + AttachStatList, takes SetStateBit first (#623, #630).
 inline constexpr uint64_t SetStateGfxFlag = 0x3355a0;
 inline constexpr uint64_t SkillStateExpired = 0x5551f0;  // Frozen Armor's expiry callback: removes the state
 
@@ -249,7 +248,9 @@ inline constexpr uint64_t SrvPrgDispatch = 0x56c3e0;
 inline constexpr uint64_t SendChargePacket = 0x5396d0;
 inline constexpr uint64_t ListStatValue = 0x2f5df0;  // (dataFlag, list, stat, layer) -> value
 inline constexpr uint64_t NewStatList = 0x2f7300;  // (flags, expire frame, unit type, unit id) -> list or null
-inline constexpr uint64_t AttachStatList = 0x2f2cb0;  // (unit, list, 1)
+// (unit, list, 1). It does not set the list's state bit: UnitHasState read 0 after it in game (#630), and D2R's
+// 0x339d70 calls SetStateBit after it. Its body is D2RCore's (jmp [0x3e2a270], filled at runtime).
+inline constexpr uint64_t AttachStatList = 0x2f2cb0;
 // Dragon Flight (W31): D2R's srvdo 52 (0x56fc80) fills its kick with this after the roll (MeleeRoll, below), on a
 // d2r::LeapKnockback block with DmgPercent set
 inline constexpr uint64_t MeleeFill = 0x573af0;  // (game, &block, unit, target, skill, level): the hit's damage

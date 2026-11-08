@@ -240,6 +240,7 @@ auto Apply(Game* game, Unit* unit, char which) noexcept -> bool {
 		}
 	}
 	d2r::Engine<void (*)(Unit*, void*, int32_t) noexcept>(AttachStatList)(unit, list, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(unit, MapState, 1);  // AttachStatList does not (#630)
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, MapState, 1);
 	return true;
 }

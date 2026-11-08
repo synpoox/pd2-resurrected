@@ -300,6 +300,7 @@ auto EmpowerBoss(Game* game, Unit* monster, uint32_t lifePercent) noexcept -> vo
 		set(dataFlag, list, stat, 10, 0);
 	}
 	d2r::Engine<void (*)(Unit*, void*, int32_t) noexcept>(AttachStatList)(monster, list, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(monster, MapEventState, 1);  // AttachStatList does not (#630)
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(monster, MapEventState, 1);
 }
 
