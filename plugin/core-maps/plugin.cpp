@@ -42,7 +42,7 @@
 #define CORE_PLUGIN_NAME "core-maps"
 #endif
 #ifndef CORE_PLUGIN_VERSION
-#define CORE_PLUGIN_VERSION "0.1.0"
+#define CORE_PLUGIN_VERSION "0.2.0"
 #endif
 
 namespace {
