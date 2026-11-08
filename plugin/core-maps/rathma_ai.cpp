@@ -182,12 +182,9 @@ auto ApplyAuraState(Game* game, Unit* owner, Unit* unit, int32_t skillId, int32_
 	if (list == nullptr) {
 		return false;
 	}
-	// PD2's helper (0x1036d7d0) ORs 0x800 (when 0x1030c560 holds for the state) and 8 (expansion games, which every
-	// D2R game is) into the new list's flags; D2R's NewStateList made it with 2 alone in the Slot8 check (#478)
-	auto& flags = *reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(list) + ListFlags);
-	const uint32_t before = flags;
-	flags |= 0x800 | 8;
-	plog::Info("rathma: state %d list flags 0x%x -> 0x%x", state, before, flags);
+	// shortcut: PD2's helper (0x1036d7d0) ORs 8 into the list's flags in expansion games (game+0x10 & 2) and 0x800 for
+	// a state with states.txt `exp` (D2Common #10226; blank for monfrenzy and disable_tele). D2R's NewStateList's own
+	// flags stand, as for the uber scaling and map stat lists
 	d2r::Engine<void (*)(Unit*, void*, const uint8_t*, int32_t, int32_t) noexcept>(AddAuraStats)(unit, list, skill,
 	                                                                                           skillId, level);
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
