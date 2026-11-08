@@ -19,12 +19,14 @@
 #include "lucion.h"
 #include "lucion_ai.h"
 #include "lucion_chests.h"
+#include "map_bosses.h"
 #include "map_events.h"
 #include "map_open.h"
 #include "map_stats.h"
 #include "off_switch.h"
 #include "prime_minions.h"
 #include "rathma_ai.h"
+#include "guardian_ai.h"
 #include "rathma.h"
 #include "rathma_life.h"
 #include "uber_tristram.h"
@@ -148,6 +150,12 @@ void InstallDclone(const D2RL::PluginContext* context, char* report, size_t size
 	std::snprintf(report, size, "%d/2 installed: %s", installed, rules);
 }
 
+void InstallGuardian(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallGuardianAi(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
+}
+
 void InstallZharPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
 	const int installed = InstallZhar(context, rules, sizeof(rules));
@@ -175,6 +183,7 @@ Part g_parts[] = {
 	{"rathmaai", InstallRathma, ""},
 	{"rathmalife", InstallRathmaLifePart, ""},
 	{"dcloneai", InstallDclone, ""},
+	{"guardianai", InstallGuardian, ""},
 	{"zhar", InstallZharPart, ""},
 };
 
@@ -258,6 +267,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	ZharCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
+	MapBossCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
 	LucionAiCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
@@ -268,6 +280,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	DcloneAiCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	GuardianAiCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;

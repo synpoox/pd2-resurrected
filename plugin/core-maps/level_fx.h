@@ -10,5 +10,6 @@ auto SetDarkness(d2r::Game* game, d2r::Unit* unit, bool on) noexcept -> void;
 // SetDarkness for the act of `level`, found through a player in it (PD2 passes the level's act). False when no
 // player is in the level.
 auto SetLevelDarkness(d2r::Game* game, int32_t level, bool on) noexcept -> bool;
-// PD2 0x1037f240: plays sounds.txt row `sound` on each player in `level` (packet 0x2c).
+// PD2 0x1037f240: plays sounds.txt row `sound` on each player in `level` (packet 0x2c), or on every player in game
+// for a level of 0 or less (PD2's 0).
 auto PlayLevelSound(d2r::Game* game, int32_t level, int32_t sound) noexcept -> void;

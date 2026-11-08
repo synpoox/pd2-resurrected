@@ -179,6 +179,10 @@ inline constexpr uint64_t RemoveSkillState = 0x4370b0;
 // What 0x4370b0 does for each state it removes: state bit off (unit, state, 0), then the list detached (unit, list)
 // and freed (dataFlag, list)
 inline constexpr uint64_t ClearUnitState = 0x3354c0;
+// The same function with on 1: sets the state bit UnitHasState reads (owner +0xaf0, via 0x2f7ea0), then QueueUnitUpdate.
+// D2R's srvst 63 (0x587b50) takes its corpse with it. SetUnitState (0x3355a0) writes the second array, which
+// UnitHasState never reads (#378).
+inline constexpr uint64_t SetStateBit = 0x3354c0;  // (unit, state, on)
 inline constexpr uint64_t DetachStatList = 0x2f7920;
 inline constexpr uint64_t FreeStatList = 0x2f4180;
 // (&StateListRequest) -> stat list or null. An older list of the state with the same skill and level only gets
@@ -1150,6 +1154,12 @@ inline constexpr uint64_t AiMephisto = 0x5b1ca0, AiDiablo = 0x5c8d40, AiBaalCrab
 inline constexpr uint64_t AiOverseer = 0x5c2290;  // row 120's think (Lucion, #437)
 inline constexpr uint64_t AiTrapMelee = 0x5b5ca0;  // row 87's think (Dclone, #470): melee by aip1, else idle aip2
 inline constexpr uint64_t AiTrappedSoul = 0x5cfb20;  // row 99's think (the trapped souls, #472), read from the table
+// Row 71's think (Regurgitator, #609), read from the table; its state opens with the same "state 5: idle 0x10" as
+// 1.13c's 0x6fca3fe0, the think PD2's Altar guardian AI falls back to
+inline constexpr uint64_t AiRegurgitator = 0x5b3040;
+// The tick's AI control (tick +0): its three int params at +0x44 (1.13c +0x14, +0x18, +0x1c), as the Regurgitator
+// think reads its state at +0x44 and corpse at +0x48
+inline constexpr int AiTickControl = 0x0, AiControlParams = 0x44;
 // The think's tick block: the target at +0x10 (1.13c +0x08), its distance at +0x20 (1.13c +0x14), as the Mephisto
 // think reads them
 inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;

@@ -78,9 +78,11 @@ add_library(core_maps SHARED
 	core-maps/uber_tristram.cpp
 	core-maps/unique_maps.cpp
 	core-maps/zhar.cpp
+	core-maps/map_bosses.cpp
 	core-maps/lucion_ai.cpp
 	core-maps/level_fx.cpp
 	core-maps/rathma_ai.cpp
+	core-maps/guardian_ai.cpp
 	core-maps/rathma_life.cpp
 	core-maps/dclone_ai.cpp
 	core-maps/ai_hooks.cpp
