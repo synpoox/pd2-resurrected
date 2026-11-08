@@ -1146,6 +1146,12 @@ inline constexpr uint64_t AiMephisto = 0x5b1ca0, AiDiablo = 0x5c8d40, AiBaalCrab
 inline constexpr uint64_t AiOverseer = 0x5c2290;  // row 120's think (Lucion, #437)
 inline constexpr uint64_t AiTrapMelee = 0x5b5ca0;  // row 87's think (Dclone, #470): melee by aip1, else idle aip2
 inline constexpr uint64_t AiTrappedSoul = 0x5cfb20;  // row 99's think (the trapped souls, #472), read from the table
+// Row 71's think (Regurgitator, #609), read from the table; its state opens with the same "state 5: idle 0x10" as
+// 1.13c's 0x6fca3fe0, the think PD2's Altar guardian AI falls back to
+inline constexpr uint64_t AiRegurgitator = 0x5b3040;
+// The tick's AI control (tick +0): its three int params at +0x44 (1.13c +0x14, +0x18, +0x1c), as the Regurgitator
+// think reads its state at +0x44 and corpse at +0x48
+inline constexpr int AiTickControl = 0x0, AiControlParams = 0x44;
 // The think's tick block: the target at +0x10 (1.13c +0x08), its distance at +0x20 (1.13c +0x14), as the Mephisto
 // think reads them
 inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;

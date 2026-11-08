@@ -129,11 +129,11 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	if (tier < 0 || game == nullptr || At<uint16_t>(game, GameIdField) != id) {
 		return;
 	}
+	Unit* monster = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(game, 1, event->monster.id);
 	if (event->monster.classId == AltarGuardian) {
-		AltarGuardianDied(game);
+		AltarGuardianDied(game, monster);
 		return;
 	}
-	Unit* monster = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(game, 1, event->monster.id);
 	// shortcut: a kill by a missile, a pet or a console cheat rolls for the game's first player, which offline is the
 	// only one; find the missile's or pet's owner if multiplayer ever needs it
 	Unit* killer = event->killer.type == UnitType::Player

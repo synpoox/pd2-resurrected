@@ -76,7 +76,7 @@ auto SetDarkness(Game* game, Unit* unit, bool on) noexcept -> void {
 auto PlayLevelSound(Game* game, int32_t level, int32_t sound) noexcept -> void {
 	using namespace d2r::rva;
 	ForEachClient(game, [&](void* client, Unit* player) {
-		if (LevelOf(player) == level) {
+		if (level <= 0 || LevelOf(player) == level) {
 			d2r::Engine<void (*)(Unit*, int32_t, Unit*) noexcept>(ClientMessage)(player, sound, player);
 			d2r::Engine<void (*)(Unit*, void*) noexcept>(SoundPacket)(player, client);
 		}
