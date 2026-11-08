@@ -21,12 +21,20 @@
 //   item-level tiers, and a level from rand%(90 + min(ilvl/3, 10)) + bonus/2. No PluginSDK service runs inside item
 //   generation, so D2R's staffmods step (0x58a050) is wrapped: an item of the seven classes gets PD2's roll; a
 //   Warlock item (PD2 has no list) keeps D2R's.
+// - seal kills (#664): the monsters Chaos Sanctuary's sweep kills when the fifth seal opens drop nothing. PD2 sets
+//   their no-treasure-class flag before 1.13c's kill (0x10372e10 over +0xbb4b8). No SDK service runs before a drop
+//   (the monster-death event comes after it and only observes), so D2R's mode command (0x4471e0) is wrapped: called
+//   from the sweep (its return address), it sets the flag on the monster first.
+// Flying monsters' loot needs no port: PD2 patches nothing in 1.13c's drop placement, which, as D2R's (0x444680),
+//   puts the item on the nearest free tile by mask 0x3e01, unwalkable tiles excluded.
 #include "loot_rules.h"
 
 #include "pd2_engine.h"
 #include "log.h"
 
 #include <D2RLPlugin/mutations.h>
+
+#include <intrin.h>
 
 #include <atomic>
 #include <cstdint>
@@ -46,6 +54,19 @@ constexpr int32_t WeaponStats[] = {21, 22, 23, 24, 159, 160};  // mindamage, max
 std::atomic<uint32_t> g_ethereal {0};
 std::atomic<uint32_t> g_rareBlocked {0};
 std::atomic<uint32_t> g_staffMods {0};
+std::atomic<uint32_t> g_sealKills {0};
+
+using ModeCmdInitFn = uint64_t (*)(Unit*, int32_t, void*) noexcept;
+ModeCmdInitFn g_modeCmdInitOriginal = nullptr;
+
+auto SealSweepModeCmd(Unit* unit, int32_t mode, void* cmd) noexcept -> uint64_t {
+	using namespace d2r::rva;
+	if (unit != nullptr && reinterpret_cast<uint64_t>(_ReturnAddress()) == d2r::imageBase + SealSweepKillReturn) {
+		d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlags)(unit, UnitNoDrop, 1);
+		++g_sealKills;
+	}
+	return g_modeCmdInitOriginal(unit, mode, cmd);
+}
 
 constexpr int32_t QualityRare = 6, QualityCrafted = 8, QualityTempered = 9;
 
@@ -362,18 +383,22 @@ auto InstallLootRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool durability = PatchWeaponDurability(context);
 	const bool staffMods = context->InstallInlineHook(ItemStaffMods, ItemStaffModsEntry, sizeof(ItemStaffModsEntry),
 	                                                  &StaffMods, &g_staffModsOriginal);
-	std::snprintf(report, reportSize, "ethereal bonus%s; affix rare%s; weapon durability 1/2%s; staffmods%s",
+	const bool seals = context->InstallInlineHook(ModeCmdInit, ModeCmdInitEntry, sizeof(ModeCmdInitEntry),
+	                                              &SealSweepModeCmd, &g_modeCmdInitOriginal);
+	std::snprintf(report, reportSize,
+	              "ethereal bonus%s; affix rare%s; weapon durability 1/2%s; staffmods%s; seal kills drop nothing%s",
 	              !decoder ? " FAILED (decoder bytes differ)" : ethereal ? "" : " FAILED (bytes differ)",
 	              rare ? "" : " FAILED (bytes differ)", durability ? "" : " FAILED (bytes differ)",
-	              staffMods ? "" : " FAILED (bytes differ)");
-	return (ethereal ? 1 : 0) + (rare ? 1 : 0) + (durability ? 1 : 0) + (staffMods ? 1 : 0);
+	              staffMods ? "" : " FAILED (bytes differ)", seals ? "" : " FAILED (bytes differ)");
+	return (ethereal ? 1 : 0) + (rare ? 1 : 0) + (durability ? 1 : 0) + (staffMods ? 1 : 0) + (seals ? 1 : 0);
 }
 
 auto LootRuleCount() noexcept -> int {
-	return 4;
+	return 5;
 }
 
 auto LootRuleCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "ethereal bonuses %u, rare-only affixes refused %u, staffmods rolls %u",
-	              g_ethereal.load(), g_rareBlocked.load(), g_staffMods.load());
+	std::snprintf(out, size,
+	              "ethereal bonuses %u, rare-only affixes refused %u, staffmods rolls %u, seal kills without drops %u",
+	              g_ethereal.load(), g_rareBlocked.load(), g_staffMods.load(), g_sealKills.load());
 }

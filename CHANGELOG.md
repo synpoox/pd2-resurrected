@@ -17,6 +17,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Throwing potions burst into their explosion and fire, gas, cold or lightning ring.
 - Weapons lose durability half as often.
 - Class items roll skill bonuses from the whole class tree, gated by each skill's required level.
+- Monsters cleared from Chaos Sanctuary when Diablo arrives drop nothing.
 - Nova item casts (on striking, charges) burst around the target, and no longer misfire.
 
 #### Maps
