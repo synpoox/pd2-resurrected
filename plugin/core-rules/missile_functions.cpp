@@ -544,6 +544,83 @@ auto SrvHitBoltSplash(Game* game, Unit* missile, Unit* /*hit*/) noexcept -> int3
 	return 1;
 }
 
+// --- Uber immolation arrow (PD2 shit 64, UB4: the trapped souls' UberDiabloBoulder) --------------------------------
+namespace {
+
+std::atomic<uint32_t> g_uberImmolationHits {0};
+
+}  // namespace
+
+// shit 64 (PD2 0x103a8ca0): D2R's Immolation Arrow hit (srvhit 9, 0x45d020) as PD2 changed it. HitSubMissile1 burns at
+// every open spot within sHitPar1 of the missile (0: the skill's calc1, at least 1) for SHitCalc1 frames; then every
+// unit within sHitPar2 (0: the skill's aurarangecalc, not clamped) takes the missile's damage with the row's HitFlags
+// and ResultFlags. Returns 1, so the struck unit takes no damage of its own. PD2's UberDiabloBoulder has no
+// aurarangecalc, so the radius is 0, D2R's area walk (0x4398b0) skips it, and only the fire disc does damage.
+// srvhit 9 also clears the missile's cold length and freeze before the disc (stats 56, 134), clamps the damage radius
+// to 1 and reads calc2 for it, and returns 3; PD2's leaves all four out.
+auto SrvHitUberImmolation(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (game == nullptr || missile == nullptr) {
+		return 1;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
+		dataFlag, At<int32_t>(missile, UnitClassId));
+	if (row == nullptr) {
+		return 1;
+	}
+	const int32_t skillId = At<int16_t>(row, MsSkill);
+	const int32_t level = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileLevel)(missile);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	int32_t x = 0, y = 0;
+	if (skill == nullptr || !d2r::UnitXY(missile, &x, &y)) {
+		return 1;
+	}
+	Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, missile);
+	const int32_t sub = At<int16_t>(row, MsHitSubMissile1);
+	int32_t discRadius = 0, frames = 0;
+	if (sub >= 0) {
+		discRadius = At<int32_t>(row, MsHitPar1);
+		if (discRadius < 1) {
+			discRadius = owner == nullptr ? 0 : d2r::EvalCalc(game, owner, skill, SkCalc1, skillId, level);
+			discRadius = discRadius < 1 ? 1 : discRadius;
+		}
+		using EvalFn = int32_t (*)(uint32_t, Unit*, Unit*, int32_t, int32_t, int32_t) noexcept;
+		frames = d2r::Engine<EvalFn>(EvalMissileCalc)(dataFlag, missile, owner, At<int32_t>(row, MsHitCalc1), -1, -1);
+		frames = frames < 0 ? 0 : frames;
+		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t) noexcept>(MissileFireDisc)(game, missile, discRadius,
+		                                                                                     sub, frames);
+	}
+	int32_t radius = At<int32_t>(row, MsHitPar2);
+	if (radius < 1 && owner != nullptr) {
+		radius = d2r::EvalCalc(game, owner, skill, SkAuraRangeCalc, skillId, level);
+	}
+	if (owner != nullptr && radius >= 1) {  // D2R's area walk does nothing below 1, as 1.13c's does
+		d2r::LeapKnockback damage;
+		damage.resultFlags = 0;
+		d2r::Engine<void (*)(Game*, Unit*, Unit*, d2r::LeapKnockback*) noexcept>(MissileDamageFill)(game, missile, hit,
+		                                                                                         &damage);
+		damage.hitFlags |= At<uint32_t>(row, MsHitFlags);
+		damage.resultFlags |= At<uint16_t>(row, MsResultFlags);
+		// srvhit 9 lends the owner the missile's state key for the area hit, then puts the owner's back
+		const auto key = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey);
+		const auto setKey = d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitStateKey);
+		const int32_t ownerKey = key(owner);
+		setKey(owner, key(missile));
+		uint8_t scratch[0x20] {};  // as srvhit 9 passes it: only its byte +0x18 (0) is read
+		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, d2r::LeapKnockback*, int32_t, void*) noexcept>(
+			AreaKnockback)(game, owner, x, y, radius, &damage, 0, scratch);
+		setKey(owner, ownerKey);
+		ReleaseDamage(damage);
+	}
+	if (plog::Sample(g_uberImmolationHits)) {
+		plog::Info("uber immolation hit: missile row %d skill %d level %d: fire row %d in radius %d for %d frames, "
+		           "damage radius %d%s, hit %u", At<int32_t>(missile, UnitClassId), skillId, level, sub, discRadius,
+		           frames, radius, radius >= 1 ? "" : " (none)", g_uberImmolationHits.load());
+	}
+	return 1;
+}
+
 // --- Client hits around the hit point (W17, docs/research/w17-holy-light.md) ---------------------------------------
 namespace {
 
