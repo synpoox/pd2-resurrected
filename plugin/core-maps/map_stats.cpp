@@ -454,7 +454,7 @@ auto Rand() noexcept -> int32_t {
 // it and never the destroyed one; the first row whose value beats the roll puts its mods on.
 // With `desecrate` (PD2's flag 1, Desecration) the roll is 851-999 from the start (an amulet's rows 682-689) and the
 // row's corrupt/corruptnum go on as desecrate/desecratenum; the caller checks the item.
-auto CorruptItem(Game* game, Unit* item, bool desecrate) noexcept -> bool {
+auto CorruptItem(Game* game, Unit* item, bool desecrate, const char* label = "map drops") noexcept -> bool {
 	using namespace d2r::rva;
 	const uint32_t dataFlag = d2r::DataFlag(game);
 	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
@@ -509,7 +509,7 @@ auto CorruptItem(Game* game, Unit* item, bool desecrate) noexcept -> bool {
 			int32_t property[4] = {prop, At<int16_t>(mod, 4), At<int16_t>(mod, 6), At<int16_t>(mod, 8)};
 			d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(ApplyCubeMod)(item, property);
 		}
-		plog::Info("%s: item %d %s by cubemain row %d (roll %d of %d-999)", desecrate ? "desecration" : "map drops",
+		plog::Info("%s: item %d %s by cubemain row %d (roll %d of %d-999)", desecrate ? "desecration" : label,
 		           At<int32_t>(item, UnitClassId), desecrate ? "desecrated" : "corrupted", i, roll, floor);
 		return true;
 	}
@@ -643,6 +643,10 @@ constexpr StatDrop StatDrops[] = {
 std::atomic<uint32_t> g_deathDrops {0};  // extra drops and stat drops made
 
 }  // namespace
+
+auto CorruptFreshItem(Game* game, Unit* item) noexcept -> bool {
+	return CorruptItem(game, item, false, "desecration brick");
+}
 
 auto DesecrateItem(Game* game, Unit* item) noexcept -> bool {
 	return CorruptItem(game, item, true);
