@@ -6,6 +6,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 #### Items
 
+- Rare items roll an even spread of affix counts above their item level's minimum.
 - Open wounds stacks up to three hits, and deep wounds adds to its damage.
 - The Horadric Navigator and Horadric Almanac are no longer used up.
 - Items with replenish charges (Enigma, Oath and others) regain their used charges over time.
