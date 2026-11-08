@@ -397,6 +397,9 @@ auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
 	using namespace d2r::rva;
 	Game* game = args->game;
 	Unit* player = args->player;
+	if (const int32_t warped = DungeonBarrierWarp(game, player, args->object, args->classId); warped >= 0) {
+		return warped;  // PD2's operate 77 also opens the dungeons' warp barriers (unique_maps.cpp)
+	}
 	const int32_t level = d2r::Engine<uint16_t (*)(Unit*) noexcept>(PortalLevel)(args->object);
 	if (game == nullptr || player == nullptr) {
 		return 0;

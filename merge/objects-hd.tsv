@@ -16,3 +16,7 @@ LucionChest	consolation_chest
 # The map event altars draw the D2R object of the legacy token PD2's row uses: OB (Obelisk1), xo (DungeonShrineMagic)
 TaintedSunMapEventAltar	obelisk_1
 ForceShardAltar	dungeon_shrine_magic
+# PD2 draws its dungeon warp barriers as a magic door that, once open, the player clicks to enter the next level; they
+# take the Arreat Summit door, D2R's door on a warp that opens when its bosses die (#610)
+bossblocker_x_warp	summit_door
+bossblocker_y_warp	summit_door

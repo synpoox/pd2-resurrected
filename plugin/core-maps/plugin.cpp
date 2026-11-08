@@ -230,6 +230,26 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 		std::snprintf(line, sizeof(line), "%s %s", p.word, p.report);
 		command->plugin->WriteConsoleMessage(line);
 	}
+	{  // TEMP debug, not for commit
+		using namespace d2r::rva;
+		d2r::Unit* local = d2r::Engine<d2r::Unit* (*)(uint32_t) noexcept>(ClientPlayer)(d2r::Engine<uint32_t (*)() noexcept>(LocalPlayerSlot)());
+		int32_t xy[2] = {0, 0};
+		if (local != nullptr) { d2r::Engine<void (*)(d2r::Unit*, int32_t*) noexcept>(UnitCoords)(local, xy); }
+		std::snprintf(line, sizeof(line), "TEMP-POS player at (%d, %d)", xy[0], xy[1]);
+		plog::Info("%s", line);
+		void* room = local != nullptr ? d2r::Engine<void* (*)(d2r::Unit*) noexcept>(UnitRoom)(local) : nullptr;
+		void** rooms = nullptr; uint32_t count = 0;
+		if (room != nullptr) { d2r::Engine<void (*)(void*, void***, uint32_t*) noexcept>(NearRooms)(room, &rooms, &count); }
+		for (uint32_t r = 0; rooms != nullptr && r < count; ++r) {
+			for (auto* u = d2r::Engine<d2r::Unit* (*)(void*) noexcept>(RoomFirstUnit)(rooms[r]); u != nullptr; u = d2r::Engine<d2r::Unit* (*)(d2r::Unit*) noexcept>(NextUnitInRoom)(u)) {
+				if (d2r::At<int32_t>(u, UnitType) == 1) {
+					int32_t uxy[2] = {0, 0};
+					d2r::Engine<void (*)(d2r::Unit*, int32_t*) noexcept>(UnitCoords)(u, uxy);
+					plog::Info("TEMP-MON class %d mode %d at (%d, %d)", d2r::At<int32_t>(u, UnitClassId), d2r::At<int32_t>(u, UnitMode), uxy[0], uxy[1]);
+				}
+			}
+		}
+	}
 	std::snprintf(line, sizeof(line), "pool now %s", EntityPoolState());
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);

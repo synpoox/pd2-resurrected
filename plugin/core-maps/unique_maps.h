@@ -22,6 +22,9 @@ auto DungeonPreset(d2r::Game* game, void* room, uint8_t* preset,
 auto DungeonKeepsRoom(d2r::Unit* unit) noexcept -> bool;
 // From the portal operate (map_open.cpp): an Outer Void portal linked to a spot moves the player there (true).
 auto OuterVoidWarp(d2r::Game* game, d2r::Unit* player, d2r::Unit* portal) noexcept -> bool;
+// PD2 0x103a9780's first branch, from the portal operate (map_open.cpp): an opened bossblocker_x_warp or _y_warp sends
+// the player through the warp tile in its room (1, or 0 when it can't); -1 for any other object.
+auto DungeonBarrierWarp(d2r::Game* game, d2r::Unit* player, d2r::Unit* barrier, int32_t classId) noexcept -> int32_t;
 // Takes the object init slot of the dungeon barriers (InitFn 30). Returns false when the slot is not D2R's.
 auto InstallDungeonBarriers(const D2RL::PluginContext* context) noexcept -> bool;
 // From the item spawn hook (map_stats.cpp), on a TC drop's request: Zhar's charm's forced prefix and item level.

@@ -131,6 +131,15 @@ constexpr Dungeon Dungeons[] = {{163, 760},    // Plains of Torment: willowispbo
                                 {182, 1122}};  // Steppes of Daken-Shar: SharpToothBoss
 constexpr uint32_t DungeonBossKey = 0x4d444742;  // 'MDGB': the boss's unit id + 1 (PD2's game +0x2600)
 constexpr uint32_t BarrierKey = 0x4d444700;      // 'MDG' + slot: a barrier's unit id + 1 (PD2's game +0x2604 + slot * 4)
+// A level's links in its LevelDefs row (the PluginSDK's TableId::LevelDefs): Vis0-7 at +0x48, Warp0-7 at +0x68, int32
+// each (read in game: level 182's Vis2 183 and Warp2 85, level 183's Vis1 182 and Warp1 73).
+constexpr uint32_t LevelDefsVis = 0x48, LevelDefsWarp = 0x68;
+constexpr int LevelLinks = 8;
+constexpr int32_t UnitTile = 5;  // a warp tile; its class is its lvlwarp Id
+struct LevelLinkRow {
+	int32_t vis[LevelLinks];
+	int32_t warp[LevelLinks];
+};
 
 // D2R's compiled uniqueitems row (uniqueitems.bin, 348 bytes): 1.13c's to +0x2c, then 4 more bytes before rarity
 constexpr uint32_t UniqueRowSize = 348;
@@ -164,6 +173,8 @@ std::atomic<uint32_t> g_voidBosses {0};
 std::atomic<uint32_t> g_voidWarps {0};
 std::atomic<uint32_t> g_barriers {0};        // blocker presets made into barriers
 std::atomic<uint32_t> g_barriersOpened {0};  // barriers opened by a boss's death
+std::atomic<uint32_t> g_barrierWarps {0};    // players sent through an opened warp barrier
+LevelLinkRow g_dungeonLinks[std::size(Dungeons)] = {};  // each dungeon's LevelDefs links, read when the tables load
 
 auto Counter(Game* game, uint32_t key) noexcept -> int32_t* {
 	return d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(d2r::rva::GameCounter)(
@@ -486,10 +497,30 @@ auto LogSkillTabPrefixes(const D2RL::PluginContext* context) noexcept -> void {
 	plog::Warn("unique maps: no Sturdy/Strong rows in MagicAffixes (%u rows of %u bytes)", view.rowCount, view.rowSize);
 }
 
+// The dungeons' level links, for their warp barriers' operate (DungeonBarrierWarp)
+auto ReadDungeonLinks(const D2RL::PluginContext* context) noexcept -> void {
+	using namespace D2RL::DataTables;
+	for (size_t i = 0; i < std::size(Dungeons); ++i) {
+		g_dungeonLinks[i] = {};
+		RowView row {.structSize = RowViewSize};
+		if (g_tables->getRow(context, Bank::Rotw, TableId::LevelDefs, static_cast<uint32_t>(Dungeons[i].level), &row) !=
+		        Result::Success ||
+		    row.row == nullptr || row.rowSize < LevelDefsWarp + sizeof(LevelLinkRow::warp)) {
+			plog::Warn("dungeons: no LevelDefs row for level %d (row size %u), its warp barrier leads nowhere",
+			           Dungeons[i].level, row.rowSize);
+			continue;
+		}
+		const auto* bytes = static_cast<const uint8_t*>(row.row);
+		std::memcpy(g_dungeonLinks[i].vis, bytes + LevelDefsVis, sizeof(LevelLinkRow::vis));
+		std::memcpy(g_dungeonLinks[i].warp, bytes + LevelDefsWarp, sizeof(LevelLinkRow::warp));
+	}
+}
+
 void __cdecl ReadUniqueBases(const D2RL::PluginContext* context, const D2RL::Lifecycle::DataTablesLoadedEvent*,
                              void*) noexcept {
 	using namespace D2RL::DataTables;
 	LogSkillTabPrefixes(context);
+	ReadDungeonLinks(context);
 	g_anyCount.store(0, std::memory_order_release);
 	g_socketCount.store(0, std::memory_order_release);
 	TableView view {.structSize = TableViewSize};
@@ -764,6 +795,50 @@ auto OuterVoidWarp(Game* game, Unit* player, Unit* portal) noexcept -> bool {
 	return false;
 }
 
+auto DungeonBarrierWarp(Game* game, Unit* player, Unit* barrier, int32_t classId) noexcept -> int32_t {
+	using namespace d2r::rva;
+	if (classId != BlockerXWarp && classId != BlockerYWarp) {
+		return -1;
+	}
+	if (game == nullptr || player == nullptr || barrier == nullptr || At<int32_t>(barrier, UnitMode) == 0) {
+		return 0;  // PD2's closed barrier is not selectable
+	}
+	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(barrier);
+	const int32_t level = room != nullptr ? d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room) : 0;
+	const Dungeon* dungeon = DungeonOf(level);
+	if (dungeon == nullptr) {
+		plog::Warn("dungeons: warp barrier %d in level %d, not a dungeon", classId, level);
+		return 0;
+	}
+	const LevelLinkRow& links = g_dungeonLinks[dungeon - Dungeons];
+	for (auto* unit = d2r::Engine<Unit* (*)(void*) noexcept>(RoomFirstUnit)(room); unit != nullptr;
+	     unit = d2r::Engine<Unit* (*)(Unit*) noexcept>(NextUnitInRoom)(unit)) {
+		if (At<int32_t>(unit, UnitType) != UnitTile) {
+			continue;
+		}
+		// PD2 asks the tile for its level (0x103804e0); the port finds it in the level's links by the tile's warp
+		const int32_t warp = At<int32_t>(unit, UnitClassId);
+		int32_t to = 0;
+		for (int i = 0; i < LevelLinks && to == 0; ++i) {
+			to = links.warp[i] == warp && links.vis[i] > 0 ? links.vis[i] : 0;
+		}
+		if (to == 0) {
+			plog::Warn("dungeons: level %d has no link through warp %d", level, warp);
+			return 0;
+		}
+		// shortcut: PD2 places the player by the level's spawn spot (0x1038a000) itself; WarpToLevel finds the level's
+		// arrival spot
+		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t) noexcept>(WarpToLevel)(game, player, to, 0);
+		void* now = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(player);
+		const int32_t arrived = now != nullptr ? d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(now) : 0;
+		plog::Info("dungeons: warp barrier %d in level %d: warp %d to level %d, player in %d (%u)", classId, level, warp,
+		           to, arrived, ++g_barrierWarps);
+		return arrived == to ? 1 : 0;
+	}
+	plog::Warn("dungeons: warp barrier %d in level %d stands on no warp tile", classId, level);
+	return 0;
+}
+
 auto InstallDungeonBarriers(const D2RL::PluginContext* context) noexcept -> bool {
 	using namespace d2r::rva;
 	g_initQuestDoor = reinterpret_cast<InitFn>(d2r::imageBase + InitQuestDoor);
@@ -812,7 +887,8 @@ auto InstallUniqueMaps(const D2RL::PluginContext* context) noexcept -> bool {
 auto UniqueMapsCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "unique maps: %u boss deaths, %u portals, %u drops, %u pillars killed, %d random unique bases, %u Outer "
-	              "Void bosses, %u Outer Void warps, %u dungeon blocker presets, %u barriers opened",
+	              "Void bosses, %u Outer Void warps, %u dungeon blocker presets, %u barriers opened, %u barrier warps",
 	              g_deaths.load(), g_portals.load(), g_drops.load(), g_pillars.load(), g_anyCount.load(),
-	              g_voidBosses.load(), g_voidWarps.load(), g_barriers.load(), g_barriersOpened.load());
+	              g_voidBosses.load(), g_voidWarps.load(), g_barriers.load(), g_barriersOpened.load(),
+	              g_barrierWarps.load());
 }

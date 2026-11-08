@@ -350,7 +350,7 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Desecrate: the corpse timer | `skills.desecrate.srvdofunc` |
 | Desecrate: the fallback levels | `skills.desecrate.srvdofunc` |
 | Force Move | `skills.Force Move.srvdofunc` `skills.Force Move.cltdofunc` `skills.Force Move.srvstfunc` `skills.Force Move.cltstfunc` |
-| PD2 object operate functions | `objects.UberAncientStatue1.OperateFn` `objects.UberAncientStatue2.OperateFn` `objects.UberAncientStatue3.OperateFn` `objects.UberAncientAltar.OperateFn` `objects.bossblocker_x_warp.OperateFn` `objects.bossblocker_y_warp.OperateFn` `objects.PVPTome1.OperateFn` `objects.Sacrifice Altar.OperateFn` `objects.PVPTome2.OperateFn` |
+| PD2 object operate functions | `objects.UberAncientStatue1.OperateFn` `objects.UberAncientStatue2.OperateFn` `objects.UberAncientStatue3.OperateFn` `objects.UberAncientAltar.OperateFn` `objects.PVPTome1.OperateFn` `objects.Sacrifice Altar.OperateFn` `objects.PVPTome2.OperateFn` |
 | Find Potion, Find Item: do functions | `skills.Find Potion.srvdofunc` `skills.Find Potion.cltdofunc` `skills.Find Potion.srvstfunc` `skills.Find Potion.cltstfunc` `skills.Find Item.srvdofunc` `skills.Find Item.cltdofunc` `skills.Find Item.srvstfunc` `skills.Find Item.cltstfunc` |
 | Lucion kit | `skills.LucionBlink.cltdofunc` `skills.LucionDash.cltdofunc` `skills.LucionDash.cltstfunc` |
 | LucionNova, LucionDash, LucionPunish | `skills.LucionDash.srvstfunc` |
