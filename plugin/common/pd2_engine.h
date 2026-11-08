@@ -1145,6 +1145,26 @@ inline constexpr uint64_t AiTrappedSoul = 0x5cfb20;  // row 99's think (the trap
 // think reads them
 inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;
 inline constexpr int MonAiDist = 0x8d;  // uint8 aidist, then (N) and (H) (monstats field table 0x39db30)
+// Lucion's frenzy extras (#490; Ghidra, D2R.gpr). Called, not hooked; no PluginSDK service hides units, sets an act's
+// light or sends sounds or raw packets.
+// D2R's own hide and unhide, 1.13c D2Game 0x7be10 / 0x89730 (PD2's thunks 0x103a4c70 / 0x103a4c90), as the FrogDemon
+// (monai 52, 0x5afb80) and Vulture (23) thinks call them. Hide (game, unit): unit flags 0xe off, the room's collision
+// 0x1000 and 0x100 at the unit cleared, path mask 0, think in 12. Unhide (game, unit) -> 0 when the unit has no room
+// to stand: flags 0xe on, the unit placed (0x491ca0), collision 0x100 marked, path mask 0x3c01, think in 12.
+inline constexpr uint64_t AiHide = 0x5bae30, AiUnhide = 0x5bafb0;
+// An act's eclipse, the way Tainted Sun (a2q3.cpp 0x5a7370) darkens act II. (dataFlag, act) eclipse on (1.13c
+// D2Common #10337). (dataFlag, act, room or null, period, time, eclipse) sets the act's light, as the client's packet
+// 0x53 handler (0x12cb50) does; period 2, time 0, eclipse 0 is 1.13c #10895's eclipse off, which also puts back the
+// speed (EnvSpeedNormal) and clears the pause. The act's light at act +8: period +0, speed +0x2c, pause +0x30,
+// eclipse +0x34 (0x351df0 reads it). A unit's act at unit +0x20 (0x34a1a0).
+inline constexpr uint64_t ActEclipseOn = 0x3526f0, ActLightSet = 0x3525c0;
+inline constexpr uint64_t EnvSpeedNormal = 0x2376848;  // int 128 (1.13c 0x6fdeb238); the eclipse's is 4 (0x237684c)
+inline constexpr int UnitAct = 0x20, ActEnv = 8, EnvSpeed = 0x2c, EnvPause = 0x30, EnvEclipse = 0x34;
+// (client, packet): sends a 10-byte packet, a2q3's 0x53 {0x53, int period, int time, byte eclipse} (0x5a4290). The
+// game's light tick 0x406550 sends the same packet to an act's clients when its light changes. Client +4: 4 in game.
+inline constexpr uint64_t SendPacket10 = 0x477420;
+inline constexpr int ClientState = 4, ClientInGame = 4;
+inline constexpr int StatLightRadius = 89;  // item_lightradius
 
 // --- core-maps: the Temple's chests (UB6, #438; D2Game\src\Objects\ObjMode.cpp) ------------------------------------
 // Decompiled for #438 (Ghidra, D2R.gpr). One operate table slot wrapped (rva::ObjectOperateTable).
