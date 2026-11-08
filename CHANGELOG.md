@@ -42,7 +42,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
 - Lucion's death opens a portal to the Temple, ends his adds and drops a Demonic Cube at tiers 1-2.
 - Lucion's death also opens a portal in Harrogath back into his arena.
-- The death novas of Rathma, Lucion, the Nihlathak map boss and DollMeteor show, as in PD2.
+- The death novas of Rathma, the Nihlathak map boss and DollMeteor show, as in PD2.
 - After Lucion's death, cube a corrupted amulet in the Temple to try a Desecration (50%, 60% at tiers 1-2).
 - Diablo Clone drops Annihilus, and at tiers 1-2 rolls 1 in 200 for one of PD2's five Dclone uniques.
 - Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
