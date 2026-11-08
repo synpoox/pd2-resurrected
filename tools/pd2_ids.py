@@ -182,7 +182,7 @@ STAT_STRINGS, STAT_DISPLAY = ("descstrpos", "descstrneg"), ("descfunc", "descval
 # The xactportals' `#1`-`#6` graphics tokens have no art in D2R (#431): they draw D2R's red portal, `PP`, as
 # xactportal_red does, until their own art is ported.
 FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
-         "objects": {"OperateFn": {"77": "60", "79": "35"},"Token": {f"#{n}": "PP" for n in range(1, 7)}},
+         "objects": {"OperateFn": {"77": "60", "79": "35"}, "Token": {f"#{n}": "PP" for n in range(1, 7)}},
          "misc": {"pSpell": {MAP_SPELL: "16"}},
          "levels": {"Teleport": {"3": "1"}},
          "missiles": {"pSrvDoFunc": {"38": "46", "40": "47"}, "pCltDoFunc": {"70": "78", "69": "79", "72": "80"},

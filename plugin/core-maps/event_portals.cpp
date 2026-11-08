@@ -28,9 +28,7 @@ using d2r::Game;
 using d2r::Unit;
 
 constexpr int32_t SummonerMap = 936;  // monstats `summonerMap` (PD2 919), port id
-constexpr int32_t AltarGuardian = 1081;  // GuardianOfFate (PD2 1064), the Altar of the Catalyst's (map_events.cpp)
 constexpr int32_t HorazonEvent = 12;
-constexpr int32_t RedPortal = 60;
 constexpr int32_t StatLevel = 12;
 // PD2's three level lists (section 4) in the port's level ids (merge/ids-levels.tsv)
 constexpr int32_t Tiers[3][10] = {

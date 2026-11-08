@@ -403,6 +403,7 @@ inline constexpr int LvlNMon1 = 0x70;
 inline constexpr int MonSpawn = 0x54;     // int16 spawn, -1 for none
 inline constexpr int MonPartyMin = 0x62;  // uint8
 inline constexpr int MonPartyMax = 0x63;  // uint8
+inline constexpr int MonMinGrp = 0x65, MonMaxGrp = 0x66;  // uint8 MinGrp, MaxGrp (field table 0x39db30; 1.13c +0x2f, +0x30)
 inline constexpr int MonFlags = 0x3c;  // uint32 flags; lUndead bit 11, hUndead bit 12 (monstats field table 0x39db30)
 inline constexpr uint32_t MonUndead = 0x1800;  // 1.13c's D2Common #10239 tests the same two bits
 inline constexpr int TablesOverlayCount = 0x1230;  // int64 overlay.txt row count in DataTables

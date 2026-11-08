@@ -22,6 +22,7 @@
 #include "map_events.h"
 
 #include "event_portals.h"
+#include "level_fx.h"
 #include "log.h"
 #include "lucion.h"
 #include "map_open.h"
@@ -67,16 +68,15 @@ constexpr int32_t MendelnMonster = 939, DarkWandererMonster = 938, TreasureFalle
 constexpr int32_t GheedMonster = 147, HorazonMonster = 936;  // PD2 919 summonerMap
 constexpr int32_t EventMarker = 597;  // PD2 object 594 empty_eventmarker: invisible, AutoMap 1499
 constexpr int32_t ShardAltar = 614;   // PD2 611 ForceShardAltar
-constexpr int32_t AltarGuardian = 1081;  // PD2 1064 GuardianOfFate
 const uint32_t ShardCode = D2RL::Items::MakeItemCode("iwss");  // the Catalyst Shard
 constexpr int32_t SpireAltar = 596;   // PD2 593 TaintedSunMapEventAltar
 constexpr int32_t Fog = 374;          // PD2 374, D2R's Fog (the same row)
-// PD2's waves: 993-995 shadowofhate, shadowofterror, shadowofdestruction; and their monstats MinGrp-MaxGrp
+// PD2's waves: 993-995 shadowofhate, shadowofterror, shadowofdestruction
 constexpr int32_t Shadows[3] = {1010, 1011, 1012};
-constexpr int32_t ShadowGroups[3][2] = {{3, 6}, {8, 14}, {1, 1}};
 constexpr int32_t SpireOver = 50;     // PD2's spawn count once 0x1036eb30 ends the waves
 constexpr int32_t BitterDepths = 198;  // PD2 207 Tomb Event Map, Act V
-constexpr int32_t RedPortal = 60;
+// PD2's Spire sounds (sounds.txt rows): 0xa78 shrine_storm and 0x24 on the use, 0x26d bloodraven_mist_end at the end
+constexpr int32_t SpireSounds[2] = {0xa78, 0x24}, SpireEndSound = 0x26d;
 constexpr int32_t ModeNeutral = 1;
 constexpr int32_t UnitObject = 2;
 
@@ -272,11 +272,12 @@ auto SpawnMonsterNear(Game* game, void* room, int32_t (&xy)[2], int32_t monster,
 
 // PD2's 0x1036eb30, once the Spire's progress passes 90: the waves end and every shadow in the game dies, without
 // drops. Picked first, so no kill runs while the lists are walked.
-// shortcut: PD2 also lifts the level's darkness (packet 0x53, D2's Tainted Sun) and plays a sound to its players; the
-// darkness is not ported (docs/deviations.md)
+// It also lifts the level's act darkness (0x1037dc70 with 0) and plays a sound to the level's players (0x1037f240).
 auto EndSpire(Game* game, int32_t level) noexcept -> void {
 	using namespace d2r::rva;
 	Set(game, SpawnsKey, SpireOver);
+	const bool dark = SetLevelDarkness(game, level, false);
+	PlayLevelSound(game, level, SpireEndSound);
 	constexpr int Max = 256;
 	Unit* found[Max] = {};
 	int n = 0;
@@ -293,7 +294,8 @@ auto EndSpire(Game* game, int32_t level) noexcept -> void {
 	for (int i = 0; i < n; ++i) {
 		KillQuietly(game, found[i]);
 	}
-	plog::Info("map events: event %d over in level %d, %d shadows killed", Spire, level, n);
+	plog::Info("map events: event %d over in level %d, %d shadows killed, darkness off%s", Spire, level, n,
+	           dark ? "" : " FAILED (no player in the level)");
 }
 
 // PD2's Spire of Darkness branch: with no spawn yet, a 20% roll once the level has more than 15 rooms places the altar
@@ -328,9 +330,13 @@ auto SpawnSpire(Game* game, void* room, int32_t (&xy)[2], int32_t level, int32_t
 		return;
 	}
 	if (const int pick = Rand() % 6; pick >= 1 && pick <= 3) {
-		const int32_t* group = ShadowGroups[pick - 1];
-		int32_t count = group[1] - group[0] + 1;
-		count = count > 1 ? group[0] + Rand() % count : count;
+		// PD2 reads the group size from the class's monstats record (MinGrp, MaxGrp)
+		const auto* rec = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(
+			d2r::DataFlag(game), Shadows[pick - 1]);
+		const int32_t minGrp = rec != nullptr ? At<uint8_t>(rec, MonMinGrp) : 0;
+		const int32_t maxGrp = rec != nullptr ? At<uint8_t>(rec, MonMaxGrp) : 0;
+		int32_t count = maxGrp - minGrp + 1;
+		count = count > 1 ? minGrp + Rand() % count : count;
 		int32_t made = 0;
 		for (int32_t i = 0; i < count; ++i) {
 			int32_t at[2] = {xy[0] - 5 + Rand() % 10, xy[1] - 5 + Rand() % 10};
@@ -402,7 +408,8 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t pr
 // PD2's operate 79 (0x103aa460) for both event altars, in D2R's operate slot 35. The Spire's first use starts the
 // waves. The Catalyst altar's first use calls its guardian 10-29 subtiles off (40 tries, spot size 2), its second,
 // once the guardian is dead (AltarGuardianDied), drops 2-3 Catalyst Shards (PD2 at item level 90).
-// shortcut: PD2 also darkens the Spire's level (packet 0x53) and plays sounds (packet 0x2c); not ported
+// The Spire's use also darkens the act (0x1037dc70) and plays two sounds to the user's level (0x1037f240).
+// shortcut: the Catalyst altar's sounds are not ported (#609)
 // shortcut: the shards drop by the user, where PD2 drops them by the altar (0x1036ebc0); D2R's drop (rva::DropItemAt)
 // is only known to work by a unit that carries a level stat
 auto OperateAltar(ObjectOperate* args) noexcept -> int32_t {
@@ -418,8 +425,14 @@ auto OperateAltar(ObjectOperate* args) noexcept -> int32_t {
 	const auto mode = d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetObjectMode);
 	if (event == Spire && spawns == 1) {
 		mode(altar, 1);
+		SetDarkness(game, altar, true);
+		void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(args->player != nullptr ? args->player : altar);
+		const int32_t level = room != nullptr ? d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room) : -1;
+		for (const int32_t sound : SpireSounds) {
+			PlayLevelSound(game, level, sound);
+		}
 		Set(game, SpawnsKey, 2);
-		plog::Info("map events: event %d altar used, the waves start", event);
+		plog::Info("map events: event %d altar used, darkness on, the waves start", event);
 		return 1;
 	}
 	if (event == Altar && spawns == 1) {

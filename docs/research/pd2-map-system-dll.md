@@ -207,12 +207,13 @@ the event's state:
   (1065) around it; the guardian's AI (`0x35a6b0`) summons them. The next use sets mode 3 and drops 2 or 3 `iwss`
   (Catalyst Shard) by the altar at item level 90 (`0x36ebc0`), state 4.
 - Spire of Darkness (event 16): the altar goes at a random point of the room (`0x389ea0`), then the spot search; fog
-  object 374 at (x+2, y), (x, y+2) and (x-1, y-1); state 1. The use sets the altar's mode 1 and darkens the level
-  (`0x37dc70`: packet 0x53, D2's Tainted Sun), state 2. While the state is 2-49 each room activation draws `rand() % 6`:
-  1, 2 or 3 spawn a group of 993, 994 or 995 (monstats MinGrp to MaxGrp: 3-6, 8-14, 1) at the room's centre +- 5
-  (spot size 10). `0x36eb30`, past progress 90: state 50, the darkness lifted (`0x37dc70` with 0), a sound for the
-  level's players (`0x37f240`, packet 0x2c), and every 993-995 in the game killed without drops (`0x356e00`; it
-  reads only the first monster of each of the 128 lists at `game+0x1320`).
+  object 374 at (x+2, y), (x, y+2) and (x-1, y-1); state 1. The use sets the altar's mode 1, darkens the level's act
+  (`0x37dc70`: packet 0x53, D2's Tainted Sun) and plays sounds 0xa78 and 0x24 to the user's level (`0x37f240`), state 2.
+  While the state is 2-49 each room activation draws `rand() % 6`: 1, 2 or 3 spawn a group of 993, 994 or 995 (MinGrp to
+  MaxGrp read from the monstats record, +0x2f and +0x30: 3-6, 8-14, 1) at the room's centre +- 5 (spot size 10).
+  `0x36eb30`, past progress 90: state 50, the darkness lifted (`0x37dc70` with 0), sound 0x26d for the level's players
+  (`0x37f240`, packet 0x2c), and every 993-995 in the game killed without drops (`0x356e00`; it reads only the first
+  monster of each of the 128 lists at `game+0x1320`).
 
 The objects go through `0x38a060`, which spawns an object in mode 0 (it passes `type != 2` as the mode) and sets
 bits `0x3000000` of its unit flags.
