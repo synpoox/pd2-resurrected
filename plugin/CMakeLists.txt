@@ -45,7 +45,7 @@ target_include_directories(core_common INTERFACE common)
 target_link_libraries(core_common INTERFACE plugin_common)
 
 # Bump with every release: Shared plugins must match between host and client.
-set(CORE_RULES_VERSION "0.1.0" CACHE STRING "core-rules PluginInfo::version")
+set(CORE_RULES_VERSION "0.2.0" CACHE STRING "core-rules PluginInfo::version")
 add_library(core_rules SHARED
 	core-rules/plugin.cpp
 	core-rules/skill_functions.cpp
@@ -62,7 +62,7 @@ target_compile_definitions(core_rules PRIVATE CORE_PLUGIN_NAME="core-rules" CORE
 set_target_properties(core_rules PROPERTIES OUTPUT_NAME "core-rules")
 core_options(core_rules)
 
-set(CORE_MAPS_VERSION "0.1.0" CACHE STRING "core-maps PluginInfo::version")
+set(CORE_MAPS_VERSION "0.2.0" CACHE STRING "core-maps PluginInfo::version")
 add_library(core_maps SHARED
 	core-maps/plugin.cpp
 	core-maps/cube_ops.cpp
@@ -77,8 +77,13 @@ add_library(core_maps SHARED
 	core-maps/rathma.cpp
 	core-maps/uber_tristram.cpp
 	core-maps/unique_maps.cpp
+	core-maps/zhar.cpp
+	core-maps/map_bosses.cpp
 	core-maps/lucion_ai.cpp
+	core-maps/level_fx.cpp
 	core-maps/rathma_ai.cpp
+	core-maps/guardian_ai.cpp
+	core-maps/map_boss_ai.cpp
 	core-maps/rathma_life.cpp
 	core-maps/dclone_ai.cpp
 	core-maps/ai_hooks.cpp
@@ -93,7 +98,7 @@ set_target_properties(core_maps PROPERTIES OUTPUT_NAME "core-maps")
 core_options(core_maps)
 
 # Client-only: not Shared, so its version need not match between host and client.
-set(CORE_UI_VERSION "0.1.0" CACHE STRING "core-ui PluginInfo::version")
+set(CORE_UI_VERSION "0.2.0" CACHE STRING "core-ui PluginInfo::version")
 add_library(core_ui SHARED
 	core-ui/plugin.cpp
 	core-ui/automap.cpp

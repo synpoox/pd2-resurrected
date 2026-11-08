@@ -46,7 +46,7 @@ PD2_ONLY = {
     "misc": {"pSpell": _nums(13)},  # PD2's map spell 12 moves to 16, which core-maps installs (MS2)
     "properties": {f"func{i}": _nums(25) for i in range(1, 8)},
     "states": {"remfunc": _nums(12)},
-    "objects": {"OperateFn": _nums(range(75, 77), range(78, 81))},  # PD2's altars, tomes and Zhar's portals (LP1)
+    "objects": {"OperateFn": _nums(range(75, 77), range(78, 80))},  # PD2's altars and tomes (LP1)
 }
 
 

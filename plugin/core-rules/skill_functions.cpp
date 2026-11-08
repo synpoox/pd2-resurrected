@@ -297,7 +297,7 @@ void DropStateList(uint32_t dataFlag, Unit* unit, int32_t state) noexcept {
 	if (list == nullptr) {
 		return;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, state, 0);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(unit, state, 0);
 	d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
 	d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
 }
@@ -345,7 +345,7 @@ auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 	                        int32_t) noexcept;
 	d2r::Engine<SendFn>(SendSkillState)(game, unit, skillId, level, key, 1, state, skill + SkSendStateA,
 	                                    skill + SkSendStateB, 4);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, state, 1);
 	if (plog::Sample(g_tempBuffs)) {
 		// aurastat1 and its calc value as the skill computes them, so the check can compare them with PD2's par4
 		plog::Info("temp buff: skill %d level %d state %d for %d frames, stat %d +%d, cast %u", skillId, level, state,
@@ -475,7 +475,7 @@ auto TimedStatList(uint32_t dataFlag, Unit* owner, Unit* unit, int32_t skillId, 
 		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, s->stat,
 		                                                                                          s->value, 0);
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, state, 1);
 	return "new";
 }
 
@@ -870,10 +870,12 @@ auto RaiseList(uint32_t dataFlag, const uint8_t* tables, int32_t levelId, bool n
 }
 
 // The corpse's timer ran out: hide it (PD2's callback 0x1036c6d0 sets corpse_nodraw). The list never set the state, so
-// the expiry call only does D2R's list bookkeeping.
+// the expiry call only does D2R's list bookkeeping. corpse_nodraw is then a bare state: SetStateBit (the bit
+// UnitHasState reads), then SetStateGfxFlag, as D2R's 0x56bfe0 (#623).
 void HideCorpse(void* list, Unit* unit, int32_t state) noexcept {
 	d2r::Engine<void (*)(void*, Unit*, int32_t) noexcept>(d2r::rva::SkillStateExpired)(list, unit, state);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetUnitState)(unit, CorpseNoDraw, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetStateBit)(unit, CorpseNoDraw, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetStateGfxFlag)(unit, CorpseNoDraw, 1);
 	g_desecrateHidden.fetch_add(1);
 }
 
@@ -1595,7 +1597,7 @@ auto VengeanceOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	if (list == nullptr) {
 		return 1;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(victim, JustHit, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(victim, JustHit, 1);
 	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(victim);
 	if (victim != b->origin && static_cast<int32_t>(d2r::RandomBelow(seed, 100)) < b->chance && b->link < MaxLinks) {
 		const std::lock_guard<std::mutex> lock(g_linksLock);
@@ -1632,7 +1634,8 @@ auto Burst(Game* game, Unit* caster, Unit* center, Unit* origin, const uint8_t* 
 			d2r::Engine<AreaFn>(AreaUnits)(game, caster, &area, radius, AreaUnitMask, VengeanceOne, &b, 0);
 		}
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(center, Shatter, 0);
+	// The state bit off, as D2R's 0x4370b0 removes one: SetStateGfxFlag on 0 only cleared the gfx bit (#623)
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(center, Shatter, 0);
 	return b;
 }
 
@@ -1931,7 +1934,9 @@ auto SrvDoHunger(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	if (corpse == nullptr || corpse == unit) {
 		return 0;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(corpse, CorpseNoDraw, 1);
+	// A bare state: SetStateBit (the bit UnitHasState reads), then SetStateGfxFlag, as D2R's 0x56bfe0 (#623)
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(corpse, CorpseNoDraw, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(corpse, CorpseNoDraw, 1);
 	d2r::api.setUnitSkillFlag(unit, 1);  // PD2 sets unit flag 0x40 on every path past the corpse
 	StatValue stats[6] {};
 	size_t count = 0;
@@ -3155,7 +3160,7 @@ auto& Flags(UnitSkill* uskill) noexcept {
 	return *reinterpret_cast<uint32_t*>(uskill + d2r::rva::USkillFlags);
 }
 
-// PD2's leap speed: a monster's monstats Velocity, a player's 0xb00 + calc2 * 0x50 (calc2 is 80 or 60 plus
+// PD2's leap speed: a monster's monstats Run << 8, a player's 0xb00 + calc2 * 0x50 (calc2 is 80 or 60 plus
 // item_leap_speed / 4), never below 0xb00. D2R's LeapStart scales the run speed by calc2 % instead.
 // shortcut: PD2's client half uses 0xa00 + calc2 * 0x29; both halves take the server's speed here so the client's
 // path matches the server's. Upgrade if PD2's client speed turns out to be visible.
@@ -3164,7 +3169,7 @@ auto LeapVelocity(Unit* unit, const uint8_t* skill, int32_t skillId, int32_t lev
 	if (At<int32_t>(unit, d2r::rva::UnitType) == 1) {
 		const uint8_t* mon = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(d2r::rva::MonStatsRecord)(
 			dataFlag, At<int32_t>(unit, d2r::rva::UnitClassId));
-		return mon != nullptr ? At<int16_t>(mon, d2r::rva::MonVelocity) << 8 : 0;
+		return mon != nullptr ? At<int16_t>(mon, d2r::rva::MonRun) << 8 : 0;
 	}
 	const int32_t v = 0xb00 + d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, d2r::rva::SkCalc2), skillId, level) * 0x50;
 	return v > 0xb00 ? v : 0xb00;
@@ -3554,7 +3559,7 @@ auto HitRecoveryGate(Game* game, Unit* unit, int32_t mode, uint8_t flag) noexcep
 std::atomic<uint32_t> g_charges {0};
 std::atomic<uint32_t> g_chargeHitFrames {0};
 
-// PD2's charge speed is base * (max(velocitypercent, 50) + Param1) / 100, base the class's (a monster's Velocity).
+// PD2's charge speed is base * (max(velocitypercent, 50) + Param1) / 100, base the class's (a monster's Run).
 // D2R's server start adds calc2 instead, which PD2's row leaves empty, so its server charged slower than its client.
 auto ChargeBase(uint32_t dataFlag, Unit* unit) noexcept -> int32_t {
 	using namespace d2r::rva;
@@ -3568,7 +3573,7 @@ auto ChargeBase(uint32_t dataFlag, Unit* unit) noexcept -> int32_t {
 	} else {
 		const uint8_t* mon = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(
 			dataFlag, At<int32_t>(unit, UnitClassId));
-		base = mon != nullptr ? At<int16_t>(mon, MonVelocity) << 8 : base;  // PD2 reads charstats at a monster's id, a wrong row; D2R's client uses this
+		base = mon != nullptr ? At<int16_t>(mon, MonRun) << 8 : base;  // PD2 reads charstats at a monster's id, a wrong row; D2R's starts read Run
 	}
 	return base;
 }
@@ -3989,7 +3994,9 @@ auto SrvStCycler(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(corpse, StateCorpseTaken) != 0) {
 		return 0;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(corpse, StateCorpseTaken, 1);
+	// SetStateBit, as D2R's srvst 63: SetStateGfxFlag's bit is not the one UnitHasState reads, so a vine re-ate the same
+	// corpse every cast (#378)
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(corpse, StateCorpseTaken, 1);
 	d2r::Engine<void (*)(Unit*) noexcept>(QueueUnitUpdate)(corpse);
 	const auto calc = [&](int field) { return d2r::EvalCalc(game, unit, skill, field, skillId, level); };
 	const int32_t radius = calc(SkAuraRangeCalc), low = calc(SkCalc1), high = calc(SkCalc2);

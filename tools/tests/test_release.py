@@ -73,27 +73,14 @@ class NotesTests(unittest.TestCase):
         (dist / "SHA256SUMS").write_text(f"{'0' * 64}  M-1.0.0.7z\n{'0' * 64}  RELEASE_NOTES-1.0.0.md\n")
         return dist
 
-    def test_finish_notes_fills_the_skeleton_and_keeps_sums_true(self):
+    def test_finish_notes_lists_only_the_changes_and_keeps_sums_true(self):
         with tempfile.TemporaryDirectory() as tmp:
             dist = self.dist(tmp)
-            release.finish_notes(dist, "1.0.0", "- A change.", "abc123", "The about line.", "Mod")
-            text = (dist / "RELEASE_NOTES-1.0.0.md").read_text()
-            self.assertNotIn("TODO", text)
-            self.assertNotIn("Downloader", text)  # no downloader ships yet
-            self.assertTrue(text.startswith("# Mod 1.0.0\n\nThe about line.\n\n## Requirements\n"))
-            self.assertIn("## Changes\n\n- A change.\n\n## Known issues\n", text)
-            self.assertIn("/blob/abc123/docs/deviations.md", text)
-            self.assertIn("mods\\Mod\\Mod.mpq\\modinfo.json", text)
-            self.assertTrue(text.endswith("## Checksums\n\nSee SHA256SUMS.\n"))
+            release.finish_notes(dist, "1.0.0", "#### Items\n\n- A change.\n")
+            self.assertEqual((dist / "RELEASE_NOTES-1.0.0.md").read_text(), "#### Items\n\n- A change.\n")
             for line in (dist / "SHA256SUMS").read_text().splitlines():
                 digest, name = line.split("  ")
                 self.assertEqual(digest, hashlib.sha256((dist / name).read_bytes()).hexdigest(), name)
-
-    def test_finish_notes_refuses_a_changed_skeleton(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            dist = self.dist(tmp, SKELETON.replace("## Known issues", "## Issues"))
-            with self.assertRaises(release.ReleaseError):
-                release.finish_notes(dist, "1.0.0", "- A change.", "abc123", "About.", "Mod")
 
 
 class StageTests(unittest.TestCase):

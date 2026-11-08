@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 namespace d2r::rva {
 
@@ -176,9 +177,12 @@ inline constexpr uint64_t DirectionY = 0x1d1b750;
 // (unit, state, self) -> 1 if it removed any: removes every state of the unit in the same states.txt group as
 // `state` (the state itself too with self 1). A state with no group (0) removes nothing.
 inline constexpr uint64_t RemoveSkillState = 0x4370b0;
-// What 0x4370b0 does for each state it removes: state bit off (unit, state, 0), then the list detached (unit, list)
-// and freed (dataFlag, list)
-inline constexpr uint64_t ClearUnitState = 0x3354c0;
+// (unit, state, on): sets or clears the state bit UnitHasState reads (owner +0xaf0, via 0x2f7ea0, which also raises
+// the state's SetStateGfxFlag bit when the bit flips), then QueueUnitUpdate. What 0x4370b0 does for each state it
+// removes: this with on 0, then the list detached (unit, list) and freed (dataFlag, list). A bare state (no list
+// carrying it) is set as D2R's 0x56bfe0 does, this then SetStateGfxFlag, both on 1; D2R's srvst 63 (0x587b50) takes
+// its corpse with this alone (#378, #623).
+inline constexpr uint64_t SetStateBit = 0x3354c0;
 inline constexpr uint64_t DetachStatList = 0x2f7920;
 inline constexpr uint64_t FreeStatList = 0x2f4180;
 // (&StateListRequest) -> stat list or null. An older list of the state with the same skill and level only gets
@@ -193,7 +197,10 @@ inline constexpr uint64_t SetListStat = 0x2f7c00;  // (dataFlag, list, stat, val
 inline constexpr uint64_t UnitStateKey = 0x34b6c0;  // (unit) -> value Frozen Armor passes to 0x435920
 inline constexpr uint64_t StateListKey = 0x435920;  // (dataFlag, list, key) -> stat 202 value
 inline constexpr uint64_t SendSkillState = 0x438470;  // (game, unit, skill, level, key, 1, state, &aurastat, &calc, 4)
-inline constexpr uint64_t SetUnitState = 0x3355a0;  // (unit, state, on)
+// (unit, state, on): only the state's gfx/update bit, in the second array after owner +0xaf0 (0x2f62d0), then
+// QueueUnitUpdate. Not the state: UnitHasState never reads it. Alone it is right only after NewStateList, as D2R's
+// 0x553650; a bare state, or a list attached with SetListState + AttachStatList, takes SetStateBit first (#623, #630).
+inline constexpr uint64_t SetStateGfxFlag = 0x3355a0;
 inline constexpr uint64_t SkillStateExpired = 0x5551f0;  // Frozen Armor's expiry callback: removes the state
 
 // Melee and units (same image as d2r-tools better-auras)
@@ -241,7 +248,9 @@ inline constexpr uint64_t SrvPrgDispatch = 0x56c3e0;
 inline constexpr uint64_t SendChargePacket = 0x5396d0;
 inline constexpr uint64_t ListStatValue = 0x2f5df0;  // (dataFlag, list, stat, layer) -> value
 inline constexpr uint64_t NewStatList = 0x2f7300;  // (flags, expire frame, unit type, unit id) -> list or null
-inline constexpr uint64_t AttachStatList = 0x2f2cb0;  // (unit, list, 1)
+// (unit, list, 1). It does not set the list's state bit: UnitHasState read 0 after it in game (#630), and D2R's
+// 0x339d70 calls SetStateBit after it. Its body is D2RCore's (jmp [0x3e2a270], filled at runtime).
+inline constexpr uint64_t AttachStatList = 0x2f2cb0;
 // Dragon Flight (W31): D2R's srvdo 52 (0x56fc80) fills its kick with this after the roll (MeleeRoll, below), on a
 // d2r::LeapKnockback block with DmgPercent set
 inline constexpr uint64_t MeleeFill = 0x573af0;  // (game, &block, unit, target, skill, level): the hit's damage
@@ -403,6 +412,7 @@ inline constexpr int LvlNMon1 = 0x70;
 inline constexpr int MonSpawn = 0x54;     // int16 spawn, -1 for none
 inline constexpr int MonPartyMin = 0x62;  // uint8
 inline constexpr int MonPartyMax = 0x63;  // uint8
+inline constexpr int MonMinGrp = 0x65, MonMaxGrp = 0x66;  // uint8 MinGrp, MaxGrp (field table 0x39db30; 1.13c +0x2f, +0x30)
 inline constexpr int MonFlags = 0x3c;  // uint32 flags; lUndead bit 11, hUndead bit 12 (monstats field table 0x39db30)
 inline constexpr uint32_t MonUndead = 0x1800;  // 1.13c's D2Common #10239 tests the same two bits
 inline constexpr int TablesOverlayCount = 0x1230;  // int64 overlay.txt row count in DataTables
@@ -421,8 +431,9 @@ inline constexpr int USkillFlags = 0x14;  // 0x80 leap starts, 0x100 in the air,
 inline constexpr int USkillTargetType = 0x2c;  // 6 = none
 inline constexpr int USkillTargetId = 0x30;
 inline constexpr int USkillParam = 0x24;  // int32 Charge's counter, PD2's charge distance (its D2Common skill param)
-inline constexpr int MonVelocity = 0x6a;  // int16 monstats Velocity
-inline constexpr int MonRun = 0x6a;  // int16 monstats Run: D2R's field table (0x39db30) has Velocity at 0x68, Run at 0x6a
+inline constexpr int MonRun = 0x6a;  // int16 monstats Run: D2R's field table (0x39db30) has Velocity at 0x68, Run at 0x6a.
+// Monster Leap and Charge read Run, not Velocity: PD2's leap (0x103b1300) reads 1.13c +0x34 (D2Common's table
+// 0x6fdaaa40: Velocity 0x32, Run 0x34), and D2R's own Charge starts (0x564dc0, 0x22e1a0) read +0x6a
 
 inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Lightning's chain range, 0 = the skill's)
 inline constexpr int MsHitPar2 = 0x74;  // int32 sHitPar2, sHitPar3 +0x78 (1.13c's 0x50 / 0x54 + 0x24)
@@ -647,7 +658,7 @@ inline constexpr uint64_t StateIsCurse = 0x335a40;  // (dataFlag, state) -> non-
 // unit +0x88: its stat list owner (+0x1c < 0 marks one); +0x90 its first chain of lists, the one NewStateList searches
 inline constexpr int UnitListOwner = 0x88, ListOwnerMark = 0x1c, ListOwnerFirst = 0x90;
 inline constexpr int ListFlags = 0x1c, ListNext = 0x68;  // uint32 flags, next list in the chain
-// owner +0xaf0: the unit's state bits (uint32 words, bit state & 31), what UnitHasState (0x2f6220) reads. SetUnitState
+// owner +0xaf0: the unit's state bits (uint32 words, bit state & 31), what UnitHasState (0x2f6220) reads. SetStateGfxFlag
 // writes a second array after it, not this one.
 inline constexpr int ListOwnerStates = 0xaf0;
 inline constexpr uint32_t ListFlagTimed = 0x2, ListFlagCurse = 0x20;
@@ -862,6 +873,9 @@ inline constexpr uint64_t ClientUnit = 0x484c90;
 // pd2_ids.FUNCS). D2R's own portal operate 15 (0x58f680) needs a linked partner portal, which PD2's grey portals lack.
 inline constexpr uint64_t ObjectOperateTable = 0x23a51c0;
 inline constexpr int ObjectOperatePortal = 60;
+// PD2's map-event altar operate 79 takes slot 35 (MS8, pd2_ids.FUNCS): D2R's null slot of the 1.09 Steeg Stone (337),
+// an object no level places
+inline constexpr int ObjectOperateAltar = 35;
 inline constexpr int OperateWaypoint = 23;  // 0x58fe00, the waypoints' OperateFn
 inline constexpr uint64_t ObjectRecord = 0x38fd00;  // (dataFlag, objects row) -> objects record (0x168 bytes) or null
 inline constexpr int ObjOperateFn = 0x15e;   // uint8 OperateFn
@@ -952,6 +966,10 @@ inline constexpr uint64_t TcDropReturn = 0x44486b;  // the TC drop's return addr
 inline constexpr int DropUnit = 0x00;   // Unit* the dropper
 inline constexpr int DropFlags = 0xc0;  // uint32; 0x4 makes an ethereal-capable item ethereal (0x442d60), 1.13c +0x80
 inline constexpr uint32_t DropFlagEthereal = 0x4;
+// int32 item level (1.13c +0x0c), set by the TC drop from the dropper; int32 prefix[3] / suffix[3] (1.13c +0x68 / +0x74):
+// a one-based magicprefix / magicsuffix id forces the affix of a magic item, 0 rolls it (0x442c60, quality 4; an id it
+// can't apply rolls too). Decompiled for #531 (Ghidra, D2R.gpr); checked in game.
+inline constexpr int DropItemLevel = 0x18, DropPrefix = 0xa8, DropSuffix = 0xb4;
 inline constexpr uint64_t ItemQuality = 0x36cf60;     // (item) -> quality (6 rare)
 inline constexpr uint64_t ItemSocketable = 0x36b410;  // (item) -> non-zero: can take sockets (1.13c D2Common #10360)
 inline constexpr uint64_t SetItemSockets = 0x36e880;  // (item, n): sockets, clamped to the type's max (1.13c #10599)
@@ -1148,6 +1166,12 @@ inline constexpr uint64_t AiMephisto = 0x5b1ca0, AiDiablo = 0x5c8d40, AiBaalCrab
 inline constexpr uint64_t AiOverseer = 0x5c2290;  // row 120's think (Lucion, #437)
 inline constexpr uint64_t AiTrapMelee = 0x5b5ca0;  // row 87's think (Dclone, #470): melee by aip1, else idle aip2
 inline constexpr uint64_t AiTrappedSoul = 0x5cfb20;  // row 99's think (the trapped souls, #472), read from the table
+// Row 71's think (Regurgitator, #609), read from the table; its state opens with the same "state 5: idle 0x10" as
+// 1.13c's 0x6fca3fe0, the think PD2's Altar guardian AI falls back to
+inline constexpr uint64_t AiRegurgitator = 0x5b3040;
+// The tick's AI control (tick +0): its three int params at +0x44 (1.13c +0x14, +0x18, +0x1c), as the Regurgitator
+// think reads its state at +0x44 and corpse at +0x48
+inline constexpr int AiTickControl = 0x0, AiControlParams = 0x44;
 // The think's tick block: the target at +0x10 (1.13c +0x08), its distance at +0x20 (1.13c +0x14), as the Mephisto
 // think reads them
 inline constexpr int AiTickTarget = 0x10, AiTickDistance = 0x20;
@@ -1192,6 +1216,14 @@ inline constexpr int SoundChestOpen = 0xb;
 inline constexpr uint64_t ItemApplyEthereal = 0x3d3510;
 inline constexpr uint8_t ItemApplyEtherealEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x57, 0x48, 0x83,
                                                      0xec, 0x20, 0x48, 0x8b, 0xd9, 0x48, 0x85, 0xc9};
+// (item, affix record) -> non-zero when the magicprefix/suffix record may roll on the item (item types, level 100+
+// rules); both affix pickers (0x58c940, 0x58ce80) call it for each candidate, after the picker's own `rare` test
+// (record +0x64, a flag in D2R: 0 bars quality 6, 8 and 9). Ghidra, D2R.gpr (#254).
+// mov [rsp+8],rbx / mov [rsp+0x10],rbp / mov [rsp+0x18],rsi / mov [rsp+0x20],rdi
+inline constexpr uint64_t AffixAllowed = 0x3d4220;
+inline constexpr uint8_t AffixAllowedEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10,
+                                                0x48, 0x89, 0x74, 0x24, 0x18, 0x48, 0x89, 0x7c, 0x24, 0x20};
+inline constexpr int AffixRare = 0x64;  // uint8 magicprefix/suffix `rare`
 inline constexpr uint64_t UnitBaseStat = 0x2f48c0;  // (unit, stat, layer) -> the value on the unit's base list
 inline constexpr uint64_t SetItemFlag = 0x36d8f0;   // (item, flag, on): item data +0x18 flags (0x400000 ethereal)
 // The item decoder (0x378860, D2Common Items.cpp; client packets and save loads) resets a weapon's base damage from
@@ -1292,6 +1324,15 @@ inline void ReleaseDamage(LeapKnockback& damage) noexcept {
 	if (static_cast<int64_t>(damage.listCapacity) >= 0) {
 		release(damage.listData);
 	}
+}
+
+// Copies a rolled block's plain fields (all but the list at 0x40 and the tagged object at 0x158) into a fresh one:
+// ElementalDamage (0x437d00) writes only 0x0c-0x3c and 0x118-0x144, and never the flags.
+inline void CopyRolled(const LeapKnockback& from, LeapKnockback& to) noexcept {
+	const auto* src = reinterpret_cast<const uint8_t*>(&from);
+	auto* dst = reinterpret_cast<uint8_t*>(&to);
+	std::memcpy(dst, src, offsetof(LeapKnockback, listData));
+	std::memcpy(dst + offsetof(LeapKnockback, pad118), src + offsetof(LeapKnockback, pad118), sizeof(from.pad118));
 }
 
 }  // namespace d2r

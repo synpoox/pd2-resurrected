@@ -9,11 +9,13 @@
 // per-game counters (rva::GameCounter), so a new game starts without them.
 #include "map_stats.h"
 
+#include "map_bosses.h"
 #include "map_open.h"
 
 #include "log.h"
 #include "uber_scaling.h"
 #include "unique_maps.h"
+#include "zhar.h"
 
 #include <intrin.h>
 
@@ -238,7 +240,8 @@ auto Apply(Game* game, Unit* unit, char which) noexcept -> bool {
 		}
 	}
 	d2r::Engine<void (*)(Unit*, void*, int32_t) noexcept>(AttachStatList)(unit, list, 1);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, MapState, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(unit, MapState, 1);  // AttachStatList does not (#630)
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, MapState, 1);
 	return true;
 }
 
@@ -248,7 +251,7 @@ auto Remove(Game* game, Unit* unit) noexcept -> bool {
 	if (list == nullptr) {
 		return false;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, MapState, 0);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(unit, MapState, 0);
 	d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
 	d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(d2r::DataFlag(game), list);
 	return true;
@@ -550,6 +553,9 @@ auto OnItemSpawn(Game* game, uint8_t* drop, int32_t arg) noexcept -> Unit* {
 	if (ethereal) {
 		*reinterpret_cast<uint32_t*>(drop + DropFlags) |= DropFlagEthereal;
 	}
+	if (tcDrop) {
+		UniqueMapDropOverride(drop);  // Zhar's charms (unique_maps.cpp)
+	}
 	Unit* item = g_itemSpawnOriginal(game, drop, arg);
 	if (map && item != nullptr) {
 		const bool madeEthereal =
@@ -582,7 +588,12 @@ auto OnPresetSpawn(Game* game, void* room, const uint8_t* preset) noexcept -> vo
 	if (game != nullptr && room != nullptr && preset != nullptr &&
 	    (NoUberWaypoint(game, room, preset) ||
 	     OuterVoidPreset(game, room, const_cast<uint8_t*>(preset), g_presetSpawnOriginal) ||
+	     ZharPreset(game, room, preset) ||  // Zhar's seal portals and tomes, for their placeholders (zhar.cpp)
 	     DungeonPreset(game, room, const_cast<uint8_t*>(preset), g_presetSpawnOriginal))) {
+		return;
+	}
+	// PD2 0x1038b990: a boss placeholder becomes the map's boss, before slot 5 reads the id (map_bosses.cpp)
+	if (MapBossPreset(game, room, const_cast<uint8_t*>(preset), g_presetSpawnOriginal)) {
 		return;
 	}
 	g_presetSpawnOriginal(game, room, preset);

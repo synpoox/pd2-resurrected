@@ -24,6 +24,8 @@ auto DungeonKeepsRoom(d2r::Unit* unit) noexcept -> bool;
 auto OuterVoidWarp(d2r::Game* game, d2r::Unit* player, d2r::Unit* portal) noexcept -> bool;
 // Takes the object init slot of the dungeon barriers (InitFn 30). Returns false when the slot is not D2R's.
 auto InstallDungeonBarriers(const D2RL::PluginContext* context) noexcept -> bool;
+// From the item spawn hook (map_stats.cpp), on a TC drop's request: Zhar's charm's forced prefix and item level.
+auto UniqueMapDropOverride(uint8_t* drop) noexcept -> void;
 // Registers the table listener that reads the random uniques' bases. Returns false when a service is missing.
 auto InstallUniqueMaps(const D2RL::PluginContext* context) noexcept -> bool;
 // Live counters for the status command.

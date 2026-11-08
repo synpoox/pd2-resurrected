@@ -2,7 +2,9 @@
 // handler (ProjectDiablo.dll 0x1037a330) switches on the dead monster's class (0x10378d80); each unique map boss's entry
 // acts only while the game's map event (+0x1df4) holds its map's value, which opening the map sets (map_events.cpp):
 // - 0x1e Zhar's Sanctum: ZharTheMad (0x10376ea0) opens a gold portal to Harrogath at the body and drops a magic grand
-//   charm at item level 99; each of his three mini-bosses (0x10376dc0) drops one at 90, 1 in 2, until Zhar dies.
+//   charm at item level 99; each of his three mini-bosses (0x10376dc0) drops one at 90, 1 in 2, until Zhar dies. Each
+//   charm's prefix is forced (0x102e5110 picks it): one of the 21 grand charm skill tab prefixes. The seals that step
+//   the sanctum's progress are zhar.cpp's.
 // - 0x1f Warlord of Blood: WarlordOfBlood (0x10376fb0) opens the gold portal, drops 2-3 random uniques and kills the
 //   `demonpillar`s in his room and the rooms next to it.
 // - 0x20 Fallen Gardens: Iskatu (0x103774f0) opens the gold portal and drops one of the eight Rainbow Facets
@@ -39,6 +41,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <iterator>
 
 namespace {
@@ -66,6 +69,17 @@ constexpr uint32_t Jewel = D2RL::Items::MakeItemCode("jew");
 constexpr int32_t FirstFacet = 392;  // Rainbow Facet, runtime uniqueitems rows 392-399 (merge/ids-uniqueitems.tsv)
 // PD2's game +0x262a, Zhar's Sanctum's progress: below 4 the mini-bosses drop charms; Zhar's death sets it to 4
 constexpr uint32_t ZharKey = 0x4d5a4852;  // 'MZHR'
+constexpr int32_t ZharLevel = 99, MiniBossLevel = 90;
+// PD2's set 0x105deb88 (filled at start by 0x1019a0c0): the charms' forced prefix, a one-based magicprefix id: the
+// compiled row less one, and the compile drops the `Expansion` row, so the id is the txt's data row (0-based) past it.
+// The merged table keeps PD2's rows, so the ids are D2R's table-local ones too: the grand charm skill tab prefixes,
+// Fletcher's to Shogukusha's
+constexpr int32_t SkillTabPrefixes[] = {430, 431, 432, 442, 443, 444, 454, 455, 456, 466, 467,
+                                        468, 478, 479, 480, 490, 491, 492, 502, 503, 504};
+// D2R's compiled MagicAffixes row: magicsuffix, then magicprefix, then automagic rows, each its name first. The
+// prefixes start at the row before "Sturdy" (compiled prefix row 0 is blank, row 1 Sturdy, row 2 Strong). The drop
+// request takes the table-local id; the start is read only to log the rows' names.
+constexpr int AffixNameSize = 32;
 constexpr int MaxPillars = 32;
 
 // The Outer Void (PD2 level 180), in act V
@@ -134,6 +148,14 @@ std::atomic<int> g_anyCount {0};
 std::atomic<int> g_socketCount {0};
 const D2RL::DataTableService* g_tables = nullptr;
 
+// The next TC drop's forced prefix and item level (UniqueMapDropOverride); the drop runs on this thread
+struct DropOverride {
+	bool armed;
+	int32_t prefix;  // one-based magicprefix id
+	int32_t itemLevel;
+};
+thread_local DropOverride t_override {};
+
 std::atomic<uint32_t> g_deaths {0};
 std::atomic<uint32_t> g_portals {0};
 std::atomic<uint32_t> g_drops {0};
@@ -175,6 +197,19 @@ auto Drop(Game* game, Unit* monster, uint32_t code, int32_t quality, int32_t uni
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(DropItemAt)(
 		game, monster, row, quality, uniqueRow + 1, 0);
 	plog::Info("unique maps: dropped %.4s (quality %d) (%u)", reinterpret_cast<const char*>(&code), quality, ++g_drops);
+}
+
+// PD2 0x10376ea0 / 0x10376dc0: a magic grand charm at item level `level`, its prefix one of the set's (0x102e5110:
+// the set's rand() % size'th row); here the monster's seed draws it. The drop request gets both (OnItemSpawn).
+auto ZharCharm(Game* game, Unit* monster, uint32_t* seed, int32_t level) noexcept -> void {
+	const int32_t row = SkillTabPrefixes[d2r::RandomBelow(seed, static_cast<uint32_t>(std::size(SkillTabPrefixes)))];
+	t_override = {true, row, level};
+	Drop(game, monster, GrandCharm, QualityMagic, -1);
+	if (t_override.armed) {
+		plog::Warn("unique maps: the charm's drop request was not seen, prefix row %d not forced", row);
+	}
+	t_override.armed = false;
+	plog::Info("unique maps: Zhar's charm, item level %d, prefix id %d", level, row);
 }
 
 // PD2 draws rows at random until one passes (20 tries for the Warlord, 40 for Ureh, then it drops no more); here the
@@ -366,7 +401,8 @@ auto EmpowerBoss(Game* game, Unit* monster, uint32_t lifePercent) noexcept -> vo
 		set(dataFlag, list, stat, 10, 0);
 	}
 	d2r::Engine<void (*)(Unit*, void*, int32_t) noexcept>(AttachStatList)(monster, list, 1);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(monster, MapEventState, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(monster, MapEventState, 1);  // AttachStatList does not (#630)
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(monster, MapEventState, 1);
 }
 
 // PD2 0x10379170: a death from the list of the level's step makes the next step. False when it does not.
@@ -426,9 +462,34 @@ auto DungeonBossDeath(Game* game, Unit* monster) noexcept -> void {
 	           MapEvent(game), MapEventStep(game), opened);
 }
 
+// Logs the forced prefixes' names, a check that the ids name the skill tab rows
+auto LogSkillTabPrefixes(const D2RL::PluginContext* context) noexcept -> void {
+	using namespace D2RL::DataTables;
+	TableView view {.structSize = TableViewSize};
+	if (g_tables->getTable(context, Bank::Rotw, TableId::MagicAffixes, &view) != Result::Success || view.rows == nullptr ||
+	    view.rowSize < AffixNameSize) {
+		plog::Warn("unique maps: no MagicAffixes rows to name the charms' prefixes");
+		return;
+	}
+	const auto name = [&](uint32_t i) {
+		return static_cast<const char*>(view.rows) + static_cast<size_t>(i) * view.rowSize;
+	};
+	for (uint32_t i = 1; i + 1 < view.rowCount; ++i) {
+		if (std::strncmp(name(i), "Sturdy", AffixNameSize) == 0 && std::strncmp(name(i + 1), "Strong", AffixNameSize) == 0) {
+			const auto base = static_cast<int32_t>(i - 1);
+			plog::Info("unique maps: magicprefix starts at MagicAffixes row %d of %u (row size %u); skill tab rows %.32s to "
+			           "%.32s", base, view.rowCount, view.rowSize, name(base + SkillTabPrefixes[0] - 1),
+			           name(base + SkillTabPrefixes[std::size(SkillTabPrefixes) - 1] - 1));
+			return;
+		}
+	}
+	plog::Warn("unique maps: no Sturdy/Strong rows in MagicAffixes (%u rows of %u bytes)", view.rowCount, view.rowSize);
+}
+
 void __cdecl ReadUniqueBases(const D2RL::PluginContext* context, const D2RL::Lifecycle::DataTablesLoadedEvent*,
                              void*) noexcept {
 	using namespace D2RL::DataTables;
+	LogSkillTabPrefixes(context);
 	g_anyCount.store(0, std::memory_order_release);
 	g_socketCount.store(0, std::memory_order_release);
 	TableView view {.structSize = TableViewSize};
@@ -482,11 +543,9 @@ auto UniqueMapDeath(Game* game, Unit* monster) noexcept -> void {
 		if (monsterClass == Zhar) {
 			*progress = 4;
 			Portal(game, monster, GoldPortal, Harrogath);
-			// shortcut: PD2 also forces one magic affix on the charm (0x102e5110, not read); read it if the charm
-			// should differ from a plain magic one
-			Drop(game, monster, GrandCharm, QualityMagic, -1);
+			ZharCharm(game, monster, seed, ZharLevel);
 		} else if (d2r::RandomBelow(seed, 2) == 0) {
-			Drop(game, monster, GrandCharm, QualityMagic, -1);
+			ZharCharm(game, monster, seed, MiniBossLevel);
 		}
 	} else if ((event == WarlordEvent && monsterClass == Warlord) || (event == UrehEvent && monsterClass == UrehBoss) ||
 	           (event == ImperialEvent && monsterClass == ImperialBoss) ||
@@ -518,6 +577,18 @@ auto UniqueMapDeath(Game* game, Unit* monster) noexcept -> void {
 		return;
 	}
 	plog::Info("unique maps: monster %d died in map event 0x%x (%u boss deaths)", monsterClass, event, g_deaths.load());
+}
+
+auto UniqueMapDropOverride(uint8_t* drop) noexcept -> void {
+	using namespace d2r::rva;
+	if (!t_override.armed || drop == nullptr) {
+		return;
+	}
+	t_override.armed = false;
+	*reinterpret_cast<int32_t*>(drop + DropItemLevel) = t_override.itemLevel;
+	if (t_override.prefix > 0) {
+		*reinterpret_cast<int32_t*>(drop + DropPrefix) = t_override.prefix;
+	}
 }
 
 auto OuterVoidPreset(Game* game, void* room, uint8_t* preset, void (*spawn)(Game*, void*, const uint8_t*) noexcept) noexcept

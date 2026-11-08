@@ -1,108 +1,98 @@
 # Changelog
 
-Player-facing changes, newest first. One section per version, heading `### <version> (<YYYY-MM-DD>)`. Until the first
-private-multiplayer release a build may break characters; each break is noted here (ADR 0003).
+Player-facing changes, newest first. Entries follow PD2 unless noted. Until multiplayer, a build may break characters (ADR 0003).
 
 ### Unreleased
 
+#### Maps
+
+- Dungeon maps get their boss, and its barriers open when the boss dies.
+
+### 0.2.0-alpha (2026-11-08)
+
 #### Items
 
-- Purgatory's damage follows ethereal items put on or taken off while it is worn.
-- D2R's organ portal is off: the three organs are used up and make PD2's Pandemonium Talisman.
-- Item crushing blow rolls on normal hits, and Purgatory gains damage per worn ethereal item, as in PD2.
-- Spear and two-hand masteries boost crits and crushing blow, and Smite's crushing blow hits harder, as in PD2.
-- Ethereal items get Project Diablo II's +25% defense or damage, not +50%.
-- Items follow PD2 more closely: ethereal durability, rare affixes, mercenary gear drops, Tome of Identify, skill on cast/block.
-- A unique charm sold to a vendor by mistake can be bought back, as in PD2.
-- Quivers roll PD2's automagic again: arrows +2/10/18 max damage, bolts -2/4/6% enemy physical resistance.
-- The Horadric Cube has PD2's 4x4 grid.
-- Stacks in the inventory, cube and stash show their quantity on the picture, as in PD2 (tomes excepted).
-- Curses follow PD2's duration resistance (75 cap on players), land on attracted units, and fail when fully resisted.
-- Ctrl+left-clicking a held stack onto a stack of the same item adds one item to it, as in PD2.
+- Rare-only affixes (Visceral, +2 class skill helms, +3 skill trees) no longer roll on magic or crafted items.
+- Larzuk's Malus shows a malus in HD, not an elixir.
+- Crossbows and claws use PD2's attack speeds and breakpoints.
+- Crushing blow rolls on normal hits.
+- Purgatory gains damage per worn ethereal item, updated as they are put on or taken off.
+- Spear and two-hand masteries boost crits and crushing blow; Smite's crushing blow hits harder.
+- Ethereal items get +25% defense or damage, not +50%.
+- Ethereal durability, rare affixes, mercenary gear drops, Tome of Identify and skill on cast/block follow PD2.
+- A unique charm sold by mistake can be bought back.
+- Quivers roll automagic again: arrows +2/10/18 max damage, bolts -2/4/6% enemy physical resistance.
+- The Horadric Cube has a 4x4 grid.
+- Stacks show their quantity on the picture (tomes excepted).
+- Ctrl+left-clicking a held stack onto a matching stack adds one item.
+- Curses follow duration resistance (75 cap on players), land on attracted units and fail when fully resisted.
 - of Anima rolls on amulets, cold prefixes tint items dark blue, and potion texts are fixed.
+- D2R's organ portal is off: the three organs make the Pandemonium Talisman.
+
+#### Skills
+
+- Dark Pact consumes a curse and explodes for magic damage that grows with the curses.
 
 #### Uber bosses
 
-- Rathma's tier-0 grey portals come out at the fight's current stage, as in PD2.
-- Rathma's final two clones share life: a hit on one is halved and the other loses the same, as in PD2.
-- Rathma's surviving clone casts RathmaDeath; the pair's drops are item level 130.
-- Lucion's frenzy darkens the act, plays PD2's sounds and hides him in shadow, as in PD2.
-- Lucion's immunity strips poison and Open Wounds, as in PD2.
-- Rathma left alone in his arena idles and turns immune for a short while, as in PD2.
-- Uber Mephisto, Diablo and Baal summon PD2's minions: skeletons, Pit Lords, vampires and wraiths.
-- Uber Mephisto's Conviction and Uber Baal's Lower Resist work as in PD2.
-- PD2's new monsters (Lucion, Na-Krul, Iskatu and others) finish their attacks and casts and keep fighting.
-- The Pandemonium Talisman opens Uber Tristram at the Blood Fountain, like the other uber keys.
-- Cubing the three Pandemonium keys in Hell opens a red portal to a mini-uber area again.
-- Lilith, Uber Duriel and Uber Izual drop Diablo's Horn, Baal's Eye and Mephisto's Brain again.
-- The Diablo Clone, Rathma and Lucion keys open their uber areas at the Blood Fountain (Hell, level 80+); the fights come later.
-- The uber areas have no waypoint, also after a key's warp.
-- A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
-- Lucion fights in PD2's stages: blinks, Nova, a frenzy of Punish, and spawners that call his adds.
-- Lucion's blink and dash show their novas on the client too.
-- Rathma and Mendeln fight by PD2's script: life events, held life, immunity, and retreat portals below 15%.
-- Mendeln, Rathma and their clones spawn in their arenas, each reached by a ghostly portal, as in PD2.
-- Rathma summons golems, a totem and void knights; his bone spear takes a share of max life.
-- Diablo Clone fights in PD2's phases: three nova rounds, three skeleton waves, immune while his adds live.
-- Diablo Clone runs to the arena centre for his novas, and uber bosses left alone go idle and immune, as in PD2.
-- Diablo Clone's trapped souls rain meteors and boulders, faster and tighter by tier, and die with him.
-- Uber fight monsters scale with the key's tier, as in PD2.
-- PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
-- Lucion's death opens a portal to the Temple, ends his adds and drops a Demonic Cube at tiers 1-2.
-- Lucion's death also opens a portal in Harrogath back into his arena.
-- The death novas of Rathma, the Nihlathak map boss and DollMeteor show, as in PD2.
-- After Lucion's death, cube a corrupted amulet in the Temple to try a Desecration (50%, 60% at tiers 1-2).
-- A failed Desecration bricks the amulet: a new rare amulet with one Corruption and one Desecration mod.
-- Diablo Clone drops Annihilus, and at tiers 1-2 rolls 1 in 200 for one of PD2's five Dclone uniques.
-- Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
-- Diablo Clone's skeleton summon raises PD2's three waves around his arena's centre.
+- The Diablo Clone, Rathma and Lucion keys open their areas at the Blood Fountain (Hell, level 80+).
+- The Pandemonium Talisman opens Uber Tristram at the Blood Fountain.
+- Cubing the three Pandemonium keys in Hell opens a mini-uber portal again.
+- Lilith, Uber Duriel and Uber Izual drop the organs again.
+- Uber areas have no waypoint, and their monsters scale with the key's tier.
+- A tier-0 key leaves three grey portals for one re-entry each, healing the boss 20%.
+- Uber bosses left alone go idle and immune.
+- Uber Mephisto, Diablo and Baal summon their minions; Conviction and Lower Resist work.
 - Uber Tristram's last prime drops the Hellfire Torch and Black Soulstone and opens a town portal.
-- Royal Fire (Lucion's controller, Radament's map boss) casts PD2's ring of fire, aimed into his arena for Lucion's.
-- Lucion's Nova leaves PD2's gaps, Punish rings its target, and his Dash leaps with a trail and a landing nova.
-- The Temple's Lucion chests show and drop PD2's LucionChest loot, one more item per uber tier.
+- Diablo Clone fights in phases: nova rounds at the arena centre, skeleton waves, immune while his adds live.
+- Diablo Clone's trapped souls rain meteors and boulders by tier and die with him.
+- Diablo Clone drops Annihilus, and at tiers 1-2 has a 1 in 200 chance at a Dclone unique.
+- Mendeln and Rathma spawn in their arenas, reached by ghostly portals.
+- Rathma fights by script: life events, held life, immunity and retreat portals below 15%.
+- Rathma summons golems, a totem and void knights; his bone spear takes a share of max life.
+- Rathma's last two clones share life; the survivor casts RathmaDeath and the drops are item level 130.
+- Rathma and Mendeln drop the Tainted Worldstone Shard and leave a gold portal to Harrogath.
+- Lucion fights in stages: blinks, Nova, a Punish frenzy, and spawners for his adds.
+- Lucion's Nova, Punish and Dash show their effects, on the client too.
+- Lucion's frenzy darkens the act and plays its sounds; his immunity strips poison and Open Wounds.
+- Lucion's death opens portals to the Temple and Harrogath, ends his adds and drops a Demonic Cube at tiers 1-2.
+- The Temple's chests drop Lucion loot, one more item per tier.
+- In the Temple, cube a corrupted amulet to try a Desecration (50%, 60% at tiers 1-2); failure bricks it.
+- New monsters (Lucion, Na-Krul, Iskatu and others) finish their attacks and keep fighting.
+- Cross-act portals are visible, drawn as D2R's red portal.
+- Royal Fire casts its ring of fire.
 
 #### Maps
 
-- Dungeon maps get PD2's boss, and its barriers open when the boss dies.
-- The Gheed map event spawns Gheed in tiered maps, as in PD2.
-- The Horazon map event spawns Horazon in tiered maps; only that Horazon opens his portal, as in PD2.
-- Unique map bosses leave a portal to Harrogath (or onward) and drop PD2's charms, facets and puzzle pieces.
-- The Warlord of Blood and Ureh's boss drop PD2's random uniques, and the Warlord's arena starts empty.
-- The Outer Void has PD2's three random bosses, and its portals lead deeper, then home with uber parts.
-- Monsters in maps can drop unique maps, and Horazon has a 10% chance to drop one, as in PD2.
-- Fortified maps no longer double key and unique map rolls on map bosses, as in PD2.
-- A map event's spawn sends PD2's notify line ("Evil beckons you from the Void...") in red chat.
-- Fortified, drop-bonus and item-drop maps give their extra and stat drops on kills, as in PD2.
-- Map tooltips show the map's tier, and map stats read without raw format codes.
-- Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
-- Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
-- Map events Shadow of Mendeln, Dark Wanderer and Treasure Fallen spawn in tiered maps, as in PD2.
-- Shadow of Mendeln's Nihlathak sends mob waves, then casts his death nova and dies, as in PD2.
-- A dungeon or unique map's area stats (density, rarity, added monsters) now apply on all of its levels.
-- Teleport blockers in Realm of Terror, Sanctuary of Sin and the Imperial boss map stop teleports past them, as in PD2.
-- Wooded PD2 maps draw HD tree borders, and D2R-tile maps use whole D2R rooms.
-- Eight more PD2 maps, among them Ashen Plains and Descent, draw walls and props in HD.
-- Wooded maps in HD fill the gaps in their tree lines and no longer plant trees on walkable ground.
-- Wooded maps in HD keep tall trees off the near side of paths, so they no longer hide the character.
+- Map events spawn in tiered maps: Altar of the Catalyst, Spire of Darkness, Void/Tomb, Gheed, Horazon, Shadow of Mendeln, Dark Wanderer, Treasure Fallen.
+- A map event's spawn sends its notify line in red chat.
+- Killing Horazon drops maps and opens a portal to a map of the same or next tier.
+- Leoric, the Siege Beast, Sharptooth, Zhar and the other map bosses spawn, run their AI and summon adds.
+- Unique map bosses leave a portal onward and drop charms, facets and puzzle pieces.
+- The Outer Void has three random bosses, and its portals lead deeper, then home with uber parts.
+- Zhar's Sanctum has seal portals and tomes; Zhar's charms get a skill tab prefix.
+- Monsters in maps can drop unique maps.
+- Fortified, drop-bonus and item-drop map stats apply on kills; fortified maps no longer double key rolls.
+- Duplicated maps spawn their boss twice.
+- A map's area stats apply on all its levels.
+- Teleport blockers stop teleports past them.
+- Map tooltips show the tier, without raw format codes.
+- More maps draw walls, props and tree borders in HD; trees no longer block paths or hide the character.
 
 #### Sounds
 
-- Zhar the Mad attacks with his own PD2 voice.
+- Zhar the Mad has his own voice.
 
 #### Fixes
 
-- Rathma's portal to Harrogath is gold, and the shard names lose a stray `*/`, as in PD2.
-- Split Throw's weapons show, split and come back to the Barbarian as in PD2.
-- Legacy graphics no longer draws the ground in D2R's own areas as red and cyan noise.
-- Legacy graphics draws PD2's maps (Mesa, Tomb Map, Graveyard Map and others) in their own colours.
-- The Ascendant mercenary equips staves only, as in PD2.
-- The mercenary panel shows the mercenary's title instead of "an evil force".
-- PD2's own items (Worldstone Shards, maps, PD2 uniques) show on the ground in HD again.
-- Legacy graphics shows PD2's own missiles again (Holy Nova and others).
-- Charged potions and other PD2-only items show their own pictures instead of a hand axe.
-- Druid and Assassin class skills on items show their number ("+2 to Assassin Skill Levels").
+- Uber, map and skill states (immunity, Hunger, Desecrate, Vengeance) are real states, so their checks fire.
+- Druid vines eat each corpse once.
+- Split Throw's weapons show, split and return.
+- Legacy graphics draws D2R's ground and PD2's maps in the right colours, and shows PD2's missiles again.
+- The Ascendant equips staves only; its title and skill icons show.
+- PD2's own items show on the ground in HD again and keep their own pictures.
+- Druid and Assassin class skills on items show their number.
 - Leoric's taunt no longer crashes the game.
-
 ### 0.1.0-alpha (2026-11-05)
 
 The first alpha: every Project Diablo II (PD2) class plays as in PD2, offline single-player, with PD2's maps. The uber

@@ -249,22 +249,13 @@ auto StripStates(Game* game, Unit* player) noexcept -> int32_t {
 		if (list == nullptr) {
 			continue;
 		}
-		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(player, state, 0);
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(player, state, 0);
 		d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(player, list);
 		d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(d2r::DataFlag(game), list);
 		++stripped;
 	}
 	return stripped;
 }
-
-// The argument block D2R's operate dispatcher 0x592c40 passes an operate function
-struct ObjectOperate {
-	Game* game;
-	Unit* object;
-	Unit* player;
-	uint64_t seed;
-	int32_t classId;
-};
 
 // How operate 15 removes a used portal: the room's clients are told, then the unit is freed. Returns its room.
 auto RemoveObject(Game* game, Unit* object) noexcept -> void* {
@@ -470,7 +461,8 @@ auto OpenUber(Game* game, Unit* player, Unit* item, int32_t level) noexcept -> v
 	}
 	*CounterOf(game, OpenKey) += 1;
 	*CounterOf(game, TierKey) = tier;
-	*CounterOf(game, EntryKey) = arrived;
+	// PD2 0x10383060 keeps the arrival count in game +0x2628, but sets it to 0 for Uber Tristram
+	*CounterOf(game, EntryKey) = level == UberTristram ? 0 : arrived;
 	g_warped += static_cast<uint32_t>(arrived);
 	plog::Info("uber: level %d open at tier %d, %d players in (%u opened)", level, tier, arrived, ++g_ubers);
 	if (tier == 0) {

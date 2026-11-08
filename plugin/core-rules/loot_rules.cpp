@@ -8,6 +8,11 @@
 //   item that is already ethereal is not ported: it would leave cube-made ethereal items with no bonus.
 //   D2R's item decoder (0x378860) applies its own 3/2 to a weapon's damage each time it reads one (the client's copy,
 //   so the tooltip, and every save load, so the real damage after a relog); those six multiplies are patched to 5/4.
+// - an affix's `rare` (#254): PD2's picker (ProjectDiablo.dll 0x10389080, item quality from D2Common #10106) takes
+//   0 on no rare, crafted or tempered item, 1 on any, 2 on no crafted or tempered item, 3 on rare items only. D2R's
+//   pickers read the column as a flag (0x58c940), so PD2's rare-only affixes (Visceral, the +2 class skill helms, the
+//   +3 skill trees) rolled on magic and crafted items. No SDK service filters an affix roll, so D2R's per-affix test
+//   (0x3d4220), which both pickers call, is wrapped: it refuses 2 and 3 where PD2 does, then runs D2R's.
 #include "loot_rules.h"
 
 #include "pd2_engine.h"
@@ -31,6 +36,34 @@ constexpr int32_t StatArmorClass = 31;
 constexpr int32_t WeaponStats[] = {21, 22, 23, 24, 159, 160};  // mindamage, maxdamage, secondary_min/maxdamage, item_throw_min/maxdamage
 
 std::atomic<uint32_t> g_ethereal {0};
+std::atomic<uint32_t> g_rareBlocked {0};
+
+constexpr int32_t QualityRare = 6, QualityCrafted = 8, QualityTempered = 9;
+
+using AffixAllowedFn = int32_t (*)(Unit*, const uint8_t*) noexcept;
+AffixAllowedFn g_affixAllowedOriginal = nullptr;
+
+// PD2's rule for `rare` 2 and 3 (0 and 1 D2R's picker already handles as PD2 does)
+constexpr auto RareAllows(uint8_t rare, int32_t quality) noexcept -> bool {
+	const bool crafted = quality == QualityCrafted || quality == QualityTempered;
+	return rare == 3 ? quality == QualityRare : rare == 2 ? !crafted : true;
+}
+static_assert(RareAllows(3, QualityRare) && !RareAllows(3, 4) && !RareAllows(3, QualityCrafted));
+static_assert(RareAllows(2, QualityRare) && RareAllows(2, 4) && !RareAllows(2, QualityCrafted) && RareAllows(1, 8));
+
+auto RareAffixAllowed(Unit* item, const uint8_t* affix) noexcept -> int32_t {
+	if (item != nullptr && affix != nullptr) {
+		const uint8_t rare = affix[d2r::rva::AffixRare];
+		if (rare >= 2) {
+			const int32_t quality = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemQuality)(item);
+			if (!RareAllows(rare, quality)) {
+				++g_rareBlocked;
+				return 0;
+			}
+		}
+	}
+	return g_affixAllowedOriginal(item, affix);
+}
 
 // PD2's rounding: (value * 5) / 4, truncated toward zero
 constexpr auto Bonus(int32_t value) noexcept -> int32_t {
@@ -120,15 +153,19 @@ auto InstallLootRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool ethereal = decoder && context->InstallInlineHook(ItemApplyEthereal, ItemApplyEtherealEntry,
 	                                                            sizeof(ItemApplyEtherealEntry),
 	                                                            reinterpret_cast<void*>(&ApplyEthereal));
-	std::snprintf(report, reportSize, "ethereal bonus%s", !decoder ? " FAILED (decoder bytes differ)"
-	                                                      : ethereal ? "" : " FAILED (bytes differ)");
-	return ethereal ? 1 : 0;
+	const bool rare = context->InstallInlineHook(AffixAllowed, AffixAllowedEntry, sizeof(AffixAllowedEntry),
+	                                             &RareAffixAllowed, &g_affixAllowedOriginal);
+	std::snprintf(report, reportSize, "ethereal bonus%s; affix rare%s",
+	              !decoder ? " FAILED (decoder bytes differ)" : ethereal ? "" : " FAILED (bytes differ)",
+	              rare ? "" : " FAILED (bytes differ)");
+	return (ethereal ? 1 : 0) + (rare ? 1 : 0);
 }
 
 auto LootRuleCount() noexcept -> int {
-	return 1;
+	return 2;
 }
 
 auto LootRuleCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "ethereal bonuses %u", g_ethereal.load());
+	std::snprintf(out, size, "ethereal bonuses %u, rare-only affixes refused %u", g_ethereal.load(),
+	              g_rareBlocked.load());
 }

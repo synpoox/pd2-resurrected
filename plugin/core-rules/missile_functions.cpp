@@ -458,7 +458,7 @@ auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 			setStat(dataFlag, list, stat, value, 0);
 		}
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(hit, state, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(hit, state, 1);
 	if (plog::Sample(g_stateHits)) {
 		plog::Info("state hit: missile row %d skill %d level %d: state %d for %d frames on unit type %d, stat %d %+d, "
 		           "stat %d %+d, result %d, hit %u", At<int32_t>(missile, UnitClassId), skillId, level, state, frames,
@@ -492,21 +492,11 @@ struct BoltSplash {
 	int64_t victims;
 };
 
-// Copies the rolled block's plain fields (all but the list at 0x40 and the tagged object at 0x158) into a fresh one:
-// ElementalDamage (0x437d00) writes only 0x0c-0x3c and 0x118-0x144, and never the flags.
-void CopyRolled(const d2r::LeapKnockback& from, d2r::LeapKnockback& to) noexcept {
-	const auto* src = reinterpret_cast<const uint8_t*>(&from);
-	auto* dst = reinterpret_cast<uint8_t*>(&to);
-	std::memcpy(dst, src, offsetof(d2r::LeapKnockback, listData));
-	std::memcpy(dst + offsetof(d2r::LeapKnockback, pad118), src + offsetof(d2r::LeapKnockback, pad118),
-	            sizeof(from.pad118));
-}
-
 // One unit in range (PD2's callback 0x10304a90): a copy of the roll through the area apply.
 auto BoltSplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	auto* b = static_cast<BoltSplash*>(area->arg);
 	d2r::LeapKnockback damage;
-	CopyRolled(*b->rolled, damage);
+	d2r::CopyRolled(*b->rolled, damage);
 	damage.hitFlags = b->hitFlags;
 	damage.resultFlags = b->resultFlags;
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(d2r::rva::AreaApply)(static_cast<Game*>(area->game),

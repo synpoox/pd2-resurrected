@@ -197,6 +197,30 @@ unknown levels use 200. `region[+0x04]` counts the level's rooms activated so fa
 
 The spawn point is the activating room's centre. Each spawn sends the notify string (client message).
 
+**The altars** ([#504](https://github.com/synpoox/pd2-resurrected/issues/504), [#505](https://github.com/synpoox/pd2-resurrected/issues/505)). Both use PD2's operate 79 (`0x3aa460`; PD2's
+operate table is filled in `0x36c320`: 77 `0x3a9780`, 78 `0x3aa270`, 79 `0x3aa460`, 80 `0x3aa670`). `game+0x2628` is
+the event's state:
+
+- Altar of the Catalyst (event 19): the spawn places object 611 by the spot search, state 1. The first use sets the
+  altar's mode 1, adds its open event and spawns monster 1064 `GuardianOfFate` 10-29 subtiles from it (40 tries, spot
+  size 2), state 2. Its death (`0x378080`, event 19 and state 2) sets state 3 and kills the `GuardianOfFateClone`s
+  (1065) around it; the guardian's AI (`0x35a6b0`) summons them. The next use sets mode 3 and drops 2 or 3 `iwss`
+  (Catalyst Shard) by the altar at item level 90 (`0x36ebc0`), state 4.
+- Spire of Darkness (event 16): the altar goes at a random point of the room (`0x389ea0`), then the spot search; fog
+  object 374 at (x+2, y), (x, y+2) and (x-1, y-1); state 1. The use sets the altar's mode 1, darkens the level's act
+  (`0x37dc70`: packet 0x53, D2's Tainted Sun) and plays sounds 0xa78 and 0x24 to the user's level (`0x37f240`), state 2.
+  While the state is 2-49 each room activation draws `rand() % 6`: 1, 2 or 3 spawn a group of 993, 994 or 995 (MinGrp to
+  MaxGrp read from the monstats record, +0x2f and +0x30: 3-6, 8-14, 1) at the room's centre +- 5 (spot size 10).
+  `0x36eb30`, past progress 90: state 50, the darkness lifted (`0x37dc70` with 0), sound 0x26d for the level's players
+  (`0x37f240`, packet 0x2c), and every 993-995 in the game killed without drops (`0x356e00`; it reads only the first
+  monster of each of the 128 lists at `game+0x1320`).
+
+The objects go through `0x38a060`, which spawns an object in mode 0 (it passes `type != 2` as the mode) and sets
+bits `0x3000000` of its unit flags.
+
+**Void / Tomb** (event 21): the spawn places object 586 `xactportal_gold` by the spot search, then `0x38a1f0` places
+another 586 in level 207 at its spot (`0x38a000`) and `0x38a510` links the two both ways; object 594 marks the spot.
+
 **Horazon** (`0x377ca0`, on `summonerMap`'s death while the event is live). It builds a pool from three hard-coded level
 lists, which match the misc `len` tiers exactly:
 
@@ -246,9 +270,11 @@ killer's player (when a player), +0x14 the uniqueitems table, +0x5C an item code
 
 | Value | Reader | When | What it does | Port |
 |---|---|---|---|---|
-| 0x1E Zhar | `0x10376ea0` | ZharTheMad (1058) dies, `game+0x262a` < 4 | sets +0x262a to 4; gold portal (586) to Harrogath; a magic Grand Charm (`cm3`, quality 4) at item level 99 with one affix forced (`0x102e5110`) | portal, charm (affix not forced) |
-| 0x1E | `0x10376dc0` | a mini-boss (1061-1063) dies, +0x262a < 4 | 1 in 2: the same charm at item level 90 | yes |
-| 0x1E | `0x103aa670` (object operate, table slot 0x140) | Zhar's seals (`zharportal_blue` 598, `zharportal_red` 599) and `ZharTomeObject` 600 are used | steps +0x262a 0 -> 3, opens and links the seal portals | no ([#531](https://github.com/synpoox/pd2-resurrected/issues/531)) |
+| 0x1E Zhar | `0x10376ea0` | ZharTheMad (1058) dies, `game+0x262a` < 4 | sets +0x262a to 4; gold portal (586) to Harrogath; a magic Grand Charm (`cm3`, quality 4) at item level 99 with its prefix forced: `0x102e5110` takes the (`rand()` % 21)th row of the set `0x105deb88` (filled by `0x1019a0c0`: one-based magicprefix ids 430-432, 442-444, 454-456, 466-468, 478-480, 490-492, 502-504, which are the txt's data rows of those numbers since the compile drops the `Expansion` row: the grand charm skill tabs), passed as the drop's prefix (1.13c request +0x68) | yes ([#531](https://github.com/synpoox/pd2-resurrected/issues/531)) |
+| 0x1E | `0x10376dc0` | a mini-boss (1061-1063) dies, +0x262a < 4 | 1 in 2: the same charm at item level 90, its prefix forced the same way | yes ([#531](https://github.com/synpoox/pd2-resurrected/issues/531)) |
+| 0x1E | `0x103aa670` (object operate 80, table slot 0x140) | Zhar's seals (`zharportal_blue` 598, `zharportal_red` 599) and `ZharTomeObject` 600 are used; any other event refuses (the player's sound 0x13) | an open portal warps through the portal operate `0x103a9780`; a tome not yet read (mode 0) finds a blue portal in the player's rooms (`0x1038d3a0`), else a red one, and opens it (mode 1, event 1 after its FrameCnt1 frames); a blue one steps +0x262a 0 -> 1 -> 2, the red one to 3 (if below); sounds 4704-4706 (`zhar_intro1`-`3`) for the steps and 4707 (`zhar_book`) for every tome, to the level's players (packet 0x2c, `0x1037f240`) | yes ([#531](https://github.com/synpoox/pd2-resurrected/issues/531)) |
+| levels 176-179 | `0x1038bfc0` (preset rewrite, no event test) | Zhar's placeholders: in the hub (176) objects 601-603 (`preset_placeholder_A`-`C`); in the wings (177-179) 601 and 602 | the hub's get an open blue portal (598), linked both ways (`0x1038a510`, mode 2) to a new open blue portal at spot 11 of wing 177, 178 or 179 (`0x1038a1f0`); in a wing, 601 gets a closed portal linked one way to an `empty` marker (587) in the hub: red (599) in the wing `game+0x7c` % 3 picks, to the hub's spot 0, else blue (598) to its spot 11 plus (-0x19, 0xf), (-0x19, -0x19) or (0xf, -0x19); 602 gets the tome (600) | yes ([#531](https://github.com/synpoox/pd2-resurrected/issues/531); trips are warps) |
+| map levels | `0x1038b990` (from `0x1038bfc0`; no event test but level 185's) | a monster preset of a map level (`0x1037c510`: 0x89-0xd2 but 0xca-0xce) | the boss swap: `lesserhydra1` (738) becomes the level's boss in about 45 levels (192's case is dead code: `0x1038bfc0` spawns its 0x47c on a free spot, `0x1038a0d0`, keeps it in +0x2600 and returns 0) (e.g. 176 ZharTheMad 1058; 177-179 his mini-bosses 1062, 1063, 1061; 167 doomknight3LibraryBoss 997), `lesserhydra2`/`3` (739/740) in 144 and 182; 891 in 183 is dropped (returns 0). In 185 with value 0x29, `lesserhydra1` rolls `rand()` % 20 < 1 for each prime (704, 705, 709) whose bit (2, 4, 8 in `game+0x2628`) is unset (the opening `0x10383060` sets +0x2628 to 0), `lesserhydra2` takes the first unset one, and one that places none is dropped. `0x1038bfc0` rewrites levels 194-196 itself first (Ureh 1171/1172/1175, Nemyr 1174; 194's bosses 1168/1166/1164 it spawns itself, `0x1038a060` and `0x1037cd00`, and keeps in +0x2600-0x260c) | yes ([#614](https://github.com/synpoox/pd2-resurrected/issues/614)) |
 | 0x1F Warlord | `0x10376fb0` | WarlordOfBlood (1060) dies | gold portal; 2-3 random uniques (any with flags, rarity and level 1-99) at item level 99; kills the `demonpillar`s (1057) in his room and the rooms next to it | yes (MS7c; the monster's item level) |
 | 0x1F | `0x1036fef0` (room activation) | a room of level 182 that overlaps x 0x5a10-0x5a88, y 0x25c2-0x263a (subtiles, `0x1037d900`) | the room gets no monsters (the arena) | yes (MS7c) |
 | 0x20 Fallen Gardens | `0x103774f0` | Iskatu (1094) dies | gold portal; one of the eight Rainbow Facets (unique records 392-399) at item level 99 (`0x103841d0`) | yes |
