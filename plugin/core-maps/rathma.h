@@ -16,12 +16,12 @@ auto RathmaRoom(d2r::Game* game, void* room, int32_t level) noexcept -> bool;
 auto RathmaArenaPortal(d2r::Game* game, d2r::Unit* player, int32_t level) noexcept -> bool;
 // PD2 0x103a9780, tier 0: a portal taken from outside Harrogath into a Rathma level moves the exit of the grey
 // re-entry portals (PD2 relinks them to a new `empty` marker, 0x1038a510): the arena portal in stages 1, 3 and 5+ to
-// the stage's spot, a portal to the next level to the taker's spot. Called before the player moves.
+// the stage's spot, a portal to the next level to that level's arrival. Called before the player moves.
 auto RathmaMoveReentry(d2r::Game* game, d2r::Unit* player, int32_t from, int32_t to) noexcept -> void;
 // The grey portals' exit for a grey portal into `level`: its level, written to `level`, and spot. False while it was
 // never moved, or `level` is no Rathma level.
 auto RathmaReentry(d2r::Game* game, int32_t& level, int32_t xy[2]) noexcept -> bool;
-// Places a player just warped into the exit's level at its spot. False when the spot's room is not found.
-auto RathmaPlaceAt(d2r::Game* game, d2r::Unit* player, const int32_t xy[2]) noexcept -> bool;
+// Places a player just warped into the exit's level at its spot; an arrival exit leaves the warp's placement.
+auto RathmaPlaceAt(d2r::Game* game, d2r::Unit* player, const int32_t xy[2]) noexcept -> void;
 // Live counters for the status command.
 auto RathmaCounters(char* out, size_t size) noexcept -> void;

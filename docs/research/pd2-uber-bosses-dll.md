@@ -92,7 +92,9 @@ When a player enters an uber level (137, 161-163 from Harrogath, or 188), by the
   The opening links the three portals (kept at `game+0x261c`-`0x2624`) to an `empty` marker (587) at the use spot.
   At tier 0, a portal taken from outside Harrogath into a Rathma level relinks them (`0x1038a510`) to a new marker:
   the arena portal (its level is the player's own) at the spot of stage 1, 3 or 5+ by `game+0x262a` (none in stages 2
-  and 4), a portal to the next level at the taker's spot by it (`0x1038a1f0`). The relink sets the portals' level too.
+  and 4), a portal to the next level at that level's spawn spot (`0x1038a1f0` with the destination level:
+  `0x1038a000` takes D2Common's act spawn location, then `0x10389ad0` finds a free spot). The relink sets the portals'
+  level too.
 - On arrival in levels 136, 137, 161-163 or 185, the level's `Waypoint` objects are removed.
 - **No exit block.** PD2 does not refuse save-and-exit or a death exit, and no reader of `game+0x1df4` or of the uber
   level ids does. Tiers 1-2 open no way back, and the three tier-0 portals are the only re-entry.

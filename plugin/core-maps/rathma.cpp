@@ -307,12 +307,15 @@ auto RathmaArenaPortal(Game* game, Unit* player, int32_t level) noexcept -> bool
 }
 
 // The grey portals' exit (PD2's `empty` marker the three portals at game +0x261c-0x2624 are linked to): level 0 until
-// the first move, which is also where they lead before it (the portal's own level, D2R's level entry)
+// the first move, which is also where they lead before it (the portal's own level, D2R's level entry). Spot (0, 0) is
+// the level's arrival, D2R's warp placing the player as PD2's marker spawn does.
 constexpr uint32_t ExitLevelKey = 0x5542524c;  // 'UBRL'
 constexpr uint32_t ExitXKey = 0x55425258;      // 'UBRX'
 constexpr uint32_t ExitYKey = 0x55425259;      // 'UBRY'
 std::atomic<uint32_t> g_exitMoves {0};
 std::atomic<uint32_t> g_reentries {0};
+
+constexpr Spot Arrival = {0, 0};
 
 auto MoveExit(Game* game, int32_t level, Spot at, const char* why) noexcept -> void {
 	Counter(game, ExitLevelKey) = level;
@@ -328,10 +331,9 @@ auto RathmaMoveReentry(Game* game, Unit* player, int32_t from, int32_t to) noexc
 		return;
 	}
 	if (from != to) {
-		// PD2 0x1038a1f0 places the marker on a free spot by the player, who still stands by the portal
-		int32_t xy[2] = {};
-		d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(d2r::rva::UnitCoords)(player, xy);
-		MoveExit(game, from, {xy[0], xy[1]}, "by the portal to the next level");
+		// PD2 0x1038a1f0 (game, level `to`) places the marker at the next level's spawn spot (0x1038a000, D2Common's
+		// act spawn location, then the free-spot search 0x10389ad0): where D2R's warp into that level puts a player
+		MoveExit(game, to, Arrival, "the next level's arrival");
 		return;
 	}
 	// The arena portal: the stage's spot, by the stage byte (1, 3, then 5 and on); none in stages 2 and 4
@@ -355,22 +357,24 @@ auto RathmaReentry(Game* game, int32_t& level, int32_t xy[2]) noexcept -> bool {
 	return true;
 }
 
-auto RathmaPlaceAt(Game* game, Unit* player, const int32_t xy[2]) noexcept -> bool {
+auto RathmaPlaceAt(Game* game, Unit* player, const int32_t xy[2]) noexcept -> void {
 	using namespace d2r::rva;
 	void* near = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(player);
 	const int32_t level = near != nullptr ? d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(near) : -1;
-	void* room = RoomHolding(game, near, level, {xy[0], xy[1]});
-	if (room == nullptr) {
-		plog::Warn("rathma: no room at the re-entry spot (0x%x, 0x%x) in level %d", xy[0], xy[1], level);
-		return false;
+	if (xy[0] != Arrival.x || xy[1] != Arrival.y) {
+		void* room = RoomHolding(game, near, level, {xy[0], xy[1]});
+		if (room == nullptr) {
+			plog::Warn("rathma: no room at the re-entry spot (0x%x, 0x%x) in level %d, left at its arrival", xy[0],
+			           xy[1], level);
+			return;
+		}
+		d2r::Engine<void (*)(Game*, Unit*, void*, int32_t, int32_t, int32_t, int32_t) noexcept>(TeleportUnit)(
+			game, player, room, xy[0], xy[1], 0, 0);
 	}
-	d2r::Engine<void (*)(Game*, Unit*, void*, int32_t, int32_t, int32_t, int32_t) noexcept>(TeleportUnit)(
-		game, player, room, xy[0], xy[1], 0, 0);
 	int32_t at[2] = {};
 	d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(UnitCoords)(player, at);
 	plog::Info("rathma: tier-0 re-entry into level %d at (0x%x, 0x%x) (%u so far)", level, at[0], at[1],
 	           ++g_reentries);
-	return true;
 }
 
 auto RathmaCounters(char* out, size_t size) noexcept -> void {
