@@ -1317,24 +1317,28 @@ auto EquipAuraTick(Game* game, Unit* unit, int32_t key, int32_t skill, int32_t s
 // equipping an item with the stat schedules it 2500 / stat + 1 frames on, and each run adds one charge to the item's
 // first charged skill below its max (sent to the owner's client) and schedules the next. No SDK service covers unit
 // events or charged skills, so both D2R functions are hooked: the scheduler, which every equip calls, and the handler.
+// PD2's handler (0x10345320) runs the durability step, else the quantity step, and only when neither added anything
+// the charge step, which schedules the next run whatever is pending (D2R frees the firing event only after its handler
+// returns, so a pending check there always sees it). The port matches: D2R's step first, then the charges only when
+// durability and quantity are unchanged. No merged item has both stats.
 // cut: PD2 halves the delay in the PvP maps (levels 157, 159, 166), which are cut.
-// shortcut: PD2 schedules the next run even when one is pending (an item that also replenishes durability then runs
-// twice as often); this one adds none while one is pending. Upgrade if a game check shows PD2's double rate.
 constexpr uint32_t StatReplenishCharges = 475;  // item_replenish_charges (PD2's 422)
 constexpr uint32_t StatChargedSkill = 204;      // item_charged_skill: charges | max << 8
 constexpr int32_t ReplenishFrames = 2500;
 
 using ScheduleReplenishFn = void (*)(Game* game, Unit* item) noexcept;
 ScheduleReplenishFn g_scheduleReplenishOriginal = nullptr;
-using ReplenishEventFn = void (*)(Game* game, Unit* item, int32_t key, int32_t skill, int32_t stateKey) noexcept;
+using ReplenishEventFn = void (*)(Game* game, Unit* item, int32_t type) noexcept;  // 0x4730d0 passes these three
 ReplenishEventFn g_replenishEventOriginal = nullptr;
 std::atomic<uint32_t> g_chargesReplenished {0};
 
-void ScheduleCharges(Game* game, Unit* item) noexcept {
+// The next run, 2500 / stat + 1 frames on; `pending` first looks for a replenish event already queued (the scheduler's
+// check; PD2's 0x103450b0)
+void ScheduleCharges(Game* game, Unit* item, bool pending) noexcept {
 	using namespace d2r::rva;
 	const int32_t rate = Stat(item, StatReplenishCharges);
-	if (rate <= 0 ||
-	    d2r::Engine<int32_t (*)(Game*, Unit*, int32_t, int32_t) noexcept>(UnitEventFrame)(game, item, UnitEventReplenish, 0) != 0) {
+	if (rate <= 0 || (pending && d2r::Engine<int32_t (*)(Game*, Unit*, int32_t, int32_t) noexcept>(UnitEventFrame)(
+	                                 game, item, UnitEventReplenish, 0) != 0)) {
 		return;
 	}
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
@@ -1344,7 +1348,7 @@ void ScheduleCharges(Game* game, Unit* item) noexcept {
 auto ReplenishSchedule(Game* game, Unit* item) noexcept -> void {
 	g_scheduleReplenishOriginal(game, item);
 	if (game != nullptr && item != nullptr) {
-		ScheduleCharges(game, item);
+		ScheduleCharges(game, item, true);
 	}
 }
 
@@ -1389,6 +1393,7 @@ void AddCharge(Game* game, Unit* item) noexcept {
 	const int32_t ownerId = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemOwnerId)(item);
 	Unit* owner = ownerId != -1 ? d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, 0, ownerId)
 	                            : nullptr;
+	// The playerbody guard is D2R's durability step's (0x46f4f0); PD2's charge step sends to any player owner
 	if (owner == nullptr || d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(owner, StatePlayerBody) != 0) {
 		return;
 	}
@@ -1398,12 +1403,17 @@ void AddCharge(Game* game, Unit* item) noexcept {
 	}
 }
 
-auto ChargesReplenishEvent(Game* game, Unit* item, int32_t key, int32_t skill, int32_t stateKey) noexcept -> void {
-	g_replenishEventOriginal(game, item, key, skill, stateKey);
-	if (game != nullptr && item != nullptr && Stat(item, StatReplenishCharges) > 0) {
-		AddCharge(game, item);
-		ScheduleCharges(game, item);
+auto ChargesReplenishEvent(Game* game, Unit* item, int32_t type) noexcept -> void {
+	using namespace d2r::rva;
+	const int32_t durability = item != nullptr ? Stat(item, StatDurability) : 0;
+	const int32_t quantity = item != nullptr ? Stat(item, StatQuantity) : 0;
+	g_replenishEventOriginal(game, item, type);
+	if (game == nullptr || item == nullptr || Stat(item, StatReplenishCharges) <= 0 ||
+	    Stat(item, StatDurability) != durability || Stat(item, StatQuantity) != quantity) {
+		return;
 	}
+	AddCharge(game, item);
+	ScheduleCharges(game, item, false);
 }
 
 }  // namespace
@@ -1478,12 +1488,12 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool equip = tick && context->InstallInlineHook(StatCallbackInit, StatCallbackInitEntry,
 	                                                      sizeof(StatCallbackInitEntry), EquipStatCallbackInit,
 	                                                      &g_statCallbackInitOriginal);
-	// Both or neither: the handler alone would never be scheduled for an item without durability or quantity
-	const bool replenish = context->InstallInlineHook(ReplenishEvent, ReplenishEventEntry, sizeof(ReplenishEventEntry),
-	                                                  ChargesReplenishEvent, &g_replenishEventOriginal) &&
-	                       context->InstallInlineHook(ScheduleReplenish, ScheduleReplenishEntry,
+	// The scheduler first: the handler alone would only see events that durability or quantity items schedule
+	const bool replenish = context->InstallInlineHook(ScheduleReplenish, ScheduleReplenishEntry,
 	                                                  sizeof(ScheduleReplenishEntry), ReplenishSchedule,
-	                                                  &g_scheduleReplenishOriginal);
+	                                                  &g_scheduleReplenishOriginal) &&
+	                       context->InstallInlineHook(ReplenishEvent, ReplenishEventEntry, sizeof(ReplenishEventEntry),
+	                                                  ChargesReplenishEvent, &g_replenishEventOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
 	              "replenish charges%s",
