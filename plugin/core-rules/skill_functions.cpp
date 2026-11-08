@@ -4060,11 +4060,10 @@ auto SrvDoUberDiabSummon(Game* game, Unit* unit, int32_t skillId, int32_t level)
 			spawn == nullptr ? ++failed : ++spawned[wave];
 		}
 	}
-	if (plog::Sample(g_uberSummons)) {
-		plog::Info("uber diablo summon: skill %d level %d: life %d%%, summon %d, waves below %d/%d/%d of %d/%d/%d: "
-		           "spawned %d/%d/%d, cast %u", skillId, level, life, summon, below[0], below[1], below[2], counts[0],
-		           counts[1], counts[2], spawned[0], spawned[1], spawned[2], g_uberSummons.load());
-	}
+	// every cast: Dclone casts it three times a fight, and Sample would log only the first
+	plog::Info("uber diablo summon: skill %d level %d: life %d%%, summon %d, waves below %d/%d/%d of %d/%d/%d: "
+	           "spawned %d/%d/%d, cast %u", skillId, level, life, summon, below[0], below[1], below[2], counts[0],
+	           counts[1], counts[2], spawned[0], spawned[1], spawned[2], ++g_uberSummons);
 	return 1;
 }
 
