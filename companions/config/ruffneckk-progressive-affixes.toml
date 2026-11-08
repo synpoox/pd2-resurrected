@@ -1,7 +1,9 @@
 # Progressive Affixes
-# PD2 Resurrected (#189): rare jewels always roll 4 affixes; regular rares keep the plugin's split, whose
-# minimums (4 at ilvl 45, 5 at 65, 6 at 85) are PD2's (the split above them waits for IR8). No magic item is
-# forced to two affixes. [crafted] is D2R's own roll: max(rand 0-4, 1/2/3/4 from ilvl 1/31/51/71).
+# PD2 Resurrected (#189, #243): rare jewels always roll 4 affixes; other rares roll PD2's
+# count (ProjectDiablo.dll 0x10384080, 0x10384010 in PD2.gpr, over 1.13c D2Game +0x152bf):
+# a minimum of 3, 4 at ilvl 45, 5 at 65, 6 at 85, then an even roll from the minimum up
+# to 6. No magic item is forced to two affixes. [crafted] is D2R's own roll:
+# max(rand 0-4, 1/2/3/4 from ilvl 1/31/51/71).
 # Increases the number of affixes generated as an item's hidden item level
 # (ilvl) rises. It does not change which affixes are eligible to roll.
 # Restart D2R after editing this file.
@@ -27,8 +29,8 @@ from_level_1  = [0, 100]
 [regular_rare_items]
 # Applies to every Rare item except Rare Jewels.
 # Values are [chance for 3, 4, 5, and 6 affixes] and must total exactly 100.
-from_level_1  = [12.5, 37.5, 37.5, 12.5]
-from_level_45 = [0,    25,   50,   25]
+from_level_1  = [25,   25,    25,    25]
+from_level_45 = [0,    33.33, 33.33, 33.34]
 from_level_65 = [0,    0,    50,   50]
 from_level_85 = [0,    0,    0,    100]
 
