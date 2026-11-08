@@ -84,6 +84,7 @@ add_library(core_maps SHARED
 	core-maps/rathma_ai.cpp
 	core-maps/guardian_ai.cpp
 	core-maps/map_boss_ai.cpp
+	core-maps/invaders.cpp
 	core-maps/rathma_life.cpp
 	core-maps/dclone_ai.cpp
 	core-maps/ai_hooks.cpp

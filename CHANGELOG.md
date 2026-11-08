@@ -4,6 +4,10 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 ### Unreleased
 
+#### Maps
+
+- Corrupted Heroes opens up to three portals of invaders, who drop their gear and class ear.
+
 #### Items
 
 - Open wounds stacks up to three hits, and deep wounds adds to its damage.

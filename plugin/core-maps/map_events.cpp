@@ -8,8 +8,8 @@
 // up to three times. The Altar of the Catalyst places its altar once: the first use calls its guardian, whose death
 // (event_portals.cpp's listener) lets the second use drop 2-3 Catalyst Shards. The Spire of Darkness places its altar
 // and three fog objects; once used, the rooms send shadow waves until the progress passes 90, which kills them. Void /
-// Tomb opens a portal pair to the Bitter Depths with a marker. The invaders (MS10) are rolled and logged but spawn
-// nothing yet. Horazon's death is event_portals.cpp's. The altars' use is PD2's operate 79 (0x103aa460) in D2R's free
+// Tomb opens a portal pair to the Bitter Depths with a marker. Corrupted Heroes opens up to three InvaderPortals, which
+// send the invaders (invaders.cpp). Horazon's death is event_portals.cpp's. The altars' use is PD2's operate 79 (0x103aa460) in D2R's free
 // operate slot 35 (pd2_ids.FUNCS), written into D2R's operate table as map_open.cpp writes slot 60.
 //
 // Each spawn sends the event's notify string to every player as a red chat line (#336; PD2 0x1037dbc0, packet 0x26
@@ -66,6 +66,7 @@ constexpr int32_t Draws[12] = {0, Mendeln, Horazon, 0, DarkWanderer, TreasureFal
 // The events' monsters, PD2 922 nihlathakMap, 921 darkwandererMap and 945 treasurefallenMap in port monstats ids
 constexpr int32_t MendelnMonster = 939, DarkWandererMonster = 938, TreasureFallenMonster = 962;
 constexpr int32_t GheedMonster = 147, HorazonMonster = 936;  // PD2 919 summonerMap
+constexpr int32_t InvaderPortal = 1199;  // PD2 1182
 constexpr int32_t EventMarker = 597;  // PD2 object 594 empty_eventmarker: invisible, AutoMap 1499
 constexpr int32_t ShardAltar = 614;   // PD2 611 ForceShardAltar
 const uint32_t ShardCode = D2RL::Items::MakeItemCode("iwss");  // the Catalyst Shard
@@ -153,14 +154,12 @@ auto NotifyKey(int32_t event) noexcept -> const char* {
 	}
 }
 
-// Every spawn sends it, as PD2's does (Dark Wanderer and Treasure Fallen up to three times)
-auto Notify(Game* game, int32_t event) noexcept -> void {
-	const char* key = NotifyKey(event);
+auto NotifyText(Game* game, const char* key) noexcept -> void {
 	char text[256] {};
 	uint32_t need = 0;
 	if (key == nullptr || g_strings == nullptr ||
 	    g_strings->getStringByKey(g_context, key, text, sizeof(text), &need) != D2RL::Localization::Result::Success) {
-		plog::Warn("map events: no notify text for event %d (%s)", event, key != nullptr ? key : "no key");
+		plog::Warn("map events: no notify text for %s", key != nullptr ? key : "no key");
 		return;
 	}
 	// PD2's packet: type 4 (a line with no sender), red
@@ -170,7 +169,12 @@ auto Notify(Game* game, int32_t event) noexcept -> void {
 	packet[8] = 1;
 	std::memcpy(packet + 0x47, text, sizeof(text) - 1);
 	d2r::Engine<void (*)(void*, uint8_t*) noexcept>(d2r::rva::SendChat)(At<void*>(game, d2r::rva::GameClients), packet);
-	plog::Info("map events: event %d notified \"%s\" (%u)", event, text, ++g_notified);
+	plog::Info("map events: %s notified \"%s\" (%u)", key, text, ++g_notified);
+}
+
+// Every spawn sends it, as PD2's does (Dark Wanderer and Treasure Fallen up to three times)
+auto Notify(Game* game, int32_t event) noexcept -> void {
+	NotifyText(game, NotifyKey(event));
 }
 
 auto Counter(Game* game, uint32_t key) noexcept -> int32_t* {
@@ -338,6 +342,8 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t pr
 	} else if ((event == DarkWanderer || event == TreasureFallen) && spawns < 3 && (spawns + 1) * 25 < progress &&
 	           roll < 25) {
 		id = event == DarkWanderer ? DarkWandererMonster : TreasureFallenMonster;
+	} else if (event == Invaders && spawns < 3 && 25 + spawns * 20 < progress && roll < 25) {
+		id = InvaderPortal;
 	}
 	if (id < 0) {
 		return;
@@ -528,6 +534,16 @@ auto FindEventSpot(void*& room, int32_t xy[2], int32_t size, uint16_t mask, int3
 
 auto MapEvent(Game* game) noexcept -> int32_t {
 	return game != nullptr ? Get(game, EventKey) : 0;
+}
+
+auto MapEventSpawns(Game* game) noexcept -> int32_t {
+	return game != nullptr ? Get(game, SpawnsKey) : 0;
+}
+
+auto MapEventNotify(Game* game, const char* key) noexcept -> void {
+	if (game != nullptr) {
+		NotifyText(game, key);
+	}
 }
 
 auto RollMapEvent(Game* game, Unit* item, int32_t level) noexcept -> void {

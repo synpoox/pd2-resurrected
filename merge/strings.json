@@ -1507,6 +1507,13 @@
     "MapEventNotifyGheed": [51433, "ui.json"],
     "MapEventNotifyShard": [51434, "ui.json"],
     "MapEventNotifyInvaders": [51435, "ui.json"],
-    "MapEventNotifyTomb": [51436, "ui.json"]
+    "MapEventNotifyTomb": [51436, "ui.json"],
+    "MapEventNotifyInvadersAmazon": [51437, "ui.json"],
+    "MapEventNotifyInvadersAssassin": [51438, "ui.json"],
+    "MapEventNotifyInvadersBarbarian": [51439, "ui.json"],
+    "MapEventNotifyInvadersDruid": [51440, "ui.json"],
+    "MapEventNotifyInvadersNecromancer": [51441, "ui.json"],
+    "MapEventNotifyInvadersPaladin": [51442, "ui.json"],
+    "MapEventNotifyInvadersSorceress": [51443, "ui.json"]
   }
 }

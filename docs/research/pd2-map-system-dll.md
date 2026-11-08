@@ -197,6 +197,22 @@ unknown levels use 200. `region[+0x04]` counts the level's rooms activated so fa
 
 The spawn point is the activating room's centre. Each spawn sends the notify string (client message).
 
+**The invaders** ([MS10](https://github.com/synpoox/pd2-resurrected/issues/224), WIP). The InvaderPortal (1182) think is
+`0x1035dca0`'s branch for 0x49e (monai 120). Event not 20: delay aidel. `game+0x262a` invaders sent, `+0x2629` portals
+closed, `+0x2628` portals opened; 5+ sent, 3+ closed or 4+ opened kills the portal quietly (`0x10356e00`). Target farther
+than aidist: delay 5. Stat 447 counts up to aip1 (Normal), delay aidel each step. Then the classes 0x49f-0x4a5 (Amazon,
+Assassin, Barbarian, Druid, Necromancer, Paladin, Sorceress) and their `MapEventNotifyInvaders<Class>` keys, shuffled
+alike with seed `game+0xec`, give element [sent]: spawned by a free spot (size 3) by the portal, then sound 0x10 to the
+level, the class notify line and state 209 `dcloneset` (D2Common #10945). The first portal closes after 1 invader, the
+second after 3, the third after 5. An invader's death (`0x10378250`, from the death switch `0x10378d80`; event 20 only,
+`game+0x262b` += 1) drops by TreasureClassEx row number (`0x1037f430`: row + base): gloves, belt, boots, ring x2, amulet,
+then the class ear (`0x1036ebc0`: one item, quality 2) and the class gear: Assassin GenericHelm, BodyAll, AssassinWeapon x2;
+Barbarian BarbarianHelm, BodyMedHeavy, then rand % 3: Barbarian2h / BarbarianThrow x2 / Barbarian1h x2; Druid DruidHelm,
+BodyAll, DruidWeapon, GenericShield; Necromancer GenericHelm, BodyLightMed, NecroWeapon, NecroShield; Paladin GenericHelm,
+BodyMedHeavy, PaladinWeapon, PaladinShield; Sorceress Circlets, BodyLightMed, then rand % 2: Sorc2hWeapon / Sorc1hWeapon +
+GenericShield; Amazon (also the switch default) Circlets, BodyAll, then rand % 4: AmazonBow + Quiver / Crossbow + Bolt /
+1hJavelin + GenericShield / 2hSpear (TC names `Invader*`).
+
 **The altars** ([#504](https://github.com/synpoox/pd2-resurrected/issues/504), [#505](https://github.com/synpoox/pd2-resurrected/issues/505)). Both use PD2's operate 79 (`0x3aa460`; PD2's
 operate table is filled in `0x36c320`: 77 `0x3a9780`, 78 `0x3aa270`, 79 `0x3aa460`, 80 `0x3aa670`). `game+0x2628` is
 the event's state:

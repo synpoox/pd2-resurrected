@@ -12,6 +12,10 @@ auto RollMapEvent(d2r::Game* game, d2r::Unit* item, int32_t level) noexcept -> v
 // This game's map event (PD2's game +0x1df4): 0 no map open, 9 a dungeon, 10 no event, 11-21 an event, 0x1e-0x24 a
 // unique map.
 auto MapEvent(d2r::Game* game) noexcept -> int32_t;
+// The event's spawns so far (PD2's game +0x2628): Corrupted Heroes counts its portals there.
+auto MapEventSpawns(d2r::Game* game) noexcept -> int32_t;
+// Sends the string `key` ("d2r:<key>") to every player as a red chat line, as each event spawn does (PD2 0x1037dbc0).
+auto MapEventNotify(d2r::Game* game, const char* key) noexcept -> void;
 // PD2 0x10378080: the Altar of the Catalyst's guardian died; the altar's next use gives the shards, and the clones in
 // the rooms around `guardian` die.
 auto AltarGuardianDied(d2r::Game* game, d2r::Unit* guardian) noexcept -> void;
