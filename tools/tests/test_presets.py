@@ -156,6 +156,44 @@ class BuildTests(unittest.TestCase):
         self.assertFalse([e for e in preset["entities"] if "waypoint01" in e["name"]])
 
 
+    def test_a_pasted_rooms_waypoint_pieces_stay_and_a_room_terrain_needs_a_key_match(self):
+        # Act 2's cel*waypoint rooms: the waypoint piece is the room's whole sculpted floor (#680 review)
+        keys = {(x, y): ("w", (A,)) if (x + y) % 2 else ("w", (B,)) for x in range(4) for y in range(4)}
+        room = P.Layout(4, 4, dict(keys))
+        floor = entity("act2/palace/celSEwaypoint/terrain", 5.0, 5.0)
+        floor["components"][1]["filename"] = "data/hd/env/preset/act2/palace/celSEwaypoint/terrain.model"
+        src = {"dependencies": {}, "entities": [floor, entity("act2/waypoint01", 25.0, 25.0)]}
+        kit = P.Kit()
+        kit.add(room, src, set(keys.values()), [("waypointact2", 20.0, 20.0)])
+        # pasted whole, with no PD2 waypoint object: the room keeps its floor
+        preset, _ = P.build(P.Layout(4, 4, dict(keys)), P.Kit(), "m", "m.ds1", "b.json", TERRAIN, stock=[(room, src)])
+        self.assertIn("act2/palace/celSEwaypoint/terrain", [e["name"] for e in preset["entities"]])
+        # an object on the pasted room's tiles gets nothing more
+        preset, _ = P.build(P.Layout(4, 4, dict(keys)), kit, "m", "m.ds1", "b.json", TERRAIN, stock=[(room, src)],
+                            objects=[("waypointact2", 20.0, 20.0)])
+        self.assertEqual(sum("waypoint" in e["name"] for e in preset["entities"]), 2)
+        # elsewhere, an object on another key gets the model by Class, without the room's floor
+        other = P.Layout(10, 10, {(5, 5): ("f", (FLOOR,))})
+        names = [e["name"] for e in P.build(other, kit, "m", "m.ds1", "b.json", TERRAIN,
+                                            objects=[("waypointact2", 50.0, 50.0)])[0]["entities"]]
+        self.assertIn("act2/waypoint01", names)
+        self.assertNotIn("act2/palace/celSEwaypoint/terrain", names)
+
+    def test_a_waypoint_of_the_same_class_on_the_key_wins_and_a_doubled_object_counts_once(self):
+        lay = P.Layout(5, 5, {(3, 3): ("f", (FLOOR,))})
+        kit = P.Kit()
+        for cls, model in (("waypointexp", "town/waypoint01"), ("waypointwilderness", "siege/waypoint01")):
+            kit.add(lay, {"dependencies": {}, "entities": [entity(model, 30.0, 30.0)]}, set(), [(cls, 30.0, 30.0)])
+        for cls, model in (("waypointexp", "town/waypoint01"), ("waypointwilderness", "siege/waypoint01")):
+            for seed in "abcdef":
+                names = [e["name"] for e in P.build(lay, kit, "m", seed, "b.json", TERRAIN,
+                                                    objects=[(cls, 32.0, 32.0)])[0]["entities"]]
+                self.assertEqual(names, [model])
+        data = ds1(2, 2, [{}], [{}])
+        data = data[:-4] + struct.pack("<i", 2) + struct.pack("<5i", 2, 0, 8, 8, 0) * 2
+        self.assertEqual(P.waypoints(data, {(1, 0): "WaypointOutsideAct1"}), [("waypointoutsideact1", 16.0, 16.0)])
+
+
 def at(e: dict) -> tuple[float, float]:
     return e["components"][0]["position"]["x"], e["components"][0]["position"]["z"]
 
@@ -327,6 +365,8 @@ class ApplyTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(data if isinstance(data, bytes) else data.replace("|", "\t").encode())
         write(self.d2r / "global/excel/lvlprest.txt", "Name|LevelId|Dt1Mask|File1\nTown|0|1|Act1/S.ds1\n")
+        for root in (self.d2r, self.out):
+            write(root / "global/excel/objpreset.txt", "Index|Act|ObjectClass\n0|1|WaypointOutsideAct1\n")
         write(self.out / "global/excel/lvlprest.txt", "Name|LevelId|Dt1Mask|File1|File2|File3|File4|File5|File6\n"
               "Town|0|1|Act1/S.ds1|||||\nMap|1|1|Expansion/Map/M.ds1|0||||\nPd2 Map|2|1|Expansion/Map/P.ds1|||||\n")
         write(self.out / "global/excel/levels.txt", "Name|LevelType\nTown|0\nMap|0\nPd2 Map|1\n")
