@@ -95,6 +95,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Fixes
 
+- Rathma, Lucion and DClone immunity, Hunger and Desecrate corpse hiding and Vengeance's shatter clear set real states.
 - Druid vines eat each corpse once, as in PD2, instead of healing from the same corpse forever.
 - Rathma's portal to Harrogath is gold, and the shard names lose a stray `*/`, as in PD2.
 - Split Throw's weapons show, split and come back to the Barbarian as in PD2.

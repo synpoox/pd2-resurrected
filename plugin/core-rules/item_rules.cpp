@@ -703,7 +703,7 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 			plog::Info("curse gate: stat 109 %d did not clear (base %d), D2R's duration rule applies", duration, base);
 		}
 	}
-	// The bit UnitHasState reads (SetUnitState writes another array)
+	// The bit UnitHasState reads (SetStateGfxFlag writes another array)
 	const auto hasState = d2r::Engine<uint32_t (*)(Unit*, int32_t) noexcept>(UnitHasState);
 	auto* word = owner != nullptr && At<int32_t>(owner, ListOwnerMark) < 0
 	                 ? reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(owner) + ListOwnerStates + (StateAttract >> 5) * 4)

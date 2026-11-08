@@ -240,7 +240,7 @@ auto Apply(Game* game, Unit* unit, char which) noexcept -> bool {
 		}
 	}
 	d2r::Engine<void (*)(Unit*, void*, int32_t) noexcept>(AttachStatList)(unit, list, 1);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, MapState, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, MapState, 1);
 	return true;
 }
 
@@ -250,7 +250,7 @@ auto Remove(Game* game, Unit* unit) noexcept -> bool {
 	if (list == nullptr) {
 		return false;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, MapState, 0);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(unit, MapState, 0);
 	d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
 	d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(d2r::DataFlag(game), list);
 	return true;

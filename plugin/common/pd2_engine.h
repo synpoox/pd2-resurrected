@@ -176,13 +176,12 @@ inline constexpr uint64_t DirectionY = 0x1d1b750;
 // (unit, state, self) -> 1 if it removed any: removes every state of the unit in the same states.txt group as
 // `state` (the state itself too with self 1). A state with no group (0) removes nothing.
 inline constexpr uint64_t RemoveSkillState = 0x4370b0;
-// What 0x4370b0 does for each state it removes: state bit off (unit, state, 0), then the list detached (unit, list)
-// and freed (dataFlag, list)
-inline constexpr uint64_t ClearUnitState = 0x3354c0;
-// The same function with on 1: sets the state bit UnitHasState reads (owner +0xaf0, via 0x2f7ea0), then QueueUnitUpdate.
-// D2R's srvst 63 (0x587b50) takes its corpse with it. SetUnitState (0x3355a0) writes the second array, which
-// UnitHasState never reads (#378).
-inline constexpr uint64_t SetStateBit = 0x3354c0;  // (unit, state, on)
+// (unit, state, on): sets or clears the state bit UnitHasState reads (owner +0xaf0, via 0x2f7ea0, which also raises
+// the state's SetStateGfxFlag bit when the bit flips), then QueueUnitUpdate. What 0x4370b0 does for each state it
+// removes: this with on 0, then the list detached (unit, list) and freed (dataFlag, list). A bare state (no list
+// carrying it) is set as D2R's 0x56bfe0 does, this then SetStateGfxFlag, both on 1; D2R's srvst 63 (0x587b50) takes
+// its corpse with this alone (#378, #623).
+inline constexpr uint64_t SetStateBit = 0x3354c0;
 inline constexpr uint64_t DetachStatList = 0x2f7920;
 inline constexpr uint64_t FreeStatList = 0x2f4180;
 // (&StateListRequest) -> stat list or null. An older list of the state with the same skill and level only gets
@@ -197,7 +196,11 @@ inline constexpr uint64_t SetListStat = 0x2f7c00;  // (dataFlag, list, stat, val
 inline constexpr uint64_t UnitStateKey = 0x34b6c0;  // (unit) -> value Frozen Armor passes to 0x435920
 inline constexpr uint64_t StateListKey = 0x435920;  // (dataFlag, list, key) -> stat 202 value
 inline constexpr uint64_t SendSkillState = 0x438470;  // (game, unit, skill, level, key, 1, state, &aurastat, &calc, 4)
-inline constexpr uint64_t SetUnitState = 0x3355a0;  // (unit, state, on)
+// (unit, state, on): only the state's gfx/update bit, in the second array after owner +0xaf0 (0x2f62d0), then
+// QueueUnitUpdate. Not the state: UnitHasState never reads it. Alone it is right only after a list carrying the state
+// was attached (NewStateList, or SetListState + AttachStatList), as D2R's 0x553650; a bare state takes SetStateBit
+// first (#623).
+inline constexpr uint64_t SetStateGfxFlag = 0x3355a0;
 inline constexpr uint64_t SkillStateExpired = 0x5551f0;  // Frozen Armor's expiry callback: removes the state
 
 // Melee and units (same image as d2r-tools better-auras)
@@ -653,7 +656,7 @@ inline constexpr uint64_t StateIsCurse = 0x335a40;  // (dataFlag, state) -> non-
 // unit +0x88: its stat list owner (+0x1c < 0 marks one); +0x90 its first chain of lists, the one NewStateList searches
 inline constexpr int UnitListOwner = 0x88, ListOwnerMark = 0x1c, ListOwnerFirst = 0x90;
 inline constexpr int ListFlags = 0x1c, ListNext = 0x68;  // uint32 flags, next list in the chain
-// owner +0xaf0: the unit's state bits (uint32 words, bit state & 31), what UnitHasState (0x2f6220) reads. SetUnitState
+// owner +0xaf0: the unit's state bits (uint32 words, bit state & 31), what UnitHasState (0x2f6220) reads. SetStateGfxFlag
 // writes a second array after it, not this one.
 inline constexpr int ListOwnerStates = 0xaf0;
 inline constexpr uint32_t ListFlagTimed = 0x2, ListFlagCurse = 0x20;
