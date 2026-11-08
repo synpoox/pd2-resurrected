@@ -1149,8 +1149,8 @@ std::atomic<uint32_t> g_spearHits {0};
 }  // namespace
 
 // dmg 18: besides its own damage, the spear deals a second hit of DmgCalc1 percent of the target's max life as magic,
-// at most its life, from the missile's owner with hit flags 0x1000 (PD2 builds a fresh block and runs 1.13c's damage
-// apply 0x10305990 and its result 0x103025b0). The missile's own block is left as it is.
+// at most its life, from the missile's owner with hit flags 0x1000 (PD2 builds a fresh block and runs 1.13c's hit
+// events 0x10305990 with area 0 and its result 0x103025b0). The missile's own block is left as it is.
 void SrvDmgRathmaSpear(Game* game, Unit* missile, Unit* target, uint8_t* damage) noexcept {
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr || target == nullptr || damage == nullptr) {
@@ -1176,8 +1176,13 @@ void SrvDmgRathmaSpear(Game* game, Unit* missile, Unit* target, uint8_t* damage)
 	// PD2's block starts zeroed, but D2R's DealDamage (0x44a9b0) applies the damage only with the hit bit set
 	hit.resultFlags = ResultHit;
 	*reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(&hit) + DmgMagic) = magic < life ? magic : life;
+	using HitFn = void (*)(Game*, Unit*, Unit*, void*) noexcept;
 	d2r::Engine<void (*)(Unit*, Unit*, void*) noexcept>(DamageStep)(owner, target, &hit);
-	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(DealDamage)(game, owner, target, &hit);
+	// PD2's 0x10305990 with area 0: D2R's HitEvents runs DamageEffects (the life loss) only for area hits, so call it
+	// first, as the melee splash does
+	d2r::Engine<HitFn>(DamageEffects)(game, owner, target, &hit);
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t, void*) noexcept>(HitEvents)(game, owner, target, 0, &hit);
+	d2r::Engine<HitFn>(DealDamage)(game, owner, target, &hit);
 	d2r::ReleaseDamage(hit);
 	if (plog::Sample(g_spearHits)) {
 		plog::Info("rathma bone spear damage: missile row %d on unit type %d: DmgCalc1 %d%% of max life %u = magic %u "
