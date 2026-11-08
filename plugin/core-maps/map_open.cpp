@@ -256,15 +256,6 @@ auto StripStates(Game* game, Unit* player) noexcept -> int32_t {
 	return stripped;
 }
 
-// The argument block D2R's operate dispatcher 0x592c40 passes an operate function
-struct ObjectOperate {
-	Game* game;
-	Unit* object;
-	Unit* player;
-	uint64_t seed;
-	int32_t classId;
-};
-
 // How operate 15 removes a used portal: the room's clients are told, then the unit is freed. Returns its room.
 auto RemoveObject(Game* game, Unit* object) noexcept -> void* {
 	using namespace d2r::rva;
