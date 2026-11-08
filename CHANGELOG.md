@@ -63,6 +63,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Maps
 
+- Map events Altar of the Catalyst, Spire of Darkness and Void/Tomb spawn their altars, waves and portal, as in PD2.
 - The Gheed map event spawns Gheed in tiered maps, as in PD2.
 - The Horazon map event spawns Horazon in tiered maps; only that Horazon opens his portal, as in PD2.
 - Unique map bosses leave a portal to Harrogath (or onward) and drop PD2's charms, facets and puzzle pieces.

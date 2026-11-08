@@ -4,9 +4,13 @@
 // forced). The event spawns as the map's rooms activate (0x1036fef0), once the level's progress, rooms activated x
 // 100 / PD2's room count for the level, is far enough; it spawns at the activating room's centre.
 //
-// This slice spawns Shadow of Mendeln, Horazon and Gheed once (Gheed with an event marker object), Dark Wanderer and
-// Treasure Fallen up to three times. The others are rolled and logged but spawn nothing yet: Altar of the Catalyst and
-// Spire of Darkness (MS8), Void/Tomb (MS9), the invaders (MS10). Horazon's death is event_portals.cpp's.
+// Shadow of Mendeln, Horazon and Gheed spawn once (Gheed with an event marker object), Dark Wanderer and Treasure Fallen
+// up to three times. The Altar of the Catalyst places its altar once: the first use calls its guardian, whose death
+// (event_portals.cpp's listener) lets the second use drop 2-3 Catalyst Shards. The Spire of Darkness places its altar
+// and three fog objects; once used, the rooms send shadow waves until the progress passes 90, which kills them. Void /
+// Tomb opens a portal pair to the Bitter Depths with a marker. The invaders (MS10) are rolled and logged but spawn
+// nothing yet. Horazon's death is event_portals.cpp's. The altars' use is PD2's operate 79 (0x103aa460) in D2R's free
+// operate slot 35 (pd2_ids.FUNCS), written into D2R's operate table as map_open.cpp writes slot 60.
 //
 // Each spawn sends the event's notify string to every player as a red chat line (#336; PD2 0x1037dbc0, packet 0x26
 // type 4, colour 1). The SDK's localization service gives the text; no SDK service sends a chat line, so it goes
@@ -17,13 +21,18 @@
 // starts without them.
 #include "map_events.h"
 
+#include "event_portals.h"
 #include "log.h"
+#include "lucion.h"
+#include "map_open.h"
 #include "rathma.h"
 
+#include <D2RLPlugin/item.h>
 #include <D2RLPlugin/localization.h>
 
 #include <intrin.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
@@ -57,6 +66,17 @@ constexpr int32_t Draws[12] = {0, Mendeln, Horazon, 0, DarkWanderer, TreasureFal
 constexpr int32_t MendelnMonster = 939, DarkWandererMonster = 938, TreasureFallenMonster = 962;
 constexpr int32_t GheedMonster = 147, HorazonMonster = 936;  // PD2 919 summonerMap
 constexpr int32_t EventMarker = 597;  // PD2 object 594 empty_eventmarker: invisible, AutoMap 1499
+constexpr int32_t ShardAltar = 614;   // PD2 611 ForceShardAltar
+constexpr int32_t AltarGuardian = 1081;  // PD2 1064 GuardianOfFate
+const uint32_t ShardCode = D2RL::Items::MakeItemCode("iwss");  // the Catalyst Shard
+constexpr int32_t SpireAltar = 596;   // PD2 593 TaintedSunMapEventAltar
+constexpr int32_t Fog = 374;          // PD2 374, D2R's Fog (the same row)
+// PD2's waves: 993-995 shadowofhate, shadowofterror, shadowofdestruction; and their monstats MinGrp-MaxGrp
+constexpr int32_t Shadows[3] = {1010, 1011, 1012};
+constexpr int32_t ShadowGroups[3][2] = {{3, 6}, {8, 14}, {1, 1}};
+constexpr int32_t SpireOver = 50;     // PD2's spawn count once 0x1036eb30 ends the waves
+constexpr int32_t BitterDepths = 198;  // PD2 207 Tomb Event Map, Act V
+constexpr int32_t RedPortal = 60;
 constexpr int32_t ModeNeutral = 1;
 constexpr int32_t UnitObject = 2;
 
@@ -228,63 +248,218 @@ auto FindSpot(void*& room, int32_t xy[2], int32_t size) noexcept -> bool {
 	return false;
 }
 
-// PD2's 0x1038a170 at the room's centre: PD2's spot search with size 12 (8 in Arcane and River of Blood), then the
-// monster. `room` and `xy` return the spot.
-auto SpawnAt(Game* game, void*& room, int32_t (&xy)[2], int32_t level, int32_t monster) noexcept -> Unit* {
-	using namespace d2r::rva;
-	constexpr int32_t Arcane = 143, RiverOfBlood = 145;  // PD2 0x8e and 0x90 in port level ids
-	xy[0] = At<int32_t>(room, RoomX) + At<int32_t>(room, RoomWidth) / 2;
-	xy[1] = At<int32_t>(room, RoomY) + At<int32_t>(room, RoomHeight) / 2;
-	if (!FindSpot(room, xy, level == Arcane || level == RiverOfBlood ? 8 : 12)) {
-		return nullptr;
-	}
+auto SpawnMonsterAt(Game* game, void* room, const int32_t (&xy)[2], int32_t monster) noexcept -> Unit* {
 	return d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
-		SpawnMonster)(game, room, xy[0], xy[1], monster, ModeNeutral, -1, 0x42);
+		d2r::rva::SpawnMonster)(game, room, xy[0], xy[1], monster, ModeNeutral, -1, 0x42);
 }
 
-// PD2's 0x1038a060 with unit type 2: an object at x/y. No PluginSDK service places objects, so this calls D2R's unit
-// spawn (rva::SpawnUnit) as OpenPortalAt (map_open.cpp) does.
+// PD2's 0x1038a060 with unit type 2: an object at x/y, in mode 0 (PD2 passes `type != 2` as the mode: an altar in mode 1
+// is not selectable, so no click reaches its operate). No PluginSDK service places objects, so this calls D2R's unit
+// spawn (rva::SpawnUnit, argument 8 the mode) as OpenPortalAt (map_open.cpp) does.
+// shortcut: PD2 also sets bits 0x3000000 of the 1.13c unit flags (+0xc4), not identified; the altars work without them
 auto SpawnObjectAt(Game* game, void* room, int32_t x, int32_t y, int32_t row) noexcept -> Unit* {
 	using namespace d2r::rva;
 	using SpawnFn = Unit* (*)(int32_t, int32_t, int32_t, int32_t, Game*, void*, int32_t, int32_t, int32_t,
 	                          int32_t) noexcept;
 	room = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(room, x, y);
-	return room != nullptr ? d2r::Engine<SpawnFn>(SpawnUnit)(UnitObject, row, x, y, game, room, 1, 1, 0, 0) : nullptr;
+	return room != nullptr ? d2r::Engine<SpawnFn>(SpawnUnit)(UnitObject, row, x, y, game, room, 1, 0, 0, 0) : nullptr;
 }
 
-// PD2's 0x1036fef0, before the room's own monsters: one roll of 100 per room, against the event's rule.
+// PD2's 0x1038a170: its spot search from `xy` with `size`, then the monster there
+auto SpawnMonsterNear(Game* game, void* room, int32_t (&xy)[2], int32_t monster, int32_t size) noexcept -> Unit* {
+	return FindSpot(room, xy, size) ? SpawnMonsterAt(game, room, xy, monster) : nullptr;
+}
+
+// PD2's 0x1036eb30, once the Spire's progress passes 90: the waves end and every shadow in the game dies, without
+// drops. Picked first, so no kill runs while the lists are walked.
+// shortcut: PD2 also lifts the level's darkness (packet 0x53, D2's Tainted Sun) and plays a sound to its players; the
+// darkness is not ported (docs/deviations.md)
+auto EndSpire(Game* game, int32_t level) noexcept -> void {
+	using namespace d2r::rva;
+	Set(game, SpawnsKey, SpireOver);
+	constexpr int Max = 256;
+	Unit* found[Max] = {};
+	int n = 0;
+	for (int bucket = 0; bucket < 128; ++bucket) {
+		for (auto* unit = At<Unit*>(game, GameMonsters + bucket * 8); unit != nullptr && n < Max;
+		     unit = At<Unit*>(unit, UnitListNext)) {
+			const int32_t classId = At<int32_t>(unit, UnitClassId);
+			if (std::find(std::begin(Shadows), std::end(Shadows), classId) != std::end(Shadows) &&
+			    d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) == 0) {
+				found[n++] = unit;
+			}
+		}
+	}
+	for (int i = 0; i < n; ++i) {
+		KillQuietly(game, found[i]);
+	}
+	plog::Info("map events: event %d over in level %d, %d shadows killed", Spire, level, n);
+}
+
+// PD2's Spire of Darkness branch: with no spawn yet, a 20% roll once the level has more than 15 rooms places the altar
+// (at a random point of the room, then the spot search) and three fog objects by it. The altar's use (OperateAltar)
+// sets 2; from then each room rolls rand() % 6: 1-3 send a group of one shadow class around its centre. Past progress
+// 90 the waves end.
+auto SpawnSpire(Game* game, void* room, int32_t (&xy)[2], int32_t level, int32_t rooms, int32_t progress,
+                int32_t spawns, int32_t roll, int32_t size) noexcept -> void {
+	using namespace d2r::rva;
+	if (spawns < 1) {
+		if (roll >= 20 || rooms <= 15) {
+			return;
+		}
+		xy[0] = At<int32_t>(room, RoomX) + Rand() % At<int32_t>(room, RoomWidth);  // PD2's 0x10389ea0
+		xy[1] = At<int32_t>(room, RoomY) + Rand() % At<int32_t>(room, RoomHeight);
+		if (!FindSpot(room, xy, size) || SpawnObjectAt(game, room, xy[0], xy[1], SpireAltar) == nullptr) {
+			plog::Warn("map events: event %d found no spot for its altar in level %d (%u)", Spire, level, ++g_noSpot);
+			return;
+		}
+		const int32_t fogs[3][2] = {{xy[0] + 2, xy[1]}, {xy[0], xy[1] + 2}, {xy[0] - 1, xy[1] - 1}};
+		int placed = 0;
+		for (const auto& f : fogs) {
+			placed += SpawnObjectAt(game, room, f[0], f[1], Fog) != nullptr ? 1 : 0;
+		}
+		Set(game, SpawnsKey, 1);
+		plog::Info("map events: event %d altar %d at (%d, %d) in level %d, %d of 3 fog %d (%u spawned)", Spire,
+		           SpireAltar, xy[0], xy[1], level, placed, Fog, ++g_spawned);
+		Notify(game, Spire);
+		return;
+	}
+	if (spawns < 2 || spawns >= SpireOver) {
+		return;
+	}
+	if (const int pick = Rand() % 6; pick >= 1 && pick <= 3) {
+		const int32_t* group = ShadowGroups[pick - 1];
+		int32_t count = group[1] - group[0] + 1;
+		count = count > 1 ? group[0] + Rand() % count : count;
+		int32_t made = 0;
+		for (int32_t i = 0; i < count; ++i) {
+			int32_t at[2] = {xy[0] - 5 + Rand() % 10, xy[1] - 5 + Rand() % 10};
+			made += SpawnMonsterNear(game, room, at, Shadows[pick - 1], 10) != nullptr ? 1 : 0;
+		}
+		plog::Info("map events: event %d wave of %d/%d monster %d in level %d at progress %d", Spire, made, count,
+		           Shadows[pick - 1], level, progress);
+	}
+	if (progress > 90) {
+		EndSpire(game, level);
+	}
+}
+
+// PD2's 0x1036fef0, before the room's own monsters: one roll of 100 per room, against the event's rule. The spot
+// search runs from the room's centre with size 12 (8 in Arcane and River of Blood).
 // shortcut: PD2 also skips a room its 0x103a2e90 (an engine call through a pointer, not read) refuses, and marks
 // Mendeln's monster (+0xd0 = 11); read both if an event spawns where PD2's would not, or Mendeln acts differently
-auto SpawnEvent(Game* game, void* room, int32_t level, int32_t progress) noexcept -> void {
+auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t progress) noexcept -> void {
+	using namespace d2r::rva;
+	constexpr int32_t Arcane = 143, RiverOfBlood = 145;  // PD2 0x8e and 0x90 in port level ids
 	const int32_t event = Get(game, EventKey);
 	const int32_t spawns = Get(game, SpawnsKey);
 	const int32_t roll = Rand() % 100;
-	int32_t monster = -1;
-	if ((event == Mendeln || event == Horazon || event == Gheed) && spawns == 0 && roll + progress > 140) {
-		monster = event == Mendeln ? MendelnMonster : event == Horazon ? HorazonMonster : GheedMonster;
-	} else if ((event == DarkWanderer || event == TreasureFallen) && spawns < 3 && (spawns + 1) * 25 < progress &&
-	           roll < 25) {
-		monster = event == DarkWanderer ? DarkWandererMonster : TreasureFallenMonster;
-	}
-	if (monster < 0) {
+	const int32_t size = level == Arcane || level == RiverOfBlood ? 8 : 12;
+	int32_t xy[2] = {At<int32_t>(room, RoomX) + At<int32_t>(room, RoomWidth) / 2,
+	                 At<int32_t>(room, RoomY) + At<int32_t>(room, RoomHeight) / 2};
+	if (event == Spire) {
+		SpawnSpire(game, room, xy, level, rooms, progress, spawns, roll, size);
 		return;
 	}
-	int32_t xy[2] {};
-	if (SpawnAt(game, room, xy, level, monster) == nullptr) {
-		plog::Warn("map events: event %d found no spot for monster %d in level %d (%u)", event, monster, level,
-		           ++g_noSpot);
+	int32_t id = -1;  // a monster; for the Altar and Void/Tomb an object
+	if ((event == Mendeln || event == Horazon || event == Gheed || event == Altar || event == Tomb) && spawns == 0 &&
+	    roll + progress > 140) {
+		id = event == Mendeln ? MendelnMonster : event == Horazon ? HorazonMonster : event == Gheed ? GheedMonster
+			: event == Altar ? ShardAltar : RedPortal;
+	} else if ((event == DarkWanderer || event == TreasureFallen) && spawns < 3 && (spawns + 1) * 25 < progress &&
+	           roll < 25) {
+		id = event == DarkWanderer ? DarkWandererMonster : TreasureFallenMonster;
+	}
+	if (id < 0) {
+		return;
+	}
+	if (!FindSpot(room, xy, size)) {
+		plog::Warn("map events: event %d found no spot for %d in level %d (%u)", event, id, level, ++g_noSpot);
+		return;
+	}
+	// PD2's Void/Tomb places xactportal_gold here and one in level 207, then links the two (0x1038a510); D2R's portal
+	// maker makes the same linked pair, of its red portal 60 (docs/deviations.md)
+	const Unit* made = event == Tomb    ? OpenEventPortal(game, room, xy[0], xy[1], BitterDepths)
+	                   : event == Altar ? SpawnObjectAt(game, room, xy[0], xy[1], ShardAltar)
+	                                    : SpawnMonsterAt(game, room, xy, id);
+	if (made == nullptr) {
+		plog::Warn("map events: event %d could not place %d at (%d, %d) in level %d", event, id, xy[0], xy[1], level);
 		return;
 	}
 	Set(game, SpawnsKey, spawns + 1);
-	plog::Info("map events: event %d spawn %d, monster %d in level %d at progress %d (%u spawned)", event, spawns + 1,
-	           monster, level, progress, ++g_spawned);
+	plog::Info("map events: event %d spawn %d, %s %d at (%d, %d) in level %d at progress %d (%u spawned)", event,
+	           spawns + 1, event == Tomb || event == Altar ? "object" : "monster", id, xy[0], xy[1], level, progress,
+	           ++g_spawned);
 	// PD2's Gheed branch also files the game's players into a set for its realm (0x10368480): cut, docs/deviations.md
-	if (event == Gheed) {
+	if (event == Gheed || event == Tomb) {
 		const bool marked = SpawnObjectAt(game, room, xy[0], xy[1], EventMarker) != nullptr;
 		plog::Info("map events: event %d object %d at (%d, %d)%s", event, EventMarker, xy[0], xy[1],
 		           marked ? "" : " FAILED");
 	}
 	Notify(game, event);
+}
+
+// PD2's operate 79 (0x103aa460) for both event altars, in D2R's operate slot 35. The Spire's first use starts the
+// waves. The Catalyst altar's first use calls its guardian 10-29 subtiles off (40 tries, spot size 2), its second,
+// once the guardian is dead (AltarGuardianDied), drops 2-3 Catalyst Shards (PD2 at item level 90).
+// shortcut: PD2 also darkens the Spire's level (packet 0x53) and plays sounds (packet 0x2c); not ported
+// shortcut: the shards drop by the user, where PD2 drops them by the altar (0x1036ebc0); D2R's drop (rva::DropItemAt)
+// is only known to work by a unit that carries a level stat
+auto OperateAltar(ObjectOperate* args) noexcept -> int32_t {
+	using namespace d2r::rva;
+	Game* game = args->game;
+	Unit* altar = args->object;
+	if (game == nullptr || altar == nullptr || (args->classId != SpireAltar && args->classId != ShardAltar)) {
+		return 0;
+	}
+	const int32_t event = Get(game, EventKey);
+	const int32_t spawns = Get(game, SpawnsKey);
+	plog::Info("map events: altar %d used, event %d, state %d", args->classId, event, spawns);
+	const auto mode = d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetObjectMode);
+	if (event == Spire && spawns == 1) {
+		mode(altar, 1);
+		Set(game, SpawnsKey, 2);
+		plog::Info("map events: event %d altar used, the waves start", event);
+		return 1;
+	}
+	if (event == Altar && spawns == 1) {
+		mode(altar, 1);
+		if (const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ObjectRecord)(
+				d2r::DataFlag(game), args->classId);
+		    record != nullptr) {
+			const int32_t open = At<int32_t>(game, GameFrame) + 1 + static_cast<int32_t>(At<uint32_t>(record, ObjOpenFrames) >> 8);
+			d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
+				game, altar, UnitEventOpen, open, 0, 0, 0);
+		}
+		void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(altar);
+		for (int i = 0; room != nullptr && i < 40; ++i) {
+			int32_t xy[2] = {};
+			d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(UnitCoords)(altar, xy);
+			xy[0] += 10 + Rand() % 20;
+			xy[1] += 10 + Rand() % 20;
+			if (SpawnMonsterNear(game, room, xy, AltarGuardian, 2) != nullptr) {
+				Set(game, SpawnsKey, 2);
+				plog::Info("map events: event %d altar used, guardian %d at (%d, %d)", event, AltarGuardian, xy[0], xy[1]);
+				return 1;
+			}
+		}
+		plog::Warn("map events: event %d altar used, no spot for its guardian", event);
+		return 0;
+	}
+	if (event == Altar && spawns == 3 && args->player != nullptr) {
+		mode(altar, 3);
+		const uint8_t dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
+		const int32_t row = d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(dataFlag, ShardCode);
+		const uint32_t count = 2 + d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(altar), 2);
+		for (uint32_t i = 0; row >= 0 && i < count; ++i) {
+			d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(DropItemAt)(
+				game, args->player, row, QualityNormal, 0, 0);
+		}
+		Set(game, SpawnsKey, 4);
+		plog::Info("map events: event %d altar used again, %u Catalyst Shards (item row %d)", event, count, row);
+		return 1;
+	}
+	return 0;
 }
 
 auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
@@ -296,7 +471,8 @@ auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 		plog::Info("map events: room activated in level %d (%u so far)", level, g_rooms.load());
 	}
 	if (tier != nullptr) {
-		SpawnEvent(game, room, level, Get(game, RoomsKey(level)) * 100 / tier->rooms);
+		const int32_t rooms = Get(game, RoomsKey(level));
+		SpawnEvent(game, room, level, rooms, rooms * 100 / tier->rooms);
 	}
 	if (RathmaRoom(game, room, level)) {
 		return;  // PD2 0x1036fef0: an arena room spawns none of its own monsters
@@ -357,11 +533,28 @@ auto RollMapEvent(Game* game, Unit* item, int32_t level) noexcept -> void {
 		}
 	}
 	event = event != 0 ? event : NoEvent;
+	// For game checks only, not PD2's: PD2R_MAP_EVENT=<11-21> in the game's environment rolls that event on every map
+	static const int32_t testEvent = [] {
+		char v[8] {};
+		size_t n = 0;
+		const int32_t e = getenv_s(&n, v, sizeof(v), "PD2R_MAP_EVENT") == 0 && n > 0 ? std::atoi(v) : 0;
+		return e > NoEvent && e <= Tomb && NotifyKey(e) != nullptr ? e : 0;
+	}();
+	event = testEvent != 0 ? testEvent : event;
 	Set(game, EventKey, event);
 	Set(game, SpawnsKey, 0);
 	++g_rolled[event - NoEvent];
 	plog::Info("map events: level %d (quality %d%s) rolled event %d (%u rolls)", level, quality,
-	           forced ? ", forced" : "", event, ++g_rolls);
+	           testEvent != 0 ? ", PD2R_MAP_EVENT" : forced ? ", forced" : "", event, ++g_rolls);
+}
+
+auto AltarGuardianDied(Game* game) noexcept -> void {
+	// shortcut: PD2 also kills the guardian's clones (1065, the port's 1082) in the rooms by it; nothing summons them
+	// until PD2's guardian AI (0x1035a6b0) is ported, so that kill comes with it
+	if (MapEvent(game) == Altar && Get(game, SpawnsKey) == 2) {
+		Set(game, SpawnsKey, 3);
+		plog::Info("map events: event %d guardian dead, the altar gives its shards", Altar);
+	}
 }
 
 auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
@@ -373,7 +566,12 @@ auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t r
 	}
 	const bool rooms = context->InstallInlineHook(RoomPopulate, RoomPopulateEntry, sizeof(RoomPopulateEntry),
 	                                              OnRoomPopulate, &g_populateOriginal);
-	std::snprintf(report, reportSize, "room activation%s%s", rooms ? "" : " FAILED (bytes differ)",
+	static constexpr uint8_t Empty[8] = {};
+	using OperateFn = int32_t (*)(ObjectOperate*) noexcept;
+	const bool altars = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperateAltar) * 8, Empty,
+	                                           sizeof(Empty), reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperateAltar)));
+	std::snprintf(report, reportSize, "room activation%s, altar operate %d%s%s", rooms ? "" : " FAILED (bytes differ)",
+	              ObjectOperateAltar, altars ? "" : " FAILED (slot not empty)",
 	              g_strings != nullptr ? "" : ", no notify (no localization service)");
 	return rooms ? 1 : 0;
 }
