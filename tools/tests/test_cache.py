@@ -212,6 +212,26 @@ class RuleCacheTests(unittest.TestCase):
                 self.assertEqual((out / "b.txt").read_text(), "Ab")
             self.assertEqual(RUNS, ["b"], "the second is a replay")
 
+    def test_a_run_that_writes_outside_generated_is_not_kept(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            cache, root = tmp / "cache", tmp / "wt"
+            out = root / "generated" / "data"
+            out.mkdir(parents=True)
+            runs = []
+
+            def art():  # as pd2_art does for a frame with no art yet: a PNG into merge/art
+                runs.append(1)
+                write(root / "merge" / "art" / f"x{len(runs)}.png", "png")
+                write(out / "a.txt", "A")
+
+            for _ in range(2):
+                with redirect_stdout(io.StringIO()) as so:
+                    self.assertFalse(pd2_cache.rule(cache, "k", {"p": root}, art))
+                self.assertIn("not cached", so.getvalue())
+            self.assertEqual(len(runs), 2, "never replayed")
+            self.assertFalse(list(cache.rglob("manifest.json")))
+
     def test_sources_follow_imports_beside_the_module(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
@@ -237,8 +257,15 @@ class RuleCacheTests(unittest.TestCase):
                 if n != "rules/j/fresh":
                     t = time.time() - 3600 * (4 - i)
                     os.utime(cache / n, (t, t))
-            gone = pd2_cache.prune(cache, 150)
-            self.assertEqual([p.relative_to(cache).as_posix() for p in gone], ["rules/k/old", "merge/legacy", "rules/k/new"])
+            self.assertEqual([p.relative_to(cache).as_posix() for p in pd2_cache.prune(cache, 150)],
+                             ["rules/k/old", "rules/k/new"], "merge/ is left alone by default")
+            self.assertTrue((cache / "merge/legacy").is_dir())
+            for n in ("rules/k/old", "rules/k/new"):
+                write(cache / n / "manifest.json", json.dumps({"bytes": 100}))
+                os.utime(cache / n, (time.time() - 7200, time.time() - 7200))
+            gone = pd2_cache.prune(cache, 150, legacy=True)
+            self.assertEqual(sorted(p.relative_to(cache).as_posix() for p in gone),
+                             ["merge/legacy", "rules/k/new", "rules/k/old"], "PD2R_PRUNE_LEGACY: merge/ too")
             self.assertTrue((cache / "rules/j/fresh").is_dir(), "used in the last 15 minutes: kept over the cap")
 
 

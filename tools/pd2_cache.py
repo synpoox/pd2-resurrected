@@ -6,8 +6,9 @@ before. Under the root:
   extract/<key>/       pd2_extract's output, one per extract stamp; a worktree's pd2-data/ is a junction to it
   rules/<key>/<reads>/ what one pd2_merge rule wrote, for its code and stamps and what it read (rule, below)
 A cache folder is complete before it gets its name, so no run sees another's half-written one. pd2_merge prunes rules/
-(and merge/, the whole-merge folders older tools kept) to a size cap, sparing what was used in the last 15 minutes;
-extract/ is never pruned: delete old ones by hand when no worktree's pd2-data/ points at them.
+to a size cap, sparing what was used in the last 15 minutes. merge/ (the whole-merge folders older tools kept) is pruned
+only with PD2R_PRUNE_LEGACY=1, as a worktree on older tools may be copying one at any time; extract/ is never pruned:
+delete old ones by hand when no worktree's pd2-data/ points at them.
 """
 from __future__ import annotations
 
@@ -312,6 +313,11 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
             run()
     finally:
         t, _trace = _trace, None
+    # a write outside generated/ (pd2_art's new merge/art PNGs) is not replayed, so such a run is not kept
+    outside = sorted(r for r in t.written | t.created if not (r + "/").startswith("p:generated/"))
+    if outside:
+        print(f"rule not cached: it wrote outside generated/ ({', '.join(outside[:3])})")
+        return False
     files1, dirs1 = _snapshot(gen)
     m = {"reads": t.reads, "files": sorted(f for f in files1 if files0.get(f) != files1[f]),
          "removed": sorted(set(files0) - set(files1)), "dirs": sorted(dirs1 - dirs0), "rmdirs": sorted(dirs0 - dirs1),
@@ -339,11 +345,12 @@ def size(p: Path) -> int:
     return sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
 
 
-def prune(cache: Path, cap: int, keep_s: float = 900) -> list[Path]:
-    """Delete the least recently used rule entries, and the whole-merge folders older tools kept in merge/, until the
-    rest fit in cap bytes. One used in the last keep_s seconds stays: a run may be replaying it."""
+def prune(cache: Path, cap: int, keep_s: float = 900, legacy: bool = False) -> list[Path]:
+    """Delete the least recently used rule entries (with legacy, the whole-merge folders older tools kept in merge/
+    too) until the rest fit in cap bytes. One used in the last keep_s seconds stays: a run may be replaying it. merge/
+    is left alone by default: an older tool copies a folder there without marking it used."""
     entries = []
-    for e in [*cache.glob("rules/*/*"), *cache.glob("merge/*")]:
+    for e in [*cache.glob("rules/*/*"), *(cache.glob("merge/*") if legacy else [])]:
         if not e.is_dir() or ".tmp" in e.name:
             continue
         try:

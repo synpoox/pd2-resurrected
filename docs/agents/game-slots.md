@@ -49,5 +49,7 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
   follows a junction and empties the shared cache (`C:\pd2r-cache`, or `F:\pd2r-cache` for slots on F:):
   `cmd /c rmdir <worktree>\pd2-data`, `cmd /c rmdir <worktree>\generated`, `cmd /c rmdir <worktree>\out`.
 - Never delete a cache folder another worktree's `pd2-data` points at. CI (`GITHUB_ACTIONS`) does not use these.
-- Each merge prunes the least recently used `rules\` entries, and the whole-merge `merge\<key>` folders older tools
-  kept, until the cache holds `PD2R_CACHE_GB` (default 20) GB. `extract\` is never pruned.
+- Each merge prunes the least recently used `rules\` entries until they hold `PD2R_CACHE_GB` (default 20) GB. A rule
+  run that wrote outside `generated\` (new `merge\art` PNGs) is not kept. The whole-merge `merge\<key>` folders older
+  tools kept are pruned only with `PD2R_PRUNE_LEGACY=1`: set it once no worktree runs the old tools. `extract\` is
+  never pruned.

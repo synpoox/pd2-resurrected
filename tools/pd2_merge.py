@@ -9,7 +9,7 @@ d2rAI-toolkit's shared/classic_import merge driver applies each merge/ file by t
 pd2-data/ extracted from another baseline. A failed run leaves no generated/, so a build never picks up half a merge.
 D2R's own tables come from modkit's cache (--d2r).
 With a pd2_cache root, each rule whose code, stamps and inputs match a kept run replays it instead (#558), and the
-cache is pruned to PD2R_CACHE_GB (default 20) GB.
+rule cache is pruned to PD2R_CACHE_GB (default 20) GB (the old whole-merge folders too with PD2R_PRUNE_LEGACY=1).
 """
 from __future__ import annotations
 
@@ -117,7 +117,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"pd2_merge: {e}", file=sys.stderr)
         return 1
     if cache:
-        for e in pd2_cache.prune(cache, int(float(os.environ.get("PD2R_CACHE_GB", "20")) * 2**30)):
+        for e in pd2_cache.prune(cache, int(float(os.environ.get("PD2R_CACHE_GB", "20")) * 2**30),
+                                  legacy=os.environ.get("PD2R_PRUNE_LEGACY") == "1"):
             print(f"pruned {e}")
     print(f"generated/data rebuilt; rules applied: {', '.join(applied) or 'none'}")
     return 0
