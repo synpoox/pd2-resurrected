@@ -8,6 +8,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 - Open wounds stacks up to three hits, and deep wounds adds to its damage.
 - Items with replenish charges (Enigma, Oath and others) regain their used charges over time.
+- Throwing potions burst into their explosion and fire, gas, cold or lightning ring.
 
 #### Uber bosses
 

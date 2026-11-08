@@ -116,7 +116,9 @@ REFS = {
 # which PD2's new warps keep (pd2_levels checks they don't clash), and LevelType is lvltypes' (pd2_levels)
 NUM_REFS = {"levels": {**{f"Vis{i}": "levels" for i in range(8)}, **{f"ObjGrp{i}": "objgroup" for i in range(8)}},
             "lvlprest": {"LevelId": "levels"},
-            "objgroup": {f"ID{i}": "objects" for i in range(8)}}
+            "objgroup": {f"ID{i}": "objects" for i in range(8)},
+            # a thrown weapon's missile (PD2's throwing potions, 912-947, are the mod's 970-1005; IR5)
+            "weapons": {"missiletype": "missiles"}}
 # A misc row with PD2's map spell opens the level its `len` names (ProjectDiablo.dll evaluates the calc as the level id,
 # docs/research/pd2-map-system-dll.md): it takes the mod's id, blank for a left-out level (PvP, PD2's Uber Ancients).
 # Every other row's len is a duration.
