@@ -22,3 +22,15 @@ default_mod = "PD2Resurrected"
 [repos]
 changelog = "CHANGELOG.md"
 github = "synpoox/pd2-resurrected"
+
+# Files players may edit: shipped_default in the launcher manifest, kept on Update and Repair.
+[package]
+preserve = ["d2rloader/config/d2rloader.toml", "d2rloader/config/filter.json"]
+
+# Schema 3 release-manifest.json + feed.json for the Resurrected launcher (pass the tested D2R.exe with --game-exe).
+[catalog]
+product_id = "pd2r"
+min_launcher_version = "0.1.0"
+loader_versions = ["1.3.1-beta"]
+required_settings = [{file = "d2rloader/config/d2rloader.toml", key = "d2rcore.save_format.mode", value = "extended"}]
+upcoming = ["project-09", "project-forever"]
