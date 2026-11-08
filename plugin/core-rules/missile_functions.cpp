@@ -1173,7 +1173,8 @@ void SrvDmgRathmaSpear(Game* game, Unit* missile, Unit* target, uint8_t* damage)
 	const uint32_t magic = share <= 0.0 ? 0 : share >= 4294967295.0 ? UINT32_MAX : static_cast<uint32_t>(share);
 	d2r::LeapKnockback hit;
 	hit.hitFlags = 0x1000;
-	hit.resultFlags = 0;  // PD2's block starts zeroed
+	// PD2's block starts zeroed, but D2R's DealDamage (0x44a9b0) applies the damage only with the hit bit set
+	hit.resultFlags = ResultHit;
 	*reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(&hit) + DmgMagic) = magic < life ? magic : life;
 	d2r::Engine<void (*)(Unit*, Unit*, void*) noexcept>(DamageStep)(owner, target, &hit);
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(DealDamage)(game, owner, target, &hit);
