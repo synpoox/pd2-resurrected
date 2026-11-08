@@ -142,3 +142,30 @@ auto IdleWindow(Game* game, Unit* boss, bool playerInLevel) noexcept -> bool {
 	}
 	return true;
 }
+
+auto ImmunityStates(d2r::Game* game, d2r::Unit* unit, bool on, bool setState) noexcept -> int {
+	using namespace d2r::rva;
+	constexpr int32_t StateResistAll = 8;
+	constexpr int32_t StripStates[] = {2, 62};  // poison, openwounds
+	if (setState) {
+		d2r::Engine<void (*)(d2r::Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, StateResistAll, on ? 1 : 0);
+	}
+	int stripped = 0;
+	if (!on) {
+		return stripped;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	for (const int32_t s : StripStates) {
+		for (int k = 0; k < 20; ++k) {
+			void* list = d2r::Engine<void* (*)(d2r::Unit*, int32_t) noexcept>(UnitStateList)(unit, s);
+			if (list == nullptr) {
+				break;
+			}
+			d2r::Engine<void (*)(d2r::Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, s, 0);
+			d2r::Engine<void (*)(d2r::Unit*, void*) noexcept>(DetachStatList)(unit, list);
+			d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
+			++stripped;
+		}
+	}
+	return stripped;
+}

@@ -38,8 +38,6 @@ constexpr uint32_t ResistSavedKey = 0x55424c52;  // 'UBLR': the six resists belo
 constexpr uint32_t ResistKeys[] = {0x55424c30, 0x55424c31, 0x55424c32, 0x55424c33, 0x55424c34, 0x55424c35};
 // PD2 0x10380770 sets these to 200 (fire, cold, lightning, poison, magic, damage resist)
 constexpr int32_t ImmuneStats[] = {39, 43, 41, 45, 37, 36};
-constexpr int32_t StateResistAll = 8;       // PD2 0x10380770 sets it with the resists
-constexpr int32_t StripStates[] = {2, 62};  // poison, openwounds: PD2 0x10380770 strips up to 20 lists of each
 
 // The arena (PD2's subtile coordinates, as Royal Fire's ring centre in skill_functions.cpp)
 constexpr int32_t Corners[][2] = {{0x622d, 0x17eb}, {0x622d, 0x17d5}, {0x6217, 0x17d5}, {0x6217, 0x17eb}};
@@ -122,11 +120,12 @@ auto SetMode(Game* game, Unit* unit, int32_t mode) noexcept -> void {
 }
 
 // PD2 0x10380770: immune sets the six resists to 200 and strips poison and open wounds; off puts back what they
-// were (PD2 reads monstats)
-auto SetImmune(Game* game, Unit* unit, bool on) noexcept -> void {
+// were (PD2 reads monstats). setState is PD2's third argument: state 8 only then
+auto SetImmune(Game* game, Unit* unit, bool on, bool setState) noexcept -> void {
 	int32_t& saved = Counter(game, ResistSavedKey);
 	if (on) {
-		if (saved == 0) {
+		const bool first = saved == 0;
+		if (first) {
 			for (size_t i = 0; i < std::size(ImmuneStats); ++i) {
 				Counter(game, ResistKeys[i]) = Stat(unit, ImmuneStats[i]);
 			}
@@ -135,27 +134,16 @@ auto SetImmune(Game* game, Unit* unit, bool on) noexcept -> void {
 		for (const int32_t s : ImmuneStats) {
 			SetStat(unit, s, 200);
 		}
-		// The curse strip, as rathma_ai.cpp's
-		using namespace d2r::rva;
-		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, StateResistAll, 1);
-		const uint32_t dataFlag = d2r::DataFlag(game);
-		for (const int32_t s : StripStates) {
-			for (int k = 0; k < 20; ++k) {
-				void* list = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, s);
-				if (list == nullptr) {
-					break;
-				}
-				d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, s, 0);
-				d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
-				d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
-				plog::Info("lucion ai: immunity stripped state %d from class %d", s, At<int32_t>(unit, UnitClassId));
-			}
+		const int stripped = ImmunityStates(game, unit, true, setState);
+		if (first || stripped > 0) {
+			plog::Info("lucion ai: immune, state 8 %s, %d poison/open wounds lists stripped", setState ? "set" : "not set",
+			           stripped);
 		}
 	} else if (saved != 0) {
 		for (size_t i = 0; i < std::size(ImmuneStats); ++i) {
 			SetStat(unit, ImmuneStats[i], Counter(game, ResistKeys[i]));
 		}
-		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetUnitState)(unit, StateResistAll, 0);
+		ImmunityStates(game, unit, false, setState);
 		saved = 0;
 	}
 }
@@ -210,7 +198,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	const int32_t dist2 = target != nullptr ? dist * dist : 0x7fffffff;  // PD2: squared distance to the nearest player
 	// The idle window for a boss left alone (PD2 game+0x26fe): idle and immune, counting down while a player is near
 	if (IdleWindow(game, unit, target != nullptr)) {
-		SetImmune(game, unit, true);
+		SetImmune(game, unit, true, true);  // PD2 0x35de6d pushes 1
 		Idle(game, unit, 10);
 		return;
 	}
@@ -255,7 +243,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	}
 	// The portal phase: stage 3 reached this tick
 	const auto portalPhase = [&]() {
-		SetImmune(game, unit, true);
+		SetImmune(game, unit, true, false);  // PD2 0x35e30e pushes 0: no state 8
 		SetMode(game, unit, ModeS3);
 		Delay(game, unit, 25);
 		if (stage == 3 && before < 3) {
@@ -287,7 +275,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		store(6, 0);
 		return;
 	case 1: {
-		SetImmune(game, unit, false);
+		SetImmune(game, unit, false, true);
 		const int32_t r = Rand(unit, 100);
 		int32_t next = 1;
 		if (r < m.P(0)) {
@@ -384,7 +372,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 			Delay(game, unit, 10);
 			store(6, 2);
 		} else {
-			SetImmune(game, unit, false);
+			SetImmune(game, unit, false, true);
 			Idle(game, unit, aidel);
 			store(1, 0);
 		}
