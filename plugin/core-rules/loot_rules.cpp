@@ -13,6 +13,8 @@
 //   pickers read the column as a flag (0x58c940), so PD2's rare-only affixes (Visceral, the +2 class skill helms, the
 //   +3 skill trees) rolled on magic and crafted items. No SDK service filters an affix roll, so D2R's per-affix test
 //   (0x3d4220), which both pickers call, is wrapped: it refuses 2 and 3 where PD2 does, then runs D2R's.
+// - weapon durability: a weapon's chance to lose durability on a hit is halved (4% -> 2%, 10% -> 5%), as PD2's two
+//   bytes over 1.13c's D2Game +0x12f16 / +0x12f36.
 #include "loot_rules.h"
 
 #include "pd2_engine.h"
@@ -143,6 +145,45 @@ auto PatchDecoder(const D2RL::PluginContext* context) noexcept -> bool {
 	return true;
 }
 
+// Weapons lose durability at half D2R's rate: the two chance immediates in D2R's weapon durability loss (0x441b10),
+// 4 -> 2 and 10 -> 5, as PD2 patches 1.13c's. Armor's loss is untouched (PD2 leaves it). No SDK service sets the
+// chance, so it is a byte patch through the MutationService; `mov ebx,imm32` is checked whole.
+auto PatchWeaponDurability(const D2RL::PluginContext* context) noexcept -> bool {
+	using namespace d2r::rva;
+	const D2RL::MutationService* mutations = nullptr;
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize) ||
+	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		return false;
+	}
+	uint8_t expected[std::size(WeaponDurabilityChance)][5];
+	uint8_t bytes[std::size(WeaponDurabilityChance)][5];
+	for (size_t i = 0; i < std::size(WeaponDurabilityChance); ++i) {
+		const uint8_t from[5] = {0xbb, WeaponDurabilityVanilla[i], 0, 0, 0};  // mov ebx,imm32
+		const uint8_t pd2[5] = {0xbb, WeaponDurabilityPd2[i], 0, 0, 0};
+		std::memcpy(expected[i], from, 5);
+		std::memcpy(bytes[i], pd2, 5);
+		const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
+		                                              .rva = WeaponDurabilityChance[i],
+		                                              .expected = expected[i],
+		                                              .expectedSize = 5,
+		                                              .bytes = bytes[i],
+		                                              .size = 5};
+		D2RL::Mutations::OperationHandle operation = 0;
+		if (mutations->stageBytePatch(context, transaction, &patch, &operation) != D2RL::Mutations::Result::Success) {
+			mutations->cancelTransaction(context, transaction);
+			return false;
+		}
+	}
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	if (mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		return false;
+	}
+	return true;
+}
+
 }  // namespace
 
 auto InstallLootRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
@@ -155,14 +196,15 @@ auto InstallLootRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                                            reinterpret_cast<void*>(&ApplyEthereal));
 	const bool rare = context->InstallInlineHook(AffixAllowed, AffixAllowedEntry, sizeof(AffixAllowedEntry),
 	                                             &RareAffixAllowed, &g_affixAllowedOriginal);
-	std::snprintf(report, reportSize, "ethereal bonus%s; affix rare%s",
+	const bool durability = PatchWeaponDurability(context);
+	std::snprintf(report, reportSize, "ethereal bonus%s; affix rare%s; weapon durability 1/2%s",
 	              !decoder ? " FAILED (decoder bytes differ)" : ethereal ? "" : " FAILED (bytes differ)",
-	              rare ? "" : " FAILED (bytes differ)");
-	return (ethereal ? 1 : 0) + (rare ? 1 : 0);
+	              rare ? "" : " FAILED (bytes differ)", durability ? "" : " FAILED (bytes differ)");
+	return (ethereal ? 1 : 0) + (rare ? 1 : 0) + (durability ? 1 : 0);
 }
 
 auto LootRuleCount() noexcept -> int {
-	return 2;
+	return 3;
 }
 
 auto LootRuleCounters(char* out, size_t size) noexcept -> void {
