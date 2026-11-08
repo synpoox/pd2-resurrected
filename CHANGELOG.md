@@ -16,6 +16,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Items with replenish charges (Enigma, Oath and others) regain their used charges over time.
 - Throwing potions burst into their explosion and fire, gas, cold or lightning ring.
 - Weapons lose durability half as often.
+- Class items roll skill bonuses from the whole class tree, gated by each skill's required level.
 
 #### Uber bosses
 
