@@ -4,6 +4,10 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 ### Unreleased
 
+#### Maps
+
+- Ten more PD2-only areas draw walls and props in HD, among them Ruined Cistern, Ureh City and Black Abyss.
+
 #### Getting started
 
 - Includes a DPS counter above the life globe.
