@@ -584,13 +584,11 @@ constexpr int16_t ExtraBossIds[] = {
 auto OnPresetSpawn(Game* game, void* room, const uint8_t* preset) noexcept -> void {
 	if (game != nullptr && room != nullptr && preset != nullptr &&
 	    (NoUberWaypoint(game, room, preset) ||
-	     OuterVoidPreset(game, room, const_cast<uint8_t*>(preset), g_presetSpawnOriginal))) {
+	     OuterVoidPreset(game, room, const_cast<uint8_t*>(preset), g_presetSpawnOriginal) ||
+	     ZharPreset(game, room, preset))) {  // Zhar's seal portals and tomes, for their placeholders (zhar.cpp)
 		return;
 	}
 	g_presetSpawnOriginal(game, room, preset);
-	if (game != nullptr && room != nullptr && preset != nullptr) {
-		ZharPreset(game, room, preset);  // Zhar's seal portals and tomes, by their placeholders (zhar.cpp)
-	}
 	using namespace d2r::rva;
 	if (game == nullptr || room == nullptr || preset == nullptr || At<int32_t>(preset, PresetType) != UnitMonster) {
 		return;

@@ -12,8 +12,11 @@
 // refused with the player's "can't" sound (0x13).
 //
 // No PluginSDK service places preset objects, operates objects or moves a player between levels, so these are the
-// preset spawn hook (map_stats.cpp), one operate table slot and engine calls, as the uber portals' (map_open.cpp).
+// preset spawn hook (map_stats.cpp, which then skips the placeholder), one operate table slot (a MutationService byte
+// patch) and engine calls, as the uber portals' (map_open.cpp).
 #include "zhar.h"
+
+#include <D2RLPlugin/mutations.h>
 
 #include "log.h"
 #include "map_events.h"
@@ -21,7 +24,8 @@
 
 #include <atomic>
 #include <cstdio>
-#include <cstdlib>
+#include <cstring>
+#include <random>
 #include <utility>
 
 namespace {
@@ -76,6 +80,12 @@ auto Field(Game* game, int link, int field) noexcept -> int32_t* {
 	return Counter(game, LinkKey + (static_cast<uint32_t>(link) << 4) + static_cast<uint32_t>(field));
 }
 
+// A link field's value (0 when the counter can't be had); read fresh, as a later counter can move the table
+auto FieldValue(Game* game, int link, int field) noexcept -> int32_t {
+	const int32_t* c = Field(game, link, field);
+	return c != nullptr ? *c : 0;
+}
+
 auto SetLink(Game* game, int link, Unit* portal, int32_t level, int32_t x, int32_t y) noexcept -> void {
 	const int32_t values[] = {static_cast<int32_t>(At<uint32_t>(portal, d2r::rva::UnitIdField)) + 1, level, x, y};
 	for (int f = 0; f < 4; ++f) {
@@ -88,8 +98,7 @@ auto SetLink(Game* game, int link, Unit* portal, int32_t level, int32_t x, int32
 auto LinkOf(Game* game, Unit* portal) noexcept -> int {
 	const auto id = static_cast<int32_t>(At<uint32_t>(portal, d2r::rva::UnitIdField)) + 1;
 	for (int link = 0; link < Links; ++link) {
-		const int32_t* c = Field(game, link, 0);
-		if (c != nullptr && *c == id) {
+		if (FieldValue(game, link, 0) == id) {
 			return link;
 		}
 	}
@@ -133,8 +142,9 @@ auto RedWing(Game* game) noexcept -> int {
 		return 0;
 	}
 	if (*red == 0) {
-		// shortcut: PD2 takes the game seed (game +0x7c) mod 3; here rand() picks it once per game
-		*red = 1 + std::rand() % Wings;
+		// shortcut: PD2 takes the game seed (game +0x7c) mod 3; here a per-thread generator picks it once per game
+		thread_local std::minstd_rand rng {std::random_device {}()};
+		*red = 1 + static_cast<int32_t>(rng() % Wings);
 		plog::Info("zhar: wing %d holds the red seal", FirstWing + *red - 1);
 	}
 	return *red - 1;
@@ -207,9 +217,7 @@ auto Warp(Game* game, Unit* player, int32_t level, int32_t x, int32_t y, void* h
 // first trip, so no other level is built inside the preset spawn
 auto HubTrip(Game* game, Unit* player, Unit* portal, int link) noexcept -> bool {
 	const int32_t wing = FirstWing + (link - HubLink);
-	const int32_t* dx = Field(game, link, 2);
-	const int32_t* dy = Field(game, link, 3);
-	if (dx != nullptr && dy != nullptr && *dx == 0) {
+	if (FieldValue(game, link, 2) == 0) {
 		int32_t x = 0, y = 0;
 		void* room = SpawnSpot(game, wing, WingSpot, &x, &y);
 		Unit* entry = room != nullptr ? Spawn(game, room, BluePortal, x, y, ModeOpen, Hub) : nullptr;
@@ -223,7 +231,7 @@ auto HubTrip(Game* game, Unit* player, Unit* portal, int link) noexcept -> bool 
 		plog::Info("zhar: level %d's portal at (%d, %d), linked to the hub's at (%d, %d) (%u portals)", wing, x, y, hx,
 		           hy, ++g_portals);
 	}
-	return Warp(game, player, wing, *Field(game, link, 2), *Field(game, link, 3));
+	return Warp(game, player, wing, FieldValue(game, link, 2), FieldValue(game, link, 3));
 }
 
 // An exit's trip: the red one to the hub's spot 0, a blue one to its marker by the hub's spot 11
@@ -321,7 +329,7 @@ auto OperateZhar(ObjectOperate* args) noexcept -> int32_t {
 	if (link >= HubLink && link < EntryLink) {
 		went = HubTrip(game, player, object, link);
 	} else if (link >= EntryLink && link < ExitLink) {
-		went = Warp(game, player, *Field(game, link, 1), *Field(game, link, 2), *Field(game, link, 3));
+		went = Warp(game, player, FieldValue(game, link, 1), FieldValue(game, link, 2), FieldValue(game, link, 3));
 	} else if (link >= ExitLink) {
 		went = ExitTrip(game, player, link);
 	} else {
@@ -332,15 +340,16 @@ auto OperateZhar(ObjectOperate* args) noexcept -> int32_t {
 
 }  // namespace
 
-auto ZharPreset(Game* game, void* room, const uint8_t* preset) noexcept -> void {
+auto ZharPreset(Game* game, void* room, const uint8_t* preset) noexcept -> bool {
 	using namespace d2r::rva;
 	if (At<int32_t>(preset, PresetType) != UnitObject) {
-		return;
+		return false;
 	}
 	const int32_t level = d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room);
 	const int32_t id = At<int32_t>(preset, PresetId);
-	if (level < Hub || level >= FirstWing + Wings || id < PlaceholderA || id > PlaceholderA + 2) {
-		return;
+	if (level < Hub || level >= FirstWing + Wings || id < PlaceholderA || id > PlaceholderA + 2 ||
+	    (level != Hub && id != PlaceholderA && id != PlaceholderB)) {
+		return false;
 	}
 	const int32_t x = At<int32_t>(room, RoomX) + At<int32_t>(preset, PresetX);
 	const int32_t y = At<int32_t>(room, RoomY) + At<int32_t>(preset, PresetY);
@@ -351,7 +360,7 @@ auto ZharPreset(Game* game, void* room, const uint8_t* preset) noexcept -> void 
 			plog::Info("zhar: hub portal %d at (%d, %d) to level %d (%u portals)", link, x, y,
 			           FirstWing + (id - PlaceholderA), ++g_portals);
 		}
-		return;
+		return true;
 	}
 	const int wing = level - FirstWing;
 	if (id == PlaceholderA) {
@@ -364,16 +373,44 @@ auto ZharPreset(Game* game, void* room, const uint8_t* preset) noexcept -> void 
 	} else if (id == PlaceholderB && Spawn(game, room, Tome, x, y, ModeClosed, 0) != nullptr) {
 		plog::Info("zhar: level %d's tome at (%d, %d)", level, x, y);
 	}
+	return true;
 }
 
 auto InstallZhar(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
-	static constexpr uint8_t Empty[8] = {};
 	using OperateFn = int32_t (*)(ObjectOperate*) noexcept;
-	const bool slot = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperateZhar) * 8, Empty,
-	                                         sizeof(Empty), reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperateZhar)));
-	std::snprintf(report, reportSize, "seal operate %d%s", ObjectOperateZhar, slot ? "" : " FAILED (slot not empty)");
-	return slot ? 1 : 0;
+	const D2RL::MutationService* mutations = nullptr;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize)) {
+		std::snprintf(report, reportSize, "seal operate %d FAILED (no mutation service)", ObjectOperateZhar);
+		return 0;
+	}
+	// The table slot is empty in D2R; the patch writes the operate's address there (MutationService, AGENTS.md)
+	static constexpr uint8_t Empty[8] = {};
+	static uint8_t address[8] = {};
+	const auto fn = reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperateZhar));
+	std::memcpy(address, &fn, sizeof(address));
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		std::snprintf(report, reportSize, "seal operate %d FAILED (no transaction)", ObjectOperateZhar);
+		return 0;
+	}
+	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
+	                                              .rva = ObjectOperateTable + static_cast<uint64_t>(ObjectOperateZhar) * 8,
+	                                              .expected = Empty,
+	                                              .expectedSize = sizeof(Empty),
+	                                              .bytes = address,
+	                                              .size = sizeof(address)};
+	D2RL::Mutations::OperationHandle operation = 0;
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	if (mutations->stageBytePatch(context, transaction, &patch, &operation) != D2RL::Mutations::Result::Success ||
+	    mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		std::snprintf(report, reportSize, "seal operate %d FAILED (slot not empty)", ObjectOperateZhar);
+		return 0;
+	}
+	std::snprintf(report, reportSize, "seal operate %d", ObjectOperateZhar);
+	return 1;
 }
 
 auto ZharCounters(char* out, size_t size) noexcept -> void {

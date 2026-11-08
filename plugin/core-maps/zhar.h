@@ -8,8 +8,8 @@
 #include <cstddef>
 
 // PD2 0x1038bfc0 in Zhar's Sanctum, from the preset spawn hook (map_stats.cpp): a placeholder object gets the seal
-// portals or a tome. The placeholder itself still spawns.
-auto ZharPreset(d2r::Game* game, void* room, const uint8_t* preset) noexcept -> void;
+// portals or a tome in its place. True when it took the preset, so the placeholder itself does not spawn.
+auto ZharPreset(d2r::Game* game, void* room, const uint8_t* preset) noexcept -> bool;
 // Installs PD2's operate 80 (the seal portals and tomes) in D2R's free operate slot 64; `report` gets one entry.
 // Returns 1 when installed.
 auto InstallZhar(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
