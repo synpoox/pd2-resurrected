@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 namespace d2r::rva {
 
@@ -1300,6 +1301,15 @@ inline void ReleaseDamage(LeapKnockback& damage) noexcept {
 	if (static_cast<int64_t>(damage.listCapacity) >= 0) {
 		release(damage.listData);
 	}
+}
+
+// Copies a rolled block's plain fields (all but the list at 0x40 and the tagged object at 0x158) into a fresh one:
+// ElementalDamage (0x437d00) writes only 0x0c-0x3c and 0x118-0x144, and never the flags.
+inline void CopyRolled(const LeapKnockback& from, LeapKnockback& to) noexcept {
+	const auto* src = reinterpret_cast<const uint8_t*>(&from);
+	auto* dst = reinterpret_cast<uint8_t*>(&to);
+	std::memcpy(dst, src, offsetof(LeapKnockback, listData));
+	std::memcpy(dst + offsetof(LeapKnockback, pad118), src + offsetof(LeapKnockback, pad118), sizeof(from.pad118));
 }
 
 }  // namespace d2r

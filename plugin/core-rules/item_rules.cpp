@@ -7,6 +7,7 @@
 // - curses (docs/research/ir4-curses.md): max curses (a target holds up to the caster's max_curses + 1 curses) and
 //   curse resistance (curse_effectiveness on the target scales the curse's stats), around D2R's ApplyCurse; PD2's
 //   gate (#264): resisted-to-0 cancels, stat 109 cuts the duration (cap 75 on a player), attract no longer refuses.
+//   Dark Pact (#265) consumes a curse and explodes around the target, scaled by the curses it held.
 // - skill while equipped and phasing (docs/research/ir7-equipped-items.md): item_skillonequip runs its skill as an
 //   item aura (D2R's item_aura case and tick, fed stat 375), and Phasing SelfAura drops the unit collision bits.
 // - critical and deadly strike (IR3, docs/research/ir3-combat-stats.md): PD2's roll and multipliers in place of
@@ -739,6 +740,149 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 	return applied;
 }
 
+// --- Dark Pact (#265, docs/research/ir4-curses.md): PD2's state list creator 0x1036d7d0, state 196 ----------------
+// PD2 consumes the first curse in the target's chain that is not the oldest timed one (so a lone curse stays), then
+// hits every unit within calc1 + curses - 1 of the target with the skill's magic damage times 1 + 1.1 * (curses - 1)
+// (D2Game 0x9f210's roll, area search 0xa0c70 with mask 0x8583 and callback 0xa1210), then puts dark_pact on the
+// target past the max-curses rule. No curse on the target: nothing. PD2 skips its curse gate for this state.
+constexpr int32_t StateDarkPact = 242;  // dark_pact, merged id (PD2 196)
+constexpr int ListState = 0x20;         // int32 the list's state (rva::SetListState writes it)
+constexpr uint32_t DarkPactHitFlags = 1;
+constexpr uint32_t DarkPactResultFlags = 5;
+
+std::atomic<uint32_t> g_darkPacts {0};
+
+using AreaFn = void (*)(Game*, Unit*, d2r::AreaCenter*, int32_t, uint32_t, int32_t (*)(d2r::AreaContext*, Unit*), void*,
+                        int32_t) noexcept;  // rva::AreaUnits
+
+struct DarkPactHit {
+	d2r::LeapKnockback* rolled;  // one roll for every unit in range, as PD2's callback copies one block
+	int64_t victims;
+};
+
+// One unit in range (1.13c D2Game 0xa1210): a copy of the roll through the area apply
+auto DarkPactOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
+	auto* hit = static_cast<DarkPactHit*>(area->arg);
+	d2r::LeapKnockback damage;
+	d2r::CopyRolled(*hit->rolled, damage);
+	damage.hitFlags = DarkPactHitFlags;
+	damage.resultFlags = DarkPactResultFlags;
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(d2r::rva::AreaApply)(static_cast<Game*>(area->game),
+	                                                                               area->unit, victim, &damage);
+	++hit->victims;
+	d2r::ReleaseDamage(damage);
+	return 1;
+}
+
+// PD2's multiplier: the magic damage, as an unsigned value, times (curses - 1.0) * 1.1 + 1.0, truncated
+auto DarkPactDamage(int32_t magic, int curses) noexcept -> int32_t {
+	const double v = static_cast<double>(static_cast<uint32_t>(magic)) * ((curses - 1.0) * 1.1 + 1.0);
+	return v >= 4294967295.0 ? -1 : static_cast<int32_t>(static_cast<uint32_t>(v));
+}
+
+auto ApplyDarkPact(Unit* target, d2r::CurseParams* params, uint32_t dataFlag) noexcept -> int64_t {
+	using namespace d2r::rva;
+	Game* game = params->game;
+	Unit* caster = params->caster;
+	uint8_t* owner = At<uint8_t*>(target, UnitListOwner);
+	if (owner == nullptr || At<int32_t>(owner, ListOwnerMark) >= 0) {
+		return 0;
+	}
+	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);
+	const auto setListStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
+	const auto stateList = d2r::Engine<uint8_t* (*)(Unit*, int32_t) noexcept>(UnitStateList);
+	// PD2's walk: count the curses, keep the most slots any was cast with, find the oldest timed one
+	const int32_t own = StatOf(caster, StatMaxCurses) + 1;
+	int32_t slots = own;
+	int count = 0;
+	uint8_t* oldest = nullptr;
+	int guard = 0;
+	for (uint8_t* list = At<uint8_t*>(owner, ListOwnerFirst); list != nullptr && guard < MaxCurseLists;
+	     list = At<uint8_t*>(list, ListNext), ++guard) {
+		if ((At<uint32_t>(list, ListFlags) & ListFlagCurse) == 0) {
+			continue;
+		}
+		++count;
+		const int32_t kept = listStat(dataFlag, list, StatCurseSlots, 0);
+		if (kept != 0 && kept < slots) {
+			setListStat(dataFlag, list, StatCurseSlots, 0, 0);
+		} else if (kept > slots) {
+			slots = kept;
+		}
+		if ((At<uint32_t>(list, ListFlags) & ListFlagTimed) != 0) {
+			oldest = list;
+		}
+	}
+	// The first curse that is not the oldest timed one goes (PD2's 0x1030c530), state bit off as RemoveSkillState does
+	int32_t consumed = -1;
+	guard = 0;
+	for (uint8_t* list = At<uint8_t*>(owner, ListOwnerFirst); list != nullptr && guard < MaxCurseLists;
+	     list = At<uint8_t*>(list, ListNext), ++guard) {
+		if ((At<uint32_t>(list, ListFlags) & ListFlagCurse) != 0 && list != oldest) {
+			consumed = At<int32_t>(list, ListState);
+			d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(target, consumed, 0);
+			d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(target, list);
+			d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
+			break;
+		}
+	}
+	const uint32_t n = ++g_darkPacts;
+	const bool log = n <= 20 || n % 100 == 0;
+	if (count < 1) {
+		if (log) {
+			plog::Info("dark pact: no curse on the target, nothing happens, %u so far", n);
+		}
+		return 0;
+	}
+	// The follow-up: the skill's magic roll, scaled, around the target
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, params->skill);
+	int32_t x = 0, y = 0;
+	int32_t radius = 0, base = 0, scaled = 0;
+	int64_t victims = 0;
+	if (skill != nullptr && caster != nullptr && d2r::UnitXY(target, &x, &y)) {
+		radius = d2r::EvalCalc(game, caster, skill, SkCalc1, params->skill, params->level) + count - 1;
+		d2r::LeapKnockback rolled;
+		d2r::Engine<void (*)(Unit*, void*, int32_t, int32_t) noexcept>(ElementalDamage)(caster, &rolled, params->skill,
+		                                                                                params->level);
+		auto& magic = *reinterpret_cast<int32_t*>(reinterpret_cast<uint8_t*>(&rolled) + DmgMagic);
+		base = magic;
+		magic = scaled = DarkPactDamage(magic, count);
+		DarkPactHit hit {&rolled, 0};
+		d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(target), x, y};
+		d2r::Engine<AreaFn>(AreaUnits)(game, caster, &center, radius, AreaUnitMask, DarkPactOne, &hit, 0);
+		victims = hit.victims;
+		d2r::ReleaseDamage(rolled);
+	}
+	// dark_pact itself, past the max-curses rule: NewStateList sees only an older dark_pact list, if any
+	uint8_t* same = stateList(target, StateDarkPact);
+	uint8_t* hidden[MaxCurseLists];
+	int hiddenCount = 0;
+	owner = At<uint8_t*>(target, UnitListOwner);
+	guard = 0;
+	for (uint8_t* list = owner != nullptr ? At<uint8_t*>(owner, ListOwnerFirst) : nullptr;
+	     list != nullptr && guard < MaxCurseLists; list = At<uint8_t*>(list, ListNext), ++guard) {
+		if ((At<uint32_t>(list, ListFlags) & ListFlagCurse) != 0 && list != same) {
+			*reinterpret_cast<uint32_t*>(list + ListFlags) &= ~ListFlagCurse;
+			hidden[hiddenCount++] = list;
+		}
+	}
+	const int64_t applied = ApplyUngated(target, params, dataFlag, params->frames, StatOf(target, StatCurseDuration));
+	for (int i = 0; i < hiddenCount; ++i) {
+		*reinterpret_cast<uint32_t*>(hidden[i] + ListFlags) |= ListFlagCurse;
+	}
+	uint8_t* list = applied != 0 ? stateList(target, StateDarkPact) : nullptr;
+	if (list != nullptr && list != same && own > StatOf(target, StatCurseSlots)) {
+		setListStat(dataFlag, list, StatCurseSlots, own, 0);
+	}
+	if (log) {
+		plog::Info("dark pact: skill %d level %d, %d curse(s) on the target, consumed state %d; follow-up radius %d, "
+		           "magic %d -> %d (1/256), %lld unit(s) hit; dark_pact %s, %u so far",
+		           params->skill, params->level, count, consumed, radius, base, scaled,
+		           static_cast<long long>(victims), list != nullptr ? "on" : "refused", n);
+	}
+	return applied;
+}
+
 auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
 	using namespace d2r::rva;
 	if (target == nullptr || params == nullptr || params->game == nullptr) {
@@ -748,6 +892,9 @@ auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
 	const int32_t state = params->state;
 	if (state < 0 || d2r::Engine<uint32_t (*)(uint32_t, int32_t) noexcept>(StateIsCurse)(dataFlag, state) == 0) {
 		return g_applyCurseOriginal(target, params);
+	}
+	if (state == StateDarkPact) {
+		return ApplyDarkPact(target, params, dataFlag);
 	}
 	int32_t frames = 0, duration = 0;
 	if (!CurseGate(params, target, frames, duration)) {

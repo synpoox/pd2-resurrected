@@ -22,6 +22,10 @@ private-multiplayer release a build may break characters; each break is noted he
 - Ctrl+left-clicking a held stack onto a stack of the same item adds one item to it, as in PD2.
 - of Anima rolls on amulets, cold prefixes tint items dark blue, and potion texts are fixed.
 
+#### Skills
+
+- Dark Pact consumes a curse and explodes for magic damage that grows with the curses, as in PD2.
+
 #### Uber bosses
 
 - Rathma's tier-0 grey portals come out at the fight's current stage, as in PD2.
