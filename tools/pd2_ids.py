@@ -194,7 +194,7 @@ FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
                     "cltdofunc": {"97": "115", "98": "116", "100": "120", "101": "121", "102": "122", "112": "37",
                                   "109": "126", "105": "125", "83": "123"},
                     # PD2's srvst 68 calls slot 32, D2R's melee start (W11)
-                    "srvstfunc": {"66": "80", "68": "32", "67": "83", "76": "40"}, "cltstfunc": {"56": "63", "57": "25"},
+                    "srvstfunc": {"66": "80", "68": "32", "67": "83", "76": "40"}, "cltstfunc": {"56": "63", "57": "25", "58": "29"},
                     # the finishers' prg functions (W29): only these PD2 rows use these values in these columns
                     **{f"srvprgfunc{i}": {"171": "184", "172": "185", "39": "186", "139": "181"} for i in (1, 2, 3)},
                     # and their client halves (W30); D2R's 106 is Bind Demon
