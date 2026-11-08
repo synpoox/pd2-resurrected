@@ -23,6 +23,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Uber bosses
 
+- Rathma left alone in his arena idles and turns immune for a short while, as in PD2.
 - Uber Mephisto, Diablo and Baal summon PD2's minions: skeletons, Pit Lords, vampires and wraiths.
 - Uber Mephisto's Conviction and Uber Baal's Lower Resist work as in PD2.
 - PD2's new monsters (Lucion, Na-Krul, Iskatu and others) finish their attacks and casts and keep fighting.
