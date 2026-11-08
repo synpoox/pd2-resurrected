@@ -1281,23 +1281,25 @@ std::atomic<uint32_t> g_potionClientHits {0};
 constexpr uint32_t PotionSpawnFlags = 0x4020010;  // PD2's unit flags on the sHitPar3 spawn (Sharptooth's minions)
 constexpr int MsHitSubMissile2 = d2r::rva::MsHitSubMissile1 + 2, MsCltHitSubMissile2 = d2r::rva::MsCltHitSubMissile1 + 2;
 
-// 1.13c's nova ring (D2Game 0x1036d250, client 0x1036d370): count missiles (0 or past 64: 64) from x/y, aimed at the
-// direction tables' offsets, 64 / count directions apart.
-constexpr auto RingCount(int32_t count) noexcept -> int32_t {
-	return count <= 0 || count > 64 ? 64 : count;
+// PD2's nova ring (ProjectDiablo.dll 0x1036d250, client 0x1036d370): from x/y, aimed at the direction tables' offsets,
+// every (64 / count)th direction (count 0 or past 64: 64), so ceil(64 / step) missiles: count 5 makes 6.
+constexpr auto RingStep(int32_t count) noexcept -> int32_t {
+	return 64 / (count <= 0 || count > 64 ? 64 : count);
 }
-static_assert(RingCount(0) == 64 && RingCount(16) == 16 && RingCount(65) == 64 && 64 / RingCount(8) == 8);
+constexpr auto RingCount(int32_t count) noexcept -> int32_t {
+	return (64 + RingStep(count) - 1) / RingStep(count);
+}
+static_assert(RingCount(0) == 64 && RingCount(16) == 16 && RingCount(65) == 64 && RingCount(5) == 6 && RingCount(8) == 8);
 
 template <typename Create>
 auto PotionRing(d2r::MissileParams params, int32_t count, Create create) noexcept -> int32_t {
 	const auto* dx = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionX);
 	const auto* dy = reinterpret_cast<const int32_t*>(d2r::imageBase + d2r::rva::DirectionY);
-	count = RingCount(count);
-	const int32_t step = 64 / count;
+	const int32_t step = RingStep(count);
 	int32_t created = 0;
-	for (int32_t i = 0; i < count; ++i) {
-		params.targetX = dx[(i * step) & 63];
-		params.targetY = dy[(i * step) & 63];
+	for (int32_t i = 0; i < 64; i += step) {
+		params.targetX = dx[i];
+		params.targetY = dy[i];
 		created += create(&params) ? 1 : 0;
 	}
 	return created;

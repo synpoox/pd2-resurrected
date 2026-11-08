@@ -261,7 +261,7 @@ auto SkillReq(uint32_t dataFlag, int32_t skill) noexcept -> int32_t {
 	using namespace d2r::rva;
 	const uint8_t* record =
 		d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(GetSkillRecord)(dataFlag, skill);
-	return record == nullptr ? -1 : d2r::At<int16_t>(record, SkillReqLevel);
+	return record == nullptr ? -1 : d2r::At<uint16_t>(record, SkReqLevel);
 }
 
 // item_singleskill on the item's magic list (flags 0x40), made and attached when it has none, as D2R's roll does
@@ -285,6 +285,7 @@ auto SetSingleSkill(Unit* item, uint32_t dataFlag, int32_t skill, int32_t level)
 // PD2's roll (0x1036f400 in PD2.gpr), step for step, on the item's own seed
 auto RollStaffMods(Unit* item, uint32_t list, int32_t ilvl, int32_t bonus) noexcept -> void {
 	using namespace d2r::rva;
+	const uint32_t total = ++g_staffMods;  // every roll PD2's function runs, the early-out ones too
 	const int32_t quality = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item);
 	if (ilvl == 1 && quality == QualityInferior) {
 		return;
@@ -320,7 +321,6 @@ auto RollStaffMods(Unit* item, uint32_t list, int32_t ilvl, int32_t bonus) noexc
 			++set;
 		}
 	}
-	const uint32_t total = ++g_staffMods;
 	if (total <= 20 || total % 100 == 0) {
 		plog::Info("staffmods: list %u ilvl %d bonus %d: %d of %d skills (%d %d %d), %u so far", list, ilvl, bonus,
 		           set, count, picked[0], picked[1], picked[2], total);

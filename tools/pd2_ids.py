@@ -198,6 +198,10 @@ FUNCS = {"properties": {f"func{i}": {"25": "26"} for i in range(1, 8)},
                                   "185": "190", "186": "190"},
                     "cltdofunc": {"97": "115", "98": "116", "100": "120", "101": "121", "102": "122", "112": "37",
                                   "109": "126", "105": "125", "83": "123"},
+                    # item casts (IR5): PD2's ItemEffect 183 (the novas' ring at the target) and ItemCltEffect 116 are
+                    # our Double Throw slots, so the novas get 187; Lightning Bolt and Fury's 187 / 116 get 1, D2R's item
+                    # cast of srvmissile / cltmissile at the target. 188 / 117 stay: D2R's empty slots do PD2's work.
+                    "ItemEffect": {"183": "187", "187": "1"}, "ItemCltEffect": {"116": "1"},
                     # PD2's srvst 68 calls slot 32, D2R's melee start (W11)
                     "srvstfunc": {"66": "80", "68": "32", "67": "83", "76": "40"}, "cltstfunc": {"56": "63", "57": "25", "58": "29"},
                     # the finishers' prg functions (W29): only these PD2 rows use these values in these columns

@@ -1260,7 +1260,6 @@ inline constexpr uint64_t ItemVersion = 0x3730d0;      // (item) -> 0 classic, 1
 inline constexpr uint64_t ItemSeed = 0x36cc80;
 inline constexpr uint64_t UnitListByFlags = 0x2f5a00;  // (unit, state, flags) -> its stat list with those flags, or null
 inline constexpr uint32_t ListFlagMagic = 0x40;        // an item's magic stat list (NewStatList flags)
-inline constexpr int SkillReqLevel = 0x214;  // int16 reqlevel in a skills.txt record (0x2ec bytes; GetSkillRecord)
 // The item decoder (0x378860, D2Common Items.cpp; client packets and save loads) resets a weapon's base damage from
 // weapons.txt and, when ethereal, times 3/2 inline: per stat 21, 22, 23, 24, 159, 160 the 16 bytes
 // lea eax,[rax+rax*2] / cdq / sub eax,edx / mov edx,<stat> / sar eax,1 / mov r8d,eax, before SetUnitStat.

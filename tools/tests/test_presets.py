@@ -254,6 +254,34 @@ class LayerTests(unittest.TestCase):
         self.assertTrue(P.draws_trees(outdoor))
         self.assertFalse(P.draws_trees(indoor))
 
+    def test_rectangles_cover_each_cell_once(self):
+        cells = {(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (1, 2), (5, 5)}
+        rects = P.rectangles(cells)
+        self.assertEqual(rects, [(0, 0, 3, 2), (1, 2, 1, 1), (5, 5, 1, 1)])
+        covered = [(x + i, y + j) for x, y, w, h in rects for i in range(w) for j in range(h)]
+        self.assertEqual(sorted(covered), sorted(cells))
+
+    def test_a_water_dt1s_blocked_floor_outside_pasted_rooms_gets_scaled_water_planes(self):
+        model = next(iter(P.WATER_SPAN))
+        plane = {"type": "Entity", "name": "water", "components": [
+            {"type": "TransformDefinitionComponent", "position": {"x": 90.0, "y": 0.0, "z": 80.0},
+             "orientation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}, "scale": {"x": 1.0, "y": 1.0, "z": 1.0}},
+            {"type": "ModelDefinitionComponent", "filename": model}]}
+        of = {"textures": [{"path": "data/hd/env/texture/water_alb.texture"}]}
+        river, dry = ("act3/river/rivbank.dt1", 0, 1, 0), ("act3/river/rivbank.dt1", 0, 2, 0)
+        keys = {(x, y): ("f", (river,)) for x in range(4) for y in range(2)}
+        keys[(3, 1)] = ("f", (dry,))  # a bank tile: walkable, no water
+        keys[(0, 2)] = ("f", (FLOOR,))  # another DT1's blocked floor (a void, a lava pool): no water
+        flags = {c: (bytes(25) if k[1][0] == dry else b"\1" * 25) for c, k in keys.items()}
+        preset, _ = P.build(P.Layout(4, 3, keys, flags), P.Kit(), "m", "m.ds1", "b.json", TERRAIN,
+                            water={"act3/river/rivbank.dt1": (plane, of)})
+        waters = [e["components"][0] for e in preset["entities"] if e["name"] == "water"]
+        self.assertEqual([(t["position"], t["scale"]) for t in waters], [
+            ({"x": 20.0, "y": P.WATER_Y, "z": 5.0}, {"x": 40 / 180, "y": 1.0, "z": 10 / 180}),
+            ({"x": 15.0, "y": P.WATER_Y, "z": 15.0}, {"x": 30 / 180, "y": 1.0, "z": 10 / 180})])
+        self.assertIn("data/hd/env/texture/water_alb.texture", [d["path"] for d in preset["dependencies"]["textures"]])
+        self.assertEqual(plane["components"][0]["position"]["x"], 90.0)  # the stock plane is copied, not changed
+
 
 class ApplyTests(unittest.TestCase):
     def setUp(self):
@@ -314,6 +342,14 @@ class ApplyTests(unittest.TestCase):
     def test_a_stand_in_line_no_preset_loads_fails(self):
         self.rule.write_text("Act 1 - Town\tb.json\npd2assets/gone.dt1\t-\n")
         with self.assertRaisesRegex(ValueError, "stand-in lines for DT1 no PD2-only preset loads: pd2assets/gone.dt1"):
+            P.apply(self.rule, Path(), self.d2r, self.out)
+
+    def test_a_water_line_no_preset_draws_from_or_naming_an_unknown_plane_fails(self):
+        self.rule.write_text(f"Act 1 - Town\tb.json\nwater:act3/river/gone.dt1\t{next(iter(P.WATER_SPAN))}\n")
+        with self.assertRaisesRegex(ValueError, "water lines for DT1 no PD2-only preset draws from: act3/river/gone.dt1"):
+            P.apply(self.rule, Path(), self.d2r, self.out)
+        self.rule.write_text("Act 1 - Town\tb.json\nwater:act1/a/wall.dt1\tdata/hd/env/model/pond.model\n")
+        with self.assertRaisesRegex(ValueError, "no water plane WATER_SPAN knows"):
             P.apply(self.rule, Path(), self.d2r, self.out)
 
     def test_a_tile_set_with_no_line_fails(self):
