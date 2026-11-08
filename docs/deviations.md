@@ -155,7 +155,7 @@ rows have no table hook: D2R does what it does.
 | Corrupted zones | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): D2R's Terror Zones stay in their place |  |
 | Level life regen cap (30, `bloodwarp` lifts it) | cut | PD2 caps it only in the PvP arenas (levels 157, 159, 166), and PvP is cut ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)) ([ms3-map-stats](research/ms3-map-stats.md)) |  |
 
-### Not yet (18)
+### Not yet (17)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
