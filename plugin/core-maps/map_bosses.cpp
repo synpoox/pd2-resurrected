@@ -72,7 +72,10 @@ constexpr Swap Swaps[] = {
 	{179, 908, Drop},           //   891 dcloneskmage_pois does not spawn
 	{180, PlaceholderA, 1111},  // 184 Diamond Gate: 1094 Iskatu
 	{183, PlaceholderA, 1120},  // 187 Kanemith Dungeon: 1103 KanemithBoss
-	{188, PlaceholderA, 1165},  // 192 Imperial Palace Map: 1148 ImperialPalaceMiniBoss
+	// 192 Imperial Palace Map: 1148 ImperialPalaceMiniBoss. 0x1038bfc0 takes it before 0x1038b990 (whose case is dead
+	// code): it spawns him on a free spot (0x1038a0d0), keeps him in game +0x2600 and returns 0 (no extra boss; 1165 is
+	// not one anyway). shortcut: here the preset spawns him
+	{188, PlaceholderA, 1165},
 	{189, PlaceholderA, 1166},  // 193 Halls of Torture Map: 1149 TortureHallsBoss
 	{193, PlaceholderA, 1212},  // 197 Djinns Domain Map: 1195 DjinnLightBoss
 	{194, PlaceholderA, 1213},  // 198 Djinns Domain Red Map: 1196 DjinnDarkBoss
@@ -90,7 +93,7 @@ constexpr Swap Swaps[] = {
 	{192, PlaceholderA, 1191},  // 1174 CityofUrehBoss
 };
 
-// 194 Imperial Palace Boss Room: 0x1038bfc0 spawns these itself (0x1038a0d0, 0x1037cd00) and returns 0, so they get no
+// 194 Imperial Palace Boss Room: 0x1038bfc0 spawns these itself (0x1038a060, 0x1037cd00) and returns 0, so they get no
 // extra boss. shortcut: PD2 also keeps them in game +0x2600-0x260c, which only ImperialPalaceBoss's death reads (to
 // clear its own entry); the port keeps nothing
 constexpr int32_t ImperialBossRoom = 190;
@@ -109,8 +112,10 @@ struct Prime {
 	int32_t bit;
 };
 constexpr Prime Primes[] = {{704, 2}, {705, 4}, {709, 8}};  // ubermephisto, uberdiablo, uberbaal
-// PD2 keeps the bits in game +0x2628, the uber opening's arrival count (map_open.cpp's 'UBRE'), as here
-constexpr uint32_t EntryKey = 0x55425245;  // 'UBRE', as map_open.cpp
+// PD2 keeps the bits in game +0x2628, which its Tristram opening (0x10383060) sets to 0 after the warp. The port's
+// +0x2628 ('UBRE', map_open.cpp) holds the other ubers' entries, so the bits get their own counter: a preset spawned
+// during the opening's warp keeps its bit
+constexpr uint32_t PrimesKey = 0x55425442;  // 'UBTB'
 
 std::atomic<uint32_t> g_swapped {0};
 std::atomic<uint32_t> g_dropped {0};
@@ -145,7 +150,7 @@ auto TristramPrime(Game* game, int32_t id) noexcept -> int32_t {
 	if (id != PlaceholderA && id != PlaceholderB) {
 		return 0;
 	}
-	int32_t* placed = Counter(game, EntryKey);
+	int32_t* placed = Counter(game, PrimesKey);
 	if (placed == nullptr) {
 		return Drop;
 	}
