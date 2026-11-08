@@ -73,6 +73,13 @@ class KeyedTests(unittest.TestCase):
         d2r = table(head + "1|dhn|Pandemonium Finale Portal|\n1|pk1|Pandemonium Portal|\n")
         self.assertEqual([r[0] for r in M.merge_cube(pd2, d2r, NO_CTX).rows], ["1", "0", "1"])
 
+    def test_cube_organs_make_the_talisman(self):
+        # D2R's `useitem` would hand the horn back: the organ row's output is the Talisman, all organs used (#593)
+        head = "input 1|output|output b\n"
+        pd2 = table(head + 'dhn|useitem|"ubtm,qty=1"\nisc|useitem|amu\n')
+        self.assertEqual([r[1:] for r in M.merge_cube(pd2, table(head), NO_CTX).rows],
+                         [["ubtm,qty=1", ""], ["useitem", "amu"]])
+
     def test_cube_mod_skill_params(self):
         ren = I.renames({t: [] for t in I.TABLES})
         ren["skills"] = {"impale": "Javelin and Spear Mastery"}
