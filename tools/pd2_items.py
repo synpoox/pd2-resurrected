@@ -240,18 +240,24 @@ def item_pictures(art: Path, pd2_data: Path, d2r_data: Path, out_data: Path, use
 
 def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
              uniques: list[tuple[str, str, str | None, str]], sets: list[tuple[str, str, str | None, str]],
-             pictures: dict[str, str] | None = None, models: dict[str, str] | None = None) -> dict[str, list[dict]]:
+             pictures: dict[str, str] | None = None, models: dict[str, str] | None = None,
+             borrowed: dict[tuple[str, str], str] | None = None) -> dict[str, list[dict]]:
     """D2R's items.json, uniques.json and sets.json (from hd) plus an entry for every item code, unique and set item
     that has none. An item whose invfile is in pictures (item_pictures) shows it; else a new code shows the picture
-    of the D2R item in the same table with the same invfile, else the table's first; a unique or set item shows the
+    of the D2R item in the same table with the same invfile, else of one in another table (#371), else the table's
+    first. borrowed gets {(table, asset): its D2R table} for each other-table picture: D2R looks an asset up in the
+    item's own table's folder, so borrow_pictures copies it there. A unique or set item shows the
     D2R row it was merged onto, else its base item.
     uniques / sets: (mod name, base code, D2R name at its id or None, invfile).
     models gets {picture asset: D2R asset}: the ground model the picture's first item would borrow without it (D2R
     draws a dropped item only from its asset's model, so a sprite alone is invisible on the ground, #351)."""
     pictures = pictures or {}
     models = {} if models is None else models
+    borrowed = {} if borrowed is None else borrowed
     files = {f: _entries(hd / f) for f in ("items.json", "uniques.json", "sets.json")}
     asset = {k: v["asset"] for e in files["items.json"] for k, v in e.items()}
+    inv_of = {t: {r[tab.header.index("invfile")]: asset[r[tab.key]] for r in tab.rows if r[tab.key] in asset}
+              for t, tab in d2r.items()}  # each table's by_inv
     for t, ptab in pd2.items():
         dtab = d2r[t]
         di, dt = dtab.header.index("invfile"), dtab.header.index("type")
@@ -273,7 +279,12 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
                 asset[code] = pictures[r[pi].lower()]
                 set_entry(files["items.json"], code, {"asset": asset[code]})
             elif code and code not in asset:
-                asset[code] = by_inv.get(r[pi], first)
+                other = next((o for o in d2r if o != t and r[pi] in inv_of[o]), None)
+                if r[pi] in by_inv or other is None:
+                    asset[code] = by_inv.get(r[pi], first)
+                else:
+                    asset[code] = inv_of[other][r[pi]]
+                    borrowed[(t, asset[code])] = other
                 files["items.json"].append({code: {"asset": asset[code]}})
     for f, rows in (("uniques.json", uniques), ("sets.json", sets)):
         have = {k: v for e in files[f] for k, v in e.items()}
@@ -295,6 +306,23 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
                 have[key] = entry
                 files[f].append({key: entry})
     return files
+
+
+def borrow_pictures(hd: Path, out: Path, borrowed: dict[tuple[str, str], str]) -> None:
+    """Copy each other-table D2R picture hd_items borrowed into the borrowing table's folders (hd: D2R's data/hd, out:
+    the mod's): the inventory sprites under global/ui/items and the ground model's unit file under items (#371)."""
+    item_folder = pd2_art.modkit()[1].item_folder
+    for (t, a), src_t in sorted(borrowed.items()):
+        for sub, exts in ((Path("global") / "ui" / "items", (".sprite", ".lowend.sprite")), (Path("items"), (".json",))):
+            for ext in exts:
+                src, dest = (hd / sub / item_folder(x) / f"{a}{ext}" for x in (src_t, t))
+                if dest.is_file():
+                    raise I.IdError(f"{t}: D2R's {dest.relative_to(hd)} is another picture; can't borrow {src_t}'s {a}")
+                if src.is_file():
+                    (out / dest.relative_to(hd)).parent.mkdir(parents=True, exist_ok=True)
+                    (out / dest.relative_to(hd)).write_bytes(src.read_bytes())
+                elif ext != ".lowend.sprite":
+                    raise I.IdError(f"{src_t}: D2R has no {src.relative_to(hd)}")
 
 
 def ground_models(hd: Path, out: Path, pictures: dict[str, str], models: dict[str, str],
@@ -353,7 +381,10 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         pictures = item_pictures(rule.parent / "art", pd2_data, d2r_data, out_data, uses, d2r_inv)
         print(f"  item pictures: {len(pictures)} upscaled from PD2's")
         models: dict[str, str] = {}
-        files = hd_items(d2r_data / "hd" / "items", pd2, d2r, uniques, sets, pictures, models)
+        borrowed: dict[tuple[str, str], str] = {}
+        files = hd_items(d2r_data / "hd" / "items", pd2, d2r, uniques, sets, pictures, models, borrowed)
+        borrow_pictures(d2r_data / "hd", out_data / "hd", borrowed)
+        print(f"  other-table pictures: {len(borrowed)} ({', '.join(f'{t} {a}' for t, a in sorted(borrowed))})")
         ground_models(d2r_data / "hd" / "items", out_data / "hd" / "items", pictures, models, uses)
         for f, entries in files.items():
             dest = out_data / "hd" / "items" / f

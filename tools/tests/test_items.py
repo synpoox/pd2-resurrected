@@ -150,6 +150,50 @@ class HdTests(unittest.TestCase):
             self.assertEqual(files["sets.json"], [{"gift": {"normal": "amulet/amulet", "uber": "amulet/amulet",
                                                             "ultra": "amulet/amulet"}}])
 
+    def test_an_invfile_only_another_table_uses_borrows_its_picture(self):  # #371: lmal drew an elixir
+        with tempfile.TemporaryDirectory() as tmp:
+            hd = Path(tmp) / "hd"
+            (hd / "items").mkdir(parents=True)
+            (hd / "items" / "items.json").write_text(json.dumps([{"elx": {"asset": "potion/elixir"}},
+                                                                  {"hdm": {"asset": "hammer/horadric_malus"}}]))
+            for f in ("uniques.json", "sets.json"):
+                (hd / "items" / f).write_text("[]")
+            ui = hd / "global" / "ui" / "items" / "weapon" / "hammer"
+            ui.mkdir(parents=True)
+            (ui / "horadric_malus.sprite").write_bytes(b"hd")
+            (ui / "horadric_malus.lowend.sprite").write_bytes(b"low")
+            (hd / "items" / "weapon" / "hammer").mkdir(parents=True)
+            (hd / "items" / "weapon" / "hammer" / "horadric_malus.json").write_text("{}")
+            d2r = {"misc": table("name|code|type|invfile\nElixir|elx|elix|invxyz\n", "code"),
+                   "weapons": table("name|code|type|invfile\nMalus|hdm|hamm|invhmr\n", "code")}
+            pd2 = {"misc": table("name|code|type|invfile\nElixir|elx|elix|invxyz\nLarzuk|lmal|ques|invhmr\n"
+                                 "Odd|odd|ques|invnone\n", "code")}
+            borrowed = {}
+            items = M.hd_items(hd / "items", pd2, d2r, [], [], borrowed=borrowed)["items.json"]
+            self.assertEqual(items[2:], [{"lmal": {"asset": "hammer/horadric_malus"}}, {"odd": {"asset": "potion/elixir"}}])
+            self.assertEqual(borrowed, {("misc", "hammer/horadric_malus"): "weapons"})
+            out = Path(tmp) / "out"
+            M.borrow_pictures(hd, out, borrowed)
+            misc = out / "global" / "ui" / "items" / "misc" / "hammer"
+            self.assertEqual((misc / "horadric_malus.sprite").read_bytes(), b"hd")
+            self.assertEqual((misc / "horadric_malus.lowend.sprite").read_bytes(), b"low")
+            self.assertTrue((out / "items" / "misc" / "hammer" / "horadric_malus.json").is_file())
+
+    def test_a_same_table_invfile_match_beats_another_tables(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            hd = Path(tmp)
+            (hd / "items.json").write_text(json.dumps([{"elx": {"asset": "potion/elixir"}}, {"key": {"asset": "key/key"}},
+                                                       {"hdm": {"asset": "hammer/horadric_malus"}}]))
+            for f in ("uniques.json", "sets.json"):
+                (hd / f).write_text("[]")
+            d2r = {"misc": table("name|code|type|invfile\nElixir|elx|elix|invxyz\nKey|key|key|invhmr\n", "code"),
+                   "weapons": table("name|code|type|invfile\nMalus|hdm|hamm|invhmr\n", "code")}
+            pd2 = {"misc": table("name|code|type|invfile\nLarzuk|lmal|ques|invhmr\n", "code")}
+            borrowed = {}
+            self.assertEqual(M.hd_items(hd, pd2, d2r, [], [], borrowed=borrowed)["items.json"][3:],
+                             [{"lmal": {"asset": "key/key"}}])
+            self.assertEqual(borrowed, {})
+
     def test_a_4th_character_the_key_patch_changes_is_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
             hd = Path(tmp)
