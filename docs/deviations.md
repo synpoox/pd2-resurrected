@@ -45,11 +45,10 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | PD2 difficultylevels columns UberCodeOddsNormal, UberCodeOddsGood, UltraCodeOddsNormal, UltraCodeOddsGood and HireableBossDamagePercent | cut | D2R plays as PD2 without them (Ghidra, [UR5](https://github.com/synpoox/pd2-resurrected/issues/203)). `HireableBossDamagePercent` (50/35/25) is D2R's `MercenaryDamagePercentVSBoss` (record +0x48), which D2R already sets to 50/35/25. The code odds: their only reader in 1.13c, PD2's D2Game `0x6fcf2ab0` (rolls a picked base up to its `ubercode`, then `ultracode`), has no caller or pointer in any PD2 module, so they never act in PD2; D2R's loader (`0x30be50`) has no such fields in its 0x84-byte record |  |
 | The Gheed map event's player list | cut | PD2 files the game's players into a global set (`0x10368480`) that only its realm's game-join hooks (`0x10385460`) read; a D2R game has no realm | [#503](https://github.com/synpoox/pd2-resurrected/issues/503) |
 
-### Not yet (22)
+### Not yet (21)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
-| PD2's animdata.d2 changes to 21 records D2R has (players' crossbow and Assassin claw speeds, a few monsters and shrines) keep D2R's timing | not yet | they move player breakpoints, beyond #502's new codes; `merge/animdata.tsv` lists them | [#510](https://github.com/synpoox/pd2-resurrected/issues/510) |
 | PD2 skill column general | not yet | D2R's skills table has no such column; PD2's D2Common loads it as vanilla 1.13c does (bit 35 of the flags, record byte 8 bit 3), set on the six vanilla general skills, PD2's six attack templates and Force Move. [UR4](https://github.com/synpoox/pd2-resurrected/issues/202) finds what reads it, then cuts it or builds a rule | [UR4](https://github.com/synpoox/pd2-resurrected/issues/202) |
 | PD2 missile columns LevRange, Qty and SpecialSetup | not yet | D2R's missiles table has no such columns | core-rules |
 | PD2's 4x4 Horadric Cube: the panel art is a stand-in | approximated | PD2's grid is merged ([#299](https://github.com/synpoox/pd2-resurrected/issues/299)); the HD, controller and classic cube panels are D2R's own, redrawn one column wider (`merge/panel-grids.json`) instead of PD2's art |  |

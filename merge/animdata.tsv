@@ -1,24 +1,2 @@
-# animdata.d2 records PD2 changes that keep D2R's timing; tools/pd2_animdata.py. PD2's own records for codes D2R lacks
-# are all added. Not yet ported (docs/deviations.md): players' crossbow and Assassin claw speeds, Ancient Barbarians'
-# cast, trapped soul, catapult, Vile Mother, shrines Mi and wk
-0DSCHTH
-0ESCHTH
-10A1HTH
-10A2HTH
-64NUHTH
-AIA1XBW
-AIA2HT1
-AIA2HT2
-AIS4HT1
-AIS4HT2
-AMA1XBW
-BAA1XBW
-DZA1XBW
-MINUHTH
-NEA1XBW
-PAA1XBW
-SOA1XBW
-VMA1HTH
-VMNUHTH
-VMWLHTH
-WKNUHTH
+# animdata.d2 records PD2 changes that keep D2R's timing; tools/pd2_animdata.py. One record name per line (such as
+# AMA1XBW). Empty: every PD2 record is taken, its changes to records D2R has included (#510).
