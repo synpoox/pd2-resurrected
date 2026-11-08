@@ -18,6 +18,12 @@ def ds1(objects: list[tuple[int, int]], act: int = 2) -> bytes:
     return head + layers + objs + b"GROUPS"
 
 
+class EntryKeyTests(unittest.TestCase):
+    def test_entry_key_keeps_letters_and_digits(self):
+        self.assertEqual(L.entry_key("Graveyard Map"), "EnteringGraveyardMap")
+        self.assertEqual(L.entry_key("Na-Krul's Abyss 2"), "EnteringNaKrulsAbyss2")
+
+
 class Ds1Tests(unittest.TestCase):
     def test_object_ids_rewritten_and_left_out(self):
         data = ds1([(1, 5), (2, -10), (2, 160), (3, 7)])
