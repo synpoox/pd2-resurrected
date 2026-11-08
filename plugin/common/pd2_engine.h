@@ -1225,6 +1225,13 @@ inline constexpr uint8_t AffixAllowedEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x
 inline constexpr int AffixRare = 0x64;  // uint8 magicprefix/suffix `rare`
 inline constexpr uint64_t UnitBaseStat = 0x2f48c0;  // (unit, stat, layer) -> the value on the unit's base list
 inline constexpr uint64_t SetItemFlag = 0x36d8f0;   // (item, flag, on): item data +0x18 flags (0x400000 ethereal)
+// The weapon durability loss per hit (0x441b10, D2Game\src\Items\Items.cpp; 1.13c's D2Game +0x12ee0): a weapon
+// loses one durability when rand(100) < its chance, `mov ebx,4` (0x441b83) and `mov ebx,0xa` (0x441ba6) for the
+// item types that take 10. PD2 writes 2 and 5 over 1.13c's two bytes (+0x12f16, +0x12f36; ProjectDiablo.dll's patch
+// table). Ghidra, D2R.gpr and PD2.gpr (#243).
+inline constexpr uint64_t WeaponDurabilityChance[] = {0x441b83, 0x441ba6};
+inline constexpr uint8_t WeaponDurabilityVanilla[] = {4, 10};
+inline constexpr uint8_t WeaponDurabilityPd2[] = {2, 5};
 // The item decoder (0x378860, D2Common Items.cpp; client packets and save loads) resets a weapon's base damage from
 // weapons.txt and, when ethereal, times 3/2 inline: per stat 21, 22, 23, 24, 159, 160 the 16 bytes
 // lea eax,[rax+rax*2] / cdq / sub eax,edx / mov edx,<stat> / sar eax,1 / mov r8d,eax, before SetUnitStat.
