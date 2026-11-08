@@ -54,7 +54,9 @@ CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
 PRESETS = Path("hd") / "env" / "preset"
 # a stock water plane's model -> its side in HD units, centred on its position (its .physics box: +-90)
 WATER_SPAN = {"data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model": 180.0}
-WATER_Y = 0.05  # just over the flat ground plane (y 0), which would hide water at the stock rooms' 0
+WATER_Y = 0.05  # just over the flat ground plane (y 0), which would hide water at the stock rooms' -5 to 0
+STREAM = "pd2r_stream_water"  # the name of the water planes streams() places, for the merge's count
+WATER_RATIO = 2  # a water rectangle longer than this many times its width is split, so its texture stretches less
 FETCH = "python -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/"
 
 Tile = tuple  # (DT1 path or None, orientation, main, sub)
@@ -296,7 +298,8 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
             loose.append(e)
             depend(of)
     entities += loose
-    for e, of in streams(lay, water or {}, taken):
+    planes = streams(lay, water or {}, taken)
+    for e, of in planes:
         entities.append(e)
         depend(of)
     # the ground: the flat plane once per TERRAIN_SIZE block not mostly under pasted rooms, unscaled (a scaled plane
@@ -338,21 +341,36 @@ def rectangles(cells: set) -> list[tuple[int, int, int, int]]:
     return out
 
 
+def squarish(rect: tuple[int, int, int, int]) -> list[tuple[int, int, int, int]]:
+    """A rectangle cut along its long side into pieces at most WATER_RATIO times as long as they are wide."""
+    x, y, w, h = rect
+    if w > WATER_RATIO * h:
+        n = -(-w // (WATER_RATIO * h))
+        return [(x + w * i // n, y, w * (i + 1) // n - w * i // n, h) for i in range(n)]
+    if h > WATER_RATIO * w:
+        n = -(-h // (WATER_RATIO * w))
+        return [(x, y + h * i // n, w, h * (i + 1) // n - h * i // n) for i in range(n)]
+    return [rect]
+
+
 def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set) -> list[tuple[dict, dict]]:
     """Stock water planes over a water DT1's blocked floor tiles outside the pasted rooms (whose own mesh draws theirs),
-    one plane scaled to each rectangle of tiles, with the dependencies of the preset it came from."""
-    out = []
+    one plane scaled to each near-square rectangle of tiles, with the dependencies of the preset it came from. A tile
+    whose floor layers hold two water DT1 gets the first one's plane only."""
+    out, done = [], set()
     for dt1 in sorted(water):
         plane, of = water[dt1]
-        cells = {c for c, k in lay.keys.items() if c not in taken and k[0] == "f"
+        cells = {c for c, k in lay.keys.items() if c not in taken and c not in done and k[0] == "f"
                  and any(t[0] == dt1 for t in k[1]) and painter.blocked_floor(lay.flags.get(c, bytes(25)))}
+        done |= cells
         span = WATER_SPAN[next(c["filename"] for c in plane["components"] if c["type"] == "ModelDefinitionComponent")]
-        for x, y, w, h in rectangles(cells):
+        for x, y, w, h in (r for rect in rectangles(cells) for r in squarish(rect)):
             e = copy.deepcopy(plane)
             t = _transform(e)
             t["position"] = {"x": (x + w / 2) * TILE, "y": WATER_Y, "z": (y + h / 2) * TILE}
             t["orientation"] = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
             t["scale"] = {"x": w * TILE / span, "y": 1.0, "z": h * TILE / span}
+            e["name"] = STREAM
             out.append((e, of))
     return out
 
@@ -437,8 +455,10 @@ def water_planes(d2r_data: Path, rule: dict[str, str]) -> dict[str, tuple[dict, 
         for model in set(rule.values()) - set(found):
             if model in text:
                 preset = json.loads(text)
-                e = next(e for e in preset["entities"] if any(c.get("filename") == model for c in e["components"]))
-                found[model] = (e, preset["dependencies"])
+                # the model may be named only in the dependencies or a prefab: then a later preset holds it
+                e = next((e for e in preset["entities"] if any(c.get("filename") == model for c in e["components"])), None)
+                if e:
+                    found[model] = (e, preset["dependencies"])
     if lost := sorted(set(rule.values()) - set(found)):
         raise ValueError(f"no stock preset draws the water plane {', '.join(lost)}: run `{FETCH}`")
     return {dt1: found[model] for dt1, model in rule.items()}
@@ -508,7 +528,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text(json.dumps(preset, separators=(",", ":")), "utf-8")
             report.append((len(lay.keys), missing, len(preset["entities"]), bool(outdoor and trees),
-                           sum(any(c.get("filename") in WATER_SPAN for c in e["components"]) for e in preset["entities"])))
+                           sum(e["name"] == STREAM for e in preset["entities"])))
     print(f"  presets-hd: {len(report)} HD presets from {len(kit.sources)} stock presets, "
           f"{sum(r[2] for r in report)} entities, {sum(r[3] for r in report)} with painted tree lines, {sum(r[4] for r in report)} water planes; {sum(r[1] for r in report)} of {sum(r[0] for r in report)} tiles "
           f"have a key no stock preset draws; {len(presets) - len(on_d2r)} presets on PD2 tiles wait for stand-ins (LP4/LP5)")

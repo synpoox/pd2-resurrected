@@ -21,7 +21,8 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 #### Maps
 
-- Jungle maps draw water in their streams beyond the copied D2R rooms.
+- Jungle and Necropolis maps draw water in their streams beyond the copied D2R rooms.
+- Jungle, Kurast and Necropolis maps grow tree walls on the near side of paths, closing most gaps in their borders.
 - PD2 areas show "Entering <area>" on arrival instead of "Missing string".
 
 #### Uber bosses

@@ -3,8 +3,10 @@ set's stock presets place them.
 
 Subtile grid: 5x5 per tile, blocked = DT1 subtile flag bit 0 (Layout.flags). harvest() learns, per stock tree, its
 distance (subtiles) to the nearest blocked subtile, the direction to its room's playable ground (8 buckets) and how far
-it stood from it; where a tree would be drawn over the playable ground, only roots stand (#454); paint() puts trees on the subtiles past the playable area, nearest first, the stock spacing apart,
-each copied from a stock tree with the same direction and distance."""
+it stood from it; where a tree would be drawn over the playable ground, only roots and the tile set's `_foreground`
+tree walls stand (#454; D2R's see-through ring shows the player behind them); paint() puts trees on the subtiles past
+the playable area, nearest first, the stock spacing apart, each copied from a stock tree with the same direction and
+distance."""
 from __future__ import annotations
 
 import bisect
@@ -23,7 +25,9 @@ CAP = 15  # distances to the blocked ground are capped here
 # a tree covers the ground screen-up of it: up to TALL subtile rows (x + y; a tile is 10) above, WIDE columns (x - y) to
 # either side, about 4 tiles high and 1 wide
 TALL, WIDE = 40, 10
-LOW = re.compile(r"jungle_roots\d+_treewall")  # the tree-wall models low enough to stand in front of the path
+# the tree walls that may stand in front of the path: roots, low enough, and the `_foreground` tree walls D2R's own
+# rooms stand camera-near of their paths (Act 3 jungle: on 2111 of the stock's near-side border tiles)
+LOW = re.compile(r"jungle_roots\d+_treewall|_foreground\.json")
 LINE = 10  # wall tiles in an 8-connected group this big are a tree line; smaller groups stand in a clearing
 STEPS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 AROUND = [(i, j) for i in (-1, 0, 1) for j in (-1, 0, 1)]
@@ -160,8 +164,8 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
     def clear(p, o) -> bool:
         return not any((p[0] + dx, p[1] + dz) in keep_off for dx, dz in footprint(o))
 
-    # the camera looks along +x +y: a tree is drawn over the playable ground screen-up of it, and no stock jungle tree
-    # fades (the `_foreground` tree walls are as tall), so only roots put a piece where it would hide the player (#454)
+    # the camera looks along +x +y: a tree is drawn over the playable ground screen-up of it, so only roots and the
+    # `_foreground` tree walls put a piece there, as D2R's rooms do; canopy and the other trees stay back (#454)
     cols = collections.defaultdict(list)  # screen column (x - y) -> the playable subtiles' screen rows (x + y)
     for q in best:
         cols[q[0] - q[1]].append(q[0] + q[1])
@@ -176,6 +180,8 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
     low = {id(o) for v in kit.values() for o in v if LOW.search(json.dumps(o[0]["components"]))}
 
     def fits(p, o) -> bool:
+        # a `_foreground` wall's footprint holds only its shadow and fade pieces, not its wide mesh: reach is its guard,
+        # standing it no nearer the path than D2R's own room did
         return o[3] <= reach[p] and (id(o) in low
                                      or not any(shades((p[0] + dx, p[1] + dz)) for dx, dz in footprint(o)))
 
