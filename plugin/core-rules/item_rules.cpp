@@ -1312,6 +1312,100 @@ auto EquipAuraTick(Game* game, Unit* unit, int32_t key, int32_t skill, int32_t s
 	}
 }
 
+// --- Replenish charges (IR5) ---------------------------------------------------------------------------------------
+// PD2 (ProjectDiablo.dll 0x10345130, 0x103450b0, 0x103451a0) runs item_replenish_charges on the replenish event (3):
+// equipping an item with the stat schedules it 2500 / stat + 1 frames on, and each run adds one charge to the item's
+// first charged skill below its max (sent to the owner's client) and schedules the next. No SDK service covers unit
+// events or charged skills, so both D2R functions are hooked: the scheduler, which every equip calls, and the handler.
+// cut: PD2 halves the delay in the PvP maps (levels 157, 159, 166), which are cut.
+// shortcut: PD2 schedules the next run even when one is pending (an item that also replenishes durability then runs
+// twice as often); this one adds none while one is pending. Upgrade if a game check shows PD2's double rate.
+constexpr uint32_t StatReplenishCharges = 475;  // item_replenish_charges (PD2's 422)
+constexpr uint32_t StatChargedSkill = 204;      // item_charged_skill: charges | max << 8
+constexpr int32_t ReplenishFrames = 2500;
+
+using ScheduleReplenishFn = void (*)(Game* game, Unit* item) noexcept;
+ScheduleReplenishFn g_scheduleReplenishOriginal = nullptr;
+using ReplenishEventFn = void (*)(Game* game, Unit* item, int32_t key, int32_t skill, int32_t stateKey) noexcept;
+ReplenishEventFn g_replenishEventOriginal = nullptr;
+std::atomic<uint32_t> g_chargesReplenished {0};
+
+void ScheduleCharges(Game* game, Unit* item) noexcept {
+	using namespace d2r::rva;
+	const int32_t rate = Stat(item, StatReplenishCharges);
+	if (rate <= 0 ||
+	    d2r::Engine<int32_t (*)(Game*, Unit*, int32_t, int32_t) noexcept>(UnitEventFrame)(game, item, UnitEventReplenish, 0) != 0) {
+		return;
+	}
+	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
+		game, item, UnitEventReplenish, At<int32_t>(game, GameFrame) + 1 + ReplenishFrames / rate, 0, 0, 0);
+}
+
+auto ReplenishSchedule(Game* game, Unit* item) noexcept -> void {
+	g_scheduleReplenishOriginal(game, item);
+	if (game != nullptr && item != nullptr) {
+		ScheduleCharges(game, item);
+	}
+}
+
+// One charge back on the item's first charged skill, as the charge use (0x4368a0) moves it: the list that holds it, the
+// value set there, and the stat sent to the owner's client.
+// shortcut: PD2 takes the first item_charged_skill of the item's own list (flag 0x40); this takes the first of its full
+// stats, the same entry unless a socketed item adds a charged skill. Upgrade if one does.
+void AddCharge(Game* game, Unit* item) noexcept {
+	using namespace d2r::rva;
+	struct Entry {
+		uint16_t layer, stat;
+		int32_t value;
+	};
+	Entry entries[64] {};
+	const int32_t count = d2r::Engine<int32_t (*)(Unit*, uint32_t, Entry*, int32_t) noexcept>(UnitStatEntries)(
+		item, StatChargedSkill, entries, 64);
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	if (count <= 0 || DataTables(dataFlag) == nullptr) {
+		return;
+	}
+	const uint32_t layer = entries[0].layer;
+	const int32_t skill = static_cast<int32_t>(layer >> LayerShift(dataFlag));
+	const int32_t level = static_cast<int32_t>(layer & LayerMask(dataFlag));
+	int32_t charges = 0;
+	void* list = nullptr;
+	if (d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t, int32_t*, void**) noexcept>(ChargedSkillList)(
+	        item, skill, level, &charges, &list) == 0 || list == nullptr) {
+		return;
+	}
+	const int32_t value = d2r::Engine<int32_t (*)(uint32_t, void*, uint32_t, uint32_t) noexcept>(ListStatValue)(
+		dataFlag, list, StatChargedSkill, layer);
+	if ((value & 0xff) >= (value >> 8)) {
+		return;
+	}
+	d2r::Engine<void (*)(uint32_t, void*, uint32_t, int32_t, uint32_t, Unit*) noexcept>(SetListStatOf)(
+		dataFlag, list, StatChargedSkill, value + 1, layer, item);
+	const uint32_t n = ++g_chargesReplenished;
+	if (n <= 20 || n % 100 == 0) {
+		plog::Info("replenish charges: skill %d level %d, %d -> %d of %d, %u so far", skill, level, value & 0xff,
+		           (value & 0xff) + 1, value >> 8, n);
+	}
+	const int32_t ownerId = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemOwnerId)(item);
+	Unit* owner = ownerId != -1 ? d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, 0, ownerId)
+	                            : nullptr;
+	if (owner == nullptr || d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(owner, StatePlayerBody) != 0) {
+		return;
+	}
+	if (void* client = d2r::Engine<void* (*)(Unit*) noexcept>(PlayerClient)(owner)) {
+		d2r::Engine<void (*)(void*, Unit*, int32_t, uint32_t, int32_t, uint32_t) noexcept>(SendUnitStat)(
+			client, item, 1, StatChargedSkill, value + 1, layer);
+	}
+}
+
+auto ChargesReplenishEvent(Game* game, Unit* item, int32_t key, int32_t skill, int32_t stateKey) noexcept -> void {
+	g_replenishEventOriginal(game, item, key, skill, stateKey);
+	if (game != nullptr && item != nullptr && Stat(item, StatReplenishCharges) > 0) {
+		AddCharge(game, item);
+		ScheduleCharges(game, item);
+	}
+}
+
 }  // namespace
 
 // PD2's 0x10381720: each item-type layer of the stat that the wielded weapon is of; 2han counts only with the other
@@ -1384,27 +1478,36 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool equip = tick && context->InstallInlineHook(StatCallbackInit, StatCallbackInitEntry,
 	                                                      sizeof(StatCallbackInitEntry), EquipStatCallbackInit,
 	                                                      &g_statCallbackInitOriginal);
+	// Both or neither: the handler alone would never be scheduled for an item without durability or quantity
+	const bool replenish = context->InstallInlineHook(ReplenishEvent, ReplenishEventEntry, sizeof(ReplenishEventEntry),
+	                                                  ChargesReplenishEvent, &g_replenishEventOriginal) &&
+	                       context->InstallInlineHook(ScheduleReplenish, ScheduleReplenishEntry,
+	                                                  sizeof(ScheduleReplenishEntry), ReplenishSchedule,
+	                                                  &g_scheduleReplenishOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
-	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s",
+	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
+	              "replenish charges%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (slot write)", lifeCap ? "" : " FAILED (bytes differ)",
 	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
-	              equip ? "" : " FAILED (bytes differ)");
+	              equip ? "" : " FAILED (bytes differ)", replenish ? "" : " FAILED (bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
-	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0);
+	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 8;
+	return 9;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "ormus rolls %u, strike rolls %u, crits %u, "
 	              "deadly strikes %u, equipped_eth changes %u, life steal cap checks %u (blocked %u), crushing blow rolls %u, "
-	              "crushing blows %u, curses %u, resisted %u, gated %u, skill on equip changes %u, ticks %u, phasing %u",
+	              "crushing blows %u, curses %u, resisted %u, gated %u, skill on equip changes %u, ticks %u, phasing %u, "
+	              "charges replenished %u",
 	              g_rolls.load(), g_strikeRolls.load(), g_crits.load(), g_deadlyStrikes.load(), g_ethReads.load(),
 	              g_capChecks.load(), g_capBlocks.load(), g_blowRolls.load(), g_blows.load(),
-	              g_curses.load(), g_curseResisted.load(), g_curseGate.load(), g_equipCallbacks.load(), g_equipTicks.load(), g_phasing.load());
+	              g_curses.load(), g_curseResisted.load(), g_curseGate.load(), g_equipCallbacks.load(), g_equipTicks.load(), g_phasing.load(),
+	              g_chargesReplenished.load());
 }
