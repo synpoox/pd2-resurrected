@@ -27,7 +27,19 @@ jobs:
           New-Item -ItemType Directory -Force $cache | Out-Null
           New-Item -ItemType Junction -Path pd2-data -Target $cache | Out-Null
           py -3 tools/pd2_extract.py --out $cache; if ($LASTEXITCODE) { throw "pd2_extract failed" }
-          py -3 -m modkit fetch --prefix data/global/animdata.d2; if ($LASTEXITCODE) { throw "modkit fetch failed" }
+          py -3 -m modkit fetch --prefix data/global/animdata.d2 --prefix data/hd/model_lod_desc.bin; if ($LASTEXITCODE) { throw "modkit fetch failed" }
           py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
       - name: Table-diff gate
         run: py -3 tools/pd2_diff.py --scope alpha
+      # LP3c (#672): the no-game coverage report of the generated HD presets, as an artifact; it never fails the job yet
+      - name: HD preset coverage
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: py -3 tools/pd2_coverage.py --commit ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        with:
+          name: hd-preset-coverage
+          path: out/coverage/
+          if-no-files-found: ignore
