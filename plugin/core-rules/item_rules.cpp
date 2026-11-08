@@ -20,6 +20,7 @@
 #include "pd2_engine.h"
 #include "log.h"
 
+#include <D2RLPlugin/mutations.h>
 #include <D2RLPlugin/threads.h>
 
 #include <algorithm>
@@ -1350,6 +1351,38 @@ auto HandStatSum(Unit* unit, uint32_t stat) noexcept -> int32_t {
 	return sum;
 }
 
+// The unlimited books' item spell entries (17 and 18), written through the SDK's MutationService (no service adds an
+// item spell); the patch is refused unless both entries are still empty.
+static auto PatchUnlimitedBooks(const D2RL::PluginContext* context) noexcept -> bool {
+	using namespace d2r::rva;
+	const D2RL::MutationService* mutations = nullptr;
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize) ||
+	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		return false;
+	}
+	static constexpr uint8_t Empty[2 * ItemSpellEntrySize] = {};
+	static constexpr int32_t Books[2 * 3] = {UnlimitedPortalCheck,   UnlimitedPortalUse,   1,
+	                                         UnlimitedIdentifyCheck, UnlimitedIdentifyUse, 1};
+	static_assert(sizeof(Books) == sizeof(Empty));
+	const D2RL::Mutations::BytePatchRequest patch{
+		.structSize = D2RL::Mutations::BytePatchRequestSize,
+		.rva = ItemSpellTable + static_cast<uint64_t>(UnlimitedPortalSpell) * ItemSpellEntrySize,
+		.expected = Empty,
+		.expectedSize = sizeof(Empty),
+		.bytes = Books,
+		.size = sizeof(Books)};
+	D2RL::Mutations::OperationHandle operation = 0;
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	if (mutations->stageBytePatch(context, transaction, &patch, &operation) != D2RL::Mutations::Result::Success ||
+	    mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		return false;
+	}
+	return true;
+}
+
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
 	g_context = context;
@@ -1393,11 +1426,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                                      &g_statCallbackInitOriginal);
 	// Unlimited books (IR5): no hook. D2R's item spell table is data; its free entries 17 and 18 get the Town Portal
 	// and Identify handlers with keep 1, so the book stays after its use
-	static constexpr uint8_t EmptyEntries[2 * ItemSpellEntrySize] = {};
-	const int32_t books[2 * 3] = {UnlimitedPortalCheck, UnlimitedPortalUse, 1, UnlimitedIdentifyCheck,
-	                              UnlimitedIdentifyUse, 1};
-	const bool unlimited = context->PatchBytes(ItemSpellTable + static_cast<uint64_t>(UnlimitedPortalSpell) * ItemSpellEntrySize,
-	                                           EmptyEntries, sizeof(EmptyEntries), books, sizeof(books));
+	const bool unlimited = PatchUnlimitedBooks(context);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
 	              "unlimited books%s",
@@ -1405,7 +1434,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (slot write)", lifeCap ? "" : " FAILED (bytes differ)",
 	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
-	              equip ? "" : " FAILED (bytes differ)", unlimited ? "" : " FAILED (entries not empty)");
+	              equip ? "" : " FAILED (bytes differ)", unlimited ? "" : " FAILED (entries not empty, or no mutation service)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (unlimited ? 1 : 0);
 }
