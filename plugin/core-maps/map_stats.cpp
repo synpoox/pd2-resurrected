@@ -14,6 +14,7 @@
 #include "log.h"
 #include "uber_scaling.h"
 #include "unique_maps.h"
+#include "zhar.h"
 
 #include <intrin.h>
 
@@ -550,6 +551,9 @@ auto OnItemSpawn(Game* game, uint8_t* drop, int32_t arg) noexcept -> Unit* {
 	if (ethereal) {
 		*reinterpret_cast<uint32_t*>(drop + DropFlags) |= DropFlagEthereal;
 	}
+	if (tcDrop) {
+		UniqueMapDropOverride(drop);  // Zhar's charms (unique_maps.cpp)
+	}
 	Unit* item = g_itemSpawnOriginal(game, drop, arg);
 	if (map && item != nullptr) {
 		const bool madeEthereal =
@@ -580,7 +584,8 @@ constexpr int16_t ExtraBossIds[] = {
 auto OnPresetSpawn(Game* game, void* room, const uint8_t* preset) noexcept -> void {
 	if (game != nullptr && room != nullptr && preset != nullptr &&
 	    (NoUberWaypoint(game, room, preset) ||
-	     OuterVoidPreset(game, room, const_cast<uint8_t*>(preset), g_presetSpawnOriginal))) {
+	     OuterVoidPreset(game, room, const_cast<uint8_t*>(preset), g_presetSpawnOriginal) ||
+	     ZharPreset(game, room, preset))) {  // Zhar's seal portals and tomes, for their placeholders (zhar.cpp)
 		return;
 	}
 	g_presetSpawnOriginal(game, room, preset);

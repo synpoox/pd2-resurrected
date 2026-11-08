@@ -15,6 +15,8 @@ auto OuterVoidPreset(d2r::Game* game, void* room, uint8_t* preset,
                      void (*spawn)(d2r::Game*, void*, const uint8_t*) noexcept) noexcept -> bool;
 // From the portal operate (map_open.cpp): an Outer Void portal linked to a spot moves the player there (true).
 auto OuterVoidWarp(d2r::Game* game, d2r::Unit* player, d2r::Unit* portal) noexcept -> bool;
+// From the item spawn hook (map_stats.cpp), on a TC drop's request: Zhar's charm's forced prefix and item level.
+auto UniqueMapDropOverride(uint8_t* drop) noexcept -> void;
 // Registers the table listener that reads the random uniques' bases. Returns false when a service is missing.
 auto InstallUniqueMaps(const D2RL::PluginContext* context) noexcept -> bool;
 // Live counters for the status command.
