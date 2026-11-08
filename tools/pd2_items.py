@@ -71,6 +71,7 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
     count_each_input(merged)
     remake_rerolls(merged)
     open_key_portal(merged)
+    make_talisman(merged)
     merged.rows += [list(r) for r in d2r_only]
     close_finale_portal(merged)
     merged.dropped = dropped
@@ -116,6 +117,17 @@ def open_key_portal(cube: I.Table) -> None:
     for r in cube.rows:
         if (r[h["op"]], r[h["param"]], r[h["min diff"]], r[h["output"]]) == ("28", "1", "2", "useitem"):
             r[h["output"]] = "Pandemonium Portal"
+
+
+def make_talisman(cube: I.Table) -> None:
+    """PD2's organ row (output `useitem`, output b `ubtm`) uses up all three organs and makes the Pandemonium Talisman.
+    In D2R `useitem` hands the first organ back, so the row's output is the Talisman itself (#593)."""
+    h = {c: j for j, c in enumerate(cube.header)}
+    if "output b" not in h:
+        return
+    for r in cube.rows:
+        if r[h["output"]] == "useitem" and r[h["output b"]].strip('"').split(",")[0] == "ubtm":
+            r[h["output"]], r[h["output b"]] = r[h["output b"]], ""
 
 
 def close_finale_portal(cube: I.Table) -> None:
