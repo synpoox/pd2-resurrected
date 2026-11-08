@@ -7,6 +7,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Items
 
+- Rare-only affixes (Visceral, +2 class skill helms, +3 skill trees) no longer roll on magic or crafted items.
 - Larzuk's Malus shows a malus in HD, not an elixir.
 - Crossbows and Assassin claws attack at PD2's speeds, so PD2's breakpoints apply.
 - Purgatory's damage follows ethereal items put on or taken off while it is worn.
@@ -22,6 +23,10 @@ private-multiplayer release a build may break characters; each break is noted he
 - Curses follow PD2's duration resistance (75 cap on players), land on attracted units, and fail when fully resisted.
 - Ctrl+left-clicking a held stack onto a stack of the same item adds one item to it, as in PD2.
 - of Anima rolls on amulets, cold prefixes tint items dark blue, and potion texts are fixed.
+
+#### Skills
+
+- Dark Pact consumes a curse and explodes for magic damage that grows with the curses, as in PD2.
 
 #### Uber bosses
 

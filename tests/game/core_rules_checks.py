@@ -131,8 +131,13 @@ and `cheat killmonster` once per zombie (`cheat monster dead zombie1` crashes th
 owner's life or mana is below the maximum, and god mode keeps both full: `cheat god 0`, summon both vines by the
 corpses (D2R names them Carrion Vine and Solar Creeper), then `cheat depletehealth 10` and `cheat depletemana 10`.
 Mana regenerates in seconds, so repeat `cheat depletemana 10` every second or two until a VineCycler (325) line shows.
-Then `cheat god 1`, `cheat mspawn torajanBoss,1` (his nest lays eggs that nova and hatch) and `cheat mspawn leoricMapBoss,1` (his orbs raise leoricGuards where they land), let them cast a while, and run the
-same command with core-rules-w36.
+Then `cheat god 1`, `cheat mspawn torajanBoss,1` (his nest lays eggs that nova and hatch) and
+`cheat mspawn GuardianOfFate,1` (core-maps' guardian AI, #609, casts GuardianOfFateSummon within seconds; its missile
+raises a GuardianOfFateClone where it lands), let them cast a while, and run the same command with core-rules-w36.
+Leoric, the Siege Beast, Sharptooth and Iskatu do not cast their summon skills yet: PD2 gives them its own thinks
+(ProjectDiablo.dll 0x10361150 fills monai rows 114, 115, 120 and 53), which the port has not ported (#624), so they run
+D2R's think for their row. A raised minion drops nothing and gives no experience (Slot7, #269); in Hell PD2's minion
+rows already have no treasure class and, but for IskatuVermin, no experience, so the flags matter mostly below Hell.
 
 P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
 drops Ormus' Robes; `cheat idall`, then run the same command with core-rules-p12. Its procs are the Cast Triggers
@@ -142,6 +147,8 @@ IR4 checks (tag core-rules-ir4), same merged data, Hell, level 90+:
 - max-curses: a Necromancer with two curses (Amplify Damage 66, Weaken 72) and Darkforge Spawn (`cheat uniques 331`,
   +1 max curses; Curse Mastery does the same). `cheat god 1`, `cheat goto 2`, `cheat mspawn zombie1,4`, then curse the
   pack with one curse and then the other, and run the same command with core-rules-ir4.
+- dark-pact: the same Necromancer with Dark Pact (453, `cheat sklvl 453,20`): two curses on a monster, then Dark Pact
+  on it, and Dark Pact on an uncursed monster; run the same command again.
 - curse-resistance: any character wearing Wraithskin (`cheat uniques 478`, 30-40 curse resistance); let a cursing
   monster curse you (Act 4 Oblivion Knights, `cheat mspawn` of one), then run again.
 
@@ -1495,7 +1502,7 @@ def summon_hit(ctx):
     found = re.findall(r"summon hit: missile (\d+): monster (\d+) mode \d+ (spawned|not spawned), flags 0x([0-9a-f]+)",
                        _log(ctx))
     if not found:
-        ctx.skip("no summon hit in the log yet (`cheat mspawn leoricMapBoss,1` and let him cast)")
+        ctx.skip("no summon hit in the log yet (`cheat mspawn GuardianOfFate,1` and let it cast)")
     spawned = 0
     for missile, mon, state, flags in found:
         assert SUMMON_HITS.get(int(missile)) == int(mon), f"missile {missile} spawned monster {mon}"
@@ -1912,6 +1919,42 @@ def curse_attract(ctx):
     landed = [r for r in rows if r[2] == "landed"]
     assert landed, f"{len(rows)} curse(s) on an attracted unit, none landed"
     return f"{len(landed)} of {len(rows)} landed, e.g. state {landed[0][0]}"
+
+
+DARK_PACT = re.compile(r"dark pact: skill (\d+) level (\d+), (\d+) curse\(s\) on the target, consumed state (-?\d+); "
+                       r"follow-up radius (-?\d+), magic (-?\d+) -> (-?\d+) \(1/256\), (\d+) unit\(s\) hit; dark_pact (on|refused)")
+DARK_PACT_NONE = re.compile(r"dark pact: no curse on the target, nothing happens")
+DARK_PACT_CALC1 = 4  # PD2's Dark Pact calc1, base aoe range (at 1 curse)
+
+
+def dark_pact_damage(magic: int, curses: int) -> int:
+    """PD2's 0x1036d7d0: the magic roll (unsigned) times (curses - 1.0) * 1.1 + 1.0, truncated."""
+    v = (magic & 0xFFFFFFFF) * ((curses - 1.0) * 1.1 + 1.0)
+    return int(v) if v < 4294967295.0 else -1
+
+
+@check("dark-pact", tags=["core-rules-ir4"])
+def dark_pact(ctx):
+    """Dark Pact consumes the first curse that is not the target's oldest timed one, then hits around the target with
+    radius calc1 + curses - 1 and magic damage times 1 + 1.1 * (curses - 1); no curse: nothing (PD2's 0x1036d7d0)."""
+    log = _log(ctx)
+    rows = DARK_PACT.findall(log)
+    if not rows:
+        ctx.skip("no Dark Pact on a cursed monster yet (curse a monster twice, cast Dark Pact on it, run again)")
+    for skill, level, curses, consumed, radius, base, scaled, hit, on in rows:
+        curses, consumed, radius, base, scaled = int(curses), int(consumed), int(radius), int(base), int(scaled)
+        assert radius == DARK_PACT_CALC1 + curses - 1, f"{curses} curse(s): radius {radius}, PD2: {DARK_PACT_CALC1 + curses - 1}"
+        assert scaled == dark_pact_damage(base, curses), f"{curses} curse(s): {base} -> {scaled}, PD2: {dark_pact_damage(base, curses)}"
+        if curses >= 2:
+            assert consumed >= 0, f"{curses} curses on the target and none consumed"
+        assert on == "on", f"dark_pact refused on a target with {curses} curse(s)"
+    multi = [r for r in rows if int(r[2]) >= 2]
+    if not multi:
+        ctx.skip("no Dark Pact on a target with two curses yet (Amplify Damage and Weaken, +1 max curses, run again)")
+    none = len(DARK_PACT_NONE.findall(log))
+    r = multi[0]
+    return (f"{len(rows)} cast(s), {none} on an uncursed target; {r[2]} curses: state {r[3]} consumed, radius {r[4]}, "
+            f"magic {r[5]} -> {r[6]}, {r[7]} hit")
 
 
 SKILL_ON_EQUIP = re.compile(r"skill on equip: unit type (\d+), skill (\d+), (-?\d+) -> (-?\d+), level now (-?\d+)")
