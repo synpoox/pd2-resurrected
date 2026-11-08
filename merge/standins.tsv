@@ -59,20 +59,8 @@ skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Blade Fury	=	seqinput	Blade Fury: the throw frame
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
-missiles	tpot_fire_small	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_fire_medium	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_fire_large	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_gas_small	rancidgasepotion	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_gas_medium	rancidgasepotion	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_gas_large	rancidgasepotion	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_cold_small	-	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_cold_medium	-	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_cold_large	-	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_light_small	-	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_light_medium	-	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	tpot_light_large	-	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	sharptootharmageddoncontrol	armageddoncontrol	pSrvHitFunc,pCltHitFunc	Throwing potions
-missiles	sharptootharmageddonrock	armageddonrock	pSrvHitFunc,pCltHitFunc	Throwing potions
+missiles	sharptootharmageddoncontrol	armageddoncontrol	pSrvHitFunc,pCltHitFunc	Sharptooth's Armageddon
+missiles	sharptootharmageddonrock	armageddonrock	pSrvHitFunc,pCltHitFunc	Sharptooth's Armageddon
 missiles	boichaosice	-	pSrvHitFunc,pCltHitFunc	`*12` server hit
 misc	Monastery Map	-	pSpell	Map items
 misc	Pvp Map	-	pSpell	Map items
