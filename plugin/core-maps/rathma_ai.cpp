@@ -36,8 +36,6 @@ constexpr int32_t StatEvent = 499, StatPick = 500, StatBias = 501;  // mon_coold
 constexpr int32_t StateMonFrenzy = 103;
 constexpr int32_t RathmaDeath = 554;     // the skill (PD2 485)
 constexpr int32_t GhostlyPortal = 588;   // xactportal_ghostly (PD2 585)
-constexpr int32_t StateResistAll = 8;    // PD2 0x10380770 sets it with the resists
-constexpr int32_t StripStates[] = {2, 62};  // poison, openwounds: PD2 0x10380770 strips up to 20 lists of each
 constexpr int32_t ImmuneStats[] = {39, 43, 41, 45, 37, 36};  // fire, cold, lightning, poison, magic, damage resist
 constexpr int32_t SummonerRow = 53;      // monai.txt
 constexpr uint64_t AiSummoner = 0x5b4d50;  // row 53's think, read from rva::AiTable
@@ -139,9 +137,9 @@ auto KillQuietly(Game* game, Unit* monster) noexcept -> void {
 	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(SetMonsterMode)(game, block, 1);
 }
 
-// PD2 0x10380770: on sets the six resists to 200 and, with `strip`, state 8, and removes the poison and open wounds
-// lists; off puts back the saved resists (PD2 reads monstats' Normal columns) and clears state 8
-auto SetImmune(Game* game, Unit* unit, bool on, bool strip) noexcept -> void {
+// PD2 0x10380770: on sets the six resists to 200, removes the poison and open wounds lists and, with `setState`,
+// state 8; off puts back the saved resists (PD2 reads monstats' Normal columns) and clears state 8
+auto SetImmune(Game* game, Unit* unit, bool on, bool setState) noexcept -> void {
 	using namespace d2r::rva;
 	const uint32_t id = At<uint32_t>(unit, UnitIdField);
 	int32_t& immune = Counter(game, UnitKey(Immune, id));
@@ -155,28 +153,12 @@ auto SetImmune(Game* game, Unit* unit, bool on, bool strip) noexcept -> void {
 		for (const int32_t s : ImmuneStats) {
 			SetStat(unit, s, 200);
 		}
-		if (strip) {
-			d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, StateResistAll, 1);
-			const uint32_t dataFlag = d2r::DataFlag(game);
-			for (const int32_t s : StripStates) {
-				for (int k = 0; k < 20; ++k) {
-					void* list = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, s);
-					if (list == nullptr) {
-						break;
-					}
-					d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, s, 0);
-					d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
-					d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
-				}
-			}
-		}
+		ImmunityStates(game, unit, true, setState);
 	} else if (immune != 0) {
 		for (size_t i = 0; i < std::size(ImmuneStats); ++i) {
 			SetStat(unit, ImmuneStats[i], Counter(game, UnitKey(Resist0 + static_cast<uint32_t>(i), id)));
 		}
-		if (strip) {
-			d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, StateResistAll, 0);
-		}
+		ImmunityStates(game, unit, false, setState);
 		immune = 0;
 	}
 }

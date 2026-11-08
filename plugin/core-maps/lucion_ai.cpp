@@ -119,11 +119,13 @@ auto SetMode(Game* game, Unit* unit, int32_t mode) noexcept -> void {
 	d2r::Engine<int32_t (*)(Game*, uint8_t*, int32_t) noexcept>(d2r::rva::ModeCmdRun)(game, cmd, 1);
 }
 
-// PD2 0x10380770: immune sets the six resists to 200; off puts back what they were (PD2 reads monstats)
-auto SetImmune(Game* game, Unit* unit, bool on) noexcept -> void {
+// PD2 0x10380770: immune sets the six resists to 200 and strips poison and open wounds; off puts back what they
+// were (PD2 reads monstats). setState is PD2's third argument: state 8 only then
+auto SetImmune(Game* game, Unit* unit, bool on, bool setState) noexcept -> void {
 	int32_t& saved = Counter(game, ResistSavedKey);
 	if (on) {
-		if (saved == 0) {
+		const bool first = saved == 0;
+		if (first) {
 			for (size_t i = 0; i < std::size(ImmuneStats); ++i) {
 				Counter(game, ResistKeys[i]) = Stat(unit, ImmuneStats[i]);
 			}
@@ -132,10 +134,16 @@ auto SetImmune(Game* game, Unit* unit, bool on) noexcept -> void {
 		for (const int32_t s : ImmuneStats) {
 			SetStat(unit, s, 200);
 		}
+		const int stripped = ImmunityStates(game, unit, true, setState);
+		if (first || stripped > 0) {
+			plog::Info("lucion ai: immune, state 8 %s, %d poison/open wounds lists stripped", setState ? "set" : "not set",
+			           stripped);
+		}
 	} else if (saved != 0) {
 		for (size_t i = 0; i < std::size(ImmuneStats); ++i) {
 			SetStat(unit, ImmuneStats[i], Counter(game, ResistKeys[i]));
 		}
+		ImmunityStates(game, unit, false, setState);
 		saved = 0;
 	}
 }
@@ -190,7 +198,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	const int32_t dist2 = target != nullptr ? dist * dist : 0x7fffffff;  // PD2: squared distance to the nearest player
 	// The idle window for a boss left alone (PD2 game+0x26fe): idle and immune, counting down while a player is near
 	if (IdleWindow(game, unit, target != nullptr)) {
-		SetImmune(game, unit, true);
+		SetImmune(game, unit, true, true);  // PD2 0x35de6d pushes 1
 		Idle(game, unit, 10);
 		return;
 	}
@@ -235,7 +243,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	}
 	// The portal phase: stage 3 reached this tick
 	const auto portalPhase = [&]() {
-		SetImmune(game, unit, true);
+		SetImmune(game, unit, true, false);  // PD2 0x35e30e pushes 0: no state 8
 		SetMode(game, unit, ModeS3);
 		Delay(game, unit, 25);
 		if (stage == 3 && before < 3) {
@@ -267,7 +275,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		store(6, 0);
 		return;
 	case 1: {
-		SetImmune(game, unit, false);
+		SetImmune(game, unit, false, true);
 		const int32_t r = Rand(unit, 100);
 		int32_t next = 1;
 		if (r < m.P(0)) {
@@ -364,7 +372,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 			Delay(game, unit, 10);
 			store(6, 2);
 		} else {
-			SetImmune(game, unit, false);
+			SetImmune(game, unit, false, true);
 			Idle(game, unit, aidel);
 			store(1, 0);
 		}
