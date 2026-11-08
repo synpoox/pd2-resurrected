@@ -14,7 +14,7 @@
 //   D2R's, in WeaponDamage's roll block (a byte patch calling WeaponStrike) and D2R's missile roll.
 // - op bases, life steal cap and crushing blow (IR3): equipped_eth / missing_hp kept as base stats from the stat
 //   callback, lifedrain_percentcap on D2R's add-life, PD2's blow in CrushingBlowApply's jump slot, and its roll on
-//   D2RCore's event dispatch.
+//   D2RCore's event dispatch, where PD2's open wounds and deep wounds (event 15) run too.
 #include "item_rules.h"
 
 #include "pd2_engine.h"
@@ -490,6 +490,12 @@ std::atomic<uint32_t> g_blowRolls {0};
 using DispatchFn = void (*)(Game*, int32_t, Unit*, Unit*, void*, void*) noexcept;
 DispatchFn g_dispatchOriginal = nullptr;
 
+// PD2's open wounds (below): item_openwounds and map_mon_openwounds nodes are hidden the same way
+constexpr uint32_t StatOpenWounds = 135;     // item_openwounds
+constexpr uint32_t StatMapOpenWounds = 460;  // map_mon_openwounds (PD2 407), the same event
+auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept -> void;
+thread_local int32_t t_hiddenEvent = -1;  // the event whose nodes an outer DispatchEvent on this thread has hidden
+
 auto DispatchEvent(Game* game, int32_t event, Unit* unit, Unit* target, void* damage, void* list) noexcept -> void {
 	using namespace d2r::rva;
 	if ((event != EventMeleeDamage && event != EventMissileDamage) || game == nullptr || unit == nullptr ||
@@ -498,17 +504,43 @@ auto DispatchEvent(Game* game, int32_t event, Unit* unit, Unit* target, void* da
 		return;
 	}
 	uint8_t* hidden[MaxHiddenNodes];
-	int count = 0;
-	for (auto* node = At<uint8_t*>(unit, UnitEventNodes); node != nullptr && count < MaxHiddenNodes;
-	     node = At<uint8_t*>(node, EventNodeNext)) {
-		if (At<uint16_t>(node, EventNodeEvent) == event && At<int32_t>(node, EventNodeStat) == static_cast<int32_t>(StatCrushingBlow)) {
+	uint32_t woundStats[MaxHiddenNodes];
+	int count = 0, wounds = 0;
+	for (auto* node = At<uint8_t*>(unit, UnitEventNodes);
+	     node != nullptr && count < MaxHiddenNodes && wounds < MaxHiddenNodes; node = At<uint8_t*>(node, EventNodeNext)) {
+		const uint16_t nodeEvent = At<uint16_t>(node, EventNodeEvent);
+		const auto stat = static_cast<uint32_t>(At<int32_t>(node, EventNodeStat));
+		const bool wound = stat == StatOpenWounds || stat == StatMapOpenWounds;
+		// A hit inside the outer dispatch (a splash item event hitting more units) finds the nodes the outer call hid;
+		// PD2 runs open wounds on those hits too
+		if (nodeEvent == NoEvent && wound && t_hiddenEvent == event) {
+			woundStats[wounds++] = stat;
+			continue;
+		}
+		if (nodeEvent != event) {
+			continue;
+		}
+		if (stat == StatCrushingBlow || wound) {
 			*reinterpret_cast<uint16_t*>(node + EventNodeEvent) = NoEvent;
 			hidden[count++] = node;
+			if (stat != StatCrushingBlow) {
+				woundStats[wounds++] = stat;
+			}
 		}
 	}
+	const int32_t outerHidden = t_hiddenEvent;
+	if (count != 0) {
+		t_hiddenEvent = event;
+	}
 	g_dispatchOriginal(game, event, unit, target, damage, list);
+	t_hiddenEvent = outerHidden;
 	for (int i = 0; i < count; ++i) {
 		*reinterpret_cast<uint16_t*>(hidden[i] + EventNodeEvent) = static_cast<uint16_t>(event);
+	}
+	for (int i = 0; i < wounds; ++i) {
+		if (d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(target) == 0) {
+			OpenWounds(game, unit, target, woundStats[i]);
+		}
 	}
 	const int32_t chance = Stat(unit, StatCrushingBlow) + HandStatSum(unit, StatCrushingBlow);
 	if (chance <= 0 || d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(target) != 0) {
@@ -529,6 +561,142 @@ auto DispatchEvent(Game* game, int32_t event, Unit* unit, Unit* target, void* da
 	if (roll < chance) {
 		d2r::CrushingBlowArgs args {damage, {4, 10, 10}, static_cast<uint8_t>(event == EventMissileDamage ? 1 : 0)};
 		CrushingBlow(game, unit, target, &args);
+	}
+}
+
+// --- Open wounds (IR3): PD2's event 15 (0x103463f0) in place of D2R's ----------------------------------------------
+constexpr uint32_t StatLevel = 12;
+constexpr uint32_t StatHpRegen = 74;
+constexpr uint32_t StatOpenWoundsStack = 373;  // openwounds_stack (PD2 189)
+constexpr uint32_t StatDeepWounds = 554;       // deep_wounds (PD2 501)
+constexpr uint32_t StatPhysPierce = 478;       // passive_phys_pierce (PD2 425)
+constexpr int32_t StateOpenWounds = 62;
+constexpr int32_t StateDeepWounds = 271;  // the Barbarian's Deep Wounds passive (PD2 225)
+constexpr int32_t BloodGolem = 290;
+constexpr int32_t OpenWoundsFrames = 125;  // D2R's 200
+constexpr int32_t MaxWoundStacks = 3;
+constexpr int32_t PlayerWoundPercent[] = {8, 6, 4};  // on a player, by difficulty (doubles 0x1044fbc0 / b8 / a8)
+
+std::atomic<uint32_t> g_wounds {0};
+
+// PD2's 0x1037c4c0 with 100: value * percent / 100 in doubles, truncated, saturated at INT32_MAX
+auto Percent(int32_t value, double percent) noexcept -> int32_t {
+	const double v = static_cast<double>(value) * percent / 100.0;
+	return v > 2147483647.0 ? 2147483647 : static_cast<int32_t>(v);
+}
+
+// 1.13c D2Game 0xac940 with PD2's slopes {9, 18, 27, 36, 45}, plus 40: D2R's own level table (0x584170) is the same
+auto WoundsByLevel(int32_t level) noexcept -> int32_t {
+	constexpr int32_t s[] = {9, 18, 27, 36, 45};
+	int32_t v = 0;
+	if (level >= 2) {
+		if (level > 60) {
+			v = (s[1] + s[2] + s[3]) * 15 + (level - 60) * s[4] + s[0] * 14;
+		} else if (level > 45) {
+			v = (s[1] + s[2]) * 15 + (level - 45) * s[3] + s[0] * 14;
+		} else if (level > 30) {
+			v = (level - 30) * s[2] + s[1] * 15 + s[0] * 14;
+		} else if (level < 16) {
+			v = (level - 1) * s[0];
+		} else {
+			v = (level - 15) * s[1] + s[0] * 14;
+		}
+	}
+	return v + 40;
+}
+
+// PD2's 0x103749f0 (unit, 1) is a player: the monster's owner, or its owner's owner, is a player (a summon, a
+// hireling, a summon's own minion)
+auto OwnedByPlayer(Game* game, Unit* unit) noexcept -> bool {
+	using namespace d2r::rva;
+	for (int depth = 0; depth < 2 && unit != nullptr && At<int32_t>(unit, UnitType) == 1; ++depth) {
+		const int32_t type = At<int32_t>(unit, UnitOwnerType);
+		const uint32_t id = At<uint32_t>(unit, UnitOwnerId);
+		if (id == 0 || id == UINT32_MAX) {
+			return false;
+		}
+		if (type == 0) {
+			return true;
+		}
+		unit = type == 1 ? d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(game, 1, id) : nullptr;
+	}
+	return false;
+}
+
+// PD2's open wounds on a hit, one roll per event node of the stat (PD2's dispatcher runs each node):
+// - chance: the node's stat on the attacker, % 100 on its seed;
+// - damage per frame (1/256 life): the level table + 5 x deep_wounds. On a player, the level part times 8 / 6 / 4%
+//   by difficulty; deep_wounds the same (half again from a Blood Golem), the Deep Wounds passive's part a third of
+//   that;
+// - less the target's damageresist after the attacker's passive_phys_pierce (a negative result counts half; 100 or
+//   more ignores the pierce): a player loses at most 50%. A monster a player owns takes a quarter;
+// - hpregen on the target's open wounds list (125 frames). Below 3 stacks the hit adds to the list's damage and a
+//   stack; at 3 it only refreshes the time (NewStateList keeps an older list of the same skill and level).
+// shortcut: PD2 keys the list by attacker (0x102fc880), so two attackers stack apart; D2R keeps one open wounds list
+// per unit, which all attackers share. Not ported: no damage to a player inside PD2's levels 157, 159, 166 (not in
+// the merged data), Rathma's two clones splitting it (core-maps' rathma_life.cpp owns the pair) and PD2's damage
+// meter.
+auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept -> void {
+	using namespace d2r::rva;
+	const int32_t chance = Stat(unit, stat);
+	if (chance <= 0) {
+		return;
+	}
+	const int32_t roll = static_cast<int32_t>(d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit), 100));
+	if (roll >= chance) {
+		return;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);
+	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
+	const auto stateList = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList);
+	const bool player = At<int32_t>(target, UnitType) == 0;
+	int32_t base = WoundsByLevel(std::max(Stat(unit, StatLevel), 1));
+	int32_t deep = Stat(unit, StatDeepWounds);
+	if (player) {
+		const uint8_t difficulty = std::min<uint8_t>(At<uint8_t>(game, GameDifficulty), 2);
+		const double percent = PlayerWoundPercent[difficulty];
+		base = Percent(base, percent);
+		const double deepPercent =
+			At<int32_t>(unit, UnitType) == 1 && At<int32_t>(unit, UnitClassId) == BloodGolem ? percent * 0.5 : percent;
+		void* passive = stateList(unit, StateDeepWounds);
+		const int32_t fromPassive = passive != nullptr ? listStat(dataFlag, passive, StatDeepWounds, 0) : 0;
+		deep = passive != nullptr ? Percent(deep - fromPassive, deepPercent) + Percent(fromPassive, deepPercent / 3.0)
+		                          : Percent(deep, deepPercent);
+	}
+	int32_t damage = base + deep * 5;
+	const int32_t resist = Stat(target, StatDamageResist);
+	int32_t r = resist < 100 ? resist - Stat(unit, StatPhysPierce) : 100;
+	if (r < 0) {
+		r /= 2;
+	}
+	damage = player && r > 50 ? Percent(damage, 50.0) : Percent(damage, 100.0 - r);
+	if (!player && OwnedByPlayer(game, target)) {
+		damage /= 4;
+	}
+	void* old = stateList(target, StateOpenWounds);
+	int32_t stacks = 1;
+	if (old != nullptr) {
+		stacks = listStat(dataFlag, old, StatOpenWoundsStack, 0);
+		if (stacks < MaxWoundStacks) {
+			++stacks;
+			damage -= listStat(dataFlag, old, StatHpRegen, 0);  // the older damage, negative
+			setStat(dataFlag, old, StatHpRegen, -damage, 0);
+		}
+	}
+	d2r::StateListRequest request {unit, target, 0, 1, OpenWoundsFrames, static_cast<int32_t>(StatHpRegen), -damage,
+	                               StateOpenWounds, nullptr};
+	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
+	if (list != nullptr) {
+		setStat(dataFlag, list, StatOpenWoundsStack, stacks, 0);
+	}
+	const uint32_t n = ++g_wounds;
+	if (At<int32_t>(unit, UnitType) == 0 || n <= 20) {
+		plog::Info("open wounds: unit type %d on unit type %d class %d, chance %d roll %d, level part %d, deep %d, "
+		           "resist %d, %d/256 per frame, stack %d%s, %u so far", At<int32_t>(unit, UnitType),
+		           At<int32_t>(target, UnitType), At<int32_t>(target, UnitClassId), chance, roll, base, deep, r,
+		           list != nullptr ? -listStat(dataFlag, list, StatHpRegen, 0) : damage, stacks,
+		           list != nullptr ? "" : " (refused)", n);
 	}
 }
 

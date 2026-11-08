@@ -551,8 +551,8 @@ struct StateListRequest {
 	int32_t skill;             // 0x10
 	int32_t level;             // 0x14
 	int32_t frames;            // 0x18 how long the list lasts
-	int32_t minusOne;          // 0x1c always -1
-	int32_t zero;              // 0x20
+	int32_t stat;              // 0x1c a stat the new list gets, -1 none (D2R's open wounds: hpregen)
+	int32_t value;             // 0x20 its value, set only on a new list
 	int32_t state;             // 0x24
 	void (*expired)();         // 0x28 called when the list runs out (rva::SkillStateExpired)
 };

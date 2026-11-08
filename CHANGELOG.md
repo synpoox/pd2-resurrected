@@ -4,6 +4,10 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 ### Unreleased
 
+#### Items
+
+- Open wounds stacks up to three hits, and deep wounds adds to its damage.
+
 #### Uber bosses
 
 - Dclone's trapped-soul boulders hurt only through the fire they leave, not on impact.
