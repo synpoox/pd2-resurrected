@@ -644,6 +644,10 @@ std::atomic<uint32_t> g_deathDrops {0};  // extra drops and stat drops made
 
 }  // namespace
 
+auto CorruptFreshItem(Game* game, Unit* item) noexcept -> bool {
+	return CorruptItem(game, item, false);
+}
+
 auto DesecrateItem(Game* game, Unit* item) noexcept -> bool {
 	return CorruptItem(game, item, true);
 }
