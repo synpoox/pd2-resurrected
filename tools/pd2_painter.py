@@ -5,8 +5,8 @@ Subtile grid: 5x5 per tile, blocked = DT1 subtile flag bit 0 (Layout.flags). har
 distance (subtiles) to the nearest blocked subtile, the direction to its room's playable ground (8 buckets) and how far
 it stood from it; where a tree would be drawn over the playable ground, only roots and the tile set's `_foreground`
 tree walls stand (#454; D2R's see-through ring shows the player behind them); paint() puts trees on the subtiles past
-the playable area, nearest first, the stock spacing apart,
-each copied from a stock tree with the same direction and distance."""
+the playable area, nearest first, the stock spacing apart, each copied from a stock tree with the same direction and
+distance."""
 from __future__ import annotations
 
 import bisect
@@ -180,6 +180,8 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tupl
     low = {id(o) for v in kit.values() for o in v if LOW.search(json.dumps(o[0]["components"]))}
 
     def fits(p, o) -> bool:
+        # a `_foreground` wall's footprint holds only its shadow and fade pieces, not its wide mesh: reach is its guard,
+        # standing it no nearer the path than D2R's own room did
         return o[3] <= reach[p] and (id(o) in low
                                      or not any(shades((p[0] + dx, p[1] + dz)) for dx, dz in footprint(o)))
 

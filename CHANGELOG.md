@@ -20,7 +20,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 #### Maps
 
 - Jungle and Necropolis maps draw water in their streams beyond the copied D2R rooms.
-- Jungle and Kurast maps grow tree walls on the near side of paths, closing most gaps in their borders.
+- Jungle, Kurast and Necropolis maps grow tree walls on the near side of paths, closing most gaps in their borders.
 
 #### Uber bosses
 

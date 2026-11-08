@@ -228,8 +228,7 @@ class LayerTests(unittest.TestCase):
         inner = [e for e, _ in painted if at(e)[0] / 2 >= 30]  # the path spans x up-screen of these
         rows = {n: {int(at(e)[1] / 2) - 20 for e in inner if e["name"] == n} for n in (front, wall, roots)}
         # r subtiles south, a tree is 2r - 8 rows (x + y) below the nearest path subtile within WIDE columns
-        self.assertLess(min(rows[roots] | rows[front]), 24)  # the border's first row: roots or a foreground wall
-        self.assertTrue(rows[front])
+        self.assertLess(min(rows[front]), 24)  # a foreground wall stands in the border's first rows
         self.assertGreater(min(rows[wall]) * 2 - 8, P.painter.TALL)
 
     def test_a_pasted_rooms_trees_reaching_walkable_floor_are_dropped(self):
