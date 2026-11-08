@@ -3989,7 +3989,9 @@ auto SrvStCycler(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(corpse, StateCorpseTaken) != 0) {
 		return 0;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(corpse, StateCorpseTaken, 1);
+	// SetStateBit, as D2R's srvst 63: SetUnitState's bit is not the one UnitHasState reads, so a vine re-ate the same
+	// corpse every cast (#378)
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(corpse, StateCorpseTaken, 1);
 	d2r::Engine<void (*)(Unit*) noexcept>(QueueUnitUpdate)(corpse);
 	const auto calc = [&](int field) { return d2r::EvalCalc(game, unit, skill, field, skillId, level); };
 	const int32_t radius = calc(SkAuraRangeCalc), low = calc(SkCalc1), high = calc(SkCalc2);
