@@ -35,6 +35,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - The uber areas have no waypoint, also after a key's warp.
 - A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
 - Lucion fights in PD2's stages: blinks, Nova, a frenzy of Punish, and spawners that call his adds.
+- Lucion's blink and dash show their novas on the client too.
 - Rathma and Mendeln fight by PD2's script: life events, held life, immunity, and retreat portals below 15%.
 - Mendeln, Rathma and their clones spawn in their arenas, each reached by a ghostly portal, as in PD2.
 - Diablo Clone fights in PD2's phases: three nova rounds, three skeleton waves, immune while his adds live.
@@ -44,7 +45,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
 - Lucion's death opens a portal to the Temple, ends his adds and drops a Demonic Cube at tiers 1-2.
 - Lucion's death also opens a portal in Harrogath back into his arena.
-- The death novas of Rathma, Lucion, the Nihlathak map boss and DollMeteor show, as in PD2.
+- The death novas of Rathma, the Nihlathak map boss and DollMeteor show, as in PD2.
 - After Lucion's death, cube a corrupted amulet in the Temple to try a Desecration (50%, 60% at tiers 1-2).
 - Diablo Clone drops Annihilus, and at tiers 1-2 rolls 1 in 200 for one of PD2's five Dclone uniques.
 - Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
