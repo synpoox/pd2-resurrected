@@ -1,6 +1,6 @@
 #include "item_pictures.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 
 #include <D2RLPlugin/mutations.h>
 

@@ -2,7 +2,7 @@
 // monstats class. The Uber Tristram primes (#483) and Lucion (#437) use it; Dclone (#470) and Rathma (#474) should.
 #pragma once
 
-#include "d2r.h"
+#include "pd2_engine.h"
 
 #include <D2RLPlugin/api.h>
 
@@ -20,3 +20,11 @@ auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, uint6
                      AiThinkFn think) noexcept -> bool;
 // D2R's own think of a registered row (null for any other): a port calls it for what it leaves to vanilla.
 auto VanillaAiThink(int32_t monaiRow) noexcept -> AiThinkFn;
+
+// PD2's idle window for a boss left alone (game+0x26fe; docs/research/pd2-uber-bosses-dll.md, section 5): the
+// room-release hook (map_open.cpp's KeepBossRoom, PD2 0x102fc6c0) marks a boss whose room has had no player for 10+
+// ticks; the boss's next think starts the game's 15-tick window when none runs.
+auto MarkBossAlone(d2r::Unit* boss) noexcept -> void;
+// True while the game's window runs. A boss passes itself (to start the window it was marked for) and whether a player
+// is in its level (the window counts down only then); the fight's other AIs pass null and false, and only read it.
+auto IdleWindow(d2r::Game* game, d2r::Unit* boss, bool playerInLevel) noexcept -> bool;

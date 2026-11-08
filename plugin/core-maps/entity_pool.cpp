@@ -1,7 +1,7 @@
-// tlsf_add_pool on D2R's Entity System Pool and Renderer Pool, written the way 0x1215a30 adds the first pool (rvas_93847.h).
+// tlsf_add_pool on D2R's Entity System Pool and Renderer Pool, written the way 0x1215a30 adds the first pool (pd2_engine.h).
 #include "entity_pool.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 
 #include <windows.h>
 

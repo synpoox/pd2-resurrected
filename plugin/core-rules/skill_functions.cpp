@@ -14,7 +14,7 @@
 // another plugin already uses is refused and logged, never overwritten. Slots keep PD2's own numbers where free (docs/core-rules.md).
 #include "skill_functions.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "item_rules.h"
 #include "log.h"
 #include "missile_functions.h"
@@ -4068,6 +4068,40 @@ auto SrvDoUberDiabSummon(Game* game, Unit* unit, int32_t skillId, int32_t level)
 	return 1;
 }
 
+// --- UberDiabRun start (PD2 srvstfunc 71) ---------------------------------------------------------------------------
+// Read from ProjectDiablo.dll: srvst 71 at 0x103b6760. D2R's DiabRun start (srvst 54, 0x57dc60) takes the skill's
+// target unit and refuses the cast without one; PD2's takes the path's target unit, aims the path at its spot, and
+// starts without one too, keeping the point the caster's AI set (Dclone's run to the arena centre, #471).
+std::atomic<uint32_t> g_uberDiabRuns {0};
+
+auto SrvStUberDiabRun(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	UnitSkill* uskill = game != nullptr && unit != nullptr ? CurrentUnitSkill(unit) : nullptr;
+	if (uskill == nullptr) {
+		return 0;
+	}
+	Flags(uskill) = 0;  // PD2 0x1030aec0(skill, 0), as D2R's srvst 54
+	auto* path = At<uint8_t*>(unit, UnitPath);
+	Unit* target = path != nullptr ? At<Unit*>(path, PathTargetUnit) : nullptr;
+	int32_t x = 0, y = 0;
+	if (target != nullptr && target != unit && d2r::UnitXY(target, &x, &y)) {
+		auto* skillTarget = reinterpret_cast<int32_t*>(uskill + USkillTargetType);
+		skillTarget[0] = At<int32_t>(target, UnitType);
+		skillTarget[1] = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(UnitId)(target, __FILE__, __LINE__);
+		// clears the path's target unit too, as PD2's 0x10309470(path, 0) before 0x103331e0
+		d2r::Engine<void (*)(void*, int32_t, int32_t) noexcept>(PathSetTargetXY)(path, x, y);
+	} else if (path != nullptr) {
+		x = At<uint16_t>(path, 0x10);  // the point already set (PathSetTargetXY)
+		y = At<uint16_t>(path, 0x12);
+	}
+	if (plog::Sample(g_uberDiabRuns)) {
+		plog::Info("uberdiabrun start: skill %d level %d, class %d: %s, path to (%d, %d) (%u so far)", skillId, level,
+		           At<int32_t>(unit, UnitClassId), target != nullptr && target != unit ? "at its target" : "no target unit",
+		           x, y, g_uberDiabRuns.load());
+	}
+	return 1;
+}
+
 // --- Lucion's kit (PD2 srvdofunc 184 Nova, 185 Dash, 186 Punish -> router 190; Dash's srvstfunc 76 -> 40) ------------
 // Read from ProjectDiablo.dll: srvdo 184 at 0x103b5110, 185 at 0x103b52b0, 186 at 0x103b56d0, srvst 76 at 0x103b6aa0
 // (docs/research/pd2-uber-bosses-dll.md, section 5). PD2 reads Lucion's AI params and the fight's sub-step (game
@@ -4368,6 +4402,7 @@ const SlotFunction Functions[] = {
 	{SrvDo, 173, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoPoisonEggSpawn)), "poison egg spawn"},
 	{CltDo, 126, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoPoisonEggSpawn)), "poison egg spawn"},
 	{SrvSt, 83, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStCycler)), "cycler start"},
+	{SrvSt, 71, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStUberDiabRun)), "uberdiabrun start"},
 	{MissileSrvHit, 67, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitSummon)), "summon"},
 	{SrvDo, 177, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoUberDiabSummon)), "uber diablo summon"},
 };

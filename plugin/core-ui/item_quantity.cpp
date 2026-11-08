@@ -14,7 +14,7 @@
 // shadow instead of the box (docs/deviations.md).
 #include "item_quantity.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "log.h"
 
 #include <D2RLPlugin/item.h>
@@ -53,7 +53,7 @@ constexpr uint64_t DrawText = 0x902e20;
 constexpr uint64_t InventoryGridVtable = 0x1cf3800;
 constexpr int32_t StatQuantity = 70;
 constexpr uint32_t RecordStackable = 0x142;  // items record: the save writer 0x37d140 writes quantity only when set
-constexpr uint32_t RecordCode = 0x80;        // items record: the item code (rvas_93847.h ItemRecord)
+constexpr uint32_t RecordCode = 0x80;        // items record: the item code (pd2_engine.h ItemRecord)
 
 // D2WinFont, 0xa4 bytes: the defaults its builder 0x86d1b0 writes, then the fields set here (offsets from the style
 // reflection at 0x8bd030: pointSize +4, fontColor +8 (r, g, b, a ints), alignment +0x28 (h, v; left 0, center 1,

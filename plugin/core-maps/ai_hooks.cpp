@@ -6,6 +6,7 @@
 #include "log.h"
 
 #include <array>
+#include <atomic>
 #include <cstring>
 #include <utility>
 
@@ -98,4 +99,46 @@ auto VanillaAiThink(int32_t monaiRow) noexcept -> AiThinkFn {
 		}
 	}
 	return nullptr;
+}
+
+namespace {
+
+constexpr uint32_t IdleWindowKey = 0x55424957;  // 'UBIW': PD2's game+0x26fe
+constexpr int32_t IdleWindowTicks = 15;
+// The bosses marked alone, not yet seen by their think. The hook runs on the game's server thread, as the thinks do;
+// a full list overwrites its oldest mark (a boss whose think never runs, as one with no port, leaves its mark there)
+std::atomic<d2r::Unit*> g_alone[16] {};
+std::atomic<uint32_t> g_aloneNext {0};
+std::atomic<uint32_t> g_windows {0};
+
+}  // namespace
+
+auto MarkBossAlone(Unit* boss) noexcept -> void {
+	for (const auto& slot : g_alone) {
+		if (slot.load() == boss) {
+			return;
+		}
+	}
+	g_alone[g_aloneNext++ % std::size(g_alone)].store(boss);
+}
+
+auto IdleWindow(Game* game, Unit* boss, bool playerInLevel) noexcept -> bool {
+	uint32_t key = IdleWindowKey;
+	int32_t& window = *d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(d2r::rva::GameCounter)(
+		reinterpret_cast<uint8_t*>(game) + d2r::rva::GameCounters, &key);
+	for (auto& slot : g_alone) {
+		Unit* marked = boss;
+		if (boss != nullptr && slot.compare_exchange_strong(marked, nullptr) && window == 0) {
+			window = IdleWindowTicks;
+			plog::Info("ai hooks: boss %d left alone: idle window of %d ticks (%u so far)",
+			           At<int32_t>(boss, d2r::rva::UnitClassId), window, ++g_windows);
+		}
+	}
+	if (window <= 0) {
+		return false;
+	}
+	if (boss != nullptr && playerInLevel && --window == 0) {
+		plog::Info("ai hooks: boss %d idle window over", At<int32_t>(boss, d2r::rva::UnitClassId));
+	}
+	return true;
 }

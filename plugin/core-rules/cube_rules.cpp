@@ -21,7 +21,7 @@
 #include "cube_rules.h"
 #include "cube_stacks.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "log.h"
 
 #include <D2RLPlugin/game_rules.h>
@@ -212,7 +212,7 @@ struct PutBack {
 	int placed = 0;
 };
 
-// Into the parent's sockets in their old order, as 0x46eb00 places them, without its gems.txt mods (rvas_93847.h).
+// Into the parent's sockets in their old order, as 0x46eb00 places them, without its gems.txt mods (pd2_engine.h).
 void PutSocketed(const D2RL::PluginContext*, void* native, void* user) noexcept {
 	using namespace d2r::rva;
 	auto& put = *static_cast<PutBack*>(user);
