@@ -40,7 +40,7 @@ from pathlib import Path
 
 import pd2_painter as painter
 from pd2_ids import Table, excel, load
-from pd2_levels import SLOTS, col, ds1_header, norm
+from pd2_levels import SLOTS, col, ds1_header, norm, object_list
 
 TILE = 10  # HD units per DS1 tile
 # a DS1 cell's unwalkable bit: what blocks the plain floor in PD2's dashed tree lines and the ground past the paths
@@ -126,6 +126,25 @@ def _transform(entity: dict) -> dict | None:
     return next((c for c in entity["components"] if c["type"] == "TransformDefinitionComponent"), None)
 
 
+def is_waypoint(entity: dict) -> bool:
+    """A waypoint's piece: its model, or its stock room's sculpted terrain (SiegeWaypoint1/terrain.model); not Act 3's
+    travincal_waypoint braziers."""
+    return any(c["type"] == "ModelDefinitionComponent" and "waypoint" in c["filename"].lower()
+               and "/braziers/" not in c["filename"].lower() for c in entity["components"])
+
+
+def waypoints(data: bytes, classes: dict[tuple[int, int], str]) -> list[tuple[str, float, float]]:
+    """A DS1's waypoint objects, (objects Class, x, z) in HD units; `classes` is objpreset's (Act, Index) -> ObjectClass."""
+    act, at, count, size = object_list(data)
+    out = []
+    for k in range(count):
+        kind, oid, x, y = struct.unpack_from("<4i", data, at + 4 + k * size)
+        cls = classes.get((act + 1, oid), "") if kind == 2 else ""
+        if "waypoint" in cls.lower():
+            out.append((cls.lower(), x * TILE / 5, y * TILE / 5))  # 5 subtiles per tile
+    return out
+
+
 def wanted(lay: Layout) -> set[Key]:
     """The keys build() may look up for a layout: each key and, for its fallback, each of its tiles alone."""
     return {k for key in lay.keys.values() for k in (key, *((key[0], (t,)) for t in key[1]))}
@@ -135,22 +154,55 @@ def wanted(lay: Layout) -> set[Key]:
 class Kit:
     instances: dict[Key, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
     sources: list[dict[str, list[dict]]] = field(default_factory=list)  # each stock preset's dependencies
+    # a waypoint's pieces, as offsets from its object, under the key of the tile the object stands on and its Class
+    waypoints: dict[Key | str, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
 
-    def add(self, lay: Layout, preset: dict, keep: set[Key]) -> None:
-        """Harvest one stock (layout, preset) pair, only the keys in `keep`."""
+    def add(self, lay: Layout, preset: dict, keep: set[Key], objects: list[tuple[str, float, float]] = ()) -> None:
+        """Harvest one stock (layout, preset) pair, only the keys in `keep`. A waypoint's pieces stay out of the
+        per-tile kit, as D2R puts their transform up to 4 tiles off the waypoint's tiles (#669): each joins the
+        nearest of the DS1's waypoint `objects` (waypoints()), or is dropped if it has none."""
         src = len(self.sources)
         self.sources.append(preset["dependencies"])
         per: dict[tuple[int, int], list] = {c: [] for c, k in lay.keys.items() if k in keep}
+        groups: dict[int, list] = {}
         for e in preset["entities"]:
             t = _transform(e)
             if t is None:
                 continue
             x, z = t["position"]["x"], t["position"]["z"]
+            if is_waypoint(e):
+                if objects:
+                    n = min(range(len(objects)), key=lambda k: (objects[k][1] - x) ** 2 + (objects[k][2] - z) ** 2)
+                    groups.setdefault(n, []).append((e, x - objects[n][1], z - objects[n][2]))
+                continue
             c = (min(max(int(x // TILE), 0), lay.width - 1), min(max(int(z // TILE), 0), lay.height - 1))
             if c in per:
                 per[c].append((e, x - c[0] * TILE, z - c[1] * TILE))
         for c, ents in per.items():
             self.instances.setdefault(lay.keys[c], []).append((src, ents))
+        for n, ents in groups.items():
+            cls, x, z = objects[n]
+            key = lay.keys.get((int(x // TILE), int(z // TILE)))
+            for k in ([key] if key else []) + [cls]:
+                self.waypoints.setdefault(k, []).append((src, ents))
+
+
+def place_waypoints(lay: Layout, kit: Kit, seed: str, objects: list[tuple[str, float, float]]
+                    ) -> tuple[list[dict], set[int]]:
+    """One stock waypoint per waypoint object, at its stock offset: one whose object stood on the same tile key, else
+    one of the same objects Class; and the kit sources used."""
+    entities, used = [], set()
+    for cls, x, z in objects:
+        options = kit.waypoints.get(lay.keys.get((int(x // TILE), int(z // TILE)))) or kit.waypoints.get(cls)
+        if not options:
+            continue
+        src, ents = options[zlib.crc32(f"{seed}:waypoint:{x}:{z}".encode()) % len(options)]
+        used.add(src)
+        for e, dx, dz in ents:
+            e = copy.deepcopy(e)
+            _transform(e)["position"]["x"], _transform(e)["position"]["z"] = x + dx, z + dz
+            entities.append(e)
+    return entities, used
 
 
 def place(lay: Layout, kit: Kit, seed: str) -> tuple[list[dict], set[int], int]:
@@ -233,12 +285,14 @@ def patches(lay: Layout, stock: list[tuple[Layout, dict]], tiles: set) -> tuple[
 
 def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict,
           stock: list[tuple[Layout, dict]] = (), trees: tuple | None = None, prefabs=lambda path: [(0.0, 0.0)],
-          water: dict[str, tuple[dict, dict]] | None = None) -> tuple[dict, int]:
+          water: dict[str, tuple[dict, dict]] | None = None, objects: list[tuple[str, float, float]] = ()
+          ) -> tuple[dict, int]:
     """The preset for a layout, and how many of its tiles stayed empty for a key the kit lacks. Over the per-tile kit,
     in order: stock rooms pasted whole, the patch lookup (both from `stock`), then the border painter with `trees`
     (pd2_painter.harvest) repaints the trees past the playable area; `prefabs(path)` gives a prefab's piece positions.
     Last, `water` (water DT1 -> a stock water plane entity and its preset's dependencies) covers that DT1's blocked
-    floor outside pasted rooms."""
+    floor outside pasted rooms. Each of the DS1's waypoint `objects` (waypoints()) gets one stock waypoint
+    (place_waypoints)."""
     entities: list[dict] = []
     # shortcut: every dependency of each stock preset copied from, as a texture can't be traced to its model; trim it
     # if the frame-rate or load-time check in Jungle Map fails
@@ -254,8 +308,8 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
         preset = stock[n][1]
         depend(preset["dependencies"])
         for e in preset["entities"] + [preset.get("terrain")]:  # the room's own sculpted terrain, water and bridges
-            if not e or "components" not in e or _transform(e) is None:  # some stock terrain is empty
-                continue
+            if not e or "components" not in e or _transform(e) is None or is_waypoint(e):  # some stock terrain is
+                continue  # empty; waypoints come from place_waypoints
             e = copy.deepcopy(e)
             _transform(e)["position"]["x"] += ox * TILE
             _transform(e)["position"]["z"] += oy * TILE
@@ -298,6 +352,10 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
             loose.append(e)
             depend(of)
     entities += loose
+    placed, used = place_waypoints(lay, kit, seed, objects)
+    for src in sorted(used):
+        depend(kit.sources[src])
+    entities += placed
     planes = streams(lay, water or {}, taken)
     for e, of in planes:
         entities.append(e)
@@ -486,6 +544,14 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     terrain = json.loads(terrain_src.read_text("utf-8-sig"))["terrain"]
 
     tiles, pd2_tiles = Tiles(tiles_dir), Tiles(out_data / "global" / "tiles")
+
+    def classes(data: Path) -> dict[tuple[int, int], str]:  # objpreset's (Act, Index) -> ObjectClass; none without it
+        if not (excel(data) / "objpreset.txt").is_file():
+            return {}
+        t = Table(excel(data) / "objpreset.txt")
+        c = [col(t, n) for n in ("Act", "Index", "ObjectClass")]
+        return {(int(r[c[0]]), int(r[c[1]])): r[c[2]] for r in t.rows if r[c[0]] and r[c[1]]}
+    stock_classes, mod_classes = classes(d2r_data), classes(out_data)
     layouts = {ds1: layout((out_data / "global" / "tiles" / ds1).read_bytes(), stand_in(files, tiles, pd2_tiles,
                                                                                         standins))
                for _, _, files, ds1s in on_d2r for ds1 in ds1s}
@@ -504,7 +570,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         if loaded.isdisjoint(listed):
             continue
         stock.append((layout(data, tiles.of(listed)), json.loads(p.read_text("utf-8-sig")), set(listed)))
-        kit.add(*stock[-1][:2], keep)
+        kit.add(*stock[-1][:2], keep, waypoints(data, stock_classes))
 
     @functools.cache
     def prefab(path: str) -> list[tuple[float, float]]:
@@ -523,7 +589,8 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             lay = layouts[ds1]
             outdoor = draws_trees(lay)
             preset, missing = build(lay, kit, Path(ds1).stem, ds1, sets[tile_set.lower()], terrain, own,
-                                    trees if outdoor else None, prefab, water)
+                                    trees if outdoor else None, prefab, water,
+                                    waypoints((out_data / "global" / "tiles" / ds1).read_bytes(), mod_classes))
             dest = out_data / PRESETS / Path(ds1).with_suffix(".json")
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text(json.dumps(preset, separators=(",", ":")), "utf-8")

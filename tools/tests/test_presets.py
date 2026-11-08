@@ -134,6 +134,28 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(preset, P.build(target, kit, "m", "m.ds1", "b.json", TERRAIN)[0])  # the same every build
 
 
+    def test_a_waypoint_is_placed_once_per_waypoint_object_at_its_stock_offset(self):
+        # D2R's siege waypoint room: its model's transform sits 4 tiles off the waypoint tiles, on plain ground (#669)
+        ground, wp = ("f", (FLOOR,)), ("f", (("expansion/town/waypt.dt1", 0, 2, 44),))
+        room = P.Layout(5, 5, {**{(x, y): ground for x in range(5) for y in range(5)}, (3, 3): wp})
+        kit = P.Kit()
+        model = entity("expansion/siege/expansion_siege_waypoints/waypoint01", -0.2, -0.04)
+        brazier = entity("global/prop/objects/braziers/travincal_waypoint", 4.0, 4.0)
+        kit.add(room, {"dependencies": {"models": [{"path": "wp.model"}]}, "entities": [model, brazier]},
+                {ground, wp}, [("waypointwilderness", 38.0, 38.0)])
+        self.assertNotIn("waypoint01", json.dumps(list(kit.instances.values())))  # no stray waypoint on plain ground
+        self.assertIn("travincal_waypoint", json.dumps(list(kit.instances.values())))  # a brazier is no waypoint
+        target = P.Layout(20, 20, {**{(x, y): ground for x in range(20) for y in range(20)}, (13, 13): wp})
+        objects = [("waypointwilderness", 138.0, 138.0)]
+        preset, _ = P.build(target, kit, "m", "m.ds1", "b.json", TERRAIN, objects=objects)
+        wps = [at(e) for e in preset["entities"] if "waypoint01" in e["name"]]
+        self.assertEqual([(round(x, 2), round(z, 2)) for x, z in wps], [(99.8, 99.96)])
+        self.assertIn("wp.model", json.dumps(preset["dependencies"]))
+        # no waypoint object: no waypoint, even on waypoint tiles
+        preset, _ = P.build(target, kit, "m", "m.ds1", "b.json", TERRAIN)
+        self.assertFalse([e for e in preset["entities"] if "waypoint01" in e["name"]])
+
+
 def at(e: dict) -> tuple[float, float]:
     return e["components"][0]["position"]["x"], e["components"][0]["position"]["z"]
 
