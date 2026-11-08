@@ -15,6 +15,9 @@
 //   the four masteries) on it and its minions, and a red portal on each placeholder object, linked to a spot deeper
 //   in the level. After the death switch (0x10379170) a death from the next list steps the level: twice a ghostly
 //   portal to a deeper spot, then the gold portal; each step drops one of nine uber keys and parts.
+// - 9 dungeons: the same rewrite makes each dungeon's boss preset (lesserhydra1) its boss and its blocker presets its
+//   barriers; the boss's death (0x10377890, 0x103778f0, 0x10377a30) opens them, and a barrier made after it opens at
+//   once (the barriers' InitFn, 0x1038daf0).
 // A random unique is a uniqueitems row PD2 accepts (enabled, rarity above 0, level 1-99): PD2 drops a unique of that
 // row's base item (0x103a3a50), and the engine's own unique roll then picks the row, as here.
 // The trigger is the SDK's monster-death listener (key_drops.cpp); the portal, the drop and the kill are engine calls
@@ -30,6 +33,7 @@
 #include <D2RLPlugin/data_tables.h>
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle_events.h>
+#include <D2RLPlugin/mutations.h>
 
 #include <algorithm>
 #include <atomic>
@@ -97,6 +101,23 @@ constexpr uint32_t LinkKey = 0x4f564c00;  // 'OVL' + link: the linked portal's u
 constexpr int MaxSpawned = 64;
 constexpr int MaxNearUnits = 512;
 
+// The dungeons (map event 9; PD2 0x1038bfc0): the level's boss preset, lesserhydra1, becomes the dungeon's boss, and its
+// boss blocker presets become the barriers that open when the boss dies. Port ids (PD2's: levels 164, 171, 186;
+// monsters 743, 1104, 1105; objects 616-619).
+constexpr int32_t DungeonEvent = 9;
+constexpr int32_t BossPlaceholder = 755;  // lesserhydra1 (PD2 0x2e2)
+constexpr int32_t BlockerX = 619, BlockerY = 620, BlockerXWarp = 621, BlockerYWarp = 622;  // bossblocker_x, _y, _warps
+constexpr int MaxBarriers = 7;  // PD2's game +0x2604-0x261c
+struct Dungeon {
+	int32_t level;
+	int32_t boss;
+};
+constexpr Dungeon Dungeons[] = {{163, 760},    // Plains of Torment: willowispboss
+                                {168, 1121},   // Sanctuary of Sin: RadamentBoss
+                                {182, 1122}};  // Steppes of Daken-Shar: SharpToothBoss
+constexpr uint32_t DungeonBossKey = 0x4d444742;  // 'MDGB': the boss's unit id + 1 (PD2's game +0x2600)
+constexpr uint32_t BarrierKey = 0x4d444700;      // 'MDG' + slot: a barrier's unit id + 1 (PD2's game +0x2604 + slot * 4)
+
 // D2R's compiled uniqueitems row (uniqueitems.bin, 348 bytes): 1.13c's to +0x2c, then 4 more bytes before rarity
 constexpr uint32_t UniqueRowSize = 348;
 constexpr int UqCode = 0x28, UqFlags = 0x2c, UqRarity = 0x34, UqLevel = 0x38;
@@ -119,6 +140,8 @@ std::atomic<uint32_t> g_drops {0};
 std::atomic<uint32_t> g_pillars {0};
 std::atomic<uint32_t> g_voidBosses {0};
 std::atomic<uint32_t> g_voidWarps {0};
+std::atomic<uint32_t> g_barriers {0};        // blocker presets made into barriers
+std::atomic<uint32_t> g_barriersOpened {0};  // barriers opened by a boss's death
 
 auto Counter(Game* game, uint32_t key) noexcept -> int32_t* {
 	return d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(d2r::rva::GameCounter)(
@@ -243,6 +266,84 @@ auto NearUnits(void* room, Unit** out, int max) noexcept -> int {
 	return n;
 }
 
+// Each Counter call may insert, so no pointer is kept across another call.
+auto Value(Game* game, uint32_t key) noexcept -> int32_t {
+	const int32_t* c = Counter(game, key);
+	return c != nullptr ? *c : 0;
+}
+
+auto Store(Game* game, uint32_t key, int32_t value) noexcept -> void {
+	if (int32_t* c = Counter(game, key); c != nullptr) {
+		*c = value;
+	}
+}
+
+auto DungeonOf(int32_t level) noexcept -> const Dungeon* {
+	for (const Dungeon& d : Dungeons) {
+		if (d.level == level) {
+			return &d;
+		}
+	}
+	return nullptr;
+}
+
+auto IsBarrier(int32_t row) noexcept -> bool {
+	return row >= BlockerX && row <= BlockerYWarp;
+}
+
+// PD2's 0x1038a060 with unit type 2: an object at x/y in the room near `room` that holds it. No PluginSDK service
+// places objects, so this calls D2R's unit spawn (rva::SpawnUnit), as OpenPortalAt (map_open.cpp) does; the object's
+// InitFn runs.
+auto SpawnObject(Game* game, void* room, int32_t row, int32_t x, int32_t y) noexcept -> Unit* {
+	using namespace d2r::rva;
+	using SpawnFn = Unit* (*)(int32_t, int32_t, int32_t, int32_t, Game*, void*, int32_t, int32_t, int32_t,
+	                          int32_t) noexcept;
+	room = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(room, x, y);
+	// Mode 0, closed: PD2 0x1038a060 spawns an object in mode 0 (mode 1 is the open animation).
+	return room != nullptr ? d2r::Engine<SpawnFn>(SpawnUnit)(UnitObject, row, x, y, game, room, 1, 0, 0, 0) : nullptr;
+}
+
+// PD2 0x10380590: the barrier plays its open frames (mode 1), then its mode end event opens it (mode 2), which has no
+// collision. PD2 also redoes the collision at once (1.13c D2Common #10408); D2R's mode setter (rva::SetObjectMode)
+// clears it when it sets a mode whose HasCollision is 0. No PluginSDK service sets an object's mode.
+auto OpenBarrier(Game* game, Unit* barrier) noexcept -> bool {
+	using namespace d2r::rva;
+	if (barrier == nullptr || At<int32_t>(barrier, UnitType) != UnitObject || At<int32_t>(barrier, UnitMode) != 0) {
+		return false;
+	}
+	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ObjectRecord)(
+		d2r::DataFlag(game), At<int32_t>(barrier, UnitClassId));
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetObjectMode)(barrier, 1);
+	const int32_t frames = record != nullptr ? static_cast<int32_t>(At<uint32_t>(record, ObjOpenFrames) >> 8) : 0;
+	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
+		game, barrier, UnitEventOpen, At<int32_t>(game, GameFrame) + 1 + frames, 0, 0, 0);
+	return true;
+}
+
+// The argument block D2R's object init dispatch passes an InitFn (rva::ObjectInitTable)
+struct ObjectInit {
+	Game* game;
+	Unit* object;
+};
+using InitFn = void (*)(ObjectInit*) noexcept;
+InitFn g_initQuestDoor = nullptr;
+
+// PD2 0x1038daf0, InitFn 30 (0x1036c320 sets it): the four barriers skip the slot's own init, which in D2R opens them
+// in a Hell game past act 2 quest 4 (rva::InitQuestDoor), and a barrier made once the dungeon's boss is dead opens.
+// No PluginSDK service runs object inits, so this takes the table slot, as PD2 does.
+void BarrierInit(ObjectInit* init) noexcept {
+	using namespace d2r::rva;
+	Unit* object = init != nullptr ? init->object : nullptr;
+	if (object == nullptr || !IsBarrier(At<int32_t>(object, UnitClassId))) {
+		g_initQuestDoor(init);
+		return;
+	}
+	if (init->game != nullptr && MapEvent(init->game) == DungeonEvent && MapEventStep(init->game) == 2 &&
+	    OpenBarrier(init->game, object)) {
+		plog::Info("dungeons: barrier %d made after the boss died, opened", At<int32_t>(object, UnitClassId));
+	}
+}
+
 // PD2 0x1038bfc0's boss: max life times the list's percent, then state `mapevent` with its list
 auto EmpowerBoss(Game* game, Unit* monster, uint32_t lifePercent) noexcept -> void {
 	using namespace d2r::rva;
@@ -291,6 +392,40 @@ auto OuterVoidStep(Game* game, Unit* monster, int32_t monsterClass, uint32_t* se
 	return true;
 }
 
+// PD2 0x10377890, 0x103778f0, 0x10377a30 (the death switch 0x10378d80's SharpToothBoss, willowispboss and
+// RadamentBoss): when the stored boss dies, a dungeon's step goes 1 -> 2 and the stored barriers open. As PD2, the
+// barriers open whatever the event.
+auto DungeonBossDeath(Game* game, Unit* monster) noexcept -> void {
+	using namespace d2r::rva;
+	const int32_t boss = Value(game, DungeonBossKey);
+	if (boss == 0 || boss != static_cast<int32_t>(At<uint32_t>(monster, UnitIdField)) + 1) {
+		return;
+	}
+	Store(game, DungeonBossKey, 0);
+	if (MapEvent(game) == DungeonEvent && MapEventStep(game) == 1) {
+		SetMapEventStep(game, 2);
+	}
+	int opened = 0;
+	for (int i = 0; i < MaxBarriers; ++i) {
+		const int32_t id = Value(game, BarrierKey + static_cast<uint32_t>(i));
+		if (id == 0) {
+			continue;
+		}
+		Store(game, BarrierKey + static_cast<uint32_t>(i), 0);
+		Unit* barrier = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(
+			game, UnitObject, static_cast<uint32_t>(id - 1));
+		const bool ok = OpenBarrier(game, barrier);
+		opened += ok ? 1 : 0;
+		if (!ok) {
+			plog::Warn("dungeons: barrier %d (unit %d) not opened: %s, mode %d", i, id - 1,
+			           barrier != nullptr ? "found" : "gone", barrier != nullptr ? At<int32_t>(barrier, UnitMode) : -1);
+		}
+	}
+	g_barriersOpened.fetch_add(static_cast<uint32_t>(opened), std::memory_order_relaxed);
+	plog::Info("dungeons: boss %d died, event %d, step %d, %d barriers opened", At<int32_t>(monster, UnitClassId),
+	           MapEvent(game), MapEventStep(game), opened);
+}
+
 void __cdecl ReadUniqueBases(const D2RL::PluginContext* context, const D2RL::Lifecycle::DataTablesLoadedEvent*,
                              void*) noexcept {
 	using namespace D2RL::DataTables;
@@ -329,6 +464,7 @@ void __cdecl ReadUniqueBases(const D2RL::PluginContext* context, const D2RL::Lif
 
 auto UniqueMapDeath(Game* game, Unit* monster) noexcept -> void {
 	using namespace d2r::rva;
+	DungeonBossDeath(game, monster);
 	const int32_t event = MapEvent(game);
 	if (event < ZharEvent || event > UrehEvent) {
 		return;
@@ -437,6 +573,97 @@ auto OuterVoidPreset(Game* game, void* room, uint8_t* preset, void (*spawn)(Game
 	return true;
 }
 
+auto DungeonPreset(Game* game, void* room, uint8_t* preset, void (*spawn)(Game*, void*, const uint8_t*) noexcept) noexcept
+	-> bool {
+	using namespace d2r::rva;
+	const Dungeon* dungeon = DungeonOf(d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room));
+	if (dungeon == nullptr) {
+		return false;
+	}
+	const int32_t type = At<int32_t>(preset, PresetType);
+	const int32_t id = At<int32_t>(preset, PresetId);
+	const int32_t x = At<int32_t>(room, RoomX) + At<int32_t>(preset, PresetX);
+	const int32_t y = At<int32_t>(room, RoomY) + At<int32_t>(preset, PresetY);
+	if (type == UnitMonster && id == BossPlaceholder) {
+		// As PD2, the preset itself is rewritten to the boss. shortcut: PD2 spawns the boss alone on a free spot near
+		// the preset (0x1038a0d0); here the preset spawns it, as any boss preset is placed
+		Unit* before[MaxNearUnits];
+		const int had = NearUnits(room, before, MaxNearUnits);
+		*reinterpret_cast<int32_t*>(preset + PresetId) = dungeon->boss;
+		spawn(game, room, preset);
+		Unit* after[MaxNearUnits];
+		const int has = NearUnits(room, after, MaxNearUnits);
+		Unit* boss = nullptr;
+		for (int i = 0; i < has && boss == nullptr; ++i) {
+			if (At<int32_t>(after[i], UnitType) == UnitMonster && At<int32_t>(after[i], UnitClassId) == dungeon->boss &&
+			    std::find(before, before + had, after[i]) == before + had) {
+				boss = after[i];
+			}
+		}
+		if (boss != nullptr) {
+			Store(game, DungeonBossKey, static_cast<int32_t>(At<uint32_t>(boss, UnitIdField)) + 1);
+			if (MapEvent(game) == DungeonEvent && MapEventStep(game) == 0) {
+				SetMapEventStep(game, 1);
+			}
+		}
+		plog::Info("dungeons: level %d preset %d became boss %d at (%d, %d)%s, event %d, step %d", dungeon->level, id,
+		           dungeon->boss, x, y, boss != nullptr ? "" : " NOT FOUND", MapEvent(game), MapEventStep(game));
+		return true;  // and no extra boss: PD2 returns before its extra boss test
+	}
+	if (type != UnitObject || !IsBarrier(id)) {
+		return false;
+	}
+	// PD2's barriers: Plains of Torment a row of 7 per blocker, along its length; Sanctuary of Sin two of bossblocker_y;
+	// the Steppes bossblocker_x_warp for bossblocker_x. The other blockers spawn as they are.
+	struct Place {
+		int32_t row, x, y;
+	};
+	Place places[MaxBarriers] = {};
+	int count = 0;
+	if (dungeon->level == Dungeons[0].level && (id == BlockerX || id == BlockerY)) {
+		for (int i = 0; i < MaxBarriers; ++i) {
+			const int32_t step = -12 + 4 * i;
+			places[count++] = id == BlockerY ? Place {id, x + step, y} : Place {id, x, y + step};
+		}
+	} else if (dungeon->level == Dungeons[1].level && id == BlockerY) {
+		places[count++] = {id, x - 5, y + 1};
+		places[count++] = {id, x + 5, y + 1};
+	} else if (dungeon->level == Dungeons[2].level && id == BlockerX) {
+		places[count++] = {BlockerXWarp, x, y};
+	}
+	if (count == 0) {
+		return false;
+	}
+	int made = 0;
+	for (int i = 0; i < count; ++i) {
+		Unit* barrier = SpawnObject(game, room, places[i].row, places[i].x, places[i].y);
+		if (barrier != nullptr) {
+			++made;
+			Store(game, BarrierKey + static_cast<uint32_t>(i),
+			      static_cast<int32_t>(At<uint32_t>(barrier, UnitIdField)) + 1);
+		}
+	}
+	plog::Info("dungeons: level %d blocker %d at (%d, %d) became %d of %d barriers %d, event %d, step %d (%u)",
+	           dungeon->level, id, x, y, made, count, places[0].row, MapEvent(game), MapEventStep(game), ++g_barriers);
+	return true;
+}
+
+auto DungeonKeepsRoom(Unit* unit) noexcept -> bool {
+	using namespace d2r::rva;
+	const int32_t type = At<int32_t>(unit, UnitType);
+	const int32_t classId = At<int32_t>(unit, UnitClassId);
+	if (type == UnitObject) {
+		return IsBarrier(classId) && At<int32_t>(unit, UnitMode) == 0;
+	}
+	if (type != UnitMonster || d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) != 0) {
+		return false;
+	}
+	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit);
+	const Dungeon* dungeon =
+		room != nullptr ? DungeonOf(d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room)) : nullptr;
+	return dungeon != nullptr && dungeon->boss == classId;
+}
+
 auto OuterVoidWarp(Game* game, Unit* player, Unit* portal) noexcept -> bool {
 	using namespace d2r::rva;
 	if (game == nullptr || portal == nullptr ||
@@ -466,6 +693,37 @@ auto OuterVoidWarp(Game* game, Unit* player, Unit* portal) noexcept -> bool {
 	return false;
 }
 
+auto InstallDungeonBarriers(const D2RL::PluginContext* context) noexcept -> bool {
+	using namespace d2r::rva;
+	g_initQuestDoor = reinterpret_cast<InitFn>(d2r::imageBase + InitQuestDoor);
+	const D2RL::MutationService* mutations = nullptr;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize)) {
+		return false;
+	}
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		return false;
+	}
+	// The table holds absolute addresses: slot 30 must still be D2R's own a2q4 init.
+	const uint64_t expected = d2r::imageBase + InitQuestDoor;
+	const uint64_t barrierInit = reinterpret_cast<uint64_t>(static_cast<InitFn>(BarrierInit));
+	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
+	                                              .rva = ObjectInitTable + static_cast<uint64_t>(ObjectInitQuestDoor) * 8,
+	                                              .expected = &expected,
+	                                              .expectedSize = sizeof(expected),
+	                                              .bytes = &barrierInit,
+	                                              .size = sizeof(barrierInit)};
+	D2RL::Mutations::OperationHandle operation = 0;
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	if (mutations->stageBytePatch(context, transaction, &patch, &operation) != D2RL::Mutations::Result::Success ||
+	    mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		return false;
+	}
+	return true;
+}
+
 auto InstallUniqueMaps(const D2RL::PluginContext* context) noexcept -> bool {
 	const D2RL::LifecycleService* lifecycle = nullptr;
 	if (context->QueryService(&g_tables) != D2RL::ServiceQueryResult::Success ||
@@ -483,7 +741,7 @@ auto InstallUniqueMaps(const D2RL::PluginContext* context) noexcept -> bool {
 auto UniqueMapsCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "unique maps: %u boss deaths, %u portals, %u drops, %u pillars killed, %d random unique bases, %u Outer "
-	              "Void bosses, %u Outer Void warps",
+	              "Void bosses, %u Outer Void warps, %u dungeon blocker presets, %u barriers opened",
 	              g_deaths.load(), g_portals.load(), g_drops.load(), g_pillars.load(), g_anyCount.load(),
-	              g_voidBosses.load(), g_voidWarps.load());
+	              g_voidBosses.load(), g_voidWarps.load(), g_barriers.load(), g_barriersOpened.load());
 }

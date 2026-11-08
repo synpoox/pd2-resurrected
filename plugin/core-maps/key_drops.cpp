@@ -249,8 +249,9 @@ auto InstallKeyDrops(const D2RL::PluginContext* context, char* report, size_t re
 		std::snprintf(report, reportSize, "off: monster-death listener refused");
 		return 0;
 	}
-	std::snprintf(report, reportSize, "%d rolls and the uber boss drops on every monster death%s", RollCount,
-	              InstallUniqueMaps(context) ? "" : " (no random uniques: a table service is missing)");
+	std::snprintf(report, reportSize, "%d rolls and the uber boss drops on every monster death%s%s", RollCount,
+	              InstallUniqueMaps(context) ? "" : " (no random uniques: a table service is missing)",
+	              InstallDungeonBarriers(context) ? "" : " (dungeon barriers: object init 30 is not D2R's)");
 	return 1;
 }
 

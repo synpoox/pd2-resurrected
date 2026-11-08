@@ -327,6 +327,16 @@ auto MapEvent(Game* game) noexcept -> int32_t {
 	return game != nullptr ? Get(game, EventKey) : 0;
 }
 
+auto MapEventStep(Game* game) noexcept -> int32_t {
+	return game != nullptr ? Get(game, SpawnsKey) : 0;
+}
+
+auto SetMapEventStep(Game* game, int32_t value) noexcept -> void {
+	if (game != nullptr) {
+		Set(game, SpawnsKey, value);
+	}
+}
+
 auto RollMapEvent(Game* game, Unit* item, int32_t level) noexcept -> void {
 	using namespace d2r::rva;
 	if (game == nullptr || item == nullptr) {
