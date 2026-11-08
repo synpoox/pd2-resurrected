@@ -21,6 +21,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 #### Maps
 
 - Jungle maps draw water in their streams beyond the copied D2R rooms.
+- Dungeon boss barriers show as iron gates instead of invisible walls.
 
 #### Uber bosses
 
