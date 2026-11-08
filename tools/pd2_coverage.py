@@ -13,7 +13,14 @@ Writes <out>/report.md, worst first (border score, then wall score), and per pre
 where covered, red where bare) and, for a border, <name>_border.png (ring green, gap red, leak magenta). Known bias:
 a turned piece's footprint is its axis-aligned box, which spills onto neighbour tiles, so both scores run a little
 generous. TALL 4 reproduced the LP3 slice 1 game check (research/lp3-tile-table, FINDINGS.md). The report cannot judge
-looks, frame rate or collision. Needs model_lod_desc.bin in modkit's cache, else it skips:
+looks, frame rate or collision.
+
+Changes against main: BASELINE (docs/coverage-baseline.tsv, `preset <tab> wall % <tab> border % or -`) holds main's
+scores. The report and <out>/changes.md list each preset whose score moved, a new one, and one no longer scored.
+`--check` fails (exit 1) when a preset's wall or border score drops more than TOLERANCE points below the baseline, or
+a baselined preset is no longer scored. To accept an intended drop (or record a gain), run with `--write-baseline`
+after the merge and commit docs/coverage-baseline.tsv with the PR: the drop then shows in its diff and review.
+Needs model_lod_desc.bin in modkit's cache, else it skips:
 `python -m modkit fetch --prefix data/hd/model_lod_desc.bin`.
 """
 from __future__ import annotations
@@ -40,6 +47,8 @@ MODELS = Path("hd") / "model_lod_desc.bin"
 TALL = 4.0  # HD units: a piece this high hides a wall in game
 ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculpted terrain), not a wall piece
 DEPTH = 2  # prefab levels followed
+BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
+TOLERANCE = 1.0  # percentage points a score may drop below the baseline
 IDENTITY = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
 
 Box = tuple[float, float, float, float, float]  # x0, x1, z0, z1, top
@@ -160,7 +169,74 @@ def _key(s: Score) -> tuple:
     return (s.border_score is None, s.border_score or 0.0, s.wall_score, s.name)
 
 
-def report(scores: list[Score], commit: str = "") -> str:
+def pct1(v: float | None) -> float | None:
+    """A score as the baseline keeps it: a percentage to one decimal."""
+    return None if v is None else round(100 * v, 1)
+
+
+def baseline_text(scores: list[Score]) -> str:
+    lines = ["# HD preset coverage on main (tools/pd2_coverage.py --write-baseline): preset, wall %, border % or -"]
+    for s in sorted(scores, key=lambda s: s.name):
+        b = pct1(s.border_score)
+        lines.append(f"{s.name}\t{pct1(s.wall_score)}\t{'-' if b is None else b}")
+    return "\n".join(lines) + "\n"
+
+
+def read_baseline(text: str) -> dict[str, tuple[float, float | None]]:
+    out = {}
+    for line in text.splitlines():
+        if line and not line.startswith("#"):
+            name, wall, border = line.split("\t")
+            out[name] = (float(wall), None if border == "-" else float(border))
+    return out
+
+
+@dataclass
+class Change:
+    name: str
+    wall: tuple[float | None, float | None]  # (baseline, now); None: absent
+    border: tuple[float | None, float | None]
+    drop: bool  # beyond TOLERANCE, or no longer scored
+
+
+def changes(scores: list[Score], base: dict, tolerance: float = TOLERANCE) -> list[Change]:
+    """The presets whose scores differ from the baseline, worst drop first."""
+    now = {s.name: (pct1(s.wall_score), pct1(s.border_score)) for s in scores}
+    out = []
+    for name in sorted(set(now) | set(base)):
+        (w0, b0), (w1, b1) = base.get(name, (None, None)), now.get(name, (None, None))
+        if name in base and name in now and (w0, b0) == (w1, b1):
+            continue
+        gone = name not in now
+        drop = gone or any(old is not None and new is not None and old - new > tolerance
+                           for old, new in ((w0, w1), (b0, b1)))
+        out.append(Change(name, (w0, w1), (b0, b1), drop))
+    def worst(c: Change) -> float:
+        return min((n - o for o, n in (c.wall, c.border) if o is not None and n is not None), default=0.0)
+    return sorted(out, key=lambda c: (not c.drop, worst(c), c.name))
+
+
+def changes_md(found: list[Change], tolerance: float = TOLERANCE) -> str:
+    def cell(old, new) -> str:
+        if old is None and new is None:
+            return "-"
+        if old is None:
+            return f"new {new}%"
+        if new is None:
+            return f"{old}% -> gone"
+        return f"{old}% -> {new}% ({new - old:+.1f})" if old != new else f"{new}%"
+    drops = sum(c.drop for c in found)
+    lines = ["## Changes against main", ""]
+    if not found:
+        return "\n".join(lines + ["No preset's coverage changed.", ""])
+    lines += [f"{len(found)} presets changed; {drops} dropped by more than the {tolerance:g}-point tolerance or are no longer scored"
+              + (" (accept an intended drop: `--write-baseline`, commit docs/coverage-baseline.tsv)." if drops else "."),
+              "", "| Preset | Wall | Border | |", "|---|---|---|---|"]
+    lines += [f"| {c.name} | {cell(*c.wall)} | {cell(*c.border)} | {'**drop**' if c.drop else ''} |" for c in found]
+    return "\n".join(lines) + "\n"
+
+
+def report(scores: list[Score], commit: str = "", found: list[Change] | None = None) -> str:
     """The markdown report, worst first: presets with a border by border score, then the rest by wall score."""
     pct = lambda v: "-" if v is None else f"{100 * v:.1f}%"  # noqa: E731
     lines = ["# HD preset coverage" + (f" ({commit})" if commit else ""), "",
@@ -169,6 +245,8 @@ def report(scores: list[Score], commit: str = "") -> str:
              "Images: red where bare.", "",
              "| Preset | Area | Border | Gaps | Leaks | Wall | Walls | Images |",
              "|---|---|---|---|---|---|---|---|"]
+    if found is not None:
+        lines[2:2] = [changes_md(found), ""]
     for s in sorted(scores, key=_key):
         img = f"[walls]({s.name}_walls.png)" + (f" [border]({s.name}_border.png)" if s.ring is not None else "")
         border = s.ring is not None
@@ -184,8 +262,9 @@ def report(scores: list[Score], commit: str = "") -> str:
     return "\n".join(lines) + "\n"
 
 
-def run(data: Path, d2r: Path, out: Path, commit: str = "") -> list[Score] | None:
-    """Score every generated preset under data (generated/data) and write the report to out. None: skipped."""
+def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = None) -> list[Score] | None:
+    """Score every generated preset under data (generated/data) and write the report to out, with the changes
+    against `base` (read_baseline) when given. None: skipped."""
     if not (d2r / MODELS).is_file():
         print(f"pd2_coverage: skipped, no {d2r / MODELS} (`python -m modkit fetch --prefix data/hd/model_lod_desc.bin`)")
         return None
@@ -216,7 +295,10 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "") -> list[Score] | Non
             scores.append(s)
             for name, image in images(lay, s, tall).items():
                 (out / name).write_bytes(image)
-    (out / "report.md").write_text(report(scores, commit), "utf-8")
+    found = None if base is None else changes(scores, base)
+    if found is not None:
+        (out / "changes.md").write_text(changes_md(found), "utf-8")
+    (out / "report.md").write_text(report(scores, commit, found), "utf-8")
     print(f"pd2_coverage: {len(scores)} presets scored, {out / 'report.md'}")
     return scores
 
@@ -227,9 +309,26 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--d2r", type=Path, default=D2R_DATA, help=f"D2R data root (default: {D2R_DATA})")
     ap.add_argument("--out", type=Path, default=ROOT / "out" / "coverage", help="report folder")
     ap.add_argument("--commit", default="", help="commit named in the report's title")
+    ap.add_argument("--baseline", type=Path, default=BASELINE, help=f"main's scores (default: {BASELINE})")
+    ap.add_argument("--check", action="store_true", help=f"exit 1 on a drop of more than {TOLERANCE:g} points")
+    ap.add_argument("--write-baseline", action="store_true", help="write the scores to --baseline")
     a = ap.parse_args(argv)
-    run(a.data, a.d2r, a.out, a.commit)
-    return 0
+    base = read_baseline(a.baseline.read_text("utf-8")) if a.baseline.is_file() else None
+    scores = run(a.data, a.d2r, a.out, a.commit, base)
+    if scores is None:
+        return 0
+    if a.write_baseline:
+        a.baseline.write_text(baseline_text(scores), "utf-8", newline="\n")
+        print(f"pd2_coverage: baseline written, {a.baseline}")
+        return 0
+    if base is None:
+        print(f"pd2_coverage: no baseline at {a.baseline}" + ("" if not a.check else "; nothing to check"))
+        return 1 if a.check else 0
+    found = changes(scores, base)
+    drops = [c.name for c in found if c.drop]
+    print(f"pd2_coverage: {len(found)} presets changed against the baseline, {len(drops)} dropped"
+          + (f": {', '.join(drops)}" if drops else ""))
+    return 1 if a.check and drops else 0
 
 
 if __name__ == "__main__":
