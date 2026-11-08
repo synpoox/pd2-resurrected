@@ -10,7 +10,7 @@
 //   so the tooltip, and every save load, so the real damage after a relog); those six multiplies are patched to 5/4.
 #include "loot_rules.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "log.h"
 
 #include <D2RLPlugin/mutations.h>

@@ -1,7 +1,7 @@
 // PD2's stack-aware cube matching: a stack counts as its quantity toward a recipe (cube_stacks.cpp).
 #pragma once
 
-#include "d2r.h"
+#include "pd2_engine.h"
 
 #include <D2RLPlugin/api.h>
 

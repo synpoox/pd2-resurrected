@@ -4,16 +4,16 @@
     python tools/pd2_merge.py --seed-ids     append id-list lines for PD2 rows that have none (see pd2_ids)
 
 `modkit build` layers generated/data/ after files/ and before patches/. Every run rebuilds generated/ from scratch.
-Each merge/ file is handled by the rule kind its name maps to in RULES (`*.md` files are notes); a file with no rule
-kind fails the run, so a rule is never silently skipped. Refuses a pd2-data/ extracted from another baseline. A failed
-run leaves no generated/, so a build never picks up half a merge. D2R's own tables come from modkit's cache (--d2r).
+d2rAI-toolkit's shared/classic_import merge driver applies each merge/ file by the rule kind its name maps to in RULES
+(`*.md` files are notes); a file with no rule kind fails the run, so a rule is never silently skipped. Refuses a
+pd2-data/ extracted from another baseline. A failed run leaves no generated/, so a build never picks up half a merge.
+D2R's own tables come from modkit's cache (--d2r).
 With a pd2_cache root, a run whose merge_key matches a finished merge copies that merge's generated/ instead (#440).
 """
 from __future__ import annotations
 
 import argparse
 import os
-import shutil
 import sys
 from pathlib import Path
 from typing import Callable
@@ -68,45 +68,22 @@ class MergeError(Exception):
 
 
 def merge_key(root: Path, d2r: Path) -> str:
-    """pd2_cache's key for root's merge: everything the merge reads but D2R's tables, which the path stands for. The
-    tools' tests are left out, so a test-only change still hits."""
+    """pd2_cache's key for root's merge: everything the merge reads but D2R's tables, which the path stands for, with
+    the toolkit's merge code (modkit, shared/classic_import). The tools' tests are left out, so a test-only change still
+    hits."""
     return pd2_cache.key([root / "merge", *sorted((root / "tools").glob("*.py")), root / "pd2-baseline.json",
-                          root / "pd2-data" / "baseline.json", pd2_ids.toolkit(root) / "modkit"], str(d2r.resolve()))
+                          root / "pd2-data" / "baseline.json", pd2_ids.toolkit(root) / "modkit",
+                          pd2_ids.toolkit(root) / "shared" / "classic_import"], str(d2r.resolve()))
 
 
 def merge(root: Path, d2r: Path = D2R_DATA) -> list[str]:
-    """Rebuild root/generated/ and return the rule files applied."""
-    pd2, rules_dir, out = root / "pd2-data", root / "merge", root / "generated" / "data"
-    stamp = pd2 / "baseline.json"
-    if not stamp.is_file():
-        raise MergeError(f"{pd2} has no baseline stamp: run tools/pd2_extract.py")
-    baseline = (root / "pd2-baseline.json").read_bytes()
-    found = stamp.read_bytes()
-    if found != pd2_extract.stamp(baseline):
-        why = "an older pd2_extract" if found == baseline else "another baseline"
-        raise MergeError(f"{pd2} was extracted by {why}: run tools/pd2_extract.py again")
-    files = sorted(p for p in rules_dir.glob("*") if p.is_file() and p.suffix != ".md") if rules_dir.exists() else []
-    unknown = [p.name for p in files if p.name not in RULES]
-    if unknown:
-        raise MergeError(f"merge/ files with no rule kind in pd2_merge.RULES: {', '.join(unknown)}")
-    if files and not (d2r / "global" / "excel").is_dir():
-        raise MergeError(f"no D2R tables under {d2r}: run `modkit fetch` or pass --d2r")
-    if out.parent.exists():
-        shutil.rmtree(out.parent)
-    out.mkdir(parents=True)
+    """Rebuild root/generated/ and return the rule files applied (d2rAI-toolkit's shared/classic_import driver)."""
+    mg = pd2_extract.classic("merge")
     try:
-        for p in files:
-            try:
-                RULES[p.name](p, pd2 / "data", d2r, out)
-            except ValueError as e:  # a rule's data error, named by its rule file
-                raise MergeError(f"merge/{p.name}: {e}") from e
-    except (pd2_ids.IdError, MergeError) as e:
-        shutil.rmtree(out.parent)
-        raise MergeError(str(e)) from e
-    except BaseException:
-        shutil.rmtree(out.parent)
-        raise
-    return [p.name for p in files]
+        mg.check_extract(root / "pd2-data", root / "pd2-baseline.json")
+        return mg.merge(RULES, root / "merge", root / "pd2-data" / "data", d2r, root / "generated", (pd2_ids.IdError,))
+    except mg.MergeError as e:
+        raise MergeError(f"{e} (tools/pd2_extract.py extracts)" if "extract" in str(e) else str(e)) from e
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -130,7 +107,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     try:
         applied = merge(a.root, a.d2r)
-    except MergeError as e:
+    except (MergeError, ValueError) as e:  # ValueError: no toolkit
         print(f"pd2_merge: {e}", file=sys.stderr)
         return 1
     if cached:

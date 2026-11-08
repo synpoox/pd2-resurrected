@@ -1,7 +1,7 @@
 // The Uber Tristram primes' drop (uber_tristram.cpp).
 #pragma once
 
-#include "d2r.h"
+#include "pd2_engine.h"
 
 #include <D2RLPlugin/api.h>
 

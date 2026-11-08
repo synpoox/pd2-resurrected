@@ -36,6 +36,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Rathma and Mendeln fight by PD2's script: life events, held life, immunity, and retreat portals below 15%.
 - Mendeln, Rathma and their clones spawn in their arenas, each reached by a ghostly portal, as in PD2.
 - Diablo Clone fights in PD2's phases: three nova rounds, three skeleton waves, immune while his adds live.
+- Diablo Clone runs to the arena centre for his novas, and uber bosses left alone go idle and immune, as in PD2.
 - Diablo Clone's trapped souls rain meteors and boulders, faster and tighter by tier, and die with him.
 - Uber fight monsters scale with the key's tier, as in PD2.
 - PD2's cross-act portals (UB2 re-entry, Lucion's Temple) are visible, drawn as D2R's red portal.
@@ -65,6 +66,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Killing Horazon in a tiered map drops maps and opens a red portal to another map of that tier or the next.
 - Duplicated maps (`map_glob_extra_boss`) spawn their boss twice, as in PD2.
 - Map events Shadow of Mendeln, Dark Wanderer and Treasure Fallen spawn in tiered maps, as in PD2.
+- Shadow of Mendeln's Nihlathak sends mob waves, then casts his death nova and dies, as in PD2.
 - A dungeon or unique map's area stats (density, rarity, added monsters) now apply on all of its levels.
 - Teleport blockers in Realm of Terror, Sanctuary of Sin and the Imperial boss map stop teleports past them, as in PD2.
 - Wooded PD2 maps draw HD tree borders, and D2R-tile maps use whole D2R rooms.

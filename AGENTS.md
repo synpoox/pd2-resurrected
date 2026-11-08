@@ -31,19 +31,11 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 - Game slots (separate game copies for a test, Slot4-8 here) and how to set one up: `docs/agents/game-slots.md`.
 - `pd2_extract.py` and `pd2_merge.py` reuse the machine-wide cache in `C:\pd2r-cache` (game-slots.md, "Shared cache"):
   run them as usual, and don't copy `pd2-data/`, `generated/` or `out/` between worktrees.
-- The in-game console can toggle god mode, teleport you out of town, and spawn monsters. Use it to set up a test quickly instead of playing to the spot.
-- **Read `docs/agents/cheat-commands.md` before any in-game test.** It lists every D2RLoader console cheat command (spawn items, monsters and objects, set stats and skills, go to any level, unlock waypoints, god mode, and more). They are the fastest way to set up a test: use them instead of playing to the spot.
+- Before removing a worktree, unlink its `pd2-data`, `generated` and `out` junctions (`cmd /c rmdir <worktree>\<name>`):
+  `git worktree remove --force` follows them and empties the shared cache (`C:\pd2r-cache`, `F:\pd2r-cache`).
+- **Read `d2rAI-toolkit/knowledge/cheat-commands.md` before any in-game test.** It lists every D2RLoader console cheat command (spawn items, monsters and objects, set stats and skills, go to any level, unlock waypoints, god mode, and more) and what the item spawn lines did in game: spawn syntax and quality, `idall`, durability reading 0 after a reload, `gold`, cursor and pickup hints. Use them instead of playing to the spot.
 - **Agents may run any in-game check, console-driven or not**, but prefer the console (clicking and movement are hard for agents). If a check runs past 10 minutes with no significant progress on what it checks, the agent stops, unlocks its slot, and a new `ready-for-human` issue hands the game check to the owner, with the steps left and what the agent already verified.
-- Spawn items from the console after `debug_mode` turns cheats on. These are the lines the debug menu's Item Spawner sends; its window needs double-clicks, which the test harness cannot send. `cheat item` does nothing.
-  - A base item: `cheat spawn <item code>,inv 0` (e.g. `cheat spawn wnd,inv 0`) puts it in the inventory. Without `inv 0`, or with no room, it drops on the ground ("I am overburdened"). `typ <letter>` with a space sets the quality: `cheat spawn t11,typ m,inv 0` gives a magic map and `typ r` a rare one (D2R's own test lines use `typ m`). `typ=<letter>` did not change it in [MS5](https://github.com/synpoox/pd2-resurrected/issues/220)'s run, so read the tooltip.
-  - A unique: `cheat uniques <row>`, where the row is zero-based in the merged `uniqueitems.txt` (`out/data/global/excel/`): Gull 39, Pelta Lunata 94, Goblin Toe 110. It drops on the ground.
-  - `cheat idall` identifies every item you carry.
-- Spawned items have normal durability: a fresh Goblin Toe came at 17 of 18 and kept it through `cheat idall` and 55 attacks. But every item reads `Durability: 0` after the game is saved and loaded again, and a 0-durability item has its stats switched off. So spawn fresh items after each load, and hover them before a test.
-- An unidentified item can't be equipped ("I can't use this yet"): run `cheat idall` first.
-- A red cell behind every item in the inventory means the cursor holds an item, and tooltips don't show until you put it down.
-- Escape twice saves and exits to the character screen.
-- `cheat gold <n>` does not add gold.
-- To pick up a ground item, hold Alt so the item labels show, then click the label.
+- PD2's uniques for `cheat uniques <row>` (zero-based rows in the merged `uniqueitems.txt`, `out/data/global/excel/`): Gull 39, Pelta Lunata 94, Goblin Toe 110.
 - Always test in Hell difficulty, where monsters have enough HP to survive long enough to show what a skill does.
 - Always test on a character of level 90 or higher.
 
