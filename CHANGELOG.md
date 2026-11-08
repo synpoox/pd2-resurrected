@@ -8,6 +8,11 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 - Open wounds stacks up to three hits, and deep wounds adds to its damage.
 - The Horadric Navigator and Horadric Almanac are no longer used up.
+- Items with replenish charges (Enigma, Oath and others) regain their used charges over time.
+
+#### Uber bosses
+
+- Dclone's trapped-soul boulders hurt only through the fire they leave, not on impact.
 
 ### 0.2.0-alpha (2026-11-08)
 

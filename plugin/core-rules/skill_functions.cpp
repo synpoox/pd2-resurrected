@@ -4604,6 +4604,7 @@ const SlotFunction Functions[] = {
 	{CltDo, 122, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoPoisonDagger)), "poison dagger"},
 	{MissileSrvHit, 61, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitState)), "state hit"},
 	{MissileSrvHit, 62, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitBoltSplash)), "bolt splash"},
+	{MissileSrvHit, 64, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitUberImmolation)), "uber immolation"},
 	{SrvDo, 176, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoHolyLight)), "holy light"},
 	{SrvDo, 174, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoVengeance)), "vengeance"},
 	{MissileCltHit, 66, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitHolyLight)), "holy light"},

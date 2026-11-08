@@ -226,11 +226,19 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	}
 	if (args != nullptr && std::strncmp(args, "life ", 5) == 0) {
 		char* end = nullptr;
-		const auto percent = static_cast<int32_t>(std::strtol(args + 5, &end, 10));
-		const auto classId = static_cast<int32_t>(std::strtol(end, nullptr, 10));
-		RequestBossLife(percent, classId);
-		std::snprintf(line, sizeof(line), "%s: the next think of a ported boss%s sets its life to %d%%", PluginName,
-		              classId != 0 ? " of that class" : "", percent);
+		const long percent = std::strtol(args + 5, &end, 10);
+		const bool percentRead = end != args + 5;
+		char* classEnd = nullptr;
+		const long classId = std::strtol(end, &classEnd, 10);
+		if (!percentRead || classEnd == end || percent < 0 || percent > 100 || classId <= 0) {
+			std::snprintf(line, sizeof(line), "%s: usage: %s life <percent 0-100> <merged monstats class>", PluginName,
+			              PluginName);
+			command->plugin->WriteConsoleMessage(line);
+			return D2RL::ConsoleCommandResult::Failed;
+		}
+		RequestBossLife(static_cast<int32_t>(percent), static_cast<int32_t>(classId));
+		std::snprintf(line, sizeof(line), "%s: the next think of a ported boss of class %ld sets its life to %ld%%",
+		              PluginName, classId, percent);
 		command->plugin->WriteConsoleMessage(line);
 		plog::Info("%s", line);
 		return D2RL::ConsoleCommandResult::Handled;
@@ -344,7 +352,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	g_imageKnown = d2r::Bind(context->exeBase);
 	InstallParts(context);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand,
-	                                       "PD2 Resurrected Core Maps: every part and its counters; `life <percent> [class]` sets a ported boss's life (test aid).");
+	                                       "PD2 Resurrected Core Maps: every part and its counters; `life <percent> <class>` sets a ported boss's life (test aid).");
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {

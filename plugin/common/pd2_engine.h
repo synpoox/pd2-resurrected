@@ -224,6 +224,11 @@ inline constexpr uint64_t AreaUnits = 0x4398b0;
 inline constexpr uint32_t AreaUnitMask = 0x8583;  // PD2's and AreaKnockback's default unit mask
 // (game, unit, 0, 0, radius, &LeapKnockback, 0, &scratch): Leap's landing knockback (srvdo 77), callback 0x43a740
 inline constexpr uint64_t AreaKnockback = 0x437820;
+// srvhit 9's (Immolation Arrow, 0x45d020) helpers: (game, missile, radius, missile row, frames) creates the row at every
+// open spot within radius of the missile (frames 0 = the row's own range), and (game, missile, hit, &block) fills the
+// missile's damage into a d2r::LeapKnockback block
+inline constexpr uint64_t MissileFireDisc = 0x462b20;
+inline constexpr uint64_t MissileDamageFill = 0x465d60;
 inline constexpr uint64_t SkillMeleeHit = 0x56b170;  // (game, unit, skillId, level): Leap Attack's hit on the skill target
 inline constexpr uint64_t CltDoLeap = 0x22f9a0;  // D2R cltdo 43 (unit, skillId): Leap's client half
 inline constexpr uint64_t RemoveUnitEvent = 0x48b890;  // (game, unit, event, key): 0 for most; an item aura passes its key
@@ -438,6 +443,7 @@ inline constexpr int MonRun = 0x6a;  // int16 monstats Run: D2R's field table (0
 inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Lightning's chain range, 0 = the skill's)
 inline constexpr int MsHitPar2 = 0x74;  // int32 sHitPar2, sHitPar3 +0x78 (1.13c's 0x50 / 0x54 + 0x24)
 inline constexpr int MsHitPar3 = 0x78;
+inline constexpr int MsHitCalc1 = 0xac;  // int32 SHitCalc1 (calc index; 1.13c's 0x88 + 0x24), as srvhit 9 (0x45d020) reads it
 inline constexpr int MsCltHitPar1 = 0x90;  // int32 cHitPar1-3 (1.13c's 0x6c-0x74 + 0x24)
 inline constexpr int MsCltHitPar2 = 0x94;
 inline constexpr int MsCltHitPar3 = 0x98;
@@ -1237,6 +1243,32 @@ inline constexpr uint64_t SetItemFlag = 0x36d8f0;   // (item, flag, on): item da
 // weapons.txt and, when ethereal, times 3/2 inline: per stat 21, 22, 23, 24, 159, 160 the 16 bytes
 // lea eax,[rax+rax*2] / cdq / sub eax,edx / mov edx,<stat> / sar eax,1 / mov r8d,eax, before SetUnitStat.
 inline constexpr uint64_t DecodeEtherealDamage[] = {0x37a451, 0x37a47c, 0x37a4a7, 0x37a4d2, 0x37a4fe, 0x37a52a};
+
+// --- core-rules: replenish charges (IR5, #240; D2Game\src\Items\ItemMode.cpp) --------------------------------------
+// Decompiled for #240 (Ghidra, D2R.gpr). Item event 3 replenishes: (game, item) schedules it 2500 / stat + 1 frames on
+// for item_replenish_durability (252), unless one is pending; the equip 0x46eb00 and the durability loss 0x441b10
+// call it, each beside its replenish_quantity (253) twin 0x43eaa0. The handler (game, item, ...) adds one durability
+// or quantity (0x46f4f0) and schedules the next, at least 125 frames on.
+// mov [rsp+8],rbx / mov [rsp+0x10],rsi / push rdi / sub rsp,0x40
+inline constexpr uint64_t ScheduleReplenish = 0x43ea10;
+inline constexpr uint8_t ScheduleReplenishEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x74,
+                                                     0x24, 0x10, 0x57, 0x48, 0x83, 0xec, 0x40};
+// mov [rsp+8],rbx / mov [rsp+0x10],rbp / mov [rsp+0x18],rsi
+inline constexpr uint64_t ReplenishEvent = 0x476060;
+inline constexpr uint8_t ReplenishEventEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c,
+                                                  0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18};
+inline constexpr int UnitEventReplenish = 3;
+// How a charge use (0x4368a0) and the repair (0x46f3be) move an item_charged_skill (204) value, charges | max << 8 at
+// layer skill << TablesSkillLayerShift | level:
+// (unit, stat, out, max) -> count: the unit's full-stat entries of the stat, 8 bytes each {u16 layer, u16 stat, i32}
+inline constexpr uint64_t UnitStatEntries = 0x2f84b0;
+// (item, skill, level, &charges, &list) -> non-zero: the item's list that holds the charged skill (a D2RCore jump)
+inline constexpr uint64_t ChargedSkillList = 0x3d4950;
+inline constexpr uint64_t SetListStatOf = 0x2f7c20;  // (dataFlag, list, stat, value, layer, unit) (a D2RCore jump)
+inline constexpr uint64_t ItemOwnerId = 0x371d00;    // (item) -> the owner's unit id (item data +0xc), -1 for none
+// (client, unit, 1, stat, value, layer): sends the unit's stat to the client, as the charge use does
+inline constexpr uint64_t SendUnitStat = 0x47a190;
+inline constexpr int StatePlayerBody = 7;  // the durability step sends nothing to a player who has it
 
 // --- core-maps: the Horazon event's portal and drops (MS9, #223; D2Game\src\Items\ItemMode.cpp, Items.cpp) ----------
 // Decompiled for #223 (Ghidra, D2R.gpr). Called, not hooked.
