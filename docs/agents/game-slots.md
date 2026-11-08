@@ -39,13 +39,17 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
 - `pd2_extract.py` (no `--out`) extracts once per extract stamp into `extract\<key>\` and makes the worktree's
   `pd2-data` a junction to it. A lock lets one extract run at a time; the others wait, then skip. A worktree whose
   `pd2-data` is still a real folder keeps using it: delete that folder to share the cache.
-- `pd2_merge.py` copies `merge\<key>\` into `generated\` when merge/, tools/, the stamps and modkit match a finished
-  merge, else merges and stores the result. Don't skip the merge in a worktree: a hit takes seconds.
+- `pd2_merge.py` caches each rule on its own (#558) in `rules\<key>\`: a rule whose code, stamps and modkit match, and
+  whose inputs (every file it read, path it checked and folder it listed, under the worktree and D2R's tables) are
+  unchanged, copies what it wrote last time instead of running. So a PR that edits one rule reruns that rule and the
+  rules that read its output. Don't skip the merge in a worktree.
 - `install.ps1` (modkit install) writes only the `out\data` files that differ from the slot's and touches nothing outside
   `<slot>\mods\PD2Resurrected`, so moving a slot between builds is quick.
 - Before removing a worktree, unlink its junctions, and never delete through them: `git worktree remove --force`
   follows a junction and empties the shared cache (`C:\pd2r-cache`, or `F:\pd2r-cache` for slots on F:):
   `cmd /c rmdir <worktree>\pd2-data`, `cmd /c rmdir <worktree>\generated`, `cmd /c rmdir <worktree>\out`.
 - Never delete a cache folder another worktree's `pd2-data` points at. CI (`GITHUB_ACTIONS`) does not use these.
-- Nothing prunes the cache. Each `merge\<key>` holds about 2 GB, so the owner deletes old ones by hand while no
-  merge is running.
+- Each merge prunes the least recently used `rules\` entries until they hold `PD2R_CACHE_GB` (default 20) GB. A rule
+  run that wrote outside `generated\` (new `merge\art` PNGs) is not kept. The whole-merge `merge\<key>` folders older
+  tools kept are pruned only with `PD2R_PRUNE_LEGACY=1`: set it once no worktree runs the old tools. `extract\` is
+  never pruned.

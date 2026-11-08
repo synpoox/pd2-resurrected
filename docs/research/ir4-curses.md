@@ -38,8 +38,33 @@ necromancer curse function among them) with `0x1036d7d0`. It takes the same requ
   - curse resistance stat 109 (`curse_resistance`) shortens the duration with the same 75 cap on players; D2R refuses a
     curse at 100+ and has no cap;
   - PD2 reads the attract state but no longer refuses a curse on an attracted unit; D2R does;
-  - Dark Pact (state 196, `dark_pact`) consumes one other curse and casts a follow-up skill whose level grows with the
-    curses on the target.
+  - Dark Pact (state 196, `dark_pact`): see "Dark Pact" below ([#265](https://github.com/synpoox/pd2-resurrected/issues/265)).
+
+## Dark Pact
+
+[#265](https://github.com/synpoox/pd2-resurrected/issues/265). In `0x1036d7d0`, state 196 skips the curse gate (stat 109 and curse resistance). After the slot walk
+(count `n`, oldest timed curse) it:
+
+0. like every state on a monster, is refused first when the monster's monstats row is flagged npc (bit 8) or its
+   monstats2 row lacks revive (`0x200`), the checks D2R's NewStateList makes too (`0x433d82`-`0x433f16`); the port
+   asks them before the explosion;
+1. frees the first curse-flagged list in the chain that is not the oldest timed one (`0x1030c530`): with one timed
+   curse, none goes;
+2. returns 0 (no list) when `n < 1`;
+3. rolls the skill's elemental damage on the caster at the cast level (`0x103a2550` -> 1.13c D2Game `0x9f210`, entry
+   `0x104a96c4`; Dark Pact's EType is mag, so `+0x20`), sets hit flags 1 and result flags 5, and scales magic by
+   `(n - 1.0) * 1.1 + 1.0` (doubles `0x1044fb18` = 1.0, `0x1044fb28` = 1.1; the magic read unsigned, truncated by
+   `0x103b8a40`);
+4. searches around the target's x/y (`0x103a1450` -> D2Game `0xa0c70`, entry `0x104a93fc`) from the caster with
+   radius `calc1 + n - 1` (`0x1030ad70`, D2Common #10786 on the skill's `+0x138`, calc1: 4, "base aoe range"), unit
+   mask `0x8583`, callback `0x1030f8f0` (D2Game `0xa1210`: copy the block, area apply), so this "follow-up" is an
+   explosion, not a skill cast or missile;
+5. puts `dark_pact` on the target: below the slot count through the usual same-state check, at or above it with no
+   curse replaced.
+
+The port (core-rules `ApplyDarkPact`) does the same through D2R's ElementalDamage, AreaUnits and AreaApply, then
+ApplyCurse with every other curse hidden. Approximated (deviation list): at or above the slot count PD2 adds a second
+`dark_pact` list when one is still on the target; NewStateList refreshes the old one. Its aurastate lasts 1 frame.
 
 ## In the port
 
@@ -69,4 +94,5 @@ attract list is still there.
 
 `tests/game/core_rules_checks.py`, tag `core-rules-ir4`: `max-curses` (a curse joins only with a free slot, a full
 target loses one, and a monster holds a second curse) and `curse-resistance` (each resisted stat matches PD2's formula
-and cap), `curse-resisted-to-0`, `curse-duration` (PD2's frames and the 75 cap on a player) and `curse-attract`.
+and cap), `curse-resisted-to-0`, `curse-duration` (PD2's frames and the 75 cap on a player), `curse-attract` and `dark-pact`
+(the consumed curse, radius and scaled magic from the log).

@@ -63,11 +63,13 @@ What [WL1](https://github.com/synpoox/pd2-resurrected/issues/233) found and did 
   grimoire is a `shld`.
 - PD2 made class affixes ten times as common (frequency 1, 2, 4 -> 10, 20, 40); D2R's Warlock affixes take the same
   (the patch).
-- PD2 added, for each other class, +1 class skills on body armor, shields and helms, and two kinds with `rare` 3
-  (what PD2 does with 3 is not traced): +2 class skills on the same, and +3 to each tree on the class's items.
-  What `rare` 3 means is not traced; it could be worth tracing some day. The lead: ProjectDiablo.dll's affix picker
-  (rva `0x389080`) branches on `rare` 0-3 against a value that looks like the item's quality, so 3 may limit an
-  affix to one quality. The Warlock gets the same five rows, the
+- PD2 added, for each other class, +1 class skills on body armor, shields and helms, and two kinds with `rare` 3:
+  +2 class skills on the same, and +3 to each tree on the class's items. `rare` 3 means rare items only
+  ([#254](https://github.com/synpoox/pd2-resurrected/issues/254)): ProjectDiablo.dll's affix picker (rva `0x389080`,
+  its quality from D2Common #10106; asm `0x3892c1`-`0x38934c`) takes `rare` 0 on no rare, crafted or tempered item
+  (quality 6, 8, 9), 1 on any, 2 on no crafted or tempered item (no PD2 row has 2), and 3 on quality 6 only. D2R
+  reads the column as a flag (`0x58c940`), so core-rules refuses 2 and 3 where PD2 does (`loot_rules.cpp`,
+  `docs/core-rules.md`). The Warlock gets the same five rows, the
   tree ones on daggers and grimoires as its other tree affixes, at ids 1042-1046 (the `+` lines in
   `merge/ids-magicprefix.tsv`).
 - PD2's grand-charm skillers also roll on the PvP charm (`lchp`); PvP is cut, so the Warlock's don't.

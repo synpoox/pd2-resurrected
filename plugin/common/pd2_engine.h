@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 namespace d2r::rva {
 
@@ -1208,6 +1209,14 @@ inline constexpr int SoundChestOpen = 0xb;
 inline constexpr uint64_t ItemApplyEthereal = 0x3d3510;
 inline constexpr uint8_t ItemApplyEtherealEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x57, 0x48, 0x83,
                                                      0xec, 0x20, 0x48, 0x8b, 0xd9, 0x48, 0x85, 0xc9};
+// (item, affix record) -> non-zero when the magicprefix/suffix record may roll on the item (item types, level 100+
+// rules); both affix pickers (0x58c940, 0x58ce80) call it for each candidate, after the picker's own `rare` test
+// (record +0x64, a flag in D2R: 0 bars quality 6, 8 and 9). Ghidra, D2R.gpr (#254).
+// mov [rsp+8],rbx / mov [rsp+0x10],rbp / mov [rsp+0x18],rsi / mov [rsp+0x20],rdi
+inline constexpr uint64_t AffixAllowed = 0x3d4220;
+inline constexpr uint8_t AffixAllowedEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10,
+                                                0x48, 0x89, 0x74, 0x24, 0x18, 0x48, 0x89, 0x7c, 0x24, 0x20};
+inline constexpr int AffixRare = 0x64;  // uint8 magicprefix/suffix `rare`
 inline constexpr uint64_t UnitBaseStat = 0x2f48c0;  // (unit, stat, layer) -> the value on the unit's base list
 inline constexpr uint64_t SetItemFlag = 0x36d8f0;   // (item, flag, on): item data +0x18 flags (0x400000 ethereal)
 // The item decoder (0x378860, D2Common Items.cpp; client packets and save loads) resets a weapon's base damage from
@@ -1308,6 +1317,15 @@ inline void ReleaseDamage(LeapKnockback& damage) noexcept {
 	if (static_cast<int64_t>(damage.listCapacity) >= 0) {
 		release(damage.listData);
 	}
+}
+
+// Copies a rolled block's plain fields (all but the list at 0x40 and the tagged object at 0x158) into a fresh one:
+// ElementalDamage (0x437d00) writes only 0x0c-0x3c and 0x118-0x144, and never the flags.
+inline void CopyRolled(const LeapKnockback& from, LeapKnockback& to) noexcept {
+	const auto* src = reinterpret_cast<const uint8_t*>(&from);
+	auto* dst = reinterpret_cast<uint8_t*>(&to);
+	std::memcpy(dst, src, offsetof(LeapKnockback, listData));
+	std::memcpy(dst + offsetof(LeapKnockback, pad118), src + offsetof(LeapKnockback, pad118), sizeof(from.pad118));
 }
 
 }  // namespace d2r

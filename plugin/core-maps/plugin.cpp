@@ -27,6 +27,7 @@
 #include "prime_minions.h"
 #include "rathma_ai.h"
 #include "guardian_ai.h"
+#include "map_boss_ai.h"
 #include "rathma.h"
 #include "rathma_life.h"
 #include "uber_tristram.h"
@@ -156,6 +157,12 @@ void InstallGuardian(const D2RL::PluginContext* context, char* report, size_t si
 	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
 }
 
+void InstallMapBossAiPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallMapBossAi(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/3 installed: %s", installed, rules);
+}
+
 void InstallZharPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
 	const int installed = InstallZhar(context, rules, sizeof(rules));
@@ -184,6 +191,7 @@ Part g_parts[] = {
 	{"rathmalife", InstallRathmaLifePart, ""},
 	{"dcloneai", InstallDclone, ""},
 	{"guardianai", InstallGuardian, ""},
+	{"mapbossai", InstallMapBossAiPart, ""},
 	{"zhar", InstallZharPart, ""},
 };
 
@@ -283,6 +291,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	GuardianAiCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	MapBossAiCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
