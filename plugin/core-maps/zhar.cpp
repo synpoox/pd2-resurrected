@@ -296,15 +296,6 @@ auto ReadTome(Game* game, Unit* player, Unit* tome) noexcept -> int32_t {
 	return 1;
 }
 
-// The argument block D2R's operate dispatcher 0x592c40 passes an operate function (map_open.cpp's)
-struct ObjectOperate {
-	Game* game;
-	Unit* object;
-	Unit* player;
-	uint64_t seed;
-	int32_t classId;
-};
-
 // PD2 0x103aa670
 auto OperateZhar(ObjectOperate* args) noexcept -> int32_t {
 	using namespace d2r::rva;
