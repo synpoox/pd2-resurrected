@@ -8,6 +8,7 @@
 // (<game>\d2rloader\config\core-maps-off.txt), which leaves listed parts out to bisect a crash.
 #include <D2RLPlugin/api.h>
 
+#include "ai_hooks.h"
 #include "crash_guard.h"
 #include "cube_ops.h"
 #include "entity_pool.h"
@@ -37,6 +38,8 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #ifndef CORE_PLUGIN_NAME
 #define CORE_PLUGIN_NAME "core-maps"
@@ -217,6 +220,21 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 		return D2RL::ConsoleCommandResult::Failed;
 	}
 	char line[2500];
+	const char* args = command->args;
+	while (args != nullptr && *args == ' ') {
+		++args;
+	}
+	if (args != nullptr && std::strncmp(args, "life ", 5) == 0) {
+		char* end = nullptr;
+		const auto percent = static_cast<int32_t>(std::strtol(args + 5, &end, 10));
+		const auto classId = static_cast<int32_t>(std::strtol(end, nullptr, 10));
+		RequestBossLife(percent, classId);
+		std::snprintf(line, sizeof(line), "%s: the next think of a ported boss%s sets its life to %d%%", PluginName,
+		              classId != 0 ? " of that class" : "", percent);
+		command->plugin->WriteConsoleMessage(line);
+		plog::Info("%s", line);
+		return D2RL::ConsoleCommandResult::Handled;
+	}
 	char image[200];
 	build_guard::Describe(image, sizeof(image), build_guard::ImageStamp(static_cast<uintptr_t>(g_context->exeBase)), D2RL::GetBuildVersion(g_context));
 	std::snprintf(line, sizeof(line), "%s %s | %s | mod %s | file %s", PluginName, PluginVersion, image,
@@ -326,7 +344,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	g_imageKnown = d2r::Bind(context->exeBase);
 	InstallParts(context);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand,
-	                                       "PD2 Resurrected Core Maps: every part and its counters.");
+	                                       "PD2 Resurrected Core Maps: every part and its counters; `life <percent> [class]` sets a ported boss's life (test aid).");
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
