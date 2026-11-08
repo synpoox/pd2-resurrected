@@ -208,10 +208,14 @@ controller, spawner and adds. So a boss left alone, or pulled out of every playe
   unit for auralencalc frames, and never runs its srvdo 169 (#474). From stage 6 the survivor's AI repeats it while it
   lacks state 103 (`monfrenzy`). When the second clone dies (6 -> 7),
   every void knight, golem and totem in the level is killed.
-- **Shared life:** in PD2's damage code (`0x10302ca0`), when a clone (935 or 936) takes damage and both boss slots are
-  set, the other clone loses the same life (stat 6), unless it is dead or dying or has state 8. Life-drain damage (stat
-  74, `0x103055b0`) is mirrored the same way through `0x10305460`. The damage is copied, not halved: the wiki's
-  "halved" is not in this code.
+- **Shared life** (read again for [#475](https://github.com/synpoox/pd2-resurrected/issues/475)): PD2's damage-type
+  step (`0x10302ca0`, in place of 1.13c's `0x6fcfbd00`; D2Game's table of 12 types at `0x6fd22ab0`) runs after the
+  resists. When a clone (935 or 936) takes one of the 9 flagged types (physical, fire, lightning, cold, magic, poison
+  and the three leeches; table field 8), both boss slots are set, and the other clone is not in mode 0 or 12, the
+  hit's damage of that type is halved (`0x1037c4c0` with 50 / 100: the double at `0x1044fc08` is 50.0). Unless the other
+  clone has state 8, it loses that half from its life (stat 6, not below 0). So the wiki's "halved" is right: each
+  clone takes half. Poison (stat 74 at -rate, `0x103055b0`) puts the same rate and length on the other clone through
+  `0x10305460`, under the same slot and mode tests, without the state 8 one.
 - Adds: each tick it checks whether void knights (968, 969, 1106, 1107) and the blood golem (938) are alive. That gates
   which skills are used.
 
