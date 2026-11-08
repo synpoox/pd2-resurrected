@@ -97,6 +97,7 @@ auto ScaleUberMonster(Game* game, Unit* monster) noexcept -> void {
 		setUnit(monster, StatLife, scaled, 0);
 	}
 	d2r::Engine<void (*)(Unit*, void*, int32_t) noexcept>(AttachStatList)(monster, list, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(monster, ScalingState, 1);  // AttachStatList does not (#630)
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(monster, ScalingState, 1);
 	plog::Info("uber scaling: monster %d (unit %d) in level %d, tier %d, entries %d%s: maxhp %d -> %d, life %d -> %d, "
 	           "skills +%d, absorbs %d/%d, dr %d, plr %d",
