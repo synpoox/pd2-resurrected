@@ -7,6 +7,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 #### Items
 
 - Open wounds stacks up to three hits, and deep wounds adds to its damage.
+- Items with replenish charges (Enigma, Oath and others) regain their used charges over time.
 
 ### 0.2.0-alpha (2026-11-08)
 
