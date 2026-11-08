@@ -28,3 +28,8 @@ auto MarkBossAlone(d2r::Unit* boss) noexcept -> void;
 // True while the game's window runs. A boss passes itself (to start the window it was marked for) and whether a player
 // is in its level (the window counts down only then); the fight's other AIs pass null and false, and only read it.
 auto IdleWindow(d2r::Game* game, d2r::Unit* boss, bool playerInLevel) noexcept -> bool;
+
+// The state half of PD2's boss immunity (0x10380770): strips up to 20 stat lists each of poison (2) and open wounds
+// (62) on every immune call, and sets or clears state 8 (resistall) only when the caller asks (PD2's third argument:
+// Lucion's idle window pushes 1, his portal phase 0). Returns the number of lists stripped.
+auto ImmunityStates(d2r::Game* game, d2r::Unit* unit, bool on, bool setState) noexcept -> int;
