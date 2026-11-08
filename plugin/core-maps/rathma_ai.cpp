@@ -187,7 +187,7 @@ auto ApplyAuraState(Game* game, Unit* owner, Unit* unit, int32_t skillId, int32_
 	// flags stand, as for the uber scaling and map stat lists
 	d2r::Engine<void (*)(Unit*, void*, const uint8_t*, int32_t, int32_t) noexcept>(AddAuraStats)(unit, list, skill,
 	                                                                                           skillId, level);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, state, 1);
 	return true;
 }
 

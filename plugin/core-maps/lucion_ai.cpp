@@ -182,9 +182,9 @@ auto SetShroud(Game* game, Unit* unit, bool on) noexcept -> void {
 		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(
 			d2r::DataFlag(game), list, StatLightRadius, -100, 0);
 		d2r::Engine<void (*)(Unit*, void*, int32_t) noexcept>(AttachStatList)(unit, list, 1);
-		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, StateInvis, 1);
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, StateInvis, 1);
 	} else if (!on && list != nullptr) {
-		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, StateInvis, 0);
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(unit, StateInvis, 0);
 		d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
 		d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(d2r::DataFlag(game), list);
 	} else {

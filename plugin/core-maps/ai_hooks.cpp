@@ -148,7 +148,12 @@ auto ImmunityStates(d2r::Game* game, d2r::Unit* unit, bool on, bool setState) no
 	constexpr int32_t StateResistAll = 8;
 	constexpr int32_t StripStates[] = {2, 62};  // poison, openwounds
 	if (setState) {
-		d2r::Engine<void (*)(d2r::Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, StateResistAll, on ? 1 : 0);
+		// A bare state: SetStateBit is the bit UnitHasState reads (Rathma's shared life skips a resist_all partner),
+		// SetStateGfxFlag after it on 1, as D2R's 0x56bfe0 (#623)
+		d2r::Engine<void (*)(d2r::Unit*, int32_t, int32_t) noexcept>(SetStateBit)(unit, StateResistAll, on ? 1 : 0);
+		if (on) {
+			d2r::Engine<void (*)(d2r::Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, StateResistAll, 1);
+		}
 	}
 	int stripped = 0;
 	if (!on) {
@@ -161,7 +166,7 @@ auto ImmunityStates(d2r::Game* game, d2r::Unit* unit, bool on, bool setState) no
 			if (list == nullptr) {
 				break;
 			}
-			d2r::Engine<void (*)(d2r::Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, s, 0);
+			d2r::Engine<void (*)(d2r::Unit*, int32_t, int32_t) noexcept>(SetStateBit)(unit, s, 0);
 			d2r::Engine<void (*)(d2r::Unit*, void*) noexcept>(DetachStatList)(unit, list);
 			d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
 			++stripped;
