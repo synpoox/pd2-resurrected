@@ -5,6 +5,7 @@
 
 #include "log.h"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstring>
@@ -29,6 +30,28 @@ struct Row {
 // Filled at install, before the game runs a think; read-only after
 Row g_rows[MaxRows];
 
+// The test aid's request (RequestBossLife): -1 for none
+std::atomic<int32_t> g_lifePercent {-1};
+std::atomic<int32_t> g_lifeClass {0};
+
+// Sets a ported boss's life on its own think, on the server thread, so the console thread never writes a unit
+auto ApplyLifeRequest(Unit* unit, int32_t classId) noexcept -> void {
+	const int32_t want = g_lifeClass.load();
+	if (g_lifePercent.load() < 0 || (want != 0 && want != classId)) {
+		return;
+	}
+	const int32_t percent = g_lifePercent.exchange(-1);
+	if (percent < 0) {
+		return;
+	}
+	const int64_t max = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::UnitMaxLife)(unit);
+	const auto life = static_cast<int32_t>(std::max<int64_t>(256, max * percent / 100));
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(d2r::rva::SetUnitStat)(unit, d2r::rva::StatLife,
+	                                                                                      life, 0);
+	plog::Info("ai hooks: test aid: class %d unit %u life set to %d%% (%d of %lld)", classId,
+	           At<uint32_t>(unit, d2r::rva::UnitIdField), percent, life, static_cast<long long>(max));
+}
+
 template <int K>
 void Trampoline(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	const Row& r = g_rows[K];
@@ -36,6 +59,7 @@ void Trampoline(Game* game, Unit* unit, uint8_t* tick) noexcept {
 		const int32_t classId = At<int32_t>(unit, d2r::rva::UnitClassId);
 		for (int i = 0; i < r.count; ++i) {
 			if (r.classes[i] == classId) {
+				ApplyLifeRequest(unit, classId);
 				r.thinks[i](game, unit, tick);
 				return;
 			}
@@ -90,6 +114,11 @@ auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, uint6
 	++r.count;
 	plog::Info("ai hooks: monai %d class %d -> port", monaiRow, classId);
 	return true;
+}
+
+auto RequestBossLife(int32_t percent, int32_t classId) noexcept -> void {
+	g_lifeClass.store(classId);
+	g_lifePercent.store(std::clamp(percent, 0, 100));
 }
 
 auto VanillaAiThink(int32_t monaiRow) noexcept -> AiThinkFn {
