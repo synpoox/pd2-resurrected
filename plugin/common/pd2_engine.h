@@ -1250,6 +1250,14 @@ inline constexpr uint8_t WeaponDurabilityPd2[] = {2, 5};
 // weapons.txt and, when ethereal, times 3/2 inline: per stat 21, 22, 23, 24, 159, 160 the 16 bytes
 // lea eax,[rax+rax*2] / cdq / sub eax,edx / mov edx,<stat> / sar eax,1 / mov r8d,eax, before SetUnitStat.
 inline constexpr uint64_t DecodeEtherealDamage[] = {0x37a451, 0x37a47c, 0x37a4a7, 0x37a4d2, 0x37a4fe, 0x37a52a};
+// The Chaos Sanctuary sweep (0x5e5990, D2Game\src\Quests\a4q2.cpp; 1.13c's D2Game +0xbb3b0): once the fifth seal
+// opens, it kills every monster but Diablo (243) in level 108's rooms, each through rva::ModeCmdInit (unit, 0, &cmd)
+// at 0x5e5a8c, then rva::ModeCmdRun. PD2 redirects 1.13c's kill call (+0xbb4b8) to 0x10372e10, which sets the
+// unit's no-treasure-class flag (rva::UnitNoDrop) first. Ghidra, D2R.gpr and PD2.gpr (#664).
+inline constexpr uint64_t SealSweepKillReturn = 0x5e5a91;
+// mov [rsp+0x20],rbx / push rbp / push rsi / push rdi / sub rsp,0x20 / mov rdi,r8
+inline constexpr uint8_t ModeCmdInitEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x20, 0x55, 0x56, 0x57,
+                                               0x48, 0x83, 0xec, 0x20, 0x49, 0x8b, 0xf8};
 
 // --- core-rules: replenish charges (IR5, #240; D2Game\src\Items\ItemMode.cpp) --------------------------------------
 // Decompiled for #240 (Ghidra, D2R.gpr). Item event 3 replenishes: (game, item) schedules it 2500 / stat + 1 frames on
