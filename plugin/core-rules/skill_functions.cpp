@@ -4013,6 +4013,160 @@ auto SrvStCycler(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	return 1;
 }
 
+// One monster for PD2's summons (0x1038a170 with a spot search, 0x1038a0d0 without), mode 1 (neutral), at x/y in the
+// room holding x/y (room follows it). D2R native calls: PluginSDK has no server-side monster spawn (its Encounters
+// service only runs the console's test spawn for a client), so this calls D2R's RoomAtXY, FindFreeSpot and SpawnMonster.
+// Flags 0x42 are what D2R's own spawns and core-maps pass to SpawnMonster; PD2's 0xc is not a spawn flag but an
+// argument of its spot search (0x10389c20), and its spawn (0x1038a060) passes fixed flags to D2Game.
+// shortcut: D2R's portal spot search stands in for PD2's 0x10389c20, as core-maps' map events do; PD2's 0x3000000 unit
+// flags and its D2Game call on each spawn (0x103a1eb0) are left out, as their meaning is unread
+// FindFreeSpot's other arguments, as D2R's red portal (OpenRedPortal) passes them; the names are guesses, unread
+constexpr uint32_t SpotSize = 3, SpotMask = 0x400;
+constexpr uint64_t SpotRings = 5;
+constexpr int32_t SpotTries = 100;
+constexpr int16_t SpawnFlags = 0x42;
+
+auto SummonAt(Game* game, void*& room, int32_t x, int32_t y, int32_t mon, bool search = true) noexcept -> Unit* {
+	using namespace d2r::rva;
+	void* at = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(room, x, y);
+	if (at == nullptr) {
+		return nullptr;
+	}
+	room = at;
+	int32_t xy[2] = {x, y};
+	void* found = at;
+	if (search) {
+		found = nullptr;
+		d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(
+			FindFreeSpot)(game, room, xy, SpotSize, SpotMask, &found, SpotRings, SpotTries);
+	}
+	return found == nullptr ? nullptr
+		: d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(SpawnMonster)(
+			game, found, xy[0], xy[1], mon, 1, -1, SpawnFlags);
+}
+
+// RathmaSummon (PD2 srvdofunc 179, ProjectDiablo.dll 0x103b42a0): what Rathma's AI picked (stat 447, here 500, which
+// core-maps' rathma_ai.cpp sets before the cast) spawns, around the caster at +-20 unless noted:
+//   30 void golems (937): 10 / 8 / 6 / 4 below 31 / 51 / 71 / 101 % life, 40 failed spots at most
+//   31 four blood golems (938) at the stage's spot (0x103567d0) -25 x, -25 y, +23 x, +25 y: only the first takes the
+//      spot search (0x1038a170), the other three spawn on their cell (0x1038a0d0, forced)
+//   32 one totem (939), 20 failed spots at most
+//   33 void knights cold, fire, poison, then phys, fire, cold below 31 %, phys, poison below 51 %, fire to 70 %: each
+//      takes the first free spot, 40 failed spots for the whole list
+// Pick 30 is dead code in PD2 as well: its Rathma AI (0x10358510) never enters state 0x1e, so the port's never does.
+// PD2 spawns no spire here.
+std::atomic<uint32_t> g_rathmaSummons {0};
+constexpr int32_t StatRathmaPick = 500;               // mon_cooldown2 (PD2 447)
+constexpr uint32_t RathmaStageKey = 0x55425247;       // 'UBRG', core-maps' stage counter (PD2 game +0x262a)
+constexpr int32_t VoidGolem = 954, BloodGolem = 955, RathmaTotem = 956;  // merged ids (PD2 937-939)
+// merged ids of the void knights (PD2 968, 969, 1106, 1107)
+constexpr int32_t KnightPoison = 985, KnightFire = 986, KnightCold = 1123, KnightPhys = 1124;
+constexpr int32_t RathmaSpread = 20;  // the spots: caster +-20
+
+// PD2 0x103567d0: the stage's spot. PD2's case 31 returns 0 on a zero spot, which 0x103567d0 gives only with no game,
+// and the cast already returns on that
+constexpr auto RathmaSpot(int32_t stage) noexcept -> std::pair<int32_t, int32_t> {
+	return stage < 3 ? std::pair {0x476c, 0x35bf} : stage < 5 ? std::pair {0x47d3, 0x394b} : std::pair {0x4e9a, 0x1403};
+}
+
+// PD2's case 30 count by life percent
+constexpr auto VoidGolemCount(int32_t life) noexcept -> int32_t {
+	return life < 31 ? 10 : life < 51 ? 8 : life < 71 ? 6 : 4;
+}
+static_assert(VoidGolemCount(30) == 10 && VoidGolemCount(50) == 8 && VoidGolemCount(70) == 6 && VoidGolemCount(71) == 4);
+
+// PD2's case 33 list by life percent
+auto VoidKnightList(int32_t life, int32_t* out) noexcept -> int {
+	int n = 0;
+	for (int32_t id : {KnightCold, KnightFire, KnightPoison}) {
+		out[n++] = id;
+	}
+	if (life < 31) {
+		for (int32_t id : {KnightPhys, KnightFire, KnightCold}) {
+			out[n++] = id;
+		}
+	} else if (life < 51) {
+		out[n++] = KnightPhys;
+		out[n++] = KnightPoison;
+	} else if (life <= 70) {
+		out[n++] = KnightFire;
+	}
+	return n;
+}
+
+auto SrvDoRathmaSummon(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	// shortcut: PD2 also needs the game's area type to be Rathma's (game +0x1df4 == 0x2b), which the port does not keep
+	// (docs/deviations.md); only the Rathma group has the skill
+	int32_t x = 0, y = 0;
+	if (game == nullptr || unit == nullptr || d2r::api.getSkillRecord(d2r::DataFlag(game), skillId) == nullptr ||
+	    !d2r::UnitXY(unit, &x, &y)) {
+		return 0;
+	}
+	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit);
+	if (room == nullptr) {
+		return 0;
+	}
+	d2r::api.setUnitSkillFlag(unit, 1);
+	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	const int32_t life = LifePercent(unitStat(unit, StatLife, 0), unitStat(unit, StatMaxLife, 0));
+	const int32_t pick = unitStat(unit, StatRathmaPick, 0);
+	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit);
+	// shortcut: the spots roll the caster's seed, where PD2 calls the C runtime's rand(); the spread is the same
+	const auto near = [&](int32_t c) {
+		return c - RathmaSpread + static_cast<int32_t>(d2r::RandomBelow(seed, 2 * RathmaSpread));
+	};
+	int32_t wanted = 0, spawned = 0, failed = 0;
+	// count of mon near the caster, giving up after tries failed spots
+	const auto spawnNear = [&](int32_t mon, int32_t count, int32_t tries) {
+		for (wanted = count; spawned < wanted && failed < tries;) {
+			const int32_t sx = near(x), sy = near(y);
+			SummonAt(game, room, sx, sy, mon) != nullptr ? ++spawned : ++failed;
+		}
+	};
+	switch (pick) {
+	case 30:
+		spawnNear(VoidGolem, VoidGolemCount(life), 40);
+		break;
+	case 32:
+		spawnNear(RathmaTotem, 1, 20);
+		break;
+	case 31: {
+		uint32_t key = RathmaStageKey;
+		const auto [cx, cy] = RathmaSpot(*d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(GameCounter)(
+			reinterpret_cast<uint8_t*>(game) + GameCounters, &key));
+		wanted = 4;
+		bool search = true;  // the first golem only
+		for (const auto& [sx, sy] : {std::pair {cx - 25, cy}, {cx, cy - 25}, {cx + 23, cy}, {cx, cy + 25}}) {
+			SummonAt(game, room, sx, sy, BloodGolem, search) != nullptr ? ++spawned : ++failed;
+			search = false;
+		}
+		break;
+	}
+	case 33: {
+		int32_t list[6] = {};
+		wanted = VoidKnightList(life, list);
+		for (int i = 0; i < wanted; ++i) {
+			for (; failed < 40; ++failed) {
+				const int32_t sx = near(x), sy = near(y);
+				if (SummonAt(game, room, sx, sy, list[i]) != nullptr) {
+					++spawned;
+					break;
+				}
+			}
+		}
+		break;
+	}
+	default:
+		return 0;  // PD2 too
+	}
+	if (plog::Sample(g_rathmaSummons)) {
+		plog::Info("rathma summon: skill %d level %d: pick %d, life %d%%: spawned %d of %d (%d failed spots), cast %u",
+		           skillId, level, pick, life, spawned, wanted, failed, g_rathmaSummons.load());
+	}
+	return 1;
+}
+
 // UberDiabSummon (PD2 srvdofunc 177, ProjectDiablo.dll 0x103b3e10): Dclone's skeleton waves around his arena's centre.
 // Each wave whose threshold (Param4-6) is above the caster's life percent spawns calc1-3 monsters: the skill's summon,
 // then summon + 1, then summon + 2 + rand % 4. Dclone's AI casts it at phases 1, 3 and 5 (#470).
@@ -4029,10 +4183,9 @@ auto SrvDoUberDiabSummon(Game* game, Unit* unit, int32_t skillId, int32_t level)
 	if (summon < 0 || room == nullptr) {
 		return 0;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitSkillFlag)(unit, 1);
+	d2r::api.setUnitSkillFlag(unit, 1);
 	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
-	const int64_t max = unitStat(unit, StatMaxLife, 0);
-	const int32_t life = max > 0 ? static_cast<int32_t>(int64_t {unitStat(unit, StatLife, 0)} * 100 / max) : 0;
+	const int32_t life = LifePercent(unitStat(unit, StatLife, 0), unitStat(unit, StatMaxLife, 0));
 	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit);
 	const int32_t counts[] = {d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level),
 	                          d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level),
@@ -4042,22 +4195,10 @@ auto SrvDoUberDiabSummon(Game* game, Unit* unit, int32_t skillId, int32_t level)
 	for (int wave = 0; wave < 3; ++wave) {
 		for (int32_t failed = 0; life < below[wave] && spawned[wave] < counts[wave] && failed < WaveTries;) {
 			// PD2's spot: rand % 50 + 0x3b00 by rand % 50 + 0x197b, then its free-spot search
-			int32_t xy[2] = {DcloneArenaX - 25 + static_cast<int32_t>(d2r::RandomBelow(seed, 50)),
-			                 DcloneArenaY - 25 + static_cast<int32_t>(d2r::RandomBelow(seed, 50))};
+			const int32_t sx = DcloneArenaX - 25 + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
+			const int32_t sy = DcloneArenaY - 25 + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
 			const int32_t mon = wave < 2 ? summon + wave : summon + 2 + static_cast<int32_t>(d2r::RandomBelow(seed, 4));
-			void* at = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(room, xy[0], xy[1]);
-			void* found = nullptr;
-			// shortcut: D2R's portal spot search stands in for PD2's 0x10389c20, as core-maps' map events do; and PD2's
-			// 0x3000000 unit flags and its D2Game call on each spawn (0x103a1eb0) are not set, as their meaning is unread
-			if (at != nullptr) {
-				room = at;
-				d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(
-					FindFreeSpot)(game, room, xy, 3, 0x400, &found, 5, 100);
-			}
-			Unit* spawn = found == nullptr ? nullptr
-				: d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
-					SpawnMonster)(game, found, xy[0], xy[1], mon, 1, -1, 0x42);  // mode 1: neutral
-			spawn == nullptr ? ++failed : ++spawned[wave];
+			SummonAt(game, room, sx, sy, mon) == nullptr ? ++failed : ++spawned[wave];
 		}
 	}
 	// every cast: Dclone casts it three times a fight, and Sample would log only the first
@@ -4509,6 +4650,9 @@ const SlotFunction Functions[] = {
 	{SrvSt, 71, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvStUberDiabRun)), "uberdiabrun start"},
 	{MissileSrvHit, 67, reinterpret_cast<const void*>(static_cast<MissileSrvHitFn>(SrvHitSummon)), "summon"},
 	{SrvDo, 177, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoUberDiabSummon)), "uber diablo summon"},
+	// Rathma (UB5): srvdo 179 and dmg 18 are free in D2R
+	{SrvDo, 179, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoRathmaSummon)), "rathma summon"},
+	{MissileSrvDmg, 18, reinterpret_cast<const void*>(static_cast<MissileSrvDmgFn>(SrvDmgRathmaSpear)), "rathma bone spear"},
 };
 
 }  // namespace

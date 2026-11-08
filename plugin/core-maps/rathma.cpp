@@ -8,14 +8,16 @@
 //
 // Deaths, on key_drops' monster-death listener (the SDK's): Mendeln (0x10376760) and Rathma (0x103767d0), when killed
 // before their retreat, set the stage to 2 or 4 and open a ghostly portal at their spot to the next level. The first
-// clone's death (0x10376840) sets stage 6, from which the survivor's AI takes RathmaDeath's buff; the second's sets 7,
-// kills the void knights, golems and totem, drops the Tainted Worldstone Shard, rolls 1 in (50 - 6 x tier) for an
-// unlimited tome or key and, at tiers 1-2, 1 in 200 for one of three uniques, and opens a gold portal to Harrogath.
+// clone's death (0x10376840) sets stage 6 and the survivor casts RathmaDeath's buff through PD2's helper 0x1036d7d0
+// (its AI keeps it on); the second's sets 7, kills the void knights, golems and totem, drops the Tainted Worldstone
+// Shard, rolls 1 in (50 - 6 x tier) for an unlimited tome or key and, at tiers 1-2, 1 in 200 for one of three uniques
+// (all at item level 130), and opens a gold portal to Harrogath.
 #include "rathma.h"
 
 #include "log.h"
 #include "map_open.h"
 #include "rathma_ai.h"
+#include "uber_drops.h"
 
 #include <D2RLPlugin/item.h>
 
@@ -191,19 +193,12 @@ auto OpenNextLevelPortal(Game* game, Unit* monster, Spot at, int32_t level) noex
 	}
 }
 
-// shortcut: the item takes the monster's item level, where PD2 makes these at 130; set it if a unique ever fails
-// to drop for its level (the three are level 131)
+// PD2 makes these at item level 130 (the three uniques are level 131)
+constexpr int32_t DropLevel = 130;
 auto Drop(Game* game, Unit* monster, uint32_t code, int32_t quality, int32_t uniqueRow) noexcept -> void {
-	using namespace d2r::rva;
-	const uint8_t dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
-	const int32_t row = d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(dataFlag, code);
-	if (row < 0) {
-		plog::Warn("rathma: no item \"%.4s\"", reinterpret_cast<const char*>(&code));
-		return;
+	if (!DropUniqueAt(game, monster, code, uniqueRow, DropLevel, quality)) {
+		plog::Warn("rathma: %.4s did not drop at item level %d", reinterpret_cast<const char*>(&code), DropLevel);
 	}
-	d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(DropItemAt)(
-		game, monster, row, quality, uniqueRow + 1, 0);
-	plog::Info("rathma: dropped %.4s", reinterpret_cast<const char*>(&code));
 }
 
 // PD2 0x10376840, stage 6 -> 7
@@ -254,6 +249,9 @@ auto RathmaDeath(Game* game, Unit* monster) noexcept -> void {
 	if (stage != before) {
 		++g_stages;
 		plog::Info("rathma: stage %d -> %d (class %d died)", before, stage, classId);
+		if (stage == 6) {
+			BuffRathmaSurvivor(game, monster);
+		}
 		if (stage == 7) {
 			PairDead(game, monster);
 		}
