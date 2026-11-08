@@ -131,8 +131,13 @@ and `cheat killmonster` once per zombie (`cheat monster dead zombie1` crashes th
 owner's life or mana is below the maximum, and god mode keeps both full: `cheat god 0`, summon both vines by the
 corpses (D2R names them Carrion Vine and Solar Creeper), then `cheat depletehealth 10` and `cheat depletemana 10`.
 Mana regenerates in seconds, so repeat `cheat depletemana 10` every second or two until a VineCycler (325) line shows.
-Then `cheat god 1`, `cheat mspawn torajanBoss,1` (his nest lays eggs that nova and hatch) and `cheat mspawn leoricMapBoss,1` (his orbs raise leoricGuards where they land), let them cast a while, and run the
-same command with core-rules-w36.
+Then `cheat god 1`, `cheat mspawn torajanBoss,1` (his nest lays eggs that nova and hatch) and
+`cheat mspawn GuardianOfFate,1` (core-maps' guardian AI, #609, casts GuardianOfFateSummon within seconds; its missile
+raises a GuardianOfFateClone where it lands), let them cast a while, and run the same command with core-rules-w36.
+Leoric, the Siege Beast, Sharptooth and Iskatu do not cast their summon skills yet: PD2 gives them its own thinks
+(ProjectDiablo.dll 0x10361150 fills monai rows 114, 115, 120 and 53), which the port has not ported (#624), so they run
+D2R's think for their row. A raised minion drops nothing and gives no experience (Slot7, #269); in Hell PD2's minion
+rows already have no treasure class and, but for IskatuVermin, no experience, so the flags matter mostly below Hell.
 
 P12 checks (tag core-rules-p12), same merged data: a level 90+ Sorceress in Hell (`debug_mode`, `cheat uniques 358`
 drops Ormus' Robes; `cheat idall`, then run the same command with core-rules-p12. Its procs are the Cast Triggers
@@ -1497,7 +1502,7 @@ def summon_hit(ctx):
     found = re.findall(r"summon hit: missile (\d+): monster (\d+) mode \d+ (spawned|not spawned), flags 0x([0-9a-f]+)",
                        _log(ctx))
     if not found:
-        ctx.skip("no summon hit in the log yet (`cheat mspawn leoricMapBoss,1` and let him cast)")
+        ctx.skip("no summon hit in the log yet (`cheat mspawn GuardianOfFate,1` and let it cast)")
     spawned = 0
     for missile, mon, state, flags in found:
         assert SUMMON_HITS.get(int(missile)) == int(mon), f"missile {missile} spawned monster {mon}"
