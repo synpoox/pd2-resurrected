@@ -13,7 +13,7 @@ A scan of `ProjectDiablo.dll` for each stat id pushed as a constant:
 | `item_crit_chance` (258), `item_maxdeadlystrike` (210) | `0x10304710` (the roll) |
 | `item_crit_multiplier` (256), `item_ds_multiplier` (257) | `0x103047f0` (the multiplier) |
 | `item_crushingblow_efficiency` (268) | `0x103469a0` (event 16, [w19](w19-holy-sword-smite.md)), `0x102b3c70` |
-| `openwounds_stack` (189), `deep_wounds` (501) | `0x103463f0` (open wounds event, from the event fill `0x1036c2b0`), `0x102fe6a0`, `0x10376560` |
+| `openwounds_stack` (189), `deep_wounds` (501) | `0x103463f0` (open wounds event, from the event fill `0x1036c2b0`); `0x102fe6a0` and `0x10376560` push 189 as other ids |
 | `lifedrain_percentcap` (488) | `0x102fbc50` (`0x10296830` is a UI constant) |
 | `inc_splash_radius_permissinghp` (489) | `0x102fa640` (`0x1036c410` is a constant) |
 | `item_dmgpercent_pereth` (484) | `0x102fa930` |
@@ -139,10 +139,41 @@ the per-hand sums ([#321](https://github.com/synpoox/pd2-resurrected/issues/321)
 
 ## Open and deep wounds
 
-PD2's open wounds event (`0x103463f0`) rolls the stat, then builds a timed hit-point regen list (state 62) from the
-attacker's level, `deep_wounds` (501) and `openwounds_stack` (189, up to 3 stacks). D2R's event 15 (`0x584170`) is
-D2R's own (damage from level, quartered or halved on players, state 62). Not ported: the stacking and deep wounds parts
-are not decoded yet, and the game check below found no item event reaching D2R's functions on a player's melee hit.
+PD2's event 15 (`0x103463f0`, thiscall: game in ECX, then attacker, target, a dummy and the node's `stat << 16 |
+layer`), disassembled; constants from the Ghidra copy of the DLL (the DLL now on disk has moved them by 8 bytes):
+
+1. Chance: the node's stat on the attacker (`item_openwounds` 135, or `map_mon_openwounds` 407, the only two with
+   func 15), `rand % 100 <` it (`0x1036f320`, the attacker's seed).
+2. Level part: 1.13c D2Game `0xac940 ({9, 18, 27, 36, 45}, level)` + 40, the level at least 1: `9l + 31` up to 15,
+   then slopes 18, 27, 36, 45 from 16, 31, 46 and 61 (D2R's `0x584170` has the same table).
+3. `deep_wounds` (501) on the attacker. On a **player** target both parts are cut: the level part to 8 / 6 / 4% by
+   difficulty (game `+0x6d`; doubles `0x1044fbc0`, `fbb8`, `fba8`), `deep_wounds` to the same, halved again when the
+   attacker is a Blood Golem (class 290), and the part held by the Barbarian's Deep Wounds passive list (state 225 on the
+   attacker, D2Common #10871) a third of that (`0x1044fb90` = 3).
+4. Damage = level part + 5 x deep. Resist: `damageresist` (36) on the target less the attacker's `passive_phys_pierce`
+   (425); 100 or more ignores the pierce; a negative result counts half (to zero). A player takes `x50%` above 50 resist,
+   any other unit `x(100 - r)%`. All cuts are `0x1037c4c0` (`a * x / 100` in doubles, truncated).
+5. On a player in PD2's levels 157, 159, 166 inside a region (`0x1037c7b0`, `0x1037d470`): no damage. On a monster whose
+   owner, or owner's owner, is a player (`0x103749f0 (unit, 1)`): a quarter.
+6. Rathma's clones (classes 935, 936, with both boss slots `game +0x2600 / +0x2604` set): the damage is halved and the
+   other clone, unless it has `resistall` (state 8), gets the same half as its own list.
+7. The list: `0x102fc880 (target, 62, attacker)` finds the target's open wounds list from this attacker. With fewer than
+   3 `openwounds_stack` (189) the old `hpregen` (74, negative) is added to the damage and set on it, and the stack goes
+   up; at 3 nothing changes. Then PD2's `0x1036d7d0` request (skill 0, level 1, 125 frames, `hpregen` = -damage,
+   state 62): an older list of the same skill and level only gets its timer moved, so the stat is set only on a new list.
+   `openwounds_stack` is set on the result. A player attacker also adds the damage to PD2's damage meter (PlayerData
+   `+0x1a8`).
+
+So open wounds stacks its damage up to three hits, then each hit only refreshes the 5 s. D2R's own event 15 cuts a
+player target to a quarter (melee) or an eighth (missile), a player's pet to half, and lasts 200 frames.
+
+The port (`OpenWounds`, `item_rules.cpp`): the crushing blow dispatch wrap also hides the func-15 nodes from D2RCore's
+event copy and runs PD2's event once per hidden node after the dispatch, through D2R's `NewStateList` (its request has
+the same stat and value fields; D2R's own event 15 passes `hpregen` there). A splash item event hits more units inside
+the outer dispatch, where the nodes are hidden: those hits find the outer call's hidden nodes (a thread-local event) and
+roll too, as in PD2. Approximated: D2R keeps one open wounds list per target (`UnitStateList`), so all attackers share
+its stacks, where PD2 keys it by attacker. Not ported: the PD2-only levels, Rathma's clone split (core-maps'
+`rathma_life.cpp` owns the pair) and the damage meter.
 
 ## Game check
 
@@ -168,11 +199,14 @@ pass; `items 7/7`).
 - Smite's effectiveness ([#321](https://github.com/synpoox/pd2-resurrected/issues/321), Slot 8, Hell, level 90 Paladin, Smite 20, zombies): each Smite blow
   logged effectiveness 1.41 (calc4 41); life 1422848 -> 1297459 at divisor 8 and resist 50, PD2's formula.
 - Open wounds: a probe on `0x584170` logged nothing with `item_openwounds` 50 (stat only, no listener).
+- Open wounds, ported (Slot 6, Hell, level 90 Paladin and level 95 Assassin, The Gnasher: 50%, `deep_wounds` 2):
+  level part 2731 at 90 and 2956 at 95, + 10 deep, halved by a zombie's 50 resist: 1370 and 1483 /256 per frame;
+  Andariel (resist 66) 1008. Stacks on one zombie (`cheat mongod 1`): 1483, 2966, 4449 at stacks 1-3, then 4449 stays
+  at stack 3 on later procs; a proc 7.6 s after the last starts at stack 1 again (125 frames). Splash hits roll it too.
 - Spawn commands: `cheat uniques` rows past the "Expansion" separator row are one lower than the merged table's
   (Fleshripper 304, The Gladiator's Bane 250); Attack is the bottom-left icon of the left skill picker.
 
 ## Open
 
-- Open and deep wounds: decode the rest of `0x103463f0` and port it.
-- Open wounds on a player's hit: D2RCore runs item events through its own copy (see crushing blow above), so PD2's
-  open wounds needs the same dispatcher wrap ([#165](https://github.com/synpoox/pd2-resurrected/issues/165)).
+- Open wounds: the damage over time itself (life falling by `hpregen`) was not measured in game; the list and its stat
+  were logged. Rathma's clone split is left to core-maps.

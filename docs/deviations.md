@@ -154,7 +154,7 @@ rows have no table hook: D2R does what it does.
 | Corrupted zones | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): D2R's Terror Zones stay in their place |  |
 | Level life regen cap (30, `bloodwarp` lifts it) | cut | PD2 caps it only in the PvP arenas (levels 157, 159, 166), and PvP is cut ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)) ([ms3-map-stats](research/ms3-map-stats.md)) |  |
 
-### Not yet (25)
+### Not yet (24)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -165,7 +165,6 @@ rows have no table hook: D2R does what it does.
 | Uber immolation arrow hit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB4](https://github.com/synpoox/pd2-resurrected/issues/229) |
 | Throwing potions | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [IR5](https://github.com/synpoox/pd2-resurrected/issues/240) |
 | Skill on block (`item_skillonblock`, 5 live rows) | not yet | stand-in until confirmed: the Cast Triggers companion (1.1.12, D2RLoader Hub) maps `[on_block] stat_id = 379` and `patches/030-cast-triggers.json` puts the stat on `doactive` / 20; it loads, but no block proc was seen in game yet (the owner confirms by hand) | [IR2](https://github.com/synpoox/pd2-resurrected/issues/237) |
-| Deep wounds and the open wounds rework | not yet | stand-in: D2R's open wounds; `deep_wounds` does nothing. PD2's event `0x103463f0` is only partly read ([ir3-combat-stats](research/ir3-combat-stats.md)) | [IR3](https://github.com/synpoox/pd2-resurrected/issues/238) |
 | Replenish charges | not yet | stand-in: D2R's own behaviour; the stat does nothing | [IR5](https://github.com/synpoox/pd2-resurrected/issues/240) |
 | Ethereal bonus: PD2's early return on an item already ethereal | approximated | core-rules' ApplyEthereal gives PD2's +25% (`ProjectDiablo.dll` `0x2fb710`) but always applies it, as D2R's `0x3d3510` does: D2R's cube output (`0x5269c0`) sets the flag before it calls, so PD2's check would leave cube-made ethereal items with no bonus. Ethereal items made before this build keep D2R's +50% in their saved stats | [IR8](https://github.com/synpoox/pd2-resurrected/issues/243) |
 | Weapons lose durability at half the rate | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked against the DLL); Item Durability's resistance would also halve armor's ([#189](https://github.com/synpoox/pd2-resurrected/issues/189)) | [IR8](https://github.com/synpoox/pd2-resurrected/issues/243) |
@@ -184,7 +183,7 @@ rows have no table hook: D2R does what it does.
 | Item quantity display | approximated | the number sits at the bottom right of the picture (#359 asks for it; PD2 draws it bottom left), white with D2R's drop shadow instead of PD2's black box; tomes show no number (PD2 shows their charges; the owner's call); the stash's Gems/Materials/Runes tabs show D2R's own count instead | [#359](https://github.com/synpoox/pd2-resurrected/issues/359) |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 
-### Approximated (71)
+### Approximated (72)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -259,6 +258,7 @@ rows have no table hook: D2R does what it does.
 | Charm "only one unique" rule | approximated | covered by the Charm Inventory companion (`companions/manifest.json`), which refuses a second unique charm (owner, 2026-11-05); which PD2 charms share a group is not compared with PD2's | companion |
 | RathmaSummon: the area check and the spawn spots | approximated | srvdo 179 runs for any caster, where PD2 also needs the game's area type to be Rathma's (game `+0x1df4`); each searched spawn (all but the last three blood golems, which spawn on their cell as in PD2) takes D2R's portal spot search near its point, as UberDiabSummon does, where PD2 runs its own (`0x10389c20`); the points roll the caster's seed, not `rand()`; PD2's 0x3000000 unit flags and D2Game call on each spawn (`0x103a1eb0`) and a void knight's AI event 15 frames on are left out (docs/core-rules.md) | [#476](https://github.com/synpoox/pd2-resurrected/issues/476) |
 | UberDiabSummon: the spawn spot and flags | approximated | each skeleton takes D2R's portal spot search near its random point, as core-maps' map events do, where PD2 runs its own search (`0x10389c20`); PD2's 0x3000000 unit flags and its D2Game call on each spawn (`0x103a1eb0`) are left out, as their meaning is unread (docs/core-rules.md) | [#469](https://github.com/synpoox/pd2-resurrected/issues/469) |
+| Open wounds: one list per target; Rathma's clones and PD2's levels | approximated | core-rules ports PD2's event 15 (`0x103463f0`): damage, `deep_wounds`, 3 stacks. PD2 keeps an open wounds list per attacker, so two attackers stack apart; D2R's `NewStateList` keeps one per target, which every attacker's hits share. Left out: Rathma's two clones splitting it (core-maps owns the pair), no damage to a player in PD2's levels 157, 159 and 166 (not in the merged data), and PD2's damage meter ([ir3-combat-stats](research/ir3-combat-stats.md)) | [IR3](https://github.com/synpoox/pd2-resurrected/issues/238) |
 
 ## Data rows
 
