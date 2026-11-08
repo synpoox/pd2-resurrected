@@ -857,7 +857,7 @@ auto ApplyDarkPact(Unit* target, d2r::CurseParams* params, uint32_t dataFlag) no
 	     list = At<uint8_t*>(list, ListNext), ++guard) {
 		if ((At<uint32_t>(list, ListFlags) & ListFlagCurse) != 0 && list != oldest) {
 			consumed = At<int32_t>(list, ListState);
-			d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(target, consumed, 0);
+			d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(target, consumed, 0);
 			d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(target, list);
 			d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
 			break;
