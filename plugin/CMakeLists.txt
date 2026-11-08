@@ -79,6 +79,7 @@ add_library(core_maps SHARED
 	core-maps/unique_maps.cpp
 	core-maps/lucion_ai.cpp
 	core-maps/rathma_ai.cpp
+	core-maps/rathma_life.cpp
 	core-maps/dclone_ai.cpp
 	core-maps/ai_hooks.cpp
 	core-maps/event_portals.cpp
