@@ -149,14 +149,13 @@ rows have no table hook: D2R does what it does.
 | Corrupted zones | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): D2R's Terror Zones stay in their place |  |
 | Level life regen cap (30, `bloodwarp` lifts it) | cut | PD2 caps it only in the PvP arenas (levels 157, 159, 166), and PvP is cut ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)) ([ms3-map-stats](research/ms3-map-stats.md)) |  |
 
-### Not yet (29)
+### Not yet (28)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
 | Item casts of skills: `ItemEffect` 183/187/188 and `ItemCltEffect` 10/116/117 (Lightning Bolt and Fury, Fire Bolt, Ice Bolt, Fire Ball, Lightning, Glacial Spike, Frozen Orb, the novas) | not yet | D2R's item-effect slots are empty, so an item cast runs the skill's normal cast; PD2's item functions aim at the target unit and set missile flag 0x10000 ([lightning-javelins](research/lightning-javelins.md)) | [IR5](https://github.com/synpoox/pd2-resurrected/issues/240) |
 | Force Move | not yet | stand-in: move-only skill: a third-party plugin will provide it; until then its functions are blank | third-party plugin |
 | PD2 object operate functions | not yet | stand-in: blank (`merge/standins.tsv`): boss blockers, map event altars, Zhar's tome and portals, the Uber Ancients' statues and the PvP tomes (75, 76, 78-80) do nothing when clicked. PD2's portal operate 77 (the `xactportal` objects) is built since [UB2](https://github.com/synpoox/pd2-resurrected/issues/227), as D2R's operate slot 60 | [MS2](https://github.com/synpoox/pd2-resurrected/issues/217), [MS8](https://github.com/synpoox/pd2-resurrected/issues/222) |
-| UberDiabSummon, UberDiabRun | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB4](https://github.com/synpoox/pd2-resurrected/issues/229) |
 | RathmaSummon | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB5](https://github.com/synpoox/pd2-resurrected/issues/230) |
 | Lucion kit | not yet | stand-in: closest D2R function (`merge/standins.tsv`): LucionBlink's and LucionDash's client halves (cltdo 113, 114, cltst 58; MonLeap's for the dash) | [#488](https://github.com/synpoox/pd2-resurrected/issues/488) |
 | Uber immolation arrow hit | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [UB4](https://github.com/synpoox/pd2-resurrected/issues/229) |
@@ -183,7 +182,7 @@ rows have no table hook: D2R does what it does.
 | Item quantity display | approximated | the number sits at the bottom right of the picture (#359 asks for it; PD2 draws it bottom left), white with D2R's drop shadow instead of PD2's black box; tomes show no number (PD2 shows their charges; the owner's call); the stash's Gems/Materials/Runes tabs show D2R's own count instead | [#359](https://github.com/synpoox/pd2-resurrected/issues/359) |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 
-### Approximated (66)
+### Approximated (67)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -253,6 +252,7 @@ rows have no table hook: D2R does what it does.
 | Revive's event: the splash target | approximated | PD2's splash centres on the revive's path target; core-rules passes the unit the revive hit (docs/core-rules.md) | core-rules |
 | Function numbers of the exact data rows (Monster frenzy, Baal Corpse Explode client start, `*12` server hit) | approximated | the cells differ from PD2 but run the same rule: D2R's number for it, or none where PD2's points past D2R's table (see Data rows) | [W3](https://github.com/synpoox/pd2-resurrected/issues/46) |
 | Charm "only one unique" rule | approximated | covered by the Charm Inventory companion (`companions/manifest.json`), which refuses a second unique charm (owner, 2026-11-05); which PD2 charms share a group is not compared with PD2's | companion |
+| UberDiabSummon: the spawn spot and flags | approximated | each skeleton takes D2R's portal spot search near its random point, as core-maps' map events do, where PD2 runs its own search (`0x10389c20`); PD2's 0x3000000 unit flags and its D2Game call on each spawn (`0x103a1eb0`) are left out, as their meaning is unread (docs/core-rules.md) | [#469](https://github.com/synpoox/pd2-resurrected/issues/469) |
 
 ## Data rows
 
@@ -346,7 +346,6 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Force Move | `skills.Force Move.srvdofunc` `skills.Force Move.cltdofunc` `skills.Force Move.srvstfunc` `skills.Force Move.cltstfunc` |
 | PD2 object operate functions | `objects.UberAncientStatue1.OperateFn` `objects.UberAncientStatue2.OperateFn` `objects.UberAncientStatue3.OperateFn` `objects.UberAncientAltar.OperateFn` `objects.TaintedSunMapEventAltar.OperateFn` `objects.zharportal_blue.OperateFn` `objects.zharportal_red.OperateFn` `objects.ZharTomeObject.OperateFn` `objects.ForceShardAltar.OperateFn` `objects.bossblocker_x_warp.OperateFn` `objects.bossblocker_y_warp.OperateFn` `objects.PVPTome1.OperateFn` `objects.Sacrifice Altar.OperateFn` `objects.PVPTome2.OperateFn` |
 | Find Potion, Find Item: do functions | `skills.Find Potion.srvdofunc` `skills.Find Potion.cltdofunc` `skills.Find Potion.srvstfunc` `skills.Find Potion.cltstfunc` `skills.Find Item.srvdofunc` `skills.Find Item.cltdofunc` `skills.Find Item.srvstfunc` `skills.Find Item.cltstfunc` |
-| UberDiabSummon, UberDiabRun | `skills.UberDiabSummon.srvdofunc` |
 | RathmaSummon | `skills.RathmaSummon.srvdofunc` |
 | Lucion kit | `skills.LucionBlink.cltdofunc` `skills.LucionDash.cltdofunc` `skills.LucionDash.cltstfunc` |
 | LucionNova, LucionDash, LucionPunish | `skills.LucionDash.srvstfunc` |
