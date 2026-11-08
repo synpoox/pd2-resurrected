@@ -248,7 +248,7 @@ auto StripStates(Game* game, Unit* player) noexcept -> int32_t {
 		if (list == nullptr) {
 			continue;
 		}
-		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(player, state, 0);
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(player, state, 0);
 		d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(player, list);
 		d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(d2r::DataFlag(game), list);
 		++stripped;

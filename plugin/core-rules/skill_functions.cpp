@@ -297,7 +297,7 @@ void DropStateList(uint32_t dataFlag, Unit* unit, int32_t state) noexcept {
 	if (list == nullptr) {
 		return;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, state, 0);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(unit, state, 0);
 	d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
 	d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
 }
@@ -345,7 +345,7 @@ auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 	                        int32_t) noexcept;
 	d2r::Engine<SendFn>(SendSkillState)(game, unit, skillId, level, key, 1, state, skill + SkSendStateA,
 	                                    skill + SkSendStateB, 4);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, state, 1);
 	if (plog::Sample(g_tempBuffs)) {
 		// aurastat1 and its calc value as the skill computes them, so the check can compare them with PD2's par4
 		plog::Info("temp buff: skill %d level %d state %d for %d frames, stat %d +%d, cast %u", skillId, level, state,
@@ -475,7 +475,7 @@ auto TimedStatList(uint32_t dataFlag, Unit* owner, Unit* unit, int32_t skillId, 
 		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list, s->stat,
 		                                                                                          s->value, 0);
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, state, 1);
 	return "new";
 }
 
@@ -870,10 +870,12 @@ auto RaiseList(uint32_t dataFlag, const uint8_t* tables, int32_t levelId, bool n
 }
 
 // The corpse's timer ran out: hide it (PD2's callback 0x1036c6d0 sets corpse_nodraw). The list never set the state, so
-// the expiry call only does D2R's list bookkeeping.
+// the expiry call only does D2R's list bookkeeping. corpse_nodraw is then a bare state: SetStateBit (the bit
+// UnitHasState reads), then SetStateGfxFlag, as D2R's 0x56bfe0 (#623).
 void HideCorpse(void* list, Unit* unit, int32_t state) noexcept {
 	d2r::Engine<void (*)(void*, Unit*, int32_t) noexcept>(d2r::rva::SkillStateExpired)(list, unit, state);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetUnitState)(unit, CorpseNoDraw, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetStateBit)(unit, CorpseNoDraw, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetStateGfxFlag)(unit, CorpseNoDraw, 1);
 	g_desecrateHidden.fetch_add(1);
 }
 
@@ -1595,7 +1597,7 @@ auto VengeanceOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	if (list == nullptr) {
 		return 1;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(victim, JustHit, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(victim, JustHit, 1);
 	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(victim);
 	if (victim != b->origin && static_cast<int32_t>(d2r::RandomBelow(seed, 100)) < b->chance && b->link < MaxLinks) {
 		const std::lock_guard<std::mutex> lock(g_linksLock);
@@ -1632,7 +1634,8 @@ auto Burst(Game* game, Unit* caster, Unit* center, Unit* origin, const uint8_t* 
 			d2r::Engine<AreaFn>(AreaUnits)(game, caster, &area, radius, AreaUnitMask, VengeanceOne, &b, 0);
 		}
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(center, Shatter, 0);
+	// The state bit off, as D2R's 0x4370b0 removes one: SetStateGfxFlag on 0 only cleared the gfx bit (#623)
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(center, Shatter, 0);
 	return b;
 }
 
@@ -1931,7 +1934,9 @@ auto SrvDoHunger(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	if (corpse == nullptr || corpse == unit) {
 		return 0;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(corpse, CorpseNoDraw, 1);
+	// A bare state: SetStateBit (the bit UnitHasState reads), then SetStateGfxFlag, as D2R's 0x56bfe0 (#623)
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(corpse, CorpseNoDraw, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(corpse, CorpseNoDraw, 1);
 	d2r::api.setUnitSkillFlag(unit, 1);  // PD2 sets unit flag 0x40 on every path past the corpse
 	StatValue stats[6] {};
 	size_t count = 0;
@@ -3989,7 +3994,7 @@ auto SrvStCycler(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(corpse, StateCorpseTaken) != 0) {
 		return 0;
 	}
-	// SetStateBit, as D2R's srvst 63: SetUnitState's bit is not the one UnitHasState reads, so a vine re-ate the same
+	// SetStateBit, as D2R's srvst 63: SetStateGfxFlag's bit is not the one UnitHasState reads, so a vine re-ate the same
 	// corpse every cast (#378)
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(corpse, StateCorpseTaken, 1);
 	d2r::Engine<void (*)(Unit*) noexcept>(QueueUnitUpdate)(corpse);

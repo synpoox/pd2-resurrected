@@ -131,7 +131,11 @@ auto SetImmune(Game* game, Unit* unit, bool on) noexcept -> void {
 			SetStat(unit, ImmuneStats[i], Counter(game, ResistKeys[i]));
 		}
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetUnitState)(unit, StateResistAll, on ? 1 : 0);
+	// A bare state, set as D2R's 0x56bfe0: SetStateBit is the bit UnitHasState reads (#623)
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetStateBit)(unit, StateResistAll, on ? 1 : 0);
+	if (on) {
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetStateGfxFlag)(unit, StateResistAll, 1);
+	}
 	immune = on ? 1 : 0;
 	plog::Info("dclone: immune %s", on ? "on" : "off");
 }

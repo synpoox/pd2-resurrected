@@ -458,7 +458,7 @@ auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 			setStat(dataFlag, list, stat, value, 0);
 		}
 	}
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(hit, state, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(hit, state, 1);
 	if (plog::Sample(g_stateHits)) {
 		plog::Info("state hit: missile row %d skill %d level %d: state %d for %d frames on unit type %d, stat %d %+d, "
 		           "stat %d %+d, result %d, hit %u", At<int32_t>(missile, UnitClassId), skillId, level, state, frames,
