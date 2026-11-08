@@ -38,6 +38,8 @@ constexpr uint32_t ResistSavedKey = 0x55424c52;  // 'UBLR': the six resists belo
 constexpr uint32_t ResistKeys[] = {0x55424c30, 0x55424c31, 0x55424c32, 0x55424c33, 0x55424c34, 0x55424c35};
 // PD2 0x10380770 sets these to 200 (fire, cold, lightning, poison, magic, damage resist)
 constexpr int32_t ImmuneStats[] = {39, 43, 41, 45, 37, 36};
+constexpr int32_t StateResistAll = 8;       // PD2 0x10380770 sets it with the resists
+constexpr int32_t StripStates[] = {2, 62};  // poison, openwounds: PD2 0x10380770 strips up to 20 lists of each
 
 // The arena (PD2's subtile coordinates, as Royal Fire's ring centre in skill_functions.cpp)
 constexpr int32_t Corners[][2] = {{0x622d, 0x17eb}, {0x622d, 0x17d5}, {0x6217, 0x17d5}, {0x6217, 0x17eb}};
@@ -119,7 +121,8 @@ auto SetMode(Game* game, Unit* unit, int32_t mode) noexcept -> void {
 	d2r::Engine<int32_t (*)(Game*, uint8_t*, int32_t) noexcept>(d2r::rva::ModeCmdRun)(game, cmd, 1);
 }
 
-// PD2 0x10380770: immune sets the six resists to 200; off puts back what they were (PD2 reads monstats)
+// PD2 0x10380770: immune sets the six resists to 200 and strips poison and open wounds; off puts back what they
+// were (PD2 reads monstats)
 auto SetImmune(Game* game, Unit* unit, bool on) noexcept -> void {
 	int32_t& saved = Counter(game, ResistSavedKey);
 	if (on) {
@@ -132,10 +135,27 @@ auto SetImmune(Game* game, Unit* unit, bool on) noexcept -> void {
 		for (const int32_t s : ImmuneStats) {
 			SetStat(unit, s, 200);
 		}
+		// The curse strip, as rathma_ai.cpp's
+		using namespace d2r::rva;
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, StateResistAll, 1);
+		const uint32_t dataFlag = d2r::DataFlag(game);
+		for (const int32_t s : StripStates) {
+			for (int k = 0; k < 20; ++k) {
+				void* list = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, s);
+				if (list == nullptr) {
+					break;
+				}
+				d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, s, 0);
+				d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
+				d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(dataFlag, list);
+				plog::Info("lucion ai: immunity stripped state %d from class %d", s, At<int32_t>(unit, UnitClassId));
+			}
+		}
 	} else if (saved != 0) {
 		for (size_t i = 0; i < std::size(ImmuneStats); ++i) {
 			SetStat(unit, ImmuneStats[i], Counter(game, ResistKeys[i]));
 		}
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetUnitState)(unit, StateResistAll, 0);
 		saved = 0;
 	}
 }
