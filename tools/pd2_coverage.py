@@ -229,7 +229,8 @@ def changes_md(found: list[Change], tolerance: float = TOLERANCE) -> str:
     lines = ["## Changes against main", ""]
     if not found:
         return "\n".join(lines + ["No preset's coverage changed.", ""])
-    lines += [f"{len(found)} presets changed; {drops} dropped by more than the {tolerance:g}-point tolerance or are no longer scored"
+    lines += [f"{len(found)} presets changed; {drops} dropped by more than the {tolerance:g}-point tolerance or are "
+              "no longer scored"
               + (" (accept an intended drop: `--write-baseline`, commit docs/coverage-baseline.tsv)." if drops else "."),
               "", "| Preset | Wall | Border | |", "|---|---|---|---|"]
     lines += [f"| {c.name} | {cell(*c.wall)} | {cell(*c.border)} | {'**drop**' if c.drop else ''} |" for c in found]
