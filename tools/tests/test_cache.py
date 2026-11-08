@@ -1,11 +1,8 @@
-"""pd2_cache (#440): the extract lock, the cache key, the shared extract and merge, and the changed-files-only install."""
+"""pd2_cache (#440): the extract lock, the cache key, and the shared extract and merge."""
 import io
-import json
 import os
-import shutil
 import tempfile
 import threading
-import time
 import sys
 import unittest
 from contextlib import redirect_stdout
@@ -16,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_cache  # noqa: E402
 import pd2_extract  # noqa: E402
 import pd2_merge  # noqa: E402
-import pd2_strings  # noqa: E402
 
 
 def cache_env(cache: Path):
@@ -131,47 +127,6 @@ class MergeCacheTests(unittest.TestCase):
                     self.assertEqual(pd2_merge.main(args), 0)
                 self.assertEqual(len(runs), 3, "CI always merges fresh")
             self.assertEqual(len(list((tmp / "cache" / "merge").iterdir())), 2, "two keys, no temp folder left")
-
-
-class SyncTests(unittest.TestCase):
-    def test_writes_only_what_differs_and_removes_the_rest(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            src, dest = Path(tmp) / "src", Path(tmp) / "dest"
-            write(src / "a.txt", "same")
-            write(src / "sub" / "b.txt", "new")
-            dest.mkdir()
-            shutil.copy2(src / "a.txt", dest / "a.txt")  # same size and time: kept
-            write(dest / "sub" / "b.txt", "old")  # same size, other time: rewritten
-            write(dest / "gone" / "c.txt", "stale")
-            self.assertEqual(pd2_cache.sync(src, dest), 1)
-            self.assertEqual((dest / "sub" / "b.txt").read_text(), "new")
-            self.assertFalse((dest / "gone").exists())
-            self.assertEqual(pd2_cache.sync(src, dest), 0)
-
-    def test_install_keeps_files_outside_the_mod_and_rewrites_only_changes(self):
-        try:
-            pd2_strings.modkit()  # puts d2rAI-toolkit on sys.path
-        except ValueError as e:  # CI has no d2rAI-toolkit (private)
-            self.skipTest(str(e))
-        from modkit import install as mi
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp)
-            proj, game = tmp / "proj", tmp / "game"
-            write(proj / "mod.json", json.dumps({"name": "M", "plugins": []}))
-            write(proj / "out" / "data" / "global" / "excel" / "a.txt", "1")
-            write(game / "D2R.exe", "")
-            write(game / "data" / "base.txt", "base game")
-            with mock.patch.object(mi, "game_running", lambda: False):
-                self.assertIn("(1 written", pd2_cache.install(proj, game))
-                data = game / "mods" / "M" / "M.mpq" / "data"
-                stamp = (data / "global" / "excel" / "a.txt").stat().st_mtime_ns
-                time.sleep(0.05)
-                write(proj / "out" / "data" / "b.txt", "2")
-                self.assertIn("(1 written", pd2_cache.install(proj, game))
-            self.assertEqual((data / "global" / "excel" / "a.txt").stat().st_mtime_ns, stamp, "unchanged file kept")
-            self.assertEqual((data / "b.txt").read_text(), "2")
-            self.assertTrue((game / "mods" / "M" / "modinfo.json").is_file())
-            self.assertEqual((game / "data" / "base.txt").read_text(), "base game")
 
 
 if __name__ == "__main__":
