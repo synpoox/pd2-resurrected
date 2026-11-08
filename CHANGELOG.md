@@ -69,6 +69,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Unique map bosses leave a portal to Harrogath (or onward) and drop PD2's charms, facets and puzzle pieces.
 - The Warlord of Blood and Ureh's boss drop PD2's random uniques, and the Warlord's arena starts empty.
 - The Outer Void has PD2's three random bosses, and its portals lead deeper, then home with uber parts.
+- Zhar's Sanctum has PD2's seal portals and tomes, and Zhar's charms get a skill tab prefix.
 - Monsters in maps can drop unique maps, and Horazon has a 10% chance to drop one, as in PD2.
 - Fortified maps no longer double key and unique map rolls on map bosses, as in PD2.
 - A map event's spawn sends PD2's notify line ("Evil beckons you from the Void...") in red chat.
