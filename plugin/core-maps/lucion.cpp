@@ -19,8 +19,10 @@
 #include "map_open.h"
 #include "map_stats.h"
 
+#include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle_events.h>
+#include <D2RLPlugin/threads.h>
 
 #include <algorithm>
 #include <atomic>
@@ -204,12 +206,175 @@ auto KillQuietly(Game* game, Unit* monster) noexcept -> void {
 	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(SetMonsterMode)(game, block, 1);
 }
 
+namespace {
+
+namespace items = D2RL::Items;
+
+// UB7b, the brick (PD2 0x103729e0's failure branch): a new rare `amu` at item level 99 replaces the amulet, then
+// 0x103649d0 rolls a normal Corruption (flag 0) and the Desecration roll (flag 1) on it. Nothing is read from the old
+// amulet. The swap is one SDK item transaction (old amulet in, new one out into the cube). The SDK refuses item changes
+// inside the recipe search and names the local player only on the UI thread, so the press goes search -> UI thread
+// (which player) -> game thread (the transaction), as core-rules' Demonic Cube reroll does. The two rolls are native
+// (editNativeItem): the SDK cannot pick a cubemain corruption row.
+// The brick is unidentified, as PD2's: 0x1036ebc0 leaves the drop request's force flag and item-flag override at 0.
+// shortcut: single player only (the SDK names only the local player), as core-rules' reroll.
+const D2RL::PluginContext* g_context = nullptr;
+const D2RL::ItemService* g_items = nullptr;
+const D2RL::InventoryService* g_inventory = nullptr;
+const D2RL::ThreadService* g_threads = nullptr;
+const uint32_t AmuletCode = items::MakeItemCode("amu");
+constexpr uint32_t BrickLevel = 99;
+std::atomic<uint32_t> g_bricks {0};
+std::atomic<bool> g_brickBusy {false};  // set by the press, cleared by the game-thread transaction
+Game* g_brickGame = nullptr;            // the press's game and player, for the rolls and SendItem
+Unit* g_brickPlayer = nullptr;
+uint32_t g_brickAmulet = 0;  // the old amulet's unit id (ItemInfo::runtimeId)
+
+auto BrickDone(const char* why) noexcept -> void {
+	if (why != nullptr) {
+		plog::Info("desecration: no brick, %s", why);
+	}
+	g_brickBusy.store(false, std::memory_order_release);
+}
+
+struct OldAmulet {
+	items::ItemInfo item {};
+	int count = 0;
+};
+
+auto FindOldAmulet(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept
+	-> D2RL::Inventory::IterationAction {
+	auto* old = static_cast<OldAmulet*>(user);
+	if (item->runtimeId == g_brickAmulet) {
+		old->item = *item;
+	}
+	++old->count;
+	return D2RL::Inventory::IterationAction::Continue;
+}
+
+struct Rolls {
+	bool corrupted = false;
+	bool desecrated = false;
+};
+
+// PD2's two 0x103649d0 calls on the new amulet, then a refresh on the client (item flag 1), as UB7a's success
+void RollBrick(const D2RL::PluginContext*, void* native, void* user) noexcept {
+	using namespace d2r::rva;
+	auto* item = static_cast<Unit*>(native);
+	auto& rolls = *static_cast<Rolls*>(user);
+	rolls.corrupted = CorruptFreshItem(g_brickGame, item);
+	rolls.desecrated = DesecrateItem(g_brickGame, item);
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, uint32_t, uint32_t, int32_t, uint8_t, uint8_t, uint32_t) noexcept>(SendItem)(
+		g_brickGame, g_brickPlayer, item, 1, 0, At<int32_t>(item, UnitMode), d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(item),
+		d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemStorePage)(item), d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitXY)(item));
+}
+
+// Game thread: the swap, then the rolls
+void MakeBrick(const D2RL::PluginContext*, void* user) noexcept {
+	const auto player = reinterpret_cast<D2RL::PlayerHandle>(user);
+	OldAmulet old;
+	const D2RL::Inventory::ItemFilter filter {.structSize = D2RL::Inventory::ItemFilterSize,
+	                                          .containerMask = items::ContainerBit(items::ItemContainer::Cube)};
+	if (g_inventory->forEachInventoryItem(g_context, player, &filter, FindOldAmulet, &old) != D2RL::Inventory::Result::Success ||
+	    old.count != 1 || old.item.handle == D2RL::InvalidItemHandle) {
+		BrickDone("the cube no longer holds the amulet alone");
+		return;
+	}
+	const items::TransactionInput input {
+		.item = old.item.handle, .quantity = 1, .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty};
+	const items::ItemCreateSpec spec {.structSize = items::ItemCreateSpecSize,
+	                                  .code = AmuletCode,
+	                                  .quality = items::Quality::Rare,
+	                                  .qualityRecordId = items::RandomQualityRecord,
+	                                  .itemLevel = BrickLevel,
+	                                  .seedMode = items::SeedMode::Random,
+	                                  .quantity = items::DefaultValue,
+	                                  .durability = items::DefaultValue,
+	                                  .stateFlags = 0,  // unidentified (top of block)
+	                                  .destination = {.structSize = items::ItemDestinationSize,
+	                                                  .container = items::ItemContainer::Cube,
+	                                                  .placement = items::Placement::Automatic}};
+	D2RL::ItemHandle brick = D2RL::InvalidItemHandle;
+	const items::Transaction transaction {.structSize = items::TransactionSize,
+	                                      .player = player,
+	                                      .inputCount = 1,
+	                                      .outputCount = 1,
+	                                      .inputs = &input,
+	                                      .outputs = &spec,
+	                                      .outputItems = &brick,
+	                                      .outputCapacity = 1};
+	items::TransactionResult result {.structSize = items::TransactionResultSize};
+	const items::Result status = g_items->executeTransaction(g_context, &transaction, &result);
+	if (status != items::Result::Success || brick == D2RL::InvalidItemHandle) {
+		plog::Info("desecration: no brick, the transaction failed (%u); the amulet stays", static_cast<uint32_t>(status));
+		BrickDone(nullptr);
+		return;
+	}
+	Rolls rolls;
+	const items::Result edited = g_items->editNativeItem(g_context, brick, RollBrick, &rolls);
+	plog::Info("desecration: brick %u, a rare amulet at item level %u replaces the amulet: corruption %s, "
+	           "desecration %s (edit %u)",
+	           ++g_bricks, BrickLevel, rolls.corrupted ? "rolled" : "NOT rolled", rolls.desecrated ? "rolled" : "NOT rolled",
+	           static_cast<uint32_t>(edited));
+	BrickDone(nullptr);
+}
+
+// UI thread: the SDK names the local player only here; refuses a press by another player (top of block)
+void PickBrickPlayer(const D2RL::PluginContext*, void* user) noexcept {
+	using namespace d2r::rva;
+	const auto pressedBy = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(user));
+	Unit* local = d2r::Engine<Unit* (*)(uint32_t) noexcept>(ClientPlayer)(d2r::Engine<uint32_t (*)() noexcept>(LocalPlayerSlot)());
+	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+	if (local == nullptr || At<uint32_t>(local, UnitIdField) != pressedBy) {
+		BrickDone("pressed by another player than this game's own");
+	} else if (g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success) {
+		BrickDone("no local player");
+	} else if (g_threads->runOnGameThread(g_context, MakeBrick, reinterpret_cast<void*>(player)) !=
+	           D2RL::Threads::Result::Success) {
+		BrickDone("could not queue the transaction");
+	}
+}
+
+// Game thread, in the recipe search: queues the brick for the amulet in the player's cube
+auto QueueBrick(Game* game, Unit* player, Unit* amulet) noexcept -> bool {
+	if (g_items == nullptr || g_inventory == nullptr || g_threads == nullptr) {
+		plog::Info("desecration: no brick, the SDK item services are off");
+		return false;
+	}
+	// A session change discards queued game work, so a brick still pending from another game is dropped, not waited on
+	if (g_brickBusy.exchange(true, std::memory_order_acquire) && g_brickGame == game) {
+		plog::Info("desecration: no brick, the last one is not made yet");
+		return false;
+	}
+	g_brickGame = game;
+	g_brickPlayer = player;
+	g_brickAmulet = At<uint32_t>(amulet, d2r::rva::UnitIdField);
+	const uint32_t id = At<uint32_t>(player, d2r::rva::UnitIdField);
+	if (g_threads->runOnUiThread(g_context, PickBrickPlayer, reinterpret_cast<void*>(static_cast<uintptr_t>(id))) !=
+	    D2RL::Threads::Result::Success) {
+		BrickDone("could not queue it");
+		return false;
+	}
+	return true;
+}
+
+template <class Service>
+auto Query(const D2RL::PluginContext* context, const Service*& service, bool (*has)(const Service*, uint32_t),
+           uint32_t required) noexcept -> bool {
+	if (context->QueryService(&service) != D2RL::ServiceQueryResult::Success || !has(service, required)) {
+		service = nullptr;
+	}
+	return service != nullptr;
+}
+
+}  // namespace
+
 // UB7a, Desecration (PD2's altar handler 0x103961b0 and roll 0x103729e0; docs/research/pd2-uber-bosses-dll.md, section 8)
 // on a transmute in the Temple instead of PD2's altar (docs/deviations.md). The cube holds one item, a corrupted
 // amulet that is not desecrated or mirrored, and Lucion is dead (stage 8): the attempt sets the stage to 9, then
 // succeeds at 50% (60% at tiers 1-2) with one of rows 682-689 as desecrate/desecratenum. Native: it runs inside the
 // recipe search on the pressing player's cube, where the SDK refuses item changes, and the SDK cannot add a mod to an
-// existing item. shortcut: a failed roll leaves the amulet as it was; the brick is UB7b (#509).
+// existing item. A failed roll queues the brick (UB7b, above).
 auto Desecrate(Game* game, Unit* player) noexcept -> bool {
 	using namespace d2r::rva;
 	if (game == nullptr || player == nullptr || LevelOf(player) != Temple) {
@@ -243,6 +408,7 @@ auto Desecrate(Game* game, Unit* player) noexcept -> bool {
 	const int32_t chance = tier == 1 || tier == 2 ? 60 : 50;
 	const auto roll = static_cast<int32_t>(d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(player), 100));
 	const bool success = roll < chance && DesecrateItem(game, item);
+	const bool brick = !success && QueueBrick(game, player, item);
 	if (success) {
 		// Refresh the amulet on the client, as core-rules' reroll refreshes an item (item flag 1)
 		d2r::Engine<void (*)(Game*, Unit*, Unit*, uint32_t, uint32_t, int32_t, uint8_t, uint8_t, uint32_t) noexcept>(SendItem)(
@@ -251,7 +417,7 @@ auto Desecrate(Game* game, Unit* player) noexcept -> bool {
 		g_desecrated.fetch_add(1, std::memory_order_relaxed);
 	}
 	plog::Info("desecration: attempt %u at tier %d, roll %d of 100 against %d: %s, stage %d", ++g_attempts, tier, roll,
-	           chance, success ? "desecrated" : "failed (the brick is UB7b)", AttemptedStage);
+	           chance, success ? "desecrated" : brick ? "failed, brick queued" : "failed, no brick", AttemptedStage);
 	return true;
 }
 
@@ -273,16 +439,24 @@ auto InstallLucion(const D2RL::PluginContext* context, char* report, size_t repo
 		std::snprintf(report, reportSize, "off: monster-death listener refused");
 		return 0;
 	}
+	g_context = context;
+	const bool brick = Query(context, g_items, D2RL::HasItemServiceField, D2RL::ItemServiceRequiredSize) &
+	                   Query(context, g_inventory, D2RL::HasInventoryServiceField, D2RL::InventoryServiceRequiredSize) &
+	                   Query(context, g_threads, D2RL::HasThreadServiceField, D2RL::ThreadServiceRequiredSize);
+	if (!brick) {
+		g_items = nullptr;
+	}
 	std::snprintf(report, reportSize,
-	              "Lucion's death: Temple and Harrogath portals, Demonic Cube roll, stage %d, adds killed",
-	              LucionDeadStage);
+	              "Lucion's death: Temple and Harrogath portals, Demonic Cube roll, stage %d, adds killed; "
+	              "Desecration's brick %s",
+	              LucionDeadStage, brick ? "on" : "OFF (no SDK item, inventory or thread service)");
 	return 1;
 }
 
 auto LucionCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "lucion: %u deaths, %u Temple portals, %u Harrogath portals, %u Demonic Cubes, %u adds killed, "
-	              "%u desecration attempts, %u desecrated",
+	              "%u desecration attempts, %u desecrated, %u bricks",
 	              g_deaths.load(), g_portals.load(), g_returns.load(), g_cubes.load(), g_killed.load(), g_attempts.load(),
-	              g_desecrated.load());
+	              g_desecrated.load(), g_bricks.load());
 }

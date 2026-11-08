@@ -50,6 +50,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - Lucion's death also opens a portal in Harrogath back into his arena.
 - The death novas of Rathma, the Nihlathak map boss and DollMeteor show, as in PD2.
 - After Lucion's death, cube a corrupted amulet in the Temple to try a Desecration (50%, 60% at tiers 1-2).
+- A failed Desecration bricks the amulet: a new rare amulet with one Corruption and one Desecration mod.
 - Diablo Clone drops Annihilus, and at tiers 1-2 rolls 1 in 200 for one of PD2's five Dclone uniques.
 - Rathma and Mendeln drop the Tainted Worldstone Shard and PD2's rolls, and leave a portal to Harrogath.
 - Diablo Clone's skeleton summon raises PD2's three waves around his arena's centre.
