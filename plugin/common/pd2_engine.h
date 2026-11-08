@@ -831,6 +831,11 @@ inline constexpr uint8_t ItemSpellCheckEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 
 inline constexpr uint64_t ItemSpellUse = 0x581680;
 inline constexpr uint8_t ItemSpellUseEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x48, 0x89, 0x6c,
                                                 0x24, 0x20, 0x56, 0x57, 0x41, 0x57};
+// The item spell table itself (.data, read by 0x300ae0 by pSpell): 20 entries of {check index, use index, keep}.
+// keep 1 leaves the item after its use (the Cube's entry 7); 0 lets the use-item handler 0x4f40c0 free a non-book.
+// D2R fills 0-15; 16 is core-maps' map spell, 17 and 18 core-rules' unlimited books (IR5).
+inline constexpr uint64_t ItemSpellTable = 0x236fe30;
+inline constexpr int ItemSpellEntrySize = 12;
 inline constexpr uint64_t UnitClassOf = 0x349860;  // (unit, file, line) -> class id (the dispatchers' item row)
 inline constexpr int ItemPSpell = 0x94;   // int32 misc pSpell in the items record (ItemRecord)
 inline constexpr int ItemLenCalc = 0xb0;  // uint32 misc len calc; the timed potion handler 0x57ecb0 evaluates it

@@ -75,8 +75,6 @@ missiles	tpot_light_large	-	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	sharptootharmageddoncontrol	armageddoncontrol	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	sharptootharmageddonrock	armageddonrock	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	boichaosice	-	pSrvHitFunc,pCltHitFunc	`*12` server hit
-misc	TP Book Unlimited	Tome of Town Portal	pSpell	Unlimited TP and ID books
-misc	ID Book Unlimited	Tome of Identify	pSpell	Unlimited TP and ID books
 misc	Monastery Map	-	pSpell	Map items
 misc	Pvp Map	-	pSpell	Map items
 misc	Pvp Map 2	-	pSpell	Map items

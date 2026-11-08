@@ -43,6 +43,13 @@ constexpr int32_t StatSkillOnCast = 378;   // item_skilloncast, merged id (PD2 2
 
 std::atomic<uint32_t> g_rolls {0};
 
+// PD2's unlimited books (spell 13, ProjectDiablo.dll): the Horadric Navigator (rtp) opens a town portal and the
+// Horadric Almanac (rid) identifies, and neither is used up. The merge moves them to item spells 17 and 18
+// (tools/pd2_ids.py FIXES), which run D2R's own Town Portal (entry 2) and Identify (entry 1) handlers.
+constexpr int32_t UnlimitedPortalSpell = 17;  // 18 follows it
+constexpr int32_t UnlimitedPortalCheck = 2, UnlimitedPortalUse = 2;
+constexpr int32_t UnlimitedIdentifyCheck = 1, UnlimitedIdentifyUse = 1;
+
 using SetStatFn = int32_t (*)(uint8_t dataFlag, uint32_t a1, uint64_t a2, Unit* item, const void* property, uint8_t set,
                               uint16_t stat, uint16_t layer, uint32_t value, uint32_t a8, uint32_t a9,
                               uint64_t a10) noexcept;
@@ -1384,19 +1391,27 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool equip = tick && context->InstallInlineHook(StatCallbackInit, StatCallbackInitEntry,
 	                                                      sizeof(StatCallbackInitEntry), EquipStatCallbackInit,
 	                                                      &g_statCallbackInitOriginal);
+	// Unlimited books (IR5): no hook. D2R's item spell table is data; its free entries 17 and 18 get the Town Portal
+	// and Identify handlers with keep 1, so the book stays after its use
+	static constexpr uint8_t EmptyEntries[2 * ItemSpellEntrySize] = {};
+	const int32_t books[2 * 3] = {UnlimitedPortalCheck, UnlimitedPortalUse, 1, UnlimitedIdentifyCheck,
+	                              UnlimitedIdentifyUse, 1};
+	const bool unlimited = context->PatchBytes(ItemSpellTable + static_cast<uint64_t>(UnlimitedPortalSpell) * ItemSpellEntrySize,
+	                                           EmptyEntries, sizeof(EmptyEntries), books, sizeof(books));
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
-	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s",
+	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
+	              "unlimited books%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (slot write)", lifeCap ? "" : " FAILED (bytes differ)",
 	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
-	              equip ? "" : " FAILED (bytes differ)");
+	              equip ? "" : " FAILED (bytes differ)", unlimited ? "" : " FAILED (entries not empty)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
-	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0);
+	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (unlimited ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 8;
+	return 9;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
