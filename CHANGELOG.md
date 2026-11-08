@@ -4,6 +4,10 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 ### Unreleased
 
+#### Getting started
+
+- Includes a DPS counter above the life globe.
+
 #### Items
 
 - Open wounds stacks up to three hits, and deep wounds adds to its damage.
