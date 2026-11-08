@@ -13,7 +13,8 @@ param(
     [Parameter(Mandatory)] [string]$Game,
     [string]$Data = "",
     [string]$Toolkit = "",  # d2rAI-toolkit checkout (default: the nearest one beside a parent folder, so worktrees find it)
-    [switch]$NoValidate
+    [switch]$NoValidate,
+    [switch]$KeepExtras  # keep files other than our plugins in d2rloader\plugins (a slot set up on purpose)
 )
 $ErrorActionPreference = 'Stop'
 if (-not $Toolkit) {
@@ -35,6 +36,20 @@ foreach ($name in @("core-rules", "core-maps", "core-ui")) {
     if (-not (Test-Path $dll)) { throw "$dll missing: run plugin\build.ps1 first" }
     Copy-Item $dll $plugins -Force
     Write-Output "installed $name.dll -> $plugins"
+}
+
+# Strays (third-party plugins, D2RLoader companions) would make the test run on an unclean install: move, never delete.
+$ours = @("core-rules.dll", "core-maps.dll", "core-ui.dll", "test-harness.dll", "d2r-testharness-console.txt")
+$strays = @(Get-ChildItem $plugins -Force | Where-Object { $ours -notcontains $_.Name })
+if ($strays -and -not $KeepExtras) {
+    $backup = Join-Path "C:\D2RTestSlots\backups\stray-plugins-$(Get-Date -Format yyyy-MM-dd)" (Split-Path $Game -Leaf)
+    New-Item -ItemType Directory -Force $backup | Out-Null
+    foreach ($f in $strays) {
+        $dest = Join-Path $backup $f.Name
+        if (Test-Path $dest) { $dest = Join-Path $backup "$($f.BaseName)-$(Get-Date -Format HHmmss)$($f.Extension)" }
+        Move-Item -LiteralPath $f.FullName $dest
+        Write-Output "moved stray $($f.Name) -> $dest"
+    }
 }
 
 if ($Data) {
