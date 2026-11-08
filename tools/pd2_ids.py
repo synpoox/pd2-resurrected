@@ -424,7 +424,10 @@ FIXES = {"itemstatcost": {("descstr2", k): {"descstr2": v} for k, v in PLAIN_STR
                   ("alternategfx", "invmppvp"): {"alternategfx": "invm"},
                   ("stat1", "dmg-min"): {"stat1": "", "calc1": ""}, ("stat2", "dmg-max"): {"stat2": "", "calc2": ""},
                   ("spelldescstr", "ItemStatsAnti"): _EVIL, ("spelldescstr", "ItemStatsThaw"): _EVIL,
-                  **{("type", t): cells for t, cells in _TIER.items()}},
+                  **{("type", t): cells for t, cells in _TIER.items()},
+                  # PD2's unlimited books share spell 13 (D2R's respec token); core-rules gives each its own free item
+                  # spell, the Navigator 17 (Town Portal) and the Almanac 18 (Identify), kept after use (IR5)
+                  ("code", "rtp"): {"pSpell": "17"}, ("code", "rid"): {"pSpell": "18"}},
          "missiles": {("Skill", "immolationarrow"): {"Skill": ""}, ("Skill", "RadamentUnholyOrb"): {"Skill": ""},
                       ("HitSound", "firearrow firewall"): {"HitSound": ""}, ("ProgOverlay", "fireexplode"): {"ProgOverlay": ""}}}
 
