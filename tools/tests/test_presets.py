@@ -212,21 +212,23 @@ class LayerTests(unittest.TestCase):
         self.assertIn(single, [d["path"] for d in preset["dependencies"]["models"]])
         self.assertEqual(preset, P.build(target, strays, "m", "m.ds1", "b.json", TERRAIN, **cluster)[0])
 
-    def test_only_roots_stand_on_the_camera_near_side_of_the_path(self):
+    def test_only_roots_and_foreground_tree_walls_stand_on_the_camera_near_side_of_the_path(self):
         keys = {(x, y): self.F for x in range(8) for y in range(16)}  # rows 0-3 the path, rows 4-15 sealed, south of it
         lay = P.Layout(8, 16, keys, {c: b"\0" * 25 for c in keys}, frozenset(c for c in keys if c[1] >= 4))
-        wall, roots = "pf_tree_wall01_foreground.json", "jungle_roots09_treewall.model"
-        trees = [{"type": "Entity", "name": wall, "id": 1, "components": [
-            entity(wall, 0, 0)["components"][0], {"type": "PrefabPlacementDefinitionComponent", "prefab": wall}]},
-                 {"type": "Entity", "name": roots, "id": 1, "components": [
-                     entity(roots, 0, 0)["components"][0], {"type": "ModelDefinitionComponent", "filename": roots}]}]
+        front, wall = "pf_tree_wall01_foreground.json", "pf_tree_wall01.json"
+        roots = "jungle_roots09_treewall.model"
+        trees = [{"type": "Entity", "name": w, "id": 1, "components": [
+            entity(w, 0, 0)["components"][0], {"type": "PrefabPlacementDefinitionComponent", "prefab": w}]}
+                 for w in (front, wall)]
+        trees.append({"type": "Entity", "name": roots, "id": 1, "components": [
+            entity(roots, 0, 0)["components"][0], {"type": "ModelDefinitionComponent", "filename": roots}]})
         # trees south of the path: the path is up (bucket 6), no blocked subtile within reach (distance CAP)
         kit = {(6, P.painter.CAP): [(e, 0.0, 0.0, 0, {}) for e in trees]}
         painted, _ = P.painter.paint(lay, (kit, 3.0), "m.ds1", set(), lambda path: [(0.0, 0.0)])
         inner = [e for e, _ in painted if at(e)[0] / 2 >= 30]  # the path spans x up-screen of these
-        rows = {n: {int(at(e)[1] / 2) - 20 for e in inner if e["name"] == n} for n in (wall, roots)}
+        rows = {n: {int(at(e)[1] / 2) - 20 for e in inner if e["name"] == n} for n in (front, wall, roots)}
         # r subtiles south, a tree is 2r - 8 rows (x + y) below the nearest path subtile within WIDE columns
-        self.assertLess(min(rows[roots]), 24)
+        self.assertLess(min(rows[front]), 24)  # a foreground wall stands in the border's first rows
         self.assertGreater(min(rows[wall]) * 2 - 8, P.painter.TALL)
 
     def test_a_pasted_rooms_trees_reaching_walkable_floor_are_dropped(self):
@@ -261,6 +263,11 @@ class LayerTests(unittest.TestCase):
         covered = [(x + i, y + j) for x, y, w, h in rects for i in range(w) for j in range(h)]
         self.assertEqual(sorted(covered), sorted(cells))
 
+    def test_a_long_water_rectangle_is_cut_into_pieces_at_most_twice_as_long_as_wide(self):
+        self.assertEqual(P.squarish((0, 0, 1, 5)), [(0, 0, 1, 1), (0, 1, 1, 2), (0, 3, 1, 2)])
+        self.assertEqual(P.squarish((4, 2, 9, 2)), [(4, 2, 3, 2), (7, 2, 3, 2), (10, 2, 3, 2)])
+        self.assertEqual(P.squarish((0, 0, 3, 2)), [(0, 0, 3, 2)])
+
     def test_a_water_dt1s_blocked_floor_outside_pasted_rooms_gets_scaled_water_planes(self):
         model = next(iter(P.WATER_SPAN))
         plane = {"type": "Entity", "name": "water", "components": [
@@ -272,13 +279,18 @@ class LayerTests(unittest.TestCase):
         keys = {(x, y): ("f", (river,)) for x in range(4) for y in range(2)}
         keys[(3, 1)] = ("f", (dry,))  # a bank tile: walkable, no water
         keys[(0, 2)] = ("f", (FLOOR,))  # another DT1's blocked floor (a void, a lava pool): no water
+        keys[(1, 2)] = ("f", (river, ("act3/river/pool.dt1", 0, 1, 0)))  # two water DT1 on one tile: one plane
         flags = {c: (bytes(25) if k[1][0] == dry else b"\1" * 25) for c, k in keys.items()}
         preset, _ = P.build(P.Layout(4, 3, keys, flags), P.Kit(), "m", "m.ds1", "b.json", TERRAIN,
-                            water={"act3/river/rivbank.dt1": (plane, of)})
-        waters = [e["components"][0] for e in preset["entities"] if e["name"] == "water"]
-        self.assertEqual([(t["position"], t["scale"]) for t in waters], [
-            ({"x": 20.0, "y": P.WATER_Y, "z": 5.0}, {"x": 40 / 180, "y": 1.0, "z": 10 / 180}),
-            ({"x": 15.0, "y": P.WATER_Y, "z": 15.0}, {"x": 30 / 180, "y": 1.0, "z": 10 / 180})])
+                            water={"act3/river/rivbank.dt1": (plane, of), "act3/river/pool.dt1": (plane, of)})
+        waters = [e["components"][0] for e in preset["entities"] if e["name"] == P.STREAM]
+
+        def tile(x, z, w):
+            return {"x": x, "y": P.WATER_Y, "z": z}, {"x": w * 10 / 180, "y": 1.0, "z": 10 / 180}
+        # the pool's tile first (its DT1 sorts first), then the river's rows, each cut at twice its width
+        self.assertEqual([(t["position"], t["scale"]) for t in waters],
+                         [tile(15.0, 25.0, 1), tile(10.0, 5.0, 2), tile(30.0, 5.0, 2), tile(5.0, 15.0, 1),
+                          tile(20.0, 15.0, 2)])
         self.assertIn("data/hd/env/texture/water_alb.texture", [d["path"] for d in preset["dependencies"]["textures"]])
         self.assertEqual(plane["components"][0]["position"]["x"], 90.0)  # the stock plane is copied, not changed
 

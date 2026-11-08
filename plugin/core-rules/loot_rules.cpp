@@ -15,6 +15,12 @@
 //   (0x3d4220), which both pickers call, is wrapped: it refuses 2 and 3 where PD2 does, then runs D2R's.
 // - weapon durability: a weapon's chance to lose durability on a hit is halved (4% -> 2%, 10% -> 5%), as PD2's two
 //   bytes over 1.13c's D2Game +0x12f16 / +0x12f36.
+// - staffmods (#663): PD2's roll of class skills on a new class item (ProjectDiablo.dll 0x1036f470 on disk, 0x1036f400
+//   in PD2.gpr) replaces 1.13c's (D2Game +0x13320 and +0x135e0) for every item version: a count from rand%100 + bonus,
+//   each skill drawn from a fixed per-class list (knives their own) with a required-level test in place of 1.13c's
+//   item-level tiers, and a level from rand%(90 + min(ilvl/3, 10)) + bonus/2. No PluginSDK service runs inside item
+//   generation, so D2R's staffmods step (0x58a050) is wrapped: an item of the seven classes gets PD2's roll; a
+//   Warlock item (PD2 has no list) keeps D2R's.
 #include "loot_rules.h"
 
 #include "pd2_engine.h"
@@ -39,6 +45,7 @@ constexpr int32_t WeaponStats[] = {21, 22, 23, 24, 159, 160};  // mindamage, max
 
 std::atomic<uint32_t> g_ethereal {0};
 std::atomic<uint32_t> g_rareBlocked {0};
+std::atomic<uint32_t> g_staffMods {0};
 
 constexpr int32_t QualityRare = 6, QualityCrafted = 8, QualityTempered = 9;
 
@@ -184,6 +191,162 @@ auto PatchWeaponDurability(const D2RL::PluginContext* context) noexcept -> bool 
 	return true;
 }
 
+// --- Staffmods ------------------------------------------------------------------------------------------------------
+
+constexpr int32_t StatSingleSkill = 107;  // item_singleskill, layer = skill
+constexpr int32_t TypeScepter = 24, TypeWand = 25, TypeKnife = 32;
+constexpr int32_t QualityInferior = 1;
+constexpr int32_t SkillPoisonDagger = 73, SkillHolySword = 116, SkillBladeDance = 452;  // merged (PD2 73, 116, 380)
+constexpr uint32_t ClassCount = 7;  // Amazon to Assassin; list 7 is the knives'
+
+// PD2's lists (ProjectDiablo.dll 0x105de988 in PD2.gpr, filled by its static initializer 0x10191c30), in merged
+// skills.txt ids (merge/ids-skills.tsv; PD2's 364-383 moved to 436-455). The Barbarian's has no Blade, Mace or Spear
+// Mastery (127, 129, 136); the knives' takes Poison Dagger and twelve Assassin skills.
+constexpr int16_t ListAmazon[] = {6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                                  21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35};
+constexpr int16_t ListSorceress[] = {36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50,  51,  52,
+                                     53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 441, 448, 455};
+constexpr int16_t ListNecromancer[] = {66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,  81,
+                                       82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 439, 453};
+constexpr int16_t ListPaladin[] = {96,  97,  98,  99,  100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
+                                   113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 436, 443, 450};
+constexpr int16_t ListBarbarian[] = {126, 128, 130, 131, 132, 133, 134, 135, 137, 138, 139, 140, 141, 142, 143,
+                                     144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 440, 447};
+constexpr int16_t ListDruid[] = {221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236,
+                                 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 442};
+constexpr int16_t ListAssassin[] = {251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266,
+                                    267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280, 438, 452};
+constexpr int16_t ListKnives[] = {73, 254, 274, 259, 269, 265, 280, 255, 270, 275, 257, 266, 277};
+
+struct SkillList {
+	const int16_t* skills;
+	int32_t count;
+};
+constexpr SkillList Lists[] = {{ListAmazon, static_cast<int32_t>(std::size(ListAmazon))},
+                               {ListSorceress, static_cast<int32_t>(std::size(ListSorceress))},
+                               {ListNecromancer, static_cast<int32_t>(std::size(ListNecromancer))},
+                               {ListPaladin, static_cast<int32_t>(std::size(ListPaladin))},
+                               {ListBarbarian, static_cast<int32_t>(std::size(ListBarbarian))},
+                               {ListDruid, static_cast<int32_t>(std::size(ListDruid))},
+                               {ListAssassin, static_cast<int32_t>(std::size(ListAssassin))},
+                               {ListKnives, static_cast<int32_t>(std::size(ListKnives))}};
+static_assert(std::size(ListAmazon) == 30 && std::size(ListSorceress) == 33 && std::size(ListNecromancer) == 32 &&
+              std::size(ListPaladin) == 33 && std::size(ListBarbarian) == 29 && std::size(ListDruid) == 31 &&
+              std::size(ListAssassin) == 32 && std::size(ListKnives) == 13);
+
+// PD2's skill count from r = rand%100 + bonus: none below 10 without a bonus, 1 below 50, 2 below 80, else 3
+constexpr auto StaffModsCount(uint32_t roll, int32_t bonus) noexcept -> int32_t {
+	return roll >= 80 ? 3 : roll >= 50 ? 2 : (roll < 10 && bonus == 0) ? 0 : 1;
+}
+static_assert(StaffModsCount(9, 0) == 0 && StaffModsCount(9, 5) == 1 && StaffModsCount(49, 0) == 1 &&
+              StaffModsCount(50, 0) == 2 && StaffModsCount(79, 0) == 2 && StaffModsCount(80, 0) == 3);
+
+// PD2's skill level from r = rand%(90 + min(ilvl/3, 10)) + bonus/2: 1 below 40, 2 below 75, else 3
+constexpr auto StaffModsLevel(uint32_t roll) noexcept -> int32_t {
+	return roll >= 75 ? 3 : roll >= 40 ? 2 : 1;
+}
+static_assert(StaffModsLevel(39) == 1 && StaffModsLevel(40) == 2 && StaffModsLevel(74) == 2 &&
+              StaffModsLevel(75) == 3);
+
+using StaffModsFn = void (*)(Unit* item, const uint8_t* drop) noexcept;
+StaffModsFn g_staffModsOriginal = nullptr;
+
+auto Roll(Unit* item, int32_t n) noexcept -> uint32_t {
+	using namespace d2r::rva;
+	return d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(ItemSeed)(item), static_cast<uint32_t>(n));
+}
+
+// skills.txt reqlevel, or -1 for a skill the table lacks
+auto SkillReq(uint32_t dataFlag, int32_t skill) noexcept -> int32_t {
+	using namespace d2r::rva;
+	const uint8_t* record =
+		d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(GetSkillRecord)(dataFlag, skill);
+	return record == nullptr ? -1 : d2r::At<uint16_t>(record, SkReqLevel);
+}
+
+// item_singleskill on the item's magic list (flags 0x40), made and attached when it has none, as D2R's roll does
+auto SetSingleSkill(Unit* item, uint32_t dataFlag, int32_t skill, int32_t level) noexcept -> void {
+	using namespace d2r::rva;
+	void* list = d2r::Engine<void* (*)(Unit*, int32_t, uint32_t) noexcept>(UnitListByFlags)(item, 0, ListFlagMagic);
+	if (list == nullptr) {
+		const int32_t id =
+			d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(UnitId)(item, __FILE__, __LINE__);
+		list = d2r::Engine<void* (*)(int32_t, int32_t, int32_t, int32_t) noexcept>(NewStatList)(ListFlagMagic, 0, 4,
+		                                                                                       id);
+		if (list == nullptr) {
+			return;
+		}
+		d2r::Engine<void (*)(Unit*, void*, int32_t) noexcept>(AttachStatList)(item, list, 1);
+	}
+	d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(dataFlag, list,
+	                                                                                      StatSingleSkill, level, skill);
+}
+
+// PD2's roll (0x1036f400 in PD2.gpr), step for step, on the item's own seed
+auto RollStaffMods(Unit* item, uint32_t list, int32_t ilvl, int32_t bonus) noexcept -> void {
+	using namespace d2r::rva;
+	const uint32_t total = ++g_staffMods;  // every roll PD2's function runs, the early-out ones too
+	const int32_t quality = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item);
+	if (ilvl == 1 && quality == QualityInferior) {
+		return;
+	}
+	const int32_t count = StaffModsCount(Roll(item, 100) + static_cast<uint32_t>(bonus), bonus);
+	if (count == 0) {
+		return;
+	}
+	const uint32_t dataFlag = d2r::Engine<uint8_t (*)(Unit*) noexcept>(UnitDataFlag)(item);
+	const auto isType = d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType);
+	const bool wand = isType(item, TypeWand) != 0, scepter = isType(item, TypeScepter) != 0;
+	const bool levelOne =
+		d2r::Engine<uint16_t (*)(Unit*) noexcept>(ItemVersion)(item) >= 100 && quality == QualityInferior;
+	const int32_t levelRange = 90 + (ilvl / 3 > 10 ? 10 : ilvl / 3);
+	int32_t picked[3] = {-1, -1, -1};
+	int32_t set = 0;
+	for (int32_t n = 0; n < count; ++n) {
+		for (int tries = 4; tries > 0; --tries) {
+			const int32_t skill = Lists[list].skills[Roll(item, Lists[list].count)];
+			const int32_t req = SkillReq(dataFlag, skill);
+			const bool reachable = req == 1 || (req >= 0 && req + 7 <= ilvl);
+			const bool barred = (skill == SkillPoisonDagger && wand) || (skill == SkillHolySword && scepter) ||
+			                    skill == SkillBladeDance;
+			if (reachable && !barred && skill != picked[0] && skill != picked[1] && skill != picked[2]) {
+				picked[n] = skill;
+				break;
+			}
+		}
+		const int32_t level =
+			levelOne ? 1 : StaffModsLevel(Roll(item, levelRange) + static_cast<uint32_t>(bonus / 2));
+		if (picked[n] >= 0) {
+			SetSingleSkill(item, dataFlag, picked[n], level);
+			++set;
+		}
+	}
+	if (total <= 20 || total % 100 == 0) {
+		plog::Info("staffmods: list %u ilvl %d bonus %d: %d of %d skills (%d %d %d), %u so far", list, ilvl, bonus,
+		           set, count, picked[0], picked[1], picked[2], total);
+	}
+}
+
+auto StaffMods(Unit* item, const uint8_t* drop) noexcept -> void {
+	using namespace d2r::rva;
+	if (item == nullptr || drop == nullptr) {
+		g_staffModsOriginal(item, drop);
+		return;
+	}
+	// PD2's caller (1.13c +0x13de0) takes classes 0-6; D2R's 7 is the Warlock, which PD2 lacks: D2R's roll
+	const uint32_t cls = d2r::Engine<uint32_t (*)(Unit*) noexcept>(StaffModsClass)(item);
+	if (cls >= ClassCount) {
+		g_staffModsOriginal(item, drop);
+		return;
+	}
+	const bool knife = d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, TypeKnife) != 0;
+	const int32_t ilvl = d2r::At<int32_t>(drop, DropItemLevel);
+	// PD2's stubs: a version-0 item (1.13c +0x135e0) rolls with no bonus, else the item level when the drop asks
+	const bool classic = d2r::Engine<uint16_t (*)(Unit*) noexcept>(ItemVersion)(item) == 0;
+	const int32_t bonus = !classic && (d2r::At<uint32_t>(drop, DropFlags) & DropFlagStaffModsBonus) != 0 ? ilvl : 0;
+	RollStaffMods(item, knife ? ClassCount : cls, ilvl, bonus);
+}
+
 }  // namespace
 
 auto InstallLootRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
@@ -197,17 +360,20 @@ auto InstallLootRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool rare = context->InstallInlineHook(AffixAllowed, AffixAllowedEntry, sizeof(AffixAllowedEntry),
 	                                             &RareAffixAllowed, &g_affixAllowedOriginal);
 	const bool durability = PatchWeaponDurability(context);
-	std::snprintf(report, reportSize, "ethereal bonus%s; affix rare%s; weapon durability 1/2%s",
+	const bool staffMods = context->InstallInlineHook(ItemStaffMods, ItemStaffModsEntry, sizeof(ItemStaffModsEntry),
+	                                                  &StaffMods, &g_staffModsOriginal);
+	std::snprintf(report, reportSize, "ethereal bonus%s; affix rare%s; weapon durability 1/2%s; staffmods%s",
 	              !decoder ? " FAILED (decoder bytes differ)" : ethereal ? "" : " FAILED (bytes differ)",
-	              rare ? "" : " FAILED (bytes differ)", durability ? "" : " FAILED (bytes differ)");
-	return (ethereal ? 1 : 0) + (rare ? 1 : 0) + (durability ? 1 : 0);
+	              rare ? "" : " FAILED (bytes differ)", durability ? "" : " FAILED (bytes differ)",
+	              staffMods ? "" : " FAILED (bytes differ)");
+	return (ethereal ? 1 : 0) + (rare ? 1 : 0) + (durability ? 1 : 0) + (staffMods ? 1 : 0);
 }
 
 auto LootRuleCount() noexcept -> int {
-	return 3;
+	return 4;
 }
 
 auto LootRuleCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "ethereal bonuses %u, rare-only affixes refused %u", g_ethereal.load(),
-	              g_rareBlocked.load());
+	std::snprintf(out, size, "ethereal bonuses %u, rare-only affixes refused %u, staffmods rolls %u",
+	              g_ethereal.load(), g_rareBlocked.load(), g_staffMods.load());
 }

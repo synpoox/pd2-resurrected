@@ -16,11 +16,13 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Items with replenish charges (Enigma, Oath and others) regain their used charges over time.
 - Throwing potions burst into their explosion and fire, gas, cold or lightning ring.
 - Weapons lose durability half as often.
+- Class items roll skill bonuses from the whole class tree, gated by each skill's required level.
 - Nova item casts (on striking, charges) burst around the target, and no longer misfire.
 
 #### Maps
 
-- Jungle maps draw water in their streams beyond the copied D2R rooms.
+- Jungle and Necropolis maps draw water in their streams beyond the copied D2R rooms.
+- Jungle, Kurast and Necropolis maps grow tree walls on the near side of paths, closing most gaps in their borders.
 - Dungeon boss barriers show as iron gates instead of invisible walls.
 
 #### Uber bosses
