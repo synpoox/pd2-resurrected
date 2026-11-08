@@ -45,11 +45,10 @@ constexpr int32_t StatSkillOnCast = 378;   // item_skilloncast, merged id (PD2 2
 std::atomic<uint32_t> g_rolls {0};
 
 // PD2's unlimited books (spell 13, ProjectDiablo.dll): the Horadric Navigator (rtp) opens a town portal and the
-// Horadric Almanac (rid) identifies, and neither is used up. The merge moves them to item spells 17 and 18
-// (tools/pd2_ids.py FIXES), which run D2R's own Town Portal (entry 2) and Identify (entry 1) handlers.
-constexpr int32_t UnlimitedPortalSpell = 17;  // 18 follows it
+// Horadric Almanac (rid) identifies every item at once, and neither is used up. The merge moves them to item spells 17
+// and 18 (tools/pd2_ids.py FIXES): 17 runs D2R's own Town Portal (entry 2); 18 has no check or use of its own, and
+// core-maps' item spell hooks identify all (d2r::rva::UnlimitedIdentifySpell).
 constexpr int32_t UnlimitedPortalCheck = 2, UnlimitedPortalUse = 2;
-constexpr int32_t UnlimitedIdentifyCheck = 1, UnlimitedIdentifyUse = 1;
 
 using SetStatFn = int32_t (*)(uint8_t dataFlag, uint32_t a1, uint64_t a2, Unit* item, const void* property, uint8_t set,
                               uint16_t stat, uint16_t layer, uint32_t value, uint32_t a8, uint32_t a9,
@@ -1363,8 +1362,7 @@ static auto PatchUnlimitedBooks(const D2RL::PluginContext* context) noexcept -> 
 		return false;
 	}
 	static constexpr uint8_t Empty[2 * ItemSpellEntrySize] = {};
-	static constexpr int32_t Books[2 * 3] = {UnlimitedPortalCheck,   UnlimitedPortalUse,   1,
-	                                         UnlimitedIdentifyCheck, UnlimitedIdentifyUse, 1};
+	static constexpr int32_t Books[2 * 3] = {UnlimitedPortalCheck, UnlimitedPortalUse, 1, 0, 0, 1};
 	static_assert(sizeof(Books) == sizeof(Empty));
 	const D2RL::Mutations::BytePatchRequest patch{
 		.structSize = D2RL::Mutations::BytePatchRequestSize,
@@ -1424,8 +1422,8 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool equip = tick && context->InstallInlineHook(StatCallbackInit, StatCallbackInitEntry,
 	                                                      sizeof(StatCallbackInitEntry), EquipStatCallbackInit,
 	                                                      &g_statCallbackInitOriginal);
-	// Unlimited books (IR5): no hook. D2R's item spell table is data; its free entries 17 and 18 get the Town Portal
-	// and Identify handlers with keep 1, so the book stays after its use
+	// Unlimited books (IR5): D2R's item spell table is data; its free entry 17 gets the Town Portal handlers and 18
+	// none (core-maps' hooks identify all), both with keep 1, so the book stays after its use
 	const bool unlimited = PatchUnlimitedBooks(context);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "

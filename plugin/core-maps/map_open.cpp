@@ -112,6 +112,42 @@ auto IsMap(Game* game, Unit* item) noexcept -> const uint8_t* {
 	return record != nullptr && At<int32_t>(record, ItemPSpell) == MapSpell ? record : nullptr;
 }
 
+// --- The Horadric Almanac (IR5, #240; core-rules' lane, kept here because these hooks own the item spell dispatchers)
+// PD2's unlimited Tome of Identify identifies every item at once and stays. Its item spell 18 has no D2R check or use
+// (core-rules writes the entry, keep 1), so the hooks below run it: D2R's identify (as its use function 1, 0x57ec30)
+// on each unidentified item in the player's inventory list.
+// shortcut: the list holds what the player carries, wears and keeps in the cube and stash; PD2's own walk is not read.
+// Upgrade if a game check shows PD2 leaves the stash or cube out.
+std::atomic<uint32_t> g_almanacUses {0};
+
+auto IsAlmanac(Game* game, Unit* item) noexcept -> bool {
+	using namespace d2r::rva;
+	const int32_t row = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(UnitClassOf)(item, __FILE__,
+	                                                                                               __LINE__);
+	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ItemRecord)(d2r::DataFlag(game), row);
+	return record != nullptr && At<int32_t>(record, ItemPSpell) == UnlimitedIdentifySpell;
+}
+
+void IdentifyAll(Game* game, Unit* player) noexcept {
+	using namespace d2r::rva;
+	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory)(player, __FILE__, __LINE__);
+	if (inventory == nullptr) {
+		return;
+	}
+	const auto next = d2r::Engine<Unit* (*)(Unit*) noexcept>(InventoryNextItem);
+	const auto hasFlag = d2r::Engine<int32_t (*)(Unit*, uint32_t, int32_t, const char*) noexcept>(ItemTestFlag);
+	const auto identify = d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t) noexcept>(IdentifyItem);
+	int32_t identified = 0;
+	for (Unit* item = d2r::Engine<Unit* (*)(void*) noexcept>(InventoryFirstItem)(inventory); item != nullptr;
+	     item = next(item)) {
+		if (hasFlag(item, ItemFlagIdentified, __LINE__, __FILE__) == 0) {
+			identify(game, player, item, 1);
+			++identified;
+		}
+	}
+	plog::Info("almanac: %d items identified, %u uses", identified, ++g_almanacUses);
+}
+
 auto MapLevel(Game* game, Unit* player, Unit* item, const uint8_t* record) noexcept -> int32_t {
 	return d2r::Engine<int32_t (*)(uint32_t, Unit*, Unit*, uint32_t) noexcept>(d2r::rva::ItemCalc)(
 		d2r::DataFlag(game), player, item, At<uint32_t>(record, d2r::rva::ItemLenCalc));
@@ -198,6 +234,9 @@ auto Refusal(Game* game, Unit* player, int32_t level, char* why, size_t size) no
 }
 
 auto SpellCheck(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> uint64_t {
+	if (game != nullptr && player != nullptr && item != nullptr && IsAlmanac(game, item)) {
+		return 1;
+	}
 	const uint8_t* record = game != nullptr && player != nullptr && item != nullptr ? IsMap(game, item) : nullptr;
 	if (record == nullptr) {
 		return g_checkOriginal(game, player, item, target);
@@ -462,6 +501,10 @@ auto OpenUber(Game* game, Unit* player, Unit* item, int32_t level) noexcept -> v
 }
 
 auto SpellUse(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> void {
+	if (game != nullptr && player != nullptr && item != nullptr && IsAlmanac(game, item)) {
+		IdentifyAll(game, player);
+		return;
+	}
 	const uint8_t* record = g_gated && game != nullptr && player != nullptr && item != nullptr ? IsMap(game, item)
 	                                                                                         : nullptr;
 	if (record == nullptr) {

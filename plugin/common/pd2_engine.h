@@ -836,6 +836,13 @@ inline constexpr uint8_t ItemSpellUseEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x
 // D2R fills 0-15; 16 is core-maps' map spell, 17 and 18 core-rules' unlimited books (IR5).
 inline constexpr uint64_t ItemSpellTable = 0x236fe30;
 inline constexpr int ItemSpellEntrySize = 12;
+// The unlimited books' item spells (IR5, #240; the merge's misc pSpell for rtp and rid): the Navigator's entry 17 runs
+// D2R's Town Portal; the Almanac's entry 18 is {0, 0, keep 1}, and core-maps' item spell hooks identify every item
+// (PD2: "Identifies all items at once"), as D2R's use function 1 (0x57ec30) identifies one.
+inline constexpr int32_t UnlimitedPortalSpell = 17, UnlimitedIdentifySpell = 18;
+inline constexpr uint64_t ItemTestFlag = 0x36e2d0;  // (item, flag, line, file) -> non-zero when item data +0x18 has it
+inline constexpr uint32_t ItemFlagIdentified = 0x10;
+inline constexpr uint64_t IdentifyItem = 0x46e8c0;  // (game, player, item, 1): identifies it and tells the client
 inline constexpr uint64_t UnitClassOf = 0x349860;  // (unit, file, line) -> class id (the dispatchers' item row)
 inline constexpr int ItemPSpell = 0x94;   // int32 misc pSpell in the items record (ItemRecord)
 inline constexpr int ItemLenCalc = 0xb0;  // uint32 misc len calc; the timed potion handler 0x57ecb0 evaluates it
