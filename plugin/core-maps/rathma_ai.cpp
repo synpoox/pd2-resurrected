@@ -662,8 +662,12 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 			nearest = p;
 		}
 	}
-	// shortcut: PD2's 15-tick immune idle window (game +0x26fe, started from the room-release hook) is not ported, as
-	// for Lucion and Dclone; add it with that hook (map_open.cpp's KeepBossRoom)
+	// The idle window for a boss left alone (PD2 game+0x26fe): idle and immune, counting down while a player is here
+	if (IdleWindow(game, unit, nearest != nullptr)) {
+		SetImmune(game, unit, true, true);
+		Idle(game, unit, 10);
+		return;
+	}
 	auto*& tickTarget = *reinterpret_cast<Unit**>(tick + AiTickTarget);
 	if (tickTarget == nullptr) {
 		if (nearest == nullptr) {
