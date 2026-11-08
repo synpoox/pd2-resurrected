@@ -7,6 +7,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Items
 
+- Larzuk's Malus shows a malus in HD, not an elixir.
 - Crossbows and Assassin claws attack at PD2's speeds, so PD2's breakpoints apply.
 - Purgatory's damage follows ethereal items put on or taken off while it is worn.
 - D2R's organ portal is off: the three organs are used up and make PD2's Pandemonium Talisman.
@@ -99,6 +100,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Fixes
 
+- Druid vines eat each corpse once, as in PD2, instead of healing from the same corpse forever.
 - Rathma's portal to Harrogath is gold, and the shard names lose a stray `*/`, as in PD2.
 - Split Throw's weapons show, split and come back to the Barbarian as in PD2.
 - Legacy graphics no longer draws the ground in D2R's own areas as red and cyan noise.

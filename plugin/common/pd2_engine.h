@@ -180,6 +180,10 @@ inline constexpr uint64_t RemoveSkillState = 0x4370b0;
 // What 0x4370b0 does for each state it removes: state bit off (unit, state, 0), then the list detached (unit, list)
 // and freed (dataFlag, list)
 inline constexpr uint64_t ClearUnitState = 0x3354c0;
+// The same function with on 1: sets the state bit UnitHasState reads (owner +0xaf0, via 0x2f7ea0), then QueueUnitUpdate.
+// D2R's srvst 63 (0x587b50) takes its corpse with it. SetUnitState (0x3355a0) writes the second array, which
+// UnitHasState never reads (#378).
+inline constexpr uint64_t SetStateBit = 0x3354c0;  // (unit, state, on)
 inline constexpr uint64_t DetachStatList = 0x2f7920;
 inline constexpr uint64_t FreeStatList = 0x2f4180;
 // (&StateListRequest) -> stat list or null. An older list of the state with the same skill and level only gets
