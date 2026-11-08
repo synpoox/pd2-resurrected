@@ -945,6 +945,10 @@ inline constexpr uint64_t TcDropReturn = 0x44486b;  // the TC drop's return addr
 inline constexpr int DropUnit = 0x00;   // Unit* the dropper
 inline constexpr int DropFlags = 0xc0;  // uint32; 0x4 makes an ethereal-capable item ethereal (0x442d60), 1.13c +0x80
 inline constexpr uint32_t DropFlagEthereal = 0x4;
+// int32 item level (1.13c +0x0c), set by the TC drop from the dropper; int32 prefix[3] / suffix[3] (1.13c +0x68 / +0x74):
+// a one-based magicprefix / magicsuffix id forces the affix of a magic item, 0 rolls it (0x442c60, quality 4; an id it
+// can't apply rolls too). Decompiled for #531 (Ghidra, D2R.gpr); checked in game.
+inline constexpr int DropItemLevel = 0x18, DropPrefix = 0xa8, DropSuffix = 0xb4;
 inline constexpr uint64_t ItemQuality = 0x36cf60;     // (item) -> quality (6 rare)
 inline constexpr uint64_t ItemSocketable = 0x36b410;  // (item) -> non-zero: can take sockets (1.13c D2Common #10360)
 inline constexpr uint64_t SetItemSockets = 0x36e880;  // (item, n): sockets, clamped to the type's max (1.13c #10599)

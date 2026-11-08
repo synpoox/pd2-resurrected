@@ -8,4 +8,8 @@ xactportal_grey	portal_permanent
 xactportal_green	portal_permanent
 xactportal_purple	portal_permanent
 xactdarkportal_grey	portal_permanent
+zharportal_blue	portal_permanent
+zharportal_red	portal_permanent
+# ZharTomeObject keeps D2R's tome token (TT): it draws the Arcane Sanctuary's tower tome
+ZharTomeObject	tower_tome
 LucionChest	consolation_chest
