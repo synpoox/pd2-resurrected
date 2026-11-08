@@ -9,6 +9,8 @@ generated/data/local/lng/. merge/strings.json holds key names and numbers only, 
   renames    our key -> the PD2 key whose text it carries (Runeword171 means another runeword in D2R)
   ids        key -> [string ID, D2R file], append-only. New keys copy PD2's English into all 13 languages; a
              hiredesc_<code> key takes the description in PD2's hiredesc table (PD2 has no string for it).
+  entries    key -> LevelName key, for the LevelEntry keys pd2_levels gives PD2-only levels: "Entering " and that
+             name, PD2's text (else D2R's), in all 13 languages; --assign adds them from the merged levels.txt
   texts      key -> English the mod writes itself, for listed keys PD2 has no text for (skilldesc lines in D2R's
              format, #73); written into all 13 languages like PD2's
 A key in pd2_ids.PLAIN_STRINGS' values takes its source key's text without printf codes (#383). The rule fails if a
@@ -33,6 +35,7 @@ import pd2_ids
 ROOT = Path(__file__).resolve().parent.parent
 TBL = "local/lng/eng/patchstring.tbl"  # under PD2's data root
 FIRST_ID = 50000  # leaves 28,106-49,999 to Blizzard (decision #29)
+ENTERING = "Entering "  # an entries key's text: this and its level's name (D2R has no localized "Entering %s")
 
 
 def read_tbl(data: bytes) -> dict[str, str]:
@@ -102,6 +105,7 @@ def build(cfg: dict, pd2: dict[str, str], s, out_root: Path) -> list[str]:
             e["enUS"] = new
             s.changed.add(rel)
     plain_src = {v: k for k, v in pd2_ids.PLAIN_STRINGS.items()}
+    entries = cfg.get("entries", {})
     seen: set[int] = set()
     for key, (sid, file) in sorted(cfg["ids"].items(), key=lambda kv: kv[1][0]):
         if key in d2r_keys:
@@ -109,26 +113,24 @@ def build(cfg: dict, pd2: dict[str, str], s, out_root: Path) -> list[str]:
         if sid & 0xFFFF in used16 or sid > 0xFFFF or sid in seen:
             raise ValueError(f"string ID {sid} ({key}) is used by D2R, repeated or above 65535")
         seen.add(sid)
-        if key in plain_src:  # PD2's text of the source key, else D2R's in each language, without format codes
-            src = plain_src[key]
+        src = plain_src.get(key, entries.get(key))
+        if src is not None:  # PD2's text of the source key, else D2R's in each language
             d2r = next((e for rel, e in index.get(src.lower(), []) if e["Key"] == src), None)
             if d2r is None and src not in pd2:
                 raise ValueError(f"{key!r}: neither game has key {src!r}")
-            texts = {la: plain(pd2[src] if src in pd2 else d2r[la]) for la in mk.LANGS}
-            for folder in mk.FOLDERS:
-                rel = f"{folder}/{file}"
-                if s.base.exists(rel):
-                    s.load(rel).append({"id": sid, "Key": key, **texts})
-                    s.changed.add(rel)
-            continue
-        own = cfg.get("texts", {}).get(key)
-        if own is None and from_key[key] not in pd2:
-            raise ValueError(f"{key!r}: PD2 has no key {from_key[key]!r}")
-        text = flip(file, pd2[from_key[key]] if own is None else own)
+            # a plain copy drops the format codes; a PD2-only level's area banner reads "Entering " and its name
+            make = plain if key in plain_src else lambda t: ENTERING + t
+            texts = {la: make(pd2[src] if src in pd2 else d2r[la]) for la in mk.LANGS}
+        else:
+            own = cfg.get("texts", {}).get(key)
+            if own is None and from_key[key] not in pd2:
+                raise ValueError(f"{key!r}: PD2 has no key {from_key[key]!r}")
+            text = flip(file, pd2[from_key[key]] if own is None else own)
+            texts = {la: text for la in mk.LANGS}
         for folder in mk.FOLDERS:
             rel = f"{folder}/{file}"
             if s.base.exists(rel):
-                s.load(rel).append({"id": sid, "Key": key, **{la: text for la in mk.LANGS}})
+                s.load(rel).append({"id": sid, "Key": key, **texts})
                 s.changed.add(rel)
     return s.write(out_root)
 
@@ -186,9 +188,11 @@ def referenced(excel: Path) -> dict[str, set[tuple[str, str]]]:
     return refs
 
 
-def assign(cfg: dict, pd2: dict[str, str], excel: Path, s) -> list[str]:
+def assign(cfg: dict, pd2: dict[str, str], excel: Path, s, levels: Path | None = None) -> list[str]:
     """Appends to cfg["ids"] each renamed key and each PD2 key a table names that D2R lacks (exact case), with the
-    D2R file the column's other keys mostly sit in, numbered from FIRST_ID skipping D2R's low-16 values."""
+    D2R file the column's other keys mostly sit in, numbered from FIRST_ID skipping D2R's low-16 values. With the
+    merged levels.txt, each LevelEntry key neither game has (pd2_levels.entry_key) also goes to cfg["entries"], naming
+    its row's LevelName key."""
     index = s.index()
     d2r = {e["Key"]: rel.rsplit("/", 1)[1] for hits in index.values() for rel, e in hits if "-legacy" not in rel}
     refs = referenced(excel)
@@ -201,6 +205,16 @@ def assign(cfg: dict, pd2: dict[str, str], excel: Path, s) -> list[str]:
     renames = cfg.setdefault("renames", {})
     want = [(k, sorted(refs[src])) for k, src in renames.items()]
     want += [(k, sorted(refs[k])) for k in sorted(pd2) if k not in d2r and refs.get(k)]
+    entries = cfg.setdefault("entries", {})
+    if levels is not None and levels.is_file():
+        rows = levels.read_bytes().decode("latin-1").splitlines()
+        head = rows[0].split("	")
+        for r in rows[1:]:
+            f = dict(zip(head, r.split("	")))
+            key, name = f.get("LevelEntry", ""), f.get("LevelName", "")
+            if key and name and key not in d2r and key not in pd2:
+                entries.setdefault(key, name)
+    want += [(k, [("levels", "LevelEntry")]) for k in entries]
     used16 = {int(e["id"]) & 0xFFFF for hits in index.values() for _, e in hits}
     used16 |= {sid & 0xFFFF for sid, _ in cfg["ids"].values()}
     nxt = max([FIRST_ID - 1] + [sid for sid, _ in cfg["ids"].values()]) + 1
@@ -238,7 +252,11 @@ def main(argv: list[str] | None = None) -> int:
     cfg_file = a.root / "merge" / "strings.json"
     cfg = json.loads(cfg_file.read_text("utf-8"))
     strings = modkit()[1].Strings(DataRoot(a.d2r or pd2_merge.D2R_DATA))
-    added = assign(cfg, read_tbl((pd2_data / TBL).read_bytes()), pd2_data / "global" / "excel", strings)
+    levels = a.root / "generated" / "data" / "global" / "excel" / "levels.txt"  # pd2_merge's
+    if not levels.is_file():
+        print(f"warning: no {levels}: run tools/pd2_merge.py first, or the levels' LevelEntry keys get no IDs",
+              file=sys.stderr)
+    added = assign(cfg, read_tbl((pd2_data / TBL).read_bytes()), pd2_data / "global" / "excel", strings, levels)
     cfg_file.write_text(dump(cfg), "utf-8", newline="\n")
     print(f"assigned {len(added)} new string IDs ({len(cfg['ids'])} listed)")
     return 0

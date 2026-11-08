@@ -89,6 +89,19 @@ class StringsTests(unittest.TestCase):
         self.assertEqual({self.built("strings/skills.json")["OwnLine"][la] for la in mkstrings.LANGS},
                          {"Own: %d per second"})
 
+    def test_build_writes_level_entries(self):
+        # a PD2-only level's banner: "Entering " and its LevelName text, PD2's or else D2R's in each language
+        cfg = {"overrides": [], "entries": {"EnteringNewAffix": "NewAffix", "EnteringRal": "r08"},
+               "ids": {"EnteringNewAffix": [50000, "item-runes.json"], "EnteringRal": [50001, "item-runes.json"]}}
+        pd2 = {k: v for k, v in self.pd2.items() if k != "r08"}
+        pd2_strings.build(cfg, pd2, self.strings(), self.root / "out")
+        runes = self.built("strings/item-runes.json")
+        self.assertEqual({runes["EnteringNewAffix"][la] for la in mkstrings.LANGS}, {"Entering of Wit"})
+        self.assertEqual(runes["EnteringRal"]["deDE"], "Entering Ral Rune")
+        with self.assertRaisesRegex(ValueError, "neither game has key 'Gone'"):
+            pd2_strings.build({**cfg, "entries": {"EnteringNewAffix": "Gone", "EnteringRal": "r08"}}, pd2,
+                              self.strings(), self.root / "out")
+
     def test_build_refuses_unsafe_data(self):
         base = {"overrides": [], "ids": {}}
         for change, msg in [({"ids": {"r08": [50000, "ui.json"]}}, "D2R now has key"),
@@ -141,6 +154,19 @@ class StringsTests(unittest.TestCase):
         self.assertEqual(cfg["ids"]["NewAffix"][1], "item-runes.json")  # no other Name cell in magicsuffix; runes.Name holds Runeword171
         self.assertEqual(json.loads(pd2_strings.dump(cfg)), cfg)
         self.assertEqual(pd2_strings.assign(cfg, self.pd2, excel, self.strings()), [])
+
+    def test_assign_adds_the_merged_levels_entry_keys(self):
+        excel = self.root / "excel"
+        excel.mkdir()
+        levels = self.root / "levels.txt"  # the merged table: D2R's key, a PD2 key, a new key, a row with none
+        rows = [["Name", "LevelName", "LevelEntry"], ["A", "r08", "r08"], ["B", "NewSkill", "NewSkill"],
+                ["C", "NewAffix", "EnteringNewAffix"], ["D", "NewAffix", ""]]
+        levels.write_bytes("".join("\t".join(r) + "\r\n" for r in rows).encode())
+        cfg = {"overrides": [], "ids": {}}
+        self.assertEqual(pd2_strings.assign(cfg, self.pd2, excel, self.strings(), levels), ["EnteringNewAffix"])
+        self.assertEqual(cfg["entries"], {"EnteringNewAffix": "NewAffix"})
+        self.assertEqual(json.loads(pd2_strings.dump(cfg)), cfg)
+        self.assertEqual(pd2_strings.assign(cfg, self.pd2, excel, self.strings(), levels), [])
 
 
 if __name__ == "__main__":
