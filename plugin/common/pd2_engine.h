@@ -590,6 +590,8 @@ struct LeapKnockback {
 static_assert(sizeof(LeapKnockback) == 0x180);
 static_assert(offsetof(LeapKnockback, listData) == 0x40);
 static_assert(offsetof(LeapKnockback, tagged) == 0x158);
+// The same block as a plain hit's damage, for callers that build one (Rathma's bone spear)
+using DamageBlock = LeapKnockback;
 
 }  // namespace d2r
 

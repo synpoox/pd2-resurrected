@@ -1153,7 +1153,8 @@ std::atomic<uint32_t> g_spearHits {0};
 // and its result 0x103025b0). PD2 writes the full share to the block's magic (+0x20) and min(share, life) to its total
 // (+0x4c): with area 0 the resist step that sums the total never runs, so the target loses the total as it stands, with
 // no magic resist. The missile's own block is left as it is.
-// D2R native calls: PluginSDK has no damage service, so this calls D2R's DamageStep, HitEvents and DealDamage.
+// D2R native calls: PluginSDK has no damage service, so this calls D2R's HitEvents and DealDamage. PD2 runs no
+// crit step here, so D2R's DamageStep (0x5889e0, the monster crit) is not called.
 // PD2 also puts the missile in the block (+0x5c): 0x103025b0 reads it only for a kill by skill 96's missile, not this
 // one, and D2R's block keeps the hit's x/y there (0x13c, 0x140, read by DealDamage), so the port leaves it out.
 constexpr uint32_t HitNoRoll = 0x1000;  // 1.13c's hit flag the spear's block carries (no to-hit roll)
@@ -1181,15 +1182,15 @@ void SrvDmgRathmaSpear(Game* game, Unit* missile, Unit* target, uint8_t* damage)
 	constexpr double UintMax = 4294967295.0;
 	const uint32_t magic = share <= 0.0 ? 0 : share >= UintMax ? UINT32_MAX : static_cast<uint32_t>(share);
 	const uint32_t total = magic < life ? magic : life;
-	d2r::LeapKnockback hit;  // D2R's damage block
+	d2r::DamageBlock hit;
 	hit.hitFlags = HitNoRoll;
-	// PD2's block starts zeroed, but D2R's DealDamage (0x44a9b0) applies the damage only with the hit bit set
-	hit.resultFlags = ResultHit;
+	// zeroed, as PD2's block: without the hit bit neither game fires on-hit events 5 and 1 (1.13c 0x10305990 and D2R's
+	// HitEvents 0x44ce80 both need result & 0x21 == 1), and HitEvents still takes the total from life
+	hit.resultFlags = 0;
 	auto* block = reinterpret_cast<uint8_t*>(&hit);
 	*reinterpret_cast<uint32_t*>(block + DmgMagic) = magic;
 	*reinterpret_cast<uint32_t*>(block + DmgTotal) = total;
 	using HitFn = void (*)(Game*, Unit*, Unit*, void*) noexcept;
-	d2r::Engine<void (*)(Unit*, Unit*, void*) noexcept>(DamageStep)(owner, target, &hit);
 	// area 0, as PD2: D2R's HitEvents then skips DamageEffects (the resists and the total), as 1.13c skips its step
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t, void*) noexcept>(HitEvents)(game, owner, target, 0, &hit);
 	d2r::Engine<HitFn>(DealDamage)(game, owner, target, &hit);

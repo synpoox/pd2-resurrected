@@ -4020,6 +4020,12 @@ auto SrvStCycler(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 // argument of its spot search (0x10389c20), and its spawn (0x1038a060) passes fixed flags to D2Game.
 // shortcut: D2R's portal spot search stands in for PD2's 0x10389c20, as core-maps' map events do; PD2's 0x3000000 unit
 // flags and its D2Game call on each spawn (0x103a1eb0) are left out, as their meaning is unread
+// FindFreeSpot's other arguments, as D2R's red portal (OpenRedPortal) passes them; the names are guesses, unread
+constexpr uint32_t SpotSize = 3, SpotMask = 0x400;
+constexpr uint64_t SpotRings = 5;
+constexpr int32_t SpotTries = 100;
+constexpr int16_t SpawnFlags = 0x42;
+
 auto SummonAt(Game* game, void*& room, int32_t x, int32_t y, int32_t mon, bool search = true) noexcept -> Unit* {
 	using namespace d2r::rva;
 	void* at = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(room, x, y);
@@ -4032,11 +4038,11 @@ auto SummonAt(Game* game, void*& room, int32_t x, int32_t y, int32_t mon, bool s
 	if (search) {
 		found = nullptr;
 		d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(
-			FindFreeSpot)(game, room, xy, 3, 0x400, &found, 5, 100);
+			FindFreeSpot)(game, room, xy, SpotSize, SpotMask, &found, SpotRings, SpotTries);
 	}
 	return found == nullptr ? nullptr
 		: d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(SpawnMonster)(
-			game, found, xy[0], xy[1], mon, 1, -1, 0x42);
+			game, found, xy[0], xy[1], mon, 1, -1, SpawnFlags);
 }
 
 // RathmaSummon (PD2 srvdofunc 179, ProjectDiablo.dll 0x103b42a0): what Rathma's AI picked (stat 447, here 500, which
@@ -4045,15 +4051,16 @@ auto SummonAt(Game* game, void*& room, int32_t x, int32_t y, int32_t mon, bool s
 //   31 four blood golems (938) at the stage's spot (0x103567d0) -25 x, -25 y, +23 x, +25 y: only the first takes the
 //      spot search (0x1038a170), the other three spawn on their cell (0x1038a0d0, forced)
 //   32 one totem (939), 20 failed spots at most
-//   33 void knights 1106, 969, 968, then 1107, 969, 1106 below 31 %, 1107, 968 below 51 %, 969 to 70 %: each takes the
-//      first free spot, 40 failed spots for the whole list
+//   33 void knights cold, fire, poison, then phys, fire, cold below 31 %, phys, poison below 51 %, fire to 70 %: each
+//      takes the first free spot, 40 failed spots for the whole list
+// Pick 30 is dead code in PD2 as well: its Rathma AI (0x10358510) never enters state 0x1e, so the port's never does.
 // PD2 spawns no spire here.
 std::atomic<uint32_t> g_rathmaSummons {0};
 constexpr int32_t StatRathmaPick = 500;               // mon_cooldown2 (PD2 447)
 constexpr uint32_t RathmaStageKey = 0x55425247;       // 'UBRG', core-maps' stage counter (PD2 game +0x262a)
 constexpr int32_t VoidGolem = 954, BloodGolem = 955, RathmaTotem = 956;  // merged ids (PD2 937-939)
-// merged ids of PD2's void knights 968, 969, 1106, 1107
-constexpr int32_t Knight968 = 985, Knight969 = 986, Knight1106 = 1123, Knight1107 = 1124;
+// merged ids of the void knights (PD2 968, 969, 1106, 1107)
+constexpr int32_t KnightPoison = 985, KnightFire = 986, KnightCold = 1123, KnightPhys = 1124;
 constexpr int32_t RathmaSpread = 20;  // the spots: caster +-20
 
 // PD2 0x103567d0: the stage's spot. PD2's case 31 returns 0 on a zero spot, which 0x103567d0 gives only with no game,
@@ -4071,18 +4078,18 @@ static_assert(VoidGolemCount(30) == 10 && VoidGolemCount(50) == 8 && VoidGolemCo
 // PD2's case 33 list by life percent
 auto VoidKnightList(int32_t life, int32_t* out) noexcept -> int {
 	int n = 0;
-	for (int32_t id : {Knight1106, Knight969, Knight968}) {
+	for (int32_t id : {KnightCold, KnightFire, KnightPoison}) {
 		out[n++] = id;
 	}
 	if (life < 31) {
-		for (int32_t id : {Knight1107, Knight969, Knight1106}) {
+		for (int32_t id : {KnightPhys, KnightFire, KnightCold}) {
 			out[n++] = id;
 		}
 	} else if (life < 51) {
-		out[n++] = Knight1107;
-		out[n++] = Knight968;
+		out[n++] = KnightPhys;
+		out[n++] = KnightPoison;
 	} else if (life <= 70) {
-		out[n++] = Knight969;
+		out[n++] = KnightFire;
 	}
 	return n;
 }
