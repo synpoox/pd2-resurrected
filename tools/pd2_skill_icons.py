@@ -10,6 +10,10 @@ normal and pressed frames alike, PD2's DC6 holds both) at the HD strip's size pe
 likewise from D2R's .lowend frames, at its own stride (frame + 2, not half the HD's). Trailing vanilla frames past
 D2R's strip are left off (the barbarian's DC6 has 156, D2R's strip 60). A listed class with no PD2 sheet, or an
 extracted sheet whose class is not listed, fails the merge.
+
+A line `hireable <class> <IconCel>` appends that frame of the class's sheet (as this rule built it, else D2R's) to D2R's
+merc skill sheet (spells/hireables/hrskillicon, skilldesc HireableIconCel), in line order after D2R's frames: PD2's
+Ascendant casts class skills that sheet has no frame for (#271). merge/tables.json points their HireableIconCel there.
 """
 from __future__ import annotations
 
@@ -31,7 +35,12 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/skill-icons.txt."""
     dc6, hd, images = modkit()
     art_dir = rule.parent / "art"
-    classes = read_lines(rule)
+    lines = read_lines(rule)
+    hireable = [line.split() for line in lines if line.startswith("hireable ")]
+    classes = [line for line in lines if not line.startswith("hireable ")]
+    bad = [" ".join(h) for h in hireable if len(h) != 3 or h[1] not in hd.CLASSES or not h[2].isdigit()]
+    if bad:
+        raise SkillIconError(f"not `hireable <class> <IconCel>`: {'; '.join(bad)}")
     unknown = [c for c in classes if c not in hd.CLASSES]
     if unknown:
         raise SkillIconError(f"not a class: {', '.join(unknown)}")
@@ -89,3 +98,19 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         (out_data / classic).parent.mkdir(parents=True, exist_ok=True)
         (out_data / classic).write_bytes((pd2_data / classic).read_bytes())
         print(f"  skill-icons: {c} {n} HD frames ({keep.count(False)} from PD2)")
+    if hireable:
+        hire = Path("hd") / "global" / "ui" / "spells" / "hireables" / "hrskillicon.sprite"
+        for sheet in (hire, hire.with_name("hrskillicon.lowend.sprite")):
+            strip, fw, n_hd = images.read_sprite(d2r_data / sheet)
+            stride = strip[0] // n_hd
+            frames = [images.crop(strip, k * stride, 0, stride, strip[1]) for k in range(n_hd)]
+            for _, c, cel in hireable:
+                src = Path(hd.icon_paths(c)[0]).relative_to("data")
+                if sheet.name.endswith(".lowend.sprite"):
+                    src = src.with_name(src.name.replace(".sprite", ".lowend.sprite"))
+                src_strip, _, src_n = images.read_sprite(out_data / src if (out_data / src).is_file() else d2r_data / src)
+                if int(cel) >= src_n or src_strip[0] // src_n != stride or src_strip[1] != strip[1]:
+                    raise SkillIconError(f"hireable {c} {cel}: no frame of {stride} x {strip[1]} px in {src.name}")
+                frames.append(images.crop(src_strip, int(cel) * stride, 0, stride, strip[1]))
+            images.write_sprite(out_data / sheet, images.hstack(frames, stride, strip[1]), fw, len(frames), lowend=False)
+        print(f"  skill-icons: hireables {len(hireable)} frames from cel {n_hd}")
