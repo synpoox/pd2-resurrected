@@ -3155,7 +3155,7 @@ auto& Flags(UnitSkill* uskill) noexcept {
 	return *reinterpret_cast<uint32_t*>(uskill + d2r::rva::USkillFlags);
 }
 
-// PD2's leap speed: a monster's monstats Velocity, a player's 0xb00 + calc2 * 0x50 (calc2 is 80 or 60 plus
+// PD2's leap speed: a monster's monstats Run << 8, a player's 0xb00 + calc2 * 0x50 (calc2 is 80 or 60 plus
 // item_leap_speed / 4), never below 0xb00. D2R's LeapStart scales the run speed by calc2 % instead.
 // shortcut: PD2's client half uses 0xa00 + calc2 * 0x29; both halves take the server's speed here so the client's
 // path matches the server's. Upgrade if PD2's client speed turns out to be visible.
@@ -3164,7 +3164,7 @@ auto LeapVelocity(Unit* unit, const uint8_t* skill, int32_t skillId, int32_t lev
 	if (At<int32_t>(unit, d2r::rva::UnitType) == 1) {
 		const uint8_t* mon = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(d2r::rva::MonStatsRecord)(
 			dataFlag, At<int32_t>(unit, d2r::rva::UnitClassId));
-		return mon != nullptr ? At<int16_t>(mon, d2r::rva::MonVelocity) << 8 : 0;
+		return mon != nullptr ? At<int16_t>(mon, d2r::rva::MonRun) << 8 : 0;
 	}
 	const int32_t v = 0xb00 + d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, d2r::rva::SkCalc2), skillId, level) * 0x50;
 	return v > 0xb00 ? v : 0xb00;
@@ -3554,7 +3554,7 @@ auto HitRecoveryGate(Game* game, Unit* unit, int32_t mode, uint8_t flag) noexcep
 std::atomic<uint32_t> g_charges {0};
 std::atomic<uint32_t> g_chargeHitFrames {0};
 
-// PD2's charge speed is base * (max(velocitypercent, 50) + Param1) / 100, base the class's (a monster's Velocity).
+// PD2's charge speed is base * (max(velocitypercent, 50) + Param1) / 100, base the class's (a monster's Run).
 // D2R's server start adds calc2 instead, which PD2's row leaves empty, so its server charged slower than its client.
 auto ChargeBase(uint32_t dataFlag, Unit* unit) noexcept -> int32_t {
 	using namespace d2r::rva;
@@ -3568,7 +3568,7 @@ auto ChargeBase(uint32_t dataFlag, Unit* unit) noexcept -> int32_t {
 	} else {
 		const uint8_t* mon = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(
 			dataFlag, At<int32_t>(unit, UnitClassId));
-		base = mon != nullptr ? At<int16_t>(mon, MonVelocity) << 8 : base;  // PD2 reads charstats at a monster's id, a wrong row; D2R's client uses this
+		base = mon != nullptr ? At<int16_t>(mon, MonRun) << 8 : base;  // PD2 reads charstats at a monster's id, a wrong row; D2R's starts read Run
 	}
 	return base;
 }

@@ -422,8 +422,9 @@ inline constexpr int USkillFlags = 0x14;  // 0x80 leap starts, 0x100 in the air,
 inline constexpr int USkillTargetType = 0x2c;  // 6 = none
 inline constexpr int USkillTargetId = 0x30;
 inline constexpr int USkillParam = 0x24;  // int32 Charge's counter, PD2's charge distance (its D2Common skill param)
-inline constexpr int MonVelocity = 0x6a;  // int16 monstats Velocity
-inline constexpr int MonRun = 0x6a;  // int16 monstats Run: D2R's field table (0x39db30) has Velocity at 0x68, Run at 0x6a
+inline constexpr int MonRun = 0x6a;  // int16 monstats Run: D2R's field table (0x39db30) has Velocity at 0x68, Run at 0x6a.
+// Monster Leap and Charge read Run, not Velocity: PD2's leap (0x103b1300) reads 1.13c +0x34 (D2Common's table
+// 0x6fdaaa40: Velocity 0x32, Run 0x34), and D2R's own Charge starts (0x564dc0, 0x22e1a0) read +0x6a
 
 inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Lightning's chain range, 0 = the skill's)
 inline constexpr int MsHitPar2 = 0x74;  // int32 sHitPar2, sHitPar3 +0x78 (1.13c's 0x50 / 0x54 + 0x24)
@@ -949,6 +950,10 @@ inline constexpr uint64_t TcDropReturn = 0x44486b;  // the TC drop's return addr
 inline constexpr int DropUnit = 0x00;   // Unit* the dropper
 inline constexpr int DropFlags = 0xc0;  // uint32; 0x4 makes an ethereal-capable item ethereal (0x442d60), 1.13c +0x80
 inline constexpr uint32_t DropFlagEthereal = 0x4;
+// int32 item level (1.13c +0x0c), set by the TC drop from the dropper; int32 prefix[3] / suffix[3] (1.13c +0x68 / +0x74):
+// a one-based magicprefix / magicsuffix id forces the affix of a magic item, 0 rolls it (0x442c60, quality 4; an id it
+// can't apply rolls too). Decompiled for #531 (Ghidra, D2R.gpr); checked in game.
+inline constexpr int DropItemLevel = 0x18, DropPrefix = 0xa8, DropSuffix = 0xb4;
 inline constexpr uint64_t ItemQuality = 0x36cf60;     // (item) -> quality (6 rare)
 inline constexpr uint64_t ItemSocketable = 0x36b410;  // (item) -> non-zero: can take sockets (1.13c D2Common #10360)
 inline constexpr uint64_t SetItemSockets = 0x36e880;  // (item, n): sockets, clamped to the type's max (1.13c #10599)
