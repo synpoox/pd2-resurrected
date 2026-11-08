@@ -46,7 +46,7 @@ def is_tree(e: dict) -> bool:
 
 
 def blocked_floor(flags: bytes) -> bool:
-    """A floor tile mostly blocked: water."""
+    """A floor tile mostly blocked: water, or the ground past a map's edge walls (see water())."""
     return sum(b & 1 for b in flags) >= 13
 
 
@@ -133,11 +133,35 @@ def harvest(stock) -> tuple[dict, float] | None:
     return dict(out), gaps[len(gaps) // 2] if gaps else SPACING
 
 
+def water(lay) -> set:
+    """The blocked floor tiles that are water: each 4-connected group of them that touches walkable floor. A group
+    touching none lies past the map's edge walls (Ashen Plains' blocked town floor, Frozen Forest's ascendors): the
+    border's own ground, where trees belong."""
+    blocked = {c for c, k in lay.keys.items() if k[0] == "f" and blocked_floor(lay.flags[c])}
+    ground = {c for c, k in lay.keys.items() if k[0] == "f" and c not in blocked and c not in lay.unwalkable}
+    found, seen = set(), set()
+    for start in blocked:
+        if start in seen:
+            continue
+        group, todo = {start}, [start]
+        while todo:
+            x, y = todo.pop()
+            for dx, dy in STEPS:
+                if (n := (x + dx, y + dy)) in blocked and n not in group:
+                    group.add(n)
+                    todo.append(n)
+        seen |= group
+        if any((x + dx, y + dy) in ground for x, y in group for dx, dy in STEPS):
+            found |= group
+    return found
+
+
 def playable(lay) -> set:
     """The tiles a player reaches: those no DS1 cell marks unwalkable (Layout.unwalkable, which seals PD2's dashed
-    tree lines), and the streams (blocked floor). Line tiles are never playable."""
-    water = {c for c, k in lay.keys.items() if k[0] == "f" and blocked_floor(lay.flags[c])}
-    return ((set(lay.keys) - lay.unwalkable) | water) - lines({c for c, k in lay.keys.items() if k[0] == "w"})
+    tree lines) and no blocked floor past the edge walls, and the streams. Line tiles are never playable."""
+    blocked = {c for c, k in lay.keys.items() if k[0] == "f" and blocked_floor(lay.flags[c])}
+    walls = {c for c, k in lay.keys.items() if k[0] == "w"}
+    return ((set(lay.keys) - lay.unwalkable - blocked) | water(lay)) - lines(walls)
 
 
 def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tuple[list[dict], set]:
