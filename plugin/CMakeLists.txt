@@ -83,6 +83,7 @@ add_library(core_maps SHARED
 	core-maps/level_fx.cpp
 	core-maps/rathma_ai.cpp
 	core-maps/guardian_ai.cpp
+	core-maps/map_boss_ai.cpp
 	core-maps/rathma_life.cpp
 	core-maps/dclone_ai.cpp
 	core-maps/ai_hooks.cpp

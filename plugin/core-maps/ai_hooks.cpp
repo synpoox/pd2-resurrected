@@ -16,7 +16,7 @@ using d2r::At;
 using d2r::Game;
 using d2r::Unit;
 
-constexpr int MaxRows = 8, MaxClasses = 8;
+constexpr int MaxRows = 10, MaxClasses = 8;
 constexpr int MonAiRows = 155;  // D2R's monai.txt
 
 struct Row {
