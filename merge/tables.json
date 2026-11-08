@@ -88,7 +88,19 @@
   "rows": "position"
  },
  "skillcalc": {},
- "skilldesc": {},
+ "skilldesc": {
+  "cells": {
+   "amplify damage": {"HireableIconCel": "29"},
+   "bone spear": {"HireableIconCel": "30"},
+   "bone armor": {"HireableIconCel": "31"},
+   "teeth": {"HireableIconCel": "32"},
+   "curse mastery": {"HireableIconCel": "33"},
+   "sanctuary": {"HireableIconCel": "34"},
+   "holy bolt": {"HireableIconCel": "35"},
+   "holy light": {"HireableIconCel": "36"},
+   "fist of the heavens": {"HireableIconCel": "37"}
+  }
+ },
  "storepage": {},
  "superuniques": {}
 }

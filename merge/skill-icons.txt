@@ -6,3 +6,15 @@ dru
 nec
 pal
 sor
+# The Ascendant's skills on D2R's merc skill sheet, from cel 29 (D2R's 29 frames): HireableIconCel in tables.json.
+# Line order is cel order: amplify damage, bone spear, bone armor, teeth, curse mastery, sanctuary, holy bolt,
+# holy light, fist of the heavens (each skill's IconCel on its class sheet)
+hireable nec 0
+hireable nec 36
+hireable nec 4
+hireable nec 2
+hireable nec 62
+hireable pal 46
+hireable pal 10
+hireable pal 62
+hireable pal 50
