@@ -154,7 +154,7 @@ rows have no table hook: D2R does what it does.
 | Corrupted zones | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): D2R's Terror Zones stay in their place |  |
 | Level life regen cap (30, `bloodwarp` lifts it) | cut | PD2 caps it only in the PvP arenas (levels 157, 159, 166), and PvP is cut ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)) ([ms3-map-stats](research/ms3-map-stats.md)) |  |
 
-### Not yet (26)
+### Not yet (25)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -166,7 +166,6 @@ rows have no table hook: D2R does what it does.
 | Throwing potions | not yet | stand-in: closest D2R function (`merge/standins.tsv`) | [IR5](https://github.com/synpoox/pd2-resurrected/issues/240) |
 | Skill on block (`item_skillonblock`, 5 live rows) | not yet | stand-in until confirmed: the Cast Triggers companion (1.1.12, D2RLoader Hub) maps `[on_block] stat_id = 379` and `patches/030-cast-triggers.json` puts the stat on `doactive` / 20; it loads, but no block proc was seen in game yet (the owner confirms by hand) | [IR2](https://github.com/synpoox/pd2-resurrected/issues/237) |
 | Deep wounds and the open wounds rework | not yet | stand-in: D2R's open wounds; `deep_wounds` does nothing. PD2's event `0x103463f0` is only partly read ([ir3-combat-stats](research/ir3-combat-stats.md)) | [IR3](https://github.com/synpoox/pd2-resurrected/issues/238) |
-| Dark Pact consuming a curse | not yet | stand-in: Dark Pact is one more curse; PD2 consumes another curse and casts a follow-up skill by the curse count (docs/research/ir4-curses.md) | [#265](https://github.com/synpoox/pd2-resurrected/issues/265) |
 | Replenish charges | not yet | stand-in: D2R's own behaviour; the stat does nothing | [IR5](https://github.com/synpoox/pd2-resurrected/issues/240) |
 | Ethereal bonus: PD2's early return on an item already ethereal | approximated | core-rules' ApplyEthereal gives PD2's +25% (`ProjectDiablo.dll` `0x2fb710`) but always applies it, as D2R's `0x3d3510` does: D2R's cube output (`0x5269c0`) sets the flag before it calls, so PD2's check would leave cube-made ethereal items with no bonus. Ethereal items made before this build keep D2R's +50% in their saved stats | [IR8](https://github.com/synpoox/pd2-resurrected/issues/243) |
 | Weapons lose durability at half the rate | not yet | stand-in: D2R's own behaviour (PD2 wiki rule, unchecked against the DLL); Item Durability's resistance would also halve armor's ([#189](https://github.com/synpoox/pd2-resurrected/issues/189)) | [IR8](https://github.com/synpoox/pd2-resurrected/issues/243) |
@@ -185,7 +184,7 @@ rows have no table hook: D2R does what it does.
 | Item quantity display | approximated | the number sits at the bottom right of the picture (#359 asks for it; PD2 draws it bottom left), white with D2R's drop shadow instead of PD2's black box; tomes show no number (PD2 shows their charges; the owner's call); the stash's Gems/Materials/Runes tabs show D2R's own count instead | [#359](https://github.com/synpoox/pd2-resurrected/issues/359) |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 
-### Approximated (70)
+### Approximated (71)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -213,6 +212,7 @@ rows have no table hook: D2R does what it does.
 | Gust | approximated | core-rules' srvdo router 190 ([druid-w23](research/druid-w23.md)): the teleport is Teleport's core ([W26](https://github.com/synpoox/pd2-resurrected/issues/101)), so its approximations apply: no `TeleportBlocked` chat line on a refusal; the missile and the area hit are D2R's own calls for PD2's | [W23](https://github.com/synpoox/pd2-resurrected/issues/98) |
 | Blood Warp: the regen list | approximated | the teleport is the Teleport row's ([W26](https://github.com/synpoox/pd2-resurrected/issues/101)); a recast that extends the running hpregen list (same level: PD2 and core-rules keep the first cast's regen and move its timer) doesn't send the client the new timer, where PD2's timed-state helper sends packet 0x83 (docs/core-rules.md) | core-rules |
 | Bash: the 50% knockback roll | approximated | core-rules' router (srvdo 190) rolls before D2R's melee do function applies the hit, for every target; PD2 rolls after the apply, only for targets with flag 0x8000 (docs/core-rules.md) | core-rules |
+| Dark Pact on a target at its curse slot count | approximated | at or above the slot count PD2 (`0x1036d7d0`) adds a new `dark_pact` list even when one is still on the target; core-rules lets D2R's NewStateList refresh the old one. The state lasts 1 frame (auralencalc 1), and the consumed curse and explosion are PD2's ([ir4-curses](research/ir4-curses.md)) | [#265](https://github.com/synpoox/pd2-resurrected/issues/265) |
 | Static Field: the debuff's monster refusals and timer | approximated | PD2's timed-state helper (`0x1036d7d0`) refuses some monsters by their monstats flags before it puts staticfield_debuff on them; core-rules leaves that to D2R's NewStateList. A player who gets the debuff is not sent PD2's packet `0x83` with its timer (as Teleport and Blood Warp), and an aurastat past itemstatcost's end is not refused as PD2 refuses it (docs/research/w27-static-field-combustion.md) | core-rules |
 | Desecrate: the corpse timer | approximated | core-rules hides each corpse with a 400-frame state list whose expiry sets corpse_nodraw; PD2 uses a game event at frame + 400 (docs/research/necromancer-w13.md) | core-rules |
 | Desecrate: the fallback levels | approximated | when the cast level has no monster to raise, core-rules tries PD2's fallback levels 32 times, then the cast fails; PD2 retries without a bound. The level, monster and offset rolls use the caster's seed, PD2 uses `rand()` | core-rules |
