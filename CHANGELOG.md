@@ -7,6 +7,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Items
 
+- Rare-only affixes (Visceral, +2 class skill helms, +3 skill trees) no longer roll on magic or crafted items.
 - Larzuk's Malus shows a malus in HD, not an elixir.
 - Crossbows and Assassin claws attack at PD2's speeds, so PD2's breakpoints apply.
 - Purgatory's damage follows ethereal items put on or taken off while it is worn.
