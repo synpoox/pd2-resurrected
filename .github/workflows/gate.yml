@@ -39,9 +39,16 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           py -3 -m modkit fetch --prefix data/hd/model_lod_desc.bin
-          py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --check
+          if ($LASTEXITCODE) { "::warning::modkit fetch of model_lod_desc.bin failed: the coverage check may skip" }
+          $out = py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --check
           $code = $LASTEXITCODE
-          if (Test-Path out/coverage/changes.md) { Get-Content out/coverage/changes.md >> $env:GITHUB_STEP_SUMMARY }
+          $out
+          if (Test-Path out/coverage/changes.md) {
+            Get-Content out/coverage/changes.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          } else {
+            "::warning::HD preset coverage did not run: $out"
+            "HD preset coverage did not run: $out" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          }
           exit $code
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}

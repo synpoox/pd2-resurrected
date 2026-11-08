@@ -205,10 +205,15 @@ class Baseline(unittest.TestCase):
         found = C.changes(self.scores(), {"a": (66.7, None), "b": (70.0, 90.0)})
         self.assertEqual([(c.name, c.drop) for c in found], [("b", True)])
 
+    def test_border_gone_is_a_drop(self):
+        found = C.changes([C.Score("b", "B", 10, set(range(3)))], {"b": (70.0, 87.5)})
+        self.assertEqual([(c.name, c.drop) for c in found], [("b", True)])
+        self.assertIn("| b | 70.0% | 87.5% -> gone | **drop** |", C.changes_md(found))
+
     def test_report_carries_changes(self):
         found = C.changes(self.scores(), {"a": (66.7, None), "b": (70.0, 90.0)})
         text = C.report(self.scores(), "", found)
-        self.assertLess(text.index("## Changes against main"), text.index("| Preset | Area |"))
+        self.assertLess(text.index("## Changes against the baseline"), text.index("| Preset | Area |"))
 
     def test_main_check_exit(self):
         with tempfile.TemporaryDirectory() as d:

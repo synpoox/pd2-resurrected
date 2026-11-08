@@ -15,11 +15,12 @@ a turned piece's footprint is its axis-aligned box, which spills onto neighbour 
 generous. TALL 4 reproduced the LP3 slice 1 game check (research/lp3-tile-table, FINDINGS.md). The report cannot judge
 looks, frame rate or collision.
 
-Changes against main: BASELINE (docs/coverage-baseline.tsv, `preset <tab> wall % <tab> border % or -`) holds main's
+Changes against the baseline: BASELINE (docs/coverage-baseline.tsv, `preset <tab> wall % <tab> border % or -`) holds main's
 scores. The report and <out>/changes.md list each preset whose score moved, a new one, and one no longer scored.
 `--check` fails (exit 1) when a preset's wall or border score drops more than TOLERANCE points below the baseline, or
 a baselined preset is no longer scored. To accept an intended drop (or record a gain), run with `--write-baseline`
-after the merge and commit docs/coverage-baseline.tsv with the PR: the drop then shows in its diff and review.
+after pd2_merge.py and commit docs/coverage-baseline.tsv with the PR: the drop then shows in its diff and review.
+Record gains the same way, or a later drop back to the old score passes unnoticed.
 Needs model_lod_desc.bin in modkit's cache, else it skips:
 `python -m modkit fetch --prefix data/hd/model_lod_desc.bin`.
 """
@@ -208,8 +209,8 @@ def changes(scores: list[Score], base: dict, tolerance: float = TOLERANCE) -> li
         if name in base and name in now and (w0, b0) == (w1, b1):
             continue
         gone = name not in now
-        drop = gone or any(old is not None and new is not None and old - new > tolerance
-                           for old, new in ((w0, w1), (b0, b1)))
+        drop = gone or b0 is not None and b1 is None or any(  # a border no longer scored drops too
+            old is not None and new is not None and old - new > tolerance for old, new in ((w0, w1), (b0, b1)))
         out.append(Change(name, (w0, w1), (b0, b1), drop))
     def worst(c: Change) -> float:
         return min((n - o for o, n in (c.wall, c.border) if o is not None and n is not None), default=0.0)
@@ -226,7 +227,7 @@ def changes_md(found: list[Change], tolerance: float = TOLERANCE) -> str:
             return f"{old}% -> gone"
         return f"{old}% -> {new}% ({new - old:+.1f})" if old != new else f"{new}%"
     drops = sum(c.drop for c in found)
-    lines = ["## Changes against main", ""]
+    lines = ["## Changes against the baseline", ""]
     if not found:
         return "\n".join(lines + ["No preset's coverage changed.", ""])
     lines += [f"{len(found)} presets changed; {drops} dropped by more than the {tolerance:g}-point tolerance or are "
