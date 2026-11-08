@@ -216,8 +216,8 @@ namespace items = D2RL::Items;
 // inside the recipe search and names the local player only on the UI thread, so the press goes search -> UI thread
 // (which player) -> game thread (the transaction), as core-rules' Demonic Cube reroll does. The two rolls are native
 // (editNativeItem): the SDK cannot pick a cubemain corruption row.
-// shortcut: single player only (the SDK names only the local player), as core-rules' reroll; the brick is made
-// identified, which PD2's 0x1036ebc0 flags were not read for.
+// The brick is unidentified, as PD2's: 0x1036ebc0 leaves the drop request's force flag and item-flag override at 0.
+// shortcut: single player only (the SDK names only the local player), as core-rules' reroll.
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::ItemService* g_items = nullptr;
 const D2RL::InventoryService* g_inventory = nullptr;
@@ -290,7 +290,7 @@ void MakeBrick(const D2RL::PluginContext*, void* user) noexcept {
 	                                  .seedMode = items::SeedMode::Random,
 	                                  .quantity = items::DefaultValue,
 	                                  .durability = items::DefaultValue,
-	                                  .stateFlags = items::ItemStateIdentified,
+	                                  .stateFlags = 0,  // unidentified (top of block)
 	                                  .destination = {.structSize = items::ItemDestinationSize,
 	                                                  .container = items::ItemContainer::Cube,
 	                                                  .placement = items::Placement::Automatic}};
@@ -341,7 +341,8 @@ auto QueueBrick(Game* game, Unit* player, Unit* amulet) noexcept -> bool {
 		plog::Info("desecration: no brick, the SDK item services are off");
 		return false;
 	}
-	if (g_brickBusy.exchange(true, std::memory_order_acquire)) {
+	// A session change discards queued game work, so a brick still pending from another game is dropped, not waited on
+	if (g_brickBusy.exchange(true, std::memory_order_acquire) && g_brickGame == game) {
 		plog::Info("desecration: no brick, the last one is not made yet");
 		return false;
 	}
