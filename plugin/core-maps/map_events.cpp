@@ -77,6 +77,9 @@ constexpr int32_t SpireOver = 50;     // PD2's spawn count once 0x1036eb30 ends 
 constexpr int32_t BitterDepths = 198;  // PD2 207 Tomb Event Map, Act V
 // PD2's Spire sounds (sounds.txt rows): 0xa78 shrine_storm and 0x24 on the use, 0x26d bloodraven_mist_end at the end
 constexpr int32_t SpireSounds[2] = {0xa78, 0x24}, SpireEndSound = 0x26d;
+// PD2's Catalyst altar sounds: 0x29c once the guardian is called, 0x23 with the shards, 0x26d on the guardian's death
+constexpr int32_t GuardianSound = 0x29c, ShardSound = 0x23, GuardianDeathSound = 0x26d;
+constexpr int32_t GuardianClone = 1082;  // GuardianOfFateClone (PD2 1065)
 constexpr int32_t ModeNeutral = 1;
 constexpr int32_t UnitObject = 2;
 
@@ -203,49 +206,9 @@ auto Rand() noexcept -> int32_t {
 	return std::rand();
 }
 
-// PD2's 0x10389c20 (#530): a breadth-first search over a 20 x 20 grid of 4-subtile cells around x/y (cells 10 +- 8,
-// at most 400 steps); each cell's point takes its room and must have a size x size box free of mask 0x805. The first
-// free point wins, moved by -2, -2 as PD2 moves it. True with `room` and `xy` set to that point.
-// shortcut: the box is centred on the point, as 1.13c's COLLISION_CheckMaskWithSizeXY centres it (PD2 calls it
-// through an import table not read here); read 0x103097a0's target if events spawn off by half a box
+// The events' spot search: PD2 passes size, mask 0x805, reach 8 and the -2, -2 move (0x1038a170)
 auto FindSpot(void*& room, int32_t xy[2], int32_t size) noexcept -> bool {
-	using namespace d2r::rva;
-	constexpr int Grid = 20, Centre = 10, Reach = 8, Step = 4, MaxSteps = 400;
-	constexpr uint16_t Mask = 0x805;
-	const auto roomAt = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY);
-	const auto at = d2r::Engine<uint64_t (*)(void*, int32_t, int32_t, uint16_t) noexcept>(CollisionAt);
-	bool seen[Grid][Grid] {};
-	int8_t queue[Grid * Grid][2];
-	int head = 0, tail = 0;
-	queue[tail][0] = Centre, queue[tail][1] = Centre, ++tail;
-	seen[Centre][Centre] = true;
-	for (int steps = 0; head < tail && steps <= MaxSteps; ++steps) {
-		const int cx = queue[head][0], cy = queue[head][1];
-		++head;
-		const int32_t x = xy[0] + (cx - Centre) * Step, y = xy[1] + (cy - Centre) * Step;
-		void* here = roomAt(room, x, y);
-		bool free = here != nullptr;
-		for (int32_t dx = -size / 2; free && dx < size - size / 2; ++dx) {
-			for (int32_t dy = -size / 2; free && dy < size - size / 2; ++dy) {
-				free = at(here, x + dx, y + dy, Mask) == 0;
-			}
-		}
-		if (free) {
-			xy[0] = x - 2, xy[1] = y - 2;
-			room = roomAt(here, xy[0], xy[1]);
-			return room != nullptr;
-		}
-		constexpr int Dirs[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
-		for (const auto& d : Dirs) {
-			const int nx = cx + d[0], ny = cy + d[1];
-			if (nx >= Centre - Reach && nx < Centre + Reach && ny >= Centre - Reach && ny < Centre + Reach &&
-			    !seen[nx][ny]) {
-				seen[nx][ny] = true;
-				queue[tail][0] = static_cast<int8_t>(nx), queue[tail][1] = static_cast<int8_t>(ny), ++tail;
-			}
-		}
-	}
-	return false;
+	return FindEventSpot(room, xy, size, 0x805, 8, true);
 }
 
 auto SpawnMonsterAt(Game* game, void* room, const int32_t (&xy)[2], int32_t monster) noexcept -> Unit* {
@@ -408,8 +371,9 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t pr
 // PD2's operate 79 (0x103aa460) for both event altars, in D2R's operate slot 35. The Spire's first use starts the
 // waves. The Catalyst altar's first use calls its guardian 10-29 subtiles off (40 tries, spot size 2), its second,
 // once the guardian is dead (AltarGuardianDied), drops 2-3 Catalyst Shards (PD2 at item level 90).
-// The Spire's use also darkens the act (0x1037dc70) and plays two sounds to the user's level (0x1037f240).
-// shortcut: the Catalyst altar's sounds are not ported (#609)
+// Each use also plays its sounds to the user's level (0x1037f240); the Spire's darkens the act (0x1037dc70).
+// shortcut: the sounds play on each player, where PD2 plays them on the altar (its unit in packet 0x2c): D2R's sound
+// sender (rva::SoundPacket) is only known to work for a player; the user stands by the altar
 // shortcut: the shards drop by the user, where PD2 drops them by the altar (0x1036ebc0); D2R's drop (rva::DropItemAt)
 // is only known to work by a unit that carries a level stat
 auto OperateAltar(ObjectOperate* args) noexcept -> int32_t {
@@ -423,11 +387,12 @@ auto OperateAltar(ObjectOperate* args) noexcept -> int32_t {
 	const int32_t spawns = Get(game, SpawnsKey);
 	plog::Info("map events: altar %d used, event %d, state %d", args->classId, event, spawns);
 	const auto mode = d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetObjectMode);
+	// PD2 reads the user's level (0x1030aa50 of its room); a level of -1 plays to no one
+	void* userRoom = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(args->player != nullptr ? args->player : altar);
+	const int32_t level = userRoom != nullptr ? d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(userRoom) : -1;
 	if (event == Spire && spawns == 1) {
 		mode(altar, 1);
 		SetDarkness(game, altar, true);
-		void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(args->player != nullptr ? args->player : altar);
-		const int32_t level = room != nullptr ? d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room) : -1;
 		for (const int32_t sound : SpireSounds) {
 			PlayLevelSound(game, level, sound);
 		}
@@ -451,8 +416,10 @@ auto OperateAltar(ObjectOperate* args) noexcept -> int32_t {
 			xy[0] += 10 + Rand() % 20;
 			xy[1] += 10 + Rand() % 20;
 			if (SpawnMonsterNear(game, room, xy, AltarGuardian, 2) != nullptr) {
+				PlayLevelSound(game, level, GuardianSound);
 				Set(game, SpawnsKey, 2);
-				plog::Info("map events: event %d altar used, guardian %d at (%d, %d)", event, AltarGuardian, xy[0], xy[1]);
+				plog::Info("map events: event %d altar used, guardian %d at (%d, %d), sound 0x%x", event, AltarGuardian,
+				           xy[0], xy[1], GuardianSound);
 				return 1;
 			}
 		}
@@ -468,8 +435,10 @@ auto OperateAltar(ObjectOperate* args) noexcept -> int32_t {
 			d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(DropItemAt)(
 				game, args->player, row, QualityNormal, 0, 0);
 		}
+		PlayLevelSound(game, level, ShardSound);
 		Set(game, SpawnsKey, 4);
-		plog::Info("map events: event %d altar used again, %u Catalyst Shards (item row %d)", event, count, row);
+		plog::Info("map events: event %d altar used again, %u Catalyst Shards (item row %d), sound 0x%x", event, count, row,
+		           ShardSound);
 		return 1;
 	}
 	return 0;
@@ -511,6 +480,51 @@ auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 }
 
 }  // namespace
+
+// PD2's 0x10389c20 (#530): a breadth-first search over a 20 x 20 grid of 4-subtile cells around x/y (cells 10 +-
+// reach, reach at most 10, at most 400 steps); each cell's point takes its room and must have a size x size box free
+// of `mask`. The first free point wins, moved by -2, -2 with `shift` (PD2's last argument).
+// shortcut: the box is centred on the point, as 1.13c's COLLISION_CheckMaskWithSizeXY centres it (PD2 calls it
+// through an import table not read here); read 0x103097a0's target if events spawn off by half a box
+auto FindEventSpot(void*& room, int32_t xy[2], int32_t size, uint16_t mask, int32_t reach, bool shift) noexcept -> bool {
+	using namespace d2r::rva;
+	constexpr int Grid = 20, Centre = 10, Step = 4, MaxSteps = 400;
+	const int Reach = reach < 10 ? reach : 10;
+	const auto roomAt = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY);
+	const auto at = d2r::Engine<uint64_t (*)(void*, int32_t, int32_t, uint16_t) noexcept>(CollisionAt);
+	bool seen[Grid][Grid] {};
+	int8_t queue[Grid * Grid][2];
+	int head = 0, tail = 0;
+	queue[tail][0] = Centre, queue[tail][1] = Centre, ++tail;
+	seen[Centre][Centre] = true;
+	for (int steps = 0; head < tail && steps <= MaxSteps; ++steps) {
+		const int cx = queue[head][0], cy = queue[head][1];
+		++head;
+		const int32_t x = xy[0] + (cx - Centre) * Step, y = xy[1] + (cy - Centre) * Step;
+		void* here = roomAt(room, x, y);
+		bool free = here != nullptr;
+		for (int32_t dx = -size / 2; free && dx < size - size / 2; ++dx) {
+			for (int32_t dy = -size / 2; free && dy < size - size / 2; ++dy) {
+				free = at(here, x + dx, y + dy, mask) == 0;
+			}
+		}
+		if (free) {
+			xy[0] = shift ? x - 2 : x, xy[1] = shift ? y - 2 : y;
+			room = roomAt(here, xy[0], xy[1]);
+			return room != nullptr;
+		}
+		constexpr int Dirs[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+		for (const auto& d : Dirs) {
+			const int nx = cx + d[0], ny = cy + d[1];
+			if (nx >= Centre - Reach && nx < Centre + Reach && ny >= Centre - Reach && ny < Centre + Reach &&
+			    !seen[nx][ny]) {
+				seen[nx][ny] = true;
+				queue[tail][0] = static_cast<int8_t>(nx), queue[tail][1] = static_cast<int8_t>(ny), ++tail;
+			}
+		}
+	}
+	return false;
+}
 
 auto MapEvent(Game* game) noexcept -> int32_t {
 	return game != nullptr ? Get(game, EventKey) : 0;
@@ -561,13 +575,48 @@ auto RollMapEvent(Game* game, Unit* item, int32_t level) noexcept -> void {
 	           testEvent != 0 ? ", PD2R_MAP_EVENT" : forced ? ", forced" : "", event, ++g_rolls);
 }
 
-auto AltarGuardianDied(Game* game) noexcept -> void {
-	// shortcut: PD2 also kills the guardian's clones (1065, the port's 1082) in the rooms by it; nothing summons them
-	// until PD2's guardian AI (0x1035a6b0) is ported, so that kill comes with it
-	if (MapEvent(game) == Altar && Get(game, SpawnsKey) == 2) {
-		Set(game, SpawnsKey, 3);
-		plog::Info("map events: event %d guardian dead, the altar gives its shards", Altar);
+// PD2 0x10378080, in state 2 of the Altar event: with the guardian in a room, a sound on the guardian to every player
+// in game, state 3, and every clone in the guardian's room and its neighbours (1.13c's near-room list) dies without a
+// drop (0x10356e00). Picked first, so no kill runs while the room lists are walked.
+// shortcut: the sound plays on each player, not on the guardian (see OperateAltar); a clone already dead is skipped,
+// where PD2 kills it again
+auto AltarGuardianDied(Game* game, Unit* guardian) noexcept -> void {
+	using namespace d2r::rva;
+	if (MapEvent(game) != Altar || Get(game, SpawnsKey) != 2) {
+		return;
 	}
+	if (guardian == nullptr) {  // not PD2's: the death listener found no unit; the shards still come, no clone dies
+		Set(game, SpawnsKey, 3);
+		plog::Warn("map events: event %d guardian dead, its unit not found: no clone killed", Altar);
+		return;
+	}
+	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(guardian);
+	if (room == nullptr) {
+		plog::Warn("map events: event %d guardian dead outside a room, state kept", Altar);
+		return;
+	}
+	PlayLevelSound(game, 0, GuardianDeathSound);
+	Set(game, SpawnsKey, 3);
+	void** rooms = nullptr;
+	int32_t count = 0;
+	d2r::Engine<void (*)(void*, void***, int32_t*) noexcept>(NearRooms)(room, &rooms, &count);
+	constexpr int Max = 64;
+	Unit* clones[Max] = {};
+	int n = 0;
+	for (int32_t i = 0; rooms != nullptr && i < count; ++i) {
+		for (auto* unit = d2r::Engine<Unit* (*)(void*) noexcept>(RoomFirstUnit)(rooms[i]); unit != nullptr && n < Max;
+		     unit = d2r::Engine<Unit* (*)(Unit*) noexcept>(NextUnitInRoom)(unit)) {
+			if (At<int32_t>(unit, UnitType) == UnitMonster && At<int32_t>(unit, UnitClassId) == GuardianClone &&
+			    d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) == 0) {
+				clones[n++] = unit;
+			}
+		}
+	}
+	for (int i = 0; i < n; ++i) {
+		KillQuietly(game, clones[i]);
+	}
+	plog::Info("map events: event %d guardian dead, %d clones killed in %d rooms, sound 0x%x; the altar gives its shards",
+	           Altar, n, count, GuardianDeathSound);
 }
 
 auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {

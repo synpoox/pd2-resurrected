@@ -64,6 +64,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Maps
 
+- The Altar of the Catalyst's guardian summons clones that die with it, and the altar plays PD2's sounds.
 - Map events Altar of the Catalyst, Spire of Darkness and Void/Tomb spawn their altars, waves and portal, as in PD2.
 - The Gheed map event spawns Gheed in tiered maps, as in PD2.
 - The Horazon map event spawns Horazon in tiered maps; only that Horazon opens his portal, as in PD2.
