@@ -68,8 +68,8 @@ def boxes(entities, parent=None, depth=0):
                             v = rot(q, (cx * s['x'], cy * s['y'], cz * s['z']))
                             xs.append(p['x'] + v[0]); ys.append(p['y'] + v[1]); zs.append(p['z'] + v[2])
                 yield min(xs), max(xs), min(zs), max(zs), max(ys)
-            elif c['type'] == 'PrefabPlacementDefinitionComponent' and depth == 0 and c.get('filename'):
-                yield from boxes(prefab(c['filename']), (p, q), 1)
+            elif c['type'] == 'PrefabPlacementDefinitionComponent' and depth == 0 and c.get('prefab'):
+                yield from boxes(prefab(c['prefab']), (p, q), 1)
 
 
 def score(lay, entities, name=None):

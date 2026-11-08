@@ -36,3 +36,10 @@ red, drawn walls green.
 At 4 units it reproduces the slice 1 game check: Tomb Map 28-31% (bare walls in game), Monastery Map Basement 90%
 (walls in game), Jungle Map 60-65%. Worst: tomb, mesa, arcane, palace, ashenplains; best: sewer, market, frozen river,
 royal crypts (89-98%). It cannot judge looks, frame rate, collision or strings.
+
+## Correction (border slice)
+
+`bbox_preview.py` first read a prefab's path from `filename`; prefabs keep it in `prefab`, so tree-wall prefabs were
+not followed and the scores above undercount tree lines. Fixed here; `border_score.py` follows prefabs two levels and
+composes their transforms. It scores the ring of tiles just outside `pd2_painter.playable()` (the automap's edge):
+covered by a piece at least 4 units high, a gap, or a leak (walkable in the DS1).
