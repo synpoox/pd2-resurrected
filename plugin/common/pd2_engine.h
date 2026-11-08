@@ -837,8 +837,10 @@ inline constexpr uint8_t ItemSpellUseEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x
 inline constexpr uint64_t ItemSpellTable = 0x236fe30;
 inline constexpr int ItemSpellEntrySize = 12;
 // The unlimited books' item spells (IR5, #240; the merge's misc pSpell for rtp and rid): the Navigator's entry 17 runs
-// D2R's Town Portal; the Almanac's entry 18 is {0, 0, keep 1}, and core-maps' item spell hooks identify every item
-// (PD2: "Identifies all items at once"), as D2R's use function 1 (0x57ec30) identifies one.
+// D2R's Town Portal; the Almanac's entry 18 is {0, 0, keep 1}, and core-maps' item spell hooks identify every inventory
+// and Cube item (PD2: "Identifies all items at once"), as D2R's use function 1 (0x57ec30) identifies one. keep is also
+// read by the client (0x161f20 allows a use only from inputs passing bit (keep != 0) + 1; right-click does, as for
+// the Cube), not by the use-item handler 0x4f40c0.
 inline constexpr int32_t UnlimitedPortalSpell = 17, UnlimitedIdentifySpell = 18;
 inline constexpr uint64_t ItemTestFlag = 0x36e2d0;  // (item, flag, line, file) -> non-zero when item data +0x18 has it
 inline constexpr uint32_t ItemFlagIdentified = 0x10;
