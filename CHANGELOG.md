@@ -24,6 +24,7 @@ private-multiplayer release a build may break characters; each break is noted he
 #### Uber bosses
 
 - Rathma's surviving clone casts RathmaDeath; the pair's drops are item level 130.
+- Lucion's frenzy darkens the act, plays PD2's sounds and hides him in shadow, as in PD2.
 - Lucion's immunity strips poison and Open Wounds, as in PD2.
 - Rathma left alone in his arena idles and turns immune for a short while, as in PD2.
 - Uber Mephisto, Diablo and Baal summon PD2's minions: skeletons, Pit Lords, vampires and wraiths.

@@ -165,6 +165,97 @@ auto Spawn(Game* game, Unit* near, int32_t classId, int32_t x, int32_t y) noexce
 	return spawn;
 }
 
+// PD2 0x10380950: on gives the unit a list with state 146 and light radius -100 (list flags 8, as PD2's); off frees it.
+// PD2 also sets the list's free callback (0x10312350) and calls a D2Common thunk (0x1030bd80) not identified.
+auto SetShroud(Game* game, Unit* unit, bool on) noexcept -> void {
+	using namespace d2r::rva;
+	void* list = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(unit, StateInvis);
+	if (on && list == nullptr) {
+		const int32_t id = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(UnitId)(unit, __FILE__, __LINE__);
+		list = d2r::Engine<void* (*)(int32_t, int32_t, int32_t, int32_t) noexcept>(NewStatList)(
+			8, 0, At<int32_t>(unit, UnitType), id);
+		if (list == nullptr) {
+			return;
+		}
+		d2r::Engine<void (*)(void*, int32_t) noexcept>(SetListState)(list, StateInvis);
+		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat)(
+			d2r::DataFlag(game), list, StatLightRadius, -100, 0);
+		d2r::Engine<void (*)(Unit*, void*, int32_t) noexcept>(AttachStatList)(unit, list, 1);
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, StateInvis, 1);
+	} else if (!on && list != nullptr) {
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(ClearUnitState)(unit, StateInvis, 0);
+		d2r::Engine<void (*)(Unit*, void*) noexcept>(DetachStatList)(unit, list);
+		d2r::Engine<void (*)(uint32_t, void*) noexcept>(FreeStatList)(d2r::DataFlag(game), list);
+	} else {
+		return;
+	}
+	plog::Info("lucion ai: shroud %s, light radius %d", on ? "on" : "off", Stat(unit, StatLightRadius));
+}
+
+// The game's clients in game (PD2 walks its player slots, game +0x1120)
+template <class F>
+auto ForEachClient(Game* game, F&& f) noexcept -> void {
+	using namespace d2r::rva;
+	for (auto* c = At<uint8_t*>(game, GameClients); c != nullptr; c = At<uint8_t*>(c, ClientNext)) {
+		if (At<int32_t>(c, ClientState) == ClientInGame) {
+			if (Unit* player = d2r::Engine<Unit* (*)(void*, int32_t) noexcept>(ClientUnit)(c, 0); player != nullptr) {
+				f(c, player);
+			}
+		}
+	}
+}
+
+// PD2 0x1037dc70 (game, act, on): the act's eclipse (1.13c D2Common #10337 on, #10895 off), switched once, and packet
+// 0x53 {act, 5, on} to every client in game, as PD2 sends it (D2R's client reads the act as the light period)
+auto SetDarkness(Game* game, Unit* unit, bool on) noexcept -> void {
+	using namespace d2r::rva;
+	uint8_t* act = At<uint8_t*>(unit, UnitAct);
+	auto* const* acts = At<uint8_t**>(game, GameActs);
+	int32_t index = -1;
+	for (uint64_t i = 0; act != nullptr && i < At<uint64_t>(game, GameActCount); ++i) {
+		index = acts[i] == act ? static_cast<int32_t>(i) : index;
+	}
+	uint8_t* env = act != nullptr ? At<uint8_t*>(act, ActEnv) : nullptr;
+	if (index < 0 || env == nullptr) {
+		return;
+	}
+	alignas(8) uint8_t packet[10] {0x53};
+	std::memcpy(packet + 1, &index, 4);
+	const int32_t time = 5;
+	std::memcpy(packet + 5, &time, 4);
+	packet[9] = on ? 1 : 0;
+	const uint32_t flag = d2r::DataFlag(game);
+	int sent = 0;
+	ForEachClient(game, [&](void* client, Unit*) {
+		const bool eclipse = At<int32_t>(env, EnvEclipse) != 0;
+		if (on && !eclipse) {
+			d2r::Engine<void (*)(uint8_t, void*) noexcept>(ActEclipseOn)(static_cast<uint8_t>(flag), act);
+		} else if (!on && eclipse) {
+			*reinterpret_cast<int32_t*>(env + EnvPause) = 0;
+			*reinterpret_cast<int32_t*>(env + EnvSpeed) = *d2r::Engine<const int32_t*>(EnvSpeedNormal);
+			d2r::Engine<void (*)(uint8_t, void*, void*, int32_t, int32_t, int32_t) noexcept>(ActLightSet)(
+				static_cast<uint8_t>(flag), act, nullptr, 2, 0, 0);
+		}
+		d2r::Engine<void (*)(void*, uint8_t*) noexcept>(SendPacket10)(client, packet);
+		++sent;
+	});
+	plog::Info("lucion ai: act %d darkness %s, eclipse %d, %d clients", index + 1, on ? "on" : "off",
+	           At<int32_t>(env, EnvEclipse), sent);
+}
+
+// PD2 0x1037f240 (game, sound, 0, level): the sound played on each player in the level (packet 0x2c)
+auto PlayLevelSound(Game* game, int32_t level, int32_t sound) noexcept -> void {
+	using namespace d2r::rva;
+	ForEachClient(game, [&](void* client, Unit* player) {
+		if (LevelOf(player) == level) {
+			d2r::Engine<void (*)(Unit*, int32_t, Unit*) noexcept>(ClientMessage)(player, sound, player);
+			d2r::Engine<void (*)(Unit*, void*) noexcept>(SoundPacket)(player, client);
+		}
+	});
+}
+
+constexpr int32_t SoundFrenzyStart = 0xa78, SoundFrenzyEnd = 0x26d;  // sounds.txt shrine_storm, bloodraven_mist_end
+
 struct Mon {
 	const uint8_t* rec;
 	uint8_t diff;
@@ -327,10 +418,13 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 			portalPhase();
 			store(4, 1);
 		} else if (param == 1) {
-			// PD2 0x10380950: state 0x92 with light radius -100; 0x103a4c70 and the level darkening are not ported
-			d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetUnitState)(unit, StateInvis, 1);
+			// PD2: the shroud (0x10380950), the hide (0x103a4c70), then the darkness and its sound for the level
+			SetShroud(game, unit, true);
+			d2r::Engine<void (*)(Game*, Unit*) noexcept>(d2r::rva::AiHide)(game, unit);
 			sub = 0;
 			Delay(game, unit, aidel);
+			SetDarkness(game, unit, true);
+			PlayLevelSound(game, LevelOf(unit), SoundFrenzyStart);
 			store(5, Rand(unit, 6) + 6);
 		} else {
 			store(1, 0);
@@ -364,10 +458,15 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		return;
 	case 6:
 		if (param == 0) {
+			SetDarkness(game, unit, false);
+			PlayLevelSound(game, LevelOf(unit), SoundFrenzyEnd);
 			Idle(game, unit, aidel);
 			store(6, 1);
 		} else if (param == 1) {
-			d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetUnitState)(unit, StateInvis, 0);
+			// PD2: the shroud off, the unhide (0x103a4c90; its result unread), mode 11
+			SetShroud(game, unit, false);
+			const int32_t shown = d2r::Engine<int32_t (*)(Game*, Unit*) noexcept>(d2r::rva::AiUnhide)(game, unit);
+			plog::Info("lucion ai: unhide -> %d", shown);
 			SetMode(game, unit, ModeS4);
 			Delay(game, unit, 10);
 			store(6, 2);
