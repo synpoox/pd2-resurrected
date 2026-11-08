@@ -38,7 +38,7 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
   `pd2-data` is still a real folder keeps using it: delete that folder to share the cache.
 - `pd2_merge.py` copies `merge\<key>\` into `generated\` when merge/, tools/, the stamps and modkit match a finished
   merge, else merges and stores the result. Don't skip the merge in a worktree: a hit takes seconds.
-- `install.ps1` writes only the `out\data` files that differ from the slot's and touches nothing outside
+- `install.ps1` (modkit install) writes only the `out\data` files that differ from the slot's and touches nothing outside
   `<slot>\mods\PD2Resurrected`, so moving a slot between builds is quick.
 - Never delete a cache folder another worktree's `pd2-data` points at. CI (`GITHUB_ACTIONS`) does not use these.
 - Nothing prunes the cache. Each `merge\<key>` holds about 2 GB, so the owner deletes old ones by hand while no

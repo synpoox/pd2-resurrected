@@ -6,7 +6,7 @@
 #
 # Plugins are game-wide (ADR 0004): <Game>\d2rloader\plugins\. -Data runs `modkit build` and `modkit install` and then
 # puts back each modinfo.json savepath, because modkit install resets it (a slot would otherwise play other saves).
-# The install (tools\pd2_cache.py) writes only the out\data files that differ from the slot's, and touches nothing
+# modkit install writes only the out\data files that differ from the slot's, and touches nothing
 # outside <Game>\mods\<mod>, so swapping a slot between builds takes seconds.
 # -NoValidate builds past modkit's validation errors, as the release workflow does: main still has known ones (#171).
 param(
@@ -48,7 +48,7 @@ if ($Data) {
     try {
         if ($NoValidate) { py -3 -m modkit build $Data --no-validate } else { py -3 -m modkit build $Data }
         if ($LASTEXITCODE -ne 0) { throw "modkit build failed ($LASTEXITCODE)" }
-        py -3 (Join-Path $PSScriptRoot "pd2_cache.py") install $Data $Game --toolkit $Toolkit
+        py -3 -m modkit --game $Game install $Data
         if ($LASTEXITCODE -ne 0) { throw "modkit install failed ($LASTEXITCODE)" }
     } finally { Pop-Location }
     foreach ($f in $saved.Keys) {

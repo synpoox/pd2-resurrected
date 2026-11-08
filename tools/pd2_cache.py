@@ -1,7 +1,5 @@
 """Machine-wide caches every worktree shares (#440), so ten agents don't each extract, merge and copy the same data.
 
-    python tools/pd2_cache.py install PROJECT GAME --toolkit DIR    modkit install, copying only the changed files
-
 The cache root is PD2R_CACHE (default C:\\pd2r-cache). Without that folder, or on CI, every tool works per worktree as
 before. Under the root:
   pd2_extract.lock     held by every pd2_extract run, so two extracts never run at once
@@ -12,16 +10,13 @@ or removed cache. Delete old ones by hand when no worktree's pd2-data/ points at
 """
 from __future__ import annotations
 
-import argparse
 import contextlib
 import hashlib
 import os
 import shutil
 import subprocess
-import sys
 import time
 from pathlib import Path
-from unittest import mock
 
 try:
     import msvcrt
@@ -110,55 +105,3 @@ def keep(src: Path, cached: Path) -> None:
         if tmp.exists():
             shutil.rmtree(tmp)
 
-
-def sync(src: Path, dest: Path) -> int:
-    """Make dest a copy of src, writing only the files whose size or modified time differ (robocopy's rule: reading
-    both copies to compare costs more than copying) and removing the rest. Returns the files written."""
-    want = {p.relative_to(src) for p in src.rglob("*") if p.is_file()}
-    dest.mkdir(parents=True, exist_ok=True)
-    for p in sorted(dest.rglob("*"), reverse=True):  # deepest first, so a folder is empty once its files are gone
-        if p.is_file() and p.relative_to(dest) not in want:
-            p.unlink()
-        elif p.is_dir() and not any(p.iterdir()):
-            p.rmdir()
-    written = 0
-    for rel in sorted(want):
-        s, d = src / rel, dest / rel
-        if d.is_file() and (d.stat().st_size, d.stat().st_mtime_ns) == (s.stat().st_size, s.stat().st_mtime_ns):
-            continue  # copy2 keeps the time, and modkit build and the merge cache keep it for files they copy
-        d.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(s, d)
-        written += 1
-    return written
-
-
-def install(project: Path, game: Path) -> str:
-    """modkit install, its copy of out/data made a sync, so a slot swap rewrites only the files that changed."""
-    from modkit import install as mi
-    written = []
-
-    class Shutil:  # shortcut: patches modkit install's rmtree + copytree; give modkit a sync option if they change
-        rmtree = staticmethod(lambda p: None)
-        copytree = staticmethod(lambda src, dst: written.append(sync(Path(src), Path(dst))))
-        copy2 = staticmethod(shutil.copy2)
-
-    with mock.patch.object(mi, "shutil", Shutil):
-        msg = mi.install(project, game)
-    return f"{msg} ({written[0]} written, the rest unchanged)"
-
-
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("install", help="install PROJECT/out/data into GAME/mods/<name>, writing only changed files")
-    p.add_argument("project", type=Path)
-    p.add_argument("game", type=Path)
-    p.add_argument("--toolkit", type=Path, required=True, help="d2rAI-toolkit checkout (holds modkit)")
-    a = ap.parse_args(argv)
-    sys.path.insert(0, str(a.toolkit))
-    print(install(a.project, a.game))
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
