@@ -1203,6 +1203,23 @@ inline constexpr uint64_t MonsterTcDrop = 0x447b80;
 inline constexpr int MonDataTypeFlags = 0x1a;     // u8 in the monster's UnitData: 0x10 minion (1.13c +0x16)
 inline constexpr uint8_t MonTypeMinion = 0x10;
 
+// --- core-maps: the Rathma clones' shared life (UB5, #475; D2Game\src\Unit\SUnitDmg.cpp) --------------------------
+// Decompiled for #475 (Ghidra, D2R.gpr). DamageEffects (0x44df10) runs its 12 damage types (1.13c's table at D2Game
+// 0x6fd22ab0, 0x40 bytes each here) through (&ctx, &type, flag), called as jmp [this slot]: D2RCore's resist step,
+// the step PD2 replaces with 0x10302ca0 (1.13c's 0x6fcfbd00).
+inline constexpr uint64_t DamageTypeStepSlot = 0x3e2aab0;
+inline constexpr int StepGame = 0x00, StepVictim = 0x18;  // ctx: Game*, the difficulty record, attacker, victim
+// type: +0 the int32* damage field; +0x28 int32 non-zero on the 9 types 1.13c flags (physical, fire, lightning,
+// cold, magic, poison and the three leeches; not the cold, freeze and poison lengths), PD2's param_1[8]
+inline constexpr int TypeField = 0x00, TypeMirrored = 0x28;
+// (attacker, victim, rate, length, a5, a6, a7): poison, stat 74 (hpregen) at -rate for length frames (PD2's
+// 0x103055b0). Its entry tests the length (test r9d,r9d / jle, relative); the hook sits past it: mov rax,rsp /
+// push rbp / push rsi / push r14 / push r15 / sub rsp,0x68 / mov r14d,r9d, the arguments still in place.
+inline constexpr uint64_t PoisonApply = 0x4518c0, PoisonApplyHook = 0x4518c9;
+inline constexpr uint8_t PoisonApplyHookEntry[] = {0x48, 0x8b, 0xc4, 0x55, 0x56, 0x41, 0x56, 0x41,
+                                                   0x57, 0x48, 0x83, 0xec, 0x68, 0x45, 0x8b, 0xf1};
+inline constexpr int UnitGame = 0xd8;  // Game*, what 0x48ff00 returns
+
 }  // namespace d2r::rva
 
 namespace d2r {
