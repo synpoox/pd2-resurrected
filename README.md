@@ -3,7 +3,7 @@
 Project Diablo II rebuilt as a Diablo II: Resurrected mod: PD2's items, skills, monsters and rules, in D2R's
 graphics. Offline single-player for now; private multiplayer comes later.
 
-**Status: alpha 0.1.0** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [how it differs from PD2](docs/deviations.md)).
+**Status: alpha 0.2.0** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [how it differs from PD2](docs/deviations.md)).
 
 ## Requirements
 
