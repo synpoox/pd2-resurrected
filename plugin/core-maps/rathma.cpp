@@ -306,10 +306,77 @@ auto RathmaArenaPortal(Game* game, Unit* player, int32_t level) noexcept -> bool
 	return true;
 }
 
+// The grey portals' exit (PD2's `empty` marker the three portals at game +0x261c-0x2624 are linked to): level 0 until
+// the first move, which is also where they lead before it (the portal's own level, D2R's level entry)
+constexpr uint32_t ExitLevelKey = 0x5542524c;  // 'UBRL'
+constexpr uint32_t ExitXKey = 0x55425258;      // 'UBRX'
+constexpr uint32_t ExitYKey = 0x55425259;      // 'UBRY'
+std::atomic<uint32_t> g_exitMoves {0};
+std::atomic<uint32_t> g_reentries {0};
+
+auto MoveExit(Game* game, int32_t level, Spot at, const char* why) noexcept -> void {
+	Counter(game, ExitLevelKey) = level;
+	Counter(game, ExitXKey) = at.x;
+	Counter(game, ExitYKey) = at.y;
+	plog::Info("rathma: tier-0 re-entry now comes out in level %d at (0x%x, 0x%x), %s (%u moves)", level, at.x, at.y,
+	           why, ++g_exitMoves);
+}
+
+auto RathmaMoveReentry(Game* game, Unit* player, int32_t from, int32_t to) noexcept -> void {
+	if (game == nullptr || player == nullptr || from == Harrogath || StageOf(to) == nullptr ||
+	    Counter(game, TierKey) != 0) {
+		return;
+	}
+	if (from != to) {
+		// PD2 0x1038a1f0 places the marker on a free spot by the player, who still stands by the portal
+		int32_t xy[2] = {};
+		d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(d2r::rva::UnitCoords)(player, xy);
+		MoveExit(game, from, {xy[0], xy[1]}, "by the portal to the next level");
+		return;
+	}
+	// The arena portal: the stage's spot, by the stage byte (1, 3, then 5 and on); none in stages 2 and 4
+	const int32_t stage = Counter(game, StageKey);
+	const int i = stage == 1 ? 0 : stage == 3 ? 1 : stage >= 5 ? 2 : -1;
+	if (i >= 0) {
+		char why[32];
+		std::snprintf(why, sizeof(why), "stage %d's spot", stage);
+		MoveExit(game, Stages[i].level, Stages[i].marker, why);
+	}
+}
+
+auto RathmaReentry(Game* game, int32_t& level, int32_t xy[2]) noexcept -> bool {
+	const int32_t exit = game != nullptr && StageOf(level) != nullptr ? Counter(game, ExitLevelKey) : 0;
+	if (exit == 0) {
+		return false;
+	}
+	level = exit;
+	xy[0] = Counter(game, ExitXKey);
+	xy[1] = Counter(game, ExitYKey);
+	return true;
+}
+
+auto RathmaPlaceAt(Game* game, Unit* player, const int32_t xy[2]) noexcept -> bool {
+	using namespace d2r::rva;
+	void* near = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(player);
+	const int32_t level = near != nullptr ? d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(near) : -1;
+	void* room = RoomHolding(game, near, level, {xy[0], xy[1]});
+	if (room == nullptr) {
+		plog::Warn("rathma: no room at the re-entry spot (0x%x, 0x%x) in level %d", xy[0], xy[1], level);
+		return false;
+	}
+	d2r::Engine<void (*)(Game*, Unit*, void*, int32_t, int32_t, int32_t, int32_t) noexcept>(TeleportUnit)(
+		game, player, room, xy[0], xy[1], 0, 0);
+	int32_t at[2] = {};
+	d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(UnitCoords)(player, at);
+	plog::Info("rathma: tier-0 re-entry into level %d at (0x%x, 0x%x) (%u so far)", level, at[0], at[1],
+	           ++g_reentries);
+	return true;
+}
+
 auto RathmaCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "rathma: %u stages, %u bosses spawned, %u arena rooms, %u arena trips, %u pair kills, %u tome rolls "
-	              "hit, %u uniques, %u portals",
+	              "hit, %u uniques, %u portals, %u re-entry moves, %u re-entries",
 	              g_stages.load(), g_spawns.load(), g_arenaRooms.load(), g_arenaTrips.load(), g_kills.load(),
-	              g_tomes.load(), g_uniques.load(), g_portals.load());
+	              g_tomes.load(), g_uniques.load(), g_portals.load(), g_exitMoves.load(), g_reentries.load());
 }
