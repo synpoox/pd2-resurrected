@@ -252,8 +252,11 @@ def main(argv: list[str] | None = None) -> int:
     cfg_file = a.root / "merge" / "strings.json"
     cfg = json.loads(cfg_file.read_text("utf-8"))
     strings = modkit()[1].Strings(DataRoot(a.d2r or pd2_merge.D2R_DATA))
-    added = assign(cfg, read_tbl((pd2_data / TBL).read_bytes()), pd2_data / "global" / "excel", strings,
-                   a.root / "generated" / "data" / "global" / "excel" / "levels.txt")  # pd2_merge's
+    levels = a.root / "generated" / "data" / "global" / "excel" / "levels.txt"  # pd2_merge's
+    if not levels.is_file():
+        print(f"warning: no {levels}: run tools/pd2_merge.py first, or the levels' LevelEntry keys get no IDs",
+              file=sys.stderr)
+    added = assign(cfg, read_tbl((pd2_data / TBL).read_bytes()), pd2_data / "global" / "excel", strings, levels)
     cfg_file.write_text(dump(cfg), "utf-8", newline="\n")
     print(f"assigned {len(added)} new string IDs ({len(cfg['ids'])} listed)")
     return 0

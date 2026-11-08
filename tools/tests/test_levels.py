@@ -23,6 +23,11 @@ class EntryKeyTests(unittest.TestCase):
         self.assertEqual(L.entry_key("Graveyard Map"), "EnteringGraveyardMap")
         self.assertEqual(L.entry_key("Na-Krul's Abyss 2"), "EnteringNaKrulsAbyss2")
 
+    def test_fill_entries_names_only_the_pd2_only_levels_without_one(self):
+        lv = table("Name|LevelName|LevelEntry\r\nA|Blood Moor|\r\nB|Graveyard Map|\r\nC|Tomb Map|Own\r\nD||\r\n")
+        L.fill_entries(lv, 1)
+        self.assertEqual([r[2] for r in lv.rows], ["", "EnteringGraveyardMap", "Own", ""])
+
 
 class Ds1Tests(unittest.TestCase):
     def test_object_ids_rewritten_and_left_out(self):

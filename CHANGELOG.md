@@ -22,14 +22,11 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 #### Maps
 
 - Jungle maps draw water in their streams beyond the copied D2R rooms.
+- PD2 areas show "Entering <area>" on arrival instead of "Missing string".
 
 #### Uber bosses
 
 - Dclone's trapped-soul boulders hurt only through the fire they leave, not on impact.
-
-#### Maps
-
-- PD2 areas show "Entering <area>" on arrival instead of "Missing string".
 
 ### 0.2.0-alpha (2026-11-08)
 
