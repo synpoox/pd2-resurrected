@@ -197,6 +197,30 @@ unknown levels use 200. `region[+0x04]` counts the level's rooms activated so fa
 
 The spawn point is the activating room's centre. Each spawn sends the notify string (client message).
 
+**The altars** ([#504](https://github.com/synpoox/pd2-resurrected/issues/504), [#505](https://github.com/synpoox/pd2-resurrected/issues/505)). Both use PD2's operate 79 (`0x3aa460`; PD2's
+operate table is filled in `0x36c320`: 77 `0x3a9780`, 78 `0x3aa270`, 79 `0x3aa460`, 80 `0x3aa670`). `game+0x2628` is
+the event's state:
+
+- Altar of the Catalyst (event 19): the spawn places object 611 by the spot search, state 1. The first use sets the
+  altar's mode 1, adds its open event and spawns monster 1064 `GuardianOfFate` 10-29 subtiles from it (40 tries, spot
+  size 2), state 2. Its death (`0x378080`, event 19 and state 2) sets state 3 and kills the `GuardianOfFateClone`s
+  (1065) around it; the guardian's AI (`0x35a6b0`) summons them. The next use sets mode 3 and drops 2 or 3 `iwss`
+  (Catalyst Shard) by the altar at item level 90 (`0x36ebc0`), state 4.
+- Spire of Darkness (event 16): the altar goes at a random point of the room (`0x389ea0`), then the spot search; fog
+  object 374 at (x+2, y), (x, y+2) and (x-1, y-1); state 1. The use sets the altar's mode 1, darkens the level's act
+  (`0x37dc70`: packet 0x53, D2's Tainted Sun) and plays sounds 0xa78 and 0x24 to the user's level (`0x37f240`), state 2.
+  While the state is 2-49 each room activation draws `rand() % 6`: 1, 2 or 3 spawn a group of 993, 994 or 995 (MinGrp to
+  MaxGrp read from the monstats record, +0x2f and +0x30: 3-6, 8-14, 1) at the room's centre +- 5 (spot size 10).
+  `0x36eb30`, past progress 90: state 50, the darkness lifted (`0x37dc70` with 0), sound 0x26d for the level's players
+  (`0x37f240`, packet 0x2c), and every 993-995 in the game killed without drops (`0x356e00`; it reads only the first
+  monster of each of the 128 lists at `game+0x1320`).
+
+The objects go through `0x38a060`, which spawns an object in mode 0 (it passes `type != 2` as the mode) and sets
+bits `0x3000000` of its unit flags.
+
+**Void / Tomb** (event 21): the spawn places object 586 `xactportal_gold` by the spot search, then `0x38a1f0` places
+another 586 in level 207 at its spot (`0x38a000`) and `0x38a510` links the two both ways; object 594 marks the spot.
+
 **Horazon** (`0x377ca0`, on `summonerMap`'s death while the event is live). It builds a pool from three hard-coded level
 lists, which match the misc `len` tiers exactly:
 

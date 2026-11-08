@@ -13,3 +13,6 @@ zharportal_red	portal_permanent
 # ZharTomeObject keeps D2R's tome token (TT): it draws the Arcane Sanctuary's tower tome
 ZharTomeObject	tower_tome
 LucionChest	consolation_chest
+# The map event altars draw the D2R object of the legacy token PD2's row uses: OB (Obelisk1), xo (DungeonShrineMagic)
+TaintedSunMapEventAltar	obelisk_1
+ForceShardAltar	dungeon_shrine_magic

@@ -403,6 +403,7 @@ inline constexpr int LvlNMon1 = 0x70;
 inline constexpr int MonSpawn = 0x54;     // int16 spawn, -1 for none
 inline constexpr int MonPartyMin = 0x62;  // uint8
 inline constexpr int MonPartyMax = 0x63;  // uint8
+inline constexpr int MonMinGrp = 0x65, MonMaxGrp = 0x66;  // uint8 MinGrp, MaxGrp (field table 0x39db30; 1.13c +0x2f, +0x30)
 inline constexpr int MonFlags = 0x3c;  // uint32 flags; lUndead bit 11, hUndead bit 12 (monstats field table 0x39db30)
 inline constexpr uint32_t MonUndead = 0x1800;  // 1.13c's D2Common #10239 tests the same two bits
 inline constexpr int TablesOverlayCount = 0x1230;  // int64 overlay.txt row count in DataTables
@@ -421,8 +422,9 @@ inline constexpr int USkillFlags = 0x14;  // 0x80 leap starts, 0x100 in the air,
 inline constexpr int USkillTargetType = 0x2c;  // 6 = none
 inline constexpr int USkillTargetId = 0x30;
 inline constexpr int USkillParam = 0x24;  // int32 Charge's counter, PD2's charge distance (its D2Common skill param)
-inline constexpr int MonVelocity = 0x6a;  // int16 monstats Velocity
-inline constexpr int MonRun = 0x6a;  // int16 monstats Run: D2R's field table (0x39db30) has Velocity at 0x68, Run at 0x6a
+inline constexpr int MonRun = 0x6a;  // int16 monstats Run: D2R's field table (0x39db30) has Velocity at 0x68, Run at 0x6a.
+// Monster Leap and Charge read Run, not Velocity: PD2's leap (0x103b1300) reads 1.13c +0x34 (D2Common's table
+// 0x6fdaaa40: Velocity 0x32, Run 0x34), and D2R's own Charge starts (0x564dc0, 0x22e1a0) read +0x6a
 
 inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Lightning's chain range, 0 = the skill's)
 inline constexpr int MsHitPar2 = 0x74;  // int32 sHitPar2, sHitPar3 +0x78 (1.13c's 0x50 / 0x54 + 0x24)
@@ -862,6 +864,9 @@ inline constexpr uint64_t ClientUnit = 0x484c90;
 // pd2_ids.FUNCS). D2R's own portal operate 15 (0x58f680) needs a linked partner portal, which PD2's grey portals lack.
 inline constexpr uint64_t ObjectOperateTable = 0x23a51c0;
 inline constexpr int ObjectOperatePortal = 60;
+// PD2's map-event altar operate 79 takes slot 35 (MS8, pd2_ids.FUNCS): D2R's null slot of the 1.09 Steeg Stone (337),
+// an object no level places
+inline constexpr int ObjectOperateAltar = 35;
 inline constexpr int OperateWaypoint = 23;  // 0x58fe00, the waypoints' OperateFn
 inline constexpr uint64_t ObjectRecord = 0x38fd00;  // (dataFlag, objects row) -> objects record (0x168 bytes) or null
 inline constexpr int ObjOperateFn = 0x15e;   // uint8 OperateFn
