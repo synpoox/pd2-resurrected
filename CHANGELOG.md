@@ -4,6 +4,10 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 ### Unreleased
 
+#### Getting started
+
+- Includes a DPS counter above the life globe.
+
 #### Items
 
 - Rare items roll an even spread of affix counts above their item level's minimum.

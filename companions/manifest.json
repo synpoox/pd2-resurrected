@@ -115,6 +115,16 @@
       }
     },
     {
+      "name": "DPS Counter",
+      "repo": "synpoox/d2r-tools",
+      "tag": "release-2026.11.08.1",
+      "asset": "dps-counter-1.0.0.zip",
+      "sha256": "eb3e8a9fbab813ba481194d6208dc73553987020489a8ad29bcc2fa987d31663",
+      "files": {
+        "dps-counter.dll": "d2rloader/plugins/dps-counter.dll"
+      }
+    },
+    {
       "name": "Charm Inventory",
       "repo": "synpoox/d2rl-charm-inv",
       "tag": "1.0.1",
