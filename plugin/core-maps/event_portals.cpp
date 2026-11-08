@@ -11,6 +11,7 @@
 
 #include "key_drops.h"
 #include "log.h"
+#include "map_events.h"
 #include "map_stats.h"
 
 #include <D2RLPlugin/lifecycle_events.h>
@@ -26,6 +27,7 @@ using d2r::Game;
 using d2r::Unit;
 
 constexpr int32_t SummonerMap = 936;  // monstats `summonerMap` (PD2 919), port id
+constexpr int32_t HorazonEvent = 12;
 constexpr int32_t RedPortal = 60;
 constexpr int32_t StatLevel = 12;
 // PD2's three level lists (section 4) in the port's level ids (merge/ids-levels.tsv)
@@ -146,8 +148,10 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	if (monster == nullptr || killer == nullptr) {
 		return;
 	}
-	// shortcut: any summonerMap death in a tiered map counts, where PD2 also needs the live event to be Horazon's
-	// (game +0x1df4 == 12); summonerMap spawns only from that event, so add the test with MS8's event field
+	if (MapEvent(game) != HorazonEvent) {  // PD2 runs it only while the event is Horazon's (game +0x1df4 == 12)
+		plog::Info("horazon: died in level %d outside a Horazon event (event %d)", event->levelId, MapEvent(game));
+		return;
+	}
 	const auto opened = [game]() noexcept {  // fetched each time: a counter call may insert and move the others
 		uint32_t counter = HorazonKey;
 		return d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(GameCounter)(
