@@ -1246,6 +1246,20 @@ inline constexpr uint64_t SetItemFlag = 0x36d8f0;   // (item, flag, on): item da
 inline constexpr uint64_t WeaponDurabilityChance[] = {0x441b83, 0x441ba6};
 inline constexpr uint8_t WeaponDurabilityVanilla[] = {4, 10};
 inline constexpr uint8_t WeaponDurabilityPd2[] = {2, 5};
+// The staffmods roll on a new item (0x58a050, D2Game\src\Items\ItemsMagic.cpp; 1.13c D2Game +0x13de0): (item, drop
+// params). It reads the itemtypes StaffMods class and that class's skill count, then rolls 1.13c's tiers in 0x58af50
+// (DropFlags 0x20 adds the item level as bonus) or, on a version-0 item, 0x58b7c0. Decompiled for #663 (Ghidra,
+// D2R.gpr). Entry: mov [rsp+0x10],rbx / push rbp / push rdi / push r14 / sub rsp,0x30 / mov rdi,rdx
+inline constexpr uint64_t ItemStaffMods = 0x58a050;
+inline constexpr uint8_t ItemStaffModsEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x55, 0x57, 0x41,
+                                                 0x56, 0x48, 0x83, 0xec, 0x30, 0x48, 0x8b, 0xfa};
+inline constexpr uint32_t DropFlagStaffModsBonus = 0x20;
+inline constexpr uint64_t StaffModsClass = 0x372b80;   // (item) -> itemtypes StaffMods class (0-6, 7 Warlock), or >7
+inline constexpr uint64_t ItemVersion = 0x3730d0;      // (item) -> 0 classic, 100 or more expansion (1.13c #10718)
+// (item) -> &its item seed {lo, hi}, which item rolls draw from (not the unit seed, UnitSeed)
+inline constexpr uint64_t ItemSeed = 0x36cc80;
+inline constexpr uint64_t UnitListByFlags = 0x2f5a00;  // (unit, state, flags) -> its stat list with those flags, or null
+inline constexpr uint32_t ListFlagMagic = 0x40;        // an item's magic stat list (NewStatList flags)
 // The item decoder (0x378860, D2Common Items.cpp; client packets and save loads) resets a weapon's base damage from
 // weapons.txt and, when ethereal, times 3/2 inline: per stat 21, 22, 23, 24, 159, 160 the 16 bytes
 // lea eax,[rax+rax*2] / cdq / sub eax,edx / mov edx,<stat> / sar eax,1 / mov r8d,eax, before SetUnitStat.
