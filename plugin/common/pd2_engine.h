@@ -837,6 +837,20 @@ inline constexpr uint8_t ItemSpellCheckEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 
 inline constexpr uint64_t ItemSpellUse = 0x581680;
 inline constexpr uint8_t ItemSpellUseEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x48, 0x89, 0x6c,
                                                 0x24, 0x20, 0x56, 0x57, 0x41, 0x57};
+// The item spell table itself (.data, read by 0x300ae0 by pSpell): 20 entries of {check index, use index, keep}.
+// keep 1 leaves the item after its use (the Cube's entry 7); 0 lets the use-item handler 0x4f40c0 free a non-book.
+// D2R fills 0-15; 16 is core-maps' map spell, 17 and 18 core-rules' unlimited books (IR5).
+inline constexpr uint64_t ItemSpellTable = 0x236fe30;
+inline constexpr int ItemSpellEntrySize = 12;
+// The unlimited books' item spells (IR5, #240; the merge's misc pSpell for rtp and rid): the Navigator's entry 17 runs
+// D2R's Town Portal; the Almanac's entry 18 is {0, 0, keep 1}, and core-maps' item spell hooks identify every inventory
+// and Cube item (PD2: "Identifies all items at once"), as D2R's use function 1 (0x57ec30) identifies one. keep is also
+// read by the client (0x161f20 allows a use only from inputs passing bit (keep != 0) + 1; right-click does, as for
+// the Cube), not by the use-item handler 0x4f40c0.
+inline constexpr int32_t UnlimitedPortalSpell = 17, UnlimitedIdentifySpell = 18;
+inline constexpr uint64_t ItemTestFlag = 0x36e2d0;  // (item, flag, line, file) -> non-zero when item data +0x18 has it
+inline constexpr uint32_t ItemFlagIdentified = 0x10;
+inline constexpr uint64_t IdentifyItem = 0x46e8c0;  // (game, player, item, 1): identifies it and tells the client
 inline constexpr uint64_t UnitClassOf = 0x349860;  // (unit, file, line) -> class id (the dispatchers' item row)
 inline constexpr int ItemPSpell = 0x94;   // int32 misc pSpell in the items record (ItemRecord)
 inline constexpr int ItemLenCalc = 0xb0;  // uint32 misc len calc; the timed potion handler 0x57ecb0 evaluates it
@@ -1225,6 +1239,13 @@ inline constexpr uint8_t AffixAllowedEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x
 inline constexpr int AffixRare = 0x64;  // uint8 magicprefix/suffix `rare`
 inline constexpr uint64_t UnitBaseStat = 0x2f48c0;  // (unit, stat, layer) -> the value on the unit's base list
 inline constexpr uint64_t SetItemFlag = 0x36d8f0;   // (item, flag, on): item data +0x18 flags (0x400000 ethereal)
+// The weapon durability loss per hit (0x441b10, D2Game\src\Items\Items.cpp; 1.13c's D2Game +0x12ee0): a weapon
+// loses one durability when rand(100) < its chance, `mov ebx,4` (0x441b83) and `mov ebx,0xa` (0x441ba6) for the
+// item types that take 10. PD2 writes 2 and 5 over 1.13c's two bytes (+0x12f16, +0x12f36; ProjectDiablo.dll's patch
+// table). Ghidra, D2R.gpr and PD2.gpr (#243).
+inline constexpr uint64_t WeaponDurabilityChance[] = {0x441b83, 0x441ba6};
+inline constexpr uint8_t WeaponDurabilityVanilla[] = {4, 10};
+inline constexpr uint8_t WeaponDurabilityPd2[] = {2, 5};
 // The item decoder (0x378860, D2Common Items.cpp; client packets and save loads) resets a weapon's base damage from
 // weapons.txt and, when ethereal, times 3/2 inline: per stat 21, 22, 23, 24, 159, 160 the 16 bytes
 // lea eax,[rax+rax*2] / cdq / sub eax,edx / mov edx,<stat> / sar eax,1 / mov r8d,eax, before SetUnitStat.

@@ -34,6 +34,7 @@ constexpr int32_t Knights[] = {985, 986, 1123, 1124};
 constexpr int32_t RetreatKills[] = {BloodGolem, VoidGolem, Totem, SpireFire, 985, 986, 1123, 1124};
 constexpr int32_t StatEvent = 499, StatPick = 500, StatBias = 501;  // mon_cooldown1-3 (PD2 446-448)
 constexpr int32_t StateMonFrenzy = 103;
+constexpr int32_t StateResistAll = 8;  // set with the 200 resists (SetImmune)
 constexpr int32_t RathmaDeath = 554;     // the skill (PD2 485)
 constexpr int32_t GhostlyPortal = 588;   // xactportal_ghostly (PD2 585)
 constexpr int32_t ImmuneStats[] = {39, 43, 41, 45, 37, 36};  // fire, cold, lightning, poison, magic, damage resist
@@ -567,7 +568,14 @@ auto LifeEvent(Tick& t) noexcept -> bool {
 		HoldLife(t.unit, 15);
 		SetImmune(t.game, t.unit, true, true);
 		t.next = 6;
-		plog::Info("rathma: class %d event 8 at %d%% life: retreat (stage %d)", t.classId, t.life, stage);
+		// The resists as SetImmune left them: the monsterinfo readout rarely catches a retreating boss (#604)
+		const bool state8 = d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::rva::UnitHasState)(t.unit,
+		                                                                                          StateResistAll) != 0;
+		plog::Info("rathma: class %d event 8 at %d%% life: retreat (stage %d), resists %d/%d/%d/%d/%d/%d "
+		           "(fire/cold/lightning/poison/magic/damage), state 8 %s",
+		           t.classId, t.life, stage, Stat(t.unit, ImmuneStats[0]), Stat(t.unit, ImmuneStats[1]),
+		           Stat(t.unit, ImmuneStats[2]), Stat(t.unit, ImmuneStats[3]), Stat(t.unit, ImmuneStats[4]),
+		           Stat(t.unit, ImmuneStats[5]), state8 ? "on" : "off");
 		if (original) {
 			Retreat(t);  // PD2 runs state 6's code here, whatever the state
 		} else {

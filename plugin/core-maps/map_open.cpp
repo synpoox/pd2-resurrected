@@ -104,12 +104,52 @@ int32_t (*g_releasableOriginal)(void* act, void* room) noexcept = nullptr;
 // Set once the check hook is in: until then the use hook leaves maps to D2R, so no portal opens ungated
 std::atomic<bool> g_gated {false};
 
-auto IsMap(Game* game, Unit* item) noexcept -> const uint8_t* {
+// The item's misc record: its pSpell picks the map (16) or the Almanac (18), one lookup per check or use
+auto ItemRecordOf(Game* game, Unit* item) noexcept -> const uint8_t* {
 	using namespace d2r::rva;
 	const int32_t row = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(UnitClassOf)(item, __FILE__,
 	                                                                                               __LINE__);
-	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ItemRecord)(d2r::DataFlag(game), row);
-	return record != nullptr && At<int32_t>(record, ItemPSpell) == MapSpell ? record : nullptr;
+	return d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ItemRecord)(d2r::DataFlag(game), row);
+}
+
+// --- The Horadric Almanac (IR5, #240; core-rules' lane, kept here because these hooks own the item spell dispatchers)
+// PD2's unlimited Tome of Identify identifies every item at once and stays. Its item spell 18 has no D2R check or use
+// (core-rules writes the entry, keep 1), so the hooks below run it. PD2's skill 513 handler (ProjectDiablo.dll
+// 0x10383ea0) walks the player's inventory list and identifies each unidentified item on inventory page 0 or in the
+// Cube (page 3), leaving the stash, worn and belt items; this does the same with D2R's identify (as its use function 1,
+// 0x57ec30: sets the flag and sends the item to the client).
+// Native, not the SDK's ItemInteraction + Inventory + executeExistingItemTransaction: ItemInteractionService raises a
+// UI-thread event for the local player's own clicks, and the SDK maps no server player unit to a PlayerHandle, so a
+// TCP/IP client's use (which reaches the host only as this item spell) could not be served; and on the test harness's
+// right-click (Slot6, 2026-11-08) the interaction event was never raised while this item spell ran.
+std::atomic<uint32_t> g_almanacUses {0};
+constexpr int32_t UnitItem = 4;  // D2's unit type of an item
+
+void IdentifyAll(Game* game, Unit* player) noexcept {
+	using namespace d2r::rva;
+	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory)(player, __FILE__, __LINE__);
+	if (inventory == nullptr) {
+		return;
+	}
+	const auto next = d2r::Engine<Unit* (*)(Unit*) noexcept>(InventoryNextItem);
+	const auto page = d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage);
+	const auto hasFlag = d2r::Engine<int32_t (*)(Unit*, uint32_t, int32_t, const char*) noexcept>(ItemTestFlag);
+	const auto identify = d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t) noexcept>(IdentifyItem);
+	int32_t identified = 0, left = 0;
+	for (Unit* item = d2r::Engine<Unit* (*)(void*) noexcept>(InventoryFirstItem)(inventory); item != nullptr;
+	     item = next(item)) {
+		if (At<int32_t>(item, UnitType) != UnitItem || hasFlag(item, ItemFlagIdentified, __LINE__, __FILE__) != 0) {
+			continue;
+		}
+		const uint8_t where = page(item);
+		if (where != 0 && where != CubePageCube) {
+			++left;
+			continue;
+		}
+		identify(game, player, item, 1);
+		++identified;
+	}
+	plog::Info("almanac: %d items identified, %d elsewhere left, %u uses", identified, left, ++g_almanacUses);
 }
 
 auto MapLevel(Game* game, Unit* player, Unit* item, const uint8_t* record) noexcept -> int32_t {
@@ -198,7 +238,12 @@ auto Refusal(Game* game, Unit* player, int32_t level, char* why, size_t size) no
 }
 
 auto SpellCheck(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> uint64_t {
-	const uint8_t* record = game != nullptr && player != nullptr && item != nullptr ? IsMap(game, item) : nullptr;
+	const uint8_t* record = game != nullptr && player != nullptr && item != nullptr ? ItemRecordOf(game, item) : nullptr;
+	const int32_t spell = record != nullptr ? At<int32_t>(record, d2r::rva::ItemPSpell) : -1;
+	if (spell == d2r::rva::UnlimitedIdentifySpell) {
+		return 1;
+	}
+	record = spell == MapSpell ? record : nullptr;
 	if (record == nullptr) {
 		return g_checkOriginal(game, player, item, target);
 	}
@@ -462,8 +507,13 @@ auto OpenUber(Game* game, Unit* player, Unit* item, int32_t level) noexcept -> v
 }
 
 auto SpellUse(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> void {
-	const uint8_t* record = g_gated && game != nullptr && player != nullptr && item != nullptr ? IsMap(game, item)
-	                                                                                         : nullptr;
+	const uint8_t* record = game != nullptr && player != nullptr && item != nullptr ? ItemRecordOf(game, item) : nullptr;
+	const int32_t spell = record != nullptr ? At<int32_t>(record, d2r::rva::ItemPSpell) : -1;
+	if (spell == d2r::rva::UnlimitedIdentifySpell) {
+		IdentifyAll(game, player);
+		return;
+	}
+	record = g_gated && spell == MapSpell ? record : nullptr;
 	if (record == nullptr) {
 		g_useOriginal(game, player, item, target);
 		return;
@@ -550,7 +600,8 @@ auto InstallMapOpen(const D2RL::PluginContext* context, char* report, size_t rep
 	                                           reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperatePortal)));
 	const bool rooms = context->InstallInlineHook(d2r::rva::RoomReleasable, RoomReleasableEntry,
 	                                              sizeof(RoomReleasableEntry), KeepBossRoom, &g_releasableOriginal);
-	std::snprintf(report, reportSize, "item spell %d%s, portal operate %d%s, boss rooms kept%s", MapSpell,
+	std::snprintf(report, reportSize, "item spells %d and %d (Almanac)%s, portal operate %d%s, boss rooms kept%s", MapSpell,
+	              d2r::rva::UnlimitedIdentifySpell,
 	              check ? "" : use ? " FAILED (check bytes differ)" : " FAILED (use bytes differ)", ObjectOperatePortal,
 	              portal ? "" : " FAILED (slot not empty)", rooms ? "" : " FAILED (bytes differ)");
 	return (check ? 1 : 0) + (portal ? 1 : 0) + (rooms ? 1 : 0);
