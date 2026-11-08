@@ -40,10 +40,12 @@ from pathlib import Path
 
 import pd2_dt1_copies as dt1_copies
 import pd2_painter as painter
+import pd2_terrain as terrain_ground
 from pd2_ids import Table, excel, load
 from pd2_levels import SLOTS, col, ds1_header, norm
 
 TILE = 10  # HD units per DS1 tile
+GROUND = "_ground"  # a stock preset's pd2_terrain.Ground, set by apply() for Kit.add; never written out
 # a DS1 cell's unwalkable bit: what blocks the plain floor in PD2's dashed tree lines and the ground past the paths
 # (jungle1: on 96% of the lines' gap tiles; D2R's stock jungle rooms stand 88% of their trees on such tiles)
 UNWALKABLE = 0x20000
@@ -141,9 +143,11 @@ class Kit:
     sources: list[dict[str, list[dict]]] = field(default_factory=list)  # each stock preset's dependencies
 
     def add(self, lay: Layout, preset: dict, keep: set[Key]) -> None:
-        """Harvest one stock (layout, preset) pair, only the keys in `keep`."""
+        """Harvest one stock (layout, preset) pair, only the keys in `keep`. With the preset's ground (GROUND, from
+        pd2_terrain), each piece keeps its height above that ground, as the generated terrain is flat."""
         src = len(self.sources)
         self.sources.append(preset["dependencies"])
+        ground = preset.get(GROUND)
         per: dict[tuple[int, int], list] = {c: [] for c, k in lay.keys.items() if k in keep}
         for e in preset["entities"]:
             t = _transform(e)
@@ -152,6 +156,9 @@ class Kit:
             x, z = t["position"]["x"], t["position"]["z"]
             c = (min(max(int(x // TILE), 0), lay.width - 1), min(max(int(z // TILE), 0), lay.height - 1))
             if c in per:
+                if ground and (g := ground.at(x, z)):
+                    e = copy.deepcopy(e)
+                    _transform(e)["position"]["y"] -= g
                 per[c].append((e, x - c[0] * TILE, z - c[1] * TILE))
         for c, ents in per.items():
             self.instances.setdefault(lay.keys[c], []).append((src, ents))
@@ -514,7 +521,9 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         listed = header_dt1s(data)
         if loaded.isdisjoint(listed):
             continue
-        stock.append((layout(data, tiles.of(listed)), json.loads(p.read_text("utf-8-sig")), set(listed)))
+        preset = json.loads(p.read_text("utf-8-sig"))
+        preset[GROUND] = terrain_ground.of_preset(preset, d2r_data)
+        stock.append((layout(data, tiles.of(listed)), preset, set(listed)))
         kit.add(*stock[-1][:2], keep)
 
     @functools.cache
