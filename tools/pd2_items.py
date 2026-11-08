@@ -126,7 +126,7 @@ def make_talisman(cube: I.Table) -> None:
     if "output b" not in h:
         return
     for r in cube.rows:
-        if r[h["output"]] == "useitem" and r[h["output b"]].split(",")[0] == "ubtm":
+        if r[h["output"]] == "useitem" and r[h["output b"]].strip('"').split(",")[0] == "ubtm":
             r[h["output"]], r[h["output b"]] = r[h["output b"]], ""
 
 

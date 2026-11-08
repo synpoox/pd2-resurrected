@@ -76,7 +76,7 @@ class KeyedTests(unittest.TestCase):
     def test_cube_organs_make_the_talisman(self):
         # D2R's `useitem` would hand the horn back: the organ row's output is the Talisman, all organs used (#593)
         head = "input 1|output|output b\n"
-        pd2 = table(head + "dhn|useitem|ubtm,qty=1\nisc|useitem|amu\n")
+        pd2 = table(head + 'dhn|useitem|"ubtm,qty=1"\nisc|useitem|amu\n')
         self.assertEqual([r[1:] for r in M.merge_cube(pd2, table(head), NO_CTX).rows],
                          [["ubtm,qty=1", ""], ["useitem", "amu"]])
 
