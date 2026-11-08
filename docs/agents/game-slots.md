@@ -25,6 +25,9 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
 3. Build and install: `plugin\build.ps1`, `python tools/pd2_extract.py`, `python tools/pd2_merge.py`, then
    `tools\install.ps1 -Game C:\D2RTestSlots\Slot<N> -Data . -NoValidate` (main still has known validation errors).
    The shared cache below makes the extract and merge near-instant when another worktree already ran them.
+   `install.ps1` leaves only our plugins in `<slot>\d2rloader\plugins` (`core-rules.dll`, `core-maps.dll`, `core-ui.dll`,
+   `test-harness.dll`, `d2r-testharness-console.txt`): it moves anything else to
+   `C:\D2RTestSlots\backups\stray-plugins-<date>\Slot<N>\` and lists it. Pass `-KeepExtras` to keep a slot's extras.
 4. Check the installed data holds the change (the merged table row in `out/data`).
 5. For a hand test, write the slot, its lock owner and the unlock command into the game-check issue.
 6. `python <toolkit>/testing/game_slots.py unlock <N> <owner>` once the test is done.
@@ -40,6 +43,9 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
   merge, else merges and stores the result. Don't skip the merge in a worktree: a hit takes seconds.
 - `install.ps1` (modkit install) writes only the `out\data` files that differ from the slot's and touches nothing outside
   `<slot>\mods\PD2Resurrected`, so moving a slot between builds is quick.
+- Before removing a worktree, unlink its junctions, and never delete through them: `git worktree remove --force`
+  follows a junction and empties the shared cache (`C:\pd2r-cache`, or `F:\pd2r-cache` for slots on F:):
+  `cmd /c rmdir <worktree>\pd2-data`, `cmd /c rmdir <worktree>\generated`, `cmd /c rmdir <worktree>\out`.
 - Never delete a cache folder another worktree's `pd2-data` points at. CI (`GITHUB_ACTIONS`) does not use these.
 - Nothing prunes the cache. Each `merge\<key>` holds about 2 GB, so the owner deletes old ones by hand while no
   merge is running.
