@@ -45,8 +45,11 @@ necromancer curse function among them) with `0x1036d7d0`. It takes the same requ
 [#265](https://github.com/synpoox/pd2-resurrected/issues/265). In `0x1036d7d0`, state 196 skips the curse gate (stat 109 and curse resistance). After the slot walk
 (count `n`, oldest timed curse) it:
 
-1. frees the first curse-flagged list in the chain that is not the oldest timed one (`0x1030c530`): with one curse,
-   none goes;
+0. like every state on a monster, is refused first when the monster's monstats row is flagged npc (bit 8) or its
+   monstats2 row lacks revive (`0x200`), the checks D2R's NewStateList makes too (`0x433d82`-`0x433f16`); the port
+   asks them before the explosion;
+1. frees the first curse-flagged list in the chain that is not the oldest timed one (`0x1030c530`): with one timed
+   curse, none goes;
 2. returns 0 (no list) when `n < 1`;
 3. rolls the skill's elemental damage on the caster at the cast level (`0x103a2550` -> 1.13c D2Game `0x9f210`, entry
    `0x104a96c4`; Dark Pact's EType is mag, so `+0x20`), sets hit flags 1 and result flags 5, and scales magic by
@@ -60,8 +63,8 @@ necromancer curse function among them) with `0x1036d7d0`. It takes the same requ
    curse replaced.
 
 The port (core-rules `ApplyDarkPact`) does the same through D2R's ElementalDamage, AreaUnits and AreaApply, then
-ApplyCurse with every other curse hidden. Left out: at or above the slot count PD2 adds a second `dark_pact` list when
-one is still on the target; NewStateList refreshes the old one. Its aurastate lasts 1 frame (auralencalc 1).
+ApplyCurse with every other curse hidden. Approximated (deviation list): at or above the slot count PD2 adds a second
+`dark_pact` list when one is still on the target; NewStateList refreshes the old one. Its aurastate lasts 1 frame.
 
 ## In the port
 

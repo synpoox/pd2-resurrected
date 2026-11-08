@@ -741,7 +741,8 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 }
 
 // --- Dark Pact (#265, docs/research/ir4-curses.md): PD2's state list creator 0x1036d7d0, state 196 ----------------
-// PD2 consumes the first curse in the target's chain that is not the oldest timed one (so a lone curse stays), then
+// PD2 refuses a monster D2R's NewStateList also refuses (below), then consumes the first curse in the target's chain
+// that is not the oldest timed one (so a lone timed curse stays), then
 // hits every unit within calc1 + curses - 1 of the target with the skill's magic damage times 1 + 1.1 * (curses - 1)
 // (D2Game 0x9f210's roll, area search 0xa0c70 with mask 0x8583 and callback 0xa1210), then puts dark_pact on the
 // target past the max-curses rule. No curse on the target: nothing. PD2 skips its curse gate for this state.
@@ -751,6 +752,35 @@ constexpr uint32_t DarkPactHitFlags = 1;
 constexpr uint32_t DarkPactResultFlags = 5;
 
 std::atomic<uint32_t> g_darkPacts {0};
+
+// PD2's early-out in 0x1036d7d0, also D2R's NewStateList's first checks (0x433d82-0x433f16): a monster target is
+// refused when its monstats row is missing or flagged npc (flags bit 8: byte +0x3d & the bit-mask table's entry 0),
+// or its monstats2 row (monstats +0x4c, table +0xf98, 0x128 a row) lacks revive (flags bit 9: byte +5 & entry 1).
+// Dark Pact must ask first: its explosion comes before NewStateList.
+constexpr int MonStats2Index = 0x4c;                      // int16 monstats -> monstats2 row
+constexpr int TablesMonStats2 = 0xf98, TablesMonStats2Count = 0xfa0;
+constexpr int MonStats2Size = 0x128, MonStats2Flags1 = 0x5;  // byte: flags bits 8-15
+constexpr uint64_t BitMasks = 0x1d996d0;                   // uint32[32]: 1 << i (MeleeRollFlagMask is entry 0)
+
+auto StateRefused(uint32_t dataFlag, Unit* target) noexcept -> bool {
+	using namespace d2r::rva;
+	if (At<int32_t>(target, UnitType) != UnitMonster) {
+		return false;
+	}
+	const auto* masks = reinterpret_cast<const uint8_t*>(d2r::imageBase + BitMasks);
+	const uint8_t* mon = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(
+		dataFlag, At<int32_t>(target, UnitClassId));
+	if (mon == nullptr || (At<uint8_t>(mon, MonFlags + 1) & masks[0]) != 0) {
+		return true;
+	}
+	const int64_t row = At<int16_t>(mon, MonStats2Index);
+	const uint8_t* tables = DataTables(dataFlag);
+	if (tables == nullptr || row < 0 || static_cast<uint64_t>(row) >= At<uint64_t>(tables, TablesMonStats2Count)) {
+		return true;
+	}
+	const uint8_t* mon2 = At<const uint8_t*>(tables, TablesMonStats2) + row * MonStats2Size;
+	return (At<uint8_t>(mon2, MonStats2Flags1) & masks[4]) == 0;
+}
 
 using AreaFn = void (*)(Game*, Unit*, d2r::AreaCenter*, int32_t, uint32_t, int32_t (*)(d2r::AreaContext*, Unit*), void*,
                         int32_t) noexcept;  // rva::AreaUnits
@@ -786,6 +816,13 @@ auto ApplyDarkPact(Unit* target, d2r::CurseParams* params, uint32_t dataFlag) no
 	Unit* caster = params->caster;
 	uint8_t* owner = At<uint8_t*>(target, UnitListOwner);
 	if (owner == nullptr || At<int32_t>(owner, ListOwnerMark) >= 0) {
+		return 0;
+	}
+	if (StateRefused(dataFlag, target)) {
+		if (const uint32_t n = ++g_darkPacts; n <= 20 || n % 100 == 0) {
+			plog::Info("dark pact: monster class %d refused (npc or not revivable), nothing happens, %u so far",
+			           At<int32_t>(target, UnitClassId), n);
+		}
 		return 0;
 	}
 	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);

@@ -184,7 +184,7 @@ rows have no table hook: D2R does what it does.
 | Item quantity display | approximated | the number sits at the bottom right of the picture (#359 asks for it; PD2 draws it bottom left), white with D2R's drop shadow instead of PD2's black box; tomes show no number (PD2 shows their charges; the owner's call); the stash's Gems/Materials/Runes tabs show D2R's own count instead | [#359](https://github.com/synpoox/pd2-resurrected/issues/359) |
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 
-### Approximated (70)
+### Approximated (71)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -212,6 +212,7 @@ rows have no table hook: D2R does what it does.
 | Gust | approximated | core-rules' srvdo router 190 ([druid-w23](research/druid-w23.md)): the teleport is Teleport's core ([W26](https://github.com/synpoox/pd2-resurrected/issues/101)), so its approximations apply: no `TeleportBlocked` chat line on a refusal; the missile and the area hit are D2R's own calls for PD2's | [W23](https://github.com/synpoox/pd2-resurrected/issues/98) |
 | Blood Warp: the regen list | approximated | the teleport is the Teleport row's ([W26](https://github.com/synpoox/pd2-resurrected/issues/101)); a recast that extends the running hpregen list (same level: PD2 and core-rules keep the first cast's regen and move its timer) doesn't send the client the new timer, where PD2's timed-state helper sends packet 0x83 (docs/core-rules.md) | core-rules |
 | Bash: the 50% knockback roll | approximated | core-rules' router (srvdo 190) rolls before D2R's melee do function applies the hit, for every target; PD2 rolls after the apply, only for targets with flag 0x8000 (docs/core-rules.md) | core-rules |
+| Dark Pact on a target at its curse slot count | approximated | at or above the slot count PD2 (`0x1036d7d0`) adds a new `dark_pact` list even when one is still on the target; core-rules lets D2R's NewStateList refresh the old one. The state lasts 1 frame (auralencalc 1), and the consumed curse and explosion are PD2's ([ir4-curses](research/ir4-curses.md)) | [#265](https://github.com/synpoox/pd2-resurrected/issues/265) |
 | Static Field: the debuff's monster refusals and timer | approximated | PD2's timed-state helper (`0x1036d7d0`) refuses some monsters by their monstats flags before it puts staticfield_debuff on them; core-rules leaves that to D2R's NewStateList. A player who gets the debuff is not sent PD2's packet `0x83` with its timer (as Teleport and Blood Warp), and an aurastat past itemstatcost's end is not refused as PD2 refuses it (docs/research/w27-static-field-combustion.md) | core-rules |
 | Desecrate: the corpse timer | approximated | core-rules hides each corpse with a 400-frame state list whose expiry sets corpse_nodraw; PD2 uses a game event at frame + 400 (docs/research/necromancer-w13.md) | core-rules |
 | Desecrate: the fallback levels | approximated | when the cast level has no monster to raise, core-rules tries PD2's fallback levels 32 times, then the cast fails; PD2 retries without a bound. The level, monster and offset rolls use the caster's seed, PD2 uses `rand()` | core-rules |
