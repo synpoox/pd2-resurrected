@@ -23,6 +23,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Uber bosses
 
+- Rathma's tier-0 grey portals come out at the fight's current stage, as in PD2.
 - Rathma's final two clones share life: a hit on one is halved and the other loses the same, as in PD2.
 - Rathma's surviving clone casts RathmaDeath; the pair's drops are item level 130.
 - Lucion's frenzy darkens the act, plays PD2's sounds and hides him in shadow, as in PD2.

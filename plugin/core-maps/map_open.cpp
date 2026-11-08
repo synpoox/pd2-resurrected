@@ -400,9 +400,8 @@ auto OpenGreyPortals(Game* game, void* near, int32_t level, Unit* (&made)[std::s
 
 // PD2's portal operate (77), in D2R's operate slot 60: the player goes to the portal's level. Into an uber level the
 // area rules run first (PD2 0x103a9780): the entry is counted, the bosses heal, pets go and buffs are stripped. A grey
-// portal is single use.
-// shortcut: Rathma's tier-0 re-entry at the stage's spot (section 3) needs the Rathma fight's stage byte; add it with
-// that fight
+// portal is single use. At tier 0 a grey portal into the Rathma levels comes out where the fight's portals last moved
+// it (section 3; RathmaMoveReentry).
 auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
 	using namespace d2r::rva;
 	Game* game = args->game;
@@ -416,26 +415,34 @@ auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
 		d2r::Engine<void (*)(Unit*, int32_t, Unit*) noexcept>(ClientMessage)(player, CantEnter, player);
 		return 0;
 	}
+	RathmaMoveReentry(game, player, PlayerLevelId(player), level);
 	if (level == PlayerLevelId(player) && RathmaArenaPortal(game, player, level)) {
 		return 1;
 	}
 	if (OuterVoidWarp(game, player, args->object)) {
 		return 1;
 	}
+	// PD2 relinks the grey portals, so their level is the exit's too
+	int32_t to = level;
+	int32_t exit[2] = {};
+	const bool moved = args->classId == GreyPortal && RathmaReentry(game, to, exit);
 	if (IsUberLevel(level) && level != UberTristram) {
 		int32_t* entries = CounterOf(game, EntryKey);
 		*entries += 1;
-		const int32_t healed = HealBosses(game, level);
+		const int32_t healed = HealBosses(game, to);
 		const int32_t pets = RemovePets(game, player);
 		const int32_t states = StripStates(game, player);
 		plog::Info("uber: entry %d into level %d by portal: %d bosses healed, %d pets removed, %d states stripped (%u)",
-		           *entries, level, healed, pets, states, ++g_entries);
+		           *entries, to, healed, pets, states, ++g_entries);
 	}
-	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t) noexcept>(WarpToLevel)(game, player, level, 0);
+	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t) noexcept>(WarpToLevel)(game, player, to, 0);
 	const int32_t now = PlayerLevelId(player);
-	if (now != level) {
-		plog::Warn("uber: the portal to level %d left the player in %d", level, now);
+	if (now != to) {
+		plog::Warn("uber: the portal to level %d left the player in %d", to, now);
 		return 0;
+	}
+	if (moved) {
+		RathmaPlaceAt(game, player, exit);
 	}
 	if (args->classId == GreyPortal) {
 		RemoveGreyPortal(game, args->object);
