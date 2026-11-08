@@ -224,6 +224,11 @@ inline constexpr uint64_t AreaUnits = 0x4398b0;
 inline constexpr uint32_t AreaUnitMask = 0x8583;  // PD2's and AreaKnockback's default unit mask
 // (game, unit, 0, 0, radius, &LeapKnockback, 0, &scratch): Leap's landing knockback (srvdo 77), callback 0x43a740
 inline constexpr uint64_t AreaKnockback = 0x437820;
+// srvhit 9's (Immolation Arrow, 0x45d020) helpers: (game, missile, radius, missile row, frames) creates the row at every
+// open spot within radius of the missile (frames 0 = the row's own range), and (game, missile, hit, &block) fills the
+// missile's damage into a d2r::LeapKnockback block
+inline constexpr uint64_t MissileFireDisc = 0x462b20;
+inline constexpr uint64_t MissileDamageFill = 0x465d60;
 inline constexpr uint64_t SkillMeleeHit = 0x56b170;  // (game, unit, skillId, level): Leap Attack's hit on the skill target
 inline constexpr uint64_t CltDoLeap = 0x22f9a0;  // D2R cltdo 43 (unit, skillId): Leap's client half
 inline constexpr uint64_t RemoveUnitEvent = 0x48b890;  // (game, unit, event, key): 0 for most; an item aura passes its key
@@ -438,6 +443,7 @@ inline constexpr int MonRun = 0x6a;  // int16 monstats Run: D2R's field table (0
 inline constexpr int MsHitPar1 = 0x70;  // int32 missiles.txt sHitPar1 (Chain Lightning's chain range, 0 = the skill's)
 inline constexpr int MsHitPar2 = 0x74;  // int32 sHitPar2, sHitPar3 +0x78 (1.13c's 0x50 / 0x54 + 0x24)
 inline constexpr int MsHitPar3 = 0x78;
+inline constexpr int MsHitCalc1 = 0xac;  // int32 SHitCalc1 (calc index; 1.13c's 0x88 + 0x24), as srvhit 9 (0x45d020) reads it
 inline constexpr int MsCltHitPar1 = 0x90;  // int32 cHitPar1-3 (1.13c's 0x6c-0x74 + 0x24)
 inline constexpr int MsCltHitPar2 = 0x94;
 inline constexpr int MsCltHitPar3 = 0x98;
