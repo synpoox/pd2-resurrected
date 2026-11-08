@@ -1,5 +1,6 @@
 """pd2_cache (#440): the extract lock, the cache key, and the shared extract and merge."""
 import io
+import json
 import os
 import tempfile
 import threading
@@ -70,6 +71,10 @@ class KeyTests(unittest.TestCase):
 
 class SharedExtractTests(unittest.TestCase):
     def test_pd2_data_is_a_junction_to_the_extract_for_its_stamp(self):
+        try:
+            ex = pd2_extract.classic("extract")
+        except ValueError as e:  # CI has no d2rAI-toolkit (private)
+            self.skipTest(str(e))
         class OneFile:
             def __init__(self, path): pass
             def names(self): return ["data\\x.txt"]
@@ -80,11 +85,13 @@ class SharedExtractTests(unittest.TestCase):
             (tmp / "cache").mkdir()
             out = tmp / "wt" / "pd2-data"
             out.parent.mkdir()
-            for i, base in enumerate([b'{"archives": {}}', b'{"archives": {}, "v": 2}']):
-                (tmp / "b.json").write_bytes(base)
+            (tmp / "a.mpq").write_bytes(b"A")  # the archive the baseline pins; OneFile stands in for its contents
+            pinned = {"archives": {"a.mpq": ex.sha256(tmp / "a.mpq")}, "extract": {"a.mpq": ["*"]}}
+            for i, base in enumerate([pinned, {**pinned, "v": 2}]):
+                (tmp / "b.json").write_text(json.dumps(base))
                 args = ["--install", str(tmp), "--baseline", str(tmp / "b.json")]
                 with cache_env(tmp / "cache"), mock.patch.object(pd2_extract, "ROOT", tmp / "wt"), \
-                        mock.patch.object(pd2_extract, "open_mpq", OneFile), redirect_stdout(io.StringIO()):
+                        mock.patch.object(ex.mpq, "Archive", OneFile), redirect_stdout(io.StringIO()):
                     self.assertEqual(pd2_extract.main(args), 0)
                 self.assertTrue(pd2_cache.is_link(out))
                 self.assertEqual((out / "data" / "x.txt").read_bytes(), b"x")
@@ -95,12 +102,16 @@ class SharedExtractTests(unittest.TestCase):
 
 class MergeCacheTests(unittest.TestCase):
     def test_a_second_merge_of_the_same_key_copies_the_first(self):
+        try:
+            ex = pd2_extract.classic("extract")
+        except ValueError as e:  # CI has no d2rAI-toolkit (private)
+            self.skipTest(str(e))
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             root, d2r = tmp / "wt", tmp / "d2r"
             write(root / "pd2-baseline.json", "B")
             (root / "pd2-data").mkdir()
-            (root / "pd2-data" / "baseline.json").write_bytes(pd2_extract.stamp(b"B"))
+            (root / "pd2-data" / "baseline.json").write_bytes(ex.stamp(b"B"))
             write(root / "merge" / "ids.json", "{}")
             (d2r / "global" / "excel").mkdir(parents=True)
             (tmp / "cache").mkdir()

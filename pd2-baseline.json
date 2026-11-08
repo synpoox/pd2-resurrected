@@ -1,5 +1,5 @@
 {
-  "note": "The PD2 baseline (GLOSSARY.md): SHA-256 of the install the port is measured against. tools/pd2_extract.py refuses any other archives; the DLLs are for reference only. Changing this file is a re-baseline (ADR 0002).",
+  "note": "The PD2 baseline (GLOSSARY.md): SHA-256 of the install the port is measured against. tools/pd2_extract.py refuses any other archives; the DLLs are for reference only. Changing archives or dlls is a re-baseline (ADR 0002). extract names the files pd2_extract takes from each archive (lower-case path patterns); changing it only extracts again.",
   "install": "C:\\Games\\PD2\\ProjectD2",
   "archives": {
     "pd2data.mpq": "7e41718ef7b737464d13ee82f4e7093c63bc3797eed6f76953e1c7b406e08d09",
@@ -11,5 +11,23 @@
     "ProjectDiablo.dll": "e7eec2564811c7b347bc62b9d738569329c4971055b8f79ce42a9a5a250e903b",
     "PD2_EXT.dll": "972753e89630a6371aba34464b789340b3d489f9d3544d758d9fb61cc7a70d14",
     "BH.dll": "4173b0c2146c0001ebecfb8b10be73915daf3b933f1fd6e05b71f11992692998"
+  },
+  "extract": {
+    "pd2data.mpq": [
+      "*"
+    ],
+    "pd2assets.mpq": [
+      "data/global/animdata.d2",
+      "data/global/ui/spells/??skillicon.dc6",
+      "data/global/ui/spells/skillicon.dc6",
+      "data/global/ui/automap/maximap*.dc6",
+      "data/global/items/*.dc6",
+      "data/global/missiles/*.dcc",
+      "data/global/tiles/*.dt1",
+      "data/global/sfx/*.wav"
+    ],
+    "pd2maps.mpq": [
+      "data/global/tiles/*.ds1"
+    ]
   }
 }

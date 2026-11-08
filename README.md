@@ -74,8 +74,8 @@ humans work here: [AGENTS.md](AGENTS.md).
 
 ## Build
 
-Needs the PD2 install named in `pd2-baseline.json` and the sibling `..\d2rAI-toolkit` at commit `197673a` or later
-(modkit's `generated/data/` layer, and `shared/classic_import`'s MPQ reader).
+Needs the PD2 install named in `pd2-baseline.json` and the sibling `..\d2rAI-toolkit` at commit `4cb428c` or later
+(modkit's `generated/data/` layer, and `shared/classic_import`'s extract and merge driver).
 
 ```bash
 python tools/pd2_extract.py
