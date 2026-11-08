@@ -72,7 +72,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | Guilds | not yet | cut in spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41) with the online layer; the cut is reversed and guilds come with multiplayer ([#339](https://github.com/synpoox/pd2-resurrected/issues/339)) | [#339](https://github.com/synpoox/pd2-resurrected/issues/339), beta |
 | Controller: PD2's own screens and binds | not yet | D2R's native controller support stands in; PD2's extra screens and binds were cut in spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41), and the cut is reversed ([#340](https://github.com/synpoox/pd2-resurrected/issues/340)) | [#340](https://github.com/synpoox/pd2-resurrected/issues/340), beta |
 
-### Approximated (55)
+### Approximated (56)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
