@@ -68,6 +68,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - The Gheed map event spawns Gheed in tiered maps, as in PD2.
 - The Horazon map event spawns Horazon in tiered maps; only that Horazon opens his portal, as in PD2.
 - Unique map bosses leave a portal to Harrogath (or onward) and drop PD2's charms, facets and puzzle pieces.
+- Zhar, his mini-bosses and the other map bosses on PD2's placeholders spawn, as do Uber Tristram's primes.
 - The Warlord of Blood and Ureh's boss drop PD2's random uniques, and the Warlord's arena starts empty.
 - The Outer Void has PD2's three random bosses, and its portals lead deeper, then home with uber parts.
 - Zhar's Sanctum has PD2's seal portals and tomes, and Zhar's charms get a skill tab prefix.

@@ -19,6 +19,7 @@
 #include "lucion.h"
 #include "lucion_ai.h"
 #include "lucion_chests.h"
+#include "map_bosses.h"
 #include "map_events.h"
 #include "map_open.h"
 #include "map_stats.h"
@@ -256,6 +257,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	ZharCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	MapBossCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	LucionAiCounters(line, sizeof(line));

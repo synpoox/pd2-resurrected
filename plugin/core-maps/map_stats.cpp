@@ -9,6 +9,7 @@
 // per-game counters (rva::GameCounter), so a new game starts without them.
 #include "map_stats.h"
 
+#include "map_bosses.h"
 #include "map_open.h"
 
 #include "log.h"
@@ -586,6 +587,10 @@ auto OnPresetSpawn(Game* game, void* room, const uint8_t* preset) noexcept -> vo
 	    (NoUberWaypoint(game, room, preset) ||
 	     OuterVoidPreset(game, room, const_cast<uint8_t*>(preset), g_presetSpawnOriginal) ||
 	     ZharPreset(game, room, preset))) {  // Zhar's seal portals and tomes, for their placeholders (zhar.cpp)
+		return;
+	}
+	// PD2 0x1038b990: a boss placeholder becomes the map's boss, before slot 5 reads the id (map_bosses.cpp)
+	if (MapBossPreset(game, room, const_cast<uint8_t*>(preset), g_presetSpawnOriginal)) {
 		return;
 	}
 	g_presetSpawnOriginal(game, room, preset);

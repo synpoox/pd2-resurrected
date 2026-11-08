@@ -187,7 +187,8 @@ as 5` (value 1). `cheat goto` with x and y works only from another level, in abs
 (`sewermap1.ds1`, origin 15000,10250, boss preset at 399,311) reached by `cheat goto 109` then `cheat goto 142,15395,10556`
 logged the preset spawn of monster 901 (SewerBoss) at 15399,10561, then `map area: extra boss 901 in level 142`; two
 Sewer Bosses stood at the preset. The Library map can't show it: its DS1's boss preset is a `lesserhydra1` placeholder
-(monpreset act 1, row 49) that PD2's wrapper replaces with doomknight3LibraryBoss, which is MS7's preset rewrite.
+(monpreset act 1, row 49) that PD2's wrapper replaces with doomknight3LibraryBoss, which is MS7's preset rewrite (`0x1038b990`, ported by
+[#614](https://github.com/synpoox/pd2-resurrected/issues/614)).
 
 ## [MS4e](https://github.com/synpoox/pd2-resurrected/issues/494): the unique map drop (`0x10381510`)
 
