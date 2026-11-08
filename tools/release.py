@@ -102,7 +102,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"release: {e}", file=sys.stderr)
         return 1
     r = subprocess.run([sys.executable, str(a.toolkit / "release" / "package_release.py"), "--mod-dir", str(mod),
-                        "--version", version, "--config", str(ROOT / "release.toml"), "--out", str(a.out)])
+                        "--version", version, "--config", str(ROOT / "release.toml"), "--out", str(a.out),
+                        "--game-exe", str(a.game / "D2R.exe")])  # release.toml's [catalog] (schema 3) needs it
     if r.returncode:
         return r.returncode
     try:
