@@ -59,7 +59,6 @@ skills	Inferno	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Arctic Blast	=	seqinput	Inferno, Arctic Blast: the caster's frame events
 skills	Blade Fury	=	seqinput	Blade Fury: the throw frame
 missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
-missiles	uberimmolationarrow	immolationarrow	pSrvHitFunc	Uber immolation arrow hit
 missiles	tpot_fire_small	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	tpot_fire_medium	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions
 missiles	tpot_fire_large	oilpotion	pSrvHitFunc,pCltHitFunc	Throwing potions

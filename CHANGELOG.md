@@ -4,6 +4,10 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 ### Unreleased
 
+#### Uber bosses
+
+- Dclone's trapped-soul boulders hurt only through the fire they leave, not on impact.
+
 ### 0.2.0-alpha (2026-11-08)
 
 #### Items
