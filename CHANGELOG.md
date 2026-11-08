@@ -34,6 +34,7 @@ private-multiplayer release a build may break characters; each break is noted he
 - The uber areas have no waypoint, also after a key's warp.
 - A tier-0 uber key leaves three grey portals for one re-entry each, healing the boss 20%.
 - Lucion fights in PD2's stages: blinks, Nova, a frenzy of Punish, and spawners that call his adds.
+- Lucion's blink and dash show their novas on the client too.
 - Rathma and Mendeln fight by PD2's script: life events, held life, immunity, and retreat portals below 15%.
 - Mendeln, Rathma and their clones spawn in their arenas, each reached by a ghostly portal, as in PD2.
 - Diablo Clone fights in PD2's phases: three nova rounds, three skeleton waves, immune while his adds live.
