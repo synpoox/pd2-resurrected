@@ -13,6 +13,10 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Throwing potions burst into their explosion and fire, gas, cold or lightning ring.
 - Weapons lose durability half as often.
 
+#### Maps
+
+- Jungle maps draw water in their streams beyond the copied D2R rooms.
+
 #### Uber bosses
 
 - Dclone's trapped-soul boulders hurt only through the fire they leave, not on impact.
