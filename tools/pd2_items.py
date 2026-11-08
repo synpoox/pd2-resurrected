@@ -25,6 +25,7 @@ import pd2_art
 import pd2_ids as I
 
 ITEM_TABLES = ["weapons", "armor", "misc"]
+HD_FOLDER = {"weapons": "weapon", "armor": "armor", "misc": "misc"}  # modkit hd.item_folder, for code that runs without modkit
 # named, never numbered, and a row must come after the rows it names: PD2's rows in PD2's order, then D2R-only ones
 PD2_ORDER = {"treasureclassex"}
 CORRUPTED_NEW = "100"  # `corrupt` value no PD2 outcome uses (1-92); the tooltip shows only "Corrupted" (descval 0)
@@ -311,11 +312,10 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
 def borrow_pictures(hd: Path, out: Path, borrowed: dict[tuple[str, str], str]) -> None:
     """Copy each other-table D2R picture hd_items borrowed into the borrowing table's folders (hd: D2R's data/hd, out:
     the mod's): the inventory sprites under global/ui/items and the ground model's unit file under items (#371)."""
-    item_folder = pd2_art.modkit()[1].item_folder
     for (t, a), src_t in sorted(borrowed.items()):
         for sub, exts in ((Path("global") / "ui" / "items", (".sprite", ".lowend.sprite")), (Path("items"), (".json",))):
             for ext in exts:
-                src, dest = (hd / sub / item_folder(x) / f"{a}{ext}" for x in (src_t, t))
+                src, dest = (hd / sub / HD_FOLDER[x] / f"{a}{ext}" for x in (src_t, t))
                 if dest.is_file():
                     raise I.IdError(f"{t}: D2R's {dest.relative_to(hd)} is another picture; can't borrow {src_t}'s {a}")
                 if src.is_file():
