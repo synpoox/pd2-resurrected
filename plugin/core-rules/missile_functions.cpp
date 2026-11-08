@@ -1148,9 +1148,16 @@ std::atomic<uint32_t> g_spearHits {0};
 
 }  // namespace
 
-// dmg 18: besides its own damage, the spear deals a second hit of DmgCalc1 percent of the target's max life as magic,
-// at most its life, from the missile's owner with hit flags 0x1000 (PD2 builds a fresh block and runs 1.13c's hit
-// events 0x10305990 with area 0 and its result 0x103025b0). The missile's own block is left as it is.
+// dmg 18: besides its own damage, the spear deals a second hit of DmgCalc1 percent of the target's max life, from the
+// missile's owner with hit flags 0x1000 (PD2 builds a fresh block and runs 1.13c's hit events 0x10305990 with area 0
+// and its result 0x103025b0). PD2 writes the full share to the block's magic (+0x20) and min(share, life) to its total
+// (+0x4c): with area 0 the resist step that sums the total never runs, so the target loses the total as it stands, with
+// no magic resist. The missile's own block is left as it is.
+// D2R native calls: PluginSDK has no damage service, so this calls D2R's DamageStep, HitEvents and DealDamage.
+// PD2 also puts the missile in the block (+0x5c): 0x103025b0 reads it only for a kill by skill 96's missile, not this
+// one, and D2R's block keeps the hit's x/y there (0x13c, 0x140, read by DealDamage), so the port leaves it out.
+constexpr uint32_t HitNoRoll = 0x1000;  // 1.13c's hit flag the spear's block carries (no to-hit roll)
+
 void SrvDmgRathmaSpear(Game* game, Unit* missile, Unit* target, uint8_t* damage) noexcept {
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr || target == nullptr || damage == nullptr) {
@@ -1170,24 +1177,27 @@ void SrvDmgRathmaSpear(Game* game, Unit* missile, Unit* target, uint8_t* damage)
 	const auto life = static_cast<uint32_t>(unitStat(target, StatLife, 0));
 	const auto maxLife = static_cast<uint32_t>(unitStat(target, StatMaxLife, 0));
 	const double share = static_cast<double>(percent) / 100.0 * static_cast<double>(maxLife);  // PD2's doubles
-	const uint32_t magic = share <= 0.0 ? 0 : share >= 4294967295.0 ? UINT32_MAX : static_cast<uint32_t>(share);
-	d2r::LeapKnockback hit;
-	hit.hitFlags = 0x1000;
+	// PD2's 0x103b8a40: the double to uint32, negatives to 0, past 2^32 - 1 to 2^32 - 1
+	constexpr double UintMax = 4294967295.0;
+	const uint32_t magic = share <= 0.0 ? 0 : share >= UintMax ? UINT32_MAX : static_cast<uint32_t>(share);
+	const uint32_t total = magic < life ? magic : life;
+	d2r::LeapKnockback hit;  // D2R's damage block
+	hit.hitFlags = HitNoRoll;
 	// PD2's block starts zeroed, but D2R's DealDamage (0x44a9b0) applies the damage only with the hit bit set
 	hit.resultFlags = ResultHit;
-	*reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(&hit) + DmgMagic) = magic < life ? magic : life;
+	auto* block = reinterpret_cast<uint8_t*>(&hit);
+	*reinterpret_cast<uint32_t*>(block + DmgMagic) = magic;
+	*reinterpret_cast<uint32_t*>(block + DmgTotal) = total;
 	using HitFn = void (*)(Game*, Unit*, Unit*, void*) noexcept;
 	d2r::Engine<void (*)(Unit*, Unit*, void*) noexcept>(DamageStep)(owner, target, &hit);
-	// PD2's 0x10305990 with area 0: D2R's HitEvents runs DamageEffects (the life loss) only for area hits, so call it
-	// first, as the melee splash does
-	d2r::Engine<HitFn>(DamageEffects)(game, owner, target, &hit);
+	// area 0, as PD2: D2R's HitEvents then skips DamageEffects (the resists and the total), as 1.13c skips its step
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t, void*) noexcept>(HitEvents)(game, owner, target, 0, &hit);
 	d2r::Engine<HitFn>(DealDamage)(game, owner, target, &hit);
 	d2r::ReleaseDamage(hit);
 	if (plog::Sample(g_spearHits)) {
-		plog::Info("rathma bone spear damage: missile row %d on unit type %d: DmgCalc1 %d%% of max life %u = magic %u "
-		           "(life %u -> %d), hit %u", At<int32_t>(missile, UnitClassId), At<int32_t>(target, UnitType), percent,
-		           maxLife >> 8, magic >> 8, life >> 8, unitStat(target, StatLife, 0) >> 8, g_spearHits.load());
+		plog::Info("rathma bone spear damage: missile row %d on unit type %d: DmgCalc1 %d%% of max life %u = magic %u, "
+		           "total %u (life %u -> %d), hit %u", At<int32_t>(missile, UnitClassId), At<int32_t>(target, UnitType),
+		           percent, maxLife >> 8, magic >> 8, total >> 8, life >> 8, unitStat(target, StatLife, 0) >> 8, g_spearHits.load());
 	}
 }
 

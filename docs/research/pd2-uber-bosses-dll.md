@@ -293,7 +293,8 @@ Both idle 10 while `game+0x26fe` > 0. "In the frenzy" means Lucion (`game+0x2600
   (halved in the frenzy). It idles its `aidel` (one less in the frenzy).
 - Monsters 0x451 and 0x49e (a map invader portal) share the function; every other Overseer gets vanilla's AI.
 - **Death** (`0x10376560`): it spawns object 622 and a portal at (0x6221, 0x17df) to level 189, the Temple. It sets stage
-  8 and kills the remaining adds in level 188.
+  8 and kills the remaining adds in level 188. It casts no skill: nothing casts LucionDeath1-4 (PD2 ids 580-583; no
+  monstats skill, no monseq event, no ProjectDiablo.dll operand), so his death draws no nova (#489).
 
 ## 6. Guaranteed drops and rolls
 
