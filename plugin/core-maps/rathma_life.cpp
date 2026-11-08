@@ -103,25 +103,28 @@ auto SharedStep(uint8_t* ctx, uint8_t* type, uint32_t flag) noexcept -> uint64_t
 	Unit* victim = At<Unit*>(ctx, StepVictim);
 	Unit* other = Partner(At<Game*>(ctx, StepGame), victim);
 	auto* field = At<int32_t*>(type, TypeField);
-	if (other == nullptr || field == nullptr) {
+	// A type the hit does not carry (0 after the resists) halves to 0 and takes nothing: not counted
+	if (other == nullptr || field == nullptr || *field <= 0) {
 		return result;
 	}
 	const auto half = static_cast<int32_t>(static_cast<int64_t>(*field) * 50 / 100);
 	*field = half;
 	++g_hits;
+	// PD2's step returns the halved damage; DamageEffects (0x44df10) drops the return and reads the field
+	const uint64_t halved = static_cast<uint32_t>(half);
 	if (d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(other, StateResistAll) != 0) {
-		return result;
+		return halved;
 	}
 	const int32_t before = Life(other);
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(other, StatLife,
 	                                                                             std::max(0, before - half), 0);
-	if (const uint32_t n = ++g_shared; half > 0 && Logged(n)) {
+	if (const uint32_t n = ++g_shared; Logged(n)) {
 		plog::Info("rathma life: class %d takes %d (1/256 life, halved) at life %d; class %d too: life %d -> %d "
 		           "(%u shared so far)",
 		           At<int32_t>(victim, UnitClassId), half, Life(victim), At<int32_t>(other, UnitClassId), before,
 		           Life(other), n);
 	}
-	return result;
+	return halved;
 }
 
 auto SharedPoison(Unit* attacker, Unit* victim, int32_t rate, int32_t length, int32_t a5, int32_t a6,
