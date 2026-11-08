@@ -451,7 +451,8 @@ auto OpenUber(Game* game, Unit* player, Unit* item, int32_t level) noexcept -> v
 	}
 	*CounterOf(game, OpenKey) += 1;
 	*CounterOf(game, TierKey) = tier;
-	*CounterOf(game, EntryKey) = arrived;
+	// PD2 0x10383060 keeps the arrival count in game +0x2628, but sets it to 0 for Uber Tristram
+	*CounterOf(game, EntryKey) = level == UberTristram ? 0 : arrived;
 	g_warped += static_cast<uint32_t>(arrived);
 	plog::Info("uber: level %d open at tier %d, %d players in (%u opened)", level, tier, arrived, ++g_ubers);
 	if (tier == 0) {
