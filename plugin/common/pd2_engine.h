@@ -438,6 +438,9 @@ inline constexpr int DmgPhys = 0x18, DmgFire = 0x20, DmgLight = 0x2c, DmgMagic =
 inline constexpr int DmgPoisonLength = 0x3c;
 inline constexpr int DmgPercent = 0x1c;  // damage% (1.13c 0x0c), set before the melee fill (D2R's srvdo 52)
 inline constexpr int DmgColdLength = 0x118;  // ElementalDamage's cold length (1.13c's 0x30)
+// int32 the hit's total, 1.13c's 0x4c: DamageEffects (0x44df10) sets it to the sum of the fields after resists, and
+// DealDamage (0x44a9b0) reads it
+inline constexpr int DmgTotal = 0x134;
 inline constexpr int DmgHitClass = 0x144;    // int32 Leap Attack's hit sets from UnitHitClass
 inline constexpr int StatDamagePercent = 25;  // itemstatcost damagepercent, D2R and PD2
 inline constexpr int StatPoisonMin = 57;  // poisonmindam, poisonmaxdam 58, poisonlength 59: D2R and PD2
@@ -587,6 +590,8 @@ struct LeapKnockback {
 static_assert(sizeof(LeapKnockback) == 0x180);
 static_assert(offsetof(LeapKnockback, listData) == 0x40);
 static_assert(offsetof(LeapKnockback, tagged) == 0x158);
+// The same block as a plain hit's damage, for callers that build one (Rathma's bone spear)
+using DamageBlock = LeapKnockback;
 
 }  // namespace d2r
 
