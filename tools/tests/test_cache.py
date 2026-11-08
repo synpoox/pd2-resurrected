@@ -1,9 +1,11 @@
-"""pd2_cache (#440): the extract lock, the cache key, and the shared extract and merge."""
+"""pd2_cache (#440, #558): the extract lock, the cache key, the shared extract, and the per-rule merge cache."""
 import io
 import json
 import os
+import shutil
 import tempfile
 import threading
+import time
 import sys
 import unittest
 from contextlib import redirect_stdout
@@ -100,8 +102,46 @@ class SharedExtractTests(unittest.TestCase):
             os.rmdir(out) if os.name == "nt" else out.unlink()
 
 
-class MergeCacheTests(unittest.TestCase):
-    def test_a_second_merge_of_the_same_key_copies_the_first(self):
+RUNS: list[str] = []
+
+
+def rule_a(rule, pd2, d2r, out):  # its rule upper-cased: "x" and "X" write the same a.txt
+    RUNS.append("a")
+    write(out / "a.txt", rule.read_text().upper())
+
+
+def rule_b(rule, pd2, d2r, out):  # reads a.txt; its rule names a file to add
+    RUNS.append("b")
+    write(out / "b.txt", (out / "a.txt").read_text() + rule.read_text())
+    if rule.read_text() == "zz":
+        write(out / "zz.txt", "")
+    (out / "old.txt").unlink(missing_ok=True)
+
+
+def rule_c(rule, pd2, d2r, out):  # looks only at whether zz.txt exists, and lists out/
+    RUNS.append("c")
+    print("c ran")
+    write(out / "sub" / "c.txt", rule.read_text() + str((out / "zz.txt").is_file()) + str(len(os.listdir(out))))
+
+
+def rule_d(rule, pd2, d2r, out):  # like presets-hd: D2R's tiles, if fetched
+    RUNS.append("d")
+    write(out / "d.txt", str(any((d2r / "global" / "tiles").rglob("*.dt1"))))
+
+
+def rule_e(rule, pd2, d2r, out):  # a D2R table copied as is (copy2 on Windows raises no audit event)
+    RUNS.append("e")
+    shutil.copy2(d2r / "global" / "excel" / "e.txt", out / "e.txt")
+
+
+def rule_f(rule, pd2, d2r, out):  # lists folders after writing into them, as strings.json does
+    RUNS.append("f")
+    write(out / "new" / "f.txt", "")
+    write(out / "f.txt", str(len(os.listdir(out / "new"))) + str(sorted(os.listdir(out))))
+
+
+class RuleCacheTests(unittest.TestCase):
+    def test_a_rule_reruns_exactly_when_its_code_or_what_it_read_changed(self):
         try:
             ex = pd2_extract.classic("extract")
         except ValueError as e:  # CI has no d2rAI-toolkit (private)
@@ -112,32 +152,95 @@ class MergeCacheTests(unittest.TestCase):
             write(root / "pd2-baseline.json", "B")
             (root / "pd2-data").mkdir()
             (root / "pd2-data" / "baseline.json").write_bytes(ex.stamp(b"B"))
-            write(root / "merge" / "ids.json", "{}")
-            (d2r / "global" / "excel").mkdir(parents=True)
+            for n, t in (("a", "x"), ("b", "b"), ("c", "c"), ("d", "d"), ("e", "e"), ("f", "f")):
+                write(root / "merge" / f"{n}.tsv", t)
+            write(d2r / "global" / "excel" / "e.txt", "1")
             (tmp / "cache").mkdir()
-            runs = []
+            gen = root / "generated" / "data"
 
-            def rule(rule, pd2, d2r_, out):
-                runs.append(1)
-                write(out / "x.txt", rule.read_text())
+            def run(**env):
+                RUNS.clear()
+                with mock.patch.dict(os.environ, env), redirect_stdout(io.StringIO()) as so:
+                    self.assertEqual(pd2_merge.main(["--root", str(root), "--d2r", str(d2r)]), 0)
+                self.assertIn("c ran", so.getvalue(), "a replay prints what the rule printed")
+                return sorted(RUNS), {p.relative_to(gen).as_posix(): p.read_text() for p in gen.rglob("*.txt")}
 
-            args = ["--root", str(root), "--d2r", str(d2r)]
-            with cache_env(tmp / "cache"), mock.patch.dict(pd2_merge.RULES, {"ids.json": rule}), redirect_stdout(io.StringIO()):
-                for _ in range(2):
-                    self.assertEqual(pd2_merge.main(args), 0)
-                    self.assertEqual((root / "generated" / "data" / "x.txt").read_text(), "{}")
-                self.assertEqual(len(runs), 1, "the second run is a cache hit")
+            rules = {"a.tsv": rule_a, "b.tsv": rule_b, "c.tsv": rule_c, "d.tsv": rule_d, "e.tsv": rule_e, "f.tsv": rule_f}
+            with cache_env(tmp / "cache"), mock.patch.dict(pd2_merge.RULES, rules, clear=True):
+                ran, fresh = run()
+                self.assertEqual(ran, ["a", "b", "c", "d", "e", "f"])
+                self.assertEqual(fresh, {"a.txt": "X", "b.txt": "Xb", "sub/c.txt": "cFalse2", "d.txt": "False",
+                                         "e.txt": "1",
+                                         "new/f.txt": "", "f.txt": "1['a.txt', 'b.txt', 'd.txt', 'e.txt', 'new', 'sub']"})
+                self.assertEqual(run(), ([], fresh), "nothing changed: every rule replays, the same files")
+                write(root / "merge" / "c.tsv", "C")
+                self.assertEqual(run()[0], ["c"], "only the changed rule")
+                write(root / "merge" / "a.tsv", "X")
+                self.assertEqual(run()[0], ["a"], "a reran, but wrote the a.txt b read before: b replays")
+                write(root / "merge" / "a.tsv", "y")
+                ran, out = run()
+                self.assertEqual((ran, out["b.txt"]), (["a", "b"], "Yb"), "b read the a.txt a changed")
+                write(root / "merge" / "b.tsv", "zz")
+                ran, out = run()
+                self.assertEqual((ran, out["sub/c.txt"]), (["b", "c", "f"], "CTrue3"), "c and f saw the zz.txt b added")
                 write(root / "tools" / "tests" / "test_x.py", "")
-                self.assertEqual(pd2_merge.main(args), 0)
-                self.assertEqual(len(runs), 1, "a test-only change still hits")
-                write(root / "merge" / "ids.json", '{"changed": 1}')
-                self.assertEqual(pd2_merge.main(args), 0)
-                self.assertEqual(len(runs), 2, "a changed merge/ is a new key")
-                self.assertEqual((root / "generated" / "data" / "x.txt").read_text(), '{"changed": 1}')
-                with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}):
-                    self.assertEqual(pd2_merge.main(args), 0)
-                self.assertEqual(len(runs), 3, "CI always merges fresh")
-            self.assertEqual(len(list((tmp / "cache" / "merge").iterdir())), 2, "two keys, no temp folder left")
+                write(root / "docs" / "x.md", "")
+                self.assertEqual(run()[0], [], "files no rule reads leave every rule cached")
+                write(d2r / "global" / "tiles" / "act1" / "x.dt1", "")
+                self.assertEqual(run(), (["d"], {**out, "d.txt": "True"}), "D2R's fetched tiles rerun the rule that looks")
+                write(d2r / "global" / "excel" / "e.txt", "22")
+                self.assertEqual(run()[0], ["e"], "a changed D2R table reruns the rule that copied it")
+                with mock.patch.object(pd2_cache, "sources", lambda fn: [root / "tools" / "tests" / "test_x.py"]):
+                    write(root / "tools" / "tests" / "test_x.py", "changed")
+                    self.assertEqual(run()[0], ["a", "b", "c", "d", "e", "f"], "changed code reruns its rules")
+                self.assertEqual(run(GITHUB_ACTIONS="true")[0], ["a", "b", "c", "d", "e", "f"], "CI always merges fresh")
+            self.assertFalse(list((tmp / "cache").rglob("*.tmp*")), "no temp folder left")
+
+    def test_a_removed_file_is_removed_again_on_replay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            cache, root = tmp / "cache", tmp / "wt"
+            write(root / "merge" / "b.tsv", "b")
+            out = root / "generated" / "data"
+            RUNS.clear()
+            for _ in range(2):
+                write(out / "a.txt", "A")
+                write(out / "old.txt", "stale")
+                with redirect_stdout(io.StringIO()):
+                    pd2_cache.rule(cache, "k", {"p": root}, lambda: rule_b(root / "merge" / "b.tsv", None, None, out))
+                self.assertFalse((out / "old.txt").exists())
+                self.assertEqual((out / "b.txt").read_text(), "Ab")
+            self.assertEqual(RUNS, ["b"], "the second is a replay")
+
+    def test_sources_follow_imports_beside_the_module(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            write(tmp / "m_one.py", "import os\nfrom m_two import f\ndef g(): pass\ndef main():\n    import m_three\n")
+            write(tmp / "m_two.py", "import m_one\ndef f(): pass\n")
+            write(tmp / "m_three.py", "")
+            sys.path.insert(0, str(tmp))
+            try:
+                import m_one
+                self.assertEqual(pd2_cache.sources(m_one.g), [tmp / "m_one.py", tmp / "m_two.py"])
+            finally:
+                sys.path.remove(str(tmp))
+                for m in ("m_one", "m_two"):
+                    sys.modules.pop(m, None)
+
+    def test_prune_drops_least_recently_used_until_under_the_cap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp)
+            for i, n in enumerate(["rules/k/old", "merge/legacy", "rules/k/new", "rules/j/fresh"]):
+                write(cache / n / "files" / "f", "x" * 100)
+                if n.startswith("rules"):
+                    write(cache / n / "manifest.json", json.dumps({"bytes": 100}))
+                if n != "rules/j/fresh":
+                    t = time.time() - 3600 * (4 - i)
+                    os.utime(cache / n, (t, t))
+            gone = pd2_cache.prune(cache, 150)
+            self.assertEqual([p.relative_to(cache).as_posix() for p in gone], ["rules/k/old", "merge/legacy", "rules/k/new"])
+            self.assertTrue((cache / "rules/j/fresh").is_dir(), "used in the last 15 minutes: kept over the cap")
+
 
 
 if __name__ == "__main__":

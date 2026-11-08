@@ -8,7 +8,8 @@ d2rAI-toolkit's shared/classic_import merge driver applies each merge/ file by t
 (`*.md` files are notes); a file with no rule kind fails the run, so a rule is never silently skipped. Refuses a
 pd2-data/ extracted from another baseline. A failed run leaves no generated/, so a build never picks up half a merge.
 D2R's own tables come from modkit's cache (--d2r).
-With a pd2_cache root, a run whose merge_key matches a finished merge copies that merge's generated/ instead (#440).
+With a pd2_cache root, each rule whose code, stamps and inputs match a kept run replays it instead (#558), and the
+cache is pruned to PD2R_CACHE_GB (default 20) GB.
 """
 from __future__ import annotations
 
@@ -67,23 +68,32 @@ class MergeError(Exception):
     pass
 
 
-def merge_key(root: Path, d2r: Path) -> str:
-    """pd2_cache's key for root's merge: everything the merge reads but D2R's tables, which the path stands for, with
-    the toolkit's merge code (modkit, shared/classic_import). The tools' tests are left out, so a test-only change still
-    hits."""
-    return pd2_cache.key([root / "merge", *sorted((root / "tools").glob("*.py")), root / "pd2-baseline.json",
-                          root / "pd2-data" / "baseline.json", pd2_ids.toolkit(root) / "modkit",
-                          pd2_ids.toolkit(root) / "shared" / "classic_import"], str(d2r.resolve()))
-
-
-def merge(root: Path, d2r: Path = D2R_DATA) -> list[str]:
-    """Rebuild root/generated/ and return the rule files applied (d2rAI-toolkit's shared/classic_import driver)."""
+def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None) -> list[str]:
+    """Rebuild root/generated/ and return the rule files applied (d2rAI-toolkit's shared/classic_import driver). With a
+    cache folder, a rule whose code, stamps and the files it read match a run kept there replays it (pd2_cache.rule)."""
     mg = pd2_extract.classic("merge")
+    rules, ran = RULES, []
+    if cache:
+        kit = pd2_ids.toolkit(root)
+        # every rule's key: the stamps, the toolkit code rules and the driver use, this cache's code and D2R's path
+        base = pd2_cache.key([root / "pd2-baseline.json", root / "pd2-data" / "baseline.json", kit / "modkit",
+                              kit / "shared" / "classic_import", Path(pd2_cache.__file__)], str(d2r.resolve()))
+
+        def cached(name: str, fn: Callable) -> Callable:
+            def run(p: Path, data: Path, d2r_: Path, out: Path) -> None:
+                k = pd2_cache.key(pd2_cache.sources(fn), base, name, fn.__qualname__)
+                if not pd2_cache.rule(cache, k, {"p": root, "d": d2r_}, lambda: fn(p, data, d2r_, out)):
+                    ran.append(name)
+            return run
+        rules = {n: cached(n, fn) for n, fn in RULES.items()}
     try:
         mg.check_extract(root / "pd2-data", root / "pd2-baseline.json")
-        return mg.merge(RULES, root / "merge", root / "pd2-data" / "data", d2r, root / "generated", (pd2_ids.IdError,))
+        applied = mg.merge(rules, root / "merge", root / "pd2-data" / "data", d2r, root / "generated", (pd2_ids.IdError,))
     except mg.MergeError as e:
         raise MergeError(f"{e} (tools/pd2_extract.py extracts)" if "extract" in str(e) else str(e)) from e
+    if cache:
+        print(f"rule cache: {len(applied) - len(ran)} of {len(applied)} rules replayed; ran {', '.join(ran) or 'none'}")
+    return applied
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -101,17 +111,14 @@ def main(argv: list[str] | None = None) -> int:
         print("id lines added: " + ", ".join(f"{t} {n}" for t, n in added.items()))
         return 0
     cache = pd2_cache.root()
-    cached = cache and cache / "merge" / merge_key(a.root, a.d2r)
-    if cached and pd2_cache.reuse(cached, a.root / "generated"):
-        print(f"generated/ copied from {cached}: merge/, tools/, the stamps and modkit match a finished merge")
-        return 0
     try:
-        applied = merge(a.root, a.d2r)
+        applied = merge(a.root, a.d2r, cache and cache / "rules")
     except (MergeError, ValueError) as e:  # ValueError: no toolkit
         print(f"pd2_merge: {e}", file=sys.stderr)
         return 1
-    if cached:
-        pd2_cache.keep(a.root / "generated", cached)
+    if cache:
+        for e in pd2_cache.prune(cache, int(float(os.environ.get("PD2R_CACHE_GB", "20")) * 2**30)):
+            print(f"pruned {e}")
     print(f"generated/data rebuilt; rules applied: {', '.join(applied) or 'none'}")
     return 0
 
