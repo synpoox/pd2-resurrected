@@ -108,9 +108,12 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
                 src = Path(hd.icon_paths(c)[0]).relative_to("data")
                 if sheet.name.endswith(".lowend.sprite"):
                     src = src.with_name(src.name.replace(".sprite", ".lowend.sprite"))
-                src_strip, _, src_n = images.read_sprite(out_data / src if (out_data / src).is_file() else d2r_data / src)
+                built = out_data / src  # this rule's class sheet, else D2R's
+                src_strip, _, src_n = images.read_sprite(built if built.is_file() else d2r_data / src)
                 if int(cel) >= src_n or src_strip[0] // src_n != stride or src_strip[1] != strip[1]:
                     raise SkillIconError(f"hireable {c} {cel}: no frame of {stride} x {strip[1]} px in {src.name}")
                 frames.append(images.crop(src_strip, int(cel) * stride, 0, stride, strip[1]))
-            images.write_sprite(out_data / sheet, images.hstack(frames, stride, strip[1]), fw, len(frames), lowend=False)
+            # lowend=False on the .lowend twin too: it is written as it is, not halved from the HD sheet
+            images.write_sprite(out_data / sheet, images.hstack(frames, stride, strip[1]), fw, len(frames),
+                                lowend=False)
         print(f"  skill-icons: hireables {len(hireable)} frames from cel {n_hd}")

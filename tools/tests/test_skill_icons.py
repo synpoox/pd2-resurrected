@@ -1,4 +1,5 @@
 """pd2_skill_icons on synthetic sheets: tiny DC6 and sprite files, a grey palette (needs d2rAI-toolkit's modkit)."""
+import csv
 import json
 import sys
 import tempfile
@@ -115,8 +116,19 @@ class ApplyTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         lines = [x for x in S.read_lines(root / "merge" / "skill-icons.txt") if x.startswith("hireable ")]
         cells = json.loads((root / "merge" / "tables.json").read_text("utf-8"))["skilldesc"]["cells"]
-        cels = sorted(int(v["HireableIconCel"]) for v in cells.values())
-        self.assertEqual(cels, list(range(29, 29 + len(lines))))  # D2R's merc sheet has 29 frames
+        self.assertEqual(sorted(int(v["HireableIconCel"]) for v in cells.values()),
+                         list(range(29, 29 + len(lines))))  # D2R's merc sheet has 29 frames
+        # line i is the skill whose cell is 29 + i: its class and IconCel are that skill's (PD2's skilldesc and skills)
+        excel = root / "pd2-data" / "data" / "global" / "excel"
+        if not excel.is_dir():
+            self.skipTest("no pd2-data: run tools/pd2_extract.py")
+        read = lambda name: list(csv.DictReader((excel / name).open(encoding="latin-1"), delimiter="	"))  # noqa: E731
+        icon = {r["skilldesc"]: r["IconCel"] for r in read("skilldesc.txt")}
+        cls = {r["skilldesc"]: r["charclass"] for r in read("skills.txt") if r["skilldesc"] and r["charclass"]}
+        by_cel = {int(v["HireableIconCel"]): k for k, v in cells.items()}
+        for i, line in enumerate(lines):
+            _, c, cel = line.split()
+            self.assertEqual((cls[by_cel[29 + i]], icon[by_cel[29 + i]]), (c, cel), by_cel[29 + i])
 
     def test_refuses_a_listed_class_with_no_pd2_sheet_or_a_sheet_not_listed(self):
         self.sheets(d2r=[10], hd=[200], pd2=[10])
