@@ -260,9 +260,9 @@ killer's player (when a player), +0x14 the uniqueitems table, +0x5C an item code
 | 0x22 | `0x10377670` | ImperialPalaceBoss (1166) dies | clears `game+0x2604` if it held him; gold portal; a Puzzle Box (`lbox`, quality 7) at item level 130 | portal, box |
 | 0x23 Ureh | `0x10377270` | CityofUrehBoss (1174) dies | gold portal; 3 random uniques (as Warlord's, and the base's `gemsockets`, items +0x138, above 0) at item level 99 | yes (MS7c; the monster's item level) |
 | 0x24 Djinn's Domain | none | | no reader tests 0x24; the Djinn bosses' deaths (`0x10378bc0`) do not read the field | |
-| 9 dungeon | `0x1038bfc0` (preset rewrite) | placing a dungeon's boss preset (`0x2e2`) | stores the boss in `game+0x2600` and its barriers (`bossblocker_x`/`_y`, 616/617) in +0x2604-0x261c; with value 9, +0x2628 0 -> 1 | no ([#533](https://github.com/synpoox/pd2-resurrected/issues/533)) |
-| 9 | `0x10377890`, `0x103778f0`, `0x10377a30` | the stored boss (SharpToothBoss 1105, willowispboss 743, RadamentBoss 1104) dies | +0x2628 1 -> 2; removes the barriers (`0x10380590`) | no ([#533](https://github.com/synpoox/pd2-resurrected/issues/533)) |
-| 9 | `0x1038daf0` (object function) | `bossblocker_x`, `_y`, `_x_warp`, `_y_warp` (616-619) with +0x2628 2 | removes them | no ([#533](https://github.com/synpoox/pd2-resurrected/issues/533)) |
+| 9 dungeon | `0x1038bfc0` (preset rewrite) | placing a dungeon's boss preset (`0x2e2`) | stores the boss in `game+0x2600` and its barriers (`bossblocker_x`/`_y`, 616/617) in +0x2604-0x261c; with value 9, +0x2628 0 -> 1 | yes, core-maps ([#533](https://github.com/synpoox/pd2-resurrected/issues/533)) |
+| 9 | `0x10377890`, `0x103778f0`, `0x10377a30` | the stored boss (SharpToothBoss 1105, willowispboss 743, RadamentBoss 1104) dies | +0x2628 1 -> 2; removes the barriers (`0x10380590`) | yes, core-maps ([#533](https://github.com/synpoox/pd2-resurrected/issues/533)) |
+| 9 | `0x1038daf0` (object function) | `bossblocker_x`, `_y`, `_x_warp`, `_y_warp` (616-619) with +0x2628 2 | removes them | yes, core-maps ([#533](https://github.com/synpoox/pd2-resurrected/issues/533)) |
 
 Every unique map boss death also adds 1 to two counters in the killer's player data (+0x39d, +0x419), which PD2's
 `.kills` chat command reads (`0x10361a70`); the port cuts them (docs/deviations.md). `0x102fcd60`

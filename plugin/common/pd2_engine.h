@@ -871,6 +871,13 @@ inline constexpr int ObjOpenFrames = 0x9c;   // uint32; >> 8 is the frames the p
 inline constexpr uint64_t SpawnUnit = 0x490410;
 inline constexpr uint64_t RoomAt = 0x38dfb0;          // (room, x, y) -> the room near `room` holding x/y, or null
 inline constexpr uint64_t SetObjectMode = 0x34e5f0;   // (object, mode)
+// Object init table: void fn(ObjectInit*) per objects.txt InitFn, the args {game, object, room, ?, objects
+// record, x, y}. Slot 12 (0x50eae0) is the red portals' (mode 1, event 1); slot 30 (0x5a04f0, a2q4.cpp) sets the
+// object's mode from act 2 quest 4's data, so a Hell game past that quest opens it (mode 2). PD2's dungeon barriers
+// (bossblocker_*) take InitFn 30, which PD2 replaces (0x1036c320 writes 0x1038daf0 over 1.13c's slot).
+inline constexpr uint64_t ObjectInitTable = 0x239b980;
+inline constexpr int ObjectInitQuestDoor = 30;
+inline constexpr uint64_t InitQuestDoor = 0x5a04f0;
 inline constexpr int UnitEventOpen = 1;               // the event that opens a portal (mode 1 -> 2)
 inline constexpr uint64_t SetPortalLevel = 0x34e9d0;  // (object, level byte): the portal's destination
 inline constexpr uint64_t PortalLevel = 0x34ad40;     // (object) -> uint16 destination

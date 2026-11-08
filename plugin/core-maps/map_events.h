@@ -12,6 +12,9 @@ auto RollMapEvent(d2r::Game* game, d2r::Unit* item, int32_t level) noexcept -> v
 // This game's map event (PD2's game +0x1df4): 0 no map open, 9 a dungeon, 10 no event, 11-21 an event, 0x1e-0x24 a
 // unique map.
 auto MapEvent(d2r::Game* game) noexcept -> int32_t;
+// PD2's game +0x2628, which a map's open sets to 0: an event's spawns so far, a dungeon's boss step (unique_maps.cpp).
+auto MapEventStep(d2r::Game* game) noexcept -> int32_t;
+auto SetMapEventStep(d2r::Game* game, int32_t value) noexcept -> void;
 // Installs the room activation hook that spawns the events; `report` gets one entry. Returns 1 when installed.
 auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
 // Live counters for the status command.

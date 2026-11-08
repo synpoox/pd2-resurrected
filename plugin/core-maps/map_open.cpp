@@ -100,6 +100,7 @@ std::atomic<uint32_t> g_portals {0};
 std::atomic<uint32_t> g_entries {0};
 std::atomic<uint32_t> g_waypoints {0};
 std::atomic<uint32_t> g_bossRoomsKept {0};
+std::atomic<uint32_t> g_dungeonRoomsKept {0};  // releases refused for a dungeon barrier or boss
 int32_t (*g_releasableOriginal)(void* act, void* room) noexcept = nullptr;
 // Set once the check hook is in: until then the use hook leaves maps to D2R, so no portal opens ungated
 std::atomic<bool> g_gated {false};
@@ -323,6 +324,15 @@ auto KeepBossRoom(void* act, void* room) noexcept -> int32_t {
 	using namespace d2r::rva;
 	for (auto* unit = d2r::Engine<Unit* (*)(void*) noexcept>(RoomFirstUnit)(room); unit != nullptr;
 	     unit = d2r::Engine<Unit* (*)(Unit*) noexcept>(NextUnitInRoom)(unit)) {
+		// a dungeon's closed barrier or live boss (unique_maps.cpp). shortcut: PD2 lets these rooms go; its barriers come
+		// back with the room (restored objects, unit flags 0x3000000) and their InitFn (0x1038daf0) opens them once the
+		// boss is dead. D2R's restore path and object init table are not read, so the room is kept instead
+		if (DungeonKeepsRoom(unit)) {
+			if (g_dungeonRoomsKept++ == 0) {
+				plog::Info("dungeons: unit %d keeps its room", At<int32_t>(unit, UnitClassId));
+			}
+			return 0;
+		}
 		// also an Outer Void boss (state `mapevent`): PD2 puts its list back when its room comes back (0x10371520 keeps
 		// the state in D2Game's monster store, 0x10371590 remakes the list); keeping the room keeps the list
 		if (At<int32_t>(unit, UnitType) == UnitMonster &&
@@ -564,7 +574,7 @@ auto MapOpenCount() noexcept -> int {
 auto MapOpenCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "map checks %u, refused %u, opened %u, failed %u; uber areas opened %u, players warped %u, grey "
-	              "portals %u, portal entries %u, waypoints not spawned %u, boss room releases refused %u",
+	              "portals %u, portal entries %u, waypoints not spawned %u, boss room releases refused %u, dungeon %u",
 	              g_checks.load(), g_refused.load(), g_opened.load(), g_failed.load(), g_ubers.load(), g_warped.load(),
-	              g_portals.load(), g_entries.load(), g_waypoints.load(), g_bossRoomsKept.load());
+	              g_portals.load(), g_entries.load(), g_waypoints.load(), g_bossRoomsKept.load(), g_dungeonRoomsKept.load());
 }
