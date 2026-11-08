@@ -45,9 +45,9 @@ Out:
   "added mod" rows). The recipes work in the port without the tint: an approximated row. How D2R Reimagined tints
   items is researched for a later patch ([#190](https://github.com/synpoox/pd2-resurrected/issues/190)).
 - **Wiki-only rules** get a core-rules row with status `verify`: the open wounds rework, ethereal durability and set
-  items rolling ethereal, the minimum rare affix count with no upper item level for staffmods, loot from flying
-  monsters landing on walkable tiles, and monsters killed by Chaos Sanctuary seals dropping nothing. Potions going to
-  the belt and items that can't be sold are data checks. A rule the DLL does not have is dropped.
+  items rolling ethereal, loot from flying monsters landing on walkable tiles, and monsters killed by Chaos Sanctuary
+  seals dropping nothing. Potions going to the belt and items that can't be sold are data checks. A rule the DLL does
+  not have is dropped.
 - **Work items are bundled by the code they share**, not one per rule.
 
 ## Work items

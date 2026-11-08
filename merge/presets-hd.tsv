@@ -99,3 +99,6 @@ pd2assets/torturehalls/trees.dt1	expansion/town/trees.dt1
 pd2assets/v/expansion/town/waypt.dt1	expansion/town/waypt.dt1
 pd2assets/wall_white.dt1	act2/palace/wall.dt1
 pd2assets/zharboat.dt1	-
+# water:<D2R DT1>	the stock water plane over its blocked floor outside pasted rooms (only those of stock rooms that draw water)
+water:act3/river/rivbank.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
+water:act3/river/pool.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model

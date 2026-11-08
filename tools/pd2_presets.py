@@ -11,7 +11,9 @@ tile, so props come at D2R's density. A key no stock preset has falls back to ea
 layers), else the tile stays empty. The ground is D2R's stock flat plane (TERRAIN), one unscaled copy per
 TERRAIN_SIZE block (a scaled plane does not draw), textured by the tile set's biome; the preset depends on what the stock presets it copies from depend on. Over the
 per-tile kit, build() pastes whole stock rooms, applies the patch lookup and, for a DS1 that draws tree tiles, the
-border painter (pd2_painter), all from the tile set's stock: the presets that list a DT1 its DS1 draw from.
+border painter (pd2_painter), all from the tile set's stock: the presets that list a DT1 its DS1 draw from. Last,
+the water: a stock room draws its stream as one room-sized mesh, so outside pasted rooms a water DT1's blocked floor
+tiles get a stock water plane, scaled to cover them in rectangles.
 
 merge/presets-hd.tsv: `tile set <tab> biome`, one line per lvltypes Name the PD2-only presets on D2R tiles load. The
 merge fails on a PD2-only preset on D2R tiles whose tile set has no line, and on a line no such preset needs. A
@@ -19,7 +21,9 @@ preset that loads a PD2 DT1 (pd2assets/) waits until each of them has a stand-in
 DT1`, or `-` for none: a PD2 tile the stand-in holds too (the same orientation, main and sub index and subtile flags;
 most PD2 DT1 are copies or recolours of a D2R one) is named by it, so it gets that tile's stock pieces; the rest stay
 empty in HD, their
-collision kept. A stand-in line no PD2-only preset loads fails the merge too. Needs D2R's tiles and
+collision kept. A stand-in line no PD2-only preset loads fails the merge too. `water:<D2R DT1> <tab> <water plane
+model>` names a DT1 whose blocked floor is water (WATER_SPAN gives each plane's size); a line for a DT1 no PD2-only
+preset draws from fails. Needs D2R's tiles and
 presets in modkit's cache, else it makes none (dev builds run without, ADR 0005):
 `python -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/`.
 """
@@ -49,6 +53,11 @@ ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is past
 SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
 CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
 PRESETS = Path("hd") / "env" / "preset"
+# a stock water plane's model -> its side in HD units, centred on its position (its .physics box: +-90)
+WATER_SPAN = {"data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model": 180.0}
+WATER_Y = 0.05  # just over the flat ground plane (y 0), which would hide water at the stock rooms' -5 to 0
+STREAM = "pd2r_stream_water"  # the name of the water planes streams() places, for the merge's count
+WATER_RATIO = 2  # a water rectangle longer than this many times its width is split, so its texture stretches less
 FETCH = "python -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/"
 
 Tile = tuple  # (DT1 path or None, orientation, main, sub)
@@ -227,11 +236,13 @@ def patches(lay: Layout, stock: list[tuple[Layout, dict]], tiles: set) -> tuple[
 
 
 def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict,
-          stock: list[tuple[Layout, dict]] = (), trees: tuple | None = None, prefabs=lambda path: [(0.0, 0.0)]
-          ) -> tuple[dict, int]:
+          stock: list[tuple[Layout, dict]] = (), trees: tuple | None = None, prefabs=lambda path: [(0.0, 0.0)],
+          water: dict[str, tuple[dict, dict]] | None = None) -> tuple[dict, int]:
     """The preset for a layout, and how many of its tiles stayed empty for a key the kit lacks. Over the per-tile kit,
     in order: stock rooms pasted whole, the patch lookup (both from `stock`), then the border painter with `trees`
-    (pd2_painter.harvest) repaints the trees past the playable area; `prefabs(path)` gives a prefab's piece positions."""
+    (pd2_painter.harvest) repaints the trees past the playable area; `prefabs(path)` gives a prefab's piece positions.
+    Last, `water` (water DT1 -> a stock water plane entity and its preset's dependencies) covers that DT1's blocked
+    floor outside pasted rooms."""
     entities: list[dict] = []
     # shortcut: every dependency of each stock preset copied from, as a texture can't be traced to its model; trim it
     # if the frame-rate or load-time check in Jungle Map fails
@@ -291,6 +302,10 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
             loose.append(e)
             depend(of)
     entities += loose
+    planes = streams(lay, water or {}, taken)
+    for e, of in planes:
+        entities.append(e)
+        depend(of)
     # the ground: the flat plane once per TERRAIN_SIZE block not mostly under pasted rooms, unscaled (a scaled plane
     # does not draw); the first copy is the preset's terrain, the rest are entities
     span = TERRAIN_SIZE // TILE
@@ -313,23 +328,79 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
             "specialTiles": {}}, missing
 
 
+def rectangles(cells: set) -> list[tuple[int, int, int, int]]:
+    """`cells` as (x, y, width, height) rectangles, greedily: the longest run along x, grown along y."""
+    left, out = set(cells), []
+    for x, y in sorted(cells, key=lambda c: (c[1], c[0])):
+        if (x, y) not in left:
+            continue
+        w = 1
+        while (x + w, y) in left:
+            w += 1
+        h = 1
+        while all((x + i, y + h) in left for i in range(w)):
+            h += 1
+        left -= {(x + i, y + j) for i in range(w) for j in range(h)}
+        out.append((x, y, w, h))
+    return out
+
+
+def squarish(rect: tuple[int, int, int, int]) -> list[tuple[int, int, int, int]]:
+    """A rectangle cut along its long side into pieces at most WATER_RATIO times as long as they are wide."""
+    x, y, w, h = rect
+    if w > WATER_RATIO * h:
+        n = -(-w // (WATER_RATIO * h))
+        return [(x + w * i // n, y, w * (i + 1) // n - w * i // n, h) for i in range(n)]
+    if h > WATER_RATIO * w:
+        n = -(-h // (WATER_RATIO * w))
+        return [(x, y + h * i // n, w, h * (i + 1) // n - h * i // n) for i in range(n)]
+    return [rect]
+
+
+def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set) -> list[tuple[dict, dict]]:
+    """Stock water planes over a water DT1's blocked floor tiles outside the pasted rooms (whose own mesh draws theirs),
+    one plane scaled to each near-square rectangle of tiles, with the dependencies of the preset it came from. A tile
+    whose floor layers hold two water DT1 gets the first one's plane only."""
+    out, done = [], set()
+    for dt1 in sorted(water):
+        plane, of = water[dt1]
+        cells = {c for c, k in lay.keys.items() if c not in taken and c not in done and k[0] == "f"
+                 and any(t[0] == dt1 for t in k[1]) and painter.blocked_floor(lay.flags.get(c, bytes(25)))}
+        done |= cells
+        span = WATER_SPAN[next(c["filename"] for c in plane["components"] if c["type"] == "ModelDefinitionComponent")]
+        for x, y, w, h in (r for rect in rectangles(cells) for r in squarish(rect)):
+            e = copy.deepcopy(plane)
+            t = _transform(e)
+            t["position"] = {"x": (x + w / 2) * TILE, "y": WATER_Y, "z": (y + h / 2) * TILE}
+            t["orientation"] = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
+            t["scale"] = {"x": w * TILE / span, "y": 1.0, "z": h * TILE / span}
+            e["name"] = STREAM
+            out.append((e, of))
+    return out
+
+
 def draws_trees(lay: Layout) -> bool:
     """Whether a DS1 draws a tile from a tree DT1 (`trees.dt1`, `treegrp.dt1`, `treegroups.dt1`): only those are
     painted, as an indoor tile set's stock may hold a courtyard's trees."""
     return any(t[0] and "tree" in t[0].rsplit("/", 1)[-1] for k in lay.keys.values() for t in k[1])
 
 
-def read_rule(rule: Path) -> tuple[dict[str, str], dict[str, str | None]]:
-    """(tile set -> biome, PD2 DT1 -> its D2R stand-in DT1 or None): a first column ending in .dt1 is a stand-in."""
-    sets, standins = {}, {}
+def read_rule(rule: Path) -> tuple[dict[str, str], dict[str, str | None], dict[str, str]]:
+    """(tile set -> biome, PD2 DT1 -> its D2R stand-in DT1 or None, water DT1 -> water plane model): a first column
+    `water:<DT1>` is a water line, one ending in .dt1 a stand-in."""
+    sets, standins, water = {}, {}, {}
     for line in rule.read_text("utf-8").splitlines():
         if line and not line.startswith("#"):
             name, value = line.split("\t")
-            if name.lower().endswith(".dt1"):
+            if name.lower().startswith("water:"):
+                if value not in WATER_SPAN:
+                    raise ValueError(f"water line {name}: {value} is no water plane WATER_SPAN knows")
+                water[norm(name[6:])] = value
+            elif name.lower().endswith(".dt1"):
                 standins[norm(name)] = None if value == "-" else norm(value)
             else:
                 sets[name.lower()] = value
-    return sets, standins
+    return sets, standins, water
 
 
 def stand_in(files: list[str], tiles: "Tiles", pd2_tiles: "Tiles", standins: dict[str, str | None],
@@ -380,9 +451,29 @@ class Tiles(dict):
         return {p: self[p] for p in paths}
 
 
+def water_planes(d2r_data: Path, rule: dict[str, str]) -> dict[str, tuple[dict, dict]]:
+    """Water DT1 -> (the first entity drawing its line's model in the smallest stock preset that has one, that
+    preset's dependencies)."""
+    found: dict[str, tuple[dict, dict]] = {}
+    for p in sorted((d2r_data / PRESETS).rglob("*.json"), key=lambda p: (p.stat().st_size, p)):
+        if len(found) == len(set(rule.values())):
+            break
+        text = p.read_text("utf-8-sig")
+        for model in set(rule.values()) - set(found):
+            if model in text:
+                preset = json.loads(text)
+                # the model may be named only in the dependencies or a prefab: then a later preset holds it
+                e = next((e for e in preset["entities"] if any(c.get("filename") == model for c in e["components"])), None)
+                if e:
+                    found[model] = (e, preset["dependencies"])
+    if lost := sorted(set(rule.values()) - set(found)):
+        raise ValueError(f"no stock preset draws the water plane {', '.join(lost)}: run `{FETCH}`")
+    return {dt1: found[model] for dt1, model in rule.items()}
+
+
 def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/presets-hd.tsv (see the module docstring)."""
-    sets, standins = read_rule(rule)
+    sets, standins, water_rule = read_rule(rule)
     tiles_dir = d2r_data / "global" / "tiles"
     if not (d2r_data / PRESETS).is_dir() or not any(tiles_dir.rglob("*.dt1")):
         print(f"  presets-hd: skipped, no D2R presets or DT1 under {d2r_data} (dev builds run without; `{FETCH}`)")
@@ -411,6 +502,9 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
                for _, _, files, ds1s in on_d2r for ds1 in ds1s}
     keep = set().union(*map(wanted, layouts.values()))
     loaded = {t[0] for k in keep for t in k[1]}
+    if stale := sorted(set(water_rule) - loaded):
+        raise ValueError(f"water lines for DT1 no PD2-only preset draws from: {', '.join(stale)}")
+    water = water_planes(d2r_data, water_rule)
     kit, stock = Kit(), []
     for p in sorted((d2r_data / PRESETS).rglob("*.json")):
         ds1 = tiles_dir / p.relative_to(d2r_data / PRESETS).with_suffix(".ds1")
@@ -440,11 +534,12 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             lay = layouts[ds1]
             outdoor = draws_trees(lay)
             preset, missing = build(lay, kit, Path(ds1).stem, ds1, sets[tile_set.lower()], terrain, own,
-                                    trees if outdoor else None, prefab)
+                                    trees if outdoor else None, prefab, water)
             dest = out_data / PRESETS / Path(ds1).with_suffix(".json")
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text(json.dumps(preset, separators=(",", ":")), "utf-8")
-            report.append((len(lay.keys), missing, len(preset["entities"]), bool(outdoor and trees)))
+            report.append((len(lay.keys), missing, len(preset["entities"]), bool(outdoor and trees),
+                           sum(e["name"] == STREAM for e in preset["entities"])))
     print(f"  presets-hd: {len(report)} HD presets from {len(kit.sources)} stock presets, "
-          f"{sum(r[2] for r in report)} entities, {sum(r[3] for r in report)} with painted tree lines; {sum(r[1] for r in report)} of {sum(r[0] for r in report)} tiles "
+          f"{sum(r[2] for r in report)} entities, {sum(r[3] for r in report)} with painted tree lines, {sum(r[4] for r in report)} water planes; {sum(r[1] for r in report)} of {sum(r[0] for r in report)} tiles "
           f"have a key no stock preset draws; {len(presets) - len(on_d2r)} presets on PD2 tiles wait for stand-ins (LP4/LP5)")

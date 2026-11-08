@@ -2671,6 +2671,38 @@ auto CltDoNova(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	return 1;
 }
 
+// --- Item casts of the novas (PD2 ItemEffect 183 -> 187; IR5, #240) ----------------------------------------------------
+// Read from ProjectDiablo.dll: srvdo 183 at 0x103b5080 (its installer 0x1036ba20). An item cast of a nova (a hit skill,
+// a charge) makes PD2's ring (0x1036d250: 64 of srvmissilea, flags 3, no range) at the skill target unit's position,
+// else the caster's. D2R's do dispatcher (0x43acb0) calls ItemEffect's slot for an item cast, instead of srvdofunc.
+// approximated: PD2 also sets the ring missiles' unit flag 0x80000 (+0xc8). Only PD2's own missile collision
+// (0x103061d0 -> 0x103a9200) reads it, to key its one-hit-per-unit check by the cast; D2R's collision has no such key.
+std::atomic<uint32_t> g_itemNovas {0};
+
+auto SrvDoItemNova(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	const int32_t missile = At<int16_t>(skill, SkSrvMissileA);
+	Unit* target = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(SkillTargetUnit)(game, unit);
+	int32_t x = 0, y = 0;
+	if (!(target != nullptr && d2r::UnitXY(target, &x, &y)) && !d2r::UnitXY(unit, &x, &y)) {
+		return 1;
+	}
+	const int32_t created = d2r::ValidMissile(dataFlag, missile) ? ServerRing(game, unit, missile, x, y, 64, skillId, level) : 0;
+	if (plog::Sample(g_itemNovas)) {
+		plog::Info("item nova: skill %d level %d: %d missiles (row %d) at %d,%d (%s), cast %u", skillId, level, created,
+		           missile, x, y, target != nullptr ? "target" : "caster", g_itemNovas.load());
+	}
+	return 1;
+}
+
 // --- Royal Fire (PD2 srvdofunc 143 -> router 190, cltdofunc 83 -> 123) -----------------------------------------------
 // Read from ProjectDiablo.dll: srvdo 143 at 0x103b0df0, cltdo 83 at 0x103ab070; for other skills both fall back to
 // vanilla 143 / 83, which D2R keeps in those slots. A ring of srvmissilea (cltmissilea) at every calc1-th of D2's 64
@@ -4618,6 +4650,8 @@ const SlotFunction Functions[] = {
 	{SrvDo, 181, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvPrgCold)), "charge cold"},
 	// Combustion and the boss novas: srvdo 159 goes through the router (190); D2R fills cltdo 100
 	{CltDo, 120, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoNova)), "nova"},
+	// Item casts of the novas: PD2's ItemEffect 183 is D2R's (and our) Double Throw slot, so the merge points it here
+	{SrvDo, 187, reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoItemNova)), "item nova"},
 	// Royal Fire: PD2 branches inside srvdo 143 / cltdo 83, which D2R keeps vanilla; the router and cltdo 123 take it
 	{CltDo, 123, reinterpret_cast<const void*>(static_cast<CltDoFn>(CltDoRoyalFire)), "royal fire"},
 	// The death novas: srvdo 169 goes through the router (190); D2R fills cltdo 105
@@ -4783,7 +4817,7 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "client %u, blood warps %u, refused %u, desecrates %u, client %u, corpses hidden %u, revives %u, "
 	              "revive events %u, splashes %u, channels %u, client %u, take-overs %u, blade fury refused %u, "
 	              "held %u, charge-up hits %u, charges %u, charge hit frames %u, holy lights %u, gusts %u, hungers %u, "
-	              "novas %u, client %u, static fields %u, vengeances %u, links %u, jousts %u, fire claws %u, hits %u, "
+	              "novas %u, client %u, item novas %u, static fields %u, vengeances %u, links %u, jousts %u, fire claws %u, hits %u, "
 	              "client %u, wolf starts %u, refused %u, dragon flights %u, hits %u, holy sword starts %u, "
 	              "smite starts %u, smite events %u, gate logs %u, poison egg spawns %u, client %u, nest spawns %u, "
 	              "nests full %u, cycler starts %u, %s",
@@ -4795,7 +4829,7 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              g_reviveEvents.load(), g_reviveSplashes.load(), g_channels.load(), g_channelClients.load(),
 	              g_takeOvers.load(), g_bladeFuryRefusals.load(), g_heldRequests.load(), g_chargeHits.load(),
 	              g_charges.load(), g_chargeHitFrames.load(), g_holyLights.load(), g_gusts.load(),
-	              g_hungers.load(), g_novas.load(), g_novaClients.load(), g_staticFields.load(), g_vengeances.load(),
+	              g_hungers.load(), g_novas.load(), g_novaClients.load(), g_itemNovas.load(), g_staticFields.load(), g_vengeances.load(),
 	              g_vengeanceLinks.load(), g_jousts.load(), g_fireClaws.load(), g_fireClawHits.load(),
 	              g_fireClawClients.load(), g_wolfStarts.load(), g_wolfRefusals.load(), g_dragonFlights.load(),
 	              g_dragonFlightHits.load(), g_holySwordStarts.load(), g_smiteStarts.load(), g_smiteEvents.load(),
