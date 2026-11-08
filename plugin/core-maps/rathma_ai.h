@@ -11,5 +11,7 @@
 auto InstallRathmaAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
 // Kills (no drop) every live void knight, golem and totem of the fight; returns how many.
 auto KillRathmaAdds(d2r::Game* game) noexcept -> int;
+// Stage 5 -> 6: the clone that did not die (`dead` is the other) takes RathmaDeath's buff; true when it did.
+auto BuffRathmaSurvivor(d2r::Game* game, d2r::Unit* dead) noexcept -> bool;
 // Live counters for the status command.
 auto RathmaAiCounters(char* out, size_t size) noexcept -> void;

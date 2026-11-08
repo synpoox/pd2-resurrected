@@ -734,6 +734,20 @@ auto KillRathmaAdds(Game* game) noexcept -> int {
 	return n;
 }
 
+auto BuffRathmaSurvivor(Game* game, Unit* dead) noexcept -> bool {
+	// PD2 0x10376840 at stage 5 -> 6: the surviving clone casts RathmaDeath (0x1036d7d0) at once
+	const int32_t other = At<int32_t>(dead, d2r::rva::UnitClassId) == BoneClone ? PoisonClone : BoneClone;
+	const int32_t clones[] = {other};
+	Unit* survivor[1] = {};
+	if (FindMonsters(game, clones, -1, survivor, 1) == 0 || !ApplyAuraState(game, survivor[0], survivor[0], RathmaDeath, 1)) {
+		plog::Warn("rathma: no survivor %d took RathmaDeath's buff", other);
+		return false;
+	}
+	++g_buffs;
+	plog::Info("rathma: survivor %d casts RathmaDeath on the first clone's death (%u buffs)", other, g_buffs.load());
+	return true;
+}
+
 auto InstallRathmaAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	bool ok = true;
 	for (const int32_t c : {RathmaBone, RathmaPoison, BoneClone, PoisonClone}) {
