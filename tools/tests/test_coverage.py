@@ -109,20 +109,18 @@ class Scores(unittest.TestCase):
         self.assertAlmostEqual(s.wall_score, 1 / 3)
         self.assertIsNone(s.border_score)
 
-    def test_border_ring_gaps_leaks_misplaced(self):
+    def test_border_ring_gaps_leaks(self):
         # a 3 x 3 walkable floor framed by tree tiles, all unwalkable but (0, 2)
         keys = {(x, y): FLOOR for x in range(1, 4) for y in range(1, 4)}
         frame = {(x, y) for x in range(5) for y in range(5)} - set(keys)
         keys |= {c: TREE for c in frame}
         L = lay(keys, unwalkable=frame - {(0, 2)})
-        tall = {c for c in frame if c != (4, 2)} | {(2, 2)}
+        tall = {c for c in frame if c != (4, 2)}
         s = C.score(L, tall, "b")
         # the frame is a tree line (pd2_painter.LINE), never playable even where walkable: a leak in the ring
         self.assertEqual(s.ring, frame - {(0, 0), (4, 0), (0, 4), (4, 4)})
         self.assertEqual(s.gaps, {(4, 2)})
         self.assertEqual(s.leaks, {(0, 2)})
-        self.assertEqual(s.misplaced, {(2, 2)})
-        self.assertEqual(s.ground, 9)
         self.assertAlmostEqual(s.border_score, 1 - 1 / len(s.ring))
 
     def test_leak(self):
@@ -159,7 +157,7 @@ class Output(unittest.TestCase):
         self.assertIn("(abc123)", text)
         order = [line.split(" | ")[0][2:] for line in text.splitlines() if line.startswith("| ") and "Preset" not in line]
         self.assertEqual(order, ["d", "b", "c", "a"])
-        self.assertIn("| d | Mesa | 40.0% | 6 | 0 | 0 | 100.0% | 10 | [walls](d_walls.png) [border](d_border.png) |", text)
+        self.assertIn("| d | Mesa | 40.0% | 6 | 0 | 100.0% | 10 | [walls](d_walls.png) [border](d_border.png) |", text)
         self.assertIn("All borders: 60.0% of 20 ring tiles.", text)
 
     def test_run_skips_without_models(self):

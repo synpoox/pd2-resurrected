@@ -7,11 +7,12 @@ least TALL units high. Per generated preset:
 - wall score: the share of DS1 wall tiles (what the automap draws as walls) under a tall piece;
 - border score, for a DS1 that draws trees (pd2_presets.draws_trees): the ring of DS1 tiles 4-adjacent to and
   outside pd2_painter.playable() (the map's edge on the automap). A ring tile is covered (under a tall piece), a gap
-  (bare), and a leak if the DS1 lets the player walk on it. Misplaced: tall pieces on walkable playable ground.
+  (bare), and a leak if the DS1 lets the player walk on it.
 
 Writes <out>/report.md, worst first (border score, then wall score), and per preset <name>_walls.png (walls green
-where covered, red where bare) and, for a border, <name>_border.png (ring green, gap red, leak magenta, misplaced
-yellow). TALL 4 reproduced the LP3 slice 1 game check (research/lp3-tile-table, FINDINGS.md). The report cannot judge
+where covered, red where bare) and, for a border, <name>_border.png (ring green, gap red, leak magenta). Known bias:
+a turned piece's footprint is its axis-aligned box, which spills onto neighbour tiles, so both scores run a little
+generous. TALL 4 reproduced the LP3 slice 1 game check (research/lp3-tile-table, FINDINGS.md). The report cannot judge
 looks, frame rate or collision. Needs model_lod_desc.bin in modkit's cache, else it skips:
 `python -m modkit fetch --prefix data/hd/model_lod_desc.bin`.
 """
@@ -106,14 +107,12 @@ def tall_tiles(found: Iterator[Box], tall: float = TALL) -> set[tuple[int, int]]
 @dataclass
 class Score:
     name: str
-    tile_set: str
+    area: str  # the lvlprest row (Name), e.g. Ashen Plains Map
     walls: int  # DS1 wall tiles
     bare: set  # wall tiles under no tall piece
     ring: set | None = None  # border ring tiles, None for a DS1 without trees
     gaps: set = frozenset()
     leaks: set = frozenset()
-    misplaced: set = frozenset()
-    ground: int = 0  # walkable playable ground tiles
 
     @property
     def wall_score(self) -> float:
@@ -124,14 +123,13 @@ class Score:
         return None if self.ring is None else 1 - len(self.gaps) / len(self.ring) if self.ring else 1.0
 
 
-def score(lay: presets.Layout, tall: set, name: str = "", tile_set: str = "") -> Score:
+def score(lay: presets.Layout, tall: set, name: str = "", area: str = "") -> Score:
     walls = {c for c, k in lay.keys.items() if k[0] == "w"}
-    s = Score(name, tile_set, len(walls), walls - tall)
+    s = Score(name, area, len(walls), walls - tall)
     if presets.draws_trees(lay):
         play = painter.playable(lay)
         ring = ({(x + dx, y + dy) for x, y in play for dx, dy in painter.STEPS} - play) & set(lay.keys)
-        ground = {c for c in play - lay.unwalkable if lay.keys[c][0] != "w" and not painter.blocked_floor(lay.flags[c])}
-        s.ring, s.gaps, s.ground, s.misplaced = ring, ring - tall, len(ground), ground & tall
+        s.ring, s.gaps = ring, ring - tall
         s.leaks = {c for c in ring if c not in lay.unwalkable and not any(b & 1 for b in lay.flags.get(c, bytes(25)))}
     return s
 
@@ -153,7 +151,6 @@ def images(lay: presets.Layout, s: Score, tall: set) -> dict[str, bytes]:
     out = {f"{s.name}_walls.png": png(lay.width, lay.height, base | walls)}
     if s.ring is not None:
         px = {c: (45, 40, 32) for c in lay.keys} | {c: (120, 112, 95) for c in painter.playable(lay)}
-        px |= {c: (230, 200, 40) for c in s.misplaced}
         px |= {c: (230, 40, 200) if c in s.leaks else (230, 40, 40) if c in s.gaps else (50, 200, 60) for c in s.ring}
         out[f"{s.name}_border.png"] = png(lay.width, lay.height, px, zoom=4)
     return out
@@ -168,15 +165,15 @@ def report(scores: list[Score], commit: str = "") -> str:
     pct = lambda v: "-" if v is None else f"{100 * v:.1f}%"  # noqa: E731
     lines = ["# HD preset coverage" + (f" ({commit})" if commit else ""), "",
              f"{len(scores)} generated presets. Wall: DS1 wall tiles under a piece >= {TALL:g} units. Border (DS1s "
-             "with trees): the ring outside the playable area; gaps bare, leaks walkable in the DS1, misplaced tall "
-             "pieces on walkable ground. Images: red where bare.", "",
-             "| Preset | Tile set | Border | Gaps | Leaks | Misplaced | Wall | Walls | Images |",
-             "|---|---|---|---|---|---|---|---|---|"]
+             "with trees): the ring outside the playable area; gaps bare, leaks walkable in the DS1. "
+             "Images: red where bare.", "",
+             "| Preset | Area | Border | Gaps | Leaks | Wall | Walls | Images |",
+             "|---|---|---|---|---|---|---|---|"]
     for s in sorted(scores, key=_key):
         img = f"[walls]({s.name}_walls.png)" + (f" [border]({s.name}_border.png)" if s.ring is not None else "")
         border = s.ring is not None
-        lines.append(f"| {s.name} | {s.tile_set} | {pct(s.border_score)} | {len(s.gaps) if border else '-'} | "
-                     f"{len(s.leaks) if border else '-'} | {len(s.misplaced) if border else '-'} | "
+        lines.append(f"| {s.name} | {s.area} | {pct(s.border_score)} | {len(s.gaps) if border else '-'} | "
+                     f"{len(s.leaks) if border else '-'} | "
                      f"{pct(s.wall_score)} | {s.walls} | {img} |")
     if scores:
         n = sum(s.walls for s in scores)
@@ -206,7 +203,7 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "") -> list[Score] | Non
     tiles, pd2_tiles = presets.Tiles(d2r / "global" / "tiles"), presets.Tiles(data / "global" / "tiles")
     out.mkdir(parents=True, exist_ok=True)
     scores, seen = [], set()
-    for _, tile_set, files, ds1s in presets.pd2_only_presets(data, len(load(d2r, "lvlprest").records())):
+    for area, _, files, ds1s in presets.pd2_only_presets(data, len(load(d2r, "lvlprest").records())):
         for ds1 in ds1s:
             f = data / presets.PRESETS / Path(ds1).with_suffix(".json")
             if not f.is_file() or ds1 in seen:  # waiting on stand-ins (LP4/LP5), or a DS1 two presets load
@@ -215,7 +212,7 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "") -> list[Score] | Non
             lay = presets.layout((data / "global" / "tiles" / ds1).read_bytes(),
                                  presets.stand_in(files, tiles, pd2_tiles, standins))
             tall = tall_tiles(boxes(json.loads(f.read_text("utf-8"))["entities"], box, prefab))
-            s = score(lay, tall, Path(ds1).stem, tile_set)
+            s = score(lay, tall, Path(ds1).stem, area)
             scores.append(s)
             for name, image in images(lay, s, tall).items():
                 (out / name).write_bytes(image)
