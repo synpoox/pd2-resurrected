@@ -58,6 +58,7 @@ std::atomic<uint32_t> g_stages {0};
 std::atomic<uint32_t> g_portals {0};
 std::atomic<uint32_t> g_casts {0};
 std::atomic<uint32_t> g_buffs {0};
+std::atomic<uint32_t> g_survivorCasts {0};
 
 auto Counter(Game* game, uint32_t key) noexcept -> int32_t& {
 	return *d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(d2r::rva::GameCounter)(
@@ -199,6 +200,12 @@ auto ApplyAuraState(Game* game, Unit* owner, Unit* unit, int32_t skillId, int32_
 	if (list == nullptr) {
 		return false;
 	}
+	// PD2's helper (0x1036d7d0) ORs 0x800 (when 0x1030c560 holds for the state) and 8 (expansion games, which every
+	// D2R game is) into the new list's flags; D2R's NewStateList made it with 2 alone in the Slot8 check (#478)
+	auto& flags = *reinterpret_cast<uint32_t*>(static_cast<uint8_t*>(list) + ListFlags);
+	const uint32_t before = flags;
+	flags |= 0x800 | 8;
+	plog::Info("rathma: state %d list flags 0x%x -> 0x%x", state, before, flags);
 	d2r::Engine<void (*)(Unit*, void*, const uint8_t*, int32_t, int32_t) noexcept>(AddAuraStats)(unit, list, skill,
 	                                                                                           skillId, level);
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetUnitState)(unit, state, 1);
@@ -739,12 +746,13 @@ auto BuffRathmaSurvivor(Game* game, Unit* dead) noexcept -> void {
 	const int32_t other = At<int32_t>(dead, d2r::rva::UnitClassId) == BoneClone ? PoisonClone : BoneClone;
 	const int32_t clones[] = {other};
 	Unit* survivor[1] = {};
-	if (FindMonsters(game, clones, LevelOf(dead), survivor, 1) == 0 || !ApplyAuraState(game, survivor[0], survivor[0], RathmaDeath, 1)) {
+	if (FindMonsters(game, clones, LevelOf(dead), survivor, 1) == 0 ||
+	    !ApplyAuraState(game, survivor[0], survivor[0], RathmaDeath, 1)) {
 		plog::Warn("rathma: no survivor %d took RathmaDeath's buff", other);
 		return;
 	}
-	++g_buffs;
-	plog::Info("rathma: survivor %d casts RathmaDeath on the first clone's death (%u buffs)", other, g_buffs.load());
+	plog::Info("rathma: survivor %d casts RathmaDeath on the first clone's death (%u so far)", other,
+	           ++g_survivorCasts);
 }
 
 auto InstallRathmaAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
@@ -753,12 +761,15 @@ auto InstallRathmaAi(const D2RL::PluginContext* context, char* report, size_t re
 		ok = ok && RegisterAiThink(context, SummonerRow, AiSummoner, c, &Think);
 	}
 	std::snprintf(report, reportSize,
-	              ok ? "monai %d (Summoner) think: rathmaBone, rathmaPoison and the clones" : "off: monai %d think not swapped",
+	              ok ? "monai %d (Summoner) think: rathmaBone, rathmaPoison and the clones"
+	                 : "off: monai %d think not swapped",
 	              SummonerRow);
 	return ok ? 1 : 0;
 }
 
 auto RathmaAiCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "rathma ai: %u thinks, %u life events, %u stages, %u portals, %u casts, %u buffs",
-	              g_thinks.load(), g_events.load(), g_stages.load(), g_portals.load(), g_casts.load(), g_buffs.load());
+	std::snprintf(out, size, "rathma ai: %u thinks, %u life events, %u stages, %u portals, %u casts, %u AI buffs, "
+	              "%u survivor casts",
+	              g_thinks.load(), g_events.load(), g_stages.load(), g_portals.load(), g_casts.load(), g_buffs.load(),
+	              g_survivorCasts.load());
 }

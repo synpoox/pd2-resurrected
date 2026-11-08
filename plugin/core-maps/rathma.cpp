@@ -8,9 +8,10 @@
 //
 // Deaths, on key_drops' monster-death listener (the SDK's): Mendeln (0x10376760) and Rathma (0x103767d0), when killed
 // before their retreat, set the stage to 2 or 4 and open a ghostly portal at their spot to the next level. The first
-// clone's death (0x10376840) sets stage 6 and the survivor casts RathmaDeath's buff (its AI keeps it on); the second's sets 7,
-// kills the void knights, golems and totem, drops the Tainted Worldstone Shard, rolls 1 in (50 - 6 x tier) for an
-// unlimited tome or key and, at tiers 1-2, 1 in 200 for one of three uniques (all at item level 130), and opens a gold portal to Harrogath.
+// clone's death (0x10376840) sets stage 6 and the survivor casts RathmaDeath's buff through PD2's helper 0x1036d7d0
+// (its AI keeps it on); the second's sets 7, kills the void knights, golems and totem, drops the Tainted Worldstone
+// Shard, rolls 1 in (50 - 6 x tier) for an unlimited tome or key and, at tiers 1-2, 1 in 200 for one of three uniques
+// (all at item level 130), and opens a gold portal to Harrogath.
 #include "rathma.h"
 
 #include "log.h"

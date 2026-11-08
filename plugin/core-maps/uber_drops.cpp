@@ -87,8 +87,10 @@ auto DropUniqueAt(Game* game, Unit* monster, uint32_t code, int32_t uniqueRow, i
 	                      : nullptr;
 	setStat(monster, StatLevel, level, 0);
 	const int32_t quality = made != nullptr ? d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(made) : -1;
-	plog::Info("unique drop: %.4s unique row %d: item row %d, %s, quality %d", reinterpret_cast<const char*>(&code),
-	           uniqueRow, row, made != nullptr ? "dropped" : "NOT dropped", quality);
+	const int32_t ilvl = made != nullptr ? d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemLevel)(made) : -1;
+	plog::Info("unique drop: %.4s unique row %d: item row %d, %s, quality %d, item level %d",
+	           reinterpret_cast<const char*>(&code), uniqueRow, row, made != nullptr ? "dropped" : "NOT dropped", quality,
+	           ilvl);
 	return quality == wanted;
 }
 
