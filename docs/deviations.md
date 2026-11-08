@@ -14,7 +14,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 
 ## Features and data
 
-### Cut (26)
+### Cut (27)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -27,6 +27,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | PD2 tables soundenviron and sounds: D2R's are kept, with the PD2 sounds `merge/sounds.tsv` lists appended (their WAVs as FLAC) | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): PD2's DLL drives its own sound engine, and audio is best effort. PD2's own voice and effect sounds are appended by [UR8](https://github.com/synpoox/pd2-resurrected/issues/206): one so far (`zhar_attack1`, the one-file test) | [P4](https://github.com/synpoox/pd2-resurrected/issues/48), [UR8](https://github.com/synpoox/pd2-resurrected/issues/206) |
 | PD2 inventory table: D2R's is kept | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): PD2's 10x8 inventory and stash pages are not ported; D2R's layouts stay. The cube rows are merged ([#299](https://github.com/synpoox/pd2-resurrected/issues/299)) |  |
 | PD2 item price and quality columns: affix transform, divide, add, multiply; itemtypes Charm, Gem, CostFormula; qualityitems' classic columns | cut | `divide`, `add` and `multiply` are empty; `transform` is set only where D2R's `transformcolor` is; `Gem` is set on shared rows only; `Charm` only on PD2's 4 PvP charms; `CostFormula` on 9 PD2-only armor subtypes, which share their D2R parent's base cost; the price stays sane without the column: in Hell, Charsi buys a socketed Troll Belt [S] (`rbe`, type `bels`) for 19,343 gold, beside 7,565 for an ethereal D2R Troll Belt (`utc`), both at base cost 41,183 (socket and ethereal differ, so this is not an equal-item comparison); the qualityitems columns are 1.13c's, which D2R dropped ([#198](https://github.com/synpoox/pd2-resurrected/issues/198), [#199](https://github.com/synpoox/pd2-resurrected/issues/199)) |  |
+| PD2's npc row gheedEventInventory is left out | cut | it matches no monster in PD2 either: no PD2 monstats row has that Id (its Gheed copy, row 1059, is `unused`) and no PD2 binary names it, so PD2's event Gheed (monster 147) trades by the `gheed` row ([MS8](https://github.com/synpoox/pd2-resurrected/issues/222)) |  |
 | PD2 item columns that are empty or set only on rows D2R shares: armor absorbs, spelloffset, throwable; misc special, throwable; weapons special and an unnamed column; gems nummods; sets level; runes server; uniqueitems ladder | cut | no row D2R lacks sets them, except one value in the unnamed weapons column (`7cr2`), a spreadsheet column no loader reads (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)) |  |
 | PD2 recipe column cubemain ladder | cut | PD2's D2Common loads it as vanilla 1.13c does (a byte at record offset 1); its values 2-4 mark PD2's online recipe groups (imbues, maps, socket adds, crafting), and the merge leaves every recipe on, which is what single-player wants. Where PD2's D2Game reads it was not traced (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)) |  |
 | PD2's art, beta and spreadsheet columns (Source Art, Game Art, OpenBetaGfx, szFlavorText, books Namco and Completed, treasure-class totals) | cut | notes for PD2's editors; the game does not read them | [P3](https://github.com/synpoox/pd2-resurrected/issues/47) |
@@ -45,14 +46,13 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | PD2 difficultylevels columns UberCodeOddsNormal, UberCodeOddsGood, UltraCodeOddsNormal, UltraCodeOddsGood and HireableBossDamagePercent | cut | D2R plays as PD2 without them (Ghidra, [UR5](https://github.com/synpoox/pd2-resurrected/issues/203)). `HireableBossDamagePercent` (50/35/25) is D2R's `MercenaryDamagePercentVSBoss` (record +0x48), which D2R already sets to 50/35/25. The code odds: their only reader in 1.13c, PD2's D2Game `0x6fcf2ab0` (rolls a picked base up to its `ubercode`, then `ultracode`), has no caller or pointer in any PD2 module, so they never act in PD2; D2R's loader (`0x30be50`) has no such fields in its 0x84-byte record |  |
 | The Gheed map event's player list | cut | PD2 files the game's players into a global set (`0x10368480`) that only its realm's game-join hooks (`0x10385460`) read; a D2R game has no realm | [#503](https://github.com/synpoox/pd2-resurrected/issues/503) |
 
-### Not yet (21)
+### Not yet (20)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
 | PD2 skill column general | not yet | D2R's skills table has no such column; PD2's D2Common loads it as vanilla 1.13c does (bit 35 of the flags, record byte 8 bit 3), set on the six vanilla general skills, PD2's six attack templates and Force Move. [UR4](https://github.com/synpoox/pd2-resurrected/issues/202) finds what reads it, then cuts it or builds a rule | [UR4](https://github.com/synpoox/pd2-resurrected/issues/202) |
 | PD2 missile columns LevRange, Qty and SpecialSetup | not yet | D2R's missiles table has no such columns | core-rules |
 | PD2's 4x4 Horadric Cube: the panel art is a stand-in | approximated | PD2's grid is merged ([#299](https://github.com/synpoox/pd2-resurrected/issues/299)); the HD, controller and classic cube panels are D2R's own, redrawn one column wider (`merge/panel-grids.json`) instead of PD2's art |  |
-| PD2's npc row gheedEventInventory is left out | not yet | it names a monster that only PD2's DLL adds; the vendor event behind it is engine work | [MS8](https://github.com/synpoox/pd2-resurrected/issues/222) |
 | PD2 weapon spell columns stat1-3, calc1-3, spelldesc, spelldescstr, spelldesccalc | not yet | D2R's weapons table has no such columns | [IR5](https://github.com/synpoox/pd2-resurrected/issues/240) |
 | PD2 misc columns normcode, ubercode, ultracode | not yet | D2R's misc table has no such columns; `ubercode` and `ultracode` carry the quiver tiers (`aqv2`, `aqv3`, `cqv2`, `cqv3`) | [UR6](https://github.com/synpoox/pd2-resurrected/issues/204) |
 | Guild, arena and ladder labels keep D2R's text (20 keys, `CapsJoinMenu4` to `Guild Portal`) | not yet | the guild labels come with guilds ([#339](https://github.com/synpoox/pd2-resurrected/issues/339)) and the ladder labels with online play, both in the beta; the arena labels stay D2R's, as PvP is cut | [#339](https://github.com/synpoox/pd2-resurrected/issues/339), beta |
