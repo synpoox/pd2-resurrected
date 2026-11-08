@@ -195,9 +195,9 @@ auto OpenNextLevelPortal(Game* game, Unit* monster, Spot at, int32_t level) noex
 // PD2 makes these at item level 130 (the three uniques are level 131)
 constexpr int32_t DropLevel = 130;
 auto Drop(Game* game, Unit* monster, uint32_t code, int32_t quality, int32_t uniqueRow) noexcept -> void {
-	const bool ok = DropUniqueAt(game, monster, code, uniqueRow, DropLevel, quality);
-	plog::Info("rathma: %s %.4s at item level %d", ok ? "dropped" : "FAILED to drop", reinterpret_cast<const char*>(&code),
-	           DropLevel);
+	if (!DropUniqueAt(game, monster, code, uniqueRow, DropLevel, quality)) {
+		plog::Warn("rathma: %.4s did not drop at item level %d", reinterpret_cast<const char*>(&code), DropLevel);
+	}
 }
 
 // PD2 0x10376840, stage 6 -> 7
