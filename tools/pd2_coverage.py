@@ -123,11 +123,11 @@ class Score:
         return None if self.ring is None else 1 - len(self.gaps) / len(self.ring) if self.ring else 1.0
 
 
-def score(lay: presets.Layout, tall: set, name: str = "", area: str = "") -> Score:
+def score(lay: presets.Layout, tall: set, name: str = "", area: str = "", wet: frozenset = frozenset()) -> Score:
     walls = {c for c, k in lay.keys.items() if k[0] == "w"}
     s = Score(name, area, len(walls), walls - tall)
     if presets.draws_trees(lay):
-        play = painter.playable(lay)
+        play = painter.playable(lay, wet)
         ring = ({(x + dx, y + dy) for x, y in play for dx, dy in painter.STEPS} - play) & set(lay.keys)
         s.ring, s.gaps = ring, ring - tall
         s.leaks = {c for c in ring if c not in lay.unwalkable and not any(b & 1 for b in lay.flags.get(c, bytes(25)))}
@@ -144,13 +144,13 @@ def png(w: int, h: int, px: dict[tuple[int, int], tuple[int, int, int]], back=(2
             + chunk(b"IDAT", zlib.compress(rows, 9)) + chunk(b"IEND", b""))
 
 
-def images(lay: presets.Layout, s: Score, tall: set) -> dict[str, bytes]:
+def images(lay: presets.Layout, s: Score, tall: set, wet: frozenset = frozenset()) -> dict[str, bytes]:
     """<name>_walls.png and, with a border, <name>_border.png."""
     base = {c: (80, 75, 60) for c in lay.keys} | {c: (40, 90, 160) for c in tall if c in lay.keys}
     walls = {c: (230, 40, 40) if c in s.bare else (60, 210, 60) for c, k in lay.keys.items() if k[0] == "w"}
     out = {f"{s.name}_walls.png": png(lay.width, lay.height, base | walls)}
     if s.ring is not None:
-        px = {c: (45, 40, 32) for c in lay.keys} | {c: (120, 112, 95) for c in painter.playable(lay)}
+        px = {c: (45, 40, 32) for c in lay.keys} | {c: (120, 112, 95) for c in painter.playable(lay, wet)}
         px |= {c: (230, 40, 200) if c in s.leaks else (230, 40, 40) if c in s.gaps else (50, 200, 60) for c in s.ring}
         out[f"{s.name}_border.png"] = png(lay.width, lay.height, px, zoom=4)
     return out
@@ -190,7 +190,8 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "") -> list[Score] | Non
         print(f"pd2_coverage: skipped, no {d2r / MODELS} (`python -m modkit fetch --prefix data/hd/model_lod_desc.bin`)")
         return None
     rule = ROOT / "merge" / "presets-hd.tsv"
-    standins = presets.read_rule(rule)[1]
+    _, standins, water = presets.read_rule(rule)
+    wet = frozenset(water)  # stream DT1, water past the tree line too (painter.water)
     found = model_boxes((d2r / MODELS).read_bytes())
 
     @functools.cache
@@ -212,9 +213,9 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "") -> list[Score] | Non
             lay = presets.layout((data / "global" / "tiles" / ds1).read_bytes(),
                                  presets.stand_in(files, tiles, pd2_tiles, standins))
             tall = tall_tiles(boxes(json.loads(f.read_text("utf-8"))["entities"], box, prefab))
-            s = score(lay, tall, Path(ds1).stem, area)
+            s = score(lay, tall, Path(ds1).stem, area, wet)
             scores.append(s)
-            for name, image in images(lay, s, tall).items():
+            for name, image in images(lay, s, tall, wet).items():
                 (out / name).write_bytes(image)
     (out / "report.md").write_text(report(scores, commit), "utf-8")
     print(f"pd2_coverage: {len(scores)} presets scored, {out / 'report.md'}")

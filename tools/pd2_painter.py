@@ -107,13 +107,13 @@ def lines(walls: set) -> set:
     return set().union(*(c for c in components(walls, AROUND) if len(c) >= LINE))
 
 
-def harvest(stock) -> tuple[dict, float] | None:
+def harvest(stock, wet: frozenset = frozenset()) -> tuple[dict, float] | None:
     """The tree kit from stock [(Layout, preset)]: {(bucket, distance): [(entity, dx, dz, reach, dependencies)]} and
-    the stock spacing (median nearest-neighbour, subtiles); None when the stock has no tree."""
+    the stock spacing (median nearest-neighbour, subtiles); None when the stock has no tree. `wet`: see water()."""
     out, gaps = collections.defaultdict(list), []
     for lay, preset in stock:
         dist = nearest_blocked(lay)
-        reach, src = nearest(subtiles(playable(lay)), lay.width * 5, lay.height * 5, 10 ** 6)
+        reach, src = nearest(subtiles(playable(lay, wet)), lay.width * 5, lay.height * 5, 10 ** 6)
         pts = []
         for e in preset["entities"]:
             t = transform(e)
@@ -133,10 +133,11 @@ def harvest(stock) -> tuple[dict, float] | None:
     return dict(out), gaps[len(gaps) // 2] if gaps else SPACING
 
 
-def water(lay) -> set:
-    """The blocked floor tiles that are water: each 4-connected group of them that touches walkable floor. A group
-    touching none lies past the map's edge walls (Ashen Plains' blocked town floor, Frozen Forest's ascendors): the
-    border's own ground, where trees belong."""
+def water(lay, wet: frozenset = frozenset()) -> set:
+    """The blocked floor tiles that are water: each 4-connected group of them that touches walkable floor or draws a
+    `wet` DT1 (the rule's water DT1, whose streams run on past the tree line). Any other group lies past the map's edge
+    walls (Ashen Plains' blocked town floor, Frozen Forest's ascendors): the border's own ground, where trees
+    belong."""
     blocked = {c for c, k in lay.keys.items() if k[0] == "f" and blocked_floor(lay.flags[c])}
     ground = {c for c, k in lay.keys.items() if k[0] == "f" and c not in blocked and c not in lay.unwalkable}
     found, seen = set(), set()
@@ -151,24 +152,26 @@ def water(lay) -> set:
                     group.add(n)
                     todo.append(n)
         seen |= group
-        if any((x + dx, y + dy) in ground for x, y in group for dx, dy in STEPS):
+        if any((x + dx, y + dy) in ground for x, y in group for dx, dy in STEPS)                 or any(t[0] in wet for c in group for t in lay.keys[c][1]):
             found |= group
     return found
 
 
-def playable(lay) -> set:
+def playable(lay, wet: frozenset = frozenset()) -> set:
     """The tiles a player reaches: those no DS1 cell marks unwalkable (Layout.unwalkable, which seals PD2's dashed
-    tree lines) and no blocked floor past the edge walls, and the streams. Line tiles are never playable."""
+    tree lines) and no blocked floor past the edge walls, and the streams (water(), with `wet`). Line tiles are never
+    playable."""
     blocked = {c for c, k in lay.keys.items() if k[0] == "f" and blocked_floor(lay.flags[c])}
     walls = {c for c, k in lay.keys.items() if k[0] == "w"}
-    return ((set(lay.keys) - lay.unwalkable - blocked) | water(lay)) - lines(walls)
+    return ((set(lay.keys) - lay.unwalkable - blocked) | water(lay, wet)) - lines(walls)
 
 
-def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tuple[list[dict], set]:
+def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs,
+          wet: frozenset = frozenset()) -> tuple[list[dict], set]:
     """Tree entities (not yet given ids) past the playable area, and the playable tiles. `skip`: tiles left alone
-    (pasted rooms); `prefabs(path)`: the (x, z) of a prefab's pieces, for its footprint."""
+    (pasted rooms); `prefabs(path)`: the (x, z) of a prefab's pieces, for its footprint; `wet`: see water()."""
     kit, spacing = trees
-    play = playable(lay)
+    play = playable(lay, wet)
     best = subtiles(play)
     reach, src = nearest(best, lay.width * 5, lay.height * 5, DEPTH)
     keep_off = best | subtiles(skip)

@@ -258,6 +258,23 @@ class LayerTests(unittest.TestCase):
         self.assertTrue({(x, 2) for x in range(6)} <= play)
         self.assertFalse({(x, y) for x in range(6) for y in (5, 6)} & play)
 
+    def test_a_stream_dt1_past_the_tree_line_stays_water(self):
+        # row 0 ground, row 1 sealed floor (unwalkable), row 2 a stream that touches only the sealed floor
+        river = ("f", (("act3/river/rivbank.dt1", 0, 0, 1),))
+        keys = {(x, y): river if y == 2 else self.F for x in range(4) for y in range(3)}
+        flags = {c: (b"\1" if c[1] == 2 else b"\0") * 25 for c in keys}
+        lay = P.Layout(4, 3, keys, flags, frozenset((x, 1) for x in range(4)))
+        stream = {(x, 2) for x in range(4)}
+        self.assertFalse(stream & P.painter.playable(lay))  # no walkable floor next to it: border ground
+        self.assertTrue(stream <= P.painter.playable(lay, frozenset({"act3/river/rivbank.dt1"})))
+
+    def test_an_edge_tile_picks_a_kit_instance_that_holds_a_piece(self):
+        kit = P.Kit({self.WA: [(0, []), (0, [(entity("wall", 0, 0), 1.0, 1.0)])]}, [{}])
+        lay = P.Layout(1, 1, {(0, 0): self.WA})
+        picks = {len(P.place(lay, kit, f"s{i}")[0]) for i in range(20)}
+        self.assertEqual(picks, {0, 1})  # off the edge, the empty stock instance is one of the picks
+        self.assertEqual({len(P.place(lay, kit, f"s{i}", frozenset({(0, 0)}))[0]) for i in range(20)}, {1})
+
     def test_only_a_ds1_drawing_a_tree_dt1_is_painted(self):
         outdoor = P.Layout(2, 1, {(0, 0): self.F, (1, 0): ("w", (("act3/jungle/treegrp.dt1", 1, 0, 0),))})
         indoor = P.Layout(2, 1, {(0, 0): self.F, (1, 0): self.WA, (2, 0): ("w", ((None, 1, 0, 0),))})
