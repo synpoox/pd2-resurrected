@@ -177,38 +177,31 @@ import game_ctl
 import missile_probe
 
 PLUGIN = "core-rules"
-SKILL_SLOTS = [  # table slots it installs
-    ("srvdofunc", 189, "split throw"), ("cltdofunc", 118, "split throw"), ("srvstfunc", 79, "temp buff"),
-    ("pSrvHitFunc", 65, "return spawn"), ("pSrvDoFunc", 46, "return"), ("pCltDoFunc", 78, "return"),
-    ("srvstfunc", 78, "splash start"), ("srvstfunc", 82, "find"), ("cltstfunc", 62, "find"),
-    ("srvdofunc", 190, "router"), ("srvstfunc", 80, "blood warp"), ("cltstfunc", 63, "blood warp"),
-    ("srvdofunc", 172, "leap"), ("cltdofunc", 115, "leap"),
-    ("srvdofunc", 183, "double throw"), ("cltdofunc", 116, "double throw"), ("pSrvHitFunc", 66, "bounce"),
-    ("pSrvDmgFunc", 21, "first hit"),
-    ("pSrvHitFunc", 63, "explode spread"), ("pSrvDmgFunc", 20, "pierce falloff"),
-    ("cltdofunc", 122, "poison dagger"), ("pSrvHitFunc", 61, "state hit"), ("pSrvHitFunc", 62, "bolt splash"),
-    ("cltdofunc", 121, "desecrate"), ("srvstfunc", 72, "charge"), ("srvdofunc", 180, "charge"),
-    ("srvdofunc", 182, "channel"), ("cltdofunc", 111, "channel"),
-    ("cltdofunc", 119, "wall"),
-    ("srvdofunc", 175, "fire claws"), ("cltdofunc", 110, "fire claws"), ("srvstfunc", 77, "wolf start"),
-    ("mode gate", "busy", "take-over"),  # an inline hook, not a slot
-    ("mode gate", "hit", "window"),  # two code patches and a logging hook
+SKILL_SOURCE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                            "plugin", "core-rules", "skill_functions.cpp")
+SKILL_EXTRAS = [  # what InstallSkillFunctions installs after its Functions[] slots
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
-    ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
-    ("srvdofunc", 176, "holy light"), ("srvdofunc", 174, "vengeance"), ("pCltHitFunc", 66, "holy light"), ("pCltHitFunc", 71, "fist delay"),
-    ("srvdofunc", 184, "charge spread"), ("srvdofunc", 185, "charge ring"), ("srvdofunc", 186, "charge fire"),
-    ("srvdofunc", 181, "charge cold"), ("cltdofunc", 120, "nova"),
-    ("cltdofunc", 127, "charge spread"), ("cltdofunc", 128, "charge ring"), ("pCltDoFunc", 79, "charge explode"),
-    ("pCltHitFunc", 67, "charge bolt"), ("pSrvDoFunc", 47, "blessed hammer"), ("pCltDoFunc", 80, "blessed hammer"),
-    ("srvdofunc", 178, "dragon flight"), ("pSrvDmgFunc", 22, "chain falloff"),
-    ("pSrvHitFunc", 69, "blade fragment"), ("pCltHitFunc", 68, "blade fragment"), ("pSrvDmgFunc", 19, "blade fragment"),
-    ("srvstfunc", 73, "holy sword"), ("srvstfunc", 75, "smite"),
     ("srvdofunc", 150, "smite crushing blow"),  # D2R's Smite do, wrapped, and an inline hook on its hit queue
-    ("srvdofunc", 173, "poison egg spawn"), ("cltdofunc", 126, "poison egg spawn"), ("srvstfunc", 83, "cycler start"),
-    ("pSrvHitFunc", 67, "summon"),
-    ("cltdofunc", 125, "death nova"),
+    ("srvdofunc", 58, "revive events"),  # D2R's Revive, wrapped
+    ("mode gate", "busy", "take-over"),  # an inline hook, not a slot
+    ("mode gate", "hit", "window"),  # two code patches and a logging hook
 ]
+
+
+def _skill_slots():
+    """The slots core-rules installs, read from skill_functions.cpp's Functions[] (so new rules need no edit here)."""
+    with open(SKILL_SOURCE, encoding="utf-8") as f:
+        src = f.read()
+    tables = dict(re.findall(r'constexpr Table (\w+) \{"(\w+)"', src))
+    body = src[src.index("const SlotFunction Functions[] = {"):]
+    body = body[:body.index("\n};")]
+    rows = re.findall(r'^\s*\{(\w+), (\d+), .*"([^"]+)"\},', body, re.M)
+    assert rows and len(rows) == body.count("reinterpret_cast"), "Functions[] did not parse"
+    return [(tables[t], int(slot), name) for t, slot, name in rows] + SKILL_EXTRAS
+
+
+SKILL_SLOTS = _skill_slots()
 LEAP, LEAP_ATTACK = 132, 143  # D2R skill ids
 REVIVE, PROC_SPLASH_DAMAGE = 95, 430  # merged skill ids
 LANDED = re.compile(r"leap: skill (\d+) level (\d+) landed: radius (\d+), (knockback|units in range) (\d+), velocity (\d+)")
