@@ -14,7 +14,7 @@
 // another plugin already uses is refused and logged, never overwritten. Slots keep PD2's own numbers where free (docs/core-rules.md).
 #include "skill_functions.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "item_rules.h"
 #include "log.h"
 #include "missile_functions.h"

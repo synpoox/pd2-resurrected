@@ -1,11 +1,9 @@
-"""pd2_cache (#440): the extract lock, the cache key, the shared extract and merge, and the changed-files-only install."""
+"""pd2_cache (#440): the extract lock, the cache key, and the shared extract and merge."""
 import io
 import json
 import os
-import shutil
 import tempfile
 import threading
-import time
 import sys
 import unittest
 from contextlib import redirect_stdout
@@ -16,7 +14,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_cache  # noqa: E402
 import pd2_extract  # noqa: E402
 import pd2_merge  # noqa: E402
-import pd2_strings  # noqa: E402
 
 
 def cache_env(cache: Path):
@@ -74,6 +71,10 @@ class KeyTests(unittest.TestCase):
 
 class SharedExtractTests(unittest.TestCase):
     def test_pd2_data_is_a_junction_to_the_extract_for_its_stamp(self):
+        try:
+            ex = pd2_extract.classic("extract")
+        except ValueError as e:  # CI has no d2rAI-toolkit (private)
+            self.skipTest(str(e))
         class OneFile:
             def __init__(self, path): pass
             def names(self): return ["data\\x.txt"]
@@ -84,11 +85,13 @@ class SharedExtractTests(unittest.TestCase):
             (tmp / "cache").mkdir()
             out = tmp / "wt" / "pd2-data"
             out.parent.mkdir()
-            for i, base in enumerate([b'{"archives": {}}', b'{"archives": {}, "v": 2}']):
-                (tmp / "b.json").write_bytes(base)
+            (tmp / "a.mpq").write_bytes(b"A")  # the archive the baseline pins; OneFile stands in for its contents
+            pinned = {"archives": {"a.mpq": ex.sha256(tmp / "a.mpq")}, "extract": {"a.mpq": ["*"]}}
+            for i, base in enumerate([pinned, {**pinned, "v": 2}]):
+                (tmp / "b.json").write_text(json.dumps(base))
                 args = ["--install", str(tmp), "--baseline", str(tmp / "b.json")]
                 with cache_env(tmp / "cache"), mock.patch.object(pd2_extract, "ROOT", tmp / "wt"), \
-                        mock.patch.object(pd2_extract.mpq, "Archive", OneFile), redirect_stdout(io.StringIO()):
+                        mock.patch.object(ex.mpq, "Archive", OneFile), redirect_stdout(io.StringIO()):
                     self.assertEqual(pd2_extract.main(args), 0)
                 self.assertTrue(pd2_cache.is_link(out))
                 self.assertEqual((out / "data" / "x.txt").read_bytes(), b"x")
@@ -99,12 +102,16 @@ class SharedExtractTests(unittest.TestCase):
 
 class MergeCacheTests(unittest.TestCase):
     def test_a_second_merge_of_the_same_key_copies_the_first(self):
+        try:
+            ex = pd2_extract.classic("extract")
+        except ValueError as e:  # CI has no d2rAI-toolkit (private)
+            self.skipTest(str(e))
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             root, d2r = tmp / "wt", tmp / "d2r"
             write(root / "pd2-baseline.json", "B")
             (root / "pd2-data").mkdir()
-            (root / "pd2-data" / "baseline.json").write_bytes(pd2_extract.stamp(b"B"))
+            (root / "pd2-data" / "baseline.json").write_bytes(ex.stamp(b"B"))
             write(root / "merge" / "ids.json", "{}")
             (d2r / "global" / "excel").mkdir(parents=True)
             (tmp / "cache").mkdir()
@@ -131,47 +138,6 @@ class MergeCacheTests(unittest.TestCase):
                     self.assertEqual(pd2_merge.main(args), 0)
                 self.assertEqual(len(runs), 3, "CI always merges fresh")
             self.assertEqual(len(list((tmp / "cache" / "merge").iterdir())), 2, "two keys, no temp folder left")
-
-
-class SyncTests(unittest.TestCase):
-    def test_writes_only_what_differs_and_removes_the_rest(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            src, dest = Path(tmp) / "src", Path(tmp) / "dest"
-            write(src / "a.txt", "same")
-            write(src / "sub" / "b.txt", "new")
-            dest.mkdir()
-            shutil.copy2(src / "a.txt", dest / "a.txt")  # same size and time: kept
-            write(dest / "sub" / "b.txt", "old")  # same size, other time: rewritten
-            write(dest / "gone" / "c.txt", "stale")
-            self.assertEqual(pd2_cache.sync(src, dest), 1)
-            self.assertEqual((dest / "sub" / "b.txt").read_text(), "new")
-            self.assertFalse((dest / "gone").exists())
-            self.assertEqual(pd2_cache.sync(src, dest), 0)
-
-    def test_install_keeps_files_outside_the_mod_and_rewrites_only_changes(self):
-        try:
-            pd2_strings.modkit()  # puts d2rAI-toolkit on sys.path
-        except ValueError as e:  # CI has no d2rAI-toolkit (private)
-            self.skipTest(str(e))
-        from modkit import install as mi
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp = Path(tmp)
-            proj, game = tmp / "proj", tmp / "game"
-            write(proj / "mod.json", json.dumps({"name": "M", "plugins": []}))
-            write(proj / "out" / "data" / "global" / "excel" / "a.txt", "1")
-            write(game / "D2R.exe", "")
-            write(game / "data" / "base.txt", "base game")
-            with mock.patch.object(mi, "game_running", lambda: False):
-                self.assertIn("(1 written", pd2_cache.install(proj, game))
-                data = game / "mods" / "M" / "M.mpq" / "data"
-                stamp = (data / "global" / "excel" / "a.txt").stat().st_mtime_ns
-                time.sleep(0.05)
-                write(proj / "out" / "data" / "b.txt", "2")
-                self.assertIn("(1 written", pd2_cache.install(proj, game))
-            self.assertEqual((data / "global" / "excel" / "a.txt").stat().st_mtime_ns, stamp, "unchanged file kept")
-            self.assertEqual((data / "b.txt").read_text(), "2")
-            self.assertTrue((game / "mods" / "M" / "modinfo.json").is_file())
-            self.assertEqual((game / "data" / "base.txt").read_text(), "base game")
 
 
 if __name__ == "__main__":

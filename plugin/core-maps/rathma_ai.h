@@ -1,7 +1,7 @@
 // PD2's Summoner AI for Rathma, Mendeln and their clones (rathma_ai.cpp).
 #pragma once
 
-#include "d2r.h"
+#include "pd2_engine.h"
 
 #include <D2RLPlugin/api.h>
 

@@ -1,6 +1,6 @@
 #include "automap.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "log.h"
 
 #include <atomic>

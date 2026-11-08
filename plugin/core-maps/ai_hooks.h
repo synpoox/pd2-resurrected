@@ -2,7 +2,7 @@
 // monstats class. The Uber Tristram primes (#483) and Lucion (#437) use it; Dclone (#470) and Rathma (#474) should.
 #pragma once
 
-#include "d2r.h"
+#include "pd2_engine.h"
 
 #include <D2RLPlugin/api.h>
 

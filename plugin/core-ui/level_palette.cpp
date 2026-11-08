@@ -3,7 +3,7 @@
 // after the event (a `cheat goto` across acts, #441) loads the same one.
 #include "level_palette.h"
 
-#include "d2r.h"
+#include "pd2_engine.h"
 #include "log.h"
 
 #include <D2RLPlugin/lifecycle_events.h>

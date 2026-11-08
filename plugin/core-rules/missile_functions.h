@@ -3,7 +3,7 @@
 // writes them into their table slots with the skill functions.
 #pragma once
 
-#include "d2r.h"
+#include "pd2_engine.h"
 
 #include <cstddef>
 #include <cstdint>

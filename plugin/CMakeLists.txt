@@ -1,5 +1,5 @@
-# PD2 Resurrected's D2RLoader plugins (ADR 0004): one project, a static library of shared code (per-build RVAs,
-# helpers) linked into each plugin DLL. Target: D2R 3.3 build 93847 + D2RLoader 1.3.1, PluginSDK in third_party/.
+# PD2 Resurrected's D2RLoader plugins (ADR 0004): one project, d2rAI-toolkit's plugin_common static library plus our
+# engine facts (common/pd2_engine.h) in each plugin DLL. Target: D2R 3.3 build 93847 + D2RLoader 1.3.1, PluginSDK in third_party/.
 #
 # Build:  powershell -ExecutionPolicy Bypass -File build.ps1
 # Output: build/Release/core-rules.dll, core-maps.dll and core-ui.dll -> tools/install.ps1 copies them to <game>/d2rloader/plugins/.
@@ -22,15 +22,27 @@ function(core_options target)
 	endif()
 endfunction()
 
-add_library(core_common STATIC
-	common/d2r.cpp
-	common/log.cpp
-	common/off_switch.cpp
-)
-target_include_directories(core_common PUBLIC common)
-target_link_libraries(core_common PUBLIC D2RLPlugin::D2RLPlugin)
-target_compile_features(core_common PUBLIC cxx_std_20)
-core_options(core_common)
+# Shared code: d2rAI-toolkit's plugin_common (log, off switch, crash and image guards, d2r::api, shared RVAs), plus
+# our own engine facts in common/pd2_engine.h. Toolkit: D2R_TOOLKIT, else the nearest one beside a parent folder (so
+# worktrees find it), as tools/install.ps1 and pd2_ids.toolkit() look.
+set(D2R_TOOLKIT "$ENV{D2R_TOOLKIT}" CACHE PATH "d2rAI-toolkit checkout")
+if(NOT D2R_TOOLKIT)
+	set(dir "${CMAKE_CURRENT_SOURCE_DIR}")
+	while(NOT EXISTS "${dir}/d2rAI-toolkit/shared/plugin-common/CMakeLists.txt")
+		get_filename_component(parent "${dir}" DIRECTORY)
+		if(parent STREQUAL dir)
+			message(FATAL_ERROR "d2rAI-toolkit not found beside any parent folder: pass -DD2R_TOOLKIT=<checkout>")
+		endif()
+		set(dir "${parent}")
+	endwhile()
+	set(D2R_TOOLKIT "${dir}/d2rAI-toolkit" CACHE PATH "d2rAI-toolkit checkout" FORCE)
+endif()
+add_subdirectory("${D2R_TOOLKIT}/shared/plugin-common" plugin-common)  # uses our PluginSDK, added above
+message(STATUS "plugin_common from ${D2R_TOOLKIT}")
+
+add_library(core_common INTERFACE)
+target_include_directories(core_common INTERFACE common)
+target_link_libraries(core_common INTERFACE plugin_common)
 
 # Bump with every release: Shared plugins must match between host and client.
 set(CORE_RULES_VERSION "0.1.0" CACHE STRING "core-rules PluginInfo::version")
