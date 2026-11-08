@@ -7,6 +7,7 @@ private-multiplayer release a build may break characters; each break is noted he
 
 #### Items
 
+- Cubing the three organs uses up Diablo's Horn too, as in PD2.
 - Purgatory's damage follows ethereal items put on or taken off while it is worn.
 - D2R's organ portal to its Uber Tristram is off: the organs make PD2's Pandemonium Talisman.
 - Item crushing blow rolls on normal hits, and Purgatory gains damage per worn ethereal item, as in PD2.
