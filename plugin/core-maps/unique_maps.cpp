@@ -33,6 +33,7 @@
 #include <D2RLPlugin/data_tables.h>
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle_events.h>
+#include <D2RLPlugin/mutations.h>
 
 #include <algorithm>
 #include <atomic>
@@ -657,12 +658,10 @@ auto DungeonKeepsRoom(Unit* unit) noexcept -> bool {
 	if (type != UnitMonster || d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) != 0) {
 		return false;
 	}
-	for (const Dungeon& d : Dungeons) {
-		if (d.boss == classId) {
-			return true;
-		}
-	}
-	return false;
+	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit);
+	const Dungeon* dungeon =
+		room != nullptr ? DungeonOf(d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room)) : nullptr;
+	return dungeon != nullptr && dungeon->boss == classId;
 }
 
 auto OuterVoidWarp(Game* game, Unit* player, Unit* portal) noexcept -> bool {
@@ -697,9 +696,32 @@ auto OuterVoidWarp(Game* game, Unit* player, Unit* portal) noexcept -> bool {
 auto InstallDungeonBarriers(const D2RL::PluginContext* context) noexcept -> bool {
 	using namespace d2r::rva;
 	g_initQuestDoor = reinterpret_cast<InitFn>(d2r::imageBase + InitQuestDoor);
+	const D2RL::MutationService* mutations = nullptr;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize)) {
+		return false;
+	}
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		return false;
+	}
+	// The table holds absolute addresses: slot 30 must still be D2R's own a2q4 init.
 	const uint64_t expected = d2r::imageBase + InitQuestDoor;
-	return context->PatchWriteU64(ObjectInitTable + static_cast<uint64_t>(ObjectInitQuestDoor) * 8, &expected,
-	                              sizeof(expected), reinterpret_cast<uint64_t>(static_cast<InitFn>(BarrierInit)));
+	const uint64_t barrierInit = reinterpret_cast<uint64_t>(static_cast<InitFn>(BarrierInit));
+	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
+	                                              .rva = ObjectInitTable + static_cast<uint64_t>(ObjectInitQuestDoor) * 8,
+	                                              .expected = &expected,
+	                                              .expectedSize = sizeof(expected),
+	                                              .bytes = &barrierInit,
+	                                              .size = sizeof(barrierInit)};
+	D2RL::Mutations::OperationHandle operation = 0;
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	if (mutations->stageBytePatch(context, transaction, &patch, &operation) != D2RL::Mutations::Result::Success ||
+	    mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		return false;
+	}
+	return true;
 }
 
 auto InstallUniqueMaps(const D2RL::PluginContext* context) noexcept -> bool {
