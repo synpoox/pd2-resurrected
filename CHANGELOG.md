@@ -4,6 +4,10 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 ### Unreleased
 
+#### Maps
+
+- Ten more PD2-only areas draw walls and props in HD, among them Ruined Cistern, Ureh City and Black Abyss.
+
 #### Getting started
 
 - Includes a DPS counter above the life globe.
@@ -32,6 +36,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - PD2 areas show "Entering <area>" on arrival instead of "Missing string".
 - Dungeon boss barriers show as iron gates instead of invisible walls.
 - Map waypoints draw their platform, and no stray waypoints stand on plain ground.
+- Westmarch's flat ground no longer draws Harrogath stair pieces.
 
 #### Uber bosses
 

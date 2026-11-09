@@ -39,17 +39,24 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+import pd2_dt1_copies as dt1_copies
 import pd2_painter as painter
+import pd2_terrain as terrain_ground
 from pd2_ids import Table, excel, load
 from pd2_levels import SLOTS, col, ds1_header, norm, object_list
 
 TILE = 10  # HD units per DS1 tile
+GROUND = "_ground"  # a stock preset's pd2_terrain.Ground, set by apply() for Kit.add; never written out
+# a floor tile's stock pieces standing higher than this above their ground are a building's upper parts (Kurast's
+# pillars and roof lips stand 9-26 up), dropped as the tile may have no building in a PD2 DS1 (#682)
+FLOOR_MAX = 8.0
 # a DS1 cell's unwalkable bit: what blocks the plain floor in PD2's dashed tree lines and the ground past the paths
 # (jungle1: on 96% of the lines' gap tiles; D2R's stock jungle rooms stand 88% of their trees on such tiles)
 UNWALKABLE = 0x20000
 TERRAIN = "act2/palace/celse3"  # a stock preset whose terrain is a flat TERRAIN_SIZE square (D2R Reimagined's plane)
 TERRAIN_SIZE = 170
 ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is pasted where this share of its tiles match
+FAR = 20.0  # HD units (2 tiles): a piece whose mesh stands this far clear of its position belongs to a structure
 SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
 CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
 PRESETS = Path("hd") / "env" / "preset"
@@ -98,8 +105,10 @@ class Layout:
     unwalkable: frozenset = frozenset()  # the tiles a wall or floor cell marks unwalkable (UNWALKABLE)
 
 
-def layout(data: bytes, dt1s: dict[str, dict]) -> Layout:
-    """The DS1's tiles, named in the DT1 files `dt1s` (path -> dt1_tiles)."""
+def layout(data: bytes, dt1s: dict[str, dict], copies: dict[Tile, Tile] | None = None) -> Layout:
+    """The DS1's tiles, named in the DT1 files `dt1s` (path -> dt1_tiles); a tile in `copies` (pd2_dt1_copies) is
+    named by the D2R tile it copies, its flags kept."""
+    copies = copies or {}
     version, w, h, _act, _tag, o, walls, floors = ds1_header(data)
     if version < 4:
         raise ValueError(f"DS1 version {version}: only 4 and up keep the tile layers in the order layout() reads")
@@ -109,13 +118,17 @@ def layout(data: bytes, dt1s: dict[str, dict]) -> Layout:
 
     def tile(orientation: int, cell: int) -> Tile:
         t = (orientation, cell >> 20 & 0x3F, cell >> 8 & 0xFF)
-        return (next((p for p in order if t in dt1s[p]), None), *t)
+        # a copied tile is named from its own PD2 DT1 first: an earlier DT1 holding the same index would steal it
+        # (Zhar Library's arcane walls became palace cellar tiles, #678 review)
+        return (next((p for p in order if t in dt1s[p] and (p, *t) in copies), None)
+                or next((p for p in order if t in dt1s[p]), None), *t)
     keys, flags = {}, {}
     for i in range(n):
         wall = tuple(tile(grids[2 * k + 1][i] & 0xFF, grids[2 * k][i]) for k in range(walls) if grids[2 * k][i])
         floor = tuple(tile(0, g[i]) for g in grids[2 * walls:] if g[i])
         if wall or floor:
-            keys[(i % w, i // w)] = ("w", wall) if wall else ("f", floor)
+            keys[(i % w, i // w)] = ("w", tuple(copies.get(t, t) for t in wall)) if wall else \
+                ("f", tuple(copies.get(t, t) for t in floor))
             f = [dt1s[t[0]][t[1:]] for t in wall + floor if t[0]]
             flags[(i % w, i // w)] = bytes(functools.reduce(lambda u, v: [x | y for x, y in zip(u, v)], f, bytes(25)))
     cells = [grids[2 * k] for k in range(walls)] + list(grids[2 * walls:])
@@ -159,24 +172,38 @@ def wanted(lay: Layout) -> set[Key]:
     return {k for key in lay.keys.values() for k in (key, *((key[0], (t,)) for t in key[1]))}
 
 
+def _floor(key: Key) -> bool:
+    """A floor tile's key, or a patch key (patches()) whose centre tile is a floor."""
+    if key[0] in ("sq", "cross"):
+        key = key[1][4 if key[0] == "sq" else 0]
+    return key is not None and key[0] == "f"
+
+
 @dataclass
 class Kit:
     instances: dict[Key, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
     sources: list[dict[str, list[dict]]] = field(default_factory=list)  # each stock preset's dependencies
+    far: Callable[[dict], bool] = lambda e: False  # far_off(): a piece whose mesh stands FAR or more clear of its anchor
     # a waypoint's pieces, as offsets from its object: under ("kc", key of the tile under the object, objects Class),
     # ("k", key) and, without a room terrain, ("c", Class)
     waypoints: dict[Key | str, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
     # whether an instance holds a piece tall enough to hide the player (apply() sets it from the models' boxes)
     tall: Callable[[list[tuple[dict, float, float]]], bool] | None = None
 
-    def add(self, lay: Layout, preset: dict, keep: set[Key], objects: list[tuple[str, float, float]] = ()) -> None:
+    def add(self, lay: Layout, preset: dict, keep: set[Key], objects: list[tuple[str, float, float]] = (),
+            floor: set | None = None) -> None:
         """Harvest one stock (layout, preset) pair, only the keys in `keep`. A waypoint's pieces stay out of the
         per-tile kit, as D2R puts their transform up to 4 tiles off the waypoint's tiles (#669): each joins the
         nearest of the DS1's waypoint `objects` (waypoints()), or is dropped if it has none. A pasted room keeps
-        its own (build())."""
+        its own (build()). With the preset's ground (GROUND, from pd2_terrain), each piece keeps its height above
+        that ground, as the generated terrain is flat. A `far` piece anchored on a floor tile (`floor`, else the
+        layout's "f" keys) is left out: its mesh belongs to a structure elsewhere in the room, and on a common floor key
+        it would stand on any plain ground (Harrogath's stairs on Westmarch's floor, #679)."""
         src = len(self.sources)
         self.sources.append(preset["dependencies"])
+        ground = preset.get(GROUND)
         per: dict[tuple[int, int], list] = {c: [] for c, k in lay.keys.items() if k in keep}
+        floor = {c for c, k in lay.keys.items() if k[0] == "f"} if floor is None else floor
         groups: dict[int, list] = {}
         for e in preset["entities"]:
             t = _transform(e)
@@ -189,7 +216,13 @@ class Kit:
                     groups.setdefault(n, []).append((e, x - objects[n][1], z - objects[n][2]))
                 continue
             c = (min(max(int(x // TILE), 0), lay.width - 1), min(max(int(z // TILE), 0), lay.height - 1))
-            if c in per:
+            if c in per and not (c in floor and self.far(e)):
+                g = ground.at(x, z, t["position"]["y"]) if ground else None
+                if g is not None and t["position"]["y"] - g > FLOOR_MAX and _floor(lay.keys[c]):
+                    continue  # a building's upper part over this floor: its walls are other tiles', so it would float
+                if g:
+                    e = copy.deepcopy(e)
+                    _transform(e)["position"]["y"] -= g
                 per[c].append((e, x - c[0] * TILE, z - c[1] * TILE))
         for c, ents in per.items():
             self.instances.setdefault(lay.keys[c], []).append((src, ents))
@@ -330,18 +363,20 @@ def rooms(lay: Layout, stock: list[tuple[Layout, dict]]) -> tuple[list[tuple[int
     return out, taken
 
 
-def patches(lay: Layout, stock: list[tuple[Layout, dict]], tiles: set) -> tuple[Layout, Kit]:
+def patches(lay: Layout, stock: list[tuple[Layout, dict]], tiles: set, far=lambda e: False) -> tuple[Layout, Kit]:
     """The patch lookup: each of `tiles` whose 3x3 neighbourhood (else its 4-neighbour cross) appears in a stock
-    preset, keyed so that the kit copies what that preset placed on the centre tile, empty included."""
+    preset, keyed so that the kit copies what that preset placed on the centre tile, empty included; `far` as
+    Kit.far."""
     def patch(keys: dict, c: tuple, name: str, cells: list) -> Key:
         return name, tuple(keys.get((c[0] + i, c[1] + j)) for i, j in cells)
     shapes = (("sq", SQUARE), ("cross", CROSS))
     want = {c: [patch(lay.keys, c, *k) for k in shapes] for c in tiles}
     keep = {k for ks in want.values() for k in ks}
-    kit = Kit()
+    kit = Kit(far=far)
     for s, preset in stock:
+        floor = {c for c, k in s.keys.items() if k[0] == "f"}
         for k in shapes:
-            kit.add(Layout(s.width, s.height, {c: patch(s.keys, c, *k) for c in s.keys}), preset, keep)
+            kit.add(Layout(s.width, s.height, {c: patch(s.keys, c, *k) for c in s.keys}), preset, keep, floor=floor)
     return Layout(lay.width, lay.height, {c: next(k for k in ks if k in kit.instances)
                                           for c, ks in want.items() if any(k in kit.instances for k in ks)}), kit
 
@@ -400,7 +435,7 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
     fill = {c for c in edge & taken if was.get(c) != lay.keys.get(c) and c not in held}
     near = frozenset(c for c in fill if {(c[0] - 1, c[1]), (c[0], c[1] - 1), (c[0] - 1, c[1] - 1)} & play)
     rest = {c: k for c, k in lay.keys.items() if c not in taken or c in fill}
-    found, pkit = patches(lay, stock, set(rest))
+    found, pkit = patches(lay, stock, set(rest), kit.far)
     pkit.tall = kit.tall
     # walkable floor whose 8 neighbours are walkable floor too: a wall piece belongs to the tile its origin falls on,
     # which may be the floor tile next to its wall, so only the floor past that keeps tall pieces off (#707)
@@ -530,6 +565,33 @@ def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set) -> lis
     return out
 
 
+def far_off(d2r_data: Path) -> Callable[[dict], bool]:
+    """Kit.far from D2R's model boxes (data/hd/model_lod_desc.bin): whether a model at least pd2_coverage.TALL high,
+    not a tree, a prefab nor room-sized, stands FAR or more clear of its position along x or z (Harrogath's stairs).
+    A mesh that reaches its position stays, however far its centre: Duriel's chamber is one piece.
+    Without the file, no piece is."""
+    import pd2_coverage as coverage  # it imports this module
+    models = d2r_data / coverage.MODELS
+    if not models.is_file():
+        return lambda e: False
+    boxes = coverage.model_boxes(models.read_bytes())
+
+    @functools.cache
+    def prefab(path: str) -> list[dict]:
+        f = d2r_data / path.removeprefix("data/")
+        return json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
+
+    def far(e: dict) -> bool:
+        # a prefab (Act 1's riverbanks) stays: on a floor key it still closes border gaps (pd2_coverage)
+        if painter.is_tree(e) or any(c["type"] == "PrefabPlacementDefinitionComponent" for c in e["components"]):
+            return False
+        p = _transform(e)["position"]
+        return any(top >= coverage.TALL and max(x1 - x0, z1 - z0) <= coverage.ROOM
+                   and max(x0 - p["x"], p["x"] - x1, z0 - p["z"], p["z"] - z1) >= FAR
+                   for x0, x1, z0, z1, top, _ in coverage.boxes([e], lambda m: boxes.get(coverage.fnv(m)), prefab))
+    return far
+
+
 def draws_trees(lay: Layout) -> bool:
     """Whether a DS1 draws a tile from a tree DT1 (`trees.dt1`, `treegrp.dt1`, `treegroups.dt1`): only those are
     painted, as an indoor tile set's stock may hold a courtyard's trees."""
@@ -554,9 +616,11 @@ def read_rule(rule: Path) -> tuple[dict[str, str], dict[str, str | None], dict[s
     return sets, standins, water
 
 
-def stand_in(files: list[str], tiles: "Tiles", pd2_tiles: "Tiles", standins: dict[str, str | None]) -> dict[str, dict]:
+def stand_in(files: list[str], tiles: "Tiles", pd2_tiles: "Tiles", standins: dict[str, str | None],
+             copied: set | dict = frozenset()) -> dict[str, dict]:
     """The DT1 files a PD2-only preset loads, for layout(): a PD2 tile its stand-in also holds, with the same subtile
-    flags, is named by the stand-in; the rest keep the PD2 DT1's name, which no stock preset draws (empty in HD)."""
+    flags, is named by the stand-in; the rest keep the PD2 DT1's name, which no stock preset draws (empty in HD), but
+    for the `copied` tiles (pd2_dt1_copies), which layout() names by the D2R tile they copy."""
     out: dict[str, dict] = {}
     for f in files:
         if f not in standins:
@@ -564,7 +628,8 @@ def stand_in(files: list[str], tiles: "Tiles", pd2_tiles: "Tiles", standins: dic
             continue
         s, own = standins[f], dict(pd2_tiles[f])
         if s:
-            out.setdefault(s, {}).update({t: own.pop(t) for t in list(own) if tiles[s].get(t) == own[t]})
+            out.setdefault(s, {}).update({t: own.pop(t) for t in list(own)
+                                          if (f, *t) not in copied and tiles[s].get(t) == own[t]})
         out[f] = own
     return out
 
@@ -661,21 +726,25 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     terrain = json.loads(terrain_src.read_text("utf-8-sig"))["terrain"]
 
     tiles, pd2_tiles = Tiles(tiles_dir), Tiles(out_data / "global" / "tiles")
+    pd2_files = {f: out_data / "global" / "tiles" / f for _, _, files, _ in on_d2r for f in files
+                 if f.startswith("pd2assets/")}
+    copied = dt1_copies.copies({f: p.read_bytes() for f, p in sorted(pd2_files.items()) if p.is_file()},
+                               dt1_copies.d2r_images(tiles_dir), standins) if pd2_files else {}
 
     def classes(data: Path) -> dict[tuple[int, int], str]:  # objpreset's (Act, Index) -> ObjectClass
         t = Table(excel(data) / "objpreset.txt")
         c = [col(t, n) for n in ("Act", "Index", "ObjectClass")]
         return {(int(r[c[0]]), int(r[c[1]])): r[c[2]] for r in t.rows if r[c[0]] and r[c[1]]}
     stock_classes, mod_classes = classes(d2r_data), classes(out_data)
-    layouts = {ds1: layout((out_data / "global" / "tiles" / ds1).read_bytes(), stand_in(files, tiles, pd2_tiles,
-                                                                                        standins))
+    layouts = {ds1: layout((out_data / "global" / "tiles" / ds1).read_bytes(),
+                           stand_in(files, tiles, pd2_tiles, standins, copied), copied)
                for _, _, files, ds1s in on_d2r for ds1 in ds1s}
     keep = set().union(*map(wanted, layouts.values()))
     loaded = {t[0] for k in keep for t in k[1]}
     if stale := sorted(set(water_rule) - loaded):
         raise ValueError(f"water lines for DT1 no PD2-only preset draws from: {', '.join(stale)}")
     water = water_planes(d2r_data, water_rule)
-    kit, stock = Kit(), []
+    kit, stock = Kit(far=far_off(d2r_data)), []
     for p in sorted((d2r_data / PRESETS).rglob("*.json")):
         ds1 = tiles_dir / p.relative_to(d2r_data / PRESETS).with_suffix(".ds1")
         if not ds1.is_file():  # a few stock presets have no DS1 (D2R's HD-only rooms)
@@ -684,7 +753,9 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         listed = header_dt1s(data)
         if loaded.isdisjoint(listed):
             continue
-        stock.append((layout(data, tiles.of(listed)), json.loads(p.read_text("utf-8-sig")), set(listed)))
+        preset = json.loads(p.read_text("utf-8-sig"))
+        preset[GROUND] = terrain_ground.of_preset(preset, d2r_data)
+        stock.append((layout(data, tiles.of(listed)), preset, set(listed)))
         kit.add(*stock[-1][:2], keep, waypoints(data, stock_classes))
     kit.tall = tall_check(d2r_data)
 
