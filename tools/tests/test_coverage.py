@@ -66,20 +66,20 @@ class Boxes(unittest.TestCase):
         return list(C.boxes(entities, models.get, lambda p: (prefabs or {}).get(p, [])))
 
     def test_model_placed(self):
-        self.assertEqual(self.found([entity(25, 35, "cube")]), [(20.0, 30.0, 30.0, 40.0, 8.0)])
+        self.assertEqual(self.found([entity(25, 35, "cube")]), [(20.0, 30.0, 30.0, 40.0, 8.0, 0.0)])
 
     def test_unknown_model_and_terrain_skipped(self):
         terrain = entity(0, 0, "cube") | {"name": "terrain"}
         self.assertEqual(self.found([entity(0, 0, "nope"), terrain]), [])
 
     def test_rotation_and_scale(self):
-        (x0, x1, z0, z1, top), = self.found([entity(0, 0, "cube", q=yaw(45), scale={"x": 2, "y": 3, "z": 1})])
+        (x0, x1, z0, z1, top, _), = self.found([entity(0, 0, "cube", q=yaw(45), scale={"x": 2, "y": 3, "z": 1})])
         self.assertAlmostEqual(top, 24.0)
         self.assertAlmostEqual(x1 - x0, 15 * math.sqrt(2))  # a 20 x 10 box turned 45 degrees
 
     def test_prefab_follows_two_levels_composed(self):
         prefabs = {"outer": [entity(10, 0, prefab="inner")], "inner": [entity(10, 0, "cube")]}
-        (x0, x1, z0, z1, top), = self.found([entity(100, 0, prefab="outer", q=yaw(90))], prefabs)
+        (x0, x1, z0, z1, top, _), = self.found([entity(100, 0, prefab="outer", q=yaw(90))], prefabs)
         # each offset of 10 turned 90 degrees about y: +x becomes -z
         self.assertAlmostEqual((x0 + x1) / 2, 100.0, places=4)
         self.assertAlmostEqual((z0 + z1) / 2, -20.0, places=4)
@@ -155,7 +155,8 @@ class Scores(unittest.TestCase):
         # a 28-unit wide, 8 high structure; a one-tile cube and a 2-high slab are props
         models = {"stairs": (-14.0, 0.0, -14.0, 14.0, 8.0, 14.0), "cube": CUBE,
                   "low": (-14.0, 0.0, -14.0, 14.0, 2.0, 14.0)}
-        ents = [entity(15, 15, "stairs"), entity(55, 5, "stairs"), entity(5, 35, "cube"), entity(35, 35, "low")]
+        ents = [entity(15, 15, "stairs"), entity(55, 5, "stairs"), entity(5, 35, "cube"), entity(35, 35, "low"),
+                entity(35, 35, "low", y=10.0), entity(35, 35, "cube", y=-6.0)]  # a raised decal, a sunk mesh
         at = {(1, 1), (3, 3), (0, 3)}  # (5, 0), the second stairs' anchor, is not flat walkable floor
         wrong = C.wrong_tiles(ents, models.get, lambda p: [], at)
         self.assertEqual(wrong, {(x, y) for x in range(3) for y in range(3)})  # x and z 1-29: tiles 0-2

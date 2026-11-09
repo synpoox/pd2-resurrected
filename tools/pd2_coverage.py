@@ -70,7 +70,7 @@ STOCK_DENSITY = 5.0
 STOCK_BYTES_PER_TILE = 8000
 IDENTITY = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
 
-Box = tuple[float, float, float, float, float]  # x0, x1, z0, z1, top
+Box = tuple[float, float, float, float, float, float]  # x0, x1, z0, z1, top, bottom
 
 
 def fnv(path: str) -> int:
@@ -115,7 +115,7 @@ def boxes(entities: list[dict], box: Callable[[str], tuple | None], prefab: Call
                 corners = [painter.rotate(q, (x * s[0], y * s[1], z * s[2]))
                            for x in (bb[0], bb[3]) for y in (bb[1], bb[4]) for z in (bb[2], bb[5])]
                 xs, ys, zs = ([p[i] + v[i] for v in corners] for i in range(3))
-                yield min(xs), max(xs), min(zs), max(zs), max(ys)
+                yield min(xs), max(xs), min(zs), max(zs), max(ys), min(ys)
             elif c["type"] == "PrefabPlacementDefinitionComponent" and c.get("prefab") and depth < DEPTH:
                 yield from boxes(prefab(c["prefab"]), box, prefab, (p, q, s), depth + 1)
 
@@ -136,7 +136,7 @@ def footprint(found: Iterator[Box], exclusive: bool = False) -> set[tuple[int, i
             return range(math.floor(a / T), math.floor(b / T) + 1)
         lo = math.floor(a / T + EDGE)  # the stock plane's box spills past its edges by float noise (170.00003)
         return range(lo, max(math.ceil(b / T - EDGE), lo + 1))
-    for x0, x1, z0, z1, _ in found:
+    for x0, x1, z0, z1, *_ in found:
         out.update((tx, tz) for tx in span(x0, x1) for tz in span(z0, z1))
     return out
 
@@ -155,8 +155,9 @@ def ground_tiles(preset: dict, box: Callable[[str], tuple | None], prefab: Calla
 
 def wrong_tiles(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
                 at: set) -> set:
-    """The tiles under the structures (STRUCTURE wide both ways and TALL high: stairs, platforms, walls, gates; #679)
-    anchored on `at`, walkable floor on the flat ground. Pieces floating over the flat ground are left out: hanging
+    """The tiles under the structures (STRUCTURE wide both ways, TALL high over the flat ground or its own base,
+    whichever is higher: stairs, platforms, walls, gates; #679) anchored on `at`, walkable floor on the flat ground. A
+    flat decal raised to its stock ground's height is not one, nor a ground mesh sunk below the plane. Pieces floating over the flat ground are left out: hanging
     beams and candles float in stock too (#682 stands kit pieces at their stock height)."""
     out = set()
     for e in entities:
@@ -166,7 +167,7 @@ def wrong_tiles(entities: list[dict], box: Callable[[str], tuple | None], prefab
         if (int(t["position"]["x"] // presets.TILE), int(t["position"]["z"] // presets.TILE)) not in at:
             continue
         out |= footprint((b for b in boxes([e], box, prefab) if STRUCTURE <= b[1] - b[0] <= ROOM
-                          and STRUCTURE <= b[3] - b[2] <= ROOM and b[4] >= TALL), exclusive=True)
+                          and STRUCTURE <= b[3] - b[2] <= ROOM and b[4] - max(b[5], 0) >= TALL), exclusive=True)
     return out
 
 
