@@ -143,6 +143,14 @@ class Scores(unittest.TestCase):
         # x 0-9 and 25-34; the entity not named terrain is left out
         self.assertEqual(C.ground_tiles(preset, boxes, lambda p: []), {(0, 0), (2, 0), (3, 0)})
 
+    def test_ground_plane_ends_on_a_tile_edge(self):
+        # a 170-unit plane from 0 covers tiles 0-16, not the 18th it ends on; the wall footprint keeps it
+        plane = entity(85, 85, "plane") | {"name": "terrain"}
+        boxes = {"plane": (-85.00001, 0.0, -85.0, 85.00003, 0.0, 85.0)}.get  # D2R's box: float noise at the edges
+        self.assertEqual(C.ground_tiles({"entities": [], "terrain": plane}, boxes, lambda p: []),
+                         {(x, y) for x in range(17) for y in range(17)})
+        self.assertEqual(len(C.footprint(iter([(0.0, 170.0, 0.0, 10.0, 8.0)]))), 18 * 2)
+
     def test_leak(self):
         keys = {(1, 1): FLOOR, (0, 1): TREE, (2, 1): TREE, (1, 0): TREE, (1, 2): TREE}
         L = P.Layout(3, 3, keys, {c: bytes(25) for c in keys}, frozenset({(0, 1), (1, 0), (1, 2)}))

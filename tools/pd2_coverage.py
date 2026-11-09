@@ -55,6 +55,7 @@ MODELS = Path("hd") / "model_lod_desc.bin"
 TALL = 4.0  # HD units: a piece this high hides a wall in game
 ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculpted terrain), not a wall piece
 DEPTH = 2  # prefab levels followed
+EDGE = 1e-3  # tiles: how far a ground box may cross a tile edge and still end on it
 BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
 TOLERANCE = 1.0  # percentage points a score may drop below the baseline
 # D2R 93847's largest stock presets: act4/diab/dungrm6b.json, 6.1 MB; act2/town/lutw.json, 5642 entities
@@ -120,13 +121,19 @@ def tall_tiles(found: Iterator[Box], tall: float = TALL) -> set[tuple[int, int]]
     return footprint(b for b in found if b[4] >= tall and b[1] - b[0] <= ROOM and b[3] - b[2] <= ROOM)
 
 
-def footprint(found: Iterator[Box]) -> set[tuple[int, int]]:
-    """The tiles under the boxes."""
+def footprint(found: Iterator[Box], exclusive: bool = False) -> set[tuple[int, int]]:
+    """The tiles under the boxes. `exclusive`: a box ending on a tile edge does not reach the tile past it (a
+    170-unit ground plane covers 17 tiles, not 18); the wall score keeps the tile it ends on (tall_tiles)."""
     out = set()
     T = presets.TILE
+
+    def span(a: float, b: float) -> range:
+        if not exclusive:
+            return range(math.floor(a / T), math.floor(b / T) + 1)
+        lo = math.floor(a / T + EDGE)  # the stock plane's box spills past its edges by float noise (170.00003)
+        return range(lo, max(math.ceil(b / T - EDGE), lo + 1))
     for x0, x1, z0, z1, _ in found:
-        out.update((tx, tz) for tx in range(math.floor(x0 / T), math.floor(x1 / T) + 1)
-                   for tz in range(math.floor(z0 / T), math.floor(z1 / T) + 1))
+        out.update((tx, tz) for tx in span(x0, x1) for tz in span(z0, z1))
     return out
 
 
@@ -134,7 +141,7 @@ def ground_tiles(preset: dict, box: Callable[[str], tuple | None], prefab: Calla
     """The tiles under a terrain's box: the preset's terrain, its flat planes and its pasted rooms' terrain."""
     terrains = [e | {"name": ""} for e in preset["entities"] + [preset.get("terrain") or {}]
                 if e.get("name") == "terrain" and "components" in e]  # boxes() skips entities named terrain
-    return footprint(boxes(terrains, box, prefab))
+    return footprint(boxes(terrains, box, prefab), exclusive=True)
 
 
 def walkable_floor(lay: presets.Layout) -> set[tuple[int, int]]:
