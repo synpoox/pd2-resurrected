@@ -82,7 +82,7 @@ python tools/pd2_extract.py
 ```
 
 ```bash
-python -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/
+python -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/ --prefix data/hd/model_lod_desc.bin
 ```
 
 ```bash
@@ -103,7 +103,10 @@ python tools/companions.py install --game DIR
 
 Run the `modkit` fetch and the last two with `..\d2rAI-toolkit` on `PYTHONPATH`. The fetch (once per D2R build)
 caches D2R's DS1, DT1 and HD presets, which the merge harvests for the HD presets of PD2-only areas
-(`tools/pd2_presets.py`). `companions.py fetch` downloads the pinned companion plugins in
+(`tools/pd2_presets.py`); `python tools/pd2_coverage.py` after `pd2_merge.py` scores them without the game
+(`out/coverage/report.md`, worst first). The gate fails when a preset's score drops more than a point below
+`docs/coverage-baseline.tsv`; to accept an intended drop, run it with `--write-baseline` and commit the baseline with the
+PR. `companions.py fetch` downloads the pinned companion plugins in
 `companions/manifest.json` (checked by SHA-256, never committed; an entry pins a GitHub release asset (`repo`, `tag`),
 a file at a repo commit (`commit`), or a direct download link (`url`, e.g. a D2RLoader Hub release)) and must run after `pd2_merge.py`, which wipes
 `generated/`. `install` is `modkit install` plus the companions, our `companions/filter.json`, plugin settings

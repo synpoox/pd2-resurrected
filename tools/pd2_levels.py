@@ -10,6 +10,7 @@ merge/level-files.tsv: writes lvltypes, objpreset and the files of the PD2-only 
 list appends). lvltypes takes PD2's new types (ids kept: D2R's end before them) and, in D2R's types, the DT1 files the
 PD2-only presets select; a file whose slot D2R already fills moves to a free slot, and those presets' Dt1Mask bit with
 it. The PD2-only levels on such a D2R type then move to a copy of it, appended, and D2R's areas keep D2R's row (#296).
+Each PD2-only level gets a LevelEntry key, its area banner (fill_entries; #671).
 The three DT1 PD2 ships over vanilla paths move to OVERRIDES/<path>, so D2R's own areas keep D2R's. Each DS1 is
 rewritten: its monster ids to the mod's monpreset indices, its object ids to objpreset rows of its act, appended where
 the act has none for that object. The file lists the DS1 objects the rewrite leaves out, with why; any other object
@@ -253,6 +254,21 @@ def col(t: Table, name: str) -> int:
     return t.header.index(name)
 
 
+def entry_key(level_name: str) -> str:
+    """The LevelEntry key of a PD2-only level: D2R's area banner ("Entering ...") shows "Missing string" for an empty
+    LevelEntry, and PD2 1.13c has no such column. "Graveyard Map" -> "EnteringGraveyardMap"; pd2_strings writes its
+    text ("Entering " and the level's name) unless D2R has the key ("EnteringTristram")."""
+    return "Entering" + "".join(c for c in level_name if c.isalnum())
+
+
+def fill_entries(lv: Table, first: int) -> None:
+    """Gives each level record from `first` on (the PD2-only ones) with a LevelName and no LevelEntry its entry_key."""
+    name, entry = col(lv, "LevelName"), col(lv, "LevelEntry")
+    for k in lv.records()[first:]:
+        if lv.rows[k][name] and not lv.rows[k][entry]:
+            lv.rows[k][entry] = entry_key(lv.rows[k][name])
+
+
 AUTOMAP_TYPES = 36  # D2R's AutoMap.txt loader (0x32cae0) knows level types 0-35; core-ui answers the rest
 # D2R's tile names in its order (table 0x1cfe350): the loader stores a row's TileName as its index here
 TILES = ["fl", "wl", "wr", "wtlr", "wtll", "wtr", "wbl", "wbr", "wld", "wrd", "wle", "wre", "co", "sh", "tr", "rf",
@@ -356,6 +372,7 @@ def apply_files(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> N
     for k in lv.records()[len(load(d2r_data, "levels").records()):]:  # the PD2-only levels
         if lv.rows[k][lt] and int(lv.rows[k][lt]) in split:
             lv.rows[k][lt] = str(split[int(lv.rows[k][lt])])
+    fill_entries(lv, len(load(d2r_data, "levels").records()))
     pd2_ids.write("levels", lv, [], out_data)
     cels = pd2_automap.apply(pd2_data, d2r_data, out_data)  # writes the tiles past D2R's; returns their frame count
     pd2_rows = load(pd2_data, "automap")
