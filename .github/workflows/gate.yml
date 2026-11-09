@@ -7,11 +7,18 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]  # labeled: coverage-drop-ok reruns the gate
 
 jobs:
   table-diff:
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    # another label (triage) does not rerun it
+    if: >-
+      github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository
+      && (!contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) || github.event.label.name == 'coverage-drop-ok'))
     runs-on: [self-hosted, windows, pd2r]
+    permissions:
+      contents: read
+      actions: read  # gh run download of main's coverage-baseline artifact
     env:
       PYTHONPATH: ${{ vars.D2R_TOOLKIT }}
       MODKIT_CACHE: ${{ vars.D2R_TOOLKIT }}\d2r-data
@@ -34,25 +41,52 @@ jobs:
           py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
       - name: Table-diff gate
         run: py -3 tools/pd2_diff.py --scope alpha
-      # LP3c (#672, #681): the no-game coverage report of the generated HD presets, uploaded as an artifact. It fails
-      # the job when a preset's wall, border or floor score drops more than pd2_coverage.TOLERANCE points below
-      # docs/coverage-baseline.tsv; to accept an intended drop, commit a new baseline (`--write-baseline`). It runs
-      # after the table-diff, so that result is already in. Without model_lod_desc.bin it skips and passes.
+      # LP3c (#672, #681): the no-game coverage report of the generated HD presets, uploaded as an artifact. A push to
+      # main uploads its scores as the coverage-baseline artifact; a PR compares against the latest one (#723), so no
+      # PR commits a baseline, and fails when a preset's wall, border or floor score drops more than
+      # pd2_coverage.TOLERANCE points below it. The PR label coverage-drop-ok accepts an intended drop. Without main's
+      # artifact it falls back to docs/coverage-baseline.tsv. It runs after the table-diff, so that result is already
+      # in. Without model_lod_desc.bin it skips and passes.
       - name: HD preset coverage
         if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DROP_OK: ${{ contains(github.event.pull_request.labels.*.name, 'coverage-drop-ok') }}
         run: |
           py -3 -m modkit fetch --prefix data/hd/model_lod_desc.bin
           if ($LASTEXITCODE) { "::warning::modkit fetch of model_lod_desc.bin failed: the coverage check may skip" }
-          $out = py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --check
+          if ("${{ github.event_name }}" -eq "push") {
+            $out = py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --baseline out/coverage/baseline.tsv --write-baseline
+          } else {
+            $base = "docs/coverage-baseline.tsv"
+            $run = gh run list --repo ${{ github.repository }} --workflow gate.yml --branch main --event push --status success --limit 1 --json databaseId -q '.[0].databaseId'
+            if ($run) { gh run download $run --repo ${{ github.repository }} --name coverage-baseline --dir out/main-coverage }
+            if (Test-Path out/main-coverage/baseline.tsv) {
+              $base = "out/main-coverage/baseline.tsv"
+              "Coverage compared with main's scores from run $run." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+            } else {
+              "::warning::no coverage-baseline artifact from main: comparing with $base"
+            }
+            [string[]]$check = if ($env:DROP_OK -eq "true") { @() } else { @("--check") }
+            if ($env:DROP_OK -eq "true") { "Label coverage-drop-ok: drops are reported, not failed." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY }
+            $out = py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --baseline $base @check
+          }
           $code = $LASTEXITCODE
           $out
           if (Test-Path out/coverage/changes.md) {
             Get-Content out/coverage/changes.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
-          } else {
+          } elseif (-not (Test-Path out/coverage/report.md)) {
             "::warning::HD preset coverage did not run: $out"
             "HD preset coverage did not run: $out" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
           }
           exit $code
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && github.event_name == 'push' }}
+        continue-on-error: true
+        with:
+          name: coverage-baseline
+          path: out/coverage/baseline.tsv
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         continue-on-error: true
