@@ -20,7 +20,9 @@ import zlib
 
 TREE = re.compile(r"tree_wall|treewall|treeline|small_cluster|_trees_")  # treelines, tree walls, foliage tree models
 SPACING = 9  # subtiles between tree origins when the stock has fewer than two trees
-DEPTH = 30  # paint unreachable ground up to this many subtiles from the playable area
+# paint unreachable ground up to this many subtiles (9 tiles) from the playable area: at 6 tiles, the inside of a wide
+# tree mass was drawn only where a nearer wall's overhang happened to fall, and a change anywhere moved those (#687)
+DEPTH = 45
 CAP = 15  # distances to the blocked ground are capped here
 # a tree covers the ground screen-up of it: up to TALL subtile rows (x + y; a tile is 10) above, WIDE columns (x - y) to
 # either side, about 4 tiles high and 1 wide
@@ -46,7 +48,7 @@ def is_tree(e: dict) -> bool:
 
 
 def blocked_floor(flags: bytes) -> bool:
-    """A floor tile mostly blocked: water."""
+    """A floor tile mostly blocked: water, or the ground past a map's edge walls (see water())."""
     return sum(b & 1 for b in flags) >= 13
 
 
@@ -107,13 +109,13 @@ def lines(walls: set) -> set:
     return set().union(*(c for c in components(walls, AROUND) if len(c) >= LINE))
 
 
-def harvest(stock) -> tuple[dict, float] | None:
+def harvest(stock, wet: frozenset = frozenset()) -> tuple[dict, float] | None:
     """The tree kit from stock [(Layout, preset)]: {(bucket, distance): [(entity, dx, dz, reach, dependencies)]} and
-    the stock spacing (median nearest-neighbour, subtiles); None when the stock has no tree."""
+    the stock spacing (median nearest-neighbour, subtiles); None when the stock has no tree. `wet`: see water()."""
     out, gaps = collections.defaultdict(list), []
     for lay, preset in stock:
         dist = nearest_blocked(lay)
-        reach, src = nearest(subtiles(playable(lay)), lay.width * 5, lay.height * 5, 10 ** 6)
+        reach, src = nearest(subtiles(playable(lay, wet)), lay.width * 5, lay.height * 5, 10 ** 6)
         pts = []
         for e in preset["entities"]:
             t = transform(e)
@@ -133,18 +135,45 @@ def harvest(stock) -> tuple[dict, float] | None:
     return dict(out), gaps[len(gaps) // 2] if gaps else SPACING
 
 
-def playable(lay) -> set:
+def water(lay, wet: frozenset = frozenset()) -> set:
+    """The blocked floor tiles that are water: each 4-connected group of them that touches walkable floor or draws a
+    `wet` DT1 (the rule's water DT1, whose streams run on past the tree line). Any other group lies past the map's edge
+    walls (Ashen Plains' blocked town floor, Frozen Forest's ascendors): the border's own ground, where trees
+    belong."""
+    blocked = {c for c, k in lay.keys.items() if k[0] == "f" and blocked_floor(lay.flags[c])}
+    ground = {c for c, k in lay.keys.items() if k[0] == "f" and c not in blocked and c not in lay.unwalkable}
+    found, seen = set(), set()
+    for start in blocked:
+        if start in seen:
+            continue
+        group, todo = {start}, [start]
+        while todo:
+            x, y = todo.pop()
+            for dx, dy in STEPS:
+                if (n := (x + dx, y + dy)) in blocked and n not in group:
+                    group.add(n)
+                    todo.append(n)
+        seen |= group
+        if any((x + dx, y + dy) in ground for x, y in group for dx, dy in STEPS)                 or any(t[0] in wet for c in group for t in lay.keys[c][1]):
+            found |= group
+    return found
+
+
+def playable(lay, wet: frozenset = frozenset()) -> set:
     """The tiles a player reaches: those no DS1 cell marks unwalkable (Layout.unwalkable, which seals PD2's dashed
-    tree lines), and the streams (blocked floor). Line tiles are never playable."""
-    water = {c for c, k in lay.keys.items() if k[0] == "f" and blocked_floor(lay.flags[c])}
-    return ((set(lay.keys) - lay.unwalkable) | water) - lines({c for c, k in lay.keys.items() if k[0] == "w"})
+    tree lines) and no blocked floor past the edge walls, and the streams (water(), with `wet`). Line tiles are never
+    playable."""
+    blocked = {c for c, k in lay.keys.items() if k[0] == "f" and blocked_floor(lay.flags[c])}
+    walls = {c for c, k in lay.keys.items() if k[0] == "w"}
+    return ((set(lay.keys) - lay.unwalkable - blocked) | water(lay, wet)) - lines(walls)
 
 
-def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs) -> tuple[list[dict], set]:
+def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs,
+          wet: frozenset = frozenset()) -> tuple[list[dict], set]:
     """Tree entities (not yet given ids) past the playable area, and the playable tiles. `skip`: tiles left alone
-    (pasted rooms); `prefabs(path)`: the (x, z) of a prefab's pieces, for its footprint."""
+    (pasted rooms); `prefabs(path)`: the (x, z) of a prefab's pieces, for its footprint; `wet`: see water()."""
     kit, spacing = trees
-    play = playable(lay)
+    play = playable(lay, wet)
     best = subtiles(play)
     reach, src = nearest(best, lay.width * 5, lay.height * 5, DEPTH)
     keep_off = best | subtiles(skip)

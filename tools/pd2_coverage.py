@@ -13,7 +13,18 @@ Writes <out>/report.md, worst first (border score, then wall score), and per pre
 where covered, red where bare) and, for a border, <name>_border.png (ring green, gap red, leak magenta). Known bias:
 a turned piece's footprint is its axis-aligned box, which spills onto neighbour tiles, so both scores run a little
 generous. TALL 4 reproduced the LP3 slice 1 game check (research/lp3-tile-table, FINDINGS.md). The report cannot judge
-looks, frame rate or collision. Needs model_lod_desc.bin in modkit's cache, else it skips:
+looks, frame rate or collision.
+
+Size budget: each preset's JSON size and entity count, the presets above STOCK_BYTES or STOCK_ENTITIES (D2R's own
+largest) listed in a "Size budget" section, largest first. Reported, not checked.
+
+Changes against the baseline: BASELINE (docs/coverage-baseline.tsv, `preset <tab> wall % <tab> border % or -`) holds main's
+scores. The report and <out>/changes.md list each preset whose score moved, a new one, and one no longer scored.
+`--check` fails (exit 1) when a preset's wall or border score drops more than TOLERANCE points below the baseline, or
+a baselined preset is no longer scored. To accept an intended drop (or record a gain), run with `--write-baseline`
+after pd2_merge.py and commit docs/coverage-baseline.tsv with the PR: the drop then shows in its diff and review.
+Record gains the same way, or a later drop back to the old score passes unnoticed.
+Needs model_lod_desc.bin in modkit's cache, else it skips:
 `python -m modkit fetch --prefix data/hd/model_lod_desc.bin`.
 """
 from __future__ import annotations
@@ -40,6 +51,14 @@ MODELS = Path("hd") / "model_lod_desc.bin"
 TALL = 4.0  # HD units: a piece this high hides a wall in game
 ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculpted terrain), not a wall piece
 DEPTH = 2  # prefab levels followed
+BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
+TOLERANCE = 1.0  # percentage points a score may drop below the baseline
+# D2R 93847's largest stock presets: act4/diab/dungrm6b.json, 6.1 MB; act2/town/lutw.json, 5642 entities
+STOCK_BYTES = 6_100_000
+STOCK_ENTITIES = 5642
+# and the densest (presets of 100+ DS1 tiles): act2/temple1.json 5.0 entities, act4/catsdown.json 8.0 KB per tile
+STOCK_DENSITY = 5.0
+STOCK_BYTES_PER_TILE = 8000
 IDENTITY = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
 
 Box = tuple[float, float, float, float, float]  # x0, x1, z0, z1, top
@@ -113,6 +132,19 @@ class Score:
     ring: set | None = None  # border ring tiles, None for a DS1 without trees
     gaps: set = frozenset()
     leaks: set = frozenset()
+    size: int = 0  # preset JSON bytes
+    entities: int = 0  # top-level entities
+    tiles: int = 0  # DS1 tiles with content
+
+    @property
+    def over_budget(self) -> bool:
+        return self.size > STOCK_BYTES or self.entities > STOCK_ENTITIES
+
+    @property
+    def dense(self) -> bool:
+        """Denser than any stock preset: a per-tile cost no D2R room carries."""
+        return bool(self.tiles) and (self.entities / self.tiles > STOCK_DENSITY
+                                     or self.size / self.tiles > STOCK_BYTES_PER_TILE)
 
     @property
     def wall_score(self) -> float:
@@ -123,11 +155,11 @@ class Score:
         return None if self.ring is None else 1 - len(self.gaps) / len(self.ring) if self.ring else 1.0
 
 
-def score(lay: presets.Layout, tall: set, name: str = "", area: str = "") -> Score:
+def score(lay: presets.Layout, tall: set, name: str = "", area: str = "", wet: frozenset = frozenset()) -> Score:
     walls = {c for c, k in lay.keys.items() if k[0] == "w"}
     s = Score(name, area, len(walls), walls - tall)
     if presets.draws_trees(lay):
-        play = painter.playable(lay)
+        play = painter.playable(lay, wet)
         ring = ({(x + dx, y + dy) for x, y in play for dx, dy in painter.STEPS} - play) & set(lay.keys)
         s.ring, s.gaps = ring, ring - tall
         s.leaks = {c for c in ring if c not in lay.unwalkable and not any(b & 1 for b in lay.flags.get(c, bytes(25)))}
@@ -144,13 +176,13 @@ def png(w: int, h: int, px: dict[tuple[int, int], tuple[int, int, int]], back=(2
             + chunk(b"IDAT", zlib.compress(rows, 9)) + chunk(b"IEND", b""))
 
 
-def images(lay: presets.Layout, s: Score, tall: set) -> dict[str, bytes]:
+def images(lay: presets.Layout, s: Score, tall: set, wet: frozenset = frozenset()) -> dict[str, bytes]:
     """<name>_walls.png and, with a border, <name>_border.png."""
     base = {c: (80, 75, 60) for c in lay.keys} | {c: (40, 90, 160) for c in tall if c in lay.keys}
     walls = {c: (230, 40, 40) if c in s.bare else (60, 210, 60) for c, k in lay.keys.items() if k[0] == "w"}
     out = {f"{s.name}_walls.png": png(lay.width, lay.height, base | walls)}
     if s.ring is not None:
-        px = {c: (45, 40, 32) for c in lay.keys} | {c: (120, 112, 95) for c in painter.playable(lay)}
+        px = {c: (45, 40, 32) for c in lay.keys} | {c: (120, 112, 95) for c in painter.playable(lay, wet)}
         px |= {c: (230, 40, 200) if c in s.leaks else (230, 40, 40) if c in s.gaps else (50, 200, 60) for c in s.ring}
         out[f"{s.name}_border.png"] = png(lay.width, lay.height, px, zoom=4)
     return out
@@ -160,37 +192,126 @@ def _key(s: Score) -> tuple:
     return (s.border_score is None, s.border_score or 0.0, s.wall_score, s.name)
 
 
-def report(scores: list[Score], commit: str = "") -> str:
+def pct1(v: float | None) -> float | None:
+    """A score as the baseline keeps it: a percentage to one decimal."""
+    return None if v is None else round(100 * v, 1)
+
+
+def baseline_text(scores: list[Score]) -> str:
+    lines = ["# HD preset coverage on main (tools/pd2_coverage.py --write-baseline): preset, wall %, border % or -"]
+    for s in sorted(scores, key=lambda s: s.name):
+        b = pct1(s.border_score)
+        lines.append(f"{s.name}\t{pct1(s.wall_score)}\t{'-' if b is None else b}")
+    return "\n".join(lines) + "\n"
+
+
+def read_baseline(text: str) -> dict[str, tuple[float, float | None]]:
+    out = {}
+    for line in text.splitlines():
+        if line and not line.startswith("#"):
+            name, wall, border = line.split("\t")
+            out[name] = (float(wall), None if border == "-" else float(border))
+    return out
+
+
+@dataclass
+class Change:
+    name: str
+    wall: tuple[float | None, float | None]  # (baseline, now); None: absent
+    border: tuple[float | None, float | None]
+    drop: bool  # beyond TOLERANCE, or no longer scored
+
+
+def changes(scores: list[Score], base: dict, tolerance: float = TOLERANCE) -> list[Change]:
+    """The presets whose scores differ from the baseline, worst drop first."""
+    now = {s.name: (pct1(s.wall_score), pct1(s.border_score)) for s in scores}
+    out = []
+    for name in sorted(set(now) | set(base)):
+        (w0, b0), (w1, b1) = base.get(name, (None, None)), now.get(name, (None, None))
+        if name in base and name in now and (w0, b0) == (w1, b1):
+            continue
+        gone = name not in now
+        drop = gone or b0 is not None and b1 is None or any(  # a border no longer scored drops too
+            old is not None and new is not None and old - new > tolerance for old, new in ((w0, w1), (b0, b1)))
+        out.append(Change(name, (w0, w1), (b0, b1), drop))
+    def worst(c: Change) -> float:
+        return min((n - o for o, n in (c.wall, c.border) if o is not None and n is not None), default=0.0)
+    return sorted(out, key=lambda c: (not c.drop, worst(c), c.name))
+
+
+def changes_md(found: list[Change], tolerance: float = TOLERANCE) -> str:
+    def cell(old, new) -> str:
+        if old is None and new is None:
+            return "-"
+        if old is None:
+            return f"new {new}%"
+        if new is None:
+            return f"{old}% -> gone"
+        return f"{old}% -> {new}% ({new - old:+.1f})" if old != new else f"{new}%"
+    drops = sum(c.drop for c in found)
+    lines = ["## Changes against the baseline", ""]
+    if not found:
+        return "\n".join(lines + ["No preset's coverage changed.", ""])
+    lines += [f"{len(found)} presets changed; {drops} dropped by more than the {tolerance:g}-point tolerance or are "
+              "no longer scored"
+              + (" (accept an intended drop: `--write-baseline`, commit docs/coverage-baseline.tsv)." if drops else "."),
+              "", "| Preset | Wall | Border | |", "|---|---|---|---|"]
+    lines += [f"| {c.name} | {cell(*c.wall)} | {cell(*c.border)} | {'**drop**' if c.drop else ''} |" for c in found]
+    return "\n".join(lines) + "\n"
+
+
+def report(scores: list[Score], commit: str = "", found: list[Change] | None = None) -> str:
     """The markdown report, worst first: presets with a border by border score, then the rest by wall score."""
     pct = lambda v: "-" if v is None else f"{100 * v:.1f}%"  # noqa: E731
     lines = ["# HD preset coverage" + (f" ({commit})" if commit else ""), "",
              f"{len(scores)} generated presets. Wall: DS1 wall tiles under a piece >= {TALL:g} units. Border (DS1s "
              "with trees): the ring outside the playable area; gaps bare, leaks walkable in the DS1. "
              "Images: red where bare.", "",
-             "| Preset | Area | Border | Gaps | Leaks | Wall | Walls | Images |",
-             "|---|---|---|---|---|---|---|---|"]
+             "| Preset | Area | Border | Gaps | Leaks | Wall | Walls | MB | Entities | Images |",
+             "|---|---|---|---|---|---|---|---|---|---|"]
+    if found is not None:
+        lines[2:2] = [changes_md(found), ""]
     for s in sorted(scores, key=_key):
         img = f"[walls]({s.name}_walls.png)" + (f" [border]({s.name}_border.png)" if s.ring is not None else "")
         border = s.ring is not None
         lines.append(f"| {s.name} | {s.area} | {pct(s.border_score)} | {len(s.gaps) if border else '-'} | "
                      f"{len(s.leaks) if border else '-'} | "
-                     f"{pct(s.wall_score)} | {s.walls} | {img} |")
+                     f"{pct(s.wall_score)} | {s.walls} | {s.size / 1e6:.1f} | {s.entities} | {img} |")
     if scores:
         n = sum(s.walls for s in scores)
         lines += ["", f"All walls: {pct(1 - sum(len(s.bare) for s in scores) / n if n else 1.0)} of {n}."]
         rings = [s for s in scores if s.ring is not None]
         if r := sum(len(s.ring) for s in rings):
             lines.append(f"All borders: {pct(1 - sum(len(s.gaps) for s in rings) / r)} of {r} ring tiles.")
+    return "\n".join(lines) + "\n" + budget_md(scores)
+
+
+def budget_md(scores: list[Score]) -> str:
+    """The presets above stock's largest in size or entities, largest first."""
+    over = sorted((s for s in scores if s.over_budget), key=lambda s: (-s.size, s.name))
+    lines = ["", "## Size budget", "",
+             f"{len(over)} of {len(scores)} presets are above D2R's largest stock preset ({STOCK_BYTES / 1e6:.1f} MB "
+             f"or {STOCK_ENTITIES} entities); a PD2 map is one DS1 where a D2R area is many rooms, so size alone is "
+             f"expected. **dense**: more per DS1 tile than any stock preset ({STOCK_DENSITY:g} entities or "
+             f"{STOCK_BYTES_PER_TILE / 1000:g} KB); {sum(s.dense for s in scores)} presets."]
+    if over:
+        lines += ["", "| Preset | Area | MB | x stock | Entities | x stock | Entities/tile | KB/tile | |",
+                  "|---|---|---|---|---|---|---|---|---|"]
+        lines += [f"| {s.name} | {s.area} | {s.size / 1e6:.1f} | {s.size / STOCK_BYTES:.1f} | {s.entities} | "
+                  f"{s.entities / STOCK_ENTITIES:.1f} | {s.entities / max(s.tiles, 1):.1f} | "
+                  f"{s.size / max(s.tiles, 1) / 1000:.1f} | {'**dense**' if s.dense else ''} |" for s in over]
     return "\n".join(lines) + "\n"
 
 
-def run(data: Path, d2r: Path, out: Path, commit: str = "") -> list[Score] | None:
-    """Score every generated preset under data (generated/data) and write the report to out. None: skipped."""
+def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = None) -> list[Score] | None:
+    """Score every generated preset under data (generated/data) and write the report to out, with the changes
+    against `base` (read_baseline) when given. None: skipped."""
     if not (d2r / MODELS).is_file():
         print(f"pd2_coverage: skipped, no {d2r / MODELS} (`python -m modkit fetch --prefix data/hd/model_lod_desc.bin`)")
         return None
     rule = ROOT / "merge" / "presets-hd.tsv"
-    standins = presets.read_rule(rule)[1]
+    _, standins, water = presets.read_rule(rule)
+    wet = frozenset(water)  # stream DT1, water past the tree line too (painter.water)
     found = model_boxes((d2r / MODELS).read_bytes())
 
     @functools.cache
@@ -211,12 +332,17 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "") -> list[Score] | Non
             seen.add(ds1)
             lay = presets.layout((data / "global" / "tiles" / ds1).read_bytes(),
                                  presets.stand_in(files, tiles, pd2_tiles, standins))
-            tall = tall_tiles(boxes(json.loads(f.read_text("utf-8"))["entities"], box, prefab))
-            s = score(lay, tall, Path(ds1).stem, area)
+            entities = json.loads(f.read_text("utf-8"))["entities"]
+            tall = tall_tiles(boxes(entities, box, prefab))
+            s = score(lay, tall, Path(ds1).stem, area, wet)
+            s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
             scores.append(s)
-            for name, image in images(lay, s, tall).items():
+            for name, image in images(lay, s, tall, wet).items():
                 (out / name).write_bytes(image)
-    (out / "report.md").write_text(report(scores, commit), "utf-8")
+    found = None if base is None else changes(scores, base)
+    if found is not None:
+        (out / "changes.md").write_text(changes_md(found), "utf-8")
+    (out / "report.md").write_text(report(scores, commit, found), "utf-8")
     print(f"pd2_coverage: {len(scores)} presets scored, {out / 'report.md'}")
     return scores
 
@@ -227,9 +353,26 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--d2r", type=Path, default=D2R_DATA, help=f"D2R data root (default: {D2R_DATA})")
     ap.add_argument("--out", type=Path, default=ROOT / "out" / "coverage", help="report folder")
     ap.add_argument("--commit", default="", help="commit named in the report's title")
+    ap.add_argument("--baseline", type=Path, default=BASELINE, help=f"main's scores (default: {BASELINE})")
+    ap.add_argument("--check", action="store_true", help=f"exit 1 on a drop of more than {TOLERANCE:g} points")
+    ap.add_argument("--write-baseline", action="store_true", help="write the scores to --baseline")
     a = ap.parse_args(argv)
-    run(a.data, a.d2r, a.out, a.commit)
-    return 0
+    base = read_baseline(a.baseline.read_text("utf-8")) if a.baseline.is_file() else None
+    scores = run(a.data, a.d2r, a.out, a.commit, base)
+    if scores is None:
+        return 0
+    if a.write_baseline:
+        a.baseline.write_text(baseline_text(scores), "utf-8", newline="\n")
+        print(f"pd2_coverage: baseline written, {a.baseline}")
+        return 0
+    if base is None:
+        print(f"pd2_coverage: no baseline at {a.baseline}" + ("" if not a.check else "; nothing to check"))
+        return 1 if a.check else 0
+    found = changes(scores, base)
+    drops = [c.name for c in found if c.drop]
+    print(f"pd2_coverage: {len(found)} presets changed against the baseline, {len(drops)} dropped"
+          + (f": {', '.join(drops)}" if drops else ""))
+    return 1 if a.check and drops else 0
 
 
 if __name__ == "__main__":
