@@ -153,15 +153,19 @@ class Kit:
             self.instances.setdefault(lay.keys[c], []).append((src, ents))
 
 
-def place(lay: Layout, kit: Kit, seed: str) -> tuple[list[dict], set[int], int]:
+def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
     """Each tile's pick of its key's instances (no ids yet), the kit sources used, and how many tiles stayed empty
-    for a key the kit lacks."""
+    for a key the kit lacks. An `edge` tile (the map's border, where the automap draws its edge) picks among the
+    instances that hold a piece: a stock tile left empty there leans on its neighbour's piece, which another pick
+    may not have, and the border would show a gap."""
     entities, used, missing = [], set(), 0
 
     def one(x: int, y: int, key: Key, salt: str) -> bool:
         options = kit.instances.get(key)
         if not options:
             return False
+        if (x, y) in edge:
+            options = [o for o in options if o[1]] or options
         src, ents = options[zlib.crc32(f"{seed}:{x}:{y}{salt}".encode()) % len(options)]
         used.add(src)
         for e, dx, dz in ents:
@@ -265,17 +269,22 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
                                                "y": c["wallTileLocalCoord"]["y"] + oy}
             entities.append(e)
     rest = {c: k for c, k in lay.keys.items() if c not in taken}
+    wet = frozenset(water or {})  # stream DT1: their blocked floor stays water past the tree line
+    edge = frozenset()
+    if trees:  # the ring just past the playable area: the border the automap draws
+        play = painter.playable(lay, wet)
+        edge = frozenset({(x + dx, y + dy) for x, y in play for dx, dy in painter.STEPS} - play)
     found, pkit = patches(lay, stock, set(rest))
-    loose, used, _ = place(found, pkit, seed)
+    loose, used, _ = place(found, pkit, seed, edge)
     for src in sorted(used):
         depend(pkit.sources[src])
     more, used, missing = place(Layout(lay.width, lay.height, {c: k for c, k in rest.items() if c not in found.keys}),
-                                kit, seed)
+                                kit, seed, edge)
     for src in sorted(used):
         depend(kit.sources[src])
     loose += more
     if trees:  # drop the trees past the playable area and paint them again from it out
-        painted, play = painter.paint(lay, trees, seed, taken, prefabs)
+        painted, play = painter.paint(lay, trees, seed, taken, prefabs, wet)
         line = painter.lines({c for c, k in lay.keys.items() if k[0] == "w"})
 
         def tile(e: dict) -> tuple[int, int]:
@@ -518,7 +527,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         # the tile set's stock: the presets that list a DT1 its DS1 draw from; the tree kit is harvested from them
         drawn = {t[0] for ds1 in ds1s for k in wanted(layouts[ds1]) for t in k[1]}
         own = [(lay, preset) for lay, preset, listed in stock if not drawn.isdisjoint(listed)]
-        trees = painter.harvest(own)
+        trees = painter.harvest(own, frozenset(water_rule))
         for ds1 in ds1s:
             lay = layouts[ds1]
             outdoor = draws_trees(lay)
