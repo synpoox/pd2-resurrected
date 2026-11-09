@@ -62,7 +62,7 @@ TALL = 4.0  # HD units: a piece this high hides a wall in game
 # fences and shores are low by design (stone walls, graveyard railings, river banks): a piece this high covers them
 LOW = 1.0
 LOW_EDGE = re.compile(r"fence|stonewall|palisade|picket|graveyrd|river|rivbank|pool|swamp|pond|puddle")
-EDGE_PIECE = re.compile(r"fence|wall|palisade|picket|rail|gate|bank")  # a low model that stands as an edge
+EDGE_PIECE = re.compile(r"fence|(?<!tree)(?<!tree_)wall|palisade|picket|rail|gate|bank")  # a low edge model, not a tree wall
 ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculpted terrain), not a wall piece
 STRUCTURE = 20.0  # HD units (2 tiles): a tall piece this wide both ways is a structure (stairs, platform), not a prop
 DEPTH = 2  # prefab levels followed
