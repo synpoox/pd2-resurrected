@@ -9,11 +9,13 @@ least TALL units high. Per generated preset:
   outside pd2_painter.playable() (the map's edge on the automap). A ring tile is covered (under a tall piece), a gap
   (bare), and a leak if the DS1 lets the player walk on it;
 - floor score (#695): the share of walkable DS1 floor tiles (floor, no wall, not marked unwalkable, not mostly
-  blocked) under a terrain's box: the flat ground planes and the pasted stock rooms' own terrain. A bare one draws no
-  ground.
+  blocked) under a terrain's box (the flat ground planes and the pasted stock rooms' own terrain) and, on the flat
+  planes, under no wrong-tile piece: a structure such as stairs or a wall (wrong_tiles). A bare tile draws no ground;
+  a wrong one draws stairs or a wall where the DS1 has flat, walkable floor.
 
 Writes <out>/report.md, worst first (border score, then wall score), and per preset <name>_walls.png (walls green
-where covered, red where bare), <name>_floor.png (walkable floor green where covered, red where bare) and, for a
+where covered, red where bare), <name>_floor.png (walkable floor green where covered, red where bare, orange where
+wrong) and, for a
 border, <name>_border.png (ring green, gap red, leak magenta). Known bias:
 a turned piece's footprint is its axis-aligned box, which spills onto neighbour tiles, so both scores run a little
 generous. TALL 4 reproduced the LP3 slice 1 game check (research/lp3-tile-table, FINDINGS.md). The report cannot judge
@@ -24,9 +26,10 @@ largest) listed in a "Size budget" section, largest first. Reported, not checked
 
 Changes against the baseline: BASELINE (docs/coverage-baseline.tsv, `preset <tab> wall % <tab> border % or - <tab>
 floor %`) holds main's scores. The report and <out>/changes.md list each preset whose score moved, a new one, and one
-no longer scored. `--check` fails (exit 1) when a preset's wall, border or floor score drops more than TOLERANCE points below the baseline, or
-a baselined preset is no longer scored. To accept an intended drop (or record a gain), run with `--write-baseline`
-after pd2_merge.py and commit docs/coverage-baseline.tsv with the PR: the drop then shows in its diff and review.
+no longer scored. `--check` fails (exit 1) when a preset's wall, border or floor score drops more than TOLERANCE
+points below the baseline, or a baselined preset is no longer scored. To accept an intended drop (or record a gain),
+run with `--write-baseline` after pd2_merge.py and commit docs/coverage-baseline.tsv with the PR: the drop then shows
+in its diff and review.
 Record gains the same way, or a later drop back to the old score passes unnoticed.
 Needs model_lod_desc.bin in modkit's cache, else it skips:
 `python -m modkit fetch --prefix data/hd/model_lod_desc.bin`.
@@ -54,6 +57,7 @@ D2R_DATA = Path(os.environ.get("MODKIT_CACHE", toolkit(ROOT) / "d2r-data")) / "9
 MODELS = Path("hd") / "model_lod_desc.bin"
 TALL = 4.0  # HD units: a piece this high hides a wall in game
 ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculpted terrain), not a wall piece
+STRUCTURE = 20.0  # HD units (2 tiles): a tall piece this wide both ways is a structure (stairs, platform), not a prop
 DEPTH = 2  # prefab levels followed
 BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
 TOLERANCE = 1.0  # percentage points a score may drop below the baseline
@@ -124,17 +128,39 @@ def footprint(found: Iterator[Box]) -> set[tuple[int, int]]:
     """The tiles under the boxes."""
     out = set()
     T = presets.TILE
-    for x0, x1, z0, z1, _ in found:
+    for x0, x1, z0, z1, *_ in found:
         out.update((tx, tz) for tx in range(math.floor(x0 / T), math.floor(x1 / T) + 1)
                    for tz in range(math.floor(z0 / T), math.floor(z1 / T) + 1))
     return out
 
 
-def ground_tiles(preset: dict, box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]]) -> set:
-    """The tiles under a terrain's box: the preset's terrain, its flat planes and its pasted rooms' terrain."""
+def ground_tiles(preset: dict, box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
+                 flat: bool | None = None) -> set:
+    """The tiles under a terrain's box: the preset's terrain, its flat planes and its pasted rooms' terrain; with
+    `flat`, only the flat planes' (True) or only the rooms' (False)."""
+    def is_flat(e: dict) -> bool:
+        return any(f"/{presets.TERRAIN}/" in c.get("filename", "").lower() for c in e["components"])
     terrains = [e | {"name": ""} for e in preset["entities"] + [preset.get("terrain") or {}]
-                if e.get("name") == "terrain" and "components" in e]  # boxes() skips entities named terrain
+                if e.get("name") == "terrain" and "components" in e  # boxes() skips entities named terrain
+                and (flat is None or is_flat(e) == flat)]
     return footprint(boxes(terrains, box, prefab))
+
+
+def wrong_tiles(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
+                at: set) -> set:
+    """The tiles under the structures (STRUCTURE wide both ways and TALL high: stairs, platforms, walls, gates; #679)
+    anchored on `at`, walkable floor on the flat ground. Pieces floating over the flat ground are left out: hanging
+    beams and candles float in stock too (#682 stands kit pieces at their stock height)."""
+    out = set()
+    for e in entities:
+        t = presets._transform(e)
+        if t is None or e.get("name") == "terrain":
+            continue
+        if (int(t["position"]["x"] // presets.TILE), int(t["position"]["z"] // presets.TILE)) not in at:
+            continue
+        out |= footprint(b for b in boxes([e], box, prefab) if STRUCTURE <= b[1] - b[0] <= ROOM
+                         and STRUCTURE <= b[3] - b[2] <= ROOM and b[4] >= TALL)
+    return out
 
 
 def walkable_floor(lay: presets.Layout) -> set[tuple[int, int]]:
@@ -157,6 +183,7 @@ class Score:
     tiles: int = 0  # DS1 tiles with content
     floors: int = 0  # walkable DS1 floor tiles
     floor_bare: set = frozenset()  # walkable floor under no terrain
+    floor_wrong: set = frozenset()  # walkable floor under a piece that does not belong on flat floor (wrong_tiles)
 
     @property
     def over_budget(self) -> bool:
@@ -174,7 +201,7 @@ class Score:
 
     @property
     def floor_score(self) -> float:
-        return 1 - len(self.floor_bare) / self.floors if self.floors else 1.0
+        return 1 - len(self.floor_bare | self.floor_wrong) / self.floors if self.floors else 1.0
 
     @property
     def border_score(self) -> float | None:
@@ -182,12 +209,13 @@ class Score:
 
 
 def score(lay: presets.Layout, tall: set, name: str = "", area: str = "", wet: frozenset = frozenset(),
-          ground: set | None = None) -> Score:
-    """A layout's scores from its tall tiles and `ground` (ground_tiles; None: every tile has ground)."""
+          ground: set | None = None, wrong: set = frozenset()) -> Score:
+    """A layout's scores from its tall tiles, `ground` (ground_tiles; None: every tile has ground) and `wrong`
+    (wrong_tiles)."""
     walls = {c for c, k in lay.keys.items() if k[0] == "w"}
     floor = walkable_floor(lay)
     s = Score(name, area, len(walls), walls - tall, floors=len(floor),
-              floor_bare=set() if ground is None else floor - ground)
+              floor_bare=set() if ground is None else floor - ground, floor_wrong=(floor & wrong))
     if presets.draws_trees(lay):
         play = painter.playable(lay, wet)
         ring = ({(x + dx, y + dy) for x, y in play for dx, dy in painter.STEPS} - play) & set(lay.keys)
@@ -211,7 +239,8 @@ def images(lay: presets.Layout, s: Score, tall: set, wet: frozenset = frozenset(
     base = {c: (80, 75, 60) for c in lay.keys} | {c: (40, 90, 160) for c in tall if c in lay.keys}
     walls = {c: (230, 40, 40) if c in s.bare else (60, 210, 60) for c, k in lay.keys.items() if k[0] == "w"}
     out = {f"{s.name}_walls.png": png(lay.width, lay.height, base | walls)}
-    floor = {c: (230, 40, 40) if c in s.floor_bare else (60, 210, 60) for c in walkable_floor(lay)}
+    floor = {c: (230, 40, 40) if c in s.floor_bare else (240, 150, 30) if c in s.floor_wrong else (60, 210, 60)
+             for c in walkable_floor(lay)}
     out[f"{s.name}_floor.png"] = png(lay.width, lay.height, {c: (60, 55, 45) for c in lay.keys} | floor)
     if s.ring is not None:
         px = {c: (45, 40, 32) for c in lay.keys} | {c: (120, 112, 95) for c in painter.playable(lay, wet)}
@@ -305,9 +334,11 @@ def report(scores: list[Score], commit: str = "", found: list[Change] | None = N
     lines = ["# HD preset coverage" + (f" ({commit})" if commit else ""), "",
              f"{len(scores)} generated presets. Wall: DS1 wall tiles under a piece >= {TALL:g} units. Border (DS1s "
              "with trees): the ring outside the playable area; gaps bare, leaks walkable in the DS1. Floor: walkable "
-             "DS1 floor tiles under a terrain. Images: red where bare.", "",
-             "| Preset | Area | Border | Gaps | Leaks | Wall | Walls | Floor | Bare floor | MB | Entities | Images |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+             "DS1 floor tiles under a terrain and no wrong-tile piece (stairs or walls on flat floor). Images: red "
+             "where bare, orange where wrong.", "",
+             "| Preset | Area | Border | Gaps | Leaks | Wall | Walls | Floor | Bare floor | Wrong floor | MB "
+             "| Entities | Images |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     if found is not None:
         lines[2:2] = [changes_md(found), ""]
     for s in sorted(scores, key=_key):
@@ -317,13 +348,14 @@ def report(scores: list[Score], commit: str = "", found: list[Change] | None = N
         lines.append(f"| {s.name} | {s.area} | {pct(s.border_score)} | {len(s.gaps) if border else '-'} | "
                      f"{len(s.leaks) if border else '-'} | "
                      f"{pct(s.wall_score)} | {s.walls} | {pct(s.floor_score)} | {len(s.floor_bare)} | "
+                     f"{len(s.floor_wrong)} | "
                      f"{s.size / 1e6:.1f} | {s.entities} | {img} |")
     if scores:
         n = sum(s.walls for s in scores)
         lines += ["", f"All walls: {pct(1 - sum(len(s.bare) for s in scores) / n if n else 1.0)} of {n}."]
         if f := sum(s.floors for s in scores):
-            lines.append(f"All floors: {pct(1 - sum(len(s.floor_bare) for s in scores) / f)} of {f} walkable "
-                         "floor tiles.")
+            lines.append(f"All floors: {pct(1 - sum(len(s.floor_bare | s.floor_wrong) for s in scores) / f)} of {f} "
+                         f"walkable floor tiles ({sum(len(s.floor_wrong) for s in scores)} wrong).")
         rings = [s for s in scores if s.ring is not None]
         if r := sum(len(s.ring) for s in rings):
             lines.append(f"All borders: {pct(1 - sum(len(s.gaps) for s in rings) / r)} of {r} ring tiles.")
@@ -379,7 +411,9 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
             preset = json.loads(f.read_text("utf-8"))
             entities = preset["entities"]
             tall = tall_tiles(boxes(entities, box, prefab))
-            s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab))
+            flat = ground_tiles(preset, box, prefab, True) - ground_tiles(preset, box, prefab, False)
+            wrong = wrong_tiles(entities, box, prefab, walkable_floor(lay) & flat)
+            s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab), wrong)
             s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
             scores.append(s)
             for name, image in images(lay, s, tall, wet).items():
