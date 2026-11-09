@@ -167,14 +167,17 @@ class Kit:
     waypoints: dict[Key | str, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
     flags: dict[Key, bytes] = field(default_factory=dict)  # a key's subtile flags in the first stock DS1 that has it
 
-    def add(self, lay: Layout, preset: dict, keep: set[Key], objects: list[tuple[str, float, float]] = ()) -> None:
-        """Harvest one stock (layout, preset) pair, only the keys in `keep`. A waypoint's pieces stay out of the
+    def add(self, lay: Layout, preset: dict, keep: set[Key], objects: list[tuple[str, float, float]] = (),
+            alike: frozenset[str] = frozenset()) -> None:
+        """Harvest one stock (layout, preset) pair, only the keys in `keep`, and the single-layer LIKE keys of the
+        `alike` DT1s, which like() lends to tiles the kit has no key for. A waypoint's pieces stay out of the
         per-tile kit, as D2R puts their transform up to 4 tiles off the waypoint's tiles (#669): each joins the
         nearest of the DS1's waypoint `objects` (waypoints()), or is dropped if it has none. A pasted room keeps
         its own (build())."""
         src = len(self.sources)
         self.sources.append(preset["dependencies"])
-        per: dict[tuple[int, int], list] = {c: [] for c, k in lay.keys.items() if k in keep}
+        per: dict[tuple[int, int], list] = {c: [] for c, k in lay.keys.items() if k in keep or (
+            len(k[1]) == 1 and k[1][0] and k[1][0][1] == LIKE and k[1][0][0] in alike)}
         groups: dict[int, list] = {}
         for e in preset["entities"]:
             t = _transform(e)
@@ -238,23 +241,29 @@ def structure(ents: list) -> bool:
 
 def fades(e: dict) -> bool:
     """Whether a piece is see-through in front of the player: a wall that fades, or a low root or foreground wall."""
-    return any(c["type"] == "WallTransparencyComponent" for c in e["components"])         or bool(painter.LOW.search(json.dumps(e["components"])))
+    return (any(c["type"] == "WallTransparencyComponent" for c in e["components"])
+            or bool(painter.LOW.search(json.dumps(e["components"]))))
 
 
 def like(lay: Layout, kit: Kit) -> dict[tuple[int, int], Key]:
     """For each tile whose key the kit lacks, whole and layer by layer, and that has a LIKE layer: the single-layer
     LIKE key, from a DT1 the layout draws and with a piece in some instance, whose subtile collision is nearest the
-    tile's (then the one with the most such instances). A PD2 DT1's pillar or wall end with no stand-in tile (#714:
-    Torture Halls' flesh pillars) then stands as the tile set's own of the same footprint."""
+    tile's (then the one with the most such instances), if the two footprints share at least half their blocked
+    subtiles; a tile that blocks nothing, or shares too little, borrows nothing (a stock chair is no pillar). A PD2
+    DT1's pillar with no stand-in tile (#714: Torture Halls' flesh pillars) then stands as a stock pillar."""
     drawn = {t[0] for k in lay.keys.values() for t in k[1] if t}
     pool = [(k, kit.flags.get(k, bytes(25)), sum(bool(o[1]) for o in v)) for k, v in kit.instances.items()
             if len(k[1]) == 1 and k[1][0] and k[1][0][1] == LIKE and k[1][0][0] in drawn and any(o[1] for o in v)]
     out = {}
     for c, key in lay.keys.items():
-        if not pool or key in kit.instances or any((key[0], (t,)) in kit.instances for t in key[1])                 or not any(t and t[1] == LIKE for t in key[1]):
+        whole = key in kit.instances or any((key[0], (t,)) in kit.instances for t in key[1])
+        if not pool or whole or not any(t and t[1] == LIKE for t in key[1]):
             continue
-        f = lay.flags.get(c, bytes(25))
-        out[c] = min(pool, key=lambda p: (sum((a ^ b) & 1 for a, b in zip(f, p[1])), -p[2], p[0]))[0]
+        f = {i for i, v in enumerate(lay.flags.get(c, bytes(25))) if v & 1}
+        fits = [(len(f ^ g), -n, k) for k, flags, n in pool
+                if 2 * len(f & (g := {i for i, v in enumerate(flags) if v & 1})) >= len(f | g) and f & g]
+        if fits:
+            out[c] = min(fits)[2]
     return out
 
 
@@ -416,7 +425,8 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
     loose, used, _ = place(found, pkit, seed, edge, near, far)
     for src in sorted(used):
         depend(pkit.sources[src])
-    more, used, missing = place(Layout(lay.width, lay.height, {c: k for c, k in rest.items() if c not in found.keys}),
+    more, used, missing = place(Layout(lay.width, lay.height, {c: k for c, k in rest.items() if c not in found.keys},
+                                       lay.flags),
                                 kit, seed, edge, near, far)
     for src in sorted(used):
         depend(kit.sources[src])
@@ -672,7 +682,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         if loaded.isdisjoint(listed):
             continue
         stock.append((layout(data, tiles.of(listed)), json.loads(p.read_text("utf-8-sig")), set(listed)))
-        kit.add(*stock[-1][:2], keep, waypoints(data, stock_classes))
+        kit.add(*stock[-1][:2], keep, waypoints(data, stock_classes), alike=frozenset(loaded))
 
     @functools.cache
     def prefab(path: str) -> list[tuple[float, float]]:
