@@ -15,6 +15,9 @@ a turned piece's footprint is its axis-aligned box, which spills onto neighbour 
 generous. TALL 4 reproduced the LP3 slice 1 game check (research/lp3-tile-table, FINDINGS.md). The report cannot judge
 looks, frame rate or collision.
 
+Size budget: each preset's JSON size and entity count, the presets above STOCK_BYTES or STOCK_ENTITIES (D2R's own
+largest) listed in a "Size budget" section, largest first. Reported, not checked.
+
 Changes against the baseline: BASELINE (docs/coverage-baseline.tsv, `preset <tab> wall % <tab> border % or -`) holds main's
 scores. The report and <out>/changes.md list each preset whose score moved, a new one, and one no longer scored.
 `--check` fails (exit 1) when a preset's wall or border score drops more than TOLERANCE points below the baseline, or
@@ -50,6 +53,12 @@ ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculp
 DEPTH = 2  # prefab levels followed
 BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
 TOLERANCE = 1.0  # percentage points a score may drop below the baseline
+# D2R 93847's largest stock presets: act4/diab/dungrm6b.json, 6.1 MB; act2/town/lutw.json, 5642 entities
+STOCK_BYTES = 6_100_000
+STOCK_ENTITIES = 5642
+# and the densest (presets of 100+ DS1 tiles): act2/temple1.json 5.0 entities, act4/catsdown.json 8.0 KB per tile
+STOCK_DENSITY = 5.0
+STOCK_BYTES_PER_TILE = 8000
 IDENTITY = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
 
 Box = tuple[float, float, float, float, float]  # x0, x1, z0, z1, top
@@ -123,6 +132,19 @@ class Score:
     ring: set | None = None  # border ring tiles, None for a DS1 without trees
     gaps: set = frozenset()
     leaks: set = frozenset()
+    size: int = 0  # preset JSON bytes
+    entities: int = 0  # top-level entities
+    tiles: int = 0  # DS1 tiles with content
+
+    @property
+    def over_budget(self) -> bool:
+        return self.size > STOCK_BYTES or self.entities > STOCK_ENTITIES
+
+    @property
+    def dense(self) -> bool:
+        """Denser than any stock preset: a per-tile cost no D2R room carries."""
+        return bool(self.tiles) and (self.entities / self.tiles > STOCK_DENSITY
+                                     or self.size / self.tiles > STOCK_BYTES_PER_TILE)
 
     @property
     def wall_score(self) -> float:
@@ -245,8 +267,8 @@ def report(scores: list[Score], commit: str = "", found: list[Change] | None = N
              f"{len(scores)} generated presets. Wall: DS1 wall tiles under a piece >= {TALL:g} units. Border (DS1s "
              "with trees): the ring outside the playable area; gaps bare, leaks walkable in the DS1. "
              "Images: red where bare.", "",
-             "| Preset | Area | Border | Gaps | Leaks | Wall | Walls | Images |",
-             "|---|---|---|---|---|---|---|---|"]
+             "| Preset | Area | Border | Gaps | Leaks | Wall | Walls | MB | Entities | Images |",
+             "|---|---|---|---|---|---|---|---|---|---|"]
     if found is not None:
         lines[2:2] = [changes_md(found), ""]
     for s in sorted(scores, key=_key):
@@ -254,13 +276,30 @@ def report(scores: list[Score], commit: str = "", found: list[Change] | None = N
         border = s.ring is not None
         lines.append(f"| {s.name} | {s.area} | {pct(s.border_score)} | {len(s.gaps) if border else '-'} | "
                      f"{len(s.leaks) if border else '-'} | "
-                     f"{pct(s.wall_score)} | {s.walls} | {img} |")
+                     f"{pct(s.wall_score)} | {s.walls} | {s.size / 1e6:.1f} | {s.entities} | {img} |")
     if scores:
         n = sum(s.walls for s in scores)
         lines += ["", f"All walls: {pct(1 - sum(len(s.bare) for s in scores) / n if n else 1.0)} of {n}."]
         rings = [s for s in scores if s.ring is not None]
         if r := sum(len(s.ring) for s in rings):
             lines.append(f"All borders: {pct(1 - sum(len(s.gaps) for s in rings) / r)} of {r} ring tiles.")
+    return "\n".join(lines) + "\n" + budget_md(scores)
+
+
+def budget_md(scores: list[Score]) -> str:
+    """The presets above stock's largest in size or entities, largest first."""
+    over = sorted((s for s in scores if s.over_budget), key=lambda s: (-s.size, s.name))
+    lines = ["", "## Size budget", "",
+             f"{len(over)} of {len(scores)} presets are above D2R's largest stock preset ({STOCK_BYTES / 1e6:.1f} MB "
+             f"or {STOCK_ENTITIES} entities); a PD2 map is one DS1 where a D2R area is many rooms, so size alone is "
+             f"expected. **dense**: more per DS1 tile than any stock preset ({STOCK_DENSITY:g} entities or "
+             f"{STOCK_BYTES_PER_TILE / 1000:g} KB); {sum(s.dense for s in scores)} presets."]
+    if over:
+        lines += ["", "| Preset | Area | MB | x stock | Entities | x stock | Entities/tile | KB/tile | |",
+                  "|---|---|---|---|---|---|---|---|---|"]
+        lines += [f"| {s.name} | {s.area} | {s.size / 1e6:.1f} | {s.size / STOCK_BYTES:.1f} | {s.entities} | "
+                  f"{s.entities / STOCK_ENTITIES:.1f} | {s.entities / max(s.tiles, 1):.1f} | "
+                  f"{s.size / max(s.tiles, 1) / 1000:.1f} | {'**dense**' if s.dense else ''} |" for s in over]
     return "\n".join(lines) + "\n"
 
 
@@ -293,8 +332,10 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
             seen.add(ds1)
             lay = presets.layout((data / "global" / "tiles" / ds1).read_bytes(),
                                  presets.stand_in(files, tiles, pd2_tiles, standins))
-            tall = tall_tiles(boxes(json.loads(f.read_text("utf-8"))["entities"], box, prefab))
+            entities = json.loads(f.read_text("utf-8"))["entities"]
+            tall = tall_tiles(boxes(entities, box, prefab))
             s = score(lay, tall, Path(ds1).stem, area, wet)
+            s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
             scores.append(s)
             for name, image in images(lay, s, tall, wet).items():
                 (out / name).write_bytes(image)
