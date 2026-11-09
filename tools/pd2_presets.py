@@ -49,7 +49,8 @@ UNWALKABLE = 0x20000
 TERRAIN = "act2/palace/celse3"  # a stock preset whose terrain is a flat TERRAIN_SIZE square (D2R Reimagined's plane)
 TERRAIN_SIZE = 170
 ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is pasted where this share of its tiles match
-ROOM_BARE = 0  # walkable DS1 floor tiles a pasted room may leave without its walkable floor
+ROOM_BARE = 0.001  # the share of a room's tiles that may be walkable DS1 floor off its walkable floor (#713:
+# Uber Tristram's 2156-tile town has one PD2 edit; a room with tens of such tiles draws walls or lava on open ground)
 SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
 CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
 PRESETS = Path("hd") / "env" / "preset"
@@ -318,9 +319,9 @@ def rooms(lay: Layout, stock: list[tuple[Layout, dict]]) -> tuple[list[tuple[int
                     break
             else:
                 # the DS1's walkable floor must land on the room's: where it lands on the room's lava, wall or
-                # nothing, the room draws no ground under a walkable tile (Lava, #702)
-                if sum((x - ox, y - oy) not in sw for x, y in walk
-                       if ox <= x < ox + s.width and oy <= y < oy + s.height) <= ROOM_BARE:
+                # nothing, the room draws no ground under a walkable tile (Lava, #702), but for ROOM_BARE of it
+                bare = sum((x + ox, y + oy) in walk and (x, y) not in sw for x in range(s.width) for y in range(s.height))
+                if bare <= ROOM_BARE * len(items):
                     found.append((-hit, n, ox, oy))
     out, taken = [], set()
     for _, n, ox, oy in sorted(found):

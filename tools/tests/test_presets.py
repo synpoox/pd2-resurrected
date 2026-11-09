@@ -215,6 +215,16 @@ class LayerTests(unittest.TestCase):
         self.assertIn("data/hd/env/texture/pillar_alb.texture",
                       [d["path"] for d in preset["dependencies"]["textures"]])
 
+    def test_a_big_stock_room_pastes_over_one_bare_tile_in_a_thousand(self):
+        # Uber Tristram's 2156-tile town: one PD2 edit leaves one walkable tile on the room's wall (#713 review)
+        n = 40  # 1600 tiles: one bare tile is within ROOM_BARE, two are not
+        room = P.Layout(n, n, {(x, y): self.WA if (x, y) in ((0, 0), (5, 5), (6, 6)) else self.F
+                               for x in range(n) for y in range(n)})
+        one = {**room.keys, (5, 5): self.F}
+        two = {**one, (6, 6): self.F}
+        self.assertEqual(len(P.rooms(P.Layout(n, n, one), [(room, {})])[0]), 1)
+        self.assertEqual(len(P.rooms(P.Layout(n, n, two), [(room, {})])[0]), 0)
+
     def test_a_stock_room_is_not_pasted_where_the_ds1s_walkable_floor_lands_off_the_rooms(self):
         room = P.Layout(4, 4, {(x, y): self.WA if (x, y) == (0, 0) else self.F for x in range(4) for y in range(4)},
                         unwalkable=frozenset({(3, 3)}))  # the room's lava corner
