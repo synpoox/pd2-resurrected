@@ -135,15 +135,50 @@ class BuildTests(unittest.TestCase):
             return sorted(e["components"][0]["position"]["x"] for e in preset["entities"] + [preset["terrain"]]
                           if e["name"] == "terrain")
         self.assertEqual(planes(set()), [0.0, 170.0])
-        self.assertEqual(planes({(20, 0)}), [0.0])  # a canal in the room: the plane would hide it
+        self.assertEqual(planes({(20, 0)}), [0.0, 210.0])  # a canal at x 20: the plane shifts past it, to x 21
 
-    def test_sunken_tiles_are_a_pasted_rooms_ground_below_the_plane(self):
-        class Ground:
+    def test_a_mostly_loose_block_with_a_sunken_room_gets_planes_shifted_off_the_sunken_ground(self):
+        # #707's Siege wagon: block 2 (x 17-33) is mostly loose floor, a sunken room tile at x 25 (and y 0-1)
+        lay = P.Layout(34, 2, {(x, y): ("f", (FLOOR,)) for x in range(34) for y in range(2)})
+        taken = {(x, y) for x in range(24, 27) for y in range(2)}
+        with mock.patch.object(P, "rooms", return_value=([], taken)), \
+                mock.patch.object(P, "sunken", return_value={(25, 0), (25, 1)}):
+            preset, _ = P.build(lay, P.Kit(), "m", "m.ds1", "b.json", TERRAIN)
+        xs = [int(e["components"][0]["position"]["x"]) // P.TILE for e in preset["entities"] if e["name"] == "terrain"]
+        covered = {x for px in xs for x in range(px, px + 17)}
+        self.assertNotIn(25, covered)  # no plane over the sunken ground
+        self.assertLessEqual(set(range(17, 24)) | set(range(27, 34)), covered)  # every loose tile in the block
+
+    def test_around_covers_loose_tiles_off_the_sunken_ones_and_leaves_unreachable_ones_bare(self):
+        span = 3
+        # block at (3, 0); a sunken tile at (4, 0) with loose tiles on both sides of it in one row
+        out = P.around({(3, 0), (5, 0)}, {(4, 0)}, 3, 0, span)
+        covered = {(x, y) for px, py in out for x in range(px, px + span) for y in range(py, py + span)}
+        self.assertEqual(covered & {(3, 0), (5, 0)}, {(3, 0), (5, 0)})
+        self.assertNotIn((4, 0), covered)
+        self.assertEqual(P.around({(4, 1)}, {(x, y) for x in range(1, 8) for y in range(-2, 5)} - {(4, 1)}, 3, 0, span),
+                         [])  # every plane over (4, 1) reaches a sunken tile: it stays bare
+
+    def test_sunken_tiles_are_a_placed_terrains_ground_below_the_plane(self):
+        class Ground:  # three tiles along x, at the origin: the first sunk 5 units, the second flat
+            v = [(0.0, 0.0, 0.0), (29.0, 0.0, 9.0)]
+
             def at(self, x, z):
                 return -5.0 if x < 10 else None if x > 20 else 0.0
-        room = P.Layout(3, 1, {(0, 0): ("f", (FLOOR,)), (1, 0): ("f", (FLOOR,)), (2, 0): ("f", (FLOOR,))})
-        self.assertEqual(P.sunken([(0, 4, 7)], [(room, {P.GROUND: Ground()})]), {(4, 7)})
-        self.assertEqual(P.sunken([(0, 4, 7)], [(room, {})]), set())  # no ground read: not sunken
+
+        def terrain(x, z, y=0.0, path="t/terrain.physics", **transform):
+            return {"name": "terrain", "components": [
+                {"type": "TransformDefinitionComponent", "position": {"x": x, "y": y, "z": z}, **transform},
+                {"type": "TerrainDefinitionComponent"},
+                {"type": "PhysicsBodyDefinitionComponent", "fixturedefs": [{"shapetype": {"filename": path}}]}]}
+        grounds = {"t/terrain.physics": Ground()}.get
+        self.assertEqual(P.sunken([terrain(40.0, 70.0)], grounds), {(4, 7)})
+        self.assertEqual(P.sunken([terrain(40.0, 70.0, y=4.5)], grounds), set())  # raised: 0.5 under the plane
+        self.assertEqual(P.sunken([terrain(40.0, 70.0, path="u/terrain.physics")], grounds), set())  # no ground read
+        self.assertEqual(P.sunken([terrain(40.0, 70.0, orientation={"x": 0, "y": 1, "z": 0, "w": 0})], grounds),
+                         set())  # rotated: skipped
+        self.assertEqual(P.sunken([{**terrain(40.0, 70.0), "components": terrain(40.0, 70.0)["components"][::2]}],
+                                  grounds), set())  # no TerrainDefinitionComponent: a prop, not ground
 
     def test_a_key_keeps_d2rs_empty_instances_so_props_come_at_its_density(self):
         lay = P.Layout(2, 1, {(0, 0): ("w", (A,)), (1, 0): ("w", (A,))})

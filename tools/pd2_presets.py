@@ -54,7 +54,8 @@ FLOOR_MAX = 8.0
 UNWALKABLE = 0x20000
 TERRAIN = "act2/palace/celse3"  # a stock preset whose terrain is a flat TERRAIN_SIZE square (D2R Reimagined's plane)
 TERRAIN_SIZE = 170
-SINK = 1.0  # HD units: a pasted room's ground this far below the flat plane would be hidden by it (#705)
+SINK = 1.0  # HD units: a placed terrain's ground this far below the flat plane would be hidden by it (#705)
+IDENTITY = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}  # an unrotated entity's orientation
 ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is pasted where this share of its tiles match
 SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
 CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
@@ -361,14 +362,14 @@ def patches(lay: Layout, stock: list[tuple[Layout, dict]], tiles: set) -> tuple[
 
 def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict,
           stock: list[tuple[Layout, dict]] = (), trees: tuple | None = None, prefabs=lambda path: [(0.0, 0.0)],
-          water: dict[str, tuple[dict, dict]] | None = None, objects: list[tuple[str, float, float]] = ()
-          ) -> tuple[dict, int]:
+          water: dict[str, tuple[dict, dict]] | None = None, objects: list[tuple[str, float, float]] = (),
+          grounds=lambda path: None) -> tuple[dict, int]:
     """The preset for a layout, and how many of its tiles stayed empty for a key the kit lacks. Over the per-tile kit,
     in order: stock rooms pasted whole, the patch lookup (both from `stock`), then the border painter with `trees`
     (pd2_painter.harvest) repaints the trees past the playable area; `prefabs(path)` gives a prefab's piece positions.
     Last, `water` (water DT1 -> a stock water plane entity and its preset's dependencies) covers that DT1's blocked
     floor outside pasted rooms. Each of the DS1's waypoint `objects` (waypoints()) gets one stock waypoint
-    (place_waypoints)."""
+    (place_waypoints). `grounds(physics path)` reads a placed terrain's ground (sunken())."""
     entities: list[dict] = []
     # shortcut: every dependency of each stock preset copied from, as a texture can't be traced to its model; trim it
     # if the frame-rate or load-time check in Jungle Map fails
@@ -453,17 +454,26 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
         depend(of)
     # the ground: the flat plane once per TERRAIN_SIZE block not mostly under pasted rooms, unscaled (a scaled plane
     # does not draw); the first copy is the preset's terrain, the rest are entities. A block mostly under rooms gets
-    # it too when it has tiles outside them, which the rooms' terrain does not reach (#705), unless a room in it has
-    # ground below the plane (a canal, a sunken court), which the plane would hide
+    # it too when it has tiles outside them, which the rooms' terrain does not reach (#705). A block holding sunken
+    # ground (a pasted room's canal, the kit's sunken wagon) gets planes shifted off it instead, as the plane would
+    # hide it (#707's Siege wagon): see around()
     span = TERRAIN_SIZE // TILE
-    sunk = sunken(pasted, stock)
+    sunk = sunken(entities, grounds)
     for bx in range(0, lay.width, span):
         for by in range(0, lay.height, span):
             block = [(x, y) for x in range(bx, min(bx + span, lay.width)) for y in range(by, min(by + span, lay.height))]
-            if (bx or by) and (sum(c in taken for c in block) * 2 < len(block) or any(
-                    c in lay.keys and c not in taken for c in block) and not any(c in sunk for c in block)):
+            loose = {c for c in block if c in lay.keys and c not in taken}
+            if not (bx or by):
+                continue
+            if any(c in sunk for c in block):
+                at = around(loose, sunk, bx, by, span)
+            elif sum(c in taken for c in block) * 2 < len(block) or loose:
+                at = [(bx, by)]
+            else:
+                at = []
+            for px, py in at:
                 plane = copy.deepcopy(terrain)
-                _transform(plane)["position"].update({"x": float(bx * TILE), "z": float(by * TILE)})
+                _transform(plane)["position"].update({"x": float(px * TILE), "z": float(py * TILE)})
                 entities.append(plane)
     for i, e in enumerate(entities):
         e["id"] = i + 1
@@ -477,19 +487,59 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
             "specialTiles": {}}, missing
 
 
-def sunken(pasted: list[tuple[int, int, int]], stock: list[tuple[Layout, dict]]) -> set[tuple[int, int]]:
-    """The tiles of the pasted rooms whose stock ground (GROUND, at the tile's centre) lies more than SINK below the
-    flat plane: a plane over them would hide the room's floor or water."""
+def sunken(entities: list[dict], grounds) -> set[tuple[int, int]]:
+    """The tiles where a placed terrain entity's ground (`grounds(physics path)`, a pd2_terrain.Ground at the origin, or
+    None) lies more than SINK below the flat plane at the tile's centre: a plane over them would hide that floor or
+    water. Placed terrains are a pasted room's own and the kit's sculpted pieces (Siege's sunken wagon and dirt
+    patches, #705); every stock one is unrotated and unscaled, and any other is skipped."""
     out = set()
-    for n, ox, oy in pasted:
-        s, preset = stock[n]
-        ground = preset.get(GROUND)
-        if ground is None:
+    for e in entities:
+        t = _transform(e)
+        if t is None or not any(c["type"] == "TerrainDefinitionComponent" for c in e.get("components", ())):
             continue
-        for x, y in s.keys:
-            h = ground.at(x * TILE + TILE / 2, y * TILE + TILE / 2)
-            if h is not None and h < -SINK:
-                out.add((x + ox, y + oy))
+        if (t.get("orientation") or IDENTITY) != IDENTITY or {*(t.get("scale") or {"x": 1}).values()} - {1, 1.0}:
+            continue
+        path = next((f["shapetype"].get("filename", "") for c in e["components"]
+                     if c["type"] == "PhysicsBodyDefinitionComponent" for f in c.get("fixturedefs", ())), "")
+        ground = grounds(path) if path.endswith(".physics") else None
+        if ground is None or not ground.v:
+            continue
+        p = t["position"]
+        xs, zs = [v[0] + p["x"] for v in ground.v], [v[2] + p["z"] for v in ground.v]
+        for x in range(int(min(xs) // TILE), int(max(xs) // TILE) + 1):
+            for y in range(int(min(zs) // TILE), int(max(zs) // TILE) + 1):
+                h = ground.at(x * TILE + TILE / 2 - p["x"], y * TILE + TILE / 2 - p["z"])
+                if h is not None and h + p.get("y", 0.0) < -SINK:
+                    out.add((x, y))
+    return out
+
+
+def around(loose: set, sunk: set, bx: int, by: int, span: int) -> list[tuple[int, int]]:
+    """Plane corners (tiles) covering a block's `loose` tiles without reaching a `sunk` one, greedily: the corner,
+    within a plane's span of the block's, whose plane covers the most loose tiles left. Loose tiles no plane can reach
+    without a sunk tile stay bare."""
+    n = 3 * span - 2
+    ox, oy = bx - span + 1, by - span + 1
+
+    def table(cells: set) -> list[list[int]]:  # summed-area table over the n x n tiles from (ox, oy)
+        t = [[0] * (n + 1) for _ in range(n + 1)]
+        for i in range(n):
+            for j in range(n):
+                t[i + 1][j + 1] = t[i][j + 1] + t[i + 1][j] - t[i][j] + ((ox + i, oy + j) in cells)
+        return t
+
+    def count(t: list[list[int]], i: int, j: int) -> int:
+        return t[i + span][j + span] - t[i][j + span] - t[i + span][j] + t[i][j]
+    hole, left, out = table(sunk), set(loose), []
+    while left:
+        have = table(left)
+        best = max(((count(have, i, j), -abs(i - span + 1) - abs(j - span + 1), i, j)
+                    for i in range(2 * span - 1) for j in range(2 * span - 1) if not count(hole, i, j)), default=None)
+        if not best or not best[0]:
+            break
+        px, py = ox + best[2], oy + best[3]
+        out.append((px, py))
+        left -= {(x, y) for x in range(px, px + span) for y in range(py, py + span)}
     return out
 
 
@@ -695,6 +745,14 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         f = d2r_data / path.removeprefix("data/")
         ents = json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
         return [(t["position"]["x"], t["position"]["z"]) for t in map(_transform, ents) if t] or [(0.0, 0.0)]
+
+    @functools.cache
+    def ground(path: str) -> terrain_ground.Ground | None:
+        f = d2r_data / path.removeprefix("data/")
+        try:
+            return terrain_ground.Ground(f.read_bytes()) if f.is_file() else None
+        except struct.error:
+            return None
     report, groups, bare = [], {}, []
     for _, tile_set, _, ds1s in on_d2r:
         groups.setdefault(tile_set, []).extend(ds1s)
@@ -709,7 +767,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             objects = waypoints((out_data / "global" / "tiles" / ds1).read_bytes(), mod_classes)
             bare += [f"{Path(ds1).stem} {o[0]}" for o in objects if not waypoint_options(lay, kit, *o)]
             preset, missing = build(lay, kit, Path(ds1).stem, ds1, sets[tile_set.lower()], terrain, own,
-                                    trees if outdoor else None, prefab, water, objects)
+                                    trees if outdoor else None, prefab, water, objects, ground)
             dest = out_data / PRESETS / Path(ds1).with_suffix(".json")
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text(json.dumps(preset, separators=(",", ":")), "utf-8")
