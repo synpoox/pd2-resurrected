@@ -37,6 +37,7 @@ import struct
 import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 import pd2_painter as painter
 from pd2_ids import Table, excel, load
@@ -165,6 +166,8 @@ class Kit:
     # a waypoint's pieces, as offsets from its object: under ("kc", key of the tile under the object, objects Class),
     # ("k", key) and, without a room terrain, ("c", Class)
     waypoints: dict[Key | str, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
+    # whether an instance holds a piece tall enough to hide the player (apply() sets it from the models' boxes)
+    tall: Callable[[list[tuple[dict, float, float]]], bool] | None = None
 
     def add(self, lay: Layout, preset: dict, keep: set[Key], objects: list[tuple[str, float, float]] = ()) -> None:
         """Harvest one stock (layout, preset) pair, only the keys in `keep`. A waypoint's pieces stay out of the
@@ -239,7 +242,7 @@ def fades(e: dict) -> bool:
 
 
 def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near: frozenset = frozenset(),
-          far: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
+          far: frozenset = frozenset(), inner: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
     """Each tile's pick of its key's instances (no ids yet), the kit sources used, and how many tiles stayed empty
     for a key the kit lacks. An `edge` tile (the map's border, where the automap draws its edge) picks among the
     instances that hold a piece: a stock tile left empty there leans on its neighbour's piece, which another pick
@@ -249,8 +252,12 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
     playable ground screen-up of it) picks only an instance whose pieces all fade, as D2R's rooms do on their near
     side, or stays empty. A `far` edge tile (one whose tree is drawn over no playable ground) picks among those that
     hold a tree (painter.is_tree) first, as a lone rock or shrub is too low to close the border (Frozen Forest,
-    #688)."""
+    #688). An `inner` tile (walkable floor amid walkable floor) picks only an instance with no piece tall enough to
+    hide the player (kit.tall), or stays empty: legacy draws a wall or object there as its own tile or object, never
+    on plain floor, so a stock room's altar canopy pasted onto the floor stands where legacy shows open ground
+    (Crypts Map, #707)."""
     entities, used, missing = [], set(), 0
+    tall: dict[int, bool] = {}
 
     def one(x: int, y: int, key: Key, salt: str) -> bool:
         options = kit.instances.get(key)
@@ -262,6 +269,10 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
             options = [o for o in options if any(painter.is_tree(e) for e, _, _ in o[1])] or options
         if (x, y) in near:
             options = [o for o in options if all(fades(e) for e, _, _ in o[1])]
+            if not options:
+                return True
+        if (x, y) in inner and kit.tall:
+            options = [o for o in options if not tall.setdefault(id(o[1]), kit.tall(o[1]))]
             if not options:
                 return True
         if (x, y) in edge:
@@ -390,11 +401,16 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
     near = frozenset(c for c in fill if {(c[0] - 1, c[1]), (c[0], c[1] - 1), (c[0] - 1, c[1] - 1)} & play)
     rest = {c: k for c, k in lay.keys.items() if c not in taken or c in fill}
     found, pkit = patches(lay, stock, set(rest))
-    loose, used, _ = place(found, pkit, seed, edge, near, far)
+    pkit.tall = kit.tall
+    # walkable floor whose 8 neighbours are walkable floor too: a wall piece belongs to the tile its origin falls on,
+    # which may be the floor tile next to its wall, so only the floor past that keeps tall pieces off (#707)
+    walk = {c for c, k in lay.keys.items() if k[0] == "f" and c not in lay.unwalkable}
+    inner = frozenset(c for c in walk if all((c[0] + i, c[1] + j) in walk for i in (-1, 0, 1) for j in (-1, 0, 1)))
+    loose, used, _ = place(found, pkit, seed, edge, near, far, inner)
     for src in sorted(used):
         depend(pkit.sources[src])
     more, used, missing = place(Layout(lay.width, lay.height, {c: k for c, k in rest.items() if c not in found.keys}),
-                                kit, seed, edge, near, far)
+                                kit, seed, edge, near, far, inner)
     for src in sorted(used):
         depend(kit.sources[src])
     loose += more
@@ -603,6 +619,26 @@ def water_planes(d2r_data: Path, rule: dict[str, str]) -> dict[str, tuple[dict, 
     return {dt1: found[model] for dt1, model in rule.items()}
 
 
+def tall_check(d2r_data: Path) -> Callable[[list[tuple[dict, float, float]]], bool] | None:
+    """Kit.tall from D2R's model boxes: a piece at least pd2_coverage.TALL high and not room-sized (its sculpted
+    terrain or water), the height the coverage report counts as one that hides a wall; None without the boxes."""
+    import pd2_coverage as cov  # here: pd2_coverage imports this module
+    src = d2r_data / cov.MODELS
+    if not src.is_file():
+        return None
+    found = cov.model_boxes(src.read_bytes())
+
+    @functools.cache
+    def prefab(path: str) -> list[dict]:
+        f = d2r_data / path.removeprefix("data/")
+        return json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
+
+    def tall(ents: list[tuple[dict, float, float]]) -> bool:
+        return any(b[4] >= cov.TALL and b[1] - b[0] <= cov.ROOM and b[3] - b[2] <= cov.ROOM
+                   for b in cov.boxes([e for e, _, _ in ents], lambda p: found.get(cov.fnv(p)), prefab))
+    return tall
+
+
 def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/presets-hd.tsv (see the module docstring)."""
     sets, standins, water_rule = read_rule(rule)
@@ -650,6 +686,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             continue
         stock.append((layout(data, tiles.of(listed)), json.loads(p.read_text("utf-8-sig")), set(listed)))
         kit.add(*stock[-1][:2], keep, waypoints(data, stock_classes))
+    kit.tall = tall_check(d2r_data)
 
     @functools.cache
     def prefab(path: str) -> list[tuple[float, float]]:

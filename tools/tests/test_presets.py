@@ -417,6 +417,29 @@ class LayerTests(unittest.TestCase):
         # on the near side (not `far`) a tree would be drawn over the path: the pick stays the stock one (#454)
         self.assertEqual({e["name"] for i in range(20) for e in P.place(lay, kit, f"s{i}", edge)[0]},
                          {"act5_tree_wall01", "rock"})
+    def test_inner_walkable_floor_picks_no_instance_with_a_piece_tall_enough_to_hide_the_player(self):
+        canopy, rug = entity("baldachin01", 0, 0), entity("altar_runner_rug01", 0, 0)
+        kit = P.Kit({self.F: [(0, [(canopy, 1.0, 1.0)]), (0, [(rug, 1.0, 1.0)])]}, [{}],
+                    tall=lambda ents: any(e["name"] == "baldachin01" for e, _, _ in ents))
+        lay = P.Layout(1, 1, {(0, 0): self.F})
+        inner = frozenset({(0, 0)})
+        self.assertEqual({e["name"] for i in range(20) for e in P.place(lay, kit, f"s{i}")[0]},
+                         {"baldachin01", "altar_runner_rug01"})
+        self.assertEqual({e["name"] for i in range(20) for e in P.place(lay, kit, f"s{i}", inner=inner)[0]},
+                         {"altar_runner_rug01"})
+        kit.instances[self.F] = kit.instances[self.F][:1]  # only the canopy: the tile stays empty
+        self.assertEqual(P.place(lay, kit, "s", inner=inner)[0], [])
+
+    def test_a_tall_piece_stays_on_floor_next_to_a_wall_or_unwalkable_floor(self):
+        keys = {(x, y): self.F for x in range(5) for y in range(5)}
+        keys[(4, 2)] = self.WA
+        lay = P.Layout(5, 5, keys, {c: b"\0" * 25 for c in keys}, frozenset({(2, 4)}))
+        kit = P.Kit({self.F: [(0, [(entity("column", 0, 0), 1.0, 1.0)])]}, [{}], tall=lambda ents: True)
+        preset, _ = P.build(lay, kit, "m", "m.ds1", "b.json", TERRAIN)
+        cols = {(int(at(e)[0] // 10), int(at(e)[1] // 10)) for e in preset["entities"] if e["name"] == "column"}
+        # only these four have all 8 neighbours on the map and walkable floor (not the wall (4, 2) or sealed (2, 4))
+        self.assertEqual(set(keys) - {(4, 2)} - cols, {(1, 1), (2, 1), (1, 2), (2, 2)})
+
     def test_a_tree_tile_never_picks_a_stone_wall_or_cliff_instance(self):
         tree = ("w", (("expansion/siege/trees.dt1", 14, 0, 6),))
         kit = P.Kit({tree: [(0, [(entity("siege/wall_stone_large01", 0, 0), 1.0, 1.0)]),
