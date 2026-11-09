@@ -258,6 +258,17 @@ class LayerTests(unittest.TestCase):
         self.assertTrue({(x, 2) for x in range(6)} <= play)
         self.assertFalse({(x, y) for x in range(6) for y in (5, 6)} & play)
 
+    def test_a_border_tile_a_pasted_room_does_not_match_takes_the_kits_piece(self):
+        room = P.Layout(4, 4, {(x, y): self.WA if (x, y) == (0, 0) else self.F for x in range(4) for y in range(4)})
+        src = {"dependencies": {}, "entities": [entity("pillar", 3.0, 4.0)], "terrain": TERRAIN}
+        keys = dict(room.keys)
+        keys[(3, 3)] = keys[(2, 3)] = self.WB  # PD2 sealed two tiles with a wall the stock room has not
+        lay = P.Layout(4, 4, keys, {c: b"\0" * 25 for c in keys}, frozenset({(3, 3)}))
+        kit = P.Kit({self.WB: [(0, [(entity("post", 0, 0), 5.0, 5.0)])]}, [{}])
+        preset, _ = P.build(lay, kit, "m", "m.ds1", "b.json", TERRAIN, stock=[(room, src)], trees=({}, 9.0))
+        posts = [P._transform(e)["position"] for e in preset["entities"] if e["name"] == "post"]
+        self.assertEqual([(p["x"], p["z"]) for p in posts], [(35.0, 35.0)])  # the border tile only, not (2, 3)
+
     def test_a_stream_dt1_past_the_tree_line_stays_water(self):
         # row 0 ground, row 1 sealed floor (unwalkable), row 2 a stream that touches only the sealed floor
         river = ("f", (("act3/river/rivbank.dt1", 0, 0, 1),))

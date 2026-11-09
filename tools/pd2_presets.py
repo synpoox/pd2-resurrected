@@ -268,12 +268,15 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
                     c["wallTileLocalCoord"] = {"x": c["wallTileLocalCoord"]["x"] + ox,
                                                "y": c["wallTileLocalCoord"]["y"] + oy}
             entities.append(e)
-    rest = {c: k for c, k in lay.keys.items() if c not in taken}
     wet = frozenset(water or {})  # stream DT1: their blocked floor stays water past the tree line
     edge = frozenset()
     if trees:  # the ring just past the playable area: the border the automap draws
         play = painter.playable(lay, wet)
         edge = frozenset({(x + dx, y + dy) for x, y in play for dx, dy in painter.STEPS} - play)
+    # a room pastes whole at a ROOM_MATCH match: a border tile in it that its stock tile doesn't match (or that its
+    # stock leaves empty) has no piece of its own, so it takes the kit's pick too (#686: Fortress's wall islands)
+    was = {(x + ox, y + oy): k for n, ox, oy in pasted for (x, y), k in stock[n][0].keys.items()}
+    rest = {c: k for c, k in lay.keys.items() if c not in taken or c in edge and was.get(c) != k}
     found, pkit = patches(lay, stock, set(rest))
     loose, used, _ = place(found, pkit, seed, edge)
     for src in sorted(used):
