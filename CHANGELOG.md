@@ -26,8 +26,11 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Jungle, Kurast and Necropolis maps grow tree walls on the near side of paths, closing most gaps in their borders.
 - Ashen Plains and other outdoor maps grow trees on the blocked ground past their edge walls.
 - Frozen Forest and other outdoor maps close more gaps in the tree lines beyond their paths.
+- Fortress Map draws the walls PD2 added inside copied D2R rooms, closing most of its border gaps.
+- Tree tiles no longer draw a stone wall or cliff, which hid Fortress Map's waypoint court.
 - PD2 areas show "Entering <area>" on arrival instead of "Missing string".
 - Dungeon boss barriers show as iron gates instead of invisible walls.
+- Map waypoints draw their platform, and no stray waypoints stand on plain ground.
 
 #### Uber bosses
 
