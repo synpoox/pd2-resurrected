@@ -35,7 +35,7 @@ jobs:
       - name: Table-diff gate
         run: py -3 tools/pd2_diff.py --scope alpha
       # LP3c (#672, #681): the no-game coverage report of the generated HD presets, uploaded as an artifact. It fails
-      # the job when a preset's wall or border score drops more than pd2_coverage.TOLERANCE points below
+      # the job when a preset's wall, border or floor score drops more than pd2_coverage.TOLERANCE points below
       # docs/coverage-baseline.tsv; to accept an intended drop, commit a new baseline (`--write-baseline`). It runs
       # after the table-diff, so that result is already in. Without model_lod_desc.bin it skips and passes.
       - name: HD preset coverage
