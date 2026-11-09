@@ -18,6 +18,17 @@ def ds1(objects: list[tuple[int, int]], act: int = 2) -> bytes:
     return head + layers + objs + b"GROUPS"
 
 
+class EntryKeyTests(unittest.TestCase):
+    def test_entry_key_keeps_letters_and_digits(self):
+        self.assertEqual(L.entry_key("Graveyard Map"), "EnteringGraveyardMap")
+        self.assertEqual(L.entry_key("Na-Krul's Abyss 2"), "EnteringNaKrulsAbyss2")
+
+    def test_fill_entries_names_only_the_pd2_only_levels_without_one(self):
+        lv = table("Name|LevelName|LevelEntry\r\nA|Blood Moor|\r\nB|Graveyard Map|\r\nC|Tomb Map|Own\r\nD||\r\n")
+        L.fill_entries(lv, 1)
+        self.assertEqual([r[2] for r in lv.rows], ["", "EnteringGraveyardMap", "Own", ""])
+
+
 class Ds1Tests(unittest.TestCase):
     def test_object_ids_rewritten_and_left_out(self):
         data = ds1([(1, 5), (2, -10), (2, 160), (3, 7)])

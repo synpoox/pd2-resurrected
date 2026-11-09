@@ -21,6 +21,9 @@ jobs:
         run: if (Test-Path pd2-data) { cmd /c rmdir pd2-data }
         continue-on-error: true
       - uses: actions/checkout@v4
+      - name: Update the toolkit checkout
+        run: git -C "${{ vars.D2R_TOOLKIT }}" pull -q --ff-only
+        continue-on-error: true  # a dirty or diverged checkout, or another job's pull, must not fail the run
       - name: Merged data
         run: |
           $cache = "C:\pd2r-cache\pd2-data"
@@ -31,3 +34,29 @@ jobs:
           py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
       - name: Table-diff gate
         run: py -3 tools/pd2_diff.py --scope alpha
+      # LP3c (#672, #681): the no-game coverage report of the generated HD presets, uploaded as an artifact. It fails
+      # the job when a preset's wall, border or floor score drops more than pd2_coverage.TOLERANCE points below
+      # docs/coverage-baseline.tsv; to accept an intended drop, commit a new baseline (`--write-baseline`). It runs
+      # after the table-diff, so that result is already in. Without model_lod_desc.bin it skips and passes.
+      - name: HD preset coverage
+        if: ${{ !cancelled() }}
+        run: |
+          py -3 -m modkit fetch --prefix data/hd/model_lod_desc.bin
+          if ($LASTEXITCODE) { "::warning::modkit fetch of model_lod_desc.bin failed: the coverage check may skip" }
+          $out = py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --check
+          $code = $LASTEXITCODE
+          $out
+          if (Test-Path out/coverage/changes.md) {
+            Get-Content out/coverage/changes.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          } else {
+            "::warning::HD preset coverage did not run: $out"
+            "HD preset coverage did not run: $out" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          }
+          exit $code
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        with:
+          name: hd-preset-coverage
+          path: out/coverage/
+          if-no-files-found: ignore

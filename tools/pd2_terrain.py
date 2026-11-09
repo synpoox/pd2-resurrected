@@ -14,6 +14,7 @@ import struct
 from pathlib import Path
 
 CELL = 10.0  # bucket size for the triangle lookup, in HD units (one DS1 tile)
+REACH = 1.0  # a piece sunk this far into a surface still stands on it
 
 
 class Ground:
@@ -35,8 +36,19 @@ class Ground:
                 for cz in range(int(min(zs) // CELL), int(max(zs) // CELL) + 1):
                     self.cells.setdefault((cx, cz), []).append(t)
 
-    def at(self, x: float, z: float) -> float | None:
-        best = None
+    def at(self, x: float, z: float, y: float | None = None) -> float | None:
+        """With `y` (a piece's height), the surface the piece stands on: the highest at or below y + REACH, else the
+        lowest, so an overhead layer (a siege rampart over a wall's foot) does not bury it (#678 review)."""
+        ys = self.surfaces(x, z)
+        if not ys:
+            return None
+        if y is None:
+            return max(ys)
+        under = [s for s in ys if s <= y + REACH]
+        return max(under) if under else min(ys)
+
+    def surfaces(self, x: float, z: float) -> list[float]:
+        out = []
         for i, j, k in self.cells.get((int(x // CELL), int(z // CELL)), ()):
             (ax, ay, az), (bx, by, bz), (cx, cy, cz) = self.v[i], self.v[j], self.v[k]
             den = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz)
@@ -45,9 +57,8 @@ class Ground:
             l1 = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / den
             l2 = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / den
             if min(l1, l2, 1 - l1 - l2) >= -1e-4:
-                y = l1 * ay + l2 * by + (1 - l1 - l2) * cy
-                best = y if best is None else max(best, y)
-        return best
+                out.append(l1 * ay + l2 * by + (1 - l1 - l2) * cy)
+        return out
 
 
 def of_preset(preset: dict, d2r_data: Path) -> Ground | None:

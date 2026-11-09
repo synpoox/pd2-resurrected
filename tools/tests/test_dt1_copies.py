@@ -61,6 +61,16 @@ class CopiesTests(unittest.TestCase):
         self.assertEqual(C.copies(pd2, images, {})[("pd2assets/x.dt1", 5, 5, 5)], ("act1/town/floor.dt1", 0, 1, 0))
 
 
+class LayoutTests(unittest.TestCase):
+    def test_a_copied_tile_is_named_from_its_own_dt1_not_an_earlier_one_with_the_same_index(self):
+        data = ds1(1, 1, walls=[], floors=[{(0, 0): (1, 2)}])
+        f = b"\x00" * 25
+        dt1s = {"act2/palace/cellar.dt1": {(0, 1, 2): f}, "pd2assets/x.dt1": {(0, 1, 2): f}}
+        copies = {("pd2assets/x.dt1", 0, 1, 2): ("act2/arcane/sanctuary.dt1", 0, 1, 2)}
+        self.assertEqual(P.layout(data, dt1s, copies).keys[(0, 0)], ("f", (("act2/arcane/sanctuary.dt1", 0, 1, 2),)))
+        self.assertEqual(P.layout(data, dt1s).keys[(0, 0)], ("f", (("act2/palace/cellar.dt1", 0, 1, 2),)))
+
+
 class GeneratorTests(unittest.TestCase):
     def test_a_preset_draws_the_stock_pieces_of_the_d2r_tile_a_pd2_tile_copies_at_another_index(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -71,6 +81,8 @@ class GeneratorTests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(data if isinstance(data, bytes) else data.replace("|", "\t").encode())
             write(d2r / "global/excel/lvlprest.txt", "Name|LevelId|Dt1Mask|File1\nTown|0|1|Act1/S.ds1\n")
+            for root in (d2r, out):
+                write(root / "global/excel/objpreset.txt", "Index|Act|ObjectClass\n0|1|WaypointOutsideAct1\n")
             write(out / "global/excel/lvlprest.txt", "Name|LevelId|Dt1Mask|File1|File2|File3|File4|File5|File6\n"
                   "Town|0|1|Act1/S.ds1|||||\nPd2 Map|1|1|Expansion/Map/P.ds1|||||\n")
             write(out / "global/excel/levels.txt", "Name|LevelType\nTown|0\nPd2 Map|1\n")

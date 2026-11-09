@@ -22,12 +22,20 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Throwing potions burst into their explosion and fire, gas, cold or lightning ring.
 - Weapons lose durability half as often.
 - Class items roll skill bonuses from the whole class tree, gated by each skill's required level.
+- Monsters cleared from Chaos Sanctuary when Diablo arrives drop nothing.
 - Nova item casts (on striking, charges) burst around the target, and no longer misfire.
 
 #### Maps
 
 - Jungle and Necropolis maps draw water in their streams beyond the copied D2R rooms.
 - Jungle, Kurast and Necropolis maps grow tree walls on the near side of paths, closing most gaps in their borders.
+- Ashen Plains and other outdoor maps grow trees on the blocked ground past their edge walls.
+- Frozen Forest and other outdoor maps close more gaps in the tree lines beyond their paths.
+- Fortress Map draws the walls PD2 added inside copied D2R rooms, closing most of its border gaps.
+- Tree tiles no longer draw a stone wall or cliff, which hid Fortress Map's waypoint court.
+- PD2 areas show "Entering <area>" on arrival instead of "Missing string".
+- Dungeon boss barriers show as iron gates instead of invisible walls.
+- Map waypoints draw their platform, and no stray waypoints stand on plain ground.
 
 #### Uber bosses
 
