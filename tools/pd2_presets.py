@@ -156,8 +156,9 @@ class Kit:
 def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
     """Each tile's pick of its key's instances (no ids yet), the kit sources used, and how many tiles stayed empty
     for a key the kit lacks. An `edge` tile (the map's border, where the automap draws its edge) picks among the
-    instances that hold a piece: a stock tile left empty there leans on its neighbour's piece, which another pick
-    may not have, and the border would show a gap."""
+    instances that hold a tree (painter.is_tree), else a piece: a stock tile left empty there leans on its
+    neighbour's piece, which another pick may not have, and a lone rock or shrub is too low to close the border
+    (Frozen Forest, #688)."""
     entities, used, missing = [], set(), 0
 
     def one(x: int, y: int, key: Key, salt: str) -> bool:
@@ -165,7 +166,8 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset()) -> tu
         if not options:
             return False
         if (x, y) in edge:
-            options = [o for o in options if o[1]] or options
+            options = ([o for o in options if any(painter.is_tree(e) for e, _, _ in o[1])]
+                       or [o for o in options if o[1]] or options)
         src, ents = options[zlib.crc32(f"{seed}:{x}:{y}{salt}".encode()) % len(options)]
         used.add(src)
         for e, dx, dz in ents:
@@ -299,9 +301,10 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
                        for x, z in painter.pieces(e, prefabs))
         entities = [e for e in entities if not painter.is_tree(e) or not on_ground(e)]
         # a lone tree (a wall tile on the path) stays, and a stream's; so does a line's where no painted tree stands
-        # within two tiles (a line with playable ground on both sides leaves the painter no room)
+        # within two tiles (a line with playable ground on both sides leaves the painter no room), and an edge tile's:
+        # the painter keeps its trees off the ground camera-near of the path, so a dropped edge tree left a gap (#688)
         loose = [e for e in loose if not painter.is_tree(e)
-                 or not on_ground(e) and (tile(e) in play or tile(e) in line - near)]
+                 or not on_ground(e) and (tile(e) in play or tile(e) in line - near or tile(e) in edge)]
         assert not any(on_ground(e) for e, _ in painted), f"{name}: a painted tree reaches walkable floor"
         for e, of in painted:
             loose.append(e)
