@@ -354,6 +354,14 @@ class LayerTests(unittest.TestCase):
         self.assertFalse(stream & P.painter.playable(lay))  # no walkable floor next to it: border ground
         self.assertTrue(stream <= P.painter.playable(lay, frozenset({"act3/river/rivbank.dt1"})))
 
+    def test_a_stock_piece_on_a_keyless_tile_joins_the_nearest_kept_tile(self):
+        stock = P.Layout(3, 1, {(0, 0): self.WA})  # (1, 0) and (2, 0) have no tile in the stock DS1
+        kit = P.Kit()
+        kit.add(stock, {"dependencies": {}, "entities": [entity("pillar", 12.0, 5.0), entity("far", 25.0, 5.0)]},
+                {self.WA})
+        [(_, ents)] = kit.instances[self.WA]
+        self.assertEqual([(e["name"], dx, dz) for e, dx, dz in ents], [("pillar", 12.0, 5.0)])  # "far" is 2 tiles off
+
     def test_an_edge_tile_picks_a_kit_instance_that_holds_a_piece(self):
         kit = P.Kit({self.WA: [(0, []), (0, [(entity("wall", 0, 0), 1.0, 1.0)])]}, [{}])
         lay = P.Layout(1, 1, {(0, 0): self.WA})

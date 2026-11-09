@@ -170,7 +170,8 @@ class Kit:
         """Harvest one stock (layout, preset) pair, only the keys in `keep`. A waypoint's pieces stay out of the
         per-tile kit, as D2R puts their transform up to 4 tiles off the waypoint's tiles (#669): each joins the
         nearest of the DS1's waypoint `objects` (waypoints()), or is dropped if it has none. A pasted room keeps
-        its own (build())."""
+        its own (build()). A piece whose origin falls on a tile the stock DS1 leaves without a key (a pillar or wall
+        end just past its tile) joins the nearest kept tile within one tile instead of being lost (#686)."""
         src = len(self.sources)
         self.sources.append(preset["dependencies"])
         per: dict[tuple[int, int], list] = {c: [] for c, k in lay.keys.items() if k in keep}
@@ -186,6 +187,10 @@ class Kit:
                     groups.setdefault(n, []).append((e, x - objects[n][1], z - objects[n][2]))
                 continue
             c = (min(max(int(x // TILE), 0), lay.width - 1), min(max(int(z // TILE), 0), lay.height - 1))
+            if c not in lay.keys:
+                near = [(c[0] + i, c[1] + j) for i, j in painter.AROUND if (c[0] + i, c[1] + j) in lay.keys]
+                if near:
+                    c = min(near, key=lambda n: ((n[0] + 0.5) * TILE - x) ** 2 + ((n[1] + 0.5) * TILE - z) ** 2)
             if c in per:
                 per[c].append((e, x - c[0] * TILE, z - c[1] * TILE))
         for c, ents in per.items():
