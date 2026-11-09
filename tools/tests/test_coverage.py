@@ -103,6 +103,14 @@ class Tall(unittest.TestCase):
     def test_room_sized_left_out(self):
         self.assertEqual(C.tall_tiles(iter([(0.0, 500.0, 0.0, 9.0, 50.0)])), set())
 
+    def test_a_low_piece_covers_a_fence_or_shore_tile_only(self):
+        fence = ("w", (("act1/outdoors/stonewall.dt1", 1, 0, 0),))
+        shore = ("f", (("act3/river/rivbank.dt1", 0, 0, 0),))
+        L = lay({(0, 0): fence, (1, 0): WALL, (2, 0): shore})
+        low = [(0.0, 29.0, 0.0, 9.0, 2.0)]  # a 2-unit piece over all three tiles
+        self.assertEqual(C.covered(L, low), {(0, 0), (2, 0)})
+        self.assertEqual(C.covered(L, [(10.0, 19.0, 0.0, 9.0, 5.0)]), {(1, 0)})
+
 
 class Scores(unittest.TestCase):
     def test_wall_score(self):
