@@ -16,3 +16,8 @@ LucionChest	consolation_chest
 # The map event altars draw the D2R object of the legacy token PD2's row uses: OB (Obelisk1), xo (DungeonShrineMagic)
 TaintedSunMapEventAltar	obelisk_1
 ForceShardAltar	dungeon_shrine_magic
+# The dungeons' boss blockers draw D2R's closed iron gate: the 1x5 blockers take the 1x3 left gate, the 5x1 the 3x1 right (#610)
+bossblocker_x	door_gate_left
+bossblocker_x_warp	door_gate_left
+bossblocker_y	door_gate_right
+bossblocker_y_warp	door_gate_right
