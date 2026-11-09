@@ -37,6 +37,7 @@ import struct
 import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 import pd2_dt1_copies as dt1_copies
 import pd2_painter as painter
@@ -57,6 +58,7 @@ TERRAIN_SIZE = 170
 SINK = 1.0  # HD units: a placed terrain's ground this far below the flat plane would be hidden by it (#705)
 IDENTITY = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}  # an unrotated entity's orientation
 ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is pasted where this share of its tiles match
+FAR = 20.0  # HD units (2 tiles): a piece whose mesh stands this far clear of its position belongs to a structure
 SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
 CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
 PRESETS = Path("hd") / "env" / "preset"
@@ -183,20 +185,25 @@ def _floor(key: Key) -> bool:
 class Kit:
     instances: dict[Key, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
     sources: list[dict[str, list[dict]]] = field(default_factory=list)  # each stock preset's dependencies
+    far: Callable[[dict], bool] = lambda e: False  # far_off(): a piece whose mesh stands FAR or more clear of its anchor
     # a waypoint's pieces, as offsets from its object: under ("kc", key of the tile under the object, objects Class),
     # ("k", key) and, without a room terrain, ("c", Class)
     waypoints: dict[Key | str, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
 
-    def add(self, lay: Layout, preset: dict, keep: set[Key], objects: list[tuple[str, float, float]] = ()) -> None:
+    def add(self, lay: Layout, preset: dict, keep: set[Key], objects: list[tuple[str, float, float]] = (),
+            floor: set | None = None) -> None:
         """Harvest one stock (layout, preset) pair, only the keys in `keep`. A waypoint's pieces stay out of the
         per-tile kit, as D2R puts their transform up to 4 tiles off the waypoint's tiles (#669): each joins the
         nearest of the DS1's waypoint `objects` (waypoints()), or is dropped if it has none. A pasted room keeps
         its own (build()). With the preset's ground (GROUND, from pd2_terrain), each piece keeps its height above
-        that ground, as the generated terrain is flat."""
+        that ground, as the generated terrain is flat. A `far` piece anchored on a floor tile (`floor`, else the
+        layout's "f" keys) is left out: its mesh belongs to a structure elsewhere in the room, and on a common floor key
+        it would stand on any plain ground (Harrogath's stairs on Westmarch's floor, #679)."""
         src = len(self.sources)
         self.sources.append(preset["dependencies"])
         ground = preset.get(GROUND)
         per: dict[tuple[int, int], list] = {c: [] for c, k in lay.keys.items() if k in keep}
+        floor = {c for c, k in lay.keys.items() if k[0] == "f"} if floor is None else floor
         groups: dict[int, list] = {}
         for e in preset["entities"]:
             t = _transform(e)
@@ -209,7 +216,7 @@ class Kit:
                     groups.setdefault(n, []).append((e, x - objects[n][1], z - objects[n][2]))
                 continue
             c = (min(max(int(x // TILE), 0), lay.width - 1), min(max(int(z // TILE), 0), lay.height - 1))
-            if c in per:
+            if c in per and not (c in floor and self.far(e)):
                 g = ground.at(x, z, t["position"]["y"]) if ground else None
                 if g is not None and t["position"]["y"] - g > FLOOR_MAX and _floor(lay.keys[c]):
                     continue  # a building's upper part over this floor: its walls are other tiles', so it would float
@@ -348,18 +355,20 @@ def rooms(lay: Layout, stock: list[tuple[Layout, dict]]) -> tuple[list[tuple[int
     return out, taken
 
 
-def patches(lay: Layout, stock: list[tuple[Layout, dict]], tiles: set) -> tuple[Layout, Kit]:
+def patches(lay: Layout, stock: list[tuple[Layout, dict]], tiles: set, far=lambda e: False) -> tuple[Layout, Kit]:
     """The patch lookup: each of `tiles` whose 3x3 neighbourhood (else its 4-neighbour cross) appears in a stock
-    preset, keyed so that the kit copies what that preset placed on the centre tile, empty included."""
+    preset, keyed so that the kit copies what that preset placed on the centre tile, empty included; `far` as
+    Kit.far."""
     def patch(keys: dict, c: tuple, name: str, cells: list) -> Key:
         return name, tuple(keys.get((c[0] + i, c[1] + j)) for i, j in cells)
     shapes = (("sq", SQUARE), ("cross", CROSS))
     want = {c: [patch(lay.keys, c, *k) for k in shapes] for c in tiles}
     keep = {k for ks in want.values() for k in ks}
-    kit = Kit()
+    kit = Kit(far=far)
     for s, preset in stock:
+        floor = {c for c, k in s.keys.items() if k[0] == "f"}
         for k in shapes:
-            kit.add(Layout(s.width, s.height, {c: patch(s.keys, c, *k) for c in s.keys}), preset, keep)
+            kit.add(Layout(s.width, s.height, {c: patch(s.keys, c, *k) for c in s.keys}), preset, keep, floor=floor)
     return Layout(lay.width, lay.height, {c: next(k for k in ks if k in kit.instances)
                                           for c, ks in want.items() if any(k in kit.instances for k in ks)}), kit
 
@@ -418,7 +427,7 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
     fill = {c for c in edge & taken if was.get(c) != lay.keys.get(c) and c not in held}
     near = frozenset(c for c in fill if {(c[0] - 1, c[1]), (c[0], c[1] - 1), (c[0] - 1, c[1] - 1)} & play)
     rest = {c: k for c, k in lay.keys.items() if c not in taken or c in fill}
-    found, pkit = patches(lay, stock, set(rest))
+    found, pkit = patches(lay, stock, set(rest), kit.far)
     loose, used, _ = place(found, pkit, seed, edge, near, far)
     for src in sorted(used):
         depend(pkit.sources[src])
@@ -612,6 +621,33 @@ def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set) -> lis
     return out
 
 
+def far_off(d2r_data: Path) -> Callable[[dict], bool]:
+    """Kit.far from D2R's model boxes (data/hd/model_lod_desc.bin): whether a model at least pd2_coverage.TALL high,
+    not a tree, a prefab nor room-sized, stands FAR or more clear of its position along x or z (Harrogath's stairs).
+    A mesh that reaches its position stays, however far its centre: Duriel's chamber is one piece.
+    Without the file, no piece is."""
+    import pd2_coverage as coverage  # it imports this module
+    models = d2r_data / coverage.MODELS
+    if not models.is_file():
+        return lambda e: False
+    boxes = coverage.model_boxes(models.read_bytes())
+
+    @functools.cache
+    def prefab(path: str) -> list[dict]:
+        f = d2r_data / path.removeprefix("data/")
+        return json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
+
+    def far(e: dict) -> bool:
+        # a prefab (Act 1's riverbanks) stays: on a floor key it still closes border gaps (pd2_coverage)
+        if painter.is_tree(e) or any(c["type"] == "PrefabPlacementDefinitionComponent" for c in e["components"]):
+            return False
+        p = _transform(e)["position"]
+        return any(top >= coverage.TALL and max(x1 - x0, z1 - z0) <= coverage.ROOM
+                   and max(x0 - p["x"], p["x"] - x1, z0 - p["z"], p["z"] - z1) >= FAR
+                   for x0, x1, z0, z1, top, _ in coverage.boxes([e], lambda m: boxes.get(coverage.fnv(m)), prefab))
+    return far
+
+
 def draws_trees(lay: Layout) -> bool:
     """Whether a DS1 draws a tile from a tree DT1 (`trees.dt1`, `treegrp.dt1`, `treegroups.dt1`): only those are
     painted, as an indoor tile set's stock may hold a courtyard's trees."""
@@ -744,7 +780,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     if stale := sorted(set(water_rule) - loaded):
         raise ValueError(f"water lines for DT1 no PD2-only preset draws from: {', '.join(stale)}")
     water = water_planes(d2r_data, water_rule)
-    kit, stock = Kit(), []
+    kit, stock = Kit(far=far_off(d2r_data)), []
     for p in sorted((d2r_data / PRESETS).rglob("*.json")):
         ds1 = tiles_dir / p.relative_to(d2r_data / PRESETS).with_suffix(".ds1")
         if not ds1.is_file():  # a few stock presets have no DS1 (D2R's HD-only rooms)
