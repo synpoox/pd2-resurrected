@@ -7,6 +7,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 #### Maps
 
 - Ten more PD2-only areas draw walls and props in HD, among them Ruined Cistern, Ureh City and Black Abyss.
+- Demon Road, Bitter Depths and Dark Temple draw walls and props in HD.
 
 #### Getting started
 
