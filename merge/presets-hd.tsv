@@ -18,6 +18,8 @@ Act 4 - Lava	data/hd/env/biome/act4_lava.json
 Act 5 - Siege	data/hd/env/biome/expansion_siege.json
 Act 5 - Ice Caves	data/hd/env/biome/expansion_icecave.json
 Act 5 - Barricade	data/hd/env/biome/expansion_ruins_snow.json
+Borq S13 Map	data/hd/env/biome/act4_mesa.json
+Djinns Domain	data/hd/env/biome/act2_palace.json
 36	data/hd/env/biome/expansion_town.json
 37	data/hd/env/biome/act1_outdoors.json
 40	data/hd/env/biome/act4_lava.json
@@ -27,6 +29,7 @@ Act 5 - Barricade	data/hd/env/biome/expansion_ruins_snow.json
 # PD2 DT1	the D2R DT1 standing in for it, - for none (LP4): the D2R DT1 holding the most of its tiles with the same
 # subtile flags, where that is a quarter of its tiles or more. Tiles that are pixel copies of a D2R tile, at any
 # index, stand in as that tile whatever the line says (pd2_dt1_copies)
+pd2assets/a1_ruinwall.dt1	-
 pd2assets/a3_altar.dt1	act1/cathedrl/alter.dt1
 pd2assets/a3_objects.dt1	-
 pd2assets/a4_throne.dt1	expansion/baallair/throne.dt1
@@ -35,6 +38,8 @@ pd2assets/a4_worldstone.dt1	expansion/baallair/worldstone.dt1
 pd2assets/a5_chain_walls.dt1	act4/mesa/chain_walls.dt1
 pd2assets/a5_cliff_parts.dt1	-
 pd2assets/a5_head.dt1	-
+pd2assets/a5_rotatedriver.dt1	garden/colossalsummit/floor.dt1
+pd2assets/aer_palace2.dt1	-
 pd2assets/archwallalt.dt1	-
 pd2assets/barflooralt.dt1	act2/outdoors/oasis.dt1
 pd2assets/borq.dt1	act2/tomb/talrasha.dt1
@@ -73,6 +78,8 @@ pd2assets/descend/torture.dt1	act1/barracks/torture.dt1
 pd2assets/descend/town_reindexed.dt1	act1/tristram/town.dt1
 pd2assets/descend/treegroups.dt1	guild/outdoors/treegroups.dt1
 pd2assets/descend/trees.dt1	act1/town/trees.dt1
+pd2assets/djinnfloor.dt1	expansion/specials.dt1
+pd2assets/djinnfloorbloody.dt1	-
 pd2assets/dtprivate/archwall.dt1	-
 pd2assets/dtprivate/bone.dt1	act2/outdoors/bone.dt1
 pd2assets/dtprivate/desertground.dt1	act2/town/ground.dt1
@@ -120,6 +127,15 @@ pd2assets/pboxwallalt.dt1	-
 pd2assets/recoloured_tombcor.dt1	act2/bigcliff/tombcor.dt1
 pd2assets/rotated_ext.dt1	-
 pd2assets/rotatedthronearch.dt1	expansion/siege/building.dt1
+pd2assets/s13/boxes.dt1	act1/barracks/objects.dt1
+pd2assets/s13/brick_wall_floor.dt1	act1/court/floor.dt1
+pd2assets/s13/brick_walls.dt1	-
+pd2assets/s13/building_floor.dt1	-
+pd2assets/s13/buildings.dt1	-
+pd2assets/s13/inv_wall.dt1	act4/mesa/inv_wall.dt1
+pd2assets/s13/mesafloor.dt1	act4/mesa/floor.dt1
+pd2assets/s13/outwall.dt1	act1/court/outwall.dt1
+pd2assets/s13/surf_wall.dt1	act4/mesa/surf_wall.dt1
 pd2assets/sanctuaryadds.dt1	act2/arcane/sanctuary.dt1
 pd2assets/sanctuaryreindexed.dt1	guild/outdoors/floor.dt1
 pd2assets/sanctuaryyellow.dt1	act2/arcane/sanctuary.dt1
