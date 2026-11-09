@@ -38,11 +38,17 @@ import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import pd2_dt1_copies as dt1_copies
 import pd2_painter as painter
+import pd2_terrain as terrain_ground
 from pd2_ids import Table, excel, load
 from pd2_levels import SLOTS, col, ds1_header, norm, object_list
 
 TILE = 10  # HD units per DS1 tile
+GROUND = "_ground"  # a stock preset's pd2_terrain.Ground, set by apply() for Kit.add; never written out
+# a floor tile's stock pieces standing higher than this above their ground are a building's upper parts (Kurast's
+# pillars and roof lips stand 9-26 up), dropped as the tile may have no building in a PD2 DS1 (#682)
+FLOOR_MAX = 8.0
 # a DS1 cell's unwalkable bit: what blocks the plain floor in PD2's dashed tree lines and the ground past the paths
 # (jungle1: on 96% of the lines' gap tiles; D2R's stock jungle rooms stand 88% of their trees on such tiles)
 UNWALKABLE = 0x20000
@@ -97,8 +103,10 @@ class Layout:
     unwalkable: frozenset = frozenset()  # the tiles a wall or floor cell marks unwalkable (UNWALKABLE)
 
 
-def layout(data: bytes, dt1s: dict[str, dict]) -> Layout:
-    """The DS1's tiles, named in the DT1 files `dt1s` (path -> dt1_tiles)."""
+def layout(data: bytes, dt1s: dict[str, dict], copies: dict[Tile, Tile] | None = None) -> Layout:
+    """The DS1's tiles, named in the DT1 files `dt1s` (path -> dt1_tiles); a tile in `copies` (pd2_dt1_copies) is
+    named by the D2R tile it copies, its flags kept."""
+    copies = copies or {}
     version, w, h, _act, _tag, o, walls, floors = ds1_header(data)
     if version < 4:
         raise ValueError(f"DS1 version {version}: only 4 and up keep the tile layers in the order layout() reads")
@@ -108,13 +116,17 @@ def layout(data: bytes, dt1s: dict[str, dict]) -> Layout:
 
     def tile(orientation: int, cell: int) -> Tile:
         t = (orientation, cell >> 20 & 0x3F, cell >> 8 & 0xFF)
-        return (next((p for p in order if t in dt1s[p]), None), *t)
+        # a copied tile is named from its own PD2 DT1 first: an earlier DT1 holding the same index would steal it
+        # (Zhar Library's arcane walls became palace cellar tiles, #678 review)
+        return (next((p for p in order if t in dt1s[p] and (p, *t) in copies), None)
+                or next((p for p in order if t in dt1s[p]), None), *t)
     keys, flags = {}, {}
     for i in range(n):
         wall = tuple(tile(grids[2 * k + 1][i] & 0xFF, grids[2 * k][i]) for k in range(walls) if grids[2 * k][i])
         floor = tuple(tile(0, g[i]) for g in grids[2 * walls:] if g[i])
         if wall or floor:
-            keys[(i % w, i // w)] = ("w", wall) if wall else ("f", floor)
+            keys[(i % w, i // w)] = ("w", tuple(copies.get(t, t) for t in wall)) if wall else \
+                ("f", tuple(copies.get(t, t) for t in floor))
             f = [dt1s[t[0]][t[1:]] for t in wall + floor if t[0]]
             flags[(i % w, i // w)] = bytes(functools.reduce(lambda u, v: [x | y for x, y in zip(u, v)], f, bytes(25)))
     cells = [grids[2 * k] for k in range(walls)] + list(grids[2 * walls:])
@@ -158,6 +170,13 @@ def wanted(lay: Layout) -> set[Key]:
     return {k for key in lay.keys.values() for k in (key, *((key[0], (t,)) for t in key[1]))}
 
 
+def _floor(key: Key) -> bool:
+    """A floor tile's key, or a patch key (patches()) whose centre tile is a floor."""
+    if key[0] in ("sq", "cross"):
+        key = key[1][4 if key[0] == "sq" else 0]
+    return key is not None and key[0] == "f"
+
+
 @dataclass
 class Kit:
     instances: dict[Key, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
@@ -170,9 +189,11 @@ class Kit:
         """Harvest one stock (layout, preset) pair, only the keys in `keep`. A waypoint's pieces stay out of the
         per-tile kit, as D2R puts their transform up to 4 tiles off the waypoint's tiles (#669): each joins the
         nearest of the DS1's waypoint `objects` (waypoints()), or is dropped if it has none. A pasted room keeps
-        its own (build())."""
+        its own (build()). With the preset's ground (GROUND, from pd2_terrain), each piece keeps its height above
+        that ground, as the generated terrain is flat."""
         src = len(self.sources)
         self.sources.append(preset["dependencies"])
+        ground = preset.get(GROUND)
         per: dict[tuple[int, int], list] = {c: [] for c, k in lay.keys.items() if k in keep}
         groups: dict[int, list] = {}
         for e in preset["entities"]:
@@ -187,6 +208,12 @@ class Kit:
                 continue
             c = (min(max(int(x // TILE), 0), lay.width - 1), min(max(int(z // TILE), 0), lay.height - 1))
             if c in per:
+                g = ground.at(x, z, t["position"]["y"]) if ground else None
+                if g is not None and t["position"]["y"] - g > FLOOR_MAX and _floor(lay.keys[c]):
+                    continue  # a building's upper part over this floor: its walls are other tiles', so it would float
+                if g:
+                    e = copy.deepcopy(e)
+                    _transform(e)["position"]["y"] -= g
                 per[c].append((e, x - c[0] * TILE, z - c[1] * TILE))
         for c, ents in per.items():
             self.instances.setdefault(lay.keys[c], []).append((src, ents))
@@ -238,8 +265,8 @@ def fades(e: dict) -> bool:
     return any(c["type"] == "WallTransparencyComponent" for c in e["components"])         or bool(painter.LOW.search(json.dumps(e["components"])))
 
 
-def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(),
-          near: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
+def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near: frozenset = frozenset(),
+          far: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
     """Each tile's pick of its key's instances (no ids yet), the kit sources used, and how many tiles stayed empty
     for a key the kit lacks. An `edge` tile (the map's border, where the automap draws its edge) picks among the
     instances that hold a piece: a stock tile left empty there leans on its neighbour's piece, which another pick
@@ -247,7 +274,9 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(),
     a stock piece belongs to the tile its origin falls on, and a stone wall standing on a tree tile there would draw
     a wall where the legacy view shows a tree (#686: Fortress's waypoint court). A `near` tile (drawn over the
     playable ground screen-up of it) picks only an instance whose pieces all fade, as D2R's rooms do on their near
-    side, or stays empty."""
+    side, or stays empty. A `far` edge tile (one whose tree is drawn over no playable ground) picks among those that
+    hold a tree (painter.is_tree) first, as a lone rock or shrub is too low to close the border (Frozen Forest,
+    #688)."""
     entities, used, missing = [], set(), 0
 
     def one(x: int, y: int, key: Key, salt: str) -> bool:
@@ -256,6 +285,8 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(),
             return False
         if key[1] and all(t and t[1] == TREE_LAYER for t in key[1]):
             options = [o for o in options if not structure(o[1])] or options
+        if (x, y) in far:
+            options = [o for o in options if any(painter.is_tree(e) for e, _, _ in o[1])] or options
         if (x, y) in near:
             options = [o for o in options if all(fades(e) for e, _, _ in o[1])]
             if not options:
@@ -371,10 +402,13 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
                                                "y": c["wallTileLocalCoord"]["y"] + oy}
             entities.append(e)
     wet = frozenset(water or {})  # stream DT1: their blocked floor stays water past the tree line
-    edge, play = frozenset(), set()
+    edge, far, play = frozenset(), frozenset(), set()
     if trees:  # the ring just past the playable area: the border the automap draws
         play = painter.playable(lay, wet)
         edge = frozenset({(x + dx, y + dy) for x, y in play for dx, dy in painter.STEPS} - play)
+        # its far side: tiles whose tree is drawn over no playable ground (#454 keeps trees off the near side)
+        shades = painter.shader(painter.subtiles(play))
+        far = frozenset(c for c in edge if not shades((c[0] * 5 + 2, c[1] * 5 + 2)))  # the tile's centre subtile
     # a room pastes whole at a ROOM_MATCH match: a border tile in it that its stock tile doesn't match (or that its
     # stock leaves empty) and that holds none of the room's pieces takes the kit's pick too (#686: Fortress's wall
     # islands); one with playable ground screen-up of it takes only a fading piece, as the room's near side does
@@ -383,11 +417,11 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
     near = frozenset(c for c in fill if {(c[0] - 1, c[1]), (c[0], c[1] - 1), (c[0] - 1, c[1] - 1)} & play)
     rest = {c: k for c, k in lay.keys.items() if c not in taken or c in fill}
     found, pkit = patches(lay, stock, set(rest))
-    loose, used, _ = place(found, pkit, seed, edge, near)
+    loose, used, _ = place(found, pkit, seed, edge, near, far)
     for src in sorted(used):
         depend(pkit.sources[src])
     more, used, missing = place(Layout(lay.width, lay.height, {c: k for c, k in rest.items() if c not in found.keys}),
-                                kit, seed, edge, near)
+                                kit, seed, edge, near, far)
     for src in sorted(used):
         depend(kit.sources[src])
     loose += more
@@ -406,10 +440,21 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
             return any((int((p["x"] + x) // TILE), int((p["z"] + z) // TILE)) in ground
                        for x, z in painter.pieces(e, prefabs))
         entities = [e for e in entities if not painter.is_tree(e) or not on_ground(e)]
-        # a lone tree (a wall tile on the path) stays, and a stream's; so does a line's where no painted tree stands
-        # within two tiles (a line with playable ground on both sides leaves the painter no room)
-        loose = [e for e in loose if not painter.is_tree(e)
-                 or not on_ground(e) and (tile(e) in play or tile(e) in line - near)]
+        def keep(e: dict) -> bool:
+            """A lone tree (a wall tile on the path) stays, and a stream's; so does a line's where no painted tree
+            stands within two tiles (a line with playable ground on both sides leaves the painter no room). A far edge
+            tile's tree stays where it is drawn over no playable ground: the painter plants little on the ring, so a
+            dropped edge tree left a gap (#688). On the near side roots and `_foreground` walls stay too (#454)."""
+            if not painter.is_tree(e):
+                return True
+            if on_ground(e):
+                return False
+            if tile(e) in far:
+                p = _transform(e)["position"]
+                return not shades((int(p["x"] / 2), int(p["z"] / 2)))  # its origin subtile, as the painter's
+            return (tile(e) in play or tile(e) in line - near
+                    or tile(e) in edge and bool(painter.LOW.search(json.dumps(e["components"]))))
+        loose = [e for e in loose if keep(e)]
         assert not any(on_ground(e) for e, _ in painted), f"{name}: a painted tree reaches walkable floor"
         for e, of in painted:
             loose.append(e)
@@ -520,9 +565,11 @@ def read_rule(rule: Path) -> tuple[dict[str, str], dict[str, str | None], dict[s
     return sets, standins, water
 
 
-def stand_in(files: list[str], tiles: "Tiles", pd2_tiles: "Tiles", standins: dict[str, str | None]) -> dict[str, dict]:
+def stand_in(files: list[str], tiles: "Tiles", pd2_tiles: "Tiles", standins: dict[str, str | None],
+             copied: set | dict = frozenset()) -> dict[str, dict]:
     """The DT1 files a PD2-only preset loads, for layout(): a PD2 tile its stand-in also holds, with the same subtile
-    flags, is named by the stand-in; the rest keep the PD2 DT1's name, which no stock preset draws (empty in HD)."""
+    flags, is named by the stand-in; the rest keep the PD2 DT1's name, which no stock preset draws (empty in HD), but
+    for the `copied` tiles (pd2_dt1_copies), which layout() names by the D2R tile they copy."""
     out: dict[str, dict] = {}
     for f in files:
         if f not in standins:
@@ -530,7 +577,8 @@ def stand_in(files: list[str], tiles: "Tiles", pd2_tiles: "Tiles", standins: dic
             continue
         s, own = standins[f], dict(pd2_tiles[f])
         if s:
-            out.setdefault(s, {}).update({t: own.pop(t) for t in list(own) if tiles[s].get(t) == own[t]})
+            out.setdefault(s, {}).update({t: own.pop(t) for t in list(own)
+                                          if (f, *t) not in copied and tiles[s].get(t) == own[t]})
         out[f] = own
     return out
 
@@ -607,14 +655,18 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     terrain = json.loads(terrain_src.read_text("utf-8-sig"))["terrain"]
 
     tiles, pd2_tiles = Tiles(tiles_dir), Tiles(out_data / "global" / "tiles")
+    pd2_files = {f: out_data / "global" / "tiles" / f for _, _, files, _ in on_d2r for f in files
+                 if f.startswith("pd2assets/")}
+    copied = dt1_copies.copies({f: p.read_bytes() for f, p in sorted(pd2_files.items()) if p.is_file()},
+                               dt1_copies.d2r_images(tiles_dir), standins) if pd2_files else {}
 
     def classes(data: Path) -> dict[tuple[int, int], str]:  # objpreset's (Act, Index) -> ObjectClass
         t = Table(excel(data) / "objpreset.txt")
         c = [col(t, n) for n in ("Act", "Index", "ObjectClass")]
         return {(int(r[c[0]]), int(r[c[1]])): r[c[2]] for r in t.rows if r[c[0]] and r[c[1]]}
     stock_classes, mod_classes = classes(d2r_data), classes(out_data)
-    layouts = {ds1: layout((out_data / "global" / "tiles" / ds1).read_bytes(), stand_in(files, tiles, pd2_tiles,
-                                                                                        standins))
+    layouts = {ds1: layout((out_data / "global" / "tiles" / ds1).read_bytes(),
+                           stand_in(files, tiles, pd2_tiles, standins, copied), copied)
                for _, _, files, ds1s in on_d2r for ds1 in ds1s}
     keep = set().union(*map(wanted, layouts.values()))
     loaded = {t[0] for k in keep for t in k[1]}
@@ -630,7 +682,9 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         listed = header_dt1s(data)
         if loaded.isdisjoint(listed):
             continue
-        stock.append((layout(data, tiles.of(listed)), json.loads(p.read_text("utf-8-sig")), set(listed)))
+        preset = json.loads(p.read_text("utf-8-sig"))
+        preset[GROUND] = terrain_ground.of_preset(preset, d2r_data)
+        stock.append((layout(data, tiles.of(listed)), preset, set(listed)))
         kit.add(*stock[-1][:2], keep, waypoints(data, stock_classes))
 
     @functools.cache
