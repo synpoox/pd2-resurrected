@@ -1,4 +1,5 @@
 """pd2_coverage on synthetic layouts, entities and a model_lod_desc.bin (no PD2 or D2R data)."""
+import io
 import json
 import math
 import struct
@@ -6,6 +7,7 @@ import sys
 import tempfile
 import unittest
 import zlib
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -164,6 +166,66 @@ class Output(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             self.assertIsNone(C.run(Path(d), Path(d), Path(d) / "out"))
             self.assertFalse((Path(d) / "out").exists())
+
+
+class Baseline(unittest.TestCase):
+    def scores(self):
+        return [C.Score("b", "B", 10, set(range(3)), ring=set(range(8)), gaps={1}),
+                C.Score("a", "A", 3, {(0, 0)})]
+
+    def test_round_trip(self):
+        text = C.baseline_text(self.scores())
+        self.assertEqual(text.splitlines()[1:], ["a\t66.7\t-", "b\t70.0\t87.5"])
+        self.assertEqual(C.read_baseline(text), {"a": (66.7, None), "b": (70.0, 87.5)})
+
+    def test_no_change(self):
+        base = C.read_baseline(C.baseline_text(self.scores()))
+        self.assertEqual(C.changes(self.scores(), base), [])
+        self.assertIn("No preset's coverage changed.", C.changes_md([]))
+
+    def test_drop_within_and_beyond_tolerance(self):
+        base = {"a": (67.5, None), "b": (71.5, 87.5)}  # a now 66.7 (-0.8), b wall 70.0 (-1.5)
+        found = C.changes(self.scores(), base)
+        self.assertEqual([(c.name, c.drop) for c in found], [("b", True), ("a", False)])
+        md = C.changes_md(found)
+        self.assertIn("| b | 71.5% -> 70.0% (-1.5) | 87.5% | **drop** |", md)
+        self.assertIn("--write-baseline", md)
+
+    def test_gain_new_and_gone(self):
+        base = {"a": (50.0, None), "z": (90.0, 80.0)}
+        found = {c.name: c for c in C.changes(self.scores(), base)}
+        self.assertTrue(found["z"].drop)  # no longer scored
+        self.assertFalse(found["a"].drop)  # a gain
+        self.assertFalse(found["b"].drop)  # new
+        md = C.changes_md(list(found.values()))
+        self.assertIn("| b | new 70.0% | new 87.5% |", md)
+        self.assertIn("| z | 90.0% -> gone | 80.0% -> gone | **drop** |", md)
+
+    def test_border_drop_alone(self):
+        found = C.changes(self.scores(), {"a": (66.7, None), "b": (70.0, 90.0)})
+        self.assertEqual([(c.name, c.drop) for c in found], [("b", True)])
+
+    def test_border_gone_is_a_drop(self):
+        found = C.changes([C.Score("b", "B", 10, set(range(3)))], {"b": (70.0, 87.5)})
+        self.assertEqual([(c.name, c.drop) for c in found], [("b", True)])
+        self.assertIn("| b | 70.0% | 87.5% -> gone | **drop** |", C.changes_md(found))
+
+    def test_report_carries_changes(self):
+        found = C.changes(self.scores(), {"a": (66.7, None), "b": (70.0, 90.0)})
+        text = C.report(self.scores(), "", found)
+        self.assertLess(text.index("## Changes against the baseline"), text.index("| Preset | Area |"))
+
+    def test_main_check_exit(self):
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d) / "base.tsv"
+            base.write_text("a\t99.0\t-\n", "utf-8")
+            with mock.patch.object(C, "run", return_value=self.scores()), redirect_stdout(io.StringIO()):
+                self.assertEqual(C.main(["--baseline", str(base), "--check"]), 1)
+                self.assertEqual(C.main(["--baseline", str(base)]), 0)
+                self.assertEqual(C.main(["--baseline", str(base), "--write-baseline"]), 0)
+                self.assertEqual(C.main(["--baseline", str(base), "--check"]), 0)
+            with mock.patch.object(C, "run", return_value=None):
+                self.assertEqual(C.main(["--baseline", str(base), "--check"]), 0)  # skipped: no model file
 
 
 if __name__ == "__main__":

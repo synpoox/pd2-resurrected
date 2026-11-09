@@ -20,6 +20,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Update the toolkit checkout
+        run: git -C "${{ vars.D2R_TOOLKIT }}" pull -q --ff-only
+        continue-on-error: true  # a dirty or diverged checkout, or another job's pull, must not fail the run
       - name: Python packages
         run: py -3 -m pip install --quiet --disable-pip-version-check numpy Pillow
       - name: Tool tests

@@ -26,6 +26,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Jungle, Kurast and Necropolis maps grow tree walls on the near side of paths, closing most gaps in their borders.
 - Ashen Plains and other outdoor maps grow trees on the blocked ground past their edge walls.
 - PD2 areas show "Entering <area>" on arrival instead of "Missing string".
+- Dungeon boss barriers show as iron gates instead of invisible walls.
 
 #### Uber bosses
 
