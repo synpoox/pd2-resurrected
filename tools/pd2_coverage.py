@@ -5,7 +5,8 @@ transforms composed) is placed on the DS1's tiles (pd2_presets.TILE HD units eac
 least TALL units high. Per generated preset:
 
 - wall score: the share of DS1 wall tiles (what the automap draws as walls) under a tall piece (a fence or shore
-  tile, LOW_EDGE: under a LOW piece, as stone walls, railings and banks are low by design);
+  tile, LOW_EDGE: under a LOW piece that is itself a fence or wall, EDGE_PIECE, as stone walls, railings and banks
+  are low by design; grass and rocks on such a tile cover nothing);
 - border score, for a DS1 that draws trees (pd2_presets.draws_trees): the ring of DS1 tiles 4-adjacent to and
   outside pd2_painter.playable() (the map's edge on the automap). A ring tile is covered (under a tall piece), a gap
   (bare), and a leak if the DS1 lets the player walk on it.
@@ -54,6 +55,7 @@ TALL = 4.0  # HD units: a piece this high hides a wall in game
 # fences and shores are low by design (stone walls, graveyard railings, river banks): a piece this high covers them
 LOW = 1.0
 LOW_EDGE = re.compile(r"fence|stonewall|palisade|picket|graveyrd|river|rivbank|pool|swamp|pond|puddle")
+EDGE_PIECE = re.compile(r"fence|wall|palisade|picket|rail|gate|bank")  # a low model that stands as an edge
 ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculpted terrain), not a wall piece
 DEPTH = 2  # prefab levels followed
 BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
@@ -117,13 +119,19 @@ def boxes(entities: list[dict], box: Callable[[str], tuple | None], prefab: Call
 
 
 def low_edge(key) -> bool:
-    """A DS1 tile drawing a fence or shore DT1 (LOW_EDGE), which a LOW piece covers."""
-    return bool(key) and any(t[0] and LOW_EDGE.search(t[0].rsplit("/", 1)[-1]) for t in key[1])
+    """A DS1 tile whose every layer draws a fence or shore DT1 (LOW_EDGE), which a LOW edge piece covers."""
+    return bool(key) and all(t[0] and LOW_EDGE.search(t[0].rsplit("/", 1)[-1]) for t in key[1])
 
 
-def covered(lay: presets.Layout, found: list[Box]) -> set[tuple[int, int]]:
-    """The tiles under a TALL piece, and the fence and shore tiles (low_edge) under a LOW one."""
-    return tall_tiles(found) | {c for c in tall_tiles(found, LOW) if low_edge(lay.keys.get(c))}
+def edge_piece(path: str) -> bool:
+    """A model that stands as an edge (EDGE_PIECE: fences, walls, railings, banks), not grass or rocks."""
+    return bool(EDGE_PIECE.search(path.rsplit("/", 1)[-1].lower()))
+
+
+def covered(lay: presets.Layout, found: list[Box], edges: list[Box] = ()) -> set[tuple[int, int]]:
+    """The tiles under a TALL piece (`found`), and the fence and shore tiles (low_edge) under a LOW edge piece
+    (`edges`: the boxes of the edge_piece models)."""
+    return tall_tiles(found) | {c for c in tall_tiles(edges, LOW) if low_edge(lay.keys.get(c))}
 
 
 def tall_tiles(found: Iterator[Box], tall: float = TALL) -> set[tuple[int, int]]:
@@ -348,7 +356,8 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
             lay = presets.layout((data / "global" / "tiles" / ds1).read_bytes(),
                                  presets.stand_in(files, tiles, pd2_tiles, standins))
             entities = json.loads(f.read_text("utf-8"))["entities"]
-            tall = covered(lay, list(boxes(entities, box, prefab)))
+            tall = covered(lay, list(boxes(entities, box, prefab)),
+                           list(boxes(entities, lambda f: box(f) if edge_piece(f) else None, prefab)))
             s = score(lay, tall, Path(ds1).stem, area, wet)
             s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
             scores.append(s)
