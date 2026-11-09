@@ -6,6 +6,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 #### Maps
 
+- The uber areas, Throne, Pandemonium, Realm of Terror and Kanemith draw HD floors and walls.
 - Ten more PD2-only areas draw walls and props in HD, among them Ruined Cistern, Ureh City and Black Abyss.
 
 #### Getting started
