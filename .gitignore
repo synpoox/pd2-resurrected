@@ -7,3 +7,4 @@ tests/game/fixtures/*/out/
 __pycache__/
 dist/
 pd2_extract.lock
+pd2_merge.lock
