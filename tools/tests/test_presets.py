@@ -123,6 +123,16 @@ class BuildTests(unittest.TestCase):
         self.assertTrue(all(e["components"][0]["scale"] == {"x": 1.0, "y": 1.0, "z": 1.0} for e in planes))
         self.assertEqual(sorted(e["id"] for e in preset["entities"] + [preset["terrain"]]), [1, 2])
 
+    def test_a_block_mostly_under_a_pasted_room_still_gets_the_plane_for_its_other_tiles(self):
+        # block 2 (x 17-33) holds a pasted room on x 17-30 and loose floor on x 31-33 (#705); block 3 all room
+        lay = P.Layout(51, 2, {(x, y): ("f", (FLOOR,)) for x in range(51) for y in range(2)})
+        with mock.patch.object(P, "rooms", return_value=([], {(x, y) for x in range(17, 31) for y in range(2)}
+                                                             | {(x, y) for x in range(34, 51) for y in range(2)})):
+            preset, _ = P.build(lay, P.Kit(), "m", "m.ds1", "b.json", TERRAIN)
+        xs = sorted(e["components"][0]["position"]["x"] for e in preset["entities"] + [preset["terrain"]]
+                    if e["name"] == "terrain")
+        self.assertEqual(xs, [0.0, 170.0])
+
     def test_a_key_keeps_d2rs_empty_instances_so_props_come_at_its_density(self):
         lay = P.Layout(2, 1, {(0, 0): ("w", (A,)), (1, 0): ("w", (A,))})
         kit = P.Kit()

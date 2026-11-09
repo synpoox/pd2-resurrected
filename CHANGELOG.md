@@ -30,6 +30,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - PD2 areas show "Entering <area>" on arrival instead of "Missing string".
 - Dungeon boss barriers show as iron gates instead of invisible walls.
 - Map waypoints draw their platform, and no stray waypoints stand on plain ground.
+- Mesa, Lava and Fortress maps draw ground beside copied D2R rooms instead of black gaps.
 
 #### Uber bosses
 

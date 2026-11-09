@@ -423,13 +423,16 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
     for e, of in planes:
         entities.append(e)
         depend(of)
-    # the ground: the flat plane once per TERRAIN_SIZE block not mostly under pasted rooms, unscaled (a scaled plane
-    # does not draw); the first copy is the preset's terrain, the rest are entities
+    # the ground: the flat plane once per TERRAIN_SIZE block, unscaled (a scaled plane does not draw), but for a block
+    # whose DS1 tiles all lie in pasted rooms (their own terrain draws it; a room covers only its own tiles, so a
+    # block mostly under rooms needs the plane for the rest, #705); the first copy is the preset's terrain, the rest
+    # are entities
     span = TERRAIN_SIZE // TILE
     for bx in range(0, lay.width, span):
         for by in range(0, lay.height, span):
             block = [(x, y) for x in range(bx, min(bx + span, lay.width)) for y in range(by, min(by + span, lay.height))]
-            if (bx or by) and sum(c in taken for c in block) * 2 < len(block):
+            tiles = [c for c in block if c in lay.keys]
+            if (bx or by) and not (tiles and all(c in taken for c in tiles)):
                 plane = copy.deepcopy(terrain)
                 _transform(plane)["position"].update({"x": float(bx * TILE), "z": float(by * TILE)})
                 entities.append(plane)
