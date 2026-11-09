@@ -21,6 +21,9 @@ jobs:
         run: if (Test-Path pd2-data) { cmd /c rmdir pd2-data }
         continue-on-error: true
       - uses: actions/checkout@v4
+      - name: Update the toolkit checkout
+        run: git -C "${{ vars.D2R_TOOLKIT }}" pull -q --ff-only
+        continue-on-error: true  # a dirty or diverged checkout, or another job's pull, must not fail the run
       - name: Merged data
         run: |
           $cache = "C:\pd2r-cache\pd2-data"
