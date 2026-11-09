@@ -49,6 +49,7 @@ UNWALKABLE = 0x20000
 TERRAIN = "act2/palace/celse3"  # a stock preset whose terrain is a flat TERRAIN_SIZE square (D2R Reimagined's plane)
 TERRAIN_SIZE = 170
 ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is pasted where this share of its tiles match
+ROOM_BARE = 0  # walkable DS1 floor tiles a pasted room may leave without its walkable floor
 SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
 CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
 PRESETS = Path("hd") / "env" / "preset"
@@ -283,17 +284,24 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(),
     return entities, used, missing
 
 
+def walkable(lay: Layout) -> set[tuple[int, int]]:
+    """The DS1's walkable floor: floor tiles (no wall), not marked unwalkable, not mostly blocked (water)."""
+    return {c for c, k in lay.keys.items() if k[0] == "f" and c not in lay.unwalkable
+            and not painter.blocked_floor(lay.flags.get(c, bytes(25)))}
+
+
 def rooms(lay: Layout, stock: list[tuple[Layout, dict]]) -> tuple[list[tuple[int, int, int]], set]:
     """The stock rooms to paste whole, [(stock index, x, y)], best match first and none overlapping, and their tiles."""
     at: dict[Key, list] = {}
     for c, k in lay.keys.items():
         at.setdefault(k, []).append(c)
-    found = []
+    found, walk = [], walkable(lay)
     for n, (s, _) in enumerate(stock):
         items = list(s.keys.items())
         if len(items) < ROOM_MIN:
             continue
         (ax, ay), anchor = min(items, key=lambda it: len(at.get(it[1], ())) or 10 ** 9)
+        sw = walkable(s)
         misses = len(items) - ROOM_MATCH * len(items)
         for px, py in at.get(anchor, ()):
             ox, oy = px - ax, py - ay
@@ -305,7 +313,11 @@ def rooms(lay: Layout, stock: list[tuple[Layout, dict]]) -> tuple[list[tuple[int
                 if m + 1 - hit > misses:
                     break
             else:
-                found.append((-hit, n, ox, oy))
+                # the DS1's walkable floor must land on the room's: where it lands on the room's lava, wall or
+                # nothing, the room draws no ground under a walkable tile (Lava, #702)
+                if sum((x - ox, y - oy) not in sw for x, y in walk
+                       if ox <= x < ox + s.width and oy <= y < oy + s.height) <= ROOM_BARE:
+                    found.append((-hit, n, ox, oy))
     out, taken = [], set()
     for _, n, ox, oy in sorted(found):
         cells = {(x, y) for x in range(ox, ox + stock[n][0].width) for y in range(oy, oy + stock[n][0].height)}

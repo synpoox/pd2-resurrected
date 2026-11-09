@@ -27,6 +27,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Ashen Plains and other outdoor maps grow trees on the blocked ground past their edge walls.
 - Fortress Map draws the walls PD2 added inside copied D2R rooms, closing most of its border gaps.
 - Tree tiles no longer draw a stone wall or cliff, which hid Fortress Map's waypoint court.
+- Copied D2R rooms paste only where the map's walkable floor matches theirs, so Fortress Map draws its own walls.
 - PD2 areas show "Entering <area>" on arrival instead of "Missing string".
 - Dungeon boss barriers show as iron gates instead of invisible walls.
 - Map waypoints draw their platform, and no stray waypoints stand on plain ground.

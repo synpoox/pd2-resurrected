@@ -215,6 +215,16 @@ class LayerTests(unittest.TestCase):
         self.assertIn("data/hd/env/texture/pillar_alb.texture",
                       [d["path"] for d in preset["dependencies"]["textures"]])
 
+    def test_a_stock_room_is_not_pasted_where_the_ds1s_walkable_floor_lands_off_the_rooms(self):
+        room = P.Layout(4, 4, {(x, y): self.WA if (x, y) == (0, 0) else self.F for x in range(4) for y in range(4)},
+                        unwalkable=frozenset({(3, 3)}))  # the room's lava corner
+        keys = dict(room.keys)
+        self.assertEqual(len(P.rooms(P.Layout(4, 4, keys, unwalkable=frozenset({(3, 3)})), [(room, {})])[0]), 1)
+        # the DS1 walks on that corner: pasted, the room would draw no ground under it
+        self.assertEqual(P.rooms(P.Layout(4, 4, keys), [(room, {})])[0], [])
+        keys[(3, 3)] = self.WB  # a wall there instead: the room matches 15 of 16 and is pasted
+        self.assertEqual(len(P.rooms(P.Layout(4, 4, keys), [(room, {})])[0]), 1)
+
     def test_a_tile_whose_3x3_appears_in_a_stock_preset_copies_its_centre(self):
         patch = {(x, y): ("w", ((f"p{x}{y}.dt1", 1, 0, 0),)) for x in range(3) for y in range(3)}
         keys = {(x, y): self.WB for x in range(6) for y in range(3)}
