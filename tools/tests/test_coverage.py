@@ -151,6 +151,19 @@ class Scores(unittest.TestCase):
                          {(x, y) for x in range(17) for y in range(17)})
         self.assertEqual(len(C.footprint(iter([(0.0, 170.0, 0.0, 10.0, 8.0)]))), 18 * 2)
 
+    def test_wrong_tiles(self):
+        # a 28-unit wide, 8 high structure; a one-tile cube and a 2-high slab are props
+        models = {"stairs": (-14.0, 0.0, -14.0, 14.0, 8.0, 14.0), "cube": CUBE,
+                  "low": (-14.0, 0.0, -14.0, 14.0, 2.0, 14.0)}
+        ents = [entity(15, 15, "stairs"), entity(55, 5, "stairs"), entity(5, 35, "cube"), entity(35, 35, "low")]
+        at = {(1, 1), (3, 3), (0, 3)}  # (5, 0), the second stairs' anchor, is not flat walkable floor
+        wrong = C.wrong_tiles(ents, models.get, lambda p: [], at)
+        self.assertEqual(wrong, {(x, y) for x in range(3) for y in range(3)})  # x and z 1-29: tiles 0-2
+        L = lay({(x, y): FLOOR for x in range(4) for y in range(4)})
+        s = C.score(L, set(), "w", ground={(0, 0)}, wrong=wrong)
+        self.assertEqual(s.floor_wrong, wrong)
+        self.assertAlmostEqual(s.floor_score, 1 - len(s.floor_bare | wrong) / 16)
+
     def test_leak(self):
         keys = {(1, 1): FLOOR, (0, 1): TREE, (2, 1): TREE, (1, 0): TREE, (1, 2): TREE}
         L = P.Layout(3, 3, keys, {c: bytes(25) for c in keys}, frozenset({(0, 1), (1, 0), (1, 2)}))
@@ -185,7 +198,7 @@ class Output(unittest.TestCase):
         self.assertIn("(abc123)", text)
         order = [line.split(" | ")[0][2:] for line in text.splitlines() if line.startswith("| ") and "Preset" not in line]
         self.assertEqual(order, ["d", "b", "c", "a"])
-        self.assertIn("| d | Mesa | 40.0% | 6 | 0 | 100.0% | 10 | 100.0% | 0 | 0.0 | 0 | [walls](d_walls.png) [floor](d_floor.png) [border](d_border.png) |", text)
+        self.assertIn("| d | Mesa | 40.0% | 6 | 0 | 100.0% | 10 | 100.0% | 0 | 0 | 0.0 | 0 | [walls](d_walls.png) [floor](d_floor.png) [border](d_border.png) |", text)
         self.assertIn("All borders: 60.0% of 20 ring tiles.", text)
 
     def test_run_skips_without_models(self):
