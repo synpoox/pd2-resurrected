@@ -153,21 +153,23 @@ class Kit:
             self.instances.setdefault(lay.keys[c], []).append((src, ents))
 
 
-def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
+def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(),
+          far: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
     """Each tile's pick of its key's instances (no ids yet), the kit sources used, and how many tiles stayed empty
     for a key the kit lacks. An `edge` tile (the map's border, where the automap draws its edge) picks among the
-    instances that hold a tree (painter.is_tree), else a piece: a stock tile left empty there leans on its
-    neighbour's piece, which another pick may not have, and a lone rock or shrub is too low to close the border
-    (Frozen Forest, #688)."""
+    instances that hold a piece: a stock tile left empty there leans on its neighbour's piece, which another pick
+    may not have. A `far` edge tile (one whose tree is drawn over no playable ground) picks among those that hold a
+    tree (painter.is_tree) first, as a lone rock or shrub is too low to close the border (Frozen Forest, #688)."""
     entities, used, missing = [], set(), 0
 
     def one(x: int, y: int, key: Key, salt: str) -> bool:
         options = kit.instances.get(key)
         if not options:
             return False
+        if (x, y) in far:
+            options = [o for o in options if any(painter.is_tree(e) for e, _, _ in o[1])] or options
         if (x, y) in edge:
-            options = ([o for o in options if any(painter.is_tree(e) for e, _, _ in o[1])]
-                       or [o for o in options if o[1]] or options)
+            options = [o for o in options if o[1]] or options
         src, ents = options[zlib.crc32(f"{seed}:{x}:{y}{salt}".encode()) % len(options)]
         used.add(src)
         for e, dx, dz in ents:
@@ -272,16 +274,19 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
             entities.append(e)
     rest = {c: k for c, k in lay.keys.items() if c not in taken}
     wet = frozenset(water or {})  # stream DT1: their blocked floor stays water past the tree line
-    edge = frozenset()
+    edge = far = frozenset()
     if trees:  # the ring just past the playable area: the border the automap draws
         play = painter.playable(lay, wet)
         edge = frozenset({(x + dx, y + dy) for x, y in play for dx, dy in painter.STEPS} - play)
+        # its far side: tiles whose tree is drawn over no playable ground (#454 keeps trees off the near side)
+        shades = painter.shader(painter.subtiles(play))
+        far = frozenset(c for c in edge if not shades((c[0] * 5 + 2, c[1] * 5 + 2)))  # the tile's centre subtile
     found, pkit = patches(lay, stock, set(rest))
-    loose, used, _ = place(found, pkit, seed, edge)
+    loose, used, _ = place(found, pkit, seed, edge, far)
     for src in sorted(used):
         depend(pkit.sources[src])
     more, used, missing = place(Layout(lay.width, lay.height, {c: k for c, k in rest.items() if c not in found.keys}),
-                                kit, seed, edge)
+                                kit, seed, edge, far)
     for src in sorted(used):
         depend(kit.sources[src])
     loose += more
@@ -301,10 +306,12 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
                        for x, z in painter.pieces(e, prefabs))
         entities = [e for e in entities if not painter.is_tree(e) or not on_ground(e)]
         # a lone tree (a wall tile on the path) stays, and a stream's; so does a line's where no painted tree stands
-        # within two tiles (a line with playable ground on both sides leaves the painter no room), and an edge tile's:
-        # the painter keeps its trees off the ground camera-near of the path, so a dropped edge tree left a gap (#688)
+        # within two tiles (a line with playable ground on both sides leaves the painter no room), and a far edge
+        # tile's: the painter plants little on the ring, so a dropped edge tree left a gap (#688). On the near side
+        # only roots and `_foreground` walls stay, as the painter's (#454)
         loose = [e for e in loose if not painter.is_tree(e)
-                 or not on_ground(e) and (tile(e) in play or tile(e) in line - near or tile(e) in edge)]
+                 or not on_ground(e) and (tile(e) in play or tile(e) in line - near or tile(e) in far
+                                          or tile(e) in edge and painter.LOW.search(json.dumps(e["components"])))]
         assert not any(on_ground(e) for e, _ in painted), f"{name}: a painted tree reaches walkable floor"
         for e, of in painted:
             loose.append(e)
