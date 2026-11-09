@@ -165,6 +165,7 @@ class Kit:
     # a waypoint's pieces, as offsets from its object: under ("kc", key of the tile under the object, objects Class),
     # ("k", key) and, without a room terrain, ("c", Class)
     waypoints: dict[Key | str, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
+    flags: dict[Key, bytes] = field(default_factory=dict)  # a key's subtile flags in the first stock DS1 that has it
 
     def add(self, lay: Layout, preset: dict, keep: set[Key], objects: list[tuple[str, float, float]] = ()) -> None:
         """Harvest one stock (layout, preset) pair, only the keys in `keep`. A waypoint's pieces stay out of the
@@ -190,6 +191,7 @@ class Kit:
                 per[c].append((e, x - c[0] * TILE, z - c[1] * TILE))
         for c, ents in per.items():
             self.instances.setdefault(lay.keys[c], []).append((src, ents))
+            self.flags.setdefault(lay.keys[c], lay.flags.get(c, bytes(25)))
         for n, ents in groups.items():
             cls, x, z = objects[n]
             key = lay.keys.get((int(x // TILE), int(z // TILE)))
@@ -225,6 +227,7 @@ def place_waypoints(lay: Layout, kit: Kit, seed: str, objects: list[tuple[str, f
 
 
 TREE_LAYER = 14  # the orientation of a DT1's tree tiles
+LIKE = 12  # the orientation whose PD2 tiles without a stand-in borrow a stock tile's pieces (like())
 STRUCTURE = re.compile(r"/(?:wall|cliff)_[^/\"]*\.(?:model|json)")  # stone walls and cliffs, by their file name
 
 
@@ -238,6 +241,23 @@ def fades(e: dict) -> bool:
     return any(c["type"] == "WallTransparencyComponent" for c in e["components"])         or bool(painter.LOW.search(json.dumps(e["components"])))
 
 
+def like(lay: Layout, kit: Kit) -> dict[tuple[int, int], Key]:
+    """For each tile whose key the kit lacks, whole and layer by layer, and that has a LIKE layer: the single-layer
+    LIKE key, from a DT1 the layout draws and with a piece in some instance, whose subtile collision is nearest the
+    tile's (then the one with the most such instances). A PD2 DT1's pillar or wall end with no stand-in tile (#714:
+    Torture Halls' flesh pillars) then stands as the tile set's own of the same footprint."""
+    drawn = {t[0] for k in lay.keys.values() for t in k[1] if t}
+    pool = [(k, kit.flags.get(k, bytes(25)), sum(bool(o[1]) for o in v)) for k, v in kit.instances.items()
+            if len(k[1]) == 1 and k[1][0] and k[1][0][1] == LIKE and k[1][0][0] in drawn and any(o[1] for o in v)]
+    out = {}
+    for c, key in lay.keys.items():
+        if not pool or key in kit.instances or any((key[0], (t,)) in kit.instances for t in key[1])                 or not any(t and t[1] == LIKE for t in key[1]):
+            continue
+        f = lay.flags.get(c, bytes(25))
+        out[c] = min(pool, key=lambda p: (sum((a ^ b) & 1 for a, b in zip(f, p[1])), -p[2], p[0]))[0]
+    return out
+
+
 def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near: frozenset = frozenset(),
           far: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
     """Each tile's pick of its key's instances (no ids yet), the kit sources used, and how many tiles stayed empty
@@ -249,8 +269,9 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
     playable ground screen-up of it) picks only an instance whose pieces all fade, as D2R's rooms do on their near
     side, or stays empty. A `far` edge tile (one whose tree is drawn over no playable ground) picks among those that
     hold a tree (painter.is_tree) first, as a lone rock or shrub is too low to close the border (Frozen Forest,
-    #688)."""
+    #688). A tile the kit has no key for takes its like() key's pick."""
     entities, used, missing = [], set(), 0
+    borrow = like(lay, kit)
 
     def one(x: int, y: int, key: Key, salt: str) -> bool:
         options = kit.instances.get(key)
@@ -283,6 +304,8 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
         alone = [(k, (key[0], (t,))) for k, t in enumerate(key[1]) if (key[0], (t,)) in kit.instances]
         for k, single in alone:
             one(x, y, single, f":{k}")
+        if not alone and (x, y) in borrow:
+            alone = [one(x, y, borrow[(x, y)], ":like")]
         missing += not alone
     return entities, used, missing
 

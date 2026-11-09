@@ -400,6 +400,18 @@ class LayerTests(unittest.TestCase):
         self.assertFalse(stream & P.painter.playable(lay))  # no walkable floor next to it: border ground
         self.assertTrue(stream <= P.painter.playable(lay, frozenset({"act3/river/rivbank.dt1"})))
 
+    def test_a_pd2_pillar_tile_without_a_stand_in_borrows_the_stock_pillar_of_its_footprint(self):
+        T = "expansion/wildtemple/interior.dt1"
+        short, tall = ("w", ((T, 12, 4, 3),)), ("w", ((T, 12, 4, 5),))
+        solid, ring = b"" * 25, bytes(12) + b"" + bytes(12)  # a full tile, and a pillar on its centre subtile
+        kit = P.Kit({short: [(0, [(entity("short01", 0, 0), 5.0, 5.0)])], tall: [(0, [(entity("tall01", 0, 0), 5.0, 5.0)])]},
+                    [{}], flags={short: solid, tall: ring})
+        pd2 = ("w", (("pd2assets/torturehalls/file2.dt1", 12, 9, 1),))
+        lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 1, 0, 0),)), (1, 0): pd2}, {(0, 0): solid, (1, 0): ring})
+        ents, _, missing = P.place(lay, kit, "s")
+        self.assertEqual([(e["name"], P._transform(e)["position"]["x"]) for e in ents], [("tall01", 15.0)])
+        self.assertEqual(missing, 1)  # (0, 0): no LIKE layer, so it borrows nothing
+
     def test_an_edge_tile_picks_a_kit_instance_that_holds_a_piece(self):
         kit = P.Kit({self.WA: [(0, []), (0, [(entity("wall", 0, 0), 1.0, 1.0)])]}, [{}])
         lay = P.Layout(1, 1, {(0, 0): self.WA})
