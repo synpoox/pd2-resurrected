@@ -159,13 +159,27 @@ class Output(unittest.TestCase):
         self.assertIn("(abc123)", text)
         order = [line.split(" | ")[0][2:] for line in text.splitlines() if line.startswith("| ") and "Preset" not in line]
         self.assertEqual(order, ["d", "b", "c", "a"])
-        self.assertIn("| d | Mesa | 40.0% | 6 | 0 | 100.0% | 10 | [walls](d_walls.png) [border](d_border.png) |", text)
+        self.assertIn("| d | Mesa | 40.0% | 6 | 0 | 100.0% | 10 | 0.0 | 0 | [walls](d_walls.png) [border](d_border.png) |", text)
         self.assertIn("All borders: 60.0% of 20 ring tiles.", text)
 
     def test_run_skips_without_models(self):
         with tempfile.TemporaryDirectory() as d:
             self.assertIsNone(C.run(Path(d), Path(d), Path(d) / "out"))
             self.assertFalse((Path(d) / "out").exists())
+
+
+class Budget(unittest.TestCase):
+    def test_over_budget_listed_largest_first(self):
+        small = C.Score("s", "S", 1, set(), size=1_000_000, entities=100)
+        big = C.Score("b", "B", 1, set(), size=59_200_000, entities=60854, tiles=20000)
+        many = C.Score("m", "M", 1, set(), size=2_000_000, entities=6000, tiles=1000)
+        self.assertEqual([x.over_budget for x in (small, big, many)], [False, True, True])
+        self.assertEqual([x.dense for x in (small, big, many)], [False, False, True])  # m: 6 entities a tile
+        md = C.budget_md([small, many, big])
+        self.assertIn("2 of 3 presets are above", md)
+        self.assertLess(md.index("| b | B | 59.2 | 9.7 | 60854 | 10.8 | 3.0 | 3.0 |  |"),
+                        md.index("| m | M | 2.0 | 0.3 | 6000 | 1.1 | 6.0 | 2.0 | **dense** |"))
+        self.assertIn("## Size budget", C.report([small, many, big]))
 
 
 class Baseline(unittest.TestCase):
