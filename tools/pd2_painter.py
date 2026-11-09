@@ -20,7 +20,9 @@ import zlib
 
 TREE = re.compile(r"tree_wall|treewall|treeline|small_cluster|_trees_")  # treelines, tree walls, foliage tree models
 SPACING = 9  # subtiles between tree origins when the stock has fewer than two trees
-DEPTH = 30  # paint unreachable ground up to this many subtiles from the playable area
+# paint unreachable ground up to this many subtiles (9 tiles) from the playable area: at 6 tiles, the inside of a wide
+# tree mass was drawn only where a nearer wall's overhang happened to fall, and a change anywhere moved those (#687)
+DEPTH = 45
 CAP = 15  # distances to the blocked ground are capped here
 # a tree covers the ground screen-up of it: up to TALL subtile rows (x + y; a tile is 10) above, WIDE columns (x - y) to
 # either side, about 4 tiles high and 1 wide
