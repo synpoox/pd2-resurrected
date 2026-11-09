@@ -32,6 +32,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Dungeon boss barriers show as iron gates instead of invisible walls.
 - Map waypoints draw their platform, and no stray waypoints stand on plain ground.
 - Westmarch's flat ground no longer draws Harrogath stair pieces.
+- The Sewers map no longer grows Kurast's jungle trees and vines on its floor.
 
 #### Uber bosses
 
