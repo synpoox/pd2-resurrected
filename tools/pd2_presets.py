@@ -55,6 +55,7 @@ FLOOR_MAX = 8.0
 UNWALKABLE = 0x20000
 TERRAIN = "act2/palace/celse3"  # a stock preset whose terrain is a flat TERRAIN_SIZE square (D2R Reimagined's plane)
 TERRAIN_SIZE = 170
+SINK = 1.0  # HD units: a pasted room's ground this far below the flat plane would be hidden by it (#705)
 ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is pasted where this share of its tiles match
 FAR = 20.0  # HD units (2 tiles): a piece whose mesh stands this far clear of its position belongs to a structure
 SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
@@ -478,12 +479,16 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
         entities.append(e)
         depend(of)
     # the ground: the flat plane once per TERRAIN_SIZE block not mostly under pasted rooms, unscaled (a scaled plane
-    # does not draw); the first copy is the preset's terrain, the rest are entities
+    # does not draw); the first copy is the preset's terrain, the rest are entities. A block mostly under rooms gets
+    # it too when it has tiles outside them, which the rooms' terrain does not reach (#705), unless a room in it has
+    # ground below the plane (a canal, a sunken court), which the plane would hide
     span = TERRAIN_SIZE // TILE
+    sunk = sunken(pasted, stock)
     for bx in range(0, lay.width, span):
         for by in range(0, lay.height, span):
             block = [(x, y) for x in range(bx, min(bx + span, lay.width)) for y in range(by, min(by + span, lay.height))]
-            if (bx or by) and sum(c in taken for c in block) * 2 < len(block):
+            if (bx or by) and (sum(c in taken for c in block) * 2 < len(block) or any(
+                    c in lay.keys and c not in taken for c in block) and not any(c in sunk for c in block)):
                 plane = copy.deepcopy(terrain)
                 _transform(plane)["position"].update({"x": float(bx * TILE), "z": float(by * TILE)})
                 entities.append(plane)
@@ -497,6 +502,22 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
     return {"dependencies": {k: list(v.values()) for k, v in deps.items()}, "type": "Preset", "name": name,
             "entities": entities, "terrain": terrain, "biomeFilename": biome, "perTileBiomeOverrides": [],
             "specialTiles": {}}, missing
+
+
+def sunken(pasted: list[tuple[int, int, int]], stock: list[tuple[Layout, dict]]) -> set[tuple[int, int]]:
+    """The tiles of the pasted rooms whose stock ground (GROUND, at the tile's centre) lies more than SINK below the
+    flat plane: a plane over them would hide the room's floor or water."""
+    out = set()
+    for n, ox, oy in pasted:
+        s, preset = stock[n]
+        ground = preset.get(GROUND)
+        if ground is None:
+            continue
+        for x, y in s.keys:
+            h = ground.at(x * TILE + TILE / 2, y * TILE + TILE / 2)
+            if h is not None and h < -SINK:
+                out.add((x + ox, y + oy))
+    return out
 
 
 def rectangles(cells: set) -> list[tuple[int, int, int, int]]:
