@@ -286,6 +286,15 @@ class LayerTests(unittest.TestCase):
         self.assertEqual(picks, {0, 1})  # off the edge, the empty stock instance is one of the picks
         self.assertEqual({len(P.place(lay, kit, f"s{i}", frozenset({(0, 0)}))[0]) for i in range(20)}, {1})
 
+    def test_a_tree_tile_never_picks_a_stone_wall_or_cliff_instance(self):
+        tree = ("w", (("expansion/siege/trees.dt1", 14, 0, 6),))
+        kit = P.Kit({tree: [(0, [(entity("siege/wall_stone_large01", 0, 0), 1.0, 1.0)]),
+                            (0, [(entity("siege/cliff_rock_large01", 0, 0), 1.0, 1.0)]),
+                            (0, [(entity("siege/expansion_tree_dead03", 0, 0), 1.0, 1.0)])]}, [{}])
+        lay = P.Layout(1, 1, {(0, 0): tree})
+        names = {e["name"] for i in range(20) for e in P.place(lay, kit, f"s{i}")[0]}
+        self.assertEqual(names, {"siege/expansion_tree_dead03"})
+
     def test_only_a_ds1_drawing_a_tree_dt1_is_painted(self):
         outdoor = P.Layout(2, 1, {(0, 0): self.F, (1, 0): ("w", (("act3/jungle/treegrp.dt1", 1, 0, 0),))})
         indoor = P.Layout(2, 1, {(0, 0): self.F, (1, 0): self.WA, (2, 0): ("w", ((None, 1, 0, 0),))})

@@ -153,17 +153,30 @@ class Kit:
             self.instances.setdefault(lay.keys[c], []).append((src, ents))
 
 
+TREE_LAYER = 14  # the orientation of a DT1's tree tiles
+STRUCTURE = re.compile(r"/(?:wall|cliff)_[^/\"]*\.(?:model|json)")  # stone walls and cliffs, by their file name
+
+
+def structure(ents: list) -> bool:
+    """Whether a kit instance holds a wall or cliff piece."""
+    return any(STRUCTURE.search(json.dumps(e["components"])) for e, _, _ in ents)
+
+
 def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
     """Each tile's pick of its key's instances (no ids yet), the kit sources used, and how many tiles stayed empty
     for a key the kit lacks. An `edge` tile (the map's border, where the automap draws its edge) picks among the
     instances that hold a piece: a stock tile left empty there leans on its neighbour's piece, which another pick
-    may not have, and the border would show a gap."""
+    may not have, and the border would show a gap. A tree tile picks among the instances that hold no wall or cliff:
+    a stock piece belongs to the tile its origin falls on, and a stone wall standing on a tree tile there would draw
+    a wall where the legacy view shows a tree (#686: Fortress's waypoint court)."""
     entities, used, missing = [], set(), 0
 
     def one(x: int, y: int, key: Key, salt: str) -> bool:
         options = kit.instances.get(key)
         if not options:
             return False
+        if key[1] and all(t and t[1] == TREE_LAYER for t in key[1]):
+            options = [o for o in options if not structure(o[1])] or options
         if (x, y) in edge:
             options = [o for o in options if o[1]] or options
         src, ents = options[zlib.crc32(f"{seed}:{x}:{y}{salt}".encode()) % len(options)]
