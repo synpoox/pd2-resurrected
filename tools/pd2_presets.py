@@ -528,7 +528,7 @@ def far_off(d2r_data: Path) -> Callable[[dict], bool]:
         p = _transform(e)["position"]
         return any(top >= coverage.TALL and max(x1 - x0, z1 - z0) <= coverage.ROOM
                    and max(x0 - p["x"], p["x"] - x1, z0 - p["z"], p["z"] - z1) >= FAR
-                   for x0, x1, z0, z1, top in coverage.boxes([e], lambda m: boxes.get(coverage.fnv(m)), prefab))
+                   for x0, x1, z0, z1, top, _ in coverage.boxes([e], lambda m: boxes.get(coverage.fnv(m)), prefab))
     return far
 
 
