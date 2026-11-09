@@ -305,13 +305,21 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
             return any((int((p["x"] + x) // TILE), int((p["z"] + z) // TILE)) in ground
                        for x, z in painter.pieces(e, prefabs))
         entities = [e for e in entities if not painter.is_tree(e) or not on_ground(e)]
-        # a lone tree (a wall tile on the path) stays, and a stream's; so does a line's where no painted tree stands
-        # within two tiles (a line with playable ground on both sides leaves the painter no room), and a far edge
-        # tile's: the painter plants little on the ring, so a dropped edge tree left a gap (#688). On the near side
-        # only roots and `_foreground` walls stay, as the painter's (#454)
-        loose = [e for e in loose if not painter.is_tree(e)
-                 or not on_ground(e) and (tile(e) in play or tile(e) in line - near or tile(e) in far
-                                          or tile(e) in edge and painter.LOW.search(json.dumps(e["components"])))]
+        def keep(e: dict) -> bool:
+            """A lone tree (a wall tile on the path) stays, and a stream's; so does a line's where no painted tree
+            stands within two tiles (a line with playable ground on both sides leaves the painter no room). A far edge
+            tile's tree stays where it is drawn over no playable ground: the painter plants little on the ring, so a
+            dropped edge tree left a gap (#688). On the near side roots and `_foreground` walls stay too (#454)."""
+            if not painter.is_tree(e):
+                return True
+            if on_ground(e):
+                return False
+            if tile(e) in far:
+                p = _transform(e)["position"]
+                return not shades((int(p["x"] / 2), int(p["z"] / 2)))  # its origin subtile, as the painter's
+            return (tile(e) in play or tile(e) in line - near
+                    or tile(e) in edge and bool(painter.LOW.search(json.dumps(e["components"]))))
+        loose = [e for e in loose if keep(e)]
         assert not any(on_ground(e) for e, _ in painted), f"{name}: a painted tree reaches walkable floor"
         for e, of in painted:
             loose.append(e)
