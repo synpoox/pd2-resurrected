@@ -46,6 +46,9 @@ from pd2_levels import SLOTS, col, ds1_header, norm
 
 TILE = 10  # HD units per DS1 tile
 GROUND = "_ground"  # a stock preset's pd2_terrain.Ground, set by apply() for Kit.add; never written out
+# a floor tile's stock pieces standing higher than this above their ground are a building's upper parts (Kurast's
+# pillars and roof lips stand 9-26 up), dropped as the tile may have no building in a PD2 DS1 (#682)
+FLOOR_MAX = 8.0
 # a DS1 cell's unwalkable bit: what blocks the plain floor in PD2's dashed tree lines and the ground past the paths
 # (jungle1: on 96% of the lines' gap tiles; D2R's stock jungle rooms stand 88% of their trees on such tiles)
 UNWALKABLE = 0x20000
@@ -137,6 +140,13 @@ def wanted(lay: Layout) -> set[Key]:
     return {k for key in lay.keys.values() for k in (key, *((key[0], (t,)) for t in key[1]))}
 
 
+def _floor(key: Key) -> bool:
+    """A floor tile's key, or a patch key (patches()) whose centre tile is a floor."""
+    if key[0] in ("sq", "cross"):
+        key = key[1][4 if key[0] == "sq" else 0]
+    return key is not None and key[0] == "f"
+
+
 @dataclass
 class Kit:
     instances: dict[Key, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
@@ -156,7 +166,10 @@ class Kit:
             x, z = t["position"]["x"], t["position"]["z"]
             c = (min(max(int(x // TILE), 0), lay.width - 1), min(max(int(z // TILE), 0), lay.height - 1))
             if c in per:
-                if ground and (g := ground.at(x, z)):
+                g = ground.at(x, z) if ground else None
+                if g is not None and t["position"]["y"] - g > FLOOR_MAX and _floor(lay.keys[c]):
+                    continue  # a building's upper part over this floor: its walls are other tiles', so it would float
+                if g:
                     e = copy.deepcopy(e)
                     _transform(e)["position"]["y"] -= g
                 per[c].append((e, x - c[0] * TILE, z - c[1] * TILE))
