@@ -162,13 +162,21 @@ def structure(ents: list) -> bool:
     return any(STRUCTURE.search(json.dumps(e["components"])) for e, _, _ in ents)
 
 
-def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
+def fades(e: dict) -> bool:
+    """Whether a piece is see-through in front of the player: a wall that fades, or a low root or foreground wall."""
+    return any(c["type"] == "WallTransparencyComponent" for c in e["components"])         or bool(painter.LOW.search(json.dumps(e["components"])))
+
+
+def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(),
+          near: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
     """Each tile's pick of its key's instances (no ids yet), the kit sources used, and how many tiles stayed empty
     for a key the kit lacks. An `edge` tile (the map's border, where the automap draws its edge) picks among the
     instances that hold a piece: a stock tile left empty there leans on its neighbour's piece, which another pick
     may not have, and the border would show a gap. A tree tile picks among the instances that hold no wall or cliff:
     a stock piece belongs to the tile its origin falls on, and a stone wall standing on a tree tile there would draw
-    a wall where the legacy view shows a tree (#686: Fortress's waypoint court)."""
+    a wall where the legacy view shows a tree (#686: Fortress's waypoint court). A `near` tile (drawn over the
+    playable ground screen-up of it) picks only an instance whose pieces all fade, as D2R's rooms do on their near
+    side, or stays empty."""
     entities, used, missing = [], set(), 0
 
     def one(x: int, y: int, key: Key, salt: str) -> bool:
@@ -177,6 +185,10 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset()) -> tu
             return False
         if key[1] and all(t and t[1] == TREE_LAYER for t in key[1]):
             options = [o for o in options if not structure(o[1])] or options
+        if (x, y) in near:
+            options = [o for o in options if all(fades(e) for e, _, _ in o[1])]
+            if not options:
+                return True
         if (x, y) in edge:
             options = [o for o in options if o[1]] or options
         src, ents = options[zlib.crc32(f"{seed}:{x}:{y}{salt}".encode()) % len(options)]
@@ -267,35 +279,42 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
                 deps.setdefault(kind, {}).setdefault(d["path"].lower(), d)
     stock = list(stock)
     pasted, taken = rooms(lay, stock)
+    held = set()  # tiles a pasted room puts a piece on
     for n, ox, oy in pasted:
         preset = stock[n][1]
         depend(preset["dependencies"])
         for e in preset["entities"] + [preset.get("terrain")]:  # the room's own sculpted terrain, water and bridges
             if not e or "components" not in e or _transform(e) is None:  # some stock terrain is empty
                 continue
+            piece = e is not preset.get("terrain")
             e = copy.deepcopy(e)
             _transform(e)["position"]["x"] += ox * TILE
             _transform(e)["position"]["z"] += oy * TILE
+            if piece:
+                held.add((int(_transform(e)["position"]["x"] // TILE), int(_transform(e)["position"]["z"] // TILE)))
             for c in e["components"]:
                 if c["type"] == "WallTransparencyComponent" and c["wallTileLocalCoord"]["x"] >= 0:
                     c["wallTileLocalCoord"] = {"x": c["wallTileLocalCoord"]["x"] + ox,
                                                "y": c["wallTileLocalCoord"]["y"] + oy}
             entities.append(e)
     wet = frozenset(water or {})  # stream DT1: their blocked floor stays water past the tree line
-    edge = frozenset()
+    edge, play = frozenset(), set()
     if trees:  # the ring just past the playable area: the border the automap draws
         play = painter.playable(lay, wet)
         edge = frozenset({(x + dx, y + dy) for x, y in play for dx, dy in painter.STEPS} - play)
     # a room pastes whole at a ROOM_MATCH match: a border tile in it that its stock tile doesn't match (or that its
-    # stock leaves empty) has no piece of its own, so it takes the kit's pick too (#686: Fortress's wall islands)
+    # stock leaves empty) and that holds none of the room's pieces takes the kit's pick too (#686: Fortress's wall
+    # islands); one with playable ground screen-up of it takes only a fading piece, as the room's near side does
     was = {(x + ox, y + oy): k for n, ox, oy in pasted for (x, y), k in stock[n][0].keys.items()}
-    rest = {c: k for c, k in lay.keys.items() if c not in taken or c in edge and was.get(c) != k}
+    fill = {c for c in edge & taken if was.get(c) != lay.keys.get(c) and c not in held}
+    near = frozenset(c for c in fill if {(c[0] - 1, c[1]), (c[0], c[1] - 1), (c[0] - 1, c[1] - 1)} & play)
+    rest = {c: k for c, k in lay.keys.items() if c not in taken or c in fill}
     found, pkit = patches(lay, stock, set(rest))
-    loose, used, _ = place(found, pkit, seed, edge)
+    loose, used, _ = place(found, pkit, seed, edge, near)
     for src in sorted(used):
         depend(pkit.sources[src])
     more, used, missing = place(Layout(lay.width, lay.height, {c: k for c, k in rest.items() if c not in found.keys}),
-                                kit, seed, edge)
+                                kit, seed, edge, near)
     for src in sorted(used):
         depend(kit.sources[src])
     loose += more
