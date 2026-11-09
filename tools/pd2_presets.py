@@ -50,7 +50,7 @@ UNWALKABLE = 0x20000
 TERRAIN = "act2/palace/celse3"  # a stock preset whose terrain is a flat TERRAIN_SIZE square (D2R Reimagined's plane)
 TERRAIN_SIZE = 170
 ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is pasted where this share of its tiles match
-FAR = 20.0  # HD units (2 tiles): a piece whose mesh centre stands this far off its position belongs to a structure
+FAR = 20.0  # HD units (2 tiles): a piece whose mesh stands this far clear of its position belongs to a structure
 SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
 CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
 PRESETS = Path("hd") / "env" / "preset"
@@ -137,7 +137,7 @@ def wanted(lay: Layout) -> set[Key]:
 class Kit:
     instances: dict[Key, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
     sources: list[dict[str, list[dict]]] = field(default_factory=list)  # each stock preset's dependencies
-    far: Callable[[dict], bool] = lambda e: False  # far_off(): a piece whose mesh stands FAR or more off its anchor
+    far: Callable[[dict], bool] = lambda e: False  # far_off(): a piece whose mesh stands FAR or more clear of its anchor
 
     def add(self, lay: Layout, preset: dict, keep: set[Key], floor: set | None = None) -> None:
         """Harvest one stock (layout, preset) pair, only the keys in `keep`. A `far` piece anchored on a floor tile
@@ -394,7 +394,8 @@ def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set) -> lis
 
 def far_off(d2r_data: Path) -> Callable[[dict], bool]:
     """Kit.far from D2R's model boxes (data/hd/model_lod_desc.bin): whether a model at least pd2_coverage.TALL high,
-    not a tree, a prefab nor room-sized, has its box centre FAR or more off its position along x or z.
+    not a tree, a prefab nor room-sized, stands FAR or more clear of its position along x or z (Harrogath's stairs).
+    A mesh that reaches its position stays, however far its centre: Duriel's chamber is one piece.
     Without the file, no piece is."""
     import pd2_coverage as coverage  # it imports this module
     models = d2r_data / coverage.MODELS
@@ -413,7 +414,7 @@ def far_off(d2r_data: Path) -> Callable[[dict], bool]:
             return False
         p = _transform(e)["position"]
         return any(top >= coverage.TALL and max(x1 - x0, z1 - z0) <= coverage.ROOM
-                   and max(abs((x0 + x1) / 2 - p["x"]), abs((z0 + z1) / 2 - p["z"])) >= FAR
+                   and max(x0 - p["x"], p["x"] - x1, z0 - p["z"], p["z"] - z1) >= FAR
                    for x0, x1, z0, z1, top in coverage.boxes([e], lambda m: boxes.get(coverage.fnv(m)), prefab))
     return far
 

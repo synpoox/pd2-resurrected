@@ -147,17 +147,20 @@ class BuildTests(unittest.TestCase):
             entity("stairs", 3.0, 4.0)]})], {(0, 0)}, kit.far)
         self.assertFalse(any(ents for opts in pkit.instances.values() for _, ents in opts))
 
-    def test_a_piece_is_far_when_its_box_centre_stands_two_tiles_off(self):
+    def test_a_piece_is_far_when_its_box_stands_two_tiles_clear_of_it(self):
         d = Path(tempfile.mkdtemp())
         import pd2_coverage as C
         stairs, sack = "data/hd/env/model/stairs.model", "data/hd/env/model/sack.model"
-        recs = sorted([(C.fnv(stairs), (-37.0, 0.0, 28.0, 0.0, 15.0, 55.0)), (C.fnv(sack), (-2.0, 0.0, -2.0, 2.0, 3.0, 2.0))])
+        pit = "data/hd/env/model/pit.model"  # Duriel's chamber: its centre stands far off, but it reaches its anchor
+        recs = sorted([(C.fnv(stairs), (-37.0, 0.0, 28.0, 0.0, 15.0, 55.0)), (C.fnv(sack), (-2.0, 0.0, -2.0, 2.0, 3.0, 2.0)),
+                       (C.fnv(pit), (-85.0, 0.0, -113.0, 7.0, 20.0, 2.0))])
         raw = struct.pack("<Ii", len(recs), 4) + b"".join(struct.pack("<I6f", k, *b) + bytes(16) for k, b in recs)
         (d / "hd").mkdir()
         (d / "hd" / "model_lod_desc.bin").write_bytes(raw)
         far = P.far_off(d)
         self.assertTrue(far(entity("stairs", 50.0, 50.0)))
         self.assertFalse(far(entity("sack", 50.0, 50.0)))
+        self.assertFalse(far(entity("pit", 50.0, 50.0)))
         self.assertFalse(P.far_off(d / "none")(entity("stairs", 0.0, 0.0)))
 
 
