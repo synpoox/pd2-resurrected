@@ -4,11 +4,13 @@ import io
 import json
 import sys
 import tempfile
+import threading
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import pd2_cache  # noqa: E402
 import pd2_extract  # noqa: E402
 import pd2_ids  # noqa: E402
 import pd2_merge  # noqa: E402
@@ -73,6 +75,29 @@ class MergeTests(unittest.TestCase):
                 self.assertFalse((root / "generated").exists())
             finally:
                 del pd2_merge.RULES["ids.json"]
+
+    def test_a_second_run_in_the_project_waits_for_the_first(self):
+        ex = toolkit_or_skip(self)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.project(Path(tmp), ex.stamp(b"B"))
+            (root / "merge" / "ids.json").write_text("{}")
+            got = threading.Event()
+
+            def other():
+                with redirect_stdout(io.StringIO()), pd2_cache.lock(root / "pd2_merge.lock", poll=0.05):
+                    got.set()
+            t = threading.Thread(target=other)
+
+            def rule(rule, pd2, d2r, out):
+                t.start()
+                self.assertFalse(got.wait(0.5))  # the run holds the lock while its rules write generated/
+            pd2_merge.RULES["ids.json"] = rule
+            try:
+                pd2_merge.merge(root, root / "d2r")
+            finally:
+                del pd2_merge.RULES["ids.json"]
+            self.assertTrue(got.wait(5))  # released once the run is done
+            t.join()
 
     def test_main_reports_errors(self):
         with tempfile.TemporaryDirectory() as tmp:

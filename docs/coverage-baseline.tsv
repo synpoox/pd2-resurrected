@@ -1,75 +1,75 @@
-# HD preset coverage on main (tools/pd2_coverage.py --write-baseline): preset, wall %, border % or -
-arcanemap	34.5	-
-arcanemap2	33.4	-
-ashenplains1	80.1	85.1
-ashenplains2	79.0	81.6
-ashenplains3	82.3	84.9
-descend	66.2	67.5
-descend_2	68.3	68.7
-descend_3	66.0	66.2
-descend_4	67.4	67.2
-fortress1	71.2	69.3
-fortress2	76.5	76.9
-fortress3	72.7	70.6
-frozenforestv1	58.8	76.0
-frozenforestv2	62.6	75.2
-frozenforestv3	56.5	74.8
-frozenriver1	91.2	-
-frozenriver2	93.8	-
-frozenriver3	92.2	-
-imperial_palace	48.2	-
-imperialpalacebossroom	59.7	-
-jungle1	94.4	91.2
-jungle2	92.7	89.0
-jungle3	95.5	89.1
-kurastopenwide	93.9	96.2
-kurastopenwide2	95.9	97.8
-kurastopenwide3	93.0	96.8
-lava1	65.4	-
-lava3	61.1	-
-lava5	63.8	-
-library	78.3	-
-library_v2	78.2	-
-library_v3	78.3	-
-market2	96.6	-
-mesa1	33.0	-
-mesa2	31.3	-
-mesa3	35.0	-
-mesa4	34.7	-
-mesa5	41.6	-
-mesa6	38.1	-
-monasterybase	90.4	-
-necropolis_1	89.4	98.1
-necropolis_2	94.4	92.2
-palace1	40.4	-
-palace2	40.1	-
-palace3	39.9	-
-palace4	39.2	-
-palace5	39.4	-
-palace6	39.2	-
-pd2_ubertrist	82.8	77.8
-riverofblood	53.4	-
-riverofblood2	58.5	-
-riverofblood3	53.9	-
-riverofblood4	56.6	-
-royalcrypts	89.8	-
-royalcryptsv2	89.5	-
-royalcryptsv3	89.8	-
-sewermap1	96.7	-
-sewermap2	97.6	-
-sewermap3	96.3	-
-shadowsofwestmarchv1	92.4	91.3
-shadowsofwestmarchv3	91.9	91.6
-siege1	90.5	90.7
-siege2	89.0	91.4
-tomb1	34.9	-
-tomb2	36.4	-
-tomb3	36.6	-
-tomb4	33.4	-
-torturehalls	74.9	74.9
-torturehalls2	75.6	75.9
-torturehalls3	72.6	73.1
-tristmap	76.3	88.7
-tristmapv2	75.6	88.0
-tristmapv3	78.0	85.3
-zharlibrary	45.4	-
+# HD preset coverage on main (tools/pd2_coverage.py --write-baseline): preset, wall %, border % or -, floor %
+arcanemap	34.5	-	100.0
+arcanemap2	33.4	-	99.1
+ashenplains1	80.2	85.3	98.1
+ashenplains2	79.2	82.4	97.1
+ashenplains3	82.3	84.9	97.9
+descend	66.2	67.5	94.8
+descend_2	68.3	68.7	95.7
+descend_3	66.0	66.2	94.6
+descend_4	67.4	67.2	94.0
+fortress1	77.6	80.0	86.1
+fortress2	80.6	82.8	85.9
+fortress3	77.9	78.9	88.9
+frozenforestv1	58.2	74.5	99.8
+frozenforestv2	62.2	74.0	99.6
+frozenforestv3	55.9	75.4	98.2
+frozenriver1	91.2	-	100.0
+frozenriver2	93.8	-	98.8
+frozenriver3	92.2	-	99.3
+imperial_palace	48.3	-	100.0
+imperialpalacebossroom	59.7	-	100.0
+jungle1	95.4	93.6	98.7
+jungle2	93.4	90.5	99.2
+jungle3	96.2	90.4	97.0
+kurastopenwide	94.1	96.9	99.7
+kurastopenwide2	96.2	98.4	99.6
+kurastopenwide3	93.5	97.1	99.5
+lava1	65.4	-	75.3
+lava3	61.1	-	80.6
+lava5	63.8	-	84.8
+library	78.3	-	99.9
+library_v2	78.2	-	99.9
+library_v3	78.3	-	99.9
+market2	96.6	-	96.1
+mesa1	33.0	-	84.1
+mesa2	31.3	-	84.5
+mesa3	35.0	-	86.1
+mesa4	34.7	-	90.1
+mesa5	41.6	-	91.4
+mesa6	38.1	-	95.9
+monasterybase	90.4	-	100.0
+necropolis_1	89.9	98.4	100.0
+necropolis_2	94.1	92.3	99.4
+palace1	40.4	-	96.4
+palace2	40.1	-	96.3
+palace3	39.9	-	98.9
+palace4	39.2	-	100.0
+palace5	39.4	-	100.0
+palace6	39.2	-	98.9
+pd2_ubertrist	82.8	77.8	100.0
+riverofblood	53.4	-	100.0
+riverofblood2	58.5	-	100.0
+riverofblood3	53.9	-	100.0
+riverofblood4	56.6	-	100.0
+royalcrypts	89.8	-	94.4
+royalcryptsv2	89.5	-	92.0
+royalcryptsv3	89.8	-	94.3
+sewermap1	96.7	-	99.6
+sewermap2	97.6	-	100.0
+sewermap3	96.3	-	100.0
+shadowsofwestmarchv1	92.9	91.9	77.9
+shadowsofwestmarchv3	92.1	92.4	79.2
+siege1	90.0	90.3	97.9
+siege2	88.7	91.3	97.0
+tomb1	34.9	-	93.5
+tomb2	36.4	-	96.3
+tomb3	36.6	-	96.9
+tomb4	33.4	-	97.4
+torturehalls	75.6	75.5	100.0
+torturehalls2	76.7	76.9	100.0
+torturehalls3	73.6	74.0	100.0
+tristmap	76.3	88.9	98.4
+tristmapv2	75.7	88.2	98.0
+tristmapv3	78.0	85.4	98.3
+zharlibrary	45.4	-	100.0

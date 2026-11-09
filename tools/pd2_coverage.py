@@ -7,10 +7,16 @@ least TALL units high. Per generated preset:
 - wall score: the share of DS1 wall tiles (what the automap draws as walls) under a tall piece;
 - border score, for a DS1 that draws trees (pd2_presets.draws_trees): the ring of DS1 tiles 4-adjacent to and
   outside pd2_painter.playable() (the map's edge on the automap). A ring tile is covered (under a tall piece), a gap
-  (bare), and a leak if the DS1 lets the player walk on it.
+  (bare), and a leak if the DS1 lets the player walk on it;
+- floor score (#695): the share of walkable DS1 floor tiles (floor, no wall, not marked unwalkable, not mostly
+  blocked) under a terrain's box (the flat ground planes and the pasted stock rooms' own terrain) and, on the flat
+  planes, under no wrong-tile piece: a structure such as stairs or a wall (wrong_tiles). A bare tile draws no ground;
+  a wrong one draws stairs or a wall where the DS1 has flat, walkable floor.
 
 Writes <out>/report.md, worst first (border score, then wall score), and per preset <name>_walls.png (walls green
-where covered, red where bare) and, for a border, <name>_border.png (ring green, gap red, leak magenta). Known bias:
+where covered, red where bare), <name>_floor.png (walkable floor green where covered, red where bare, orange where
+wrong) and, for a
+border, <name>_border.png (ring green, gap red, leak magenta). Known bias:
 a turned piece's footprint is its axis-aligned box, which spills onto neighbour tiles, so both scores run a little
 generous. TALL 4 reproduced the LP3 slice 1 game check (research/lp3-tile-table, FINDINGS.md). The report cannot judge
 looks, frame rate or collision.
@@ -18,11 +24,12 @@ looks, frame rate or collision.
 Size budget: each preset's JSON size and entity count, the presets above STOCK_BYTES or STOCK_ENTITIES (D2R's own
 largest) listed in a "Size budget" section, largest first. Reported, not checked.
 
-Changes against the baseline: BASELINE (docs/coverage-baseline.tsv, `preset <tab> wall % <tab> border % or -`) holds main's
-scores. The report and <out>/changes.md list each preset whose score moved, a new one, and one no longer scored.
-`--check` fails (exit 1) when a preset's wall or border score drops more than TOLERANCE points below the baseline, or
-a baselined preset is no longer scored. To accept an intended drop (or record a gain), run with `--write-baseline`
-after pd2_merge.py and commit docs/coverage-baseline.tsv with the PR: the drop then shows in its diff and review.
+Changes against the baseline: BASELINE (docs/coverage-baseline.tsv, `preset <tab> wall % <tab> border % or - <tab>
+floor %`) holds main's scores. The report and <out>/changes.md list each preset whose score moved, a new one, and one
+no longer scored. `--check` fails (exit 1) when a preset's wall, border or floor score drops more than TOLERANCE
+points below the baseline, or a baselined preset is no longer scored. To accept an intended drop (or record a gain),
+run with `--write-baseline` after pd2_merge.py and commit docs/coverage-baseline.tsv with the PR: the drop then shows
+in its diff and review.
 Record gains the same way, or a later drop back to the old score passes unnoticed.
 Needs model_lod_desc.bin in modkit's cache, else it skips:
 `python -m modkit fetch --prefix data/hd/model_lod_desc.bin`.
@@ -50,7 +57,9 @@ D2R_DATA = Path(os.environ.get("MODKIT_CACHE", toolkit(ROOT) / "d2r-data")) / "9
 MODELS = Path("hd") / "model_lod_desc.bin"
 TALL = 4.0  # HD units: a piece this high hides a wall in game
 ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculpted terrain), not a wall piece
+STRUCTURE = 20.0  # HD units (2 tiles): a tall piece this wide both ways is a structure (stairs, platform), not a prop
 DEPTH = 2  # prefab levels followed
+EDGE = 1e-3  # tiles: how far a ground box may cross a tile edge and still end on it
 BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
 TOLERANCE = 1.0  # percentage points a score may drop below the baseline
 # D2R 93847's largest stock presets: act4/diab/dungrm6b.json, 6.1 MB; act2/town/lutw.json, 5642 entities
@@ -61,7 +70,7 @@ STOCK_DENSITY = 5.0
 STOCK_BYTES_PER_TILE = 8000
 IDENTITY = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
 
-Box = tuple[float, float, float, float, float]  # x0, x1, z0, z1, top
+Box = tuple[float, float, float, float, float, float]  # x0, x1, z0, z1, top, bottom
 
 
 def fnv(path: str) -> int:
@@ -106,21 +115,66 @@ def boxes(entities: list[dict], box: Callable[[str], tuple | None], prefab: Call
                 corners = [painter.rotate(q, (x * s[0], y * s[1], z * s[2]))
                            for x in (bb[0], bb[3]) for y in (bb[1], bb[4]) for z in (bb[2], bb[5])]
                 xs, ys, zs = ([p[i] + v[i] for v in corners] for i in range(3))
-                yield min(xs), max(xs), min(zs), max(zs), max(ys)
+                yield min(xs), max(xs), min(zs), max(zs), max(ys), min(ys)
             elif c["type"] == "PrefabPlacementDefinitionComponent" and c.get("prefab") and depth < DEPTH:
                 yield from boxes(prefab(c["prefab"]), box, prefab, (p, q, s), depth + 1)
 
 
 def tall_tiles(found: Iterator[Box], tall: float = TALL) -> set[tuple[int, int]]:
     """The tiles under the footprint of a box at least `tall` high (room-sized boxes left out)."""
+    return footprint(b for b in found if b[4] >= tall and b[1] - b[0] <= ROOM and b[3] - b[2] <= ROOM)
+
+
+def footprint(found: Iterator[Box], exclusive: bool = False) -> set[tuple[int, int]]:
+    """The tiles under the boxes. `exclusive`: a box ending on a tile edge does not reach the tile past it (a
+    170-unit ground plane covers 17 tiles, not 18); the wall score keeps the tile it ends on (tall_tiles)."""
     out = set()
     T = presets.TILE
-    for x0, x1, z0, z1, top in found:
-        if top < tall or x1 - x0 > ROOM or z1 - z0 > ROOM:
-            continue
-        out.update((tx, tz) for tx in range(math.floor(x0 / T), math.floor(x1 / T) + 1)
-                   for tz in range(math.floor(z0 / T), math.floor(z1 / T) + 1))
+
+    def span(a: float, b: float) -> range:
+        if not exclusive:
+            return range(math.floor(a / T), math.floor(b / T) + 1)
+        lo = math.floor(a / T + EDGE)  # the stock plane's box spills past its edges by float noise (170.00003)
+        return range(lo, max(math.ceil(b / T - EDGE), lo + 1))
+    for x0, x1, z0, z1, *_ in found:
+        out.update((tx, tz) for tx in span(x0, x1) for tz in span(z0, z1))
     return out
+
+
+def ground_tiles(preset: dict, box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
+                 flat: bool | None = None) -> set:
+    """The tiles under a terrain's box: the preset's terrain, its flat planes and its pasted rooms' terrain; with
+    `flat`, only the flat planes' (True) or only the rooms' (False)."""
+    def is_flat(e: dict) -> bool:
+        return any(f"/{presets.TERRAIN}/" in c.get("filename", "").lower() for c in e["components"])
+    terrains = [e | {"name": ""} for e in preset["entities"] + [preset.get("terrain") or {}]
+                if e.get("name") == "terrain" and "components" in e  # boxes() skips entities named terrain
+                and (flat is None or is_flat(e) == flat)]
+    return footprint(boxes(terrains, box, prefab), exclusive=True)
+
+
+def wrong_tiles(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
+                at: set) -> set:
+    """The tiles under the structures (STRUCTURE wide both ways, TALL high over the flat ground or its own base,
+    whichever is higher: stairs, platforms, walls, gates; #679) anchored on `at`, walkable floor on the flat ground. A
+    flat decal raised to its stock ground's height is not one, nor a ground mesh sunk below the plane. Pieces floating over the flat ground are left out: hanging
+    beams and candles float in stock too (#682 stands kit pieces at their stock height)."""
+    out = set()
+    for e in entities:
+        t = presets._transform(e)
+        if t is None or e.get("name") == "terrain":
+            continue
+        if (int(t["position"]["x"] // presets.TILE), int(t["position"]["z"] // presets.TILE)) not in at:
+            continue
+        out |= footprint((b for b in boxes([e], box, prefab) if STRUCTURE <= b[1] - b[0] <= ROOM
+                          and STRUCTURE <= b[3] - b[2] <= ROOM and b[4] - max(b[5], 0) >= TALL), exclusive=True)
+    return out
+
+
+def walkable_floor(lay: presets.Layout) -> set[tuple[int, int]]:
+    """The DS1's walkable floor: floor tiles (no wall), not marked unwalkable, not mostly blocked (water)."""
+    return {c for c, k in lay.keys.items() if k[0] == "f" and c not in lay.unwalkable
+            and not painter.blocked_floor(lay.flags.get(c, bytes(25)))}
 
 
 @dataclass
@@ -135,6 +189,9 @@ class Score:
     size: int = 0  # preset JSON bytes
     entities: int = 0  # top-level entities
     tiles: int = 0  # DS1 tiles with content
+    floors: int = 0  # walkable DS1 floor tiles
+    floor_bare: set = frozenset()  # walkable floor under no terrain
+    floor_wrong: set = frozenset()  # walkable floor under a piece that does not belong on flat floor (wrong_tiles)
 
     @property
     def over_budget(self) -> bool:
@@ -151,13 +208,22 @@ class Score:
         return 1 - len(self.bare) / self.walls if self.walls else 1.0
 
     @property
+    def floor_score(self) -> float:
+        return 1 - len(self.floor_bare | self.floor_wrong) / self.floors if self.floors else 1.0
+
+    @property
     def border_score(self) -> float | None:
         return None if self.ring is None else 1 - len(self.gaps) / len(self.ring) if self.ring else 1.0
 
 
-def score(lay: presets.Layout, tall: set, name: str = "", area: str = "", wet: frozenset = frozenset()) -> Score:
+def score(lay: presets.Layout, tall: set, name: str = "", area: str = "", wet: frozenset = frozenset(),
+          ground: set | None = None, wrong: set = frozenset()) -> Score:
+    """A layout's scores from its tall tiles, `ground` (ground_tiles; None: every tile has ground) and `wrong`
+    (wrong_tiles)."""
     walls = {c for c, k in lay.keys.items() if k[0] == "w"}
-    s = Score(name, area, len(walls), walls - tall)
+    floor = walkable_floor(lay)
+    s = Score(name, area, len(walls), walls - tall, floors=len(floor),
+              floor_bare=set() if ground is None else floor - ground, floor_wrong=(floor & wrong))
     if presets.draws_trees(lay):
         play = painter.playable(lay, wet)
         ring = ({(x + dx, y + dy) for x, y in play for dx, dy in painter.STEPS} - play) & set(lay.keys)
@@ -181,6 +247,9 @@ def images(lay: presets.Layout, s: Score, tall: set, wet: frozenset = frozenset(
     base = {c: (80, 75, 60) for c in lay.keys} | {c: (40, 90, 160) for c in tall if c in lay.keys}
     walls = {c: (230, 40, 40) if c in s.bare else (60, 210, 60) for c, k in lay.keys.items() if k[0] == "w"}
     out = {f"{s.name}_walls.png": png(lay.width, lay.height, base | walls)}
+    floor = {c: (230, 40, 40) if c in s.floor_bare else (240, 150, 30) if c in s.floor_wrong else (60, 210, 60)
+             for c in walkable_floor(lay)}
+    out[f"{s.name}_floor.png"] = png(lay.width, lay.height, {c: (60, 55, 45) for c in lay.keys} | floor)
     if s.ring is not None:
         px = {c: (45, 40, 32) for c in lay.keys} | {c: (120, 112, 95) for c in painter.playable(lay, wet)}
         px |= {c: (230, 40, 200) if c in s.leaks else (230, 40, 40) if c in s.gaps else (50, 200, 60) for c in s.ring}
@@ -198,19 +267,21 @@ def pct1(v: float | None) -> float | None:
 
 
 def baseline_text(scores: list[Score]) -> str:
-    lines = ["# HD preset coverage on main (tools/pd2_coverage.py --write-baseline): preset, wall %, border % or -"]
+    lines = ["# HD preset coverage on main (tools/pd2_coverage.py --write-baseline): preset, wall %, border % or -, "
+             "floor %"]
     for s in sorted(scores, key=lambda s: s.name):
         b = pct1(s.border_score)
-        lines.append(f"{s.name}\t{pct1(s.wall_score)}\t{'-' if b is None else b}")
+        lines.append(f"{s.name}\t{pct1(s.wall_score)}\t{'-' if b is None else b}\t{pct1(s.floor_score)}")
     return "\n".join(lines) + "\n"
 
 
-def read_baseline(text: str) -> dict[str, tuple[float, float | None]]:
+def read_baseline(text: str) -> dict[str, tuple[float, float | None, float | None]]:
+    """name -> (wall, border or None, floor or None: a line from before the floor score)."""
     out = {}
     for line in text.splitlines():
         if line and not line.startswith("#"):
-            name, wall, border = line.split("\t")
-            out[name] = (float(wall), None if border == "-" else float(border))
+            name, wall, border, *floor = line.split("\t")
+            out[name] = (float(wall), None if border == "-" else float(border), float(floor[0]) if floor else None)
     return out
 
 
@@ -219,23 +290,27 @@ class Change:
     name: str
     wall: tuple[float | None, float | None]  # (baseline, now); None: absent
     border: tuple[float | None, float | None]
+    floor: tuple[float | None, float | None]
     drop: bool  # beyond TOLERANCE, or no longer scored
 
 
 def changes(scores: list[Score], base: dict, tolerance: float = TOLERANCE) -> list[Change]:
     """The presets whose scores differ from the baseline, worst drop first."""
-    now = {s.name: (pct1(s.wall_score), pct1(s.border_score)) for s in scores}
+    now = {s.name: (pct1(s.wall_score), pct1(s.border_score), pct1(s.floor_score)) for s in scores}
     out = []
     for name in sorted(set(now) | set(base)):
-        (w0, b0), (w1, b1) = base.get(name, (None, None)), now.get(name, (None, None))
-        if name in base and name in now and (w0, b0) == (w1, b1):
+        (w0, b0, f0), (w1, b1, f1) = base.get(name, (None,) * 3), now.get(name, (None,) * 3)
+        if f0 is None and name in base:  # a baseline line from before the floor score: no floor change
+            f1 = None
+        if name in base and name in now and (w0, b0, f0) == (w1, b1, f1):
             continue
         gone = name not in now
         drop = gone or b0 is not None and b1 is None or any(  # a border no longer scored drops too
-            old is not None and new is not None and old - new > tolerance for old, new in ((w0, w1), (b0, b1)))
-        out.append(Change(name, (w0, w1), (b0, b1), drop))
+            old is not None and new is not None and old - new > tolerance
+            for old, new in ((w0, w1), (b0, b1), (f0, f1)))
+        out.append(Change(name, (w0, w1), (b0, b1), (f0, f1), drop))
     def worst(c: Change) -> float:
-        return min((n - o for o, n in (c.wall, c.border) if o is not None and n is not None), default=0.0)
+        return min((n - o for o, n in (c.wall, c.border, c.floor) if o is not None and n is not None), default=0.0)
     return sorted(out, key=lambda c: (not c.drop, worst(c), c.name))
 
 
@@ -255,8 +330,9 @@ def changes_md(found: list[Change], tolerance: float = TOLERANCE) -> str:
     lines += [f"{len(found)} presets changed; {drops} dropped by more than the {tolerance:g}-point tolerance or are "
               "no longer scored"
               + (" (accept an intended drop: `--write-baseline`, commit docs/coverage-baseline.tsv)." if drops else "."),
-              "", "| Preset | Wall | Border | |", "|---|---|---|---|"]
-    lines += [f"| {c.name} | {cell(*c.wall)} | {cell(*c.border)} | {'**drop**' if c.drop else ''} |" for c in found]
+              "", "| Preset | Wall | Border | Floor | |", "|---|---|---|---|---|"]
+    lines += [f"| {c.name} | {cell(*c.wall)} | {cell(*c.border)} | {cell(*c.floor)} | {'**drop**' if c.drop else ''} |"
+              for c in found]
     return "\n".join(lines) + "\n"
 
 
@@ -265,21 +341,29 @@ def report(scores: list[Score], commit: str = "", found: list[Change] | None = N
     pct = lambda v: "-" if v is None else f"{100 * v:.1f}%"  # noqa: E731
     lines = ["# HD preset coverage" + (f" ({commit})" if commit else ""), "",
              f"{len(scores)} generated presets. Wall: DS1 wall tiles under a piece >= {TALL:g} units. Border (DS1s "
-             "with trees): the ring outside the playable area; gaps bare, leaks walkable in the DS1. "
-             "Images: red where bare.", "",
-             "| Preset | Area | Border | Gaps | Leaks | Wall | Walls | MB | Entities | Images |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
+             "with trees): the ring outside the playable area; gaps bare, leaks walkable in the DS1. Floor: walkable "
+             "DS1 floor tiles under a terrain and no wrong-tile piece (stairs or walls on flat floor). Images: red "
+             "where bare, orange where wrong.", "",
+             "| Preset | Area | Border | Gaps | Leaks | Wall | Walls | Floor | Bare floor | Wrong floor | MB "
+             "| Entities | Images |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     if found is not None:
         lines[2:2] = [changes_md(found), ""]
     for s in sorted(scores, key=_key):
-        img = f"[walls]({s.name}_walls.png)" + (f" [border]({s.name}_border.png)" if s.ring is not None else "")
+        img = (f"[walls]({s.name}_walls.png) [floor]({s.name}_floor.png)"
+               + (f" [border]({s.name}_border.png)" if s.ring is not None else ""))
         border = s.ring is not None
         lines.append(f"| {s.name} | {s.area} | {pct(s.border_score)} | {len(s.gaps) if border else '-'} | "
                      f"{len(s.leaks) if border else '-'} | "
-                     f"{pct(s.wall_score)} | {s.walls} | {s.size / 1e6:.1f} | {s.entities} | {img} |")
+                     f"{pct(s.wall_score)} | {s.walls} | {pct(s.floor_score)} | {len(s.floor_bare)} | "
+                     f"{len(s.floor_wrong)} | "
+                     f"{s.size / 1e6:.1f} | {s.entities} | {img} |")
     if scores:
         n = sum(s.walls for s in scores)
         lines += ["", f"All walls: {pct(1 - sum(len(s.bare) for s in scores) / n if n else 1.0)} of {n}."]
+        if f := sum(s.floors for s in scores):
+            lines.append(f"All floors: {pct(1 - sum(len(s.floor_bare | s.floor_wrong) for s in scores) / f)} of {f} "
+                         f"walkable floor tiles ({sum(len(s.floor_wrong) for s in scores)} wrong).")
         rings = [s for s in scores if s.ring is not None]
         if r := sum(len(s.ring) for s in rings):
             lines.append(f"All borders: {pct(1 - sum(len(s.gaps) for s in rings) / r)} of {r} ring tiles.")
@@ -332,9 +416,12 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
             seen.add(ds1)
             lay = presets.layout((data / "global" / "tiles" / ds1).read_bytes(),
                                  presets.stand_in(files, tiles, pd2_tiles, standins))
-            entities = json.loads(f.read_text("utf-8"))["entities"]
+            preset = json.loads(f.read_text("utf-8"))
+            entities = preset["entities"]
             tall = tall_tiles(boxes(entities, box, prefab))
-            s = score(lay, tall, Path(ds1).stem, area, wet)
+            flat = ground_tiles(preset, box, prefab, True) - ground_tiles(preset, box, prefab, False)
+            wrong = wrong_tiles(entities, box, prefab, walkable_floor(lay) & flat)
+            s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab), wrong)
             s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
             scores.append(s)
             for name, image in images(lay, s, tall, wet).items():
