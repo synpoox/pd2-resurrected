@@ -29,6 +29,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Tree tiles no longer draw a stone wall or cliff, which hid Fortress Map's waypoint court.
 - PD2 areas show "Entering <area>" on arrival instead of "Missing string".
 - Dungeon boss barriers show as iron gates instead of invisible walls.
+- Map waypoints draw their platform, and no stray waypoints stand on plain ground.
 
 #### Uber bosses
 
