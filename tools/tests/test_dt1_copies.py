@@ -81,6 +81,8 @@ class GeneratorTests(unittest.TestCase):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(data if isinstance(data, bytes) else data.replace("|", "\t").encode())
             write(d2r / "global/excel/lvlprest.txt", "Name|LevelId|Dt1Mask|File1\nTown|0|1|Act1/S.ds1\n")
+            for root in (d2r, out):
+                write(root / "global/excel/objpreset.txt", "Index|Act|ObjectClass\n0|1|WaypointOutsideAct1\n")
             write(out / "global/excel/lvlprest.txt", "Name|LevelId|Dt1Mask|File1|File2|File3|File4|File5|File6\n"
                   "Town|0|1|Act1/S.ds1|||||\nPd2 Map|1|1|Expansion/Map/P.ds1|||||\n")
             write(out / "global/excel/levels.txt", "Name|LevelType\nTown|0\nPd2 Map|1\n")
