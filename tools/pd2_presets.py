@@ -267,8 +267,8 @@ def fades(e: dict) -> bool:
     return any(c["type"] == "WallTransparencyComponent" for c in e["components"])         or bool(painter.LOW.search(json.dumps(e["components"])))
 
 
-def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(),
-          near: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
+def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near: frozenset = frozenset(),
+          far: frozenset = frozenset()) -> tuple[list[dict], set[int], int]:
     """Each tile's pick of its key's instances (no ids yet), the kit sources used, and how many tiles stayed empty
     for a key the kit lacks. An `edge` tile (the map's border, where the automap draws its edge) picks among the
     instances that hold a piece: a stock tile left empty there leans on its neighbour's piece, which another pick
@@ -276,7 +276,9 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(),
     a stock piece belongs to the tile its origin falls on, and a stone wall standing on a tree tile there would draw
     a wall where the legacy view shows a tree (#686: Fortress's waypoint court). A `near` tile (drawn over the
     playable ground screen-up of it) picks only an instance whose pieces all fade, as D2R's rooms do on their near
-    side, or stays empty."""
+    side, or stays empty. A `far` edge tile (one whose tree is drawn over no playable ground) picks among those that
+    hold a tree (painter.is_tree) first, as a lone rock or shrub is too low to close the border (Frozen Forest,
+    #688)."""
     entities, used, missing = [], set(), 0
 
     def one(x: int, y: int, key: Key, salt: str) -> bool:
@@ -285,6 +287,8 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(),
             return False
         if key[1] and all(t and t[1] == TREE_LAYER for t in key[1]):
             options = [o for o in options if not structure(o[1])] or options
+        if (x, y) in far:
+            options = [o for o in options if any(painter.is_tree(e) for e, _, _ in o[1])] or options
         if (x, y) in near:
             options = [o for o in options if all(fades(e) for e, _, _ in o[1])]
             if not options:
@@ -400,10 +404,13 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
                                                "y": c["wallTileLocalCoord"]["y"] + oy}
             entities.append(e)
     wet = frozenset(water or {})  # stream DT1: their blocked floor stays water past the tree line
-    edge, play = frozenset(), set()
+    edge, far, play = frozenset(), frozenset(), set()
     if trees:  # the ring just past the playable area: the border the automap draws
         play = painter.playable(lay, wet)
         edge = frozenset({(x + dx, y + dy) for x, y in play for dx, dy in painter.STEPS} - play)
+        # its far side: tiles whose tree is drawn over no playable ground (#454 keeps trees off the near side)
+        shades = painter.shader(painter.subtiles(play))
+        far = frozenset(c for c in edge if not shades((c[0] * 5 + 2, c[1] * 5 + 2)))  # the tile's centre subtile
     # a room pastes whole at a ROOM_MATCH match: a border tile in it that its stock tile doesn't match (or that its
     # stock leaves empty) and that holds none of the room's pieces takes the kit's pick too (#686: Fortress's wall
     # islands); one with playable ground screen-up of it takes only a fading piece, as the room's near side does
@@ -412,11 +419,11 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
     near = frozenset(c for c in fill if {(c[0] - 1, c[1]), (c[0], c[1] - 1), (c[0] - 1, c[1] - 1)} & play)
     rest = {c: k for c, k in lay.keys.items() if c not in taken or c in fill}
     found, pkit = patches(lay, stock, set(rest))
-    loose, used, _ = place(found, pkit, seed, edge, near)
+    loose, used, _ = place(found, pkit, seed, edge, near, far)
     for src in sorted(used):
         depend(pkit.sources[src])
     more, used, missing = place(Layout(lay.width, lay.height, {c: k for c, k in rest.items() if c not in found.keys}),
-                                kit, seed, edge, near)
+                                kit, seed, edge, near, far)
     for src in sorted(used):
         depend(kit.sources[src])
     loose += more
@@ -435,10 +442,21 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
             return any((int((p["x"] + x) // TILE), int((p["z"] + z) // TILE)) in ground
                        for x, z in painter.pieces(e, prefabs))
         entities = [e for e in entities if not painter.is_tree(e) or not on_ground(e)]
-        # a lone tree (a wall tile on the path) stays, and a stream's; so does a line's where no painted tree stands
-        # within two tiles (a line with playable ground on both sides leaves the painter no room)
-        loose = [e for e in loose if not painter.is_tree(e)
-                 or not on_ground(e) and (tile(e) in play or tile(e) in line - near)]
+        def keep(e: dict) -> bool:
+            """A lone tree (a wall tile on the path) stays, and a stream's; so does a line's where no painted tree
+            stands within two tiles (a line with playable ground on both sides leaves the painter no room). A far edge
+            tile's tree stays where it is drawn over no playable ground: the painter plants little on the ring, so a
+            dropped edge tree left a gap (#688). On the near side roots and `_foreground` walls stay too (#454)."""
+            if not painter.is_tree(e):
+                return True
+            if on_ground(e):
+                return False
+            if tile(e) in far:
+                p = _transform(e)["position"]
+                return not shades((int(p["x"] / 2), int(p["z"] / 2)))  # its origin subtile, as the painter's
+            return (tile(e) in play or tile(e) in line - near
+                    or tile(e) in edge and bool(painter.LOW.search(json.dumps(e["components"]))))
+        loose = [e for e in loose if keep(e)]
         assert not any(on_ground(e) for e, _ in painted), f"{name}: a painted tree reaches walkable floor"
         for e, of in painted:
             loose.append(e)
