@@ -67,7 +67,7 @@ jobs:
             } else {
               "::warning::no coverage-baseline artifact from main: comparing with $base"
             }
-            $check = if ($env:DROP_OK -eq "true") { @() } else { @("--check") }
+            [string[]]$check = if ($env:DROP_OK -eq "true") { @() } else { @("--check") }
             if ($env:DROP_OK -eq "true") { "Label coverage-drop-ok: drops are reported, not failed." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY }
             $out = py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --baseline $base @check
           }
