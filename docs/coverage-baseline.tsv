@@ -8,9 +8,9 @@ descend	66.2	67.5	94.8
 descend_2	68.4	68.7	95.7
 descend_3	66.0	66.2	94.6
 descend_4	67.4	67.2	94.0
-fortress1	77.6	80.0	86.1
-fortress2	80.7	83.0	85.9
-fortress3	78.3	79.3	88.9
+fortress1	77.6	80.0	86.8
+fortress2	80.7	83.0	86.8
+fortress3	78.2	79.3	89.8
 frozenforestv1	60.6	78.7	99.8
 frozenforestv2	64.0	78.3	99.6
 frozenforestv3	58.0	79.2	98.2
@@ -26,7 +26,7 @@ kurastopenwide	94.1	96.9	99.7
 kurastopenwide2	96.3	98.6	99.6
 kurastopenwide3	93.6	97.3	99.5
 lava1	65.4	-	75.3
-lava3	61.1	-	80.6
+lava3	61.1	-	82.4
 lava5	63.8	-	84.8
 library	78.3	-	99.9
 library_v2	78.2	-	99.9
@@ -58,8 +58,8 @@ royalcryptsv3	89.8	-	94.3
 sewermap1	96.7	-	99.6
 sewermap2	97.6	-	100.0
 sewermap3	96.3	-	100.0
-shadowsofwestmarchv1	92.9	91.9	77.9
-shadowsofwestmarchv3	92.2	92.5	79.2
+shadowsofwestmarchv1	91.8	91.5	97.8
+shadowsofwestmarchv3	91.8	92.4	98.1
 siege1	90.4	90.5	97.9
 siege2	89.2	91.7	97.0
 tomb1	34.9	-	93.5
