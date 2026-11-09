@@ -39,6 +39,16 @@ class GroundTests(unittest.TestCase):
         self.assertAlmostEqual(g.at(15, 4), 5.0)
         self.assertIsNone(g.at(25, 4))
 
+    def test_a_piece_stands_on_the_surface_under_it_not_an_overhead_layer(self):
+        # x 0-10: ground at 0 and a rampart deck at 70 over it
+        g = T.Ground(physics([(0, 0, 0), (10, 0, 0), (10, 0, 10), (0, 0, 10),
+                              (0, 70, 0), (10, 70, 0), (10, 70, 10), (0, 70, 10)],
+                             [(0, 1, 2), (0, 2, 3), (4, 5, 6), (4, 6, 7)]))
+        self.assertAlmostEqual(g.at(3, 4), 70.0)
+        self.assertAlmostEqual(g.at(3, 4, 6.0), 0.0)  # a wall's foot
+        self.assertAlmostEqual(g.at(3, 4, 70.5), 70.0)  # a piece on the deck
+        self.assertAlmostEqual(g.at(3, 4, -3.0), 0.0)  # sunk below every surface: the lowest
+
     def test_a_presets_ground_comes_from_its_terrains_physics_file_at_the_terrains_position(self):
         with tempfile.TemporaryDirectory() as tmp:
             d2r = Path(tmp)

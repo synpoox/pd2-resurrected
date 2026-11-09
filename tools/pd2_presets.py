@@ -116,7 +116,10 @@ def layout(data: bytes, dt1s: dict[str, dict], copies: dict[Tile, Tile] | None =
 
     def tile(orientation: int, cell: int) -> Tile:
         t = (orientation, cell >> 20 & 0x3F, cell >> 8 & 0xFF)
-        return (next((p for p in order if t in dt1s[p]), None), *t)
+        # a copied tile is named from its own PD2 DT1 first: an earlier DT1 holding the same index would steal it
+        # (Zhar Library's arcane walls became palace cellar tiles, #678 review)
+        return (next((p for p in order if t in dt1s[p] and (p, *t) in copies), None)
+                or next((p for p in order if t in dt1s[p]), None), *t)
     keys, flags = {}, {}
     for i in range(n):
         wall = tuple(tile(grids[2 * k + 1][i] & 0xFF, grids[2 * k][i]) for k in range(walls) if grids[2 * k][i])
@@ -166,7 +169,7 @@ class Kit:
             x, z = t["position"]["x"], t["position"]["z"]
             c = (min(max(int(x // TILE), 0), lay.width - 1), min(max(int(z // TILE), 0), lay.height - 1))
             if c in per:
-                g = ground.at(x, z) if ground else None
+                g = ground.at(x, z, t["position"]["y"]) if ground else None
                 if g is not None and t["position"]["y"] - g > FLOOR_MAX and _floor(lay.keys[c]):
                     continue  # a building's upper part over this floor: its walls are other tiles', so it would float
                 if g:
