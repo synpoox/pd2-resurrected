@@ -294,6 +294,52 @@ class LayerTests(unittest.TestCase):
         self.assertIn(single, [d["path"] for d in preset["dependencies"]["models"]])
         self.assertEqual(preset, P.build(target, strays, "m", "m.ds1", "b.json", TERRAIN, **cluster)[0])
 
+    @mock.patch.object(P.painter, "TALL", 0)
+    def test_a_kit_tree_on_the_edge_stays_next_to_painted_trees(self):
+        blocked = {(x, 5) for x in range(30)}  # the tree line on row 5 is the edge; rows 6-9 are painted
+
+        def lay(w, h):
+            keys = {(x, y): self.WA if (x, y) in blocked else self.F for x in range(w) for y in range(h)}
+            return P.Layout(w, h, keys, {c: (b"\1" if c in blocked else b"\0") * 25 for c in keys},
+                            frozenset(c for c in keys if c[1] >= 6))
+        model = "data/hd/env/foliage/act3/model/act3_treeline/small_cluster01.model"
+
+        def tree(name, x, z):
+            return {"type": "Entity", "name": name, "id": 1, "components": [
+                entity(name, x, z)["components"][0], {"type": "ModelDefinitionComponent", "filename": model}]}
+        kit = P.painter.harvest([(lay(10, 10), {"dependencies": {}, "entities": [
+            tree("painted", x, z) for x in (10.0, 50.0, 90.0) for z in (75.0, 95.0)]})])
+        edge = P.Kit()  # the per-tile kit stands a tree on each wall tile of the line
+        edge.add(P.Layout(1, 1, {(0, 0): self.WA}), {"dependencies": {}, "entities": [tree("edge", 5, 5)]}, {self.WA})
+        preset, _ = P.build(lay(30, 10), edge, "m", "m.ds1", "b.json", TERRAIN, trees=kit)
+        where = {n: [at(e) for e in preset["entities"] if e["name"] == n] for n in ("painted", "edge")}
+        self.assertTrue(where["painted"])
+        self.assertEqual(sorted(where["edge"]), [(x * 10 + 5.0, 55.0) for x in range(30)])  # none dropped
+
+    def test_a_kit_tree_on_the_near_edge_is_dropped_but_its_roots_stay(self):
+        blocked = {(x, 5) for x in range(30)}  # row 5, the edge, lies camera-near of the path (rows 0-4)
+
+        def lay(w, h):
+            keys = {(x, y): self.WA if (x, y) in blocked else self.F for x in range(w) for y in range(h)}
+            return P.Layout(w, h, keys, {c: (b"\1" if c in blocked else b"\0") * 25 for c in keys},
+                            frozenset(c for c in keys if c[1] >= 6))
+
+        def tree(name, x, z, model):
+            return {"type": "Entity", "name": name, "id": 1, "components": [
+                entity(name, x, z)["components"][0], {"type": "ModelDefinitionComponent", "filename": model}]}
+        front = "data/hd/env/foliage/act3/model/prefab/pf_tree_wall01_foreground.json"
+        kit = P.painter.harvest([(lay(10, 10), {"dependencies": {}, "entities": [
+            tree("painted", x, z, front) for x in (10.0, 50.0, 90.0) for z in (65.0, 85.0)]})])
+        edge = P.Kit()  # the per-tile kit stands a pine and roots on each wall tile of the line
+        edge.add(P.Layout(1, 1, {(0, 0): self.WA}), {"dependencies": {}, "entities": [
+            tree("pine", 5, 5, "a/small_cluster01.model"), tree("roots", 5, 5, "a/jungle_roots01_treewall.model")]},
+            {self.WA})
+        preset, _ = P.build(lay(30, 10), edge, "m", "m.ds1", "b.json", TERRAIN, trees=kit)
+        names = [e["name"] for e in preset["entities"]]
+        self.assertIn("painted", names)  # a foreground wall near the line: the line's pines go to the painter
+        self.assertNotIn("pine", names)
+        self.assertEqual(names.count("roots"), 30)
+
     def test_only_roots_and_foreground_tree_walls_stand_on_the_camera_near_side_of_the_path(self):
         keys = {(x, y): self.F for x in range(8) for y in range(16)}  # rows 0-3 the path, rows 4-15 sealed, south of it
         lay = P.Layout(8, 16, keys, {c: b"\0" * 25 for c in keys}, frozenset(c for c in keys if c[1] >= 4))
@@ -383,6 +429,16 @@ class LayerTests(unittest.TestCase):
         self.assertEqual(picks, {0, 1})  # off the edge, the empty stock instance is one of the picks
         self.assertEqual({len(P.place(lay, kit, f"s{i}", frozenset({(0, 0)}))[0]) for i in range(20)}, {1})
 
+    def test_an_edge_tile_picks_a_kit_instance_that_holds_a_tree(self):
+        tree = entity("act5_tree_wall01", 0, 0)
+        kit = P.Kit({self.WA: [(0, [(entity("rock", 0, 0), 1.0, 1.0)]), (0, [(tree, 1.0, 1.0)])]}, [{}])
+        lay = P.Layout(1, 1, {(0, 0): self.WA})
+        edge = frozenset({(0, 0)})
+        names = {e["name"] for i in range(20) for e in P.place(lay, kit, f"s{i}", edge, far=edge)[0]}
+        self.assertEqual(names, {"act5_tree_wall01"})  # the rock alone is a piece too low to close the border
+        # on the near side (not `far`) a tree would be drawn over the path: the pick stays the stock one (#454)
+        self.assertEqual({e["name"] for i in range(20) for e in P.place(lay, kit, f"s{i}", edge)[0]},
+                         {"act5_tree_wall01", "rock"})
     def test_a_tree_tile_never_picks_a_stone_wall_or_cliff_instance(self):
         tree = ("w", (("expansion/siege/trees.dt1", 14, 0, 6),))
         kit = P.Kit({tree: [(0, [(entity("siege/wall_stone_large01", 0, 0), 1.0, 1.0)]),
