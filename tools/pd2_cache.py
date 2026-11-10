@@ -44,7 +44,8 @@ def lock(path: Path, poll: float = 1.0):
     """Hold an OS lock on the file path, waiting while another process holds it. The OS drops the lock when its holder
     exits, so a crashed run never leaves a stale one."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a+b") as f:
+    path.touch()
+    with open(path, "r+b") as f:
         waited = False
         while True:
             try:
@@ -53,14 +54,48 @@ def lock(path: Path, poll: float = 1.0):
                 break
             except OSError:
                 if not waited:
-                    print(f"waiting for {path}: another run holds it", flush=True)
+                    print(f"waiting for {path}: {holder(path)} holds it", flush=True)
                     waited = True
                 time.sleep(poll)
         try:
+            f.seek(1)  # byte 0 is the locked one; the holder's pid follows it, for a waiter's message (#745)
+            f.write(str(os.getpid()).encode())
+            f.truncate()
+            f.flush()
             yield
         finally:
             f.seek(0)
             msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1) if msvcrt else fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def holder(path: Path) -> str:
+    """Who wrote path's lock last: "pid N (running)" or "pid N (gone)". The OS drops a lock when its holder dies, so a
+    lock still held names a live process (an orphan of a killed shell runs on and keeps it until it ends)."""
+    try:
+        with open(path, "rb") as f:
+            f.seek(1)  # not byte 0: Windows refuses a read of the locked byte
+            pid = int(f.read().decode() or 0)
+    except (OSError, ValueError):
+        pid = 0
+    if not pid:
+        return "another run"
+    try:
+        if os.name == "nt":
+            import ctypes
+            h = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+            alive = False
+            if h:  # a handle can outlive its process: ask whether it still runs (259: STILL_ACTIVE)
+                code = ctypes.c_ulong()
+                alive = bool(ctypes.windll.kernel32.GetExitCodeProcess(h, ctypes.byref(code))) and code.value == 259
+                ctypes.windll.kernel32.CloseHandle(h)
+        else:
+            os.kill(pid, 0)
+            alive = True
+    except PermissionError:
+        alive = True
+    except OSError:
+        alive = False
+    return f"pid {pid} ({'running' if alive else 'gone'})"
 
 
 def key(paths: list[Path], *extra: str) -> str:

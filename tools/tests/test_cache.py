@@ -49,6 +49,29 @@ class LockTests(unittest.TestCase):
                 pass
 
 
+class DeadHolderTests(unittest.TestCase):
+    def test_a_killed_holder_frees_the_lock_and_is_named_while_it_runs(self):
+        import subprocess
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "x.lock"
+            code = ("import sys, time, pathlib; sys.path.insert(0, sys.argv[1]); import pd2_cache\n"
+                    "with pd2_cache.lock(pathlib.Path(sys.argv[2])):\n print('held', flush=True); time.sleep(60)")
+            p = subprocess.Popen([sys.executable, "-c", code, str(Path(pd2_cache.__file__).parent), str(path)],
+                                 stdout=subprocess.PIPE, text=True)
+            try:
+                self.assertEqual(p.stdout.readline().strip(), "held")
+                self.assertEqual(pd2_cache.holder(path), f"pid {p.pid} (running)")
+            finally:
+                p.kill()
+                p.wait()
+            self.assertEqual(pd2_cache.holder(path), f"pid {p.pid} (gone)")
+            start = time.time()
+            with pd2_cache.lock(path, poll=0.05):  # the kernel dropped the dead holder's lock: no wait
+                pass
+            self.assertLess(time.time() - start, 5)
+            self.assertEqual(pd2_cache.holder(path), f"pid {os.getpid()} (running)", "the last holder is recorded")
+
+
 class KeyTests(unittest.TestCase):
     def test_key_follows_content_paths_and_extra_only(self):
         with tempfile.TemporaryDirectory() as tmp:
