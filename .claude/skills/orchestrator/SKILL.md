@@ -29,11 +29,13 @@ Repo rules (PR body, gate, changelog fragments, branch deletion) live in `AGENTS
    Keep the links current. Done when the issue states the goal and its done-condition, and its links exist.
 3. **Brief.** Write a short brief: the issue number, the goal, files to read, what is out of scope.
    Say "game check per `docs/agents/game-check.md`" instead of pasting its steps. A brief that may let the agent
-   create issues says so, and tells it to link them as above. Done when the brief names the issue and holds no rule
-   that a doc already states.
+   create issues says so, and tells it to link them as above. Tell the worker never to wait on CI, neither in the
+   foreground nor in a background loop: it pushes, opens the PR and reports. Done when the brief names the issue and
+   holds no rule that a doc already states.
 4. **Implement.** Launch the implementer. It codes, then pushes and opens the PR (`Closes #<n>`, a `changelog.d/`
-   fragment), then runs the game check per `docs/agents/game-check.md` while the CI gate runs, then reports.
-   Docs-only PRs skip the game check. Done when the report names the PR, the head SHA and the check result.
+   fragment), then runs the game check per `docs/agents/game-check.md`, then reports.
+   Docs-only PRs skip the game check. When the report arrives, stop the worker (standing rule "Finished agents").
+   Done when the report names the PR, the head SHA and the check result.
 5. **Verify.** Read the report against the issue and the PR diff yourself. Check the CI result for the head
    (CI is fast). Done when the PR matches the issue and the checks you rely on ran on the head.
 6. **Review.** Launch one Opus reviewer with the PR and the builder's notes. It posts one PR comment.
@@ -54,6 +56,8 @@ Repo rules (PR body, gate, changelog fragments, branch deletion) live in `AGENTS
   (AGENTS.md) as the fallback.
 - **Slots:** lock times show local time: check the clock and the owner name before you free a lock that looks
   stale. Police stuck slots: ping the worker, or stop the game and unlock.
+- **Finished agents:** after any agent's final report (implementer, reviewer, fix-cycle worker), stop it with
+  TaskStop and kill its shells. A finished agent left running waits on its own background work for hours.
 - **Owner messages:** send only a vital update or a blocker, one line per item.
 
 ## Session end
