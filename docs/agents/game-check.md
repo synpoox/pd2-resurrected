@@ -18,7 +18,7 @@ in-game". Slot details are in `docs/agents/game-slots.md`.
 8. **Upload the images** to the orphan `issue-assets` branch under `<issue>/` (a scratch checkout without
    junctions), push, and link them on the issue and the PR. Keep that branch.
 9. **Close out** right after the check: `game_ctl.py --slot <N> stop`, `pd2_force_ds1.py --slot <N> --reset` if you
-   pinned, then `game_slots.py unlock <N> <owner>`.
+   pinned, then, with `MODKIT_RUN=<owner>` set, `game_slots.py unlock <N> <owner>`.
 10. **Report** what you saw per spot, with the image links.
 
 ## Worktree hygiene

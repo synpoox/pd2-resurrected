@@ -34,7 +34,7 @@ The per-check recipe (cheats, shots, images, unlock) is `docs/agents/game-check.
    `C:\D2RTestSlots\backups\stray-plugins-<date>\Slot<N>\` and lists it. Pass `-KeepExtras` to keep a slot's extras.
 4. Check the installed data holds the change (the merged table row in `out/data`).
 5. For a hand test, write the slot, its lock owner and the unlock command into the game-check issue.
-6. `python <toolkit>/testing/game_slots.py unlock <N> <owner>` once the test is done.
+6. With `MODKIT_RUN=<owner>` set, `python <toolkit>/testing/game_slots.py unlock <N> <owner>` once the test is done.
 
 ## Force a DS1 variant
 
