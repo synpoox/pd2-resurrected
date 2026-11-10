@@ -9,17 +9,19 @@ from .consts import WATER_Y
 from .layout import Layout
 
 def mask(lay: Layout, extra: frozenset = frozenset()) -> dict[tuple[int, int], tuple[str, ...]]:
-    """Every blocked floor tile of the layout with a liquid DT1 (pd2_fidelity.classify "liquid", or one of `extra`, the
-    DT1s the rule names as water) -> the liquid DT1s on it, sorted. Pasted rooms are not excluded: this is the legacy
-    map's liquid, whatever HD draws there."""
+    """Every floor tile of the layout that a liquid DT1 draws and nothing walkable covers -> its liquid DT1s, sorted:
+    blocked by its DT1 flags (water) or marked unwalkable by its DS1 cell (PD2's lava seas, whose lava floor has walkable
+    flags), with only liquid floor layers (a stone platform's tile over lava is no liquid). A liquid DT1 is
+    pd2_fidelity.classify "liquid" or one of `extra`, the DT1s the rule names as water. Pasted rooms are not excluded:
+    this is the legacy map's liquid, whatever HD draws there."""
     import pd2_fidelity  # imports the presets package: not at the top
     out = {}
     for c, k in lay.keys.items():
-        if k[0] != "f" or not painter.blocked_floor(lay.flags.get(c, bytes(25))):
+        if k[0] != "f" or not (painter.blocked_floor(lay.flags.get(c, bytes(25))) or c in lay.unwalkable):
             continue
-        dt1s = sorted({t[0] for t in k[1] if t[0] and (t[0] in extra or pd2_fidelity.classify(t[0], 0, "floor", True) == "liquid")})
-        if dt1s:
-            out[c] = tuple(dt1s)
+        dt1s = {t[0] for t in k[1] if t[0]}
+        if dt1s and all(d in extra or pd2_fidelity.classify(d, 0, "floor", True) == "liquid" for d in dt1s):
+            out[c] = tuple(sorted(dt1s))
     return out
 
 

@@ -43,6 +43,12 @@ class LiquidTests(unittest.TestCase):
         lay.flags[(0, 1)] = b"\1" * 25
         self.assertEqual(liquids.mask(lay), {(0, 0): (LAVA,), (1, 0): (LAVA,)})
 
+    def test_unwalkable_lava_is_liquid_but_not_under_a_platform(self):
+        lay = layout(LAVA, set(), {(0, 0), (1, 0), (2, 0)})  # lava floor with walkable flags
+        lay.keys[(2, 0)] = ("f", ((LAVA, 0, 1, 0), ("act4/diab/floor.dt1", 0, 1, 0)))
+        lay.unwalkable = frozenset({(0, 0), (2, 0)})
+        self.assertEqual(liquids.mask(lay), {(0, 0): (LAVA,)})
+
     def test_a_rule_dt1_is_liquid_whatever_its_name(self):
         lay = layout("act1/a/wall.dt1", {(0, 0)})
         self.assertEqual(liquids.mask(lay), {})
