@@ -1,4 +1,4 @@
-"""presets.liquids: the liquid mask, and the water, lava and swamp planes of the streams pass (#741)."""
+"""presets.liquids: the liquid mask, and the water and lava planes of the streams pass (#741)."""
 import sys
 import unittest
 from pathlib import Path
@@ -11,7 +11,6 @@ from presets import liquids  # noqa: E402
 from presets_fixtures import FLOOR, TERRAIN  # noqa: E402
 
 LAVA_MODEL = "data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model"
-SWAMP_MODEL = "data/hd/env/model/act3/docktown/act3_docktown_water/swamp_terrain.model"
 LAVA, SWAMP, RIVER = "act4/lava/floor.dt1", "act1/outdoors/swamp.dt1", "act1/outdoors/river.dt1"
 
 
@@ -49,6 +48,16 @@ class LiquidTests(unittest.TestCase):
         lay.unwalkable = frozenset({(0, 0), (2, 0)})
         self.assertEqual(liquids.mask(lay), {(0, 0): (LAVA,)})
 
+    def test_a_crust_overlay_on_lava_is_liquid_with_zero_flags(self):
+        # lava1: the base lava tile (0,20,k) carries a crust overlay (0,22,k) of the same DT1, flags all zero and no
+        # unwalkable bit of its own: still lava, where the same base tile is lava elsewhere (a blocked tile)
+        lay = layout(LAVA, set(), {(0, 0), (1, 0), (2, 0)})
+        lay.keys[(0, 0)] = ("f", ((LAVA, 0, 20, 1),))
+        lay.keys[(1, 0)] = ("f", ((LAVA, 0, 20, 1), (LAVA, 0, 22, 1)))
+        lay.keys[(2, 0)] = ("f", ((LAVA, 0, 20, 1), ("act4/diab/floor.dt1", 0, 1, 0)))
+        lay.unwalkable = frozenset({(0, 0)})
+        self.assertEqual(liquids.mask(lay), {(0, 0): (LAVA,), (1, 0): (LAVA,)})  # not the platform (2, 0)
+
     def test_a_rule_dt1_is_liquid_whatever_its_name(self):
         lay = layout("act1/a/wall.dt1", {(0, 0)})
         self.assertEqual(liquids.mask(lay), {})
@@ -61,18 +70,14 @@ class LiquidTests(unittest.TestCase):
             self.assertIs(liquids.of(b), liquids.of(b))
         self.assertEqual(m.call_count, 1)
 
-    def test_lava_and_swamp_planes_scale_by_their_own_span(self):
+    def test_lava_planes_scale_by_their_own_span(self):
         lay = layout(LAVA, {(0, 0), (1, 0)})
-        lay.keys.update(layout(SWAMP, {(0, 2)}).keys)
-        lay.flags.update({(0, 2): b"\1" * 25})
-        water = {LAVA: (plane(LAVA_MODEL, "wall"), {}), SWAMP: (plane(SWAMP_MODEL), {})}
+        water = {LAVA: (plane(LAVA_MODEL, "wall"), {})}
         out = [e for e, _ in P.streams(lay, water, set())]
         lava = next(e for e in out if e["components"][2]["filename"] == LAVA_MODEL)["components"]
-        swamp = next(e for e in out if e["components"][2]["filename"] == SWAMP_MODEL)["components"]
         self.assertEqual(lava[0]["position"], {"x": 10.0, "y": P.WATER_Y, "z": 5.0})
         self.assertEqual(lava[0]["scale"], {"x": 20 / 29.5872, "y": 1.0, "z": 10 / 29.5872})
         self.assertEqual(lava[1]["filter"], "wall")  # as every stock lava plane
-        self.assertEqual(swamp[0]["scale"], {"x": 10 / 650.0, "y": 1.0, "z": 10 / 550.0})
 
     def test_a_big_pool_is_split_into_planes_no_larger_than_stock_scale(self):
         lay = layout(LAVA, {(x, y) for x in range(9) for y in range(5)})
