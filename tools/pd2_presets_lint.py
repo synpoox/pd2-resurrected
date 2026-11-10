@@ -9,6 +9,7 @@ presets/lint.py.
 from __future__ import annotations
 
 import argparse
+import functools
 import sys
 from pathlib import Path
 
@@ -24,18 +25,21 @@ ROOT = Path(__file__).resolve().parent.parent
 def run(rule: Path, data: Path, d2r: Path) -> tuple[list[lint.Line], str]:
     _, standins, _ = presets.read_rule(rule)
     tiles_dir = d2r / "global" / "tiles"
-    tiles, pd2_tiles = presets.Tiles(tiles_dir), presets.Tiles(data / "global" / "tiles")
+    tiles, pd2_tiles = presets.Tiles(tiles_dir, strict=True), presets.Tiles(data / "global" / "tiles", strict=True)
+    stock, pd2_stock = presets.Tiles(tiles_dir), presets.Tiles(data / "global" / "tiles")  # lenient: layouts as built
     pd2_only = presets.pd2_only_presets(data, len(load(d2r, "lvlprest").records()))
-    files = {f: data / "global" / "tiles" / f for _, _, fs, _ in pd2_only for f in fs
-             if f in standins and (data / "global" / "tiles" / f).is_file()}
-    copied = dt1_copies.copies({f: p.read_bytes() for f, p in sorted(files.items())},
-                               dt1_copies.d2r_images(tiles_dir), standins) if files else {}
-    lines = lint.lint(standins, lint.reasons(rule), tiles, pd2_tiles, copied)
-    ok = [ln for ln in lines if not any(p.startswith("no DT1") for p in ln.problems)]
+    images = dt1_copies.d2r_images(tiles_dir)
+
+    @functools.cache
+    def copies_of(pd2: str, standin: str | None) -> dict:
+        """pd2_dt1_copies' copies of one PD2 DT1 with `standin` as its line (None: the `-` line)."""
+        f = data / "global" / "tiles" / pd2
+        return dt1_copies.copies({pd2: f.read_bytes()}, images, {pd2: standin}) if f.is_file() else {}
+    lines = lint.lint(standins, lint.reasons(rule), tiles, pd2_tiles, copies_of)
 
     def layout_of(ds1: str, dt1s: dict, copies: dict):
         return presets.layout((data / "global" / "tiles" / ds1).read_bytes(), dt1s, copies)
-    lint.renamed(ok, standins, tiles, pd2_tiles, copied, pd2_only, layout_of)
+    lint.renamed(lines, stock, pd2_stock, pd2_only, layout_of, copies_of)
     return lines, lint.report(lines)
 
 
