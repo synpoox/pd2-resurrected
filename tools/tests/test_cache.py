@@ -272,6 +272,22 @@ class RuleCacheTests(unittest.TestCase):
                 for m in ("m_one", "m_two"):
                     sys.modules.pop(m, None)
 
+    def test_sources_include_every_file_of_an_imported_package(self):
+        # tools/presets/ is a package: a change to any of its files, however it is imported, must change the key
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            write(tmp / "m_four.py", "from pk_a import x\ndef g(): pass\n")
+            write(tmp / "pk_a" / "__init__.py", "x = 1\n")
+            write(tmp / "pk_a" / "sub" / "deep.py", "from ..helper import y\n")
+            sys.path.insert(0, str(tmp))
+            try:
+                import m_four
+                self.assertEqual(pd2_cache.sources(m_four.g),
+                                 [tmp / "m_four.py", tmp / "pk_a" / "__init__.py", tmp / "pk_a" / "sub" / "deep.py"])
+            finally:
+                sys.path.remove(str(tmp))
+                sys.modules.pop("m_four", None)
+
     def test_prune_drops_least_recently_used_until_under_the_cap(self):
         with tempfile.TemporaryDirectory() as tmp:
             cache = Path(tmp)
