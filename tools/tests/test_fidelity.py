@@ -1,0 +1,314 @@
+"""pd2_fidelity on hand-made layouts and pieces (no PD2 or D2R data)."""
+import struct
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import pd2_coverage as C  # noqa: E402
+import pd2_fidelity as F  # noqa: E402
+import pd2_presets as P  # noqa: E402
+
+CLIFF = "act1/outdoors/cliff1.dt1"
+FENCE = "act1/outdoors/fence.dt1"
+WALLS = "act1/cathedrl/walls.dt1"
+TREES = "act1/outdoors/trees.dt1"
+RIVER = "act1/outdoors/river.dt1"
+FLOORS = "act1/outdoors/floor.dt1"
+
+
+def w(path: str, orientation: int = 1, main: int = 0) -> tuple:
+    return "w", ((path, orientation, main, 0),)
+
+
+def lay(keys: dict, flags: dict | None = None) -> P.Layout:
+    width, height = max(x for x, _ in keys) + 1, max(y for _, y in keys) + 1
+    return P.Layout(width, height, keys, flags or {c: bytes(25) for c in keys}, frozenset())
+
+
+def heights(**by_path) -> dict:
+    return {p: {(1, 0, 0): px, (12, 0, 0): px, (14, 0, 0): px} for p, px in by_path.items()}
+
+
+def piece(kind_dir: str, x0: float, x1: float, top: float, z: float = 5.0) -> dict:
+    """An entity standing a model of folder `kind_dir`; the fake box is (x1 - x0) wide, `top` high."""
+    return {"name": "e", "components": [
+        {"type": "TransformDefinitionComponent", "position": {"x": (x0 + x1) / 2, "y": 0.0, "z": z}},
+        {"type": "ModelDefinitionComponent", "filename": f"data/hd/{kind_dir}/{int(x1 - x0)}x{int(top * 10)}.model"}]}
+
+
+def box(path: str):
+    w_, h = (int(n) for n in path.rsplit("/", 1)[-1].removesuffix(".model").split("x"))
+    return -w_ / 2, 0.0, -4.9, w_ / 2, h / 10, 4.9
+
+
+def pieces(*entities: dict) -> F.Hd:
+    return F.hd_pieces(list(entities), box, lambda p: [])
+
+
+def dt1(tiles: list[tuple[int, int, int, int]]) -> bytes:
+    """A DT1 holding records (orientation, main, sub, pixel height)."""
+    at = 400
+    head = bytearray(at)
+    struct.pack_into("<2i", head, 268, len(tiles), at)
+    body = bytearray()
+    for o, m, s, h in tiles:
+        rec = bytearray(96)
+        struct.pack_into("<i", rec, 8, -h)
+        struct.pack_into("<3i", rec, 20, o, m, s)
+        body += rec
+    return bytes(head + body)
+
+
+class Typing(unittest.TestCase):
+    def test_model_type_by_folder_and_name(self):
+        for path, kind in [("act2/sewer/act2_sewer_walls/cap01.model", "wall"),
+                           ("act4/mesa/act4_mesa_cliff_supports/a.model", "cliff"),
+                           ("act3/jungle/act3_treewall_combined/a.model", "treeline"),
+                           ("act2/model/act2_trees_palm/act2_tree_palm02.model", "treeline"),
+                           ("act1/outdoors/act1_outdoors_fences/a.model", "fence"),
+                           ("expansion/baallair/expansion_baallair_rails/rail01.model", "fence"),
+                           ("act2/sewer/act2_sewer_pillars/pillar04.model", "pillar"),
+                           ("act2/sewer/act2_sewer_water/water_channel_ledge01.model", "water"),
+                           ("act4/lava/act4_lava_walls/a.model", "wall"),
+                           ("act3/jungle/act3_jungle_dungeon_puddlewall/a.model", "wall"),
+                           ("act3/jungle/act3_jungle_grass_clump_water/a.model", None),
+                           ("act2/outdoors/act2_outdoors_rocks/rock_large01.model", None),
+                           ("act2/model/act2_bushes/act2_bush04.model", None)]:
+            self.assertEqual(F.model_type(path), kind, path)
+
+    def test_dt1_heights(self):
+        self.assertEqual(F.dt1_heights(dt1([(1, 0, 0, 480), (14, 3, 1, 352)])), {(1, 0, 0): 480, (14, 3, 1): 352})
+
+    def test_heights_reads_a_folder_and_an_absent_file_holds_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "a.dt1").write_bytes(dt1([(1, 0, 0, 192)]))
+            h = F.Heights(Path(d))
+            self.assertEqual(h["a.dt1"], {(1, 0, 0): 192})
+            self.assertEqual(h["b.dt1"], {})
+
+    def test_tile_type(self):
+        self.assertEqual(F.tile_type((CLIFF, 1, 0, 0)), "cliff")
+        self.assertEqual(F.tile_type(("pd2assets/final_corner.dt1", 3, 0, 0)), "cliff")
+        self.assertEqual(F.tile_type((FENCE, 2, 0, 0)), "fence")
+        self.assertEqual(F.tile_type((WALLS, 4, 0, 0)), "wall")
+        self.assertEqual(F.tile_type((WALLS, 12, 0, 0)), "pillar")
+        self.assertEqual(F.tile_type((TREES, 14, 0, 0)), "treeline")
+        self.assertEqual(F.tile_type((TREES, 2, 0, 0)), "treeline")  # a tree DT1's wall tile
+        for ignored in [(WALLS, 13, 0, 0), (WALLS, 15, 0, 0), (WALLS, 0, 0, 0), (None, 1, 0, 0),
+                        ("act4/mesa/inv_wall.dt1", 1, 0, 0)]:
+            self.assertIsNone(F.tile_type(ignored), ignored)
+
+    def test_classify_by_name_first(self):
+        c = F.classify
+        self.assertEqual(c("act4/mesa/inv_wall.dt1", 2), "invisible")
+        self.assertEqual(c("act4/mesa/chain_walls.dt1", 1), "fence")
+        self.assertEqual(c("expansion/siege/fence.dt1", 1), "fence")
+        self.assertEqual(c("act4/fort/foregate.dt1", 3), "fence")
+        self.assertEqual(c("act1/barracks/barset.dt1", 1), "fence")
+        self.assertEqual(c("act4/mesa/brick_walls.dt1", 1), "cliff")
+        self.assertEqual(c("act3/travincal/terraces.dt1", 2), "cliff")
+        self.assertEqual(c("act3/kurast/walls.dt1", 1), "wall")
+        self.assertEqual(c("act3/kurast/walls.dt1", 9), "wall")
+        self.assertEqual(c("act3/kurast/walls.dt1", 16), "wall")
+        self.assertEqual(c("act1/outdoors/river.dt1", 1), "water")
+        self.assertEqual(c("act1/outdoors/rivbank.dt1", 2), "water")
+        self.assertEqual(c("act4/lava/extwalls.dt1", 1), "water")
+        self.assertEqual(c("act4/lava/intwalls.dt1", 1), "water")
+        self.assertEqual(c("act4/lava/rocks.dt1", 1), "water")
+        self.assertEqual(c("act1/outdoors/rocks.dt1", 1), "wall")
+        self.assertEqual(c("act3/jungle/treegrp.dt1", 2), "treeline")
+
+    def test_classify_by_orientation(self):
+        c = F.classify
+        self.assertEqual(c("act3/kurast/walls.dt1", 12), "pillar")
+        self.assertEqual(c("act1/outdoors/trees.dt1", 14), "treeline")
+        self.assertEqual(c("act3/kurast/walls.dt1", 0, "floor"), "floor")
+        self.assertEqual(c("act3/kurast/walls.dt1", 1, "floor"), "floor")
+        self.assertEqual(c("act1/outdoors/river.dt1", 0, "floor"), "floor")
+        self.assertEqual(c("act1/outdoors/river.dt1", 0, "floor", blocked=True), "liquid")
+        self.assertEqual(c("act4/lava/lavafloor.dt1", 0, "floor", blocked=True), "liquid")
+        self.assertEqual(c("act1/outdoors/floor.dt1", 0, "floor", blocked=True), "floor")
+        for none in [("act3/kurast/walls.dt1", 13), ("act3/kurast/walls.dt1", 15), (None, 1)]:
+            self.assertIsNone(c(*none), none)
+
+    def test_cliff_cell_is_upper_over_lower(self):
+        up, low = (WALLS, 2, 0, 0), (WALLS, 17, 0, 0)
+        self.assertTrue(F.cliff_cell((up, low)))
+        self.assertFalse(F.cliff_cell((up,)))
+        self.assertFalse(F.cliff_cell((low,)))
+
+    def test_expected_class(self):
+        self.assertEqual(F.expected_class("fence", (FENCE, 1, 0, 0), 192), "low")
+        self.assertEqual(F.expected_class("wall", ("act1/outdoors/stonewall.dt1", 1, 0, 0), 224), "low")
+        self.assertEqual(F.expected_class("wall", (WALLS, 1, 0, 0), 288), "tall")
+        self.assertEqual(F.expected_class("wall", (WALLS, 1, 0, 0), 200), "low")
+        self.assertEqual(F.expected_class("cliff", (CLIFF, 1, 0, 0), 450), "tall")
+        self.assertIsNone(F.expected_class("water", (RIVER, 0, 0, 0), 128))
+
+
+class Legacy(unittest.TestCase):
+    def test_edges_by_type_with_the_tallest_layer(self):
+        keys = {(0, 0): w(CLIFF), (1, 0): ("w", ((WALLS, 1, 0, 0), (CLIFF, 1, 0, 0))), (2, 0): w(FENCE),
+                (3, 0): w(WALLS, 12), (4, 0): w(TREES, 14), (5, 0): ("f", ((FLOORS, 0, 0, 0),))}
+        h = heights(**{CLIFF: 450, WALLS: 200, FENCE: 160, TREES: 400})
+        got = F.legacy_edges(lay(keys), h)
+        self.assertEqual(got["cliff"], {(0, 0): "tall", (1, 0): "tall"})
+        self.assertEqual(got["wall"], {(1, 0): "low"})
+        stacked = {(0, 0): ("w", ((WALLS, 2, 0, 0), (WALLS, 17, 0, 0)))}
+        self.assertEqual(F.legacy_edges(lay(stacked), heights(**{WALLS: 300}))["cliff"], {(0, 0): "tall"})
+        self.assertEqual(got["fence"], {(2, 0): "low"})
+        self.assertEqual(got["pillar"], {(3, 0): "tall"})
+        self.assertEqual(got["treeline"], {(4, 0): "tall"})
+        self.assertEqual(got["water"], {})
+
+    def test_water_edge_is_a_blocked_water_floor_next_to_dry_ground(self):
+        keys = {(x, 0): ("f", ((RIVER, 0, 0, 0),)) for x in range(3)} | {(3, 0): ("f", ((FLOORS, 0, 0, 0),))}
+        blocked = bytes([1] * 25)
+        flags = {c: blocked if c[0] < 3 else bytes(25) for c in keys}
+        self.assertEqual(set(F.legacy_edges(lay(keys, flags), heights())["water"]), {(2, 0)})
+
+    def test_dry_floor_of_a_river_dt1_is_no_water(self):
+        keys = {(0, 0): ("f", ((RIVER, 0, 0, 0),)), (1, 0): ("f", ((FLOORS, 0, 0, 0),))}
+        self.assertEqual(F.legacy_edges(lay(keys), heights())["water"], {})
+
+
+class HdPieces(unittest.TestCase):
+    def test_pieces_by_type_with_tops_and_centres(self):
+        hd = pieces(piece("act2_sewer_walls", 0, 20, 6.0), piece("act1_outdoors_fences", 20, 30, 1.5),
+                    piece("act2_outdoors_rocks", 30, 40, 5.0), piece("act2_outdoors_rocks", 40, 50, 0.5))
+        self.assertEqual(hd.tops["wall"], {(0, 0): 6.0, (1, 0): 6.0, (2, 0): 6.0})
+        self.assertEqual(hd.tops["fence"], {(2, 0): 1.5, (3, 0): 1.5})
+        self.assertEqual(hd.centres["wall"], [(1, 0)])
+        self.assertEqual(hd.other, {(3, 0): 5.0, (4, 0): 5.0})  # the low rock is dropped
+
+    def test_room_sized_boxes_are_left_out(self):
+        self.assertEqual(pieces(piece("act2_sewer_walls", 0, 500, 6.0)).tops["wall"], {})
+
+    def test_height_class(self):
+        self.assertEqual([F.hd_class(t) for t in (0.2, 1.0, 3.9, 4.0)], ["flat", "low", "low", "tall"])
+
+
+def hd_of(wall=(), fence=(), tree=(), other=()) -> F.Hd:
+    hd = F.Hd()
+    for name, tiles in (("wall", wall), ("fence", fence), ("treeline", tree)):
+        for c, top in tiles:
+            hd.tops[name][c] = top
+            hd.centres[name].append(c)
+    hd.other.update(dict(other))
+    return hd
+
+
+class Scoring(unittest.TestCase):
+    row = {(x, 0): "tall" for x in range(5)}
+
+    def test_all_right(self):
+        s = F.score_type("wall", self.row, hd_of(wall=[((x, 0), 6.0) for x in range(5)]))
+        self.assertEqual((s.n, s.score, s.spacing), (5, 1.0, 1.0))
+
+    def test_missing_wrong_type_and_wrong_height(self):
+        hd = hd_of(wall=[((0, 0), 6.0), ((1, 0), 2.0)], fence=[((2, 0), 1.5)], other=[((3, 0), 5.0)])
+        s = F.score_type("wall", self.row, hd)
+        self.assertEqual(s.wrong_height, {(1, 0)})
+        self.assertEqual(s.wrong_type, {(2, 0), (3, 0)})
+        self.assertEqual(s.missing, {(4, 0)})
+        self.assertAlmostEqual(s.score, 1 / 5)
+
+    def test_a_low_edge_asked_low_is_wrong_when_tall(self):
+        s = F.score_type("fence", {(0, 0): "low", (1, 0): "low"}, hd_of(fence=[((0, 0), 1.5), ((1, 0), 5.0)]))
+        self.assertEqual(s.wrong_height, {(1, 0)})
+
+    def test_water_has_no_height(self):
+        hd = F.Hd()
+        hd.tops["water"][(0, 0)] = 0.05
+        self.assertEqual(F.score_type("water", {(0, 0): None}, hd).score, 1.0)
+
+    def test_hole_between_pieces(self):
+        hd = hd_of(wall=[((x, 0), 6.0) for x in (0, 1, 3, 4)])
+        s = F.score_type("wall", self.row, hd)
+        self.assertEqual(s.holes, {(2, 0)})
+        self.assertEqual(s.missing, {(2, 0)})
+        self.assertAlmostEqual(s.spacing, 1 - 1 / 5)
+
+    def test_a_bare_end_is_no_hole(self):
+        s = F.score_type("wall", self.row, hd_of(wall=[((x, 0), 6.0) for x in range(3)]))
+        self.assertEqual((s.holes, s.missing), (set(), {(3, 0), (4, 0)}))
+
+    def test_piled_pieces(self):
+        hd = hd_of(wall=[((x, 0), 6.0) for x in range(5)])
+        hd.centres["wall"] += [(2, 0)] * 12  # 17 pieces on 5 tiles: 7 beyond two a tile
+        s = F.score_type("wall", self.row, hd)
+        self.assertEqual(s.piled, 7)
+        self.assertAlmostEqual(s.spacing, 0.0)
+
+    def test_runs_split_where_tiles_are_not_neighbours(self):
+        got = F.runs({(0, 0), (1, 1), (5, 5)})
+        self.assertEqual(sorted(map(len, got)), [1, 2])
+
+    def test_score_map_scores_the_types_legacy_has_and_the_floor(self):
+        keys = {(0, 0): w(CLIFF), (1, 0): w(CLIFF)}
+        got = F.score_map(lay(keys), heights(**{CLIFF: 450}), hd_of(), 100, {(0, 0), (1, 1)}, {(1, 1), (2, 2)})
+        self.assertEqual(set(got), {"cliff", "floor"})
+        self.assertEqual(got["cliff"].missing, {(0, 0), (1, 0)})
+        self.assertEqual(got["floor"].missing, {(0, 0), (1, 1)})
+        self.assertEqual(got["floor"].wrong_type, {(2, 2)})
+        self.assertIsNone(got["floor"].spacing)
+        self.assertAlmostEqual(got["floor"].score, 0.97)
+
+    def test_no_floor_no_floor_row(self):
+        self.assertNotIn("floor", F.score_map(lay({(0, 0): w(CLIFF)}), heights(**{CLIFF: 450}), hd_of(), 0, set(), set()))
+
+
+class Reports(unittest.TestCase):
+    def rows(self, missing=0) -> F.Rows:
+        s = F.TypeScore(10, {(i, 0) for i in range(missing)})
+        return {"mapa": {"wall": s, "floor": F.TypeScore(20, scored=False)}}
+
+    def test_baseline_roundtrip(self):
+        text = F.baseline_text(self.rows(2))
+        self.assertEqual(F.read_baseline(text), {("mapa", "wall"): (80.0, 100.0), ("mapa", "floor"): (100.0, None)})
+
+    def test_changes_flag_drops_per_type(self):
+        base = F.read_baseline(F.baseline_text(self.rows(0)))
+        found = F.changes(self.rows(3), base)
+        self.assertEqual([(c.name, c.kind, c.drop) for c in found], [("mapa", "wall", True)])
+        self.assertEqual(F.by_type(found), {"wall": 1})
+        self.assertIn("wall 1", F.changes_md(found))
+        self.assertIn("**drop**", F.changes_md(found))
+
+    def test_small_drop_within_tolerance_and_gain_are_no_drop(self):
+        base = {("mapa", "wall"): (80.5, 100.0)}
+        self.assertFalse(F.changes(self.rows(2), base)[0].drop)  # 80.5 -> 80.0
+        self.assertFalse(F.changes(self.rows(0), {("mapa", "wall"): (50.0, 100.0)})[0].drop)
+
+    def test_a_type_no_longer_scored_drops_and_a_new_one_does_not(self):
+        found = F.changes(self.rows(0), {("mapa", "pillar"): (90.0, 100.0), ("mapa", "wall"): (100.0, 100.0)})
+        self.assertEqual({(c.kind, c.drop) for c in found}, {("pillar", True), ("floor", False)})
+
+    def test_unchanged_reports_nothing(self):
+        base = F.read_baseline(F.baseline_text(self.rows(1)))
+        self.assertEqual(F.changes(self.rows(1), base), [])
+        self.assertIn("No map's fidelity changed", F.changes_md([]))
+
+    def test_report_and_write(self):
+        with tempfile.TemporaryDirectory() as d:
+            found = F.write(Path(d), self.rows(1), "abc", {})
+            self.assertEqual(sorted(c.kind for c in found), ["floor", "wall"])
+            text = (Path(d) / "fidelity.md").read_text("utf-8")
+            self.assertIn("(abc)", text)
+            self.assertIn("| mapa | wall | 10 | 90.0% | 1 | 0 | 0 | 100.0% |", text)
+            self.assertIn("| floor | 20 | 100.0%", text)
+            self.assertTrue((Path(d) / "fidelity-baseline.tsv").is_file())
+            self.assertTrue((Path(d) / "fidelity-changes.md").is_file())
+
+    def test_image_colours_each_status(self):
+        keys = {(x, 0): w(WALLS) for x in range(5)}
+        legacy = {"wall": {(x, 0): "tall" for x in range(5)}}
+        s = F.TypeScore(5, {(0, 0)}, {(1, 0)}, {(2, 0)}, {(3, 0)})
+        png = F.image(lay(keys), legacy, {"wall": s}, "m")["m_fidelity.png"]
+        self.assertTrue(png.startswith(b"\x89PNG"))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -47,7 +47,7 @@ import re
 import struct
 import sys
 import zlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterator
 
@@ -67,6 +67,7 @@ ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculp
 STRUCTURE = 20.0  # HD units (2 tiles): a tall piece this wide both ways is a structure (stairs, platform), not a prop
 DEPTH = 2  # prefab levels followed
 EDGE = 1e-3  # tiles: how far a ground box may cross a tile edge and still end on it
+FIDELITY_DROPS: list = []  # the pd2_fidelity.Change drops of the last run()
 BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
 TOLERANCE = 1.0  # percentage points a score may drop below the baseline
 # D2R 93847's largest stock presets: act4/diab/dungrm6b.json, 6.1 MB; act2/town/lutw.json, 5642 entities
@@ -214,6 +215,7 @@ class Score:
     floors: int = 0  # walkable DS1 floor tiles
     floor_bare: set = frozenset()  # walkable floor under no terrain
     floor_wrong: set = frozenset()  # walkable floor under a piece that does not belong on flat floor (wrong_tiles)
+    fidelity: dict = field(default_factory=dict)  # pd2_fidelity.score_map: edge type or floor -> TypeScore
 
     @property
     def over_budget(self) -> bool:
@@ -409,9 +411,13 @@ def budget_md(scores: list[Score]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = None) -> list[Score] | None:
+def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = None,
+        fbase: dict | None = None) -> list[Score] | None:
     """Score every generated preset under data (generated/data) and write the report to out, with the changes
-    against `base` (read_baseline) when given. None: skipped."""
+    against `base` (read_baseline) when given. The fidelity scores against legacy (pd2_fidelity, #732) go to
+    fidelity.md, fidelity-baseline.tsv and <name>_fidelity.png, compared with `fbase` (pd2_fidelity.read_baseline).
+    None: skipped."""
+    import pd2_fidelity as fidelity  # imports this module: not at the top
     if not (d2r / MODELS).is_file():
         print(f"pd2_coverage: skipped, no {d2r / MODELS} (`python -m modkit fetch --prefix data/hd/model_lod_desc.bin`)")
         return None
@@ -428,6 +434,7 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
     def box(path: str):
         return found.get(fnv(path))
     tiles, pd2_tiles = presets.Tiles(d2r / "global" / "tiles"), presets.Tiles(data / "global" / "tiles")
+    heights = fidelity.Heights(data / "global" / "tiles")
     out.mkdir(parents=True, exist_ok=True)
     scores, seen = [], set()
     for area, _, files, ds1s in presets.pd2_only_presets(data, len(load(d2r, "lvlprest").records())):
@@ -446,14 +453,20 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
             wrong = wrong_tiles(entities, box, prefab, walkable_floor(lay) & flat)
             s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab), wrong)
             s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
+            legacy = presets.layout((data / "global" / "tiles" / ds1).read_bytes(), pd2_tiles.of(files))  # PD2's DT1s
+            s.fidelity = fidelity.score_map(legacy, heights, fidelity.hd_pieces(entities, box, prefab), s.floors,
+                                            set(s.floor_bare), set(s.floor_wrong))
             scores.append(s)
-            for name, image in images(lay, s, tall, wet).items():
+            for name, image in (images(lay, s, tall, wet) | fidelity.image(
+                    legacy, fidelity.legacy_edges(legacy, heights), s.fidelity, s.name)).items():
                 (out / name).write_bytes(image)
     found = None if base is None else changes(scores, base)
     if found is not None:
         (out / "changes.md").write_text(changes_md(found), "utf-8")
     (out / "report.md").write_text(report(scores, commit, found), "utf-8")
-    print(f"pd2_coverage: {len(scores)} presets scored, {out / 'report.md'}")
+    ffound = fidelity.write(out, {s.name: s.fidelity for s in scores}, commit, fbase)
+    FIDELITY_DROPS[:] = [c for c in ffound or [] if c.drop]
+    print(f"pd2_coverage: {len(scores)} presets scored, {out / 'report.md'}, {out / 'fidelity.md'}")
     return scores
 
 
@@ -468,7 +481,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--write-baseline", action="store_true", help="write the scores to --baseline")
     a = ap.parse_args(argv)
     base = read_baseline(a.baseline.read_text("utf-8")) if a.baseline.is_file() else None
-    scores = run(a.data, a.d2r, a.out, a.commit, base)
+    fpath = a.baseline.with_name("fidelity-baseline.tsv")  # main's fidelity scores sit beside its coverage scores
+    fbase = None
+    if fpath.is_file():
+        import pd2_fidelity
+        fbase = pd2_fidelity.read_baseline(fpath.read_text("utf-8"))
+    scores = run(a.data, a.d2r, a.out, a.commit, base, fbase)
     if scores is None:
         return 0
     if a.write_baseline:
@@ -482,7 +500,11 @@ def main(argv: list[str] | None = None) -> int:
     drops = [c.name for c in found if c.drop]
     print(f"pd2_coverage: {len(found)} presets changed against the baseline, {len(drops)} dropped"
           + (f": {', '.join(drops)}" if drops else ""))
-    return 1 if a.check and drops else 0
+    if FIDELITY_DROPS:
+        import pd2_fidelity
+        print(f"pd2_coverage: fidelity dropped on {len(FIDELITY_DROPS)} (map, type) scores: "
+              + ", ".join(f"{k} {n}" for k, n in pd2_fidelity.by_type(FIDELITY_DROPS).items()))
+    return 1 if a.check and (drops or FIDELITY_DROPS) else 0
 
 
 if __name__ == "__main__":
