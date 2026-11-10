@@ -1,0 +1,119 @@
+{
+ "spider_run": {
+  "box": [
+   -11.532,
+   -0.539,
+   -3.192,
+   1.182,
+   2.902,
+   2.599
+  ],
+  "dependencies": {
+   "models": [
+    {
+     "path": "data/hd/env/model/act3/spider/act3_spider_fences/fence_low_a01.model"
+    }
+   ],
+   "textures": [
+    {
+     "path": "data/hd/env/texture/act3/spider/fences/Act3_spider_fences_fence_low_a01_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act3/spider/fences/Act3_spider_fences_fence_low_a01_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act3/spider/fences/Act3_spider_fences_fence_low_a01_orm.texture"
+    }
+   ]
+  },
+  "entity": {
+   "components": [
+    {
+     "inheritOnlyPosition": false,
+     "name": "pd2r_fence_TransformDefinitionComponent",
+     "orientation": {
+      "w": 1.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "scale": {
+      "x": 1.0,
+      "y": 1.0,
+      "z": 1.0
+     },
+     "type": "TransformDefinitionComponent"
+    },
+    {
+     "allowTransition": true,
+     "angulardamping": 0.0,
+     "bodytype": "static",
+     "filter": "wall",
+     "fixturedefs": [
+      {
+       "boneindex": -1,
+       "density": 37.5,
+       "dragfactor": 0.0,
+       "explosionfactor": 1.0,
+       "explosionliftfactor": 1.0,
+       "friction": 0.6,
+       "impulsefactor": 1.0,
+       "liftfactor": 1.0,
+       "name": "PhysicsFixtureDefinition037",
+       "restitution": 0.0,
+       "rollingresistance": 0.2,
+       "shapetype": {
+        "center": {
+         "x": -5.174228,
+         "y": 1.196733,
+         "z": -0.2839611
+        },
+        "extents": {
+         "x": 6.347222,
+         "y": 1.705477,
+         "z": 2.883118
+        },
+        "name": "PhysicsBoxDefinition036",
+        "orientation": {
+         "w": 1.0,
+         "x": 0.0,
+         "y": 0.0,
+         "z": 0.0
+        },
+        "type": "PhysicsBoxDefinition"
+       },
+       "type": "PhysicsFixtureDefinition",
+       "windfactor": 0.0
+      }
+     ],
+     "gravityscale": 1.0,
+     "lineardamping": 0.0,
+     "name": "PhysicsBodyDefinitionComponent036",
+     "removeOnDeath": true,
+     "type": "PhysicsBodyDefinitionComponent"
+    },
+    {
+     "filename": "data/hd/env/model/act3/spider/act3_spider_fences/fence_low_a01.model",
+     "floorModel": false,
+     "ghostShadows": false,
+     "lightMask": 19,
+     "name": "model",
+     "shadowMask": 3,
+     "terrainBlendEnableYUpBlend": true,
+     "terrainBlendMode": 1,
+     "type": "ModelDefinitionComponent",
+     "visibleLayers": 1
+    }
+   ],
+   "name": "pd2r_fence",
+   "type": "Entity"
+  },
+  "model": "data/hd/env/model/act3/spider/act3_spider_fences/fence_low_a01.model",
+  "source": "act3/spider/lairne.json"
+ }
+}

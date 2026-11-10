@@ -25,9 +25,9 @@ class LayerTests(unittest.TestCase):
         keys.update({(x + 4, y): k for (x, y), k in room.keys.items()})
         keys[(7, 3)] = self.WB  # 15 of 16 tiles match
         preset, _ = P.build(P.Layout(8, 4, keys), P.Kit(), "m", "m.ds1", "b.json", TERRAIN, stock=[(room, stock())])
-        placed = sorted((e["name"], at(e)) for e in preset["entities"])
+        placed = sorted((e["name"].removeprefix(P.ROOM_PIECE), at(e)) for e in preset["entities"])  # the height pass marks room pieces
         self.assertEqual(placed, [("pillar", (43.0, 4.0)), ("terrain", (40.0, 0.0)), ("torch", (54.0, 2.0))])
-        pillar = next(e for e in preset["entities"] if e["name"] == "pillar")
+        pillar = next(e for e in preset["entities"] if e["name"].removeprefix(P.ROOM_PIECE) == "pillar")
         self.assertEqual(pillar["components"][2]["wallTileLocalCoord"], {"x": 4, "y": 0})
         self.assertIn("data/hd/env/texture/pillar_alb.texture",
                       [d["path"] for d in preset["dependencies"]["textures"]])
@@ -184,7 +184,7 @@ class LayerTests(unittest.TestCase):
         src = {"dependencies": {}, "entities": trees + [entity("torch", 14.0, 2.0)]}
         preset, _ = P.build(room, P.Kit(), "m", "m.ds1", "b.json", TERRAIN, stock=[(room, src)], trees=({}, 9.0),
                             prefabs=lambda path: [(0.0, 0.0), (-20.0, 0.0)])  # the prefab reaches 2 tiles west
-        self.assertEqual(sorted(e["name"] for e in preset["entities"]), ["sealed", "torch"])
+        self.assertEqual(sorted(e["name"].removeprefix(P.ROOM_PIECE) for e in preset["entities"]), ["sealed", "torch"])
 
     def test_a_dashed_lines_gap_is_playable_only_where_the_ds1_leaves_it_walkable(self):
         keys = {(x, y): self.WA if y == 1 and x % 4 else self.F for x in range(12) for y in range(3)}
@@ -213,7 +213,7 @@ class LayerTests(unittest.TestCase):
         kit = P.Kit({self.WB: [(0, [(post, 5.0, 5.0)])]}, [{}])
         preset, _ = P.build(lay, kit, "m", "m.ds1", "b.json", TERRAIN, stock=[(room, src)], trees=({}, 9.0))
         return [(P._transform(e)["position"]["x"], P._transform(e)["position"]["z"])
-                for e in preset["entities"] if e["name"] == "post"]
+                for e in preset["entities"] if e["name"].removeprefix(P.ROOM_PIECE) == "post"]
 
     def test_a_border_tile_a_pasted_room_does_not_match_takes_the_kits_piece(self):
         # (0, 0) is on the border, with the playable ground screen-down of it; (1, 1) is playable, not border
