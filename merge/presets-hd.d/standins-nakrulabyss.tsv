@@ -1,0 +1,6 @@
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column and the rules: merge/presets-hd.tsv
+# nakrulabyss/l5_addon and l5_walls: no D2R DT1 holds more than 3 tiles of either: none
+pd2assets/nakrulabyss/l5_addon.dt1	-
+# nakrulabyss/l5_floor: lair.dt1 holds the most (16 of 21 tiles), a dark cave floor
+pd2assets/nakrulabyss/l5_floor.dt1	act3/spider/lair.dt1
+pd2assets/nakrulabyss/l5_walls.dt1	-

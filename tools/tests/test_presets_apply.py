@@ -108,5 +108,35 @@ class ApplyTests(unittest.TestCase):
         self.assertFalse((self.out / "hd").exists())
 
 
+class RuleFilesTests(unittest.TestCase):
+    """The rule's lines are in merge/presets-hd.tsv (the anchor) and presets-hd.d/*.tsv (#789)."""
+    def test_the_anchor_then_the_folders_files_by_name_and_a_later_line_wins(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            t = Path(tmp)
+            rule, d = t / "presets-hd.tsv", t / "presets-hd.d"
+            d.mkdir()
+            rule.write_text("# anchor\nSet A\ta.json\n")
+            (d / "z.tsv").write_text("Set A\tz.json\nSet Z\tz.json\n")
+            (d / "b.tsv").write_text("# note\nSet A\tb.json\nSet B\tb.json\npd2assets/x.dt1\t-\n")
+            (d / "notes.md").write_text("Set Q\tq.json\n")
+            self.assertEqual([f.name for f in P.rule_files(rule)], ["presets-hd.tsv", "b.tsv", "z.tsv"])
+            sets, standins, water = P.read_rule(rule)
+            self.assertEqual(sets, {"set a": "z.json", "set b": "b.json", "set z": "z.json"})
+            self.assertEqual((standins, water), ({"pd2assets/x.dt1": None}, {}))
+
+    def test_without_the_folder_the_anchor_alone_is_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rule = Path(tmp) / "presets-hd.tsv"
+            rule.write_text("Set A\ta.json\n")
+            self.assertEqual(P.rule_files(rule), [rule])
+            self.assertEqual(P.read_rule(rule)[0], {"set a": "a.json"})
+
+    def test_the_repos_anchor_holds_no_line_and_its_folder_all_of_them(self):
+        rule = Path(__file__).resolve().parent.parent.parent / "merge" / "presets-hd.tsv"
+        self.assertEqual([ln for ln in rule.read_text("utf-8").splitlines() if ln and not ln.startswith("#")], [])
+        sets, standins, water = P.read_rule(rule)
+        self.assertTrue(sets and standins and water)
+
+
 if __name__ == "__main__":
     unittest.main()

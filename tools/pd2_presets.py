@@ -15,7 +15,7 @@ border painter (pd2_painter), all from the tile set's stock: the presets that li
 the water: a stock room draws its stream as one room-sized mesh, so outside pasted rooms a water DT1's blocked floor
 tiles get a stock water plane, scaled to cover them in rectangles.
 
-merge/presets-hd.tsv: `tile set <tab> biome`, one line per lvltypes Name the PD2-only presets on D2R tiles load. The
+merge/presets-hd.d/*.tsv (merge/presets-hd.tsv is its pd2_merge anchor: no lines; presets.apply.rule_files gives the read order): `tile set <tab> biome`, one line per lvltypes Name the PD2-only presets on D2R tiles load. The
 merge fails on a PD2-only preset on D2R tiles whose tile set has no line, and on a line no such preset needs. A
 preset that loads a PD2 DT1 (pd2assets/) waits until each of them has a stand-in line (LP4/LP5), `PD2 DT1 <tab> D2R
 DT1`, or `-` for none: a PD2 tile the stand-in holds too (the same orientation, main and sub index and subtile flags;
@@ -28,7 +28,7 @@ presets in modkit's cache, else it makes none (dev builds run without, ADR 0005)
 `python -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/`.
 """
 
-from presets.apply import apply, pd2_only_presets, read_rule, stand_in  # noqa: F401
+from presets.apply import apply, pd2_only_presets, read_rule, rule_files, stand_in  # noqa: F401
 from presets.build import build  # noqa: F401
 from presets.consts import *  # noqa: F401,F403
 from presets.dt1 import Tiles, dt1_tiles, header_dt1s  # noqa: F401

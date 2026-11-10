@@ -16,7 +16,7 @@ cell marks unwalkable (bit `0x20000`), which also seals the plain-floor gaps of 
 blocked floor, except streams: a blocked floor group that touches walkable floor or draws a `water:` DT1. Other
 blocked floor lies past the map's edge walls and gets trees. Last, the
 water: a stock room draws its stream as one room-sized mesh, so outside pasted rooms the blocked floor of each DT1 a
-`water:` line in `merge/presets-hd.tsv` names gets a stock water plane, scaled to cover it in near-square rectangles.
+`water:` line in `merge/presets-hd.d/` names gets a stock water plane, scaled to cover it in near-square rectangles.
 
 ## Considered Options
 

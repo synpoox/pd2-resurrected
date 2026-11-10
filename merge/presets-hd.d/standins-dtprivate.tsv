@@ -1,0 +1,23 @@
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column and the rules: merge/presets-hd.tsv
+pd2assets/dtprivate/archwall.dt1	-
+pd2assets/dtprivate/bone.dt1	act2/outdoors/bone.dt1
+pd2assets/dtprivate/desertground.dt1	act2/town/ground.dt1
+pd2assets/dtprivate/floor.dt1	expansion/baallair/floor.dt1
+pd2assets/dtprivate/ground.dt1	expansion/town/tent.dt1
+pd2assets/dtprivate/negradient.dt1	act2/outdoors/dune.dt1
+pd2assets/dtprivate/nwgradient.dt1	act1/outdoors/tower.dt1
+pd2assets/dtprivate/oasis.dt1	act2/outdoors/oasis.dt1
+pd2assets/dtprivate/outwall.dt1	act1/court/outwall.dt1
+pd2assets/dtprivate/palm.dt1	act2/outdoors/palm.dt1
+pd2assets/dtprivate/pboxwall.dt1	act1/court/pboxwall.dt1
+pd2assets/dtprivate/pentagram.dt1	-
+pd2assets/dtprivate/rock.dt1	act2/outdoors/rocks.dt1
+pd2assets/dtprivate/segradient.dt1	act4/lava/floor.dt1
+pd2assets/dtprivate/swgradient.dt1	-
+pd2assets/dtprivate/throne.dt1	expansion/baallair/throne.dt1
+pd2assets/dtprivate/underflr.dt1	expansion/baallair/underflr.dt1
+pd2assets/dtprivate/underwall.dt1	expansion/baallair/underwall.dt1
+pd2assets/dtprivate/village.dt1	act2/outdoors/village.dt1
+pd2assets/dtprivate/walls.dt1	-
+pd2assets/dtprivate/worldstone.dt1	expansion/baallair/worldstone.dt1
+pd2assets/dtprivate/worldstonegray.dt1	-

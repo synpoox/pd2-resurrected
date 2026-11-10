@@ -1,0 +1,4 @@
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column and the rules: merge/presets-hd.tsv
+pd2assets/new_chamb.dt1	-
+pd2assets/new_floornew.dt1	-
+pd2assets/new_ground.dt1	expansion/town/ground.dt1	# its 160 pixel copies get expansion/town/ground.dt1; it renames no tile by index

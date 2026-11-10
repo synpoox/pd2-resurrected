@@ -1,0 +1,8 @@
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column and the rules: merge/presets-hd.tsv
+# fallengarden*: floor 157 of 198 tiles are pixel copies of baallair/floor, stairs 27 of 81 (26 of sanctuary), water 57 of 58 of docktown/bridge (copies draw whatever the line says);
+# trees 189 of 189 match jungle/trees flags (the line renames them); the 9 wall tiles match nothing
+pd2assets/fallengardenfloor.dt1	-
+pd2assets/fallengardenstairs.dt1	-
+pd2assets/fallengardentrees.dt1	act3/jungle/trees.dt1
+pd2assets/fallengardenwall.dt1	-
+pd2assets/fallengardenwater.dt1	-
