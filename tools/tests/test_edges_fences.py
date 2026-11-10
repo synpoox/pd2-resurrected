@@ -63,6 +63,7 @@ class FenceTests(unittest.TestCase):
         for dt1 in (FOREGATE, STONE, "act1/barracks/barset.dt1", "act1/graveyard/graveyrd.dt1"):
             keys = {(5, 5): ("w", ((dt1, 2, 0, 0),))}
             b = build(keys, [stock_piece(55, 55)])
+            self.assertEqual(fences.fence_tiles(b.lay), {}, dt1)
             fences.run(b)
             self.assertEqual([e["name"] for e in b.loose], ["wall_stone_large01"], dt1)
 

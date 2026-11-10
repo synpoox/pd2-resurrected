@@ -7,8 +7,8 @@ stock tile drew there (a 17-unit palisade, a gate, a wall: Fortress's palisade, 
   rock or stone wall (the first cut took wildtemple_rockwalls/fence03 for wood: a rock wall). A stone fence DT1 would
   need a stone family here. The piece is in fence_kit.json: a D2R fence model under TALL (4 units, pd2_coverage), so it
   hides no walkable ground; its entity, box and dependencies come from the stock preset named there.
-- A fence DT1 whose walls are tall is no fence: classify calls it a wall (TALL_FENCE: foregate, chain_walls, barset,
-  graveyrd, town/fence, stone_fence), so this pass leaves its tiles to the wall pass.
+- A fence DT1 whose walls are tall is no fence here (pd2_fidelity.TALL_FENCE: foregate, chain_walls, barset,
+  graveyrd, town/fence, stone_fence): classify still calls it a fence, but this pass leaves its tiles to the wall pass.
 - Run direction: a tile turns its piece along x or z, by the straight run of fence tiles through it (the longer); a
   tile with no longer run (a lone tile, or the elbow of an L) goes by its orientation (ALONG_Z). One piece per tile,
   centred on it, as the legacy edge is one tile wide and the pieces span about a tile.
@@ -52,6 +52,8 @@ def fence_tiles(lay) -> dict[tuple[int, int], int]:
         if kind != "w":
             continue
         kinds = [fidelity.classify(t[0], t[1], "wall") for t in layers]
+        kinds = ["wall" if k == "fence" and fidelity.TALL_FENCE.search(t[0].lower().replace("\\", "/")) else k
+                 for t, k in zip(layers, kinds)]
         if "fence" not in kinds or any(k not in ("fence", "invisible", None) for k in kinds):
             continue
         fence = [t for t, k in zip(layers, kinds) if k == "fence"]
