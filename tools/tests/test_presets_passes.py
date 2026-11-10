@@ -30,7 +30,7 @@ class DiscoveryTests(unittest.TestCase):
             self.assertTrue(known & set(vars(m)), m.__name__)
 
     def test_hooks_each_lists_the_functions_by_name_in_order(self):
-        self.assertEqual([f.__module__.rsplit(".", 1)[1] for f in hooks.each("drop")], ["far", "tall"])
+        self.assertEqual([f.__module__.rsplit(".", 1)[1] for f in hooks.each("drop")], ["far", "blockers", "tall"])
 
 
 if __name__ == "__main__":
