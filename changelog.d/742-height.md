@@ -1,3 +1,3 @@
 #### Maps
 
-- PD2-only maps draw raised terraces and platforms, and no ground plane over a sunken room.
+- PD2-only maps draw raised and sunken ground, and every prop stands on the ground drawn under it.

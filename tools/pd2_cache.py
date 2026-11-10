@@ -126,8 +126,7 @@ def point(link: Path, target: Path) -> None:
 
 
 def sources(fn: Callable) -> list[Path]:
-    """fn's module file and every module or package beside it that it imports, at any depth (a rule's code: a package's
-    files are all in, as its own relative imports are not traced). An import in a
+    """fn's module file and every module beside it that it imports, at any depth (a rule's code). An import in a
     module's main() is left out: a merge never runs a tool's command line (pd2_strings' imports pd2_merge, which
     would put every tool in every key)."""
     todo, seen = [Path(sys.modules[fn.__module__].__file__)], set()
@@ -143,12 +142,7 @@ def sources(fn: Callable) -> list[Path]:
                 continue
             names = ([a.name for a in n.names] if isinstance(n, ast.Import) else
                      [n.module] if isinstance(n, ast.ImportFrom) and n.module and not n.level else [])
-            for m in names:
-                top = p.parent / m.split(".")[0]
-                if (top / "__init__.py").is_file():  # a package beside the module (tools/presets/): all its files
-                    todo += [q for q in sorted(top.rglob("*.py")) if "__pycache__" not in q.parts]
-                elif top.with_suffix(".py").is_file():
-                    todo.append(top.with_suffix(".py"))
+            todo += [q for q in (p.parent / f"{m.split('.')[0]}.py" for m in names) if q.is_file()]
     return sorted(seen)
 
 

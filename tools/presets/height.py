@@ -13,7 +13,6 @@ whose stock ground lies more than SINK below the plane, with that ground's heigh
 from __future__ import annotations
 
 import collections
-import re
 
 from .consts import GROUND, SINK, TILE
 from .layout import Layout, walkable
@@ -23,29 +22,48 @@ MAX_LEVELS = 2  # a region stands at most this many STEPs from the base
 MIN_REGION = 20  # a walkable region of fewer tiles is a doorway or a nook, not a terrace: it keeps its neighbour's level
 MIN_RUN = 3  # a face between two regions must run this many tiles, or it is a wall piece, not a cliff
 LOWER = frozenset(range(16, 20))  # pd2_fidelity.LOWER_ORIENT
-# a DT1 whose upper wall tiles (orientation 1-4) are cliffs: the walkable ground behind them is higher (the Ice map's
-# platforms have no lower walls, only icecave/interior upper walls)
-CLIFF = re.compile(r"cliff|terrace|icecave|brick_walls")
+FACE_ORIENT = frozenset({1, 2, 3, 4}) | LOWER  # the orientations that can hold a face: upper walls of a cliff, lower walls
 SIDES = {  # orientation -> (tiles behind the face: higher, tiles in front: lower); the camera looks up the map
     1: (((-1, 0),), ((1, 0),)), 16: (((-1, 0),), ((1, 0),)),
     2: (((0, -1),), ((0, 1),)), 17: (((0, -1),), ((0, 1),)),
 }
-BOTH = (((-1, 0), (0, -1), (-1, -1)), ((1, 0), (0, 1), (1, 1)))  # corners and ends
+BOTH = (((-1, 0), (0, -1), (-1, -1)), ((1, 0), (0, 1), (1, 1)))  # corners (3, 4, 18, 19) and ends
 STEPS = ((1, 0), (-1, 0), (0, 1), (0, -1))
+REACH = 4  # tiles: how far from a wall or a blocked liquid tile the nearest walkable ground still gives its height
 
 
 def faces(lay: Layout) -> dict[tuple[int, int], tuple]:
-    """The tiles holding a cliff face: a lower wall layer (16-19), or an upper one (1-4) of a cliff DT1; tile -> the
-    (high, low) offsets of its orientation."""
+    """The tiles holding a cliff face; tile -> the (high, low) offsets of its orientation. The shared classifier
+    (pd2_fidelity.classify, #732) decides: a wall layer of type "cliff" in a face orientation counts; a lower wall (16-19)
+    of the plain "wall" type counts only where it is a real ledge (pd2_fidelity.cliff_cell: an upper wall over it in the
+    same cell). Fences, water edges, invisible blockers and plain walls on their own are no ledge."""
+    import pd2_fidelity as fid  # imported here: pd2_fidelity imports pd2_presets, which imports this package
     out = {}
     for c, (kind, tiles) in lay.keys.items():
         if kind != "w":
             continue
+        ledge = fid.cliff_cell(tiles)
         for t in tiles:
-            if t[1] in LOWER or (t[1] in (1, 2, 3, 4) and t[0] and CLIFF.search(t[0].lower())):
+            if t[1] not in FACE_ORIENT:
+                continue
+            k = fid.classify(t[0], t[1], "wall")
+            if k == "cliff" or (k == "wall" and t[1] in LOWER and ledge):
                 out[c] = SIDES.get(t[1], BOTH)
                 break
     return out
+
+
+def nearest(lay: Layout, height: dict, c: tuple[int, int]) -> float:
+    """The ground height at a tile with no walkable ground of its own (a wall, a blocked liquid tile): the commonest
+    height among the walkable tiles in the nearest ring (up to REACH tiles away) round it, the lower on a tie, so a cliff
+    face stands on the low ground; 0 where none is near."""
+    for r in range(1, REACH + 1):
+        ring = [height[m] for dx in range(-r, r + 1) for dy in range(-r, r + 1) if max(abs(dx), abs(dy)) == r
+                and (m := (c[0] + dx, c[1] + dy)) in height]
+        if ring:
+            n = collections.Counter(ring)
+            return min(h for h, k in n.items() if k == max(n.values()))
+    return 0.0
 
 
 def regions(tiles: set) -> dict[tuple[int, int], int]:
