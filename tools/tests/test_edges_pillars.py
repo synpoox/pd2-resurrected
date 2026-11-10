@@ -154,6 +154,21 @@ class PillarTests(unittest.TestCase):
         lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 1, 0, 0),)), (1, 0): PD2}, {(1, 0): bytes([1]) * 25})
         self.assertEqual([at(e) for e in P.place(lay, kit, "s")[0]], [(15.0, 5.0)])
 
+    def test_a_bare_wall_bar_beside_a_pillar_tile_stands_a_pillar(self):
+        # nemyrmonastery (#737): a stock corpse on the pillar tile covered the wall row beside it by its box; a stock
+        # column does not, so the bare wall bar (a whole row blocked, no piece for its key) stands one itself
+        wall = ("w", ((T, 1, 0, 0),))
+        bar = ("w", (("pd2assets/x/file2.dt1", 2, 0, 9),))
+        row = grid(".....", ".....", "#####", ".....", ".....")
+        kit = P.Kit({wall: [(0, [(entity("wildtemple/pillar01", 0, 0), 5.0, 5.0)])]}, [{}])
+        lay = P.Layout(3, 1, {(0, 0): wall, (1, 0): PD2, (2, 0): bar}, {(1, 0): grid("..##.", "..##.", ".....", ".....", "....."),
+                                                                      (2, 0): row})
+        ents = P.place(lay, kit, "s")[0]
+        self.assertEqual(sorted(round(at(e)[0] // 10) for e in ents), [0, 1, 2])  # wall's own, pillar tile, bar
+        far = P.Layout(5, 1, {(0, 0): wall, (1, 0): PD2, (4, 0): bar}, {(4, 0): row})  # no pillar tile within two
+        self.assertEqual(sorted(round(at(e)[0] // 10) for e in P.place(far, kit, "s")[0]), [0])
+        self.assertEqual(pillars.bars(far, kit), set())
+
     def test_a_2x2_cluster_stands_one_pillar(self):
         wall = ("w", ((T, 1, 0, 0),))
         kit = P.Kit({wall: [(0, [(entity("wildtemple/pillar01", 0, 0), 5.0, 5.0)])]}, [{}])

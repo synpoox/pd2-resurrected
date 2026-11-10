@@ -58,8 +58,12 @@ def like(lay: Layout, kit: Kit, seed: str = "") -> dict[tuple[int, int], Key]:
             if len(k[1]) == 1 and k[1][0] and k[1][0][1] == LIKE and k[1][0][0] in drawn and any(o[1] for o in v)]
     stand = pillars.stand_keys(kit)
     out, lone = {}, set()
+    bars = pillars.bars(lay, kit)
     for c, key in sorted(lay.keys.items()):
         whole = key in kit.instances or any((key[0], (t,)) in kit.instances for t in key[1])
+        if stand and c in bars:
+            out[c] = stand[zlib.crc32(f"{seed}:{c}:bar".encode()) % len(stand)]  # a bare wall bar beside a pillar tile
+            continue
         if not (pool or stand) or whole or not any(t and t[1] == LIKE for t in key[1]):
             continue
         f = {i for i, v in enumerate(lay.flags.get(c, bytes(25))) if v & 1}
@@ -68,8 +72,8 @@ def like(lay: Layout, kit: Kit, seed: str = "") -> dict[tuple[int, int], Key]:
         best = min(fits) if fits else None
         if fits and (nearest := min(fits, key=lambda t: t[1:3]))[4]:
             best = nearest  # the nearest footprint carries walls: it keeps them, pillar or not (nemyrmonastery)
-        if best and (not best[0] or not stand or best[4]):
-            out[c] = best[3]
+        if best and (not best[0] or not stand or best[4] or not pillars.centre(lay.flags.get(c, bytes(25)))):
+            out[c] = best[3]  # a pillar key, or the nearest footprint of a tile that cannot stand a pillar (a wall edge)
         elif stand and pillars.centre(lay.flags.get(c, bytes(25))) and not any(
                 (c[0] + dx, c[1] + dy) in lone for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
             lone.add(c)  # no lone pillar beside an earlier one (8-adjacent): a 2x2 cluster is one column
@@ -128,6 +132,9 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
             entities.append(e)
         return True
     for (x, y), key in sorted(lay.keys.items()):
+        if borrow.get((x, y), (None,))[0] == pillars.KIND and not any(t and t[1] == LIKE for t in key[1]):
+            lone.append((x, y, borrow[(x, y)]))  # a wall bar the kit has no piece for (pillars.bars)
+            continue
         if one(x, y, key, ""):
             continue
         alone = [(k, (key[0], (t,))) for k, t in enumerate(key[1]) if (key[0], (t,)) in kit.instances]
@@ -151,7 +158,8 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
     for x, y, k in lone:  # a lone pillar stands where fewer than STACK pillar pieces are within two tiles of it: more
         around = sum(crowd.get((x + dx, y + dy), 0) for dx in range(-2, 3) for dy in range(-2, 3))  # would pile (#737)
         before = len(entities)
-        if around < pillars.STACK and one(x, y, k, ":like", pillars.centre(lay.flags.get((x, y), bytes(25)))):
+        bar = not any(t and t[1] == LIKE for t in lay.keys[(x, y)][1])  # a wall bar's stand-in pillar piles no pillar
+        if (bar or around < pillars.STACK) and one(x, y, k, ":like", pillars.centre(lay.flags.get((x, y), bytes(25)), bar)):
             crowd[(x, y)] = crowd.get((x, y), 0) + len(entities) - before
         else:
             missing += 1

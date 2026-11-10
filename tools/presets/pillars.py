@@ -18,7 +18,7 @@ import re
 from pathlib import Path
 from typing import Callable
 
-from .consts import TILE, Key
+from .consts import LIKE, TILE, Key
 from .entity import _transform
 
 # a pillar or column, by the model's folder and file name (pd2_fidelity.HD_MODEL's "pillar", which scores it)
@@ -28,12 +28,15 @@ STACK = 2  # pillar pieces within two tiles of a lone pillar, past which it woul
 KIND = "pillar"  # the key kind of a stand-alone stock pillar in place()'s kit (never a DS1 key)
 
 
-def centre(flags: bytes) -> tuple[float, float] | None:
+def centre(flags: bytes, bar: bool = False) -> tuple[float, float] | None:
     """Where a stand-alone pillar stands on a tile with these subtile flags: the centroid of the blocked subtiles, as
     (dx, dz) in HD units from the tile's origin; None where no pillar stands. That is None for fewer than two blocked
     subtiles, for a single row or column of them (a wall edge), and where a subtile at the centroid is free (the
-    pillar would stand on walkable ground: a corner-only footprint has its centroid inside its own corner)."""
+    pillar would stand on walkable ground: a corner-only footprint has its centroid inside its own corner). A `bar`
+    (a wall tile with a whole row or column blocked, see bars()) stands on the centroid of that line."""
     blocked = [(i % 5, i // 5) for i, v in enumerate(flags) if v & 1]
+    if bar:
+        return (sum(c for c, _ in blocked) / len(blocked) + 0.5) * TILE / 5, (sum(r for _, r in blocked) / len(blocked) + 0.5) * TILE / 5
     if len(blocked) < 2 or len({c for c, _ in blocked}) < 2 or len({r for _, r in blocked}) < 2:
         return None
     cx = sum(c for c, _ in blocked) / len(blocked) + 0.5  # in subtiles, from the tile's edge
@@ -43,6 +46,23 @@ def centre(flags: bytes) -> tuple[float, float] | None:
     if not under or not under <= set(blocked):
         return None
     return cx * TILE / 5, cz * TILE / 5
+
+
+def bars(lay, kit) -> set[tuple[int, int]]:
+    """The bare wall bars beside a pillar: DS1 tiles the kit has no piece for (whole or layer by layer), that block a
+    whole row or column of subtiles (4 or more of one line, no other subtile) and have a pillar tile (a LIKE layer)
+    within two tiles. nemyrmonastery's wall rows beside its columns: a stock corpse standing on the column tile used
+    to cover them by its box, a stock column does not (#737). They stand one stock pillar each, a wall of posts."""
+    pillar = {c for c, k in lay.keys.items() if any(t and t[1] == LIKE for t in k[1])}
+    out = set()
+    for c, key in lay.keys.items():
+        if c in pillar or any(o[1] for k in [key, *((key[0], (t,)) for t in key[1])] for o in kit.instances.get(k, [])):
+            continue  # a pillar tile, or a tile whose key (whole or layer by layer) has a piece
+        blocked = [(i % 5, i // 5) for i, v in enumerate(lay.flags.get(c, bytes(25))) if v & 1]
+        line = len({x for x, _ in blocked}) == 1 or len({y for _, y in blocked}) == 1
+        if len(blocked) >= 4 and line and any((c[0] + dx, c[1] + dy) in pillar for dx in range(-2, 3) for dy in range(-2, 3)):
+            out.add(c)
+    return out
 
 
 def model(e: dict) -> str:
