@@ -18,7 +18,7 @@ from .entity import _transform
 from .hooks.far import far_off
 from .kit import Kit, indoor
 from .layout import draws_trees, layout, wanted
-from .passes.edges_pillars import model_top
+from .pillars import model_top
 from .waypoints import waypoint_options, waypoints
 from .water import water_planes
 

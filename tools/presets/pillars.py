@@ -5,12 +5,11 @@ stock piece by subtile collision; borrowed by collision alone, the nearest footp
 So a candidate is ranked by its model first (a pillar or column, PILLAR, at least PILLAR_TALL high), then by collision.
 A tile with no such LIKE key in the kit stands a stock pillar taken from the kit's pieces of the tile set the layout
 draws (standing()), centred on the tile's blocked subtiles (centre()): Torture Halls' flesh pillars have no stock tile
-at all, but the wildtemple's wall tiles hold `pillar01` and `column01`. One piece per tile, as the legacy DS1 has one
-pillar per cell, not the stock walls' rows of them. A tile whose blocked subtiles are a single row or column is a wall
+at all, but the wildtemple's wall tiles hold `pillar01` and `column01`. One piece per tile (not the stock walls' rows of
+them), and none beside an earlier lone pillar (8-adjacent), so a 2x2 cluster stands one. A tile whose blocked subtiles are a single row or column is a wall
 edge, and one with a single blocked subtile is a speck: neither stands a pillar.
 
-This module holds the pillar logic place.py calls; as a pass it has no work of its own (the pieces are placed by the
-tiles pass, through place())."""
+This module holds the pillar logic place.py calls; the pieces are placed by the tiles pass, through place()."""
 from __future__ import annotations
 
 import dataclasses
@@ -19,19 +18,14 @@ import re
 from pathlib import Path
 from typing import Callable
 
-from ..consts import TILE, Key
-from ..entity import _transform
+from .consts import TILE, Key
+from .entity import _transform
 
 # a pillar or column, by the model's folder and file name (pd2_fidelity.HD_MODEL's "pillar", which scores it)
 PILLAR = re.compile(r"pillar|column")
 PILLAR_TALL = 4.0  # HD units: as pd2_coverage.TALL, the height a piece hides a wall at, and pd2_fidelity scores tall at
-ORDER = 350  # after the tiles pass, which places the pillars through place()
 STACK = 2  # pillar pieces within two tiles of a lone pillar, past which it would pile (pd2_fidelity.STACK per tile of a run)
 KIND = "pillar"  # the key kind of a stand-alone stock pillar in place()'s kit (never a DS1 key)
-
-
-def run(b) -> None:
-    """No pass work: place() stands the pillars (see the module doc)."""
 
 
 def centre(flags: bytes) -> tuple[float, float] | None:

@@ -35,7 +35,7 @@ class Kit:
     instances: dict[Key, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
     sources: list[dict[str, list[dict]]] = field(default_factory=list)  # each stock preset's dependencies
     far: Callable[[dict], bool] = lambda e: False  # far_off(): a piece whose mesh stands FAR or more clear of its anchor
-    top: Callable[[dict], float | None] = lambda e: None  # passes.edges_pillars.model_top(): a piece's model height, None if unknown
+    top: Callable[[dict], float | None] = lambda e: None  # pillars.model_top(): a piece's model height, None if unknown
     # a waypoint's pieces, as offsets from its object: under ("kc", key of the tile under the object, objects Class),
     # ("k", key) and, without a room terrain, ("c", Class)
     waypoints: dict[Key | str, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)

@@ -11,7 +11,7 @@ import pd2_painter as painter
 from .consts import LIKE, TILE, TREE_LAYER, Key
 from .entity import _transform
 from .kit import Kit
-from .passes import edges_pillars as pillars
+from . import pillars
 from .layout import Layout
 
 STRUCTURE = re.compile(r"/(?:wall|cliff)_[^/\"]*\.(?:model|json)")  # stone walls and cliffs, by their file name
@@ -23,10 +23,11 @@ def structure(ents: list) -> bool:
     return any(STRUCTURE.search(json.dumps(e["components"])) for e, _, _ in ents)
 
 
-def carries(kit: Kit, ents: list) -> bool:
-    """Whether a kit instance holds a wall: a wall or cliff piece (structure), or any other tall piece but a pillar."""
-    return structure(ents) or any(not pillars.is_pillar(kit, e) and (kit.top(e) or 0.0) >= pillars.PILLAR_TALL
-                                  for e, _, _ in ents)
+def carries(ents: list) -> bool:
+    """Whether a kit instance holds a real wall: a wall or cliff piece (structure), or a model pd2_fidelity types as
+    a wall or cliff. A tall prop (a shrine, a cage) is no wall, whatever its height (#737)."""
+    import pd2_fidelity  # late: it reads the presets package's constants
+    return structure(ents) or any(pd2_fidelity.model_type(pillars.model(e)) in ("wall", "cliff") for e, _, _ in ents)
 
 
 def fades(e: dict) -> bool:
@@ -42,11 +43,12 @@ def like(lay: Layout, kit: Kit, seed: str = "") -> dict[tuple[int, int], Key]:
     subtiles; a tile that blocks nothing, or shares too little, borrows nothing (a stock chair is no pillar). A key
     that holds a pillar (pillars.holds) goes before any other, whatever its collision: the tile is a pillar (#737). A
     tile that blocks something and has no such key stands one of the kit's stand-alone stock pillars
-    (pillars.standing), picked by the seed and its position, if pillars.centre finds a place for it (#714: Torture Halls'
-    flesh pillars)."""
+    (pillars.standing), picked by the seed and its position, if pillars.centre finds a place for it and no earlier lone
+    pillar stands on one of its 8 neighbours (#714: Torture Halls' flesh pillars). A 3x3 block of such tiles can still
+    stand up to four, and a 1xN run one every other tile."""
     drawn = {t[0] for k in lay.keys.values() for t in k[1] if t}
     pool = [(k, kit.flags.get(k, bytes(25)), sum(bool(o[1]) for o in v), any(pillars.holds(kit, o[1]) for o in v),
-             any(carries(kit, o[1]) for o in v))
+             any(carries(o[1]) for o in v))
             for k, v in kit.instances.items()
             if len(k[1]) == 1 and k[1][0] and k[1][0][1] == LIKE and k[1][0][0] in drawn and any(o[1] for o in v)]
     stand = pillars.stand_keys(kit)
@@ -65,7 +67,7 @@ def like(lay: Layout, kit: Kit, seed: str = "") -> dict[tuple[int, int], Key]:
             out[c] = best[3]
         elif stand and pillars.centre(lay.flags.get(c, bytes(25))) and not any(
                 (c[0] + dx, c[1] + dy) in lone for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
-            lone.add(c)  # one lone pillar per cluster of blocked tiles: a 2x2 cluster is one column
+            lone.add(c)  # no lone pillar beside an earlier one (8-adjacent): a 2x2 cluster is one column
             out[c] = stand[zlib.crc32(f"{seed}:{c}:pillar".encode()) % len(stand)]
     return out
 
@@ -87,7 +89,7 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
     borrow = like(lay, kit, seed)
 
     def one(x: int, y: int, key: Key, salt: str, at: tuple[float, float] = (0.0, 0.0),
-            lone: tuple[float, float] | None = None) -> bool:
+            only: tuple[float, float] | None = None) -> bool:
         options = kit.instances.get(key)
         if not options:
             return False
@@ -105,10 +107,10 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
             options = [o for o in options if o[1]] or options
         src, ents = options[zlib.crc32(f"{seed}:{x}:{y}{salt}".encode()) % len(options)]
         used.add(src)
-        if lone:  # a borrowed pillar key stands one pillar, the instance's nearest the tile's blocked centre (as a
+        if only:  # a borrowed pillar key stands one pillar, the instance's nearest the tile's blocked centre (as a
             held = [p for p in ents if pillars.is_pillar(kit, p[0])]  # KIND key), not every column of a stock row
             if len(held) > 1:
-                cx, cz = lone
+                cx, cz = only
                 keep = min(held, key=lambda p: (p[1] - cx) ** 2 + (p[2] - cz) ** 2)
                 ents = [p for p in ents if p is keep or p not in held]
         for e, dx, dz in ents:
@@ -132,7 +134,8 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
                 lone.append((x, y, k))
                 continue
             c = pillars.centre(lay.flags.get((x, y), bytes(25))) or (TILE / 2, TILE / 2)
-            alone = [one(x, y, k, ":like", (0.0, 0.0), c)]
+            pillar = any(pillars.holds(kit, o[1]) and not carries(o[1]) for o in kit.instances[k])  # only a pillar key (no wall) is cut to one column:
+            alone = [one(x, y, k, ":like", (0.0, 0.0), c if pillar else None)]  # a wall's own row stays whole
         missing += not alone
     crowd: dict[tuple[int, int], int] = {}  # pillar-model pieces per tile
     for e in entities:
