@@ -49,15 +49,15 @@ def centre(flags: bytes, bar: bool = False) -> tuple[float, float] | None:
 
 
 def bars(lay, kit) -> set[tuple[int, int]]:
-    """The bare wall bars beside a pillar: DS1 tiles the kit has no piece for (whole or layer by layer), that block a
+    """The bare wall bars beside a pillar: wall keys (not floor: a blocked water edge is no wall) the kit has no piece for (whole or layer by layer), that block a
     whole row or column of subtiles (4 or more of one line, no other subtile) and have a pillar tile (a LIKE layer)
     within two tiles. nemyrmonastery's wall rows beside its columns: a stock corpse standing on the column tile used
     to cover them by its box, a stock column does not (#737). They stand one stock pillar each, a wall of posts."""
     pillar = {c for c, k in lay.keys.items() if any(t and t[1] == LIKE for t in k[1])}
     out = set()
     for c, key in lay.keys.items():
-        if c in pillar or any(o[1] for k in [key, *((key[0], (t,)) for t in key[1])] for o in kit.instances.get(k, [])):
-            continue  # a pillar tile, or a tile whose key (whole or layer by layer) has a piece
+        if key[0] != "w" or c in pillar or any(o[1] for k in [key, *((key[0], (t,)) for t in key[1])] for o in kit.instances.get(k, [])):
+            continue  # a floor key (a blocked water or river edge), a pillar tile, or a tile whose key (whole or layer by layer) has a piece
         blocked = [(i % 5, i // 5) for i, v in enumerate(lay.flags.get(c, bytes(25))) if v & 1]
         line = len({x for x, _ in blocked}) == 1 or len({y for _, y in blocked}) == 1
         if len(blocked) >= 4 and line and any((c[0] + dx, c[1] + dy) in pillar for dx in range(-2, 3) for dy in range(-2, 3)):

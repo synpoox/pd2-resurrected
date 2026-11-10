@@ -159,7 +159,7 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
         around = sum(crowd.get((x + dx, y + dy), 0) for dx in range(-2, 3) for dy in range(-2, 3))  # would pile (#737)
         before = len(entities)
         bar = not any(t and t[1] == LIKE for t in lay.keys[(x, y)][1])  # a wall bar's stand-in pillar piles no pillar
-        if (bar or around < pillars.STACK) and one(x, y, k, ":like", pillars.centre(lay.flags.get((x, y), bytes(25)), bar)):
+        if around < pillars.STACK and one(x, y, k, ":like", pillars.centre(lay.flags.get((x, y), bytes(25)), bar)):
             crowd[(x, y)] = crowd.get((x, y), 0) + len(entities) - before
         else:
             missing += 1
