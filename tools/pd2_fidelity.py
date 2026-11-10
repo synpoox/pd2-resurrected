@@ -25,7 +25,7 @@ headers (96-byte tile records, as pd2_presets.dt1_tiles reads them: orientation 
   not liquid.
 
 Heights: a wall's height class comes from its DT1, not the single tile (wall_px: the median pixel height of the DT1's
-wall tiles): low when that is under LOW_PX (see there) or the DT1 is a fence/stone wall by name
+wall tiles, weighted by how often the map places each): low when that is under LOW_PX (see there) or the DT1 is a fence/stone wall by name
 (pd2_coverage.LOW_EDGE: low by design), else tall. Cliffs and trees are always tall (384-480, 256-480 px). A piece's
 height is its model box top (pd2_coverage.boxes): flat below pd2_coverage.LOW, low below TALL, else tall.
 
@@ -60,6 +60,7 @@ TYPES = EDGES + ("floor",)
 # 12 pillars (pd2_presets.LIKE), 13 shadows (trees.dt1: 91 tiles of height 0 to -128), 14 trees (presets.TREE_LAYER),
 # 0 floors.
 WALL_ORIENT = frozenset(range(1, 12)) | {16, 17, 18, 19}
+HEIGHT_ORIENT = WALL_ORIENT - {10, 11}  # 10 and 11 are warp and roof tiles: no wall height
 UPPER_ORIENT, LOWER_ORIENT = frozenset(range(1, 10)), frozenset(range(16, 20))
 PILLAR_ORIENT = presets.LIKE  # 12
 TREE_ORIENT = presets.TREE_LAYER  # 14
@@ -87,7 +88,7 @@ HOLE_PAIRS = (((-1, 0), (1, 0)), ((0, -1), (0, 1)), ((-1, -1), (1, 1)), ((-1, 1)
 CULPRITS = 8  # the folders listed under the all-maps table, per type
 STACK = 2.0  # pieces per tile of an edge run above which they pile on each other (stock walls span 5-10 units)
 TOLERANCE = coverage.TOLERANCE
-MIN_TILES = 20  # a (map, type) with fewer legacy tiles never counts as a drop: one hole moves its spacing by whole points
+MIN_TILES = 20  # a (map, type) with fewer legacy tiles never counts a spacing drop: one hole moves its spacing by whole points
 STEPS8 = [(i, j) for i in (-1, 0, 1) for j in (-1, 0, 1) if i or j]
 # the HD side: a model is typed by its folder and file name together, as D2R groups its kits in folders
 # (act3_treewall_combined, act4_mesa_cliff_supports, act2_sewer_pillars, expansion_baallair_rails, act2_sewer_walls);
@@ -177,10 +178,16 @@ def tile_type(t: tuple) -> str | None:
     return k if k in EDGES else None
 
 
-def wall_px(tiles: dict) -> int:
-    """The typical wall height of a DT1 (dt1_heights): the median pixel height of its wall-orientation tiles; 0 for
-    a DT1 with none (or an unread one)."""
-    h = sorted(v for k, v in tiles.items() if k[0] in WALL_ORIENT)
+def wall_px(tiles: dict, use: dict | None = None) -> int:
+    """The typical wall height of a DT1 (dt1_heights): the median pixel height of its wall tiles, each counted as often
+    as `use` (tile key -> times the maps place it) says, so a mixed DT1 takes the class of the tiles its maps use
+    (catacomb basewalls: median 192 over its 28 tiles, but 128 of the 130 placed are 256+). Orientations 10 and 11
+    (warp and roof tiles) never count. Without `use`, or when none of the DT1's wall tiles is used, each counts once;
+    0 for a DT1 with none (or an unread one)."""
+    walls = {k: v for k, v in tiles.items() if k[0] in HEIGHT_ORIENT}
+    if use and any(use.get(k) for k in walls):
+        walls = {k: v for k, v in walls.items() if use.get(k)}
+    h = sorted(v for k, v in walls.items() for _ in range(use.get(k, 1) if use else 1))
     return h[len(h) // 2] if h else 0
 
 
@@ -198,6 +205,13 @@ def legacy_edges(lay: presets.Layout, heights: dict[str, dict]) -> dict[str, dic
     """For each edge type, its legacy tiles -> the height class they ask for. `lay` names the PD2 DT1s (no stand-ins),
     `heights` is a Heights."""
     out: dict[str, dict[Tile, str | None]] = {e: {} for e in EDGES}
+    use: dict[str, dict[tuple, int]] = {}  # DT1 -> (orientation, main, sub) -> times the layout places it
+    for kind, tiles in lay.keys.values():
+        for t in tiles if kind == "w" else ():
+            if t[0]:
+                use.setdefault(t[0], {}).setdefault(t[1:], 0)
+                use[t[0]][t[1:]] += 1
+    px_of: dict[str, int] = {}
     for c, (kind, tiles) in lay.keys.items():
         best: dict[str, tuple[int, tuple]] = {}
         if kind == "w":
@@ -209,7 +223,7 @@ def legacy_edges(lay: presets.Layout, heights: dict[str, dict]) -> dict[str, dic
                     if k not in best or px > best[k][0]:
                         best[k] = (px, t)
         for k, (px, t) in best.items():
-            out[k][c] = expected_class(k, t, wall_px(heights[t[0]]) or px)
+            out[k][c] = expected_class(k, t, px_of.setdefault(t[0], wall_px(heights[t[0]], use.get(t[0]))) or px)
     water = {c for c, (kind, tiles) in lay.keys.items() if kind == "f" and any(
         classify(t[0], 0, "floor", painter.blocked_floor(lay.flags.get(c, bytes(25)))) == "liquid" for t in tiles)}
     for c in water:
@@ -390,7 +404,7 @@ class Change:
 
 def changes(rows: Rows, base: dict, tolerance: float = TOLERANCE) -> list[Change]:
     """The (map, type) pairs whose score or spacing differ from the baseline, worst drop first. A pair the baseline
-    has and the run no longer scores is a drop; a pair of under MIN_TILES legacy tiles is never one."""
+    has and the run no longer scores is a drop; a pair of under MIN_TILES legacy tiles is exempt for its spacing, not its score."""
     now = {(n, k): (pct(s.score), pct(s.spacing)) for n, r in rows.items() for k, s in r.items()}
     small = {(n, k) for n, r in rows.items() for k, s in r.items() if s.n < MIN_TILES}
     out = []
@@ -398,8 +412,10 @@ def changes(rows: Rows, base: dict, tolerance: float = TOLERANCE) -> list[Change
         (s0, p0), (s1, p1) = base.get(key, (None, None)), now.get(key, (None, None))
         if key in base and key in now and (s0, p0) == (s1, p1):
             continue
-        fell = any(o is not None and n is not None and o - n > tolerance for o, n in ((s0, s1), (p0, p1)))
-        drop = key not in now or (key not in small and (fell or (p0 is not None and p1 is None)))
+        # a small pair is exempt from spacing only (one hole moves it by whole points), never from its score
+        pairs = ((s0, s1),) if key in small else ((s0, s1), (p0, p1))
+        fell = any(o is not None and n is not None and o - n > tolerance for o, n in pairs)
+        drop = key not in now or fell or (key not in small and p0 is not None and p1 is None)
         out.append(Change(*key, (s0, s1), (p0, p1), drop))
 
     def worst(c: Change) -> float:
