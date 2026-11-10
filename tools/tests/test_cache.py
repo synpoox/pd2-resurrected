@@ -387,6 +387,17 @@ class ConcurrentMergeTests(unittest.TestCase):
         self.assertFalse((self.tmp / "cache" / "pd2_merge.lock").exists())
         self.assertFalse(list((self.tmp / "cache").rglob("*.tmp*")), "no temp folder left")
 
+    def test_a_pure_cache_hit_does_not_wait_for_a_slot_and_a_miss_does(self):
+        with contextlib.ExitStack() as st:
+            for c in self.patched():
+                st.enter_context(c)
+            st.enter_context(mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": "1"}))
+            self.assertEqual(self.merge("a"), 0)  # keeps the rule
+            with mock.patch.object(pd2_cache.Slots, "acquire", side_effect=RuntimeError("asked for a slot")):
+                self.assertEqual(self.merge("a"), 0, "every rule replays: no slot needed")
+                with self.assertRaises(RuntimeError):
+                    self.merge("b")  # a different rule input misses and needs one
+
     def test_a_partial_tree_is_rebuilt_not_handed_back(self):
         with contextlib.ExitStack() as st:
             for c in self.patched():
@@ -564,3 +575,72 @@ class CheckOutputTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MergeSlotTests(unittest.TestCase):
+    """The machine-wide cap on concurrent merges (#760): a counting semaphore of OS-locked slot files."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = Path(self.tmp.name) / "merge-slots"
+
+    def test_the_cap_holds_with_one_more_worker_than_slots(self):
+        live, peak, lock = [0], [0], threading.Lock()
+
+        def worker():
+            with redirect_stdout(io.StringIO()), pd2_cache.Slots(self.dir, 3, poll=0.01):
+                with lock:
+                    live[0] += 1
+                    peak[0] = max(peak[0], live[0])
+                time.sleep(0.15)
+                with lock:
+                    live[0] -= 1
+        ts = [threading.Thread(target=worker) for _ in range(4)]
+        [t.start() for t in ts]
+        [t.join(30) for t in ts]
+        self.assertEqual(peak[0], 3)
+        self.assertEqual(live[0], 0)
+
+    def test_a_waiter_says_it_is_queued_once_and_takes_the_slot_a_release_frees(self):
+        a = pd2_cache.Slots(self.dir, 1, poll=0.01)
+        a.acquire()
+        buf, got = io.StringIO(), []
+
+        def wait():
+            with redirect_stdout(buf):
+                b = pd2_cache.Slots(self.dir, 1, poll=0.01)
+                b.acquire()
+                got.append(b)
+        t = threading.Thread(target=wait)
+        t.start()
+        time.sleep(0.2)
+        self.assertEqual(got, [])
+        a.release()
+        t.join(10)
+        self.assertEqual(len(got), 1)
+        got[0].release()
+        self.assertEqual(buf.getvalue().count("queued: 1/1 slots busy"), 1)
+
+    def test_a_killed_holder_frees_its_slot(self):
+        code = ("import sys, time; sys.path.insert(0, sys.argv[1]); import pd2_cache; from pathlib import Path\n"
+                "s = pd2_cache.Slots(Path(sys.argv[2]), 1); s.acquire(); print('held', flush=True); time.sleep(60)")
+        p = subprocess.Popen([sys.executable, "-c", code, str(Path(pd2_cache.__file__).parent), str(self.dir)],
+                             stdout=subprocess.PIPE, text=True)
+        self.addCleanup(p.kill)
+        self.assertEqual(p.stdout.readline().strip(), "held")
+        s = pd2_cache.Slots(self.dir, 1)
+        self.assertIsNone(s._try(0), "held by the child")
+        p.kill()
+        p.wait(10)
+        deadline, f = time.time() + 10, None
+        while time.time() < deadline and not (f := s._try(0)):
+            time.sleep(0.05)
+        self.assertTrue(f, "the OS dropped the dead holder's lock")
+        f.close()
+
+    def test_the_cap_comes_from_the_environment(self):
+        with mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": "2"}):
+            self.assertEqual(pd2_cache.merge_slots(Path(self.tmp.name)).n, 2)
+        with mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": ""}):
+            self.assertEqual(pd2_cache.merge_slots(Path(self.tmp.name)).n, 6)

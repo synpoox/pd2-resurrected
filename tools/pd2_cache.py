@@ -479,3 +479,62 @@ def prune(cache: Path, cap: int, keep_s: float = 900, legacy: bool = False) -> l
             gone.append(e)
     return gone
 
+
+
+class Slots:
+    """A machine-wide counting semaphore (#760): n slot files under folder, each held by an OS lock, so a crashed holder
+    frees its slot with no pid file to leak. acquire() blocks until one is free (one 'queued' line meanwhile) and is
+    idempotent; release() frees it. Usable as a context manager."""
+
+    def __init__(self, folder: Path, n: int, what: str = "merge", poll: float = 1.0):
+        self.folder, self.n, self.what, self.poll = folder, max(1, n), what, poll
+        self.f = None
+
+    def _try(self, i: int):
+        p = self.folder / f"slot.{i}"
+        p.touch()
+        f = open(p, "r+b")
+        try:
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1) if msvcrt else fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            f.close()
+            return None
+        return f
+
+    def acquire(self) -> None:
+        if self.f:
+            return
+        self.folder.mkdir(parents=True, exist_ok=True)
+        told = False
+        while True:
+            for i in range(self.n):
+                if f := self._try(i):
+                    self.f = f
+                    return
+            if not told:
+                print(f"{self.what} queued: {self.n}/{self.n} slots busy (machine-wide cap, PD2R_MERGE_SLOTS)", flush=True)
+                told = True
+            time.sleep(self.poll)
+
+    def release(self) -> None:
+        if self.f:
+            f, self.f = self.f, None
+            f.seek(0)
+            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1) if msvcrt else fcntl.flock(f, fcntl.LOCK_UN)
+            f.close()
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, *exc):
+        self.release()
+
+
+def merge_slots(cache: Path) -> Slots:
+    """The merge semaphore under the cache root: PD2R_MERGE_SLOTS slots (default 6; about 3.8 GB of RAM each)."""
+    try:
+        n = int(os.environ.get("PD2R_MERGE_SLOTS", "6"))
+    except ValueError:
+        n = 6
+    return Slots(cache / "merge-slots", n)
