@@ -404,6 +404,15 @@ class Baseline(unittest.TestCase):
         border_none = C.Change("p", (80.0, 80.0), (90.0, None), (None, None), True)
         self.assertEqual([(r.type, r.status) for r in C.drop_rows([border_none], [])], [("coverage border", C.DROP)])
 
+    def test_coverage_outputs_are_not_under_the_folder_modkit_build_wipes(self):
+        out = C.ROOT / "out"  # install.ps1 (modkit build) cleans it (#801)
+        self.assertNotIn(out, [C.COVERAGE_OUT, *C.COVERAGE_OUT.parents])
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.object(C, "main_baseline", return_value=Path(d) / "none") as mb, \
+                mock.patch.object(C, "run", return_value=None):
+            C.main(["--out", str(Path(d) / "c")])
+            mb.assert_called_once_with(Path(d) / "c" / "main-coverage")  # the baseline download rides with the outputs
+
     def test_a_drop_past_the_tolerance_fails_and_the_summary_marks_it(self):
         with tempfile.TemporaryDirectory() as d:
             base = Path(d) / "base.tsv"

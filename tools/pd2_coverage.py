@@ -72,6 +72,7 @@ EDGE = 1e-3  # tiles: how far a ground box may cross a tile edge and still end o
 FIDELITY_CHANGES: list = []  # every pd2_fidelity.Change of the last run(): drops and within-tolerance falls
 FIDELITY_ROWS: dict = {}  # that run's map -> type -> TypeScore
 BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
+COVERAGE_OUT = ROOT / "coverage"  # not under out/: install.ps1 (modkit build) cleans that (#801)
 # The one place for the gate's limits. A score (coverage wall, border, floor; fidelity score and spacing, per map and
 # type) may fall up to TOLERANCE percentage points below main's and still pass `--check`: the drop is listed, marked
 # "within tolerance". A fall past it, or a score no longer scored, fails (the PR label coverage-drop-ok accepts it).
@@ -635,7 +636,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", type=Path, default=ROOT / "generated" / "data", help="merged data (pd2_merge's output)")
     ap.add_argument("--d2r", type=Path, default=D2R_DATA, help=f"D2R data root (default: {D2R_DATA})")
-    ap.add_argument("--out", type=Path, default=ROOT / "out" / "coverage", help="report folder")
+    ap.add_argument("--out", type=Path, default=COVERAGE_OUT, help="report folder (outside out/, which modkit build wipes, #801)")
     ap.add_argument("--commit", default="", help="commit named in the report's title")
     ap.add_argument("--baseline", type=Path, default=None, help="main's scores, a coverage baseline.tsv (default: "
                     "the latest coverage-baseline artifact of main's gate runs, else the --tsv file)")
@@ -645,9 +646,9 @@ def main(argv: list[str] | None = None) -> int:
                     f"still pass --check (default {TOLERANCE:g}); a fall inside it is listed, marked within tolerance")
     ap.add_argument("--write-baseline", action="store_true", help="write the scores to --baseline")
     a = ap.parse_args(argv)
-    a.out.mkdir(parents=True, exist_ok=True)  # out/coverage is not there on a fresh checkout (#787)
+    a.out.mkdir(parents=True, exist_ok=True)  # the report folder is not there on a fresh checkout (#787)
     if a.baseline is None:
-        a.baseline = BASELINE if a.tsv or a.write_baseline else main_baseline(a.out.parent / "main-coverage")
+        a.baseline = BASELINE if a.tsv or a.write_baseline else main_baseline(a.out / "main-coverage")
     base = read_baseline(a.baseline.read_text("utf-8")) if a.baseline.is_file() else None
     fpath = a.baseline.with_name("fidelity-baseline.tsv")  # main's fidelity scores sit beside its coverage scores
     fbase = tbase = None
