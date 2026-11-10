@@ -7,9 +7,9 @@
 d2rAI-toolkit's shared/classic_import merge driver applies each merge/ file by the rule kind its name maps to in RULES
 (`*.md` files are notes); a file with no rule kind fails the run, so a rule is never silently skipped. Refuses a
 pd2-data/ extracted from another baseline. A failed run leaves no generated/, so a build never picks up half a merge.
-A second run in the same project waits for the first (pd2_merge.lock); with a pd2_cache root, one machine-wide
-lock (pd2_merge.lock in the cache root) lets one merge run at a time across worktrees (#745). The output is checked
-before it is handed back (tables present, count); a bad tree is rebuilt once with no rule cache, then fails the run.
+A second run in the same project waits for the first (pd2_merge.lock). Merges in different worktrees run at once: the
+rule cache is safe to share, as entries are kept and deleted by rename (#745). The output is checked before it is
+handed back (tables present, count); a bad tree is rebuilt once with no rule cache, then fails the run.
 D2R's own tables come from modkit's cache (--d2r).
 With a pd2_cache root, each rule whose code, stamps and inputs match a kept run replays it instead (#558), and the
 rule cache is pruned to PD2R_CACHE_GB (default 20) GB (the old whole-merge folders too with PD2R_PRUNE_LEGACY=1).
@@ -17,7 +17,6 @@ rule cache is pruned to PD2R_CACHE_GB (default 20) GB (the old whole-merge folde
 from __future__ import annotations
 
 import argparse
-import contextlib
 import os
 import sys
 from pathlib import Path
@@ -118,16 +117,14 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None) -> list[s
     rebuilt = False
     try:
         # one run per worktree at a time: a second one rebuilding generated/ under the first would show up in its rules'
-        # snapshots, and so in the rule cache every worktree replays (#698). With a cache, one run per machine too, so
-        # merges never overlap on the shared rule cache (#745).
-        with contextlib.ExitStack() as stack:
-            if cache:
-                stack.enter_context(pd2_cache.lock(cache.parent / "pd2_merge.lock"))
-            stack.enter_context(pd2_cache.lock(root / "pd2_merge.lock"))
+        # snapshots, and so in the rule cache every worktree replays (#698). No machine-wide lock: a cache miss of
+        # minutes in one worktree must not block the others (#745).
+        with pd2_cache.lock(root / "pd2_merge.lock"):
             pd2_cache.used.clear()
             applied = apply(rules)
             if (why := check_output(root / "generated" / "data")) is not None:
-                pd2_cache.evict(pd2_cache.used)  # a partial entry would be replayed, and fail, on every later run
+                # a partial entry would be replayed, and fail, on every later run; only the tables are checked
+                pd2_cache.evict(pd2_cache.used, "data/global/excel/")
                 print(f"merge output is not whole ({why}): rebuilding without the rule cache", flush=True)
                 applied, rebuilt = apply(RULES), True
                 if (why := check_output(root / "generated" / "data")) is not None:
@@ -160,9 +157,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"pd2_merge: {e}", file=sys.stderr)
         return 1
     if cache:
-        with pd2_cache.lock(cache / "pd2_merge.lock"):  # no merge is replaying an entry while it is deleted
-            gone = pd2_cache.prune(cache, int(float(os.environ.get("PD2R_CACHE_GB", "20")) * 2**30),
-                                   legacy=os.environ.get("PD2R_PRUNE_LEGACY") == "1")
+        gone = pd2_cache.prune(cache, int(float(os.environ.get("PD2R_CACHE_GB", "20")) * 2**30),
+                               legacy=os.environ.get("PD2R_PRUNE_LEGACY") == "1")
         for e in gone:
             print(f"pruned {e}")
     print(f"generated/data rebuilt; rules applied: {', '.join(applied) or 'none'}")
