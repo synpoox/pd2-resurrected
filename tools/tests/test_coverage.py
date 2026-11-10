@@ -158,6 +158,10 @@ class Scores(unittest.TestCase):
         self.assertAlmostEqual(s.wall_score, 1 / 3)
         self.assertIsNone(s.border_score)
 
+    def test_wall_ok_replaces_the_tall_rule(self):
+        s = C.score(lay({(0, 0): WALL, (1, 0): WALL}), {(0, 0)}, "a", wall_ok={(1, 0)})
+        self.assertEqual(s.bare, {(0, 0)})
+
     def test_border_ring_gaps_leaks(self):
         # a 3 x 3 walkable floor framed by tree tiles, all unwalkable but (0, 2)
         keys = {(x, y): FLOOR for x in range(1, 4) for y in range(1, 4)}
@@ -338,6 +342,55 @@ class Baseline(unittest.TestCase):
                 self.assertEqual(C.main(["--baseline", str(base), "--check"]), 0)
             with mock.patch.object(C, "run", return_value=None):
                 self.assertEqual(C.main(["--baseline", str(base), "--check"]), 0)  # skipped: no model file
+
+    def test_drop_table_lists_map_type_before_after_delta(self):
+        found = C.changes(self.scores(), {"a": (99.0, None, 100.0), "b": (70.0, 90.0, 100.0)})
+        fd = mock.Mock(kind="wall", score=(90.0, 80.0), spacing=(None, None))
+        fd.name = "m"
+        rows = C.drop_rows(found, [fd])
+        self.assertEqual([r[:2] for r in rows if r[0] == "m"], [("m", "fidelity wall")])
+        self.assertIn(("a", "coverage wall", 99.0, 66.7, -32.3), rows)
+        text = C.drop_table(rows)
+        self.assertIn("before", text.splitlines()[0])
+        self.assertTrue(any(l.startswith("a ") and "-32.3" in l for l in text.splitlines()))
+
+    def test_check_prints_the_drop_table(self):
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d) / "base.tsv"
+            base.write_text("a\t99.0\t-\n", "utf-8")
+            buf = io.StringIO()
+            with mock.patch.object(C, "run", return_value=self.scores()), redirect_stdout(buf):
+                C.main(["--out", str(Path(d) / "new" / "coverage"), "--baseline", str(base), "--check"])
+            self.assertIn("coverage wall", buf.getvalue())
+            self.assertTrue((Path(d) / "new" / "coverage").is_dir())  # a missing out folder is created
+
+    def test_baseline_defaults_to_main_artifact_and_tsv_flag_skips_it(self):
+        with tempfile.TemporaryDirectory() as d:
+            art = Path(d) / "art.tsv"
+            art.write_text("a\t66.7\t-\n", "utf-8")
+            with mock.patch.object(C, "run", return_value=self.scores()) as run,                     mock.patch.object(C, "main_baseline", return_value=art) as fetch, redirect_stdout(io.StringIO()):
+                C.main(["--out", str(Path(d) / "o"), "--check"])
+                self.assertEqual(fetch.call_count, 1)
+                self.assertEqual(run.call_args.args[4], C.read_baseline(art.read_text("utf-8")))
+                C.main(["--out", str(Path(d) / "o"), "--tsv"])
+                self.assertEqual(fetch.call_count, 1)  # --tsv: no download
+
+    def test_main_baseline_falls_back_to_the_tsv_offline(self):
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(C.subprocess, "run", side_effect=OSError("no gh")),                 mock.patch("sys.stderr", new_callable=io.StringIO) as err:
+            self.assertEqual(C.main_baseline(Path(d) / "m"), C.BASELINE)
+            self.assertIn("warning", err.getvalue())
+
+    def test_main_baseline_downloads_the_artifact(self):
+        with tempfile.TemporaryDirectory() as d:
+            into = Path(d) / "m"
+
+            def fake(cmd, **kw):
+                if cmd[1] == "run" and cmd[2] == "download":
+                    into.mkdir(parents=True, exist_ok=True)
+                    (into / "baseline.tsv").write_text("a\t1.0\t-\n", "utf-8")
+                return mock.Mock(stdout="123\n")
+            with mock.patch.object(C.subprocess, "run", side_effect=fake), redirect_stdout(io.StringIO()):
+                self.assertEqual(C.main_baseline(into), into / "baseline.tsv")
 
 
 if __name__ == "__main__":

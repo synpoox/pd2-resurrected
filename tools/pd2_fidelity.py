@@ -215,7 +215,8 @@ def expected_class(kind: str, t: tuple, px: int) -> str | None:
     if kind == "water":
         return None
     name = (t[0] or "").rsplit("/", 1)[-1].lower()
-    return "low" if kind == "fence" or (kind == "wall" and (
+    tall_fence = kind == "fence" and TALL_FENCE.search((t[0] or "").lower().replace("\\", "/"))  # #787: 256-288 px
+    return "low" if (kind == "fence" and not tall_fence) or (kind == "wall" and (
         px < LOW_PX or coverage.LOW_EDGE.search(name) or LOW_NAME.search(name))) else "tall"
 
 
@@ -291,6 +292,21 @@ def hd_pieces(entities: list[dict], box: Callable[[str], tuple | None], prefab: 
 
 def hd_class(top: float) -> str:
     return "tall" if top >= coverage.TALL else "low" if top >= coverage.LOW else "flat"
+
+
+def wall_cover(legacy: dict[str, dict[Tile, str | None]], hd: Hd, tall: set[Tile]) -> set[Tile]:
+    """The DS1 wall tiles the coverage wall score counts as drawn (#787), by the fidelity classes: a legacy edge tile
+    (legacy_edges) is drawn when an HD piece of the height class it asks for ("low", "tall"; any piece for water)
+    stands on it, whatever the piece's type; of a tile holding several edge types, one right is enough. A wall tile
+    with no edge type (invisible blockers, a layer classify() skips) keeps the old rule: under a `tall` tile."""
+    classes: dict[Tile, set[str]] = {}
+    for tops in list(hd.tops.values()) + [hd.other]:
+        for c, top in tops.items():
+            classes.setdefault(c, set()).add(hd_class(top))
+    typed = {c for tiles in legacy.values() for c in tiles}
+    right = {c for tiles in legacy.values() for c, want in tiles.items()
+             if (want in classes.get(c, ())) or (want is None and classes.get(c, set()) - {"flat"})}
+    return right | (tall - typed)
 
 
 def runs(tiles: set[Tile]) -> list[set[Tile]]:
