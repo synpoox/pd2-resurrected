@@ -254,7 +254,7 @@ class Baseline(unittest.TestCase):
         self.assertEqual([(c.name, c.drop) for c in found], [("b", True), ("a", False)])
         md = C.changes_md(found)
         self.assertIn("| b | 71.5% -> 70.0% (-1.5) | 87.5% | 100.0% | **drop** |", md)
-        self.assertIn("--write-baseline", md)
+        self.assertIn("coverage-drop-ok", md)
 
     def test_gain_new_and_gone(self):
         base = {"a": (50.0, None, 100.0), "z": (90.0, 80.0, 100.0)}
