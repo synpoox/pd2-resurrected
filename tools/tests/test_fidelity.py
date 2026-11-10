@@ -107,6 +107,7 @@ class Typing(unittest.TestCase):
         self.assertEqual(c("expansion/siege/fence.dt1", 1), "fence")
         self.assertEqual(c("act4/fort/foregate.dt1", 3), "fence")
         self.assertEqual(c("act1/barracks/barset.dt1", 1), "fence")
+        self.assertEqual(c("act1/outdoors/fence.dt1", 1), "fence")  # 192 px
         self.assertEqual(c("act4/mesa/brick_walls.dt1", 1), "cliff")
         self.assertEqual(c("act3/travincal/terraces.dt1", 2), "cliff")
         self.assertEqual(c("act3/kurast/walls.dt1", 1), "wall")
