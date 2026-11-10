@@ -8,6 +8,7 @@ Act 2 - Sewer	data/hd/env/biome/act2_sewer.json
 Act 2 - Basement	data/hd/env/biome/act2_palace_cells.json
 Act 2 - Tomb	data/hd/env/biome/act2_tomb.json
 Act 2 - Arcane	data/hd/env/biome/act2_arcane.json
+Act 2 - Lair	data/hd/env/biome/act2_maggot.json
 Act 3 - Jungle	data/hd/env/biome/act3_jungle.json
 Act 3 - Kurast	data/hd/env/biome/act3_kurast.json
 Act 3 - Dungeon	data/hd/env/biome/act3_jungle_dungeon.json
@@ -23,7 +24,9 @@ Act 5 - Baal	data/hd/env/biome/expansion_baallair.json
 37	data/hd/env/biome/act1_outdoors.json
 38	data/hd/env/biome/act4_lava.json
 39	data/hd/env/biome/act2_outdoors.json
+40	data/hd/env/biome/act4_lava.json
 42	data/hd/env/biome/expansion_wildtemple.json
+48	data/hd/env/biome/expansion_baallair.json
 49	data/hd/env/biome/act1_outdoors.json
 # PD2 DT1	the D2R DT1 standing in for it, - for none (LP4): the D2R DT1 holding the most of its tiles with the same
 # subtile flags, where that is a quarter of its tiles or more. Tiles that are pixel copies of a D2R tile, at any
@@ -33,7 +36,9 @@ pd2assets/a3_objects.dt1	-
 pd2assets/a4_throne.dt1	expansion/baallair/throne.dt1
 pd2assets/a4_underflr.dt1	expansion/baallair/underflr.dt1
 pd2assets/a4_worldstone.dt1	expansion/baallair/worldstone.dt1
+pd2assets/a5_chain_walls.dt1	act4/mesa/chain_walls.dt1
 pd2assets/a5_cliff_parts.dt1	-
+pd2assets/a5_head.dt1	-
 pd2assets/a5_palm.dt1	act2/outdoors/palm.dt1
 pd2assets/a5_prickly.dt1	act2/outdoors/prickly.dt1
 # a5_river's best (16 of 45 tiles) is specials.dt1, marker tiles that draw nothing: none
@@ -41,6 +46,11 @@ pd2assets/a5_river.dt1	-
 pd2assets/a5_rotatedriver.dt1	garden/colossalsummit/floor.dt1
 pd2assets/archwallalt.dt1	-
 pd2assets/barflooralt.dt1	act2/outdoors/oasis.dt1
+pd2assets/borq.dt1	act2/tomb/talrasha.dt1
+pd2assets/borq1.dt1	garden/colossalsummit/floor.dt1
+pd2assets/borq2.dt1	act4/lava/specials.dt1
+pd2assets/borq4.dt1	act3/kurast/terraces.dt1
+pd2assets/borq_floor.dt1	act4/lava/floor.dt1
 pd2assets/cairnstones2.dt1	-
 pd2assets/cellar_white.dt1	act2/palace/cellar.dt1
 pd2assets/cellflr_white.dt1	act2/palace/cellflr.dt1
@@ -72,6 +82,28 @@ pd2assets/descend/torture.dt1	act1/barracks/torture.dt1
 pd2assets/descend/town_reindexed.dt1	act1/tristram/town.dt1
 pd2assets/descend/treegroups.dt1	guild/outdoors/treegroups.dt1
 pd2assets/descend/trees.dt1	act1/town/trees.dt1
+pd2assets/dtprivate/archwall.dt1	-
+pd2assets/dtprivate/bone.dt1	act2/outdoors/bone.dt1
+pd2assets/dtprivate/desertground.dt1	act2/town/ground.dt1
+pd2assets/dtprivate/floor.dt1	expansion/baallair/floor.dt1
+pd2assets/dtprivate/ground.dt1	expansion/town/tent.dt1
+pd2assets/dtprivate/negradient.dt1	act2/outdoors/dune.dt1
+pd2assets/dtprivate/nwgradient.dt1	act1/outdoors/tower.dt1
+pd2assets/dtprivate/oasis.dt1	act2/outdoors/oasis.dt1
+pd2assets/dtprivate/outwall.dt1	act1/court/outwall.dt1
+pd2assets/dtprivate/palm.dt1	act2/outdoors/palm.dt1
+pd2assets/dtprivate/pboxwall.dt1	act1/court/pboxwall.dt1
+pd2assets/dtprivate/pentagram.dt1	-
+pd2assets/dtprivate/rock.dt1	act2/outdoors/rocks.dt1
+pd2assets/dtprivate/segradient.dt1	act4/lava/floor.dt1
+pd2assets/dtprivate/swgradient.dt1	-
+pd2assets/dtprivate/throne.dt1	expansion/baallair/throne.dt1
+pd2assets/dtprivate/underflr.dt1	expansion/baallair/underflr.dt1
+pd2assets/dtprivate/underwall.dt1	expansion/baallair/underwall.dt1
+pd2assets/dtprivate/village.dt1	act2/outdoors/village.dt1
+pd2assets/dtprivate/walls.dt1	-
+pd2assets/dtprivate/worldstone.dt1	expansion/baallair/worldstone.dt1
+pd2assets/dtprivate/worldstonegray.dt1	-
 pd2assets/ext.dt1	-
 pd2assets/fac5pd2.dt1	-
 pd2assets/final_cliff1.dt1	act1/outdoors/cliff1.dt1
@@ -105,6 +137,8 @@ pd2assets/sanctuaryadds.dt1	act2/arcane/sanctuary.dt1
 pd2assets/sanctuaryreindexed.dt1	guild/outdoors/floor.dt1
 pd2assets/sanctuaryyellow.dt1	act2/arcane/sanctuary.dt1
 pd2assets/stainedalt.dt1	-
+pd2assets/tombs/centre-piece.dt1	-
+pd2assets/tombs/things.dt1	-
 pd2assets/torturehalls/file1.dt1	expansion/wildtemple/interior.dt1
 pd2assets/torturehalls/file2.dt1	act1/barracks/objects.dt1
 pd2assets/torturehalls/file3.dt1	act1/barracks/torture.dt1
