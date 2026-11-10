@@ -18,6 +18,7 @@ from .entity import _transform
 from .hooks.far import far_off
 from .kit import Kit, indoor
 from .layout import draws_trees, layout, wanted
+from .pillars import model_top
 from .waypoints import waypoint_options, waypoints
 from .water import water_planes
 
@@ -139,7 +140,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     if stale := sorted(set(water_rule) - loaded):
         raise ValueError(f"water lines for DT1 no PD2-only preset draws from: {', '.join(stale)}")
     water = water_planes(d2r_data, water_rule)
-    kit, stock = Kit(far=far_off(d2r_data)), []
+    kit, stock = Kit(far=far_off(d2r_data), top=model_top(d2r_data)), []
     inside = None  # indoor(kit), made once the kit is harvested
     for p in sorted((d2r_data / PRESETS).rglob("*.json")):
         ds1 = tiles_dir / p.relative_to(d2r_data / PRESETS).with_suffix(".ds1")
