@@ -8,10 +8,10 @@ import zlib
 
 import pd2_painter as painter
 
-from . import pillars
 from .consts import LIKE, TILE, TREE_LAYER, Key
 from .entity import _transform
 from .kit import Kit
+from .passes import edges_pillars as pillars
 from .layout import Layout
 
 STRUCTURE = re.compile(r"/(?:wall|cliff)_[^/\"]*\.(?:model|json)")  # stone walls and cliffs, by their file name
@@ -29,14 +29,15 @@ def fades(e: dict) -> bool:
             or bool(painter.LOW.search(json.dumps(e["components"]))))
 
 
-def like(lay: Layout, kit: Kit) -> dict[tuple[int, int], Key]:
+def like(lay: Layout, kit: Kit, seed: str = "") -> dict[tuple[int, int], Key]:
     """For each tile whose key the kit lacks, whole and layer by layer, and that has a LIKE layer: the single-layer
     LIKE key, from a DT1 the layout draws and with a piece in some instance, whose subtile collision is nearest the
     tile's (then the one with the most such instances), if the two footprints share at least half their blocked
     subtiles; a tile that blocks nothing, or shares too little, borrows nothing (a stock chair is no pillar). A key
     that holds a pillar (pillars.holds) goes before any other, whatever its collision: the tile is a pillar (#737). A
     tile that blocks something and has no such key stands one of the kit's stand-alone stock pillars
-    (pillars.standing), picked by its position (#714: Torture Halls' flesh pillars)."""
+    (pillars.standing), picked by the seed and its position, if pillars.centre finds a place for it (#714: Torture Halls'
+    flesh pillars)."""
     drawn = {t[0] for k in lay.keys.values() for t in k[1] if t}
     pool = [(k, kit.flags.get(k, bytes(25)), sum(bool(o[1]) for o in v), any(pillars.holds(kit, o[1]) for o in v))
             for k, v in kit.instances.items()
@@ -51,10 +52,10 @@ def like(lay: Layout, kit: Kit) -> dict[tuple[int, int], Key]:
         fits = [(not pillar, len(f ^ g), -n, k) for k, flags, n, pillar in pool
                 if 2 * len(f & (g := {i for i, v in enumerate(flags) if v & 1})) >= len(f | g) and f & g]
         best = min(fits) if fits else None
-        if stand and f and not (best and not best[0]):
-            out[c] = stand[zlib.crc32(f"{c}".encode()) % len(stand)]
-        elif best:
+        if best and (not best[0] or not stand):
             out[c] = best[3]
+        elif stand and pillars.centre(lay.flags.get(c, bytes(25))):  # no pillar key fits: a stock pillar, or nothing
+            out[c] = stand[zlib.crc32(f"{seed}:{c}:pillar".encode()) % len(stand)]
     return out
 
 
@@ -72,9 +73,9 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
     #688). A tile the kit has no key for takes its like() key's pick."""
     entities, used, missing = [], set(), 0
     kit = pillars.with_stand_ins(kit, pillars.standing(kit, {t[0] for k in lay.keys.values() for t in k[1] if t}))
-    borrow = like(lay, kit)
+    borrow = like(lay, kit, seed)
 
-    def one(x: int, y: int, key: Key, salt: str) -> bool:
+    def one(x: int, y: int, key: Key, salt: str, at: tuple[float, float] = (0.0, 0.0)) -> bool:
         options = kit.instances.get(key)
         if not options:
             return False
@@ -95,7 +96,7 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
         for e, dx, dz in ents:
             e = copy.deepcopy(e)
             t = _transform(e)
-            t["position"]["x"], t["position"]["z"] = x * TILE + dx, y * TILE + dz
+            t["position"]["x"], t["position"]["z"] = x * TILE + dx + at[0], y * TILE + dz + at[1]
             for c in e["components"]:  # a wall's transparency names its tile
                 if c["type"] == "WallTransparencyComponent" and c["wallTileLocalCoord"]["x"] >= 0:
                     c["wallTileLocalCoord"] = {"x": x, "y": y}
@@ -108,6 +109,8 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
         for k, single in alone:
             one(x, y, single, f":{k}")
         if not alone and (x, y) in borrow:
-            alone = [one(x, y, borrow[(x, y)], ":like")]
+            k = borrow[(x, y)]
+            at = pillars.centre(lay.flags.get((x, y), bytes(25))) if k[0] == pillars.KIND else (0.0, 0.0)
+            alone = [one(x, y, k, ":like", at)]
         missing += not alone
     return entities, used, missing
