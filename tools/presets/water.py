@@ -49,6 +49,15 @@ def tiled(rect: tuple[int, int, int, int], cx: int, cz: int) -> list[tuple[int, 
             for j in range(nz) for i in range(nx)]
 
 
+def rim_sides(rect: tuple[int, int, int, int], wet) -> tuple[bool, bool, bool, bool]:
+    """Which sides (-x, +x, -z, +z) of a plane's rectangle meet a liquid tile (`wet`: the liquid mask): only there does
+    the plane's rim overlap its neighbour. Where a side meets no liquid it stops at the mask edge, so the plane doesn't
+    spill onto walkable ground or a platform (#768)."""
+    x, y, w, h = rect
+    return (any((x - 1, y + j) in wet for j in range(h)), any((x + w, y + j) in wet for j in range(h)),
+            any((x + i, y - 1) in wet for i in range(w)), any((x + i, y + h) in wet for i in range(w)))
+
+
 def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set,
             liquids: dict | None = None) -> list[tuple[dict, dict]]:
     """Stock liquid planes (water, lava) over a liquid DT1's blocked floor tiles outside the pasted rooms (whose
@@ -67,9 +76,13 @@ def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set,
         for x, y, w, h in (r for rect in rectangles(cells) for sq in squarish(rect) for r in tiled(sq, *cap)):
             e = copy.deepcopy(plane)
             t = _transform(e)
-            t["position"] = {"x": (x + w / 2) * TILE, "y": liquid_y((x + w // 2, y + h // 2)), "z": (y + h / 2) * TILE}
+            lx, hx, lz, hz = rim_sides((x, y, w, h), liquids)
+            # half the rim on each side that meets liquid, none past the mask edge
+            ex0, ex1, ez0, ez1 = rx / 2 * lx, rx / 2 * hx, rz / 2 * lz, rz / 2 * hz
+            t["position"] = {"x": (x + w / 2) * TILE + (ex1 - ex0) / 2, "y": liquid_y((x + w // 2, y + h // 2)),
+                             "z": (y + h / 2) * TILE + (ez1 - ez0) / 2}
             t["orientation"] = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
-            t["scale"] = {"x": (w * TILE + rx) / sx, "y": 1.0, "z": (h * TILE + rz) / sz}
+            t["scale"] = {"x": (w * TILE + ex0 + ex1) / sx, "y": 1.0, "z": (h * TILE + ez0 + ez1) / sz}
             e["name"] = STREAM
             out.append((e, of))
     return out
