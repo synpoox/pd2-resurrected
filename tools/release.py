@@ -147,22 +147,27 @@ def main(argv: list[str] | None = None) -> int:
     except ReleaseError as e:
         print(f"release: {e}", file=sys.stderr)
         return 1
-    if fragments:  # package_release reads CHANGELOG.md, so fold it now; the fragments go only once the release is done
+    folded = bool(fragments)
+    if folded:  # package_release reads CHANGELOG.md, so fold it now; the fragments go only once the release is done
         log.write_text(text, "utf-8", newline="\n")
         print(f"changelog: folded {len(fragments)} fragments from changelog.d/")
-    code = 0
+    done = False
     try:
-        r = subprocess.run([sys.executable, str(a.toolkit / "release" / "package_release.py"), "--mod-dir", str(mod),
-                            "--version", version, "--config", str(ROOT / "release.toml"), "--out", str(a.out),
-                            "--game-exe", str(a.game / "D2R.exe")])  # release.toml's [catalog] (schema 3) needs it
-        code = r.returncode
-        if not code:
-            finish_notes(a.out, version, section)
-    except ReleaseError as e:
-        print(f"release: {e}", file=sys.stderr)
-        code = 1
-    if code:  # a failed release leaves CHANGELOG.md and the fragments as they were
-        log.write_text(before, "utf-8", newline="\n")
+        try:
+            r = subprocess.run([sys.executable, str(a.toolkit / "release" / "package_release.py"), "--mod-dir", str(mod),
+                                "--version", version, "--config", str(ROOT / "release.toml"), "--out", str(a.out),
+                                "--game-exe", str(a.game / "D2R.exe")])  # release.toml's [catalog] (schema 3) needs it
+            code = r.returncode
+            if not code:
+                finish_notes(a.out, version, section)
+        except ReleaseError as e:
+            print(f"release: {e}", file=sys.stderr)
+            code = 1
+        done = not code
+    finally:
+        if folded and not done:  # any failure or interruption leaves CHANGELOG.md and the fragments as they were
+            log.write_text(before, "utf-8", newline="\n")
+    if code:
         return code
     for f in fragments:
         f.unlink()
