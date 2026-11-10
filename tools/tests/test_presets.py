@@ -454,7 +454,7 @@ class LayerTests(unittest.TestCase):
     def test_a_pd2_pillar_tile_without_a_stand_in_borrows_the_stock_pillar_of_its_footprint(self):
         T = "expansion/wildtemple/interior.dt1"
         short, tall = ("w", ((T, 12, 4, 3),)), ("w", ((T, 12, 4, 5),))
-        solid, ring = b"" * 25, bytes(12) + b"" + bytes(12)  # a full tile, and a pillar on its centre subtile
+        solid, ring = bytes([1]) * 25, bytes(12) + bytes([1]) + bytes(12)  # a full tile, and a pillar on its centre subtile
         kit = P.Kit({short: [(0, [(entity("short01", 0, 0), 5.0, 5.0)])], tall: [(0, [(entity("tall01", 0, 0), 5.0, 5.0)])]},
                     [{}], flags={short: solid, tall: ring})
         pd2 = ("w", (("pd2assets/torturehalls/file2.dt1", 12, 9, 1),))
