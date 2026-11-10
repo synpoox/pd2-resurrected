@@ -10,7 +10,7 @@ import threading
 import time
 import sys
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -573,10 +573,6 @@ class CheckOutputTests(unittest.TestCase):
         self.assertIsNone(pd2_merge.check_output(gen, ("a.txt",), 1))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class MergeSlotTests(unittest.TestCase):
     """The machine-wide cap on concurrent merges (#760): a counting semaphore of OS-locked slot files."""
 
@@ -589,7 +585,7 @@ class MergeSlotTests(unittest.TestCase):
         live, peak, lock = [0], [0], threading.Lock()
 
         def worker():
-            with redirect_stdout(io.StringIO()), pd2_cache.Slots(self.dir, 3, poll=0.01):
+            with redirect_stderr(io.StringIO()), pd2_cache.Slots(self.dir, 3, poll=0.01):
                 with lock:
                     live[0] += 1
                     peak[0] = max(peak[0], live[0])
@@ -608,7 +604,7 @@ class MergeSlotTests(unittest.TestCase):
         buf, got = io.StringIO(), []
 
         def wait():
-            with redirect_stdout(buf):
+            with redirect_stderr(buf):
                 b = pd2_cache.Slots(self.dir, 1, poll=0.01)
                 b.acquire()
                 got.append(b)
@@ -643,4 +639,8 @@ class MergeSlotTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": "2"}):
             self.assertEqual(pd2_cache.merge_slots(Path(self.tmp.name)).n, 2)
         with mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": ""}):
-            self.assertEqual(pd2_cache.merge_slots(Path(self.tmp.name)).n, 6)
+            self.assertEqual(pd2_cache.merge_slots(Path(self.tmp.name)).n, 4)
+
+
+if __name__ == "__main__":
+    unittest.main()

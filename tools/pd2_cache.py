@@ -512,7 +512,7 @@ class Slots:
                     self.f = f
                     return
             if not told:
-                print(f"{self.what} queued: {self.n}/{self.n} slots busy (machine-wide cap, PD2R_MERGE_SLOTS)", flush=True)
+                print(f"{self.what} queued: {self.n}/{self.n} slots busy (machine-wide cap, PD2R_MERGE_SLOTS)", file=sys.stderr, flush=True)
                 told = True
             time.sleep(self.poll)
 
@@ -532,9 +532,9 @@ class Slots:
 
 
 def merge_slots(cache: Path) -> Slots:
-    """The merge semaphore under the cache root: PD2R_MERGE_SLOTS slots (default 6; about 3.8 GB of RAM each)."""
+    """The merge semaphore under the cache root: PD2R_MERGE_SLOTS slots (default 4; about 3.8 GB of RAM each)."""
     try:
-        n = int(os.environ.get("PD2R_MERGE_SLOTS", "6"))
+        n = int(os.environ.get("PD2R_MERGE_SLOTS", "4"))
     except ValueError:
-        n = 6
+        n = 4
     return Slots(cache / "merge-slots", n)
