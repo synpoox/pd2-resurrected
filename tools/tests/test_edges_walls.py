@@ -27,7 +27,7 @@ class PickTests(unittest.TestCase):
         self.assertIs(W.pick([one, two], "tall", (5, 5), {(5, 5), (6, 5)}, set(), set(), "s"), two)
         self.assertIs(W.pick([one, two], "tall", (5, 5), {(5, 5), (6, 5)}, {(6, 5)}, set(), "s") in (one, two), True)
 
-    def test_ground_is_flat_until_the_height_pass_lands(self):
+    def test_ground_is_the_stock_ground_floor_height_lifts_from(self):
         self.assertEqual(W.wall_y(None, 1.0, 2.0), 0.0)
 
     def test_a_build_with_no_context_runs_no_wall_pass(self):

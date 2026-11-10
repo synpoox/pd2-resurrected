@@ -9,7 +9,7 @@ each: one harvested from a stock wall tile of the same orientation (so it is rot
 class, from the tile set's own stock first. A piece covers the tiles under its box, so tiles it covers get no second
 piece (stock spacing, not a piece per tile); a piece whose box would reach walkable floor (a doorway, an arch) is not
 used. Pieces of the wrong class on a tile that gets a replacement are removed. `act4/mesa/inv_wall` is invisible
-in legacy and stays bare. The ground a wall stands on is wall_y(), the one place #742's per-tile height plugs in.
+in legacy and stays bare. The ground a wall stands on is wall_y(); floor_height (#742, ORDER 900) then lifts it with the plane under its tile.
 
 The pass needs what only the merge knows (the legacy-named layout, DT1 heights, D2R's model boxes): apply() calls
 configure() per DS1. A build with no configure() runs no wall pass.
@@ -60,7 +60,8 @@ class Option:
 
 
 def wall_y(b, x: float, z: float) -> float:
-    """The ground height walls stand on at (x, z): the generated terrain is flat. #742 (per-tile height) replaces this."""
+    """The ground height walls stand on at (x, z), before floor_height (ORDER 900, #742) lifts every placed piece by the
+    plane under its tile: 0, the stock ground the piece was harvested from (rel_y is relative to it)."""
     return 0.0
 
 
