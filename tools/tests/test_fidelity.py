@@ -176,6 +176,23 @@ class Legacy(unittest.TestCase):
         self.assertEqual(F.wall_px({(1, 0, 0): 160, (2, 0, 0): 288, (3, 0, 0): 288, (12, 0, 0): 900, (14, 0, 0): 900}), 288)
         self.assertEqual(F.wall_px({(12, 0, 0): 900}), 0)
 
+    def test_wall_px_skips_warp_and_roof_orientations(self):
+        self.assertEqual(F.wall_px({(10, 0, 0): 128, (11, 1, 0): 128}), 0)
+        self.assertEqual(F.wall_px({(10, 0, 0): 128, (11, 1, 0): 128, (1, 2, 0): 288}), 288)
+
+    def test_wall_px_weights_the_median_by_use(self):
+        """act1/catacomb/basewalls.dt1: {160: 8, 192: 8, 256: 7, 288: 5} is low unweighted, yet the maps place 256+."""
+        base = {(1, i, 0): px for i, px in enumerate([160] * 8 + [192] * 8 + [256] * 7 + [288] * 5)}
+        self.assertEqual(F.wall_px(base), 192)
+        use = {(1, 16, 0): 100, (1, 23, 0): 28, (1, 0, 0): 2}
+        self.assertEqual(F.wall_px(base, use), 256)
+        self.assertEqual(F.expected_class("wall", ("act1/catacomb/basewalls.dt1", 1, 16, 0), F.wall_px(base, use)), "tall")
+
+    def test_legacy_edges_class_a_mixed_dt1_by_the_tiles_the_map_uses(self):
+        h = {WALLS: {(1, i, 0): px for i, px in enumerate([160] * 8 + [192] * 8 + [256] * 7 + [288] * 5)}}
+        keys = {(i, 0): w(WALLS, 1, 16 + i % 7) for i in range(10)}
+        self.assertEqual(set(F.legacy_edges(lay(keys), h)["wall"].values()), {"tall"})
+
     def test_legacy_edges_use_the_dt1s_median_not_the_tile(self):
         keys = {(0, 0): w(WALLS, 1, 0), (1, 0): w(WALLS, 1, 1)}
         h = {WALLS: {(1, 0, 0): 128, (1, 1, 0): 288, (2, 0, 0): 288, (3, 0, 0): 288}}
@@ -331,7 +348,12 @@ class Reports(unittest.TestCase):
     def test_a_small_type_never_drops(self):
         rows = {"m": {"fence": F.TypeScore(F.MIN_TILES - 1, missing={(0, 0)}), "wall": F.TypeScore(F.MIN_TILES, missing={(0, 0)})}}
         base = {("m", "fence"): (100.0, 100.0), ("m", "wall"): (100.0, 100.0)}
-        self.assertEqual({(c.kind, c.drop) for c in F.changes(rows, base)}, {("fence", False), ("wall", True)})
+        got = {(c.kind, c.drop) for c in F.changes(rows, base)}
+        self.assertEqual(got, {("fence", True), ("wall", True)})  # a small pair still drops on its score
+
+    def test_a_small_type_may_lose_spacing_only(self):
+        rows = {"m": {"fence": F.TypeScore(F.MIN_TILES - 1)}}
+        self.assertEqual([c.drop for c in F.changes(rows, {("m", "fence"): (100.0, 80.0)})], [False])
 
     def test_unchanged_reports_nothing(self):
         base = F.read_baseline(F.baseline_text(self.rows(1)))
