@@ -523,13 +523,28 @@ class LayerTests(unittest.TestCase):
         preset, _ = P.build(lay, kit, "m", "m.ds1", "b.json", TERRAIN)
         self.assertIn("tall01", [e["name"] for e in preset["entities"]])
 
-    def test_a_stock_piece_on_a_keyless_tile_joins_the_nearest_kept_tile(self):
-        stock = P.Layout(3, 1, {(0, 0): self.WA})  # (1, 0) and (2, 0) have no tile in the stock DS1
+    def _snap(self, keys, ents, keep=None):
         kit = P.Kit()
-        kit.add(stock, {"dependencies": {}, "entities": [entity("pillar", 12.0, 5.0), entity("far", 25.0, 5.0)]},
-                {self.WA})
-        [(_, ents)] = kit.instances[self.WA]
-        self.assertEqual([(e["name"], dx, dz) for e, dx, dz in ents], [("pillar", 12.0, 5.0)])  # "far" is 2 tiles off
+        kit.add(P.Layout(3, 1, keys), {"dependencies": {}, "entities": ents}, keep or set(keys.values()))
+        return {k: [e["name"] for _, o in v for e, _, _ in o] for k, v in kit.instances.items()}
+
+    def test_a_wall_piece_on_a_keyless_tile_joins_the_nearest_wall_tile_of_its_family(self):
+        got = self._snap({(0, 0): self.WA}, [entity("siege/wall_stone_a", 5.0, 5.0), entity("siege/wall_stone_b", 12.0, 5.0),
+                                              entity("siege/wall_stone_far", 25.0, 5.0)])
+        self.assertEqual(got, {self.WA: ["siege/wall_stone_a", "siege/wall_stone_b"]})  # the third is 2 tiles off
+
+    def test_a_keyless_snap_never_takes_a_pillar_a_mural_or_another_family(self):
+        got = self._snap({(0, 0): self.WA}, [entity("siege/wall_stone_a", 5.0, 5.0), entity("temple/pillar01", 12.0, 5.0),
+                                              entity("temple/mural_a", 12.0, 5.0), entity("siege/cliff_rock_a", 12.0, 5.0)])
+        self.assertEqual(got, {self.WA: ["siege/wall_stone_a"]})
+
+    def test_a_keyless_wall_piece_leaves_a_tile_without_a_wall_of_its_family_alone(self):
+        got = self._snap({(0, 0): self.WA}, [entity("siege/wall_stone_a", 12.0, 5.0)])  # no wall piece on (0, 0) yet
+        self.assertEqual(got, {self.WA: []})
+
+    def test_a_keyless_wall_piece_never_lands_on_a_floor_tile(self):
+        got = self._snap({(0, 0): self.F}, [entity("siege/wall_stone_a", 5.0, 5.0), entity("siege/wall_stone_b", 12.0, 5.0)])
+        self.assertEqual(got, {self.F: ["siege/wall_stone_a"]})
 
     def test_an_edge_tile_picks_a_kit_instance_that_holds_a_piece(self):
         kit = P.Kit({self.WA: [(0, []), (0, [(entity("wall", 0, 0), 1.0, 1.0)])]}, [{}])

@@ -206,9 +206,10 @@ class Kit:
         that ground, as the generated terrain is flat. A `far` piece anchored on a floor tile (`floor`, else the
         layout's "f" keys) is left out: its mesh belongs to a structure elsewhere in the room, and on a common floor key
         it would stand on any plain ground (Harrogath's stairs on Westmarch's floor, #679). `outdoor`: whether the stock DS1
-        draws trees (else draws_trees(lay)); indoor() leaves such a room's plants out. A piece whose origin falls on a tile the stock DS1
-        leaves without a key (a pillar or wall end just past its tile) joins the nearest kept tile within one tile
-        instead of being lost (#686)."""
+        draws trees (else draws_trees(lay)); indoor() leaves such a room's plants out. A wall or cliff piece whose origin falls on a tile
+        the stock DS1 leaves without a key (a wall end just past its tile) joins the nearest kept wall tile within one
+        tile, if that tile already holds a wall piece of the same family (wall_stone, cliff_rock...). Pillars, murals
+        and every other piece, and floor tiles, never take it (#686, #711)."""
         src = len(self.sources)
         self.sources.append(preset["dependencies"])
         ground = preset.get(GROUND)
@@ -218,6 +219,7 @@ class Kit:
             len(k[1]) == 1 and k[1][0] and k[1][0][1] == LIKE and k[1][0][0] in alike)}
         floor = {c for c, k in lay.keys.items() if k[0] == "f"} if floor is None else floor
         groups: dict[int, list] = {}
+        keyless: list = []
         for e in preset["entities"]:
             t = _transform(e)
             if t is None:
@@ -230,9 +232,9 @@ class Kit:
                 continue
             c = (min(max(int(x // TILE), 0), lay.width - 1), min(max(int(z // TILE), 0), lay.height - 1))
             if c not in lay.keys:
-                near = [(c[0] + i, c[1] + j) for i, j in painter.AROUND if (c[0] + i, c[1] + j) in lay.keys]
-                if near:
-                    c = min(near, key=lambda n: ((n[0] + 0.5) * TILE - x) ** 2 + ((n[1] + 0.5) * TILE - z) ** 2)
+                if wall_family(e):
+                    keyless.append((e, x, z, c))
+                continue
             if c in per and not (c in floor and self.far(e)):
                 g = ground.at(x, z, t["position"]["y"]) if ground else None
                 if g is not None and t["position"]["y"] - g > FLOOR_MAX and _floor(lay.keys[c]):
@@ -241,6 +243,17 @@ class Kit:
                     e = copy.deepcopy(e)
                     _transform(e)["position"]["y"] -= g
                 per[c].append((e, x - c[0] * TILE, z - c[1] * TILE))
+        for e, x, z, c in keyless:
+            near = [(c[0] + i, c[1] + j) for i, j in painter.AROUND
+                    if lay.keys.get((c[0] + i, c[1] + j), ("f",))[0] == "w" and (c[0] + i, c[1] + j) in per]
+            near = [n for n in near if any(wall_family(p[0]) == wall_family(e) for p in per[n])]
+            if near:
+                n = min(near, key=lambda n: ((n[0] + 0.5) * TILE - x) ** 2 + ((n[1] + 0.5) * TILE - z) ** 2)
+                g = ground.at(x, z, _transform(e)["position"]["y"]) if ground else None
+                if g:
+                    e = copy.deepcopy(e)
+                    _transform(e)["position"]["y"] -= g
+                per[n].append((e, x - n[0] * TILE, z - n[1] * TILE))
         for c, ents in per.items():
             self.instances.setdefault(lay.keys[c], []).append((src, ents))
             self.flags.setdefault(lay.keys[c], lay.flags.get(c, bytes(25)))
@@ -294,6 +307,16 @@ def place_waypoints(lay: Layout, kit: Kit, seed: str, objects: list[tuple[str, f
 TREE_LAYER = 14  # the orientation of a DT1's tree tiles
 LIKE = 12  # the orientation whose PD2 tiles without a stand-in borrow a stock tile's pieces (like())
 STRUCTURE = re.compile(r"/(?:wall|cliff)_[^/\"]*\.(?:model|json)")  # stone walls and cliffs, by their file name
+
+
+FAMILY = re.compile(r"/((?:wall|cliff)_[a-z]+)")
+
+
+def wall_family(e: dict) -> str | None:
+    """A wall or cliff piece's family (`wall_stone`, `cliff_rock`) from its model file name, else None: pillars,
+    murals and every other piece have none."""
+    m = FAMILY.search(json.dumps([c.get("filename") or c.get("prefab") or "" for c in e["components"]]))
+    return m and m.group(1)
 
 
 def structure(ents: list) -> bool:
