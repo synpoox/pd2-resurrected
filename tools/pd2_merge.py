@@ -95,7 +95,7 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None) -> list[s
     cache folder, a rule whose code, stamps and the files it read match a run kept there replays it (pd2_cache.rule)."""
     mg = pd2_extract.classic("merge")
     rules, ran = RULES, []
-    # at most PD2R_MERGE_SLOTS (6) merges hold RAM at once, machine-wide (#760). Taken at the first rule that must run:
+    # at most PD2R_MERGE_SLOTS (default 4) merges hold RAM at once, machine-wide (#760). Taken at the first rule that must run:
     # a run whose rules all replay from the cache never waits. Without a cache (CI) there is no shared machine.
     slots = pd2_cache.merge_slots(cache.parent) if cache else None
     if cache:
