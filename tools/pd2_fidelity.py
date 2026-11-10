@@ -253,8 +253,10 @@ class Hd:
     who: dict[Tile, tuple[float, str]] = field(default_factory=dict)  # the tallest piece on a tile -> its folder
 
 
-def hd_pieces(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]]) -> Hd:
-    """The preset's pieces by edge type (model_type) with the tiles under each (room-sized boxes left out)."""
+def hd_pieces(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
+              ground: coverage.Ground | None = None) -> Hd:
+    """The preset's pieces by edge type (model_type) with the tiles under each (room-sized boxes left out). With
+    `ground` (coverage.plane_ground), a piece's top is measured from the ground plane under it."""
     hd, kind, folder = Hd(), [None], [""]
 
     def typed(path: str):
@@ -262,7 +264,7 @@ def hd_pieces(entities: list[dict], box: Callable[[str], tuple | None], prefab: 
         folder[0] = path.rsplit("/", 2)[-2] if path.count("/") else ""
         kind[0] = model_type(path)  # boxes() yields right after this call, so the box it yields is this model's
         return b
-    for b in coverage.boxes(entities, typed, prefab):
+    for b in coverage.boxes(entities, typed, prefab, ground=ground):
         if b[1] - b[0] > coverage.ROOM or b[3] - b[2] > coverage.ROOM:
             continue
         top, t = b[4], kind[0]

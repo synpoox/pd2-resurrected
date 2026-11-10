@@ -104,14 +104,33 @@ def qmul(a: dict, b: dict) -> dict:
             "y": aw * by - ax * bz + ay * bw + az * bx, "z": aw * bz + ax * by - ay * bx + az * bw}
 
 
+Ground = Callable[[float, float], float]  # world x, z -> the height of the ground plane under it
+
+
+def plane_ground(preset: dict) -> Ground:
+    """The ground plane height under a world position: the y of the preset's flat terrain plane of that TERRAIN_SIZE
+    block (#742 raises and sinks the planes and the pieces on them), 0 where no plane is drawn."""
+    ys = {}
+    for e in preset["entities"] + [preset.get("terrain") or {}]:
+        t = presets._transform(e) if "components" in e else None
+        if t is not None and e.get("name") == "terrain" and any(
+                f"/{presets.TERRAIN}/" in c.get("filename", "").lower() for c in e["components"]):
+            p = t["position"]
+            ys[(round(p["x"] / presets.TERRAIN_SIZE), round(p["z"] / presets.TERRAIN_SIZE))] = p["y"]
+    return lambda x, z: ys.get((math.floor(x / presets.TERRAIN_SIZE), math.floor(z / presets.TERRAIN_SIZE)), 0.0)
+
+
 def boxes(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
-          base: tuple | None = None, depth: int = 0) -> Iterator[Box]:
-    """The world boxes of the entities' models; a prefab's entities are placed by the prefab's transform."""
+          base: tuple | None = None, depth: int = 0, ground: Ground | None = None) -> Iterator[Box]:
+    """The world boxes of the entities' models; a prefab's entities are placed by the prefab's transform. With
+    `ground`, heights are measured from the ground plane under the entity (a wall on a sunken plane is as tall as one on
+    the flat ground); a prefab's entities stand on the plane under the prefab."""
     for e in entities:
         t = presets._transform(e)
         if t is None or e.get("name") == "terrain":
             continue
         p = (t["position"]["x"], t["position"]["y"], t["position"]["z"])
+        g = ground(p[0], p[2]) if ground else 0.0
         q, sc = t.get("orientation") or IDENTITY, t.get("scale") or {"x": 1, "y": 1, "z": 1}
         s = (sc["x"], sc["y"], sc["z"])
         if base:
@@ -123,9 +142,10 @@ def boxes(entities: list[dict], box: Callable[[str], tuple | None], prefab: Call
                 corners = [painter.rotate(q, (x * s[0], y * s[1], z * s[2]))
                            for x in (bb[0], bb[3]) for y in (bb[1], bb[4]) for z in (bb[2], bb[5])]
                 xs, ys, zs = ([p[i] + v[i] for v in corners] for i in range(3))
-                yield min(xs), max(xs), min(zs), max(zs), max(ys), min(ys)
+                yield min(xs), max(xs), min(zs), max(zs), max(ys) - g, min(ys) - g
             elif c["type"] == "PrefabPlacementDefinitionComponent" and c.get("prefab") and depth < DEPTH:
-                yield from boxes(prefab(c["prefab"]), box, prefab, (p, q, s), depth + 1)
+                yield from boxes(prefab(c["prefab"]), box, prefab, (p, q, s), depth + 1,
+                                 (lambda x, z: g) if ground else None)
 
 
 def low_edge(key) -> bool:
@@ -178,7 +198,7 @@ def ground_tiles(preset: dict, box: Callable[[str], tuple | None], prefab: Calla
 
 
 def wrong_tiles(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
-                at: set) -> set:
+                at: set, ground: Ground | None = None) -> set:
     """The tiles under the structures (STRUCTURE wide both ways, TALL high over the flat ground or its own base,
     whichever is higher: stairs, platforms, walls, gates; #679) anchored on `at`, walkable floor on the flat ground. A
     flat decal raised to its stock ground's height is not one, nor a ground mesh sunk below the plane. Pieces floating over the flat ground are left out: hanging
@@ -190,7 +210,7 @@ def wrong_tiles(entities: list[dict], box: Callable[[str], tuple | None], prefab
             continue
         if (int(t["position"]["x"] // presets.TILE), int(t["position"]["z"] // presets.TILE)) not in at:
             continue
-        out |= footprint((b for b in boxes([e], box, prefab) if STRUCTURE <= b[1] - b[0] <= ROOM
+        out |= footprint((b for b in boxes([e], box, prefab, ground=ground) if STRUCTURE <= b[1] - b[0] <= ROOM
                           and STRUCTURE <= b[3] - b[2] <= ROOM and b[4] - max(b[5], 0) >= TALL), exclusive=True)
     return out
 
@@ -447,14 +467,15 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
                                  presets.stand_in(files, tiles, pd2_tiles, standins))
             preset = json.loads(f.read_text("utf-8"))
             entities = preset["entities"]
-            tall = covered(lay, list(boxes(entities, box, prefab)),
-                           list(boxes(entities, lambda f: box(f) if edge_piece(f) else None, prefab)))
+            ground = plane_ground(preset)
+            tall = covered(lay, list(boxes(entities, box, prefab, ground=ground)),
+                           list(boxes(entities, lambda f: box(f) if edge_piece(f) else None, prefab, ground=ground)))
             flat = ground_tiles(preset, box, prefab, True) - ground_tiles(preset, box, prefab, False)
-            wrong = wrong_tiles(entities, box, prefab, walkable_floor(lay) & flat)
+            wrong = wrong_tiles(entities, box, prefab, walkable_floor(lay) & flat, ground)
             s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab), wrong)
             s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
             legacy = presets.layout((data / "global" / "tiles" / ds1).read_bytes(), {p: pd2_tiles[p] or tiles[p] for p in files})  # PD2's DT1s, else D2R's own
-            s.fidelity = fidelity.score_map(legacy, heights, fidelity.hd_pieces(entities, box, prefab), s.floors,
+            s.fidelity = fidelity.score_map(legacy, heights, fidelity.hd_pieces(entities, box, prefab, ground), s.floors,
                                             set(s.floor_bare), set(s.floor_wrong))
             scores.append(s)
             for name, image in (images(lay, s, tall, wet) | fidelity.image(

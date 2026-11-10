@@ -5,7 +5,7 @@ Runs late (ORDER 900, after the ground planes and every pass that places pieces)
 1. each ground plane the ground pass drew (and the preset's terrain) is set to the height most of its block's walkable
    tiles have; a block holding a sunken pasted room never goes above 0, so the plane never hides the room more than the
    flat plane did (the ground pass keeps deciding which blocks get a plane);
-2. each placed piece (floor pieces, rocks, trees, waypoint pads, water planes) is lifted by the height of the plane
+2. each placed piece (floor pieces, walls, pillars, rocks, trees, waypoint pads, water planes) is lifted by the height of the plane
    under its tile, so it stands on the ground that is drawn, not buried in a raised block or floating over a sunk one.
    Pieces of the pasted rooms (b.taken) keep their own heights: the rooms draw their own ground.
 
