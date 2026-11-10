@@ -51,27 +51,20 @@ class FenceTests(unittest.TestCase):
         fences.run(b)
         self.assertEqual({e["components"][0]["orientation"]["y"] for e in b.loose}, {-0.707106769})
 
-    def test_a_tall_foregate_is_no_fence(self):
-        keys = {(x, 5): ("w", ((FOREGATE, 2, 0, 0),)) for x in range(3, 8)}
-        b = build(keys, [stock_piece(45, 55)])
-        fences.run(b)
-        self.assertEqual([e["name"] for e in b.loose], ["wall_stone_large01"])  # its stock wall stays
-
     def test_a_wooden_fence_never_takes_a_rock_or_stone_wall(self):
         keys = {(x, 5): ("w", ((FENCE, 2, 0, 0),)) for x in range(0, 12)}
         b = build(keys, [])
         fences.run(b)
         models = {next(c for c in e["components"] if c["type"] == "ModelDefinitionComponent")["filename"]
                   for e in b.loose}
-        self.assertTrue(models and all("spider_fences" in m for m in models), models)
+        self.assertTrue(models and all("spider_fences" in m and "rockwalls" not in m for m in models), models)
 
-    def test_a_stone_fence_takes_stone_pieces(self):
-        keys = {(x, 5): ("w", ((STONE, 2, 0, 0),)) for x in range(0, 12)}
-        b = build(keys, [])
-        fences.run(b)
-        models = {next(c for c in e["components"] if c["type"] == "ModelDefinitionComponent")["filename"]
-                  for e in b.loose}
-        self.assertTrue(models and all(("stone_fences" in m or "tomb_fences" in m) for m in models), models)
+    def test_tall_fence_dt1s_are_walls_the_pass_leaves_alone(self):
+        for dt1 in (FOREGATE, STONE, "act1/barracks/barset.dt1", "act1/graveyard/graveyrd.dt1"):
+            keys = {(5, 5): ("w", ((dt1, 2, 0, 0),))}
+            b = build(keys, [stock_piece(55, 55)])
+            fences.run(b)
+            self.assertEqual([e["name"] for e in b.loose], ["wall_stone_large01"], dt1)
 
     def test_a_lone_tile_goes_by_its_orientation(self):
         def yaw(o: int) -> float:
@@ -81,14 +74,13 @@ class FenceTests(unittest.TestCase):
         self.assertEqual({o: yaw(o) for o in (1, 2, 3, 4, 5, 6, 7)},
                          {1: -0.707106769, 2: 0.0, 3: 0.0, 4: -0.707106769, 5: -0.707106769, 6: 0.0, 7: 0.0})
 
-    def test_gate_orientations_take_the_end_cap(self):
-        keys = {(x, 5): ("w", ((STONE, 8 if x == 3 else 2, 0, 0),)) for x in range(3, 6)}
+    def test_gate_orientations_take_the_run_piece(self):
+        keys = {(x, 5): ("w", ((FENCE, 8 if x == 3 else 2, 0, 0),)) for x in range(3, 6)}
         b = build(keys, [])
         fences.run(b)
-        models = [next(c for c in e["components"] if c["type"] == "ModelDefinitionComponent")["filename"]
-                  for e in sorted(b.loose, key=at)]
-        self.assertEqual(models[0], fences.kit()[fences.GATE["stone"]]["model"])
-        self.assertNotIn(fences.kit()[fences.GATE["stone"]]["model"], models[1:])
+        self.assertEqual(len(b.loose), 3)
+        self.assertEqual({next(c for c in e["components"] if c["type"] == "ModelDefinitionComponent")["filename"]
+                          for e in b.loose}, {fences.kit()[fences.PIECE]["model"]})
 
     def test_a_fence_beside_another_wall_keeps_the_kits_pick(self):
         keys = {(5, 5): ("w", ((FENCE, 2, 0, 0), (WALL, 1, 0, 0)))}
