@@ -1,3 +1,3 @@
 #### Maps
 
-- Dark PD2-only maps (Torture Halls, Dark Temple, Demon Road) get a brighter ambient light in HD.
+- Tomb, Ruined Cistern, market and Dark Temple maps get a brighter ambient light in HD.
