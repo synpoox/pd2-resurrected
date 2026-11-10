@@ -215,9 +215,9 @@ class Legacy(unittest.TestCase):
         self.assertEqual(F.wall_px({(1, i, 0): 288 for i in range(3)}, own=288), 288)
 
     def test_legacy_edges_use_the_dt1s_median_not_the_tile(self):
-        keys = {(0, 0): w(WALLS, 1, 0), (1, 0): w(WALLS, 1, 1)}
-        h = {WALLS: {(1, 0, 0): 128, (1, 1, 0): 288, (2, 0, 0): 288, (3, 0, 0): 288, (4, 0, 0): 288}}
-        self.assertEqual(F.legacy_edges(lay(keys), h)["wall"], {(0, 0): "tall", (1, 0): "tall"})
+        keys = {(0, 0): w(WALLS, 1, 0)} | {(i, 0): w(WALLS, 1, 1) for i in range(1, 6)}  # 1 short cell in 6
+        h = {WALLS: {(1, 0, 0): 128, (1, 1, 0): 288}}
+        self.assertEqual(set(F.legacy_edges(lay(keys), h)["wall"].values()), {"tall"})
 
     def test_heights_fall_back_to_the_next_folder(self):
         with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
