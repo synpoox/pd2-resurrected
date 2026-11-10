@@ -120,6 +120,14 @@ class PillarTests(unittest.TestCase):
         for seed in "abc":  # an 8.0 high shrine is no wall: the pillar key goes first
             self.assertEqual([e["name"] for e in P.place(lay, kit, seed)[0] if at(e)[0] >= 10], ["wildtemple/pillar01"])
 
+    def test_a_fence_bearing_key_is_kept_as_a_wall(self):
+        bar = ("w", ((T, 12, 7, 7),))
+        flags = grid(".....", ".###.", ".###.", ".###.", ".....")
+        kit = P.Kit({("w", ((T, 1, 0, 0),)): [(0, [(entity("wildtemple/pillar01", 0, 0), 5.0, 5.0)])],
+                     bar: [(0, [(entity("icecave_fences/corner_fence01", 0, 0), 5.0, 5.0)])]}, [{}], flags={bar: flags})
+        lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 1, 0, 0),)), (1, 0): PD2}, {(1, 0): flags})
+        self.assertEqual([e["name"] for e in P.place(lay, kit, "s")[0] if at(e)[0] >= 10], ["icecave_fences/corner_fence01"])
+
     def test_a_wall_bearing_key_keeps_all_its_columns(self):
         bar = ("w", ((T, 12, 7, 7),))
         row = [(entity("wildtemple/wall_bar01", 0, 0), x, 5.0) for x in (1.0, 5.0)]
