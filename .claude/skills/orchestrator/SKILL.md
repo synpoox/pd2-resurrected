@@ -29,11 +29,14 @@ Repo rules (PR body, gate, changelog fragments, branch deletion) live in `AGENTS
    Keep the links current. Done when the issue states the goal and its done-condition, and its links exist.
 3. **Brief.** Write a short brief: the issue number, the goal, files to read, what is out of scope.
    Say "game check per `docs/agents/game-check.md`" instead of pasting its steps. A brief that may let the agent
-   create issues says so, and tells it to link them as above. Done when the brief names the issue and holds no rule
-   that a doc already states.
+   create issues says so, and tells it to link them as above. Tell the worker never to wait on CI, neither in the
+   foreground nor in a background loop: it pushes, opens the PR and reports. Done when the brief names the issue and
+   holds no rule that a doc already states.
 4. **Implement.** Launch the implementer. It codes, then pushes and opens the PR (`Closes #<n>`, a `changelog.d/`
-   fragment), then runs the game check per `docs/agents/game-check.md` while the CI gate runs, then reports.
+   fragment), then runs the game check per `docs/agents/game-check.md`, then reports. It does not wait on CI.
    Docs-only PRs skip the game check. Done when the report names the PR, the head SHA and the check result.
+   Then stop the worker with TaskStop and kill its shells: a finished worker left running waits on its own
+   background work for hours.
 5. **Verify.** Read the report against the issue and the PR diff yourself. Check the CI result for the head
    (CI is fast). Done when the PR matches the issue and the checks you rely on ran on the head.
 6. **Review.** Launch one Opus reviewer with the PR and the builder's notes. It posts one PR comment.
