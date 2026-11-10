@@ -5,6 +5,7 @@ import copy
 
 
 _SCALARS = (str, int, float, bool, type(None))
+_NESTED = (dict, list)
 
 
 def clone(o):
@@ -12,9 +13,10 @@ def clone(o):
     (a tuple, a set) goes to copy.deepcopy."""
     t = type(o)
     if t is dict:
-        return {k: clone(v) for k, v in o.items()}
+        return {k: clone(v) if type(v) in _NESTED else v if type(v) in _SCALARS else copy.deepcopy(v)
+                for k, v in o.items()}
     if t is list:
-        return [clone(v) for v in o]
+        return [clone(v) if type(v) in _NESTED else v if type(v) in _SCALARS else copy.deepcopy(v) for v in o]
     return o if t in _SCALARS else copy.deepcopy(o)
 
 
