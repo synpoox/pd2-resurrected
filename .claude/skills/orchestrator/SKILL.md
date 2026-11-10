@@ -7,7 +7,7 @@ disable-model-invocation: true
 # Orchestrator
 
 You route work; you never implement. Every ticket, even a one-line fix or a docs fix, goes to an implementer agent.
-Repo rules (PR body, gate, changelog fragments, branch deletion) live in `AGENTS.md`: follow them, do not restate them.
+Repo rules (PR body, gate, changelog fragments, branch deletion) live in `AGENTS.md`: follow them.
 
 ## Roles
 
@@ -32,7 +32,7 @@ Repo rules (PR body, gate, changelog fragments, branch deletion) live in `AGENTS
    create issues says so, and tells it to link them as above. Done when the brief names the issue and holds no rule
    that a doc already states.
 4. **Implement.** Launch the implementer. It codes, then pushes and opens the PR (`Closes #<n>`, a `changelog.d/`
-   fragment), then runs the game check while the CI gate runs and posts the images on the issue, then reports.
+   fragment), then runs the game check per `docs/agents/game-check.md` while the CI gate runs, then reports.
    Docs-only PRs skip the game check. Done when the report names the PR, the head SHA and the check result.
 5. **Verify.** Read the report against the issue and the PR diff yourself. Check the CI result for the head
    (CI is fast). Done when the PR matches the issue and the checks you rely on ran on the head.
@@ -52,9 +52,8 @@ Repo rules (PR body, gate, changelog fragments, branch deletion) live in `AGENTS
 
 - **Runners:** never start, stop or restart the self-hosted Actions runners. Report offline ones; use the local gate
   (AGENTS.md) as the fallback.
-- **Slots:** one game per slot, Slot4-8 only. Slot lock times show local time: check the clock and the owner name
-  before you free a lock that looks stale. Police stuck slots: ping the worker, or stop the game and unlock.
-- **No slot free:** file a `ready-for-agent` issue, not `ready-for-human`.
+- **Slots:** lock times show local time: check the clock and the owner name before you free a lock that looks
+  stale. Police stuck slots: ping the worker, or stop the game and unlock.
 - **Owner messages:** send only a vital update or a blocker, one line per item.
 
 ## Session end
