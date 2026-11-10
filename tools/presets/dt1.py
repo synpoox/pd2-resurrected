@@ -33,13 +33,17 @@ def header_dt1s(data: bytes) -> list[str]:
 
 
 class Tiles(dict):
-    """DT1 path -> dt1_tiles, read from D2R's tiles on first use (an absent file holds nothing)."""
-    def __init__(self, root: Path):
+    """DT1 path -> dt1_tiles, read from D2R's tiles on first use (an absent file holds nothing: stock lvltypes list DT1
+    D2R does not ship. `strict`, for the stand-in lint, raises FileNotFoundError instead)."""
+    def __init__(self, root: Path, strict: bool = False):
         super().__init__()
         self.root = root
+        self.strict = strict
 
     def __missing__(self, path: str) -> dict:
         f = self.root / path
+        if self.strict and not f.is_file():
+            raise FileNotFoundError(f"no DT1 {f}")
         self[path] = dt1_tiles(f.read_bytes()) if f.is_file() else {}
         return self[path]
 
