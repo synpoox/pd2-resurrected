@@ -377,10 +377,17 @@ class Classify(unittest.TestCase):
     def now(self, missing=(), holes=(), spill=()):
         return F.TypeScore(40, set(missing), holes=set(holes), spill=set(spill))
 
-    def test_a_hole_beside_a_tile_main_had_wrong_that_is_now_right(self):
-        main = {"bad": {(3, 3)}, "holes": set(), "spill": set()}
-        got = F.classify_drop(True, self.now(holes={(4, 3)}), main)  # (3,3) is right now; (4,3) a new hole
+    def test_a_hole_that_was_wrong_on_main_beside_a_tile_now_right(self):
+        main = {"bad": {(3, 3), (4, 3)}, "holes": set(), "spill": set()}
+        got = F.classify_drop(True, self.now(holes={(4, 3)}, missing={(4, 3)}), main)  # (3,3) right now
         self.assertEqual(got, {F.HOLE_KIND: 1})
+
+    def test_a_tile_right_on_main_is_no_hole_beside_a_new_piece(self):
+        main = {"bad": {(3, 3)}, "holes": set(), "spill": set()}  # (4,3) was right on main
+        got = F.classify_drop(True, self.now(holes={(4, 3)}), main)
+        self.assertEqual(got, {F.OTHER_KIND: 1})
+        main["spill"] = {(4, 3)}
+        self.assertEqual(F.classify_drop(True, self.now(holes={(4, 3)}), main), {F.SPILL_KIND: 1})
 
     def test_a_tile_main_already_had_wrong_that_is_now_a_hole_beside_a_new_piece(self):
         main = {"bad": {(3, 3), (4, 3)}, "holes": set(), "spill": set()}
@@ -459,7 +466,9 @@ class Reports(unittest.TestCase):
         found = F.changes(self.rows(1, 40), base)  # 97.5: -2.5
         self.assertEqual([(c.drop, c.within) for c in found if c.kind == "wall"], [(False, True)])
         self.assertIn("within tolerance", F.changes_md(found))
-        self.assertTrue(F.changes(self.rows(3, 40), base)[0].drop)  # 92.5: -7.5, past the 5-point default
+        self.assertTrue(F.changes(self.rows(3, 40), base)[0].drop)  # 92.5: -7.5, past the 3-point default
+        self.assertTrue(F.changes(self.rows(2, 40), base)[0].drop)  # 95.0: -5.0
+        self.assertTrue(F.changes(self.rows(2, 40), base, 6.0)[0].within)
 
     def test_unchanged_reports_nothing(self):
         base = F.read_baseline(F.baseline_text(self.rows(1)))

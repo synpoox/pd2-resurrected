@@ -463,7 +463,7 @@ def changes(rows: Rows, base: dict, tolerance: float = TOLERANCE) -> list[Change
         pairs = ((s0, s1),) if key in small else ((s0, s1), (p0, p1))
         fell = any(o is not None and n is not None and o - n > tolerance for o, n in pairs)
         drop = key not in now or fell or (key not in small and p0 is not None and p1 is None)
-        within = not drop and any(o is not None and n is not None and o > n for o, n in ((s0, s1), (p0, p1)))
+        within = not drop and any(o is not None and n is not None and o > n for o, n in pairs)  # a small pair's spacing is not checked
         out.append(Change(*key, (s0, s1), (p0, p1), drop, within, key in small))
 
     def worst(c: Change) -> float:
@@ -499,7 +499,7 @@ def changes_md(found: list[Change], tolerance: float = TOLERANCE) -> str:
     return "\n".join(lines) + "\n"
 
 
-def report(rows: Rows, commit: str = "", found: list[Change] | None = None) -> str:
+def report(rows: Rows, commit: str = "", found: list[Change] | None = None, tolerance: float = TOLERANCE) -> str:
     p = lambda v: "-" if v is None else f"{100 * v:.1f}%"  # noqa: E731
     lines = ["# HD fidelity against legacy" + (f" ({commit})" if commit else ""), "",
              f"{len(rows)} generated maps. Per edge type and floor: share of legacy tiles the HD preset gets right "
@@ -508,7 +508,7 @@ def report(rows: Rows, commit: str = "", found: list[Change] | None = None) -> s
              "`<map>_fidelity.png`, green right, red missing, orange wrong type, yellow wrong height, magenta a hole.",
              ""]
     if found is not None:
-        lines += [changes_md(found), ""]
+        lines += [changes_md(found, tolerance), ""]
     lines += ["## All maps", "", "| Type | Legacy tiles | Score | Missing | Wrong type | Wrong height | Spacing |",
               "|---|---|---|---|---|---|---|"]
     for kind in TYPES:
@@ -564,8 +564,8 @@ def read_tiles(text: str) -> dict[tuple[str, str], dict[str, set]]:
 def classify_drop(spacing: bool, now: TypeScore, main: dict | None) -> dict[str, int]:
     """What the tiles that newly dropped are against main's tiles `main` (read_tiles' entry of the pair; None: main's
     tiles are not known, no answer). A dropped tile is a new hole (spacing) or a newly bad tile (score). It is
-    HOLE_KIND when a neighbour went from bad to right (a new correct piece stands beside it; a tile already wrong on
-    main that is now a hole counts too), else SPILL_KIND when main covered it right only through a neighbouring box's
+    HOLE_KIND when it was already wrong on main and a neighbour went from bad to right (a new correct piece stands
+    beside it), else SPILL_KIND when main covered it right only through a neighbouring box's
     spill, else OTHER_KIND."""
     if main is None:
         return {}
@@ -574,7 +574,7 @@ def classify_drop(spacing: bool, now: TypeScore, main: dict | None) -> dict[str,
     fixed = main.get("bad", set()) - bad  # right now, bad on main: the new correct pieces
     out: dict[str, int] = {}
     for c in dropped:
-        near = any((c[0] + dx, c[1] + dy) in fixed for dx, dy in STEPS8)
+        near = c in main.get("bad", set()) and any((c[0] + dx, c[1] + dy) in fixed for dx, dy in STEPS8)
         k = HOLE_KIND if near else SPILL_KIND if c in main.get("spill", set()) else OTHER_KIND
         out[k] = out.get(k, 0) + 1
     return out
@@ -590,8 +590,8 @@ def write(out: Path, rows: Rows, commit: str = "", base: dict | None = None, tol
     (read_baseline) when given."""
     found = None if base is None else changes(rows, base, tolerance)
     (out / TILES_FILE).write_text(tiles_text(rows), "utf-8", newline="\n")
-    (out / "fidelity.md").write_text(report(rows, commit, found), "utf-8")
+    (out / "fidelity.md").write_text(report(rows, commit, found, tolerance), "utf-8")
     (out / "fidelity-baseline.tsv").write_text(baseline_text(rows), "utf-8", newline="\n")
     if found is not None:
-        (out / "fidelity-changes.md").write_text(changes_md(found), "utf-8")
+        (out / "fidelity-changes.md").write_text(changes_md(found, tolerance), "utf-8")
     return found

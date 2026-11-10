@@ -75,10 +75,12 @@ BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
 # The one place for the gate's limits. A score (coverage wall, border, floor; fidelity score and spacing, per map and
 # type) may fall up to TOLERANCE percentage points below main's and still pass `--check`: the drop is listed, marked
 # "within tolerance". A fall past it, or a score no longer scored, fails (the PR label coverage-drop-ok accepts it).
-# Why 5: artefact drops, where a legitimate change to one piece moves a neighbour's tile, were 1-4 points in the last
-# session (fallengardens treeline spacing 16.9% -> 15.8%, -1.1, failed #775 with no cause behind it); the old 1.0 made
-# every PR a manual round. 5 passes those and still fails the real losses (a wrong-height regression moved walls 20+).
-TOLERANCE = 5.0
+# Why 3, from the drops of #775, #781 and #753: the artefacts (a legitimate change to one piece moves a neighbour's
+# tile: fallengardens treeline spacing -1.1 in #775, wall spacing -1.3 to -2.9 and fortress border -1.1 to -1.6 in
+# #781, pillar spacing -2.0 to -2.4 in #753) ran -1.1 to -2.9; the real regressions ran from -3.6 (throne2 pillar
+# spacing, piling from bars(), #753) up to -13 (Torture Halls spacing). The old 1.0 failed every artefact, a manual
+# round each; 3 passes all of them and fails the smallest real regression seen.
+TOLERANCE = 3.0
 # D2R 93847's largest stock presets: act4/diab/dungrm6b.json, 6.1 MB; act2/town/lutw.json, 5642 entities
 STOCK_BYTES = 6_100_000
 STOCK_ENTITIES = 5642
@@ -433,16 +435,21 @@ def drop_rows(found: list[Change], fchanges: list, tolerance: float = TOLERANCE,
     scores and spacings (`fchanges`: every pd2_fidelity.Change, drops or not). `status` is "drop" past the tolerance
     or when no longer scored, else "within tolerance". With `rows` (map -> type -> TypeScore) and `tiles` (main's
     pd2_fidelity.read_tiles) a fidelity row also names what its dropped tiles are against main (#800)."""
-    def status(old, new, small=False) -> str:
-        if new is not None and old - new <= tolerance:
+    def status(old, new, none_drops: bool, small: bool = False) -> str:
+        """The rules of changes(): past the tolerance drops; a score gone drops only where `none_drops`; a small
+        map's spacing never drops (SMALL when it fell past the tolerance)."""
+        if new is None:
+            return DROP if none_drops else SMALL if small else WITHIN
+        if old - new <= tolerance:
             return WITHIN
-        return SMALL if small and new is not None else DROP
+        return SMALL if small else DROP
     out = []
     for c in found:
+        gone = c.wall[1] is None  # the preset is no longer scored
         for kind, (old, new) in (("wall", c.wall), ("border", c.border), ("floor", c.floor)):
             if _fell(old, new, 0):
                 out.append(DropRow(c.name, f"coverage {kind}", old, new, None if new is None else round(new - old, 1),
-                                   status(old, new)))
+                                   status(old, new, gone or kind == "border")))  # a border no longer scored drops
     import pd2_fidelity
     for c in fchanges:
         for metric, (old, new) in ((c.kind, c.score), (c.kind + " spacing", c.spacing)):
@@ -451,9 +458,10 @@ def drop_rows(found: list[Change], fchanges: list, tolerance: float = TOLERANCE,
                 now = (rows or {}).get(c.name, {}).get(c.kind)
                 kinds = "-"
                 if now is not None and tiles is not None:
-                    kinds = pd2_fidelity.kinds_text(pd2_fidelity.classify_drop(spacing, now, tiles.get((c.name, c.kind))))
+                    kinds = pd2_fidelity.kinds_text(pd2_fidelity.classify_drop(spacing, now, tiles.get((c.name, c.kind), {})))  # no line: main's pair was perfect
                 out.append(DropRow(c.name, f"fidelity {metric}", old, new, None if new is None else round(new - old, 1),
-                                   status(old, new, spacing and getattr(c, "small", False)), kinds))
+                                   status(old, new, c.drop and not (spacing and getattr(c, "small", False)),
+                                          spacing and getattr(c, "small", False)), kinds))
     return out
 
 
@@ -484,7 +492,8 @@ def drop_md(rows: list[DropRow], tolerance: float = TOLERANCE) -> str:
     return "\n".join(lines) + "\n"
 
 
-def report(scores: list[Score], commit: str = "", found: list[Change] | None = None) -> str:
+def report(scores: list[Score], commit: str = "", found: list[Change] | None = None,
+           tolerance: float = TOLERANCE) -> str:
     """The markdown report, worst first: presets with a border by border score, then the rest by wall score."""
     pct = lambda v: "-" if v is None else f"{100 * v:.1f}%"  # noqa: E731
     lines = ["# HD preset coverage" + (f" ({commit})" if commit else ""), "",
@@ -496,7 +505,7 @@ def report(scores: list[Score], commit: str = "", found: list[Change] | None = N
              "| Entities | Images |",
              "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     if found is not None:
-        lines[2:2] = [changes_md(found), ""]
+        lines[2:2] = [changes_md(found, tolerance), ""]
     for s in sorted(scores, key=_key):
         img = (f"[walls]({s.name}_walls.png) [floor]({s.name}_floor.png)"
                + (f" [border]({s.name}_border.png)" if s.ring is not None else ""))
@@ -588,8 +597,8 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
                 (out / name).write_bytes(image)
     found = None if base is None else changes(scores, base, tolerance)
     if found is not None:
-        (out / "changes.md").write_text(changes_md(found), "utf-8")
-    (out / "report.md").write_text(report(scores, commit, found), "utf-8")
+        (out / "changes.md").write_text(changes_md(found, tolerance), "utf-8")
+    (out / "report.md").write_text(report(scores, commit, found, tolerance), "utf-8")
     FIDELITY_ROWS.clear()
     FIDELITY_ROWS.update({s.name: s.fidelity for s in scores})
     ffound = fidelity.write(out, FIDELITY_ROWS, commit, fbase, tolerance)
@@ -669,6 +678,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"pd2_coverage: fidelity dropped on {len(fdrops)} (map, type) scores: "
               + ", ".join(f"{k} {n}" for k, n in pd2_fidelity.by_type(fdrops).items()))
     rows = drop_rows(found, FIDELITY_CHANGES, a.tolerance, FIDELITY_ROWS, tbase)
+    (a.out / "drops.md").unlink(missing_ok=True)  # a rerun with no falls must not leave the last run's table
     if rows:
         print(drop_table(rows))
         (a.out / "drops.md").write_text(drop_md(rows, a.tolerance), "utf-8")  # the step summary's drop table
