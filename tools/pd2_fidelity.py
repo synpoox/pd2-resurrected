@@ -215,7 +215,8 @@ def expected_class(kind: str, t: tuple, px: int) -> str | None:
     if kind == "water":
         return None
     name = (t[0] or "").rsplit("/", 1)[-1].lower()
-    return "low" if kind == "fence" or (kind == "wall" and (
+    tall_fence = kind == "fence" and TALL_FENCE.search((t[0] or "").lower().replace("\\", "/"))  # #787: 256-288 px
+    return "low" if (kind == "fence" and not tall_fence) or (kind == "wall" and (
         px < LOW_PX or coverage.LOW_EDGE.search(name) or LOW_NAME.search(name))) else "tall"
 
 

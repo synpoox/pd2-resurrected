@@ -72,6 +72,13 @@ class WallCover(unittest.TestCase):
         self.assertEqual(self.cover(keys, h, piece("act1/outdoors/fences", 1, 9, 2.0)), {(0, 0)})
         self.assertEqual(self.cover(keys, h, piece("act1/outdoors/fences", 1, 9, 5.0)), set())
 
+    def test_tall_fence_dt1_expects_a_tall_piece(self):
+        for dt1_path in ("act1/barracks/barset.dt1", "act1/graveyrd.dt1", "act4/mesa/a5_chain_walls.dt1"):
+            keys, h = {(0, 0): w(dt1_path)}, heights(**{dt1_path: 288})
+            self.assertEqual(self.cover(keys, h, piece("act1/barracks/jail", 1, 9, 5.0)), {(0, 0)}, dt1_path)
+            self.assertEqual(self.cover(keys, h, piece("act1/barracks/jail", 1, 9, 2.0)), set(), dt1_path)
+        self.assertEqual(F.expected_class("fence", (FENCE, 1, 0, 0), 160), "low")
+
     def test_tall_wall_needs_a_tall_piece(self):
         keys, h = {(0, 0): w(WALLS)}, heights(**{WALLS: 288})
         self.assertEqual(self.cover(keys, h, piece("act1/cathedrl/walls", 1, 9, 5.0)), {(0, 0)})
