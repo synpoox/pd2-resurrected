@@ -73,6 +73,32 @@ def pd2_only_presets(out_data: Path, d2r_lvlprest: int) -> list[tuple[str, str, 
     return out
 
 
+def wall_pass(on_d2r: list, tiles: "Tiles", pd2_tiles: "Tiles", out_data: Path, d2r_data: Path, tiles_dir: Path,
+              stock: list) -> None:
+    """Give the wall pass (passes/edges_walls) what only the merge has: each DS1 named by its own DT1s, their heights
+    and D2R's model boxes. Without D2R's model boxes (dev builds) there is no wall pass."""
+    import pd2_coverage as coverage
+    import pd2_fidelity as fidelity
+    from .passes import edges_walls
+    models = d2r_data / coverage.MODELS
+    if not models.is_file():
+        return
+    found = coverage.model_boxes(models.read_bytes())
+
+    @functools.cache
+    def prefab(path: str) -> list[dict]:
+        f = d2r_data / path.removeprefix("data/")
+        return json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
+    heights = fidelity.Heights(out_data / "global" / "tiles", tiles_dir)
+    far = far_off(d2r_data)
+    for _, _, files, ds1s in on_d2r:
+        for ds1 in ds1s:
+            legacy = layout((out_data / "global" / "tiles" / ds1).read_bytes(),
+                            {p: pd2_tiles[p] or tiles[p] for p in files})
+            edges_walls.configure(ds1, edges_walls.Context(legacy, heights, lambda m: found.get(coverage.fnv(m)),
+                                                           prefab, stock, far))
+
+
 def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/presets-hd.tsv (see the module docstring)."""
     sets, standins, water_rule = read_rule(rule)
@@ -127,6 +153,8 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         preset[GROUND] = terrain_ground.of_preset(preset, d2r_data)
         stock.append((layout(data, tiles.of(listed)), preset, set(listed)))
         kit.add(*stock[-1][:2], keep, waypoints(data, stock_classes), alike=frozenset(loaded))
+
+    wall_pass(on_d2r, tiles, pd2_tiles, out_data, d2r_data, tiles_dir, [(lay, p) for lay, p, _ in stock])
 
     @functools.cache
     def prefab(path: str) -> list[tuple[float, float]]:
