@@ -343,6 +343,8 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
     with this key that saw what roots (the project, and D2R's tables as "d") hold now. A miss is kept. True on a hit."""
     gen, home, top = roots["p"] / "generated", cache / key_, _roots(roots)
     for e in sorted(home.iterdir()) if home.is_dir() else []:
+        if ".tmp" in e.name or ".dead." in e.name:  # another run's keep or delete in progress, not an entry
+            continue
         try:
             m = json.loads((e / "manifest.json").read_text("utf-8"))
             if all(_state(top, k) == v for k, v in m["reads"].items()):
@@ -359,8 +361,8 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
                     (gen / d).rmdir()
                 sys.stdout.write(m["stdout"])
                 return True
-        except OSError:  # being kept or pruned by another run (its tmp folder has no manifest): a run of the rule
-            continue  # rewrites whatever a part replay copied, as it writes the same files
+        except (OSError, ValueError, KeyError):  # deleted or unreadable (OSError), a damaged manifest (the others): a
+            continue  # run of the rule rewrites whatever a part replay copied, as it writes the same files
     global _trace
     _hook()
     files0, dirs0 = _snapshot(gen)
@@ -387,7 +389,8 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
         for f in m["files"]:
             (tmp / "files" / f).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(gen / f, tmp / "files" / f)
-        (tmp / "manifest.json").write_text(json.dumps(m), "utf-8")
+        (tmp / "manifest.tmp").write_text(json.dumps(m), "utf-8")
+        os.replace(tmp / "manifest.tmp", tmp / "manifest.json")  # whole or absent, whatever reads this folder
         os.rename(tmp, home / name)
         used.append(home / name)
     except OSError as e:  # FileExistsError: another run kept the same reads; anything else only costs a later hit
@@ -401,21 +404,36 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
     return False
 
 
-def _delete(e: Path) -> None:
+def _delete(e: Path) -> bool:
     """Remove entry e atomically: rename it away first, so a replay of e sees it whole or gets an OSError (and runs
-    the rule), never half of it; then delete the renamed folder."""
+    the rule), never half of it; then delete the renamed folder. False if it is still there (in use by a replay)."""
     dead = e.with_name(f"{e.name}.dead.{os.getpid()}")
     try:
         os.rename(e, dead)
+    except PermissionError:  # a replay has files of it open: it stays
+        print(f"kept {e} (in use)")
+        return False
     except OSError:  # gone already (another run deleted it): nothing to do
-        return
+        return True
     shutil.rmtree(dead, ignore_errors=True)
+    return True
+
+
+def _newest(p: Path) -> float:
+    """The newest modified time of folder p or anything in it (a deep copy into it does not touch p itself)."""
+    t = p.stat().st_mtime
+    for top, ds, fs in os.walk(p):
+        for n in [*ds, *fs]:
+            with contextlib.suppress(OSError):
+                t = max(t, os.stat(os.path.join(top, n)).st_mtime)
+    return t
 
 
 def touches(e: Path, prefix: str) -> bool:
-    """Whether entry e writes a file under prefix (a path from generated/, e.g. "data/global/excel/")."""
+    """Whether entry e writes, removes or removes a folder under prefix (a path from generated/, e.g. "data/global/excel/")."""
     try:
-        return any(f.startswith(prefix) for f in json.loads((e / "manifest.json").read_text("utf-8"))["files"])
+        m = json.loads((e / "manifest.json").read_text("utf-8"))
+        return any(f.startswith(prefix) for f in [*m["files"], *m["removed"], *m["rmdirs"]])
     except (OSError, ValueError, KeyError):
         return False
 
@@ -437,8 +455,12 @@ def prune(cache: Path, cap: int, keep_s: float = 900, legacy: bool = False) -> l
     too) until the rest fit in cap bytes. One used in the last keep_s seconds stays: a run may be replaying it. merge/
     is left alone by default: an older tool copies a folder there without marking it used."""
     for e in cache.glob("rules/*/*"):  # leftovers of a run killed mid-keep or mid-delete
-        if (".dead." in e.name or ".tmp" in e.name) and time.time() - e.stat().st_mtime > keep_s:
-            shutil.rmtree(e, ignore_errors=True)
+        if ".dead." in e.name or ".tmp" in e.name:
+            try:  # a folder another run is still filling or deleting has a recent file in it
+                if time.time() - _newest(e) > keep_s:
+                    shutil.rmtree(e, ignore_errors=True)
+            except OSError:  # vanished meanwhile
+                continue
     entries = []
     for e in [*cache.glob("rules/*/*"), *(cache.glob("merge/*") if legacy else [])]:
         if not e.is_dir() or ".tmp" in e.name or ".dead." in e.name:
@@ -452,8 +474,8 @@ def prune(cache: Path, cap: int, keep_s: float = 900, legacy: bool = False) -> l
     for mtime, b, e in sorted(entries, key=lambda x: x[0]):
         if total <= cap or time.time() - mtime < keep_s:
             break
-        _delete(e)
-        total -= b
-        gone.append(e)
+        if _delete(e):
+            total -= b
+            gone.append(e)
     return gone
 

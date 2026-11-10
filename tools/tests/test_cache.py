@@ -455,13 +455,56 @@ class RaceTests(unittest.TestCase):
         stale = entry.with_name("x.tmp9")
         for d in (dead, stale):
             write(d / "f", "x")
-            os.utime(d, (time.time() - 7200,) * 2)
+            for q in (d, d / "f"):
+                os.utime(q, (time.time() - 7200,) * 2)
         self.assertEqual(pd2_cache.prune(self.cache.parent, 10**9), [])
         self.assertFalse(dead.exists() or stale.exists(), "stale leftovers swept")
         self.assertTrue(entry.is_dir())
         pd2_cache.evict([entry])
         self.assertFalse(entry.exists() or list(self.cache.glob("k/*")))
         pd2_cache.evict([entry])  # already gone: no error
+
+    def test_a_replay_skips_other_runs_tmp_folders_with_a_truncated_manifest(self):
+        entry = self.keep()
+        for name in ("zz.tmp123", "zz.dead.123"):  # a keep mid-write sorts among the entries
+            write(self.cache / "k" / name / "manifest.json", '{"reads": ')
+        (entry / "manifest.json").write_text('{"reads": ', "utf-8")  # and a damaged real entry
+        runs = []
+        with redirect_stdout(io.StringIO()):
+            replayed = pd2_cache.rule(self.cache, "k", {"p": self.root}, lambda: runs.append(1) or write(
+                self.root / "generated" / "data/global/excel/out.txt", "x"))
+        self.assertFalse(replayed)
+        self.assertEqual(runs, [1], "ran the rule, no JSONDecodeError")
+
+    def test_prune_survives_a_leftover_vanishing_and_spares_a_busy_one(self):
+        entry = self.keep()
+        busy = entry.with_name("busy.tmp7")
+        write(busy / "deep/f", "x")
+        os.utime(busy, (time.time() - 7200,) * 2)  # its own mtime is old, a file in it is new
+        ghost = entry.with_name("ghost.tmp8")
+        write(ghost / "f", "x")
+        real = pd2_cache._newest
+
+        def vanish(p):
+            if p == ghost:
+                shutil.rmtree(p)
+            return real(p)
+        with mock.patch.object(pd2_cache, "_newest", vanish):
+            pd2_cache.prune(self.cache.parent, 10**9)
+        self.assertTrue(busy.is_dir() and entry.is_dir())
+
+    def test_delete_that_is_refused_keeps_the_entry_and_is_not_counted_freed(self):
+        entry = self.keep()
+        with mock.patch.object(os, "rename", side_effect=PermissionError), redirect_stdout(io.StringIO()) as out:
+            self.assertFalse(pd2_cache._delete(entry))
+        self.assertIn("in use", out.getvalue())
+        self.assertTrue(entry.is_dir())
+
+    def test_touches_counts_removed_files_and_folders(self):
+        for field in ("removed", "rmdirs"):
+            e = self.cache / field
+            write(e / "manifest.json", json.dumps({"files": [], "removed": [], "rmdirs": [], field: ["data/global/excel/a"]}))
+            self.assertTrue(pd2_cache.touches(e, "data/global/excel/"))
 
     def test_evict_touching_spares_entries_the_check_does_not_read(self):
         tables, other = self.keep("a.txt"), None
