@@ -7,7 +7,8 @@ mod folder as an install lays it out (out/data, modinfo, loader metadata and con
 d2rloader/plugins/, the vanilla tables the loot filter reads from DIR) in dist/mod/, then runs d2rAI-toolkit's
 release/package_release.py with release.toml, and replaces its notes with the changelog's `### <version>` section
 (the README has the requirements and install steps). The version defaults to
-mod.json's; the changelog must have its section.
+mod.json's; the changelog must have its section. Before that it folds the fragments in changelog.d/ into the changelog
+(fold_fragments), so a PR adds a fragment file instead of editing CHANGELOG.md.
 """
 from __future__ import annotations
 
@@ -30,6 +31,43 @@ PLUGINS = ["core-rules", "core-maps", "core-ui"]
 
 class ReleaseError(Exception):
     pass
+
+
+def fold(changelog: str, version: str, fragments: list[str]) -> str:
+    """The changelog with each fragment's bullet lines added at the end of the `### Unreleased` section (else the
+    `### <version> (<date>)` one). A fragment may open with a `#### <Category>` line: its bullets then join that
+    heading's bullets in the section, or start it. Fragments fold in the order given."""
+    m = re.search(rf"^### (?:Unreleased|{re.escape(version)} \(.*?\))[ \t]*\n(.*?)(?=^### |\Z)", changelog, re.M | re.S)
+    if not m:
+        raise ReleaseError(f"CHANGELOG.md has no '### Unreleased' or '### {version} (<date>)' section")
+    body = m.group(1)
+    for text in fragments:
+        lines = [ln for ln in text.strip().splitlines() if ln.strip()]
+        head = lines.pop(0) if lines and lines[0].startswith("#### ") else None
+        if not lines:
+            continue
+        add = "\n".join(lines)
+        if head is None:
+            body = body.rstrip("\n") + "\n" + add + "\n\n"
+            continue
+        h = re.search(rf"^{re.escape(head)}[ \t]*\n(.*?)(?=^#### |\Z)", body, re.M | re.S)
+        if h:
+            body = body[:h.start(1)] + h.group(1).rstrip("\n") + "\n" + add + "\n\n" + body[h.end(1):]
+        else:
+            body = body.rstrip("\n") + f"\n\n{head}\n\n{add}\n\n"
+    return changelog[:m.start(1)] + body.rstrip("\n") + "\n\n" + changelog[m.end(1):]
+
+
+def fold_fragments(root: Path, version: str) -> int:
+    """Fold changelog.d/*.md (by file name) into CHANGELOG.md and delete them; how many were folded."""
+    files = sorted((root / "changelog.d").glob("*.md"))
+    if files:
+        log = root / "CHANGELOG.md"
+        log.write_text(fold(log.read_text("utf-8"), version, [f.read_text("utf-8") for f in files]), "utf-8",
+                       newline="\n")
+        for f in files:
+            f.unlink()
+    return len(files)
 
 
 def notes_section(changelog: str, version: str) -> str:
@@ -95,6 +133,8 @@ def main(argv: list[str] | None = None) -> int:
     mod_json = json.loads((ROOT / "mod.json").read_text("utf-8"))
     version = a.version or mod_json["version"]
     try:
+        if n := fold_fragments(ROOT, version):
+            print(f"changelog: folded {n} fragments from changelog.d/")
         section = notes_section((ROOT / "CHANGELOG.md").read_text("utf-8"), version)
         from modkit.base import Base  # the sibling d2rAI-toolkit on PYTHONPATH
         mod = stage(ROOT, a.out / "mod", Base(a.game).bytes)

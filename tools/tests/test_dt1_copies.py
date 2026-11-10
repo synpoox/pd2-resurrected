@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_dt1_copies as C  # noqa: E402
 import pd2_presets as P  # noqa: E402
-from test_presets import TERRAIN, ds1, stock  # noqa: E402
+from presets_fixtures import TERRAIN, ds1, stock  # noqa: E402
 
 
 def dt1(tiles: list[tuple[tuple[int, int, int], bytes | None]], blocked: set = frozenset()) -> bytes:

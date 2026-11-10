@@ -55,6 +55,39 @@ See SHA256SUMS.
 """
 
 
+class FoldTests(unittest.TestCase):
+    LOG = ("# Changelog\n\n### Unreleased\n\n#### Maps\n\n- A.\n\n#### Items\n\n- B.\n\n"
+           "### 0.1.0 (2026-01-01)\n\n#### Maps\n\n- Old.\n")
+
+    def test_a_fragment_joins_its_categorys_bullets_in_unreleased_only(self):
+        out = release.fold(self.LOG, "0.2.0", ["#### Maps\n- C.\n"])
+        self.assertIn("#### Maps\n\n- A.\n- C.\n\n#### Items\n\n- B.\n\n### 0.1.0", out)
+        self.assertIn("- Old.\n", out)
+
+    def test_a_new_category_is_added_at_the_end_of_the_section(self):
+        out = release.fold(self.LOG, "0.2.0", ["#### Skills\n- D.\n", "- E.\n"])
+        self.assertIn("- B.\n\n#### Skills\n\n- D.\n- E.\n\n### 0.1.0", out)
+
+    def test_a_renamed_section_takes_the_fragments_and_a_missing_one_fails(self):
+        log = self.LOG.replace("Unreleased", "0.2.0 (2026-02-01)")
+        self.assertIn("- C.\n", release.fold(log, "0.2.0", ["#### Maps\n- C.\n"]))
+        with self.assertRaises(release.ReleaseError):
+            release.fold(self.LOG.replace("Unreleased", "Soon"), "0.2.0", ["- C.\n"])
+
+    def test_folding_fragments_deletes_them_in_file_order(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "changelog.d").mkdir()
+            (root / "CHANGELOG.md").write_text(self.LOG, "utf-8")
+            (root / "changelog.d" / "2-b.md").write_text("#### Items\n- Y.\n", "utf-8")
+            (root / "changelog.d" / "1-a.md").write_text("#### Items\n- X.\n", "utf-8")
+            (root / "changelog.d" / ".gitkeep").write_text("", "utf-8")
+            self.assertEqual(release.fold_fragments(root, "0.2.0"), 2)
+            self.assertIn("- B.\n- X.\n- Y.\n", (root / "CHANGELOG.md").read_text("utf-8"))
+            self.assertEqual([f.name for f in (root / "changelog.d").iterdir()], [".gitkeep"])
+            self.assertEqual(release.fold_fragments(root, "0.2.0"), 0)
+
+
 class NotesTests(unittest.TestCase):
     def test_takes_only_the_versions_section(self):
         self.assertEqual(release.notes_section(CHANGELOG, "0.1.0-alpha"), "- First line.\n- Second line.")
