@@ -120,6 +120,11 @@ class Typing(unittest.TestCase):
         self.assertEqual(c("act1/outdoors/rocks.dt1", 1), "wall")
         self.assertEqual(c("act3/jungle/treegrp.dt1", 2), "treeline")
 
+    def test_icecave_interior_is_a_cliff(self):
+        for path in ["expansion/icecave/interior.dt1", "act1/icecave/interior.dt1", "expansion/icecave_interior.dt1"]:
+            self.assertEqual(F.classify(path, 1), "cliff", path)
+        self.assertEqual(F.classify("expansion/icecave/floor.dt1", 1), "wall")
+
     def test_classify_by_orientation(self):
         c = F.classify
         self.assertEqual(c("act3/kurast/walls.dt1", 12), "pillar")
@@ -149,6 +154,43 @@ class Typing(unittest.TestCase):
 
 
 class Legacy(unittest.TestCase):
+    def test_low_or_tall_by_the_dt1s_median_wall_height(self):
+        """Real DT1s (wall-tile heights measured on the PD2 and D2R files): the low families are low, the tall
+        dungeon and keep walls tall, though each mixes 128-192 px pieces in."""
+        def median_of(*pxs):
+            return F.wall_px({(1, i, 0): px for i, px in enumerate(pxs)})
+        low = {"stonewall": [128] + [160] * 26 + [192] * 8 + [224] * 3, "borq4": [128] * 10 + [160] * 11 + [192],
+               "torturehalls/file2": [128] + [160] * 13 + [192] * 10 + [224] + [256], "fence": [160] * 6 + [192] * 17}
+        tall = {"torturehalls/file1": [128] * 3 + [160] * 9 + [192] * 12 + [224] * 5 + [256] * 11 + [288] * 30,
+                "lair_mishift": [160] * 6 + [192] * 4 + [224] * 7 + [256] * 12 + [288] * 5,
+                "baallair/underwall": [160] * 15 + [224] * 6 + [256] * 8 + [288] * 20,
+                "act2/tomb/tomb": [160] * 3 + [288] * 37, "act3/sewer/walls": [192] * 2 + [224] * 9,
+                "jungle/dungeon": [160] * 7 + [192] * 14 + [224] * 50 + [256] * 13,
+                "new_chamb": [128, 160, 192] + [224] * 6 + [288] * 2}
+        for name, pxs in low.items():
+            self.assertEqual(F.expected_class("wall", (f"a/{name}.dt1", 1, 0, 0), median_of(*pxs)), "low", name)
+        for name, pxs in tall.items():
+            self.assertEqual(F.expected_class("wall", (f"a/{name}.dt1", 1, 0, 0), median_of(*pxs)), "tall", name)
+
+    def test_wall_px_counts_wall_orientations_only(self):
+        self.assertEqual(F.wall_px({(1, 0, 0): 160, (2, 0, 0): 288, (3, 0, 0): 288, (12, 0, 0): 900, (14, 0, 0): 900}), 288)
+        self.assertEqual(F.wall_px({(12, 0, 0): 900}), 0)
+
+    def test_legacy_edges_use_the_dt1s_median_not_the_tile(self):
+        keys = {(0, 0): w(WALLS, 1, 0), (1, 0): w(WALLS, 1, 1)}
+        h = {WALLS: {(1, 0, 0): 128, (1, 1, 0): 288, (2, 0, 0): 288, (3, 0, 0): 288}}
+        self.assertEqual(F.legacy_edges(lay(keys), h)["wall"], {(0, 0): "tall", (1, 0): "tall"})
+
+    def test_heights_fall_back_to_the_next_folder(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            (Path(a) / "x.dt1").write_bytes(dt1([(1, 0, 0, 160)]))
+            (Path(b) / "x.dt1").write_bytes(dt1([(1, 0, 0, 999)]))
+            (Path(b) / "y.dt1").write_bytes(dt1([(1, 0, 0, 288)]))
+            h = F.Heights(Path(a), Path(b))
+            self.assertEqual(h["x.dt1"], {(1, 0, 0): 160})
+            self.assertEqual(h["y.dt1"], {(1, 0, 0): 288})
+            self.assertEqual(h["z.dt1"], {})
+
     def test_edges_by_type_with_the_tallest_layer(self):
         keys = {(0, 0): w(CLIFF), (1, 0): ("w", ((WALLS, 1, 0, 0), (CLIFF, 1, 0, 0))), (2, 0): w(FENCE),
                 (3, 0): w(WALLS, 12), (4, 0): w(TREES, 14), (5, 0): ("f", ((FLOORS, 0, 0, 0),))}
@@ -261,8 +303,8 @@ class Scoring(unittest.TestCase):
 
 
 class Reports(unittest.TestCase):
-    def rows(self, missing=0) -> F.Rows:
-        s = F.TypeScore(10, {(i, 0) for i in range(missing)})
+    def rows(self, missing=0, n=10) -> F.Rows:
+        s = F.TypeScore(n, {(i, 0) for i in range(missing)})
         return {"mapa": {"wall": s, "floor": F.TypeScore(20, scored=False)}}
 
     def test_baseline_roundtrip(self):
@@ -270,8 +312,8 @@ class Reports(unittest.TestCase):
         self.assertEqual(F.read_baseline(text), {("mapa", "wall"): (80.0, 100.0), ("mapa", "floor"): (100.0, None)})
 
     def test_changes_flag_drops_per_type(self):
-        base = F.read_baseline(F.baseline_text(self.rows(0)))
-        found = F.changes(self.rows(3), base)
+        base = F.read_baseline(F.baseline_text(self.rows(0, F.MIN_TILES)))
+        found = F.changes(self.rows(3, F.MIN_TILES), base)
         self.assertEqual([(c.name, c.kind, c.drop) for c in found], [("mapa", "wall", True)])
         self.assertEqual(F.by_type(found), {"wall": 1})
         self.assertIn("wall 1", F.changes_md(found))
@@ -285,6 +327,11 @@ class Reports(unittest.TestCase):
     def test_a_type_no_longer_scored_drops_and_a_new_one_does_not(self):
         found = F.changes(self.rows(0), {("mapa", "pillar"): (90.0, 100.0), ("mapa", "wall"): (100.0, 100.0)})
         self.assertEqual({(c.kind, c.drop) for c in found}, {("pillar", True), ("floor", False)})
+
+    def test_a_small_type_never_drops(self):
+        rows = {"m": {"fence": F.TypeScore(F.MIN_TILES - 1, missing={(0, 0)}), "wall": F.TypeScore(F.MIN_TILES, missing={(0, 0)})}}
+        base = {("m", "fence"): (100.0, 100.0), ("m", "wall"): (100.0, 100.0)}
+        self.assertEqual({(c.kind, c.drop) for c in F.changes(rows, base)}, {("fence", False), ("wall", True)})
 
     def test_unchanged_reports_nothing(self):
         base = F.read_baseline(F.baseline_text(self.rows(1)))

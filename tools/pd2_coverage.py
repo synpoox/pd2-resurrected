@@ -434,7 +434,7 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
     def box(path: str):
         return found.get(fnv(path))
     tiles, pd2_tiles = presets.Tiles(d2r / "global" / "tiles"), presets.Tiles(data / "global" / "tiles")
-    heights = fidelity.Heights(data / "global" / "tiles")
+    heights = fidelity.Heights(data / "global" / "tiles", d2r / "global" / "tiles")
     out.mkdir(parents=True, exist_ok=True)
     scores, seen = [], set()
     for area, _, files, ds1s in presets.pd2_only_presets(data, len(load(d2r, "lvlprest").records())):
@@ -453,7 +453,7 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
             wrong = wrong_tiles(entities, box, prefab, walkable_floor(lay) & flat)
             s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab), wrong)
             s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
-            legacy = presets.layout((data / "global" / "tiles" / ds1).read_bytes(), pd2_tiles.of(files))  # PD2's DT1s
+            legacy = presets.layout((data / "global" / "tiles" / ds1).read_bytes(), {p: pd2_tiles[p] or tiles[p] for p in files})  # PD2's DT1s, else D2R's own
             s.fidelity = fidelity.score_map(legacy, heights, fidelity.hd_pieces(entities, box, prefab), s.floors,
                                             set(s.floor_bare), set(s.floor_wrong))
             scores.append(s)

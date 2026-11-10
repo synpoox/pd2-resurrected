@@ -13,7 +13,8 @@ Edge types and how legacy tiles are classified (classify, the shared classifier)
 headers (96-byte tile records, as pd2_presets.dt1_tiles reads them: orientation at +20, the tile's pixel height at +8):
 
 - walls, cliffs, fences: a wall orientation (WALL_ORIENT: cliff1/cliff2/final_cliff*/a5_cliff_parts hold only 1-7, 10,
-  11 and the lower variants 16-19; fence, stonewall, stone_fence and sewerwalls hold 1-7) told apart by the DT1's name
+  11 and the lower variants 16-19; fence, stonewall, stone_fence and sewerwalls hold 1-7; 10 and 11 also appear in
+  warp, waypoint and roof tiles) told apart by the DT1's name
   (INVISIBLE, FENCE, CLIFF; the rest are walls), and a cell with an upper over a lower wall tile is a cliff (cliff_cell);
 - pillars: orientation 12 (pd2_presets.LIKE: "a PD2 DT1's pillar"; stone_fence, sewerchamb and seweritems hold their
   columns there);
@@ -21,10 +22,11 @@ headers (96-byte tile records, as pd2_presets.dt1_tiles reads them: orientation 
   by "tree"); orientation 13 is a tree DT1's shadow (91-120 tiles at height 0 to -128) and is left out;
 - water and lava edges: a wall layer of a river/pond/rivbank/pool DT1 or lava's extwalls/intwalls/rocks (classify), or
   a liquid floor tile (a mostly blocked floor, pd2_painter.blocked_floor, of a liquid DT1) with a 4-neighbour that is
-  not liquid. Not verified: whether a lava DT1 shows up under that name (see the PR).
+  not liquid.
 
-Heights: a legacy tile's pixel height (cliffs 384-480, trees 256-480, walls 128-288, fences 160-192) is low below
-LOW_PX or when the DT1 is a fence/stone wall by name (pd2_coverage.LOW_EDGE: low by design), else tall. A piece's
+Heights: a wall's height class comes from its DT1, not the single tile (wall_px: the median pixel height of the DT1's
+wall tiles): low when that is under LOW_PX (see there) or the DT1 is a fence/stone wall by name
+(pd2_coverage.LOW_EDGE: low by design), else tall. Cliffs and trees are always tall (384-480, 256-480 px). A piece's
 height is its model box top (pd2_coverage.boxes): flat below pd2_coverage.LOW, low below TALL, else tall.
 
 HD pieces are typed by their model's file name (model_type). A tall piece of no edge type is "other": it counts as
@@ -68,16 +70,24 @@ FENCE = re.compile(r"fence|chain_walls|foregate|barset|palisade|picket|graveyrd"
 # fort foregate, barracks barset, outdoors/town fence
 # kurast/travincal terraces, icecave interior, hellcaves, mesa brick_walls; `corner` because corner.dt1 stands in as
 # guild/outdoors/cliff.dt1 (presets-hd.tsv). Approximate: matched by name, not by every PD2 DT1 checked.
-CLIFF = re.compile(r"cliff|corner|terrace|brick_walls|hellcaves|icecave[^/]*interior|interior[^/]*icecave")
+CLIFF = re.compile(r"cliff|corner|terrace|brick_walls|hellcaves|icecave.*interior|interior.*icecave")
 TREE = re.compile(r"tree")  # the jungle's treegrp/treegroups wall lines, trees.dt1 walls
 # river, pond, rivbank and pool wall layers; lava's extwalls and intwalls, and its rocks
 WATER_EDGE = re.compile(r"river|rivbank|pond|pool|extwalls|intwalls|lava[^/]*/rocks|lava.*rocks")
 LIQUID = re.compile(r"water|river|rivbank|pond|pool|swamp|puddle|lake|lava|canal|oasis")  # a blocked floor of these
-LOW_PX = 256  # a wall tile under this many pixels is low (stone walls <= 224, fences <= 192)
+# A wall DT1 is low when the median pixel height of its wall tiles is under LOW_PX, else tall. Measured over the 161
+# PD2 and the stock DT1s: the known low families sit at 160 (stonewall, borq4, torturehalls/file2 and file3) and 192
+# (fence), and every tall dungeon or keep wall at 224 or more (act2/sewer/walls and sewerwalls 224, a4_worldstone 224,
+# new_chamb 224, act3/jungle/dungeon 224, lair_mishift 256, torturehalls/file1 256, dtprivate/underwall 256,
+# act2/tomb/tomb 288, aer_palace 288). A per-tile cutoff does not work: those DT1s mix 128-192 px end pieces in with
+# their walls, and a median over the DT1 sees past them.
+LOW_PX = 224
+LOW_NAME = re.compile(r"barricade")  # a low barricade, by name (median 224 in siege/barricade.dt1: its tiles are mixed)
 HOLE_PAIRS = (((-1, 0), (1, 0)), ((0, -1), (0, 1)), ((-1, -1), (1, 1)), ((-1, 1), (1, -1)))
 CULPRITS = 8  # the folders listed under the all-maps table, per type
 STACK = 2.0  # pieces per tile of an edge run above which they pile on each other (stock walls span 5-10 units)
 TOLERANCE = coverage.TOLERANCE
+MIN_TILES = 20  # a (map, type) with fewer legacy tiles never counts as a drop: one hole moves its spacing by whole points
 STEPS8 = [(i, j) for i in (-1, 0, 1) for j in (-1, 0, 1) if i or j]
 # the HD side: a model is typed by its folder and file name together, as D2R groups its kits in folders
 # (act3_treewall_combined, act4_mesa_cliff_supports, act2_sewer_pillars, expansion_baallair_rails, act2_sewer_walls);
@@ -111,14 +121,15 @@ def dt1_heights(data: bytes) -> dict[tuple[int, int, int], int]:
 
 
 class Heights(dict):
-    """DT1 path -> dt1_heights, read from a folder of tiles on first use (an absent file holds nothing)."""
-    def __init__(self, root: Path):
+    """DT1 path -> dt1_heights, read from the first of the folders of tiles that has the file, on first use (an absent
+    file holds nothing). The merge ships only PD2's own DT1s, so the stock D2R folder comes second."""
+    def __init__(self, *roots: Path):
         super().__init__()
-        self.root = root
+        self.roots = roots
 
     def __missing__(self, path: str) -> dict:
-        f = self.root / path
-        self[path] = dt1_heights(f.read_bytes()) if f.is_file() else {}
+        f = next((r / path for r in self.roots if (r / path).is_file()), None)
+        self[path] = dt1_heights(f.read_bytes()) if f else {}
         return self[path]
 
 
@@ -166,12 +177,21 @@ def tile_type(t: tuple) -> str | None:
     return k if k in EDGES else None
 
 
+def wall_px(tiles: dict) -> int:
+    """The typical wall height of a DT1 (dt1_heights): the median pixel height of its wall-orientation tiles; 0 for
+    a DT1 with none (or an unread one)."""
+    h = sorted(v for k, v in tiles.items() if k[0] in WALL_ORIENT)
+    return h[len(h) // 2] if h else 0
+
+
 def expected_class(kind: str, t: tuple, px: int) -> str | None:
-    """The height class a legacy tile asks of the HD piece: "low" or "tall"; None for water (a surface, no height)."""
+    """The height class a legacy tile asks of the HD piece: "low" or "tall"; None for water (a surface, no height).
+    `px` is the typical wall height of the tile's DT1 (wall_px), see LOW_PX."""
     if kind == "water":
         return None
     name = (t[0] or "").rsplit("/", 1)[-1].lower()
-    return "low" if kind == "fence" or (kind == "wall" and (px < LOW_PX or coverage.LOW_EDGE.search(name))) else "tall"
+    return "low" if kind == "fence" or (kind == "wall" and (
+        px < LOW_PX or coverage.LOW_EDGE.search(name) or LOW_NAME.search(name))) else "tall"
 
 
 def legacy_edges(lay: presets.Layout, heights: dict[str, dict]) -> dict[str, dict[Tile, str | None]]:
@@ -185,11 +205,11 @@ def legacy_edges(lay: presets.Layout, heights: dict[str, dict]) -> dict[str, dic
                 if (k := tile_type(t)):
                     if k == "wall" and cliff_cell(tiles):
                         k = "cliff"
-                    px = heights[t[0]].get(t[1:], 0)
+                    px = heights[t[0]].get(t[1:], 0)  # the tile's own height ranks the layers of a cell
                     if k not in best or px > best[k][0]:
                         best[k] = (px, t)
         for k, (px, t) in best.items():
-            out[k][c] = expected_class(k, t, px)
+            out[k][c] = expected_class(k, t, wall_px(heights[t[0]]) or px)
     water = {c for c, (kind, tiles) in lay.keys.items() if kind == "f" and any(
         classify(t[0], 0, "floor", painter.blocked_floor(lay.flags.get(c, bytes(25)))) == "liquid" for t in tiles)}
     for c in water:
@@ -370,15 +390,16 @@ class Change:
 
 def changes(rows: Rows, base: dict, tolerance: float = TOLERANCE) -> list[Change]:
     """The (map, type) pairs whose score or spacing differ from the baseline, worst drop first. A pair the baseline
-    has and the run no longer scores is a drop."""
+    has and the run no longer scores is a drop; a pair of under MIN_TILES legacy tiles is never one."""
     now = {(n, k): (pct(s.score), pct(s.spacing)) for n, r in rows.items() for k, s in r.items()}
+    small = {(n, k) for n, r in rows.items() for k, s in r.items() if s.n < MIN_TILES}
     out = []
     for key in sorted(set(now) | set(base)):
         (s0, p0), (s1, p1) = base.get(key, (None, None)), now.get(key, (None, None))
         if key in base and key in now and (s0, p0) == (s1, p1):
             continue
-        drop = key not in now or any(o is not None and n is not None and o - n > tolerance
-                                     for o, n in ((s0, s1), (p0, p1))) or (p0 is not None and p1 is None)
+        fell = any(o is not None and n is not None and o - n > tolerance for o, n in ((s0, s1), (p0, p1)))
+        drop = key not in now or (key not in small and (fell or (p0 is not None and p1 is None)))
         out.append(Change(*key, (s0, s1), (p0, p1), drop))
 
     def worst(c: Change) -> float:
