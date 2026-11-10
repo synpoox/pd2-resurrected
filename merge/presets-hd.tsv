@@ -38,6 +38,7 @@ Borq S13 Map	data/hd/env/biome/act4_mesa.json
 # index, stand in as that tile whatever the line says (pd2_dt1_copies)
 # a1_ruinwall: no D2R tile has its index and subtile flags
 pd2assets/a1_ruinwall.dt1	-
+# A line under a quarter needs a third tab column, `# reason`; tools/pd2_presets_lint.py (gate job) checks every line
 pd2assets/a3_altar.dt1	act1/cathedrl/alter.dt1
 pd2assets/a3_objects.dt1	-
 pd2assets/a4_throne.dt1	expansion/baallair/throne.dt1
@@ -52,21 +53,21 @@ pd2assets/a5_cliff_parts.dt1	-
 pd2assets/a5_floor.dt1	-
 pd2assets/a5_head.dt1	-
 # a5_huts: docktown/huts.dt1 holds 13% of 97 tiles; nothing else is closer in biome (huts)
-pd2assets/a5_huts.dt1	act3/docktown/huts.dt1
-pd2assets/a5_market.dt1	expansion/baallair/floor.dt1
+pd2assets/a5_huts.dt1	act3/docktown/huts.dt1	# docktown/huts.dt1 holds 13% of 97 tiles; nothing else is closer in biome (huts)
+pd2assets/a5_market.dt1	expansion/baallair/floor.dt1	# its copies get baallair/floor.dt1, the D2R home of its floor pixel copies; it renames no tile by index
 pd2assets/a5_palm.dt1	act2/outdoors/palm.dt1
 pd2assets/a5_prickly.dt1	act2/outdoors/prickly.dt1
 # a5_river's best (16 of 45 tiles) is specials.dt1, marker tiles that draw nothing; oasis.dt1's 13 are walkable ground with zero flags, not water, and would rename 7101 tiles of Zhar Rivers: none
 pd2assets/a5_river.dt1	-
 # a5_rogue_encampment_objects: Act 1 camp objects, 12% of 91 tiles (the best by flags) and the closest by biome
-pd2assets/a5_rogue_encampment_objects.dt1	act1/town/objects.dt1
+pd2assets/a5_rogue_encampment_objects.dt1	act1/town/objects.dt1	# Act 1 camp objects, 12% of 91 tiles (the best by flags) and the closest by biome
 pd2assets/a5_rotatedriver.dt1	garden/colossalsummit/floor.dt1
 pd2assets/a5_shack.dt1	act3/docktown/shack.dt1
 # a5_stones: no D2R DT1 holds more than 5 of 41 tiles, and those are bridge pieces
 pd2assets/a5_stones.dt1	-
 pd2assets/a5_trees.dt1	act3/jungle/trees.dt1
 # aer_canal: all floor, one tile a pixel copy of canal.dt1 and none the same index (oasis 8%): canal.dt1, Lut Gholein's canal by biome; it maps no tile by index, so it works like -
-pd2assets/aer_canal.dt1	act2/town/canal.dt1
+pd2assets/aer_canal.dt1	act2/town/canal.dt1	# canal.dt1, Lut Gholein canal by biome; its one pixel copy gets canal.dt1
 # aer_palace and aer_palace2: best is oasis.dt1 with 16% of 117 tiles (oasis water floors, a different look); no palace DT1 shares an index: none
 pd2assets/aer_palace.dt1	-
 pd2assets/aer_palace2.dt1	-
@@ -171,7 +172,7 @@ pd2assets/nakrulabyss/l5_walls.dt1	-
 pd2assets/nemyrmonastery.dt1	expansion/icecave/interior.dt1
 pd2assets/new_chamb.dt1	-
 pd2assets/new_floornew.dt1	-
-pd2assets/new_ground.dt1	expansion/town/ground.dt1
+pd2assets/new_ground.dt1	expansion/town/ground.dt1	# its 160 pixel copies get expansion/town/ground.dt1; it renames no tile by index
 pd2assets/oasiswalkable.dt1	-
 pd2assets/palace_white.dt1	act2/palace/palace.dt1
 pd2assets/pboxwallalt.dt1	-
@@ -181,7 +182,7 @@ pd2assets/psnwell/used/bridgefill.dt1	-
 pd2assets/psnwell/used/den.dt1	act2/maggot/den.dt1
 pd2assets/psnwell/used/psndetail.dt1	-
 # psnwell/used/rivbank: rivbank.dt1 holds the most (89 of 557 tiles, 16%), the same bank art
-pd2assets/psnwell/used/rivbank.dt1	act3/river/rivbank.dt1
+pd2assets/psnwell/used/rivbank.dt1	act3/river/rivbank.dt1	# rivbank.dt1 holds 89 of 557 tiles (16%), the same bank art
 pd2assets/psnwell/used/sewerchamb.dt1	-
 pd2assets/psnwell/used/seweritems.dt1	-
 pd2assets/psnwell/used/sewerradament.dt1	-
