@@ -26,6 +26,7 @@ from ..entity import _transform
 PILLAR = re.compile(r"pillar|column")
 PILLAR_TALL = 4.0  # HD units: as pd2_coverage.TALL, the height a piece hides a wall at, and pd2_fidelity scores tall at
 ORDER = 350  # after the tiles pass, which places the pillars through place()
+STACK = 2  # pillar pieces within two tiles of a lone pillar, past which it would pile (pd2_fidelity.STACK per tile of a run)
 KIND = "pillar"  # the key kind of a stand-alone stock pillar in place()'s kit (never a DS1 key)
 
 

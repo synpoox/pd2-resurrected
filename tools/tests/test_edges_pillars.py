@@ -101,13 +101,45 @@ class PillarTests(unittest.TestCase):
     def test_a_full_tile_stands_its_pillar_at_the_middle(self):
         self.assertEqual(pillars.centre(bytes([1]) * 25), (5.0, 5.0))
 
+    def test_a_wall_bearing_best_key_is_kept_when_stand_ins_exist(self):
+        wall = ("w", ((T, 1, 0, 0),))
+        bar = ("w", ((T, 12, 7, 7),))
+        flags = grid(".....", ".###.", ".###.", ".###.", ".....")
+        kit = P.Kit({wall: [(0, [(entity("wildtemple/pillar01", 0, 0), 5.0, 5.0)])],
+                     bar: [(0, [(entity("wildtemple/wall_bar01", 0, 0), 5.0, 5.0)])]}, [{}], flags={bar: flags})
+        lay = P.Layout(2, 1, {(0, 0): wall, (1, 0): PD2}, {(1, 0): flags})
+        for seed in "abc":
+            self.assertEqual([e["name"] for e in P.place(lay, kit, seed)[0] if at(e)[0] >= 10], ["wildtemple/wall_bar01"])
+
+    def test_a_borrowed_multi_pillar_instance_places_one_piece(self):
+        pillar = ("w", ((T, 12, 4, 5),))
+        row = [(entity("wildtemple/pillar01", 0, 0), x, 5.0) for x in (1.0, 5.0, 9.0)]
+        kit = P.Kit({pillar: [(0, row)]}, [{}], flags={pillar: bytes([1]) * 25})
+        lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 1, 0, 0),)), (1, 0): PD2}, {(1, 0): bytes([1]) * 25})
+        self.assertEqual([at(e) for e in P.place(lay, kit, "s")[0]], [(15.0, 5.0)])
+
+    def test_a_2x2_cluster_stands_one_pillar(self):
+        wall = ("w", ((T, 1, 0, 0),))
+        kit = P.Kit({wall: [(0, [(entity("wildtemple/pillar01", 0, 0), 5.0, 5.0)])]}, [{}])
+        full = bytes([1]) * 25
+        keys = {(0, 0): wall, **{(x, y): PD2 for x in (1, 2) for y in (0, 1)}}
+        lay = P.Layout(3, 2, keys, {(x, y): full for x in (1, 2) for y in (0, 1)})
+        self.assertEqual(len([e for e in P.place(lay, kit, "s")[0] if at(e)[0] >= 10]), 1)
+
+    def test_a_lone_pillar_is_skipped_beside_two_pillar_pieces(self):
+        wall = ("w", ((T, 1, 0, 0),))
+        two = [(entity("wildtemple/pillar01", 0, 0), x, 5.0) for x in (1.0, 9.0)]
+        kit = P.Kit({wall: [(0, two)]}, [{}])
+        lay = P.Layout(2, 1, {(0, 0): wall, (1, 0): PD2}, {(1, 0): bytes([1]) * 25})
+        self.assertEqual([at(e) for e in P.place(lay, kit, "s")[0]], [(1.0, 5.0), (9.0, 5.0)])  # no third beside them
+
     def test_the_fallback_pick_is_salted_with_the_seed(self):
         wall = ("w", ((T, 1, 0, 0),))
         pieces = [(entity(f"wildtemple/pillar0{i}", 0, 0), 5.0, 5.0) for i in range(1, 4)]
         kit = P.Kit({wall: [(0, pieces)]}, [{}])
         flags = bytes([1]) * 25
-        picks = {tuple(e["name"] for e in P.place(P.Layout(2, 1, {(0, 0): wall, (1, 0): PD2}, {(1, 0): flags}), kit, s)[0]
-                       if at(e)[0] >= 10) for s in "abcdefghij"}
+        picks = {tuple(e["name"] for e in P.place(P.Layout(4, 1, {(0, 0): wall, (3, 0): PD2}, {(3, 0): flags}), kit, s)[0]
+                       if at(e)[0] >= 30) for s in "abcdefghij"}
         self.assertGreater(len(picks), 1)
 
 

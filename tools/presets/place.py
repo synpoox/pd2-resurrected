@@ -23,6 +23,12 @@ def structure(ents: list) -> bool:
     return any(STRUCTURE.search(json.dumps(e["components"])) for e, _, _ in ents)
 
 
+def carries(kit: Kit, ents: list) -> bool:
+    """Whether a kit instance holds a wall: a wall or cliff piece (structure), or any other tall piece but a pillar."""
+    return structure(ents) or any(not pillars.is_pillar(kit, e) and (kit.top(e) or 0.0) >= pillars.PILLAR_TALL
+                                  for e, _, _ in ents)
+
+
 def fades(e: dict) -> bool:
     """Whether a piece is see-through in front of the player: a wall that fades, or a low root or foreground wall."""
     return (any(c["type"] == "WallTransparencyComponent" for c in e["components"])
@@ -39,22 +45,27 @@ def like(lay: Layout, kit: Kit, seed: str = "") -> dict[tuple[int, int], Key]:
     (pillars.standing), picked by the seed and its position, if pillars.centre finds a place for it (#714: Torture Halls'
     flesh pillars)."""
     drawn = {t[0] for k in lay.keys.values() for t in k[1] if t}
-    pool = [(k, kit.flags.get(k, bytes(25)), sum(bool(o[1]) for o in v), any(pillars.holds(kit, o[1]) for o in v))
+    pool = [(k, kit.flags.get(k, bytes(25)), sum(bool(o[1]) for o in v), any(pillars.holds(kit, o[1]) for o in v),
+             any(carries(kit, o[1]) for o in v))
             for k, v in kit.instances.items()
             if len(k[1]) == 1 and k[1][0] and k[1][0][1] == LIKE and k[1][0][0] in drawn and any(o[1] for o in v)]
     stand = pillars.stand_keys(kit)
-    out = {}
-    for c, key in lay.keys.items():
+    out, lone = {}, set()
+    for c, key in sorted(lay.keys.items()):
         whole = key in kit.instances or any((key[0], (t,)) in kit.instances for t in key[1])
         if not (pool or stand) or whole or not any(t and t[1] == LIKE for t in key[1]):
             continue
         f = {i for i, v in enumerate(lay.flags.get(c, bytes(25))) if v & 1}
-        fits = [(not pillar, len(f ^ g), -n, k) for k, flags, n, pillar in pool
+        fits = [(not pillar, len(f ^ g), -n, k, wall) for k, flags, n, pillar, wall in pool
                 if 2 * len(f & (g := {i for i, v in enumerate(flags) if v & 1})) >= len(f | g) and f & g]
         best = min(fits) if fits else None
-        if best and (not best[0] or not stand):
+        if fits and (nearest := min(fits, key=lambda t: t[1:3]))[4]:
+            best = nearest  # the nearest footprint carries walls: it keeps them, pillar or not (nemyrmonastery)
+        if best and (not best[0] or not stand or best[4]):
             out[c] = best[3]
-        elif stand and pillars.centre(lay.flags.get(c, bytes(25))):  # no pillar key fits: a stock pillar, or nothing
+        elif stand and pillars.centre(lay.flags.get(c, bytes(25))) and not any(
+                (c[0] + dx, c[1] + dy) in lone for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
+            lone.add(c)  # one lone pillar per cluster of blocked tiles: a 2x2 cluster is one column
             out[c] = stand[zlib.crc32(f"{seed}:{c}:pillar".encode()) % len(stand)]
     return out
 
@@ -71,11 +82,12 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
     side, or stays empty. A `far` edge tile (one whose tree is drawn over no playable ground) picks among those that
     hold a tree (painter.is_tree) first, as a lone rock or shrub is too low to close the border (Frozen Forest,
     #688). A tile the kit has no key for takes its like() key's pick."""
-    entities, used, missing = [], set(), 0
+    entities, used, missing, lone = [], set(), 0, []
     kit = pillars.with_stand_ins(kit, pillars.standing(kit, {t[0] for k in lay.keys.values() for t in k[1] if t}))
     borrow = like(lay, kit, seed)
 
-    def one(x: int, y: int, key: Key, salt: str, at: tuple[float, float] = (0.0, 0.0)) -> bool:
+    def one(x: int, y: int, key: Key, salt: str, at: tuple[float, float] = (0.0, 0.0),
+            lone: tuple[float, float] | None = None) -> bool:
         options = kit.instances.get(key)
         if not options:
             return False
@@ -93,6 +105,12 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
             options = [o for o in options if o[1]] or options
         src, ents = options[zlib.crc32(f"{seed}:{x}:{y}{salt}".encode()) % len(options)]
         used.add(src)
+        if lone:  # a borrowed pillar key stands one pillar, the instance's nearest the tile's blocked centre (as a
+            held = [p for p in ents if pillars.is_pillar(kit, p[0])]  # KIND key), not every column of a stock row
+            if len(held) > 1:
+                cx, cz = lone
+                keep = min(held, key=lambda p: (p[1] - cx) ** 2 + (p[2] - cz) ** 2)
+                ents = [p for p in ents if p is keep or p not in held]
         for e, dx, dz in ents:
             e = copy.deepcopy(e)
             t = _transform(e)
@@ -110,7 +128,23 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
             one(x, y, single, f":{k}")
         if not alone and (x, y) in borrow:
             k = borrow[(x, y)]
-            at = pillars.centre(lay.flags.get((x, y), bytes(25))) if k[0] == pillars.KIND else (0.0, 0.0)
-            alone = [one(x, y, k, ":like", at)]
+            if k[0] == pillars.KIND:  # a lone pillar waits until the walls' own pillar pieces are down
+                lone.append((x, y, k))
+                continue
+            c = pillars.centre(lay.flags.get((x, y), bytes(25))) or (TILE / 2, TILE / 2)
+            alone = [one(x, y, k, ":like", (0.0, 0.0), c)]
         missing += not alone
+    crowd: dict[tuple[int, int], int] = {}  # pillar-model pieces per tile
+    for e in entities:
+        if pillars.is_pillar(kit, e):
+            p = _transform(e)["position"]
+            t = (int(p["x"] // TILE), int(p["z"] // TILE))
+            crowd[t] = crowd.get(t, 0) + 1
+    for x, y, k in lone:  # a lone pillar stands where fewer than STACK pillar pieces are within two tiles of it: more
+        around = sum(crowd.get((x + dx, y + dy), 0) for dx in range(-2, 3) for dy in range(-2, 3))  # would pile (#737)
+        before = len(entities)
+        if around < pillars.STACK and one(x, y, k, ":like", pillars.centre(lay.flags.get((x, y), bytes(25)))):
+            crowd[(x, y)] = crowd.get((x, y), 0) + len(entities) - before
+        else:
+            missing += 1
     return entities, used, missing
