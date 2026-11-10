@@ -77,5 +77,6 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
                                           for p in re.findall(r'"filename"\s*:\s*"([^"]+)"', json.dumps(terrain))]:
         deps.setdefault(kind, {}).setdefault(path.lower(), {"path": path})
     return {"dependencies": {k: list(v.values()) for k, v in deps.items()}, "type": "Preset", "name": name,
-            "entities": entities, "terrain": terrain, "biomeFilename": biome, "perTileBiomeOverrides": [],
+            "entities": entities, "terrain": terrain, "biomeFilename": biome,
+            "perTileBiomeOverrides": b.state.get("floor_ground", {}).get("perTileBiomeOverrides", []),
             "specialTiles": {}}, b.missing
