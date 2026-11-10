@@ -9,10 +9,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]  # labeled: coverage-drop-ok reruns the gate
 
-# One gate per PR: a push cancels the run on the old head (#801). A push to main keeps its own group per commit, so
-# each main commit still uploads its coverage baseline.
+# One gate per PR: a push cancels the run on the old head (#801). push: one group per main commit (each uploads its
+# baseline). A label other than coverage-drop-ok starts a run the job's if: skips: one group per run, so it can't
+# cancel the PR's real gate. Otherwise one group per PR.
 concurrency:
-  group: gate-${{ github.event_name == 'push' && github.sha || github.event.pull_request.number }}
+  group: gate-${{ github.event_name == 'push' && github.sha || (contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) && github.event.label.name != 'coverage-drop-ok') && format('skip-{0}', github.run_id) || github.event.pull_request.number }}
   cancel-in-progress: true
 
 # The merge below takes a slot of the machine-wide semaphore agents' merges use (pd2_cache.Slots, PD2R_MERGE_SLOTS, #760,
