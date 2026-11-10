@@ -8,7 +8,9 @@ class low/tall each tile asks for, #750), finds those the preset does not get ri
 each: one harvested from a stock wall tile of the same orientation (so it is rotated right) and of the asked height
 class, from the tile set's own stock first. A piece covers the tiles under its box, so tiles it covers get no second
 piece (stock spacing, not a piece per tile); a piece whose box would reach walkable floor (a doorway, an arch) is not
-used. Pieces of the wrong class on a tile that gets a replacement are removed. `act4/mesa/inv_wall` is invisible
+used. The fallback past the tile set's own stock keeps to the model folders that stock draws walls from (its act and
+family): a tile with no such piece stays bare rather than get another act's wall. Pieces of the wrong class on a tile
+that gets a replacement are removed, unless one is the only cover on a cliff, pillar, treeline or fence tile. `act4/mesa/inv_wall` is invisible
 in legacy and stays bare. The ground a wall stands on is wall_y(); floor_height (#742, ORDER 900) then lifts it with the plane under its tile.
 
 The pass needs what only the merge knows (the legacy-named layout, DT1 heights, D2R's model boxes): apply() calls
@@ -16,6 +18,7 @@ configure() per DS1. A build with no configure() runs no wall pass.
 """
 from __future__ import annotations
 
+import collections
 import copy
 import zlib
 from dataclasses import dataclass
@@ -41,7 +44,7 @@ class Context:
 
 
 CONTEXT: dict[str, Context] = {}  # DS1 path (Build.seed) -> its Context
-_INDEX: dict[tuple, dict] = {}
+_INDEX: dict[tuple, tuple] = {}  # stock ids -> (the presets, held so an id is never reused; its index)
 
 
 def configure(ds1: str, ctx: Context) -> None:
@@ -74,8 +77,9 @@ def index(stock: list, ctx: Context) -> dict[int, list[Option]]:
     import pd2_coverage as coverage
     import pd2_fidelity as fid
     key = tuple(id(p) for _, p in stock)
-    if key in _INDEX:
-        return _INDEX[key]
+    held = _INDEX.get(key)
+    if held and all(a is p for a, (_, p) in zip(held[0], stock)):
+        return held[1]
     out: dict[int, list[Option]] = {}
     for lay, preset in stock:
         ground = preset.get(GROUND)
@@ -104,8 +108,18 @@ def index(stock: list, ctx: Context) -> dict[int, list[Option]]:
                 continue
             out.setdefault(tiles[1][0][1], []).append(
                 Option(e, x - c[0] * TILE, z - c[1] * TILE, y - g, cls, foot, preset["dependencies"]))
-    _INDEX[key] = out
+    _INDEX[key] = (tuple(p for _, p in stock), out)
     return out
+
+
+def folder(e: dict) -> str:
+    return model(e).rsplit("/", 1)[0]
+
+
+def families(stock: list) -> set[str]:
+    """The model folders the stock presets draw walls from: the act and family a map's own stock uses."""
+    import pd2_fidelity as fid
+    return {folder(e) for _, p in stock for e in p["entities"] if model(e) and fid.model_type(model(e)) == "wall"}
 
 
 def pick(options: list[Option], want: str, c: tuple, bad: set, covered: set, blocked: set, seed: str) -> Option | None:
@@ -123,19 +137,33 @@ def pick(options: list[Option], want: str, c: tuple, bad: set, covered: set, blo
     return best[1] if best else None
 
 
+COVER = ("cliff", "pillar", "treeline", "fence")  # the other edge types a wall piece's box may be the only cover of
+
+
 def trim(b, ctx: Context, legacy: dict) -> list[dict]:
     """b.loose without the wall pieces too tall for the tiles under their box: a piece whose box covers a legacy wall
-    tile that asks for a low wall, and none that asks for a tall one. The fill then stands low pieces there."""
+    tile that asks for a low wall, and none that asks for a tall one. The fill then stands low pieces there. A piece
+    stays when it is the only piece on a legacy cliff, pillar, treeline or fence tile. The top is measured from the
+    ground wall_y() gives, as index() measures a stock piece from its own."""
     import pd2_coverage as coverage
     import pd2_fidelity as fid
+    other: set = set()
+    for kind, tiles in fid.legacy_edges(ctx.legacy, ctx.heights).items():
+        if kind in COVER:
+            other |= set(tiles)
+    seen = {id(e): list(coverage.boxes([e], ctx.box, ctx.prefab)) for e in b.entities + b.loose}
+    count = collections.Counter(c for found in seen.values() for f in found for c in coverage.footprint([f]))
     keep = []
     for e in b.loose:
         if fid.model_type(model(e)) == "wall":
-            found = list(coverage.boxes([e], ctx.box, ctx.prefab))
-            if len(found) == 1 and fid.hd_class(found[0][4]) == "tall":
-                want = {legacy[c] for c in coverage.footprint([found[0]]) if c in legacy}
-                if want == {"low"}:
-                    continue
+            found = seen[id(e)]
+            if len(found) == 1:
+                x0, x1, z0, z1, top, _ = found[0]
+                if fid.hd_class(top - wall_y(b, (x0 + x1) / 2, (z0 + z1) / 2)) == "tall":
+                    foot = coverage.footprint([found[0]])
+                    want = {legacy[c] for c in foot if c in legacy}
+                    if want == {"low"} and not any(c in other and count[c] == 1 for c in foot):
+                        continue
         keep.append(e)
     return keep
 
@@ -155,9 +183,17 @@ def run(b) -> None:
     bad = score.missing | score.wrong_type | score.wrong_height
     if not bad:
         return
-    own, every = index(b.stock, ctx), index(ctx.stock, ctx)
+    own = index(b.stock, ctx)
+    family = families(b.stock)
+    every = {o: [x for x in opts if folder(x.ent) in family] for o, opts in index(ctx.stock, ctx).items()}
     blocked = walkable(ctx.legacy)
     covered: set = set()
+    area, near, good = {}, collections.defaultdict(int), collections.defaultdict(set)
+    for k, run in enumerate(fid.runs(set(legacy))):  # per edge run: the wall pieces by it and the tiles it has, as score_type counts
+        around = run | {(x + dx, y + dy) for x, y in run for dx, dy in fid.STEPS8}
+        area |= {c: k for c in run}
+        near[k] = sum(p in around for p in hd.centres["wall"])
+        good[k] = {c for c in run if c in hd.tops["wall"]}
     added: list[dict] = []
     for c in sorted(bad):
         if c in covered:
@@ -172,6 +208,12 @@ def run(b) -> None:
                   or pick(every.get(o, []), want, c, bad, covered, blocked, b.seed))
         if choice is None:
             continue
+        k = area[c]
+        gained = good[k] | {(c[0] + i, c[1] + j) for i, j in choice.foot if (c[0] + i, c[1] + j) in legacy}
+        if near[k] + 1 > fid.STACK * max(len(gained), 1):  # one more piece would pile on the run's own
+            continue
+        near[k] += 1
+        good[k] = gained
         e = copy.deepcopy(choice.ent)
         t = _transform(e)
         t["position"]["x"], t["position"]["z"] = c[0] * TILE + choice.dx, c[1] * TILE + choice.dz
