@@ -156,6 +156,18 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(preset, P.build(target, kit, "m", "m.ds1", "b.json", TERRAIN)[0])  # the same every build
 
 
+    def test_an_indoor_map_takes_no_plants_from_an_outdoor_stock_room(self):
+        # Kurast's sewer entrances share the sewers' floor tiles and hold banyans (#707)
+        lay = P.Layout(1, 1, {(0, 0): ("f", (FLOOR,))})
+        kit = P.Kit()
+        kit.add(lay, {"dependencies": {}, "entities": [entity("banyan_tree", 3.0, 4.0), entity("sack", 4.0, 4.0)]},
+                {("f", (FLOOR,))}, outdoor=True)
+        kit.add(lay, {"dependencies": {}, "entities": [entity("courtyard_palm", 3.0, 4.0)]}, {("f", (FLOOR,))},
+                outdoor=False)
+        names = [[e["name"] for e, _, _ in ents] for _, ents in P.indoor(kit).instances[("f", (FLOOR,))]]
+        self.assertEqual(names, [["sack"], ["courtyard_palm"]])
+        self.assertEqual(len(kit.instances[("f", (FLOOR,))][0][1]), 2)  # the outdoor kit keeps its banyan
+
     def test_a_far_anchored_piece_on_a_floor_tile_stays_out_of_the_kit(self):
         # D2R's townwest anchors its stairs on a plain ground tile, 4 tiles off their mesh (#679)
         lay = P.Layout(2, 1, {(0, 0): ("f", (FLOOR,)), (1, 0): ("w", (A,))})
