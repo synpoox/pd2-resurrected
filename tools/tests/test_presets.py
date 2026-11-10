@@ -451,6 +451,46 @@ class LayerTests(unittest.TestCase):
         self.assertFalse(stream & P.painter.playable(lay))  # no walkable floor next to it: border ground
         self.assertTrue(stream <= P.painter.playable(lay, frozenset({"act3/river/rivbank.dt1"})))
 
+    def test_a_pd2_pillar_tile_without_a_stand_in_borrows_the_stock_pillar_of_its_footprint(self):
+        T = "expansion/wildtemple/interior.dt1"
+        short, tall = ("w", ((T, 12, 4, 3),)), ("w", ((T, 12, 4, 5),))
+        solid, ring = bytes([1]) * 25, bytes(12) + bytes([1]) + bytes(12)  # a full tile, and a pillar on its centre subtile
+        kit = P.Kit({short: [(0, [(entity("short01", 0, 0), 5.0, 5.0)])], tall: [(0, [(entity("tall01", 0, 0), 5.0, 5.0)])]},
+                    [{}], flags={short: solid, tall: ring})
+        pd2 = ("w", (("pd2assets/torturehalls/file2.dt1", 12, 9, 1),))
+        lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 1, 0, 0),)), (1, 0): pd2}, {(0, 0): solid, (1, 0): ring})
+        ents, _, missing = P.place(lay, kit, "s")
+        self.assertEqual([(e["name"], P._transform(e)["position"]["x"]) for e in ents], [("tall01", 15.0)])
+        self.assertEqual(missing, 1)  # (0, 0): no LIKE layer, so it borrows nothing
+
+    def test_a_pd2_tile_whose_footprint_shares_too_little_borrows_nothing(self):
+        T = "expansion/wildtemple/interior.dt1"
+        chair = ("w", ((T, 12, 9, 9),))
+        kit = P.Kit({chair: [(0, [(entity("chair01", 0, 0), 5.0, 5.0)])]}, [{}], flags={chair: bytes(25)})
+        pd2 = ("w", (("pd2assets/torturehalls/file2.dt1", 12, 9, 1),))
+        block = bytes([1]) * 5 + bytes(20)
+        for flags in (bytes(25), block):  # blocks nothing; blocks what the chair (nothing) does not
+            lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 1, 0, 0),)), (1, 0): pd2}, {(1, 0): flags})
+            self.assertEqual(P.place(lay, kit, "s")[0], [])
+
+    def test_the_kit_keeps_the_like_keys_of_the_drawn_dt1s(self):
+        T = "expansion/wildtemple/interior.dt1"
+        lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 12, 4, 5),)), (1, 0): ("w", ((T, 1, 0, 0),))})
+        kit = P.Kit()
+        kit.add(lay, {"dependencies": {}, "entities": [entity("tall01", 3.0, 4.0), entity("rug", 13.0, 4.0)]},
+                set(), alike=frozenset({T}))
+        self.assertEqual(list(kit.instances), [("w", ((T, 12, 4, 5),))])
+
+    def test_build_gives_place_the_maps_subtile_flags(self):
+        T = "expansion/wildtemple/interior.dt1"
+        tall = ("w", ((T, 12, 4, 5),))
+        ring = bytes(12) + bytes([1]) + bytes(12)
+        kit = P.Kit({tall: [(0, [(entity("tall01", 0, 0), 5.0, 5.0)])]}, [{}], flags={tall: ring})
+        lay = P.Layout(2, 1, {(0, 0): ("w", (("pd2assets/torturehalls/file2.dt1", 12, 9, 1),)),
+                              (1, 0): ("w", ((T, 1, 0, 0),))}, {(0, 0): ring})
+        preset, _ = P.build(lay, kit, "m", "m.ds1", "b.json", TERRAIN)
+        self.assertIn("tall01", [e["name"] for e in preset["entities"]])
+
     def test_an_edge_tile_picks_a_kit_instance_that_holds_a_piece(self):
         kit = P.Kit({self.WA: [(0, []), (0, [(entity("wall", 0, 0), 1.0, 1.0)])]}, [{}])
         lay = P.Layout(1, 1, {(0, 0): self.WA})
