@@ -56,7 +56,7 @@ pd2assets/a5_huts.dt1	act3/docktown/huts.dt1
 pd2assets/a5_market.dt1	expansion/baallair/floor.dt1
 pd2assets/a5_palm.dt1	act2/outdoors/palm.dt1
 pd2assets/a5_prickly.dt1	act2/outdoors/prickly.dt1
-# a5_river's best (16 of 45 tiles) is specials.dt1, marker tiles that draw nothing: none
+# a5_river's best (16 of 45 tiles) is specials.dt1, marker tiles that draw nothing; oasis.dt1's 13 are walkable ground with zero flags, not water, and would rename 7101 tiles of Zhar Rivers: none
 pd2assets/a5_river.dt1	-
 # a5_rogue_encampment_objects: Act 1 camp objects, 12% of 91 tiles (the best by flags) and the closest by biome
 pd2assets/a5_rogue_encampment_objects.dt1	act1/town/objects.dt1
@@ -108,6 +108,8 @@ pd2assets/descend/torture.dt1	act1/barracks/torture.dt1
 pd2assets/descend/town_reindexed.dt1	act1/tristram/town.dt1
 pd2assets/descend/treegroups.dt1	guild/outdoors/treegroups.dt1
 pd2assets/descend/trees.dt1	act1/town/trees.dt1
+# diamondgates: 13 of 64 tiles are pixel copies of act4/fort/foregate, which draw whatever the line says; nothing else matches
+pd2assets/diamondgates.dt1	-
 # djinnfloor's best (15 of 45 tiles) is specials.dt1, marker tiles that draw nothing: none
 pd2assets/djinnfloor.dt1	-
 # djinnfloorbloody: best is siege/snow.dt1 with 8% of its tiles: none
@@ -136,6 +138,13 @@ pd2assets/dtprivate/worldstone.dt1	expansion/baallair/worldstone.dt1
 pd2assets/dtprivate/worldstonegray.dt1	-
 pd2assets/ext.dt1	-
 pd2assets/fac5pd2.dt1	-
+# fallengarden*: floor 157 of 198 tiles are pixel copies of baallair/floor, stairs 27 of 81 (26 of sanctuary), water 57 of 58 of docktown/bridge (copies draw whatever the line says);
+# trees 189 of 189 match jungle/trees flags (the line renames them); the 9 wall tiles match nothing
+pd2assets/fallengardenfloor.dt1	-
+pd2assets/fallengardenstairs.dt1	-
+pd2assets/fallengardentrees.dt1	act3/jungle/trees.dt1
+pd2assets/fallengardenwall.dt1	-
+pd2assets/fallengardenwater.dt1	-
 pd2assets/final_cliff1.dt1	act1/outdoors/cliff1.dt1
 pd2assets/final_cliff2.dt1	act1/outdoors/cliff2.dt1
 pd2assets/final_corner.dt1	guild/outdoors/cliff.dt1
