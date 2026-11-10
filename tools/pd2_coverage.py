@@ -4,7 +4,9 @@ Run after pd2_merge.py. Each entity's model box (D2R's data/hd/model_lod_desc.bi
 transforms composed) is placed on the DS1's tiles (pd2_presets.TILE HD units each), giving the tiles under a piece at
 least TALL units high. Per generated preset:
 
-- wall score: the share of DS1 wall tiles (what the automap draws as walls) under a tall piece;
+- wall score: the share of DS1 wall tiles (what the automap draws as walls) under a tall piece (a fence or shore
+  tile, LOW_EDGE: under a LOW piece that is itself a fence or wall, EDGE_PIECE, as stone walls, railings and banks
+  are low by design; grass and rocks on such a tile cover nothing);
 - border score, for a DS1 that draws trees (pd2_presets.draws_trees): the ring of DS1 tiles 4-adjacent to and
   outside pd2_painter.playable() (the map's edge on the automap). A ring tile is covered (under a tall piece), a gap
   (bare), and a leak if the DS1 lets the player walk on it;
@@ -24,13 +26,13 @@ looks, frame rate or collision.
 Size budget: each preset's JSON size and entity count, the presets above STOCK_BYTES or STOCK_ENTITIES (D2R's own
 largest) listed in a "Size budget" section, largest first. Reported, not checked.
 
-Changes against the baseline: BASELINE (docs/coverage-baseline.tsv, `preset <tab> wall % <tab> border % or - <tab>
-floor %`) holds main's scores. The report and <out>/changes.md list each preset whose score moved, a new one, and one
-no longer scored. `--check` fails (exit 1) when a preset's wall, border or floor score drops more than TOLERANCE
-points below the baseline, or a baselined preset is no longer scored. To accept an intended drop (or record a gain),
-run with `--write-baseline` after pd2_merge.py and commit docs/coverage-baseline.tsv with the PR: the drop then shows
-in its diff and review.
-Record gains the same way, or a later drop back to the old score passes unnoticed.
+Changes against the baseline: `--baseline` (`preset <tab> wall % <tab> border % or - <tab> floor %`) holds main's
+scores. The report and <out>/changes.md list each preset whose score moved, a new one, and one no longer scored.
+`--check` fails (exit 1) when a preset's wall, border or floor score drops more than TOLERANCE points below the
+baseline, or a baselined preset is no longer scored. In CI (#723) each push to main writes its scores
+(`--write-baseline`) as the coverage-baseline artifact, and a PR is checked against the latest one, so PRs never
+commit a baseline; the PR label coverage-drop-ok accepts an intended drop. BASELINE (docs/coverage-baseline.tsv) is
+a snapshot for local runs and CI's fallback when main has no artifact; don't update it in a PR.
 Needs model_lod_desc.bin in modkit's cache, else it skips:
 `python -m modkit fetch --prefix data/hd/model_lod_desc.bin`.
 """
@@ -41,6 +43,7 @@ import functools
 import json
 import math
 import os
+import re
 import struct
 import sys
 import zlib
@@ -56,6 +59,10 @@ ROOT = Path(__file__).resolve().parent.parent
 D2R_DATA = Path(os.environ.get("MODKIT_CACHE", toolkit(ROOT) / "d2r-data")) / "93847" / "data"
 MODELS = Path("hd") / "model_lod_desc.bin"
 TALL = 4.0  # HD units: a piece this high hides a wall in game
+# fences and shores are low by design (stone walls, graveyard railings, river banks): a piece this high covers them
+LOW = 1.0
+LOW_EDGE = re.compile(r"fence|stonewall|palisade|picket|graveyrd|river|rivbank|pool|swamp|pond|puddle")
+EDGE_PIECE = re.compile(r"fence|(?<!tree)(?<!tree_)wall|palisade|picket|rail|gate|bank")  # a low edge model, not a tree wall
 ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculpted terrain), not a wall piece
 STRUCTURE = 20.0  # HD units (2 tiles): a tall piece this wide both ways is a structure (stairs, platform), not a prop
 DEPTH = 2  # prefab levels followed
@@ -120,6 +127,22 @@ def boxes(entities: list[dict], box: Callable[[str], tuple | None], prefab: Call
                 yield from boxes(prefab(c["prefab"]), box, prefab, (p, q, s), depth + 1)
 
 
+def low_edge(key) -> bool:
+    """A DS1 tile whose every layer draws a fence or shore DT1 (LOW_EDGE), which a LOW edge piece covers."""
+    return bool(key) and all(t[0] and LOW_EDGE.search(t[0].rsplit("/", 1)[-1]) for t in key[1])
+
+
+def edge_piece(path: str) -> bool:
+    """A model that stands as an edge (EDGE_PIECE: fences, walls, railings, banks), not grass or rocks."""
+    return bool(EDGE_PIECE.search(path.rsplit("/", 1)[-1].lower()))
+
+
+def covered(lay: presets.Layout, found: list[Box], edges: list[Box] = ()) -> set[tuple[int, int]]:
+    """The tiles under a TALL piece (`found`), and the fence and shore tiles (low_edge) under a LOW edge piece
+    (`edges`: the boxes of the edge_piece models)."""
+    return tall_tiles(found) | {c for c in tall_tiles(edges, LOW) if low_edge(lay.keys.get(c))}
+
+
 def tall_tiles(found: Iterator[Box], tall: float = TALL) -> set[tuple[int, int]]:
     """The tiles under the footprint of a box at least `tall` high (room-sized boxes left out)."""
     return footprint(b for b in found if b[4] >= tall and b[1] - b[0] <= ROOM and b[3] - b[2] <= ROOM)
@@ -172,9 +195,8 @@ def wrong_tiles(entities: list[dict], box: Callable[[str], tuple | None], prefab
 
 
 def walkable_floor(lay: presets.Layout) -> set[tuple[int, int]]:
-    """The DS1's walkable floor: floor tiles (no wall), not marked unwalkable, not mostly blocked (water)."""
-    return {c for c, k in lay.keys.items() if k[0] == "f" and c not in lay.unwalkable
-            and not painter.blocked_floor(lay.flags.get(c, bytes(25)))}
+    """The DS1's walkable floor (pd2_presets.walkable, which also decides where a stock room may paste)."""
+    return presets.walkable(lay)
 
 
 @dataclass
@@ -329,7 +351,7 @@ def changes_md(found: list[Change], tolerance: float = TOLERANCE) -> str:
         return "\n".join(lines + ["No preset's coverage changed.", ""])
     lines += [f"{len(found)} presets changed; {drops} dropped by more than the {tolerance:g}-point tolerance or are "
               "no longer scored"
-              + (" (accept an intended drop: `--write-baseline`, commit docs/coverage-baseline.tsv)." if drops else "."),
+              + (" (accept an intended drop: label the PR `coverage-drop-ok`)." if drops else "."),
               "", "| Preset | Wall | Border | Floor | |", "|---|---|---|---|---|"]
     lines += [f"| {c.name} | {cell(*c.wall)} | {cell(*c.border)} | {cell(*c.floor)} | {'**drop**' if c.drop else ''} |"
               for c in found]
@@ -418,7 +440,8 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
                                  presets.stand_in(files, tiles, pd2_tiles, standins))
             preset = json.loads(f.read_text("utf-8"))
             entities = preset["entities"]
-            tall = tall_tiles(boxes(entities, box, prefab))
+            tall = covered(lay, list(boxes(entities, box, prefab)),
+                           list(boxes(entities, lambda f: box(f) if edge_piece(f) else None, prefab)))
             flat = ground_tiles(preset, box, prefab, True) - ground_tiles(preset, box, prefab, False)
             wrong = wrong_tiles(entities, box, prefab, walkable_floor(lay) & flat)
             s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab), wrong)
