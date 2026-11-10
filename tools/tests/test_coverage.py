@@ -96,6 +96,34 @@ class Boxes(unittest.TestCase):
         self.assertAlmostEqual(x1 - x0, 20.0)
 
 
+class OnPlanes(unittest.TestCase):
+    """#742 sinks and raises the ground planes and the pieces on them: heights are measured from the plane."""
+    def preset(self, y: float, *pieces) -> dict:
+        plane = entity(85, 85, "plane", y=y) | {"name": "terrain"}
+        plane["components"][1]["filename"] = f"data/hd/{P.TERRAIN}/plane.model"
+        return {"entities": list(pieces), "terrain": plane}
+
+    def tall(self, preset: dict, models: dict) -> set:
+        return C.tall_tiles(C.boxes(preset["entities"], models.get, lambda p: [], ground=C.plane_ground(preset)))
+
+    def test_wall_on_a_sunken_plane_is_tall(self):
+        wall = entity(25, 25, "cube", y=-6.0)  # top at +2 in the world
+        self.assertEqual(self.tall(self.preset(-6.0, wall), {"cube": CUBE}), {(x, y) for x in (2, 3) for y in (2, 3)})
+        self.assertEqual(C.tall_tiles(C.boxes([wall], {"cube": CUBE}.get, lambda p: [])), set())  # no plane: the world top, +2
+
+    def test_low_piece_on_a_raised_plane_is_not_tall(self):
+        low = entity(25, 25, "low", y=6.0)  # top at +8 in the world
+        models = {"low": (-5.0, 0.0, -5.0, 5.0, 2.0, 5.0)}
+        self.assertEqual(self.tall(self.preset(6.0, low), models), set())
+        self.assertEqual(C.tall_tiles(C.boxes([low], models.get, lambda p: [])), {(x, y) for x in (2, 3) for y in (2, 3)})
+
+    def test_plane_is_per_block_and_prefab_stands_on_its_plane(self):
+        preset = self.preset(-6.0, entity(25, 25, prefab="p", y=-6.0), entity(185, 25, "cube"))  # block 1 has no plane
+        found = C.tall_tiles(C.boxes(preset["entities"], {"cube": CUBE}.get, lambda p: [entity(0, 0, "cube")],
+                                     ground=C.plane_ground(preset)))
+        self.assertEqual(found, {(x, y) for x in (2, 3, 18, 19) for y in (2, 3)})
+
+
 class Tall(unittest.TestCase):
     def test_footprint_and_height(self):
         self.assertEqual(C.tall_tiles(iter([(0.0, 19.0, 0.0, 9.0, 5.0), (50, 59, 50, 59, 3.0)])), {(0, 0), (1, 0)})

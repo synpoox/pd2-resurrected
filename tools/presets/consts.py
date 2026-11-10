@@ -55,6 +55,7 @@ def wet_dt1s(water) -> frozenset:
 
 
 WATER_Y = 0.05  # just over the flat ground plane (y 0), which would hide water at the stock rooms' -5 to 0
+ROOM_PIECE = "pd2r_room:"  # a name prefix of the pieces on pasted rooms' tiles, which the height pass leaves at the room's own ground (0), for the coverage scorer
 STREAM = "pd2r_stream_water"  # the name of the water planes streams() places, for the merge's count
 WATER_RATIO = 2  # a water rectangle longer than this many times its width is split, so its texture stretches less
 FETCH = "python -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/"
