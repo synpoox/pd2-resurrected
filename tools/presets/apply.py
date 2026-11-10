@@ -29,7 +29,7 @@ def read_rule(rule: Path) -> tuple[dict[str, str], dict[str, str | None], dict[s
     sets, standins, water = {}, {}, {}
     for line in rule.read_text("utf-8").splitlines():
         if line and not line.startswith("#"):
-            name, value = line.split("\t")
+            name, value, *_reason = line.split("\t")  # a third column is the line's `# reason` (pd2_presets_lint)
             if name.lower().startswith("water:"):
                 if value not in WATER_SPAN:
                     raise ValueError(f"water line {name}: {value} is no water plane WATER_SPAN knows")
