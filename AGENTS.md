@@ -32,7 +32,7 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 ## Testing in-game
 
 - Game slots (separate game copies for a test, Slot4-8 here) and how to set one up: `docs/agents/game-slots.md`.
-- The game-check recipe (lock, install, cheats, screenshots, unlock, worktree hygiene): `docs/agents/game-check.md`.
+- The game-check recipe (lock, install, cheats, screenshots, unlock, worktree hygiene): `docs/agents/game-check.md`. Remove a worktree only with `tools/worktree_remove.ps1` (never through its junctions).
 - `pd2_extract.py` and `pd2_merge.py` reuse the machine-wide cache in `C:\pd2r-cache` (game-slots.md, "Shared cache"):
   run them as usual, and don't copy `pd2-data/`, `generated/` or `out/` between worktrees.
 - **Read `d2rAI-toolkit/knowledge/cheat-commands.md` before any in-game test.** It lists every D2RLoader console cheat command (spawn items, monsters and objects, set stats and skills, go to any level, unlock waypoints, god mode, and more) and what the item spawn lines did in game: spawn syntax and quality, `idall`, durability reading 0 after a reload, `gold`, cursor and pickup hints. Use them instead of playing to the spot.
