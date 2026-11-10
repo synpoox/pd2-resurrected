@@ -41,6 +41,10 @@ jobs:
           py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
       - name: Table-diff gate
         run: py -3 tools/pd2_diff.py --scope alpha
+      # #786: the presets-hd.tsv stand-in lines (quarter rule, no empty line, no missing DT1); prints tiles renamed per map
+      - name: Stand-in lines lint
+        if: ${{ !cancelled() }}
+        run: py -3 tools/pd2_presets_lint.py
       # LP3c (#672, #681): the no-game coverage report of the generated HD presets, uploaded as an artifact. A push to
       # main uploads its scores as the coverage-baseline artifact; a PR compares against the latest one (#723), so no
       # PR commits a baseline, and fails when a preset's wall, border or floor score drops more than
