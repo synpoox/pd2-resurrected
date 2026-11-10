@@ -32,6 +32,17 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
 5. For a hand test, write the slot, its lock owner and the unlock command into the game-check issue.
 6. `python <toolkit>/testing/game_slots.py unlock <N> <owner>` once the test is done.
 
+## Force a DS1 variant
+
+A level with several DS1 variants rolls one per game, so a warp can land on the wrong layout. After installing the
+slot, pin the level to the variant under test (test-only; it edits the slot's installed `lvlprest.txt`, never `out/`):
+
+    python tools/pd2_force_ds1.py --slot <N> "Dark Temple Map=DarktempleV2.ds1"   # or 200=darktemplev2.ds1, or darktemplev2.ds1
+
+A selector is the lvlprest `Name`, the LevelId or, alone, a DS1 file name; it refuses a DS1 that is not one of that
+row's variants and prints what it changed. Run `--reset` before you unlock the slot (the original is kept as
+`lvlprest.txt.pd2-force-ds1.orig`); reinstalling the slot undoes it as well.
+
 ## Shared cache
 
 `C:\pd2r-cache` (or `PD2R_CACHE`) holds what every worktree would otherwise rebuild (`tools/pd2_cache.py`, #440):
