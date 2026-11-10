@@ -272,6 +272,28 @@ class RuleCacheTests(unittest.TestCase):
                 for m in ("m_one", "m_two"):
                     sys.modules.pop(m, None)
 
+    def test_sources_include_a_package_beside_the_module_and_what_it_imports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            write(tmp / "m_top.py", "from m_pkg.inner import f\ndef g(): pass\n")
+            write(tmp / "m_pkg" / "__init__.py", "")
+            write(tmp / "m_pkg" / "inner.py", "import m_side\ndef f(): pass\n")
+            write(tmp / "m_pkg" / "kit.json", "{}")
+            write(tmp / "m_side.py", "")
+            sys.path.insert(0, str(tmp))
+            try:
+                import m_top
+                found = pd2_cache.sources(m_top.g)
+                self.assertIn(tmp / "m_pkg", found)  # its folder: key() hashes the data file too
+                self.assertIn(tmp / "m_side.py", found)
+                before = pd2_cache.key(found)
+                write(tmp / "m_pkg" / "kit.json", '{"1": 1}')
+                self.assertNotEqual(pd2_cache.key(found), before)
+            finally:
+                sys.path.remove(str(tmp))
+                for m in ("m_top", "m_pkg", "m_pkg.inner", "m_side"):
+                    sys.modules.pop(m, None)
+
     def test_prune_drops_least_recently_used_until_under_the_cap(self):
         with tempfile.TemporaryDirectory() as tmp:
             cache = Path(tmp)
