@@ -61,6 +61,31 @@ def dt1(tiles: list[tuple[int, int, int, int]]) -> bytes:
     return bytes(head + body)
 
 
+class WallCover(unittest.TestCase):
+    """The coverage wall score reads walls by the fidelity height class (#787)."""
+
+    def cover(self, keys: dict, h: dict, *entities: dict, tall: set = frozenset()) -> set:
+        return F.wall_cover(F.legacy_edges(lay(keys), h), pieces(*entities), set(tall))
+
+    def test_low_wall_drawn_low_is_covered_and_drawn_tall_is_not(self):
+        keys, h = {(0, 0): w(FENCE), (1, 0): w(FENCE)}, heights(**{FENCE: 160})
+        self.assertEqual(self.cover(keys, h, piece("act1/outdoors/fences", 1, 9, 2.0)), {(0, 0)})
+        self.assertEqual(self.cover(keys, h, piece("act1/outdoors/fences", 1, 9, 5.0)), set())
+
+    def test_tall_wall_needs_a_tall_piece(self):
+        keys, h = {(0, 0): w(WALLS)}, heights(**{WALLS: 288})
+        self.assertEqual(self.cover(keys, h, piece("act1/cathedrl/walls", 1, 9, 5.0)), {(0, 0)})
+        self.assertEqual(self.cover(keys, h, piece("act1/cathedrl/walls", 1, 9, 2.0)), set())
+
+    def test_pillar_by_its_class(self):
+        keys, h = {(0, 0): w("act2/sewer/pillars.dt1", 12)}, heights(**{"act2/sewer/pillars.dt1": 288})
+        self.assertEqual(self.cover(keys, h, piece("act2/sewer/pillars", 1, 9, 5.0)), {(0, 0)})
+
+    def test_tile_without_an_edge_type_keeps_the_tall_rule(self):
+        keys, h = {(0, 0): w("act4/mesa/inv_wall.dt1"), (1, 0): w("act4/mesa/inv_wall.dt1")}, heights()
+        self.assertEqual(self.cover(keys, h, tall={(0, 0)}), {(0, 0)})
+
+
 class Typing(unittest.TestCase):
     def test_model_type_by_folder_and_name(self):
         for path, kind in [("act2/sewer/act2_sewer_walls/cap01.model", "wall"),

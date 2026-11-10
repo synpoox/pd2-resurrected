@@ -106,7 +106,8 @@ caches D2R's DS1, DT1 and HD presets, which the merge harvests for the HD preset
 (`tools/pd2_presets.py`); `python tools/pd2_coverage.py` after `pd2_merge.py` scores them without the game
 (`out/coverage/report.md`, worst first). The gate fails when a preset's score drops more than a point below main's
 scores (the coverage-baseline artifact of main's latest gate run); to accept an intended drop, label the PR
-`coverage-drop-ok`. PRs never commit `docs/coverage-baseline.tsv`, a snapshot for local runs. `companions.py fetch` downloads the pinned companion plugins in
+`coverage-drop-ok`. `--check` compares with that artifact too (`gh run download`; offline it warns and falls back to
+`docs/coverage-baseline.tsv`, a stale snapshot PRs never commit; `--tsv` picks the file on purpose) and prints the drop table. `companions.py fetch` downloads the pinned companion plugins in
 `companions/manifest.json` (checked by SHA-256, never committed; an entry pins a GitHub release asset (`repo`, `tag`),
 a file at a repo commit (`commit`), or a direct download link (`url`, e.g. a D2RLoader Hub release)) and must run after `pd2_merge.py`, which wipes
 `generated/`. `install` is `modkit install` plus the companions, our `companions/filter.json`, plugin settings
