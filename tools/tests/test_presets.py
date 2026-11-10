@@ -123,6 +123,28 @@ class BuildTests(unittest.TestCase):
         self.assertTrue(all(e["components"][0]["scale"] == {"x": 1.0, "y": 1.0, "z": 1.0} for e in planes))
         self.assertEqual(sorted(e["id"] for e in preset["entities"] + [preset["terrain"]]), [1, 2])
 
+    def test_a_block_mostly_under_rooms_gets_the_plane_for_its_other_tiles_unless_a_room_is_sunken(self):
+        # block 2 (x 17-33): a pasted room on x 17-30, loose floor on x 31-33 (#705); block 3 (x 34-50): all room
+        lay = P.Layout(51, 2, {(x, y): ("f", (FLOOR,)) for x in range(51) for y in range(2)})
+        taken = {(x, y) for x in range(17, 31) for y in range(2)} | {(x, y) for x in range(34, 51) for y in range(2)}
+
+        def planes(sunk: set) -> list[float]:
+            with mock.patch.object(P, "rooms", return_value=([], taken)), \
+                    mock.patch.object(P, "sunken", return_value=sunk):
+                preset, _ = P.build(lay, P.Kit(), "m", "m.ds1", "b.json", TERRAIN)
+            return sorted(e["components"][0]["position"]["x"] for e in preset["entities"] + [preset["terrain"]]
+                          if e["name"] == "terrain")
+        self.assertEqual(planes(set()), [0.0, 170.0])
+        self.assertEqual(planes({(20, 0)}), [0.0])  # a canal in the room: the plane would hide it
+
+    def test_sunken_tiles_are_a_pasted_rooms_ground_below_the_plane(self):
+        class Ground:
+            def at(self, x, z):
+                return -5.0 if x < 10 else None if x > 20 else 0.0
+        room = P.Layout(3, 1, {(0, 0): ("f", (FLOOR,)), (1, 0): ("f", (FLOOR,)), (2, 0): ("f", (FLOOR,))})
+        self.assertEqual(P.sunken([(0, 4, 7)], [(room, {P.GROUND: Ground()})]), {(4, 7)})
+        self.assertEqual(P.sunken([(0, 4, 7)], [(room, {})]), set())  # no ground read: not sunken
+
     def test_a_key_keeps_d2rs_empty_instances_so_props_come_at_its_density(self):
         lay = P.Layout(2, 1, {(0, 0): ("w", (A,)), (1, 0): ("w", (A,))})
         kit = P.Kit()
