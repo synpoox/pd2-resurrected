@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pd2_presets as P  # noqa: E402
 from presets import height  # noqa: E402
+from presets.consts import ROOM_PIECE  # noqa: E402
 from presets.build import Build  # noqa: E402
 from presets.passes import floor_height as height_pass  # noqa: E402
 from presets_fixtures import FLOOR, TERRAIN, entity  # noqa: E402
@@ -105,6 +106,27 @@ class HeightTests(unittest.TestCase):
         h = solve(6)  # six against two: the left side (40 tiles) is high over the right (72), the base
         self.assertEqual((h[(2, 1)], h[(10, 1)]), (height.STEP, 0.0))
 
+    def test_a_terrace_touching_two_levels_takes_the_level_most_face_tiles_imply_and_a_tie_the_one_nearest_0(self):
+        # X (0-5, 0-3) is the base; P (7-12, 0-3) is high over X (+6), Q (0-5, 5-8) low under X (-6); T (7-12, 5-8) is high
+        # over P (+12 by the row of faces at y 4) and high over Q (0 by the column at x 6): two faces, two levels
+        walk = {(x, y) for x0, x1, y0, y1 in ((0, 6, 0, 4), (7, 13, 0, 4), (0, 6, 5, 9), (7, 13, 5, 9))
+                for x in range(x0, x1) for y in range(y0, y1)}
+        lay = P.Layout(13, 9, {c: ("f", (FLOOR,)) for c in walk})
+        up, right = (((0, 1),), ((0, -1),)), (((1, 0),), ((-1, 0),))  # high toward larger y; high toward larger x
+        down = (((0, -1),), ((0, 1),))  # high toward smaller y
+
+        def solve(row_tiles):  # row_tiles face tiles of T over P, 4 of T over Q
+            faces = {(6, y): right for y in range(0, 4)}  # P high over X
+            faces |= {(x, 4): down for x in range(0, 6)}  # X high over Q
+            faces |= {(7 + i, 4): up for i in range(row_tiles)}  # T high over P
+            faces |= {(6, y): right for y in range(5, 9)}  # T high over Q
+            with mock.patch("presets.height.faces", return_value=faces):
+                return height.levels(lay)
+        h = solve(4)
+        self.assertEqual((h[(1, 1)], h[(8, 1)], h[(1, 6)]), (0.0, height.STEP, -height.STEP))
+        self.assertEqual(h[(8, 6)], 0.0)  # 4 face tiles imply +12, 4 imply 0: a tie takes the level nearest 0
+        self.assertEqual(solve(6)[(8, 6)], 2 * height.STEP)  # 6 against 4: the row of faces wins
+
     def test_separate_groups_each_take_their_own_base(self):
         keys = {**terrace().keys, **{(x + 20, y): k for (x, y), k in terrace().keys.items()}}  # five empty tiles between
         h = height.levels(P.Layout(35, ROWS, keys))
@@ -174,10 +196,30 @@ class FloorHeightPassTests(unittest.TestCase):
         height_pass.run(b)
         self.assertEqual((y_of(b.entities[0]), y_of(piece)), (-height.STEP, -height.STEP))
 
-    def test_pieces_of_a_pasted_room_keep_their_height(self):
-        b = build(self.raised(), [plane(1), entity("room piece", 175.0, 30.0)], taken={(17, 3)})
+    def test_pieces_of_a_pasted_room_keep_their_height_and_the_block_plane_stays_at_the_rooms_ground(self):
+        # block 1 is a +6 terrace with a room at 0 on part of it (under half the block: the ground pass still draws a plane)
+        room = {(x, y) for x in range(17, 24) for y in range(ROWS)}  # 42 of the block's 289 tiles
+        b = build(self.raised(), [plane(1), entity("room piece", 175.0, 30.0), entity("terrace piece", 300.0, 30.0)],
+                  taken=room)
         height_pass.run(b)
-        self.assertEqual(y_of(b.entities[1]), 0.0)
+        self.assertEqual(height.levels(self.raised(), room)[(30, 3)], height.STEP)  # the terrace itself stands at +6
+        self.assertEqual(height_pass.plane_at(b, (17, 3)), 0.0)  # but the plane stays at the room's ground
+        self.assertEqual([y_of(e) for e in b.entities], [0.0, 0.0, 0.0])
+        self.assertTrue(b.entities[1]["name"].startswith(ROOM_PIECE))  # marked for the scorer
+        self.assertFalse(b.entities[2]["name"].startswith(ROOM_PIECE))
+
+    def test_a_face_in_the_middle_of_a_block_puts_the_plane_step_at_the_block_edge_not_at_the_face(self):
+        # Documents the current behaviour (#755 review): one plane per 17-tile block, so the ground steps where the blocks
+        # meet. The face at x 25 splits block 1 (x 17-33) into 8 tiles at +6 and 8 at 0 (a tie: the lower wins), so the plane
+        # of block 1 is 0 and the 8 high tiles x 17-24 are floor at +6 under a plane at 0; block 0 (x 0-16) is +6 whole.
+        lay = P.Layout(70, ROWS, {**floor(0, 70), **column(25, FACE)})
+        b = build(lay, [plane(i) for i in range(1, 5)])
+        height_pass.run(b)
+        self.assertEqual([height_pass.plane_at(b, (17 * i, 1)) for i in range(5)], [height.STEP, 0.0, 0.0, 0.0, 0.0])
+        self.assertEqual(height_pass.tiles_at(b)[(24, 1)], height.STEP)
+        self.assertEqual(height_pass.tiles_at(b)[(26, 1)], 0.0)
+        step = [x for x in range(1, 70) if height_pass.plane_at(b, (x, 1)) != height_pass.plane_at(b, (x - 1, 1))]
+        self.assertEqual(step, [17])  # the plane steps at x 17; the cliff face is at x 25, 8 tiles on
 
     def test_a_sunken_room_never_raises_its_block_and_the_other_blocks_are_unchanged(self):
         b = build(self.raised(), [plane(1), plane(2), entity("a", 175.0, 30.0), entity("b", 360.0, 30.0)],

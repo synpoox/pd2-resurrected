@@ -4,7 +4,8 @@ A lower wall (orientation 16-19: the face of a cliff or terrace, see pd2_fidelit
 side and a low side. The camera looks up the map, so a face is seen from the low side, and the high ground lies behind
 it, toward smaller x and y (HIGH_SIDE). The walkable floor splits into regions (4-connected, walls cut them); each face
 asks its high region to stand STEP above its low region. The regions are then solved as a graph and the largest region of
-each group stands at 0 (the stock plane height, so a map with no faces is unchanged). Stairs keep the floor of their
+each group stands at 0; a region that borders several set ones (a terrace between two bases) takes the level most of its
+face tiles imply, a tie the level nearest 0 (the stock plane height, so a map with no faces is unchanged). Stairs keep the floor of their
 region (a ramp inside a region is not modelled); a region the faces never reach stays at 0.
 
 Pasted stock rooms (b.taken) draw their own sculpted ground: their tiles are not in `levels`, only in `sunk` (the tiles
@@ -17,7 +18,7 @@ import collections
 from .consts import GROUND, SINK, TILE
 from .layout import Layout, walkable
 
-STEP = 6.0  # HD units one cliff face lifts the ground: D2R's own steps are 6 (siege strip) to 7.5 (icecave riverice) up or down
+STEP = 6.0  # HD units one cliff face lifts the ground: measured from D2R's stock steps (6 to 7.5), not cited: no in-repo source
 MAX_LEVELS = 2  # a region stands at most this many STEPs from the base
 MIN_REGION = 20  # a walkable region of fewer tiles is a doorway or a nook, not a terrace: it keeps its neighbour's level
 MIN_RUN = 3  # a face between two regions must run this many tiles, or it is a wall piece, not a cliff
@@ -98,23 +99,31 @@ def levels(lay: Layout, skip: set = frozenset()) -> dict[tuple[int, int], float]
             for lw in lo - {h}:
                 if size[h] >= MIN_REGION and size[lw] >= MIN_REGION:
                     runs[(h, lw)] += 1
-    edges: dict[int, dict[int, float]] = collections.defaultdict(dict)  # region -> {neighbour: its height - mine}
+    edges: dict[int, dict[int, tuple[float, int]]] = collections.defaultdict(dict)  # region -> {neighbour: (its height - mine, face tiles)}
     for (h, lw), n in sorted(runs.items(), key=lambda kv: (-kv[1], kv[0])):
         if n >= MIN_RUN and runs.get((lw, h), 0) < n:  # the longer face of a pair decides which side is high
-            edges[lw].setdefault(h, STEP)
-            edges[h].setdefault(lw, -STEP)
+            edges[lw].setdefault(h, (STEP, n))
+            edges[h].setdefault(lw, (-STEP, n))
     height: dict[int, float] = {}
     for r in sorted(size, key=lambda r: (-size[r], r)):  # the largest region of each group is its base
         if r in height:
             continue
         height[r] = 0.0
-        q = collections.deque([r])
-        while q:
-            a = q.popleft()
-            for b, d in sorted(edges[a].items()):
-                if b not in height:
-                    height[b] = max(-MAX_LEVELS * STEP, min(MAX_LEVELS * STEP, height[a] + d))
-                    q.append(b)
+        front = [r]
+        while front:  # breadth-first, a layer at a time, so a region touching two assigned ones hears both
+            votes: dict[int, collections.Counter] = {}
+            for a in front:
+                for b in edges[a]:
+                    if b not in height:
+                        votes[b] = collections.Counter()
+            for b in votes:  # a region's level is the one most face tiles (of the regions already set) imply; a tie takes
+                for a, (d, n) in edges[b].items():  # the level nearest 0, then the lower: never the order of the search
+                    if a in height:
+                        votes[b][max(-MAX_LEVELS * STEP, min(MAX_LEVELS * STEP, height[a] - d))] += n
+            for b in sorted(votes):
+                top = max(votes[b].values())
+                height[b] = min((v for v, n in votes[b].items() if n == top), key=lambda v: (abs(v), v))
+            front = sorted(votes)
     return {c: height[r] for c, r in reg.items()}
 
 
