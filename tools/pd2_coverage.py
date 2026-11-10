@@ -423,7 +423,7 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
         return None
     rule = ROOT / "merge" / "presets-hd.tsv"
     _, standins, water = presets.read_rule(rule)
-    wet = frozenset(water)  # stream DT1, water past the tree line too (painter.water)
+    wet = presets.wet_dt1s(water)  # stream DT1, water past the tree line too (painter.water)
     found = model_boxes((d2r / MODELS).read_bytes())
 
     @functools.cache

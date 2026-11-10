@@ -28,10 +28,30 @@ WATER_SPAN = {"data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.mo
               "data/hd/env/model/act3/docktown/act3_docktown_water/swamp_terrain.model": (650.0, 550.0)}
 
 
+# the largest scale stock D2R gives a liquid plane (lava: 0.24 to 1.4); a model not here: 1.0
+MAX_SCALE = {"data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model": 1.4}
+
+
+def plane_cap(model: str) -> tuple[int, int]:
+    """The most tiles (x, z) one plane of a model covers, at its stock scale."""
+    s = MAX_SCALE.get(model, 1.0)
+    return tuple(max(1, int(side * s // TILE)) for side in plane_span(model))
+
+
 def plane_span(model: str) -> tuple[float, float]:
     """WATER_SPAN of a model as (x, z) sides."""
     s = WATER_SPAN[model]
     return s if isinstance(s, tuple) else (s, s)
+
+
+# the water DT1s whose blocked floor is a stream: it stays playable past the tree line (painter.water). The other
+# `water:` lines (swamp, pond, lava) get a plane but, being blocked map edge too, count as no ground to plant by.
+WET = frozenset({"act3/river/rivbank.dt1", "act3/river/pool.dt1"})
+
+
+def wet_dt1s(water) -> frozenset:
+    """The stream DT1s among the rule's water DT1s."""
+    return frozenset(d for d in water if d in WET)
 
 
 WATER_Y = 0.05  # just over the flat ground plane (y 0), which would hide water at the stock rooms' -5 to 0

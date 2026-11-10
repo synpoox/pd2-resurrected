@@ -55,10 +55,6 @@ class LiquidTests(unittest.TestCase):
             self.assertIs(liquids.of(b), liquids.of(b))
         self.assertEqual(m.call_count, 1)
 
-    def test_a_dt1_draws_lava_swamp_or_water(self):
-        self.assertEqual([liquids.kind(d) for d in (LAVA, "act4/lava/floornew.dt1", SWAMP, RIVER, "act2/town/canal.dt1")],
-                         ["lava", "lava", "swamp", "water", "water"])
-
     def test_lava_and_swamp_planes_scale_by_their_own_span(self):
         lay = layout(LAVA, {(0, 0), (1, 0)})
         lay.keys.update(layout(SWAMP, {(0, 2)}).keys)
@@ -69,8 +65,19 @@ class LiquidTests(unittest.TestCase):
         swamp = next(e for e in out if e["components"][2]["filename"] == SWAMP_MODEL)["components"]
         self.assertEqual(lava[0]["position"], {"x": 10.0, "y": P.WATER_Y, "z": 5.0})
         self.assertEqual(lava[0]["scale"], {"x": 20 / 29.5872, "y": 1.0, "z": 10 / 29.5872})
-        self.assertEqual(lava[1]["filter"], "effectfloor")  # a stock lava plane's "wall" would block the mouse
+        self.assertEqual(lava[1]["filter"], "wall")  # as every stock lava plane
         self.assertEqual(swamp[0]["scale"], {"x": 10 / 650.0, "y": 1.0, "z": 10 / 550.0})
+
+    def test_a_big_pool_is_split_into_planes_no_larger_than_stock_scale(self):
+        lay = layout(LAVA, {(x, y) for x in range(9) for y in range(5)})
+        out = P.streams(lay, {LAVA: (plane(LAVA_MODEL), {})}, set())
+        self.assertEqual(sum(e["components"][0]["scale"]["x"] * e["components"][0]["scale"]["z"] for e, _ in out)
+                         * 29.5872 ** 2 / P.TILE ** 2, 45)  # every tile covered once
+        self.assertTrue(all(e["components"][0]["scale"][a] <= 1.4 for e, _ in out for a in "xz"))
+        self.assertGreater(len(out), 1)
+
+    def test_only_stream_dt1_are_wet(self):
+        self.assertEqual(P.wet_dt1s({"act3/river/rivbank.dt1": 1, SWAMP: 1, LAVA: 1}), {"act3/river/rivbank.dt1"})
 
     def test_the_plane_height_comes_from_one_function(self):
         lay = layout(LAVA, {(1, 1), (2, 1)})

@@ -3,22 +3,10 @@ streams pass. #738 (water and lava edges) reads it with `of(b)` to trace the wal
 streams pass draws a plane over it. The liquid DT1s are the shared classifier's (pd2_fidelity.classify, #732)."""
 from __future__ import annotations
 
-import re
-
 import pd2_painter as painter
 
 from .consts import WATER_Y
 from .layout import Layout
-
-LAVA = re.compile(r"lava")
-SWAMP = re.compile(r"swamp")
-
-
-def kind(dt1: str) -> str:
-    """The liquid a DT1 draws: "lava", "swamp" or "water"."""
-    name = dt1.lower()
-    return "lava" if LAVA.search(name) else "swamp" if SWAMP.search(name) else "water"
-
 
 def mask(lay: Layout, extra: frozenset = frozenset()) -> dict[tuple[int, int], tuple[str, ...]]:
     """Every blocked floor tile of the layout with a liquid DT1 (pd2_fidelity.classify "liquid", or one of `extra`, the

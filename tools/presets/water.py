@@ -5,7 +5,7 @@ import copy
 import json
 from pathlib import Path
 
-from .consts import FETCH, PRESETS, STREAM, TILE, WATER_RATIO, plane_span
+from .consts import FETCH, PRESETS, STREAM, TILE, WATER_RATIO, plane_cap, plane_span
 from .entity import _transform
 from .layout import Layout
 from .liquids import liquid_y, mask as liquid_mask
@@ -40,6 +40,15 @@ def squarish(rect: tuple[int, int, int, int]) -> list[tuple[int, int, int, int]]
     return [rect]
 
 
+def tiled(rect: tuple[int, int, int, int], cx: int, cz: int) -> list[tuple[int, int, int, int]]:
+    """A rectangle cut into even pieces at most cx tiles wide and cz tiles high, so no plane is scaled past its stock
+    scale."""
+    x, y, w, h = rect
+    nx, nz = -(-w // cx), -(-h // cz)
+    return [(x + w * i // nx, y + h * j // nz, w * (i + 1) // nx - w * i // nx, h * (j + 1) // nz - h * j // nz)
+            for j in range(nz) for i in range(nx)]
+
+
 def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set,
             liquids: dict | None = None) -> list[tuple[dict, dict]]:
     """Stock liquid planes (water, lava, swamp) over a liquid DT1's blocked floor tiles outside the pasted rooms (whose
@@ -54,15 +63,13 @@ def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set,
         cells = {c for c, dt1s in liquids.items() if c not in taken and c not in done and dt1 in dt1s}
         done |= cells
         sx, sz = plane_span(next(c["filename"] for c in plane["components"] if c["type"] == "ModelDefinitionComponent"))
-        for x, y, w, h in (r for rect in rectangles(cells) for r in squarish(rect)):
+        cap = plane_cap(next(c["filename"] for c in plane["components"] if c["type"] == "ModelDefinitionComponent"))
+        for x, y, w, h in (r for rect in rectangles(cells) for sq in squarish(rect) for r in tiled(sq, *cap)):
             e = copy.deepcopy(plane)
             t = _transform(e)
             t["position"] = {"x": (x + w / 2) * TILE, "y": liquid_y((x + w // 2, y + h // 2)), "z": (y + h / 2) * TILE}
             t["orientation"] = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
             t["scale"] = {"x": w * TILE / sx, "y": 1.0, "z": h * TILE / sz}
-            for c in e["components"]:  # a stock lava plane is a "wall" for raycasts: a floor plane, like the water's
-                if c["type"] == "PhysicsBodyDefinitionComponent" and c.get("filter") == "wall":
-                    c["filter"] = "effectfloor"
             e["name"] = STREAM
             out.append((e, of))
     return out
