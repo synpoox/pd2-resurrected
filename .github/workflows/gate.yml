@@ -44,7 +44,8 @@ jobs:
       # LP3c (#672, #681): the no-game coverage report of the generated HD presets, uploaded as an artifact. A push to
       # main uploads its scores as the coverage-baseline artifact; a PR compares against the latest one (#723), so no
       # PR commits a baseline, and fails when a preset's wall, border or floor score drops more than
-      # pd2_coverage.TOLERANCE points below it. The PR label coverage-drop-ok accepts an intended drop. Without main's
+      # pd2_coverage.TOLERANCE points below it. The fidelity scores against legacy per edge type and floor (#732,
+      # pd2_fidelity) ride along: fidelity-baseline.tsv in the same artifact, a drop per (map, type) fails the same way. The PR label coverage-drop-ok accepts an intended drop. Without main's
       # artifact it falls back to docs/coverage-baseline.tsv. It runs after the table-diff, so that result is already
       # in. Without model_lod_desc.bin it skips and passes.
       - name: HD preset coverage
@@ -73,6 +74,9 @@ jobs:
           }
           $code = $LASTEXITCODE
           $out
+          if (Test-Path out/coverage/fidelity-changes.md) {
+            Get-Content out/coverage/fidelity-changes.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          }
           if (Test-Path out/coverage/changes.md) {
             Get-Content out/coverage/changes.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
           } elseif (-not (Test-Path out/coverage/report.md)) {
@@ -85,7 +89,9 @@ jobs:
         continue-on-error: true
         with:
           name: coverage-baseline
-          path: out/coverage/baseline.tsv
+          path: |
+            out/coverage/baseline.tsv
+            out/coverage/fidelity-baseline.tsv
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}

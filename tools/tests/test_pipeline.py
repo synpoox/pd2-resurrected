@@ -8,6 +8,7 @@ import threading
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_cache  # noqa: E402
@@ -33,6 +34,13 @@ class BaselineTests(unittest.TestCase):
 
 
 class MergeTests(unittest.TestCase):
+    def setUp(self):
+        # these fixtures' rules write no D2R table set (#745's output check)
+        for n, v in (('REQUIRED_TABLES', ()), ('MIN_TABLES', 0)):
+            p = mock.patch.object(pd2_merge, n, v)
+            p.start()
+            self.addCleanup(p.stop)
+
     def project(self, tmp: Path, stamp: bytes | None) -> Path:
         (tmp / "pd2-baseline.json").write_text("B")
         if stamp is not None:
