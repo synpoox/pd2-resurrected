@@ -46,20 +46,23 @@ def lock(path: Path, poll: float = 1.0):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.touch()
     with open(path, "r+b") as f:
-        waited = False
+        misses, shown = 0, None
         while True:
             try:
                 f.seek(0)
                 msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1) if msvcrt else fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
             except OSError:
-                if not waited:
-                    print(f"waiting for {path}: {holder(path)} holds it", flush=True)
-                    waited = True
+                # not on the first miss: a holder that has just taken the lock has not written its pid yet, and the
+                # file still names the holder before it. Again when the holder changes.
+                misses += 1
+                if misses > 1 and (who := holder(path)) != shown:
+                    print(f"waiting for {path}: {who} holds it", flush=True)
+                    shown = who
                 time.sleep(poll)
         try:
-            f.seek(1)  # byte 0 is the locked one; the holder's pid follows it, for a waiter's message (#745)
-            f.write(str(os.getpid()).encode())
+            f.seek(1)  # byte 0 is the locked one; the holder's pid and start time follow it, for a waiter's message
+            f.write(f"{os.getpid()} {int(time.time())}".encode())
             f.truncate()
             f.flush()
             yield
@@ -69,14 +72,15 @@ def lock(path: Path, poll: float = 1.0):
 
 
 def holder(path: Path) -> str:
-    """Who wrote path's lock last: "pid N (running)" or "pid N (gone)". The OS drops a lock when its holder dies, so a
+    """Who wrote path's lock last: "pid N (running, holding since HH:MM:SS)" or "... (gone, ...)". The OS drops a lock when its holder dies, so a
     lock still held names a live process (an orphan of a killed shell runs on and keeps it until it ends)."""
     try:
         with open(path, "rb") as f:
             f.seek(1)  # not byte 0: Windows refuses a read of the locked byte
-            pid = int(f.read().decode() or 0)
+            pid, _, since = f.read().decode().partition(" ")
+            pid, since = int(pid or 0), int(since or 0)
     except (OSError, ValueError):
-        pid = 0
+        pid = since = 0
     if not pid:
         return "another run"
     try:
@@ -95,7 +99,8 @@ def holder(path: Path) -> str:
         alive = True
     except OSError:
         alive = False
-    return f"pid {pid} ({'running' if alive else 'gone'})"
+    when = f", holding since {time.strftime('%H:%M:%S', time.localtime(since))}" if since else ""
+    return f"pid {pid} ({'running' if alive else 'gone'}{when})"
 
 
 def key(paths: list[Path], *extra: str) -> str:
@@ -126,15 +131,27 @@ def point(link: Path, target: Path) -> None:
 
 
 def sources(fn: Callable) -> list[Path]:
-    """fn's module file and every module beside it that it imports, at any depth (a rule's code). An import in a
-    module's main() is left out: a merge never runs a tool's command line (pd2_strings' imports pd2_merge, which
-    would put every tool in every key)."""
+    """fn's module file and every module beside it that it imports, at any depth (a rule's code). A module inside a
+    package brings the whole package (every .py under its top folder): relative imports and passes found by discovery
+    are code the rule runs too (#754). An import in a module's main() is left out: a merge never runs a tool's command
+    line (pd2_strings' imports pd2_merge, which would put every tool in every key)."""
     todo, seen = [Path(sys.modules[fn.__module__].__file__)], set()
+
+    def package(d: Path) -> Path | None:  # the top folder of the package d is in, or None
+        top = None
+        while (d / "__init__.py").is_file():
+            top, d = d, d.parent
+        return top
+
     while todo:
         p = todo.pop()
         if p in seen:
             continue
         seen.add(p)
+        top = package(p.parent)
+        if top is not None:
+            todo += [q for q in top.rglob("*.py") if "__pycache__" not in q.parts]
+        homes = {p.parent, top.parent} if top else {p.parent}
         tree = ast.parse(p.read_text("utf-8"))
         cli = {id(n) for d in tree.body if isinstance(d, ast.FunctionDef) and d.name == "main" for n in ast.walk(d)}
         for n in ast.walk(tree):
@@ -142,7 +159,10 @@ def sources(fn: Callable) -> list[Path]:
                 continue
             names = ([a.name for a in n.names] if isinstance(n, ast.Import) else
                      [n.module] if isinstance(n, ast.ImportFrom) and n.module and not n.level else [])
-            todo += [q for q in (p.parent / f"{m.split('.')[0]}.py" for m in names) if q.is_file()]
+            for m in names:
+                for h in homes:
+                    if (q := h / f"{m.split('.')[0]}.py").is_file():
+                        todo.append(q)
     return sorted(seen)
 
 
@@ -381,10 +401,31 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
     return False
 
 
-def evict(entries: list[Path]) -> None:
-    """Delete rule entries (those in used) whose output a check found wrong, so the next run rebuilds and keeps a good one."""
+def _delete(e: Path) -> None:
+    """Remove entry e atomically: rename it away first, so a replay of e sees it whole or gets an OSError (and runs
+    the rule), never half of it; then delete the renamed folder."""
+    dead = e.with_name(f"{e.name}.dead.{os.getpid()}")
+    try:
+        os.rename(e, dead)
+    except OSError:  # gone already (another run deleted it): nothing to do
+        return
+    shutil.rmtree(dead, ignore_errors=True)
+
+
+def touches(e: Path, prefix: str) -> bool:
+    """Whether entry e writes a file under prefix (a path from generated/, e.g. "data/global/excel/")."""
+    try:
+        return any(f.startswith(prefix) for f in json.loads((e / "manifest.json").read_text("utf-8"))["files"])
+    except (OSError, ValueError, KeyError):
+        return False
+
+
+def evict(entries: list[Path], touching: str | None = None) -> None:
+    """Delete rule entries (those in used) whose output a check found wrong, so the next run rebuilds and keeps a good
+    one. With touching, only those that write under that path: the check looked at nothing else."""
     for e in entries:
-        shutil.rmtree(e, ignore_errors=True)
+        if touching is None or touches(e, touching):
+            _delete(e)
 
 
 def size(p: Path) -> int:
@@ -395,9 +436,12 @@ def prune(cache: Path, cap: int, keep_s: float = 900, legacy: bool = False) -> l
     """Delete the least recently used rule entries (with legacy, the whole-merge folders older tools kept in merge/
     too) until the rest fit in cap bytes. One used in the last keep_s seconds stays: a run may be replaying it. merge/
     is left alone by default: an older tool copies a folder there without marking it used."""
+    for e in cache.glob("rules/*/*"):  # leftovers of a run killed mid-keep or mid-delete
+        if (".dead." in e.name or ".tmp" in e.name) and time.time() - e.stat().st_mtime > keep_s:
+            shutil.rmtree(e, ignore_errors=True)
     entries = []
     for e in [*cache.glob("rules/*/*"), *(cache.glob("merge/*") if legacy else [])]:
-        if not e.is_dir() or ".tmp" in e.name:
+        if not e.is_dir() or ".tmp" in e.name or ".dead." in e.name:
             continue
         try:
             m = e / "manifest.json"
@@ -408,7 +452,7 @@ def prune(cache: Path, cap: int, keep_s: float = 900, legacy: bool = False) -> l
     for mtime, b, e in sorted(entries, key=lambda x: x[0]):
         if total <= cap or time.time() - mtime < keep_s:
             break
-        shutil.rmtree(e, ignore_errors=True)
+        _delete(e)
         total -= b
         gone.append(e)
     return gone
