@@ -4,9 +4,9 @@ Run after pd2_merge.py. Each entity's model box (D2R's data/hd/model_lod_desc.bi
 transforms composed) is placed on the DS1's tiles (pd2_presets.TILE HD units each), giving the tiles under a piece at
 least TALL units high. Per generated preset:
 
-- wall score: the share of DS1 wall tiles (what the automap draws as walls) under a tall piece (a fence or shore
-  tile, LOW_EDGE: under a LOW piece that is itself a fence or wall, EDGE_PIECE, as stone walls, railings and banks
-  are low by design; grass and rocks on such a tile cover nothing);
+- wall score: the share of DS1 wall tiles (what the automap draws as walls) under a piece of the height class the
+  tile asks for (pd2_fidelity.wall_cover, #787: classify() and the low/tall class, as the fidelity score reads them;
+  a tile of no edge type: under a tall piece, a fence or shore tile, LOW_EDGE, under a LOW edge piece, EDGE_PIECE);
 - border score, for a DS1 that draws trees (pd2_presets.draws_trees): the ring of DS1 tiles 4-adjacent to and
   outside pd2_painter.playable() (the map's edge on the automap). A ring tile is covered (under a tall piece), a gap
   (bare), and a leak if the DS1 lets the player walk on it;
@@ -44,7 +44,9 @@ import json
 import math
 import os
 import re
+import shutil
 import struct
+import subprocess
 import sys
 import zlib
 from dataclasses import dataclass, field
@@ -262,12 +264,13 @@ class Score:
 
 
 def score(lay: presets.Layout, tall: set, name: str = "", area: str = "", wet: frozenset = frozenset(),
-          ground: set | None = None, wrong: set = frozenset()) -> Score:
-    """A layout's scores from its tall tiles, `ground` (ground_tiles; None: every tile has ground) and `wrong`
-    (wrong_tiles)."""
+          ground: set | None = None, wrong: set = frozenset(), wall_ok: set | None = None) -> Score:
+    """A layout's scores from its tall tiles, `ground` (ground_tiles; None: every tile has ground), `wrong`
+    (wrong_tiles) and `wall_ok` (the wall tiles drawn right by the fidelity height classes, pd2_fidelity.wall_cover,
+    #787; None: the tall tiles)."""
     walls = {c for c, k in lay.keys.items() if k[0] == "w"}
     floor = walkable_floor(lay)
-    s = Score(name, area, len(walls), walls - tall, floors=len(floor),
+    s = Score(name, area, len(walls), walls - (tall if wall_ok is None else wall_ok), floors=len(floor),
               floor_bare=set() if ground is None else floor - ground, floor_wrong=(floor & wrong))
     if presets.draws_trees(lay):
         play = painter.playable(lay, wet)
@@ -381,6 +384,35 @@ def changes_md(found: list[Change], tolerance: float = TOLERANCE) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _fell(old, new, tolerance: float) -> bool:
+    return old is not None and (new is None or old - new > tolerance)
+
+
+def drop_rows(found: list[Change], fdrops: list, tolerance: float = TOLERANCE) -> list[tuple]:
+    """(map, type, before, after, delta) per score that dropped, the coverage presets' wall, border and floor and the
+    fidelity (map, type) scores and spacings: what the gate's log lists (#787), `after` None when no longer scored."""
+    rows = []
+    for c in found:
+        for kind, (old, new) in (("wall", c.wall), ("border", c.border), ("floor", c.floor)):
+            if _fell(old, new, tolerance):
+                rows.append((c.name, f"coverage {kind}", old, new, None if new is None else round(new - old, 1)))
+    for c in fdrops:
+        for kind, (old, new) in ((c.kind, c.score), (c.kind + " spacing", c.spacing)):
+            if _fell(old, new, tolerance):
+                rows.append((c.name, f"fidelity {kind}", old, new, None if new is None else round(new - old, 1)))
+    return rows
+
+
+def drop_table(rows: list[tuple]) -> str:
+    """drop_rows as a plain text table, worst first."""
+    rows = sorted(rows, key=lambda r: (-9999.0 if r[4] is None else r[4], r[0], r[1]))
+    cell = lambda v: "-" if v is None else f"{v:g}%"  # noqa: E731
+    lines = [f"{'map':<24} {'type':<26} {'before':>8} {'after':>8} {'delta':>7}"]
+    lines += [f"{n:<24} {k:<26} {cell(o):>8} {cell(a) if a is not None else 'gone':>8} "
+              f"{'-' if d is None else f'{d:+.1f}':>7}" for n, k, o, a, d in rows]
+    return "\n".join(lines)
+
+
 def report(scores: list[Score], commit: str = "", found: list[Change] | None = None) -> str:
     """The markdown report, worst first: presets with a border by border score, then the rest by wall score."""
     pct = lambda v: "-" if v is None else f"{100 * v:.1f}%"  # noqa: E731
@@ -473,11 +505,12 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
                            list(boxes(entities, lambda f: box(f) if edge_piece(f) else None, prefab, ground=ground)))
             flat = ground_tiles(preset, box, prefab, True) - ground_tiles(preset, box, prefab, False)
             wrong = wrong_tiles(entities, box, prefab, walkable_floor(lay) & flat, ground)
-            s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab), wrong)
-            s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
             legacy = presets.layout((data / "global" / "tiles" / ds1).read_bytes(), {p: pd2_tiles[p] or tiles[p] for p in files})  # PD2's DT1s, else D2R's own
-            s.fidelity = fidelity.score_map(legacy, heights, fidelity.hd_pieces(entities, box, prefab, ground), s.floors,
-                                            set(s.floor_bare), set(s.floor_wrong))
+            hd = fidelity.hd_pieces(entities, box, prefab, ground)
+            s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab), wrong,
+                      fidelity.wall_cover(fidelity.legacy_edges(legacy, heights), hd, tall))  # walls by fidelity class (#787)
+            s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
+            s.fidelity = fidelity.score_map(legacy, heights, hd, s.floors, set(s.floor_bare), set(s.floor_wrong))
             scores.append(s)
             for name, image in (images(lay, s, tall, wet) | fidelity.image(
                     legacy, fidelity.legacy_edges(legacy, heights), s.fidelity, s.name)).items():
@@ -492,16 +525,45 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
     return scores
 
 
+def main_baseline(into: Path) -> Path:
+    """The baseline.tsv of the latest successful push run of gate.yml on main (its coverage-baseline artifact, #787),
+    downloaded into `into` with the gh CLI; BASELINE, with a warning, when gh or the network fails (the tsv in docs
+    goes stale: it is only the fallback)."""
+    def gh(*args: str) -> str:
+        return subprocess.run(["gh", *args], capture_output=True, text=True, check=True, timeout=120).stdout.strip()
+    try:
+        run_id = gh("run", "list", "--workflow", "gate.yml", "--branch", "main", "--event", "push", "--status",
+                    "success", "--limit", "1", "--json", "databaseId", "-q", ".[0].databaseId")
+        if not run_id:
+            raise ValueError("no successful gate run on main")
+        shutil.rmtree(into, ignore_errors=True)
+        gh("run", "download", run_id, "--name", "coverage-baseline", "--dir", str(into))
+        got = next(into.rglob("baseline.tsv"), None)
+        if got is None:
+            raise ValueError(f"run {run_id} has no baseline.tsv")
+        print(f"pd2_coverage: comparing with main's baseline from gate run {run_id}")
+        return got
+    except (OSError, subprocess.SubprocessError, ValueError) as e:
+        print(f"pd2_coverage: warning: no main baseline artifact ({e}); comparing with {BASELINE}, which may be stale "
+              "(pass --tsv to choose it on purpose)", file=sys.stderr)
+        return BASELINE
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", type=Path, default=ROOT / "generated" / "data", help="merged data (pd2_merge's output)")
     ap.add_argument("--d2r", type=Path, default=D2R_DATA, help=f"D2R data root (default: {D2R_DATA})")
     ap.add_argument("--out", type=Path, default=ROOT / "out" / "coverage", help="report folder")
     ap.add_argument("--commit", default="", help="commit named in the report's title")
-    ap.add_argument("--baseline", type=Path, default=BASELINE, help=f"main's scores (default: {BASELINE})")
+    ap.add_argument("--baseline", type=Path, default=None, help="main's scores, a coverage baseline.tsv (default: "
+                    "the latest coverage-baseline artifact of main's gate runs, else the --tsv file)")
+    ap.add_argument("--tsv", action="store_true", help=f"compare with {BASELINE} instead of main's latest artifact")
     ap.add_argument("--check", action="store_true", help=f"exit 1 on a drop of more than {TOLERANCE:g} points")
     ap.add_argument("--write-baseline", action="store_true", help="write the scores to --baseline")
     a = ap.parse_args(argv)
+    a.out.mkdir(parents=True, exist_ok=True)  # out/coverage is not there on a fresh checkout (#787)
+    if a.baseline is None:
+        a.baseline = BASELINE if a.tsv or a.write_baseline else main_baseline(a.out.parent / "main-coverage")
     base = read_baseline(a.baseline.read_text("utf-8")) if a.baseline.is_file() else None
     fpath = a.baseline.with_name("fidelity-baseline.tsv")  # main's fidelity scores sit beside its coverage scores
     fbase = None
@@ -512,6 +574,7 @@ def main(argv: list[str] | None = None) -> int:
     if scores is None:
         return 0
     if a.write_baseline:
+        a.baseline.parent.mkdir(parents=True, exist_ok=True)
         a.baseline.write_text(baseline_text(scores), "utf-8", newline="\n")
         print(f"pd2_coverage: baseline written, {a.baseline}")
         return 0
@@ -526,6 +589,8 @@ def main(argv: list[str] | None = None) -> int:
         import pd2_fidelity
         print(f"pd2_coverage: fidelity dropped on {len(FIDELITY_DROPS)} (map, type) scores: "
               + ", ".join(f"{k} {n}" for k, n in pd2_fidelity.by_type(FIDELITY_DROPS).items()))
+    if drops or FIDELITY_DROPS:
+        print(drop_table(drop_rows(found, FIDELITY_DROPS)))
     return 1 if a.check and (drops or FIDELITY_DROPS) else 0
 
 
