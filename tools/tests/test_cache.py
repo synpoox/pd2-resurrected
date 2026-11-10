@@ -368,6 +368,31 @@ class ConcurrentMergeTests(unittest.TestCase):
             excel = self.tmp / "a" / "generated" / "data" / "global" / "excel"
             self.assertEqual({p.name for p in excel.glob("*.txt")}, set(TABLES))
 
+    def test_a_partial_entry_is_evicted_so_the_next_run_keeps_and_replays_a_good_one(self):
+        with contextlib.ExitStack() as st:
+            for c in self.patched():
+                st.enter_context(c)
+            PARTIAL.append(True)
+            outs = []
+            for _ in range(3):
+                buf = io.StringIO()
+                with redirect_stdout(buf):
+                    rc = pd2_merge.main(["--root", str(self.tmp / "a"), "--d2r", str(self.tmp / "d2r")])
+                self.assertEqual(rc, 0)
+                outs.append(buf.getvalue())
+        self.assertIn("rebuilding without the rule cache", outs[0])
+        self.assertNotIn("rebuilding", outs[1], "the partial entry is gone: the rule runs and keeps a whole one")
+        self.assertIn("0 of 1 rules replayed", outs[1])
+        self.assertNotIn("rebuilding", outs[2])
+        self.assertIn("1 of 1 rules replayed", outs[2], "the good entry is replayed")
+        self.assertEqual(len(list((self.tmp / "cache" / "rules").glob("*/*"))), 1)
+
+
+class CheckOutputTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
     def test_check_output_names_what_is_missing(self):
         gen = self.tmp / "gen"
         self.assertIn("lacks monstats.txt", pd2_merge.check_output(gen, ("monstats.txt",), 0))

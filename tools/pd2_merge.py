@@ -124,8 +124,10 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None) -> list[s
             if cache:
                 stack.enter_context(pd2_cache.lock(cache.parent / "pd2_merge.lock"))
             stack.enter_context(pd2_cache.lock(root / "pd2_merge.lock"))
+            pd2_cache.used.clear()
             applied = apply(rules)
             if (why := check_output(root / "generated" / "data")) is not None:
+                pd2_cache.evict(pd2_cache.used)  # a partial entry would be replayed, and fail, on every later run
                 print(f"merge output is not whole ({why}): rebuilding without the rule cache", flush=True)
                 applied, rebuilt = apply(RULES), True
                 if (why := check_output(root / "generated" / "data")) is not None:
@@ -158,8 +160,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"pd2_merge: {e}", file=sys.stderr)
         return 1
     if cache:
-        for e in pd2_cache.prune(cache, int(float(os.environ.get("PD2R_CACHE_GB", "20")) * 2**30),
-                                  legacy=os.environ.get("PD2R_PRUNE_LEGACY") == "1"):
+        with pd2_cache.lock(cache / "pd2_merge.lock"):  # no merge is replaying an entry while it is deleted
+            gone = pd2_cache.prune(cache, int(float(os.environ.get("PD2R_CACHE_GB", "20")) * 2**30),
+                                   legacy=os.environ.get("PD2R_PRUNE_LEGACY") == "1")
+        for e in gone:
             print(f"pruned {e}")
     print(f"generated/data rebuilt; rules applied: {', '.join(applied) or 'none'}")
     return 0

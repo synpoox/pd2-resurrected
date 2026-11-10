@@ -154,6 +154,7 @@ def sources(fn: Callable) -> list[Path]:
 NOT_TRACED = ("pd2-data", "tools")
 _digests: dict[tuple[str, int, int], str] = {}
 _trace: "Trace | None" = None
+used: list[Path] = []  # the entries rule() replayed or kept since the caller last cleared this (evict, below)
 
 
 def _roots(roots: dict[str, Path]) -> dict[str, str]:
@@ -325,6 +326,7 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
         try:
             m = json.loads((e / "manifest.json").read_text("utf-8"))
             if all(_state(top, k) == v for k, v in m["reads"].items()):
+                used.append(e)
                 os.utime(e)  # recently used: pruned last, and not while this replay copies it
                 for d in m["dirs"]:
                     (gen / d).mkdir(parents=True, exist_ok=True)
@@ -367,13 +369,22 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
             shutil.copy2(gen / f, tmp / "files" / f)
         (tmp / "manifest.json").write_text(json.dumps(m), "utf-8")
         os.rename(tmp, home / name)
+        used.append(home / name)
     except OSError as e:  # FileExistsError: another run kept the same reads; anything else only costs a later hit
-        if not isinstance(e, FileExistsError):
+        if isinstance(e, FileExistsError):
+            used.append(home / name)
+        else:
             print(f"warning: rule not cached ({e})")
     finally:
         if tmp.exists():
             shutil.rmtree(tmp, ignore_errors=True)
     return False
+
+
+def evict(entries: list[Path]) -> None:
+    """Delete rule entries (those in used) whose output a check found wrong, so the next run rebuilds and keeps a good one."""
+    for e in entries:
+        shutil.rmtree(e, ignore_errors=True)
 
 
 def size(p: Path) -> int:
