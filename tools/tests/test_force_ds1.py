@@ -79,6 +79,44 @@ class ForceTests(unittest.TestCase):
         f.reset(self.path)
         self.assertEqual(self.path.read_bytes(), self.raw)
 
+    def test_reforce_another_variant_without_reset(self):
+        f.apply(self.path, ["200=darktemplev2.ds1"])
+        f.apply(self.path, ["200=darktemplev3.ds1"])
+        self.assertEqual(self.row("Dark Temple Map")[4], "Expansion/Map/DarktempleV3.ds1")
+        with self.assertRaises(f.ForceError):
+            f.apply(self.path, ["200=Bord1.ds1"])  # still not one of the original variants
+        f.reset(self.path)
+        self.assertEqual(self.path.read_bytes(), self.raw)
+
+    def test_slot_guard_refusals_become_force_errors(self):
+        class Refuse(Exception):
+            pass
+
+        class Cfg:
+            def slot_dir(self, n):
+                return str(Path(self.tmp) / f"S{n}")
+
+        def toolkit(msg):
+            tc = type("tc", (), {"load": staticmethod(lambda _p: Cfg())})
+            def check(cfg, n):
+                if msg:
+                    raise Refuse(msg)
+                return n
+            return lambda: (tc, type("ri", (), {"check_slot": staticmethod(check)}))
+        saved = f._toolkit
+        try:
+            for msg in ("slot 1 is your own game", "slot 4 is not locked by MODKIT_RUN=None", "slot 4 still has a running game"):
+                f._toolkit = toolkit(msg)
+                with self.assertRaises(f.ForceError) as c:
+                    f.lvlprest_path(4)
+                self.assertIn(msg, str(c.exception))
+                self.assertEqual(f.main(["--slot", "4", "--reset"]), 1)
+            Cfg.tmp = self.tmp.name
+            f._toolkit = toolkit(None)
+            self.assertEqual(f.lvlprest_path(4), Path(self.tmp.name) / "S4" / f.REL)
+        finally:
+            f._toolkit = saved
+
     def test_cli(self):
         argv = ["--slots-dir", self.tmp.name, "--slot", "4"]
         self.assertEqual(f.main([*argv, "200=darktemplev2.ds1"]), 0)

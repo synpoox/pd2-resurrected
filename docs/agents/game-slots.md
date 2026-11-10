@@ -40,7 +40,9 @@ slot, pin the level to the variant under test (test-only; it edits the slot's in
     python tools/pd2_force_ds1.py --slot <N> "Dark Temple Map=DarktempleV2.ds1"   # or 200=darktemplev2.ds1, or darktemplev2.ds1
 
 A selector is the lvlprest `Name`, the LevelId or, alone, a DS1 file name; it refuses a DS1 that is not one of that
-row's variants and prints what it changed. Run `--reset` before you unlock the slot (the original is kept as
+row's variants (as the slot first had them, so `200=V2` then `200=V3` works) and prints what it changed. Like
+`slot_install.py` it needs `MODKIT_TESTING_CONFIG` set, the slot lock held by `MODKIT_RUN`, and the slot's game
+closed: D2R reads `lvlprest.txt` at launch, so force before you start the game. Run `--reset` before you unlock the slot (the original is kept as
 `lvlprest.txt.pd2-force-ds1.orig`); reinstalling the slot undoes it as well.
 
 ## Shared cache
