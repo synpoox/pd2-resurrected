@@ -41,8 +41,8 @@ pd2assets/a5_cliff_parts.dt1	-
 pd2assets/a5_head.dt1	-
 pd2assets/a5_palm.dt1	act2/outdoors/palm.dt1
 pd2assets/a5_prickly.dt1	act2/outdoors/prickly.dt1
-# a5_river's best (16 of 45 tiles) is specials.dt1, marker tiles that draw nothing: none
-pd2assets/a5_river.dt1	-
+# a5_river's best (16 of 45 tiles) is specials.dt1, marker tiles that draw nothing; oasis.dt1 (13 of 45, river water) is next
+pd2assets/a5_river.dt1	act2/outdoors/oasis.dt1
 pd2assets/a5_rotatedriver.dt1	garden/colossalsummit/floor.dt1
 pd2assets/archwallalt.dt1	-
 pd2assets/barflooralt.dt1	act2/outdoors/oasis.dt1
@@ -82,6 +82,8 @@ pd2assets/descend/torture.dt1	act1/barracks/torture.dt1
 pd2assets/descend/town_reindexed.dt1	act1/tristram/town.dt1
 pd2assets/descend/treegroups.dt1	guild/outdoors/treegroups.dt1
 pd2assets/descend/trees.dt1	act1/town/trees.dt1
+# diamondgates: 13 of 64 tiles are pixel copies of act4/fort/foregate (the gate), the only D2R art holding any
+pd2assets/diamondgates.dt1	act4/fort/foregate.dt1
 pd2assets/dtprivate/archwall.dt1	-
 pd2assets/dtprivate/bone.dt1	act2/outdoors/bone.dt1
 pd2assets/dtprivate/desertground.dt1	act2/town/ground.dt1
@@ -106,6 +108,13 @@ pd2assets/dtprivate/worldstone.dt1	expansion/baallair/worldstone.dt1
 pd2assets/dtprivate/worldstonegray.dt1	-
 pd2assets/ext.dt1	-
 pd2assets/fac5pd2.dt1	-
+# fallengarden*: floor 157 of 198 tiles are pixel copies of baallair/floor; stairs 24 of 81 match sanctuary's flags;
+# trees 189 of 189 match jungle/trees; water 57 of 58 are pixel copies of docktown/bridge; the 9 wall tiles match nothing
+pd2assets/fallengardenfloor.dt1	expansion/baallair/floor.dt1
+pd2assets/fallengardenstairs.dt1	act2/arcane/sanctuary.dt1
+pd2assets/fallengardentrees.dt1	act3/jungle/trees.dt1
+pd2assets/fallengardenwall.dt1	-
+pd2assets/fallengardenwater.dt1	act3/docktown/bridge.dt1
 pd2assets/final_cliff1.dt1	act1/outdoors/cliff1.dt1
 pd2assets/final_cliff2.dt1	act1/outdoors/cliff2.dt1
 pd2assets/final_corner.dt1	guild/outdoors/cliff.dt1
