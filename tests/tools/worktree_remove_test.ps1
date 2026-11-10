@@ -12,9 +12,9 @@ function Run([string[]]$a) {
     $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $script @a 2>&1 | Out-String
     [pscustomobject]@{ Code = $LASTEXITCODE; Out = $out }
 }
-function NewWt([string]$name) {
+function NewWt([string]$name, [string]$start = 'origin/main') {
     $p = Join-Path $scratch $name
-    & git -C $repo worktree add -q -b "scratch/$name" $p HEAD
+    & git -C $repo worktree add -q -b "scratch/$name" $p $start
     $p
 }
 
@@ -49,6 +49,35 @@ try {
     Check 'nested junction reported' ($r.Out -match 'unlinked .*nested')
     Check 'worktree no longer listed' (-not ((& git -C $repo worktree list) -match 'wtr-test'))
     Check 'unmerged branch kept' ($r.Out -match 'kept branch' -and (& git -C $repo branch --list 'scratch/links'))
+
+    # Locked: refused before anything is touched, and not unlocked.
+    $wt = NewWt 'locked'
+    New-Item -ItemType Junction -Path (Join-Path $wt 'pd2-data') -Target $target | Out-Null
+    & git -C $repo worktree lock --reason 'live agent' $wt
+    $r = Run @('-Path', $wt)
+    Check 'refuses locked worktree' ($r.Code -ne 0 -and $r.Out -match 'locked')
+    Check 'locked worktree untouched (junction kept, still locked)' ((Test-Path (Join-Path $wt 'pd2-data\keep.txt')) -and ((& git -C $repo worktree list --porcelain) -match '^locked'))
+    & git -C $repo worktree unlock $wt
+    cmd /c rmdir (Join-Path $wt 'pd2-data')
+    & git -C $repo worktree remove --force $wt
+
+    # Nested worktree: refused, both stay.
+    $outer = NewWt 'outer'
+    $inner = Join-Path $outer 'inner'
+    & git -C $repo worktree add -q -b scratch/inner $inner origin/main
+    $r = Run @('-Path', $outer)
+    Check 'refuses a target containing another worktree' ($r.Code -ne 0 -and $r.Out -match 'contains another worktree' -and (Test-Path $inner))
+    & git -C $repo worktree remove --force $inner
+    & git -C $repo worktree remove --force $outer
+
+    # Branch rule: tip in origin/main -> deleted; tip with a commit past it and no merged PR -> kept.
+    $wt = NewWt 'merged'
+    $r = Run @('-Path', $wt, '-DeleteBranch')
+    Check 'branch whose tip is in origin/main is deleted' ($r.Code -eq 0 -and $r.Out -match 'deleted local branch' -and -not (& git -C $repo branch --list 'scratch/merged'))
+    $wt = NewWt 'ahead'
+    & git -C $wt commit -q --allow-empty -m 'after merge'
+    $r = Run @('-Path', $wt, '-DeleteBranch')
+    Check 'branch with a commit past origin/main is kept' ($r.Code -eq 0 -and $r.Out -match 'kept branch' -and (& git -C $repo branch --list 'scratch/ahead'))
 } finally {
     & git -C $repo worktree prune
     foreach ($b in (& git -C $repo branch --list 'scratch/*' --format '%(refname:short)')) { & git -C $repo branch -D $b | Out-Null }
