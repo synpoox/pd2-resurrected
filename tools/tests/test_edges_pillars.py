@@ -128,6 +128,15 @@ class PillarTests(unittest.TestCase):
         lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 1, 0, 0),)), (1, 0): PD2}, {(1, 0): flags})
         self.assertEqual([e["name"] for e in P.place(lay, kit, "s")[0] if at(e)[0] >= 10], ["icecave_fences/corner_fence01"])
 
+    def test_a_post_bearing_key_is_kept_as_a_wall(self):
+        bar = ("w", ((T, 12, 7, 7),))
+        flags = grid(".....", ".###.", ".###.", ".###.", ".....")
+        kit = P.Kit({("w", ((T, 1, 0, 0),)): [(0, [(entity("wildtemple/pillar01", 0, 0), 5.0, 5.0)])],
+                     bar: [(0, [(entity("icecave_architecture/post01", 0, 0), 5.0, 5.0)])]}, [{}], flags={bar: flags},
+                    top=lambda e: 8.0)
+        lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 1, 0, 0),)), (1, 0): PD2}, {(1, 0): flags})
+        self.assertEqual([e["name"] for e in P.place(lay, kit, "s")[0] if at(e)[0] >= 10], ["icecave_architecture/post01"])
+
     def test_a_wall_bearing_key_keeps_all_its_columns(self):
         bar = ("w", ((T, 12, 7, 7),))
         row = [(entity("wildtemple/wall_bar01", 0, 0), x, 5.0) for x in (1.0, 5.0)]
