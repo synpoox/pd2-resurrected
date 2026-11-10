@@ -32,6 +32,7 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 ## Testing in-game
 
 - Game slots (separate game copies for a test, Slot4-8 here) and how to set one up: `docs/agents/game-slots.md`.
+- The game-check recipe (lock, install, cheats, screenshots, unlock, worktree hygiene): `docs/agents/game-check.md`.
 - `pd2_extract.py` and `pd2_merge.py` reuse the machine-wide cache in `C:\pd2r-cache` (game-slots.md, "Shared cache"):
   run them as usual, and don't copy `pd2-data/`, `generated/` or `out/` between worktrees.
 - Before removing a worktree, unlink its `pd2-data`, `generated` and `out` junctions (`cmd /c rmdir <worktree>\<name>`):

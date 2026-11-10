@@ -19,6 +19,8 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
 
 ## Steps
 
+The per-check recipe (cheats, shots, images, unlock) is `docs/agents/game-check.md`; these are the slot basics.
+
 1. `python <toolkit>/testing/game_slots.py status` and pick a free slot from 4-8.
 2. `python <toolkit>/testing/game_slots.py lock <N> <owner>`. For a slot the owner tests by hand, use an owner name
    such as `owner-<work item>`: a manual lock lasts until `unlock`.
@@ -64,10 +66,7 @@ closed: D2R reads `lvlprest.txt` at launch, so force before you start the game. 
   (#745). A rule's cache key covers its module, what it imports, and every file of an imported package (`tools/presets/`).
 - `install.ps1` (modkit install) writes only the `out\data` files that differ from the slot's and touches nothing outside
   `<slot>\mods\PD2Resurrected`, so moving a slot between builds is quick.
-- Before removing a worktree, unlink its junctions, and never delete through them: `git worktree remove --force`
-  follows a junction and empties the shared cache (`C:\pd2r-cache`, or `F:\pd2r-cache` for slots on F:):
-  `cmd /c rmdir <worktree>\pd2-data`, `cmd /c rmdir <worktree>\generated`, `cmd /c rmdir <worktree>\out`.
-- Never delete a cache folder another worktree's `pd2-data` points at. CI (`GITHUB_ACTIONS`) does not use these.
+- Removing a worktree: unlink its junctions first (`docs/agents/game-check.md`, "Worktree hygiene"). CI (`GITHUB_ACTIONS`) does not use these.
 - Each merge prunes the least recently used `rules\` entries until they hold `PD2R_CACHE_GB` (default 20) GB. A rule
   run that wrote outside `generated\` (new `merge\art` PNGs) is not kept. The whole-merge `merge\<key>` folders older
   tools kept are pruned only with `PD2R_PRUNE_LEGACY=1`: set it once no worktree runs the old tools. `extract\` is
