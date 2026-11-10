@@ -1,4 +1,4 @@
-"""The fence pass (#736): fence tiles stand as low D2R fence pieces along their run, gates at orientations 8 and 9."""
+"""The fence pass (#736, passes/edges_fences.py): fence tiles stand as low D2R fence pieces along their run, gates at orientations 8 and 9."""
 import sys
 import unittest
 from pathlib import Path
@@ -7,9 +7,11 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_coverage as coverage  # noqa: E402
 from presets.layout import Layout  # noqa: E402
-from presets.passes import fences  # noqa: E402
+from presets.passes import edges_fences as fences  # noqa: E402
 
-FENCE = "act4/fort/foregate.dt1"
+FENCE = "expansion/siege/fence.dt1"
+STONE = "act4/mesa/chain_walls.dt1"
+FOREGATE = "act4/fort/foregate.dt1"
 WALL = "act1/barracks/basewall.dt1"
 
 
@@ -49,14 +51,44 @@ class FenceTests(unittest.TestCase):
         fences.run(b)
         self.assertEqual({e["components"][0]["orientation"]["y"] for e in b.loose}, {-0.707106769})
 
+    def test_a_tall_foregate_is_no_fence(self):
+        keys = {(x, 5): ("w", ((FOREGATE, 2, 0, 0),)) for x in range(3, 8)}
+        b = build(keys, [stock_piece(45, 55)])
+        fences.run(b)
+        self.assertEqual([e["name"] for e in b.loose], ["wall_stone_large01"])  # its stock wall stays
+
+    def test_a_wooden_fence_never_takes_a_rock_or_stone_wall(self):
+        keys = {(x, 5): ("w", ((FENCE, 2, 0, 0),)) for x in range(0, 12)}
+        b = build(keys, [])
+        fences.run(b)
+        models = {next(c for c in e["components"] if c["type"] == "ModelDefinitionComponent")["filename"]
+                  for e in b.loose}
+        self.assertTrue(models and all("spider_fences" in m for m in models), models)
+
+    def test_a_stone_fence_takes_stone_pieces(self):
+        keys = {(x, 5): ("w", ((STONE, 2, 0, 0),)) for x in range(0, 12)}
+        b = build(keys, [])
+        fences.run(b)
+        models = {next(c for c in e["components"] if c["type"] == "ModelDefinitionComponent")["filename"]
+                  for e in b.loose}
+        self.assertTrue(models and all(("stone_fences" in m or "tomb_fences" in m) for m in models), models)
+
+    def test_a_lone_tile_goes_by_its_orientation(self):
+        def yaw(o: int) -> float:
+            b = build({(5, 5): ("w", ((FENCE, o, 0, 0),))}, [])
+            fences.run(b)
+            return b.loose[0]["components"][0]["orientation"]["y"]
+        self.assertEqual({o: yaw(o) for o in (1, 2, 3, 4, 5, 6, 7)},
+                         {1: -0.707106769, 2: 0.0, 3: 0.0, 4: -0.707106769, 5: -0.707106769, 6: 0.0, 7: 0.0})
+
     def test_gate_orientations_take_the_end_cap(self):
-        keys = {(x, 5): ("w", ((FENCE, 8 if x == 3 else 2, 0, 0),)) for x in range(3, 6)}
+        keys = {(x, 5): ("w", ((STONE, 8 if x == 3 else 2, 0, 0),)) for x in range(3, 6)}
         b = build(keys, [])
         fences.run(b)
         models = [next(c for c in e["components"] if c["type"] == "ModelDefinitionComponent")["filename"]
                   for e in sorted(b.loose, key=at)]
-        self.assertEqual(models[0], fences.kit()[fences.GATE]["model"])
-        self.assertNotIn(fences.kit()[fences.GATE]["model"], models[1:])
+        self.assertEqual(models[0], fences.kit()[fences.GATE["stone"]]["model"])
+        self.assertNotIn(fences.kit()[fences.GATE["stone"]]["model"], models[1:])
 
     def test_a_fence_beside_another_wall_keeps_the_kits_pick(self):
         keys = {(5, 5): ("w", ((FENCE, 2, 0, 0), (WALL, 1, 0, 0)))}

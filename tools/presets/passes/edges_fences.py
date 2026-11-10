@@ -2,13 +2,18 @@
 low D2R fence piece laid along its run, in place of the per-tile kit's pick, which is a stock piece of whatever the
 stock tile drew there (a 17-unit palisade, a gate, a wall: Fortress's palisade, #686).
 
-- Family: a wooden fence DT1 (fence, barset, graveyrd) takes the wood pieces, a stone one (chain_walls, foregate,
-  stone_fence) the stone pieces. The pieces are fence_kit.json: D2R fence models under TALL (4 units, pd2_coverage), so
-  none hides walkable ground; their entities, boxes and dependencies come from the stock presets named there.
-- Run direction: a tile turns its piece along x or z, by the straight run of fence tiles through it (the longer; a lone
-  tile by its orientation: 1 runs along z, the rest along x). One piece per tile, centred on it, as the legacy edge is
-  one tile wide and the pieces span about a tile.
-- Gates: orientations 8 and 9 (the end tiles of a fence DT1's gate) take the end cap.
+- Family, by the fence DT1's material: wood (siege/fence: wooden stakes; outdoors/fence, town/fence, descend/fence:
+  rail fences; barset; graveyrd) takes a wooden piece (act3_spider_fences), stone (chain_walls, stone_fence) a stone
+  one (act2_ruin_stone_fences, act2_tomb_fences). A wood fence never takes a rock wall (wildtemple_rockwalls). The
+  pieces are fence_kit.json: D2R fence models under TALL (4 units, pd2_coverage), so none hides walkable ground; their
+  entities, boxes and dependencies come from the stock presets named there.
+- A DT1 whose walls are tall (act4/fort/foregate: 224-416 px) is no fence: pd2_fidelity.classify calls it a wall, so
+  this pass leaves it alone.
+- Run direction: a tile turns its piece along x or z, by the straight run of fence tiles through it (the longer); a
+  tile with no longer run (a lone tile, or the elbow of an L) goes by its orientation (ALONG_Z). One piece per tile,
+  centred on it, as the legacy edge is one tile wide and the pieces span about a tile.
+- Gates: orientations 8 and 9 (the end tiles of a fence DT1's gate) take the end cap of a stone fence; the kit has no
+  wooden end cap, so a wooden gate takes the run piece.
 - Only a tile whose every wall layer is a fence or an invisible wall (act4/mesa/inv_wall) is replaced; a fence beside
   another wall layer keeps the kit's pick. Trees and pasted rooms' pieces stay.
 """
@@ -28,9 +33,11 @@ from ..entity import _transform
 
 ORDER = 450
 KIT = Path(__file__).resolve().parent.parent / "fence_kit.json"
-STONE = re.compile(r"chain_walls|foregate|stone_fence|palisade")
-POOLS = {"wood": ("spider_run", "wild_run"), "stone": ("ruin_long", "ruin_medium", "tomb_run")}
-GATE, GATES = "tomb_end", (8, 9)
+STONE = re.compile(r"chain_walls|stone_fence")
+POOLS = {"wood": ("spider_run",), "stone": ("ruin_long", "ruin_medium", "tomb_run")}
+GATE, GATES = {"stone": "tomb_end"}, (8, 9)
+# a tile with no longer run goes along z for the left-hand orientations (1 left wall, 4 and 5 the left corners), else x
+ALONG_Z = frozenset({1, 4, 5})
 YAW_Z = {"x": 0.0, "y": -0.707106769, "z": 0.0, "w": 0.707106769}  # turns a piece's long x axis along z
 STAND = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
 
@@ -65,7 +72,7 @@ def along(tiles: dict, c: tuple[int, int]) -> str:
             n += 1
         return n
     ax, az = reach(1, 0) + reach(-1, 0), reach(0, 1) + reach(0, -1)
-    return "x" if ax > az else "z" if az > ax else "z" if tiles[c][2] == 1 else "x"
+    return "x" if ax > az else "z" if az > ax else "z" if tiles[c][2] in ALONG_Z else "x"
 
 
 def piece(name: str, c: tuple[int, int], axis: str) -> dict:
@@ -95,7 +102,7 @@ def run(b) -> None:
     for c in sorted(tiles):
         fam, gate, _ = tiles[c]
         pool = POOLS[fam]
-        name = GATE if gate else pool[zlib.crc32(f"{b.seed}:{c[0]}:{c[1]}:fence".encode()) % len(pool)]
+        name = GATE.get(fam, pool[0]) if gate else pool[zlib.crc32(f"{b.seed}:{c[0]}:{c[1]}:fence".encode()) % len(pool)]
         used.add(name)
         b.loose.append(piece(name, c, along(runs, c)))
     for name in sorted(used):

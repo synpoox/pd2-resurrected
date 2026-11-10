@@ -126,20 +126,15 @@ def point(link: Path, target: Path) -> None:
 
 
 def sources(fn: Callable) -> list[Path]:
-    """fn's module file and every module or package beside it that it imports, at any depth (a rule's code; a package
-    is listed as its folder, which key() hashes whole, its data files too). An import in a
+    """fn's module file and every module beside it that it imports, at any depth (a rule's code). An import in a
     module's main() is left out: a merge never runs a tool's command line (pd2_strings' imports pd2_merge, which
     would put every tool in every key)."""
-    root = Path(sys.modules[fn.__module__].__file__).parent
     todo, seen = [Path(sys.modules[fn.__module__].__file__)], set()
     while todo:
         p = todo.pop()
         if p in seen:
             continue
         seen.add(p)
-        if p.is_dir():  # a package beside the rule (tools/presets/): every file in it is code or the code's data
-            todo += [q for q in sorted(p.rglob("*.py")) if "__pycache__" not in q.parts]
-            continue
         tree = ast.parse(p.read_text("utf-8"))
         cli = {id(n) for d in tree.body if isinstance(d, ast.FunctionDef) and d.name == "main" for n in ast.walk(d)}
         for n in ast.walk(tree):
@@ -147,8 +142,7 @@ def sources(fn: Callable) -> list[Path]:
                 continue
             names = ([a.name for a in n.names] if isinstance(n, ast.Import) else
                      [n.module] if isinstance(n, ast.ImportFrom) and n.module and not n.level else [])
-            todo += [q for m in names for q in (root / f"{m.split('.')[0]}.py", root / m.split('.')[0])
-                     if q.is_file() or (q / "__init__.py").is_file()]
+            todo += [q for q in (p.parent / f"{m.split('.')[0]}.py" for m in names) if q.is_file()]
     return sorted(seen)
 
 

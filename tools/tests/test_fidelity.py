@@ -105,7 +105,7 @@ class Typing(unittest.TestCase):
         self.assertEqual(c("act4/mesa/inv_wall.dt1", 2), "invisible")
         self.assertEqual(c("act4/mesa/chain_walls.dt1", 1), "fence")
         self.assertEqual(c("expansion/siege/fence.dt1", 1), "fence")
-        self.assertEqual(c("act4/fort/foregate.dt1", 3), "fence")
+        self.assertEqual(c("act4/fort/foregate.dt1", 3), "wall")  # tall (224-416 px), not a fence
         self.assertEqual(c("act1/barracks/barset.dt1", 1), "fence")
         self.assertEqual(c("act4/mesa/brick_walls.dt1", 1), "cliff")
         self.assertEqual(c("act3/travincal/terraces.dt1", 2), "cliff")
