@@ -195,9 +195,8 @@ def wrong_tiles(entities: list[dict], box: Callable[[str], tuple | None], prefab
 
 
 def walkable_floor(lay: presets.Layout) -> set[tuple[int, int]]:
-    """The DS1's walkable floor: floor tiles (no wall), not marked unwalkable, not mostly blocked (water)."""
-    return {c for c, k in lay.keys.items() if k[0] == "f" and c not in lay.unwalkable
-            and not painter.blocked_floor(lay.flags.get(c, bytes(25)))}
+    """The DS1's walkable floor (pd2_presets.walkable, which also decides where a stock room may paste)."""
+    return presets.walkable(lay)
 
 
 @dataclass

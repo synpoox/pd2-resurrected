@@ -58,6 +58,8 @@ TERRAIN = "act2/palace/celse3"  # a stock preset whose terrain is a flat TERRAIN
 TERRAIN_SIZE = 170
 SINK = 1.0  # HD units: a pasted room's ground this far below the flat plane would be hidden by it (#705)
 ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is pasted where this share of its tiles match
+ROOM_BARE = 0.001  # the share of a room's tiles that may be walkable DS1 floor off its walkable floor (#713:
+# Uber Tristram's 2156-tile town has one PD2 edit; a room with tens of such tiles draws walls or lava on open ground)
 # a plant (tree, palm, bush, vines, foliage): left out of an indoor map when harvested from an outdoor stock room
 PLANT = re.compile(r"tree|palm|bush|vine|foliage|banyan")
 FAR = 20.0  # HD units (2 tiles): a piece whose mesh stands this far clear of its position belongs to a structure
@@ -373,17 +375,24 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
     return entities, used, missing
 
 
+def walkable(lay: Layout) -> set[tuple[int, int]]:
+    """The DS1's walkable floor: floor tiles (no wall), not marked unwalkable, not mostly blocked (water)."""
+    return {c for c, k in lay.keys.items() if k[0] == "f" and c not in lay.unwalkable
+            and not painter.blocked_floor(lay.flags.get(c, bytes(25)))}
+
+
 def rooms(lay: Layout, stock: list[tuple[Layout, dict]]) -> tuple[list[tuple[int, int, int]], set]:
     """The stock rooms to paste whole, [(stock index, x, y)], best match first and none overlapping, and their tiles."""
     at: dict[Key, list] = {}
     for c, k in lay.keys.items():
         at.setdefault(k, []).append(c)
-    found = []
+    found, walk = [], walkable(lay)
     for n, (s, _) in enumerate(stock):
         items = list(s.keys.items())
         if len(items) < ROOM_MIN:
             continue
         (ax, ay), anchor = min(items, key=lambda it: len(at.get(it[1], ())) or 10 ** 9)
+        sw = walkable(s)
         misses = len(items) - ROOM_MATCH * len(items)
         for px, py in at.get(anchor, ()):
             ox, oy = px - ax, py - ay
@@ -395,7 +404,11 @@ def rooms(lay: Layout, stock: list[tuple[Layout, dict]]) -> tuple[list[tuple[int
                 if m + 1 - hit > misses:
                     break
             else:
-                found.append((-hit, n, ox, oy))
+                # the DS1's walkable floor must land on the room's: where it lands on the room's lava, wall or
+                # nothing, the room draws no ground under a walkable tile (Lava, #702), but for ROOM_BARE of it
+                bare = sum((x + ox, y + oy) in walk and (x, y) not in sw for x in range(s.width) for y in range(s.height))
+                if bare <= ROOM_BARE * len(items):
+                    found.append((-hit, n, ox, oy))
     out, taken = [], set()
     for _, n, ox, oy in sorted(found):
         cells = {(x, y) for x in range(ox, ox + stock[n][0].width) for y in range(oy, oy + stock[n][0].height)}

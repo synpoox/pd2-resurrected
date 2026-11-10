@@ -34,6 +34,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Frozen Forest and other outdoor maps close more gaps in the tree lines beyond their paths.
 - Fortress Map draws the walls PD2 added inside copied D2R rooms, closing most of its border gaps.
 - Tree tiles no longer draw a stone wall or cliff, which hid Fortress Map's waypoint court.
+- Copied D2R rooms paste only where the map's walkable floor matches theirs, so Fortress Map draws its own walls.
 - Halls of Torture Map draws stock temple pillars and cages where PD2 drew its own pillars.
 - PD2 areas show "Entering <area>" on arrival instead of "Missing string".
 - Dungeon boss barriers show as iron gates instead of invisible walls.
