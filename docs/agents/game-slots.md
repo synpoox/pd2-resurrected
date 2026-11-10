@@ -22,8 +22,10 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
 1. `python <toolkit>/testing/game_slots.py status` and pick a free slot from 4-8.
 2. `python <toolkit>/testing/game_slots.py lock <N> <owner>`. For a slot the owner tests by hand, use an owner name
    such as `owner-<work item>`: a manual lock lasts until `unlock`.
-3. Build and install: `plugin\build.ps1`, `python tools/pd2_extract.py`, `python tools/pd2_merge.py`, then
-   `tools\install.ps1 -Game C:\D2RTestSlots\Slot<N> -Data . -NoValidate` (main still has known validation errors).
+3. Build and install: `plugin\build.ps1`, `python tools/pd2_extract.py`, `python tools/pd2_merge.py`, then, with
+   `MODKIT_RUN` set to the lock's owner, `tools\install.ps1 -Game C:\D2RTestSlots\Slot<N> -Data . -NoValidate` (main
+   still has known validation errors). modkit install refuses a slot, so `install.ps1` installs a slot's data through
+   the toolkit's `testing/slot_install.py`, which keeps the slot's own savepath and needs the lock held by `MODKIT_RUN`.
    The shared cache below makes the extract and merge near-instant when another worktree already ran them.
    `install.ps1` leaves only our plugins in `<slot>\d2rloader\plugins` (`core-rules.dll`, `core-maps.dll`, `core-ui.dll`,
    `test-harness.dll`, `d2r-testharness-console.txt`): it moves anything else to
@@ -31,6 +33,19 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
 4. Check the installed data holds the change (the merged table row in `out/data`).
 5. For a hand test, write the slot, its lock owner and the unlock command into the game-check issue.
 6. `python <toolkit>/testing/game_slots.py unlock <N> <owner>` once the test is done.
+
+## Force a DS1 variant
+
+A level with several DS1 variants rolls one per game, so a warp can land on the wrong layout. After installing the
+slot, pin the level to the variant under test (test-only; it edits the slot's installed `lvlprest.txt`, never `out/`):
+
+    python tools/pd2_force_ds1.py --slot <N> "Dark Temple Map=DarktempleV2.ds1"   # or 200=darktemplev2.ds1, or darktemplev2.ds1
+
+A selector is the lvlprest `Name`, the LevelId or, alone, a DS1 file name; it refuses a DS1 that is not one of that
+row's variants (as the slot first had them, so `200=V2` then `200=V3` works) and prints what it changed. Like
+`slot_install.py` it needs `MODKIT_TESTING_CONFIG` set, the slot lock held by `MODKIT_RUN`, and the slot's game
+closed: D2R reads `lvlprest.txt` at launch, so force before you start the game. Run `--reset` before you unlock the slot (the original is kept as
+`lvlprest.txt.pd2-force-ds1.orig`); reinstalling the slot undoes it as well.
 
 ## Shared cache
 
