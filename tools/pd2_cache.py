@@ -44,7 +44,8 @@ def lock(path: Path, poll: float = 1.0):
     """Hold an OS lock on the file path, waiting while another process holds it. The OS drops the lock when its holder
     exits, so a crashed run never leaves a stale one."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a+b") as f:
+    path.touch()
+    with open(path, "r+b") as f:
         waited = False
         while True:
             try:
@@ -53,14 +54,48 @@ def lock(path: Path, poll: float = 1.0):
                 break
             except OSError:
                 if not waited:
-                    print(f"waiting for {path}: another run holds it", flush=True)
+                    print(f"waiting for {path}: {holder(path)} holds it", flush=True)
                     waited = True
                 time.sleep(poll)
         try:
+            f.seek(1)  # byte 0 is the locked one; the holder's pid follows it, for a waiter's message (#745)
+            f.write(str(os.getpid()).encode())
+            f.truncate()
+            f.flush()
             yield
         finally:
             f.seek(0)
             msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1) if msvcrt else fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def holder(path: Path) -> str:
+    """Who wrote path's lock last: "pid N (running)" or "pid N (gone)". The OS drops a lock when its holder dies, so a
+    lock still held names a live process (an orphan of a killed shell runs on and keeps it until it ends)."""
+    try:
+        with open(path, "rb") as f:
+            f.seek(1)  # not byte 0: Windows refuses a read of the locked byte
+            pid = int(f.read().decode() or 0)
+    except (OSError, ValueError):
+        pid = 0
+    if not pid:
+        return "another run"
+    try:
+        if os.name == "nt":
+            import ctypes
+            h = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+            alive = False
+            if h:  # a handle can outlive its process: ask whether it still runs (259: STILL_ACTIVE)
+                code = ctypes.c_ulong()
+                alive = bool(ctypes.windll.kernel32.GetExitCodeProcess(h, ctypes.byref(code))) and code.value == 259
+                ctypes.windll.kernel32.CloseHandle(h)
+        else:
+            os.kill(pid, 0)
+            alive = True
+    except PermissionError:
+        alive = True
+    except OSError:
+        alive = False
+    return f"pid {pid} ({'running' if alive else 'gone'})"
 
 
 def key(paths: list[Path], *extra: str) -> str:
@@ -119,6 +154,7 @@ def sources(fn: Callable) -> list[Path]:
 NOT_TRACED = ("pd2-data", "tools")
 _digests: dict[tuple[str, int, int], str] = {}
 _trace: "Trace | None" = None
+used: list[Path] = []  # the entries rule() replayed or kept since the caller last cleared this (evict, below)
 
 
 def _roots(roots: dict[str, Path]) -> dict[str, str]:
@@ -290,6 +326,7 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
         try:
             m = json.loads((e / "manifest.json").read_text("utf-8"))
             if all(_state(top, k) == v for k, v in m["reads"].items()):
+                used.append(e)
                 os.utime(e)  # recently used: pruned last, and not while this replay copies it
                 for d in m["dirs"]:
                     (gen / d).mkdir(parents=True, exist_ok=True)
@@ -332,13 +369,22 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
             shutil.copy2(gen / f, tmp / "files" / f)
         (tmp / "manifest.json").write_text(json.dumps(m), "utf-8")
         os.rename(tmp, home / name)
+        used.append(home / name)
     except OSError as e:  # FileExistsError: another run kept the same reads; anything else only costs a later hit
-        if not isinstance(e, FileExistsError):
+        if isinstance(e, FileExistsError):
+            used.append(home / name)
+        else:
             print(f"warning: rule not cached ({e})")
     finally:
         if tmp.exists():
             shutil.rmtree(tmp, ignore_errors=True)
     return False
+
+
+def evict(entries: list[Path]) -> None:
+    """Delete rule entries (those in used) whose output a check found wrong, so the next run rebuilds and keeps a good one."""
+    for e in entries:
+        shutil.rmtree(e, ignore_errors=True)
 
 
 def size(p: Path) -> int:
