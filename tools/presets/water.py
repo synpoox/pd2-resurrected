@@ -5,11 +5,10 @@ import copy
 import json
 from pathlib import Path
 
-import pd2_painter as painter
-
-from .consts import FETCH, PRESETS, STREAM, TILE, WATER_RATIO, WATER_SPAN, WATER_Y
+from .consts import FETCH, PRESETS, STREAM, TILE, WATER_RATIO, plane_cap, plane_rim, plane_span
 from .entity import _transform
 from .layout import Layout
+from .liquids import liquid_y, mask as liquid_mask
 
 
 def rectangles(cells: set) -> list[tuple[int, int, int, int]]:
@@ -41,23 +40,36 @@ def squarish(rect: tuple[int, int, int, int]) -> list[tuple[int, int, int, int]]
     return [rect]
 
 
-def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set) -> list[tuple[dict, dict]]:
-    """Stock water planes over a water DT1's blocked floor tiles outside the pasted rooms (whose own mesh draws theirs),
-    one plane scaled to each near-square rectangle of tiles, with the dependencies of the preset it came from. A tile
-    whose floor layers hold two water DT1 gets the first one's plane only."""
+def tiled(rect: tuple[int, int, int, int], cx: int, cz: int) -> list[tuple[int, int, int, int]]:
+    """A rectangle cut into even pieces at most cx tiles wide and cz tiles high, so no plane is scaled past its stock
+    scale."""
+    x, y, w, h = rect
+    nx, nz = -(-w // cx), -(-h // cz)
+    return [(x + w * i // nx, y + h * j // nz, w * (i + 1) // nx - w * i // nx, h * (j + 1) // nz - h * j // nz)
+            for j in range(nz) for i in range(nx)]
+
+
+def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set,
+            liquids: dict | None = None) -> list[tuple[dict, dict]]:
+    """Stock liquid planes (water, lava) over a liquid DT1's blocked floor tiles outside the pasted rooms (whose
+    own mesh draws theirs), one plane scaled to each near-square rectangle of tiles, with the dependencies of the
+    preset it came from. `liquids` is the liquid mask (liquids.mask). A tile whose floor layers hold two liquid DT1
+    with a plane gets the first one's plane only."""
+    if liquids is None:
+        liquids = liquid_mask(lay, frozenset(water))
     out, done = [], set()
     for dt1 in sorted(water):
         plane, of = water[dt1]
-        cells = {c for c, k in lay.keys.items() if c not in taken and c not in done and k[0] == "f"
-                 and any(t[0] == dt1 for t in k[1]) and painter.blocked_floor(lay.flags.get(c, bytes(25)))}
+        cells = {c for c, dt1s in liquids.items() if c not in taken and c not in done and dt1 in dt1s}
         done |= cells
-        span = WATER_SPAN[next(c["filename"] for c in plane["components"] if c["type"] == "ModelDefinitionComponent")]
-        for x, y, w, h in (r for rect in rectangles(cells) for r in squarish(rect)):
+        model = next(c["filename"] for c in plane["components"] if c["type"] == "ModelDefinitionComponent")
+        (sx, sz), cap, (rx, rz) = plane_span(model), plane_cap(model), plane_rim(model)
+        for x, y, w, h in (r for rect in rectangles(cells) for sq in squarish(rect) for r in tiled(sq, *cap)):
             e = copy.deepcopy(plane)
             t = _transform(e)
-            t["position"] = {"x": (x + w / 2) * TILE, "y": WATER_Y, "z": (y + h / 2) * TILE}
+            t["position"] = {"x": (x + w / 2) * TILE, "y": liquid_y((x + w // 2, y + h // 2)), "z": (y + h / 2) * TILE}
             t["orientation"] = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
-            t["scale"] = {"x": w * TILE / span, "y": 1.0, "z": h * TILE / span}
+            t["scale"] = {"x": (w * TILE + rx) / sx, "y": 1.0, "z": (h * TILE + rz) / sz}
             e["name"] = STREAM
             out.append((e, of))
     return out

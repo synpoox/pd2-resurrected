@@ -156,7 +156,7 @@ class BuildTests(unittest.TestCase):
         kit.add(room, src, set(keys.values()), [("waypointact2", 20.0, 20.0)])
         # pasted whole, with no PD2 waypoint object: the room keeps its floor
         preset, _ = P.build(P.Layout(4, 4, dict(keys)), P.Kit(), "m", "m.ds1", "b.json", TERRAIN, stock=[(room, src)])
-        self.assertIn("act2/palace/celSEwaypoint/terrain", [e["name"] for e in preset["entities"]])
+        self.assertIn(P.ROOM_PIECE + "act2/palace/celSEwaypoint/terrain", [e["name"] for e in preset["entities"]])  # marked by the height pass
         # an object on the pasted room's tiles gets nothing more
         preset, _ = P.build(P.Layout(4, 4, dict(keys)), kit, "m", "m.ds1", "b.json", TERRAIN, stock=[(room, src)],
                             objects=[("waypointact2", 20.0, 20.0)])

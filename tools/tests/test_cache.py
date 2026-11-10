@@ -4,12 +4,13 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 import threading
 import time
 import sys
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -60,16 +61,16 @@ class DeadHolderTests(unittest.TestCase):
                                  stdout=subprocess.PIPE, text=True)
             try:
                 self.assertEqual(p.stdout.readline().strip(), "held")
-                self.assertEqual(pd2_cache.holder(path), f"pid {p.pid} (running)")
+                self.assertRegex(pd2_cache.holder(path), rf"^pid {p.pid} \(running, holding since \d\d:\d\d:\d\d\)$")
             finally:
                 p.kill()
                 p.wait()
-            self.assertEqual(pd2_cache.holder(path), f"pid {p.pid} (gone)")
+            self.assertRegex(pd2_cache.holder(path), rf"^pid {p.pid} \(gone, ")
             start = time.time()
             with pd2_cache.lock(path, poll=0.05):  # the kernel dropped the dead holder's lock: no wait
                 pass
             self.assertLess(time.time() - start, 5)
-            self.assertEqual(pd2_cache.holder(path), f"pid {os.getpid()} (running)", "the last holder is recorded")
+            self.assertRegex(pd2_cache.holder(path), rf"^pid {os.getpid()} \(running", "the last holder is recorded")
 
 
 class KeyTests(unittest.TestCase):
@@ -305,12 +306,38 @@ def rule_tables(rule, pd2, d2r, out):  # writes the table set slowly; the first 
     PEAK.append(len(LIVE))
     try:
         for i, t in enumerate(TABLES):
-            if PARTIAL and PARTIAL.pop():
+            if PARTIAL and i == 2 and PARTIAL.pop():
                 return
             write(out / "global" / "excel" / t, rule.read_text())
             time.sleep(0.02)
     finally:
         LIVE.pop()
+
+
+CHILD = """
+import sys, time, pathlib
+from unittest import mock
+sys.path.insert(0, %(tools)r)
+import pd2_merge
+meet, name, TABLES = pathlib.Path(%(meet)r), sys.argv[3], %(tables)r
+
+def rule(rule, pd2, d2r, out):
+    meet.mkdir(exist_ok=True)
+    (meet / ("run-" + name)).write_text("x")
+    end = time.time() + 30
+    while len(list(meet.glob("run-*"))) < 2 and time.time() < end:
+        time.sleep(0.01)
+    if len(list(meet.glob("run-*"))) == 2:
+        (meet / ("met-" + name)).write_text("x")
+    (out / "global" / "excel").mkdir(parents=True, exist_ok=True)
+    for t in TABLES:
+        (out / "global" / "excel" / t).write_text(rule.read_text())
+
+with mock.patch.dict(pd2_merge.RULES, {"tables.tsv": rule}, clear=True), \\
+        mock.patch.object(pd2_merge, "REQUIRED_TABLES", ("monstats.txt",)), \\
+        mock.patch.object(pd2_merge, "MIN_TABLES", len(TABLES)):
+    sys.exit(pd2_merge.main(["--root", sys.argv[1], "--d2r", sys.argv[2]]))
+"""
 
 
 class ConcurrentMergeTests(unittest.TestCase):
@@ -342,22 +369,34 @@ class ConcurrentMergeTests(unittest.TestCase):
                  mock.patch.object(pd2_merge, "MIN_TABLES", len(TABLES))]
         return stack
 
-    def test_two_merges_at_once_both_write_a_whole_tree_and_never_overlap(self):
-        with contextlib.ExitStack() as st:
-            for c in self.patched():
-                st.enter_context(c)
-            codes, ts = {}, []
-            for n in ("a", "b"):
-                ts.append(threading.Thread(target=lambda n=n: codes.__setitem__(n, self.merge(n))))
-            [t.start() for t in ts]
-            [t.join(60) for t in ts]
-        self.assertEqual(codes, {"a": 0, "b": 0})
-        self.assertEqual(max(PEAK), 1, "the machine-wide lock: one merge at a time")
+    def test_two_merges_at_once_both_write_a_whole_tree_without_waiting_on_each_other(self):
+        # two processes (the rule cache traces per process); each rule waits until the other one is running too
+        child = CHILD % {"tools": str(Path(pd2_cache.__file__).parent), "meet": str(self.tmp / "meet"), "tables": TABLES}
+        write(self.tmp / "child" / "child_merge.py", child)  # a file: a rule's module needs a __file__
+        env = {**os.environ, "PD2R_CACHE": str(self.tmp / "cache")}
+        env.pop("GITHUB_ACTIONS", None)
+        procs = [subprocess.Popen([sys.executable, str(self.tmp / "child" / "child_merge.py"), str(self.tmp / n), str(self.tmp / "d2r"), n], env=env,
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) for n in ("a", "b")]
+        outs = [p.communicate(timeout=120)[0] for p in procs]
+        self.assertEqual([p.returncode for p in procs], [0, 0], outs)
+        self.assertEqual(sorted(p.name for p in (self.tmp / "meet").glob("met-*")), ["met-a", "met-b"],
+                         "each merge saw the other running: no machine-wide lock")
         for n in ("a", "b"):
             tables = {p.name for p in (self.tmp / n / "generated" / "data" / "global" / "excel").glob("*.txt")}
             self.assertEqual(tables, set(TABLES))
-        self.assertTrue((self.tmp / "cache" / "pd2_merge.lock").is_file())
+        self.assertFalse((self.tmp / "cache" / "pd2_merge.lock").exists())
         self.assertFalse(list((self.tmp / "cache").rglob("*.tmp*")), "no temp folder left")
+
+    def test_a_pure_cache_hit_does_not_wait_for_a_slot_and_a_miss_does(self):
+        with contextlib.ExitStack() as st:
+            for c in self.patched():
+                st.enter_context(c)
+            st.enter_context(mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": "1"}))
+            self.assertEqual(self.merge("a"), 0)  # keeps the rule
+            with mock.patch.object(pd2_cache.Slots, "acquire", side_effect=RuntimeError("asked for a slot")):
+                self.assertEqual(self.merge("a"), 0, "every rule replays: no slot needed")
+                with self.assertRaises(RuntimeError):
+                    self.merge("b")  # a different rule input misses and needs one
 
     def test_a_partial_tree_is_rebuilt_not_handed_back(self):
         with contextlib.ExitStack() as st:
@@ -388,6 +427,139 @@ class ConcurrentMergeTests(unittest.TestCase):
         self.assertEqual(len(list((self.tmp / "cache" / "rules").glob("*/*"))), 1)
 
 
+class RaceTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.cache, self.root = self.tmp / "cache" / "rules", self.tmp / "root"
+        (self.root / "generated").mkdir(parents=True)
+
+    def keep(self, name="out.txt", where="data/global/excel"):
+        def run():
+            write(self.root / "generated" / where / name, "x")
+        with redirect_stdout(io.StringIO()):
+            self.assertFalse(pd2_cache.rule(self.cache, "k", {"p": self.root}, run))
+        return next(self.cache.glob("k/*"))
+
+    def test_an_evict_or_prune_during_a_replay_leaves_a_run_not_a_crash(self):
+        entry = self.keep()
+        real, hit = shutil.copy2, []
+
+        def copy_then_lose_the_entry(src, dst, *a, **k):
+            if not hit:  # another run deletes the entry between two files of this replay
+                hit.append(1)
+                pd2_cache.evict([entry])
+            return real(src, dst, *a, **k)
+
+        runs = []
+        with mock.patch.object(shutil, "copy2", copy_then_lose_the_entry), redirect_stdout(io.StringIO()):
+            replayed = pd2_cache.rule(self.cache, "k", {"p": self.root}, lambda: runs.append(1) or write(
+                self.root / "generated" / "data/global/excel/out.txt", "x"))
+        self.assertTrue(hit)
+        self.assertFalse(replayed, "the entry was gone: the rule ran")
+        self.assertEqual(runs, [1])
+        self.assertTrue((self.root / "generated/data/global/excel/out.txt").is_file())
+
+    def test_evict_and_prune_rename_before_deleting_and_sweep_leftovers(self):
+        entry = self.keep()
+        dead = entry.with_name(entry.name + ".dead.1")
+        stale = entry.with_name("x.tmp9")
+        for d in (dead, stale):
+            write(d / "f", "x")
+            for q in (d, d / "f"):
+                os.utime(q, (time.time() - 7200,) * 2)
+        self.assertEqual(pd2_cache.prune(self.cache.parent, 10**9), [])
+        self.assertFalse(dead.exists() or stale.exists(), "stale leftovers swept")
+        self.assertTrue(entry.is_dir())
+        pd2_cache.evict([entry])
+        self.assertFalse(entry.exists() or list(self.cache.glob("k/*")))
+        pd2_cache.evict([entry])  # already gone: no error
+
+    def test_a_replay_skips_other_runs_tmp_folders_with_a_truncated_manifest(self):
+        entry = self.keep()
+        for name in ("zz.tmp123", "zz.dead.123"):  # a keep mid-write sorts among the entries
+            write(self.cache / "k" / name / "manifest.json", '{"reads": ')
+        (entry / "manifest.json").write_text('{"reads": ', "utf-8")  # and a damaged real entry
+        runs = []
+        with redirect_stdout(io.StringIO()):
+            replayed = pd2_cache.rule(self.cache, "k", {"p": self.root}, lambda: runs.append(1) or write(
+                self.root / "generated" / "data/global/excel/out.txt", "x"))
+        self.assertFalse(replayed)
+        self.assertEqual(runs, [1], "ran the rule, no JSONDecodeError")
+
+    def test_prune_survives_a_leftover_vanishing_and_spares_a_busy_one(self):
+        entry = self.keep()
+        busy = entry.with_name("busy.tmp7")
+        write(busy / "deep/f", "x")
+        os.utime(busy, (time.time() - 7200,) * 2)  # its own mtime is old, a file in it is new
+        ghost = entry.with_name("ghost.tmp8")
+        write(ghost / "f", "x")
+        real = pd2_cache._newest
+
+        def vanish(p):
+            if p == ghost:
+                shutil.rmtree(p)
+            return real(p)
+        with mock.patch.object(pd2_cache, "_newest", vanish):
+            pd2_cache.prune(self.cache.parent, 10**9)
+        self.assertTrue(busy.is_dir() and entry.is_dir())
+
+    def test_delete_that_is_refused_keeps_the_entry_and_is_not_counted_freed(self):
+        entry = self.keep()
+        with mock.patch.object(os, "rename", side_effect=PermissionError), redirect_stdout(io.StringIO()) as out:
+            self.assertFalse(pd2_cache._delete(entry))
+        self.assertIn("in use", out.getvalue())
+        self.assertTrue(entry.is_dir())
+
+    def test_touches_counts_removed_files_and_folders(self):
+        for field in ("removed", "rmdirs"):
+            e = self.cache / field
+            write(e / "manifest.json", json.dumps({"files": [], "removed": [], "rmdirs": [], field: ["data/global/excel/a"]}))
+            self.assertTrue(pd2_cache.touches(e, "data/global/excel/"))
+
+    def test_evict_touching_spares_entries_the_check_does_not_read(self):
+        tables, other = self.keep("a.txt"), None
+        self.root2 = self.root
+        with redirect_stdout(io.StringIO()):
+            pd2_cache.rule(self.cache, "k2", {"p": self.root}, lambda: write(self.root / "generated/data/global/x.bin", "x"))
+        other = next(self.cache.glob("k2/*"))
+        pd2_cache.evict([tables, other], "data/global/excel/")
+        self.assertFalse(tables.exists())
+        self.assertTrue(other.is_dir())
+
+
+class PackageKeyTests(unittest.TestCase):
+    def test_editing_any_module_of_a_package_changes_its_rules_sources(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            write(tmp / "pk_top.py", "from pk_pkg.apply import go\n")
+            write(tmp / "pk_pkg" / "__init__.py", "")
+            write(tmp / "pk_pkg" / "apply.py", "from .other import f\ndef go(): pass\n")
+            write(tmp / "pk_pkg" / "other.py", "def f(): pass\n")
+            write(tmp / "pk_pkg" / "passes" / "__init__.py", "")
+            write(tmp / "pk_pkg" / "passes" / "found.py", "x = 1\n")  # found by discovery, imported by no one
+            sys.path.insert(0, str(tmp))
+            try:
+                import pk_top
+                paths = pd2_cache.sources(pk_top.go)
+                self.assertEqual({p.relative_to(tmp).as_posix() for p in paths},
+                                 {"pk_pkg/__init__.py", "pk_pkg/apply.py", "pk_pkg/other.py",
+                                  "pk_pkg/passes/__init__.py", "pk_pkg/passes/found.py"})
+                before = pd2_cache.key(paths)
+                write(tmp / "pk_pkg" / "passes" / "found.py", "x = 2\n")
+                self.assertNotEqual(pd2_cache.key(pd2_cache.sources(pk_top.go)), before)
+            finally:
+                sys.path.remove(str(tmp))
+                for m in [m for m in sys.modules if m.startswith("pk_")]:
+                    sys.modules.pop(m)
+
+    def test_the_presets_rule_covers_the_whole_presets_package(self):
+        names = {p.relative_to(Path(pd2_cache.__file__).parent).as_posix()
+                 for p in pd2_cache.sources(pd2_merge.RULES["presets-hd.tsv"])}
+        self.assertIn("presets/water.py", names)
+        self.assertIn("presets/hooks/tall.py", names)
+
+
 class CheckOutputTests(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
@@ -399,6 +571,75 @@ class CheckOutputTests(unittest.TestCase):
         write(gen / "global" / "excel" / "a.txt", "")
         self.assertIn("fewer than 2", pd2_merge.check_output(gen, (), 2))
         self.assertIsNone(pd2_merge.check_output(gen, ("a.txt",), 1))
+
+
+class MergeSlotTests(unittest.TestCase):
+    """The machine-wide cap on concurrent merges (#760): a counting semaphore of OS-locked slot files."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = Path(self.tmp.name) / "merge-slots"
+
+    def test_the_cap_holds_with_one_more_worker_than_slots(self):
+        live, peak, lock = [0], [0], threading.Lock()
+
+        def worker():
+            with redirect_stderr(io.StringIO()), pd2_cache.Slots(self.dir, 3, poll=0.01):
+                with lock:
+                    live[0] += 1
+                    peak[0] = max(peak[0], live[0])
+                time.sleep(0.15)
+                with lock:
+                    live[0] -= 1
+        ts = [threading.Thread(target=worker) for _ in range(4)]
+        [t.start() for t in ts]
+        [t.join(30) for t in ts]
+        self.assertEqual(peak[0], 3)
+        self.assertEqual(live[0], 0)
+
+    def test_a_waiter_says_it_is_queued_once_and_takes_the_slot_a_release_frees(self):
+        a = pd2_cache.Slots(self.dir, 1, poll=0.01)
+        a.acquire()
+        buf, got = io.StringIO(), []
+
+        def wait():
+            with redirect_stderr(buf):
+                b = pd2_cache.Slots(self.dir, 1, poll=0.01)
+                b.acquire()
+                got.append(b)
+        t = threading.Thread(target=wait)
+        t.start()
+        time.sleep(0.2)
+        self.assertEqual(got, [])
+        a.release()
+        t.join(10)
+        self.assertEqual(len(got), 1)
+        got[0].release()
+        self.assertEqual(buf.getvalue().count("queued: 1/1 slots busy"), 1)
+
+    def test_a_killed_holder_frees_its_slot(self):
+        code = ("import sys, time; sys.path.insert(0, sys.argv[1]); import pd2_cache; from pathlib import Path\n"
+                "s = pd2_cache.Slots(Path(sys.argv[2]), 1); s.acquire(); print('held', flush=True); time.sleep(60)")
+        p = subprocess.Popen([sys.executable, "-c", code, str(Path(pd2_cache.__file__).parent), str(self.dir)],
+                             stdout=subprocess.PIPE, text=True)
+        self.addCleanup(p.kill)
+        self.assertEqual(p.stdout.readline().strip(), "held")
+        s = pd2_cache.Slots(self.dir, 1)
+        self.assertIsNone(s._try(0), "held by the child")
+        p.kill()
+        p.wait(10)
+        deadline, f = time.time() + 10, None
+        while time.time() < deadline and not (f := s._try(0)):
+            time.sleep(0.05)
+        self.assertTrue(f, "the OS dropped the dead holder's lock")
+        f.close()
+
+    def test_the_cap_comes_from_the_environment(self):
+        with mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": "2"}):
+            self.assertEqual(pd2_cache.merge_slots(Path(self.tmp.name)).n, 2)
+        with mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": ""}):
+            self.assertEqual(pd2_cache.merge_slots(Path(self.tmp.name)).n, 4)
 
 
 if __name__ == "__main__":

@@ -68,7 +68,7 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
     b = Build(lay, kit, name, seed, biome, terrain, list(stock), trees, prefabs, water or {}, objects)
     for p in passes.ordered():
         p.run(b)
-    entities, terrain = b.entities, copy.deepcopy(terrain)
+    entities, terrain = b.entities, copy.deepcopy(b.terrain)  # the ground pass may raise or sink the terrain plane
     for i, e in enumerate(entities):
         e["id"] = i + 1
     terrain["id"] = len(entities) + 1

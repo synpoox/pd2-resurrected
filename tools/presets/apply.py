@@ -12,7 +12,7 @@ from pd2_ids import Table, excel, load
 from pd2_levels import SLOTS, col, norm
 
 from .build import build
-from .consts import FETCH, GROUND, PRESETS, STREAM, TERRAIN, WATER_SPAN
+from .consts import FETCH, GROUND, PRESETS, STREAM, TERRAIN, WATER_SPAN, wet_dt1s
 from .dt1 import Tiles, header_dt1s
 from .entity import _transform
 from .hooks.far import far_off
@@ -168,7 +168,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         # the tile set's stock: the presets that list a DT1 its DS1 draw from; the tree kit is harvested from them
         drawn = {t[0] for ds1 in ds1s for k in wanted(layouts[ds1]) for t in k[1]}
         own = [(lay, preset) for lay, preset, listed in stock if not drawn.isdisjoint(listed)]
-        trees = painter.harvest(own, frozenset(water_rule))
+        trees = painter.harvest(own, wet_dt1s(water_rule))
         for ds1 in ds1s:
             lay = layouts[ds1]
             outdoor = draws_trees(lay)

@@ -21,9 +21,50 @@ FAR = 20.0  # HD units (2 tiles): a piece whose mesh stands this far clear of it
 SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
 CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
 PRESETS = Path("hd") / "env" / "preset"
-# a stock water plane's model -> its side in HD units, centred on its position (its .physics box: +-90)
-WATER_SPAN = {"data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model": 180.0}
+# a stock liquid plane's model -> its side in HD units, or its (x, z) sides, centred on its position (the model box in
+# model_lod_desc.bin: water +-90; lava +-14.79, stock scales it)
+WATER_SPAN = {"data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model": 180.0,
+              "data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model": 29.5872}
+
+
+# the largest scale stock D2R gives a liquid plane (lava: 0.24 to 1.4); a model not here: 1.0
+MAX_SCALE = {"data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model": 1.4}
+
+
+# HD units a plane is made larger than its tiles, along (x, z), so neighbours overlap: stock lava planes leave a dark
+# seam between them at their exact size (game check lava1b, #741; z needed 4, x 1). Stock lava instances avoid seams
+# by being isolated patches, so no stock value to copy
+RIM = {"data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model": (1.0, 4.0)}
+
+
+def plane_rim(model: str) -> tuple[float, float]:
+    return RIM.get(model, (0.0, 0.0))
+
+
+def plane_cap(model: str) -> tuple[int, int]:
+    """The most tiles (x, z) one plane of a model covers, at its stock scale."""
+    s = MAX_SCALE.get(model, 1.0)
+    return tuple(max(1, int(side * s // TILE)) for side in plane_span(model))
+
+
+def plane_span(model: str) -> tuple[float, float]:
+    """WATER_SPAN of a model as (x, z) sides."""
+    s = WATER_SPAN[model]
+    return s if isinstance(s, tuple) else (s, s)
+
+
+# the water DT1s whose blocked floor is a stream: it stays playable past the tree line (painter.water). The other
+# `water:` lines (pond, lava) get a plane but, being blocked map edge too, count as no ground to plant by.
+WET = frozenset({"act3/river/rivbank.dt1", "act3/river/pool.dt1"})
+
+
+def wet_dt1s(water) -> frozenset:
+    """The stream DT1s among the rule's water DT1s."""
+    return frozenset(d for d in water if d in WET)
+
+
 WATER_Y = 0.05  # just over the flat ground plane (y 0), which would hide water at the stock rooms' -5 to 0
+ROOM_PIECE = "pd2r_room:"  # a name prefix of the pieces on pasted rooms' tiles, which the height pass leaves at the room's own ground (0), for the coverage scorer
 STREAM = "pd2r_stream_water"  # the name of the water planes streams() places, for the merge's count
 WATER_RATIO = 2  # a water rectangle longer than this many times its width is split, so its texture stretches less
 FETCH = "python -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/"
