@@ -95,6 +95,9 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None) -> list[s
     cache folder, a rule whose code, stamps and the files it read match a run kept there replays it (pd2_cache.rule)."""
     mg = pd2_extract.classic("merge")
     rules, ran = RULES, []
+    # at most PD2R_MERGE_SLOTS (default 4) merges hold RAM at once, machine-wide (#760). Taken at the first rule that must run:
+    # a run whose rules all replay from the cache never waits. Without a cache (CI) there is no shared machine.
+    slots = pd2_cache.merge_slots(cache.parent) if cache else None
     if cache:
         kit = pd2_ids.toolkit(root)
         # every rule's key: the stamps, the toolkit code rules and the driver use, this cache's code and D2R's path
@@ -104,12 +107,17 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None) -> list[s
         def cached(name: str, fn: Callable) -> Callable:
             def run(p: Path, data: Path, d2r_: Path, out: Path) -> None:
                 k = pd2_cache.key(pd2_cache.sources(fn), base, name, fn.__qualname__)
-                if not pd2_cache.rule(cache, k, {"p": root, "d": d2r_}, lambda: fn(p, data, d2r_, out)):
+                def work() -> None:
+                    slots.acquire()
+                    fn(p, data, d2r_, out)
+                if not pd2_cache.rule(cache, k, {"p": root, "d": d2r_}, work):
                     ran.append(name)
             return run
         rules = {n: cached(n, fn) for n, fn in RULES.items()}
 
     def apply(rules_: dict) -> list[str]:
+        if slots and rules_ is RULES:
+            slots.acquire()  # the uncached rebuild runs every rule
         mg.check_extract(root / "pd2-data", root / "pd2-baseline.json")
         return mg.merge(rules_, root / "merge", root / "pd2-data" / "data", d2r, root / "generated",
                         (pd2_ids.IdError,))
@@ -131,6 +139,9 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None) -> list[s
                     raise MergeError(f"merge output is not whole after a rebuild: {why}")
     except mg.MergeError as e:
         raise MergeError(f"{e} (tools/pd2_extract.py extracts)" if "extract" in str(e) else str(e)) from e
+    finally:
+        if slots:
+            slots.release()
     if cache and not rebuilt:
         print(f"rule cache: {len(applied) - len(ran)} of {len(applied)} rules replayed; ran {', '.join(ran) or 'none'}")
     return applied
