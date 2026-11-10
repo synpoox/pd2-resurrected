@@ -70,6 +70,11 @@ TREE_ORIENT = presets.TREE_LAYER  # 14
 INVISIBLE = re.compile(r"inv_wall")  # act4/mesa/inv_wall: a blocker that draws nothing
 FENCE = re.compile(r"fence|chain_walls|foregate|barset|palisade|picket|graveyrd")  # mesa chain_walls, siege fence,
 # fort foregate, barracks barset, outdoors/town fence
+# FENCE DT1s whose walls are tall: classify still calls them fences (the scorer's types stay fixed); the fence pass
+# (presets/passes/edges_fences.py) uses this to leave them to the wall pass. Median pixel height of the tiles the PD2
+# maps place is 256-288 px for these (mesa and a5 chain_walls 256-288, graveyrd 256, barset 256, town/fence and descend/stone_fence 288), and
+# foregate's walls are 224-416 (median 288), against 192 for the low siege, outdoors and descend fences (#757).
+TALL_FENCE = re.compile(r"chain_walls|foregate|barset|graveyrd|town/fence|stone_fence")
 # kurast/travincal terraces, icecave interior, hellcaves, mesa brick_walls; `corner` because corner.dt1 stands in as
 # guild/outdoors/cliff.dt1 (presets-hd.tsv). Approximate: matched by name, not by every PD2 DT1 checked.
 CLIFF = re.compile(r"cliff|corner|terrace|brick_walls|hellcaves|icecave.*interior|interior.*icecave")
