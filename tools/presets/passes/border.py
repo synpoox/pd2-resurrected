@@ -2,12 +2,14 @@
 per-tile kit fills."""
 import pd2_painter as painter
 
+from ..consts import wet_dt1s
+
 ORDER = 200
 
 
 def run(b) -> None:
     lay, trees, taken = b.lay, b.trees, b.taken
-    b.wet = frozenset(b.water)  # stream DT1: their blocked floor stays water past the tree line
+    b.wet = wet_dt1s(b.water)  # stream DT1: their blocked floor stays water past the tree line
     if trees:  # the ring just past the playable area: the border the automap draws
         b.play = painter.playable(lay, b.wet)
         b.edge = frozenset({(x + dx, y + dy) for x, y in b.play for dx, dy in painter.STEPS} - b.play)
