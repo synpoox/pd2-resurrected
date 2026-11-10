@@ -53,3 +53,26 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
   run that wrote outside `generated\` (new `merge\art` PNGs) is not kept. The whole-merge `merge\<key>` folders older
   tools kept are pruned only with `PD2R_PRUNE_LEGACY=1`: set it once no worktree runs the old tools. `extract\` is
   never pruned.
+
+## Edge tour
+
+`tools/pd2_edge_tour.py` (#733) takes HD/legacy screenshot pairs along the edges and over the floors of the PD2-only
+maps (#707), warping instead of walking. Only the maps with a generated HD preset are toured.
+
+- `py -3 tools/pd2_edge_tour.py list --map "Torture Halls" [--type wall] [--points 4]` prints the plan, no game needed
+  (it reads `generated/data` after `pd2_merge.py`, and D2R's tiles from modkit's cache, as `pd2_coverage.py` does): map,
+  DS1, type, DS1 tile and the `cheat goto <levelId>,<x>,<y>` line. x = OffsetX*5 + tileX*5 + 2 (y alike), the offsets
+  from the merged `levels.txt`.
+- Types: edges `wall`, `fence`, `shore`, `water`, `ring` (the tree border) and floors `floor:<DT1 stem>`. `--type` is
+  repeatable; `floor` means every floor type. A point stands on walkable floor next to an edge run (longest runs first,
+  then the farthest-apart tiles of a run), or on interior floor of its type.
+- `py -3 tools/pd2_edge_tour.py shoot --slot N --map "Torture Halls" --type wall` drives the slot through
+  d2rAI-toolkit's `game_ctl.py` (console, `g`, window screenshots) and writes
+  `out/edge-tour/<map>/<ds1>_<type>_<x>-<y>.png`, HD on the left and legacy on the right. Lock the slot and set it up as
+  above, with `MODKIT_TESTING_CONFIG` set; start its game and enter a Hell game with a level 90+ character in HD. The
+  script sets `cheat nogethit 1` and `cheat god 1`, warps, waits `--settle` seconds (3), shoots, presses `g`, shoots,
+  presses `g` again. It warns when the two shots are identical (the game was not in HD, or `g` did nothing). Stop the
+  game and unlock the slot afterwards.
+- A preset with several DS1 files rolls one per game, and each is in the plan: a shot of another variant than the one
+  loaded lands on different tiles (check the `list` line's DS1 against the game's map).
+- Not done: weighting the points by the fidelity scores' worst tiles.
