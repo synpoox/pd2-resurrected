@@ -68,7 +68,7 @@ No Blizzard files, PD2 archives or extracted PD2 data are committed here ([ADR 0
 ## Contributing
 
 Pull requests are welcome. Every PR links its issue: the body opens with `Closes #<n>` (or `Part of #<n>`); open an
-issue first if there is none. Run the tool tests before you push, and add a line to `CHANGELOG.md` for anything a
+issue first if there is none. Run the tool tests before you push, and add a `changelog.d/<issue>-<slug>.md` fragment (see AGENTS.md) for anything a
 player would notice. Changes that alter gameplay need an in-game check (Hell, a level 90+ character). How agents and
 humans work here: [AGENTS.md](AGENTS.md).
 

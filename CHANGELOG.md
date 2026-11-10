@@ -37,7 +37,6 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Tree tiles no longer draw a stone wall or cliff, which hid Fortress Map's waypoint court.
 - Copied D2R rooms paste only where the map's walkable floor matches theirs, so Fortress Map draws its own walls.
 - Halls of Torture Map draws stock temple pillars and cages where PD2 drew its own pillars.
-- Halls of Torture Map draws the stock pillars and wall ends that stand just past their tile.
 - PD2 areas show "Entering <area>" on arrival instead of "Missing string".
 - Dungeon boss barriers show as iron gates instead of invisible walls.
 - Map waypoints draw their platform, and no stray waypoints stand on plain ground.

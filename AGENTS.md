@@ -10,6 +10,9 @@ Rerun the table-diff gate (`tools/pd2_diff.py`) after resolving a merge from mai
 final commit (its first line names the commit). Merge only on a report for the final commit. Untracked files count as uncommitted changes; the gate CI job's report names GitHub's merge commit, not the PR head.
 
 Each CHANGELOG entry is one short line (one sentence, under ~100 chars), unless it is a huge feature.
+Never edit `CHANGELOG.md` in a PR: add `changelog.d/<issue>-<slug>.md` holding `#### <Category>` and then the `- ` line;
+`tools/release.py` folds the fragments in at release. Likewise add map-generator passes and Kit.add hooks as new modules
+under `tools/presets/passes/` and `tools/presets/hooks/` (each declares `ORDER`), never to a shared list.
 
 After a PR merges, delete its branch, on the remote and locally.
 

@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -53,6 +54,90 @@ By hand (offline):
 
 See SHA256SUMS.
 """
+
+
+class FoldTests(unittest.TestCase):
+    LOG = ("# Changelog\n\n### Unreleased\n\n#### Maps\n\n- A.\n\n#### Items\n\n- B.\n\n"
+           "### 0.1.0 (2026-01-01)\n\n#### Maps\n\n- Old.\n")
+
+    def test_a_fragment_joins_its_categorys_bullets_in_unreleased_only(self):
+        out = release.fold(self.LOG, "0.2.0", ["#### Maps\n- C.\n"])
+        self.assertIn("#### Maps\n\n- A.\n- C.\n\n#### Items\n\n- B.\n\n### 0.1.0", out)
+        self.assertIn("- Old.\n", out)
+
+    def test_a_new_category_is_added_at_the_end_of_the_section(self):
+        out = release.fold(self.LOG, "0.2.0", ["#### Skills\n- D.\n", "- E.\n"])
+        self.assertIn("- B.\n\n#### Skills\n\n- D.\n- E.\n\n### 0.1.0", out)
+
+    def test_a_renamed_section_takes_the_fragments_and_a_missing_one_fails(self):
+        log = self.LOG.replace("Unreleased", "0.2.0 (2026-02-01)")
+        self.assertIn("- C.\n", release.fold(log, "0.2.0", ["#### Maps\n- C.\n"]))
+        with self.assertRaises(release.ReleaseError):
+            release.fold(self.LOG.replace("Unreleased", "Soon"), "0.2.0", ["- C.\n"])
+
+    def test_folding_fragments_deletes_them_in_file_order(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "changelog.d").mkdir()
+            (root / "CHANGELOG.md").write_text(self.LOG, "utf-8")
+            (root / "changelog.d" / "2-b.md").write_text("#### Items\n- Y.\n", "utf-8")
+            (root / "changelog.d" / "1-a.md").write_text("#### Items\n- X.\n", "utf-8")
+            (root / "changelog.d" / ".gitkeep").write_text("", "utf-8")
+            self.assertEqual(release.fold_fragments(root, "0.2.0"), 2)
+            self.assertIn("- B.\n- X.\n- Y.\n", (root / "CHANGELOG.md").read_text("utf-8"))
+            self.assertEqual([f.name for f in (root / "changelog.d").iterdir()], [".gitkeep"])
+            self.assertEqual(release.fold_fragments(root, "0.2.0"), 0)
+
+
+    def test_a_failed_check_leaves_the_fragments_and_changelog_in_place(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "changelog.d").mkdir()
+            (root / "CHANGELOG.md").write_text(self.LOG, "utf-8")
+            (root / "mod.json").write_text('{"name": "M", "version": "0.2.0"}', "utf-8")
+            (root / "changelog.d" / "1-a.md").write_text("#### Items\n- X.\n", "utf-8")
+            with mock.patch.object(release, "ROOT", root), \
+                    mock.patch.object(release, "notes_section", side_effect=release.ReleaseError("no notes")):
+                self.assertEqual(release.main(["--game", str(root), "--out", str(root / "dist")]), 1)
+            self.assertEqual([f.name for f in (root / "changelog.d").iterdir()], ["1-a.md"])
+            self.assertEqual((root / "CHANGELOG.md").read_text("utf-8"), self.LOG)
+
+    def _release_run(self, run):
+        """main() with the checks passing and package_release replaced by `run`; returns (root, go)."""
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        (root / "changelog.d").mkdir()
+        (root / "CHANGELOG.md").write_text(self.LOG, "utf-8")
+        (root / "mod.json").write_text('{"name": "M", "version": "0.2.0"}', "utf-8")
+        (root / "changelog.d" / "1-a.md").write_text("#### Items\n- X.\n", "utf-8")
+
+        def go():
+            with mock.patch.object(release, "ROOT", root), \
+                    mock.patch.object(release, "notes_section", return_value="notes"), \
+                    mock.patch.object(release, "stage", return_value=root / "mod"), \
+                    mock.patch.dict(sys.modules, {"modkit": mock.MagicMock(), "modkit.base": mock.MagicMock()}), \
+                    mock.patch.object(release.subprocess, "run", side_effect=run):
+                return release.main(["--game", str(root), "--out", str(root / "dist"), "--toolkit", str(root)])
+        return root, go
+
+    def _assert_restored(self, root):
+        self.assertEqual((root / "CHANGELOG.md").read_text("utf-8"), self.LOG)
+        self.assertEqual([f.name for f in (root / "changelog.d").iterdir()], ["1-a.md"])
+
+    def test_a_failing_package_release_restores_the_changelog_and_keeps_fragments(self):
+        def run(*a, **k):
+            self.assertIn("- X.", (root / "CHANGELOG.md").read_text("utf-8"))  # folded while it runs
+            return mock.Mock(returncode=3)
+        root, go = self._release_run(run)
+        self.assertEqual(go(), 3)
+        self._assert_restored(root)
+
+    def test_a_raising_package_release_restores_the_changelog_and_propagates(self):
+        root, go = self._release_run(FileNotFoundError("no python"))
+        with self.assertRaises(FileNotFoundError):
+            go()
+        self._assert_restored(root)
 
 
 class NotesTests(unittest.TestCase):
