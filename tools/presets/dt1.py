@@ -33,14 +33,16 @@ def header_dt1s(data: bytes) -> list[str]:
 
 
 class Tiles(dict):
-    """DT1 path -> dt1_tiles, read from D2R's tiles on first use (an absent file holds nothing)."""
+    """DT1 path -> dt1_tiles, read from D2R's tiles on first use (an absent file raises FileNotFoundError: a path no file backs is a rule bug, not an empty DT1)."""
     def __init__(self, root: Path):
         super().__init__()
         self.root = root
 
     def __missing__(self, path: str) -> dict:
         f = self.root / path
-        self[path] = dt1_tiles(f.read_bytes()) if f.is_file() else {}
+        if not f.is_file():
+            raise FileNotFoundError(f"no DT1 {f}")
+        self[path] = dt1_tiles(f.read_bytes())
         return self[path]
 
     def of(self, paths: list[str]) -> dict[str, dict]:
