@@ -22,8 +22,10 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
 1. `python <toolkit>/testing/game_slots.py status` and pick a free slot from 4-8.
 2. `python <toolkit>/testing/game_slots.py lock <N> <owner>`. For a slot the owner tests by hand, use an owner name
    such as `owner-<work item>`: a manual lock lasts until `unlock`.
-3. Build and install: `plugin\build.ps1`, `python tools/pd2_extract.py`, `python tools/pd2_merge.py`, then
-   `tools\install.ps1 -Game C:\D2RTestSlots\Slot<N> -Data . -NoValidate` (main still has known validation errors).
+3. Build and install: `plugin\build.ps1`, `python tools/pd2_extract.py`, `python tools/pd2_merge.py`, then, with
+   `MODKIT_RUN` set to the lock's owner, `tools\install.ps1 -Game C:\D2RTestSlots\Slot<N> -Data . -NoValidate` (main
+   still has known validation errors). modkit install refuses a slot, so `install.ps1` installs a slot's data through
+   the toolkit's `testing/slot_install.py`, which keeps the slot's own savepath and needs the lock held by `MODKIT_RUN`.
    The shared cache below makes the extract and merge near-instant when another worktree already ran them.
    `install.ps1` leaves only our plugins in `<slot>\d2rloader\plugins` (`core-rules.dll`, `core-maps.dll`, `core-ui.dll`,
    `test-harness.dll`, `d2r-testharness-console.txt`): it moves anything else to
