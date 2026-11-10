@@ -249,6 +249,45 @@ class LayerTests(unittest.TestCase):
         self.assertEqual([(e["name"], P._transform(e)["position"]["x"]) for e in ents], [("tall01", 15.0)])
         self.assertEqual(missing, 1)  # (0, 0): no LIKE layer, so it borrows nothing
 
+    def test_a_pillar_tile_borrows_a_pillar_before_a_nearer_footprint(self):
+        T = "expansion/wildtemple/interior.dt1"
+        chair, pillar = ("w", ((T, 12, 9, 9),)), ("w", ((T, 12, 4, 5),))
+        solid, ring = bytes([1]) * 25, bytes(12) + bytes([1]) + bytes(12)
+        kit = P.Kit({chair: [(0, [(entity("chair06", 0, 0), 5.0, 5.0)])],
+                     pillar: [(0, []), (0, [(entity("wildtemple/pillar01", 0, 0), 5.0, 5.0)])]},
+                    [{}], flags={chair: ring, pillar: solid})
+        lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 1, 0, 0),)), (1, 0): ("w", (("pd2assets/x/file2.dt1", 12, 9, 1),))},
+                       {(1, 0): ring})
+        for seed in "abcde":  # the chair's collision fits better; the empty instance is no pick
+            self.assertEqual([e["name"] for e in P.place(lay, kit, seed)[0]], ["wildtemple/pillar01"])
+
+    def test_a_pillar_tile_without_a_pillar_key_stands_the_kits_stock_pillar_centred(self):
+        T = "expansion/wildtemple/interior.dt1"
+        wall = ("w", ((T, 1, 0, 0),))
+        kit = P.Kit({wall: [(0, [(entity("wildtemple/pillar01", 0, 0), 1.0, 9.0), (entity("wildtemple/wall01", 0, 0), 5.0, 5.0)])]},
+                    [{}])
+        ring = bytes(12) + bytes([1]) + bytes(12)
+        keys = {(0, 0): wall, (1, 0): ("w", (("pd2assets/x/file2.dt1", 12, 9, 1),))}
+        ents = P.place(P.Layout(2, 1, keys, {(1, 0): ring}), kit, "s")[0]
+        self.assertEqual(sorted((e["name"], at(e)) for e in ents),
+                         [("wildtemple/pillar01", (1.0, 9.0)), ("wildtemple/pillar01", (15.0, 5.0)),
+                          ("wildtemple/wall01", (5.0, 5.0))])  # the wall's own pieces, and one pillar on the tile
+        ents = P.place(P.Layout(2, 1, keys, {}), kit, "s")[0]  # a tile that blocks nothing stands no pillar
+        self.assertEqual(sorted(e["name"] for e in ents), ["wildtemple/pillar01", "wildtemple/wall01"])
+
+    def test_a_short_column_is_no_stand_in_pillar(self):
+        T = "expansion/wildtemple/interior.dt1"
+        wall = ("w", ((T, 1, 0, 0),))
+        kit = P.Kit({wall: [(0, [(entity("icecave/column_small02", 0, 0), 5.0, 5.0)])]}, [{}], top=lambda e: 2.0)
+        ring = bytes(12) + bytes([1]) + bytes(12)
+        lay = P.Layout(2, 1, {(0, 0): wall, (1, 0): ("w", (("pd2assets/x/file2.dt1", 12, 9, 1),))}, {(1, 0): ring})
+        self.assertEqual([at(e) for e in P.place(lay, kit, "s")[0]], [(5.0, 5.0)])  # the wall's own, none on (1, 0)
+
+    def test_the_pillar_height_is_the_coverage_tall(self):
+        import pd2_coverage
+        from presets import pillars
+        self.assertEqual(pillars.PILLAR_TALL, pd2_coverage.TALL)
+
     def test_a_pd2_tile_whose_footprint_shares_too_little_borrows_nothing(self):
         T = "expansion/wildtemple/interior.dt1"
         chair = ("w", ((T, 12, 9, 9),))

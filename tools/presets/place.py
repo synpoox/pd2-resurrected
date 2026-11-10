@@ -8,6 +8,7 @@ import zlib
 
 import pd2_painter as painter
 
+from . import pillars
 from .consts import LIKE, TILE, TREE_LAYER, Key
 from .entity import _transform
 from .kit import Kit
@@ -32,21 +33,28 @@ def like(lay: Layout, kit: Kit) -> dict[tuple[int, int], Key]:
     """For each tile whose key the kit lacks, whole and layer by layer, and that has a LIKE layer: the single-layer
     LIKE key, from a DT1 the layout draws and with a piece in some instance, whose subtile collision is nearest the
     tile's (then the one with the most such instances), if the two footprints share at least half their blocked
-    subtiles; a tile that blocks nothing, or shares too little, borrows nothing (a stock chair is no pillar). A PD2
-    DT1's pillar with no stand-in tile (#714: Torture Halls' flesh pillars) then stands as a stock pillar."""
+    subtiles; a tile that blocks nothing, or shares too little, borrows nothing (a stock chair is no pillar). A key
+    that holds a pillar (pillars.holds) goes before any other, whatever its collision: the tile is a pillar (#737). A
+    tile that blocks something and has no such key stands one of the kit's stand-alone stock pillars
+    (pillars.standing), picked by its position (#714: Torture Halls' flesh pillars)."""
     drawn = {t[0] for k in lay.keys.values() for t in k[1] if t}
-    pool = [(k, kit.flags.get(k, bytes(25)), sum(bool(o[1]) for o in v)) for k, v in kit.instances.items()
+    pool = [(k, kit.flags.get(k, bytes(25)), sum(bool(o[1]) for o in v), any(pillars.holds(kit, o[1]) for o in v))
+            for k, v in kit.instances.items()
             if len(k[1]) == 1 and k[1][0] and k[1][0][1] == LIKE and k[1][0][0] in drawn and any(o[1] for o in v)]
+    stand = pillars.stand_keys(kit)
     out = {}
     for c, key in lay.keys.items():
         whole = key in kit.instances or any((key[0], (t,)) in kit.instances for t in key[1])
-        if not pool or whole or not any(t and t[1] == LIKE for t in key[1]):
+        if not (pool or stand) or whole or not any(t and t[1] == LIKE for t in key[1]):
             continue
         f = {i for i, v in enumerate(lay.flags.get(c, bytes(25))) if v & 1}
-        fits = [(len(f ^ g), -n, k) for k, flags, n in pool
+        fits = [(not pillar, len(f ^ g), -n, k) for k, flags, n, pillar in pool
                 if 2 * len(f & (g := {i for i, v in enumerate(flags) if v & 1})) >= len(f | g) and f & g]
-        if fits:
-            out[c] = min(fits)[2]
+        best = min(fits) if fits else None
+        if stand and f and not (best and not best[0]):
+            out[c] = stand[zlib.crc32(f"{c}".encode()) % len(stand)]
+        elif best:
+            out[c] = best[3]
     return out
 
 
@@ -63,6 +71,7 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
     hold a tree (painter.is_tree) first, as a lone rock or shrub is too low to close the border (Frozen Forest,
     #688). A tile the kit has no key for takes its like() key's pick."""
     entities, used, missing = [], set(), 0
+    kit = pillars.with_stand_ins(kit, pillars.standing(kit, {t[0] for k in lay.keys.values() for t in k[1] if t}))
     borrow = like(lay, kit)
 
     def one(x: int, y: int, key: Key, salt: str) -> bool:
@@ -71,6 +80,8 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
             return False
         if key[1] and all(t and t[1] == TREE_LAYER for t in key[1]):
             options = [o for o in options if not structure(o[1])] or options
+        if salt == ":like":  # a borrowed pillar key: the instances that hold the pillar
+            options = [o for o in options if pillars.holds(kit, o[1])] or options
         if (x, y) in far:
             options = [o for o in options if any(painter.is_tree(e) for e, _, _ in o[1])] or options
         if (x, y) in near:
