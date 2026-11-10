@@ -1,3 +1,3 @@
 #### Maps
 
-- Lava, swamp, river and oasis pools draw in HD in the areas built from D2R tiles, not only streams.
+- PD2-only maps built from D2R tiles get lava, swamp, river and pond planes in HD (placeholder stock textures).
