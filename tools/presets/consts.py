@@ -24,6 +24,7 @@ PRESETS = Path("hd") / "env" / "preset"
 # a stock water plane's model -> its side in HD units, centred on its position (its .physics box: +-90)
 WATER_SPAN = {"data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model": 180.0}
 WATER_Y = 0.05  # just over the flat ground plane (y 0), which would hide water at the stock rooms' -5 to 0
+ROOM_PIECE = "pd2r_room:"  # a name prefix of the pieces on pasted rooms' tiles, which the height pass leaves at the room's own ground (0), for the coverage scorer
 STREAM = "pd2r_stream_water"  # the name of the water planes streams() places, for the merge's count
 WATER_RATIO = 2  # a water rectangle longer than this many times its width is split, so its texture stretches less
 FETCH = "python -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/"
