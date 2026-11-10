@@ -51,7 +51,7 @@ def tiled(rect: tuple[int, int, int, int], cx: int, cz: int) -> list[tuple[int, 
 
 def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set,
             liquids: dict | None = None) -> list[tuple[dict, dict]]:
-    """Stock liquid planes (water, lava, swamp) over a liquid DT1's blocked floor tiles outside the pasted rooms (whose
+    """Stock liquid planes (water, lava) over a liquid DT1's blocked floor tiles outside the pasted rooms (whose
     own mesh draws theirs), one plane scaled to each near-square rectangle of tiles, with the dependencies of the
     preset it came from. `liquids` is the liquid mask (liquids.mask). A tile whose floor layers hold two liquid DT1
     with a plane gets the first one's plane only."""

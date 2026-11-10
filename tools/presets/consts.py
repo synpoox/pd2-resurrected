@@ -22,7 +22,7 @@ SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
 CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
 PRESETS = Path("hd") / "env" / "preset"
 # a stock liquid plane's model -> its side in HD units, or its (x, z) sides, centred on its position (the model box in
-# model_lod_desc.bin: water +-90; lava +-14.79, stock scales it; swamp +-325 by +-275)
+# model_lod_desc.bin: water +-90; lava +-14.79, stock scales it; swamp +-325 by +-275, no `water:` rule uses it)
 WATER_SPAN = {"data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model": 180.0,
               "data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model": 29.5872,
               "data/hd/env/model/act3/docktown/act3_docktown_water/swamp_terrain.model": (650.0, 550.0)}
@@ -45,7 +45,7 @@ def plane_span(model: str) -> tuple[float, float]:
 
 
 # the water DT1s whose blocked floor is a stream: it stays playable past the tree line (painter.water). The other
-# `water:` lines (swamp, pond, lava) get a plane but, being blocked map edge too, count as no ground to plant by.
+# `water:` lines (pond, lava) get a plane but, being blocked map edge too, count as no ground to plant by.
 WET = frozenset({"act3/river/rivbank.dt1", "act3/river/pool.dt1"})
 
 

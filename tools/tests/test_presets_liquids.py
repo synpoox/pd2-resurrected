@@ -99,6 +99,39 @@ class LiquidTests(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertEqual(set(mask), {(0, 0), (1, 0)})
 
+    def test_oasis_floor_gets_no_plane(self):
+        # ruinedcisternv3's sand fill is all (39,50) oasis tiles: no stock room loading oasis.dt1 draws water
+        oasis = "act2/outdoors/oasis.dt1"
+        lay = layout(oasis, {(x, y) for x in range(4) for y in range(4)})
+        self.assertEqual(P.streams(lay, self.rule_water(), set()), [])
+
+    def test_swamp_floor_gets_no_plane(self):
+        lay = layout(SWAMP, {(x, y) for x in range(4) for y in range(4)})
+        self.assertEqual(P.streams(lay, self.rule_water(), set()), [])
+
+    @staticmethod
+    def rule_water() -> dict:
+        """The real `water:` rules as streams() takes them (a bare plane per DT1)."""
+        return {d: (plane(m), {}) for d, m in water_rules().items()}
+
+    def test_every_water_rule_is_an_expected_liquid(self):
+        allowed = ("river", "rivbank", "pool", "pond", "canal", "lava/floor")
+        rules = water_rules()
+        self.assertTrue(rules)
+        for dt1 in rules:
+            self.assertTrue(any(a in dt1 for a in allowed), dt1)
+        self.assertFalse([d for d in rules if "oasis" in d or "swamp" in d])
+
+
+def water_rules() -> dict:
+    tsv = Path(__file__).resolve().parent.parent.parent / "merge" / "presets-hd.tsv"
+    rules = {}
+    for line in tsv.read_text(encoding="utf-8").splitlines():
+        if line.startswith("water:"):
+            key, _, model = line.partition("	")
+            rules[key[len("water:"):]] = model.strip()
+    return rules
+
 
 if __name__ == "__main__":
     unittest.main()
