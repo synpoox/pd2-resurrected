@@ -1,7 +1,6 @@
 """The Kit: the stock pieces harvested per tile key."""
 from __future__ import annotations
 
-import copy
 import dataclasses
 import functools
 from dataclasses import dataclass, field
@@ -9,7 +8,7 @@ from typing import Callable
 
 from . import hooks
 from .consts import GROUND, TILE, Key
-from .entity import _transform, is_waypoint, room_terrain
+from .entity import _transform, clone, is_waypoint, room_terrain
 from .layout import Layout, draws_trees
 
 
@@ -83,7 +82,7 @@ class Kit:
                     continue
                 g = piece.ground_h
                 if g:
-                    e = copy.deepcopy(e)
+                    e = clone(e)
                     _transform(e)["position"]["y"] -= g
                 per[c].append((e, x - c[0] * TILE, z - c[1] * TILE))
         for c, ents in per.items():

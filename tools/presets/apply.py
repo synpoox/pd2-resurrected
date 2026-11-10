@@ -165,11 +165,12 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     report, groups, bare = [], {}, []
     for _, tile_set, _, ds1s in on_d2r:
         groups.setdefault(tile_set, []).extend(ds1s)
+    learned: dict = {}  # painter.harvest's memo: lives for this apply() only
     for tile_set, ds1s in groups.items():
         # the tile set's stock: the presets that list a DT1 its DS1 draw from; the tree kit is harvested from them
         drawn = {t[0] for ds1 in ds1s for k in wanted(layouts[ds1]) for t in k[1]}
         own = [(lay, preset) for lay, preset, listed in stock if not drawn.isdisjoint(listed)]
-        trees = painter.harvest(own, wet_dt1s(water_rule))
+        trees = painter.harvest(own, wet_dt1s(water_rule), learned)
         for ds1 in ds1s:
             lay = layouts[ds1]
             outdoor = draws_trees(lay)

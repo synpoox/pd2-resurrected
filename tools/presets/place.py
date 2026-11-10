@@ -1,7 +1,6 @@
 """Place each tile's pick of its key's kit instances."""
 from __future__ import annotations
 
-import copy
 import json
 import re
 import zlib
@@ -9,7 +8,7 @@ import zlib
 import pd2_painter as painter
 
 from .consts import LIKE, TILE, TREE_LAYER, Key
-from .entity import _transform
+from .entity import _transform, clone
 from .kit import Kit
 from . import pillars
 from .layout import Layout
@@ -96,6 +95,16 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
     entities, used, missing, lone = [], set(), 0, []
     kit = pillars.with_stand_ins(kit, pillars.standing(kit, {t[0] for k in lay.keys.values() for t in k[1] if t}))
     borrow = like(lay, kit, seed)
+    # the json.dumps-based tests, once per kit instance and not once per tile that looks at it
+    memo: dict[tuple[str, int], bool] = {}
+
+    def test(kind: str, ents: list, fn) -> bool:
+        k = (kind, id(ents))
+        if k not in memo:
+            memo[k] = fn(ents)
+        return memo[k]
+    has_tree = lambda ents: any(painter.is_tree(e) for e, _, _ in ents)  # noqa: E731
+    all_fade = lambda ents: all(fades(e) for e, _, _ in ents)  # noqa: E731
 
     def one(x: int, y: int, key: Key, salt: str, at: tuple[float, float] = (0.0, 0.0),
             only: tuple[float, float] | None = None) -> bool:
@@ -103,13 +112,13 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
         if not options:
             return False
         if key[1] and all(t and t[1] == TREE_LAYER for t in key[1]):
-            options = [o for o in options if not structure(o[1])] or options
+            options = [o for o in options if not test("s", o[1], structure)] or options
         if salt == ":like":  # a borrowed pillar key: the instances that hold the pillar
             options = [o for o in options if pillars.holds(kit, o[1])] or options
         if (x, y) in far:
-            options = [o for o in options if any(painter.is_tree(e) for e, _, _ in o[1])] or options
+            options = [o for o in options if test("t", o[1], has_tree)] or options
         if (x, y) in near:
-            options = [o for o in options if all(fades(e) for e, _, _ in o[1])]
+            options = [o for o in options if test("f", o[1], all_fade)]
             if not options:
                 return True
         if (x, y) in edge:
@@ -123,7 +132,7 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
                 keep = min(held, key=lambda p: (p[1] - cx) ** 2 + (p[2] - cz) ** 2)
                 ents = [p for p in ents if p is keep or p not in held]
         for e, dx, dz in ents:
-            e = copy.deepcopy(e)
+            e = clone(e)
             t = _transform(e)
             t["position"]["x"], t["position"]["z"] = x * TILE + dx + at[0], y * TILE + dz + at[1]
             for c in e["components"]:  # a wall's transparency names its tile
