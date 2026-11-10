@@ -58,6 +58,23 @@ class LiquidTests(unittest.TestCase):
         lay.unwalkable = frozenset({(0, 0)})
         self.assertEqual(liquids.mask(lay), {(0, 0): (LAVA,), (1, 0): (LAVA,)})  # not the platform (2, 0)
 
+    def test_a_lava_decal_on_walkable_road_is_no_liquid(self):
+        # demonroad1: the road's base tile (0,22,0) is walkable single-layer floor 231 times and carries lava decals on
+        # 15 tiles: no lava. A lava sea's base (lava1's (0,20,3)) is blocked on far more tiles than it is walkable alone
+        road, sea, decal = (LAVA, 0, 22, 0), (LAVA, 0, 20, 3), (LAVA, 0, 22, 1)
+        lay = layout(LAVA, set(), {(x, 0) for x in range(6)})
+        lay.keys[(0, 0)] = lay.keys[(1, 0)] = ("f", (road,))  # plain road
+        lay.keys[(2, 0)] = ("f", (road, decal))  # road with a decal
+        lay.keys[(3, 0)] = ("f", (sea,))  # lava sea, unwalkable
+        lay.keys[(4, 0)] = ("f", (sea, decal))  # its crust
+        lay.keys[(5, 0)] = ("f", (sea,))  # one stray walkable tile of the sea base
+        lay.unwalkable = frozenset({(3, 0)})
+        lay.keys[(6, 0)], lay.flags[(6, 0)] = ("f", (sea,)), b"" * 25
+        lay.unwalkable |= {(7, 0)}
+        lay.keys[(7, 0)], lay.flags[(7, 0)] = ("f", (sea,)), bytes(25)
+        lay.keys[(8, 0)], lay.flags[(8, 0)] = ("f", (road,)), b"" * 25  # the road base blocked once somewhere
+        self.assertEqual(sorted(liquids.mask(lay)), [(3, 0), (4, 0), (6, 0), (7, 0), (8, 0)])  # not (2, 0)
+
     def test_a_rule_dt1_is_liquid_whatever_its_name(self):
         lay = layout("act1/a/wall.dt1", {(0, 0)})
         self.assertEqual(liquids.mask(lay), {})
@@ -76,18 +93,34 @@ class LiquidTests(unittest.TestCase):
         out = [e for e, _ in P.streams(lay, water, set())]
         lava = next(e for e in out if e["components"][2]["filename"] == LAVA_MODEL)["components"]
         self.assertEqual(lava[0]["position"], {"x": 10.0, "y": P.WATER_Y, "z": 5.0})
-        self.assertEqual(lava[0]["scale"], {"x": 21 / 29.5872, "y": 1.0, "z": 14 / 29.5872})  # + RIM
+        self.assertEqual(lava[0]["scale"], {"x": 20 / 29.5872, "y": 1.0, "z": 10 / 29.5872})  # no liquid beside: no RIM
         self.assertEqual(lava[1]["filter"], "wall")  # as every stock lava plane
 
     def test_a_big_pool_is_split_into_planes_no_larger_than_stock_scale(self):
         lay = layout(LAVA, {(x, y) for x in range(9) for y in range(5)})
         out = P.streams(lay, {LAVA: (plane(LAVA_MODEL), {})}, set())
-        rx, rz = P.plane_rim(LAVA_MODEL)
-        self.assertEqual(round(sum((e["components"][0]["scale"]["x"] * 29.5872 - rx)
-                                   * (e["components"][0]["scale"]["z"] * 29.5872 - rz) for e, _ in out)
-                               / P.TILE ** 2, 6), 45)  # every tile covered once, bar the rim
         self.assertTrue(all(e["components"][0]["scale"][a] <= 1.5 for e, _ in out for a in "xz"))
         self.assertGreater(len(out), 1)
+        # the planes reach exactly the pool's edge, 9 x 5 tiles: no rim past the mask
+        spans = [(p["position"][a] - p["scale"][a] * 29.5872 / 2, p["position"][a] + p["scale"][a] * 29.5872 / 2)
+                 for e, _ in out for p in [e["components"][0]] for a in "xz"]
+        self.assertAlmostEqual(min(s[0] for s in spans[0::2]), 0.0)
+        self.assertAlmostEqual(max(s[1] for s in spans[0::2]), 90.0)
+        self.assertAlmostEqual(min(s[0] for s in spans[1::2]), 0.0)
+        self.assertAlmostEqual(max(s[1] for s in spans[1::2]), 50.0)
+
+    def test_the_rim_overlaps_neighbouring_planes_only(self):
+        # a 2x1 and a 1x1 lava rectangle, one under the other: the rim joins them along z; nowhere else
+        lay = layout(LAVA, {(0, 0), (1, 0), (0, 1)}, {(1, 1), (2, 0)})
+        out = [e["components"][0] for e, _ in P.streams(lay, {LAVA: (plane(LAVA_MODEL), {})}, set())]
+        rx, rz = P.plane_rim(LAVA_MODEL)
+
+        def ext(axis):
+            return sorted((round(c["position"][axis] - c["scale"][axis] * 29.5872 / 2, 6),
+                           round(c["position"][axis] + c["scale"][axis] * 29.5872 / 2, 6)) for c in out)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(ext("x"), [(0.0, 10.0), (0.0, 20.0)])  # no spill onto the walkable tiles
+        self.assertEqual(ext("z"), [(0.0, 10.0 + rz / 2), (10.0 - rz / 2, 20.0)])
 
     def test_only_stream_dt1_are_wet(self):
         self.assertEqual(P.wet_dt1s({"act3/river/rivbank.dt1": 1, SWAMP: 1, LAVA: 1}), {"act3/river/rivbank.dt1"})
