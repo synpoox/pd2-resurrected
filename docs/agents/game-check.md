@@ -23,8 +23,6 @@ in-game". Slot details are in `docs/agents/game-slots.md`.
 
 ## Worktree hygiene
 
-`pd2-data`, `generated` and `out` in a worktree are junctions into the shared cache (`C:\pd2r-cache`, or
-`F:\pd2r-cache`). Before any worktree removal, unlink each with `cmd /c rmdir <worktree>\<name>`, then
-`git worktree remove --force`. Never delete through a junction, and never delete a cache folder another worktree's
-`pd2-data` points at: `--force` follows junctions and empties the cache. Afterwards check that
-`C:\pd2r-cache\extract` still has files.
+Remove a worktree with `tools/worktree_remove.ps1 -Path <worktree> [-DeleteBranch]`: it unlinks every junction first and
+checks the shared cache is intact. Never delete a worktree any other way: `git worktree remove --force` and `rm -r`
+follow the `pd2-data`, `generated` and `out` junctions and empty `C:\pd2r-cache`.
