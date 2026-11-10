@@ -14,8 +14,9 @@ from .layout import Layout
 
 @dataclass
 class Build:
-    """What the passes share: the inputs of build() and the preset so far. A pass reads and sets the fields it needs;
-    a field a pass adds for later passes gets a default here."""
+    """What the passes share: the inputs of build() and the preset so far. A pass reads and sets the fields it needs.
+    A new pass never adds a field here (two PRs adding fields at the end of the class conflict): it keeps its state in
+    its own module or in `state`, through `mine(__name__)`."""
     lay: Layout
     kit: Kit
     name: str
@@ -41,6 +42,12 @@ class Build:
     near: frozenset = frozenset()  # border tiles with playable ground screen-up of them
     rest: dict = field(default_factory=dict)  # the tiles the per-tile kit fills
     loose: list = field(default_factory=list)  # the kit's and painter's pieces, joined to `entities` by a pass
+
+    state: dict = field(default_factory=dict)  # per-pass scratch, by module name: see mine()
+
+    def mine(self, module: str) -> dict:
+        """The calling pass's own sub-dict of `state`, keyed by its module name (`b.mine(__name__)`)."""
+        return self.state.setdefault(module, {})
 
     def depend(self, of: dict) -> None:
         for kind, items in of.items():

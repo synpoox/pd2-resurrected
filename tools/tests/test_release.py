@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -86,6 +87,20 @@ class FoldTests(unittest.TestCase):
             self.assertIn("- B.\n- X.\n- Y.\n", (root / "CHANGELOG.md").read_text("utf-8"))
             self.assertEqual([f.name for f in (root / "changelog.d").iterdir()], [".gitkeep"])
             self.assertEqual(release.fold_fragments(root, "0.2.0"), 0)
+
+
+    def test_a_failed_check_leaves_the_fragments_and_changelog_in_place(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "changelog.d").mkdir()
+            (root / "CHANGELOG.md").write_text(self.LOG, "utf-8")
+            (root / "mod.json").write_text('{"name": "M", "version": "0.2.0"}', "utf-8")
+            (root / "changelog.d" / "1-a.md").write_text("#### Items\n- X.\n", "utf-8")
+            with mock.patch.object(release, "ROOT", root), \
+                    mock.patch.object(release, "notes_section", side_effect=release.ReleaseError("no notes")):
+                self.assertEqual(release.main(["--game", str(root), "--out", str(root / "dist")]), 1)
+            self.assertEqual([f.name for f in (root / "changelog.d").iterdir()], ["1-a.md"])
+            self.assertEqual((root / "CHANGELOG.md").read_text("utf-8"), self.LOG)
 
 
 class NotesTests(unittest.TestCase):

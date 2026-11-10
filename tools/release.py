@@ -58,13 +58,18 @@ def fold(changelog: str, version: str, fragments: list[str]) -> str:
     return changelog[:m.start(1)] + body.rstrip("\n") + "\n\n" + changelog[m.end(1):]
 
 
-def fold_fragments(root: Path, version: str) -> int:
-    """Fold changelog.d/*.md (by file name) into CHANGELOG.md and delete them; how many were folded."""
+def pending_fragments(root: Path, version: str) -> tuple[str, list[Path]]:
+    """CHANGELOG.md's text with changelog.d/*.md (by file name) folded in, and those files. Changes nothing on disk."""
     files = sorted((root / "changelog.d").glob("*.md"))
+    text = (root / "CHANGELOG.md").read_text("utf-8")
+    return (fold(text, version, [f.read_text("utf-8") for f in files]) if files else text), files
+
+
+def fold_fragments(root: Path, version: str) -> int:
+    """Fold changelog.d/*.md into CHANGELOG.md and delete them; how many were folded."""
+    text, files = pending_fragments(root, version)
     if files:
-        log = root / "CHANGELOG.md"
-        log.write_text(fold(log.read_text("utf-8"), version, [f.read_text("utf-8") for f in files]), "utf-8",
-                       newline="\n")
+        (root / "CHANGELOG.md").write_text(text, "utf-8", newline="\n")
         for f in files:
             f.unlink()
     return len(files)
@@ -132,25 +137,35 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
     mod_json = json.loads((ROOT / "mod.json").read_text("utf-8"))
     version = a.version or mod_json["version"]
+    log = ROOT / "CHANGELOG.md"
+    before = log.read_text("utf-8")
     try:
-        if n := fold_fragments(ROOT, version):
-            print(f"changelog: folded {n} fragments from changelog.d/")
-        section = notes_section((ROOT / "CHANGELOG.md").read_text("utf-8"), version)
+        text, fragments = pending_fragments(ROOT, version)
+        section = notes_section(text, version)  # checked before anything is written or deleted
         from modkit.base import Base  # the sibling d2rAI-toolkit on PYTHONPATH
         mod = stage(ROOT, a.out / "mod", Base(a.game).bytes)
     except ReleaseError as e:
         print(f"release: {e}", file=sys.stderr)
         return 1
-    r = subprocess.run([sys.executable, str(a.toolkit / "release" / "package_release.py"), "--mod-dir", str(mod),
-                        "--version", version, "--config", str(ROOT / "release.toml"), "--out", str(a.out),
-                        "--game-exe", str(a.game / "D2R.exe")])  # release.toml's [catalog] (schema 3) needs it
-    if r.returncode:
-        return r.returncode
+    if fragments:  # package_release reads CHANGELOG.md, so fold it now; the fragments go only once the release is done
+        log.write_text(text, "utf-8", newline="\n")
+        print(f"changelog: folded {len(fragments)} fragments from changelog.d/")
+    code = 0
     try:
-        finish_notes(a.out, version, section)
+        r = subprocess.run([sys.executable, str(a.toolkit / "release" / "package_release.py"), "--mod-dir", str(mod),
+                            "--version", version, "--config", str(ROOT / "release.toml"), "--out", str(a.out),
+                            "--game-exe", str(a.game / "D2R.exe")])  # release.toml's [catalog] (schema 3) needs it
+        code = r.returncode
+        if not code:
+            finish_notes(a.out, version, section)
     except ReleaseError as e:
         print(f"release: {e}", file=sys.stderr)
-        return 1
+        code = 1
+    if code:  # a failed release leaves CHANGELOG.md and the fragments as they were
+        log.write_text(before, "utf-8", newline="\n")
+        return code
+    for f in fragments:
+        f.unlink()
     print(f"notes: {a.out / f'RELEASE_NOTES-{version}.md'}")
     return 0
 
