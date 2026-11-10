@@ -95,7 +95,11 @@ LOW_NAME = re.compile(r"barricade")  # a low barricade, by name (median 224 in s
 HOLE_PAIRS = (((-1, 0), (1, 0)), ((0, -1), (0, 1)), ((-1, -1), (1, 1)), ((-1, 1), (1, -1)))
 CULPRITS = 8  # the folders listed under the all-maps table, per type
 STACK = 2.0  # pieces per tile of an edge run above which they pile on each other (stock walls span 5-10 units)
-TOLERANCE = coverage.TOLERANCE
+TOLERANCE = coverage.TOLERANCE  # the gate's one limit, in pd2_coverage
+TILES_FILE = "fidelity-tiles-baseline.tsv"  # main's per-tile state, beside fidelity-baseline.tsv (#800)
+HOLE_KIND = "hole beside new correct piece"
+SPILL_KIND = "spill-only cover on main"
+OTHER_KIND = "other"
 MIN_TILES = 20  # a (map, type) of fewer legacy tiles never counts a spacing drop: one hole moves it by whole points
 STEPS8 = [(i, j) for i in (-1, 0, 1) for j in (-1, 0, 1) if i or j]
 # the HD side: a model is typed by its folder and file name together, as D2R groups its kits in folders
@@ -257,6 +261,8 @@ class Hd:
     centres: dict[str, list[Tile]] = field(default_factory=lambda: {e: [] for e in EDGES})  # type -> a tile per piece
     other: dict[Tile, float] = field(default_factory=dict)  # a tall piece of no edge type -> its top
     who: dict[Tile, tuple[float, str]] = field(default_factory=dict)  # the tallest piece on a tile -> its folder
+    core: dict[str, set] = field(default_factory=lambda: {e: set() for e in EDGES})  # type -> tiles a piece mainly
+    # covers (coverage.core_footprint); a tile in `tops` but not here is covered only by a neighbouring box's spill
 
 
 def hd_pieces(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
@@ -286,6 +292,7 @@ def hd_pieces(entities: list[dict], box: Callable[[str], tuple | None], prefab: 
             continue
         for c in tiles:
             hd.tops[t][c] = max(top, hd.tops[t].get(c, top))
+        hd.core[t] |= coverage.core_footprint(b)
         hd.centres[t].append((int((b[0] + b[1]) / 2 // presets.TILE), int((b[2] + b[3]) / 2 // presets.TILE)))
     return hd
 
@@ -335,6 +342,7 @@ class TypeScore:
     holes: set = field(default_factory=set)  # missing tiles between pieces of an edge run
     culprits: dict = field(default_factory=dict)  # folder -> wrong-type tiles its pieces stand on
     piled: int = 0  # pieces beyond STACK per tile of a run
+    spill: set = field(default_factory=set)  # right tiles covered only by a box's spill, never by its core
     scored: bool = True  # False: height and spacing are not scored (floors)
 
     @property
@@ -361,6 +369,7 @@ def score_type(kind: str, legacy: dict[Tile, str | None], hd: Hd) -> TypeScore:
             s.culprits[folder] = s.culprits.get(folder, 0) + 1
         else:
             s.missing.add(c)
+    s.spill = {c for c in mine if c in legacy and c not in s.wrong_height and c not in hd.core[kind]}
     for run in runs(set(legacy)):
         good = {c for c in run if c in mine}
         s.holes |= {c for c in run if c not in mine and any(
@@ -435,6 +444,8 @@ class Change:
     score: tuple[float | None, float | None]  # (baseline, now)
     spacing: tuple[float | None, float | None]
     drop: bool
+    within: bool = False  # fell, but by no more than the tolerance: listed, passes
+    small: bool = False  # under MIN_TILES legacy tiles: its spacing is not checked
 
 
 def changes(rows: Rows, base: dict, tolerance: float = TOLERANCE) -> list[Change]:
@@ -452,7 +463,8 @@ def changes(rows: Rows, base: dict, tolerance: float = TOLERANCE) -> list[Change
         pairs = ((s0, s1),) if key in small else ((s0, s1), (p0, p1))
         fell = any(o is not None and n is not None and o - n > tolerance for o, n in pairs)
         drop = key not in now or fell or (key not in small and p0 is not None and p1 is None)
-        out.append(Change(*key, (s0, s1), (p0, p1), drop))
+        within = not drop and any(o is not None and n is not None and o > n for o, n in ((s0, s1), (p0, p1)))
+        out.append(Change(*key, (s0, s1), (p0, p1), drop, within, key in small))
 
     def worst(c: Change) -> float:
         return min((n - o for o, n in (c.score, c.spacing) if o is not None and n is not None), default=0.0)
@@ -476,11 +488,13 @@ def changes_md(found: list[Change], tolerance: float = TOLERANCE) -> str:
     if not found:
         return "\n".join(lines + ["No map's fidelity changed.", ""])
     drops = by_type(found)
+    inside = sum(c.within for c in found)
     lines += [f"{len(found)} (map, type) scores changed; {sum(drops.values())} dropped by more than the "
               f"{tolerance:g}-point tolerance or are no longer scored"
-              + (": " + ", ".join(f"{k} {n}" for k, n in drops.items()) if drops else "") + ".", "",
+              + (": " + ", ".join(f"{k} {n}" for k, n in drops.items()) if drops else "")
+              + (f"; {inside} fell within the tolerance" if inside else "") + ".", "",
               "| Map | Type | Score | Spacing | |", "|---|---|---|---|---|"]
-    lines += [f"| {c.name} | {c.kind} | {cell(*c.score)} | {cell(*c.spacing)} | {'**drop**' if c.drop else ''} |"
+    lines += [f"| {c.name} | {c.kind} | {cell(*c.score)} | {cell(*c.spacing)} | {'**drop**' if c.drop else 'within tolerance' if c.within else ''} |"
               for c in found]
     return "\n".join(lines) + "\n"
 
@@ -523,9 +537,59 @@ def report(rows: Rows, commit: str = "", found: list[Change] | None = None) -> s
     return "\n".join(lines) + "\n"
 
 
-def write(out: Path, rows: Rows, commit: str = "", base: dict | None = None) -> list[Change] | None:
-    """<out>/fidelity.md and fidelity-baseline.tsv; the changes against `base` (read_baseline) when given."""
-    found = None if base is None else changes(rows, base)
+def tiles_text(rows: Rows) -> str:
+    """Per (map, type), the tiles that are bad (missing, wrong type or height), the holes and the spill-only right
+    tiles, one line each: `map <tab> type <tab> field <tab> x,y x,y ...`. main's copy lets a PR tell what a dropped
+    tile is (classify_drop)."""
+    lines = ["# HD fidelity tiles on main (tools/pd2_fidelity.py): map, type, bad|holes|spill, tiles x,y"]
+    for name in sorted(rows):
+        for kind in TYPES:
+            if s := rows[name].get(kind):
+                for field_, tiles in (("bad", s.missing | s.wrong_type | s.wrong_height), ("holes", s.holes),
+                                      ("spill", s.spill)):
+                    if tiles:
+                        lines.append(f"{name}\t{kind}\t{field_}\t" + " ".join(f"{x},{y}" for x, y in sorted(tiles)))
+    return "\n".join(lines) + "\n"
+
+
+def read_tiles(text: str) -> dict[tuple[str, str], dict[str, set]]:
+    out: dict = {}
+    for line in text.splitlines():
+        if line and not line.startswith("#"):
+            name, kind, field_, tiles = line.split("\t")
+            out.setdefault((name, kind), {})[field_] = {tuple(map(int, t.split(","))) for t in tiles.split()}
+    return out
+
+
+def classify_drop(spacing: bool, now: TypeScore, main: dict | None) -> dict[str, int]:
+    """What the tiles that newly dropped are against main's tiles `main` (read_tiles' entry of the pair; None: main's
+    tiles are not known, no answer). A dropped tile is a new hole (spacing) or a newly bad tile (score). It is
+    HOLE_KIND when a neighbour went from bad to right (a new correct piece stands beside it; a tile already wrong on
+    main that is now a hole counts too), else SPILL_KIND when main covered it right only through a neighbouring box's
+    spill, else OTHER_KIND."""
+    if main is None:
+        return {}
+    bad = now.missing | now.wrong_type | now.wrong_height
+    dropped = now.holes - main.get("holes", set()) if spacing else bad - main.get("bad", set())
+    fixed = main.get("bad", set()) - bad  # right now, bad on main: the new correct pieces
+    out: dict[str, int] = {}
+    for c in dropped:
+        near = any((c[0] + dx, c[1] + dy) in fixed for dx, dy in STEPS8)
+        k = HOLE_KIND if near else SPILL_KIND if c in main.get("spill", set()) else OTHER_KIND
+        out[k] = out.get(k, 0) + 1
+    return out
+
+
+def kinds_text(kinds: dict[str, int]) -> str:
+    return "-" if not kinds else ", ".join(f"{n} {k}" for k, n in sorted(kinds.items(), key=lambda kv: (-kv[1], kv[0])))
+
+
+def write(out: Path, rows: Rows, commit: str = "", base: dict | None = None, tolerance: float = TOLERANCE
+          ) -> list[Change] | None:
+    """<out>/fidelity.md, fidelity-baseline.tsv and fidelity-tiles-baseline.tsv; the changes against `base`
+    (read_baseline) when given."""
+    found = None if base is None else changes(rows, base, tolerance)
+    (out / TILES_FILE).write_text(tiles_text(rows), "utf-8", newline="\n")
     (out / "fidelity.md").write_text(report(rows, commit, found), "utf-8")
     (out / "fidelity-baseline.tsv").write_text(baseline_text(rows), "utf-8", newline="\n")
     if found is not None:

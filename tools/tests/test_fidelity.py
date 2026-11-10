@@ -373,6 +373,51 @@ class Scoring(unittest.TestCase):
         self.assertNotIn("floor", F.score_map(lay({(0, 0): w(CLIFF)}), heights(**{CLIFF: 450}), hd_of(), 0, set(), set()))
 
 
+class Classify(unittest.TestCase):
+    def now(self, missing=(), holes=(), spill=()):
+        return F.TypeScore(40, set(missing), holes=set(holes), spill=set(spill))
+
+    def test_a_hole_beside_a_tile_main_had_wrong_that_is_now_right(self):
+        main = {"bad": {(3, 3)}, "holes": set(), "spill": set()}
+        got = F.classify_drop(True, self.now(holes={(4, 3)}), main)  # (3,3) is right now; (4,3) a new hole
+        self.assertEqual(got, {F.HOLE_KIND: 1})
+
+    def test_a_tile_main_already_had_wrong_that_is_now_a_hole_beside_a_new_piece(self):
+        main = {"bad": {(3, 3), (4, 3)}, "holes": set(), "spill": set()}
+        self.assertEqual(F.classify_drop(True, self.now(holes={(4, 3)}, missing={(4, 3)}), main), {F.HOLE_KIND: 1})
+
+    def test_a_tile_main_covered_only_by_spill(self):
+        main = {"bad": set(), "holes": set(), "spill": {(7, 7)}}
+        self.assertEqual(F.classify_drop(False, self.now(missing={(7, 7)}), main), {F.SPILL_KIND: 1})
+
+    def test_anything_else_and_old_holes(self):
+        main = {"bad": set(), "holes": {(1, 1)}, "spill": set()}
+        got = F.classify_drop(True, self.now(holes={(1, 1), (9, 9)}), main)
+        self.assertEqual(got, {F.OTHER_KIND: 1})  # (1,1) was a hole on main: not a drop
+        self.assertEqual(F.classify_drop(False, self.now(), main), {})  # nothing newly bad
+
+    def test_no_tiles_on_main_no_answer(self):
+        self.assertEqual(F.classify_drop(False, self.now(missing={(1, 1)}), None), {})
+        self.assertEqual(F.kinds_text({}), "-")
+        self.assertEqual(F.kinds_text({F.SPILL_KIND: 1, F.HOLE_KIND: 3}), f"3 {F.HOLE_KIND}, 1 {F.SPILL_KIND}")
+
+    def test_tiles_round_trip(self):
+        rows = {"m": {"wall": F.TypeScore(5, {(1, 2)}, holes={(3, 4)}, spill={(0, 0), (5, 6)})}}
+        self.assertEqual(F.read_tiles(F.tiles_text(rows)), {("m", "wall"): {
+            "bad": {(1, 2)}, "holes": {(3, 4)}, "spill": {(0, 0), (5, 6)}}})
+
+    def test_spill_is_right_tiles_under_no_core(self):
+        hd = hd_of(wall=[((0, 0), 6.0), ((1, 0), 6.0)])
+        hd.core["wall"] = {(0, 0)}
+        s = F.score_type("wall", {(0, 0): "tall", (1, 0): "tall"}, hd)
+        self.assertEqual(s.spill, {(1, 0)})
+
+    def test_pieces_record_their_core_tiles(self):
+        hd = pieces(piece("act2_sewer_walls", 0, 30, 6.0))  # tiles 0-3, but the box only touches the edge of 3
+        self.assertEqual(hd.core["wall"], {(t, 0) for t in range(3)})
+        self.assertIn((3, 0), hd.tops["wall"])
+
+
 class Reports(unittest.TestCase):
     def rows(self, missing=0, n=10) -> F.Rows:
         s = F.TypeScore(n, {(i, 0) for i in range(missing)})
@@ -400,7 +445,7 @@ class Reports(unittest.TestCase):
         self.assertEqual({(c.kind, c.drop) for c in found}, {("pillar", True), ("floor", False)})
 
     def test_a_small_type_still_drops_on_its_score(self):
-        rows = {"m": {"fence": F.TypeScore(F.MIN_TILES - 1, missing={(0, 0)}), "wall": F.TypeScore(F.MIN_TILES, missing={(0, 0)})}}
+        rows = {"m": {"fence": F.TypeScore(F.MIN_TILES - 1, missing={(0, 0)}), "wall": F.TypeScore(F.MIN_TILES, missing={(0, 0), (1, 0)})}}
         base = {("m", "fence"): (100.0, 100.0), ("m", "wall"): (100.0, 100.0)}
         got = {(c.kind, c.drop) for c in F.changes(rows, base)}
         self.assertEqual(got, {("fence", True), ("wall", True)})  # a small pair still drops on its score
@@ -408,6 +453,13 @@ class Reports(unittest.TestCase):
     def test_a_small_type_may_lose_spacing_only(self):
         rows = {"m": {"fence": F.TypeScore(F.MIN_TILES - 1)}}
         self.assertEqual([c.drop for c in F.changes(rows, {("m", "fence"): (100.0, 80.0)})], [False])
+
+    def test_a_fall_within_the_tolerance_is_marked_and_listed(self):
+        base = {("mapa", "wall"): (100.0, 100.0)}
+        found = F.changes(self.rows(1, 40), base)  # 97.5: -2.5
+        self.assertEqual([(c.drop, c.within) for c in found if c.kind == "wall"], [(False, True)])
+        self.assertIn("within tolerance", F.changes_md(found))
+        self.assertTrue(F.changes(self.rows(3, 40), base)[0].drop)  # 92.5: -7.5, past the 5-point default
 
     def test_unchanged_reports_nothing(self):
         base = F.read_baseline(F.baseline_text(self.rows(1)))

@@ -300,12 +300,19 @@ class Baseline(unittest.TestCase):
         self.assertIn("No preset's coverage changed.", C.changes_md([]))
 
     def test_drop_within_and_beyond_tolerance(self):
-        base = {"a": (67.5, None, 100.0), "b": (71.5, 87.5, 100.0)}  # a now 66.7 (-0.8), b wall 70.0 (-1.5)
+        base = {"a": (70.5, None, 100.0), "b": (76.0, 87.5, 100.0)}  # a now 66.7 (-3.8), b wall 70.0 (-6.0)
         found = C.changes(self.scores(), base)
-        self.assertEqual([(c.name, c.drop) for c in found], [("b", True), ("a", False)])
+        self.assertEqual([(c.name, c.drop, c.within) for c in found], [("b", True, False), ("a", False, True)])
         md = C.changes_md(found)
-        self.assertIn("| b | 71.5% -> 70.0% (-1.5) | 87.5% | 100.0% | **drop** |", md)
+        self.assertIn("| b | 76.0% -> 70.0% (-6.0) | 87.5% | 100.0% | **drop** |", md)
+        self.assertIn("| a | 70.5% -> 66.7% (-3.8) | - | 100.0% | within tolerance |", md)
         self.assertIn("coverage-drop-ok", md)
+
+    def test_the_limit_is_one_value_with_a_default(self):
+        self.assertEqual(C.TOLERANCE, 5.0)
+        self.assertFalse(C.changes(self.scores(), {"a": (71.7, None, 100.0)})[0].drop)  # exactly 5.0 down
+        self.assertTrue(C.changes(self.scores(), {"a": (71.8, None, 100.0)})[0].drop)  # 5.1 down
+        self.assertTrue(C.changes(self.scores(), {"a": (68.0, None, 100.0)}, tolerance=1.0)[0].drop)
 
     def test_gain_new_and_gone(self):
         base = {"a": (50.0, None, 100.0), "z": (90.0, 80.0, 100.0)}
@@ -318,7 +325,7 @@ class Baseline(unittest.TestCase):
         self.assertIn("| z | 90.0% -> gone | 80.0% -> gone | 100.0% -> gone | **drop** |", md)
 
     def test_border_drop_alone(self):
-        found = C.changes(self.scores(), {"a": (66.7, None, 100.0), "b": (70.0, 90.0, 100.0)})
+        found = C.changes(self.scores(), {"a": (66.7, None, 100.0), "b": (70.0, 95.0, 100.0)})
         self.assertEqual([(c.name, c.drop) for c in found], [("b", True)])
 
     def test_border_gone_is_a_drop(self):
@@ -345,14 +352,63 @@ class Baseline(unittest.TestCase):
 
     def test_drop_table_lists_map_type_before_after_delta(self):
         found = C.changes(self.scores(), {"a": (99.0, None, 100.0), "b": (70.0, 90.0, 100.0)})
-        fd = mock.Mock(kind="wall", score=(90.0, 80.0), spacing=(None, None))
+        fd = mock.Mock(kind="wall", score=(90.0, 80.0), spacing=(None, None), small=False)
         fd.name = "m"
         rows = C.drop_rows(found, [fd])
         self.assertEqual([r[:2] for r in rows if r[0] == "m"], [("m", "fidelity wall")])
-        self.assertIn(("a", "coverage wall", 99.0, 66.7, -32.3), rows)
+        self.assertIn(("a", "coverage wall", 99.0, 66.7, -32.3, C.DROP), [r[:6] for r in rows])
+        self.assertIn(("b", "coverage border", 90.0, 87.5, -2.5, C.WITHIN), [r[:6] for r in rows])  # listed, passes
         text = C.drop_table(rows)
         self.assertIn("before", text.splitlines()[0])
         self.assertTrue(any(l.startswith("a ") and "-32.3" in l for l in text.splitlines()))
+
+    def test_check_passes_a_drop_within_tolerance_and_lists_it(self):
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d) / "base.tsv"
+            base.write_text("a\t69.0\t-\nb\t70.0\t87.5\n", "utf-8")  # a: -2.3
+            out = Path(d) / "out"
+            buf = io.StringIO()
+            with mock.patch.object(C, "run", return_value=self.scores()), redirect_stdout(buf):
+                self.assertEqual(C.main(["--out", str(out), "--baseline", str(base), "--check"]), 0)
+                self.assertIn("| a | coverage wall | 69% | 66.7% | -2.3 | within tolerance |",
+                              (out / "drops.md").read_text("utf-8"))
+                self.assertEqual(C.main(["--out", str(out), "--baseline", str(base), "--check", "--tolerance", "1"]), 1)
+            self.assertIn("within tolerance", buf.getvalue())
+
+    def test_a_drop_past_the_tolerance_fails_and_the_summary_marks_it(self):
+        with tempfile.TemporaryDirectory() as d:
+            base = Path(d) / "base.tsv"
+            base.write_text("a\t80.0\t-\n", "utf-8")
+            with mock.patch.object(C, "run", return_value=self.scores()), redirect_stdout(io.StringIO()):
+                self.assertEqual(C.main(["--out", d, "--baseline", str(base), "--check"]), 1)
+                self.assertEqual(C.main(["--out", d, "--baseline", str(base)]), 0)  # no --check: label coverage-drop-ok
+            self.assertIn("**drop**", (Path(d) / "drops.md").read_text("utf-8"))
+
+    def test_fidelity_drop_inside_and_past_the_tolerance(self):
+        import pd2_fidelity as F
+        main = {("m", "wall"): (100.0, 90.0), ("n", "wall"): (100.0, 100.0)}
+        rows = {"m": {"wall": F.TypeScore(40, missing={(0, 0)})},
+                "n": {"wall": F.TypeScore(40, missing={(i, 0) for i in range(4)})}}
+        fch = F.changes(rows, main)
+        self.assertEqual({(c.name, c.drop, c.within) for c in fch}, {("m", False, True), ("n", True, False)})
+        got = {(r.name, r.type, r.status) for r in C.drop_rows([], fch)}
+        self.assertIn(("m", "fidelity wall", C.WITHIN), got)
+        self.assertIn(("n", "fidelity wall", C.DROP), got)
+
+    def test_drop_rows_carry_the_kind_of_the_dropped_tiles(self):
+        import pd2_fidelity as F
+        now = {"m": {"wall": F.TypeScore(40, missing={(5, 5)})}}
+        fch = F.changes(now, {("m", "wall"): (100.0, 100.0)})
+        tiles = {("m", "wall"): {"bad": set(), "spill": {(5, 5)}}}
+        row, = C.drop_rows([], fch, rows=now, tiles=tiles)
+        self.assertEqual(row.kinds, "1 " + F.SPILL_KIND)
+        self.assertIn(F.SPILL_KIND, C.drop_md([row]))
+
+    def test_core_footprint_leaves_out_tiles_a_box_only_grazes(self):
+        T = P.TILE
+        self.assertEqual(C.core_footprint((0.1 * T, 3.4 * T, 0.0, 0.9 * T, 1, 0)), {(t, 0) for t in range(3)})
+        self.assertEqual(C.core_footprint((0.9 * T, 2.1 * T, 0.0, 0.9 * T, 1, 0)), {(1, 0)})  # 0.1 spills each side
+        self.assertEqual(C.core_footprint((0.8 * T, 1.3 * T, 0.0, 0.2 * T, 1, 0)), {(1, 0)})  # a small box: its centre
 
     def test_check_prints_the_drop_table(self):
         with tempfile.TemporaryDirectory() as d:
