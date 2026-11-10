@@ -24,10 +24,11 @@ headers (96-byte tile records, as pd2_presets.dt1_tiles reads them: orientation 
   a liquid floor tile (a mostly blocked floor, pd2_painter.blocked_floor, of a liquid DT1) with a 4-neighbour that is
   not liquid.
 
-Heights: a wall's height class comes from its DT1, not the single tile (wall_px: the median pixel height of the DT1's
-wall tiles, weighted by how often the map places each): low when that is under LOW_PX (see there) or the DT1 is a fence/stone wall by name
-(pd2_coverage.LOW_EDGE: low by design), else tall. Cliffs and trees are always tall (384-480, 256-480 px). A piece's
-height is its model box top (pd2_coverage.boxes): flat below pd2_coverage.LOW, low below TALL, else tall.
+Heights: a wall's height class comes from its DT1 (wall_px: the median pixel height of the DT1's wall tiles, weighted
+by how often the map places each; the tile's own height when the DT1 is mixed, MIXED): low when that is under LOW_PX
+(see there) or the DT1 is a fence/stone wall by name (pd2_coverage.LOW_EDGE: low by design), else tall. Cliffs and
+trees are always tall (384-480, 256-480 px). A piece's height is its model box top (pd2_coverage.boxes): flat below
+pd2_coverage.LOW, low below TALL, else tall.
 
 HD pieces are typed by their model's file name (model_type). A tall piece of no edge type is "other": it counts as
 present, and as the wrong type for every legacy edge.
@@ -80,15 +81,17 @@ LIQUID = re.compile(r"water|river|rivbank|pond|pool|swamp|puddle|lake|lava|canal
 # PD2 and the stock DT1s: the known low families sit at 160 (stonewall, borq4, torturehalls/file2 and file3) and 192
 # (fence), and every tall dungeon or keep wall at 224 or more (act2/sewer/walls and sewerwalls 224, a4_worldstone 224,
 # new_chamb 224, act3/jungle/dungeon 224, lair_mishift 256, torturehalls/file1 256, dtprivate/underwall 256,
-# act2/tomb/tomb 288, aer_palace 288). A per-tile cutoff does not work: those DT1s mix 128-192 px end pieces in with
-# their walls, and a median over the DT1 sees past them.
+# act2/tomb/tomb 288, aer_palace 288). A per-tile cutoff does not work for them: they mix a few 128-192 px end pieces
+# in with their walls (2-14% of the placed tiles), and a median over the DT1 sees past them. A DT1 whose placed tiles
+# split nearly evenly (MIXED) has no such majority: its median is a coin toss, so each tile counts as its own.
 LOW_PX = 224
+MIXED = 0.25  # the minority share of a DT1's placed wall tiles, either side of LOW_PX, from which it is mixed
 LOW_NAME = re.compile(r"barricade")  # a low barricade, by name (median 224 in siege/barricade.dt1: its tiles are mixed)
 HOLE_PAIRS = (((-1, 0), (1, 0)), ((0, -1), (0, 1)), ((-1, -1), (1, 1)), ((-1, 1), (1, -1)))
 CULPRITS = 8  # the folders listed under the all-maps table, per type
 STACK = 2.0  # pieces per tile of an edge run above which they pile on each other (stock walls span 5-10 units)
 TOLERANCE = coverage.TOLERANCE
-MIN_TILES = 20  # a (map, type) with fewer legacy tiles never counts a spacing drop: one hole moves its spacing by whole points
+MIN_TILES = 20  # a (map, type) of fewer legacy tiles never counts a spacing drop: one hole moves it by whole points
 STEPS8 = [(i, j) for i in (-1, 0, 1) for j in (-1, 0, 1) if i or j]
 # the HD side: a model is typed by its folder and file name together, as D2R groups its kits in folders
 # (act3_treewall_combined, act4_mesa_cliff_supports, act2_sewer_pillars, expansion_baallair_rails, act2_sewer_walls);
@@ -178,16 +181,26 @@ def tile_type(t: tuple) -> str | None:
     return k if k in EDGES else None
 
 
-def wall_px(tiles: dict, use: dict | None = None) -> int:
-    """The typical wall height of a DT1 (dt1_heights): the median pixel height of its wall tiles, each counted as often
-    as `use` (tile key -> times the maps place it) says, so a mixed DT1 takes the class of the tiles its maps use
-    (catacomb basewalls: median 192 over its 28 tiles, but 128 of the 130 placed are 256+). Orientations 10 and 11
-    (warp and roof tiles) never count. Without `use`, or when none of the DT1's wall tiles is used, each counts once;
-    0 for a DT1 with none (or an unread one)."""
+def wall_px(tiles: dict, use: dict | None = None, own: int = 0) -> int:
+    """The wall height a tile of a DT1 asks for (dt1_heights): the median pixel height of the DT1's wall tiles, each
+    counted as often as `use` (tile key -> times the maps place it) says, so a mixed DT1 takes the class of the tiles
+    its maps use (catacomb basewalls: median 192 over its 28 tiles, but 128 of the 130 placed are 256+). Orientations
+    10 and 11 (warp and roof tiles) never count. Without `use`, or when none of the DT1's wall tiles is used, each
+    counts once; 0 for a DT1 with none (or an unread one).
+
+    When the placed tiles are mixed (at least MIXED of them, low or tall, on the other side of LOW_PX from the rest)
+    and `own` (the tile's own height) is given, that is returned instead: the median of such a DT1 is a coin toss that
+    tips whole maps (siege/battle: 46% of the placed cells are 160-192 px barricades and trench walls, the rest
+    256+ px towers; median exactly LOW_PX), and the tile's own height is what the game draws. A DT1 with a small
+    minority keeps its median, so a few short end pieces do not turn a tall wall low (catacomb basewalls 2%, act2
+    palace/cellar 6%, sewer walls 9%, arcane sanctuary 14%; the mixed ones sit at 31-46%: torturehalls/file1, tomb,
+    battle, rocks, camp, town_reindexed)."""
     walls = {k: v for k, v in tiles.items() if k[0] in HEIGHT_ORIENT}
     if use and any(use.get(k) for k in walls):
         walls = {k: v for k, v in walls.items() if use.get(k)}
     h = sorted(v for k, v in walls.items() for _ in range(use.get(k, 1) if use else 1))
+    if own and h and min(low := sum(v < LOW_PX for v in h), len(h) - low) >= MIXED * len(h):
+        return own
     return h[len(h) // 2] if h else 0
 
 
@@ -211,7 +224,6 @@ def legacy_edges(lay: presets.Layout, heights: dict[str, dict]) -> dict[str, dic
             if t[0]:
                 use.setdefault(t[0], {}).setdefault(t[1:], 0)
                 use[t[0]][t[1:]] += 1
-    px_of: dict[str, int] = {}
     for c, (kind, tiles) in lay.keys.items():
         best: dict[str, tuple[int, tuple]] = {}
         if kind == "w":
@@ -223,7 +235,7 @@ def legacy_edges(lay: presets.Layout, heights: dict[str, dict]) -> dict[str, dic
                     if k not in best or px > best[k][0]:
                         best[k] = (px, t)
         for k, (px, t) in best.items():
-            out[k][c] = expected_class(k, t, px_of.setdefault(t[0], wall_px(heights[t[0]], use.get(t[0]))) or px)
+            out[k][c] = expected_class(k, t, wall_px(heights[t[0]], use.get(t[0]), px) or px)
     water = {c for c, (kind, tiles) in lay.keys.items() if kind == "f" and any(
         classify(t[0], 0, "floor", painter.blocked_floor(lay.flags.get(c, bytes(25)))) == "liquid" for t in tiles)}
     for c in water:
@@ -404,7 +416,8 @@ class Change:
 
 def changes(rows: Rows, base: dict, tolerance: float = TOLERANCE) -> list[Change]:
     """The (map, type) pairs whose score or spacing differ from the baseline, worst drop first. A pair the baseline
-    has and the run no longer scores is a drop; a pair of under MIN_TILES legacy tiles is exempt for its spacing, not its score."""
+    has and the run no longer scores is a drop; a pair of under MIN_TILES legacy tiles is exempt for its spacing, not
+    its score."""
     now = {(n, k): (pct(s.score), pct(s.spacing)) for n, r in rows.items() for k, s in r.items()}
     small = {(n, k) for n, r in rows.items() for k, s in r.items() if s.n < MIN_TILES}
     out = []

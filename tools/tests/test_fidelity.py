@@ -193,9 +193,30 @@ class Legacy(unittest.TestCase):
         keys = {(i, 0): w(WALLS, 1, 16 + i % 7) for i in range(10)}
         self.assertEqual(set(F.legacy_edges(lay(keys), h)["wall"].values()), {"tall"})
 
+    def test_legacy_edges_class_a_mixed_dt1_by_each_tile(self):
+        """expansion/siege/battle.dt1: 46% of the placed cells are 160-192 px barricades, the rest 256+ px towers."""
+        h = {WALLS: {(1, i, 0): px for i, px in enumerate([160] * 3 + [192] * 3 + [256] * 4 + [288] * 3)}}
+        keys = {(i, 0): w(WALLS, 1, i) for i in range(13)}
+        got = F.legacy_edges(lay(keys), h)["wall"]
+        self.assertEqual([got[(i, 0)] for i in range(13)], ["low"] * 6 + ["tall"] * 7)
+
+    def test_legacy_edges_keep_a_tall_dt1_tall_when_a_few_end_pieces_are_short(self):
+        """act1/catacomb/basewalls.dt1: 128 of 130 placed cells are 256+ px; the 2 short ones stay tall."""
+        h = {WALLS: {(1, i, 0): px for i, px in enumerate([160] + [256] * 10 + [288] * 10)}}
+        keys = {(i, 0): w(WALLS, 1, i % 21) for i in range(21)}
+        self.assertEqual(set(F.legacy_edges(lay(keys), h)["wall"].values()), {"tall"})
+
+    def test_wall_px_returns_the_tile_only_for_a_mixed_dt1(self):
+        mixed = {(1, i, 0): px for i, px in enumerate([160, 160, 288, 288])}
+        self.assertEqual(F.wall_px(mixed, own=160), 160)
+        self.assertEqual(F.wall_px(mixed), 288)  # no tile asked
+        tall = {(1, i, 0): px for i, px in enumerate([160] + [288] * 9)}
+        self.assertEqual(F.wall_px(tall, own=160), 288)
+        self.assertEqual(F.wall_px({(1, i, 0): 288 for i in range(3)}, own=288), 288)
+
     def test_legacy_edges_use_the_dt1s_median_not_the_tile(self):
         keys = {(0, 0): w(WALLS, 1, 0), (1, 0): w(WALLS, 1, 1)}
-        h = {WALLS: {(1, 0, 0): 128, (1, 1, 0): 288, (2, 0, 0): 288, (3, 0, 0): 288}}
+        h = {WALLS: {(1, 0, 0): 128, (1, 1, 0): 288, (2, 0, 0): 288, (3, 0, 0): 288, (4, 0, 0): 288}}
         self.assertEqual(F.legacy_edges(lay(keys), h)["wall"], {(0, 0): "tall", (1, 0): "tall"})
 
     def test_heights_fall_back_to_the_next_folder(self):
@@ -345,7 +366,7 @@ class Reports(unittest.TestCase):
         found = F.changes(self.rows(0), {("mapa", "pillar"): (90.0, 100.0), ("mapa", "wall"): (100.0, 100.0)})
         self.assertEqual({(c.kind, c.drop) for c in found}, {("pillar", True), ("floor", False)})
 
-    def test_a_small_type_never_drops(self):
+    def test_a_small_type_still_drops_on_its_score(self):
         rows = {"m": {"fence": F.TypeScore(F.MIN_TILES - 1, missing={(0, 0)}), "wall": F.TypeScore(F.MIN_TILES, missing={(0, 0)})}}
         base = {("m", "fence"): (100.0, 100.0), ("m", "wall"): (100.0, 100.0)}
         got = {(c.kind, c.drop) for c in F.changes(rows, base)}
