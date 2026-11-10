@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_presets as P  # noqa: E402
 import pd2_terrain as T  # noqa: E402
-from test_presets import entity  # noqa: E402
+from presets_fixtures import entity  # noqa: E402
 
 
 def physics(verts: list[tuple[float, float, float]], tris: list[tuple[int, int, int]]) -> bytes:
