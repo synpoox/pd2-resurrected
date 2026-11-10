@@ -25,11 +25,10 @@ in-game". Slot details are in `docs/agents/game-slots.md`.
 
 One shot should answer the question. Before each shot:
 
-- **Quiet spot.** No cheat clears monsters: warp to a spot with none, or `cheat monfreeze 1`, and shoot once nothing
-  casts or burns near you.
+- **Quiet spot.** Warp to a spot with no monsters, or repeat `cheat killmonster` (or `cheat monfreeze 1`), and shoot
+  once nothing casts or burns near you.
 - **Structure shots** (walls, edges, floors) in the dark: `cheat stat item_lightradius, 25`. Never for lighting shots.
-- **Pin the DS1 variant** with `python tools/pd2_force_ds1.py --slot <N> "<Level Name>=<file>.ds1"` before the game
-  starts, every time (game-slots.md, "Force a DS1 variant").
+- **Pin the DS1 variant** (step 3) on every level with several, or the warp can land on another layout.
 - **Lighting shots:** take several frames with no combat effects (fire, poison, spells skew luma) and use the median luma.
 - **Water under canopy:** `cheat-commands.md` lists no canopy or tree toggle. Warp to where the canopy is thin, or
   say in the report that the canopy hid it.
