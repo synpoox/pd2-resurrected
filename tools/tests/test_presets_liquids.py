@@ -76,15 +76,17 @@ class LiquidTests(unittest.TestCase):
         out = [e for e, _ in P.streams(lay, water, set())]
         lava = next(e for e in out if e["components"][2]["filename"] == LAVA_MODEL)["components"]
         self.assertEqual(lava[0]["position"], {"x": 10.0, "y": P.WATER_Y, "z": 5.0})
-        self.assertEqual(lava[0]["scale"], {"x": 20 / 29.5872, "y": 1.0, "z": 10 / 29.5872})
+        self.assertEqual(lava[0]["scale"], {"x": 21 / 29.5872, "y": 1.0, "z": 14 / 29.5872})  # + RIM
         self.assertEqual(lava[1]["filter"], "wall")  # as every stock lava plane
 
     def test_a_big_pool_is_split_into_planes_no_larger_than_stock_scale(self):
         lay = layout(LAVA, {(x, y) for x in range(9) for y in range(5)})
         out = P.streams(lay, {LAVA: (plane(LAVA_MODEL), {})}, set())
-        self.assertEqual(sum(e["components"][0]["scale"]["x"] * e["components"][0]["scale"]["z"] for e, _ in out)
-                         * 29.5872 ** 2 / P.TILE ** 2, 45)  # every tile covered once
-        self.assertTrue(all(e["components"][0]["scale"][a] <= 1.4 for e, _ in out for a in "xz"))
+        rx, rz = P.plane_rim(LAVA_MODEL)
+        self.assertEqual(round(sum((e["components"][0]["scale"]["x"] * 29.5872 - rx)
+                                   * (e["components"][0]["scale"]["z"] * 29.5872 - rz) for e, _ in out)
+                               / P.TILE ** 2, 6), 45)  # every tile covered once, bar the rim
+        self.assertTrue(all(e["components"][0]["scale"][a] <= 1.5 for e, _ in out for a in "xz"))
         self.assertGreater(len(out), 1)
 
     def test_only_stream_dt1_are_wet(self):

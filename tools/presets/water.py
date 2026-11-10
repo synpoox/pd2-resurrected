@@ -5,7 +5,7 @@ import copy
 import json
 from pathlib import Path
 
-from .consts import FETCH, PRESETS, STREAM, TILE, WATER_RATIO, plane_cap, plane_span
+from .consts import FETCH, PRESETS, STREAM, TILE, WATER_RATIO, plane_cap, plane_rim, plane_span
 from .entity import _transform
 from .layout import Layout
 from .liquids import liquid_y, mask as liquid_mask
@@ -62,14 +62,14 @@ def streams(lay: Layout, water: dict[str, tuple[dict, dict]], taken: set,
         plane, of = water[dt1]
         cells = {c for c, dt1s in liquids.items() if c not in taken and c not in done and dt1 in dt1s}
         done |= cells
-        sx, sz = plane_span(next(c["filename"] for c in plane["components"] if c["type"] == "ModelDefinitionComponent"))
-        cap = plane_cap(next(c["filename"] for c in plane["components"] if c["type"] == "ModelDefinitionComponent"))
+        model = next(c["filename"] for c in plane["components"] if c["type"] == "ModelDefinitionComponent")
+        (sx, sz), cap, (rx, rz) = plane_span(model), plane_cap(model), plane_rim(model)
         for x, y, w, h in (r for rect in rectangles(cells) for sq in squarish(rect) for r in tiled(sq, *cap)):
             e = copy.deepcopy(plane)
             t = _transform(e)
             t["position"] = {"x": (x + w / 2) * TILE, "y": liquid_y((x + w // 2, y + h // 2)), "z": (y + h / 2) * TILE}
             t["orientation"] = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
-            t["scale"] = {"x": w * TILE / sx, "y": 1.0, "z": h * TILE / sz}
+            t["scale"] = {"x": (w * TILE + rx) / sx, "y": 1.0, "z": (h * TILE + rz) / sz}
             e["name"] = STREAM
             out.append((e, of))
     return out

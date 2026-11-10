@@ -31,6 +31,16 @@ WATER_SPAN = {"data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.mo
 MAX_SCALE = {"data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model": 1.4}
 
 
+# HD units a plane is made larger than its tiles, along (x, z), so neighbours overlap: stock lava planes leave a dark
+# seam between them at their exact size (game check lava1b, #741; z needed 4, x 1). Stock lava instances avoid seams
+# by being isolated patches, so no stock value to copy
+RIM = {"data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model": (1.0, 4.0)}
+
+
+def plane_rim(model: str) -> tuple[float, float]:
+    return RIM.get(model, (0.0, 0.0))
+
+
 def plane_cap(model: str) -> tuple[int, int]:
     """The most tiles (x, z) one plane of a model covers, at its stock scale."""
     s = MAX_SCALE.get(model, 1.0)
