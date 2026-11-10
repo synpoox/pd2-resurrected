@@ -21,8 +21,19 @@ FAR = 20.0  # HD units (2 tiles): a piece whose mesh stands this far clear of it
 SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
 CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
 PRESETS = Path("hd") / "env" / "preset"
-# a stock water plane's model -> its side in HD units, centred on its position (its .physics box: +-90)
-WATER_SPAN = {"data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model": 180.0}
+# a stock liquid plane's model -> its side in HD units, or its (x, z) sides, centred on its position (the model box in
+# model_lod_desc.bin: water +-90; lava +-14.79, stock scales it; swamp +-325 by +-275)
+WATER_SPAN = {"data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model": 180.0,
+              "data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model": 29.5872,
+              "data/hd/env/model/act3/docktown/act3_docktown_water/swamp_terrain.model": (650.0, 550.0)}
+
+
+def plane_span(model: str) -> tuple[float, float]:
+    """WATER_SPAN of a model as (x, z) sides."""
+    s = WATER_SPAN[model]
+    return s if isinstance(s, tuple) else (s, s)
+
+
 WATER_Y = 0.05  # just over the flat ground plane (y 0), which would hide water at the stock rooms' -5 to 0
 STREAM = "pd2r_stream_water"  # the name of the water planes streams() places, for the merge's count
 WATER_RATIO = 2  # a water rectangle longer than this many times its width is split, so its texture stretches less
