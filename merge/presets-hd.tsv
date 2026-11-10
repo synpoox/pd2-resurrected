@@ -34,7 +34,7 @@ Borq S13 Map	data/hd/env/biome/act4_mesa.json
 48	data/hd/env/biome/expansion_baallair.json
 49	data/hd/env/biome/act1_outdoors.json
 # PD2 DT1	the D2R DT1 standing in for it, - for none (LP4): the D2R DT1 holding the most of its tiles with the same
-# subtile flags, where that is a quarter of its tiles or more. Tiles that are pixel copies of a D2R tile, at any
+# subtile flags, where that is a quarter of its tiles or more (a pick by biome under a quarter says why on its line). Tiles that are pixel copies of a D2R tile, at any
 # index, stand in as that tile whatever the line says (pd2_dt1_copies)
 # a1_ruinwall: no D2R tile has its index and subtile flags
 pd2assets/a1_ruinwall.dt1	-
@@ -65,7 +65,7 @@ pd2assets/a5_shack.dt1	act3/docktown/shack.dt1
 # a5_stones: no D2R DT1 holds more than 5 of 41 tiles, and those are bridge pieces
 pd2assets/a5_stones.dt1	-
 pd2assets/a5_trees.dt1	act3/jungle/trees.dt1
-# aer_canal: all floor, one tile a pixel copy of canal.dt1 and none the same index (oasis 8%): canal.dt1, Lut Gholein's canal
+# aer_canal: all floor, one tile a pixel copy of canal.dt1 and none the same index (oasis 8%): canal.dt1, Lut Gholein's canal by biome; it maps no tile by index, so it works like -
 pd2assets/aer_canal.dt1	act2/town/canal.dt1
 # aer_palace and aer_palace2: best is oasis.dt1 with 16% of 117 tiles (oasis water floors, a different look); no palace DT1 shares an index: none
 pd2assets/aer_palace.dt1	-
@@ -110,6 +110,7 @@ pd2assets/descend/treegroups.dt1	guild/outdoors/treegroups.dt1
 pd2assets/descend/trees.dt1	act1/town/trees.dt1
 # djinnfloor's best (15 of 45 tiles) is specials.dt1, marker tiles that draw nothing: none
 pd2assets/djinnfloor.dt1	-
+# djinnfloorbloody: best is siege/snow.dt1 with 8% of its tiles: none
 pd2assets/djinnfloorbloody.dt1	-
 pd2assets/dtprivate/archwall.dt1	-
 pd2assets/dtprivate/bone.dt1	act2/outdoors/bone.dt1
@@ -165,7 +166,7 @@ pd2assets/new_ground.dt1	expansion/town/ground.dt1
 pd2assets/oasiswalkable.dt1	-
 pd2assets/palace_white.dt1	act2/palace/palace.dt1
 pd2assets/pboxwallalt.dt1	-
-# psnwell/used: sewerwalls, sewerchamb, seweritems, sewerradament, a3houses, psndetail and bridgefill share no index with any D2R DT1 beyond 2% of their tiles: none
+# psnwell/used: sewerchamb, seweritems, sewerradament, a3houses (4%), psndetail and bridgefill (5%) share no index with any D2R DT1 beyond 5% of their tiles: none
 pd2assets/psnwell/used/a3houses.dt1	-
 pd2assets/psnwell/used/bridgefill.dt1	-
 pd2assets/psnwell/used/den.dt1	act2/maggot/den.dt1
@@ -175,7 +176,8 @@ pd2assets/psnwell/used/rivbank.dt1	act3/river/rivbank.dt1
 pd2assets/psnwell/used/sewerchamb.dt1	-
 pd2assets/psnwell/used/seweritems.dt1	-
 pd2assets/psnwell/used/sewerradament.dt1	-
-pd2assets/psnwell/used/sewerwalls.dt1	-
+# psnwell/used/sewerwalls: tomb/serpent.dt1 and travincal/walls.dt1 each hold 8 of 29 tiles (28%); serpent is the closer look for sewer stonework
+pd2assets/psnwell/used/sewerwalls.dt1	act2/tomb/serpent.dt1
 pd2assets/recoloured_tombcor.dt1	act2/bigcliff/tombcor.dt1
 pd2assets/rotated_ext.dt1	-
 pd2assets/rotatedthronearch.dt1	expansion/siege/building.dt1
