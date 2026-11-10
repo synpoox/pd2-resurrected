@@ -24,13 +24,13 @@ looks, frame rate or collision.
 Size budget: each preset's JSON size and entity count, the presets above STOCK_BYTES or STOCK_ENTITIES (D2R's own
 largest) listed in a "Size budget" section, largest first. Reported, not checked.
 
-Changes against the baseline: BASELINE (docs/coverage-baseline.tsv, `preset <tab> wall % <tab> border % or - <tab>
-floor %`) holds main's scores. The report and <out>/changes.md list each preset whose score moved, a new one, and one
-no longer scored. `--check` fails (exit 1) when a preset's wall, border or floor score drops more than TOLERANCE
-points below the baseline, or a baselined preset is no longer scored. To accept an intended drop (or record a gain),
-run with `--write-baseline` after pd2_merge.py and commit docs/coverage-baseline.tsv with the PR: the drop then shows
-in its diff and review.
-Record gains the same way, or a later drop back to the old score passes unnoticed.
+Changes against the baseline: `--baseline` (`preset <tab> wall % <tab> border % or - <tab> floor %`) holds main's
+scores. The report and <out>/changes.md list each preset whose score moved, a new one, and one no longer scored.
+`--check` fails (exit 1) when a preset's wall, border or floor score drops more than TOLERANCE points below the
+baseline, or a baselined preset is no longer scored. In CI (#723) each push to main writes its scores
+(`--write-baseline`) as the coverage-baseline artifact, and a PR is checked against the latest one, so PRs never
+commit a baseline; the PR label coverage-drop-ok accepts an intended drop. BASELINE (docs/coverage-baseline.tsv) is
+a snapshot for local runs and CI's fallback when main has no artifact; don't update it in a PR.
 Needs model_lod_desc.bin in modkit's cache, else it skips:
 `python -m modkit fetch --prefix data/hd/model_lod_desc.bin`.
 """
@@ -329,7 +329,7 @@ def changes_md(found: list[Change], tolerance: float = TOLERANCE) -> str:
         return "\n".join(lines + ["No preset's coverage changed.", ""])
     lines += [f"{len(found)} presets changed; {drops} dropped by more than the {tolerance:g}-point tolerance or are "
               "no longer scored"
-              + (" (accept an intended drop: `--write-baseline`, commit docs/coverage-baseline.tsv)." if drops else "."),
+              + (" (accept an intended drop: label the PR `coverage-drop-ok`)." if drops else "."),
               "", "| Preset | Wall | Border | Floor | |", "|---|---|---|---|---|"]
     lines += [f"| {c.name} | {cell(*c.wall)} | {cell(*c.border)} | {cell(*c.floor)} | {'**drop**' if c.drop else ''} |"
               for c in found]

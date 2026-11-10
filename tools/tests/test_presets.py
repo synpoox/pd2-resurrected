@@ -123,6 +123,28 @@ class BuildTests(unittest.TestCase):
         self.assertTrue(all(e["components"][0]["scale"] == {"x": 1.0, "y": 1.0, "z": 1.0} for e in planes))
         self.assertEqual(sorted(e["id"] for e in preset["entities"] + [preset["terrain"]]), [1, 2])
 
+    def test_a_block_mostly_under_rooms_gets_the_plane_for_its_other_tiles_unless_a_room_is_sunken(self):
+        # block 2 (x 17-33): a pasted room on x 17-30, loose floor on x 31-33 (#705); block 3 (x 34-50): all room
+        lay = P.Layout(51, 2, {(x, y): ("f", (FLOOR,)) for x in range(51) for y in range(2)})
+        taken = {(x, y) for x in range(17, 31) for y in range(2)} | {(x, y) for x in range(34, 51) for y in range(2)}
+
+        def planes(sunk: set) -> list[float]:
+            with mock.patch.object(P, "rooms", return_value=([], taken)), \
+                    mock.patch.object(P, "sunken", return_value=sunk):
+                preset, _ = P.build(lay, P.Kit(), "m", "m.ds1", "b.json", TERRAIN)
+            return sorted(e["components"][0]["position"]["x"] for e in preset["entities"] + [preset["terrain"]]
+                          if e["name"] == "terrain")
+        self.assertEqual(planes(set()), [0.0, 170.0])
+        self.assertEqual(planes({(20, 0)}), [0.0])  # a canal in the room: the plane would hide it
+
+    def test_sunken_tiles_are_a_pasted_rooms_ground_below_the_plane(self):
+        class Ground:
+            def at(self, x, z):
+                return -5.0 if x < 10 else None if x > 20 else 0.0
+        room = P.Layout(3, 1, {(0, 0): ("f", (FLOOR,)), (1, 0): ("f", (FLOOR,)), (2, 0): ("f", (FLOOR,))})
+        self.assertEqual(P.sunken([(0, 4, 7)], [(room, {P.GROUND: Ground()})]), {(4, 7)})
+        self.assertEqual(P.sunken([(0, 4, 7)], [(room, {})]), set())  # no ground read: not sunken
+
     def test_a_key_keeps_d2rs_empty_instances_so_props_come_at_its_density(self):
         lay = P.Layout(2, 1, {(0, 0): ("w", (A,)), (1, 0): ("w", (A,))})
         kit = P.Kit()
@@ -133,6 +155,35 @@ class BuildTests(unittest.TestCase):
         self.assertTrue(5 < len(preset["entities"]) < 35)
         self.assertEqual(preset, P.build(target, kit, "m", "m.ds1", "b.json", TERRAIN)[0])  # the same every build
 
+
+    def test_a_far_anchored_piece_on_a_floor_tile_stays_out_of_the_kit(self):
+        # D2R's townwest anchors its stairs on a plain ground tile, 4 tiles off their mesh (#679)
+        lay = P.Layout(2, 1, {(0, 0): ("f", (FLOOR,)), (1, 0): ("w", (A,))})
+        kit = P.Kit(far=lambda e: e["name"].startswith("stairs"))
+        kit.add(lay, {"dependencies": {}, "entities": [entity("stairs", 3.0, 4.0), entity("sack", 4.0, 4.0),
+                                                       entity("stairs_on_wall", 13.0, 4.0)]},
+                {("f", (FLOOR,)), ("w", (A,))})
+        self.assertEqual([e["name"] for _, ents in kit.instances[("f", (FLOOR,))] for e, _, _ in ents], ["sack"])
+        self.assertEqual([e["name"] for _, ents in kit.instances[("w", (A,))] for e, _, _ in ents], ["stairs_on_wall"])
+        found, pkit = P.patches(P.Layout(1, 1, {(0, 0): ("f", (FLOOR,))}), [(lay, {"dependencies": {}, "entities": [
+            entity("stairs", 3.0, 4.0)]})], {(0, 0)}, kit.far)
+        self.assertFalse(any(ents for opts in pkit.instances.values() for _, ents in opts))
+
+    def test_a_piece_is_far_when_its_box_stands_two_tiles_clear_of_it(self):
+        d = Path(tempfile.mkdtemp())
+        import pd2_coverage as C
+        stairs, sack = "data/hd/env/model/stairs.model", "data/hd/env/model/sack.model"
+        pit = "data/hd/env/model/pit.model"  # Duriel's chamber: its centre stands far off, but it reaches its anchor
+        recs = sorted([(C.fnv(stairs), (-37.0, 0.0, 28.0, 0.0, 15.0, 55.0)), (C.fnv(sack), (-2.0, 0.0, -2.0, 2.0, 3.0, 2.0)),
+                       (C.fnv(pit), (-85.0, 0.0, -113.0, 7.0, 20.0, 2.0))])
+        raw = struct.pack("<Ii", len(recs), 4) + b"".join(struct.pack("<I6f", k, *b) + bytes(16) for k, b in recs)
+        (d / "hd").mkdir()
+        (d / "hd" / "model_lod_desc.bin").write_bytes(raw)
+        far = P.far_off(d)
+        self.assertTrue(far(entity("stairs", 50.0, 50.0)))
+        self.assertFalse(far(entity("sack", 50.0, 50.0)))
+        self.assertFalse(far(entity("pit", 50.0, 50.0)))
+        self.assertFalse(P.far_off(d / "none")(entity("stairs", 0.0, 0.0)))
 
     def test_a_waypoint_is_placed_once_per_waypoint_object_at_its_stock_offset(self):
         # D2R's siege waypoint room: its model's transform sits 4 tiles off the waypoint tiles, on plain ground (#669)
