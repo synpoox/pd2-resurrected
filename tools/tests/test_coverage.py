@@ -103,6 +103,25 @@ class Tall(unittest.TestCase):
     def test_room_sized_left_out(self):
         self.assertEqual(C.tall_tiles(iter([(0.0, 500.0, 0.0, 9.0, 50.0)])), set())
 
+    def test_a_low_piece_covers_a_fence_or_shore_tile_only(self):
+        fence = ("w", (("act1/outdoors/stonewall.dt1", 1, 0, 0),))
+        shore = ("f", (("act3/river/rivbank.dt1", 0, 0, 0),))
+        L = lay({(0, 0): fence, (1, 0): WALL, (2, 0): shore})
+        low = [(0.0, 29.0, 0.0, 9.0, 2.0)]  # a 2-unit edge piece over all three tiles
+        self.assertEqual(C.covered(L, low, low), {(0, 0), (2, 0)})
+        self.assertEqual(C.covered(L, [(10.0, 19.0, 0.0, 9.0, 5.0)]), {(1, 0)})
+
+    def test_grass_or_rocks_on_a_fence_tile_cover_nothing(self):
+        fence = ("w", (("act1/outdoors/stonewall.dt1", 1, 0, 0),))
+        mixed = ("w", (("act1/outdoors/stonewall.dt1", 1, 0, 0), ("act1/outdoors/treegroups.dt1", 1, 0, 0)))
+        L = lay({(0, 0): fence, (1, 0): mixed})
+        low = [(0.0, 19.0, 0.0, 9.0, 2.0)]  # a 2-unit piece over both tiles
+        self.assertEqual(C.covered(L, low), set())  # not an edge piece: grass, rocks
+        self.assertEqual(C.covered(L, low, low), {(0, 0)})  # a tile with a non-fence layer needs a tall piece
+        self.assertTrue(C.edge_piece("data/hd/env/model/act1/outdoors/fence_wood01.model"))
+        self.assertFalse(C.edge_piece("data/hd/env/model/act3/river/riverrocks02.model"))
+        self.assertFalse(C.edge_piece("data/hd/env/model/act1/outdoors/grass_tall01.model"))
+
 
 class Scores(unittest.TestCase):
     def test_wall_score(self):

@@ -30,6 +30,7 @@ presets in modkit's cache, else it makes none (dev builds run without, ADR 0005)
 from __future__ import annotations
 
 import copy
+import dataclasses
 import functools
 import json
 import re
@@ -59,6 +60,8 @@ SINK = 1.0  # HD units: a pasted room's ground this far below the flat plane wou
 ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is pasted where this share of its tiles match
 ROOM_BARE = 0.001  # the share of a room's tiles that may be walkable DS1 floor off its walkable floor (#713:
 # Uber Tristram's 2156-tile town has one PD2 edit; a room with tens of such tiles draws walls or lava on open ground)
+# a plant (tree, palm, bush, vines, foliage): left out of an indoor map when harvested from an outdoor stock room
+PLANT = re.compile(r"tree|palm|bush|vine|foliage|banyan")
 FAR = 20.0  # HD units (2 tiles): a piece whose mesh stands this far clear of its position belongs to a structure
 SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
 CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]
@@ -190,20 +193,27 @@ class Kit:
     # a waypoint's pieces, as offsets from its object: under ("kc", key of the tile under the object, objects Class),
     # ("k", key) and, without a room terrain, ("c", Class)
     waypoints: dict[Key | str, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
+    outdoor: set[int] = field(default_factory=set)  # the sources whose stock DS1 draws trees (draws_trees())
+    flags: dict[Key, bytes] = field(default_factory=dict)  # a key's subtile flags in the first stock DS1 that has it
 
     def add(self, lay: Layout, preset: dict, keep: set[Key], objects: list[tuple[str, float, float]] = (),
-            floor: set | None = None) -> None:
-        """Harvest one stock (layout, preset) pair, only the keys in `keep`. A waypoint's pieces stay out of the
+            floor: set | None = None, alike: frozenset[str] = frozenset(), outdoor: bool | None = None) -> None:
+        """Harvest one stock (layout, preset) pair, only the keys in `keep`, and the single-layer LIKE keys of the
+        `alike` DT1s, which like() lends to tiles the kit has no key for. A waypoint's pieces stay out of the
         per-tile kit, as D2R puts their transform up to 4 tiles off the waypoint's tiles (#669): each joins the
         nearest of the DS1's waypoint `objects` (waypoints()), or is dropped if it has none. A pasted room keeps
         its own (build()). With the preset's ground (GROUND, from pd2_terrain), each piece keeps its height above
         that ground, as the generated terrain is flat. A `far` piece anchored on a floor tile (`floor`, else the
         layout's "f" keys) is left out: its mesh belongs to a structure elsewhere in the room, and on a common floor key
-        it would stand on any plain ground (Harrogath's stairs on Westmarch's floor, #679)."""
+        it would stand on any plain ground (Harrogath's stairs on Westmarch's floor, #679). `outdoor`: whether the stock DS1
+        draws trees (else draws_trees(lay)); indoor() leaves such a room's plants out."""
         src = len(self.sources)
         self.sources.append(preset["dependencies"])
         ground = preset.get(GROUND)
-        per: dict[tuple[int, int], list] = {c: [] for c, k in lay.keys.items() if k in keep}
+        if draws_trees(lay) if outdoor is None else outdoor:
+            self.outdoor.add(src)
+        per: dict[tuple[int, int], list] = {c: [] for c, k in lay.keys.items() if k in keep or (
+            len(k[1]) == 1 and k[1][0] and k[1][0][1] == LIKE and k[1][0][0] in alike)}
         floor = {c for c, k in lay.keys.items() if k[0] == "f"} if floor is None else floor
         groups: dict[int, list] = {}
         for e in preset["entities"]:
@@ -227,6 +237,7 @@ class Kit:
                 per[c].append((e, x - c[0] * TILE, z - c[1] * TILE))
         for c, ents in per.items():
             self.instances.setdefault(lay.keys[c], []).append((src, ents))
+            self.flags.setdefault(lay.keys[c], lay.flags.get(c, bytes(25)))
         for n, ents in groups.items():
             cls, x, z = objects[n]
             key = lay.keys.get((int(x // TILE), int(z // TILE)))
@@ -234,6 +245,19 @@ class Kit:
             for k, group in ((("kc", key, cls), ents), (("k", key), ents), (("c", cls), models)):
                 if group and k[1]:
                     self.waypoints.setdefault(k, []).append((src, group))
+
+
+def is_plant(e: dict) -> bool:
+    return any(c["type"] in ("ModelDefinitionComponent", "PrefabPlacementDefinitionComponent")
+               and PLANT.search((c.get("filename") or c.get("prefab") or "").rsplit("/", 1)[-1]) for c in e["components"])
+
+
+def indoor(kit: Kit) -> Kit:
+    """The kit for a map that draws no trees: without the plants of outdoor stock rooms. Kurast's sewer entrances
+    share the sewers' floor tiles, and put their banyans and vines on the Sewers map's floor (#707)."""
+    return dataclasses.replace(kit, instances={
+        k: [(src, [p for p in ents if src not in kit.outdoor or not is_plant(p[0])]) for src, ents in opts]
+        for k, opts in kit.instances.items()})
 
 
 def waypoint_options(lay: Layout, kit: Kit, cls: str, x: float, z: float) -> list:
@@ -262,6 +286,7 @@ def place_waypoints(lay: Layout, kit: Kit, seed: str, objects: list[tuple[str, f
 
 
 TREE_LAYER = 14  # the orientation of a DT1's tree tiles
+LIKE = 12  # the orientation whose PD2 tiles without a stand-in borrow a stock tile's pieces (like())
 STRUCTURE = re.compile(r"/(?:wall|cliff)_[^/\"]*\.(?:model|json)")  # stone walls and cliffs, by their file name
 
 
@@ -272,7 +297,30 @@ def structure(ents: list) -> bool:
 
 def fades(e: dict) -> bool:
     """Whether a piece is see-through in front of the player: a wall that fades, or a low root or foreground wall."""
-    return any(c["type"] == "WallTransparencyComponent" for c in e["components"])         or bool(painter.LOW.search(json.dumps(e["components"])))
+    return (any(c["type"] == "WallTransparencyComponent" for c in e["components"])
+            or bool(painter.LOW.search(json.dumps(e["components"]))))
+
+
+def like(lay: Layout, kit: Kit) -> dict[tuple[int, int], Key]:
+    """For each tile whose key the kit lacks, whole and layer by layer, and that has a LIKE layer: the single-layer
+    LIKE key, from a DT1 the layout draws and with a piece in some instance, whose subtile collision is nearest the
+    tile's (then the one with the most such instances), if the two footprints share at least half their blocked
+    subtiles; a tile that blocks nothing, or shares too little, borrows nothing (a stock chair is no pillar). A PD2
+    DT1's pillar with no stand-in tile (#714: Torture Halls' flesh pillars) then stands as a stock pillar."""
+    drawn = {t[0] for k in lay.keys.values() for t in k[1] if t}
+    pool = [(k, kit.flags.get(k, bytes(25)), sum(bool(o[1]) for o in v)) for k, v in kit.instances.items()
+            if len(k[1]) == 1 and k[1][0] and k[1][0][1] == LIKE and k[1][0][0] in drawn and any(o[1] for o in v)]
+    out = {}
+    for c, key in lay.keys.items():
+        whole = key in kit.instances or any((key[0], (t,)) in kit.instances for t in key[1])
+        if not pool or whole or not any(t and t[1] == LIKE for t in key[1]):
+            continue
+        f = {i for i, v in enumerate(lay.flags.get(c, bytes(25))) if v & 1}
+        fits = [(len(f ^ g), -n, k) for k, flags, n in pool
+                if 2 * len(f & (g := {i for i, v in enumerate(flags) if v & 1})) >= len(f | g) and f & g]
+        if fits:
+            out[c] = min(fits)[2]
+    return out
 
 
 def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near: frozenset = frozenset(),
@@ -286,8 +334,9 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
     playable ground screen-up of it) picks only an instance whose pieces all fade, as D2R's rooms do on their near
     side, or stays empty. A `far` edge tile (one whose tree is drawn over no playable ground) picks among those that
     hold a tree (painter.is_tree) first, as a lone rock or shrub is too low to close the border (Frozen Forest,
-    #688)."""
+    #688). A tile the kit has no key for takes its like() key's pick."""
     entities, used, missing = [], set(), 0
+    borrow = like(lay, kit)
 
     def one(x: int, y: int, key: Key, salt: str) -> bool:
         options = kit.instances.get(key)
@@ -320,6 +369,8 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
         alone = [(k, (key[0], (t,))) for k, t in enumerate(key[1]) if (key[0], (t,)) in kit.instances]
         for k, single in alone:
             one(x, y, single, f":{k}")
+        if not alone and (x, y) in borrow:
+            alone = [one(x, y, borrow[(x, y)], ":like")]
         missing += not alone
     return entities, used, missing
 
@@ -380,7 +431,8 @@ def patches(lay: Layout, stock: list[tuple[Layout, dict]], tiles: set, far=lambd
     for s, preset in stock:
         floor = {c for c, k in s.keys.items() if k[0] == "f"}
         for k in shapes:
-            kit.add(Layout(s.width, s.height, {c: patch(s.keys, c, *k) for c in s.keys}), preset, keep, floor=floor)
+            kit.add(Layout(s.width, s.height, {c: patch(s.keys, c, *k) for c in s.keys}), preset, keep, floor=floor,
+                    outdoor=draws_trees(s))
     return Layout(lay.width, lay.height, {c: next(k for k in ks if k in kit.instances)
                                           for c, ks in want.items() if any(k in kit.instances for k in ks)}), kit
 
@@ -440,10 +492,13 @@ def build(lay: Layout, kit: Kit, name: str, seed: str, biome: str, terrain: dict
     near = frozenset(c for c in fill if {(c[0] - 1, c[1]), (c[0], c[1] - 1), (c[0] - 1, c[1] - 1)} & play)
     rest = {c: k for c, k in lay.keys.items() if c not in taken or c in fill}
     found, pkit = patches(lay, stock, set(rest), kit.far)
+    if not draws_trees(lay):
+        pkit = indoor(pkit)
     loose, used, _ = place(found, pkit, seed, edge, near, far)
     for src in sorted(used):
         depend(pkit.sources[src])
-    more, used, missing = place(Layout(lay.width, lay.height, {c: k for c, k in rest.items() if c not in found.keys}),
+    more, used, missing = place(Layout(lay.width, lay.height, {c: k for c, k in rest.items() if c not in found.keys},
+                                       lay.flags),
                                 kit, seed, edge, near, far)
     for src in sorted(used):
         depend(kit.sources[src])
@@ -744,6 +799,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         raise ValueError(f"water lines for DT1 no PD2-only preset draws from: {', '.join(stale)}")
     water = water_planes(d2r_data, water_rule)
     kit, stock = Kit(far=far_off(d2r_data)), []
+    inside = None  # indoor(kit), made once the kit is harvested
     for p in sorted((d2r_data / PRESETS).rglob("*.json")):
         ds1 = tiles_dir / p.relative_to(d2r_data / PRESETS).with_suffix(".ds1")
         if not ds1.is_file():  # a few stock presets have no DS1 (D2R's HD-only rooms)
@@ -755,7 +811,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         preset = json.loads(p.read_text("utf-8-sig"))
         preset[GROUND] = terrain_ground.of_preset(preset, d2r_data)
         stock.append((layout(data, tiles.of(listed)), preset, set(listed)))
-        kit.add(*stock[-1][:2], keep, waypoints(data, stock_classes))
+        kit.add(*stock[-1][:2], keep, waypoints(data, stock_classes), alike=frozenset(loaded))
 
     @functools.cache
     def prefab(path: str) -> list[tuple[float, float]]:
@@ -775,7 +831,9 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             outdoor = draws_trees(lay)
             objects = waypoints((out_data / "global" / "tiles" / ds1).read_bytes(), mod_classes)
             bare += [f"{Path(ds1).stem} {o[0]}" for o in objects if not waypoint_options(lay, kit, *o)]
-            preset, missing = build(lay, kit, Path(ds1).stem, ds1, sets[tile_set.lower()], terrain, own,
+            if not outdoor and inside is None:
+                inside = indoor(kit)
+            preset, missing = build(lay, kit if outdoor else inside, Path(ds1).stem, ds1, sets[tile_set.lower()], terrain, own,
                                     trees if outdoor else None, prefab, water, objects)
             dest = out_data / PRESETS / Path(ds1).with_suffix(".json")
             dest.parent.mkdir(parents=True, exist_ok=True)
