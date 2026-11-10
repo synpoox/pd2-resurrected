@@ -32,8 +32,10 @@ from ..entity import _transform
 ORDER = 450
 KIT = Path(__file__).resolve().parent.parent / "fence_kit.json"
 PIECE = "spider_run"
-# a tile with no longer run goes along z for the left-hand orientations (1 left wall, 4 and 5 the left corners), else x
-ALONG_Z = frozenset({1, 4, 5})
+# a tile with no longer run goes along z for the left-hand orientations (1 left wall, 4 and 5 the left corners, 8 the
+# left wall with a door), else x (2 right wall, 9 the right wall with a door: DT1 orientations as in the DT1 format
+# spec, measured on the PD2 DT1s in pd2_fidelity.py; 8 and 9 are the door variants of 1 and 2)
+ALONG_Z = frozenset({1, 4, 5, 8})
 YAW_Z = {"x": 0.0, "y": -0.707106769, "z": 0.0, "w": 0.707106769}  # turns a piece's long x axis along z
 STAND = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
 

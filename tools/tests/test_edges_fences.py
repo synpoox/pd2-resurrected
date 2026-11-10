@@ -60,7 +60,8 @@ class FenceTests(unittest.TestCase):
         self.assertTrue(models and all("spider_fences" in m and "rockwalls" not in m for m in models), models)
 
     def test_tall_fence_dt1s_are_walls_the_pass_leaves_alone(self):
-        for dt1 in (FOREGATE, STONE, "act1/barracks/barset.dt1", "act1/graveyard/graveyrd.dt1"):
+        for dt1 in (FOREGATE, STONE, "act1/barracks/barset.dt1", "act1/graveyard/graveyrd.dt1",
+                    "act1/town/fence.dt1", "expansion/descend/stone_fence.dt1"):
             keys = {(5, 5): ("w", ((dt1, 2, 0, 0),))}
             b = build(keys, [stock_piece(55, 55)])
             self.assertEqual(fences.fence_tiles(b.lay), {}, dt1)
@@ -74,6 +75,8 @@ class FenceTests(unittest.TestCase):
             return b.loose[0]["components"][0]["orientation"]["y"]
         self.assertEqual({o: yaw(o) for o in (1, 2, 3, 4, 5, 6, 7)},
                          {1: -0.707106769, 2: 0.0, 3: 0.0, 4: -0.707106769, 5: -0.707106769, 6: 0.0, 7: 0.0})
+        # the door variants mirror the walls they stand in: 8 the left wall (along z), 9 the right wall (along x)
+        self.assertEqual({o: yaw(o) for o in (8, 9)}, {8: -0.707106769, 9: 0.0})
 
     def test_gate_orientations_take_the_run_piece(self):
         keys = {(x, 5): ("w", ((FENCE, 8 if x == 3 else 2, 0, 0),)) for x in range(3, 6)}
