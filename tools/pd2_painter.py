@@ -195,17 +195,7 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs,
 
     # the camera looks along +x +y: a tree is drawn over the playable ground screen-up of it, so only roots and the
     # `_foreground` tree walls put a piece there, as D2R's rooms do; canopy and the other trees stay back (#454)
-    cols = collections.defaultdict(list)  # screen column (x - y) -> the playable subtiles' screen rows (x + y)
-    for q in best:
-        cols[q[0] - q[1]].append(q[0] + q[1])
-    for v in cols.values():
-        v.sort()
-
-    @functools.cache
-    def shades(p) -> bool:
-        s = p[0] + p[1]
-        return any((v := cols.get(c)) and (i := bisect.bisect_left(v, s - TALL)) < len(v) and v[i] < s
-                   for c in range(p[0] - p[1] - WIDE, p[0] - p[1] + WIDE + 1))
+    shades = shader(best)
     low = {id(o) for v in kit.values() for o in v if LOW.search(json.dumps(o[0]["components"]))}
 
     def fits(p, o) -> bool:
@@ -255,6 +245,23 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs,
     out += run(single, singles, walls)
     out += run(canopy, {}, collections.defaultdict(list))
     return out, play
+
+
+def shader(best: set):
+    """shades(p): whether a tree at subtile p is drawn over the playable subtiles `best` (any within TALL rows above
+    it, WIDE columns to either side): the camera looks along +x +y (#454)."""
+    cols = collections.defaultdict(list)  # screen column (x - y) -> the playable subtiles' screen rows (x + y)
+    for q in best:
+        cols[q[0] - q[1]].append(q[0] + q[1])
+    for v in cols.values():
+        v.sort()
+
+    @functools.cache
+    def shades(p) -> bool:
+        s = p[0] + p[1]
+        return any((v := cols.get(c)) and (i := bisect.bisect_left(v, s - TALL)) < len(v) and v[i] < s
+                   for c in range(p[0] - p[1] - WIDE, p[0] - p[1] + WIDE + 1))
+    return shades
 
 
 def pieces(e: dict, prefabs) -> list[tuple[float, float]]:

@@ -4,6 +4,12 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 
 ### Unreleased
 
+#### Maps
+
+- The uber areas, Throne, Pandemonium, Realm of Terror and Kanemith draw HD floors, and walls where D2R has a match.
+- Ten more PD2-only areas draw walls and props in HD, among them Ruined Cistern, Ureh City and Black Abyss.
+- Mesa, Lava and Fortress maps draw ground beside copied D2R rooms instead of black gaps.
+
 #### Getting started
 
 - Includes a DPS counter above the life globe.
@@ -25,12 +31,17 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Jungle and Necropolis maps draw water in their streams beyond the copied D2R rooms.
 - Jungle, Kurast and Necropolis maps grow tree walls on the near side of paths, closing most gaps in their borders.
 - Ashen Plains and other outdoor maps grow trees on the blocked ground past their edge walls.
+- Frozen Forest and other outdoor maps close more gaps in the tree lines beyond their paths.
 - Fortress Map draws the walls PD2 added inside copied D2R rooms, closing most of its border gaps.
 - Tree tiles no longer draw a stone wall or cliff, which hid Fortress Map's waypoint court.
+- Copied D2R rooms paste only where the map's walkable floor matches theirs, so Fortress Map draws its own walls.
+- Halls of Torture Map draws stock temple pillars and cages where PD2 drew its own pillars.
 - Halls of Torture Map draws the stock pillars and wall ends that stand just past their tile.
 - PD2 areas show "Entering <area>" on arrival instead of "Missing string".
 - Dungeon boss barriers show as iron gates instead of invisible walls.
 - Map waypoints draw their platform, and no stray waypoints stand on plain ground.
+- Westmarch's flat ground no longer draws Harrogath stair pieces.
+- The Sewers map no longer grows Kurast's jungle trees and vines on its floor.
 
 #### Uber bosses
 

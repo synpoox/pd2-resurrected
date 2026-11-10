@@ -123,6 +123,28 @@ class BuildTests(unittest.TestCase):
         self.assertTrue(all(e["components"][0]["scale"] == {"x": 1.0, "y": 1.0, "z": 1.0} for e in planes))
         self.assertEqual(sorted(e["id"] for e in preset["entities"] + [preset["terrain"]]), [1, 2])
 
+    def test_a_block_mostly_under_rooms_gets_the_plane_for_its_other_tiles_unless_a_room_is_sunken(self):
+        # block 2 (x 17-33): a pasted room on x 17-30, loose floor on x 31-33 (#705); block 3 (x 34-50): all room
+        lay = P.Layout(51, 2, {(x, y): ("f", (FLOOR,)) for x in range(51) for y in range(2)})
+        taken = {(x, y) for x in range(17, 31) for y in range(2)} | {(x, y) for x in range(34, 51) for y in range(2)}
+
+        def planes(sunk: set) -> list[float]:
+            with mock.patch.object(P, "rooms", return_value=([], taken)), \
+                    mock.patch.object(P, "sunken", return_value=sunk):
+                preset, _ = P.build(lay, P.Kit(), "m", "m.ds1", "b.json", TERRAIN)
+            return sorted(e["components"][0]["position"]["x"] for e in preset["entities"] + [preset["terrain"]]
+                          if e["name"] == "terrain")
+        self.assertEqual(planes(set()), [0.0, 170.0])
+        self.assertEqual(planes({(20, 0)}), [0.0])  # a canal in the room: the plane would hide it
+
+    def test_sunken_tiles_are_a_pasted_rooms_ground_below_the_plane(self):
+        class Ground:
+            def at(self, x, z):
+                return -5.0 if x < 10 else None if x > 20 else 0.0
+        room = P.Layout(3, 1, {(0, 0): ("f", (FLOOR,)), (1, 0): ("f", (FLOOR,)), (2, 0): ("f", (FLOOR,))})
+        self.assertEqual(P.sunken([(0, 4, 7)], [(room, {P.GROUND: Ground()})]), {(4, 7)})
+        self.assertEqual(P.sunken([(0, 4, 7)], [(room, {})]), set())  # no ground read: not sunken
+
     def test_a_key_keeps_d2rs_empty_instances_so_props_come_at_its_density(self):
         lay = P.Layout(2, 1, {(0, 0): ("w", (A,)), (1, 0): ("w", (A,))})
         kit = P.Kit()
@@ -133,6 +155,47 @@ class BuildTests(unittest.TestCase):
         self.assertTrue(5 < len(preset["entities"]) < 35)
         self.assertEqual(preset, P.build(target, kit, "m", "m.ds1", "b.json", TERRAIN)[0])  # the same every build
 
+
+    def test_an_indoor_map_takes_no_plants_from_an_outdoor_stock_room(self):
+        # Kurast's sewer entrances share the sewers' floor tiles and hold banyans (#707)
+        lay = P.Layout(1, 1, {(0, 0): ("f", (FLOOR,))})
+        kit = P.Kit()
+        kit.add(lay, {"dependencies": {}, "entities": [entity("banyan_tree", 3.0, 4.0), entity("sack", 4.0, 4.0)]},
+                {("f", (FLOOR,))}, outdoor=True)
+        kit.add(lay, {"dependencies": {}, "entities": [entity("courtyard_palm", 3.0, 4.0)]}, {("f", (FLOOR,))},
+                outdoor=False)
+        names = [[e["name"] for e, _, _ in ents] for _, ents in P.indoor(kit).instances[("f", (FLOOR,))]]
+        self.assertEqual(names, [["sack"], ["courtyard_palm"]])
+        self.assertEqual(len(kit.instances[("f", (FLOOR,))][0][1]), 2)  # the outdoor kit keeps its banyan
+
+    def test_a_far_anchored_piece_on_a_floor_tile_stays_out_of_the_kit(self):
+        # D2R's townwest anchors its stairs on a plain ground tile, 4 tiles off their mesh (#679)
+        lay = P.Layout(2, 1, {(0, 0): ("f", (FLOOR,)), (1, 0): ("w", (A,))})
+        kit = P.Kit(far=lambda e: e["name"].startswith("stairs"))
+        kit.add(lay, {"dependencies": {}, "entities": [entity("stairs", 3.0, 4.0), entity("sack", 4.0, 4.0),
+                                                       entity("stairs_on_wall", 13.0, 4.0)]},
+                {("f", (FLOOR,)), ("w", (A,))})
+        self.assertEqual([e["name"] for _, ents in kit.instances[("f", (FLOOR,))] for e, _, _ in ents], ["sack"])
+        self.assertEqual([e["name"] for _, ents in kit.instances[("w", (A,))] for e, _, _ in ents], ["stairs_on_wall"])
+        found, pkit = P.patches(P.Layout(1, 1, {(0, 0): ("f", (FLOOR,))}), [(lay, {"dependencies": {}, "entities": [
+            entity("stairs", 3.0, 4.0)]})], {(0, 0)}, kit.far)
+        self.assertFalse(any(ents for opts in pkit.instances.values() for _, ents in opts))
+
+    def test_a_piece_is_far_when_its_box_stands_two_tiles_clear_of_it(self):
+        d = Path(tempfile.mkdtemp())
+        import pd2_coverage as C
+        stairs, sack = "data/hd/env/model/stairs.model", "data/hd/env/model/sack.model"
+        pit = "data/hd/env/model/pit.model"  # Duriel's chamber: its centre stands far off, but it reaches its anchor
+        recs = sorted([(C.fnv(stairs), (-37.0, 0.0, 28.0, 0.0, 15.0, 55.0)), (C.fnv(sack), (-2.0, 0.0, -2.0, 2.0, 3.0, 2.0)),
+                       (C.fnv(pit), (-85.0, 0.0, -113.0, 7.0, 20.0, 2.0))])
+        raw = struct.pack("<Ii", len(recs), 4) + b"".join(struct.pack("<I6f", k, *b) + bytes(16) for k, b in recs)
+        (d / "hd").mkdir()
+        (d / "hd" / "model_lod_desc.bin").write_bytes(raw)
+        far = P.far_off(d)
+        self.assertTrue(far(entity("stairs", 50.0, 50.0)))
+        self.assertFalse(far(entity("sack", 50.0, 50.0)))
+        self.assertFalse(far(entity("pit", 50.0, 50.0)))
+        self.assertFalse(P.far_off(d / "none")(entity("stairs", 0.0, 0.0)))
 
     def test_a_waypoint_is_placed_once_per_waypoint_object_at_its_stock_offset(self):
         # D2R's siege waypoint room: its model's transform sits 4 tiles off the waypoint tiles, on plain ground (#669)
@@ -215,6 +278,26 @@ class LayerTests(unittest.TestCase):
         self.assertIn("data/hd/env/texture/pillar_alb.texture",
                       [d["path"] for d in preset["dependencies"]["textures"]])
 
+    def test_a_big_stock_room_pastes_over_one_bare_tile_in_a_thousand(self):
+        # Uber Tristram's 2156-tile town: one PD2 edit leaves one walkable tile on the room's wall (#713 review)
+        n = 40  # 1600 tiles: one bare tile is within ROOM_BARE, two are not
+        room = P.Layout(n, n, {(x, y): self.WA if (x, y) in ((0, 0), (5, 5), (6, 6)) else self.F
+                               for x in range(n) for y in range(n)})
+        one = {**room.keys, (5, 5): self.F}
+        two = {**one, (6, 6): self.F}
+        self.assertEqual(len(P.rooms(P.Layout(n, n, one), [(room, {})])[0]), 1)
+        self.assertEqual(len(P.rooms(P.Layout(n, n, two), [(room, {})])[0]), 0)
+
+    def test_a_stock_room_is_not_pasted_where_the_ds1s_walkable_floor_lands_off_the_rooms(self):
+        room = P.Layout(4, 4, {(x, y): self.WA if (x, y) == (0, 0) else self.F for x in range(4) for y in range(4)},
+                        unwalkable=frozenset({(3, 3)}))  # the room's lava corner
+        keys = dict(room.keys)
+        self.assertEqual(len(P.rooms(P.Layout(4, 4, keys, unwalkable=frozenset({(3, 3)})), [(room, {})])[0]), 1)
+        # the DS1 walks on that corner: pasted, the room would draw no ground under it
+        self.assertEqual(P.rooms(P.Layout(4, 4, keys), [(room, {})])[0], [])
+        keys[(3, 3)] = self.WB  # a wall there instead: the room matches 15 of 16 and is pasted
+        self.assertEqual(len(P.rooms(P.Layout(4, 4, keys), [(room, {})])[0]), 1)
+
     def test_a_tile_whose_3x3_appears_in_a_stock_preset_copies_its_centre(self):
         patch = {(x, y): ("w", ((f"p{x}{y}.dt1", 1, 0, 0),)) for x in range(3) for y in range(3)}
         keys = {(x, y): self.WB for x in range(6) for y in range(3)}
@@ -271,6 +354,52 @@ class LayerTests(unittest.TestCase):
         self.assertLess(last["single"], first["canopy"])
         self.assertIn(single, [d["path"] for d in preset["dependencies"]["models"]])
         self.assertEqual(preset, P.build(target, strays, "m", "m.ds1", "b.json", TERRAIN, **cluster)[0])
+
+    @mock.patch.object(P.painter, "TALL", 0)
+    def test_a_kit_tree_on_the_edge_stays_next_to_painted_trees(self):
+        blocked = {(x, 5) for x in range(30)}  # the tree line on row 5 is the edge; rows 6-9 are painted
+
+        def lay(w, h):
+            keys = {(x, y): self.WA if (x, y) in blocked else self.F for x in range(w) for y in range(h)}
+            return P.Layout(w, h, keys, {c: (b"\1" if c in blocked else b"\0") * 25 for c in keys},
+                            frozenset(c for c in keys if c[1] >= 6))
+        model = "data/hd/env/foliage/act3/model/act3_treeline/small_cluster01.model"
+
+        def tree(name, x, z):
+            return {"type": "Entity", "name": name, "id": 1, "components": [
+                entity(name, x, z)["components"][0], {"type": "ModelDefinitionComponent", "filename": model}]}
+        kit = P.painter.harvest([(lay(10, 10), {"dependencies": {}, "entities": [
+            tree("painted", x, z) for x in (10.0, 50.0, 90.0) for z in (75.0, 95.0)]})])
+        edge = P.Kit()  # the per-tile kit stands a tree on each wall tile of the line
+        edge.add(P.Layout(1, 1, {(0, 0): self.WA}), {"dependencies": {}, "entities": [tree("edge", 5, 5)]}, {self.WA})
+        preset, _ = P.build(lay(30, 10), edge, "m", "m.ds1", "b.json", TERRAIN, trees=kit)
+        where = {n: [at(e) for e in preset["entities"] if e["name"] == n] for n in ("painted", "edge")}
+        self.assertTrue(where["painted"])
+        self.assertEqual(sorted(where["edge"]), [(x * 10 + 5.0, 55.0) for x in range(30)])  # none dropped
+
+    def test_a_kit_tree_on_the_near_edge_is_dropped_but_its_roots_stay(self):
+        blocked = {(x, 5) for x in range(30)}  # row 5, the edge, lies camera-near of the path (rows 0-4)
+
+        def lay(w, h):
+            keys = {(x, y): self.WA if (x, y) in blocked else self.F for x in range(w) for y in range(h)}
+            return P.Layout(w, h, keys, {c: (b"\1" if c in blocked else b"\0") * 25 for c in keys},
+                            frozenset(c for c in keys if c[1] >= 6))
+
+        def tree(name, x, z, model):
+            return {"type": "Entity", "name": name, "id": 1, "components": [
+                entity(name, x, z)["components"][0], {"type": "ModelDefinitionComponent", "filename": model}]}
+        front = "data/hd/env/foliage/act3/model/prefab/pf_tree_wall01_foreground.json"
+        kit = P.painter.harvest([(lay(10, 10), {"dependencies": {}, "entities": [
+            tree("painted", x, z, front) for x in (10.0, 50.0, 90.0) for z in (65.0, 85.0)]})])
+        edge = P.Kit()  # the per-tile kit stands a pine and roots on each wall tile of the line
+        edge.add(P.Layout(1, 1, {(0, 0): self.WA}), {"dependencies": {}, "entities": [
+            tree("pine", 5, 5, "a/small_cluster01.model"), tree("roots", 5, 5, "a/jungle_roots01_treewall.model")]},
+            {self.WA})
+        preset, _ = P.build(lay(30, 10), edge, "m", "m.ds1", "b.json", TERRAIN, trees=kit)
+        names = [e["name"] for e in preset["entities"]]
+        self.assertIn("painted", names)  # a foreground wall near the line: the line's pines go to the painter
+        self.assertNotIn("pine", names)
+        self.assertEqual(names.count("roots"), 30)
 
     def test_only_roots_and_foreground_tree_walls_stand_on_the_camera_near_side_of_the_path(self):
         keys = {(x, y): self.F for x in range(8) for y in range(16)}  # rows 0-3 the path, rows 4-15 sealed, south of it
@@ -354,6 +483,46 @@ class LayerTests(unittest.TestCase):
         self.assertFalse(stream & P.painter.playable(lay))  # no walkable floor next to it: border ground
         self.assertTrue(stream <= P.painter.playable(lay, frozenset({"act3/river/rivbank.dt1"})))
 
+    def test_a_pd2_pillar_tile_without_a_stand_in_borrows_the_stock_pillar_of_its_footprint(self):
+        T = "expansion/wildtemple/interior.dt1"
+        short, tall = ("w", ((T, 12, 4, 3),)), ("w", ((T, 12, 4, 5),))
+        solid, ring = bytes([1]) * 25, bytes(12) + bytes([1]) + bytes(12)  # a full tile, and a pillar on its centre subtile
+        kit = P.Kit({short: [(0, [(entity("short01", 0, 0), 5.0, 5.0)])], tall: [(0, [(entity("tall01", 0, 0), 5.0, 5.0)])]},
+                    [{}], flags={short: solid, tall: ring})
+        pd2 = ("w", (("pd2assets/torturehalls/file2.dt1", 12, 9, 1),))
+        lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 1, 0, 0),)), (1, 0): pd2}, {(0, 0): solid, (1, 0): ring})
+        ents, _, missing = P.place(lay, kit, "s")
+        self.assertEqual([(e["name"], P._transform(e)["position"]["x"]) for e in ents], [("tall01", 15.0)])
+        self.assertEqual(missing, 1)  # (0, 0): no LIKE layer, so it borrows nothing
+
+    def test_a_pd2_tile_whose_footprint_shares_too_little_borrows_nothing(self):
+        T = "expansion/wildtemple/interior.dt1"
+        chair = ("w", ((T, 12, 9, 9),))
+        kit = P.Kit({chair: [(0, [(entity("chair01", 0, 0), 5.0, 5.0)])]}, [{}], flags={chair: bytes(25)})
+        pd2 = ("w", (("pd2assets/torturehalls/file2.dt1", 12, 9, 1),))
+        block = bytes([1]) * 5 + bytes(20)
+        for flags in (bytes(25), block):  # blocks nothing; blocks what the chair (nothing) does not
+            lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 1, 0, 0),)), (1, 0): pd2}, {(1, 0): flags})
+            self.assertEqual(P.place(lay, kit, "s")[0], [])
+
+    def test_the_kit_keeps_the_like_keys_of_the_drawn_dt1s(self):
+        T = "expansion/wildtemple/interior.dt1"
+        lay = P.Layout(2, 1, {(0, 0): ("w", ((T, 12, 4, 5),)), (1, 0): ("w", ((T, 1, 0, 0),))})
+        kit = P.Kit()
+        kit.add(lay, {"dependencies": {}, "entities": [entity("tall01", 3.0, 4.0), entity("rug", 13.0, 4.0)]},
+                set(), alike=frozenset({T}))
+        self.assertEqual(list(kit.instances), [("w", ((T, 12, 4, 5),))])
+
+    def test_build_gives_place_the_maps_subtile_flags(self):
+        T = "expansion/wildtemple/interior.dt1"
+        tall = ("w", ((T, 12, 4, 5),))
+        ring = bytes(12) + bytes([1]) + bytes(12)
+        kit = P.Kit({tall: [(0, [(entity("tall01", 0, 0), 5.0, 5.0)])]}, [{}], flags={tall: ring})
+        lay = P.Layout(2, 1, {(0, 0): ("w", (("pd2assets/torturehalls/file2.dt1", 12, 9, 1),)),
+                              (1, 0): ("w", ((T, 1, 0, 0),))}, {(0, 0): ring})
+        preset, _ = P.build(lay, kit, "m", "m.ds1", "b.json", TERRAIN)
+        self.assertIn("tall01", [e["name"] for e in preset["entities"]])
+
     def test_a_stock_piece_on_a_keyless_tile_joins_the_nearest_kept_tile(self):
         stock = P.Layout(3, 1, {(0, 0): self.WA})  # (1, 0) and (2, 0) have no tile in the stock DS1
         kit = P.Kit()
@@ -369,6 +538,16 @@ class LayerTests(unittest.TestCase):
         self.assertEqual(picks, {0, 1})  # off the edge, the empty stock instance is one of the picks
         self.assertEqual({len(P.place(lay, kit, f"s{i}", frozenset({(0, 0)}))[0]) for i in range(20)}, {1})
 
+    def test_an_edge_tile_picks_a_kit_instance_that_holds_a_tree(self):
+        tree = entity("act5_tree_wall01", 0, 0)
+        kit = P.Kit({self.WA: [(0, [(entity("rock", 0, 0), 1.0, 1.0)]), (0, [(tree, 1.0, 1.0)])]}, [{}])
+        lay = P.Layout(1, 1, {(0, 0): self.WA})
+        edge = frozenset({(0, 0)})
+        names = {e["name"] for i in range(20) for e in P.place(lay, kit, f"s{i}", edge, far=edge)[0]}
+        self.assertEqual(names, {"act5_tree_wall01"})  # the rock alone is a piece too low to close the border
+        # on the near side (not `far`) a tree would be drawn over the path: the pick stays the stock one (#454)
+        self.assertEqual({e["name"] for i in range(20) for e in P.place(lay, kit, f"s{i}", edge)[0]},
+                         {"act5_tree_wall01", "rock"})
     def test_a_tree_tile_never_picks_a_stone_wall_or_cliff_instance(self):
         tree = ("w", (("expansion/siege/trees.dt1", 14, 0, 6),))
         kit = P.Kit({tree: [(0, [(entity("siege/wall_stone_large01", 0, 0), 1.0, 1.0)]),

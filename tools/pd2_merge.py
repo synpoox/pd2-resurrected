@@ -7,6 +7,7 @@
 d2rAI-toolkit's shared/classic_import merge driver applies each merge/ file by the rule kind its name maps to in RULES
 (`*.md` files are notes); a file with no rule kind fails the run, so a rule is never silently skipped. Refuses a
 pd2-data/ extracted from another baseline. A failed run leaves no generated/, so a build never picks up half a merge.
+A second run in the same project waits for the first (pd2_merge.lock).
 D2R's own tables come from modkit's cache (--d2r).
 With a pd2_cache root, each rule whose code, stamps and inputs match a kept run replays it instead (#558), and the
 rule cache is pruned to PD2R_CACHE_GB (default 20) GB (the old whole-merge folders too with PD2R_PRUNE_LEGACY=1).
@@ -87,8 +88,12 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None) -> list[s
             return run
         rules = {n: cached(n, fn) for n, fn in RULES.items()}
     try:
-        mg.check_extract(root / "pd2-data", root / "pd2-baseline.json")
-        applied = mg.merge(rules, root / "merge", root / "pd2-data" / "data", d2r, root / "generated", (pd2_ids.IdError,))
+        # one run per worktree at a time: a second one rebuilding generated/ under the first would show up in its rules'
+        # snapshots, and so in the rule cache every worktree replays (#698)
+        with pd2_cache.lock(root / "pd2_merge.lock"):
+            mg.check_extract(root / "pd2-data", root / "pd2-baseline.json")
+            applied = mg.merge(rules, root / "merge", root / "pd2-data" / "data", d2r, root / "generated",
+                               (pd2_ids.IdError,))
     except mg.MergeError as e:
         raise MergeError(f"{e} (tools/pd2_extract.py extracts)" if "extract" in str(e) else str(e)) from e
     if cache:
