@@ -6,6 +6,8 @@
 #
 # Plugins are game-wide (ADR 0004): <Game>\d2rloader\plugins\. -Data runs `modkit build` and `modkit install` and then
 # puts back each modinfo.json savepath, because modkit install resets it (a slot would otherwise play other saves).
+# A test slot of the testing config installs through the toolkit's testing\slot_install.py instead (modkit install
+# refuses slots): set MODKIT_TESTING_CONFIG, and MODKIT_RUN to the slot lock's owner.
 # modkit install writes only the out\data files that differ from the slot's, and touches nothing
 # outside <Game>\mods\<mod>, so swapping a slot between builds takes seconds.
 # -NoValidate builds past modkit's validation errors, as the release workflow does: main still has known ones (#171).
@@ -63,8 +65,19 @@ if ($Data) {
     try {
         if ($NoValidate) { py -3 -m modkit build $Data --no-validate } else { py -3 -m modkit build $Data }
         if ($LASTEXITCODE -ne 0) { throw "modkit build failed ($LASTEXITCODE)" }
-        py -3 -m modkit --game $Game install $Data
-        if ($LASTEXITCODE -ne 0) { throw "modkit install failed ($LASTEXITCODE)" }
+        # modkit install refuses a test slot of the testing config (MODKIT_TESTING_CONFIG), so a slot goes through the
+        # toolkit's slot_install.py, which sets the slot's own savepath and needs the slot lock held by MODKIT_RUN (#602).
+        $slot = py -3 -c "import sys; from pathlib import Path; from modkit.install import configured_slot; print(configured_slot(Path(sys.argv[1])) or '')" $Game
+        if ($LASTEXITCODE -ne 0) { throw "reading the testing config failed ($LASTEXITCODE)" }
+        if ($slot) {
+            if (-not $env:MODKIT_RUN) { throw "$Game is test slot ${slot}: set MODKIT_RUN to the owner of its lock (testing\game_slots.py lock $slot <owner>)" }
+            py -3 testing\slot_install.py --slot $slot $Data
+            if ($LASTEXITCODE -ne 0) { throw "slot_install failed ($LASTEXITCODE)" }
+            $saved = @{}  # slot_install wrote the slot's savepath
+        } else {
+            py -3 -m modkit --game $Game install $Data
+            if ($LASTEXITCODE -ne 0) { throw "modkit install failed ($LASTEXITCODE)" }
+        }
     } finally { Pop-Location }
     foreach ($f in $saved.Keys) {
         $info = Get-Content $f -Raw | ConvertFrom-Json
