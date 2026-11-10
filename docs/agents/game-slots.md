@@ -43,6 +43,8 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
   whose inputs (every file it read, path it checked and folder it listed, under the worktree and D2R's tables) are
   unchanged, copies what it wrote last time instead of running. So a PR that edits one rule reruns that rule and the
   rules that read its output. Don't skip the merge in a worktree.
+  One merge runs per machine at a time (`pd2_merge.lock` in the cache root; others wait), and the output is checked
+  (required tables, table count) before use: a bad tree is rebuilt once without the cache, then the run fails (#745).
 - `install.ps1` (modkit install) writes only the `out\data` files that differ from the slot's and touches nothing outside
   `<slot>\mods\PD2Resurrected`, so moving a slot between builds is quick.
 - Before removing a worktree, unlink its junctions, and never delete through them: `git worktree remove --force`

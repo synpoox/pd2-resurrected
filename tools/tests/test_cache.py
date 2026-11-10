@@ -1,4 +1,5 @@
 """pd2_cache (#440, #558): the extract lock, the cache key, the shared extract, and the per-rule merge cache."""
+import contextlib
 import io
 import json
 import os
@@ -166,7 +167,8 @@ class RuleCacheTests(unittest.TestCase):
                 return sorted(RUNS), {p.relative_to(gen).as_posix(): p.read_text() for p in gen.rglob("*.txt")}
 
             rules = {"a.tsv": rule_a, "b.tsv": rule_b, "c.tsv": rule_c, "d.tsv": rule_d, "e.tsv": rule_e, "f.tsv": rule_f}
-            with cache_env(tmp / "cache"), mock.patch.dict(pd2_merge.RULES, rules, clear=True):
+            with cache_env(tmp / "cache"), mock.patch.dict(pd2_merge.RULES, rules, clear=True), \
+                    mock.patch.object(pd2_merge, "REQUIRED_TABLES", ()), mock.patch.object(pd2_merge, "MIN_TABLES", 0):
                 ran, fresh = run()
                 self.assertEqual(ran, ["a", "b", "c", "d", "e", "f"])
                 self.assertEqual(fresh, {"a.txt": "X", "b.txt": "Xb", "sub/c.txt": "cFalse2", "d.txt": "False",
@@ -268,6 +270,87 @@ class RuleCacheTests(unittest.TestCase):
                              ["merge/legacy", "rules/k/new", "rules/k/old"], "PD2R_PRUNE_LEGACY: merge/ too")
             self.assertTrue((cache / "rules/j/fresh").is_dir(), "used in the last 15 minutes: kept over the cap")
 
+
+TABLES = [f"t{i}.txt" for i in range(6)] + ["monstats.txt"]
+LIVE: list[int] = []
+PEAK: list[int] = []
+PARTIAL: list[bool] = []
+
+
+def rule_tables(rule, pd2, d2r, out):  # writes the table set slowly; the first run writes a partial one if asked
+    LIVE.append(1)
+    PEAK.append(len(LIVE))
+    try:
+        for i, t in enumerate(TABLES):
+            if PARTIAL and PARTIAL.pop():
+                return
+            write(out / "global" / "excel" / t, rule.read_text())
+            time.sleep(0.02)
+    finally:
+        LIVE.pop()
+
+
+class ConcurrentMergeTests(unittest.TestCase):
+    def setUp(self):
+        try:
+            self.ex = pd2_extract.classic("extract")
+        except ValueError as e:  # CI has no d2rAI-toolkit (private)
+            self.skipTest(str(e))
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.tmp = Path(self.tmp.name)
+        (self.tmp / "cache").mkdir()
+        write(self.tmp / "d2r" / "global" / "excel" / "x.txt", "1")
+        for name in ("a", "b"):
+            root = self.tmp / name
+            write(root / "pd2-baseline.json", "B")
+            (root / "pd2-data").mkdir()
+            (root / "pd2-data" / "baseline.json").write_bytes(self.ex.stamp(b"B"))
+            write(root / "merge" / "tables.tsv", name)  # differs: neither replays the other's rule
+        LIVE.clear(), PEAK.clear(), PARTIAL.clear()
+
+    def merge(self, name):
+        with redirect_stdout(io.StringIO()):
+            return pd2_merge.main(["--root", str(self.tmp / name), "--d2r", str(self.tmp / "d2r")])
+
+    def patched(self):
+        stack = [cache_env(self.tmp / "cache"), mock.patch.dict(pd2_merge.RULES, {"tables.tsv": rule_tables}, clear=True),
+                 mock.patch.object(pd2_merge, "REQUIRED_TABLES", ("monstats.txt",)),
+                 mock.patch.object(pd2_merge, "MIN_TABLES", len(TABLES))]
+        return stack
+
+    def test_two_merges_at_once_both_write_a_whole_tree_and_never_overlap(self):
+        with contextlib.ExitStack() as st:
+            for c in self.patched():
+                st.enter_context(c)
+            codes, ts = {}, []
+            for n in ("a", "b"):
+                ts.append(threading.Thread(target=lambda n=n: codes.__setitem__(n, self.merge(n))))
+            [t.start() for t in ts]
+            [t.join(60) for t in ts]
+        self.assertEqual(codes, {"a": 0, "b": 0})
+        self.assertEqual(max(PEAK), 1, "the machine-wide lock: one merge at a time")
+        for n in ("a", "b"):
+            tables = {p.name for p in (self.tmp / n / "generated" / "data" / "global" / "excel").glob("*.txt")}
+            self.assertEqual(tables, set(TABLES))
+        self.assertTrue((self.tmp / "cache" / "pd2_merge.lock").is_file())
+        self.assertFalse(list((self.tmp / "cache").rglob("*.tmp*")), "no temp folder left")
+
+    def test_a_partial_tree_is_rebuilt_not_handed_back(self):
+        with contextlib.ExitStack() as st:
+            for c in self.patched():
+                st.enter_context(c)
+            PARTIAL.append(True)
+            self.assertEqual(self.merge("a"), 0, "the check fails, the rebuild is whole")
+            excel = self.tmp / "a" / "generated" / "data" / "global" / "excel"
+            self.assertEqual({p.name for p in excel.glob("*.txt")}, set(TABLES))
+
+    def test_check_output_names_what_is_missing(self):
+        gen = self.tmp / "gen"
+        self.assertIn("lacks monstats.txt", pd2_merge.check_output(gen, ("monstats.txt",), 0))
+        write(gen / "global" / "excel" / "a.txt", "")
+        self.assertIn("fewer than 2", pd2_merge.check_output(gen, (), 2))
+        self.assertIsNone(pd2_merge.check_output(gen, ("a.txt",), 1))
 
 
 if __name__ == "__main__":
