@@ -12,6 +12,11 @@ from .layout import Layout
 
 # floor layers PD2 puts under water as a marker: Descend's river tiles lie over hellgate.dt1's tile 26/86 (#823)
 FILLER_BASES = frozenset({"pd2assets/descend/hellgate.dt1"})
+# wall-layer liquids: PD2 draws Descend's river rapids as wall tiles (orientation 1 and 2) of this DT1, over the river
+# floor, so no floor tile of them is liquid (505 of Descend's 692 legacy water-edge tiles, #916). A cell with one of
+# these walls is liquid when the rule gives the DT1 a plane (a `water:` line). The DT1 is not stood in by lava's
+# extwalls.dt1 (merge/presets-hd.d/lvltype-49.tsv), whose cliff walls on the lava maps are no water
+RAPIDS = frozenset({"pd2assets/descend/extwalls.dt1"})
 
 
 def mask(lay: Layout, extra: frozenset = frozenset()) -> dict[tuple[int, int], tuple[str, ...]]:
@@ -28,6 +33,11 @@ def mask(lay: Layout, extra: frozenset = frozenset()) -> dict[tuple[int, int], t
         return d in extra or pd2_tiles.classify(d, 0, "floor", True) == "liquid"
     blocked, walkable, overlaid, out = Counter(), Counter(), {}, {}
     for c, k in lay.keys.items():
+        if k[0] == "w":
+            if rapids := sorted({t[0] for t in k[1] if t[0] in RAPIDS and t[0] in extra
+                                 and pd2_tiles.classify(t[0], t[1], "wall") == "water"}):
+                out[c] = tuple(rapids)  # a river's rapids, drawn as a wall over the river floor
+            continue
         if k[0] != "f":
             continue
         dt1s = {t[0] for t in k[1] if t[0]} - FILLER_BASES  # a filler layer under the water draws nothing

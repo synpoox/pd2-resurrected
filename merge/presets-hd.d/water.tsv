@@ -12,3 +12,5 @@ water:act3/docktown/bridge.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/w
 water:pd2assets/fallengardenwater.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
 water:pd2assets/psnwell/used/rivbank.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
 water:pd2assets/aer_canal.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
+# Descend's river rapids are wall tiles of this DT1 (liquids.RAPIDS, #916): the plane draws under them (the DT1 is no stand-in, lvltype-49.tsv)
+water:pd2assets/descend/extwalls.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
