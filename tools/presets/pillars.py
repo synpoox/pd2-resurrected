@@ -119,15 +119,15 @@ def stand_keys(kit) -> list[Key]:
 def model_top(d2r_data: Path) -> Callable[[dict], float | None]:
     """Kit.top from D2R's model boxes (data/hd/model_lod_desc.bin): the height of an entity's model above its own
     origin (the box's top times the piece's scale); None for a model it does not know, and without the file."""
-    import pd2_coverage as coverage  # it imports this module
-    models = d2r_data / coverage.MODELS
+    import pd2_tiles as tiles  # late: it imports the presets package
+    models = d2r_data / tiles.MODELS
     if not models.is_file():
         return lambda e: None
-    boxes = coverage.model_boxes(models.read_bytes())
+    boxes = tiles.model_boxes(models.read_bytes())
 
     @functools.cache
     def top(path: str) -> float | None:
-        bb = boxes.get(coverage.fnv(path))
+        bb = boxes.get(tiles.fnv(path))
         return None if bb is None else bb[4]
 
     def of(e: dict) -> float | None:

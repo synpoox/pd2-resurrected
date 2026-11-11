@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Callable
 
+import pd2_cache
 import pd2_painter as painter
 
 from ..consts import FAR
@@ -17,33 +18,41 @@ def far_off(d2r_data: Path) -> Callable[[dict], bool]:
     not a tree, a prefab nor room-sized, stands FAR or more clear of its position along x or z (Harrogath's stairs).
     A mesh that reaches its position stays, however far its centre: Duriel's chamber is one piece.
     Without the file, no piece is."""
-    import pd2_coverage as coverage  # it imports this module
-    models = d2r_data / coverage.MODELS
+    import pd2_tiles as tiles  # late: it imports the presets package
+    models = d2r_data / tiles.MODELS
     if not models.is_file():
         return lambda e: False
-    boxes = coverage.model_boxes(models.read_bytes())
+    boxes = tiles.model_boxes(models.read_bytes())
 
     @functools.cache
-    def prefab(path: str) -> list[dict]:
+    def load(path: str) -> list[dict]:
         f = d2r_data / path.removeprefix("data/")
         return json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
 
-    seen: dict[int, tuple[dict, bool]] = {}  # once per stock entity (Kit.add asks again per DS1)
+    def prefab(path: str) -> list[dict]:
+        pd2_cache.note(d2r_data / path.removeprefix("data/"))  # the memo hides the read from the DS1 that asks next (#861)
+        return load(path)
+
+    seen: dict[int, tuple[dict, bool, list]] = {}  # once per stock entity (Kit.add asks again per DS1)
 
     def far(e: dict) -> bool:
         held = seen.get(id(e))
         if held is None or held[0] is not e:
-            held = seen[id(e)] = (e, _far(e))
+            opened: list = []
+            held = seen[id(e)] = (e, _far(e, opened), opened)
+        for path in held[2]:  # the answer is memoised, the prefabs it read are every asker's
+            pd2_cache.note(d2r_data / path.removeprefix("data/"))
         return held[1]
 
-    def _far(e: dict) -> bool:
+    def _far(e: dict, opened: list) -> bool:
         # a prefab (Act 1's riverbanks) stays: on a floor key it still closes border gaps (pd2_coverage)
         if painter.is_tree(e) or any(c["type"] == "PrefabPlacementDefinitionComponent" for c in e["components"]):
             return False
         p = _transform(e)["position"]
-        return any(top >= coverage.TALL and max(x1 - x0, z1 - z0) <= coverage.ROOM
+        return any(top >= tiles.TALL and max(x1 - x0, z1 - z0) <= tiles.ROOM
                    and max(x0 - p["x"], p["x"] - x1, z0 - p["z"], p["z"] - z1) >= FAR
-                   for x0, x1, z0, z1, top, _ in coverage.boxes([e], lambda m: boxes.get(coverage.fnv(m)), prefab))
+                   for x0, x1, z0, z1, top, _ in tiles.boxes([e], lambda m: boxes.get(tiles.fnv(m)),
+                                                             lambda path: opened.append(path) or prefab(path)))
     return far
 
 

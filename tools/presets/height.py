@@ -38,7 +38,7 @@ def faces(lay: Layout) -> dict[tuple[int, int], tuple]:
     (pd2_fidelity.classify, #732) decides: a wall layer of type "cliff" in a face orientation counts; a lower wall (16-19)
     of the plain "wall" type counts only where it is a real ledge (pd2_fidelity.cliff_cell: an upper wall over it in the
     same cell). Fences, water edges, invisible blockers and plain walls on their own are no ledge."""
-    import pd2_fidelity as fid  # imported here: pd2_fidelity imports pd2_presets, which imports this package
+    import pd2_tiles as fid  # imported here: it imports pd2_presets, which imports this package
     out = {}
     for c, (kind, tiles) in lay.keys.items():
         if kind != "w":

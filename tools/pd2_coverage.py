@@ -45,6 +45,7 @@ import math
 import os
 import re
 import shutil
+import pickle
 import struct
 import subprocess
 import sys
@@ -53,22 +54,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterator, NamedTuple
 
+import pd2_cache
 import pd2_painter as painter
 import pd2_presets as presets
 from pd2_ids import load, toolkit
+from pd2_tiles import (  # noqa: F401  (moved there, #855: the generator imports it; re-exported)
+    D2R_DATA, MODELS, TALL, LOW, LOW_EDGE, ROOM, DEPTH, EDGE, IDENTITY, Box, fnv, model_boxes, qmul, Ground,
+    plane_ground, boxes, footprint, CORE, core_footprint,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
-D2R_DATA = Path(os.environ.get("MODKIT_CACHE", toolkit(ROOT) / "d2r-data")) / "93847" / "data"
-MODELS = Path("hd") / "model_lod_desc.bin"
-TALL = 4.0  # HD units: a piece this high hides a wall in game
-# fences and shores are low by design (stone walls, graveyard railings, river banks): a piece this high covers them
-LOW = 1.0
-LOW_EDGE = re.compile(r"fence|stonewall|palisade|picket|graveyrd|river|rivbank|pool|swamp|pond|puddle")
 EDGE_PIECE = re.compile(r"fence|(?<!tree)(?<!tree_)wall|palisade|picket|rail|gate|bank")  # a low edge model, not a tree wall
-ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculpted terrain), not a wall piece
 STRUCTURE = 20.0  # HD units (2 tiles): a tall piece this wide both ways is a structure (stairs, platform), not a prop
-DEPTH = 2  # prefab levels followed
-EDGE = 1e-3  # tiles: how far a ground box may cross a tile edge and still end on it
 # The Palace (Horadrim Tower, palace1-6) cannot be played, so it is no target of the scores or the gate (#822).
 UNPLAYABLE = frozenset(f"palace{i}" for i in range(1, 7))
 FIDELITY_CHANGES: list = []  # every pd2_fidelity.Change of the last run(): drops and within-tolerance falls
@@ -90,81 +87,6 @@ STOCK_ENTITIES = 5642
 # and the densest (presets of 100+ DS1 tiles): act2/temple1.json 5.0 entities, act4/catsdown.json 8.0 KB per tile
 STOCK_DENSITY = 5.0
 STOCK_BYTES_PER_TILE = 8000
-IDENTITY = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
-
-Box = tuple[float, float, float, float, float, float]  # x0, x1, z0, z1, top, bottom
-
-
-def fnv(path: str) -> int:
-    """model_lod_desc.bin's key for a model path: 32-bit FNV-1a of the lower-cased path."""
-    h = 0x811C9DC5
-    for b in path.lower().encode():
-        h = ((h ^ b) * 0x1000193) & 0xFFFFFFFF
-    return h
-
-
-def model_boxes(raw: bytes) -> dict[int, tuple[float, ...]]:
-    """model_lod_desc.bin: `u32 count | i32 offset`, then from 4 + offset, 44-byte records
-    `u32 key | f32 bbMin[3] | f32 bbMax[3] | ...`. key -> (min x, y, z, max x, y, z)."""
-    count, off = struct.unpack_from("<Ii", raw, 0)
-    return {r[0]: r[1:] for r in (struct.unpack_from("<I6f", raw, 4 + off + 44 * i) for i in range(count))}
-
-
-def qmul(a: dict, b: dict) -> dict:
-    """The quaternion a * b (b turned, then a)."""
-    ax, ay, az, aw = a["x"], a["y"], a["z"], a["w"]
-    bx, by, bz, bw = b["x"], b["y"], b["z"], b["w"]
-    return {"w": aw * bw - ax * bx - ay * by - az * bz, "x": aw * bx + ax * bw + ay * bz - az * by,
-            "y": aw * by - ax * bz + ay * bw + az * bx, "z": aw * bz + ax * by - ay * bx + az * bw}
-
-
-Ground = Callable[[float, float], float]  # world x, z -> the height of the ground plane under it
-
-
-def plane_ground(preset: dict) -> Ground:
-    """The ground plane height under a world position: the y of the preset's flat terrain plane of that TERRAIN_SIZE
-    block (#742 raises and sinks the planes and the pieces on them), 0 where no plane is drawn."""
-    ys = {}
-    for e in preset["entities"] + [preset.get("terrain") or {}]:
-        t = presets._transform(e) if "components" in e else None
-        if t is not None and e.get("name") == "terrain" and any(
-                f"/{presets.TERRAIN}/" in c.get("filename", "").lower() for c in e["components"]):
-            p = t["position"]
-            ys[(round(p["x"] / presets.TERRAIN_SIZE), round(p["z"] / presets.TERRAIN_SIZE))] = p["y"]
-    return lambda x, z: ys.get((math.floor(x / presets.TERRAIN_SIZE), math.floor(z / presets.TERRAIN_SIZE)), 0.0)
-
-
-def boxes(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
-          base: tuple | None = None, depth: int = 0, ground: Ground | None = None, meta: bool = False,
-          room: bool = False) -> Iterator[Box]:
-    """The world boxes of the entities' models; a prefab's entities are placed by the prefab's transform. With
-    `ground`, heights are measured from the ground plane under the entity (a wall on a sunken plane is as tall as one on
-    the flat ground; a pasted room's piece, named with ROOM_PIECE, is measured from 0: #742 does not move it); a
-    prefab's entities stand on the plane under the prefab. With `meta`, each box is followed by its model path (lower
-    case) and whether it is a pasted room's piece (also inside a prefab placed by one): tools/pd2_parity.py (#838)."""
-    for e in entities:
-        t = presets._transform(e)
-        if t is None or e.get("name") == "terrain":
-            continue
-        p = (t["position"]["x"], t["position"]["y"], t["position"]["z"])
-        in_room = room or (e.get("name") or "").startswith(presets.ROOM_PIECE)
-        g = ground(p[0], p[2]) if ground and not in_room else 0.0  # pasted room: ground 0
-        q, sc = t.get("orientation") or IDENTITY, t.get("scale") or {"x": 1, "y": 1, "z": 1}
-        s = (sc["x"], sc["y"], sc["z"])
-        if base:
-            bp, bq, bs = base
-            v = painter.rotate(bq, (p[0] * bs[0], p[1] * bs[1], p[2] * bs[2]))
-            p, q, s = (bp[0] + v[0], bp[1] + v[1], bp[2] + v[2]), qmul(bq, q), (s[0] * bs[0], s[1] * bs[1], s[2] * bs[2])
-        for c in e["components"]:
-            if c["type"] == "ModelDefinitionComponent" and (bb := box(c.get("filename", ""))):
-                corners = [painter.rotate(q, (x * s[0], y * s[1], z * s[2]))
-                           for x in (bb[0], bb[3]) for y in (bb[1], bb[4]) for z in (bb[2], bb[5])]
-                xs, ys, zs = ([p[i] + v[i] for v in corners] for i in range(3))
-                b = (min(xs), max(xs), min(zs), max(zs), max(ys) - g, min(ys) - g)
-                yield b + (c["filename"].lower(), in_room) if meta else b
-            elif c["type"] == "PrefabPlacementDefinitionComponent" and c.get("prefab") and depth < DEPTH:
-                yield from boxes(prefab(c["prefab"]), box, prefab, (p, q, s), depth + 1,
-                                 (lambda x, z: g) if ground else None, meta, in_room)
 
 
 def low_edge(key) -> bool:
@@ -186,37 +108,6 @@ def covered(lay: presets.Layout, found: list[Box], edges: list[Box] = ()) -> set
 def tall_tiles(found: Iterator[Box], tall: float = TALL) -> set[tuple[int, int]]:
     """The tiles under the footprint of a box at least `tall` high (room-sized boxes left out)."""
     return footprint(b for b in found if b[4] >= tall and b[1] - b[0] <= ROOM and b[3] - b[2] <= ROOM)
-
-
-def footprint(found: Iterator[Box], exclusive: bool = False) -> set[tuple[int, int]]:
-    """The tiles under the boxes. `exclusive`: a box ending on a tile edge does not reach the tile past it (a
-    170-unit ground plane covers 17 tiles, not 18); the wall score keeps the tile it ends on (tall_tiles)."""
-    out = set()
-    T = presets.TILE
-
-    def span(a: float, b: float) -> range:
-        if not exclusive:
-            return range(math.floor(a / T), math.floor(b / T) + 1)
-        lo = math.floor(a / T + EDGE)  # the stock plane's box spills past its edges by float noise (170.00003)
-        return range(lo, max(math.ceil(b / T - EDGE), lo + 1))
-    for x0, x1, z0, z1, *_ in found:
-        out.update((tx, tz) for tx in span(x0, x1) for tz in span(z0, z1))
-    return out
-
-
-CORE = 0.5  # share of a tile's width a box must cover, both ways, for the tile to be under its core (not a spill)
-
-
-def core_footprint(b: Box) -> set[tuple[int, int]]:
-    """The tiles a box covers by at least CORE of their width on both axes, and always the tile under its centre: the
-    rest of footprint(b) is spill, tiles the box only grazes. A wide or turned box spills onto its neighbours (#800)."""
-    T = presets.TILE
-
-    def span(a: float, b_: float) -> set[int]:
-        mid = math.floor((a + b_) / 2 / T)
-        return {t for t in range(math.floor(a / T), math.floor(b_ / T) + 1)
-                if min(b_, (t + 1) * T) - max(a, t * T) >= CORE * T} | {mid}
-    return {(tx, tz) for tx in span(b[0], b[1]) for tz in span(b[2], b[3])}
 
 
 def ground_tiles(preset: dict, box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
@@ -567,11 +458,12 @@ def model_lookup(d2r: Path) -> tuple[Callable[[str], tuple | None], Callable[[st
 
 
 def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = None,
-        fbase: dict | None = None, tolerance: float = TOLERANCE) -> list[Score] | None:
+        fbase: dict | None = None, tolerance: float = TOLERANCE, memo: tuple | None = None) -> list[Score] | None:
     """Score every generated preset under data (generated/data) and write the report to out, with the changes
     against `base` (read_baseline) when given. The fidelity scores against legacy (pd2_fidelity, #732) go to
     fidelity.md, fidelity-baseline.tsv and <name>_fidelity.png, compared with `fbase` (pd2_fidelity.read_baseline).
-    None: skipped."""
+    memo (cache folder, pd2_cache.Policy): keep each map's score there and replay it while its inputs are unchanged
+    (#854). None: skipped."""
     import pd2_fidelity as fidelity  # imports this module: not at the top
     if not (d2r / MODELS).is_file():
         print(f"pd2_coverage: skipped, no {d2r / MODELS} (`python -m modkit fetch --prefix data/hd/model_lod_desc.bin`)")
@@ -584,34 +476,85 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
     if warn := fidelity.votes_stale(votes, fidelity.votes_input_hash(d2r)):
         print(f"pd2_coverage: warning: {warn}", file=sys.stderr)
     stock = fidelity.stock_types(fidelity.read_votes(votes))
-    tiles, pd2_tiles = presets.Tiles(d2r / "global" / "tiles"), presets.Tiles(data / "global" / "tiles")
-    heights = fidelity.Heights(data / "global" / "tiles", d2r / "global" / "tiles")
+    cur: list = [None]  # the Trace of the map being scored: the readers below report their reads to it (#854)
+
+    def note(*paths) -> None:
+        if cur[0] is not None:
+            for p in paths:
+                cur[0].see(p)
+
+    class SeenTiles(presets.Tiles):
+        def __getitem__(self, path):  # a DT1 read for an earlier map is held here: report it again for this one
+            note(self.root / path)
+            return super().__getitem__(path)
+
+    class SeenHeights(fidelity.Heights):
+        def __getitem__(self, path):
+            note(*(r / path for r in self.roots))
+            return super().__getitem__(path)
+
+        def own_flags(self, path):
+            note(*(r / path for r in self.roots))
+            return super().own_flags(path)
+
+    raw_prefab = prefab
+
+    def prefab(path: str) -> list[dict]:
+        note(d2r / path.removeprefix("data/"))
+        return raw_prefab(path)
+    tiles, pd2_tiles = SeenTiles(d2r / "global" / "tiles"), SeenTiles(data / "global" / "tiles")
+    heights = SeenHeights(data / "global" / "tiles", d2r / "global" / "tiles")
     out.mkdir(parents=True, exist_ok=True)
-    scores, seen = [], set()
+    roots = {"d": d2r, "g": data}
+    # What every map's score reads besides its own files: the scorer's code (the presets package too: pd2_presets
+    # imports it by package, which sources() does not follow), the stock vote, the stand-in and water rules.
+    base_key = pd2_cache.key([*pd2_cache.sources(run), ROOT / "tools" / "presets", fidelity.VOTES_FILE, rule,
+                              rule.with_name("presets-hd.d")], "coverage-map-v1", repr(sorted(standins.items())),
+                             repr(sorted(wet)), repr(sorted(stock.items()) if isinstance(stock, dict) else sorted(stock)))
+
+    def score_one(f, ds1, area, files):
+        lay = presets.layout((data / "global" / "tiles" / ds1).read_bytes(),
+                             presets.stand_in(files, tiles, pd2_tiles, standins))
+        preset = json.loads(f.read_text("utf-8"))
+        entities = preset["entities"]
+        ground = plane_ground(preset)
+        tall = covered(lay, list(boxes(entities, box, prefab, ground=ground)),
+                       list(boxes(entities, lambda f: box(f) if edge_piece(f) else None, prefab, ground=ground)))
+        flat = ground_tiles(preset, box, prefab, True) - ground_tiles(preset, box, prefab, False)
+        wrong = wrong_tiles(entities, box, prefab, walkable_floor(lay) & flat, ground)
+        legacy = presets.layout((data / "global" / "tiles" / ds1).read_bytes(), {p: pd2_tiles[p] or tiles[p] for p in files})  # PD2's DT1s, else D2R's own
+        hd = fidelity.hd_pieces(entities, box, prefab, ground, stock)
+        s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab), wrong,
+                  fidelity.wall_cover(fidelity.legacy_edges(legacy, heights), hd, tall))  # walls by fidelity class (#787)
+        s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
+        s.fidelity = fidelity.score_map(legacy, heights, hd, s.floors, set(s.floor_bare), set(s.floor_wrong))
+        return s, images(lay, s, tall, wet) | fidelity.image(
+            legacy, fidelity.legacy_edges(legacy, heights), s.fidelity, s.name)
+
+    def compute(trace, f, ds1, area, files) -> bytes:
+        cur[0] = trace
+        try:
+            note(d2r / MODELS, f, data / "global" / "tiles" / ds1)
+            return pickle.dumps(score_one(f, ds1, area, files), protocol=4)
+        finally:
+            cur[0] = None
+    scores, seen, hits = [], set(), 0
     for area, _, files, ds1s in presets.pd2_only_presets(data, len(load(d2r, "lvlprest").records())):
         for ds1 in ds1s:
             f = data / presets.PRESETS / Path(ds1).with_suffix(".json")
             if not f.is_file() or ds1 in seen or Path(ds1).stem in UNPLAYABLE:  # waiting on stand-ins (LP4/LP5), a DS1
                 continue  # two presets load, or the unplayable Palace
             seen.add(ds1)
-            lay = presets.layout((data / "global" / "tiles" / ds1).read_bytes(),
-                                 presets.stand_in(files, tiles, pd2_tiles, standins))
-            preset = json.loads(f.read_text("utf-8"))
-            entities = preset["entities"]
-            ground = plane_ground(preset)
-            tall = covered(lay, list(boxes(entities, box, prefab, ground=ground)),
-                           list(boxes(entities, lambda f: box(f) if edge_piece(f) else None, prefab, ground=ground)))
-            flat = ground_tiles(preset, box, prefab, True) - ground_tiles(preset, box, prefab, False)
-            wrong = wrong_tiles(entities, box, prefab, walkable_floor(lay) & flat, ground)
-            legacy = presets.layout((data / "global" / "tiles" / ds1).read_bytes(), {p: pd2_tiles[p] or tiles[p] for p in files})  # PD2's DT1s, else D2R's own
-            hd = fidelity.hd_pieces(entities, box, prefab, ground, stock)
-            s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab), wrong,
-                      fidelity.wall_cover(fidelity.legacy_edges(legacy, heights), hd, tall))  # walls by fidelity class (#787)
-            s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
-            s.fidelity = fidelity.score_map(legacy, heights, hd, s.floors, set(s.floor_bare), set(s.floor_wrong))
+            work = functools.partial(compute, f=f, ds1=ds1, area=area, files=files)
+            if memo:  # the map's score, replayed when nothing it read has changed (#854)
+                blob, hit = pd2_cache.memo(memo[0], pd2_cache.key([], base_key, ds1, repr(files), area), roots, work,
+                                           memo[1])
+                hits += hit
+            else:
+                blob = work(pd2_cache.Trace(roots))
+            s, imgs = pickle.loads(blob)
             scores.append(s)
-            for name, image in (images(lay, s, tall, wet) | fidelity.image(
-                    legacy, fidelity.legacy_edges(legacy, heights), s.fidelity, s.name)).items():
+            for name, image in imgs.items():
                 (out / name).write_bytes(image)
     found = None if base is None else changes(scores, base, tolerance)
     if found is not None:
@@ -621,7 +564,7 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
     FIDELITY_ROWS.update({s.name: s.fidelity for s in scores})
     ffound = fidelity.write(out, FIDELITY_ROWS, commit, fbase, tolerance)
     FIDELITY_CHANGES[:] = ffound or []
-    print(f"pd2_coverage: {len(scores)} presets scored, {out / 'report.md'}, {out / 'fidelity.md'}")
+    print(f"pd2_coverage: {len(scores)} presets scored ({hits} replayed from the cache), {out / 'report.md'}, {out / 'fidelity.md'}")
     return scores
 
 
@@ -649,6 +592,17 @@ def main_baseline(into: Path) -> Path:
         return BASELINE
 
 
+def cache_for() -> tuple[Path, pd2_cache.Policy] | None:
+    """(rules folder, policy) the per-map scores are kept under, as pd2_merge picks them: the agents' cache root, or on
+    CI the gate's scope (PD2R_CI_SCOPE: main keeps in the shared folder, a PR only in its own scratch, #820). None: no
+    cache folder, or a CI run without a scope."""
+    cache, policy = pd2_cache.root(), pd2_cache.Policy()
+    if os.environ.get("GITHUB_ACTIONS"):
+        home = pd2_cache.slot_home()
+        cache, policy = (home, ci) if home and (ci := pd2_cache.ci_policy(home)) else (None, policy)
+    return (cache / "rules", policy) if cache else None
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", type=Path, default=ROOT / "generated" / "data", help="merged data (pd2_merge's output)")
@@ -662,6 +616,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--tolerance", type=float, default=TOLERANCE, help="points a score may fall below main's and "
                     f"still pass --check (default {TOLERANCE:g}); a fall inside it is listed, marked within tolerance")
     ap.add_argument("--write-baseline", action="store_true", help="write the scores to --baseline")
+    ap.add_argument("--no-cache", action="store_true", help="score every map afresh (the per-map cache, #854, is off)")
     a = ap.parse_args(argv)
     a.out.mkdir(parents=True, exist_ok=True)  # the report folder is not there on a fresh checkout (#787)
     if a.baseline is None:
@@ -675,7 +630,7 @@ def main(argv: list[str] | None = None) -> int:
         tpath = fpath.with_name(pd2_fidelity.TILES_FILE)  # main's tiles, to tell what a dropped tile is
         if tpath.is_file():
             tbase = pd2_fidelity.read_tiles(tpath.read_text("utf-8"))
-    scores = run(a.data, a.d2r, a.out, a.commit, base, fbase, a.tolerance)
+    scores = run(a.data, a.d2r, a.out, a.commit, base, fbase, a.tolerance, None if a.no_cache else cache_for())
     if scores is None:
         return 0
     if a.write_baseline:

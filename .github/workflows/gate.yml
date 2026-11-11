@@ -57,6 +57,7 @@ jobs:
           # new entries there and replays only main's own; a PR replays main's and keeps only in its scratch folder
           # (pd2_cache.Policy), so a buggy PR run cannot damage the entries main replays (same-repo PR code is trusted by this job's `if:`).
           $env:PD2R_CI_SCOPE = if ("${{ github.event_name }}" -eq "push") { "main" } else { "pr-${{ github.event.pull_request.number }}" }
+          "PD2R_CI_SCOPE=$env:PD2R_CI_SCOPE" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV  # #854: the coverage step caches under the same scope
           py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
       - name: Table-diff gate
         run: py -3 tools/pd2_diff.py --scope alpha
@@ -122,8 +123,9 @@ jobs:
           } else {
             [string[]]$check = if ($env:DROP_OK -eq "true") { @() } else { @("--check") }
             if ($env:DROP_OK -eq "true") { "Label parity-drop-ok: parity drops are reported, not failed." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY }
-            # main's parity-baseline.tsv comes from the artifact the coverage step downloaded (none yet: the tool says so)
-            [string[]]$base = if (Test-Path coverage/main-coverage/parity-baseline.tsv) { @("--baseline", "coverage/main-coverage/parity-baseline.tsv") } else { @() }
+            # main's parity-baseline.tsv comes from the artifact the coverage step downloaded; always passed, so a main artifact
+            # without the file yet is not downloaded a second time (the file is missing: the tool says "Not gated", #869)
+            [string[]]$base = @("--baseline", "coverage/main-coverage/parity-baseline.tsv")
             py -3 tools/pd2_parity.py --commit ${{ github.sha }} @base @check
           }
           $code = $LASTEXITCODE

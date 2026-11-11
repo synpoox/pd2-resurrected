@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import copy
 import hashlib
 import io
 import json
@@ -152,8 +153,9 @@ def sources(fn: Callable) -> list[Path]:
     """fn's module file and every module beside it that it imports, at any depth (a rule's code). A module inside a
     package brings the whole package (every .py under its top folder): relative imports and passes found by discovery
     are code the rule runs too (#754). An import in a module's main() is left out: a merge never runs a tool's command
-    line (pd2_strings' imports pd2_merge, which would put every tool in every key)."""
-    todo, seen = [Path(sys.modules[fn.__module__].__file__)], set()
+    line (pd2_strings' imports pd2_merge, which would put every tool in every key). The data files in such a package
+    (not .py or .pyc) are part of the code too."""
+    todo, seen, data = [Path(sys.modules[fn.__module__].__file__)], set(), set()
 
     def package(d: Path) -> Path | None:  # the top folder of the package d is in, or None
         top = None
@@ -169,6 +171,8 @@ def sources(fn: Callable) -> list[Path]:
         top = package(p.parent)
         if top is not None:
             todo += [q for q in top.rglob("*.py") if "__pycache__" not in q.parts]
+            # the data files the package reads (presets/fence_kit.json) are code the rule runs too (#861)
+            data |= {q for q in top.rglob("*") if q.is_file() and q.suffix not in (".py", ".pyc") and "__pycache__" not in q.parts}
         homes = {p.parent, top.parent} if top else {p.parent}
         tree = ast.parse(p.read_text("utf-8"))
         cli = {id(n) for d in tree.body if isinstance(d, ast.FunctionDef) and d.name == "main" for n in ast.walk(d)}
@@ -187,7 +191,7 @@ def sources(fn: Callable) -> list[Path]:
             for h, m, imported in bases:
                 for q in module_files(h, m, imported):
                     todo.append(q)
-    return sorted(seen)
+    return sorted(seen | data)
 
 
 def toolkit_sources(kit: Path, files: list[Path]) -> list[Path]:
@@ -247,6 +251,7 @@ def toolkit_sources(kit: Path, files: list[Path]) -> list[Path]:
 NOT_TRACED = ("pd2-data", "tools")
 _digests: dict[tuple[str, int, int], str] = {}
 _trace: "Trace | None" = None
+_subs: "list[Trace]" = []  # the traces of the parts running inside the rule's (sub_trace)
 used: list[Path] = []  # the entries rule() replayed or kept since the caller last cleared this (evict, below)
 
 
@@ -310,6 +315,14 @@ class Trace:
         finally:
             self.busy = False
 
+    def adopt(self, reads: dict[str, str | None]) -> None:
+        """Take reads another trace made (a replayed part's, as part_get checked them just now) as this trace's own, except
+        of what this rule wrote or made."""
+        for k, v in reads.items():
+            rel = k.split(":", 1)[1]
+            if rel not in self.written and rel not in self.created:
+                self.reads.setdefault(k, v)
+
     def wrote(self, path, made: bool = False) -> None:
         """path is written (made: a folder made) by the rule; one that did not exist yet is created."""
         if (rel := self.rel(path)) is None or rel in self.written or rel in self.created:
@@ -326,7 +339,15 @@ class Trace:
 
 def _audit(event: str, args: tuple) -> None:
     t = _trace
-    if t is None or t.busy:
+    if t is None:
+        return
+    _audit_to(t, event, args)
+    for sub in _subs:  # the traces of parts inside the rule (sub_trace) see what the rule's own does
+        _audit_to(sub, event, args)
+
+
+def _audit_to(t: "Trace", event: str, args: tuple) -> None:
+    if t.busy:
         return
     if event == "open":
         path, mode, flags = args
@@ -353,8 +374,10 @@ def _audit(event: str, args: tuple) -> None:
 def _seen(fn: Callable) -> Callable:
     """fn (an os stat or os.path test) recording the path it looks at."""
     def f(path, *a, **k):
-        if (t := _trace) is not None and not t.busy:
-            t.see(path)
+        if (t := _trace) is not None:
+            for x in (t, *_subs):
+                if not x.busy:
+                    x.see(path)
         return fn(path, *a, **k)
     return f
 
@@ -377,12 +400,51 @@ def _hook() -> None:
             copy = _winapi.CopyFile2
 
             def copied(src, dst, *a):
-                if (t := _trace) is not None and not t.busy:
-                    t.see(src)
-                    t.wrote(dst)
+                if (t := _trace) is not None:
+                    for x in (t, *_subs):
+                        if not x.busy:
+                            x.see(src)
+                            x.wrote(dst)
                 return copy(src, dst, *a)
             _winapi.CopyFile2 = copied
         _hooked = True
+
+
+def trace_roots() -> dict[str, str] | None:
+    """The roots the running rule's trace watches (normalised, as Trace keeps them), None when no rule is traced. A worker
+    process a rule starts (presets/parallel.py) passes them to worker_start(): its reads are the rule's too."""
+    t = _trace
+    return dict(t.roots) if t is not None else None
+
+
+def worker_start(roots: dict[str, str]) -> None:
+    """In a worker process of a traced rule: trace what this process reads and writes, under the rule's roots."""
+    global _trace
+    _hook()
+    _trace = Trace(roots)
+
+
+def worker_finish() -> dict:
+    """In a worker process: stop tracing and return what it saw (picklable), for the rule's process to absorb()."""
+    global _trace
+    t, _trace = _trace, None
+    return {"reads": t.reads, "written": sorted(t.written), "created": sorted(t.created)} if t else {}
+
+
+def absorb(part: dict) -> None:
+    """Add a worker's trace (worker_finish) to the running rule's, as if the rule had done that work itself. A path
+    one worker created and another saw already made is read as it was before the rule: absent."""
+    t = _trace
+    if t is None or not part:
+        return
+    for k, v in part["reads"].items():
+        t.reads.setdefault(k, v)
+    t.written.update(part["written"])
+    t.created.update(part["created"])
+    t.written -= t.created
+    for k in t.reads:
+        if k.split(":", 1)[1] in t.created and t.reads[k] is not None:
+            t.reads[k] = None
 
 
 def _snapshot(gen: Path) -> tuple[dict[str, tuple[int, int]], set[str]]:
@@ -505,7 +567,64 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
             if waited:
                 print(f"rule {key_}: waited for another run of it and replayed what it kept", flush=True)
             return True
-        return _build(gen, home, roots, run, policy)
+        global _scope
+        _scope = Scope(key_, roots, [(cache, policy.trusted)] + ([(policy.scratch, None)] if policy.scratch else []), dest, policy)
+        try:
+            return _build(gen, home, roots, run, policy)
+        finally:
+            _scope = None
+
+
+def memo(cache: Path, key_: str, roots: dict[str, Path], compute: Callable[["Trace"], bytes], policy: Policy = Policy()
+         ) -> tuple[bytes, bool]:
+    """compute(trace) -> bytes, or replay the bytes a kept run of it returned under this key that saw what roots hold
+    now (the per-map scores of pd2_coverage, #854). Unlike rule(), nothing is hooked: compute reports every file it reads
+    with trace.see(path), because the readers it calls keep their own memory (a DT1 read for one map is not read again
+    for the next), so an audit of opens would miss them. Entries share rule()'s folders, manifests, origins and
+    policy (a PR keeps only in its scratch folder), so prune, sweep and the PR scratch cleanup cover them. (bytes, True)
+    on a hit."""
+    top = _roots(roots)
+    dest = policy.scratch if policy.scratch else cache if policy.write else None
+    reads = [(cache / key_, policy.trusted)] + ([(policy.scratch / key_, None)] if policy.scratch else [])
+    for folder, trusted in reads:
+        for e in sorted(folder.iterdir()) if folder.is_dir() else []:
+            if ".tmp" in e.name or ".dead." in e.name:
+                continue
+            try:
+                m = json.loads((e / "manifest.json").read_text("utf-8"))
+                if trusted is not None and m.get("origin") not in trusted:
+                    continue
+                if all(_state(top, k) == v for k, v in m["reads"].items()):
+                    data = (e / "result.bin").read_bytes()
+                    used.append(e)
+                    os.utime(e)
+                    return data, True
+            except (OSError, ValueError, KeyError):
+                continue
+    t = Trace(roots)
+    data = compute(t)
+    if dest is None:
+        return data, False
+    m = {"reads": t.reads, "files": [], "removed": [], "dirs": [], "rmdirs": [], "stdout": "", "origin": policy.origin,
+         "bytes": len(data)}
+    home = dest / key_
+    name = hashlib.sha256(json.dumps(m["reads"], sort_keys=True).encode()
+                          + (b"" if policy.origin == "local" else policy.origin.encode())).hexdigest()[:16]
+    tmp = home / f"{name}.tmp{os.getpid()}"
+    try:
+        tmp.mkdir(parents=True)
+        (tmp / "result.bin").write_bytes(data)
+        (tmp / "manifest.tmp").write_text(json.dumps(m), "utf-8")
+        os.replace(tmp / "manifest.tmp", tmp / "manifest.json")
+        os.rename(tmp, home / name)
+        used.append(home / name)
+    except OSError as e:  # FileExistsError: another run kept the same reads; anything else only costs a later hit
+        if not isinstance(e, FileExistsError):
+            print(f"warning: result not cached ({e})")
+    finally:
+        if tmp.exists():
+            shutil.rmtree(tmp, ignore_errors=True)
+    return data, False
 
 
 def _build(gen: Path, home: Path, roots: dict[str, Path], run: Callable[[], None], policy: Policy) -> bool:
@@ -595,6 +714,116 @@ def evict(entries: list[Path], touching: str | None = None) -> None:
             _delete(e)
 
 
+# Parts (#861): a rule that is itself many independent builds (presets-hd: one preset per DS1) keeps each under a key of its
+# own inputs, so a run of the rule that misses as a whole replays the parts whose inputs did not change. The rule, while
+# it runs under rule() above, asks scope() for where and under what; a part is rules/<part key>/<origin>/ (rules-pr/pr-<n>/
+# ... for a PR gate) with a manifest that has the shape of a rule entry's (bytes, files, origin: prune, sweep, evict, own
+# and the Policy treat it as one), and `reads`: the files the part opened while it ran, checked again on replay.
+
+
+class Scope(NamedTuple):
+    """The running rule, for its parts: its key (part keys include it: the code), the roots it traces, the folders a part
+    is looked up in with the origins each may have (as rule()'s), and where a new one is kept (None: nowhere)."""
+    key: str
+    roots: dict
+    reads: list
+    dest: "Path | None"
+    policy: Policy
+
+
+_scope: "Scope | None" = None
+
+
+def scope() -> "Scope | None":
+    """The scope of the rule running under rule() in this process, None outside one (a worker process, a bare call, CI
+    with no scope): then a rule keeps no parts."""
+    return _scope
+
+
+@contextlib.contextmanager
+def sub_trace():
+    """Trace what the code inside reads, apart from the rule's own trace (which sees it too). Yields the Trace (its `reads`
+    are the part's), None when no rule is traced in this process."""
+    t = _trace
+    if t is None:
+        yield None
+        return
+    sub = Trace({k: Path(v) for k, v in t.roots.items()})
+    _subs.append(sub)
+    try:
+        yield sub
+    finally:
+        _subs.remove(sub)
+
+
+def note(path) -> None:
+    """Record that path is read now, for the traces: a read a memo would hide from the next part (functools.cache)."""
+    if (t := _trace) is not None:
+        for x in (t, *_subs):
+            if not x.busy:
+                x.see(path)
+
+
+def part_get(sc: Scope, key_: str) -> "dict | None":
+    """Replay the part with this key whose reads still hold: its files are copied under generated/ and its reads join the
+    rule's trace. Returns what part_put was given as `extra`, None on a miss."""
+    gen, top = sc.roots["p"] / "generated", _roots(sc.roots)
+    for base, trusted in sc.reads:
+        d = base / key_
+        for e in sorted(d.iterdir()) if d.is_dir() else []:
+            if ".tmp" in e.name or ".dead." in e.name:
+                continue
+            try:
+                m = json.loads((e / "manifest.json").read_text("utf-8"))
+                if trusted is not None and m.get("origin") not in trusted:
+                    continue
+                if not all(_state(top, k) == v for k, v in m["reads"].items()):
+                    continue
+                used.append(e)
+                os.utime(e)
+                for f in m["files"]:
+                    (gen / f).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(e / "files" / f, gen / f)
+                for x in ([_trace] if _trace is not None else []) + _subs:
+                    x.adopt(m["reads"])
+                return m["extra"]
+            except (OSError, ValueError, KeyError):  # deleted or damaged: a miss, the part is built and kept again
+                continue
+    return None
+
+
+def part_put(sc: Scope, key_: str, files: list[str], extra: dict, reads: dict) -> None:
+    """Keep a part built just now: `files` (paths from generated/) as they are, `extra` (JSON) for part_get to return, and
+    `reads`, what it opened (a Trace's), less the folders its own files are made in."""
+    if sc.dest is None:
+        return
+    gen, home = sc.roots["p"] / "generated", sc.dest / key_
+    outs = [f"p:generated/{f}" for f in files]
+    keep = {k: v for k, v in reads.items()
+            if not any(o == (r := k.split(":", 1)[1]) or o.startswith(r + "/") for o in outs)}
+    m = {"reads": keep, "files": sorted(files), "removed": [], "dirs": [], "rmdirs": [], "stdout": "", "extra": extra,
+         "origin": sc.policy.origin, "bytes": sum((gen / f).stat().st_size for f in files)}
+    name = sc.policy.origin
+    tmp = home / f"{name}.tmp{os.getpid()}"
+    try:
+        tmp.mkdir(parents=True)
+        for f in files:
+            (tmp / "files" / f).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(gen / f, tmp / "files" / f)
+        (tmp / "manifest.tmp").write_text(json.dumps(m), "utf-8")
+        os.replace(tmp / "manifest.tmp", tmp / "manifest.json")
+        if (home / name).exists():  # its reads no longer hold (part_get missed): this replaces it
+            _delete(home / name)
+        os.rename(tmp, home / name)
+        used.append(home / name)
+    except OSError as e:  # FileExistsError: another run kept the part meanwhile; anything else only costs a later hit
+        if not isinstance(e, FileExistsError):
+            print(f"warning: part not cached ({e})")
+    finally:
+        if tmp.exists():
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 def size(p: Path) -> int:
     return sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
 
@@ -658,14 +887,60 @@ def prune(cache: Path, cap: int, keep_s: float = 900, legacy: bool = False) -> l
 
 
 
+_held: "Slots | None" = None  # the merge slot this process holds (acquire), for spare_slots
+
+
+def holding() -> bool:
+    """Whether this process holds a merge slot (a merge that runs under the cap)."""
+    return _held is not None
+
+
+def spare_slots(n: int) -> list["Slots"]:
+    """Up to n more merge slots of the machine-wide cap, taken now without waiting, for worker processes of the rule that
+    runs under the slot this process holds (#807). Empty when this process holds none (no cache root: the cap cannot be
+    kept). The caller release()s each when its worker ends."""
+    h, out = _held, []
+    while h is not None and len(out) < n:
+        s = h.clone()
+        if not s.try_acquire():
+            break
+        # leave a slot free for a merge (or CI) that arrives while the workers run: another slot of this holder's own
+        # pool (an agent's never counts the CI reserve) must still be free after this one is taken
+        probe = h.clone()
+        if not probe.try_acquire():
+            s.release()
+            break
+        probe.release()
+        out.append(s)
+    return out
+
+
 class Slots:
     """A machine-wide counting semaphore (#760): n slot files under folder, each held by an OS lock, so a crashed holder
     frees its slot with no pid file to leak. acquire() blocks until one is free (one 'queued' line meanwhile) and is
-    idempotent; release() frees it. Usable as a context manager."""
+    idempotent; release() frees it. Usable as a context manager.
 
-    def __init__(self, folder: Path, n: int, what: str = "merge", poll: float = 1.0):
+    Of the n slots, the last `reserved` belong to the CI gate (#872): with reserved > 0, a holder that is not `ci` only
+    tries slots 0..n-reserved-1 (at least one), so it can never hold a reserved one; a `ci` holder tries the reserved
+    slots first, then the rest, so it keeps the agents' slots free when it can."""
+
+    def __init__(self, folder: Path, n: int, what: str = "merge", poll: float = 1.0, reserved: int = 0, ci: bool = False):
         self.folder, self.n, self.what, self.poll = folder, max(1, n), what, poll
+        self.ci = ci
+        self.reserved = max(0, min(reserved, self.n - 1))
         self.f = None
+
+    def clone(self) -> "Slots":
+        """A new, unheld Slots with this one's folder and settings (pool, reserve and ci included), for spare_slots."""
+        c = copy.copy(self)
+        c.f = None
+        return c
+
+    def _order(self) -> list[int]:
+        """The slot indexes this holder may try, in order."""
+        if self.ci:
+            return list(range(self.n - 1, -1, -1))
+        return list(range(self.n - self.reserved))
 
     def _try(self, i: int):
         p = self.folder / f"slot.{i}"
@@ -678,22 +953,38 @@ class Slots:
             return None
         return f
 
+    def try_acquire(self) -> bool:
+        """Take a free slot now, never wait. True when this holds one."""
+        if self.f:
+            return True
+        self.folder.mkdir(parents=True, exist_ok=True)
+        for i in self._order():
+            if f := self._try(i):
+                self.f = f
+                return True
+        return False
+
     def acquire(self) -> None:
+        global _held
         if self.f:
             return
-        self.folder.mkdir(parents=True, exist_ok=True)
         told = False
         while True:
-            for i in range(self.n):
-                if f := self._try(i):
-                    self.f = f
-                    return
+            if self.try_acquire():
+                _held = self
+                return
+            order = self._order()
             if not told:
-                print(f"{self.what} queued: {self.n}/{self.n} slots busy (machine-wide cap, PD2R_MERGE_SLOTS); waiting for one to free", file=sys.stderr, flush=True)
+                pool = len(order)
+                note = "" if self.ci or not self.reserved else f", {self.reserved} more reserved for CI (PD2R_CI_RESERVED)"
+                print(f"{self.what} queued: {pool}/{pool} slots busy (machine-wide cap, PD2R_MERGE_SLOTS{note}); waiting for one to free", file=sys.stderr, flush=True)
                 told = True
             time.sleep(self.poll)
 
     def release(self) -> None:
+        global _held
+        if _held is self:
+            _held = None
         if self.f:
             f, self.f = self.f, None
             f.seek(0)
@@ -717,11 +1008,17 @@ def slot_home() -> Path | None:
 
 def merge_slots(cache: Path) -> Slots:
     """The merge semaphore under the cache root, shared by agents and the CI gate: PD2R_MERGE_SLOTS slots (default 4).
+    The last PD2R_CI_RESERVED (default 2) are the gate's (#872): an agent merge (no GITHUB_ACTIONS) holds at most
+    PD2R_MERGE_SLOTS - PD2R_CI_RESERVED slots (at least one), and CI may take any, so the gate never queues behind
+    agents while a reserved slot is free. A queued merge says which pool it waits on. The slots stay per-file OS locks.
     Pick the count from RAM: (RAM left for merges) / (RAM of one merge). One merge held about 3.8 GB at one worker;
-    parallel merge workers (#807, planned) may hold more each, so lower the count then, and raise it when
-    a faster merge (#806) leaves RAM idle. The runners are user processes: set the same value in their `.env` or the user environment."""
-    try:
-        n = int(os.environ.get("PD2R_MERGE_SLOTS", "4"))
-    except ValueError:
-        n = 4
-    return Slots(cache / "merge-slots", n, "CI merge" if os.environ.get("GITHUB_ACTIONS") else "merge")
+    parallel merge workers (#807, each takes a slot of the pool; PD2R_PRESET_WORKERS set with no slot held starts that many uncapped) may hold more each, so lower the count then, and raise it when
+    a faster merge (#806) leaves RAM idle. The runners are user processes: set the same values in their `.env` or the user environment."""
+    def env(name: str, default: int) -> int:
+        try:
+            return int(os.environ.get(name, str(default)))
+        except ValueError:
+            return default
+    ci = bool(os.environ.get("GITHUB_ACTIONS"))
+    return Slots(cache / "merge-slots", env("PD2R_MERGE_SLOTS", 4), "CI merge" if ci else "merge",
+                 reserved=env("PD2R_CI_RESERVED", 2), ci=ci)
