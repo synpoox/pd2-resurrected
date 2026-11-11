@@ -3,7 +3,7 @@ filled with props, or drawn at the wrong height.
 
 The per-tile kit copies what D2R drew on a tile with the same key, so a PD2 wall tile whose key the stock never saw
 gets nothing (palace cellar walls, arcane sanctuary walls), and one whose key was a barrel shelf gets a barrel. This
-pass reads the wall edges of the legacy DS1 the way pd2_fidelity does (legacy_edges: the type "wall" and the height
+pass reads the wall edges of the legacy DS1 the way pd2_tiles does (legacy_edges: the type "wall" and the height
 class low/tall each tile asks for, #750), finds those the preset does not get right, and stands a D2R wall piece on
 each: one harvested from a stock wall tile of the same orientation (so it is rotated right) and of the asked height
 class, from the tile set's own stock first. A piece covers the tiles under its box, so tiles it covers get no second
@@ -26,6 +26,8 @@ import zlib
 from dataclasses import dataclass, field
 from typing import Callable
 
+import pd2_cache
+
 from ..consts import GROUND, TILE
 from ..entity import _transform, clone, is_waypoint
 from ..layout import Layout, walkable
@@ -37,8 +39,8 @@ LOWER_AS = {16: 1, 17: 2, 18: 3, 19: 4}  # a lower variant borrows the upper one
 
 @dataclass
 class Context:
-    legacy: Layout  # the DS1 named by its own DT1s (not stand-ins), as pd2_fidelity reads it
-    heights: dict  # pd2_fidelity.Heights
+    legacy: Layout  # the DS1 named by its own DT1s (not stand-ins), as pd2_tiles reads it
+    heights: dict  # pd2_tiles.Heights
     box: Callable  # model path -> its box, from model_lod_desc.bin
     prefab: Callable  # prefab path -> its entities
     stock: list  # every stock (layout, preset): the fallback when the tile set's own has no piece
@@ -47,7 +49,7 @@ class Context:
 
 
 CONTEXT: dict[str, Context] = {}  # DS1 path (Build.seed) -> its Context
-_INDEX: dict[tuple, tuple] = {}  # stock ids -> (the presets, held so an id is never reused; its index)
+_INDEX: dict[tuple, tuple] = {}  # stock ids -> (the presets, held so an id is never reused; its index; the files it read)
 
 
 def configure(ds1: str, ctx: Context) -> None:
@@ -60,7 +62,7 @@ class Option:
     dx: float
     dz: float
     rel_y: float  # above the stock ground it stood on
-    cls: str  # pd2_fidelity.hd_class of its top
+    cls: str  # pd2_tiles.hd_class of its top
     foot: tuple  # tile offsets (from the tile it belongs to) under its box
     deps: dict
     dt1: str = ""  # the DT1 of the stock wall tile it stands on (a `walls:` line picks by it)
@@ -78,12 +80,19 @@ def model(e: dict) -> str:
 
 def index(stock: list, ctx: Context) -> dict[int, list[Option]]:
     """The wall pieces of the stock presets by the orientation of the single wall tile they stand on."""
-    import pd2_tiles as coverage  # the shared tile module (#855), under the scorer's old name
     import pd2_tiles as fid
     key = tuple(id(p) for _, p in stock)
     held = _INDEX.get(key)
     if held and all(a is p for a, (_, p) in zip(held[0], stock)):
+        pd2_cache.adopt_reads(held[2])  # the memo hides the prefab reads it made: every asker's DS1 read them (#882)
         return held[1]
+    with pd2_cache.sub_trace() as sub:
+        out = _build_index(stock, ctx, coverage, fid)
+    _INDEX[key] = (tuple(p for _, p in stock), out, dict(sub.reads) if sub is not None else {})
+    return out
+
+
+def _build_index(stock: list, ctx: Context, coverage, fid) -> dict[int, list[Option]]:
     out: dict[int, list[Option]] = {}
     for lay, preset in stock:
         ground = preset.get(GROUND)
@@ -97,23 +106,22 @@ def index(stock: list, ctx: Context) -> dict[int, list[Option]]:
             tiles = lay.keys.get(c, ("f", ()))
             if tiles[0] != "w" or len(tiles[1]) != 1 or tiles[1][0][1] not in UPPER:
                 continue
-            found = list(coverage.boxes([e], ctx.box, ctx.prefab))
+            found = list(fid.boxes([e], ctx.box, ctx.prefab))
             if len(found) != 1:
                 continue
             x0, x1, z0, z1, top, _ = found[0]
-            if x1 - x0 > coverage.ROOM or z1 - z0 > coverage.ROOM:
+            if x1 - x0 > fid.ROOM or z1 - z0 > fid.ROOM:
                 continue
             g = (ground.at(x, z, y) if ground else None) or 0.0
             cls = fid.hd_class(top - g)
             if cls == "flat":
                 continue
-            foot = tuple((tx - c[0], tz - c[1]) for tx, tz in coverage.footprint([found[0]]))
+            foot = tuple((tx - c[0], tz - c[1]) for tx, tz in fid.footprint([found[0]]))
             if (0, 0) not in foot:
                 continue
             out.setdefault(tiles[1][0][1], []).append(
                 Option(e, x - c[0] * TILE, z - c[1] * TILE, y - g, cls, foot, preset["dependencies"],
                        tiles[1][0][0]))
-    _INDEX[key] = (tuple(p for _, p in stock), out)
     return out
 
 
@@ -159,14 +167,13 @@ def trim(b, ctx: Context, legacy: dict) -> list[dict]:
     tile that asks for a low wall, and none that asks for a tall one. The fill then stands low pieces there. A piece
     stays when it is the only piece on a legacy cliff, pillar, treeline or fence tile. The top is measured from the
     ground wall_y() gives, as index() measures a stock piece from its own."""
-    import pd2_tiles as coverage  # the shared tile module (#855), under the scorer's old name
     import pd2_tiles as fid
     other: set = set()
     for kind, tiles in fid.legacy_edges(ctx.legacy, ctx.heights).items():
         if kind in COVER:
             other |= set(tiles)
-    seen = {id(e): list(coverage.boxes([e], ctx.box, ctx.prefab)) for e in b.entities + b.loose}
-    count = collections.Counter(c for found in seen.values() for f in found for c in coverage.footprint([f]))
+    seen = {id(e): list(fid.boxes([e], ctx.box, ctx.prefab)) for e in b.entities + b.loose}
+    count = collections.Counter(c for found in seen.values() for f in found for c in fid.footprint([f]))
     keep = []
     for e in b.loose:
         if fid.model_type(model(e)) == "wall":
@@ -174,7 +181,7 @@ def trim(b, ctx: Context, legacy: dict) -> list[dict]:
             if len(found) == 1:
                 x0, x1, z0, z1, top, _ = found[0]
                 if fid.hd_class(top - wall_y(b, (x0 + x1) / 2, (z0 + z1) / 2)) == "tall":
-                    foot = coverage.footprint([found[0]])
+                    foot = fid.footprint([found[0]])
                     want = {legacy[c] for c in foot if c in legacy}
                     if want == {"low"} and not any(c in other and count[c] == 1 for c in foot):
                         continue

@@ -259,8 +259,10 @@ def report_md(rows: list[dict], commit: str = "", found: list[Change] | None = N
 
 # --- run ------------------------------------------------------------------------------------------------------------
 
-def run(data: Path, d2r: Path, out: Path | None, only: set[str] = frozenset(), images: bool = True) -> list[dict] | None:
-    """Score every generated preset under data (generated/data) except the unplayable Palace; None: skipped (no model boxes)."""
+def run(data: Path, d2r: Path, out: Path | None, only: set[str] = frozenset(), images: bool = True,
+        on_row=None) -> list[dict] | None:
+    """Score every generated preset under data (generated/data) except the unplayable Palace; None: skipped (no model boxes).
+    `on_row(row)` sees each full row (with its tile sets) before they are dropped: the sweep picks capture points from them."""
     if not (d2r / coverage.MODELS).is_file():
         print(f"::warning::pd2_parity: skipped, no {d2r / coverage.MODELS} (`python -m modkit fetch --prefix data/hd/model_lod_desc.bin`)")
         return None
@@ -288,6 +290,8 @@ def run(data: Path, d2r: Path, out: Path | None, only: set[str] = frozenset(), i
             r["area"] = area
             if images and out is not None:
                 (out / f"{stem}_parity.png").write_bytes(image(lay, r))
+            if on_row is not None:
+                on_row(r)
             del r["sets"], r["visible"], r["edge_tiles"], r["walkable_set"]  # keep a row small: 128 maps in memory
             rows.append(r)
             print(f"{stem:<24} parity {100 * r['parity']:5.1f}%  tiles {r['tiles']:6}  "
