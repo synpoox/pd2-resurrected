@@ -50,7 +50,11 @@ jobs:
           # could fire in that gap. Pause auto-merge first and restore it once the rerun has reset the check (#901).
           paused=false
           if [ "$ACTION" = unlabeled ] && [ "$auto" != "-" ]; then
-            gh pr merge "$PR" --disable-auto && paused=true
+            if ! gh pr merge "$PR" --disable-auto; then
+              echo "::error::could not pause auto-merge, so the gate was not rerun: the old green table-diff could merge the PR. Rerun the gate by hand."
+              exit 1
+            fi
+            paused=true
           fi
           if $active; then
             gh run cancel "$id"
@@ -66,5 +70,20 @@ jobs:
               exit 1
             fi
           fi
-          gh run rerun "$id" && echo "reran gate run $id"
-          if $paused; then gh pr merge "$PR" --auto "--$(echo "$auto" | tr A-Z a-z)" && echo "auto-merge restored"; fi
+          gh run rerun "$id"
+          echo "reran gate run $id"
+          if $paused; then
+            # restore auto-merge only once the rerun's new table-diff check is on the head and not completed (<= 60 s)
+            queued=false
+            for i in $(seq 1 12); do
+              n=$(gh api "repos/$GH_REPO/commits/$head/check-runs?check_name=table-diff&filter=latest" -q '[.check_runs[] | select(.status != "completed")] | length')
+              if [ "$n" -gt 0 ]; then queued=true; break; fi
+              sleep 5
+            done
+            if ! $queued; then
+              echo "::error::the rerun's table-diff check did not show up on $head within 60 s. Auto-merge stays paused: re-enable it once the gate is running."
+              exit 1
+            fi
+            gh pr merge "$PR" --auto "--$(echo "$auto" | tr A-Z a-z)"
+            echo "auto-merge restored"
+          fi

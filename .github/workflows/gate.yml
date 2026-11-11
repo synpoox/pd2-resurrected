@@ -64,7 +64,7 @@ jobs:
           py -3 -m modkit fetch --prefix data/global/animdata.d2; if ($LASTEXITCODE) { throw "modkit fetch failed" }
           # #820: replay the rules whose code and inputs are unchanged from the shared rule cache. A push to main keeps
           # new entries there and replays only main's own; a PR replays main's and keeps only in its scratch folder
-          # (pd2_cache.Policy), so a buggy PR run cannot damage the entries main replays (same-repo PR code is trusted by this job's `if:`).
+          # (pd2_cache.Policy), so a buggy PR run cannot damage the entries main replays (fork PRs fail before this step, so only same-repo PR code gets here).
           $env:PD2R_CI_SCOPE = if ("${{ github.event_name }}" -eq "push") { "main" } else { "pr-${{ github.event.pull_request.number }}" }
           "PD2R_CI_SCOPE=$env:PD2R_CI_SCOPE" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV  # #854: the coverage step caches under the same scope
           py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
