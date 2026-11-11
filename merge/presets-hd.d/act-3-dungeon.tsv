@@ -1,0 +1,4 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+Act 3 - Dungeon	data/hd/env/biome/act3_jungle_dungeon.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+pd2assets/lair_mishift.dt1	-

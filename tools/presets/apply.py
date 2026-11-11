@@ -23,21 +23,38 @@ from .waypoints import waypoint_options, waypoints
 from .water import water_planes
 
 
+def rule_files(rule: Path) -> list[Path]:
+    """The files that hold the rule's lines, in the order read: `rule` itself (merge/presets-hd.tsv, the anchor
+    pd2_merge's driver runs the rule by, so it is a file; its lines, if any, come first), then the *.tsv of the folder
+    beside it (merge/presets-hd.d/), sorted by file name (#789). THIS is where the read order is defined; the lint and
+    the tools read the rule through here. A key may appear once (read_rule), so the order cannot change the output."""
+    d = rule.with_name(rule.stem + ".d")
+    return [rule, *(sorted(d.glob("*.tsv")) if d.is_dir() else [])]
+
+
 def read_rule(rule: Path) -> tuple[dict[str, str], dict[str, str | None], dict[str, str]]:
     """(tile set -> biome, PD2 DT1 -> its D2R stand-in DT1 or None, water DT1 -> water plane model): a first column
-    `water:<DT1>` is a water line, one ending in .dt1 a stand-in."""
+    `water:<DT1>` is a water line, one ending in .dt1 a stand-in. The lines are in rule_files(rule). A ValueError
+    names the two files of a key that appears twice, in one file or in two."""
     sets, standins, water = {}, {}, {}
-    for line in rule.read_text("utf-8").splitlines():
-        if line and not line.startswith("#"):
-            name, value, *_reason = line.split("\t")  # a third column is the line's `# reason` (pd2_presets_lint)
-            if name.lower().startswith("water:"):
-                if value not in WATER_SPAN:
-                    raise ValueError(f"water line {name}: {value} is no water plane WATER_SPAN knows")
-                water[norm(name[6:])] = value
-            elif name.lower().endswith(".dt1"):
-                standins[norm(name)] = None if value == "-" else norm(value)
-            else:
-                sets[name.lower()] = value
+    seen: dict[tuple[str, str], str] = {}  # (kind, key) -> the file of its line
+    for f in rule_files(rule):
+        for line in f.read_text("utf-8").splitlines():
+            if line and not line.startswith("#"):
+                name, value, *_reason = line.split("	")  # a third column is the line's `# reason` (pd2_presets_lint)
+                kind, key = (("water", norm(name[6:])) if name.lower().startswith("water:") else
+                             ("standin", norm(name)) if name.lower().endswith(".dt1") else ("set", name.lower()))
+                if (kind, key) in seen:
+                    raise ValueError(f"{kind} line {name!r} is in {seen[kind, key]} and in {f.name}: a key has one line")
+                seen[kind, key] = f.name
+                if kind == "water":
+                    if value not in WATER_SPAN:
+                        raise ValueError(f"water line {name}: {value} is no water plane WATER_SPAN knows")
+                    water[key] = value
+                elif kind == "standin":
+                    standins[key] = None if value == "-" else norm(value)
+                else:
+                    sets[key] = value
     return sets, standins, water
 
 
@@ -101,7 +118,7 @@ def wall_pass(on_d2r: list, tiles: "Tiles", pd2_tiles: "Tiles", out_data: Path, 
 
 
 def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
-    """pd2_merge rule kind for merge/presets-hd.tsv (see the module docstring)."""
+    """pd2_merge rule kind for merge/presets-hd.tsv and its folder presets-hd.d/ (see the module docstring)."""
     sets, standins, water_rule = read_rule(rule)
     tiles_dir = d2r_data / "global" / "tiles"
     if not (d2r_data / PRESETS).is_dir() or not any(tiles_dir.rglob("*.dt1")):

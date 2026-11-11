@@ -1,0 +1,8 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+Na-Krul's Abyss	data/hd/env/biome/act4_lava.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+# nakrulabyss/l5_addon and l5_walls: no D2R DT1 holds more than 3 tiles of either: none
+pd2assets/nakrulabyss/l5_addon.dt1	-
+# nakrulabyss/l5_floor: lair.dt1 holds the most (16 of 21 tiles), a dark cave floor
+pd2assets/nakrulabyss/l5_floor.dt1	act3/spider/lair.dt1
+pd2assets/nakrulabyss/l5_walls.dt1	-

@@ -1,0 +1,31 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+49	data/hd/env/biome/act1_outdoors.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+pd2assets/descend/a4_throne.dt1	expansion/baallair/throne.dt1
+pd2assets/descend/a5_rotatedriver.dt1	garden/colossalsummit/floor.dt1
+pd2assets/descend/basewall.dt1	act1/crypt/basewall.dt1
+pd2assets/descend/bridge.dt1	-
+pd2assets/descend/camp.dt1	expansion/siege/camp.dt1
+pd2assets/descend/change-me.dt1	-
+pd2assets/descend/cliff1.dt1	act1/outdoors/cliff1.dt1
+pd2assets/descend/cliff2.dt1	act1/outdoors/cliff2.dt1
+pd2assets/descend/corner.dt1	guild/outdoors/cliff.dt1
+pd2assets/descend/entrance.dt1	garden/colossalsummit/entrance.dt1
+pd2assets/descend/extwalls.dt1	act4/lava/extwalls.dt1
+pd2assets/descend/fence.dt1	act1/outdoors/fence.dt1
+pd2assets/descend/file2.dt1	act1/barracks/objects.dt1
+pd2assets/descend/floor.dt1	act1/town/floor.dt1
+pd2assets/descend/hellcaves_base.dt1	-
+pd2assets/descend/hellgate.dt1	expansion/siege/hellgate.dt1
+pd2assets/descend/new_floors.dt1	act3/travincal/floors.dt1
+pd2assets/descend/new_kanemith.dt1	-
+pd2assets/descend/objects.dt1	act1/outdoors/objects.dt1
+pd2assets/descend/objects_outdoors.dt1	act1/town/objects.dt1
+pd2assets/descend/pond.dt1	act1/outdoors/pond.dt1
+pd2assets/descend/river.dt1	act1/outdoors/river.dt1
+pd2assets/descend/stone_fence.dt1	act1/town/fence.dt1
+pd2assets/descend/stonewall.dt1	act1/outdoors/stonewall.dt1
+pd2assets/descend/torture.dt1	act1/barracks/torture.dt1
+pd2assets/descend/town_reindexed.dt1	act1/tristram/town.dt1
+pd2assets/descend/treegroups.dt1	guild/outdoors/treegroups.dt1
+pd2assets/descend/trees.dt1	act1/town/trees.dt1

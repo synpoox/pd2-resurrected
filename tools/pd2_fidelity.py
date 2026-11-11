@@ -66,7 +66,7 @@ UPPER_ORIENT, LOWER_ORIENT = frozenset(range(1, 10)), frozenset(range(16, 20))
 PILLAR_ORIENT = presets.LIKE  # 12
 TREE_ORIENT = presets.TREE_LAYER  # 14
 # Walls, fences and cliffs share orientations, so a wall layer is told apart by its DT1's name first (the #707
-# researcher's table, V = verified in the DT1 list of merge/presets-hd.tsv):
+# researcher's table, V = verified in the DT1 lists of merge/presets-hd.d/):
 INVISIBLE = re.compile(r"inv_wall")  # act4/mesa/inv_wall: a blocker that draws nothing
 FENCE = re.compile(r"fence|chain_walls|foregate|barset|palisade|picket|graveyrd")  # mesa chain_walls, siege fence,
 # fort foregate, barracks barset, outdoors/town fence
@@ -76,7 +76,7 @@ FENCE = re.compile(r"fence|chain_walls|foregate|barset|palisade|picket|graveyrd"
 # foregate's walls are 224-416 (median 288), against 192 for the low siege, outdoors and descend fences (#757).
 TALL_FENCE = re.compile(r"chain_walls|foregate|barset|graveyrd|town/fence|stone_fence")
 # kurast/travincal terraces, icecave interior, hellcaves, mesa brick_walls; `corner` because corner.dt1 stands in as
-# guild/outdoors/cliff.dt1 (presets-hd.tsv). Approximate: matched by name, not by every PD2 DT1 checked.
+# guild/outdoors/cliff.dt1 (merge/presets-hd.d/). Approximate: matched by name, not by every PD2 DT1 checked.
 CLIFF = re.compile(r"cliff|corner|terrace|brick_walls|hellcaves|icecave.*interior|interior.*icecave")
 TREE = re.compile(r"tree")  # the jungle's treegrp/treegroups wall lines, trees.dt1 walls
 # river, pond, rivbank and pool wall layers; lava's extwalls and intwalls, and its rocks

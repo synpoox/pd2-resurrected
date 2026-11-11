@@ -1,0 +1,8 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+Djinns Domain	data/hd/env/biome/act2_palace.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+pd2assets/aer_palace2.dt1	-
+# djinnfloor's best (15 of 45 tiles) is specials.dt1, marker tiles that draw nothing: none
+pd2assets/djinnfloor.dt1	-
+# djinnfloorbloody: best is siege/snow.dt1 with 8% of its tiles: none
+pd2assets/djinnfloorbloody.dt1	-

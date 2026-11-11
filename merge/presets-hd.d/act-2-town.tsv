@@ -1,0 +1,7 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+Act 2 - Town	data/hd/env/biome/act2_town.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+# aer_canal: all floor, one tile a pixel copy of canal.dt1 and none the same index (oasis 8%): canal.dt1, Lut Gholein's canal by biome; it maps no tile by index, so it works like -
+pd2assets/aer_canal.dt1	act2/town/canal.dt1	# canal.dt1, Lut Gholein canal by biome; its one pixel copy gets canal.dt1
+# aer_palace and aer_palace2: best is oasis.dt1 with 16% of 117 tiles (oasis water floors, a different look); no palace DT1 shares an index: none
+pd2assets/aer_palace.dt1	-

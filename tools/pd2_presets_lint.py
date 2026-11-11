@@ -1,4 +1,4 @@
-"""Lint merge/presets-hd.tsv's stand-in lines (#786): `py -3 tools/pd2_presets_lint.py [--data D] [--d2r D]`.
+"""Lint the stand-in lines in merge/presets-hd.d/ (#786): `py -3 tools/pd2_presets_lint.py [--data D] [--d2r D]`.
 
 Prints, per stand-in line, the share of the PD2 DT1's tiles its D2R DT1 holds with the same flags and the tiles it
 renames in each map that loads it; exits 1 on a line under a quarter with no `# reason` third column, a line that

@@ -1,0 +1,10 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+40	data/hd/env/biome/act4_lava.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+pd2assets/a5_chain_walls.dt1	act4/mesa/chain_walls.dt1
+pd2assets/a5_head.dt1	-
+pd2assets/borq.dt1	act2/tomb/talrasha.dt1
+pd2assets/borq1.dt1	garden/colossalsummit/floor.dt1
+pd2assets/borq2.dt1	act4/lava/specials.dt1
+pd2assets/borq4.dt1	act3/kurast/terraces.dt1
+pd2assets/borq_floor.dt1	act4/lava/floor.dt1
