@@ -28,7 +28,15 @@ def far_off(d2r_data: Path) -> Callable[[dict], bool]:
         f = d2r_data / path.removeprefix("data/")
         return json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
 
+    seen: dict[int, tuple[dict, bool]] = {}  # once per stock entity (Kit.add asks again per DS1)
+
     def far(e: dict) -> bool:
+        held = seen.get(id(e))
+        if held is None or held[0] is not e:
+            held = seen[id(e)] = (e, _far(e))
+        return held[1]
+
+    def _far(e: dict) -> bool:
         # a prefab (Act 1's riverbanks) stays: on a floor key it still closes border gaps (pd2_coverage)
         if painter.is_tree(e) or any(c["type"] == "PrefabPlacementDefinitionComponent" for c in e["components"]):
             return False

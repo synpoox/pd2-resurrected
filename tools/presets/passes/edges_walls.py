@@ -19,13 +19,12 @@ configure() per DS1. A build with no configure() runs no wall pass.
 from __future__ import annotations
 
 import collections
-import copy
 import zlib
 from dataclasses import dataclass
 from typing import Callable
 
 from ..consts import GROUND, TILE
-from ..entity import _transform, is_waypoint
+from ..entity import _transform, clone, is_waypoint
 from ..layout import Layout, walkable
 
 ORDER = 350
@@ -122,16 +121,25 @@ def families(stock: list) -> set[str]:
     return {folder(e) for _, p in stock for e in p["entities"] if model(e) and fid.model_type(model(e)) == "wall"}
 
 
-def pick(options: list[Option], want: str, c: tuple, bad: set, covered: set, blocked: set, seed: str) -> Option | None:
-    """The option of class `want` whose box stands on no blocked tile and covers the most uncovered bad tiles."""
+def pick(options: list[Option], want: str, c: tuple, bad: set, covered: set, blocked: set, seed: str,
+         classed: dict | None = None) -> Option | None:
+    """The option of class `want` whose box stands on no blocked tile and covers the most uncovered bad tiles.
+    `classed`: the caller's memo of each list's options by class, with their index in the list (the hash below needs
+    it); one dict per pass run, so it outlives no merge."""
     best = None
-    for k, o in enumerate(options):
-        if o.cls != want:
+    classed = {} if classed is None else classed
+    key = (id(options), want)
+    if key not in classed or classed[key][0] is not options:
+        classed[key] = (options, [(k, o) for k, o in enumerate(options) if o.cls == want])
+    c0, c1 = c
+    for k, o in classed[key][1]:
+        tiles = [(c0 + i, c1 + j) for i, j in o.foot]  # foot holds distinct offsets (a footprint set)
+        if any(t in blocked for t in tiles):
             continue
-        tiles = {(c[0] + i, c[1] + j) for i, j in o.foot}
-        if tiles & blocked:
+        n = sum(t in bad and t not in covered for t in tiles)
+        if best is not None and n < best[0][0]:  # the hash only breaks ties
             continue
-        rank = (len(tiles & bad - covered), zlib.crc32(f"{seed}:{c}:{k}".encode()))
+        rank = (n, zlib.crc32(f"{seed}:{c}:{k}".encode()))
         if best is None or rank > best[0]:
             best = (rank, o)
     return best[1] if best else None
@@ -195,6 +203,7 @@ def run(b) -> None:
         near[k] = sum(p in around for p in hd.centres["wall"])
         good[k] = {c for c in run if c in hd.tops["wall"]}
     added: list[dict] = []
+    classed: dict = {}
     for c in sorted(bad):
         if c in covered:
             continue
@@ -204,8 +213,8 @@ def run(b) -> None:
             continue
         o = LOWER_AS.get(tile[1], tile[1])
         want = legacy[c]
-        choice = (pick(own.get(o, []), want, c, bad, covered, blocked, b.seed)
-                  or pick(every.get(o, []), want, c, bad, covered, blocked, b.seed))
+        choice = (pick(own.get(o, []), want, c, bad, covered, blocked, b.seed, classed)
+                  or pick(every.get(o, []), want, c, bad, covered, blocked, b.seed, classed))
         if choice is None:
             continue
         k = area[c]
@@ -214,7 +223,7 @@ def run(b) -> None:
             continue
         near[k] += 1
         good[k] = gained
-        e = copy.deepcopy(choice.ent)
+        e = clone(choice.ent)
         t = _transform(e)
         t["position"]["x"], t["position"]["z"] = c[0] * TILE + choice.dx, c[1] * TILE + choice.dz
         t["position"]["y"] = wall_y(b, t["position"]["x"], t["position"]["z"]) + choice.rel_y

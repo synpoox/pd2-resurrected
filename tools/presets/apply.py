@@ -182,11 +182,12 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     report, groups, bare = [], {}, []
     for _, tile_set, _, ds1s in on_d2r:
         groups.setdefault(tile_set, []).extend(ds1s)
+    learned: dict = {}  # painter.harvest's memo: lives for this apply() only
     for tile_set, ds1s in groups.items():
         # the tile set's stock: the presets that list a DT1 its DS1 draw from; the tree kit is harvested from them
         drawn = {t[0] for ds1 in ds1s for k in wanted(layouts[ds1]) for t in k[1]}
         own = [(lay, preset) for lay, preset, listed in stock if not drawn.isdisjoint(listed)]
-        trees = painter.harvest(own, wet_dt1s(water_rule))
+        trees = painter.harvest(own, wet_dt1s(water_rule), learned)
         for ds1 in ds1s:
             lay = layouts[ds1]
             outdoor = draws_trees(lay)
@@ -205,3 +206,5 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
           f"{sum(r[2] for r in report)} entities, {sum(r[3] for r in report)} with painted tree lines, {sum(r[4] for r in report)} water planes; {sum(r[1] for r in report)} of {sum(r[0] for r in report)} tiles "
           f"have a key no stock preset draws; {len(presets) - len(on_d2r)} presets on PD2 tiles wait for stand-ins (LP4/LP5); "
           f"{len(bare)} waypoint objects have no stock waypoint ({', '.join(sorted(bare)) or 'none'})")
+    from .passes import edges_walls
+    edges_walls.CONTEXT.clear()  # the wall pass's contexts hold this run's layouts and presets: nothing outlives apply()

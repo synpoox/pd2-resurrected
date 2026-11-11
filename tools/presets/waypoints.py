@@ -1,14 +1,13 @@
 """Waypoint objects and the stock waypoints placed on them."""
 from __future__ import annotations
 
-import copy
 import struct
 import zlib
 
 from pd2_levels import object_list
 
 from .consts import TILE, Key
-from .entity import _transform
+from .entity import _transform, clone
 from .kit import Kit
 from .layout import Layout
 
@@ -45,7 +44,7 @@ def place_waypoints(lay: Layout, kit: Kit, seed: str, objects: list[tuple[str, f
         src, ents = options[zlib.crc32(f"{seed}:waypoint:{x}:{z}".encode()) % len(options)]
         used.add(src)
         for e, dx, dz in ents:
-            e = copy.deepcopy(e)
+            e = clone(e)
             _transform(e)["position"]["x"], _transform(e)["position"]["z"] = x + dx, z + dz
             entities.append(e)
     return entities, used

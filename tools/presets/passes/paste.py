@@ -1,8 +1,7 @@
 """Paste the stock rooms that match the layout whole: their pieces, sculpted terrain, water and bridges."""
-import copy
 
 from ..consts import TILE
-from ..entity import _transform
+from ..entity import _transform, clone
 from ..rooms import rooms
 
 ORDER = 100
@@ -17,7 +16,7 @@ def run(b) -> None:
             if not e or "components" not in e or _transform(e) is None:  # some stock terrain is empty
                 continue
             piece = e is not preset.get("terrain")
-            e = copy.deepcopy(e)
+            e = clone(e)
             _transform(e)["position"]["x"] += ox * TILE
             _transform(e)["position"]["z"] += oy * TILE
             if piece:

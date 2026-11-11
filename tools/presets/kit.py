@@ -1,7 +1,6 @@
 """The Kit: the stock pieces harvested per tile key."""
 from __future__ import annotations
 
-import copy
 import dataclasses
 import functools
 from dataclasses import dataclass, field
@@ -9,7 +8,7 @@ from typing import Callable
 
 from . import hooks
 from .consts import GROUND, TILE, Key
-from .entity import _transform, is_waypoint, room_terrain
+from .entity import _transform, clone, is_waypoint, room_terrain
 from .layout import Layout, draws_trees
 
 
@@ -41,6 +40,15 @@ class Kit:
     waypoints: dict[Key | str, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
     outdoor: set[int] = field(default_factory=set)  # the sources whose stock DS1 draws trees (draws_trees())
     flags: dict[Key, bytes] = field(default_factory=dict)  # a key's subtile flags in the first stock DS1 that has it
+    memo: dict = field(default_factory=dict)  # tests of an instance's pieces, once per kit: see tested()
+
+    def tested(self, kind: str, ents: list, fn: Callable[[list], bool]) -> bool:
+        """fn(ents), once per kit instance and kind (json.dumps and regex tests, asked again in every DS1). The memo is
+        the kit's and goes with it (dataclasses.replace shares it); it holds `ents`, so the id stays theirs."""
+        held = self.memo.get((kind, id(ents)))
+        if held is None or held[0] is not ents:
+            held = self.memo[kind, id(ents)] = (ents, fn(ents))
+        return held[1]
 
     def add(self, lay: Layout, preset: dict, keep: set[Key], objects: list[tuple[str, float, float]] = (),
             floor: set | None = None, alike: frozenset[str] = frozenset(), outdoor: bool | None = None) -> None:
@@ -83,7 +91,7 @@ class Kit:
                     continue
                 g = piece.ground_h
                 if g:
-                    e = copy.deepcopy(e)
+                    e = clone(e)
                     _transform(e)["position"]["y"] -= g
                 per[c].append((e, x - c[0] * TILE, z - c[1] * TILE))
         for c, ents in per.items():

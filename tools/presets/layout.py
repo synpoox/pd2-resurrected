@@ -18,6 +18,7 @@ class Layout:
     keys: dict[tuple[int, int], Key]  # (x, y) -> key; tiles with nothing are left out
     flags: dict[tuple[int, int], bytes] = field(default_factory=dict)  # (x, y) -> its layers' subtile flags, OR'd
     unwalkable: frozenset = frozenset()  # the tiles a wall or floor cell marks unwalkable (UNWALKABLE)
+    walk: set | None = field(default=None, compare=False, repr=False)  # walkable(), once: see walk_set()
 
 
 def layout(data: bytes, dt1s: dict[str, dict], copies: dict[Tile, Tile] | None = None) -> Layout:
@@ -31,21 +32,28 @@ def layout(data: bytes, dt1s: dict[str, dict], copies: dict[Tile, Tile] | None =
     grids = [struct.unpack_from(f"<{n}I", data, o + k * n * 4) for k in range(2 * walls + floors)]
     order = sorted(dt1s)
 
+    named: dict[tuple, Tile] = {}  # each distinct (orientation, main, sub) is looked up once
+
     def tile(orientation: int, cell: int) -> Tile:
         t = (orientation, cell >> 20 & 0x3F, cell >> 8 & 0xFF)
+        if t in named:
+            return named[t]
         # a copied tile is named from its own PD2 DT1 first: an earlier DT1 holding the same index would steal it
         # (Zhar Library's arcane walls became palace cellar tiles, #678 review)
-        return (next((p for p in order if t in dt1s[p] and (p, *t) in copies), None)
-                or next((p for p in order if t in dt1s[p]), None), *t)
-    keys, flags = {}, {}
+        named[t] = (next((p for p in order if t in dt1s[p] and (p, *t) in copies), None)
+                    or next((p for p in order if t in dt1s[p]), None), *t)
+        return named[t]
+    keys, flags, ored = {}, {}, {}
     for i in range(n):
         wall = tuple(tile(grids[2 * k + 1][i] & 0xFF, grids[2 * k][i]) for k in range(walls) if grids[2 * k][i])
         floor = tuple(tile(0, g[i]) for g in grids[2 * walls:] if g[i])
         if wall or floor:
             keys[(i % w, i // w)] = ("w", tuple(copies.get(t, t) for t in wall)) if wall else \
                 ("f", tuple(copies.get(t, t) for t in floor))
-            f = [dt1s[t[0]][t[1:]] for t in wall + floor if t[0]]
-            flags[(i % w, i // w)] = bytes(functools.reduce(lambda u, v: [x | y for x, y in zip(u, v)], f, bytes(25)))
+            if (both := wall + floor) not in ored:
+                f = [dt1s[t[0]][t[1:]] for t in both if t[0]]
+                ored[both] = bytes(functools.reduce(lambda u, v: [x | y for x, y in zip(u, v)], f, bytes(25)))
+            flags[(i % w, i // w)] = ored[both]
     cells = [grids[2 * k] for k in range(walls)] + list(grids[2 * walls:])
     unwalkable = frozenset((i % w, i // w) for i in range(n) if any(g[i] & UNWALKABLE for g in cells))
     return Layout(w, h, keys, flags, unwalkable)
@@ -67,6 +75,13 @@ def walkable(lay: Layout) -> set[tuple[int, int]]:
     """The DS1's walkable floor: floor tiles (no wall), not marked unwalkable, not mostly blocked (water)."""
     return {c for c, k in lay.keys.items() if k[0] == "f" and c not in lay.unwalkable
             and not painter.blocked_floor(lay.flags.get(c, bytes(25)))}
+
+
+def walk_set(lay: Layout) -> set[tuple[int, int]]:
+    """walkable(lay), made once and kept on the layout (a stock layout is asked in every DS1). Do not change it."""
+    if lay.walk is None:
+        lay.walk = walkable(lay)
+    return lay.walk
 
 
 def draws_trees(lay: Layout) -> bool:

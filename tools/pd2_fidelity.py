@@ -234,6 +234,7 @@ def legacy_edges(lay: presets.Layout, heights: dict[str, dict]) -> dict[str, dic
             if t[0]:
                 use.setdefault(t[0], {}).setdefault(t[1:], 0)
                 use[t[0]][t[1:]] += 1
+    typical: dict[tuple, int] = {}
     for c, (kind, tiles) in lay.keys.items():
         best: dict[str, tuple[int, tuple]] = {}
         if kind == "w":
@@ -245,7 +246,9 @@ def legacy_edges(lay: presets.Layout, heights: dict[str, dict]) -> dict[str, dic
                     if k not in best or px > best[k][0]:
                         best[k] = (px, t)
         for k, (px, t) in best.items():
-            out[k][c] = expected_class(k, t, wall_px(heights[t[0]], use.get(t[0]), px) or px)
+            if (t[0], px) not in typical:  # wall_px once per DT1 and own height, not per tile
+                typical[t[0], px] = wall_px(heights[t[0]], use.get(t[0]), px)
+            out[k][c] = expected_class(k, t, typical[t[0], px] or px)
     water = {c for c, (kind, tiles) in lay.keys.items() if kind == "f" and any(
         classify(t[0], 0, "floor", painter.blocked_floor(lay.flags.get(c, bytes(25)))) == "liquid" for t in tiles)}
     for c in water:

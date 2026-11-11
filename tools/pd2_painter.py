@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import bisect
 import collections
-import copy
 import functools
 import json
 import math
 import re
 import zlib
+
+from presets.entity import clone
 
 TREE = re.compile(r"tree_wall|treewall|treeline|small_cluster|_trees_")  # treelines, tree walls, foliage tree models
 SPACING = 9  # subtiles between tree origins when the stock has fewer than two trees
@@ -109,30 +110,45 @@ def lines(walls: set) -> set:
     return set().union(*(c for c in components(walls, AROUND) if len(c) >= LINE))
 
 
-def harvest(stock, wet: frozenset = frozenset()) -> tuple[dict, float] | None:
+def harvest(stock, wet: frozenset = frozenset(), learned: dict | None = None) -> tuple[dict, float] | None:
     """The tree kit from stock [(Layout, preset)]: {(bucket, distance): [(entity, dx, dz, reach, dependencies)]} and
-    the stock spacing (median nearest-neighbour, subtiles); None when the stock has no tree. `wet`: see water()."""
+    the stock spacing (median nearest-neighbour, subtiles); None when the stock has no tree. `wet`: see water().
+    `learned`: the caller's memo, as the same stock room's trees are alike in every tile set whose stock holds it (one
+    dict per merge run: it keeps the presets alive, and holds nothing once the caller drops it)."""
     out, gaps = collections.defaultdict(list), []
+    learned = {} if learned is None else learned
     for lay, preset in stock:
-        dist = nearest_blocked(lay)
-        reach, src = nearest(subtiles(playable(lay, wet)), lay.width * 5, lay.height * 5, 10 ** 6)
-        pts = []
-        for e in preset["entities"]:
-            t = transform(e)
-            if t is None or not is_tree(e):
-                continue
-            p = (int(t["position"]["x"] / 2), int(t["position"]["z"] / 2))  # 10 units per tile, 5 subtiles
-            if not (0 <= p[0] < lay.width * 5 and 0 <= p[1] < lay.height * 5):
-                continue
-            pts.append(p)
-            out[(bucket(p, src.get(p)), dist.get(p, CAP))].append(
-                (e, t["position"]["x"] - p[0] * 2, t["position"]["z"] - p[1] * 2, reach.get(p, 10 ** 6),
-                 preset["dependencies"]))
-        gaps += [min(math.dist(a, b) for b in pts if b != a) for a in pts if len(set(pts)) > 1]
+        held = learned.get((id(lay), id(preset), wet))
+        if held is None:
+            held = learned[id(lay), id(preset), wet] = (lay, preset, *_harvest_one(lay, preset, wet))
+        for k, item in held[2]:
+            out[k].append(item)
+        gaps += held[3]
     if not out:
         return None
     gaps.sort()
     return dict(out), gaps[len(gaps) // 2] if gaps else SPACING
+
+
+def _harvest_one(lay, preset, wet) -> tuple[list, list]:
+    """One stock room's trees [((bucket, distance), item)] and their nearest-neighbour gaps."""
+    out, gaps = [], []
+    dist = nearest_blocked(lay)
+    reach, src = nearest(subtiles(playable(lay, wet)), lay.width * 5, lay.height * 5, 10 ** 6)
+    pts = []
+    for e in preset["entities"]:
+        t = transform(e)
+        if t is None or not is_tree(e):
+            continue
+        p = (int(t["position"]["x"] / 2), int(t["position"]["z"] / 2))  # 10 units per tile, 5 subtiles
+        if not (0 <= p[0] < lay.width * 5 and 0 <= p[1] < lay.height * 5):
+            continue
+        pts.append(p)
+        out.append(((bucket(p, src.get(p)), dist.get(p, CAP)),
+                    (e, t["position"]["x"] - p[0] * 2, t["position"]["z"] - p[1] * 2, reach.get(p, 10 ** 6),
+                     preset["dependencies"])))
+    gaps += [min(math.dist(a, b) for b in pts if b != a) for a in pts if len(set(pts)) > 1]
+    return out, gaps
 
 
 def water(lay, wet: frozenset = frozenset()) -> set:
@@ -204,16 +220,45 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs,
         return o[3] <= reach[p] and (id(o) in low
                                      or not any(shades((p[0] + dx, p[1] + dz)) for dx, dz in footprint(o)))
 
+    def order(d: int) -> list[int]:  # the distances, nearest to d first
+        return sorted(range(CAP + 1), key=lambda dd: abs(dd - d))
+    orders = {d: order(d) for d in range(CAP + 1)}
+
     def run(sub: dict, singles: dict, grid) -> list:
         ents, cell = [], max(1, int(spacing))
+        # fits() per option, for the options of every (bucket, distance): the reach test first, and the shade test
+        # once per footprint and subtile
+        prep = {k: (min(o[3] for o in v), [(o, o[3], id(o) in low, footprint(o)) for o in v]) for k, v in sub.items() if v}
+        held: dict[tuple, list] = {}  # (bucket, distance) -> the distances, nearest first, that hold options
+
+        def holding(b: int, d: int) -> list:
+            if (b, d) not in held:
+                held[b, d] = [dd for dd in orders.get(d) or order(d) if (b, dd) in prep]
+            return held[b, d]
         for p in cand:
             g = (p[0] // cell, p[1] // cell)
             if any(math.dist(p, o) < spacing for gx, gy in AROUND for o in grid[(g[0] + gx, g[1] + gy)]):
                 continue
             b, d = bucket(p, src.get(p)), dist.get(p, CAP)
-            ok = ([o for o in sub.get((b, dd), ()) if fits(p, o)]  # no closer to the path than the stock tree
-                  for dd in sorted(range(CAP + 1), key=lambda dd: abs(dd - d)))
-            options = next((oo for oo in ok if oo), None)
+            r, shaded = reach[p], {}
+
+            def ok(key):
+                e = prep.get(key)
+                if e is None or e[0] > r:
+                    return []
+                out = []
+                for o, o3, lo, fp in e[1]:
+                    if o3 > r:
+                        continue
+                    if not lo:
+                        s = shaded.get(fp)
+                        if s is None:
+                            s = shaded[fp] = any(shades((p[0] + dx, p[1] + dz)) for dx, dz in fp)
+                        if s:
+                            continue
+                    out.append(o)
+                return out
+            options = next((oo for oo in (ok((b, dd)) for dd in holding(b, d)) if oo), None)
             if not options:
                 continue
             k0 = zlib.crc32(f"{seed}:{p}:t".encode())
@@ -223,7 +268,7 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs,
                 if not small:
                     continue
                 pick = small[k0 % len(small)]
-            e = copy.deepcopy(pick[0])
+            e = clone(pick[0])
             t = transform(e)
             t["position"]["x"], t["position"]["z"] = p[0] * 2 + pick[1], p[1] * 2 + pick[2]
             for c in e["components"]:  # a wall's transparency names its tile

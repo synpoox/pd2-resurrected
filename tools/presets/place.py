@@ -1,7 +1,6 @@
 """Place each tile's pick of its key's kit instances."""
 from __future__ import annotations
 
-import copy
 import json
 import re
 import zlib
@@ -9,7 +8,7 @@ import zlib
 import pd2_painter as painter
 
 from .consts import LIKE, TILE, TREE_LAYER, Key
-from .entity import _transform
+from .entity import _transform, clone
 from .kit import Kit
 from . import pillars
 from .layout import Layout
@@ -52,8 +51,8 @@ def like(lay: Layout, kit: Kit, seed: str = "") -> dict[tuple[int, int], Key]:
     pillar stands on one of its 8 neighbours (#714: Torture Halls' flesh pillars). A 3x3 block of such tiles can still
     stand up to four, and a 1xN run one every other tile."""
     drawn = {t[0] for k in lay.keys.values() for t in k[1] if t}
-    pool = [(k, kit.flags.get(k, bytes(25)), sum(bool(o[1]) for o in v), any(pillars.holds(kit, o[1]) for o in v),
-             any(carries(o[1]) for o in v))
+    pool = [(k, kit.flags.get(k, bytes(25)), sum(bool(o[1]) for o in v), any(kit.tested("holds", o[1], lambda e: pillars.holds(kit, e)) for o in v),
+             any(kit.tested("carries", o[1], carries) for o in v))
             for k, v in kit.instances.items()
             if len(k[1]) == 1 and k[1][0] and k[1][0][1] == LIKE and k[1][0][0] in drawn and any(o[1] for o in v)]
     stand = pillars.stand_keys(kit)
@@ -96,6 +95,10 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
     entities, used, missing, lone = [], set(), 0, []
     kit = pillars.with_stand_ins(kit, pillars.standing(kit, {t[0] for k in lay.keys.values() for t in k[1] if t}))
     borrow = like(lay, kit, seed)
+    def test(kind: str, ents: list, fn) -> bool:  # the json.dumps-based tests, once per kit instance
+        return kit.tested(kind, ents, fn)
+    has_tree = lambda ents: any(painter.is_tree(e) for e, _, _ in ents)  # noqa: E731
+    all_fade = lambda ents: all(fades(e) for e, _, _ in ents)  # noqa: E731
 
     def one(x: int, y: int, key: Key, salt: str, at: tuple[float, float] = (0.0, 0.0),
             only: tuple[float, float] | None = None) -> bool:
@@ -103,13 +106,13 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
         if not options:
             return False
         if key[1] and all(t and t[1] == TREE_LAYER for t in key[1]):
-            options = [o for o in options if not structure(o[1])] or options
+            options = [o for o in options if not test("s", o[1], structure)] or options
         if salt == ":like":  # a borrowed pillar key: the instances that hold the pillar
             options = [o for o in options if pillars.holds(kit, o[1])] or options
         if (x, y) in far:
-            options = [o for o in options if any(painter.is_tree(e) for e, _, _ in o[1])] or options
+            options = [o for o in options if test("t", o[1], has_tree)] or options
         if (x, y) in near:
-            options = [o for o in options if all(fades(e) for e, _, _ in o[1])]
+            options = [o for o in options if test("f", o[1], all_fade)]
             if not options:
                 return True
         if (x, y) in edge:
@@ -123,7 +126,7 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
                 keep = min(held, key=lambda p: (p[1] - cx) ** 2 + (p[2] - cz) ** 2)
                 ents = [p for p in ents if p is keep or p not in held]
         for e, dx, dz in ents:
-            e = copy.deepcopy(e)
+            e = clone(e)
             t = _transform(e)
             t["position"]["x"], t["position"]["z"] = x * TILE + dx + at[0], y * TILE + dz + at[1]
             for c in e["components"]:  # a wall's transparency names its tile
@@ -146,7 +149,8 @@ def place(lay: Layout, kit: Kit, seed: str, edge: frozenset = frozenset(), near:
                 lone.append((x, y, k))
                 continue
             c = pillars.centre(lay.flags.get((x, y), bytes(25))) or (TILE / 2, TILE / 2)
-            pillar = any(pillars.holds(kit, o[1]) and not carries(o[1]) for o in kit.instances[k])  # only a pillar key (no wall) is cut to one column:
+            pillar = any(kit.tested("holds", o[1], lambda e: pillars.holds(kit, e))
+                         and not kit.tested("carries", o[1], carries) for o in kit.instances[k])  # only a pillar key (no wall) is cut to one column:
             alone = [one(x, y, k, ":like", (0.0, 0.0), c if pillar else None)]  # a wall's own row stays whole
         missing += not alone
     crowd: dict[tuple[int, int], int] = {}  # pillar-model pieces per tile

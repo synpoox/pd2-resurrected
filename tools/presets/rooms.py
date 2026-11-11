@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from .consts import GROUND, ROOM_BARE, ROOM_MATCH, ROOM_MIN, SINK, TILE, Key
-from .layout import Layout, walkable
+from .layout import Layout, walk_set
 
 
 def rooms(lay: Layout, stock: list[tuple[Layout, dict]]) -> tuple[list[tuple[int, int, int]], set]:
@@ -10,13 +10,13 @@ def rooms(lay: Layout, stock: list[tuple[Layout, dict]]) -> tuple[list[tuple[int
     at: dict[Key, list] = {}
     for c, k in lay.keys.items():
         at.setdefault(k, []).append(c)
-    found, walk = [], walkable(lay)
+    found, walk = [], walk_set(lay)
     for n, (s, _) in enumerate(stock):
         items = list(s.keys.items())
         if len(items) < ROOM_MIN:
             continue
         (ax, ay), anchor = min(items, key=lambda it: len(at.get(it[1], ())) or 10 ** 9)
-        sw = walkable(s)
+        sw = walk_set(s)
         misses = len(items) - ROOM_MATCH * len(items)
         for px, py in at.get(anchor, ()):
             ox, oy = px - ax, py - ay
