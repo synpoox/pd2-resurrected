@@ -112,34 +112,76 @@ class RunTests(unittest.TestCase):
 
 
 class WallsRuleTests(unittest.TestCase):
-    """A `walls:<PD2 DT1>` line (#826): the PD2 DT1's wall tiles take pieces only off stock wall tiles of the D2R DT1."""
+    """A `walls:<PD2 DT1>` line (#826): the PD2 DT1's cells take pieces only off stock wall tiles of the D2R DT1."""
     PD2 = ("pd2assets/x.dt1", 1, 0, 0)
 
-    def run_pass(self, walls):
-        piece = lambda m: {"dependencies": {}, "entities": [entity(f"act2/{m}", 26.0, 26.0)]}
-        a = SimpleNamespace(keys={(2, 2): ("w", (("act2/a/wall.dt1", 1, 0, 0),))})
-        c = SimpleNamespace(keys={(2, 2): ("w", (("act2/b/wall.dt1", 1, 0, 0),))})
+    def piece(self, folder, m):
+        return {"dependencies": {}, "entities": [entity(f"{folder}/{m}", 26.0, 26.0)]}
+
+    def tile(self, dt1):
+        return SimpleNamespace(keys={(2, 2): ("w", ((dt1, 1, 0, 0),))})
+
+    def run_pass(self, walls, kind="wall", own=None, extra=()):
+        a, c = self.tile("act2/a/wall.dt1"), self.tile("act2/b/wall.dt1")
         lay = SimpleNamespace(keys={(0, 0): ("w", (self.PD2,))})
-        stock = [(a, piece("wall_low")), (c, piece("wall_low2"))]
-        b = SimpleNamespace(seed="x.ds1", entities=[], loose=[], stock=stock, depend=lambda d: None)
-        W.CONTEXT["x.ds1"] = ctx(stock, lay.keys)
+        mine = own if own is not None else [(a, self.piece("act2", "wall_low")), (c, self.piece("act2", "wall_low2"))]
+        b = SimpleNamespace(seed="x.ds1", entities=[], loose=[], stock=mine, depend=lambda d: None)
+        W.CONTEXT["x.ds1"] = ctx(mine + list(extra), lay.keys)
         W.CONTEXT["x.ds1"].legacy, W.CONTEXT["x.ds1"].walls = lay, walls
         try:
-            with mock.patch("pd2_fidelity.legacy_edges", return_value=edges(wall={(0, 0): "low"})),                     mock.patch("pd2_fidelity.tile_type", return_value="wall"), mock.patch.object(W, "walkable", return_value=set()):
+            with mock.patch("pd2_fidelity.legacy_edges", return_value=edges(**{kind: {(0, 0): "low"}})),                     mock.patch("pd2_fidelity.tile_type", return_value=kind), mock.patch.object(W, "walkable", return_value=set()):
                 W.run(b)
         finally:
             W.CONTEXT.pop("x.ds1", None)
-        return [W.model(e).rsplit("/", 1)[1] for e in b.loose]
+        return [W.model(e).split("/", 5)[-2:] and "/".join(W.model(e).split("/")[-2:]) for e in b.loose]
 
     def test_the_line_picks_the_piece_off_its_d2r_dt1(self):
-        self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act2/b/wall.dt1"}), ["wall_low2.model"])
-        self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act2/a/wall.dt1"}), ["wall_low.model"])
+        self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act2/b/wall.dt1"}), ["act2/wall_low2.model"])
+        self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act2/a/wall.dt1"}), ["act2/wall_low.model"])
 
     def test_a_d2r_dt1_with_no_wall_piece_leaves_the_tile_bare(self):
         self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act2/c/wall.dt1"}), [])
 
     def test_a_line_for_another_dt1_changes_nothing(self):
         self.assertEqual(self.run_pass({"pd2assets/y.dt1": "act2/c/wall.dt1"}), self.run_pass({}))
+
+    def test_a_line_fills_cliff_and_pillar_cells_on_a_map_with_no_wall_edges(self):
+        for kind in ("cliff", "pillar"):
+            self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act2/b/wall.dt1"}, kind), ["act2/wall_low2.model"], kind)
+            self.assertEqual(self.run_pass({}, kind), [], kind)  # without the line the pass has no wall edges to fill
+
+    def test_the_maps_own_stock_comes_before_other_families(self):
+        other = (self.tile("act2/b/wall.dt1"), self.piece("act1", "wall_low"))
+        self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act2/b/wall.dt1"}, extra=[other]), ["act2/wall_low2.model"])
+
+    def test_a_line_takes_a_piece_of_another_family_when_the_own_stock_has_none(self):
+        other = (self.tile("act1/z/wall.dt1"), self.piece("act1", "wall_low"))
+        self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act1/z/wall.dt1"}, extra=[other]), ["act1/wall_low.model"])
+
+
+class CheckWallsTests(unittest.TestCase):
+    """check_walls: a `walls:` line must have cells to fill and a wall piece to fill them with."""
+    def context(self, tile_dt1="pd2assets/x.dt1", stock_dt1="act2/b/wall.dt1"):
+        lay = SimpleNamespace(keys={(0, 0): ("w", ((tile_dt1, 1, 0, 0),))})
+        stock = [(SimpleNamespace(keys={(2, 2): ("w", ((stock_dt1, 1, 0, 0),))}),
+                  {"dependencies": {}, "entities": [entity("act2/wall_low", 26.0, 26.0)]})]
+        return W.Context(lay, defaultdict(dict), BOXES.get, lambda p: [], stock)
+
+    def check(self, walls, c):
+        with mock.patch("pd2_fidelity.tile_type", return_value="cliff"),                 mock.patch("pd2_fidelity.model_type", return_value="wall"),                 mock.patch("pd2_fidelity.hd_class", return_value="low"),                 mock.patch("pd2_coverage.boxes", return_value=[(0, 3, 0, 3, 2, 3)]),                 mock.patch("pd2_coverage.footprint", return_value={(2, 2)}):
+            W._INDEX.clear()
+            W.check_walls(walls, [c])
+
+    def test_a_line_with_cells_and_a_piece_passes(self):
+        self.check({"pd2assets/x.dt1": "act2/b/wall.dt1"}, self.context())
+
+    def test_a_pd2_dt1_with_no_cell_is_an_error(self):
+        with self.assertRaisesRegex(ValueError, "pd2assets/void.dt1"):
+            self.check({"pd2assets/void.dt1": "act2/b/wall.dt1"}, self.context())
+
+    def test_a_d2r_dt1_with_no_harvested_piece_is_an_error(self):
+        with self.assertRaisesRegex(ValueError, "act2/c/wall.dt1"):
+            self.check({"pd2assets/x.dt1": "act2/c/wall.dt1"}, self.context())
 
 
 class IndexTests(unittest.TestCase):

@@ -12,7 +12,9 @@ used. The fallback past the tile set's own stock keeps to the model folders that
 family): a tile with no such piece stays bare rather than get another act's wall. Pieces of the wrong class on a tile
 that gets a replacement are removed, unless one is the only cover on a cliff, pillar, treeline or fence tile. `act4/mesa/inv_wall` is invisible
 in legacy and stays bare. A `walls:<PD2 DT1>` line of merge/presets-hd.d (#826) makes the wall tiles drawn from that PD2 DT1
-(which the kit leaves as nothing) take their pieces only from stock wall tiles of the named D2R DT1. The ground a wall stands on is wall_y(); floor_height (#742, ORDER 900) then lifts it with the plane under its tile.
+(which the kit leaves as nothing) take their pieces only from stock wall tiles of the named D2R DT1, of any family. Such a
+line takes that DT1's cells of the edge types wall, cliff and pillar (RULED), whatever fidelity types them, and the pass
+runs for them even on a map with no legacy "wall" edges. The ground a wall stands on is wall_y(); floor_height (#742, ORDER 900) then lifts it with the plane under its tile.
 
 The pass needs what only the merge knows (the legacy-named layout, DT1 heights, D2R's model boxes): apply() calls
 configure() per DS1. A build with no configure() runs no wall pass.
@@ -180,12 +182,58 @@ def trim(b, ctx: Context, legacy: dict) -> list[dict]:
     return keep
 
 
+RULED = ("wall", "cliff", "pillar")  # the edge types a `walls:` line takes the cells of its PD2 DT1 in
+
+
+def ruled_cells(ctx: Context, edges: dict, legacy: dict) -> set:
+    """Adds to `legacy` (tile -> height class) the cells of the edge types RULED that a tile of a PD2 DT1 with a
+    `walls:` line sits on, whatever type the fidelity scorer gives them (hellcaves DT1 walls are cliffs there). Returns
+    those cells."""
+    out: set = set()
+    if not ctx.walls:
+        return out
+    for kind in RULED:
+        for c, cls in edges[kind].items():
+            if any(t[0] in ctx.walls for t in ctx.legacy.keys[c][1]):
+                legacy.setdefault(c, cls)
+                out.add(c)
+    return out
+
+
+def filtered(memo: dict, borrow: str, o: int, which: str, source: dict) -> list[Option]:
+    """The options of orientation `o` in `source` off the stock wall tiles of the D2R DT1 `borrow`, one list each."""
+    key = (borrow, o, which)
+    if key not in memo:
+        memo[key] = [x for x in source.get(o, []) if x.dt1 == borrow]
+    return memo[key]
+
+
+def check_walls(walls: dict, contexts: list[Context]) -> None:
+    """The `walls:` lines must each fill something (#826): the PD2 DT1 has a tile of an edge type in RULED in some DS1
+    (with an orientation a piece is indexed by), and the wall pass harvested a wall piece off the named D2R DT1. A
+    ValueError names the lines that do not."""
+    import pd2_fidelity as fid
+    orient = {*UPPER, *LOWER_AS}
+    drawn = {t[0] for ctx in contexts for _, tiles in ctx.legacy.keys.values() for t in tiles
+             if t[0] in walls and t[1] in orient and fid.tile_type(t) in RULED}
+    if idle := sorted(set(walls) - drawn):
+        raise ValueError(f"walls lines for PD2 DT1 with no wall, cliff or pillar tile any PD2-only preset draws: "
+                         f"{', '.join(idle)}")
+    if contexts:
+        harvested = {x.dt1 for opts in index(contexts[0].stock, contexts[0]).values() for x in opts}
+        if none := sorted(d for d in set(walls.values()) if d not in harvested):
+            raise ValueError(f"walls lines name D2R DT1 none of the harvested stock draws a wall piece from: "
+                             f"{', '.join(none)}")
+
+
 def run(b) -> None:
     ctx = CONTEXT.get(b.seed)
     if ctx is None:
         return
     import pd2_fidelity as fid
-    legacy = fid.legacy_edges(ctx.legacy, ctx.heights)["wall"]
+    edges = fid.legacy_edges(ctx.legacy, ctx.heights)
+    legacy = dict(edges["wall"])
+    ruled = ruled_cells(ctx, edges, legacy)
     if not legacy:
         return
     b.loose = trim(b, ctx, legacy)
@@ -197,7 +245,8 @@ def run(b) -> None:
         return
     own = index(b.stock, ctx)
     family = families(b.stock)
-    every = {o: [x for x in opts if folder(x.ent) in family] for o, opts in index(ctx.stock, ctx).items()}
+    whole = index(ctx.stock, ctx)
+    every = {o: [x for x in opts if folder(x.ent) in family] for o, opts in whole.items()}
     blocked = walkable(ctx.legacy)
     covered: set = set()
     area, near, good = {}, collections.defaultdict(int), collections.defaultdict(set)
@@ -208,19 +257,21 @@ def run(b) -> None:
         good[k] = {c for c in run if c in hd.tops["wall"]}
     added: list[dict] = []
     classed: dict = {}
+    memo: dict = {}  # (D2R DT1, orientation, own or all) -> the options off that DT1, one list per pass run
     for c in sorted(bad):
         if c in covered:
             continue
-        tile = max((t for t in ctx.legacy.keys[c][1] if fid.tile_type(t) == "wall"),
+        tile = max((t for t in ctx.legacy.keys[c][1] if (t[0] in ctx.walls if c in ruled else fid.tile_type(t) == "wall")
+                    and fid.tile_type(t) is not None),
                    key=lambda t: ctx.heights[t[0]].get(t[1:], 0), default=None)
         if tile is None or tile[1] not in (*UPPER, *LOWER_AS):
             continue
         o = LOWER_AS.get(tile[1], tile[1])
-        want = legacy[c]
-        borrow = ctx.walls.get(tile[0])  # a `walls:` line: only pieces off that D2R DT1's wall tiles, none else
+        want = legacy[c] or "tall"  # a cliff or pillar cell can ask for no class
         mine, anyone = own.get(o, []), every.get(o, [])
-        if borrow:
-            mine, anyone = [x for x in mine if x.dt1 == borrow], [x for x in anyone if x.dt1 == borrow]
+        if borrow := ctx.walls.get(tile[0]):  # a `walls:` line: only pieces off that D2R DT1, of any family, none else
+            mine = filtered(memo, borrow, o, "own", own)
+            anyone = filtered(memo, borrow, o, "all", whole)
         choice = (pick(mine, want, c, bad, covered, blocked, b.seed, classed)
                   or pick(anyone, want, c, bad, covered, blocked, b.seed, classed))
         if choice is None:

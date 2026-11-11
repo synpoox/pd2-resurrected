@@ -121,12 +121,16 @@ def wall_pass(on_d2r: list, tiles: "Tiles", pd2_tiles: "Tiles", out_data: Path, 
         return json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
     heights = fidelity.Heights(out_data / "global" / "tiles", tiles_dir)
     far = far_off(d2r_data)
+    contexts = []
     for _, _, files, ds1s in on_d2r:
         for ds1 in ds1s:
             legacy = layout((out_data / "global" / "tiles" / ds1).read_bytes(),
                             {p: pd2_tiles[p] or tiles[p] for p in files})
-            edges_walls.configure(ds1, edges_walls.Context(legacy, heights, lambda m: found.get(coverage.fnv(m)),
-                                                           prefab, stock, far, walls or {}))
+            contexts.append(edges_walls.Context(legacy, heights, lambda m: found.get(coverage.fnv(m)),
+                                                prefab, stock, far, walls or {}))
+            edges_walls.configure(ds1, contexts[-1])
+    if walls:
+        edges_walls.check_walls(walls, contexts)
 
 
 def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
