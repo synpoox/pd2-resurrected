@@ -106,7 +106,7 @@ def lvlprest_path(slot: int, slots_dir: Path | None = None, owner: str | None = 
     try:
         tc, ri = _toolkit()
         cfg = tc.load(None)
-        return Path(cfg.slot_dir(ri.check_slot(cfg, slot, owner))) / REL
+        return Path(cfg.slot_dir(ri.check_slot(cfg, slot, owner) if owner else ri.check_slot(cfg, slot))) / REL
     except Exception as e:  # the toolkit's ReleaseError and config errors
         raise ForceError(str(e)) from e
 
