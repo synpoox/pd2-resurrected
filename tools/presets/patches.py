@@ -18,8 +18,10 @@ def patches(lay: Layout, stock: list[tuple[Layout, dict]], tiles: set, far=lambd
     kit = Kit(far=far)
     for s, preset in stock:
         floor = {c for c, k in s.keys.items() if k[0] == "f"}
-        for k in shapes:
-            kit.add(Layout(s.width, s.height, {c: patch(s.keys, c, *k) for c in s.keys}), preset, keep, floor=floor,
+        get = s.keys.get
+        for name, cells in shapes:  # patch() of every tile, inlined: the hottest line of the merge
+            around = {c: (name, tuple([get((c[0] + i, c[1] + j)) for i, j in cells])) for c in s.keys}
+            kit.add(Layout(s.width, s.height, around), preset, keep, floor=floor,
                     outdoor=draws_trees(s))
     return Layout(lay.width, lay.height, {c: next(k for k in ks if k in kit.instances)
                                           for c, ks in want.items() if any(k in kit.instances for k in ks)}), kit
