@@ -16,6 +16,7 @@ from __future__ import annotations
 import ast
 import contextlib
 import copy
+import errno
 import hashlib
 import io
 import json
@@ -149,13 +150,19 @@ def module_files(home: Path, module: str, imported: list[str]) -> list[Path]:
     return found + [f for a in imported for f in (d / f"{a}.py", d / a / "__init__.py") if f.is_file()]
 
 
-def sources(fn: Callable) -> list[Path]:
+def sources(fn: Callable, leave_out: tuple[Path, ...] = ()) -> list[Path]:
     """fn's module file and every module beside it that it imports, at any depth (a rule's code). A module inside a
     package brings the whole package (every .py under its top folder): relative imports and passes found by discovery
     are code the rule runs too (#754). An import in a module's main() is left out: a merge never runs a tool's command
     line (pd2_strings' imports pd2_merge, which would put every tool in every key). The data files in such a package
-    (not .py or .pyc) are part of the code too."""
+    (not .py or .pyc) are part of the code too. leave_out: files or folders that are neither listed nor followed (code
+    the caller knows its fn never runs, #870)."""
     todo, seen, data = [Path(sys.modules[fn.__module__].__file__)], set(), set()
+    skip = [os.path.normcase(os.path.abspath(x)) for x in leave_out]
+
+    def left_out(q: Path) -> bool:
+        n = os.path.normcase(os.path.abspath(q))
+        return any(n == x or n.startswith(x + os.sep) for x in skip)
 
     def package(d: Path) -> Path | None:  # the top folder of the package d is in, or None
         top = None
@@ -165,14 +172,15 @@ def sources(fn: Callable) -> list[Path]:
 
     while todo:
         p = todo.pop()
-        if p in seen:
+        if p in seen or left_out(p):
             continue
         seen.add(p)
         top = package(p.parent)
         if top is not None:
             todo += [q for q in top.rglob("*.py") if "__pycache__" not in q.parts]
             # the data files the package reads (presets/fence_kit.json) are code the rule runs too (#861)
-            data |= {q for q in top.rglob("*") if q.is_file() and q.suffix not in (".py", ".pyc") and "__pycache__" not in q.parts}
+            data |= {q for q in top.rglob("*") if q.is_file() and q.suffix not in (".py", ".pyc") and "__pycache__" not in q.parts
+                     and not left_out(q)}
         homes = {p.parent, top.parent} if top else {p.parent}
         tree = ast.parse(p.read_text("utf-8"))
         cli = {id(n) for d in tree.body if isinstance(d, ast.FunctionDef) and d.name == "main" for n in ast.walk(d)}
@@ -575,45 +583,66 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
             _scope = None
 
 
-def memo(cache: Path, key_: str, roots: dict[str, Path], compute: Callable[["Trace"], bytes], policy: Policy = Policy()
-         ) -> tuple[bytes, bool]:
-    """compute(trace) -> bytes, or replay the bytes a kept run of it returned under this key that saw what roots hold
-    now (the per-map scores of pd2_coverage, #854). Unlike rule(), nothing is hooked: compute reports every file it reads
-    with trace.see(path), because the readers it calls keep their own memory (a DT1 read for one map is not read again
-    for the next), so an audit of opens would miss them. Entries share rule()'s folders, manifests, origins and
-    policy (a PR keeps only in its scratch folder), so prune, sweep and the PR scratch cleanup cover them. (bytes, True)
-    on a hit."""
+def memo(cache: Path, key_: str, roots: dict[str, Path], compute: Callable[["Trace"], dict[str, bytes]],
+         policy: Policy = Policy()) -> tuple[dict[str, bytes], bool]:
+    """compute(trace) -> files (name -> bytes), or replay the files a kept run of it returned under this key that saw what
+    roots hold now (the per-map scores of pd2_coverage, #854). Entries are data only (a manifest of JSON and the files
+    beside it): nothing in one is run or unpickled on load (#870). Unlike rule(), nothing is hooked: compute reports every
+    file it reads with trace.see(path), because the readers it calls keep their own memory (a DT1 read for one map is not
+    read again for the next), so an audit of opens would miss them. Entries share rule()'s folders, manifests, origins and
+    policy (a PR keeps only in its scratch folder), so prune, sweep and the PR scratch cleanup cover them.
+    Single-flight, as rule(): a miss takes the key's lock (beside the kept folder, one per origin), looks again, and only
+    then computes, so two jobs that miss together score once. (files, True) on a hit."""
     top = _roots(roots)
     dest = policy.scratch if policy.scratch else cache if policy.write else None
     reads = [(cache / key_, policy.trusted)] + ([(policy.scratch / key_, None)] if policy.scratch else [])
-    for folder, trusted in reads:
-        for e in sorted(folder.iterdir()) if folder.is_dir() else []:
-            if ".tmp" in e.name or ".dead." in e.name:
-                continue
-            try:
-                m = json.loads((e / "manifest.json").read_text("utf-8"))
-                if trusted is not None and m.get("origin") not in trusted:
+
+    def replay() -> dict[str, bytes] | None:
+        for folder, trusted in reads:
+            for e in sorted(folder.iterdir()) if folder.is_dir() else []:
+                if ".tmp" in e.name or ".dead." in e.name:
                     continue
-                if all(_state(top, k) == v for k, v in m["reads"].items()):
-                    data = (e / "result.bin").read_bytes()
-                    used.append(e)
-                    os.utime(e)
-                    return data, True
-            except (OSError, ValueError, KeyError):
-                continue
-    t = Trace(roots)
-    data = compute(t)
-    if dest is None:
+                try:
+                    m = json.loads((e / "manifest.json").read_text("utf-8"))
+                    if trusted is not None and m.get("origin") not in trusted:
+                        continue
+                    if all(_state(top, k) == v for k, v in m["reads"].items()):
+                        data = {n: (e / "files" / n).read_bytes() for n in m["names"] if Path(n).name == n}
+                        if len(data) != len(m["names"]):
+                            continue
+                        used.append(e)
+                        os.utime(e)
+                        return data
+                except (OSError, ValueError, KeyError):
+                    continue
+        return None
+
+    if (got := replay()) is not None:
+        return got, True
+    if dest is None:  # nothing is kept: no one to wait for
+        return compute(Trace(roots)), False
+    with lock(dest.with_name(dest.name + ".locks") / f"{key_}.{policy.origin}"):
+        if (got := replay()) is not None:  # another run may have kept it between the first look and the lock
+            return got, True
+        t = Trace(roots)
+        data = compute(t)
+        _keep(dest / key_, t, data, policy)
         return data, False
+
+
+def _keep(home: Path, t: "Trace", data: dict[str, bytes], policy: Policy) -> None:
+    """Keep a memo run in home, whole or not at all."""
+    if any(Path(n).name != n or n.startswith(".") for n in data):
+        raise ValueError(f"memo file names must be plain: {sorted(data)}")
     m = {"reads": t.reads, "files": [], "removed": [], "dirs": [], "rmdirs": [], "stdout": "", "origin": policy.origin,
-         "bytes": len(data)}
-    home = dest / key_
+         "names": sorted(data), "bytes": sum(map(len, data.values()))}
     name = hashlib.sha256(json.dumps(m["reads"], sort_keys=True).encode()
                           + (b"" if policy.origin == "local" else policy.origin.encode())).hexdigest()[:16]
     tmp = home / f"{name}.tmp{os.getpid()}"
     try:
-        tmp.mkdir(parents=True)
-        (tmp / "result.bin").write_bytes(data)
+        (tmp / "files").mkdir(parents=True)
+        for n, b in data.items():
+            (tmp / "files" / n).write_bytes(b)
         (tmp / "manifest.tmp").write_text(json.dumps(m), "utf-8")
         os.replace(tmp / "manifest.tmp", tmp / "manifest.json")
         os.rename(tmp, home / name)
@@ -624,7 +653,6 @@ def memo(cache: Path, key_: str, roots: dict[str, Path], compute: Callable[["Tra
     finally:
         if tmp.exists():
             shutil.rmtree(tmp, ignore_errors=True)
-    return data, False
 
 
 def _build(gen: Path, home: Path, roots: dict[str, Path], run: Callable[[], None], policy: Policy) -> bool:
@@ -764,6 +792,12 @@ def note(path) -> None:
                 x.see(path)
 
 
+def adopt_reads(reads: dict) -> None:
+    """Hand reads a memo recorded (a sub-trace's) to the traces running now: a memo hit stands in for the reads it hid (#882)."""
+    for x in ([_trace] if _trace is not None else []) + _subs:
+        x.adopt(reads)
+
+
 def part_get(sc: Scope, key_: str) -> "dict | None":
     """Replay the part with this key whose reads still hold: its files are copied under generated/ and its reads join the
     rule's trace. Returns what part_put was given as `extra`, None on a miss."""
@@ -792,15 +826,19 @@ def part_get(sc: Scope, key_: str) -> "dict | None":
     return None
 
 
-def part_put(sc: Scope, key_: str, files: list[str], extra: dict, reads: dict) -> None:
+def part_put(sc: Scope, key_: str, files: list[str], extra: dict, reads: dict, made: "set[str]" = frozenset()) -> None:
     """Keep a part built just now: `files` (paths from generated/) as they are, `extra` (JSON) for part_get to return, and
-    `reads`, what it opened (a Trace's), less the folders its own files are made in."""
+    `reads`, what it opened (a Trace's), less any read of its own files and of `made` (paths from generated/ that other parts
+    write: another worker's output is not an input). A listing (`l:`) of a folder above the files stays (one of a folder the outputs sit in would see
+    sibling outputs); the existence (`f:`) of those folders goes: it depends on which part ran first."""
     if sc.dest is None:
         return
     gen, home = sc.roots["p"] / "generated", sc.dest / key_
-    outs = [f"p:generated/{f}" for f in files]
+    outs = {f"p:generated/{f}" for f in (*files, *made)}
+    dirs = {o.rsplit("/", i)[0] for o in outs for i in range(1, o.count("/") + 1)}  # the folders above the outputs
+    # the existence of those folders (os.mkdir's f: read, None or "dir") depends on which part ran first, not on an input
     keep = {k: v for k, v in reads.items()
-            if not any(o == (r := k.split(":", 1)[1]) or o.startswith(r + "/") for o in outs)}
+            if (r := k.split(":", 1)[1]) not in outs and not (k.startswith("f:") and r in dirs)}
     m = {"reads": keep, "files": sorted(files), "removed": [], "dirs": [], "rmdirs": [], "stdout": "", "extra": extra,
          "origin": sc.policy.origin, "bytes": sum((gen / f).stat().st_size for f in files)}
     name = sc.policy.origin
@@ -817,7 +855,7 @@ def part_put(sc: Scope, key_: str, files: list[str], extra: dict, reads: dict) -
         os.rename(tmp, home / name)
         used.append(home / name)
     except OSError as e:  # FileExistsError: another run kept the part meanwhile; anything else only costs a later hit
-        if not isinstance(e, FileExistsError):
+        if not isinstance(e, FileExistsError) and e.errno not in (errno.ENOTEMPTY, errno.EEXIST):  # POSIX: ENOTEMPTY
             print(f"warning: part not cached ({e})")
     finally:
         if tmp.exists():

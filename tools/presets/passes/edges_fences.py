@@ -1,13 +1,13 @@
-"""The fence pass (#736): a legacy fence tile (a wall layer of a fence DT1: pd2_fidelity.classify) stands as a whole,
+"""The fence pass (#736): a legacy fence tile (a wall layer of a fence DT1: pd2_tiles.classify) stands as a whole,
 low D2R fence piece laid along its run, in place of the per-tile kit's pick, which is a stock piece of whatever the
 stock tile drew there (a 17-unit palisade, a gate, a wall: Fortress's palisade, #686).
 
-- Material: every fence DT1 left (pd2_fidelity.classify: siege/fence, a row of wooden stakes; outdoors/fence and
+- Material: every fence DT1 left (pd2_tiles.classify: siege/fence, a row of wooden stakes; outdoors/fence and
   descend/fence, rail fences) is wooden, so the piece is a wooden fence (act3_spider_fences/fence_low_a01), never a
   rock or stone wall (the first cut took wildtemple_rockwalls/fence03 for wood: a rock wall). A stone fence DT1 would
-  need a stone family here. The piece is in fence_kit.json: a D2R fence model under TALL (4 units, pd2_coverage), so it
+  need a stone family here. The piece is in fence_kit.json: a D2R fence model under TALL (4 units, pd2_tiles), so it
   hides no walkable ground; its entity, box and dependencies come from the stock preset named there.
-- A fence DT1 whose walls are tall is no fence here (pd2_fidelity.TALL_FENCE: foregate, chain_walls, barset,
+- A fence DT1 whose walls are tall is no fence here (pd2_tiles.TALL_FENCE: foregate, chain_walls, barset,
   graveyrd, town/fence, stone_fence): classify still calls it a fence, but this pass leaves its tiles to the wall pass.
 - Run direction: a tile turns its piece along x or z, by the straight run of fence tiles through it (the longer); a
   tile with no longer run (a lone tile, or the elbow of an L) goes by its orientation (ALONG_Z). One piece per tile,
@@ -33,7 +33,7 @@ KIT = Path(__file__).resolve().parent.parent / "fence_kit.json"
 PIECE = "spider_run"
 # a tile with no longer run goes along z for the left-hand orientations (1 left wall, 4 and 5 the left corners, 8 the
 # left wall with a door), else x (2 right wall, 9 the right wall with a door: DT1 orientations as in the DT1 format
-# spec, measured on the PD2 DT1s in pd2_fidelity.py; 8 and 9 are the door variants of 1 and 2)
+# spec, measured on the PD2 DT1s in pd2_tiles.py; 8 and 9 are the door variants of 1 and 2)
 ALONG_Z = frozenset({1, 4, 5, 8})
 YAW_Z = {"x": 0.0, "y": -0.707106769, "z": 0.0, "w": 0.707106769}  # turns a piece's long x axis along z
 STAND = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}

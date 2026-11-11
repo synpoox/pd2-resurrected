@@ -106,5 +106,5 @@ def run(b) -> None:
         c = (int(t["position"]["x"] // TILE), int(t["position"]["z"] // TILE))
         if c not in b.taken:
             t["position"]["y"] += planes.get(_block(c), 0.0)
-        elif e.get("name") != "terrain":  # the scorer's pd2_coverage.plane_ground reads the mark; a room's terrain keeps its name
+        elif e.get("name") != "terrain":  # the scorer's pd2_tiles.plane_ground reads the mark; a room's terrain keeps its name
             e["name"] = ROOM_PIECE + (e.get("name") or "")

@@ -1,6 +1,6 @@
 """Ground height per DS1 tile (#742), derived from the legacy structure: the DS1 stores no height.
 
-A lower wall (orientation 16-19: the face of a cliff or terrace, see pd2_fidelity.LOWER_ORIENT) stands between a high
+A lower wall (orientation 16-19: the face of a cliff or terrace, see pd2_tiles.LOWER_ORIENT) stands between a high
 side and a low side. The camera looks up the map, so a face is seen from the low side, and the high ground lies behind
 it, toward smaller x and y (HIGH_SIDE). The walkable floor splits into regions (4-connected, walls cut them); each face
 asks its high region to stand STEP above its low region. The regions are then solved as a graph and the largest region of
@@ -22,7 +22,7 @@ STEP = 6.0  # HD units one cliff face lifts the ground: measured from D2R's stoc
 MAX_LEVELS = 2  # a region stands at most this many STEPs from the base
 MIN_REGION = 20  # a walkable region of fewer tiles is a doorway or a nook, not a terrace: it keeps its neighbour's level
 MIN_RUN = 3  # a face between two regions must run this many tiles, or it is a wall piece, not a cliff
-LOWER = frozenset(range(16, 20))  # pd2_fidelity.LOWER_ORIENT
+LOWER = frozenset(range(16, 20))  # pd2_tiles.LOWER_ORIENT
 FACE_ORIENT = frozenset({1, 2, 3, 4}) | LOWER  # the orientations that can hold a face: upper walls of a cliff, lower walls
 SIDES = {  # orientation -> (tiles behind the face: higher, tiles in front: lower); the camera looks up the map
     1: (((-1, 0),), ((1, 0),)), 16: (((-1, 0),), ((1, 0),)),
@@ -35,8 +35,8 @@ REACH = 4  # tiles: how far from a wall or a blocked liquid tile the nearest wal
 
 def faces(lay: Layout) -> dict[tuple[int, int], tuple]:
     """The tiles holding a cliff face; tile -> the (high, low) offsets of its orientation. The shared classifier
-    (pd2_fidelity.classify, #732) decides: a wall layer of type "cliff" in a face orientation counts; a lower wall (16-19)
-    of the plain "wall" type counts only where it is a real ledge (pd2_fidelity.cliff_cell: an upper wall over it in the
+    (pd2_tiles.classify, #732) decides: a wall layer of type "cliff" in a face orientation counts; a lower wall (16-19)
+    of the plain "wall" type counts only where it is a real ledge (pd2_tiles.cliff_cell: an upper wall over it in the
     same cell). Fences, water edges, invisible blockers and plain walls on their own are no ledge."""
     import pd2_tiles as fid  # imported here: it imports pd2_presets, which imports this package
     out = {}
