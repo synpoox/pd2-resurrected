@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import functools
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable, NamedTuple
 
 import pd2_dt1_copies as dt1_copies
 import pd2_painter as painter
@@ -117,13 +119,52 @@ def wall_pass(on_d2r: list, tiles: "Tiles", pd2_tiles: "Tiles", out_data: Path, 
                                                            prefab, stock, far))
 
 
-def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
-    """pd2_merge rule kind for merge/presets-hd.tsv and its folder presets-hd.d/ (see the module docstring)."""
+@dataclass
+class Plan:
+    """What apply() builds, from the tables alone (cheap, no DS1 read): the inputs, the rule, and the DS1 by tile set.
+    Picklable: a build worker (parallel.py) gets it and runs setup() itself."""
+    rule: Path
+    pd2_data: Path
+    d2r_data: Path
+    out_data: Path
+    sets: dict[str, str]
+    standins: dict[str, str | None]
+    water_rule: dict[str, str]
+    presets: list
+    on_d2r: list
+    groups: dict[str, list[str]]  # tile set -> its DS1, in the order the presets list them
+    terrain: dict
+
+
+class DS1Built(NamedTuple):
+    """What build_ds1 reports for one DS1 (its preset JSON is already written): (tiles, tiles with a key no stock preset
+    draws, entities, painted tree lines, water planes), and the waypoint objects with no stock waypoint."""
+    row: tuple[int, int, int, bool, int]
+    bare: list[str]
+
+
+@dataclass
+class State:
+    """setup()'s result: what every build_ds1 reads and none writes (memos aside: they only save work)."""
+    plan: Plan
+    layouts: dict
+    kit: Kit
+    stock: list
+    mod_classes: dict
+    prefab: Callable
+    water: dict
+    learned: dict = field(default_factory=dict)  # painter.harvest's memo: lives for this state only
+    trees: dict = field(default_factory=dict)  # tile set -> (its stock, its tree kit once a DS1 of it draws trees)
+    inside: Kit | None = None  # indoor(kit), made when a DS1 draws no trees
+
+
+def plan(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> Plan | None:
+    """Read the rule and the tables and check them; None (with a line) when D2R's presets or DT1 are not there."""
     sets, standins, water_rule = read_rule(rule)
     tiles_dir = d2r_data / "global" / "tiles"
     if not (d2r_data / PRESETS).is_dir() or not any(tiles_dir.rglob("*.dt1")):
         print(f"  presets-hd: skipped, no D2R presets or DT1 under {d2r_data} (dev builds run without; `{FETCH}`)")
-        return
+        return None
     presets = pd2_only_presets(out_data, len(load(d2r_data, "lvlprest").records()))
     # a preset on PD2 tiles is built once every PD2 DT1 it loads has a stand-in line (LP4/LP5); the others wait
     on_d2r = [p for p in presets if all(f in standins for f in p[2] if f.startswith("pd2assets/"))]
@@ -137,7 +178,17 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     if not terrain_src.is_file():
         raise ValueError(f"no {terrain_src}: run `{FETCH}`")
     terrain = json.loads(terrain_src.read_text("utf-8-sig"))["terrain"]
+    groups: dict[str, list[str]] = {}
+    for _, tile_set, _, ds1s in on_d2r:
+        groups.setdefault(tile_set, []).extend(ds1s)
+    return Plan(rule, pd2_data, d2r_data, out_data, sets, standins, water_rule, presets, on_d2r, groups, terrain)
 
+
+def setup(pl: Plan) -> State:
+    """The slow part before any DS1: read the stock presets, name every DS1's tiles, harvest the kit, set up the wall
+    pass. Deterministic, so a worker process that runs it gets the same State."""
+    d2r_data, out_data, on_d2r, standins = pl.d2r_data, pl.out_data, pl.on_d2r, pl.standins
+    tiles_dir = d2r_data / "global" / "tiles"
     tiles, pd2_tiles = Tiles(tiles_dir), Tiles(out_data / "global" / "tiles")
     pd2_files = {f: out_data / "global" / "tiles" / f for _, _, files, _ in on_d2r for f in files
                  if f.startswith("pd2assets/")}
@@ -154,11 +205,10 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
                for _, _, files, ds1s in on_d2r for ds1 in ds1s}
     keep = set().union(*map(wanted, layouts.values()))
     loaded = {t[0] for k in keep for t in k[1]}
-    if stale := sorted(set(water_rule) - loaded):
+    if stale := sorted(set(pl.water_rule) - loaded):
         raise ValueError(f"water lines for DT1 no PD2-only preset draws from: {', '.join(stale)}")
-    water = water_planes(d2r_data, water_rule)
+    water = water_planes(d2r_data, pl.water_rule)
     kit, stock = Kit(far=far_off(d2r_data), top=model_top(d2r_data)), []
-    inside = None  # indoor(kit), made once the kit is harvested
     for p in sorted((d2r_data / PRESETS).rglob("*.json")):
         ds1 = tiles_dir / p.relative_to(d2r_data / PRESETS).with_suffix(".ds1")
         if not ds1.is_file():  # a few stock presets have no DS1 (D2R's HD-only rooms)
@@ -179,32 +229,49 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         f = d2r_data / path.removeprefix("data/")
         ents = json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
         return [(t["position"]["x"], t["position"]["z"]) for t in map(_transform, ents) if t] or [(0.0, 0.0)]
-    report, groups, bare = [], {}, []
-    for _, tile_set, _, ds1s in on_d2r:
-        groups.setdefault(tile_set, []).extend(ds1s)
-    learned: dict = {}  # painter.harvest's memo: lives for this apply() only
-    for tile_set, ds1s in groups.items():
+    return State(pl, layouts, kit, stock, mod_classes, prefab, water)
+
+
+def build_ds1(st: State, tile_set: str, ds1: str) -> DS1Built:
+    """Build one DS1's HD preset and write it (out_data/hd/env/preset/<ds1>.json). The unit the work is farmed out in
+    (parallel.py): inputs in, one DS1's report out. Builds share nothing they write, so any order and any split of the
+    DS1 over processes gives the same files."""
+    pl, lay = st.plan, st.layouts[ds1]
+    outdoor = draws_trees(lay)
+    if tile_set not in st.trees:
         # the tile set's stock: the presets that list a DT1 its DS1 draw from; the tree kit is harvested from them
-        drawn = {t[0] for ds1 in ds1s for k in wanted(layouts[ds1]) for t in k[1]}
-        own = [(lay, preset) for lay, preset, listed in stock if not drawn.isdisjoint(listed)]
-        trees = painter.harvest(own, wet_dt1s(water_rule), learned)
-        for ds1 in ds1s:
-            lay = layouts[ds1]
-            outdoor = draws_trees(lay)
-            objects = waypoints((out_data / "global" / "tiles" / ds1).read_bytes(), mod_classes)
-            bare += [f"{Path(ds1).stem} {o[0]}" for o in objects if not waypoint_options(lay, kit, *o)]
-            if not outdoor and inside is None:
-                inside = indoor(kit)
-            preset, missing = build(lay, kit if outdoor else inside, Path(ds1).stem, ds1, sets[tile_set.lower()], terrain, own,
-                                    trees if outdoor else None, prefab, water, objects)
-            dest = out_data / PRESETS / Path(ds1).with_suffix(".json")
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_text(json.dumps(preset, separators=(",", ":")), "utf-8")
-            report.append((len(lay.keys), missing, len(preset["entities"]), bool(outdoor and trees),
-                           sum(e["name"] == STREAM for e in preset["entities"])))
-    print(f"  presets-hd: {len(report)} HD presets from {len(kit.sources)} stock presets, "
+        drawn = {t[0] for d in pl.groups[tile_set] for k in wanted(st.layouts[d]) for t in k[1]}
+        st.trees[tile_set] = [(lay_, preset) for lay_, preset, listed in st.stock if not drawn.isdisjoint(listed)], None
+    own, trees = st.trees[tile_set]
+    if outdoor and trees is None:
+        trees = painter.harvest(own, wet_dt1s(pl.water_rule), st.learned) or ()
+        st.trees[tile_set] = own, trees
+    objects = waypoints((pl.out_data / "global" / "tiles" / ds1).read_bytes(), st.mod_classes)
+    bare = [f"{Path(ds1).stem} {o[0]}" for o in objects if not waypoint_options(lay, st.kit, *o)]
+    if not outdoor and st.inside is None:
+        st.inside = indoor(st.kit)
+    preset, missing = build(lay, st.kit if outdoor else st.inside, Path(ds1).stem, ds1, pl.sets[tile_set.lower()],
+                            pl.terrain, own, (trees or None) if outdoor else None, st.prefab, st.water, objects)
+    dest = pl.out_data / PRESETS / Path(ds1).with_suffix(".json")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(preset, separators=(",", ":")), "utf-8")
+    return DS1Built((len(lay.keys), missing, len(preset["entities"]), bool(outdoor and trees),
+                     sum(e["name"] == STREAM for e in preset["entities"])), bare)
+
+
+def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
+    """pd2_merge rule kind for merge/presets-hd.tsv and its folder presets-hd.d/ (see the module docstring). The DS1
+    builds run in worker processes when merge slots are free (parallel.py); the output is the same for any worker count."""
+    pl = plan(rule, pd2_data, d2r_data, out_data)
+    if pl is None:
+        return
+    from . import parallel
+    tasks = [(tile_set, ds1) for tile_set, ds1s in pl.groups.items() for ds1 in ds1s]
+    built, sources = parallel.build_all(pl, tasks)
+    report, bare = [b.row for b in built], [n for b in built for n in b.bare]
+    print(f"  presets-hd: {len(report)} HD presets from {sources} stock presets, "
           f"{sum(r[2] for r in report)} entities, {sum(r[3] for r in report)} with painted tree lines, {sum(r[4] for r in report)} water planes; {sum(r[1] for r in report)} of {sum(r[0] for r in report)} tiles "
-          f"have a key no stock preset draws; {len(presets) - len(on_d2r)} presets on PD2 tiles wait for stand-ins (LP4/LP5); "
+          f"have a key no stock preset draws; {len(pl.presets) - len(pl.on_d2r)} presets on PD2 tiles wait for stand-ins (LP4/LP5); "
           f"{len(bare)} waypoint objects have no stock waypoint ({', '.join(sorted(bare)) or 'none'})")
     from .passes import edges_walls
     edges_walls.CONTEXT.clear()  # the wall pass's contexts hold this run's layouts and presets: nothing outlives apply()

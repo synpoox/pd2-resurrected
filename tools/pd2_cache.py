@@ -316,6 +316,43 @@ def _hook() -> None:
         _hooked = True
 
 
+def trace_roots() -> dict[str, str] | None:
+    """The roots the running rule's trace watches (normalised, as Trace keeps them), None when no rule is traced. A worker
+    process a rule starts (presets/parallel.py) passes them to worker_start(): its reads are the rule's too."""
+    t = _trace
+    return dict(t.roots) if t is not None else None
+
+
+def worker_start(roots: dict[str, str]) -> None:
+    """In a worker process of a traced rule: trace what this process reads and writes, under the rule's roots."""
+    global _trace
+    _hook()
+    _trace = Trace(roots)
+
+
+def worker_finish() -> dict:
+    """In a worker process: stop tracing and return what it saw (picklable), for the rule's process to absorb()."""
+    global _trace
+    t, _trace = _trace, None
+    return {"reads": t.reads, "written": sorted(t.written), "created": sorted(t.created)} if t else {}
+
+
+def absorb(part: dict) -> None:
+    """Add a worker's trace (worker_finish) to the running rule's, as if the rule had done that work itself. A path
+    one worker created and another saw already made is read as it was before the rule: absent."""
+    t = _trace
+    if t is None or not part:
+        return
+    for k, v in part["reads"].items():
+        t.reads.setdefault(k, v)
+    t.written.update(part["written"])
+    t.created.update(part["created"])
+    t.written -= t.created
+    for k in t.reads:
+        if k.split(":", 1)[1] in t.created and t.reads[k] is not None:
+            t.reads[k] = None
+
+
 def _snapshot(gen: Path) -> tuple[dict[str, tuple[int, int]], set[str]]:
     """gen's files (size, modified time) and folders, by path from gen."""
     files, dirs = {}, set()
@@ -589,6 +626,27 @@ def prune(cache: Path, cap: int, keep_s: float = 900, legacy: bool = False) -> l
 
 
 
+_held: "Slots | None" = None  # the merge slot this process holds (acquire), for spare_slots
+
+
+def holding() -> bool:
+    """Whether this process holds a merge slot (a merge that runs under the cap)."""
+    return _held is not None
+
+
+def spare_slots(n: int) -> list["Slots"]:
+    """Up to n more merge slots of the machine-wide cap, taken now without waiting, for worker processes of the rule that
+    runs under the slot this process holds (#807). Empty when this process holds none (no cache root: the cap cannot be
+    kept). The caller release()s each when its worker ends."""
+    h, out = _held, []
+    while h is not None and len(out) < n:
+        s = Slots(h.folder, h.n, h.what, h.poll)
+        if not s.try_acquire():
+            break
+        out.append(s)
+    return out
+
+
 class Slots:
     """A machine-wide counting semaphore (#760): n slot files under folder, each held by an OS lock, so a crashed holder
     frees its slot with no pid file to leak. acquire() blocks until one is free (one 'queued' line meanwhile) and is
@@ -609,22 +667,35 @@ class Slots:
             return None
         return f
 
+    def try_acquire(self) -> bool:
+        """Take a free slot now, never wait. True when this holds one."""
+        if self.f:
+            return True
+        self.folder.mkdir(parents=True, exist_ok=True)
+        for i in range(self.n):
+            if f := self._try(i):
+                self.f = f
+                return True
+        return False
+
     def acquire(self) -> None:
+        global _held
         if self.f:
             return
-        self.folder.mkdir(parents=True, exist_ok=True)
         told = False
         while True:
-            for i in range(self.n):
-                if f := self._try(i):
-                    self.f = f
-                    return
+            if self.try_acquire():
+                _held = self
+                return
             if not told:
                 print(f"{self.what} queued: {self.n}/{self.n} slots busy (machine-wide cap, PD2R_MERGE_SLOTS); waiting for one to free", file=sys.stderr, flush=True)
                 told = True
             time.sleep(self.poll)
 
     def release(self) -> None:
+        global _held
+        if _held is self:
+            _held = None
         if self.f:
             f, self.f = self.f, None
             f.seek(0)
