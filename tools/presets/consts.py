@@ -17,6 +17,8 @@ SINK = 1.0  # HD units: a pasted room's ground this far below the flat plane wou
 ROOM_MATCH, ROOM_MIN = 0.6, 16  # a stock room of ROOM_MIN tiles or more is pasted where this share of its tiles match
 ROOM_BARE = 0.001  # the share of a room's tiles that may be walkable DS1 floor off its walkable floor (#713:
 # Uber Tristram's 2156-tile town has one PD2 edit; a room with tens of such tiles draws walls or lava on open ground)
+STRUCTURE = 20.0  # HD units (2 tiles): a piece this wide both ways and STRUCTURE_TOP high is a building or platform
+STRUCTURE_TOP = 4.0  # HD units: how high a structure stands
 FAR = 20.0  # HD units (2 tiles): a piece whose mesh stands this far clear of its position belongs to a structure
 SQUARE = [(i, j) for j in (-1, 0, 1) for i in (-1, 0, 1)]
 CROSS = [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)]

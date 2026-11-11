@@ -250,7 +250,7 @@ class Output(unittest.TestCase):
         self.assertIn("(abc123)", text)
         order = [line.split(" | ")[0][2:] for line in text.splitlines() if line.startswith("| ") and "Preset" not in line]
         self.assertEqual(order, ["d", "b", "c", "a"])
-        self.assertIn("| d | Mesa | 40.0% | 6 | 0 | 100.0% | 10 | 100.0% | 0 | 0 | 0.0 | 0 | [walls](d_walls.png) [floor](d_floor.png) [border](d_border.png) |", text)
+        self.assertIn("| d | Mesa | 40.0% | 6 | 0 | 100.0% | 10 | 100.0% | 0 | 0 | 0.0 | 0 | 0 | [walls](d_walls.png) [floor](d_floor.png) [border](d_border.png) |", text)
         self.assertIn("All borders: 60.0% of 20 ring tiles.", text)
 
     def test_run_skips_without_models(self):

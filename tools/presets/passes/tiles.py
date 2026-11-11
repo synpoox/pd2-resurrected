@@ -9,7 +9,7 @@ ORDER = 300
 
 def run(b) -> None:
     lay, kit = b.lay, b.kit
-    found, pkit = patches(lay, b.stock, set(b.rest), kit.far)
+    found, pkit = patches(lay, b.stock, set(b.rest), kit.far, kit.structure)
     if not draws_trees(lay):
         pkit = indoor(pkit)
     b.loose, used, _ = place(found, pkit, b.seed, b.edge, b.near, b.far)
