@@ -166,6 +166,7 @@ class SlotLoss(unittest.TestCase):
 
     def run_worker(self, lock_results):
         calls = []
+        held = {"ours": True}
 
         class Game:
             def __init__(self, *a, **k): pass
@@ -176,6 +177,7 @@ class SlotLoss(unittest.TestCase):
             @staticmethod
             def acquire(cfg, slot, owner):
                 ok = lock_results.pop(0) if lock_results else True
+                held["ours"] = ok
                 calls.append(f"lock:{ok}")
                 return ok, "msg"
             @staticmethod
@@ -185,7 +187,10 @@ class SlotLoss(unittest.TestCase):
 
         class Force:
             @staticmethod
-            def lvlprest_path(slot, owner=None): return "p"
+            def lvlprest_path(slot, owner=None):
+                if not held["ours"]:  # the real one goes through check_slot, which refuses a lock that is not ours
+                    raise RuntimeError("slot not locked by this owner")
+                return "p"
             @staticmethod
             def apply(*a, **k):
                 calls.append("apply")
