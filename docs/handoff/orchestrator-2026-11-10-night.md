@@ -16,7 +16,32 @@ surfaces and material.
    Its tickets are P1-P14 (section 6), followed by the day-by-day plan (section 7). Its prototypes are in
    `docs/research/hd-parity-strategy/`. This note is the short form; that doc decides.
 3. Every map ticket uses the warp list, now on main: `docs/agents/warp-locations.md` (generator `tools/pd2_warps.py`).
-4. Work section 3 below. First get the owner's day-1 checkpoint: approve the plan and give map tiers.
+4. **The plan is approved** (owner, 2026-11-10), and the map tiers are below. Do section 3a first, then day 1.
+
+## 3a. Before day 1
+
+1. **#833 (docs, S):** reviewer `isolation: worktree`, one full merge per commit, CPU-time speed measure, one gate
+   rule, and the game-check order (push, PR, check). Five parallel lanes for a week would hit every one of those
+   hazards, and it's a docs-only change.
+2. **The owner sets `PD2R_MERGE_SLOTS`** machine-wide (`setx`, then restart the runners) to the value #817's docstring
+   suggests for the current RAM. Ask once, then go on.
+3. Pull **#821** (single-flight cache) into day 1 beside P14/#820. Lanes that rebase onto main at the same time would
+   otherwise each run the same full merge.
+
+## Map tiers (owner, 2026-11-10), most important first
+
+1. **Uber boss arenas:** dclone (UberDiabloLvl), Lucion (lucionarena), Rathma.
+2. **Common tier 1-3 maps:** Jungle, Ruined Cistern, and the rest.
+3. **Unique maps:** Fallen Gardens and the rest.
+4. **Tier 4 dungeon maps:** Kanemith, Sanctuary of Sin and the rest.
+
+These tiers **replace the plan doc's tuning order** (section 7). Within a tier, keep the plan's rule: worst gap times
+walkable size. So:
+- the first lane works the uber arenas;
+- P7's Lucion Arena walls (#829) move to the front of P7.
+Map each level to its tier from the warp list and `levels.txt` before you assign lanes. The lanes are family-based
+and each owns its own override folder. Re-balance them so the tier 1-2 maps are done first, and post the tier
+assignment on the first lane ticket.
 
 ## 2. State at handoff
 
