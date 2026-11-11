@@ -216,9 +216,12 @@ class DefectPoints(unittest.TestCase):
 
     def test_parity_rows_collect_each_row_through_on_row(self):
         def fake(data, d2r, out, only, images, on_row=None):
-            on_row({"name": "jungle1", "sets": {}})
+            row = {"name": "jungle1", "sets": {"void": {(1, 1)}}}
+            on_row(row)
+            del row["sets"]  # as pd2_parity.run does after on_row
         with mock.patch("pd2_parity.run", side_effect=fake):
-            self.assertEqual(set(T.parity_rows(Path("."), Path("."), {"jungle1"}, lambda *_: None)), {"jungle1"})
+            got = T.parity_rows(Path("."), Path("."), {"jungle1"}, lambda *_: None)
+            self.assertEqual(got["jungle1"]["sets"], {"void": {(1, 1)}})
 
 
 class SlotLoss(unittest.TestCase):

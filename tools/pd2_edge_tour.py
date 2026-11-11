@@ -394,7 +394,7 @@ def parity_rows(data: Path, d2r: Path, stems: set[str], log=print) -> dict[str, 
     rows: dict[str, dict] = {}
     try:
         t0 = time.process_time()
-        pd2_parity.run(data, d2r, None, stems, False, on_row=lambda r: rows.__setitem__(r["name"], r))
+        pd2_parity.run(data, d2r, None, stems, False, on_row=lambda r: rows.__setitem__(r["name"], dict(r)))  # a copy: run drops the sets from r after
         log(f"parity scored {len(rows)} variants in {time.process_time() - t0:.1f} s CPU")
     except Exception as e:  # scoring is an extra: the sweep must still run on plan points
         log(f"warning: no parity defects ({type(e).__name__}: {e}); using plan points")
