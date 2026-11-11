@@ -1,18 +1,23 @@
 """The presets rule's cache per DS1 (#861): the key, the kit slice, the parts of pd2_cache, and the rule end to end."""
+import errno
 import io
 import json
 import shutil
 import sys
 import tempfile
 import unittest
+from collections import defaultdict
 from contextlib import redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pd2_cache  # noqa: E402
 import pd2_presets as P  # noqa: E402
-from presets import apply as A, ds1cache, slices  # noqa: E402
+from presets import apply as A, ds1cache, parallel, slices  # noqa: E402
+from presets.passes import edges_walls as W  # noqa: E402
 from presets.kit import Kit  # noqa: E402
 from presets.layout import Layout  # noqa: E402
 from presets_fixtures import B, ds1, entity  # noqa: E402
@@ -54,6 +59,11 @@ class UniqueTests(unittest.TestCase):
         self.assertEqual(ds1cache.unique([("A", "x.ds1"), ("B", "y.ds1"), ("A", "x.ds1")]), [("A", "x.ds1"), ("B", "y.ds1")])
         with self.assertRaisesRegex(ValueError, "x.ds1 is built under two tile sets, A and B"):
             ds1cache.unique([("A", "x.ds1"), ("B", "x.ds1")])
+
+    def test_two_spellings_of_one_output_file_are_one_task(self):
+        self.assertEqual(ds1cache.unique([("A", "Dir/x.ds1"), ("A", "dir\\X.ds1")]), [("A", "Dir/x.ds1")])
+        with self.assertRaisesRegex(ValueError, "two tile sets"):
+            ds1cache.unique([("A", "Dir/x.ds1"), ("B", "dir/X.DS1")])
 
 
 class SliceTests(unittest.TestCase):
@@ -179,6 +189,104 @@ class PartTests(unittest.TestCase):
         with pd2_cache.sub_trace() as sub:
             pass
         self.assertIsNone(sub)
+
+
+    def test_a_part_keeps_ancestor_listings_and_drops_reads_of_other_outputs(self):
+        sc = mock.Mock(dest=self.cache, roots={"p": self.root}, policy=mock.Mock(origin="o"))
+        (self.root / "generated" / "data").mkdir(parents=True)
+        put(self.root / "generated" / "data" / "a.json", "{}")
+        reads = {"f:p:generated/data/a.json": "1", "f:p:generated/data/b.json": "2", "l:p:generated/data": "x",
+                 "f:p:merge/a.txt": "3"}
+        pd2_cache.part_put(sc, "k", ["data/a.json"], {}, reads, {"data/b.json"})
+        kept = json.loads(next(self.cache.glob("k/o/manifest.json")).read_text())["reads"]
+        self.assertEqual(sorted(kept), ["f:p:merge/a.txt", "l:p:generated/data"])
+
+    def test_a_rename_onto_a_kept_folder_says_nothing_on_posix_either(self):
+        sc = mock.Mock(dest=self.cache, roots={"p": self.root}, policy=mock.Mock(origin="o"))
+        (self.root / "generated" / "data").mkdir(parents=True)
+        put(self.root / "generated" / "data" / "a.json", "{}")
+        real = pd2_cache.os.rename
+
+        def rename(src, dst):
+            if str(dst).endswith("o"):
+                raise OSError(errno.ENOTEMPTY, "Directory not empty")
+            return real(src, dst)
+        with mock.patch.object(pd2_cache.os, "rename", rename), redirect_stdout(io.StringIO()) as log:
+            pd2_cache.part_put(sc, "k", ["data/a.json"], {}, {})
+        self.assertEqual(log.getvalue(), "")
+
+
+class WallIndexMemoTests(unittest.TestCase):
+    """The wall index is memoised per process; the prefab files it read are every asker's (#882)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        t = Path(self.tmp.name)
+        self.root, self.cache, self.d2r = t / "wt", t / "cache" / "rules", t / "d2r"
+        put(self.d2r / "hd/prefab.json", "1")
+        put(self.root / "merge" / "rule.txt", "r")
+        W._INDEX.clear()
+
+    def tearDown(self):
+        W._INDEX.clear()
+        self.tmp.cleanup()
+
+    def run_rule(self, built):
+        # a memoised prefab loader, as apply.py's: the file is opened once, every call notes it
+        cache = {}
+
+        def prefab(path):
+            f = self.d2r / "hd/prefab.json"
+            pd2_cache.note(f)
+            return cache.setdefault(path, [f.read_text()] and [])
+        lay = SimpleNamespace(keys={(0, 0): ("w", (("act2/a/wall.dt1", 1, 0, 0),))})
+        stock = [(lay, {"dependencies": {}, "entities": [entity("wall_a", 1.0, 1.0)]})]
+        ctx = W.Context(SimpleNamespace(keys={}), defaultdict(dict), lambda m: None, prefab, stock)
+
+        def run():
+            sc = pd2_cache.scope()
+            (self.root / "merge" / "rule.txt").read_text()
+            for name in "ab":  # two DS1: the first builds the index, the second hits the memo
+                if pd2_cache.part_get(sc, "part" + name) is not None:
+                    built.append(f"replayed {name}")
+                    continue
+                with pd2_cache.sub_trace() as sub:
+                    W.index(stock, ctx)
+                put(self.root / "generated" / "data" / f"{name}.json", "{}")
+                built.append(f"built {name}")
+                pd2_cache.part_put(sc, "part" + name, [f"data/{name}.json"], {}, sub.reads)
+
+        def boxes(ents, box, pf):
+            pf("p")
+            return []
+        with redirect_stdout(io.StringIO()), mock.patch("pd2_tiles.model_type", return_value="wall"), \
+                mock.patch("pd2_tiles.boxes", boxes):
+            pd2_cache.rule(self.cache, "rule", {"p": self.root, "d": self.d2r}, run)
+
+    def test_a_changed_prefab_misses_every_ds1_that_used_it(self):
+        built = []
+        self.run_rule(built)
+        self.assertEqual(built, ["built a", "built b"])
+        for text, prefab, want in (("r2", "1", ["replayed a", "replayed b"]), ("r3", "2", ["built a", "built b"])):
+            shutil.rmtree(self.root / "generated")
+            W._INDEX.clear()
+            put(self.root / "merge" / "rule.txt", text)  # the rule misses; the parts replay while their reads hold
+            if prefab != "1":
+                put(self.d2r / "hd/prefab.json", prefab)
+            built = []
+            self.run_rule(built)
+            self.assertEqual(built, want, "b only hit the memo, yet its entry holds the prefab")
+
+
+class ReleaseTests(unittest.TestCase):
+    def test_the_parent_drops_the_wall_stock_before_the_workers_run(self):
+        W.CONTEXT["x.ds1"], W._INDEX[(1,)] = object(), ((), {}, {})
+        seen = {}
+        workers = lambda pl, tasks, spare: seen.update(ctx=dict(W.CONTEXT), idx=dict(W._INDEX)) or ({}, 0)  # noqa: E731
+        with mock.patch.object(parallel, "_workers", workers), mock.patch.object(parallel, "wanted", lambda: (2, True)), \
+                mock.patch.object(parallel.pd2_cache, "holding", lambda: False):
+            parallel._build_unique(None, [("A", "x.ds1"), ("A", "y.ds1")], [object()])
+        self.assertEqual(seen, {"ctx": {}, "idx": {}})
 
 
 class RuleEndToEndTests(unittest.TestCase):

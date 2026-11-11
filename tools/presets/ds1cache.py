@@ -122,15 +122,25 @@ def decode(extra: dict):
     return DS1Built(tuple(extra["row"]), list(extra["bare"]))
 
 
+def out_file(ds1: str) -> str:
+    """The DS1's preset JSON, relative to the out folder, as one file (the key of the output: two spellings of a DS1 path,
+    by case or by separator, are one file on Windows)."""
+    return (PRESETS / Path(ds1.replace("\\", "/")).with_suffix(".json")).as_posix().casefold()
+
+
 def unique(tasks: list[tuple[str, str]]) -> list[tuple[str, str]]:
-    """The tasks without repeats. The DS1 is the key of the output (its preset JSON is one file): a DS1 under two tile sets
-    would be written by two tasks, the last one winning by chance of the workers' order, so that is an error."""
-    uniq = list(dict.fromkeys(tasks))
-    by_ds1: dict[str, str] = {}
-    for tile_set, ds1 in uniq:
-        if by_ds1.setdefault(ds1, tile_set) != tile_set:
-            raise ValueError(f"presets-hd: {ds1} is built under two tile sets, {by_ds1[ds1]} and {tile_set}: one file")
-    return uniq
+    """The tasks without repeats, one per output file (out_file). A DS1 under two tile sets would be written by two tasks,
+    the last one winning by chance of the workers' order, so that is an error."""
+    by_out: dict[str, tuple[str, str]] = {}
+    for tile_set, ds1 in tasks:
+        if by_out.setdefault(out_file(ds1), (tile_set, ds1))[0] != tile_set:
+            first = by_out[out_file(ds1)]
+            raise ValueError(f"presets-hd: {ds1} is built under two tile sets, {first[0]} and {tile_set}: one file")
+    return list(by_out.values())
+
+
+def _generated(pl, task: tuple[str, str], gen: Path) -> Path:
+    return (pl.out_data / PRESETS / Path(task[1]).with_suffix(".json")).resolve().relative_to(gen)
 
 
 def build_all(pl, tasks: list[tuple[str, str]]) -> tuple[list, int]:
@@ -140,8 +150,8 @@ def build_all(pl, tasks: list[tuple[str, str]]) -> tuple[list, int]:
     uniq = unique(tasks)
     if len(uniq) != len(tasks):  # a repeated row builds once and reports the same: parallel.build_all does the same
         built, sources = build_all(pl, uniq)
-        by = dict(zip(uniq, built))
-        return [by[t] for t in tasks], sources
+        by = {out_file(t[1]): b for t, b in zip(uniq, built)}
+        return [by[out_file(t[1])] for t in tasks], sources
     sc = pd2_cache.scope()
     gen = (sc.roots["p"] / "generated").resolve() if sc else None
     try:
@@ -160,12 +170,13 @@ def build_all(pl, tasks: list[tuple[str, str]]) -> tuple[list, int]:
             got[t] = decode(extra)
     print(f"  presets-hd: {len(got)} of {len(tasks)} DS1 replayed")
     if misses := [t for t in tasks if t not in got]:
+        outs = {_generated(pl, t, gen).as_posix() for t in tasks}  # every task's file: no part reads another's output
         box = [st]
         del st
         built, _ = parallel.build_all(pl, misses, box)
         for t, (b, reads) in zip(misses, built):
             got[t] = b
-            out = (pl.out_data / PRESETS / Path(t[1]).with_suffix(".json")).resolve().relative_to(gen)
-            pd2_cache.part_put(sc, keys[t], [out.as_posix()], encode(b), reads)
+            out = _generated(pl, t, gen).as_posix()
+            pd2_cache.part_put(sc, keys[t], [out], encode(b), reads, outs - {out})
     gc.collect()
     return [got[t] for t in tasks], sources
