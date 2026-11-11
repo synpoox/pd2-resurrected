@@ -45,7 +45,8 @@ Repo rules (PR body, gate, changelog fragments, branch deletion) live in `AGENTS
    Done when the comment is posted.
 7. **Fix.** At most 2 implementer -> reviewer cycles per PR. Findings left after cycle 2 become a follow-up issue.
    Done when the reviewer has no blocking finding, or the leftovers are filed.
-8. **Merge.** Squash only, per the AGENTS.md gate rule. A coverage
+8. **Merge.** Squash only, per the AGENTS.md gate rule. A docs-only PR (only `.md` files, docs, `changelog.d/` fragments; no
+   code, data, workflow or tools change) merges at once, without waiting for CI. A coverage
    drop needs the owner's `coverage-drop-ok`: ask, do not apply it yourself. Two PRs that edit the same table
    conflict: merge one, then the other merges main and reruns the gate. Done when the PR shows merged.
 9. **Clean up.** Run `gh pr list --base <branch>` first: retarget any PR based on the branch, then delete the
