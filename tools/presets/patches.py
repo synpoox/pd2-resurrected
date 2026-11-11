@@ -7,16 +7,16 @@ from .layout import Layout, draws_trees
 
 
 def patches(lay: Layout, stock: list[tuple[Layout, dict]], tiles: set, far=lambda e: False,
-            structure=lambda e: False) -> tuple[Layout, Kit]:
+            structure=lambda e: False, top=lambda e: None) -> tuple[Layout, Kit]:
     """The patch lookup: each of `tiles` whose 3x3 neighbourhood (else its 4-neighbour cross) appears in a stock
-    preset, keyed so that the kit copies what that preset placed on the centre tile, empty included; `far` and `structure` as Kit.far and
-    Kit.structure."""
+    preset, keyed so that the kit copies what that preset placed on the centre tile, empty included; `far`, `structure` and `top` as Kit.far,
+    Kit.structure and Kit.top."""
     def patch(keys: dict, c: tuple, name: str, cells: list) -> Key:
         return name, tuple(keys.get((c[0] + i, c[1] + j)) for i, j in cells)
     shapes = (("sq", SQUARE), ("cross", CROSS))
     want = {c: [patch(lay.keys, c, *k) for k in shapes] for c in tiles}
     keep = {k for ks in want.values() for k in ks}
-    kit = Kit(far=far, structure=structure)
+    kit = Kit(far=far, structure=structure, top=top)
     for s, preset in stock:
         floor = {c for c, k in s.keys.items() if k[0] == "f"}
         get = s.keys.get

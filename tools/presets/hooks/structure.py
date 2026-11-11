@@ -4,7 +4,8 @@ A stock town places each house on the floor tile its origin falls on. Harvested 
 that shares that floor key: Tristram's `town.dt1` ground put its building01-05 houses on the floor of the Descent
 (descend_2, descend_4), where the legacy view shows hell cliffs and lava. The wall tiles of a PD2 DS1 that wants a
 building carry their own pieces; a plain floor tile never asks for one. (pd2_coverage.wrong_tiles scores the same
-pieces as walkable floor under a structure.)
+pieces as walkable floor under a structure.) Only a model from a `*_buildings` folder counts: the other big pieces
+(a room's sculpted floor, lava walls and kits, cave walls, trees) are the stock map's own scenery and stay.
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from ..consts import STRUCTURE, STRUCTURE_TOP
 from ..entity import _transform
 
 ORDER = 220
+BUILDINGS = "_buildings/"  # the folder of a stock town's houses (tristram/act1_tristram_buildings/)
 
 
 def structure_off(d2r_data: Path) -> Callable[[dict], bool]:
@@ -37,7 +39,8 @@ def structure_off(d2r_data: Path) -> Callable[[dict], bool]:
     def structure(e: dict) -> bool:
         t = _transform(e)
         s = (t or {}).get("scale") or {"x": 1.0, "y": 1.0, "z": 1.0}
-        return any(c["type"] == "ModelDefinitionComponent" and big(c.get("filename", ""), s["x"], s["y"], s["z"])
+        return any(c["type"] == "ModelDefinitionComponent" and BUILDINGS in c.get("filename", "").lower()
+                   and big(c.get("filename", ""), s["x"], s["y"], s["z"])
                    for c in e["components"])
     return structure
 

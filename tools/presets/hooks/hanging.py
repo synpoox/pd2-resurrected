@@ -3,8 +3,8 @@
 A stock wall tile carries the props mounted on its wall: a torch, a banner, a beam end. Those stand on the wall piece of
 the same tile instance. A beam or a shield anchored on a tile whose wall piece sits on a neighbouring tile has nothing
 under it once the tile stands in another map, and floats (Descent's burnt beams over hell cliffs). A floor tile's
-raised pieces go in tall.py. Foliage hangs from its tree, which the kit keeps whole, and a piece with no model (a
-light, a fog volume) has no height to float at.
+raised pieces go in tall.py. Only beams (BEAMS) are judged: chains, arches, trims, supports and statues that a stock
+map hangs on purpose stay, as do foliage and a piece with no model (a light, a fog volume has no height to float at).
 """
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from ..entity import _transform
 from ..layout import _floor
 
 ORDER = 310
+BEAMS = ("_beam",)  # Tristram's burnt_beam and wall_beam: the props that floated over Descent's hell cliffs
 SLACK = 1.0  # HD units: a piece this far into the top of another still rests on it
 
 
@@ -31,6 +32,6 @@ def settle(kit, lay, c, ents):
         e = ents[i][0]
         y = tops[i][0]
         m = _model(e)
-        return (y > FLOOR_MAX and bool(m) and "/foliage/" not in m
+        return (y > FLOOR_MAX and any(b in m for b in BEAMS)
                 and not any(j != i and base < y - SLACK and top >= y - SLACK for j, (base, top) in enumerate(tops)))
     return [x for i, x in enumerate(ents) if not floats(i)]

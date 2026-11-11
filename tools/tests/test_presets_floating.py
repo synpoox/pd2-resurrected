@@ -28,9 +28,14 @@ class Raised(unittest.TestCase):
         # Westmarch's loft pieces (shields, apples, sacks) stand 14-16 up where the stock terrain mesh does not reach
         lay = P.Layout(1, 1, {(0, 0): ("f", (FLOOR,))})
         kit = P.Kit()
-        kit.add(lay, {"dependencies": {}, "entities": [raised("shield01", 3.0, 3.0, 13.9), entity("sack", 4.0, 4.0)]},
+        shield = raised("shield01", 3.0, 3.0, 13.9)
+        shield["components"][1]["filename"] = "data/hd/env/town/act2_town_shields/shield01.model"
+        ledge = raised("skull_pile", 3.0, 5.0, 13.9)  # a mesa ledge's own raised scenery stays
+        light = raised("light", 5.0, 3.0, 13.9)
+        light["components"].pop(1)  # and a piece with no model has no height
+        kit.add(lay, {"dependencies": {}, "entities": [shield, ledge, light, entity("sack", 4.0, 4.0)]},
                 {("f", (FLOOR,))})
-        self.assertEqual(names(kit, ("f", (FLOOR,))), ["sack"])
+        self.assertEqual(names(kit, ("f", (FLOOR,))), ["skull_pile", "light", "sack"])
 
     def test_a_prop_with_nothing_under_it_on_a_wall_tile_stays_out_but_a_mounted_one_stays(self):
         lay = P.Layout(2, 1, {(0, 0): ("w", (A,)), (1, 0): ("w", (A,))})
@@ -65,23 +70,35 @@ class Structures(unittest.TestCase):
 
     def test_a_house_anchored_on_a_floor_tile_stays_out_of_the_kit_but_not_off_a_wall_tile(self):
         # Tristram's building01 is 53 x 46 x 29: it stood on the Descent's plain floor (#871)
-        d = self.d2r({"building": (-26.0, -0.8, -20.0, 27.0, 28.8, 25.0), "sack": (-2.0, 0.0, -2.0, 2.0, 3.0, 2.0),
+        d = self.d2r({"building": (-26.0, -0.8, -20.0, 27.0, 28.8, 25.0), "tristram_buildings/building": (-26.0, -0.8, -20.0, 27.0, 28.8, 25.0), "sack": (-2.0, 0.0, -2.0, 2.0, 3.0, 2.0),
                       "slab": (-14.0, 0.0, -14.0, 14.0, 2.0, 14.0)})
         s = structure_off(d)
-        self.assertTrue(s(entity("building", 0.0, 0.0)))
+
+        def house(x: float, z: float) -> dict:
+            e = entity("building", x, z)
+            e["components"][1]["filename"] = "data/hd/env/model/tristram_buildings/building.model"
+            return e
+        self.assertFalse(s(entity("building", 0.0, 0.0)))  # a big piece outside a `_buildings` folder is scenery
+        self.assertTrue(s(house(0.0, 0.0)))
         self.assertFalse(s(entity("sack", 0.0, 0.0)))
         self.assertFalse(s(entity("slab", 0.0, 0.0)))  # a flat decal is no structure
-        self.assertFalse(structure_off(d / "none")(entity("building", 0.0, 0.0)))
+        self.assertFalse(structure_off(d / "none")(house(0.0, 0.0)))
         lay = P.Layout(2, 1, {(0, 0): ("f", (FLOOR,)), (1, 0): ("w", (A,))})
         kit = P.Kit(structure=s)
-        kit.add(lay, {"dependencies": {}, "entities": [entity("building", 3.0, 4.0), entity("sack", 4.0, 4.0),
-                                                       entity("building", 13.0, 4.0)]}, {("f", (FLOOR,)), ("w", (A,))})
+        kit.add(lay, {"dependencies": {}, "entities": [house(3.0, 4.0), entity("sack", 4.0, 4.0), house(13.0, 4.0)]},
+                {("f", (FLOOR,)), ("w", (A,))})
         self.assertEqual(names(kit, ("f", (FLOOR,))), ["sack"])
         self.assertEqual(names(kit, ("w", (A,))), ["building"])
         _, pkit = P.patches(P.Layout(1, 1, {(0, 0): ("f", (FLOOR,))}),
-                            [(lay, {"dependencies": {}, "entities": [entity("building", 3.0, 4.0)]})], {(0, 0)},
-                            structure=s)
+                            [(lay, {"dependencies": {}, "entities": [house(3.0, 4.0)]})], {(0, 0)}, structure=s)
         self.assertFalse(any(ents for opts in pkit.instances.values() for _, ents in opts))
+        # patches() passes `top` to its Kit: a beam the wall reaches (top 14 vs base 13) stays
+        beam = raised("burnt_beam01", 4.0, 4.0, 13.0)
+        beam["components"][1]["filename"] = "data/hd/env/model/burnt_beam01.model"
+        wl = P.Layout(1, 1, {(0, 0): ("w", (A,))})
+        pl, pk = P.patches(wl, [(wl, {"dependencies": {}, "entities": [entity("wall", 3.0, 3.0), beam]})], {(0, 0)},
+                          top=lambda e: 14.0 if e["name"] == "wall" else 2.0)
+        self.assertEqual(names(pk, pl.keys[(0, 0)]), ["wall", "burnt_beam01"])
 
 
 class Report(unittest.TestCase):
