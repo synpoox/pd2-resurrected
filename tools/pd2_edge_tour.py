@@ -479,13 +479,23 @@ def run_slot(slot: int, jobs: list[tuple[Map, list[Point]]], out: Path, owner: s
             log(f"slot {slot}: {msg}")
         return ok
 
+    def skip(rest, left: str = "") -> None:  # variants this slot will not shoot: recorded, never dropped silently
+        for m2, pts in rest:
+            row = {"map": m2.name, "ds1": Path(m2.ds1).stem, "slot": slot, "points": len(pts), "error": "skipped: slot lock lost"}
+            if left:
+                row["left_file"] = left
+            results.append(row)
+
     if not lock():
+        skip(jobs)
         return
     log(f"slot {slot}: locked by {owner}")
+    pin_file = force.lvlprest_path(slot, owner=owner)  # taken while the lock is ours: the slot guard refuses it later if lost
     game = game_ctl.Game(cfg, slot, owner, log=lambda *a: None)
+    lost = False  # the slot's lock went to another claimer: the slot is theirs now, so this worker touches nothing on it
     try:
-        for m, points in jobs:
-            if STOP.is_set():
+        for i, (m, points) in enumerate(jobs):
+            if STOP.is_set() or lost:
                 break
             stem, t0 = Path(m.ds1).stem, time.monotonic()
             row = {"map": m.name, "ds1": stem, "slot": slot, "points": len(points)}
@@ -494,8 +504,9 @@ def run_slot(slot: int, jobs: list[tuple[Map, list[Point]]], out: Path, owner: s
             try:
                 game.stop()
                 if not lock():
+                    lost = True
                     raise RuntimeError("the slot's lock was taken while its game stopped")
-                log("slot %d: %s: %s" % (slot, stem, force.apply(force.lvlprest_path(slot, owner=owner), [Path(m.ds1).name])[0]))
+                log("slot %d: %s: %s" % (slot, stem, force.apply(pin_file, [Path(m.ds1).name])[0]))
                 game.start()
                 enter_hell(game)
                 shot = shoot_variant(game, m, points, folder, settle, log)
@@ -511,16 +522,24 @@ def run_slot(slot: int, jobs: list[tuple[Map, list[Point]]], out: Path, owner: s
             row["seconds"] = round(time.monotonic() - t0, 1)
             log(f"slot {slot}: {stem}: {row.get('pairs', 0)} pairs in {row['seconds']} s")
             results.append(row)
+            if lost:
+                left = str(pin_file)
+                row["left_file"] = left
+                skip(jobs[i + 1:], left)
     finally:
-        try:
-            game.stop()
-        finally:
+        if lost:
+            log(f"slot {slot}: abandoned (lock taken by another claimer): game, pin and lock left alone; "
+                f"forced file left in place: {pin_file}")
+        if not lost:
             try:
-                lock()  # the pin reset's guard wants the lock held, and the game stopped
-                force.reset(force.lvlprest_path(slot, owner=owner))
-            except Exception as e:
-                log(f"slot {slot}: pin not reset: {e}")
-            log(f"slot {slot}: " + game_slots.release(cfg, slot, owner)[1])
+                game.stop()
+            finally:
+                try:
+                    lock()  # the pin reset's guard wants the lock held, and the game stopped
+                    force.reset(pin_file)
+                except Exception as e:
+                    log(f"slot {slot}: pin not reset: {e}")
+                log(f"slot {slot}: " + game_slots.release(cfg, slot, owner)[1])
 
 
 def free_slots(cfg, candidates: list[int], keep_free: int) -> list[int]:
@@ -544,8 +563,10 @@ def sweep(variants: list[tuple[Map, list[Point]]], slots: list[int], out: Path, 
     interrupted = False
     for t in threads:
         t.start()
-    while any(t.is_alive() for t in threads):
-        try:
+    while True:
+        try:  # the whole body: a Ctrl-C landing in the `while` test or the log call must still set STOP
+            if not any(t.is_alive() for t in threads):
+                break
             for t in threads:
                 t.join(0.5)
         except KeyboardInterrupt:  # (a second Ctrl-C lands here too: keep waiting for the cleanups)
