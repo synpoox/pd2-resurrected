@@ -14,7 +14,7 @@ from ..entity import _transform
 
 
 def far_off(d2r_data: Path) -> Callable[[dict], bool]:
-    """Kit.far from D2R's model boxes (data/hd/model_lod_desc.bin): whether a model at least pd2_coverage.TALL high,
+    """Kit.far from D2R's model boxes (data/hd/model_lod_desc.bin): whether a model at least pd2_tiles.TALL high,
     not a tree, a prefab nor room-sized, stands FAR or more clear of its position along x or z (Harrogath's stairs).
     A mesh that reaches its position stays, however far its centre: Duriel's chamber is one piece.
     Without the file, no piece is."""
@@ -45,7 +45,7 @@ def far_off(d2r_data: Path) -> Callable[[dict], bool]:
         return held[1]
 
     def _far(e: dict, opened: list) -> bool:
-        # a prefab (Act 1's riverbanks) stays: on a floor key it still closes border gaps (pd2_coverage)
+        # a prefab (Act 1's riverbanks) stays: on a floor key it still closes border gaps (pd2_tiles)
         if painter.is_tree(e) or any(c["type"] == "PrefabPlacementDefinitionComponent" for c in e["components"]):
             return False
         p = _transform(e)["position"]

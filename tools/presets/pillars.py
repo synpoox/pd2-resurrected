@@ -21,10 +21,10 @@ from typing import Callable
 from .consts import LIKE, TILE, Key
 from .entity import _transform
 
-# a pillar or column, by the model's folder and file name (pd2_fidelity.HD_MODEL's "pillar", which scores it)
+# a pillar or column, by the model's folder and file name (pd2_tiles.HD_MODEL's "pillar", which scores it)
 PILLAR = re.compile(r"pillar|column")
-PILLAR_TALL = 4.0  # HD units: as pd2_coverage.TALL, the height a piece hides a wall at, and pd2_fidelity scores tall at
-STACK = 2  # pillar pieces within two tiles of a lone pillar, past which it would pile (pd2_fidelity.STACK per tile of a run)
+PILLAR_TALL = 4.0  # HD units: as pd2_tiles.TALL, the height a piece hides a wall at, and pd2_tiles scores tall at
+STACK = 2  # pillar pieces within two tiles of a lone pillar, past which it would pile (pd2_tiles.STACK per tile of a run)
 KIND = "pillar"  # the key kind of a stand-alone stock pillar in place()'s kit (never a DS1 key)
 
 
