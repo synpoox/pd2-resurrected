@@ -31,6 +31,10 @@ class PickTests(unittest.TestCase):
         east = W.Option(entity("wall_e", 3.0, 4.0), 3.0, 4.0, 0.0, "tall", ((1, 0),), {})
         self.assertIs(W.pick([one, east], "tall", (5, 5), {(5, 5), (6, 5)}, {(5, 5)}, set(), "s"), east)
 
+    def test_a_tall_piece_never_reaches_a_low_tile(self):
+        self.assertIsNone(W.pick([OPT], "tall", (5, 5), {(5, 5)}, set(), set(), "s", None, {(6, 5)}))
+        self.assertIs(W.pick([OPT], "tall", (5, 5), {(5, 5)}, set(), set(), "s", None, {(9, 9)}), OPT)
+
     def test_ground_is_the_stock_ground_floor_height_lifts_from(self):
         self.assertEqual(W.wall_y(None, 1.0, 2.0), 0.0)
 
@@ -68,9 +72,13 @@ class TrimTests(unittest.TestCase):
         tall = entity("wall_tall", 1.0, 1.0)
         self.assertEqual(self.trim([tall], edges(wall={(0, 0): "low", (1, 0): "low"})), [])
 
-    def test_a_tall_piece_over_a_tall_tile_stays(self):
+    def test_a_tall_piece_grazing_a_low_tile_goes_even_over_a_tall_one(self):
         tall = entity("wall_tall", 1.0, 1.0)
-        self.assertEqual(self.trim([tall], edges(wall={(0, 0): "low", (1, 0): "tall"})), [tall])
+        self.assertEqual(self.trim([tall], edges(wall={(0, 0): "low", (1, 0): "tall"})), [])
+
+    def test_a_tall_piece_over_only_tall_tiles_stays(self):
+        tall = entity("wall_tall", 1.0, 1.0)
+        self.assertEqual(self.trim([tall], edges(wall={(0, 0): "tall", (1, 0): "tall"})), [tall])
 
     def test_the_only_cover_of_a_treeline_tile_stays(self):
         tall = entity("wall_tall", 1.0, 1.0)
@@ -109,6 +117,16 @@ class RunTests(unittest.TestCase):
         b = self.build("act2", "act1")
         b.stock = []  # the tile set's own stock has no piece: only the map's own family may fill, and it has none
         self.assertEqual(self.run_pass(b), [])
+
+    def test_a_tall_piece_over_a_low_tile_goes_only_where_a_low_piece_takes_its_place(self):
+        tall = entity("wall_tall", 1.0, 1.0)
+        b = self.build("act2", "act1")
+        b.loose = [tall]
+        self.assertEqual(self.run_pass(b), ["data/hd/env/model/act2/wall_low.model"])
+        b = self.build("act2", "act1")
+        b.loose, b.stock = [tall], []  # no low piece to stand there: the wrong height beats a hole
+        W.CONTEXT["x.ds1"].stock = []
+        self.assertEqual(self.run_pass(b), ["data/hd/env/model/wall_tall.model"])
 
 
 import pd2_tiles as fid  # noqa: E402
