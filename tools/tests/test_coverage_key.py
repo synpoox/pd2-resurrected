@@ -1,7 +1,7 @@
 """A map's coverage score is kept as JSON plus files and keyed on the code the scorer runs (#870)."""
 import ast
-import importlib
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -20,6 +20,11 @@ class KeptScoreTests(unittest.TestCase):
         self.assertEqual(imgs, {"m_walls.png": b"\x89PNG"})
         self.assertIs(type(got.ring), frozenset)
         self.assertEqual(C.pack(got, imgs), C.pack(s, imgs), "the same bytes again")
+
+    def test_an_outdated_score_file_fails_to_unpack_with_an_error_run_catches(self):
+        for bad in (b'{"@":"Gone","v":{}}', b'not json', b'{"@":"Score","v":{"old":1}}'):
+            with self.assertRaises((KeyError, ValueError, TypeError)):
+                C.unpack({"score.json": bad})
 
     def test_a_score_file_cannot_make_an_object(self):
         with self.assertRaises(KeyError):
@@ -42,42 +47,174 @@ class KeptScoreTests(unittest.TestCase):
         self.assertFalse(gen & set(C.SCORER_PRESETS))
         self.assertEqual(have, gen | set(C.SCORER_PRESETS), "add the new module to GENERATOR or SCORER_PRESETS")
 
-    def test_nothing_the_scorer_uses_lives_in_a_left_out_module(self):
-        """The scorer reaches the presets package as pd2_presets.<name>: each name it uses must be defined outside GENERATOR
-        and must not use, in its own module, a name that module imports from a left-out one."""
+    def test_nothing_the_scorer_reaches_lives_in_a_left_out_module(self):
+        """Follow every presets name the scorer's modules use through the helpers it calls, at any depth (#885): none may
+        resolve to a def in GENERATOR."""
         tools = C.ROOT / "tools"
-        used = set()
-        for mod in ("pd2_coverage", "pd2_fidelity", "pd2_tiles", "pd2_painter"):
-            for n in ast.walk(ast.parse((tools / f"{mod}.py").read_text("utf-8"))):
-                if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id in ("presets", "P"):
-                    used.add(n.attr)
-        left = {Path(p).resolve() for p in C.GENERATOR}
+        entries = scorer_entries([p for p in pd2_cache.sources(C.run, C.GENERATOR)
+                                  if p.parent == tools and p.name != "pd2_presets.py"],
+                                 tools / "presets", "presets")
+        self.assertGreater(len(entries), 5)
+        self.assertEqual(reach_left_out(entries, tools / "presets", "presets", C.GENERATOR), [])
 
-        def left_out(path: Path) -> bool:
-            path = path.resolve()
-            return path in left or any(g in path.parents for g in left)
-        checked = 0
-        for name in sorted(used):
-            obj = getattr(P, name, None)
-            modname = getattr(obj, "__module__", None)
-            if not modname or not modname.startswith("presets."):
+    def test_a_helper_two_levels_deep_that_reaches_the_generator_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            tools = Path(d)
+            pkg = tools / "presets"
+            pkg.mkdir()
+            (pkg / "__init__.py").write_text("")
+            (pkg / "apply.py").write_text("from .helpers import mid\n\ndef score_it():\n    return mid()\n")
+            (pkg / "helpers.py").write_text("from .build import deep_build\n\ndef mid():\n    return low()\n\n"
+                                            "def low():\n    return deep_build()\n")
+            (pkg / "build.py").write_text("def deep_build():\n    return 1\n")
+            (tools / "scorer.py").write_text("from presets.apply import score_it\n\ndef run():\n    return score_it()\n")
+            entries = scorer_entries([tools / "scorer.py"], pkg, "presets")
+            self.assertEqual(entries, [(pkg / "apply.py", "score_it")])
+            bad = reach_left_out(entries, pkg, "presets", (pkg / "build.py",))
+            self.assertEqual(len(bad), 1)
+            self.assertIn("score_it -> mid -> low -> deep_build", bad[0])
+            # the same chain with build.py on the scorer's side passes
+            self.assertEqual(reach_left_out(entries, pkg, "presets", (pkg / "other.py",)), [])
+
+    def test_a_module_reached_as_an_attribute_two_levels_deep_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            tools = Path(d)
+            pkg = tools / "presets"
+            pkg.mkdir()
+            (pkg / "__init__.py").write_text("")
+            (pkg / "apply.py").write_text("from . import helpers\n\ndef score_it():\n    return helpers.mid()\n")
+            (pkg / "helpers.py").write_text("from . import build\n\ndef mid():\n    return build.deep_build()\n")
+            (pkg / "build.py").write_text("def deep_build():\n    return 1\n")
+            (tools / "scorer.py").write_text("import pd2_presets as presets\n\ndef run():\n    return presets.score_it()\n")
+            (tools / "pd2_presets.py").write_text("from presets.apply import score_it\n")
+            entries = scorer_entries([tools / "scorer.py"], pkg, "presets")
+            self.assertEqual(len(reach_left_out(entries, pkg, "presets", (pkg / "build.py",))), 1)
+
+    def test_a_scorer_module_importing_a_left_out_name_directly_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            tools = Path(d)
+            pkg = tools / "presets"
+            pkg.mkdir()
+            (pkg / "build.py").write_text("def deep_build():\n    return 1\n")
+            (tools / "scorer.py").write_text("from presets.build import deep_build\n")
+            entries = scorer_entries([tools / "scorer.py"], pkg, "presets")
+            self.assertEqual(len(reach_left_out(entries, pkg, "presets", (pkg / "build.py",))), 1)
+
+
+def _module_file(base: Path, parts: list[str]) -> Path | None:
+    p = base.joinpath(*parts)
+    if p.with_suffix(".py").is_file():
+        return p.with_suffix(".py")
+    return p / "__init__.py" if (p / "__init__.py").is_file() else None
+
+
+def _imports(path: Path, pkg: Path, pkg_name: str) -> tuple[dict, list]:
+    """name -> (module file, original name; None for a module bound by name) for every import of the package's own
+    modules in the file (inside a def too), and the modules of its star imports."""
+    names, stars = {}, []
+    for n in ast.walk(ast.parse(path.read_text("utf-8"))):
+        if not isinstance(n, ast.ImportFrom):
+            continue
+        if n.level == 1:
+            base, parts = path.parent, (n.module or "").split(".") if n.module else []
+        elif n.level == 0 and n.module and n.module.split(".")[0] == pkg_name:
+            base, parts = pkg.parent, n.module.split(".")
+        else:
+            continue
+        mod = _module_file(base, parts) if parts else (base / "__init__.py")
+        for a in n.names:
+            if a.name == "*":
+                if mod:
+                    stars.append(mod)
                 continue
-            mod = importlib.import_module(modname)
-            self.assertFalse(left_out(Path(mod.__file__)), f"presets.{name} is defined in {modname}, left out of the key")
-            tree = ast.parse(Path(mod.__file__).read_text("utf-8"))
-            foreign = set()
-            for n in ast.walk(tree):
-                if isinstance(n, ast.ImportFrom) and n.level == 1:
-                    base = Path(mod.__file__).parent / (n.module or "").replace(".", "/")
-                    for a in n.names:
-                        if any(left_out(q) for q in (base, base.with_suffix(".py"), base / a.name, base / f"{a.name}.py")):
-                            foreign.add(a.asname or a.name)
-            node = next((n for n in tree.body if getattr(n, "name", None) == name), None)
-            if node is not None:
-                called = {x.id for x in ast.walk(node) if isinstance(x, ast.Name)}
-                self.assertFalse(called & foreign, f"presets.{name} uses {called & foreign} from the generator")
-            checked += 1
-        self.assertGreater(checked, 5)
+            sub = _module_file(base, [*parts, a.name])
+            names[a.asname or a.name] = (sub, None) if sub else (mod, a.name)
+    return names, stars
+
+
+def _top_level(tree: ast.Module) -> dict:
+    nodes = {}
+    for n in tree.body:
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            nodes[n.name] = n
+        elif isinstance(n, (ast.Assign, ast.AnnAssign)):
+            for t in (n.targets if isinstance(n, ast.Assign) else [n.target]):
+                for x in ast.walk(t):
+                    if isinstance(x, ast.Name):
+                        nodes[x.id] = n
+    return nodes
+
+
+def scorer_entries(files: list[Path], pkg: Path, pkg_name: str) -> list[tuple[Path, str]]:
+    """The (module file, name) pairs of the presets package that these scorer-side files use: `from presets.x import n`
+    and attribute reads off the package (`presets.n`, `P.n`, bound by `import pd2_presets as ...`), which the package
+    (pd2_presets re-exports its names) resolves."""
+    out = set()
+    for f in files:  # not the shim itself: its imports are its re-exports, resolved only where a file reads them
+        tree = ast.parse(f.read_text("utf-8"))
+        aliases = {"P"}
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Import):
+                aliases |= {a.asname or a.name for a in n.names if a.name in (pkg_name, f"pd2_{pkg_name}")}
+        names, _ = _imports(f, pkg, pkg_name)
+        shim = pkg.parent / f"pd2_{pkg_name}.py"
+        reexport = _imports(shim, pkg, pkg_name) if shim.is_file() else ({}, [])
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id in aliases:
+                if n.attr in reexport[0] and reexport[0][n.attr][1]:
+                    out.add(reexport[0][n.attr])
+                else:
+                    out.update((s, n.attr) for s in reexport[1] if n.attr in _top_level(ast.parse(s.read_text("utf-8")))
+                               or n.attr in _imports(s, pkg, pkg_name)[0])
+        out.update((m, o) for m, o in names.values() if m and o)
+    return sorted(out, key=str)
+
+
+def reach_left_out(entries: list[tuple[Path, str]], pkg: Path, pkg_name: str, left: tuple[Path, ...]) -> list[str]:
+    """Follow each entry through the defs it calls, across modules and at any depth; one message (with the chain) for
+    each chain that ends in a module left out of the key."""
+    left = [Path(x).resolve() for x in left]
+
+    def is_left(p: Path) -> bool:
+        p = p.resolve()
+        return any(p == g or g in p.parents for g in left)
+    cache: dict = {}
+
+    def parsed(p: Path):
+        if p not in cache:
+            cache[p] = (_top_level(ast.parse(p.read_text("utf-8"))), *_imports(p, pkg, pkg_name))
+        return cache[p]
+    def has(p: Path, name: str) -> bool:
+        return name in parsed(p)[0] or name in parsed(p)[1]
+    bad, seen = [], set()
+    todo = [(m, n, (n,)) for m, n in entries]
+    while todo:
+        mod, name, chain = todo.pop()
+        if (mod, name) in seen:
+            continue
+        seen.add((mod, name))
+        if is_left(mod):
+            bad.append(f"{name} in {mod.relative_to(pkg.parent).as_posix()} is left out of the key; reached: "
+                       + " -> ".join(chain))
+            continue
+        defs, imps, stars = parsed(mod)
+        if name in defs:
+            for x in ast.walk(defs[name]):
+                if isinstance(x, ast.Attribute) and isinstance(x.value, ast.Name) and x.value.id in imps \
+                        and imps[x.value.id][1] is None:
+                    todo.append((imps[x.value.id][0], x.attr, (*chain, x.attr)))
+                elif isinstance(x, ast.Name) and x.id != name:
+                    if x.id in defs:
+                        todo.append((mod, x.id, (*chain, x.id)))
+                    elif x.id in imps and imps[x.id][1]:
+                        todo.append((imps[x.id][0], imps[x.id][1], (*chain, x.id)))
+                    else:
+                        todo.extend((s, x.id, (*chain, x.id)) for s in stars if has(s, x.id))
+        elif name in imps and imps[name][1]:
+            todo.append((imps[name][0], imps[name][1], chain))
+        elif name not in imps:
+            todo.extend((s, name, chain) for s in stars if has(s, name))
+    return sorted(bad)
 
 
 if __name__ == "__main__":

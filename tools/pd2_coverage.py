@@ -655,7 +655,11 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
                 hits += hit
             else:
                 got = work(pd2_cache.Trace(roots))
-            s, imgs = unpack(got)
+            try:
+                s, imgs = unpack(got)
+            except (KeyError, ValueError, TypeError):  # an outdated or damaged kept score.json: score the map again (#885)
+                hits -= bool(memo)
+                s, imgs = unpack(work(pd2_cache.Trace(roots)))
             scores.append(s)
             for name, image in imgs.items():
                 (out / name).write_bytes(image)
