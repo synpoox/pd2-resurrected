@@ -69,6 +69,8 @@ ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculp
 STRUCTURE = 20.0  # HD units (2 tiles): a tall piece this wide both ways is a structure (stairs, platform), not a prop
 DEPTH = 2  # prefab levels followed
 EDGE = 1e-3  # tiles: how far a ground box may cross a tile edge and still end on it
+# The Palace (Horadrim Tower, palace1-6) cannot be played, so it is no target of the scores or the gate (#822).
+UNPLAYABLE = frozenset(f"palace{i}" for i in range(1, 7))
 FIDELITY_CHANGES: list = []  # every pd2_fidelity.Change of the last run(): drops and within-tolerance falls
 FIDELITY_ROWS: dict = {}  # that run's map -> type -> TypeScore
 BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
@@ -545,6 +547,21 @@ def budget_md(scores: list[Score]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def model_lookup(d2r: Path) -> tuple[Callable[[str], tuple | None], Callable[[str], list[dict]]]:
+    """(box, prefab) of the D2R install `d2r` (its data folder): a model path -> its box (None: unknown), a prefab path
+    -> its entities. Needs model_lod_desc.bin."""
+    found = model_boxes((d2r / MODELS).read_bytes())
+
+    @functools.cache
+    def prefab(path: str) -> list[dict]:
+        f = d2r / path.removeprefix("data/")
+        return json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
+
+    def box(path: str):
+        return found.get(fnv(path))
+    return box, prefab
+
+
 def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = None,
         fbase: dict | None = None, tolerance: float = TOLERANCE) -> list[Score] | None:
     """Score every generated preset under data (generated/data) and write the report to out, with the changes
@@ -558,15 +575,11 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
     rule = ROOT / "merge" / "presets-hd.tsv"
     _, standins, water = presets.read_rule(rule)
     wet = presets.wet_dt1s(water)  # stream DT1, water past the tree line too (painter.water)
-    found = model_boxes((d2r / MODELS).read_bytes())
-
-    @functools.cache
-    def prefab(path: str) -> list[dict]:
-        f = d2r / path.removeprefix("data/")
-        return json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
-
-    def box(path: str):
-        return found.get(fnv(path))
+    box, prefab = model_lookup(d2r)
+    votes = fidelity.VOTES_FILE.read_text("utf-8")
+    if warn := fidelity.votes_stale(votes, fidelity.votes_input_hash(d2r)):
+        print(f"pd2_coverage: warning: {warn}", file=sys.stderr)
+    stock = fidelity.stock_types(fidelity.read_votes(votes))
     tiles, pd2_tiles = presets.Tiles(d2r / "global" / "tiles"), presets.Tiles(data / "global" / "tiles")
     heights = fidelity.Heights(data / "global" / "tiles", d2r / "global" / "tiles")
     out.mkdir(parents=True, exist_ok=True)
@@ -574,8 +587,8 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
     for area, _, files, ds1s in presets.pd2_only_presets(data, len(load(d2r, "lvlprest").records())):
         for ds1 in ds1s:
             f = data / presets.PRESETS / Path(ds1).with_suffix(".json")
-            if not f.is_file() or ds1 in seen:  # waiting on stand-ins (LP4/LP5), or a DS1 two presets load
-                continue
+            if not f.is_file() or ds1 in seen or Path(ds1).stem in UNPLAYABLE:  # waiting on stand-ins (LP4/LP5), a DS1
+                continue  # two presets load, or the unplayable Palace
             seen.add(ds1)
             lay = presets.layout((data / "global" / "tiles" / ds1).read_bytes(),
                                  presets.stand_in(files, tiles, pd2_tiles, standins))
@@ -587,7 +600,7 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
             flat = ground_tiles(preset, box, prefab, True) - ground_tiles(preset, box, prefab, False)
             wrong = wrong_tiles(entities, box, prefab, walkable_floor(lay) & flat, ground)
             legacy = presets.layout((data / "global" / "tiles" / ds1).read_bytes(), {p: pd2_tiles[p] or tiles[p] for p in files})  # PD2's DT1s, else D2R's own
-            hd = fidelity.hd_pieces(entities, box, prefab, ground)
+            hd = fidelity.hd_pieces(entities, box, prefab, ground, stock)
             s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab), wrong,
                       fidelity.wall_cover(fidelity.legacy_edges(legacy, heights), hd, tall))  # walls by fidelity class (#787)
             s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
