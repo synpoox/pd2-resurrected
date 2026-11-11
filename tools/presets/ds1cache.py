@@ -124,7 +124,8 @@ def decode(extra: dict):
 
 def out_file(ds1: str) -> str:
     """The DS1's preset JSON, relative to the out folder, as one file (the key of the output: two spellings of a DS1 path,
-    by case or by separator, are one file on Windows)."""
+    by case or by separator, are one file on Windows; folded everywhere, so on POSIX a pair that differs only by case is
+    one task too: no PD2 data has such a pair)."""
     return (PRESETS / Path(ds1.replace("\\", "/")).with_suffix(".json")).as_posix().casefold()
 
 

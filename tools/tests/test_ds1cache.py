@@ -191,6 +191,37 @@ class PartTests(unittest.TestCase):
         self.assertIsNone(sub)
 
 
+    def folder_rule(self, order, built):
+        """Parts that make their output's folder first (as build_ds1 does: mkdir, then write), in `order`."""
+        def run():
+            sc = pd2_cache.scope()
+            (self.root / "merge" / "rule.txt").read_text()
+            for name in order:
+                if pd2_cache.part_get(sc, "part" + name) is not None:
+                    built.append(f"replayed {name}")
+                    continue
+                with pd2_cache.sub_trace() as sub:
+                    out = self.root / "generated" / "data" / "act1" / f"{name}.json"
+                    out.parent.mkdir(parents=True, exist_ok=True)
+                    out.write_text("{}")
+                built.append(f"built {name}")
+                pd2_cache.part_put(sc, "part" + name, [f"data/act1/{name}.json"], {}, sub.reads, {"data/act1/a.json", "data/act1/b.json"})
+        with redirect_stdout(io.StringIO()):
+            pd2_cache.rule(self.cache, "rule", {"p": self.root, "d": self.d2r}, run)
+
+    def test_whether_a_part_replays_does_not_depend_on_the_folder_it_made_or_the_order(self):
+        built = []
+        self.folder_rule("ab", built)
+        self.assertEqual(built, ["built a", "built b"])
+        # (generated/ kept or deleted, the order): every part replays, whichever was first into the folder before
+        for n, (keep, order) in enumerate([(True, "ab"), (False, "ba"), (True, "ba"), (True, "ab"), (False, "ab")]):
+            if not keep:
+                shutil.rmtree(self.root / "generated")
+            put(self.root / "merge" / "rule.txt", f"r{n}")
+            built = []
+            self.folder_rule(order, built)
+            self.assertEqual(sorted(built), ["replayed a", "replayed b"], (keep, order))
+
     def test_a_part_keeps_ancestor_listings_and_drops_reads_of_other_outputs(self):
         sc = mock.Mock(dest=self.cache, roots={"p": self.root}, policy=mock.Mock(origin="o"))
         (self.root / "generated" / "data").mkdir(parents=True)
