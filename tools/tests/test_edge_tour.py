@@ -1,5 +1,6 @@
 """pd2_edge_tour on synthetic layouts and a synthetic levels.txt (no PD2 or D2R data, no game)."""
 import sys
+import threading
 import tempfile
 import unittest
 from unittest import mock
@@ -156,6 +157,79 @@ class Sweep(unittest.TestCase):
         with mock.patch.object(gs, "lock_info", lambda cfg, s: object() if s == 5 else None),                 mock.patch.object(gs, "slot_processes", lambda cfg, s: []):
             self.assertEqual(T.free_slots(None, [4, 5, 6, 7], 1), [4, 6])
             self.assertEqual(T.free_slots(None, [4, 5], 2), [])
+
+
+class SlotLoss(unittest.TestCase):
+    def setUp(self):
+        T.STOP.clear()
+        self.addCleanup(T.STOP.clear)
+
+    def run_worker(self, lock_results):
+        calls = []
+
+        class Game:
+            def __init__(self, *a, **k): pass
+            def stop(self): calls.append("stop")
+            def start(self): calls.append("start")
+
+        class Slots:
+            @staticmethod
+            def acquire(cfg, slot, owner):
+                ok = lock_results.pop(0) if lock_results else True
+                calls.append(f"lock:{ok}")
+                return ok, "msg"
+            @staticmethod
+            def release(cfg, slot, owner):
+                calls.append("release")
+                return True, "released"
+
+        class Force:
+            @staticmethod
+            def lvlprest_path(slot, owner=None): return "p"
+            @staticmethod
+            def apply(*a, **k):
+                calls.append("apply")
+                return ["ok"]
+            @staticmethod
+            def reset(*a, **k): calls.append("reset")
+
+        gc = mock.Mock(Game=Game)
+        tc = mock.Mock()
+        jobs = [(T.Map("A Map", 1, "x/a1.ds1", []), []), (T.Map("B Map", 2, "x/b1.ds1", []), [])]
+        results = []
+        with mock.patch.object(T, "load_game_ctl", lambda: (gc, tc)),                 mock.patch.dict(sys.modules, {"game_slots": Slots, "pd2_force_ds1": Force}),                 mock.patch.object(T, "enter_hell", lambda g: None),                 mock.patch.object(T, "shoot_variant", lambda *a, **k: []),                 mock.patch.object(T, "finish_sheet", lambda *a, **k: {}),                 tempfile.TemporaryDirectory() as d:
+            T.run_slot(4, jobs, Path(d), "me", 0, results, log=lambda *a: None)
+        return calls, results
+
+    def test_lost_lock_abandons_the_slot_without_stop_or_reset(self):
+        calls, results = self.run_worker([True, False])  # initial lock ok, re-take after the first stop fails
+        self.assertEqual(calls, ["lock:True", "stop", "lock:False"])  # no second stop, no reset, no release, no 2nd variant
+        self.assertEqual(len(results), 1)
+        self.assertIn("lock was taken", results[0]["error"])
+
+    def test_normal_slot_still_stops_resets_and_releases(self):
+        calls, results = self.run_worker([])
+        self.assertEqual(calls[-3:], ["lock:True", "reset", "release"])
+        self.assertEqual(len(results), 2)
+
+    def test_ctrl_c_in_the_loop_test_still_sets_stop(self):
+        seen = {}
+
+        def worker(slot, share, out, owner, settle, results, log):
+            seen["stopped"] = T.STOP.wait(5)
+
+        class Th(threading.Thread):
+            first = True
+            def is_alive(self):
+                if Th.first:
+                    Th.first = False
+                    raise KeyboardInterrupt
+                return super().is_alive()
+
+        with mock.patch.object(T, "run_slot", worker), mock.patch.object(T.threading, "Thread", Th),                 tempfile.TemporaryDirectory() as d:
+            T.sweep([(T.Map("A Map", 1, "x/a1.ds1", []), [])], [4], Path(d), log=lambda *a: None)
+            self.assertTrue((Path(d) / "sweep.json").read_text("utf-8").count('"interrupted": true'))
+        self.assertTrue(seen["stopped"])
 
 
 class Plan(unittest.TestCase):

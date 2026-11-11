@@ -483,9 +483,10 @@ def run_slot(slot: int, jobs: list[tuple[Map, list[Point]]], out: Path, owner: s
         return
     log(f"slot {slot}: locked by {owner}")
     game = game_ctl.Game(cfg, slot, owner, log=lambda *a: None)
+    lost = False  # the slot's lock went to another claimer: the slot is theirs now, so this worker touches nothing on it
     try:
         for m, points in jobs:
-            if STOP.is_set():
+            if STOP.is_set() or lost:
                 break
             stem, t0 = Path(m.ds1).stem, time.monotonic()
             row = {"map": m.name, "ds1": stem, "slot": slot, "points": len(points)}
@@ -494,6 +495,7 @@ def run_slot(slot: int, jobs: list[tuple[Map, list[Point]]], out: Path, owner: s
             try:
                 game.stop()
                 if not lock():
+                    lost = True
                     raise RuntimeError("the slot's lock was taken while its game stopped")
                 log("slot %d: %s: %s" % (slot, stem, force.apply(force.lvlprest_path(slot, owner=owner), [Path(m.ds1).name])[0]))
                 game.start()
@@ -512,6 +514,9 @@ def run_slot(slot: int, jobs: list[tuple[Map, list[Point]]], out: Path, owner: s
             log(f"slot {slot}: {stem}: {row.get('pairs', 0)} pairs in {row['seconds']} s")
             results.append(row)
     finally:
+        if lost:
+            log(f"slot {slot}: abandoned (lock taken by another claimer): game, pin and lock left alone")
+            return
         try:
             game.stop()
         finally:
@@ -544,8 +549,10 @@ def sweep(variants: list[tuple[Map, list[Point]]], slots: list[int], out: Path, 
     interrupted = False
     for t in threads:
         t.start()
-    while any(t.is_alive() for t in threads):
-        try:
+    while True:
+        try:  # the whole body: a Ctrl-C landing in the `while` test or the log call must still set STOP
+            if not any(t.is_alive() for t in threads):
+                break
             for t in threads:
                 t.join(0.5)
         except KeyboardInterrupt:  # (a second Ctrl-C lands here too: keep waiting for the cleanups)
