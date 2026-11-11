@@ -16,7 +16,7 @@ Code: `tools/pd2_overrides.py`. Tests: `tools/tests/test_overrides.py`.
 | `merge/presets-overrides.tsv` | the `pd2_merge` anchor, no lines (`RULES["presets-overrides.tsv"]`). It sorts after `presets-hd.tsv`: the merge driver runs rule files in name order, and the rule edits `presets-hd`'s output |
 | `merge/presets-overrides.d/<family>/<ds1 stem>.json` | the ops for one generated preset (`generated/data/hd/env/preset/**/<ds1 stem>.json`), in a folder per map family (`jungle`, `tomb`, `cistern`, ...) |
 
-A file's `ds1` must equal its file name (case-insensitive) and name a generated preset: a file for a preset that does not
+A file's `ds1` is the preset's stem, or its path under `hd/env/preset/` (`expansion/map/guild4`) when two presets share a stem (the merge fails on an ambiguous stem); its last part must equal the file name (case-insensitive). It must name a generated preset: a file for a preset that does not
 exist fails the merge (a stale file). Add a family by making its folder; no list changes.
 
 ```json
@@ -53,14 +53,14 @@ The ground `terrain` entity is never selected. Never select by `id` or array ind
 | `move` | `by` `[dx, dy, dz]` HD units, or `to` `[x, y]` tile (the entity keeps its offset in the tile, y re-grounded) |
 | `swap` | the matched entities' model (or prefab) path becomes `to`; with `from` (a stock preset path, `data/hd/...`) its dependencies are merged in, else `to` is added to the models |
 | `add` | needs `at`, `from` and `pick`: copies the first entity of stock preset `from` whose model matches `pick` to the centre of tile `at` (plus `offset` `[dx, dy, dz]`), y on the ground plane, a fresh id, named `pd2r_override:...`; that preset's dependencies are merged in |
-| `entity` | an inline entity, kept as is with a fresh id: what `diff` writes for an entity an editor added |
+| `entity` | an inline entity, kept as is with a fresh id: what `diff` writes for an entity an editor added. Its optional `dependencies` (`{kind: [{"path": ...}]}`) are merged in, and its model is added to the models if missing |
 
 A malformed op (unknown op, no selector, a `move` with both or neither of `by`/`to`, a missing key) fails the merge.
 
 ## Lint: a stale op fails
 
 An op that matches nothing, or not its `expect`, is **stale**: the generator moved or replaced what it aimed at. It
-changes nothing, the merge prints `STALE ...`, and the rule writes the list to `generated/presets-overrides-report.tsv`.
+changes nothing, the merge prints `STALE ...`, and the rule writes the list to `generated/presets-overrides-report.tsv` (a skipped rule writes an empty one).
 `py -3 tools/pd2_overrides.py lint` reads that report and exits 1 on any stale op (and when there is no report). The gate
 workflow runs it after the merge, so a PR that makes an override stale (or adds one that is) fails. Re-aim the op or drop
 it.
@@ -86,4 +86,4 @@ fix is a rule of the map (all ferns on this tile block float) rather than a one-
 
 Overrides change what players see, so an override needs a game check: pin the variant with `tools/pd2_force_ds1.py`,
 warp with `docs/agents/warp-locations.md`, and shoot the spot before and after (`docs/agents/game-check.md`). The first
-one is `jungle/jungle1.json` (floating debris, cypress and ferns grounded; the cypress's rock stack replaced by one rock).
+one is `jungle/jungle1.json`: the floating debris, cypress (with its 3 rock piles) and ferns grounded, and a fourth rock added at the cypress; nothing is removed.

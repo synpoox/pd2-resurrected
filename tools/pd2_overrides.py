@@ -2,14 +2,14 @@
 
 A pd2_merge rule. Its anchor is merge/presets-overrides.tsv (no lines; it must sort AFTER presets-hd.tsv, because the
 toolkit's merge driver runs the rule files in name order). The ops live beside it, one JSON file per DS1 variant, in a
-folder per map family: merge/presets-overrides.d/<family>/<ds1 stem>.json. Format, selectors and ops: the doc above.
+folder per map family: merge/presets-overrides.d/<family>/<ds1 stem>.json (`ds1` may be a path relative to the preset root, `expansion/map/guild4`, when a stem is ambiguous). Format, selectors and ops: the doc above.
 
 Lint: an op that matches nothing, or not `expect`, is STALE: the merge prints it and writes it to generated/REPORT;
 `lint` (the gate) fails on it.
 
 CLI:
     py -3 tools/pd2_overrides.py lint                       # the stale ops of the last merge (exit 1 on any)
-    py -3 tools/pd2_overrides.py diff <generated.json> <edited.json> [--ds1 stem]
+    py -3 tools/pd2_overrides.py diff <generated.json> <edited.json> [--ds1 name]
     py -3 tools/pd2_overrides.py roundtrip <generated.json> <edited.json>
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ from presets.entity import _transform  # noqa: E402
 
 
 def plane_ground(preset: dict):
-    import pd2_coverage  # imported when an op needs it: the coverage report is heavy and others edit it
+    import pd2_coverage  # imported on first use only to keep the import cheap; pd2_cache.sources() still follows it into the rule's key
     return pd2_coverage.plane_ground(preset)
 
 
@@ -129,6 +129,11 @@ def apply_ops(preset: dict, ops: list[dict], d2r: Path) -> list[str]:
             continue
         if kind == "entity":  # an inline entity (diff of an editor's output): kept as is, a fresh id
             e = json.loads(json.dumps(op["entity"]))
+            merge_deps(preset, op.get("dependencies", {}))
+            for c in e["components"]:  # a model the entity draws must be a dependency of the preset
+                if c["type"] == "ModelDefinitionComponent" and not any(
+                        m["path"].lower() == c["filename"].lower() for m in preset["dependencies"].get("models", [])):
+                    preset["dependencies"].setdefault("models", []).append({"path": c["filename"]})
             e["id"] = next_id
             next_id += 1
             ents.append(e)
@@ -170,18 +175,35 @@ def apply_ops(preset: dict, ops: list[dict], d2r: Path) -> list[str]:
 
 
 def generated(out_data: Path) -> dict[str, Path]:
-    return {p.stem.lower(): p for p in (out_data / PRESETS).rglob("*.json")}
+    """Every generated preset by its path under the preset root, no extension, lower case, `/` (`expansion/map/jungle1`)."""
+    root = out_data / PRESETS
+    return {p.relative_to(root).with_suffix("").as_posix().lower(): p for p in root.rglob("*.json")}
+
+
+def resolve(have: dict[str, Path], ds1: str, f: Path) -> str:
+    """The key of the preset `ds1` names: a relative path, or a stem that exactly one preset has."""
+    ds1 = ds1.lower().removesuffix(".json")
+    if "/" in ds1:
+        if ds1 not in have:
+            raise ValueError(f"{f}: no generated preset {ds1}.json (a stale override file)")
+        return ds1
+    hits = [k for k in have if k.rsplit("/", 1)[-1] == ds1]
+    if not hits:
+        raise ValueError(f"{f}: no generated preset {ds1}.json (a stale override file)")
+    if len(hits) > 1:
+        raise ValueError(f"{f}: ds1 {ds1!r} is ambiguous ({', '.join(sorted(hits))}): name it by its path")
+    return hits[0]
 
 
 def run(rule: Path, d2r: Path, out_data: Path) -> dict[str, list[str]]:
     have, report = generated(out_data), {}
     for f in files(rule):
         spec = json.loads(f.read_text("utf-8"))
-        ds1 = spec["ds1"].lower()
-        if ds1 != f.stem.lower():
-            raise ValueError(f"{f}: ds1 {ds1!r} is not the file's name")
-        if ds1 not in have:
-            raise ValueError(f"{f}: no generated preset {ds1}.json (a stale override file)")
+        ds1 = resolve(have, spec["ds1"], f)
+        if ds1.rsplit("/", 1)[-1] != f.stem.lower():
+            raise ValueError(f"{f}: ds1 {spec['ds1']!r} is not the file's name")
+        if ds1 in report:
+            raise ValueError(f"{f}: a second file for {ds1}")
         preset = json.loads(have[ds1].read_text("utf-8"))
         n0 = len(preset["entities"])
         report[ds1] = apply_ops(preset, spec["ops"], d2r)
@@ -197,8 +219,9 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/presets-overrides.tsv (RULES["presets-overrides.tsv"])."""
     if not (out_data / PRESETS).is_dir():
         print("  presets-overrides: skipped, no generated presets")
-        return
-    report = run(rule, d2r_data, out_data)
+        report = {}  # an explicit empty report, so lint never reads an older merge's
+    else:
+        report = run(rule, d2r_data, out_data)
     (out_data.parent / REPORT).write_text("# ds1 <tab> stale op\n" + "".join(
         f"{d}\t{s}\n" for d, ss in sorted(report.items()) for s in ss), "utf-8")
 
@@ -234,7 +257,10 @@ def diff(gen: dict, edited: dict, ds1: str) -> dict:
         ops.append({"op": "remove", "at": list(tile(e)), "model": paths(e)[0] if paths(e) else "*", "expect": 1,
                     "pos": [round(_transform(e)["position"]["x"], 3), round(_transform(e)["position"]["z"], 3)]})
     for e in new:
-        ops.append({"op": "entity", "entity": e})  # an inline add: the editor's own entity, kept as is
+        want = set(paths(e))  # the editor's own dependencies of what it drew
+        deps = {k: [i for i in v if i["path"].lower() in want] for k, v in edited["dependencies"].items()}
+        deps = {k: v for k, v in deps.items() if v}
+        ops.append({"op": "entity", "entity": e, **({"dependencies": deps} if deps else {})})  # an inline add
     return {"ds1": ds1, "ops": ops}
 
 
@@ -278,7 +304,10 @@ if __name__ == "__main__":
 
         def key_(p):
             return sorted(json.dumps(r2(x["components"]), sort_keys=True) for x in p["entities"])
-        same = key_(g) == key_(e)
+        def deps_(p):
+            return {(k, i["path"].lower()) for k, v in p["dependencies"].items() for i in v}
+        added = deps_(e) - deps_(json.loads(a.generated.read_text("utf-8-sig")))
+        same = key_(g) == key_(e) and added <= deps_(g)  # the dependencies the editor added are in the replay too
         print(f"{len(spec['ops'])} ops, {len(stale)} stale, replay equals the edited preset: {same}")
         sys.exit(0 if same and not stale else 1)
     if a.cmd == "lint":

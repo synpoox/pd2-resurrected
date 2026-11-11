@@ -202,6 +202,26 @@ class RuleTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.apply()
 
+    def test_a_skip_replaces_an_old_report(self):
+        self.spec([{"op": "remove", "at": [0, 0], "model": "*/gone*"}])
+        self.apply()
+        shutil.rmtree(self.out / PRESETS)
+        self.apply()
+        self.assertEqual(O.lint(self.out), 0)
+
+    def test_same_stem_in_two_folders_needs_a_path(self):
+        other = self.out / PRESETS / "guild"
+        other.mkdir()
+        (other / "jungle1.json").write_text(json.dumps(preset()))
+        self.spec([{"op": "remove", "at": [20, 20]}])
+        with self.assertRaises(ValueError) as c:
+            self.apply()
+        self.assertIn("ambiguous", str(c.exception))
+        self.spec([{"op": "remove", "at": [20, 20]}], ds1="guild/jungle1")
+        self.apply()
+        n = lambda d: len(json.loads((self.out / PRESETS / d / "jungle1.json").read_text())["entities"])
+        self.assertEqual((n("act3"), n("guild")), (5, 4))
+
     def test_no_generated_presets_skips(self):
         shutil.rmtree(self.out / PRESETS)
         self.apply()  # no error
@@ -218,6 +238,7 @@ class DiffTests(unittest.TestCase):
         self.assertEqual(sorted(o["op"] for o in spec["ops"]), ["entity", "move", "remove"])
         replay = copy.deepcopy(gen)
         self.assertEqual(O.apply_ops(replay, spec["ops"], Path(".")), [])
+        self.assertEqual(replay["dependencies"]["models"][-1], {"path": "x/new.model"})
         key = lambda p: sorted(json.dumps(e["components"], sort_keys=True) for e in p["entities"])
         self.assertEqual(key(replay), key(edited))
 
