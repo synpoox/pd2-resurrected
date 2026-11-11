@@ -139,11 +139,31 @@ class LiquidTests(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertEqual(set(mask), {(0, 0), (1, 0)})
 
+    def test_a_blocked_river_tile_over_the_filler_layer_is_liquid(self):
+        # Descend: river tiles over hellgate.dt1's marker layer (#823); a walkable one is a ford, any other base is no water
+        lay = layout(RIVER, {(0, 0)}, {(1, 0)})
+        filler = ("pd2assets/descend/hellgate.dt1", 0, 26, 86)
+        lay.keys[(0, 0)] = ("f", (filler, (RIVER, 0, 2, 24)))
+        lay.keys[(1, 0)] = ("f", (filler, (RIVER, 0, 2, 24)))
+        self.assertEqual(liquids.mask(lay), {(0, 0): (RIVER,)})
+        lay.keys[(0, 0)] = ("f", (("act3/ground/darkmud.dt1", 0, 0, 38), (RIVER, 0, 2, 24)))
+        self.assertEqual(liquids.mask(lay), {})
+
     def test_oasis_floor_gets_no_plane(self):
-        # ruinedcisternv3's sand fill is all (39,50) oasis tiles: no stock room loading oasis.dt1 draws water
+        # the kit already draws stock oasis water (oasis_large01) over ruinedcisternv3's blocked (39,50) tiles, which are
+        # dark water in legacy too (game check, #823): a plane over them would draw water twice
         oasis = "act2/outdoors/oasis.dt1"
         lay = layout(oasis, {(x, y) for x in range(4) for y in range(4)})
         self.assertEqual(P.streams(lay, self.rule_water(), set()), [])
+
+    def test_pd2_water_dt1s_get_a_plane_by_their_own_name(self):
+        # tiles no stock DT1 holds keep their PD2 name (stand_in), and Fallen Gardens' water is all such tiles (#823)
+        for dt1 in ("pd2assets/fallengardenwater.dt1", "pd2assets/psnwell/used/rivbank.dt1",
+                    "pd2assets/aer_canal.dt1"):
+            lay = layout(dt1, {(x, y) for x in range(4) for y in range(4)})
+            out = P.streams(lay, self.rule_water(), set())
+            self.assertEqual(len(out), 1, dt1)
+            self.assertEqual(out[0][0]["components"][0]["position"]["x"], 20.0, dt1)
 
     def test_swamp_floor_gets_no_plane(self):
         lay = layout(SWAMP, {(x, y) for x in range(4) for y in range(4)})
@@ -155,7 +175,7 @@ class LiquidTests(unittest.TestCase):
         return {d: (plane(m), {}) for d, m in water_rules().items()}
 
     def test_every_water_rule_is_an_expected_liquid(self):
-        allowed = ("river", "rivbank", "pool", "pond", "canal", "lava/floor")
+        allowed = ("river", "rivbank", "pool", "pond", "canal", "lava/floor", "fallengardenwater", "docktown/bridge")
         rules = water_rules()
         self.assertTrue(rules)
         for dt1 in rules:

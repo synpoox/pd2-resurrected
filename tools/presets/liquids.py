@@ -10,6 +10,10 @@ import pd2_painter as painter
 from .consts import WATER_Y
 from .layout import Layout
 
+# floor layers PD2 puts under water as a marker: Descend's river tiles lie over hellgate.dt1's tile 26/86 (#823)
+FILLER_BASES = frozenset({"pd2assets/descend/hellgate.dt1"})
+
+
 def mask(lay: Layout, extra: frozenset = frozenset()) -> dict[tuple[int, int], tuple[str, ...]]:
     """Every floor tile of the layout that a liquid DT1 draws and nothing walkable covers -> its liquid DT1s, sorted:
     blocked by its DT1 flags (water) or marked unwalkable by its DS1 cell (PD2's lava seas, whose lava floor has walkable
@@ -26,10 +30,13 @@ def mask(lay: Layout, extra: frozenset = frozenset()) -> dict[tuple[int, int], t
     for c, k in lay.keys.items():
         if k[0] != "f":
             continue
-        dt1s = {t[0] for t in k[1] if t[0]}
+        dt1s = {t[0] for t in k[1] if t[0]} - FILLER_BASES  # a filler layer under the water draws nothing
         if not dt1s or not all(liquid(d) for d in dt1s):
             continue  # a stone platform's tile over lava is no liquid
-        if painter.blocked_floor(lay.flags.get(c, bytes(25))) or c in lay.unwalkable:
+        cell_blocked = painter.blocked_floor(lay.flags.get(c, bytes(25))) or c in lay.unwalkable
+        if not cell_blocked and any(t[0] in FILLER_BASES for t in k[1]):
+            continue  # a walkable tile over the filler is a ford, not water
+        if cell_blocked:
             out[c] = tuple(sorted(dt1s))
             blocked[k[1][0]] += 1
         elif len(k[1]) > 1 and k[1][0][0]:
