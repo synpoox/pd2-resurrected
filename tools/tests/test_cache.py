@@ -372,10 +372,11 @@ class ConcurrentMergeTests(unittest.TestCase):
     def test_two_merges_at_once_both_write_a_whole_tree_without_waiting_on_each_other(self):
         # two processes (the rule cache traces per process); each rule waits until the other one is running too
         child = CHILD % {"tools": str(Path(pd2_cache.__file__).parent), "meet": str(self.tmp / "meet"), "tables": TABLES}
-        write(self.tmp / "child" / "child_merge.py", child)  # a file: a rule's module needs a __file__
+        for n in ("a", "b"):  # a file: a rule's module needs a __file__. Each differs, so the rules' keys do (a shared key
+            write(self.tmp / "child" / f"child_merge_{n}.py", child + f"# {n}\n")  # is single-flight, #821)
         env = {**os.environ, "PD2R_CACHE": str(self.tmp / "cache")}
         env.pop("GITHUB_ACTIONS", None)
-        procs = [subprocess.Popen([sys.executable, str(self.tmp / "child" / "child_merge.py"), str(self.tmp / n), str(self.tmp / "d2r"), n], env=env,
+        procs = [subprocess.Popen([sys.executable, str(self.tmp / "child" / f"child_merge_{n}.py"), str(self.tmp / n), str(self.tmp / "d2r"), n], env=env,
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) for n in ("a", "b")]
         outs = [p.communicate(timeout=120)[0] for p in procs]
         self.assertEqual([p.returncode for p in procs], [0, 0], outs)
@@ -676,6 +677,223 @@ class MergeSlotTests(unittest.TestCase):
             self.assertEqual(pd2_cache.merge_slots(Path(self.tmp.name)).n, 2)
         with mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": ""}):
             self.assertEqual(pd2_cache.merge_slots(Path(self.tmp.name)).n, 4)
+
+
+class SingleFlightTests(unittest.TestCase):
+    """Two merges that miss one rule key together run the rule once (#821)."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.cache = self.tmp / "rules"
+        self.runs: list[str] = []
+        self.roots = []
+        for n in ("one", "two"):
+            write(self.tmp / n / "merge" / "r.tsv", "same")  # equal inputs: one's entry is two's hit
+            self.roots.append(self.tmp / n)
+
+    def rule_for(self, i, before=None, slots=None, seconds=0.0):
+        root = self.roots[i]
+
+        def work():
+            if before:
+                before()
+            self.runs.append(root.name)
+            (root / "merge" / "r.tsv").read_text()
+            time.sleep(seconds)
+            write(root / "generated" / "data" / "a.txt", "A")
+        return pd2_cache.rule(self.cache, "k", {"p": root}, work, slots=slots)  # callers capture stdout (it is per process)
+
+    def test_the_second_merge_waits_and_replays_with_the_same_bytes(self):
+        res = {}
+        ts = [threading.Thread(target=lambda i=i: res.__setitem__(i, self.rule_for(i, seconds=1.0))) for i in (0, 1)]
+        with redirect_stdout(io.StringIO()) as so:
+            ts[0].start()
+            time.sleep(0.4)
+            ts[1].start()
+            [t.join(30) for t in ts]
+        self.assertEqual(self.runs, ["one"], "the rule ran once")
+        self.assertEqual((res[0], res[1]), (False, True))
+        self.assertIn("waited for another run", so.getvalue())
+        a = [(r / "generated" / "data" / "a.txt").read_bytes() for r in self.roots]
+        self.assertEqual(a[0], a[1], "the same bytes with and without the wait")
+
+    def test_a_holder_that_dies_hands_the_rule_to_the_waiter(self):
+        lockfile = self.tmp / "rules.locks" / "k.local"
+        code = ("import sys, time; sys.path.insert(0, sys.argv[1]); import pd2_cache; from pathlib import Path\n"
+                "with pd2_cache.lock(Path(sys.argv[2])):\n    print('held', flush=True); time.sleep(60)")
+        p = subprocess.Popen([sys.executable, "-c", code, str(Path(pd2_cache.__file__).parent), str(lockfile)],
+                             stdout=subprocess.PIPE, text=True)
+        self.addCleanup(p.kill)
+        self.assertEqual(p.stdout.readline().strip(), "held")
+        res = []
+        t = threading.Thread(target=lambda: res.append(self.rule_for(1)))
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            t.start()
+            time.sleep(1.5)
+            self.assertEqual(self.runs, [], "waiting on the live holder")
+            p.kill()
+            p.wait(10)
+            t.join(30)
+        self.assertEqual(self.runs, ["two"], "the holder died with nothing kept: the waiter runs the rule itself")
+        self.assertEqual(res, [False])
+
+    def test_a_merge_holding_the_only_slot_does_not_deadlock_on_a_key_lock(self):
+        folder = self.tmp / "slots"
+        a, b = pd2_cache.Slots(folder, 1, poll=0.01), pd2_cache.Slots(folder, 1, poll=0.01)
+        b.acquire()  # merge two holds the only slot (an earlier rule ran)
+        started, res = threading.Event(), {}
+
+        def holder():  # merge one: holds the key lock, then needs the slot to run
+            with redirect_stderr(io.StringIO()):
+                res[0] = self.rule_for(0, before=lambda: (started.set(), a.acquire()), slots=a)
+            a.release()
+
+        def waiter():  # merge two: needs the key lock one holds, while holding the slot one waits for
+            started.wait(10)
+            time.sleep(0.2)
+            res[1] = self.rule_for(1, slots=b)
+        ts = [threading.Thread(target=holder), threading.Thread(target=waiter)]
+        with redirect_stdout(io.StringIO()):
+            [t.start() for t in ts]
+            [t.join(20) for t in ts]
+        self.assertFalse(any(t.is_alive() for t in ts), "deadlock: each waits for what the other holds")
+        self.assertEqual(self.runs, ["one"])
+        self.assertTrue(res[1], "two replays what one kept")
+        self.assertIsNone(b.f, "and gave its slot up while it waited")
+
+
+class CiPolicyTests(unittest.TestCase):
+    """The gate replays rules without letting a PR's code write what main's code replays (#820)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.home = Path(self.tmp.name)
+        self.cache = self.home / "rules"
+        self.root = self.home / "wt"
+        self.out = self.root / "generated" / "data"
+        self.root.mkdir()
+        self.runs: list[str] = []
+
+    def go(self, policy, text="v"):
+        def work():
+            self.runs.append(text)
+            write(self.out / "a.txt", text)
+        with redirect_stdout(io.StringIO()):
+            return pd2_cache.rule(self.cache, "k", {"p": self.root}, work, policy)
+
+    def test_scope_picks_the_policy(self):
+        for scope, want in (("main", ("main", None, True)), ("pr-12", ("pr", self.home / "rules-pr" / "pr-12", True))):
+            with mock.patch.dict(os.environ, {"PD2R_CI_SCOPE": scope}):
+                p = pd2_cache.ci_policy(self.home)
+                self.assertEqual((p.origin, p.scratch, p.write), want)
+                self.assertEqual(p.trusted, frozenset({"main"}))
+        for scope in ("", "pr-", "pr-1/../x", "pr-1x", "other"):
+            with mock.patch.dict(os.environ, {"PD2R_CI_SCOPE": scope}):
+                self.assertIsNone(pd2_cache.ci_policy(self.home), f"{scope!r}: no cache, merge fresh")
+
+    def test_a_pr_replays_mains_entries_and_never_writes_the_shared_folder(self):
+        main = pd2_cache.Policy("main", frozenset({"main"}))
+        pr = pd2_cache.Policy("pr", frozenset({"main"}), self.home / "rules-pr" / "pr-7")
+        self.assertFalse(self.go(main, "m"))
+        shutil.rmtree(self.root / "generated")  # a merge starts from an empty generated/
+        self.assertTrue(self.go(pr, "p"), "main's entry replays in a PR")
+        self.assertEqual(self.runs, ["m"])
+        shared = sorted(self.cache.rglob("manifest.json"))
+        write(self.root / "x", "")
+        # a rule whose inputs differ: a PR run is kept in the scratch folder only
+        (self.root / "merge").mkdir()
+        def other():
+            self.runs.append("p")
+            write(self.out / "a.txt", "p")
+        with redirect_stdout(io.StringIO()):
+            pd2_cache.rule(self.cache, "k2", {"p": self.root}, other, pr)
+            self.assertTrue(pd2_cache.rule(self.cache, "k2", {"p": self.root}, other, pr), "the PR replays its own")
+        self.assertEqual(sorted(self.cache.rglob("manifest.json")), shared, "the shared folder is untouched")
+        self.assertTrue(list((self.home / "rules-pr" / "pr-7" / "k2").glob("*/manifest.json")))
+        with redirect_stdout(io.StringIO()):
+            self.assertFalse(pd2_cache.rule(self.cache, "k2", {"p": self.root}, other,
+                                            pd2_cache.Policy("pr", frozenset({"main"}), self.home / "rules-pr" / "pr-8")),
+                             "another PR does not read it")
+            self.assertFalse(pd2_cache.rule(self.cache, "k2", {"p": self.root}, other, main), "nor does main")
+
+    def test_main_replays_only_entries_main_kept(self):
+        self.assertFalse(self.go(pd2_cache.Policy()), "an agent's local merge keeps an entry")
+        main = pd2_cache.Policy("main", frozenset({"main"}))
+        shutil.rmtree(self.root / "generated")
+        self.assertFalse(self.go(main), "main does not replay a local entry: runs fresh")
+        shutil.rmtree(self.root / "generated")
+        self.assertTrue(self.go(main), "but replays its own")
+        shutil.rmtree(self.root / "generated")
+        self.assertTrue(self.go(pd2_cache.Policy()), "agents replay anything")
+        # an entry from before origins (no key) is not main's either
+        for m in self.cache.rglob("manifest.json"):
+            d = json.loads(m.read_text("utf-8"))
+            d.pop("origin")
+            m.write_text(json.dumps(d), "utf-8")
+        shutil.rmtree(self.root / "generated")
+        self.assertFalse(self.go(main))
+
+    def test_a_run_without_a_scope_keeps_nothing(self):
+        self.assertFalse(self.go(pd2_cache.Policy(write=False)))
+        shutil.rmtree(self.root / "generated")
+        self.assertFalse(self.go(pd2_cache.Policy(write=False)))
+        self.assertEqual(self.runs, ["v", "v"])
+        self.assertFalse(self.cache.exists())
+
+    def test_a_pr_gate_evicts_only_its_own_scratch_entries(self):
+        shared, mine = self.cache / "k" / "e1", self.home / "rules-pr" / "pr-7" / "k" / "e2"
+        pr = pd2_cache.Policy("pr", frozenset({"main"}), self.home / "rules-pr" / "pr-7")
+        self.assertEqual(pd2_cache.own([shared, mine], pr), [mine])
+        self.assertEqual(pd2_cache.own([shared, mine], pd2_cache.Policy("main", frozenset({"main"}))), [shared, mine])
+
+    def test_the_main_gate_does_not_wait_on_an_agent_run_it_cannot_replay(self):
+        lock = self.home / "rules.locks" / "k.local"
+        with pd2_cache.lock(lock):  # an agent's run of the key
+            t0 = time.time()
+            self.assertFalse(self.go(pd2_cache.Policy("main", frozenset({"main"}))))
+            self.assertLess(time.time() - t0, 5)
+        self.assertEqual(self.runs, ["v"])
+
+    def test_sweep_drops_stale_pr_folders_empty_key_folders_and_old_locks(self):
+        old = time.time() - 10 * 86400
+        for n in ("rules-pr/pr-1/k/e", "rules-pr/pr-2/k/e"):
+            write(self.home / n / "manifest.json", "{}")
+        for n in ("rules-pr/pr-1", "rules-pr/pr-1/k", "rules-pr/pr-1/k/e", "rules-pr/pr-1/k/e/manifest.json"):
+            os.utime(self.home / n, (old, old))
+        (self.home / "rules" / "empty").mkdir(parents=True)
+        write(self.home / "rules.locks" / "old.main", "")
+        write(self.home / "rules.locks" / "new.main", "")
+        os.utime(self.home / "rules.locks" / "old.main", (old, old))
+        pd2_cache.sweep(self.home)
+        self.assertFalse((self.home / "rules-pr" / "pr-1").exists())
+        self.assertTrue((self.home / "rules-pr" / "pr-2" / "k" / "e").is_dir())
+        self.assertFalse((self.home / "rules" / "empty").exists())
+        self.assertFalse((self.home / "rules.locks" / "old.main").exists())
+        self.assertTrue((self.home / "rules.locks" / "new.main").exists())
+
+    def test_prune_counts_the_pr_scratch_folders(self):
+        cache = self.home
+        for n in ("rules/k/old", "rules-pr/pr-3/k/e"):
+            write(cache / n / "files" / "f", "x" * 100)
+            write(cache / n / "manifest.json", json.dumps({"bytes": 100}))
+            os.utime(cache / n, (time.time() - 7200, time.time() - 7200))
+        gone = pd2_cache.prune(cache, 100)
+        self.assertEqual([p.relative_to(cache).as_posix() for p in gone], ["rules/k/old"], "oldest first, scratch counted")
+        self.assertEqual(len(pd2_cache.prune(cache, 0)), 1)
+
+    def test_pd2_merge_main_uses_the_cache_on_ci_only_with_a_scope(self):
+        calls = []
+        def fake(root, d2r, cache, slots, policy):
+            calls.append((cache, policy))
+            return []
+        for env, want in (({"PD2R_CI_SCOPE": "pr-5"}, (self.home / "rules", "pr")), ({}, (None, "local")),
+                          ({"PD2R_CI_SCOPE": "main"}, (self.home / "rules", "main"))):
+            calls.clear()
+            with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "PD2R_CACHE": str(self.home), **env}),                     mock.patch.object(pd2_merge, "merge", fake), redirect_stdout(io.StringIO()):
+                pd2_merge.main(["--root", str(self.root)])
+            self.assertEqual((calls[0][0], calls[0][1].origin), want, env)
 
 
 if __name__ == "__main__":

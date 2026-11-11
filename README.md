@@ -104,7 +104,7 @@ python tools/companions.py install --game DIR
 Run the `modkit` fetch and the last two with `..\d2rAI-toolkit` on `PYTHONPATH`. The fetch (once per D2R build)
 caches D2R's DS1, DT1 and HD presets, which the merge harvests for the HD presets of PD2-only areas
 (`tools/pd2_presets.py`); `python tools/pd2_coverage.py` after `pd2_merge.py` scores them without the game
-(`coverage/report.md`, worst first; outside `out/`, which `modkit build` wipes). The gate fails when a preset's score drops more than a point below main's
+(`coverage/report.md`, worst first; outside `out/`, which `modkit build` wipes). The gate fails when a preset's score (or a fidelity score) drops more than `pd2_coverage.TOLERANCE` (3 points) below main's
 scores (the coverage-baseline artifact of main's latest gate run); to accept an intended drop, label the PR
 `coverage-drop-ok`. `--check` compares with that artifact too (`gh run download`; offline it warns and falls back to
 `docs/coverage-baseline.tsv`, a stale snapshot PRs never commit; `--tsv` picks the file on purpose) and prints the drop table. `companions.py fetch` downloads the pinned companion plugins in
@@ -124,7 +124,7 @@ python -m unittest discover -s tools/tests
 
 The table-diff gate compares the merged tables with PD2's, scoped to a work item (P2, [P3](https://github.com/synpoox/pd2-resurrected/issues/47), [P4](https://github.com/synpoox/pd2-resurrected/issues/48)) or milestone (M1,
 alpha). It fails on any difference that [docs/deviations.md](docs/deviations.md) does not list. The `gate` workflow
-runs it at scope alpha on every PR from this repository's branches, on the self-hosted runner described under Release.
+runs it at scope alpha on every PR from this repository's branches, on the self-hosted runner described under Release. Docs-only changes (`*.md`, `docs/`, `changelog.d/`, except gate inputs `docs/deviations.md` and `docs/coverage-baseline.tsv`) start no run, and closing or merging a PR cancels its running gate.
 For a work item's own scope, paste its output into the PR:
 
 ```bash

@@ -41,6 +41,30 @@ def walkable_near(lay: presets.Layout, cx: int, cy: int) -> tuple[int, int]:
     return min(tiles, key=lambda t: ((t[0] - cx) ** 2 + (t[1] - cy) ** 2, t)) if tiles else (cx, cy)
 
 
+def object_classes(gen: Path) -> dict[tuple[int, int], str]:
+    """objpreset.txt: (act, object id) -> class name, as the waypoint lookup reads it."""
+    op = load(gen, "objpreset")
+    return {(int(r[1]), int(r[0])): r[2] for r in op.rows if r[0].isdigit() and r[1].isdigit()}
+
+
+def reference_spots(data: bytes, lay: presets.Layout | None, classes: dict[tuple[int, int], str],
+                    places: dict[int, list[str]] | None = None) -> list[tuple[str, int, int]]:
+    """A DS1's reference spots as (label, tileX, tileY): the centre, the walkable tile nearest it (when `lay` is given:
+    the centre itself can be rock or water), then in object order each waypoint and, when `places` (act -> monpreset
+    names) is given, each boss-like monster preset. The sweep (pd2_edge_tour) calls this without `places`."""
+    _v, w, h, dact, *_ = ds1_header(data)
+    spots = [("centre", w // 2, h // 2)]
+    if lay is not None:
+        spots.append(("nearest walkable to centre", *walkable_near(lay, w // 2, h // 2)))
+    for kind, oid, x, y in read_objects(data):
+        if kind == 2 and "waypoint" in classes.get((dact + 1, oid), "").lower():
+            spots.append(("waypoint", x // 5, y // 5))
+        if places is not None and kind == 1 and oid < len(places.get(dact + 1, [])) and any(
+                s in places[dact + 1][oid].lower() for s in ("boss", "unique", "diablo", "baal", "mephisto")):
+            spots.append((f"monster preset {places[dact + 1][oid]}", x // 5, y // 5))
+    return spots
+
+
 def selector(ds1: str) -> str:
     """The `pd2_force_ds1.py` selector of a DS1: its file name."""
     return ds1.rsplit("/", 1)[-1].lower()
@@ -50,11 +74,11 @@ def main() -> None:
     from pd2_merge import D2R_DATA
     gen = ROOT / "generated" / "data"
     lp, lv = load(gen, "lvlprest"), load(gen, "levels")
-    mp, op = load(gen, "monpreset"), load(gen, "objpreset")
+    mp = load(gen, "monpreset")
     n_d2r = len(load(D2R_DATA, "lvlprest").records())
     lvl = {int(r[col(lv, "Id")]): r for r in lv.rows if r[col(lv, "Id")].isdigit()}
     origin = offsets(gen)
-    classes = {(int(r[1]), int(r[0])): r[2] for r in op.rows if r[0].isdigit() and r[1].isdigit()}
+    classes = object_classes(gen)
     places: dict[int, list[str]] = {}
     for r in mp.rows:
         if r[0].isdigit():
@@ -102,20 +126,12 @@ def main() -> None:
                 sel = f" (pin: `pd2_force_ds1.py --slot <N> \"{selector(ds1)}\"`)" if multi else ""
                 built = "" if ds1 in m["built"] else " (no HD preset generated for this variant)"
                 out.append(f"- **{ds1.rsplit('/', 1)[-1]}**{sel}, {w}x{h} tiles{built}")
-                spots = [("centre", w // 2, h // 2)]
+                lay = None
                 try:
                     lay = presets.layout(data, presets.stand_in(dt1s.get(name, m["files"]), tiles, pd2_tiles, standins))
-                    tx, ty = walkable_near(lay, w // 2, h // 2)
-                    spots.append(("nearest walkable to centre", tx, ty))
                 except ValueError as e:  # a DS1 older than version 4: layout() cannot read its layers
                     out.append(f"  - (no walkable-tile line: {e})")
-                for kind, oid, x, y in read_objects(data):
-                    if kind == 2 and "waypoint" in classes.get((dact + 1, oid), "").lower():
-                        spots.append(("waypoint", x // 5, y // 5))
-                    if kind == 1 and oid < len(places.get(dact + 1, [])) and any(
-                            s in places[dact + 1][oid].lower()
-                            for s in ("boss", "unique", "diablo", "baal", "mephisto")):
-                        spots.append((f"monster preset {places[dact + 1][oid]}", x // 5, y // 5))
+                spots = reference_spots(data, lay, classes, places)
                 seen = set()
                 for label, tx, ty in spots:
                     if (tx, ty) in seen:

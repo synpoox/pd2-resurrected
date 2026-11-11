@@ -3,11 +3,15 @@ name: gate
 # The table-diff gate (tools/pd2_diff.py, #352) on every PR and push to main. It needs the PD2 install and D2R's tables,
 # which never go to GitHub (ADR 0002), so it runs on the owner's self-hosted runner, as the release does; README.md has
 # the runner setup. PRs from forks don't run here: the runner only builds this repository's own branches.
+# Docs-only changes start no run (paths:), except the gate inputs docs/deviations.md and docs/coverage-baseline.tsv; closing or merging a PR cancels its in-flight run (#847).
 on:
   push:
     branches: [main]
+    paths: ['**', '!**/*.md', '!docs/**', '!changelog.d/**', 'docs/deviations.md', 'docs/coverage-baseline.tsv']
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]  # labeled: coverage-drop-ok reruns the gate
+    # labeled: coverage-drop-ok reruns the gate; closed (merged too) joins the PR's group to cancel its run, the job's if: skips it
+    types: [opened, synchronize, reopened, labeled, unlabeled, closed]
+    paths: ['**', '!**/*.md', '!docs/**', '!changelog.d/**', 'docs/deviations.md', 'docs/coverage-baseline.tsv']
 
 # One gate per PR: a push cancels the run on the old head (#801). push: one group per main commit (each uploads its
 # baseline). A label other than coverage-drop-ok starts a run the job's if: skips: one group per run, so it can't
@@ -49,6 +53,10 @@ jobs:
           New-Item -ItemType Junction -Path pd2-data -Target $cache | Out-Null
           py -3 tools/pd2_extract.py --out $cache; if ($LASTEXITCODE) { throw "pd2_extract failed" }
           py -3 -m modkit fetch --prefix data/global/animdata.d2; if ($LASTEXITCODE) { throw "modkit fetch failed" }
+          # #820: replay the rules whose code and inputs are unchanged from the shared rule cache. A push to main keeps
+          # new entries there and replays only main's own; a PR replays main's and keeps only in its scratch folder
+          # (pd2_cache.Policy), so a buggy PR run cannot damage the entries main replays (same-repo PR code is trusted by this job's `if:`).
+          $env:PD2R_CI_SCOPE = if ("${{ github.event_name }}" -eq "push") { "main" } else { "pr-${{ github.event.pull_request.number }}" }
           py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
       - name: Table-diff gate
         run: py -3 tools/pd2_diff.py --scope alpha

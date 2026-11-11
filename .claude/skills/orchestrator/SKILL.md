@@ -30,25 +30,31 @@ Repo rules (PR body, gate, changelog fragments, branch deletion) live in `AGENTS
 3. **Brief.** Write a short brief: the issue number, the goal, files to read, what is out of scope.
    Say "game check per `docs/agents/game-check.md`" instead of pasting its steps. A brief that may let the agent
    create issues says so, and tells it to link them as above. Tell the worker never to wait on CI, neither in the
-   foreground nor in a background loop: it pushes, opens the PR and reports. Done when the brief names the issue and
+   foreground nor in a background loop: it pushes, opens the PR and reports. Reviewers get `isolation: worktree` and
+   never check out in your tree. Tell workers: one full merge per commit (reuse a worktree's or CI's output instead of
+   re-merging; limits #820, #821), compare merge speed by `time.process_time` not wall time, expect CI to queue when
+   4 agents merge, and commit or delete scratch files before a worktree is removed. Done when the brief names the issue and
    holds no rule that a doc already states.
 4. **Implement.** Launch the implementer. It codes, then pushes and opens the PR (`Closes #<n>`, a `changelog.d/`
    fragment), then runs the game check per `docs/agents/game-check.md`, then reports.
    Docs-only PRs skip the game check. When the report arrives, stop the worker (standing rule "Finished agents").
    Done when the report names the PR, the head SHA and the check result.
 5. **Verify.** Read the report against the issue and the PR diff yourself. Check the CI result for the head
-   (CI is fast). Done when the PR matches the issue and the checks you rely on ran on the head.
+   (`unit` is fast; the gate may queue for a merge slot). Done when the PR matches the issue and the checks you rely on ran on the head.
 6. **Review.** Launch one Opus reviewer with the PR and the builder's notes. It posts one PR comment.
    Done when the comment is posted.
 7. **Fix.** At most 2 implementer -> reviewer cycles per PR. Findings left after cycle 2 become a follow-up issue.
    Done when the reviewer has no blocking finding, or the leftovers are filed.
-8. **Merge.** Squash only, on a green CI table-diff and unit job for the final head (AGENTS.md gate rule). A coverage
+8. **Merge.** Squash only, per the AGENTS.md gate rule. A docs-only PR (only `.md` files, docs, `changelog.d/` fragments, except gate inputs `docs/deviations.md`, `docs/coverage-baseline.tsv`; no
+   code, data, workflow or tools change) merges at once, without waiting for CI. A coverage
    drop needs the owner's `coverage-drop-ok`: ask, do not apply it yourself. Two PRs that edit the same table
    conflict: merge one, then the other merges main and reruns the gate. Done when the PR shows merged.
 9. **Clean up.** Run `gh pr list --base <branch>` first: retarget any PR based on the branch, then delete the
    branch on the remote and locally (never `research/*`, `issue-assets` or `handoff/*`). Remove the agent worktree
-   with the junction-safe steps in `docs/agents/game-check.md` ("Worktree hygiene"). Done when the branch and
-   worktree are gone and the shared cache still has files.
+   with `tools/worktree_remove.ps1` only (`docs/agents/game-check.md`, "Worktree hygiene"). Done when the branch and
+   worktree are gone and the shared cache still has files. Merge with `gh pr merge --squash` without
+   `--delete-branch` (it removes local worktrees through the `pd2-data` junction); delete the remote branch with
+   `git push origin --delete <branch>`.
 
 ## Standing rules
 
