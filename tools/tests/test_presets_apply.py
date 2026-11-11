@@ -1,6 +1,9 @@
 """pd2_presets: the pd2_merge rule."""
+import contextlib
 import io
 import json
+import os
+import shutil
 import struct
 import sys
 import tempfile
@@ -107,6 +110,43 @@ class ApplyTests(unittest.TestCase):
         self.assertIn("skipped", log.getvalue())
         self.assertFalse((self.out / "hd").exists())
 
+    def test_the_output_does_not_depend_on_the_worker_count_and_a_repeated_ds1_is_built_once(self):
+        lv = self.out / "global/excel/lvlprest.txt"
+        lv.write_text(lv.read_text() + "Map B\t3\t1\tExpansion/Map/N.ds1\t\t\t\t\t\n")
+        lv2 = self.out / "global/excel/levels.txt"
+        lv2.write_text(lv2.read_text() + "Map B\t0\n")
+        (self.out / "global/tiles/expansion/map/n.ds1").write_bytes(
+            ds1(2, 1, [{(0, 0): A[1:], (1, 0): B[1:]}], [{}]))
+        self.rule.write_text("# tile set\tbiome\nAct 1 - Town\tdata/hd/env/biome/act1_town.json\n")
+        pre, outputs = self.out / "hd/env/preset", {}
+        for workers in ("1", "2"):
+            shutil.rmtree(pre, ignore_errors=True)
+            with mock.patch.dict(os.environ, {"PD2R_PRESET_WORKERS": workers}), redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                P.apply(self.rule, Path(), self.d2r, self.out)
+            outputs[workers] = {f.relative_to(pre).as_posix(): f.read_bytes() for f in pre.rglob("*.json")}
+        self.assertEqual(sorted(outputs["1"]), ["expansion/map/m.json", "expansion/map/n.json"])
+        self.assertEqual(outputs["1"], outputs["2"])
+
+    def test_a_ds1_the_plan_lists_twice_is_built_once_and_reported_twice(self):
+        from presets import parallel
+        seen = []
+
+        def fake(pl, tasks):
+            seen.append(list(tasks))
+            return {t: t[1] for t in tasks}, 7
+        with mock.patch.object(parallel, "_serial", fake):
+            built, sources = parallel.build_all(None, [("1", "a.ds1"), ("1", "b.ds1"), ("1", "a.ds1")])
+        self.assertEqual(seen, [[("1", "a.ds1"), ("1", "b.ds1")]])
+        self.assertEqual((built, sources), (["a.ds1", "b.ds1", "a.ds1"], 7))
+
+    def test_workers_default_to_three_and_the_env_asks_for_more_or_fewer(self):
+        from presets import parallel
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("PD2R_PRESET_WORKERS", None)
+            self.assertEqual(parallel.wanted(), (3, False))
+        with mock.patch.dict(os.environ, {"PD2R_PRESET_WORKERS": "5"}):
+            self.assertEqual(parallel.wanted(), (5, True))
+
 
 class RuleFilesTests(unittest.TestCase):
     """The rule's lines are in merge/presets-hd.tsv (the anchor) and presets-hd.d/*.tsv (#789)."""
@@ -168,7 +208,6 @@ class RuleFilesTests(unittest.TestCase):
         self.assertEqual([ln for ln in rule.read_text("utf-8").splitlines() if ln and not ln.startswith("#")], [])
         sets, standins, water = P.read_rule(rule)
         self.assertTrue(sets and standins and water)
-
 
 if __name__ == "__main__":
     unittest.main()
