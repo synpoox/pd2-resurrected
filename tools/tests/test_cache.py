@@ -719,7 +719,7 @@ class SingleFlightTests(unittest.TestCase):
         self.assertEqual(a[0], a[1], "the same bytes with and without the wait")
 
     def test_a_holder_that_dies_hands_the_rule_to_the_waiter(self):
-        lockfile = self.tmp / "rules.locks" / "k"
+        lockfile = self.tmp / "rules.locks" / "k.local"
         code = ("import sys, time; sys.path.insert(0, sys.argv[1]); import pd2_cache; from pathlib import Path\n"
                 "with pd2_cache.lock(Path(sys.argv[2])):\n    print('held', flush=True); time.sleep(60)")
         p = subprocess.Popen([sys.executable, "-c", code, str(Path(pd2_cache.__file__).parent), str(lockfile)],
@@ -841,6 +841,37 @@ class CiPolicyTests(unittest.TestCase):
         self.assertFalse(self.go(pd2_cache.Policy(write=False)))
         self.assertEqual(self.runs, ["v", "v"])
         self.assertFalse(self.cache.exists())
+
+    def test_a_pr_gate_evicts_only_its_own_scratch_entries(self):
+        shared, mine = self.cache / "k" / "e1", self.home / "rules-pr" / "pr-7" / "k" / "e2"
+        pr = pd2_cache.Policy("pr", frozenset({"main"}), self.home / "rules-pr" / "pr-7")
+        self.assertEqual(pd2_cache.own([shared, mine], pr), [mine])
+        self.assertEqual(pd2_cache.own([shared, mine], pd2_cache.Policy("main", frozenset({"main"}))), [shared, mine])
+
+    def test_the_main_gate_does_not_wait_on_an_agent_run_it_cannot_replay(self):
+        lock = self.home / "rules.locks" / "k.local"
+        with pd2_cache.lock(lock):  # an agent's run of the key
+            t0 = time.time()
+            self.assertFalse(self.go(pd2_cache.Policy("main", frozenset({"main"}))))
+            self.assertLess(time.time() - t0, 5)
+        self.assertEqual(self.runs, ["v"])
+
+    def test_sweep_drops_stale_pr_folders_empty_key_folders_and_old_locks(self):
+        old = time.time() - 10 * 86400
+        for n in ("rules-pr/pr-1/k/e", "rules-pr/pr-2/k/e"):
+            write(self.home / n / "manifest.json", "{}")
+        for n in ("rules-pr/pr-1", "rules-pr/pr-1/k", "rules-pr/pr-1/k/e", "rules-pr/pr-1/k/e/manifest.json"):
+            os.utime(self.home / n, (old, old))
+        (self.home / "rules" / "empty").mkdir(parents=True)
+        write(self.home / "rules.locks" / "old.main", "")
+        write(self.home / "rules.locks" / "new.main", "")
+        os.utime(self.home / "rules.locks" / "old.main", (old, old))
+        pd2_cache.sweep(self.home)
+        self.assertFalse((self.home / "rules-pr" / "pr-1").exists())
+        self.assertTrue((self.home / "rules-pr" / "pr-2" / "k" / "e").is_dir())
+        self.assertFalse((self.home / "rules" / "empty").exists())
+        self.assertFalse((self.home / "rules.locks" / "old.main").exists())
+        self.assertTrue((self.home / "rules.locks" / "new.main").exists())
 
     def test_prune_counts_the_pr_scratch_folders(self):
         cache = self.home
