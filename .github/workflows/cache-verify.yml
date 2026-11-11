@@ -53,8 +53,26 @@ jobs:
           $scratch = "C:\pd2r-cache\rules-pr\pr-0"
           if (Test-Path $scratch) { Remove-Item -Recurse -Force $scratch }
           $env:PD2R_CI_SCOPE = "pr-0"
-          py -3 tools/pd2_merge.py; $code = $LASTEXITCODE
+          $out = py -3 tools/pd2_merge.py; $code = $LASTEXITCODE
+          $out
           if (Test-Path $scratch) { Remove-Item -Recurse -Force $scratch }
           if ($code) { throw "cached pd2_merge failed" }
+          $line = $out | Select-String -Pattern 'rule cache: (\d+) of (\d+) rules replayed' | Select-Object -First 1
+          if ($line) { $line.Line | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY }
+          # self-heal hides a cache fault: the merge rebuilt without the cache, so the comparison proves nothing
+          if ($out | Select-String -SimpleMatch 'rebuilding without the rule cache') {
+            "::warning::the cached merge logged 'rebuilding without the rule cache': the cache was not what was compared"
+            "Warning: the merge rebuilt without the rule cache." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          }
+          # 0 replayed: nothing cached was compared (an empty cache, or a key that never hits), so the check is vacuous
+          if (-not $line -or $line.Matches[0].Groups[1].Value -eq "0") {
+            "::error::NOT VERIFIED: the cached merge replayed no rules, so there is nothing to compare ($($line.Line))"
+            "NOT VERIFIED: no rules replayed." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+            throw "cached merge replayed 0 rules"
+          }
       - name: Compare generated/
         run: py -3 tools/pd2_cache_verify.py generated-fresh generated
+      - name: Remove generated-fresh
+        if: always()
+        run: if (Test-Path generated-fresh) { Remove-Item -Recurse -Force generated-fresh }
+        continue-on-error: true
