@@ -5,6 +5,7 @@ before. Under the root:
   pd2_extract.lock     held by every pd2_extract run, so two extracts never run at once
   extract/<key>/       pd2_extract's output, one per extract stamp; a worktree's pd2-data/ is a junction to it
   rules/<key>/<reads>/ what one pd2_merge rule wrote, for its code and stamps and what it read (rule, below)
+  rules-pr/pr-<n>/...  the same for one PR's CI gate, which keeps only there (Policy, below); pruned with rules/
 A cache folder is complete before it gets its name, so no run sees another's half-written one. pd2_merge prunes rules/
 to a size cap, sparing what was used in the last 15 minutes. merge/ (the whole-merge folders older tools kept) is pruned
 only with PD2R_PRUNE_LEGACY=1, as a worktree on older tools may be copying one at any time; extract/ is never pruned:
@@ -22,8 +23,9 @@ import shutil
 import subprocess
 import sys
 import time
+import re
 from pathlib import Path
-from typing import Callable
+from typing import Callable, NamedTuple
 
 try:
     import _winapi
@@ -338,15 +340,53 @@ class _Tee(io.TextIOBase):
             o.flush()
 
 
-def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]) -> bool:
+class Policy(NamedTuple):
+    """Who may replay and keep rule entries (#820). The default is the agents' local use: replay any entry under the
+    rules folder, keep new ones there.
+      origin   written into each kept entry's manifest, so a reader can tell who made it
+      trusted  the origins an entry under the rules folder must have to be replayed (None: any, even an entry from before
+               origins). CI replays only what a push to main kept: a PR's code runs on the runner and could write an
+               entry under a key main's code later replays, so a PR's gate never writes the shared folder
+      scratch  a folder (per PR) also read, and where a miss is kept instead of the rules folder
+      write    False: keep nothing (a CI run without a known scope)"""
+    origin: str = "local"
+    trusted: frozenset | None = None
+    scratch: Path | None = None
+    write: bool = True
+
+
+CI_SCOPE = re.compile(r"main|pr-\d+")
+
+
+def ci_policy(home: Path) -> "Policy | None":
+    """The policy of a CI run, from PD2R_CI_SCOPE (gate.yml sets it): "main" for a push to main, where the code is
+    reviewed, replays only entries main kept and keeps into the shared rules folder; "pr-<n>" for a PR, which replays
+    main's entries and its own scratch folder home/rules-pr/pr-<n> and keeps only there. None (no or odd scope, as in
+    release.yml): no cache, merge fresh."""
+    scope = os.environ.get("PD2R_CI_SCOPE", "")
+    if not CI_SCOPE.fullmatch(scope):
+        return None
+    if scope == "main":
+        return Policy("main", frozenset({"main"}))
+    return Policy("pr", frozenset({"main"}), home / "rules-pr" / scope)
+
+
+def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None], policy: Policy = Policy()) -> bool:
     """run() a merge rule that writes under the project (roots["p"]) folder generated/, or replay a cached run of it
-    with this key that saw what roots (the project, and D2R's tables as "d") hold now. A miss is kept. True on a hit."""
-    gen, home, top = roots["p"] / "generated", cache / key_, _roots(roots)
-    for e in sorted(home.iterdir()) if home.is_dir() else []:
+    with this key that saw what roots (the project, and D2R's tables as "d") hold now. A miss is kept (where policy
+    says). True on a hit."""
+    gen, top = roots["p"] / "generated", _roots(roots)
+    dest = policy.scratch if policy.scratch else cache if policy.write else None
+    home = dest / key_ if dest else None
+    reads = [(cache / key_, policy.trusted)] + ([(policy.scratch / key_, None)] if policy.scratch else [])
+    entries = [(e, trusted) for folder, trusted in reads for e in (sorted(folder.iterdir()) if folder.is_dir() else [])]
+    for e, trusted in entries:
         if ".tmp" in e.name or ".dead." in e.name:  # another run's keep or delete in progress, not an entry
             continue
         try:
             m = json.loads((e / "manifest.json").read_text("utf-8"))
+            if trusted is not None and m.get("origin") not in trusted:
+                continue
             if all(_state(top, k) == v for k, v in m["reads"].items()):
                 used.append(e)
                 os.utime(e)  # recently used: pruned last, and not while this replay copies it
@@ -363,6 +403,9 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
                 return True
         except (OSError, ValueError, KeyError):  # deleted or unreadable (OSError), a damaged manifest (the others): a
             continue  # run of the rule rewrites whatever a part replay copied, as it writes the same files
+    if home is None:  # nothing is kept: no trace either
+        run()
+        return False
     global _trace
     _hook()
     files0, dirs0 = _snapshot(gen)
@@ -380,9 +423,11 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
     files1, dirs1 = _snapshot(gen)
     m = {"reads": t.reads, "files": sorted(f for f in files1 if files0.get(f) != files1[f]),
          "removed": sorted(set(files0) - set(files1)), "dirs": sorted(dirs1 - dirs0), "rmdirs": sorted(dirs0 - dirs1),
-         "stdout": out.getvalue()}
+         "stdout": out.getvalue(), "origin": policy.origin}
     m["bytes"] = sum(files1[f][0] for f in m["files"])
-    name = hashlib.sha256(json.dumps(m["reads"], sort_keys=True).encode()).hexdigest()[:16]
+    # a local entry and a main one with the same reads sit side by side: main replays only its own (policy.trusted)
+    name = hashlib.sha256(json.dumps(m["reads"], sort_keys=True).encode()
+                          + (b"" if policy.origin == "local" else policy.origin.encode())).hexdigest()[:16]
     tmp = home / f"{name}.tmp{os.getpid()}"
     try:
         tmp.mkdir(parents=True)
@@ -454,7 +499,7 @@ def prune(cache: Path, cap: int, keep_s: float = 900, legacy: bool = False) -> l
     """Delete the least recently used rule entries (with legacy, the whole-merge folders older tools kept in merge/
     too) until the rest fit in cap bytes. One used in the last keep_s seconds stays: a run may be replaying it. merge/
     is left alone by default: an older tool copies a folder there without marking it used."""
-    for e in cache.glob("rules/*/*"):  # leftovers of a run killed mid-keep or mid-delete
+    for e in [*cache.glob("rules/*/*"), *cache.glob("rules-pr/*/*/*")]:  # leftovers of a run killed mid-keep or mid-delete
         if ".dead." in e.name or ".tmp" in e.name:
             try:  # a folder another run is still filling or deleting has a recent file in it
                 if time.time() - _newest(e) > keep_s:
@@ -462,7 +507,7 @@ def prune(cache: Path, cap: int, keep_s: float = 900, legacy: bool = False) -> l
             except OSError:  # vanished meanwhile
                 continue
     entries = []
-    for e in [*cache.glob("rules/*/*"), *(cache.glob("merge/*") if legacy else [])]:
+    for e in [*cache.glob("rules/*/*"), *cache.glob("rules-pr/*/*/*"), *(cache.glob("merge/*") if legacy else [])]:
         if not e.is_dir() or ".tmp" in e.name or ".dead." in e.name:
             continue
         try:
@@ -541,7 +586,7 @@ def slot_home() -> Path | None:
 def merge_slots(cache: Path) -> Slots:
     """The merge semaphore under the cache root, shared by agents and the CI gate: PD2R_MERGE_SLOTS slots (default 4).
     Pick the count from RAM: (RAM left for merges) / (RAM of one merge). One merge held about 3.8 GB at one worker;
-    parallel merge workers (#807) will hold about 6 GB each, so lower it then (16 GB free -> 2) and raise it when
+    parallel merge workers (#807, planned) may hold more each, so lower the count then, and raise it when
     a faster merge (#806) leaves RAM idle. The runners are user processes: set the same value in their `.env` or the user environment."""
     try:
         n = int(os.environ.get("PD2R_MERGE_SLOTS", "4"))

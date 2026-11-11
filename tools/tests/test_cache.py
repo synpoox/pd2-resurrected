@@ -678,5 +678,107 @@ class MergeSlotTests(unittest.TestCase):
             self.assertEqual(pd2_cache.merge_slots(Path(self.tmp.name)).n, 4)
 
 
+class CiPolicyTests(unittest.TestCase):
+    """The gate replays rules without letting a PR's code write what main's code replays (#820)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.home = Path(self.tmp.name)
+        self.cache = self.home / "rules"
+        self.root = self.home / "wt"
+        self.out = self.root / "generated" / "data"
+        self.root.mkdir()
+        self.runs: list[str] = []
+
+    def go(self, policy, text="v"):
+        def work():
+            self.runs.append(text)
+            write(self.out / "a.txt", text)
+        with redirect_stdout(io.StringIO()):
+            return pd2_cache.rule(self.cache, "k", {"p": self.root}, work, policy)
+
+    def test_scope_picks_the_policy(self):
+        for scope, want in (("main", ("main", None, True)), ("pr-12", ("pr", self.home / "rules-pr" / "pr-12", True))):
+            with mock.patch.dict(os.environ, {"PD2R_CI_SCOPE": scope}):
+                p = pd2_cache.ci_policy(self.home)
+                self.assertEqual((p.origin, p.scratch, p.write), want)
+                self.assertEqual(p.trusted, frozenset({"main"}))
+        for scope in ("", "pr-", "pr-1/../x", "pr-1x", "other"):
+            with mock.patch.dict(os.environ, {"PD2R_CI_SCOPE": scope}):
+                self.assertIsNone(pd2_cache.ci_policy(self.home), f"{scope!r}: no cache, merge fresh")
+
+    def test_a_pr_replays_mains_entries_and_never_writes_the_shared_folder(self):
+        main = pd2_cache.Policy("main", frozenset({"main"}))
+        pr = pd2_cache.Policy("pr", frozenset({"main"}), self.home / "rules-pr" / "pr-7")
+        self.assertFalse(self.go(main, "m"))
+        shutil.rmtree(self.root / "generated")  # a merge starts from an empty generated/
+        self.assertTrue(self.go(pr, "p"), "main's entry replays in a PR")
+        self.assertEqual(self.runs, ["m"])
+        shared = sorted(self.cache.rglob("manifest.json"))
+        write(self.root / "x", "")
+        # a rule whose inputs differ: a PR run is kept in the scratch folder only
+        (self.root / "merge").mkdir()
+        def other():
+            self.runs.append("p")
+            write(self.out / "a.txt", "p")
+        with redirect_stdout(io.StringIO()):
+            pd2_cache.rule(self.cache, "k2", {"p": self.root}, other, pr)
+            self.assertTrue(pd2_cache.rule(self.cache, "k2", {"p": self.root}, other, pr), "the PR replays its own")
+        self.assertEqual(sorted(self.cache.rglob("manifest.json")), shared, "the shared folder is untouched")
+        self.assertTrue(list((self.home / "rules-pr" / "pr-7" / "k2").glob("*/manifest.json")))
+        with redirect_stdout(io.StringIO()):
+            self.assertFalse(pd2_cache.rule(self.cache, "k2", {"p": self.root}, other,
+                                            pd2_cache.Policy("pr", frozenset({"main"}), self.home / "rules-pr" / "pr-8")),
+                             "another PR does not read it")
+            self.assertFalse(pd2_cache.rule(self.cache, "k2", {"p": self.root}, other, main), "nor does main")
+
+    def test_main_replays_only_entries_main_kept(self):
+        self.assertFalse(self.go(pd2_cache.Policy()), "an agent's local merge keeps an entry")
+        main = pd2_cache.Policy("main", frozenset({"main"}))
+        shutil.rmtree(self.root / "generated")
+        self.assertFalse(self.go(main), "main does not replay a local entry: runs fresh")
+        shutil.rmtree(self.root / "generated")
+        self.assertTrue(self.go(main), "but replays its own")
+        shutil.rmtree(self.root / "generated")
+        self.assertTrue(self.go(pd2_cache.Policy()), "agents replay anything")
+        # an entry from before origins (no key) is not main's either
+        for m in self.cache.rglob("manifest.json"):
+            d = json.loads(m.read_text("utf-8"))
+            d.pop("origin")
+            m.write_text(json.dumps(d), "utf-8")
+        shutil.rmtree(self.root / "generated")
+        self.assertFalse(self.go(main))
+
+    def test_a_run_without_a_scope_keeps_nothing(self):
+        self.assertFalse(self.go(pd2_cache.Policy(write=False)))
+        shutil.rmtree(self.root / "generated")
+        self.assertFalse(self.go(pd2_cache.Policy(write=False)))
+        self.assertEqual(self.runs, ["v", "v"])
+        self.assertFalse(self.cache.exists())
+
+    def test_prune_counts_the_pr_scratch_folders(self):
+        cache = self.home
+        for n in ("rules/k/old", "rules-pr/pr-3/k/e"):
+            write(cache / n / "files" / "f", "x" * 100)
+            write(cache / n / "manifest.json", json.dumps({"bytes": 100}))
+            os.utime(cache / n, (time.time() - 7200, time.time() - 7200))
+        gone = pd2_cache.prune(cache, 100)
+        self.assertEqual([p.relative_to(cache).as_posix() for p in gone], ["rules/k/old"], "oldest first, scratch counted")
+        self.assertEqual(len(pd2_cache.prune(cache, 0)), 1)
+
+    def test_pd2_merge_main_uses_the_cache_on_ci_only_with_a_scope(self):
+        calls = []
+        def fake(root, d2r, cache, slots, policy):
+            calls.append((cache, policy))
+            return []
+        for env, want in (({"PD2R_CI_SCOPE": "pr-5"}, (self.home / "rules", "pr")), ({}, (None, "local")),
+                          ({"PD2R_CI_SCOPE": "main"}, (self.home / "rules", "main"))):
+            calls.clear()
+            with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "PD2R_CACHE": str(self.home), **env}),                     mock.patch.object(pd2_merge, "merge", fake), redirect_stdout(io.StringIO()):
+                pd2_merge.main(["--root", str(self.root)])
+            self.assertEqual((calls[0][0], calls[0][1].origin), want, env)
+
+
 if __name__ == "__main__":
     unittest.main()
