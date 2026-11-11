@@ -8,3 +8,9 @@
 # Tiles that are pixel copies of a D2R tile, whatever their index, stand in as that tile whatever the line says
 # (pd2_dt1_copies).
 # A line under a quarter needs a third tab column, `# reason`; tools/pd2_presets_lint.py (gate job) checks every line.
+# walls:<PD2 DT1><TAB><D2R DT1> (#826) makes the wall pass (tools/presets/passes/edges_walls.py) stand walls on the cells
+# of the PD2 DT1 that the kit left as nothing. It takes the DT1's cells of the edge types wall, cliff and pillar, whatever
+# pd2_fidelity types them (the hellcaves DT1 walls count as cliffs there), and runs on maps with no "wall" edges. It uses
+# only the stock wall pieces off wall tiles of the named D2R DT1 (the tile set's own stock first, then any family's). A
+# cell with no such piece stays bare. A PD2 DT1 has one walls line in all the files; the merge fails when the DT1 has no
+# such cell in a PD2-only preset, or when no wall piece comes from the D2R DT1 after the stock harvest.
