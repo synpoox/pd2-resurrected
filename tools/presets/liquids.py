@@ -1,6 +1,6 @@
 """The liquid mask: the legacy DS1's blocked floor tiles of a liquid DT1 (water, lava, swamp), as a shared result of the
 streams pass. #738 (water and lava edges) reads it with `of(b)` to trace the walkable-to-liquid boundary; the
-streams pass draws a plane over it. The liquid DT1s are the shared classifier's (pd2_fidelity.classify, #732)."""
+streams pass draws a plane over it. The liquid DT1s are the shared classifier's (pd2_tiles.classify, #732)."""
 from __future__ import annotations
 
 from collections import Counter
@@ -20,7 +20,7 @@ def mask(lay: Layout, extra: frozenset = frozenset()) -> dict[tuple[int, int], t
     flags), or a liquid base floor layer under a liquid overlay (lava1's crust: a base blocked on more tiles of the
     layout than it is walkable alone, so a road tile with a lava decal is no liquid, #768), with only liquid floor
     layers (a stone platform's tile over lava is no liquid). A liquid DT1 is
-    pd2_fidelity.classify "liquid" or one of `extra`, the DT1s the rule names as water. Pasted rooms are not excluded:
+    pd2_tiles.classify "liquid" or one of `extra`, the DT1s the rule names as water. Pasted rooms are not excluded:
     this is the legacy map's liquid, whatever HD draws there."""
     import pd2_tiles  # imports the presets package: not at the top
 

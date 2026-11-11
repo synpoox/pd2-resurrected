@@ -6,7 +6,7 @@ import struct
 from dataclasses import dataclass, field
 
 import pd2_painter as painter
-from pd2_levels import ds1_header
+from pd2_ds1 import ds1_header
 
 from .consts import UNWALKABLE, Key, Tile
 

@@ -1,0 +1,49 @@
+name: gate-control
+
+# Label and close events for the gate (#897). They used to start gate.yml itself, whose job `if:` skipped them, and that
+# left a skipped check run named table-diff on the PR head: main's ruleset requires table-diff and GitHub counts a
+# skipped check as passing, so auto-merge could merge before the real gate finished. The job here has another name, so
+# no event but a real gate run ever produces a table-diff check.
+#   closed (merged too): cancel the PR's in-flight gate run (#847).
+#   parity-drop-ok added or removed: rerun the gate, which reads the label at run time. Any other label does nothing.
+on:
+  pull_request:
+    types: [labeled, unlabeled, closed]
+
+# One control run per PR, never cancelled midway (a cancelled rerun could leave the gate cancelled).
+concurrency:
+  group: gate-control-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  control:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository
+      && (github.event.action == 'closed' || github.event.label.name == 'parity-drop-ok')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Cancel or rerun the PR's gate run
+        shell: bash
+        run: |
+          # the newest gate.yml run of this PR's head commit
+          run=$(gh run list --workflow gate.yml --event pull_request --commit "${{ github.event.pull_request.head.sha }}" --limit 1 --json databaseId,status -q '.[0] | "\(.databaseId) \(.status)"')
+          if [ -z "$run" ]; then echo "no gate run on this head (docs-only change?)"; exit 0; fi
+          id=${run% *}; status=${run#* }
+          active=false; case "$status" in queued|in_progress|waiting|requested|pending) active=true;; esac
+          if [ "${{ github.event.action }}" = closed ]; then
+            if $active; then gh run cancel "$id"; echo "cancelled gate run $id"; fi
+            exit 0
+          fi
+          if $active; then
+            gh run cancel "$id"
+            for i in $(seq 1 60); do
+              [ "$(gh run view "$id" --json status -q .status)" = completed ] && break
+              sleep 5
+            done
+          fi
+          gh run rerun "$id" && echo "reran gate run $id"

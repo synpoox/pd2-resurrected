@@ -11,8 +11,8 @@ import pd2_cache
 import pd2_dt1_copies as dt1_copies
 import pd2_painter as painter
 import pd2_terrain as terrain_ground
-from pd2_ids import Table, excel, load
-from pd2_levels import SLOTS, col, norm
+from pd2_ds1 import SLOTS, col, norm
+from pd2_table import Table, excel, load
 
 from .build import build
 from .consts import FETCH, GROUND, PRESETS, STREAM, TERRAIN, WATER_SPAN, wet_dt1s
@@ -23,6 +23,7 @@ from . import slices
 from .kit import Kit
 from .layout import draws_trees, layout, wanted
 from .pillars import model_top
+from . import void
 from .waypoints import waypoint_options, waypoints
 from .water import water_planes
 
@@ -140,6 +141,18 @@ def wall_pass(on_d2r: list, tiles: "Tiles", pd2_tiles: "Tiles", out_data: Path, 
         edges_walls.check_walls(walls, contexts)
 
 
+def void_pass(on_d2r: list, tiles: "Tiles", pd2_tiles: "Tiles", out_data: Path, d2r_data: Path) -> None:
+    """Give the void passes (#783) what only the merge has: each DS1's empty cells, read from the DS1 named by its own
+    DT1s, and the stock black plane."""
+    void.STOCK[:] = [void.black(d2r_data)]
+    drawn = void.Drawn(out_data / "global" / "tiles", d2r_data / "global" / "tiles")
+    for _, _, files, ds1s in on_d2r:
+        for ds1 in ds1s:
+            legacy = layout((out_data / "global" / "tiles" / ds1).read_bytes(),
+                            {p: pd2_tiles[p] or tiles[p] for p in files})
+            void.configure(ds1, void.empty(legacy, drawn))
+
+
 @dataclass
 class Plan:
     """What apply() builds, from the tables alone (cheap, no DS1 read): the inputs, the rule, and the DS1 by tile set.
@@ -252,6 +265,7 @@ def setup(pl: Plan) -> State:
     if gone := sorted(d for d in set(pl.walls_rule.values()) if not tiles[d]):
         raise ValueError(f"walls lines name D2R DT1 with no tiles: {', '.join(gone)}")
     wall_pass(on_d2r, tiles, pd2_tiles, out_data, d2r_data, tiles_dir, [(lay, p) for lay, p, _ in stock], pl.walls_rule)
+    void_pass(on_d2r, tiles, pd2_tiles, out_data, d2r_data)
 
     @functools.cache
     def load(path: str) -> list[tuple[float, float]]:
@@ -315,3 +329,5 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
           f"{len(bare)} waypoint objects have no stock waypoint ({', '.join(sorted(bare)) or 'none'})")
     from .passes import edges_walls
     edges_walls.CONTEXT.clear()  # the wall pass's contexts hold this run's layouts and presets: nothing outlives apply()
+    void.CELLS.clear()
+    void.STOCK.clear()

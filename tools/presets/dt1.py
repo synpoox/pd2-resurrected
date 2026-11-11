@@ -4,7 +4,7 @@ from __future__ import annotations
 import struct
 from pathlib import Path
 
-from pd2_levels import norm
+from pd2_ds1 import norm
 
 
 def dt1_tiles(data: bytes) -> dict[tuple[int, int, int], bytes]:

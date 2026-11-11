@@ -13,6 +13,7 @@ DS1 builds share nothing they write and the memos only save work, so the output 
 """
 from __future__ import annotations
 
+import gc
 import multiprocessing
 import os
 import queue
@@ -62,7 +63,17 @@ def _build_unique(pl, tasks: list[tuple[str, str]], box: list | None = None) -> 
         return _serial(pl, tasks, box)
     if box:
         box.clear()  # the workers set up themselves: this one is not used
+    _release()
     return _workers(pl, tasks, spare)
+
+
+def _release() -> None:
+    """Free the stock the wall pass holds in this process (its Contexts and index) while the workers run: they hold their
+    own, and the slots count one State each (#882). apply() clears CONTEXT at its end anyway."""
+    from .passes import edges_walls
+    edges_walls.CONTEXT.clear()
+    edges_walls._INDEX.clear()
+    gc.collect()
 
 
 def _one(st, task: tuple[str, str]) -> tuple:
