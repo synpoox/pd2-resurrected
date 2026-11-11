@@ -68,6 +68,41 @@ class Checks(unittest.TestCase):
         room = piece("act1/rocks", 40, 60, 2.0, name=presets.ROOM_PIECE + "x", **high)
         self.assertEqual(score(room)["defects"]["floating"], 0)
 
+    def floats(self, *entities: dict) -> int:
+        return score(*entities)["defects"]["floating"]
+
+    def test_a_piece_over_room_terrain_rests_within_its_relief_but_flat_planes_and_height_do_not_count(self):
+        room = piece("act1/room_ground", 0, 140, 0.5, name="terrain")  # a room's terrain box is flat
+        self.assertEqual(self.floats(piece("act1/rocks", 40, 60, 2.0, y=8.0), room), 0)
+        self.assertGreater(self.floats(piece("act1/rocks", 40, 60, 2.0, y=12.0), room), 0)  # past RELIEF
+        self.assertGreater(self.floats(piece("act1/rocks", 40, 60, 2.0, y=8.0)), 0)  # no terrain there
+        far = piece("act1/room_ground", 100, 240, 0.5, name="terrain")
+        self.assertGreater(self.floats(piece("act1/rocks", 40, 60, 2.0, y=8.0), far), 0)
+        flat = piece(presets.TERRAIN + "/plane", 0, 140, 0.5, name="terrain")  # a flat plane lifts no threshold
+        self.assertGreater(self.floats(piece("act1/rocks", 40, 60, 2.0, y=8.0), flat), 0)
+
+    def test_a_piece_rests_on_a_top_under_it_but_not_beside_a_taller_wall_or_over_a_lower_one(self):
+        prop = piece("act1/rocks", 40, 60, 1.0, y=6.0)
+        self.assertEqual(self.floats(prop, piece("act1/walls", 40, 60, 6.0)), 0)  # a wall top at the base
+        self.assertGreater(self.floats(prop, piece("act1/walls", 40, 60, 3.0)), 0)  # top more than REST under the base
+        self.assertGreater(self.floats(prop, piece("act1/walls", 100, 110, 6.0)), 0)  # a wall tile away
+        # beside a wall much taller than the base: no rest, mid-air against its face
+        self.assertGreater(self.floats(piece("act1/rocks", 40, 60, 1.0, y=2.0), piece("act1/walls", 61, 70, 9.0)), 0)
+
+    def test_a_wall_hung_trim_touches_a_taller_neighbour_and_hangs_from_it(self):
+        wall = piece("act1/walls", 60.5, 70, 9.0)
+        self.assertEqual(self.floats(piece("act1/trim_kit", 50, 60, 1.0, y=4.0), wall), 0)
+        self.assertGreater(self.floats(piece("act1/trim_kit", 40, 50, 1.0, y=4.0), wall), 0)  # not touching
+        self.assertGreater(self.floats(piece("act1/rocks", 50, 60, 1.0, y=4.0), wall), 0)  # not a hung kind
+
+    def test_a_piece_on_a_shelf_or_canopy_rests_but_a_thin_floating_shelf_does_not_hold_itself(self):
+        prop = piece("act1/rocks", 40, 60, 2.0, y=3.0)
+        for kind in ("act1/shelf_kit", "act1/canopy_kit"):
+            self.assertEqual(self.floats(prop, piece(kind, 40, 60, 3.0)), 0, kind)
+            self.assertGreater(self.floats(prop, piece(kind, 40, 60, 0.5)), 0, kind)
+        shelf = piece("act1/shelf_kit", 40, 60, 0.2, y=3.0)  # raised, thin: its own top is within REST of its base
+        self.assertGreater(self.floats(shelf), 0)
+
     def test_void_is_where_legacy_draws_nothing(self):
         hole = {c: k for c, k in floor_keys().items() if c not in {(5, 5), (6, 5)}}
         r = score(piece("act1/rocks", 50, 70, 2.0), keys=floor_keys(), legacy=hole)

@@ -18,8 +18,10 @@ does not count). Only tiles within SIGHT tiles of walkable legacy floor are scor
   floating     a piece whose base is >= FLOAT above the ground plane under it (not a tree, light, chain, banner or
                water surface; pieces of pasted stock rooms are skipped: their own terrain is not the plane; a
                piece 60+ units (6 tiles) tall from base to top is skipped too: a tall prop on a slope or a stack reads as
-               standing, not floating)
-  invisible    legacy draws a wall cell there (not inv_wall, not liquid) and HD draws nothing >= LOW: you bump into
+               standing, not floating; a piece resting on something is no float either (#906): on a pasted room's
+               terrain, or on the top of another piece under it (a wall, shelf, canopy or cap; wall-hung trims,
+               spikes and icicles also on the side of a taller neighbour they touch))
+invisible    legacy draws a wall cell there (not inv_wall, not liquid) and HD draws nothing >= LOW: you bump into
                air (blocked floor legacy draws as plain ground is left out: it looks walkable in legacy too)
   void         legacy (the DS1 with PD2's own DT1s) draws nothing there (no layer, or floor tiles that are missing
                or have no blocks; walkable tiles apart), HD draws a ground plane or a piece, unless a black cover
@@ -67,6 +69,14 @@ TOLERANCE = 2.0
 NOT_FLOATING = ("tree", "palm", "canopy", "light", "lamp", "candle", "torch", "chain", "banner", "flag", "beam",
                 "bird", "bat", "fx", "vfx", "particle", "cloud", "fog", "ray", "god", "dust", "smoke", "hanging",
                 "vine", "web", "roof", "ceiling")
+# Room terrain (a pasted stock room's mesh) has a flat model box (its top reads 0), so a raised level on it cannot be
+# measured: a piece over it that stands up to RELIEF above the plane rests on that level (#906). The flat planes are no
+# such terrain: over them a piece must have a box under it (Support.rests).
+RELIEF = 9.0
+REST = 2 * FLOAT  # HD units a supporting top may differ from the base resting on it (a mesh's bounding box is not its surface)
+CONTACT = 1.0  # HD units a box may stand off a wall or shelf and still touch it
+SLACK = coverage.SUPPORT_SLACK  # a piece this far into the top of another still rests on it
+HUNG = ("trim", "cap", "crenel", "spike", "icicle")  # wall-hung kinds: attached to the side of a neighbouring wall
 WATERY = ("water", "river", "lava", "pond", "lake", "swamp", "oasis", "puddle", "stream", "canal", "flow", "pool")
 WEIGHT = {"edge": 3.0, "walk": 2.0, "other": 1.0}
 CHECKS = ("edge", "solid", "invisible", "void", "floating", "occlusion", "clutter", "liquid")
@@ -75,6 +85,41 @@ COLOUR = {"ok": (70, 160, 70), "edge": (230, 40, 40), "solid": (240, 120, 20), "
           "liquid": (20, 220, 180), "bg": (20, 20, 20), "plain": (55, 50, 42)}
 BASELINE_FILE = "parity-baseline.tsv"
 MAIN_DIR = "main-parity"  # under --out: main's baseline artifact, downloaded for a PR
+
+
+class Support:
+    """What a floating-check piece can rest on (#906), in absolute heights (boxes measured without `ground`):
+    room terrain (`terrain`: tiles under a pasted room's mesh, up to RELIEF above the plane) and another piece's box
+    (`rests`): one that reaches the piece's base from below with its top within REST of the base and overlaps it in x
+    and z (a wall or shelf top, a cap on a pillar, a book on a shelf); a wall-hung kind (HUNG) also hangs on a taller box
+    it touches. The piece itself never counts."""
+
+    def __init__(self):
+        self.terrain: set = set()
+        self.boxes: list = []  # (box, path) of every candidate support
+        self.index: dict = {}  # tile -> indices into boxes
+
+    def add(self, b, path: str):
+        self.boxes.append((b, path))
+        for c in coverage.footprint([b[:6]]):
+            self.index.setdefault(c, []).append(len(self.boxes) - 1)
+
+    def terrain_under(self, core: set, bottom: float) -> bool:
+        """`bottom` is measured from the plane under the piece."""
+        return bottom <= RELIEF and bool(core & self.terrain)
+
+    def rests(self, me, path: str) -> bool:
+        grow = (me[0] - CONTACT, me[1] + CONTACT, me[2] - CONTACT, me[3] + CONTACT, me[4], me[5])
+        hung = any(w in path for w in HUNG)
+        for i in {i for c in coverage.footprint([grow]) for i in self.index.get(c, ())}:
+            o, _ = self.boxes[i]
+            if o is me or o[:6] == me[:6]:
+                continue
+            if not (o[0] < grow[1] and grow[0] < o[1] and o[2] < grow[3] and grow[2] < o[3]):
+                continue
+            if o[5] < me[5] - SLACK and (abs(o[4] - me[5]) <= REST or (hung and o[4] >= me[5] - REST)):
+                return True
+        return False
 
 
 def score(name, lay, legacy, preset, box, prefab, heights, stock: dict | None = None, drawn: dict | None = None) -> dict:
@@ -103,8 +148,16 @@ def score(name, lay, legacy, preset, box, prefab, heights, stock: dict | None = 
     d: dict[str, set] = {k: set() for k in CHECKS}
     drawn_any, watery, covered, floats = set(), set(), set(), Counter()
     hd = fidelity.Hd()
-    for x0, x1, z0, z1, top, bottom, path, in_room in coverage.boxes(
-            preset["entities"], box, prefab, ground=ground, meta=True):
+    support = Support()
+    support.terrain = coverage.ground_tiles(preset, box, prefab, flat=False)
+    # the same pieces measured from 0, not from the plane under them: the heights to rest on are absolute
+    pieces = list(zip(coverage.boxes(preset["entities"], box, prefab, ground=ground, meta=True),
+                      coverage.boxes(preset["entities"], box, prefab, meta=True)))
+    for (*_, path, in_room), ab in pieces:
+        if not in_room and ab[1] - ab[0] <= coverage.ROOM and ab[3] - ab[2] <= coverage.ROOM:
+            support.add(ab[:6], path)
+    for (x0, x1, z0, z1, top, bottom, path, in_room), ab in pieces:
+        abottom = ab[5]
         b = (x0, x1, z0, z1, top, bottom)
         big = x1 - x0 > coverage.ROOM or z1 - z0 > coverage.ROOM
         core = coverage.footprint([b]) if big else coverage.core_footprint(b)
@@ -121,7 +174,8 @@ def score(name, lay, legacy, preset, box, prefab, heights, stock: dict | None = 
         types = fidelity.model_types(path, stock)
         hd.add(b, types, fidelity.model_type(path), fidelity.folder_of(path))  # the edge check's pieces
         if (not in_room and bottom >= FLOAT and top - bottom < 60
-                and not any(w in path for w in NOT_FLOATING + WATERY) and not cover):
+                and not any(w in path for w in NOT_FLOATING + WATERY) and not cover
+                and not (support.terrain_under(core, bottom) or support.rests(ab[:6], path))):
             d["floating"] |= core
             floats[fidelity.folder_of(path)] += 1
         on_ground = bottom < FLOAT
