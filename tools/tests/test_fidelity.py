@@ -308,6 +308,7 @@ def hd_of(wall=(), fence=(), tree=(), other=()) -> F.Hd:
     for name, tiles in (("wall", wall), ("fence", fence), ("treeline", tree)):
         for c, top in tiles:
             hd.tops[name][c] = top
+            hd.nametops[name][c] = top
             hd.centres[name].append(c)
     hd.other.update(dict(other))
     return hd
@@ -492,6 +493,143 @@ class Reports(unittest.TestCase):
         s = F.TypeScore(5, {(0, 0)}, {(1, 0)}, {(2, 0)}, {(3, 0)})
         png = F.image(lay(keys), legacy, {"wall": s}, "m")["m_fidelity.png"]
         self.assertTrue(png.startswith(b"\x89PNG"))
+
+
+class StockTyping(unittest.TestCase):
+    """#822: HD folders typed by the legacy edge D2R's own presets stand them on; tall fences are walls; liquid per tile."""
+    def test_tall_fence_dt1_is_a_wall_to_the_scorer_only(self):
+        for path in ("act4/mesa/chain_walls.dt1", "act4/fort/foregate.dt1", "act1/barracks/barset.dt1",
+                     "act1/graveyrd.dt1", "act1/town/fence.dt1", "act5/descend/stone_fence.dt1"):
+            self.assertEqual(F.classify(path, 1), "fence", path)  # the passes' shared classifier is unchanged
+            self.assertEqual(F.tile_type((path, 1, 0, 0)), "wall", path)
+            self.assertEqual(F.expected_class("wall", (path, 1, 0, 0), 288), "tall", path)
+        self.assertEqual(F.tile_type((FENCE, 1, 0, 0)), "fence")  # a low fence stays one
+        self.assertEqual(F.expected_class("fence", (FENCE, 1, 0, 0), 192), "low")
+
+    def test_tall_fence_cell_is_a_tall_wall_in_the_legacy_edges(self):
+        path = "act4/mesa/chain_walls.dt1"
+        got = F.legacy_edges(lay({(0, 0): w(path), (1, 0): w(FENCE)}), heights(**{path: 288, FENCE: 192}))
+        self.assertEqual(got["wall"], {(0, 0): "tall"})
+        self.assertEqual(got["fence"], {(1, 0): "low"})
+
+    def test_model_types_add_the_stock_type_to_the_name_type(self):
+        stock = {"act2_tomb_fences": "wall", "act2_oasis": "water", "act3_bushes": "treeline"}
+        self.assertEqual(F.model_types("data/hd/x/act2_tomb_fences/a.model", stock), ("fence", "wall"))
+        self.assertEqual(F.model_types("data/hd/x/act2_oasis/a.model", stock), ("water",))
+        self.assertEqual(F.model_types("data/hd/x/act2_sewer_walls/a.model", stock), ("wall",))
+        self.assertEqual(F.model_types("data/hd/x/act2_sewer_walls/a.model"), ("wall",))
+        self.assertEqual(F.model_types("data/hd/x/act2_rocks/a.model", stock), ())
+        self.assertEqual(F.model_types("data/hd/x/act2_wall_grass_clump/a.model", stock), ())  # ground cover is no edge
+        self.assertEqual(F.model_types("data/hd/x/act3_bushes/a.model", stock), ())
+
+    def test_stock_types_need_enough_edge_tiles_and_a_share(self):
+        votes = {"a": {"none": 90, "wall": 30, "cliff": 10}, "f": {"none": 900, "wall": 30}, "b": {"wall": 5}, "c": {"none": 40}, "d": {"wall": 12, "fence": 10},
+                 "e": {"pillar": 5, "wall": 4, "none": 5}}
+        self.assertEqual(F.stock_types(votes), {"a": "wall", "d": "wall"})
+
+    def test_a_prop_kit_under_a_tenth_on_edges_is_not_typed(self):
+        self.assertEqual(F.stock_types({"kit": {"none": 900, "wall": 99}}), {})
+        self.assertEqual(F.stock_types({"kit": {"none": 900, "wall": 100}}), {"kit": "wall"})
+
+    def test_vote_keys_are_lower_case(self):
+        hd = F.hd_pieces([piece("Act2_Tomb_Fences", 0, 20, 1.5)], box, lambda p: [])
+        self.assertEqual(hd.who[(0, 0)][1], "act2_tomb_fences")
+        for f in F.read_votes(F.VOTES_FILE.read_text("utf-8")):
+            self.assertEqual(f, f.lower())
+
+    def test_a_voted_piece_never_changes_the_name_types_height(self):
+        hd = F.hd_pieces([piece("act2_tomb_fences", 0, 20, 1.5), piece("act2_props", 0, 20, 6.0)], box, lambda p: [],
+                         stock={"act2_props": "fence"})
+        self.assertEqual(hd.tops["fence"][(0, 0)], 6.0)
+        self.assertEqual(hd.nametops["fence"][(0, 0)], 1.5)
+        self.assertEqual(F.score_type("fence", {(0, 0): "low"}, hd).wrong_height, set())
+
+    def test_a_tall_voted_piece_keeps_the_low_class_under_it_for_wall_cover(self):
+        hd = F.hd_pieces([piece("act2_tomb_fences", 0, 20, 1.5), piece("act2_props", 0, 20, 6.0)], box, lambda p: [],
+                         stock={"act2_props": "fence"})
+        self.assertEqual(hd.stocktops, {(0, 0): 6.0, (1, 0): 6.0, (2, 0): 6.0})
+        self.assertEqual(F.wall_cover({"wall": {(0, 0): "low"}}, hd, set()), {(0, 0)})
+        self.assertEqual(F.wall_cover({"wall": {(0, 0): "tall"}}, hd, set()), {(0, 0)})
+
+    def test_stale_votes_are_warned_about(self):
+        text = F.votes_text({"a": {"wall": 3}}, "abc")
+        self.assertIsNone(F.votes_stale(text, "abc"))
+        self.assertIn("--write-votes", F.votes_stale(text, "def"))
+        self.assertIn("unknown", F.votes_stale("a\t0\t3\n", "def"))
+        self.assertEqual(F.read_votes(text), {"a": {"wall": 3}})
+
+    def test_input_hash_follows_the_stock_preset_list(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d) / F.presets.PRESETS
+            root.mkdir(parents=True)
+            (root / "a.json").write_text("{}")
+            h = F.votes_input_hash(Path(d))
+            self.assertEqual(h, F.votes_input_hash(Path(d)))
+            (root / "b.json").write_text("{}")
+            self.assertNotEqual(h, F.votes_input_hash(Path(d)))
+
+    def test_the_committed_vote_is_current_in_form(self):
+        text = F.VOTES_FILE.read_text("utf-8")
+        self.assertRegex(text, r"(?m)^# input: [0-9a-f]{16}$")
+
+    def test_votes_round_trip(self):
+        votes = {"act2_oasis": {"none": 87, "water": 38}, "a": {"wall": 3}}
+        self.assertEqual(F.read_votes(F.votes_text(votes)), votes)
+
+    def test_hd_pieces_with_stock_types_stand_in_both_types(self):
+        hd = F.hd_pieces([piece("act2_tomb_fences", 0, 20, 1.5)], box, lambda p: [], stock={"act2_tomb_fences": "wall"})
+        self.assertEqual(hd.tops["fence"], hd.tops["wall"])
+        self.assertEqual((hd.centres["fence"], hd.centres["wall"]), ([(1, 0)], []))  # it piles in its name's type only
+        self.assertEqual(F.score_type("wall", {(0, 0): "low"}, hd).score, 1.0)
+        self.assertEqual(F.score_type("wall", {(0, 0): "tall"}, hd).score, 1.0)  # the stock's height is not scored
+        self.assertEqual(F.score_type("fence", {(0, 0): "tall"}, hd).wrong_height, {(0, 0)})  # the name's is
+        none = F.hd_pieces([piece("act2_tomb_fences", 0, 20, 1.5)], box, lambda p: [])
+        self.assertEqual(F.score_type("wall", {(0, 0): "low"}, none).wrong_type, {(0, 0)})
+
+    def test_untyped_short_piece_of_a_voted_folder_counts_in_its_voted_type(self):
+        hd = F.hd_pieces([piece("act2_oasis", 0, 10, 0.5)], box, lambda p: [], stock={"act2_oasis": "water"})
+        self.assertIn((0, 0), hd.tops["water"])
+
+    OASIS = "act2/outdoors/oasis.dt1"
+
+    def test_liquid_is_decided_per_tile_by_the_dt1s_own_flags(self):
+        class H(dict):
+            def own_flags(self, path):
+                return {(0, 39, 0): bytes([1] * 25), (0, 38, 0): bytes(25)}
+        h = H()
+        cell = bytes([1] * 25)  # the cell is blocked: a blocked layer over the sand
+        self.assertTrue(F.liquid_floor((self.OASIS, 0, 39, 0), cell, h))
+        self.assertFalse(F.liquid_floor((self.OASIS, 0, 38, 0), cell, h))  # sand, whatever the cell says
+        self.assertTrue(F.liquid_floor((self.OASIS, 0, 41, 0), cell, h))  # a tile the DT1 lacks: the cell's flags
+        self.assertFalse(F.liquid_floor((FLOORS, 0, 39, 0), cell, h))  # a DT1 that is no liquid
+        self.assertFalse(F.liquid_floor((None, 0, 39, 0), cell, h))
+
+    def test_oasis_sand_is_no_water_edge(self):
+        class H(dict):
+            def own_flags(self, path):
+                return {(0, 39, 0): bytes([1] * 25), (0, 38, 0): bytes(25)}
+        keys = {(0, 0): ("f", ((self.OASIS, 0, 39, 0),)), (1, 0): ("f", ((self.OASIS, 0, 38, 0),)),
+                (2, 0): ("f", ((FLOORS, 0, 0, 0),))}
+        blocked = {c: bytes([1] * 25) for c in keys}
+        self.assertEqual(set(F.legacy_edges(lay(keys, blocked), H())["water"]), {(0, 0)})
+
+    def test_heights_reads_own_flags(self):
+        with tempfile.TemporaryDirectory() as d:
+            data = bytearray(dt1([(0, 39, 0, 0)]))
+            data[400 + 40:400 + 65] = bytes([1] * 25)
+            (Path(d) / "o.dt1").write_bytes(bytes(data))
+            h = F.Heights(Path(d))
+            self.assertEqual(h.own_flags("o.dt1")[(0, 39, 0)], bytes([1] * 25))
+            self.assertEqual(h.own_flags("none.dt1"), {})
+
+    def test_the_committed_vote_reads(self):
+        votes = F.read_votes(F.VOTES_FILE.read_text("utf-8"))
+        self.assertTrue(votes)
+        self.assertIn("water", set(F.stock_types(votes).values()))
+
+    def test_palace_is_no_target(self):
+        self.assertEqual(sorted(C.UNPLAYABLE), [f"palace{i}" for i in range(1, 7)])
+        self.assertNotIn("imperial_palace", C.UNPLAYABLE)
 
 
 if __name__ == "__main__":
