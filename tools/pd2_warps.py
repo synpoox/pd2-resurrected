@@ -15,7 +15,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-import pd2_painter as painter  # noqa: E402
 import pd2_presets as presets  # noqa: E402
 from pd2_edge_tour import offsets, subtile  # noqa: E402
 from pd2_ids import load  # noqa: E402
@@ -36,9 +35,9 @@ def read_objects(data: bytes) -> list[tuple[int, int, int, int]]:
     return [struct.unpack_from("<4i", data, at + 4 + k * size) for k in range(count)]
 
 
-def walkable_near(lay: presets.Layout, cx: int, cy: int, wet: frozenset) -> tuple[int, int]:
-    """The tile a player reaches (painter.playable) nearest (cx, cy); (cx, cy) if the DS1 has none."""
-    tiles = painter.playable(lay, wet)
+def walkable_near(lay: presets.Layout, cx: int, cy: int) -> tuple[int, int]:
+    """The walkable floor tile (presets.walkable) nearest (cx, cy); (cx, cy) if the DS1 has none."""
+    tiles = presets.walkable(lay)
     return min(tiles, key=lambda t: ((t[0] - cx) ** 2 + (t[1] - cy) ** 2, t)) if tiles else (cx, cy)
 
 
@@ -61,7 +60,7 @@ def main() -> None:
         if r[0].isdigit():
             places.setdefault(int(r[0]), []).append(r[1])
     preset_dir = gen / "hd" / "env" / "preset"
-    _, standins, water = presets.read_rule(ROOT / "merge" / "presets-hd.tsv")
+    _, standins, _ = presets.read_rule(ROOT / "merge" / "presets-hd.tsv")
     tiles, pd2_tiles = presets.Tiles(D2R_DATA / "global" / "tiles"), presets.Tiles(gen / "global" / "tiles")
     dt1s = {name: files for name, _, files, _ in presets.pd2_only_presets(gen, n_d2r)}
     maps: dict[tuple[int, str], dict] = {}
@@ -106,7 +105,7 @@ def main() -> None:
                 spots = [("centre", w // 2, h // 2)]
                 try:
                     lay = presets.layout(data, presets.stand_in(dt1s.get(name, m["files"]), tiles, pd2_tiles, standins))
-                    tx, ty = walkable_near(lay, w // 2, h // 2, frozenset(water))
+                    tx, ty = walkable_near(lay, w // 2, h // 2)
                     spots.append(("nearest walkable to centre", tx, ty))
                 except ValueError as e:  # a DS1 older than version 4: layout() cannot read its layers
                     out.append(f"  - (no walkable-tile line: {e})")
@@ -145,8 +144,8 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the {n} PD2-specific map
   OffsetY, from the merged `levels.txt`. Unit-tested in `tools/tests/test_warps.py`.
 - A map with several DS1 variants rolls one per game. Pin one first, game closed (`docs/agents/game-slots.md`,
   "Force a DS1 variant"), or the warp can land on another layout.
-- "nearest walkable to centre" is the DS1 tile nearest the centre that a player reaches (`pd2_painter.playable`:
-  no wall or floor cell marks it unwalkable, no blocked floor past the walls, streams count): a centre can be rock.
+- "nearest walkable to centre" is the DS1 tile nearest the centre that is walkable floor (`presets.walkable`: a
+  floor tile with no wall, not marked unwalkable and not mostly blocked), so a centre can be rock or water.
 - Test in Hell on a level 90+ character (`AGENTS.md`).
 """
 

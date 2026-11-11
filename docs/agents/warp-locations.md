@@ -9,8 +9,8 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
   OffsetY, from the merged `levels.txt`. Unit-tested in `tools/tests/test_warps.py`.
 - A map with several DS1 variants rolls one per game. Pin one first, game closed (`docs/agents/game-slots.md`,
   "Force a DS1 variant"), or the warp can land on another layout.
-- "nearest walkable to centre" is the DS1 tile nearest the centre that a player reaches (`pd2_painter.playable`:
-  no wall or floor cell marks it unwalkable, no blocked floor past the walls, streams count): a centre can be rock.
+- "nearest walkable to centre" is the DS1 tile nearest the centre that is walkable floor (`presets.walkable`: a
+  floor tile with no wall, not marked unwalkable and not mostly blocked), so a centre can be rock or water.
 - Test in Hell on a level 90+ character (`AGENTS.md`).
 
 
@@ -57,7 +57,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **Mesa5.ds1** (pin: `pd2_force_ds1.py --slot <N> "mesa5.ds1"`), 151x151 tiles
   - centre (tile 75,75): `cheat goto 139,15377,7377`
-  - nearest walkable to centre (tile 69,78): `cheat goto 139,15347,7392`
+  - nearest walkable to centre (tile 84,75): `cheat goto 139,15422,7377`
   - waypoint (tile 14,136): `cheat goto 139,15072,7682`
   - monster preset willowispboss (tile 66,26): `cheat goto 139,15332,7132`
   - monster preset fingermageboss (tile 138,131): `cheat goto 139,15692,7657`
@@ -65,7 +65,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **Mesa6.ds1** (pin: `pd2_force_ds1.py --slot <N> "mesa6.ds1"`), 151x151 tiles
   - centre (tile 75,75): `cheat goto 139,15377,7377`
-  - nearest walkable to centre (tile 80,79): `cheat goto 139,15402,7397`
+  - nearest walkable to centre (tile 83,79): `cheat goto 139,15417,7397`
   - waypoint (tile 4,140): `cheat goto 139,15022,7702`
   - monster preset willowispboss (tile 73,25): `cheat goto 139,15367,7127`
   - monster preset fingermageboss (tile 140,133): `cheat goto 139,15702,7667`
@@ -83,7 +83,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **Siege2.ds1** (pin: `pd2_force_ds1.py --slot <N> "siege2.ds1"`), 200x200 tiles
   - centre (tile 100,100): `cheat goto 140,15502,8502`
-  - nearest walkable to centre (tile 98,101): `cheat goto 140,15492,8507`
+  - nearest walkable to centre (tile 96,105): `cheat goto 140,15482,8527`
   - waypoint (tile 47,45): `cheat goto 140,15237,8227`
   - monster preset SiegeBoss (tile 42,120): `cheat goto 140,15212,8602`
   - entry: `cheat goto 140`
@@ -152,12 +152,14 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **ArcaneMap.ds1** (pin: `pd2_force_ds1.py --slot <N> "arcanemap.ds1"`), 180x180 tiles
   - centre (tile 90,90): `cheat goto 143,15452,11952`
+  - nearest walkable to centre (tile 85,90): `cheat goto 143,15427,11952`
   - waypoint (tile 76,74): `cheat goto 143,15382,11872`
   - monster preset ArcaneBoss (tile 19,21): `cheat goto 143,15097,11607`
   - entry: `cheat goto 143`
 
 - **ArcaneMap2.ds1** (pin: `pd2_force_ds1.py --slot <N> "arcanemap2.ds1"`), 180x180 tiles
   - centre (tile 90,90): `cheat goto 143,15452,11952`
+  - nearest walkable to centre (tile 85,90): `cheat goto 143,15427,11952`
   - waypoint (tile 76,74): `cheat goto 143,15382,11872`
   - monster preset ArcaneBoss (tile 127,109): `cheat goto 143,15637,12047`
   - entry: `cheat goto 143`
@@ -202,11 +204,13 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **RiverOfBlood3.ds1** (pin: `pd2_force_ds1.py --slot <N> "riverofblood3.ds1"`), 241x241 tiles
   - centre (tile 120,120): `cheat goto 145,15602,14352`
+  - nearest walkable to centre (tile 123,119): `cheat goto 145,15617,14347`
   - waypoint (tile 108,210): `cheat goto 145,15542,14802`
   - entry: `cheat goto 145`
 
 - **RiverOfBlood4.ds1** (pin: `pd2_force_ds1.py --slot <N> "riverofblood4.ds1"`), 241x241 tiles
   - centre (tile 120,120): `cheat goto 145,15602,14352`
+  - nearest walkable to centre (tile 123,119): `cheat goto 145,15617,14347`
   - waypoint (tile 161,61): `cheat goto 145,15807,14057`
   - entry: `cheat goto 145`
 
@@ -221,14 +225,14 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **Lava3.ds1** (pin: `pd2_force_ds1.py --slot <N> "lava3.ds1"`), 250x250 tiles
   - centre (tile 125,125): `cheat goto 146,17127,5627`
-  - nearest walkable to centre (tile 112,134): `cheat goto 146,17062,5672`
+  - nearest walkable to centre (tile 112,135): `cheat goto 146,17062,5677`
   - waypoint (tile 122,64): `cheat goto 146,17112,5322`
   - monster preset megademonboss (tile 48,31): `cheat goto 146,16742,5157`
   - entry: `cheat goto 146`
 
 - **Lava5.ds1** (pin: `pd2_force_ds1.py --slot <N> "lava5.ds1"`), 250x250 tiles
   - centre (tile 125,125): `cheat goto 146,17127,5627`
-  - nearest walkable to centre (tile 124,137): `cheat goto 146,17122,5687`
+  - nearest walkable to centre (tile 125,138): `cheat goto 146,17127,5692`
   - waypoint (tile 51,50): `cheat goto 146,16757,5252`
   - monster preset megademonboss (tile 171,41): `cheat goto 146,17357,5207`
   - entry: `cheat goto 146`
@@ -237,19 +241,21 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **frozenriver1.ds1** (pin: `pd2_force_ds1.py --slot <N> "frozenriver1.ds1"`), 200x200 tiles
   - centre (tile 100,100): `cheat goto 147,17002,7002`
-  - nearest walkable to centre (tile 91,100): `cheat goto 147,16957,7002`
+  - nearest walkable to centre (tile 76,100): `cheat goto 147,16882,7002`
   - monster preset IceBoss (tile 61,22): `cheat goto 147,16807,6612`
   - waypoint (tile 28,140): `cheat goto 147,16642,7202`
   - entry: `cheat goto 147`
 
 - **frozenriver2.ds1** (pin: `pd2_force_ds1.py --slot <N> "frozenriver2.ds1"`), 200x200 tiles
   - centre (tile 100,100): `cheat goto 147,17002,7002`
+  - nearest walkable to centre (tile 94,106): `cheat goto 147,16972,7032`
   - waypoint (tile 73,133): `cheat goto 147,16867,7167`
   - monster preset IceBoss (tile 149,51): `cheat goto 147,17247,6757`
   - entry: `cheat goto 147`
 
 - **frozenriver3.ds1** (pin: `pd2_force_ds1.py --slot <N> "frozenriver3.ds1"`), 200x200 tiles
   - centre (tile 100,100): `cheat goto 147,17002,7002`
+  - nearest walkable to centre (tile 98,100): `cheat goto 147,16992,7002`
   - waypoint (tile 94,89): `cheat goto 147,16972,6947`
   - monster preset IceBoss (tile 50,75): `cheat goto 147,16752,6877`
   - entry: `cheat goto 147`
@@ -266,7 +272,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **Jungle1.ds1** (pin: `pd2_force_ds1.py --slot <N> "jungle1.ds1"`), 251x251 tiles
   - centre (tile 125,125): `cheat goto 149,17127,9877`
-  - nearest walkable to centre (tile 135,129): `cheat goto 149,17177,9897`
+  - nearest walkable to centre (tile 133,162): `cheat goto 149,17167,10062`
   - waypoint (tile 236,237): `cheat goto 149,17682,10437`
   - monster preset torajanBoss (tile 11,174): `cheat goto 149,16557,10122`
   - entry: `cheat goto 149`
@@ -280,6 +286,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **Jungle3.ds1** (pin: `pd2_force_ds1.py --slot <N> "jungle3.ds1"`), 251x251 tiles
   - centre (tile 125,125): `cheat goto 149,17127,9877`
+  - nearest walkable to centre (tile 126,125): `cheat goto 149,17132,9877`
   - waypoint (tile 223,211): `cheat goto 149,17617,10307`
   - monster preset torajanBoss (tile 88,148): `cheat goto 149,16942,9992`
   - entry: `cheat goto 149`
@@ -311,7 +318,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **throne1.ds1** (pin: `pd2_force_ds1.py --slot <N> "throne1.ds1"`), 150x150 tiles
   - centre (tile 75,75): `cheat goto 151,16877,11877`
-  - nearest walkable to centre (tile 73,72): `cheat goto 151,16867,11862`
+  - nearest walkable to centre (tile 75,67): `cheat goto 151,16877,11837`
   - monster preset ThroneBoss (tile 92,40): `cheat goto 151,16962,11702`
   - waypoint (tile 67,122): `cheat goto 151,16837,12112`
   - entry: `cheat goto 151`
@@ -324,7 +331,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **throne3.ds1** (pin: `pd2_force_ds1.py --slot <N> "throne3.ds1"`), 150x150 tiles
   - centre (tile 75,75): `cheat goto 151,16877,11877`
-  - nearest walkable to centre (tile 72,75): `cheat goto 151,16862,11877`
+  - nearest walkable to centre (tile 75,71): `cheat goto 151,16877,11857`
   - monster preset ThroneBoss (tile 109,70): `cheat goto 151,17047,11852`
   - waypoint (tile 24,28): `cheat goto 151,16622,11642`
   - entry: `cheat goto 151`
@@ -394,12 +401,14 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **Caldeum.ds1** (pin: `pd2_force_ds1.py --slot <N> "caldeum.ds1"`), 180x160 tiles
   - centre (tile 90,80): `cheat goto 156,18202,6902`
+  - nearest walkable to centre (tile 83,84): `cheat goto 156,18167,6922`
   - waypoint (tile 129,135): `cheat goto 156,18397,7177`
   - monster preset act2hireTraitorBoss (tile 42,38): `cheat goto 156,17962,6692`
   - entry: `cheat goto 156`
 
 - **Caldeum2.ds1** (pin: `pd2_force_ds1.py --slot <N> "caldeum2.ds1"`), 180x160 tiles
   - centre (tile 90,80): `cheat goto 156,18202,6902`
+  - nearest walkable to centre (tile 100,89): `cheat goto 156,18252,6947`
   - waypoint (tile 160,115): `cheat goto 156,18552,7077`
   - monster preset act2hireTraitorBoss (tile 46,26): `cheat goto 156,17982,6632`
   - entry: `cheat goto 156`
@@ -480,7 +489,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **necropolis_2.ds1**, 180x160 tiles
   - centre (tile 90,80): `cheat goto 160,18452,13902`
-  - nearest walkable to centre (tile 104,80): `cheat goto 160,18522,13902`
+  - nearest walkable to centre (tile 105,80): `cheat goto 160,18527,13902`
   - waypoint (tile 90,115): `cheat goto 160,18452,14077`
   - entry: `cheat goto 160`
 
@@ -488,6 +497,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **necropolis_1.ds1**, 180x160 tiles
   - centre (tile 90,80): `cheat goto 161,18452,14902`
+  - nearest walkable to centre (tile 86,89): `cheat goto 161,18432,14947`
   - waypoint (tile 85,90): `cheat goto 161,18427,14952`
   - entry: `cheat goto 161`
 
@@ -495,7 +505,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **necropolis_3.ds1**, 151x151 tiles
   - centre (tile 75,75): `cheat goto 162,20377,5377`
-  - nearest walkable to centre (tile 69,71): `cheat goto 162,20347,5357`
+  - nearest walkable to centre (tile 64,73): `cheat goto 162,20322,5367`
   - waypoint (tile 113,130): `cheat goto 162,20567,5652`
   - entry: `cheat goto 162`
 
@@ -567,13 +577,13 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **RoyalCrypts.ds1** (pin: `pd2_force_ds1.py --slot <N> "royalcrypts.ds1"`), 150x150 tiles
   - centre (tile 75,75): `cheat goto 167,21877,5377`
-  - nearest walkable to centre (tile 71,79): `cheat goto 167,21857,5397`
+  - nearest walkable to centre (tile 70,82): `cheat goto 167,21852,5412`
   - waypoint (tile 23,19): `cheat goto 167,21617,5097`
   - entry: `cheat goto 167`
 
 - **RoyalCryptsV2.ds1** (pin: `pd2_force_ds1.py --slot <N> "royalcryptsv2.ds1"`), 150x150 tiles
   - centre (tile 75,75): `cheat goto 167,21877,5377`
-  - nearest walkable to centre (tile 71,79): `cheat goto 167,21857,5397`
+  - nearest walkable to centre (tile 70,82): `cheat goto 167,21852,5412`
   - waypoint (tile 23,19): `cheat goto 167,21617,5097`
   - entry: `cheat goto 167`
 
@@ -596,14 +606,14 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **SanctuaryOfSinV3.ds1** (pin: `pd2_force_ds1.py --slot <N> "sanctuaryofsinv3.ds1"`), 170x200 tiles
   - centre (tile 85,100): `cheat goto 168,21927,6502`
-  - nearest walkable to centre (tile 80,100): `cheat goto 168,21902,6502`
+  - nearest walkable to centre (tile 79,100): `cheat goto 168,21897,6502`
   - entry: `cheat goto 168`
 
 ### Black Abyss Map (LevelId 169, lvlprest `Black Abyss Map`)
 
 - **BlackAbyss.ds1**, 150x150 tiles
   - centre (tile 75,75): `cheat goto 169,21877,7627`
-  - nearest walkable to centre (tile 74,75): `cheat goto 169,21872,7627`
+  - nearest walkable to centre (tile 73,75): `cheat goto 169,21867,7627`
   - waypoint (tile 97,85): `cheat goto 169,21987,7677`
   - monster preset siegebeastMapBoss (tile 60,49): `cheat goto 169,21802,7497`
   - entry: `cheat goto 169`
@@ -673,6 +683,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **ZharKurast.ds1**, 150x150 tiles
   - centre (tile 75,75): `cheat goto 175,23377,8127`
+  - nearest walkable to centre (tile 74,76): `cheat goto 175,23372,8132`
   - waypoint (tile 74,27): `cheat goto 175,23372,7887`
   - entry: `cheat goto 175`
 
@@ -688,7 +699,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **hellcaves.ds1**, 151x151 tiles
   - centre (tile 75,75): `cheat goto 177,23377,10377`
-  - nearest walkable to centre (tile 69,78): `cheat goto 177,23347,10392`
+  - nearest walkable to centre (tile 69,79): `cheat goto 177,23347,10397`
   - entry: `cheat goto 177`
 
 ### Hellcave Fortress (LevelId 178, lvlprest `HellcaveFortress`)
@@ -749,12 +760,14 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **SkovosStrongholdV1.ds1** (pin: `pd2_force_ds1.py --slot <N> "skovosstrongholdv1.ds1"`), 180x150 tiles
   - centre (tile 90,75): `cheat goto 186,23452,13377`
+  - nearest walkable to centre (tile 85,80): `cheat goto 186,23427,13402`
   - monster preset SkovosBoss (tile 12,51): `cheat goto 186,23062,13257`
   - waypoint (tile 145,91): `cheat goto 186,23727,13457`
   - entry: `cheat goto 186`
 
 - **SkovosStrongholdV2.ds1** (pin: `pd2_force_ds1.py --slot <N> "skovosstrongholdv2.ds1"`), 180x150 tiles
   - centre (tile 90,75): `cheat goto 186,23452,13377`
+  - nearest walkable to centre (tile 85,80): `cheat goto 186,23427,13402`
   - monster preset SkovosBoss (tile 10,101): `cheat goto 186,23052,13507`
   - waypoint (tile 145,91): `cheat goto 186,23727,13457`
   - entry: `cheat goto 186`
@@ -763,28 +776,28 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **DemonRoad1.ds1** (pin: `pd2_force_ds1.py --slot <N> "demonroad1.ds1"`), 201x201 tiles
   - centre (tile 100,100): `cheat goto 187,23502,15002`
-  - nearest walkable to centre (tile 106,95): `cheat goto 187,23532,14977`
+  - nearest walkable to centre (tile 107,95): `cheat goto 187,23537,14977`
   - waypoint (tile 35,94): `cheat goto 187,23177,14972`
   - monster preset DemonRoadBoss (tile 154,94): `cheat goto 187,23772,14972`
   - entry: `cheat goto 187`
 
 - **DemonRoad2.ds1** (pin: `pd2_force_ds1.py --slot <N> "demonroad2.ds1"`), 201x201 tiles
   - centre (tile 100,100): `cheat goto 187,23502,15002`
-  - nearest walkable to centre (tile 97,101): `cheat goto 187,23487,15007`
+  - nearest walkable to centre (tile 94,96): `cheat goto 187,23472,14982`
   - waypoint (tile 91,187): `cheat goto 187,23457,15437`
   - monster preset DemonRoadBoss (tile 90,67): `cheat goto 187,23452,14837`
   - entry: `cheat goto 187`
 
 - **DemonRoad3.ds1** (pin: `pd2_force_ds1.py --slot <N> "demonroad3.ds1"`), 201x201 tiles
   - centre (tile 100,100): `cheat goto 187,23502,15002`
-  - nearest walkable to centre (tile 102,100): `cheat goto 187,23512,15002`
+  - nearest walkable to centre (tile 104,103): `cheat goto 187,23522,15017`
   - waypoint (tile 91,33): `cheat goto 187,23457,14667`
   - monster preset DemonRoadBoss (tile 92,152): `cheat goto 187,23462,15262`
   - entry: `cheat goto 187`
 
 - **DemonRoad4.ds1** (pin: `pd2_force_ds1.py --slot <N> "demonroad4.ds1"`), 201x201 tiles
   - centre (tile 100,100): `cheat goto 187,23502,15002`
-  - nearest walkable to centre (tile 106,95): `cheat goto 187,23532,14977`
+  - nearest walkable to centre (tile 107,95): `cheat goto 187,23537,14977`
   - waypoint (tile 151,94): `cheat goto 187,23757,14972`
   - monster preset DemonRoadBoss (tile 31,93): `cheat goto 187,23157,14967`
   - entry: `cheat goto 187`
@@ -821,7 +834,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **ImperialPalaceBossRoom.ds1**, 26x26 tiles
   - centre (tile 13,13): `cheat goto 190,19317,5567`
-  - nearest walkable to centre (tile 13,12): `cheat goto 190,19317,5562`
+  - nearest walkable to centre (tile 15,12): `cheat goto 190,19327,5562`
   - waypoint (tile 19,6): `cheat goto 190,19347,5532`
   - entry: `cheat goto 190`
 
@@ -842,6 +855,7 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **DjinnsDomain.ds1**, 125x125 tiles
   - centre (tile 62,62): `cheat goto 193,18312,11312`
+  - nearest walkable to centre (tile 61,54): `cheat goto 193,18307,11272`
   - waypoint (tile 111,74): `cheat goto 193,18557,11372`
   - entry: `cheat goto 193`
 
@@ -896,17 +910,17 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **poisonedwell.ds1** (pin: `pd2_force_ds1.py --slot <N> "poisonedwell.ds1"`), 150x150 tiles
   - centre (tile 75,75): `cheat goto 199,25377,8377`
-  - nearest walkable to centre (tile 75,74): `cheat goto 199,25377,8372`
+  - nearest walkable to centre (tile 75,72): `cheat goto 199,25377,8362`
   - entry: `cheat goto 199`
 
 - **poisonedwellV2.ds1** (pin: `pd2_force_ds1.py --slot <N> "poisonedwellv2.ds1"`), 150x150 tiles
   - centre (tile 75,75): `cheat goto 199,25377,8377`
-  - nearest walkable to centre (tile 75,74): `cheat goto 199,25377,8372`
+  - nearest walkable to centre (tile 75,72): `cheat goto 199,25377,8362`
   - entry: `cheat goto 199`
 
 - **poisonedwellV3.ds1** (pin: `pd2_force_ds1.py --slot <N> "poisonedwellv3.ds1"`), 150x150 tiles
   - centre (tile 75,75): `cheat goto 199,25377,8377`
-  - nearest walkable to centre (tile 75,74): `cheat goto 199,25377,8372`
+  - nearest walkable to centre (tile 75,72): `cheat goto 199,25377,8362`
   - entry: `cheat goto 199`
 
 ### Dark Temple Map (LevelId 200, lvlprest `Dark Temple Map`)
@@ -918,13 +932,13 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **DarktempleV2.ds1** (pin: `pd2_force_ds1.py --slot <N> "darktemplev2.ds1"`), 175x175 tiles
   - centre (tile 87,87): `cheat goto 200,25437,8937`
-  - nearest walkable to centre (tile 83,92): `cheat goto 200,25417,8962`
+  - nearest walkable to centre (tile 77,92): `cheat goto 200,25387,8962`
   - waypoint (tile 139,136): `cheat goto 200,25697,9182`
   - entry: `cheat goto 200`
 
 - **DarktempleV3.ds1** (pin: `pd2_force_ds1.py --slot <N> "darktemplev3.ds1"`), 175x175 tiles
   - centre (tile 87,87): `cheat goto 200,25437,8937`
-  - nearest walkable to centre (tile 87,88): `cheat goto 200,25437,8942`
+  - nearest walkable to centre (tile 96,87): `cheat goto 200,25482,8937`
   - waypoint (tile 26,144): `cheat goto 200,25132,9222`
   - entry: `cheat goto 200`
 
@@ -932,23 +946,25 @@ Ready-to-paste `cheat goto <levelId>,<x>,<y>` lines for the 64 PD2-specific maps
 
 - **Descend.ds1** (pin: `pd2_force_ds1.py --slot <N> "descend.ds1"`), 150x150 tiles
   - centre (tile 75,75): `cheat goto 201,25377,9377`
-  - nearest walkable to centre (tile 75,76): `cheat goto 201,25377,9382`
+  - nearest walkable to centre (tile 81,70): `cheat goto 201,25407,9352`
   - waypoint (tile 50,16): `cheat goto 201,25252,9082`
   - entry: `cheat goto 201`
 
 - **Descend_2.ds1** (pin: `pd2_force_ds1.py --slot <N> "descend_2.ds1"`), 150x150 tiles
   - centre (tile 75,75): `cheat goto 201,25377,9377`
+  - nearest walkable to centre (tile 76,74): `cheat goto 201,25382,9372`
   - waypoint (tile 10,19): `cheat goto 201,25052,9097`
   - entry: `cheat goto 201`
 
 - **Descend_3.ds1** (pin: `pd2_force_ds1.py --slot <N> "descend_3.ds1"`), 150x150 tiles
   - centre (tile 75,75): `cheat goto 201,25377,9377`
+  - nearest walkable to centre (tile 76,74): `cheat goto 201,25382,9372`
   - waypoint (tile 116,30): `cheat goto 201,25582,9152`
   - entry: `cheat goto 201`
 
 - **Descend_4.ds1** (pin: `pd2_force_ds1.py --slot <N> "descend_4.ds1"`), 150x150 tiles
   - centre (tile 75,75): `cheat goto 201,25377,9377`
-  - nearest walkable to centre (tile 75,76): `cheat goto 201,25377,9382`
+  - nearest walkable to centre (tile 81,70): `cheat goto 201,25407,9352`
   - waypoint (tile 50,16): `cheat goto 201,25252,9082`
   - entry: `cheat goto 201`
 
