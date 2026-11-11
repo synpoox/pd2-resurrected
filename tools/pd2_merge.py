@@ -116,7 +116,7 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None, slots_hom
                 def work() -> None:
                     slots.acquire()
                     fn(p, data, d2r_, out)
-                if not pd2_cache.rule(cache, k, {"p": root, "d": d2r_}, work, policy):
+                if not pd2_cache.rule(cache, k, {"p": root, "d": d2r_}, work, policy, slots):
                     ran.append(name)
             return run
         rules = {n: cached(n, fn) for n, fn in RULES.items()}
