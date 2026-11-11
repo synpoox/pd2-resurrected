@@ -19,13 +19,12 @@ configure() per DS1. A build with no configure() runs no wall pass.
 from __future__ import annotations
 
 import collections
-import copy
 import zlib
 from dataclasses import dataclass
 from typing import Callable
 
 from ..consts import GROUND, TILE
-from ..entity import _transform, is_waypoint
+from ..entity import _transform, clone, is_waypoint
 from ..layout import Layout, walkable
 
 ORDER = 350
@@ -224,7 +223,7 @@ def run(b) -> None:
             continue
         near[k] += 1
         good[k] = gained
-        e = copy.deepcopy(choice.ent)
+        e = clone(choice.ent)
         t = _transform(e)
         t["position"]["x"], t["position"]["z"] = c[0] * TILE + choice.dx, c[1] * TILE + choice.dz
         t["position"]["y"] = wall_y(b, t["position"]["x"], t["position"]["z"]) + choice.rel_y

@@ -19,7 +19,6 @@ stock tile drew there (a 17-unit palisade, a gate, a wall: Fortress's palisade, 
 """
 from __future__ import annotations
 
-import copy
 import functools
 import json
 from pathlib import Path
@@ -27,7 +26,7 @@ from pathlib import Path
 import pd2_painter as painter
 
 from ..consts import TILE
-from ..entity import _transform
+from ..entity import _transform, clone
 
 ORDER = 450
 KIT = Path(__file__).resolve().parent.parent / "fence_kit.json"
@@ -77,7 +76,7 @@ def along(tiles: dict, c: tuple[int, int]) -> str:
 def piece(name: str, c: tuple[int, int], axis: str) -> dict:
     """The kit entity `name` on tile c, centred on it along `axis`."""
     k = kit()[name]
-    e = copy.deepcopy(k["entity"])
+    e = clone(k["entity"])
     q = YAW_Z if axis == "z" else STAND
     x0, y0, z0, x1, y1, z1 = k["box"]
     cx, _, cz = painter.rotate(q, ((x0 + x1) / 2, 0.0, (z0 + z1) / 2))

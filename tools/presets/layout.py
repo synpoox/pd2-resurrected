@@ -18,6 +18,7 @@ class Layout:
     keys: dict[tuple[int, int], Key]  # (x, y) -> key; tiles with nothing are left out
     flags: dict[tuple[int, int], bytes] = field(default_factory=dict)  # (x, y) -> its layers' subtile flags, OR'd
     unwalkable: frozenset = frozenset()  # the tiles a wall or floor cell marks unwalkable (UNWALKABLE)
+    walk: set | None = field(default=None, compare=False, repr=False)  # walkable(), once: see walk_set()
 
 
 def layout(data: bytes, dt1s: dict[str, dict], copies: dict[Tile, Tile] | None = None) -> Layout:
@@ -74,6 +75,13 @@ def walkable(lay: Layout) -> set[tuple[int, int]]:
     """The DS1's walkable floor: floor tiles (no wall), not marked unwalkable, not mostly blocked (water)."""
     return {c for c, k in lay.keys.items() if k[0] == "f" and c not in lay.unwalkable
             and not painter.blocked_floor(lay.flags.get(c, bytes(25)))}
+
+
+def walk_set(lay: Layout) -> set[tuple[int, int]]:
+    """walkable(lay), made once and kept on the layout (a stock layout is asked in every DS1). Do not change it."""
+    if lay.walk is None:
+        lay.walk = walkable(lay)
+    return lay.walk
 
 
 def draws_trees(lay: Layout) -> bool:

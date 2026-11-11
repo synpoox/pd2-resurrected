@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import bisect
 import collections
-import copy
 import functools
 import json
 import math
 import re
 import zlib
+
+from presets.entity import clone
 
 TREE = re.compile(r"tree_wall|treewall|treeline|small_cluster|_trees_")  # treelines, tree walls, foliage tree models
 SPACING = 9  # subtiles between tree origins when the stock has fewer than two trees
@@ -117,12 +118,12 @@ def harvest(stock, wet: frozenset = frozenset(), learned: dict | None = None) ->
     out, gaps = collections.defaultdict(list), []
     learned = {} if learned is None else learned
     for lay, preset in stock:
-        held = learned.get((id(preset), wet))
+        held = learned.get((id(lay), id(preset), wet))
         if held is None:
-            held = learned[id(preset), wet] = (preset, *_harvest_one(lay, preset, wet))
-        for k, item in held[1]:
+            held = learned[id(lay), id(preset), wet] = (lay, preset, *_harvest_one(lay, preset, wet))
+        for k, item in held[2]:
             out[k].append(item)
-        gaps += held[2]
+        gaps += held[3]
     if not out:
         return None
     gaps.sort()
@@ -228,6 +229,12 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs,
         # fits() per option, for the options of every (bucket, distance): the reach test first, and the shade test
         # once per footprint and subtile
         prep = {k: (min(o[3] for o in v), [(o, o[3], id(o) in low, footprint(o)) for o in v]) for k, v in sub.items() if v}
+        held: dict[tuple, list] = {}  # (bucket, distance) -> the distances, nearest first, that hold options
+
+        def holding(b: int, d: int) -> list:
+            if (b, d) not in held:
+                held[b, d] = [dd for dd in orders.get(d) or order(d) if (b, dd) in prep]
+            return held[b, d]
         for p in cand:
             g = (p[0] // cell, p[1] // cell)
             if any(math.dist(p, o) < spacing for gx, gy in AROUND for o in grid[(g[0] + gx, g[1] + gy)]):
@@ -251,7 +258,7 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs,
                             continue
                     out.append(o)
                 return out
-            options = next((oo for oo in (ok((b, dd)) for dd in orders.get(d) or order(d)) if oo), None)
+            options = next((oo for oo in (ok((b, dd)) for dd in holding(b, d)) if oo), None)
             if not options:
                 continue
             k0 = zlib.crc32(f"{seed}:{p}:t".encode())
@@ -261,7 +268,7 @@ def paint(lay, trees: tuple[dict, float], seed: str, skip: set, prefabs,
                 if not small:
                     continue
                 pick = small[k0 % len(small)]
-            e = copy.deepcopy(pick[0])
+            e = clone(pick[0])
             t = transform(e)
             t["position"]["x"], t["position"]["z"] = p[0] * 2 + pick[1], p[1] * 2 + pick[2]
             for c in e["components"]:  # a wall's transparency names its tile

@@ -30,6 +30,7 @@ class Build:
     objects: list
     entities: list = field(default_factory=list)  # the preset's entities so far, without ids
     deps: dict = field(default_factory=dict)  # every dependency of the stock presets copied from
+    told: dict = field(default_factory=dict)  # id -> the dependency lists depend() took, held so the id stays theirs
     missing: int = 0  # tiles left empty for a key the kit lacks
     pasted: list = field(default_factory=list)  # [(stock index, x, y)] of the pasted rooms
     taken: set = field(default_factory=set)  # the tiles of the pasted rooms
@@ -50,6 +51,9 @@ class Build:
         return self.state.setdefault(module, {})
 
     def depend(self, of: dict) -> None:
+        if id(of) in self.told:  # a stock preset's list, told again for each of its pieces
+            return
+        self.told[id(of)] = of
         for kind, items in of.items():
             for d in items:
                 self.deps.setdefault(kind, {}).setdefault(d["path"].lower(), d)
