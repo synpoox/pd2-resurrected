@@ -153,9 +153,10 @@ def sources(fn: Callable, leave_out: tuple[Path, ...] = ()) -> list[Path]:
     """fn's module file and every module beside it that it imports, at any depth (a rule's code). A module inside a
     package brings the whole package (every .py under its top folder): relative imports and passes found by discovery
     are code the rule runs too (#754). An import in a module's main() is left out: a merge never runs a tool's command
-    line (pd2_strings' imports pd2_merge, which would put every tool in every key). leave_out: files or folders that are
-    neither listed nor followed (code the caller knows its fn never runs, #870)."""
-    todo, seen = [Path(sys.modules[fn.__module__].__file__)], set()
+    line (pd2_strings' imports pd2_merge, which would put every tool in every key). The data files in such a package
+    (not .py or .pyc) are part of the code too. leave_out: files or folders that are neither listed nor followed (code
+    the caller knows its fn never runs, #870)."""
+    todo, seen, data = [Path(sys.modules[fn.__module__].__file__)], set(), set()
     skip = [os.path.normcase(os.path.abspath(x)) for x in leave_out]
 
     def left_out(q: Path) -> bool:
@@ -176,6 +177,9 @@ def sources(fn: Callable, leave_out: tuple[Path, ...] = ()) -> list[Path]:
         top = package(p.parent)
         if top is not None:
             todo += [q for q in top.rglob("*.py") if "__pycache__" not in q.parts]
+            # the data files the package reads (presets/fence_kit.json) are code the rule runs too (#861)
+            data |= {q for q in top.rglob("*") if q.is_file() and q.suffix not in (".py", ".pyc") and "__pycache__" not in q.parts
+                     and not left_out(q)}
         homes = {p.parent, top.parent} if top else {p.parent}
         tree = ast.parse(p.read_text("utf-8"))
         cli = {id(n) for d in tree.body if isinstance(d, ast.FunctionDef) and d.name == "main" for n in ast.walk(d)}
@@ -194,7 +198,7 @@ def sources(fn: Callable, leave_out: tuple[Path, ...] = ()) -> list[Path]:
             for h, m, imported in bases:
                 for q in module_files(h, m, imported):
                     todo.append(q)
-    return sorted(seen)
+    return sorted(seen | data)
 
 
 def toolkit_sources(kit: Path, files: list[Path]) -> list[Path]:
@@ -254,6 +258,7 @@ def toolkit_sources(kit: Path, files: list[Path]) -> list[Path]:
 NOT_TRACED = ("pd2-data", "tools")
 _digests: dict[tuple[str, int, int], str] = {}
 _trace: "Trace | None" = None
+_subs: "list[Trace]" = []  # the traces of the parts running inside the rule's (sub_trace)
 used: list[Path] = []  # the entries rule() replayed or kept since the caller last cleared this (evict, below)
 
 
@@ -317,6 +322,14 @@ class Trace:
         finally:
             self.busy = False
 
+    def adopt(self, reads: dict[str, str | None]) -> None:
+        """Take reads another trace made (a replayed part's, as part_get checked them just now) as this trace's own, except
+        of what this rule wrote or made."""
+        for k, v in reads.items():
+            rel = k.split(":", 1)[1]
+            if rel not in self.written and rel not in self.created:
+                self.reads.setdefault(k, v)
+
     def wrote(self, path, made: bool = False) -> None:
         """path is written (made: a folder made) by the rule; one that did not exist yet is created."""
         if (rel := self.rel(path)) is None or rel in self.written or rel in self.created:
@@ -333,7 +346,15 @@ class Trace:
 
 def _audit(event: str, args: tuple) -> None:
     t = _trace
-    if t is None or t.busy:
+    if t is None:
+        return
+    _audit_to(t, event, args)
+    for sub in _subs:  # the traces of parts inside the rule (sub_trace) see what the rule's own does
+        _audit_to(sub, event, args)
+
+
+def _audit_to(t: "Trace", event: str, args: tuple) -> None:
+    if t.busy:
         return
     if event == "open":
         path, mode, flags = args
@@ -360,8 +381,10 @@ def _audit(event: str, args: tuple) -> None:
 def _seen(fn: Callable) -> Callable:
     """fn (an os stat or os.path test) recording the path it looks at."""
     def f(path, *a, **k):
-        if (t := _trace) is not None and not t.busy:
-            t.see(path)
+        if (t := _trace) is not None:
+            for x in (t, *_subs):
+                if not x.busy:
+                    x.see(path)
         return fn(path, *a, **k)
     return f
 
@@ -384,9 +407,11 @@ def _hook() -> None:
             copy = _winapi.CopyFile2
 
             def copied(src, dst, *a):
-                if (t := _trace) is not None and not t.busy:
-                    t.see(src)
-                    t.wrote(dst)
+                if (t := _trace) is not None:
+                    for x in (t, *_subs):
+                        if not x.busy:
+                            x.see(src)
+                            x.wrote(dst)
                 return copy(src, dst, *a)
             _winapi.CopyFile2 = copied
         _hooked = True
@@ -549,7 +574,12 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
             if waited:
                 print(f"rule {key_}: waited for another run of it and replayed what it kept", flush=True)
             return True
-        return _build(gen, home, roots, run, policy)
+        global _scope
+        _scope = Scope(key_, roots, [(cache, policy.trusted)] + ([(policy.scratch, None)] if policy.scratch else []), dest, policy)
+        try:
+            return _build(gen, home, roots, run, policy)
+        finally:
+            _scope = None
 
 
 def memo(cache: Path, key_: str, roots: dict[str, Path], compute: Callable[["Trace"], dict[str, bytes]],
@@ -709,6 +739,116 @@ def evict(entries: list[Path], touching: str | None = None) -> None:
     for e in entries:
         if touching is None or touches(e, touching):
             _delete(e)
+
+
+# Parts (#861): a rule that is itself many independent builds (presets-hd: one preset per DS1) keeps each under a key of its
+# own inputs, so a run of the rule that misses as a whole replays the parts whose inputs did not change. The rule, while
+# it runs under rule() above, asks scope() for where and under what; a part is rules/<part key>/<origin>/ (rules-pr/pr-<n>/
+# ... for a PR gate) with a manifest that has the shape of a rule entry's (bytes, files, origin: prune, sweep, evict, own
+# and the Policy treat it as one), and `reads`: the files the part opened while it ran, checked again on replay.
+
+
+class Scope(NamedTuple):
+    """The running rule, for its parts: its key (part keys include it: the code), the roots it traces, the folders a part
+    is looked up in with the origins each may have (as rule()'s), and where a new one is kept (None: nowhere)."""
+    key: str
+    roots: dict
+    reads: list
+    dest: "Path | None"
+    policy: Policy
+
+
+_scope: "Scope | None" = None
+
+
+def scope() -> "Scope | None":
+    """The scope of the rule running under rule() in this process, None outside one (a worker process, a bare call, CI
+    with no scope): then a rule keeps no parts."""
+    return _scope
+
+
+@contextlib.contextmanager
+def sub_trace():
+    """Trace what the code inside reads, apart from the rule's own trace (which sees it too). Yields the Trace (its `reads`
+    are the part's), None when no rule is traced in this process."""
+    t = _trace
+    if t is None:
+        yield None
+        return
+    sub = Trace({k: Path(v) for k, v in t.roots.items()})
+    _subs.append(sub)
+    try:
+        yield sub
+    finally:
+        _subs.remove(sub)
+
+
+def note(path) -> None:
+    """Record that path is read now, for the traces: a read a memo would hide from the next part (functools.cache)."""
+    if (t := _trace) is not None:
+        for x in (t, *_subs):
+            if not x.busy:
+                x.see(path)
+
+
+def part_get(sc: Scope, key_: str) -> "dict | None":
+    """Replay the part with this key whose reads still hold: its files are copied under generated/ and its reads join the
+    rule's trace. Returns what part_put was given as `extra`, None on a miss."""
+    gen, top = sc.roots["p"] / "generated", _roots(sc.roots)
+    for base, trusted in sc.reads:
+        d = base / key_
+        for e in sorted(d.iterdir()) if d.is_dir() else []:
+            if ".tmp" in e.name or ".dead." in e.name:
+                continue
+            try:
+                m = json.loads((e / "manifest.json").read_text("utf-8"))
+                if trusted is not None and m.get("origin") not in trusted:
+                    continue
+                if not all(_state(top, k) == v for k, v in m["reads"].items()):
+                    continue
+                used.append(e)
+                os.utime(e)
+                for f in m["files"]:
+                    (gen / f).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(e / "files" / f, gen / f)
+                for x in ([_trace] if _trace is not None else []) + _subs:
+                    x.adopt(m["reads"])
+                return m["extra"]
+            except (OSError, ValueError, KeyError):  # deleted or damaged: a miss, the part is built and kept again
+                continue
+    return None
+
+
+def part_put(sc: Scope, key_: str, files: list[str], extra: dict, reads: dict) -> None:
+    """Keep a part built just now: `files` (paths from generated/) as they are, `extra` (JSON) for part_get to return, and
+    `reads`, what it opened (a Trace's), less the folders its own files are made in."""
+    if sc.dest is None:
+        return
+    gen, home = sc.roots["p"] / "generated", sc.dest / key_
+    outs = [f"p:generated/{f}" for f in files]
+    keep = {k: v for k, v in reads.items()
+            if not any(o == (r := k.split(":", 1)[1]) or o.startswith(r + "/") for o in outs)}
+    m = {"reads": keep, "files": sorted(files), "removed": [], "dirs": [], "rmdirs": [], "stdout": "", "extra": extra,
+         "origin": sc.policy.origin, "bytes": sum((gen / f).stat().st_size for f in files)}
+    name = sc.policy.origin
+    tmp = home / f"{name}.tmp{os.getpid()}"
+    try:
+        tmp.mkdir(parents=True)
+        for f in files:
+            (tmp / "files" / f).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(gen / f, tmp / "files" / f)
+        (tmp / "manifest.tmp").write_text(json.dumps(m), "utf-8")
+        os.replace(tmp / "manifest.tmp", tmp / "manifest.json")
+        if (home / name).exists():  # its reads no longer hold (part_get missed): this replaces it
+            _delete(home / name)
+        os.rename(tmp, home / name)
+        used.append(home / name)
+    except OSError as e:  # FileExistsError: another run kept the part meanwhile; anything else only costs a later hit
+        if not isinstance(e, FileExistsError):
+            print(f"warning: part not cached ({e})")
+    finally:
+        if tmp.exists():
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 def size(p: Path) -> int:

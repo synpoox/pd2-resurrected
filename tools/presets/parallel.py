@@ -26,6 +26,7 @@ import pd2_cache
 ENV = "PD2R_PRESET_WORKERS"
 DEFAULT = 3  # each worker repeats the ~130 s setup(): 3 gets most of the wall-time gain for less CPU and slot time than 4
 SILENCE = 1800  # seconds without any message from the workers before the rule gives up on them
+PER_WORKER = 8  # DS1 to build per worker, unless PD2R_PRESET_WORKERS asks for the workers (#861: a cached run builds few)
 
 
 def wanted() -> tuple[int, bool]:
@@ -37,19 +38,20 @@ def wanted() -> tuple[int, bool]:
         return DEFAULT, False
 
 
-def build_all(pl, tasks: list[tuple[str, str]]) -> tuple[list, int]:
-    """Build every (tile set, DS1) task of the plan and return the apply.DS1Built of each, in task order, and the number of
-    stock presets the kit harvested."""
+def build_all(pl, tasks: list[tuple[str, str]], box: list | None = None) -> tuple[list, int]:
+    """Build every (tile set, DS1) task of the plan and return (the apply.DS1Built of each, what it opened: pd2_cache's
+    sub-trace reads, {} untraced), in task order, and the number of stock presets the kit harvested. `box` may hold the
+    State the caller made already: a build in this process takes it out (the caller drops its own, to free the RAM)."""
     # the plan may list a DS1 twice (shadowsofwestmarchv3 under one tile set): build each once, so no two workers write one
     # file, and give a repeated row the same report (as the second serial build of it would)
     uniq = list(dict.fromkeys(tasks))
-    built, sources = _build_unique(pl, uniq)
+    built, sources = _build_unique(pl, uniq, box)
     return [built[t] for t in tasks], sources
 
 
-def _build_unique(pl, tasks: list[tuple[str, str]]) -> tuple[dict, int]:
+def _build_unique(pl, tasks: list[tuple[str, str]], box: list | None = None) -> tuple[dict, int]:
     n, asked = wanted()
-    n = min(n, len(tasks))
+    n = min(n, len(tasks)) if asked else min(n, len(tasks) // PER_WORKER)  # a worker's setup (minutes) must pay off
     spare = []
     if n > 1 and (pd2_cache.holding() or asked):
         # asked, with no merge slot to count against (no cache root): the caller's word
@@ -57,14 +59,27 @@ def _build_unique(pl, tasks: list[tuple[str, str]]) -> tuple[dict, int]:
         if len(spare) + 1 < n:
             print(f"  presets-hd: {len(spare) + 1} of {n} workers (merge slots busy)", file=sys.stderr, flush=True)
     if not spare:
-        return _serial(pl, tasks)
+        return _serial(pl, tasks, box)
+    if box:
+        box.clear()  # the workers set up themselves: this one is not used
     return _workers(pl, tasks, spare)
 
 
-def _serial(pl, tasks: list) -> tuple[dict, int]:
+def _one(st, task: tuple[str, str]) -> tuple:
+    """build_ds1 of one task, with what it opened (the part's reads)."""
     from . import apply
-    st = apply.setup(pl)
-    return {t: apply.build_ds1(st, *t) for t in tasks}, len(st.kit.sources)
+    with pd2_cache.sub_trace() as sub:
+        built = apply.build_ds1(st, *task)
+    reads = dict(sub.reads) if sub is not None else {}
+    if apply.draws_trees(st.layouts[task[1]]):  # an outdoor DS1 owns its tile set's tree harvest too
+        reads = {**st.tree_reads.get(task[0], {}), **reads}
+    return built, reads
+
+
+def _serial(pl, tasks: list, box: list | None = None) -> tuple[dict, int]:
+    from . import apply
+    st = box.pop() if box else apply.setup(pl)
+    return {t: _one(st, t) for t in tasks}, len(st.kit.sources)
 
 
 def _cost(pl, task: tuple[str, str]) -> int:
@@ -85,7 +100,7 @@ def _worker(pl, roots, tasks, results, i: int) -> None:
         st = apply.setup(pl)
         results.put(("ready", i, len(st.kit.sources), time.perf_counter() - began))
         while (t := tasks.get()) is not None:
-            results.put(("built", i, t, apply.build_ds1(st, *t)))
+            results.put(("built", i, t, _one(st, t)))
         results.put(("done", i, pd2_cache.worker_finish() if roots else None))
     except BaseException as e:  # noqa: BLE001 - the parent re-raises it
         results.put(("error", i, type(e).__name__, str(e), traceback.format_exc()))

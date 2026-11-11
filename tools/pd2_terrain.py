@@ -10,6 +10,7 @@ triangle counts at 0x18; a vertex is 4 f32 (x, y up, z, pad), a triangle 8 u32 w
 """
 from __future__ import annotations
 
+import hashlib
 import struct
 from pathlib import Path
 
@@ -21,6 +22,7 @@ class Ground:
     """Ground height at (x, z) in preset units: the highest triangle of the mesh over that point, None off it."""
 
     def __init__(self, data: bytes, offset: tuple[float, float, float] = (0.0, 0.0, 0.0)):
+        self.digest = hashlib.sha256(data + repr(offset).encode()).hexdigest()  # what a cache key (presets/ds1cache) holds of it
         _nodes, verts, tris = struct.unpack_from("<3Q", data, 0)
         nv, nt = struct.unpack_from("<2I", data, 0x1c)
         ox, oy, oz = offset
