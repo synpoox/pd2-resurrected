@@ -3,11 +3,15 @@ name: gate
 # The table-diff gate (tools/pd2_diff.py, #352) on every PR and push to main. It needs the PD2 install and D2R's tables,
 # which never go to GitHub (ADR 0002), so it runs on the owner's self-hosted runner, as the release does; README.md has
 # the runner setup. PRs from forks don't run here: the runner only builds this repository's own branches.
+# Docs-only changes start no run (paths:), except the gate inputs docs/deviations.md and docs/coverage-baseline.tsv; closing or merging a PR cancels its in-flight run (#847).
 on:
   push:
     branches: [main]
+    paths: ['**', '!**/*.md', '!docs/**', '!changelog.d/**', 'docs/deviations.md', 'docs/coverage-baseline.tsv']
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]  # labeled: coverage-drop-ok reruns the gate
+    # labeled: coverage-drop-ok reruns the gate; closed (merged too) joins the PR's group to cancel its run, the job's if: skips it
+    types: [opened, synchronize, reopened, labeled, unlabeled, closed]
+    paths: ['**', '!**/*.md', '!docs/**', '!changelog.d/**', 'docs/deviations.md', 'docs/coverage-baseline.tsv']
 
 # One gate per PR: a push cancels the run on the old head (#801). push: one group per main commit (each uploads its
 # baseline). A label other than coverage-drop-ok starts a run the job's if: skips: one group per run, so it can't
