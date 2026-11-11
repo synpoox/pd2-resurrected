@@ -45,12 +45,11 @@ import math
 import os
 import re
 import shutil
-import pickle
 import struct
 import subprocess
 import sys
 import zlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
 from typing import Callable, Iterator, NamedTuple
 
@@ -60,10 +59,18 @@ import pd2_presets as presets
 from pd2_ids import load, toolkit
 from pd2_tiles import (  # noqa: F401  (moved there, #855: the generator imports it; re-exported)
     D2R_DATA, MODELS, TALL, LOW, LOW_EDGE, ROOM, DEPTH, EDGE, IDENTITY, Box, fnv, model_boxes, qmul, Ground,
-    plane_ground, boxes, footprint, CORE, core_footprint,
+    plane_ground, boxes, footprint, CORE, core_footprint, TypeScore,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
+# The generator's code (#870): modules of the presets package that build the presets (their output is read per map, as
+# the preset file itself) and that no score runs. A map's score key leaves them out, so a generator PR that leaves a
+# map's preset as it was does not re-score the map. tests/test_coverage checks that nothing the scorer uses lives in them.
+GENERATOR = tuple(ROOT / "tools" / "presets" / n for n in (
+    "build.py", "kit.py", "place.py", "rooms.py", "patches.py", "waypoints.py", "water.py", "liquids.py", "pillars.py",
+    "height.py", "lint.py", "discover.py", "hooks", "passes")) + (ROOT / "tools" / "pd2_cache.py",)  # the cache's
+# format is in the key as pd2_cache.CACHE_FORMAT, as in a rule's: an edit to its code does not re-score
+SCORE_FORMAT = 2  # bump when what a kept score holds changes
 EDGE_PIECE = re.compile(r"fence|(?<!tree)(?<!tree_)wall|palisade|picket|rail|gate|bank")  # a low edge model, not a tree wall
 STRUCTURE = 20.0  # HD units (2 tiles): a tall piece this wide both ways is a structure (stairs, platform), not a prop
 # The Palace (Horadrim Tower, palace1-6) cannot be played, so it is no target of the scores or the gate (#822).
@@ -183,6 +190,9 @@ class Score:
     @property
     def border_score(self) -> float | None:
         return None if self.ring is None else 1 - len(self.gaps) / len(self.ring) if self.ring else 1.0
+
+
+_KINDS = {"Score": Score, "TypeScore": TypeScore}  # the classes a kept score may hold (_dec)
 
 
 def score(lay: presets.Layout, tall: set, name: str = "", area: str = "", wet: frozenset = frozenset(),
@@ -457,6 +467,47 @@ def model_lookup(d2r: Path) -> tuple[Callable[[str], tuple | None], Callable[[st
     return box, prefab
 
 
+def _enc(v):
+    """v as JSON data that loads without running code (#870): sets, tuples, dicts and the two score classes tagged."""
+    if isinstance(v, (set, frozenset)):
+        return {"@": "frozenset" if isinstance(v, frozenset) else "set", "v": sorted((_enc(x) for x in v), key=json.dumps)}
+    if isinstance(v, tuple):
+        return {"@": "tuple", "v": [_enc(x) for x in v]}
+    if isinstance(v, list):
+        return [_enc(x) for x in v]
+    if isinstance(v, dict):
+        return {"@": "dict", "v": [[_enc(k), _enc(x)] for k, x in v.items()]}
+    if type(v).__name__ in _KINDS and is_dataclass(v):
+        return {"@": type(v).__name__, "v": {f.name: _enc(getattr(v, f.name)) for f in fields(v)}}
+    if v is None or isinstance(v, (str, int, float, bool)):
+        return v
+    raise TypeError(f"a kept score cannot hold {type(v).__name__}")
+
+
+def _dec(v):
+    if isinstance(v, list):
+        return [_dec(x) for x in v]
+    if not isinstance(v, dict):
+        return v
+    tag, body = v["@"], v["v"]
+    if tag in ("set", "frozenset"):
+        return (set if tag == "set" else frozenset)(_dec(x) for x in body)
+    if tag == "tuple":
+        return tuple(_dec(x) for x in body)
+    if tag == "dict":
+        return {_dec(k): _dec(x) for k, x in body}
+    return _KINDS[tag](**{k: _dec(x) for k, x in body.items()})
+
+
+def pack(s: "Score", imgs: dict[str, bytes]) -> dict[str, bytes]:
+    """A map's score and images as the files a kept entry holds: score.json and the PNGs."""
+    return {**imgs, "score.json": json.dumps(_enc(s), separators=(",", ":")).encode()}
+
+
+def unpack(files: dict[str, bytes]) -> tuple["Score", dict[str, bytes]]:
+    return _dec(json.loads(files["score.json"])), {n: b for n, b in files.items() if n != "score.json"}
+
+
 def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = None,
         fbase: dict | None = None, tolerance: float = TOLERANCE, memo: tuple | None = None) -> list[Score] | None:
     """Score every generated preset under data (generated/data) and write the report to out, with the changes
@@ -506,10 +557,11 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
     heights = SeenHeights(data / "global" / "tiles", d2r / "global" / "tiles")
     out.mkdir(parents=True, exist_ok=True)
     roots = {"d": d2r, "g": data}
-    # What every map's score reads besides its own files: the scorer's code (the presets package too: pd2_presets
-    # imports it by package, which sources() does not follow), the stock vote, the stand-in and water rules.
-    base_key = pd2_cache.key([*pd2_cache.sources(run), ROOT / "tools" / "presets", fidelity.VOTES_FILE, rule,
-                              rule.with_name("presets-hd.d")], "coverage-map-v1", repr(sorted(standins.items())),
+    # What every map's score reads besides its own files: the scorer's code (the imports it runs, not the generator's:
+    # a map's generated preset is read per map), the stock vote, the stand-in and water rules.
+    base_key = pd2_cache.key([*pd2_cache.sources(run, GENERATOR), fidelity.VOTES_FILE, rule,
+                              rule.with_name("presets-hd.d")], f"coverage-map-v{SCORE_FORMAT}",
+                             str(pd2_cache.CACHE_FORMAT), repr(sorted(standins.items())),
                              repr(sorted(wet)), repr(sorted(stock.items()) if isinstance(stock, dict) else sorted(stock)))
 
     def score_one(f, ds1, area, files):
@@ -531,11 +583,11 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
         return s, images(lay, s, tall, wet) | fidelity.image(
             legacy, fidelity.legacy_edges(legacy, heights), s.fidelity, s.name)
 
-    def compute(trace, f, ds1, area, files) -> bytes:
+    def compute(trace, f, ds1, area, files) -> dict[str, bytes]:
         cur[0] = trace
         try:
             note(d2r / MODELS, f, data / "global" / "tiles" / ds1)
-            return pickle.dumps(score_one(f, ds1, area, files), protocol=4)
+            return pack(*score_one(f, ds1, area, files))
         finally:
             cur[0] = None
     scores, seen, hits = [], set(), 0
@@ -547,12 +599,12 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
             seen.add(ds1)
             work = functools.partial(compute, f=f, ds1=ds1, area=area, files=files)
             if memo:  # the map's score, replayed when nothing it read has changed (#854)
-                blob, hit = pd2_cache.memo(memo[0], pd2_cache.key([], base_key, ds1, repr(files), area), roots, work,
+                got, hit = pd2_cache.memo(memo[0], pd2_cache.key([], base_key, ds1, repr(files), area), roots, work,
                                            memo[1])
                 hits += hit
             else:
-                blob = work(pd2_cache.Trace(roots))
-            s, imgs = pickle.loads(blob)
+                got = work(pd2_cache.Trace(roots))
+            s, imgs = unpack(got)
             scores.append(s)
             for name, image in imgs.items():
                 (out / name).write_bytes(image)
