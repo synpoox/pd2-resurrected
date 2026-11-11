@@ -90,14 +90,16 @@ def check_output(gen: Path, required: tuple[str, ...] | None = None, minimum: in
     return None
 
 
-def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None) -> list[str]:
+def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None, slots_home: Path | None = None) -> list[str]:
     """Rebuild root/generated/ and return the rule files applied (d2rAI-toolkit's shared/classic_import driver). With a
     cache folder, a rule whose code, stamps and the files it read match a run kept there replays it (pd2_cache.rule)."""
     mg = pd2_extract.classic("merge")
     rules, ran = RULES, []
     # at most PD2R_MERGE_SLOTS (default 4) merges hold RAM at once, machine-wide (#760). Taken at the first rule that must run:
-    # a run whose rules all replay from the cache never waits. Without a cache (CI) there is no shared machine.
-    slots = pd2_cache.merge_slots(cache.parent) if cache else None
+    # a run whose rules all replay from the cache never waits. CI has no rule cache but shares the machine, so its
+    # uncached merge takes a slot too, under slots_home (#801).
+    home = cache.parent if cache else slots_home
+    slots = pd2_cache.merge_slots(home) if home else None
     if cache:
         kit = pd2_ids.toolkit(root)
         # every rule's key: the stamps, the toolkit code rules and the driver use, this cache's code and D2R's path
@@ -163,7 +165,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     cache = pd2_cache.root()
     try:
-        applied = merge(a.root, a.d2r, cache and cache / "rules")
+        applied = merge(a.root, a.d2r, cache and cache / "rules", pd2_cache.slot_home())
     except (MergeError, ValueError) as e:  # ValueError: no toolkit
         print(f"pd2_merge: {e}", file=sys.stderr)
         return 1

@@ -9,11 +9,22 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]  # labeled: coverage-drop-ok reruns the gate
 
+# One gate per PR: a push cancels the run on the old head (#801). push: one group per main commit (each uploads its
+# baseline). A label other than coverage-drop-ok starts a run the job's if: skips: one group per run, so it can't
+# cancel the PR's real gate. Otherwise one group per PR.
+concurrency:
+  group: gate-${{ github.event_name == 'push' && github.sha || (contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) && github.event.label.name != 'coverage-drop-ok') && format('skip-{0}', github.run_id) || github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# The merge below takes a slot of the machine-wide semaphore agents' merges use (pd2_cache.Slots, PD2R_MERGE_SLOTS, #760,
+# #801), so CI and agents share one cap and a gate merge that has to wait says so in its log. Set PD2R_MERGE_SLOTS in
+# the runner's environment to the same value as the agents' (see pd2_cache.merge_slots for how to pick it).
 jobs:
   table-diff:
-    # another label (triage) does not rerun it
+    # another label (triage) does not rerun it, and a label on a merged or closed PR starts nothing (#801)
     if: >-
       github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.state == 'open' && !github.event.pull_request.merged
       && (!contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) || github.event.label.name == 'coverage-drop-ok'))
     runs-on: [self-hosted, windows, pd2r]
     permissions:
@@ -61,13 +72,13 @@ jobs:
           py -3 -m modkit fetch --prefix data/hd/model_lod_desc.bin
           if ($LASTEXITCODE) { "::warning::modkit fetch of model_lod_desc.bin failed: the coverage check may skip" }
           if ("${{ github.event_name }}" -eq "push") {
-            $out = py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --baseline out/coverage/baseline.tsv --write-baseline
+            $out = py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --baseline coverage/baseline.tsv --write-baseline
           } else {
             $base = "docs/coverage-baseline.tsv"
             $run = gh run list --repo ${{ github.repository }} --workflow gate.yml --branch main --event push --status success --limit 1 --json databaseId -q '.[0].databaseId'
-            if ($run) { gh run download $run --repo ${{ github.repository }} --name coverage-baseline --dir out/main-coverage }
-            if (Test-Path out/main-coverage/baseline.tsv) {
-              $base = "out/main-coverage/baseline.tsv"
+            if ($run) { gh run download $run --repo ${{ github.repository }} --name coverage-baseline --dir coverage/main-coverage }
+            if (Test-Path coverage/main-coverage/baseline.tsv) {
+              $base = "coverage/main-coverage/baseline.tsv"
               "Coverage compared with main's scores from run $run." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
             } else {
               "::warning::no coverage-baseline artifact from main: comparing with $base"
@@ -78,15 +89,15 @@ jobs:
           }
           $code = $LASTEXITCODE
           $out
-          if (Test-Path out/coverage/drops.md) {
-            Get-Content out/coverage/drops.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          if (Test-Path coverage/drops.md) {
+            Get-Content coverage/drops.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
           }
-          if (Test-Path out/coverage/fidelity-changes.md) {
-            Get-Content out/coverage/fidelity-changes.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          if (Test-Path coverage/fidelity-changes.md) {
+            Get-Content coverage/fidelity-changes.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
           }
-          if (Test-Path out/coverage/changes.md) {
-            Get-Content out/coverage/changes.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
-          } elseif (-not (Test-Path out/coverage/report.md)) {
+          if (Test-Path coverage/changes.md) {
+            Get-Content coverage/changes.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          } elseif (-not (Test-Path coverage/report.md)) {
             "::warning::HD preset coverage did not run: $out"
             "HD preset coverage did not run: $out" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
           }
@@ -97,14 +108,14 @@ jobs:
         with:
           name: coverage-baseline
           path: |
-            out/coverage/baseline.tsv
-            out/coverage/fidelity-baseline.tsv
-            out/coverage/fidelity-tiles-baseline.tsv
+            coverage/baseline.tsv
+            coverage/fidelity-baseline.tsv
+            coverage/fidelity-tiles-baseline.tsv
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         continue-on-error: true
         with:
           name: hd-preset-coverage
-          path: out/coverage/
+          path: coverage/
           if-no-files-found: ignore

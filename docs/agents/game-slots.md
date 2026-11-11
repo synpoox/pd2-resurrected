@@ -66,6 +66,11 @@ closed: D2R reads `lvlprest.txt` at launch, so force before you start the game. 
   (#745). A rule's cache key covers its module, what it imports, and every file of an imported package (`tools/presets/`).
 - `install.ps1` (modkit install) writes only the `out\data` files that differ from the slot's and touches nothing outside
   `<slot>\mods\PD2Resurrected`, so moving a slot between builds is quick.
+- Merge slots (#760, #801): at most `PD2R_MERGE_SLOTS` (default 4) merges run at once on the machine, agents' and the CI
+  gate's together (the gate's uncached merge takes a slot too, under the same cache root). A merge that waits prints
+  `merge queued: N/N slots busy`; the gate's says `CI merge queued`. Pick the count from RAM (`pd2_cache.merge_slots`).
+- Coverage outputs (`pd2_coverage.py`) go to `coverage/` in the worktree, not `out/`: `install.ps1` / `modkit build`
+  wipes `out/`, so an install no longer deletes a running coverage report or the downloaded main baseline.
 - Removing a worktree: unlink its junctions first (`docs/agents/game-check.md`, "Worktree hygiene"). CI (`GITHUB_ACTIONS`) does not use these.
 - Each merge prunes the least recently used `rules\` entries until they hold `PD2R_CACHE_GB` (default 20) GB. A rule
   run that wrote outside `generated\` (new `merge\art` PNGs) is not kept. The whole-merge `merge\<key>` folders older
