@@ -13,7 +13,7 @@ handed back (tables present, count); a bad tree is rebuilt once with no rule cac
 D2R's own tables come from modkit's cache (--d2r).
 CI (the gate) replays rules the same way when it sets PD2R_CI_SCOPE (#820): a push to main ("main") replays only entries
 main kept and keeps into the shared cache; a PR ("pr-<n>") replays main's entries and its own scratch folder and keeps
-only there, so a PR's code never writes an entry main replays (pd2_cache.Policy).
+only there, so a PR's accidents stay out of the entries main replays (pd2_cache.Policy).
 With a pd2_cache root, each rule whose code, stamps and inputs match a kept run replays it instead (#558), and the
 rule cache is pruned to PD2R_CACHE_GB (default 20) GB (the old whole-merge folders too with PD2R_PRUNE_LEGACY=1).
 """
@@ -116,7 +116,7 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None, slots_hom
                 def work() -> None:
                     slots.acquire()
                     fn(p, data, d2r_, out)
-                if not pd2_cache.rule(cache, k, {"p": root, "d": d2r_}, work, policy):
+                if not pd2_cache.rule(cache, k, {"p": root, "d": d2r_}, work, policy, slots):
                     ran.append(name)
             return run
         rules = {n: cached(n, fn) for n, fn in RULES.items()}
@@ -138,7 +138,7 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None, slots_hom
             applied = apply(rules)
             if (why := check_output(root / "generated" / "data")) is not None:
                 # a partial entry would be replayed, and fail, on every later run; only the tables are checked
-                pd2_cache.evict(pd2_cache.used, "data/global/excel/")
+                pd2_cache.evict(pd2_cache.own(pd2_cache.used, policy), "data/global/excel/")
                 print(f"merge output is not whole ({why}): rebuilding without the rule cache", flush=True)
                 applied, rebuilt = apply(RULES), True
                 if (why := check_output(root / "generated" / "data")) is not None:

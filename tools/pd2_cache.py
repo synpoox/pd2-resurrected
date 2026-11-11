@@ -42,12 +42,12 @@ def root() -> Path | None:
 
 
 @contextlib.contextmanager
-def lock(path: Path, poll: float = 1.0):
+def lock(path: Path, poll: float = 1.0, on_wait: Callable[[], None] | None = None):
     """Hold an OS lock on the file path, waiting while another process holds it. The OS drops the lock when its holder
-    exits, so a crashed run never leaves a stale one."""
+    exits, so a crashed run never leaves a stale one. on_wait() runs once, when the first try finds it held."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.touch()
-    with open(path, "r+b") as f:
+    # create and open in one step: a sweep that deletes idle lock files cannot slip in between a touch and the open
+    with os.fdopen(os.open(path, os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0)), "r+b") as f:
         misses, shown = 0, None
         while True:
             try:
@@ -55,6 +55,8 @@ def lock(path: Path, poll: float = 1.0):
                 msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1) if msvcrt else fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
             except OSError:
+                if on_wait and not misses:
+                    on_wait()
                 # not on the first miss: a holder that has just taken the lock has not written its pid yet, and the
                 # file still names the holder before it. Again when the holder changes.
                 misses += 1
@@ -345,8 +347,10 @@ class Policy(NamedTuple):
     rules folder, keep new ones there.
       origin   written into each kept entry's manifest, so a reader can tell who made it
       trusted  the origins an entry under the rules folder must have to be replayed (None: any, even an entry from before
-               origins). CI replays only what a push to main kept: a PR's code runs on the runner and could write an
-               entry under a key main's code later replays, so a PR's gate never writes the shared folder
+               origins). CI replays only what a push to main kept: a PR's gate keeps in its own scratch folder, so a
+               buggy or half-run PR merge cannot damage the entries main replays. PR code of the same repository runs
+               as the runner's user and is trusted as far as the job's same-repo `if:` allows; this contains accidents,
+               it is not a sandbox against a malicious same-repo author
       scratch  a folder (per PR) also read, and where a miss is kept instead of the rules folder
       write    False: keep nothing (a CI run without a known scope)"""
     origin: str = "local"
@@ -371,41 +375,72 @@ def ci_policy(home: Path) -> "Policy | None":
     return Policy("pr", frozenset({"main"}), home / "rules-pr" / scope)
 
 
-def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None], policy: Policy = Policy()) -> bool:
+def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None], policy: Policy = Policy(),
+         slots: "Slots | None" = None) -> bool:
     """run() a merge rule that writes under the project (roots["p"]) folder generated/, or replay a cached run of it
     with this key that saw what roots (the project, and D2R's tables as "d") hold now. A miss is kept (where policy
-    says). True on a hit."""
+    says). True on a hit.
+
+    Single-flight (#821): a miss takes an OS lock on <kept folder>.locks/<key>.<origin> (rules.locks/<key>.main, beside
+    rules/ so no glob of the entries sees it; one lock per origin, as a main gate cannot replay an agent's entry and
+    so must not wait for an agent's run), then looks again, so two merges that
+    miss one key together run the rule once: the second waits and replays what the first kept. A holder that dies drops
+    the lock (the OS does), and the waiter runs the rule itself. A waiter first gives up its slot (the machine-wide
+    merge cap, run() takes it again when it needs one): a holder of the key lock may be waiting for a slot, so a
+    merge that holds one must not block on a key lock (the order is key lock, then slot, and never the reverse)."""
     gen, top = roots["p"] / "generated", _roots(roots)
     dest = policy.scratch if policy.scratch else cache if policy.write else None
     home = dest / key_ if dest else None
     reads = [(cache / key_, policy.trusted)] + ([(policy.scratch / key_, None)] if policy.scratch else [])
-    entries = [(e, trusted) for folder, trusted in reads for e in (sorted(folder.iterdir()) if folder.is_dir() else [])]
-    for e, trusted in entries:
-        if ".tmp" in e.name or ".dead." in e.name:  # another run's keep or delete in progress, not an entry
-            continue
-        try:
-            m = json.loads((e / "manifest.json").read_text("utf-8"))
-            if trusted is not None and m.get("origin") not in trusted:
-                continue
-            if all(_state(top, k) == v for k, v in m["reads"].items()):
-                used.append(e)
-                os.utime(e)  # recently used: pruned last, and not while this replay copies it
-                for d in m["dirs"]:
-                    (gen / d).mkdir(parents=True, exist_ok=True)
-                for f in m["files"]:
-                    (gen / f).parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(e / "files" / f, gen / f)
-                for f in m["removed"]:
-                    (gen / f).unlink(missing_ok=True)
-                for d in sorted(m["rmdirs"], reverse=True):
-                    (gen / d).rmdir()
-                sys.stdout.write(m["stdout"])
-                return True
-        except (OSError, ValueError, KeyError):  # deleted or unreadable (OSError), a damaged manifest (the others): a
-            continue  # run of the rule rewrites whatever a part replay copied, as it writes the same files
-    if home is None:  # nothing is kept: no trace either
+
+    def replay() -> bool:
+        entries = [(e, trusted) for folder, trusted in reads for e in (sorted(folder.iterdir()) if folder.is_dir() else [])]
+        for e, trusted in entries:
+            if ".tmp" in e.name or ".dead." in e.name:  # another run's keep or delete in
+                continue  # progress: not an entry
+            try:
+                m = json.loads((e / "manifest.json").read_text("utf-8"))
+                if trusted is not None and m.get("origin") not in trusted:
+                    continue
+                if all(_state(top, k) == v for k, v in m["reads"].items()):
+                    used.append(e)
+                    os.utime(e)  # recently used: pruned last, and not while this replay copies it
+                    for d in m["dirs"]:
+                        (gen / d).mkdir(parents=True, exist_ok=True)
+                    for f in m["files"]:
+                        (gen / f).parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(e / "files" / f, gen / f)
+                    for f in m["removed"]:
+                        (gen / f).unlink(missing_ok=True)
+                    for d in sorted(m["rmdirs"], reverse=True):
+                        (gen / d).rmdir()
+                    sys.stdout.write(m["stdout"])
+                    return True
+            except (OSError, ValueError, KeyError):  # deleted or unreadable (OSError), a damaged manifest (the others): a
+                continue  # run of the rule rewrites whatever a part replay copied, as it writes the same files
+        return False
+
+    if replay():
+        return True
+    if home is None:  # nothing is kept: no trace either, and no one to wait for
         run()
         return False
+    waited = []
+
+    def give_up_slot() -> None:
+        waited.append(1)
+        if slots:
+            slots.release()  # run() takes one again when it needs it
+    with lock(dest.with_name(dest.name + ".locks") / f"{key_}.{policy.origin}", on_wait=give_up_slot):  # beside rules/
+        if replay():  # another run may have kept it between the first look and the lock
+            if waited:
+                print(f"rule {key_}: waited for another run of it and replayed what it kept", flush=True)
+            return True
+        return _build(gen, home, roots, run, policy)
+
+
+def _build(gen: Path, home: Path, roots: dict[str, Path], run: Callable[[], None], policy: Policy) -> bool:
+    """Run a rule, tracing what it reads and writes, and keep it in home. False: a miss."""
     global _trace
     _hook()
     files0, dirs0 = _snapshot(gen)
@@ -495,10 +530,38 @@ def size(p: Path) -> int:
     return sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
 
 
+def own(entries: list[Path], policy: Policy) -> list[Path]:
+    """The entries a run under policy may delete: with a scratch folder (a PR gate) only those in it, never the shared
+    rules folder's, which main's entries live in."""
+    return [e for e in entries if policy.scratch is None or policy.scratch in e.parents]
+
+
+def sweep(cache: Path, stale_s: float = 3 * 86400, lock_s: float = 86400) -> None:
+    """Housekeeping before pruning to the cap: delete per-PR scratch folders (rules-pr/pr-*) not used for stale_s seconds
+    (the PR closed or went quiet), key folders left empty, and lock files (<root>/*.locks/*) unused for lock_s. A lock
+    file that is open (a waiter has it) cannot be deleted on Windows, and one idle a day is not held."""
+    now = time.time()
+    for d in cache.glob("rules-pr/*"):
+        try:
+            if d.is_dir() and now - _newest(d) > stale_s:
+                shutil.rmtree(d, ignore_errors=True)
+        except OSError:
+            continue
+    for d in [*cache.glob("rules/*"), *cache.glob("rules-pr/*/*")]:
+        if d.is_dir():
+            with contextlib.suppress(OSError):
+                d.rmdir()  # only if empty
+    for f in [*cache.glob("rules.locks/*"), *cache.glob("rules-pr/*.locks/*")]:
+        with contextlib.suppress(OSError):
+            if f.is_file() and now - f.stat().st_mtime > lock_s:
+                f.unlink()
+
+
 def prune(cache: Path, cap: int, keep_s: float = 900, legacy: bool = False) -> list[Path]:
     """Delete the least recently used rule entries (with legacy, the whole-merge folders older tools kept in merge/
     too) until the rest fit in cap bytes. One used in the last keep_s seconds stays: a run may be replaying it. merge/
     is left alone by default: an older tool copies a folder there without marking it used."""
+    sweep(cache)
     for e in [*cache.glob("rules/*/*"), *cache.glob("rules-pr/*/*/*")]:  # leftovers of a run killed mid-keep or mid-delete
         if ".dead." in e.name or ".tmp" in e.name:
             try:  # a folder another run is still filling or deleting has a recent file in it
