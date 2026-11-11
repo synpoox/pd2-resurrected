@@ -605,9 +605,32 @@ class ToolkitKeyTests(unittest.TestCase):
             self.skipTest("no d2rAI-toolkit beside the repo")
         used = {p.relative_to(kit).as_posix()
                 for p in pd2_cache.toolkit_sources(kit, pd2_cache.sources(pd2_merge.RULES["presets-hd.tsv"]))}
-        self.assertTrue(used, "presets-hd.tsv imports modkit modules")
         every = {p.relative_to(kit).as_posix() for p in (kit / "modkit").glob("*.py")}
-        self.assertTrue(every - used, "some modkit module is not in presets-hd.tsv's key")
+        self.assertTrue(every, "the toolkit has modkit modules")
+        self.assertEqual(used, set(), "presets-hd.tsv imports no toolkit module")
+
+
+class SlimSourcesTests(unittest.TestCase):
+    """The presets rule is 97% of a merge: its key must not follow the id lists and the level merge (#808)."""
+    def names(self, rule):
+        return {p.name for p in pd2_cache.sources(pd2_merge.RULES[rule])}
+
+    def test_presets_rule_does_not_take_the_id_and_level_merge_into_its_key(self):
+        used = self.names("presets-hd.tsv")
+        for m in ("pd2_ids.py", "pd2_levels.py", "pd2_strings.py", "pd2_tables.py", "pd2_skilldesc.py", "pd2_automap.py"):
+            self.assertNotIn(m, used)
+        self.assertLessEqual({"pd2_table.py", "pd2_ds1.py"}, used)
+
+    def test_other_rules_still_key_on_pd2_ids(self):
+        self.assertIn("pd2_ids.py", self.names("ids-skills.tsv"))
+        self.assertIn("pd2_levels.py", self.names("level-files.tsv"))
+
+    def test_slim_modules_keep_the_old_names(self):
+        import pd2_ds1, pd2_levels, pd2_table
+        for n in ("IdError", "Table", "excel", "load", "toolkit", "KEY"):
+            self.assertIs(getattr(pd2_ids, n), getattr(pd2_table, n))
+        for n in ("SLOTS", "col", "ds1_header", "norm", "object_list"):
+            self.assertIs(getattr(pd2_levels, n), getattr(pd2_ds1, n))
 
 
 class PackageKeyTests(unittest.TestCase):

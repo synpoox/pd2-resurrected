@@ -11,8 +11,8 @@ import pd2_cache
 import pd2_dt1_copies as dt1_copies
 import pd2_painter as painter
 import pd2_terrain as terrain_ground
-from pd2_ids import Table, excel, load
-from pd2_levels import SLOTS, col, norm
+from pd2_ds1 import SLOTS, col, norm
+from pd2_table import Table, excel, load
 
 from .build import build
 from .consts import FETCH, GROUND, PRESETS, STREAM, TERRAIN, WATER_SPAN, wet_dt1s
