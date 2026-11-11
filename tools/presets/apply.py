@@ -19,10 +19,12 @@ from .consts import FETCH, GROUND, PRESETS, STREAM, TERRAIN, WATER_SPAN, wet_dt1
 from .dt1 import Tiles, header_dt1s
 from .entity import _transform
 from .hooks.far import far_off
+from .hooks.structure import structure_off
 from . import slices
 from .kit import Kit
 from .layout import draws_trees, layout, wanted
 from .pillars import model_top
+from . import void
 from .waypoints import waypoint_options, waypoints
 from .water import water_planes
 
@@ -140,6 +142,18 @@ def wall_pass(on_d2r: list, tiles: "Tiles", pd2_tiles: "Tiles", out_data: Path, 
         edges_walls.check_walls(walls, contexts)
 
 
+def void_pass(on_d2r: list, tiles: "Tiles", pd2_tiles: "Tiles", out_data: Path, d2r_data: Path) -> None:
+    """Give the void passes (#783) what only the merge has: each DS1's empty cells, read from the DS1 named by its own
+    DT1s, and the stock black plane."""
+    void.STOCK[:] = [void.black(d2r_data)]
+    drawn = void.Drawn(out_data / "global" / "tiles", d2r_data / "global" / "tiles")
+    for _, _, files, ds1s in on_d2r:
+        for ds1 in ds1s:
+            legacy = layout((out_data / "global" / "tiles" / ds1).read_bytes(),
+                            {p: pd2_tiles[p] or tiles[p] for p in files})
+            void.configure(ds1, void.empty(legacy, drawn))
+
+
 @dataclass
 class Plan:
     """What apply() builds, from the tables alone (cheap, no DS1 read): the inputs, the rule, and the DS1 by tile set.
@@ -235,7 +249,7 @@ def setup(pl: Plan) -> State:
     if stale := sorted(set(walls_rule) - loaded):
         raise ValueError(f"walls lines for DT1 no PD2-only preset draws from: {', '.join(stale)}")
     water = water_planes(d2r_data, pl.water_rule)
-    kit, stock = Kit(far=far_off(d2r_data), top=model_top(d2r_data)), []
+    kit, stock = Kit(far=far_off(d2r_data), structure=structure_off(d2r_data), top=model_top(d2r_data)), []
     for p in sorted((d2r_data / PRESETS).rglob("*.json")):
         ds1 = tiles_dir / p.relative_to(d2r_data / PRESETS).with_suffix(".ds1")
         if not ds1.is_file():  # a few stock presets have no DS1 (D2R's HD-only rooms)
@@ -252,6 +266,7 @@ def setup(pl: Plan) -> State:
     if gone := sorted(d for d in set(pl.walls_rule.values()) if not tiles[d]):
         raise ValueError(f"walls lines name D2R DT1 with no tiles: {', '.join(gone)}")
     wall_pass(on_d2r, tiles, pd2_tiles, out_data, d2r_data, tiles_dir, [(lay, p) for lay, p, _ in stock], pl.walls_rule)
+    void_pass(on_d2r, tiles, pd2_tiles, out_data, d2r_data)
 
     @functools.cache
     def load(path: str) -> list[tuple[float, float]]:
@@ -315,3 +330,5 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
           f"{len(bare)} waypoint objects have no stock waypoint ({', '.join(sorted(bare)) or 'none'})")
     from .passes import edges_walls
     edges_walls.CONTEXT.clear()  # the wall pass's contexts hold this run's layouts and presets: nothing outlives apply()
+    void.CELLS.clear()
+    void.STOCK.clear()

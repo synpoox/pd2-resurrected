@@ -77,13 +77,14 @@ class KitTests(unittest.TestCase):
 
     def test_a_floor_tiles_piece_far_above_its_ground_is_dropped_but_a_wall_tiles_kept(self):
         lay = P.Layout(2, 1, {(0, 0): ("f", (("a.dt1", 0, 0, 0),)), (1, 0): ("w", (("a.dt1", 1, 0, 0),))})
-        roof, beam = entity("roof", 4.0, 4.0), entity("beam", 14.0, 4.0)
+        roof, beam, post = entity("roof", 4.0, 4.0), entity("beam", 14.0, 4.0), entity("post", 15.0, 4.0)
         roof["components"][0]["position"]["y"] = P.FLOOR_MAX + 1  # over flat ground at 0
         beam["components"][0]["position"]["y"] = 5 + P.FLOOR_MAX + 1  # over the terrace at 5
-        kit = P.Kit()
-        kit.add(lay, {"dependencies": {}, "entities": [roof, beam], P.GROUND: T.Ground(STEP)}, set(lay.keys.values()))
+        kit = P.Kit(top=lambda e: 30.0 if e["name"] == "post" else None)  # the post holds the beam up (hanging.py)
+        kit.add(lay, {"dependencies": {}, "entities": [roof, beam, post], P.GROUND: T.Ground(STEP)},
+                set(lay.keys.values()))
         self.assertEqual({k[0]: [e["name"] for e, _, _ in v[0][1]] for k, v in kit.instances.items()},
-                         {"f": [], "w": ["beam"]})
+                         {"f": [], "w": ["beam", "post"]})
         patch = ("sq", (None,) * 4 + (lay.keys[(0, 0)],) + (None,) * 4)
         self.assertTrue(P._floor(patch))
         self.assertFalse(P._floor(("cross", (lay.keys[(1, 0)],) + (None,) * 4)))

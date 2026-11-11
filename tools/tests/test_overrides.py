@@ -102,6 +102,14 @@ class OpTests(unittest.TestCase):
         self.assertIn(ROCK, [m["path"] for m in self.p["dependencies"]["models"]])
         self.assertNotIn("empty", self.p["dependencies"])
 
+    def test_add_keeps_the_picked_entitys_scale(self):
+        src = json.loads((self.d2r / "hd/env/preset/act3/jungle/boge.json").read_text())
+        src["entities"][0]["components"][0]["scale"] = {"x": 1.45, "y": 1.0, "z": 1.45}
+        (self.d2r / "hd/env/preset/act3/jungle/boge.json").write_text(json.dumps(src))
+        self.run_ops({"op": "add", "at": [8, 9], "from": "data/hd/env/preset/act3/jungle/boge.json",
+                      "pick": "*/act3_jungle_rocks/*"})
+        self.assertEqual(O._transform(self.p["entities"][-1])["scale"], {"x": 1.45, "y": 1.0, "z": 1.45})
+
     def test_add_with_no_matching_pick_is_stale(self):
         stale = self.run_ops({"op": "add", "at": [8, 9], "from": "data/hd/env/preset/act3/jungle/boge.json",
                               "pick": "*/nothing/*"})

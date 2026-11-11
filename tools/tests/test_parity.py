@@ -76,6 +76,31 @@ class Checks(unittest.TestCase):
         r = score(piece("act1/rocks", 50, 70, 2.0), keys=hole, legacy=floor_keys())
         self.assertEqual(r["defects"]["void"], 0)
 
+    def test_a_black_cover_over_the_empty_tiles_is_no_void(self):
+        hole = {c: k for c, k in floor_keys().items() if c not in {(5, 5), (6, 5)}}
+        cover = {"name": "pd2r_void", "components": [
+            {"type": "TransformDefinitionComponent", "position": {"x": 60.0, "y": 0.1, "z": 55.0}},
+            {"type": "ModelDefinitionComponent", "filename": presets.void.BLACK}]}
+
+        def fits(path: str):
+            return (-10.0, 0.0, -5.0, 10.0, 0.0, 5.0) if path == presets.void.BLACK else box(path)
+        r = P.score("t", layout(floor_keys()), layout(hole), {"entities": [cover]}, fits, lambda p: [], {})
+        self.assertEqual(r["defects"]["void"], 0)
+        # a plane the stand-in lays over those tiles is void again without the cover
+        r = P.score("t", layout(floor_keys()), layout(hole), {"entities": [piece("act1/rocks", 50, 70, 2.0)]}, box,
+                    lambda p: [], {})
+        self.assertGreater(r["defects"]["void"], 0)
+
+    def test_floor_tiles_that_draw_nothing_are_void_when_the_drawn_tiles_are_known(self):
+        pit = {c: ("f", ((FLOORS, 0, 0, 1),)) if c != (5, 5) else ("f", ((FLOORS, 0, 0, 2),)) for c in floor_keys()}
+        drawn = {FLOORS: frozenset({(0, 0, 1)})}
+        rock = piece("act1/rocks", 50, 60, 2.0)
+        lay = layout(pit)
+        lay.flags[(5, 5)] = b"" * 25  # blocked, so no player stands on it
+        args = ("t", lay, lay, {"entities": [rock]}, box, lambda p: [], {})
+        self.assertEqual(P.score(*args)["defects"]["void"], 0)
+        self.assertGreater(P.score(*args, drawn=drawn)["defects"]["void"], 0)
+
     def test_edge_wall_missing_then_drawn(self):
         keys = floor_keys()
         keys[(5, 5)] = ("w", ((WALLS, 1, 0, 0),))
