@@ -221,6 +221,31 @@ class TurnTests(unittest.TestCase):
 
 
 class IndexTests(unittest.TestCase):
+    def index(self, name, cliffs):
+        """index() of one piece `name` standing on a single wall tile (2, 2) of orientation 1; its box reaches two tiles,
+        its core one."""
+        lay = SimpleNamespace(keys={(2, 2): ("w", (("d/a.dt1", 1, 0, 0),))})
+        e = entity(f"m/{name}", 2.5 * W.TILE, 2.5 * W.TILE)
+        W._INDEX.clear()
+        with mock.patch("pd2_tiles.boxes", return_value=[(0.0, 1.0, 0.0, 1.0, 6.0, 1.0)]),                 mock.patch("pd2_tiles.footprint", return_value={(2, 2), (3, 2)}),                 mock.patch("pd2_tiles.core_footprint", return_value={(2, 2)}),                 mock.patch("pd2_tiles.hd_class", return_value="tall"):
+            return W.index([(lay, {"entities": [e], "dependencies": {}})], ctx(), cliffs)
+
+    def test_a_cliff_piece_is_covered_by_its_core_and_blocked_by_its_full_box(self):
+        got = self.index("cliff_a", True)[1][0]
+        self.assertEqual((got.foot, set(got.full)), (((0, 0),), {(0, 0), (1, 0)}))
+
+    def test_a_wall_piece_covers_its_full_box(self):
+        got = self.index("wall_a", False)[1][0]
+        self.assertEqual((set(got.foot), set(got.full)), ({(0, 0), (1, 0)}, {(0, 0), (1, 0)}))
+
+    def test_cliff_pieces_are_indexed_only_for_a_borrowing_line(self):
+        self.assertEqual(self.index("cliff_a", False), {})
+
+    def test_pick_keeps_a_cliff_off_walkable_tiles_its_spill_reaches(self):
+        o = W.Option(entity("cliff_a", 0.0, 0.0), 0.0, 0.0, 0.0, "tall", ((0, 0),), {}, "d/a.dt1", ((0, 0), (1, 0)))
+        self.assertIsNone(W.pick([o], "tall", (2, 2), {(2, 2)}, set(), {(3, 2)}, "s"))
+        self.assertIs(W.pick([o], "tall", (2, 2), {(2, 2)}, set(), set(), "s"), o)
+
     def test_a_reused_id_never_returns_a_stale_index(self):
         a = [(SimpleNamespace(keys={}), {"entities": [], "dependencies": {}})]
         W._INDEX[(False, *(id(p) for _, p in a))] = ((object(),), {1: ["stale"]})

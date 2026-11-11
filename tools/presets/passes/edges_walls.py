@@ -68,6 +68,7 @@ class Option:
     foot: tuple  # tile offsets (from the tile it belongs to) under its box
     deps: dict
     dt1: str = ""  # the DT1 of the stock wall tile it stands on (a `walls:` line picks by it)
+    full: tuple = ()  # every tile its box reaches (foot: the tiles it covers, a cliff's core only); () = foot
     turn: bool = False  # stands turned half a circle about its tile's centre (an orientation-3 piece for a 4)
 
 
@@ -120,13 +121,14 @@ def _build_index(stock: list, ctx: Context, fid, cliffs: bool) -> dict[int, list
             cls = fid.hd_class(top - g)
             if cls == "flat":
                 continue
-            under = fid.core_footprint(found[0]) if fid.model_type(path) == "cliff" else fid.footprint([found[0]])
-            foot = tuple((tx - c[0], tz - c[1]) for tx, tz in under)  # a cliff rock's box spills wide: only its core counts
-            if (0, 0) not in foot:
+            full = tuple((tx - c[0], tz - c[1]) for tx, tz in fid.footprint([found[0]]))
+            under = fid.core_footprint(found[0]) if fid.model_type(path) == "cliff" else None
+            foot = tuple((tx - c[0], tz - c[1]) for tx, tz in under) if under else full  # a cliff's box spills: only its core covers
+            if (0, 0) not in foot or (0, 0) not in full:
                 continue
             out.setdefault(tiles[1][0][1], []).append(
                 Option(e, x - c[0] * TILE, z - c[1] * TILE, y - g, cls, foot, preset["dependencies"],
-                       tiles[1][0][0]))
+                       tiles[1][0][0], full))
     return out
 
 
@@ -153,7 +155,7 @@ def pick(options: list[Option], want: str, c: tuple, bad: set, covered: set, blo
     c0, c1 = c
     for k, o in classed[key][1]:
         tiles = [(c0 + i, c1 + j) for i, j in o.foot]  # foot holds distinct offsets (a footprint set)
-        if any(t in blocked for t in tiles):
+        if any((c0 + i, c1 + j) in blocked for i, j in o.full or o.foot):  # the whole box, spill too, off walkable floor
             continue
         n = sum(t in bad and t not in covered for t in tiles)
         if best is not None and n < best[0][0]:  # the hash only breaks ties
@@ -236,7 +238,8 @@ def filtered(memo: dict, borrow: str, o: int, which: str, source: dict) -> list[
     if key not in memo:
         found = [x for x in source.get(o, []) if x.dt1 == borrow]
         if o == 4 and not found:  # no stock piece stands on an orientation 4: an orientation 3 turned half a circle does
-            found = [dataclasses.replace(x, dx=TILE - x.dx, dz=TILE - x.dz, foot=tuple((-i, -j) for i, j in x.foot), turn=True)
+            found = [dataclasses.replace(x, dx=TILE - x.dx, dz=TILE - x.dz, foot=tuple((-i, -j) for i, j in x.foot),
+                                     full=tuple((-i, -j) for i, j in x.full), turn=True)
                      for x in source.get(3, []) if x.dt1 == borrow]
         memo[key] = found
     return memo[key]
