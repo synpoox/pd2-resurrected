@@ -95,6 +95,13 @@ def check_output(gen: Path, required: tuple[str, ...] | None = None, minimum: in
     return None
 
 
+def base_key(root: Path, kit: Path, d2r: Path) -> str:
+    """Every rule's key base: the stamps, the toolkit code rules and the driver use, D2R's path and the cache's format
+    (pd2_cache.CACHE_FORMAT, not pd2_cache.py's bytes: an edit to the cache's code must not rebuild every rule)."""
+    return pd2_cache.key([root / "pd2-baseline.json", root / "pd2-data" / "baseline.json", kit / "modkit",
+                          kit / "shared" / "classic_import"], str(d2r.resolve()), str(pd2_cache.CACHE_FORMAT))
+
+
 def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None, slots_home: Path | None = None,
           policy: pd2_cache.Policy = pd2_cache.Policy()) -> list[str]:
     """Rebuild root/generated/ and return the rule files applied (d2rAI-toolkit's shared/classic_import driver). With a
@@ -108,9 +115,7 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None, slots_hom
     slots = pd2_cache.merge_slots(home) if home else None
     if cache:
         kit = pd2_ids.toolkit(root)
-        # every rule's key: the stamps, the toolkit code rules and the driver use, this cache's code and D2R's path
-        base = pd2_cache.key([root / "pd2-baseline.json", root / "pd2-data" / "baseline.json", kit / "modkit",
-                              kit / "shared" / "classic_import", Path(pd2_cache.__file__)], str(d2r.resolve()))
+        base = base_key(root, kit, d2r)
 
         def cached(name: str, fn: Callable) -> Callable:
             def run(p: Path, data: Path, d2r_: Path, out: Path) -> None:
