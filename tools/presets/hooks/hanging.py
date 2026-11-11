@@ -3,7 +3,7 @@
 A stock wall tile carries the props mounted on its wall: a torch, a banner, a beam end. Those stand on the wall piece of
 the same tile instance. A beam or a shield anchored on a tile whose wall piece sits on a neighbouring tile has nothing
 under it once the tile stands in another map, and floats (Descent's burnt beams over hell cliffs). A floor tile's
-raised pieces go in tall.py. Only beams (BEAMS) are judged: chains, arches, trims, supports and statues that a stock
+raised pieces go in tall.py. Only beams and a house's props (BEAMS, tall.FURNISHINGS) are judged: chains, arches, trims, supports and statues that a stock
 map hangs on purpose stay, as do foliage and a piece with no model (a light, a fog volume has no height to float at).
 """
 from __future__ import annotations
@@ -11,9 +11,10 @@ from __future__ import annotations
 from ..consts import FLOOR_MAX
 from ..entity import _transform
 from ..layout import _floor
+from .tall import FURNISHINGS
 
 ORDER = 310
-BEAMS = ("_beam",)  # Tristram's burnt_beam and wall_beam: the props that floated over Descent's hell cliffs
+BEAMS = ("_beam",) + FURNISHINGS  # Tristram's burnt_beam and wall_beam: the props that floated over Descent's hell cliffs
 SLACK = 1.0  # HD units: a piece this far into the top of another still rests on it
 
 

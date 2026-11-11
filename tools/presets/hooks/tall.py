@@ -2,14 +2,15 @@
 pillars and roof lips stand 9-26 up), dropped as the tile may have no building in a PD2 DS1 (#682). A stock preset
 whose terrain mesh does not reach a house furnishing (Westmarch's raised house floors) has no ground there: the piece
 stands over the flat plane, so its ground is 0 (#871: the shields, apples and sacks of a Westmarch loft floated 14-16
-units over the ground in Shadows of Westmarch). Only furnishings (FURNISHINGS) read a missing ground as 0: a mesa
+units over the ground in Shadows of Westmarch). Only furnishings and roof litter (FURNISHINGS) read a missing ground as 0: a mesa
 ledge's skull piles, an arcane trim or a diab fence over a missing ground are the stock map's own raised scenery, and a
 piece with no model has no height to float at."""
 from ..consts import FLOOR_MAX
 from ..layout import _floor
 
 ORDER = 300
-FURNISHINGS = ("/town/", "act2_town", "jungle_debris/apple")  # model path parts of a house's loose props
+# model path parts of a house's loose props and the snow and pebbles on its roof (Westmarch, Tristram)
+FURNISHINGS = ("/town/", "act2_town", "expansion_town", "/tristram/", "snowprops", "pebbles", "jungle_debris/apple")
 
 
 def _furnishing(e: dict) -> bool:
