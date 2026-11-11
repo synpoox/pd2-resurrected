@@ -508,6 +508,58 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
         return _build(gen, home, roots, run, policy)
 
 
+def memo(cache: Path, key_: str, roots: dict[str, Path], compute: Callable[["Trace"], bytes], policy: Policy = Policy()
+         ) -> tuple[bytes, bool]:
+    """compute(trace) -> bytes, or replay the bytes a kept run of it returned under this key that saw what roots hold
+    now (the per-map scores of pd2_coverage, #854). Unlike rule(), nothing is hooked: compute reports every file it reads
+    with trace.see(path), because the readers it calls keep their own memory (a DT1 read for one map is not read again
+    for the next), so an audit of opens would miss them. Entries share rule()'s folders, manifests, origins and
+    policy (a PR keeps only in its scratch folder), so prune, sweep and the PR scratch cleanup cover them. (bytes, True)
+    on a hit."""
+    top = _roots(roots)
+    dest = policy.scratch if policy.scratch else cache if policy.write else None
+    reads = [(cache / key_, policy.trusted)] + ([(policy.scratch / key_, None)] if policy.scratch else [])
+    for folder, trusted in reads:
+        for e in sorted(folder.iterdir()) if folder.is_dir() else []:
+            if ".tmp" in e.name or ".dead." in e.name:
+                continue
+            try:
+                m = json.loads((e / "manifest.json").read_text("utf-8"))
+                if trusted is not None and m.get("origin") not in trusted:
+                    continue
+                if all(_state(top, k) == v for k, v in m["reads"].items()):
+                    data = (e / "result.bin").read_bytes()
+                    used.append(e)
+                    os.utime(e)
+                    return data, True
+            except (OSError, ValueError, KeyError):
+                continue
+    t = Trace(roots)
+    data = compute(t)
+    if dest is None:
+        return data, False
+    m = {"reads": t.reads, "files": [], "removed": [], "dirs": [], "rmdirs": [], "stdout": "", "origin": policy.origin,
+         "bytes": len(data)}
+    home = dest / key_
+    name = hashlib.sha256(json.dumps(m["reads"], sort_keys=True).encode()
+                          + (b"" if policy.origin == "local" else policy.origin.encode())).hexdigest()[:16]
+    tmp = home / f"{name}.tmp{os.getpid()}"
+    try:
+        tmp.mkdir(parents=True)
+        (tmp / "result.bin").write_bytes(data)
+        (tmp / "manifest.tmp").write_text(json.dumps(m), "utf-8")
+        os.replace(tmp / "manifest.tmp", tmp / "manifest.json")
+        os.rename(tmp, home / name)
+        used.append(home / name)
+    except OSError as e:  # FileExistsError: another run kept the same reads; anything else only costs a later hit
+        if not isinstance(e, FileExistsError):
+            print(f"warning: result not cached ({e})")
+    finally:
+        if tmp.exists():
+            shutil.rmtree(tmp, ignore_errors=True)
+    return data, False
+
+
 def _build(gen: Path, home: Path, roots: dict[str, Path], run: Callable[[], None], policy: Policy) -> bool:
     """Run a rule, tracing what it reads and writes, and keep it in home. False: a miss."""
     global _trace
