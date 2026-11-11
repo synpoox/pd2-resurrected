@@ -2,7 +2,8 @@
 
 A tile is empty in legacy when its DS1 cell has no layer at all, or only floor layers whose DT1 tile is missing or has
 no blocks, or the `blank.dt1` filler that paints black (the PD2 DT1 `hellgate` floor of the Descent, `aer_palace` floor 0): nothing is drawn there, so the screen
-stays black. Walkable tiles are never empty (a player can stand on them, the ground stays); a wall cell is not empty
+stays black. Walkable tiles beside drawn walkable floor are never empty (a player can stand on them, the ground stays);
+a walkable region with no drawn cell at all is cut off from the ground and empty (#902). A wall cell is not empty
 either (its floor layer may be drawn under it, and a blocker is a wall's business).
 
 This module is the shared seam: the DS1-to-cells reader (`empty`, from a legacy layout and `Drawn`), the cells the merge
@@ -54,14 +55,34 @@ def empty(legacy: Layout, drawn: dict) -> frozenset:
     """The cells of a legacy layout (the DS1 named by its own DT1s) where nothing is drawn, walkable tiles apart:
     `drawn` maps a DT1 path to the keys of its tiles that have blocks (Drawn)."""
     walk = walkable(legacy)
+
+    def bare(key) -> bool:
+        return key is None or key[0] == "f" and all(t[0] is None or t[1:] not in drawn[t[0]] for t in key[1])
     out = set()
     for x in range(legacy.width):
         for y in range(legacy.height):
-            key = legacy.keys.get((x, y))
-            if (x, y) not in walk and (key is None or key[0] == "f" and all(
-                    t[0] is None or t[1:] not in drawn[t[0]] for t in key[1])):
+            if (x, y) not in walk and bare(legacy.keys.get((x, y))):
                 out.add((x, y))
-    return frozenset(out)
+    return frozenset(out | cut_off(walk, lambda c: bare(legacy.keys.get(c))))
+
+
+def cut_off(walk: set, bare) -> set:
+    """The walkable cells of the 8-connected walkable regions where legacy draws nothing under any cell (#902): a strip of
+    flagged-walkable cells behind a map's outer walls (Library's floor (0,30,0), which no DT1 holds), reachable only by
+    teleport. A region with one drawn cell is ground a player can stand on and keeps it."""
+    left, out = set(walk), set()
+    while left:
+        todo, region = [left.pop()], set()
+        while todo:
+            x, y = c = todo.pop()
+            region.add(c)
+            for n in ((x + dx, y + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
+                if n in left:
+                    left.remove(n)
+                    todo.append(n)
+        if all(bare(c) for c in region):
+            out |= region
+    return out
 
 
 def configure(ds1: str, cells: frozenset) -> None:

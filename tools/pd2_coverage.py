@@ -39,6 +39,7 @@ Needs model_lod_desc.bin in modkit's cache, else it skips:
 from __future__ import annotations
 
 import argparse
+import collections
 import functools
 import json
 import math
@@ -149,6 +150,37 @@ def wrong_tiles(entities: list[dict], box: Callable[[str], tuple | None], prefab
     return out
 
 
+FLOAT = 8.0  # HD units: a piece whose base is this far over its ground, with nothing under it, floats (#871)
+SUPPORT_SLACK = 1.0  # a piece this far into the top of another still rests on it
+
+
+def floating_pieces(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
+                    ground: Ground | None = None) -> list[tuple[tuple[int, int], str]]:
+    """The pieces drawn in the air (#871): (tile, model path) of each model box whose base stands FLOAT or more over
+    the ground plane and that no other box reaches from below over its footprint (a torch on its wall, a table's
+    plates, a tree's own pieces are held up). Foliage (a /foliage/ model) hangs from a canopy and is left out, as are a
+    pasted room's pieces (their ground is the room's own) and room-sized meshes. Report-only: the generator's kit
+    hooks (presets/hooks/tall.py, hanging.py) keep such pieces out, this finds the ones that got through."""
+    found = [b for b in boxes(entities, box, prefab, ground=ground, meta=True)
+             if not b[7] and b[1] - b[0] <= ROOM and b[3] - b[2] <= ROOM]
+    T = presets.TILE
+    held: dict[tuple[int, int], list[int]] = {}
+    for i, b in enumerate(found):
+        if b[4] >= FLOAT:
+            for c in footprint([b[:6]]):
+                held.setdefault(c, []).append(i)
+    out = []
+    for i, b in enumerate(found):
+        if b[5] < FLOAT or "/foliage/" in b[6]:
+            continue
+        under = {j for c in footprint([b[:6]]) for j in held.get(c, ())}
+        if not any(j != i and found[j][5] < b[5] - SUPPORT_SLACK and found[j][4] >= b[5] - SUPPORT_SLACK
+                   and found[j][0] < b[1] and b[0] < found[j][1] and found[j][2] < b[3] and b[2] < found[j][3]
+                   for j in under):
+            out.append(((int((b[0] + b[1]) / 2 // T), int((b[2] + b[3]) / 2 // T)), b[6]))
+    return out
+
+
 def walkable_floor(lay: presets.Layout) -> set[tuple[int, int]]:
     """The DS1's walkable floor (pd2_presets.walkable, which also decides where a stock room may paste)."""
     return presets.walkable(lay)
@@ -169,6 +201,7 @@ class Score:
     floors: int = 0  # walkable DS1 floor tiles
     floor_bare: set = frozenset()  # walkable floor under no terrain
     floor_wrong: set = frozenset()  # walkable floor under a piece that does not belong on flat floor (wrong_tiles)
+    floating: tuple = ()  # (tile, model) of the pieces drawn in the air (floating_pieces); report-only
     fidelity: dict = field(default_factory=dict)  # pd2_fidelity.score_map: edge type or floor -> TypeScore
 
     @property
@@ -412,8 +445,8 @@ def report(scores: list[Score], commit: str = "", found: list[Change] | None = N
              "DS1 floor tiles under a terrain and no wrong-tile piece (stairs or walls on flat floor). Images: red "
              "where bare, orange where wrong.", "",
              "| Preset | Area | Border | Gaps | Leaks | Wall | Walls | Floor | Bare floor | Wrong floor | MB "
-             "| Entities | Images |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+             "| Floating | Entities | Images |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     if found is not None:
         lines[2:2] = [changes_md(found, tolerance), ""]
     for s in sorted(scores, key=_key):
@@ -424,7 +457,7 @@ def report(scores: list[Score], commit: str = "", found: list[Change] | None = N
                      f"{len(s.leaks) if border else '-'} | "
                      f"{pct(s.wall_score)} | {s.walls} | {pct(s.floor_score)} | {len(s.floor_bare)} | "
                      f"{len(s.floor_wrong)} | "
-                     f"{s.size / 1e6:.1f} | {s.entities} | {img} |")
+                     f"{s.size / 1e6:.1f} | {len(s.floating)} | {s.entities} | {img} |")
     if scores:
         n = sum(s.walls for s in scores)
         lines += ["", f"All walls: {pct(1 - sum(len(s.bare) for s in scores) / n if n else 1.0)} of {n}."]
@@ -434,7 +467,22 @@ def report(scores: list[Score], commit: str = "", found: list[Change] | None = N
         rings = [s for s in scores if s.ring is not None]
         if r := sum(len(s.ring) for s in rings):
             lines.append(f"All borders: {pct(1 - sum(len(s.gaps) for s in rings) / r)} of {r} ring tiles.")
-    return "\n".join(lines) + "\n" + budget_md(scores)
+    return "\n".join(lines) + "\n" + floating_md(scores) + budget_md(scores)
+
+
+def floating_md(scores: list[Score], top: int = 5) -> str:
+    """The maps with floating pieces (floating_pieces), most first, each with its most common models. Report-only."""
+    rows = sorted((s for s in scores if s.floating), key=lambda s: (-len(s.floating), s.name))
+    lines = ["", "## Floating pieces", "",
+             f"{sum(len(s.floating) for s in rows)} pieces in {len(rows)} of {len(scores)} presets stand {FLOAT:g}+ units "
+             "over their ground with nothing under them (report-only, not gated)."]
+    if rows:
+        lines += ["", "| Preset | Floating | Most common models |", "|---|---|---|"]
+        for s in rows:
+            common = collections.Counter(m.rsplit("/", 1)[-1].removesuffix(".model") for _, m in s.floating)
+            lines.append(f"| {s.name} | {len(s.floating)} | "
+                         + ", ".join(f"{m} x{n}" for m, n in common.most_common(top)) + " |")
+    return "\n".join(lines) + "\n"
 
 
 def budget_md(scores: list[Score]) -> str:
@@ -581,6 +629,7 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
         s = score(lay, tall, Path(ds1).stem, area, wet, ground_tiles(preset, box, prefab), wrong,
                   fidelity.wall_cover(fidelity.legacy_edges(legacy, heights), hd, tall))  # walls by fidelity class (#787)
         s.size, s.entities, s.tiles = f.stat().st_size, len(entities), len(lay.keys)
+        s.floating = tuple(floating_pieces(entities, box, prefab, ground))
         s.fidelity = fidelity.score_map(legacy, heights, hd, s.floors, set(s.floor_bare), set(s.floor_wrong))
         return s, images(lay, s, tall, wet) | fidelity.image(
             legacy, fidelity.legacy_edges(legacy, heights), s.fidelity, s.name)
