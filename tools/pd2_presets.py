@@ -44,6 +44,7 @@ from presets.layout import Layout, _floor, draws_trees, layout, walkable, wanted
 from presets.patches import patches  # noqa: F401
 from presets.place import STRUCTURE, fades, like, place, structure  # noqa: F401
 from presets.rooms import rooms, sunken  # noqa: F401
+from presets import void  # noqa: F401
 from presets.waypoints import place_waypoints, waypoint_options, waypoints  # noqa: F401
 from presets.water import rectangles, squarish, streams, water_planes  # noqa: F401
 

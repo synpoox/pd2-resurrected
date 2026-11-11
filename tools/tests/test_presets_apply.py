@@ -15,7 +15,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pd2_presets as P  # noqa: E402
-from presets_fixtures import A, B, FLOOR, TERRAIN, at, cell, dt1, ds1, entity, stock  # noqa: E402,F401
+from presets_fixtures import A, B, FLOOR, TERRAIN, at, cell, dt1, ds1, entity, stock, with_black  # noqa: E402,F401
 
 
 class ApplyTests(unittest.TestCase):
@@ -38,7 +38,7 @@ class ApplyTests(unittest.TestCase):
         write(self.d2r / "global/tiles/act1/a/wall.dt1", dt1([A[1:], B[1:]]))
         write(self.d2r / "global/tiles/act1/s.ds1", ds1(2, 1, [{(0, 0): A[1:], (1, 0): B[1:]}], [{}],
                                                        ["\\d2\\data\\global\\tiles\\act1\\a\\wall.tg1"]))
-        write(self.d2r / "hd/env/preset/act1/s.json", json.dumps(stock()).encode())
+        write(self.d2r / "hd/env/preset/act1/s.json", json.dumps(with_black(stock())).encode())
         write(self.d2r / f"hd/env/preset/{P.TERRAIN}.json", json.dumps({"terrain": TERRAIN}).encode())
         write(self.out / "global/tiles/expansion/map/m.ds1", ds1(1, 2, [{(0, 1): B[1:]}], [{}]))
         write(self.out / "global/tiles/expansion/map/p.ds1", ds1(1, 1, [{(0, 0): B[1:]}], [{}]))
