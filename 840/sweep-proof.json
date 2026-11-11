@@ -1,0 +1,191 @@
+{
+ "slots": [
+  4,
+  5
+ ],
+ "seconds": 114.5,
+ "variants": [
+  {
+   "map": "Jungle Map",
+   "ds1": "jungle1",
+   "slot": 4,
+   "points": 10,
+   "pairs": 10,
+   "metrics": [
+    {
+     "point": "00_jungle1-ref-nearest-walkable-to-centre_133-162",
+     "luma_hd": 12.7,
+     "luma_legacy": 11.0,
+     "luma_ratio": 1.156,
+     "black_hd": 0.505,
+     "black_legacy": 0.655
+    },
+    {
+     "point": "01_jungle1-ref-waypoint_236-237",
+     "luma_hd": 16.5,
+     "luma_legacy": 12.6,
+     "luma_ratio": 1.304,
+     "black_hd": 0.303,
+     "black_legacy": 0.528
+    },
+    {
+     "point": "02_jungle1-wall_6-168",
+     "luma_hd": 13.8,
+     "luma_legacy": 14.4,
+     "luma_ratio": 0.959,
+     "black_hd": 0.454,
+     "black_legacy": 0.547
+    },
+    {
+     "point": "03_jungle1-pillar_33-173",
+     "luma_hd": 14.4,
+     "luma_legacy": 14.1,
+     "luma_ratio": 1.019,
+     "black_hd": 0.429,
+     "black_legacy": 0.584
+    },
+    {
+     "point": "04_jungle1-water_162-216",
+     "luma_hd": 19.8,
+     "luma_legacy": 14.2,
+     "luma_ratio": 1.392,
+     "black_hd": 0.223,
+     "black_legacy": 0.58
+    },
+    {
+     "point": "05_jungle1-treeline_72-192",
+     "luma_hd": 14.7,
+     "luma_legacy": 11.6,
+     "luma_ratio": 1.266,
+     "black_hd": 0.386,
+     "black_legacy": 0.674
+    },
+    {
+     "point": "06_jungle1-floor-darkgrass_162-237",
+     "luma_hd": 17.5,
+     "luma_legacy": 14.6,
+     "luma_ratio": 1.2,
+     "black_hd": 0.276,
+     "black_legacy": 0.588
+    },
+    {
+     "point": "07_jungle1-floor-darkmud_158-179",
+     "luma_hd": 18.6,
+     "luma_legacy": 12.8,
+     "luma_ratio": 1.45,
+     "black_hd": 0.302,
+     "black_legacy": 0.608
+    },
+    {
+     "point": "08_jungle1-floor-ruin_217-168",
+     "luma_hd": 16.3,
+     "luma_legacy": 10.9,
+     "luma_ratio": 1.49,
+     "black_hd": 0.389,
+     "black_legacy": 0.69
+    },
+    {
+     "point": "09_jungle1-floor-pool_14-171",
+     "luma_hd": 19.1,
+     "luma_legacy": 13.1,
+     "luma_ratio": 1.464,
+     "black_hd": 0.212,
+     "black_legacy": 0.677
+    }
+   ],
+   "sheet": "jungle-map/jungle1.jpg",
+   "seconds": 110.4
+  },
+  {
+   "map": "Tomb Map",
+   "ds1": "tomb1",
+   "slot": 5,
+   "points": 10,
+   "pairs": 10,
+   "metrics": [
+    {
+     "point": "00_tomb1-ref-nearest-walkable-to-centre_106-127",
+     "luma_hd": 15.7,
+     "luma_legacy": 31.8,
+     "luma_ratio": 0.493,
+     "black_hd": 0.673,
+     "black_legacy": 0.469
+    },
+    {
+     "point": "01_tomb1-ref-waypoint_74-74",
+     "luma_hd": 13.1,
+     "luma_legacy": 58.1,
+     "luma_ratio": 0.225,
+     "black_hd": 0.673,
+     "black_legacy": 0.01
+    },
+    {
+     "point": "02_tomb1-wall_80-94",
+     "luma_hd": 16.4,
+     "luma_legacy": 33.4,
+     "luma_ratio": 0.491,
+     "black_hd": 0.627,
+     "black_legacy": 0.538
+    },
+    {
+     "point": "03_tomb1-pillar_88-39",
+     "luma_hd": 14.8,
+     "luma_legacy": 49.8,
+     "luma_ratio": 0.297,
+     "black_hd": 0.674,
+     "black_legacy": 0.164
+    },
+    {
+     "point": "04_tomb1-floor-tomb_85-75",
+     "luma_hd": 15.6,
+     "luma_legacy": 44.4,
+     "luma_ratio": 0.351,
+     "black_hd": 0.633,
+     "black_legacy": 0.149
+    },
+    {
+     "point": "05_tomb1-floor-things_60-40",
+     "luma_hd": 30.1,
+     "luma_legacy": 81.3,
+     "luma_ratio": 0.371,
+     "black_hd": 0.458,
+     "black_legacy": 0.013
+    },
+    {
+     "point": "06_tomb1-floor-talrasha_75-128",
+     "luma_hd": 34.8,
+     "luma_legacy": 36.5,
+     "luma_ratio": 0.952,
+     "black_hd": 0.367,
+     "black_legacy": 0.256
+    },
+    {
+     "point": "07_tomb1-floor-columns_111-44",
+     "luma_hd": 19.2,
+     "luma_legacy": 52.6,
+     "luma_ratio": 0.365,
+     "black_hd": 0.663,
+     "black_legacy": 0.168
+    },
+    {
+     "point": "08_tomb1-wall_89-62",
+     "luma_hd": 16.4,
+     "luma_legacy": 31.8,
+     "luma_ratio": 0.514,
+     "black_hd": 0.653,
+     "black_legacy": 0.464
+    },
+    {
+     "point": "09_tomb1-pillar_97-39",
+     "luma_hd": 18.8,
+     "luma_legacy": 52.7,
+     "luma_ratio": 0.356,
+     "black_hd": 0.66,
+     "black_legacy": 0.162
+    }
+   ],
+   "sheet": "tomb-map/tomb1.jpg",
+   "seconds": 103.0
+  }
+ ]
+}
