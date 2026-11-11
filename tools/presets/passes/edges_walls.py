@@ -11,7 +11,8 @@ piece (stock spacing, not a piece per tile); a piece whose box would reach walka
 used. The fallback past the tile set's own stock keeps to the model folders that stock draws walls from (its act and
 family): a tile with no such piece stays bare rather than get another act's wall. Pieces of the wrong class on a tile
 that gets a replacement are removed, unless one is the only cover on a cliff, pillar, treeline or fence tile. `act4/mesa/inv_wall` is invisible
-in legacy and stays bare. The ground a wall stands on is wall_y(); floor_height (#742, ORDER 900) then lifts it with the plane under its tile.
+in legacy and stays bare. A `walls:<PD2 DT1>` line of merge/presets-hd.d (#826) makes the wall tiles drawn from that PD2 DT1
+(which the kit leaves as nothing) take their pieces only from stock wall tiles of the named D2R DT1. The ground a wall stands on is wall_y(); floor_height (#742, ORDER 900) then lifts it with the plane under its tile.
 
 The pass needs what only the merge knows (the legacy-named layout, DT1 heights, D2R's model boxes): apply() calls
 configure() per DS1. A build with no configure() runs no wall pass.
@@ -20,7 +21,7 @@ from __future__ import annotations
 
 import collections
 import zlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 
 from ..consts import GROUND, TILE
@@ -40,6 +41,7 @@ class Context:
     prefab: Callable  # prefab path -> its entities
     stock: list  # every stock (layout, preset): the fallback when the tile set's own has no piece
     far: Callable = lambda e: False
+    walls: dict = field(default_factory=dict)  # `walls:` lines (#826): PD2 DT1 -> the D2R DT1 its wall tiles borrow pieces from
 
 
 CONTEXT: dict[str, Context] = {}  # DS1 path (Build.seed) -> its Context
@@ -59,6 +61,7 @@ class Option:
     cls: str  # pd2_fidelity.hd_class of its top
     foot: tuple  # tile offsets (from the tile it belongs to) under its box
     deps: dict
+    dt1: str = ""  # the DT1 of the stock wall tile it stands on (a `walls:` line picks by it)
 
 
 def wall_y(b, x: float, z: float) -> float:
@@ -106,7 +109,8 @@ def index(stock: list, ctx: Context) -> dict[int, list[Option]]:
             if (0, 0) not in foot:
                 continue
             out.setdefault(tiles[1][0][1], []).append(
-                Option(e, x - c[0] * TILE, z - c[1] * TILE, y - g, cls, foot, preset["dependencies"]))
+                Option(e, x - c[0] * TILE, z - c[1] * TILE, y - g, cls, foot, preset["dependencies"],
+                       tiles[1][0][0]))
     _INDEX[key] = (tuple(p for _, p in stock), out)
     return out
 
@@ -213,8 +217,12 @@ def run(b) -> None:
             continue
         o = LOWER_AS.get(tile[1], tile[1])
         want = legacy[c]
-        choice = (pick(own.get(o, []), want, c, bad, covered, blocked, b.seed, classed)
-                  or pick(every.get(o, []), want, c, bad, covered, blocked, b.seed, classed))
+        borrow = ctx.walls.get(tile[0])  # a `walls:` line: only pieces off that D2R DT1's wall tiles, none else
+        mine, anyone = own.get(o, []), every.get(o, [])
+        if borrow:
+            mine, anyone = [x for x in mine if x.dt1 == borrow], [x for x in anyone if x.dt1 == borrow]
+        choice = (pick(mine, want, c, bad, covered, blocked, b.seed, classed)
+                  or pick(anyone, want, c, bad, covered, blocked, b.seed, classed))
         if choice is None:
             continue
         k = area[c]

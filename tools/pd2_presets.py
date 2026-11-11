@@ -32,7 +32,7 @@ presets in modkit's cache, else it makes none (dev builds run without, ADR 0005)
 `python -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/`.
 """
 
-from presets.apply import apply, pd2_only_presets, read_rule, rule_files, stand_in  # noqa: F401
+from presets.apply import apply, pd2_only_presets, read_rule, read_rule_all, rule_files, stand_in  # noqa: F401
 from presets.build import build  # noqa: F401
 from presets.consts import *  # noqa: F401,F403
 from presets.dt1 import Tiles, dt1_tiles, header_dt1s  # noqa: F401

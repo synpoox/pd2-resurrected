@@ -46,7 +46,7 @@ class PickTests(unittest.TestCase):
 TALL_BOX = (0, 0, 0, 15, 6, 4)  # model box: x0, y0, z0, x1, y1, z1: tall, two tiles wide
 LOW_BOX = (0, 0, 0, 3, 2, 3)  # low, inside one tile
 BOXES = {"data/hd/env/model/wall_tall.model": TALL_BOX, "data/hd/env/model/tree_a.model": TALL_BOX,
-         "data/hd/env/model/act2/wall_low.model": LOW_BOX, "data/hd/env/model/act1/wall_low.model": LOW_BOX}
+         "data/hd/env/model/act2/wall_low.model": LOW_BOX, "data/hd/env/model/act2/wall_low2.model": LOW_BOX, "data/hd/env/model/act1/wall_low.model": LOW_BOX}
 WALL = ("act2/a/wall.dt1", 1, 0, 0)
 
 
@@ -109,6 +109,37 @@ class RunTests(unittest.TestCase):
         b = self.build("act2", "act1")
         b.stock = []  # the tile set's own stock has no piece: only the map's own family may fill, and it has none
         self.assertEqual(self.run_pass(b), [])
+
+
+class WallsRuleTests(unittest.TestCase):
+    """A `walls:<PD2 DT1>` line (#826): the PD2 DT1's wall tiles take pieces only off stock wall tiles of the D2R DT1."""
+    PD2 = ("pd2assets/x.dt1", 1, 0, 0)
+
+    def run_pass(self, walls):
+        piece = lambda m: {"dependencies": {}, "entities": [entity(f"act2/{m}", 26.0, 26.0)]}
+        a = SimpleNamespace(keys={(2, 2): ("w", (("act2/a/wall.dt1", 1, 0, 0),))})
+        c = SimpleNamespace(keys={(2, 2): ("w", (("act2/b/wall.dt1", 1, 0, 0),))})
+        lay = SimpleNamespace(keys={(0, 0): ("w", (self.PD2,))})
+        stock = [(a, piece("wall_low")), (c, piece("wall_low2"))]
+        b = SimpleNamespace(seed="x.ds1", entities=[], loose=[], stock=stock, depend=lambda d: None)
+        W.CONTEXT["x.ds1"] = ctx(stock, lay.keys)
+        W.CONTEXT["x.ds1"].legacy, W.CONTEXT["x.ds1"].walls = lay, walls
+        try:
+            with mock.patch("pd2_fidelity.legacy_edges", return_value=edges(wall={(0, 0): "low"})),                     mock.patch("pd2_fidelity.tile_type", return_value="wall"), mock.patch.object(W, "walkable", return_value=set()):
+                W.run(b)
+        finally:
+            W.CONTEXT.pop("x.ds1", None)
+        return [W.model(e).rsplit("/", 1)[1] for e in b.loose]
+
+    def test_the_line_picks_the_piece_off_its_d2r_dt1(self):
+        self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act2/b/wall.dt1"}), ["wall_low2.model"])
+        self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act2/a/wall.dt1"}), ["wall_low.model"])
+
+    def test_a_d2r_dt1_with_no_wall_piece_leaves_the_tile_bare(self):
+        self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act2/c/wall.dt1"}), [])
+
+    def test_a_line_for_another_dt1_changes_nothing(self):
+        self.assertEqual(self.run_pass({"pd2assets/y.dt1": "act2/c/wall.dt1"}), self.run_pass({}))
 
 
 class IndexTests(unittest.TestCase):
