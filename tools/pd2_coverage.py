@@ -65,11 +65,13 @@ from pd2_tiles import (  # noqa: F401  (moved there, #855: the generator imports
 ROOT = Path(__file__).resolve().parent.parent
 # The generator's code (#870): modules of the presets package that build the presets (their output is read per map, as
 # the preset file itself) and that no score runs. A map's score key leaves them out, so a generator PR that leaves a
-# map's preset as it was does not re-score the map. tests/test_coverage checks that nothing the scorer uses lives in them.
+# map's preset as it was does not re-score the map. tests/test_coverage_key checks that nothing the scorer uses lives in
+# them, and that each module of the package is either here or in SCORER_PRESETS (a new one must pick a side).
 GENERATOR = tuple(ROOT / "tools" / "presets" / n for n in (
     "build.py", "kit.py", "place.py", "rooms.py", "patches.py", "waypoints.py", "water.py", "liquids.py", "pillars.py",
-    "height.py", "lint.py", "discover.py", "hooks", "passes")) + (ROOT / "tools" / "pd2_cache.py",)  # the cache's
-# format is in the key as pd2_cache.CACHE_FORMAT, as in a rule's: an edit to its code does not re-score
+    "height.py", "lint.py", "discover.py", "parallel.py", "hooks", "passes")) + (
+    ROOT / "tools" / "pd2_cache.py",)  # its format is in the key as pd2_cache.CACHE_FORMAT, as in a rule's
+SCORER_PRESETS = ("__init__.py", "apply.py", "consts.py", "dt1.py", "entity.py", "layout.py")  # in the key
 SCORE_FORMAT = 2  # bump when what a kept score holds changes
 EDGE_PIECE = re.compile(r"fence|(?<!tree)(?<!tree_)wall|palisade|picket|rail|gate|bank")  # a low edge model, not a tree wall
 STRUCTURE = 20.0  # HD units (2 tiles): a tall piece this wide both ways is a structure (stairs, platform), not a prop

@@ -34,6 +34,14 @@ class KeptScoreTests(unittest.TestCase):
                      "tools/pd2_painter.py", "tools/pd2_fidelity.py", "tools/pd2_coverage.py"):
             self.assertIn(used, names)
 
+    def test_each_presets_module_is_the_scorers_or_the_generators(self):
+        """A new module of the presets package picks a side: GENERATOR (left out of the score key) or SCORER_PRESETS."""
+        home = C.ROOT / "tools" / "presets"
+        have = {p.name for p in home.iterdir() if p.suffix == ".py" or (p / "__init__.py").is_file()}
+        gen = {p.name for p in C.GENERATOR if p.parent == home}
+        self.assertFalse(gen & set(C.SCORER_PRESETS))
+        self.assertEqual(have, gen | set(C.SCORER_PRESETS), "add the new module to GENERATOR or SCORER_PRESETS")
+
     def test_nothing_the_scorer_uses_lives_in_a_left_out_module(self):
         """The scorer reaches the presets package as pd2_presets.<name>: each name it uses must be defined outside GENERATOR
         and must not use, in its own module, a name that module imports from a left-out one."""
