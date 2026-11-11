@@ -7,13 +7,13 @@ on:
   push:
     branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]  # labeled: coverage-drop-ok reruns the gate
+    types: [opened, synchronize, reopened, labeled, unlabeled]  # labeled: parity-drop-ok reruns the gate
 
 # One gate per PR: a push cancels the run on the old head (#801). push: one group per main commit (each uploads its
-# baseline). A label other than coverage-drop-ok starts a run the job's if: skips: one group per run, so it can't
+# baseline). A label other than parity-drop-ok starts a run the job's if: skips: one group per run, so it can't
 # cancel the PR's real gate. Otherwise one group per PR.
 concurrency:
-  group: gate-${{ github.event_name == 'push' && github.sha || (contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) && github.event.label.name != 'coverage-drop-ok') && format('skip-{0}', github.run_id) || github.event.pull_request.number }}
+  group: gate-${{ github.event_name == 'push' && github.sha || (contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) && github.event.label.name != 'parity-drop-ok') && format('skip-{0}', github.run_id) || github.event.pull_request.number }}
   cancel-in-progress: true
 
 # The merge below takes a slot of the machine-wide semaphore agents' merges use (pd2_cache.Slots, PD2R_MERGE_SLOTS, #760,
@@ -25,7 +25,7 @@ jobs:
     if: >-
       github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository
       && github.event.pull_request.state == 'open' && !github.event.pull_request.merged
-      && (!contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) || github.event.label.name == 'coverage-drop-ok'))
+      && (!contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) || github.event.label.name == 'parity-drop-ok'))
     runs-on: [self-hosted, windows, pd2r]
     permissions:
       contents: read
@@ -56,18 +56,15 @@ jobs:
       - name: Stand-in lines lint
         if: ${{ !cancelled() }}
         run: py -3 tools/pd2_presets_lint.py
-      # LP3c (#672, #681): the no-game coverage report of the generated HD presets, uploaded as an artifact. A push to
-      # main uploads its scores as the coverage-baseline artifact; a PR compares against the latest one (#723), so no
-      # PR commits a baseline, and fails when a preset's wall, border or floor score drops more than
-      # pd2_coverage.TOLERANCE points below it; a drop inside it passes and is listed as within tolerance (#800). The fidelity scores against legacy per edge type and floor (#732,
-      # pd2_fidelity) ride along: fidelity-baseline.tsv in the same artifact, a drop per (map, type) fails the same way. The PR label coverage-drop-ok accepts an intended drop. Without main's
-      # artifact it falls back to docs/coverage-baseline.tsv. It runs after the table-diff, so that result is already
-      # in. Without model_lod_desc.bin it skips and passes.
+      # LP3c (#672, #681): the no-game coverage report of the generated HD presets, uploaded as an artifact. Information
+      # only since #838: it no longer fails a PR (the parity step below gates). A push to main uploads its scores as the
+      # coverage-baseline artifact; a PR's report lists its changes against the latest one (#723; fall back to
+      # docs/coverage-baseline.tsv). The fidelity scores against legacy per edge type and floor (#732, pd2_fidelity) ride
+      # along: fidelity-baseline.tsv in the same artifact. Without model_lod_desc.bin it skips and passes.
       - name: HD preset coverage
         if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ github.token }}
-          DROP_OK: ${{ contains(github.event.pull_request.labels.*.name, 'coverage-drop-ok') }}
         run: |
           py -3 -m modkit fetch --prefix data/hd/model_lod_desc.bin
           if ($LASTEXITCODE) { "::warning::modkit fetch of model_lod_desc.bin failed: the coverage check may skip" }
@@ -83,11 +80,8 @@ jobs:
             } else {
               "::warning::no coverage-baseline artifact from main: comparing with $base"
             }
-            [string[]]$check = if ($env:DROP_OK -eq "true") { @() } else { @("--check") }
-            if ($env:DROP_OK -eq "true") { "Label coverage-drop-ok: drops are reported, not failed." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY }
-            $out = py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --baseline $base @check
+            $out = py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --baseline $base
           }
-          $code = $LASTEXITCODE
           $out
           if (Test-Path coverage/drops.md) {
             Get-Content coverage/drops.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
@@ -101,6 +95,28 @@ jobs:
             "::warning::HD preset coverage did not run: $out"
             "HD preset coverage did not run: $out" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
           }
+      # #838: the parity of each map (tools/pd2_parity.py) in the step summary. A push to main uploads parity-baseline.tsv
+      # with the coverage baseline; a PR fails when a map's parity drops more than pd2_parity.TOLERANCE points below it
+      # (or a baselined map is no longer scored). The PR label parity-drop-ok accepts an intended drop. Without a
+      # parity baseline from main (the first runs) it reports and passes.
+      - name: HD:legacy parity
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DROP_OK: ${{ contains(github.event.pull_request.labels.*.name, 'parity-drop-ok') }}
+        run: |
+          if ("${{ github.event_name }}" -eq "push") {
+            py -3 tools/pd2_parity.py --commit ${{ github.sha }} --write-baseline
+          } else {
+            [string[]]$check = if ($env:DROP_OK -eq "true") { @() } else { @("--check") }
+            if ($env:DROP_OK -eq "true") { "Label parity-drop-ok: parity drops are reported, not failed." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY }
+            py -3 tools/pd2_parity.py --commit ${{ github.sha }} @check
+          }
+          $code = $LASTEXITCODE
+          if (Test-Path coverage/parity.md) {
+            Get-Content coverage/parity.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          }
+          exit $code
           exit $code
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && github.event_name == 'push' }}
@@ -109,6 +125,7 @@ jobs:
           name: coverage-baseline
           path: |
             coverage/baseline.tsv
+            coverage/parity-baseline.tsv
             coverage/fidelity-baseline.tsv
             coverage/fidelity-tiles-baseline.tsv
           if-no-files-found: ignore
