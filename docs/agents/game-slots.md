@@ -71,7 +71,10 @@ closed: D2R reads `lvlprest.txt` at launch, so force before you start the game. 
   `merge queued: N/N slots busy`; the gate's says `CI merge queued`. Pick the count from RAM (`pd2_cache.merge_slots`).
 - Coverage outputs (`pd2_coverage.py`) go to `coverage/` in the worktree, not `out/`: `install.ps1` / `modkit build`
   wipes `out/`, so an install no longer deletes a running coverage report or the downloaded main baseline.
-- Removing a worktree: unlink its junctions first (`docs/agents/game-check.md`, "Worktree hygiene"). CI (`GITHUB_ACTIONS`) does not use these.
+- CI's gate shares the merge slots, the extract lock and `pd2-data` with the agents; it does not share the rule
+  cache (#820). With 4 agents merging, expect CI to queue; a merge is one per commit (#820, #821), so reuse a
+  worktree's or CI's output, and time merges by CPU time (`time.process_time`), not wall time under load.
+- Removing a worktree: `tools/worktree_remove.ps1` only (`docs/agents/game-check.md`, "Worktree hygiene").
 - Each merge prunes the least recently used `rules\` entries until they hold `PD2R_CACHE_GB` (default 20) GB. A rule
   run that wrote outside `generated\` (new `merge\art` PNGs) is not kept. The whole-merge `merge\<key>` folders older
   tools kept are pruned only with `PD2R_PRUNE_LEGACY=1`: set it once no worktree runs the old tools. `extract\` is

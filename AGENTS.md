@@ -6,8 +6,14 @@ Issues live in GitHub Issues (`gh` CLI). See `docs/agents/issue-tracker.md`.
 
 Every PR links the issue it solves: the body opens with `Closes #<n>`, or `Part of #<n>` when it does not finish the issue. If no issue exists yet, open one first.
 
-Rerun the table-diff gate (`tools/pd2_diff.py`) after resolving a merge from main, and paste the report for the PR's
-final commit (its first line names the commit). Merge only on a report for the final commit. Untracked files count as uncommitted changes; the gate CI job's report names GitHub's merge commit, not the PR head.
+**Gate rule (the one home).** Docs-only PRs (only `.md` files, docs and `changelog.d/` fragments) merge without waiting
+for CI. Any other PR merges only when CI's `table-diff` and `unit` are green on the PR's final head and the PR
+is MERGEABLE (rerun after resolving a merge from main). Only when the runners are offline, run `tools/pd2_diff.py`
+locally and paste the report for the final commit (its first line names the commit; untracked files count as
+uncommitted changes). The CI table-diff report's first line names GitHub's merge commit, not the PR head.
+
+**PR order.** Push, open the PR, then run the game check while CI runs, attaching images to the PR. Never merge an
+unchecked PR.
 
 Each CHANGELOG entry is one short line (one sentence, under ~100 chars), unless it is a huge feature.
 Never edit `CHANGELOG.md` in a PR: add `changelog.d/<issue>-<slug>.md` holding `#### <Category>` and then the `- ` line;
@@ -32,9 +38,9 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 ## Testing in-game
 
 - Game slots (separate game copies for a test, Slot4-8 here) and how to set one up: `docs/agents/game-slots.md`.
-- The game-check recipe (lock, install, cheats, screenshots, unlock, worktree hygiene): `docs/agents/game-check.md`. Remove a worktree only with `tools/worktree_remove.ps1` (never through its junctions).
+- The game-check recipe (lock, install, cheats, screenshots, unlock, worktree hygiene): `docs/agents/game-check.md`. Remove a worktree only with `tools/worktree_remove.ps1` (never `git worktree remove` or `rm -r`: they follow the `pd2-data` junction).
 - `pd2_extract.py` and `pd2_merge.py` reuse the machine-wide cache in `C:\pd2r-cache` (game-slots.md, "Shared cache"):
-  run them as usual, and don't copy `pd2-data/`, `generated/` or `out/` between worktrees.
+  run them as usual, and don't copy `pd2-data/`, `generated/` or `out/` between worktrees. `pd2-data` is the only junction.
 - **Read `d2rAI-toolkit/knowledge/cheat-commands.md` before any in-game test.** It lists every D2RLoader console cheat command (spawn items, monsters and objects, set stats and skills, go to any level, unlock waypoints, god mode, and more) and what the item spawn lines did in game: spawn syntax and quality, `idall`, durability reading 0 after a reload, `gold`, cursor and pickup hints. Use them instead of playing to the spot.
 - **Agents may run any in-game check, console-driven or not**, but prefer the console (clicking and movement are hard for agents). If a check runs past 10 minutes with no significant progress on what it checks, the agent stops, unlocks its slot, and a new `ready-for-human` issue hands the game check to the owner, with the steps left and what the agent already verified.
 - PD2's uniques for `cheat uniques <row>` (zero-based rows in the merged `uniqueitems.txt`, `out/data/global/excel/`): Gull 39, Pelta Lunata 94, Goblin Toe 110.
