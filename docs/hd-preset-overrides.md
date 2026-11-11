@@ -88,7 +88,4 @@ fix is a rule of the map (all ferns on this tile block float) rather than a one-
 
 Overrides change what players see, so an override needs a game check: pin the variant with `tools/pd2_force_ds1.py`,
 warp with `docs/agents/warp-locations.md`, and shoot the spot before and after (`docs/agents/game-check.md`). The first
-one is `jungle/jungle1.json`: the floating debris, cypress (with its 3 rock piles) and ferns grounded, and a
-stock `tree_mound01` (from `boge.json`) added at the cypress; nothing is removed. An `add` keeps the picked entity's
-scale, and a rock pile (`rock_pile03` 0.63, `rock_pile04` 1.0) is invisible at it, so pick a piece that reads from the
-game camera.
+one is `jungle/jungle1.json`: the floating debris, cypress (with its 3 rock piles) and ferns grounded, and a fourth rock added at the cypress; nothing is removed.
