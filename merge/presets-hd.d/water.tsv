@@ -1,0 +1,8 @@
+# water:<DT1>	the stock water or lava plane over its blocked floor outside pasted rooms (only those of stock rooms that draw it)
+water:act3/river/rivbank.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
+water:act3/river/pool.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
+water:act1/outdoors/river.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
+water:act1/outdoors/pond.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
+water:act2/town/canal.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
+water:act4/lava/floor.dt1	data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model
+water:act4/lava/floornew.dt1	data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model

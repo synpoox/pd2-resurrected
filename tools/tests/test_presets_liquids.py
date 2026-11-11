@@ -166,10 +166,11 @@ class LiquidTests(unittest.TestCase):
 def water_rules() -> dict:
     tsv = Path(__file__).resolve().parent.parent.parent / "merge" / "presets-hd.tsv"
     rules = {}
-    for line in tsv.read_text(encoding="utf-8").splitlines():
-        if line.startswith("water:"):
-            key, _, model = line.partition("	")
-            rules[key[len("water:"):]] = model.strip()
+    for f in P.rule_files(tsv):
+        for line in f.read_text(encoding="utf-8").splitlines():
+            if line.startswith("water:"):
+                key, _, model = line.partition("\t")
+                rules[key[len("water:"):]] = model.strip()
     return rules
 
 

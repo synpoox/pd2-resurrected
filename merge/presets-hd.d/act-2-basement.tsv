@@ -1,0 +1,8 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+Act 2 - Basement	data/hd/env/biome/act2_palace_cells.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+pd2assets/cellar_white.dt1	act2/palace/cellar.dt1
+pd2assets/cellflr_white.dt1	act2/palace/cellflr.dt1
+pd2assets/palace_white.dt1	act2/palace/palace.dt1
+pd2assets/sanctuaryyellow.dt1	act2/arcane/sanctuary.dt1
+pd2assets/wall_white.dt1	act2/palace/wall.dt1

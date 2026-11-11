@@ -1,0 +1,11 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+Act 3 - Kurast	data/hd/env/biome/act3_kurast.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+# A line under a quarter needs a third tab column, `# reason`; tools/pd2_presets_lint.py (gate job) checks every line
+pd2assets/a3_altar.dt1	act1/cathedrl/alter.dt1
+pd2assets/a3_objects.dt1	-
+pd2assets/ext.dt1	-
+pd2assets/nemyrmonastery.dt1	expansion/icecave/interior.dt1
+pd2assets/recoloured_tombcor.dt1	act2/bigcliff/tombcor.dt1
+pd2assets/rotated_ext.dt1	-
+pd2assets/zharboat.dt1	-

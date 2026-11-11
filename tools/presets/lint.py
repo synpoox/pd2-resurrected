@@ -1,4 +1,4 @@
-"""Lint merge/presets-hd.tsv's stand-in lines (#786).
+"""Lint the stand-in lines (#786) in merge/presets-hd.d/ (apply.rule_files).
 
 A stand-in line renames only the PD2 tiles its D2R DT1 also holds, with the same (orientation, main, sub) and subtile
 flags (apply.stand_in), and picks the D2R home of a pixel copy (pd2_dt1_copies); the merge builds the preset whatever
@@ -16,7 +16,7 @@ from pathlib import Path
 
 from pd2_levels import norm
 
-from .apply import stand_in
+from .apply import rule_files, stand_in
 from .dt1 import Tiles
 
 QUARTER = 0.25
@@ -43,11 +43,12 @@ KNOWN_NOOPS: frozenset[str] = frozenset({
 def reasons(rule: Path) -> dict[str, str]:
     """PD2 DT1 -> the `# reason` third column of its stand-in line (lines without one are left out)."""
     out = {}
-    for line in rule.read_text("utf-8").splitlines():
-        cols = line.split("\t")
-        if line and not line.startswith("#") and cols[0].lower().endswith(".dt1") and len(cols) > 2 \
-                and cols[2].startswith("#") and cols[2][1:].strip():
-            out[norm(cols[0])] = cols[2][1:].strip()
+    for f in rule_files(rule):
+        for line in f.read_text("utf-8").splitlines():
+            cols = line.split("\t")
+            if line and not line.startswith("#") and cols[0].lower().endswith(".dt1") and len(cols) > 2 \
+                    and cols[2].startswith("#") and cols[2][1:].strip():
+                out[norm(cols[0])] = cols[2][1:].strip()
     return out
 
 

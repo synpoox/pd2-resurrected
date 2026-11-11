@@ -51,7 +51,7 @@ import sys
 import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterator
+from typing import Callable, Iterator, NamedTuple
 
 import pd2_painter as painter
 import pd2_presets as presets
@@ -69,9 +69,19 @@ ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculp
 STRUCTURE = 20.0  # HD units (2 tiles): a tall piece this wide both ways is a structure (stairs, platform), not a prop
 DEPTH = 2  # prefab levels followed
 EDGE = 1e-3  # tiles: how far a ground box may cross a tile edge and still end on it
-FIDELITY_DROPS: list = []  # the pd2_fidelity.Change drops of the last run()
+FIDELITY_CHANGES: list = []  # every pd2_fidelity.Change of the last run(): drops and within-tolerance falls
+FIDELITY_ROWS: dict = {}  # that run's map -> type -> TypeScore
 BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
-TOLERANCE = 1.0  # percentage points a score may drop below the baseline
+COVERAGE_OUT = ROOT / "coverage"  # not under out/: install.ps1 (modkit build) cleans that (#801)
+# The one place for the gate's limits. A score (coverage wall, border, floor; fidelity score and spacing, per map and
+# type) may fall up to TOLERANCE percentage points below main's and still pass `--check`: the drop is listed, marked
+# "within tolerance". A fall past it, or a score no longer scored, fails (the PR label coverage-drop-ok accepts it).
+# Why 3, from the drops of #775, #781 and #753: the artefacts (a legitimate change to one piece moves a neighbour's
+# tile: fallengardens treeline spacing -1.1 in #775, wall spacing -1.3 to -2.9 and fortress border -1.1 to -1.6 in
+# #781, pillar spacing -2.0 to -2.4 in #753) ran -1.1 to -2.9; the real regressions ran from -3.6 (throne2 pillar
+# spacing, piling from bars(), #753) up to -13 (Torture Halls spacing). The old 1.0 failed every artefact, a manual
+# round each; 3 passes all of them and fails the smallest real regression seen.
+TOLERANCE = 3.0
 # D2R 93847's largest stock presets: act4/diab/dungrm6b.json, 6.1 MB; act2/town/lutw.json, 5642 entities
 STOCK_BYTES = 6_100_000
 STOCK_ENTITIES = 5642
@@ -186,6 +196,21 @@ def footprint(found: Iterator[Box], exclusive: bool = False) -> set[tuple[int, i
     for x0, x1, z0, z1, *_ in found:
         out.update((tx, tz) for tx in span(x0, x1) for tz in span(z0, z1))
     return out
+
+
+CORE = 0.5  # share of a tile's width a box must cover, both ways, for the tile to be under its core (not a spill)
+
+
+def core_footprint(b: Box) -> set[tuple[int, int]]:
+    """The tiles a box covers by at least CORE of their width on both axes, and always the tile under its centre: the
+    rest of footprint(b) is spill, tiles the box only grazes. A wide or turned box spills onto its neighbours (#800)."""
+    T = presets.TILE
+
+    def span(a: float, b_: float) -> set[int]:
+        mid = math.floor((a + b_) / 2 / T)
+        return {t for t in range(math.floor(a / T), math.floor(b_ / T) + 1)
+                if min(b_, (t + 1) * T) - max(a, t * T) >= CORE * T} | {mid}
+    return {(tx, tz) for tx in span(b[0], b[1]) for tz in span(b[2], b[3])}
 
 
 def ground_tiles(preset: dict, box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
@@ -340,6 +365,7 @@ class Change:
     border: tuple[float | None, float | None]
     floor: tuple[float | None, float | None]
     drop: bool  # beyond TOLERANCE, or no longer scored
+    within: bool = False  # fell, but by no more than the tolerance: listed, passes
 
 
 def changes(scores: list[Score], base: dict, tolerance: float = TOLERANCE) -> list[Change]:
@@ -353,10 +379,11 @@ def changes(scores: list[Score], base: dict, tolerance: float = TOLERANCE) -> li
         if name in base and name in now and (w0, b0, f0) == (w1, b1, f1):
             continue
         gone = name not in now
+        pairs = ((w0, w1), (b0, b1), (f0, f1))
         drop = gone or b0 is not None and b1 is None or any(  # a border no longer scored drops too
-            old is not None and new is not None and old - new > tolerance
-            for old, new in ((w0, w1), (b0, b1), (f0, f1)))
-        out.append(Change(name, (w0, w1), (b0, b1), (f0, f1), drop))
+            old is not None and new is not None and old - new > tolerance for old, new in pairs)
+        within = not drop and any(old is not None and new is not None and old > new for old, new in pairs)
+        out.append(Change(name, (w0, w1), (b0, b1), (f0, f1), drop, within))
     def worst(c: Change) -> float:
         return min((n - o for o, n in (c.wall, c.border, c.floor) if o is not None and n is not None), default=0.0)
     return sorted(out, key=lambda c: (not c.drop, worst(c), c.name))
@@ -375,11 +402,13 @@ def changes_md(found: list[Change], tolerance: float = TOLERANCE) -> str:
     lines = ["## Changes against the baseline", ""]
     if not found:
         return "\n".join(lines + ["No preset's coverage changed.", ""])
+    inside = sum(c.within for c in found)
     lines += [f"{len(found)} presets changed; {drops} dropped by more than the {tolerance:g}-point tolerance or are "
               "no longer scored"
-              + (" (accept an intended drop: label the PR `coverage-drop-ok`)." if drops else "."),
+              + (" (accept an intended drop: label the PR `coverage-drop-ok`)" if drops else "")
+              + (f"; {inside} fell within the tolerance" if inside else "") + ".",
               "", "| Preset | Wall | Border | Floor | |", "|---|---|---|---|---|"]
-    lines += [f"| {c.name} | {cell(*c.wall)} | {cell(*c.border)} | {cell(*c.floor)} | {'**drop**' if c.drop else ''} |"
+    lines += [f"| {c.name} | {cell(*c.wall)} | {cell(*c.border)} | {cell(*c.floor)} | {'**drop**' if c.drop else 'within tolerance' if c.within else ''} |"
               for c in found]
     return "\n".join(lines) + "\n"
 
@@ -388,32 +417,84 @@ def _fell(old, new, tolerance: float) -> bool:
     return old is not None and (new is None or old - new > tolerance)
 
 
-def drop_rows(found: list[Change], fdrops: list, tolerance: float = TOLERANCE) -> list[tuple]:
-    """(map, type, before, after, delta) per score that dropped, the coverage presets' wall, border and floor and the
-    fidelity (map, type) scores and spacings: what the gate's log lists (#787), `after` None when no longer scored."""
-    rows = []
+DROP, WITHIN, SMALL = "drop", "within tolerance", "not checked (small map)"
+
+
+class DropRow(NamedTuple):
+    name: str
+    type: str
+    before: float | None
+    after: float | None  # None: no longer scored
+    delta: float | None
+    status: str = DROP
+    kinds: str = "-"  # what the dropped tiles are against main (pd2_fidelity.classify_drop), fidelity rows only
+
+
+def drop_rows(found: list[Change], fchanges: list, tolerance: float = TOLERANCE, rows: dict | None = None,
+              tiles: dict | None = None) -> list[DropRow]:
+    """A row per score that fell at all: the coverage presets' wall, border and floor and the fidelity (map, type)
+    scores and spacings (`fchanges`: every pd2_fidelity.Change, drops or not). `status` is "drop" past the tolerance
+    or when no longer scored, else "within tolerance". With `rows` (map -> type -> TypeScore) and `tiles` (main's
+    pd2_fidelity.read_tiles) a fidelity row also names what its dropped tiles are against main (#800)."""
+    def status(old, new, none_drops: bool, small: bool = False) -> str:
+        """The rules of changes(): past the tolerance drops; a score gone drops only where `none_drops`; a small
+        map's spacing never drops (SMALL when it fell past the tolerance)."""
+        if new is None:
+            return DROP if none_drops else SMALL if small else WITHIN
+        if old - new <= tolerance:
+            return WITHIN
+        return SMALL if small else DROP
+    out = []
     for c in found:
+        gone = c.wall[1] is None  # the preset is no longer scored
         for kind, (old, new) in (("wall", c.wall), ("border", c.border), ("floor", c.floor)):
-            if _fell(old, new, tolerance):
-                rows.append((c.name, f"coverage {kind}", old, new, None if new is None else round(new - old, 1)))
-    for c in fdrops:
-        for kind, (old, new) in ((c.kind, c.score), (c.kind + " spacing", c.spacing)):
-            if _fell(old, new, tolerance):
-                rows.append((c.name, f"fidelity {kind}", old, new, None if new is None else round(new - old, 1)))
-    return rows
+            if _fell(old, new, 0):
+                out.append(DropRow(c.name, f"coverage {kind}", old, new, None if new is None else round(new - old, 1),
+                                   status(old, new, gone or kind == "border")))  # a border no longer scored drops
+    import pd2_fidelity
+    for c in fchanges:
+        for metric, (old, new) in ((c.kind, c.score), (c.kind + " spacing", c.spacing)):
+            if _fell(old, new, 0):
+                spacing = metric.endswith("spacing")
+                now = (rows or {}).get(c.name, {}).get(c.kind)
+                kinds = "-"
+                if now is not None and tiles is not None:
+                    kinds = pd2_fidelity.kinds_text(pd2_fidelity.classify_drop(spacing, now, tiles.get((c.name, c.kind), {})))  # no line: main's pair was perfect
+                out.append(DropRow(c.name, f"fidelity {metric}", old, new, None if new is None else round(new - old, 1),
+                                   status(old, new, c.drop and not (spacing and getattr(c, "small", False)),
+                                          spacing and getattr(c, "small", False)), kinds))
+    return out
 
 
-def drop_table(rows: list[tuple]) -> str:
+def _worst_first(rows: list[DropRow]) -> list[DropRow]:
+    return sorted(rows, key=lambda r: (-9999.0 if r.delta is None else r.delta, r.name, r.type))
+
+
+def drop_table(rows: list[DropRow]) -> str:
     """drop_rows as a plain text table, worst first."""
-    rows = sorted(rows, key=lambda r: (-9999.0 if r[4] is None else r[4], r[0], r[1]))
     cell = lambda v: "-" if v is None else f"{v:g}%"  # noqa: E731
-    lines = [f"{'map':<24} {'type':<26} {'before':>8} {'after':>8} {'delta':>7}"]
-    lines += [f"{n:<24} {k:<26} {cell(o):>8} {cell(a) if a is not None else 'gone':>8} "
-              f"{'-' if d is None else f'{d:+.1f}':>7}" for n, k, o, a, d in rows]
+    lines = [f"{'map':<24} {'type':<26} {'before':>8} {'after':>8} {'delta':>7}  {'status':<24} kind of dropped tiles"]
+    lines += [f"{r.name:<24} {r.type:<26} {cell(r.before):>8} {cell(r.after) if r.after is not None else 'gone':>8} "
+              f"{'-' if r.delta is None else f'{r.delta:+.1f}':>7}  {r.status:<24} {r.kinds}"
+              for r in _worst_first(rows)]
     return "\n".join(lines)
 
 
-def report(scores: list[Score], commit: str = "", found: list[Change] | None = None) -> str:
+def drop_md(rows: list[DropRow], tolerance: float = TOLERANCE) -> str:
+    """The step summary's drop table: every score that fell, marked drop or within tolerance."""
+    cell = lambda v: "-" if v is None else f"{v:g}%"  # noqa: E731
+    lines = ["## Score drops", "", f"{sum(r.status == DROP for r in rows)} past the {tolerance:g}-point tolerance, "
+             f"{sum(r.status != DROP for r in rows)} within it or not checked. Kind: what the dropped tiles are "
+             "against main's tiles.", "", "| Map | Type | Before | After | Delta | Status | Kind of dropped tiles |",
+             "|---|---|---|---|---|---|---|"]
+    lines += [f"| {r.name} | {r.type} | {cell(r.before)} | {'gone' if r.after is None else cell(r.after)} | "
+              f"{'-' if r.delta is None else f'{r.delta:+.1f}'} | {'**drop**' if r.status == DROP else r.status} | "
+              f"{r.kinds} |" for r in _worst_first(rows)]
+    return "\n".join(lines) + "\n"
+
+
+def report(scores: list[Score], commit: str = "", found: list[Change] | None = None,
+           tolerance: float = TOLERANCE) -> str:
     """The markdown report, worst first: presets with a border by border score, then the rest by wall score."""
     pct = lambda v: "-" if v is None else f"{100 * v:.1f}%"  # noqa: E731
     lines = ["# HD preset coverage" + (f" ({commit})" if commit else ""), "",
@@ -425,7 +506,7 @@ def report(scores: list[Score], commit: str = "", found: list[Change] | None = N
              "| Entities | Images |",
              "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     if found is not None:
-        lines[2:2] = [changes_md(found), ""]
+        lines[2:2] = [changes_md(found, tolerance), ""]
     for s in sorted(scores, key=_key):
         img = (f"[walls]({s.name}_walls.png) [floor]({s.name}_floor.png)"
                + (f" [border]({s.name}_border.png)" if s.ring is not None else ""))
@@ -465,7 +546,7 @@ def budget_md(scores: list[Score]) -> str:
 
 
 def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = None,
-        fbase: dict | None = None) -> list[Score] | None:
+        fbase: dict | None = None, tolerance: float = TOLERANCE) -> list[Score] | None:
     """Score every generated preset under data (generated/data) and write the report to out, with the changes
     against `base` (read_baseline) when given. The fidelity scores against legacy (pd2_fidelity, #732) go to
     fidelity.md, fidelity-baseline.tsv and <name>_fidelity.png, compared with `fbase` (pd2_fidelity.read_baseline).
@@ -515,12 +596,14 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
             for name, image in (images(lay, s, tall, wet) | fidelity.image(
                     legacy, fidelity.legacy_edges(legacy, heights), s.fidelity, s.name)).items():
                 (out / name).write_bytes(image)
-    found = None if base is None else changes(scores, base)
+    found = None if base is None else changes(scores, base, tolerance)
     if found is not None:
-        (out / "changes.md").write_text(changes_md(found), "utf-8")
-    (out / "report.md").write_text(report(scores, commit, found), "utf-8")
-    ffound = fidelity.write(out, {s.name: s.fidelity for s in scores}, commit, fbase)
-    FIDELITY_DROPS[:] = [c for c in ffound or [] if c.drop]
+        (out / "changes.md").write_text(changes_md(found, tolerance), "utf-8")
+    (out / "report.md").write_text(report(scores, commit, found, tolerance), "utf-8")
+    FIDELITY_ROWS.clear()
+    FIDELITY_ROWS.update({s.name: s.fidelity for s in scores})
+    ffound = fidelity.write(out, FIDELITY_ROWS, commit, fbase, tolerance)
+    FIDELITY_CHANGES[:] = ffound or []
     print(f"pd2_coverage: {len(scores)} presets scored, {out / 'report.md'}, {out / 'fidelity.md'}")
     return scores
 
@@ -553,24 +636,29 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", type=Path, default=ROOT / "generated" / "data", help="merged data (pd2_merge's output)")
     ap.add_argument("--d2r", type=Path, default=D2R_DATA, help=f"D2R data root (default: {D2R_DATA})")
-    ap.add_argument("--out", type=Path, default=ROOT / "out" / "coverage", help="report folder")
+    ap.add_argument("--out", type=Path, default=COVERAGE_OUT, help="report folder (outside out/, which modkit build wipes, #801)")
     ap.add_argument("--commit", default="", help="commit named in the report's title")
     ap.add_argument("--baseline", type=Path, default=None, help="main's scores, a coverage baseline.tsv (default: "
                     "the latest coverage-baseline artifact of main's gate runs, else the --tsv file)")
     ap.add_argument("--tsv", action="store_true", help=f"compare with {BASELINE} instead of main's latest artifact")
-    ap.add_argument("--check", action="store_true", help=f"exit 1 on a drop of more than {TOLERANCE:g} points")
+    ap.add_argument("--check", action="store_true", help=f"exit 1 on a drop of more than --tolerance points")
+    ap.add_argument("--tolerance", type=float, default=TOLERANCE, help="points a score may fall below main's and "
+                    f"still pass --check (default {TOLERANCE:g}); a fall inside it is listed, marked within tolerance")
     ap.add_argument("--write-baseline", action="store_true", help="write the scores to --baseline")
     a = ap.parse_args(argv)
-    a.out.mkdir(parents=True, exist_ok=True)  # out/coverage is not there on a fresh checkout (#787)
+    a.out.mkdir(parents=True, exist_ok=True)  # the report folder is not there on a fresh checkout (#787)
     if a.baseline is None:
-        a.baseline = BASELINE if a.tsv or a.write_baseline else main_baseline(a.out.parent / "main-coverage")
+        a.baseline = BASELINE if a.tsv or a.write_baseline else main_baseline(a.out / "main-coverage")
     base = read_baseline(a.baseline.read_text("utf-8")) if a.baseline.is_file() else None
     fpath = a.baseline.with_name("fidelity-baseline.tsv")  # main's fidelity scores sit beside its coverage scores
-    fbase = None
+    fbase = tbase = None
     if fpath.is_file():
         import pd2_fidelity
         fbase = pd2_fidelity.read_baseline(fpath.read_text("utf-8"))
-    scores = run(a.data, a.d2r, a.out, a.commit, base, fbase)
+        tpath = fpath.with_name(pd2_fidelity.TILES_FILE)  # main's tiles, to tell what a dropped tile is
+        if tpath.is_file():
+            tbase = pd2_fidelity.read_tiles(tpath.read_text("utf-8"))
+    scores = run(a.data, a.d2r, a.out, a.commit, base, fbase, a.tolerance)
     if scores is None:
         return 0
     if a.write_baseline:
@@ -581,17 +669,21 @@ def main(argv: list[str] | None = None) -> int:
     if base is None:
         print(f"pd2_coverage: no baseline at {a.baseline}" + ("" if not a.check else "; nothing to check"))
         return 1 if a.check else 0
-    found = changes(scores, base)
+    found = changes(scores, base, a.tolerance)
     drops = [c.name for c in found if c.drop]
     print(f"pd2_coverage: {len(found)} presets changed against the baseline, {len(drops)} dropped"
           + (f": {', '.join(drops)}" if drops else ""))
-    if FIDELITY_DROPS:
-        import pd2_fidelity
-        print(f"pd2_coverage: fidelity dropped on {len(FIDELITY_DROPS)} (map, type) scores: "
-              + ", ".join(f"{k} {n}" for k, n in pd2_fidelity.by_type(FIDELITY_DROPS).items()))
-    if drops or FIDELITY_DROPS:
-        print(drop_table(drop_rows(found, FIDELITY_DROPS)))
-    return 1 if a.check and (drops or FIDELITY_DROPS) else 0
+    import pd2_fidelity
+    fdrops = [c for c in FIDELITY_CHANGES if c.drop]
+    if fdrops:
+        print(f"pd2_coverage: fidelity dropped on {len(fdrops)} (map, type) scores: "
+              + ", ".join(f"{k} {n}" for k, n in pd2_fidelity.by_type(fdrops).items()))
+    rows = drop_rows(found, FIDELITY_CHANGES, a.tolerance, FIDELITY_ROWS, tbase)
+    (a.out / "drops.md").unlink(missing_ok=True)  # a rerun with no falls must not leave the last run's table
+    if rows:
+        print(drop_table(rows))
+        (a.out / "drops.md").write_text(drop_md(rows, a.tolerance), "utf-8")  # the step summary's drop table
+    return 1 if a.check and (drops or fdrops) else 0
 
 
 if __name__ == "__main__":

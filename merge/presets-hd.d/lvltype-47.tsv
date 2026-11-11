@@ -1,0 +1,15 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+47	data/hd/env/biome/act2_sewer.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+# psnwell/used: sewerchamb, seweritems, sewerradament, a3houses (4%), psndetail and bridgefill (5%) share no index with any D2R DT1 beyond 5% of their tiles: none
+pd2assets/psnwell/used/a3houses.dt1	-
+pd2assets/psnwell/used/bridgefill.dt1	-
+pd2assets/psnwell/used/den.dt1	act2/maggot/den.dt1
+pd2assets/psnwell/used/psndetail.dt1	-
+# psnwell/used/rivbank: rivbank.dt1 holds the most (89 of 557 tiles, 16%), the same bank art
+pd2assets/psnwell/used/rivbank.dt1	act3/river/rivbank.dt1	# rivbank.dt1 holds 89 of 557 tiles (16%), the same bank art
+pd2assets/psnwell/used/sewerchamb.dt1	-
+pd2assets/psnwell/used/seweritems.dt1	-
+pd2assets/psnwell/used/sewerradament.dt1	-
+# psnwell/used/sewerwalls: tomb/serpent.dt1 and travincal/walls.dt1 each hold 8 of 29 tiles (28%); serpent is the closer look for sewer stonework
+pd2assets/psnwell/used/sewerwalls.dt1	act2/tomb/serpent.dt1

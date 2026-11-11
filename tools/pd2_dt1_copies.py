@@ -1,7 +1,7 @@
 """PD2 DT1 tiles that are pixel-identical copies of a D2R tile, at any index (#214).
 
 Many PD2 DT1 copy D2R's tiles under new indexes (`sanctuaryreindexed.dt1` is D2R's `act2/arcane/sanctuary.dt1`
-reordered), which a stand-in line in merge/presets-hd.tsv cannot catch: a line names a D2R DT1 whose tiles stand in
+reordered), which a stand-in line in merge/presets-hd.d/ cannot catch: a line names a D2R DT1 whose tiles stand in
 at the same index. `copies` finds them by content (each block's place, format and pixels, plus the 25 subtile flags),
 so the generator (pd2_presets) names a copied tile by its D2R tile and draws that tile's stock pieces. Built from the
 PD2 and D2R files at merge time; nothing from PD2 is committed (ADR 0002).

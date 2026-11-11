@@ -512,7 +512,7 @@ class Slots:
                     self.f = f
                     return
             if not told:
-                print(f"{self.what} queued: {self.n}/{self.n} slots busy (machine-wide cap, PD2R_MERGE_SLOTS)", file=sys.stderr, flush=True)
+                print(f"{self.what} queued: {self.n}/{self.n} slots busy (machine-wide cap, PD2R_MERGE_SLOTS); waiting for one to free", file=sys.stderr, flush=True)
                 told = True
             time.sleep(self.poll)
 
@@ -531,10 +531,20 @@ class Slots:
         self.release()
 
 
+def slot_home() -> Path | None:
+    """The cache root a merge takes its slot under, on CI too (root() is None there, but the runner shares this machine
+    with the agents, so the gate's merge counts against the same cap, #801). None without the folder."""
+    p = Path(os.environ.get("PD2R_CACHE", r"C:\pd2r-cache"))
+    return p if p.is_dir() else None
+
+
 def merge_slots(cache: Path) -> Slots:
-    """The merge semaphore under the cache root: PD2R_MERGE_SLOTS slots (default 4; about 3.8 GB of RAM each)."""
+    """The merge semaphore under the cache root, shared by agents and the CI gate: PD2R_MERGE_SLOTS slots (default 4).
+    Pick the count from RAM: (RAM left for merges) / (RAM of one merge). One merge held about 3.8 GB at one worker;
+    parallel merge workers (#807) will hold about 6 GB each, so lower it then (16 GB free -> 2) and raise it when
+    a faster merge (#806) leaves RAM idle. The runners are user processes: set the same value in their `.env` or the user environment."""
     try:
         n = int(os.environ.get("PD2R_MERGE_SLOTS", "4"))
     except ValueError:
         n = 4
-    return Slots(cache / "merge-slots", n)
+    return Slots(cache / "merge-slots", n, "CI merge" if os.environ.get("GITHUB_ACTIONS") else "merge")

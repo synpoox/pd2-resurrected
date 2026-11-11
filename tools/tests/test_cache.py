@@ -398,6 +398,18 @@ class ConcurrentMergeTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     self.merge("b")  # a different rule input misses and needs one
 
+    def test_a_ci_merge_takes_a_slot_though_it_has_no_rule_cache(self):
+        with contextlib.ExitStack() as st:
+            for c in self.patched():
+                st.enter_context(c)
+            st.enter_context(mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}))
+            self.assertIsNone(pd2_cache.root(), "CI merges fresh, with no rule cache")
+            with mock.patch.object(pd2_cache.Slots, "acquire", side_effect=RuntimeError("asked for a slot")):
+                with self.assertRaises(RuntimeError):
+                    self.merge("a")
+            self.assertEqual(self.merge("a"), 0, "a free slot lets it run")
+            self.assertFalse(list((self.tmp / "cache" / "rules").glob("*")), "and nothing is cached")
+
     def test_a_partial_tree_is_rebuilt_not_handed_back(self):
         with contextlib.ExitStack() as st:
             for c in self.patched():
@@ -634,6 +646,30 @@ class MergeSlotTests(unittest.TestCase):
             time.sleep(0.05)
         self.assertTrue(f, "the OS dropped the dead holder's lock")
         f.close()
+
+    def test_ci_shares_the_agents_cap_and_names_itself_when_it_waits(self):
+        home = Path(self.tmp.name)
+        with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "PD2R_CACHE": str(home), "PD2R_MERGE_SLOTS": "1"}):
+            self.assertEqual(pd2_cache.slot_home(), home)
+            first, second = pd2_cache.merge_slots(home), pd2_cache.merge_slots(home)
+            self.assertEqual(first.folder, home / "merge-slots")  # where the agents' merges count
+            first.acquire()
+            self.addCleanup(first.release)
+            second.poll, buf = 0.01, io.StringIO()
+
+            def wait():
+                with redirect_stderr(buf):
+                    second.acquire()
+            t = threading.Thread(target=wait, daemon=True)
+            t.start()
+            time.sleep(0.3)
+            self.assertIn("CI merge queued: 1/1 slots busy", buf.getvalue())
+            first.release()
+            t.join(10)
+            self.assertIsNotNone(second.f)
+            second.release()
+        with mock.patch.dict(os.environ, {"PD2R_CACHE": str(home / "none")}):
+            self.assertIsNone(pd2_cache.slot_home())
 
     def test_the_cap_comes_from_the_environment(self):
         with mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": "2"}):
