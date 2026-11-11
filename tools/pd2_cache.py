@@ -191,6 +191,55 @@ def sources(fn: Callable) -> list[Path]:
     return sorted(seen)
 
 
+def toolkit_sources(kit: Path, files: list[Path]) -> list[Path]:
+    """The d2rAI-toolkit modules (files under kit) that files import, at any depth: each module's .py or package
+    __init__.py, every parent package's __init__.py, and what those import in turn (#808). A rule's key takes these, not
+    the whole toolkit, so a toolkit commit rebuilds only the rules that use a module it changed. Nothing is skipped
+    that might run: an import anywhere in a toolkit module counts (a tools/ module's main() does not, as in sources()),
+    and a name that is a submodule of the imported package counts as imported."""
+    todo, seen, found = list(files), set(), set()
+    kit = kit.resolve()
+    while todo:
+        p = todo.pop()
+        if p in seen or not p.is_file():
+            continue
+        seen.add(p)
+        inside = kit in p.resolve().parents
+        if inside:
+            found.add(p.resolve())
+        tree = ast.parse(p.read_text("utf-8"))
+        cli = {id(n) for d in tree.body if not inside and isinstance(d, ast.FunctionDef) and d.name == "main"
+               for n in ast.walk(d)}
+        for n in ast.walk(tree):
+            if id(n) in cli or not isinstance(n, (ast.Import, ast.ImportFrom)):
+                continue
+            if isinstance(n, ast.Import):
+                bases = [(kit, a.name, []) for a in n.names]
+            elif n.level:  # relative, from a toolkit module only
+                if not inside:
+                    continue
+                d = p.resolve().parent
+                for _ in range(n.level - 1):
+                    d = d.parent
+                bases = [(d, n.module or "", [a.name for a in n.names])]
+            else:
+                bases = [(kit, n.module, [a.name for a in n.names])]
+            for h, m, imported in bases:
+                for q in module_files(h, m, imported):
+                    q = q.resolve()
+                    if kit not in q.parents:
+                        continue
+                    for d in q.parents:  # the packages it sits in run their __init__ first
+                        if d == kit:
+                            break
+                        if (d / "__init__.py").is_file():
+                            found.add(d / "__init__.py")
+                            todo.append(d / "__init__.py")
+                    found.add(q)
+                    todo.append(q)
+    return sorted(found)
+
+
 # The rule cache (#558): rules/<key>/<reads>/ holds what one merge rule wrote to generated/, under a key of its code
 # (sources), the stamps and modkit, and is found again by what the rule looked at while it ran, as it was before: under
 # the project ("p"), each file's bytes, path missing and folder listing; under D2R's tables ("d"), the same with a file's
@@ -495,6 +544,58 @@ def rule(cache: Path, key_: str, roots: dict[str, Path], run: Callable[[], None]
                 print(f"rule {key_}: waited for another run of it and replayed what it kept", flush=True)
             return True
         return _build(gen, home, roots, run, policy)
+
+
+def memo(cache: Path, key_: str, roots: dict[str, Path], compute: Callable[["Trace"], bytes], policy: Policy = Policy()
+         ) -> tuple[bytes, bool]:
+    """compute(trace) -> bytes, or replay the bytes a kept run of it returned under this key that saw what roots hold
+    now (the per-map scores of pd2_coverage, #854). Unlike rule(), nothing is hooked: compute reports every file it reads
+    with trace.see(path), because the readers it calls keep their own memory (a DT1 read for one map is not read again
+    for the next), so an audit of opens would miss them. Entries share rule()'s folders, manifests, origins and
+    policy (a PR keeps only in its scratch folder), so prune, sweep and the PR scratch cleanup cover them. (bytes, True)
+    on a hit."""
+    top = _roots(roots)
+    dest = policy.scratch if policy.scratch else cache if policy.write else None
+    reads = [(cache / key_, policy.trusted)] + ([(policy.scratch / key_, None)] if policy.scratch else [])
+    for folder, trusted in reads:
+        for e in sorted(folder.iterdir()) if folder.is_dir() else []:
+            if ".tmp" in e.name or ".dead." in e.name:
+                continue
+            try:
+                m = json.loads((e / "manifest.json").read_text("utf-8"))
+                if trusted is not None and m.get("origin") not in trusted:
+                    continue
+                if all(_state(top, k) == v for k, v in m["reads"].items()):
+                    data = (e / "result.bin").read_bytes()
+                    used.append(e)
+                    os.utime(e)
+                    return data, True
+            except (OSError, ValueError, KeyError):
+                continue
+    t = Trace(roots)
+    data = compute(t)
+    if dest is None:
+        return data, False
+    m = {"reads": t.reads, "files": [], "removed": [], "dirs": [], "rmdirs": [], "stdout": "", "origin": policy.origin,
+         "bytes": len(data)}
+    home = dest / key_
+    name = hashlib.sha256(json.dumps(m["reads"], sort_keys=True).encode()
+                          + (b"" if policy.origin == "local" else policy.origin.encode())).hexdigest()[:16]
+    tmp = home / f"{name}.tmp{os.getpid()}"
+    try:
+        tmp.mkdir(parents=True)
+        (tmp / "result.bin").write_bytes(data)
+        (tmp / "manifest.tmp").write_text(json.dumps(m), "utf-8")
+        os.replace(tmp / "manifest.tmp", tmp / "manifest.json")
+        os.rename(tmp, home / name)
+        used.append(home / name)
+    except OSError as e:  # FileExistsError: another run kept the same reads; anything else only costs a later hit
+        if not isinstance(e, FileExistsError):
+            print(f"warning: result not cached ({e})")
+    finally:
+        if tmp.exists():
+            shutil.rmtree(tmp, ignore_errors=True)
+    return data, False
 
 
 def _build(gen: Path, home: Path, roots: dict[str, Path], run: Callable[[], None], policy: Policy) -> bool:
