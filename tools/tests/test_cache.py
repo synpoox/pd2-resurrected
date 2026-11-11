@@ -606,7 +606,8 @@ class ToolkitKeyTests(unittest.TestCase):
         used = {p.relative_to(kit).as_posix()
                 for p in pd2_cache.toolkit_sources(kit, pd2_cache.sources(pd2_merge.RULES["presets-hd.tsv"]))}
         every = {p.relative_to(kit).as_posix() for p in (kit / "modkit").glob("*.py")}
-        self.assertTrue(every - used, "some modkit module is not in presets-hd.tsv's key")
+        self.assertTrue(every, "the toolkit has modkit modules")
+        self.assertEqual(used, set(), "presets-hd.tsv imports no toolkit module")
 
 
 class SlimSourcesTests(unittest.TestCase):

@@ -45,7 +45,6 @@ OVERRIDDEN = {"act4/fort/foregate.dt1", "expansion/town/waypt.dt1", "act1/barrac
 ENGINE_OBJECTS = range(573, 584)
 
 
-
 def acts(t: Table) -> dict[str, list[str]]:
     """monpreset's places by act, in file order (a DS1's monster id is the index in its act)."""
     out: dict[str, list[str]] = {}
