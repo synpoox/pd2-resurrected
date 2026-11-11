@@ -52,7 +52,9 @@ Repo rules (PR body, gate, changelog fragments, branch deletion) live in `AGENTS
 9. **Clean up.** Run `gh pr list --base <branch>` first: retarget any PR based on the branch, then delete the
    branch on the remote and locally (never `research/*`, `issue-assets` or `handoff/*`). Remove the agent worktree
    with `tools/worktree_remove.ps1` only (`docs/agents/game-check.md`, "Worktree hygiene"). Done when the branch and
-   worktree are gone and the shared cache still has files.
+   worktree are gone and the shared cache still has files. Merge with `gh pr merge --squash` without
+   `--delete-branch` (it removes local worktrees through the `pd2-data` junction); delete the remote branch with
+   `git push origin --delete <branch>`.
 
 ## Standing rules
 
