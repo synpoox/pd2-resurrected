@@ -722,6 +722,26 @@ class MergeSlotTests(unittest.TestCase):
         self.assertEqual(peak[0], 3)
         self.assertEqual(live[0], 0)
 
+    def test_spare_slots_leave_one_slot_free_and_come_from_the_holders_own_pool(self):
+        held = pd2_cache.Slots(self.dir, 4, poll=0.01)
+        held.acquire()
+        spares = pd2_cache.spare_slots(9)
+        self.addCleanup(lambda: [s.release() for s in spares])
+        held.release()
+        self.assertEqual(len(spares), 2)  # 4 slots: the holder's, two spares, one left free for an arriving merge
+        probe = pd2_cache.Slots(self.dir, 4)
+        self.assertTrue(probe.try_acquire())
+        probe.release()
+        self.assertEqual({s.n for s in spares}, {4})
+
+    def test_spare_slots_are_none_without_a_held_slot_and_clone_is_unheld(self):
+        self.assertEqual(pd2_cache.spare_slots(3), [])
+        a = pd2_cache.Slots(self.dir, 2, "x", 0.5)
+        a.acquire()
+        self.addCleanup(a.release)
+        c = a.clone()
+        self.assertEqual((c.folder, c.n, c.what, c.poll, c.f), (a.folder, 2, "x", 0.5, None))
+
     def test_a_waiter_says_it_is_queued_once_and_takes_the_slot_a_release_frees(self):
         a = pd2_cache.Slots(self.dir, 1, poll=0.01)
         a.acquire()
@@ -782,6 +802,23 @@ class MergeSlotTests(unittest.TestCase):
             second.release()
         with mock.patch.dict(os.environ, {"PD2R_CACHE": str(home / "none")}):
             self.assertIsNone(pd2_cache.slot_home())
+
+    def test_an_agents_spare_slots_never_reach_the_ci_reserve_and_a_clone_keeps_the_pool(self):
+        held = pd2_cache.Slots(self.dir, 5, poll=0.01, reserved=2)  # agent pool: slots 0-2
+        held.acquire()
+        self.addCleanup(held.release)
+        c = held.clone()
+        self.assertEqual((c.reserved, c.ci, c.n, c.f), (2, False, 5, None))
+        spares = pd2_cache.spare_slots(9)
+        self.addCleanup(lambda: [x.release() for x in spares])
+        self.assertEqual(len(spares), 1)  # holder + 1 spare + 1 free of the 3-slot pool
+        ci = pd2_cache.Slots(self.dir, 5, reserved=2, ci=True)
+        for i in (3, 4):  # both reserved slots are free to take
+            f = ci._try(i)
+            self.assertIsNotNone(f)
+            f.close()
+        free = [i for i in range(3) if (f := ci._try(i)) and not f.close()]
+        self.assertEqual(len(free), 1)
 
     def test_agents_never_hold_a_reserved_slot_and_ci_can(self):
         agents = [pd2_cache.Slots(self.dir, 4, poll=0.01, reserved=2) for _ in range(3)]
