@@ -6,8 +6,8 @@ units over the ground in Shadows of Westmarch). Only furnishings and roof litter
 ledge's skull piles, an arcane trim or a diab fence over a missing ground are the stock map's own raised scenery, and a
 piece with no model has no height to float at.
 
-A furnishing raised over its ground, or over a missing one, stays when a piece that stays holds it up (settle, #909):
-the boards and snow on a fortress roof, the blood on a pentagram, the decals on a Westmarch wall top. A loft's own props rest on other dropped
+A furnishing over a missing ground stays when a piece that stays holds it up (settle, #909): the boards and snow on a
+fortress roof, the blood on a pentagram, the decals on a Westmarch wall top. A loft's own props rest on other dropped
 props, so the whole stack goes."""
 from ..consts import FLOOR_MAX
 from ..entity import _transform
@@ -31,8 +31,8 @@ def _furnishing(e: dict) -> bool:
 def drop(kit, lay, p) -> bool:
     """A building's upper part over this floor: its walls are other tiles', so it would float."""
     g = p.ground_h
-    if g is None or _furnishing(p.e):
-        return False  # a furnishing is judged by what holds it up: settle()
+    if g is None:
+        return False  # a furnishing over a missing ground is judged by what holds it up: settle()
     return p.y - g > FLOOR_MAX and _floor(lay.keys[p.c])
 
 
