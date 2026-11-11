@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, NamedTuple
 
+import pd2_cache
 import pd2_dt1_copies as dt1_copies
 import pd2_painter as painter
 import pd2_terrain as terrain_ground
@@ -18,7 +19,8 @@ from .consts import FETCH, GROUND, PRESETS, STREAM, TERRAIN, WATER_SPAN, wet_dt1
 from .dt1 import Tiles, header_dt1s
 from .entity import _transform
 from .hooks.far import far_off
-from .kit import Kit, indoor
+from . import slices
+from .kit import Kit
 from .layout import draws_trees, layout, wanted
 from .pillars import model_top
 from .waypoints import waypoint_options, waypoints
@@ -118,9 +120,13 @@ def wall_pass(on_d2r: list, tiles: "Tiles", pd2_tiles: "Tiles", out_data: Path, 
     found = coverage.model_boxes(models.read_bytes())
 
     @functools.cache
-    def prefab(path: str) -> list[dict]:
+    def load(path: str) -> list[dict]:
         f = d2r_data / path.removeprefix("data/")
         return json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
+
+    def prefab(path: str) -> list[dict]:
+        pd2_cache.note(d2r_data / path.removeprefix("data/"))  # the memo hides the read from the DS1 that asks next (#861)
+        return load(path)
     heights = fidelity.Heights(out_data / "global" / "tiles", tiles_dir)
     far = far_off(d2r_data)
     contexts = []
@@ -170,9 +176,11 @@ class State:
     mod_classes: dict
     prefab: Callable
     water: dict
+    slices: dict = field(default_factory=dict)  # DS1 -> its slices.Slice (the kit it can see, its objects and water)
+    digests: dict = field(default_factory=dict)  # ds1cache's memo of content hashes: lives for this state only
+    tree_reads: dict = field(default_factory=dict)  # tile set -> what its tree harvest opened (every outdoor DS1 of it owns them)
     learned: dict = field(default_factory=dict)  # painter.harvest's memo: lives for this state only
     trees: dict = field(default_factory=dict)  # tile set -> (its stock, its tree kit once a DS1 of it draws trees)
-    inside: Kit | None = None  # indoor(kit), made when a DS1 draws no trees
 
 
 def plan(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> Plan | None:
@@ -246,36 +254,47 @@ def setup(pl: Plan) -> State:
     wall_pass(on_d2r, tiles, pd2_tiles, out_data, d2r_data, tiles_dir, [(lay, p) for lay, p, _ in stock], pl.walls_rule)
 
     @functools.cache
-    def prefab(path: str) -> list[tuple[float, float]]:
+    def load(path: str) -> list[tuple[float, float]]:
         f = d2r_data / path.removeprefix("data/")
         ents = json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
         return [(t["position"]["x"], t["position"]["z"]) for t in map(_transform, ents) if t] or [(0.0, 0.0)]
+
+    def prefab(path: str) -> list[tuple[float, float]]:
+        pd2_cache.note(d2r_data / path.removeprefix("data/"))  # the memo hides the read from the DS1 that asks next (#861)
+        return load(path)
     return State(pl, layouts, kit, stock, mod_classes, prefab, water)
+
+
+def tile_stock(st: State, tile_set: str) -> list:
+    """The tile set's stock: the presets that list a DT1 one of its DS1 draws from (the tree kit is harvested from them)."""
+    if tile_set not in st.trees:
+        drawn = {t[0] for d in st.plan.groups[tile_set] for k in wanted(st.layouts[d]) for t in k[1]}
+        st.trees[tile_set] = [(lay_, preset) for lay_, preset, listed in st.stock if not drawn.isdisjoint(listed)], None
+    return st.trees[tile_set][0]
 
 
 def build_ds1(st: State, tile_set: str, ds1: str) -> DS1Built:
     """Build one DS1's HD preset and write it (out_data/hd/env/preset/<ds1>.json). The unit the work is farmed out in
     (parallel.py): inputs in, one DS1's report out. Builds share nothing they write, so any order and any split of the
-    DS1 over processes gives the same files."""
+    DS1 over processes gives the same files. It runs on the DS1's slice of the State (slices.py): what the build cannot
+    see is not in the rule's per-DS1 cache key (ds1cache.py)."""
     pl, lay = st.plan, st.layouts[ds1]
     outdoor = draws_trees(lay)
-    if tile_set not in st.trees:
-        # the tile set's stock: the presets that list a DT1 its DS1 draw from; the tree kit is harvested from them
-        drawn = {t[0] for d in pl.groups[tile_set] for k in wanted(st.layouts[d]) for t in k[1]}
-        st.trees[tile_set] = [(lay_, preset) for lay_, preset, listed in st.stock if not drawn.isdisjoint(listed)], None
-    own, trees = st.trees[tile_set]
+    own, trees = tile_stock(st, tile_set), st.trees[tile_set][1]
     if outdoor and trees is None:
-        trees = painter.harvest(own, wet_dt1s(pl.water_rule), st.learned) or ()
+        # the tile set's, not the first DS1's: its own trace, handed to each outdoor DS1 of the set (parallel._one)
+        with pd2_cache.sub_trace() as sub:
+            trees = painter.harvest(own, wet_dt1s(pl.water_rule), st.learned) or ()
+        st.tree_reads[tile_set] = dict(sub.reads) if sub is not None else {}
         st.trees[tile_set] = own, trees
-    objects = waypoints((pl.out_data / "global" / "tiles" / ds1).read_bytes(), st.mod_classes)
-    bare = [f"{Path(ds1).stem} {o[0]}" for o in objects if not waypoint_options(lay, st.kit, *o)]
-    if not outdoor and st.inside is None:
-        st.inside = indoor(st.kit)
-    preset, missing = build(lay, st.kit if outdoor else st.inside, Path(ds1).stem, ds1, pl.sets[tile_set.lower()],
-                            pl.terrain, own, (trees or None) if outdoor else None, st.prefab, st.water, objects)
+    sl = slices.sliced(st, ds1)
+    bare = [f"{Path(ds1).stem} {o[0]}" for o in sl.objects if not waypoint_options(lay, sl.kit, *o)]
+    preset, missing = build(lay, sl.kit if outdoor else slices.inside(sl), Path(ds1).stem, ds1, pl.sets[tile_set.lower()],
+                            pl.terrain, own, (trees or None) if outdoor else None, st.prefab, sl.water, sl.objects)
     dest = pl.out_data / PRESETS / Path(ds1).with_suffix(".json")
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(preset, separators=(",", ":")), "utf-8")
+    st.slices.pop(ds1, None)  # a worker builds many: the slice is not needed again
     return DS1Built((len(lay.keys), missing, len(preset["entities"]), bool(outdoor and trees),
                      sum(e["name"] == STREAM for e in preset["entities"])), bare)
 
@@ -286,9 +305,9 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     pl = plan(rule, pd2_data, d2r_data, out_data)
     if pl is None:
         return
-    from . import parallel
+    from . import ds1cache
     tasks = [(tile_set, ds1) for tile_set, ds1s in pl.groups.items() for ds1 in ds1s]
-    built, sources = parallel.build_all(pl, tasks)
+    built, sources = ds1cache.build_all(pl, tasks)
     report, bare = [b.row for b in built], [n for b in built for n in b.bare]
     print(f"  presets-hd: {len(report)} HD presets from {sources} stock presets, "
           f"{sum(r[2] for r in report)} entities, {sum(r[3] for r in report)} with painted tree lines, {sum(r[4] for r in report)} water planes; {sum(r[1] for r in report)} of {sum(r[0] for r in report)} tiles "
