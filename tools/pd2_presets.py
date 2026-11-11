@@ -9,14 +9,18 @@ position (one tile is TILE HD units, DS1 x along x, DS1 y along z), so a key col
 a tile, empty ones too. build() gives each tile one of its key's instances, picked by a hash of the DS1 path and the
 tile, so props come at D2R's density. A key no stock preset has falls back to each of its tiles alone (a wall on two
 layers), else the tile stays empty. The ground is D2R's stock flat plane (TERRAIN), one unscaled copy per
-TERRAIN_SIZE block (a scaled plane does not draw), textured by the tile set's biome; the preset depends on what the stock presets it copies from depend on. Over the
-per-tile kit, build() pastes whole stock rooms, applies the patch lookup and, for a DS1 that draws tree tiles, the
+TERRAIN_SIZE block (a scaled plane does not draw), textured by the tile set's biome; the preset depends on what the
+stock presets it copies from depend on. Over
+the per-tile kit, build() pastes whole stock rooms, applies the patch lookup and, for a DS1 that draws tree tiles, the
 border painter (pd2_painter), all from the tile set's stock: the presets that list a DT1 its DS1 draw from. Last,
 the water: a stock room draws its stream as one room-sized mesh, so outside pasted rooms a water DT1's blocked floor
 tiles get a stock water plane, scaled to cover them in rectangles.
 
-merge/presets-hd.d/*.tsv (merge/presets-hd.tsv is its pd2_merge anchor: no lines; presets.apply.rule_files gives the read order): `tile set <tab> biome`, one line per lvltypes Name the PD2-only presets on D2R tiles load. The
-merge fails on a PD2-only preset on D2R tiles whose tile set has no line, and on a line no such preset needs. A
+merge/presets-hd.d/<tile set>.tsv, one file per lvltypes tile set (merge/presets-hd.tsv is its pd2_merge anchor: no
+lines; presets.apply.rule_files gives the read order; a key has one line). A PR adding a tile set adds its own file;
+never append to another set's file. `tile set <tab> biome`, one line per lvltypes Name the PD2-only presets on D2R
+tiles load. The merge fails on a PD2-only preset on D2R tiles whose tile set has no line, and on a line no such
+preset needs. A
 preset that loads a PD2 DT1 (pd2assets/) waits until each of them has a stand-in line (LP4/LP5), `PD2 DT1 <tab> D2R
 DT1`, or `-` for none: a PD2 tile the stand-in holds too (the same orientation, main and sub index and subtile flags;
 most PD2 DT1 are copies or recolours of a D2R one) is named by it, so it gets that tile's stock pieces; the rest stay

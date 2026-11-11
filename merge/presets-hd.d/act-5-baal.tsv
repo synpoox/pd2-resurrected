@@ -1,23 +1,26 @@
-# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column and the rules: merge/presets-hd.tsv
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+Act 5 - Baal	data/hd/env/biome/expansion_baallair.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
 pd2assets/a5_a1barracks_objects.dt1	act1/barracks/objects.dt1
 # a5_a1grass_objects: best is rockclifffloor.dt1 with 1 of 42 tiles
 pd2assets/a5_a1grass_objects.dt1	-
-pd2assets/a5_chain_walls.dt1	act4/mesa/chain_walls.dt1
-pd2assets/a5_cliff_parts.dt1	-
 # a5_floor: best is siege/temptile.dt1 with 10% of 144 tiles, a placeholder set
 pd2assets/a5_floor.dt1	-
-pd2assets/a5_head.dt1	-
 # a5_huts: docktown/huts.dt1 holds 13% of 97 tiles; nothing else is closer in biome (huts)
 pd2assets/a5_huts.dt1	act3/docktown/huts.dt1	# docktown/huts.dt1 holds 13% of 97 tiles; nothing else is closer in biome (huts)
 pd2assets/a5_market.dt1	expansion/baallair/floor.dt1	# its copies get baallair/floor.dt1, the D2R home of its floor pixel copies; it renames no tile by index
-pd2assets/a5_palm.dt1	act2/outdoors/palm.dt1
-pd2assets/a5_prickly.dt1	act2/outdoors/prickly.dt1
-# a5_river's best (16 of 45 tiles) is specials.dt1, marker tiles that draw nothing; oasis.dt1's 13 are walkable ground with zero flags, not water, and would rename 7101 tiles of Zhar Rivers: none
-pd2assets/a5_river.dt1	-
 # a5_rogue_encampment_objects: Act 1 camp objects, 12% of 91 tiles (the best by flags) and the closest by biome
 pd2assets/a5_rogue_encampment_objects.dt1	act1/town/objects.dt1	# Act 1 camp objects, 12% of 91 tiles (the best by flags) and the closest by biome
-pd2assets/a5_rotatedriver.dt1	garden/colossalsummit/floor.dt1
 pd2assets/a5_shack.dt1	act3/docktown/shack.dt1
 # a5_stones: no D2R DT1 holds more than 5 of 41 tiles, and those are bridge pieces
 pd2assets/a5_stones.dt1	-
 pd2assets/a5_trees.dt1	act3/jungle/trees.dt1
+# fallengarden*: floor 157 of 198 tiles are pixel copies of baallair/floor, stairs 27 of 81 (26 of sanctuary), water 57 of 58 of docktown/bridge (copies draw whatever the line says);
+# trees 189 of 189 match jungle/trees flags (the line renames them); the 9 wall tiles match nothing
+pd2assets/fallengardenfloor.dt1	-
+pd2assets/fallengardenstairs.dt1	-
+pd2assets/fallengardentrees.dt1	act3/jungle/trees.dt1
+pd2assets/fallengardenwall.dt1	-
+pd2assets/fallengardenwater.dt1	-
+pd2assets/new_ground.dt1	expansion/town/ground.dt1	# its 160 pixel copies get expansion/town/ground.dt1; it renames no tile by index
+pd2assets/xxthrone.dt1	expansion/baallair/throne.dt1

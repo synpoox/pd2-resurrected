@@ -1,0 +1,10 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+39	data/hd/env/biome/act2_outdoors.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+pd2assets/a5_palm.dt1	act2/outdoors/palm.dt1
+pd2assets/a5_prickly.dt1	act2/outdoors/prickly.dt1
+# a5_river's best (16 of 45 tiles) is specials.dt1, marker tiles that draw nothing; oasis.dt1's 13 are walkable ground with zero flags, not water, and would rename 7101 tiles of Zhar Rivers: none
+pd2assets/a5_river.dt1	-
+pd2assets/a5_rotatedriver.dt1	garden/colossalsummit/floor.dt1
+pd2assets/kanemith.dt1	-
+pd2assets/triune_floor.dt1	act2/ruin/ground.dt1

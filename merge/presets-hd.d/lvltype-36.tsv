@@ -1,0 +1,4 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+36	data/hd/env/biome/expansion_town.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+pd2assets/v/expansion/town/waypt.dt1	expansion/town/waypt.dt1

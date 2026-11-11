@@ -1,0 +1,8 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+Act 1 - Wilderness	data/hd/env/biome/act1_outdoors.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+# PD2 DT1	the D2R DT1 standing in for it, - for none (LP4): the D2R DT1 holding the most of its tiles with the same
+# subtile flags, where that is a quarter of its tiles or more (a pick by biome under a quarter says why on its line). Tiles that are pixel copies of a D2R tile, at any
+# index, stand in as that tile whatever the line says (pd2_dt1_copies)
+# a1_ruinwall: no D2R tile has its index and subtile flags
+pd2assets/a1_ruinwall.dt1	-

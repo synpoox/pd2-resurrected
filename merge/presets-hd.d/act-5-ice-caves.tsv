@@ -1,0 +1,6 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+Act 5 - Ice Caves	data/hd/env/biome/expansion_icecave.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+pd2assets/a5_cliff_parts.dt1	-
+pd2assets/sanctuaryadds.dt1	act2/arcane/sanctuary.dt1
+pd2assets/sanctuaryreindexed.dt1	guild/outdoors/floor.dt1

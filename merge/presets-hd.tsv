@@ -1,7 +1,10 @@
-# merge/presets-hd.d/*.tsv hold this rule's lines; this file is its pd2_merge anchor (the driver runs a rule per file in
-# merge/) and holds no lines. The rule reads this file, then the folder's *.tsv by name (presets.apply.rule_files).
-# tile-sets.tsv: tile set <tab> biome; standins-<group>.tsv: stand-in lines; water.tsv: water lines. The columns:
+# merge/presets-hd.d/<tile set>.tsv hold this rule's lines, one file per lvltypes tile set: its `tile set<TAB>biome` line
+# and the stand-in lines for the PD2 DT1 added for it. This file is only the pd2_merge anchor (the driver runs a rule per
+# file in merge/) and holds no lines. The rule reads it, then the folder's *.tsv by name (presets.apply.rule_files).
+# A PR adding a tile set adds its own file; never append to another set's file. A key has one line in all the files.
+# water.tsv holds the water lines. A DT1 several sets load has its line in the set that first added it. The columns:
 # PD2 DT1	the D2R DT1 standing in for it, - for none (LP4): the D2R DT1 holding the most of its tiles with the same
-# subtile flags, where that is a quarter of its tiles or more (a pick by biome under a quarter says why on its line). Tiles that are pixel copies of a D2R tile, at any
-# index, stand in as that tile whatever the line says (pd2_dt1_copies)
-# A line under a quarter needs a third tab column, `# reason`; tools/pd2_presets_lint.py (gate job) checks every line
+# subtile flags, where that is a quarter of its tiles or more (a pick by biome under a quarter says why on its line).
+# Tiles that are pixel copies of a D2R tile, whatever their index, stand in as that tile whatever the line says
+# (pd2_dt1_copies).
+# A line under a quarter needs a third tab column, `# reason`; tools/pd2_presets_lint.py (gate job) checks every line.

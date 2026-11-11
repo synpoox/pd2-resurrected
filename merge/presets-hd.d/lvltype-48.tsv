@@ -1,4 +1,6 @@
-# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column and the rules: merge/presets-hd.tsv
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+48	data/hd/env/biome/expansion_baallair.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
 pd2assets/dtprivate/archwall.dt1	-
 pd2assets/dtprivate/bone.dt1	act2/outdoors/bone.dt1
 pd2assets/dtprivate/desertground.dt1	act2/town/ground.dt1

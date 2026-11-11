@@ -110,19 +110,33 @@ class ApplyTests(unittest.TestCase):
 
 class RuleFilesTests(unittest.TestCase):
     """The rule's lines are in merge/presets-hd.tsv (the anchor) and presets-hd.d/*.tsv (#789)."""
-    def test_the_anchor_then_the_folders_files_by_name_and_a_later_line_wins(self):
+    def test_the_anchor_then_the_folders_files_by_name(self):
         with tempfile.TemporaryDirectory() as tmp:
             t = Path(tmp)
             rule, d = t / "presets-hd.tsv", t / "presets-hd.d"
             d.mkdir()
             rule.write_text("# anchor\nSet A\ta.json\n")
-            (d / "z.tsv").write_text("Set A\tz.json\nSet Z\tz.json\n")
-            (d / "b.tsv").write_text("# note\nSet A\tb.json\nSet B\tb.json\npd2assets/x.dt1\t-\n")
+            (d / "z.tsv").write_text("Set Z\tz.json\n")
+            (d / "b.tsv").write_text("# note\nSet B\tb.json\npd2assets/x.dt1\t-\n")
             (d / "notes.md").write_text("Set Q\tq.json\n")
             self.assertEqual([f.name for f in P.rule_files(rule)], ["presets-hd.tsv", "b.tsv", "z.tsv"])
             sets, standins, water = P.read_rule(rule)
-            self.assertEqual(sets, {"set a": "z.json", "set b": "b.json", "set z": "z.json"})
+            self.assertEqual(sets, {"set a": "a.json", "set b": "b.json", "set z": "z.json"})
             self.assertEqual((standins, water), ({"pd2assets/x.dt1": None}, {}))
+
+    def test_a_key_twice_is_an_error_naming_both_files(self):
+        for first, second, named in (("Set A\ta.json\n", "set a\tz.json\n", r"a\.tsv and in b\.tsv"),
+                                     ("pd2assets/x.dt1\t-\n", "PD2Assets/X.dt1\tact1/a.dt1\n", r"a\.tsv and in b\.tsv"),
+                                     ("Set A\ta.json\nSet A\tb.json\n", "", r"a\.tsv and in a\.tsv")):
+            with self.subTest(first=first), tempfile.TemporaryDirectory() as tmp:
+                t = Path(tmp)
+                rule, d = t / "presets-hd.tsv", t / "presets-hd.d"
+                d.mkdir()
+                rule.write_text("")
+                (d / "a.tsv").write_text(first)
+                (d / "b.tsv").write_text(second)
+                with self.assertRaisesRegex(ValueError, named):
+                    P.read_rule(rule)
 
     def test_without_the_folder_the_anchor_alone_is_read(self):
         with tempfile.TemporaryDirectory() as tmp:

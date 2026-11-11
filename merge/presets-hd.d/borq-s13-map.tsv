@@ -1,4 +1,6 @@
-# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column and the rules: merge/presets-hd.tsv
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+Borq S13 Map	data/hd/env/biome/act4_mesa.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
 pd2assets/s13/boxes.dt1	act1/barracks/objects.dt1
 pd2assets/s13/brick_wall_floor.dt1	act1/court/floor.dt1
 # s13/brick_walls, buildings and building_floor: the best is under 20% (guild/house1/ext 11%, stonewall 8%, icecave/interior 19%): none

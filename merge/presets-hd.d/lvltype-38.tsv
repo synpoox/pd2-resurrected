@@ -1,0 +1,6 @@
+# tile set	the biome its generated HD presets are drawn in (pd2_presets, ADR 0005)
+38	data/hd/env/biome/act4_lava.json
+# PD2 DT1	the D2R DT1 standing in for it, - for none; a `# reason` third column; the rules: merge/presets-hd.tsv
+pd2assets/hellcaves_base.dt1	-
+pd2assets/hellcaves_obj.dt1	-
+pd2assets/void.dt1	-
