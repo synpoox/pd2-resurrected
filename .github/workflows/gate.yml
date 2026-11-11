@@ -3,21 +3,22 @@ name: gate
 # The table-diff gate (tools/pd2_diff.py, #352) on every PR and push to main. It needs the PD2 install and D2R's tables,
 # which never go to GitHub (ADR 0002), so it runs on the owner's self-hosted runner, as the release does; README.md has
 # the runner setup. PRs from forks don't run here: the runner only builds this repository's own branches.
-# Docs-only changes start no run (paths:), except the gate inputs docs/deviations.md and docs/coverage-baseline.tsv; closing or merging a PR cancels its in-flight run (#847).
+# Docs-only changes start no run (paths:), except the gate inputs docs/deviations.md and docs/coverage-baseline.tsv.
+# Only a real gate run may carry a check named table-diff (#897): main's ruleset requires it and GitHub counts a skipped
+# check as passing, so no event may start a run of this workflow whose job is skipped. Label and close events go to
+# gate-control.yml, which cancels (#847) or reruns (parity-drop-ok) the PR's gate run from a job with another name.
 on:
   push:
     branches: [main]
     paths: ['**', '!**/*.md', '!docs/**', '!changelog.d/**', 'docs/deviations.md', 'docs/coverage-baseline.tsv']
   pull_request:
-    # labeled: parity-drop-ok reruns the gate; closed (merged too) joins the PR's group to cancel its run, the job's if: skips it
-    types: [opened, synchronize, reopened, labeled, unlabeled, closed]
+    types: [opened, synchronize, reopened]
     paths: ['**', '!**/*.md', '!docs/**', '!changelog.d/**', 'docs/deviations.md', 'docs/coverage-baseline.tsv']
 
 # One gate per PR: a push cancels the run on the old head (#801). push: one group per main commit (each uploads its
-# baseline). A label other than parity-drop-ok starts a run the job's if: skips: one group per run, so it can't
-# cancel the PR's real gate. Otherwise one group per PR.
+# baseline).
 concurrency:
-  group: gate-${{ github.event_name == 'push' && github.sha || (contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) && github.event.label.name != 'parity-drop-ok') && format('skip-{0}', github.run_id) || github.event.pull_request.number }}
+  group: gate-${{ github.event_name == 'push' && github.sha || github.event.pull_request.number }}
   cancel-in-progress: true
 
 # The merge below takes a slot of the machine-wide semaphore agents' merges use (pd2_cache.Slots, PD2R_MERGE_SLOTS, #760,
@@ -25,15 +26,12 @@ concurrency:
 # the runner's environment to the same value as the agents' (see pd2_cache.merge_slots for how to pick it).
 jobs:
   table-diff:
-    # another label (triage) does not rerun it, and a label on a merged or closed PR starts nothing (#801)
-    if: >-
-      github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository
-      && github.event.pull_request.state == 'open' && !github.event.pull_request.merged
-      && (!contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) || github.event.label.name == 'parity-drop-ok'))
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, windows, pd2r]
     permissions:
       contents: read
       actions: read  # gh run download of main's coverage-baseline artifact
+      pull-requests: read  # the PR's labels, read when the parity step runs (a rerun keeps the old event payload)
     env:
       PYTHONPATH: ${{ vars.D2R_TOOLKIT }}
       MODKIT_CACHE: ${{ vars.D2R_TOOLKIT }}\d2r-data
@@ -121,13 +119,14 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ github.token }}
-          DROP_OK: ${{ contains(github.event.pull_request.labels.*.name, 'parity-drop-ok') }}
         run: |
+          # the label now, not the event payload's: gate-control.yml reruns this run when parity-drop-ok changes (#897)
+          $DROP_OK = if ("${{ github.event_name }}" -eq "push") { "false" } else { (gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json labels -q '[.labels[].name] | index("parity-drop-ok") != null') }
           if ("${{ github.event_name }}" -eq "push") {
             py -3 tools/pd2_parity.py --commit ${{ github.sha }} --write-baseline
           } else {
-            [string[]]$check = if ($env:DROP_OK -eq "true") { @() } else { @("--check") }
-            if ($env:DROP_OK -eq "true") { "Label parity-drop-ok: parity drops are reported, not failed." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY }
+            [string[]]$check = if ($DROP_OK -eq "true") { @() } else { @("--check") }
+            if ($DROP_OK -eq "true") { "Label parity-drop-ok: parity drops are reported, not failed." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY }
             # main's parity-baseline.tsv comes from the artifact the coverage step downloaded; always passed, so a main artifact
             # without the file yet is not downloaded a second time (the file is missing: the tool says "Not gated", #869)
             [string[]]$base = @("--baseline", "coverage/main-coverage/parity-baseline.tsv")
