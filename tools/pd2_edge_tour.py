@@ -4,13 +4,12 @@
 type. Walking there is slow, so this plans warp points from a map's DS1 and `levels.txt`, then drives a game slot to
 each and saves the HD shot beside the legacy shot (`g` toggles).
 
-Edge types (a run is a 8-connected group of edge tiles; a point stands on the walkable tile 4-next to one):
-  wall    DS1 wall tiles (not the low fence and shore kinds below)
-  fence   tiles whose every layer draws a fence, palisade, picket, stone wall or graveyard DT1 (pd2_coverage.low_edge)
-  shore   the other low_edge tiles: river banks, pools, swamp, ponds, puddles
-  water   blocked floor tiles (water, and the ground past a map's edge walls) next to walkable floor
-  ring    for a DS1 that draws trees: the tiles 4-next to and outside pd2_painter.playable (the border ring)
-Floor types: `floor:<stem>`, the walkable tiles whose first floor tile is in DT1 `<stem>`, interior ones first.
+Edge types are pd2_fidelity.classify's (the score types, #747; a run is a 8-connected group of edge tiles; a point stands on
+the walkable tile 4-next to one):
+  wall, cliff, fence, pillar, treeline   a wall layer of the DS1 (its DT1's name and orientation)
+  water   a water or lava edge wall layer, and a blocked liquid floor tile next to non-liquid floor
+Floor types: `floor:<stem>`, the walkable tiles whose first floor tile is in the PD2 DT1 `<stem>` (not its D2R stand-in),
+interior ones first.
 
 A point's command is `cheat goto <levelId>,<x>,<y>` with x = OffsetX*5 + tileX*5 + 2 (y alike), OffsetX/OffsetY the
 level's row in the merged levels.txt (generated/data/global/excel/). A map whose preset lists several DS1 rolls one per
@@ -18,20 +17,31 @@ game: the plan covers each, named by DS1, and the shot lands on the wanted tiles
 
     py -3 tools/pd2_edge_tour.py list  --map "Torture Halls" [--type wall] [--points 4]
     py -3 tools/pd2_edge_tour.py shoot --slot 7 --map "Torture Halls" --type wall [--points 4]
+    py -3 tools/pd2_edge_tour.py sweep --map jungle1 [--map ...] [--slots 4,5] [--points 10]
 
 `list` needs the merged data (pd2_merge.py) and D2R's tiles in modkit's cache (like pd2_coverage.py). `shoot` needs the
 slot locked and its game running in a game (Hell, level 90+); see docs/agents/game-slots.md. It reuses d2rAI-toolkit's
 testing/game_ctl.py for the console, keys and window screenshots, and writes <out>/edge-tour/<map>/<name>.png: HD on
-the left, legacy on the right. Not done: weighting the points by the fidelity scores' worst tiles.
+the left, legacy on the right.
+
+`sweep` (#840) shoots every variant (each DS1 of the PD2-only maps, or those matching --map) with no manual step:
+it shards the variants over the free slots (one thread per slot, always leaving --keep-free slots unlocked), and per
+variant stops the game, pins the DS1 (pd2_force_ds1), starts, clicks through Play and Hell, sets the cheats and shoots
+about --points pairs: the warp list's centre and waypoint (docs/agents/warp-locations.md), then edge and floor points
+(plan, until pd2_parity's defect-driven points exist). Each click waits for a screenshot that is not black. The result is
+<out>/<map>/<ds1>.jpg (a contact sheet with luma and black share), <out>/sweep.json, and the PNG pairs are pruned. Each
+slot is locked and unlocked, its pin reset and `g` pressed back in a `finally`.
 """
 from __future__ import annotations
 
 import argparse
-import dataclasses
+import json
 import math
 import os
 import re
+import shutil
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,17 +49,17 @@ from pathlib import Path
 import pd2_coverage as coverage
 import pd2_painter as painter
 import pd2_presets as presets
+from pd2_fidelity import EDGES, classify
 from pd2_ids import Table, excel, load, toolkit
 from pd2_levels import col
 
 ROOT = Path(__file__).resolve().parent.parent
 Tile = tuple[int, int]
 
-FENCE = re.compile(r"fence|palisade|picket|stonewall|graveyrd")  # the low_edge DT1 kinds that are a fence
-EDGES = ("wall", "fence", "shore", "water", "ring")
 AROUND = [(i, j) for i in (-1, 0, 1) for j in (-1, 0, 1) if i or j]
 SETTLE = 3.0  # seconds after a warp before the HD shot (the level loads; a same-level warp is quick)
 TOGGLE = 1.5  # seconds after `g` before the shot
+WARP_DOC = ROOT / "docs" / "agents" / "warp-locations.md"
 
 
 # ---------------------------------------------------------------------------------------------------- warp points
@@ -102,20 +112,20 @@ def spread(tiles: list[Tile], k: int) -> list[Tile]:
     return picked
 
 
-def edge_tiles(lay: presets.Layout, wet: frozenset = frozenset()) -> dict[str, set[Tile]]:
-    """The edge tiles of each type (EDGES) that have walkable floor 4-next to them."""
+def edge_tiles(lay: presets.Layout) -> dict[str, set[Tile]]:
+    """The edge tiles of each type (pd2_fidelity.EDGES, by classify) that have walkable floor 4-next to them. `lay` names
+    the PD2 DT1s (no stand-ins)."""
     walk = presets.walkable(lay)
-    low = {c for c in lay.keys if coverage.low_edge(lay.keys[c])}
-    found = {
-        "wall": {c for c, k in lay.keys.items() if k[0] == "w"} - low,
-        "fence": {c for c in low if any(FENCE.search((t[0] or "").rsplit("/", 1)[-1]) for t in lay.keys[c][1])},
-    }
-    found["shore"] = low - found["fence"]
-    found["water"] = {c for c, k in lay.keys.items() if k[0] == "f" and painter.blocked_floor(lay.flags.get(c, bytes(25)))
-                      and c not in low}
-    if presets.draws_trees(lay):
-        play = painter.playable(lay, wet)
-        found["ring"] = ({(x + dx, y + dy) for x, y in play for dx, dy in painter.STEPS} - play) & set(lay.keys)
+    found: dict[str, set[Tile]] = {e: set() for e in EDGES}
+    liquid = set()
+    for c, (kind, tiles) in lay.keys.items():
+        for t in tiles:
+            if kind == "w" and (k := classify(t[0], t[1], "wall")) in found:
+                found[k].add(c)
+            elif kind == "f" and classify(t[0], 0, "floor", painter.blocked_floor(lay.flags.get(c, bytes(25)))) == "liquid":
+                liquid.add(c)
+    found["water"] |= {c for c in liquid if any(n in lay.keys and n not in liquid for n in
+                                                ((c[0] + dx, c[1] + dy) for dx, dy in painter.STEPS))}
     return {k: {c for c in v if any((c[0] + dx, c[1] + dy) in walk for dx, dy in painter.STEPS)}
             for k, v in found.items()}
 
@@ -127,7 +137,7 @@ def stands(lay: presets.Layout, run: list[Tile]) -> list[Tile]:
 
 
 def floor_types(lay: presets.Layout) -> dict[str, list[Tile]]:
-    """`floor:<DT1 stem>` -> the walkable tiles drawing it, those with only same-type neighbours first."""
+    """`floor:<PD2 DT1 stem>` -> the walkable tiles drawing it, those with only same-type neighbours first."""
     walk, by = presets.walkable(lay), {}
     for c in sorted(walk):
         by.setdefault((lay.keys[c][1][0][0] or "none").rsplit("/", 1)[-1].removesuffix(".dt1"), set()).add(c)
@@ -166,9 +176,9 @@ class Point:
 
 
 def plan(lay: presets.Layout, map_: str, ds1: str, level: int, offset: tuple[int, int], types: list[str] | None = None,
-         n: int = 4, wet: frozenset = frozenset()) -> list[Point]:
+         n: int = 4) -> list[Point]:
     """The warp points of one DS1: up to n per wanted type (default: every edge type and floor type the DS1 has)."""
-    edges = edge_tiles(lay, wet)
+    edges = edge_tiles(lay)
     groups = {t: [stands(lay, run) for run in components(edges[t])] for t in EDGES if edges.get(t)}
     groups = {t: [g for g in gs if g] for t, gs in groups.items()}
     groups |= {t: [c] for t, c in floor_types(lay).items()}
@@ -211,18 +221,24 @@ def select(found: list[Map], wanted: str) -> list[Map]:
 
 def plan_all(out_data: Path, d2r_data: Path, wanted: str, types: list[str] | None, n: int) -> list[Point]:
     lv = offsets(out_data)
-    _, standins, water = presets.read_rule(ROOT / "merge" / "presets-hd.tsv")
     tiles, pd2_tiles = presets.Tiles(d2r_data / "global" / "tiles"), presets.Tiles(out_data / "global" / "tiles")
     out = []
     for m in select(maps(out_data, d2r_data), wanted):
         lay = presets.layout((out_data / "global" / "tiles" / m.ds1).read_bytes(),
-                             presets.stand_in(m.files, tiles, pd2_tiles, standins))
+                             {p: pd2_tiles[p] or tiles[p] for p in m.files})  # PD2's DT1s, else D2R's own
         _, ox, oy = lv[m.level]
-        out += plan(lay, m.name, Path(m.ds1).stem, m.level, (ox, oy), types, n, frozenset(water))
+        out += plan(lay, m.name, Path(m.ds1).stem, m.level, (ox, oy), types, n)
     return out
 
 
 # ---------------------------------------------------------------------------------------------------- the game slot
+
+PLAY = (0.394, 0.898)  # the character screen's Play button (fractions of the client area, 1920x1080)
+HELL = (0.5, 0.543)  # the difficulty popup's Hell button
+MIN_LUMA = 10.0  # a screenshot whose mean grey is below this is a loading screen or black, not a menu
+NO_LEGACY = ("poisonedwell",)  # `g` hangs the game on these (#772): HD only, the legacy half stays blank
+CHEATS = ("cheat nogethit 1", "cheat god 1", "cheat speedup 300", "cheat stat item_lightradius, 25")
+
 
 def side_by_side(left, right):
     """One toolkit Image holding two of the same size, `left` on the left."""
@@ -234,11 +250,40 @@ def side_by_side(left, right):
     return Image(2 * w, left.height, b"".join(rows))
 
 
-def shoot(points: list[Point], slot: int, out: Path, settle: float = SETTLE, log=print) -> list[Path]:
-    """Warp to each point on a locked slot whose game is in a game, and save the HD|legacy pair. Leaves the game in HD."""
+def blank_like(img):
+    """A mid-grey Image of the size of `img` (the legacy half of a pair that cannot be shot)."""
+    from game_ctl import Image
+    return Image(img.width, img.height, bytes([60]) * (img.width * img.height * 3))
+
+
+def load_game_ctl():
     sys.path.insert(0, str(toolkit(ROOT) / "testing"))
     import game_ctl
     import testing_config as tc
+    return game_ctl, tc
+
+
+def pair(game, settle: float, legacy: bool = True):
+    """The (HD, legacy) screenshots at the current spot. `g` is pressed back whatever happens to the legacy shot (#795)."""
+    time.sleep(settle)
+    hd = game.screenshot()
+    if not legacy:
+        return hd, blank_like(hd)
+    pressed = False
+    try:
+        game.key("g")
+        pressed = True
+        time.sleep(TOGGLE)
+        return hd, game.screenshot()
+    finally:
+        if pressed:
+            game.key("g")
+            time.sleep(TOGGLE)
+
+
+def shoot(points: list[Point], slot: int, out: Path, settle: float = SETTLE, log=print) -> list[Path]:
+    """Warp to each point on a locked slot whose game is in a game, and save the HD|legacy pair. Leaves the game in HD."""
+    game_ctl, tc = load_game_ctl()
     game = game_ctl.Game(tc.load(None), slot, os.environ.get("MODKIT_RUN"))
     if not game.is_running():
         raise SystemExit(f"slot {slot}: the game is not running (game_ctl.py --slot {slot} start, then enter a game)")
@@ -249,13 +294,7 @@ def shoot(points: list[Point], slot: int, out: Path, settle: float = SETTLE, log
         if not game.console(p.command):
             log(f"skip {p.name}: the console did not take {p.command!r}")
             continue
-        time.sleep(settle)
-        hd = game.screenshot()
-        game.key("g")
-        time.sleep(TOGGLE)
-        legacy = game.screenshot()
-        game.key("g")
-        time.sleep(TOGGLE)
+        hd, legacy = pair(game, settle)
         if game_ctl.signature_distance(hd.signature(), legacy.signature()) == 0:
             log(f"warning {p.name}: HD and legacy shots are identical (is `g` toggling? is the game in HD?)")
         path = out / p.map.lower().replace(" ", "-") / f"{p.name}.png"
@@ -264,24 +303,240 @@ def shoot(points: list[Point], slot: int, out: Path, settle: float = SETTLE, log
     return saved
 
 
+# ---------------------------------------------------------------------------------------------------- the sweep
+
+def parse_warps(text: str) -> dict[str, list[tuple[str, tuple[int, int] | None, str]]]:
+    """docs/agents/warp-locations.md -> DS1 stem (lower case) -> [(label, DS1 tile or None, `cheat goto` line)] of the
+    reference spots that stand on walkable floor: the walkable tile nearest the centre (else the centre, which is
+    walkable when no 'nearest' line follows it), the waypoint, and the level entry."""
+    out: dict[str, list] = {}
+    cur = None
+    for line in text.splitlines():
+        if m := re.match(r"- \*\*(\S+?)\.ds1\*\*", line, re.I):
+            cur = out.setdefault(m[1].lower(), [])
+        elif cur is not None and (m := re.match(r"\s+- (.+?)(?: \(tile (\d+),(\d+)\))?: `(cheat goto [^`]+)`", line)):
+            label, x, y, cmd = m.groups()
+            cur.append((label, (int(x), int(y)) if x else None, cmd))
+        elif line.startswith("#"):
+            cur = None
+    keep = {}
+    for ds1, rows in out.items():
+        has_near = any(r[0].startswith("nearest walkable") for r in rows)
+        keep[ds1] = [r for r in rows if r[0].startswith("nearest walkable") or (r[0] == "centre" and not has_near)
+                     or r[0] == "waypoint" or r[0] == "entry"]
+    return keep
+
+
+def variant_points(warps: list, edge_points: list[Point], m: Map, n: int) -> list[Point]:
+    """About n points: up to two warp-list references (centre-ish, waypoint), then one point per edge or floor type in
+    turn (the plan's order: edges first), spread by `pick`. Defect-driven points (pd2_parity) will replace the plan's."""
+    refs = [Point(m.name, Path(m.ds1).stem, m.level, "ref-" + re.sub(r"\W+", "-", lab.split(" (")[0]), t or (0, 0), cmd)
+            for lab, t, cmd in warps if lab != "entry"][:2]
+    if not refs and warps:
+        refs = [Point(m.name, Path(m.ds1).stem, m.level, "ref-entry", (0, 0), warps[-1][2])]
+    by: dict[str, list[Point]] = {}
+    for p in edge_points:
+        by.setdefault(p.type, []).append(p)
+    rest = []
+    for r in range(max((len(v) for v in by.values()), default=0)):
+        rest += [v[r] for v in by.values() if r < len(v)]
+    return (refs + rest)[:n]
+
+
+def sweep_variants(data: Path, d2r: Path, wanted: list[str], n: int) -> list[tuple[Map, list[Point]]]:
+    """Every variant matching a --map (all when none), with its points."""
+    warps = parse_warps(WARP_DOC.read_text("utf-8"))
+    found = maps(data, d2r)
+    chosen = [m for m in found if not wanted or any(select([m], w) for w in wanted)]
+    out = []
+    for m in chosen:
+        plan_pts = plan_all(data, d2r, Path(m.ds1).stem, None, 2)
+        plan_pts = [p for p in plan_pts if p.ds1 == Path(m.ds1).stem]
+        out.append((m, variant_points(warps.get(Path(m.ds1).stem.lower(), []), plan_pts, m, n)))
+    return out
+
+
+def mean_luma(img) -> float:
+    """The mean grey of a toolkit Image, from a 64x36 thumbnail (the toolkit's own stats() walks every pixel in Python)."""
+    from PIL import Image
+    thumb = Image.frombytes("RGB", (img.width, img.height), img.rgb).convert("L").resize((64, 36))
+    return sum(thumb.tobytes()) / (64 * 36)
+
+
+def wait_lit(game, timeout: float = 60.0, what: str = "the game") -> None:
+    """Wait for a screenshot that is not black (the luma check before a click)."""
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        try:
+            if mean_luma(game.screenshot()) >= MIN_LUMA:
+                time.sleep(1.0)
+                return
+        except Exception:  # the window is not there yet
+            pass
+        time.sleep(1.0)
+    raise TimeoutError(f"{what}: the screen stayed black for {timeout:g} s")
+
+
+def enter_hell(game, timeout: float = 90.0, log=print) -> None:
+    """From the started game's character screen into a Hell game: Play, Hell, then wait for the console to answer."""
+    wait_lit(game, 90, "character screen")
+    game.click(*PLAY)
+    time.sleep(2.0)
+    wait_lit(game, 30, "difficulty popup")
+    game.click(*HELL)
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        time.sleep(2.0)
+        try:
+            if game.console("cheat nogethit 1", timeout=3):
+                return
+        except Exception:
+            pass
+    raise TimeoutError(f"no Hell game after {timeout:g} s")
+
+
+def shoot_variant(game, m: Map, points: list[Point], out: Path, settle: float, log=print) -> list[Path]:
+    """Cheats, then the HD|legacy pair of each point; the first warp gets a longer settle (the level loads)."""
+    for c in CHEATS:
+        game.console(c)
+    legacy_ok = Path(m.ds1).stem.lower() not in NO_LEGACY
+    saved = []
+    for i, p in enumerate(points):
+        if not game.console(p.command):
+            log(f"skip {p.name}: the console did not take {p.command!r}")
+            continue
+        game.console("cheat killmonster")
+        hd, legacy = pair(game, settle + (4.0 if i == 0 else 0.0), legacy_ok)
+        saved.append(Path(side_by_side(hd, legacy).save(str(out / f"{i:02d}_{p.name}.png"))))
+    return saved
+
+
+def finish_sheet(folder: Path, dest: Path, log=print) -> list[dict]:
+    """The JPEG sheet of the pairs in `folder`, their metrics, and the PNGs pruned."""
+    import contact_sheet
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for name, m in contact_sheet.sheet(folder, dest):
+        rows.append({"point": name, "luma_hd": round(m["hd"][0], 1), "luma_legacy": round(m["legacy"][0], 1),
+                     "luma_ratio": round(m["ratio"], 3), "black_hd": round(m["hd"][1], 3),
+                     "black_legacy": round(m["legacy"][1], 3)})
+    shutil.rmtree(folder, ignore_errors=True)
+    return rows
+
+
+def run_slot(slot: int, jobs: list[tuple[Map, list[Point]]], out: Path, owner: str, settle: float, results: list,
+             log=print) -> None:
+    """One slot's share of the sweep. Locks the slot, and in a `finally` stops the game, resets the pin and unlocks."""
+    import game_slots
+    import pd2_force_ds1 as force
+    game_ctl, tc = load_game_ctl()
+    cfg = tc.load(None)
+    ok, msg = game_slots.acquire(cfg, slot, owner, pid=0)  # a manual lock: released below, whatever happens
+    log(f"slot {slot}: {msg}")
+    if not ok:
+        return
+    game = game_ctl.Game(cfg, slot, owner, log=lambda *a: None)
+    try:
+        for m, points in jobs:
+            stem, t0 = Path(m.ds1).stem, time.monotonic()
+            row = {"map": m.name, "ds1": stem, "slot": slot, "points": len(points)}
+            folder = out / "_pairs" / f"slot{slot}" / stem
+            folder.mkdir(parents=True, exist_ok=True)
+            try:
+                game.stop()
+                game_slots.acquire(cfg, slot, owner, pid=0)  # stop() releases a non-manual lock only
+                log("slot %d: %s: %s" % (slot, stem, force.apply(force.lvlprest_path(slot), [Path(m.ds1).name])[0]))
+                game.start()
+                enter_hell(game)
+                shot = shoot_variant(game, m, points, folder, settle, log)
+                row["pairs"] = len(shot)
+                row["metrics"] = finish_sheet(folder, out / m.name.lower().replace(" ", "-") / f"{stem}.jpg", log)
+                row["sheet"] = f"{m.name.lower().replace(' ', '-')}/{stem}.jpg"
+            except Exception as e:  # one variant failing must not stop the slot's others
+                row["error"] = f"{type(e).__name__}: {e}"
+                log(f"slot {slot}: {stem} failed: {row['error']}")
+            row["seconds"] = round(time.monotonic() - t0, 1)
+            log(f"slot {slot}: {stem}: {row.get('pairs', 0)} pairs in {row['seconds']} s")
+            results.append(row)
+    finally:
+        try:
+            game.stop()
+        finally:
+            try:
+                force.reset(force.lvlprest_path(slot))
+            except Exception as e:
+                log(f"slot {slot}: pin not reset: {e}")
+            log(f"slot {slot}: " + game_slots.release(cfg, slot, owner, manual=True)[1])
+
+
+def free_slots(cfg, candidates: list[int], keep_free: int) -> list[int]:
+    """The free slots among the candidates, minus `keep_free` of them left unlocked (other work needs one)."""
+    import game_slots
+    free = [s for s in candidates if game_slots.lock_info(cfg, s) is None and not game_slots.slot_processes(cfg, s)]
+    return free[:max(0, len(free) - max(0, keep_free))]
+
+
+def sweep(variants: list[tuple[Map, list[Point]]], slots: list[int], out: Path, settle: float = SETTLE, log=print) -> list[dict]:
+    """Shard the variants over the slots (one thread each), write <out>/sweep.json and return its rows."""
+    owner = "sweep-840"
+    os.environ["MODKIT_RUN"] = owner
+    results: list[dict] = []
+    shares = [variants[i::len(slots)] for i in range(len(slots))]
+    threads = [threading.Thread(target=run_slot, args=(s, share, out, owner, settle, results, log), name=f"slot{s}")
+               for s, share in zip(slots, shares) if share]
+    t0 = time.monotonic()
+    try:
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    finally:
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "sweep.json").write_text(json.dumps(
+            {"slots": slots, "seconds": round(time.monotonic() - t0, 1), "variants": sorted(results, key=lambda r: r["ds1"])},
+            indent=1), "utf-8")
+        shutil.rmtree(out / "_pairs", ignore_errors=True)
+    return results
+
+
 # ---------------------------------------------------------------------------------------------------- command line
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=("list", "shoot"))
-    ap.add_argument("--map", default="", help="a PD2-only preset name or DS1 stem, or part of one (default: all)")
+    ap.add_argument("cmd", choices=("list", "shoot", "sweep"))
+    ap.add_argument("--map", action="append", default=[], help="a PD2-only preset name or DS1 stem, or part of one "
+                    "(repeatable; default: all; sweep takes several)")
     ap.add_argument("--type", action="append", default=[], help=f"edge type ({', '.join(EDGES)}), `floor` for every "
                     "floor type or `floor:<stem>` (repeatable; default: all)")
-    ap.add_argument("--points", type=int, default=4, help="points per type and DS1 (default 4)")
+    ap.add_argument("--points", type=int, default=None, help="points per type and DS1 (default 4); sweep: points per "
+                    "variant (default 10)")
     ap.add_argument("--data", type=Path, default=ROOT / "generated" / "data", help="merged data (pd2_merge's generated/data)")
     ap.add_argument("--d2r", type=Path, default=coverage.D2R_DATA, help="D2R data root")
-    ap.add_argument("--out", type=Path, default=ROOT / "out" / "edge-tour", help="where `shoot` writes the pairs")
+    ap.add_argument("--out", type=Path, default=None, help="where `shoot` (out/edge-tour) and `sweep` (coverage/sweep) write")
     ap.add_argument("--slot", type=int, help="shoot: the locked slot, its game running in a game")
-    ap.add_argument("--settle", type=float, default=SETTLE, help="shoot: seconds to wait after each warp")
+    ap.add_argument("--slots", default="4,5,6,7,8", help="sweep: the slots it may use (free ones only)")
+    ap.add_argument("--keep-free", type=int, default=1, help="sweep: slots of --slots to leave unlocked for other work")
+    ap.add_argument("--settle", type=float, default=SETTLE, help="seconds to wait after each warp")
     a = ap.parse_args(argv)
-    points = plan_all(a.data, a.d2r, a.map, a.type, a.points)
+    if a.cmd == "sweep":
+        variants = [v for v in sweep_variants(a.data, a.d2r, a.map, a.points or 10) if v[1]]
+        if not variants:
+            print(f"no variants for {a.map or 'all maps'}")
+            return 1
+        game_ctl, tc = load_game_ctl()
+        slots = free_slots(tc.load(None), [int(s) for s in a.slots.split(",")], a.keep_free)
+        if not slots:
+            print("no free slot to sweep on (the others are locked or running, or --keep-free leaves none)")
+            return 1
+        out = a.out or ROOT / "coverage" / "sweep"
+        print(f"{len(variants)} variants on slots {slots}")
+        rows = sweep(variants, slots, out, a.settle)
+        bad = [r for r in rows if "error" in r]
+        print(f"{len(rows) - len(bad)} of {len(rows)} variants shot; sheets and sweep.json under {out}")
+        return 1 if bad or not rows else 0
+    points = plan_all(a.data, a.d2r, a.map[0] if a.map else "", a.type, a.points or 4)
     if not points:
-        print(f"no points for map {a.map!r}, type {a.type or 'any'}")
+        print(f"no points for map {a.map or 'any'!r}, type {a.type or 'any'}")
         return 1
     if a.cmd == "list":
         for p in points:
@@ -289,8 +544,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if a.slot is None:
         ap.error("shoot needs --slot N")
-    saved = shoot(points, a.slot, a.out, a.settle)
-    print(f"{len(saved)} of {len(points)} pairs under {a.out}")
+    saved = shoot(points, a.slot, a.out or ROOT / "out" / "edge-tour", a.settle)
+    print(f"{len(saved)} of {len(points)} pairs under {a.out or ROOT / 'out' / 'edge-tour'}")
     return 0 if saved else 1
 
 

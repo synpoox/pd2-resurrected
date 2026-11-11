@@ -86,7 +86,7 @@ maps (#707), warping instead of walking. Only the maps with a generated HD prese
   (it reads `generated/data` after `pd2_merge.py`, and D2R's tiles from modkit's cache, as `pd2_coverage.py` does): map,
   DS1, type, DS1 tile and the `cheat goto <levelId>,<x>,<y>` line. x = OffsetX*5 + tileX*5 + 2 (y alike), the offsets
   from the merged `levels.txt`.
-- Types: edges `wall`, `fence`, `shore`, `water`, `ring` (the tree border) and floors `floor:<DT1 stem>`. `--type` is
+- Types: the edge types of `pd2_fidelity.classify` (`wall`, `cliff`, `fence`, `pillar`, `water`, `treeline`) and floors `floor:<PD2 DT1 stem>`. `--type` is
   repeatable; `floor` means every floor type. A point stands on walkable floor next to an edge run (longest runs first,
   then the farthest-apart tiles of a run), or on interior floor of its type.
 - `py -3 tools/pd2_edge_tour.py shoot --slot N --map "Torture Halls" --type wall` drives the slot through
@@ -98,4 +98,10 @@ maps (#707), warping instead of walking. Only the maps with a generated HD prese
   game and unlock the slot afterwards.
 - A preset with several DS1 files rolls one per game, and each is in the plan: a shot of another variant than the one
   loaded lands on different tiles (check the `list` line's DS1 against the game's map).
-- Not done: weighting the points by the fidelity scores' worst tiles.
+- `py -3 tools/pd2_edge_tour.py sweep [--map jungle1 ...] [--slots 4,5,6,7,8] [--points 10]` (#840) needs no manual
+  step: per variant it stops the game, pins the DS1, starts, clicks Play and Hell (each after a not-black screenshot),
+  sets the cheats and shoots the warp list's centre and waypoint plus edge and floor points. It uses only free slots,
+  leaves `--keep-free` (1) of them unlocked, and locks and unlocks each slot, resets its pin and presses `g` back in
+  a `finally`. Output: `coverage/sweep/<map>/<ds1>.jpg` (contact sheet, `tools/contact_sheet.py`: luma HD/legacy and
+  black share per pair) and `sweep.json` (seconds per variant); the PNG pairs are deleted. Install a build on the
+  slots first. Poisoned Well is HD only (`g` hangs it, #772). Not done: points from the parity defects (pd2_parity).

@@ -2,16 +2,19 @@
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_edge_tour as T  # noqa: E402
+sys.path.insert(0, str(T.toolkit(T.ROOT) / "testing"))
 import pd2_presets as P  # noqa: E402
 
-WALL = ("w", (("act1/outdoors/cliff.dt1", 1, 0, 0),))
+WALL = ("w", (("act1/outdoors/ruins.dt1", 1, 0, 0),))
 FENCE = ("w", (("act1/outdoors/fence.dt1", 1, 0, 0),))
 SHORE = ("w", (("act1/outdoors/riverbank.dt1", 1, 0, 0),))
 GRASS = ("f", (("act1/outdoors/grass.dt1", 0, 0, 0),))
+WATER = ("f", (("act1/outdoors/water.dt1", 0, 0, 0),))
 DIRT = ("f", (("act1/outdoors/dirt.dt1", 0, 0, 0),))
 OPEN, SHUT = bytes(25), bytes([1] * 25)
 
@@ -78,20 +81,22 @@ class Edges(unittest.TestCase):
         e = T.edge_tiles(hall())
         self.assertEqual(e["wall"], {(x, y) for x in range(1, 11) for y in (0, 7)} | {(11, y) for y in range(1, 7)})
         self.assertEqual(e["fence"], {(0, y) for y in range(1, 7)})
-        self.assertNotIn("ring", e)
+        self.assertEqual(e["cliff"], set())
 
-    def test_fence_and_shore_are_split_by_their_dt1(self):
+    def test_fence_and_water_edge_are_split_by_their_dt1(self):
         keys = {(x, y): GRASS for x in range(6) for y in range(6)}
         keys.update({(0, y): FENCE for y in range(6)} | {(5, y): SHORE for y in range(6)})
         e = T.edge_tiles(lay(keys))
         self.assertEqual(e["fence"], {(0, y) for y in range(6)})
-        self.assertEqual(e["shore"], {(5, y) for y in range(6)})
+        self.assertEqual(e["water"], {(5, y) for y in range(6)})
         self.assertEqual(e["wall"], set())
 
-    def test_water_is_blocked_floor_next_to_walkable_floor(self):
-        keys = {(x, y): GRASS for x in range(6) for y in range(4)}
+    def test_water_is_blocked_liquid_floor_next_to_walkable_floor(self):
+        keys = {(x, y): GRASS for x in range(6) for y in range(1, 4)}
+        keys.update({(x, 0): WATER for x in range(6)})
         e = T.edge_tiles(lay(keys, {(x, 0): SHUT for x in range(6)}))
         self.assertEqual(e["water"], {(x, 0) for x in range(6)})
+        self.assertEqual(T.edge_tiles(lay({c: GRASS for c in keys}, {(x, 0): SHUT for x in range(6)}))["water"], set())
 
     def test_a_stand_is_walkable_and_next_to_the_run(self):
         h = hall()
@@ -109,13 +114,56 @@ class Edges(unittest.TestCase):
             self.assertTrue(all(hall().keys[(c[0] + dx, c[1] + dy)] == DIRT for dx, dy in T.AROUND))
 
 
+WARPS = """## Act 3
+
+### Jungle Map (LevelId 149, lvlprest `Jungle Map`)
+
+- **jungle1.ds1** (pin: `pd2_force_ds1.py --slot <N> "jungle1.ds1"`), 255x255 tiles
+  - centre (tile 127,127): `cheat goto 149,16902,9997`
+  - nearest walkable to centre (tile 133,162): `cheat goto 149,17167,10062`
+  - waypoint (tile 236,237): `cheat goto 149,17682,10437`
+  - monster preset x (tile 1,2): `cheat goto 149,1,2`
+  - entry: `cheat goto 149`
+
+- **Tomb1.ds1**, 10x10 tiles
+  - centre (tile 5,5): `cheat goto 152,5,5`
+  - entry: `cheat goto 152`
+"""
+
+
+class Sweep(unittest.TestCase):
+    def test_warp_doc_keeps_the_walkable_references(self):
+        w = T.parse_warps(WARPS)
+        self.assertEqual([r[0] for r in w["jungle1"]], ["nearest walkable to centre", "waypoint", "entry"])
+        self.assertEqual(w["jungle1"][0][1:], ((133, 162), "cheat goto 149,17167,10062"))
+        self.assertEqual([r[0] for r in w["tomb1"]], ["centre", "entry"])  # no 'nearest' line: the centre is walkable
+
+    def test_variant_points_put_references_first_then_one_per_type(self):
+        m = T.Map("Jungle Map", 149, "expansion/map/jungle1.ds1", [])
+        plan = T.plan(hall(), "Jungle Map", "jungle1", 149, (0, 0), n=3)
+        pts = T.variant_points(T.parse_warps(WARPS)["jungle1"], plan, m, 6)
+        self.assertEqual(len(pts), 6)
+        self.assertEqual([p.type for p in pts[:2]], ["ref-nearest-walkable-to-centre", "ref-waypoint"])
+        self.assertEqual(len({p.type for p in pts[2:]}), 4)  # four different types before a second of one
+        self.assertEqual(T.variant_points([("entry", None, "cheat goto 149")], [], m, 6)[0].command, "cheat goto 149")
+
+    def test_free_slots_leave_keep_free_unlocked(self):
+        try:
+            import game_slots as gs
+        except ImportError:
+            self.skipTest("no d2rAI-toolkit beside the repo")
+        with mock.patch.object(gs, "lock_info", lambda cfg, s: object() if s == 5 else None),                 mock.patch.object(gs, "slot_processes", lambda cfg, s: []):
+            self.assertEqual(T.free_slots(None, [4, 5, 6, 7], 1), [4, 6])
+            self.assertEqual(T.free_slots(None, [4, 5], 2), [])
+
+
 class Plan(unittest.TestCase):
     def test_plan_gives_each_type_up_to_n_points_with_commands(self):
         pts = T.plan(hall(), "Test Map", "hall1", 189, (4000, 2000), n=3)
         by = {}
         for p in pts:
             by.setdefault(p.type, []).append(p)
-        self.assertEqual(set(by), {"wall", "fence", "floor:grass", "floor:dirt"})
+        self.assertEqual(set(by), {"wall", "fence", "floor:grass", "floor:dirt"})  # edges by pd2_fidelity.classify
         self.assertTrue(all(len(v) <= 3 for v in by.values()))
         p = by["fence"][0]
         self.assertEqual(p.command, T.goto(189, (4000, 2000), p.tile))
