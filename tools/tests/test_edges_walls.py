@@ -111,6 +111,10 @@ class RunTests(unittest.TestCase):
         self.assertEqual(self.run_pass(b), [])
 
 
+import pd2_tiles as fid  # noqa: E402
+fid_score = fid.score_type
+
+
 class WallsRuleTests(unittest.TestCase):
     """A `walls:<PD2 DT1>` line (#826): the PD2 DT1's cells take pieces only off stock wall tiles of the D2R DT1."""
     PD2 = ("pd2assets/x.dt1", 1, 0, 0)
@@ -121,7 +125,7 @@ class WallsRuleTests(unittest.TestCase):
     def tile(self, dt1):
         return SimpleNamespace(keys={(2, 2): ("w", ((dt1, 1, 0, 0),))})
 
-    def run_pass(self, walls, kind="wall", own=None, extra=()):
+    def run_pass(self, walls, kind="wall", own=None, extra=(), score=None):
         a, c = self.tile("act2/a/wall.dt1"), self.tile("act2/b/wall.dt1")
         lay = SimpleNamespace(keys={(0, 0): ("w", (self.PD2,))})
         mine = own if own is not None else [(a, self.piece("act2", "wall_low")), (c, self.piece("act2", "wall_low2"))]
@@ -129,11 +133,11 @@ class WallsRuleTests(unittest.TestCase):
         W.CONTEXT["x.ds1"] = ctx(mine + list(extra), lay.keys)
         W.CONTEXT["x.ds1"].legacy, W.CONTEXT["x.ds1"].walls = lay, walls
         try:
-            with mock.patch("pd2_tiles.legacy_edges", return_value=edges(**{kind: {(0, 0): "low"}})),                     mock.patch("pd2_tiles.tile_type", return_value=kind), mock.patch.object(W, "walkable", return_value=set()):
+            with mock.patch("pd2_tiles.legacy_edges", return_value=edges(**{kind: {(0, 0): "low"}})),                     mock.patch("pd2_tiles.tile_type", return_value=kind),                     mock.patch.object(W, "walkable", return_value=set()),                     mock.patch("pd2_tiles.score_type", **({"return_value": score} if score else {"wraps": fid_score})):
                 W.run(b)
         finally:
             W.CONTEXT.pop("x.ds1", None)
-        return [W.model(e).split("/", 5)[-2:] and "/".join(W.model(e).split("/")[-2:]) for e in b.loose]
+        return ["/".join(W.model(e).split("/")[-2:]) for e in b.loose]
 
     def test_the_line_picks_the_piece_off_its_d2r_dt1(self):
         self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act2/b/wall.dt1"}), ["act2/wall_low2.model"])
@@ -157,6 +161,23 @@ class WallsRuleTests(unittest.TestCase):
     def test_a_line_takes_a_piece_of_another_family_when_the_own_stock_has_none(self):
         other = (self.tile("act1/z/wall.dt1"), self.piece("act1", "wall_low"))
         self.assertEqual(self.run_pass({"pd2assets/x.dt1": "act1/z/wall.dt1"}, extra=[other]), ["act1/wall_low.model"])
+
+
+    def test_a_ruled_cell_that_holds_a_cliff_piece_gets_no_wall_stacked(self):
+        line = {"pd2assets/x.dt1": "act2/b/wall.dt1"}
+        score = lambda **k: SimpleNamespace(**{"missing": set(), "wrong_type": set(), "wrong_height": set(), **k})
+        self.assertEqual(self.run_pass(line, "cliff", score=score(missing={(0, 0)})), ["act2/wall_low2.model"])
+        self.assertEqual(self.run_pass(line, "cliff", score=score(wrong_type={(0, 0)})), [])
+
+    def test_a_ruled_cells_class_is_a_walls_not_the_cliffs_always_tall(self):
+        for px, want in ((150, "low"), (300, "tall")):
+            c = ctx()
+            c.legacy = SimpleNamespace(keys={(0, 0): ("w", (self.PD2,))})
+            c.heights = {"pd2assets/x.dt1": {(1, 0, 0): px}}
+            c.walls = {"pd2assets/x.dt1": "act2/b/wall.dt1"}
+            legacy = {}
+            self.assertEqual(W.ruled_cells(c, edges(cliff={(0, 0): "tall"}), legacy), {(0, 0)})
+            self.assertEqual(legacy, {(0, 0): want}, px)
 
 
 class CheckWallsTests(unittest.TestCase):

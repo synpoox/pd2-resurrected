@@ -130,17 +130,20 @@ def plane_ground(preset: dict) -> Ground:
 
 
 def boxes(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
-          base: tuple | None = None, depth: int = 0, ground: Ground | None = None) -> Iterator[Box]:
+          base: tuple | None = None, depth: int = 0, ground: Ground | None = None, meta: bool = False,
+          room: bool = False) -> Iterator[Box]:
     """The world boxes of the entities' models; a prefab's entities are placed by the prefab's transform. With
     `ground`, heights are measured from the ground plane under the entity (a wall on a sunken plane is as tall as one on
     the flat ground; a pasted room's piece, named with ROOM_PIECE, is measured from 0: #742 does not move it); a
-    prefab's entities stand on the plane under the prefab."""
+    prefab's entities stand on the plane under the prefab. With `meta`, each box is followed by its model path (lower
+    case) and whether it is a pasted room's piece (also inside a prefab placed by one): tools/pd2_parity.py (#838)."""
     for e in entities:
         t = presets._transform(e)
         if t is None or e.get("name") == "terrain":
             continue
         p = (t["position"]["x"], t["position"]["y"], t["position"]["z"])
-        g = ground(p[0], p[2]) if ground and not (e.get("name") or "").startswith(presets.ROOM_PIECE) else 0.0  # pasted room: ground 0
+        in_room = room or (e.get("name") or "").startswith(presets.ROOM_PIECE)
+        g = ground(p[0], p[2]) if ground and not in_room else 0.0  # pasted room: ground 0
         q, sc = t.get("orientation") or IDENTITY, t.get("scale") or {"x": 1, "y": 1, "z": 1}
         s = (sc["x"], sc["y"], sc["z"])
         if base:
@@ -152,10 +155,11 @@ def boxes(entities: list[dict], box: Callable[[str], tuple | None], prefab: Call
                 corners = [painter.rotate(q, (x * s[0], y * s[1], z * s[2]))
                            for x in (bb[0], bb[3]) for y in (bb[1], bb[4]) for z in (bb[2], bb[5])]
                 xs, ys, zs = ([p[i] + v[i] for v in corners] for i in range(3))
-                yield min(xs), max(xs), min(zs), max(zs), max(ys) - g, min(ys) - g
+                b = (min(xs), max(xs), min(zs), max(zs), max(ys) - g, min(ys) - g)
+                yield b + (c["filename"].lower(), in_room) if meta else b
             elif c["type"] == "PrefabPlacementDefinitionComponent" and c.get("prefab") and depth < DEPTH:
                 yield from boxes(prefab(c["prefab"]), box, prefab, (p, q, s), depth + 1,
-                                 (lambda x, z: g) if ground else None)
+                                 (lambda x, z: g) if ground else None, meta, in_room)
 
 def footprint(found: Iterator[Box], exclusive: bool = False) -> set[tuple[int, int]]:
     """The tiles under the boxes. `exclusive`: a box ending on a tile edge does not reach the tile past it (a

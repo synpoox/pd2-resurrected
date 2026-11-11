@@ -28,10 +28,10 @@ largest) listed in a "Size budget" section, largest first. Reported, not checked
 
 Changes against the baseline: `--baseline` (`preset <tab> wall % <tab> border % or - <tab> floor %`) holds main's
 scores. The report and <out>/changes.md list each preset whose score moved, a new one, and one no longer scored.
-`--check` fails (exit 1) when a preset's wall, border or floor score drops more than TOLERANCE points below the
+`--check` (which the gate no longer runs, #838) fails (exit 1) when a preset's wall, border or floor score drops more than TOLERANCE points below the
 baseline, or a baselined preset is no longer scored. In CI (#723) each push to main writes its scores
 (`--write-baseline`) as the coverage-baseline artifact, and a PR is checked against the latest one, so PRs never
-commit a baseline; the PR label coverage-drop-ok accepts an intended drop. BASELINE (docs/coverage-baseline.tsv) is
+commit a baseline; the gate no longer fails on coverage (#838: tools/pd2_parity.py gates, label parity-drop-ok). BASELINE (docs/coverage-baseline.tsv) is
 a snapshot for local runs and CI's fallback when main has no artifact; don't update it in a PR.
 Needs model_lod_desc.bin in modkit's cache, else it skips:
 `python -m modkit fetch --prefix data/hd/model_lod_desc.bin`.
@@ -72,7 +72,7 @@ BASELINE = ROOT / "docs" / "coverage-baseline.tsv"
 COVERAGE_OUT = ROOT / "coverage"  # not under out/: install.ps1 (modkit build) cleans that (#801)
 # The one place for the gate's limits. A score (coverage wall, border, floor; fidelity score and spacing, per map and
 # type) may fall up to TOLERANCE percentage points below main's and still pass `--check`: the drop is listed, marked
-# "within tolerance". A fall past it, or a score no longer scored, fails (the PR label coverage-drop-ok accepts it).
+# "within tolerance". A fall past it, or a score no longer scored, fails `--check`, which the gate no longer runs: coverage is information only (#838).
 # Why 3, from the drops of #775, #781 and #753: the artefacts (a legitimate change to one piece moves a neighbour's
 # tile: fallengardens treeline spacing -1.1 in #775, wall spacing -1.3 to -2.9 and fortress border -1.1 to -1.6 in
 # #781, pillar spacing -2.0 to -2.4 in #753) ran -1.1 to -2.9; the real regressions ran from -3.6 (throne2 pillar
@@ -300,7 +300,7 @@ def changes_md(found: list[Change], tolerance: float = TOLERANCE) -> str:
     inside = sum(c.within for c in found)
     lines += [f"{len(found)} presets changed; {drops} dropped by more than the {tolerance:g}-point tolerance or are "
               "no longer scored"
-              + (" (accept an intended drop: label the PR `coverage-drop-ok`)" if drops else "")
+              + (" (information only: the gate is the parity score, tools/pd2_parity.py)" if drops else "")
               + (f"; {inside} fell within the tolerance" if inside else "") + ".",
               "", "| Preset | Wall | Border | Floor | |", "|---|---|---|---|---|"]
     lines += [f"| {c.name} | {cell(*c.wall)} | {cell(*c.border)} | {cell(*c.floor)} | {'**drop**' if c.drop else 'within tolerance' if c.within else ''} |"
