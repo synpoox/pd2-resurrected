@@ -1,0 +1,1185 @@
+{
+ "lava_curve01": {
+  "box": [
+   -17.718,
+   -5.154,
+   -15.202,
+   20.667,
+   1.348,
+   22.567
+  ],
+  "dependencies": {
+   "models": [
+    {
+     "path": "data/hd/env/model/act4/lava/act4_lava_edges_corners/edge_curve01.model"
+    }
+   ],
+   "textures": [
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_orm.texture"
+    }
+   ]
+  },
+  "entity": {
+   "components": [
+    {
+     "inheritOnlyPosition": false,
+     "name": "edge_curve01_02_components_TransformDefinitionComponent",
+     "orientation": {
+      "w": 1.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "scale": {
+      "x": 1.0,
+      "y": 1.0,
+      "z": 1.0
+     },
+     "type": "TransformDefinitionComponent"
+    },
+    {
+     "filename": "data/hd/env/model/act4/lava/act4_lava_edges_corners/edge_curve01.model",
+     "floorModel": true,
+     "ghostShadows": false,
+     "lightMask": 19,
+     "name": "edge_curve01_ModelDefinition",
+     "shadowMask": 3,
+     "terrainBlendEnableYUpBlend": true,
+     "terrainBlendMode": 1,
+     "type": "ModelDefinitionComponent",
+     "visibleLayers": 1
+    }
+   ],
+   "name": "pd2r_liquid_edge",
+   "type": "Entity"
+  }
+ },
+ "lava_curve02": {
+  "box": [
+   -15.808,
+   -3.902,
+   -16.425,
+   19.55,
+   1.59,
+   17.274
+  ],
+  "dependencies": {
+   "models": [
+    {
+     "path": "data/hd/env/model/act4/lava/act4_lava_edges_corners/edge_curve02.model"
+    }
+   ],
+   "textures": [
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_orm.texture"
+    }
+   ]
+  },
+  "entity": {
+   "components": [
+    {
+     "inheritOnlyPosition": false,
+     "name": "edge_curve02_01_components_TransformDefinitionComponent",
+     "orientation": {
+      "w": 1.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "scale": {
+      "x": 1.0,
+      "y": 1.0,
+      "z": 1.0
+     },
+     "type": "TransformDefinitionComponent"
+    },
+    {
+     "filename": "data/hd/env/model/act4/lava/act4_lava_edges_corners/edge_curve02.model",
+     "floorModel": true,
+     "ghostShadows": false,
+     "lightMask": 19,
+     "name": "edge_curve02_ModelDefinition",
+     "shadowMask": 3,
+     "terrainBlendEnableYUpBlend": true,
+     "terrainBlendMode": 1,
+     "type": "ModelDefinitionComponent",
+     "visibleLayers": 1
+    }
+   ],
+   "name": "pd2r_liquid_edge",
+   "type": "Entity"
+  }
+ },
+ "lava_curve03": {
+  "box": [
+   -14.816,
+   -3.856,
+   -13.578,
+   18.15,
+   1.458,
+   14.843
+  ],
+  "dependencies": {
+   "models": [
+    {
+     "path": "data/hd/env/model/act4/lava/act4_lava_edges_corners/edge_curve03.model"
+    }
+   ],
+   "textures": [
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_orm.texture"
+    }
+   ]
+  },
+  "entity": {
+   "components": [
+    {
+     "inheritOnlyPosition": false,
+     "name": "edge_curve03_01_components_TransformDefinitionComponent",
+     "orientation": {
+      "w": 1.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "scale": {
+      "x": 1.0,
+      "y": 1.0,
+      "z": 1.0
+     },
+     "type": "TransformDefinitionComponent"
+    },
+    {
+     "filename": "data/hd/env/model/act4/lava/act4_lava_edges_corners/edge_curve03.model",
+     "floorModel": true,
+     "ghostShadows": false,
+     "lightMask": 19,
+     "name": "edge_curve03_ModelDefinition",
+     "shadowMask": 3,
+     "terrainBlendEnableYUpBlend": true,
+     "terrainBlendMode": 1,
+     "type": "ModelDefinitionComponent",
+     "visibleLayers": 1
+    }
+   ],
+   "name": "pd2r_liquid_edge",
+   "type": "Entity"
+  }
+ },
+ "lava_small01": {
+  "box": [
+   -15.814,
+   -4.084,
+   -21.568,
+   9.313,
+   1.285,
+   23.557
+  ],
+  "dependencies": {
+   "models": [
+    {
+     "path": "data/hd/env/model/act4/lava/act4_lava_edge_straight/edge_small01.model"
+    }
+   ],
+   "textures": [
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_orm.texture"
+    }
+   ]
+  },
+  "entity": {
+   "components": [
+    {
+     "inheritOnlyPosition": false,
+     "name": "edge_small01_01_TransformDefinitionComponent",
+     "orientation": {
+      "w": 1.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "scale": {
+      "x": 1.0,
+      "y": 1.0,
+      "z": 1.0
+     },
+     "type": "TransformDefinitionComponent"
+    },
+    {
+     "filename": "data/hd/env/model/act4/lava/act4_lava_edge_straight/edge_small01.model",
+     "floorModel": true,
+     "ghostShadows": false,
+     "lightMask": 19,
+     "name": "edge_small01_ModelDefinition",
+     "shadowMask": 3,
+     "terrainBlendEnableYUpBlend": true,
+     "terrainBlendMode": 1,
+     "type": "ModelDefinitionComponent",
+     "visibleLayers": 1
+    }
+   ],
+   "name": "pd2r_liquid_edge",
+   "type": "Entity"
+  }
+ },
+ "lava_small02": {
+  "box": [
+   -21.023,
+   -3.849,
+   -17.02,
+   22.531,
+   1.362,
+   6.451
+  ],
+  "dependencies": {
+   "models": [
+    {
+     "path": "data/hd/env/model/act4/lava/act4_lava_edge_straight/edge_small02.model"
+    }
+   ],
+   "textures": [
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_orm.texture"
+    }
+   ]
+  },
+  "entity": {
+   "components": [
+    {
+     "inheritOnlyPosition": false,
+     "name": "edge_small02_06_components_TransformDefinitionComponent",
+     "orientation": {
+      "w": 1.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "scale": {
+      "x": 1.0,
+      "y": 1.0,
+      "z": 1.0
+     },
+     "type": "TransformDefinitionComponent"
+    },
+    {
+     "filename": "data/hd/env/model/act4/lava/act4_lava_edge_straight/edge_small02.model",
+     "floorModel": true,
+     "ghostShadows": false,
+     "lightMask": 19,
+     "name": "edge_small02_ModelDefinition",
+     "shadowMask": 3,
+     "terrainBlendEnableYUpBlend": true,
+     "terrainBlendMode": 1,
+     "type": "ModelDefinitionComponent",
+     "visibleLayers": 1
+    }
+   ],
+   "name": "pd2r_liquid_edge",
+   "type": "Entity"
+  }
+ },
+ "lava_small03": {
+  "box": [
+   -22.162,
+   -4.331,
+   -13.983,
+   23.101,
+   1.253,
+   15.492
+  ],
+  "dependencies": {
+   "models": [
+    {
+     "path": "data/hd/env/model/act4/lava/act4_lava_edge_straight/edge_small03.model"
+    }
+   ],
+   "textures": [
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_orm.texture"
+    }
+   ]
+  },
+  "entity": {
+   "components": [
+    {
+     "inheritOnlyPosition": false,
+     "name": "edge_small03_01_components_TransformDefinitionComponent",
+     "orientation": {
+      "w": 1.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "scale": {
+      "x": 1.0,
+      "y": 1.0,
+      "z": 1.0
+     },
+     "type": "TransformDefinitionComponent"
+    },
+    {
+     "filename": "data/hd/env/model/act4/lava/act4_lava_edge_straight/edge_small03.model",
+     "floorModel": true,
+     "ghostShadows": false,
+     "lightMask": 19,
+     "name": "edge_small03_ModelDefinition",
+     "shadowMask": 3,
+     "terrainBlendEnableYUpBlend": true,
+     "terrainBlendMode": 1,
+     "type": "ModelDefinitionComponent",
+     "visibleLayers": 1
+    }
+   ],
+   "name": "pd2r_liquid_edge",
+   "type": "Entity"
+  }
+ },
+ "lava_small04": {
+  "box": [
+   -4.907,
+   -3.848,
+   -22.305,
+   26.014,
+   1.509,
+   24.351
+  ],
+  "dependencies": {
+   "models": [
+    {
+     "path": "data/hd/env/model/act4/lava/act4_lava_edge_straight/edge_small04.model"
+    }
+   ],
+   "textures": [
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_a_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_b_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_c_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_d_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_e_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_f_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_g_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_h_orm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_alb.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_nrm.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act4/lava/act4_lava_lava_edges_i_orm.texture"
+    }
+   ]
+  },
+  "entity": {
+   "components": [
+    {
+     "inheritOnlyPosition": false,
+     "name": "edge_small04_04_components_TransformDefinitionComponent",
+     "orientation": {
+      "w": 1.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "scale": {
+      "x": 1.0,
+      "y": 1.0,
+      "z": 1.0
+     },
+     "type": "TransformDefinitionComponent"
+    },
+    {
+     "filename": "data/hd/env/model/act4/lava/act4_lava_edge_straight/edge_small04.model",
+     "floorModel": true,
+     "ghostShadows": false,
+     "lightMask": 19,
+     "name": "edge_small04_ModelDefinition",
+     "shadowMask": 3,
+     "terrainBlendEnableYUpBlend": true,
+     "terrainBlendMode": 1,
+     "type": "ModelDefinitionComponent",
+     "visibleLayers": 1
+    }
+   ],
+   "name": "pd2r_liquid_edge",
+   "type": "Entity"
+  }
+ },
+ "rock_river01": {
+  "box": [
+   -1.38,
+   -0.374,
+   -1.348,
+   1.415,
+   1.162,
+   1.381
+  ],
+  "dependencies": {
+   "models": [
+    {
+     "path": "data/hd/env/model/global/prop/act1/outdoors/act1_outdoors_rocks/rock_river01.model"
+    }
+   ],
+   "textures": [
+    {
+     "path": "data/hd/env/texture/act1/outdoors/act1_outdoors_markers/act1_Stones_dt1_Rocks_01_ALB.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act1/outdoors/act1_outdoors_markers/act1_Stones_dt1_Rocks_01_NRM.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act1/outdoors/act1_outdoors_markers/act1_Stones_dt1_Rocks_01_ORM.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act1/outdoors/act1_outdoors_markers/act1_Stones_dt1_Rocks_01_wet_ORM.texture"
+    }
+   ]
+  },
+  "entity": {
+   "components": [
+    {
+     "inheritOnlyPosition": false,
+     "name": "rock_river01_01_TransformDefinitionComponent",
+     "orientation": {
+      "w": 1.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "scale": {
+      "x": 1.0,
+      "y": 1.0,
+      "z": 1.0
+     },
+     "type": "TransformDefinitionComponent"
+    },
+    {
+     "filename": "data/hd/env/model/global/prop/act1/outdoors/act1_outdoors_rocks/rock_river01.model",
+     "floorModel": true,
+     "ghostShadows": false,
+     "lightMask": 19,
+     "name": "rock_river01_ModelDefinitionComponent",
+     "shadowMask": 3,
+     "terrainBlendEnableYUpBlend": false,
+     "terrainBlendMode": 1,
+     "type": "ModelDefinitionComponent",
+     "visibleLayers": 1
+    }
+   ],
+   "name": "pd2r_liquid_edge",
+   "type": "Entity"
+  }
+ },
+ "rock_river02": {
+  "box": [
+   -1.533,
+   -0.499,
+   -1.483,
+   1.537,
+   1.621,
+   1.52
+  ],
+  "dependencies": {
+   "models": [
+    {
+     "path": "data/hd/env/model/global/prop/act1/outdoors/act1_outdoors_rocks/rock_river02.model"
+    }
+   ],
+   "textures": [
+    {
+     "path": "data/hd/env/texture/act1/outdoors/act1_outdoors_markers/act1_Stones_dt1_Rocks_01_ALB.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act1/outdoors/act1_outdoors_markers/act1_Stones_dt1_Rocks_01_NRM.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act1/outdoors/act1_outdoors_markers/act1_Stones_dt1_Rocks_01_ORM.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act1/outdoors/act1_outdoors_markers/act1_Stones_dt1_Rocks_01_wet_ORM.texture"
+    }
+   ]
+  },
+  "entity": {
+   "components": [
+    {
+     "inheritOnlyPosition": false,
+     "name": "rock_river02_01_TransformDefinitionComponent",
+     "orientation": {
+      "w": 1.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "scale": {
+      "x": 1.0,
+      "y": 1.0,
+      "z": 1.0
+     },
+     "type": "TransformDefinitionComponent"
+    },
+    {
+     "filename": "data/hd/env/model/global/prop/act1/outdoors/act1_outdoors_rocks/rock_river02.model",
+     "floorModel": true,
+     "ghostShadows": false,
+     "lightMask": 19,
+     "name": "rock_river02_ModelDefinitionComponent",
+     "shadowMask": 3,
+     "terrainBlendEnableYUpBlend": false,
+     "terrainBlendMode": 1,
+     "type": "ModelDefinitionComponent",
+     "visibleLayers": 1
+    }
+   ],
+   "name": "pd2r_liquid_edge",
+   "type": "Entity"
+  }
+ },
+ "rock_river03": {
+  "box": [
+   -2.19,
+   -0.403,
+   -1.978,
+   2.178,
+   1.55,
+   1.978
+  ],
+  "dependencies": {
+   "models": [
+    {
+     "path": "data/hd/env/model/global/prop/act1/outdoors/act1_outdoors_rocks/rock_river03.model"
+    }
+   ],
+   "textures": [
+    {
+     "path": "data/hd/env/texture/act1/outdoors/act1_outdoors_markers/act1_Stones_dt1_Rocks_01_ALB.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act1/outdoors/act1_outdoors_markers/act1_Stones_dt1_Rocks_01_NRM.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act1/outdoors/act1_outdoors_markers/act1_Stones_dt1_Rocks_01_ORM.texture"
+    },
+    {
+     "path": "data/hd/env/texture/act1/outdoors/act1_outdoors_markers/act1_Stones_dt1_Rocks_01_wet_ORM.texture"
+    }
+   ]
+  },
+  "entity": {
+   "components": [
+    {
+     "inheritOnlyPosition": false,
+     "name": "rock_river03_01_TransformDefinitionComponent",
+     "orientation": {
+      "w": 1.0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+     },
+     "scale": {
+      "x": 1.0,
+      "y": 1.0,
+      "z": 1.0
+     },
+     "type": "TransformDefinitionComponent"
+    },
+    {
+     "filename": "data/hd/env/model/global/prop/act1/outdoors/act1_outdoors_rocks/rock_river03.model",
+     "floorModel": true,
+     "ghostShadows": false,
+     "lightMask": 19,
+     "name": "rock_river03_ModelDefinitionComponent",
+     "shadowMask": 3,
+     "terrainBlendEnableYUpBlend": false,
+     "terrainBlendMode": 1,
+     "type": "ModelDefinitionComponent",
+     "visibleLayers": 1
+    }
+   ],
+   "name": "pd2r_liquid_edge",
+   "type": "Entity"
+  }
+ }
+}
