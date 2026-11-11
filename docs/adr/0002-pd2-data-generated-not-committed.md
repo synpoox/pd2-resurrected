@@ -15,6 +15,5 @@ The mod's PD2 tables are not stored in this repo. `tools/pd2_extract.py` reads t
 
 ## Amendments
 
-- 2026-11-10 ([#833](https://github.com/synpoox/pd2-resurrected/issues/833)): the table-diff gate now builds on a self-hosted runner that has the PD2 install; the local `pd2_diff` paste is the fallback when runners are offline.
-
 - 2026-11-04 ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)): the rule covers PD2's level files too. `pd2_extract` reads the DS1 and DT1 that PD2-only areas use from `pd2maps.mpq` and `pd2assets.mpq`, under the same baseline hash check; the merge rewrites them and writes the HD presets generated from them (ADR 0005) to `generated/`. None of them is committed.
+- 2026-11-10 ([#833](https://github.com/synpoox/pd2-resurrected/issues/833)): the table-diff gate now builds on a self-hosted runner that has the PD2 install; the local `pd2_diff` paste is the fallback when runners are offline.

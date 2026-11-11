@@ -45,13 +45,12 @@ Repo rules (PR body, gate, changelog fragments, branch deletion) live in `AGENTS
    Done when the comment is posted.
 7. **Fix.** At most 2 implementer -> reviewer cycles per PR. Findings left after cycle 2 become a follow-up issue.
    Done when the reviewer has no blocking finding, or the leftovers are filed.
-8. **Merge.** Squash only, on a the AGENTS.md gate rule. A coverage
+8. **Merge.** Squash only, per the AGENTS.md gate rule. A coverage
    drop needs the owner's `coverage-drop-ok`: ask, do not apply it yourself. Two PRs that edit the same table
    conflict: merge one, then the other merges main and reruns the gate. Done when the PR shows merged.
 9. **Clean up.** Run `gh pr list --base <branch>` first: retarget any PR based on the branch, then delete the
    branch on the remote and locally (never `research/*`, `issue-assets` or `handoff/*`). Remove the agent worktree
-   with `tools/worktree_remove.ps1` only (`docs/agents/game-check.md`, "Worktree hygiene"); the harness's own
-   auto-cleanup is unverified against the `pd2-data` junction, so unlink it first. Done when the branch and
+   with `tools/worktree_remove.ps1` only (`docs/agents/game-check.md`, "Worktree hygiene"). Done when the branch and
    worktree are gone and the shared cache still has files.
 
 ## Standing rules

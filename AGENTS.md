@@ -9,8 +9,10 @@ Every PR links the issue it solves: the body opens with `Closes #<n>`, or `Part 
 **Gate rule (the one home).** Merge only when CI's `table-diff` and `unit` are green on the PR's final head and the PR
 is MERGEABLE (rerun after resolving a merge from main). Only when the runners are offline, run `tools/pd2_diff.py`
 locally and paste the report for the final commit (its first line names the commit; untracked files count as
-uncommitted changes). Order: push, open the PR, then run the game check while CI runs, attaching images to the PR.
-Never merge an unchecked PR.
+uncommitted changes). The CI table-diff report's first line names GitHub's merge commit, not the PR head.
+
+**PR order.** Push, open the PR, then run the game check while CI runs, attaching images to the PR. Never merge an
+unchecked PR.
 
 Each CHANGELOG entry is one short line (one sentence, under ~100 chars), unless it is a huge feature.
 Never edit `CHANGELOG.md` in a PR: add `changelog.d/<issue>-<slug>.md` holding `#### <Category>` and then the `- ` line;
