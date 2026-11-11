@@ -393,8 +393,13 @@ def main(argv: list[str] | None = None) -> int:
     import argparse
     ap = argparse.ArgumentParser(description="Rebuild the committed stock vote (hd-folder-types.tsv) from D2R's stock presets.")
     ap.add_argument("--write-votes", action="store_true", help=f"write {VOTES_FILE.name} (needs the D2R install and model_lod_desc.bin)")
+    ap.add_argument("--check-votes", action="store_true", help=f"exit 1 when {VOTES_FILE.name} is stale (the gate runs this, #891)")
     ap.add_argument("--d2r", type=Path, default=coverage.D2R_DATA, help=f"D2R data root (default: {coverage.D2R_DATA})")
     a = ap.parse_args(argv)
+    if a.check_votes:
+        warn = votes_stale(VOTES_FILE.read_text("utf-8"), votes_input_hash(a.d2r))
+        print(warn or f"pd2_fidelity: {VOTES_FILE.name} is current")
+        return 1 if warn else 0
     if not a.write_votes:
         ap.print_help()
         return 0
