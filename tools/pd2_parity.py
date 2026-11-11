@@ -20,8 +20,9 @@ does not count). Only tiles within SIGHT tiles of walkable legacy floor are scor
                piece 60+ units (6 tiles) tall from base to top is skipped too: a tall prop on a slope or a stack reads as
                standing, not floating; a piece resting on something is no float either (#906): on a pasted room's
                terrain, or on the top of another piece under it (a wall, shelf, canopy or cap; wall-hung trims,
-               spikes and icicles also on the side of a taller neighbour they touch))
-invisible    legacy draws a wall cell there (not inv_wall, not liquid) and HD draws nothing >= LOW: you bump into
+               spikes and icicles also on the side of a taller neighbour they touch, if that is a wall or a grounded
+               structure piece: no tree, grass or other hung piece (#913)))
+  invisible    legacy draws a wall cell there (not inv_wall, not liquid) and HD draws nothing >= LOW: you bump into
                air (blocked floor legacy draws as plain ground is left out: it looks walkable in legacy too)
   void         legacy (the DS1 with PD2's own DT1s) draws nothing there (no layer, or floor tiles that are missing
                or have no blocks; walkable tiles apart), HD draws a ground plane or a piece, unless a black cover
@@ -92,17 +93,28 @@ class Support:
     room terrain (`terrain`: tiles under a pasted room's mesh, up to RELIEF above the plane) and another piece's box
     (`rests`): one that reaches the piece's base from below with its top within REST of the base and overlaps it in x
     and z (a wall or shelf top, a cap on a pillar, a book on a shelf); a wall-hung kind (HUNG) also hangs on a taller box
-    it touches. The piece itself never counts."""
+    it touches, if that box is a wall (by model type) or a grounded structure piece (#913). A tree, grass or other
+    foliage is no wall, and a HUNG piece is no support to hang on: a chain of hung pieces would hold itself up in the
+    air, so a trim on a trim on a wall floats (the trim on the wall rests; the second has no wall to touch). The piece
+    itself never counts."""
 
     def __init__(self):
         self.terrain: set = set()
-        self.boxes: list = []  # (box, path) of every candidate support
+        self.boxes: list = []  # (box, path, wall) of every candidate support; wall: a box a HUNG piece may hang on
         self.index: dict = {}  # tile -> indices into boxes
 
-    def add(self, b, path: str):
-        self.boxes.append((b, path))
+    def add(self, b, path: str, grounded: bool = False):
+        self.boxes.append((b, path, self.wall(path, grounded)))
         for c in coverage.footprint([b[:6]]):
             self.index.setdefault(c, []).append(len(self.boxes) - 1)
+
+    @staticmethod
+    def wall(path: str, grounded: bool) -> bool:
+        """Whether a box is one a hung piece hangs on: wall-typed, or a grounded structure piece; never foliage, ground
+        cover, water or another hung piece."""
+        if any(w in path for w in NOT_FLOATING + WATERY + HUNG) or fidelity.GROUND_COVER.search("/".join(path.split("/")[-2:])):
+            return False
+        return fidelity.model_type(path) == "wall" or grounded
 
     def terrain_under(self, core: set, bottom: float) -> bool:
         """`bottom` is measured from the plane under the piece."""
@@ -112,12 +124,12 @@ class Support:
         grow = (me[0] - CONTACT, me[1] + CONTACT, me[2] - CONTACT, me[3] + CONTACT, me[4], me[5])
         hung = any(w in path for w in HUNG)
         for i in {i for c in coverage.footprint([grow]) for i in self.index.get(c, ())}:
-            o, _ = self.boxes[i]
+            o, _, wall = self.boxes[i]
             if o is me or o[:6] == me[:6]:
                 continue
             if not (o[0] < grow[1] and grow[0] < o[1] and o[2] < grow[3] and grow[2] < o[3]):
                 continue
-            if o[5] < me[5] - SLACK and (abs(o[4] - me[5]) <= REST or (hung and o[4] >= me[5] - REST)):
+            if o[5] < me[5] - SLACK and (abs(o[4] - me[5]) <= REST or (hung and wall and o[4] >= me[5] - REST)):
                 return True
         return False
 
@@ -153,9 +165,9 @@ def score(name, lay, legacy, preset, box, prefab, heights, stock: dict | None = 
     # the same pieces measured from 0, not from the plane under them: the heights to rest on are absolute
     pieces = list(zip(coverage.boxes(preset["entities"], box, prefab, ground=ground, meta=True),
                       coverage.boxes(preset["entities"], box, prefab, meta=True)))
-    for (*_, path, in_room), ab in pieces:
+    for (*_, bottom, path, in_room), ab in pieces:
         if not in_room and ab[1] - ab[0] <= coverage.ROOM and ab[3] - ab[2] <= coverage.ROOM:
-            support.add(ab[:6], path)
+            support.add(ab[:6], path, bottom < FLOAT)
     for (x0, x1, z0, z1, top, bottom, path, in_room), ab in pieces:
         abottom = ab[5]
         b = (x0, x1, z0, z1, top, bottom)

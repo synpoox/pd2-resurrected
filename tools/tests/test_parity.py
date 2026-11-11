@@ -95,6 +95,22 @@ class Checks(unittest.TestCase):
         self.assertGreater(self.floats(piece("act1/trim_kit", 40, 50, 1.0, y=4.0), wall), 0)  # not touching
         self.assertGreater(self.floats(piece("act1/rocks", 50, 60, 1.0, y=4.0), wall), 0)  # not a hung kind
 
+    def test_a_hung_piece_hangs_on_a_wall_or_a_grounded_structure_only(self):
+        trim = piece("act1/trim_kit", 50, 60, 1.0, y=4.0)
+        wall = lambda z=55.0: piece("act1/walls", 60.5, 70, 9.0, z=z)
+        self.assertEqual(self.floats(trim, wall()), 0)  # on a wall
+        pillar = piece("act1/pillar_kit", 60.5, 70, 9.0)  # grounded, not wall-typed
+        self.assertEqual(self.floats(trim, pillar), 0)
+        self.assertGreater(self.floats(trim, piece("act1/tree_dead", 60.5, 70, 9.0)), 0)  # a tree
+        self.assertGreater(self.floats(trim, piece("act1/grass_clump", 60.5, 70, 9.0)), 0)  # grass
+        self.assertGreater(self.floats(trim, piece("act1/fern_bush", 60.5, 70, 9.0, y=2.0)), 0)  # raised foliage
+        # a hung piece on a hung piece that hangs on a wall: the first rests on the wall, the second touches only the
+        # first, which is no support (a chain of hung pieces would hold itself up in the air)
+        first = piece("act1/trim_kit", 50, 60, 3.0, y=4.0)
+        second = piece("act1/spike_kit", 40, 49.5, 1.0, y=4.0)
+        self.assertEqual(self.floats(first, wall()), 0)
+        self.assertGreater(self.floats(second, first, wall()), 0)
+
     def test_a_piece_on_a_shelf_or_canopy_rests_but_a_thin_floating_shelf_does_not_hold_itself(self):
         prop = piece("act1/rocks", 40, 60, 2.0, y=3.0)
         for kind in ("act1/shelf_kit", "act1/canopy_kit"):
