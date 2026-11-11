@@ -111,17 +111,45 @@ def holder(path: Path) -> str:
 
 # Bump when what a cache entry stores or how replay works changes: it is in every rule's key (pd2_merge.base_key), so
 # editing this file's code otherwise leaves the cache alone.
-CACHE_FORMAT = 1
+CACHE_FORMAT = 2  # 2: Python sources are hashed by their AST (#893)
+
+_code: dict[tuple[str, int, int], bytes] = {}  # (path, size, mtime) -> a Python file's normalised digest
+
+
+def _strip_docstrings(tree: ast.AST) -> None:
+    for n in ast.walk(tree):
+        if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            b = n.body
+            if b and isinstance(b[0], ast.Expr) and isinstance(b[0].value, ast.Constant) and isinstance(b[0].value.value, str):
+                b[:] = b[1:] or [ast.Pass()]
+
+
+def file_digest(p: Path) -> bytes:
+    """A file's digest for a key: a .py file by its AST without docstrings (comments, blank lines, docstrings and
+    formatting don't change it, #893), anything else (or a file that doesn't parse) by its bytes. Memoised by size and time."""
+    st = p.stat()
+    k = (str(p), st.st_size, st.st_mtime_ns)
+    if k not in _code:
+        data = p.read_bytes()
+        if p.suffix == ".py":
+            try:
+                tree = ast.parse(data)
+                _strip_docstrings(tree)
+                data = b"ast:" + ast.dump(tree).encode()
+            except (SyntaxError, ValueError, RecursionError):
+                pass
+        _code[k] = hashlib.sha256(data).digest()
+    return _code[k]
 
 
 def key(paths: list[Path], *extra: str) -> str:
-    """A hash of every file under paths (its path from that path's parent, and its bytes) and of extra."""
+    """A hash of every file under paths (its path from that path's parent, and its file_digest) and of extra."""
     h = hashlib.sha256("\0".join(extra).encode())
     for base in paths:
         for p in sorted(base.rglob("*")) if base.is_dir() else [base]:
             rel = p.relative_to(base.parent)
             if p.is_file() and "__pycache__" not in rel.parts:
-                h.update(rel.as_posix().encode() + b"\0" + hashlib.sha256(p.read_bytes()).digest())
+                h.update(rel.as_posix().encode() + b"\0" + file_digest(p))
     return h.hexdigest()[:16]
 
 
