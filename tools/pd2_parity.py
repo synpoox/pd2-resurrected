@@ -21,8 +21,9 @@ does not count). Only tiles within SIGHT tiles of walkable legacy floor are scor
                standing, not floating)
   invisible    legacy draws a wall cell there (not inv_wall, not liquid) and HD draws nothing >= LOW: you bump into
                air (blocked floor legacy draws as plain ground is left out: it looks walkable in legacy too)
-  void         legacy (the DS1 with PD2's own DT1s) draws nothing there (no floor, no wall), HD draws a ground
-               plane or a piece (#783)
+  void         legacy (the DS1 with PD2's own DT1s) draws nothing there (no layer, or floor tiles that are missing
+               or have no blocks; walkable tiles apart), HD draws a ground plane or a piece, unless a black cover
+               (the stock flat black plane, presets/void) lies over it (#783)
   liquid       legacy liquid floor under no water or lava model, any size
 
 parity = 1 - sum(w(t) over bad tiles) / sum(w(t) over visible tiles). w is 3 on a legacy edge tile (what the eye
@@ -76,9 +77,10 @@ BASELINE_FILE = "parity-baseline.tsv"
 MAIN_DIR = "main-parity"  # under --out: main's baseline artifact, downloaded for a PR
 
 
-def score(name, lay, legacy, preset, box, prefab, heights, stock: dict | None = None) -> dict:
+def score(name, lay, legacy, preset, box, prefab, heights, stock: dict | None = None, drawn: dict | None = None) -> dict:
     """The parity of one map: `lay` is the layout with stand-in DT1s (what HD builds from), `legacy` the layout with
-    PD2's own DT1s (what legacy draws). `stock` is fidelity.stock_types (the stock vote's folder types, #822)."""
+    PD2's own DT1s (what legacy draws). `stock` is fidelity.stock_types (the stock vote's folder types, #822); `drawn`
+    is presets.void.Drawn (DT1 -> its tiles with blocks): without it only a tile no DT1 holds counts as drawing nothing."""
     W, H = lay.width, lay.height
     grid = {(x, y) for x in range(W) for y in range(H)}
     ground = coverage.plane_ground(preset)
@@ -88,6 +90,8 @@ def score(name, lay, legacy, preset, box, prefab, heights, stock: dict | None = 
     near_edge = {(x + dx, y + dy) for x, y in edge_tiles for dx, dy in fidelity.STEPS8} | edge_tiles
     open_floor = walkable - near_edge  # walkable floor where legacy draws no edge on or beside the tile
     void = {c for c in grid if c not in legacy.keys or all(t[0] is None for t in legacy.keys[c][1])}
+    if drawn is not None:
+        void |= presets.void.empty(legacy, drawn)
     liquid = {c for c, (k, ts) in legacy.keys.items() if k == "f" and any(
         fidelity.liquid_floor(t, legacy.flags.get(c, bytes(25)), heights) for t in ts)}
     invisible_dt1 = {c for c, (k, ts) in legacy.keys.items()
@@ -97,7 +101,7 @@ def score(name, lay, legacy, preset, box, prefab, heights, stock: dict | None = 
     blocked = {c for c, (k, _) in lay.keys.items() if k == "w"} - void - liquid - invisible_dt1
 
     d: dict[str, set] = {k: set() for k in CHECKS}
-    drawn_any, watery, floats = set(), set(), Counter()
+    drawn_any, watery, covered, floats = set(), set(), set(), Counter()
     hd = fidelity.Hd()
     for x0, x1, z0, z1, top, bottom, path, in_room in coverage.boxes(
             preset["entities"], box, prefab, ground=ground, meta=True):
@@ -106,6 +110,9 @@ def score(name, lay, legacy, preset, box, prefab, heights, stock: dict | None = 
         core = coverage.footprint([b]) if big else coverage.core_footprint(b)
         if any(w in path for w in WATERY):
             watery |= coverage.footprint([b])
+        if presets.void.BLACK in path:  # a black cover: the tiles it lies over are drawn as legacy draws them, black
+            covered |= coverage.core_footprint(b)
+            continue
         if big:
             continue
         if top >= LOW:
@@ -126,7 +133,7 @@ def score(name, lay, legacy, preset, box, prefab, heights, stock: dict | None = 
             d["clutter"] |= core & open_floor
     d["occlusion"] -= d["solid"]
     planes = coverage.ground_tiles(preset, box, prefab)
-    d["void"] = void & (planes | drawn_any)
+    d["void"] = void & (planes | drawn_any) - covered
     d["invisible"] = blocked - drawn_any - watery
     d["liquid"] = liquid - watery
     fid = {k: fidelity.score_type(k, cs, hd) for k, cs in edges_by_kind.items() if cs}
@@ -252,8 +259,10 @@ def report_md(rows: list[dict], commit: str = "", found: list[Change] | None = N
 
 # --- run ------------------------------------------------------------------------------------------------------------
 
-def run(data: Path, d2r: Path, out: Path | None, only: set[str] = frozenset(), images: bool = True) -> list[dict] | None:
-    """Score every generated preset under data (generated/data) except the unplayable Palace; None: skipped (no model boxes)."""
+def run(data: Path, d2r: Path, out: Path | None, only: set[str] = frozenset(), images: bool = True,
+        on_row=None) -> list[dict] | None:
+    """Score every generated preset under data (generated/data) except the unplayable Palace; None: skipped (no model boxes).
+    `on_row(row)` sees each full row (with its tile sets) before they are dropped: the sweep picks capture points from them."""
     if not (d2r / coverage.MODELS).is_file():
         print(f"::warning::pd2_parity: skipped, no {d2r / coverage.MODELS} (`python -m modkit fetch --prefix data/hd/model_lod_desc.bin`)")
         return None
@@ -265,6 +274,7 @@ def run(data: Path, d2r: Path, out: Path | None, only: set[str] = frozenset(), i
     _, standins, _ = presets.read_rule(ROOT / "merge" / "presets-hd.tsv")
     tiles, pd2_tiles = presets.Tiles(d2r / "global" / "tiles"), presets.Tiles(data / "global" / "tiles")
     heights = fidelity.Heights(data / "global" / "tiles", d2r / "global" / "tiles")
+    drawn = presets.void.Drawn(data / "global" / "tiles", d2r / "global" / "tiles")
     rows, seen = [], set()
     for area, _, files, ds1s in presets.pd2_only_presets(data, len(load(d2r, "lvlprest").records())):
         for ds1 in ds1s:
@@ -276,10 +286,12 @@ def run(data: Path, d2r: Path, out: Path | None, only: set[str] = frozenset(), i
             raw = (data / "global" / "tiles" / ds1).read_bytes()
             lay = presets.layout(raw, presets.stand_in(files, tiles, pd2_tiles, standins))
             legacy = presets.layout(raw, {p: pd2_tiles[p] or tiles[p] for p in files})
-            r = score(stem, lay, legacy, json.loads(f.read_text("utf-8")), box, prefab, heights, stock)
+            r = score(stem, lay, legacy, json.loads(f.read_text("utf-8")), box, prefab, heights, stock, drawn)
             r["area"] = area
             if images and out is not None:
                 (out / f"{stem}_parity.png").write_bytes(image(lay, r))
+            if on_row is not None:
+                on_row(r)
             del r["sets"], r["visible"], r["edge_tiles"], r["walkable_set"]  # keep a row small: 128 maps in memory
             rows.append(r)
             print(f"{stem:<24} parity {100 * r['parity']:5.1f}%  tiles {r['tiles']:6}  "

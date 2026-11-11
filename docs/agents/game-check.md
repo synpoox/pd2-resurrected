@@ -6,7 +6,7 @@ in-game". Slot details are in `docs/agents/game-slots.md`.
 
 1. **Lock a slot.** `game_slots.py status`, then `lock <N> <owner>` on a free Slot4-8 (game-slots.md, "Steps" 1-2).
    No free slot: stop and file a `ready-for-agent` issue with the steps left.
-2. **Install the build** (game-slots.md, "Steps" 3-4).
+2. **Install the build** (game-slots.md, "Steps" 3-4). `plugin\build.ps1` initialises an empty `third_party/PluginSDK` submodule itself.
 3. **Pin the DS1 variant** when the level has several (game-slots.md, "Force a DS1 variant"), game closed.
 4. **Start the game** in HD on a character that meets the AGENTS.md test rules:
    `python <toolkit>/testing/game_ctl.py --slot <N> start`.

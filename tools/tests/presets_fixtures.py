@@ -55,6 +55,13 @@ def stock() -> dict:
             "terrain": TERRAIN, "biomeFilename": "data/hd/env/biome/x.json"}
 
 
+def with_black(preset: dict) -> dict:
+    from presets import void  # the void pass (#783) needs a stock preset that draws the black plane
+    preset["entities"].append(entity("black", 0.0, 0.0))
+    preset["entities"][-1]["components"][1]["filename"] = void.BLACK
+    return preset
+
+
 def at(e: dict) -> tuple[float, float]:
     return e["components"][0]["position"]["x"], e["components"][0]["position"]["z"]
 

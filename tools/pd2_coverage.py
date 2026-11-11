@@ -71,7 +71,7 @@ GENERATOR = tuple(ROOT / "tools" / "presets" / n for n in (
     "build.py", "kit.py", "place.py", "rooms.py", "patches.py", "waypoints.py", "water.py", "liquids.py", "pillars.py",
     "height.py", "lint.py", "discover.py", "parallel.py", "ds1cache.py", "slices.py", "hooks", "passes")) + (
     ROOT / "tools" / "pd2_cache.py",)  # its format is in the key as pd2_cache.CACHE_FORMAT, as in a rule's
-SCORER_PRESETS = ("__init__.py", "apply.py", "consts.py", "dt1.py", "entity.py", "layout.py")  # in the key
+SCORER_PRESETS = ("__init__.py", "apply.py", "consts.py", "dt1.py", "entity.py", "layout.py", "void.py")  # in the key
 SCORE_FORMAT = 2  # bump when what a kept score holds changes
 EDGE_PIECE = re.compile(r"fence|(?<!tree)(?<!tree_)wall|palisade|picket|rail|gate|bank")  # a low edge model, not a tree wall
 STRUCTURE = 20.0  # HD units (2 tiles): a tall piece this wide both ways is a structure (stairs, platform), not a prop

@@ -579,7 +579,7 @@ class ToolkitKeyTests(unittest.TestCase):
                 write(kit / unrelated, "X = 1\n")
                 self.assertEqual(self.key(fn, kit, tmp), before, unrelated)
             for used in ("modkit/base.py", "modkit/dc6.py", "modkit/__init__.py"):
-                write(kit / used, (kit / used).read_text() + "# edit\n")
+                write(kit / used, (kit / used).read_text() + "EDIT = 1\n")
                 after = self.key(fn, kit, tmp)
                 self.assertNotEqual(after, before, used)
                 before = after
@@ -594,7 +594,7 @@ class ToolkitKeyTests(unittest.TestCase):
             write(kit / "shared/classic_import/ids.py", "X = 1\n")  # the driver does not import it
             self.assertEqual(self.key(fn, kit, tmp), before)
             for f in ("merge.py", "extract.py"):
-                write(kit / "shared/classic_import" / f, (kit / "shared/classic_import" / f).read_text() + "# edit\n")
+                write(kit / "shared/classic_import" / f, (kit / "shared/classic_import" / f).read_text() + "EDIT = 1\n")
                 after = self.key(fn, kit, tmp)
                 self.assertNotEqual(after, before, f)
                 before = after
@@ -605,9 +605,32 @@ class ToolkitKeyTests(unittest.TestCase):
             self.skipTest("no d2rAI-toolkit beside the repo")
         used = {p.relative_to(kit).as_posix()
                 for p in pd2_cache.toolkit_sources(kit, pd2_cache.sources(pd2_merge.RULES["presets-hd.tsv"]))}
-        self.assertTrue(used, "presets-hd.tsv imports modkit modules")
         every = {p.relative_to(kit).as_posix() for p in (kit / "modkit").glob("*.py")}
-        self.assertTrue(every - used, "some modkit module is not in presets-hd.tsv's key")
+        self.assertTrue(every, "the toolkit has modkit modules")
+        self.assertEqual(used, set(), "presets-hd.tsv imports no toolkit module")
+
+
+class SlimSourcesTests(unittest.TestCase):
+    """The presets rule is 97% of a merge: its key must not follow the id lists and the level merge (#808)."""
+    def names(self, rule):
+        return {p.name for p in pd2_cache.sources(pd2_merge.RULES[rule])}
+
+    def test_presets_rule_does_not_take_the_id_and_level_merge_into_its_key(self):
+        used = self.names("presets-hd.tsv")
+        for m in ("pd2_ids.py", "pd2_levels.py", "pd2_strings.py", "pd2_tables.py", "pd2_skilldesc.py", "pd2_automap.py"):
+            self.assertNotIn(m, used)
+        self.assertLessEqual({"pd2_table.py", "pd2_ds1.py"}, used)
+
+    def test_other_rules_still_key_on_pd2_ids(self):
+        self.assertIn("pd2_ids.py", self.names("ids-skills.tsv"))
+        self.assertIn("pd2_levels.py", self.names("level-files.tsv"))
+
+    def test_slim_modules_keep_the_old_names(self):
+        import pd2_ds1, pd2_levels, pd2_table
+        for n in ("IdError", "Table", "excel", "load", "toolkit", "KEY"):
+            self.assertIs(getattr(pd2_ids, n), getattr(pd2_table, n))
+        for n in ("SLOTS", "col", "ds1_header", "norm", "object_list"):
+            self.assertIs(getattr(pd2_levels, n), getattr(pd2_ds1, n))
 
 
 class PackageKeyTests(unittest.TestCase):
@@ -1100,6 +1123,69 @@ class CiPolicyTests(unittest.TestCase):
             with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "PD2R_CACHE": str(self.home), **env}),                     mock.patch.object(pd2_merge, "merge", fake), redirect_stdout(io.StringIO()):
                 pd2_merge.main(["--root", str(self.root)])
             self.assertEqual((calls[0][0], calls[0][1].origin), want, env)
+
+
+class AstKeyTests(unittest.TestCase):
+    """A Python source is keyed by its AST without docstrings (#893); anything else by its bytes."""
+    def key_of(self, name: str, text: str) -> str:
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / name
+            p.write_text(text)
+            return pd2_cache.key([p])
+
+    BASE = '"""Module doc."""\nLIMIT = 3\n\n\nclass C:\n    """Doc."""\n    x = 1\n\n\ndef f(a):\n    """Doc."""\n    return a + LIMIT\n'
+
+    def test_docstring_comment_and_blank_line_edits_keep_the_key(self):
+        edited = ('# a comment\n"""A different module doc."""\n\nLIMIT = 3  # trailing\n\n\n\nclass C:\n    """Other."""\n'
+                  '    x = 1\n\n\ndef f(a):\n    # note\n    """Longer doc\n    over lines."""\n    return a + LIMIT\n')
+        self.assertEqual(self.key_of("m.py", self.BASE), self.key_of("m.py", edited))
+
+    def test_removing_a_docstring_keeps_the_key(self):
+        bare = 'LIMIT = 3\n\n\nclass C:\n    x = 1\n\n\ndef f(a):\n    return a + LIMIT\n'
+        self.assertEqual(self.key_of("m.py", self.BASE), self.key_of("m.py", bare))
+
+    def test_a_code_edit_changes_the_key(self):
+        base = self.key_of("m.py", self.BASE)
+        self.assertNotEqual(base, self.key_of("m.py", self.BASE.replace("LIMIT = 3", "LIMIT = 4")))
+        self.assertNotEqual(base, self.key_of("m.py", self.BASE.replace("a + LIMIT", "a - LIMIT")))
+
+    def test_a_string_that_is_not_a_docstring_counts(self):
+        a = self.key_of("m.py", "x = 1\n'note'\ny = 2\n")
+        self.assertNotEqual(a, self.key_of("m.py", "x = 1\n'other'\ny = 2\n"))
+
+    def test_a_syntax_error_falls_back_to_bytes(self):
+        self.assertNotEqual(self.key_of("m.py", "def f(:\n"), self.key_of("m.py", "def f(:  # c\n"))
+
+    def test_other_files_stay_byte_hashed(self):
+        self.assertNotEqual(self.key_of("m.txt", self.BASE), self.key_of("m.txt", self.BASE + "# c\n"))
+
+    def test_an_edit_in_place_is_seen_despite_the_digest_memo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "m.py"
+            p.write_text("A = 1\n")
+            before = pd2_cache.key([p])
+            p.write_text("A = 2\n")  # same size; the time moves on
+            os.utime(p, ns=(1, p.stat().st_mtime_ns + 10**9))
+            self.assertNotEqual(before, pd2_cache.key([p]))
+
+    def test_sources_key_ignores_a_docstring_edit_in_a_rule_module(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            m = Path(tmp) / "ruleprobe893.py"
+            m.write_text('"""v1"""\ndef rule(*a):\n    """v1"""\n    return 1\n')
+            sys.path.insert(0, tmp)
+            try:
+                import importlib
+                mod = importlib.import_module("ruleprobe893")
+                k1 = pd2_cache.key(pd2_cache.sources(mod.rule))
+                m.write_text('# c\n"""v2"""\ndef rule(*a):\n    """v2 longer"""\n    return 1\n')
+                k2 = pd2_cache.key(pd2_cache.sources(mod.rule))
+                m.write_text('def rule(*a):\n    return 2\n')
+                k3 = pd2_cache.key(pd2_cache.sources(mod.rule))
+            finally:
+                sys.path.remove(tmp)
+                sys.modules.pop("ruleprobe893", None)
+            self.assertEqual(k1, k2)
+            self.assertNotEqual(k1, k3)
 
 
 if __name__ == "__main__":

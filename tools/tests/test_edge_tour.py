@@ -159,6 +159,92 @@ class Sweep(unittest.TestCase):
             self.assertEqual(T.free_slots(None, [4, 5], 2), [])
 
 
+class DefectPoints(unittest.TestCase):
+    M = T.Map("Jungle Map", 149, "x/jungle1.ds1", [])
+
+    def walk(self, w=40, h=40):
+        return {(x, y) for x in range(w) for y in range(h)}
+
+    def test_worst_cluster_first_on_a_walkable_tile_near_its_centre(self):
+        sets = {"edge": {(25 + i, 30) for i in range(3)}, "void": {(5, 5)}}
+        pts = T.defect_points(sets, set(), self.walk(), self.M, (0, 0), 5)
+        self.assertEqual([p.type for p in pts], ["defect-edge", "defect-void"])
+        self.assertEqual(pts[0].tile, (26, 30))
+        self.assertEqual(pts[0].command, T.goto(149, (0, 0), (26, 30)))
+
+    def test_heavier_tiles_rank_higher_and_the_type_is_the_heaviest_check(self):
+        sets = {"clutter": {(2, 2), (3, 2)}, "solid": {(2, 3), (3, 3), (2, 4)}, "floating": {(20, 20)}}
+        pts = T.defect_points(sets, set(), self.walk(), self.M, (0, 0), 5)
+        self.assertEqual([p.type for p in pts], ["defect-solid", "defect-floating"])
+        edge = T.defect_points({"floating": {(20, 20)}, "void": {(2, 2)}}, {(20, 20)}, self.walk(), self.M, (0, 0), 1)
+        self.assertEqual(edge[0].type, "defect-floating")  # an edge tile weighs 3 against walkable floor's 2
+
+    def test_points_are_spread_apart_and_capped_at_k(self):
+        sets = {"void": {(x, 10) for x in range(0, 40, 2)}}  # cells 8 wide: neighbours are closer than APART
+        pts = T.defect_points(sets, set(), self.walk(), self.M, (0, 0), 3)
+        self.assertGreaterEqual(len(pts), 2)
+        self.assertLessEqual(len(pts), 3)
+        for i, a in enumerate(pts):
+            for b in pts[i + 1:]:
+                self.assertGreaterEqual(max(abs(a.tile[0] - b.tile[0]), abs(a.tile[1] - b.tile[1])), T.APART)
+
+    def test_a_stand_off_the_defect_is_the_nearest_walkable_tile(self):
+        walk = {(x, 0) for x in range(10)}
+        pts = T.defect_points({"void": {(4, 6)}}, set(), walk, self.M, (0, 0), 1)
+        self.assertEqual(pts[0].tile, (4, 0))
+
+    def test_no_defects_or_no_walkable_floor_gives_nothing(self):
+        self.assertEqual(T.defect_points({"void": set()}, set(), self.walk(), self.M, (0, 0), 5), [])
+        self.assertEqual(T.defect_points({"void": {(1, 1)}}, set(), set(), self.M, (0, 0), 5), [])
+        self.assertEqual(T.defect_points({"void": {(1, 1)}}, set(), self.walk(), self.M, (0, 0), 0), [])
+
+    def test_variant_points_put_defects_after_references_and_fall_back_to_the_plan(self):
+        refs = [T.Point("J", "jungle1", 149, "ref-nearest", (1, 1), "c"), T.Point("J", "jungle1", 149, "ref-waypoint", (2, 2), "c")]
+        plan = T.plan(hall(), "Jungle Map", "jungle1", 149, (0, 0), n=3)
+        defects = [T.Point("J", "jungle1", 149, "defect-void", (i, i), "c") for i in range(3)]
+        pts = T.variant_points(refs, plan, 6, defects)
+        self.assertEqual([p.type for p in pts[:4]], ["ref-nearest", "ref-waypoint"] + ["defect-void"] * 2)  # n=6 keeps 2 plan points
+        self.assertEqual(len(pts), 6)
+        self.assertEqual(T.variant_points(refs, plan, 6, []), T.variant_points(refs, plan, 6))
+        self.assertEqual(len(T.variant_points(refs, plan, 4, defects)), 4)
+
+    def test_checks_take_turns_and_each_is_capped(self):
+        sets = {"floating": {(x, 5) for x in range(0, 200, 10)}, "void": {(5, 100)}, "edge": {(100, 100)}}
+        pts = T.defect_points(sets, set(), self.walk(200, 200), self.M, (0, 0), 6)
+        self.assertEqual({p.type for p in pts}, {"defect-floating", "defect-void", "defect-edge"})
+        self.assertEqual(sum(p.type == "defect-floating" for p in pts), T.PER_CHECK)
+        self.assertEqual({p.type for p in pts[:3]}, {"defect-floating", "defect-void", "defect-edge"})
+
+    def test_points_keep_off_the_reference_tiles(self):
+        sets = {"void": {(5, 5)}, "edge": {(30, 30)}}
+        pts = T.defect_points(sets, set(), self.walk(), self.M, (0, 0), 5, [(5, 6)])
+        self.assertEqual([p.type for p in pts], ["defect-edge"])
+
+    def test_variant_points_keep_two_plan_points(self):
+        refs = [T.Point("J", "j", 149, "ref-nearest", (1, 1), "c"), T.Point("J", "j", 149, "ref-waypoint", (2, 2), "c")]
+        plan = T.plan(hall(), "Jungle Map", "j", 149, (0, 0), n=3)
+        defects = [T.Point("J", "j", 149, "defect-void", (i, i), "c") for i in range(9)]
+        pts = T.variant_points(refs, plan, 10, defects)
+        self.assertEqual(len(pts), 10)
+        self.assertEqual(sum(p.type.startswith("defect") for p in pts), 6)
+        self.assertEqual(len([p for p in pts if p.type not in ("ref-nearest", "ref-waypoint") and not p.type.startswith("defect")]), 2)
+
+    def test_parity_points_keep_only_what_pick_returns(self):
+        def fake(data, d2r, out, only, images, on_row=None):
+            row = {"name": "jungle1", "sets": {"void": {(1, 1)}}}
+            on_row(row)
+            del row["sets"]  # as pd2_parity.run does after on_row
+        with mock.patch("pd2_parity.run", side_effect=fake):
+            got = T.parity_points(Path("."), Path("."), {"jungle1"}, lambda r: sorted(r["sets"]), lambda *_: None)
+        self.assertEqual(got, {"jungle1": ["void"]})
+
+    def test_parity_points_survive_a_scorer_failure(self):
+        logs = []
+        with mock.patch("pd2_parity.run", side_effect=RuntimeError("boom")):
+            self.assertEqual(T.parity_points(Path("."), Path("."), {"jungle1"}, dict, logs.append), {})
+        self.assertIn("plan points", logs[0])
+
+
 class SlotLoss(unittest.TestCase):
     def setUp(self):
         T.STOP.clear()
