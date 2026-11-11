@@ -11,6 +11,9 @@ A second run in the same project waits for the first (pd2_merge.lock). Merges in
 rule cache is safe to share, as entries are kept and deleted by rename (#745). The output is checked before it is
 handed back (tables present, count); a bad tree is rebuilt once with no rule cache, then fails the run.
 D2R's own tables come from modkit's cache (--d2r).
+CI (the gate) replays rules the same way when it sets PD2R_CI_SCOPE (#820): a push to main ("main") replays only entries
+main kept and keeps into the shared cache; a PR ("pr-<n>") replays main's entries and its own scratch folder and keeps
+only there, so a PR's code never writes an entry main replays (pd2_cache.Policy).
 With a pd2_cache root, each rule whose code, stamps and inputs match a kept run replays it instead (#558), and the
 rule cache is pruned to PD2R_CACHE_GB (default 20) GB (the old whole-merge folders too with PD2R_PRUNE_LEGACY=1).
 """
@@ -90,9 +93,10 @@ def check_output(gen: Path, required: tuple[str, ...] | None = None, minimum: in
     return None
 
 
-def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None, slots_home: Path | None = None) -> list[str]:
+def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None, slots_home: Path | None = None,
+          policy: pd2_cache.Policy = pd2_cache.Policy()) -> list[str]:
     """Rebuild root/generated/ and return the rule files applied (d2rAI-toolkit's shared/classic_import driver). With a
-    cache folder, a rule whose code, stamps and the files it read match a run kept there replays it (pd2_cache.rule)."""
+    cache folder, a rule whose code, stamps and the files it read match a run kept there replays it (pd2_cache.rule); policy says whose entries may be replayed and where a miss is kept (CI, #820)."""
     mg = pd2_extract.classic("merge")
     rules, ran = RULES, []
     # at most PD2R_MERGE_SLOTS (default 4) merges hold RAM at once, machine-wide (#760). Taken at the first rule that must run:
@@ -112,7 +116,7 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None, slots_hom
                 def work() -> None:
                     slots.acquire()
                     fn(p, data, d2r_, out)
-                if not pd2_cache.rule(cache, k, {"p": root, "d": d2r_}, work):
+                if not pd2_cache.rule(cache, k, {"p": root, "d": d2r_}, work, policy):
                     ran.append(name)
             return run
         rules = {n: cached(n, fn) for n, fn in RULES.items()}
@@ -163,9 +167,11 @@ def main(argv: list[str] | None = None) -> int:
         added["monpreset"] = pd2_levels.seed_list(a.root / "merge", a.root / "pd2-data" / "data", a.d2r)
         print("id lines added: " + ", ".join(f"{t} {n}" for t, n in added.items()))
         return 0
-    cache = pd2_cache.root()
+    cache, policy = pd2_cache.root(), pd2_cache.Policy()
+    if os.environ.get("GITHUB_ACTIONS") and (home := pd2_cache.slot_home()) and (policy_ci := pd2_cache.ci_policy(home)):
+        cache, policy = home, policy_ci  # the gate replays rules too (#820), under its own read and write policy
     try:
-        applied = merge(a.root, a.d2r, cache and cache / "rules", pd2_cache.slot_home())
+        applied = merge(a.root, a.d2r, cache and cache / "rules", pd2_cache.slot_home(), policy)
     except (MergeError, ValueError) as e:  # ValueError: no toolkit
         print(f"pd2_merge: {e}", file=sys.stderr)
         return 1

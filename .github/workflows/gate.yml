@@ -49,6 +49,10 @@ jobs:
           New-Item -ItemType Junction -Path pd2-data -Target $cache | Out-Null
           py -3 tools/pd2_extract.py --out $cache; if ($LASTEXITCODE) { throw "pd2_extract failed" }
           py -3 -m modkit fetch --prefix data/global/animdata.d2; if ($LASTEXITCODE) { throw "modkit fetch failed" }
+          # #820: replay the rules whose code and inputs are unchanged from the shared rule cache. A push to main keeps
+          # new entries there and replays only main's own; a PR replays main's and keeps only in its scratch folder
+          # (pd2_cache.Policy), so a PR's code can never write an entry main's code replays.
+          $env:PD2R_CI_SCOPE = if ("${{ github.event_name }}" -eq "push") { "main" } else { "pr-${{ github.event.pull_request.number }}" }
           py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
       - name: Table-diff gate
         run: py -3 tools/pd2_diff.py --scope alpha
