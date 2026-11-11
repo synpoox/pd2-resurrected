@@ -235,6 +235,7 @@ def plan_all(out_data: Path, d2r_data: Path, wanted: str, types: list[str] | Non
 
 PLAY = (0.394, 0.898)  # the character screen's Play button (fractions of the client area, 1920x1080)
 HELL = (0.5, 0.543)  # the difficulty popup's Hell button
+LOAD_TOP, LOAD_MID = 1.5, 30.0  # loading(): the top strip is darker than this, the middle brighter
 MIN_LUMA = 10.0  # a screenshot whose mean grey is below this is a loading screen or black, not a menu
 NO_LEGACY = ("poisonedwell",)  # `g` hangs the game on these (#772): HD only, the legacy half stays blank
 CHEATS = ("cheat nogethit 1", "cheat god 1", "cheat speedup 300", "cheat stat item_lightradius, 25")
@@ -363,6 +364,32 @@ def mean_luma(img) -> float:
     return sum(thumb.tobytes()) / (64 * 36)
 
 
+def region_luma(img, fx0: float, fy0: float, fx1: float, fy1: float) -> float:
+    """The mean grey of a fractional region of a toolkit Image."""
+    from PIL import Image
+    full = Image.frombytes("RGB", (img.width, img.height), img.rgb)
+    box = (int(fx0 * img.width), int(fy0 * img.height), int(fx1 * img.width), int(fy1 * img.height))
+    thumb = full.crop(box).convert("L").resize((32, 18))
+    return sum(thumb.tobytes()) / (32 * 18)
+
+
+def loading(img) -> bool:
+    """The level loading screen: a lit picture in the middle of black (the top of the frame is pure black, the middle is
+    bright; a dark level's frame has scenery up top)."""
+    return region_luma(img, 0.2, 0.05, 0.8, 0.25) < LOAD_TOP and region_luma(img, 0.35, 0.4, 0.65, 0.75) > LOAD_MID
+
+
+def wait_loaded(game, timeout: float = 45.0, log=print) -> bool:
+    """Wait (up to timeout) until the screen is no longer the loading screen; False when it still is."""
+    end = time.monotonic() + timeout
+    while loading(game.screenshot()):
+        if time.monotonic() > end:
+            log(f"warning: still loading after {timeout:g} s")
+            return False
+        time.sleep(1.0)
+    return True
+
+
 def wait_lit(game, timeout: float = 60.0, what: str = "the game") -> None:
     """Wait for a screenshot that is not black (the luma check before a click)."""
     end = time.monotonic() + timeout
@@ -396,7 +423,7 @@ def enter_hell(game, timeout: float = 90.0, log=print) -> None:
 
 
 def shoot_variant(game, m: Map, points: list[Point], out: Path, settle: float, log=print) -> list[Path]:
-    """Cheats, then the HD|legacy pair of each point; the first warp gets a longer settle (the level loads)."""
+    """Cheats, then the HD|legacy pair of each point (after the loading screen, which the first warp shows)."""
     for c in CHEATS:
         game.console(c)
     legacy_ok = Path(m.ds1).stem.lower() not in NO_LEGACY
@@ -406,7 +433,9 @@ def shoot_variant(game, m: Map, points: list[Point], out: Path, settle: float, l
             log(f"skip {p.name}: the console did not take {p.command!r}")
             continue
         game.console("cheat killmonster")
-        hd, legacy = pair(game, settle + (4.0 if i == 0 else 0.0), legacy_ok)
+        time.sleep(settle)
+        wait_loaded(game, log=log)  # a warp to another level shows the loading screen first
+        hd, legacy = pair(game, 0.5, legacy_ok)
         saved.append(Path(side_by_side(hd, legacy).save(str(out / f"{i:02d}_{p.name}.png"))))
     return saved
 
