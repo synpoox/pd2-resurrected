@@ -2,7 +2,8 @@ name: gate
 
 # The table-diff gate (tools/pd2_diff.py, #352) on every PR and push to main. It needs the PD2 install and D2R's tables,
 # which never go to GitHub (ADR 0002), so it runs on the owner's self-hosted runner, as the release does; README.md has
-# the runner setup. PRs from forks don't run here: the runner only builds this repository's own branches.
+# the runner setup. PRs from forks never reach the runner (it only builds this repository's own branches): their
+# table-diff job runs on a hosted runner and fails at once (#901), because a skipped check counts as passing.
 # Docs-only changes start no run (paths:), except the gate inputs docs/deviations.md and docs/coverage-baseline.tsv.
 # Only a real gate run may carry a check named table-diff (#897): main's ruleset requires it and GitHub counts a skipped
 # check as passing, so no event may start a run of this workflow whose job is skipped. Label and close events go to
@@ -27,18 +28,27 @@ concurrency:
 # the runner's environment to the same value as the agents' (see pd2_cache.merge_slots for how to pick it).
 jobs:
   table-diff:
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, windows, pd2r]
+    # #901: the job never skips. A fork PR runs it on a hosted runner, where the first step fails it (a skipped
+    # table-diff counts as passing, #897); every later step is skipped by that failure or by the FORK guard.
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","windows","pd2r"]') }}
     permissions:
       contents: read
       actions: read  # gh run download of main's coverage-baseline artifact
       pull-requests: read  # the PR's labels, read when the parity step runs (a rerun keeps the old event payload)
     env:
       PYTHONPATH: ${{ vars.D2R_TOOLKIT }}
+      FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
       MODKIT_CACHE: ${{ vars.D2R_TOOLKIT }}\d2r-data
       MODKIT_GAME: ${{ vars.D2R_GAME }}
     steps:
+      - name: Refuse fork PRs
+        if: ${{ env.FORK == 'true' }}
+        shell: bash
+        run: |
+          echo "::error::table-diff does not run for PRs from forks: the gate needs the owner's runner, which only builds this repository's branches. Push the branch to synpoox/pd2-resurrected and open the PR from there."
+          exit 1
       - name: Drop cache junction
+        if: ${{ env.FORK != 'true' }}
         run: if (Test-Path pd2-data) { cmd /c rmdir pd2-data }
         continue-on-error: true
       - uses: actions/checkout@v4
@@ -62,11 +72,11 @@ jobs:
         run: py -3 tools/pd2_diff.py --scope alpha
       # #786: the merge/presets-hd.d/ stand-in lines (quarter rule, no empty line, no missing DT1); prints tiles renamed per map
       - name: Stand-in lines lint
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && env.FORK != 'true' }}
         run: py -3 tools/pd2_presets_lint.py
       # #839: a stale op in merge/presets-overrides.d/ (it matches nothing the generator makes) fails the PR
       - name: Preset overrides lint
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && env.FORK != 'true' }}
         run: py -3 tools/pd2_overrides.py lint
       # LP3c (#672, #681): the no-game coverage report of the generated HD presets, uploaded as an artifact. Information
       # only since #838: it no longer fails a PR (the parity step below gates). A push to main uploads its scores as the
@@ -74,7 +84,7 @@ jobs:
       # docs/coverage-baseline.tsv). The fidelity scores against legacy per edge type and floor (#732, pd2_fidelity) ride
       # along: fidelity-baseline.tsv in the same artifact. Without model_lod_desc.bin it skips and passes.
       - name: HD preset coverage
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && env.FORK != 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -110,14 +120,14 @@ jobs:
       # #891: hd-folder-types.tsv is made from the typing code and D2R's stock presets; fail when either changed since
       # it was written, so parity never scores with an old typing (fix: `py -3 tools/pd2_fidelity.py --write-votes`)
       - name: Folder types current
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && env.FORK != 'true' }}
         run: py -3 tools/pd2_fidelity.py --check-votes
       # #838: the parity of each map (tools/pd2_parity.py) in the step summary. A push to main uploads parity-baseline.tsv
       # with the coverage baseline; a PR fails when a map's parity drops more than pd2_parity.TOLERANCE (2) points below it
       # (or a baselined map is no longer scored). The PR label parity-drop-ok accepts an intended drop. Without a
       # parity baseline from main (the first runs) it reports and passes.
       - name: HD:legacy parity
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && env.FORK != 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -139,7 +149,7 @@ jobs:
           }
           exit $code
       - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() && github.event_name == 'push' }}
+        if: ${{ !cancelled() && env.FORK != 'true' && github.event_name == 'push' }}
         continue-on-error: true
         with:
           name: coverage-baseline
@@ -150,7 +160,7 @@ jobs:
             coverage/fidelity-tiles-baseline.tsv
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && env.FORK != 'true' }}
         continue-on-error: true
         with:
           name: hd-preset-coverage

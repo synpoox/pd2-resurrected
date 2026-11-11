@@ -5,7 +5,8 @@ name: gate-control
 # skipped check as passing, so auto-merge could merge before the real gate finished. The job here has another name, so
 # no event but a real gate run ever produces a table-diff check.
 #   closed (merged too): cancel the PR's in-flight gate run (#847).
-#   parity-drop-ok added or removed: rerun the gate, which reads the label at run time. Any other label does nothing.
+#   parity-drop-ok added or removed: rerun the gate of the open PR's current head, which reads the label at run time
+#   (#901: auto-merge is paused across a removal). Any other label does nothing.
 on:
   pull_request:
     types: [labeled, unlabeled, closed]
@@ -23,27 +24,47 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       actions: write
+      pull-requests: write  # pause and restore auto-merge
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
+      PR: ${{ github.event.pull_request.number }}
+      ACTION: ${{ github.event.action }}
     steps:
       - name: Cancel or rerun the PR's gate run
         shell: bash
         run: |
-          # the newest gate.yml run of this PR's head commit
-          run=$(gh run list --workflow gate.yml --event pull_request --commit "${{ github.event.pull_request.head.sha }}" --limit 1 --json databaseId,status -q '.[0] | "\(.databaseId) \(.status)"')
-          if [ -z "$run" ]; then echo "no gate run on this head (docs-only change?)"; exit 0; fi
+          # The PR as it is now, not as the event saw it: a push may have landed since (#901).
+          read -r state head auto < <(gh pr view "$PR" --json state,headRefOid,autoMergeRequest -q '"\(.state) \(.headRefOid) \(.autoMergeRequest.mergeMethod // "-")"')
+          if [ "$ACTION" != closed ] && [ "$state" != OPEN ]; then echo "PR is $state: nothing to rerun"; exit 0; fi
+          # the newest gate.yml run of that head commit
+          run=$(gh run list --workflow gate.yml --event pull_request --commit "$head" --limit 1 --json databaseId,status -q '.[0] | "\(.databaseId) \(.status)"')
+          if [ -z "$run" ]; then echo "no gate run on $head (docs-only change?)"; exit 0; fi
           id=${run% *}; status=${run#* }
           active=false; case "$status" in queued|in_progress|waiting|requested|pending) active=true;; esac
-          if [ "${{ github.event.action }}" = closed ]; then
+          if [ "$ACTION" = closed ]; then
             if $active; then gh run cancel "$id"; echo "cancelled gate run $id"; fi
             exit 0
           fi
+          # Removing parity-drop-ok: the old green table-diff stays on the head until the rerun starts, and auto-merge
+          # could fire in that gap. Pause auto-merge first and restore it once the rerun has reset the check (#901).
+          paused=false
+          if [ "$ACTION" = unlabeled ] && [ "$auto" != "-" ]; then
+            gh pr merge "$PR" --disable-auto && paused=true
+          fi
           if $active; then
             gh run cancel "$id"
+            ended=false
             for i in $(seq 1 60); do
-              [ "$(gh run view "$id" --json status -q .status)" = completed ] && break
+              if [ "$(gh run view "$id" --json status -q .status)" = completed ]; then ended=true; break; fi
               sleep 5
             done
+            if ! $ended; then
+              msg="gate run $id was still running 300 s after the cancel request, so it was not rerun. Rerun it by hand once it ends."
+              $paused && msg="$msg Auto-merge stays paused: re-enable it after the rerun."
+              echo "::error::$msg"
+              exit 1
+            fi
           fi
           gh run rerun "$id" && echo "reran gate run $id"
+          if $paused; then gh pr merge "$PR" --auto "--$(echo "$auto" | tr A-Z a-z)" && echo "auto-merge restored"; fi
