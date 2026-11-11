@@ -15,10 +15,11 @@ on:
     types: [opened, synchronize, reopened]
     paths: ['**', '!**/*.md', '!docs/**', '!changelog.d/**', 'docs/deviations.md', 'docs/coverage-baseline.tsv']
 
-# One gate per PR: a push cancels the run on the old head (#801). push: one group per main commit (each uploads its
-# baseline).
+# One gate per PR: a push cancels the run on the old head (#801). push: one group for main, so a newer main commit cancels
+# the older one's run (#903). PRs take the latest successful main run's baseline (gh run list --status success), so a
+# cancelled run leaves them the previous baseline, then docs/coverage-baseline.tsv.
 concurrency:
-  group: gate-${{ github.event_name == 'push' && github.sha || github.event.pull_request.number }}
+  group: gate-${{ github.event_name == 'push' && 'main' || github.event.pull_request.number }}
   cancel-in-progress: true
 
 # The merge below takes a slot of the machine-wide semaphore agents' merges use (pd2_cache.Slots, PD2R_MERGE_SLOTS, #760,
