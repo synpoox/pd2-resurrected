@@ -16,10 +16,13 @@ does not count). Only tiles within SIGHT tiles of walkable legacy floor are scor
   clutter      the same floor under a grounded prop LOW..TALL high (not ground cover)
   occlusion    the same floor under a piece >= TALL whose base is raised (canopy, overhangs): it hides the floor
   floating     a piece whose base is >= FLOAT above the ground plane under it (not a tree, light, chain, banner or
-               water surface; pieces of pasted stock rooms are skipped: their own terrain is not the plane)
+               water surface; pieces of pasted stock rooms are skipped: their own terrain is not the plane; a
+               piece 6+ units tall from base to top is skipped too: a tall prop on a slope or a stack reads as
+               standing, not floating)
   invisible    legacy draws a wall cell there (not inv_wall, not liquid) and HD draws nothing >= LOW: you bump into
                air (blocked floor legacy draws as plain ground is left out: it looks walkable in legacy too)
-  void         legacy draws nothing there (no floor, no wall), HD draws a ground plane or a piece (#783)
+  void         legacy (the DS1 with PD2's own DT1s) draws nothing there (no floor, no wall), HD draws a ground
+               plane or a piece (#783)
   liquid       legacy liquid floor under no water or lava model, any size
 
 parity = 1 - sum(w(t) over bad tiles) / sum(w(t) over visible tiles). w is 3 on a legacy edge tile (what the eye
@@ -43,7 +46,7 @@ import shutil
 import subprocess
 import sys
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -57,7 +60,10 @@ from pd2_ids import load  # noqa: E402
 LOW, TALL = coverage.LOW, coverage.TALL  # 1 and 4 HD units, as the coverage gate
 SIGHT = 7  # tiles from walkable floor the camera shows (D2R HD at 1080p: about 7 tiles each way from the player)
 FLOAT = 1.0  # HD units of air under a piece's base that the eye reads as floating (a tile is 10 units)
-TOLERANCE = 1.0  # points a map's parity may fall below main's and still pass --check
+# points a map's parity may fall below main's and still pass --check. 2, not 1, until the weights are calibrated against
+# the owner's grades (P10): one shared-pass fix often trades one defect for another, and on a small map 1 point is a
+# handful of tiles. Tighten after P10.
+TOLERANCE = 2.0
 NOT_FLOATING = ("tree", "palm", "canopy", "light", "lamp", "candle", "torch", "chain", "banner", "flag", "beam",
                 "bird", "bat", "fx", "vfx", "particle", "cloud", "fog", "ray", "god", "dust", "smoke", "hanging",
                 "vine", "web", "roof", "ceiling")
@@ -115,7 +121,7 @@ def score(name, lay, legacy, preset, box, prefab, heights, typer=None) -> dict:
     walkable = presets.walkable(lay)
     near_edge = {(x + dx, y + dy) for x, y in edge_tiles for dx, dy in fidelity.STEPS8} | edge_tiles
     open_floor = walkable - near_edge  # walkable floor where legacy draws no edge on or beside the tile
-    void = {c for c in grid if c not in lay.keys or all(t[0] is None for t in lay.keys[c][1])}
+    void = {c for c in grid if c not in legacy.keys or all(t[0] is None for t in legacy.keys[c][1])}
     liquid = {c for c, (k, ts) in legacy.keys.items() if k == "f" and any(
         fidelity.classify(t[0], 0, "floor", coverage.painter.blocked_floor(legacy.flags.get(c, bytes(25)))) == "liquid"
         for t in ts)}
@@ -183,6 +189,11 @@ def score(name, lay, legacy, preset, box, prefab, heights, typer=None) -> dict:
             "floats": floats.most_common(6), "visible": visible, "edge_tiles": edge_tiles, "walkable_set": walkable}
 
 
+def wanted(stem: str, only: set[str] = frozenset()) -> bool:
+    """Whether a DS1 is scored: not the Palace (palace1-6), and in `only` when that is given."""
+    return not stem.startswith(PALACE) and (not only or stem in only)
+
+
 def worst_check(r: dict) -> str:
     """The check that flags the most visible tiles of a map ('-' when none does)."""
     k = max(CHECKS, key=lambda k: r["defects"][k])
@@ -214,13 +225,13 @@ def baseline_text(rows: list[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def read_baseline(text: str) -> dict[str, float]:
-    """map -> parity in percent."""
+def read_baseline(text: str) -> dict[str, tuple[float, dict[str, int]]]:
+    """map -> (parity in percent, defect tiles per check)."""
     out = {}
     for line in text.splitlines():
         if line.strip() and not line.startswith("#"):
             f = line.split("\t")
-            out[f[0]] = float(f[1])
+            out[f[0]] = (float(f[1]), {k: int(v) for k, v in zip(CHECKS, f[2:])})
     return out
 
 
@@ -230,40 +241,48 @@ class Change:
     old: float | None  # percent; None: not in the baseline (new map)
     new: float | None  # percent; None: no longer scored
     drop: bool  # fell more than the tolerance, or no longer scored
+    deltas: dict[str, int] = field(default_factory=dict)  # defect tiles per check, now minus main (only the ones that moved)
 
 
-def changes(rows: list[dict], base: dict[str, float], tolerance: float = TOLERANCE) -> list[Change]:
+def changes(rows: list[dict], base: dict, tolerance: float = TOLERANCE) -> list[Change]:
     """The maps whose parity differs from the baseline by a displayed point or more, worst drop first."""
     now = {r["name"]: round(100 * r["parity"], 1) for r in rows}
+    defects = {r["name"]: r["defects"] for r in rows}
     found = []
     for name in sorted(now.keys() | base.keys()):
-        old, new = base.get(name), now.get(name)
+        old, new = base.get(name, (None, {}))[0], now.get(name)
         if old is None or new is None:
             found.append(Change(name, old, new, new is None))
         elif new != old:
-            found.append(Change(name, old, new, old - new > tolerance))
+            was = base[name][1]
+            found.append(Change(name, old, new, old - new > tolerance,
+                                {k: defects[name].get(k, 0) - was.get(k, 0) for k in CHECKS
+                                 if defects[name].get(k, 0) != was.get(k, 0)}))
     return sorted(found, key=lambda c: (c.new if c.new is not None else -1) - (c.old if c.old is not None else 100))
 
 
 def report_md(rows: list[dict], commit: str = "", found: list[Change] | None = None,
-              tolerance: float = TOLERANCE) -> str:
+              tolerance: float = TOLERANCE, note: str = "") -> str:
     worst = sorted(rows, key=lambda r: r["parity"])
     title = f"## HD:legacy parity{f' at {commit[:9]}' if commit else ''}"
     lines = [title, "",
              f"Mean parity **{100 * mean(rows):.1f}%** over {len(rows)} variants (Palace excluded). The weakest: "
              + ", ".join(f"{r['name']} {100 * r['parity']:.1f}%" for r in worst[:5]) + ".", ""]
+    if note:
+        lines += [f"**{note}**", ""]
     if found is not None:
         drops = [c for c in found if c.drop]
         lines += [f"Against main's baseline: {len(found)} maps changed, {len(drops)} dropped more than "
                   f"{tolerance:g} point{'s' if tolerance != 1 else ''} (a drop fails the gate; to accept an intended "
                   "one, label the PR `parity-drop-ok`).", ""]
         if found:
-            lines += ["| map | main | now | change |", "|---|--:|--:|--:|"]
+            lines += ["| map | main | now | change | defect tiles vs main |", "|---|--:|--:|--:|---|"]
             for c in found:
                 o = "new" if c.old is None else f"{c.old:.1f}%"
                 n = "gone" if c.new is None else f"{c.new:.1f}%"
                 dl = "" if c.old is None or c.new is None else f"{c.new - c.old:+.1f}"
-                lines.append(f"| {c.name} | {o} | {n} | {dl}{' FAIL' if c.drop else ''} |")
+                dt = ", ".join(f"{k} {v:+d}" for k, v in c.deltas.items())
+                lines.append(f"| {c.name} | {o} | {n} | {dl}{' FAIL' if c.drop else ''} | {dt} |")
             lines.append("")
     lines += ["Defect tiles are visible tiles flagged by each check (a tile can be flagged by several; it counts once "
               "in the parity). Floor and wall coverage stay in report.md, information only.", "",
@@ -279,7 +298,7 @@ def report_md(rows: list[dict], commit: str = "", found: list[Change] | None = N
 def run(data: Path, d2r: Path, out: Path | None, only: set[str] = frozenset(), images: bool = True) -> list[dict] | None:
     """Score every generated preset under data (generated/data) except the Palace; None: skipped (no model boxes)."""
     if not (d2r / coverage.MODELS).is_file():
-        print(f"pd2_parity: skipped, no {d2r / coverage.MODELS} (`python -m modkit fetch --prefix data/hd/model_lod_desc.bin`)")
+        print(f"::warning::pd2_parity: skipped, no {d2r / coverage.MODELS} (`python -m modkit fetch --prefix data/hd/model_lod_desc.bin`)")
         return None
     found = coverage.model_boxes((d2r / coverage.MODELS).read_bytes())
 
@@ -298,7 +317,7 @@ def run(data: Path, d2r: Path, out: Path | None, only: set[str] = frozenset(), i
         for ds1 in ds1s:
             stem = Path(ds1).stem.lower()
             f = data / presets.PRESETS / Path(ds1).with_suffix(".json")
-            if ds1 in seen or not f.is_file() or (only and stem not in only) or stem.startswith(PALACE):
+            if ds1 in seen or not f.is_file() or not wanted(stem, only):
                 continue
             seen.add(ds1)
             raw = (data / "global" / "tiles" / ds1).read_bytes()
@@ -333,7 +352,7 @@ def main_baseline(into: Path) -> Path | None:
         print(f"pd2_parity: comparing with main's baseline from gate run {run_id}")
         return got
     except (OSError, subprocess.SubprocessError, ValueError) as e:
-        print(f"pd2_parity: warning: no main parity baseline ({e}); nothing to compare with", file=sys.stderr)
+        print(f"::warning::pd2_parity: no main parity baseline ({e}); nothing to compare with", file=sys.stderr)
         return None
 
 
@@ -361,9 +380,16 @@ def main(argv: list[str] | None = None) -> int:
             base = read_baseline(path.read_text("utf-8"))
     rows = run(a.data, a.d2r, a.out, only, not a.no_images)
     if rows is None:
+        (a.out / "parity.md").write_text(
+            "## HD:legacy parity\n\n**Not scored: no model_lod_desc.bin in modkit's cache. Parity is not gated on this run.**\n",
+            "utf-8")
         return 0
     found = changes(rows, base, a.tolerance) if base is not None and not only else None
-    (a.out / "parity.md").write_text(report_md(rows, a.commit, found, a.tolerance), "utf-8")
+    note = ""
+    if base is None and not a.write_baseline and not only:
+        note = "Not gated: no parity baseline from main (the first runs, or the download failed)."
+        print(f"::warning::pd2_parity: {note}")
+    (a.out / "parity.md").write_text(report_md(rows, a.commit, found, a.tolerance, note), "utf-8")
     if a.write_baseline:
         (a.out / BASELINE_FILE).write_text(baseline_text(rows), "utf-8", newline="\n")
         print(f"pd2_parity: baseline written, {a.out / BASELINE_FILE}")

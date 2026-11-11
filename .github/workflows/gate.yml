@@ -96,7 +96,7 @@ jobs:
             "HD preset coverage did not run: $out" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
           }
       # #838: the parity of each map (tools/pd2_parity.py) in the step summary. A push to main uploads parity-baseline.tsv
-      # with the coverage baseline; a PR fails when a map's parity drops more than pd2_parity.TOLERANCE points below it
+      # with the coverage baseline; a PR fails when a map's parity drops more than pd2_parity.TOLERANCE (2) points below it
       # (or a baselined map is no longer scored). The PR label parity-drop-ok accepts an intended drop. Without a
       # parity baseline from main (the first runs) it reports and passes.
       - name: HD:legacy parity
@@ -110,13 +110,14 @@ jobs:
           } else {
             [string[]]$check = if ($env:DROP_OK -eq "true") { @() } else { @("--check") }
             if ($env:DROP_OK -eq "true") { "Label parity-drop-ok: parity drops are reported, not failed." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY }
-            py -3 tools/pd2_parity.py --commit ${{ github.sha }} @check
+            # main's parity-baseline.tsv comes from the artifact the coverage step downloaded (none yet: the tool says so)
+            [string[]]$base = if (Test-Path coverage/main-coverage/parity-baseline.tsv) { @("--baseline", "coverage/main-coverage/parity-baseline.tsv") } else { @() }
+            py -3 tools/pd2_parity.py --commit ${{ github.sha }} @base @check
           }
           $code = $LASTEXITCODE
           if (Test-Path coverage/parity.md) {
             Get-Content coverage/parity.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
           }
-          exit $code
           exit $code
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && github.event_name == 'push' }}
