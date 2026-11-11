@@ -41,6 +41,19 @@ class DrawnTests(unittest.TestCase):
         raw[276 + 80:276 + 84] = (3).to_bytes(4, "little")  # the first tile's block count
         self.assertEqual(void.drawn_tiles(bytes(raw)), {(0, 0, 1)})
 
+    def test_the_blank_dt1_filler_draws_nothing_though_it_has_blocks(self):
+        import tempfile
+        raw = bytearray(dt1([(0, 0, 1)]))
+        raw[276 + 80:276 + 84] = (25).to_bytes(4, "little")
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "act1/outdoors/blank.dt1"
+            f.parent.mkdir(parents=True)
+            f.write_bytes(bytes(raw))
+            (f.parent / "other.dt1").write_bytes(bytes(raw))
+            drawn = void.Drawn(Path(d))
+            self.assertEqual(drawn["act1/outdoors/blank.dt1"], frozenset())
+            self.assertEqual(drawn["act1/outdoors/other.dt1"], {(0, 0, 1)})
+
     def test_empty_cells_are_no_layer_and_floor_that_draws_nothing_but_never_walkable_or_wall(self):
         drawn = {"act1/a/floor.dt1": frozenset({FLOOR[1:]}), "act1/a/pit.dt1": frozenset()}
         keys = {(0, 0): ("f", (FLOOR,)), (1, 0): ("f", (PIT,)), (2, 0): ("f", ((None, 0, 0, 3),)),

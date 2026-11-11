@@ -1,7 +1,7 @@
 """Void (#783): the tiles where legacy draws nothing, a pit or the black past the map, which HD must not floor.
 
 A tile is empty in legacy when its DS1 cell has no layer at all, or only floor layers whose DT1 tile is missing or has
-no blocks (the PD2 DT1 `hellgate` floor of the Descent, `aer_palace` floor 0): nothing is drawn there, so the screen
+no blocks, or the `blank.dt1` filler that paints black (the PD2 DT1 `hellgate` floor of the Descent, `aer_palace` floor 0): nothing is drawn there, so the screen
 stays black. Walkable tiles are never empty (a player can stand on them, the ground stays); a wall cell is not empty
 either (its floor layer may be drawn under it, and a blocker is a wall's business).
 
@@ -45,7 +45,8 @@ class Drawn(dict):
 
     def __missing__(self, path: str) -> frozenset:
         f = next((r / path for r in self.roots if (r / path).is_file()), None)
-        self[path] = drawn_tiles(f.read_bytes()) if f else frozenset()
+        # blank.dt1 is legacy's black filler: its tiles have blocks, but the blocks paint black (Arcane Sanctuary's balconies)
+        self[path] = drawn_tiles(f.read_bytes()) if f and path.rsplit("/", 1)[-1].lower() != "blank.dt1" else frozenset()
         return self[path]
 
 
