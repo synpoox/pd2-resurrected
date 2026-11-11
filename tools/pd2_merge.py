@@ -35,6 +35,7 @@ import pd2_missiles_hd
 import pd2_monsters_hd
 import pd2_objects_hd
 import pd2_overlays_hd
+import pd2_overrides
 import pd2_panels
 import pd2_presets
 import pd2_skill_icons
@@ -60,6 +61,7 @@ RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
     "objects-hd.tsv": pd2_objects_hd.apply,  # after ids-objects.tsv
     "panel-grids.json": pd2_panels.apply,
     "presets-hd.tsv": pd2_presets.apply,  # after level-files.tsv: reads the merged levels, lvlprest, lvltypes and DS1
+    "presets-overrides.tsv": pd2_overrides.apply,  # after presets-hd.tsv (rules run in name order): edits its output
     "skill-icons.txt": pd2_skill_icons.apply,
     "sounds.tsv": pd2_sounds.apply,
     "standins.tsv": pd2_standins.apply,  # after the id and item rules (merge runs rule files by name)
