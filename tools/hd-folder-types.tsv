@@ -1,6 +1,5 @@
 # HD folder tiles by the legacy edge type under them in D2R's stock presets (tools/pd2_fidelity.py --write-votes): folder, then none, wall, cliff, fence, pillar, water, treeline
-Model	116	54	0	2	0	0	5
-SnowProps	3	0	0	0	0	0	0
+# input: 86f3c950c313f250
 act1_barracks_barrels	324	533	0	0	12	0	0
 act1_barracks_bottles	0	1	0	0	0	0	0
 act1_barracks_cobwebs	50	109	0	0	0	0	0
@@ -487,6 +486,7 @@ hanging_muck01	2	4	0	0	0	0	0
 hanging_muck02	0	1	0	0	0	0	0
 leaves	3	0	0	0	0	0	0
 misc	8	13	0	0	0	0	0
+model	116	54	0	2	0	0	5
 prefab	3	0	0	0	0	0	0
 puddles	3	0	0	0	0	0	0
 pygmy_fences	103	254	0	0	0	0	2
@@ -494,6 +494,7 @@ ruins	6	2	0	0	0	0	0
 scum	4	2	0	0	0	0	0
 siege	2	0	0	0	0	0	0
 snow	2	0	0	0	0	0	0
+snowprops	3	0	0	0	0	0	0
 spider_jungle_fences	6	3	0	0	0	0	0
 statues	4	3	0	0	0	0	0
 town	5	2	0	3	0	0	1

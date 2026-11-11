@@ -42,6 +42,8 @@ spacing`, percentages), and per map <name>_fidelity.png. Needs the same inputs a
 """
 from __future__ import annotations
 
+import hashlib
+import inspect
 import json
 import re
 import struct
@@ -116,7 +118,7 @@ HD_MODEL = (("treeline", re.compile(r"tree|palm")),
             ("wall", re.compile(r"wall")))
 # The stock vote (stock_vote) types a folder by the commonest legacy edge type it stands on (stock_types), when at
 # least STOCK_SHARE of its edge tiles are that type and there are STOCK_MIN of them.
-STOCK_MIN, STOCK_SHARE = 10, 0.5
+STOCK_MIN, STOCK_SHARE, STOCK_EDGE = 10, 0.5, 0.1
 VOTES_FILE = Path(__file__).with_name("hd-folder-types.tsv")  # the stock vote, committed (stock_vote; `--write-votes`)
 GROUND_COVER = re.compile(r"grass|clump|weed|reed|cattail|bush|cactus|mushroom")
 
@@ -333,22 +335,44 @@ def stock_vote(d2r: Path, box: Callable[[str], tuple | None], prefab: Callable[[
 
 def stock_types(votes: dict) -> dict[str, str]:
     """The folders the stock vote types (stock_vote's counts): folder -> the commonest legacy edge type under it, for
-    those with STOCK_MIN edge tiles of which STOCK_SHARE are that type."""
+    those with STOCK_MIN edge tiles, STOCK_EDGE of their tiles on edges, and STOCK_SHARE of the edge tiles that type.
+    A prop kit that hugs walls (under STOCK_EDGE) stays untyped. A low piece of a voted folder gets edge credit by
+    its folder with no height check (only name-typed pieces are height-scored)."""
     out = {}
     for f, v in votes.items():
         edge = {k: n for k, n in v.items() if k in EDGES}
-        if edge and (e := sum(edge.values())) >= STOCK_MIN:
+        if edge and (e := sum(edge.values())) >= STOCK_MIN and e >= STOCK_EDGE * sum(v.values()):
             k = max(sorted(edge), key=edge.get)
             if edge[k] >= STOCK_SHARE * e:
                 out[f] = k
     return out
 
 
-def votes_text(votes: dict) -> str:
+def votes_input_hash(d2r: Path) -> str:
+    """A hash of what the stock vote is made from: the typing code (the folder and model typing, the legacy edges, the
+    vote and the piece stand) and D2R's stock preset list. A changed hash means hd-folder-types.tsv is stale."""
+    code = [inspect.getsource(f) for f in (folder_of, model_type, model_types, legacy_edges, liquid_floor, stock_vote,
+                                           Hd.add, hd_pieces)]
+    code += [repr([(t, rx.pattern) for t, rx in HD_MODEL]), GROUND_COVER.pattern, repr(coverage.TALL)]
+    root = d2r / presets.PRESETS
+    names = sorted(p.relative_to(root).as_posix() for p in root.rglob("*.json"))
+    return hashlib.sha256("\n".join(code + names).encode("utf-8")).hexdigest()[:16]
+
+
+def votes_text(votes: dict, digest: str = "") -> str:
     head = ("# HD folder tiles by the legacy edge type under them in D2R's stock presets (tools/pd2_fidelity.py "
             "--write-votes): folder, then " + ", ".join(("none",) + EDGES))
-    return "\n".join([head] + [f"{f}\t" + "\t".join(str(v.get(k, 0)) for k in ("none",) + EDGES)
-                              for f, v in sorted(votes.items())]) + "\n"
+    return "\n".join([head, f"# input: {digest}"] + [f"{f}\t" + "\t".join(str(v.get(k, 0)) for k in ("none",) + EDGES)
+                                                     for f, v in sorted(votes.items())]) + "\n"
+
+
+def votes_stale(text: str, digest: str) -> str | None:
+    """A warning when the vote file was made from other typing code or stock presets than `digest` (votes_input_hash)."""
+    have = next((l.split(":", 1)[1].strip() for l in text.splitlines() if l.startswith("# input:")), "")
+    if have == digest:
+        return None
+    return (f"{VOTES_FILE.name} is stale (made from input {have or 'unknown'}, now {digest}): the typing code or the stock "
+            f"presets changed; rerun `py -3 tools/pd2_fidelity.py --write-votes`")
 
 
 def read_votes(text: str) -> dict:
@@ -362,16 +386,47 @@ def read_votes(text: str) -> dict:
 
 @dataclass
 class Hd:
-    """What the HD preset stands on the DS1's tiles."""
+    """What the HD preset stands on the DS1's tiles. Fill it through add()."""
     tops: dict[str, dict[Tile, float]] = field(default_factory=lambda: {e: {} for e in EDGES})  # type -> tile -> top
     centres: dict[str, list[Tile]] = field(default_factory=lambda: {e: [] for e in EDGES})  # type -> a tile per piece
     other: dict[Tile, float] = field(default_factory=dict)  # a tall piece of no edge type -> its top
     who: dict[Tile, tuple[float, str]] = field(default_factory=dict)  # the tallest piece on a tile -> its folder
-    named: dict[str, set] = field(default_factory=lambda: {e: set() for e in EDGES})  # type -> tiles a piece stands on
-    # that its model name types (model_type); a tile in `tops` but not here is the stock vote's alone (#822: the height
-    # D2R's own presets draw the legacy edge at is the right one, so it is not scored)
+    nametops: dict[str, dict[Tile, float]] = field(default_factory=lambda: {e: {} for e in EDGES})  # type -> tile -> top
+    # of the pieces its model name types (model_type) alone. The height is scored from these: a tile in `tops` but not
+    # here is the stock vote's (#822: the height D2R's own presets draw the legacy edge at is the right one), and a
+    # voted piece on a named one never changes its height
+    stocktops: dict[Tile, float] = field(default_factory=dict)  # a piece typed only by the stock vote -> its top, apart
+    # from `tops` so a tall voted piece never hides the low name-typed piece under it from wall_cover's height classes
     core: dict[str, set] = field(default_factory=lambda: {e: set() for e in EDGES})  # type -> tiles a piece mainly
     # covers (coverage.core_footprint); a tile in `tops` but not here is covered only by a neighbouring box's spill
+
+    def add(self, b: tuple, types: tuple, named: str | None, folder: str) -> None:
+        """Stand one piece (a coverage.boxes box `b`) of `folder` on the tiles. `types` are the edge types it counts as
+        (model_types), `named` its name's type (model_type). A piece of no type under coverage.TALL is left out; a tall
+        one of none goes to `other`. Only the name's type adds to `centres` (spacing): a prop kit the stock vote types
+        is not a run of pieces. Shared with tools that build an Hd of their own (#843)."""
+        top = b[4]
+        if not types and top < coverage.TALL:
+            return
+        tiles = coverage.footprint([b])
+        for c in tiles:
+            if top >= self.who.get(c, (0.0, ""))[0]:
+                self.who[c] = (top, folder)
+        if not types:
+            for c in tiles:
+                self.other[c] = max(top, self.other.get(c, top))
+            return
+        if named not in types:
+            for c in tiles:
+                self.stocktops[c] = max(top, self.stocktops.get(c, top))
+        for t in types:
+            for c in tiles:
+                self.tops[t][c] = max(top, self.tops[t].get(c, top))
+            self.core[t] |= coverage.core_footprint(b)
+            if t == named:
+                for c in tiles:
+                    self.nametops[t][c] = max(top, self.nametops[t].get(c, top))
+                self.centres[t].append((int((b[0] + b[1]) / 2 // presets.TILE), int((b[2] + b[3]) / 2 // presets.TILE)))
 
 
 def hd_pieces(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
@@ -383,31 +438,14 @@ def hd_pieces(entities: list[dict], box: Callable[[str], tuple | None], prefab: 
 
     def typed(path: str):
         b = box(path)
-        folder[0] = path.rsplit("/", 2)[-2] if path.count("/") else ""
+        folder[0] = folder_of(path)
         byname[0] = model_type(path)
         kind[0] = model_types(path, stock)  # boxes() yields right after this call, so the box it yields is this model's
         return b
     for b in coverage.boxes(entities, typed, prefab, ground=ground):
         if b[1] - b[0] > coverage.ROOM or b[3] - b[2] > coverage.ROOM:
             continue
-        top, ts = b[4], kind[0]
-        if not ts and top < coverage.TALL:
-            continue
-        tiles = coverage.footprint([b])
-        for c in tiles:
-            if top >= hd.who.get(c, (0.0, ""))[0]:
-                hd.who[c] = (top, folder[0])
-        if not ts:
-            for c in tiles:
-                hd.other[c] = max(top, hd.other.get(c, top))
-            continue
-        for t in ts:
-            for c in tiles:
-                hd.tops[t][c] = max(top, hd.tops[t].get(c, top))
-            hd.core[t] |= coverage.core_footprint(b)
-            if t == byname[0]:  # only the name's type piles up (a prop kit the vote types is not a run of pieces)
-                hd.centres[t].append((int((b[0] + b[1]) / 2 // presets.TILE), int((b[2] + b[3]) / 2 // presets.TILE)))
-                hd.named[t] |= tiles
+        hd.add(b, kind[0], byname[0], folder[0])
     return hd
 
 
@@ -421,7 +459,7 @@ def wall_cover(legacy: dict[str, dict[Tile, str | None]], hd: Hd, tall: set[Tile
     stands on it, whatever the piece's type; of a tile holding several edge types, one right is enough. A wall tile
     with no edge type (invisible blockers, a layer classify() skips) keeps the old rule: under a `tall` tile."""
     classes: dict[Tile, set[str]] = {}
-    for tops in list(hd.tops.values()) + [hd.other]:
+    for tops in list(hd.nametops.values()) + [hd.other, hd.stocktops]:
         for c, top in tops.items():
             classes.setdefault(c, set()).add(hd_class(top))
     typed = {c for tiles in legacy.values() for c in tiles}
@@ -475,7 +513,7 @@ def score_type(kind: str, legacy: dict[Tile, str | None], hd: Hd) -> TypeScore:
     mine = hd.tops[kind]
     for c, want in legacy.items():
         if c in mine:
-            if want and c in hd.named[kind] and hd_class(mine[c]) != want:
+            if want and c in hd.nametops[kind] and hd_class(hd.nametops[kind][c]) != want:
                 s.wrong_height.add(c)
         elif any(c in tops for tops in hd.tops.values()) or c in hd.other:
             s.wrong_type.add(c)
@@ -722,7 +760,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     box, prefab = coverage.model_lookup(a.d2r)
     votes = stock_vote(a.d2r, box, prefab)
-    VOTES_FILE.write_text(votes_text(votes), "utf-8", newline="\n")
+    VOTES_FILE.write_text(votes_text(votes, votes_input_hash(a.d2r)), "utf-8", newline="\n")
     print(f"pd2_fidelity: {len(votes)} folders voted, {len(stock_types(votes))} typed, {VOTES_FILE}")
     return 0
 

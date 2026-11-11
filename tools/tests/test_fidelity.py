@@ -308,7 +308,7 @@ def hd_of(wall=(), fence=(), tree=(), other=()) -> F.Hd:
     for name, tiles in (("wall", wall), ("fence", fence), ("treeline", tree)):
         for c, top in tiles:
             hd.tops[name][c] = top
-            hd.named[name].add(c)
+            hd.nametops[name][c] = top
             hd.centres[name].append(c)
     hd.other.update(dict(other))
     return hd
@@ -523,9 +523,54 @@ class StockTyping(unittest.TestCase):
         self.assertEqual(F.model_types("data/hd/x/act3_bushes/a.model", stock), ())
 
     def test_stock_types_need_enough_edge_tiles_and_a_share(self):
-        votes = {"a": {"none": 900, "wall": 30, "cliff": 10}, "b": {"wall": 5}, "c": {"none": 40}, "d": {"wall": 12, "fence": 10},
+        votes = {"a": {"none": 90, "wall": 30, "cliff": 10}, "f": {"none": 900, "wall": 30}, "b": {"wall": 5}, "c": {"none": 40}, "d": {"wall": 12, "fence": 10},
                  "e": {"pillar": 5, "wall": 4, "none": 5}}
         self.assertEqual(F.stock_types(votes), {"a": "wall", "d": "wall"})
+
+    def test_a_prop_kit_under_a_tenth_on_edges_is_not_typed(self):
+        self.assertEqual(F.stock_types({"kit": {"none": 900, "wall": 99}}), {})
+        self.assertEqual(F.stock_types({"kit": {"none": 900, "wall": 100}}), {"kit": "wall"})
+
+    def test_vote_keys_are_lower_case(self):
+        hd = F.hd_pieces([piece("Act2_Tomb_Fences", 0, 20, 1.5)], box, lambda p: [])
+        self.assertEqual(hd.who[(0, 0)][1], "act2_tomb_fences")
+        for f in F.read_votes(F.VOTES_FILE.read_text("utf-8")):
+            self.assertEqual(f, f.lower())
+
+    def test_a_voted_piece_never_changes_the_name_types_height(self):
+        hd = F.hd_pieces([piece("act2_tomb_fences", 0, 20, 1.5), piece("act2_props", 0, 20, 6.0)], box, lambda p: [],
+                         stock={"act2_props": "fence"})
+        self.assertEqual(hd.tops["fence"][(0, 0)], 6.0)
+        self.assertEqual(hd.nametops["fence"][(0, 0)], 1.5)
+        self.assertEqual(F.score_type("fence", {(0, 0): "low"}, hd).wrong_height, set())
+
+    def test_a_tall_voted_piece_keeps_the_low_class_under_it_for_wall_cover(self):
+        hd = F.hd_pieces([piece("act2_tomb_fences", 0, 20, 1.5), piece("act2_props", 0, 20, 6.0)], box, lambda p: [],
+                         stock={"act2_props": "fence"})
+        self.assertEqual(hd.stocktops, {(0, 0): 6.0, (1, 0): 6.0, (2, 0): 6.0})
+        self.assertEqual(F.wall_cover({"wall": {(0, 0): "low"}}, hd, set()), {(0, 0)})
+        self.assertEqual(F.wall_cover({"wall": {(0, 0): "tall"}}, hd, set()), {(0, 0)})
+
+    def test_stale_votes_are_warned_about(self):
+        text = F.votes_text({"a": {"wall": 3}}, "abc")
+        self.assertIsNone(F.votes_stale(text, "abc"))
+        self.assertIn("--write-votes", F.votes_stale(text, "def"))
+        self.assertIn("unknown", F.votes_stale("a\t0\t3\n", "def"))
+        self.assertEqual(F.read_votes(text), {"a": {"wall": 3}})
+
+    def test_input_hash_follows_the_stock_preset_list(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d) / F.presets.PRESETS
+            root.mkdir(parents=True)
+            (root / "a.json").write_text("{}")
+            h = F.votes_input_hash(Path(d))
+            self.assertEqual(h, F.votes_input_hash(Path(d)))
+            (root / "b.json").write_text("{}")
+            self.assertNotEqual(h, F.votes_input_hash(Path(d)))
+
+    def test_the_committed_vote_is_current_in_form(self):
+        text = F.VOTES_FILE.read_text("utf-8")
+        self.assertRegex(text, r"(?m)^# input: [0-9a-f]{16}$")
 
     def test_votes_round_trip(self):
         votes = {"act2_oasis": {"none": 87, "water": 38}, "a": {"wall": 3}}

@@ -576,7 +576,10 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
     _, standins, water = presets.read_rule(rule)
     wet = presets.wet_dt1s(water)  # stream DT1, water past the tree line too (painter.water)
     box, prefab = model_lookup(d2r)
-    stock = fidelity.stock_types(fidelity.read_votes(fidelity.VOTES_FILE.read_text("utf-8")))
+    votes = fidelity.VOTES_FILE.read_text("utf-8")
+    if warn := fidelity.votes_stale(votes, fidelity.votes_input_hash(d2r)):
+        print(f"pd2_coverage: warning: {warn}", file=sys.stderr)
+    stock = fidelity.stock_types(fidelity.read_votes(votes))
     tiles, pd2_tiles = presets.Tiles(d2r / "global" / "tiles"), presets.Tiles(data / "global" / "tiles")
     heights = fidelity.Heights(data / "global" / "tiles", d2r / "global" / "tiles")
     out.mkdir(parents=True, exist_ok=True)
