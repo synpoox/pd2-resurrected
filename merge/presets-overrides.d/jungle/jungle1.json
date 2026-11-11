@@ -4,6 +4,6 @@
     {"op": "ground", "area": [30, 160, 50, 190], "model": "*/act3_jungle_debris/*", "why": "sticks float 6-7 units over the plane"},
     {"op": "ground", "at": [39, 181], "model": "*/pf_act3_tree_cypress04_01.json", "expect": 1, "why": "the cypress prefab (and its 3 rock piles) floats 10 units up"},
     {"op": "ground", "area": [80, 160, 99, 179], "model": "*/act3_ferns/*", "why": "fern block (4,8): 29 ferns float 5-12 units"},
-    {"op": "add", "at": [39, 181], "from": "data/hd/env/preset/act3/jungle/boge.json", "pick": "*/act3_jungle_rocks/rock_pile04.model", "why": "one full-size (scale 1) jungle rock pile at the cypress base: the shipped rock_pile03 copy is scale 0.63 and a few pebbles"}
+    {"op": "add", "at": [39, 181], "from": "data/hd/env/preset/act3/jungle/boge.json", "pick": "*/act3_jungle_ground/tree_mound01.model", "why": "a stock jungle ground mound (scale 1) at the cypress base: legacy shows bare jungle floor there, and a rock pile (0.63 or 1.0) is invisible at the shipped scale"}
   ]
 }
