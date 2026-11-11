@@ -24,13 +24,8 @@ slot locked and its game running in a game (Hell, level 90+); see docs/agents/ga
 testing/game_ctl.py for the console, keys and window screenshots, and writes <out>/edge-tour/<map>/<name>.png: HD on
 the left, legacy on the right.
 
-`sweep` (#840) shoots every variant (each DS1 of the PD2-only maps, or those matching --map) with no manual step:
-it shards the variants over the free slots (one thread per slot, always leaving --keep-free slots unlocked), and per
-variant stops the game, pins the DS1 (pd2_force_ds1), starts, clicks through Play and Hell, sets the cheats and shoots
-about --points pairs: the warp list's centre and waypoint (docs/agents/warp-locations.md), then edge and floor points
-(plan, until pd2_parity's defect-driven points exist). Each click waits for a screenshot that is not black. The result is
-<out>/<map>/<ds1>.jpg (a contact sheet with luma and black share), <out>/sweep.json, and the PNG pairs are pruned. Each
-slot is locked and unlocked, its pin reset and `g` pressed back in a `finally`.
+`sweep` (#840) shoots every non-Palace variant with no manual step, across the free slots: see docs/agents/game-slots.md, "Edge
+tour".
 """
 from __future__ import annotations
 
@@ -59,7 +54,7 @@ Tile = tuple[int, int]
 AROUND = [(i, j) for i in (-1, 0, 1) for j in (-1, 0, 1) if i or j]
 SETTLE = 3.0  # seconds after a warp before the HD shot (the level loads; a same-level warp is quick)
 TOGGLE = 1.5  # seconds after `g` before the shot
-WARP_DOC = ROOT / "docs" / "agents" / "warp-locations.md"
+PALACE = 141  # levels.txt Id of the Palace (Horadrim Tower): unplayable, never swept
 
 
 # ---------------------------------------------------------------------------------------------------- warp points
@@ -200,23 +195,33 @@ class Map:
 
 
 def maps(out_data: Path, d2r_data: Path) -> list[Map]:
-    """The PD2-only presets with a generated HD preset, one per DS1."""
+    """The PD2-only presets with a generated HD preset, one per DS1 (a DS1 two presets or one preset twice lists is
+    kept once, by its lower-cased path)."""
     lp = load(out_data, "lvlprest")
     level = {r[0]: int(r[col(lp, "LevelId")]) for r in lp.rows if r[0] and r[col(lp, "LevelId")].isdigit()}
     out, seen = [], set()
     for name, _, files, ds1s in presets.pd2_only_presets(out_data, len(load(d2r_data, "lvlprest").records())):
         for ds1 in ds1s:
             hd = out_data / presets.PRESETS / Path(ds1).with_suffix(".json")
-            if ds1 not in seen and hd.is_file() and level.get(name):
-                seen.add(ds1)
+            if ds1.lower() not in seen and hd.is_file() and level.get(name):
+                seen.add(ds1.lower())
                 out.append(Map(name, level[name], ds1, files))
     return out
 
 
-def select(found: list[Map], wanted: str) -> list[Map]:
-    """The maps whose preset name or DS1 stem contains `wanted` (case-insensitive), or all for an empty one."""
+def select(found: list[Map], wanted: str, exact: bool = False) -> list[Map]:
+    """The maps whose preset name or DS1 stem contains `wanted` (case-insensitive), or all for an empty one. `exact`:
+    the name (with or without its " Map") or the stem equals it."""
     w = wanted.lower()
+    if exact:
+        return [m for m in found if w in (m.name.lower(), m.name.lower().removesuffix(" map"), Path(m.ds1).stem.lower())]
     return [m for m in found if w in m.name.lower() or w in Path(m.ds1).stem.lower()]
+
+
+def map_layout(m: Map, out_data: Path, tiles, pd2_tiles) -> tuple[bytes, presets.Layout]:
+    """A map's DS1 bytes and its layout naming the PD2 DT1s (else D2R's own), no stand-ins."""
+    data = (out_data / "global" / "tiles" / m.ds1).read_bytes()
+    return data, presets.layout(data, {p: pd2_tiles[p] or tiles[p] for p in m.files})
 
 
 def plan_all(out_data: Path, d2r_data: Path, wanted: str, types: list[str] | None, n: int) -> list[Point]:
@@ -224,8 +229,7 @@ def plan_all(out_data: Path, d2r_data: Path, wanted: str, types: list[str] | Non
     tiles, pd2_tiles = presets.Tiles(d2r_data / "global" / "tiles"), presets.Tiles(out_data / "global" / "tiles")
     out = []
     for m in select(maps(out_data, d2r_data), wanted):
-        lay = presets.layout((out_data / "global" / "tiles" / m.ds1).read_bytes(),
-                             {p: pd2_tiles[p] or tiles[p] for p in m.files})  # PD2's DT1s, else D2R's own
+        _, lay = map_layout(m, out_data, tiles, pd2_tiles)
         _, ox, oy = lv[m.level]
         out += plan(lay, m.name, Path(m.ds1).stem, m.level, (ox, oy), types, n)
     return out
@@ -237,7 +241,7 @@ PLAY = (0.394, 0.898)  # the character screen's Play button (fractions of the cl
 HELL = (0.5, 0.543)  # the difficulty popup's Hell button
 LOAD_TOP, LOAD_MID = 1.5, 30.0  # loading(): the top strip is darker than this, the middle brighter
 MIN_LUMA = 10.0  # a screenshot whose mean grey is below this is a loading screen or black, not a menu
-NO_LEGACY = ("poisonedwell",)  # `g` hangs the game on these (#772): HD only, the legacy half stays blank
+NO_LEGACY = frozenset({199})  # levels (Poisoned Well Map, all variants) where `g` hangs the game (#778): HD only, the legacy half stays blank
 CHEATS = ("cheat nogethit 1", "cheat god 1", "cheat speedup 300", "cheat stat item_lightradius, 25")
 
 
@@ -266,7 +270,7 @@ def load_game_ctl():
 
 def pair(game, settle: float, legacy: bool = True):
     """The (HD, legacy) screenshots at the current spot. `g` is pressed back whatever happens to the legacy shot (#795)."""
-    time.sleep(settle)
+    nap(settle)
     hd = game.screenshot()
     if not legacy:
         return hd, blank_like(hd)
@@ -274,7 +278,7 @@ def pair(game, settle: float, legacy: bool = True):
     try:
         game.key("g")
         pressed = True
-        time.sleep(TOGGLE)
+        nap(TOGGLE)
         return hd, game.screenshot()
     finally:
         if pressed:
@@ -306,54 +310,55 @@ def shoot(points: list[Point], slot: int, out: Path, settle: float = SETTLE, log
 
 # ---------------------------------------------------------------------------------------------------- the sweep
 
-def parse_warps(text: str) -> dict[str, list[tuple[str, tuple[int, int] | None, str]]]:
-    """docs/agents/warp-locations.md -> DS1 stem (lower case) -> [(label, DS1 tile or None, `cheat goto` line)] of the
-    reference spots that stand on walkable floor: the walkable tile nearest the centre (else the centre, which is
-    walkable when no 'nearest' line follows it), the waypoint, and the level entry."""
-    out: dict[str, list] = {}
-    cur = None
-    for line in text.splitlines():
-        if m := re.match(r"- \*\*(\S+?)\.ds1\*\*", line, re.I):
-            cur = out.setdefault(m[1].lower(), [])
-        elif cur is not None and (m := re.match(r"\s+- (.+?)(?: \(tile (\d+),(\d+)\))?: `(cheat goto [^`]+)`", line)):
-            label, x, y, cmd = m.groups()
-            cur.append((label, (int(x), int(y)) if x else None, cmd))
-        elif line.startswith("#"):
-            cur = None
-    keep = {}
-    for ds1, rows in out.items():
-        has_near = any(r[0].startswith("nearest walkable") for r in rows)
-        keep[ds1] = [r for r in rows if r[0].startswith("nearest walkable") or (r[0] == "centre" and not has_near)
-                     or r[0] == "waypoint" or r[0] == "entry"]
-    return keep
+STOP = threading.Event()  # set on Ctrl-C: every worker stops at its next check and runs its cleanup
 
 
-def variant_points(warps: list, edge_points: list[Point], m: Map, n: int) -> list[Point]:
-    """About n points: up to two warp-list references (centre-ish, waypoint), then one point per edge or floor type in
-    turn (the plan's order: edges first), spread by `pick`. Defect-driven points (pd2_parity) will replace the plan's."""
-    refs = [Point(m.name, Path(m.ds1).stem, m.level, "ref-" + re.sub(r"\W+", "-", lab.split(" (")[0]), t or (0, 0), cmd)
-            for lab, t, cmd in warps if lab != "entry"][:2]
-    if not refs and warps:
-        refs = [Point(m.name, Path(m.ds1).stem, m.level, "ref-entry", (0, 0), warps[-1][2])]
+class Stopped(Exception):
+    """The sweep was interrupted."""
+
+
+def nap(seconds: float) -> None:
+    """Sleep, but raise Stopped as soon as the sweep is interrupted."""
+    if STOP.wait(seconds):
+        raise Stopped()
+
+
+def references(m: Map, data: bytes, lay: presets.Layout, offset: tuple[int, int], classes: dict) -> list[Point]:
+    """The walkable reference points of a variant (pd2_warps.reference_spots): the walkable tile nearest the centre
+    (the centre itself can be rock or water) and each waypoint, with their `cheat goto` lines."""
+    from pd2_warps import reference_spots  # inside: pd2_warps imports this module
+    out = []
+    for label, x, y in reference_spots(data, lay, classes):
+        if label != "centre":
+            out.append(Point(m.name, Path(m.ds1).stem, m.level, "ref-" + label.split()[0], (x, y), goto(m.level, offset, (x, y))))
+    return out
+
+
+def variant_points(refs: list[Point], edge_points: list[Point], n: int) -> list[Point]:
+    """About n points: up to two references, then one point per edge or floor type in turn (the plan's order: edges
+    first). Defect-driven points (pd2_parity) will replace the plan's."""
     by: dict[str, list[Point]] = {}
     for p in edge_points:
         by.setdefault(p.type, []).append(p)
     rest = []
     for r in range(max((len(v) for v in by.values()), default=0)):
         rest += [v[r] for v in by.values() if r < len(v)]
-    return (refs + rest)[:n]
+    return (refs[:2] + rest)[:n]
 
 
-def sweep_variants(data: Path, d2r: Path, wanted: list[str], n: int) -> list[tuple[Map, list[Point]]]:
-    """Every variant matching a --map (all when none), with its points."""
-    warps = parse_warps(WARP_DOC.read_text("utf-8"))
-    found = maps(data, d2r)
-    chosen = [m for m in found if not wanted or any(select([m], w) for w in wanted)]
+def sweep_variants(data: Path, d2r: Path, wanted: list[str], n: int, exact: bool = True) -> list[tuple[Map, list[Point]]]:
+    """Every non-Palace variant matching a --map (all when none; exact names unless `exact` is off), with its points."""
+    from pd2_warps import object_classes
+    lv, classes = offsets(data), object_classes(data)
+    tiles, pd2_tiles = presets.Tiles(d2r / "global" / "tiles"), presets.Tiles(data / "global" / "tiles")
+    chosen = [m for m in maps(data, d2r) if m.level != PALACE and (not wanted or any(select([m], w, exact) for w in wanted))]
     out = []
     for m in chosen:
-        plan_pts = plan_all(data, d2r, Path(m.ds1).stem, None, 2)
-        plan_pts = [p for p in plan_pts if p.ds1 == Path(m.ds1).stem]
-        out.append((m, variant_points(warps.get(Path(m.ds1).stem.lower(), []), plan_pts, m, n)))
+        raw, lay = map_layout(m, data, tiles, pd2_tiles)
+        _, ox, oy = lv[m.level]
+        stem = Path(m.ds1).stem
+        out.append((m, variant_points(references(m, raw, lay, (ox, oy), classes),
+                                      plan(lay, m.name, stem, m.level, (ox, oy), None, 2), n)))
     return out
 
 
@@ -386,7 +391,7 @@ def wait_loaded(game, timeout: float = 45.0, log=print) -> bool:
         if time.monotonic() > end:
             log(f"warning: still loading after {timeout:g} s")
             return False
-        time.sleep(1.0)
+        nap(1.0)
     return True
 
 
@@ -396,11 +401,13 @@ def wait_lit(game, timeout: float = 60.0, what: str = "the game") -> None:
     while time.monotonic() < end:
         try:
             if mean_luma(game.screenshot()) >= MIN_LUMA:
-                time.sleep(1.0)
+                nap(1.0)
                 return
+        except Stopped:
+            raise
         except Exception:  # the window is not there yet
             pass
-        time.sleep(1.0)
+        nap(1.0)
     raise TimeoutError(f"{what}: the screen stayed black for {timeout:g} s")
 
 
@@ -408,15 +415,17 @@ def enter_hell(game, timeout: float = 90.0, log=print) -> None:
     """From the started game's character screen into a Hell game: Play, Hell, then wait for the console to answer."""
     wait_lit(game, 90, "character screen")
     game.click(*PLAY)
-    time.sleep(2.0)
+    nap(2.0)
     wait_lit(game, 30, "difficulty popup")
     game.click(*HELL)
     end = time.monotonic() + timeout
     while time.monotonic() < end:
-        time.sleep(2.0)
+        nap(2.0)
         try:
             if game.console("cheat nogethit 1", timeout=3):
                 return
+        except Stopped:
+            raise
         except Exception:
             pass
     raise TimeoutError(f"no Hell game after {timeout:g} s")
@@ -426,14 +435,15 @@ def shoot_variant(game, m: Map, points: list[Point], out: Path, settle: float, l
     """Cheats, then the HD|legacy pair of each point (after the loading screen, which the first warp shows)."""
     for c in CHEATS:
         game.console(c)
-    legacy_ok = Path(m.ds1).stem.lower() not in NO_LEGACY
+    legacy_ok = m.level not in NO_LEGACY
     saved = []
     for i, p in enumerate(points):
+        nap(0)
         if not game.console(p.command):
             log(f"skip {p.name}: the console did not take {p.command!r}")
             continue
         game.console("cheat killmonster")
-        time.sleep(settle)
+        nap(settle)
         wait_loaded(game, log=log)  # a warp to another level shows the loading screen first
         hd, legacy = pair(game, 0.5, legacy_ok)
         saved.append(Path(side_by_side(hd, legacy).save(str(out / f"{i:02d}_{p.name}.png"))))
@@ -455,32 +465,46 @@ def finish_sheet(folder: Path, dest: Path, log=print) -> list[dict]:
 
 def run_slot(slot: int, jobs: list[tuple[Map, list[Point]]], out: Path, owner: str, settle: float, results: list,
              log=print) -> None:
-    """One slot's share of the sweep. Locks the slot, and in a `finally` stops the game, resets the pin and unlocks."""
+    """One slot's share of the sweep. Locks the slot (a lock tied to this process: a hard kill leaves it stale, which
+    the next claim replaces), checks STOP before each variant and point, and in a `finally` stops the game, resets the
+    pin and unlocks."""
+    game_ctl, tc = load_game_ctl()  # puts the toolkit's testing/ on sys.path
     import game_slots
     import pd2_force_ds1 as force
-    game_ctl, tc = load_game_ctl()
     cfg = tc.load(None)
-    ok, msg = game_slots.acquire(cfg, slot, owner, pid=0)  # a manual lock: released below, whatever happens
-    log(f"slot {slot}: {msg}")
-    if not ok:
+
+    def lock() -> bool:  # Game.stop() releases a pid lock, so the slot is claimed again at once after it
+        ok, msg = game_slots.acquire(cfg, slot, owner)
+        if not ok:
+            log(f"slot {slot}: {msg}")
+        return ok
+
+    if not lock():
         return
+    log(f"slot {slot}: locked by {owner}")
     game = game_ctl.Game(cfg, slot, owner, log=lambda *a: None)
     try:
         for m, points in jobs:
+            if STOP.is_set():
+                break
             stem, t0 = Path(m.ds1).stem, time.monotonic()
             row = {"map": m.name, "ds1": stem, "slot": slot, "points": len(points)}
             folder = out / "_pairs" / f"slot{slot}" / stem
             folder.mkdir(parents=True, exist_ok=True)
             try:
                 game.stop()
-                game_slots.acquire(cfg, slot, owner, pid=0)  # stop() releases a non-manual lock only
-                log("slot %d: %s: %s" % (slot, stem, force.apply(force.lvlprest_path(slot), [Path(m.ds1).name])[0]))
+                if not lock():
+                    raise RuntimeError("the slot's lock was taken while its game stopped")
+                log("slot %d: %s: %s" % (slot, stem, force.apply(force.lvlprest_path(slot, owner=owner), [Path(m.ds1).name])[0]))
                 game.start()
                 enter_hell(game)
                 shot = shoot_variant(game, m, points, folder, settle, log)
                 row["pairs"] = len(shot)
                 row["metrics"] = finish_sheet(folder, out / m.name.lower().replace(" ", "-") / f"{stem}.jpg", log)
                 row["sheet"] = f"{m.name.lower().replace(' ', '-')}/{stem}.jpg"
+            except Stopped:
+                row["error"] = "interrupted"
+                log(f"slot {slot}: {stem} interrupted")
             except Exception as e:  # one variant failing must not stop the slot's others
                 row["error"] = f"{type(e).__name__}: {e}"
                 log(f"slot {slot}: {stem} failed: {row['error']}")
@@ -492,10 +516,11 @@ def run_slot(slot: int, jobs: list[tuple[Map, list[Point]]], out: Path, owner: s
             game.stop()
         finally:
             try:
-                force.reset(force.lvlprest_path(slot))
+                lock()  # the pin reset's guard wants the lock held, and the game stopped
+                force.reset(force.lvlprest_path(slot, owner=owner))
             except Exception as e:
                 log(f"slot {slot}: pin not reset: {e}")
-            log(f"slot {slot}: " + game_slots.release(cfg, slot, owner, manual=True)[1])
+            log(f"slot {slot}: " + game_slots.release(cfg, slot, owner)[1])
 
 
 def free_slots(cfg, candidates: list[int], keep_free: int) -> list[int]:
@@ -506,25 +531,34 @@ def free_slots(cfg, candidates: list[int], keep_free: int) -> list[int]:
 
 
 def sweep(variants: list[tuple[Map, list[Point]]], slots: list[int], out: Path, settle: float = SETTLE, log=print) -> list[dict]:
-    """Shard the variants over the slots (one thread each), write <out>/sweep.json and return its rows."""
-    owner = "sweep-840"
-    os.environ["MODKIT_RUN"] = owner
+    """Shard the variants over the slots (one thread each) and write <out>/sweep.json. Ctrl-C sets STOP and waits for
+    every worker's cleanup (game stopped, pin reset, slot unlocked) before anything is written or pruned; the rows of
+    the variants that finished are kept. Returns the rows."""
+    owner = f"sweep-{os.getpid()}"  # the lock's owner: unique per sweep, and `acquire` ties the lock to this pid
+    STOP.clear()
     results: list[dict] = []
     shares = [variants[i::len(slots)] for i in range(len(slots))]
     threads = [threading.Thread(target=run_slot, args=(s, share, out, owner, settle, results, log), name=f"slot{s}")
                for s, share in zip(slots, shares) if share]
     t0 = time.monotonic()
-    try:
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-    finally:
-        out.mkdir(parents=True, exist_ok=True)
-        (out / "sweep.json").write_text(json.dumps(
-            {"slots": slots, "seconds": round(time.monotonic() - t0, 1), "variants": sorted(results, key=lambda r: r["ds1"])},
-            indent=1), "utf-8")
-        shutil.rmtree(out / "_pairs", ignore_errors=True)
+    interrupted = False
+    for t in threads:
+        t.start()
+    while any(t.is_alive() for t in threads):
+        try:
+            for t in threads:
+                t.join(0.5)
+        except KeyboardInterrupt:  # (a second Ctrl-C lands here too: keep waiting for the cleanups)
+            if not STOP.is_set():
+                log("interrupted: stopping each slot (game, pin, lock) before exit; Ctrl-C again does not skip that")
+            STOP.set()
+            interrupted = True
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "sweep.json").write_text(json.dumps(
+        {"slots": slots, "seconds": round(time.monotonic() - t0, 1), "interrupted": interrupted,
+         "variants": sorted(results, key=lambda r: r["ds1"])}, indent=1), "utf-8")
+    shutil.rmtree(out / "_pairs", ignore_errors=True)
+    STOP.clear()
     return results
 
 
@@ -534,7 +568,8 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=("list", "shoot", "sweep"))
     ap.add_argument("--map", action="append", default=[], help="a PD2-only preset name or DS1 stem, or part of one "
-                    "(repeatable; default: all; sweep takes several)")
+                    "(repeatable; default: all). sweep matches exactly (--contains: part of one) and skips the Palace")
+    ap.add_argument("--contains", action="store_true", help="sweep: --map matches part of a name or stem")
     ap.add_argument("--type", action="append", default=[], help=f"edge type ({', '.join(EDGES)}), `floor` for every "
                     "floor type or `floor:<stem>` (repeatable; default: all)")
     ap.add_argument("--points", type=int, default=None, help="points per type and DS1 (default 4); sweep: points per "
@@ -548,7 +583,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--settle", type=float, default=SETTLE, help="seconds to wait after each warp")
     a = ap.parse_args(argv)
     if a.cmd == "sweep":
-        variants = [v for v in sweep_variants(a.data, a.d2r, a.map, a.points or 10) if v[1]]
+        variants = [v for v in sweep_variants(a.data, a.d2r, a.map, a.points or 10, not a.contains) if v[1]]
         if not variants:
             print(f"no variants for {a.map or 'all maps'}")
             return 1

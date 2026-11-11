@@ -97,16 +97,16 @@ def _toolkit():
     return testing_config, release_install
 
 
-def lvlprest_path(slot: int, slots_dir: Path | None = None) -> Path:
+def lvlprest_path(slot: int, slots_dir: Path | None = None, owner: str | None = None) -> Path:
     """The slot's installed lvlprest.txt. With no slots_dir (the real use) the toolkit's testing config names the slot
     folder, and the guard of testing/slot_install.py runs: not slot 1, the lock held by MODKIT_RUN, no game running
-    in the slot (D2R reads lvlprest at launch)."""
+    in the slot (D2R reads lvlprest at launch). `owner` names the lock's owner when MODKIT_RUN is not set."""
     if slots_dir is not None:
         return slots_dir / f"Slot{slot}" / REL
     try:
         tc, ri = _toolkit()
         cfg = tc.load(None)
-        return Path(cfg.slot_dir(ri.check_slot(cfg, slot))) / REL
+        return Path(cfg.slot_dir(ri.check_slot(cfg, slot, owner))) / REL
     except Exception as e:  # the toolkit's ReleaseError and config errors
         raise ForceError(str(e)) from e
 

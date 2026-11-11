@@ -114,38 +114,39 @@ class Edges(unittest.TestCase):
             self.assertTrue(all(hall().keys[(c[0] + dx, c[1] + dy)] == DIRT for dx, dy in T.AROUND))
 
 
-WARPS = """## Act 3
-
-### Jungle Map (LevelId 149, lvlprest `Jungle Map`)
-
-- **jungle1.ds1** (pin: `pd2_force_ds1.py --slot <N> "jungle1.ds1"`), 255x255 tiles
-  - centre (tile 127,127): `cheat goto 149,16902,9997`
-  - nearest walkable to centre (tile 133,162): `cheat goto 149,17167,10062`
-  - waypoint (tile 236,237): `cheat goto 149,17682,10437`
-  - monster preset x (tile 1,2): `cheat goto 149,1,2`
-  - entry: `cheat goto 149`
-
-- **Tomb1.ds1**, 10x10 tiles
-  - centre (tile 5,5): `cheat goto 152,5,5`
-  - entry: `cheat goto 152`
-"""
-
-
 class Sweep(unittest.TestCase):
-    def test_warp_doc_keeps_the_walkable_references(self):
-        w = T.parse_warps(WARPS)
-        self.assertEqual([r[0] for r in w["jungle1"]], ["nearest walkable to centre", "waypoint", "entry"])
-        self.assertEqual(w["jungle1"][0][1:], ((133, 162), "cheat goto 149,17167,10062"))
-        self.assertEqual([r[0] for r in w["tomb1"]], ["centre", "entry"])  # no 'nearest' line: the centre is walkable
-
     def test_variant_points_put_references_first_then_one_per_type(self):
-        m = T.Map("Jungle Map", 149, "expansion/map/jungle1.ds1", [])
+        refs = [T.Point("J", "jungle1", 149, "ref-nearest", (1, 1), "cheat goto 149,1,1"),
+                T.Point("J", "jungle1", 149, "ref-waypoint", (2, 2), "cheat goto 149,2,2")]
         plan = T.plan(hall(), "Jungle Map", "jungle1", 149, (0, 0), n=3)
-        pts = T.variant_points(T.parse_warps(WARPS)["jungle1"], plan, m, 6)
+        pts = T.variant_points(refs, plan, 6)
         self.assertEqual(len(pts), 6)
-        self.assertEqual([p.type for p in pts[:2]], ["ref-nearest-walkable-to-centre", "ref-waypoint"])
+        self.assertEqual([p.type for p in pts[:2]], ["ref-nearest", "ref-waypoint"])
         self.assertEqual(len({p.type for p in pts[2:]}), 4)  # four different types before a second of one
-        self.assertEqual(T.variant_points([("entry", None, "cheat goto 149")], [], m, 6)[0].command, "cheat goto 149")
+        self.assertEqual(T.variant_points([], [], 6), [])
+
+    def test_exact_select_takes_a_stem_or_preset_name_not_a_part(self):
+        found = [T.Map("Library Map", 1, "x/library1.ds1", []), T.Map("Zhar Library Map", 2, "x/zharlibrary1.ds1", []),
+                 T.Map("Poisoned Well Map", 199, "x/poisonedwell.ds1", []),
+                 T.Map("Poisoned Well Map", 199, "x/poisonedwellv2.ds1", [])]
+        self.assertEqual([m.level for m in T.select(found, "Library", True)], [1])
+        self.assertEqual([m.ds1 for m in T.select(found, "poisonedwellV2", True)], ["x/poisonedwellv2.ds1"])
+        self.assertEqual(len(T.select(found, "poisoned well map", True)), 2)
+        self.assertEqual(len(T.select(found, "library")), 2)  # substring stays the default for list and shoot
+
+    def test_poisoned_well_skips_legacy_by_level_and_palace_is_never_swept(self):
+        self.assertIn(199, T.NO_LEGACY)
+        self.assertEqual(T.PALACE, 141)
+
+    def test_nap_raises_once_stopped(self):
+        T.STOP.clear()
+        T.nap(0)
+        T.STOP.set()
+        try:
+            with self.assertRaises(T.Stopped):
+                T.nap(5)
+        finally:
+            T.STOP.clear()
 
     def test_free_slots_leave_keep_free_unlocked(self):
         try:
