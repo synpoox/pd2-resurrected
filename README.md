@@ -124,7 +124,7 @@ python -m unittest discover -s tools/tests
 
 The table-diff gate compares the merged tables with PD2's, scoped to a work item (P2, [P3](https://github.com/synpoox/pd2-resurrected/issues/47), [P4](https://github.com/synpoox/pd2-resurrected/issues/48)) or milestone (M1,
 alpha). It fails on any difference that [docs/deviations.md](docs/deviations.md) does not list. The `gate` workflow
-runs it at scope alpha on every PR from this repository's branches, on the self-hosted runner described under Release.
+runs it at scope alpha on every PR from this repository's branches, on the self-hosted runner described under Release. Docs-only changes (`*.md`, `docs/`, `changelog.d/`) start no run, and closing or merging a PR cancels its running gate.
 For a work item's own scope, paste its output into the PR:
 
 ```bash
