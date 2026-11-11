@@ -107,6 +107,11 @@ def holder(path: Path) -> str:
     return f"pid {pid} ({'running' if alive else 'gone'}{when})"
 
 
+# Bump when what a cache entry stores or how replay works changes: it is in every rule's key (pd2_merge.base_key), so
+# editing this file's code otherwise leaves the cache alone.
+CACHE_FORMAT = 1
+
+
 def key(paths: list[Path], *extra: str) -> str:
     """A hash of every file under paths (its path from that path's parent, and its bytes) and of extra."""
     h = hashlib.sha256("\0".join(extra).encode())
@@ -134,6 +139,15 @@ def point(link: Path, target: Path) -> None:
         link.symlink_to(target, target_is_directory=True)
 
 
+def module_files(home: Path, module: str, imported: list[str]) -> list[Path]:
+    """The files under home that `import module` (dotted, "" for the home itself) or `from module import imported`
+    runs: the module's .py or package __init__.py, and each imported name that is a submodule of it (#844)."""
+    d = home.joinpath(*module.split(".")) if module else home
+    own = [d.with_suffix(".py"), d / "__init__.py"] if module else [d / "__init__.py"]
+    found = [f for f in own if f.is_file()]
+    return found + [f for a in imported for f in (d / f"{a}.py", d / a / "__init__.py") if f.is_file()]
+
+
 def sources(fn: Callable) -> list[Path]:
     """fn's module file and every module beside it that it imports, at any depth (a rule's code). A module inside a
     package brings the whole package (every .py under its top folder): relative imports and passes found by discovery
@@ -159,14 +173,20 @@ def sources(fn: Callable) -> list[Path]:
         tree = ast.parse(p.read_text("utf-8"))
         cli = {id(n) for d in tree.body if isinstance(d, ast.FunctionDef) and d.name == "main" for n in ast.walk(d)}
         for n in ast.walk(tree):
-            if id(n) in cli:
+            if id(n) in cli or not isinstance(n, (ast.Import, ast.ImportFrom)):
                 continue
-            names = ([a.name for a in n.names] if isinstance(n, ast.Import) else
-                     [n.module] if isinstance(n, ast.ImportFrom) and n.module and not n.level else [])
-            for m in names:
-                for h in homes:
-                    if (q := h / f"{m.split('.')[0]}.py").is_file():
-                        todo.append(q)
+            if isinstance(n, ast.Import):
+                bases = [(h, a.name, []) for a in n.names for h in homes]
+            elif n.level:  # relative: from the folder of p, one level up for each dot after the first
+                d = p.parent
+                for _ in range(n.level - 1):
+                    d = d.parent
+                bases = [(d, n.module or "", [a.name for a in n.names])]
+            else:
+                bases = [(h, n.module, [a.name for a in n.names]) for h in homes]
+            for h, m, imported in bases:
+                for q in module_files(h, m, imported):
+                    todo.append(q)
     return sorted(seen)
 
 

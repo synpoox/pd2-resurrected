@@ -138,6 +138,24 @@ class RuleFilesTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, named):
                     P.read_rule(rule)
 
+    def test_walls_lines_are_read_apart_from_stand_ins_and_keyed_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            t = Path(tmp)
+            rule, d = t / "presets-hd.tsv", t / "presets-hd.d"
+            d.mkdir()
+            rule.write_text("")
+            (d / "a.tsv").write_text("walls:PD2Assets/X.dt1\tAct2/A.dt1\npd2assets/x.dt1\tact1/b.dt1\n")
+            sets, standins, water, walls = P.read_rule_all(rule)
+            self.assertEqual((sets, standins, water, walls),
+                             ({}, {"pd2assets/x.dt1": "act1/b.dt1"}, {}, {"pd2assets/x.dt1": "act2/a.dt1"}))
+            self.assertEqual(P.read_rule(rule)[1], {"pd2assets/x.dt1": "act1/b.dt1"})
+            (d / "b.tsv").write_text("walls:pd2assets/x.dt1\tact2/c.dt1\n")
+            with self.assertRaisesRegex(ValueError, r"a\.tsv and in b\.tsv"):
+                P.read_rule_all(rule)
+            (d / "b.tsv").write_text("walls:pd2assets/y.dt1\tact2/c.txt\n")
+            with self.assertRaisesRegex(ValueError, "must be .dt1"):
+                P.read_rule_all(rule)
+
     def test_without_the_folder_the_anchor_alone_is_read(self):
         with tempfile.TemporaryDirectory() as tmp:
             rule = Path(tmp) / "presets-hd.tsv"
