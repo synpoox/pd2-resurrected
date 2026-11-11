@@ -54,14 +54,23 @@ class DrawnTests(unittest.TestCase):
             self.assertEqual(drawn["act1/outdoors/blank.dt1"], frozenset())
             self.assertEqual(drawn["act1/outdoors/other.dt1"], {(0, 0, 1)})
 
-    def test_empty_cells_are_no_layer_and_floor_that_draws_nothing_but_never_walkable_or_wall(self):
+    def test_empty_cells_are_no_layer_and_floor_that_draws_nothing_but_never_wall_or_walkable_ground_beside_drawn_floor(self):
         drawn = {"act1/a/floor.dt1": frozenset({FLOOR[1:]}), "act1/a/pit.dt1": frozenset()}
         keys = {(0, 0): ("f", (FLOOR,)), (1, 0): ("f", (PIT,)), (2, 0): ("f", ((None, 0, 0, 3),)),
                 (3, 0): ("w", (PIT[:1] + (1, 1, 1),)), (4, 0): ("f", (FLOOR, PIT)), (5, 0): ("f", (PIT,))}
         lay = P.Layout(7, 1, keys, {c: bytes(25) for c in keys})
         lay.unwalkable = frozenset({(0, 0), (1, 0), (2, 0), (3, 0), (4, 0)})  # (5, 0) alone is walkable
         # (0, 0) is drawn; (1, 0) and (2, 0) draw nothing; (3, 0) is a wall; (4, 0) has one drawn layer; (5, 0) walks
-        self.assertEqual(void.empty(lay, drawn), {(1, 0), (2, 0), (6, 0)})
+        # but nothing walkable beside it is drawn: cut off from ground (#902), so it is empty too
+        self.assertEqual(void.empty(lay, drawn), {(1, 0), (2, 0), (5, 0), (6, 0)})
+
+    def test_walkable_bare_cells_beside_drawn_walkable_floor_keep_their_ground(self):
+        drawn = {"act1/a/floor.dt1": frozenset({FLOOR[1:]}), "act1/a/pit.dt1": frozenset()}
+        keys = {(0, 0): ("f", (FLOOR,)), (1, 0): ("f", (PIT,)), (2, 0): ("f", (PIT,)), (4, 0): ("f", (PIT,)),
+                (5, 0): ("f", (PIT,))}
+        lay = P.Layout(6, 1, keys, {c: bytes(25) for c in keys})
+        # (0..2, 0) is one walkable region with a drawn cell; (4..5, 0) is a region of bare cells, (3, 0) has no layer
+        self.assertEqual(void.empty(lay, drawn), {(3, 0), (4, 0), (5, 0)})
 
 
 class PassTests(unittest.TestCase):
