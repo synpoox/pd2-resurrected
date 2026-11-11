@@ -1,3 +1,3 @@
 #### Maps
 
-- Override layer's `add` op proven in game on the jungle1 rock (tile 39,181).
+- Game-checked the HD override layer's add op on the jungle1 rock (tile 39,181).
