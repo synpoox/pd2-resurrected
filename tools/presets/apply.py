@@ -232,7 +232,8 @@ def setup(pl: Plan) -> State:
     loaded = {t[0] for k in keep for t in k[1]}
     if stale := sorted(set(pl.water_rule) - loaded):
         raise ValueError(f"water lines for DT1 no PD2-only preset draws from: {', '.join(stale)}")
-    if stale := sorted(set(pl.walls_rule) - loaded):
+    walls_rule = pl.walls_rule
+    if stale := sorted(set(walls_rule) - loaded):
         raise ValueError(f"walls lines for DT1 no PD2-only preset draws from: {', '.join(stale)}")
     water = water_planes(d2r_data, pl.water_rule)
     kit, stock = Kit(far=far_off(d2r_data), top=model_top(d2r_data)), []
