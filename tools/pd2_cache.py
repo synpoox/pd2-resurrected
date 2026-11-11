@@ -46,8 +46,8 @@ def lock(path: Path, poll: float = 1.0, on_wait: Callable[[], None] | None = Non
     """Hold an OS lock on the file path, waiting while another process holds it. The OS drops the lock when its holder
     exits, so a crashed run never leaves a stale one. on_wait() runs once, when the first try finds it held."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.touch()
-    with open(path, "r+b") as f:
+    # create and open in one step: a sweep that deletes idle lock files cannot slip in between a touch and the open
+    with os.fdopen(os.open(path, os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0)), "r+b") as f:
         misses, shown = 0, None
         while True:
             try:
