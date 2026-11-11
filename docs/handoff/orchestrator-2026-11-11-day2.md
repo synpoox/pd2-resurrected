@@ -21,7 +21,8 @@ The goal, map tiers and plan are unchanged. Read the plan doc on `research/hd-pa
 
 ## 2. State at handoff
 
-- `main` is **97489f6**. No agents are running, and slots 4-8 are free.
+- `main` is **97489f6**. No agents are running. Slot locks were not verified at handoff: check them per
+  `docs/agents/game-check.md` before starting a game check.
 - **Merged since the last note:**
   - **Gate and infrastructure:** #866, #873, #879, #880, #881, #883, #884, #887, #888, #892, #894, #895, #898, #900
     (hotfix for a main broken by #880 + #883), #904, #908, #918.
@@ -34,8 +35,10 @@ The goal, map tiers and plan are unchanged. Read the plan doc on `research/hd-pa
   - A skipped check no longer passes (#898/#908), and fork PRs now fail `table-diff`.
   - Main push runs cancel the older ones (#904).
 - **Merge slots:** the owner set `PD2R_MERGE_SLOTS` = 6, with `PD2R_CI_RESERVED` = 2.
-- **Merge time is the bottleneck.** Agent full merges take 20-60+ minutes. With 4 merges at once the CPU is at about
-  87% across all 16 cores, so more slots won't help. The fix is #920: a partial build of only the maps you name. Its
+- **Merge time is the bottleneck.** A full merge takes 12-28 minutes under load. CI `table-diff` jobs took 5-36
+  minutes today. The rest is the wait for a merge slot: agents reported waits of 40-45 minutes, and agents saw only 2
+  slots because the app's environment is stale. With 4 merges at once the CPU is at about 87% across all 16 cores,
+  so more slots won't help. The fix is #920: a partial build of only the maps you name. Its
   design is in the status comment on #920, and no code exists yet.
 
 ## 3. Open PRs
