@@ -87,12 +87,12 @@ def index(stock: list, ctx: Context) -> dict[int, list[Option]]:
         pd2_cache.adopt_reads(held[2])  # the memo hides the prefab reads it made: every asker's DS1 read them (#882)
         return held[1]
     with pd2_cache.sub_trace() as sub:
-        out = _build_index(stock, ctx, coverage, fid)
+        out = _build_index(stock, ctx, fid)
     _INDEX[key] = (tuple(p for _, p in stock), out, dict(sub.reads) if sub is not None else {})
     return out
 
 
-def _build_index(stock: list, ctx: Context, coverage, fid) -> dict[int, list[Option]]:
+def _build_index(stock: list, ctx: Context, fid) -> dict[int, list[Option]]:
     out: dict[int, list[Option]] = {}
     for lay, preset in stock:
         ground = preset.get(GROUND)

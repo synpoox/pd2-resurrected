@@ -4,7 +4,7 @@ from __future__ import annotations
 import struct
 import zlib
 
-from pd2_levels import object_list
+from pd2_ds1 import object_list
 
 from .consts import TILE, Key
 from .entity import _transform, clone

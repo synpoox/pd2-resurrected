@@ -106,6 +106,11 @@ jobs:
             "::warning::HD preset coverage did not run: $out"
             "HD preset coverage did not run: $out" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
           }
+      # #891: hd-folder-types.tsv is made from the typing code and D2R's stock presets; fail when either changed since
+      # it was written, so parity never scores with an old typing (fix: `py -3 tools/pd2_fidelity.py --write-votes`)
+      - name: Folder types current
+        if: ${{ !cancelled() }}
+        run: py -3 tools/pd2_fidelity.py --check-votes
       # #838: the parity of each map (tools/pd2_parity.py) in the step summary. A push to main uploads parity-baseline.tsv
       # with the coverage baseline; a PR fails when a map's parity drops more than pd2_parity.TOLERANCE (2) points below it
       # (or a baselined map is no longer scored). The PR label parity-drop-ok accepts an intended drop. Without a
