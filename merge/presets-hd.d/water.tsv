@@ -6,3 +6,9 @@ water:act1/outdoors/pond.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/wat
 water:act2/town/canal.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
 water:act4/lava/floor.dt1	data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model
 water:act4/lava/floornew.dt1	data/hd/env/model/act4/lava/act4_lava_plane/diab_lavaplane01.model
+# PD2's own water DT1s, named by the PD2 path: the stand-in rules rename only the tiles a stock DT1 holds with the same flags, the rest keep this name and are no stock tile (#823)
+# Fallen Gardens' water floor is a pixel copy of docktown/bridge's tile, so the layout names it by that DT1; the plane draws only over its blocked tiles
+water:act3/docktown/bridge.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
+water:pd2assets/fallengardenwater.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
+water:pd2assets/psnwell/used/rivbank.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
+water:pd2assets/aer_canal.dt1	data/hd/env/model/act3/kurast/act3_kurast_water/water_16x16_01.model
