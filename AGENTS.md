@@ -6,7 +6,7 @@ Issues live in GitHub Issues (`gh` CLI). See `docs/agents/issue-tracker.md`.
 
 Every PR links the issue it solves: the body opens with `Closes #<n>`, or `Part of #<n>` when it does not finish the issue. If no issue exists yet, open one first.
 
-**Gate rule (the one home).** Docs-only PRs (only `.md` files, docs and `changelog.d/` fragments) merge without waiting
+**Gate rule (the one home).** Docs-only PRs (only `.md` files, docs and `changelog.d/` fragments, except gate inputs `docs/deviations.md`, `docs/coverage-baseline.tsv`) merge without waiting
 for CI. Any other PR merges only when CI's `table-diff` and `unit` are green on the PR's final head and the PR
 is MERGEABLE (rerun after resolving a merge from main). Only when the runners are offline, run `tools/pd2_diff.py`
 locally and paste the report for the final commit (its first line names the commit; untracked files count as
