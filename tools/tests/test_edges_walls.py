@@ -205,10 +205,25 @@ class CheckWallsTests(unittest.TestCase):
             self.check({"pd2assets/x.dt1": "act2/c/wall.dt1"}, self.context())
 
 
+class TurnTests(unittest.TestCase):
+    def test_no_stock_piece_for_an_orientation_4_borrows_an_orientation_3_turned_half_a_circle(self):
+        three = W.Option(entity("wall_c", 6.0, 10.0), 6.0, 10.0, 0.0, "tall", ((0, 0), (1, 0)), {}, "d/a.dt1")
+        got = W.filtered({}, "d/a.dt1", 4, "own", {3: [three]})
+        self.assertEqual([(x.turn, x.dx, x.dz, x.foot) for x in got], [(True, W.TILE - 6.0, W.TILE - 10.0, ((0, 0), (-1, 0)))])
+        self.assertEqual(W.filtered({}, "d/a.dt1", 3, "own", {3: [three]}), [three])
+        four = W.Option(entity("wall_d", 1.0, 1.0), 1.0, 1.0, 0.0, "tall", ((0, 0),), {}, "d/a.dt1")
+        self.assertEqual(W.filtered({}, "d/a.dt1", 4, "own", {3: [three], 4: [four]}), [four])
+
+    def test_the_turn_is_half_a_circle_about_y(self):
+        q = {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0}
+        self.assertEqual(W.turned(q), {"w": 0.0, "x": 0.0, "y": 1.0, "z": -0.0})
+        self.assertEqual(W.turned(W.turned(q)), {"w": -1.0, "x": 0.0, "y": 0.0, "z": 0.0})
+
+
 class IndexTests(unittest.TestCase):
     def test_a_reused_id_never_returns_a_stale_index(self):
         a = [(SimpleNamespace(keys={}), {"entities": [], "dependencies": {}})]
-        W._INDEX[tuple(id(p) for _, p in a)] = ((object(),), {1: ["stale"]})
+        W._INDEX[(False, *(id(p) for _, p in a))] = ((object(),), {1: ["stale"]})
         self.assertEqual(W.index(a, ctx()), {})
 
 
