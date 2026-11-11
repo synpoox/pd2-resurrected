@@ -4,6 +4,7 @@ by name, so adding one edits no shared list:
     tile(lay, key, alike) -> bool          the stock tile `key` is harvested though not wanted (alike DT1s' LIKE keys)
     locate(lay, c, x, z) -> c              the tile a piece at (x, z) over tile c belongs to
     drop(kit, lay, p) -> bool              the piece p (a kit.Piece) is left out of the kit
+    settle(kit, lay, c, ents) -> ents      the pieces of tile c that stay, once all its pieces are harvested
     indoor(kit, src, ents) -> ents         the pieces an indoor map's kit keeps of a stock source's tile instance
 """
 from __future__ import annotations

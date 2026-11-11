@@ -19,6 +19,7 @@ from .consts import FETCH, GROUND, PRESETS, STREAM, TERRAIN, WATER_SPAN, wet_dt1
 from .dt1 import Tiles, header_dt1s
 from .entity import _transform
 from .hooks.far import far_off
+from .hooks.structure import structure_off
 from . import slices
 from .kit import Kit
 from .layout import draws_trees, layout, wanted
@@ -248,7 +249,7 @@ def setup(pl: Plan) -> State:
     if stale := sorted(set(walls_rule) - loaded):
         raise ValueError(f"walls lines for DT1 no PD2-only preset draws from: {', '.join(stale)}")
     water = water_planes(d2r_data, pl.water_rule)
-    kit, stock = Kit(far=far_off(d2r_data), top=model_top(d2r_data)), []
+    kit, stock = Kit(far=far_off(d2r_data), structure=structure_off(d2r_data), top=model_top(d2r_data)), []
     for p in sorted((d2r_data / PRESETS).rglob("*.json")):
         ds1 = tiles_dir / p.relative_to(d2r_data / PRESETS).with_suffix(".ds1")
         if not ds1.is_file():  # a few stock presets have no DS1 (D2R's HD-only rooms)

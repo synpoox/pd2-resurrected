@@ -34,6 +34,7 @@ class Kit:
     instances: dict[Key, list[tuple[int, list[tuple[dict, float, float]]]]] = field(default_factory=dict)
     sources: list[dict[str, list[dict]]] = field(default_factory=list)  # each stock preset's dependencies
     far: Callable[[dict], bool] = lambda e: False  # far_off(): a piece whose mesh stands FAR or more clear of its anchor
+    structure: Callable[[dict], bool] = lambda e: False  # structure_off(): a building-sized piece (a house, a platform)
     top: Callable[[dict], float | None] = lambda e: None  # pillars.model_top(): a piece's model height, None if unknown
     # a waypoint's pieces, as offsets from its object: under ("kc", key of the tile under the object, objects Class),
     # ("k", key) and, without a room terrain, ("c", Class)
@@ -94,6 +95,8 @@ class Kit:
                     e = clone(e)
                     _transform(e)["position"]["y"] -= g
                 per[c].append((e, x - c[0] * TILE, z - c[1] * TILE))
+        for h in hooks.each("settle"):
+            per = {c: h(self, lay, c, ents) for c, ents in per.items()}
         for c, ents in per.items():
             self.instances.setdefault(lay.keys[c], []).append((src, ents))
             self.flags.setdefault(lay.keys[c], lay.flags.get(c, bytes(25)))
