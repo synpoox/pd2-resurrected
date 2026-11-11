@@ -120,7 +120,8 @@ def _build_index(stock: list, ctx: Context, fid, cliffs: bool) -> dict[int, list
             cls = fid.hd_class(top - g)
             if cls == "flat":
                 continue
-            foot = tuple((tx - c[0], tz - c[1]) for tx, tz in fid.footprint([found[0]]))
+            under = fid.core_footprint(found[0]) if fid.model_type(path) == "cliff" else fid.footprint([found[0]])
+            foot = tuple((tx - c[0], tz - c[1]) for tx, tz in under)  # a cliff rock's box spills wide: only its core counts
             if (0, 0) not in foot:
                 continue
             out.setdefault(tiles[1][0][1], []).append(
