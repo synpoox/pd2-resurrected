@@ -111,13 +111,12 @@ def wall_pass(on_d2r: list, tiles: "Tiles", pd2_tiles: "Tiles", out_data: Path, 
               stock: list, walls: dict[str, str] | None = None) -> None:
     """Give the wall pass (passes/edges_walls) what only the merge has: each DS1 named by its own DT1s, their heights
     and D2R's model boxes. Without D2R's model boxes (dev builds) there is no wall pass."""
-    import pd2_coverage as coverage
-    import pd2_fidelity as fidelity
+    import pd2_tiles as shared
     from .passes import edges_walls
-    models = d2r_data / coverage.MODELS
+    models = d2r_data / shared.MODELS
     if not models.is_file():
         return
-    found = coverage.model_boxes(models.read_bytes())
+    found = shared.model_boxes(models.read_bytes())
 
     @functools.cache
     def load(path: str) -> list[dict]:
@@ -127,14 +126,14 @@ def wall_pass(on_d2r: list, tiles: "Tiles", pd2_tiles: "Tiles", out_data: Path, 
     def prefab(path: str) -> list[dict]:
         pd2_cache.note(d2r_data / path.removeprefix("data/"))  # the memo hides the read from the DS1 that asks next (#861)
         return load(path)
-    heights = fidelity.Heights(out_data / "global" / "tiles", tiles_dir)
+    heights = shared.Heights(out_data / "global" / "tiles", tiles_dir)
     far = far_off(d2r_data)
     contexts = []
     for _, _, files, ds1s in on_d2r:
         for ds1 in ds1s:
             legacy = layout((out_data / "global" / "tiles" / ds1).read_bytes(),
                             {p: pd2_tiles[p] or tiles[p] for p in files})
-            contexts.append(edges_walls.Context(legacy, heights, lambda m: found.get(coverage.fnv(m)),
+            contexts.append(edges_walls.Context(legacy, heights, lambda m: found.get(shared.fnv(m)),
                                                 prefab, stock, far, walls or {}))
             edges_walls.configure(ds1, contexts[-1])
     if walls:

@@ -85,15 +85,14 @@ def file_digest(path: Path) -> str:
 
 def global_digest(st) -> str:
     """What every DS1 of the State shares: the stock presets (the wall pass borrows pieces from all of them), D2R's model
-    boxes and the typing vote (fidelity) the wall pass and Kit.far/top read, the terrain, the stream DT1s."""
+    boxes the wall pass and Kit.far/top read, the terrain, the stream DT1s."""
     if "global" not in st.digests:
-        import pd2_coverage as coverage
-        import pd2_fidelity as fidelity
+        import pd2_tiles as shared
         pl, held = st.plan, st.digests
         stock = digest([[memo(held, lay, layout_digest), memo(held, p, preset_digest), sorted(listed)]
                         for lay, p, listed in st.stock])
-        st.digests["global"] = (None, digest(stock, file_digest(pl.d2r_data / coverage.MODELS),
-                                             file_digest(fidelity.VOTES_FILE), pl.terrain, sorted(wet_dt1s(pl.water_rule))))
+        st.digests["global"] = (None, digest(stock, file_digest(pl.d2r_data / shared.MODELS),
+                                             pl.terrain, sorted(wet_dt1s(pl.water_rule))))
     return st.digests["global"][1]
 
 
@@ -123,10 +122,26 @@ def decode(extra: dict):
     return DS1Built(tuple(extra["row"]), list(extra["bare"]))
 
 
+def unique(tasks: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """The tasks without repeats. The DS1 is the key of the output (its preset JSON is one file): a DS1 under two tile sets
+    would be written by two tasks, the last one winning by chance of the workers' order, so that is an error."""
+    uniq = list(dict.fromkeys(tasks))
+    by_ds1: dict[str, str] = {}
+    for tile_set, ds1 in uniq:
+        if by_ds1.setdefault(ds1, tile_set) != tile_set:
+            raise ValueError(f"presets-hd: {ds1} is built under two tile sets, {by_ds1[ds1]} and {tile_set}: one file")
+    return uniq
+
+
 def build_all(pl, tasks: list[tuple[str, str]]) -> tuple[list, int]:
     """apply.DS1Built of every (tile set, DS1) task, in task order, and the number of stock presets the kit harvested.
     Under a running rule cache each DS1 with an entry for its key is replayed; the others are built (in workers when
     there are enough of them, parallel.py) and kept."""
+    uniq = unique(tasks)
+    if len(uniq) != len(tasks):  # a repeated row builds once and reports the same: parallel.build_all does the same
+        built, sources = build_all(pl, uniq)
+        by = dict(zip(uniq, built))
+        return [by[t] for t in tasks], sources
     sc = pd2_cache.scope()
     gen = (sc.roots["p"] / "generated").resolve() if sc else None
     try:

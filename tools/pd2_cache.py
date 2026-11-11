@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import copy
 import hashlib
 import io
 import json
@@ -900,9 +901,16 @@ def spare_slots(n: int) -> list["Slots"]:
     kept). The caller release()s each when its worker ends."""
     h, out = _held, []
     while h is not None and len(out) < n:
-        s = Slots(h.folder, h.n, h.what, h.poll)
+        s = h.clone()
         if not s.try_acquire():
             break
+        # leave a slot free for a merge (or CI) that arrives while the workers run: another slot of this holder's own
+        # pool (an agent's never counts the CI reserve) must still be free after this one is taken
+        probe = h.clone()
+        if not probe.try_acquire():
+            s.release()
+            break
+        probe.release()
         out.append(s)
     return out
 
@@ -910,11 +918,29 @@ def spare_slots(n: int) -> list["Slots"]:
 class Slots:
     """A machine-wide counting semaphore (#760): n slot files under folder, each held by an OS lock, so a crashed holder
     frees its slot with no pid file to leak. acquire() blocks until one is free (one 'queued' line meanwhile) and is
-    idempotent; release() frees it. Usable as a context manager."""
+    idempotent; release() frees it. Usable as a context manager.
 
-    def __init__(self, folder: Path, n: int, what: str = "merge", poll: float = 1.0):
+    Of the n slots, the last `reserved` belong to the CI gate (#872): with reserved > 0, a holder that is not `ci` only
+    tries slots 0..n-reserved-1 (at least one), so it can never hold a reserved one; a `ci` holder tries the reserved
+    slots first, then the rest, so it keeps the agents' slots free when it can."""
+
+    def __init__(self, folder: Path, n: int, what: str = "merge", poll: float = 1.0, reserved: int = 0, ci: bool = False):
         self.folder, self.n, self.what, self.poll = folder, max(1, n), what, poll
+        self.ci = ci
+        self.reserved = max(0, min(reserved, self.n - 1))
         self.f = None
+
+    def clone(self) -> "Slots":
+        """A new, unheld Slots with this one's folder and settings (pool, reserve and ci included), for spare_slots."""
+        c = copy.copy(self)
+        c.f = None
+        return c
+
+    def _order(self) -> list[int]:
+        """The slot indexes this holder may try, in order."""
+        if self.ci:
+            return list(range(self.n - 1, -1, -1))
+        return list(range(self.n - self.reserved))
 
     def _try(self, i: int):
         p = self.folder / f"slot.{i}"
@@ -932,7 +958,7 @@ class Slots:
         if self.f:
             return True
         self.folder.mkdir(parents=True, exist_ok=True)
-        for i in range(self.n):
+        for i in self._order():
             if f := self._try(i):
                 self.f = f
                 return True
@@ -947,8 +973,11 @@ class Slots:
             if self.try_acquire():
                 _held = self
                 return
+            order = self._order()
             if not told:
-                print(f"{self.what} queued: {self.n}/{self.n} slots busy (machine-wide cap, PD2R_MERGE_SLOTS); waiting for one to free", file=sys.stderr, flush=True)
+                pool = len(order)
+                note = "" if self.ci or not self.reserved else f", {self.reserved} more reserved for CI (PD2R_CI_RESERVED)"
+                print(f"{self.what} queued: {pool}/{pool} slots busy (machine-wide cap, PD2R_MERGE_SLOTS{note}); waiting for one to free", file=sys.stderr, flush=True)
                 told = True
             time.sleep(self.poll)
 
@@ -979,11 +1008,17 @@ def slot_home() -> Path | None:
 
 def merge_slots(cache: Path) -> Slots:
     """The merge semaphore under the cache root, shared by agents and the CI gate: PD2R_MERGE_SLOTS slots (default 4).
+    The last PD2R_CI_RESERVED (default 2) are the gate's (#872): an agent merge (no GITHUB_ACTIONS) holds at most
+    PD2R_MERGE_SLOTS - PD2R_CI_RESERVED slots (at least one), and CI may take any, so the gate never queues behind
+    agents while a reserved slot is free. A queued merge says which pool it waits on. The slots stay per-file OS locks.
     Pick the count from RAM: (RAM left for merges) / (RAM of one merge). One merge held about 3.8 GB at one worker;
-    parallel merge workers (#807, planned) may hold more each, so lower the count then, and raise it when
-    a faster merge (#806) leaves RAM idle. The runners are user processes: set the same value in their `.env` or the user environment."""
-    try:
-        n = int(os.environ.get("PD2R_MERGE_SLOTS", "4"))
-    except ValueError:
-        n = 4
-    return Slots(cache / "merge-slots", n, "CI merge" if os.environ.get("GITHUB_ACTIONS") else "merge")
+    parallel merge workers (#807, each takes a slot of the pool; PD2R_PRESET_WORKERS set with no slot held starts that many uncapped) may hold more each, so lower the count then, and raise it when
+    a faster merge (#806) leaves RAM idle. The runners are user processes: set the same values in their `.env` or the user environment."""
+    def env(name: str, default: int) -> int:
+        try:
+            return int(os.environ.get(name, str(default)))
+        except ValueError:
+            return default
+    ci = bool(os.environ.get("GITHUB_ACTIONS"))
+    return Slots(cache / "merge-slots", env("PD2R_MERGE_SLOTS", 4), "CI merge" if ci else "merge",
+                 reserved=env("PD2R_CI_RESERVED", 2), ci=ci)

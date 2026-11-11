@@ -49,6 +49,13 @@ class DigestTests(unittest.TestCase):
         self.assertEqual(ds1cache.memo(held, {"k": 2}, make), ds1cache.digest({"k": 2}))
 
 
+class UniqueTests(unittest.TestCase):
+    def test_a_repeated_row_builds_once_and_a_ds1_under_two_tile_sets_is_an_error(self):
+        self.assertEqual(ds1cache.unique([("A", "x.ds1"), ("B", "y.ds1"), ("A", "x.ds1")]), [("A", "x.ds1"), ("B", "y.ds1")])
+        with self.assertRaisesRegex(ValueError, "x.ds1 is built under two tile sets, A and B"):
+            ds1cache.unique([("A", "x.ds1"), ("B", "x.ds1")])
+
+
 class SliceTests(unittest.TestCase):
     def kit(self):
         e = lambda n: [(entity(n, 1.0, 1.0), 0.0, 0.0)]  # noqa: E731

@@ -18,11 +18,11 @@ def far_off(d2r_data: Path) -> Callable[[dict], bool]:
     not a tree, a prefab nor room-sized, stands FAR or more clear of its position along x or z (Harrogath's stairs).
     A mesh that reaches its position stays, however far its centre: Duriel's chamber is one piece.
     Without the file, no piece is."""
-    import pd2_coverage as coverage  # it imports this module
-    models = d2r_data / coverage.MODELS
+    import pd2_tiles as tiles  # late: it imports the presets package
+    models = d2r_data / tiles.MODELS
     if not models.is_file():
         return lambda e: False
-    boxes = coverage.model_boxes(models.read_bytes())
+    boxes = tiles.model_boxes(models.read_bytes())
 
     @functools.cache
     def load(path: str) -> list[dict]:
@@ -49,10 +49,10 @@ def far_off(d2r_data: Path) -> Callable[[dict], bool]:
         if painter.is_tree(e) or any(c["type"] == "PrefabPlacementDefinitionComponent" for c in e["components"]):
             return False
         p = _transform(e)["position"]
-        return any(top >= coverage.TALL and max(x1 - x0, z1 - z0) <= coverage.ROOM
+        return any(top >= tiles.TALL and max(x1 - x0, z1 - z0) <= tiles.ROOM
                    and max(x0 - p["x"], p["x"] - x1, z0 - p["z"], p["z"] - z1) >= FAR
-                   for x0, x1, z0, z1, top, _ in coverage.boxes([e], lambda m: boxes.get(coverage.fnv(m)),
-                                                     lambda path: opened.append(path) or prefab(path)))
+                   for x0, x1, z0, z1, top, _ in tiles.boxes([e], lambda m: boxes.get(tiles.fnv(m)),
+                                                             lambda path: opened.append(path) or prefab(path)))
     return far
 
 
