@@ -26,7 +26,7 @@ POST = re.compile(r"/post\d")  # a stone post: nemyrmonastery's wall bars are ro
 
 
 def carries(ents: list) -> bool:
-    """Whether a kit instance holds a real wall: a wall or cliff piece (structure), or a model pd2_fidelity types as
+    """Whether a kit instance holds a real wall: a wall or cliff piece (structure), or a model pd2_tiles types as
     a wall, cliff or fence (nemyrmonastery's bars
     are fences). A tall prop (a shrine, a cage) is no wall, whatever its height (#737)."""
     import pd2_tiles  # late: it reads the presets package's constants

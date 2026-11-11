@@ -1,8 +1,11 @@
 """pd2_fidelity on hand-made layouts and pieces (no PD2 or D2R data)."""
+import contextlib
+import io
 import struct
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -571,6 +574,16 @@ class StockTyping(unittest.TestCase):
     def test_the_committed_vote_is_current_in_form(self):
         text = F.VOTES_FILE.read_text("utf-8")
         self.assertRegex(text, r"(?m)^# input: [0-9a-f]{16}$")
+
+    def test_check_votes_fails_on_drift(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / F.presets.PRESETS).mkdir(parents=True)
+            vf = Path(d) / "votes.tsv"
+            with mock.patch.object(F, "VOTES_FILE", vf), contextlib.redirect_stdout(io.StringIO()):
+                vf.write_text(F.votes_text({"a": {"wall": 3}}, F.votes_input_hash(Path(d))), "utf-8")
+                self.assertEqual(F.main(["--check-votes", "--d2r", d]), 0)
+                vf.write_text(F.votes_text({"a": {"wall": 3}}, "0123456789abcdef"), "utf-8")
+                self.assertEqual(F.main(["--check-votes", "--d2r", d]), 1)
 
     def test_votes_round_trip(self):
         votes = {"act2_oasis": {"none": 87, "water": 38}, "a": {"wall": 3}}
