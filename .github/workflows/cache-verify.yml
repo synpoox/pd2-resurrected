@@ -1,0 +1,78 @@
+name: cache-verify
+
+# #849: the gate replays cached merge rules (#820), so it is only as correct as the rule key. Nightly (and by hand), merge
+# main's head fresh and again replaying the shared rule cache, and fail naming every file of generated/ whose SHA-256
+# differs (tools/pd2_cache_verify.py). Self-hosted like the gate: it needs the PD2 install and D2R's tables (ADR 0002).
+on:
+  schedule:
+    - cron: '17 4 * * *'  # daily, 04:17 UTC: a quiet hour, off the :00 mark
+  workflow_dispatch:
+
+# One check at a time. Both merges take slots of the machine-wide semaphore the gate and agents share (pd2_cache.Slots).
+concurrency:
+  group: cache-verify
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: [self-hosted, windows, pd2r]
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      PYTHONPATH: ${{ vars.D2R_TOOLKIT }}
+      MODKIT_CACHE: ${{ vars.D2R_TOOLKIT }}\d2r-data
+      MODKIT_GAME: ${{ vars.D2R_GAME }}
+    steps:
+      - name: Drop cache junction
+        run: if (Test-Path pd2-data) { cmd /c rmdir pd2-data }
+        continue-on-error: true
+      - uses: actions/checkout@v4
+        with:
+          ref: main  # the cache is main's: check main's head, whichever branch a manual run starts from
+      - name: Update the toolkit checkout
+        run: git -C "${{ vars.D2R_TOOLKIT }}" pull -q --ff-only
+        continue-on-error: true
+      - name: Extracted data
+        run: |
+          $cache = "C:\pd2r-cache\pd2-data"
+          New-Item -ItemType Directory -Force $cache | Out-Null
+          New-Item -ItemType Junction -Path pd2-data -Target $cache | Out-Null
+          py -3 tools/pd2_extract.py --out $cache; if ($LASTEXITCODE) { throw "pd2_extract failed" }
+          py -3 -m modkit fetch --prefix data/global/animdata.d2; if ($LASTEXITCODE) { throw "modkit fetch failed" }
+      - name: Fresh merge
+        # no PD2R_CI_SCOPE: pd2_cache.ci_policy is None, so every rule runs and nothing is read from or kept in the cache
+        run: |
+          Remove-Item Env:PD2R_CI_SCOPE -ErrorAction SilentlyContinue
+          py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "fresh pd2_merge failed" }
+          Move-Item generated generated-fresh
+      - name: Cached merge
+        # scope pr-0 replays only the entries main kept and keeps its misses in the scratch folder rules-pr/pr-0, which
+        # is emptied before and after, so this run never writes into the shared rules folder and never replays leftovers
+        run: |
+          $scratch = "C:\pd2r-cache\rules-pr\pr-0"
+          if (Test-Path $scratch) { Remove-Item -Recurse -Force $scratch }
+          $env:PD2R_CI_SCOPE = "pr-0"
+          $out = py -3 tools/pd2_merge.py; $code = $LASTEXITCODE
+          $out
+          if (Test-Path $scratch) { Remove-Item -Recurse -Force $scratch }
+          if ($code) { throw "cached pd2_merge failed" }
+          $line = $out | Select-String -Pattern 'rule cache: (\d+) of (\d+) rules replayed' | Select-Object -First 1
+          if ($line) { $line.Line | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY }
+          # self-heal hides a cache fault: the merge rebuilt without the cache, so the comparison proves nothing
+          if ($out | Select-String -SimpleMatch 'rebuilding without the rule cache') {
+            "::warning::the cached merge logged 'rebuilding without the rule cache': the cache was not what was compared"
+            "Warning: the merge rebuilt without the rule cache." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          }
+          # 0 replayed: nothing cached was compared (an empty cache, or a key that never hits), so the check is vacuous
+          if (-not $line -or $line.Matches[0].Groups[1].Value -eq "0") {
+            "::error::NOT VERIFIED: the cached merge replayed no rules, so there is nothing to compare ($($line.Line))"
+            "NOT VERIFIED: no rules replayed." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+            throw "cached merge replayed 0 rules"
+          }
+      - name: Compare generated/
+        run: py -3 tools/pd2_cache_verify.py generated-fresh generated
+      - name: Remove generated-fresh
+        if: always()
+        run: if (Test-Path generated-fresh) { Remove-Item -Recurse -Force generated-fresh }
+        continue-on-error: true
