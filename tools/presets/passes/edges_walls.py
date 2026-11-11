@@ -187,16 +187,34 @@ RULED = ("wall", "cliff", "pillar")  # the edge types a `walls:` line takes the 
 
 def ruled_cells(ctx: Context, edges: dict, legacy: dict) -> set:
     """Adds to `legacy` (tile -> height class) the cells of the edge types RULED that a tile of a PD2 DT1 with a
-    `walls:` line sits on, whatever type the fidelity scorer gives them (hellcaves DT1 walls are cliffs there). Returns
+    `walls:` line sits on, whatever type the fidelity scorer gives them (hellcaves DT1 walls are cliffs there). Their
+    class is a wall's, expected_class("wall", tile, px) for the tile with the tallest own height, as legacy_edges gives
+    a wall cell; fidelity's cliff and pillar class is always "tall", and many of these tiles are short walls. Returns
     those cells."""
+    import pd2_fidelity as fid
     out: set = set()
     if not ctx.walls:
         return out
+    use: dict = {}  # DT1 -> (orientation, main, sub) -> times the layout places it, as legacy_edges counts
+    for kind, tiles in ctx.legacy.keys.values():
+        for t in tiles if kind == "w" else ():
+            if t[0]:
+                use.setdefault(t[0], {}).setdefault(t[1:], 0)
+                use[t[0]][t[1:]] += 1
+    typical: dict = {}
     for kind in RULED:
-        for c, cls in edges[kind].items():
-            if any(t[0] in ctx.walls for t in ctx.legacy.keys[c][1]):
-                legacy.setdefault(c, cls)
-                out.add(c)
+        for c in edges[kind]:
+            mine = [t for t in ctx.legacy.keys[c][1] if t[0] in ctx.walls]
+            if not mine:
+                continue
+            out.add(c)
+            if c in legacy:  # a wall edge keeps the class legacy_edges gave it
+                continue
+            t = max(mine, key=lambda t: ctx.heights[t[0]].get(t[1:], 0))
+            px = ctx.heights[t[0]].get(t[1:], 0)
+            if (t[0], px) not in typical:
+                typical[t[0], px] = fid.wall_px(ctx.heights[t[0]], use.get(t[0]), px)
+            legacy[c] = fid.expected_class("wall", t, typical[t[0], px] or px)
     return out
 
 
@@ -241,6 +259,7 @@ def run(b) -> None:
     hd = fid.hd_pieces(ents, ctx.box, ctx.prefab)
     score = fid.score_type("wall", legacy, hd)
     bad = score.missing | score.wrong_type | score.wrong_height
+    bad -= ruled & score.wrong_type  # a ruled cell that already holds a piece (a cliff piece) gets no wall stacked on it
     if not bad:
         return
     own = index(b.stock, ctx)
@@ -267,7 +286,7 @@ def run(b) -> None:
         if tile is None or tile[1] not in (*UPPER, *LOWER_AS):
             continue
         o = LOWER_AS.get(tile[1], tile[1])
-        want = legacy[c] or "tall"  # a cliff or pillar cell can ask for no class
+        want = legacy[c]
         mine, anyone = own.get(o, []), every.get(o, [])
         if borrow := ctx.walls.get(tile[0]):  # a `walls:` line: only pieces off that D2R DT1, of any family, none else
             mine = filtered(memo, borrow, o, "own", own)
