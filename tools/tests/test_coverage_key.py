@@ -21,6 +21,11 @@ class KeptScoreTests(unittest.TestCase):
         self.assertIs(type(got.ring), frozenset)
         self.assertEqual(C.pack(got, imgs), C.pack(s, imgs), "the same bytes again")
 
+    def test_an_outdated_score_file_fails_to_unpack_with_an_error_run_catches(self):
+        for bad in (b'{"@":"Gone","v":{}}', b'not json', b'{"@":"Score","v":{"old":1}}'):
+            with self.assertRaises((KeyError, ValueError, TypeError)):
+                C.unpack({"score.json": bad})
+
     def test_a_score_file_cannot_make_an_object(self):
         with self.assertRaises(KeyError):
             C.unpack({"score.json": b'{"@":"os.system","v":{}}'})
