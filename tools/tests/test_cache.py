@@ -566,6 +566,44 @@ class PackageKeyTests(unittest.TestCase):
                 for m in [m for m in sys.modules if m.startswith("pk_")]:
                     sys.modules.pop(m)
 
+    def test_package_imports_under_tools_enter_the_key(self):
+        forms = {"absolute_from": "from pk2_pkg.consts import X\n", "import_dotted": "import pk2_pkg.consts\n",
+                 "from_package": "from pk2_pkg import consts\n"}
+        for name, line in forms.items():
+            with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
+                tmp = Path(tmp)
+                write(tmp / "pk2_rule.py", line + "def go(): pass\n")
+                write(tmp / "pk2_pkg" / "__init__.py", "")
+                write(tmp / "pk2_pkg" / "consts.py", "X = 1\n")
+                sys.path.insert(0, str(tmp))
+                try:
+                    import pk2_rule
+                    before = pd2_cache.key(pd2_cache.sources(pk2_rule.go))
+                    write(tmp / "pk2_pkg" / "consts.py", "X = 2\n")
+                    self.assertNotEqual(pd2_cache.key(pd2_cache.sources(pk2_rule.go)), before)
+                finally:
+                    sys.path.remove(str(tmp))
+                    for m in [m for m in sys.modules if m.startswith("pk2_")]:
+                        sys.modules.pop(m)
+
+    def test_relative_imports_up_a_package_enter_the_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            write(tmp / "pk3_top.py", "from pk3_a.sub.mod import go\n")
+            write(tmp / "pk3_a" / "__init__.py", "")
+            write(tmp / "pk3_a" / "sub" / "__init__.py", "")
+            write(tmp / "pk3_a" / "sub" / "mod.py", "from .. import deep\ndef go(): pass\n")
+            write(tmp / "pk3_a" / "deep.py", "x = 1\n")
+            sys.path.insert(0, str(tmp))
+            try:
+                import pk3_top
+                names = {p.relative_to(tmp).as_posix() for p in pd2_cache.sources(pk3_top.go)}
+                self.assertIn("pk3_a/deep.py", names)
+            finally:
+                sys.path.remove(str(tmp))
+                for m in [m for m in sys.modules if m.startswith("pk3_")]:
+                    sys.modules.pop(m)
+
     def test_the_presets_rule_covers_the_whole_presets_package(self):
         names = {p.relative_to(Path(pd2_cache.__file__).parent).as_posix()
                  for p in pd2_cache.sources(pd2_merge.RULES["presets-hd.tsv"])}
