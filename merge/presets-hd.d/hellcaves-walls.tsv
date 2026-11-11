@@ -1,0 +1,3 @@
+# PD2 DT1	the D2R DT1 whose stock wall pieces stand on its wall tiles (walls: rule, merge/presets-hd.tsv)
+# Lucion Arena: pd2_fidelity types hellcaves_base walls as cliffs, and the stock vote types the folders of icecave/interior wall pieces as cliff (expansion_icecave_walls: 5234 of 5254 edge tiles), so those score as the right type; act4/lava/walls.dt1 pieces are walls and score as wrong type. Orientations 1, 2, 3, 7 and the lower 16-18 have pieces; the lower variant 19 (orientation 4) has none in any D2R DT1 and stays bare
+walls:pd2assets/hellcaves_base.dt1	expansion/icecave/interior.dt1
