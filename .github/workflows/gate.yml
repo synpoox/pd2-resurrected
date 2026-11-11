@@ -123,8 +123,9 @@ jobs:
           } else {
             [string[]]$check = if ($env:DROP_OK -eq "true") { @() } else { @("--check") }
             if ($env:DROP_OK -eq "true") { "Label parity-drop-ok: parity drops are reported, not failed." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY }
-            # main's parity-baseline.tsv comes from the artifact the coverage step downloaded (none yet: the tool says so)
-            [string[]]$base = if (Test-Path coverage/main-coverage/parity-baseline.tsv) { @("--baseline", "coverage/main-coverage/parity-baseline.tsv") } else { @() }
+            # main's parity-baseline.tsv comes from the artifact the coverage step downloaded; always passed, so a main artifact
+            # without the file yet is not downloaded a second time (the file is missing: the tool says "Not gated", #869)
+            [string[]]$base = @("--baseline", "coverage/main-coverage/parity-baseline.tsv")
             py -3 tools/pd2_parity.py --commit ${{ github.sha }} @base @check
           }
           $code = $LASTEXITCODE

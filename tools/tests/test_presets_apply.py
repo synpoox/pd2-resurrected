@@ -131,7 +131,7 @@ class ApplyTests(unittest.TestCase):
         from presets import parallel
         seen = []
 
-        def fake(pl, tasks):
+        def fake(pl, tasks, box=None):
             seen.append(list(tasks))
             return {t: t[1] for t in tasks}, 7
         with mock.patch.object(parallel, "_serial", fake):

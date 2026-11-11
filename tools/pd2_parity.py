@@ -17,7 +17,7 @@ does not count). Only tiles within SIGHT tiles of walkable legacy floor are scor
   occlusion    the same floor under a piece >= TALL whose base is raised (canopy, overhangs): it hides the floor
   floating     a piece whose base is >= FLOAT above the ground plane under it (not a tree, light, chain, banner or
                water surface; pieces of pasted stock rooms are skipped: their own terrain is not the plane; a
-               piece 6+ units tall from base to top is skipped too: a tall prop on a slope or a stack reads as
+               piece 60+ units (6 tiles) tall from base to top is skipped too: a tall prop on a slope or a stack reads as
                standing, not floating)
   invisible    legacy draws a wall cell there (not inv_wall, not liquid) and HD draws nothing >= LOW: you bump into
                air (blocked floor legacy draws as plain ground is left out: it looks walkable in legacy too)
