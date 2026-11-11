@@ -24,13 +24,13 @@ class DiscoveryTests(unittest.TestCase):
             self.assertLess(names.index(a), names.index(b))
 
     def test_every_hook_declares_an_order_and_a_known_function(self):
-        known = {"tile", "locate", "drop", "indoor"}
+        known = {"tile", "locate", "drop", "settle", "indoor"}
         for m in discover.modules(hooks):
             self.assertIsInstance(m.ORDER, int, m.__name__)
             self.assertTrue(known & set(vars(m)), m.__name__)
 
     def test_hooks_each_lists_the_functions_by_name_in_order(self):
-        self.assertEqual([f.__module__.rsplit(".", 1)[1] for f in hooks.each("drop")], ["far", "blockers", "tall"])
+        self.assertEqual([f.__module__.rsplit(".", 1)[1] for f in hooks.each("drop")], ["far", "blockers", "structure", "tall"])
 
 
 if __name__ == "__main__":
