@@ -80,6 +80,16 @@ class LiquidTests(unittest.TestCase):
         self.assertEqual(liquids.mask(lay), {})
         self.assertEqual(liquids.mask(lay, frozenset({"act1/a/wall.dt1"})), {(0, 0): ("act1/a/wall.dt1",)})
 
+    def test_rapids_wall_tiles_are_liquid_only_with_a_rule_and_only_as_water_walls(self):
+        # Descend's rapids are orientation 1 and 2 walls of extwalls.dt1 (#916); its orientation 12 pillars are no water,
+        # and lava's extwalls.dt1 (the stand-in's name on the lava maps) is no rapids
+        rapids = next(iter(liquids.RAPIDS))
+        lay = P.Layout(4, 4, {(0, 0): ("w", ((rapids, 2, 5, 0),)), (1, 0): ("w", ((rapids, 12, 5, 0),)),
+                              (2, 0): ("w", (("act4/lava/extwalls.dt1", 1, 5, 0),))})
+        self.assertEqual(liquids.mask(lay), {})
+        self.assertEqual(liquids.mask(lay, frozenset({rapids})), {(0, 0): (rapids,)})
+        self.assertEqual(liquids.mask(lay, frozenset({"act4/lava/extwalls.dt1"})), {})
+
     def test_the_mask_is_made_once_and_shared(self):
         b = Stub(layout(SWAMP, {(0, 0)}))
         with mock.patch.object(liquids, "mask", wraps=liquids.mask) as m:
@@ -175,7 +185,7 @@ class LiquidTests(unittest.TestCase):
         return {d: (plane(m), {}) for d, m in water_rules().items()}
 
     def test_every_water_rule_is_an_expected_liquid(self):
-        allowed = ("river", "rivbank", "pool", "pond", "canal", "lava/floor", "fallengardenwater", "docktown/bridge")
+        allowed = ("river", "rivbank", "pool", "pond", "canal", "lava/floor", "fallengardenwater", "docktown/bridge", "descend/extwalls")
         rules = water_rules()
         self.assertTrue(rules)
         for dt1 in rules:
