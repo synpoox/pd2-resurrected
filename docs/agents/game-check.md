@@ -1,6 +1,6 @@
 # Game check
 
-An ordered checklist. A brief says "game check per `docs/agents/game-check.md`". Each rule lives in one home; this
+An ordered checklist, run after the PR is pushed and open (CI runs meanwhile; never merge unchecked). A brief says "game check per `docs/agents/game-check.md`". Each rule lives in one home; this
 file links to it. Test rules (Hell, level 90+, the 10-minute limit, cheat-commands) are in `AGENTS.md`, "Testing
 in-game". Slot details are in `docs/agents/game-slots.md`.
 
@@ -37,4 +37,5 @@ One shot should answer the question. Before each shot:
 
 Remove a worktree with `tools/worktree_remove.ps1 -Path <worktree> [-DeleteBranch]`: it unlinks every junction first and
 checks the shared cache is intact. Never delete a worktree any other way: `git worktree remove --force` and `rm -r`
-follow the `pd2-data`, `generated` and `out` junctions and empty `C:\pd2r-cache`.
+follow the `pd2-data` junction and empty `C:\pd2r-cache`. Agents also unlink `pd2-data` before any removal by the
+harness (unverified whether its auto-cleanup follows junctions), and commit or delete scratch files first.
