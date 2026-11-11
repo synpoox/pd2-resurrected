@@ -555,7 +555,10 @@ def pack(s: "Score", imgs: dict[str, bytes]) -> dict[str, bytes]:
 
 
 def unpack(files: dict[str, bytes]) -> tuple["Score", dict[str, bytes]]:
-    return _dec(json.loads(files["score.json"])), {n: b for n, b in files.items() if n != "score.json"}
+    got = _dec(json.loads(files["score.json"]))
+    if not isinstance(got, Score):  # valid JSON of something else (a kept entry that is damaged)
+        raise ValueError(f"score.json holds {type(got).__name__}, not a Score")
+    return got, {n: b for n, b in files.items() if n != "score.json"}
 
 
 def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = None,
@@ -649,17 +652,24 @@ def run(data: Path, d2r: Path, out: Path, commit: str = "", base: dict | None = 
                 continue  # two presets load, or the unplayable Palace
             seen.add(ds1)
             work = functools.partial(compute, f=f, ds1=ds1, area=area, files=files)
+            hit = False
             if memo:  # the map's score, replayed when nothing it read has changed (#854)
-                got, hit = pd2_cache.memo(memo[0], pd2_cache.key([], base_key, ds1, repr(files), area), roots, work,
-                                           memo[1])
-                hits += hit
+                def kept():
+                    return pd2_cache.memo(memo[0], pd2_cache.key([], base_key, ds1, repr(files), area), roots, work, memo[1])
+                got, hit = kept()
             else:
                 got = work(pd2_cache.Trace(roots))
             try:
                 s, imgs = unpack(got)
-            except (KeyError, ValueError, TypeError):  # an outdated or damaged kept score.json: score the map again (#885)
-                hits -= bool(memo)
-                s, imgs = unpack(work(pd2_cache.Trace(roots)))
+            except (KeyError, ValueError, TypeError, AttributeError):  # an outdated or damaged kept score.json (#885)
+                got = None
+                if hit:  # drop the kept entry (the last one memo replayed) so the fresh score is kept in its place (#919)
+                    shutil.rmtree(pd2_cache.used[-1], ignore_errors=True)
+                    got, hit = kept()
+                if got is None or hit:  # not kept, or the entry could not be dropped: score the map again, unkept
+                    got, hit = work(pd2_cache.Trace(roots)), False
+                s, imgs = unpack(got)
+            hits += hit
             scores.append(s)
             for name, image in imgs.items():
                 (out / name).write_bytes(image)
