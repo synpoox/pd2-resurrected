@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import copy
 import hashlib
 import io
 import json
@@ -660,9 +661,16 @@ def spare_slots(n: int) -> list["Slots"]:
     kept). The caller release()s each when its worker ends."""
     h, out = _held, []
     while h is not None and len(out) < n:
-        s = Slots(h.folder, h.n, h.what, h.poll)
+        s = h.clone()
         if not s.try_acquire():
             break
+        # leave a slot free for a merge (or CI) that arrives while the workers run: another slot of this holder's own
+        # pool (an agent's never counts the CI reserve) must still be free after this one is taken
+        probe = h.clone()
+        if not probe.try_acquire():
+            s.release()
+            break
+        probe.release()
         out.append(s)
     return out
 
@@ -675,6 +683,13 @@ class Slots:
     def __init__(self, folder: Path, n: int, what: str = "merge", poll: float = 1.0):
         self.folder, self.n, self.what, self.poll = folder, max(1, n), what, poll
         self.f = None
+
+    def clone(self) -> "Slots":
+        """A new, unheld Slots with this one's folder and settings (a pool or reserve a subclass or later field adds
+        carries over), for spare_slots."""
+        c = copy.copy(self)
+        c.f = None
+        return c
 
     def _try(self, i: int):
         p = self.folder / f"slot.{i}"
@@ -740,7 +755,7 @@ def slot_home() -> Path | None:
 def merge_slots(cache: Path) -> Slots:
     """The merge semaphore under the cache root, shared by agents and the CI gate: PD2R_MERGE_SLOTS slots (default 4).
     Pick the count from RAM: (RAM left for merges) / (RAM of one merge). One merge held about 3.8 GB at one worker;
-    parallel merge workers (#807, planned) may hold more each, so lower the count then, and raise it when
+    parallel merge workers (#807, each takes a slot; PD2R_PRESET_WORKERS set with no slot held starts that many uncapped) may hold more each, so lower the count then, and raise it when
     a faster merge (#806) leaves RAM idle. The runners are user processes: set the same value in their `.env` or the user environment."""
     try:
         n = int(os.environ.get("PD2R_MERGE_SLOTS", "4"))
