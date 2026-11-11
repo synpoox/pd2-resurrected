@@ -1,0 +1,3 @@
+# PD2 DT1	the D2R DT1 whose stock wall pieces stand on its wall tiles (walls: rule, merge/presets-hd.tsv)
+# Lucion Arena: hellcaves_base walls (orientations 1, 2, 3, 7 and the lower 16-19) take act4/lava/walls.dt1 pieces; the 24 lower-variant-19 cells (orientation 4) have no stock piece and stay bare
+walls:pd2assets/hellcaves_base.dt1	act4/lava/walls.dt1
