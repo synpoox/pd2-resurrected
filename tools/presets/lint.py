@@ -46,7 +46,7 @@ def reasons(rule: Path) -> dict[str, str]:
     for f in rule_files(rule):
         for line in f.read_text("utf-8").splitlines():
             cols = line.split("\t")
-            if line and not line.startswith("#") and cols[0].lower().endswith(".dt1") and len(cols) > 2 \
+            if line and not line.startswith("#") and cols[0].lower().endswith(".dt1") and not cols[0].lower().startswith(("walls:", "water:")) and len(cols) > 2 \
                     and cols[2].startswith("#") and cols[2][1:].strip():
                 out[norm(cols[0])] = cols[2][1:].strip()
     return out
