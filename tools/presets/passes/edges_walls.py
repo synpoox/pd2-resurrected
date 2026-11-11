@@ -22,6 +22,7 @@ configure() per DS1. A build with no configure() runs no wall pass.
 from __future__ import annotations
 
 import collections
+import dataclasses
 import zlib
 from dataclasses import dataclass, field
 from typing import Callable
@@ -33,6 +34,7 @@ from ..entity import _transform, clone, is_waypoint
 from ..layout import Layout, walkable
 
 ORDER = 350
+KINDS = {False: ("wall",), True: ("wall", "cliff")}  # the model types index() harvests, by its `cliffs` flag
 UPPER = range(1, 10)  # the wall orientations a stock piece is indexed by
 LOWER_AS = {16: 1, 17: 2, 18: 3, 19: 4}  # a lower variant borrows the upper one's pieces (a5_cliff_parts pairs them)
 
@@ -66,6 +68,8 @@ class Option:
     foot: tuple  # tile offsets (from the tile it belongs to) under its box
     deps: dict
     dt1: str = ""  # the DT1 of the stock wall tile it stands on (a `walls:` line picks by it)
+    full: tuple = ()  # every tile its box reaches (foot: the tiles it covers, a cliff's core only); () = foot
+    turn: bool = False  # stands turned half a circle about its tile's centre (an orientation-3 piece for a 4)
 
 
 def wall_y(b, x: float, z: float) -> float:
@@ -78,28 +82,29 @@ def model(e: dict) -> str:
     return next((c.get("filename", "") for c in e["components"] if c["type"] == "ModelDefinitionComponent"), "")
 
 
-def index(stock: list, ctx: Context) -> dict[int, list[Option]]:
-    """The wall pieces of the stock presets by the orientation of the single wall tile they stand on."""
+def index(stock: list, ctx: Context, cliffs: bool = False) -> dict[int, list[Option]]:
+    """The wall pieces of the stock presets by the orientation of the single wall tile they stand on. `cliffs`: the
+    pieces named cliffs too (a `walls:` line borrows them: pd2_fidelity types the cells it rules as cliffs)."""
     import pd2_tiles as fid
-    key = tuple(id(p) for _, p in stock)
+    key = (cliffs, *(id(p) for _, p in stock))
     held = _INDEX.get(key)
     if held and all(a is p for a, (_, p) in zip(held[0], stock)):
         pd2_cache.adopt_reads(held[2])  # the memo hides the prefab reads it made: every asker's DS1 read them (#882)
         return held[1]
     with pd2_cache.sub_trace() as sub:
-        out = _build_index(stock, ctx, fid)
+        out = _build_index(stock, ctx, fid, cliffs)
     _INDEX[key] = (tuple(p for _, p in stock), out, dict(sub.reads) if sub is not None else {})
     return out
 
 
-def _build_index(stock: list, ctx: Context, fid) -> dict[int, list[Option]]:
+def _build_index(stock: list, ctx: Context, fid, cliffs: bool) -> dict[int, list[Option]]:
     out: dict[int, list[Option]] = {}
     for lay, preset in stock:
         ground = preset.get(GROUND)
         for e in preset["entities"]:
             t = _transform(e)
             path = model(e)
-            if t is None or not path or fid.model_type(path) != "wall" or is_waypoint(e) or ctx.far(e):
+            if t is None or not path or is_waypoint(e) or ctx.far(e) or fid.model_type(path) not in KINDS[cliffs]:
                 continue
             x, y, z = t["position"]["x"], t["position"]["y"], t["position"]["z"]
             c = (int(x // TILE), int(z // TILE))
@@ -116,12 +121,14 @@ def _build_index(stock: list, ctx: Context, fid) -> dict[int, list[Option]]:
             cls = fid.hd_class(top - g)
             if cls == "flat":
                 continue
-            foot = tuple((tx - c[0], tz - c[1]) for tx, tz in fid.footprint([found[0]]))
-            if (0, 0) not in foot:
+            full = tuple((tx - c[0], tz - c[1]) for tx, tz in fid.footprint([found[0]]))
+            under = fid.core_footprint(found[0]) if fid.model_type(path) == "cliff" else None
+            foot = tuple((tx - c[0], tz - c[1]) for tx, tz in under) if under else full  # a cliff's box spills: only its core covers
+            if (0, 0) not in foot or (0, 0) not in full:
                 continue
             out.setdefault(tiles[1][0][1], []).append(
                 Option(e, x - c[0] * TILE, z - c[1] * TILE, y - g, cls, foot, preset["dependencies"],
-                       tiles[1][0][0]))
+                       tiles[1][0][0], full))
     return out
 
 
@@ -148,7 +155,7 @@ def pick(options: list[Option], want: str, c: tuple, bad: set, covered: set, blo
     c0, c1 = c
     for k, o in classed[key][1]:
         tiles = [(c0 + i, c1 + j) for i, j in o.foot]  # foot holds distinct offsets (a footprint set)
-        if any(t in blocked for t in tiles):
+        if any((c0 + i, c1 + j) in blocked for i, j in o.full or o.foot):  # the whole box, spill too, off walkable floor
             continue
         n = sum(t in bad and t not in covered for t in tiles)
         if best is not None and n < best[0][0]:  # the hash only breaks ties
@@ -229,7 +236,12 @@ def filtered(memo: dict, borrow: str, o: int, which: str, source: dict) -> list[
     """The options of orientation `o` in `source` off the stock wall tiles of the D2R DT1 `borrow`, one list each."""
     key = (borrow, o, which)
     if key not in memo:
-        memo[key] = [x for x in source.get(o, []) if x.dt1 == borrow]
+        found = [x for x in source.get(o, []) if x.dt1 == borrow]
+        if o == 4 and not found:  # no stock piece stands on an orientation 4: an orientation 3 turned half a circle does
+            found = [dataclasses.replace(x, dx=TILE - x.dx, dz=TILE - x.dz, foot=tuple((-i, -j) for i, j in x.foot),
+                                     full=tuple((-i, -j) for i, j in x.full), turn=True)
+                     for x in source.get(3, []) if x.dt1 == borrow]
+        memo[key] = found
     return memo[key]
 
 
@@ -245,10 +257,15 @@ def check_walls(walls: dict, contexts: list[Context]) -> None:
         raise ValueError(f"walls lines for PD2 DT1 with no wall, cliff or pillar tile any PD2-only preset draws: "
                          f"{', '.join(idle)}")
     if contexts:
-        harvested = {x.dt1 for opts in index(contexts[0].stock, contexts[0]).values() for x in opts}
+        harvested = {x.dt1 for opts in index(contexts[0].stock, contexts[0], True).values() for x in opts}
         if none := sorted(d for d in set(walls.values()) if d not in harvested):
             raise ValueError(f"walls lines name D2R DT1 none of the harvested stock draws a wall piece from: "
                              f"{', '.join(none)}")
+
+
+def turned(q: dict) -> dict:
+    """The rotation q then half a circle about the world's y axis: (w, x, y, z) -> (-y, z, w, -x)."""
+    return {"w": -q["y"], "x": q["z"], "y": q["w"], "z": -q["x"]}
 
 
 def run(b) -> None:
@@ -270,6 +287,7 @@ def run(b) -> None:
     if not bad:
         return
     own = index(b.stock, ctx)
+    wide = ctx.walls and (index(b.stock, ctx, True), index(ctx.stock, ctx, True))  # with the cliff pieces a `walls:` line borrows
     family = families(b.stock)
     whole = index(ctx.stock, ctx)
     every = {o: [x for x in opts if folder(x.ent) in family] for o, opts in whole.items()}
@@ -296,8 +314,8 @@ def run(b) -> None:
         want = legacy[c]
         mine, anyone = own.get(o, []), every.get(o, [])
         if borrow := ctx.walls.get(tile[0]):  # a `walls:` line: only pieces off that D2R DT1, of any family, none else
-            mine = filtered(memo, borrow, o, "own", own)
-            anyone = filtered(memo, borrow, o, "all", whole)
+            mine = filtered(memo, borrow, o, "own", wide[0])
+            anyone = filtered(memo, borrow, o, "all", wide[1])
         choice = (pick(mine, want, c, bad, covered, blocked, b.seed, classed)
                   or pick(anyone, want, c, bad, covered, blocked, b.seed, classed))
         if choice is None:
@@ -312,6 +330,8 @@ def run(b) -> None:
         t = _transform(e)
         t["position"]["x"], t["position"]["z"] = c[0] * TILE + choice.dx, c[1] * TILE + choice.dz
         t["position"]["y"] = wall_y(b, t["position"]["x"], t["position"]["z"]) + choice.rel_y
+        if choice.turn:
+            t["rotation"] = turned(t.get("rotation") or {"w": 1.0, "x": 0.0, "y": 0.0, "z": 0.0})
         for comp in e["components"]:
             if comp["type"] == "WallTransparencyComponent" and comp["wallTileLocalCoord"]["x"] >= 0:
                 comp["wallTileLocalCoord"] = {"x": c[0], "y": c[1]}
