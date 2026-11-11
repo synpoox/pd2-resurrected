@@ -1,0 +1,21 @@
+diff --git a/tools/pd2_merge.py b/tools/pd2_merge.py
+index b246629..ea76f88 100644
+--- a/tools/pd2_merge.py
++++ b/tools/pd2_merge.py
+@@ -34,6 +34,8 @@ import pd2_objects_hd
+ import pd2_overlays_hd
+ import pd2_panels
+ import pd2_presets
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "docs" / "research" / "hd-parity-strategy"))
++import preset_overrides  # noqa: E402  (research prototype)
+ import pd2_skill_icons
+ import pd2_skilltrees
+ import pd2_sounds
+@@ -57,6 +59,7 @@ RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
+     "objects-hd.tsv": pd2_objects_hd.apply,  # after ids-objects.tsv
+     "panel-grids.json": pd2_panels.apply,
+     "presets-hd.tsv": pd2_presets.apply,  # after level-files.tsv: reads the merged levels, lvlprest, lvltypes and DS1
++    "presets-overrides.tsv": preset_overrides.apply,  # after presets-hd.tsv (name order): edits its output
+     "skill-icons.txt": pd2_skill_icons.apply,
+     "sounds.tsv": pd2_sounds.apply,
+     "standins.tsv": pd2_standins.apply,  # after the id and item rules (merge runs rule files by name)
