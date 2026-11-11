@@ -204,8 +204,17 @@ class SlotLoss(unittest.TestCase):
     def test_lost_lock_abandons_the_slot_without_stop_or_reset(self):
         calls, results = self.run_worker([True, False])  # initial lock ok, re-take after the first stop fails
         self.assertEqual(calls, ["lock:True", "stop", "lock:False"])  # no second stop, no reset, no release, no 2nd variant
-        self.assertEqual(len(results), 1)
+        self.assertEqual(len(results), 2)
         self.assertIn("lock was taken", results[0]["error"])
+        self.assertEqual(results[0]["left_file"], "p")
+        self.assertEqual(results[1]["error"], "skipped: slot lock lost")  # the second variant is recorded, not dropped
+        self.assertEqual(results[1]["ds1"], "b1")
+        self.assertEqual(results[1]["left_file"], "p")
+
+    def test_failed_first_lock_records_the_whole_share_as_skipped(self):
+        calls, results = self.run_worker([False])
+        self.assertEqual(calls, ["lock:False"])
+        self.assertEqual([r["error"] for r in results], ["skipped: slot lock lost"] * 2)
 
     def test_normal_slot_still_stops_resets_and_releases(self):
         calls, results = self.run_worker([])

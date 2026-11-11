@@ -479,13 +479,21 @@ def run_slot(slot: int, jobs: list[tuple[Map, list[Point]]], out: Path, owner: s
             log(f"slot {slot}: {msg}")
         return ok
 
+    def skip(rest, left: str = "") -> None:  # variants this slot will not shoot: recorded, never dropped silently
+        for m2, pts in rest:
+            row = {"map": m2.name, "ds1": Path(m2.ds1).stem, "slot": slot, "points": len(pts), "error": "skipped: slot lock lost"}
+            if left:
+                row["left_file"] = left
+            results.append(row)
+
     if not lock():
+        skip(jobs)
         return
     log(f"slot {slot}: locked by {owner}")
     game = game_ctl.Game(cfg, slot, owner, log=lambda *a: None)
     lost = False  # the slot's lock went to another claimer: the slot is theirs now, so this worker touches nothing on it
     try:
-        for m, points in jobs:
+        for i, (m, points) in enumerate(jobs):
             if STOP.is_set() or lost:
                 break
             stem, t0 = Path(m.ds1).stem, time.monotonic()
@@ -513,19 +521,24 @@ def run_slot(slot: int, jobs: list[tuple[Map, list[Point]]], out: Path, owner: s
             row["seconds"] = round(time.monotonic() - t0, 1)
             log(f"slot {slot}: {stem}: {row.get('pairs', 0)} pairs in {row['seconds']} s")
             results.append(row)
+            if lost:
+                left = str(force.lvlprest_path(slot, owner=owner))
+                row["left_file"] = left
+                skip(jobs[i + 1:], left)
     finally:
         if lost:
-            log(f"slot {slot}: abandoned (lock taken by another claimer): game, pin and lock left alone")
-            return
-        try:
-            game.stop()
-        finally:
+            log(f"slot {slot}: abandoned (lock taken by another claimer): game, pin and lock left alone; "
+                f"forced file left in place: {force.lvlprest_path(slot, owner=owner)}")
+        if not lost:
             try:
-                lock()  # the pin reset's guard wants the lock held, and the game stopped
-                force.reset(force.lvlprest_path(slot, owner=owner))
-            except Exception as e:
-                log(f"slot {slot}: pin not reset: {e}")
-            log(f"slot {slot}: " + game_slots.release(cfg, slot, owner)[1])
+                game.stop()
+            finally:
+                try:
+                    lock()  # the pin reset's guard wants the lock held, and the game stopped
+                    force.reset(force.lvlprest_path(slot, owner=owner))
+                except Exception as e:
+                    log(f"slot {slot}: pin not reset: {e}")
+                log(f"slot {slot}: " + game_slots.release(cfg, slot, owner)[1])
 
 
 def free_slots(cfg, candidates: list[int], keep_free: int) -> list[int]:
