@@ -69,6 +69,9 @@ closed: D2R reads `lvlprest.txt` at launch, so force before you start the game. 
 - Merge slots (#760, #801): at most `PD2R_MERGE_SLOTS` (default 4) merges run at once on the machine, agents' and the CI
   gate's together (the gate's uncached merge takes a slot too, under the same cache root). A merge that waits prints
   `merge queued: N/N slots busy`; the gate's says `CI merge queued`. Pick the count from RAM (`pd2_cache.merge_slots`).
+  The last `PD2R_CI_RESERVED` (default 2, #872) slots are the gate's: an agent merge holds at most
+  `PD2R_MERGE_SLOTS - PD2R_CI_RESERVED` (at least one), CI (`GITHUB_ACTIONS`) may take any. The queued line says which
+  pool it waits on. Set both variables in the runners' `.env` too.
 - Coverage outputs (`pd2_coverage.py`) go to `coverage/` in the worktree, not `out/`: `install.ps1` / `modkit build`
   wipes `out/`, so an install no longer deletes a running coverage report or the downloaded main baseline.
 - CI's gate shares the merge slots, the extract lock and `pd2-data` with the agents; it does not share the rule

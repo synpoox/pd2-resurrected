@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import copy
 import hashlib
 import io
 import json
@@ -385,6 +386,43 @@ def _hook() -> None:
         _hooked = True
 
 
+def trace_roots() -> dict[str, str] | None:
+    """The roots the running rule's trace watches (normalised, as Trace keeps them), None when no rule is traced. A worker
+    process a rule starts (presets/parallel.py) passes them to worker_start(): its reads are the rule's too."""
+    t = _trace
+    return dict(t.roots) if t is not None else None
+
+
+def worker_start(roots: dict[str, str]) -> None:
+    """In a worker process of a traced rule: trace what this process reads and writes, under the rule's roots."""
+    global _trace
+    _hook()
+    _trace = Trace(roots)
+
+
+def worker_finish() -> dict:
+    """In a worker process: stop tracing and return what it saw (picklable), for the rule's process to absorb()."""
+    global _trace
+    t, _trace = _trace, None
+    return {"reads": t.reads, "written": sorted(t.written), "created": sorted(t.created)} if t else {}
+
+
+def absorb(part: dict) -> None:
+    """Add a worker's trace (worker_finish) to the running rule's, as if the rule had done that work itself. A path
+    one worker created and another saw already made is read as it was before the rule: absent."""
+    t = _trace
+    if t is None or not part:
+        return
+    for k, v in part["reads"].items():
+        t.reads.setdefault(k, v)
+    t.written.update(part["written"])
+    t.created.update(part["created"])
+    t.written -= t.created
+    for k in t.reads:
+        if k.split(":", 1)[1] in t.created and t.reads[k] is not None:
+            t.reads[k] = None
+
+
 def _snapshot(gen: Path) -> tuple[dict[str, tuple[int, int]], set[str]]:
     """gen's files (size, modified time) and folders, by path from gen."""
     files, dirs = {}, set()
@@ -710,14 +748,60 @@ def prune(cache: Path, cap: int, keep_s: float = 900, legacy: bool = False) -> l
 
 
 
+_held: "Slots | None" = None  # the merge slot this process holds (acquire), for spare_slots
+
+
+def holding() -> bool:
+    """Whether this process holds a merge slot (a merge that runs under the cap)."""
+    return _held is not None
+
+
+def spare_slots(n: int) -> list["Slots"]:
+    """Up to n more merge slots of the machine-wide cap, taken now without waiting, for worker processes of the rule that
+    runs under the slot this process holds (#807). Empty when this process holds none (no cache root: the cap cannot be
+    kept). The caller release()s each when its worker ends."""
+    h, out = _held, []
+    while h is not None and len(out) < n:
+        s = h.clone()
+        if not s.try_acquire():
+            break
+        # leave a slot free for a merge (or CI) that arrives while the workers run: another slot of this holder's own
+        # pool (an agent's never counts the CI reserve) must still be free after this one is taken
+        probe = h.clone()
+        if not probe.try_acquire():
+            s.release()
+            break
+        probe.release()
+        out.append(s)
+    return out
+
+
 class Slots:
     """A machine-wide counting semaphore (#760): n slot files under folder, each held by an OS lock, so a crashed holder
     frees its slot with no pid file to leak. acquire() blocks until one is free (one 'queued' line meanwhile) and is
-    idempotent; release() frees it. Usable as a context manager."""
+    idempotent; release() frees it. Usable as a context manager.
 
-    def __init__(self, folder: Path, n: int, what: str = "merge", poll: float = 1.0):
+    Of the n slots, the last `reserved` belong to the CI gate (#872): with reserved > 0, a holder that is not `ci` only
+    tries slots 0..n-reserved-1 (at least one), so it can never hold a reserved one; a `ci` holder tries the reserved
+    slots first, then the rest, so it keeps the agents' slots free when it can."""
+
+    def __init__(self, folder: Path, n: int, what: str = "merge", poll: float = 1.0, reserved: int = 0, ci: bool = False):
         self.folder, self.n, self.what, self.poll = folder, max(1, n), what, poll
+        self.ci = ci
+        self.reserved = max(0, min(reserved, self.n - 1))
         self.f = None
+
+    def clone(self) -> "Slots":
+        """A new, unheld Slots with this one's folder and settings (pool, reserve and ci included), for spare_slots."""
+        c = copy.copy(self)
+        c.f = None
+        return c
+
+    def _order(self) -> list[int]:
+        """The slot indexes this holder may try, in order."""
+        if self.ci:
+            return list(range(self.n - 1, -1, -1))
+        return list(range(self.n - self.reserved))
 
     def _try(self, i: int):
         p = self.folder / f"slot.{i}"
@@ -730,22 +814,38 @@ class Slots:
             return None
         return f
 
+    def try_acquire(self) -> bool:
+        """Take a free slot now, never wait. True when this holds one."""
+        if self.f:
+            return True
+        self.folder.mkdir(parents=True, exist_ok=True)
+        for i in self._order():
+            if f := self._try(i):
+                self.f = f
+                return True
+        return False
+
     def acquire(self) -> None:
+        global _held
         if self.f:
             return
-        self.folder.mkdir(parents=True, exist_ok=True)
         told = False
         while True:
-            for i in range(self.n):
-                if f := self._try(i):
-                    self.f = f
-                    return
+            if self.try_acquire():
+                _held = self
+                return
+            order = self._order()
             if not told:
-                print(f"{self.what} queued: {self.n}/{self.n} slots busy (machine-wide cap, PD2R_MERGE_SLOTS); waiting for one to free", file=sys.stderr, flush=True)
+                pool = len(order)
+                note = "" if self.ci or not self.reserved else f", {self.reserved} more reserved for CI (PD2R_CI_RESERVED)"
+                print(f"{self.what} queued: {pool}/{pool} slots busy (machine-wide cap, PD2R_MERGE_SLOTS{note}); waiting for one to free", file=sys.stderr, flush=True)
                 told = True
             time.sleep(self.poll)
 
     def release(self) -> None:
+        global _held
+        if _held is self:
+            _held = None
         if self.f:
             f, self.f = self.f, None
             f.seek(0)
@@ -769,11 +869,17 @@ def slot_home() -> Path | None:
 
 def merge_slots(cache: Path) -> Slots:
     """The merge semaphore under the cache root, shared by agents and the CI gate: PD2R_MERGE_SLOTS slots (default 4).
+    The last PD2R_CI_RESERVED (default 2) are the gate's (#872): an agent merge (no GITHUB_ACTIONS) holds at most
+    PD2R_MERGE_SLOTS - PD2R_CI_RESERVED slots (at least one), and CI may take any, so the gate never queues behind
+    agents while a reserved slot is free. A queued merge says which pool it waits on. The slots stay per-file OS locks.
     Pick the count from RAM: (RAM left for merges) / (RAM of one merge). One merge held about 3.8 GB at one worker;
-    parallel merge workers (#807, planned) may hold more each, so lower the count then, and raise it when
-    a faster merge (#806) leaves RAM idle. The runners are user processes: set the same value in their `.env` or the user environment."""
-    try:
-        n = int(os.environ.get("PD2R_MERGE_SLOTS", "4"))
-    except ValueError:
-        n = 4
-    return Slots(cache / "merge-slots", n, "CI merge" if os.environ.get("GITHUB_ACTIONS") else "merge")
+    parallel merge workers (#807, each takes a slot of the pool; PD2R_PRESET_WORKERS set with no slot held starts that many uncapped) may hold more each, so lower the count then, and raise it when
+    a faster merge (#806) leaves RAM idle. The runners are user processes: set the same values in their `.env` or the user environment."""
+    def env(name: str, default: int) -> int:
+        try:
+            return int(os.environ.get(name, str(default)))
+        except ValueError:
+            return default
+    ci = bool(os.environ.get("GITHUB_ACTIONS"))
+    return Slots(cache / "merge-slots", env("PD2R_MERGE_SLOTS", 4), "CI merge" if ci else "merge",
+                 reserved=env("PD2R_CI_RESERVED", 2), ci=ci)

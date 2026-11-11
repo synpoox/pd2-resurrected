@@ -20,19 +20,19 @@ ORDER = 220
 
 def structure_off(d2r_data: Path) -> Callable[[dict], bool]:
     """Kit.structure from D2R's model boxes (data/hd/model_lod_desc.bin): whether an entity's model is at least
-    STRUCTURE wide along both axes and STRUCTURE_TOP high at its scale, and no room-sized mesh (pd2_coverage.ROOM). A
+    STRUCTURE wide along both axes and STRUCTURE_TOP high at its scale, and no room-sized mesh (pd2_tiles.ROOM). A
     prefab or a tree is none. Without the file, nothing is."""
-    import pd2_coverage as coverage  # it imports this module
-    models = d2r_data / coverage.MODELS
+    import pd2_tiles as tiles  # late: it imports the presets package
+    models = d2r_data / tiles.MODELS
     if not models.is_file():
         return lambda e: False
-    boxes = coverage.model_boxes(models.read_bytes())
+    boxes = tiles.model_boxes(models.read_bytes())
 
     @functools.cache
     def big(path: str, sx: float, sy: float, sz: float) -> bool:
-        bb = boxes.get(coverage.fnv(path))
+        bb = boxes.get(tiles.fnv(path))
         return bb is not None and STRUCTURE_TOP <= bb[4] * sy and (
-            STRUCTURE <= (bb[3] - bb[0]) * sx <= coverage.ROOM and STRUCTURE <= (bb[5] - bb[2]) * sz <= coverage.ROOM)
+            STRUCTURE <= (bb[3] - bb[0]) * sx <= tiles.ROOM and STRUCTURE <= (bb[5] - bb[2]) * sz <= tiles.ROOM)
 
     def structure(e: dict) -> bool:
         t = _transform(e)

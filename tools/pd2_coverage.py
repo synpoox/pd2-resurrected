@@ -59,19 +59,14 @@ import pd2_cache
 import pd2_painter as painter
 import pd2_presets as presets
 from pd2_ids import load, toolkit
+from pd2_tiles import (  # noqa: F401  (moved there, #855: the generator imports it; re-exported)
+    D2R_DATA, MODELS, TALL, LOW, LOW_EDGE, ROOM, DEPTH, EDGE, IDENTITY, Box, fnv, model_boxes, qmul, Ground,
+    plane_ground, boxes, footprint, CORE, core_footprint,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
-D2R_DATA = Path(os.environ.get("MODKIT_CACHE", toolkit(ROOT) / "d2r-data")) / "93847" / "data"
-MODELS = Path("hd") / "model_lod_desc.bin"
-TALL = 4.0  # HD units: a piece this high hides a wall in game
-# fences and shores are low by design (stone walls, graveyard railings, river banks): a piece this high covers them
-LOW = 1.0
-LOW_EDGE = re.compile(r"fence|stonewall|palisade|picket|graveyrd|river|rivbank|pool|swamp|pond|puddle")
 EDGE_PIECE = re.compile(r"fence|(?<!tree)(?<!tree_)wall|palisade|picket|rail|gate|bank")  # a low edge model, not a tree wall
-ROOM = 400  # HD units: a box wider than this is a room-sized mesh (water, sculpted terrain), not a wall piece
 STRUCTURE = 20.0  # HD units (2 tiles): a tall piece this wide both ways is a structure (stairs, platform), not a prop
-DEPTH = 2  # prefab levels followed
-EDGE = 1e-3  # tiles: how far a ground box may cross a tile edge and still end on it
 # The Palace (Horadrim Tower, palace1-6) cannot be played, so it is no target of the scores or the gate (#822).
 UNPLAYABLE = frozenset(f"palace{i}" for i in range(1, 7))
 FIDELITY_CHANGES: list = []  # every pd2_fidelity.Change of the last run(): drops and within-tolerance falls
@@ -93,81 +88,6 @@ STOCK_ENTITIES = 5642
 # and the densest (presets of 100+ DS1 tiles): act2/temple1.json 5.0 entities, act4/catsdown.json 8.0 KB per tile
 STOCK_DENSITY = 5.0
 STOCK_BYTES_PER_TILE = 8000
-IDENTITY = {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}
-
-Box = tuple[float, float, float, float, float, float]  # x0, x1, z0, z1, top, bottom
-
-
-def fnv(path: str) -> int:
-    """model_lod_desc.bin's key for a model path: 32-bit FNV-1a of the lower-cased path."""
-    h = 0x811C9DC5
-    for b in path.lower().encode():
-        h = ((h ^ b) * 0x1000193) & 0xFFFFFFFF
-    return h
-
-
-def model_boxes(raw: bytes) -> dict[int, tuple[float, ...]]:
-    """model_lod_desc.bin: `u32 count | i32 offset`, then from 4 + offset, 44-byte records
-    `u32 key | f32 bbMin[3] | f32 bbMax[3] | ...`. key -> (min x, y, z, max x, y, z)."""
-    count, off = struct.unpack_from("<Ii", raw, 0)
-    return {r[0]: r[1:] for r in (struct.unpack_from("<I6f", raw, 4 + off + 44 * i) for i in range(count))}
-
-
-def qmul(a: dict, b: dict) -> dict:
-    """The quaternion a * b (b turned, then a)."""
-    ax, ay, az, aw = a["x"], a["y"], a["z"], a["w"]
-    bx, by, bz, bw = b["x"], b["y"], b["z"], b["w"]
-    return {"w": aw * bw - ax * bx - ay * by - az * bz, "x": aw * bx + ax * bw + ay * bz - az * by,
-            "y": aw * by - ax * bz + ay * bw + az * bx, "z": aw * bz + ax * by - ay * bx + az * bw}
-
-
-Ground = Callable[[float, float], float]  # world x, z -> the height of the ground plane under it
-
-
-def plane_ground(preset: dict) -> Ground:
-    """The ground plane height under a world position: the y of the preset's flat terrain plane of that TERRAIN_SIZE
-    block (#742 raises and sinks the planes and the pieces on them), 0 where no plane is drawn."""
-    ys = {}
-    for e in preset["entities"] + [preset.get("terrain") or {}]:
-        t = presets._transform(e) if "components" in e else None
-        if t is not None and e.get("name") == "terrain" and any(
-                f"/{presets.TERRAIN}/" in c.get("filename", "").lower() for c in e["components"]):
-            p = t["position"]
-            ys[(round(p["x"] / presets.TERRAIN_SIZE), round(p["z"] / presets.TERRAIN_SIZE))] = p["y"]
-    return lambda x, z: ys.get((math.floor(x / presets.TERRAIN_SIZE), math.floor(z / presets.TERRAIN_SIZE)), 0.0)
-
-
-def boxes(entities: list[dict], box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],
-          base: tuple | None = None, depth: int = 0, ground: Ground | None = None, meta: bool = False,
-          room: bool = False) -> Iterator[Box]:
-    """The world boxes of the entities' models; a prefab's entities are placed by the prefab's transform. With
-    `ground`, heights are measured from the ground plane under the entity (a wall on a sunken plane is as tall as one on
-    the flat ground; a pasted room's piece, named with ROOM_PIECE, is measured from 0: #742 does not move it); a
-    prefab's entities stand on the plane under the prefab. With `meta`, each box is followed by its model path (lower
-    case) and whether it is a pasted room's piece (also inside a prefab placed by one): tools/pd2_parity.py (#838)."""
-    for e in entities:
-        t = presets._transform(e)
-        if t is None or e.get("name") == "terrain":
-            continue
-        p = (t["position"]["x"], t["position"]["y"], t["position"]["z"])
-        in_room = room or (e.get("name") or "").startswith(presets.ROOM_PIECE)
-        g = ground(p[0], p[2]) if ground and not in_room else 0.0  # pasted room: ground 0
-        q, sc = t.get("orientation") or IDENTITY, t.get("scale") or {"x": 1, "y": 1, "z": 1}
-        s = (sc["x"], sc["y"], sc["z"])
-        if base:
-            bp, bq, bs = base
-            v = painter.rotate(bq, (p[0] * bs[0], p[1] * bs[1], p[2] * bs[2]))
-            p, q, s = (bp[0] + v[0], bp[1] + v[1], bp[2] + v[2]), qmul(bq, q), (s[0] * bs[0], s[1] * bs[1], s[2] * bs[2])
-        for c in e["components"]:
-            if c["type"] == "ModelDefinitionComponent" and (bb := box(c.get("filename", ""))):
-                corners = [painter.rotate(q, (x * s[0], y * s[1], z * s[2]))
-                           for x in (bb[0], bb[3]) for y in (bb[1], bb[4]) for z in (bb[2], bb[5])]
-                xs, ys, zs = ([p[i] + v[i] for v in corners] for i in range(3))
-                b = (min(xs), max(xs), min(zs), max(zs), max(ys) - g, min(ys) - g)
-                yield b + (c["filename"].lower(), in_room) if meta else b
-            elif c["type"] == "PrefabPlacementDefinitionComponent" and c.get("prefab") and depth < DEPTH:
-                yield from boxes(prefab(c["prefab"]), box, prefab, (p, q, s), depth + 1,
-                                 (lambda x, z: g) if ground else None, meta, in_room)
 
 
 def low_edge(key) -> bool:
@@ -189,37 +109,6 @@ def covered(lay: presets.Layout, found: list[Box], edges: list[Box] = ()) -> set
 def tall_tiles(found: Iterator[Box], tall: float = TALL) -> set[tuple[int, int]]:
     """The tiles under the footprint of a box at least `tall` high (room-sized boxes left out)."""
     return footprint(b for b in found if b[4] >= tall and b[1] - b[0] <= ROOM and b[3] - b[2] <= ROOM)
-
-
-def footprint(found: Iterator[Box], exclusive: bool = False) -> set[tuple[int, int]]:
-    """The tiles under the boxes. `exclusive`: a box ending on a tile edge does not reach the tile past it (a
-    170-unit ground plane covers 17 tiles, not 18); the wall score keeps the tile it ends on (tall_tiles)."""
-    out = set()
-    T = presets.TILE
-
-    def span(a: float, b: float) -> range:
-        if not exclusive:
-            return range(math.floor(a / T), math.floor(b / T) + 1)
-        lo = math.floor(a / T + EDGE)  # the stock plane's box spills past its edges by float noise (170.00003)
-        return range(lo, max(math.ceil(b / T - EDGE), lo + 1))
-    for x0, x1, z0, z1, *_ in found:
-        out.update((tx, tz) for tx in span(x0, x1) for tz in span(z0, z1))
-    return out
-
-
-CORE = 0.5  # share of a tile's width a box must cover, both ways, for the tile to be under its core (not a spill)
-
-
-def core_footprint(b: Box) -> set[tuple[int, int]]:
-    """The tiles a box covers by at least CORE of their width on both axes, and always the tile under its centre: the
-    rest of footprint(b) is spill, tiles the box only grazes. A wide or turned box spills onto its neighbours (#800)."""
-    T = presets.TILE
-
-    def span(a: float, b_: float) -> set[int]:
-        mid = math.floor((a + b_) / 2 / T)
-        return {t for t in range(math.floor(a / T), math.floor(b_ / T) + 1)
-                if min(b_, (t + 1) * T) - max(a, t * T) >= CORE * T} | {mid}
-    return {(tx, tz) for tx in span(b[0], b[1]) for tz in span(b[2], b[3])}
 
 
 def ground_tiles(preset: dict, box: Callable[[str], tuple | None], prefab: Callable[[str], list[dict]],

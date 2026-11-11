@@ -47,7 +47,7 @@ def kit() -> dict:
 def fence_tiles(lay) -> dict[tuple[int, int], int]:
     """Each pure fence tile -> its fence layer's orientation. Pure: every wall layer
     is a fence or an invisible wall (act4/mesa/inv_wall)."""
-    import pd2_fidelity as fidelity  # it imports pd2_presets, which imports this package: not at the top
+    import pd2_tiles as fidelity  # it imports pd2_presets, which imports this package: not at the top
     out = {}
     for c, (kind, layers) in lay.keys.items():
         if kind != "w":
