@@ -203,25 +203,46 @@ class DefectPoints(unittest.TestCase):
         plan = T.plan(hall(), "Jungle Map", "jungle1", 149, (0, 0), n=3)
         defects = [T.Point("J", "jungle1", 149, "defect-void", (i, i), "c") for i in range(3)]
         pts = T.variant_points(refs, plan, 6, defects)
-        self.assertEqual([p.type for p in pts[:5]], ["ref-nearest", "ref-waypoint"] + ["defect-void"] * 3)
+        self.assertEqual([p.type for p in pts[:4]], ["ref-nearest", "ref-waypoint"] + ["defect-void"] * 2)  # n=6 keeps 2 plan points
         self.assertEqual(len(pts), 6)
         self.assertEqual(T.variant_points(refs, plan, 6, []), T.variant_points(refs, plan, 6))
         self.assertEqual(len(T.variant_points(refs, plan, 4, defects)), 4)
 
-    def test_parity_rows_survive_a_scorer_failure(self):
-        logs = []
-        with mock.patch("pd2_parity.run", side_effect=RuntimeError("boom")):
-            self.assertEqual(T.parity_rows(Path("."), Path("."), {"jungle1"}, logs.append), {})
-        self.assertIn("plan points", logs[0])
+    def test_checks_take_turns_and_each_is_capped(self):
+        sets = {"floating": {(x, 5) for x in range(0, 200, 10)}, "void": {(5, 100)}, "edge": {(100, 100)}}
+        pts = T.defect_points(sets, set(), self.walk(200, 200), self.M, (0, 0), 6)
+        self.assertEqual({p.type for p in pts}, {"defect-floating", "defect-void", "defect-edge"})
+        self.assertEqual(sum(p.type == "defect-floating" for p in pts), T.PER_CHECK)
+        self.assertEqual({p.type for p in pts[:3]}, {"defect-floating", "defect-void", "defect-edge"})
 
-    def test_parity_rows_collect_each_row_through_on_row(self):
+    def test_points_keep_off_the_reference_tiles(self):
+        sets = {"void": {(5, 5)}, "edge": {(30, 30)}}
+        pts = T.defect_points(sets, set(), self.walk(), self.M, (0, 0), 5, [(5, 6)])
+        self.assertEqual([p.type for p in pts], ["defect-edge"])
+
+    def test_variant_points_keep_two_plan_points(self):
+        refs = [T.Point("J", "j", 149, "ref-nearest", (1, 1), "c"), T.Point("J", "j", 149, "ref-waypoint", (2, 2), "c")]
+        plan = T.plan(hall(), "Jungle Map", "j", 149, (0, 0), n=3)
+        defects = [T.Point("J", "j", 149, "defect-void", (i, i), "c") for i in range(9)]
+        pts = T.variant_points(refs, plan, 10, defects)
+        self.assertEqual(len(pts), 10)
+        self.assertEqual(sum(p.type.startswith("defect") for p in pts), 6)
+        self.assertEqual(len([p for p in pts if p.type not in ("ref-nearest", "ref-waypoint") and not p.type.startswith("defect")]), 2)
+
+    def test_parity_points_keep_only_what_pick_returns(self):
         def fake(data, d2r, out, only, images, on_row=None):
             row = {"name": "jungle1", "sets": {"void": {(1, 1)}}}
             on_row(row)
             del row["sets"]  # as pd2_parity.run does after on_row
         with mock.patch("pd2_parity.run", side_effect=fake):
-            got = T.parity_rows(Path("."), Path("."), {"jungle1"}, lambda *_: None)
-            self.assertEqual(got["jungle1"]["sets"], {"void": {(1, 1)}})
+            got = T.parity_points(Path("."), Path("."), {"jungle1"}, lambda r: sorted(r["sets"]), lambda *_: None)
+        self.assertEqual(got, {"jungle1": ["void"]})
+
+    def test_parity_points_survive_a_scorer_failure(self):
+        logs = []
+        with mock.patch("pd2_parity.run", side_effect=RuntimeError("boom")):
+            self.assertEqual(T.parity_points(Path("."), Path("."), {"jungle1"}, dict, logs.append), {})
+        self.assertIn("plan points", logs[0])
 
 
 class SlotLoss(unittest.TestCase):
