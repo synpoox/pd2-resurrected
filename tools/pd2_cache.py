@@ -16,6 +16,7 @@ from __future__ import annotations
 import ast
 import contextlib
 import copy
+import errno
 import hashlib
 import io
 import json
@@ -791,6 +792,12 @@ def note(path) -> None:
                 x.see(path)
 
 
+def adopt_reads(reads: dict) -> None:
+    """Hand reads a memo recorded (a sub-trace's) to the traces running now: a memo hit stands in for the reads it hid (#882)."""
+    for x in ([_trace] if _trace is not None else []) + _subs:
+        x.adopt(reads)
+
+
 def part_get(sc: Scope, key_: str) -> "dict | None":
     """Replay the part with this key whose reads still hold: its files are copied under generated/ and its reads join the
     rule's trace. Returns what part_put was given as `extra`, None on a miss."""
@@ -819,15 +826,19 @@ def part_get(sc: Scope, key_: str) -> "dict | None":
     return None
 
 
-def part_put(sc: Scope, key_: str, files: list[str], extra: dict, reads: dict) -> None:
+def part_put(sc: Scope, key_: str, files: list[str], extra: dict, reads: dict, made: "set[str]" = frozenset()) -> None:
     """Keep a part built just now: `files` (paths from generated/) as they are, `extra` (JSON) for part_get to return, and
-    `reads`, what it opened (a Trace's), less the folders its own files are made in."""
+    `reads`, what it opened (a Trace's), less any read of its own files and of `made` (paths from generated/ that other parts
+    write: another worker's output is not an input). A listing (`l:`) of a folder above the files stays (one of a folder the outputs sit in would see
+    sibling outputs); the existence (`f:`) of those folders goes: it depends on which part ran first."""
     if sc.dest is None:
         return
     gen, home = sc.roots["p"] / "generated", sc.dest / key_
-    outs = [f"p:generated/{f}" for f in files]
+    outs = {f"p:generated/{f}" for f in (*files, *made)}
+    dirs = {o.rsplit("/", i)[0] for o in outs for i in range(1, o.count("/") + 1)}  # the folders above the outputs
+    # the existence of those folders (os.mkdir's f: read, None or "dir") depends on which part ran first, not on an input
     keep = {k: v for k, v in reads.items()
-            if not any(o == (r := k.split(":", 1)[1]) or o.startswith(r + "/") for o in outs)}
+            if (r := k.split(":", 1)[1]) not in outs and not (k.startswith("f:") and r in dirs)}
     m = {"reads": keep, "files": sorted(files), "removed": [], "dirs": [], "rmdirs": [], "stdout": "", "extra": extra,
          "origin": sc.policy.origin, "bytes": sum((gen / f).stat().st_size for f in files)}
     name = sc.policy.origin
@@ -844,7 +855,7 @@ def part_put(sc: Scope, key_: str, files: list[str], extra: dict, reads: dict) -
         os.rename(tmp, home / name)
         used.append(home / name)
     except OSError as e:  # FileExistsError: another run kept the part meanwhile; anything else only costs a later hit
-        if not isinstance(e, FileExistsError):
+        if not isinstance(e, FileExistsError) and e.errno not in (errno.ENOTEMPTY, errno.EEXIST):  # POSIX: ENOTEMPTY
             print(f"warning: part not cached ({e})")
     finally:
         if tmp.exists():

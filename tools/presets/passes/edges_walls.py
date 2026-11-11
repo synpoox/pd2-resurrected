@@ -26,6 +26,8 @@ import zlib
 from dataclasses import dataclass, field
 from typing import Callable
 
+import pd2_cache
+
 from ..consts import GROUND, TILE
 from ..entity import _transform, clone, is_waypoint
 from ..layout import Layout, walkable
@@ -47,7 +49,7 @@ class Context:
 
 
 CONTEXT: dict[str, Context] = {}  # DS1 path (Build.seed) -> its Context
-_INDEX: dict[tuple, tuple] = {}  # stock ids -> (the presets, held so an id is never reused; its index)
+_INDEX: dict[tuple, tuple] = {}  # stock ids -> (the presets, held so an id is never reused; its index; the files it read)
 
 
 def configure(ds1: str, ctx: Context) -> None:
@@ -82,7 +84,15 @@ def index(stock: list, ctx: Context) -> dict[int, list[Option]]:
     key = tuple(id(p) for _, p in stock)
     held = _INDEX.get(key)
     if held and all(a is p for a, (_, p) in zip(held[0], stock)):
+        pd2_cache.adopt_reads(held[2])  # the memo hides the prefab reads it made: every asker's DS1 read them (#882)
         return held[1]
+    with pd2_cache.sub_trace() as sub:
+        out = _build_index(stock, ctx, coverage, fid)
+    _INDEX[key] = (tuple(p for _, p in stock), out, dict(sub.reads) if sub is not None else {})
+    return out
+
+
+def _build_index(stock: list, ctx: Context, coverage, fid) -> dict[int, list[Option]]:
     out: dict[int, list[Option]] = {}
     for lay, preset in stock:
         ground = preset.get(GROUND)
@@ -112,7 +122,6 @@ def index(stock: list, ctx: Context) -> dict[int, list[Option]]:
             out.setdefault(tiles[1][0][1], []).append(
                 Option(e, x - c[0] * TILE, z - c[1] * TILE, y - g, cls, foot, preset["dependencies"],
                        tiles[1][0][0]))
-    _INDEX[key] = (tuple(p for _, p in stock), out)
     return out
 
 
