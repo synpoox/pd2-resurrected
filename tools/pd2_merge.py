@@ -96,10 +96,18 @@ def check_output(gen: Path, required: tuple[str, ...] | None = None, minimum: in
 
 
 def base_key(root: Path, kit: Path, d2r: Path) -> str:
-    """Every rule's key base: the stamps, the toolkit code rules and the driver use, D2R's path and the cache's format
-    (pd2_cache.CACHE_FORMAT, not pd2_cache.py's bytes: an edit to the cache's code must not rebuild every rule)."""
-    return pd2_cache.key([root / "pd2-baseline.json", root / "pd2-data" / "baseline.json", kit / "modkit",
-                          kit / "shared" / "classic_import"], str(d2r.resolve()), str(pd2_cache.CACHE_FORMAT))
+    """Every rule's key base: the stamps, the toolkit's merge driver (shared/classic_import's merge and what it imports),
+    D2R's path and the cache's format (pd2_cache.CACHE_FORMAT, not pd2_cache.py's bytes: an edit to the cache's code must
+    not rebuild every rule). The toolkit modules a rule itself imports are in its own key (rule_key, #808)."""
+    driver = pd2_cache.toolkit_sources(kit, [kit / "shared" / "classic_import" / "merge.py"])
+    return pd2_cache.key([root / "pd2-baseline.json", root / "pd2-data" / "baseline.json", *driver],
+                         str(d2r.resolve()), str(pd2_cache.CACHE_FORMAT))
+
+
+def rule_key(fn: Callable, kit: Path, base: str, name: str) -> str:
+    """One rule's key: its tools/ code, the toolkit modules that code imports, and the base."""
+    srcs = pd2_cache.sources(fn)
+    return pd2_cache.key(srcs + pd2_cache.toolkit_sources(kit, srcs), base, name, fn.__qualname__)
 
 
 def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None, slots_home: Path | None = None,
@@ -119,7 +127,7 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None, slots_hom
 
         def cached(name: str, fn: Callable) -> Callable:
             def run(p: Path, data: Path, d2r_: Path, out: Path) -> None:
-                k = pd2_cache.key(pd2_cache.sources(fn), base, name, fn.__qualname__)
+                k = rule_key(fn, kit, base, name)
                 def work() -> None:
                     slots.acquire()
                     fn(p, data, d2r_, out)

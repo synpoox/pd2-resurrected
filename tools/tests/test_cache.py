@@ -17,6 +17,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_cache  # noqa: E402
 import pd2_extract  # noqa: E402
+import pd2_ids  # noqa: E402
 import pd2_merge  # noqa: E402
 
 
@@ -539,6 +540,74 @@ class RaceTests(unittest.TestCase):
         pd2_cache.evict([tables, other], "data/global/excel/")
         self.assertFalse(tables.exists())
         self.assertTrue(other.is_dir())
+
+
+class ToolkitKeyTests(unittest.TestCase):
+    """A rule's key takes the toolkit modules its code imports, not the whole toolkit (#808)."""
+
+    def kit(self, tmp: Path) -> Path:
+        kit = tmp / "kit"
+        for f in ("modkit/__init__.py", "modkit/base.py", "modkit/dc6.py", "modkit/other.py", "modkit/hd.py",
+                  "shared/classic_import/__init__.py", "shared/classic_import/extract.py",
+                  "shared/classic_import/ids.py"):
+            write(kit / f, "")
+        write(kit / "modkit/base.py", "from . import dc6\n")
+        write(kit / "shared/classic_import/merge.py", "from . import extract\n")
+        return kit
+
+    def rule(self, tmp: Path, line: str):
+        write(tmp / "tk_rule.py", line + "\ndef go(): pass\ndef main():\n    from modkit import other\n")
+        sys.path.insert(0, str(tmp))
+        self.addCleanup(sys.path.remove, str(tmp))
+        self.addCleanup(lambda: [sys.modules.pop(m) for m in [m for m in sys.modules if m.startswith("tk_")]])
+        import tk_rule
+        return tk_rule.go
+
+    def key(self, fn, kit, tmp):
+        return pd2_merge.rule_key(fn, kit, pd2_merge.base_key(tmp, kit, tmp), "r")
+
+    def test_only_the_modules_a_rule_imports_change_its_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            kit = self.kit(tmp)
+            write(tmp / "pd2-baseline.json", "{}")
+            fn = self.rule(tmp, "def modkit():\n    from modkit import base\n    return base\n")
+            before = self.key(fn, kit, tmp)
+            names = {p.relative_to(kit).as_posix() for p in pd2_cache.toolkit_sources(kit, pd2_cache.sources(fn))}
+            self.assertEqual(names, {"modkit/__init__.py", "modkit/base.py", "modkit/dc6.py"})  # base's relative import too
+            for unrelated in ("modkit/other.py", "modkit/hd.py", "shared/classic_import/ids.py"):  # main() is no import
+                write(kit / unrelated, "X = 1\n")
+                self.assertEqual(self.key(fn, kit, tmp), before, unrelated)
+            for used in ("modkit/base.py", "modkit/dc6.py", "modkit/__init__.py"):
+                write(kit / used, (kit / used).read_text() + "# edit\n")
+                after = self.key(fn, kit, tmp)
+                self.assertNotEqual(after, before, used)
+                before = after
+
+    def test_the_merge_driver_is_in_every_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            kit = self.kit(tmp)
+            write(tmp / "pd2-baseline.json", "{}")
+            fn = self.rule(tmp, "")
+            before = self.key(fn, kit, tmp)
+            write(kit / "shared/classic_import/ids.py", "X = 1\n")  # the driver does not import it
+            self.assertEqual(self.key(fn, kit, tmp), before)
+            for f in ("merge.py", "extract.py"):
+                write(kit / "shared/classic_import" / f, (kit / "shared/classic_import" / f).read_text() + "# edit\n")
+                after = self.key(fn, kit, tmp)
+                self.assertNotEqual(after, before, f)
+                before = after
+
+    def test_presets_rule_key_leaves_out_toolkit_modules_it_does_not_import(self):
+        kit = pd2_ids.toolkit(Path(pd2_cache.__file__).resolve().parent.parent)
+        if not (kit / "modkit").is_dir():
+            self.skipTest("no d2rAI-toolkit beside the repo")
+        used = {p.relative_to(kit).as_posix()
+                for p in pd2_cache.toolkit_sources(kit, pd2_cache.sources(pd2_merge.RULES["presets-hd.tsv"]))}
+        self.assertTrue(used, "presets-hd.tsv imports modkit modules")
+        every = {p.relative_to(kit).as_posix() for p in (kit / "modkit").glob("*.py")}
+        self.assertTrue(every - used, "some modkit module is not in presets-hd.tsv's key")
 
 
 class PackageKeyTests(unittest.TestCase):
