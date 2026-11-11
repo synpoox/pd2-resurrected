@@ -39,6 +39,23 @@ class Raised(unittest.TestCase):
                 {("f", (FLOOR,))})
         self.assertEqual(names(kit, ("f", (FLOOR,))), ["skull_pile", "light", "sack"])
 
+    def test_a_furnishing_held_up_by_a_kept_piece_stays_but_one_on_a_dropped_stack_goes(self):
+        # a fortress roof's snow rests on its roof piece; a loft's shield rests on a sack that is itself in the air (#909)
+        lay = P.Layout(1, 1, {(0, 0): ("f", (FLOOR,))})
+        heights = {"roof": 12.0, "snow": 1.0, "sack": 2.0, "disc": 1.0, "heap": 3.0, "heap2": 3.0}
+
+        def snow(name: str, x: float, y: float) -> dict:
+            e = raised(name, x, 4.0, y)
+            e["components"][1]["filename"] = "data/hd/env/model/snowprops/" + name + ".model"
+            return e
+        kit = P.Kit(top=lambda e: heights[e["name"]])
+        kit.add(lay, {"dependencies": {}, "entities": [entity("roof", 3.0, 4.0), snow("snow", 3.0, 11.0),
+                                                       snow("sack", 6.0, 20.0), snow("disc", 6.0, 21.5),
+                                                       snow("heap", 8.0, 7.0), snow("heap2", 8.0, 21.0)]},
+                {("f", (FLOOR,))})
+        # the heap lies at 7 (low, stays); heap2 is 9 over the roof's top
+        self.assertEqual(names(kit, ("f", (FLOOR,))), ["roof", "snow", "heap"])
+
     def test_a_prop_with_nothing_under_it_on_a_wall_tile_stays_out_but_a_mounted_one_stays(self):
         lay = P.Layout(2, 1, {(0, 0): ("w", (A,)), (1, 0): ("w", (A,))})
         heights = {"wall": 12.0, "torch": 1.0, "burnt_beam01": 2.0}
