@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_dt1_copies as C  # noqa: E402
 import pd2_presets as P  # noqa: E402
-from presets_fixtures import TERRAIN, ds1, stock  # noqa: E402
+from presets_fixtures import TERRAIN, ds1, stock, with_black  # noqa: E402
 
 
 def dt1(tiles: list[tuple[tuple[int, int, int], bytes | None]], blocked: set = frozenset()) -> bytes:
@@ -91,7 +91,7 @@ class GeneratorTests(unittest.TestCase):
             write(d2r / "global/tiles/act1/a/wall.dt1", dt1([((1, 2, 3), b"pillar art"), ((4, 5, 6), b"torch art")]))
             write(d2r / "global/tiles/act1/s.ds1", ds1(2, 1, [{(0, 0): (1, 2, 3), (1, 0): (4, 5, 6)}], [{}],
                                                        ["\\d2\\data\\global\\tiles\\act1\\a\\wall.tg1"]))
-            write(d2r / "hd/env/preset/act1/s.json", json.dumps(stock()).encode())
+            write(d2r / "hd/env/preset/act1/s.json", json.dumps(with_black(stock())).encode())
             write(d2r / f"hd/env/preset/{P.TERRAIN}.json", json.dumps({"terrain": TERRAIN}).encode())
             # PD2 reindexes: its (1,2,3) is D2R's torch tile, its (7,7,7) new art; no D2R DT1 holds 25% at the same index
             write(out / "global/tiles/pd2assets/x.dt1", dt1([((1, 2, 3), b"torch art"), ((7, 7, 7), b"new art")]))
