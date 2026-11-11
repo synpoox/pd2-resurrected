@@ -68,6 +68,29 @@ class Checks(unittest.TestCase):
         room = piece("act1/rocks", 40, 60, 2.0, name=presets.ROOM_PIECE + "x", **high)
         self.assertEqual(score(room)["defects"]["floating"], 0)
 
+    def floats(self, *entities: dict) -> int:
+        return score(*entities)["defects"]["floating"]
+
+    def test_a_piece_over_room_terrain_rests_within_its_relief_but_one_above_it_or_off_it_floats(self):
+        room = piece("act1/room_ground", 0, 140, 0.5, name="terrain")  # a room's terrain box is flat
+        self.assertEqual(self.floats(piece("act1/rocks", 40, 60, 2.0, y=8.0), room), 0)
+        self.assertGreater(self.floats(piece("act1/rocks", 40, 60, 2.0, y=12.0), room), 0)  # past RELIEF
+        self.assertGreater(self.floats(piece("act1/rocks", 40, 60, 2.0, y=8.0)), 0)  # no terrain there
+        far = piece("act1/room_ground", 100, 240, 0.5, name="terrain")
+        self.assertGreater(self.floats(piece("act1/rocks", 40, 60, 2.0, y=8.0), far), 0)
+
+    def test_a_piece_beside_a_wall_top_rests_but_one_over_a_lower_wall_or_far_from_it_floats(self):
+        prop = piece("act1/rocks", 40, 55, 1.0, y=6.0)  # tiles 4-5, base 6
+        self.assertEqual(self.floats(prop, piece("act1/walls", 60, 70, 5.0)), 0)  # a wall on tile 6, top 5: within FLOAT of the base
+        self.assertGreater(self.floats(prop, piece("act1/walls", 60, 70, 4.0)), 0)  # top 4: under the base by more than FLOAT
+        self.assertGreater(self.floats(prop, piece("act1/walls", 100, 110, 5.0)), 0)  # tile 10: not a neighbour
+
+    def test_a_piece_on_a_shelf_or_canopy_rests_but_one_over_a_low_shelf_floats(self):
+        prop = piece("act1/rocks", 40, 60, 2.0, y=3.0)
+        for kind in ("act1/shelf_kit", "act1/canopy_kit"):
+            self.assertEqual(self.floats(prop, piece(kind, 40, 60, 3.0)), 0, kind)
+            self.assertGreater(self.floats(prop, piece(kind, 40, 60, 0.5)), 0, kind)
+
     def test_void_is_where_legacy_draws_nothing(self):
         hole = {c: k for c, k in floor_keys().items() if c not in {(5, 5), (6, 5)}}
         r = score(piece("act1/rocks", 50, 70, 2.0), keys=floor_keys(), legacy=hole)
