@@ -541,8 +541,8 @@ def slot_home() -> Path | None:
 def merge_slots(cache: Path) -> Slots:
     """The merge semaphore under the cache root, shared by agents and the CI gate: PD2R_MERGE_SLOTS slots (default 4).
     Pick the count from RAM: (RAM left for merges) / (RAM of one merge). One merge held about 3.8 GB at one worker;
-    parallel merge workers (#807, planned) may hold more each, so lower the count then, and raise it when a faster
-    merge (#806) leaves RAM idle. The runners are user processes: set the same value in their `.env` or the user environment."""
+    parallel merge workers (#807) will hold about 6 GB each, so lower it then (16 GB free -> 2) and raise it when
+    a faster merge (#806) leaves RAM idle. The runners are user processes: set the same value in their `.env` or the user environment."""
     try:
         n = int(os.environ.get("PD2R_MERGE_SLOTS", "4"))
     except ValueError:
