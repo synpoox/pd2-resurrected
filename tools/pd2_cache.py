@@ -107,6 +107,11 @@ def holder(path: Path) -> str:
     return f"pid {pid} ({'running' if alive else 'gone'}{when})"
 
 
+# Bump when what a cache entry stores or how replay works changes: it is in every rule's key (pd2_merge.base_key), so
+# editing this file's code otherwise leaves the cache alone.
+CACHE_FORMAT = 1
+
+
 def key(paths: list[Path], *extra: str) -> str:
     """A hash of every file under paths (its path from that path's parent, and its bytes) and of extra."""
     h = hashlib.sha256("\0".join(extra).encode())

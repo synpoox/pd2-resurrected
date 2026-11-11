@@ -586,23 +586,27 @@ class PackageKeyTests(unittest.TestCase):
                     for m in [m for m in sys.modules if m.startswith("pk2_")]:
                         sys.modules.pop(m)
 
-    def test_relative_imports_up_a_package_enter_the_key(self):
+    def test_module_files_resolves_every_import_form(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
-            write(tmp / "pk3_top.py", "from pk3_a.sub.mod import go\n")
-            write(tmp / "pk3_a" / "__init__.py", "")
-            write(tmp / "pk3_a" / "sub" / "__init__.py", "")
-            write(tmp / "pk3_a" / "sub" / "mod.py", "from .. import deep\ndef go(): pass\n")
-            write(tmp / "pk3_a" / "deep.py", "x = 1\n")
-            sys.path.insert(0, str(tmp))
-            try:
-                import pk3_top
-                names = {p.relative_to(tmp).as_posix() for p in pd2_cache.sources(pk3_top.go)}
-                self.assertIn("pk3_a/deep.py", names)
-            finally:
-                sys.path.remove(str(tmp))
-                for m in [m for m in sys.modules if m.startswith("pk3_")]:
-                    sys.modules.pop(m)
+            for f in ("pk3_a/__init__.py", "pk3_a/deep.py", "pk3_a/sub/__init__.py", "pk3_a/sub/mod.py"):
+                write(tmp / f, "")
+            rel = lambda fs: sorted(f.relative_to(tmp).as_posix() for f in fs)
+            self.assertEqual(rel(pd2_cache.module_files(tmp, "pk3_a.deep", [])), ["pk3_a/deep.py"])
+            self.assertEqual(rel(pd2_cache.module_files(tmp, "pk3_a", ["deep", "sub", "nope"])),
+                             ["pk3_a/__init__.py", "pk3_a/deep.py", "pk3_a/sub/__init__.py"])
+            # from .. import deep, written in pk3_a/sub/mod.py: the folder two levels up is pk3_a's, module empty
+            self.assertEqual(rel(pd2_cache.module_files(tmp / "pk3_a", "", ["deep"])), ["pk3_a/__init__.py", "pk3_a/deep.py"])
+            self.assertEqual(rel(pd2_cache.module_files(tmp / "pk3_a", "sub.mod", [])), ["pk3_a/sub/mod.py"])
+
+    def test_the_base_key_follows_cache_format_not_the_cache_code(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            write(tmp / "pd2-baseline.json", "{}")
+            before = pd2_merge.base_key(tmp, tmp / "kit", tmp)
+            self.assertEqual(pd2_merge.base_key(tmp, tmp / "kit", tmp), before)  # pd2_cache.py's bytes are not in it
+            with mock.patch.object(pd2_cache, "CACHE_FORMAT", pd2_cache.CACHE_FORMAT + 1):
+                self.assertNotEqual(pd2_merge.base_key(tmp, tmp / "kit", tmp), before)
 
     def test_the_presets_rule_covers_the_whole_presets_package(self):
         names = {p.relative_to(Path(pd2_cache.__file__).parent).as_posix()
