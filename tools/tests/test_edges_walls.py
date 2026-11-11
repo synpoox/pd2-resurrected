@@ -129,7 +129,7 @@ class WallsRuleTests(unittest.TestCase):
         W.CONTEXT["x.ds1"] = ctx(mine + list(extra), lay.keys)
         W.CONTEXT["x.ds1"].legacy, W.CONTEXT["x.ds1"].walls = lay, walls
         try:
-            with mock.patch("pd2_fidelity.legacy_edges", return_value=edges(**{kind: {(0, 0): "low"}})),                     mock.patch("pd2_fidelity.tile_type", return_value=kind), mock.patch.object(W, "walkable", return_value=set()):
+            with mock.patch("pd2_tiles.legacy_edges", return_value=edges(**{kind: {(0, 0): "low"}})),                     mock.patch("pd2_tiles.tile_type", return_value=kind), mock.patch.object(W, "walkable", return_value=set()):
                 W.run(b)
         finally:
             W.CONTEXT.pop("x.ds1", None)
@@ -168,7 +168,7 @@ class CheckWallsTests(unittest.TestCase):
         return W.Context(lay, defaultdict(dict), BOXES.get, lambda p: [], stock)
 
     def check(self, walls, c):
-        with mock.patch("pd2_fidelity.tile_type", return_value="cliff"),                 mock.patch("pd2_fidelity.model_type", return_value="wall"),                 mock.patch("pd2_fidelity.hd_class", return_value="low"),                 mock.patch("pd2_coverage.boxes", return_value=[(0, 3, 0, 3, 2, 3)]),                 mock.patch("pd2_coverage.footprint", return_value={(2, 2)}):
+        with mock.patch("pd2_tiles.tile_type", return_value="cliff"),                 mock.patch("pd2_tiles.model_type", return_value="wall"),                 mock.patch("pd2_tiles.hd_class", return_value="low"),                 mock.patch("pd2_tiles.boxes", return_value=[(0, 3, 0, 3, 2, 3)]),                 mock.patch("pd2_tiles.footprint", return_value={(2, 2)}):
             W._INDEX.clear()
             W.check_walls(walls, [c])
 
