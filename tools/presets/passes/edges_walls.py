@@ -166,9 +166,10 @@ COVER = ("cliff", "pillar", "treeline", "fence")  # the other edge types a wall 
 
 def trim(b, ctx: Context, legacy: dict) -> list[dict]:
     """b.loose without the wall pieces too tall for the tiles under their box: a piece whose box covers a legacy wall
-    tile that asks for a low wall, and none that asks for a tall one. The fill then stands low pieces there. A piece
-    stays when it is the only piece on a legacy cliff, pillar, treeline or fence tile. The top is measured from the
-    ground wall_y() gives, as index() measures a stock piece from its own."""
+    tile that asks for a low wall, even if it also covers tiles that ask for a tall one (a tall piece grazing a low
+    tile spoils its height, #824). A piece stays when it is the only piece on a legacy cliff, pillar, treeline or fence
+    tile. run() puts back the trimmed pieces whose low tiles no low piece takes, so a hole never replaces a wall of the
+    wrong height. The top is measured from the ground wall_y() gives, as index() measures a stock piece from its own."""
     import pd2_tiles as fid
     other: set = set()
     for kind, tiles in fid.legacy_edges(ctx.legacy, ctx.heights).items():
@@ -263,21 +264,50 @@ def run(b) -> None:
     ruled = ruled_cells(ctx, edges, legacy)
     if not legacy:
         return
-    b.loose = trim(b, ctx, legacy)
-    ents = b.entities + b.loose
+    low = {c for c, k in legacy.items() if k == "low"}
+    trimmed = trim(b, ctx, legacy)
+    keep = {id(e) for e in trimmed}
+    gone = [e for e in b.loose if id(e) not in keep]
+    added = fill(b, ctx, legacy, ruled, low, trimmed)
+    # A tall piece goes only when the wall that replaces it leaves none of its tiles bare (#824): where no low piece
+    # fits, a wall of the wrong height beats a hole. The fill runs again with those pieces kept, until none is bare.
+    held: list[dict] = []
+    for _ in range(4):
+        hd = fid.hd_pieces(b.entities + trimmed + added, ctx.box, ctx.prefab)
+        bare = fid.score_type("wall", legacy, hd).missing
+        more = [e for e in gone if not any(e is h for h in held) and low_tiles(e, ctx, legacy) & bare]
+        if not more:
+            break
+        held += more
+        trimmed = [e for e in b.loose if id(e) in keep or any(e is h for h in held)]
+        added = fill(b, ctx, legacy, ruled, low, trimmed)
+    b.loose = trimmed + added
+
+
+def low_tiles(e: dict, ctx: Context, legacy: dict) -> set:
+    """The tiles under the wall piece `e` for which legacy asks a low wall."""
+    import pd2_tiles as fid
+    found = list(fid.boxes([e], ctx.box, ctx.prefab))
+    return {c for c in fid.footprint(found[:1]) if legacy.get(c) == "low"} if len(found) == 1 else set()
+
+
+def fill(b, ctx: Context, legacy: dict, ruled: set, low: set, loose: list) -> list[dict]:
+    """The wall pieces to add on the tiles `loose` (the build's pieces) leaves bare or at the wrong height or type.
+    `low`: the tiles legacy asks a low wall of."""
+    import pd2_tiles as fid
+    ents = b.entities + loose
     hd = fid.hd_pieces(ents, ctx.box, ctx.prefab)
     score = fid.score_type("wall", legacy, hd)
     bad = score.missing | score.wrong_type | score.wrong_height
     bad -= ruled & score.wrong_type  # a ruled cell that already holds a piece (a cliff piece) gets no wall stacked on it
     if not bad:
-        return
+        return []
     own = index(b.stock, ctx)
     family = families(b.stock)
     whole = index(ctx.stock, ctx)
     every = {o: [x for x in opts if folder(x.ent) in family] for o, opts in whole.items()}
     blocked = walkable(ctx.legacy)
     covered: set = set()
-    low = {c for c, k in legacy.items() if k == "low"}
     area, near, good = {}, collections.defaultdict(int), collections.defaultdict(set)
     for k, run in enumerate(fid.runs(set(legacy))):  # per edge run: the wall pieces by it and the tiles it has, as score_type counts
         around = run | {(x + dx, y + dy) for x, y in run for dx, dy in fid.STEPS8}
@@ -287,22 +317,36 @@ def run(b) -> None:
     added: list[dict] = []
     classed: dict = {}
     memo: dict = {}  # (D2R DT1, orientation, own or all) -> the options off that DT1, one list per pass run
-    for c in sorted(bad):
-        if c in covered:
-            continue
+    def options(c):
+        """(want, own options, any options) of the stock wall pieces for the tile c, or None where none apply."""
         tile = max((t for t in ctx.legacy.keys[c][1] if (t[0] in ctx.walls if c in ruled else fid.tile_type(t) == "wall")
                     and fid.tile_type(t) is not None),
                    key=lambda t: ctx.heights[t[0]].get(t[1:], 0), default=None)
         if tile is None or tile[1] not in (*UPPER, *LOWER_AS):
-            continue
+            return None
         o = LOWER_AS.get(tile[1], tile[1])
-        want = legacy[c]
         mine, anyone = own.get(o, []), every.get(o, [])
         if borrow := ctx.walls.get(tile[0]):  # a `walls:` line: only pieces off that D2R DT1, of any family, none else
             mine = filtered(memo, borrow, o, "own", own)
             anyone = filtered(memo, borrow, o, "all", whole)
-        choice = (pick(mine, want, c, bad, covered, blocked, b.seed, classed, low)
-                  or pick(anyone, want, c, bad, covered, blocked, b.seed, classed, low))
+        return legacy[c], mine, anyone
+
+    # A tall piece keeps off the low tiles a low piece can stand on; a low tile with no low piece to stand there may
+    # lie under a tall one, a wall of the wrong height beating a hole (#824).
+    veto = set()
+    for c in low:
+        got = options(c) if c in bad else None
+        if c not in bad or (got and (pick(got[1], "low", c, bad, set(), blocked, b.seed, classed)
+                                     or pick(got[2], "low", c, bad, set(), blocked, b.seed, classed))):
+            veto.add(c)
+    for c in sorted(bad):
+        if c in covered or (got := options(c)) is None:
+            continue
+        want, mine, anyone = got
+        choice = (pick(mine, want, c, bad, covered, blocked, b.seed, classed, veto)
+                  or pick(anyone, want, c, bad, covered, blocked, b.seed, classed, veto)
+                  or pick(mine, want, c, bad, covered, blocked, b.seed, classed)  # none clears the low tiles: the old tall pick
+                  or pick(anyone, want, c, bad, covered, blocked, b.seed, classed))
         if choice is None:
             continue
         k = area[c]
@@ -321,4 +365,4 @@ def run(b) -> None:
         b.depend(choice.deps)
         added.append(e)
         covered |= {(c[0] + i, c[1] + j) for i, j in choice.foot}
-    b.loose = b.loose + added
+    return added
