@@ -87,12 +87,12 @@ def index(stock: list, ctx: Context) -> dict[int, list[Option]]:
         pd2_cache.adopt_reads(held[2])  # the memo hides the prefab reads it made: every asker's DS1 read them (#882)
         return held[1]
     with pd2_cache.sub_trace() as sub:
-        out = _build_index(stock, ctx, coverage, fid)
+        out = _build_index(stock, ctx, fid)
     _INDEX[key] = (tuple(p for _, p in stock), out, dict(sub.reads) if sub is not None else {})
     return out
 
 
-def _build_index(stock: list, ctx: Context, coverage, fid) -> dict[int, list[Option]]:
+def _build_index(stock: list, ctx: Context, fid) -> dict[int, list[Option]]:
     out: dict[int, list[Option]] = {}
     for lay, preset in stock:
         ground = preset.get(GROUND)
@@ -136,8 +136,10 @@ def families(stock: list) -> set[str]:
 
 
 def pick(options: list[Option], want: str, c: tuple, bad: set, covered: set, blocked: set, seed: str,
-         classed: dict | None = None) -> Option | None:
-    """The option of class `want` whose box stands on no blocked tile and covers the most uncovered bad tiles.
+         classed: dict | None = None, low: set = frozenset()) -> Option | None:
+    """The option of class `want` whose box stands on no blocked tile and covers the most uncovered bad tiles. A tall
+    option is never one whose box reaches a tile in `low` (legacy asks a low wall there): the scorer reads the tallest
+    piece on a tile, so a tall box that grazes a low tile makes it the wrong height (#824).
     `classed`: the caller's memo of each list's options by class, with their index in the list (the hash below needs
     it); one dict per pass run, so it outlives no merge."""
     best = None
@@ -148,7 +150,7 @@ def pick(options: list[Option], want: str, c: tuple, bad: set, covered: set, blo
     c0, c1 = c
     for k, o in classed[key][1]:
         tiles = [(c0 + i, c1 + j) for i, j in o.foot]  # foot holds distinct offsets (a footprint set)
-        if any(t in blocked for t in tiles):
+        if any(t in blocked for t in tiles) or (want == "tall" and any(t in low for t in tiles)):
             continue
         n = sum(t in bad and t not in covered for t in tiles)
         if best is not None and n < best[0][0]:  # the hash only breaks ties
@@ -183,7 +185,7 @@ def trim(b, ctx: Context, legacy: dict) -> list[dict]:
                 if fid.hd_class(top - wall_y(b, (x0 + x1) / 2, (z0 + z1) / 2)) == "tall":
                     foot = fid.footprint([found[0]])
                     want = {legacy[c] for c in foot if c in legacy}
-                    if want == {"low"} and not any(c in other and count[c] == 1 for c in foot):
+                    if "low" in want and not any(c in other and count[c] == 1 for c in foot):
                         continue
         keep.append(e)
     return keep
@@ -275,6 +277,7 @@ def run(b) -> None:
     every = {o: [x for x in opts if folder(x.ent) in family] for o, opts in whole.items()}
     blocked = walkable(ctx.legacy)
     covered: set = set()
+    low = {c for c, k in legacy.items() if k == "low"}
     area, near, good = {}, collections.defaultdict(int), collections.defaultdict(set)
     for k, run in enumerate(fid.runs(set(legacy))):  # per edge run: the wall pieces by it and the tiles it has, as score_type counts
         around = run | {(x + dx, y + dy) for x, y in run for dx, dy in fid.STEPS8}
@@ -298,8 +301,8 @@ def run(b) -> None:
         if borrow := ctx.walls.get(tile[0]):  # a `walls:` line: only pieces off that D2R DT1, of any family, none else
             mine = filtered(memo, borrow, o, "own", own)
             anyone = filtered(memo, borrow, o, "all", whole)
-        choice = (pick(mine, want, c, bad, covered, blocked, b.seed, classed)
-                  or pick(anyone, want, c, bad, covered, blocked, b.seed, classed))
+        choice = (pick(mine, want, c, bad, covered, blocked, b.seed, classed, low)
+                  or pick(anyone, want, c, bad, covered, blocked, b.seed, classed, low))
         if choice is None:
             continue
         k = area[c]
