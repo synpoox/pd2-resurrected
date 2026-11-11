@@ -61,7 +61,7 @@ def edges(**kinds):
 class TrimTests(unittest.TestCase):
     def trim(self, loose, legacy):
         b = SimpleNamespace(entities=[], loose=loose)
-        with mock.patch("pd2_fidelity.legacy_edges", return_value=legacy):
+        with mock.patch("pd2_tiles.legacy_edges", return_value=legacy):
             return W.trim(b, ctx(), legacy["wall"])
 
     def test_a_tall_piece_over_only_low_tiles_is_trimmed(self):
@@ -95,8 +95,8 @@ class RunTests(unittest.TestCase):
 
     def run_pass(self, b):
         try:
-            with mock.patch("pd2_fidelity.legacy_edges", return_value=edges(wall={(0, 0): "low"})), \
-                    mock.patch("pd2_fidelity.tile_type", return_value="wall"), mock.patch.object(W, "walkable", return_value=set()):
+            with mock.patch("pd2_tiles.legacy_edges", return_value=edges(wall={(0, 0): "low"})), \
+                    mock.patch("pd2_tiles.tile_type", return_value="wall"), mock.patch.object(W, "walkable", return_value=set()):
                 W.run(b)
         finally:
             W.CONTEXT.pop("x.ds1", None)

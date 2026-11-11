@@ -28,8 +28,8 @@ from presets.entity import _transform  # noqa: E402
 
 
 def plane_ground(preset: dict):
-    import pd2_coverage  # imported on first use only to keep the import cheap; pd2_cache.sources() still follows it into the rule's key
-    return pd2_coverage.plane_ground(preset)
+    import pd2_tiles  # imported on first use only to keep the import cheap
+    return pd2_tiles.plane_ground(preset)
 
 
 ANCHOR = "presets-overrides.tsv"
@@ -295,8 +295,8 @@ if __name__ == "__main__":
     if a.cmd == "roundtrip":
         g, e = json.loads(a.generated.read_text("utf-8-sig")), json.loads(a.edited.read_text("utf-8-sig"))
         spec = diff(g, e, a.generated.stem)
-        import pd2_coverage
-        stale = apply_ops(g, spec["ops"], pd2_coverage.D2R_DATA)
+        import pd2_tiles
+        stale = apply_ops(g, spec["ops"], pd2_tiles.D2R_DATA)
 
         def r2(o):
             return ({k: r2(v) for k, v in o.items()} if isinstance(o, dict) else [r2(v) for v in o]

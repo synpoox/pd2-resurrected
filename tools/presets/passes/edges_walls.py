@@ -73,8 +73,8 @@ def model(e: dict) -> str:
 
 def index(stock: list, ctx: Context) -> dict[int, list[Option]]:
     """The wall pieces of the stock presets by the orientation of the single wall tile they stand on."""
-    import pd2_coverage as coverage
-    import pd2_fidelity as fid
+    import pd2_tiles as coverage  # the shared tile module (#855), under the scorer's old name
+    import pd2_tiles as fid
     key = tuple(id(p) for _, p in stock)
     held = _INDEX.get(key)
     if held and all(a is p for a, (_, p) in zip(held[0], stock)):
@@ -117,7 +117,7 @@ def folder(e: dict) -> str:
 
 def families(stock: list) -> set[str]:
     """The model folders the stock presets draw walls from: the act and family a map's own stock uses."""
-    import pd2_fidelity as fid
+    import pd2_tiles as fid
     return {folder(e) for _, p in stock for e in p["entities"] if model(e) and fid.model_type(model(e)) == "wall"}
 
 
@@ -153,8 +153,8 @@ def trim(b, ctx: Context, legacy: dict) -> list[dict]:
     tile that asks for a low wall, and none that asks for a tall one. The fill then stands low pieces there. A piece
     stays when it is the only piece on a legacy cliff, pillar, treeline or fence tile. The top is measured from the
     ground wall_y() gives, as index() measures a stock piece from its own."""
-    import pd2_coverage as coverage
-    import pd2_fidelity as fid
+    import pd2_tiles as coverage  # the shared tile module (#855), under the scorer's old name
+    import pd2_tiles as fid
     other: set = set()
     for kind, tiles in fid.legacy_edges(ctx.legacy, ctx.heights).items():
         if kind in COVER:
@@ -180,7 +180,7 @@ def run(b) -> None:
     ctx = CONTEXT.get(b.seed)
     if ctx is None:
         return
-    import pd2_fidelity as fid
+    import pd2_tiles as fid
     legacy = fid.legacy_edges(ctx.legacy, ctx.heights)["wall"]
     if not legacy:
         return

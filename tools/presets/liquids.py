@@ -18,10 +18,10 @@ def mask(lay: Layout, extra: frozenset = frozenset()) -> dict[tuple[int, int], t
     layers (a stone platform's tile over lava is no liquid). A liquid DT1 is
     pd2_fidelity.classify "liquid" or one of `extra`, the DT1s the rule names as water. Pasted rooms are not excluded:
     this is the legacy map's liquid, whatever HD draws there."""
-    import pd2_fidelity  # imports the presets package: not at the top
+    import pd2_tiles  # imports the presets package: not at the top
 
     def liquid(d: str) -> bool:
-        return d in extra or pd2_fidelity.classify(d, 0, "floor", True) == "liquid"
+        return d in extra or pd2_tiles.classify(d, 0, "floor", True) == "liquid"
     blocked, walkable, overlaid, out = Counter(), Counter(), {}, {}
     for c, k in lay.keys.items():
         if k[0] != "f":
