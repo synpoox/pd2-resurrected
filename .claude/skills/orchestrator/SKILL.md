@@ -12,9 +12,9 @@ Repo rules (PR body, gate, changelog fragments, branch deletion) live in `AGENTS
 ## Roles
 
 - **Orchestrator (you):** files issues, writes briefs, launches agents, verifies results, merges.
-- **Implementer:** Agent tool, Sonnet, `isolation: worktree`. One per ticket.
-- **Reviewer:** Agent tool, Opus, independent. One per PR. Gets the builder's notes and posts one PR comment.
-- **Cap:** at most 4 agents at once, reviewers included. Use the Agent tool, not Orca.
+- **Implementer:** Agent tool, Sonnet, medium-effort, `isolation: worktree`. One per ticket.
+- **Reviewer:** Agent tool, Opus, medium-effort, independent. One per PR. Gets the builder's notes and posts one PR comment.
+- **Cap:** at most 5 agents at once, reviewers do not count towards this. Use the Agent tool, not Orca.
 
 ## Pipeline
 
