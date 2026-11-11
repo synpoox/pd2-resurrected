@@ -16,8 +16,10 @@ Code: `tools/pd2_overrides.py`. Tests: `tools/tests/test_overrides.py`.
 | `merge/presets-overrides.tsv` | the `pd2_merge` anchor, no lines (`RULES["presets-overrides.tsv"]`). It sorts after `presets-hd.tsv`: the merge driver runs rule files in name order, and the rule edits `presets-hd`'s output |
 | `merge/presets-overrides.d/<family>/<ds1 stem>.json` | the ops for one generated preset (`generated/data/hd/env/preset/**/<ds1 stem>.json`), in a folder per map family (`jungle`, `tomb`, `cistern`, ...) |
 
-A file's `ds1` is the preset's stem, or its path under `hd/env/preset/` (`expansion/map/guild4`) when two presets share a stem (the merge fails on an ambiguous stem); its last part must equal the file name (case-insensitive). It must name a generated preset: a file for a preset that does not
-exist fails the merge (a stale file). Add a family by making its folder; no list changes.
+A file's `ds1` is the preset's stem, or its path under `hd/env/preset/` (`expansion/map/guild4`) when two presets share
+a stem (the merge fails on an ambiguous stem); its last part must equal the file name (case-insensitive). It must name a
+generated preset: a file for a preset that does not exist fails the merge (a stale file). Add a family by making its
+folder; no list changes.
 
 ```json
 {"ds1": "jungle1",
