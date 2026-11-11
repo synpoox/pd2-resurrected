@@ -30,10 +30,12 @@ class Raised(unittest.TestCase):
         kit = P.Kit()
         shield = raised("shield01", 3.0, 3.0, 13.9)
         shield["components"][1]["filename"] = "data/hd/env/town/act2_town_shields/shield01.model"
+        disc = raised("shield02", 5.0, 5.0, 14.0)  # Westmarch's loft shields, banners and decals
+        disc["components"][1]["filename"] = "data/hd/env/model/global/prop/siege/expansion_siege_weapons/shield01.model"
         ledge = raised("skull_pile", 3.0, 5.0, 13.9)  # a mesa ledge's own raised scenery stays
         light = raised("light", 5.0, 3.0, 13.9)
         light["components"].pop(1)  # and a piece with no model has no height
-        kit.add(lay, {"dependencies": {}, "entities": [shield, ledge, light, entity("sack", 4.0, 4.0)]},
+        kit.add(lay, {"dependencies": {}, "entities": [shield, disc, ledge, light, entity("sack", 4.0, 4.0)]},
                 {("f", (FLOOR,))})
         self.assertEqual(names(kit, ("f", (FLOOR,))), ["skull_pile", "light", "sack"])
 

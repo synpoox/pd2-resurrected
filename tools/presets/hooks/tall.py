@@ -9,8 +9,11 @@ from ..consts import FLOOR_MAX
 from ..layout import _floor
 
 ORDER = 300
-# model path parts of a house's loose props and the snow and pebbles on its roof (Westmarch, Tristram)
-FURNISHINGS = ("/town/", "act2_town", "expansion_town", "/tristram/", "snowprops", "pebbles", "jungle_debris/apple")
+# model path parts of a house's loose props, its wall shields and banners, and the snow, pebbles and decals on its loft
+# floor (Westmarch, Tristram)
+FURNISHINGS = ("/town/", "act2_town", "expansion_town", "/tristram/", "snowprops", "pebbles", "jungle_debris/apple",
+               "expansion_siege_weapons", "expansion_siege_banners", "grunge/blood/", "grunge/dirt/", "grunge/snow/",
+               "grunge_straw", "wood_board")
 
 
 def _furnishing(e: dict) -> bool:
