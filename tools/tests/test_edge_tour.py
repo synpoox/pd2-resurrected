@@ -2,16 +2,19 @@
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_edge_tour as T  # noqa: E402
+sys.path.insert(0, str(T.toolkit(T.ROOT) / "testing"))
 import pd2_presets as P  # noqa: E402
 
-WALL = ("w", (("act1/outdoors/cliff.dt1", 1, 0, 0),))
+WALL = ("w", (("act1/outdoors/ruins.dt1", 1, 0, 0),))
 FENCE = ("w", (("act1/outdoors/fence.dt1", 1, 0, 0),))
 SHORE = ("w", (("act1/outdoors/riverbank.dt1", 1, 0, 0),))
 GRASS = ("f", (("act1/outdoors/grass.dt1", 0, 0, 0),))
+WATER = ("f", (("act1/outdoors/water.dt1", 0, 0, 0),))
 DIRT = ("f", (("act1/outdoors/dirt.dt1", 0, 0, 0),))
 OPEN, SHUT = bytes(25), bytes([1] * 25)
 
@@ -78,20 +81,22 @@ class Edges(unittest.TestCase):
         e = T.edge_tiles(hall())
         self.assertEqual(e["wall"], {(x, y) for x in range(1, 11) for y in (0, 7)} | {(11, y) for y in range(1, 7)})
         self.assertEqual(e["fence"], {(0, y) for y in range(1, 7)})
-        self.assertNotIn("ring", e)
+        self.assertEqual(e["cliff"], set())
 
-    def test_fence_and_shore_are_split_by_their_dt1(self):
+    def test_fence_and_water_edge_are_split_by_their_dt1(self):
         keys = {(x, y): GRASS for x in range(6) for y in range(6)}
         keys.update({(0, y): FENCE for y in range(6)} | {(5, y): SHORE for y in range(6)})
         e = T.edge_tiles(lay(keys))
         self.assertEqual(e["fence"], {(0, y) for y in range(6)})
-        self.assertEqual(e["shore"], {(5, y) for y in range(6)})
+        self.assertEqual(e["water"], {(5, y) for y in range(6)})
         self.assertEqual(e["wall"], set())
 
-    def test_water_is_blocked_floor_next_to_walkable_floor(self):
-        keys = {(x, y): GRASS for x in range(6) for y in range(4)}
+    def test_water_is_blocked_liquid_floor_next_to_walkable_floor(self):
+        keys = {(x, y): GRASS for x in range(6) for y in range(1, 4)}
+        keys.update({(x, 0): WATER for x in range(6)})
         e = T.edge_tiles(lay(keys, {(x, 0): SHUT for x in range(6)}))
         self.assertEqual(e["water"], {(x, 0) for x in range(6)})
+        self.assertEqual(T.edge_tiles(lay({c: GRASS for c in keys}, {(x, 0): SHUT for x in range(6)}))["water"], set())
 
     def test_a_stand_is_walkable_and_next_to_the_run(self):
         h = hall()
@@ -109,13 +114,57 @@ class Edges(unittest.TestCase):
             self.assertTrue(all(hall().keys[(c[0] + dx, c[1] + dy)] == DIRT for dx, dy in T.AROUND))
 
 
+class Sweep(unittest.TestCase):
+    def test_variant_points_put_references_first_then_one_per_type(self):
+        refs = [T.Point("J", "jungle1", 149, "ref-nearest", (1, 1), "cheat goto 149,1,1"),
+                T.Point("J", "jungle1", 149, "ref-waypoint", (2, 2), "cheat goto 149,2,2")]
+        plan = T.plan(hall(), "Jungle Map", "jungle1", 149, (0, 0), n=3)
+        pts = T.variant_points(refs, plan, 6)
+        self.assertEqual(len(pts), 6)
+        self.assertEqual([p.type for p in pts[:2]], ["ref-nearest", "ref-waypoint"])
+        self.assertEqual(len({p.type for p in pts[2:]}), 4)  # four different types before a second of one
+        self.assertEqual(T.variant_points([], [], 6), [])
+
+    def test_exact_select_takes_a_stem_or_preset_name_not_a_part(self):
+        found = [T.Map("Library Map", 1, "x/library1.ds1", []), T.Map("Zhar Library Map", 2, "x/zharlibrary1.ds1", []),
+                 T.Map("Poisoned Well Map", 199, "x/poisonedwell.ds1", []),
+                 T.Map("Poisoned Well Map", 199, "x/poisonedwellv2.ds1", [])]
+        self.assertEqual([m.level for m in T.select(found, "Library", True)], [1])
+        self.assertEqual([m.ds1 for m in T.select(found, "poisonedwellV2", True)], ["x/poisonedwellv2.ds1"])
+        self.assertEqual(len(T.select(found, "poisoned well map", True)), 2)
+        self.assertEqual(len(T.select(found, "library")), 2)  # substring stays the default for list and shoot
+
+    def test_poisoned_well_skips_legacy_by_level_and_palace_is_never_swept(self):
+        self.assertIn(199, T.NO_LEGACY)
+        self.assertEqual(T.PALACE, 141)
+
+    def test_nap_raises_once_stopped(self):
+        T.STOP.clear()
+        T.nap(0)
+        T.STOP.set()
+        try:
+            with self.assertRaises(T.Stopped):
+                T.nap(5)
+        finally:
+            T.STOP.clear()
+
+    def test_free_slots_leave_keep_free_unlocked(self):
+        try:
+            import game_slots as gs
+        except ImportError:
+            self.skipTest("no d2rAI-toolkit beside the repo")
+        with mock.patch.object(gs, "lock_info", lambda cfg, s: object() if s == 5 else None),                 mock.patch.object(gs, "slot_processes", lambda cfg, s: []):
+            self.assertEqual(T.free_slots(None, [4, 5, 6, 7], 1), [4, 6])
+            self.assertEqual(T.free_slots(None, [4, 5], 2), [])
+
+
 class Plan(unittest.TestCase):
     def test_plan_gives_each_type_up_to_n_points_with_commands(self):
         pts = T.plan(hall(), "Test Map", "hall1", 189, (4000, 2000), n=3)
         by = {}
         for p in pts:
             by.setdefault(p.type, []).append(p)
-        self.assertEqual(set(by), {"wall", "fence", "floor:grass", "floor:dirt"})
+        self.assertEqual(set(by), {"wall", "fence", "floor:grass", "floor:dirt"})  # edges by pd2_fidelity.classify
         self.assertTrue(all(len(v) <= 3 for v in by.values()))
         p = by["fence"][0]
         self.assertEqual(p.command, T.goto(189, (4000, 2000), p.tile))

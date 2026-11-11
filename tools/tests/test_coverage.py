@@ -306,7 +306,7 @@ class Baseline(unittest.TestCase):
         md = C.changes_md(found)
         self.assertIn("| b | 76.0% -> 70.0% (-6.0) | 87.5% | 100.0% | **drop** |", md)
         self.assertIn("| a | 69.0% -> 66.7% (-2.3) | - | 100.0% | within tolerance |", md)
-        self.assertIn("coverage-drop-ok", md)
+        self.assertIn("information only", md)
 
     def test_the_limit_is_one_value_with_a_default(self):
         self.assertEqual(C.TOLERANCE, 3.0)
@@ -419,7 +419,7 @@ class Baseline(unittest.TestCase):
             base.write_text("a\t80.0\t-\n", "utf-8")
             with mock.patch.object(C, "run", return_value=self.scores()), redirect_stdout(io.StringIO()):
                 self.assertEqual(C.main(["--out", d, "--baseline", str(base), "--check"]), 1)
-                self.assertEqual(C.main(["--out", d, "--baseline", str(base)]), 0)  # no --check: label coverage-drop-ok
+                self.assertEqual(C.main(["--out", d, "--baseline", str(base)]), 0)  # no --check: coverage never gates
             self.assertIn("**drop**", (Path(d) / "drops.md").read_text("utf-8"))
 
     def test_fidelity_drop_inside_and_past_the_tolerance(self):

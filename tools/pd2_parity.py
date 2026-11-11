@@ -40,7 +40,6 @@ no longer scored. The gate passes a drop when the PR carries the label parity-dr
 from __future__ import annotations
 
 import argparse
-import functools
 import json
 import shutil
 import subprocess
@@ -70,7 +69,6 @@ NOT_FLOATING = ("tree", "palm", "canopy", "light", "lamp", "candle", "torch", "c
 WATERY = ("water", "river", "lava", "pond", "lake", "swamp", "oasis", "puddle", "stream", "canal", "flow", "pool")
 WEIGHT = {"edge": 3.0, "walk": 2.0, "other": 1.0}
 CHECKS = ("edge", "solid", "invisible", "void", "floating", "occlusion", "clutter", "liquid")
-PALACE = "palace"  # palace1-6: unplayable (Horadrim Tower), out of the scores
 COLOUR = {"ok": (70, 160, 70), "edge": (230, 40, 40), "solid": (240, 120, 20), "invisible": (40, 200, 230),
           "void": (150, 60, 220), "floating": (250, 230, 40), "occlusion": (30, 70, 220), "clutter": (240, 140, 200),
           "liquid": (20, 220, 180), "bg": (20, 20, 20), "plain": (55, 50, 42)}
@@ -78,41 +76,9 @@ BASELINE_FILE = "parity-baseline.tsv"
 MAIN_DIR = "main-parity"  # under --out: main's baseline artifact, downloaded for a PR
 
 
-def walk(entities, box, prefab, ground, base=None, depth=0, room=False):
-    """(model path, x0, x1, z0, z1, top, bottom, in a pasted room) of every model, as coverage.boxes places them;
-    heights from the ground plane under the entity (a pasted room's pieces from 0)."""
-    for e in entities:
-        t = presets._transform(e)
-        if t is None or e.get("name") == "terrain":
-            continue
-        p = (t["position"]["x"], t["position"]["y"], t["position"]["z"])
-        in_room = room or (e.get("name") or "").startswith(presets.ROOM_PIECE)
-        g = 0.0 if in_room or ground is None else ground(p[0], p[2])
-        q, sc = t.get("orientation") or coverage.IDENTITY, t.get("scale") or {"x": 1, "y": 1, "z": 1}
-        s = (sc["x"], sc["y"], sc["z"])
-        if base:
-            bp, bq, bs = base
-            v = coverage.painter.rotate(bq, (p[0] * bs[0], p[1] * bs[1], p[2] * bs[2]))
-            p, q, s = (bp[0] + v[0], bp[1] + v[1], bp[2] + v[2]), coverage.qmul(bq, q), (s[0] * bs[0], s[1] * bs[1], s[2] * bs[2])
-        for c in e["components"]:
-            if c["type"] == "ModelDefinitionComponent" and (bb := box(c.get("filename", ""))):
-                corners = [coverage.painter.rotate(q, (x * s[0], y * s[1], z * s[2]))
-                           for x in (bb[0], bb[3]) for y in (bb[1], bb[4]) for z in (bb[2], bb[5])]
-                xs, ys, zs = ([p[i] + v[i] for v in corners] for i in range(3))
-                yield c["filename"].lower(), min(xs), max(xs), min(zs), max(zs), max(ys) - g, min(ys) - g, in_room
-            elif c["type"] == "PrefabPlacementDefinitionComponent" and c.get("prefab") and depth < coverage.DEPTH:
-                yield from walk(prefab(c["prefab"]), box, prefab, (lambda x, z: g) if ground else None,
-                                (p, q, s), depth + 1, in_room)
-
-
-def folder(path: str) -> str:
-    return path.rsplit("/", 2)[-2] if path.count("/") else ""
-
-
-def score(name, lay, legacy, preset, box, prefab, heights, typer=None) -> dict:
+def score(name, lay, legacy, preset, box, prefab, heights, stock: dict | None = None) -> dict:
     """The parity of one map: `lay` is the layout with stand-in DT1s (what HD builds from), `legacy` the layout with
-    PD2's own DT1s (what legacy draws). `typer` types an HD model path as an edge kind (default: pd2_fidelity)."""
-    typer = typer or fidelity.model_type
+    PD2's own DT1s (what legacy draws). `stock` is fidelity.stock_types (the stock vote's folder types, #822)."""
     W, H = lay.width, lay.height
     grid = {(x, y) for x in range(W) for y in range(H)}
     ground = coverage.plane_ground(preset)
@@ -123,8 +89,7 @@ def score(name, lay, legacy, preset, box, prefab, heights, typer=None) -> dict:
     open_floor = walkable - near_edge  # walkable floor where legacy draws no edge on or beside the tile
     void = {c for c in grid if c not in legacy.keys or all(t[0] is None for t in legacy.keys[c][1])}
     liquid = {c for c, (k, ts) in legacy.keys.items() if k == "f" and any(
-        fidelity.classify(t[0], 0, "floor", coverage.painter.blocked_floor(legacy.flags.get(c, bytes(25)))) == "liquid"
-        for t in ts)}
+        fidelity.liquid_floor(t, legacy.flags.get(c, bytes(25)), heights) for t in ts)}
     invisible_dt1 = {c for c, (k, ts) in legacy.keys.items()
                      if any(t[0] and fidelity.INVISIBLE.search(t[0].lower()) for t in ts)}
     # what legacy DRAWS as an obstacle: a wall cell. Blocked floor that legacy draws as plain ground (past a tree line,
@@ -134,7 +99,8 @@ def score(name, lay, legacy, preset, box, prefab, heights, typer=None) -> dict:
     d: dict[str, set] = {k: set() for k in CHECKS}
     drawn_any, watery, floats = set(), set(), Counter()
     hd = fidelity.Hd()
-    for path, x0, x1, z0, z1, top, bottom, in_room in walk(preset["entities"], box, prefab, ground):
+    for x0, x1, z0, z1, top, bottom, path, in_room in coverage.boxes(
+            preset["entities"], box, prefab, ground=ground, meta=True):
         b = (x0, x1, z0, z1, top, bottom)
         big = x1 - x0 > coverage.ROOM or z1 - z0 > coverage.ROOM
         core = coverage.footprint([b]) if big else coverage.core_footprint(b)
@@ -145,23 +111,14 @@ def score(name, lay, legacy, preset, box, prefab, heights, typer=None) -> dict:
         if top >= LOW:
             drawn_any |= core
         cover = bool(fidelity.GROUND_COVER.search("/".join(path.split("/")[-2:])))
-        kind = typer(path)
-        # edge pieces, for the edge check (fidelity.hd_pieces with this typing)
-        if kind is not None or top >= TALL:
-            for c in coverage.footprint([b]):
-                if kind is None:
-                    hd.other[c] = max(top, hd.other.get(c, top))
-                else:
-                    hd.tops[kind][c] = max(top, hd.tops[kind].get(c, top))
-            if kind is not None:
-                hd.core[kind] |= coverage.core_footprint(b)
-                hd.centres[kind].append((int((x0 + x1) / 2 // presets.TILE), int((z0 + z1) / 2 // presets.TILE)))
+        types = fidelity.model_types(path, stock)
+        hd.add(b, types, fidelity.model_type(path), fidelity.folder_of(path))  # the edge check's pieces
         if (not in_room and bottom >= FLOAT and top - bottom < 60
                 and not any(w in path for w in NOT_FLOATING + WATERY) and not cover):
             d["floating"] |= core
-            floats[folder(path)] += 1
+            floats[fidelity.folder_of(path)] += 1
         on_ground = bottom < FLOAT
-        if top >= TALL and on_ground and kind != "treeline":
+        if top >= TALL and on_ground and "treeline" not in types:
             d["solid"] |= core & open_floor
         elif top >= TALL:
             d["occlusion"] |= core & open_floor
@@ -191,7 +148,7 @@ def score(name, lay, legacy, preset, box, prefab, heights, typer=None) -> dict:
 
 def wanted(stem: str, only: set[str] = frozenset()) -> bool:
     """Whether a DS1 is scored: not the Palace (palace1-6), and in `only` when that is given."""
-    return not stem.startswith(PALACE) and (not only or stem in only)
+    return stem not in coverage.UNPLAYABLE and (not only or stem in only)
 
 
 def worst_check(r: dict) -> str:
@@ -296,19 +253,15 @@ def report_md(rows: list[dict], commit: str = "", found: list[Change] | None = N
 # --- run ------------------------------------------------------------------------------------------------------------
 
 def run(data: Path, d2r: Path, out: Path | None, only: set[str] = frozenset(), images: bool = True) -> list[dict] | None:
-    """Score every generated preset under data (generated/data) except the Palace; None: skipped (no model boxes)."""
+    """Score every generated preset under data (generated/data) except the unplayable Palace; None: skipped (no model boxes)."""
     if not (d2r / coverage.MODELS).is_file():
         print(f"::warning::pd2_parity: skipped, no {d2r / coverage.MODELS} (`python -m modkit fetch --prefix data/hd/model_lod_desc.bin`)")
         return None
-    found = coverage.model_boxes((d2r / coverage.MODELS).read_bytes())
-
-    @functools.cache
-    def prefab(path):
-        f = d2r / path.removeprefix("data/")
-        return json.loads(f.read_text("utf-8-sig")).get("entities", []) if f.is_file() else []
-
-    def box(path):
-        return found.get(coverage.fnv(path))
+    box, prefab = coverage.model_lookup(d2r)
+    votes = fidelity.VOTES_FILE.read_text("utf-8")
+    if warn := fidelity.votes_stale(votes, fidelity.votes_input_hash(d2r)):
+        print(f"::warning::pd2_parity: {warn}", file=sys.stderr)
+    stock = fidelity.stock_types(fidelity.read_votes(votes))
     _, standins, _ = presets.read_rule(ROOT / "merge" / "presets-hd.tsv")
     tiles, pd2_tiles = presets.Tiles(d2r / "global" / "tiles"), presets.Tiles(data / "global" / "tiles")
     heights = fidelity.Heights(data / "global" / "tiles", d2r / "global" / "tiles")
@@ -323,7 +276,7 @@ def run(data: Path, d2r: Path, out: Path | None, only: set[str] = frozenset(), i
             raw = (data / "global" / "tiles" / ds1).read_bytes()
             lay = presets.layout(raw, presets.stand_in(files, tiles, pd2_tiles, standins))
             legacy = presets.layout(raw, {p: pd2_tiles[p] or tiles[p] for p in files})
-            r = score(stem, lay, legacy, json.loads(f.read_text("utf-8")), box, prefab, heights)
+            r = score(stem, lay, legacy, json.loads(f.read_text("utf-8")), box, prefab, heights, stock)
             r["area"] = area
             if images and out is not None:
                 (out / f"{stem}_parity.png").write_bytes(image(lay, r))
