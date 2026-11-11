@@ -803,6 +803,81 @@ class MergeSlotTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {"PD2R_CACHE": str(home / "none")}):
             self.assertIsNone(pd2_cache.slot_home())
 
+    def test_an_agents_spare_slots_never_reach_the_ci_reserve_and_a_clone_keeps_the_pool(self):
+        held = pd2_cache.Slots(self.dir, 5, poll=0.01, reserved=2)  # agent pool: slots 0-2
+        held.acquire()
+        self.addCleanup(held.release)
+        c = held.clone()
+        self.assertEqual((c.reserved, c.ci, c.n, c.f), (2, False, 5, None))
+        spares = pd2_cache.spare_slots(9)
+        self.addCleanup(lambda: [x.release() for x in spares])
+        self.assertEqual(len(spares), 1)  # holder + 1 spare + 1 free of the 3-slot pool
+        ci = pd2_cache.Slots(self.dir, 5, reserved=2, ci=True)
+        for i in (3, 4):  # both reserved slots are free to take
+            f = ci._try(i)
+            self.assertIsNotNone(f)
+            f.close()
+        free = [i for i in range(3) if (f := ci._try(i)) and not f.close()]
+        self.assertEqual(len(free), 1)
+
+    def test_agents_never_hold_a_reserved_slot_and_ci_can(self):
+        agents = [pd2_cache.Slots(self.dir, 4, poll=0.01, reserved=2) for _ in range(3)]
+        agents[0].acquire()
+        agents[1].acquire()
+        self.addCleanup(agents[0].release)
+        self.addCleanup(agents[1].release)
+        buf, got = io.StringIO(), []
+
+        def wait():
+            with redirect_stderr(buf):
+                agents[2].acquire()
+                got.append(1)
+        t = threading.Thread(target=wait, daemon=True)
+        t.start()
+        time.sleep(0.3)
+        self.assertEqual(got, [], "the third agent waits though two slots are free")
+        self.assertIn("merge queued: 2/2 slots busy", buf.getvalue())
+        self.assertIn("reserved for CI", buf.getvalue())
+        ci = [pd2_cache.Slots(self.dir, 4, poll=0.01, reserved=2, ci=True) for _ in range(2)]
+        for c in ci:
+            c.acquire()
+            self.addCleanup(c.release)
+        self.assertEqual(sorted(int(c.f.name.rsplit(".", 1)[1]) for c in ci), [2, 3])
+        self.assertEqual(got, [])
+        agents[0].release()
+        t.join(10)
+        self.assertEqual(got, [1])
+        agents[2].release()
+
+    def test_ci_takes_any_slot_when_all_are_busy_but_one(self):
+        agents = [pd2_cache.Slots(self.dir, 3, poll=0.01, reserved=1) for _ in range(2)]
+        for a in agents:
+            a.acquire()
+            self.addCleanup(a.release)
+        ci = pd2_cache.Slots(self.dir, 3, poll=0.01, reserved=1, ci=True)
+        ci.acquire()
+        self.addCleanup(ci.release)
+        self.assertTrue(ci.f.name.endswith("slot.2"))
+        later = pd2_cache.Slots(self.dir, 3, poll=0.01, reserved=1, ci=True)
+        self.assertEqual(later._order(), [2, 1, 0])
+        self.assertEqual(agents[0]._order(), [0, 1])
+
+    def test_reserving_everything_still_leaves_agents_one_slot(self):
+        self.assertEqual(pd2_cache.Slots(self.dir, 2, reserved=5)._order(), [0])
+        self.assertEqual(pd2_cache.Slots(self.dir, 3)._order(), [0, 1, 2])
+
+    def test_the_reserve_comes_from_the_environment(self):
+        home = Path(self.tmp.name)
+        with mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": "5", "PD2R_CI_RESERVED": "1", "GITHUB_ACTIONS": ""}):
+            s = pd2_cache.merge_slots(home)
+            self.assertEqual((s.reserved, s.ci, s._order()), (1, False, [0, 1, 2, 3]))
+        with mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": "5", "GITHUB_ACTIONS": "true"}):
+            os.environ.pop("PD2R_CI_RESERVED", None)
+            s = pd2_cache.merge_slots(home)
+            self.assertEqual((s.reserved, s.ci), (2, True))
+        with mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": "5", "PD2R_CI_RESERVED": "x", "GITHUB_ACTIONS": ""}):
+            self.assertEqual(pd2_cache.merge_slots(home).reserved, 2)
+
     def test_the_cap_comes_from_the_environment(self):
         with mock.patch.dict(os.environ, {"PD2R_MERGE_SLOTS": "2"}):
             self.assertEqual(pd2_cache.merge_slots(Path(self.tmp.name)).n, 2)

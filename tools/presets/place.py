@@ -29,8 +29,8 @@ def carries(ents: list) -> bool:
     """Whether a kit instance holds a real wall: a wall or cliff piece (structure), or a model pd2_fidelity types as
     a wall, cliff or fence (nemyrmonastery's bars
     are fences). A tall prop (a shrine, a cage) is no wall, whatever its height (#737)."""
-    import pd2_fidelity  # late: it reads the presets package's constants
-    return structure(ents) or any(pd2_fidelity.model_type(pillars.model(e)) in ("wall", "cliff", "fence")
+    import pd2_tiles  # late: it reads the presets package's constants
+    return structure(ents) or any(pd2_tiles.model_type(pillars.model(e)) in ("wall", "cliff", "fence")
                                   or POST.search(pillars.model(e)) for e, _, _ in ents)
 
 
