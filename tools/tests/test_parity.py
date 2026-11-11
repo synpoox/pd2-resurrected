@@ -111,6 +111,14 @@ class Checks(unittest.TestCase):
         self.assertEqual(self.floats(first, wall()), 0)
         self.assertGreater(self.floats(second, first, wall()), 0)
 
+    def test_a_grounded_support_is_not_barred_by_its_name_and_foliage_is_no_support(self):
+        spike = piece("act1/spike_kit", 50, 60, 1.0, y=4.0)
+        self.assertEqual(self.floats(spike, piece("act1/spikedcolumn01", 60.5, 70, 9.0)), 0)  # grounded spiked column
+        self.assertGreater(self.floats(spike, piece("act1/spike_body02", 60.5, 70, 9.0, y=2.0)), 0)  # raised hung body
+        self.assertGreater(self.floats(spike, piece("act1/foliage/spruce_sapling", 60.5, 70, 9.0)), 0)
+        self.assertEqual(self.floats(piece("act1/cap_kit", 50, 60, 1.0, y=4.0),
+                                     piece("act1/water_channel_tunnel01", 60.5, 70, 9.0)), 0)
+
     def test_a_piece_on_a_shelf_or_canopy_rests_but_a_thin_floating_shelf_does_not_hold_itself(self):
         prop = piece("act1/rocks", 40, 60, 2.0, y=3.0)
         for kind in ("act1/shelf_kit", "act1/canopy_kit"):

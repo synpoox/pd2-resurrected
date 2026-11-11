@@ -111,10 +111,15 @@ class Support:
     @staticmethod
     def wall(path: str, grounded: bool) -> bool:
         """Whether a box is one a hung piece hangs on: wall-typed, or a grounded structure piece; never foliage, ground
-        cover, water or another hung piece."""
-        if any(w in path for w in NOT_FLOATING + WATERY + HUNG) or fidelity.GROUND_COVER.search("/".join(path.split("/")[-2:])):
+        cover or a raised hung or watery piece. A grounded box is no hung piece whatever its name says (spikedcolumn01,
+        water_channel_tunnel01), so only a raised one is tested against the HUNG and WATERY words (#913)."""
+        low = path.lower()
+        if ("/foliage/" in low or any(w in path for w in NOT_FLOATING)
+                or fidelity.GROUND_COVER.search("/".join(path.split("/")[-2:]))):
             return False
-        return fidelity.model_type(path) == "wall" or grounded
+        if grounded:
+            return True
+        return fidelity.model_type(path) == "wall" and not any(w in path for w in WATERY + HUNG)
 
     def terrain_under(self, core: set, bottom: float) -> bool:
         """`bottom` is measured from the plane under the piece."""
