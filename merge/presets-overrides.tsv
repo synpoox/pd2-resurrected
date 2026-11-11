@@ -1,0 +1,4 @@
+# merge/presets-overrides.d/<family>/<ds1 stem>.json hold this rule's ops, one file per generated HD preset (a DS1 variant),
+# in a folder per map family. This file is only the pd2_merge anchor (the driver runs a rule per file in merge/) and holds
+# no lines. The rule runs after presets-hd.tsv (the driver runs the rule files in name order) and edits its output.
+# Format, selectors and ops: docs/hd-preset-overrides.md

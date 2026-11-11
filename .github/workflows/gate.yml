@@ -56,6 +56,10 @@ jobs:
       - name: Stand-in lines lint
         if: ${{ !cancelled() }}
         run: py -3 tools/pd2_presets_lint.py
+      # #839: a stale op in merge/presets-overrides.d/ (it matches nothing the generator makes) fails the PR
+      - name: Preset overrides lint
+        if: ${{ !cancelled() }}
+        run: py -3 tools/pd2_overrides.py lint
       # LP3c (#672, #681): the no-game coverage report of the generated HD presets, uploaded as an artifact. A push to
       # main uploads its scores as the coverage-baseline artifact; a PR compares against the latest one (#723), so no
       # PR commits a baseline, and fails when a preset's wall, border or floor score drops more than
