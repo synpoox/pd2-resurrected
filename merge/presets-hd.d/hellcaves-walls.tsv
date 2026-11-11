@@ -1,0 +1,5 @@
+# Hellcaves walls (#827): the walls: rule (merge/presets-hd.tsv, #826) for tile set 38's wall DT1s. Their PD2 art has no D2R
+# stand-in, so the kit leaves the cells bare; the wall pass stands lava-cave wall pieces on them. Hellcaves, Hellcave
+# Fortress and Lucion Arena all draw these two DT1s.
+walls:pd2assets/hellcaves_base.dt1	act4/lava/extwalls.dt1
+walls:pd2assets/hellcaves_obj.dt1	act4/lava/intwalls.dt1
