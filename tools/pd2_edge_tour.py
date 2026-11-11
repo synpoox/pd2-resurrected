@@ -334,32 +334,109 @@ def references(m: Map, data: bytes, lay: presets.Layout, offset: tuple[int, int]
     return out
 
 
-def variant_points(refs: list[Point], edge_points: list[Point], n: int) -> list[Point]:
-    """About n points: up to two references, then one point per edge or floor type in turn (the plan's order: edges
-    first). Defect-driven points (pd2_parity) will replace the plan's."""
+CELL = 8  # tiles: defect tiles are summed per CELL x CELL cell to find clusters
+APART = 10  # tiles (Chebyshev) between two defect points, and from a reference point: each shot shows another cluster
+PER_CHECK = 3  # defect points of one check per variant at most, so a sheet shows several kinds of defect
+KEEP_PLAN = 2  # plan points a variant keeps whatever the defects say
+
+
+def defect_points(sets: dict[str, set], edge: set, walk: set, m: Map, offset: tuple[int, int], k: int,
+                  avoid: list[Tile] = ()) -> list[Point]:
+    """Up to k warp points at the worst defect clusters of a parity row (pd2_parity's `sets`, already limited to
+    visible tiles by the caller): the weighted bad tiles (pd2_parity.WEIGHT) are summed per CELL-tile cell and check.
+    Checks take turns, the one with the heaviest cell first, each giving its next-worst cell (at most PER_CHECK per
+    check), standing on the walkable tile nearest the cell's weighted centre, at least APART tiles from the points
+    taken and from the `avoid` tiles (the reference points). The point's type is `defect-<check>`. [] when nothing is
+    bad or nothing is walkable (the caller keeps the plan's points)."""
+    from pd2_parity import WEIGHT
+    if not walk or k <= 0:
+        return []
+    cells: dict[str, dict[Tile, list]] = {}  # check -> cell -> [weight, sum x*w, sum y*w]
+    for check, tiles in sets.items():
+        for c in tiles:
+            w = WEIGHT["edge"] if c in edge else WEIGHT["walk"] if c in walk else WEIGHT["other"]
+            a = cells.setdefault(check, {}).setdefault((c[0] // CELL, c[1] // CELL), [0.0, 0.0, 0.0])
+            a[0] += w
+            a[1] += w * c[0]
+            a[2] += w * c[1]
+    queues = {check: sorted(by.items(), key=lambda kv: (-kv[1][0], kv[0])) for check, by in cells.items() if by}
+    order = sorted(queues, key=lambda c: (-queues[c][0][1][0], c))
+    stand = sorted(walk)
+    out: list[Point] = []
+    taken: list[Tile] = list(avoid)
+    used = {c: 0 for c in queues}
+    while len(out) < k and any(queues.values()):
+        for check in order:
+            while queues[check] and used[check] < PER_CHECK and len(out) < k:
+                _, (wt, sx, sy) = queues[check].pop(0)
+                cx, cy = sx / wt, sy / wt
+                t = min(stand, key=lambda w: (math.hypot(w[0] - cx, w[1] - cy), w))
+                if any(max(abs(t[0] - p[0]), abs(t[1] - p[1])) < APART for p in taken):
+                    continue
+                taken.append(t)
+                used[check] += 1
+                out.append(Point(m.name, Path(m.ds1).stem, m.level, f"defect-{check}", t, goto(m.level, offset, t)))
+                break
+            else:
+                queues[check] = []  # capped or empty
+    return out
+
+
+def variant_points(refs: list[Point], edge_points: list[Point], n: int, defects: list[Point] | None = None) -> list[Point]:
+    """About n points: up to two references, then the defect points (varied by check, P4), then one point per edge
+    or floor type in turn (the plan's order: edges first) to fill up; at least KEEP_PLAN plan points stay when the plan
+    has them. A map with no scored defects gets the plan's."""
     by: dict[str, list[Point]] = {}
     for p in edge_points:
         by.setdefault(p.type, []).append(p)
     rest = []
     for r in range(max((len(v) for v in by.values()), default=0)):
         rest += [v[r] for v in by.values() if r < len(v)]
-    return (refs[:2] + rest)[:n]
+    refs = refs[:2]
+    keep = min(KEEP_PLAN, len(rest), max(0, n - len(refs)))
+    room = max(0, n - len(refs) - keep)
+    return refs + (defects or [])[:room] + rest[:n - len(refs) - len(((defects or [])[:room]))]
 
 
-def sweep_variants(data: Path, d2r: Path, wanted: list[str], n: int, exact: bool = True) -> list[tuple[Map, list[Point]]]:
-    """Every non-Palace variant matching a --map (all when none; exact names unless `exact` is off), with its points."""
+def parity_points(data: Path, d2r: Path, stems: set[str], pick, log=print) -> dict:
+    """`pick(row)` of each DS1 stem's full parity row (tile sets included), one scoring pass, keyed by stem: only what
+    pick returns is kept, so the 128 maps' tile sets are never held at once. {} when it cannot score (no model boxes in
+    modkit's cache, or an error: the sweep then uses the plan's points)."""
+    import pd2_parity
+    got: dict = {}
+    try:
+        t0 = time.process_time()
+        pd2_parity.run(data, d2r, None, stems, False, on_row=lambda r: got.__setitem__(r["name"], pick(r)))
+        log(f"parity scored {len(got)} variants in {time.process_time() - t0:.1f} s CPU")
+    except Exception as e:  # scoring is an extra: the sweep must still run on plan points
+        log(f"warning: no parity defects ({type(e).__name__}: {e}); using plan points")
+    return got
+
+
+def sweep_variants(data: Path, d2r: Path, wanted: list[str], n: int, exact: bool = True, defects: bool = True,
+                   log=print) -> list[tuple[Map, list[Point]]]:
+    """Every non-Palace variant matching a --map (all when none; exact names unless `exact` is off), with its points:
+    two references, the parity scorer's worst defect clusters, and the plan's points where there are none (`defects`
+    off: plan points only)."""
     from pd2_warps import object_classes
     lv, classes = offsets(data), object_classes(data)
     tiles, pd2_tiles = presets.Tiles(d2r / "global" / "tiles"), presets.Tiles(data / "global" / "tiles")
     chosen = [m for m in maps(data, d2r) if m.level != PALACE and (not wanted or any(select([m], w, exact) for w in wanted))]
-    out = []
+    base = {}  # stem -> (map, offset, reference points, plan points): small, so the scorer's rows need not wait
     for m in chosen:
         raw, lay = map_layout(m, data, tiles, pd2_tiles)
         _, ox, oy = lv[m.level]
         stem = Path(m.ds1).stem
-        out.append((m, variant_points(references(m, raw, lay, (ox, oy), classes),
-                                      plan(lay, m.name, stem, m.level, (ox, oy), None, 2), n)))
-    return out
+        base[stem.lower()] = (m, (ox, oy), references(m, raw, lay, (ox, oy), classes),
+                              plan(lay, m.name, stem, m.level, (ox, oy), None, 2))
+
+    def pick(r: dict) -> list[Point]:  # inside the scorer's pass: the row's tile sets are dropped right after
+        m, off, refs, _ = base[r["name"]]
+        bad = {k: v & r["visible"] for k, v in r["sets"].items()}
+        return defect_points(bad, r["edge_tiles"], r["walkable_set"], m, off, max(0, n - KEEP_PLAN - len(refs[:2])),
+                             [p.tile for p in refs[:2]])
+    found = parity_points(data, d2r, set(base), pick, log) if defects and base else {}
+    return [(m, variant_points(refs, pl, n, found.get(stem))) for stem, (m, _, refs, pl) in base.items()]
 
 
 def mean_luma(img) -> float:
@@ -591,6 +668,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--map", action="append", default=[], help="a PD2-only preset name or DS1 stem, or part of one "
                     "(repeatable; default: all). sweep matches exactly (--contains: part of one) and skips the Palace")
     ap.add_argument("--contains", action="store_true", help="sweep: --map matches part of a name or stem")
+    ap.add_argument("--plan-points", action="store_true", help="sweep: skip the parity scorer, use the plan's points only")
     ap.add_argument("--type", action="append", default=[], help=f"edge type ({', '.join(EDGES)}), `floor` for every "
                     "floor type or `floor:<stem>` (repeatable; default: all)")
     ap.add_argument("--points", type=int, default=None, help="points per type and DS1 (default 4); sweep: points per "
@@ -604,7 +682,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--settle", type=float, default=SETTLE, help="seconds to wait after each warp")
     a = ap.parse_args(argv)
     if a.cmd == "sweep":
-        variants = [v for v in sweep_variants(a.data, a.d2r, a.map, a.points or 10, not a.contains) if v[1]]
+        variants = [v for v in sweep_variants(a.data, a.d2r, a.map, a.points or 10, not a.contains, not a.plan_points) if v[1]]
         if not variants:
             print(f"no variants for {a.map or 'all maps'}")
             return 1
