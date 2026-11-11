@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from pd2_levels import norm
+from pd2_ds1 import norm
 
 from .apply import rule_files, stand_in
 from .dt1 import Tiles

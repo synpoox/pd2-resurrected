@@ -30,6 +30,7 @@ from pathlib import Path
 
 import pd2_automap
 import pd2_ids
+from pd2_ds1 import SLOTS, col, ds1_header, norm, object_list  # noqa: F401  (re-exported, #808)
 from pd2_ids import IdError, Table, excel, ident, load, read_list
 
 MONPRESET_VANILLA = {"1": 47, "2": 59, "3": 39, "4": 28, "5": 51}
@@ -42,7 +43,7 @@ OVERRIDDEN = {"act4/fort/foregate.dt1", "expansion/town/waypt.dt1", "act1/barrac
 # 1.13c's preset table names these objects ids for the objects its engine places (random shrines and chests, the Arcane
 # Sanctuary's portal); PD2's objects.txt keeps a blank <reserved> row at each, D2R a row of its own at the same id
 ENGINE_OBJECTS = range(573, 584)
-SLOTS = 32  # lvltypes File 1-32
+
 
 
 def acts(t: Table) -> dict[str, list[str]]:
@@ -126,44 +127,6 @@ def seed_list(merge_dir: Path, pd2_data: Path, d2r_data: Path) -> int:
     return len(new)
 
 
-# DS1 (version 18 and older), as 1.13c's loader reads it: header, file names, tile layers, then the object list
-def ds1_header(data: bytes) -> tuple[int, int, int, int, int, int, int, int]:
-    """(version, width, height, act 0-4, tag type, offset of the tile layers, wall layers, floor layers). Width and
-    height count tiles; the layers are walls (a tile grid, then an orientation grid, per layer), floors, shadow, tags."""
-    version, width, height = struct.unpack_from("<3i", data, 0)
-    o, act, tag = 12, 0, 0
-    if version >= 8:
-        act = min(struct.unpack_from("<i", data, o)[0], 4)
-        o += 4
-    if version >= 10:
-        tag = struct.unpack_from("<i", data, o)[0]
-        o += 4
-    if version >= 3:
-        files = struct.unpack_from("<i", data, o)[0]
-        o += 4
-        for _ in range(files):
-            o = data.index(b"\0", o) + 1
-    if 9 <= version <= 13:
-        o += 8
-    walls, floors = 1, 1
-    if version >= 4:
-        walls = struct.unpack_from("<i", data, o)[0]
-        o += 4
-        if version >= 16:
-            floors = struct.unpack_from("<i", data, o)[0]
-            o += 4
-    return version, width + 1, height + 1, act, tag, o, walls, floors
-
-
-def object_list(data: bytes) -> tuple[int, int, int, int]:
-    """(act 0-4, offset of the object count, object count, bytes per object)."""
-    version, width, height, act, tag, o, walls, floors = ds1_header(data)
-    o += (2 * walls + floors + 1 + (tag in (1, 2))) * width * height * 4
-    if version < 2:
-        return act, o, 0, 0
-    return act, o, struct.unpack_from("<i", data, o)[0], 20 if version >= 5 else 16
-
-
 def rewrite_ds1(data: bytes, fix) -> bytes:
     """The DS1 with each object's (type, id) replaced by fix(act, type, id): a new id, or None to leave it out."""
     act, at, count, size = object_list(data)
@@ -176,10 +139,6 @@ def rewrite_ds1(data: bytes, fix) -> bytes:
             struct.pack_into("<i", rec, 4, new)
             keep.append(bytes(rec))
     return data[:at] + struct.pack("<i", len(keep)) + b"".join(keep) + data[at + 4 + count * size:]
-
-
-def norm(path: str) -> str:
-    return path.replace("\\", "/").lower()
 
 
 def merge_types(pd2: Table, d2r: Table, wanted: dict[int, int], overrides: set[str]) -> tuple[Table, dict[int, dict[int, int]]]:
@@ -248,10 +207,6 @@ def move_bits(mask: int, moves: dict[int, int]) -> int:
         if mask >> s & 1:
             mask = (mask & ~(1 << s)) | (1 << to)
     return mask
-
-
-def col(t: Table, name: str) -> int:
-    return t.header.index(name)
 
 
 def entry_key(level_name: str) -> str:

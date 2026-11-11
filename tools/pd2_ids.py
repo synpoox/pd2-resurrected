@@ -34,12 +34,8 @@ import re
 from pathlib import Path
 from typing import NamedTuple
 
+from pd2_table import KEY, IdError, Table, excel, load, toolkit  # noqa: F401  (re-exported: the readers live in pd2_table, #808)
 
-def toolkit(root: Path) -> Path:
-    """The nearest d2rAI-toolkit beside root or one of its parents (an agent worktree sits deep inside the main
-    checkout), else the one beside root."""
-    return next((p / "d2rAI-toolkit" for p in root.parents if (p / "d2rAI-toolkit" / "modkit").is_dir()),
-                root.parent / "d2rAI-toolkit")
 
 TABLES = ["skills", "states", "itemstatcost", "missiles",  # P2
           # P3: item tables a save or D2R's code reads by row number
@@ -61,8 +57,6 @@ _BY_ROW = ["gems", "qualityitems", "lowqualityitems", "books", "itemratio", "uni
            "uniqueappellation"]
 VANILLA |= {t: 0 for t in ["weapons", "armor", "misc", "sets", "properties", "treasureclassex", "gamble"]}
 VANILLA |= {t: 1 << 20 for t in _BY_ROW}
-KEY = {"itemtypes": "Code", "weapons": "code", "armor": "code", "misc": "code", "gamble": "code",
-       "qualityitems": "mod1code"}  # when not the first (PD2's qualityitems starts with nummods)
 # the key is the string the player sees (or, for qualityitems, a value), so PD2's wins on a merged row; elsewhere D2R's
 # files name the row by D2R's key
 PD2_NAMES = {"uniqueitems", "setitems", "runes", "magicprefix", "magicsuffix", "automagic", "rareprefix", "raresuffix",
@@ -225,32 +219,6 @@ KEY_LIMIT = {"missiles": 31}  # bytes, from D2R's data guide; the other three al
 NEGATIVE = re.compile(r"(?<![\w)\]'.])-(\d+)")  # modkit tsv.NEGATIVE: D2R rejects 'x*-5'
 FORMULA_REF = re.compile(r"\b(skill|miss|stat)\('([^']*)'")
 FORMULA_TABLE = {"skill": "skills", "miss": "missiles", "stat": "itemstatcost"}
-
-
-class IdError(Exception):
-    pass
-
-
-class Table:
-    def __init__(self, path: Path, key: str | None = None):
-        text = path.read_bytes().decode("latin-1")  # keeps CRLF, which read_text would turn into LF
-        self.newline = "\r\n" if "\r\n" in text else "\n"
-        lines = text.split(self.newline)
-        while lines and not lines[-1]:
-            lines.pop()
-        self.header = lines[0].split("\t")
-        self.rows = [(line.split("\t") + [""] * len(self.header))[:len(self.header)] for line in lines[1:]]
-        self.key = self.header.index(key) if key else 0
-
-    def records(self) -> list[int]:
-        """Row positions of the records, numbered as the game numbers them: an `Expansion` row (first column) is not one."""
-        return [i for i, r in enumerate(self.rows) if r[0] != "Expansion"]
-
-    def names(self) -> list[str]:
-        return [self.rows[i][self.key] for i in self.records()]
-
-    def text(self) -> str:
-        return self.newline.join("\t".join(r) for r in [self.header, *self.rows]) + self.newline
 
 
 def ident(names: list[str]) -> list[str]:
@@ -592,14 +560,6 @@ def follow(lines: list[tuple[str, int, str]], pd2_keys: list[str], d2r: list[str
 
 
 FOLLOWERS = {"objects": "objtype"}  # written by the same rule, by follow()
-
-
-def excel(root: Path) -> Path:
-    return root / "global" / "excel"
-
-
-def load(data: Path, table: str) -> Table:
-    return Table(excel(data) / f"{table}.txt", KEY.get(table))
 
 
 def lists_for(merge_dir: Path, pd2_data: Path, d2r_data: Path) -> dict[str, list[tuple[str, int, str]]]:

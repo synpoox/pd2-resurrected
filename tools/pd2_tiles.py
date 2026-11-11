@@ -15,7 +15,7 @@ from typing import Callable, Iterator
 
 import pd2_painter as painter
 import pd2_presets as presets
-from pd2_ids import toolkit
+from pd2_table import toolkit
 
 ROOT = Path(__file__).resolve().parent.parent
 
