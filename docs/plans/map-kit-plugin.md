@@ -1,121 +1,170 @@
-# Plan: a reusable map system plugin ("MapKit", working name)
+# Plan: a standalone map system plugin ("MapKit", working name)
 
-Written 2026-11-11 from origin/main 97489f6. The goal is a D2RLoader plugin that any D2R mod can use to add endgame maps. It must:
+Revised 2026-11-11 to the owner's goal. It was written from origin/main 97489f6.
 
-1. Open a portal from a map item into a custom level, with **no limit per game**.
-2. Give that level area, monster and player map stats.
-3. Run map events.
+## Goal
 
-PD2-Resurrected becomes its first user: PD2's maps, uber fights and unique-map bosses stay ours, built on top of it.
+MapKit is a **standalone D2RLoader plugin** that any D2R mod can drop in.
 
-## 1. What we found
+1. **Any number of maps per game, one live at a time.** Opening a new map completely erases the previous one.
+2. **Map stats:** monster, area and player stats, rolled on the map item.
+3. **Procedural layouts:** each map is generated fresh, within the constraints of a template and a tileset.
+4. **Map events** can happen inside a map.
 
-### Our code today (`plugin/core-maps`)
+PD2-Resurrected is its first user. PD2's maps become MapKit templates and content. PD2's uber fights stay in core-maps; they use fixed levels, not maps.
 
-- **"One per game" is only a counter.** `map_open.cpp` refuses once the per-game counter `'MAPS'` is above 0 (`Refusal`, MO:224). It also passes `max=1` to D2R's `OpenRedPortal`. Nothing in the DRLG enforces it.
-- **Removing the gate would break things.** All map state is game-wide, one slot each:
-  - **Stats.** The stat lists are counters `'M'|list|entry|field`. A second map overwrites the first map's stats.
-  - **Area writes.** `ApplyArea` changes the monster region in place, so a second map stacks density and groups on top of the first.
-  - **Events.** The event roll (`EventKey`, `SpawnsKey`), room progress and Horazon are single slots that are never reset.
-  - **"Is this a map?"** The check is a hard-coded level range, 138–201.
-  - **Level layout.** A level is generated once per game, so reopening a level gives the same layout, and monsters already killed stay dead.
-- **PD2 content is hard-coded in C++.** This covers routes, stat ids, level ids, monster and object ids, events, gates, TCs and uber references. There are no data tables. The full list is in the internals study, section 4 (summarised in §4 below).
-- **The SDK has no level, portal, DRLG or room service.** Item spells, operate slots, room populate, preset spawn, monster spawn and the player frame are all native hooks. The SDK is used only for the monster-death listener, DataTablesLoaded, Localization and Mutations. So level work must use native hooks, which the "SDK before native hooks" rule allows when the code says why.
-- **Coupling.** `key_drops` (death), `map_stats` (spawn, item and preset hooks), `map_open` (item spell and portal) and `map_events` (room populate) call every PD2 fight by name. Issue #600 already proposes the event seam needed to fix this.
+## 1. What shapes the design
 
-### D2R Reimagined does not have unlimited maps
+- **Today's limit is only a counter.** `map_open.cpp` refuses once the per-game counter `'MAPS'` is above 0 (MO:224). It also passes `max=1` to `OpenRedPortal`. All the other map state is game-wide, one slot each: stat lists, area writes, event progress. That suits "one live map", provided every open resets everything.
+- **A level is generated once per game.** To open again, the level must be freed and rebuilt. That needs native hooks, because the SDK has no level, DRLG, portal or room service.
+- **Rebuilding a level in a running game has been done.** locbones/D2RHUD-2.4 does it with these steps:
+  1. Free the level's units and rooms.
+  2. Set a new seed at `drlg+0x860` around a native `AllocateLevel` call.
+  3. Keep the old level record as an unlinked tombstone until the act is freed.
+  4. Clear the preset and superunique "spawned" bits, then repopulate.
+  5. Send the seed to each client and wait for each to confirm.
 
-Its wiki says each theme and tier combination runs once per game, and a second map does not reset a map already visited (`maps/overview.md` and `maps/crafting.md` in github.com/D2R-Reimagined/wiki-content). That gives 60 distinct maps per game, several of them open at once. It looks like one level instance per theme and tier, with no regeneration. The plugin is closed source.
+  It has no license. We take the approach only, copy no code, and find every function in our own 93847 Ghidra project.
+- **One live map makes erasing simple.** D2RHUD has to refuse when a level is in use. We don't: we warp everyone out, then erase. The owner accepts losing whatever is left inside.
+- **Few level ids.** A single live map needs only a small set of reusable **slot levels**: about one per DRLG kind (maze, preset, outdoor) in the opening act. Each slot is re-parameterised at every open. This keeps us well under the 255-id limit, which a pool of map copies would break.
+- **Layouts can use D2's own generator.** D2's maze DRLG already builds a level from template pieces: LvlMaze rows, plus LvlPrest pieces of one LevelType (tileset). Setting those parameters before `AllocateLevel`, and limiting which pieces it may pick, gives constrained procedural layouts with no new generator. Our own grid generator is an optional later stage.
+- **HD.** D2R draws a generated level from the same preset pieces. So a template may only use pieces that have HD presets: D2R's own, or ours from ADR 0005's generated presets. MapKit checks this when it loads.
+- **No plugin-to-plugin calls in the SDK.** The SDK has only `QueryService` for loader services; one plugin cannot register a service for others. For content plugins to hear MapKit's events, MapKit exports a small, versioned C interface, which they find by module name. This amends ADR 0004 ("plugins never call each other").
 
-### Unlimited maps have been done elsewhere: locbones/D2RHUD-2.4
+## 2. How it works
 
-D2RHUD-2.4 regenerates an existing level id in the same game with a new seed. Its "Cube maps" code is in `CubeMapLayouts.inl` and `CubeMap.cpp`. It has **no license**, so we read it for the approach only, never copy it, and find every function in our own 93847 Ghidra project. Its steps:
+### Opening a map
 
-1. Refuse if any room has a player, a corpse or a client-cached room.
-2. Move ground items to town, then remove the units and free the rooms.
-3. Set a new seed at `drlg+0x860` around a native `AllocateLevel(drlg, id)` call.
-4. Keep the old level record as an unlinked "tombstone" until the act is freed, because native code still holds pointers to it.
-5. Send the seed to each client, which rebuilds its own copy. The portal refuses entry until every client acknowledges.
-6. Clear the room-preset "spawned" bits and the superunique-spawned bits (`game+0x5670`), then run population again.
+The flow starts when a player uses a map item, through item spell slot 16 (configurable).
 
-### Why a pool of duplicate levels won't do
+1. **Gates.** Check the difficulty, character level, quest and town. Each gate comes from the item's `maps.txt` row.
+2. **Erase the live map, if there is one:**
+   1. Warp every player inside it to town.
+   2. Remove its portal pair.
+   3. Free its units and rooms, keeping the old level record as a tombstone.
+   4. Restore the slot's monster region from a saved base copy.
+   5. Clear all map stats and event state.
+3. **Generate the new map:**
+   1. Choose a template from the item's pool.
+   2. Roll a seed.
+   3. Write the template's parameters into the slot level: LevelType, DRLG kind, size, rooms, merge, piece pool, Vis/warps, monster pool.
+   4. Call `AllocateLevel`.
+   5. Check the constraints (§3). If one fails, re-roll the seed, up to N tries, then fall back to the template's safe preset.
+4. **Apply the stats.** Read the item's map stats into the live map's monster, player and area lists (§4). Then apply the area entries to the slot's region.
+5. **Roll an event** (§5).
+6. **Open a red portal pair** from town to the map's entry.
+7. **Multiplayer.** Send `{template id, seed}` to each client. Each client rebuilds the slot level the same way and confirms before the portal lets it in.
 
-The level id limit is 255, and PD2's levels already reach about 201 with about 60 map levels. Giving each map level even one more copy goes over the limit. **Regenerating the level is the only route to unlimited maps** for a mod of PD2's size. A pool is still useful for a small mod (§3, Backend A).
+### Live map state
 
-## 2. Architecture
+The live map has one record per game: `{template, seed, slot, item stats, monster, player and area lists, event state, portal pair}`.
 
-```
-mapkit (static library, generic, data-driven)
-  ├─ Instance store: per-instance state, replacing game-wide counters
-  ├─ Opener: item spell → gates → instance → portal pair
-  ├─ Instance backend: Regenerate (unlimited) | Pool (fixed copies)
-  ├─ Stats: routing table → per-instance m/p/area lists → apply hooks
-  ├─ Events: event table → roll → progress → spawn
-  └─ Event bus: MonsterSpawned, PresetSpawn, RoomPopulate, MonsterDeath,
-                ItemSpell, PortalOperate, PlayerFrame, ItemSpawn, InstanceOpened/Closed
-         │
-         ├── mapkit.dll   = library + a thin plugin.cpp; content comes from tables only (for any mod)
-         └── core-maps.dll = library + PD2 content: uber fights, unique maps, Zhar, Horazon …
-```
+To test whether a unit is in a map, check that its level is the live slot or one of its extra levels. This replaces the hard-coded range 138–201.
 
-**One DLL, or one library linked twice.** ADR 0004 says plugins never call each other, and core-maps' fights need the library's events in the same process. So MapKit is a static library:
+### Plugin shape
 
-- `mapkit.dll` is that library plus a 30-line shell, for other mods.
-- `core-maps.dll` links the same library and adds PD2's fights as event subscribers.
+- `mapkit.dll` is Shared and NativeHooks. It owns every native hook it needs: item spell check and use, monster spawned, player frame, area monster level, item spawn, preset spawn, room populate and room release.
+- It uses the SDK wherever a service fits: MonsterDeath and DataTablesLoaded listeners, CustomTableService, Localization, and Mutations for byte patches.
+- **Content interface** (exported C functions, versioned):
+  - Subscribe to `MapOpened`, `MapErased`, `MonsterSpawned`, `MonsterDied`, `PresetSpawn`, `RoomActivated`, `EventStarted` and `PlayerEnteredMap`.
+  - Query the live map: template, tier, stats and level ids.
+  - Register custom event kinds.
 
-Only one of the two is loaded at a time; core-maps replaces mapkit. This needs an amendment to ADR 0004.
+  core-maps uses this interface for PD2's scripted map content: unique-map bosses, Zhar's seals, Horazon and the Altar guardian.
 
-**Content as data.** All content is read through the SDK's CustomTableService from `data/global/excel/d2rloader/mapkit/*.txt`, the same pattern as `core-ui/automap.cpp`. Our merge tools emit PD2's rows. Another mod writes its own rows.
+## 3. Templates and constraints
 
-| Table | Rows say |
+`templates.txt` has one row per layout family:
+
+| Column | Meaning |
 |---|---|
-| `maps.txt` | Item code or misc `len`, entry level, extra levels (multi-level maps), tier, room count for progress, backend, gates (difficulty, character level, quest, town level), portal object |
-| `mapstats.txt` | Stat id → list (monster / player / area slot), physical-as-extra, item-drop effects (ethereal, sockets, corrupt) |
-| `mapevents.txt` | Event key, weight, chance by item quality, kind (monster / superunique / object / portal), unit id, count, repeats, progress threshold, notify string, sound |
-| `mapkit.txt` | Global settings: item spell slot, refusal message, item level rules, debug overrides |
+| `kind` | `maze` (D2 maze DRLG), `preset` (one fixed ds1 such as a unique map, with no generation), or `outdoor` (later; outdoor levels need the act rectangle and border links) |
+| `leveltype` | Tileset (LevelType row) |
+| `pieces` | Allowed LvlPrest pieces, as an explicit list or by tag. Every piece must have HD presets |
+| `required` | Pieces that must appear: entry, boss room, event rooms |
+| `rooms`, `size` | Minimum and maximum room count and size, rolled per open |
+| `merge` | LvlMaze merge |
+| `bossrule` | e.g. the boss room sits farthest from the entry by room path |
+| `eventslots` | How many rooms may host an event |
+| `monsters` | Monster pool for the slot level (mon1–25, umon), plus the area level base |
+| `palette`, `sound` | Palette and level sound (MapKit owns the palette swap that core-ui does today) |
+| `extralevels` | For multi-level maps: further templates linked by Vis/warps |
 
-The PD2-only stats (Desecration, corruption rows, Zhar's charms) stay as core-maps subscribers. They are not table features.
+**Constraint checking** runs in two places:
 
-## 3. Unlimited maps: the instance model
+- **While generating.** A hook on the maze piece picker limits which pieces may be chosen and forces the required ones.
+- **After generating.** Walk the room graph and check `required`, `bossrule`, `rooms` and connectivity. If any check fails, re-roll the seed.
 
-- **Instance.** An instance holds `{id, level ids, seed, owner, stat lists, area slots, event state, portal pair, state}`, where state is Open, Occupied, Empty or Closed. Its lifetime is from opening the map to closing it. It replaces every `'MAPS'`, `'M…'`, `EventKey`, `SpawnsKey` and `RoomsKey` counter.
-- **"Is this unit in a map?"** Look up the unit's level in the live-instance index. This replaces the 138–201 range.
-- **Opening a map:**
-  - If no live instance uses the level, start one.
-  - If the instance using the level is empty (no players, corpses or cached rooms), close it: remove its portal pair, regenerate the level, then start a new one.
-  - If it is occupied, refuse with a message such as "a map of this area is still in use". **(Owner decision D2; see §6.)**
-  - Different levels run side by side, so there is no total cap.
-- **Backend B, Regenerate (the target).** Do steps 1–6 of the D2RHUD approach in §1, each from our own Ghidra work on 93847. On every open, reset the monster region from a saved base copy, so area stats never stack.
-- **Backend A, Pool (fallback and small mods).** Use N level rows per map and pick a free copy. When all N are used, refuse. No engine work is needed. This is also the safety net if regeneration proves unstable in multiplayer.
+**Stage 2 (optional, later):** our own grid generator. It places ds1 pieces on a grid against a constraint graph, then feeds the rooms into D2's preset-room creation. Do it only if the maze generator's limits bite.
 
-## 4. Phases
+## 4. Map stats
 
-Each phase is one issue with its own PR, and a game check in Hell on a level 90+ character unless it is docs only. PD2 behaviour must not change until phase 5. The table-diff and unit gate applies throughout.
+`mapstats.txt` routes each item stat to one of three lists, replacing today's hard-coded `Routes`/`Extras`:
+
+- **monster** list, applied as a state on every map monster at spawn;
+- **player** list, added while the player is in the map;
+- **area** slot: density, area level, rarity, extra groups, extra boss, fortify, ethereal, socket and corrupt drops, death drops, multi-level.
+
+A row may also turn physical damage into extra damage, or point at an item-drop effect.
+
+The application mechanism is today's code (MS:309-382, hooks MS:826-843) made generic. Two changes:
+
+- The region writes start from the saved base copy each time, so stats never stack.
+- Stat ids come from the table, never from C++.
+
+PD2-only effects stay in core-maps as content subscribers: Desecration, corruption rows and Zhar's charms.
+
+## 5. Map events
+
+`mapevents.txt` columns:
+
+| Column | Meaning |
+|---|---|
+| `event`, `weight` | Event name and draw weight |
+| chance by item quality | Chance the map rolls an event at all |
+| `forcestat` | A stat on the item that forces an event |
+| `kind` | `monster`, `superunique`, `object`, `portal` (to another template), or `custom` (a content plugin handles it) |
+| `unit`, `count`, `repeats` | What spawns and how often |
+| `progress` | Rooms-activated threshold that triggers it |
+| `spot` | Spot rule |
+| `notify`, `sound` | Notify string and sound |
+
+Event state is per live map and is cleared on erase. That fixes today's bugs where room progress and Horazon never reset.
+
+PD2's events ship as rows: Mendeln, Dark Wanderer, Treasure Fallen, Gheed, Altar, Spire and Void/Tomb. Scripted parts, such as the Altar guardian AI and Spire stages, use `custom` events in core-maps.
+
+## 6. Phases
+
+Each phase has one issue and a PR. Each gets a game check in Hell on a level 90+ character, with the table-diff and unit gate. PD2's maps keep working, on the old code, until phase 8 switches them over.
 
 | # | Phase | Work | Done when |
 |---|---|---|---|
-| 0 | Decisions + ADR | Settle D1–D4 (§6). Amend ADR 0004 (library + two shells). Add a glossary entry for *map instance* | ADR merged |
-| 1 | **Regeneration spike** (riskiest; time-box ~2 days) | In 93847 Ghidra, find AllocateLevel, level free, act room free, the seed field, the level list, superunique bits, and the client's level build. Prototype `cheat` commands `regen <level>` and `mapkit regen` in a test build. Write `docs/research/level-regeneration.md` | A level regenerates twice in one game in single player with a new layout and fresh monsters, without crashing on leaving the game. Otherwise fall back to Backend A and say so |
-| 2 | Event bus | One dispatcher per native hook. `map_stats`, `map_open`, `key_drops` and `map_events` publish events, and the fights subscribe (#600's seam). Counter keys go into one registry header | Same behaviour; no hub file names a fight |
-| 3 | Instance store | Move all map state from game-wide counters to instances. The area test uses the instance index. Save and restore the monster region per instance. The limit stays at 1 | Same behaviour; unit tests for the store |
-| 4 | Data-driven content | Add CustomTableService loading. Add `maps`, `mapstats` and `mapevents` tables. Extend `tools/` to emit PD2's rows. Delete the hard-coded `Routes`, `MultiLevels`, `TieredLevels`, `Draws`, gates and level range | PD2 rows give the same table-diff and game behaviour |
-| 5 | **Unlimited** | Backend B behind the instance store, with portal pair removal and region reset on reopen. Remove the `'MAPS'` gate and `max=1` | Open the same map 5 times in one game, with a new layout and fresh stats each time, plus two different maps open together |
-| 6 | Multiplayer | Seed sync packet and client acknowledgement before portal entry. Per-instance kill credit (replacing "first player"). Map stat HUD (packet 0x55 or a core-ui panel) | Two-client LAN check |
-| 7 | Library split + `mapkit.dll` | CMake target `mapkit` (static) plus a shell. core-maps links it. Ship an example content pack: one custom map, two stats, one event. Write a README for mod authors | A non-PD2 test mod opens its map from tables only |
+| 0 | Decisions + ADR | Settle D1–D5 (§8). Amend ADR 0004: standalone MapKit plus a content interface. Add glossary entries for *slot level*, *template*, *live map* | ADR merged |
+| 1 | **Spike: erase and rebuild a level** (time-box ~2 days) | In 93847 Ghidra find: AllocateLevel, level free, act room free, the seed field, the level list, preset and superunique bits, and the client's level build. Test build with `cheat`-style `mapkit regen <level>`. Write `docs/research/level-regeneration.md` | One level rebuilt 20 times in one game, then leave and make a new game, with no crash and a new layout each time |
+| 2 | **Spike: parameterising the DRLG** (time-box ~2 days) | Find where AllocateLevel reads LevelType, LvlMaze and LvlPrest, and whether per-open overrides work. Find the maze piece picker. Find what the client needs to rebuild the same layout. Add to the research doc | One slot level built three times with three tilesets and room counts |
+| 3 | MapKit skeleton | New `plugin/mapkit` target, standalone. CustomTableService loading and validation (including the HD piece check). Slot-level rows shipped as data. Item spell, gates, the erase flow (warp out, portals, free, region restore) and the portal pair. One fixed template | Open five maps in a row in one game; each erases the last |
+| 4 | Templates + constraints | `templates.txt`, parameter write-in, piece-picker constraint hook, post-checks with seed re-rolls, `preset` kind, multi-level maps, palette and sound | Each template generates within its constraints over 50 seeded opens (automated where possible) and in game |
+| 5 | Map stats | `mapstats.txt`, three lists, region base copy, drop effects, player frame add/remove | Stats right on monsters, players and drops; no stacking after 5 opens |
+| 6 | Map events | `mapevents.txt`, rolls, progress, spawn kinds, notify, per-map reset | Each built-in kind fires; a reopened map starts with no progress |
+| 7 | Content interface | Exported C API, versioned, with off-safe fallbacks. Example content plugin | Example plugin's custom event fires |
+| 8 | PD2 on MapKit | Tools emit PD2's maps as templates (each PD2 map's levels row becomes its template), stats and events. core-maps subscribes for scripted content. Delete core-maps' map code and keep the ubers | Table-diff parity; PD2 map game checks pass |
+| 9 | Multiplayer | `{template, seed}` packet, client rebuild and confirm, per-map kill credit, map stat HUD (packet 0x55 or a panel) | Two-client LAN check |
+| 10 | Release | README for mod authors, example pack (one tileset, two templates, three stats, two events), versioned tables | A non-PD2 test mod runs maps from tables only |
 
-Phases 2 and 3 are refactors with no behaviour change and can follow each other quickly. Phase 1 can run alongside them, because it touches no shipped code.
+Phases 1 and 2 are the risk; they decide whether the rest holds, so run them first and in parallel. Phases 3–7 build the new plugin beside core-maps, so PD2 maps keep working on the old code throughout.
 
-## 5. Risks
+## 7. Risks
 
-- **Crashes after regeneration.** Native code caches level and room pointers. Mitigations: the tombstone rule, and freeing only empty levels. Run a stress check: 20 regenerations, then leave the game and make a new one.
-- **Client desync.** Each client builds the level itself. A wrong seed means walls in the wrong place. The portal refuses entry until the client acknowledges.
-- **Level-type quirks.** Outdoor levels need the act-placed rectangle and border links carried over, and the Act 3 jungle needs its template. PD2 maps are mostly preset or maze levels, so check which DRLG type each map uses during phase 1.
-- **Quest and superunique state.** Clear only the bits of the instance's own level. Never touch quest flags.
-- **License.** D2RHUD-2.4 has no license, so we copy no code from it. All addresses come from our own Ghidra work.
+- **Crashes after rebuilding.** Native code caches pointers to levels and rooms. Mitigations: the tombstone rule, and only erasing after everyone has been warped out. Phase 1's stress check covers this.
+- **Template overrides leaking.** Writing parameters into shared table records also affects the client in single player, since it is the same process, and every reader of those rows. Restore the records after `AllocateLevel`, or point the slot at a private record copy; phase 2 decides which.
+- **Client desync.** A wrong seed or wrong parameters put walls in the wrong place. The portal waits for each client's confirmation.
+- **Thin maze generator.** D2's maze DRLG may not express every constraint. If so, rely on post-checks and re-rolls, then stage 2's own generator.
+- **License.** D2RHUD-2.4 has no license, so no code is copied. All addresses come from our own research.
 
-## 6. Decisions for the owner
+## 8. Decisions for the owner
 
-- **D1 Name:** "MapKit" or another name. It must not carry PD2 branding (ADR 0004, 2026-11-03 amendment).
-- **D2 Reopening an occupied level:** refuse (recommended), or fall back to a pool copy when the mod ships one.
-- **D3 Where state lives when a player leaves:** the instance stays until the level is empty and a new map replaces it (recommended), or it closes as soon as the portal owner leaves.
-- **D4 Release scope:** the library split (phase 7) ships before or after unlimited maps (phase 5). Recommended: after, so PD2 players get unlimited maps first.
+- **D1 Name:** "MapKit" or another name without PD2 branding (ADR 0004, 2026-11-03 amendment).
+- **D2 Players inside the old map when a new one opens:** warp them to town (recommended), or refuse the open until the map is empty.
+- **D3 Ground items in the erased map:** lost (simplest, and matches "completely erased"), or moved to the opener's feet in town.
+- **D4 Content interface:** amend ADR 0004 so content plugins can call MapKit's exported C API (recommended; PD2's scripted map content needs it), or keep MapKit data-only and drop scripted map content.
+- **D5 Stage 2 own generator:** out of scope until the maze generator falls short (recommended), or plan it now.
