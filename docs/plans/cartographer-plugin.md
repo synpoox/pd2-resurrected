@@ -172,6 +172,19 @@ Release 1 gives each tileset a plain name for its D2R LevelType:
 
 A tileset that isn't ready is refused at load, with a message that says so.
 
+**Long-term goal (owner, 2026-11-11): every tileset becomes map-ready.** The list above is only the release-1 rollout order. The rest follow group by group, as later phases:
+
+| Group | Tilesets | What it takes |
+|---|---|---|
+| Maze, ready | Cave, Crypt, Act 4 Lava | Nothing more (#929) |
+| Maze, one extra hook | Barracks, Jail, Lair, Durance, Dungeon, Act 3 Sewer, Ice, Harem, Basement, Spider, Temple, Act 5 Lava | A no-op ring-grower hook plus a game check for each |
+| Maze, own growers | Arcane, Catacombs, Tombs, Act 2 Sewer | A spike and a hook for each grower |
+| Outdoor, connectable pieces | Jungle, Snow/Barricade, Siege, Kurast | The outdoor builder, Jungle first |
+| Outdoor, open fields | Act 1 Wilderness, Act 2 Desert, Act 4 Mesa | An outline-polygon method (outdoor plan phase 8 spike) |
+| Fixed areas | Towns, Monastery, Courtyard, Cathedral, Tristram, Baal | No room pieces: usable only as whole fixed (`preset`) maps, or later as landmarks inside other maps |
+
+**Mixing tilesets.** The owner's choice is to mix tilesets inside a single level, not to warp between zones; zone warping is ruled out. This is a future research phase (phase 9), started only after the basics ship.
+
 **The tileset decides the builder.** Authors never choose indoor or outdoor. Each tileset name is tagged maze or outdoor in the shipped catalogue, so `Cave` builds a maze and `Jungle` builds outdoor. A private piece set (option C in §3.6) uses its `Base` tileset's builder.
 
 ### 3.5a Worked example: two maps in five minutes
@@ -260,6 +273,8 @@ Each phase gets one issue and a PR, plus a game check in Hell on a level 90+ cha
 | 6 | Map events | `mapevents.txt`, `EventChance`, the five kinds, the event room, message | Each kind fires in game |
 | 7 | Multiplayer | `{map, seed}` message, client build and confirm, kill credit | A two-client LAN check shows the same layout |
 | 8 | Release | A one-page "Your first map in 5 minutes" README, a table reference (every column, default and example), the example pack, the installer, and a release zip | **Novice test:** a fresh agent with no project context, given only the zip and the README, adds a new map to a clean mod and opens it in game, without reading any code |
+| 9 | **Future research: mixed-tileset levels** | A time-boxed spike, started only after phases 1–8. Hook the room tile loader `0x3f3970` so each room takes its tile files from its own piece's tileset, not the level's (`level+0x1e0`). Preload every mixed tileset's DT1s on the client. Handle mismatched room sizes in the maze grid, and the seams where two tilesets meet (transition pieces?). Check that HD draws each room right | A test level mixing two tilesets renders and plays without crashes or broken walls, or a clear "no" with the reason |
+| 10+ | Remaining tilesets | Group by group, per the §3.5 table | Each tileset builds within its shape in game |
 
 Phases 2, 5 and 6 can run alongside 3 and 4.
 
@@ -281,3 +296,6 @@ Phases 2, 5 and 6 can run alongside 3 and 4.
 | D4 | No content interface; fully standalone | ✅ |
 | D5 | Our own outdoor builder is in scope | ✅ |
 | D6 | Author-facing tables are extremely simple (§3.0); the novice test gates the release (2026-11-11) | ✅ |
+| D7 | Defaults: 6 properties and a 20% event chance per map | ✅ |
+| D8 | Every tileset becomes map-ready over time (§3.5) | ✅ |
+| D9 | Tilesets are mixed within a single level, not by zone warping; future research phase 9 | ✅ |
