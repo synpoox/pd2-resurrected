@@ -1,167 +1,146 @@
 # Plan: a standalone map system plugin "Cartographer"
 
-Revised 2026-11-11, after the owner's decisions D2–D5, from origin/main 97489f6.
+Revised 2026-11-11. This version follows the owner's decisions and two research spikes:
+
+- [DRLG steering, #929](https://github.com/synpoox/pd2-resurrected/pull/929): `docs/research/drlg-steering.md`
+- [Level regeneration, #930](https://github.com/synpoox/pd2-resurrected/pull/930): `docs/research/level-regeneration.md`
+
+The outdoor builder has its own plan: [cartographer-outdoor-builder.md](cartographer-outdoor-builder.md).
 
 ## Goal
 
-Cartographer is a fully **standalone D2RLoader plugin** that any D2R mod can drop in, with all of its content defined in data tables.
+Cartographer is a fully **standalone D2RLoader plugin** that any D2R mod can drop in, with all of its content in data tables.
 
-1. **Any number of maps per game, one live at a time.** Opening a new map erases the previous one completely. Ground items and corpses are gone. The open is refused while anyone is still inside the old map.
+1. **One map per game.** A map item in Act 5 (Harrogath) opens a red portal into the game's map level. Once a map has been opened, the game refuses another one.
 2. **Map stats:** monster, area and player stats, rolled on the map item.
-3. **Procedural layouts.** Each map has **one tileset** and its own **shape rules**. Every open builds a new random layout from that tileset only, following those rules. For example, "Shorelines" builds only from its Act 3 tileset as a mostly straight path with few dead ends and corners.
+3. **Procedural layouts.** Each map has **one tileset** and its own **shape rules**. Each game builds a new random layout from that tileset alone, inside those rules. For example, "Shorelines" is a mostly straight path with few dead ends and corners.
 4. **Map events** can happen inside a map.
 
-### Not in scope
+### Out of scope
 
-- **PD2-Resurrected does not move to Cartographer.** core-maps keeps its own map code. Cartographer has no content interface for other plugins (no ADR 0004 amendment) and none of PD2's scripted map content.
-- **Our own tile-level generator** (D5). It is left out for now; layouts come from D2's DRLG, steered by Cartographer.
-- **Cartographer and core-maps never load together.** Both hook item spell 16 and the same spawn functions. A test slot runs Cartographer with core-maps switched off.
+- **PD2-Resurrected does not move to Cartographer.** core-maps keeps its own map code. Cartographer has no content interface for other plugins and carries no PD2-specific content.
+- **Erasing or rebuilding a map within a game.** The owner decided on one map per game (2026-11-11). Rebuilding works, as #930 showed. The owner ruled it out because of the risk of a stale automap after a layout change.
+- **Cartographer and core-maps never load together.** Both hook item spell 16 and the same spawn functions.
 
-## 1. What shapes the design
+## 1. What the research settled
 
-- **A level is generated once per game.** To open a new map, the level must be freed and rebuilt in place. The SDK has no level, DRLG, portal or room service, so this needs native hooks. The "SDK before native hooks" rule allows that, with the reason stated in the code.
-- **Rebuilding a level in a running game has been done before.** locbones/D2RHUD-2.4 does it. Its steps are:
-  1. Free the level's units and rooms.
-  2. Set a new seed at `drlg+0x860` around a native `AllocateLevel` call.
-  3. Keep the old level record as an unlinked tombstone until the act is freed.
-  4. Clear the preset and superunique "spawned" bits, then repopulate.
-  5. Send the seed to clients and wait for each one to confirm.
-
-  It has no license, so we take only the approach and copy no code. Every function is found again in our own 93847 Ghidra project.
-- **Our own code shows what "one live map" needs.** In today's core-maps, stats, area writes and event progress are game-wide single slots, and the limit is only the `'MAPS'` counter (`map_open.cpp:224`). Cartographer keeps one live-map record per game and resets all of it on every open.
-- **Slot levels.** Since only one map is live at a time, Cartographer needs only a few reusable level rows, which it re-parameterises on each open. That means one slot per DRLG kind, plus one per extra level of a multi-level map, all in the act of the opening town. The 255 level-id limit is no concern.
-- **Standalone from this repo's code.** Cartographer links only d2rAI-toolkit's `plugin_common` and the PluginSDK. It never uses `plugin/common/pd2_engine.h`: the addresses it needs go into the toolkit's `rvas_93847.h`. It is built in `plugin/cartographer/` for now, so the repo's CI, Ghidra projects and game slots apply, but it can move to its own repo unchanged.
-- **HD.** D2R draws a generated level from the same preset pieces it was built from. A map may only use pieces that have HD presets, and Cartographer checks this when it loads.
+- **The SDK cannot do it, and tables alone cannot do it.** The PluginSDK has no level, DRLG, portal or room service. Tables cannot shape a layout or steer the builder. Level work therefore uses native hooks. Every hook says in the code why no SDK service fits, and byte patches go through MutationService.
+- **Indoor (maze) maps can be steered: yes** (#929, game-checked).
+  - Cartographer replaces the room walk `0x3e96d0` for the slot level. D2R's own room placer and piece picker then follow the layout graph. Cartographer also steers the entrance and exit placer `0x3eb850`.
+  - Tileset, room size and merge chance are fields of the level record, so no shared table record is written.
+  - Tilesets that steer as-is: Cave, Crypt and Act 4 Lava.
+  - Tilesets that need a no-op hook on the ring grower `0x3e9820`: Barracks, Jail, Lair, Durance, Dungeon, Act 3 Sewer, Ice, Harem, Basement, Spider and Temple.
+  - Not yet steerable: Arcane, Catacombs, the tombs, Act 2 Sewer and Baal.
+- **D2R's outdoor builders cannot build a map level: no** (#929, §3). Each one is hand-written for vanilla level ids that act start-up placed. D2RLoader's D2RCore also replaces the outdoor entry point. So outdoor maps need **Cartographer's own outdoor builder**, built on D2R's own pieces and primitives (separate plan).
+- **A level is still rebuilt within a game.** When a level is empty, D2R unloads its rooms and rebuilds them on the next visit (#930). The builder therefore has to produce the same rooms in the same order every time in a game. Cartographer caches the solved layout per act seed and map level.
 
 ## 2. Opening a map
 
-The flow starts when a player uses a map item (item spell 16 by default; configurable).
+1. **Gates.** The map row sets difficulty, character level, quest and the town level (Harrogath by default). If a map was already opened this game, the open is refused and the player keeps the item. The refusal uses client message 0x15.
+2. **Lay out the map.** Load the map row, roll the map seed and solve the layout from the shape rules (§3). If no solution is found within the retry budget, use the map's `fallback` preset.
+3. **Fill the map level.** The map's level is a **slot level**: a levels.txt row in Act 5 with no links to other levels, one row per DRLG kind. Before the map is first built, Cartographer writes the tileset and builder parameters into that level's record. The level is built on the first portal entry, through Cartographer's build hook.
+4. **Apply stats** (§4), then **roll an event** (§5).
+5. **Open the portal.** A red portal pair runs from town to the map's entry room.
+6. **Multiplayer.** Cartographer sends `{map id, seed}` to each client, and the client builds the same layout. The portal waits until each client confirms.
 
-1. **Gates.** The map's row sets the gates: difficulty, character level, quest and town. If the live map still holds a player, the open is refused with the message "the current map is still in use" (D2). The item is kept, and the refusal goes to the player as client message 0x15, as today.
-2. **Erase the live map, if there is one:**
-   - remove its portal pair;
-   - free all its units and rooms, with ground items and corpses gone (D3);
-   - keep the old level record as a tombstone;
-   - restore the slot's monster region from its saved base copy;
-   - clear all map stats and event state.
-3. **Generate the new map:**
-   1. Load the map's row and roll a seed.
-   2. Write the tileset and DRLG parameters into the slot level.
-   3. Build the **layout graph** from the map's shape rules (§3).
-   4. Call `AllocateLevel` with the layout-guide hook active.
-   5. Post-check the result. If it fails, re-roll the seed, up to N tries, then fall back to the map's fixed `fallback` preset.
-4. **Apply stats.** Route the item's map stats into the monster, player and area lists (§4), then apply the area entries to the slot's region.
-5. **Roll an event** (§5).
-6. **Open the portal.** A red portal pair runs from town to the map's entry.
-7. **Multiplayer.** Send `{map id, seed}` to each client. Each client rebuilds the same layout and confirms before the portal lets it in.
-
-The live map is a single record per game: `{map, seed, slot, item stats, monster, player and area lists, event state, portal pair}`. A unit counts as "in a map" when its level is the live slot or one of its extra levels.
+Each game keeps one map record: `{map, seed, slot, solved layout, item stats, monster/player/area lists, event state, portal pair}`. A unit counts as "in the map" when its level is the slot level.
 
 ## 3. Maps, tilesets and shape rules
 
-### `maps.txt`: one row per map
+`maps.txt` has one row per map. Its columns:
 
-| Column | Meaning |
-|---|---|
-| `map`, `name` | Map key and display string (e.g. Shorelines) |
-| `item` | Map item code(s) that open it |
-| `tier`, `arealevel` | Tier and base area level |
-| gates | Difficulty, character level, quest, town level |
-| `leveltype` | **The one tileset** the map builds from |
-| `drlg` | `maze`, `outdoor` or `preset`. `preset` is one fixed ds1 with no generation |
-| `pieces` | The tileset's allowed LvlPrest pieces, as a list or by tag. The default is every piece of `leveltype` that has HD presets |
-| shape columns | See below |
-| `monsters`, `umonsters` | Monster pool (mon1–25, umon) |
-| `palette`, `sound` | Palette and level sound |
-| `extralevels` | Further map rows linked by warps (multi-level maps) |
-| `fallback` | A preset used if the generator fails |
-
-### Shape columns (per map)
+- `map`, `name`, `item`, `tier`, `arealevel`, and the gates.
+- `drlg`: `maze`, `outdoor` or `preset`.
+- `tileset`: the one tileset.
+- `pieces`: piece tags.
+- `monsters`: monster pool.
+- `palette` and `sound`.
+- `fallback`: the preset to use when no layout solves.
+- **shape columns:**
 
 | Column | Meaning | Shorelines example |
 |---|---|---|
-| `pathlen` | Minimum and maximum rooms on the main path, entry to exit or boss | 14–18 |
-| `straightness` | Chance the path keeps its direction at each step (0–100) | 85 |
-| `maxturns` | Maximum corners on the main path | 4 |
-| `branches` | Minimum and maximum side branches (dead ends) | 0–2 |
-| `branchlen` | Maximum rooms per branch | 2 |
+| `pathlen` | Rooms on the main path (minimum–maximum) | 14–18 |
+| `straightness` | Chance, 0–100, that the path keeps its direction at each step | 85 |
+| `maxturns` | Most corners on the main path | 4 |
+| `branches`, `branchlen` | Dead ends (minimum–maximum), and the most rooms in each | 0–2, 2 |
 | `loops` | Whether the path may rejoin itself | no |
-| `bounds` | Maximum width and height in rooms | 20×6 |
-| `bossroom` | Where the boss or end room goes: `end`, `farthest` or `none` | end |
-| `required` | Pieces that must appear (entry, boss room, event rooms) | entry, dock-end |
-| `eventslots` | Rooms on the main path that may host an event | 3 |
+| `bounds` | Largest size, in cells | 12×6 |
+| `bossroom` | `end`, `farthest` or `none` | end |
+| `required` | Pieces that must appear | entry, boss clearing |
+| `eventslots` | Main-path rooms that may host an event | 3 |
 
-### How a layout is built
+Layouts are built in three steps:
 
-1. **Layout graph.** Cartographer draws an abstract room graph on a grid from the shape columns and the seed. It walks a main path of `pathlen` rooms, keeps going straight with chance `straightness`, and turns at most `maxturns` times. It then adds `branches` dead ends of up to `branchlen` rooms each, all inside `bounds`. The boss room sits at the path's end. This is cheap code with no engine calls, so it can be unit-tested outside the game.
-2. **Guided DRLG.** D2's own builder still places the tileset's real pieces and tiles, but a hook makes it follow the graph instead of its own random walk:
-   - **Maze levels.** The builder adds rooms by picking directions. The hook gives it the graph's directions and limits each pick to pieces whose exits match the graph cell.
-   - **Outdoor levels** (Act 3 jungle, Kurast-style shorelines). These are built from outdoor sub-presets on a grid, not from maze rooms. Phase 2 checks whether that builder can be steered the same way. If it cannot, outdoor maps use their `fallback` preset until a generator of our own exists (D5).
-3. **Post-check.** Walk the real room graph and measure path length, turns, dead ends and bounds against the shape columns, plus the `required` pieces and connectivity. If any check fails, re-roll.
+1. **Layout graph.** A pure, seeded generator draws the graph from the shape columns. It needs no engine, has unit tests outside the game, and uses its own PCG/splitmix random numbers so host and client agree.
+2. **Building it in the level:**
+   - **maze:** the guided maze from #929.
+   - **outdoor:** Cartographer's own builder, which stamps tileset pieces cell by cell (separate plan).
+   - **preset:** one DS1, with no graph.
+3. **Post-check and retry.** Check the result against the shape rules. On failure, retry with `seed_k = splitmix64(seed ^ k)` up to 32 times, then use `fallback`. All of this happens before any engine call.
+
+When the plugin loads, it checks that every piece has HD presets.
 
 ## 4. Map stats
 
 `mapstats.txt` routes each item stat to one of three lists:
 
-- **monster:** applied as a state on every map monster when it spawns.
-- **player:** added while the player is in the map, and removed on leaving.
-- **area:** a slot such as density, area level, rarity, extra groups, extra boss, fortify, ethereal, socket and corrupt drops, death drops, or multi-level.
+- the **monster** list, applied as a state on every map monster when it spawns;
+- the **player** list, added while the player is in the map;
+- an **area** slot: density, area level, rarity, extra groups, extra boss, fortify, ethereal, socket and corrupt drops, death drops.
 
-A row can also mark a stat as physical-as-extra, or name an item-drop effect.
+A row can also mark physical-as-extra, or name an item-drop effect.
 
-The mechanism follows today's core-maps code (region formulas `map_stats.cpp:309-382`, hooks `:826-843`), rewritten for Cartographer. Stat ids come from the table, never from C++. Region writes start from the saved base copy each time, so effects never stack.
+This works like today's core-maps code (formulas `map_stats.cpp:309-382`, hooks `:826-843`), rewritten for Cartographer. Stat ids come from the table, never from C++.
 
 ## 5. Map events
 
 `mapevents.txt` columns:
 
-| Column | Meaning |
-|---|---|
-| `event` | Event key |
-| `weight` | Weight when one event is drawn from many |
-| chance by item quality | Chance the map rolls an event at all |
-| `forcestat` | A stat on the item that forces an event |
-| `maps` | The maps it may appear on |
-| `kind` | `monster`, `superunique`, `object` or `portal` (to another map row) |
-| `unit`, `count`, `repeats` | What spawns, how many, how often |
-| `progress` | The rooms-activated threshold that triggers it |
-| `spot` | Spot rule, e.g. an `eventslots` room |
-| `notify`, `sound` | Notify string and sound |
+- `event`, `weight`;
+- the chance by item quality, and an optional `forcestat`;
+- `maps`;
+- `kind`: `monster`, `superunique`, `object` or `portal`;
+- `unit`, `count`, `repeats`;
+- `progress`: the rooms-activated threshold;
+- `spot`: for example an event-slot room;
+- `notify`, `sound`.
 
-Event state belongs to the live map and is cleared on erase. Scripted events, such as PD2's Altar guardian AI, are out of scope: Cartographer has no content interface.
+The event state belongs to the game's map record.
 
 ## 6. Phases
 
-Each phase gets one issue and a PR, with a game check in Hell on a level 90+ character. The table-diff and unit gate applies. All test content ships as a small Cartographer test pack, separate from PD2's data.
+Each phase gets one issue and one PR. Each needs a game check in Hell on a level 90+ character, and must pass the table-diff and unit gate. All test content ships in a small Cartographer test pack, kept apart from PD2's data.
 
 | # | Phase | Work | Done when |
 |---|---|---|---|
-| 0 | Glossary + ADR | Add glossary entries for *slot level*, *layout graph*, *live map*. Record in an ADR that Cartographer is standalone and that core-maps and Cartographer are never loaded together | ADR merged |
-| 1 | **Spike: erase and rebuild a level** (time-box ~2 days) | In 93847 Ghidra find AllocateLevel, level free, act room free, the seed field, the level list, preset and superunique bits, and the client's level build. Test build: `cartographer regen <level>` console command. Write `docs/research/level-regeneration.md` | One level rebuilt 20 times in one game, then leave and start a new game: no crash, a new layout each time |
-| 2 | **Spike: steering the DRLG** (time-box ~3 days) | Find where AllocateLevel reads LevelType, LvlMaze and LvlPrest, and whether per-open overrides are safe. Find the **maze** direction and piece pickers, and the **outdoor** sub-preset grid builder, and whether each can follow a given graph. Find what the client needs to rebuild the same layout. Add the findings to the research doc | A maze slot built on a hand-written straight graph, a second build with a different tileset, and a yes or no on steering outdoor levels |
-| 3 | Skeleton | `plugin/cartographer` target, standalone, with no `pd2_engine.h`. CustomTableService loading and validation, including the HD piece check. Slot-level rows. Item spell, gates, refuse-while-occupied, erase, portal pair. One `preset` map | Open five maps in a row; each erases the last; opening is refused while a player is inside |
-| 4 | Layout graph | Shape columns and a pure graph generator with unit tests (path length, turns, branches, bounds, determinism by seed) | 1000 seeded graphs per test map meet their rules |
-| 5 | Guided maze | Parameter write-in, maze guide hook, post-check with re-rolls, fallback | A test maze map builds 50 times in game, within its shape each time |
-| 6 | Guided outdoor | The outdoor builder guide, if phase 2 said yes; otherwise outdoor maps use their fallback and phase 6 is dropped | Shorelines-style test map builds within shape |
-| 7 | Map stats | `mapstats.txt`, three lists, region base copy, drop effects, player add/remove | Stats right on monsters, players and drops; no stacking after 5 opens |
-| 8 | Map events | `mapevents.txt`, roll, progress, spawn kinds, notify, reset on erase | Each kind fires; a reopened map starts with no progress |
-| 9 | Multiplayer | `{map id, seed}` packet, client rebuild and confirm, kill credit, occupancy check across clients, map-stat HUD | Two-client LAN check |
-| 10 | Release | README for mod authors, the test pack as an example (two tilesets, three maps, three stats, two events), versioned table formats, its own release zip | A mod with no PD2 data runs maps from tables only |
+| 0 | Glossary + ADR | Add glossary entries for *slot level*, *layout graph* and *map record*. Write an ADR recording that Cartographer is standalone, that it never loads with core-maps, and that a game has one map | ADR merged |
+| ✅ | Spikes | DRLG steering (#929) and level regeneration (#930) | Done |
+| 1 | Skeleton | Add the `plugin/cartographer` target, standalone (no `pd2_engine.h`). Load and validate tables through CustomTableService, including the HD check. Add the slot rows, item spell, gates, the one-map-per-game refusal and the portal pair, with one `preset` map | A map opens; a second open is refused; leaving and returning shows the same map |
+| 2 | Layout graph | Shape columns and the pure generator, with unit tests: path length, turns, branches, bounds, determinism by seed | 10k seeded graphs per test map meet their rules |
+| 3 | Guided maze | Productise the #929 prototype: build hook, walk replacement, special-room steer, ring-grower no-op, parameter write-in, post-check, fallback, layout cache | A test maze map builds within its shape in 50 games, and is the same after an unload in one game |
+| 4 | Own outdoor builder | See [cartographer-outdoor-builder.md](cartographer-outdoor-builder.md), phases S0–7, Act 3 jungle first | A "Shorelines" jungle map builds within its shape in 50 games |
+| 5 | Map stats | `mapstats.txt`, the three lists, drop effects, player add and remove | Stats are right on monsters, players and drops |
+| 6 | Map events | `mapevents.txt`, roll, progress, spawn kinds, notify | Each kind fires |
+| 7 | Multiplayer | The `{map id, seed}` message, client build and confirm, kill credit, map-stat HUD | Two-client LAN check shows the same layout |
+| 8 | Release | README for mod authors, an example pack, versioned table formats and a release zip | A mod with no PD2 data runs maps from tables alone |
 
-Phases 1 and 2 decide whether the rest holds; run them first, in parallel. Phase 4 needs no game and can start at any time.
+Phases 2, 5 and 6 can run in parallel with 3 and 4.
 
 ## 7. Risks
 
-- **Crashes after a rebuild.** Native code caches pointers to levels and rooms. Mitigations: the tombstone rule, erasing only an empty level, and phase 1's 20-rebuild stress check.
-- **Parameter overrides leaking.** Writing into shared level and maze records also affects the client in single player and every other reader. Restore them after `AllocateLevel`, or point the slot at a private copy; phase 2 decides.
-- **Steering limits.** D2's builders may not follow every graph, for example piece sizes on outdoor grids. Post-checks and re-rolls cover small gaps. Outdoor tilesets are the main unknown (phase 6, D5).
-- **Client desync.** A wrong seed or wrong parameters put walls in the wrong place. The portal waits for each client to confirm.
-- **License.** D2RHUD-2.4 has no license, so no code is copied. All addresses come from our own research.
+- **D2RLoader updates.** D2RCore owns the outdoor entry and helpers. Mitigation: byte-check every hook, bypass D2RCore only for the slot level, and switch outdoor maps to `fallback` on any mismatch.
+- **Cross-act tilesets in an Act 5 slot.** The client preloads tile files for the current act only. Act 5 Ice drew fine in Act 1, but other pairs are unchecked. Mitigation: a preload hook for the map's LevelType.
+- **The same rooms after an unload.** The layout is cached and pure, and the stamping order is fixed.
+- **Client desync.** The graph comes from the map seed only. The portal waits for each client's confirmation.
+- **License.** D2RHUD-2.4 has no license, so no code is copied from it. All addresses come from our own research.
 
 ## 8. Decisions
 
-- **D1 Name:** Cartographer. ✅
-- **D2 Old map occupied:** refuse until it is empty. ✅
-- **D3 What is left in the erased map:** gone. ✅
-- **D4 Content interface:** none. Cartographer is fully standalone and PD2-Resurrected keeps core-maps. ✅
-- **D5 Our own tile generator:** deferred. ✅
+| # | Decision | Status |
+|---|---|---|
+| D1 | Name: Cartographer | ✅ |
+| D2 | One map per game (replaces "refuse until empty") | ✅ |
+| D3 | Items left in a map: gone (now only at the end of the game) | ✅ |
+| D4 | No content interface; fully standalone | ✅ |
+| D5 | Our own outdoor builder is **in scope** (2026-11-11) | ✅ |
