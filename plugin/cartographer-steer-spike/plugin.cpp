@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <cwchar>
 
 namespace {
 
@@ -202,8 +203,14 @@ void SpecialHook(void* level, int32_t* entry, uint32_t* rotation) noexcept {
 
 auto ReadConfig(const wchar_t* dir) noexcept -> bool {
 	if (dir == nullptr) return false;
+	// pluginConfigPath names the plugin's own config file (<game>\d2rloader\config\<id>.toml): use its folder
 	wchar_t path[600];
-	std::swprintf(path, 600, L"%ls\\%hs.txt", dir, PluginName);
+	std::swprintf(path, 600, L"%ls", dir);
+	wchar_t* slash = std::wcsrchr(path, L'\\');
+	if (slash != nullptr && std::wcschr(slash, L'.') != nullptr) *slash = L'\0';
+	const size_t used = std::wcslen(path);
+	std::swprintf(path + used, 600 - used, L"\\%hs.txt", PluginName);
+	plog::Info("config %ls", path);
 	FILE* f = _wfopen(path, L"r");
 	if (f == nullptr) return false;
 	char line[200];
@@ -239,7 +246,7 @@ constexpr D2RL::PluginInfo Info {
 	.version     = "0.0.1",
 	.author      = "Synpoo",
 	.description = "Throwaway prototype: builds one maze level on a straight room graph with an overridden tileset.",
-	.flags       = D2RL::PluginFlags::NativeHooks,
+	.flags       = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
 };
 
 }  // namespace
