@@ -48,13 +48,15 @@ The release is gated on a **novice test** (plan §3.0 and phase 8).
   - **B.** Add DS1 variants. These also show in vanilla levels of that tileset.
   - **C.** A private 15-piece set through `tilesets.txt` (`Name`, `Base`, `First`), which needs a piece-picker hook on `0x3eb960` for the slot level.
 - **Test commands:** `cartographer check` and `cartographer open <Name>`.
+- **Every tileset becomes map-ready over time** (plan §3.5 table, phases 10+). The release-1 list is only the rollout order.
+- **Tilesets will be mixed within one level** (D9). **Zone warping is ruled out.** This is the future research phase 9, which starts **only after phases 1–8 ship**. Don't dispatch it in waves 1–3.
 - **The worked example** in §3.5a (Shorelines = Jungle/Corridor, Tunneling Depths = Cave/Loop) is the README's acceptance case.
 
 **Out of scope.** PD2-Resurrected does **not** migrate to Cartographer, and core-maps stays. Cartographer and core-maps are never loaded together. There is no content interface for other plugins. Maps are not erased or rebuilt within a game.
 
 ## 3. State at handoff
 
-**main** is **97489f6**. No Cartographer code is on main. The plans' latest commit on `docs/map-kit-plan` is **866c3dd**.
+**main** is **97489f6**. No Cartographer code is on main. The plans' latest commit on `docs/map-kit-plan` is **785935e**.
 
 **Every game slot is free** (2–11, checked 2026-11-11 late). No agents are running from this session.
 
