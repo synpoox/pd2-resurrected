@@ -172,6 +172,8 @@ Release 1 gives each tileset a plain name for its D2R LevelType:
 
 A tileset that isn't ready is refused at load, with a message that says so.
 
+**The tileset decides the builder.** Authors never choose indoor or outdoor. Each tileset name is tagged maze or outdoor in the shipped catalogue, so `Cave` builds a maze and `Jungle` builds outdoor. A private piece set (option C in §3.6) uses its `Base` tileset's builder.
+
 ### 3.5a Worked example: two maps in five minutes
 
 A mod author wants two maps:
