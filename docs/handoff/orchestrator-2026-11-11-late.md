@@ -1,6 +1,6 @@
 # Orchestrator handoff, 2026-11-11 late: Cartographer moved to d2r-tools
 
-This branch holds only this note and is never merged. It supersedes `handoff/orchestrator-2026-11-11-pm` for the
+This branch holds only this note and is never merged. It is pushed to both synpoox/d2r-tools (where Cartographer now lives) and synpoox/pd2-resurrected. It supersedes `handoff/orchestrator-2026-11-11-pm` for the
 **Cartographer** workstream only. The HD-parity lanes (P7–P10, PRs #876 #878 #912 #914 #915 #922 #923 #607) were not
 touched; their state is still in `handoff/orchestrator-2026-11-11-day2`. Keep both branches.
 
@@ -25,8 +25,8 @@ Read d2r-tools' `AGENTS.md` and `CONTRIBUTING.md` before dispatching. They diffe
 - Build and test: `tools\build.ps1 -Plugin cartographer -Test` (VS 2022, CMake 3.29+). Worktrees are sibling folders
   `..\d2r-tools-<topic>`, branches `<plugin>/<topic>`; no `pd2-data` junction, plain `git worktree remove` is fine.
 - Changelog: the plugin's own `CHANGELOG.md` under `## Unreleased` (no `changelog.d/`). No table-diff gate.
-- **Outward-facing steps (push, PRs, issues, comments) only when the owner asks.** Confirm the standing permission
-  for Cartographer workers with the owner before wave 1 restarts.
+- Outward-facing steps (push, PRs, issues, comments) need the owner's ask; **the owner granted standing permission
+  for Cartographer workers** (§4.3).
 - Game checks: vanilla D2R + D2RLoader with a test save (no PD2 build, no core-maps to switch off).
 
 | Item | Where |
@@ -63,24 +63,23 @@ The `ready-for-agent` label does not exist in d2r-tools, so the moved issues hav
   stands (adds the slot level, a LvlPrest row, the map item, its string). The SDK's custom tables reject a whole table
   on one bad cell, so the plugin parses its own tables (plan §3.0: skip bad rows).
 
-## 4. Owner decisions pending
+## 4. Owner decisions (2026-11-11 late)
 
-1. **d2r-tools "global plugin" rule.** Cartographer reads the mod's `maps.txt`, and its installer edits the mod's
-   `levels.txt`/`misc.txt`. That needs an exception to "a plugin does not depend on the active mod shipping files"
-   (better-auras' optional `skills.txt` read is the nearest precedent). A built-in example map could be the fallback.
-2. **Signature scanning** instead of fixed 93847 RVAs adds work to phases 1, 3 and 4.
-3. **Worker push/PR permission** in d2r-tools (its AGENTS.md: outward steps only when the owner asks).
-4. **`Boss` column:** the §3.5a example uses `Bishibosh`, a superunique, but §3.1 allows only a monstats `Id`.
-5. The plan ambiguities listed in d2r-tools#25's source review: `shapes.txt` column names, `tilesets.txt` `First`
-   being a LvlPrest id, option C editing LvlPrest despite "no vanilla table edits", the Difficulty column, mixed
-   name kinds in `mapevents.txt` `Spawn`.
-6. **pd2-resurrected docs-only PRs** (#929, #930) still can't merge without `--admin` (ruleset requires
-   `table-diff`/`unit`, which docs-only paths never run). Root fix: a docs-only job that posts a real success, or a
-   ruleset bypass. No issue is open. Both PRs stay here as Cartographer reference regardless.
+1. **Mod files: exception granted.** Cartographer may read the mod's `maps.txt` (and its other tables) and its
+   installer may add rows to the mod's `levels.txt`/`misc.txt`, despite d2r-tools' "global plugin" rule.
+2. **Byte signatures: yes**, as d2r-tools best practice, in place of fixed 93847 RVAs (more work in phases 1, 3, 4).
+3. **Push/PR/issue permission granted** to Cartographer workers in d2r-tools.
+4. **`Boss` takes monstats `Id`s and superunique names** (so `Bishibosh` in the §3.5a example is valid). Update
+   plan §3.1 and `docs/cartographer/tables.md` accordingly.
+5. **The vendored doctest 2.4.11** (downloaded by the layout worker) is approved.
+6. **Do not merge pd2-resurrected #929 and #930.** They stay open as reference.
+
+Still open, for the plan owner: `shapes.txt` column names, `tilesets.txt` `First` being a LvlPrest id, option C
+editing LvlPrest despite "no vanilla table edits", the Difficulty column, mixed name kinds in `mapevents.txt` `Spawn`.
 
 ## 5. Left in pd2-resurrected (reference only, never merged)
 
-- PRs #929 (DRLG steering) and #930 (level regeneration), open, docs only, BLOCKED (§4.6). Each has a comment
+- PRs #929 (DRLG steering) and #930 (level regeneration), open, docs only; **do not merge** (§4.6). Each has a comment
   pointing at the move.
 - Spike branches `spike/cartographer-steer-proto`, `spike/cartographer-level-regen`, `spike/cartographer-outdoor-s1`.
 - Owner reference branch `docs/map-kit-plan` (the plans' source).
@@ -100,8 +99,8 @@ The `ready-for-agent` label does not exist in d2r-tools, so the moved issues hav
 
 ## 7. Next steps (when the owner restarts Cartographer)
 
-1. Settle §4.1–4.3 with the owner.
-2. Merge d2r-tools#25.
+1. Merge d2r-tools#25 (docs only), after folding in the §4.4 `Boss` change.
+2. Add `0x3e77a0` and `0x32c6a0` to the RE stub.
 3. Restart wave 1 in d2r-tools: A (#20) first creates `plugins/cartographer/` with a CMake skeleton, so B (#21) and
    D (#23) can land under it; C (#22) continues from the pd2-resurrected spike branch, ported to d2r-tools' build.
 4. Wave 2 and 3 order is unchanged from the plan's §5.
