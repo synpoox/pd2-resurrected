@@ -55,7 +55,7 @@ Cartographer is a fully **standalone D2RLoader plugin** that any D2R mod can dro
 - **Blank means default.** A missing optional column or a blank cell takes the default. A map row needs only 3 filled cells.
 - **No vanilla table edits.** Authors never edit levels.txt, lvlmaze.txt, lvlprest.txt or misc.txt for Cartographer (§3.4).
 - **Plain-English errors.**
-  - **Where they appear:** at load, every problem is written to `cartographer-report.txt`, and the in-game console command `cartographer check` shows them too. An example: "maps.txt row 3: tileset 'Jungel' is not known. Did you mean 'Jungle'?"
+  - **Where they appear:** at load, every problem is written to `cartographer-report.txt`, and the in-game console command `cartographer check` shows them too. `cartographer open <Name>` opens a map's portal on the spot, for testing, without needing the item. An example: "maps.txt row 3: tileset 'Jungel' is not known. Did you mean 'Jungle'?"
   - **What happens to a bad row:** it is skipped, and the other maps still work. A bad row never crashes the game.
 - **Familiar format.** Tab-separated `.txt` with a header row, like D2's own tables, so authors can edit it in the same spreadsheet tools. Our own words (tileset, shape, size, target) ignore case. Names from D2's tables (monstats `Id`, item codes) must match exactly, and the check suggests the right spelling and case.
 
@@ -65,7 +65,7 @@ Cartographer is a fully **standalone D2RLoader plugin** that any D2R mod can dro
 |---|---|---|---|
 | `Name` | yes | The map's name, shown on entry | Shorelines |
 | `Tileset` | yes | A name from the tileset list (§3.5) | Jungle |
-| `Shape` | yes | `Corridor`, `Winding`, `Branching` or `Sprawl` | Corridor |
+| `Shape` | yes | `Corridor`, `Winding`, `Branching`, `Loop` or `Sprawl` | Corridor |
 | `Size` | no | `Small`, `Medium` (default) or `Large` | Large |
 | `Level` | no | Monster level in the map (default 85) | 90 |
 | `Item` | no | Item code of the map item. Blank: the map can drop from Cartographer's own map item | `shm1` |
@@ -91,11 +91,12 @@ Shorelines	Jungle	Corridor
 | `Corridor` | One long path, mostly straight, few dead ends |
 | `Winding` | One long path with many turns, few dead ends |
 | `Branching` | A main path with several side rooms and dead ends |
+| `Loop` | The path runs in a ring and comes back to where it started, with a few short side rooms |
 | `Sprawl` | Wide and open, with loops and many branches |
 
 ### 3.2 `mapstats.txt` (optional): the property pool
 
-This file is **one shared pool of random properties**. Every map that opens draws `Properties` of them: the per-map value, or else the default in `cartographer.txt`. The owner hasn't decided the default yet. Each property affects either monsters or players. A property can't be drawn twice in one map.
+This file is **one shared pool of random properties**. Every map that opens draws `Properties` of them: the per-map value, or else the default in `cartographer.txt` (6). Each property affects either monsters or players. A property can't be drawn twice in one map.
 
 | Column | What to put | Example |
 |---|---|---|
@@ -148,8 +149,8 @@ Two columns, `Setting` and `Value`. Every setting has a default.
 
 | Setting | Meaning | Default |
 |---|---|---|
-| `Properties` | Random properties per map | N, still to be decided |
-| `EventChance` | Percent chance of an event per map | still to be decided |
+| `Properties` | Random properties per map | 6 |
+| `EventChance` | Percent chance of an event per map | 20 |
 | `ItemStats` | 1 = use the map item's own stats in place of a draw | 0 |
 | `Town` | The level the portal opens from | Harrogath |
 
@@ -170,6 +171,44 @@ Release 1 gives each tileset a plain name for its D2R LevelType:
 - **Outdoor:** `Jungle` first, then `Snow`.
 
 A tileset that isn't ready is refused at load, with a message that says so.
+
+### 3.5a Worked example: two maps in five minutes
+
+A mod author wants two maps:
+
+- **Shorelines:** an outdoor jungle map that is basically a straight line.
+- **Tunneling Depths:** an indoor cave map that loops.
+
+**1. Install.** Copy `Cartographer.dll` into D2RLoader's plugins folder. If the release has the installer (§3.4), run it once.
+
+**2. Write the maps.** Create `maps.txt` in the mod's `data/global/excel/d2rloader/cartographer/` folder. It is tab-separated, so spreadsheet tools and D2's table editors open it:
+
+```
+Name	Tileset	Shape
+Shorelines	Jungle	Corridor
+Tunneling Depths	Cave	Loop
+```
+
+That is all. Both maps get the defaults:
+
+- size Medium and monster level 85;
+- 6 random properties from the built-in pool, and a 20% chance of an event (none until `mapevents.txt` exists);
+- opened in Harrogath in Hell;
+- they drop as Cartographer's own map item, which opens one of the two at random.
+
+**3. Test.** Start a Hell game and go to Harrogath. Type `cartographer check` in the console; it should report "2 maps loaded, no problems". Then type `cartographer open Shorelines` and walk in. Every new game gives a new straight jungle path, and `Tunneling Depths` a new cave ring.
+
+**4. Optional tuning.** Add only the columns you want:
+
+```
+Name	Tileset	Shape	Size	Level	Boss
+Shorelines	Jungle	Corridor	Large	90	Bishibosh
+Tunneling Depths	Cave	Loop	Small		quillrat5
+```
+
+A blank cell keeps the default; Tunneling Depths keeps level 85 here.
+
+**Availability.** `Cave` works from phase 3, and `Jungle` from phase 4, the outdoor builder.
 
 ### 3.6 Maze maps and the author's own pieces
 
