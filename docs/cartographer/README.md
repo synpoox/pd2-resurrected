@@ -4,7 +4,7 @@
 
 Cartographer adds random maps to your mod. A player uses a map item in Harrogath. A red portal opens. Behind it is a new random level. Every game builds a new one.
 
-Each game opens **one map**. After that, more maps are refused until the next game.
+Each game opens **one map**. After that, more maps are refused until the next game. A refused map item is kept, and the player is told why.
 
 You make a map by adding one line to one small table.
 
@@ -97,8 +97,8 @@ A tileset that is not ready is refused when the game loads, with a message that 
 | `Size` | `Small`, `Medium` or `Large` |
 | `Level` | Monster level in the map |
 | `Item` | The map item that opens this map. Blank: Cartographer's own item |
-| `Boss` | A monster placed at the end of the path |
-| `Monsters` | Up to 10 monsters, separated by commas. Blank: the tileset's own monsters |
+| `Boss` | A monster placed at the end of the path. Use its `Id` from the game's monster table; upper and lower case must match |
+| `Monsters` | Up to 10 monster `Id`s, separated by commas, with the case matching. Blank: the tileset's own monsters |
 | `Difficulty` | `Normal`, `Nightmare` or `Hell` |
 | `MinCharLevel` | The character level the player needs |
 | `Properties` | How many random properties this map gets |
@@ -115,7 +115,7 @@ Without a `mapstats.txt`, Cartographer uses a small built-in list. To use your o
 
 ```
 Target	Stat	Min	Max	Weight
-Monsters	maxhp%	10	20	3
+Monsters	item_maxhp_percent	10	20	3
 Players	fireresist	10	25	1
 ```
 
@@ -123,7 +123,7 @@ The text players see comes from the game's own stat description. You do not writ
 
 ## Events (optional, phase 6)
 
-A map can have an event, such as a boss waiting in a room or an ambush. Without a `mapevents.txt` there are none. To add some:
+A map can have an event, such as a boss waiting in a room or an ambush. Until you add a `mapevents.txt`, no map has events. To add some:
 
 ```
 Name	Kind	Spawn	Count	Message

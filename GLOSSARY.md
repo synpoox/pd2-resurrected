@@ -142,13 +142,14 @@ _Avoid_: map mod, map affix (an affix is how a map stat rolls)
 **Map event**:
 A random happening inside a map area, such as a boss, a portal, a shop or a timed lair, rolled when the area opens.
 _Avoid_: map-event notification (cut; the events are not)
+This entry is PD2's. Cartographer's events are a separate system with five generic kinds (Boss, Ambush, Horde, Treasure, Shrine) defined in `mapevents.txt`.
 
 **Cartographer**:
 The standalone D2RLoader plugin that opens procedurally laid-out maps from a mod author's `maps.txt`. It shares no code with `core-maps` and is never loaded with it ([ADR 0006](docs/adr/0006-cartographer-standalone.md)).
 _Avoid_: map plugin, map kit
 
 **Map record**:
-One row of Cartographer's `maps.txt`: a map's name, tileset, shape and optional settings. Not the game's own per-game map state.
+The game's per-game map state in Cartographer: which map is open, its seed, rolled properties and event. It lives for one game. A row of `maps.txt` is a *map row*, not a map record.
 _Avoid_: map definition, map entry
 
 **Slot level**:

@@ -20,7 +20,7 @@ One row per map.
 | `Size` | no | `Small`, `Medium` or `Large` | Medium | Large |
 | `Level` | no | Monster level in the map | 85 | 90 |
 | `Item` | no | Item code of the map item | Cartographer's own map item | `shm1` |
-| `Boss` | no | A monster `Id` placed at the end of the path | no boss | `fallenshaman` |
+| `Boss` | no | A monster `Id` placed at the end of the path (case must match) | no boss | `fallenshaman1` |
 | `Monsters` | no | Up to 10 monster `Id`s, separated by commas | the tileset's own monsters | `quillrat1,zombie3` |
 | `Difficulty` | no | `Normal`, `Nightmare` or `Hell` | Hell | Nightmare |
 | `MinCharLevel` | no | Character level needed | 1 | 80 |
@@ -32,6 +32,8 @@ One row per map.
 
 Smallest map: `Name`, `Tileset` and `Shape` filled in.
 
+**Open question (owner call pending):** the examples use `Bishibosh`, a unique monster, but `Boss` takes a monster `Id`. `Boss` may need to accept unique monster names too.
+
 ## mapstats.txt (optional)
 
 One shared pool of random properties. Each map draws `Properties` of them. A property is never drawn twice in one map. If the file is missing, a small built-in pool is used.
@@ -41,7 +43,7 @@ There is no text column. The text comes from the game's own stat description.
 | Column | What to put | Default | Example |
 |---|---|---|---|
 | `Target` | `Monsters` or `Players` | none (required) | Monsters |
-| `Stat` | A stat name from the game's stat table | none (required) | `maxhp%` |
+| `Stat` | A stat name from the game's stat table | none (required) | `item_maxhp_percent` |
 | `Min` | Lowest rolled value | none (required) | 10 |
 | `Max` | Highest rolled value | none (required) | 20 |
 | `Weight` | How often it is drawn compared with the others | 1 | 3 |
@@ -90,7 +92,7 @@ Adds your own room-piece set to a built-in tileset. Only for maze tilesets. Your
 |---|---|---|---|
 | `Name` | The name to use in `maps.txt` | none (required) | Mossy Cave |
 | `Base` | The built-in tileset it copies | none (required) | Cave |
-| `First` | The row in the game's room piece table of the first of your 15 pieces (the "west" piece) | none (required) | 1200 |
+| `First` | The `Def` value of the "W" piece in the game's room piece table (`LvlPrest`); the other 14 follow it | none (required) | 1200 (illustrative) |
 
 ## shapes.txt (optional, advanced)
 
