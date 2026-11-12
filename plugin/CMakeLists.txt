@@ -112,3 +112,12 @@ target_link_libraries(core_ui PRIVATE core_common)
 target_compile_definitions(core_ui PRIVATE CORE_PLUGIN_NAME="core-ui" CORE_PLUGIN_VERSION="${CORE_UI_VERSION}")
 set_target_properties(core_ui PROPERTIES OUTPUT_NAME "core-ui")
 core_options(core_ui)
+
+# Cartographer outdoor S0/S1 spike (#938): throwaway prototype, standalone (plugin_common + SDK only). Not for merge.
+add_library(cartographer_outdoor_spike SHARED
+	cartographer-outdoor-spike/plugin.cpp
+	cartographer-outdoor-spike/plugin.rc
+)
+target_link_libraries(cartographer_outdoor_spike PRIVATE plugin_common)
+set_target_properties(cartographer_outdoor_spike PROPERTIES OUTPUT_NAME "cartographer-outdoor-spike")
+core_options(cartographer_outdoor_spike)
