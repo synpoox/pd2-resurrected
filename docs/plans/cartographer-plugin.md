@@ -73,6 +73,9 @@ Cartographer is a fully **standalone D2RLoader plugin** that any D2R mod can dro
 | `Monsters` | no | Up to 10 monstats `Id`s, comma-separated. Blank: the tileset's own monsters | `quillrat1,zombie3` |
 | `Difficulty` | no | `Normal`, `Nightmare` or `Hell` (default) | |
 | `MinCharLevel` | no | Character level needed (default 1) | 80 |
+| `Properties` | no | How many random properties this map gets (§3.2). Blank: the `cartographer.txt` default | 4 |
+| `EventChance` | no | Percent chance of a map event (§3.3). Blank: the `cartographer.txt` default | 25 |
+| `Density`, `Champions`, `Uniques` | no | Area: percent more monsters, champion packs and unique packs than the tileset's normal (default 0) | 50 |
 
 The smallest complete map:
 
@@ -90,34 +93,65 @@ Shorelines	Jungle	Corridor
 | `Branching` | A main path with several side rooms and dead ends |
 | `Sprawl` | Wide and open, with loops and many branches |
 
-### 3.2 `mapstats.txt` (optional)
+### 3.2 `mapstats.txt` (optional): the property pool
 
-Each row is one possible map stat. When a map opens, every row rolls its `Chance`, and each row that hits applies a value between `Min` and `Max`.
-
-| Column | What to put | Example |
-|---|---|---|
-| `Map` | A map `Name`, or `*` for every map | `*` |
-| `Text` | What the player reads | Monsters have +20% life |
-| `Target` | `Monsters`, `Players` or `Area` | Monsters |
-| `Stat` | For Monsters and Players: an itemstatcost `Stat` name. For Area: a built-in effect name (`Density`, `MonsterLevel`, `ExtraBoss`, `Champions`, `Uniques`, `MagicFind`, `Experience`) | `maxhp%` |
-| `Min`, `Max` | The value range | 10, 20 |
-| `Chance` | Percent chance this stat appears (default 100) | 30 |
-
-Rolled stats show in the entry message and on the map-stat panel.
-
-**Advanced:** a mod that rolls its own affixes onto map items can leave this file out. Cartographer then reads the item's own stats and applies each one to its target. It sorts an item stat by its Target: player stats go to the player, `Area` effects to the area, and everything else to monsters.
-
-### 3.3 `mapevents.txt` (optional)
+This file is **one shared pool of random properties**. Every map that opens draws `Properties` of them: the per-map value, or else the default in `cartographer.txt`. The owner hasn't decided the default yet. Each property affects either monsters or players. A property can't be drawn twice in one map.
 
 | Column | What to put | Example |
 |---|---|---|
-| `Map` | A map `Name`, or `*` | `*` |
-| `Chance` | Percent chance per opened map | 15 |
+| `Target` | `Monsters` or `Players` | Monsters |
+| `Stat` | An itemstatcost `Stat` name | `maxhp%` |
+| `Min`, `Max` | The rolled value range | 10, 20 |
+| `Weight` | How often it's drawn compared with the others (default 1) | 3 |
+
+There is no text column. Each property's text comes from the game's own stat description in itemstatcost, the same text players see on items. It shows in the entry message and on the map-stat panel.
+
+Area effects are fixed per map, not random. They are the `Density`, `Champions` and `Uniques` columns in `maps.txt`.
+
+If the file is missing, Cartographer uses a small built-in pool, for example monster life, monster damage, monster resistances, player resistances, player life regen and player curse effects.
+
+**Advanced:** a mod that rolls its own affixes onto map items can set `ItemStats=1` in `cartographer.txt`. The item's own stats are then used in place of a draw.
+
+### 3.3 `mapevents.txt` (optional): what events exist
+
+Each map has `EventChance` percent chance of one event: the per-map value, or else the default in `cartographer.txt`. This file defines what those events are. When a map rolls an event, one row is drawn by `Weight`.
+
+**What is hardcoded and what is data:**
+- **The event kinds are built into the plugin.** There are five, all generic, so any mod can use them.
+- **Everything about an event is data:** what spawns, how many, the drops, the message.
+- **What a table can't express:** scripted events with puzzles, stages or custom AI, like PD2's Altar of the Catalyst or Spire. These would need code, which a standalone plugin with no content interface doesn't take (D4).
+
+| Kind | What happens |
+|---|---|
+| `Boss` | A boss (a monstats `Id` or superuniques `Name`) with `Count` minions waits in the event room |
+| `Ambush` | When a player reaches the event room, `Waves` waves of `Count` × `Spawn` attack |
+| `Horde` | The event room is packed with `Count` × `Spawn` |
+| `Treasure` | A treasure monster flees and drops from `Drop` when killed. Or, if `Spawn` is an object, a chest is placed that drops from `Drop` |
+| `Shrine` | An object (shrine, well, chest) is placed in the event room |
+
+| Column | What to put | Example |
+|---|---|---|
+| `Name` | Shown to the player when the event starts | The Drowned King |
+| `Kind` | One of the kinds above | Boss |
 | `Spawn` | A monstats `Id`, superuniques `Name` or objects `Name` | `Bishibosh` |
-| `Count` | How many (default 1) | 1 |
-| `Message` | Text shown when the event starts | A dark presence stirs… |
+| `Count` | How many (minions, horde size or wave size; default 1) | 6 |
+| `Waves` | Ambush only (default 3) | |
+| `Drop` | A treasureclassex name, for Treasure, or extra loot for Boss | `Act 5 (H) Super C` |
+| `Message` | Optional extra text when it starts | The water churns… |
+| `Weight` | How often it's drawn (default 1) | 2 |
 
-At most one event is chosen per map. The event triggers partway along the main path, at a built-in event room.
+The event room sits partway along the main path, and the layout graph reserves it. With no `mapevents.txt` there are no events.
+
+### 3.3a `cartographer.txt` (optional): global settings
+
+Two columns, `Setting` and `Value`. Every setting has a default.
+
+| Setting | Meaning | Default |
+|---|---|---|
+| `Properties` | Random properties per map | N, still to be decided |
+| `EventChance` | Percent chance of an event per map | still to be decided |
+| `ItemStats` | 1 = use the map item's own stats in place of a draw | 0 |
+| `Town` | The level the portal opens from | Harrogath |
 
 ### 3.4 What ships ready-made, so authors never edit it
 
@@ -137,6 +171,31 @@ Release 1 gives each tileset a plain name for its D2R LevelType:
 
 A tileset that isn't ready is refused at load, with a message that says so.
 
+### 3.6 Maze maps and the author's own pieces
+
+**What Cartographer reads.** For a maze map it reads D2's tables and writes to none of them.
+- **The tileset's 15 room pieces.** D2 picks a maze room's piece as *tileset base + exit mask*: LvlPrest `Def` base+1 … base+15 are `<tileset> W, E, EW, S, … NSEW` (#929 §2.3). The base per tileset is hardcoded in D2's piece picker `0x3eb960`, not stored in a table.
+- **The tile files** from LvlTypes.
+- **The room size and merge chance** from the LvlMaze row of a vanilla level of that tileset.
+
+**What Cartographer writes.** Its choices go only into the slot level's own record: tileset, room size, merge chance and the graph walk. No shared table record is written, so vanilla levels are never affected.
+
+**The author's options, from easiest to hardest:**
+
+| Option | What the author does | Effect | Who it's for |
+|---|---|---|---|
+| **A. Pick a built-in tileset** | `Tileset=Cave` in `maps.txt`. Nothing else | Vanilla Cave rooms, Cartographer's layout | Everyone (the default) |
+| **B. More variety in a tileset** | Add more DS1 files to that tileset's piece rows (LvlPrest `File1`–`File6`). D2 already rotates through a piece's files | New-looking rooms in Cartographer maps, **and also in vanilla levels of that tileset** | Modders who already edit DS1s |
+| **C. Their own piece set** (Advanced) | Add 15 LvlPrest rows (their own DS1s, one per exit mask, same room size and tiles as a built-in tileset). Add one row to an optional `tilesets.txt`: `Name`, `Base` (the built-in tileset), `First` (the LvlPrest `Def` of the "W" piece). Then use `Tileset=<Name>` in `maps.txt` | Rooms used **only** by Cartographer maps; vanilla levels are untouched | Experienced modders |
+
+**How option C works in the plugin.** For the slot level, a hook on the piece picker `0x3eb960` returns `First + mask − 1` in place of D2's hardcoded base. This is the same hook family as the maze steering, scoped to the slot.
+
+**What C can't do.** The pieces must share the base tileset's room size and its LvlTypes tile files. A brand-new LevelType with new DT1s is out of scope for release 1, because cross-act tile preload is still unverified (§6).
+
+**What the load check verifies for option C:** all 15 rows exist, the DS1 files exist, every piece has the same size, and the HD presets exist.
+
+**Special rooms.** Maze maps need no level exits, so the vanilla Prev, Next and Down rooms are never placed. The entrance is the portal room at the start of the path. The end of the path holds the boss and the reserved event room, built from ordinary mask pieces.
+
 ## 4. Map stats and events: how they work
 
 - **Monster stats** are applied as a state on every map monster when it spawns.
@@ -154,10 +213,10 @@ Each phase gets one issue and a PR, plus a game check in Hell on a level 90+ cha
 | ✅ | Spikes | DRLG steering (#929), level regeneration (#930) | Done |
 | 1 | Skeleton | `plugin/cartographer` target, standalone (no `pd2_engine.h`). Table loader with the §3.0 checks, `cartographer-report.txt` and `cartographer check`. Slot rows, the default map item and the installer (or D2RLoader row injection), gates, the one-map rule, the portal, and one built-in preset map | A 2-cell `maps.txt` opens a map; a typo gives a plain-English error; a second open is refused |
 | 2 | Layout graph | The pure generator, the shape and size presets, and `shapes.txt`. Unit tests in a new C++ test harness | 10k seeds per preset meet their rules |
-| 3 | Guided maze | Productise the #929 prototype: hooks, ring-grower no-op, special-room steer, cache, fallback | `Cave`/`Corridor` and `Crypt`/`Branching` build in shape in 50 games and stay the same after an unload |
+| 3 | Guided maze | Productise the #929 prototype: hooks, ring-grower no-op, special-room steer, cache, fallback, and the option C piece-set hook with `tilesets.txt` (§3.6) | `Cave`/`Corridor` and `Crypt`/`Branching` build in shape in 50 games and stay the same after an unload |
 | 4 | Own outdoor builder | [cartographer-outdoor-builder.md](cartographer-outdoor-builder.md), Act 3 jungle first | `Jungle`/`Corridor` (Shorelines) builds in shape in 50 games |
-| 5 | Map stats | `mapstats.txt`, the item-stat mode, the three targets, area effects, the panel | Each target and each area effect is right in game |
-| 6 | Map events | `mapevents.txt`, the event room, spawn kinds, message | Each spawn kind fires |
+| 5 | Map stats | `mapstats.txt` pool and draw, `cartographer.txt`, the `ItemStats` mode, area columns, the panel | N properties drawn per map, each showing its game text; area columns right in game |
+| 6 | Map events | `mapevents.txt`, `EventChance`, the five kinds, the event room, message | Each kind fires in game |
 | 7 | Multiplayer | `{map, seed}` message, client build and confirm, kill credit | A two-client LAN check shows the same layout |
 | 8 | Release | A one-page "Your first map in 5 minutes" README, a table reference (every column, default and example), the example pack, the installer, and a release zip | **Novice test:** a fresh agent with no project context, given only the zip and the README, adds a new map to a clean mod and opens it in game, without reading any code |
 
