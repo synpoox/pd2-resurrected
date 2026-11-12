@@ -12,15 +12,20 @@ stamp `0x6ab3782c`), found with the toolkit's `tools/ghidra_query.ps1` (`StringX
 `D2Common\src\Drlg\{Drlg, DrlgRoom, DrlgWarp, Preset, DrlgLogic, Maze, OutPlace, RoomTile, TileSub, DrlgVer, OutWild,
 OutDesr, OutJung, OutSiege}.cpp`. Each file's assert stubs sit right before its code, which gives these code ranges:
 Drlg.cpp `0x3261a0-`, Preset.cpp `0x3db000-`, Maze.cpp `0x3e67c0-0x3ef850`, OutPlace.cpp `0x3ef850-`, OutWild.cpp
-`0x3fabb0-`, OutDesr.cpp `0x3fbce0-`, OutJung.cpp `0x3fcb80-`, OutSiege.cpp `0x3fe100-`. No code is taken from
-locbones/D2RHUD-2.4.
+`0x3fabb0-`, OutDesr.cpp `0x3fbce0-`, OutJung.cpp `0x3fcb80-`, OutSiege.cpp `0x3fe100-`.
+
+Facts marked **[D2RHUD]** come from reading locbones/D2RHUD-2.4 (`d2rhud/plugin/CubeMapLayouts.inl` and
+`CubeMapLayoutNative.h`), which rebuilds a level with a new seed. It has no license: no code is copied, only facts and
+the approach. Its RVAs are from another D2R build (its AllocateLevel is 0x3ec bytes, ours `0x3267c0` is 0x1e8), so
+its functions are matched to ours by signature and behaviour, not by address. Where a fact could be checked in our
+93847 project, the text says so.
 
 ## Verdict
 
 | Builder | Steer to a graph? | How |
 |---|---|---|
 | **Maze** (indoor: caves, crypts, sewers, tombs, jail, catacombs, temples, ice caves, ...) | **Yes** | Replace the room walk `0x3e96d0` for the slot level. D2R's own room placer (`0x3e77a0`) places each graph cell and D2R's own piece picker (`0x3eb960`) gives it the piece whose exits match the cell, by construction. Steer the entrance/exit placer `0x3eb850` onto the graph's ends. Tileset, room size and merge chance are per-level fields: no shared record is written. A prototype is on branch `spike/cartographer-steer-proto` (see "Prototype"). |
-| **Outdoor**, all acts (wilderness, desert, jungle, Kurast, act 4 plains, act 5 siege) | **No** with D2R's builders; **partly** with our own placement on D2R's primitives | Every outdoor builder is a hand-written routine for named level ids, run on a level that act start-up placed and sized from fixed tables. A new slot level id gets no size, no position and an empty builder. On top of that, D2RLoader's D2RCore replaces the outdoor entry point and five of its helpers. What could work: stamp LvlPrest pieces on the slot's 8x8-tile cell grid ourselves with D2R's cell stamp `0x3ecfc0` and let D2R turn the grid into rooms (`0x3ee780`). That is a small generator of our own (decision D5), so outdoor maps use their `fallback` preset for now. |
+| **Outdoor**, all acts (wilderness, desert, jungle, Kurast, act 4 plains, act 5 siege) | **No** with D2R's builders; **partly** with our own placement on D2R's primitives | Every outdoor builder is a hand-written routine for named level ids, run on a level that act start-up placed and sized from fixed tables. A new slot level id gets no size, no position and an empty builder. On top of that, D2RLoader's D2RCore replaces the outdoor entry point and five of its helpers. What could work: stamp LvlPrest pieces on the slot's 8x8-tile cell grid ourselves with D2R's cell stamp `0x3ecfc0` and let D2R turn the grid into rooms (`0x3ee780`). That is a small generator of our own (decision D5), so outdoor maps use their `fallback` preset for now. Two narrower routes exist (3.7, [D2RHUD]): an outdoor level that act start-up already placed can be rebuilt with a new seed by keeping its rectangle, border links and jungle blocks, and the act 3 jungle route (levels 76-78) is an int array we can write before the build. |
 | **Preset** (`drlg = preset`) | not needed | One fixed DS1 per build; the file is picked from LvlPrest `Files` with the level seed. |
 
 ## 1. Where the level allocator reads its tables
@@ -290,6 +295,8 @@ act start-up placed. A slot level id is not.
 
 ### 3.6 Answer: no, partly with our own placement
 
+(Section 3.7 adds two narrower routes; this answer is for a new slot level id.)
+
 Outdoor layouts are open rectangles of fill and LvlSub with named pieces; the level's place, size and neighbours come
 from act start-up tables, and every builder is a switch on vanilla level ids. A graph cannot be fed to any of them.
 The workable route (later, D5) is a builder of our own for the slot level that uses D2R's primitives:
@@ -302,6 +309,37 @@ The workable route (later, D5) is a builder of our own for the slot level that u
 That skips D2RCore's `GenerateOutdoorLevel` only if Cartographer replaces the outdoor dispatch for its slot (the
 D2RLoader stub in `0x3271c0`), which needs care with D2RLoader. Until then, outdoor maps use their `fallback` preset,
 as the plan says.
+
+### 3.7 Rebuilding an outdoor level that act start-up placed [D2RHUD]
+
+D2RHUD-2.4 rebuilds a level of the running game with a new seed (its "cube map layouts"). For outdoor levels this
+shows which state belongs to act start-up and must be carried over:
+
+- **A fresh AllocateLevel does not run act placement** (D2RHUD's comment). To rebuild, it allocates a new record and
+  moves the act's choices from the old one: the rectangle (+0x24..+0x33), the flags (+4), the jungle count and blocks
+  (+0x1d0, +0x1d8), and the neighbour link list at grid block +0x338, clearing bits 0x60 ("generated") of the grid
+  block's first word. Checked in our project: `0x3ee320` passes grid block +0x338 to the outline builder, and
+  `0x3fbd10` walks it as nodes {neighbour level at +0, side at +8, next at +0x20}. It then points every neighbour's
+  link node (and the room links) from the old record to the new one.
+- **The seed is changed by writing `drlg+0x860` only around the level's AllocateLevel and build, then restoring it**,
+  which is the "Seed field shared by the act" mitigation under Risks. Level seed = `drlg+0x860 + level id` matches 1.
+- **Act 3 jungle.** For levels 76-78 with drlgType 3, `level+0x1d8` is `width x height` ints (block ids), with width
+  = LevelDefs SizeX / 32 = 2 and height 4-16 (LevelDefs record stride 0x9c, SizeX at +0xc + difficulty * 4, SizeY at
+  +0x18 + difficulty * 4; our `0x327650` reads the same fields). D2RHUD keeps the act's original array as a template,
+  writes its own re-rolled array before the build, and notes that D2R's build with another seed varies only the
+  preset files, never the jungle route. So the jungle route **can be steered**: write the block array before
+  `0x3271c0` (blocks must still connect at their edges).
+- **Limits**, in D2RHUD's own words, roughly: D2R's outdoor connections and fixed presets still constrain the layouts.
+  The level must already be placed by act start-up, so a new slot level id still gets nothing (3.2).
+- **Client**: the host sends `{level, seed}` in a message of its own; the client frees its copy of the level and
+  rebuilds it with the same hooks, which confirms section 4 (`{map id, seed}` is enough).
+- **For #927 (rebuild a live level):** room neighbour lists are cached across level boundaries (room +0x10/+0x18, a
+  tile list at +0x78) and must be emptied on rooms of other levels that point into the retired one, and the old
+  record is kept, unlinked from `drlg+0x868`, until act teardown, because other code still holds pointers to it.
+
+Effect on the verdict: outdoor steering stays "partly", but the jungle route of 76-78 is a cheap, real target (a
+graph of 32x32 blocks), and a placed outdoor level can be re-rolled with a map seed without touching act start-up.
+Whether these go through D2RCore's `GenerateOutdoorLevel` (3.0) is still unchecked on our install.
 
 ## 4. What a client needs to rebuild the same layout
 
@@ -318,7 +356,7 @@ The client builds its own DRLG: the act allocator `0x2ef1c0` is called by the ho
 | Cartographer's overrides | tileset (+0x1e0), private LvlMaze row (+0x18), size (+0x24..+0x30), the graph | **Not** in any D2R message. The client derives them from `{map id, seed}`: the graph generator must be pure and deterministic, so it runs on the client too. |
 | Build order | | The level seed is drawn in order by every room, piece file and variant: client and host must run the same hook code (same plugin version, `Shared` flag). |
 
-So `{map id, seed}` is enough, as the plan says, if the graph is a pure function of them and the map row. The client
+So `{map id, seed}` is enough, as the plan says (D2RHUD's re-roll sends exactly a level and a seed, 3.7), if the graph is a pure function of them and the map row. The client
 also needs the level rebuilt in its own DRLG, which is phase 1's question (#927).
 
 The client preloads tile files per act: `0x86bc0` adds the DT1 files of every LvlTypes row whose `Act` is the
