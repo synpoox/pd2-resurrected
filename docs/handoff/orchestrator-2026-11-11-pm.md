@@ -32,11 +32,29 @@ It covers one new workstream, **Cartographer**: a standalone map-system plugin f
 
 The release is gated on a **novice test** (plan §3.0 and phase 8).
 
+**Author-side decisions (owner, 2026-11-11 late).** These are all in plan §3:
+
+- **The tileset decides the builder.** Authors never choose indoor or outdoor.
+  - Each built-in tileset name is tagged maze or outdoor in the shipped catalogue: `Cave` builds a maze, `Jungle` builds outdoor.
+  - An option-C piece set inherits the builder of its `Base` tileset.
+- **Shapes:** `Corridor`, `Winding`, `Branching`, `Loop` and `Sprawl`. The numbers behind each are hidden from authors; experts can override them in `shapes.txt`.
+- **`mapstats.txt`** is one shared pool of properties, with columns `Target` (Monsters/Players), `Stat`, `Min`, `Max` and `Weight`.
+  - Every map draws **6** properties. That is the default in `cartographer.txt`; a map overrides it with a `Properties` column.
+  - A property's text comes from the game's itemstatcost stat description.
+  - Area effects are fixed per map, as the `maps.txt` columns `Density`, `Champions` and `Uniques`. That split was the session's call, not the owner's; confirm it with the owner if it matters.
+- **`mapevents.txt`.** Each map has a **20%** event chance (`EventChance`). Five generic, hardcoded kinds: `Boss`, `Ambush`, `Horde`, `Treasure` and `Shrine`. Everything else about an event is data. Scripted PD2-style events are out of scope.
+- **Maze authoring options** (§3.6):
+  - **A.** Pick a built-in tileset.
+  - **B.** Add DS1 variants. These also show in vanilla levels of that tileset.
+  - **C.** A private 15-piece set through `tilesets.txt` (`Name`, `Base`, `First`), which needs a piece-picker hook on `0x3eb960` for the slot level.
+- **Test commands:** `cartographer check` and `cartographer open <Name>`.
+- **The worked example** in §3.5a (Shorelines = Jungle/Corridor, Tunneling Depths = Cave/Loop) is the README's acceptance case.
+
 **Out of scope.** PD2-Resurrected does **not** migrate to Cartographer, and core-maps stays. Cartographer and core-maps are never loaded together. There is no content interface for other plugins. Maps are not erased or rebuilt within a game.
 
 ## 3. State at handoff
 
-**main** is **97489f6**. No Cartographer code is on main.
+**main** is **97489f6**. No Cartographer code is on main. The plans' latest commit on `docs/map-kit-plan` is **866c3dd**.
 
 **Every game slot is free** (2–11, checked 2026-11-11 late). No agents are running from this session.
 
@@ -66,11 +84,11 @@ None of these issues is open yet. File each one first, as a sub-issue of a new e
 
 | Worker | Issue to open | Owns (files) | Needs game? | Needs Ghidra? | Done when |
 |---|---|---|---|---|---|
-| A | Phase 1 skeleton | `plugin/cartographer/` (not `layout/`), and `plugin/CMakeLists.txt` | Yes, at the end | Little | A 3-cell `maps.txt` opens a built-in preset map; a typo gives a plain-English error in `cartographer-report.txt` and `cartographer check`; a second open is refused |
-| B | Phase 2 layout graph | `plugin/cartographer/layout/`, `tests/cartographer/` (its own CMake; **don't edit `plugin/CMakeLists.txt`**) | No | No | 10k seeds per shape preset meet their rules; pure C++ with no engine headers; deterministic PCG/splitmix |
+| A | Phase 1 skeleton | `plugin/cartographer/` (not `layout/`), and `plugin/CMakeLists.txt` | Yes, at the end | Little | A 3-cell `maps.txt` opens a built-in preset map through the item and through `cartographer open <Name>`; a typo gives a plain-English error in `cartographer-report.txt` and `cartographer check`; a second open is refused; `cartographer.txt` defaults are 6 properties and 20% events |
+| B | Phase 2 layout graph | `plugin/cartographer/layout/`, `tests/cartographer/` (its own CMake; **don't edit `plugin/CMakeLists.txt`**) | No | No | 10k seeds per shape preset (all five, `Loop` included) meet their rules; pure C++ with no engine headers; deterministic PCG/splitmix |
 | C | Outdoor S0 probe + S1 jungle spike | spike branch only, `plugin/cartographer-outdoor-spike/`, not merged; findings in `docs/research/cartographer-outdoor-s1.md` | Yes | Yes | The outdoor plan's S0 and S1 "done when" are met, and river-or-path is answered |
 | D | Tileset catalogue tool | `tools/cartographer/` | No | No | Masks generated from `lvlprest.txt` and DS1s match the hand-checked masks for 530–604 (outdoor plan §3 phase 3) |
-| E | Phase 0 docs | `docs/adr/`, `GLOSSARY.md`, `docs/cartographer/` (README and table-reference drafts) | No | No | ADR merged (standalone, never loaded with core-maps, one map per game, simplicity rules); the README draft "Your first map in 5 minutes" follows plan §3 |
+| E | Phase 0 docs | `docs/adr/`, `GLOSSARY.md`, `docs/cartographer/` (README and table-reference drafts) | No | No | ADR merged (standalone, never loaded with core-maps, one map per game, simplicity rules); the README draft "Your first map in 5 minutes" follows plan §3 and uses the §3.5a example |
 
 **What each brief must say** (on top of the skill's rules):
 - Read `docs/plans/cartographer-plugin.md`, from `git show origin/docs/map-kit-plan:<path>`.
@@ -85,7 +103,7 @@ None of these issues is open yet. File each one first, as a sub-issue of a new e
 - **One Ghidra headless query at a time** per project (project lock). Only C, and a little of A, use it.
 
 **Wave 2, after A and B merge:**
-- phase 3, guided maze (needs A, plus the steer prototype);
+- phase 3, guided maze (needs A, plus the steer prototype). This includes `Loop`, which links the graph's loop edges with `0x360bb0`, and the option-C piece-set hook;
 - phase 4, the outdoor builder (needs A, B, C and D);
 - phase 5, map stats (needs A);
 - phase 6, map events (needs A).
