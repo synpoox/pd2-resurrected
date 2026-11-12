@@ -112,3 +112,12 @@ target_link_libraries(core_ui PRIVATE core_common)
 target_compile_definitions(core_ui PRIVATE CORE_PLUGIN_NAME="core-ui" CORE_PLUGIN_VERSION="${CORE_UI_VERSION}")
 set_target_properties(core_ui PROPERTIES OUTPUT_NAME "core-ui")
 core_options(core_ui)
+
+# Cartographer spike (#927): a standalone test build, plugin_common + PluginSDK only (no common/pd2_engine.h).
+add_library(cartographer_spike SHARED
+	cartographer-spike/plugin.cpp
+	cartographer-spike/plugin.rc
+)
+target_link_libraries(cartographer_spike PRIVATE plugin_common)
+set_target_properties(cartographer_spike PROPERTIES OUTPUT_NAME "cartographer-spike")
+core_options(cartographer_spike)
