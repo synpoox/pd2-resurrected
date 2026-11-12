@@ -143,6 +143,30 @@ _Avoid_: map mod, map affix (an affix is how a map stat rolls)
 A random happening inside a map area, such as a boss, a portal, a shop or a timed lair, rolled when the area opens.
 _Avoid_: map-event notification (cut; the events are not)
 
+**Cartographer**:
+The standalone D2RLoader plugin that opens procedurally laid-out maps from a mod author's `maps.txt`. It shares no code with `core-maps` and is never loaded with it ([ADR 0006](docs/adr/0006-cartographer-standalone.md)).
+_Avoid_: map plugin, map kit
+
+**Map record**:
+One row of Cartographer's `maps.txt`: a map's name, tileset, shape and optional settings. Not the game's own per-game map state.
+_Avoid_: map definition, map entry
+
+**Slot level**:
+One of Cartographer's own Act 5 levels with no links. A map is built in one, so a mod author never edits `levels.txt`.
+_Avoid_: map level, spare level
+
+**Layout graph**:
+The plan of a map's rooms and how they connect, solved from its shape and size before the level is built. The level is then built to follow it.
+_Avoid_: map layout, room list
+
+**Tileset**:
+In Cartographer, the one set of room pieces a map is built from, named in plain words such as `Cave` or `Jungle`. It decides whether the map is a maze or outdoor.
+_Avoid_: level type, theme
+
+**Shape**:
+In Cartographer, the feel of a map's path: `Corridor`, `Winding`, `Branching`, `Loop` or `Sprawl`. It decides the layout graph.
+_Avoid_: layout type, pattern
+
 **Invader**:
 A monster that plays a PD2 class, coming out of portals in the Corrupted Heroes map event.
 _Avoid_: corrupted hero, PK
