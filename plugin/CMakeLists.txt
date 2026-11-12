@@ -112,3 +112,12 @@ target_link_libraries(core_ui PRIVATE core_common)
 target_compile_definitions(core_ui PRIVATE CORE_PLUGIN_NAME="core-ui" CORE_PLUGIN_VERSION="${CORE_UI_VERSION}")
 set_target_properties(core_ui PROPERTIES OUTPUT_NAME "core-ui")
 core_options(core_ui)
+
+# Cartographer DRLG steering spike (#928): throwaway prototype, standalone (plugin_common + SDK only). Not for merge.
+add_library(cartographer_steer_spike SHARED
+	cartographer-steer-spike/plugin.cpp
+	cartographer-steer-spike/plugin.rc
+)
+target_link_libraries(cartographer_steer_spike PRIVATE plugin_common)
+set_target_properties(cartographer_steer_spike PROPERTIES OUTPUT_NAME "cartographer-steer-spike")
+core_options(cartographer_steer_spike)
