@@ -90,6 +90,14 @@ add_library(core_maps SHARED
 	core-maps/event_portals.cpp
 	core-maps/uber_scaling.cpp
 	core-maps/uber_drops.cpp
+	core-maps/almanac.cpp
+	core-maps/corruption_roll.cpp
+	core-maps/map_deaths.cpp
+	core-maps/open_gate.cpp
+	core-maps/tc_roll.cpp
+	core-maps/uber_deaths.cpp
+	core-maps/uber_entry.cpp
+	core-maps/unique_map_drops.cpp
 	core-maps/plugin.rc
 )
 target_link_libraries(core_maps PRIVATE core_common)

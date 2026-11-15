@@ -11,11 +11,10 @@
 #include "key_drops.h"
 
 #include "log.h"
-#include "map_stats.h"
-#include "rathma.h"
-#include "uber_tristram.h"
-#include "uber_drops.h"
+#include "death_steps.h"
+#include "tc_roll.h"
 #include "unique_maps.h"
+#include "unique_map_drops.h"
 
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle_events.h>
@@ -48,53 +47,9 @@ constexpr KeyRoll Rolls[] = {
 constexpr int RollCount = static_cast<int>(sizeof(Rolls) / sizeof(Rolls[0]));
 
 constexpr int32_t FirstRedPortal = 125, LastRedPortal = 127;  // Abaddon, the Pit of Acheron, the Infernal Pit
-constexpr int32_t FirstMapLevel = 138, LastMapLevel = 201;  // PD2's map-area test 0x1037c510, port ids
 
-// PD2's 0x10375ee0: N of the 1-in-N roll; 0 means no drop. More than 8 players counts as 1.
-constexpr auto Odds(int32_t unique, int32_t set, int32_t players) noexcept -> int64_t {
-	if (players > 1 && players <= 8) {
-		unique = unique * (127 - 2 * (players - 1)) / 127;
-	}
-	return static_cast<int64_t>(unique) * (set > 1 ? set : 1);
-}
-static_assert(Odds(2250, 10, 1) == 22500);      // Jawbone, Hell
-static_assert(Odds(1000, 1000, 1) == 1000000);  // Demonic Cube, Hell
-static_assert(Odds(200, 0, 1) == 200);          // Worldstone Shard
-static_assert(Odds(127, 1, 2) == 125);
-static_assert(Odds(127, 1, 9) == 127);
-static_assert(Odds(0, 10, 1) == 0);
-
-// PD2's 0x10381510: the eight unique maps (rand & 7), each a unique at item level 131. Code and runtime uniqueitems row.
-struct UniqueMap {
-	uint32_t code;
-	int32_t row;
-};
-constexpr UniqueMap UniqueMaps[8] = {
-	{D2RL::Items::MakeItemCode("t51"), 469}, {D2RL::Items::MakeItemCode("t52"), 470},  // Zhar the Mad, Warlord of Blood
-	{D2RL::Items::MakeItemCode("t53"), 473}, {D2RL::Items::MakeItemCode("t55"), 490},  // Fallen Gardens, Outer Void
-	{D2RL::Items::MakeItemCode("t54"), 489}, {D2RL::Items::MakeItemCode("t56"), 509},  // Imperial Palace, Ureh City
-	{D2RL::Items::MakeItemCode("t57"), 515}, {D2RL::Items::MakeItemCode("t58"), 519},  // Djinn's Domain, Na-Krul's Abyss
-};
-constexpr int32_t UniqueMapLevel = 131;
-// PD2's boss sets 0x105deb54, 0x105dea4c, 0x105debcc and 0x105debdc (0x103760a0 +0x20/+0x28/+0x30/+0x38), port ids:
-// these roll "Unique Map MapBoss" (TC 1021) instead of "Unique Map Monsters" (1020)
-constexpr int32_t UniqueMapBosses[] = {
-	247,  248,  249,  763,  764,  767,  817,  841,  911,  932,  940,  941,  943,  944,  987,  988,
-	989,  990,  1013, 1014, 1017, 1042, 1043, 1120, 1181, 1183, 1191, 1192, 1257, 1259, 1260,
-};
-auto IsIn(int32_t id, const int32_t* ids, size_t n) noexcept -> bool {
-	for (size_t i = 0; i < n; ++i) {
-		if (ids[i] == id) {
-			return true;
-		}
-	}
-	return false;
-}
 
 std::atomic<uint32_t> g_deaths {0};
-std::atomic<uint32_t> g_uniqueMapRolls {0};
-std::atomic<uint32_t> g_uniqueMaps {0};
-std::atomic<uint32_t> g_missing {0};  // TCs or items the tables lack
 std::atomic<uint32_t> g_hits[RollCount] {};
 
 auto Applies(Where where, Game* game, const uint8_t* monstats, int32_t level) noexcept -> bool {
@@ -108,45 +63,6 @@ auto Applies(Where where, Game* game, const uint8_t* monstats, int32_t level) no
 	case Where::Any: return true;
 	}
 	return false;
-}
-
-auto TcOdds(uint8_t dataFlag, const char* name, int32_t players) noexcept -> int64_t {
-	using namespace d2r::rva;
-	const uint8_t* tables = d2r::Engine<const uint8_t* (*)(uint8_t) noexcept>(DataTablesOf)(dataFlag);
-	if (tables == nullptr) {
-		return 0;
-	}
-	const int32_t index = d2r::Engine<int32_t (*)(void*, const char*, int32_t) noexcept>(TcIndexByName)(
-		At<void*>(tables, TablesTcNames), name, 0);
-	const uint8_t* tc =
-		index > 0 ? d2r::Engine<const uint8_t* (*)(uint8_t, uint16_t, int32_t) noexcept>(TcRecord)(
-						dataFlag, static_cast<uint16_t>(index), 0)
-				  : nullptr;
-	if (tc == nullptr) {
-		if (plog::Sample(g_missing)) {
-			plog::Warn("key drops: no TC \"%s\" (%u so far)", name, g_missing.load());
-		}
-		return 0;
-	}
-	return Odds(At<uint16_t>(tc, TcUnique), At<uint16_t>(tc, TcSet), players);
-}
-
-// PD2 0x103799d0's unique map roll: in a map area, 1 in N of TC 1020 (1021 for a map boss), N divided by `mult`
-void RollUniqueMap(Game* game, Unit* monster, int32_t level, int32_t players, int64_t mult, uint32_t* seed) noexcept {
-	if (level < FirstMapLevel || level > LastMapLevel) {
-		return;
-	}
-	const int32_t classId = At<int32_t>(monster, d2r::rva::UnitClassId);
-	const bool boss = IsIn(classId, UniqueMapBosses, sizeof(UniqueMapBosses) / sizeof(UniqueMapBosses[0]));
-	const char* tc = boss ? "Unique Map MapBoss" : "Unique Map Monsters";
-	const int64_t odds = TcOdds(static_cast<uint8_t>(d2r::DataFlag(game)), tc, players);
-	if (plog::Sample(g_uniqueMapRolls)) {
-		plog::Info("unique maps: monster %d in level %d rolls TC \"%s\" 1 in %lld x%lld (%u rolls)", classId, level, tc, odds,
-		           mult, g_uniqueMapRolls.load());
-	}
-	if (odds > 0 && odds <= 0xffffffffLL && d2r::RandomBelow(seed, static_cast<uint32_t>(odds)) < mult) {
-		DropUniqueMap(game, monster);
-	}
 }
 
 void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::MonsterDeathEvent* event,
@@ -174,25 +90,15 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 		return;
 	}
 	g_deaths.fetch_add(1, std::memory_order_relaxed);
-	RathmaDeath(game, monster);
-	TristramDeath(game, monster);
-	UniqueMapDeath(game, monster);
+	UberDeathEarly(game, monster);
+	MapDeathEarly(game, monster);
 	const uint32_t difficulty = event->difficulty < 3 ? event->difficulty : 2;
 	const int32_t players = d2r::Engine<int32_t (*)(Game*) noexcept>(PlayerCount)(game);
-	const int64_t mult = MapRollMultiplier(monster);  // 1 for a map boss (0x103760a0's +0x48 sets)
+	const int64_t mult = MapDeathMultiplier(monster);  // 1 for a map boss (0x103760a0's +0x48 sets)
 	auto* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(monster);
-	UberDeathDrops(game, monster, seed);
-	RollUniqueMap(game, monster, event->levelId, players, mult, seed);
-	// The drop's killer (its quest test and magic find): a missile counts as its owner, as for D2R's own drop
-	using D2RL::Lifecycle::UnitType;
-	Unit* killer = event->killer.type != UnitType::Invalid
-	                   ? d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(
-	                         game, static_cast<int32_t>(event->killer.type), event->killer.id)
-	                   : nullptr;
-	if (killer != nullptr && event->killer.type == UnitType::Missile) {
-		killer = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, killer);
-	}
-	MapDeathDrops(game, monster, killer, seed);
+	const DeathContext death {game, monster, event, players, mult, seed};
+	UberDeathLate(death);
+	MapDeathLate(death);
 	for (int i = 0; i < RollCount; ++i) {
 		const KeyRoll& r = Rolls[i];
 		if (!Applies(r.where, game, monstats, event->levelId)) {
@@ -204,8 +110,8 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 		}
 		const int32_t row = d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(dataFlag, r.code);
 		if (row < 0) {
-			if (plog::Sample(g_missing)) {
-				plog::Warn("key drops: no item \"%.4s\" (%u so far)", reinterpret_cast<const char*>(&r.code), g_missing.load());
+			if (plog::Sample(g_tcMissing)) {
+				plog::Warn("key drops: no item \"%.4s\" (%u so far)", reinterpret_cast<const char*>(&r.code), g_tcMissing.load());
 			}
 			continue;
 		}
@@ -219,17 +125,6 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 }
 
 }  // namespace
-
-auto DropUniqueMap(Game* game, Unit* monster) noexcept -> void {
-	auto* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(d2r::rva::UnitSeed)(monster);
-	const UniqueMap& u = UniqueMaps[d2r::RandomBelow(seed, 8)];
-	// PD2's 0x1037ff30(game, unique, 0): clear the unique's dropped bit, so a second one in this game drops unique too
-	reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(game) + d2r::rva::GameUniquesDropped)[u.row >> 5] &=
-		~(1u << (u.row & 31));
-	if (DropUniqueAt(game, monster, u.code, u.row, UniqueMapLevel)) {
-		plog::Info("unique maps: %.4s dropped (%u so far)", reinterpret_cast<const char*>(&u.code), ++g_uniqueMaps);
-	}
-}
 
 auto InstallKeyDrops(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	const D2RL::LifecycleService* lifecycle = nullptr;
@@ -256,7 +151,7 @@ auto InstallKeyDrops(const D2RL::PluginContext* context, char* report, size_t re
 
 auto KeyDropsCounters(char* out, size_t size) noexcept -> void {
 	int n = std::snprintf(out, size, "key drops: %u deaths, unique maps %u of %u rolls", g_deaths.load(),
-	                      g_uniqueMaps.load(), g_uniqueMapRolls.load());
+	                      UniqueMapsDropped(), UniqueMapRolls());
 	for (int i = 0; i < RollCount && n > 0 && static_cast<size_t>(n) < size; ++i) {
 		n += std::snprintf(out + n, size - n, ", %.4s %u", reinterpret_cast<const char*>(&Rolls[i].code),
 		                   g_hits[i].load());
