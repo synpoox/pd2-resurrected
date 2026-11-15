@@ -463,6 +463,8 @@ auto OperateAltar(ObjectOperate* args) noexcept -> int32_t {
 	return 0;
 }
 
+std::atomic<int32_t> g_forceNext {0};
+
 // The roll for a tiered map of `quality` (rva::Quality*), `forced` by a Catalyst Shard's marker
 auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept -> void {
 	int32_t event = pd2::event_roll::Pick(quality, forced, Rand);
@@ -474,11 +476,14 @@ auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept
 		return e > NoEvent && e <= Tomb && NotifyKey(e) != nullptr ? e : 0;
 	}();
 	event = testEvent != 0 ? testEvent : event;
+	// The console command `core-maps event` (#998): one shot, for the next map rolled
+	const int32_t forcedEvent = g_forceNext.exchange(0);
+	event = forcedEvent != 0 ? forcedEvent : event;
 	Set(game, EventKey, event);
 	Set(game, SpawnsKey, 0);
 	++g_rolled[event - NoEvent];
 	plog::Info("map events: level %d (quality %d%s) rolled event %d (%u rolls)", level, quality,
-	           testEvent != 0 ? ", PD2R_MAP_EVENT" : forced ? ", forced" : "", event, ++g_rolls);
+	           forcedEvent != 0 ? ", console event" : testEvent != 0 ? ", PD2R_MAP_EVENT" : forced ? ", forced" : "", event, ++g_rolls);
 }
 
 // A native map's first room: the game has no event yet (Cartographer allows one map per game), so roll it from the map
@@ -486,8 +491,8 @@ auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept
 // item interaction listener never fired for a right-click (almanac.cpp), so the use-item handler's entry keeps the
 // item's quality and forcing marker (0x4f40c0 (game, player, packet): the packet holds the item's id at +10, the same
 // message Cartographer's spell 16 answers). Without a map use (a map opened another way) it rolls as a normal map.
-// shortcut: only the codes listed here count as maps; lane A adds a code with each map row it clones from m01
-const uint32_t NativeMapCodes[] = {D2RL::Items::MakeItemCode("m01")};
+// A native map is any item of the Cartographer map type cmap (merge/ids-itemtypes.tsv, docs/cartographer-contracts.md)
+constexpr int32_t MapItemType = 245;
 std::atomic<int32_t> g_usedQuality {0};  // 0 none; else the D2R quality of the map item used last
 std::atomic<bool> g_usedForced {false};
 using UseItemFn = void (*)(Game*, Unit*, uint8_t*, char) noexcept;
@@ -500,8 +505,7 @@ auto OnUseItem(Game* game, Unit* player, uint8_t* packet, char flag) noexcept ->
 	Unit* item = game != nullptr && packet != nullptr
 	                 ? d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, UnitItem, At<int32_t>(packet, 10))
 	                 : nullptr;
-	const uint32_t code = item != nullptr ? d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(item) : 0;
-	if (std::find(std::begin(NativeMapCodes), std::end(NativeMapCodes), code) != std::end(NativeMapCodes)) {
+	if (item != nullptr && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, MapItemType) != 0) {
 		g_usedQuality = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item);
 		// the isolated forcing marker is stat 553 on layer 1 only (event_link.h); a layer-0 553 is a player buff
 		g_usedForced = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatForceEvent,
@@ -743,4 +747,17 @@ auto MapEventsCounters(char* out, size_t size) noexcept -> void {
 		std::snprintf(out + n, size - n, "), %u rooms activated, %u spawned, %u without a spot, %u notified", g_rooms.load(),
 		              g_spawned.load(), g_noSpot.load(), g_notified.load());
 	}
+}
+
+auto ForceNextMapEvent(const char* name) noexcept -> bool {
+	static constexpr struct { const char* word; int32_t event; } Names[] = {
+		{"off", 0}, {"wanderer", DarkWanderer}, {"mendeln", Mendeln}, {"treasure", TreasureFallen}, {"gheed", Gheed},
+	};
+	for (const auto& n : Names) {
+		if (std::strcmp(name, n.word) == 0) {
+			g_forceNext = n.event;
+			return true;
+		}
+	}
+	return false;
 }

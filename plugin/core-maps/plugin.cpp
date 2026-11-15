@@ -12,6 +12,7 @@
 #include "crash_guard.h"
 #include "entity_pool.h"
 #include "log.h"
+#include "map_events.h"
 #include "off_switch.h"
 #include "parts.h"
 #include "pd2_engine.h"
@@ -98,6 +99,14 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 		command->plugin->WriteConsoleMessage(line);
 		plog::Info("%s", line);
 		return D2RL::ConsoleCommandResult::Handled;
+	}
+	if (args != nullptr && std::strncmp(args, "event ", 6) == 0) {
+		const bool ok = ForceNextMapEvent(args + 6);
+		std::snprintf(line, sizeof(line), ok ? "%s: the next map rolls event %s" : "%s: usage: %s event wanderer|mendeln|treasure|gheed|off",
+		              PluginName, ok ? args + 6 : PluginName);
+		command->plugin->WriteConsoleMessage(line);
+		plog::Info("%s", line);
+		return ok ? D2RL::ConsoleCommandResult::Handled : D2RL::ConsoleCommandResult::Failed;
 	}
 	char image[200];
 	build_guard::Describe(image, sizeof(image), build_guard::ImageStamp(static_cast<uintptr_t>(g_context->exeBase)), D2RL::GetBuildVersion(g_context));
