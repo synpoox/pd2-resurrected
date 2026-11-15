@@ -25,5 +25,5 @@ Deviations seen (not caused by this PR, not fixed here):
 - `cartographer-report.txt` warns "core-maps is loaded next to Cartographer ... cannot be used together". Both load in the slot; map opening still worked. Belongs to the shared checkpoint (#959).
 - Item tooltip says "+16% Monster Speed", the in-map text says "+16% Movement Speed": synpoox/d2r-tools#483.
 - `EventChance` 0 with the forced core-maps event is by design (#999): the log says "event ... chance 0%: none" while core-maps rolls its own event.
-- Frostbitten Fields: the arrival spot sat on a wall segment (`m05-arr-a`) while the Shape cell of `maps.txt` was empty (log: "Snow  Medium"). Fixed here by setting `Winding` like the other maps; the next arrival was on open ground (`m05-arr-b`). One seed each, so the arrival rooms differ and the cause is not proven.
+- Frostbitten Fields (Snow): the arrival put the portal and player against a wall (`m05-arr-a`); another seed arrived on open ground (`m05-arr-b`). Shape is ignored for Snow, so the blank Shape cell is not the cause; it is Cartographer's Snow planner or arrival placement: synpoox/d2r-tools#484.
 - `plugin/common/pd2_engine.h` redefines RVAs the current d2rAI-toolkit (`rvas_93847/tables.h`) now holds, so `plugin/build.ps1` fails against a current toolkit. The check built with `D2R_TOOLKIT=d2rAI-toolkit-669f42a`. Needs a shared-file sync.
