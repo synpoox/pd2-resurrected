@@ -29,9 +29,9 @@ The per-check recipe (cheats, shots, images, unlock) is `docs/agents/game-check.
    still has known validation errors). modkit install refuses a slot, so `install.ps1` installs a slot's data through
    the toolkit's `testing/slot_install.py`, which keeps the slot's own savepath and needs the lock held by `MODKIT_RUN`.
    The shared cache below makes the extract and merge near-instant when another worktree already ran them.
-   `install.ps1` leaves only our plugins in `<slot>\d2rloader\plugins` (`core-rules.dll`, `core-maps.dll`, `core-ui.dll`,
+   `install.ps1` leaves only our plugins in `<slot>\d2rloader\plugins` (`core-rules.dll`, `core-maps.dll`, `core-ui.dll`, `cartographer.dll`,
    `test-harness.dll`, `d2r-testharness-console.txt`): it moves anything else to
-   `C:\D2RTestSlots\backups\stray-plugins-<date>\Slot<N>\` and lists it. Pass `-KeepExtras` to keep a slot's extras.
+   `C:\D2RTestSlots\backups\stray-plugins-<date>\Slot<N>\` and lists it. `cartographer.dll` (required here, built in d2r-tools) is kept if the slot holds it; install does not copy it. Pass `-KeepExtras` to keep other extras.
 4. Check the installed data holds the change (the merged table row in `out/data`).
 5. For a hand test, write the slot, its lock owner and the unlock command into the game-check issue.
 6. With `MODKIT_RUN=<owner>` set, `python <toolkit>/testing/game_slots.py unlock <N> <owner>` once the test is done.
