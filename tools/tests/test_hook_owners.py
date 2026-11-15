@@ -19,8 +19,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 import pd2_ids  # noqa: E402
 
 # Engine facts live in our header and (the shared ones, e.g. CubeExecutorEntry) in the toolkit's rvas_93847 headers (#976).
+TOOLKIT_RVAS = Path(os.environ.get("D2R_TOOLKIT", pd2_ids.toolkit(ROOT))) / "shared" / "plugin-common" / "src" / "rvas_93847"
 ENGINE = (PLUGIN / "common" / "pd2_engine.h").read_text(encoding="utf-8") + "".join(
-    p.read_text(encoding="utf-8") for p in (Path(os.environ.get("D2R_TOOLKIT", pd2_ids.toolkit(ROOT))) / "shared" / "plugin-common" / "src" / "rvas_93847").glob("*.h")
+    p.read_text(encoding="utf-8") for p in TOOLKIT_RVAS.glob("*.h")
 )
 
 
@@ -39,6 +40,7 @@ def installs():
 
 def entry(name):
     m = re.search(name + r"Entry\[\]\s*=\s*\{([^}]*)\}", ENGINE)
+    assert m, f"{name}Entry not found in pd2_engine.h or the toolkit's rvas_93847 headers ({TOOLKIT_RVAS})"
     return [int(b, 16) for b in re.findall(r"0x([0-9a-f]{2})", m.group(1))]
 
 
@@ -87,6 +89,7 @@ class HookOwners(unittest.TestCase):
         text = (PLUGIN / "core-rules" / "almanac.cpp").read_text(encoding="utf-8")
         self.assertIn("where == 0 || where == d2r::rva::CubePageCube", text)
 
+    @unittest.skipUnless(TOOLKIT_RVAS.is_dir(), "d2rAI-toolkit not found (set D2R_TOOLKIT)")
     def test_signatures_row_turns_off_only_cartographers_cube_stamping(self):
         rows = [r.split("\t") for r in (ROOT / "companions" / "cartographer" / "signatures.txt").read_text(encoding="utf-8").splitlines()]
         self.assertEqual(rows[0], ["Part", "Signature"])

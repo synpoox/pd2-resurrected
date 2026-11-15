@@ -17,7 +17,7 @@
 namespace d2r::rva {
 
 // --- Tables -------------------------------------------------------------------------------------------------------
-// D2R's own slots PD2's rules call through (Find Potion / Find Item start, the plain melee do function)
+// D2R's own slot PD2's rules call through (the Poison Dagger do function)
 inline constexpr int SrvDoPoisonDaggerSlot = 32;  // 0x55cc50: D2R's Poison Dagger do function, applies the queued hit
 
 // Charge, D2R's own: srvst 31 (0x564dc0) aims the charge path, srvdo 67 (0x5622c0) runs it and hits at the end
@@ -28,9 +28,7 @@ inline constexpr int SrvStVanillaCharge = 31, SrvDoVanillaCharge = 67;
 inline constexpr int MissileCallbackMaker = 1;
 inline constexpr int AuraEventRevive = 32;
 
-
 inline constexpr uint16_t CollisionMissile = 0x806;  // PD2's fragment tests this mask
-
 
 // Assassin charge-up finishers (W29, docs/research/w29-assassin-finishers.md)
 inline constexpr int SrvDoChargeUpSlot = 34;  // 0x570a70: target, roll, queue the hit, AddCharge if it hits, apply
@@ -38,56 +36,32 @@ inline constexpr int SrvDoChargeUpSlot = 34;  // 0x570a70: target, roll, queue t
 // (game, unit, target, &damage, srcdam): weapon damage at srcdam / 128, queued on the unit for target
 inline constexpr uint64_t QueueMeleeHit = 0x44b600;
 inline constexpr uint64_t ApplyQueuedHit = 0x44b2b0;  // (game, unit, target, 0, 1)
-// D2R's own do slots PD2's PoisonEggSpawn calls: Nova's and MaggotEgg's
+// D2R's own Nova do (srvdo) and client do (cltdo) slots PD2's PoisonEggSpawn calls
 inline constexpr int SrvDoVanillaNova = 22, CltDoVanillaNova = 25;
 
-
 // --- Offsets ------------------------------------------------------------------------------------------------------
-
-
-// Monster Leap and Charge read Run, not Velocity: PD2's leap (0x103b1300) reads 1.13c +0x34 (D2Common's table
-// 0x6fdaaa40: Velocity 0x32, Run 0x34), and D2R's own Charge starts (0x564dc0, 0x22e1a0) read +0x6a
-
 
 // Cold length (1.13c's 0x30) and hit class (1.13c's 0x64), as ElementalDamage (0x437d00) and Hunger (0x576630) fill
 // them
 inline constexpr int DamageColdLength = 0x118;
 inline constexpr int DamageHitClass = 0x144;  // uint32; D2R's Static Field ORs 0xd into it (0x4d, as PD2's)
 
-
 inline constexpr int SkPetMax = 0x114;   // int32 petmax (calc index), which srvdo 119 hands the pet add
 
 }  // namespace d2r::rva
 
-namespace d2r {
-
-
-}  // namespace d2r
-
-// --- Item rules: Ormus' Robes' property (docs/research/p12-ormus-robes.md) ------------------------------------------
 namespace d2r::rva {
 
 inline constexpr int NpcMenuTyrael = 0x15;  // Tyrael's record (monster 367, tyrael2), as NpcMenuOpen picks it
 inline constexpr int NpcTableTyrael = 30;
 inline constexpr uint16_t MonTyrael2 = 0x16f;
 
-
-// --- Item rules: curse resistance and max curses (docs/research/ir4-curses.md) ------------------------------------
-
-
-// --- Item rules: skill while equipped and phasing (docs/research/ir7-equipped-items.md) ---------------------------
-
-
 // --- Cube (D2Game\src\Player\PlrTrade.cpp; core-maps' op 30) --------------------------------------------------------
-
 
 inline constexpr uint8_t CubeNumInputsJumpD2R[] = {0x0f, 0x85, 0xbd, 0x06, 0x00, 0x00};
 inline constexpr uint8_t CubeNumInputsJumpOff[] = {0x66, 0x0f, 0x1f, 0x44, 0x00, 0x00};  // 6-byte nop
 
 inline constexpr uint64_t UnitXY = 0x34a110;               // (unit) -> uint32: x low 16 bits, y high 16
-
-// --- core-ui: automap for level types 36+ (LP2, #212) -------------------------------------------------------------
-
 
 // --- core-ui: HD pictures of 4-character item codes (#310, #298) ---------------------------------------------------
 
@@ -107,10 +81,7 @@ inline constexpr uint8_t SpawnCheatKeyFull[] = {0x41, 0x8b, 0x00, 0xb9, 0x20, 0x
                                                0x90, 0x90, 0x90, 0x90, 0x90};
 static_assert(sizeof(SpawnCheatKeyD2R) == sizeof(SpawnCheatKeyFull));
 
-// --- core-ui: legacy palette of the level entered (#296) -----------------------------------------------------------
-
 // --- core-maps: opening a map (MS2, #217; D2Game\src\Skills\SkillItem.cpp) ----------------------------------------
-
 
 // The unlimited books' item spells (IR5, #240; the merge's misc pSpell for rtp and rid): the Navigator's entry 17 runs
 // D2R's Town Portal; the Almanac's entry 18 is {0, 0, keep 1}, and core-maps' item spell hooks identify every inventory
@@ -126,35 +97,12 @@ inline constexpr uint64_t ItemSpellUseTable = 0x1d3ea90;
 inline constexpr int32_t AlmanacUseSlot = 14;
 inline constexpr uint64_t AlmanacUseSlotOriginal = 0x580f10;  // D2R's stub in that slot (calls 0x5d9710, returns 1)
 
-// --- core-maps: opening an uber fight (UB2, #227; D2Game\src\Game\Clients.cpp) ----------------------------------
-
 // --- core-maps: tier-0 re-entry portals and the area rules on entry (UB2, #346; D2Game\src\Objects\ObjMode.cpp) ----
 inline constexpr int ObjectOperatePortal = 60;
 // PD2's map-event altar operate 79 takes slot 35 (MS8, pd2_ids.FUNCS): D2R's null slot of the 1.09 Steeg Stone (337),
 // an object no level places
 inline constexpr int ObjectOperateAltar = 35;
 inline constexpr uint64_t RoomAt = 0x38dfb0;          // (room, x, y) -> the room near `room` holding x/y, or null
-
-
-// --- core-maps: map stats on monsters and players (MS3, #218) -----------------------------------------------------
-
-
-// --- core-maps: area map stats (MS4, #219; D2Game\src\Monster\MonsterRegion.cpp) ----------------------------------
-
-
-// --- core-maps: the drop chance area stats (MS4b, #286; D2Game\src\Items\Items.cpp) -------------------------------
-
-
-// --- core-maps: the extra boss area stat (MS4c, #289; D2Game\src\Unit\SUnit.cpp) -----------------------------------
-
-
-// --- core-maps: map events that only spawn (MS8, #222; D2Game\src\Monster\MonsterRegion.cpp) -----------------------
-
-
-// --- core-maps: engine memory pools (LP3, #213) ----------------------------------------------------------------------
-
-
-// --- core-maps: Lucion's AI (UB6, #437; D2Game\src\Ai) ----------------------------------------------------------------
 
 // --- core-maps: the key drop rule (UB2, #348) ----------------------------------------------------------------------
 inline constexpr uint64_t DataTablesOf = 0x300a90;  // (dataFlag) -> DataTables
@@ -174,23 +122,13 @@ static_assert(sizeof(PrimesDropD2R) == sizeof(PrimesDropOff));
 inline constexpr uint64_t MonsterModeBlock = 0x4471e0;
 inline constexpr uint64_t UnitTarget = 0x490300;
 inline constexpr uint64_t SetMonsterMode = 0x4475c0;
-// --- core-maps: the Outer Void's in-level portals (MS7c, #532; D2Common Drlg) -------------------------------------
-
-// --- core-maps: the Uber Tristram primes' minions (UB3, #483) -------------------------------------------------------
 
 // --- core-maps: the Temple's chests (UB6, #438; D2Game\src\Objects\ObjMode.cpp) ------------------------------------
 inline constexpr int ObjectOperateChest = 4;
 
 // --- core-rules: the ethereal bonus (IR8, #243) --------------------------------------------------------------------
 
-
 inline constexpr uint8_t WeaponDurabilityPd2[] = {2, 5};
-
-
-// --- core-rules: replenish charges (IR5, #240; D2Game\src\Items\ItemMode.cpp) --------------------------------------
-
-
-// --- core-maps: the Horazon event's portal and drops (MS9, #223; D2Game\src\Items\ItemMode.cpp, Items.cpp) ----------
 
 // --- core-maps: Rathma's stage spawns (UB5, #525; D2Common Drlg, D2Game\src\Game\Clients.cpp) -----------------------
 // Decompiled for #525 (Ghidra, D2R.gpr). Called, not hooked. How ActSpawnSpot's 0x3da650 finds and builds a room
@@ -202,17 +140,7 @@ inline constexpr int DrlgLevelRooms = 0x10;
 inline constexpr uint64_t DrlgRoomAt = 0x3275b0;    // (drlg level, tile x, tile y) -> its drlg room holding them, or null
 inline constexpr uint64_t DrlgRoomInit = 0x3289a0;  // (dataFlag, drlg room) -> the room, built if needed
 
-// --- core-maps: the map-area death drops (MS4d; D2Game\src\Monster\MonsterMode.cpp) --------------------------------
-
-// --- core-maps: the Rathma clones' shared life (UB5, #475; D2Game\src\Unit\SUnitDmg.cpp) --------------------------
-
-
 }  // namespace d2r::rva
-
-namespace d2r {
-
-
-}  // namespace d2r
 
 namespace d2r {
 
