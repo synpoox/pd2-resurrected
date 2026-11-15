@@ -1,2 +1,2 @@
 #### Fixes
-- `core-maps event spire` forces the Spire of Darkness on the next map.
+- Map events (Spire, Gheed, Mendeln and the rest) now finish on native maps.
