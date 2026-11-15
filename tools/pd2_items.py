@@ -25,6 +25,8 @@ import pd2_art
 import pd2_ids as I
 
 ITEM_TABLES = ["weapons", "armor", "misc"]
+# A PD2 item with no D2R counterpart draws this ground model, not its table's first row (misc's is a potion, #1005).
+NEUTRAL_MODEL = {"misc": "scroll/identify_scroll"}
 HD_FOLDER = {"weapons": "weapon", "armor": "armor", "misc": "misc"}  # modkit hd.item_folder, for code that runs without modkit
 # named, never numbered, and a row must come after the rows it names: PD2's rows in PD2's order, then D2R-only ones
 PD2_ORDER = {"treasureclassex"}
@@ -268,6 +270,8 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
             if r[dtab.key] in asset:
                 by_type.setdefault(r[dt], asset[r[dtab.key]])
         first = next(asset[r[dtab.key]] for r in dtab.rows if r[dtab.key] in asset)
+        if NEUTRAL_MODEL.get(t) in asset.values():
+            first = NEUTRAL_MODEL[t]
         pi, pt = ptab.header.index("invfile"), ptab.header.index("type")
         for r in ptab.rows:
             code = r[ptab.key]

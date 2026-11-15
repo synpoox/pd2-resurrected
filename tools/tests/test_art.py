@@ -161,6 +161,42 @@ class HdPictureTests(unittest.TestCase):
             items = M.hd_items(hd, pd2, d2r, [], [], {"invlps": "pd2/invlps"})["items.json"]
             self.assertEqual(items[1], {"tpls": {"asset": "pd2/invlps"}})
 
+    def test_a_new_misc_item_with_a_pd2_picture_draws_a_scroll_not_the_first_potion(self):
+        # #1005: Fortify Map (type fort, no D2R twin) took misc's first row, an elixir, as its ground model
+        with tempfile.TemporaryDirectory() as tmp:
+            hd = Path(tmp)
+            (hd / "items.json").write_text(json.dumps([{"elx": {"asset": "potion/elixir"}},
+                                                       {"isc": {"asset": "scroll/identify_scroll"}}]))
+            (hd / "uniques.json").write_text("[]")
+            (hd / "sets.json").write_text("[]")
+            pd2 = {"misc": table("name|code|type|invfile\nElixir|elx|elix|invpot\nFortify|fort|fort|invfort\n", "code")}
+            d2r = {"misc": table("name|code|type|invfile\nElixir|elx|elix|invpot\nIdentify|isc|scro|invrsc\n", "code")}
+            models = {}
+            M.hd_items(hd, pd2, d2r, [], [], {"invfort": "pd2/invfort"}, models)
+            self.assertEqual(models, {"pd2/invfort": "scroll/identify_scroll"})
+
+
+class GroundGraphicTests(unittest.TestCase):
+    GEN = Path(__file__).resolve().parents[2] / "generated" / "data"
+
+    @unittest.skipUnless((GEN / "hd" / "items" / "items.json").is_file(), "run tools/pd2_merge.py first")
+    def test_every_pd2_misc_row_has_a_ground_graphic(self):  # #1005
+        entries = {k: v["asset"] for e in json.loads((self.GEN / "hd/items/items.json").read_text("utf-8-sig"))
+                   for k, v in e.items()}
+        rows = [r.split("\t") for r in (self.GEN / "global/excel/misc.txt").read_text("utf-8", "replace").splitlines()]
+        code, typ = rows[0].index("code"), rows[0].index("type")
+        missing = []
+        for r in rows[1:]:
+            a = entries.get(r[code])
+            if not r[code]:
+                continue
+            unit = self.GEN / "hd/items/misc" / f"{a}.json"
+            # a PD2 picture's ground model is a copy of a stand-in; only a potion row may stand in as a potion
+            if a is None or (a.startswith("pd2/") and (not unit.is_file() or (
+                    "/potion/" in unit.read_text("utf-8") and not r[typ].endswith("pot")))):
+                missing.append(r[code])
+        self.assertEqual(missing, [])
+
 
 if __name__ == "__main__":
     unittest.main()
