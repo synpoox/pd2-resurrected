@@ -32,7 +32,6 @@
 #include "event_link.h"
 
 #include <D2RLPlugin/item.h>
-#include <D2RLPlugin/item_interactions.h>
 #include <D2RLPlugin/localization.h>
 
 #include <intrin.h>
@@ -59,6 +58,7 @@ constexpr auto RoomsKey(int32_t level) noexcept -> uint32_t {
 
 constexpr int32_t StatForceEvent = 553;  // map_force_event (PD2 500)
 constexpr int32_t QualityMagic = 4;  // rva::QualityNormal is 2
+constexpr int32_t UnitItem = 4;      // D2 unit type of an item
 constexpr int32_t NoEvent = 10;
 enum : int32_t {
 	Mendeln = 11, Horazon = 12, DarkWanderer = 14, TreasureFallen = 15, Spire = 16, Gheed = 18, Altar = 19,
@@ -130,6 +130,12 @@ std::atomic<uint32_t> g_arenaRooms {0};
 
 using PopulateFn = void (*)(Game* game, void* room) noexcept;
 PopulateFn g_populateOriginal = nullptr;
+PopulateFn g_activateOriginal = nullptr;
+// 0x48f190 (game, room): the first of four calls (0x48f190, 0x503790, 0x510f00, RoomPopulate) both RoomPopulate callers
+// (the per-frame room loop 0x408670 and the activation 0x4042a0) make for a room that is not active yet (0x2f0600 == 0).
+// Decompiled for #950 (Ghidra, D2R.gpr); entry bytes push rbp; push rsi; push r14; mov rbp,rsp.
+constexpr uint64_t RoomActivate = 0x48f190;
+constexpr uint8_t RoomActivateEntry[] = {0x40, 0x55, 0x56, 0x41, 0x56, 0x48, 0x8b, 0xec};
 
 std::atomic<uint32_t> g_rolls {0};
 std::atomic<uint32_t> g_rolled[12] {};  // by event - 10
@@ -198,7 +204,9 @@ auto Set(Game* game, uint32_t key, int32_t value) noexcept -> void {
 constexpr int32_t NativeFirst = 202, NativeLast = 208;
 // shortcut: Cartographer publishes no room count (event-link RoomProgress), so a native map's progress counts against
 // PD2's default of 200 rooms; read the level's room list once a RoomEx's next pointer is known
-constexpr Tiered NativeTier = {0, 200};
+// For game checks only: PD2R_MAP_ROOMS=<n> in the game's environment replaces the 200 (a 108-room cave needs 60+ rooms
+// walked for a 25% progress otherwise)
+Tiered NativeTier = {0, 200};
 
 auto Tier(int32_t level) noexcept -> const Tiered* {
 	if (level >= NativeFirst && level <= NativeLast) {
@@ -483,65 +491,45 @@ auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept
 	           testEvent != 0 ? ", PD2R_MAP_EVENT" : forced ? ", forced" : "", event, ++g_rolls);
 }
 
-// The map item the player used last: Cartographer takes the item before its area exists and publishes nothing yet
-// (docs/event-link.md), so the item interaction listener keeps what the roll needs, for the native map's first room.
+// A native map's first room: the game has no event yet (Cartographer allows one map per game), so roll it from the map
+// item the player used. Cartographer takes the item inside its open call, before the first room activates, and the
+// item interaction listener never fired for a right-click (almanac.cpp), so the use-item handler's entry keeps the
+// item's quality and forcing marker (0x4f40c0 (game, player, packet): the packet holds the item's id at +10, the same
+// message Cartographer's spell 16 answers). Without a map use (a map opened another way) it rolls as a normal map.
 // shortcut: only the codes listed here count as maps; lane A adds a code with each map row it clones from cmc
 const uint32_t NativeMapCodes[] = {D2RL::Items::MakeItemCode("cmc")};
-std::atomic<int32_t> g_pendingQuality {0};  // 0 none; else the D2R quality of the item (2 normal, 4 magic, 6 rare ...)
-std::atomic<bool> g_pendingForced {false};
-std::atomic<uint32_t> g_pendingSeen {0};
-const D2RL::ItemService* g_items = nullptr;
+std::atomic<int32_t> g_usedQuality {0};  // 0 none; else the D2R quality of the map item used last
+std::atomic<bool> g_usedForced {false};
+using UseItemFn = void (*)(Game*, Unit*, uint8_t*, char) noexcept;
+UseItemFn g_useOriginal = nullptr;
+constexpr uint64_t UseItem = 0x4f40c0;
+constexpr uint8_t UseItemEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41, 0x56};
 
-// The item's isolated forcing marker: stat 553 on layer 1 only (event_link.h MarkerLayer); a layer-0 553 is a player
-// buff to Cartographer and never forces an event
-auto ForcedByMarker(const D2RL::PluginContext* context, D2RL::ItemHandle item) noexcept -> bool {
-	if (!D2RL::HasItemServiceField(g_items, D2RL::ItemServiceDetailsFieldEnd)) {
-		return false;
+auto OnUseItem(Game* game, Unit* player, uint8_t* packet, char flag) noexcept -> void {
+	using namespace d2r::rva;
+	Unit* item = game != nullptr && packet != nullptr
+	                 ? d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, UnitItem, At<int32_t>(packet, 10))
+	                 : nullptr;
+	const uint32_t code = item != nullptr ? d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(item) : 0;
+	if (std::find(std::begin(NativeMapCodes), std::end(NativeMapCodes), code) != std::end(NativeMapCodes)) {
+		g_usedQuality = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item);
+		// the isolated forcing marker is stat 553 on layer 1 only (event_link.h); a layer-0 553 is a player buff
+		g_usedForced = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatForceEvent,
+		                                                                                     pd2::event_link::MarkerLayer) > 0;
 	}
-	D2RL::Items::ItemDetails details {};
-	details.structSize = sizeof(details);
-	D2RL::Items::ItemStatValue stats[256] {};
-	if (g_items->getItemDetails(context, item, &details, stats, std::size(stats)) != D2RL::Items::Result::Success) {
-		return false;
-	}
-	for (uint32_t i = 0; i < details.statCount && i < std::size(stats); ++i) {
-		if (stats[i].statId == static_cast<uint32_t>(StatForceEvent) && pd2::event_link::IsEventMetadata(stats[i].layer) &&
-		    stats[i].value > 0) {
-			return true;
-		}
-	}
-	return false;
+	g_useOriginal(game, player, packet, flag);
 }
 
-auto __cdecl OnItemActivate(const D2RL::PluginContext* context, const D2RL::ItemInteractions::ItemInteractionEvent* event,
-                            void*) noexcept -> D2RL::ItemInteractions::Decision {
-	D2RL::Items::ItemInfo info {};
-	info.structSize = sizeof(info);
-	if (event != nullptr && g_items != nullptr &&
-	    g_items->getItemInfo(context, event->item, &info) == D2RL::Items::Result::Success &&
-	    std::find(std::begin(NativeMapCodes), std::end(NativeMapCodes), info.code) != std::end(NativeMapCodes)) {
-		g_pendingForced = ForcedByMarker(context, event->item);
-		g_pendingQuality = static_cast<int32_t>(info.quality);
-		++g_pendingSeen;
-		plog::Info("map events: native map used, quality %d%s", static_cast<int32_t>(info.quality),
-		           g_pendingForced ? ", forced" : "");
-	}
-	return D2RL::ItemInteractions::Decision::Continue;  // observe only: Cartographer opens the map
-}
-
-// A native map's first room: the game has no event yet (Cartographer allows one map per game), so roll it from the
-// item the player used. Without one (a map opened another way) it rolls as a normal map.
 auto RollNative(Game* game, int32_t level) noexcept -> void {
-	const int32_t quality = g_pendingQuality.exchange(0);
-	const bool forced = g_pendingForced.exchange(false);
+	const int32_t quality = g_usedQuality.exchange(0);
+	const bool forced = g_usedForced.exchange(false);
+	plog::Info("map events: native map %s, quality %d%s", quality != 0 ? "item used" : "item not seen", quality,
+	           forced ? ", forced" : "");
 	RollEvent(game, level, quality != 0 ? quality : d2r::rva::QualityNormal, forced);
 }
 
-auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
-	const int32_t level = game != nullptr && room != nullptr
-		? d2r::Engine<int32_t (*)(void*) noexcept>(d2r::rva::RoomLevelId)(room)
-		: -1;
-	const Tiered* tier = Tier(level);
+// Before the room's own monsters: a native map's event roll, then PD2's event spawn
+auto BeforeRoom(Game* game, void* room, int32_t level, const Tiered* tier) noexcept -> void {
 	if (plog::Sample(g_rooms)) {
 		plog::Info("map events: room activated in level %d (%u so far)", level, g_rooms.load());
 	}
@@ -552,6 +540,23 @@ auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 		const int32_t rooms = Get(game, RoomsKey(level));
 		SpawnEvent(game, room, level, rooms, rooms * 100 / tier->rooms);
 	}
+}
+
+auto AfterRoom(Game* game, int32_t level, const Tiered* tier) noexcept -> void {
+	const int32_t rooms = Get(game, RoomsKey(level)) + 1;
+	Set(game, RoomsKey(level), rooms);
+	if (rooms % 5 == 0) {  // for the game check
+		plog::Info("map events: level %d, %d rooms activated (progress %d), event %d, %d spawned", level, rooms,
+		           rooms * 100 / tier->rooms, Get(game, EventKey), Get(game, SpawnsKey));
+	}
+}
+
+auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
+	const int32_t level = game != nullptr && room != nullptr
+		? d2r::Engine<int32_t (*)(void*) noexcept>(d2r::rva::RoomLevelId)(room)
+		: -1;
+	const Tiered* tier = Tier(level);
+	BeforeRoom(game, room, level, tier);
 	if (RathmaRoom(game, room, level)) {
 		return;  // PD2 0x1036fef0: an arena room spawns none of its own monsters
 	}
@@ -564,14 +569,24 @@ auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 		return;
 	}
 	g_populateOriginal(game, room);
-	if (tier == nullptr) {
-		return;
+	if (tier != nullptr) {
+		AfterRoom(game, level, tier);
 	}
-	const int32_t rooms = Get(game, RoomsKey(level)) + 1;
-	Set(game, RoomsKey(level), rooms);
-	if (rooms % 10 == 0) {  // for the game check
-		plog::Info("map events: level %d, %d rooms activated (progress %d), event %d, %d spawned", level, rooms,
-		           rooms * 100 / tier->rooms, Get(game, EventKey), Get(game, SpawnsKey));
+}
+
+// The first step of a room's first activation, hooked only while Cartographer holds RoomPopulate
+auto OnRoomActivate(Game* game, void* room) noexcept -> void {
+	const int32_t level = game != nullptr && room != nullptr
+		? d2r::Engine<int32_t (*)(void*) noexcept>(d2r::rva::RoomLevelId)(room)
+		: -1;
+	const Tiered* tier = Tier(level);
+	const bool first = tier == &NativeTier;
+	if (first) {
+		BeforeRoom(game, room, level, tier);
+	}
+	g_activateOriginal(game, room);
+	if (first) {
+		AfterRoom(game, level, tier);
 	}
 }
 
@@ -695,36 +710,38 @@ auto AltarGuardianDied(Game* game, Unit* guardian) noexcept -> void {
 
 auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
+	char envRooms[16] = {};
+	size_t n = 0;
+	if (getenv_s(&n, envRooms, sizeof(envRooms), "PD2R_MAP_ROOMS") == 0 && n > 0 && std::atoi(envRooms) > 0) {
+		NativeTier.rooms = static_cast<int16_t>(std::atoi(envRooms));
+	}
 	g_context = context;
 	if (context->QueryService(&g_strings) != D2RL::ServiceQueryResult::Success ||
 	    !D2RL::HasLocalizationServiceField(g_strings, D2RL::LocalizationServiceRequiredSize)) {
 		g_strings = nullptr;  // the events still spawn, without their chat line
 	}
-	if (context->QueryService(&g_items) != D2RL::ServiceQueryResult::Success) {
-		g_items = nullptr;
+	const bool rooms = context->InstallInlineHook(RoomPopulate, RoomPopulateEntry, sizeof(RoomPopulateEntry), OnRoomPopulate,
+	                                        &g_populateOriginal);
+	bool activate = false;
+	if (!rooms) {
+		// Cartographer hooks RoomPopulate's entry too (its own events) and loads first; the loader's hook engine cannot
+		// hook one address twice. Hook the call both of RoomPopulate's callers make just before it (rva 0x48f190): native rooms get their events there. PD2's arena rooms (Rathma,
+		// Warlord) need RoomPopulate to skip its monsters and stay unserved while Cartographer holds it.
+		activate = context->InstallInlineHook(RoomActivate, RoomActivateEntry, sizeof(RoomActivateEntry), OnRoomActivate,
+		                                      &g_activateOriginal);
 	}
-	const D2RL::ItemInteractionService* interactions = nullptr;
-	bool listening = false;
-	if (g_items != nullptr && context->QueryService(&interactions) == D2RL::ServiceQueryResult::Success &&
-	    D2RL::HasItemInteractionServiceField(interactions, D2RL::ItemInteractionServiceRequiredSize)) {
-		const D2RL::ItemInteractions::ItemInteractionListener listener {
-			.structSize = D2RL::ItemInteractions::ItemInteractionListenerSize,
-			.callback = OnItemActivate,
-		};
-		D2RL::ItemInteractions::ListenerHandle handle = D2RL::ItemInteractions::InvalidHandle;
-		listening = interactions->registerListener(context, &listener, &handle) == D2RL::ItemInteractions::Result::Success;
-	}
-	const bool rooms = context->InstallInlineHook(RoomPopulate, RoomPopulateEntry, sizeof(RoomPopulateEntry),
-	                                              OnRoomPopulate, &g_populateOriginal);
+	const bool uses = context->InstallInlineHook(UseItem, UseItemEntry, sizeof(UseItemEntry), OnUseItem, &g_useOriginal);
 	static constexpr uint8_t Empty[8] = {};
 	using OperateFn = int32_t (*)(ObjectOperate*) noexcept;
 	const bool altars = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperateAltar) * 8, Empty,
 	                                           sizeof(Empty), reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperateAltar)));
-	std::snprintf(report, reportSize, "room activation%s, native map listener %s, altar operate %d%s%s",
-	              rooms ? "" : " FAILED (bytes differ)", listening ? "on" : "OFF (native maps roll as normal)",
-	              ObjectOperateAltar, altars ? "" : " FAILED (slot not empty)",
+	std::snprintf(report, reportSize, "room activation%s, map use %s, altar operate %d%s%s",
+	              rooms      ? ""
+	              : activate ? " (through 0x48f190: Cartographer holds RoomPopulate)"
+	                         : " FAILED (bytes differ)",
+	              uses ? "on" : "FAILED (native maps roll as normal)", ObjectOperateAltar, altars ? "" : " FAILED (slot not empty)",
 	              g_strings != nullptr ? "" : ", no notify (no localization service)");
-	return rooms ? 1 : 0;
+	return rooms || activate ? 1 : 0;
 }
 
 auto MapEventsCounters(char* out, size_t size) noexcept -> void {
