@@ -486,8 +486,8 @@ auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept
 // item interaction listener never fired for a right-click (almanac.cpp), so the use-item handler's entry keeps the
 // item's quality and forcing marker (0x4f40c0 (game, player, packet): the packet holds the item's id at +10, the same
 // message Cartographer's spell 16 answers). Without a map use (a map opened another way) it rolls as a normal map.
-// shortcut: only the codes listed here count as maps; lane A adds a code with each map row it clones from cmc
-const uint32_t NativeMapCodes[] = {D2RL::Items::MakeItemCode("cmc")};
+// shortcut: only the codes listed here count as maps; lane A adds a code with each map row it clones from m01
+const uint32_t NativeMapCodes[] = {D2RL::Items::MakeItemCode("m01")};
 std::atomic<int32_t> g_usedQuality {0};  // 0 none; else the D2R quality of the map item used last
 std::atomic<bool> g_usedForced {false};
 using UseItemFn = void (*)(Game*, Unit*, uint8_t*, char) noexcept;

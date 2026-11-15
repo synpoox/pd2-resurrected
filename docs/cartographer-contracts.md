@@ -6,12 +6,12 @@ The native-map base every Wave 1 lane builds on. A change to anything below is a
 
 | Piece | Where | Value |
 |---|---|---|
-| Native map | `files/data/global/excel/d2rloader/cartographer/maps.txt` | Five maps, Medium, level 85: `Tunneling Depths` (Cave, Loop, `cmc`), `Bone Vaults` (Crypt, Branching, `cmr`), `Frozen Hollows` (Ice, Winding, `cmi`), `Overgrown Reach` (Jungle, Winding, `cmj`), `Frostbitten Fields` (Snow, blank Shape, a documented default for Snow, `cms`). Lava and Siege are deferred (#948) |
+| Native map | `files/data/global/excel/d2rloader/cartographer/maps.txt` | Five maps, Medium, level 85: `Tunneling Depths` (Cave, Loop, `m01`), `Bone Vaults` (Crypt, Branching, `m02`), `Frozen Hollows` (Ice, Winding, `m03`), `Overgrown Reach` (Jungle, Winding, `m04`), `Frostbitten Fields` (Snow, blank Shape, a documented default for Snow, `m05`). Lava and Siege are deferred (#948) |
 | Settings | `.../cartographer.txt` | `EventChance 0` (PD2 events stay in `core-maps`), `PlayerStats 1` |
 | Level slots | `.../slots.txt` | Maze 202, MazeCrypt 203, MazeLava 204, MazeIce 205, Outdoor 206, OutdoorSnow 207, OutdoorSiege 208 |
 | Levels | `merge/ids-levels.tsv` | 202-208 `Cartographer ...` (copies of PD2 area rows); lvlmaze rows for 202-205 in `patches/070-cartographer-base.json` |
 | Item type | `merge/ids-itemtypes.tsv` | `cmap` (id 245), parent `misc`; the PD2 `map` and `tNN` types are untouched |
-| Item | `patches/070-cartographer-base.json` | misc `cmc` "Tunneling Depths Map": type `cmap`, `pSpell 16`, `belt 0`, `useable 1`, `spellicon -1`, `compactsave 0`, `spawnable 1`, `rarity 0` (`spawnable 0` would keep the item out of treasure class generation) |
+| Item | `patches/070-cartographer-base.json` | misc `m01` "Tunneling Depths Map": type `cmap`, `pSpell 16`, `belt 0`, `useable 1`, `spellicon -1`, `compactsave 0`, `spawnable 1`, `rarity 0` (`spawnable 0` would keep the item out of treasure class generation) |
 | Stats | `merge/ids-itemstatcost.tsv` | `cartographer_map_level` 564, `cartographer_mon_life` .. `_speed` 565-571, `cartographer_map_density` 572 (extended saves allow ids past 511, ADR 0003) |
 | Properties | patch | `map-level`, `mon-life`, `mon-damage`, `mon-fire-res`, `mon-cold-res`, `mon-light-res`, `mon-poison-res`, `mon-speed`, `map-density` |
 | Affixes | `merge/ids-magic*.tsv`, `ids-rare*.tsv` | `cmap` only: Teeming, Savage, Hastened, of the Swarm, of Embers, rare Labyrinth / Warren; magic groups 9201-9205 |
@@ -22,7 +22,7 @@ None of it reads PD2 map items, affixes or recipes. The PD2 map rows still exist
 
 ## Frozen consumer contracts
 
-- **Map item**: misc type `cmap`, `pSpell 16`, `belt 0`, `useable 1`, `spellicon -1`, `compactsave 0`. A lane adds a map by adding a `maps.txt` row and a misc row (clone `cmc`).
+- **Map item**: misc type `cmap`, `pSpell 16`, `belt 0`, `useable 1`, `spellicon -1`, `compactsave 0`. A lane adds a map by adding a `maps.txt` row and a misc row (clone `m01`).
 - **Opening**: Harrogath, Hell, red portal, one map per game (Cartographer's rule). No lane changes it.
 - **Event link**: [event-link.md](event-link.md) (#944). Metadata on layered stats only.
 - **Reserved ids**: levels 202-208 taken, 209-215 reserved for the private areas below (#947; 216 and up free; never build uber arena replacements: vanilla mini-ubers and D2R Tristram arena with PD2 bosses); stats 564-572 taken, 573 up free (none reserved: the fights keep state in game counters); item type 245 taken; magic affix groups 9201-9205 taken.
@@ -51,7 +51,7 @@ None of it reads PD2 map items, affixes or recipes. The PD2 map rows still exist
 - `cmap` has `Equiv1 misc` (copied from Herb), so a `misc` type-based pick could roll a map. Not seen in any treasure class; lane A decides whether to cut the parent.
 - Affix names are string keys in `item-nameaffixes.json`, added by `string` ops in `070-cartographer-base.json` (a name without one reads "Missing string" on the tooltip).
 - Slot level `LevelType` (202-208) is set by `set` ops on `levels` (`where: {"Id": ...}`): PD2's merge renumbers LevelType after the `+` lines, so a value in the `+` line is lost and `cartographer check` reports the wrong type.
-- `cmap` gets `Magic=1 Rare=1 Normal=0` from a patch `set` (the template row left it `0/1/0`), and `cmc` has `rarity 1`, `level 1`. The pool class `Cartographer Maps` sits on row 121, before the Good rows that name it: a treasure class defined after the rows that name it is never resolved (0 drops in 440,000), and patches can only append rows.
+- `cmap` gets `Magic=1 Rare=1 Normal=0` from a patch `set` (the template row left it `0/1/0`), and `m01` has `rarity 1`, `level 1`. The pool class `Cartographer Maps` sits on row 121, before the Good rows that name it: a treasure class defined after the rows that name it is never resolved (0 drops in 440,000), and patches can only append rows.
 - Building the PD2 plugins (`pluginuild.ps1`) fails against current d2rAI-toolkit main (`rvas_93847/tables.h` redefines `pd2_engine.h`); #946 was built with `D2R_TOOLKIT` pointed at toolkit commit 669f42a. Filed separately as a toolkit issue.
 - `LevelEntry` on levels 202-208: the `+` lines set it empty, but the merged `levels.txt` keeps the template area's string (for example `EnteringCaveLevel1` on 202). Harmless; Cartographer's map names replace the entry text.
 

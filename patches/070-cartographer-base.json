@@ -384,8 +384,8 @@
    "from": "Identify Scroll",
    "key": "Tunneling Depths Map",
    "set": {
-    "code": "cmc",
-    "namestr": "cmc",
+    "code": "m01",
+    "namestr": "m01",
     "type": "cmap",
     "compactsave": "0",
     "belt": "0",
@@ -475,13 +475,13 @@
   },
   {
    "op": "string",
-   "key": "cmc",
+   "key": "m01",
    "text": "Tunneling Depths Map",
    "file": "item-names.json"
   },
   {
    "op": "item_hd",
-   "code": "cmc",
+   "code": "m01",
    "asset": "scroll/identify_scroll"
   },
   {
@@ -490,7 +490,7 @@
    "bank": "excel",
    "key": "Act 1 (H) Good",
    "set": {
-    "Item9": "cmc"
+    "Item9": "m01"
    }
   },
   {
@@ -499,7 +499,7 @@
    "bank": "excel",
    "key": "Act 2 (H) Good",
    "set": {
-    "Item9": "cmc"
+    "Item9": "m01"
    }
   },
   {
@@ -508,7 +508,7 @@
    "bank": "excel",
    "key": "Act 3 (H) Good",
    "set": {
-    "Item9": "cmc"
+    "Item9": "m01"
    }
   },
   {
@@ -517,7 +517,7 @@
    "bank": "excel",
    "key": "Act 4 (H) Good",
    "set": {
-    "Item9": "cmc"
+    "Item9": "m01"
    }
   },
   {
@@ -526,7 +526,7 @@
    "bank": "excel",
    "key": "Act 5 (H) Good",
    "set": {
-    "Item9": "cmc"
+    "Item9": "m01"
    }
   },
   {
