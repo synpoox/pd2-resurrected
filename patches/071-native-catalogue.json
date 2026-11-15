@@ -98,12 +98,6 @@
    }
   },
   {
-   "op": "string",
-   "key": "m02",
-   "text": "Bone Vaults Map",
-   "file": "item-names.json"
-  },
-  {
    "op": "item_hd",
    "code": "m02",
    "asset": "scroll/identify_scroll"
@@ -203,12 +197,6 @@
     "alternategfx": "",
     "UICatOverride": ""
    }
-  },
-  {
-   "op": "string",
-   "key": "m03",
-   "text": "Frozen Hollows Map",
-   "file": "item-names.json"
   },
   {
    "op": "item_hd",
@@ -312,12 +300,6 @@
    }
   },
   {
-   "op": "string",
-   "key": "m04",
-   "text": "Overgrown Reach Map",
-   "file": "item-names.json"
-  },
-  {
    "op": "item_hd",
    "code": "m04",
    "asset": "scroll/identify_scroll"
@@ -417,12 +399,6 @@
     "alternategfx": "",
     "UICatOverride": ""
    }
-  },
-  {
-   "op": "string",
-   "key": "m05",
-   "text": "Frostbitten Fields Map",
-   "file": "item-names.json"
   },
   {
    "op": "item_hd",

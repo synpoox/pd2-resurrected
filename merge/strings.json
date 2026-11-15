@@ -70,7 +70,18 @@
     "ThornsOpenWoundsDamagePerSecond": "Your Open Wounds Damage: %d per second",
     "Ascendant": "Ascendant",
     "t99": "Mesa Map",
-    "MapTierValue": "Tier: %d"
+    "MapTierValue": "Tier: %d",
+    "m01": "Tunneling Depths Map",
+    "Teeming": "Teeming",
+    "Hastened": "Hastened",
+    "of the Swarm": "of the Swarm",
+    "of Embers": "of Embers",
+    "Labyrinth": "Labyrinth",
+    "Warren": "Warren",
+    "m02": "Bone Vaults Map",
+    "m03": "Frozen Hollows Map",
+    "m04": "Overgrown Reach Map",
+    "m05": "Frostbitten Fields Map"
   },
   "entries": {
     "EnteringMesa": "Mesa",
@@ -1633,6 +1644,17 @@
     "EnteringTombEventMap": [51495, "levels.json"],
     "EnteringPoisonedWellMap": [51496, "levels.json"],
     "EnteringDarkTempleMap": [51497, "levels.json"],
-    "EnteringDescentMap": [51498, "levels.json"]
+    "EnteringDescentMap": [51498, "levels.json"],
+    "m01": [51499, "item-names.json"],
+    "Teeming": [51500, "item-nameaffixes.json"],
+    "Hastened": [51502, "item-nameaffixes.json"],
+    "of the Swarm": [51503, "item-nameaffixes.json"],
+    "of Embers": [51504, "item-nameaffixes.json"],
+    "Labyrinth": [51505, "item-nameaffixes.json"],
+    "Warren": [51506, "item-nameaffixes.json"],
+    "m02": [51507, "item-names.json"],
+    "m03": [51508, "item-names.json"],
+    "m04": [51509, "item-names.json"],
+    "m05": [51510, "item-names.json"]
   }
 }
