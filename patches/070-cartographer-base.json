@@ -393,7 +393,7 @@
     "spellicon": "-1",
     "useable": "1",
     "rarity": "0",
-    "spawnable": "0",
+    "spawnable": "1",
     "cost": "0",
     "nodurability": "1",
     "TMogMin": "",

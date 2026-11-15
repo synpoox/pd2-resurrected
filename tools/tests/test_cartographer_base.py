@@ -12,12 +12,14 @@ def table(name):
         return list(csv.DictReader(f, delimiter="\t"))
 
 
-def ids(table_name):
+def ids(table_name, plus=None):
+    """Ids of the list's lines: all, or only the port's `+` lines (plus=True) or only PD2/D2R rows (plus=False)."""
     out = []
     for line in (ROOT / "merge" / f"ids-{table_name}.tsv").read_text().splitlines():
-        if line and not line.startswith("# "):
-            if line.split("\t")[1] != "-":
-                out.append(int(line.split("\t")[1]))
+        if line and not line.startswith("# ") and (plus is None or line.startswith("+") == plus):
+            n = line.split("	")[1]
+            if n != "-":
+                out.append(int(n))
     return out
 
 
@@ -35,9 +37,10 @@ def test_every_slot_is_a_level_and_ids_are_gapless():
     levels = set(ids("levels"))
     for s in table("slots.txt"):
         assert int(s["Level"]) in levels, s["Slot"]
-    for t in ("levels", "itemstatcost", "itemtypes"):
-        got = ids(t)
-        assert len(set(got)) == len(got) and set(range(min(got), max(got) + 1)) >= set(got), t
+    for t in ("levels", "itemstatcost", "itemtypes", "magicprefix", "magicsuffix", "rareprefix", "raresuffix"):
+        added = ids(t, plus=True)
+        assert added == list(range(max(ids(t, plus=False)) + 1, max(ids(t, plus=False)) + 1 + len(added))), t
+
 
 
 def test_map_pool_is_tierless():

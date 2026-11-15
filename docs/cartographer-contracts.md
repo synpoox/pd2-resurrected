@@ -11,7 +11,7 @@ The native-map base every Wave 1 lane builds on. A change to anything below is a
 | Level slots | `.../slots.txt` | Maze 202, MazeCrypt 203, MazeLava 204, MazeIce 205, Outdoor 206, OutdoorSnow 207, OutdoorSiege 208 |
 | Levels | `merge/ids-levels.tsv` | 202-208 `Cartographer ...` (copies of PD2 area rows); lvlmaze rows for 202-205 in `patches/070-cartographer-base.json` |
 | Item type | `merge/ids-itemtypes.tsv` | `cmap` (id 245), parent `misc`; the PD2 `map` and `tNN` types are untouched |
-| Item | `patches/070-cartographer-base.json` | misc `cmc` "Tunneling Depths Map": type `cmap`, `pSpell 16`, `belt 0`, `useable 1`, `spellicon -1`, `compactsave 0`, `spawnable 0`, `rarity 0` |
+| Item | `patches/070-cartographer-base.json` | misc `cmc` "Tunneling Depths Map": type `cmap`, `pSpell 16`, `belt 0`, `useable 1`, `spellicon -1`, `compactsave 0`, `spawnable 1`, `rarity 0` (`spawnable 0` would keep the item out of treasure class generation) |
 | Stats | `merge/ids-itemstatcost.tsv` | `cartographer_map_level` 564, `cartographer_mon_life` .. `_speed` 565-571, `cartographer_map_density` 572 (extended saves allow ids past 511, ADR 0003) |
 | Properties | patch | `map-level`, `mon-life`, `mon-damage`, `mon-fire-res`, `mon-cold-res`, `mon-light-res`, `mon-poison-res`, `mon-speed`, `map-density` |
 | Affixes | `merge/ids-magic*.tsv`, `ids-rare*.tsv` | `cmap` only: Teeming, Savage, Hastened, of the Swarm, of Embers, rare Labyrinth / Warren; magic groups 9201-9205 |
@@ -38,10 +38,14 @@ None of it reads PD2 map items, affixes or recipes. The PD2 map rows still exist
 | D ubers | `plugin/core-maps/lane-d/` and uber data patches |
 | Shared (serial) | `merge/ids-*.tsv` ids, `patches/070-cartographer-base.json`, `cartographer.txt`, `plugin/core-maps/parts` registration, this file |
 
-`tools/tests/test_core_maps_lanes.py` enforces the plugin allowlist; `tools/tests/test_cartographer_base.py` checks the data base.
+`tools/tests/test_core_maps_lanes.py` enforces the plugin allowlist; - Appending new affix ids to `merge/ids-magic*.tsv` and `ids-rare*.tsv`: lane A, one PR at a time, always after the current maximum; lanes B, C and D ask lane A (the shared serial role during a checkpoint) instead of appending, so #948 and #949 cannot collide.
+- Uber-key recipes and uber tiers: recipe and tier behavior is lane B (core-rules); the uber-only access, rewards and fights that use them are lane D.
+- Lane A's removal of PD2 map stats must keep `map_force_event` (553): it is the Catalyst marker.
+
+`tools/tests/test_cartographer_base.py` checks the data base.
 
 ## Known caveats
 
 - `cmap` has `Equiv1 misc` (copied from Herb), so a `misc` type-based pick could roll a map. Not seen in any treasure class; lane A decides whether to cut the parent.
 - Affix names are literal English, not string keys.
-- `LevelEntry` on levels 202-208 keeps the template area's string.
+- `LevelEntry` on levels 202-208: the `+` lines set it empty, but the merged `levels.txt` keeps the template area's string (for example `EnteringCaveLevel1` on 202). Harmless; Cartographer's map names replace the entry text.
