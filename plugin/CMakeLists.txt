@@ -54,6 +54,7 @@ add_library(core_rules SHARED
 	core-rules/merc_rules.cpp
 	core-rules/cube_rules.cpp
 	core-rules/cube_stacks.cpp
+	core-rules/almanac.cpp
 	core-rules/loot_rules.cpp
 	core-rules/plugin.rc  # ABI manifest resource: D2RLoader rejects a plugin DLL without it
 )
@@ -94,7 +95,6 @@ add_library(core_maps SHARED
 	core-maps/parts_shared.cpp
 	core-maps/uber_scaling.cpp
 	core-maps/uber_drops.cpp
-	core-maps/almanac.cpp
 	core-maps/corruption_roll.cpp
 	core-maps/map_deaths.cpp
 	core-maps/open_gate.cpp
