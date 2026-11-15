@@ -21,6 +21,7 @@ def ops(patch):
     return json.loads((ROOT / "patches" / patch).read_text())["ops"]
 
 
+STRINGS = json.loads((ROOT / "merge/strings.json").read_text("utf-8"))
 ALL = ops("070-cartographer-base.json") + ops("071-native-catalogue.json")
 
 
@@ -35,7 +36,7 @@ def test_one_map_per_verified_tileset_and_none_other():
 
 def test_every_map_item_is_complete_and_unique():
     misc = {o["set"]["code"]: o["set"] for o in ALL if o.get("table") == "misc"}
-    names = {o["key"] for o in ALL if o["op"] == "string" and o["file"] == "item-names.json"}
+    names = {k for k, (_, f) in STRINGS["ids"].items() if f == "item-names.json" and k in STRINGS["texts"]}
     hd = {o["code"] for o in ALL if o["op"] == "item_hd"}
     codes = [m["Item"] for m in rows("maps.txt")]
     assert len(set(codes)) == len(codes) == len(misc)
@@ -66,3 +67,8 @@ def test_patch_is_deterministic_and_adds_no_ids():
     first = (ROOT / "patches/071-native-catalogue.json").read_text()
     assert json.dumps(json.loads(first), indent=1) == first  # regenerating is a no-op
     assert not any(o.get("table") in ("itemstatcost", "magicprefix", "magicsuffix", "rareprefix", "raresuffix") for o in ops("071-native-catalogue.json"))
+
+
+def test_no_patch_string_op():
+    # modkit's Strings reads D2R's pristine file, so one string op replaces the merged copy and drops every PD2 name (#996)
+    assert not [p.name for p in (ROOT / "patches").glob("*.json") if any(o["op"] == "string" for o in ops(p.name))]
