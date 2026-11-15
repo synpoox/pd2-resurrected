@@ -1,0 +1,14 @@
+{
+ "_note": "#1007: nine PD2 rows name their own BaseId in lower case (Lucion's is 'lucion'), which is no monstats Id: D2R reads names case-sensitively, so the row has no base class and Lucion showed no nameplate on hover. Each takes its exact Id, as NaKrulBoss's does.",
+ "ops": [
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "Iskatu", "set": {"BaseId": "Iskatu"}},
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "Rakanoth", "set": {"BaseId": "Rakanoth"}},
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "RadamentBoss", "set": {"BaseId": "RadamentBoss"}},
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "Lucion", "set": {"BaseId": "Lucion"}},
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "LucionControl", "set": {"BaseId": "LucionControl"}},
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "LucionSpawn", "set": {"BaseId": "LucionSpawn"}},
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "LucionSpawnRanged", "set": {"BaseId": "LucionSpawnRanged"}},
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "LucionSpawnTank", "set": {"BaseId": "LucionSpawnTank"}},
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "LucionSpawner", "set": {"BaseId": "LucionSpawner"}}
+ ]
+}
