@@ -9,9 +9,16 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 
 | File | Lane | Notes |
 |---|---|---|
-| plugin.cpp | S | Parts registry `g_parts[]` (install order) and the status command. One AI registry stays in ai_hooks. |
+| plugin.cpp | S | Installs the registered parts in order and runs the status command. No part lists live here. One AI registry stays in ai_hooks. |
+| parts.cpp, parts.h | S | The parts registry: `PartReg` and `CountersReg`, sorted by order. Frozen. |
+| parts_shared.cpp | S | Parts of lane S: `pool` (50) and `keys` (60) and the key drop counters. |
+| lane-a/ | A | Every file in the folder is lane A's: `parts.cpp` registers its parts and counters. |
+| lane-b/ | B | Every file in the folder is lane B's: `parts.cpp` registers its parts and counters. |
+| lane-c/ | C | Every file in the folder is lane C's: `parts.cpp` registers its parts and counters. |
+| lane-d/ | D | Every file in the folder is lane D's: `parts.cpp` registers its parts and counters. |
 | plugin.rc | S | |
 | ai_hooks.cpp, ai_hooks.h | S | The one AI registry and low-level dispatch. |
+| ai_common.h | S | Helpers the Dclone AI (D) and the event Nihlathak AI (C) share: counters, idle, cast, kill, nearest player. Frozen. |
 | death_steps.h | S | Seam of the monster-death listener: frozen. Call order in key_drops.cpp is part of the RNG stream. |
 | key_drops.cpp, key_drops.h | S | The listener and the key rolls (run on every death). Calls the lane steps in a fixed order. |
 | tc_roll.cpp, tc_roll.h | B | Odds-only TC roll, shared by the key rolls and the map rolls. |
@@ -30,7 +37,9 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 | entity_pool.cpp, entity_pool.h | S | Engine pool growth, needed by any lane. |
 | level_fx.cpp, level_fx.h | C | |
 | map_events.cpp, map_events.h | C | |
-| event_portals.cpp, event_portals.h | C | Horazon. |
+| event_portals.cpp, event_portals.h | C | The red portal pair (`OpenEventPortal`), shared by Horazon and the Void/Tomb event. |
+| horazon.cpp, horazon.h | C | Horazon's portal and map drops (the one monster-death listener also hands the Altar guardian over). |
+| nihlathak_ai.cpp, nihlathak_ai.h | C | The event Nihlathak/Mendeln AI, on monai row 99 through ai_hooks. |
 | guardian_ai.cpp, guardian_ai.h | C | Altar of the Catalyst guardian. |
 | uber_entry.cpp, uber_entry.h | D | Blood Fountain opening, portal entry rules, grey portals, boss rooms kept. |
 | uber_deaths.cpp | D | Uber steps of the death listener. |
@@ -44,7 +53,7 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 | rathma.cpp, rathma.h | D | |
 | rathma_ai.cpp, rathma_ai.h | D | |
 | rathma_life.cpp, rathma_life.h | D | |
-| dclone_ai.cpp, dclone_ai.h | D | Also holds the event Nihlathak/Mendeln AI (lane C): not yet split. |
+| dclone_ai.cpp, dclone_ai.h | D | Dclone and his trapped souls. Its install also registers the Nihlathak AI (C), right after the souls, so the part's log line stays one. |
 
 ## Cross-lane dependencies (frozen contracts)
 
@@ -53,7 +62,20 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 - `g_tcMissing` (tc_roll.h): shared warning counter for the key rolls and the map rolls.
 - `DropUniqueMap` (A) is called by Horazon in C.
 
-## Not yet done
+## Registration
 
-Nihlathak/Mendeln AI is still in dclone_ai.cpp; Horazon is still in event_portals.cpp with the rest of the events;
-`g_parts[]` is still one list in plugin.cpp (no per-lane registration).
+Each part and each status counters line is one object in a lane folder: `PartReg r<order>(<order>, "<word>", <install>)`
+and `CountersReg c<order>(<order>, <counters>)` (`parts.h`). `plugin.cpp` sorts them by order and installs them, so the
+order is the install sequence and the log line order. Orders are one global sequence in steps of 10; a new part takes an
+unused number (the test fails on a duplicate). `plugin/CMakeLists.txt` globs `core-maps/lane-*/*.cpp`, so a lane adds
+files in its own folder and edits neither `plugin.cpp`, `CMakeLists.txt` nor this file; only a file outside the lane
+folders (lane S, or a lane's older flat files) needs a row above and a CMake line.
+
+Orders now: cube 10 (B), open 20, stats 30 (A), mapevents 40 (C), pool 50, keys 60 (S), trist 70, lucion 80, primes 90,
+temple 100 (D), events 110 (C), lucionai 120, rathmaai 130, rathmalife 140, dcloneai 150 (D), guardianai 160 (C),
+mapbossai 170, zhar 180 (A). Counters lines: the same steps (cube 10 ... mapbossai 210), unchanged from before.
+
+## Evidence for a PR
+
+Report pass, fail and skipped separately for each check (clean build, `tools/pd2_diff.py --scope alpha`,
+`pytest tools/tests`), and report existing deviations on their own, not mixed into those counts.
