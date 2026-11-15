@@ -11,6 +11,7 @@
 #include "ai_hooks.h"
 #include "level_fx.h"
 #include "log.h"
+#include "placements.h"
 
 #include <atomic>
 #include <cstdio>
@@ -42,7 +43,7 @@ constexpr int32_t ImmuneStats[] = {39, 43, 41, 45, 37, 36};
 
 // The arena (PD2's subtile coordinates, as Royal Fire's ring centre in skill_functions.cpp)
 constexpr int32_t Corners[][2] = {{0x622d, 0x17eb}, {0x622d, 0x17d5}, {0x6217, 0x17d5}, {0x6217, 0x17eb}};
-constexpr int32_t CentreX = 0x6223, CentreY = 0x17e1;
+const auto Centre() noexcept { return placements::SpotOf("lucion", "centre"); }  // placements/lucion.cpp
 
 constexpr int32_t OverseerRow = 120;  // monai.txt
 
@@ -418,7 +419,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		return;
 	case 7:
 		if (param == 0) {
-			Cast(game, unit, m.Skill(0), m.Mode(0), nullptr, CentreX, CentreY);
+			Cast(game, unit, m.Skill(0), m.Mode(0), nullptr, Centre().x, Centre().y);
 			Delay(game, unit, 35 - 4 * tier);
 			store(7, 1);
 		} else if (param == 1) {
@@ -490,7 +491,8 @@ auto ThinkControl(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept 
 		if (cd < 1 && frenzy) {
 			const int32_t n = CountInLevel(game, LucionSpawner, level);
 			if (n < m.P(2) && r < (tier - m.P(0)) * n + 100) {
-				const int32_t x = Rand(unit, 0x2c) + 0x620d, y = Rand(unit, 0x2c) + 0x17cb;
+				const auto& adds = placements::Need("lucion", "adds");
+				const int32_t x = Rand(unit, adds.w) + adds.x, y = Rand(unit, adds.h) + adds.y;
 				if (Spawn(game, unit, LucionSpawner, x, y) != nullptr) {
 					SetStat(unit, StatCooldown1, r % (3 - tier) - stage / 2 + base);
 				}

@@ -217,3 +217,10 @@ Descent Map	201	Descent Map
 +111 SizeX=384 SizeY=384 SizeX(N)=384 SizeY(N)=384 SizeX(H)=384 SizeY(H)=384 OffsetX=6000 OffsetY=3000 Depend=0 LevelType=21 SubType=-1 SubTheme=-1 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	206	Cartographer Outdoor
 +117 SizeX=192 SizeY=192 SizeX(N)=192 SizeY(N)=192 SizeX(H)=192 SizeY(H)=192 OffsetX=1500 OffsetY=0 Depend=0 SubType=-1 SubTheme=-1 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Warp2=-1 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	207	Cartographer Snow
 +110 OffsetX=6000 OffsetY=3900 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	208	Cartographer Siege
++110 OffsetX=6000 OffsetY=4200 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	209	Dclone Arena
++110 OffsetX=6000 OffsetY=4500 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	210	Rathma Stage 1
++110 OffsetX=6000 OffsetY=4800 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	211	Rathma Stage 2
++110 OffsetX=6000 OffsetY=5100 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	212	Rathma Stage 3
++110 OffsetX=6000 OffsetY=5400 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	213	Lucion Arena New
++110 OffsetX=6000 OffsetY=5700 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	214	Temple of the Triune New
++110 OffsetX=6000 OffsetY=6000 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	215	Bitter Depths New

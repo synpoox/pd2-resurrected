@@ -18,6 +18,7 @@
 #include "log.h"
 #include "map_open.h"
 #include "map_stats.h"
+#include "placements.h"
 
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
@@ -39,9 +40,10 @@ constexpr int32_t Lucion = 1129;      // PD2 1112, in the port's monstats ids (P
 constexpr int32_t Controller = 1130;  // LucionControl (PD2 1113): PD2 removes the unit at game +0x2604
 // PD2's kill list 0x45a, 0x45b, 0x474, 0x475: LucionSpawn, LucionSpawnRanged, LucionSpawnTank, LucionSpawner
 constexpr int32_t Adds[] = {1131, 1132, 1157, 1158};
-constexpr int32_t Arena = 184, Temple = 185;  // PD2's levels 188 and 189
+// PD2's levels 188 and 189; the levels are bound in placements/lucion.cpp
+const auto Arena() noexcept { return placements::LevelOf("lucion"); }
+const auto Temple() noexcept { return placements::LevelOf("temple"); }
 constexpr int32_t DarkPortal = 625;           // xactdarkportal_grey (PD2 622)
-constexpr int32_t TempleX = 0x6221, TempleY = 0x17df;
 constexpr int32_t Harrogath = 109, HarrogathSpot = 1, HarrogathAct = 4;  // PD2's 0x6d, spot 1; act V
 constexpr int32_t PortalSize = 3;  // the unit size PD2 0x1038a000 passes the spot search
 constexpr uint32_t TierKey = 0x55425254;  // 'UBRT', as map_open.cpp
@@ -85,22 +87,23 @@ auto OpenTemplePortal(Game* game, Unit* lucion) noexcept -> bool {
 	if (near == nullptr) {
 		return false;
 	}
-	int32_t xy[2] = {TempleX, TempleY};
+	const auto at = placements::SpotOf("lucion", "temple-portal");
+	int32_t xy[2] = {at.x, at.y};
 	void* room = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(near, xy[0], xy[1]);
 	if (room == nullptr) {
 		d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(UnitCoords)(lucion, xy);
 		room = near;
-		plog::Warn("lucion: (0x%x, 0x%x) is out of reach, the Temple portal goes by the body at (%d, %d)", TempleX,
-		           TempleY, xy[0], xy[1]);
+		plog::Warn("lucion: (0x%x, 0x%x) is out of reach, the Temple portal goes by the body at (%d, %d)", at.x,
+		           at.y, xy[0], xy[1]);
 	}
 	Unit* portal = nullptr;
 	const int32_t made = d2r::Engine<int32_t (*)(Game*, Unit*, void*, int32_t, int32_t, int32_t, Unit**, int32_t, int32_t,
-	                                             int32_t) noexcept>(PortalMaker)(game, nullptr, room, xy[0], xy[1], Temple,
+	                                             int32_t) noexcept>(PortalMaker)(game, nullptr, room, xy[0], xy[1], Temple(),
 	                                                                             &portal, DarkPortal, 0, 1);
 	if (made == 0 || portal == nullptr) {
 		return false;
 	}
-	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetPortalLevel)(portal, Temple);
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetPortalLevel)(portal, Temple());
 	return true;
 }
 
@@ -116,7 +119,7 @@ auto OpenHarrogathPortal(Game* game) noexcept -> bool {
 		? d2r::Engine<void* (*)(uint32_t, void*, int32_t, int32_t, int32_t*, int32_t*, int32_t) noexcept>(ActSpawnSpot)(
 			  d2r::DataFlag(game), act, Harrogath, HarrogathSpot, &x, &y, PortalSize)
 		: nullptr;
-	if (room == nullptr || OpenPortalAt(game, room, DarkPortal, x, y, Arena) == nullptr) {
+	if (room == nullptr || OpenPortalAt(game, room, DarkPortal, x, y, Arena()) == nullptr) {
 		return false;
 	}
 	plog::Info("lucion: Harrogath portal at (%d, %d)", x, y);
@@ -133,7 +136,7 @@ auto KillAdds(Game* game) noexcept -> int32_t {
 		     unit = At<Unit*>(unit, UnitListNext)) {
 			const int32_t classId = At<int32_t>(unit, UnitClassId);
 			if ((classId == Controller || std::find(std::begin(Adds), std::end(Adds), classId) != std::end(Adds)) &&
-			    d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) == 0 && LevelOf(unit) == Arena) {
+			    d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) == 0 && LevelOf(unit) == Arena()) {
 				found[n++] = unit;
 			}
 		}
@@ -150,7 +153,7 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	(void)context;
 	(void)userData;
 	if (event == nullptr || event->monster.type != D2RL::Lifecycle::UnitType::Monster || event->gameId > 0xffff ||
-	    event->levelId != Arena) {
+	    event->levelId != Arena()) {
 		return;
 	}
 	const auto id = static_cast<uint16_t>(event->gameId);
@@ -377,7 +380,7 @@ auto Query(const D2RL::PluginContext* context, const Service*& service, bool (*h
 // existing item. A failed roll queues the brick (UB7b, above).
 auto Desecrate(Game* game, Unit* player) noexcept -> bool {
 	using namespace d2r::rva;
-	if (game == nullptr || player == nullptr || LevelOf(player) != Temple) {
+	if (game == nullptr || player == nullptr || LevelOf(player) != Temple()) {
 		return false;
 	}
 	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory)(player, __FILE__, __LINE__);

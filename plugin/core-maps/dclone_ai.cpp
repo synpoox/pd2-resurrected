@@ -14,6 +14,7 @@
 #include "ai_hooks.h"
 #include "nihlathak_ai.h"
 #include "log.h"
+#include "placements.h"
 
 #include <atomic>
 #include <cstdio>
@@ -32,7 +33,7 @@ constexpr int32_t StatCooldown1 = 499, StatPhase = 500;  // mon_cooldown1/2 (PD2
 constexpr int32_t StatColdMastery = 331, StatColdPierce = 305;
 constexpr int32_t StateResistAll = 8;  // PD2 0x10380770 sets it with the resists
 constexpr int32_t ImmuneStats[] = {39, 43, 41, 45, 37, 36};  // fire, cold, lightning, poison, magic, damage resist
-constexpr int32_t CentreX = 15129, CentreY = 6548;          // the arena centre (PD2 0x3b19, 0x1994)
+const auto Centre() noexcept { return placements::SpotOf("dclone", "centre"); }  // the arena centre (placements/dclone.cpp)
 constexpr int32_t FarPlayer = 0x17c;                         // squared distance
 
 constexpr uint32_t TierKey = 0x55425254;     // 'UBRT', as map_open.cpp
@@ -113,7 +114,7 @@ auto ScanMonsters(Game* game, Unit* self, int32_t level, Unit** onSpot, int max,
 			}
 			const int32_t classId = At<int32_t>(u, UnitClassId);
 			adds |= classId >= FirstAdd && classId <= LastAdd;
-			if (onSpot != nullptr && u != self && *spotCount < max && Dist2(u, CentreX, CentreY) <= 10) {
+			if (onSpot != nullptr && u != self && *spotCount < max && Dist2(u, Centre().x, Centre().y) <= 10) {
 				onSpot[(*spotCount)++] = u;
 			}
 		}
@@ -207,10 +208,10 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	const int32_t novas = Stat(unit, StatCooldown1);
 	// PD2 aims the path at the centre (0x103331e0) before the run: UberDiabRun's start (srvst 71) keeps that point
 	const auto runToCentre = [&]() {
-		plog::Info("dclone: run to the centre, %d away (squared)", Dist2(unit, CentreX, CentreY));
+		plog::Info("dclone: run to the centre, %d away (squared)", Dist2(unit, Centre().x, Centre().y));
 		d2r::Engine<void (*)(void*, int32_t, int32_t) noexcept>(d2r::rva::PathSetTargetXY)(
-			At<void*>(unit, d2r::rva::UnitPath), CentreX, CentreY);
-		Cast(game, unit, m.Skill(7), m.Mode(7), nullptr, CentreX, CentreY, 50);
+			At<void*>(unit, d2r::rva::UnitPath), Centre().x, Centre().y);
+		Cast(game, unit, m.Skill(7), m.Mode(7), nullptr, Centre().x, Centre().y, 50);
 		SetImmune(game, unit, true);
 	};
 	if (novas == m.Aip(5)) {
@@ -219,7 +220,7 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		return;
 	}
 	if (novas > 0) {
-		const int32_t d = Dist2(unit, CentreX, CentreY);
+		const int32_t d = Dist2(unit, Centre().x, Centre().y);
 		if (d > 30) {
 			runToCentre();
 			return;
@@ -233,7 +234,7 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 				KillQuietly(game, onSpot[i]);
 			}
 			plog::Info("dclone: teleport onto the centre, %d away (squared), %d on the spot killed", d, count);
-			Cast(game, unit, m.Skill(8), m.Mode(8), nullptr, CentreX, CentreY, 50);
+			Cast(game, unit, m.Skill(8), m.Mode(8), nullptr, Centre().x, Centre().y, 50);
 			return;
 		}
 		const int32_t cold = (m.Aip(5) - novas + 1) * m.Aip(6);
@@ -374,8 +375,9 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	int32_t x = 0, y = 0, tx = 0, ty = 0, spread = -1;
 	if (m.Aip(8) != 2 && m.Aip(8) != 3) {
 		// A random spot in the 50x50 square around the arena centre
-		x = 0x3b00 + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
-		y = 0x197b + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
+		const auto& souls = placements::Need("dclone", "souls");
+		x = souls.x + static_cast<int32_t>(d2r::RandomBelow(seed, static_cast<uint32_t>(souls.w)));
+		y = souls.y + static_cast<int32_t>(d2r::RandomBelow(seed, static_cast<uint32_t>(souls.h)));
 	} else {
 		// At the target, spread over 24 - 8 x tier subtiles
 		if (target == nullptr || !d2r::UnitXY(target, &x, &y)) {

@@ -5,6 +5,7 @@
 
 #include "ai_hooks.h"
 #include "log.h"
+#include "placements.h"
 #include "rathma.h"
 
 #include <algorithm>
@@ -25,11 +26,12 @@ constexpr int32_t MinCharLevel = 80;
 constexpr int32_t StatLevel = 12;      // itemstatcost level
 // Uber keys: Diablo Clone `dcma`, Rathma `rtma`, Lucion `luca`, Uber Tristram `ubtm` (PD2 levels 137, 161, 188, 185
 // in the port's ids)
-constexpr int32_t UberTristram = 181;
-constexpr int32_t UberLevels[] = {138, 160, 184, UberTristram};
+// The levels are bound in plugin/placements/ (the uber flag marks these four)
+auto UberTristram() noexcept -> int32_t {
+	return placements::LevelOf("tristram");
+}
 // PD2 0x1037d840 is a squared distance to the Blood Fountain (5074, 5114): the user must be within 0x95 of it, and
 // the warp takes every player under 0x96
-constexpr int32_t FountainX = 5074, FountainY = 5114;
 constexpr int32_t FountainUse = 0x95, FountainWarp = 0x96;
 constexpr int32_t StatUberTier = 370;  // uber_difficulty (PD2 185): the key's tier, 0-2
 // The game counter keys of the open uber fight: its tier (PD2 game +0x2629) and entries (+0x2628)
@@ -37,14 +39,13 @@ constexpr uint32_t TierKey = 0x55425254;   // 'UBRT'
 constexpr uint32_t EntryKey = 0x55425245;  // 'UBRE'
 // PD2's three tier-0 re-entry portals (object 595 `xactportal_grey`, the port's 598) around the fountain
 constexpr int32_t GreyPortal = 598;
-constexpr int32_t GreyPortalXY[][2] = {{5076, 5119}, {5068, 5108}, {5079, 5110}};
+constexpr const char* GreyPortalIds[] = {"grey0", "grey1", "grey2"};  // placements/uber_entry.cpp
 constexpr int32_t CantEnter = 0x14;  // operate 15's refusal message
 // The bosses PD2's entry heals by 20% of max life (its set 0x105deec4): Dclone, Rathma and Mendeln and their clones,
 // Lucion, in the port's monstats ids
 constexpr int32_t UberBosses[] = {806, 950, 951, 952, 953, 1129};
 constexpr int32_t MapEventState = 259;  // states `mapevent` (PD2 213): the Outer Void's bosses (unique_maps.cpp)
 // PD2 removes the waypoints on arriving in its 137, 161-163 and 185 (and D2R's Uber Tristram 136, turned off)
-constexpr int32_t NoWaypointLevels[] = {138, 160, 161, 162, UberTristram};
 // PD2 0x1037f4a0: the states stripped on entering an uber area, in the port's ids: enchant, coldenchant, venomclaws,
 // shout, battleorders, battlecommand, wolf, bear, fade, quickness, energyshield, shiverarmor, chillingarmor, bonearmor,
 // cyclonearmor, bladeshield, holyshield, holysword, thunderstorm, thawing, antidote, the ten shrine states,
@@ -69,7 +70,8 @@ int32_t (*g_releasableOriginal)(void* act, void* room) noexcept = nullptr;
 auto FountainDistance(Unit* player) noexcept -> int32_t {
 	int32_t xy[2] = {};
 	d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(d2r::rva::UnitCoords)(player, xy);
-	return (xy[0] - FountainX) * (xy[0] - FountainX) + (xy[1] - FountainY) * (xy[1] - FountainY);
+	const auto fountain = placements::SpotOf("harrogath", "fountain");
+	return (xy[0] - fountain.x) * (xy[0] - fountain.x) + (xy[1] - fountain.y) * (xy[1] - fountain.y);
 }
 
 // PD2 0x1037fb10 (flag 0): every pet but the golems goes; the hireling is killed
@@ -228,11 +230,11 @@ auto WarpGroup(Game* game, Unit* user, int32_t level) noexcept -> int32_t {
 
 // PD2 0x10383060, tier 0: three grey portals to the level around the fountain. `near` is a room by the fountain.
 // Each portal goes in `made`, null where none was made.
-auto OpenGreyPortals(Game* game, void* near, int32_t level, Unit* (&made)[std::size(GreyPortalXY)]) noexcept -> int32_t {
+auto OpenGreyPortals(Game* game, void* near, int32_t level, Unit* (&made)[std::size(GreyPortalIds)]) noexcept -> int32_t {
 	int32_t count = 0;
-	for (size_t i = 0; i < std::size(GreyPortalXY); ++i) {
-		const auto& xy = GreyPortalXY[i];
-		made[i] = OpenPortalAt(game, near, GreyPortal, xy[0], xy[1], level);
+	for (size_t i = 0; i < std::size(GreyPortalIds); ++i) {
+		const auto xy = placements::SpotOf("harrogath", GreyPortalIds[i]);
+		made[i] = OpenPortalAt(game, near, GreyPortal, xy.x, xy.y, level);
 		count += made[i] != nullptr ? 1 : 0;
 	}
 	return count;
@@ -244,7 +246,7 @@ auto OpenUber(Game* game, Unit* player, Unit* item, int32_t level) noexcept -> v
 	const int32_t tier = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(
 		item, StatUberTier, 0);
 	// the portals are made while the user still stands by the fountain, and taken back if the opening fails
-	Unit* portals[std::size(GreyPortalXY)] = {};
+	Unit* portals[std::size(GreyPortalIds)] = {};
 	const int32_t made = tier == 0 ? OpenGreyPortals(game, d2r::Engine<void* (*)(Unit*) noexcept>(d2r::rva::UnitRoom)(
 	                                                           player), level, portals)
 	                               : 0;
@@ -261,7 +263,7 @@ auto OpenUber(Game* game, Unit* player, Unit* item, int32_t level) noexcept -> v
 	*OpenCounter(game, OpenKey) += 1;
 	*OpenCounter(game, TierKey) = tier;
 	// PD2 0x10383060 keeps the arrival count in game +0x2628, but sets it to 0 for Uber Tristram
-	*OpenCounter(game, EntryKey) = level == UberTristram ? 0 : arrived;
+	*OpenCounter(game, EntryKey) = level == UberTristram() ? 0 : arrived;
 	g_warped += static_cast<uint32_t>(arrived);
 	plog::Info("uber: level %d open at tier %d, %d players in (%u opened)", level, tier, arrived, ++g_ubers);
 	if (tier == 0) {
@@ -273,7 +275,7 @@ auto OpenUber(Game* game, Unit* player, Unit* item, int32_t level) noexcept -> v
 
 
 auto IsUberLevel(int32_t level) noexcept -> bool {
-	return std::find(std::begin(UberLevels), std::end(UberLevels), level) != std::end(UberLevels);
+	return placements::IsUberLevel(level);
 }
 
 auto UberFountainRefusal(Unit* player, char* why, size_t size) noexcept -> bool {
@@ -315,7 +317,7 @@ auto UberPortalFinish(ObjectOperate* args, int32_t level) noexcept -> int32_t {
 	int32_t to = level;
 	int32_t exit[2] = {};
 	const bool moved = args->classId == GreyPortal && RathmaReentry(game, to, exit);
-	if (IsUberLevel(level) && level != UberTristram) {
+	if (IsUberLevel(level) && level != UberTristram()) {
 		int32_t* entries = OpenCounter(game, EntryKey);
 		*entries += 1;
 		const int32_t healed = HealBosses(game, to);
@@ -349,7 +351,7 @@ auto NoUberWaypoint(Game* game, void* room, const uint8_t* preset) noexcept -> b
 		return false;
 	}
 	const int32_t level = d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room);
-	if (std::find(std::begin(NoWaypointLevels), std::end(NoWaypointLevels), level) == std::end(NoWaypointLevels)) {
+	if (!placements::NoWaypointLevel(level)) {
 		return false;
 	}
 	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ObjectRecord)(
