@@ -30,6 +30,7 @@
 #include "rathma.h"
 
 #include "event_link.h"
+#include "event_roll.h"
 
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/localization.h>
@@ -57,16 +58,13 @@ constexpr auto RoomsKey(int32_t level) noexcept -> uint32_t {
 }
 
 constexpr int32_t StatForceEvent = 553;  // map_force_event (PD2 500)
-constexpr int32_t QualityMagic = 4;  // rva::QualityNormal is 2
+constexpr int32_t QualityMagic = pd2::event_roll::QualityMagic;  // rva::QualityNormal is 2
 constexpr int32_t UnitItem = 4;      // D2 unit type of an item
 constexpr int32_t NoEvent = 10;
 enum : int32_t {
 	Mendeln = 11, Horazon = 12, DarkWanderer = 14, TreasureFallen = 15, Spire = 16, Gheed = 18, Altar = 19,
 	Invaders = 20, Tomb = 21,
 };
-// PD2's draw (rand() % 12) -> event; 0 draws again
-constexpr int32_t Draws[12] = {0, Mendeln, Horazon, 0, DarkWanderer, TreasureFallen, Spire, 0, Gheed, Altar, Invaders,
-                               Tomb};
 // The events' monsters, PD2 922 nihlathakMap, 921 darkwandererMap and 945 treasurefallenMap in port monstats ids
 constexpr int32_t MendelnMonster = 939, DarkWandererMonster = 938, TreasureFallenMonster = 962;
 constexpr int32_t GheedMonster = 147, HorazonMonster = 936;  // PD2 919 summonerMap
@@ -131,7 +129,7 @@ std::atomic<uint32_t> g_arenaRooms {0};
 using PopulateFn = void (*)(Game* game, void* room) noexcept;
 PopulateFn g_populateOriginal = nullptr;
 PopulateFn g_activateOriginal = nullptr;
-// 0x48f190 (game, room): the first of four calls (0x48f190, 0x503790, 0x510f00, RoomPopulate) both RoomPopulate callers
+// 0x48f190 (game, room): the room's preset loop (pd2_engine.h PresetSpawn), the first of four calls (0x48f190, 0x503790, 0x510f00, RoomPopulate) both RoomPopulate callers
 // (the per-frame room loop 0x408670 and the activation 0x4042a0) make for a room that is not active yet (0x2f0600 == 0).
 // Decompiled for #950 (Ghidra, D2R.gpr); entry bytes push rbp; push rsi; push r14; mov rbp,rsp.
 constexpr uint64_t RoomActivate = 0x48f190;
@@ -467,15 +465,7 @@ auto OperateAltar(ObjectOperate* args) noexcept -> int32_t {
 
 // The roll for a tiered map of `quality` (rva::Quality*), `forced` by a Catalyst Shard's marker
 auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept -> void {
-	const int32_t chance = quality == d2r::rva::QualityNormal ? 11 : quality == QualityMagic ? 17 : 34;
-	int32_t event = 0;
-	if (forced || Rand() % 100 < chance) {
-		for (int draw = 0; draw < 40 && event == 0; ++draw) {
-			const int32_t e = Draws[Rand() % 12];
-			event = forced && e == Altar ? 0 : e;
-		}
-	}
-	event = event != 0 ? event : NoEvent;
+	int32_t event = pd2::event_roll::Pick(quality, forced, Rand);
 	// For game checks only, not PD2's: PD2R_MAP_EVENT=<11-21> in the game's environment rolls that event on every map
 	static const int32_t testEvent = [] {
 		char v[8] {};
@@ -660,7 +650,7 @@ auto RollMapEvent(Game* game, Unit* item, int32_t level) noexcept -> void {
 		plog::Info("map events: level %d set event 0x%x (no roll)", level, fixed);
 		return;
 	}
-	const bool forced = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatForceEvent, 0) > 0;
+	const bool forced = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatForceEvent, pd2::event_link::MarkerLayer) > 0;
 	RollEvent(game, level, d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item), forced);
 }
 
@@ -713,7 +703,7 @@ auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t r
 	char envRooms[16] = {};
 	size_t n = 0;
 	if (getenv_s(&n, envRooms, sizeof(envRooms), "PD2R_MAP_ROOMS") == 0 && n > 0 && std::atoi(envRooms) > 0) {
-		NativeTier.rooms = static_cast<int16_t>(std::atoi(envRooms));
+		NativeTier.rooms = static_cast<int16_t>(std::clamp(std::atoi(envRooms), 1, 32767));
 	}
 	g_context = context;
 	if (context->QueryService(&g_strings) != D2RL::ServiceQueryResult::Success ||
