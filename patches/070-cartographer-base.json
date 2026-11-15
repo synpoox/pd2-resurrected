@@ -607,6 +607,48 @@
     "Rare": "1",
     "Normal": "0"
    }
+  },
+  {
+   "op": "string",
+   "key": "Teeming",
+   "text": "Teeming",
+   "file": "item-nameaffixes.json"
+  },
+  {
+   "op": "string",
+   "key": "Savage",
+   "text": "Savage",
+   "file": "item-nameaffixes.json"
+  },
+  {
+   "op": "string",
+   "key": "Hastened",
+   "text": "Hastened",
+   "file": "item-nameaffixes.json"
+  },
+  {
+   "op": "string",
+   "key": "of the Swarm",
+   "text": "of the Swarm",
+   "file": "item-nameaffixes.json"
+  },
+  {
+   "op": "string",
+   "key": "of Embers",
+   "text": "of Embers",
+   "file": "item-nameaffixes.json"
+  },
+  {
+   "op": "string",
+   "key": "Labyrinth",
+   "text": "Labyrinth",
+   "file": "item-nameaffixes.json"
+  },
+  {
+   "op": "string",
+   "key": "Warren",
+   "text": "Warren",
+   "file": "item-nameaffixes.json"
   }
  ]
 }
