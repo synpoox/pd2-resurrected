@@ -15,7 +15,7 @@ The native-map base every Wave 1 lane builds on. A change to anything below is a
 | Stats | `merge/ids-itemstatcost.tsv` | `cartographer_map_level` 564, `cartographer_mon_life` .. `_speed` 565-571, `cartographer_map_density` 572 (extended saves allow ids past 511, ADR 0003) |
 | Properties | patch | `map-level`, `mon-life`, `mon-damage`, `mon-fire-res`, `mon-cold-res`, `mon-light-res`, `mon-poison-res`, `mon-speed`, `map-density` |
 | Affixes | `merge/ids-magic*.tsv`, `ids-rare*.tsv` | `cmap` only: Teeming, Savage, Hastened, of the Swarm, of Embers, rare Labyrinth / Warren; magic groups 9201-9205 |
-| Acquisition pool | patch | treasure class `Cartographer Maps` (one pick, `cmc`); `Act 1-5 (H) Good` slot `Item9` points at it instead of PD2's `Map Tier 1`, keeping PD2's odds (Prob 1). Tierless. |
+| Acquisition pool | patch | `Act 1-5 (H) Good` slot `Item9` is `cmc` directly instead of PD2's `Map Tier 1` (no sub-class: a class defined after the rows that name it is not resolved, and patches can only append rows), keeping PD2's odds (Prob 1). Tierless. |
 | Catalyst marker | patch, stat `map_force_event` (id 553) | `Save Param Bits` and `Send Param Bits` 6. The marker rides **layer 1** (`MarkerLayer`, [event-link](event-link.md)). Lane B ticket 10 adapts the recipe and owns the game proof that the layer survives a save. |
 
 None of it reads PD2 map items, affixes or recipes. The PD2 map rows still exist (lane A's removal ticket deletes them); `map_open.cpp` already yields item spell 16 to Cartographer, so PD2 maps cannot open here.
