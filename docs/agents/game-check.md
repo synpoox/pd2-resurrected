@@ -12,6 +12,9 @@ in-game". Slot details are in `docs/agents/game-slots.md`.
    `python <toolkit>/testing/game_ctl.py --slot <N> start`.
 5. **Set the cheats** `cheat nogethit 1`, `cheat speedup 300`, `cheat god 1`, each through
    `game_ctl.py --slot <N> console "<cmd>"`.
+   Before any spawn whose item must survive a Save and Exit, also run `cheat savecheatitems 1`: cheat-spawned items are
+   dropped from the save otherwise (any item, not only maps). The flag applies at spawn time: items spawned before it
+   are still dropped.
 6. **Warp** to each spot with `cheat goto <level>,<x>,<y>` (formula: `cheat-commands.md`).
 7. **Shoot** with `game_ctl.py --slot <N> shot`: HD, then `key g` for legacy and `shot` again. Look at each
    screenshot for a held cursor item before the next click. Visual changes get before/after pairs.
