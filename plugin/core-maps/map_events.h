@@ -22,3 +22,5 @@ auto FindEventSpot(void*& room, int32_t xy[2], int32_t size, uint16_t mask, int3
 auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
 // Live counters for the status command.
 auto MapEventsCounters(char* out, size_t size) noexcept -> void;
+// Test aid (#998): the next map event rolled is `name` (wanderer, mendeln, treasure, gheed; off clears it). False for an unknown name.
+auto ForceNextMapEvent(const char* name) noexcept -> bool;

@@ -21,6 +21,12 @@ in-game". Slot details are in `docs/agents/game-slots.md`.
    pinned, then, with `MODKIT_RUN=<owner>` set, `game_slots.py unlock <N> <owner>`.
 10. **Report** what you saw per spot, with the image links.
 
+## Forcing a map event
+
+Console command (core-maps, #998), one shot for the next map opened: `core-maps event wanderer|mendeln|treasure|gheed`
+(`core-maps event off` clears it). Run it through `game_ctl.py --slot <N> console "core-maps event gheed"` before using the
+map item; the log shows `rolled event <n> ..., console event`. A forced event skips the quality roll (the event is the one named, whatever the map's quality). A map is any item of type `cmap` (item type 245).
+
 ## Screenshots that settle the question
 
 One shot should answer the question. Before each shot:
