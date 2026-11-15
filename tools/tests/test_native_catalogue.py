@@ -64,5 +64,5 @@ def test_native_properties_exist():
 
 def test_patch_is_deterministic_and_adds_no_ids():
     first = (ROOT / "patches/071-native-catalogue.json").read_text()
-    assert json.dumps(json.loads(first), indent=1) == first.rstrip("\n") or json.loads(first)
+    assert json.dumps(json.loads(first), indent=1) == first  # regenerating is a no-op
     assert not any(o.get("table") in ("itemstatcost", "magicprefix", "magicsuffix", "rareprefix", "raresuffix") for o in ops("071-native-catalogue.json"))

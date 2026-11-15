@@ -6,7 +6,7 @@ The native-map base every Wave 1 lane builds on. A change to anything below is a
 
 | Piece | Where | Value |
 |---|---|---|
-| Native map | `files/data/global/excel/d2rloader/cartographer/maps.txt` | `Tunneling Depths`, Cave, Loop, item `cmc`, Medium, level 85 |
+| Native map | `files/data/global/excel/d2rloader/cartographer/maps.txt` | Five maps, Medium, level 85: `Tunneling Depths` (Cave, Loop, `cmc`), `Bone Vaults` (Crypt, Branching, `cmr`), `Frozen Hollows` (Ice, Winding, `cmi`), `Overgrown Reach` (Jungle, Winding, `cmj`), `Frostbitten Fields` (Snow, blank Shape, a documented default for Snow, `cms`). Lava and Siege are deferred (#948) |
 | Settings | `.../cartographer.txt` | `EventChance 0` (PD2 events stay in `core-maps`), `PlayerStats 1` |
 | Level slots | `.../slots.txt` | Maze 202, MazeCrypt 203, MazeLava 204, MazeIce 205, Outdoor 206, OutdoorSnow 207, OutdoorSiege 208 |
 | Levels | `merge/ids-levels.tsv` | 202-208 `Cartographer ...` (copies of PD2 area rows); lvlmaze rows for 202-205 in `patches/070-cartographer-base.json` |
@@ -15,7 +15,7 @@ The native-map base every Wave 1 lane builds on. A change to anything below is a
 | Stats | `merge/ids-itemstatcost.tsv` | `cartographer_map_level` 564, `cartographer_mon_life` .. `_speed` 565-571, `cartographer_map_density` 572 (extended saves allow ids past 511, ADR 0003) |
 | Properties | patch | `map-level`, `mon-life`, `mon-damage`, `mon-fire-res`, `mon-cold-res`, `mon-light-res`, `mon-poison-res`, `mon-speed`, `map-density` |
 | Affixes | `merge/ids-magic*.tsv`, `ids-rare*.tsv` | `cmap` only: Teeming, Savage, Hastened, of the Swarm, of Embers, rare Labyrinth / Warren; magic groups 9201-9205 |
-| Acquisition pool | patch | `Act 1-5 (H) Good` slot `Item9` is `cmc` directly instead of PD2's `Map Tier 1` (no sub-class: a class defined after the rows that name it is not resolved, and patches can only append rows), keeping PD2's odds (Prob 1). Tierless. |
+| Acquisition pool | patch | `Act 1-5 (H) Good` slot `Item9` names the `Cartographer Maps` class (the five maps, Picks 1, equal odds) instead of PD2's `Map Tier 1`, keeping PD2's odds (Prob 1). A class must be defined before any row that names it and patches can only append rows, so `patches/071-native-catalogue.json` renames the unreferenced row 121 (`Act 1 Melee A`) into the class. Tierless. |
 | Catalyst marker | patch, stat `map_force_event` (id 553) | `Save Param Bits` and `Send Param Bits` 6. The marker rides **layer 1** (`MarkerLayer`, [event-link](event-link.md)). Lane B ticket 10 adapts the recipe and owns the game proof that the layer survives a save. |
 
 None of it reads PD2 map items, affixes or recipes. The PD2 map rows still exist (lane A's removal ticket deletes them); `map_open.cpp` already yields item spell 16 to Cartographer, so PD2 maps cannot open here.
@@ -51,7 +51,7 @@ None of it reads PD2 map items, affixes or recipes. The PD2 map rows still exist
 - `cmap` has `Equiv1 misc` (copied from Herb), so a `misc` type-based pick could roll a map. Not seen in any treasure class; lane A decides whether to cut the parent.
 - Affix names are string keys in `item-nameaffixes.json`, added by `string` ops in `070-cartographer-base.json` (a name without one reads "Missing string" on the tooltip).
 - Slot level `LevelType` (202-208) is set by `set` ops on `levels` (`where: {"Id": ...}`): PD2's merge renumbers LevelType after the `+` lines, so a value in the `+` line is lost and `cartographer check` reports the wrong type.
-- `cmap` gets `Magic=1 Rare=1 Normal=0` from a patch `set` (the template row left it `0/1/0`), and `cmc` has `rarity 1`, `level 1`. The pool puts `cmc` straight into `Item9`: a treasure class defined after the rows that name it is never resolved (0 drops in 440,000), and patches can only append rows.
+- `cmap` gets `Magic=1 Rare=1 Normal=0` from a patch `set` (the template row left it `0/1/0`), and `cmc` has `rarity 1`, `level 1`. The pool class `Cartographer Maps` sits on row 121, before the Good rows that name it: a treasure class defined after the rows that name it is never resolved (0 drops in 440,000), and patches can only append rows.
 - Building the PD2 plugins (`pluginuild.ps1`) fails against current d2rAI-toolkit main (`rvas_93847/tables.h` redefines `pd2_engine.h`); #946 was built with `D2R_TOOLKIT` pointed at toolkit commit 669f42a. Filed separately as a toolkit issue.
 - `LevelEntry` on levels 202-208: the `+` lines set it empty, but the merged `levels.txt` keeps the template area's string (for example `EnteringCaveLevel1` on 202). Harmless; Cartographer's map names replace the entry text.
 
