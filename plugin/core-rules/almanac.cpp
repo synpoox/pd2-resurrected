@@ -88,6 +88,7 @@ auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions
 	}
 	// The event does not name the button and a left click (picking the item up) raises it too, so only a held right
 	// button counts as using the Almanac. A controller activation is always a use.
+	plog::Info("almanac-diag: event src %u L %d R %d", static_cast<uint32_t>(event->inputSource), (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0, (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0);
 	const bool used = event->inputSource == D2RL::ItemInteractions::InputSource::Controller ||
 	                  (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
 	if (used && g_threads->runOnGameThread(g_context, IdentifyNow, reinterpret_cast<void*>(event->player)) !=
