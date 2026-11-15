@@ -113,8 +113,8 @@ auto OperateTempleChest(ObjectOperate* args) noexcept -> int32_t {
 
 auto InstallLucionChests(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
-	g_original = reinterpret_cast<OperateFn>(d2r::imageBase + OperateChest);
-	const uint64_t expected = d2r::imageBase + OperateChest;
+	g_original = reinterpret_cast<OperateFn>(d2r::imageBase + OperateChestFn);
+	const uint64_t expected = d2r::imageBase + OperateChestFn;
 	const bool on = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperateChest) * 8, &expected,
 	                                       sizeof(expected), reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperateTempleChest)));
 	std::snprintf(report, reportSize, "chest operate %d%s", ObjectOperateChest, on ? "" : " FAILED (slot differs)");
