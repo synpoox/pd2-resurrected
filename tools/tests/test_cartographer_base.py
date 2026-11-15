@@ -46,5 +46,5 @@ def test_every_slot_is_a_level_and_ids_are_gapless():
 
 def test_map_pool_is_tierless():
     sets = [o for o in patch_ops() if o.get("table") == "treasureclassex" and o["op"] == "set" and o["set"].get("Item9")]
-    assert len(sets) == 10 and all(o["set"]["Item9"] in ("cmc", "Cartographer Maps") for o in sets)
+    assert len(sets) == 10 and all(o["set"]["Item9"] in ("m01", "Cartographer Maps") for o in sets)
     assert not any("Map Tier" in json.dumps(o) for o in sets)

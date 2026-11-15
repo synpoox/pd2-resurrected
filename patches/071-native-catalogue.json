@@ -1,5 +1,5 @@
 {
- "_note": "#948 (lane A): the small verified native catalogue. Four more map items (Crypt, Ice, Jungle, Snow; Cave is cmc in 070) and one pool, Cartographer Maps, that Act 1-5 (H) Good Item9 and Horazon's six rolls share. The pool reuses the unreferenced PD2/D2R leftover row Act 1 Melee A, renamed, because a treasure class must be defined before any row that names it and patches can only append rows.",
+ "_note": "#948 (lane A): the small verified native catalogue. Four more map items (Crypt, Ice, Jungle, Snow; Cave is m01 in 070) and one pool, Cartographer Maps, that Act 1-5 (H) Good Item9 and Horazon's six rolls share. The pool reuses the unreferenced PD2/D2R leftover row Act 1 Melee A, renamed, because a treasure class must be defined before any row that names it and patches can only append rows.",
  "ops": [
   {
    "op": "clone_row",
@@ -8,8 +8,8 @@
    "from": "Identify Scroll",
    "key": "Bone Vaults Map",
    "set": {
-    "code": "cmr",
-    "namestr": "cmr",
+    "code": "m02",
+    "namestr": "m02",
     "type": "cmap",
     "compactsave": "0",
     "belt": "0",
@@ -99,13 +99,13 @@
   },
   {
    "op": "string",
-   "key": "cmr",
+   "key": "m02",
    "text": "Bone Vaults Map",
    "file": "item-names.json"
   },
   {
    "op": "item_hd",
-   "code": "cmr",
+   "code": "m02",
    "asset": "scroll/identify_scroll"
   },
   {
@@ -115,8 +115,8 @@
    "from": "Identify Scroll",
    "key": "Frozen Hollows Map",
    "set": {
-    "code": "cmi",
-    "namestr": "cmi",
+    "code": "m03",
+    "namestr": "m03",
     "type": "cmap",
     "compactsave": "0",
     "belt": "0",
@@ -206,13 +206,13 @@
   },
   {
    "op": "string",
-   "key": "cmi",
+   "key": "m03",
    "text": "Frozen Hollows Map",
    "file": "item-names.json"
   },
   {
    "op": "item_hd",
-   "code": "cmi",
+   "code": "m03",
    "asset": "scroll/identify_scroll"
   },
   {
@@ -222,8 +222,8 @@
    "from": "Identify Scroll",
    "key": "Overgrown Reach Map",
    "set": {
-    "code": "cmj",
-    "namestr": "cmj",
+    "code": "m04",
+    "namestr": "m04",
     "type": "cmap",
     "compactsave": "0",
     "belt": "0",
@@ -313,13 +313,13 @@
   },
   {
    "op": "string",
-   "key": "cmj",
+   "key": "m04",
    "text": "Overgrown Reach Map",
    "file": "item-names.json"
   },
   {
    "op": "item_hd",
-   "code": "cmj",
+   "code": "m04",
    "asset": "scroll/identify_scroll"
   },
   {
@@ -329,8 +329,8 @@
    "from": "Identify Scroll",
    "key": "Frostbitten Fields Map",
    "set": {
-    "code": "cms",
-    "namestr": "cms",
+    "code": "m05",
+    "namestr": "m05",
     "type": "cmap",
     "compactsave": "0",
     "belt": "0",
@@ -420,13 +420,13 @@
   },
   {
    "op": "string",
-   "key": "cms",
+   "key": "m05",
    "text": "Frostbitten Fields Map",
    "file": "item-names.json"
   },
   {
    "op": "item_hd",
-   "code": "cms",
+   "code": "m05",
    "asset": "scroll/identify_scroll"
   },
   {
@@ -444,15 +444,15 @@
     "Rare": "",
     "Magic": "",
     "NoDrop": "",
-    "Item1": "cmc",
+    "Item1": "m01",
     "Prob1": "1",
-    "Item2": "cmr",
+    "Item2": "m02",
     "Prob2": "1",
-    "Item3": "cmi",
+    "Item3": "m03",
     "Prob3": "1",
-    "Item4": "cmj",
+    "Item4": "m04",
     "Prob4": "1",
-    "Item5": "cms",
+    "Item5": "m05",
     "Prob5": "1",
     "Item6": "",
     "Prob6": "",
