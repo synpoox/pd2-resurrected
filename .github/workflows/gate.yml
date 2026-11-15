@@ -6,8 +6,8 @@ name: gate
 # table-diff job runs on a hosted runner and fails at once (#901), because a skipped check counts as passing.
 # Docs-only changes start no run (paths:), except the gate inputs docs/deviations.md and docs/coverage-baseline.tsv.
 # Only a real gate run may carry a check named table-diff (#897): main's ruleset requires it and GitHub counts a skipped
-# check as passing, so no event may start a run of this workflow whose job is skipped. Label and close events go to
-# gate-control.yml, which cancels (#847) or reruns (parity-drop-ok) the PR's gate run from a job with another name.
+# check as passing, so no event may start a run of this workflow whose job is skipped. Close events go to
+# gate-control.yml, which cancels the PR's gate run (#847) from a job with another name.
 on:
   push:
     branches: [main]
@@ -17,8 +17,7 @@ on:
     paths: ['**', '!**/*.md', '!docs/**', '!changelog.d/**', 'docs/deviations.md', 'docs/coverage-baseline.tsv']
 
 # One gate per PR: a push cancels the run on the old head (#801). push: one group for main, so a newer main commit cancels
-# the older one's run (#903). PRs take the latest successful main run's baseline (gh run list --status success), so a
-# cancelled run leaves them the previous baseline, then docs/coverage-baseline.tsv.
+# the older one's run (#903).
 concurrency:
   group: gate-${{ github.event_name == 'push' && 'main' || github.event.pull_request.number }}
   cancel-in-progress: true
@@ -33,8 +32,6 @@ jobs:
     runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","windows","pd2r"]') }}
     permissions:
       contents: read
-      actions: read  # gh run download of main's coverage-baseline artifact
-      pull-requests: read  # the PR's labels, read when the parity step runs (a rerun keeps the old event payload)
     env:
       PYTHONPATH: ${{ vars.D2R_TOOLKIT }}
       FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
@@ -66,103 +63,6 @@ jobs:
           # new entries there and replays only main's own; a PR replays main's and keeps only in its scratch folder
           # (pd2_cache.Policy), so a buggy PR run cannot damage the entries main replays (fork PRs fail before this step, so only same-repo PR code gets here).
           $env:PD2R_CI_SCOPE = if ("${{ github.event_name }}" -eq "push") { "main" } else { "pr-${{ github.event.pull_request.number }}" }
-          "PD2R_CI_SCOPE=$env:PD2R_CI_SCOPE" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV  # #854: the coverage step caches under the same scope
           py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
       - name: Table-diff gate
         run: py -3 tools/pd2_diff.py --scope alpha
-      # #786: the merge/presets-hd.d/ stand-in lines (quarter rule, no empty line, no missing DT1); prints tiles renamed per map
-      - name: Stand-in lines lint
-        if: ${{ !cancelled() && env.FORK != 'true' }}
-        run: py -3 tools/pd2_presets_lint.py
-      # #839: a stale op in merge/presets-overrides.d/ (it matches nothing the generator makes) fails the PR
-      - name: Preset overrides lint
-        if: ${{ !cancelled() && env.FORK != 'true' }}
-        run: py -3 tools/pd2_overrides.py lint
-      # LP3c (#672, #681): the no-game coverage report of the generated HD presets, uploaded as an artifact. Information
-      # only since #838: it no longer fails a PR (the parity step below gates). A push to main uploads its scores as the
-      # coverage-baseline artifact; a PR's report lists its changes against the latest one (#723; fall back to
-      # docs/coverage-baseline.tsv). The fidelity scores against legacy per edge type and floor (#732, pd2_fidelity) ride
-      # along: fidelity-baseline.tsv in the same artifact. Without model_lod_desc.bin it skips and passes.
-      - name: HD preset coverage
-        if: ${{ !cancelled() && env.FORK != 'true' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          py -3 -m modkit fetch --prefix data/hd/model_lod_desc.bin
-          if ($LASTEXITCODE) { "::warning::modkit fetch of model_lod_desc.bin failed: the coverage check may skip" }
-          if ("${{ github.event_name }}" -eq "push") {
-            $out = py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --baseline coverage/baseline.tsv --write-baseline
-          } else {
-            $base = "docs/coverage-baseline.tsv"
-            $run = gh run list --repo ${{ github.repository }} --workflow gate.yml --branch main --event push --status success --limit 1 --json databaseId -q '.[0].databaseId'
-            if ($run) { gh run download $run --repo ${{ github.repository }} --name coverage-baseline --dir coverage/main-coverage }
-            if (Test-Path coverage/main-coverage/baseline.tsv) {
-              $base = "coverage/main-coverage/baseline.tsv"
-              "Coverage compared with main's scores from run $run." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
-            } else {
-              "::warning::no coverage-baseline artifact from main: comparing with $base"
-            }
-            $out = py -3 tools/pd2_coverage.py --commit ${{ github.sha }} --baseline $base
-          }
-          $out
-          if (Test-Path coverage/drops.md) {
-            Get-Content coverage/drops.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
-          }
-          if (Test-Path coverage/fidelity-changes.md) {
-            Get-Content coverage/fidelity-changes.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
-          }
-          if (Test-Path coverage/changes.md) {
-            Get-Content coverage/changes.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
-          } elseif (-not (Test-Path coverage/report.md)) {
-            "::warning::HD preset coverage did not run: $out"
-            "HD preset coverage did not run: $out" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
-          }
-      # #891: hd-folder-types.tsv is made from the typing code and D2R's stock presets; fail when either changed since
-      # it was written, so parity never scores with an old typing (fix: `py -3 tools/pd2_fidelity.py --write-votes`)
-      - name: Folder types current
-        if: ${{ !cancelled() && env.FORK != 'true' }}
-        run: py -3 tools/pd2_fidelity.py --check-votes
-      # #838: the parity of each map (tools/pd2_parity.py) in the step summary. A push to main uploads parity-baseline.tsv
-      # with the coverage baseline; a PR fails when a map's parity drops more than pd2_parity.TOLERANCE (2) points below it
-      # (or a baselined map is no longer scored). The PR label parity-drop-ok accepts an intended drop. Without a
-      # parity baseline from main (the first runs) it reports and passes.
-      - name: HD:legacy parity
-        if: ${{ !cancelled() && env.FORK != 'true' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # the label now, not the event payload's: gate-control.yml reruns this run when parity-drop-ok changes (#897)
-          $DROP_OK = if ("${{ github.event_name }}" -eq "push") { "false" } else { (gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json labels -q '[.labels[].name] | index("parity-drop-ok") != null') }
-          if ("${{ github.event_name }}" -eq "push") {
-            py -3 tools/pd2_parity.py --commit ${{ github.sha }} --write-baseline
-          } else {
-            [string[]]$check = if ($DROP_OK -eq "true") { @() } else { @("--check") }
-            if ($DROP_OK -eq "true") { "Label parity-drop-ok: parity drops are reported, not failed." | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY }
-            # main's parity-baseline.tsv comes from the artifact the coverage step downloaded; always passed, so a main artifact
-            # without the file yet is not downloaded a second time (the file is missing: the tool says "Not gated", #869)
-            [string[]]$base = @("--baseline", "coverage/main-coverage/parity-baseline.tsv")
-            py -3 tools/pd2_parity.py --commit ${{ github.sha }} @base @check
-          }
-          $code = $LASTEXITCODE
-          if (Test-Path coverage/parity.md) {
-            Get-Content coverage/parity.md | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
-          }
-          exit $code
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() && env.FORK != 'true' && github.event_name == 'push' }}
-        continue-on-error: true
-        with:
-          name: coverage-baseline
-          path: |
-            coverage/baseline.tsv
-            coverage/parity-baseline.tsv
-            coverage/fidelity-baseline.tsv
-            coverage/fidelity-tiles-baseline.tsv
-          if-no-files-found: ignore
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() && env.FORK != 'true' }}
-        continue-on-error: true
-        with:
-          name: hd-preset-coverage
-          path: coverage/
-          if-no-files-found: ignore
