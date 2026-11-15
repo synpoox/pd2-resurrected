@@ -59,6 +59,18 @@ static_assert(std::size(StrippedStates) == 37);
 constexpr int32_t PetTypes = 31, KeptPetType = 3;
 
 
+// The uber keys' own item spell (#951): Cartographer owns the item spell dispatchers and the map spell 16, and a key
+// that took 16 reached no handler, so the keys (misc pSpell 19, patches/080-uber-access.json) use D2R's free entry 19
+// {check 0, use 0, keep 0}. Both of its handler indexes are slot 0, D2R's `mov al,1; ret` stub in the check table and
+// the use table; the slots are written here (no hook), and every other item that reaches slot 0 passes (it did before).
+constexpr int32_t UberKeySpell = 19, RiteOfPassage = 39;
+constexpr int32_t CantDoThat = 0x15;
+constexpr uint64_t ItemSpellCheckTable = 0x1d3ea30;  // 11 check handlers: uint64 fn(game, player, item)
+constexpr uint64_t KeyStubOriginal = 0x77ee0;       // slot 0 of both tables
+std::atomic<uint32_t> g_keyChecks {0};
+std::atomic<uint32_t> g_keyRefused {0};
+std::atomic<uint32_t> g_keyUses {0};
+
 std::atomic<uint32_t> g_ubers {0};
 std::atomic<uint32_t> g_warped {0};
 std::atomic<uint32_t> g_portals {0};
@@ -265,7 +277,11 @@ auto OpenUber(Game* game, Unit* player, Unit* item, int32_t level) noexcept -> v
 	// PD2 0x10383060 keeps the arrival count in game +0x2628, but sets it to 0 for Uber Tristram
 	*OpenCounter(game, EntryKey) = level == UberTristram() ? 0 : arrived;
 	g_warped += static_cast<uint32_t>(arrived);
-	plog::Info("uber: level %d open at tier %d, %d players in (%u opened)", level, tier, arrived, ++g_ubers);
+	// stock areas (Vanilla mini-ubers, D2R's Tristram) and the authored private ones open through this same path
+	const placements::Binding* bound = placements::BindingAt(level);
+	plog::Info("uber: level %d (%s, source %d) open at tier %d, %d players in (%u opened)", level,
+	           bound != nullptr ? bound->encounter : "?", bound != nullptr ? static_cast<int>(bound->source) : -1, tier,
+	           arrived, ++g_ubers);
 	if (tier == 0) {
 		g_portals += static_cast<uint32_t>(made);
 		plog::Info("uber: %d re-entry portals by the fountain", made);
@@ -273,6 +289,107 @@ auto OpenUber(Game* game, Unit* player, Unit* item, int32_t level) noexcept -> v
 }
 
 
+
+namespace {
+
+auto KeyRecord(Game* game, Unit* item) noexcept -> const uint8_t* {
+	using namespace d2r::rva;
+	const int32_t row = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(UnitClassOf)(item, __FILE__,
+	                                                                                               __LINE__);
+	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ItemRecord)(d2r::DataFlag(game), row);
+	return record != nullptr && At<int32_t>(record, ItemPSpell) == UberKeySpell ? record : nullptr;
+}
+
+auto Openings(Game* game) noexcept -> int32_t {
+	const int32_t* counter = OpenCounter(game, OpenKey);
+	return counter != nullptr ? *counter : 0;
+}
+
+auto RiteDone(Unit* player) noexcept -> bool {
+	using namespace d2r::rva;
+	const uint8_t* data = d2r::Engine<const uint8_t* (*)(Unit*) noexcept>(UnitPlayerData)(player);
+	void* quests = data != nullptr ? At<void*>(data, PlayerQuests + Hell * 8) : nullptr;
+	return quests != nullptr && d2r::Engine<int32_t (*)(void*, int32_t, int32_t) noexcept>(QuestFlag)(
+	                                quests, RiteOfPassage, 0) != 0;
+}
+
+// The gates of PD2's key use (0x1037d840), in its order, as map_open.cpp's Refusal runs them for a map, plus the
+// destination: a level no placement binds as an uber fight (a reserved private id before its author flips the
+// binding, or a stray `len`) is refused before anything else, so no key is spent on an unfinished area.
+auto KeyRefusal(Game* game, Unit* player, int32_t level, char* why, size_t size) noexcept -> bool {
+	const int32_t charLevel = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(
+		player, StatLevel, 0);
+	const int32_t where = PlayerLevelId(player);
+	if (!placements::IsUberLevel(level)) {
+		std::snprintf(why, size, "level %d is not a finished uber area", level);
+	} else if (At<uint8_t>(game, d2r::rva::GameDifficulty) != Hell) {
+		std::snprintf(why, size, "not Hell");
+	} else if (charLevel < MinCharLevel) {
+		std::snprintf(why, size, "character level %d under %d", charLevel, MinCharLevel);
+	} else if (!RiteDone(player)) {
+		std::snprintf(why, size, "Rite of Passage not done in Hell");
+	} else if (where != Harrogath) {
+		std::snprintf(why, size, "in level %d, not Harrogath", where);
+	} else if (Openings(game) > 0) {
+		std::snprintf(why, size, "a map or uber area is already open in this game");
+	} else {
+		return UberFountainRefusal(player, why, size);
+	}
+	return true;
+}
+
+auto KeyLevel(Game* game, Unit* player, Unit* item, const uint8_t* record) noexcept -> int32_t {
+	return d2r::Engine<int32_t (*)(uint32_t, Unit*, Unit*, uint32_t) noexcept>(d2r::rva::ItemCalc)(
+		d2r::DataFlag(game), player, item, At<uint32_t>(record, d2r::rva::ItemLenCalc));
+}
+
+// Item spell check slot 0: a refused key stays in the inventory and the player gets D2R's "can't do that"
+auto KeyCheck(Game* game, Unit* player, Unit* item) noexcept -> uint64_t {
+	const uint8_t* record = game != nullptr && player != nullptr && item != nullptr ? KeyRecord(game, item) : nullptr;
+	if (record == nullptr) {
+		return 1;
+	}
+	++g_keyChecks;
+	const int32_t level = KeyLevel(game, player, item, record);
+	char why[96];
+	if (KeyRefusal(game, player, level, why, sizeof(why))) {
+		plog::Info("uber: key for level %d refused: %s (%u refused)", level, why, ++g_keyRefused);
+		d2r::Engine<void (*)(Unit*, int32_t, Unit*) noexcept>(d2r::rva::ClientMessage)(player, CantDoThat, player);
+		return 0;
+	}
+	return 1;
+}
+
+// Item spell use slot 0: the check has passed, so the key opens its area (entry 19's keep is 0: D2R then uses it up)
+auto KeyUse(Game* game, Unit* player, Unit* item) noexcept -> uint8_t {
+	const uint8_t* record = game != nullptr && player != nullptr && item != nullptr ? KeyRecord(game, item) : nullptr;
+	if (record != nullptr) {
+		++g_keyUses;
+		OpenUber(game, player, item, KeyLevel(game, player, item, record));
+	}
+	return 1;
+}
+
+}  // namespace
+
+auto InstallUberKey(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
+	using namespace d2r::rva;
+	const uint64_t expected = d2r::imageBase + KeyStubOriginal;
+	using CheckFn = uint64_t (*)(Game*, Unit*, Unit*) noexcept;
+	using UseFn = uint8_t (*)(Game*, Unit*, Unit*) noexcept;
+	const bool check = context->PatchWriteU64(ItemSpellCheckTable, &expected, sizeof(expected),
+	                                          reinterpret_cast<uint64_t>(static_cast<CheckFn>(KeyCheck)));
+	const bool use = context->PatchWriteU64(ItemSpellUseTable, &expected, sizeof(expected),
+	                                        reinterpret_cast<uint64_t>(static_cast<UseFn>(KeyUse)));
+	std::snprintf(report, reportSize, "uber key item spell %d, check slot 0%s, use slot 0%s", UberKeySpell,
+	              check ? "" : " FAILED (the slot differs)", use ? "" : " FAILED (the slot differs)");
+	return (check ? 1 : 0) + (use ? 1 : 0);
+}
+
+auto UberKeyCounters(char* out, size_t size) noexcept -> void {
+	std::snprintf(out, size, "uber keys: checked %u, refused %u, used %u", g_keyChecks.load(), g_keyRefused.load(),
+	              g_keyUses.load());
+}
 
 auto IsUberLevel(int32_t level) noexcept -> bool {
 	return placements::IsUberLevel(level);

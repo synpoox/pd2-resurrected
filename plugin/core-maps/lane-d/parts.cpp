@@ -11,6 +11,7 @@
 #include "rathma_ai.h"
 #include "rathma_life.h"
 #include "uber_drops.h"
+#include "uber_entry.h"
 #include "uber_tristram.h"
 
 #include <cstdio>
@@ -59,7 +60,12 @@ void InstallDcloneaiPart(const D2RL::PluginContext* context, char* report, size_
 	std::snprintf(report, size, "%d/%d installed: %s", installed, 2, rules);
 }
 
+void InstallUberkeyPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	InstallUberKey(context, report, size);
+}
+
 PartReg r70(70, "trist", InstallTristram);
+PartReg r156(156, "uberkey", InstallUberkeyPart);
 PartReg r80(80, "lucion", InstallLucionPart);
 PartReg r90(90, "primes", InstallPrimesPart);
 PartReg r100(100, "temple", InstallTemplePart);
@@ -77,5 +83,6 @@ CountersReg c160(160, LucionAiCounters);
 CountersReg c170(170, RathmaAiCounters);
 CountersReg c180(180, RathmaLifeCounters);
 CountersReg c190(190, DcloneAiCounters);
+CountersReg c196(196, UberKeyCounters);
 
 }  // namespace
