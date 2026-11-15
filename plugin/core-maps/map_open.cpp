@@ -206,7 +206,7 @@ auto CartographerBeside(const D2RL::PluginContext* context) noexcept -> bool {
 		return false;
 	}
 	std::wstring path = self;
-	const size_t slash = path.find_last_of(L"\/");
+	const size_t slash = path.find_last_of(L"\\/");
 	if (slash == std::wstring::npos) {
 		return false;
 	}

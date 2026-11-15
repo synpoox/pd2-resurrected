@@ -55,6 +55,17 @@ class HookOwners(unittest.TestCase):
         self.assertIn("!g_yielded && context->InstallInlineHook(ItemSpellUse", text)
         self.assertIn("cartographer.dll", text)
 
+    def test_yield_test_splits_the_path_on_a_backslash(self):
+        # L"\/" is not an escape: MSVC reads it as "/" and a Windows plugin path never matched (the yield then
+        # depended on load order)
+        text = (PLUGIN / "core-maps" / "map_open.cpp").read_text(encoding="utf-8")
+        self.assertIn('find_last_of(L"\\\\/")', text)
+
+    def test_almanac_listens_to_inventory_and_cube_and_the_right_button(self):
+        text = (PLUGIN / "core-rules" / "almanac.cpp").read_text(encoding="utf-8")
+        self.assertIn(".containerMask = Boundary", text)
+        self.assertIn("VK_RBUTTON", text)
+
     def test_almanac_is_an_interaction_listener_in_core_rules(self):
         self.assertFalse((PLUGIN / "core-maps" / "almanac.cpp").exists())
         text = (PLUGIN / "core-rules" / "almanac.cpp").read_text(encoding="utf-8")

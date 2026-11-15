@@ -16,6 +16,9 @@
 #include <D2RLPlugin/item_interactions.h>
 #include <D2RLPlugin/threads.h>
 
+#define NOMINMAX
+#include <windows.h>
+
 #include <atomic>
 #include <cstdio>
 #include <vector>
@@ -83,12 +86,15 @@ auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions
 	    g_items->getItemInfo(g_context, event->item, &info) != items::Result::Success || info.code != CodeAlmanac) {
 		return Decision::Continue;
 	}
-	if (g_threads->runOnGameThread(g_context, IdentifyNow, reinterpret_cast<void*>(event->player)) !=
-	    D2RL::Threads::Result::Success) {
+	// The event does not name the button and a left click (picking the item up) raises it too, so only a held right
+	// button counts as using the Almanac. A controller activation is always a use.
+	const bool used = event->inputSource == D2RL::ItemInteractions::InputSource::Controller ||
+	                  (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
+	if (used && g_threads->runOnGameThread(g_context, IdentifyNow, reinterpret_cast<void*>(event->player)) !=
+	                D2RL::Threads::Result::Success) {
 		plog::Info("almanac: could not queue the identify");
 	}
-	// Continue, not Consume: the event does not say which button, and a left click on the item (picking it up) raises it
-	// too (seen in game), so consuming would stop the player moving the Almanac. D2R's own use (item spell 18) has no handler.
+	// Continue: D2R's own use (item spell 18) has no handler, so nothing else happens
 	return Decision::Continue;
 }
 
@@ -113,7 +119,8 @@ auto InstallAlmanac(const D2RL::PluginContext* context, char* report, size_t rep
 	                            D2RL::ItemInteractionServiceRequiredSize);
 	D2RL::ItemInteractions::ListenerHandle handle = D2RL::ItemInteractions::InvalidHandle;
 	const D2RL::ItemInteractions::ItemInteractionListener listener {
-		.structSize = D2RL::ItemInteractions::ItemInteractionListenerSize, .callback = OnActivate};
+		.structSize = D2RL::ItemInteractions::ItemInteractionListenerSize, .callback = OnActivate,
+		.containerMask = Boundary};
 	const bool live = services && interactions->registerListener(context, &listener, &handle) ==
 	                                  D2RL::ItemInteractions::Result::Success;
 	std::snprintf(report, reportSize, "almanac identify-all%s", live ? "" : " FAILED (a service or the listener is missing)");
