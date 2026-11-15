@@ -38,7 +38,9 @@ None of it reads PD2 map items, affixes or recipes. The PD2 map rows still exist
 | D ubers | `plugin/core-maps/lane-d/` and uber data patches |
 | Shared (serial) | `merge/ids-*.tsv` ids, `patches/070-cartographer-base.json`, `cartographer.txt`, `plugin/core-maps/parts` registration, this file |
 
-`tools/tests/test_core_maps_lanes.py` enforces the plugin allowlist; - Appending new affix ids to `merge/ids-magic*.tsv` and `ids-rare*.tsv`: lane A, one PR at a time, always after the current maximum; lanes B, C and D ask lane A (the shared serial role during a checkpoint) instead of appending, so #948 and #949 cannot collide.
+`tools/tests/test_core_maps_lanes.py` enforces the plugin allowlist.
+
+- Appending new affix ids to `merge/ids-magic*.tsv` and `ids-rare*.tsv`: lane A, one PR at a time, always after the current maximum; lanes B, C and D ask lane A (the shared serial role during a checkpoint) instead of appending, so #948 and #949 cannot collide.
 - Uber-key recipes and uber tiers: recipe and tier behavior is lane B (core-rules); the uber-only access, rewards and fights that use them are lane D.
 - Lane A's removal of PD2 map stats must keep `map_force_event` (553): it is the Catalyst marker.
 
