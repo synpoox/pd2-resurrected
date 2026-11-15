@@ -210,3 +210,10 @@ Tomb Event Map	198	Tomb Event Map
 Poisoned Well Map	199	Poisoned Well Map
 Dark Temple Map	200	Dark Temple Map
 Descent Map	201	Descent Map
++9 Act=4 SizeX=360 SizeY=360 SizeX(N)=360 SizeY(N)=360 SizeX(H)=360 SizeY(H)=360 OffsetX=3500 OffsetY=0 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Warp4=-1 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	202	Cartographer Maze
++18 Act=4 SizeX=360 SizeY=360 SizeX(N)=360 SizeY(N)=360 SizeX(H)=360 SizeY(H)=360 OffsetX=3000 OffsetY=0 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	203	Cartographer Crypt
++107 Act=4 SizeX=360 SizeY=360 SizeX(N)=360 SizeY(N)=360 SizeX(H)=360 SizeY(H)=360 OffsetX=2500 OffsetY=0 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	204	Cartographer Lava
++113 SizeX=360 SizeY=360 SizeX(N)=360 SizeY(N)=360 SizeX(H)=360 SizeY(H)=360 OffsetY=0 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Warp1=-1 Warp2=-1 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	205	Cartographer Ice Caves
++111 SizeX=384 SizeY=384 SizeX(N)=384 SizeY(N)=384 SizeX(H)=384 SizeY(H)=384 OffsetX=6000 OffsetY=3000 Depend=0 LevelType=21 SubType=-1 SubTheme=-1 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	206	Cartographer Outdoor
++117 SizeX=192 SizeY=192 SizeX(N)=192 SizeY(N)=192 SizeX(H)=192 SizeY(H)=192 OffsetX=1500 OffsetY=0 Depend=0 SubType=-1 SubTheme=-1 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Warp2=-1 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	207	Cartographer Snow
++110 OffsetX=6000 OffsetY=3900 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	208	Cartographer Siege

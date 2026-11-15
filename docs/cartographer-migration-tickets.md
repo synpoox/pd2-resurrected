@@ -54,7 +54,7 @@ Ownership barriers are deliberate blockers. D's fight tickets and C's shared eve
 
 3. **Preserve general cube execution and Almanac with Cartographer** — **Blocked by:** 2. **Delivers:** Native mapping coexists with retained corruption/Demonic Cube and identify-all behavior. **Assignment:** Shared.
 
-4. **Open and acquire one native map in the candidate** — **Blocked by:** 3. **Delivers:** A real native map item is obtainable and opens a generated area with the supported PD2 plugins active. **Assignment:** Shared.
+4. **Open and acquire one native map in the candidate** — **Blocked by:** 3. **Delivers:** A real native map item is obtainable and opens a generated area with the supported PD2 plugins active. **Assignment:** Shared. **Done in #946:** the frozen contracts, reserved ids and four-lane file ownership are in [cartographer-contracts.md](cartographer-contracts.md); lanes edit only the files that table gives them.
 
 5. **Complete the small verified native catalogue** — **Blocked by:** 23. **Delivers:** One native map per game-verified tileset is obtainable through normal tierless acquisition. **Assignment:** A — native maps.
 

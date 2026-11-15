@@ -994,3 +994,6 @@ Scintillating#7	1041	Scintillating
 +704 itype3= itype4= rare=3 frequency=10	1044	Torrid
 +707 itype3= itype4= itype5= rare=3 frequency=10	1045	Forbidden
 +710 itype3= itype4= rare=3 frequency=10	1046	Malevolent
++704 itype1=cmap itype2= itype3= itype4= itype5= itype6= itype7= etype1= etype2= etype3= etype4= etype5= spawnable=1 rare=1 level=1 maxlevel= levelreq=1 classspecific= class= classlevelreq= frequency=10 transformcolor= multiply= add= mod2code= mod2param= mod2min= mod2max= mod3code= mod3param= mod3min= mod3max= mod1param= group=9201 mod1code=mon-life mod1min=10 mod1max=40	1047	Teeming
++704 itype1=cmap itype2= itype3= itype4= itype5= itype6= itype7= etype1= etype2= etype3= etype4= etype5= spawnable=1 rare=1 level=1 maxlevel= levelreq=1 classspecific= class= classlevelreq= frequency=10 transformcolor= multiply= add= mod2code= mod2param= mod2min= mod2max= mod3code= mod3param= mod3min= mod3max= mod1param= group=9202 mod1code=mon-damage mod1min=10 mod1max=40	1048	Savage
++704 itype1=cmap itype2= itype3= itype4= itype5= itype6= itype7= etype1= etype2= etype3= etype4= etype5= spawnable=1 rare=1 level=1 maxlevel= levelreq=1 classspecific= class= classlevelreq= frequency=10 transformcolor= multiply= add= mod2code= mod2param= mod2min= mod2max= mod3code= mod3param= mod3min= mod3max= mod1param= group=9203 mod1code=mon-speed mod1min=5 mod1max=20	1049	Hastened

@@ -1,0 +1,2 @@
+Name	Tileset	Shape	Item	Size	Level	MinCharLevel
+Tunneling Depths	Cave	Loop	cmc	Medium	85	1

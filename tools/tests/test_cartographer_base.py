@@ -1,0 +1,48 @@
+"""The #946 native-map data base: maps.txt names real items and slots, the ids are gapless (docs/cartographer-contracts.md)."""
+import csv
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+CART = ROOT / "files/data/global/excel/d2rloader/cartographer"
+
+
+def table(name):
+    with open(CART / name, newline="") as f:
+        return list(csv.DictReader(f, delimiter="\t"))
+
+
+def ids(table_name, plus=None):
+    """Ids of the list's lines: all, or only the port's `+` lines (plus=True) or only PD2/D2R rows (plus=False)."""
+    out = []
+    for line in (ROOT / "merge" / f"ids-{table_name}.tsv").read_text().splitlines():
+        if line and not line.startswith("# ") and (plus is None or line.startswith("+") == plus):
+            n = line.split("	")[1]
+            if n != "-":
+                out.append(int(n))
+    return out
+
+
+def patch_ops():
+    return json.loads((ROOT / "patches/070-cartographer-base.json").read_text())["ops"]
+
+
+def test_every_map_names_a_patched_misc_item():
+    items = {o["set"]["code"] for o in patch_ops() if o.get("table") == "misc"}
+    for m in table("maps.txt"):
+        assert m["Item"] in items, m["Name"]
+
+
+def test_every_slot_is_a_level_and_ids_are_gapless():
+    levels = set(ids("levels"))
+    for s in table("slots.txt"):
+        assert int(s["Level"]) in levels, s["Slot"]
+    for t in ("levels", "itemstatcost", "itemtypes", "magicprefix", "magicsuffix", "rareprefix", "raresuffix"):
+        added = ids(t, plus=True)
+        assert added == list(range(max(ids(t, plus=False)) + 1, max(ids(t, plus=False)) + 1 + len(added))), t
+
+
+
+def test_map_pool_is_tierless():
+    sets = [o for o in patch_ops() if o.get("table") == "treasureclassex" and o["op"] == "set"]
+    assert len(sets) == 5 and all(o["set"] == {"Item9": "cmc"} for o in sets)

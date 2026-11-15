@@ -1,0 +1,3 @@
+Setting	Value
+EventChance	0
+PlayerStats	1

@@ -1042,3 +1042,5 @@ of Acceleration#2	1077	of Acceleration
 of the Archmage#3	1078	of the Archmage
 of Frostward	1079	of Frostward
 of the Magus#4	1080	of the Magus
++705 itype1=cmap itype2= itype3= itype4= itype5= itype6= itype7= etype1= etype2= etype3= etype4= etype5= spawnable=1 rare=1 level=1 maxlevel= levelreq=1 classspecific= class= classlevelreq= frequency=10 transformcolor= multiply= add= mod2code= mod2param= mod2min= mod2max= mod3code= mod3param= mod3min= mod3max= mod1param= group=9204 mod1code=map-density mod1min=10 mod1max=40	1081	of the Swarm
++705 itype1=cmap itype2= itype3= itype4= itype5= itype6= itype7= etype1= etype2= etype3= etype4= etype5= spawnable=1 rare=1 level=1 maxlevel= levelreq=1 classspecific= class= classlevelreq= frequency=10 transformcolor= multiply= add= mod2code= mod2param= mod2min= mod2max= mod3code= mod3param= mod3min= mod3max= mod1param= group=9205 mod1code=mon-fire-res mod1min=10 mod1max=40	1082	of Embers
