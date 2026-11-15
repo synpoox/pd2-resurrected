@@ -25,6 +25,11 @@ auto InstallBossRoomKeep(const D2RL::PluginContext* context) noexcept -> bool;
 // True for a waypoint preset in an uber level, which PD2 leaves without one: the preset spawn skips it.
 auto NoUberWaypoint(d2r::Game* game, void* room, const uint8_t* preset) noexcept -> bool;
 
+// The uber keys' item spell (pSpell 19, #951): writes the stub slot 0 of D2R's item spell check and use handler tables.
+// Returns how many of the two writes took.
+auto InstallUberKey(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
+auto UberKeyCounters(char* out, size_t size) noexcept -> void;
+
 // The uber entry's counters, for map_open's status line.
 struct UberEntryStats {
 	uint32_t opened, warped, portals, entries, waypoints, bossRoomsKept;
