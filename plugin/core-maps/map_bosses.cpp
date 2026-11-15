@@ -178,6 +178,16 @@ auto MapBossPreset(Game* game, void* room, uint8_t* preset, void (*spawn)(Game*,
 	const int32_t y = At<int32_t>(room, RoomY) + At<int32_t>(preset, PresetY);
 	int32_t boss = 0;
 	bool spawnHere = false;
+	if (level == placements::LevelOf("lucion") && id == PlaceholderA) {
+		// 0x1038bfc0 (level 188, lesserhydra1): Lucion 0x458, then his controller 0x459, both on the preset's spot.
+		// shortcut: PD2 also keeps them in game +0x2600/+0x2604 and hides them (0x10380770); the port keeps nothing
+		for (const int32_t classId : {1129, 1130}) {
+			*reinterpret_cast<int32_t*>(preset + PresetId) = classId;
+			spawn(game, room, preset);
+		}
+		plog::Info("map bosses: level %d placeholder %d at (%d, %d) became Lucion and his controller", level, id, x, y);
+		return true;
+	}
 	if (level == UberTristram()) {
 		boss = TristramPrime(game, id);
 		g_primes += boss > 0 ? 1 : 0;
