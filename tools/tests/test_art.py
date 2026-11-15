@@ -161,6 +161,54 @@ class HdPictureTests(unittest.TestCase):
             items = M.hd_items(hd, pd2, d2r, [], [], {"invlps": "pd2/invlps"})["items.json"]
             self.assertEqual(items[1], {"tpls": {"asset": "pd2/invlps"}})
 
+    def test_a_new_misc_item_draws_the_model_of_the_d2r_item_with_its_flippyfile(self):
+        # #1005: rune and gem stacks, the puzzlebox and the maps took misc's first row, an elixir, as their ground model
+        with tempfile.TemporaryDirectory() as tmp:
+            hd = Path(tmp)
+            assets = {"elx": "potion/elixir", "isc": "scroll/identify_scroll", "r01": "rune/el_rune",
+                      "gpv": "gem/perfect_amethyst", "box": "quest/horadric_cube"}
+            (hd / "items.json").write_text(json.dumps([{k: {"asset": v}} for k, v in assets.items()]))
+            (hd / "uniques.json").write_text("[]")
+            (hd / "sets.json").write_text("[]")
+            head = "name|code|type|invfile|flippyfile@"
+            d2r = "@".join(["Elixir|elx|elix|invpot|flpelx", "Scroll|isc|scro|invrsc|flpisc", "El|r01|rune|invrEl|flprun",
+                            "Amethyst|gpv|gemp|invgsve|flpgsv", "Cube|box|quest|invbox|flpbox"])
+            pd2 = d2r + "@" + "@".join(["El Stack|r01s|runs|invrsEl|flprun", "Amethyst Stack|gpvs|gg4a|invgsves|flpgsv",
+                                        "Puzzlebox|lbox|lbox|invlbox|flpbox", "Fortify|fort|fort|invfort|flpnone"])
+            tab = lambda rows: table((head + rows).replace("@", chr(10)) + chr(10), "code")
+            models = {}
+            M.hd_items(hd, {"misc": tab(pd2)}, {"misc": tab(d2r)}, [], [],
+                       {k: "pd2/" + k for k in ("invrsel", "invgsves", "invlbox", "invfort")}, models)
+            self.assertEqual(models, {"pd2/invrsel": "rune/el_rune", "pd2/invgsves": "gem/perfect_amethyst",
+                                      "pd2/invlbox": "quest/horadric_cube", "pd2/invfort": "scroll/identify_scroll"})
+
+
+class GroundGraphicTests(unittest.TestCase):
+    GEN = Path(__file__).resolve().parents[2] / "generated" / "data"
+
+    @unittest.skipUnless((GEN / "hd" / "items" / "items.json").is_file(), "run tools/pd2_merge.py first")
+    def test_every_pd2_misc_row_has_a_ground_graphic(self):  # #1005
+        entries = {k: v["asset"] for e in json.loads((self.GEN / "hd/items/items.json").read_text("utf-8-sig"))
+                   for k, v in e.items()}
+        rows = [r.split("\t") for r in (self.GEN / "global/excel/misc.txt").read_text("utf-8", "replace").splitlines()]
+        code, typ = rows[0].index("code"), rows[0].index("type")
+        missing = []
+        for r in rows[1:]:
+            a = entries.get(r[code])
+            if not r[code]:
+                continue
+            unit = self.GEN / "hd/items/misc" / f"{a}.json"
+            # a PD2 picture's ground model is a copy of a stand-in; only a potion row may stand in as a potion
+            if a is None or (a.startswith("pd2/") and (not unit.is_file() or (
+                    "/potion/" in unit.read_text("utf-8") and not (r[typ].endswith("pot") or r[code] == "dcso")))):  # dcso: its flippyfile is a red potion
+                missing.append(r[code])
+        self.assertEqual(missing, [])
+
+        def model(code):
+            return (self.GEN / "hd/items/misc" / f"{entries[code]}.json").read_text("utf-8")
+        for code, want in (("r01s", "/rune/"), ("gpvs", "/gem/"), ("lbox", "horadric_cube")):
+            self.assertIn(want, model(code), code)
+
 
 if __name__ == "__main__":
     unittest.main()

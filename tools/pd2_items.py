@@ -25,6 +25,8 @@ import pd2_art
 import pd2_ids as I
 
 ITEM_TABLES = ["weapons", "armor", "misc"]
+# A PD2 item with no D2R counterpart draws this ground model, not its table's first row (misc's is a potion, #1005).
+NEUTRAL_MODEL = {"misc": "scroll/identify_scroll"}
 HD_FOLDER = {"weapons": "weapon", "armor": "armor", "misc": "misc"}  # modkit hd.item_folder, for code that runs without modkit
 # named, never numbered, and a row must come after the rows it names: PD2's rows in PD2's order, then D2R-only ones
 PD2_ORDER = {"treasureclassex"}
@@ -263,11 +265,19 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
         dtab = d2r[t]
         di, dt = dtab.header.index("invfile"), dtab.header.index("type")
         by_inv = {r[di]: asset[r[dtab.key]] for r in dtab.rows if r[dtab.key] in asset}
+        fi = dtab.header.index("flippyfile") if "flippyfile" in dtab.header else None
+        pf = ptab.header.index("flippyfile") if "flippyfile" in ptab.header else None
+        # the ground model a D2R item with the same flippy draws: PD2's flippyfile names a vanilla one (#1005)
+        by_flippy = {}
         by_type = {}
         for r in dtab.rows:
             if r[dtab.key] in asset:
                 by_type.setdefault(r[dt], asset[r[dtab.key]])
+                if fi is not None and r[fi]:
+                    by_flippy.setdefault(r[fi], asset[r[dtab.key]])
         first = next(asset[r[dtab.key]] for r in dtab.rows if r[dtab.key] in asset)
+        if NEUTRAL_MODEL.get(t) in asset.values():
+            first = NEUTRAL_MODEL[t]
         pi, pt = ptab.header.index("invfile"), ptab.header.index("type")
         for r in ptab.rows:
             code = r[ptab.key]
@@ -276,7 +286,8 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
                                 "so this code would draw no picture; give it a 4th character with bit 0x20 set")
             if code and r[pi].lower() in pictures:
                 models.setdefault(pictures[r[pi].lower()],
-                                  asset.get(code) or by_inv.get(r[pi]) or by_type.get(r[pt]) or first)
+                                  asset.get(code) or by_inv.get(r[pi])
+                                  or (by_flippy.get(r[pf]) if pf is not None else None) or by_type.get(r[pt]) or first)
                 asset[code] = pictures[r[pi].lower()]
                 set_entry(files["items.json"], code, {"asset": asset[code]})
             elif code and code not in asset:
