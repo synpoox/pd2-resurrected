@@ -128,3 +128,16 @@ target_link_libraries(core_ui PRIVATE core_common)
 target_compile_definitions(core_ui PRIVATE CORE_PLUGIN_NAME="core-ui" CORE_PLUGIN_VERSION="${CORE_UI_VERSION}")
 set_target_properties(core_ui PROPERTIES OUTPUT_NAME "core-ui")
 core_options(core_ui)
+
+# Host self-check of common/event_link.h (#944): not shipped, not in `all`. With CARTOGRAPHER_SRC (a d2r-tools
+# plugins/cartographer/src checkout, read-only) it also checks Cartographer's own stat code.
+set(CARTOGRAPHER_SRC "" CACHE PATH "Cartographer src/ folder for event_link_check (optional)")
+add_executable(event_link_check EXCLUDE_FROM_ALL tests/event_link_check.cpp)
+target_include_directories(event_link_check PRIVATE common)
+target_compile_features(event_link_check PRIVATE cxx_std_20)
+if(CARTOGRAPHER_SRC)
+	target_sources(event_link_check PRIVATE "${CARTOGRAPHER_SRC}/statplan/statplan.cpp")
+	target_include_directories(event_link_check PRIVATE "${CARTOGRAPHER_SRC}/statplan")
+	target_compile_definitions(event_link_check PRIVATE CARTOGRAPHER_CHECK)
+endif()
+core_options(event_link_check)
