@@ -1,3 +1,3 @@
 #### Items
 
-- The Horadric Almanac identifies inventory and Cube items without hooking the item spell dispatcher.
+- The Horadric Almanac identifies again on right-click, beside Cartographer, through item spell use slot 14.

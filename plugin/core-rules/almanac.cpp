@@ -1,130 +1,79 @@
-// The Horadric Almanac (IR5, #240), moved to core-rules by #945. PD2's unlimited Tome of Identify (`rid`) identifies every
+// The Horadric Almanac (IR5, #240), in core-rules since #945. PD2's unlimited Tome of Identify (`rid`) identifies every
 // unidentified item on inventory page 0 and in the Cube at once, and leaves the stash, worn and belt items.
 //
-// It used to run from core-maps' item spell hooks (0x581680 and 0x5817f0). Cartographer hooks both functions for its map
-// portal, and two plugins cannot own one entry (d2rAI-toolkit knowledge/engine-re.md, "One owner per hook site"), so the
-// Almanac leaves them: an ItemInteractionService listener (UI thread) sees the activation before D2R runs the item's
-// spell, and one SDK transaction identifies the items on the game thread.
-// The SDK's interaction event names the local player, so a TCP/IP client's use is not served; single player only, as
-// the migration's checks are (#942).
+// Trigger: D2R's own item spell path. A right-click sends the use message, the server's use-item handler 0x4f40c0 runs
+// the item's spell entry, and the dispatcher 0x581680 calls the use handler its entry names. Entry 18 (item_rules.cpp)
+// names use slot 14, D2R's unused stub, and this file writes that slot of the use handler table. So there is no hook on
+// the dispatchers 0x581680 / 0x5817f0, which Cartographer owns beside us (one owner per hook site), and no SDK event (the
+// ItemInteractionService raised none for a right-click, Slot4 2026-11-15). It runs on the game thread for any player,
+// so a TCP/IP client's use works too.
+// PD2's skill 513 handler (ProjectDiablo.dll 0x10383ea0) walks the player's inventory list the same way; this identifies
+// with D2R's identify (use function 1, 0x57ec30: sets the flag and sends the item to the client).
 #include "almanac.h"
 
 #include "log.h"
-
-#include <D2RLPlugin/inventory.h>
-#include <D2RLPlugin/item.h>
-#include <D2RLPlugin/item_interactions.h>
-#include <D2RLPlugin/threads.h>
-
-#define NOMINMAX
-#include <windows.h>
+#include "pd2_engine.h"
 
 #include <atomic>
 #include <cstdio>
-#include <vector>
 
 namespace {
 
-namespace items = D2RL::Items;
+using d2r::At;
+using d2r::Game;
+using d2r::Unit;
 
-constexpr uint32_t CodeAlmanac = items::MakeItemCode('r', 'i', 'd');
-constexpr uint32_t Boundary = items::ContainerBit(items::ItemContainer::Inventory) | items::ContainerBit(items::ItemContainer::Cube);
-
-const D2RL::PluginContext* g_context = nullptr;
-const D2RL::ItemService* g_items = nullptr;
-const D2RL::InventoryService* g_inventory = nullptr;
-const D2RL::ThreadService* g_threads = nullptr;
 std::atomic<uint32_t> g_uses {0};
+constexpr int32_t UnitItem = 4;  // D2's unit type of an item
 
-struct Pending {
-	std::vector<D2RL::ItemHandle> handles;
-};
-
-auto Collect(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept -> D2RL::Inventory::IterationAction {
-	if ((item->stateFlags & items::ItemStateIdentified) == 0) {
-		static_cast<Pending*>(user)->handles.push_back(item->handle);
-	}
-	return D2RL::Inventory::IterationAction::Continue;
-}
-
-// Game thread: the items of the pressing player, one transaction (all or none, so a refusal changes nothing).
-void IdentifyNow(const D2RL::PluginContext*, void* user) noexcept {
-	const auto player = reinterpret_cast<D2RL::PlayerHandle>(user);
-	Pending pending;
-	const D2RL::Inventory::ItemFilter filter {.structSize = D2RL::Inventory::ItemFilterSize, .containerMask = Boundary};
-	if (g_inventory->forEachInventoryItem(g_context, player, &filter, Collect, &pending) != D2RL::Inventory::Result::Success) {
-		plog::Info("almanac: could not read the inventory");
+void IdentifyAll(Game* game, Unit* player) noexcept {
+	using namespace d2r::rva;
+	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory)(player, __FILE__, __LINE__);
+	if (inventory == nullptr) {
 		return;
 	}
-	const size_t found = pending.handles.size();
-	if (found == 0) {
-		plog::Info("almanac: nothing to identify (%u uses)", ++g_uses);
-		return;
+	const auto next = d2r::Engine<Unit* (*)(Unit*) noexcept>(InventoryNextItem);
+	const auto page = d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage);
+	const auto hasFlag = d2r::Engine<int32_t (*)(Unit*, uint32_t, int32_t, const char*) noexcept>(ItemTestFlag);
+	const auto identify = d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t) noexcept>(IdentifyItem);
+	int32_t identified = 0, left = 0;
+	for (Unit* item = d2r::Engine<Unit* (*)(void*) noexcept>(InventoryFirstItem)(inventory); item != nullptr;
+	     item = next(item)) {
+		if (At<int32_t>(item, UnitType) != UnitItem || hasFlag(item, ItemFlagIdentified, __LINE__, __FILE__) != 0) {
+			continue;
+		}
+		const uint8_t where = page(item);
+		if (where != 0 && where != CubePageCube) {
+			++left;
+			continue;
+		}
+		identify(game, player, item, 1);
+		++identified;
 	}
-	std::vector<items::ExistingItemOperation> operations(found);
-	for (size_t i = 0; i < found; ++i) {
-		operations[i] = {.structSize = sizeof(items::ExistingItemOperation), .kind = items::ExistingItemOperationKind::Edit,
-		                 .item = pending.handles[i]};
-		operations[i].edit = {.fields = items::EditFieldBit(items::EditField::Identified), .stateFlags = items::ItemStateIdentified};
-	}
-	const items::ExistingItemTransaction transaction {.structSize = sizeof(items::ExistingItemTransaction),
-	                                                  .player = player,
-	                                                  .operationCount = static_cast<uint32_t>(found),
-	                                                  .operations = operations.data()};
-	items::ExistingItemTransactionResult result {.structSize = sizeof(items::ExistingItemTransactionResult)};
-	const items::Result status = g_items->executeExistingItemTransaction(g_context, &transaction, &result);
-	plog::Info("almanac: %zu items to identify, result %u, %u committed (%u uses)", found, static_cast<uint32_t>(status),
-	           result.committedOperationCount, ++g_uses);
+	plog::Info("almanac: use handler ran, %d items identified, %d elsewhere left, %u uses", identified, left, ++g_uses);
 }
 
-// UI thread, before D2R handles the activation. Anything but the Almanac goes on to D2R.
-auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions::ItemInteractionEvent* event,
-                        void*) noexcept -> D2RL::ItemInteractions::Decision {
-	using D2RL::ItemInteractions::Decision;
-	items::ItemInfo info {.structSize = items::ItemInfoSize};
-	if (event == nullptr || event->structSize < D2RL::ItemInteractions::ItemInteractionEventRequiredSize ||
-	    g_items->getItemInfo(g_context, event->item, &info) != items::Result::Success || info.code != CodeAlmanac) {
-		return Decision::Continue;
+// The use handler (game, player, item) -> bool; the item is the Almanac itself (rid's spellicon is -1). Only one in the
+// inventory or the Cube is used (the client allows the right-click use from there; this also refuses the stash).
+auto UseAlmanac(Game* game, Unit* player, Unit* item) noexcept -> uint8_t {
+	const uint8_t where = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::rva::ItemPage)(item);
+	if (where == 0 || where == d2r::rva::CubePageCube) {
+		IdentifyAll(game, player);
+	} else {
+		plog::Info("almanac: use refused, the Almanac sits on page %u", where);
 	}
-	// The event does not name the button and a left click (picking the item up) raises it too, so only a held right
-	// button counts as using the Almanac. A controller activation is always a use.
-	plog::Info("almanac-diag: event src %u L %d R %d", static_cast<uint32_t>(event->inputSource), (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0, (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0);
-	const bool used = event->inputSource == D2RL::ItemInteractions::InputSource::Controller ||
-	                  (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
-	if (used && g_threads->runOnGameThread(g_context, IdentifyNow, reinterpret_cast<void*>(event->player)) !=
-	                D2RL::Threads::Result::Success) {
-		plog::Info("almanac: could not queue the identify");
-	}
-	// Continue: D2R's own use (item spell 18) has no handler, so nothing else happens
-	return Decision::Continue;
-}
-
-template <class Service>
-auto Query(const D2RL::PluginContext* context, const Service*& service, bool (*has)(const Service*, uint32_t),
-           uint32_t required) noexcept -> bool {
-	if (context->QueryService(&service) != D2RL::ServiceQueryResult::Success || !has(service, required)) {
-		service = nullptr;
-	}
-	return service != nullptr;
+	return 1;
 }
 
 }  // namespace
 
 auto InstallAlmanac(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
-	g_context = context;
-	const D2RL::ItemInteractionService* interactions = nullptr;
-	const bool services = Query(context, g_items, D2RL::HasItemServiceField, D2RL::ItemServiceRequiredSize) &
-	                      Query(context, g_inventory, D2RL::HasInventoryServiceField, D2RL::InventoryServiceRequiredSize) &
-	                      Query(context, g_threads, D2RL::HasThreadServiceField, D2RL::ThreadServiceRequiredSize) &
-	                      Query(context, interactions, D2RL::HasItemInteractionServiceField,
-	                            D2RL::ItemInteractionServiceRequiredSize);
-	D2RL::ItemInteractions::ListenerHandle handle = D2RL::ItemInteractions::InvalidHandle;
-	const D2RL::ItemInteractions::ItemInteractionListener listener {
-		.structSize = D2RL::ItemInteractions::ItemInteractionListenerSize, .callback = OnActivate,
-		.containerMask = Boundary};
-	const bool live = services && interactions->registerListener(context, &listener, &handle) ==
-	                                  D2RL::ItemInteractions::Result::Success;
-	std::snprintf(report, reportSize, "almanac identify-all%s", live ? "" : " FAILED (a service or the listener is missing)");
+	using namespace d2r::rva;
+	const uint64_t expected = d2r::imageBase + AlmanacUseSlotOriginal;
+	const bool live = context->PatchWriteU64(ItemSpellUseTable + static_cast<uint64_t>(AlmanacUseSlot) * 8, &expected,
+	                                         sizeof(expected), reinterpret_cast<uint64_t>(&UseAlmanac));
+	std::snprintf(report, reportSize, "almanac identify-all, use slot %d%s", AlmanacUseSlot,
+	              live ? "" : " FAILED (the slot differs)");
 	return live ? 1 : 0;
 }
 

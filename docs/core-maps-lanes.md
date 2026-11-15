@@ -25,7 +25,7 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 | corruption_roll.cpp, corruption_roll.h | B | CRT roll and corruption/Desecration roll; map drops and bricks borrow them. |
 | cube_ops.cpp, cube_ops.h | B | Cube op 30 (map recipes use it, the op is generic) and the Desecration search trigger: the one owner of the cube recipe search hook. |
 | open_gate.cpp, open_gate.h | S | Counters, player level and portal maker shared by map opening and uber entry. |
-| map_open.cpp, map_open.h | A | Item spell hooks (map spell 16; left to Cartographer when it sits beside, #945), portal operate wrapper. The Almanac moved to core-rules (`plugin/core-rules/almanac.cpp`, an item interaction listener). |
+| map_open.cpp, map_open.h | A | Item spell hooks (map spell 16; left to Cartographer when it sits beside, #945), portal operate wrapper. The Almanac moved to core-rules (`plugin/core-rules/almanac.cpp`, a write of item spell use slot 14, no hook). |
 | map_stats.cpp, map_stats.h | A | |
 | map_bosses.cpp, map_bosses.h | A | |
 | map_boss_ai.cpp, map_boss_ai.h | A | |

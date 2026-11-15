@@ -3,8 +3,8 @@
 Cartographer (d2r-tools, not modified) installs inline hooks on the cube executor and on both item spell dispatchers.
 Two plugins cannot own one entry (d2rAI-toolkit knowledge/engine-re.md), so PD2's plugins keep off those entries:
 core-rules owns the cube executor and Cartographer's optional stamping part is turned off by a signatures.txt row;
-Cartographer owns the item spell dispatchers and core-maps leaves them when it sits beside; the Almanac listens to item
-interactions. CARTOGRAPHER_SRC (a d2r-tools plugins/cartographer/src checkout) adds a check against Cartographer's own
+Cartographer owns the item spell dispatchers and core-maps leaves them when it sits beside; the Almanac writes use slot 14 of the item spell
+handler table (no hook, no listener). CARTOGRAPHER_SRC (a d2r-tools plugins/cartographer/src checkout) adds a check against Cartographer's own
 signatures; without it that test is skipped.
 """
 import os
@@ -61,17 +61,24 @@ class HookOwners(unittest.TestCase):
         text = (PLUGIN / "core-maps" / "map_open.cpp").read_text(encoding="utf-8")
         self.assertIn('find_last_of(L"\\\\/")', text)
 
-    def test_almanac_listens_to_inventory_and_cube_and_the_right_button(self):
-        text = (PLUGIN / "core-rules" / "almanac.cpp").read_text(encoding="utf-8")
-        self.assertIn(".containerMask = Boundary", text)
-        self.assertIn("VK_RBUTTON", text)
-
-    def test_almanac_is_an_interaction_listener_in_core_rules(self):
+    def test_almanac_is_a_use_slot_write_not_a_hook_or_a_listener(self):
+        # A right-click raises no ItemInteraction event (Slot4, #975) and Cartographer owns both dispatchers, so the
+        # Almanac is a write of item spell use slot 14, which entry 18 names (item_rules.cpp)
         self.assertFalse((PLUGIN / "core-maps" / "almanac.cpp").exists())
         text = (PLUGIN / "core-rules" / "almanac.cpp").read_text(encoding="utf-8")
-        self.assertIn("registerListener", text)
+        self.assertIn("PatchWriteU64(ItemSpellUseTable", text)
         self.assertNotIn("InstallInlineHook", text)
+        self.assertNotIn("registerListener", text)
+        self.assertNotIn("almanac-diag", text)
         self.assertNotIn("UnlimitedIdentifySpell", (PLUGIN / "core-maps" / "map_open.cpp").read_text(encoding="utf-8"))
+
+    def test_almanac_use_slot_matches_entry_18_and_stays_in_inventory_and_cube(self):
+        engine = (PLUGIN / "common" / "pd2_engine.h").read_text(encoding="utf-8")
+        self.assertIn("AlmanacUseSlot = 14", engine)
+        rules = (PLUGIN / "core-rules" / "item_rules.cpp").read_text(encoding="utf-8")
+        self.assertIn("{UnlimitedPortalCheck, UnlimitedPortalUse, 1, 0, AlmanacUseSlot, 1}", rules)
+        text = (PLUGIN / "core-rules" / "almanac.cpp").read_text(encoding="utf-8")
+        self.assertIn("where == 0 || where == d2r::rva::CubePageCube", text)
 
     def test_signatures_row_turns_off_only_cartographers_cube_stamping(self):
         rows = [r.split("\t") for r in (ROOT / "companions" / "cartographer" / "signatures.txt").read_text(encoding="utf-8").splitlines()]

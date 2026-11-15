@@ -46,8 +46,8 @@ std::atomic<uint32_t> g_rolls {0};
 
 // PD2's unlimited books (spell 13, ProjectDiablo.dll): the Horadric Navigator (rtp) opens a town portal and the
 // Horadric Almanac (rid) identifies every item at once, and neither is used up. The merge moves them to item spells 17
-// and 18 (tools/pd2_ids.py FIXES): 17 runs D2R's own Town Portal (entry 2); 18 has no check or use of its own, and
-// core-maps' item spell hooks identify all (d2r::rva::UnlimitedIdentifySpell).
+// and 18 (tools/pd2_ids.py FIXES): 17 runs D2R's own Town Portal (entry 2); 18 has no check of its own and its use is
+// the Almanac's handler in use slot 14 (almanac.cpp), which identifies all.
 constexpr int32_t UnlimitedPortalCheck = 2, UnlimitedPortalUse = 2;
 
 using SetStatFn = int32_t (*)(uint8_t dataFlag, uint32_t a1, uint64_t a2, Unit* item, const void* property, uint8_t set,
@@ -1466,7 +1466,7 @@ static auto PatchUnlimitedBooks(const D2RL::PluginContext* context) noexcept -> 
 		return false;
 	}
 	static constexpr uint8_t Empty[2 * ItemSpellEntrySize] = {};
-	static constexpr int32_t Books[2 * 3] = {UnlimitedPortalCheck, UnlimitedPortalUse, 1, 0, 0, 1};
+	static constexpr int32_t Books[2 * 3] = {UnlimitedPortalCheck, UnlimitedPortalUse, 1, 0, AlmanacUseSlot, 1};
 	static_assert(sizeof(Books) == sizeof(Empty));
 	const D2RL::Mutations::BytePatchRequest patch{
 		.structSize = D2RL::Mutations::BytePatchRequestSize,
