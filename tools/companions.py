@@ -101,6 +101,12 @@ def overlay(root: Path, mod_dir: Path) -> None:
     if not src.is_dir():
         raise CompanionError(f"{src} missing: run tools/companions.py fetch")
     shutil.copytree(src, mod_dir, dirs_exist_ok=True)
+    # Cartographer reads this beside its maps.txt; it keeps the cube executor (0x5269c0) with core-rules (#945)
+    sig = root / "companions" / "cartographer" / "signatures.txt"
+    if sig.is_file():
+        tables = mod_dir / f"{mod_dir.name}.mpq" / "data" / "global" / "excel" / "d2rloader" / "cartographer"
+        tables.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(sig, tables / sig.name)
     toml = mod_dir / "d2rloader" / "config" / "d2rloader.toml"
     text = toml.read_text("utf-8") if toml.exists() else ""
     if re.search(r"^\s*item_stat_ranges\s*=", text, re.M):

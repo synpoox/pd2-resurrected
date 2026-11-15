@@ -22,7 +22,6 @@
 // the opening's warp (0x1038a680) still strips every player it takes in.
 #include "map_open.h"
 
-#include "almanac.h"
 #include "pd2_engine.h"
 #include "log.h"
 #include "map_events.h"
@@ -31,10 +30,13 @@
 #include "uber_entry.h"
 #include "unique_maps.h"
 
+#include <windows.h>
+
 #include <algorithm>
 #include <atomic>
 #include <iterator>
 #include <cstdio>
+#include <string>
 
 namespace {
 
@@ -57,10 +59,12 @@ UseFn g_useOriginal = nullptr;
 std::atomic<uint32_t> g_checks {0};
 std::atomic<uint32_t> g_refused {0};
 std::atomic<uint32_t> g_opened {0};
+// True when Cartographer sits beside this plugin: it owns both item spell hooks then (see InstallMapOpen)
+bool g_yielded = false;
 // Set once the check hook is in: until then the use hook leaves maps to D2R, so no portal opens ungated
 std::atomic<bool> g_gated {false};
 
-// The item's misc record: its pSpell picks the map (16) or the Almanac (18), one lookup per check or use
+// The item's misc record: its pSpell picks the map (16), one lookup per check or use
 auto ItemRecordOf(Game* game, Unit* item) noexcept -> const uint8_t* {
 	using namespace d2r::rva;
 	const int32_t row = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(UnitClassOf)(item, __FILE__,
@@ -131,9 +135,6 @@ auto Refusal(Game* game, Unit* player, int32_t level, char* why, size_t size) no
 auto SpellCheck(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> uint64_t {
 	const uint8_t* record = game != nullptr && player != nullptr && item != nullptr ? ItemRecordOf(game, item) : nullptr;
 	const int32_t spell = record != nullptr ? At<int32_t>(record, d2r::rva::ItemPSpell) : -1;
-	if (spell == d2r::rva::UnlimitedIdentifySpell) {
-		return 1;
-	}
 	record = spell == MapSpell ? record : nullptr;
 	if (record == nullptr) {
 		return g_checkOriginal(game, player, item, target);
@@ -166,10 +167,6 @@ auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
 auto SpellUse(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> void {
 	const uint8_t* record = game != nullptr && player != nullptr && item != nullptr ? ItemRecordOf(game, item) : nullptr;
 	const int32_t spell = record != nullptr ? At<int32_t>(record, d2r::rva::ItemPSpell) : -1;
-	if (spell == d2r::rva::UnlimitedIdentifySpell) {
-		IdentifyAll(game, player);
-		return;
-	}
 	record = g_gated && spell == MapSpell ? record : nullptr;
 	if (record == nullptr) {
 		g_useOriginal(game, player, item, target);
@@ -194,10 +191,34 @@ auto SpellUse(Game* game, Unit* player, Unit* item, Unit* target) noexcept -> vo
 
 }  // namespace
 
+// Cartographer's native map portal hooks the same two item spell dispatchers (its ItemSpellUse and ItemSpellCheck parts),
+// and two plugins cannot own one entry: the second to load sees the first's jump, fails its byte check and its feature is
+// off, so load order would pick the winner. The decision cannot depend on load order, so it reads the files: when
+// cartographer.dll sits in this plugin's folder (or is loaded already) this plugin leaves the dispatchers to it (#945).
+// PD2's own map spell 16 and the uber keys' use then go through Cartographer's check (no map names their item, so it
+// passes them to D2R, which refuses): the uber lane moves key activation to an item interaction listener.
+auto CartographerBeside(const D2RL::PluginContext* context) noexcept -> bool {
+	if (GetModuleHandleW(L"cartographer.dll") != nullptr) {
+		return true;
+	}
+	const wchar_t* self = D2RL::GetPluginPath(context);
+	if (self == nullptr) {
+		return false;
+	}
+	std::wstring path = self;
+	const size_t slash = path.find_last_of(L"\\/");
+	if (slash == std::wstring::npos) {
+		return false;
+	}
+	path.resize(slash + 1);
+	return GetFileAttributesW((path + L"cartographer.dll").c_str()) != INVALID_FILE_ATTRIBUTES;
+}
+
 auto InstallMapOpen(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
+	g_yielded = CartographerBeside(context);
 	// The use first: with only the check, D2R's use would take a map that passed and open nothing
-	const bool use = context->InstallInlineHook(ItemSpellUse, ItemSpellUseEntry, sizeof(ItemSpellUseEntry), SpellUse,
+	const bool use = !g_yielded && context->InstallInlineHook(ItemSpellUse, ItemSpellUseEntry, sizeof(ItemSpellUseEntry), SpellUse,
 	                                            &g_useOriginal);
 	const bool check = use && context->InstallInlineHook(ItemSpellCheck, ItemSpellCheckEntry,
 	                                                     sizeof(ItemSpellCheckEntry), SpellCheck, &g_checkOriginal);
@@ -208,15 +229,17 @@ auto InstallMapOpen(const D2RL::PluginContext* context, char* report, size_t rep
 	                                           Empty, sizeof(Empty),
 	                                           reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperatePortal)));
 	const bool rooms = InstallBossRoomKeep(context);
-	std::snprintf(report, reportSize, "item spells %d and %d (Almanac)%s, portal operate %d%s, boss rooms kept%s", MapSpell,
-	              d2r::rva::UnlimitedIdentifySpell,
-	              check ? "" : use ? " FAILED (check bytes differ)" : " FAILED (use bytes differ)", ObjectOperatePortal,
-	              portal ? "" : " FAILED (slot not empty)", rooms ? "" : " FAILED (bytes differ)");
+	std::snprintf(report, reportSize, "item spell %d%s, portal operate %d%s, boss rooms kept%s", MapSpell,
+	              g_yielded ? " left to Cartographer"
+	              : check   ? ""
+	              : use     ? " FAILED (check bytes differ)"
+	                        : " FAILED (use bytes differ)",
+	              ObjectOperatePortal, portal ? "" : " FAILED (slot not empty)", rooms ? "" : " FAILED (bytes differ)");
 	return (check ? 1 : 0) + (portal ? 1 : 0) + (rooms ? 1 : 0);
 }
 
 auto MapOpenCount() noexcept -> int {
-	return 3;
+	return g_yielded ? 2 : 3;
 }
 
 auto MapOpenCounters(char* out, size_t size) noexcept -> void {
