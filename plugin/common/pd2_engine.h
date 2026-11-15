@@ -848,6 +848,13 @@ inline constexpr int ItemSpellEntrySize = 12;
 // read by the client (0x161f20 allows a use only from inputs passing bit (keep != 0) + 1; right-click does, as for
 // the Cube), not by the use-item handler 0x4f40c0.
 inline constexpr int32_t UnlimitedPortalSpell = 17, UnlimitedIdentifySpell = 18;
+// The item spell USE handler table (.data, 16 pointers of bool fn(game, player, item) noexcept, indexed by an entry's
+// use index; the dispatcher 0x581680 calls it for every spell but core-maps' 16, so a slot write needs no hook on the
+// dispatchers Cartographer owns). Slot 14 is D2R's unused spell 14 (no D2R or PD2 misc row has pSpell 14); the Almanac
+// takes it, and core-rules writes its entry 18 as {0, 14, keep 1}.
+inline constexpr uint64_t ItemSpellUseTable = 0x1d3ea90;
+inline constexpr int32_t AlmanacUseSlot = 14;
+inline constexpr uint64_t AlmanacUseSlotOriginal = 0x580f10;  // D2R's stub in that slot (calls 0x5d9710, returns 1)
 inline constexpr uint64_t ItemTestFlag = 0x36e2d0;  // (item, flag, line, file) -> non-zero when item data +0x18 has it
 inline constexpr uint32_t ItemFlagIdentified = 0x10;
 inline constexpr uint64_t IdentifyItem = 0x46e8c0;  // (game, player, item, 1): identifies it and tells the client

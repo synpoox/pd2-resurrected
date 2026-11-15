@@ -125,6 +125,18 @@ class CompanionTests(unittest.TestCase):
             companions.overlay(root, mod)
             self.assertEqual(toml.read_text(), companions.ITEM_RANGES + "# item_stat_ranges = false\n\n[d2rcore.stash]\n")
 
+    def test_overlay_puts_cartographers_signatures_beside_its_tables(self):
+        zipped = make_zip({"d2rloader/plugins/x.dll": b"dll", "Other.mpq/data/sfx/a.flac": b"a"})
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.project(Path(tmp), zipped)
+            (root / "companions" / "cartographer").mkdir()
+            (root / "companions" / "cartographer" / "signatures.txt").write_text("Part\tSignature\n")
+            companions.fetch(root, download=lambda *a: zipped)
+            mod = root / "game" / "mods" / "Mod"
+            companions.overlay(root, mod)
+            sig = mod / "Mod.mpq/data/global/excel/d2rloader/cartographer/signatures.txt"
+            self.assertEqual(sig.read_text(), "Part\tSignature\n")
+
     def test_fill_tables_adds_only_missing_ones(self):
         with tempfile.TemporaryDirectory() as tmp:
             excel = Path(tmp) / "excel"

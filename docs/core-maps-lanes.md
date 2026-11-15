@@ -23,10 +23,9 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 | key_drops.cpp, key_drops.h | S | The listener and the key rolls (run on every death). Calls the lane steps in a fixed order. |
 | tc_roll.cpp, tc_roll.h | B | Odds-only TC roll, shared by the key rolls and the map rolls. |
 | corruption_roll.cpp, corruption_roll.h | B | CRT roll and corruption/Desecration roll; map drops and bricks borrow them. |
-| almanac.cpp, almanac.h | B | Horadric Almanac identify-all. Called by map_open.cpp's item spell hook. |
-| cube_ops.cpp, cube_ops.h | B | Cube op 30 (map recipes use it, the op is generic). |
+| cube_ops.cpp, cube_ops.h | B | Cube op 30 (map recipes use it, the op is generic) and the Desecration search trigger: the one owner of the cube recipe search hook. |
 | open_gate.cpp, open_gate.h | S | Counters, player level and portal maker shared by map opening and uber entry. |
-| map_open.cpp, map_open.h | A | Item spell hooks (map spell 16, Almanac spell 18), portal operate wrapper. |
+| map_open.cpp, map_open.h | A | Item spell hooks (map spell 16; left to Cartographer when it sits beside, #945), portal operate wrapper. The Almanac moved to core-rules (`plugin/core-rules/almanac.cpp`, a write of item spell use slot 14, no hook). |
 | map_stats.cpp, map_stats.h | A | |
 | map_bosses.cpp, map_bosses.h | A | |
 | map_boss_ai.cpp, map_boss_ai.h | A | |
