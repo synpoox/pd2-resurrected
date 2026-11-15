@@ -1,3 +1,3 @@
 #### Maps
 
-- Lucion shows his nameplate on hover (his base class id now matches his monster id).
+- Lucion and Rathma use D2R animation codes so their nameplates show on hover.

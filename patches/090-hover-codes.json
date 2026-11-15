@@ -1,0 +1,8 @@
+{
+ "_note": "#1007: a monster whose monstats Code is PD2-only ($1 Rathma's bones, $7 Lucion) has no classic COF in D2R, and the owner got no nameplate on hover for it, while Mendeln (rathmaPoison, D2R's Code XU) shows one. Each takes the Code of the D2R monster whose HD model it already draws (merge/monsters-hd.tsv), as act4hire does (040). Their own monstats2 rows and skill modes stay; the AI's mode timers cover the PD2-only modes (lucion_ai.cpp). Other PD2-only Codes ($4 Zhar, !8 Iskatu, !3 Na-Krul, ...) are not changed until a hover shows they need it.",
+ "ops": [
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "rathmaBone", "set": {"Code": "XU"}},
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "rathmaBoneClone", "set": {"Code": "XU"}},
+  {"op": "set", "table": "monstats", "bank": "excel", "key": "Lucion", "set": {"Code": "MP"}}
+ ]
+}
