@@ -10,10 +10,10 @@
 // Catalyst's guardian to map_events.cpp, and the Void/Tomb event takes its portal pair from here.
 #include "event_portals.h"
 
-#include "key_drops.h"
 #include "log.h"
 #include "map_events.h"
 #include "map_stats.h"
+#include "unique_map_drops.h"
 
 #include <D2RLPlugin/lifecycle_events.h>
 
