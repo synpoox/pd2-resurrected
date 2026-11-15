@@ -510,3 +510,12 @@ es_efficiency	560	es_efficiency
 map_glob_sundermonsters	561	map_glob_sundermonsters
 extra_grizzly	562	extra_grizzly
 no_wolves	563	no_wolves
++76 descstrpos=cartographer:map_level_stat	564	cartographer_map_level
++76 descstrpos=cartographer:mon_life	565	cartographer_mon_life
++76 descstrpos=cartographer:mon_damage	566	cartographer_mon_damage
++76 descstrpos=cartographer:mon_fire_res	567	cartographer_mon_fire_res
++76 descstrpos=cartographer:mon_cold_res	568	cartographer_mon_cold_res
++76 descstrpos=cartographer:mon_light_res	569	cartographer_mon_light_res
++76 descstrpos=cartographer:mon_poison_res	570	cartographer_mon_poison_res
++76 descstrpos=cartographer:mon_speed	571	cartographer_mon_speed
++76 descstrpos=cartographer:map_density	572	cartographer_map_density

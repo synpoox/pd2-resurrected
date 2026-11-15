@@ -1,0 +1,8 @@
+Slot	Level
+Maze	202
+MazeCrypt	203
+MazeLava	204
+MazeIce	205
+Outdoor	206
+OutdoorSnow	207
+OutdoorSiege	208
