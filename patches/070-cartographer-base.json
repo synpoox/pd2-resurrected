@@ -538,6 +538,72 @@
    "set": {
     "Item9": "Cartographer Maps"
    }
+  },
+  {
+   "op": "set",
+   "table": "levels",
+   "bank": "excel",
+   "where": {
+    "Id": "202"
+   },
+   "set": {
+    "LevelType": "3"
+   }
+  },
+  {
+   "op": "set",
+   "table": "levels",
+   "bank": "excel",
+   "where": {
+    "Id": "203"
+   },
+   "set": {
+    "LevelType": "4"
+   }
+  },
+  {
+   "op": "set",
+   "table": "levels",
+   "bank": "excel",
+   "where": {
+    "Id": "204"
+   },
+   "set": {
+    "LevelType": "28"
+   }
+  },
+  {
+   "op": "set",
+   "table": "levels",
+   "bank": "excel",
+   "where": {
+    "Id": "205"
+   },
+   "set": {
+    "LevelType": "33"
+   }
+  },
+  {
+   "op": "set",
+   "table": "levels",
+   "bank": "excel",
+   "where": {
+    "Id": "207"
+   },
+   "set": {
+    "LevelType": "31"
+   }
+  },
+  {
+   "op": "set",
+   "table": "levels",
+   "bank": "excel",
+   "where": {
+    "Id": "208"
+   },
+   "set": {
+    "LevelType": "30"
+   }
   }
  ]
 }
