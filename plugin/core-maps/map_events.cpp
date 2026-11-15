@@ -29,7 +29,10 @@
 #include "map_open.h"
 #include "rathma.h"
 
+#include "event_link.h"
+
 #include <D2RLPlugin/item.h>
+#include <D2RLPlugin/item_interactions.h>
 #include <D2RLPlugin/localization.h>
 
 #include <intrin.h>
@@ -191,7 +194,16 @@ auto Set(Game* game, uint32_t key, int32_t value) noexcept -> void {
 	}
 }
 
+// The Cartographer slots (docs/cartographer-contracts.md, merge/ids-levels.tsv): every native map is one of these levels
+constexpr int32_t NativeFirst = 202, NativeLast = 208;
+// shortcut: Cartographer publishes no room count (event-link RoomProgress), so a native map's progress counts against
+// PD2's default of 200 rooms; read the level's room list once a RoomEx's next pointer is known
+constexpr Tiered NativeTier = {0, 200};
+
 auto Tier(int32_t level) noexcept -> const Tiered* {
+	if (level >= NativeFirst && level <= NativeLast) {
+		return &NativeTier;
+	}
 	for (const Tiered& t : TieredLevels) {
 		if (t.level == level) {
 			return &t;
@@ -445,6 +457,86 @@ auto OperateAltar(ObjectOperate* args) noexcept -> int32_t {
 	return 0;
 }
 
+// The roll for a tiered map of `quality` (rva::Quality*), `forced` by a Catalyst Shard's marker
+auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept -> void {
+	const int32_t chance = quality == d2r::rva::QualityNormal ? 11 : quality == QualityMagic ? 17 : 34;
+	int32_t event = 0;
+	if (forced || Rand() % 100 < chance) {
+		for (int draw = 0; draw < 40 && event == 0; ++draw) {
+			const int32_t e = Draws[Rand() % 12];
+			event = forced && e == Altar ? 0 : e;
+		}
+	}
+	event = event != 0 ? event : NoEvent;
+	// For game checks only, not PD2's: PD2R_MAP_EVENT=<11-21> in the game's environment rolls that event on every map
+	static const int32_t testEvent = [] {
+		char v[8] {};
+		size_t n = 0;
+		const int32_t e = getenv_s(&n, v, sizeof(v), "PD2R_MAP_EVENT") == 0 && n > 0 ? std::atoi(v) : 0;
+		return e > NoEvent && e <= Tomb && NotifyKey(e) != nullptr ? e : 0;
+	}();
+	event = testEvent != 0 ? testEvent : event;
+	Set(game, EventKey, event);
+	Set(game, SpawnsKey, 0);
+	++g_rolled[event - NoEvent];
+	plog::Info("map events: level %d (quality %d%s) rolled event %d (%u rolls)", level, quality,
+	           testEvent != 0 ? ", PD2R_MAP_EVENT" : forced ? ", forced" : "", event, ++g_rolls);
+}
+
+// The map item the player used last: Cartographer takes the item before its area exists and publishes nothing yet
+// (docs/event-link.md), so the item interaction listener keeps what the roll needs, for the native map's first room.
+// shortcut: only the codes listed here count as maps; lane A adds a code with each map row it clones from cmc
+const uint32_t NativeMapCodes[] = {D2RL::Items::MakeItemCode("cmc")};
+std::atomic<int32_t> g_pendingQuality {0};  // 0 none; else the D2R quality of the item (2 normal, 4 magic, 6 rare ...)
+std::atomic<bool> g_pendingForced {false};
+std::atomic<uint32_t> g_pendingSeen {0};
+const D2RL::ItemService* g_items = nullptr;
+
+// The item's isolated forcing marker: stat 553 on layer 1 only (event_link.h MarkerLayer); a layer-0 553 is a player
+// buff to Cartographer and never forces an event
+auto ForcedByMarker(const D2RL::PluginContext* context, D2RL::ItemHandle item) noexcept -> bool {
+	if (!D2RL::HasItemServiceField(g_items, D2RL::ItemServiceDetailsFieldEnd)) {
+		return false;
+	}
+	D2RL::Items::ItemDetails details {};
+	details.structSize = sizeof(details);
+	D2RL::Items::ItemStatValue stats[256] {};
+	if (g_items->getItemDetails(context, item, &details, stats, std::size(stats)) != D2RL::Items::Result::Success) {
+		return false;
+	}
+	for (uint32_t i = 0; i < details.statCount && i < std::size(stats); ++i) {
+		if (stats[i].statId == static_cast<uint32_t>(StatForceEvent) && pd2::event_link::IsEventMetadata(stats[i].layer) &&
+		    stats[i].value > 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+auto __cdecl OnItemActivate(const D2RL::PluginContext* context, const D2RL::ItemInteractions::ItemInteractionEvent* event,
+                            void*) noexcept -> D2RL::ItemInteractions::Decision {
+	D2RL::Items::ItemInfo info {};
+	info.structSize = sizeof(info);
+	if (event != nullptr && g_items != nullptr &&
+	    g_items->getItemInfo(context, event->item, &info) == D2RL::Items::Result::Success &&
+	    std::find(std::begin(NativeMapCodes), std::end(NativeMapCodes), info.code) != std::end(NativeMapCodes)) {
+		g_pendingForced = ForcedByMarker(context, event->item);
+		g_pendingQuality = static_cast<int32_t>(info.quality);
+		++g_pendingSeen;
+		plog::Info("map events: native map used, quality %d%s", static_cast<int32_t>(info.quality),
+		           g_pendingForced ? ", forced" : "");
+	}
+	return D2RL::ItemInteractions::Decision::Continue;  // observe only: Cartographer opens the map
+}
+
+// A native map's first room: the game has no event yet (Cartographer allows one map per game), so roll it from the
+// item the player used. Without one (a map opened another way) it rolls as a normal map.
+auto RollNative(Game* game, int32_t level) noexcept -> void {
+	const int32_t quality = g_pendingQuality.exchange(0);
+	const bool forced = g_pendingForced.exchange(false);
+	RollEvent(game, level, quality != 0 ? quality : d2r::rva::QualityNormal, forced);
+}
+
 auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 	const int32_t level = game != nullptr && room != nullptr
 		? d2r::Engine<int32_t (*)(void*) noexcept>(d2r::rva::RoomLevelId)(room)
@@ -452,6 +544,9 @@ auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 	const Tiered* tier = Tier(level);
 	if (plog::Sample(g_rooms)) {
 		plog::Info("map events: room activated in level %d (%u so far)", level, g_rooms.load());
+	}
+	if (tier == &NativeTier && Get(game, EventKey) == 0) {
+		RollNative(game, level);
 	}
 	if (tier != nullptr) {
 		const int32_t rooms = Get(game, RoomsKey(level));
@@ -551,29 +646,7 @@ auto RollMapEvent(Game* game, Unit* item, int32_t level) noexcept -> void {
 		return;
 	}
 	const bool forced = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatForceEvent, 0) > 0;
-	const int32_t quality = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item);
-	const int32_t chance = quality == QualityNormal ? 11 : quality == QualityMagic ? 17 : 34;
-	int32_t event = 0;
-	if (forced || Rand() % 100 < chance) {
-		for (int draw = 0; draw < 40 && event == 0; ++draw) {
-			const int32_t e = Draws[Rand() % 12];
-			event = forced && e == Altar ? 0 : e;
-		}
-	}
-	event = event != 0 ? event : NoEvent;
-	// For game checks only, not PD2's: PD2R_MAP_EVENT=<11-21> in the game's environment rolls that event on every map
-	static const int32_t testEvent = [] {
-		char v[8] {};
-		size_t n = 0;
-		const int32_t e = getenv_s(&n, v, sizeof(v), "PD2R_MAP_EVENT") == 0 && n > 0 ? std::atoi(v) : 0;
-		return e > NoEvent && e <= Tomb && NotifyKey(e) != nullptr ? e : 0;
-	}();
-	event = testEvent != 0 ? testEvent : event;
-	Set(game, EventKey, event);
-	Set(game, SpawnsKey, 0);
-	++g_rolled[event - NoEvent];
-	plog::Info("map events: level %d (quality %d%s) rolled event %d (%u rolls)", level, quality,
-	           testEvent != 0 ? ", PD2R_MAP_EVENT" : forced ? ", forced" : "", event, ++g_rolls);
+	RollEvent(game, level, d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item), forced);
 }
 
 // PD2 0x10378080, in state 2 of the Altar event: with the guardian in a room, a sound on the guardian to every player
@@ -627,13 +700,28 @@ auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t r
 	    !D2RL::HasLocalizationServiceField(g_strings, D2RL::LocalizationServiceRequiredSize)) {
 		g_strings = nullptr;  // the events still spawn, without their chat line
 	}
+	if (context->QueryService(&g_items) != D2RL::ServiceQueryResult::Success) {
+		g_items = nullptr;
+	}
+	const D2RL::ItemInteractionService* interactions = nullptr;
+	bool listening = false;
+	if (g_items != nullptr && context->QueryService(&interactions) == D2RL::ServiceQueryResult::Success &&
+	    D2RL::HasItemInteractionServiceField(interactions, D2RL::ItemInteractionServiceRequiredSize)) {
+		const D2RL::ItemInteractions::ItemInteractionListener listener {
+			.structSize = D2RL::ItemInteractions::ItemInteractionListenerSize,
+			.callback = OnItemActivate,
+		};
+		D2RL::ItemInteractions::ListenerHandle handle = D2RL::ItemInteractions::InvalidHandle;
+		listening = interactions->registerListener(context, &listener, &handle) == D2RL::ItemInteractions::Result::Success;
+	}
 	const bool rooms = context->InstallInlineHook(RoomPopulate, RoomPopulateEntry, sizeof(RoomPopulateEntry),
 	                                              OnRoomPopulate, &g_populateOriginal);
 	static constexpr uint8_t Empty[8] = {};
 	using OperateFn = int32_t (*)(ObjectOperate*) noexcept;
 	const bool altars = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperateAltar) * 8, Empty,
 	                                           sizeof(Empty), reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperateAltar)));
-	std::snprintf(report, reportSize, "room activation%s, altar operate %d%s%s", rooms ? "" : " FAILED (bytes differ)",
+	std::snprintf(report, reportSize, "room activation%s, native map listener %s, altar operate %d%s%s",
+	              rooms ? "" : " FAILED (bytes differ)", listening ? "on" : "OFF (native maps roll as normal)",
 	              ObjectOperateAltar, altars ? "" : " FAILED (slot not empty)",
 	              g_strings != nullptr ? "" : ", no notify (no localization service)");
 	return rooms ? 1 : 0;
