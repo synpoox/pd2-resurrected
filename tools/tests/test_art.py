@@ -161,19 +161,26 @@ class HdPictureTests(unittest.TestCase):
             items = M.hd_items(hd, pd2, d2r, [], [], {"invlps": "pd2/invlps"})["items.json"]
             self.assertEqual(items[1], {"tpls": {"asset": "pd2/invlps"}})
 
-    def test_a_new_misc_item_with_a_pd2_picture_draws_a_scroll_not_the_first_potion(self):
-        # #1005: Fortify Map (type fort, no D2R twin) took misc's first row, an elixir, as its ground model
+    def test_a_new_misc_item_draws_the_model_of_the_d2r_item_with_its_flippyfile(self):
+        # #1005: rune and gem stacks, the puzzlebox and the maps took misc's first row, an elixir, as their ground model
         with tempfile.TemporaryDirectory() as tmp:
             hd = Path(tmp)
-            (hd / "items.json").write_text(json.dumps([{"elx": {"asset": "potion/elixir"}},
-                                                       {"isc": {"asset": "scroll/identify_scroll"}}]))
+            assets = {"elx": "potion/elixir", "isc": "scroll/identify_scroll", "r01": "rune/el_rune",
+                      "gpv": "gem/perfect_amethyst", "box": "quest/horadric_cube"}
+            (hd / "items.json").write_text(json.dumps([{k: {"asset": v}} for k, v in assets.items()]))
             (hd / "uniques.json").write_text("[]")
             (hd / "sets.json").write_text("[]")
-            pd2 = {"misc": table("name|code|type|invfile\nElixir|elx|elix|invpot\nFortify|fort|fort|invfort\n", "code")}
-            d2r = {"misc": table("name|code|type|invfile\nElixir|elx|elix|invpot\nIdentify|isc|scro|invrsc\n", "code")}
+            head = "name|code|type|invfile|flippyfile@"
+            d2r = "@".join(["Elixir|elx|elix|invpot|flpelx", "Scroll|isc|scro|invrsc|flpisc", "El|r01|rune|invrEl|flprun",
+                            "Amethyst|gpv|gemp|invgsve|flpgsv", "Cube|box|quest|invbox|flpbox"])
+            pd2 = d2r + "@" + "@".join(["El Stack|r01s|runs|invrsEl|flprun", "Amethyst Stack|gpvs|gg4a|invgsves|flpgsv",
+                                        "Puzzlebox|lbox|lbox|invlbox|flpbox", "Fortify|fort|fort|invfort|flpnone"])
+            tab = lambda rows: table((head + rows).replace("@", chr(10)) + chr(10), "code")
             models = {}
-            M.hd_items(hd, pd2, d2r, [], [], {"invfort": "pd2/invfort"}, models)
-            self.assertEqual(models, {"pd2/invfort": "scroll/identify_scroll"})
+            M.hd_items(hd, {"misc": tab(pd2)}, {"misc": tab(d2r)}, [], [],
+                       {k: "pd2/" + k for k in ("invrsel", "invgsves", "invlbox", "invfort")}, models)
+            self.assertEqual(models, {"pd2/invrsel": "rune/el_rune", "pd2/invgsves": "gem/perfect_amethyst",
+                                      "pd2/invlbox": "quest/horadric_cube", "pd2/invfort": "scroll/identify_scroll"})
 
 
 class GroundGraphicTests(unittest.TestCase):
@@ -193,9 +200,14 @@ class GroundGraphicTests(unittest.TestCase):
             unit = self.GEN / "hd/items/misc" / f"{a}.json"
             # a PD2 picture's ground model is a copy of a stand-in; only a potion row may stand in as a potion
             if a is None or (a.startswith("pd2/") and (not unit.is_file() or (
-                    "/potion/" in unit.read_text("utf-8") and not r[typ].endswith("pot")))):
+                    "/potion/" in unit.read_text("utf-8") and not (r[typ].endswith("pot") or r[code] == "dcso")))):  # dcso: its flippyfile is a red potion
                 missing.append(r[code])
         self.assertEqual(missing, [])
+
+        def model(code):
+            return (self.GEN / "hd/items/misc" / f"{entries[code]}.json").read_text("utf-8")
+        for code, want in (("r01s", "/rune/"), ("gpvs", "/gem/"), ("lbox", "horadric_cube")):
+            self.assertIn(want, model(code), code)
 
 
 if __name__ == "__main__":
