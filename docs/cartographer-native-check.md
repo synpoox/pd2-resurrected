@@ -1,25 +1,29 @@
 # Native catalogue check (#952, lane A)
 
 Game check of the five native Cartographer maps (m01-m05), 2026-11-15, Slot4, Hell, TESTPAL (level 99), build of
-`cartographer-migration` at d929925 plus this PR. Images: `issue-assets` branch, `952/`.
+`cartographer-migration` (d929925, then b6aec9b for the second pass). Images: `issue-assets` branch, `952/`. Image names (s4, m3-in, b1, ...) are screenshot labels, not item codes.
 
 | Check | Result |
 |---|---|
 | Item reads (name, area level, native property text) | Pass: "Hastened Bone Vaults Map / Area Level: 85 / +16% Monster Speed" |
 | Acquisition by `cheat spawn m01..m05` and opening in Harrogath (Hell) | Pass for all five (red portal, "Entering <name>") |
-| Tunneling Depths (Cave, slot 202), Bone Vaults (Crypt, 203), Frozen Hollows (Ice, 205), Overgrown Reach (Jungle, 206), Frostbitten Fields (Snow, 207) | Pass: each log line "built as planned"; arrival and area text seen |
-| Entrance to boss room | Bone Vaults only: warped to the boss room, loaded and populated. Others: skipped (log reports boss and event rooms known) |
+| Tunneling Depths (Cave, slot 202), Bone Vaults (Crypt, 203), Frozen Hollows (Ice, 205), Overgrown Reach (Jungle, 206), Frostbitten Fields (Snow, 207) | Pass: each log says "built as planned" (Tunneling Depths 12 rooms; Bone Vaults 13 rooms; Frozen Hollows 12 rooms; Overgrown Reach 15 stamps, 336 void of 576 cells, 240 rooms; Frostbitten Fields 48 stamps, 0 void, 192 cells); arrival and area text seen |
+| Entrance to boss room | Bone Vaults, Tunneling Depths (`cheat goto 202,17802,422`, walked) and Overgrown Reach (plan cell (0,0), Berserker Slayer boss present, walked): loaded and populated. Frozen Hollows, Frostbitten Fields: skipped: owner scope cut 2026-11-15 |
 | Return path | Pass for Frozen Hollows: the arrival portal leads back to Harrogath |
 | HD / legacy (`g`) | Pass on Bone Vaults (name, monster level and property text show in both) |
 | Panel / name text | Pass: map name and "Monster level 85 / Monsters have ..." text on the automap panel |
 | Teardown (Save and Exit, stop) | Pass: no new crash file, no plugin error line |
-| Terror Zone restoration, ordinary-area regressions | Not checked: no ordinary area visited after a map except Harrogath (normal) |
-| Frame time / memory | Skipped: no matched before/after build was cheap to get (old toolkit copy needed to build, below) |
+| Ordinary areas after a map | Pass after Tunneling Depths: Blood Moor and Den of Evil show their own name, Hell and no map text on the automap |
+| Terror Zone restoration | Skipped: owner scope cut 2026-11-15. Seen once: with `cheat desecrate 109` and `cheat seed 1` set, the Frozen Hollows portal answered "I can't" (not reproduced without them; cause unknown) |
+| Deterministic rebuild | Skipped: owner scope cut 2026-11-15. `cheat seed 7` did not pin the map: Tunneling Depths opened twice got maze seeds 8439465493737898331 and 13976776300227222905 |
+| Max size | Only Medium is enabled in `maps.txt` |
+| One map per game | A second map item answers "a map has already been opened in this game" (by design) |
+| Frame time / memory / load / teardown | Skipped: tracked in #1022 |
 
 Deviations seen (not caused by this PR, not fixed here):
 
 - `cartographer-report.txt` warns "core-maps is loaded next to Cartographer ... cannot be used together". Both load in the slot; map opening still worked. Belongs to the shared checkpoint (#959).
-- Item tooltip says "+16% Monster Speed", the in-map text says "+16% Movement Speed".
-- Overgrown Reach's plan is 11 stamps with 144 void cells of 320.
-- Frostbitten Fields: the arrival spot sits on a wall segment.
+- Item tooltip says "+16% Monster Speed", the in-map text says "+16% Movement Speed": synpoox/d2r-tools#483.
+- `EventChance` 0 with the forced core-maps event is by design (#999): the log says "event ... chance 0%: none" while core-maps rolls its own event.
+- Frostbitten Fields: the arrival spot sat on a wall segment (`m05-arr-a`) while the Shape cell of `maps.txt` was empty (log: "Snow  Medium"). Fixed here by setting `Winding` like the other maps; the next arrival was on open ground (`m05-arr-b`). One seed each, so the arrival rooms differ and the cause is not proven.
 - `plugin/common/pd2_engine.h` redefines RVAs the current d2rAI-toolkit (`rvas_93847/tables.h`) now holds, so `plugin/build.ps1` fails against a current toolkit. The check built with `D2R_TOOLKIT=d2rAI-toolkit-669f42a`. Needs a shared-file sync.

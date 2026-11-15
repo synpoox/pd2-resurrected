@@ -3,4 +3,4 @@ Tunneling Depths	Cave	Loop	m01	Medium	85	1
 Bone Vaults	Crypt	Branching	m02	Medium	85	1
 Frozen Hollows	Ice	Winding	m03	Medium	85	1
 Overgrown Reach	Jungle	Winding	m04	Medium	85	1
-Frostbitten Fields	Snow		m05	Medium	85	1
+Frostbitten Fields	Snow	Winding	m05	Medium	85	1
