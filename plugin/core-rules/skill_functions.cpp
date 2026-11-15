@@ -1154,7 +1154,7 @@ auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	}
 	DealSplash(game, area->unit, victim, damage);
 	hit->victims += (damage.resultFlags & ResultHit) != 0 ? 1 : 0;
-	ReleaseDamage(damage);
+	ReleaseDamageRva(damage);
 	return 1;
 }
 
@@ -1342,7 +1342,7 @@ auto HolyLightOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(AreaApply)(static_cast<Game*>(area->game), unit, victim,
 	                                                                     &damage);
 	++hl->hit;
-	ReleaseDamage(damage);
+	ReleaseDamageRva(damage);
 	return 1;
 }
 
@@ -1421,7 +1421,7 @@ auto MeleeHit(Game* game, Unit* unit, Unit* target, const uint8_t* skill, int32_
 		                                                                                    srcDam);
 		d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t, uint8_t) noexcept>(ApplyQueuedHit)(game, unit, target, 0, 1);
 	}
-	ReleaseDamage(damage);
+	ReleaseDamageRva(damage);
 	return hit;
 }
 
@@ -1492,7 +1492,7 @@ auto RollVengeance(Game* game, Unit* unit, const uint8_t* skill, int32_t skillId
 	d2r::LeapKnockback roll;
 	d2r::Engine<void (*)(Unit*, void*, int32_t, int32_t) noexcept>(ElementalDamage)(unit, &roll, skillId, level);
 	d.base = At<int32_t>(&roll, DmgPhys);
-	ReleaseDamage(roll);
+	ReleaseDamageRva(roll);
 	for (int i = 0; i < 3; ++i) {
 		d.dmg[i] += d.base + Percent(d.base, mastery[i]);
 	}
@@ -1580,7 +1580,7 @@ auto VengeanceOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	*reinterpret_cast<int32_t*>(block + DmgLight) = b->damage.dmg[2];
 	*reinterpret_cast<int32_t*>(block + DmgColdLength) = b->damage.coldLength;
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(AreaApply)(game, caster, victim, &damage);
-	ReleaseDamage(damage);
+	ReleaseDamageRva(damage);
 	++b->hit;
 	int32_t cx = 0, cy = 0, vx = 0, vy = 0;
 	if (d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(victim, JustHit) != 0 ||
@@ -1761,7 +1761,7 @@ auto SrvDoDragonFlight(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 		d2r::api.setUnitSkillFlag(unit, 1);
 	}
 	const uint32_t resultFlags = damage.resultFlags;
-	ReleaseDamage(damage);
+	ReleaseDamageRva(damage);
 	const bool sampleCast = plog::Sample(g_dragonFlights);
 	if ((hit && plog::Sample(g_dragonFlightHits)) || sampleCast) {
 		plog::Info("dragon flight: skill %d level %d at unit type %d: to-hit %d (progressive %d), result 0x%x, "
@@ -2956,7 +2956,7 @@ auto StaticFieldOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	*(reinterpret_cast<uint8_t*>(&damage) + DamageFlag148) = 1;
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t, void*) noexcept>(HitEvents)(game, area->unit, victim, 1, &damage);
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(DealDamage)(game, area->unit, victim, &damage);
-	ReleaseDamage(damage);
+	ReleaseDamageRva(damage);
 	if (hit->hits++ == 0) {
 		hit->life = life;
 		hit->maxLife = maxLife;

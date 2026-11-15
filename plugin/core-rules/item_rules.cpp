@@ -975,7 +975,7 @@ auto DarkPactOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(d2r::rva::AreaApply)(static_cast<Game*>(area->game),
 	                                                                               area->unit, victim, &damage);
 	++hit->victims;
-	d2r::ReleaseDamage(damage);
+	d2r::ReleaseDamageRva(damage);
 	return 1;
 }
 
@@ -1063,7 +1063,7 @@ auto ApplyDarkPact(Unit* target, d2r::CurseParams* params, uint32_t dataFlag) no
 		d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(target), x, y};
 		d2r::Engine<AreaFn>(AreaUnits)(game, caster, &center, radius, AreaUnitMask, DarkPactOne, &hit, 0);
 		victims = hit.victims;
-		d2r::ReleaseDamage(rolled);
+		d2r::ReleaseDamageRva(rolled);
 	}
 	// dark_pact itself, past the max-curses rule: NewStateList sees only an older dark_pact list, if any
 	uint8_t* same = stateList(target, StateDarkPact);

@@ -502,7 +502,7 @@ auto BoltSplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(d2r::rva::AreaApply)(static_cast<Game*>(area->game),
 	                                                                               area->unit, victim, &damage);
 	b->victims += (damage.resultFlags & d2r::rva::ResultHit) != 0 ? 1 : 0;
-	ReleaseDamage(damage);
+	ReleaseDamageRva(damage);
 	return 1;
 }
 
@@ -540,7 +540,7 @@ auto SrvHitBoltSplash(Game* game, Unit* missile, Unit* /*hit*/) noexcept -> int3
 		           "hit %u", At<int32_t>(missile, UnitClassId), skillId, level, radius, At<int32_t>(&rolled, DmgFire),
 		           At<int32_t>(&rolled, DmgCold), static_cast<long long>(b.victims), g_boltHits.load());
 	}
-	ReleaseDamage(rolled);
+	ReleaseDamageRva(rolled);
 	return 1;
 }
 
@@ -611,7 +611,7 @@ auto SrvHitUberImmolation(Game* game, Unit* missile, Unit* hit) noexcept -> int3
 		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, d2r::LeapKnockback*, int32_t, void*) noexcept>(
 			AreaKnockback)(game, owner, x, y, radius, &damage, 0, scratch);
 		setKey(owner, ownerKey);
-		ReleaseDamage(damage);
+		ReleaseDamageRva(damage);
 	}
 	if (plog::Sample(g_uberImmolationHits)) {
 		plog::Info("uber immolation hit: missile row %d skill %d level %d: fire row %d in radius %d for %d frames, "
@@ -1261,7 +1261,7 @@ void SrvDmgRathmaSpear(Game* game, Unit* missile, Unit* target, uint8_t* damage)
 	// area 0, as PD2: D2R's HitEvents then skips DamageEffects (the resists and the total), as 1.13c skips its step
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t, void*) noexcept>(HitEvents)(game, owner, target, 0, &hit);
 	d2r::Engine<HitFn>(DealDamage)(game, owner, target, &hit);
-	d2r::ReleaseDamage(hit);
+	d2r::ReleaseDamageRva(hit);
 	if (plog::Sample(g_spearHits)) {
 		plog::Info("rathma bone spear damage: missile row %d on unit type %d: DmgCalc1 %d%% of max life %u = magic %u, "
 		           "total %u (life %u -> %d), hit %u", At<int32_t>(missile, UnitClassId), At<int32_t>(target, UnitType),
