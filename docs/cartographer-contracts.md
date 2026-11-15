@@ -49,7 +49,7 @@ None of it reads PD2 map items, affixes or recipes. The PD2 map rows still exist
 ## Known caveats
 
 - `cmap` has `Equiv1 misc` (copied from Herb), so a `misc` type-based pick could roll a map. Not seen in any treasure class; lane A decides whether to cut the parent.
-- Affix names are string keys in `item-nameaffixes.json`, added as `texts` and `ids` rows in `merge/strings.json` (a `string` op in a patch would replace the merged file, #996) (a name without one reads "Missing string" on the tooltip).
+- Affix names are string keys in `item-nameaffixes.json`, added as `texts` and `ids` rows in `merge/strings.json` (a `string` op in a patch would replace the merged file, #996); a name without one reads "Missing string" on the tooltip.
 - Slot level `LevelType` (202-208) is set by `set` ops on `levels` (`where: {"Id": ...}`): PD2's merge renumbers LevelType after the `+` lines, so a value in the `+` line is lost and `cartographer check` reports the wrong type.
 - `cmap` gets `Magic=1 Rare=1 Normal=0` from a patch `set` (the template row left it `0/1/0`), and `m01` has `rarity 1`, `level 1`. The pool class `Cartographer Maps` sits on row 121, before the Good rows that name it: a treasure class defined after the rows that name it is never resolved (0 drops in 440,000), and patches can only append rows.
 - Building the PD2 plugins (`pluginuild.ps1`) fails against current d2rAI-toolkit main (`rvas_93847/tables.h` redefines `pd2_engine.h`); #946 was built with `D2R_TOOLKIT` pointed at toolkit commit 669f42a. Filed separately as a toolkit issue.
