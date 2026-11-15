@@ -4,37 +4,17 @@
 // Shared (host and client must match) and NativeHooks; a game-wide plugin in <game>\d2rloader\plugins (ADR 0004).
 // On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
 //
-// Parts: each has a one-word name for the log, the status command and core-maps-off.txt
+// Parts: registered by the lanes (parts.h); each has a one-word name for the log, the status command and core-maps-off.txt
 // (<game>\d2rloader\config\core-maps-off.txt), which leaves listed parts out to bisect a crash.
 #include <D2RLPlugin/api.h>
 
 #include "ai_hooks.h"
 #include "crash_guard.h"
-#include "cube_ops.h"
 #include "entity_pool.h"
-#include "event_portals.h"
-#include "pd2_engine.h"
-#include "dclone_ai.h"
-#include "key_drops.h"
 #include "log.h"
-#include "lucion.h"
-#include "lucion_ai.h"
-#include "lucion_chests.h"
-#include "map_bosses.h"
-#include "map_events.h"
-#include "map_open.h"
-#include "map_stats.h"
 #include "off_switch.h"
-#include "prime_minions.h"
-#include "rathma_ai.h"
-#include "guardian_ai.h"
-#include "map_boss_ai.h"
-#include "rathma.h"
-#include "rathma_life.h"
-#include "uber_tristram.h"
-#include "uber_drops.h"
-#include "unique_maps.h"
-#include "zhar.h"
+#include "parts.h"
+#include "pd2_engine.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -68,138 +48,14 @@ constexpr D2RL::PluginInfo Info {
 	.flags       = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
 };
 
-using InstallFn = void (*)(const D2RL::PluginContext* context, char* report, size_t size) noexcept;
-
-struct Part {
-	const char* word;
-	InstallFn install;
-	char report[300];
-};
-
-void InstallCube(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallCubeOps(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/%d installed: %s", installed, CubeOpCount(), rules);
-}
-
-void InstallMaps(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallMapOpen(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/%d installed: %s", installed, MapOpenCount(), rules);
-}
-
-void InstallStats(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallMapStats(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/%d installed: %s", installed, MapStatsCount(), rules);
-}
-
-void InstallMapEventsPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallMapEvents(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
-}
-
-void InstallKeys(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallKeyDrops(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
-}
-
-void InstallLucionPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallLucion(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
-}
-
-void InstallPrimes(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallPrimeMinions(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
-}
-
-void InstallTempleChests(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallLucionChests(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
-}
-
-void InstallEvents(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallEventPortals(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
-}
-
-void InstallLucion(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallLucionAi(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
-}
-
-void InstallRathma(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallRathmaAi(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
-}
-
-void InstallRathmaLifePart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallRathmaLife(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/2 installed: %s", installed, rules);
-}
-
-void InstallDclone(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallDcloneAi(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/2 installed: %s", installed, rules);
-}
-
-void InstallGuardian(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallGuardianAi(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
-}
-
-void InstallMapBossAiPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallMapBossAi(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/3 installed: %s", installed, rules);
-}
-
-void InstallZharPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallZhar(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
-}
-
-void InstallPool(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	(void)context;
-	InstallEntityPool(report, size);
-}
-
-Part g_parts[] = {
-	{"cube", InstallCube, ""},
-	{"open", InstallMaps, ""},
-	{"stats", InstallStats, ""},
-	{"mapevents", InstallMapEventsPart, ""},
-	{"pool", InstallPool, ""},
-	{"keys", InstallKeys, ""},
-	{"trist", InstallTristram, ""},
-	{"lucion", InstallLucionPart, ""},
-	{"primes", InstallPrimes, ""},
-	{"temple", InstallTempleChests, ""},
-	{"events", InstallEvents, ""},
-	{"lucionai", InstallLucion, ""},
-	{"rathmaai", InstallRathma, ""},
-	{"rathmalife", InstallRathmaLifePart, ""},
-	{"dcloneai", InstallDclone, ""},
-	{"guardianai", InstallGuardian, ""},
-	{"mapbossai", InstallMapBossAiPart, ""},
-	{"zhar", InstallZharPart, ""},
-};
-
 void InstallParts(const D2RL::PluginContext* context) noexcept {
-	for (Part& p : g_parts) {
+	size_t count = 0;
+	Part* parts = Parts(&count);
+	if (RegistryOverflowed()) {
+		plog::Warn("parts registry full: some parts or counters are not registered");
+	}
+	for (size_t i = 0; i < count; ++i) {
+		Part& p = parts[i];
 		if (!g_imageKnown) {
 			std::snprintf(p.report, sizeof(p.report), "off: unknown game image 0x%08x (expects 0x%08x)",
 			              build_guard::ImageStamp(static_cast<uintptr_t>(context->exeBase)), d2r::rva::ImageStamp);
@@ -252,76 +108,23 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 		std::snprintf(line, sizeof(line), "off-file: %s", off_switch::Words());
 		command->plugin->WriteConsoleMessage(line);
 	}
-	for (const Part& p : g_parts) {
+	size_t count = 0;
+	const Part* parts = Parts(&count);
+	for (size_t i = 0; i < count; ++i) {
+		const Part& p = parts[i];
 		std::snprintf(line, sizeof(line), "%s %s", p.word, p.report);
 		command->plugin->WriteConsoleMessage(line);
 	}
 	std::snprintf(line, sizeof(line), "pool now %s", EntityPoolState());
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
-	CubeOpCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);  // also in the plugin log, for game checks
-	MapOpenCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	MapStatsCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	MapEventsCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	KeyDropsCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	LucionCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	PrimeMinionsCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	LucionChestsCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	UberDropsCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	RathmaCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	TristramCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	EventPortalsCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	UniqueMapsCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	ZharCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	MapBossCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	LucionAiCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	RathmaAiCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	RathmaLifeCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	DcloneAiCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	GuardianAiCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	MapBossAiCounters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
+	size_t counterCount = 0;
+	const CountersFn* counters = Counters(&counterCount);
+	for (size_t i = 0; i < counterCount; ++i) {
+		counters[i](line, sizeof(line));
+		command->plugin->WriteConsoleMessage(line);
+		plog::Info("%s", line);
+	}
 	return D2RL::ConsoleCommandResult::Handled;
 }
 

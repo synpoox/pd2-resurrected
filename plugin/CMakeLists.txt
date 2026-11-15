@@ -88,6 +88,10 @@ add_library(core_maps SHARED
 	core-maps/dclone_ai.cpp
 	core-maps/ai_hooks.cpp
 	core-maps/event_portals.cpp
+	core-maps/horazon.cpp
+	core-maps/nihlathak_ai.cpp
+	core-maps/parts.cpp
+	core-maps/parts_shared.cpp
 	core-maps/uber_scaling.cpp
 	core-maps/uber_drops.cpp
 	core-maps/almanac.cpp
@@ -100,6 +104,10 @@ add_library(core_maps SHARED
 	core-maps/unique_map_drops.cpp
 	core-maps/plugin.rc
 )
+# Each lane registers its parts from its own folder (core-maps/lane-a .. lane-d, #943): new files there need no edit here.
+file(GLOB CORE_MAPS_LANE_SOURCES CONFIGURE_DEPENDS core-maps/lane-*/*.cpp)
+target_sources(core_maps PRIVATE ${CORE_MAPS_LANE_SOURCES})
+target_include_directories(core_maps PRIVATE core-maps)
 target_link_libraries(core_maps PRIVATE core_common)
 target_compile_definitions(core_maps PRIVATE CORE_PLUGIN_NAME="core-maps" CORE_PLUGIN_VERSION="${CORE_MAPS_VERSION}")
 set_target_properties(core_maps PROPERTIES OUTPUT_NAME "core-maps")
