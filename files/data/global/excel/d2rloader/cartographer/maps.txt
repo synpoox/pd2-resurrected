@@ -1,2 +1,6 @@
 Name	Tileset	Shape	Item	Size	Level	MinCharLevel
 Tunneling Depths	Cave	Loop	cmc	Medium	85	1
+Bone Vaults	Crypt	Branching	cmr	Medium	85	1
+Frozen Hollows	Ice	Winding	cmi	Medium	85	1
+Overgrown Reach	Jungle	Winding	cmj	Medium	85	1
+Frostbitten Fields	Snow		cms	Medium	85	1

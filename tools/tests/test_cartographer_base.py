@@ -24,7 +24,8 @@ def ids(table_name, plus=None):
 
 
 def patch_ops():
-    return json.loads((ROOT / "patches/070-cartographer-base.json").read_text())["ops"]
+    """The base patch plus lane A's catalogue patch (#948), which supersedes its pool."""
+    return [o for f in ("070-cartographer-base.json", "071-native-catalogue.json") for o in json.loads((ROOT / "patches" / f).read_text())["ops"]]
 
 
 def test_every_map_names_a_patched_misc_item():
@@ -44,5 +45,6 @@ def test_every_slot_is_a_level_and_ids_are_gapless():
 
 
 def test_map_pool_is_tierless():
-    sets = [o for o in patch_ops() if o.get("table") == "treasureclassex" and o["op"] == "set"]
-    assert len(sets) == 5 and all(o["set"] == {"Item9": "cmc"} for o in sets)
+    sets = [o for o in patch_ops() if o.get("table") == "treasureclassex" and o["op"] == "set" and o["set"].get("Item9")]
+    assert len(sets) == 10 and all(o["set"]["Item9"] in ("cmc", "Cartographer Maps") for o in sets)
+    assert not any("Map Tier" in json.dumps(o) for o in sets)
