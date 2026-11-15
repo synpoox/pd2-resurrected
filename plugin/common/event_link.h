@@ -81,7 +81,10 @@ struct Progress {
 
 class AreaTracker {
 public:
-	void Entered(AreaId a) { areas_.try_emplace(a); }
+	void Entered(AreaId a) { areas_.try_emplace(a); }  // re-entering keeps the progress
+	// A fresh open of a map: resets the entry. Cartographer reuses a slot's level id within one game, so without the
+	// AreaIdentity capability the consumer must call this on every open, or map 2 inherits map 1's closed entry.
+	void Opened(AreaId a) { areas_[a] = Progress{}; }
 	void MonsterDied(AreaId a) {
 		const auto it = areas_.find(a);
 		if (it != areas_.end() && !it->second.closed) {

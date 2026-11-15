@@ -1,4 +1,4 @@
-// Host self-check of plugin/common/event_link.h (#944). Always runs. With -DCARTOGRAPHER_SRC the same file also runs
+// Host self-check of plugin/common/event_link.h (#944). The event_link.h checks always run. With -DCARTOGRAPHER_SRC the same file also runs
 // the metadata checks against Cartographer's own statplan.cpp (read-only, never modified): without it those print SKIPPED.
 //   cmake -S plugin -B plugin/build-checks -DCARTOGRAPHER_SRC=<d2r-tools>/plugins/cartographer/src && cmake --build plugin/build-checks --target event_link_check
 #include "event_link.h"
@@ -12,7 +12,7 @@
 
 namespace el = pd2::event_link;
 
-static int g_pass = 0, g_fail = 0;
+static int g_pass = 0, g_fail = 0, g_skip = 0;
 #define CHECK(name, cond) do { if (cond) { ++g_pass; std::printf("PASS  %s\n", name); } else { ++g_fail; std::printf("FAIL  %s\n", name); } } while (0)
 
 struct Source {  // the source map's state the refusal must leave alone
@@ -55,6 +55,9 @@ int main() {
 		CHECK("source progress unchanged by the destination", tracker.Get(src.area) == before);
 		tracker.Entered(reused);
 		CHECK("same level id in a new session is a different area", tracker.Get(reused).monstersKilled == 0);
+		tracker.Opened(dest);  // slot reuse: the next map opens in the same level id
+		tracker.MonsterDied(dest);
+		CHECK("slot reuse: a fresh open resets a closed entry", tracker.Get(dest).monstersKilled == 1 && !tracker.Get(dest).closed);
 	}
 	CHECK("marker layer is event metadata, layer 0 is not", el::IsEventMetadata(el::MarkerLayer) && !el::IsEventMetadata(0));
 
@@ -89,8 +92,9 @@ int main() {
 	const sp::MapLevelPick pick2 = sp::mapLevelFromItem({{901, 0, 91}, {553, el::MarkerLayer, 1}}, ids, 85);
 	CHECK("standalone default: the item's map level wins, marker ignored", pick2.level == 91 && pick2.fromItem);
 #else
-	std::printf("SKIPPED  Cartographer metadata and standalone-default checks (no -DCARTOGRAPHER_SRC)\n");
+	g_skip = 7;
+	std::printf("SKIPPED  7 Cartographer metadata and standalone-default checks (no -DCARTOGRAPHER_SRC)\n");
 #endif
-	std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
+	std::printf("\n%d passed, %d failed, %d skipped\n", g_pass, g_fail, g_skip);
 	return g_fail == 0 ? 0 : 1;
 }
