@@ -58,6 +58,9 @@ add_library(core_rules SHARED
 	core-rules/loot_rules.cpp
 	core-rules/plugin.rc  # ABI manifest resource: D2RLoader rejects a plugin DLL without it
 )
+# The per-encounter placement data (#947), one file per encounter: built into every plugin that reads placements.h.
+file(GLOB CORE_PLACEMENT_SOURCES CONFIGURE_DEPENDS placements/*.cpp)
+target_sources(core_rules PRIVATE ${CORE_PLACEMENT_SOURCES})
 target_link_libraries(core_rules PRIVATE core_common)
 target_compile_definitions(core_rules PRIVATE CORE_PLUGIN_NAME="core-rules" CORE_PLUGIN_VERSION="${CORE_RULES_VERSION}")
 set_target_properties(core_rules PROPERTIES OUTPUT_NAME "core-rules")
@@ -107,6 +110,7 @@ add_library(core_maps SHARED
 # Each lane registers its parts from its own folder (core-maps/lane-a .. lane-d, #943): new files there need no edit here.
 file(GLOB CORE_MAPS_LANE_SOURCES CONFIGURE_DEPENDS core-maps/lane-*/*.cpp)
 target_sources(core_maps PRIVATE ${CORE_MAPS_LANE_SOURCES})
+target_sources(core_maps PRIVATE ${CORE_PLACEMENT_SOURCES})
 target_include_directories(core_maps PRIVATE core-maps)
 target_link_libraries(core_maps PRIVATE core_common)
 target_compile_definitions(core_maps PRIVATE CORE_PLUGIN_NAME="core-maps" CORE_PLUGIN_VERSION="${CORE_MAPS_VERSION}")

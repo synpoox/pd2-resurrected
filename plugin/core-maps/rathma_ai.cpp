@@ -12,6 +12,7 @@
 
 #include "ai_hooks.h"
 #include "log.h"
+#include "placements.h"
 #include "map_open.h"
 
 #include <algorithm>
@@ -214,10 +215,10 @@ auto HoldLife(Unit* unit, int32_t percent) noexcept -> void {
 }
 
 // PD2 0x103567d0: the stage's spot, where Blink lands and the retreat portal opens
-constexpr auto Spot(int32_t stage) noexcept -> std::pair<int32_t, int32_t> {
-	return stage <= 2 ? std::pair {0x476c, 0x35bf} : stage <= 4 ? std::pair {0x47d3, 0x394b} : std::pair {0x4e9a, 0x1403};
+auto Spot(int32_t stage) noexcept -> std::pair<int32_t, int32_t> {
+	const auto at = placements::SpotOf(stage <= 2 ? "rathma1" : stage <= 4 ? "rathma2" : "rathma3", "arena");
+	return {at.x, at.y};
 }
-static_assert(Spot(1).first == 0x476c && Spot(4).second == 0x394b && Spot(6).first == 0x4e9a);
 
 // The life events (bone set, poison set): below `life`, with stat 446 under `event`. `odd` events are the healing
 // waves: life is held at the mark; the poison set's are rathmaPoison's alone.
@@ -269,12 +270,12 @@ auto Retreat(Tick& t) noexcept -> void {
 	} else if (t.sub == 1) {
 		t.sub = 2;
 		const int32_t before = stage;
-		int32_t level = 161;  // PD2 162
+		int32_t level = placements::LevelOf("rathma2");  // PD2 162
 		if (stage == 1) {
 			stage = 2;
 		} else if (stage == 3) {
 			stage = 4;
-			level = 162;  // PD2 163
+			level = placements::LevelOf("rathma3");  // PD2 163
 		}
 		if (stage != before) {
 			++g_stages;

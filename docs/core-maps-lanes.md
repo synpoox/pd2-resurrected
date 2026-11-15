@@ -11,7 +11,7 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 |---|---|---|
 | plugin.cpp | S | Installs the registered parts in order and runs the status command. No part lists live here. One AI registry stays in ai_hooks. |
 | parts.cpp, parts.h | S | The parts registry: `PartReg` and `CountersReg`, sorted by order. Frozen. |
-| parts_shared.cpp | S | Parts of lane S: `pool` (50) and `keys` (60) and the key drop counters. |
+| parts_shared.cpp | S | Parts of lane S: `pool` (50), `placements` (55, #947) and `keys` (60) and the key drop counters. |
 | lane-a/ | A | Every file in the folder is lane A's: `parts.cpp` registers its parts and counters. |
 | lane-b/ | B | Every file in the folder is lane B's: `parts.cpp` registers its parts and counters. |
 | lane-c/ | C | Every file in the folder is lane C's: `parts.cpp` registers its parts and counters. |

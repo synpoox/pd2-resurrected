@@ -24,6 +24,7 @@
 #include "event_portals.h"
 #include "level_fx.h"
 #include "log.h"
+#include "placements.h"
 #include "lucion.h"
 #include "map_open.h"
 #include "rathma.h"
@@ -74,7 +75,7 @@ constexpr int32_t Fog = 374;          // PD2 374, D2R's Fog (the same row)
 // PD2's waves: 993-995 shadowofhate, shadowofterror, shadowofdestruction
 constexpr int32_t Shadows[3] = {1010, 1011, 1012};
 constexpr int32_t SpireOver = 50;     // PD2's spawn count once 0x1036eb30 ends the waves
-constexpr int32_t BitterDepths = 198;  // PD2 207 Tomb Event Map, Act V
+inline auto BitterDepths() noexcept -> int32_t { return placements::LevelOf("bitterdepths"); }  // PD2 207 Tomb Event Map, Act V (placements/bitterdepths.cpp)
 // PD2's Spire sounds (sounds.txt rows): 0xa78 shrine_storm and 0x24 on the use, 0x26d bloodraven_mist_end at the end
 constexpr int32_t SpireSounds[2] = {0xa78, 0x24}, SpireEndSound = 0x26d;
 // PD2's Catalyst altar sounds: 0x29c once the guardian is called, 0x23 with the shards, 0x26d on the guardian's death
@@ -348,7 +349,7 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t pr
 	}
 	// PD2's Void/Tomb places xactportal_gold here and one in level 207, then links the two (0x1038a510); D2R's portal
 	// maker makes the same linked pair, of its red portal 60 (docs/deviations.md)
-	const Unit* made = event == Tomb    ? OpenEventPortal(game, room, xy[0], xy[1], BitterDepths)
+	const Unit* made = event == Tomb    ? OpenEventPortal(game, room, xy[0], xy[1], BitterDepths())
 	                   : event == Altar ? SpawnObjectAt(game, room, xy[0], xy[1], ShardAltar)
 	                                    : SpawnMonsterAt(game, room, xy, id);
 	if (made == nullptr) {

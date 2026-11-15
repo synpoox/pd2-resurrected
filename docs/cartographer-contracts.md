@@ -25,7 +25,7 @@ None of it reads PD2 map items, affixes or recipes. The PD2 map rows still exist
 - **Map item**: misc type `cmap`, `pSpell 16`, `belt 0`, `useable 1`, `spellicon -1`, `compactsave 0`. A lane adds a map by adding a `maps.txt` row and a misc row (clone `cmc`).
 - **Opening**: Harrogath, Hell, red portal, one map per game (Cartographer's rule). No lane changes it.
 - **Event link**: [event-link.md](event-link.md) (#944). Metadata on layered stats only.
-- **Reserved ids**: levels 202-208 taken, 209 and up free for lane statics (never build uber arena replacements: vanilla mini-ubers and D2R Tristram arena with PD2 bosses); stats 564-572 taken, 573 up free; item type 245 taken; magic affix groups 9201-9205 taken.
+- **Reserved ids**: levels 202-208 taken, 209-215 reserved for the private areas below (#947; 216 and up free; never build uber arena replacements: vanilla mini-ubers and D2R Tristram arena with PD2 bosses); stats 564-572 taken, 573 up free (none reserved: the fights keep state in game counters); item type 245 taken; magic affix groups 9201-9205 taken.
 - **Gapless `+` lines**: new ids run on after the current maximum in the `merge/ids-*.tsv` file, one lane at a time.
 
 ## Four-lane base and file ownership
@@ -54,3 +54,38 @@ None of it reads PD2 map items, affixes or recipes. The PD2 map rows still exist
 - `cmap` gets `Magic=1 Rare=1 Normal=0` from a patch `set` (the template row left it `0/1/0`), and `cmc` has `rarity 1`, `level 1`. The pool puts `cmc` straight into `Item9`: a treasure class defined after the rows that name it is never resolved (0 drops in 440,000), and patches can only append rows.
 - Building the PD2 plugins (`pluginuild.ps1`) fails against current d2rAI-toolkit main (`rvas_93847/tables.h` redefines `pd2_engine.h`); #946 was built with `D2R_TOOLKIT` pointed at toolkit commit 669f42a. Filed separately as a toolkit issue.
 - `LevelEntry` on levels 202-208: the `+` lines set it empty, but the merged `levels.txt` keeps the template area's string (for example `EnteringCaveLevel1` on 202). Harmless; Cartographer's map names replace the entry text.
+
+## Encounter placements (#947, frozen)
+
+`plugin/common/placements.h` is the one place AI, server/client skills, stage travel, chests and re-entry read an encounter's level and coordinates from. A consumer never holds a level number or a coordinate of its own. Data: one file per encounter in `plugin/placements/` (globbed into both `core-maps` and `core-rules`; no edit to CMake or any list). The `placements` part (order 55, lane S) logs the counts and the status command shows lookups that found nothing.
+
+Interface (frozen; a change is a checkpoint): `Binding {encounter, level, target, Source, uber, noWaypoint}`, `Place {encounter, id, x, y, w, h, arg}` (w = h = 0 a point, else the region [x, x+w) x [y, y+h); `arg` a monstats class for a boss spot), `Reg`, `LevelOf(encounter)`, `BindingAt(level)`, `IsUberLevel`, `NoWaypointLevel`, `Find`, `Need`, `SpotOf`. `level` is what consumers read now; `target` the frozen destination. A private author flips `level` to `target` in the same PR that ships the area, and edits the places to the new geometry.
+
+Consumers adapted once (all read the registry): Dclone AI (`dclone_ai.cpp`: centre, souls square), Lucion AI (centre, adds square), Lucion death (`lucion.cpp`: arena and Temple levels, Temple portal), Rathma stages and AI (`rathma.cpp` builds its stage table from `rathma1`-`rathma3`; `rathma_ai.cpp` drops its duplicate spot table), uber entry and re-entry (`uber_entry.cpp`: uber and no-waypoint levels, Tristram level, fountain, grey portals), Void/Tomb event (`map_events.cpp`: Bitter Depths level), the Rathma retreat portal levels (`rathma_ai.cpp`), `map_bosses.cpp` (Tristram) and `map_stats.cpp` (extra-drop levels: dclone, rathma1, lucion; lane A, obsolete with the native maps). Chests (`lucion_chests.cpp`) hold no level or coordinate (the object is in the area's DS1); a chest placement goes in the Temple's file as `chest*` places. Skills: the core-rules fight skills (UberDiabSummon/Run, RathmaSummon, the Lucion kit) are built with their fights (#958-#962) and read `placements.h` too; none exists yet.
+
+Reserved levels (appended in `merge/ids-levels.tsv`, so no later PR appends there; an author sets the real fields with `set` ops in its own patch):
+
+| Level | Encounter (binding) | Lane / ticket | Replaces |
+|---|---|---|---|
+| 209 | `dclone` | D #958 | 138 |
+| 210, 211, 212 | `rathma1`, `rathma2`, `rathma3` | D #961 | 160, 161, 162 |
+| 213 | `lucion` | D #962 | 184 |
+| 214 | `temple` | D #962 | 185 |
+| 215 | `bitterdepths` | C #960 | 198 |
+
+No bridge is justified yet (Horazon's #959 may ask for one at its checkpoint: next id 216). Frozen without a replacement arena: `miniuber1-3` = D2R levels 133-135 (vanilla, `miniubers.cpp`, bindings only), and `tristram` = D2R's Uber Tristram arena 136 with PD2's bosses (`Source::D2RTristram`, target 136; level stays 181 until D #957 flips it and adds its places to `miniubers.cpp`). `harrogath` (109) holds the Blood Fountain and the three grey re-entry portals.
+
+Exact file ownership (a lane edits only these for its encounter; lane S owns everything else listed above):
+
+| Encounter | Placement data | Fight modules |
+|---|---|---|
+| Dclone (D #958) | `plugin/placements/dclone.cpp` | `lane-d/*`, `dclone_ai.*` |
+| Rathma/Mendeln (D #961) | `plugin/placements/rathma.cpp` | `lane-d/*`, `rathma*.{cpp,h}` |
+| Lucion, Temple (D #962) | `plugin/placements/lucion.cpp` | `lane-d/*`, `lucion*.{cpp,h}` |
+| Mini-ubers, Tristram (D #955, #957) | `plugin/placements/miniubers.cpp` | `lane-d/*`, `uber_tristram.*`, `prime_minions.*` |
+| Bitter Depths (C #960) | `plugin/placements/bitterdepths.cpp` | `lane-c/*`, `map_events.*` |
+| Access, re-entry (D #951) | `plugin/placements/uber_entry.cpp` | `uber_entry.*`, `uber_scaling.*` |
+
+The placement files need no generated output: nothing in `plugin/` reads `generated/`, `out/` or any DT1/DS1/converter product, and `tools/tests/test_placements.py` checks the files against `merge/ids-levels.tsv` and every consumer lookup.
+
+Skipped by the owner: building a representative native static uber area (acceptance criterion 1). The registry is proven on the retained fights instead; the first new arena (#958) is the proof of native static authoring.

@@ -15,6 +15,7 @@
 #include "rathma.h"
 
 #include "log.h"
+#include "placements.h"
 #include "map_open.h"
 #include "rathma_ai.h"
 #include "uber_drops.h"
@@ -23,6 +24,7 @@
 
 #include <intrin.h>
 
+#include <array>
 #include <atomic>
 #include <cstdio>
 
@@ -54,14 +56,12 @@ constexpr UniqueDrop Uniques[] = {{D2RL::Items::MakeItemCode("ram"), 455},
                                   {D2RL::Items::MakeItemCode("rar"), 454},
                                   {D2RL::Items::MakeItemCode("rbe"), 453}};
 
-struct Spot {
-	int32_t x, y;
-};
+using Spot = placements::Spot;
 struct Boss {
 	int32_t classId;
 	Spot at;
 };
-// PD2 0x1036fef0's three Rathma levels (PD2 161-163, the port's 160-162)
+// PD2 0x1036fef0's three Rathma levels (PD2 161-163, the port's 160-162), read from plugin/placements/rathma.cpp
 struct Stage {
 	int32_t level, from;  // the stage it moves on from (to from + 1)
 	Spot portals[4];      // the in-level ghostly portal; the third level's picks one of three, then tries 1-3 less 3
@@ -71,19 +71,35 @@ struct Stage {
 	int32_t bossCount;
 	Spot arena;  // the arena's centre
 };
-constexpr Stage Stages[] = {
-	{160, 0, {{0x4862, 0x363d}}, 1, {0x476b, 0x35d3}, {{RathmaPoison, {0x476c, 0x35bf}}}, 1, {0x476c, 0x35bf}},
-	{161, 2, {{0x488a, 0x3a25}}, 1, {0x47d7, 0x3961}, {{RathmaBone, {0x47d3, 0x394b}}}, 1, {0x47d3, 0x394b}},
-	{162,
-	 4,
-	 {{0x4fb1, 0x1590}, {0x4ff0, 0x151c}, {0x5096, 0x1549}},
-	 3,
-	 {0x4e98, 0x1419},
-	 {{PoisonClone, {0x4e97, 0x1403}}, {BoneClone, {0x4e9d, 0x1403}}},
-	 2,
-	 {0x4e9a, 0x1403}},
-};
-static_assert(Stages[2].arena.x - ArenaHalf == 0x4e72 && Stages[0].arena.y + ArenaHalf == 0x35e7);
+// Built on first use from the encounters rathma1..3 (levels bound there); the stage it moves on from is 0, 2, 4
+auto Stages() noexcept -> const std::array<Stage, 3>& {
+	static const auto stages = [] {
+		std::array<Stage, 3> out {};
+		static constexpr const char* encounters[] = {"rathma1", "rathma2", "rathma3"};
+		static constexpr const char* portalIds[] = {"portal0", "portal1", "portal2", "portal3"};
+		static constexpr const char* bossIds[] = {"boss0", "boss1"};
+		for (int i = 0; i < 3; ++i) {
+			const char* e = encounters[i];
+			Stage& s = out[static_cast<size_t>(i)];
+			s.level = placements::LevelOf(e);
+			s.from = 2 * i;
+			for (const char* id : portalIds) {
+				if (placements::Find(e, id) != nullptr) {
+					s.portals[s.picks++] = placements::SpotOf(e, id);
+				}
+			}
+			s.marker = placements::SpotOf(e, "marker");
+			for (const char* id : bossIds) {
+				if (const auto* p = placements::Find(e, id)) {
+					s.bosses[s.bossCount++] = {p->arg, {p->x, p->y}};
+				}
+			}
+			s.arena = placements::SpotOf(e, "arena");
+		}
+		return out;
+	}();
+	return stages;
+}
 
 constexpr auto TomeOdds(int32_t tier) noexcept -> uint32_t {
 	return static_cast<uint32_t>(50 - 6 * tier);
@@ -111,7 +127,7 @@ auto Counter(Game* game, uint32_t key) noexcept -> int32_t& {
 }
 
 auto StageOf(int32_t level) noexcept -> const Stage* {
-	for (const Stage& s : Stages) {
+	for (const Stage& s : Stages()) {
 		if (s.level == level) {
 			return &s;
 		}
@@ -239,10 +255,10 @@ auto RathmaDeath(Game* game, Unit* monster) noexcept -> void {
 	const int32_t before = stage;
 	if (classId == RathmaPoison && stage < 2) {
 		stage = 2;
-		OpenNextLevelPortal(game, monster, Stages[0].arena, Stages[1].level);
+		OpenNextLevelPortal(game, monster, Stages()[0].arena, Stages()[1].level);
 	} else if (classId == RathmaBone && stage < 4) {
 		stage = 4;
-		OpenNextLevelPortal(game, monster, Stages[1].arena, Stages[2].level);
+		OpenNextLevelPortal(game, monster, Stages()[1].arena, Stages()[2].level);
 	} else if ((classId == BoneClone || classId == PoisonClone) && (stage == 5 || stage == 6)) {
 		stage = stage + 1;
 	}
@@ -342,7 +358,7 @@ auto RathmaMoveReentry(Game* game, Unit* player, int32_t from, int32_t to) noexc
 	if (i >= 0) {
 		char why[32];
 		std::snprintf(why, sizeof(why), "stage %d's spot", stage);
-		MoveExit(game, Stages[i].level, Stages[i].marker, why);
+		MoveExit(game, Stages()[i].level, Stages()[i].marker, why);
 	}
 }
 
