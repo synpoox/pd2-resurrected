@@ -4,7 +4,7 @@
 // It used to run from core-maps' item spell hooks (0x581680 and 0x5817f0). Cartographer hooks both functions for its map
 // portal, and two plugins cannot own one entry (d2rAI-toolkit knowledge/engine-re.md, "One owner per hook site"), so the
 // Almanac leaves them: an ItemInteractionService listener (UI thread) sees the activation before D2R runs the item's
-// spell, takes it, and one SDK transaction identifies the items on the game thread.
+// spell, and one SDK transaction identifies the items on the game thread.
 // The SDK's interaction event names the local player, so a TCP/IP client's use is not served; single player only, as
 // the migration's checks are (#942).
 #include "almanac.h"
@@ -87,7 +87,9 @@ auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions
 	    D2RL::Threads::Result::Success) {
 		plog::Info("almanac: could not queue the identify");
 	}
-	return Decision::Consume;  // D2R's own use (item spell 18: no handler) must not run on top
+	// Continue, not Consume: the event does not say which button, and a left click on the item (picking it up) raises it
+	// too (seen in game), so consuming would stop the player moving the Almanac. D2R's own use (item spell 18) has no handler.
+	return Decision::Continue;
 }
 
 template <class Service>
