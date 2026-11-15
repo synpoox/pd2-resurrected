@@ -124,11 +124,15 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	    (event->monster.classId != SummonerMap && event->monster.classId != AltarGuardian) || event->gameId > 0xffff) {
 		return;
 	}
+	// The Altar guardian also dies on a native Cartographer map, whose level is in no tier (#954)
 	const int tier = TierOf(event->levelId);
+	if (event->monster.classId == AltarGuardian) {
+		plog::Info("map events: guardian death heard in level %d, game %u", static_cast<int>(event->levelId), static_cast<unsigned>(event->gameId));
+	}
 	const auto id = static_cast<uint16_t>(event->gameId);
 	const uint64_t key = d2r::Engine<uint64_t (*)(uint16_t) noexcept>(GameKey)(id);
 	Game* game = key != 0 ? d2r::Engine<Game* (*)(uint64_t) noexcept>(GameById)(key) : nullptr;
-	if (tier < 0 || game == nullptr || At<uint16_t>(game, GameIdField) != id) {
+	if ((tier < 0 && event->monster.classId != AltarGuardian) || game == nullptr || At<uint16_t>(game, GameIdField) != id) {
 		return;
 	}
 	Unit* monster = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(game, 1, event->monster.id);

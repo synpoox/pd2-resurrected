@@ -666,6 +666,8 @@ auto RollMapEvent(Game* game, Unit* item, int32_t level) noexcept -> void {
 auto AltarGuardianDied(Game* game, Unit* guardian) noexcept -> void {
 	using namespace d2r::rva;
 	if (MapEvent(game) != Altar || Get(game, SpawnsKey) != 2) {
+		plog::Info("map events: a guardian died with event %d in state %d: not the altar's fight", MapEvent(game),
+		           Get(game, SpawnsKey));
 		return;
 	}
 	if (guardian == nullptr) {  // not PD2's: the death listener found no unit; the shards still come, no clone dies
@@ -751,7 +753,7 @@ auto MapEventsCounters(char* out, size_t size) noexcept -> void {
 
 auto ForceNextMapEvent(const char* name) noexcept -> bool {
 	static constexpr struct { const char* word; int32_t event; } Names[] = {
-		{"off", 0}, {"wanderer", DarkWanderer}, {"mendeln", Mendeln}, {"treasure", TreasureFallen}, {"gheed", Gheed},
+		{"off", 0}, {"wanderer", DarkWanderer}, {"mendeln", Mendeln}, {"treasure", TreasureFallen}, {"gheed", Gheed}, {"altar", Altar},
 	};
 	for (const auto& n : Names) {
 		if (std::strcmp(name, n.word) == 0) {
