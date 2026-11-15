@@ -41,7 +41,8 @@ foreach ($name in @("core-rules", "core-maps", "core-ui")) {
 }
 
 # Strays (third-party plugins, D2RLoader companions) would make the test run on an unclean install: move, never delete.
-$ours = @("core-rules.dll", "core-maps.dll", "core-ui.dll", "test-harness.dll", "d2r-testharness-console.txt")
+# cartographer.dll is the required native-map plugin on this branch: install.ps1 does not copy it, the slot must already hold it (d2r-tools build).
+$ours = @("core-rules.dll", "core-maps.dll", "core-ui.dll", "cartographer.dll", "test-harness.dll", "d2r-testharness-console.txt")
 $strays = @(Get-ChildItem $plugins -Force | Where-Object { $ours -notcontains $_.Name })
 if ($strays -and -not $KeepExtras) {
     $backup = Join-Path "C:\D2RTestSlots\backups\stray-plugins-$(Get-Date -Format yyyy-MM-dd)" (Split-Path $Game -Leaf)
