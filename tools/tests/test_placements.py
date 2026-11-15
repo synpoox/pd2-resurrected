@@ -60,3 +60,24 @@ def test_rathma_stages_keep_their_geometry():
     text = (PLUGIN / "placements/rathma.cpp").read_text(encoding="utf-8")
     assert '{"rathma3", "arena", 0x4e9a, 0x1403' in text and '{"rathma1", "arena", 0x476c, 0x35bf' in text
     assert ("rathma3", "portal2") in places and ("rathma1", "portal1") not in places
+
+
+def test_no_consumer_hard_codes_a_bound_level_id():
+    """A bound level number (133-138, 160-162, 181, 184, 185, 198) in code that is not a placements lookup fails."""
+    bound = {133, 134, 135, 136, 138, 160, 161, 162, 181, 184, 185, 198}
+    # Lines naming these numbers for another reason: table data keyed by other ids, comments, stat/skill/AI rows.
+    allowed = {("map_bosses.cpp", "{159, PlaceholderA"), ("map_events.cpp", "{144, 200}"), ("map_stats.cpp", "{460, Route"),
+               ("map_stats.cpp", "{177, {178}}"), ("map_stats.cpp", "{179, {180}}"), ("map_stats.cpp", "MapState = 244"),
+               ("map_stats.cpp", "FirstMapLevel = 138"), ("map_stats.cpp", "fixed[] ="), ("unique_map_drops.cpp", "FirstMapLevel = 138"),
+               ("prime_minions.cpp", "AiRows"), ("prime_minions.cpp", "AI rows"), ("uber_entry.cpp", "StatUberTier"),
+               ("uber_entry.cpp", "133, 134, 135, 136, 137, 176")}
+    bad = []
+    for f in (PLUGIN / "core-maps").rglob("*.cpp"):
+        for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+            code = line.split("//")[0]
+            if re.search(r"0x|rva::|(PartReg|CountersReg) \w+\(", code):
+                continue
+            if any(int(m) in bound for m in re.findall(r"(?<![\w.])(\d{3})(?![\w.])", code)):
+                if not any(f.name == a and b in line for a, b in allowed) and not re.search(r"\{\d+, PlaceholderA", code):
+                    bad.append(f"{f.name}:{n}: {line.strip()}")
+    assert not bad, bad

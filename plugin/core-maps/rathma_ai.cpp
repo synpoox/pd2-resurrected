@@ -270,12 +270,12 @@ auto Retreat(Tick& t) noexcept -> void {
 	} else if (t.sub == 1) {
 		t.sub = 2;
 		const int32_t before = stage;
-		int32_t level = 161;  // PD2 162
+		int32_t level = placements::LevelOf("rathma2");  // PD2 162
 		if (stage == 1) {
 			stage = 2;
 		} else if (stage == 3) {
 			stage = 4;
-			level = 162;  // PD2 163
+			level = placements::LevelOf("rathma3");  // PD2 163
 		}
 		if (stage != before) {
 			++g_stages;

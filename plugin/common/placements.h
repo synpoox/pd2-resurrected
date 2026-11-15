@@ -44,7 +44,9 @@ struct Registry {
 	size_t placeCounts[MaxRegs];
 	size_t regs = 0;
 	bool overflowed = false;
-	uint32_t missing = 0;  // lookups that found nothing (a consumer asked for a placement no file holds)
+	uint32_t missing = 0;  // distinct placements a consumer asked for that no file holds (each counted once)
+	const char* missingEnc[16] = {};
+	const char* missingId[16] = {};
 };
 inline auto Reg_() noexcept -> Registry& {
 	static Registry r;
@@ -123,7 +125,18 @@ inline auto Need(const char* encounter, const char* id) noexcept -> const Place&
 	static const Place none{"", "", 0, 0, 0, 0, 0};
 	const Place* p = Find(encounter, id);
 	if (p == nullptr) {
-		++Reg_().missing;
+		Registry& r = Reg_();
+		bool seen = false;
+		for (uint32_t i = 0; i < r.missing && i < 16; ++i) {
+			seen |= std::strcmp(r.missingEnc[i], encounter) == 0 && std::strcmp(r.missingId[i], id) == 0;
+		}
+		if (!seen) {
+			if (r.missing < 16) {
+				r.missingEnc[r.missing] = encounter;
+				r.missingId[r.missing] = id;
+			}
+			++r.missing;
+		}
 		return none;
 	}
 	return *p;

@@ -14,6 +14,7 @@
 #include "map_open.h"
 
 #include "log.h"
+#include "placements.h"
 #include "uber_scaling.h"
 #include "unique_maps.h"
 #include "zhar.h"
@@ -549,7 +550,13 @@ auto IsMapBoss(int32_t classId) noexcept -> bool {
 
 // PD2's level set 0x105dea8c (Zhar's Sanctum 172-175, Uber Diablo 138, the Necropolis 160, Lucion's arena 184; PD2's
 // Uber Ancients level is cut) and Djinn's Domain (193-195): each kill there drops once more.
-constexpr int32_t ExtraDropLevels[] = {172, 173, 174, 175, 138, 160, 184, 193, 194, 195};
+// The uber levels come from placements/ (dclone, rathma1, lucion), read when asked
+inline auto ExtraDropLevel(size_t i) noexcept -> int32_t {
+	const int32_t fixed[] = {172, 173, 174, 175, 193, 194, 195};
+	const int32_t bound[] = {placements::LevelOf("dclone"), placements::LevelOf("rathma1"), placements::LevelOf("lucion")};
+	return i < std::size(fixed) ? fixed[i] : bound[i - std::size(fixed)];
+}
+constexpr size_t ExtraDropLevelCount = 10;
 
 // PD2's map-stat drops in 0x103799d0: a monster stat, and the TC row its chance drops from (port ids, PD2's in the
 // comments). The ear list is 0x1044ed20.
@@ -626,8 +633,8 @@ auto MapDeathDrops(Game* game, Unit* monster, Unit* killer, uint32_t* seed) noex
 	if (stat(monster, 546, 0) > 0 && (!boss || roll < 25)) {
 		again();
 	}
-	for (const int32_t l : ExtraDropLevels) {
-		if (l == level) {
+	for (size_t i = 0; i < ExtraDropLevelCount; ++i) {
+		if (ExtraDropLevel(i) == level) {
 			again();
 		}
 	}

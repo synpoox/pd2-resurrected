@@ -9,6 +9,7 @@
 #include "map_bosses.h"
 
 #include "log.h"
+#include "placements.h"
 
 #include <intrin.h>
 
@@ -106,7 +107,7 @@ constexpr Swap ImperialSwaps[] = {
 
 // 185 Uber Tristram (0xb9), with the game's area 0x29: lesserhydra1 rolls 1 in 20 for each prime not yet placed, in
 // order, and lesserhydra2 takes the first one not placed; a placeholder that places none does not spawn.
-constexpr int32_t UberTristram = 181;
+inline auto UberTristram() noexcept -> int32_t { return placements::LevelOf("tristram"); }
 struct Prime {
 	int32_t classId;
 	int32_t bit;
@@ -177,7 +178,7 @@ auto MapBossPreset(Game* game, void* room, uint8_t* preset, void (*spawn)(Game*,
 	const int32_t y = At<int32_t>(room, RoomY) + At<int32_t>(preset, PresetY);
 	int32_t boss = 0;
 	bool spawnHere = false;
-	if (level == UberTristram) {
+	if (level == UberTristram()) {
 		boss = TristramPrime(game, id);
 		g_primes += boss > 0 ? 1 : 0;
 	} else if (const Swap* s = Find(ImperialSwaps, level, id); s != nullptr) {
