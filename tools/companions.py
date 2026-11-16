@@ -139,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             if not a.game:
                 ap.error("install needs --game")
-            from modkit.install import install  # the sibling d2rAI-toolkit on PYTHONPATH
+            from modkit.install import install  # the pinned toolkit, on PYTHONPATH
             print(install(a.root, a.game))
             name = json.loads((a.root / "mod.json").read_text("utf-8"))["name"]
             overlay(a.root, a.game / "mods" / name)

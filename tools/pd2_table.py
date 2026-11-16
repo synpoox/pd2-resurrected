@@ -24,6 +24,8 @@ def toolkit(root: Path) -> Path:
                                               if (p / "d2rAI-toolkit" / "tools" / "toolkit_path.py").is_file()), None)
         finder = kit and kit / "tools" / "toolkit_path.py"
         if not finder or not finder.is_file():
+            if given:
+                raise ValueError(f"D2R_TOOLKIT={given} has no tools/toolkit_path.py (a toolkit older than the pin?)")
             continue
         spec = importlib.util.spec_from_file_location("toolkit_path", finder)
         mod = importlib.util.module_from_spec(spec)

@@ -12,7 +12,7 @@ import pd2_items as M  # noqa: E402
 
 try:
     A.modkit()
-except ValueError as e:  # CI has no d2rAI-toolkit (private)
+except ValueError as e:  # no d2rAI-toolkit found (a machine without the private toolkit)
     raise unittest.SkipTest(str(e))
 from modkit import dc6, images  # noqa: E402
 from test_ids import table  # noqa: E402

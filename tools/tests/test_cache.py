@@ -101,7 +101,7 @@ class SharedExtractTests(unittest.TestCase):
     def test_pd2_data_is_a_junction_to_the_extract_for_its_stamp(self):
         try:
             ex = pd2_extract.classic("extract")
-        except ValueError as e:  # CI has no d2rAI-toolkit (private)
+        except ValueError as e:  # no d2rAI-toolkit found (a machine without the private toolkit)
             self.skipTest(str(e))
         class OneFile:
             def __init__(self, path): pass
@@ -170,7 +170,7 @@ class RuleCacheTests(unittest.TestCase):
     def test_a_rule_reruns_exactly_when_its_code_or_what_it_read_changed(self):
         try:
             ex = pd2_extract.classic("extract")
-        except ValueError as e:  # CI has no d2rAI-toolkit (private)
+        except ValueError as e:  # no d2rAI-toolkit found (a machine without the private toolkit)
             self.skipTest(str(e))
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
@@ -345,7 +345,7 @@ class ConcurrentMergeTests(unittest.TestCase):
     def setUp(self):
         try:
             self.ex = pd2_extract.classic("extract")
-        except ValueError as e:  # CI has no d2rAI-toolkit (private)
+        except ValueError as e:  # no d2rAI-toolkit found (a machine without the private toolkit)
             self.skipTest(str(e))
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

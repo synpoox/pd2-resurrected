@@ -9,9 +9,9 @@ DIRS = ("pd2-data/", "generated/", "d2r-data/", "dist/", "coverage/", "out/", "i
 EXT = {".mpq", ".casc", ".idx", ".exe", ".dll", ".pdb", ".dmp", ".mdmp", ".d2s", ".d2i", ".ctlo", ".key",
        ".ma0", ".ma1", ".ma2", ".ma3"}
 CASC = re.compile(r"(^|/)(data\.\d{3}|\.build\.info|shmem)$", re.I)
-TOP = {".claude", ".github", ".gitignore", ".gitattributes", ".gitmodules", "AGENTS.md", "CHANGELOG.md", "GLOSSARY.md",
+TOP = {".claude", ".github", ".gitignore", ".gitattributes", "AGENTS.md", "CHANGELOG.md", "GLOSSARY.md",
        "README.md", "changelog.d", "companions", "docs", "files", "merge", "mod.json", "pd2-baseline.json",
-       "pd2-import.txt", "plugin", "release.toml", "tests", "third_party", "tools", "check_public.allow", "ruff.toml"}
+       "pd2-import.txt", "plugin", "release.toml", "tests", "toolkit.version", "tools", "check_public.allow", "ruff.toml"}
 
 
 def offenders(paths: list[str]) -> list[str]:
