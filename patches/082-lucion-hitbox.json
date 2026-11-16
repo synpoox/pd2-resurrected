@@ -1,0 +1,6 @@
+{
+ "_note": "#1007: the client finds the monster under the cursor by its legacy sprite unless noGfxHitTest is set. Lucion's PD2 code $7 has no legacy sprite in D2R, so nothing was hovered and no nameplate showed; a fixed hit box (Tyrael's way) restores it.",
+ "ops": [
+  {"op": "set", "table": "monstats2", "bank": "excel", "key": "Lucion", "set": {"noGfxHitTest": "1", "htTop": "-140", "htLeft": "-40", "htWidth": "80", "htHeight": "140"}}
+ ]
+}

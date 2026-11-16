@@ -65,8 +65,8 @@ class PlacementsTests(unittest.TestCase):
 
 
     def test_no_consumer_hard_codes_a_bound_level_id(self):
-        """A bound level number (133-138, 160-162, 181, 184, 185, 198) in code that is not a placements lookup fails."""
-        bound = {133, 134, 135, 136, 138, 160, 161, 162, 181, 184, 185, 198}
+        """A bound level number (133-138, 160-162, 181, 184, 185, 198, 213, 214) in code that is not a placements lookup fails."""
+        bound = {133, 134, 135, 136, 138, 160, 161, 162, 181, 184, 185, 198, 213, 214}
         # Lines naming these numbers for another reason: table data keyed by other ids, comments, stat/skill/AI rows.
         allowed = {("map_bosses.cpp", "{159, PlaceholderA"), ("map_events.cpp", "{144, 200}"), ("map_stats.cpp", "{460, Route"),
                    ("map_stats.cpp", "{177, {178}}"), ("map_stats.cpp", "{179, {180}}"), ("map_stats.cpp", "MapState = 244"),
