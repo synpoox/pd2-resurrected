@@ -1,7 +1,7 @@
 # PD2 Resurrected's D2RLoader plugins (ADR 0004): one project, d2rAI-toolkit's plugin_common static library plus our
 # engine facts (common/pd2_engine.h) in each plugin DLL. Target: D2R 3.3 build 93847 + D2RLoader 1.3.1, PluginSDK from the toolkit.
 #
-# Build:  powershell -ExecutionPolicy Bypass -File build.ps1
+# Build:  powershell -ExecutionPolicy Bypass -File build.ps1   (the toolkit's plugin-template build.ps1, see there)
 # Output: build/Release/core-rules.dll, core-events.dll and core-ui.dll -> tools/install.ps1 copies them to <game>/d2rloader/plugins/.
 cmake_minimum_required(VERSION 3.29)
 project(pd2_resurrected_plugins LANGUAGES CXX RC)
@@ -33,9 +33,12 @@ else()
 	endwhile()
 	list(APPEND CMAKE_MODULE_PATH "${_d}/d2rAI-toolkit/cmake")
 endif()
+# build.ps1 passes the template's variables; this project sets each plugin's own id, version and mod in modkit_add_plugin
+set(_modkit_template_vars "${MODKIT_PLUGIN_NAME}${MODKIT_MOD_NAME}${MODKIT_SOUND_ROWS}${MODKIT_TOOLKIT_DIR}")
 find_package(D2rToolkit REQUIRED)  # sets D2R_TOOLKIT_DIR; a toolkit.version mismatch is a warning (fatal when D2R_TOOLKIT_STRICT=1)
 add_subdirectory("${D2R_TOOLKIT_DIR}/shared/plugin-common" plugin-common)
 message(STATUS "plugin_common from ${D2R_TOOLKIT_DIR}")
+include(ModkitPlugin)  # modkit_add_plugin(): one plugin DLL per call, linked to plugin_common, /W4, static CRT
 
 add_library(core_common INTERFACE)
 target_include_directories(core_common INTERFACE common)
@@ -43,7 +46,7 @@ target_link_libraries(core_common INTERFACE plugin_common)
 
 # Bump with every release: Shared plugins must match between host and client.
 set(CORE_RULES_VERSION "0.2.0" CACHE STRING "core-rules PluginInfo::version")
-add_library(core_rules SHARED
+modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/plugin.cpp
 	core-rules/skill_functions.cpp
 	core-rules/missile_functions.cpp
@@ -55,19 +58,18 @@ add_library(core_rules SHARED
 	core-rules/almanac.cpp
 	core-rules/shrine_rules.cpp
 	core-rules/loot_rules.cpp
+	"${D2R_TOOLKIT_DIR}/plugin-template/src/skill_router.cpp"  # the toolkit's router: slot 190 dispatches this mod's skill routes
 	core-events/arena_spots.cpp  # Royal Fire's ring centre reads the arena's centre spot (#962)
 	core-rules/plugin.rc  # ABI manifest resource: D2RLoader rejects a plugin DLL without it
 )
 # The per-encounter placement data (#947), one file per encounter: built into every plugin that reads placements.h.
 file(GLOB CORE_PLACEMENT_SOURCES CONFIGURE_DEPENDS placements/*.cpp)
-target_sources(core_rules PRIVATE ${CORE_PLACEMENT_SOURCES})
-target_link_libraries(core_rules PRIVATE core_common)
-target_compile_definitions(core_rules PRIVATE CORE_PLUGIN_NAME="core-rules" CORE_PLUGIN_VERSION="${CORE_RULES_VERSION}")
-set_target_properties(core_rules PROPERTIES OUTPUT_NAME "core-rules")
-core_options(core_rules)
+target_sources(plugin_core_rules PRIVATE ${CORE_PLACEMENT_SOURCES})
+target_include_directories(plugin_core_rules PRIVATE "${D2R_TOOLKIT_DIR}/plugin-template/src")
+target_link_libraries(plugin_core_rules PRIVATE core_common)
 
 set(CORE_EVENTS_VERSION "0.2.0" CACHE STRING "core-events PluginInfo::version")
-add_library(core_events SHARED
+modkit_add_plugin(core-events VERSION "${CORE_EVENTS_VERSION}" SOURCES
 	core-events/plugin.cpp
 	core-events/cube_ops.cpp
 	core-events/map_open.cpp
@@ -89,7 +91,7 @@ add_library(core_events SHARED
 	core-events/event_portals.cpp
 	core-events/horazon.cpp
 	core-events/nihlathak_ai.cpp
-	core-events/parts.cpp
+	core-events/part_registry.cpp
 	core-events/parts_shared.cpp
 	core-events/uber_scaling.cpp
 	core-events/uber_drops.cpp
@@ -105,29 +107,22 @@ add_library(core_events SHARED
 )
 # Each lane registers its parts from its own folder (core-events/lane-a .. lane-d, #943): new files there need no edit here.
 file(GLOB CORE_EVENTS_LANE_SOURCES CONFIGURE_DEPENDS core-events/lane-*/*.cpp)
-target_sources(core_events PRIVATE ${CORE_EVENTS_LANE_SOURCES})
-target_sources(core_events PRIVATE ${CORE_PLACEMENT_SOURCES})
-target_include_directories(core_events PRIVATE core-events)
-target_link_libraries(core_events PRIVATE core_common)
-target_compile_definitions(core_events PRIVATE CORE_PLUGIN_NAME="core-events" CORE_PLUGIN_VERSION="${CORE_EVENTS_VERSION}")
-set_target_properties(core_events PROPERTIES OUTPUT_NAME "core-events")
-core_options(core_events)
+target_sources(plugin_core_events PRIVATE ${CORE_EVENTS_LANE_SOURCES})
+target_sources(plugin_core_events PRIVATE ${CORE_PLACEMENT_SOURCES})
+target_include_directories(plugin_core_events PRIVATE core-events)
+target_link_libraries(plugin_core_events PRIVATE core_common)
 
 # Client-only: not Shared, so its version need not match between host and client.
 set(CORE_UI_VERSION "0.2.0" CACHE STRING "core-ui PluginInfo::version")
-add_library(core_ui SHARED
+modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/plugin.cpp
 	core-ui/automap.cpp
 	core-ui/item_pictures.cpp
 	core-ui/item_quantity.cpp
-	core-ui/level_palette.cpp
 	core-ui/stack_split.cpp
 	core-ui/plugin.rc
 )
-target_link_libraries(core_ui PRIVATE core_common)
-target_compile_definitions(core_ui PRIVATE CORE_PLUGIN_NAME="core-ui" CORE_PLUGIN_VERSION="${CORE_UI_VERSION}")
-set_target_properties(core_ui PROPERTIES OUTPUT_NAME "core-ui")
-core_options(core_ui)
+target_link_libraries(plugin_core_ui PRIVATE core_common)
 
 # Host self-check of common/event_link.h (#944): not shipped, not in `all`. With CARTOGRAPHER_SRC (a d2r-tools
 # plugins/cartographer/src checkout, read-only) it also checks Cartographer's own stat code.
@@ -167,7 +162,7 @@ target_include_directories(shrine_rules_check PRIVATE common)
 target_compile_features(shrine_rules_check PRIVATE cxx_std_20)
 core_options(shrine_rules_check)
 # core-events' parts with `uses` (#1081): the gate that installs them on any image their signature entries resolved on.
-add_executable(parts_uses_check EXCLUDE_FROM_ALL tests/parts_uses_check.cpp core-events/parts.cpp)
+add_executable(parts_uses_check EXCLUDE_FROM_ALL tests/parts_uses_check.cpp core-events/part_registry.cpp)
 target_include_directories(parts_uses_check PRIVATE core-events)
 target_link_libraries(parts_uses_check PRIVATE core_common)
 core_options(parts_uses_check)
