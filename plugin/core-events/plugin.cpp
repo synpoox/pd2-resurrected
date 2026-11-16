@@ -106,7 +106,7 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	}
 	if (args != nullptr && std::strncmp(args, "event ", 6) == 0) {
 		const bool ok = ForceNextMapEvent(args + 6);
-		std::snprintf(line, sizeof(line), ok ? "%s: the next map rolls event %s" : "%s: usage: %s event wanderer|mendeln|treasure|gheed|altar|spire|off",
+		std::snprintf(line, sizeof(line), ok ? "%s: the next map rolls event %s" : "%s: usage: %s event wanderer|mendeln|treasure|gheed|altar|spire|tomb|off",
 		              PluginName, ok ? args + 6 : PluginName);
 		command->plugin->WriteConsoleMessage(line);
 		plog::Info("%s", line);

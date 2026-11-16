@@ -5,7 +5,9 @@
 
 namespace {
 using placements::Source;
-// Bitter Depths, the Void/Tomb event's fixed area (PD2 207, the port's Tomb Event Map 198). Lane C (#960) flips it.
-const placements::Binding bindings[] = {{"bitterdepths", 198, 215, Source::Existing, false, false}};
+// Bitter Depths (#960): level 215 is Cartographer's square Mesa arena (arenas.txt, patches/082-bitter-depths-arena.json),
+// the Void/Tomb event's area. Its monsters are the level row's own mon* columns (PD2's Tomb Event Map 198), and its
+// spots are none: the portal lands at the arrival. So this file holds no places.
+const placements::Binding bindings[] = {{"bitterdepths", 215, 215, Source::Private, false, false}};
 const placements::Reg reg(bindings, std::size(bindings));
 }  // namespace
