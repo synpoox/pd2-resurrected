@@ -187,7 +187,7 @@ Runeword60		1						staf										r30	r23	r30	r24			dmg%		255	325	move2		35	35	vi
 Runeword130		1						staf										r07	r10	r09	r11			balance3		55	55	mana		59	82	ease		-15	-15	vit		11	22	cast3		25	35	abs-mag		3	8	allskills		2	2	
 Runeword103		1						weap						staf				r26	r26	r28	r31			dmg%		400	450	ac-miss		350	400	att-skill	Firestorm	33	40	levelup-skill	Blaze	100	40	pierce-fire		28	28	aura	Redemption	10	12	abs-fire		15	21	
 Runeword17		1						pole	spea									r13	r22	r03				pierce-ltng		10	15	ignore-ac		1	1	dmg%		180	220	abs-mag		3	5	charged	Summon Spirit Wolf	30	18	hit-skill	Static Field	24	13	hit-skill	Lightning	10	27	
-Ferocity		1						helm										r33	r32	r13				hit-skill	Taunt	12	10	lifesteal		10	12	oskill	Zeal	18	18	ac%		150	200	red-mag		6	12	Thorns		200	250					
+Ferocity		1						helm										r33	r32	r13				hit-skill	Taunt	12	10	lifesteal		10	12	oskill	Zeal	18	18	ac%		150	200	red-mag		6	12	thorns		200	250					
 Zenith		1						miss	spea	pole	staf	2hsw						r31	r33	r09	r10	r08		dmg%		225	300	aura	Salvation	10	12	swing2		40	40	move2		20	20	allskills		3	3	dmg-elem	100	430	500					
 Rampage		1						staf	spea	pole								r13	r01	r06	r05			dmg%		120	145	swing2		45	45	res-fire		25	25	balance2		20	20													
 Neophyte		1						scep	club	sorc	h2h	h2h2						r10	r03					half-freeze		1	1	red-dmg		2	4	cast2		30	30	res-pois-len		25	25													

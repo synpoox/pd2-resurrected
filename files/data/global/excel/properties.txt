@@ -366,7 +366,7 @@ crit-strike-multiplier	459		1	item_crit_multiplier																														
 deadly-strike-multiplier	460		1	item_ds_multiplier																																442	0
 crit-strike-chance	461		1	item_crit_chance																																443	0
 treacherous	464		1	treacherous																																446	0
-phasing	467		8	phasing			24	state			1		phasing	1																						449	0
+phasing	467		8	phasing			24	state			1			1																						449	0
 zon-ear-drops	468		8	map_glob_monsterrarity			8	zon_ear_drops																												450	0
 sin-ear-drops	469		8	map_glob_monsterrarity			8	sin_ear_drops																												451	0
 barb-ear-drops	470		8	map_glob_monsterrarity			8	barb_ear_drops																												452	0
