@@ -33,7 +33,7 @@ class ArtError(ValueError):
 
 
 def modkit():
-    """modkit's dc6, hd and images modules (d2rAI-toolkit found as pd2_strings finds it)."""
+    """modkit's dc6, hd and images modules (the toolkit as pd2_strings finds it)."""
     pd2_strings.modkit()
     from modkit import dc6, hd, images
     return dc6, hd, images

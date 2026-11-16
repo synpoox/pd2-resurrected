@@ -167,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="the cartographer.dll to ship, built from d2r-tools main (default: CARTOGRAPHER_DLL)")
     ap.add_argument("--cartographer-commit", default=os.environ.get("CARTOGRAPHER_COMMIT"),
                     help="the d2r-tools commit it was built from, recorded in the notes (default: CARTOGRAPHER_COMMIT)")
-    ap.add_argument("--toolkit", type=Path, default=Path(os.environ.get("D2R_TOOLKIT", pd2_ids.toolkit(ROOT))))
+    ap.add_argument("--toolkit", type=Path, help="the d2rAI-toolkit folder (default: the toolkit finder's)")
     a = ap.parse_args(argv)
     mod_json = json.loads((ROOT / "mod.json").read_text("utf-8"))
     version = a.version or mod_json["version"]
@@ -196,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
             conf.parent.mkdir(parents=True, exist_ok=True)
             conf.write_text(with_loader(
                 (ROOT / "release.toml").read_text("utf-8"), a.game / "D2RLoader.exe"), "utf-8")
-            r = subprocess.run([sys.executable, str(a.toolkit / "release" / "package_release.py"), "--mod-dir", str(mod),
+            r = subprocess.run([sys.executable, str((a.toolkit or pd2_ids.toolkit(ROOT)) / "release" / "package_release.py"), "--mod-dir", str(mod),
                                 "--version", version, "--config", str(conf), "--out", str(a.out),
                                 "--game-exe", str(a.game / "D2R.exe")])  # release.toml's [catalog] (schema 3) needs it
             code = r.returncode

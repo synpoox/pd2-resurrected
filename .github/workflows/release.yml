@@ -12,17 +12,13 @@ jobs:
     permissions:
       contents: write
     env:
-      PYTHONPATH: ${{ vars.D2R_TOOLKIT }}
       MODKIT_CACHE: ${{ vars.D2R_TOOLKIT }}\d2r-data
       MODKIT_GAME: ${{ vars.D2R_GAME }}
-      D2R_TOOLKIT: ${{ vars.D2R_TOOLKIT }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Update the toolkit checkout
-        run: git -C "${{ vars.D2R_TOOLKIT }}" pull -q --ff-only
-        continue-on-error: true  # a dirty or diverged checkout, or another job's pull, must not fail the run
+      - name: Pin the toolkit
+        # the commit toolkit.version names, in its own worktree (tools/ci_toolkit.ps1): the runner's shared checkout is never moved
+        run: powershell -ExecutionPolicy Bypass -File tools\ci_toolkit.ps1 -Main "${{ vars.D2R_TOOLKIT }}"
       - name: Python packages
         run: py -3 -m pip install --quiet --disable-pip-version-check numpy Pillow
       - name: Tool tests
