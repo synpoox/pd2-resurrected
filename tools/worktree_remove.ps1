@@ -5,7 +5,7 @@
 # run from inside the target, and a dirty or untracked worktree (-Force overrides only that one).
 # Then: record the file count and a sample file inside every junction's target and the shared caches' extract\ top
 # level, unlink every reparse point under the worktree (never descending into one), re-scan and abort if any remain,
-# `git worktree remove --force` (plain remove refuses because of the PluginSDK submodule), `git worktree prune`, and
+# `git worktree remove --force` (the junction fingerprints are already taken), `git worktree prune`, and
 # check the fingerprints are unchanged.
 # -DeleteBranch deletes the local branch only if its tip is an ancestor of origin/main, or `gh pr list --head <branch>
 # --state merged` returns a PR whose head SHA equals the tip; otherwise the branch is kept. Decided before removal.

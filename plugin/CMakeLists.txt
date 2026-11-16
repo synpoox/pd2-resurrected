@@ -1,19 +1,10 @@
 # PD2 Resurrected's D2RLoader plugins (ADR 0004): one project, d2rAI-toolkit's plugin_common static library plus our
-# engine facts (common/pd2_engine.h) in each plugin DLL. Target: D2R 3.3 build 93847 + D2RLoader 1.3.1, PluginSDK in third_party/.
+# engine facts (common/pd2_engine.h) in each plugin DLL. Target: D2R 3.3 build 93847 + D2RLoader 1.3.1, PluginSDK from the toolkit.
 #
 # Build:  powershell -ExecutionPolicy Bypass -File build.ps1
 # Output: build/Release/core-rules.dll, core-events.dll and core-ui.dll -> tools/install.ps1 copies them to <game>/d2rloader/plugins/.
 cmake_minimum_required(VERSION 3.29)
 project(pd2_resurrected_plugins LANGUAGES CXX RC)
-
-set(CORE_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/PluginSDK" CACHE PATH "D2RLoader PluginSDK directory")
-if(NOT EXISTS "${CORE_SDK_DIR}/CMakeLists.txt")
-	message(FATAL_ERROR "PluginSDK not found at ${CORE_SDK_DIR}: run `git submodule update --init`")
-endif()
-
-set(D2RLPLUGIN_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
-add_subdirectory(${CORE_SDK_DIR} PluginSDK EXCLUDE_FROM_ALL)
 
 function(core_options target)
 	if(MSVC)
@@ -23,22 +14,28 @@ function(core_options target)
 endfunction()
 
 # Shared code: d2rAI-toolkit's plugin_common (log, off switch, crash and image guards, d2r::api, shared RVAs), plus
-# our own engine facts in common/pd2_engine.h. Toolkit: D2R_TOOLKIT, else the nearest one beside a parent folder (so
-# worktrees find it), as tools/install.ps1 and pd2_ids.toolkit() look.
-set(D2R_TOOLKIT "$ENV{D2R_TOOLKIT}" CACHE PATH "d2rAI-toolkit checkout")
-if(NOT D2R_TOOLKIT)
-	set(dir "${CMAKE_CURRENT_SOURCE_DIR}")
-	while(NOT EXISTS "${dir}/d2rAI-toolkit/shared/plugin-common/CMakeLists.txt")
-		get_filename_component(parent "${dir}" DIRECTORY)
-		if(parent STREQUAL dir)
-			message(FATAL_ERROR "d2rAI-toolkit not found beside any parent folder: pass -DD2R_TOOLKIT=<checkout>")
-		endif()
-		set(dir "${parent}")
-	endwhile()
-	set(D2R_TOOLKIT "${dir}/d2rAI-toolkit" CACHE PATH "d2rAI-toolkit checkout" FORCE)
+# our own engine facts in common/pd2_engine.h. The toolkit comes from its finder (docs/toolkit-finder.md there):
+# D2R_TOOLKIT, else a walk up from here (so worktrees find it), checked against ../toolkit.version. plugin_common
+# also adds the PluginSDK from the toolkit's third_party/PluginSDK.
+if(D2R_TOOLKIT)  # -DD2R_TOOLKIT=<checkout> works as the environment variable does
+	set(ENV{D2R_TOOLKIT} "${D2R_TOOLKIT}")
 endif()
-add_subdirectory("${D2R_TOOLKIT}/shared/plugin-common" plugin-common)  # uses our PluginSDK, added above
-message(STATUS "plugin_common from ${D2R_TOOLKIT}")
+if(DEFINED ENV{D2R_TOOLKIT})
+	list(APPEND CMAKE_MODULE_PATH "$ENV{D2R_TOOLKIT}/cmake")
+else()
+	set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
+	while(NOT EXISTS "${_d}/d2rAI-toolkit/cmake/FindD2rToolkit.cmake")
+		get_filename_component(_p "${_d}" DIRECTORY)
+		if(_p STREQUAL _d)
+			message(FATAL_ERROR "d2rAI-toolkit not found beside any parent folder: set D2R_TOOLKIT")
+		endif()
+		set(_d "${_p}")
+	endwhile()
+	list(APPEND CMAKE_MODULE_PATH "${_d}/d2rAI-toolkit/cmake")
+endif()
+find_package(D2rToolkit REQUIRED)  # sets D2R_TOOLKIT_DIR; a toolkit.version mismatch is a warning (fatal when D2R_TOOLKIT_STRICT=1)
+add_subdirectory("${D2R_TOOLKIT_DIR}/shared/plugin-common" plugin-common)
+message(STATUS "plugin_common from ${D2R_TOOLKIT_DIR}")
 
 add_library(core_common INTERFACE)
 target_include_directories(core_common INTERFACE common)

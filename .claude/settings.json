@@ -1,4 +1,7 @@
 {
+  "enabledPlugins": {
+    "d2r-toolkit@d2r-local": true
+  },
   "hooks": {
     "SessionStart": [
       {

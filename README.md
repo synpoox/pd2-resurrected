@@ -74,7 +74,7 @@ humans work here: [AGENTS.md](AGENTS.md).
 
 ## Build
 
-Needs D2R and the sibling `..\d2rAI-toolkit` at commit `4cb428c` or later. The mod's data is committed in `files/data/`:
+Needs D2R and the d2rAI-toolkit at the commit in `toolkit.version`. The tools, `plugin\build.ps1` and `tools\install.ps1` find the toolkit with its own finder (`D2R_TOOLKIT`, else the nearest `d2rAI-toolkit` folder up the tree, so agent worktrees find it) and warn when its HEAD differs from the pin (`D2R_TOOLKIT_STRICT=1` makes that an error). Bump the pin on purpose, in a commit named `chore: pin d2rAI-toolkit to <sha>`. The mod's data is committed in `files/data/`:
 no extract or merge runs per build.
 
 ```bash
@@ -89,14 +89,13 @@ python -m modkit build .
 python tools/companions.py install --game DIR
 ```
 
-Run `modkit` and the last command with `..\d2rAI-toolkit` on `PYTHONPATH`.
+Run `modkit` and the last command with the toolkit on `PYTHONPATH`.
 `companions.py fetch` downloads the pinned companion plugins in
 `companions/manifest.json` (checked by SHA-256, never committed; an entry pins a GitHub release asset (`repo`, `tag`),
 a file at a repo commit (`commit`), or a direct download link (`url`, e.g. a D2RLoader Hub release)). `install` is
 `modkit install` plus the companions, our `companions/filter.json`, plugin settings
 (`companions/config/`), and the vanilla
-item tables the loot filter needs when the build doesn't ship them. The tool tests find modkit in
-`..\d2rAI-toolkit` (or on `PYTHONPATH`).
+item tables the loot filter needs when the build doesn't ship them. The tool tests find modkit through the same finder (or on `PYTHONPATH`).
 
 ### Importing a new PD2 version
 
@@ -141,17 +140,16 @@ repository page). It fails if that version already has a release. It needs the P
 only on a self-hosted Windows runner with the labels `self-hosted, windows, pd2r` (Settings > Actions > Runners > New self-hosted runner;
 add the `pd2r` label when `config.cmd` asks). That machine needs the PD2 install named in `pd2-baseline.json`, Python
 3.13 with `py`, CMake and Visual Studio, and 7-Zip. Set two repository variables (Settings > Secrets and variables >
-Actions > Variables): `D2R_TOOLKIT`, the d2rAI-toolkit checkout (its `d2r-data/` cache is reused), and `D2R_GAME`, the
+Actions > Variables): `D2R_TOOLKIT`, the d2rAI-toolkit checkout (its `d2r-data/` cache is reused; each job runs against the commit `toolkit.version` pins, in its own worktree under `C:\pd2r-cache\toolkit`, made by `tools/ci_toolkit.ps1`, so the checkout itself is only fetched, never moved; the toolkit tests and the gate, `tests` and `release` workflows all run on this runner), and `D2R_GAME`, the
 D2R folder. The repository is public, so Settings > Actions > General > "Fork pull request workflows from outside
 collaborators" must stay on "Require approval for all external contributors": a fork's PR could otherwise edit a
 workflow to run on this runner. Read a fork PR's workflow changes before approving its run.
 
 ## Plugins
 
-`plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules, `core-events` PD2's map events and uber fights (maps are Cartographer's). Shared code (log, guards, the `d2r::api` binding and engine addresses other projects use) comes from d2rAI-toolkit's `shared/plugin-common`, found the way `tools/install.ps1` finds the toolkit (or `-DD2R_TOOLKIT=<checkout>`); the addresses only PD2 uses live in `plugin/common/pd2_engine.h`.
+`plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules, `core-events` PD2's map events and uber fights (maps are Cartographer's). Shared code (log, guards, the `d2r::api` binding and engine addresses other projects use) comes from d2rAI-toolkit's `shared/plugin-common`, found by the toolkit finder (`D2R_TOOLKIT` or `-DD2R_TOOLKIT=<checkout>`, else a walk up), together with the PluginSDK in its `third_party/PluginSDK` (this repo has no PluginSDK copy of its own); the addresses only PD2 uses live in `plugin/common/pd2_engine.h`.
 
 ```powershell
-git submodule update --init
 powershell -ExecutionPolicy Bypass -File plugin\build.ps1
 powershell -ExecutionPolicy Bypass -File tools\install.ps1 -Game <D2R folder> [-Data <modkit project>]
 ```

@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def toolkit_or_skip(test: unittest.TestCase):
     try:
         return pd2_extract.classic("extract")
-    except ValueError as e:  # CI has no d2rAI-toolkit (private)
+    except ValueError as e:  # no d2rAI-toolkit found (a machine without the private toolkit)
         test.skipTest(str(e))
 
 
