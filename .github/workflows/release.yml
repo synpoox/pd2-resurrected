@@ -57,7 +57,10 @@ jobs:
       - name: Package
         run: |
           py -3 tools/release_precheck.py; if ($LASTEXITCODE) { throw "out/data holds retired converter output" }
+          if (-not $env:CARTOGRAPHER_DLL -or -not $env:CARTOGRAPHER_COMMIT) { throw "CARTOGRAPHER_DLL and CARTOGRAPHER_COMMIT must be set on the runner" }
+          # the notes line reads "<dll name>: d2r-tools <commit>, sha256 ...": the toolkit labels it with the DLL's file name
           py -3 "$env:D2R_TOOLKIT\release\stage.py" --game "$env:MODKIT_GAME" --extra-plugin "$env:CARTOGRAPHER_DLL@d2r-tools $env:CARTOGRAPHER_COMMIT"
+          if ($LASTEXITCODE) { throw "stage.py failed" }
       - uses: actions/upload-artifact@v4
         with:
           name: release
@@ -86,13 +89,17 @@ jobs:
         run: |
           $v = $env:VERSION
           # the tag must be new: gh would attach a release to an existing bare tag, maybe on another commit
+          # Windows PowerShell 5.1 ends the step on a native command's stderr under 'Stop', and a new tag answers "Not Found"
+          $ErrorActionPreference = 'Continue'
           gh api "repos/$env:GITHUB_REPOSITORY/git/ref/tags/v$v" --silent 2>$null
-          if ($LASTEXITCODE -eq 0) { throw "tag v$v already exists: bump mod.json's version to publish again" }
+          $code = $LASTEXITCODE
+          $ErrorActionPreference = 'Stop'
+          if ($code -eq 0) { throw "tag v$v already exists: bump mod.json's version to publish again" }
           $sums = Get-ChildItem release-files -Recurse -Filter SHA256SUMS | Select-Object -First 1
           if (-not $sums) { throw "no SHA256SUMS in the build artifact" }
           $d = $sums.DirectoryName
-          # the assets are what SHA256SUMS lists, plus SHA256SUMS itself
-          $files = @(Get-Content $sums.FullName | Where-Object { $_ } | ForEach-Object { Join-Path $d ($_ -split '  ', 2)[1] }) + $sums.FullName
-          foreach ($f in $files) { if (-not (Test-Path $f)) { throw "missing release asset $f" } }
+          # the release assets are the 7z and SHA256SUMS, as before (SHA256SUMS lists the manifest and feed too, as before)
+          $files = @((Get-ChildItem $d -Filter *.7z).FullName) + $sums.FullName
+          if ($files.Count -ne 2) { throw "expected one 7z and SHA256SUMS in $d, found: $($files -join ', ')" }
           gh release create "v$v" @files --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "PD2 Resurrected $v" --notes-file (Join-Path $d "RELEASE_NOTES-$v.md") --latest
           if ($LASTEXITCODE) { throw "gh release create failed" }
