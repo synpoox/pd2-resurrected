@@ -11,8 +11,10 @@
 
 #include "pd2_engine.h"
 #include "ai_common.h"
+#include "corruption_roll.h"
 #include "log.h"
 #include "open_gate.h"
+#include "placements.h"
 #include "uber_entry.h"
 #include "uber_scaling.h"
 
@@ -33,11 +35,76 @@ auto OperatePortal(ObjectOperate* args) noexcept -> int32_t {
 using PresetSpawnFn = void (*)(d2r::Game* game, void* room, const uint8_t* preset) noexcept;
 PresetSpawnFn g_presetSpawnOriginal = nullptr;
 
-// The uber levels' waypoint presets are refused at spawn (NoUberWaypoint). No PluginSDK service reports room presets, so
-// this hooks D2R's preset spawn (rva::PresetSpawn).
+// lesserhydra1/2 (PD2 0x2e2, 0x2e3): the placeholder presets PD2's preset rewrite (0x1038bfc0, 0x1038b990) turned into the
+// uber fights' monsters
+constexpr int32_t PlaceholderA = 755, PlaceholderB = 756;
+constexpr int32_t LucionClass = 1129, LucionControlClass = 1130;
+struct Prime {
+	int32_t classId;
+	int32_t bit;
+};
+constexpr Prime Primes[] = {{704, 2}, {705, 4}, {709, 8}};  // ubermephisto, uberdiablo, uberbaal
+// PD2 keeps the bits in game +0x2628, which its Tristram opening (0x10383060) sets to 0 after the warp. The port's +0x2628
+// ('UBRE') holds the other ubers' entries, so the bits get their own counter: a preset spawned during the opening's warp
+// keeps its bit
+constexpr uint32_t PrimesKey = 0x55425442;  // 'UBTB'
+
+// Uber Tristram (0xb9), with the game's area 0x29: lesserhydra1 rolls 1 in 20 for each prime not yet placed, in order, and
+// lesserhydra2 takes the first one not placed. Returns the prime, 0 when the preset is no placeholder, -1 to drop it.
+// shortcut: PD2 also needs the game's area to be Uber Tristram's (game +0x1df4 == 0x29), which the port does not keep.
+auto TristramPrime(d2r::Game* game, int32_t id) noexcept -> int32_t {
+	if (id != PlaceholderA && id != PlaceholderB) {
+		return 0;
+	}
+	uint32_t key = PrimesKey;
+	int32_t* placed = d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(d2r::rva::GameCounter)(
+		reinterpret_cast<uint8_t*>(game) + d2r::rva::GameCounters, &key);
+	if (placed == nullptr) {
+		return -1;
+	}
+	for (const Prime& p : Primes) {
+		if ((*placed & p.bit) == 0 && (id == PlaceholderB || RollRand() % 20 < 1)) {
+			*placed |= p.bit;
+			return p.classId;
+		}
+	}
+	return -1;
+}
+
+// The uber levels' preset rewrites (map_bosses.cpp before #964) and waypoint presets. No PluginSDK service spawns or
+// reports room presets, so this hooks D2R's preset spawn (rva::PresetSpawn).
 auto OnPresetSpawn(d2r::Game* game, void* room, const uint8_t* preset) noexcept -> void {
-	if (game != nullptr && room != nullptr && preset != nullptr && NoUberWaypoint(game, room, preset)) {
+	using namespace d2r::rva;
+	if (game == nullptr || room == nullptr || preset == nullptr) {
+		g_presetSpawnOriginal(game, room, preset);
 		return;
+	}
+	if (NoUberWaypoint(game, room, preset)) {
+		return;
+	}
+	if (d2r::At<int32_t>(preset, PresetType) == UnitMonster) {
+		const int32_t level = d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(room);
+		const int32_t id = d2r::At<int32_t>(preset, PresetId);
+		auto* mutablePreset = const_cast<uint8_t*>(preset);
+		if (level == placements::LevelOf("lucion") && id == PlaceholderA) {
+			// 0x1038bfc0 (lesserhydra1): Lucion, then his controller, both on the preset's spot
+			for (const int32_t classId : {LucionClass, LucionControlClass}) {
+				*reinterpret_cast<int32_t*>(mutablePreset + PresetId) = classId;
+				g_presetSpawnOriginal(game, room, preset);
+			}
+			plog::Info("uber: level %d placeholder %d became Lucion and his controller", level, id);
+			return;
+		}
+		if (level == placements::LevelOf("tristram")) {
+			const int32_t prime = TristramPrime(game, id);
+			if (prime < 0) {
+				return;
+			}
+			if (prime > 0) {
+				*reinterpret_cast<int32_t*>(mutablePreset + PresetId) = prime;
+				plog::Info("uber: Tristram placeholder %d became prime %d", id, prime);
+			}
+		}
 	}
 	g_presetSpawnOriginal(game, room, preset);
 }

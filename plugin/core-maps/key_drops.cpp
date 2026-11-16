@@ -99,7 +99,7 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 			continue;
 		}
 		const int64_t odds = TcOdds(dataFlag, r.tc[difficulty], players);
-		if (odds <= 0 || odds > 0xffffffffLL || d2r::RandomBelow(seed, static_cast<uint32_t>(odds)) >= 1) {
+		if (odds <= 0 || odds > 0xffffffffLL || d2r::RandomBelow(seed, static_cast<uint32_t>(odds)) != 0) {
 			continue;
 		}
 		const int32_t row = d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(dataFlag, r.code);
