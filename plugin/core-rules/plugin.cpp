@@ -6,6 +6,7 @@
 // (<game>\d2rloader\config\core-rules-off.txt), which leaves listed parts out to bisect a crash.
 #include <D2RLPlugin/api.h>
 
+#include "../core-events/arena_spots.h"  // the "arena" part: Royal Fire reads the arena centre (#962)
 #include "almanac.h"
 #include "crash_guard.h"
 #include "cube_rules.h"
@@ -105,8 +106,13 @@ void InstallLoot(const D2RL::PluginContext* context, char* report, size_t size) 
 	std::snprintf(report, size, "%d/%d installed: %s", installed, LootRuleCount(), rules);
 }
 
+void InstallArena(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	InstallArenaSpots(context, report, size);
+}
+
 Part g_parts[] = {
 	{"skills", InstallSkills, ""},
+	{"arena", InstallArena, ""},
 	{"items", InstallItems, ""},
 	{"mercs", InstallMercs, ""},
 	{"cube", InstallCube, ""},

@@ -19,6 +19,7 @@
 #include "log.h"
 #include "missile_functions.h"
 #include "line_spread.h"
+#include "../core-events/arena_spots.h"  // Lucion's arena centre (#962): core-rules reads the same arena service
 
 #include <algorithm>
 #include <atomic>
@@ -2753,12 +2754,18 @@ constexpr auto NextCastSeed(uint32_t v, uint32_t unitType, uint32_t unitId) noex
 }
 static_assert(NextCastSeed(0, 1, 0x12345678) == 0x45678 && NextCastSeed(0x45678, 1, 0) >> 20 == 1);
 
-// The controller's ring centre (x, y) in the arena; other casters cast from where they stand.
+// The controller's ring centre (x, y) in the arena; other casters cast from where they stand. The ring lies in the
+// 40 x 40 square around the arena's `centre` spot (#962, arenaspots.txt), so it follows the arena wherever Cartographer
+// builds it. No arena means no ring: nothing is invented.
 auto RoyalFireCentre(std::map<uint32_t, uint32_t>& seeds, std::mutex& lock, Unit* unit, int32_t* x, int32_t* y)
 	noexcept -> bool {
 	using namespace d2r::rva;
 	if (At<int32_t>(unit, UnitType) != UnitMonster || At<int32_t>(unit, UnitClassId) != LucionControl) {
 		return d2r::UnitXY(unit, x, y);
+	}
+	placements::Spot c{};
+	if (!ArenaSpotOf("lucion", "centre", &c)) {
+		return false;
 	}
 	const uint32_t id = At<uint32_t>(unit, UnitIdField);
 	uint32_t seed = 0;
@@ -2766,8 +2773,8 @@ auto RoyalFireCentre(std::map<uint32_t, uint32_t>& seeds, std::mutex& lock, Unit
 		std::lock_guard guard(lock);
 		seed = seeds[id] = NextCastSeed(seeds[id], UnitMonster, id);
 	}
-	*x = static_cast<int32_t>((seed + 0xd) % 0x28 + 0x620f);
-	*y = static_cast<int32_t>((seed + 0x13) % 0x28 + 0x17cd);
+	*x = static_cast<int32_t>(c.x - 0x14 + (seed + 0xd) % 0x28);
+	*y = static_cast<int32_t>(c.y - 0x14 + (seed + 0x13) % 0x28);
 	return true;
 }
 

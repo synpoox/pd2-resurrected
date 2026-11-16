@@ -57,6 +57,7 @@ add_library(core_rules SHARED
 	core-rules/cube_stacks.cpp
 	core-rules/almanac.cpp
 	core-rules/loot_rules.cpp
+	core-events/arena_spots.cpp  # Royal Fire's ring centre reads the arena's centre spot (#962)
 	core-rules/plugin.rc  # ABI manifest resource: D2RLoader rejects a plugin DLL without it
 )
 # The per-encounter placement data (#947), one file per encounter: built into every plugin that reads placements.h.

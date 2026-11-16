@@ -42,7 +42,7 @@ constexpr uint32_t ResistKeys[] = {0x55424c30, 0x55424c31, 0x55424c32, 0x55424c3
 // PD2 0x10380770 sets these to 200 (fire, cold, lightning, poison, magic, damage resist)
 constexpr int32_t ImmuneStats[] = {39, 43, 41, 45, 37, 36};
 
-// The arena's corners, as subtile offsets from its centre (PD2's corners around 0x6223, 0x17e1)
+// Stage 3's LucionSpawner spots, as subtile offsets from the arena centre (PD2's corners around 0x6223, 0x17e1)
 constexpr int32_t Corners[][2] = {{10, 10}, {10, -12}, {-12, -12}, {-12, 10}};
 // The arena centre: the `centre` spot of Lucion's Cartographer arena (arenaspots.txt, #962); {0, 0} when none
 auto Centre() noexcept -> placements::Spot {
