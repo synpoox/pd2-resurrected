@@ -1,6 +1,11 @@
 # Generic false positives in the committed mod data (ADR 0007): Blizzard support addresses in D2R's UI strings,
-# and byte runs in two skill-tree sprites that read as addresses.
+# and byte runs in two skill-tree sprites and some monster DCCs that read as addresses.
 files/data/local/lng/strings/ui.json :: @blizzard\.
 files/data/local/lng/strings-legacy/ui.json :: @blizzard\.
 files/data/hd/global/ui/controller/panel/spells/v2/baskilltree.sprite :: \[email\]|@
 files/data/hd/global/ui/controller/panel/spells/v2/soskilltree.sprite :: \[email\]|@
+files/data/global/monsters/$4/tr/$4trlita1hth.dcc :: \[email\]|@
+files/data/global/monsters/$4/tr/$4trlits2hth.dcc :: \[email\]|@
+files/data/global/monsters/$7/s1/$7s1litnuhth.dcc :: \[email\]|@
+files/data/global/monsters/$7/s1/$7s1lits3hth.dcc :: \[email\]|@
+files/data/global/monsters/$7/tr/$7trlita2hth.dcc :: \[email\]|@

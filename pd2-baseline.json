@@ -22,6 +22,11 @@
       "data/global/ui/spells/skillicon.dc6",
       "data/global/items/*.dc6",
       "data/global/missiles/*.dcc",
+      "data/global/monsters/$1/*",
+      "data/global/monsters/$3/*",
+      "data/global/monsters/$4/*",
+      "data/global/monsters/$7/*",
+      "data/global/monsters/$8/*",
       "data/global/sfx/*.wav"
     ]
   }
