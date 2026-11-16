@@ -170,12 +170,10 @@ class GateTests(unittest.TestCase):
         self.write("d2r", "lvlmaze", table("Name | MonLvl", "Blood Moor | 1"))
         self.write("mod", "lvlmaze", table("Name | MonLvl", "Blood Moor | 1"))
         for pat in ("lvlmaze.*", "lvlmaze.*.*", "lvlmaze.**.*"):
-            self.deviations(f"| Whole table | not yet | `{pat}` | P4 |
-")
+            self.deviations(f"| Whole table | not yet | `{pat}` | P4 |\n")
             with self.assertRaisesRegex(pd2_diff.GateError, "merged", msg=pat):
                 self.gate()
-        self.deviations("| Narrow | not yet | `lvlmaze.*.monlvl` `lvlmaze.blood moor.*` | P4 |
-")
+        self.deviations("| Narrow | not yet | `lvlmaze.*.monlvl` `lvlmaze.blood moor.*` | P4 |\n")
         self.gate()
 
     def test_excels_quote_marks_are_not_data(self):
