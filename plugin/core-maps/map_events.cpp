@@ -57,6 +57,11 @@ constexpr auto RoomsKey(int32_t level) noexcept -> uint32_t {
 	return 0x4d520000u | static_cast<uint32_t>(level & 0xffff);
 }
 
+// 'MT' and the level: its room count, read once from the built level (native maps only)
+constexpr auto TotalKey(int32_t level) noexcept -> uint32_t {
+	return 0x4d540000u | static_cast<uint32_t>(level & 0xffff);
+}
+
 constexpr int32_t StatForceEvent = 553;  // map_force_event (PD2 500)
 constexpr int32_t QualityMagic = pd2::event_roll::QualityMagic;  // rva::QualityNormal is 2
 constexpr int32_t UnitItem = 4;      // D2 unit type of an item
@@ -200,11 +205,25 @@ auto Set(Game* game, uint32_t key, int32_t value) noexcept -> void {
 
 // The Cartographer slots (docs/cartographer-contracts.md, merge/ids-levels.tsv): every native map is one of these levels
 constexpr int32_t NativeFirst = 202, NativeLast = 208;
-// shortcut: Cartographer publishes no room count (event-link RoomProgress), so a native map's progress counts against
-// PD2's default of 200 rooms; read the level's room list once a RoomEx's next pointer is known
-// For game checks only: PD2R_MAP_ROOMS=<n> in the game's environment replaces the 200 (a 108-room cave needs 60+ rooms
-// walked for a 25% progress otherwise)
+// Cartographer publishes no room count (event-link RoomProgress), so a native map's progress divides by the room
+// count of its built level (RealRooms); NativeTier.rooms (PD2's default 200) serves until it is read.
+// For game checks only: PD2R_MAP_ROOMS=<n> in the game's environment replaces the count.
+bool g_roomsOverride = false;
 Tiered NativeTier = {0, 200};
+
+// The rooms of the room's level, counted down its drlg room list (level +0x10, next +0x48, D2R 93847; the same
+// list DrlgRoomAt walks). The room's +0x18 is its drlg room, whose +0x90 is the level.
+auto RealRooms(void* room) noexcept -> int32_t {
+	constexpr int Cap = 32767;
+	void* drlgRoom = At<void*>(room, 0x18);
+	void* level = drlgRoom != nullptr ? At<void*>(drlgRoom, 0x90) : nullptr;
+	int32_t n = 0;
+	for (void* r = level != nullptr ? At<void*>(level, d2r::rva::DrlgLevelRooms) : nullptr; r != nullptr && n < Cap;
+	     r = At<void*>(r, 0x48)) {
+		++n;
+	}
+	return n;
+}
 
 auto Tier(int32_t level) noexcept -> const Tiered* {
 	if (level >= NativeFirst && level <= NativeLast) {
@@ -522,6 +541,11 @@ auto RollNative(Game* game, int32_t level) noexcept -> void {
 	RollEvent(game, level, quality != 0 ? quality : d2r::rva::QualityNormal, forced);
 }
 
+auto Divisor(Game* game, int32_t level, const Tiered* tier) noexcept -> int32_t {
+	const int32_t total = tier == &NativeTier ? Get(game, TotalKey(level)) : 0;
+	return total > 0 ? total : tier->rooms;
+}
+
 // Before the room's own monsters: a native map's event roll, then PD2's event spawn
 auto BeforeRoom(Game* game, void* room, int32_t level, const Tiered* tier) noexcept -> void {
 	if (plog::Sample(g_rooms)) {
@@ -530,9 +554,14 @@ auto BeforeRoom(Game* game, void* room, int32_t level, const Tiered* tier) noexc
 	if (tier == &NativeTier && Get(game, EventKey) == 0) {
 		RollNative(game, level);
 	}
+	if (tier == &NativeTier && !g_roomsOverride && Get(game, TotalKey(level)) == 0) {
+		const int32_t total = RealRooms(room);
+		Set(game, TotalKey(level), total);
+		plog::Info("map events: level %d has %d rooms, progress divides by that", level, total);
+	}
 	if (tier != nullptr) {
 		const int32_t rooms = Get(game, RoomsKey(level));
-		SpawnEvent(game, room, level, rooms, rooms * 100 / tier->rooms);
+		SpawnEvent(game, room, level, rooms, rooms * 100 / Divisor(game, level, tier));
 	}
 }
 
@@ -541,7 +570,7 @@ auto AfterRoom(Game* game, int32_t level, const Tiered* tier) noexcept -> void {
 	Set(game, RoomsKey(level), rooms);
 	if (rooms % 5 == 0) {  // for the game check
 		plog::Info("map events: level %d, %d rooms activated (progress %d), event %d, %d spawned", level, rooms,
-		           rooms * 100 / tier->rooms, Get(game, EventKey), Get(game, SpawnsKey));
+		           rooms * 100 / Divisor(game, level, tier), Get(game, EventKey), Get(game, SpawnsKey));
 	}
 }
 
@@ -709,6 +738,7 @@ auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t r
 	char envRooms[16] = {};
 	size_t n = 0;
 	if (getenv_s(&n, envRooms, sizeof(envRooms), "PD2R_MAP_ROOMS") == 0 && n > 0 && std::atoi(envRooms) > 0) {
+		g_roomsOverride = true;
 		NativeTier.rooms = static_cast<int16_t>(std::clamp(std::atoi(envRooms), 1, 32767));
 	}
 	g_context = context;
@@ -753,7 +783,7 @@ auto MapEventsCounters(char* out, size_t size) noexcept -> void {
 
 auto ForceNextMapEvent(const char* name) noexcept -> bool {
 	static constexpr struct { const char* word; int32_t event; } Names[] = {
-		{"off", 0}, {"wanderer", DarkWanderer}, {"mendeln", Mendeln}, {"treasure", TreasureFallen}, {"gheed", Gheed}, {"altar", Altar},
+		{"off", 0}, {"wanderer", DarkWanderer}, {"mendeln", Mendeln}, {"treasure", TreasureFallen}, {"gheed", Gheed}, {"altar", Altar}, {"spire", Spire},
 	};
 	for (const auto& n : Names) {
 		if (std::strcmp(name, n.word) == 0) {

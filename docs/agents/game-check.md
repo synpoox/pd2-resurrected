@@ -26,7 +26,7 @@ in-game". Slot details are in `docs/agents/game-slots.md`.
 
 ## Forcing a map event
 
-Console command (core-maps, #998), one shot for the next map opened: `core-maps event wanderer|mendeln|treasure|gheed|altar`
+Console command (core-maps, #998), one shot for the next map opened: `core-maps event wanderer|mendeln|treasure|gheed|altar|spire`
 (`core-maps event off` clears it). Run it through `game_ctl.py --slot <N> console "core-maps event gheed"` before using the
 map item; the log shows `rolled event <n> ..., console event`. A forced event skips the quality roll (the event is the one named, whatever the map's quality). A map is any item of type `cmap` (item type 245).
 
