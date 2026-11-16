@@ -166,20 +166,21 @@ class HdPictureTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             hd = Path(tmp)
             assets = {"elx": "potion/elixir", "isc": "scroll/identify_scroll", "r01": "rune/el_rune",
-                      "gpv": "gem/perfect_amethyst", "box": "quest/horadric_cube"}
+                      "gpv": "gem/perfect_amethyst", "r05": "rune/ort_rune", "gpy": "gem/perfect_topaz", "box": "quest/horadric_cube"}
             (hd / "items.json").write_text(json.dumps([{k: {"asset": v}} for k, v in assets.items()]))
             (hd / "uniques.json").write_text("[]")
             (hd / "sets.json").write_text("[]")
             head = "name|code|type|invfile|flippyfile@"
-            d2r = "@".join(["Elixir|elx|elix|invpot|flpelx", "Scroll|isc|scro|invrsc|flpisc", "El|r01|rune|invrEl|flprun",
+            d2r = "@".join(["Elixir|elx|elix|invpot|flpelx", "Scroll|isc|scro|invrsc|flpisc", "El|r01|rune|invrEl|flprun", "Ort|r05|rune|invrOrt|flprun", "Topaz|gpy|gemp|invgsyl|flpgsv",
                             "Amethyst|gpv|gemp|invgsve|flpgsv", "Cube|box|quest|invbox|flpbox"])
             pd2 = d2r + "@" + "@".join(["El Stack|r01s|runs|invrsEl|flprun", "Amethyst Stack|gpvs|gg4a|invgsves|flpgsv",
-                                        "Puzzlebox|lbox|lbox|invlbox|flpbox", "Fortify|fort|fort|invfort|flpnone"])
+                                        "Ort Stack|r05s|runs|invrsOrt|flprun", "Topaz Stack|gpys|gg4a|invgsyls|flpgsv", "Puzzlebox|lbox|lbox|invlbox|flpbox", "Fortify|fort|fort|invfort|flpnone"])
             tab = lambda rows: table((head + rows).replace("@", chr(10)) + chr(10), "code")
             models = {}
             M.hd_items(hd, {"misc": tab(pd2)}, {"misc": tab(d2r)}, [], [],
-                       {k: "pd2/" + k for k in ("invrsel", "invgsves", "invlbox", "invfort")}, models)
+                       {k: "pd2/" + k for k in ("invrsel", "invgsves", "invrsort", "invgsyls", "invlbox", "invfort")}, models)
             self.assertEqual(models, {"pd2/invrsel": "rune/el_rune", "pd2/invgsves": "gem/perfect_amethyst",
+                                      "pd2/invrsort": "rune/ort_rune", "pd2/invgsyls": "gem/perfect_topaz",
                                       "pd2/invlbox": "quest/horadric_cube", "pd2/invfort": "scroll/identify_scroll"})
 
 

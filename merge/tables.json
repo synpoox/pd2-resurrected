@@ -90,6 +90,7 @@
  "skillcalc": {},
  "skilldesc": {
   "cells": {
+   "force move": {"IconCel": "40"},
    "amplify damage": {"HireableIconCel": "29"},
    "bone spear": {"HireableIconCel": "30"},
    "bone armor": {"HireableIconCel": "31"},

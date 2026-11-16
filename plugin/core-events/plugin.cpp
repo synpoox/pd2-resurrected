@@ -40,7 +40,7 @@ bool g_imageKnown = false;
 constexpr D2RL::PluginInfo Info {
 	.infoSize    = D2RL::PluginInfoSize,
 	.abiVersion  = D2RL_PLUGIN_ABI_VERSION,
-	.id          = CORE_PLUGIN_NAME,
+	.id          = "core-maps", // saved characters record plugin ids; keep the pre-#1040 id so they load (#1044)
 	.name        = "PD2 Resurrected Core Events",
 	.version     = CORE_PLUGIN_VERSION,
 	.author      = "Synpoo",
