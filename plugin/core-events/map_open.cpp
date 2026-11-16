@@ -111,22 +111,35 @@ auto OnPresetSpawn(d2r::Game* game, void* room, const uint8_t* preset) noexcept 
 
 // PD2's monster spawn hook 0x1038af90 ran the uber tier scaling for every monster spawning in a PD2 level; the map stats it
 // also ran are cut (#964). No SDK service reports or changes a spawning monster, so this hooks D2R. Not MonsterSpawned
-// (0x494a60): Cartographer hooks it first and the loader cannot hook one address twice (#1032). Its only caller, the
-// spawn core 0x493cc0 (params), is free and returns the monster it made (null when it made none), so the scaling runs
-// as the core returns: after the whole spawn, where PD2's hook ran it right after the class setup.
+// (0x494a60): Cartographer hooks it first and the loader cannot hook one address twice (#1032). The spawn core 0x493cc0
+// (params) is void: its rax on return is whatever the last call left (1 crashed OnSpawnCore, #1050). The monster it
+// made is the third argument of 0x509520, which the core calls once per spawn, so that hook records it and the core
+// hook scales it as the core returns: after the whole spawn, where PD2's hook ran it right after the class setup.
 constexpr uint64_t SpawnCore = 0x493cc0;  // mov [rsp+0x10],rbx / mov [rsp+0x18],rsi
 constexpr uint8_t SpawnCoreEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18};
-using SpawnCoreFn = d2r::Unit* (*)(void* params) noexcept;
+constexpr uint64_t SpawnLink = 0x509520;  // push rbx / sub rsp,0x20 / mov rax,r8 / mov rbx,rcx
+constexpr uint8_t SpawnLinkEntry[] = {0x40, 0x53, 0x48, 0x83, 0xec, 0x20, 0x49, 0x8b, 0xc0, 0x48, 0x8b, 0xd9};
+using SpawnCoreFn = void (*)(void* params) noexcept;
+using SpawnLinkFn = uint64_t (*)(void* a, void* b, d2r::Unit* unit, uint32_t flags) noexcept;
 SpawnCoreFn g_coreOriginal = nullptr;
+SpawnLinkFn g_linkOriginal = nullptr;
+thread_local d2r::Unit* g_spawned = nullptr;
 
-auto OnSpawnCore(void* params) noexcept -> d2r::Unit* {
-	d2r::Unit* monster = g_coreOriginal(params);
+auto OnSpawnLink(void* a, void* b, d2r::Unit* unit, uint32_t flags) noexcept -> uint64_t {
+	g_spawned = unit;
+	return g_linkOriginal(a, b, unit, flags);
+}
+
+auto OnSpawnCore(void* params) noexcept -> void {
+	g_spawned = nullptr;
+	g_coreOriginal(params);
+	d2r::Unit* monster = g_spawned;
+	g_spawned = nullptr;
 	d2r::Game* game = params != nullptr ? *static_cast<d2r::Game**>(params) : nullptr;  // params +0: the game
 	if (game != nullptr && monster != nullptr && d2r::At<int32_t>(monster, d2r::rva::UnitType) == d2r::rva::UnitMonster &&
 	    IsUberLevel(ai_common::LevelOf(monster))) {
 		ScaleUberMonster(game, monster);
 	}
-	return monster;
 }
 
 }  // namespace
@@ -143,10 +156,12 @@ auto InstallMapOpen(const D2RL::PluginContext* context, char* report, size_t rep
 	                                                OnPresetSpawn, &g_presetSpawnOriginal);
 	const bool spawns = context->InstallInlineHook(SpawnCore, SpawnCoreEntry, sizeof(SpawnCoreEntry), OnSpawnCore,
 	                                               &g_coreOriginal);
+	const bool links = spawns && context->InstallInlineHook(SpawnLink, SpawnLinkEntry, sizeof(SpawnLinkEntry), OnSpawnLink,
+	                                                        &g_linkOriginal);
 	std::snprintf(report, reportSize, "portal operate %d%s, boss rooms kept%s, uber waypoints%s, uber scaling%s", ObjectOperatePortal,
 	              portal ? "" : " FAILED (slot not empty)", rooms ? "" : " FAILED (bytes differ)",
-	              presets ? "" : " FAILED (bytes differ)", spawns ? "" : " FAILED (bytes differ)");
-	return (portal ? 1 : 0) + (rooms ? 1 : 0) + (presets ? 1 : 0) + (spawns ? 1 : 0);
+	              presets ? "" : " FAILED (bytes differ)", spawns && links ? "" : " FAILED (bytes differ)");
+	return (portal ? 1 : 0) + (rooms ? 1 : 0) + (presets ? 1 : 0) + (spawns && links ? 1 : 0);
 }
 
 auto MapOpenCount() noexcept -> int {
