@@ -9,7 +9,6 @@
 #include "log.h"
 
 #include <algorithm>
-#include <atomic>
 #include <cstdio>
 
 namespace {
@@ -18,9 +17,6 @@ using d2r::At;
 using d2r::Game;
 using d2r::Unit;
 
-pd2::test_cmd::Cmd g_cmd;
-std::atomic<bool> g_busy {false};
-const D2RL::PluginContext* g_context = nullptr;
 const D2RL::ThreadService* g_threads = nullptr;
 
 auto FirstGame() noexcept -> Game* {
@@ -36,7 +32,7 @@ auto FirstGame() noexcept -> Game* {
 }
 
 // The living monster in the player's level that matches (class or unit id), nearest to the player
-auto Find(Game* game, Unit* player, const pd2::test_cmd::Cmd& cmd) noexcept -> Unit* {
+auto Find(Game* game, Unit* player, const pd2::test_cmd::Cmd& cmd, bool* ownedByPlayer) noexcept -> Unit* {
 	using namespace d2r::rva;
 	const int32_t level = ai_common::LevelOf(player);
 	int32_t px = 0, py = 0;
@@ -50,6 +46,12 @@ auto Find(Game* game, Unit* player, const pd2::test_cmd::Cmd& cmd) noexcept -> U
 			if (!match || ai_common::Dead(unit) || ai_common::LevelOf(unit) != level) {
 				continue;
 			}
+			// A player's pet (merc, golem, summon): its owner is a player, the input that crashed the engine's death path
+			Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(UnitTarget)(game, unit);
+			if (owner != nullptr && At<int32_t>(owner, UnitType) == 0) {
+				*ownedByPlayer = true;
+				continue;
+			}
 			const int32_t dist = ai_common::Dist2(unit, px, py);
 			if (dist < bestDist) {
 				bestDist = dist;
@@ -60,15 +62,39 @@ auto Find(Game* game, Unit* player, const pd2::test_cmd::Cmd& cmd) noexcept -> U
 	return best;
 }
 
+// The whole Cmd in the ThreadService's userData: kind (bits 0-7), percent (8-15), is-unit-id (16), the class or unit id (32-63)
+auto Pack(const pd2::test_cmd::Cmd& c) noexcept -> uintptr_t {
+	const uint64_t id = c.unitId != 0 ? c.unitId : static_cast<uint32_t>(c.classId);
+	return static_cast<uintptr_t>(static_cast<uint64_t>(c.kind) | (static_cast<uint64_t>(c.percent) << 8) |
+	                              (static_cast<uint64_t>(c.unitId != 0) << 16) | (id << 32));
+}
+auto Unpack(uintptr_t v) noexcept -> pd2::test_cmd::Cmd {
+	pd2::test_cmd::Cmd c;
+	c.kind = static_cast<pd2::test_cmd::Cmd::Kind>(v & 0xff);
+	c.percent = static_cast<int32_t>((v >> 8) & 0xff);
+	const auto id = static_cast<uint32_t>(v >> 32);
+	if ((v >> 16) & 1) {
+		c.unitId = id;
+	} else {
+		c.classId = static_cast<int32_t>(id);
+	}
+	return c;
+}
+
 // Game thread
-void Run(const D2RL::PluginContext*, void*) noexcept {
+void Run(const D2RL::PluginContext*, void* user) noexcept {
 	using namespace d2r::rva;
-	const pd2::test_cmd::Cmd cmd = g_cmd;
-	g_busy.store(false, std::memory_order_release);
+	const pd2::test_cmd::Cmd cmd = Unpack(reinterpret_cast<uintptr_t>(user));
 	Game* game = FirstGame();
 	Unit* player = d2r::Engine<Unit* (*)(uint32_t) noexcept>(ClientPlayer)(d2r::Engine<uint32_t (*)() noexcept>(LocalPlayerSlot)());
-	Unit* monster = game != nullptr && player != nullptr ? Find(game, player, cmd) : nullptr;
+	bool owned = false;
+	Unit* monster = game != nullptr && player != nullptr ? Find(game, player, cmd, &owned) : nullptr;
 	const bool kill = cmd.kind == pd2::test_cmd::Cmd::Kind::Kill;
+	if (monster == nullptr && owned) {
+		plog::Info("test aid: %s refused: every match in the player's level is a player's pet (merc, golem or summon)",
+		           kill ? "kill" : "life");
+		return;
+	}
 	if (monster == nullptr) {
 		plog::Info("test aid: %s: no living monster %s %u in the player's level (game %s, player %s)", kill ? "kill" : "life",
 		           cmd.unitId != 0 ? "unit" : "class", cmd.unitId != 0 ? cmd.unitId : static_cast<uint32_t>(cmd.classId),
@@ -84,8 +110,8 @@ void Run(const D2RL::PluginContext*, void*) noexcept {
 		plog::Info("test aid: life: class %d unit %u set to %d%% (%d of %lld)", classId, id, cmd.percent, life, static_cast<long long>(max));
 		return;
 	}
-	// KillQuietly's death mode, with no UnitNoDrop (so the drop rolls) and the monster's own target as the killer. The player as the killer
-	// crashed the game (a player in block+0x10 reaches a Game* read of 2 in the engine, 0x506d40's caller): no credit to the player
+	// KillQuietly's death mode, with no UnitNoDrop (so the drop rolls) and the killer the owner (null for wild monsters).
+	// A player there crashed the game (a Game* read of 2 in the engine), so pets of players are skipped in Find: no credit to the player
 	alignas(8) uint8_t block[0x30] = {};
 	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlags)(monster, UnitNoDrop, 0);
 	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(MonsterModeBlock)(monster, ModeDeath, block);
@@ -104,14 +130,7 @@ auto QueueTestCommand(const D2RL::PluginContext* context, const pd2::test_cmd::C
 		std::snprintf(why, whySize, "no SDK thread service");
 		return false;
 	}
-	if (g_busy.exchange(true, std::memory_order_acquire)) {
-		std::snprintf(why, whySize, "the last command has not run yet");
-		return false;
-	}
-	g_cmd = cmd;
-	g_context = context;
-	if (g_threads->runOnGameThread(context, Run, nullptr) != D2RL::Threads::Result::Success) {
-		g_busy.store(false);
+	if (g_threads->runOnGameThread(context, Run, reinterpret_cast<void*>(Pack(cmd))) != D2RL::Threads::Result::Success) {
 		std::snprintf(why, whySize, "could not queue it on the game thread");
 		return false;
 	}
