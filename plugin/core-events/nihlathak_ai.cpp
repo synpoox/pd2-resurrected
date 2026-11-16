@@ -10,6 +10,7 @@
 #include <D2RLPlugin/item.h>
 
 #include <atomic>
+#include <iterator>
 
 namespace {
 
@@ -80,9 +81,28 @@ auto DropMendelnLoot(Game* game, Unit* unit) noexcept -> void {
 	           target, MendelnTc, ilvl);
 }
 
-// shortcut: champion and unique picks (PD2 0x1037cbf0 / 0x1037caf0: mods and 3-6 minions) spawn as normal monsters,
-// and the spot search is D2R's portal one, not PD2's 0x10389c20; port D2R's unique maker if a wave must match PD2's
-auto SpawnWaveMonster(Game* game, Unit* unit, int32_t ux, int32_t uy, uint32_t* seed) noexcept -> bool {
+// D2R's champion and unique makers (docs/research/map-events-audit.md section 6), our own signatures; 93847 RVAs are
+// for reference only. The waves fall back to plain spawns when one does not resolve.
+// 93847: 0x499880, Unit* (game, room, area, classId, mayChampion, x, y, 1, flags): spawn + unique mods + 3-6 minions
+sigscan::Entry SpawnUnique {"MonsterSpawnUnique", "waves", sigscan::Kind::Code, 0, 0,
+                            "48 89 54 24 10 55 41 54 41 55 41 57 48 8d 6c 24 e9 48 81 ec a8 00 00 00 0f b7 45 7f 45 8b d9 44 0f b7 55 6f"};
+// 93847: 0x49ab40, void (game, unit, umod): makes the unit a champion with that monumod row
+sigscan::Entry MakeChampion {"MonsterMakeChampion", "waves", sigscan::Kind::Code, 0, 0,
+                             "48 89 5c 24 18 48 89 6c 24 20 56 48 83 ec 20 41 8b e8 48 8b da 48 8b f1 48 85 d2 74 0d 48 8b ca e8 ?? ?? ?? ?? 83 f8 01"};
+// 93847: 0x492b00, Unit* (game, near, classId, mode, range, flags): a monster next to a unit
+sigscan::Entry SpawnNear {"SpawnMonsterNear", "waves", sigscan::Kind::Code, 0, 0,
+                          "48 89 5c 24 08 48 89 74 24 10 57 48 83 ec 60 48 8b d9 44 89 44 24 38 33 f6 44 89"};
+sigscan::Entry* const WaveMakers[] = {&SpawnUnique, &MakeChampion, &SpawnNear};
+bool g_makers = false;
+
+enum class WaveKind { Normal, Champion, Unique };
+constexpr const char* WaveKindName[] = {"normal", "champion", "unique"};
+constexpr uint8_t ChampionMods[] = {16, 36, 37, 38, 39};  // PD2's cpick monumod rows, weight 1 each
+
+// PD2 0x1037cbf0 / 0x1037caf0. A unique is D2R's maker (mods, 3-6 minions); a champion is a plain spawn made a champion
+// with one mod, plus 1-3 pack mates with mod 16 (D2R's 0x50b1b0, which needs a populator area we do not have).
+// The spot search is D2R's portal one, not PD2's 0x10389c20.
+auto SpawnWaveMonster(Game* game, Unit* unit, int32_t ux, int32_t uy, uint32_t* seed, WaveKind kind) noexcept -> bool {
 	using namespace d2r::rva;
 	int32_t xy[2] = {ux - 10 + static_cast<int32_t>(d2r::RandomBelow(seed, 20)),
 	                 uy - 10 + static_cast<int32_t>(d2r::RandomBelow(seed, 20))};
@@ -98,8 +118,40 @@ auto SpawnWaveMonster(Game* game, Unit* unit, int32_t ux, int32_t uy, uint32_t* 
 	}
 	const uint32_t pick = d2r::RandomBelow(seed, 5);
 	const int32_t monster = pick < 4 ? NihlMobs[pick] : NihlMages[d2r::RandomBelow(seed, 4)];
-	return d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
-		SpawnMonster)(game, found, xy[0], xy[1], monster, 1, -1, 0x42) != nullptr;
+	if (!g_makers) {
+		kind = WaveKind::Normal;
+	}
+	const auto spawn = [&] {
+		return d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
+			SpawnMonster)(game, found, xy[0], xy[1], monster, 1, -1, 0x42);
+	};
+	Unit* leader = nullptr;
+	int32_t mates = 0;
+	if (kind == WaveKind::Unique) {
+		leader = d2r::Engine<Unit* (*)(Game*, void*, void*, int32_t, int32_t, uint16_t, uint16_t, int32_t, uint16_t) noexcept>(
+			SpawnUnique.address)(game, found, nullptr, monster, 0, static_cast<uint16_t>(xy[0]), static_cast<uint16_t>(xy[1]), 1, 0x10);
+	} else {
+		leader = spawn();
+		if (leader != nullptr && kind == WaveKind::Champion) {
+			const auto make = d2r::Engine<void (*)(Game*, Unit*, uint8_t) noexcept>(MakeChampion.address);
+			make(game, leader, ChampionMods[d2r::RandomBelow(seed, 5)]);
+			const int32_t want = static_cast<int32_t>(d2r::RandomBelow(seed, 3)) + 1;
+			for (int32_t k = 0; k < want; ++k) {
+				Unit* mate = d2r::Engine<Unit* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint16_t) noexcept>(
+					SpawnNear.address)(game, leader, monster, 1, 4, 0x110);
+				if (mate != nullptr) {
+					make(game, mate, 16);
+					++mates;
+				}
+			}
+		}
+	}
+	if (leader == nullptr) {
+		return false;
+	}
+	plog::Info("nihlathakMap: wave %s %d at (%d, %d), %d pack mates", WaveKindName[static_cast<int>(kind)], monster, xy[0],
+	           xy[1], mates);
+	return true;
 }
 
 auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
@@ -173,7 +225,8 @@ auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	normal += normal + champions + uniques < 1 ? 1 : 0;
 	int spawned = 0;
 	for (int32_t k = 0; k < normal + champions + uniques; ++k) {
-		spawned += SpawnWaveMonster(game, unit, ux, uy, seed) ? 1 : 0;
+		const WaveKind kind = k < normal ? WaveKind::Normal : k < normal + champions ? WaveKind::Champion : WaveKind::Unique;
+		spawned += SpawnWaveMonster(game, unit, ux, uy, seed, kind) ? 1 : 0;
 	}
 	g_nihlSpawned += spawned;
 	// The pause: aip5's Normal column, Nightmare's past aip1's first column, Hell's past the first two
@@ -192,6 +245,16 @@ auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 }  // namespace
 
 auto RegisterNihlathakAi(const D2RL::PluginContext* context) noexcept -> bool {
+	sigscan::Resolve(WaveMakers, std::size(WaveMakers), context->exeBase, nullptr, 0);
+	g_makers = true;
+	for (sigscan::Entry* e : WaveMakers) {
+		if (e->state != sigscan::State::Ok) {
+			g_makers = false;
+			plog::Warn("nihlathakMap: signature %s %s, wave champions and uniques spawn as normal monsters", e->name,
+			           sigscan::StateText(e->state));
+		}
+	}
+	plog::Info("nihlathakMap: champion and unique makers %s", g_makers ? "resolved" : "off");
 	return RegisterAiThink(context, TrappedSoulRow, d2r::sig::AiTrappedSoul.address, NihlathakMap, &ThinkNihlathak);
 }
 
