@@ -1,5 +1,5 @@
 {
-  "_note": "Pinned cartographer.dll (#966). No d2r-tools release carries it yet: tools/release.py stages it from --cartographer / CARTOGRAPHER_DLL and refuses any other SHA-256. Bump with the source commit when the matched build changes.",
-  "source": "synpoox/d2r-tools 62ee69400b2d757671dc674132842e2bf20caad8 (plugins/cartographer, Release x64)",
-  "sha256": "7b2763d4813267082049f3a4588d877853007a197d6ed96af5b4500e21a16f93"
+  "_note": "Pinned cartographer.dll (#966). No d2r-tools release carries it yet: tools/release.py stages it from --cartographer / CARTOGRAPHER_DLL and refuses any other SHA-256. The exact build is stored on the issue-assets branch at 966/cartographer-0bd23a64.dll. Re-pin: docs/release-rehearsal.md.",
+  "source": "synpoox/d2r-tools d78952d9c37f994c6cb8a860a4418e0b6b73e975 (origin/main, plugins/cartographer, Release x64)",
+  "sha256": "0bd23a64c64d325f56913be5b01f6d6ef119eb1fc30e2ee4dde0eecc7783ef89"
 }

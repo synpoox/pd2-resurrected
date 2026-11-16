@@ -17,10 +17,34 @@ changes.
 | core-rules.dll | 5017fda9... | 158adeda... |
 | core-maps.dll | 01fa3924... | 464380e2... |
 | core-ui.dll | 7d839ef1... | ab729a71... |
-| cartographer.dll | none | 7b2763d4... (pin) |
+| cartographer.dll | none | 0bd23a64... (pin, d2r-tools d78952d) |
 
-The 7z is not committed. `release.py` also writes a temporary `release.toml` that adds `loader_files` (the toolkit's
-schema 3 refuses a catalog without it); the same failure was already in `main`.
+The candidate ships `core-rules`, `core-maps` and `core-ui` plus Cartographer; there is no separate core-events (the
+retained map events live in core-maps). The 7z is not committed, and the hashes above for the rehearsal run were taken
+before the re-pin below: the rehearsal's dll was a build of a stale local merge commit, replaced by the pinned one.
+
+`--game` must hold the official `D2RLoader.exe`: `release.py` writes a temporary `release.toml` that adds
+`catalog.loader_files` for it, pinned at `[d2rloader] version` (the toolkit's schema 3 refuses a catalog without it;
+the same failure was already in `main`). It fails when `[catalog]` or that version is missing, or when `release.toml`
+sets `loader_files` itself.
+
+## Re-pin Cartographer
+
+Cartographer has no release yet, so each new tileset needs a re-pin. Four steps:
+
+1. Build from a d2r-tools `origin/main` commit in a scratch clone (never the owner's worktrees):
+   `git clone https://github.com/synpoox/d2r-tools <dir>`, `git submodule update --init third_party/PluginSDK`, then
+   `cmake -S <dir>/plugins/cartographer -B <build> -A x64` and `cmake --build <build> --config Release`
+   (the dll is `<build>/Release/cartographer.dll`; build outside the system temp folder if MSBuild warns).
+2. `sha256sum cartographer.dll`; add the file to the `issue-assets` branch as `966/cartographer-<sha8>.dll`
+   (add only, never rewrite history or delete the branch).
+3. Edit `companions/cartographer/pin.json`: `source` (the full commit), `sha256`, and the path in `_note`.
+4. `python tools/release.py ... --cartographer <that dll>`: it refuses any other hash. Then start the game once in a slot with the dll and check `cartographer.log` loads it.
+
+## Arena status
+
+Vanilla mini-ubers and D2R Tristram (136) work on native maps. Dclone, Rathma, Lucion/Temple and Bitter Depths are
+refused safely (they still use converted levels until #965).
 
 ## Install and rollback by manifest
 

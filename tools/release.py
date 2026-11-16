@@ -20,6 +20,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import Callable
 
@@ -96,6 +97,20 @@ def pinned_cartographer(root: Path, dll: Path | None) -> Path | None:
     if got != want:
         raise ReleaseError(f"{dll}: SHA-256 {got} differs from companions/cartographer/pin.json ({want})")
     return dll
+
+
+def with_loader(text: str, exe: Path) -> str:
+    """release.toml's text with catalog.loader_files pointing at `exe` (--game's official D2RLoader.exe, a machine path),
+    pinned at [d2rloader] version. Fails when [catalog] is missing or already sets loader_files (one source of truth)."""
+    conf = tomllib.loads(text)
+    if "catalog" not in conf or "[catalog]\n" not in text:
+        raise ReleaseError("release.toml has no [catalog] table")
+    if "loader_files" in conf["catalog"]:
+        raise ReleaseError("release.toml sets catalog.loader_files: release.py adds it from --game, remove it")
+    version = conf.get("d2rloader", {}).get("version")
+    if not version:
+        raise ReleaseError("release.toml has no [d2rloader] version to pin the loader at")
+    return text.replace("[catalog]\n", f'[catalog]\nloader_files = [{{path = "{exe.as_posix()}", version = "{version}"}}]\n', 1)
 
 
 def stage(root: Path, out: Path, read: Callable[[str], bytes], cartographer: Path | None = None) -> Path:
@@ -175,8 +190,8 @@ def main(argv: list[str] | None = None) -> int:
             # the catalog pins the official loader by hash: point loader_files at DIR's D2RLoader.exe (a machine path)
             conf = a.out / "release.toml"
             conf.parent.mkdir(parents=True, exist_ok=True)
-            conf.write_text((ROOT / "release.toml").read_text("utf-8").replace(
-                "[catalog]\n", f'[catalog]\nloader_files = [{{path = "{(a.game / "D2RLoader.exe").as_posix()}"}}]\n', 1), "utf-8")
+            conf.write_text(with_loader(
+                (ROOT / "release.toml").read_text("utf-8"), a.game / "D2RLoader.exe"), "utf-8")
             r = subprocess.run([sys.executable, str(a.toolkit / "release" / "package_release.py"), "--mod-dir", str(mod),
                                 "--version", version, "--config", str(conf), "--out", str(a.out),
                                 "--game-exe", str(a.game / "D2R.exe")])  # release.toml's [catalog] (schema 3) needs it

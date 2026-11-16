@@ -34,6 +34,14 @@ def sha(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
+def inside(mod_dir: Path, rel: str) -> Path:
+    """mod_dir/rel, refused when a manifest path would leave mod_dir (`..`, an absolute path)."""
+    p = (mod_dir / rel).resolve()
+    if not p.is_relative_to(mod_dir.resolve()):
+        raise ValueError(f"manifest path {rel!r} leaves {mod_dir}")
+    return mod_dir / rel
+
+
 def other_scope(new: dict, old: dict) -> set[str]:
     return {Path(r).name for r in (*new, *old) if r.startswith(PLUGINS)}
 
@@ -41,6 +49,8 @@ def other_scope(new: dict, old: dict) -> set[str]:
 def apply(src: Path, mod_dir: Path, new: dict, old: dict, global_plugins: Path | None = None,
           savepath: str | None = None) -> dict:
     n = {"written": 0, "kept": 0, "deleted": 0, "other_scope_removed": 0}
+    for rel in (*new, *old):
+        inside(mod_dir, rel)  # before anything is written
     for rel, f in new.items():
         dst = mod_dir / rel
         edited = f["ownership"] == "shipped_default" and dst.exists() and not (rel in old and sha(dst) == old[rel]["sha256"])
@@ -84,7 +94,10 @@ def verify(mod_dir: Path, new: dict, other: dict, global_plugins: Path | None = 
             bad.append(f"missing {rel}")
         elif f["ownership"] == "managed" and sha(p) != f["sha256"]:
             bad.append(f"differs {rel}")
-    bad += [f"stale {rel}" for rel in other if rel not in new and (mod_dir / rel).exists()]
+    bad += [f"stale {rel}"
+            for rel, f in other.items()
+            if rel not in new and (mod_dir / rel).exists()
+            and not (f["ownership"] == "shipped_default" and sha(mod_dir / rel) != f["sha256"])]  # a player's edit stays
     if global_plugins:
         bad += [f"other scope {n}" for n in other_scope(new, other) if (global_plugins / n).exists()]
     return bad

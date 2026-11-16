@@ -111,7 +111,7 @@ class FoldTests(unittest.TestCase):
         (root / "CHANGELOG.md").write_text(self.LOG, "utf-8")
         (root / "mod.json").write_text('{"name": "M", "version": "0.2.0"}', "utf-8")
         (root / "changelog.d" / "1-a.md").write_text("#### Items\n- X.\n", "utf-8")
-        (root / "release.toml").write_text("[catalog]\nx = 1\n", "utf-8")
+        (root / "release.toml").write_text('[d2rloader]\nversion = "1"\n\n[catalog]\nx = 1\n', "utf-8")
 
         def go():
             with mock.patch.object(release, "ROOT", root), \
@@ -139,6 +139,17 @@ class FoldTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             go()
         self._assert_restored(root)
+
+
+class LoaderTests(unittest.TestCase):
+    def test_pins_the_loader_at_the_d2rloader_version_and_refuses_a_bad_catalog(self):
+        toml = '[d2rloader]\nversion = "1.3"\n\n[catalog]\nx = 1\n'
+        out = release.with_loader(toml, Path("D:/g/D2RLoader.exe"))
+        self.assertIn('loader_files = [{path = "D:/g/D2RLoader.exe", version = "1.3"}]', out)
+        for bad in (toml.replace("[catalog]", "[catalog]\nloader_files = []"), '[d2rloader]\nversion = "1"\n',
+                    "[catalog]\nx = 1\n"):
+            with self.assertRaises(release.ReleaseError):
+                release.with_loader(bad, Path("x"))
 
 
 class NotesTests(unittest.TestCase):

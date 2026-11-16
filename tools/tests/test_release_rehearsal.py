@@ -46,6 +46,20 @@ class RehearsalTests(unittest.TestCase):
             self.assertFalse((mod / "d2rloader/plugins/cartographer.dll").exists())
             self.assertTrue((mod / "d2rloader/plugins/user.dll").exists())
 
+    def test_an_edited_old_only_default_is_not_stale_and_a_path_out_of_mod_dir_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            t = Path(tmp)
+            mod = t / "game/mods/Mod"
+            old = package(t / "old", {"cfg.toml": ("default", "shipped_default")})
+            new = package(t / "new", {"a.txt": ("a", "managed")})
+            rr.apply(t / "old", mod, old, {})
+            self.assertEqual(rr.verify(mod, new, old), ["missing a.txt", "stale cfg.toml"])
+            (mod / "cfg.toml").write_text("player edit")
+            self.assertEqual(rr.verify(mod, new, old), ["missing a.txt"])
+            with self.assertRaises(ValueError):
+                rr.apply(t / "new", mod, {"../x.txt": {"sha256": "0", "ownership": "managed"}}, {})
+            self.assertFalse((t / "game/mods/x.txt").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
