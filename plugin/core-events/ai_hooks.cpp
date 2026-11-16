@@ -1,5 +1,5 @@
 // A native table write: no PluginSDK service runs or replaces a monster's AI (data_tables only reads monai.txt). D2R
-// calls a monster's think from its monai row in rva::AiTable; a registered row's slot gets one of the trampolines
+// calls a monster's think from its monai row in d2r::sig::AiTable; a registered row's slot gets one of the trampolines
 // below, which hands registered classes to their port and every other monster to the row's D2R think.
 #include "ai_hooks.h"
 
@@ -90,7 +90,8 @@ constexpr auto MakeTrampolines(std::integer_sequence<int, K...>) noexcept {
 constexpr auto Trampolines = MakeTrampolines(std::make_integer_sequence<int, MaxRows> {});
 
 auto Slot(int32_t row) noexcept -> uint64_t {
-	return d2r::rva::AiTable + static_cast<uint64_t>(row) * d2r::rva::AiRowSize;
+	// PatchWriteU64 takes an rva: the table's rva from its signature entry. AiRowSize is the row stride (a named offset).
+	return d2r::sig::AiTable.rva + static_cast<uint64_t>(row) * d2r::rva::AiRowSize;
 }
 
 }  // namespace

@@ -14,8 +14,8 @@ using d2r::Unit;
 namespace {
 
 auto LevelOf(Unit* unit) noexcept -> int32_t {
-	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(d2r::rva::UnitRoom)(unit);
-	return room != nullptr ? d2r::Engine<int32_t (*)(void*) noexcept>(d2r::rva::RoomLevelId)(room) : -1;
+	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::UnitRoom)(unit);
+	return room != nullptr ? d2r::Engine<int32_t (*)(void*) noexcept>(d2r::sig::RoomLevelId)(room) : -1;
 }
 
 // The game's clients in game (PD2 walks its player slots, game +0x1120)
@@ -24,7 +24,7 @@ auto ForEachClient(Game* game, F&& f) noexcept -> void {
 	using namespace d2r::rva;
 	for (auto* c = At<uint8_t*>(game, GameClients); c != nullptr; c = At<uint8_t*>(c, ClientNext)) {
 		if (At<int32_t>(c, ClientState) == ClientInGame) {
-			if (Unit* player = d2r::Engine<Unit* (*)(void*, int32_t) noexcept>(ClientUnit)(c, 0); player != nullptr) {
+			if (Unit* player = d2r::Engine<Unit* (*)(void*, int32_t) noexcept>(d2r::sig::ClientUnit)(c, 0); player != nullptr) {
 				f(c, player);
 			}
 		}
@@ -74,11 +74,10 @@ auto SetDarkness(Game* game, Unit* unit, bool on) noexcept -> void {
 
 // PD2 0x1037f240 (game, sound, 0, level): the sound played on each player in the level (packet 0x2c)
 auto PlayLevelSound(Game* game, int32_t level, int32_t sound) noexcept -> void {
-	using namespace d2r::rva;
 	ForEachClient(game, [&](void* client, Unit* player) {
 		if (level <= 0 || LevelOf(player) == level) {
-			d2r::Engine<void (*)(Unit*, int32_t, Unit*) noexcept>(ClientMessage)(player, sound, player);
-			d2r::Engine<void (*)(Unit*, void*) noexcept>(SoundPacket)(player, client);
+			d2r::Engine<void (*)(Unit*, int32_t, Unit*) noexcept>(d2r::sig::ClientMessage)(player, sound, player);
+			d2r::Engine<void (*)(Unit*, void*) noexcept>(d2r::sig::SoundPacket)(player, client);
 		}
 	});
 }

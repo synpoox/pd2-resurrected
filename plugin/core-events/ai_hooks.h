@@ -14,7 +14,7 @@ using AiThinkFn = void (*)(d2r::Game* game, d2r::Unit* unit, uint8_t* tick) noex
 // Runs `think` instead of D2R's think of monai row `monaiRow` for monsters of monstats class `classId` (merged id);
 // other classes on the row keep D2R's think. `d2rThinkAddress` is the resolved address of D2R's think in that row
 // (d2r::sig::AiMephisto.address, ...; 0 when unresolved): the first registration on a row writes the row's slot in
-// rva::AiTable through the SDK's PatchWriteU64 with it as the expected value. Call from a part's install. False when the
+// d2r::sig::AiTable through the SDK's PatchWriteU64 with it as the expected value. Call from a part's install. False when the
 // row is out of range, the address is 0, the slot is not `d2rThinkAddress`, or the registry is full.
 auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, uint64_t d2rThinkAddress, int32_t classId,
                      AiThinkFn think) noexcept -> bool;
