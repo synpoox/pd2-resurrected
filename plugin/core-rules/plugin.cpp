@@ -19,22 +19,24 @@
 #include "merc_rules.h"
 #include "socket_rules.h"
 #include "off_switch.h"
+#include "parts.h"
 #include "skill_functions.h"
 
 #include <cstdint>
 #include <cstdio>
+#include <iterator>
 
-#ifndef CORE_PLUGIN_NAME
-#define CORE_PLUGIN_NAME "core-rules"
+#ifndef MODKIT_PLUGIN_NAME
+#define MODKIT_PLUGIN_NAME "core-rules"
 #endif
-#ifndef CORE_PLUGIN_VERSION
-#define CORE_PLUGIN_VERSION "0.2.0"
+#ifndef MODKIT_PLUGIN_VERSION
+#define MODKIT_PLUGIN_VERSION "0.2.0"
 #endif
 
 namespace {
 
-constexpr const char* PluginName = CORE_PLUGIN_NAME;
-constexpr const char* PluginVersion = CORE_PLUGIN_VERSION;
+constexpr const char* PluginName = MODKIT_PLUGIN_NAME;
+constexpr const char* PluginVersion = MODKIT_PLUGIN_VERSION;
 
 const D2RL::PluginContext* g_context = nullptr;
 char g_selfPath[520] = "?";
@@ -43,20 +45,12 @@ bool g_imageKnown = false;
 constexpr D2RL::PluginInfo Info {
 	.infoSize    = D2RL::PluginInfoSize,
 	.abiVersion  = D2RL_PLUGIN_ABI_VERSION,
-	.id          = CORE_PLUGIN_NAME,
+	.id          = MODKIT_PLUGIN_NAME,
 	.name        = "PD2 Resurrected Core Rules",
-	.version     = CORE_PLUGIN_VERSION,
+	.version     = MODKIT_PLUGIN_VERSION,
 	.author      = "Synpoo",
 	.description = "Project Diablo II engine rules (skill functions and server rules) for PD2 Resurrected.",
 	.flags       = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
-};
-
-using InstallFn = void (*)(const D2RL::PluginContext* context, char* report, size_t size) noexcept;
-
-struct Part {
-	const char* word;
-	InstallFn install;
-	char report[2700];  // one entry per installed slot, so it grows with every rule
 };
 
 void InstallSkills(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
@@ -117,32 +111,18 @@ void InstallArena(const D2RL::PluginContext* context, char* report, size_t size)
 	InstallArenaSpots(context, report, size);
 }
 
-Part g_parts[] = {
-	{"skills", InstallSkills, ""},
-	{"arena", InstallArena, ""},
-	{"items", InstallItems, ""},
-	{"mercs", InstallMercs, ""},
-	{"cube", InstallCube, ""},
-	{"stacks", InstallStacks, ""},
-	{"almanac", InstallAlmanacPart, ""},
-	{"shrines", InstallShrinesPart, ""},
-	{"loot", InstallLoot, ""},
-	{"sockets", InstallSockets, ""},
+parts::Part g_parts[] = {
+	{"skills", true, InstallSkills},
+	{"arena", true, InstallArena},
+	{"items", true, InstallItems},
+	{"mercs", true, InstallMercs},
+	{"cube", true, InstallCube},
+	{"stacks", true, InstallStacks},
+	{"almanac", true, InstallAlmanacPart},
+	{"shrines", true, InstallShrinesPart},
+	{"loot", true, InstallLoot},
+	{"sockets", true, InstallSockets},
 };
-
-void InstallParts(const D2RL::PluginContext* context) noexcept {
-	for (Part& p : g_parts) {
-		if (!g_imageKnown) {
-			std::snprintf(p.report, sizeof(p.report), "off: unknown game image 0x%08x (expects 0x%08x)",
-			              build_guard::ImageStamp(static_cast<uintptr_t>(context->exeBase)), d2r::rva::ImageStamp);
-		} else if (off_switch::Off(p.word)) {
-			std::snprintf(p.report, sizeof(p.report), "off: left out by %s-off.txt", PluginName);
-		} else {
-			p.install(context, p.report, sizeof(p.report));
-		}
-		plog::Info("%s %s", p.word, p.report);
-	}
-}
 
 auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext* command, void* userData) noexcept
 	-> D2RL::ConsoleCommandResult {
@@ -161,10 +141,7 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 		std::snprintf(line, sizeof(line), "off-file: %s", off_switch::Words());
 		command->plugin->WriteConsoleMessage(line);
 	}
-	for (const Part& p : g_parts) {
-		std::snprintf(line, sizeof(line), "%s %s", p.word, p.report);
-		command->plugin->WriteConsoleMessage(line);
-	}
+	parts::WriteStatus(g_parts, std::size(g_parts), command);
 	SkillFunctionCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);  // also in the plugin log, for game checks and crash reports
@@ -220,7 +197,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 		plog::Info("%s-off.txt leaves out: %s", PluginName, off_switch::Words());
 	}
 	g_imageKnown = d2r::Bind(context->exeBase);
-	InstallParts(context);
+	parts::InstallAll(g_parts, std::size(g_parts), context, PluginName, g_imageKnown);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand,
 	                                       "PD2 Resurrected Core Rules: every part and its counters.");
 }

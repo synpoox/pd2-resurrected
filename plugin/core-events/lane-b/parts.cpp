@@ -1,6 +1,6 @@
 // Lane B generic rules: the parts and status counters this lane installs, registered by order (parts.h; #943).
 // A lane adds its parts here, in its own folder, and never edits plugin.cpp. Orders are one global sequence.
-#include "parts.h"
+#include "part_registry.h"
 
 #include "cube_ops.h"
 

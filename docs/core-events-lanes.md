@@ -10,14 +10,14 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 | File | Lane | Notes |
 |---|---|---|
 | plugin.cpp | S | Installs the registered parts in order and runs the status command. No part lists live here. One AI registry stays in ai_hooks. |
-| parts.cpp, parts.h | S | The parts registry: `PartReg` and `CountersReg`, sorted by order. Frozen. |
+| part_registry.cpp, part_registry.h | S | The parts registry: `PartReg` and `CountersReg`, sorted by order. Frozen. The part type, install loop and status lines are plugin-common's `parts.h`. |
 | parts_shared.cpp | S | Parts of lane S: `pool` (50), `placements` (55, #947) and `keys` (60) and the key drop counters. |
 | lane-a/ | A | Every file in the folder is lane A's: `parts.cpp` registers its parts and counters. |
 | lane-b/ | B | Every file in the folder is lane B's: `parts.cpp` registers its parts and counters. |
 | lane-c/ | C | Every file in the folder is lane C's: `parts.cpp` registers its parts and counters. |
 | lane-d/ | D | Every file in the folder is lane D's: `parts.cpp` registers its parts and counters. |
 | plugin.rc | S | |
-| ai_hooks.cpp, ai_hooks.h | S | The one AI registry and low-level dispatch. |
+| ai_hooks.cpp, ai_hooks.h | S | This mod's think functions and registrations; the registry and dispatch are plugin-common's `ai_registry`. |
 | ai_common.h | S | Helpers the Dclone AI (D) and the event Nihlathak AI (C) share: counters, idle, cast, kill, nearest player. Frozen. |
 | death_steps.h | S | Seam of the monster-death listener: frozen. Call order in key_drops.cpp is part of the RNG stream. |
 | key_drops.cpp, key_drops.h | S | The listener and the key rolls (run on every death). Calls the lane steps in a fixed order. |
@@ -60,7 +60,7 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 ## Registration
 
 Each part and each status counters line is one object in a lane folder: `PartReg r<order>(<order>, "<word>", <install>)`
-and `CountersReg c<order>(<order>, <counters>)` (`parts.h`). `plugin.cpp` sorts them by order and installs them, so the
+and `CountersReg c<order>(<order>, <counters>)` (`part_registry.h`). `plugin.cpp` sorts them by order and installs them, so the
 order is the install sequence and the log line order. Orders are one global sequence in steps of 10; a new part takes an
 unused number (the test fails on a duplicate). `plugin/CMakeLists.txt` globs `core-events/lane-*/*.cpp`, so a lane adds
 files in its own folder and edits neither `plugin.cpp`, `CMakeLists.txt` nor this file; only a file outside the lane
