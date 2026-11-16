@@ -75,13 +75,14 @@ class HookOwners(unittest.TestCase):
         self.assertNotIn("almanac-diag", text)
         self.assertNotIn("UnlimitedIdentifySpell", (PLUGIN / "core-maps" / "map_open.cpp").read_text(encoding="utf-8"))
 
-    def test_almanac_use_slot_matches_entry_18_and_stays_in_inventory_and_cube(self):
+    def test_almanac_use_slot_matches_entry_18_and_stays_in_inventory_only(self):
         engine = (PLUGIN / "common" / "pd2_engine.h").read_text(encoding="utf-8")
         self.assertIn("AlmanacUseSlot = 14", engine)
         rules = (PLUGIN / "core-rules" / "item_rules.cpp").read_text(encoding="utf-8")
         self.assertIn("{UnlimitedPortalCheck, UnlimitedPortalUse, 1, 0, AlmanacUseSlot, 1}", rules)
         text = (PLUGIN / "core-rules" / "almanac.cpp").read_text(encoding="utf-8")
-        self.assertIn("where == 0 || where == d2r::rva::CubePageCube", text)
+        self.assertIn("if (where == 0) {", text)
+        self.assertNotIn("where == 0 || where == d2r::rva::CubePageCube", text)
 
     @unittest.skipUnless(TOOLKIT_RVAS.is_dir(), "d2rAI-toolkit not found (set D2R_TOOLKIT)")
     def test_signatures_row_turns_off_only_cartographers_cube_stamping(self):
