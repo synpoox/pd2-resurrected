@@ -1,6 +1,6 @@
 // Per-encounter level bindings and placements (#947, docs/cartographer-contracts.md "Encounter placements").
 // The one place AI, server/client skills, stage travel, chests and re-entry read an encounter's level and its
-// coordinates from. The data is one file per encounter in plugin/placements/ (built into core-maps and core-rules);
+// coordinates from. The data is one file per encounter in plugin/placements/ (built into core-events and core-rules);
 // a private author changes that file only, never a consumer. Header only: each DLL holds its own copy of the same data.
 #pragma once
 

@@ -447,7 +447,7 @@ class ItemTableTests(unittest.TestCase):
 
     def test_pd2_portal_operate_takes_slot_60(self):
         # PD2's portal operate 77 (grey re-entry portals and the other xactportals) takes D2R's free operate slot 60,
-        # which core-maps fills (UB2); D2R's own 15 stays
+        # which core-events fills (UB2); D2R's own 15 stays
         merged = I.merge_table("objects", table("Name|OperateFn\nxactportal_grey|77\nPortal|15\n"),
                                table("Name|OperateFn\n"), [("xactportal_grey", 0, "xactportal_grey"),
                                                            ("Portal", 1, "Portal")], {}, {})[0]

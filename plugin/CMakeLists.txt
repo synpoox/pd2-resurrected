@@ -2,7 +2,7 @@
 # engine facts (common/pd2_engine.h) in each plugin DLL. Target: D2R 3.3 build 93847 + D2RLoader 1.3.1, PluginSDK in third_party/.
 #
 # Build:  powershell -ExecutionPolicy Bypass -File build.ps1
-# Output: build/Release/core-rules.dll, core-maps.dll and core-ui.dll -> tools/install.ps1 copies them to <game>/d2rloader/plugins/.
+# Output: build/Release/core-rules.dll, core-events.dll and core-ui.dll -> tools/install.ps1 copies them to <game>/d2rloader/plugins/.
 cmake_minimum_required(VERSION 3.29)
 project(pd2_resurrected_plugins LANGUAGES CXX RC)
 
@@ -66,49 +66,49 @@ target_compile_definitions(core_rules PRIVATE CORE_PLUGIN_NAME="core-rules" CORE
 set_target_properties(core_rules PROPERTIES OUTPUT_NAME "core-rules")
 core_options(core_rules)
 
-set(CORE_MAPS_VERSION "0.2.0" CACHE STRING "core-maps PluginInfo::version")
-add_library(core_maps SHARED
-	core-maps/plugin.cpp
-	core-maps/cube_ops.cpp
-	core-maps/map_open.cpp
-	core-maps/map_events.cpp
-	core-maps/entity_pool.cpp
-	core-maps/key_drops.cpp
-	core-maps/lucion.cpp
-	core-maps/prime_minions.cpp
-	core-maps/lucion_chests.cpp
-	core-maps/rathma.cpp
-	core-maps/uber_tristram.cpp
-	core-maps/lucion_ai.cpp
-	core-maps/level_fx.cpp
-	core-maps/rathma_ai.cpp
-	core-maps/guardian_ai.cpp
-	core-maps/rathma_life.cpp
-	core-maps/dclone_ai.cpp
-	core-maps/ai_hooks.cpp
-	core-maps/event_portals.cpp
-	core-maps/horazon.cpp
-	core-maps/nihlathak_ai.cpp
-	core-maps/parts.cpp
-	core-maps/parts_shared.cpp
-	core-maps/uber_scaling.cpp
-	core-maps/uber_drops.cpp
-	core-maps/corruption_roll.cpp
-	core-maps/open_gate.cpp
-	core-maps/tc_roll.cpp
-	core-maps/uber_deaths.cpp
-	core-maps/uber_entry.cpp
-	core-maps/plugin.rc
+set(CORE_EVENTS_VERSION "0.2.0" CACHE STRING "core-events PluginInfo::version")
+add_library(core_events SHARED
+	core-events/plugin.cpp
+	core-events/cube_ops.cpp
+	core-events/map_open.cpp
+	core-events/map_events.cpp
+	core-events/entity_pool.cpp
+	core-events/key_drops.cpp
+	core-events/lucion.cpp
+	core-events/prime_minions.cpp
+	core-events/lucion_chests.cpp
+	core-events/rathma.cpp
+	core-events/uber_tristram.cpp
+	core-events/lucion_ai.cpp
+	core-events/level_fx.cpp
+	core-events/rathma_ai.cpp
+	core-events/guardian_ai.cpp
+	core-events/rathma_life.cpp
+	core-events/dclone_ai.cpp
+	core-events/ai_hooks.cpp
+	core-events/event_portals.cpp
+	core-events/horazon.cpp
+	core-events/nihlathak_ai.cpp
+	core-events/parts.cpp
+	core-events/parts_shared.cpp
+	core-events/uber_scaling.cpp
+	core-events/uber_drops.cpp
+	core-events/corruption_roll.cpp
+	core-events/open_gate.cpp
+	core-events/tc_roll.cpp
+	core-events/uber_deaths.cpp
+	core-events/uber_entry.cpp
+	core-events/plugin.rc
 )
-# Each lane registers its parts from its own folder (core-maps/lane-a .. lane-d, #943): new files there need no edit here.
-file(GLOB CORE_MAPS_LANE_SOURCES CONFIGURE_DEPENDS core-maps/lane-*/*.cpp)
-target_sources(core_maps PRIVATE ${CORE_MAPS_LANE_SOURCES})
-target_sources(core_maps PRIVATE ${CORE_PLACEMENT_SOURCES})
-target_include_directories(core_maps PRIVATE core-maps)
-target_link_libraries(core_maps PRIVATE core_common)
-target_compile_definitions(core_maps PRIVATE CORE_PLUGIN_NAME="core-maps" CORE_PLUGIN_VERSION="${CORE_MAPS_VERSION}")
-set_target_properties(core_maps PROPERTIES OUTPUT_NAME "core-maps")
-core_options(core_maps)
+# Each lane registers its parts from its own folder (core-events/lane-a .. lane-d, #943): new files there need no edit here.
+file(GLOB CORE_EVENTS_LANE_SOURCES CONFIGURE_DEPENDS core-events/lane-*/*.cpp)
+target_sources(core_events PRIVATE ${CORE_EVENTS_LANE_SOURCES})
+target_sources(core_events PRIVATE ${CORE_PLACEMENT_SOURCES})
+target_include_directories(core_events PRIVATE core-events)
+target_link_libraries(core_events PRIVATE core_common)
+target_compile_definitions(core_events PRIVATE CORE_PLUGIN_NAME="core-events" CORE_PLUGIN_VERSION="${CORE_EVENTS_VERSION}")
+set_target_properties(core_events PROPERTIES OUTPUT_NAME "core-events")
+core_options(core_events)
 
 # Client-only: not Shared, so its version need not match between host and client.
 set(CORE_UI_VERSION "0.2.0" CACHE STRING "core-ui PluginInfo::version")

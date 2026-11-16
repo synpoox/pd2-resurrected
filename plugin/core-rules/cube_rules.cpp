@@ -379,7 +379,7 @@ auto CubeExecute(Game* game, Unit* player, const uint8_t* record, MatchOut* out)
 		plog::Info("corruption: roll row ran, no clean shard in the cube, no second row");
 		return made;
 	}
-	// Through core-maps' hook, so op 30 blocks still apply to the second search
+	// Through core-events' hook, so op 30 blocks still apply to the second search
 	SearchResult result {};
 	MatchOut again {};
 	d2r::Engine<SearchFn>(d2r::rva::CubeRecipeSearch)(&result, game, player, &again);

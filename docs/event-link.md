@@ -5,7 +5,7 @@ Code: `plugin/common/event_link.h`. Check: `plugin/tests/event_link_check.cpp`.
 
 ## Rule
 
-Cartographer is **not modified** and stays PD2-neutral. The PD2 side (core-events, today core-maps' lane C/D code) adapts to
+Cartographer is **not modified** and stays PD2-neutral. The PD2 side (core-events, today core-events' lane C/D code) adapts to
 what Cartographer already exposes plus D2RLoader's PluginSDK services. Inspected: d2r-tools 629f08b. Cartographer
 publishes no service or event (`PluginCommunicationService`, `ItemInteractionService` and `LifecycleService` are unused
 there), so there is nothing to consume yet; the consumer runs observe-only.
@@ -26,7 +26,7 @@ there), so there is nothing to consume yet; the consumer runs observe-only.
 ## Not decided here
 
 - Which ItemStatCost row carries the marker. The ticket asks for an unused existing row, not a new one. The row needs a Save Param Bits setting so it can hold a layer. Ticket 4 publishes the reserved metadata definition (the row); ticket 10 owns the game proof that a layered stat survives the Catalyst recipe and a save.
-- `RoomProgress` and `MonsterSetup` (spawn-time) hooks. The SDK offers death and level-change events only. Room activation and monster setup stay on core-maps' native hooks until a provider publishes them.
+- `RoomProgress` and `MonsterSetup` (spawn-time) hooks. The SDK offers death and level-change events only. Room activation and monster setup stay on core-events' native hooks until a provider publishes them.
 
 ## Check
 

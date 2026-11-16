@@ -18,7 +18,7 @@ using AiThinkFn = void (*)(d2r::Game* game, d2r::Unit* unit, uint8_t* tick) noex
 // the registry is full.
 auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, uint64_t d2rThink, int32_t classId,
                      AiThinkFn think) noexcept -> bool;
-// A game-check aid (`core-maps life <percent> <class>`): the next think of a ported boss of merged monstats class
+// A game-check aid (`core-events life <percent> <class>`): the next think of a ported boss of merged monstats class
 // `classId` first sets its life to `percent` of its max, for the life events of a boss that blinks away from clicks.
 // One request, used once; dropped if no such boss thinks within 10 seconds.
 auto RequestBossLife(int32_t percent, int32_t classId) noexcept -> void;

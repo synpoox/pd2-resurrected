@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import pd2_cutmaps  # noqa: E402
 from pd2_table import Table  # noqa: E402
 
-CORE_MAPS = ROOT / "plugin" / "core-maps"
+CORE_EVENTS = ROOT / "plugin" / "core-events"
 REMOVED = ["map_stats", "map_deaths", "unique_maps", "unique_map_drops", "zhar", "map_bosses", "map_boss_ai"]
 
 
@@ -51,16 +51,16 @@ class DataCut(unittest.TestCase):
 class PluginCut(unittest.TestCase):
     def test_removed_sources_are_gone_and_unnamed(self):
         for name in REMOVED:
-            self.assertFalse((CORE_MAPS / f"{name}.cpp").exists(), name)
-            self.assertFalse((CORE_MAPS / f"{name}.h").exists(), name)
-        pattern = re.compile(r'#include "(%s)\.h"|core-maps/(%s)\.cpp' % ("|".join(REMOVED), "|".join(REMOVED)))
+            self.assertFalse((CORE_EVENTS / f"{name}.cpp").exists(), name)
+            self.assertFalse((CORE_EVENTS / f"{name}.h").exists(), name)
+        pattern = re.compile(r'#include "(%s)\.h"|core-events/(%s)\.cpp' % ("|".join(REMOVED), "|".join(REMOVED)))
         for p in list((ROOT / "plugin").rglob("*.cpp")) + list((ROOT / "plugin").rglob("*.h")) + [ROOT / "plugin" / "CMakeLists.txt"]:
             if "build" in p.relative_to(ROOT / "plugin").parts[:1]:
                 continue
             self.assertIsNone(pattern.search(p.read_text(encoding="utf-8", errors="replace")), p.name)
 
     def test_every_cmake_source_exists(self):
-        for f in re.findall(r"^\s+(core-maps/\S+\.(?:cpp|rc))\s*$", (ROOT / "plugin" / "CMakeLists.txt").read_text(encoding="utf-8"), re.M):
+        for f in re.findall(r"^\s+(core-events/\S+\.(?:cpp|rc))\s*$", (ROOT / "plugin" / "CMakeLists.txt").read_text(encoding="utf-8"), re.M):
             self.assertTrue((ROOT / "plugin" / f).exists(), f)
 
 

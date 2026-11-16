@@ -43,11 +43,11 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
   shares this, so it is built once in [#316](https://github.com/synpoox/pd2-resurrected/issues/316), not in a map item ([#210](https://github.com/synpoox/pd2-resurrected/issues/210)).
 - **Invaders** run their table AIs (the vanilla `BloodRaven`, `Summoner` and so on). That is an approximated deviation.
   PD2's own invader brain (`AiThink4.cpp`) replaces them in [MS11](https://github.com/synpoox/pd2-resurrected/issues/225).
-- **Plugins:** `core-maps` (Shared) holds the code that belongs only to the map system: opening maps, map stats, cube
+- **Plugins:** `core-events` (Shared) holds the code that belongs only to the map system: opening maps, map stats, cube
   op 30, map events and invaders. It is a plugin of its own because the map system is large enough to be used outside
   this project ([ADR 0004](adr/0004-plugins-split-by-multiplayer-scope.md), amended). Rules the map system shares with
   other content stay in `core-rules`: the Teleport 3 blocker check, the
-  Find Item and Desecrate monster lists, and the death novas. `core-maps` never calls `core-rules`.
+  Find Item and Desecrate monster lists, and the death novas. `core-events` never calls `core-rules`.
 - **Rules deferred to the map plan** (core-rules rows and their deviation rows) join the work item that first brings in
   their levels or monsters (table below).
 - **D2R Reimagined:** we copy no code from them. Their GPL-3.0 code stays out (ADR 0005), and their map plugin is
@@ -64,16 +64,16 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
 | # | Work item | Plugin | Blocked by |
 |---|---|---|---|
 | [MS1](https://github.com/synpoox/pd2-resurrected/issues/216) | Investigation, Ghidra on `ProjectDiablo.dll`: which area each map item opens, the gate checks, how map stats are applied and how density and rarity scale, cube op 30's meaning (block always or block stacked), the event roll and the levels the Vault, Horazon and Void events open; plus whether a plugin can open a red portal to a map area | none | none |
-| [MS2](https://github.com/synpoox/pd2-resurrected/issues/217) | Open a map: `pSpell` 16, the gates, one per game, the red portal to its area; maps drop again; the Find Item and Desecrate lists for map-area monsters | core-maps, core-rules (lists) | [MS1](https://github.com/synpoox/pd2-resurrected/issues/216), the level pipeline for the tiered map areas |
-| [MS3](https://github.com/synpoox/pd2-resurrected/issues/218) | Monster and player map stats (`map_mon_*`, `map_play_*`); the level life regen cap, which [MS3](https://github.com/synpoox/pd2-resurrected/issues/218) found applies only in the PvP arenas, so it is cut with PvP | core-maps | [MS2](https://github.com/synpoox/pd2-resurrected/issues/217) |
-| [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) | Area map stats (`map_glob_*`): density, area level, monster rarity, extra monster groups, extra boss, fortify, drop stats | core-maps | [MS2](https://github.com/synpoox/pd2-resurrected/issues/217) |
-| [MS4b](https://github.com/synpoox/pd2-resurrected/issues/286) | The extra boss and the drop chance area stats (corrupted, socketed, ethereal), [#286](https://github.com/synpoox/pd2-resurrected/issues/286) | core-maps | [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) |
-| [MS5](https://github.com/synpoox/pd2-resurrected/issues/220) | Map recipes: cube op 30, and one recipe per group checked in game | core-maps | [MS1](https://github.com/synpoox/pd2-resurrected/issues/216) |
-| [MS7](https://github.com/synpoox/pd2-resurrected/issues/221) | Dungeons and unique maps: their multi-level areas, the Teleport 3 blocker check, the Nihlathak map death nova | core-maps, core-rules (Teleport 3, nova) | [MS2](https://github.com/synpoox/pd2-resurrected/issues/217), the level pipeline for those areas |
-| [MS8](https://github.com/synpoox/pd2-resurrected/issues/222) | Events that only spawn: Dark Wanderer, Shadow of Mendeln, Treasure Fallen, Gheed, Altar of the Catalyst, Spire of Darkness | core-maps | [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) |
-| [MS9](https://github.com/synpoox/pd2-resurrected/issues/223) | Events that open areas: Horazon, Void/Tomb | core-maps | [MS8](https://github.com/synpoox/pd2-resurrected/issues/222), [MS7](https://github.com/synpoox/pd2-resurrected/issues/221) |
-| [MS10](https://github.com/synpoox/pd2-resurrected/issues/224) | Invaders on their table AIs (approximated), with their ears | core-maps | [MS8](https://github.com/synpoox/pd2-resurrected/issues/222) |
-| [MS11](https://github.com/synpoox/pd2-resurrected/issues/225) | PD2's invader brain (`AiThink4.cpp`) in place of the table AIs | core-maps | [MS10](https://github.com/synpoox/pd2-resurrected/issues/224) |
+| [MS2](https://github.com/synpoox/pd2-resurrected/issues/217) | Open a map: `pSpell` 16, the gates, one per game, the red portal to its area; maps drop again; the Find Item and Desecrate lists for map-area monsters | core-events, core-rules (lists) | [MS1](https://github.com/synpoox/pd2-resurrected/issues/216), the level pipeline for the tiered map areas |
+| [MS3](https://github.com/synpoox/pd2-resurrected/issues/218) | Monster and player map stats (`map_mon_*`, `map_play_*`); the level life regen cap, which [MS3](https://github.com/synpoox/pd2-resurrected/issues/218) found applies only in the PvP arenas, so it is cut with PvP | core-events | [MS2](https://github.com/synpoox/pd2-resurrected/issues/217) |
+| [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) | Area map stats (`map_glob_*`): density, area level, monster rarity, extra monster groups, extra boss, fortify, drop stats | core-events | [MS2](https://github.com/synpoox/pd2-resurrected/issues/217) |
+| [MS4b](https://github.com/synpoox/pd2-resurrected/issues/286) | The extra boss and the drop chance area stats (corrupted, socketed, ethereal), [#286](https://github.com/synpoox/pd2-resurrected/issues/286) | core-events | [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) |
+| [MS5](https://github.com/synpoox/pd2-resurrected/issues/220) | Map recipes: cube op 30, and one recipe per group checked in game | core-events | [MS1](https://github.com/synpoox/pd2-resurrected/issues/216) |
+| [MS7](https://github.com/synpoox/pd2-resurrected/issues/221) | Dungeons and unique maps: their multi-level areas, the Teleport 3 blocker check, the Nihlathak map death nova | core-events, core-rules (Teleport 3, nova) | [MS2](https://github.com/synpoox/pd2-resurrected/issues/217), the level pipeline for those areas |
+| [MS8](https://github.com/synpoox/pd2-resurrected/issues/222) | Events that only spawn: Dark Wanderer, Shadow of Mendeln, Treasure Fallen, Gheed, Altar of the Catalyst, Spire of Darkness | core-events | [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) |
+| [MS9](https://github.com/synpoox/pd2-resurrected/issues/223) | Events that open areas: Horazon, Void/Tomb | core-events | [MS8](https://github.com/synpoox/pd2-resurrected/issues/222), [MS7](https://github.com/synpoox/pd2-resurrected/issues/221) |
+| [MS10](https://github.com/synpoox/pd2-resurrected/issues/224) | Invaders on their table AIs (approximated), with their ears | core-events | [MS8](https://github.com/synpoox/pd2-resurrected/issues/222) |
+| [MS11](https://github.com/synpoox/pd2-resurrected/issues/225) | PD2's invader brain (`AiThink4.cpp`) in place of the table AIs | core-events | [MS10](https://github.com/synpoox/pd2-resurrected/issues/224) |
 
 ## Game check
 

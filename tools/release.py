@@ -27,7 +27,7 @@ from typing import Callable
 import pd2_ids
 from companions import ROOT, fill_tables, overlay
 
-PLUGINS = ["core-rules", "core-maps", "core-ui"]
+PLUGINS = ["core-rules", "core-events", "core-ui"]
 
 
 class ReleaseError(Exception):

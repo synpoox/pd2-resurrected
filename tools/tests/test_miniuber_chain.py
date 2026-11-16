@@ -16,6 +16,6 @@ def test_miniubers_keep_vanilla_levels_and_are_not_uber_fights():
 
 
 def test_organs_drop_from_the_three_mini_uber_bosses():
-    src = (ROOT / "plugin/core-maps/uber_drops.cpp").read_text(encoding="utf-8")
+    src = (ROOT / "plugin/core-events/uber_drops.cpp").read_text(encoding="utf-8")
     got = re.findall(r'\{(70[678]), \{D2RL::Items::MakeItemCode\("(\w+)"\)', src)
     assert got == [("706", "mbr"), ("707", "dhn"), ("708", "bey")]

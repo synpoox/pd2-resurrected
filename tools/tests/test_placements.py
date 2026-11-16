@@ -47,7 +47,7 @@ def test_private_levels_are_reserved_once():
 
 def test_every_consumer_lookup_has_a_placement():
     bindings, places = parse()
-    for f in list((PLUGIN / "core-maps").rglob("*.cpp")) + list((PLUGIN / "core-rules").rglob("*.cpp")):
+    for f in list((PLUGIN / "core-events").rglob("*.cpp")) + list((PLUGIN / "core-rules").rglob("*.cpp")):
         text = f.read_text(encoding="utf-8")
         for enc in re.findall(r'placements::LevelOf\("(\w+)"\)', text):
             assert enc in bindings, (f.name, enc)
@@ -72,7 +72,7 @@ def test_no_consumer_hard_codes_a_bound_level_id():
                ("prime_minions.cpp", "AiRows"), ("prime_minions.cpp", "AI rows"), ("uber_entry.cpp", "StatUberTier"),
                ("uber_entry.cpp", "133, 134, 135, 136, 137, 176")}
     bad = []
-    for f in (PLUGIN / "core-maps").rglob("*.cpp"):
+    for f in (PLUGIN / "core-events").rglob("*.cpp"):
         for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
             code = line.split("//")[0]
             if re.search(r"0x|rva::|(PartReg|CountersReg) \w+\(", code):

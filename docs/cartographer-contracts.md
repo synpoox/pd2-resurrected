@@ -7,7 +7,7 @@ The native-map base every Wave 1 lane builds on. A change to anything below is a
 | Piece | Where | Value |
 |---|---|---|
 | Native map | `files/data/global/excel/d2rloader/cartographer/maps.txt` | Five maps, Medium, level 85: `Tunneling Depths` (Cave, Loop, `m01`), `Bone Vaults` (Crypt, Branching, `m02`), `Frozen Hollows` (Ice, Winding, `m03`), `Overgrown Reach` (Jungle, Winding, `m04`), `Frostbitten Fields` (Snow, blank Shape, a documented default for Snow, `m05`). Lava and Siege are deferred (#948) |
-| Settings | `.../cartographer.txt` | `EventChance 0` (PD2 events stay in `core-maps`), `PlayerStats 1` |
+| Settings | `.../cartographer.txt` | `EventChance 0` (PD2 events stay in `core-events`), `PlayerStats 1` |
 | Level slots | `.../slots.txt` | Maze 202, MazeCrypt 203, MazeLava 204, MazeIce 205, Outdoor 206, OutdoorSnow 207, OutdoorSiege 208 |
 | Levels | `merge/ids-levels.tsv` | 202-208 `Cartographer ...` (copies of PD2 area rows); lvlmaze rows for 202-205 in `patches/070-cartographer-base.json` |
 | Item type | `merge/ids-itemtypes.tsv` | `cmap` (id 245), parent `misc`; the PD2 `map` and `tNN` types are untouched |
@@ -18,7 +18,7 @@ The native-map base every Wave 1 lane builds on. A change to anything below is a
 | Acquisition pool | patch | `Act 1-5 (H) Good` slot `Item9` names the `Cartographer Maps` class (the five maps, Picks 1, equal odds) instead of PD2's `Map Tier 1`, keeping PD2's odds (Prob 1). A class must be defined before any row that names it and patches can only append rows, so `patches/071-native-catalogue.json` renames the unreferenced row 121 (`Act 1 Melee A`) into the class. Tierless. |
 | Catalyst marker | patch, stat `map_force_event` (id 553) | `Save Param Bits` and `Send Param Bits` 6. The marker rides **layer 1** (`MarkerLayer`, [event-link](event-link.md)). Lane B ticket 10 adapts the recipe and owns the game proof that the layer survives a save. |
 
-None of it reads PD2 map items, affixes or recipes. PD2's map rows, code and hooks are cut (#964): `tools/pd2_cutmaps.py` deletes the map items, recipes, properties and drop entries, and core-maps hooks neither item spell dispatcher, so Cartographer owns both. Kept ids: the reserved levels 209-215 and stats 564-572, and the cut items' itemstatcost, itemtypes and levels rows as inert numbers (ADR 0003).
+None of it reads PD2 map items, affixes or recipes. PD2's map rows, code and hooks are cut (#964): `tools/pd2_cutmaps.py` deletes the map items, recipes, properties and drop entries, and core-events hooks neither item spell dispatcher, so Cartographer owns both. Kept ids: the reserved levels 209-215 and stats 564-572, and the cut items' itemstatcost, itemtypes and levels rows as inert numbers (ADR 0003).
 
 ## Frozen consumer contracts
 
@@ -33,12 +33,12 @@ None of it reads PD2 map items, affixes or recipes. PD2's map rows, code and hoo
 | Lane | Owns |
 |---|---|
 | A native maps | `.../cartographer/maps.txt`, `slots.txt`, new `cmap` misc rows, native affix rows and the acquisition pool in its own patch files |
-| B general rules | cube, Almanac, Catalyst recipe: `plugin/core-maps/lane-b/`, its own patch files |
-| C map events | `plugin/core-maps/lane-c/`, `mapevents.txt` |
-| D ubers | `plugin/core-maps/lane-d/` and uber data patches |
-| Shared (serial) | `merge/ids-*.tsv` ids, `patches/070-cartographer-base.json`, `cartographer.txt`, `plugin/core-maps/parts` registration, this file |
+| B general rules | cube, Almanac, Catalyst recipe: `plugin/core-events/lane-b/`, its own patch files |
+| C map events | `plugin/core-events/lane-c/`, `mapevents.txt` |
+| D ubers | `plugin/core-events/lane-d/` and uber data patches |
+| Shared (serial) | `merge/ids-*.tsv` ids, `patches/070-cartographer-base.json`, `cartographer.txt`, `plugin/core-events/parts` registration, this file |
 
-`tools/tests/test_core_maps_lanes.py` enforces the plugin allowlist.
+`tools/tests/test_core_events_lanes.py` enforces the plugin allowlist.
 
 - Appending new affix ids to `merge/ids-magic*.tsv` and `ids-rare*.tsv`: lane A, one PR at a time, always after the current maximum; lanes B, C and D ask lane A (the shared serial role during a checkpoint) instead of appending, so #948 and #949 cannot collide.
 - Uber-key recipes and uber tiers: recipe and tier behavior is lane B (core-rules); the uber-only access, rewards and fights that use them are lane D.
@@ -58,7 +58,7 @@ None of it reads PD2 map items, affixes or recipes. PD2's map rows, code and hoo
 
 ## Encounter placements (#947, frozen)
 
-`plugin/common/placements.h` is the one place AI, server/client skills, stage travel, chests and re-entry read an encounter's level and coordinates from. A consumer never holds a level number or a coordinate of its own. Data: one file per encounter in `plugin/placements/` (globbed into both `core-maps` and `core-rules`; no edit to CMake or any list). The `placements` part (order 55, lane S) logs the counts and the status command shows lookups that found nothing.
+`plugin/common/placements.h` is the one place AI, server/client skills, stage travel, chests and re-entry read an encounter's level and coordinates from. A consumer never holds a level number or a coordinate of its own. Data: one file per encounter in `plugin/placements/` (globbed into both `core-events` and `core-rules`; no edit to CMake or any list). The `placements` part (order 55, lane S) logs the counts and the status command shows lookups that found nothing.
 
 Interface (frozen; a change is a checkpoint): `Binding {encounter, level, target, Source, uber, noWaypoint}`, `Place {encounter, id, x, y, w, h, arg}` (w = h = 0 a point, else the region [x, x+w) x [y, y+h); `arg` a monstats class for a boss spot), `Reg`, `LevelOf(encounter)`, `BindingAt(level)`, `IsUberLevel`, `NoWaypointLevel`, `Find`, `Need`, `SpotOf`. `level` is what consumers read now; `target` the frozen destination. A private author flips `level` to `target` in the same PR that ships the area, and edits the places to the new geometry.
 
