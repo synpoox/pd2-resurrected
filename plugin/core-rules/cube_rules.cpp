@@ -22,6 +22,7 @@
 #include "cube_stacks.h"
 
 #include "pd2_engine.h"
+#include "socket_rules.h"
 #include "log.h"
 
 #include <D2RLPlugin/game_rules.h>
@@ -232,6 +233,7 @@ void PutSocketed(const D2RL::PluginContext*, void* native, void* user) noexcept 
 		d2r::Engine<void (*)(Unit*, uint8_t) noexcept>(SetItemPage)(s, 0xff);
 		d2r::Engine<void (*)(Unit*, Unit*, int32_t) noexcept>(StatListLink)(parent, s, 1);
 		++put.placed;
+		MarkSocketedCompact(s);  // gems socketed before #450 still carry their saved stats
 		if (put.send) {
 			Send(s, 0, 2);
 		}
