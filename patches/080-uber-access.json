@@ -1,9 +1,0 @@
-{
- "_note": "#962: Lucion Map opens Cartographer's arena 213 (patches/081-uber-arenas.json). #958: Uber Map opens Cartographer's arena 209 (patches/081-uber-arenas.json). #951 (docs/cartographer-contracts.md, lane D): the four uber keys take item spell 19, a free D2R entry core-events' uberkey part serves (plugin/core-events/uber_entry.cpp). Cartographer owns the item spell dispatchers and spell 16, so a key on 16 reached no handler. Their len stays the port's level (138, 160, 184), read through placements; the Uber Trist Map opens D2R's arena 136 (#957).",
- "ops": [
-  {"op": "set", "table": "misc", "bank": "excel", "key": "Uber Map", "set": {"pSpell": "19", "len": "209"}},
-  {"op": "set", "table": "misc", "bank": "excel", "key": "Rathma Map", "set": {"pSpell": "19"}},
-  {"op": "set", "table": "misc", "bank": "excel", "key": "Lucion Map", "set": {"pSpell": "19", "len": "213"}},
-  {"op": "set", "table": "misc", "bank": "excel", "key": "Uber Trist Map", "set": {"pSpell": "19", "len": "136"}}
- ]
-}

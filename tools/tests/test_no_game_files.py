@@ -11,8 +11,7 @@ EXT = {".mpq", ".casc", ".idx", ".exe", ".dll", ".pdb", ".dmp", ".mdmp", ".d2s",
 CASC = re.compile(r"(^|/)(data\.\d{3}|\.build\.info|shmem)$", re.I)
 TOP = {".claude", ".github", ".gitignore", ".gitattributes", ".gitmodules", "AGENTS.md", "CHANGELOG.md", "GLOSSARY.md",
        "README.md", "changelog.d", "companions", "docs", "files", "merge", "mod.json", "pd2-baseline.json",
-       "pd2-import.txt", "plugin", "release.toml", "tests", "third_party", "tools",
-       "patches"}  # Part 2 of #1100 removes patches
+       "pd2-import.txt", "plugin", "release.toml", "tests", "third_party", "tools", "check_public.allow"}
 
 
 def offenders(paths: list[str]) -> list[str]:
@@ -23,9 +22,8 @@ def offenders(paths: list[str]) -> list[str]:
 class NoGameFiles(unittest.TestCase):
     def test_rules(self):
         bad = ["pd2-data/x.txt", "generated/data/a.txt", "a/b.d2s", "x/data.012", "x/.build.info", "out/data/a.txt",
-               "import/a.txt", "dumps/D2R.DMP", "plugin/core.dll", "newtop/a.txt", "files/other/a.txt"]
-        good = ["files/data/global/excel/skills.txt", "files/data/hd/x.sprite", "merge/art/items/a.png", "tools/x.py",
-                "patches/010-a.json"]
+               "import/a.txt", "dumps/D2R.DMP", "plugin/core.dll", "newtop/a.txt", "files/other/a.txt", "patches/010-a.json"]
+        good = ["files/data/global/excel/skills.txt", "files/data/hd/x.sprite", "merge/art/items/a.png", "tools/x.py"]
         self.assertEqual(offenders(bad + good), bad)
 
     def test_tracked_tree(self):

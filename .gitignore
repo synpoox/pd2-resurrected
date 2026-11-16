@@ -1,4 +1,4 @@
-# PD2 data is extracted and merged locally, never committed (ADR 0002)
+# pd2-data/ and generated/ are local intermediates of tools/pd2_import.py; the mod data is committed in files/data (ADR 0007)
 pd2-data/
 generated/
 out/

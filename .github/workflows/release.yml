@@ -1,6 +1,6 @@
 name: release
-# The full build and the release 7z (issue #109). Runs only on the owner's self-hosted runner: it needs the PD2 install
-# in pd2-baseline.json and a D2R install, which never go to GitHub (ADR 0002). Run it by hand (Actions > release > Run
+# The full build and the release 7z (issue #109). Runs only on the owner's self-hosted runner: it needs a D2R install,
+# which never goes to GitHub (ADR 0007). Run it by hand (Actions > release > Run
 # workflow). A green build publishes a GitHub release v<mod.json version>, marked Latest so the repo page shows it, with
 # the 7z and SHA256SUMS, and keeps them as a workflow artifact too. Runner setup: README.md.
 on:
@@ -29,11 +29,8 @@ jobs:
         run: py -3 -m unittest discover -s tools/tests
       - name: Plugins
         run: powershell -ExecutionPolicy Bypass -File plugin\build.ps1
-      - name: Merged data
+      - name: Companions and build
         run: |
-          py -3 tools/pd2_extract.py; if ($LASTEXITCODE) { throw "pd2_extract failed" }
-          py -3 -m modkit fetch --prefix data/global/animdata.d2; if ($LASTEXITCODE) { throw "modkit fetch failed" }
-          py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
           py -3 tools/companions.py fetch; if ($LASTEXITCODE) { throw "companions fetch failed" }
           py -3 -m modkit build . --no-validate; if ($LASTEXITCODE) { throw "modkit build failed" }
       - name: Validation (known errors, #171; does not block the release)

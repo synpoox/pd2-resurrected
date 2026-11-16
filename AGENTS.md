@@ -38,8 +38,9 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 
 - Game slots (separate game copies for a test, Slot2-5 here) and how to set one up: `docs/agents/game-slots.md`.
 - The game-check recipe (lock, install, cheats, screenshots, unlock, worktree hygiene): `docs/agents/game-check.md`. Remove a worktree only with `tools/worktree_remove.ps1` (never `git worktree remove` or `rm -r`: they follow the `pd2-data` junction).
-- `pd2_extract.py` and `pd2_merge.py` reuse the machine-wide cache in `C:\pd2r-cache` (game-slots.md, "Shared cache"):
-  run them as usual, and don't copy `pd2-data/`, `generated/` or `out/` between worktrees. `pd2-data` is the only junction.
+- The mod data is committed in `files/data/` and its tables are the source (ADR 0007): a data change edits the table
+  or JSON there directly; never add a JSON patch. `install.ps1 -Data .` installs it with no extract or merge. Don't
+  keep a `generated/` folder in a worktree (install refuses it); `pd2-data` is the only junction.
 - **Read `d2rAI-toolkit/knowledge/cheat-commands.md` before any in-game test.** It lists every D2RLoader console cheat command (spawn items, monsters and objects, set stats and skills, go to any level, unlock waypoints, god mode, and more) and what the item spawn lines did in game: spawn syntax and quality, `idall`, durability reading 0 after a reload, `gold`, cursor and pickup hints. Use them instead of playing to the spot.
 - **Agents may run any in-game check, console-driven or not**, but prefer the console (clicking and movement are hard for agents). If a check runs past 10 minutes with no significant progress on what it checks, the agent stops, unlocks its slot, and a new `ready-for-human` issue hands the game check to the owner, with the steps left and what the agent already verified.
 - PD2's uniques for `cheat uniques <row>` (zero-based rows in the merged `uniqueitems.txt`, `out/data/global/excel/`): Gull 39, Pelta Lunata 94, Goblin Toe 110.

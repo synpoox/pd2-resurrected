@@ -1,0 +1,48 @@
+name	version	itype1	itype2	itype3	itype4	itype5	itype6	itype7	etype1	etype2	etype3	etype4
+Beast	0	armo	weap	misc	map							
+Eagle	0	armo	weap	misc	map							
+Raven	0	armo	weap	misc	map							
+Viper	0	armo	weap	misc	map							
+GhoulRI	0	armo	weap	misc	map							
+Skull	0	armo	weap	misc	map							
+Blood	0	armo	weap	misc	map							
+Dread	0	armo	weap	misc	map							
+Doom	0	armo	weap	misc	map							
+Grim	0	armo	weap	misc	map							
+Bone	0	armo	weap	misc	map							
+Death	0	armo	weap	misc	map							
+Shadow	0	armo	weap	misc	map							
+Storm	0	armo	weap	misc	map							
+Rune	0	armo	weap	misc	map							
+PlagueRI	0	armo	weap	misc	map							
+Stone	0	armo	weap	misc	map							
+Wraithra	0	armo	weap	misc	map							
+Spirit	0	armo	rod									
+Storm	0	armo	weap									
+Demon	0	armo	weap									
+Cruel	0	armo	weap									
+Empyrion	0	rod										
+Bramble	0	armo	weap									
+Pain	0	armo	weap									
+Loath	0	armo	weap									
+Glyph	0	armo	weap									
+Imp	0	armo	weap									
+Fiendra	0	armo	weap									
+Hailstone	0	armo	weap									
+Gale	0	armo	weap									
+Dire	0	armo	weap									
+Soul	0	armo	weap									
+Brimstone	0	armo	weap									
+Corpse	0	armo	weap									
+Carrion	0	armo	weap									
+Holocaust	0	tors	helm	shld	swor	axe						
+Havoc	0	armo	weap	misc								
+Bitter	0	armo	weap	misc								
+Entropy	0	ring	amul									
+Chaos	0	ring	amul									
+Order	0	ring	amul	scep								
+Rule	0	rod										
+Warp	0											
+Rift	0											
+Corruption	0	ring	amul									
+Labyrinth	0	cmap										
