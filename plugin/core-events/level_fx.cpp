@@ -33,6 +33,7 @@ auto ForEachClient(Game* game, F&& f) noexcept -> void {
 
 }  // namespace
 
+// The packets are documented in the d2rAI-toolkit's knowledge/d2r-93847-addresses.md, "Level packets: act darkness (0x53) and level sound (0x2c)".
 // PD2 0x1037dc70 (game, act, on): the act's eclipse (1.13c D2Common #10337 on, #10895 off), switched once, and packet
 // 0x53 {act, 5, on} to every client in game, as PD2 sends it (D2R's client reads the act as the light period)
 

@@ -5,6 +5,7 @@
 
 #include <cstdint>
 
+// Packets 0x53 and 0x2c: the d2rAI-toolkit's knowledge/d2r-93847-addresses.md, "Level packets: act darkness (0x53) and level sound (0x2c)".
 // PD2 0x1037dc70: switches the darkness (the act's eclipse, packet 0x53) of `unit`'s act for every client in game.
 auto SetDarkness(d2r::Game* game, d2r::Unit* unit, bool on) noexcept -> void;
 // SetDarkness for the act of `level`, found through a player in it (PD2 passes the level's act). False when no
