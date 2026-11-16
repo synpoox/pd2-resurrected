@@ -1,6 +1,8 @@
 """core-events game checks for d2rAI-toolkit's testing/ framework (game_checks.py).
 
 uber-scaling (#347, docs/research/pd2-uber-bosses-dll.md section 4) reads <slot>/d2rloader/logs/core-maps.log.
+Environment for every command here (docs/agents/game-slots.md): MODKIT_PROJECT=pd2-resurrected, MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml, MODKIT_RUN=<lock owner>; the toolkit refuses to run without a config.
+
 Setup: tools/install.ps1 on the merged data, a level 90+ character in Hell. In game: `debug_mode`, `cheat goto 138`
 (tier 0: no key opened, so the counters read 0; for tiers 1-2, `cheat spawn dcma,inv 0`, cube the key alone once per
 tier, and right-click it at the fountain, `cheat goto 109,5074,5114`),
@@ -11,9 +13,9 @@ Passed on Slot5 (#347, level 95 Amazon, Hell): 14 monsters x1.5 at full life, Dc
 not scaled.
 
 """
-import os
 import re
 
+from check_helpers import plugin_log
 from game_checks import check
 
 PLUGIN = "core-events"  # log line prefix
@@ -27,13 +29,7 @@ SCALED = re.compile(r"uber scaling: monster (\d+) \(unit (\d+)\) in level (\d+),
 
 
 def _log(ctx) -> str:
-    path = os.path.join(ctx.cfg.slot_dir(ctx.slot), "d2rloader", "logs", f"{LOG}.log")
-    if not os.path.isfile(path):
-        ctx.skip(f"no plugin log yet: {path}")
-    with open(path, encoding="utf-8", errors="replace") as f:
-        text = f.read()
-    starts = [m.start() for m in re.finditer(rf"{PLUGIN}: \S+ loaded \(", text)]
-    return text[starts[-1]:] if starts else ""
+    return plugin_log(ctx, LOG, scope="game", skip_if_missing=True, prefix=PLUGIN)
 
 
 def expected_maxhp(maxhp: int, tier: int, boss: bool) -> int:

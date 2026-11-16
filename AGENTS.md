@@ -36,7 +36,7 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 
 ## Testing in-game
 
-- Game slots (separate game copies for a test, Slot2-5 here) and how to set one up: `docs/agents/game-slots.md`.
+- Game slots (separate game copies for a test) and how to set one up: `docs/agents/game-slots.md`. Which slots this repo may lock is the toolkit's slot registry (`~/.d2r-modkit/slots.toml`, machine config, enforced by `game_slots lock`; Slot2-5 on this machine). Name the slot every time; never `lock any`.
 - The game-check recipe (lock, install, cheats, screenshots, unlock, worktree hygiene): `docs/agents/game-check.md`. Remove a worktree only with `tools/worktree_remove.ps1` (never `git worktree remove` or `rm -r`: they follow the `pd2-data` junction).
 - The mod data is committed in `files/data/` and its tables are the source (ADR 0007): a data change edits the table
   or JSON there directly; never add a JSON patch. `install.ps1 -Data .` installs it with no extract or merge. Don't

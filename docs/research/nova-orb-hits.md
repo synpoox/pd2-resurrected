@@ -52,7 +52,7 @@ D2R's own `thunderstorm1` has no hit functions, so on vanilla D2R data a Thunder
 ## Game check
 
 `tests/game/nova_orb_checks.py` (`thunder-storm-nova`) casts Thunder Storm next to monsters and counts the
-`thunderstormnova` client missiles each bolt leaves, read from game memory by `tests/game/missile_probe.py` (the client
+`thunderstormnova` client missiles each bolt leaves, read from game memory by the toolkit's `testing/unit_probe.py` (the client
 missile hash table at `0x2a25d10`, 128 buckets keyed `guid & 0x7f`, next pointer at unit `+0x158`). The expected count
 comes from PD2's `cHitPar1`.
 
