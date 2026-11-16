@@ -733,16 +733,16 @@ Flying Scimitar (N)			1					95	Act 2 (N) Good	45	scm	376	9sm	482																
 Flying Scimitar (H)			1					95	Act 2 (H) Good	45	scm	105	9sm	271	7sm	482																						0
 Mephisto			7	983	983	983	1024	0	gld,mul=1280	76	Act 4 Equip A	799	Act 4 Junk	76	Act 4 Good	46																						0
 Mephisto (N)			7	983	983	983	1024	0	gld,mul=1536	76	Act 4 (N) Equip A	799	Act 4 (N) Junk	76	Act 4 (N) Good	46	ceh	15																				0
-Mephisto (H)			7	983	983	983	1024	0	gld,mul=2048	75	Act 4 (H) Equip A	787	Act 4 (H) Junk	75	Act 4 (H) Good	45	ceh	15																				0
+Mephisto (H)			7	983	983	983	1024	0	gld,mul=2048	75	Act 4 (H) Equip A	787	Act 4 (H) Junk	75	Act 4 (H) Good	45	ceh	15	dcso	7																		0
 Mephistoq			7	993	993	1024	1024	0	Act 4 Equip A	945	Act 4 Good	54																										0
 Mephistoq (N)			7	993	993	1024	1024	0	Act 4 (N) Equip A	945	Act 4 (N) Good	54	ceh	17																								0
-Mephistoq (H)			7	993	993	1024	1024	0	Act 4 (H) Equip A	928	Act 4 (H) Good	53	ceh	17																								0
+Mephistoq (H)			7	993	993	1024	1024	0	Act 4 (H) Equip A	928	Act 4 (H) Good	53	ceh	17	dcso	7																						0
 Diablo			7	983	983	983	1024	0	gld,mul=1280	76	Act 5 Equip A	799	Act 5 Junk	76	Act 5 Good	46																						0
 Diablo (N)			7	983	983	983	1024	0	gld,mul=1536	76	Act 5 (N) Equip A	799	Act 5 (N) Junk	76	Act 5 (N) Good	46	bet	15																				0
-Diablo (H)			7	983	983	983	1024	0	gld,mul=2048	75	Act 5 (H) Equip A	787	Act 5 (H) Junk	75	Act 5 (H) Good	45	bet	15																				0
+Diablo (H)			7	983	983	983	1024	0	gld,mul=2048	75	Act 5 (H) Equip A	787	Act 5 (H) Junk	75	Act 5 (H) Good	45	bet	15	dcso	7																		0
 Diabloq			7	993	993	1024	1024	0	Act 5 Equip A	945	Act 5 Good	54																										0
 Diabloq (N)			7	993	993	1024	1024	0	Act 5 (N) Equip A	945	Act 5 (N) Good	54	bet	17																								0
-Diabloq (H)			7	993	993	1024	1024	0	Act 5 (H) Equip A	928	Act 5 (H) Good	53	bet	17																								0
+Diabloq (H)			7	993	993	1024	1024	0	Act 5 (H) Equip A	928	Act 5 (H) Good	53	bet	17	dcso	7																						0
 Summoner			5	900	900	972	1024	4	gld,mul=1280	248	Act 2 Equip C	414	Act 3 Junk	138	Act 2 Good	82	Act 3 Magic A	110																				0
 Summoner (N)			5	900	900	972	1024	4	gld,mul=1536	248	Act 2 (N) Equip C	414	Act 3 (N) Junk	138	Act 2 (N) Good	82	Act 3 (N) Magic A	110																				0
 Summoner (H)			5	900	900	972	1024	4	gld,mul=2048	242	Act 2 (H) Equip C	403	Act 3 (H) Junk	134	Act 2 (H) Good	80	Act 3 (H) Magic A	107	pk2	27																		0
@@ -772,10 +772,10 @@ Nihlathak (N)			5	900	900	900	1024	3	gld,mul=1536	340	Act 5 (N) Equip B	461	Act 
 Nihlathak (H)			5	900	900	900	1024	2	gld,mul=2048	332	Act 5 (H) Equip B	451	Act 5 (H) Junk	71	Act 5 (H) Good	71	pk3	24																				0
 Baal			7	983	983	983	1024	0	gld,mul=1280	76	Act 1 (N) Equip A	799	Act 1 (N) Junk	76	Act 1 (N) Good	46																						0
 Baal (N)			7	983	983	983	1024	0	gld,mul=1536	76	Act 1 (H) Equip A	799	Act 1 (H) Junk	76	Act 1 (H) Good	46	fed	15																				0
-Baal (H)			7	983	983	983	1024	0	gld,mul=2048	75	Act 5 (H) Equip B	787	Act 5 (H) Junk	75	Act 5 (H) Good	45	fed	15																				0
+Baal (H)			7	983	983	983	1024	0	gld,mul=2048	75	Act 5 (H) Equip B	787	Act 5 (H) Junk	75	Act 5 (H) Good	45	fed	15	dcso	11																		0
 Baalq			7	993	993	1024	1024	0	Act 1 (N) Equip A	945	Act 1 (N) Good	54																										0
 Baalq (N)			7	993	993	1024	1024	0	Act 1 (H) Equip A	945	Act 1 (H) Good	54	fed	17																								0
-Baalq (H)			7	993	993	1024	1024	0	Act 5 (H) Equip B	928	Act 5 (H) Good	53	fed	17																								0
+Baalq (H)			7	993	993	1024	1024	0	Act 5 (H) Equip B	928	Act 5 (H) Good	53	fed	17	dcso	11																						0
 Blood Raven			5	800	800	972	1024	3	gld,mul=1280	340	Act 1 Equip B	461	Act 1 Junk	121	Act 1 Good	121																						0
 Blood Raven (N)			5	800	800	972	1024	3	gld,mul=1536	340	Act 1 (N) Equip B	461	Act 1 (N) Junk	121	Act 1 (N) Good	121																						0
 Blood Raven (H)			5	800	800	972	1024	3	gld,mul=2048	340	Act 1 (H) Equip B	461	Act 1 (H) Junk	121	Act 1 (H) Good	121	pk1	26																				0
@@ -879,6 +879,10 @@ Map Boss T1		85	5	983	983	983	1024	3	Act 5 (H) Equip C	58	Act 5 (H) Good	4
 Map Boss T2		85	5	983	983	983	1024	3	Act 5 (H) Equip C	58	Act 5 (H) Good	4																										
 Map Boss T3		85	5	983	983	983	1024	3	Act 5 (H) Equip C	58	Act 5 (H) Good	4																										
 Map Boss T4		85	5	983	983	983	1024	3	Act 5 (H) Equip C	58	Act 5 (H) Good	4																										
+Map Blood Drop			1					8	dcbl	1																												
+Map Boss T1 Blood		85	-2						Map Boss T1	1	Map Blood Drop	1																										
+Map Boss T2 Blood		85	-2						Map Boss T2	1	Map Blood Drop	1																										
+Map Boss T3 Blood		85	-2						Map Boss T3	1	Map Blood Drop	1																										
 Cow King			5	850	983	983	1024	0	Act 1 Uitem C	1	Act 1 Melee B	2																										0
 Cow King (N)			5	850	983	983	1024	0	Act 1 (H) Uitem C	1	Act 1 (N) Melee B	2																										0
 Cow King (H)			5	850	983	983	1024	0	Act 1 (H) Uitem C	1	Act 1 (H) Melee B	2																										0
@@ -1292,10 +1296,10 @@ Mephisto Desecrated C	22	48	7	983	983	983	1024	15	"gld,mul=1280"	5	Act 3 (N) Equ
 Mephisto (N) Desecrated A	22	59	7	983	983	983	1024	15	"gld,mul=1536"	5	Act 4 (N) Equip B	52	Act 4 (N) Junk	5	Act 4 (N) Good	3																						0
 Mephisto (N) Desecrated B	22	66	7	983	983	983	1024	15	"gld,mul=1536"	5	Act 5 (N) Equip C	52	Act 5 (N) Junk	5	Act 5 (N) Good	3																						0
 Mephisto (N) Desecrated C	22	73	7	983	983	983	1024	15	"gld,mul=1536"	5	Act 3 (H) Equip A	52	Act 3 (H) Junk	5	Act 3 (H) Good	3																						0
-Mephisto Item (H) Desecrated A			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 4 (H) Equip B	110	Act 4 (H) Junk	11	Act 4 (H) Good	6	ceh	3	Ancient Statue 3	2																		0
-Mephisto Item (H) Desecrated B			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 5 (H) Equip A	110	Act 5 (H) Junk	11	Act 5 (H) Good	6	ceh	3	Ancient Statue 3	2																		0
-Mephisto Item (H) Desecrated C			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 5 (H) Equip B	110	Act 5 (H) Junk	11	Act 5 (H) Good	6	ceh	3	Ancient Statue 3	2																		0
-Mephisto Item (H) Desecrated D			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 5 (H) Equip C	110	Act 5 (H) Junk	11	Act 5 (H) Good	6	ceh	3	Ancient Statue 3	2																		0
+Mephisto Item (H) Desecrated A			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 4 (H) Equip B	110	Act 4 (H) Junk	11	Act 4 (H) Good	6	ceh	3	Ancient Statue 3	2	dcso	1																0
+Mephisto Item (H) Desecrated B			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 5 (H) Equip A	110	Act 5 (H) Junk	11	Act 5 (H) Good	6	ceh	3	Ancient Statue 3	2	dcso	1																0
+Mephisto Item (H) Desecrated C			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 5 (H) Equip B	110	Act 5 (H) Junk	11	Act 5 (H) Good	6	ceh	3	Ancient Statue 3	2	dcso	1																0
+Mephisto Item (H) Desecrated D			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 5 (H) Equip C	110	Act 5 (H) Junk	11	Act 5 (H) Good	6	ceh	3	Ancient Statue 3	2	dcso	1																0
 Mephisto (H) Desecrated A	22	87	-1					0	Mephisto Item (H) Desecrated A	1																												0
 Mephisto (H) Desecrated B	22	90	-1					0	Mephisto Item (H) Desecrated B	1																												0
 Mephisto (H) Desecrated C	22	93	-1					0	Mephisto Item (H) Desecrated C	1																												0
@@ -1305,8 +1309,8 @@ Diablo Desecrated B	23	48	7	983	983	983	1024	15	"gld,mul=1280"	5	Act 3 (N) Equip
 Diablo (N) Desecrated A	23	62	7	983	983	983	1024	15	"gld,mul=1536"	5	Act 5 (N) Equip A	52	Act 5 (N) Junk	5	Act 5 (N) Good	3																						0
 Diablo (N) Desecrated B	23	67	7	983	983	983	1024	15	"gld,mul=1536"	5	Act 1 (H) Equip A	52	Act 1 (H) Junk	5	Act 1 (H) Good	3																						0
 Diablo (N) Desecrated C	23	73	7	983	983	983	1024	15	"gld,mul=1536"	5	Act 3 (H) Equip A	52	Act 3 (H) Junk	5	Act 3 (H) Good	3																						0
-Diablo Item (H) Desecrated A			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 5 (H) Equip B	110	Act 5 (H) Junk	11	Act 5 (H) Good	6	bet	3	Ancient Statue 4	2																		0
-Diablo Item (H) Desecrated B			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 5 (H) Equip C	110	Act 5 (H) Junk	11	Act 5 (H) Good	6	bet	3	Ancient Statue 4	2																		0
+Diablo Item (H) Desecrated A			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 5 (H) Equip B	110	Act 5 (H) Junk	11	Act 5 (H) Good	6	bet	3	Ancient Statue 4	2	dcso	1																0
+Diablo Item (H) Desecrated B			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 5 (H) Equip C	110	Act 5 (H) Junk	11	Act 5 (H) Good	6	bet	3	Ancient Statue 4	2	dcso	1																0
 Diablo (H) Desecrated A	23	94	-1					0	Diablo Item (H) Desecrated A	1																												0
 Diablo (H) Desecrated B	23	96	-1					0	Diablo Item (H) Desecrated B	1																												0
 Summoner Desecrated A	24	18	5	900	900	972	1024	19	"gld,mul=1280"	9	Act 2 Equip C	15	Act 3 Junk	5	Act 2 Good	3	Act 3 Magic A	4																				0
@@ -1371,7 +1375,7 @@ Nihlathak Item (H) Desecrated			5	900	900	900	1024	19	"gld,mul=2048"	14	Act 5 (H
 Nihlathak (H) Desecrated	28	95	-1						Nihlathak Item (H) Desecrated	1																												0
 Baal Desecrated	29	60	7	983	983	983	1024	15	"gld,mul=1280"	5	Act 3 (N) Equip A	52	Act 3 (N) Junk	5	Act 3 (N) Good	3																						0
 Baal (N) Desecrated	29	75	7	983	983	983	1024	15	"gld,mul=1536"	5	Act 3 (H) Equip A	52	Act 3 (H) Junk	5	Act 3 (H) Good	3																						0
-Baal Item (H) Desecrated			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 5 (H) Equip C	110	Act 5 (H) Junk	11	Act 5 (H) Good	6	fed	3	Ancient Statue 5	2																		0
+Baal Item (H) Desecrated			7	983	983	983	1024	33	"gld,mul=2048"	11	Act 5 (H) Equip C	110	Act 5 (H) Junk	11	Act 5 (H) Good	6	fed	3	Ancient Statue 5	2	dcso	2																0
 Baal (H) Desecrated	29	99	-1					0	Baal Item (H) Desecrated	1																												0
 Blood Raven Desecrated A	30	10	5	800	800	972	1024	19	"gld,mul=1280"	14	Act 1 Equip C	19	Act 1 Junk	5	Act 1 Good	3																						0
 Blood Raven Desecrated B	30	29	5	800	800	972	1024	19	"gld,mul=1280"	14	Act 4 Equip B	19	Act 4 Junk	5	Act 4 Good	3																						0

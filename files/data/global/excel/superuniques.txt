@@ -67,8 +67,8 @@ Baal Subject 3	Baal Subject 3	baalhighpriest	63		17	0	0	5	5	0	1		36	36	36	Act 5 
 Baal Subject 4	Baal Subject 4	venomlord	64		6	0	0	8	8	0	1		20	20	20	Act 5 Champ C		Act 5 (N) Champ C		Act 5 (H) Champ C	Act 5 (H) Champ C Desecrated	0
 Baal Subject 5	Baal Subject 5	baalminion1	65		27	0	0	5	5	0	1		20	20	20	Act 5 Champ C		Act 5 (N) Champ C		Act 5 (H) Champ C	Act 5 (H) Champ C Desecrated	0
 Wisp Boss	Wisp Boss	willowispboss	66		15	28	8	4	4	0	1		28	28	28	Nihlathak		Nihlathak (N)		Nihlathak (H)		
-cartoboss:King_20Leoric	LeoricBoss	leoricMapBoss	67		0	0	0	0	0	1	0		11	11	11	Map Boss T3		Map Boss T3		Map Boss T3	Map Boss T3	0
-cartoboss:The_20Guardian	LibraryBoss	doomknight3LibraryBoss	68		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2	Map Boss T2	0
-cartoboss:Nathkill_20The_20Numb	IceBoss	IceBoss	69		0	0	0	0	0	1	0		11	11	11	Map Boss T1		Map Boss T1		Map Boss T1	Map Boss T1	0
-cartoboss:The_20Great_20Worm	torajanBoss	torajanBoss	70		0	0	0	0	0	1	0		11	11	11	Map Boss T1		Map Boss T1		Map Boss T1	Map Boss T1	0
-cartoboss:Shattered_20Soul	CanyonBoss	CanyonBoss	71		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2	Map Boss T2	0
+cartoboss:King_20Leoric	LeoricBoss	leoricMapBoss	67		0	0	0	0	0	1	0		11	11	11	Map Boss T3		Map Boss T3		Map Boss T3 Blood	Map Boss T3	0
+cartoboss:The_20Guardian	LibraryBoss	doomknight3LibraryBoss	68		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2 Blood	Map Boss T2	0
+cartoboss:Nathkill_20The_20Numb	IceBoss	IceBoss	69		0	0	0	0	0	1	0		11	11	11	Map Boss T1		Map Boss T1		Map Boss T1 Blood	Map Boss T1	0
+cartoboss:The_20Great_20Worm	torajanBoss	torajanBoss	70		0	0	0	0	0	1	0		11	11	11	Map Boss T1		Map Boss T1		Map Boss T1 Blood	Map Boss T1	0
+cartoboss:Shattered_20Soul	CanyonBoss	CanyonBoss	71		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2 Blood	Map Boss T2	0
