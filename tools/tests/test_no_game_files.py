@@ -11,7 +11,7 @@ EXT = {".mpq", ".casc", ".idx", ".exe", ".dll", ".pdb", ".dmp", ".mdmp", ".d2s",
 CASC = re.compile(r"(^|/)(data\.\d{3}|\.build\.info|shmem)$", re.I)
 TOP = {".claude", ".github", ".gitignore", ".gitattributes", ".gitmodules", "AGENTS.md", "CHANGELOG.md", "GLOSSARY.md",
        "README.md", "changelog.d", "companions", "docs", "files", "merge", "mod.json", "pd2-baseline.json",
-       "pd2-import.txt", "plugin", "release.toml", "tests", "third_party", "tools", "check_public.allow"}
+       "pd2-import.txt", "plugin", "release.toml", "tests", "third_party", "tools", "check_public.allow", "ruff.toml"}
 
 
 def offenders(paths: list[str]) -> list[str]:
