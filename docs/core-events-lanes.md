@@ -46,6 +46,7 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 | rathma_ai.cpp, rathma_ai.h | D | |
 | rathma_life.cpp, rathma_life.h | D | |
 | arena_spots.cpp, arena_spots.h | D | Named spots of Cartographer's fixed arenas, read through `cartographer.arena.v1` (#958); the part (57) keeps the context and acquires the service at first use. |
+| test_kill.cpp, test_kill.h | S | Game-check aid: `kill <class>` and `life <pct> unit <id>` run on the game thread (shared, no part). |
 | dclone_ai.cpp, dclone_ai.h | D | Dclone and his trapped souls. Its install also registers the Nihlathak AI (C), right after the souls, so the part's log line stays one. |
 
 ## Cross-lane dependencies (frozen contracts)
