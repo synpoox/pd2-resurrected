@@ -1,2 +1,3 @@
-#### Fixed
-- Fixed a crash entering levels such as the Cow Level with the uber monster scaling hook.
+#### Fixes
+
+- Fixed a crash entering the Cow Level and other levels, in the uber monster scaling.
