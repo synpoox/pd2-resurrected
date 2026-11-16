@@ -59,7 +59,7 @@ if ($strays -and -not $KeepExtras) {
 $repoMod = (Get-Content (Join-Path $PSScriptRoot "..\mod.json") -Raw | ConvertFrom-Json).name
 $stale = @(Get-ChildItem (Join-Path $Game "mods\$repoMod\d2rloader\plugins") -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "core-*.dll" -or $_.Name -eq "cartographer.dll" })
 if ($stale) {
-    $backup = Join-Path "C:\D2RTestSlots\backups\stale-mod-plugins-$(Get-Date -Format yyyy-MM-dd)" (Split-Path $Game -Leaf)
+    $backup = Join-Path "C:\D2RTestSlots\backups\stale-mod-plugins-$(Get-Date -Format yyyy-MM-dd-HHmmss)" (Split-Path $Game -Leaf)
     New-Item -ItemType Directory -Force $backup | Out-Null
     foreach ($f in $stale) {
         Move-Item -LiteralPath $f.FullName (Join-Path $backup $f.Name) -Force
