@@ -194,6 +194,8 @@ class StageTests(unittest.TestCase):
         (comp / "d2rloader/plugins/x.dll").write_bytes(b"companion")
         (comp / "d2rloader/config").mkdir()
         (comp / "d2rloader/config/filter.json").write_text("{}")
+        (root / "companions/cartographer").mkdir(parents=True)
+        (root / "companions/cartographer/signatures.txt").write_text("sig")
         build = root / "plugin/build/Release"
         build.mkdir(parents=True)
         for name in release.PLUGINS:
@@ -212,6 +214,7 @@ class StageTests(unittest.TestCase):
                 self.assertEqual(json.loads((mod / f).read_text()), {"name": "Mod", "savepath": "Mod/"})
             self.assertEqual(json.loads((mod / "d2rloader/metadata.json").read_text())["metadata"]["modVersion"],
                              "1.0.0")
+            self.assertEqual((mod / "Mod.mpq/data/global/excel/d2rloader/cartographer/signatures.txt").read_text(), "sig")  # #987
             toml = (mod / "d2rloader/config/d2rloader.toml").read_text()
             self.assertIn('mode = "extended"', toml)
             self.assertIn("item_stat_ranges = true", toml)

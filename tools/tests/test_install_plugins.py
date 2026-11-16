@@ -11,6 +11,11 @@ class KnownPlugins(unittest.TestCase):
         ours = re.search(r"^\$ours = @\((.*)\)", SCRIPT, re.M).group(1)
         self.assertIn('"cartographer.dll"', ours)
 
+    def test_moves_stale_mod_plugins_and_installs_signatures(self):  # #970, #987
+        for needle in (r"mods\$repoMod\d2rloader\plugins", "stale-mod-plugins",
+                       r"cartographer\signatures.txt", r"excel\d2rloader\cartographer"):
+            self.assertIn(needle, SCRIPT)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -55,6 +55,18 @@ if ($strays -and -not $KeepExtras) {
     }
 }
 
+# Plugins are game-wide: our plugin DLLs (core-*, cartographer; companions stay) left in <Game>\mods\<mod>\d2rloader\plugins shadows the fresh install (#970): move it too.
+$repoMod = (Get-Content (Join-Path $PSScriptRoot "..\mod.json") -Raw | ConvertFrom-Json).name
+$stale = @(Get-ChildItem (Join-Path $Game "mods\$repoMod\d2rloader\plugins") -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "core-*.dll" -or $_.Name -eq "cartographer.dll" })
+if ($stale) {
+    $backup = Join-Path "C:\D2RTestSlots\backups\stale-mod-plugins-$(Get-Date -Format yyyy-MM-dd)" (Split-Path $Game -Leaf)
+    New-Item -ItemType Directory -Force $backup | Out-Null
+    foreach ($f in $stale) {
+        Move-Item -LiteralPath $f.FullName (Join-Path $backup $f.Name) -Force
+        Write-Output "moved stale mod plugin $($f.Name) -> $backup"
+    }
+}
+
 if ($Data) {
     $Data = (Resolve-Path $Data).Path
     $mod = (Get-Content (Join-Path $Data "mod.json") -Raw | ConvertFrom-Json).name
@@ -80,6 +92,14 @@ if ($Data) {
             if ($LASTEXITCODE -ne 0) { throw "modkit install failed ($LASTEXITCODE)" }
         }
     } finally { Pop-Location }
+    # Cartographer's cube signatures beside its tables keep the cube executor with core-rules (#987); companions.py overlay() does the same.
+    $sig = Join-Path $PSScriptRoot "..\companions\cartographer\signatures.txt"
+    if (Test-Path $sig) {
+        $tables = Join-Path $root "$mod.mpq\data\global\excel\d2rloader\cartographer"
+        New-Item -ItemType Directory -Force $tables | Out-Null
+        Copy-Item $sig $tables -Force
+        Write-Output "installed signatures.txt -> $tables"
+    }
     foreach ($f in $saved.Keys) {
         $info = Get-Content $f -Raw | ConvertFrom-Json
         $info.savepath = $saved[$f]
