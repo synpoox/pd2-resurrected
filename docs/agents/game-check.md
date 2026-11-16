@@ -4,7 +4,7 @@ An ordered checklist, run after the PR is open (order: `AGENTS.md`, "PR order").
 file links to it. Test rules (Hell, level 90+, the 10-minute limit, cheat-commands) are in `AGENTS.md`, "Testing
 in-game". Slot details are in `docs/agents/game-slots.md`.
 
-1. **Lock a slot.** `game_slots.py status`, then `lock <N> <owner>` on a free Slot4-8 (game-slots.md, "Steps" 1-2).
+1. **Lock a slot.** `game_slots.py status`, then `lock <N> <owner>` on a free Slot2-5 (game-slots.md, "Steps" 1-2).
    No free slot: stop and file a `ready-for-agent` issue with the steps left.
 2. **Install the build** (game-slots.md, "Steps" 3-4). `plugin\build.ps1` initialises an empty `third_party/PluginSDK` submodule itself.
 3. **No DS1 pinning** (retired with the converter, #965): levels are D2R's own or Cartographer's.
