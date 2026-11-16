@@ -41,14 +41,16 @@ missile in `srvmissile` / `cltmissile`.
 srvdofunc 188 / cltdofunc 117; the table-diff gate reads PD2's rows the same way. The merged rows equal D2R's in these
 columns.
 
-## Item casts (not done)
+## Item casts
 
 PD2 rows point `ItemEffect` / `ItemCltEffect` at 187/116 (Lightning Bolt, Lightning Fury), 188/117 (Fire Bolt, Ice
-Bolt, Ice Blast, Fire Ball, Lightning, Glacial Spike, Frozen Orb, ...) and 183/10 (the novas). D2R's slots for these
-are empty and its dispatcher reads `ItemEffect` (`+0x20a`) only for an item cast with a value above 1 and a non-empty
-slot, so an item cast (Crackleshot's hit skill, Thunderstroke, "of Lightning Fury" charges) runs the skill's normal cast
-instead. It does not crash; the difference is the aim (PD2's 187 throws at the target unit's position) and the missile
-flag `0x10000`. Listed in `docs/deviations.md`.
+Bolt, Ice Blast, Fire Ball, Lightning, Glacial Spike, Frozen Orb, ...) and 183/10 (the novas). Done in #667:
+
+- Lightning Bolt and Lightning Fury: ItemEffect 187 / ItemCltEffect 116 became D2R's own item cast (slot 1), the same
+  missile from the caster at the target, without flag `0x10000` (see the deviations list).
+- 188 / 117 stay empty in D2R, so its dispatcher makes the row's missile, as PD2's do.
+- The novas: ItemEffect 183 became `SrvDoItemNova` (slot 187), PD2's ring at the target. ItemCltEffect 10 is not empty
+  in D2R: its own novas use it (`0x2b2840`), so the novas keep it.
 
 ## Game check
 

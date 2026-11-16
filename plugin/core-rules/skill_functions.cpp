@@ -2704,6 +2704,8 @@ auto CltDoNova(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 // else the caster's. D2R's do dispatcher (0x43acb0) calls ItemEffect's slot for an item cast, instead of srvdofunc.
 // approximated: PD2 also sets the ring missiles' unit flag 0x80000 (+0xc8). Only PD2's own missile collision
 // (0x103061d0 -> 0x103a9200) reads it, to key its one-hit-per-unit check by the cast; D2R's collision has no such key.
+// Why not D2R's own nova item effect (srvdo 36, 0x56df80), which also rings 64 missiles at the target: it returns 0 without a
+// target unit (PD2 falls back to the caster) and gives the missiles a calc range (PD2's ring has none).
 std::atomic<uint32_t> g_itemNovas {0};
 
 auto SrvDoItemNova(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
