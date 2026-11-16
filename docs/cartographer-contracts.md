@@ -42,7 +42,8 @@ None of it reads PD2 map items, affixes or recipes. The PD2 map rows still exist
 
 - Appending new affix ids to `merge/ids-magic*.tsv` and `ids-rare*.tsv`: lane A, one PR at a time, always after the current maximum; lanes B, C and D ask lane A (the shared serial role during a checkpoint) instead of appending, so #948 and #949 cannot collide.
 - Uber-key recipes and uber tiers: recipe and tier behavior is lane B (core-rules); the uber-only access, rewards and fights that use them are lane D.
-- Lane A's removal of PD2 map stats must keep `map_force_event` (553): it is the Catalyst marker.
+- Lane A's removal of PD2 map stats must keep `map_force_event` (553): it is the Catalyst marker. The marker needs the func 24 property `map-force-event-l` (#953).
+- Native event progress divides by the built level's real room count, not PD2's 200 (#956).
 
 `tools/tests/test_cartographer_base.py` checks the data base.
 
@@ -73,7 +74,7 @@ Reserved levels (appended in `merge/ids-levels.tsv`, so no later PR appends ther
 | 214 | `temple` | D #962 | 185 |
 | 215 | `bitterdepths` | C #960 | 198 |
 
-No bridge is justified yet (Horazon's #959 may ask for one at its checkpoint: next id 216). Frozen without a replacement arena: `miniuber1-3` = D2R levels 133-135 (vanilla, `miniubers.cpp`, bindings only), and `tristram` = D2R's Uber Tristram arena 136 with PD2's bosses (`Source::D2RTristram`, target 136; level stays 181 until D #957 flips it and adds its places to `miniubers.cpp`). `harrogath` (109) holds the Blood Fountain and the three grey re-entry portals.
+No bridge is justified (Horazon's #959 needs a second Cartographer map, which a fixed D2R level cannot be: d2r-tools#485; next free id 216). Frozen without a replacement arena: `miniuber1-3` = D2R levels 133-135 (vanilla, `miniubers.cpp`, bindings only), and `tristram` = D2R's Uber Tristram arena 136 with PD2's bosses (`Source::D2RTristram`, target 136; Tristram is now level 136 with no places (#957)). `harrogath` (109) holds the Blood Fountain and the three grey re-entry portals.
 
 Exact file ownership (a lane edits only these for its encounter; lane S owns everything else listed above):
 

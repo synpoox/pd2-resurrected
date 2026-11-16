@@ -137,6 +137,9 @@ inline constexpr uint8_t WeaponDurabilityPd2[] = {2, 5};
 // until the level is built. ActDrlg and TeleportUnit are the Outer Void's (#532) above.
 inline constexpr uint64_t DrlgLevelOf = 0x3267c0;
 inline constexpr int DrlgLevelRooms = 0x10;
+inline constexpr int RoomDrlg = 0x18;        // a room's drlg room
+inline constexpr int DrlgRoomLevel = 0x90;   // a drlg room's drlg level
+inline constexpr int DrlgRoomNext = 0x48;    // a drlg room's next room in its level's list
 inline constexpr uint64_t DrlgRoomAt = 0x3275b0;    // (drlg level, tile x, tile y) -> its drlg room holding them, or null
 inline constexpr uint64_t DrlgRoomInit = 0x3289a0;  // (dataFlag, drlg room) -> the room, built if needed
 
