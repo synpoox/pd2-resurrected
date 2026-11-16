@@ -16,14 +16,14 @@ Resolves research ticket [#28](https://github.com/synpoox/pd2-resurrected/issues
 
 | Source | What it is | Used for |
 |---|---|---|
-| `d2rAI-toolkit\pd2-data\s14-alliance\data\global\local\LNG\ENG\patchstring.tbl` | PD2's string table, extracted earlier | All PD2 counts |
+| `pd2-data\s14-alliance\data\global\local\LNG\ENG\patchstring.tbl` (a sibling folder of the repos, outside the toolkit) | PD2's string table, extracted earlier | All PD2 counts |
 | `C:\Games\PD2\ProjectD2\pd2data.mpq` | Current PD2 archive, read-only | Check that the snapshot table is the current one; list of string tables PD2 ships |
 | `C:\Games\PD2\d2data.mpq`, `d2exp.mpq`, `patch_d2.mpq` | The classic install PD2 sits beside; `Patch.txt` there lists 1.13c as the latest patch | Vanilla `string.tbl`, `expansionstring.tbl`, `patchstring.tbl` (the "changed" baseline) |
 | `C:\Games\PD2\ProjectD2\patch_d2.mpq` | PD2's own copy of the patch archive | Cross-check of the vanilla patch table |
 | `C:\Games\PD2\ProjectD2\ProjectDiablo.dll`, `BH.dll`, `PD2_EXT.dll` | PD2 engine DLLs | Printable strings only (ASCII and UTF-16), no disassembly |
 | `s14-alliance\data\global\excel\*.txt` | PD2 tables | Which table column names each key (for the file it lands in) |
-| `d2rAI-toolkit\d2r-data\93847\data\local\lng\strings\*.json`, `strings-legacy\`, `next_string_id.txt` | D2R 3.3 build 93847 strings | Comparison side, ID budget |
-| `d2rAI-toolkit\knowledge\strings.md`, `porting-classic-mods.md` section 8, `d2r-93847-addresses.md`, `d2rloader.md` | Toolkit notes | ID rules, placeholder rules, colour-code facts |
+| `data\local\lng\strings\*.json`, `strings-legacy\`, `next_string_id.txt` in the `modkit fetch` cache for build 93847 | D2R 3.3 build 93847 strings | Comparison side, ID budget |
+| [`knowledge/strings.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/strings.md), [`knowledge/porting-classic-mods.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/porting-classic-mods.md) section 8, [`knowledge/d2r-93847-addresses.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/d2r-93847-addresses.md), [`knowledge/d2rloader.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/d2rloader.md) | Toolkit notes | ID rules, placeholder rules, colour-code facts |
 
 Method: throwaway Python scripts outside the repo. The MPQ reader from the data inventory was reused with PKWARE implode support added. The toolkit has no `.tbl` reader, so a small one was written (header, index list, 17-byte hash entries; text is UTF-8). PD2's archive copy of `patchstring.tbl` now extracts: it is 197,784 bytes and its MD5 matches the snapshot file, so the snapshot is the current table.
 

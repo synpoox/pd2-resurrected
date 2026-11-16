@@ -17,9 +17,9 @@ Resolves research ticket [#2](https://github.com/synpoox/pd2-resurrected/issues/
 | Source | What it is | Used for |
 |---|---|---|
 | `C:\Games\PD2\ProjectD2` (`pd2data.mpq`, `Live\`, `Beta\`, engine DLLs, `Save\`) | Current install, read-only | Tables, DLL strings, save headers |
-| `d2rAI-toolkit\pd2-data\s14-alliance` | Older-snapshot folder | Diff against the install |
-| `d2rAI-toolkit\d2r-data\93847` | D2R 3.3 build 93847 tables | Comparison side |
-| `d2rAI-toolkit\knowledge\porting-classic-mods.md` (section 1 inventory table, section 5 function numbers), `engine-limits.md`, `saves.md` | Port notes | Table layout of this report, function-number ranges, save facts |
+| `pd2-data\s14-alliance` (a sibling folder of the repos, outside the toolkit) | Older-snapshot folder | Diff against the install |
+| the `modkit fetch` cache for build 93847 | D2R 3.3 build 93847 tables | Comparison side |
+| [`knowledge/porting-classic-mods.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/porting-classic-mods.md) (section 1 inventory table, section 5 function numbers), [`knowledge/engine-limits.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/engine-limits.md), [`knowledge/saves.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/saves.md) | Port notes | Table layout of this report, function-number ranges, save facts |
 
 Method: `pd2data.mpq` was read in memory with a throwaway script kept outside the repo (MPQ v1 with per-file encryption and PKWARE implode; 185 entries, all extracted without error except `sounds.bin` and `patchstring.tbl`, which are also unreadable by the script and so excluded). Tables were compared by header name and value sets. DLL claims come from printable strings in `ProjectDiablo.dll` and `PD2_EXT.dll`, not from disassembly.
 
