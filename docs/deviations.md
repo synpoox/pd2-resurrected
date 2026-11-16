@@ -14,7 +14,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 
 ## Features and data
 
-### Cut (27)
+### Cut (30)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -45,6 +45,9 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | PD2's panel art (26 panel DC6) | cut | each serves a cut feature or one D2R draws itself: the stash with its categories, search and tabs, the 10x8 inventory (`invchar6`), the grail, the trophy case, the controller, guild icons, the trade stash, buy and sell, the potion counter (decided in [#198](https://github.com/synpoox/pd2-resurrected/issues/198)). The controller and guild icon art comes back with [#340](https://github.com/synpoox/pd2-resurrected/issues/340) and [#339](https://github.com/synpoox/pd2-resurrected/issues/339) if they need it |  |
 | PD2 difficultylevels columns UberCodeOddsNormal, UberCodeOddsGood, UltraCodeOddsNormal, UltraCodeOddsGood and HireableBossDamagePercent | cut | D2R plays as PD2 without them (Ghidra, [UR5](https://github.com/synpoox/pd2-resurrected/issues/203)). `HireableBossDamagePercent` (50/35/25) is D2R's `MercenaryDamagePercentVSBoss` (record +0x48), which D2R already sets to 50/35/25. The code odds: their only reader in 1.13c, PD2's D2Game `0x6fcf2ab0` (rolls a picked base up to its `ubercode`, then `ultracode`), has no caller or pointer in any PD2 module, so they never act in PD2; D2R's loader (`0x30be50`) has no such fields in its 0x84-byte record |  |
 | The Gheed map event's player list | cut | PD2 files the game's players into a global set (`0x10368480`) that only its realm's game-join hooks (`0x10385460`) read; a D2R game has no realm | [#503](https://github.com/synpoox/pd2-resurrected/issues/503) |
+| PD2's map system: the map items (t1me-t3me, unique, dungeon and PvP maps), map affixes and stats, tiers, map recipes, map drops and the map areas' rules | cut | the Cartographer plugin makes maps now (epic [#942](https://github.com/synpoox/pd2-resurrected/issues/942), [#964](https://github.com/synpoox/pd2-resurrected/issues/964)). `tools/pd2_cutmaps.py` (`merge/z-maps-cut.txt`) deletes the map misc rows, cube recipes, `map*` properties and treasure-class entries; an affix or unique that used a cut property stays as a neutral row that never spawns, and the itemstatcost, itemtypes and levels rows stay as inert ids, since a save stores their numbers (ADR 0003). The plugin's stats, area, boss, Zhar, unique-map and map-drop code is deleted. Kept: the native maps, the Catalyst, Horazon's drops, the ubers with their keys, and Dclone, Lucion, Rathma, the Temple and the Bitter Depths areas until [#965](https://github.com/synpoox/pd2-resurrected/issues/965) |  |
+| Saves holding PD2 map items | cut | alpha: no save conversion. A PD2 map item in a character's stash or inventory is not read after the cut ([#964](https://github.com/synpoox/pd2-resurrected/issues/964)) |  |
+| The extra drop for kills in the uber levels, and the Zhar and Djinn levels | cut | PD2 ran it with the map-area death drops (`0x103799d0`), which are cut with the maps; the uber bosses' own drops stay ([#964](https://github.com/synpoox/pd2-resurrected/issues/964)) |  |
 
 ### Not yet (20)
 

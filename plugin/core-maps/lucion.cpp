@@ -17,7 +17,7 @@
 #include "pd2_engine.h"
 #include "log.h"
 #include "map_open.h"
-#include "map_stats.h"
+#include "corruption_roll.h"
 #include "placements.h"
 
 #include <D2RLPlugin/inventory.h>

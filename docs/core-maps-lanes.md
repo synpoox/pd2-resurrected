@@ -25,14 +25,7 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 | corruption_roll.cpp, corruption_roll.h | B | CRT roll and corruption/Desecration roll; map drops and bricks borrow them. |
 | cube_ops.cpp, cube_ops.h | B | Cube op 30 (map recipes use it, the op is generic) and the Desecration search trigger: the one owner of the cube recipe search hook. |
 | open_gate.cpp, open_gate.h | S | Counters, player level and portal maker shared by map opening and uber entry. |
-| map_open.cpp, map_open.h | A | Item spell hooks (map spell 16; left to Cartographer when it sits beside, #945), portal operate wrapper. The Almanac moved to core-rules (`plugin/core-rules/almanac.cpp`, a write of item spell use slot 14, no hook). |
-| map_stats.cpp, map_stats.h | A | |
-| map_bosses.cpp, map_bosses.h | A | |
-| map_boss_ai.cpp, map_boss_ai.h | A | |
-| map_deaths.cpp | A | Map steps of the death listener. |
-| unique_maps.cpp, unique_maps.h | A | |
-| unique_map_drops.cpp, unique_map_drops.h | A | Horazon (lane C) also calls `DropUniqueMap`. |
-| zhar.cpp, zhar.h | A | |
+| map_open.cpp, map_open.h | A | Portal operate wrapper, the uber levels' waypoint and uber scaling spawn hooks; PD2's map item spells are cut (#964), Cartographer owns the item spell dispatchers (#945). The Almanac moved to core-rules (`plugin/core-rules/almanac.cpp`, a write of item spell use slot 14, no hook). |
 | entity_pool.cpp, entity_pool.h | S | Engine pool growth, needed by any lane. |
 | level_fx.cpp, level_fx.h | C | |
 | map_events.cpp, map_events.h | C | |
@@ -56,7 +49,7 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 
 ## Cross-lane dependencies (frozen contracts)
 
-- Death listener order: uber early, map early, seed, uber drops, map roll + drop, key rolls (`death_steps.h`).
+- Death listener order: uber early, seed, uber drops, key rolls (PD2's map steps are cut, #964) (`death_steps.h`).
 - `OpenCounter`, `g_openFailed`, `OpenPortalAt` (open_gate.h): used by A (map open) and D (uber entry).
 - `g_tcMissing` (tc_roll.h): shared warning counter for the key rolls and the map rolls.
 - `DropUniqueMap` (A) is called by Horazon in C.
@@ -70,9 +63,9 @@ unused number (the test fails on a duplicate). `plugin/CMakeLists.txt` globs `co
 files in its own folder and edits neither `plugin.cpp`, `CMakeLists.txt` nor this file; only a file outside the lane
 folders (lane S, or a lane's older flat files) needs a row above and a CMake line.
 
-Orders now: cube 10 (B), open 20, stats 30 (A), mapevents 40 (C), pool 50, keys 60 (S), trist 70, lucion 80, primes 90,
-temple 100 (D), events 110 (C), lucionai 120, rathmaai 130, rathmalife 140, dcloneai 150 (D), guardianai 160 (C),
-mapbossai 170, zhar 180 (A). Counters lines: the same steps (cube 10 ... mapbossai 210), unchanged from before.
+Orders now: cube 10 (B), open 20 (A), mapevents 40 (C), pool 50, keys 60 (S), trist 70, lucion 80, primes 90,
+temple 100 (D), events 110 (C), lucionai 120, rathmaai 130, rathmalife 140, dcloneai 150 (D), guardianai 160 (C).
+Counters lines: the same steps. Orders 30, 170 and 180 (stats, mapbossai, zhar) were cut with PD2's maps (#964).
 
 ## Evidence for a PR
 

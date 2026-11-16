@@ -27,6 +27,7 @@ from typing import Callable
 
 import pd2_animdata
 import pd2_cache
+import pd2_cutmaps
 import pd2_extract
 import pd2_ids
 import pd2_items
@@ -69,6 +70,7 @@ RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
     "tables.json": pd2_tables.rule,
     "tree-backgrounds.json": pd2_skilltrees.apply,  # after tables.json (skilldesc)
     "vfx-overlays.tsv": pd2_overlays_hd.apply,  # after tables.json (overlay)
+    "z-maps-cut.txt": pd2_cutmaps.apply,  # named to run last: reads the merged monstats and superuniques (#964)
 }
 
 
