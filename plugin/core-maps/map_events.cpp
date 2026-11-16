@@ -783,7 +783,7 @@ auto MapEventsCounters(char* out, size_t size) noexcept -> void {
 
 auto ForceNextMapEvent(const char* name) noexcept -> bool {
 	static constexpr struct { const char* word; int32_t event; } Names[] = {
-		{"off", 0}, {"wanderer", DarkWanderer}, {"mendeln", Mendeln}, {"treasure", TreasureFallen}, {"gheed", Gheed}, {"altar", Altar}, {"spire", Spire},
+		{"off", 0}, {"wanderer", DarkWanderer}, {"mendeln", Mendeln}, {"treasure", TreasureFallen}, {"horazon", Horazon}, {"gheed", Gheed}, {"altar", Altar}, {"spire", Spire},
 	};
 	for (const auto& n : Names) {
 		if (std::strcmp(name, n.word) == 0) {

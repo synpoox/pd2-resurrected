@@ -9,9 +9,8 @@ SRC = Path(__file__).resolve().parents[2] / "plugin" / "core-maps"
 class AltarGuardian(unittest.TestCase):
     def test_death_not_gated_on_tier(self):
         text = (SRC / "horazon.cpp").read_text(encoding="utf-8")
-        gate = re.search(r"if \(\(tier < 0 && ([^)]*)\) \|\|", text)
-        self.assertIsNotNone(gate, "the tier gate must let the guardian through")
-        self.assertIn("AltarGuardian", gate.group(1))
+        self.assertNotIn("TierOf", text)
+        self.assertIn("AltarGuardianDied", text)
 
     def test_console_forces_altar(self):
         self.assertIn('{"altar", Altar}', (SRC / "map_events.cpp").read_text(encoding="utf-8"))
