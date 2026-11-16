@@ -1,19 +1,22 @@
-// The Dark Wanderer's boss (#1006), PD2's ProjectDiablo.dll 0x10375fe0 (the death step) and 0x10370d90 (the boss). PD2
+// The Dark Wanderer's boss (#1006), PD2's ProjectDiablo.dll 0x10375fe0 (the leave step) and 0x10370d90 (the boss). PD2
 // plays the death sound, then 85 frames later spawns a boss at the Wanderer's corpse: 1 in 3 from pool A (the map
 // bosses), else pool B (the superuniques and Izual, Blood Raven). A boss gets its max life multiplied and a stat list
 // with state `mapevent` and a damage and mastery bonus (docs/deviations.md, Dark Wanderer rows).
-// The trigger is the SDK's monster-death listener (horazon.cpp). The 85-frame wait is a game-thread callback that
-// re-queues itself each update until the due frame: no SDK service has a frame timer, and D2R's unit events take no
-// callback. shortcut: the due frame is checked each update, so the boss waits for the game thread, not a unit event.
+// The trigger is his think's leave branch, wrapped through ai_hooks (monai row 91): D2R's Wanderer never dies, he sets
+// unit flag UnitNoTreasure and goes to death mode with no kill, so the SDK's monster-death listener never fires for him.
+// The 85-frame wait is a game-thread callback that re-queues itself each update until the due frame: no SDK service has
+// a frame timer, and D2R's unit events take no callback. shortcut: the due frame is checked each update, so the boss
+// waits for the game thread, not a unit event.
 #include "wanderer.h"
 
+#include "ai_hooks.h"
 #include "corruption_roll.h"
 #include "level_fx.h"
 #include "log.h"
 
-#include <D2RLPlugin/lifecycle_events.h>
 #include <D2RLPlugin/threads.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <cstdio>
@@ -26,7 +29,9 @@ using d2r::Game;
 using d2r::Unit;
 
 constexpr int32_t DarkWandererMonster = 938;  // monstats `darkwandererMap` (PD2 921), port id
-constexpr int32_t DeathDelay = 85;            // frames from the Wanderer's death to the boss (PD2's unit timer)
+constexpr int32_t DarkWandererRow = 91;       // monai.txt `DarkWanderer`: his think is D2R's 0x5c87a0
+constexpr uint64_t AiDarkWanderer = 0x5c87a0;
+constexpr int32_t DeathDelay = 85;            // frames from the Wanderer's leave to the boss (PD2's unit timer)
 constexpr int32_t DeathSound = 705;           // darkwanderer_death
 constexpr int32_t BossState = 259;            // state `mapevent` (PD2 213)
 constexpr int32_t StatDamagePercent = 25;     // damagepercent
@@ -46,6 +51,13 @@ constexpr int32_t PoolBSuperuniques[] = {6, 11, 12, 15, 18, 20, 21, 23, 24, 36, 
 // Pool B's monsters, spawned as their monstats ids: Izual and Blood Raven
 constexpr int32_t PoolBMonsters[] = {256, 267};
 constexpr int32_t PoolBSize = static_cast<int32_t>(std::size(PoolBSuperuniques) + std::size(PoolBMonsters));
+
+// D2R's leave branch sets UnitNoTreasure and sends him to death mode in the same think: the flag appearing is the leave
+constexpr auto LeftThisThink(uint32_t before, uint32_t after) noexcept -> bool {
+	return (before & d2r::rva::UnitNoTreasure) == 0 && (after & d2r::rva::UnitNoTreasure) != 0;
+}
+static_assert(LeftThisThink(0, d2r::rva::UnitNoTreasure) && !LeftThisThink(d2r::rva::UnitNoTreasure, d2r::rva::UnitNoTreasure) &&
+              !LeftThisThink(0, 0));
 
 struct Scale {
 	int32_t mult;   // maxhp multiplier
@@ -75,10 +87,13 @@ static_assert(MasteryCount == 4 && StatMasteryFirst + MasteryCount - 1 == 332);
 
 struct Pending {
 	bool used;
-	uint32_t gameId;  // the game's id (game +0x08)
-	uint32_t unitId;  // the dead Wanderer's unit id
-	int32_t due;      // the game frame of the boss
-	uint32_t runs;    // game-thread runs without the due frame
+	uint32_t gameId;     // the game's id (game +0x08)
+	uint32_t unitId;     // the Wanderer's unit id
+	int32_t due;         // the game frame of the boss
+	uint32_t runs;       // game-thread runs without the due frame
+	int32_t x, y;        // the spot he left from
+	int32_t targetType;  // the target he had at the think's start (-1 none)
+	uint32_t targetId;   // its unit id
 };
 constexpr size_t PendingSlots = 8;
 
@@ -143,24 +158,35 @@ void Buff(Game* game, Unit* boss, bool poolA, int32_t id, uint32_t unitId, int32
 	g_bosses.fetch_add(1);
 }
 
-// PD2's up to 50 tries at the corpse's free spot: a refused superunique (already spawned this game) rolls again
-void SpawnBoss(Game* game, uint32_t unitId) noexcept {
+// PD2's up to 50 tries at the spot: a refused superunique (already spawned this game) rolls again. The spot is the
+// corpse's, or the saved spot when the corpse is gone (85 frames after a leave the corpse may be freed).
+void SpawnBoss(Game* game, const Pending& p) noexcept {
 	using namespace d2r::rva;
-	Unit* corpse = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(game, 1, unitId);
-	if (corpse == nullptr) {
-		plog::Info("wanderer: no corpse for unit %u, no boss", unitId);
-		return;
+	Unit* corpse = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(game, 1, p.unitId);
+	void* room = nullptr;
+	int32_t xy[2] = {p.x, p.y};
+	if (corpse != nullptr) {
+		room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(corpse);
+		d2r::UnitXY(corpse, &xy[0], &xy[1]);
+	} else {
+		Unit* target = p.targetType >= 0
+			? d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(game, p.targetType, p.targetId)
+			: nullptr;
+		void* near = target != nullptr ? d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(target) : nullptr;
+		room = near != nullptr ? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(near, p.x, p.y) : nullptr;
+		if (room == nullptr) {
+			plog::Info("wanderer: no corpse and no room near %d,%d, no boss", p.x, p.y);
+			return;
+		}
+		plog::Info("wanderer: corpse gone, boss at the saved spot %d,%d (target %d/%u)", p.x, p.y, p.targetType, p.targetId);
 	}
-	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(corpse);
-	int32_t xy[2] = {0, 0};
-	d2r::UnitXY(corpse, &xy[0], &xy[1]);
 	void* found = nullptr;
 	if (room != nullptr) {
 		d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(
 			FindFreeSpot)(game, room, xy, SpotSize, 0x400, &found, SpotCount, 100);
 	}
 	if (found == nullptr) {
-		plog::Info("wanderer: no free spot at the corpse, no boss");
+		plog::Info("wanderer: no free spot at the spot, no boss");
 		return;
 	}
 	const auto dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
@@ -184,14 +210,14 @@ void SpawnBoss(Game* game, uint32_t unitId) noexcept {
 		Unit* boss = d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(
 			SpawnMonsterAt)(game, found, id, xy[0], xy[1], 1, 0);
 		if (boss != nullptr) {
-			Buff(game, boss, poolA, id, unitId, attempt, frame);
+			Buff(game, boss, poolA, id, p.unitId, attempt, frame);
 			return;
 		}
 	}
 	plog::Info("wanderer: no boss after %d tries", MaxTries);
 }
 
-// Game thread: the boss at the corpse once the due frame is reached; before it, queues the next run
+// Game thread: the boss at the spot once the due frame is reached; before it, queues the next run
 void RunPending(const D2RL::PluginContext* context, void* user) noexcept {
 	(void)context;
 	const auto slot = reinterpret_cast<size_t>(user);
@@ -212,23 +238,18 @@ void RunPending(const D2RL::PluginContext* context, void* user) noexcept {
 		}
 		return;
 	}
+	const Pending due = p;
 	p.used = false;
-	SpawnBoss(game, p.unitId);
+	SpawnBoss(game, due);
 }
 
-void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::MonsterDeathEvent* event,
-                    void* userData) noexcept {
-	using D2RL::Lifecycle::UnitType;
-	(void)context;
-	(void)userData;
-	if (event == nullptr || event->monster.type != UnitType::Monster || event->monster.classId != DarkWandererMonster ||
-	    event->gameId > 0xffff) {
-		return;
-	}
-	Game* game = GameOf(event->gameId);
-	if (game == nullptr) {
-		return;
-	}
+// The leave step (PD2's 0x10375fe0 sound and timer): sound, then a pending boss for the frame 85 on
+void Leave(Game* game, Unit* unit, Unit* target) noexcept {
+	using namespace d2r::rva;
+	const auto gameId = static_cast<uint32_t>(At<uint16_t>(game, GameIdField));
+	const auto unitId = At<uint32_t>(unit, UnitIdField);
+	int32_t x = 0, y = 0;
+	d2r::UnitXY(unit, &x, &y);
 	size_t slot = PendingSlots;
 	for (size_t i = 0; i < PendingSlots && slot == PendingSlots; ++i) {
 		// a slot whose game ended is free too: the SDK drops its queued work, so it would stay used
@@ -237,53 +258,55 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 		}
 	}
 	if (slot == PendingSlots) {
-		plog::Warn("wanderer: no free slot, no boss for unit %u", event->monster.id);
+		plog::Warn("wanderer: no free slot, no boss for unit %u", unitId);
 		return;
 	}
 	PlayLevelSound(game, 0, DeathSound);
-	const int32_t due = At<int32_t>(game, d2r::rva::GameFrame) + DeathDelay;
-	g_pending[slot] = {true, event->gameId, event->monster.id, due, 0};
+	const int32_t due = At<int32_t>(game, GameFrame) + DeathDelay;
+	g_pending[slot] = {true, gameId, unitId, due, 0, x, y, target != nullptr ? At<int32_t>(target, UnitType) : -1,
+	                   target != nullptr ? At<uint32_t>(target, UnitIdField) : 0u};
 	++g_deaths;
 	if (!QueueRun(slot)) {
 		g_pending[slot].used = false;
-		plog::Warn("wanderer: could not queue the boss for unit %u", event->monster.id);
+		plog::Warn("wanderer: could not queue the boss for unit %u", unitId);
 		return;
 	}
-	plog::Info("wanderer: died, unit %u, boss due at frame %d", event->monster.id, due);
+	plog::Info("wanderer: left, unit %u at %d,%d (mode %d), boss due at frame %d", unitId, x, y,
+	           At<int32_t>(unit, UnitMode), due);
+}
+
+// His think, wrapped through ai_hooks: D2R's think runs, and when it sends him away (UnitNoTreasure appears) the leave
+// step queues the boss. The target is read before the think, as the think picks it.
+void ThinkWanderer(Game* game, Unit* unit, uint8_t* tick) noexcept {
+	using namespace d2r::rva;
+	const uint32_t before = At<uint32_t>(unit, UnitMainFlags);
+	Unit* target = tick != nullptr ? At<Unit*>(tick, AiTickTarget) : nullptr;
+	VanillaAiThink(DarkWandererRow)(game, unit, tick);
+	if (LeftThisThink(before, At<uint32_t>(unit, UnitMainFlags))) {
+		Leave(game, unit, target);
+	}
 }
 
 }  // namespace
 
 auto InstallWanderer(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
-	const D2RL::LifecycleService* lifecycle = nullptr;
-	if (context->QueryService(&lifecycle) != D2RL::ServiceQueryResult::Success ||
-	    !D2RL::HasLifecycleServiceField(lifecycle, D2RL::LifecycleServiceRequiredSize)) {
-		std::snprintf(report, reportSize, "off: no lifecycle service");
-		return 0;
-	}
 	const D2RL::ThreadService* threads = nullptr;
 	if (context->QueryService(&threads) != D2RL::ServiceQueryResult::Success ||
 	    !D2RL::HasThreadServiceField(threads, D2RL::ThreadServiceRequiredSize)) {
 		std::snprintf(report, reportSize, "off: no thread service");
 		return 0;
 	}
-	const D2RL::Lifecycle::MonsterDeathListener listener {
-		.structSize = D2RL::Lifecycle::MonsterDeathListenerSize,
-		.flags = 0,
-		.callback = OnMonsterDeath,
-		.userData = nullptr,
-	};
-	D2RL::Lifecycle::ListenerHandle handle = D2RL::Lifecycle::InvalidHandle;
-	if (lifecycle->registerMonsterDeathListener(context, &listener, &handle) != D2RL::Lifecycle::Result::Success) {
-		std::snprintf(report, reportSize, "off: monster-death listener refused");
+	if (!RegisterAiThink(context, DarkWandererRow, AiDarkWanderer, DarkWandererMonster, &ThinkWanderer)) {
+		std::snprintf(report, reportSize, "off: monai %d think not swapped (the slot is not D2R's think)", DarkWandererRow);
 		return 0;
 	}
 	g_context = context;
 	g_threads = threads;
-	std::snprintf(report, reportSize, "a buffed boss %d frames after the Dark Wanderer dies", DeathDelay);
+	std::snprintf(report, reportSize, "a buffed boss %d frames after the Dark Wanderer leaves (monai %d think)",
+	              DeathDelay, DarkWandererRow);
 	return 1;
 }
 
 auto WandererCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "wanderer: %u deaths, %u bosses", g_deaths.load(), g_bosses.load());
+	std::snprintf(out, size, "wanderer: %u leaves, %u bosses", g_deaths.load(), g_bosses.load());
 }
