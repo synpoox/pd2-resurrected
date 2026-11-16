@@ -1,5 +1,5 @@
 Name	Level	Tileset	Width	Height	Fill	Entry
-Diablo Clone	209	Mesa	3	3	Mesa3	1,2
-Lucion	213	Mesa	3	3	Mesa3	1,2
-Temple of the Triune	214	Mesa	2	2	Mesa3	1,1
+Diablo Clone	209	Mesa	3	3	Mesa1	1,2
+Lucion	213	Mesa	3	3	Mesa1	1,2
+Temple of the Triune	214	Mesa	2	2	Mesa1	1,1
 Bitter Depths	215	Mesa	8	8	Mesa1	
