@@ -165,6 +165,18 @@ class GateTests(unittest.TestCase):
         with self.assertRaisesRegex(pd2_diff.GateError, "lvlmaze.*merged"):
             self.gate()
 
+    def test_a_whole_table_pattern_with_any_wildcard_segments_is_refused_for_a_merged_table(self):
+        self.write("pd2", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))
+        self.write("d2r", "lvlmaze", table("Name | MonLvl", "Blood Moor | 1"))
+        self.write("mod", "lvlmaze", table("Name | MonLvl", "Blood Moor | 1"))
+        for pat in ("lvlmaze.*", "lvlmaze.*.*", "lvlmaze.**.*"):
+            self.deviations(f"| Whole table | not yet | `{pat}` | P4 |\n")
+            with self.assertRaisesRegex(pd2_diff.GateError, "merged", msg=pat):
+                self.gate()
+        self.deviations("| Narrow | not yet | `lvlmaze.*.monlvl` `lvlmaze.blood moor.*` | P4 |\n")
+        self.deviations("| Unnamed | not yet | `lvlmaze.*.` | P4 |\n")
+        self.gate()
+
     def test_excels_quote_marks_are_not_data(self):
         self.write("pd2", "lvlmaze", table("Name | MonLvl", 'Blood Moor | "2"'))
         self.write("mod", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))

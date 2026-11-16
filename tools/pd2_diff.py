@@ -176,6 +176,12 @@ def deviations(path: Path) -> tuple[list[str], dict[str, int]]:
     return patterns, entries
 
 
+def whole_table(pattern: str, table: str) -> bool:
+    """True for `table.*`, `table.*.*` and any other pattern whose parts after the table are only wildcards (`skilldesc.*.`, the unnamed column, is not)."""
+    head, _, rest = pattern.partition(".")
+    return head == table and all(seg and not seg.strip("*") for seg in rest.split("."))  # an empty segment is the unnamed column
+
+
 def triage(res: Result, patterns: list[str]) -> Result:
     """Moves the deviations the deviation list names from open to covered."""
     kept = [d for d in res.open if not any(fnmatch.fnmatchcase(d[0].lower(), p) for p in patterns)]
@@ -214,7 +220,7 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
             res = compare(p.stem, Table(p, key), Table(src[1], key), ren, lists,
                           ctx if ids_read else None, rows)
             res.source = src[0]
-            if src[0] == "merged" and f"{p.stem.lower()}.*" in patterns:
+            if src[0] == "merged" and any(whole_table(q, p.stem.lower()) for q in patterns):
                 raise GateError(f"deviations.md still covers all of {p.stem}, which is merged now: narrow its row")
         results.append(triage(res, patterns))
     return Report(results, entries)
