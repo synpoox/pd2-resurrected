@@ -11,10 +11,6 @@ website = "https://github.com/synpoox/pd2-resurrected"
 version = "3.3.0"
 build = "93847"
 image_timestamp = "0x6ab3782c"
-# The old release tool never compared D2R.exe with image_timestamp, and the runner's game has timestamp 0x6a6b96a4, not the
-# value above (which came from the runtime dump). The stager would refuse that game, so its check stays off until the owner
-# settles the value; image_timestamp still goes into the manifest.
-check_image = false
 
 [d2rloader]
 version = "1.3.1-beta"
