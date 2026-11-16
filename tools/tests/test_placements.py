@@ -35,7 +35,7 @@ class PlacementsTests(unittest.TestCase):
         ids = level_ids()
         for enc, (level, target, source, _f) in bindings.items():
             assert level in ids and target in ids, enc
-            if source == "Existing":
+            if source in ("Existing", "Private"):
                 assert target >= 209 and ids[target], enc  # a reserved private id, a `+` line
             else:
                 assert not ids[target], enc  # D2R's own area
@@ -43,7 +43,7 @@ class PlacementsTests(unittest.TestCase):
 
     def test_private_levels_are_reserved_once(self):
         bindings, _ = parse()
-        private = [t for (_l, t, s, _f) in bindings.values() if s == "Existing"]
+        private = [t for (_l, t, s, _f) in bindings.values() if s in ("Existing", "Private")]
         assert len(private) == len(set(private)) == 7 and sorted(private) == list(range(209, 216))
 
 

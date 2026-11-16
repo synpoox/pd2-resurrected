@@ -4,6 +4,7 @@
 #include "uber_entry.h"
 
 #include "ai_hooks.h"
+#include "arena_spots.h"
 #include "log.h"
 #include "placements.h"
 #include "rathma.h"
@@ -322,6 +323,8 @@ auto KeyRefusal(Game* game, Unit* player, int32_t level, char* why, size_t size)
 	const int32_t where = PlayerLevelId(player);
 	if (!placements::IsUberLevel(level)) {
 		std::snprintf(why, size, "level %d is not a finished uber area", level);
+	} else if (placements::BindingAt(level)->source == placements::Source::Private && !ArenaReady(level)) {
+		std::snprintf(why, size, "level %d: Cartographer did not build its arena (no cartographer.arena.v1 or no arenas.txt row)", level);
 	} else if (At<uint8_t>(game, d2r::rva::GameDifficulty) != Hell) {
 		std::snprintf(why, size, "not Hell");
 	} else if (charLevel < MinCharLevel) {

@@ -1,0 +1,43 @@
+{
+ "_note": "#958 (docs/cartographer-contracts.md, lane D; arenas.txt and arenaspots.txt hold the arena): Diablo Clone's level 209 becomes Cartographer's square Mesa arena (3 x 3 cells, 40 x 40 tiles with the ring) at OffsetY 6300 (the Mesa slot row at 4200 moves; OffsetX+OffsetY+size stays under 6553), Pal 3 for Mesa, no random monsters (its bosses are arenaspots.txt Monster rows). Layer, Act and DrlgType stay as the Harrogath layer. The name is PD2's Dclone level's (138).",
+ "ops": [
+  {
+   "op": "set",
+   "table": "levels",
+   "bank": "excel",
+   "where": {
+    "Id": "209"
+   },
+   "set": {
+    "Pal": "3",
+    "LevelType": "27",
+    "SubType": "-1",
+    "SubTheme": "-1",
+    "OffsetY": "6300",
+    "SizeX": "40",
+    "SizeY": "40",
+    "SizeX(N)": "40",
+    "SizeY(N)": "40",
+    "SizeX(H)": "40",
+    "SizeY(H)": "40",
+    "NumMon": "0",
+    "MonDen": "0",
+    "MonDen(N)": "0",
+    "MonDen(H)": "0",
+    "MonUMin": "0",
+    "MonUMax": "0",
+    "MonUMin(N)": "0",
+    "MonUMax(N)": "0",
+    "MonUMin(H)": "0",
+    "MonUMax(H)": "0",
+    "MonLvl": "43",
+    "MonLvl(N)": "68",
+    "MonLvl(H)": "93",
+    "MonLvlEx": "43",
+    "MonLvlEx(N)": "66",
+    "MonLvlEx(H)": "90",
+    "LevelName": "The Pandemonium Fortress"
+   }
+  }
+ ]
+}

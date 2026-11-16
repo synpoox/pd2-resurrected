@@ -12,6 +12,7 @@
 
 #include "ai_common.h"
 #include "ai_hooks.h"
+#include "arena_spots.h"
 #include "nihlathak_ai.h"
 #include "log.h"
 #include "placements.h"
@@ -33,7 +34,12 @@ constexpr int32_t StatCooldown1 = 499, StatPhase = 500;  // mon_cooldown1/2 (PD2
 constexpr int32_t StatColdMastery = 331, StatColdPierce = 305;
 constexpr int32_t StateResistAll = 8;  // PD2 0x10380770 sets it with the resists
 constexpr int32_t ImmuneStats[] = {39, 43, 41, 45, 37, 36};  // fire, cold, lightning, poison, magic, damage resist
-const auto Centre() noexcept { return placements::SpotOf("dclone", "centre"); }  // the arena centre (placements/dclone.cpp)
+// The arena centre: the `centre` spot of Diablo Clone's Cartographer arena (arenaspots.txt, #958); {0, 0} when none
+auto Centre() noexcept -> placements::Spot {
+	placements::Spot c{0, 0};
+	ArenaSpotOf("dclone", "centre", &c);
+	return c;
+}
 constexpr int32_t FarPlayer = 0x17c;                         // squared distance
 
 constexpr uint32_t TierKey = 0x55425254;     // 'UBRT', as map_open.cpp
@@ -375,9 +381,9 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	int32_t x = 0, y = 0, tx = 0, ty = 0, spread = -1;
 	if (m.Aip(8) != 2 && m.Aip(8) != 3) {
 		// A random spot in the 50x50 square around the arena centre
-		const auto& souls = placements::Need("dclone", "souls");
-		x = souls.x + static_cast<int32_t>(d2r::RandomBelow(seed, static_cast<uint32_t>(souls.w)));
-		y = souls.y + static_cast<int32_t>(d2r::RandomBelow(seed, static_cast<uint32_t>(souls.h)));
+		const placements::Spot c = Centre();
+		x = c.x - 25 + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
+		y = c.y - 25 + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
 	} else {
 		// At the target, spread over 24 - 8 x tier subtiles
 		if (target == nullptr || !d2r::UnitXY(target, &x, &y)) {

@@ -2,6 +2,7 @@
 // A lane adds its parts here, in its own folder, and never edits plugin.cpp. Orders are one global sequence.
 #include "parts.h"
 
+#include "arena_spots.h"
 #include "dclone_ai.h"
 #include "lucion.h"
 #include "lucion_ai.h"
@@ -60,12 +61,17 @@ void InstallDcloneaiPart(const D2RL::PluginContext* context, char* report, size_
 	std::snprintf(report, size, "%d/%d installed: %s", installed, 2, rules);
 }
 
+void InstallArenaPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	InstallArenaSpots(context, report, size);
+}
+
 void InstallUberkeyPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	InstallUberKey(context, report, size);
 }
 
 PartReg r70(70, "trist", InstallTristram);
 PartReg r156(156, "uberkey", InstallUberkeyPart);
+PartReg r57(57, "arena", InstallArenaPart);
 PartReg r80(80, "lucion", InstallLucionPart);
 PartReg r90(90, "primes", InstallPrimesPart);
 PartReg r100(100, "temple", InstallTemplePart);

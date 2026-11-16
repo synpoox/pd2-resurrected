@@ -23,6 +23,7 @@ class UberAccessTests(unittest.TestCase):
         keys = {o["key"]: o["set"] for o in ops if o.get("op") == "set"}
         assert set(keys) == {"Uber Map", "Rathma Map", "Lucion Map", "Uber Trist Map"}
         assert keys.pop("Uber Trist Map") == {"pSpell": "19", "len": "136"}  # D2R's Uber Tristram arena (#957)
+        assert keys.pop("Uber Map") == {"pSpell": "19", "len": "209"}  # Diablo Clone's arena 209 (#958)
         assert all(s == {"pSpell": "19"} for s in keys.values())
         src = (ROOT / "plugin/core-events/uber_entry.cpp").read_text(encoding="utf-8")
         assert "UberKeySpell = 19" in src and "IsUberLevel" in src
@@ -38,7 +39,7 @@ class UberAccessTests(unittest.TestCase):
     def test_every_uber_level_is_a_known_destination(self):
         for enc, (level, target, src, uber, _nw) in bindings().items():
             if uber:
-                assert src in ("Existing", "D2RTristram"), enc
+                assert src in ("Existing", "Private", "D2RTristram"), enc
                 assert target >= 209 or src == "D2RTristram", enc
 
 

@@ -99,6 +99,7 @@ add_library(core_events SHARED
 	core-events/tc_roll.cpp
 	core-events/uber_deaths.cpp
 	core-events/uber_entry.cpp
+	core-events/arena_spots.cpp
 	core-events/plugin.rc
 )
 # Each lane registers its parts from its own folder (core-events/lane-a .. lane-d, #943): new files there need no edit here.

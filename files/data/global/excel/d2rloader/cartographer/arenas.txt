@@ -1,0 +1,2 @@
+Name	Level	Tileset	Width	Height	Fill	Entry
+Diablo Clone	209	Mesa	3	3	Mesa3	1,2
