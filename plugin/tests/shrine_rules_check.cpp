@@ -14,7 +14,8 @@ int main() {
 	CHECK("others are not", !sh::IsBooster(5) && !sh::IsBooster(16) && !sh::IsBooster(18));
 	CHECK("distance 21 shares (441)", sh::InShareRange(0, 0, 21, 0));
 	CHECK("distance 22 does not (484)", !sh::InShareRange(0, 0, 22, 0));
-	CHECK("diagonal 15,15 shares (450)", sh::InShareRange(100, 100, 115, 115));
+	CHECK("diagonal 15,15 does not (450, PD2 is < 450)", !sh::InShareRange(100, 100, 115, 115));
+	CHECK("diagonal 14,15 shares (421)", sh::InShareRange(100, 100, 114, 115));
 	CHECK("diagonal 16,15 does not", !sh::InShareRange(100, 100, 116, 115));
 	CHECK("fire raises maxfireresist", sh::MaxResistStat(8) == 40);
 	CHECK("cold raises maxcoldresist", sh::MaxResistStat(9) == 44);

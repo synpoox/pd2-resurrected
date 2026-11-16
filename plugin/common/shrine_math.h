@@ -17,7 +17,7 @@ inline constexpr auto IsBooster(int code) noexcept -> bool { return code >= Firs
 // Whether another player at (x, y) is inside the shared distance of the user at (ux, uy)
 inline constexpr auto InShareRange(int32_t ux, int32_t uy, int32_t x, int32_t y) noexcept -> bool {
 	const int64_t dx = x - ux, dy = y - uy;
-	return dx * dx + dy * dy <= ShareDistanceSq;
+	return dx * dx + dy * dy < ShareDistanceSq;
 }
 
 // itemstatcost id of the max resist a resist shrine raises (8 fire, 9 cold, 10 lightning, 11 poison), 0 for any other code

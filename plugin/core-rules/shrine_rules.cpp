@@ -108,7 +108,7 @@ void ReachPlayer(Game*, Unit* player, void* arg) noexcept {
 	if (!sh::InShareRange(r->x, r->y, xy[0], xy[1])) {
 		return;
 	}
-	void* copy[8];  // the wrapper's context with the other player as the user; the shrine function reads only these
+	void* copy[5];  // the 0x28-byte shrine context with the other player as the user
 	std::memcpy(copy, r->ctx, sizeof(copy));
 	copy[2] = player;
 	r->fn(r->flag, copy, r->data);
@@ -214,7 +214,19 @@ auto InstallShrines(const D2RL::PluginContext* context, char* report, size_t rep
 		                           reinterpret_cast<uint64_t>(&Shrine))) {
 			++live;
 		} else {
+			// put the slots already written back, so no code runs half the rules
 			g_orig[code] = nullptr;
+			for (int done = sh::FirstBooster; done < code; ++done) {
+				if (g_orig[done] != nullptr) {
+					const uint64_t wrapper = reinterpret_cast<uint64_t>(&Shrine), back = reinterpret_cast<uint64_t>(g_orig[done]);
+					if (!context->PatchWriteU64(ShrineTable.rva + static_cast<uint64_t>(done) * RowSize, &wrapper, sizeof(wrapper), back)) {
+						plog::Error("shrines: slot of code %d could not be put back", done);
+					}
+					g_orig[done] = nullptr;
+				}
+			}
+			std::snprintf(report, reportSize, "off: slot of shrine code %d could not be written, slots put back", code);
+			return 0;
 		}
 	}
 	std::snprintf(report, reportSize, "shrine slots %d/%d (shared 6-15, +10 max resist 8-11, gem stack 18)%s", live, total,
