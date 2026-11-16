@@ -1,11 +1,19 @@
-Arena	Spot	X	Y	Monster
-Diablo Clone	centre	12	12	uberdiablonew
-Diablo Clone	soul1	15	10	ubertrappedsoul1
-Diablo Clone	soul2a	10	15	ubertrappedsoul2
-Diablo Clone	soul2b	8	7	ubertrappedsoul2
-Diablo Clone	soul2c	18	6	ubertrappedsoul2
-Diablo Clone	soul2d	8	18	ubertrappedsoul2
-Diablo Clone	soul2e	18	18	ubertrappedsoul2
-Diablo Clone	soul3	11	9	ubertrappedsoul3
-Diablo Clone	soul4	15	15	ubertrappedsoul4
-Diablo Clone	soul5	9	12	ubertrappedsoul5
+Arena	Spot	X	Y	Monster	Object
+Diablo Clone	centre	12	12	uberdiablonew	
+Diablo Clone	soul1	15	10	ubertrappedsoul1	
+Diablo Clone	soul2a	10	15	ubertrappedsoul2	
+Diablo Clone	soul2b	8	7	ubertrappedsoul2	
+Diablo Clone	soul2c	18	6	ubertrappedsoul2	
+Diablo Clone	soul2d	8	18	ubertrappedsoul2	
+Diablo Clone	soul2e	18	18	ubertrappedsoul2	
+Diablo Clone	soul3	11	9	ubertrappedsoul3	
+Diablo Clone	soul4	15	15	ubertrappedsoul4	
+Diablo Clone	soul5	9	12	ubertrappedsoul5	
+Lucion	centre	12	12	Lucion	
+Lucion	control	12	12	LucionControl	
+Lucion	temple-portal	11	11		
+Temple of the Triune	altar	8	3		Sacrifice Altar
+Temple of the Triune	chest1	3	6		LucionChest
+Temple of the Triune	chest2	12	6		LucionChest
+Temple of the Triune	chest3	3	10		LucionChest
+Temple of the Triune	chest4	12	10		LucionChest

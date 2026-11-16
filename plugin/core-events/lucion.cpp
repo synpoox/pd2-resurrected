@@ -16,6 +16,7 @@
 
 #include "pd2_engine.h"
 #include "log.h"
+#include "arena_spots.h"
 #include "map_open.h"
 #include "corruption_roll.h"
 #include "placements.h"
@@ -87,14 +88,15 @@ auto OpenTemplePortal(Game* game, Unit* lucion) noexcept -> bool {
 	if (near == nullptr) {
 		return false;
 	}
-	const auto at = placements::SpotOf("lucion", "temple-portal");
+	placements::Spot at{0, 0};  // Cartographer's `temple-portal` spot (arenaspots.txt, #962)
+	const bool named = ArenaSpotOf("lucion", "temple-portal", &at);
 	int32_t xy[2] = {at.x, at.y};
-	void* room = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(near, xy[0], xy[1]);
+	void* room = named ? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(near, xy[0], xy[1]) : nullptr;
 	if (room == nullptr) {
 		d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(UnitCoords)(lucion, xy);
 		room = near;
-		plog::Warn("lucion: (0x%x, 0x%x) is out of reach, the Temple portal goes by the body at (%d, %d)", at.x,
-		           at.y, xy[0], xy[1]);
+		plog::Warn("lucion: (%d, %d) is %s, the Temple portal goes by the body at (%d, %d)", at.x, at.y,
+		           named ? "out of reach" : "not a named spot", xy[0], xy[1]);
 	}
 	Unit* portal = nullptr;
 	const int32_t made = d2r::Engine<int32_t (*)(Game*, Unit*, void*, int32_t, int32_t, int32_t, Unit**, int32_t, int32_t,

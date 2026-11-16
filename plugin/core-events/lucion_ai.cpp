@@ -9,6 +9,7 @@
 #include "lucion_ai.h"
 
 #include "ai_hooks.h"
+#include "arena_spots.h"
 #include "level_fx.h"
 #include "log.h"
 #include "placements.h"
@@ -41,9 +42,14 @@ constexpr uint32_t ResistKeys[] = {0x55424c30, 0x55424c31, 0x55424c32, 0x55424c3
 // PD2 0x10380770 sets these to 200 (fire, cold, lightning, poison, magic, damage resist)
 constexpr int32_t ImmuneStats[] = {39, 43, 41, 45, 37, 36};
 
-// The arena (PD2's subtile coordinates, as Royal Fire's ring centre in skill_functions.cpp)
-constexpr int32_t Corners[][2] = {{0x622d, 0x17eb}, {0x622d, 0x17d5}, {0x6217, 0x17d5}, {0x6217, 0x17eb}};
-const auto Centre() noexcept { return placements::SpotOf("lucion", "centre"); }  // placements/lucion.cpp
+// The arena's corners, as subtile offsets from its centre (PD2's corners around 0x6223, 0x17e1)
+constexpr int32_t Corners[][2] = {{10, 10}, {10, -12}, {-12, -12}, {-12, 10}};
+// The arena centre: the `centre` spot of Lucion's Cartographer arena (arenaspots.txt, #962); {0, 0} when none
+auto Centre() noexcept -> placements::Spot {
+	placements::Spot c{0, 0};
+	ArenaSpotOf("lucion", "centre", &c);
+	return c;
+}
 
 constexpr int32_t OverseerRow = 120;  // monai.txt
 
@@ -279,8 +285,9 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		SetMode(game, unit, ModeS3);
 		Delay(game, unit, 25);
 		if (stage == 3 && before < 3) {
-			for (const auto& c : Corners) {
-				Spawn(game, unit, LucionSpawner, c[0], c[1]);
+			const auto c = Centre();
+			for (const auto& o : Corners) {
+				Spawn(game, unit, LucionSpawner, c.x + o[0], c.y + o[1]);
 			}
 		}
 	};
@@ -491,8 +498,9 @@ auto ThinkControl(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept 
 		if (cd < 1 && frenzy) {
 			const int32_t n = CountInLevel(game, LucionSpawner, level);
 			if (n < m.P(2) && r < (tier - m.P(0)) * n + 100) {
-				const auto& adds = placements::Need("lucion", "adds");
-				const int32_t x = Rand(unit, adds.w) + adds.x, y = Rand(unit, adds.h) + adds.y;
+				// The 44 x 44 square around the centre, where the summons land
+				const auto c = Centre();
+				const int32_t x = Rand(unit, 44) + c.x - 22, y = Rand(unit, 44) + c.y - 22;
 				if (Spawn(game, unit, LucionSpawner, x, y) != nullptr) {
 					SetStat(unit, StatCooldown1, r % (3 - tier) - stage / 2 + base);
 				}
