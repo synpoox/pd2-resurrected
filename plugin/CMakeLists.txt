@@ -101,6 +101,7 @@ add_library(core_events SHARED
 	core-events/uber_deaths.cpp
 	core-events/uber_entry.cpp
 	core-events/arena_spots.cpp
+	core-events/test_kill.cpp
 	core-events/plugin.rc
 )
 # Each lane registers its parts from its own folder (core-events/lane-a .. lane-d, #943): new files there need no edit here.
@@ -155,6 +156,11 @@ add_executable(rathma_split_check EXCLUDE_FROM_ALL tests/rathma_split_check.cpp)
 target_include_directories(rathma_split_check PRIVATE common)
 target_compile_features(rathma_split_check PRIVATE cxx_std_20)
 core_options(rathma_split_check)
+
+add_executable(test_cmd_check EXCLUDE_FROM_ALL tests/test_cmd_check.cpp)
+target_include_directories(test_cmd_check PRIVATE common)
+target_compile_features(test_cmd_check PRIVATE cxx_std_20)
+core_options(test_cmd_check)
 # core-events' parts with `uses` (#1081): the gate that installs them on any image their signature entries resolved on.
 add_executable(parts_uses_check EXCLUDE_FROM_ALL tests/parts_uses_check.cpp core-events/parts.cpp)
 target_include_directories(parts_uses_check PRIVATE core-events)

@@ -31,6 +31,10 @@ Console command (core-events, #998), one shot for the next map opened: `core-eve
 (`core-events event off` clears it). Run it through `game_ctl.py --slot <N> console "core-events event gheed"` before using the
 map item; the log shows `rolled event <n> ..., console event`. A forced event skips the quality roll (the event is the one named, whatever the map's quality). A map is any item of type `cmap` (item type 245).
 
+## Killing a boss
+
+Never click a boss down (adds soak the clicks, bosses hide, `cheat killmonster` skips the normal death). Use core-events' console commands, with `cheat god 1` on: `core-events kill <class>` (or `kill unit <id>`) kills the nearest living monster of that merged monstats class in your level through the normal death path, so death listeners run and its treasure class rolls, with you as the killer; the log (`core-maps.log`) gets one `test aid: kill: class .. unit ..` line. `core-events life <pct> unit <id>` sets any monster's life (`life <pct> <class>` still covers ported bosses only). The unit id is in the `cheat mspawn` or spawn log lines.
+
 ## Screenshots that settle the question
 
 One shot should answer the question. Before each shot:

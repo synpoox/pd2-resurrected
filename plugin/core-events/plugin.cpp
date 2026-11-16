@@ -15,6 +15,7 @@
 #include "off_switch.h"
 #include "parts.h"
 #include "pd2_engine.h"
+#include "test_kill.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -84,6 +85,20 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	const char* args = command->args;
 	while (args != nullptr && *args == ' ') {
 		++args;
+	}
+	const pd2::test_cmd::Cmd test = pd2::test_cmd::Parse(args);
+	if (test.kind != pd2::test_cmd::Cmd::Kind::None || (args != nullptr && std::strncmp(args, "kill", 4) == 0)) {
+		char why[120] = "usage: kill <class> | kill unit <id>";
+		const bool queued = test.kind != pd2::test_cmd::Cmd::Kind::None && QueueTestCommand(g_context, test, why, sizeof(why));
+		std::snprintf(line, sizeof(line), queued ? "%s: queued, see the log" : "%s: %s", PluginName, why);
+		command->plugin->WriteConsoleMessage(line);
+		plog::Info("%s", line);
+		return queued ? D2RL::ConsoleCommandResult::Handled : D2RL::ConsoleCommandResult::Failed;
+	}
+	if (args != nullptr && std::strncmp(args, "life ", 5) == 0 && std::strstr(args, "unit ") != nullptr) {
+		std::snprintf(line, sizeof(line), "%s: usage: life <percent 0-100> unit <unit id>", PluginName);
+		command->plugin->WriteConsoleMessage(line);
+		return D2RL::ConsoleCommandResult::Failed;
 	}
 	if (args != nullptr && std::strncmp(args, "life ", 5) == 0) {
 		char* end = nullptr;
@@ -168,7 +183,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	g_imageKnown = d2r::Bind(context->exeBase);
 	InstallParts(context);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand,
-	                                       "PD2 Resurrected Core Events: every part and its counters; `life <percent> <class>` sets a ported boss's life (test aid).");
+	                                       "PD2 Resurrected Core Events: every part and its counters; `life <percent> <class>` sets a ported boss's life, `life <percent> unit <id>` any monster's, `kill <class>` or `kill unit <id>` kills one through the death path (test aids).");
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
