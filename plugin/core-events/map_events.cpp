@@ -178,13 +178,13 @@ bool g_roomsOverride = false;
 Tiered NativeTier = {0, 200};
 
 // The rooms of the room's level, counted down its drlg room list (D2R 93847; the same
-// list DrlgRoomAt walks).
+// list LevelRoomExAt walks).
 auto RealRooms(void* room) noexcept -> int32_t {
 	constexpr int Cap = 32767;
 	void* drlgRoom = At<void*>(room, d2r::rva::RoomDrlg);
 	void* level = drlgRoom != nullptr ? At<void*>(drlgRoom, d2r::rva::DrlgRoomLevel) : nullptr;
 	int32_t n = 0;
-	for (void* r = level != nullptr ? At<void*>(level, d2r::rva::DrlgLevelRooms) : nullptr; r != nullptr && n < Cap;
+	for (void* r = level != nullptr ? At<void*>(level, d2r::rva::LevelFirstRoomEx) : nullptr; r != nullptr && n < Cap;
 	     r = At<void*>(r, d2r::rva::DrlgRoomNext)) {
 		++n;
 	}
@@ -221,7 +221,7 @@ auto SpawnObjectAt(Game* game, void* room, int32_t x, int32_t y, int32_t row) no
 	using namespace d2r::rva;
 	using SpawnFn = Unit* (*)(int32_t, int32_t, int32_t, int32_t, Game*, void*, int32_t, int32_t, int32_t,
 	                          int32_t) noexcept;
-	room = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(room, x, y);
+	room = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(room, x, y);
 	return room != nullptr ? d2r::Engine<SpawnFn>(SpawnUnit)(UnitObject, row, x, y, game, room, 1, 0, 0, 0) : nullptr;
 }
 
@@ -737,13 +737,13 @@ auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t r
 	const bool uses = context->InstallInlineHook(UseItem, UseItemEntry, sizeof(UseItemEntry), OnUseItem, &g_useOriginal);
 	static constexpr uint8_t Empty[8] = {};
 	using OperateFn = int32_t (*)(ObjectOperate*) noexcept;
-	const bool altars = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperateAltar) * 8, Empty,
+	const bool altars = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperateFree35) * 8, Empty,
 	                                           sizeof(Empty), reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperateAltar)));
 	std::snprintf(report, reportSize, "room activation%s, map use %s, altar operate %d%s%s",
 	              rooms      ? ""
 	              : activate ? " (through 0x48f190 until Cartographer's room-populate service is found)"
 	                         : " FAILED (bytes differ)",
-	              uses ? "on" : "FAILED (native maps roll as normal)", ObjectOperateAltar, altars ? "" : " FAILED (slot not empty)",
+	              uses ? "on" : "FAILED (native maps roll as normal)", ObjectOperateFree35, altars ? "" : " FAILED (slot not empty)",
 	              g_strings != nullptr ? "" : ", no notify (no localization service)");
 	return rooms || activate ? 1 : 0;
 }

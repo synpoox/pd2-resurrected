@@ -138,20 +138,20 @@ auto StageOf(int32_t level) noexcept -> const Stage* {
 // PD2 0x10389f00: the room holding (x, y) near `near`, else found in the level's rooms and built
 auto RoomHolding(Game* game, void* near, int32_t level, Spot at) noexcept -> void* {
 	using namespace d2r::rva;
-	void* room = near != nullptr ? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(near, at.x, at.y)
+	void* room = near != nullptr ? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(near, at.x, at.y)
 	                             : nullptr;
 	if (room != nullptr || At<uint64_t>(game, GameActCount) <= HarrogathAct) {
 		return room;
 	}
 	const auto dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
 	void* act = At<void**>(game, GameActs)[HarrogathAct];
-	void* drlg = act != nullptr ? d2r::Engine<void* (*)(uint8_t, void*, int32_t) noexcept>(DrlgLevelOf)(
+	void* drlg = act != nullptr ? d2r::Engine<void* (*)(uint8_t, void*, int32_t) noexcept>(LevelGet)(
 									  dataFlag, At<void*>(act, ActDrlg), level)
 	                            : nullptr;
-	void* drlgRoom = drlg != nullptr && At<void*>(drlg, DrlgLevelRooms) != nullptr
-		? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(DrlgRoomAt)(drlg, at.x / 5, at.y / 5)
+	void* drlgRoom = drlg != nullptr && At<void*>(drlg, LevelFirstRoomEx) != nullptr
+		? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(LevelRoomExAt)(drlg, at.x / 5, at.y / 5)
 		: nullptr;
-	return drlgRoom != nullptr ? d2r::Engine<void* (*)(uint8_t, void*) noexcept>(DrlgRoomInit)(dataFlag, drlgRoom)
+	return drlgRoom != nullptr ? d2r::Engine<void* (*)(uint8_t, void*) noexcept>(RoomExRoom)(dataFlag, drlgRoom)
 	                           : nullptr;
 }
 

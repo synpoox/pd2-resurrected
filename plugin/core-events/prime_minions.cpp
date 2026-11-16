@@ -135,10 +135,10 @@ auto Think(Game* game, Unit* monster, uint8_t* tick) noexcept -> void {
 			Summon(game, monster, prime, tick);
 		}
 	}
-	VanillaAiThink(AiRows[I])(game, monster, tick);
+	ai_registry::Vanilla(AiRows[I])(game, monster, tick);
 }
 
-constexpr AiThinkFn Wrappers[] = {Think<0>, Think<1>, Think<2>};
+constexpr ai_registry::ThinkFn Wrappers[] = {Think<0>, Think<1>, Think<2>};
 static_assert(std::size(Wrappers) == std::size(g_primes) && std::size(AiRows) == std::size(g_primes));
 
 }  // namespace
@@ -148,7 +148,7 @@ auto InstallPrimeMinions(const D2RL::PluginContext* context, char* report, size_
 	// Resolved at install (after d2r::Bind): Mephisto, Diablo, Baal
 	const uint64_t d2rThinks[] = {d2r::sig::AiMephisto.address, d2r::sig::AiDiablo.address, d2r::sig::AiBaalCrab.address};
 	for (size_t i = 0; i < std::size(g_primes); ++i) {
-		installed += RegisterAiThink(context, AiRows[i], d2rThinks[i], g_primes[i].classId, Wrappers[i]) ? 1 : 0;
+		installed += ai_registry::RegisterAt(context, AiRows[i], d2rThinks[i], g_primes[i].classId, Wrappers[i]) ? 1 : 0;
 	}
 	std::snprintf(report, reportSize, "prime minions on AI rows 50, 51, 135%s",
 	              installed == static_cast<int>(std::size(g_primes)) ? "" : " FAILED (a slot is not D2R's think)");

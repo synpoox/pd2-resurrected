@@ -20,7 +20,7 @@ std::atomic<uint32_t> g_tcMissing {0};
 
 auto TcOdds(uint8_t dataFlag, const char* name, int32_t players) noexcept -> int64_t {
 	using namespace d2r::rva;
-	const uint8_t* tables = d2r::Engine<const uint8_t* (*)(uint8_t) noexcept>(DataTablesOf)(dataFlag);
+	const uint8_t* tables = d2r::Engine<const uint8_t* (*)(uint8_t) noexcept>(DataTables)(dataFlag);
 	if (tables == nullptr) {
 		return 0;
 	}

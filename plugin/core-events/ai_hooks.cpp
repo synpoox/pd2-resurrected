@@ -1,35 +1,19 @@
-// A native table write: no PluginSDK service runs or replaces a monster's AI (data_tables only reads monai.txt). D2R
-// calls a monster's think from its monai row in d2r::sig::AiTable; a registered row's slot gets one of the trampolines
-// below, which hands registered classes to their port and every other monster to the row's D2R think.
+// PD2's boss helpers (ai_hooks.h). The think registry itself (the AiTable slot writes and trampolines) is the toolkit's
+// ai_registry; this file hooks the boss-life test aid into its before-think callback.
 #include "ai_hooks.h"
 
+#include "ai_registry.h"
 #include "log.h"
 
 #include <algorithm>
-#include <array>
 #include <atomic>
 #include <chrono>
-#include <cstring>
-#include <utility>
 
 namespace {
 
 using d2r::At;
 using d2r::Game;
 using d2r::Unit;
-
-constexpr int MaxRows = 16, MaxClasses = 8;
-constexpr int MonAiRows = 155;  // D2R's monai.txt
-
-struct Row {
-	int32_t row = -1;
-	AiThinkFn vanilla = nullptr;
-	int32_t classes[MaxClasses] {};
-	AiThinkFn thinks[MaxClasses] {};
-	int count = 0;
-};
-// Filled at install, before the game runs a think; read-only after
-Row g_rows[MaxRows];
 
 // The test aid's request (RequestBossLife): -1 for none
 std::atomic<int32_t> g_lifePercent {-1};
@@ -67,84 +51,13 @@ auto ApplyLifeRequest(Unit* unit, int32_t classId) noexcept -> void {
 	           At<uint32_t>(unit, d2r::rva::UnitIdField), percent, life, static_cast<long long>(max));
 }
 
-template <int K>
-void Trampoline(Game* game, Unit* unit, uint8_t* tick) noexcept {
-	const Row& r = g_rows[K];
-	if (unit != nullptr && At<int32_t>(unit, d2r::rva::UnitType) == d2r::rva::UnitMonster) {
-		const int32_t classId = At<int32_t>(unit, d2r::rva::UnitClassId);
-		for (int i = 0; i < r.count; ++i) {
-			if (r.classes[i] == classId) {
-				ApplyLifeRequest(unit, classId);
-				r.thinks[i](game, unit, tick);
-				return;
-			}
-		}
-	}
-	r.vanilla(game, unit, tick);
-}
-
-template <int... K>
-constexpr auto MakeTrampolines(std::integer_sequence<int, K...>) noexcept {
-	return std::array<AiThinkFn, sizeof...(K)> {&Trampoline<K>...};
-}
-constexpr auto Trampolines = MakeTrampolines(std::make_integer_sequence<int, MaxRows> {});
-
-auto Slot(int32_t row) noexcept -> uint64_t {
-	// PatchWriteU64 takes an rva: the table's rva from its signature entry. AiRowSize is the row stride (a named offset).
-	return d2r::sig::AiTable.rva + static_cast<uint64_t>(row) * d2r::rva::AiRowSize;
-}
-
 }  // namespace
 
-auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, uint64_t d2rThinkAddress, int32_t classId,
-                     AiThinkFn think) noexcept -> bool {
-	if (monaiRow < 0 || monaiRow >= MonAiRows || think == nullptr || d2rThinkAddress == 0) {
-		return false;
-	}
-	int k = 0;
-	while (k < MaxRows && g_rows[k].row != monaiRow && g_rows[k].row >= 0) {
-		++k;
-	}
-	if (k == MaxRows) {
-		plog::Info("ai hooks: no free row for monai %d", monaiRow);
-		return false;
-	}
-	Row& r = g_rows[k];
-	if (r.row < 0) {
-		// D2R's think is the expected value: a slot another plugin changed refuses the write
-		const uint64_t vanilla = d2rThinkAddress;
-		uint8_t expected[8];
-		std::memcpy(expected, &vanilla, sizeof(expected));
-		if (!context->PatchWriteU64(Slot(monaiRow), expected, sizeof(expected), reinterpret_cast<uint64_t>(Trampolines[k]))) {
-			plog::Warn("ai hooks: monai %d think not swapped (the slot is not D2R's think)", monaiRow);
-			return false;
-		}
-		r.row = monaiRow;
-		r.vanilla = reinterpret_cast<AiThinkFn>(vanilla);
-	}
-	if (r.count == MaxClasses) {
-		return false;
-	}
-	r.classes[r.count] = classId;
-	r.thinks[r.count] = think;
-	++r.count;
-	plog::Info("ai hooks: monai %d class %d -> port", monaiRow, classId);
-	return true;
-}
-
 auto RequestBossLife(int32_t percent, int32_t classId) noexcept -> void {
+	ai_registry::SetBeforeThink(&ApplyLifeRequest);  // idempotent; the registry calls it before a registered think
 	g_lifeClass.store(classId);
 	g_lifeAt.store(NowMs());
 	g_lifePercent.store(std::clamp(percent, 0, 100));
-}
-
-auto VanillaAiThink(int32_t monaiRow) noexcept -> AiThinkFn {
-	for (const Row& r : g_rows) {
-		if (r.row == monaiRow) {
-			return r.vanilla;
-		}
-	}
-	return nullptr;
 }
 
 namespace {

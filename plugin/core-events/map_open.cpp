@@ -136,7 +136,7 @@ auto InstallMapOpen(const D2RL::PluginContext* context, char* report, size_t rep
 	using namespace d2r::rva;
 	static constexpr uint8_t Empty[8] = {};
 	using OperateFn = int32_t (*)(ObjectOperate*) noexcept;
-	const bool portal = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperatePortal) * 8,
+	const bool portal = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperateFree60) * 8,
 	                                           Empty, sizeof(Empty),
 	                                           reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperatePortal)));
 	const bool rooms = InstallBossRoomKeep(context);
@@ -144,7 +144,7 @@ auto InstallMapOpen(const D2RL::PluginContext* context, char* report, size_t rep
 	                                                OnPresetSpawn, &g_presetSpawnOriginal);
 	const bool spawns = context->InstallInlineHook(SpawnCore, SpawnCoreEntry, sizeof(SpawnCoreEntry), OnSpawnCore,
 	                                               &g_coreOriginal);
-	std::snprintf(report, reportSize, "portal operate %d%s, boss rooms kept%s, uber waypoints%s, uber scaling%s", ObjectOperatePortal,
+	std::snprintf(report, reportSize, "portal operate %d%s, boss rooms kept%s, uber waypoints%s, uber scaling%s", ObjectOperateFree60,
 	              portal ? "" : " FAILED (slot not empty)", rooms ? "" : " FAILED (bytes differ)",
 	              presets ? "" : " FAILED (bytes differ)", spawns ? "" : " FAILED (bytes differ)");
 	return (portal ? 1 : 0) + (rooms ? 1 : 0) + (presets ? 1 : 0) + (spawns ? 1 : 0);

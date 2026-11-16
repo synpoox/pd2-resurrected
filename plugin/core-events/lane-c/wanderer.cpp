@@ -411,7 +411,7 @@ auto InstallWanderer(const D2RL::PluginContext* context, char* report, size_t re
 		std::snprintf(report, reportSize, "off: no thread service");
 		return 0;
 	}
-	if (!RegisterAiThink(context, DarkWandererRow, d2r::sig::AiDarkWanderer.address, DarkWandererMonster, &ThinkWanderer)) {
+	if (!ai_registry::RegisterAt(context, DarkWandererRow, d2r::sig::AiDarkWanderer.address, DarkWandererMonster, &ThinkWanderer)) {
 		std::snprintf(report, reportSize, "off: monai %d think not swapped (the slot is not D2R's think)", DarkWandererRow);
 		return 0;
 	}

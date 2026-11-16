@@ -30,7 +30,7 @@ auto OpenPortalAt(Game* game, void* near, int32_t row, int32_t x, int32_t y, int
 	using SpawnFn = Unit* (*)(int32_t, int32_t, int32_t, int32_t, Game*, void*, int32_t, int32_t, int32_t,
 	                          int32_t) noexcept;
 	void* room = near != nullptr && record != nullptr
-		? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(near, x, y)
+		? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(near, x, y)
 		: nullptr;
 	Unit* portal = room != nullptr ? d2r::Engine<SpawnFn>(SpawnUnit)(UnitObject, row, x, y, game, room, 1, 1, 0, 0)
 	                               : nullptr;

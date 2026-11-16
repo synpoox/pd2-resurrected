@@ -122,7 +122,7 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 			}
 		}
 	}
-	VanillaAiThink(FallenRow)(game, unit, tick);
+	ai_registry::Vanilla(FallenRow)(game, unit, tick);
 }
 
 void OnDeath(const D2RL::PluginContext*, const D2RL::Lifecycle::MonsterDeathEvent* event, void*) noexcept {
@@ -179,7 +179,7 @@ auto InstallTreasureFallen(const D2RL::PluginContext* context, char* report, siz
 		std::snprintf(report, reportSize, "off: no lifecycle service");
 		return 0;
 	}
-	if (!RegisterAiThink(context, FallenRow, AiFallen.address, TreasureFallenMonster, &Think)) {
+	if (!ai_registry::RegisterAt(context, FallenRow, AiFallen.address, TreasureFallenMonster, &Think)) {
 		std::snprintf(report, reportSize, "off: monai %d think not swapped (the slot is not D2R's think)", FallenRow);
 		return 0;
 	}

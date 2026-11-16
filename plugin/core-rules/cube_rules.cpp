@@ -204,7 +204,7 @@ void Send(Unit* item, uint32_t itemFlags, uint32_t commandFlags) noexcept {
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, uint32_t, uint32_t, int32_t, uint8_t, uint8_t, uint32_t) noexcept>(SendItem)(
 		g_pressGame, g_pressPlayer, item, itemFlags, commandFlags, At<int32_t>(item, UnitMode),
 		d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(item), d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemStorePage)(item),
-		d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitXY)(item));
+		d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitPackedXY)(item));
 }
 
 struct PutBack {

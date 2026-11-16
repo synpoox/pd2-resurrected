@@ -91,7 +91,7 @@ auto OpenTemplePortal(Game* game, Unit* lucion) noexcept -> bool {
 	placements::Spot at{0, 0};  // Cartographer's `temple-portal` spot (arenaspots.txt, #962)
 	const bool named = ArenaSpotOf("lucion", "temple-portal", &at);
 	int32_t xy[2] = {at.x, at.y};
-	void* room = named ? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(near, xy[0], xy[1]) : nullptr;
+	void* room = named ? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(near, xy[0], xy[1]) : nullptr;
 	if (room == nullptr) {
 		d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(UnitCoords)(lucion, xy);
 		room = near;
@@ -206,9 +206,9 @@ auto KillQuietly(Game* game, Unit* monster) noexcept -> void {
 	using namespace d2r::rva;
 	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlags)(monster, UnitNoDrop, 1);
 	alignas(8) uint8_t block[0x30] = {};
-	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(MonsterModeBlock)(monster, ModeDeath, block);
-	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(UnitTarget)(game, monster);
-	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(SetMonsterMode)(game, block, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(ModeCmdInit)(monster, ModeDeath, block);
+	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, monster);
+	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(ModeCmdRun)(game, block, 1);
 }
 
 namespace {
@@ -271,7 +271,7 @@ void RollBrick(const D2RL::PluginContext*, void* native, void* user) noexcept {
 	rolls.desecrated = DesecrateItem(g_brickGame, item);
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, uint32_t, uint32_t, int32_t, uint8_t, uint8_t, uint32_t) noexcept>(SendItem)(
 		g_brickGame, g_brickPlayer, item, 1, 0, At<int32_t>(item, UnitMode), d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(item),
-		d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemStorePage)(item), d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitXY)(item));
+		d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemStorePage)(item), d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitPackedXY)(item));
 }
 
 // Game thread: the swap, then the rolls
@@ -418,7 +418,7 @@ auto Desecrate(Game* game, Unit* player) noexcept -> bool {
 		// Refresh the amulet on the client, as core-rules' reroll refreshes an item (item flag 1)
 		d2r::Engine<void (*)(Game*, Unit*, Unit*, uint32_t, uint32_t, int32_t, uint8_t, uint8_t, uint32_t) noexcept>(SendItem)(
 			game, player, item, 1, 0, At<int32_t>(item, UnitMode), d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(item),
-			d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemStorePage)(item), d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitXY)(item));
+			d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemStorePage)(item), d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitPackedXY)(item));
 		g_desecrated.fetch_add(1, std::memory_order_relaxed);
 	}
 	plog::Info("desecration: attempt %u at tier %d, roll %d of 100 against %d: %s, stage %d", ++g_attempts, tier, roll,

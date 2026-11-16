@@ -56,7 +56,7 @@ auto OpenExtra() noexcept -> const carto::OpenExtraServiceV1* {
 auto DropMaps(Game* game, Unit* monster, Unit* player) noexcept -> int32_t {
 	using namespace d2r::rva;
 	const uint8_t dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
-	const uint8_t* tables = d2r::Engine<const uint8_t* (*)(uint8_t) noexcept>(DataTablesOf)(dataFlag);
+	const uint8_t* tables = d2r::Engine<const uint8_t* (*)(uint8_t) noexcept>(DataTables)(dataFlag);
 	const int32_t ilvl = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(monster, StatLevel, 0);
 	const int32_t index = tables == nullptr ? 0 : d2r::Engine<int32_t (*)(void*, const char*, int32_t) noexcept>(TcIndexByName)(
 		At<void*>(tables, TablesTcNames), MapPool, 0);
