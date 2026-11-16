@@ -62,8 +62,8 @@ auto ClampCount(int32_t count) noexcept -> int32_t {
 
 // Split Throw (PD2 srvdofunc 189): calc1 missiles of srvmissile a/b/c (by weapon) in Multiple Shot's line, calc2
 // activation frame, calc3 triggering missiles. PD2's calc1 is par1+min(lvl/5,par2).
-// shortcut: calc4 (PD2's ED%) is not applied; Multiple Shot has no damage-bonus field to copy. Upgrade when PD2's
-// srvdo 189 is read from ProjectDiablo.dll.
+// shortcut: calc4 (PD2's ED%) is not applied; Multiple Shot takes its calc4 through create callback 4 instead (#1056).
+// Upgrade when PD2's srvdo 189 is read from ProjectDiablo.dll.
 auto SrvDoSplitThrow(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	if (game == nullptr || unit == nullptr) {
 		return 0;
