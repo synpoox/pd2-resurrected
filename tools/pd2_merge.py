@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import sys
 from pathlib import Path
 from typing import Callable
@@ -36,9 +37,7 @@ import pd2_missiles_hd
 import pd2_monsters_hd
 import pd2_objects_hd
 import pd2_overlays_hd
-import pd2_overrides
 import pd2_panels
-import pd2_presets
 import pd2_skill_icons
 import pd2_skilltrees
 import pd2_sounds
@@ -56,13 +55,10 @@ RULES: dict[str, Callable[[Path, Path, Path, Path], None]] = {
     **{f"ids-{t}.tsv": pd2_ids.apply for t in pd2_ids.TABLES},
     "ids-monpreset.tsv": pd2_levels.apply_monpreset,
     "item-tables.txt": pd2_items.apply,
-    "level-files.tsv": pd2_levels.apply_files,  # after the id rules: lvltypes, objpreset, DS1 and DT1
     "missiles-hd.tsv": pd2_missiles_hd.apply,  # after ids-missiles.tsv
     "monsters-hd.tsv": pd2_monsters_hd.apply,
     "objects-hd.tsv": pd2_objects_hd.apply,  # after ids-objects.tsv
     "panel-grids.json": pd2_panels.apply,
-    "presets-hd.tsv": pd2_presets.apply,  # after level-files.tsv: reads the merged levels, lvlprest, lvltypes and DS1
-    "presets-overrides.tsv": pd2_overrides.apply,  # after presets-hd.tsv (rules run in name order): edits its output
     "skill-icons.txt": pd2_skill_icons.apply,
     "sounds.tsv": pd2_sounds.apply,
     "standins.tsv": pd2_standins.apply,  # after the id and item rules (merge runs rule files by name)
@@ -79,8 +75,18 @@ REQUIRED_TABLES = ("monstats.txt", "skills.txt", "levels.txt", "itemstatcost.txt
 MIN_TABLES = 70
 
 
+# What the retired PD2 DT1/DS1 converter wrote (#965): PD2's DS1 and DT1 under global/tiles, and the HD presets it
+# generated. The mod ships none of them: its levels are D2R's own and Cartographer's.
+LEGACY_OUTPUT = ("global/tiles", "hd/env/preset")
+
+
 class MergeError(Exception):
     pass
+
+
+def legacy_output(data: Path) -> list[str]:
+    """The retired converter's output folders data (generated/data or out/data) still holds, empty when it is clean."""
+    return [d for d in LEGACY_OUTPUT if (data / d).exists()]
 
 
 def check_output(gen: Path, required: tuple[str, ...] | None = None, minimum: int | None = None) -> str | None:
@@ -160,6 +166,9 @@ def merge(root: Path, d2r: Path = D2R_DATA, cache: Path | None = None, slots_hom
                 applied, rebuilt = apply(RULES), True
                 if (why := check_output(root / "generated" / "data")) is not None:
                     raise MergeError(f"merge output is not whole after a rebuild: {why}")
+        if old := legacy_output(root / "generated" / "data"):
+            shutil.rmtree(root / "generated")  # a failed run leaves no generated/
+            raise MergeError(f"generated/data holds the retired converter's output {old}: a rule still writes it")
     except mg.MergeError as e:
         raise MergeError(f"{e} (tools/pd2_extract.py extracts)" if "extract" in str(e) else str(e)) from e
     finally:

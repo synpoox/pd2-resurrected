@@ -20,14 +20,9 @@
       "data/global/animdata.d2",
       "data/global/ui/spells/??skillicon.dc6",
       "data/global/ui/spells/skillicon.dc6",
-      "data/global/ui/automap/maximap*.dc6",
       "data/global/items/*.dc6",
       "data/global/missiles/*.dcc",
-      "data/global/tiles/*.dt1",
       "data/global/sfx/*.wav"
-    ],
-    "pd2maps.mpq": [
-      "data/global/tiles/*.ds1"
     ]
   }
 }

@@ -39,19 +39,6 @@ The per-check recipe (cheats, shots, images, unlock) is `docs/agents/game-check.
 5. For a hand test, write the slot, its lock owner and the unlock command into the game-check issue.
 6. With `MODKIT_RUN=<owner>` set, `python <toolkit>/testing/game_slots.py unlock <N> <owner>` once the test is done.
 
-## Force a DS1 variant
-
-A level with several DS1 variants rolls one per game, so a warp can land on the wrong layout. After installing the
-slot, pin the level to the variant under test (test-only; it edits the slot's installed `lvlprest.txt`, never `out/`):
-
-    python tools/pd2_force_ds1.py --slot <N> "Dark Temple Map=DarktempleV2.ds1"   # or 200=darktemplev2.ds1, or darktemplev2.ds1
-
-A selector is the lvlprest `Name`, the LevelId or, alone, a DS1 file name; it refuses a DS1 that is not one of that
-row's variants (as the slot first had them, so `200=V2` then `200=V3` works) and prints what it changed. Like
-`slot_install.py` it needs `MODKIT_TESTING_CONFIG` set, the slot lock held by `MODKIT_RUN`, and the slot's game
-closed: D2R reads `lvlprest.txt` at launch, so force before you start the game. Run `--reset` before you unlock the slot (the original is kept as
-`lvlprest.txt.pd2-force-ds1.orig`); reinstalling the slot undoes it as well.
-
 ## Shared cache
 
 `C:\pd2r-cache` (or `PD2R_CACHE`) holds what every worktree would otherwise rebuild (`tools/pd2_cache.py`, #440):
@@ -66,7 +53,7 @@ closed: D2R reads `lvlprest.txt` at launch, so force before you start the game. 
   Merges in different worktrees run at once (only one per worktree, `pd2_merge.lock` in it): the cache is safe to
   share, as entries are kept and deleted by rename, so a replay that loses a race just runs the rule. The output is
   checked (required tables, table count) before use: a bad tree is rebuilt once without the cache, then the run fails
-  (#745). A rule's cache key covers its module, what it imports, and every file of an imported package (`tools/presets/`).
+  (#745). A rule's cache key covers its module, what it imports, and every file of an imported package.
 - `install.ps1` (modkit install) writes only the `out\data` files that differ from the slot's and touches nothing outside
   `<slot>\mods\PD2Resurrected`, so moving a slot between builds is quick.
 - Merge slots (#760, #801): at most `PD2R_MERGE_SLOTS` (default 4) merges run at once on the machine, agents' and the CI
@@ -75,8 +62,6 @@ closed: D2R reads `lvlprest.txt` at launch, so force before you start the game. 
   The last `PD2R_CI_RESERVED` (default 2, #872) slots are the gate's: an agent merge holds at most
   `PD2R_MERGE_SLOTS - PD2R_CI_RESERVED` (at least one), CI (`GITHUB_ACTIONS`) may take any. The queued line says which
   pool it waits on. Set both variables in the runners' `.env` too.
-- Coverage outputs (`pd2_coverage.py`) go to `coverage/` in the worktree, not `out/`: `install.ps1` / `modkit build`
-  wipes `out/`, so an install no longer deletes a running coverage report or the downloaded main baseline.
 - CI's gate shares the merge slots, the extract lock and `pd2-data` with the agents; it does not share the rule
   cache (#820). With 4 agents merging, expect CI to queue; a merge is one per commit (#820, #821), so reuse a
   worktree's or CI's output, and time merges by CPU time (`time.process_time`), not wall time under load.
@@ -85,34 +70,3 @@ closed: D2R reads `lvlprest.txt` at launch, so force before you start the game. 
   run that wrote outside `generated\` (new `merge\art` PNGs) is not kept. The whole-merge `merge\<key>` folders older
   tools kept are pruned only with `PD2R_PRUNE_LEGACY=1`: set it once no worktree runs the old tools. `extract\` is
   never pruned.
-
-## Edge tour
-
-`tools/pd2_edge_tour.py` (#733) takes HD/legacy screenshot pairs along the edges and over the floors of the PD2-only
-maps (#707), warping instead of walking. Only the maps with a generated HD preset are toured.
-
-- `py -3 tools/pd2_edge_tour.py list --map "Torture Halls" [--type wall] [--points 4]` prints the plan, no game needed
-  (it reads `generated/data` after `pd2_merge.py`, and D2R's tiles from modkit's cache, as `pd2_coverage.py` does): map,
-  DS1, type, DS1 tile and the `cheat goto <levelId>,<x>,<y>` line. x = OffsetX*5 + tileX*5 + 2 (y alike), the offsets
-  from the merged `levels.txt`.
-- Types: the edge types of `pd2_fidelity.classify` (`wall`, `cliff`, `fence`, `pillar`, `water`, `treeline`) and floors `floor:<PD2 DT1 stem>`. `--type` is
-  repeatable; `floor` means every floor type. A point stands on walkable floor next to an edge run (longest runs first,
-  then the farthest-apart tiles of a run), or on interior floor of its type.
-- `py -3 tools/pd2_edge_tour.py shoot --slot N --map "Torture Halls" --type wall` drives the slot through
-  d2rAI-toolkit's `game_ctl.py` (console, `g`, window screenshots) and writes
-  `out/edge-tour/<map>/<ds1>_<type>_<x>-<y>.png`, HD on the left and legacy on the right. Lock the slot and set it up as
-  above, with `MODKIT_TESTING_CONFIG` set; start its game and enter a Hell game with a level 90+ character in HD. The
-  script sets `cheat nogethit 1` and `cheat god 1`, warps, waits `--settle` seconds (3), shoots, presses `g`, shoots,
-  presses `g` again. It warns when the two shots are identical (the game was not in HD, or `g` did nothing). Stop the
-  game and unlock the slot afterwards.
-- A preset with several DS1 files rolls one per game, and each is in the plan: a shot of another variant than the one
-  loaded lands on different tiles (check the `list` line's DS1 against the game's map).
-- `py -3 tools/pd2_edge_tour.py sweep [--map jungle1 ...] [--slots 4,5,6,7,8] [--points 10]` (#840) needs no manual
-  step: per variant it stops the game, pins the DS1, starts, clicks Play and Hell (each after a not-black screenshot),
-  sets the cheats and shoots the centre-nearest walkable tile and waypoint (`pd2_warps.reference_spots`) plus edge and
-  floor points. `--map` matches a DS1 stem or preset name exactly (`--contains`: part of one); the Palace is never
-  swept. It uses only free slots, leaves `--keep-free` (1) of them unlocked, and locks each slot as `sweep-<pid>`
-  (a hard kill leaves a stale lock the next claim replaces). Ctrl-C stops every slot at its next check and waits for
-  its cleanup (game stopped, pin reset, unlock, `g` pressed back) before `sweep.json` is written. Output:
-  `coverage/sweep/<map>/<ds1>.jpg` (contact sheet, `tools/contact_sheet.py`: luma HD/legacy and black share per pair)
-  and `sweep.json` (seconds per variant); the PNG pairs are deleted. Install a build on the slots first. Poisoned Well (level 199) is HD only (`g` hangs it, #778). Not done: points from the parity defects (pd2_parity).

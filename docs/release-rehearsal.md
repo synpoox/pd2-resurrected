@@ -41,7 +41,7 @@ sets `loader_files` itself.
 ## Arena status
 
 Vanilla mini-ubers and D2R Tristram (136) work on native maps. Dclone, Rathma, Lucion/Temple and Bitter Depths are
-refused safely (they still use converted levels until #965).
+refused safely (#965 retired the converted levels; new arenas come later).
 
 ## Install and rollback by manifest
 
@@ -76,7 +76,5 @@ Screenshots: `issue-assets/966/b-main-map.png`, `c-cand-upgrade-map.png`, `d-rol
 
 ## Deferred
 
-- #965: retiring the converter. Dclone, Rathma, Lucion/Temple and Bitter Depths still use converted levels and refuse
-  safely until then.
 - #967: publishing (tag, upload, public version).
 - #1028 (Horazon's second map) and Desecration.
