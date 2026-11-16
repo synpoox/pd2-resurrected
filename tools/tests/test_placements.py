@@ -60,7 +60,7 @@ class PlacementsTests(unittest.TestCase):
     def test_rathma_places_follow_the_arena_spots(self):
         _, places = parse()
         cart = ROOT / "files/data/global/excel/d2rloader/cartographer"
-        spots = {(r[0], r[1]): (int(r[2]), int(r[3])) for r in (l.split("\t") for l in
+        spots = {(r[0], r[1]): (int(r[2]), int(r[3])) for r in (ln.split("\t") for ln in
                  (cart / "arenaspots.txt").read_text(encoding="utf-8").splitlines()[1:]) if r[0]}
         offy = {1: 4500, 2: 4800, 3: 5100}
         text = (PLUGIN / "placements/rathma.cpp").read_text(encoding="utf-8")

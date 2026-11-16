@@ -16,7 +16,7 @@ def names(rows, col):
 def pd2_rows(table):
     lines = (PD2 / f"{table}.txt").read_text("latin-1").split("\n")
     head = lines[0].rstrip("\r").split("\t")
-    return [dict(zip(head, l.rstrip("\r").split("\t"))) for l in lines[1:] if l.strip()]
+    return [dict(zip(head, ln.rstrip("\r").split("\t"))) for ln in lines[1:] if ln.strip()]
 
 
 class MonpropSkillIds(unittest.TestCase):

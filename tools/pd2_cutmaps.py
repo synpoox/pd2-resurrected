@@ -270,7 +270,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
 def deviations_row(root: Path) -> tuple[Path, str]:
     """docs/deviations.md and the cut's Gate row, as `gate_row` writes it."""
     path = root / "docs" / "deviations.md"
-    name = next(l for l in path.read_text("utf-8").splitlines() if l.startswith("| PD2's map system:")).split(" | ")[0][2:]
+    name = next(ln for ln in path.read_text("utf-8").splitlines() if ln.startswith("| PD2's map system:")).split(" | ")[0][2:]
     return path, gate_row(root / "merge" / "z-maps-cut.txt", root / "pd2-data" / "data", name)
 
 
@@ -280,7 +280,7 @@ if __name__ == "__main__":
     path, row = deviations_row(root)
     text = path.read_text("utf-8")
     lines = text.split("\n")
-    i = next(k for k, l in enumerate(lines) if l.startswith("| PD2's map system:") and "`misc." in l)
+    i = next(k for k, ln in enumerate(lines) if ln.startswith("| PD2's map system:") and "`misc." in ln)
     lines[i] = row
     path.write_text("\n".join(lines), "utf-8", newline="")
     print(f"rewrote the Gate row ({row.count('`') // 2} patterns)")

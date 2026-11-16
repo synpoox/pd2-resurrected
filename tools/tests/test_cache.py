@@ -659,7 +659,8 @@ class PackageKeyTests(unittest.TestCase):
             tmp = Path(tmp)
             for f in ("pk3_a/__init__.py", "pk3_a/deep.py", "pk3_a/sub/__init__.py", "pk3_a/sub/mod.py"):
                 write(tmp / f, "")
-            rel = lambda fs: sorted(f.relative_to(tmp).as_posix() for f in fs)
+            def rel(fs):
+                return sorted(f.relative_to(tmp).as_posix() for f in fs)
             self.assertEqual(rel(pd2_cache.module_files(tmp, "pk3_a.deep", [])), ["pk3_a/deep.py"])
             self.assertEqual(rel(pd2_cache.module_files(tmp, "pk3_a", ["deep", "sub", "nope"])),
                              ["pk3_a/__init__.py", "pk3_a/deep.py", "pk3_a/sub/__init__.py"])

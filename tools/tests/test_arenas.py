@@ -30,7 +30,7 @@ class ArenaTests(unittest.TestCase):
         return {k: int(v) for k, v in self.ops[arena["Level"]].items() if re.fullmatch(r"-?\d+", v or "")}
 
     def test_every_arena_is_a_private_binding_level(self):
-        private = {l for (l, _t, s, _f) in self.bindings.values() if s == "Private"}
+        private = {ln for (ln, _t, s, _f) in self.bindings.values() if s == "Private"}
         for arena in self.arenas:
             assert int(arena["Level"]) in private, arena["Name"]
 

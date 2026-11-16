@@ -1,5 +1,4 @@
 """Horazon drops six native maps and has no tier pool, map-stat or unique-map path (#959)."""
-import re
 import unittest
 from pathlib import Path
 

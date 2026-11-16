@@ -1,5 +1,4 @@
 """The Altar guardian's death runs on a native Cartographer map, whose level is in no Horazon tier (#954)."""
-import re
 import unittest
 from pathlib import Path
 

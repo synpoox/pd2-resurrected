@@ -89,7 +89,7 @@ def cartographer_note(dll: Path, commit: str | None) -> str:
     """The line that records which Cartographer build a release ships (#966): the d2r-tools commit, if given, and the
     dll's SHA-256. Releases ship the latest build, unpinned; this keeps them traceable."""
     if not dll.is_file():
-        raise ReleaseError(f"cartographer.dll missing: build it from d2r-tools main and pass --cartographer or set CARTOGRAPHER_DLL")
+        raise ReleaseError("cartographer.dll missing: build it from d2r-tools main and pass --cartographer or set CARTOGRAPHER_DLL")
     where = f"d2r-tools {commit}, " if commit else ""
     return f"Cartographer: {where}sha256 {hashlib.sha256(dll.read_bytes()).hexdigest()}"
 

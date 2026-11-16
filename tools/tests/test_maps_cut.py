@@ -7,7 +7,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 import pd2_cutmaps  # noqa: E402
-from pd2_table import Table  # noqa: E402
 
 CORE_EVENTS = ROOT / "plugin" / "core-events"
 REMOVED = ["map_stats", "map_deaths", "unique_maps", "unique_map_drops", "zhar", "map_bosses", "map_boss_ai"]

@@ -1,0 +1,6 @@
+# Default rules (E, F); line length is not enforced.
+include = ["tools/**/*.py"]
+
+[lint]
+select = ["E", "F"]
+ignore = ["E501"]

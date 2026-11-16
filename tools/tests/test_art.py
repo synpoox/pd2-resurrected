@@ -176,7 +176,8 @@ class HdPictureTests(unittest.TestCase):
                             "Amethyst|gpv|gemp|invgsve|flpgsv", "Cube|box|quest|invbox|flpbox"])
             pd2 = d2r + "@" + "@".join(["El Stack|r01s|runs|invrsEl|flprun", "Amethyst Stack|gpvs|gg4a|invgsves|flpgsv",
                                         "Ort Stack|r05s|runs|invrsOrt|flprun", "Topaz Stack|gpys|gg4a|invgsyls|flpgsv", "Puzzlebox|lbox|lbox|invlbox|flpbox", "Fortify|fort|fort|invfort|flpnone"])
-            tab = lambda rows: table((head + rows).replace("@", chr(10)) + chr(10), "code")
+            def tab(rows):
+                return table((head + rows).replace("@", chr(10)) + chr(10), "code")
             models = {}
             M.hd_items(hd, {"misc": tab(pd2)}, {"misc": tab(d2r)}, [], [],
                        {k: "pd2/" + k for k in ("invrsel", "invgsves", "invrsort", "invgsyls", "invlbox", "invfort")}, models)

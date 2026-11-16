@@ -199,8 +199,8 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
     pd2_excel, mod_excel = root / "pd2-data/data/global/excel", root / "files/data/global/excel"
     if not (root / "pd2-import.txt").is_file():
         raise GateError(f"no {root / 'pd2-import.txt'}: it says which tables the PD2 import owns")
-    imported = {l for l in (x.strip() for x in (root / "pd2-import.txt").read_text("utf-8").splitlines())
-                if l and not l.startswith("#")}
+    imported = {ln for ln in (x.strip() for x in (root / "pd2-import.txt").read_text("utf-8").splitlines())
+                if ln and not ln.startswith("#")}
     patterns, entries = deviations(root / "docs" / "deviations.md")
     if not any(pd2_excel.glob("*.txt")):  # else the gate compares nothing and passes
         raise GateError(f"no PD2 tables under {pd2_excel}: run `python tools/pd2_extract.py` (the merge's first step) "
