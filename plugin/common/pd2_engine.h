@@ -169,3 +169,18 @@ inline void ReleaseDamageRva(LeapKnockback& damage) noexcept {
 }
 
 }  // namespace d2r
+
+// --- core-rules: socketed gems and runes apply their mods once (#450; D2Game\src\Items\ItemMode.cpp) -----------------
+// 0x475140 (dataFlag, filler, parent item, 0) applies a socketed filler's gems.txt mods; every insert path calls it
+// (0x46eb00 and its siblings 0x46e670, 0x46ea70, 0x46e8c0, 0x46ef30, 0x470ca0, 0x4744a0, 0x475090). It takes the mods
+// into the filler's own stat list when the filler is a gem (item type row 0x14) or a rune (0x4b), unless that list was
+// saved and sent too: the save/packet writer 0x37ffd0 writes the compact form (no stats) when item data +0x18 has bit
+// 0x200000 (`flags >> 0x15 & 1`), and the client and the loader then apply the mods once, from gems.txt.
+// Our misc.txt has compactsave=0 for every gem (PD2's stacks), so the flag is set here instead.
+inline constexpr uint64_t SocketFillerMods = 0x475140;
+inline constexpr uint8_t SocketFillerModsEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x20, 0x56, 0x57, 0x41,
+                                                    0x56, 0x48, 0x83, 0xec, 0x30};
+inline constexpr uint64_t UnitItemData = 0x34a500;  // (item) -> item data, null for a non-item
+inline constexpr int ItemDataFlags = 0x18;          // uint32 item flags
+inline constexpr uint32_t ItemFlagCompactSave = 0x200000;
+inline constexpr int ItemTypeGem = 0x14, ItemTypeRune = 0x4b;

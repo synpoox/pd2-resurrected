@@ -52,6 +52,7 @@ add_library(core_rules SHARED
 	core-rules/missile_functions.cpp
 	core-rules/item_rules.cpp
 	core-rules/merc_rules.cpp
+	core-rules/socket_rules.cpp
 	core-rules/cube_rules.cpp
 	core-rules/cube_stacks.cpp
 	core-rules/almanac.cpp
