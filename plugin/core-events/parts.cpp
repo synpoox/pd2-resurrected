@@ -1,6 +1,10 @@
 // The parts registry (parts.h). Function-local statics: registration runs in static initialisers, in no fixed order.
 #include "parts.h"
 
+#include "off_switch.h"
+
+#include <cstdio>
+
 namespace {
 
 constexpr size_t Capacity = 64;
@@ -52,13 +56,30 @@ void Sort() noexcept {
 
 }  // namespace
 
-PartReg::PartReg(int order, const char* word, InstallFn install) noexcept {
+PartReg::PartReg(int order, const char* word, InstallFn install, std::span<sigscan::Entry* const> uses) noexcept {
 	Registry& r = Reg();
 	if (r.partCount == Capacity) {
 		r.overflow = true;
 		return;
 	}
-	r.parts[r.partCount++] = Part {word, install, "", order};
+	r.parts[r.partCount++] = Part {word, install, "", order, uses};
+}
+
+// The same rule as plugin-common's parts::SkipReason (its parts.h cannot be included here: the name clashes with this
+// file's parts.h): the off word, then every entry of `uses` must have resolved.
+auto UsesSkipReason(const Part& part, const char* pluginName, char* out, size_t size) noexcept -> bool {
+	if (off_switch::Off(part.word)) {
+		std::snprintf(out, size, "off: left out by %s-off.txt", pluginName);
+		return true;
+	}
+	for (const sigscan::Entry* e : part.uses) {
+		if (e == nullptr || e->state != sigscan::State::Ok) {
+			std::snprintf(out, size, "off: engine address %s %s on this game image", e != nullptr ? e->name : "(null)",
+			              sigscan::StateText(e != nullptr ? e->state : sigscan::State::Unresolved));
+			return true;
+		}
+	}
+	return false;
 }
 
 CountersReg::CountersReg(int order, CountersFn fn) noexcept {

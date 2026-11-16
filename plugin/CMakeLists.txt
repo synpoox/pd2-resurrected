@@ -149,3 +149,8 @@ add_executable(line_spread_check EXCLUDE_FROM_ALL tests/line_spread_check.cpp)
 target_include_directories(line_spread_check PRIVATE common)
 target_compile_features(line_spread_check PRIVATE cxx_std_20)
 core_options(line_spread_check)
+# core-events' parts with `uses` (#1081): the gate that installs them on any image their signature entries resolved on.
+add_executable(parts_uses_check EXCLUDE_FROM_ALL tests/parts_uses_check.cpp core-events/parts.cpp)
+target_include_directories(parts_uses_check PRIVATE core-events)
+target_link_libraries(parts_uses_check PRIVATE core_common)
+core_options(parts_uses_check)

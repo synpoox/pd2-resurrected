@@ -426,10 +426,10 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 }  // namespace
 
 auto InstallDcloneAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
-	const bool ok = RegisterAiThink(context, TrapMeleeRow, d2r::rva::AiTrapMelee, Dclone, &Think);
+	const bool ok = RegisterAiThink(context, TrapMeleeRow, d2r::sig::AiTrapMelee.address, Dclone, &Think);
 	int souls = 0;
 	for (int32_t id = FirstSoul; id <= LastSoul; ++id) {
-		souls += RegisterAiThink(context, TrappedSoulRow, d2r::rva::AiTrappedSoul, id, &ThinkSoul) ? 1 : 0;
+		souls += RegisterAiThink(context, TrappedSoulRow, d2r::sig::AiTrappedSoul.address, id, &ThinkSoul) ? 1 : 0;
 	}
 	const bool nihl = RegisterNihlathakAi(context);
 	std::snprintf(report, reportSize,

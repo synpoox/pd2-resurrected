@@ -746,7 +746,7 @@ auto BuffRathmaSurvivor(Game* game, Unit* dead) noexcept -> void {
 auto InstallRathmaAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	bool ok = true;
 	for (const int32_t c : {RathmaBone, RathmaPoison, BoneClone, PoisonClone}) {
-		ok = ok && RegisterAiThink(context, SummonerRow, AiSummoner, c, &Think);
+		ok = ok && RegisterAiThink(context, SummonerRow, d2r::imageBase + AiSummoner, c, &Think);
 	}
 	std::snprintf(report, reportSize,
 	              ok ? "monai %d (Summoner) think: rathmaBone, rathmaPoison and the clones"

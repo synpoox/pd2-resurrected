@@ -119,7 +119,6 @@ auto Summon(Game* game, Unit* boss, const Prime& prime, const uint8_t* tick) noe
 }
 
 constexpr int32_t AiRows[] = {50, 51, 135};
-constexpr uint64_t D2RThinks[] = {d2r::rva::AiMephisto, d2r::rva::AiDiablo, d2r::rva::AiBaalCrab};
 
 // ai_hooks hands only the prime's class here
 template <size_t I>
@@ -146,8 +145,10 @@ static_assert(std::size(Wrappers) == std::size(g_primes) && std::size(AiRows) ==
 
 auto InstallPrimeMinions(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	int installed = 0;
+	// Resolved at install (after d2r::Bind): Mephisto, Diablo, Baal
+	const uint64_t d2rThinks[] = {d2r::sig::AiMephisto.address, d2r::sig::AiDiablo.address, d2r::sig::AiBaalCrab.address};
 	for (size_t i = 0; i < std::size(g_primes); ++i) {
-		installed += RegisterAiThink(context, AiRows[i], D2RThinks[i], g_primes[i].classId, Wrappers[i]) ? 1 : 0;
+		installed += RegisterAiThink(context, AiRows[i], d2rThinks[i], g_primes[i].classId, Wrappers[i]) ? 1 : 0;
 	}
 	std::snprintf(report, reportSize, "prime minions on AI rows 50, 51, 135%s",
 	              installed == static_cast<int>(std::size(g_primes)) ? "" : " FAILED (a slot is not D2R's think)");

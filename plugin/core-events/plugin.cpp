@@ -56,7 +56,12 @@ void InstallParts(const D2RL::PluginContext* context) noexcept {
 	}
 	for (size_t i = 0; i < count; ++i) {
 		Part& p = parts[i];
-		if (!g_imageKnown) {
+		if (!p.uses.empty()) {
+			// Reads only signature entries: no build-93847 gate, the entries are the gate (parts.h)
+			if (!UsesSkipReason(p, PluginName, p.report, sizeof(p.report))) {
+				p.install(context, p.report, sizeof(p.report));
+			}
+		} else if (!g_imageKnown) {
 			std::snprintf(p.report, sizeof(p.report), "off: unknown game image 0x%08x (expects 0x%08x)",
 			              build_guard::ImageStamp(static_cast<uintptr_t>(context->exeBase)), d2r::rva::ImageStamp);
 		} else if (off_switch::Off(p.word)) {

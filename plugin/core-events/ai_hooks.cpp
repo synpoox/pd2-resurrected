@@ -95,9 +95,9 @@ auto Slot(int32_t row) noexcept -> uint64_t {
 
 }  // namespace
 
-auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, uint64_t d2rThink, int32_t classId,
+auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, uint64_t d2rThinkAddress, int32_t classId,
                      AiThinkFn think) noexcept -> bool {
-	if (monaiRow < 0 || monaiRow >= MonAiRows || think == nullptr) {
+	if (monaiRow < 0 || monaiRow >= MonAiRows || think == nullptr || d2rThinkAddress == 0) {
 		return false;
 	}
 	int k = 0;
@@ -111,7 +111,7 @@ auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, uint6
 	Row& r = g_rows[k];
 	if (r.row < 0) {
 		// D2R's think is the expected value: a slot another plugin changed refuses the write
-		const uint64_t vanilla = d2r::imageBase + d2rThink;
+		const uint64_t vanilla = d2rThinkAddress;
 		uint8_t expected[8];
 		std::memcpy(expected, &vanilla, sizeof(expected));
 		if (!context->PatchWriteU64(Slot(monaiRow), expected, sizeof(expected), reinterpret_cast<uint64_t>(Trampolines[k]))) {

@@ -149,7 +149,7 @@ auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 }  // namespace
 
 auto RegisterNihlathakAi(const D2RL::PluginContext* context) noexcept -> bool {
-	return RegisterAiThink(context, TrappedSoulRow, d2r::rva::AiTrappedSoul, NihlathakMap, &ThinkNihlathak);
+	return RegisterAiThink(context, TrappedSoulRow, d2r::sig::AiTrappedSoul.address, NihlathakMap, &ThinkNihlathak);
 }
 
 auto NihlathakAiCounts(uint32_t out[4]) noexcept -> void {
