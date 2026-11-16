@@ -158,7 +158,7 @@ rows have no table hook: D2R does what it does.
 | Corrupted zones | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): D2R's Terror Zones stay in their place |  |
 | Level life regen cap (30, `bloodwarp` lifts it) | cut | PD2 caps it only in the PvP arenas (levels 157, 159, 166), and PvP is cut ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)) ([ms3-map-stats](research/ms3-map-stats.md)) |  |
 
-### Not yet (17)
+### Not yet (18)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -180,6 +180,7 @@ rows have no table hook: D2R does what it does.
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 | Horazon opens no portal on native maps ([#1028](https://github.com/synpoox/pd2-resurrected/issues/1028)) | not yet | his fight and his six native map drops stay; the portal to a second map needs a destination that is not a fixed D2R level (d2r-tools#485), so after the fight no portal opens and the log says so | [#1028](https://github.com/synpoox/pd2-resurrected/issues/1028) |
 
+| Rathma arena rooms spawn their own monsters next to Cartographer | not yet | PD2 skips the monsters of Rathma's arena rooms by wrapping the room populate (`0x50ACF0`, PD2 `0x1036fef0`). Cartographer hooks that address first and the loader cannot hook it twice, so core-maps runs its map events from the room activation (`0x48f190`) and cannot skip a populate that runs after it. Rathma is refused until [#965](https://github.com/synpoox/pd2-resurrected/issues/965); the skip comes back with the new Rathma arena ([#1032](https://github.com/synpoox/pd2-resurrected/issues/1032)) | [#1032](https://github.com/synpoox/pd2-resurrected/issues/1032) |
 ### Approximated (77)
 
 | Deviation | Status | Why | Work item |

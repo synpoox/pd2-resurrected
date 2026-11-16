@@ -109,18 +109,24 @@ auto OnPresetSpawn(d2r::Game* game, void* room, const uint8_t* preset) noexcept 
 	g_presetSpawnOriginal(game, room, preset);
 }
 
-using SpawnedFn = void (*)(void* params, d2r::Unit* monster) noexcept;
-SpawnedFn g_spawnedOriginal = nullptr;
-
 // PD2's monster spawn hook 0x1038af90 ran the uber tier scaling for every monster spawning in a PD2 level; the map stats it
-// also ran are cut (#964). No SDK service changes a spawning monster's stats, so this hooks D2R's monster spawn.
-auto OnMonsterSpawned(void* params, d2r::Unit* monster) noexcept -> void {
-	g_spawnedOriginal(params, monster);
+// also ran are cut (#964). No SDK service reports or changes a spawning monster, so this hooks D2R. Not MonsterSpawned
+// (0x494a60): Cartographer hooks it first and the loader cannot hook one address twice (#1032). Its only caller, the
+// spawn core 0x493cc0 (params), is free and returns the monster it made (null when it made none), so the scaling runs
+// as the core returns: after the whole spawn, where PD2's hook ran it right after the class setup.
+constexpr uint64_t SpawnCore = 0x493cc0;  // mov [rsp+0x10],rbx / mov [rsp+0x18],rsi
+constexpr uint8_t SpawnCoreEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18};
+using SpawnCoreFn = d2r::Unit* (*)(void* params) noexcept;
+SpawnCoreFn g_coreOriginal = nullptr;
+
+auto OnSpawnCore(void* params) noexcept -> d2r::Unit* {
+	d2r::Unit* monster = g_coreOriginal(params);
 	d2r::Game* game = params != nullptr ? *static_cast<d2r::Game**>(params) : nullptr;  // params +0: the game
 	if (game != nullptr && monster != nullptr && d2r::At<int32_t>(monster, d2r::rva::UnitType) == d2r::rva::UnitMonster &&
 	    IsUberLevel(ai_common::LevelOf(monster))) {
 		ScaleUberMonster(game, monster);
 	}
+	return monster;
 }
 
 }  // namespace
@@ -135,8 +141,8 @@ auto InstallMapOpen(const D2RL::PluginContext* context, char* report, size_t rep
 	const bool rooms = InstallBossRoomKeep(context);
 	const bool presets = context->InstallInlineHook(PresetSpawn, PresetSpawnEntry, sizeof(PresetSpawnEntry),
 	                                                OnPresetSpawn, &g_presetSpawnOriginal);
-	const bool spawns = context->InstallInlineHook(MonsterSpawned, MonsterSpawnedEntry, sizeof(MonsterSpawnedEntry),
-	                                               OnMonsterSpawned, &g_spawnedOriginal);
+	const bool spawns = context->InstallInlineHook(SpawnCore, SpawnCoreEntry, sizeof(SpawnCoreEntry), OnSpawnCore,
+	                                               &g_coreOriginal);
 	std::snprintf(report, reportSize, "portal operate %d%s, boss rooms kept%s, uber waypoints%s, uber scaling%s", ObjectOperatePortal,
 	              portal ? "" : " FAILED (slot not empty)", rooms ? "" : " FAILED (bytes differ)",
 	              presets ? "" : " FAILED (bytes differ)", spawns ? "" : " FAILED (bytes differ)");
