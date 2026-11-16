@@ -66,3 +66,11 @@ class PluginCut(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GateRow(unittest.TestCase):
+    @unittest.skipUnless((ROOT / "pd2-data" / "data" / "global" / "excel").is_dir(), "needs the PD2 data")
+    def test_deviations_gate_row_is_the_generated_one(self):
+        path, row = pd2_cutmaps.deviations_row(ROOT)
+        self.assertIn(row, path.read_text("utf-8").splitlines(), "run `py tools/pd2_cutmaps.py` to rewrite the Gate row")
+        self.assertNotRegex(row, r"`\w+\.\*\.\*`")  # no whole-table pattern

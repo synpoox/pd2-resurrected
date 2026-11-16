@@ -22,7 +22,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pd2_ids
 import pd2_items
+import pd2_table
 from pd2_table import IdError, Table, excel
 
 # A unique whose code was a cut map item keeps a code that exists (the row is neutral; a save may name its number).
@@ -67,19 +69,25 @@ def cut_properties(props: Table) -> set[str]:
             and any(r[i].startswith("map_") for i in stats)}
 
 
-def cut_cube(cube: Table, codes: set[str], props: set[str]) -> int:
-    """Delete the recipes that name a cut item or property, and a heading row that names a map."""
+def cube_doomed(cube: Table, codes: set[str], props: set[str]) -> list[bool]:
+    """Per recipe: names a cut item or property, or is a heading row that names a map."""
     item_cols = [i for i, c in enumerate(cube.header) if CUBE_ITEM_COLS.match(c)]
     mod_cols = [i for i, c in enumerate(cube.header) if CUBE_MOD_COLS.search(c)]
     desc = col(cube, "description")
 
     def doomed(r: list[str]) -> bool:
-        if any(r[i].split(",")[0].strip().lower() in codes for i in item_cols):
+        if any(r[i].strip('"').split(",")[0].strip().lower() in codes for i in item_cols):
             return True
-        if any(r[i].lower() in props for i in mod_cols):
+        if any(r[i].strip('"').lower() in props for i in mod_cols):
             return True
         return bool(r[0] != "Expansion" and not any(c for k, c in enumerate(r) if k != desc) and re.search(r"\bmaps?\b", r[desc], re.I))
-    kept = [r for r in cube.rows if not doomed(r)]
+    return [doomed(r) for r in cube.rows]
+
+
+def cut_cube(cube: Table, codes: set[str], props: set[str]) -> int:
+    """Delete the recipes that name a cut item or property, and a heading row that names a map."""
+    gone = cube_doomed(cube, codes, props)
+    kept = [r for r, g in zip(cube.rows, gone) if not g]
     n = len(cube.rows) - len(kept)
     cube.rows = kept
     return n
@@ -138,21 +146,70 @@ def undefined_maps(tc: Table, slots: list[int], th: dict[str, int]) -> None:
             r[i], r[i + 1] = kept[k] if k < len(kept) else ("", "")
 
 
+def cut_codes(types: set[str], misc: Table, itemtypes: Table) -> set[str]:
+    """The misc codes whose type is a cut type or descends from one."""
+    parents = {r[itemtypes.key].lower(): [r[col(itemtypes, c)].lower() for c in ("Equiv1", "Equiv2") if r[col(itemtypes, c)]]
+               for r in itemtypes.rows}
+    low = {x.lower() for x in types}
+    if missing := sorted(t for t in types if t.lower() not in parents):
+        raise IdError(f"no item type {', '.join(missing)}")
+
+    def of_cut_type(t: str, seen: frozenset = frozenset()) -> bool:
+        return t.lower() in low or any(of_cut_type(p, seen | {t}) for p in parents.get(t.lower(), []) if p not in seen)
+    ty = col(misc, "type")
+    return {r[misc.key].lower() for r in misc.rows if of_cut_type(r[ty])}
+
+
+def glob(label: str) -> str:
+    """A row label as an fnmatch pattern part, lower case, `[` escaped."""
+    if re.search(r"[|`]", label):
+        raise IdError(f"row label {label!r} cannot sit in a Gate cell")
+    return label.lower().replace("[", "[[]")
+
+
+def gate_patterns(rule: Path, pd2_data: Path) -> list[str]:
+    """The Gate patterns of docs/deviations.md for the cut, row by row, read off PD2's tables with the cut's own tests
+    (the gate names PD2's rows). `py tools/pd2_cutmaps.py` prints the row; tests/test_maps_cut.py keeps it current."""
+    types = read_rule(rule)
+    load = lambda n: pd2_table.load(pd2_data, n)  # noqa: E731
+    misc, itemtypes, props = load("misc"), load("itemtypes"), load("properties")
+    codes, gone_props = cut_codes(types, misc, itemtypes), cut_properties(props)
+    out = [f"misc.{glob(c)}.*" for c in sorted(codes)]
+    tc = load("treasureclassex")
+    th = {c: i for i, c in enumerate(tc.header)}
+    slots = [th[f"Item{k}"] for k in range(1, 11) if f"Item{k}" in th]
+    is_map = lambda e: e.lower() in codes or "map" in e.lower()  # noqa: E731
+    out.append("treasureclassex.*map*.*")
+    for r in tc.rows:
+        if "map" not in r[0].lower() and any(is_map(r[i]) for i in slots if r[i]):
+            n = glob(r[0])
+            out += [f"treasureclassex.{n}.item*", f"treasureclassex.{n}.prob*", f"treasureclassex.{n}.nodrop"]
+    cube = load("cubemain")
+    labels = pd2_ids.ident(cube.names())
+    gone = cube_doomed(cube, codes | {t.lower() for t in types}, gone_props)
+    out += [f"cubemain.{glob(lab)}.*" for lab, i in zip(labels, cube.records()) if gone[i]]
+    for name, slot in AFFIXES.items():
+        if name == "uniqueitems":
+            out.append("uniqueitems.* map.*")
+            continue
+        t = load(name)
+        h = {c: i for i, c in enumerate(t.header)}
+        cols = [h[c] for c in (slot.format(n=k) for k in range(1, 13)) if c in h]
+        out += [f"{name}.{glob(lab)}.*" for lab, i in zip(pd2_ids.ident(t.names()), t.records())
+                if any(t.rows[i][c].lower() in gone_props for c in cols)]
+    return out + ["properties.map-*.*", "properties.mapdefense.*"]
+
+
+def gate_row(rule: Path, pd2_data: Path, name: str) -> str:
+    return f"| {name} | " + " ".join(f"`{p}`" for p in gate_patterns(rule, pd2_data)) + " |"
+
+
 def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/z-maps-cut.txt."""
     types = read_rule(rule)
     itemtypes = read(out_data, "itemtypes", "Code")
     misc, tc = read(out_data, "misc", "code"), read(out_data, "treasureclassex")
-    ty = col(misc, "type")
-    parents = {r[itemtypes.key].lower(): [r[col(itemtypes, c)].lower() for c in ("Equiv1", "Equiv2") if r[col(itemtypes, c)]]
-               for r in itemtypes.rows}
-
-    def of_cut_type(t: str, seen: frozenset = frozenset()) -> bool:
-        return t.lower() in {x.lower() for x in types} or any(
-            of_cut_type(p, seen | {t}) for p in parents.get(t.lower(), []) if p not in seen)
-    codes = {r[misc.key].lower() for r in misc.rows if of_cut_type(r[ty])}
-    if missing := sorted(t for t in types if t.lower() not in parents):
-        raise IdError(f"{rule.name}: no item type {', '.join(missing)}")
+    codes = cut_codes(types, misc, itemtypes)
 
     # treasure classes: the cascade reuses the never-drop code, which also marks the items unspawnable
     th = {c: i for i, c in enumerate(tc.header)}
@@ -208,3 +265,22 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         raise IdError(f"{rule.name}: cut rows are still named: " + "; ".join(f"{t} {v[:3]}" for t, v in left.items()))
     print(f"  maps cut: {len(codes)} misc rows, {cut} cube rows, {len(gone_props)} properties, {len(deleted)} treasure "
           f"classes ({len(cut_classes) - len(deleted)} emptied), affixes neutralised {changed}")
+
+
+def deviations_row(root: Path) -> tuple[Path, str]:
+    """docs/deviations.md and the cut's Gate row, as `gate_row` writes it."""
+    path = root / "docs" / "deviations.md"
+    name = next(l for l in path.read_text("utf-8").splitlines() if l.startswith("| PD2's map system:")).split(" | ")[0][2:]
+    return path, gate_row(root / "merge" / "z-maps-cut.txt", root / "pd2-data" / "data", name)
+
+
+if __name__ == "__main__":
+    # `py tools/pd2_cutmaps.py` rewrites the cut's Gate row in docs/deviations.md (the row a test keeps equal to this)
+    root = Path(__file__).resolve().parents[1]
+    path, row = deviations_row(root)
+    text = path.read_text("utf-8")
+    lines = text.split("\n")
+    i = next(k for k, l in enumerate(lines) if l.startswith("| PD2's map system:") and "`misc." in l)
+    lines[i] = row
+    path.write_text("\n".join(lines), "utf-8", newline="")
+    print(f"rewrote the Gate row ({row.count('`') // 2} patterns)")
