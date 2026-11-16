@@ -12,8 +12,8 @@
 
 namespace {
 
-// The signature entries the Dark Wanderer part reads (wanderer.cpp, ai_hooks.cpp): it installs on any image where they all
-// resolved. Fixed rva values it still reads through PlayLevelSound (level_fx.cpp) are a known gap, see the PR.
+// The signature entries the Dark Wanderer part reads (wanderer.cpp, ai_hooks.cpp, level_fx.cpp): it installs on any image
+// where they all resolved, so it reads no fixed rva value.
 sigscan::Entry* const WandererUses[] = {
 	&d2r::sig::AiDarkWanderer, &d2r::sig::AiTable, &d2r::sig::GameKey, &d2r::sig::GameById, &d2r::sig::UnitStat,
 	&d2r::sig::SetUnitStat, &d2r::sig::UnitId, &d2r::sig::NewStatList, &d2r::sig::SetListState, &d2r::sig::SetListStat,
@@ -21,6 +21,10 @@ sigscan::Entry* const WandererUses[] = {
 	&d2r::sig::FindUnit, &d2r::sig::UnitRoom, &d2r::sig::RoomAtXY, &d2r::sig::FindFreeSpot, &d2r::sig::DataTables,
 	&d2r::sig::SpawnMonsterAt, &d2r::sig::SetUnitFlags, &d2r::sig::AiSetModeXY, &d2r::sig::AiIdle, &d2r::sig::WalkToSpot,
 	&d2r::sig::SpotDistance, &d2r::sig::AiStepBeforeWalk,
+	// PlayLevelSound and LevelOf (level_fx.cpp)
+	&d2r::sig::ClientMessage, &d2r::sig::SoundPacket, &d2r::sig::ClientUnit, &d2r::sig::RoomLevelId,
+	// the record offsets the part reads (unit, game, client and AI tick fields), gated as a set
+	&d2r::sig::RecordOffsets,
 };
 
 void InstallMapeventsPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
