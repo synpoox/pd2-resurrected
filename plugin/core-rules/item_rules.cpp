@@ -14,7 +14,7 @@
 //   D2R's, in WeaponDamage's roll block (a byte patch calling WeaponStrike) and D2R's missile roll.
 // - op bases, life steal cap and crushing blow (IR3): equipped_eth / missing_hp kept as base stats from the stat
 //   callback, lifedrain_percentcap on D2R's add-life, PD2's blow in CrushingBlowApply's jump slot, and its roll on
-//   D2RCore's event dispatch, where PD2's open wounds and deep wounds (event 15) run too.
+//   HitEvents' event 5/6 calls, where PD2's open wounds and deep wounds (event 15) run too.
 #include "item_rules.h"
 
 #define NOMINMAX
@@ -627,16 +627,19 @@ constexpr int HitCallAt = 19;  // the E8 inside the match
 // PatchCallRel32 cannot target (plugin memory). No SDK service covers unit events (#385), so the two calls are
 // rewritten with the MutationService's byte patch (PatchBytes), as Cast Triggers does for its own relays.
 auto AllocateRelay(uint64_t image) noexcept -> uint8_t* {
+	// From the far ends of the window, so the near range stays free for other plugins' relays (Cast Triggers'
+	// allocation failed intermittently when this took a block next to the image).
 	SYSTEM_INFO info;
 	GetSystemInfo(&info);
 	const uint64_t step = info.dwAllocationGranularity;
-	const uint64_t low = image > 0x70000000ull ? image - 0x70000000ull : step;
-	for (uint64_t at = (image - 0x1000000ull) & ~(step - 1); at >= low && at < image; at -= step) {
+	const uint64_t reach = 0x70000000ull;
+	const uint64_t low = image > reach ? image - reach : step;
+	for (uint64_t at = (low + step - 1) & ~(step - 1); at < image; at += step) {
 		if (void* p = VirtualAlloc(reinterpret_cast<void*>(at), 0x1000, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE)) {
 			return static_cast<uint8_t*>(p);
 		}
 	}
-	for (uint64_t at = (image + 0x10000000ull) & ~(step - 1); at < image + 0x70000000ull; at += step) {
+	for (uint64_t at = (image + reach) & ~(step - 1); at > image; at -= step) {
 		if (void* p = VirtualAlloc(reinterpret_cast<void*>(at), 0x1000, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE)) {
 			return static_cast<uint8_t*>(p);
 		}
@@ -644,7 +647,7 @@ auto AllocateRelay(uint64_t image) noexcept -> uint8_t* {
 	return nullptr;
 }
 
-// Both calls or neither.
+// Both calls or neither: one MutationService transaction checks and writes both, and restores both on a failure.
 auto PatchHitEvents(const D2RL::PluginContext* context) noexcept -> bool {
 	sigscan::Resolve(HitOwn, std::size(HitOwn), context->exeBase, nullptr, 0);
 	if (HitMissileCall.state != sigscan::State::Ok || HitMeleeCall.state != sigscan::State::Ok) {
@@ -662,6 +665,11 @@ auto PatchHitEvents(const D2RL::PluginContext* context) noexcept -> bool {
 	if (target[0] != target[1]) {
 		return false;
 	}
+	const D2RL::MutationService* mutations = nullptr;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize)) {
+		return false;
+	}
 	uint8_t* relay = AllocateRelay(context->exeBase);
 	if (relay == nullptr) {
 		return false;
@@ -671,32 +679,38 @@ auto PatchHitEvents(const D2RL::PluginContext* context) noexcept -> bool {
 	std::memcpy(relay, jump, sizeof(jump));
 	std::memcpy(relay + sizeof(jump), &entry, 8);
 	DWORD old;
-	VirtualProtect(relay, 0x1000, PAGE_EXECUTE_READ, &old);
+	uint8_t call[2][5] = {{0xe8}, {0xe8}};
+	bool ok = VirtualProtect(relay, 0x1000, PAGE_EXECUTE_READ, &old) != 0;
+	for (int i = 0; ok && i < 2; ++i) {
+		const int64_t rel = static_cast<int64_t>(reinterpret_cast<uint64_t>(relay)) - static_cast<int64_t>(sites[i] + 5);
+		const int32_t rel32 = static_cast<int32_t>(rel);
+		ok = rel == rel32;
+		std::memcpy(call[i] + 1, &rel32, 4);
+	}
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	ok = ok && mutations->beginTransaction(context, &transaction) == D2RL::Mutations::Result::Success;
+	if (!ok) {
+		VirtualFree(relay, 0, MEM_RELEASE);
+		return false;
+	}
 	g_hitEventOriginal = reinterpret_cast<HitEventFn>(target[0]);  // before any call can reach HitEvent
-	uint8_t call[5] = {0xe8};
-	int written = 0;
-	for (int i = 0; i < 2; ++i) {
-		const int64_t rel = static_cast<int64_t>(reinterpret_cast<uint64_t>(relay)) - static_cast<int64_t>(sites[i] + 5);
-		if (rel != static_cast<int32_t>(rel)) {
-			break;
-		}
-		const int32_t rel32 = static_cast<int32_t>(rel);
-		std::memcpy(call + 1, &rel32, 4);
-		if (!context->PatchBytes(sites[i] - context->exeBase, stock[i], 5, call, 5)) {
-			break;
-		}
-		++written;
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	for (int i = 0; ok && i < 2; ++i) {
+		const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
+		                                              .rva = sites[i] - context->exeBase,
+		                                              .expected = stock[i],
+		                                              .expectedSize = 5,
+		                                              .bytes = call[i],
+		                                              .size = 5};
+		D2RL::Mutations::OperationHandle operation = 0;
+		ok = mutations->stageBytePatch(context, transaction, &patch, &operation) == D2RL::Mutations::Result::Success;
 	}
-	if (written == 2) {
-		return true;
+	if (!ok || mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		VirtualFree(relay, 0, MEM_RELEASE);
+		return false;
 	}
-	for (int i = 0; i < written; ++i) {  // undo the first when the second fails
-		const int64_t rel = static_cast<int64_t>(reinterpret_cast<uint64_t>(relay)) - static_cast<int64_t>(sites[i] + 5);
-		const int32_t rel32 = static_cast<int32_t>(rel);
-		std::memcpy(call + 1, &rel32, 4);
-		(void)context->PatchBytes(sites[i] - context->exeBase, call, 5, stock[i], 5);
-	}
-	return false;
+	return true;
 }
 
 // --- Open wounds (IR3): PD2's event 15 (0x103463f0) in place of D2R's ----------------------------------------------
