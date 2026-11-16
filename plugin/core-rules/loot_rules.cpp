@@ -342,6 +342,8 @@ auto RollStaffMods(Unit* item, uint32_t list, int32_t ilvl, int32_t bonus) noexc
 			++set;
 		}
 	}
+	plog::Info("staffmods roll: item %p quality %d list %u ilvl %d bonus %d count %d picked %d %d %d set %d",
+	           static_cast<void*>(item), quality, list, ilvl, bonus, count, picked[0], picked[1], picked[2], set);
 	if (total <= 20 || total % 100 == 0) {
 		plog::Info("staffmods: list %u ilvl %d bonus %d: %d of %d skills (%d %d %d), %u so far", list, ilvl, bonus,
 		           set, count, picked[0], picked[1], picked[2], total);
