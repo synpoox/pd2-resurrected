@@ -33,7 +33,7 @@ The per-check recipe (cheats, shots, images, unlock) is `docs/agents/game-check.
    `test-harness.dll`, `d2r-testharness-console.txt`): it moves anything else to
    `C:\D2RTestSlots\backups\stray-plugins-<date>\Slot<N>\` and lists it. `cartographer.dll` (required here, built in d2r-tools) is kept if the slot holds it; install does not copy it. Pass `-KeepExtras` to keep other extras.
    It also moves our own `core-*.dll` and `cartographer.dll` found in `<slot>\mods\PD2Resurrected\d2rloader\plugins` (they shadow the game-wide install) to
-   `C:\D2RTestSlotsackups\stale-mod-plugins-<date-time>\Slot<N>\`; companion DLLs there stay. With `-Data` it also copies
+   `C:\D2RTestSlots\backups\stale-mod-plugins-<date-time>\Slot<N>\`; companion DLLs there stay. With `-Data` it also copies
    `companions/cartographer/signatures.txt` into the mod's `excel/d2rloader/cartographer/` (core-rules' cube hook needs it).
 4. Check the installed data holds the change (the merged table row in `out/data`).
 5. For a hand test, write the slot, its lock owner and the unlock command into the game-check issue.
