@@ -61,7 +61,7 @@ struct Boss {
 	int32_t classId;
 	Spot at;
 };
-// PD2 0x1036fef0's three Rathma levels (PD2 161-163, the port's 160-162), read from plugin/placements/rathma.cpp
+// PD2 0x1036fef0's three Rathma levels (PD2 161-163, the port's 210-212), read from plugin/placements/rathma.cpp
 struct Stage {
 	int32_t level, from;  // the stage it moves on from (to from + 1)
 	Spot portals[4];      // the in-level ghostly portal; the third level's picks one of three, then tries 1-3 less 3
@@ -280,7 +280,7 @@ auto RathmaRoom(Game* game, void* room, int32_t level) noexcept -> bool {
 	if (s == nullptr) {
 		return false;
 	}
-	// shortcut: PD2 also needs the game's area type to be Rathma's (game +0x1df4); the port's levels 160-162 open from
+	// shortcut: PD2 also needs the game's area type to be Rathma's (game +0x1df4); the port's levels 210-212 open from
 	// the Rathma key alone, so the level stands in for it
 	if (int32_t& stage = Counter(game, StageKey); stage == s->from) {
 		stage = s->from + 1;
