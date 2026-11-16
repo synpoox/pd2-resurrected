@@ -6,8 +6,8 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
 
 ## This machine
 
-- Slots live in `C:\D2RTestSlots\Slot<N>`. PD2 Resurrected owns **Slot4-Slot8**; Slot2 is D2RToolsTest and Slot3 is
-  ProjectForever. Always name the slot: `lock any` and a bare `setup` reach Slot2 and Slot3.
+- Slots live in `C:\D2RTestSlots\Slot<N>`. PD2 Resurrected uses **Slot2-Slot5**. Always name the slot: a bare `lock` or
+  `setup` must not pick one for you.
 - The config is `C:\D2RTestSlots\modkit-testing-pd2.toml`. Set `MODKIT_TESTING_CONFIG` to it on every command, or the
   tools read the toolkit's default config and report the wrong saves.
 - Test characters must be Reign of the Warlock characters (character creation's Game Version, the default). A Classic or
@@ -21,7 +21,7 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its `testing/README.md`
 
 The per-check recipe (cheats, shots, images, unlock) is `docs/agents/game-check.md`; these are the slot basics.
 
-1. `python <toolkit>/testing/game_slots.py status` and pick a free slot from 4-8.
+1. `python <toolkit>/testing/game_slots.py status` and pick a free slot from 2-5.
 2. `python <toolkit>/testing/game_slots.py lock <N> <owner>`. For a slot the owner tests by hand, use an owner name
    such as `owner-<work item>`: a manual lock lasts until `unlock`.
 3. Build and install: `plugin\build.ps1`, `python tools/pd2_extract.py`, `python tools/pd2_merge.py`, then, with

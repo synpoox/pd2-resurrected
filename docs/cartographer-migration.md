@@ -41,12 +41,12 @@ The former 26-ticket draft is superseded. The replacement has [25 work items](ca
 
 Baseline port: c2b6af8c7fa095ead030d1ffdc6b03c7449255f5; Cartographer: c79ef104742952f362b8956efbce37c9ed75226b, compared with local 629f08b. Recheck later changes before implementation. At inspection Cartographer was unreleased and the inspected suite release lacked its artifact; obtain/pin a distributable before packaging. Source support is not a fresh game-test pass.
 
-[Event selection](../plugin/core-maps/map_events.cpp) uses item quality, force metadata and fixed level/room lists; [Horazon](../plugin/core-maps/event_portals.cpp) uses tier destination/drop pools. Those dependencies change; the fights do not.
+[Event selection](../plugin/core-events/map_events.cpp) uses item quality, force metadata and fixed level/room lists; [Horazon](../plugin/core-events/event_portals.cpp) uses tier destination/drop pools. Those dependencies change; the fights do not.
 
 Do not delete mixed modules wholesale:
-- [Cube search](../plugin/core-maps/cube_ops.cpp) invokes Desecration before recipe-block scanning; retained non-map op-30 rules exist.
-- [Map-stat code](../plugin/core-maps/map_stats.cpp) contains generic corruption/Desecration roll helpers and extra drops in retained uber arenas.
-- [Key/death dispatch](../plugin/core-maps/key_drops.cpp) mixes obsolete map rolls with preserved uber/key sources and rewards.
+- [Cube search](../plugin/core-events/cube_ops.cpp) invokes Desecration before recipe-block scanning; retained non-map op-30 rules exist.
+- Removed since this inspection: `map_stats.cpp`. Its generic corruption/Desecration roll helpers now live in [corruption_roll.cpp](../plugin/core-events/corruption_roll.cpp). Its extra drops in retained uber arenas were part of the same module, and their new home is not recorded here.
+- [Key/death dispatch](../plugin/core-events/key_drops.cpp) mixes obsolete map rolls with preserved uber/key sources and rewards.
 - Dclone code also contains the Mendeln/Nihlathak map-event AI. Preserve it and one shared AI registry/level-effects implementation.
 
 Normal acquisition of retained uber ingredients must remain possible. Preserve non-map sources and surviving event rewards; where a required source is the map-boss concept, adapt it to an eligible native boss at retained base odds without PD2 map-affix bonuses. Record any pre-existing missing source instead of calling a console-spawned ingredient an acquisition pass. Prune removed recursive treasure-class branches without inventing compensation loot.
