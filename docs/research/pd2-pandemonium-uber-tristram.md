@@ -34,7 +34,7 @@ repo. Table, row and string names below are short identifiers.
   scripts kept outside the repo, plus `patchstring.tbl` through `tools/pd2_strings.py`'s `read_tbl`. "Row N" means the
   Nth data row, counted from 0 after the header. Where a number is a file line (the header is line 1), it is called a
   line. The ticket's "rows 181 and 184" are lines of the merged `out/.../cubemain.txt`; they are data rows 179 and 182.
-- **D2R data:** the 93847 tables (`d2rAI-toolkit/d2r-data/93847`), to tell PD2's changes from what D2R already ships.
+- **D2R data:** the 93847 tables (the `modkit fetch` cache for build 93847), to tell PD2's changes from what D2R already ships.
 - **ProjectDiablo.dll:** printable strings only (ASCII and UTF-16), no disassembly.
 - **PD2 wiki:** [Uber tristram](https://wiki.projectdiablo2.com/wiki/Uber_tristram) (a stub marked "outdated or missing
   info (from S5 changes and later)"), [Recipes](https://wiki.projectdiablo2.com/wiki/Recipes),
