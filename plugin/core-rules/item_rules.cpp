@@ -18,6 +18,8 @@
 #include "item_rules.h"
 
 #include "pd2_engine.h"
+#include "rathma_pair.h"
+#include "rathma_split.h"
 #include "log.h"
 
 #include <D2RLPlugin/mutations.h>
@@ -585,6 +587,8 @@ constexpr int32_t MaxWoundStacks = 3;
 constexpr int32_t PlayerWoundPercent[] = {8, 6, 4};  // on a player, by difficulty (doubles 0x1044fbc0 / b8 / a8)
 
 std::atomic<uint32_t> g_wounds {0};
+std::atomic<uint32_t> g_splits {0};
+constexpr int32_t StateResistAll = 8;
 
 // PD2's 0x1037c4c0 with 100: value * percent / 100 in doubles, truncated, saturated at INT32_MAX
 auto Percent(int32_t value, double percent) noexcept -> int32_t {
@@ -630,6 +634,32 @@ auto OwnedByPlayer(Game* game, Unit* unit) noexcept -> bool {
 	return false;
 }
 
+// PD2's list step (event 15, step 7) on one unit: below 3 stacks the hit adds to the old list's damage and a stack; at 3
+// it only refreshes the time. `damage` is the hit's (the list holds it negative); returns the list, `stacks` the count.
+auto ApplyWounds(Game* game, Unit* unit, Unit* target, int32_t damage, int32_t* stacks) noexcept -> void* {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);
+	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
+	void* old = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList)(target, StateOpenWounds);
+	*stacks = 1;
+	if (old != nullptr) {
+		*stacks = listStat(dataFlag, old, StatOpenWoundsStack, 0);
+		if (*stacks < MaxWoundStacks) {
+			++*stacks;
+			damage -= listStat(dataFlag, old, StatHpRegen, 0);  // the older damage, negative
+			setStat(dataFlag, old, StatHpRegen, -damage, 0);
+		}
+	}
+	d2r::StateListRequest request {unit, target, 0, 1, OpenWoundsFrames, static_cast<int32_t>(StatHpRegen), -damage,
+	                               StateOpenWounds, nullptr};
+	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
+	if (list != nullptr) {
+		setStat(dataFlag, list, StatOpenWoundsStack, *stacks, 0);
+	}
+	return list;
+}
+
 // PD2's open wounds on a hit, one roll per event node of the stat (PD2's dispatcher runs each node):
 // - chance: the node's stat on the attacker, % 100 on its seed;
 // - damage per frame (1/256 life): the level table + 5 x deep_wounds. On a player, the level part times 8 / 6 / 4%
@@ -637,12 +667,14 @@ auto OwnedByPlayer(Game* game, Unit* unit) noexcept -> bool {
 //   that;
 // - less the target's damageresist after the attacker's passive_phys_pierce (a negative result counts half; 100 or
 //   more ignores the pierce): a player loses at most 50%. A monster a player owns takes a quarter;
+// - on one of Rathma's clones with both boss slots set (and the other alive), the damage is halved and the other clone,
+//   unless it has resistall (state 8), gets the same half on its own list (#645; the lookup is common/rathma_pair.h,
+//   shared with core-events' rathma_life.cpp);
 // - hpregen on the target's open wounds list (125 frames). Below 3 stacks the hit adds to the list's damage and a
 //   stack; at 3 it only refreshes the time (NewStateList keeps an older list of the same skill and level).
 // shortcut: PD2 keys the list by attacker (0x102fc880), so two attackers stack apart; D2R keeps one open wounds list
 // per unit, which all attackers share. Not ported: no damage to a player inside PD2's levels 157, 159, 166 (not in
-// the merged data), Rathma's two clones splitting it (core-events' rathma_life.cpp owns the pair) and PD2's damage
-// meter.
+// the merged data) and PD2's damage meter.
 auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept -> void {
 	using namespace d2r::rva;
 	const int32_t chance = Stat(unit, stat);
@@ -655,7 +687,6 @@ auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept ->
 	}
 	const uint32_t dataFlag = d2r::DataFlag(game);
 	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);
-	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
 	const auto stateList = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList);
 	const bool player = At<int32_t>(target, UnitType) == 0;
 	int32_t base = WoundsByLevel(std::max(Stat(unit, StatLevel), 1));
@@ -681,21 +712,19 @@ auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept ->
 	if (!player && OwnedByPlayer(game, target)) {
 		damage /= 4;
 	}
-	void* old = stateList(target, StateOpenWounds);
-	int32_t stacks = 1;
-	if (old != nullptr) {
-		stacks = listStat(dataFlag, old, StatOpenWoundsStack, 0);
-		if (stacks < MaxWoundStacks) {
-			++stacks;
-			damage -= listStat(dataFlag, old, StatHpRegen, 0);  // the older damage, negative
-			setStat(dataFlag, old, StatHpRegen, -damage, 0);
-		}
+	Unit* other = pd2::rathma::Partner(game, target);
+	if (other != nullptr) {
+		damage = pd2::rathma::Half(damage);
 	}
-	d2r::StateListRequest request {unit, target, 0, 1, OpenWoundsFrames, static_cast<int32_t>(StatHpRegen), -damage,
-	                               StateOpenWounds, nullptr};
-	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
-	if (list != nullptr) {
-		setStat(dataFlag, list, StatOpenWoundsStack, stacks, 0);
+	int32_t stacks = 0;
+	void* list = ApplyWounds(game, unit, target, damage, &stacks);
+	if (other != nullptr && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(other, StateResistAll) == 0) {
+		int32_t otherStacks = 0;
+		ApplyWounds(game, unit, other, damage, &otherStacks);
+		if (const uint32_t m = ++g_splits; m <= 20 || m % 100 == 0) {
+			plog::Info("open wounds split: class %d takes %d/256 per frame (halved), class %d too, stack %d (%u so far)",
+			           At<int32_t>(target, UnitClassId), damage, At<int32_t>(other, UnitClassId), otherStacks, m);
+		}
 	}
 	const uint32_t n = ++g_wounds;
 	if (At<int32_t>(unit, UnitType) == 0 || n <= 20) {

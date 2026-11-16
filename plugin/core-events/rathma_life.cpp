@@ -14,6 +14,8 @@
 
 #include "log.h"
 #include "pd2_engine.h"
+#include "rathma_pair.h"
+#include "rathma_split.h"
 
 #include <algorithm>
 #include <atomic>
@@ -26,10 +28,6 @@ using d2r::At;
 using d2r::Game;
 using d2r::Unit;
 
-constexpr int32_t BoneClone = 952, PoisonClone = 953;  // merged monstats ids (PD2 935, 936)
-constexpr uint32_t BossKey = 0x55425230;  // 'UBR0' / 'UBR1', as rathma_ai.cpp: PD2's game +0x2600 / +0x2604
-constexpr int32_t UnitMonster = 1;
-constexpr int32_t ModeDeath = 0, ModeDead = 12;
 constexpr int32_t StateResistAll = 8;
 constexpr int32_t StatLife = 6;
 
@@ -48,50 +46,8 @@ constexpr auto Logged(uint32_t n) noexcept -> bool {
 	return n <= 20 || n % 100 == 0;
 }
 
-auto Counter(Game* game, uint32_t key) noexcept -> int32_t {
-	return *d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(d2r::rva::GameCounter)(
-		reinterpret_cast<uint8_t*>(game) + d2r::rva::GameCounters, &key);
-}
-
 auto Life(Unit* unit) noexcept -> int32_t {
 	return d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(unit, StatLife, 0);
-}
-
-// The live monster with that id: the game's monster lists are keyed by id & 0x7f
-auto MonsterById(Game* game, uint32_t id) noexcept -> Unit* {
-	using namespace d2r::rva;
-	for (auto* u = At<Unit*>(game, GameMonsters + static_cast<int>(id & 0x7f) * 8); u != nullptr;
-	     u = At<Unit*>(u, UnitListNext)) {
-		if (At<uint32_t>(u, UnitIdField) == id) {
-			return u;
-		}
-	}
-	return nullptr;
-}
-
-// PD2's test: the victim is a clone, both slots are set, and the other slot's clone is not dying or dead; that
-// clone, else null. PD2 takes the slot whatever it holds; the port also wants the other clone's class there, so an
-// id left by Rathma or Mendeln never stands in for it.
-auto Partner(Game* game, Unit* victim) noexcept -> Unit* {
-	using namespace d2r::rva;
-	if (game == nullptr || victim == nullptr || At<int32_t>(victim, 0) != UnitMonster) {
-		return nullptr;
-	}
-	const int32_t classId = At<int32_t>(victim, UnitClassId);
-	if (classId != BoneClone && classId != PoisonClone) {
-		return nullptr;
-	}
-	const int32_t bone = Counter(game, BossKey), poison = Counter(game, BossKey + 1);
-	if (bone == 0 || poison == 0) {
-		return nullptr;
-	}
-	const bool isBone = classId == BoneClone;
-	Unit* other = MonsterById(game, static_cast<uint32_t>(isBone ? poison : bone));
-	if (other == nullptr || At<int32_t>(other, UnitClassId) != (isBone ? PoisonClone : BoneClone)) {
-		return nullptr;
-	}
-	const int32_t mode = At<int32_t>(other, UnitMode);
-	return mode != ModeDeath && mode != ModeDead ? other : nullptr;
 }
 
 auto SharedStep(uint8_t* ctx, uint8_t* type, uint32_t flag) noexcept -> uint64_t {
@@ -101,13 +57,13 @@ auto SharedStep(uint8_t* ctx, uint8_t* type, uint32_t flag) noexcept -> uint64_t
 		return result;
 	}
 	Unit* victim = At<Unit*>(ctx, StepVictim);
-	Unit* other = Partner(At<Game*>(ctx, StepGame), victim);
+	Unit* other = pd2::rathma::Partner(At<Game*>(ctx, StepGame), victim);
 	auto* field = At<int32_t*>(type, TypeField);
 	// A type the hit does not carry (0 after the resists) halves to 0 and takes nothing: not counted
 	if (other == nullptr || field == nullptr || *field <= 0) {
 		return result;
 	}
-	const auto half = static_cast<int32_t>(static_cast<int64_t>(*field) * 50 / 100);
+	const int32_t half = pd2::rathma::Half(*field);
 	*field = half;
 	++g_hits;
 	// PD2's step returns the halved damage; DamageEffects (0x44df10) drops the return and reads the field
@@ -134,7 +90,7 @@ auto SharedPoison(Unit* attacker, Unit* victim, int32_t rate, int32_t length, in
 	if (attacker == nullptr || victim == nullptr || (rate <= 0 && length <= 0)) {
 		return;
 	}
-	if (Unit* other = Partner(At<Game*>(victim, d2r::rva::UnitGame), victim); other != nullptr) {
+	if (Unit* other = pd2::rathma::Partner(At<Game*>(victim, d2r::rva::UnitGame), victim); other != nullptr) {
 		g_poisonOriginal(attacker, other, rate, length, a5, a6, a7);
 		if (const uint32_t n = ++g_poisons; Logged(n)) {
 			plog::Info("rathma life: poison %d for %d frames on class %d, class %d too (%u so far)", rate, length,
