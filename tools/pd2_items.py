@@ -279,14 +279,17 @@ def hd_items(hd: Path, pd2: dict[str, I.Table], d2r: dict[str, I.Table],
         if NEUTRAL_MODEL.get(t) in asset.values():
             first = NEUTRAL_MODEL[t]
         pi, pt = ptab.header.index("invfile"), ptab.header.index("type")
+        flippy_of = {r[ptab.key]: r[pf] for r in ptab.rows} if pf is not None else {}
         for r in ptab.rows:
             code = r[ptab.key]
+            # a stack (r05s, gpvs) draws its own rune or gem: same flippyfile as its base item, whose model is its own (#1011)
+            base = code[:3] if code.endswith("s") and flippy_of.get(code[:3]) == flippy_of.get(code) else code
             if len(code) == 4 and not ord(code[3]) & 0x20:  # core-ui sets bit 0x20 of the key's 4th byte (#310)
                 raise I.IdError(f"{t} {code}: core-ui keys items.json by {code[:3]}{chr(ord(code[3]) | 0x20)}, "
                                 "so this code would draw no picture; give it a 4th character with bit 0x20 set")
             if code and r[pi].lower() in pictures:
                 models.setdefault(pictures[r[pi].lower()],
-                                  asset.get(code) or by_inv.get(r[pi])
+                                  asset.get(code) or asset.get(base) or by_inv.get(r[pi])
                                   or (by_flippy.get(r[pf]) if pf is not None else None) or by_type.get(r[pt]) or first)
                 asset[code] = pictures[r[pi].lower()]
                 set_entry(files["items.json"], code, {"asset": asset[code]})
