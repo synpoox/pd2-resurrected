@@ -36,6 +36,7 @@ constexpr uint32_t StageKey = 0x55424c47;     // 'UBLG': PD2 game +0x262a
 constexpr uint32_t SubStepKey = 0x55424c53;   // 'UBLS': PD2 game +0x262b
 constexpr uint32_t StateKey = 0x55424c41;     // 'UBLA': Lucion's AI param 0, the next state
 constexpr uint32_t ParamKey = 0x55424c42;     // 'UBLB': param 1
+constexpr uint32_t PortalKey = 0x55424c50;    // 'UBLP': stage 3 was reached, the portal phase is still due
 constexpr uint32_t LastKey = 0x55424c43;      // 'UBLC': param 2, the state just run
 constexpr uint32_t ResistSavedKey = 0x55424c52;  // 'UBLR': the six resists below are saved
 constexpr uint32_t ResistKeys[] = {0x55424c30, 0x55424c31, 0x55424c32, 0x55424c33, 0x55424c34, 0x55424c35};
@@ -230,6 +231,39 @@ constexpr auto NextStage(int32_t stage, int32_t life, int32_t tier) noexcept -> 
 }
 static_assert(NextStage(1, 84, 0) && !NextStage(1, 85, 0) && NextStage(6, 36, 1) && !NextStage(7, 1, 0));
 
+// Moves the fight's stage by Lucion's life: one step, or with catchUp every step due. Lucion's think only runs while
+// D2R lets him think, and a boss hit without a pause stays in hit recovery (states 9 and 12), so his own think never
+// sees the life thresholds (#1109): LucionControl, which nothing hits, calls this too. Reaching stage 3 marks the
+// portal phase due for Lucion's next think.
+auto AdvanceStage(Game* game, Unit* lucion, bool catchUp) noexcept -> void {
+	const int32_t tier = Counter(game, TierKey);
+	int32_t& stage = Counter(game, StageKey);
+	while (NextStage(stage, LifePercent(lucion), tier)) {
+		const int32_t before = stage++;
+		++g_stages;
+		plog::Info("lucion: stage %d -> %d at %d%% life, tier %d", before, stage, LifePercent(lucion), tier);
+		if (stage == 3) {
+			Counter(game, PortalKey) = 1;
+		}
+		if (!catchUp) {
+			break;
+		}
+	}
+}
+
+// The live Lucion of the game (one per game), or null
+auto FindLucion(Game* game) noexcept -> Unit* {
+	using namespace d2r::rva;
+	for (int bucket = 0; bucket < 128; ++bucket) {
+		for (auto* u = At<Unit*>(game, GameMonsters + bucket * 8); u != nullptr; u = At<Unit*>(u, UnitListNext)) {
+			if (At<int32_t>(u, UnitClassId) == Lucion && d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(u) == 0) {
+				return u;
+			}
+		}
+	}
+	return nullptr;
+}
+
 auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -> void {
 	Unit* target = At<Unit*>(tick, d2r::rva::AiTickTarget);
 	const int32_t dist = At<int32_t>(tick, d2r::rva::AiTickDistance);
@@ -262,12 +296,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		Counter(game, LastKey) = state;
 	};
 
-	const int32_t before = stage;
-	if (NextStage(stage, LifePercent(unit), tier)) {
-		++stage;
-		++g_stages;
-		plog::Info("lucion: stage %d -> %d at %d%% life, tier %d", before, stage, LifePercent(unit), tier);
-	}
+	AdvanceStage(game, unit, false);
 	if (sub != 0 && state != 5) {
 		--sub;
 	}
@@ -280,19 +309,20 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		d2r::UnitXY(target, &tx, &ty);
 	}
 	// The portal phase: stage 3 reached this tick
-	const auto portalPhase = [&]() {
+	const auto portalPhase = [&](bool spawnCorners) {
 		SetImmune(game, unit, true, false);  // PD2 0x35e30e pushes 0: no state 8
 		SetMode(game, unit, ModeS3);
 		Delay(game, unit, 25);
-		if (stage == 3 && before < 3) {
+		if (spawnCorners) {
 			const auto c = Centre();
 			for (const auto& o : Corners) {
 				Spawn(game, unit, LucionSpawner, c.x + o[0], c.y + o[1]);
 			}
 		}
 	};
-	if (stage == 3 && before < 3) {
-		portalPhase();
+	if (Counter(game, PortalKey) != 0) {
+		Counter(game, PortalKey) = 0;
+		portalPhase(true);
 		store(4, 1);
 		return;
 	}
@@ -363,7 +393,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		return;
 	case 4:
 		if (param == 0) {
-			portalPhase();
+			portalPhase(false);
 			store(4, 1);
 		} else if (param == 1) {
 			// PD2: the shroud (0x10380950), the hide (0x103a4c70), then the darkness and its sound for the level
@@ -481,6 +511,9 @@ auto ThinkControl(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept 
 	if (IdleWindow(game, nullptr, false)) {
 		Idle(game, unit, 10);
 		return;
+	}
+	if (Unit* lucion = FindLucion(game); lucion != nullptr) {
+		AdvanceStage(game, lucion, true);
 	}
 	const int32_t stage = Counter(game, StageKey);
 	const int32_t tier = Counter(game, TierKey);
