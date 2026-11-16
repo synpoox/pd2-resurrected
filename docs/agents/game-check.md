@@ -16,12 +16,14 @@ in-game". Slot details are in `docs/agents/game-slots.md`.
    dropped from the save otherwise (any item, not only maps). The flag applies at spawn time: items spawned before it
    are still dropped.
 6. **Warp** to each spot with `cheat goto <level>,<x>,<y>` (formula: `cheat-commands.md`).
-7. **Shoot** with `game_ctl.py --slot <N> shot`: HD, then `key g` for legacy and `shot` again. Look at each
-   screenshot for a held cursor item before the next click. Visual changes get before/after pairs.
-8. **Upload the images** to the orphan `issue-assets` branch under `<issue>/` (a scratch checkout without
-   junctions), push, and link them on the issue and the PR. Keep that branch.
+7. **Shoot** only what settles the question (`game_ctl.py --slot <N> shot`); log lines are the preferred proof. Take an HD,
+   then `key g` legacy pair only when the change is visual in legacy. Look at each screenshot for a held cursor item
+   before the next click.
+8. **No upload by default.** Shots stay in the slot's run folder. Upload to the orphan `issue-assets` branch under
+   `<issue>/` (a scratch checkout without junctions, push, keep the branch) only when the brief asks, or a filed bug
+   can't be shown without a picture.
 9. **Close out** right after the check: `game_ctl.py --slot <N> stop`, then, with `MODKIT_RUN=<owner>` set, `game_slots.py unlock <N> <owner>`.
-10. **Report** what you saw per spot, with the image links.
+10. **Report** what you saw per spot in words and log lines; image links only if you uploaded any.
 
 ## Forcing a map event
 
