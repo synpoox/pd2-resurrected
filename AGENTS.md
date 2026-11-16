@@ -17,8 +17,7 @@ unchecked PR.
 
 Each CHANGELOG entry is one short line (one sentence, under ~100 chars), unless it is a huge feature.
 Never edit `CHANGELOG.md` in a PR: add `changelog.d/<issue>-<slug>.md` holding `#### <Category>` and then the `- ` line;
-`tools/release.py` folds the fragments in at release. Likewise add map-generator passes and Kit.add hooks as new modules
-under `tools/presets/passes/` and `tools/presets/hooks/` (each declares `ORDER`), never to a shared list.
+`tools/release.py` folds the fragments in at release.
 
 After a PR merges, delete its branch, on the remote and locally.
 

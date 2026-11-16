@@ -100,6 +100,10 @@ inline auto BindingAt(int32_t level) noexcept -> const Binding* {
 }
 // An Existing source is PD2's own level, whose DS1 and DT1 files the build no longer carries (#965): not finished, so
 // a key for it is refused instead of opening a level with no preset (a crash in the open path).
+inline auto Finished(int32_t level) noexcept -> bool {
+	const Binding* b = BindingAt(level);
+	return b != nullptr && b->source != Source::Existing;
+}
 inline auto IsUberLevel(int32_t level) noexcept -> bool {
 	const Binding* b = BindingAt(level);
 	return b != nullptr && b->uber && b->source != Source::Existing;
