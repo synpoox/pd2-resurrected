@@ -30,7 +30,6 @@ jobs:
     permissions:
       contents: read
     env:
-      PYTHONPATH: ${{ vars.D2R_TOOLKIT }}
       FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
       MODKIT_CACHE: ${{ vars.D2R_TOOLKIT }}\d2r-data
       MODKIT_GAME: ${{ vars.D2R_GAME }}
@@ -46,9 +45,9 @@ jobs:
         run: if (Test-Path pd2-data) { cmd /c rmdir pd2-data }
         continue-on-error: true
       - uses: actions/checkout@v4
-      - name: Update the toolkit checkout
-        run: git -C "${{ vars.D2R_TOOLKIT }}" pull -q --ff-only
-        continue-on-error: true  # a dirty or diverged checkout, or another job's pull, must not fail the run
+      - name: Pin the toolkit
+        # the commit toolkit.version names, in its own worktree (tools/ci_toolkit.ps1): the runner's shared checkout is never moved
+        run: powershell -ExecutionPolicy Bypass -File tools\ci_toolkit.ps1 -Main "${{ vars.D2R_TOOLKIT }}"
       - name: PD2 baseline
         run: |
           $cache = "C:\pd2r-cache\pd2-data"

@@ -1,19 +1,40 @@
 name: tests
 
-# Tool unit tests on CI's hosted runner; the committed tables in files/data are read directly (ADR 0007).
+# Tool unit tests and ruff on the owner's self-hosted runner, as the gate: the tools find d2rAI-toolkit (private) through its
+# finder, so the tests run against the commit toolkit.version pins (tools/ci_toolkit.ps1); the committed tables in files/data
+# are read directly (ADR 0007). A fork PR never reaches the runner: its job runs on a hosted runner and fails at once, because
+# a skipped required check counts as passing (the gate does the same, #901).
 on:
   push:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   unit:
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && fromJSON('["ubuntu-latest"]') || fromJSON('["self-hosted","windows","pd2r"]') }}
+    env:
+      FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+      MODKIT_CACHE: ${{ vars.D2R_TOOLKIT }}\d2r-data
     steps:
+      - name: Refuse fork PRs
+        if: ${{ env.FORK == 'true' }}
+        shell: bash
+        run: |
+          echo "::error::unit does not run for PRs from forks: the tests need the owner's runner (the toolkit is private), which only builds this repository's branches. Push the branch to synpoox/pd2-resurrected and open the PR from there."
+          exit 1
+      - name: Drop cache junction
+        if: ${{ env.FORK != 'true' }}
+        run: if (Test-Path pd2-data) { cmd /c rmdir pd2-data }
+        continue-on-error: true
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - run: python -m unittest discover -s tools/tests -v
-      - run: pip install ruff==0.17.5
-      - run: ruff check tools
+      - name: Pin the toolkit
+        run: powershell -ExecutionPolicy Bypass -File tools\ci_toolkit.ps1 -Main "${{ vars.D2R_TOOLKIT }}"
+      - name: Python packages
+        run: py -3 -m pip install --quiet --disable-pip-version-check numpy Pillow ruff==0.17.5
+      - name: Tool tests
+        run: py -3 -m unittest discover -s tools/tests -v
+      - name: Ruff
+        run: py -3 -m ruff check tools

@@ -2,14 +2,41 @@
 constants and the merge) into its cache key (#808): a change to pd2_ids rebuilt the presets rule, which reads only these."""
 from __future__ import annotations
 
+import functools
+import importlib.util
+import os
 from pathlib import Path
 
 
+HERE = Path(__file__).resolve().parent
+
+
+@functools.cache
 def toolkit(root: Path) -> Path:
-    """The nearest d2rAI-toolkit beside root or one of its parents (an agent worktree sits deep inside the main
-    checkout), else the one beside root."""
-    return next((p / "d2rAI-toolkit" for p in root.parents if (p / "d2rAI-toolkit" / "modkit").is_dir()),
-                root.parent / "d2rAI-toolkit")
+    """The d2rAI-toolkit folder, from the toolkit's own finder (tools/toolkit_path.py: D2R_TOOLKIT, else a walk up from
+    the start folder, which works from agent worktrees; a toolkit.version that differs from the toolkit's HEAD warns,
+    and fails under D2R_TOOLKIT_STRICT=1). Starts at root, else at this file (a scratch root has no toolkit above
+    it). ValueError when there is none. Loading the finder needs the toolkit's path first: D2R_TOOLKIT or the first
+    d2rAI-toolkit up the tree gives that, and the finder decides."""
+    given = os.environ.get("D2R_TOOLKIT")
+    for start in (root, HERE):
+        kit = Path(given) if given else next((p / "d2rAI-toolkit" for p in (start, *start.parents)
+                                              if (p / "d2rAI-toolkit" / "tools" / "toolkit_path.py").is_file()), None)
+        finder = kit and kit / "tools" / "toolkit_path.py"
+        if not finder or not finder.is_file():
+            if given:
+                raise ValueError(f"D2R_TOOLKIT={given} has no tools/toolkit_path.py (a toolkit older than the pin?)")
+            continue
+        spec = importlib.util.spec_from_file_location("toolkit_path", finder)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        try:
+            return mod.find_toolkit(start)
+        except mod.ToolkitNotFound:
+            continue
+        except mod.PinMismatch as e:
+            raise ValueError(str(e)) from None
+    raise ValueError(f"d2rAI-toolkit not found from {root}: set D2R_TOOLKIT or put d2rAI-toolkit beside the project")
 
 
 KEY = {"itemtypes": "Code", "weapons": "code", "armor": "code", "misc": "code", "gamble": "code",

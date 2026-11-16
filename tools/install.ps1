@@ -14,16 +14,22 @@
 param(
     [Parameter(Mandatory)] [string]$Game,
     [string]$Data = "",
-    [string]$Toolkit = "",  # d2rAI-toolkit checkout (default: the nearest one beside a parent folder, so worktrees find it)
+    [string]$Toolkit = "",  # d2rAI-toolkit checkout (default: the toolkit's finder: D2R_TOOLKIT, else a walk up, so worktrees find it)
     [switch]$NoValidate,
     [switch]$KeepExtras  # keep files other than our plugins in d2rloader\plugins (a slot set up on purpose)
 )
 $ErrorActionPreference = 'Stop'
 if (-not $Toolkit) {
-    $dir = Split-Path $PSScriptRoot -Parent
-    while ($dir -and -not (Test-Path (Join-Path $dir "d2rAI-toolkit\modkit"))) { $dir = Split-Path $dir -Parent }
-    if (-not $dir) { throw "d2rAI-toolkit not found beside any parent folder: pass -Toolkit" }
-    $Toolkit = Join-Path $dir "d2rAI-toolkit"
+    # The finder lives in the toolkit: D2R_TOOLKIT, else the first d2rAI-toolkit up the tree, gives its script; it then decides
+    # (and warns when toolkit.version differs from the toolkit's HEAD).
+    $boot = if ($env:D2R_TOOLKIT) { $env:D2R_TOOLKIT } else {
+        $dir = Split-Path $PSScriptRoot -Parent
+        while ($dir -and -not (Test-Path (Join-Path $dir "d2rAI-toolkit\tools\ToolkitPath.ps1"))) { $dir = Split-Path $dir -Parent }
+        if ($dir) { Join-Path $dir "d2rAI-toolkit" }
+    }
+    if (-not $boot) { throw "d2rAI-toolkit not found beside any parent folder: set D2R_TOOLKIT or pass -Toolkit" }
+    . (Join-Path $boot "tools\ToolkitPath.ps1")
+    $Toolkit = Find-D2rToolkit -From $PSScriptRoot
 }
 $Game = (Resolve-Path $Game).Path
 if (-not (Test-Path (Join-Path $Game "D2R.exe"))) { throw "$Game is not a D2R folder" }

@@ -167,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="the cartographer.dll to ship, built from d2r-tools main (default: CARTOGRAPHER_DLL)")
     ap.add_argument("--cartographer-commit", default=os.environ.get("CARTOGRAPHER_COMMIT"),
                     help="the d2r-tools commit it was built from, recorded in the notes (default: CARTOGRAPHER_COMMIT)")
-    ap.add_argument("--toolkit", type=Path, default=Path(os.environ.get("D2R_TOOLKIT", pd2_ids.toolkit(ROOT))))
+    ap.add_argument("--toolkit", type=Path, help="the d2rAI-toolkit folder (default: the toolkit finder's)")
     a = ap.parse_args(argv)
     mod_json = json.loads((ROOT / "mod.json").read_text("utf-8"))
     version = a.version or mod_json["version"]
@@ -176,7 +176,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         text, fragments = pending_fragments(ROOT, version)
         section = notes_section(text, version)  # checked before anything is written or deleted
-        from modkit.base import Base  # the sibling d2rAI-toolkit on PYTHONPATH
+        from modkit.base import Base  # the pinned toolkit, on PYTHONPATH
         if not a.cartographer:
             raise ReleaseError("no cartographer.dll: build it from d2r-tools main and pass --cartographer or set CARTOGRAPHER_DLL")
         section += "\n\n" + cartographer_note(a.cartographer, a.cartographer_commit)
@@ -196,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
             conf.parent.mkdir(parents=True, exist_ok=True)
             conf.write_text(with_loader(
                 (ROOT / "release.toml").read_text("utf-8"), a.game / "D2RLoader.exe"), "utf-8")
-            r = subprocess.run([sys.executable, str(a.toolkit / "release" / "package_release.py"), "--mod-dir", str(mod),
+            r = subprocess.run([sys.executable, str((a.toolkit or pd2_ids.toolkit(ROOT)) / "release" / "package_release.py"), "--mod-dir", str(mod),
                                 "--version", version, "--config", str(conf), "--out", str(a.out),
                                 "--game-exe", str(a.game / "D2R.exe")])  # release.toml's [catalog] (schema 3) needs it
             code = r.returncode

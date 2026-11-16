@@ -26,8 +26,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def classic(name: str):
-    """d2rAI-toolkit's shared/classic_import.<name> module (PYTHONPATH, else the nearest toolkit beside a parent
-    folder). Imported on use, not at the top, so the unit tests run on CI, which has no toolkit."""
+    """d2rAI-toolkit's shared/classic_import.<name> module (PYTHONPATH, else the toolkit the finder returns). Imported
+    on use, not at the top, so the unit tests need no toolkit."""
     try:
         return importlib.import_module(f"shared.classic_import.{name}")
     except ImportError:
@@ -36,7 +36,7 @@ def classic(name: str):
             return importlib.import_module(f"shared.classic_import.{name}")
         except ImportError:
             raise ValueError(f"d2rAI-toolkit's shared/classic_import/{name}.py not found: put the toolkit at "
-                             "README.md's commit on PYTHONPATH") from None
+                             "toolkit.version's commit") from None
 
 
 def main(argv: list[str] | None = None) -> int:
