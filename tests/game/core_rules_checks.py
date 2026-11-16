@@ -179,6 +179,7 @@ PLUGIN = "core-rules"
 SKILL_SOURCE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
                             "plugin", "core-rules", "skill_functions.cpp")
 SKILL_EXTRAS = [  # what InstallSkillFunctions installs after its Functions[] slots
+    ("srvdofunc", 190, "router"),  # the toolkit skill_router slot, counted as one install ("router, N route(s)")
     ("cltdofunc", 22, "strike for all"),  # a code patch, not a slot
     ("auraeventfunc", 32, "revive splash"),  # D2R's own slot, reached by no D2R row
     ("srvdofunc", 150, "smite crushing blow"),  # D2R's Smite do, wrapped, and an inline hook on its hit queue
