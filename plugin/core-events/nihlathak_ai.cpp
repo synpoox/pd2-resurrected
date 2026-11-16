@@ -5,6 +5,9 @@
 #include "ai_common.h"
 #include "ai_hooks.h"
 #include "log.h"
+#include "uber_drops.h"
+
+#include <D2RLPlugin/item.h>
 
 #include <atomic>
 
@@ -37,6 +40,45 @@ std::atomic<uint32_t> g_nihlStages {0};
 std::atomic<uint32_t> g_nihlSpawned {0};
 std::atomic<uint32_t> g_nihlNovas {0};
 std::atomic<uint32_t> g_nihlDeaths {0};
+std::atomic<uint32_t> g_nihlDrops {0};
+
+// PD2 0x10375fe0 (docs/research/map-events-audit.md section 2): the death step drops one rtmv (ilvl 131), then 20-24
+// items of the ShadowOfMendeln TC at the boss's level, three per roll, the boss itself as the killer.
+constexpr const char* MendelnTc = "ShadowOfMendeln";
+constexpr int32_t SoulItemLevel = 131, LootMin = 20, LootSpread = 5, LootPerRoll = 3, MaxRolls = 40, StatLevel = 12;
+static_assert(LootMin + LootSpread - 1 == 24);
+
+// shortcut: all items drop on one frame, where PD2 spreads them 5 frames apart (0x10372780); stagger them if the pile
+// must land like PD2's shower
+auto DropMendelnLoot(Game* game, Unit* unit) noexcept -> void {
+	using namespace d2r::rva;
+	const bool soul = DropUniqueAt(game, unit, D2RL::Items::MakeItemCode("rtmv"), -1, SoulItemLevel, 2);
+	const uint8_t dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
+	const uint8_t* tables = d2r::Engine<const uint8_t* (*)(uint8_t) noexcept>(DataTablesOf)(dataFlag);
+	const int32_t index = tables != nullptr ? d2r::Engine<int32_t (*)(void*, const char*, int32_t) noexcept>(TcIndexByName)(
+												  At<void*>(tables, TablesTcNames), MendelnTc, 0)
+	                                        : 0;
+	const uint8_t* tc = index > 0 ? d2r::Engine<const uint8_t* (*)(uint8_t, uint16_t, int32_t) noexcept>(TcRecord)(
+										dataFlag, static_cast<uint16_t>(index), 0)
+	                              : nullptr;
+	if (tc == nullptr) {
+		plog::Warn("nihlathakMap: no TC \"%s\", rtmv %s", MendelnTc, soul ? "dropped" : "not dropped");
+		return;
+	}
+	const int32_t ilvl = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(unit, StatLevel, 0);
+	const int32_t target = LootMin + static_cast<int32_t>(d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit), LootSpread));
+	int32_t dropped = 0;
+	for (int32_t roll = 0; roll < MaxRolls && dropped < target; ++roll) {
+		Unit* items[6] = {};
+		int32_t n = 0;
+		d2r::Engine<void (*)(Game*, Unit*, Unit*, const uint8_t*, int32_t, int32_t, int32_t, Unit**, int32_t*, int32_t) noexcept>(
+			TcDrop)(game, unit, unit, tc, 0, ilvl, 0, items, &n, LootPerRoll);
+		dropped += n;
+	}
+	++g_nihlDrops;
+	plog::Info("nihlathakMap: rtmv %s and %d of %d items from %s at ilvl %d", soul ? "dropped" : "not dropped", dropped,
+	           target, MendelnTc, ilvl);
+}
 
 // shortcut: champion and unique picks (PD2 0x1037cbf0 / 0x1037caf0: mods and 3-6 minions) spawn as normal monsters,
 // and the spot search is D2R's portal one, not PD2's 0x10389c20; port D2R's unique maker if a wave must match PD2's
@@ -113,6 +155,7 @@ auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	if (i > last + 1) {
 		++g_nihlDeaths;
 		plog::Info("nihlathakMap: after the nova, it dies (%u deaths)", g_nihlDeaths.load());
+		DropMendelnLoot(game, unit);
 		KillQuietly(game, unit);
 		return;
 	}
@@ -152,9 +195,10 @@ auto RegisterNihlathakAi(const D2RL::PluginContext* context) noexcept -> bool {
 	return RegisterAiThink(context, TrappedSoulRow, d2r::sig::AiTrappedSoul.address, NihlathakMap, &ThinkNihlathak);
 }
 
-auto NihlathakAiCounts(uint32_t out[4]) noexcept -> void {
+auto NihlathakAiCounts(uint32_t out[5]) noexcept -> void {
 	out[0] = g_nihlStages.load();
 	out[1] = g_nihlSpawned.load();
 	out[2] = g_nihlNovas.load();
 	out[3] = g_nihlDeaths.load();
+	out[4] = g_nihlDrops.load();
 }

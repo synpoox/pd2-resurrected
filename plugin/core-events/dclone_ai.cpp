@@ -439,11 +439,11 @@ auto InstallDcloneAi(const D2RL::PluginContext* context, char* report, size_t re
 }
 
 auto DcloneAiCounters(char* out, size_t size) noexcept -> void {
-	uint32_t nihl[4] = {};
+	uint32_t nihl[5] = {};
 	NihlathakAiCounts(nihl);
 	std::snprintf(out, size,
 	              "dclone ai: %u thinks, %u nova phases, %u novas, %u waves, %u heals, %u casts; souls: %u meteors, %u "
-	              "deaths; nihlathakMap: %u thinks, %u spawned, %u novas, %u deaths",
+	              "deaths; nihlathakMap: %u thinks, %u spawned, %u novas, %u deaths, %u loot drops",
 	              g_thinks.load(), g_phases.load(), g_novas.load(), g_waves.load(), g_heals.load(), g_casts.load(),
-	              g_soulCasts.load(), g_soulDeaths.load(), nihl[0], nihl[1], nihl[2], nihl[3]);
+	              g_soulCasts.load(), g_soulDeaths.load(), nihl[0], nihl[1], nihl[2], nihl[3], nihl[4]);
 }

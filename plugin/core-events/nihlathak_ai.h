@@ -11,5 +11,5 @@
 
 // Registers nihlathakMap's think on monai row 99; true when it is on.
 auto RegisterNihlathakAi(const D2RL::PluginContext* context) noexcept -> bool;
-// Thinks, spawned, novas and deaths of the event Nihlathak, for the dclone ai counters line.
-auto NihlathakAiCounts(uint32_t out[4]) noexcept -> void;
+// Thinks, spawned, novas and deaths and loot drops of the event Nihlathak, for the dclone ai counters line.
+auto NihlathakAiCounts(uint32_t out[5]) noexcept -> void;
