@@ -1,6 +1,6 @@
 """core-events game checks for d2rAI-toolkit's testing/ framework (game_checks.py).
 
-uber-scaling (#347, docs/research/pd2-uber-bosses-dll.md section 4) reads <slot>/d2rloader/logs/core-events.log.
+uber-scaling (#347, docs/research/pd2-uber-bosses-dll.md section 4) reads <slot>/d2rloader/logs/core-maps.log.
 Setup: tools/install.ps1 on the merged data, a level 90+ character in Hell. In game: `debug_mode`, `cheat goto 138`
 (tier 0: no key opened, so the counters read 0; for tiers 1-2, `cheat spawn dcma,inv 0`, cube the key alone once per
 tier, and right-click it at the fountain, `cheat goto 109,5074,5114`),
@@ -10,7 +10,7 @@ zombie1`. Then:
 Passed on Slot5 (#347, level 95 Amazon, Hell): 14 monsters x1.5 at full life, Dclone 1053000 -> 1579500, the zombie
 not scaled.
 
-Extra boss area stat checks (MS4c, #289). Each reads <slot>/d2rloader/logs/core-events.log.
+Extra boss area stat checks (MS4c, #289). Each reads <slot>/d2rloader/logs/core-maps.log.
 
 Setup (Slot4-8, game closed): merge, build and install (docs/agents/game-slots.md)
   py -3 tools/pd2_merge.py
@@ -34,7 +34,8 @@ import re
 
 from game_checks import check
 
-PLUGIN = "core-events"
+PLUGIN = "core-events"  # log line prefix
+LOG = "core-maps"  # log file: core-events keeps plugin id core-maps (#1044)
 BOSSES = {806, 950, 951, 952, 953, 1129}
 FIGHT = BOSSES | set(range(807, 812)) | set(range(903, 909)) | set(range(954, 957)) | {983, 985, 986, 1123, 1124,
                                                                                       1130, 1131, 1132, 1157, 1158}
@@ -44,7 +45,7 @@ SCALED = re.compile(r"uber scaling: monster (\d+) \(unit (\d+)\) in level (\d+),
 
 
 def _log(ctx) -> str:
-    path = os.path.join(ctx.cfg.slot_dir(ctx.slot), "d2rloader", "logs", f"{PLUGIN}.log")
+    path = os.path.join(ctx.cfg.slot_dir(ctx.slot), "d2rloader", "logs", f"{LOG}.log")
     if not os.path.isfile(path):
         ctx.skip(f"no plugin log yet: {path}")
     with open(path, encoding="utf-8", errors="replace") as f:
