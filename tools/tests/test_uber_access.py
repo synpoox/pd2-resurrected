@@ -25,6 +25,7 @@ class UberAccessTests(unittest.TestCase):
         assert all(r["pSpell"] == "19" for r in keys.values())
         assert keys["Uber Trist Map"]["len"] == "136"  # D2R's Uber Tristram arena (#957)
         assert keys["Uber Map"]["len"] == "209"  # Diablo Clone's arena 209 (#958)
+        assert keys["Rathma Map"]["len"] == "210"  # Rathma's first stage 210 (#961)
         assert keys["Lucion Map"]["len"] == "213"  # Lucion's arena 213 (#962)
         src = (ROOT / "plugin/core-events/uber_entry.cpp").read_text(encoding="utf-8")
         assert "UberKeySpell = 19" in src and "IsUberLevel" in src

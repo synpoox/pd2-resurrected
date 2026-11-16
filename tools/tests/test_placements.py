@@ -57,10 +57,24 @@ class PlacementsTests(unittest.TestCase):
                 assert (enc, pid) in places, (f.name, enc, pid)
 
 
-    def test_rathma_stages_keep_their_geometry(self):
+    def test_rathma_places_follow_the_arena_spots(self):
         _, places = parse()
+        cart = ROOT / "files/data/global/excel/d2rloader/cartographer"
+        spots = {(r[0], r[1]): (int(r[2]), int(r[3])) for r in (l.split("\t") for l in
+                 (cart / "arenaspots.txt").read_text(encoding="utf-8").splitlines()[1:]) if r[0]}
+        offy = {1: 4500, 2: 4800, 3: 5100}
         text = (PLUGIN / "placements/rathma.cpp").read_text(encoding="utf-8")
-        assert '{"rathma3", "arena", 0x4e9a, 0x1403' in text and '{"rathma1", "arena", 0x476c, 0x35bf' in text
+        pl = {(e, i): (int(x), int(y)) for e, i, x, y in
+              re.findall(r'\{"(rathma\d)", "(\w+)", (\d+), (\d+), ', text)}
+        for n in (1, 2, 3):
+            assert f"Rathma {n}\t{209 + n}\tMesa\t12\t12\tMesa1" in (cart / "arenas.txt").read_text(encoding="utf-8")
+            for (arena, name), (tx, ty) in spots.items():
+                if arena == f"Rathma {n}":
+                    assert pl[(f"rathma{n}", name)] == ((6000 + 8 + tx) * 5 + 2, (offy[n] + 8 + ty) * 5 + 2), (n, name)
+            for boss in ("boss0", "boss1"):
+                if (f"rathma{n}", boss) in pl:
+                    ax, ay = pl[(f"rathma{n}", "arena")]
+                    assert abs(pl[(f"rathma{n}", boss)][0] - ax) <= 3 and pl[(f"rathma{n}", boss)][1] == ay
         assert ("rathma3", "portal2") in places and ("rathma1", "portal1") not in places
 
 

@@ -69,7 +69,7 @@ Reserved levels (appended in `merge/ids-levels.tsv`, so no later PR appends ther
 | Level | Encounter (binding) | Lane / ticket | Replaces |
 |---|---|---|---|
 | 209 | `dclone` | D #958 | 138 (built: Cartographer's Mesa arena from `arenas.txt`, #958; its spots are `arenaspots.txt` rows read through `cartographer.arena.v1`, `plugin/core-events/arena_spots.cpp`, not `plugin/placements/`) |
-| 210, 211, 212 | `rathma1`, `rathma2`, `rathma3` | D #961 | 160, 161, 162 |
+| 210, 211, 212 | `rathma1`, `rathma2`, `rathma3` | D #961 | 160, 161, 162 (built: Cartographer's Mesa arenas from `arenas.txt`, #961; places in `plugin/placements/rathma.cpp` follow the `arenaspots.txt` spots) |
 | 213 | `lucion` | D #962 | 184 (built: Cartographer's Mesa arena from `arenas.txt`, #962; its spots are `arenaspots.txt` rows read through `cartographer.arena.v1`) |
 | 214 | `temple` | D #962 | 185 (built: Cartographer's Mesa Temple from `arenas.txt`, #962; the altar and chests are `arenaspots.txt` `Object` rows) |
 | 215 | `bitterdepths` | C #960 | 215 (built: Cartographer's Mesa arena from `arenas.txt`, #960; its monsters are the row's `mon*` columns from PD2's Tomb Event Map 198, no spots) |
