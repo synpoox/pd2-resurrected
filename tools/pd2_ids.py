@@ -637,12 +637,35 @@ def monstats_ids(pd2: Table, d2r: Table) -> dict[str, str]:
     return {str(k): str(mod[n.lower()]) for k, n in enumerate(pd2.names())}
 
 
+def entry_key(level_name: str) -> str:
+    """The LevelEntry key of a PD2-only level: D2R's area banner ("Entering ...") shows "Missing string" for an empty
+    LevelEntry, and PD2 1.13c has no such column. "Graveyard Map" -> "EnteringGraveyardMap"; pd2_strings writes its
+    text ("Entering " and the level's name) unless D2R has the key ("EnteringTristram")."""
+    return "Entering" + "".join(c for c in level_name if c.isalnum())
+
+
+def fix_levels(lv: Table, first: int, last_type: int) -> None:
+    """The level records from `first` on (the PD2-only ones): a LevelEntry key where they have a LevelName and none
+    (#671), and LevelType 0 ("None") where the type is past D2R's last lvltypes id, since the mod ships no lvltypes.txt
+    (#965) and D2R reads a null row at startup (FUN_140a13860)."""
+    name, entry, ltype = (lv.header.index(c) for c in ("LevelName", "LevelEntry", "LevelType"))
+    for k in lv.records()[first:]:
+        r = lv.rows[k]
+        if r[name] and not r[entry]:
+            r[entry] = entry_key(r[name])
+        if r[ltype] and int(r[ltype]) > last_type:
+            r[ltype] = "0"
+
+
 def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/ids-<table>.tsv: write that table."""
     table = rule.stem[len("ids-"):]
     ctx = context(rule.parent, pd2_data, d2r_data)
-    write(table, *merge_table(table, load(pd2_data, table), load(d2r_data, table), ctx.lists[table], ctx.ren, ctx.ids,
-                              ctx.props if table in PROPS else None), out_data)
+    merged, dropped = merge_table(table, load(pd2_data, table), load(d2r_data, table), ctx.lists[table], ctx.ren,
+                                  ctx.ids, ctx.props if table in PROPS else None)
+    if table == "levels":
+        fix_levels(merged, len(load(d2r_data, table).records()), len(load(d2r_data, "lvltypes").records()) - 1)
+    write(table, merged, dropped, out_data)
     if table in FOLLOWERS:
         f = FOLLOWERS[table]
         pd2, d2r = load(pd2_data, f), load(d2r_data, f)

@@ -9,7 +9,7 @@ generated/data/local/lng/. merge/strings.json holds key names and numbers only, 
   renames    our key -> the PD2 key whose text it carries (Runeword171 means another runeword in D2R)
   ids        key -> [string ID, D2R file], append-only. New keys copy PD2's English into all 13 languages; a
              hiredesc_<code> key takes the description in PD2's hiredesc table (PD2 has no string for it).
-  entries    key -> LevelName key, for the LevelEntry keys pd2_levels gives PD2-only levels: "Entering " and that
+  entries    key -> LevelName key, for the LevelEntry keys pd2_ids.fix_levels gives PD2-only levels: "Entering " and that
              name, PD2's text (else D2R's), in all 13 languages; --assign adds them from the merged levels.txt
   texts      key -> English the mod writes itself, for listed keys PD2 has no text for (skilldesc lines in D2R's
              format, #73); written into all 13 languages like PD2's
@@ -191,7 +191,7 @@ def referenced(excel: Path) -> dict[str, set[tuple[str, str]]]:
 def assign(cfg: dict, pd2: dict[str, str], excel: Path, s, levels: Path | None = None) -> list[str]:
     """Appends to cfg["ids"] each renamed key and each PD2 key a table names that D2R lacks (exact case), with the
     D2R file the column's other keys mostly sit in, numbered from FIRST_ID skipping D2R's low-16 values. With the
-    merged levels.txt, each LevelEntry key neither game has (pd2_levels.entry_key) also goes to cfg["entries"], naming
+    merged levels.txt, each LevelEntry key neither game has (pd2_ids.entry_key) also goes to cfg["entries"], naming
     its row's LevelName key."""
     index = s.index()
     d2r = {e["Key"]: rel.rsplit("/", 1)[1] for hits in index.values() for rel, e in hits if "-legacy" not in rel}

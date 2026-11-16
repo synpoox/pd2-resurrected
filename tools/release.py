@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Callable
 
 import pd2_ids
+import pd2_merge
 from companions import ROOT, fill_tables, overlay
 
 PLUGINS = ["core-rules", "core-events", "core-ui"]
@@ -115,6 +116,8 @@ def stage(root: Path, out: Path, read: Callable[[str], bytes], cartographer: Pat
     for p in (root / "out" / "data", root / "generated" / "companions", *dlls):
         if not p.exists():
             raise ReleaseError(f"{p} missing: run the build in README.md first")
+    if old := pd2_merge.legacy_output(root / "out" / "data"):
+        raise ReleaseError(f"out/data holds the retired converter's output {old}: rebuild from a clean out/ and generated/")
     if cartographer:
         cartographer_note(cartographer, None)  # fails when the file is missing
         dlls.append(cartographer)

@@ -443,7 +443,7 @@ std::atomic<int32_t> g_forceNext {0};
 
 // The roll for a tiered map of `quality` (rva::Quality*), `forced` by a Catalyst Shard's marker
 auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept -> void {
-	int32_t event = pd2::event_roll::Pick(quality, forced, Rand);
+	int32_t event = pd2::event_roll::Pick(quality, forced, Rand, placements::Finished(BitterDepths()));
 	// For game checks only, not PD2's: PD2R_MAP_EVENT=<11-21> in the game's environment rolls that event on every map
 	static const int32_t testEvent = [] {
 		char v[8] {};
@@ -455,6 +455,8 @@ auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept
 	// The console command `core-events event` (#998): one shot, for the next map rolled
 	const int32_t forcedEvent = g_forceNext.exchange(0);
 	event = forcedEvent != 0 ? forcedEvent : event;
+	// The Bitter Depths is not built (#965): the Tomb opens no portal to it, whichever way it was rolled
+	event = event == Tomb && !placements::Finished(BitterDepths()) ? NoEvent : event;
 	Set(game, EventKey, event);
 	Set(game, SpawnsKey, 0);
 	++g_rolled[event - NoEvent];

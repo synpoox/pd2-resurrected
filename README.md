@@ -82,7 +82,7 @@ python tools/pd2_extract.py
 ```
 
 ```bash
-python -m modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/ --prefix data/hd/model_lod_desc.bin
+python -m modkit fetch --prefix data/global/animdata.d2 --prefix data/hd/model_lod_desc.bin
 ```
 
 ```bash
@@ -101,13 +101,7 @@ python -m modkit build .
 python tools/companions.py install --game DIR
 ```
 
-Run the `modkit` fetch and the last two with `..\d2rAI-toolkit` on `PYTHONPATH`. The fetch (once per D2R build)
-caches D2R's DS1, DT1 and HD presets, which the merge harvests for the HD presets of PD2-only areas
-(`tools/pd2_presets.py`); `python tools/pd2_coverage.py` after `pd2_merge.py` scores them without the game
-(`coverage/report.md`, worst first; outside `out/`, which `modkit build` wipes). Coverage is information only: it never fails the gate. `python tools/pd2_parity.py` scores each map's HD preset against its legacy DS1 in one parity number
-(8 checks, Palace excluded; `coverage/parity.md`, `<map>_parity.png` defect overlays); the gate fails when a map's parity drops more than
-`pd2_parity.TOLERANCE` (2 points) below main's (the `parity-baseline.tsv` in the coverage-baseline artifact of main's latest gate run, `gh run download`); to accept an
-intended drop, label the PR `parity-drop-ok`.
+Run the `modkit` fetch and the last two with `..\d2rAI-toolkit` on `PYTHONPATH`. The fetch (once per D2R build) caches D2R's tables and animdata for the merge.
 `companions.py fetch` downloads the pinned companion plugins in
 `companions/manifest.json` (checked by SHA-256, never committed; an entry pins a GitHub release asset (`repo`, `tag`),
 a file at a repo commit (`commit`), or a direct download link (`url`, e.g. a D2RLoader Hub release)) and must run after `pd2_merge.py`, which wipes
@@ -125,7 +119,7 @@ python -m unittest discover -s tools/tests
 
 The table-diff gate compares the merged tables with PD2's, scoped to a work item (P2, [P3](https://github.com/synpoox/pd2-resurrected/issues/47), [P4](https://github.com/synpoox/pd2-resurrected/issues/48)) or milestone (M1,
 alpha). It fails on any difference that [docs/deviations.md](docs/deviations.md) does not list. The `gate` workflow
-runs it at scope alpha on every PR from this repository's branches, on the self-hosted runner described under Release. Docs-only changes (`*.md`, `docs/`, `changelog.d/`, except gate inputs `docs/deviations.md` and `docs/coverage-baseline.tsv`) start no run, and closing or merging a PR cancels its running gate.
+runs it at scope alpha on every PR from this repository's branches, on the self-hosted runner described under Release. Docs-only changes (`*.md`, `docs/`, `changelog.d/`, except the gate input `docs/deviations.md`) start no run, and closing or merging a PR cancels its running gate.
 For a work item's own scope, paste its output into the PR:
 
 ```bash

@@ -599,38 +599,14 @@ class ToolkitKeyTests(unittest.TestCase):
                 self.assertNotEqual(after, before, f)
                 before = after
 
-    def test_presets_rule_key_leaves_out_toolkit_modules_it_does_not_import(self):
-        kit = pd2_ids.toolkit(Path(pd2_cache.__file__).resolve().parent.parent)
-        if not (kit / "modkit").is_dir():
-            self.skipTest("no d2rAI-toolkit beside the repo")
-        used = {p.relative_to(kit).as_posix()
-                for p in pd2_cache.toolkit_sources(kit, pd2_cache.sources(pd2_merge.RULES["presets-hd.tsv"]))}
-        every = {p.relative_to(kit).as_posix() for p in (kit / "modkit").glob("*.py")}
-        self.assertTrue(every, "the toolkit has modkit modules")
-        self.assertEqual(used, set(), "presets-hd.tsv imports no toolkit module")
-
-
 class SlimSourcesTests(unittest.TestCase):
-    """The presets rule is 97% of a merge: its key must not follow the id lists and the level merge (#808)."""
-    def names(self, rule):
-        return {p.name for p in pd2_cache.sources(pd2_merge.RULES[rule])}
-
-    def test_presets_rule_does_not_take_the_id_and_level_merge_into_its_key(self):
-        used = self.names("presets-hd.tsv")
-        for m in ("pd2_ids.py", "pd2_levels.py", "pd2_strings.py", "pd2_tables.py", "pd2_skilldesc.py", "pd2_automap.py"):
-            self.assertNotIn(m, used)
-        self.assertLessEqual({"pd2_table.py", "pd2_ds1.py"}, used)
-
     def test_other_rules_still_key_on_pd2_ids(self):
-        self.assertIn("pd2_ids.py", self.names("ids-skills.tsv"))
-        self.assertIn("pd2_levels.py", self.names("level-files.tsv"))
+        self.assertIn("pd2_ids.py", {p.name for p in pd2_cache.sources(pd2_merge.RULES["ids-skills.tsv"])})
 
     def test_slim_modules_keep_the_old_names(self):
-        import pd2_ds1, pd2_levels, pd2_table
+        import pd2_table
         for n in ("IdError", "Table", "excel", "load", "toolkit", "KEY"):
             self.assertIs(getattr(pd2_ids, n), getattr(pd2_table, n))
-        for n in ("SLOTS", "col", "ds1_header", "norm", "object_list"):
-            self.assertIs(getattr(pd2_levels, n), getattr(pd2_ds1, n))
 
 
 class PackageKeyTests(unittest.TestCase):
@@ -699,13 +675,6 @@ class PackageKeyTests(unittest.TestCase):
             self.assertEqual(pd2_merge.base_key(tmp, tmp / "kit", tmp), before)  # pd2_cache.py's bytes are not in it
             with mock.patch.object(pd2_cache, "CACHE_FORMAT", pd2_cache.CACHE_FORMAT + 1):
                 self.assertNotEqual(pd2_merge.base_key(tmp, tmp / "kit", tmp), before)
-
-    def test_the_presets_rule_covers_the_whole_presets_package(self):
-        names = {p.relative_to(Path(pd2_cache.__file__).parent).as_posix()
-                 for p in pd2_cache.sources(pd2_merge.RULES["presets-hd.tsv"])}
-        self.assertIn("presets/water.py", names)
-        self.assertIn("presets/hooks/tall.py", names)
-
 
 class CheckOutputTests(unittest.TestCase):
     def setUp(self):

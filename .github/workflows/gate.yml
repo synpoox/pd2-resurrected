@@ -4,17 +4,17 @@ name: gate
 # which never go to GitHub (ADR 0002), so it runs on the owner's self-hosted runner, as the release does; README.md has
 # the runner setup. PRs from forks never reach the runner (it only builds this repository's own branches): their
 # table-diff job runs on a hosted runner and fails at once (#901), because a skipped check counts as passing.
-# Docs-only changes start no run (paths:), except the gate inputs docs/deviations.md and docs/coverage-baseline.tsv.
+# Docs-only changes start no run (paths:), except the gate inputs docs/deviations.md.
 # Only a real gate run may carry a check named table-diff (#897): main's ruleset requires it and GitHub counts a skipped
 # check as passing, so no event may start a run of this workflow whose job is skipped. Close events go to
 # gate-control.yml, which cancels the PR's gate run (#847) from a job with another name.
 on:
   push:
     branches: [main]
-    paths: ['**', '!**/*.md', '!docs/**', '!changelog.d/**', 'docs/deviations.md', 'docs/coverage-baseline.tsv']
+    paths: ['**', '!**/*.md', '!docs/**', '!changelog.d/**', 'docs/deviations.md']
   pull_request:
     types: [opened, synchronize, reopened]
-    paths: ['**', '!**/*.md', '!docs/**', '!changelog.d/**', 'docs/deviations.md', 'docs/coverage-baseline.tsv']
+    paths: ['**', '!**/*.md', '!docs/**', '!changelog.d/**', 'docs/deviations.md']
 
 # One gate per PR: a push cancels the run on the old head (#801). push: one group for main, so a newer main commit cancels
 # the older one's run (#903).

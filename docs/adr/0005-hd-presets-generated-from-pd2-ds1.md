@@ -1,3 +1,5 @@
+> **Superseded by #942/#965.** The generator, its DS1 import and every PD2-only area on PD2 tiles are retired: levels are D2R's own and Cartographer's. Kept as history.
+
 # HD presets for PD2-only areas are generated from their DS1
 
 D2R draws a level in HD from one HD preset per DS1, and none of the 144 DS1 that PD2-only areas use has one. Without a preset, a level plays on flat ground with invisible walls ([#159](https://github.com/synpoox/pd2-resurrected/issues/159)). The port imports each PD2 DS1 as it is, for layout and collision, and generates its HD preset at build time with its own generator: read the DS1's wall and floor cells, then place clones of D2R's stock entities from a chosen D2R tile set on those cells, over a stock flat terrain textured by a D2R biome. The committed part is the rule per tile set (which D2R kit and biome stand in for it); the presets themselves are generated, since they come from PD2 files (ADR 0002). PD2-only tiles are drawn with D2R stand-ins, each tile set an approximated deviation, until PD2's own art comes through the art pipeline.

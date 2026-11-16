@@ -31,6 +31,13 @@ int main() {
 	CHECK("forced map redraws the Altar", run(er::QualityNormal, true, {9, 5}) == 15);
 	CHECK("forced map skips the chance roll", run(er::QualityNormal, true, {1}) == 11);
 	CHECK("forced map with 40 empty draws is no event", [&] { n = 0; return er::Pick(er::QualityNormal, true, [] { return 0; }) == er::NoEvent; }());
+	const auto noTomb = [&] {
+		n = 0;
+		values[0] = 0, values[1] = 11, values[2] = 5;
+		return er::Pick(6, false, fixed, false);
+	};
+	CHECK("Tomb (draw 11) is drawn while the Bitter Depths is built", run(6, false, {0, 11}) == er::Tomb);
+	CHECK("Tomb redraws while the Bitter Depths is not built", noTomb() == 15);
 	std::printf("%d passed, %d failed\n", g_pass, g_fail);
 	return g_fail == 0 ? 0 : 1;
 }
