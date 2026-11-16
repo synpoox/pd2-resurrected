@@ -12,13 +12,20 @@
 // (docs/deviations.md, Dark Wanderer rows). The 85-frame wait is a game-thread callback that re-queues itself until the due
 // frame: no SDK service has a frame timer, and D2R's unit events take no callback.
 // shortcut: the due frame is checked each update, so the boss waits for the game thread, not a unit event.
+//
+// The shards: a boss that dies carrying state `mapevent` in event 14 drops 4-6 Worldstone Shards (PD2: 4-10, seed % 7 + 4,
+// ProjectDiablo.dll 0x10379950; the owner chose 4-6, docs/deviations.md), through a monster-death listener.
 #include "wanderer.h"
 
 #include "ai_hooks.h"
 #include "corruption_roll.h"
 #include "level_fx.h"
 #include "log.h"
+#include "map_events.h"
+#include "uber_drops.h"
 
+#include <D2RLPlugin/item.h>
+#include <D2RLPlugin/lifecycle_events.h>
 #include <D2RLPlugin/threads.h>
 
 #include <algorithm>
@@ -46,6 +53,11 @@ constexpr int32_t MaxTries = 50;
 constexpr int32_t SpotSize = 3;
 constexpr int32_t SpotCount = 5;
 constexpr uint32_t MaxRuns = 100000;          // game-thread runs without a due frame: give up with a warning
+constexpr int32_t DarkWandererEvent = 14;     // the game's map event while the Wanderer's event runs
+constexpr int32_t ShardItemLevel = 131;       // PD2's item level for the shards
+constexpr int32_t ShardMin = 4;
+constexpr int32_t ShardSpread = 3;            // shards = random below 3, plus 4: 4-6
+static_assert(ShardMin + ShardSpread - 1 == 6);
 constexpr int32_t MonstatsCountOffset = 0xf60;  // DataTables: the monstats row count (int64), read by SpawnMonsterAt
 
 // The think (vanilla's numbers, from D2R's AiDarkWanderer)
@@ -118,6 +130,7 @@ const D2RL::PluginContext* g_context = nullptr;
 const D2RL::ThreadService* g_threads = nullptr;
 std::atomic<uint32_t> g_leaves {0};
 std::atomic<uint32_t> g_bosses {0};
+std::atomic<uint32_t> g_shards {0};
 
 auto GameOf(uint32_t gameId) noexcept -> Game* {
 	const auto id = static_cast<uint16_t>(gameId);
@@ -348,6 +361,35 @@ void ThinkWanderer(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	walk(game, unit, spot.x, spot.y);
 }
 
+// A dead boss of the event: 4-6 Worldstone Shards (PD2's quality 7 turns into normal on a corrupted item, so normal is asked)
+void OnShardDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::MonsterDeathEvent* event,
+                  void* userData) noexcept {
+	using namespace d2r::rva;
+	(void)context;
+	(void)userData;
+	if (event == nullptr || event->monster.type != D2RL::Lifecycle::UnitType::Monster || event->gameId > 0xffff) {
+		return;
+	}
+	Game* game = GameOf(event->gameId);
+	if (game == nullptr || MapEvent(game) != DarkWandererEvent) {
+		return;
+	}
+	Unit* monster = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit)(game, 1, event->monster.id);
+	if (monster == nullptr ||
+	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(monster, BossState) == 0 ||
+	    (At<uint32_t>(monster, UnitMainFlags) & UnitNoTreasure) != 0) {
+		return;
+	}
+	const auto count = static_cast<int32_t>(
+		d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(monster), ShardSpread)) + ShardMin;
+	for (int32_t n = 0; n < count; ++n) {
+		DropUniqueAt(game, monster, D2RL::Items::MakeItemCode("wss"), -1, ShardItemLevel, QualityNormal);
+	}
+	g_shards.fetch_add(static_cast<uint32_t>(count));
+	plog::Info("wanderer: %d shards from boss %d (unit %u), event %d", count, event->monster.classId, event->monster.id,
+	           DarkWandererEvent);
+}
+
 }  // namespace
 
 auto InstallWanderer(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
@@ -363,11 +405,18 @@ auto InstallWanderer(const D2RL::PluginContext* context, char* report, size_t re
 	}
 	g_context = context;
 	g_threads = threads;
-	std::snprintf(report, reportSize, "a buffed boss %d frames after the Dark Wanderer leaves (monai %d think)",
-	              DeathDelay, DarkWandererRow);
+	const D2RL::LifecycleService* lifecycle = nullptr;
+	const D2RL::Lifecycle::MonsterDeathListener listener {
+		.structSize = D2RL::Lifecycle::MonsterDeathListenerSize, .flags = 0, .callback = OnShardDeath, .userData = nullptr};
+	D2RL::Lifecycle::ListenerHandle handle = D2RL::Lifecycle::InvalidHandle;
+	const bool shards = context->QueryService(&lifecycle) == D2RL::ServiceQueryResult::Success &&
+	                    D2RL::HasLifecycleServiceField(lifecycle, D2RL::LifecycleServiceRequiredSize) &&
+	                    lifecycle->registerMonsterDeathListener(context, &listener, &handle) == D2RL::Lifecycle::Result::Success;
+	std::snprintf(report, reportSize, "a buffed boss %d frames after the Dark Wanderer leaves (monai %d think)%s",
+	              DeathDelay, DarkWandererRow, shards ? ", 4-6 shards per boss" : ", no shard drop");
 	return 1;
 }
 
 auto WandererCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "wanderer: %u leaves, %u bosses", g_leaves.load(), g_bosses.load());
+	std::snprintf(out, size, "wanderer: %u leaves, %u bosses, %u shards", g_leaves.load(), g_bosses.load(), g_shards.load());
 }
