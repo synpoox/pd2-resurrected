@@ -174,6 +174,7 @@ class GateTests(unittest.TestCase):
             with self.assertRaisesRegex(pd2_diff.GateError, "merged", msg=pat):
                 self.gate()
         self.deviations("| Narrow | not yet | `lvlmaze.*.monlvl` `lvlmaze.blood moor.*` | P4 |\n")
+        self.deviations("| Unnamed | not yet | `lvlmaze.*.` | P4 |\n")
         self.gate()
 
     def test_excels_quote_marks_are_not_data(self):

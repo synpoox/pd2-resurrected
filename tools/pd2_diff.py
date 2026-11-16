@@ -177,9 +177,9 @@ def deviations(path: Path) -> tuple[list[str], dict[str, int]]:
 
 
 def whole_table(pattern: str, table: str) -> bool:
-    """True for `table.*`, `table.*.*` and any other pattern whose parts after the table are only wildcards."""
+    """True for `table.*`, `table.*.*` and any other pattern whose parts after the table are only wildcards (`skilldesc.*.`, the unnamed column, is not)."""
     head, _, rest = pattern.partition(".")
-    return head == table and rest.strip(".*") == "" and "*" in rest
+    return head == table and all(seg and not seg.strip("*") for seg in rest.split("."))  # an empty segment is the unnamed column
 
 
 def triage(res: Result, patterns: list[str]) -> Result:
