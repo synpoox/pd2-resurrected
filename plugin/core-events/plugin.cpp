@@ -1,6 +1,5 @@
-// core-events: PD2's map system for PD2 Resurrected (docs/map-system.md): so far cube op 30 (the map recipes' block),
-// opening a map (item spell 16) and its monster, player and area stats, its event, the uber key drop rule,
-// Horazon's portal, Lucion's death and the Temple's chests.
+// core-events: PD2's map events and uber fights for PD2 Resurrected (maps are Cartographer's): cube op 30, the map events, the
+// uber keys' opening and drop rule, tier scaling, AI and drops, Horazon's portal, Lucion's death and the Temple's chests.
 // Shared (host and client must match) and NativeHooks; a game-wide plugin in <game>\d2rloader\plugins (ADR 0004).
 // On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
 //
@@ -45,7 +44,7 @@ constexpr D2RL::PluginInfo Info {
 	.name        = "PD2 Resurrected Core Events",
 	.version     = CORE_PLUGIN_VERSION,
 	.author      = "Synpoo",
-	.description = "Project Diablo II map system (cube op 30, opening maps, map stats, map events, the key drop rule, Horazon's portal) for PD2 Resurrected.",
+	.description = "Project Diablo II map events and uber fights (cube op 30, map events, uber keys, scaling and drops, Horazon's portal) for PD2 Resurrected.",
 	.flags       = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
 };
 
