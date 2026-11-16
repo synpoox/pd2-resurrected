@@ -1,2 +1,2 @@
-#### Fixes
-- The Dark Wanderer now walks off, and a buffed boss spawns a few seconds later.
+#### Features
+- The Dark Wanderer map event spawns a buffed boss a few seconds after the Wanderer dies.

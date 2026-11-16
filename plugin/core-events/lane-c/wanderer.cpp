@@ -54,8 +54,8 @@ constexpr int32_t ReachDistance = 20;   // a target nearer than this starts the 
 constexpr int32_t SpotUp = 20;          // the spot is 20 north of where he is when he starts walking
 constexpr int32_t AtSpot = 2;           // he has reached the spot when closer than this
 constexpr int32_t MaxTrips = 2;         // walks back to the spot before he leaves anyway
-constexpr int32_t IdleNoTarget = 40;    // frames to idle with no target
-constexpr int32_t IdleTarget = 10;      // frames to idle with a target too far away
+constexpr int32_t IdleNoTarget = 10;    // frames to idle with no target
+constexpr int32_t IdleTarget = 40;      // frames to idle with a target 20+ away
 constexpr size_t SpotSlots = 8;
 // D2R's walk, distance and step helpers, read from D2R's think. Argument order as the owner's disassembly notes give.
 constexpr uint64_t WalkToSpot = 0x4a8850;     // (game, unit, x, y): walk to the spot
@@ -334,6 +334,7 @@ void ThinkWanderer(Game* game, Unit* unit, uint8_t* tick) noexcept {
 		d2r::UnitXY(unit, &x, &y);
 		spot = {unitId, x, y - SpotUp};
 		state = 1;
+		trips = 0;
 	}
 	if (state == 1) {
 		walk(game, unit, spot.x, spot.y);
