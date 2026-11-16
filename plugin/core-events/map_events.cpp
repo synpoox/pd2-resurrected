@@ -555,7 +555,7 @@ auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 D2RL::PluginCommunication::ServiceLease<carto::RoomPopulateServiceV1> g_populateLease;
 uint32_t g_subscription = 0;
 std::atomic<bool> g_subscribed {false};
-bool g_subscribeTried = false;
+std::atomic<bool> g_subscribeTried {false};
 
 auto __cdecl ServiceBefore(void* game, void* room, int32_t level, void*) noexcept -> uint32_t {
 	const Tiered* tier = Tier(level);
@@ -571,7 +571,6 @@ auto __cdecl ServiceAfter(void* game, void*, int32_t level, bool, void*) noexcep
 
 // Once, at the first room activation (never at load: Cartographer may load after core-events). A miss keeps OnRoomActivate's own events.
 auto SubscribeRoomPopulate() noexcept -> void {
-	g_subscribeTried = true;  // the game thread only
 	const D2RL::PluginCommunicationService* communication = nullptr;
 	static const carto::RoomPopulateCallbacksV1 Callbacks = {sizeof(carto::RoomPopulateCallbacksV1), ServiceBefore, ServiceAfter};
 	if (g_context != nullptr && g_context->QueryService(&communication) == D2RL::ServiceQueryResult::Success &&
@@ -591,7 +590,7 @@ auto SubscribeRoomPopulate() noexcept -> void {
 
 // The first step of a room's first activation, hooked only while Cartographer holds RoomPopulate
 auto OnRoomActivate(Game* game, void* room) noexcept -> void {
-	if (!g_subscribeTried) {
+	if (!g_subscribeTried.exchange(true)) {
 		SubscribeRoomPopulate();
 	}
 	if (g_subscribed) {
