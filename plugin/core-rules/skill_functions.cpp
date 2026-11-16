@@ -2702,8 +2702,11 @@ auto CltDoNova(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 // Read from ProjectDiablo.dll: srvdo 183 at 0x103b5080 (its installer 0x1036ba20). An item cast of a nova (a hit skill,
 // a charge) makes PD2's ring (0x1036d250: 64 of srvmissilea, flags 3, no range) at the skill target unit's position,
 // else the caster's. D2R's do dispatcher (0x43acb0) calls ItemEffect's slot for an item cast, instead of srvdofunc.
-// approximated: PD2 also sets the ring missiles' unit flag 0x80000 (+0xc8). Only PD2's own missile collision
-// (0x103061d0 -> 0x103a9200) reads it, to key its one-hit-per-unit check by the cast; D2R's collision has no such key.
+// approximated: a unit at the centre takes 1 hit per cast in both: the first missile hits and NextHit blocks the rest for
+// NextDelay (4) frames, by which time they have passed it. PD2 also sets the ring missiles' flag 0x80000 (+0xc8), which
+// PD2's collision (0x103061d0 -> 0x103a9200, set by 0x103a92e0) uses to widen the block's key (owner, missile row) to any
+// player. D2R's collision (0x4639a0 -> 0x324a50, set by 0x324820) keys it by the missile's cast id (+0x12c). So two item
+// novas of different casts reaching one unit within 4 frames both hit it here; PD2 lets only the first hit.
 // Why not D2R's own nova item effect (srvdo 36, 0x56df80), which also rings 64 missiles at the target: it returns 0 without a
 // target unit (PD2 falls back to the caster) and gives the missiles a calc range (PD2's ring has none).
 std::atomic<uint32_t> g_itemNovas {0};
