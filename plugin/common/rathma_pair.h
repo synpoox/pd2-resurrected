@@ -30,7 +30,8 @@ inline auto MonsterById(d2r::Game* game, uint32_t id) noexcept -> d2r::Unit* {
 	return nullptr;
 }
 
-inline auto Partner(d2r::Game* game, d2r::Unit* victim) noexcept -> d2r::Unit* {
+// The other clone in the boss slots, whatever its mode: PD2's event 15 never reads it, so the half holds after the first death
+inline auto Other(d2r::Game* game, d2r::Unit* victim) noexcept -> d2r::Unit* {
 	using namespace d2r::rva;
 	if (game == nullptr || victim == nullptr || d2r::At<int32_t>(victim, 0) != 1) {
 		return nullptr;
@@ -45,10 +46,16 @@ inline auto Partner(d2r::Game* game, d2r::Unit* victim) noexcept -> d2r::Unit* {
 	}
 	const bool isBone = classId == BoneClone;
 	d2r::Unit* other = MonsterById(game, static_cast<uint32_t>(isBone ? poison : bone));
-	if (other == nullptr || d2r::At<int32_t>(other, UnitClassId) != (isBone ? PoisonClone : BoneClone)) {
+	return other != nullptr && d2r::At<int32_t>(other, UnitClassId) == (isBone ? PoisonClone : BoneClone) ? other : nullptr;
+}
+
+// Other, and not dying or dead
+inline auto Partner(d2r::Game* game, d2r::Unit* victim) noexcept -> d2r::Unit* {
+	d2r::Unit* other = Other(game, victim);
+	if (other == nullptr) {
 		return nullptr;
 	}
-	const int32_t mode = d2r::At<int32_t>(other, UnitMode);
+	const int32_t mode = d2r::At<int32_t>(other, d2r::rva::UnitMode);
 	return mode != 0 && mode != 12 ? other : nullptr;
 }
 

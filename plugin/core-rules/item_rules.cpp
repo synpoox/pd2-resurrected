@@ -667,8 +667,8 @@ auto ApplyWounds(Game* game, Unit* unit, Unit* target, int32_t damage, int32_t* 
 //   that;
 // - less the target's damageresist after the attacker's passive_phys_pierce (a negative result counts half; 100 or
 //   more ignores the pierce): a player loses at most 50%. A monster a player owns takes a quarter;
-// - on one of Rathma's clones with both boss slots set (and the other alive), the damage is halved and the other clone,
-//   unless it has resistall (state 8), gets the same half on its own list (#645; the lookup is common/rathma_pair.h,
+// - on one of Rathma's clones with both boss slots set, the damage is halved and the other clone,
+//   unless it is dying or dead or has resistall (state 8), gets the same half on its own list (#645; the lookup is common/rathma_pair.h,
 //   shared with core-events' rathma_life.cpp);
 // - hpregen on the target's open wounds list (125 frames). Below 3 stacks the hit adds to the list's damage and a
 //   stack; at 3 it only refreshes the time (NewStateList keeps an older list of the same skill and level).
@@ -712,18 +712,24 @@ auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept ->
 	if (!player && OwnedByPlayer(game, target)) {
 		damage /= 4;
 	}
-	Unit* other = pd2::rathma::Partner(game, target);
+	Unit* other = pd2::rathma::Other(game, target);
 	if (other != nullptr) {
 		damage = pd2::rathma::Half(damage);
 	}
 	int32_t stacks = 0;
 	void* list = ApplyWounds(game, unit, target, damage, &stacks);
-	if (other != nullptr && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(other, StateResistAll) == 0) {
+	if (other != nullptr) {
+		const int32_t mode = At<int32_t>(other, UnitMode);
+		const bool otherList = mode != 0 && mode != 12 &&
+			d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(other, StateResistAll) == 0;
 		int32_t otherStacks = 0;
-		ApplyWounds(game, unit, other, damage, &otherStacks);
+		if (otherList) {
+			ApplyWounds(game, unit, other, damage, &otherStacks);
+		}
 		if (const uint32_t m = ++g_splits; m <= 20 || m % 100 == 0) {
-			plog::Info("open wounds split: class %d takes %d/256 per frame (halved), class %d too, stack %d (%u so far)",
-			           At<int32_t>(target, UnitClassId), damage, At<int32_t>(other, UnitClassId), otherStacks, m);
+			plog::Info("open wounds split: class %d takes %d/256 per frame (halved), class %d list %s, stack %d (%u so far)",
+			           At<int32_t>(target, UnitClassId), damage, At<int32_t>(other, UnitClassId), otherList ? "yes" : "no",
+			           otherStacks, m);
 		}
 	}
 	const uint32_t n = ++g_wounds;

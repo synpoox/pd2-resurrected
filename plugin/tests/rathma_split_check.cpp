@@ -1,5 +1,5 @@
 // Host self-check of common/rathma_split.h (#645).
-//   cmake -S plugin -B plugin/build-checks -A x64 && cmake --build plugin/build-checks --config Release --target rathma_split_check
+//   cmake -S plugin -B plugin/build -A x64 && cmake --build plugin/build --config Release --target rathma_split_check
 #include "rathma_split.h"
 
 #include <climits>
