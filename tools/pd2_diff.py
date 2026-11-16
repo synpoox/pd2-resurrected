@@ -177,9 +177,9 @@ def deviations(path: Path) -> tuple[list[str], dict[str, int]]:
 
 
 def whole_table(pattern: str, table: str) -> bool:
-    """True for `table.*`, `table.*.*` and any other pattern whose parts after the table are only wildcards (`skilldesc.*.`, the unnamed column, is not)."""
-    head, _, rest = pattern.partition(".")
-    return head == table and all(seg and not seg.strip("*") for seg in rest.split("."))  # an empty segment is the unnamed column
+    """True for a pattern that matches every key of `table`: any row and any column (`table.*`, `t*`, `*.*.*`, ...).
+    `skilldesc.*.` (the unnamed column) and `hireling.*.[*]` (a column named `*`) are not."""
+    return all(fnmatch.fnmatchcase(f"{table}.{k}", pattern) for k in ("zzq.zzq", "zzq.*", "*.zzq"))
 
 
 def triage(res: Result, patterns: list[str]) -> Result:
@@ -221,7 +221,7 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
                           ctx if ids_read else None, rows)
             res.source = src[0]
             if src[0] == "merged" and any(whole_table(q, p.stem.lower()) for q in patterns):
-                raise GateError(f"deviations.md still covers all of {p.stem}, which is merged now: narrow its row")
+                raise GateError(f"deviations.md still covers all of {p.stem}, which is merged now: replace it with row- or column-specific patterns")
         results.append(triage(res, patterns))
     return Report(results, entries)
 
