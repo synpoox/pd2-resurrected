@@ -67,8 +67,8 @@ files in its own folder and edits neither `plugin.cpp`, `CMakeLists.txt` nor thi
 folders (lane S, or a lane's older flat files) needs a row above and a CMake line.
 
 Orders now: cube 10 (B), open 20 (A), mapevents 40 (C), pool 50, keys 60 (S), trist 70, lucion 80, primes 90,
-temple 100 (D), events 110 (C), lucionai 120, rathmaai 130, rathmalife 140, dcloneai 150 (D), guardianai 160 (C).
-Counters lines: the same steps. Orders 30 and 190 (stats, zhar) were cut with PD2's maps (#964); 170 is wanderer and 180 treasurefallen (C).
+temple 100 (D), events 110 (C), lucionai 120, rathmaai 130, rathmalife 140, dcloneai 150 (D), guardianai 160 (C), wanderer 170, treasurefallen 180.
+Counters lines: the same steps. Orders 30, 170 and 180 (stats, mapbossai, zhar) were cut with PD2's maps (#964); 170 and 180 now belong to wanderer and treasurefallen.
 
 ## Evidence for a PR
 

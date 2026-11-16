@@ -17,6 +17,7 @@
 #include "sig.h"
 
 #include <D2RLPlugin/lifecycle_events.h>
+#include <D2RLPlugin/threads.h>
 
 #include <atomic>
 #include <cstdio>
@@ -42,21 +43,25 @@ struct Count {
 	uint16_t gameId;
 	uint32_t unitId;
 	int32_t n;  // drops made while it was hit
+	uint32_t seq;  // order of creation, the oldest is overwritten when the table is full
 };
 Count g_counts[Slots];  // the game thread runs both the think and the death listener
+uint32_t g_seq = 0;
+const D2RL::PluginContext* g_context = nullptr;
+const D2RL::ThreadService* g_threads = nullptr;
 std::atomic<uint32_t> g_hitDrops {0}, g_deathDrops {0};
 
 auto CountOf(uint16_t gameId, uint32_t unitId, bool add) noexcept -> Count* {
-	Count* free = nullptr;
+	Count* slot = &g_counts[0];  // a free slot, else the oldest
 	for (Count& c : g_counts) {
 		if (c.used && c.gameId == gameId && c.unitId == unitId) {
 			return &c;
 		}
-		free = free == nullptr && !c.used ? &c : free;
+		slot = (slot->used && (!c.used || c.seq < slot->seq)) ? &c : slot;
 	}
-	if (add && free != nullptr) {
-		*free = {true, gameId, unitId, 0};
-		return free;
+	if (add) {
+		*slot = {true, gameId, unitId, 0, ++g_seq};
+		return slot;
 	}
 	return nullptr;
 }
@@ -74,6 +79,19 @@ auto Drop(Game* game, Unit* unit, Unit* killer) noexcept -> bool {
 	} drop {nullptr, unit, killer};
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, void*) noexcept>(d2r::sig::MonsterTcDrop)(game, unit, 0, &drop);
 	return true;
+}
+
+// Game ids are reused and unit ids restart, so a fallen alive when a game ends must not leave its count behind.
+void __cdecl ClearCounts(const D2RL::PluginContext*, void*) noexcept {
+	for (Count& c : g_counts) {
+		c = {};
+	}
+}
+
+void __cdecl OnGameEdge(const D2RL::PluginContext*, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {  // UI thread
+	if (g_threads != nullptr) {
+		g_threads->runOnGameThread(g_context, ClearCounts, nullptr);
+	}
 }
 
 void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
@@ -161,6 +179,18 @@ auto InstallTreasureFallen(const D2RL::PluginContext* context, char* report, siz
 	if (lifecycle->registerMonsterDeathListener(context, &listener, &handle) != D2RL::Lifecycle::Result::Success) {
 		std::snprintf(report, reportSize, "off: monster-death listener refused");
 		return 0;
+	}
+	g_context = context;
+	if (context->QueryService(&g_threads) == D2RL::ServiceQueryResult::Success &&
+	    D2RL::HasThreadServiceField(g_threads, D2RL::ThreadServiceRequiredSize)) {
+		for (const auto kind : {D2RL::Lifecycle::GameplayEventKind::GameJoined, D2RL::Lifecycle::GameplayEventKind::GameLeft}) {
+			const D2RL::Lifecycle::GameplayEventListener edge {
+				.structSize = D2RL::Lifecycle::GameplayEventListenerSize, .kind = kind, .callback = OnGameEdge};
+			D2RL::Lifecycle::ListenerHandle h = D2RL::Lifecycle::InvalidHandle;
+			lifecycle->registerGameplayEventListener(context, &edge, &h);
+		}
+	} else {
+		g_threads = nullptr;
 	}
 	std::snprintf(report, reportSize, "Treasure Fallen: a drop per 10%% of life lost, the rest on death (monai %d think)", FallenRow);
 	return 1;
