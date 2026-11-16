@@ -1,4 +1,5 @@
 """#947: the encounter placement files agree with the level ids, and every consumer lookup finds its placement."""
+import unittest
 import re
 from pathlib import Path
 
@@ -28,56 +29,57 @@ def level_ids():
     return out
 
 
-def test_every_level_is_a_real_or_reserved_id_and_private_targets_are_new():
-    bindings, _ = parse()
-    ids = level_ids()
-    for enc, (level, target, source, _f) in bindings.items():
-        assert level in ids and target in ids, enc
-        if source == "Existing":
-            assert target >= 209 and ids[target], enc  # a reserved private id, a `+` line
-        else:
-            assert not ids[target], enc  # D2R's own area
+class PlacementsTests(unittest.TestCase):
+    def test_every_level_is_a_real_or_reserved_id_and_private_targets_are_new(self):
+        bindings, _ = parse()
+        ids = level_ids()
+        for enc, (level, target, source, _f) in bindings.items():
+            assert level in ids and target in ids, enc
+            if source == "Existing":
+                assert target >= 209 and ids[target], enc  # a reserved private id, a `+` line
+            else:
+                assert not ids[target], enc  # D2R's own area
 
 
-def test_private_levels_are_reserved_once():
-    bindings, _ = parse()
-    private = [t for (_l, t, s, _f) in bindings.values() if s == "Existing"]
-    assert len(private) == len(set(private)) == 7 and sorted(private) == list(range(209, 216))
+    def test_private_levels_are_reserved_once(self):
+        bindings, _ = parse()
+        private = [t for (_l, t, s, _f) in bindings.values() if s == "Existing"]
+        assert len(private) == len(set(private)) == 7 and sorted(private) == list(range(209, 216))
 
 
-def test_every_consumer_lookup_has_a_placement():
-    bindings, places = parse()
-    for f in list((PLUGIN / "core-events").rglob("*.cpp")) + list((PLUGIN / "core-rules").rglob("*.cpp")):
-        text = f.read_text(encoding="utf-8")
-        for enc in re.findall(r'placements::LevelOf\("(\w+)"\)', text):
-            assert enc in bindings, (f.name, enc)
-        for enc, pid in re.findall(r'placements::(?:SpotOf|Need|Find)\("(\w+)", "([\w-]+)"\)', text):
-            assert (enc, pid) in places, (f.name, enc, pid)
+    def test_every_consumer_lookup_has_a_placement(self):
+        bindings, places = parse()
+        for f in list((PLUGIN / "core-events").rglob("*.cpp")) + list((PLUGIN / "core-rules").rglob("*.cpp")):
+            text = f.read_text(encoding="utf-8")
+            for enc in re.findall(r'placements::LevelOf\("(\w+)"\)', text):
+                assert enc in bindings, (f.name, enc)
+            for enc, pid in re.findall(r'placements::(?:SpotOf|Need|Find)\("(\w+)", "([\w-]+)"\)', text):
+                assert (enc, pid) in places, (f.name, enc, pid)
 
 
-def test_rathma_stages_keep_their_geometry():
-    _, places = parse()
-    text = (PLUGIN / "placements/rathma.cpp").read_text(encoding="utf-8")
-    assert '{"rathma3", "arena", 0x4e9a, 0x1403' in text and '{"rathma1", "arena", 0x476c, 0x35bf' in text
-    assert ("rathma3", "portal2") in places and ("rathma1", "portal1") not in places
+    def test_rathma_stages_keep_their_geometry(self):
+        _, places = parse()
+        text = (PLUGIN / "placements/rathma.cpp").read_text(encoding="utf-8")
+        assert '{"rathma3", "arena", 0x4e9a, 0x1403' in text and '{"rathma1", "arena", 0x476c, 0x35bf' in text
+        assert ("rathma3", "portal2") in places and ("rathma1", "portal1") not in places
 
 
-def test_no_consumer_hard_codes_a_bound_level_id():
-    """A bound level number (133-138, 160-162, 181, 184, 185, 198) in code that is not a placements lookup fails."""
-    bound = {133, 134, 135, 136, 138, 160, 161, 162, 181, 184, 185, 198}
-    # Lines naming these numbers for another reason: table data keyed by other ids, comments, stat/skill/AI rows.
-    allowed = {("map_bosses.cpp", "{159, PlaceholderA"), ("map_events.cpp", "{144, 200}"), ("map_stats.cpp", "{460, Route"),
-               ("map_stats.cpp", "{177, {178}}"), ("map_stats.cpp", "{179, {180}}"), ("map_stats.cpp", "MapState = 244"),
-               ("map_stats.cpp", "FirstMapLevel = 138"), ("map_stats.cpp", "fixed[] ="), ("unique_map_drops.cpp", "FirstMapLevel = 138"),
-               ("prime_minions.cpp", "AiRows"), ("prime_minions.cpp", "AI rows"), ("uber_entry.cpp", "StatUberTier"),
-               ("uber_entry.cpp", "133, 134, 135, 136, 137, 176")}
-    bad = []
-    for f in (PLUGIN / "core-events").rglob("*.cpp"):
-        for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
-            code = line.split("//")[0]
-            if re.search(r"0x|rva::|(PartReg|CountersReg) \w+\(", code):
-                continue
-            if any(int(m) in bound for m in re.findall(r"(?<![\w.])(\d{3})(?![\w.])", code)):
-                if not any(f.name == a and b in line for a, b in allowed) and not re.search(r"\{\d+, PlaceholderA", code):
-                    bad.append(f"{f.name}:{n}: {line.strip()}")
-    assert not bad, bad
+    def test_no_consumer_hard_codes_a_bound_level_id(self):
+        """A bound level number (133-138, 160-162, 181, 184, 185, 198) in code that is not a placements lookup fails."""
+        bound = {133, 134, 135, 136, 138, 160, 161, 162, 181, 184, 185, 198}
+        # Lines naming these numbers for another reason: table data keyed by other ids, comments, stat/skill/AI rows.
+        allowed = {("map_bosses.cpp", "{159, PlaceholderA"), ("map_events.cpp", "{144, 200}"), ("map_stats.cpp", "{460, Route"),
+                   ("map_stats.cpp", "{177, {178}}"), ("map_stats.cpp", "{179, {180}}"), ("map_stats.cpp", "MapState = 244"),
+                   ("map_stats.cpp", "FirstMapLevel = 138"), ("map_stats.cpp", "fixed[] ="), ("unique_map_drops.cpp", "FirstMapLevel = 138"),
+                   ("prime_minions.cpp", "AiRows"), ("prime_minions.cpp", "AI rows"), ("uber_entry.cpp", "StatUberTier"),
+                   ("uber_entry.cpp", "133, 134, 135, 136, 137, 176")}
+        bad = []
+        for f in (PLUGIN / "core-events").rglob("*.cpp"):
+            for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+                code = line.split("//")[0]
+                if re.search(r"0x|rva::|(PartReg|CountersReg) \w+\(", code):
+                    continue
+                if any(int(m) in bound for m in re.findall(r"(?<![\w.])(\d{3})(?![\w.])", code)):
+                    if not any(f.name == a and b in line for a, b in allowed) and not re.search(r"\{\d+, PlaceholderA", code):
+                        bad.append(f"{f.name}:{n}: {line.strip()}")
+        assert not bad, bad
