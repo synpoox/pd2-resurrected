@@ -528,11 +528,7 @@ class FixLevelsTests(unittest.TestCase):
         self.assertEqual(I.entry_key("Na-Krul's Abyss 2"), "EnteringNaKrulsAbyss2")
 
     def test_fix_levels_keys_pd2_rows_only_and_clamps_the_type(self):
-        lv = table("LevelName|LevelEntry|LevelType
-D2R One||99
-PD2 Two||36
-PD2 Three|Kept|35
-PD2 Four||37")
+        lv = table("LevelName|LevelEntry|LevelType\nD2R One||99\nPD2 Two||36\nPD2 Three|Kept|35\nPD2 Four||37")
         I.fix_levels(lv, 1, 35)
         self.assertEqual([r[1] for r in lv.rows], ["", "EnteringPD2Two", "Kept", "EnteringPD2Four"])
         self.assertEqual([r[2] for r in lv.rows], ["99", "0", "35", "0"])
