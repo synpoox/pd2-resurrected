@@ -1,0 +1,230 @@
+{
+ "_note": "srvdofunc 8 (D2R's Teeth path) makes calc3 damaging missiles unclamped; PD2's calc3 100 made 100 server missiles against calc1 client ones (#464). 0 = every missile damages, as D2R's Teeth.",
+ "ops": [
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Magic Arrow",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Fire Arrow",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Cold Arrow",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Teeth",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Bone Spear",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Holy Bolt",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "PrimePoisonball",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Shock Wave",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Catapult Charged Ball",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Ice Barrage",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "UnravelerBossMultiShot",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "TraitorBossConeJab",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "TraitorBossStunSpear",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "RathmaBoneSpear",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Shock Wave Boss",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Teeth Rathma",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "BruteShockWave",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "UberMadawcOWAxe",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Bone Spear Serpent",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Fire Ball Ashen Boss",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "ZharBarrage",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Merc Magic Arrow",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "Bone Spear Putrid Defiler",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "DjinnBoss Poison Bolt",
+   "set": {
+    "calc3": "0"
+   }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "ArcherBossCageShot",
+   "set": {
+    "calc3": "0"
+   }
+  }
+ ]
+}
