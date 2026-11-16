@@ -107,7 +107,9 @@ function Snapshot([string]$dir) {
 $links = @(FindLinks)
 $guards = @{}   # folder -> snapshot before
 foreach ($l in $links) {
-    foreach ($t in @($l.Target)) {
+    foreach ($t0 in @($l.Target)) {
+        # A relative symlink target is relative to the link's folder, not $PWD.
+        $t = if ($t0 -and -not [IO.Path]::IsPathRooted($t0)) { [IO.Path]::GetFullPath((Join-Path (Split-Path $l.FullName -Parent) $t0)) } else { $t0 }
         if ($t -and -not $guards.ContainsKey($t) -and (Test-Path -LiteralPath $t -PathType Container)) { $guards[$t] = Snapshot $t }
     }
 }
