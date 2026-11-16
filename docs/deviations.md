@@ -78,6 +78,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
+| Frozen Orb: the plain cast motion | approximated | PD2 plays its own sequence for the Frozen Orb cast (anim `SQ`, seqnum 12, monanim `SC`). D2R plays no cast motion for that sequence on the Frozen Orb, so the port uses D2R's own cast row (anim `SC`, seqnum 0, monanim `xx`). The orb, its bolts and the cast overlay are PD2's ([#690](https://github.com/synpoox/pd2-resurrected/issues/690)) |  |
 | Dark Wanderer's boss: current life raised with max life | approximated | PD2 raises only max life (stat 7) and leaves current life. The port raises current life too when the boss spawns at full life, as uber scaling does, so the boss starts full at its new maximum | [#1006](https://github.com/synpoox/pd2-resurrected/issues/1006) |
 | Dark Wanderer's boss timer: a game-thread callback, not a unit event | approximated | PD2 sets a unit timer on the dead Wanderer for 85 frames. D2R's unit events take no callback and no SDK service has a frame timer, so the port re-queues a game-thread callback each update until the due frame. The boss waits on the game thread. If the corpse is gone by then, it spawns at the saved spot where he left | [#1006](https://github.com/synpoox/pd2-resurrected/issues/1006) |
 | Dark Wanderer's death sound: plays for the level, not on the unit | approximated | PD2 plays sound 705 on the Wanderer. `PlayLevelSound` plays it for the whole level, as the altar guardian's death does | [#1006](https://github.com/synpoox/pd2-resurrected/issues/1006) |
@@ -321,6 +322,7 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | PD2 skill columns auratgtevent, auratgteventfunc, passiveevent, passiveeventfunc | `skills.*.auratgtevent` `skills.*.auratgteventfunc` `skills.*.passiveevent` `skills.*.passiveeventfunc` |
 | PD2 skill columns checkfunc, nocostinstate | `skills.*.checkfunc` `skills.*.nocostinstate` |
 | PD2 skill column general | `skills.*.general` |
+| Frozen Orb: the plain cast motion | `skills.Frozen Orb.anim` `skills.Frozen Orb.seqnum` `skills.Frozen Orb.monanim` |
 | PD2 state column blue | `states.*.blue` |
 | PD2 state column immed | `states.*.immed` |
 | PD2 stat columns Divide, itemspecific and the S12/S13 save widths | `itemstatcost.*.divide` `itemstatcost.*.itemspecific` `itemstatcost.*.save bits s12` `itemstatcost.*.save add s12` `itemstatcost.*.save param bits s12` `itemstatcost.*.save bits s13` `itemstatcost.*.save adds s13` `itemstatcost.*.save param bits s13` |
