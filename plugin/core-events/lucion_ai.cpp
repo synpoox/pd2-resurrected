@@ -36,6 +36,7 @@ constexpr uint32_t StageKey = 0x55424c47;     // 'UBLG': PD2 game +0x262a
 constexpr uint32_t SubStepKey = 0x55424c53;   // 'UBLS': PD2 game +0x262b
 constexpr uint32_t StateKey = 0x55424c41;     // 'UBLA': Lucion's AI param 0, the next state
 constexpr uint32_t ParamKey = 0x55424c42;     // 'UBLB': param 1
+constexpr uint32_t ControlThinkKey = 0x55424c4b;  // 'UBLK': the control thought since Lucion's last think
 constexpr uint32_t LastKey = 0x55424c43;      // 'UBLC': param 2, the state just run
 constexpr uint32_t ResistSavedKey = 0x55424c52;  // 'UBLR': the six resists below are saved
 constexpr uint32_t ResistKeys[] = {0x55424c30, 0x55424c31, 0x55424c32, 0x55424c33, 0x55424c34, 0x55424c35};
@@ -230,6 +231,8 @@ constexpr auto NextStage(int32_t stage, int32_t life, int32_t tier) noexcept -> 
 }
 static_assert(NextStage(1, 84, 0) && !NextStage(1, 85, 0) && NextStage(6, 36, 1) && !NextStage(7, 1, 0));
 
+auto StandInForControl(Game* game, Unit* lucion, Unit* target, const Mon& lucionMon) noexcept -> void;
+
 auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -> void {
 	Unit* target = At<Unit*>(tick, d2r::rva::AiTickTarget);
 	const int32_t dist = At<int32_t>(tick, d2r::rva::AiTickDistance);
@@ -296,6 +299,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		store(4, 1);
 		return;
 	}
+	StandInForControl(game, unit, target, m);
 	const auto blinkAtTarget = [&]() {
 		Cast(game, unit, m.Skill(0), m.Mode(0), nullptr, tx - 1 + Rand(unit, 2), ty - 1 + Rand(unit, 2));
 		store(1, 0);
@@ -476,12 +480,8 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 }
 
 // LucionControl: from stage 3 it spawns LucionSpawners in the arena while Lucion is in state 5; from stage 4 it casts
-// Royal Fire on a timer
-auto ThinkControl(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -> void {
-	if (IdleWindow(game, nullptr, false)) {
-		Idle(game, unit, 10);
-		return;
-	}
+// Royal Fire on a timer. One step of that; false when it cast (D2R's delay then stands, no idle)
+auto ControlStep(Game* game, Unit* unit, Unit* target, const Mon& m) noexcept -> bool {
 	const int32_t stage = Counter(game, StageKey);
 	const int32_t tier = Counter(game, TierKey);
 	const int32_t level = LevelOf(unit);
@@ -513,13 +513,54 @@ auto ThinkControl(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept 
 		const int32_t base = m.P(3) - tier + (frenzy ? 2 : 0);
 		const int32_t cd = Stat(unit, StatCooldown2);
 		if (cd < 1) {
-			Cast(game, unit, m.Skill(0), m.Mode(0), At<Unit*>(tick, d2r::rva::AiTickTarget), 0, 0);
+			Cast(game, unit, m.Skill(0), m.Mode(0), target, 0, 0);
 			SetStat(unit, StatCooldown2, r % (3 - tier) - stage / 2 + base);
-			return;
+			return false;
 		}
 		SetStat(unit, StatCooldown2, cd - 1);
 	}
 	Idle(game, unit, aidel);
+	return true;
+}
+
+auto ThinkControl(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -> void {
+	if (IdleWindow(game, nullptr, false)) {
+		Idle(game, unit, 10);
+		return;
+	}
+	Counter(game, ControlThinkKey) = 1;  // D2R still calls this think: Lucion's need not stand in for it
+	ControlStep(game, unit, At<Unit*>(tick, d2r::rva::AiTickTarget), m);
+}
+
+// D2R stops thinking a unit whose room has no player near (the control stands at the arena centre, Lucion chases
+// the player): Lucion's think then runs the control's step for it, at his own pace (#1109)
+auto StandInForControl(Game* game, Unit* lucion, Unit* target, const Mon& lucionMon) noexcept -> void {
+	int32_t& thought = Counter(game, ControlThinkKey);
+	if (thought != 0) {
+		thought = 0;
+		return;
+	}
+	const int32_t level = LevelOf(lucion);
+	Mon m {};
+	m.rec = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(d2r::rva::MonStatsRecord)(d2r::DataFlag(game),
+	                                                                                              LucionControl);
+	m.diff = lucionMon.diff;
+	if (m.rec == nullptr) {
+		return;
+	}
+	for (int bucket = 0; bucket < 128; ++bucket) {
+		for (auto* u = At<Unit*>(game, d2r::rva::GameMonsters + bucket * 8); u != nullptr; u = At<Unit*>(u, d2r::rva::UnitListNext)) {
+			if (At<int32_t>(u, d2r::rva::UnitClassId) == LucionControl &&
+			    d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::UnitDead)(u) == 0 && LevelOf(u) == level) {
+				static std::atomic<uint32_t> standIns {0};
+				if (plog::Sample(standIns)) {
+					plog::Info("lucion ai: control not thinking, Lucion steps it (%u so far)", standIns.load());
+				}
+				ControlStep(game, u, target, m);
+				return;
+			}
+		}
+	}
 }
 
 // LucionSpawner: from stage 3 it spawns an add at itself on a timer, by the aip odds and caps
