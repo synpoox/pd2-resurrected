@@ -1,0 +1,2 @@
+# The committed mod data (ADR 0007) keeps its bytes: tables are CRLF, JSON and sprites must not be converted.
+/files/data/** -text
