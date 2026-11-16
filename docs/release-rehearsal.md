@@ -70,7 +70,7 @@ Screenshots: `issue-assets/966/b-main-map.png`, `c-cand-upgrade-map.png`, `d-rol
 
 ## Seen, not caused here
 
-- `core-maps` logs hook failures at `0x494A60` and `0x50ACF0` when it loads next to Cartographer (the Cartographer log
+- `core-maps` logs a hook failure at `0x50ACF0` (the `0x494A60` one is fixed, #1032) when it loads next to Cartographer (the Cartographer log
   says the two cannot be used together). The retained events still install (`mapevents 1/1`).
 - Item Durability and Mass Identify fail to load, on main and the candidate alike.
 
