@@ -2,7 +2,7 @@
 
 Answers "Probe D2R's skill function tables from a plugin" (Q1-Q3 of the core-rules inventory). Read from the runtime
 dump `C:\ghidra-work\D2RLoader_6ab3782c_dump.exe` (memory layout, base 0x140000000) and the toolkit's Ghidra project. Not
-run in game. Rerun after a patch: new dump, then `python -I skill-function-tables/probe_tables.py`. Re-find the
+run in game. Rerun after a patch: new dump, then `python -I <toolkit>/tools/probe_tables.py --dump <dump.exe>`. Re-find the
 dispatchers first (the table lists below say where).
 
 ## Tables (RVA, size, D2R's empty slots)

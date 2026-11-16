@@ -47,7 +47,7 @@ One shot should answer the question. Before each shot:
 
 ## Worktree hygiene
 
-Remove a worktree with `tools/worktree_remove.ps1 -Path <worktree> [-DeleteBranch]`: it unlinks every junction first and
+Remove a worktree with the toolkit's `tools/worktree_remove.ps1 -Path <worktree> [-DeleteBranch]`: it unlinks every junction first and
 checks the shared cache is intact. Never delete a worktree any other way: `git worktree remove --force`, `rm -r` and
 `gh pr merge --delete-branch` follow the `pd2-data` junction and empty `C:\pd2r-cache`. Agents also unlink `pd2-data` before any removal by the
 harness (unverified whether its auto-cleanup follows junctions), and commit or delete scratch files first.

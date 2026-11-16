@@ -1,4 +1,4 @@
-# Release config for d2rAI-toolkit's release/package_release.py, run by tools/release.py (keys: release/release.example.toml).
+# Release config for d2rAI-toolkit's release/stage.py and package_release.py (keys: release/release.example.toml).
 # Local 7z only: no download site or downloader yet, so [site] and [downloader] keep the toolkit's defaults.
 
 [mod]
@@ -21,7 +21,14 @@ default_mod = "PD2Resurrected"
 
 [repos]
 changelog = "CHANGELOG.md"
+fragments = "changelog.d"
 github = "synpoox/pd2-resurrected"
+
+[stage]
+plugins = ["core-rules", "core-events", "core-ui"]
+companions = true
+item_type_check = false   # not checked before the toolkit either: a mod table's item type ids are its own
+loader_from_game = true   # pin --game's official D2RLoader.exe in the catalog
 
 # Files players may edit: shipped_default in the launcher manifest, kept on Update and Repair.
 [package]

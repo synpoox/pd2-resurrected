@@ -2,7 +2,7 @@
 
 Answers work item [W36](https://github.com/synpoox/pd2-resurrected/issues/244) ([#244](https://github.com/synpoox/pd2-resurrected/issues/244)). PD2 side read from `ProjectDiablo.dll` (VAs `0x10...`) and PD2's 1.13c `D2Game.dll` /
 `D2Client.dll` (RVAs named so) in the PD2 Ghidra project; D2R side from the 93847 dump (RVAs). Read statically; D2R's
-table slots read from the runtime dump the way `skill-function-tables/probe_tables.py` reads them.
+table slots read from the runtime dump the way the toolkit's `tools/probe_tables.py` reads them.
 
 PD2's table fill `0x1036ba20` writes srvdo 173 = `0x103b3520`, srvdo 181 = `0x103b4cf0` (D2Game do table `[0x105de8fc]`),
 cltdo 109 = `0x103abba0` (`[0x105de71c]`) and srvst 67 = `0x103b6520` (start table `[0x105de8ec]`). Its server missile

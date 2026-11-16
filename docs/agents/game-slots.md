@@ -49,4 +49,4 @@ The per-check recipe (cheats, shots, images, unlock) is `docs/agents/game-check.
   `<slot>\mods\PD2Resurrected`, so moving a slot between builds is quick.
 - Only `pd2_import.py` (through `pd2_merge.py`) uses the rule cache (`rules\<key>\`, pruned to `PD2R_CACHE_GB`, default 20) and
   the merge slots (`PD2R_MERGE_SLOTS`, default 4); a normal build or install runs no merge.
-- Removing a worktree: `tools/worktree_remove.ps1` only (`docs/agents/game-check.md`, "Worktree hygiene").
+- Removing a worktree: the toolkit's `tools/worktree_remove.ps1` only (`docs/agents/game-check.md`, "Worktree hygiene").

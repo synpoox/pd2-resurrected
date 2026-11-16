@@ -1,5 +1,12 @@
 {
   "_note": "Pinned companion plugins (issue #15). sha256 from each release's SHA256SUMS (a `commit` entry: of the file at that commit, the repo has no releases). Our settings for a companion are in companions/config/, copied over the zip's. files: zip path -> path in the installed mod folder. Bump one companion per PR, after the coexistence check.",
+  "config": [
+    "companions/config/",
+    "companions/filter.json"
+  ],
+  "project_files": {
+    "companions/cartographer/signatures.txt": "{mod}.mpq/data/global/excel/d2rloader/cartographer/signatures.txt"
+  },
   "companions": [
     {
       "name": "Pyre Loot Filter",
@@ -10,7 +17,15 @@
       "files": {
         "d2rloader/plugins/pyre-lootfilter.dll": "d2rloader/plugins/pyre-lootfilter.dll",
         "Reimagined.mpq/data/hd/global/sfx/item/": "PD2Resurrected.mpq/data/hd/global/sfx/item/"
-      }
+      },
+      "filter_tables": [
+        "armor",
+        "weapons",
+        "misc",
+        "itemtypes",
+        "skills",
+        "itemstatcost"
+      ]
     },
     {
       "name": "Pyre Stash Search",
@@ -30,6 +45,11 @@
       "sha256": "8a6bb4612d83fe6c0c7253f42809702ff4521a4bf5b01d47645e31ffb3ed59e1",
       "files": {
         "d2rloader/plugins/Item Roll Ranges.dll": "d2rloader/plugins/Item Roll Ranges.dll"
+      },
+      "loader_settings": {
+        "d2rcore.items": {
+          "item_stat_ranges": true
+        }
       }
     },
     {
