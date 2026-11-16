@@ -54,10 +54,10 @@ void IdentifyAll(Game* game, Unit* player) noexcept {
 }
 
 // The use handler (game, player, item) -> bool; the item is the Almanac itself (rid's spellicon is -1). Only one in the
-// inventory or the Cube is used (the client allows the right-click use from there; this also refuses the stash).
+// inventory is used: D2R does not use any item from the Cube panel (#989), and this refuses the stash.
 auto UseAlmanac(Game* game, Unit* player, Unit* item) noexcept -> uint8_t {
 	const uint8_t where = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::rva::ItemPage)(item);
-	if (where == 0 || where == d2r::rva::CubePageCube) {
+	if (where == 0) {
 		IdentifyAll(game, player);
 	} else {
 		plog::Info("almanac: use refused, the Almanac sits on page %u", where);

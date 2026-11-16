@@ -1,3 +1,3 @@
 #### Fixes
 
-- Documented: the Almanac identifies Cube items when used from the inventory (D2R cannot use items in the Cube).
+- The Almanac identifies Cube items; use it from the inventory, since D2R can't use items in the Cube.
