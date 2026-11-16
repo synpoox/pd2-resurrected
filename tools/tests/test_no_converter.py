@@ -47,3 +47,14 @@ class NoConverterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PrecheckTests(unittest.TestCase):
+    def test_release_precheck_refuses_legacy_output(self):
+        import release_precheck
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp) / "out" / "data"
+            data.mkdir(parents=True)
+            self.assertEqual(release_precheck.main(["--root", tmp]), 0)
+            (data / "global" / "tiles").mkdir(parents=True)
+            self.assertEqual(release_precheck.main(["--root", tmp]), 1)

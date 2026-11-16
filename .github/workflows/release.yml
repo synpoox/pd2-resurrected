@@ -37,7 +37,9 @@ jobs:
         continue-on-error: true
         run: py -3 -m modkit validate .
       - name: Package
-        run: py -3 "$env:D2R_TOOLKIT\release\stage.py" --game "$env:MODKIT_GAME" --extra-plugin "$env:CARTOGRAPHER_DLL@d2r-tools $env:CARTOGRAPHER_COMMIT"
+        run: |
+          py -3 tools/release_precheck.py; if ($LASTEXITCODE) { throw "out/data holds retired converter output" }
+          py -3 "$env:D2R_TOOLKIT\release\stage.py" --game "$env:MODKIT_GAME" --extra-plugin "$env:CARTOGRAPHER_DLL@d2r-tools $env:CARTOGRAPHER_COMMIT"
       - uses: actions/upload-artifact@v4
         with:
           name: release

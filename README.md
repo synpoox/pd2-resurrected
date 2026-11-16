@@ -132,6 +132,7 @@ section and the deviation list, and `SHA256SUMS`. It needs 7-Zip, and a `### <ve
 `CHANGELOG.md` for mod.json's version: rename `### Unreleased` on release day.
 
 ```bash
+python tools/release_precheck.py   # refuses an out/data with the retired converter's output
 python <toolkit>/release/stage.py --game DIR --extra-plugin "<cartographer.dll>@d2r-tools <commit>"
 ```
 
