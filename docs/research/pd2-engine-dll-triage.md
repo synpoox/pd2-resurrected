@@ -1,6 +1,6 @@
 # Triage of PD2's engine DLLs
 
-Answers research ticket [#3](https://github.com/synpoox/pd2-resurrected/issues/3) (map [#1](https://github.com/synpoox/pd2-resurrected/issues/1)). Sorting scheme from `knowledge/porting-classic-mods.md` section 1 of the d2rAI-toolkit:
+Answers research ticket [#3](https://github.com/synpoox/pd2-resurrected/issues/3) (map [#1](https://github.com/synpoox/pd2-resurrected/issues/1)). Sorting scheme from [`knowledge/porting-classic-mods.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/porting-classic-mods.md) section 1 of the d2rAI-toolkit:
 (a) data only, (b) D2RLoader service, (c) native hook, (d) UI rebuild, (e) cut.
 
 **Method.** Static, read-only inspection of the local PD2 install: PE headers, export and import tables, printable strings (assert
@@ -153,5 +153,5 @@ SGD2FreeRes (the shipped config says "1068x600"). D2R's UI scale differs, so UI 
 ## Sources inspected
 
 Local PD2 install files named in the Method paragraph (headers, import/export tables, strings, and the config files listed there), plus
-`knowledge/porting-classic-mods.md` (sections 0 to 1, 5 to 6) and `knowledge/engine-re.md` in the d2rAI-toolkit for the bucket definitions and
+[`knowledge/porting-classic-mods.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/porting-classic-mods.md) (sections 0 to 1, 5 to 6) and [`knowledge/engine-re.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/engine-re.md) in the d2rAI-toolkit for the bucket definitions and
 D2R's existing hook points.
