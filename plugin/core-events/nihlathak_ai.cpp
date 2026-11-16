@@ -129,16 +129,16 @@ auto SpawnWaveMonster(Game* game, Unit* unit, int32_t ux, int32_t uy, uint32_t* 
 	int32_t mates = 0;
 	if (kind == WaveKind::Unique) {
 		leader = d2r::Engine<Unit* (*)(Game*, void*, void*, int32_t, int32_t, uint16_t, uint16_t, int32_t, uint16_t) noexcept>(
-			SpawnUnique.address)(game, found, nullptr, monster, 0, static_cast<uint16_t>(xy[0]), static_cast<uint16_t>(xy[1]), 1, 0x10);
+			SpawnUnique)(game, found, nullptr, monster, 0, static_cast<uint16_t>(xy[0]), static_cast<uint16_t>(xy[1]), 1, 0x10);
 	} else {
 		leader = spawn();
 		if (leader != nullptr && kind == WaveKind::Champion) {
-			const auto make = d2r::Engine<void (*)(Game*, Unit*, uint8_t) noexcept>(MakeChampion.address);
+			const auto make = d2r::Engine<void (*)(Game*, Unit*, uint8_t) noexcept>(MakeChampion);
 			make(game, leader, ChampionMods[d2r::RandomBelow(seed, 5)]);
 			const int32_t want = static_cast<int32_t>(d2r::RandomBelow(seed, 3)) + 1;
 			for (int32_t k = 0; k < want; ++k) {
 				Unit* mate = d2r::Engine<Unit* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint16_t) noexcept>(
-					SpawnNear.address)(game, leader, monster, 1, 4, 0x110);
+					SpawnNear)(game, leader, monster, 1, 4, 0x110);
 				if (mate != nullptr) {
 					make(game, mate, 16);
 					++mates;
