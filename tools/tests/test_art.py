@@ -16,6 +16,7 @@ except ValueError as e:  # CI has no d2rAI-toolkit (private)
     raise unittest.SkipTest(str(e))
 from modkit import dc6, images  # noqa: E402
 from test_ids import table  # noqa: E402
+import data_tables  # noqa: E402
 
 
 def fake_esrgan(calls: list):
@@ -185,10 +186,9 @@ class HdPictureTests(unittest.TestCase):
 
 
 class GroundGraphicTests(unittest.TestCase):
-    GEN = Path(__file__).resolve().parents[2] / "generated" / "data"
-
-    @unittest.skipUnless((GEN / "hd" / "items" / "items.json").is_file(), "run tools/pd2_merge.py first")
     def test_every_pd2_misc_row_has_a_ground_graphic(self):  # #1005
+        data_tables.need(self)
+        self.GEN = data_tables.DATA
         entries = {k: v["asset"] for e in json.loads((self.GEN / "hd/items/items.json").read_text("utf-8-sig"))
                    for k, v in e.items()}
         rows = [r.split("\t") for r in (self.GEN / "global/excel/misc.txt").read_text("utf-8", "replace").splitlines()]

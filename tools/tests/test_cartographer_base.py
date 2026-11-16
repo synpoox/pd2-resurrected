@@ -1,8 +1,9 @@
 """The #946 native-map data base: maps.txt names real items and slots, the ids are gapless (docs/cartographer-contracts.md)."""
 import unittest
 import csv
-import json
 from pathlib import Path
+
+import data_tables
 
 ROOT = Path(__file__).resolve().parents[2]
 CART = ROOT / "files/data/global/excel/d2rloader/cartographer"
@@ -24,14 +25,12 @@ def ids(table_name, plus=None):
     return out
 
 
-def patch_ops():
-    """The base patch plus lane A's catalogue patch (#948), which supersedes its pool."""
-    return [o for f in ("070-cartographer-base.json", "071-native-catalogue.json") for o in json.loads((ROOT / "patches" / f).read_text())["ops"]]
-
-
 class CartographerBaseTests(unittest.TestCase):
-    def test_every_map_names_a_patched_misc_item(self):
-        items = {o["set"]["code"] for o in patch_ops() if o.get("table") == "misc"}
+    def setUp(self):
+        data_tables.need(self)
+
+    def test_every_map_names_a_cmap_misc_item(self):
+        items = {r["code"] for r in data_tables.rows("misc") if r["type"] == "cmap"}
         for m in table("maps.txt"):
             assert m["Item"] in items, m["Name"]
 
@@ -47,6 +46,6 @@ class CartographerBaseTests(unittest.TestCase):
 
 
     def test_map_pool_is_tierless(self):
-        sets = [o for o in patch_ops() if o.get("table") == "treasureclassex" and o["op"] == "set" and o["set"].get("Item9")]
-        assert len(sets) == 10 and all(o["set"]["Item9"] in ("m01", "Cartographer Maps") for o in sets)
-        assert not any("Map Tier" in json.dumps(o) for o in sets)
+        sets = [r for r in data_tables.rows("treasureclassex") if r["Item9"] in ("m01", "Cartographer Maps")]
+        assert [r["Treasure Class"] for r in sets] == [f"Act {a} (H) Good" for a in range(1, 6)] and all(r["Item9"] == "Cartographer Maps" for r in sets)  # 070 set m01, 071 superseded it with the pool
+        assert not any("Map Tier" in v for r in data_tables.rows("treasureclassex") for v in r.values())

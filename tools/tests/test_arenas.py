@@ -1,10 +1,10 @@
-"""#958: the Cartographer arena rows agree with the level rows, the patch and the consumer lookups (arenas.txt, arenaspots.txt)."""
+"""#958: the Cartographer arena rows agree with the built level rows and the consumer lookups (arenas.txt, arenaspots.txt)."""
 import csv
-import json
 import re
 import unittest
 from pathlib import Path
 
+import data_tables
 from test_placements import parse
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -17,37 +17,17 @@ def table(name):
         return list(csv.DictReader(f, delimiter="\t"))
 
 
-def level_ops():
-    """The `levels` set ops of every patch, by Id: later ops win, as the patches apply in order."""
-    out = {}
-    for f in sorted((ROOT / "patches").glob("*.json")):
-        for op in json.loads(f.read_text(encoding="utf-8")).get("ops", []):
-            if op.get("table") == "levels" and op.get("op") == "set":
-                out.setdefault(op["where"]["Id"], {}).update(op["set"])
-    return out
-
-
-def base_offset(level):
-    """OffsetX / OffsetY of a `+` level line in merge/ids-levels.tsv (the port's own rows)."""
-    for line in (ROOT / "merge/ids-levels.tsv").read_text(encoding="utf-8").splitlines():
-        if line.startswith("+") and line.split("\t")[1] == str(level):
-            return {k: int(v) for k, v in re.findall(r"(OffsetX|OffsetY)=(-?\d+)", line)}
-    return {}
-
-
 class ArenaTests(unittest.TestCase):
     def setUp(self):
+        data_tables.need(self)
         self.arenas = table("arenas.txt")
         self.spots = table("arenaspots.txt")
-        self.ops = level_ops()
+        self.ops = {r["Id"]: r for r in data_tables.rows("levels")}
         self.bindings, _ = parse()
 
     def level_of(self, arena):
-        """The level row's effective values: the patch's set over the port's base line."""
-        level = arena["Level"]
-        values = dict(base_offset(level))
-        values.update({k: int(v) for k, v in self.ops.get(level, {}).items() if re.fullmatch(r"-?\d+", v)})
-        return values
+        """The built level row's numeric values."""
+        return {k: int(v) for k, v in self.ops[arena["Level"]].items() if re.fullmatch(r"-?\d+", v or "")}
 
     def test_every_arena_is_a_private_binding_level(self):
         private = {l for (l, _t, s, _f) in self.bindings.values() if s == "Private"}

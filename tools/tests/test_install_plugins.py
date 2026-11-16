@@ -13,7 +13,8 @@ class KnownPlugins(unittest.TestCase):
 
     def test_moves_stale_mod_plugins_and_installs_signatures(self):  # #970, #987
         for needle in (r"mods\$repoMod\d2rloader\plugins", "stale-mod-plugins",
-                       r"cartographer\signatures.txt", r"excel\d2rloader\cartographer"):
+                       r"cartographer\signatures.txt", r"excel\d2rloader\cartographer",
+                       r"generated\data would override"):
             self.assertIn(needle, SCRIPT)
 
 

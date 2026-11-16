@@ -4,6 +4,8 @@ import csv
 import json
 from pathlib import Path
 
+import data_tables
+
 ROOT = Path(__file__).resolve().parents[2]
 CART = ROOT / "files/data/global/excel/d2rloader/cartographer"
 # Tilesets seen opening, reaching the boss and returning in game (d2r-tools docs/cartographer/testing.md). Lava and
@@ -18,15 +20,13 @@ def rows(name):
         return list(csv.DictReader(f, delimiter="\t"))
 
 
-def ops(patch):
-    return json.loads((ROOT / "patches" / patch).read_text())["ops"]
-
-
 STRINGS = json.loads((ROOT / "merge/strings.json").read_text("utf-8"))
-ALL = ops("070-cartographer-base.json") + ops("071-native-catalogue.json")
 
 
 class NativeCatalogueTests(unittest.TestCase):
+    def setUp(self):
+        data_tables.need(self)
+
     def test_one_map_per_verified_tileset_and_none_other(self):
         maps = rows("maps.txt")
         assert sorted(m["Tileset"] for m in maps) == sorted(VERIFIED)
@@ -37,9 +37,9 @@ class NativeCatalogueTests(unittest.TestCase):
 
 
     def test_every_map_item_is_complete_and_unique(self):
-        misc = {o["set"]["code"]: o["set"] for o in ALL if o.get("table") == "misc"}
+        misc = {r["code"]: r for r in data_tables.rows("misc") if r["type"] == "cmap"}
         names = {k for k, (_, f) in STRINGS["ids"].items() if f == "item-names.json" and k in STRINGS["texts"]}
-        hd = {o["code"] for o in ALL if o["op"] == "item_hd"}
+        hd = {k for e in json.loads(data_tables.text("hd/items/items.json")) for k in e}
         codes = [m["Item"] for m in rows("maps.txt")]
         assert len(set(codes)) == len(codes) == len(misc)
         for c in codes:  # the contracts' frozen consumer item: cmap, pSpell 16, useable, no belt
@@ -49,28 +49,15 @@ class NativeCatalogueTests(unittest.TestCase):
 
 
     def test_pool_is_one_tierless_row_shared_by_every_normal_source(self):
-        (pool,) = [o for o in ALL if o["op"] == "set" and o["set"].get("Treasure Class") == POOL]
-        s = pool["set"]
+        (s,) = [r for r in data_tables.rows("treasureclassex") if r["Treasure Class"] == POOL]
         items = [s[f"Item{i}"] for i in range(1, 11) if s[f"Item{i}"]]
         assert items == [m["Item"] for m in rows("maps.txt")]
         assert all(s[f"Prob{i}"] == "1" for i in range(1, len(items) + 1)) and s["Picks"] == "1"
-        good = [o for o in ALL if o["op"] == "set" and o.get("key", "").endswith("(H) Good") and "Item9" in o["set"]]
-        assert [o["key"] for o in good[-5:]] == [f"Act {a} (H) Good" for a in range(1, 6)]
-        assert all(o["set"] == {"Item9": POOL} for o in good[-5:])  # only Item9: unrelated loot is untouched
-        assert not any("Map Tier" in json.dumps(o) for o in ops("071-native-catalogue.json"))
+        good = {r["Treasure Class"]: r for r in data_tables.rows("treasureclassex")}
+        assert all(good[f"Act {a} (H) Good"]["Item9"] == POOL for a in range(1, 6))
+        assert not any("Map Tier" in v for r in good.values() for v in r.values())
 
 
     def test_native_properties_exist(self):
-        props = {o["values"]["code"] for o in ALL if o["op"] == "add_row" and o["table"] == "properties"}
+        props = {r["code"] for r in data_tables.rows("properties")}
         assert {"map-level", "mon-life", "mon-damage", "mon-speed", "map-density"} <= props
-
-
-    def test_patch_is_deterministic_and_adds_no_ids(self):
-        first = (ROOT / "patches/071-native-catalogue.json").read_text()
-        assert json.dumps(json.loads(first), indent=1) == first  # regenerating is a no-op
-        assert not any(o.get("table") in ("itemstatcost", "magicprefix", "magicsuffix", "rareprefix", "raresuffix") for o in ops("071-native-catalogue.json"))
-
-
-    def test_no_patch_string_op(self):
-        # modkit's Strings reads D2R's pristine file, so one string op replaces the merged copy and drops every PD2 name (#996)
-        assert not [p.name for p in (ROOT / "patches").glob("*.json") if any(o["op"] == "string" for o in ops(p.name))]

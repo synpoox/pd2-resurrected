@@ -1,8 +1,9 @@
 """#951: uber keys run through core-events' own item spell, and only finished uber areas open."""
 import unittest
-import json
 import re
 from pathlib import Path
+
+import data_tables
 
 ROOT = Path(__file__).resolve().parents[2]
 BINDINGS = re.compile(r'\{"(\w+)", (\d+), (\d+), Source::(\w+), (true|false), (true|false)\}')
@@ -18,14 +19,13 @@ def bindings():
 
 class UberAccessTests(unittest.TestCase):
     def test_keys_use_the_core_events_item_spell(self):
-        ops = json.loads((ROOT / "patches/080-uber-access.json").read_text(encoding="utf-8"))
-        ops = ops["ops"] if isinstance(ops, dict) else ops
-        keys = {o["key"]: o["set"] for o in ops if o.get("op") == "set"}
-        assert set(keys) == {"Uber Map", "Rathma Map", "Lucion Map", "Uber Trist Map"}
-        assert keys.pop("Uber Trist Map") == {"pSpell": "19", "len": "136"}  # D2R's Uber Tristram arena (#957)
-        assert keys.pop("Uber Map") == {"pSpell": "19", "len": "209"}  # Diablo Clone's arena 209 (#958)
-        assert keys.pop("Lucion Map") == {"pSpell": "19", "len": "213"}  # Lucion's arena 213 (#962)
-        assert all(s == {"pSpell": "19"} for s in keys.values())
+        data_tables.need(self)
+        misc = {r["name"]: r for r in data_tables.rows("misc")}
+        keys = {n: misc[n] for n in ("Uber Map", "Rathma Map", "Lucion Map", "Uber Trist Map")}
+        assert all(r["pSpell"] == "19" for r in keys.values())
+        assert keys["Uber Trist Map"]["len"] == "136"  # D2R's Uber Tristram arena (#957)
+        assert keys["Uber Map"]["len"] == "209"  # Diablo Clone's arena 209 (#958)
+        assert keys["Lucion Map"]["len"] == "213"  # Lucion's arena 213 (#962)
         src = (ROOT / "plugin/core-events/uber_entry.cpp").read_text(encoding="utf-8")
         assert "UberKeySpell = 19" in src and "IsUberLevel" in src
 

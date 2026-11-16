@@ -69,6 +69,10 @@ if ($stale) {
 
 if ($Data) {
     $Data = (Resolve-Path $Data).Path
+    # files/data holds the committed tables (ADR 0007); a leftover generated/data would be copied over them by modkit build.
+    if ((Test-Path (Join-Path $Data "files\data\global\excel\levels.txt")) -and (Test-Path (Join-Path $Data "generated\data"))) {
+        throw "$Data\generated\data would override the committed tables in files\data: delete generated\ (only tools/pd2_import.py writes it)"
+    }
     $mod = (Get-Content (Join-Path $Data "mod.json") -Raw | ConvertFrom-Json).name
     $root = Join-Path $Game "mods\$mod"
     $modinfos = @((Join-Path $root "modinfo.json"), (Join-Path $root "$mod.mpq\modinfo.json"))
