@@ -99,6 +99,7 @@ add_library(core_events SHARED
 	core-events/corruption_roll.cpp
 	core-events/open_gate.cpp
 	core-events/tc_roll.cpp
+	core-events/treasure_fallen.cpp
 	core-events/uber_deaths.cpp
 	core-events/uber_entry.cpp
 	core-events/arena_spots.cpp

@@ -6,6 +6,7 @@
 #include "horazon.h"
 #include "map_events.h"
 #include "pd2_engine.h"
+#include "treasure_fallen.h"
 #include "wanderer.h"
 
 #include <cstdio>
@@ -53,11 +54,19 @@ void InstallWandererPart(const D2RL::PluginContext* context, char* report, size_
 	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
 }
 
+void InstallTreasureFallenPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallTreasureFallen(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
+}
+
 PartReg r160(160, "guardianai", InstallGuardianaiPart);
 PartReg r170(170, "wanderer", InstallWandererPart, WandererUses);
+PartReg r180(180, "treasurefallen", InstallTreasureFallenPart);
 CountersReg c40(40, MapEventsCounters);
 CountersReg c120(120, EventPortalsCounters);
 CountersReg c200(200, GuardianAiCounters);
 CountersReg c210(210, WandererCounters);
+CountersReg c220(220, TreasureFallenCounters);
 
 }  // namespace

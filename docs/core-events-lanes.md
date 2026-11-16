@@ -34,6 +34,7 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 | nihlathak_ai.cpp, nihlathak_ai.h | C | The event Nihlathak/Mendeln AI, on monai row 99 through ai_hooks. |
 | guardian_ai.cpp, guardian_ai.h | C | Altar of the Catalyst guardian. |
 | uber_entry.cpp, uber_entry.h | D | Blood Fountain opening, portal entry rules, grey portals, boss rooms kept. |
+| treasure_fallen.cpp, treasure_fallen.h | C | The Treasure Fallen's per-10% and death drops (part `treasurefallen`, order 180; its own AiFallen signature). |
 | uber_deaths.cpp | D | Uber steps of the death listener. |
 | uber_drops.cpp, uber_drops.h | D | |
 | uber_scaling.cpp, uber_scaling.h | D | |
@@ -67,7 +68,7 @@ folders (lane S, or a lane's older flat files) needs a row above and a CMake lin
 
 Orders now: cube 10 (B), open 20 (A), mapevents 40 (C), pool 50, keys 60 (S), trist 70, lucion 80, primes 90,
 temple 100 (D), events 110 (C), lucionai 120, rathmaai 130, rathmalife 140, dcloneai 150 (D), guardianai 160 (C).
-Counters lines: the same steps. Orders 30, 170 and 180 (stats, mapbossai, zhar) were cut with PD2's maps (#964).
+Counters lines: the same steps. Orders 30 and 190 (stats, zhar) were cut with PD2's maps (#964); 170 is wanderer and 180 treasurefallen (C).
 
 ## Evidence for a PR
 
