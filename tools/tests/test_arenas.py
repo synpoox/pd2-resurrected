@@ -38,8 +38,9 @@ class ArenaTests(unittest.TestCase):
         for arena in self.arenas:
             ops = self.ops[arena["Level"]]
             w, h = int(arena["Width"]), int(arena["Height"])
-            assert int(ops["LevelType"]) == 27 and int(ops["Pal"]) == 3, arena["Name"]
-            assert arena["Tileset"] == "Mesa" and 1 <= w <= 14 and 1 <= h <= 12, arena["Name"]
+            level_type, pal = {"Mesa": (27, 3), "Desert": (16, 1)}[arena["Tileset"]]
+            assert int(ops["LevelType"]) == level_type and int(ops["Pal"]) == pal, arena["Name"]
+            assert 1 <= w <= 14 and 1 <= h <= 12, arena["Name"]
             for key in ("SizeX", "SizeX(N)", "SizeX(H)"):
                 assert int(ops[key]) >= w * 8 + 16, (arena["Name"], key)
             for key in ("SizeY", "SizeY(N)", "SizeY(H)"):
