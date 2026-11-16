@@ -231,7 +231,8 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	}
 	size_t slot = PendingSlots;
 	for (size_t i = 0; i < PendingSlots && slot == PendingSlots; ++i) {
-		if (!g_pending[i].used) {
+		// a slot whose game ended is free too: the SDK drops its queued work, so it would stay used
+		if (!g_pending[i].used || GameOf(g_pending[i].gameId) == nullptr) {
 			slot = i;
 		}
 	}
