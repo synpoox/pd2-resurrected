@@ -1,7 +1,7 @@
 name: gate
 
-# The table-diff gate (tools/pd2_diff.py, #352) on every PR and push to main. It needs the PD2 install and D2R's tables,
-# which never go to GitHub (ADR 0002), so it runs on the owner's self-hosted runner, as the release does; README.md has
+# The table-diff gate (tools/pd2_diff.py, #352) on every PR and push to main. It needs the PD2 install (its baseline tables)
+# and D2R's tables, which never go to GitHub (ADR 0007; the mod's tables are the committed files/data), so it runs on the owner's self-hosted runner, as the release does; README.md has
 # the runner setup. PRs from forks never reach the runner (it only builds this repository's own branches): their
 # table-diff job runs on a hosted runner and fails at once (#901), because a skipped check counts as passing.
 # Docs-only changes start no run (paths:), except the gate inputs docs/deviations.md.
@@ -22,9 +22,6 @@ concurrency:
   group: gate-${{ github.event_name == 'push' && 'main' || github.event.pull_request.number }}
   cancel-in-progress: true
 
-# The merge below takes a slot of the machine-wide semaphore agents' merges use (pd2_cache.Slots, PD2R_MERGE_SLOTS, #760,
-# #801), so CI and agents share one cap and a gate merge that has to wait says so in its log. Set PD2R_MERGE_SLOTS in
-# the runner's environment to the same value as the agents' (see pd2_cache.merge_slots for how to pick it).
 jobs:
   table-diff:
     # #901: the job never skips. A fork PR runs it on a hosted runner, where the first step fails it (a skipped
@@ -52,17 +49,12 @@ jobs:
       - name: Update the toolkit checkout
         run: git -C "${{ vars.D2R_TOOLKIT }}" pull -q --ff-only
         continue-on-error: true  # a dirty or diverged checkout, or another job's pull, must not fail the run
-      - name: Merged data
+      - name: PD2 baseline
         run: |
           $cache = "C:\pd2r-cache\pd2-data"
           New-Item -ItemType Directory -Force $cache | Out-Null
           New-Item -ItemType Junction -Path pd2-data -Target $cache | Out-Null
           py -3 tools/pd2_extract.py --out $cache; if ($LASTEXITCODE) { throw "pd2_extract failed" }
-          py -3 -m modkit fetch --prefix data/global/animdata.d2; if ($LASTEXITCODE) { throw "modkit fetch failed" }
-          # #820: replay the rules whose code and inputs are unchanged from the shared rule cache. A push to main keeps
-          # new entries there and replays only main's own; a PR replays main's and keeps only in its scratch folder
-          # (pd2_cache.Policy), so a buggy PR run cannot damage the entries main replays (fork PRs fail before this step, so only same-repo PR code gets here).
-          $env:PD2R_CI_SCOPE = if ("${{ github.event_name }}" -eq "push") { "main" } else { "pr-${{ github.event.pull_request.number }}" }
-          py -3 tools/pd2_merge.py; if ($LASTEXITCODE) { throw "pd2_merge failed" }
+          py -3 -m modkit fetch --prefix data/global/animdata.d2 --prefix data/hd/model_lod_desc.bin; if ($LASTEXITCODE) { throw "modkit fetch failed" }
       - name: Table-diff gate
         run: py -3 tools/pd2_diff.py --scope alpha

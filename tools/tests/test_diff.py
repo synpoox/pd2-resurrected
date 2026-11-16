@@ -20,6 +20,7 @@ class GateTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         (self.root / "docs").mkdir()
+        (self.root / "pd2-import.txt").write_text("# imported\n", "utf-8")
         (self.root / "d2r/data/global/excel").mkdir(parents=True)
         self.deviations("")
 
@@ -27,7 +28,10 @@ class GateTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def write(self, side: str, name: str, data: bytes):
-        base = {"pd2": "pd2-data/data", "mod": "generated/data", "d2r": "d2r/data"}[side]
+        base = {"pd2": "pd2-data/data", "mod": "files/data", "own": "files/data", "d2r": "d2r/data"}[side]
+        if side == "mod":  # an imported table: on pd2-import.txt; "own" is committed but D2R's
+            with (self.root / "pd2-import.txt").open("a", encoding="utf-8") as f:
+                f.write(f"data/global/excel/{name}.txt\n")
         p = self.root / base / "global/excel" / f"{name}.txt"
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(data)
@@ -80,10 +84,22 @@ class GateTests(unittest.TestCase):
         self.assertIn("1 table cells on the deviation list", text)
         self.assertIn("Deviation list: 2 not yet, 1 approximated, 0 cut entries", text)
 
+    def test_a_committed_table_not_on_the_import_list_is_d2rs_and_may_keep_a_whole_table_pattern(self):
+        self.deviations("| Own table | approximated | `lvlmaze.*` | P4 |\n")
+        self.write("pd2", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))
+        self.write("own", "lvlmaze", table("Name | MonLvl", "Blood Moor | 5"))
+        res = self.gate().results[0]
+        self.assertEqual((res.source, res.covered, res.open), ("D2R", 1, []))
+
+    def test_a_missing_import_list_is_an_error(self):
+        (self.root / "pd2-import.txt").unlink()
+        with self.assertRaisesRegex(pd2_diff.GateError, "pd2-import.txt"):
+            self.gate()
+
     def test_the_report_names_its_commit_and_marks_uncommitted_changes(self):
         git = ["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
         subprocess.run([*git, "init", "-q"], check=True)
-        subprocess.run([*git, "add", "docs"], check=True)
+        subprocess.run([*git, "add", "docs", "pd2-import.txt"], check=True)
         subprocess.run([*git, "commit", "-qm", "x"], check=True)
         head = subprocess.run([*git, "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
         self.assertEqual(pd2_diff.commit_of(self.root), head)
@@ -150,7 +166,7 @@ class GateTests(unittest.TestCase):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             self.assertEqual(pd2_diff.main(args), 1)
-        self.assertIn("| lvlmaze | merged | 1 | 0 |", out.getvalue())
+        self.assertIn("| lvlmaze | committed | 1 | 0 |", out.getvalue())
         self.assertIn("| `lvlmaze.Blood Moor.MonLvl` | 2 | 5 |", out.getvalue())
         self.deviations("| Blood Moor is harder | approximated | `lvlmaze.*.monlvl` | P4 |\n")
         with contextlib.redirect_stdout(io.StringIO()):
@@ -162,7 +178,7 @@ class GateTests(unittest.TestCase):
         self.write("d2r", "lvlmaze", table("Name | MonLvl", "Blood Moor | 1"))
         self.assertEqual(self.gate().results[0].covered, 1)
         self.write("mod", "lvlmaze", table("Name | MonLvl", "Blood Moor | 1"))
-        with self.assertRaisesRegex(pd2_diff.GateError, "lvlmaze.*merged"):
+        with self.assertRaisesRegex(pd2_diff.GateError, "lvlmaze.*imported"):
             self.gate()
 
     def test_a_whole_table_pattern_with_any_wildcard_segments_is_refused_for_a_merged_table(self):
@@ -172,7 +188,7 @@ class GateTests(unittest.TestCase):
         for pat in ("lvlmaze.*", "lvlmaze.*.*", "lvlmaze.**.*", "lvlmaze.?*", "lvlmaze.*?", "lvlm*",
                     "lvlmaz[e].*", "*.*.*"):
             self.deviations(f"| Whole table | not yet | `{pat}` | P4 |\n")
-            with self.assertRaisesRegex(pd2_diff.GateError, "merged", msg=pat):
+            with self.assertRaisesRegex(pd2_diff.GateError, "imported", msg=pat):
                 self.gate()
         # one write, so every row is in the file gate() reads
         self.deviations("| Narrow | not yet | `lvlmaze.*.monlvl` `lvlmaze.blood moor.*` | P4 |\n"

@@ -1,8 +1,9 @@
-"""The table-diff gate: compare the merged tables to the PD2 baseline by table, row and column name.
+"""The table-diff gate: compare the committed tables to the PD2 baseline by table, row and column name.
 
     python tools/pd2_diff.py --scope P2|P3|P4|M1|alpha [--root DIR] [--d2r DIR]
 
-Reads PD2's tables from pd2-data/ and the mod's from generated/ (D2R's own table where generated/ has none yet).
+Reads PD2's tables from pd2-data/ and the mod's from files/data/ (D2R's own table where files/data has none). A table
+that pd2-import.txt lists is `committed` (PD2's, imported); any other is D2R's.
 Exit 0: every deviation is on docs/deviations.md; 1: some are not (listed in the report); 2: the list or an id list is
 broken.
 """
@@ -47,7 +48,7 @@ class Result:
     table: str
     open: list[tuple[str, str, str]] = field(default_factory=list)  # (table.row.column, PD2 value, mod value)
     covered: int = 0  # deviations the deviation list names
-    source: str = "merged"  # the mod's table: merged (generated/), D2R (not merged yet) or none
+    source: str = "committed"  # the mod's table: committed (imported from PD2, in pd2-import.txt), D2R (D2R's own) or none
 
 
 @dataclass
@@ -195,7 +196,11 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
         raise GateError(f"scope {scope!r} is not one of {', '.join(SCOPES)}")
     if not (d2r / "global" / "excel").is_dir():  # else every unmerged table would read as unshipped
         raise GateError(f"no D2R tables under {d2r}: run `modkit fetch` or pass --d2r")
-    pd2_excel, mod_excel = root / "pd2-data/data/global/excel", root / "generated/data/global/excel"
+    pd2_excel, mod_excel = root / "pd2-data/data/global/excel", root / "files/data/global/excel"
+    if not (root / "pd2-import.txt").is_file():
+        raise GateError(f"no {root / 'pd2-import.txt'}: it says which tables the PD2 import owns")
+    imported = {l.strip() for l in (root / "pd2-import.txt").read_text("utf-8").splitlines()
+                if l.strip() and not l.startswith("#")}
     patterns, entries = deviations(root / "docs" / "deviations.md")
     if not any(pd2_excel.glob("*.txt")):  # else the gate compares nothing and passes
         raise GateError(f"no PD2 tables under {pd2_excel}: run `python tools/pd2_extract.py` (the merge's first step) "
@@ -206,8 +211,8 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
     opts = json.loads(tables.read_text("utf-8")) if tables.is_file() else {}
     results = []
     for p in sorted(p for p in pd2_excel.glob("*.txt") if SCOPES[scope](p.stem.lower())):
-        src = next(((s, f / p.name) for s, f in (("merged", mod_excel), ("D2R", d2r / "global" / "excel"))
-                    if (f / p.name).is_file()), None)
+        src = next((f / p.name for f in (mod_excel, d2r / "global" / "excel") if (f / p.name).is_file()), None)
+        label = "committed" if f"data/global/excel/{p.name}" in imported else "D2R"
         if src is None:
             res = Result(p.stem, [(f"{p.stem}.*.*", "", "")], source="none")
         else:
@@ -216,12 +221,12 @@ def gate(root: Path, d2r: Path, scope: str) -> Report:
             if ids_read and ctx is None:
                 ctx = pd2_ids.context_of(lists, root / "pd2-data/data", d2r)
             key = pd2_ids.KEY.get(p.stem)
-            rows = opts.get(p.stem, {}).get("rows", "name") if src[0] == "merged" else "name"
-            res = compare(p.stem, Table(p, key), Table(src[1], key), ren, lists,
+            rows = opts.get(p.stem, {}).get("rows", "name") if label == "committed" else "name"
+            res = compare(p.stem, Table(p, key), Table(src, key), ren, lists,
                           ctx if ids_read else None, rows)
-            res.source = src[0]
-            if src[0] == "merged" and any(whole_table(q, p.stem.lower()) for q in patterns):
-                raise GateError(f"deviations.md still covers all of {p.stem}, which is merged now: replace it with row- or column-specific patterns")
+            res.source = label
+            if label == "committed" and any(whole_table(q, p.stem.lower()) for q in patterns):
+                raise GateError(f"deviations.md still covers all of {p.stem}, which is imported now: replace it with row- or column-specific patterns")
         results.append(triage(res, patterns))
     return Report(results, entries)
 
@@ -261,7 +266,7 @@ def report(rep: Report, scope: str, commit: str = "") -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--scope", required=True, choices=SCOPES)
-    ap.add_argument("--root", type=Path, default=ROOT, help="repo root holding pd2-data/, generated/ and docs/")
+    ap.add_argument("--root", type=Path, default=ROOT, help="repo root holding pd2-data/, files/data/, pd2-import.txt and docs/")
     ap.add_argument("--d2r", type=Path, default=pd2_merge.D2R_DATA, help="D2R data root (default: %(default)s)")
     a = ap.parse_args(argv)
     try:

@@ -1,6 +1,6 @@
 name: tests
 
-# Tool unit tests on synthetic fixtures only: CI has no PD2 data and never builds the mod (ADR 0002).
+# Tool unit tests on CI's hosted runner; the committed tables in files/data are read directly (ADR 0007).
 on:
   push:
     branches: [main]
