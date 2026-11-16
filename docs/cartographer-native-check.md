@@ -26,4 +26,4 @@ Deviations seen (not caused by this PR, not fixed here):
 - Item tooltip says "+16% Monster Speed", the in-map text says "+16% Movement Speed": synpoox/d2r-tools#483.
 - `EventChance` 0 with the forced core-maps event is by design (#999): the log says "event ... chance 0%: none" while core-maps rolls its own event.
 - Frostbitten Fields (Snow): the arrival put the portal and player against a wall (`m05-arr-a`); another seed arrived on open ground (`m05-arr-b`). Shape is ignored for Snow, so the blank Shape cell is not the cause; it is Cartographer's Snow planner or arrival placement: synpoox/d2r-tools#484.
-- `plugin/common/pd2_engine.h` redefines RVAs the current d2rAI-toolkit (`rvas_93847/tables.h`) now holds, so `plugin/build.ps1` fails against a current toolkit. The check built with `D2R_TOOLKIT=d2rAI-toolkit-669f42a`. Needs a shared-file sync.
+- `plugin/common/pd2_engine.h` redefined RVAs the d2rAI-toolkit (`rvas_93847/tables.h`) holds, so this check was built against an older toolkit; `plugin/build.ps1` now builds against the commit `toolkit.version` pins.

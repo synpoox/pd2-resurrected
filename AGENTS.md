@@ -55,7 +55,7 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 
 ## Plugin code
 
-- **Always use D2RLoader's PluginSDK (`third_party/PluginSDK`) before a native hook.** Read its `README.md` and
+- **Always use D2RLoader's PluginSDK (the toolkit's `third_party/PluginSDK`; `toolkit_path.py` prints the toolkit) before a native hook.** Read its `README.md` and
   `include/D2RLPlugin/` for a service that does the job (items: `createItem`, `executeTransaction`,
   `executeExistingItemTransaction`, `splitStack`; inventory; game rules; and others). Hook D2R code only when no service
   covers it, and say in the code why. A byte patch goes through the SDK's MutationService.

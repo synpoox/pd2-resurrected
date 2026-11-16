@@ -6,7 +6,7 @@ in-game". Slot details are in `docs/agents/game-slots.md`.
 
 1. **Lock a slot.** `game_slots.py status`, then `lock <N> <owner>` on a free Slot2-5 (game-slots.md, "Steps" 1-2).
    No free slot: stop and file a `ready-for-agent` issue with the steps left.
-2. **Install the build** (game-slots.md, "Steps" 3-4). `plugin\build.ps1` initialises an empty `third_party/PluginSDK` submodule itself.
+2. **Install the build** (game-slots.md, "Steps" 3-4). `plugin\build.ps1` builds against the toolkit's PluginSDK, found with the toolkit.
 3. **No DS1 pinning** (retired with the converter, #965): levels are D2R's own or Cartographer's.
 4. **Start the game** in HD on a character that meets the AGENTS.md test rules:
    `python <toolkit>/testing/game_ctl.py --slot <N> start`.

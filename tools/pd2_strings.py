@@ -53,14 +53,11 @@ def read_tbl(data: bytes) -> dict[str, str]:
 
 
 def modkit():
-    """modkit.base and modkit.strings, from PYTHONPATH or the nearest d2rAI-toolkit beside a parent folder."""
+    """modkit.base and modkit.strings, from PYTHONPATH or the toolkit the finder returns."""
     try:
         from modkit import base, strings
     except ImportError:
-        kit = pd2_ids.toolkit(ROOT)
-        if not (kit / "modkit").is_dir():
-            raise ValueError("modkit not found: put d2rAI-toolkit on PYTHONPATH")
-        sys.path.insert(0, str(kit))
+        sys.path.insert(0, str(pd2_ids.toolkit(ROOT)))
         from modkit import base, strings
     return base, strings
 

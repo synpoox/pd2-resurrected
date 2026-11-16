@@ -19,7 +19,10 @@ sys.path.insert(0, str(ROOT / "tools"))
 import pd2_ids  # noqa: E402
 
 # Engine facts live in our header and (the shared ones, e.g. CubeExecutorEntry) in the toolkit's rvas_93847 headers (#976).
-TOOLKIT_RVAS = Path(os.environ.get("D2R_TOOLKIT", pd2_ids.toolkit(ROOT))) / "shared" / "plugin-common" / "src" / "rvas_93847"
+try:
+    TOOLKIT_RVAS = pd2_ids.toolkit(ROOT) / "shared" / "plugin-common" / "src" / "rvas_93847"
+except ValueError:  # no toolkit: the tests that read it skip
+    TOOLKIT_RVAS = ROOT / "no-toolkit"
 ENGINE = (PLUGIN / "common" / "pd2_engine.h").read_text(encoding="utf-8") + "".join(
     p.read_text(encoding="utf-8") for p in TOOLKIT_RVAS.glob("*.h")
 )

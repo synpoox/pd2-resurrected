@@ -13,7 +13,7 @@ import pd2_skill_icons as S  # noqa: E402
 
 try:
     S.modkit()
-except ValueError as e:  # CI has no d2rAI-toolkit (private)
+except ValueError as e:  # no d2rAI-toolkit found (a machine without the private toolkit)
     raise unittest.SkipTest(str(e))
 from modkit import dc6, images  # noqa: E402
 from test_art import fake_esrgan  # noqa: E402
