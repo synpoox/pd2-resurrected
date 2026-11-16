@@ -8,15 +8,21 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_art as A  # noqa: E402
-import pd2_items as M  # noqa: E402
+import functools  # noqa: E402
+
+import pd2_items  # noqa: E402
+import pd2_table  # noqa: E402
+from shared.classic_import import items as M  # noqa: E402
 
 try:
     A.modkit()
 except ValueError as e:  # no d2rAI-toolkit found (a machine without the private toolkit)
     raise unittest.SkipTest(str(e))
 from modkit import dc6, images  # noqa: E402
-from test_ids import table  # noqa: E402
+from data_tables import table  # noqa: E402
 import data_tables  # noqa: E402
+
+item_pictures = functools.partial(M.item_pictures, A.upscale, picture_folder="pd2")  # as pd2_items.apply binds it
 
 
 def fake_esrgan(calls: list):
@@ -103,7 +109,7 @@ class ItemPictureTests(unittest.TestCase):
             # invfile -> the item tables of the items drawn with it; invnone has no DC6
             uses = {"invwss": {"misc"}, "invgem": {"misc", "weapons"}, "invrin": {"misc"}, "invnone": {"misc"}}
             with mock.patch.object(A, "esrgan", fake_esrgan([])):
-                pictures = M.item_pictures(root / "art", pd2, d2r, out, uses, d2r_inv)
+                pictures = item_pictures(root / "art", pd2, d2r, out, uses, d2r_inv)
             self.assertEqual(pictures, {"invwss": "pd2/invwss", "invgem": "pd2/invgem"})
             ui = out / "hd" / "global" / "ui" / "items"
             sprite, fw, n = images.read_sprite(ui / "misc" / "pd2" / "invwss.sprite")
@@ -117,8 +123,8 @@ class ItemPictureTests(unittest.TestCase):
     def test_an_extract_with_no_item_pictures_fails(self):  # #351: it gave "0 upscaled" and no HD pictures
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            with self.assertRaisesRegex(M.I.IdError, "pd2_extract"):
-                M.item_pictures(root / "art", root / "pd2", root / "d2r", root / "out", {"invwss": {"misc"}}, set())
+            with self.assertRaisesRegex(pd2_table.IdError, "run the extract again"):
+                item_pictures(root / "art", root / "pd2", root / "d2r", root / "out", {"invwss": {"misc"}}, set())
 
 
 class HdPictureTests(unittest.TestCase):
@@ -180,7 +186,7 @@ class HdPictureTests(unittest.TestCase):
                 return table((head + rows).replace("@", chr(10)) + chr(10), "code")
             models = {}
             M.hd_items(hd, {"misc": tab(pd2)}, {"misc": tab(d2r)}, [], [],
-                       {k: "pd2/" + k for k in ("invrsel", "invgsves", "invrsort", "invgsyls", "invlbox", "invfort")}, models)
+                       {k: "pd2/" + k for k in ("invrsel", "invgsves", "invrsort", "invgsyls", "invlbox", "invfort")}, models, neutral_model=pd2_items.NEUTRAL_MODEL)
             self.assertEqual(models, {"pd2/invrsel": "rune/el_rune", "pd2/invgsves": "gem/perfect_amethyst",
                                       "pd2/invrsort": "rune/ort_rune", "pd2/invgsyls": "gem/perfect_topaz",
                                       "pd2/invlbox": "quest/horadric_cube", "pd2/invfort": "scroll/identify_scroll"})

@@ -102,7 +102,7 @@ skill id, so they are still built (after the cut), as router cases instead of in
 go to the four prg functions. Until then their stand-ins (`merge/standins.tsv`) keep those monsters' srvdofunc off
 181 and 184-186. 188 is avoided: item casts need it empty (`ItemEffect`).
 
-The merge moves each Port value above by column in `tools/pd2_ids.py` FUNCS (`srvdofunc`, `srvprgfunc1-3`,
+The merge moves each Port value above by column in `tools/pd2_port.py` FUNCS (`srvdofunc`, `srvprgfunc1-3`,
 `cltprgfunc1-3`, missiles `pCltDoFunc`). No other PD2 row uses those values in those columns. Baal Cold Missiles'
 `srvdofunc` 139 is in another column, so it does not move.
 

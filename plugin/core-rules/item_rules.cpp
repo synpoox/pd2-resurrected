@@ -43,7 +43,7 @@ using d2r::Unit;
 // PD2's list 8 (built at 0x10206ba0): the sorceress skills func 25 draws from, in PD2's order, as merged ids (Ice
 // Barrage 369 -> 441, Lesser Hydra 383 -> 455, Combustion 376 -> 448; merge/ids-skills.tsv)
 constexpr int32_t SorceressSkills[] = {39, 45, 44, 55, 59, 441, 64, 38, 49, 48, 53, 43, 36, 47, 46, 51, 56, 455, 62, 448};
-constexpr int PropertySlot = 26;           // PD2's func 25; D2R's 25 is affix-rand (tools/pd2_ids.py FUNCS)
+constexpr int PropertySlot = 26;           // PD2's func 25; D2R's 25 is affix-rand (tools/pd2_port.py FUNCS)
 constexpr int32_t StatSingleSkill = 107;   // item_singleskill
 constexpr int32_t StatSkillOnCast = 378;   // item_skilloncast, merged id (PD2 200, merge/ids-itemstatcost.tsv)
 
@@ -51,7 +51,7 @@ std::atomic<uint32_t> g_rolls {0};
 
 // PD2's unlimited books (spell 13, ProjectDiablo.dll): the Horadric Navigator (rtp) opens a town portal and the
 // Horadric Almanac (rid) identifies every item at once, and neither is used up. The merge moves them to item spells 17
-// and 18 (tools/pd2_ids.py FIXES): 17 runs D2R's own Town Portal (entry 2); 18 has no check of its own and its use is
+// and 18 (tools/pd2_port.py FIXES): 17 runs D2R's own Town Portal (entry 2); 18 has no check of its own and its use is
 // the Almanac's handler in use slot 14 (almanac.cpp), which identifies all.
 constexpr int32_t UnlimitedPortalCheck = 2, UnlimitedPortalUse = 2;
 

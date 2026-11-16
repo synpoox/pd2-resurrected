@@ -37,7 +37,7 @@ missile in `srvmissile` / `cltmissile`.
 
 ## The merge rule
 
-`pd2_ids.MISSILE_FUNCS` moves a row's `srvmissilea` into `srvmissile` (`cltmissilea` into `cltmissile`) and blanks
+`pd2_port.MISSILE_FUNCS` moves a row's `srvmissilea` into `srvmissile` (`cltmissilea` into `cltmissile`) and blanks
 srvdofunc 188 / cltdofunc 117; the table-diff gate reads PD2's rows the same way. The merged rows equal D2R's in these
 columns.
 

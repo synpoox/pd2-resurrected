@@ -33,7 +33,7 @@ HitFlags 2. item_splashonhit is itemeventfunc 20 (skill on hit) casting it.
 
 ## D2R
 
-D2R fills srvdo 163, so the function joins the srvdo 190 router (`tools/pd2_ids.py` FUNCS). The pieces, all from D2R's
+D2R fills srvdo 163, so the function joins the srvdo 190 router (`tools/pd2_port.py` FUNCS). The pieces, all from D2R's
 own melee and area code:
 
 - Area search: `0x4398b0` (`AreaUnits`), as Leap's landing uses it, centred on the struck unit.

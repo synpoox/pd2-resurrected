@@ -46,7 +46,7 @@ the same speed as D2R's cltst 25.
   else the nearest, `0x4331d0`), in reach (`0x348650` with `0x34aa90`'s reach) and the caster alive (`0x34c2c0`). When
   the hit goes off it builds the splash list (unless the caster already has a `temp_skill_buff` list) and spends the
   distance, then calls D2R's srvdo 67.
-- The merge points the client columns at D2R's 25 and 37 (`tools/pd2_ids.py` FUNCS).
+- The merge points the client columns at D2R's 25 and 37 (`tools/pd2_port.py` FUNCS).
 
 The radius widens a splash-on-hit item's splash: proc_SplashDamage's calc3 adds `inc_splash_radius / 20` (melee
 splash, srvdo 163, [w33-melee-splash](w33-melee-splash.md)), as with Frenzy's start (srvst 78).

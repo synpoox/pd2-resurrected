@@ -18,7 +18,7 @@ import math
 import struct
 from pathlib import Path
 
-from pd2_ids import Table, excel
+from pd2_table import Table, excel
 
 CLASSES = {"ama": "am", "sor": "so", "nec": "ne", "pal": "pa", "bar": "ba", "dru": "dr", "ass": "as"}
 # where the pictures are cut from in D2R's Amazon tree, 1-based like skilldesc

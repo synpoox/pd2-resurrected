@@ -72,4 +72,4 @@ Port: exact (`SrvDmgChainFalloff`).
 
 - `tests/game/core_rules_checks.py`, tag `core-rules-w31`: `dragon-flight-kick` (damage% = calc2 on a hit, 0 on a
   miss) and `psychic-hammer-falloff` (calc1, calc2 and each hit's magic against PD2's rule).
-- `tools/tests/test_ids.py`: psychichammer's dmg 15 merges as 22, Dragon Flight keeps 178.
+- the toolkit's classic_import tests: psychichammer's dmg 15 merges as 22, Dragon Flight keeps 178.

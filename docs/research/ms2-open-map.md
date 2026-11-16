@@ -6,7 +6,7 @@ Resolves the D2R side of [MS2](https://github.com/synpoox/pd2-resurrected/issues
 
 ## The data
 
-- PD2's map spell `pSpell` 12 is D2R's Resist Scroll, so the merge moves it to 16 (`tools/pd2_ids.py` FUNCS), the
+- PD2's map spell `pSpell` 12 is D2R's Resist Scroll, so the merge moves it to 16 (`tools/pd2_port.py` FUNCS), the
   first empty entry of D2R's 20-entry item spell table (`0x236fe30`).
 - PD2 evaluates misc `len` as the level the map opens. The merge writes it in the port's level ids on every PD2 pSpell
   12 row (`fix_map_level`): Ruins of Viz-Jun `t11` 143 -> 144, Descent from Mount Arreat `t2a` 210 -> 201. A left-out

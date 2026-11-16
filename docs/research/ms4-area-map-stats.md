@@ -12,7 +12,7 @@ the port's stat ids. A scratch script checked all 28 against PD2's `itemstatcost
 keeps each slot's first value in the per-game counters (`AreaSlot(game, slot)`); PD2's getter `0x1038a9e0` also returns
 the first entry.
 
-`map_glob_add_mon_*` values are monstats ids. `tools/pd2_ids.py` now remaps them like the other id columns (PD2 690 is
+`map_glob_add_mon_*` values are monstats ids. `tools/pd2_port.py` now remaps them like the other id columns (PD2 690 is
 port 690, 1169 is 1186, 1111 is 1128...), so the merged map affixes name the right monster.
 
 ## Who reads each slot in PD2
@@ -153,7 +153,7 @@ with slot 5 > 0, it spawns a monster preset (type 1) a second time when its id i
 **The set.** `0x10371290` tests the id (in `ecx`) against six std containers, `0x105de938`, `0x105de7d4`, `0x105de9c8`,
 `0x105de9d8`, `0x105de9b0` and `0x105de818`, each filled at start from an int array by `0x10190e30`, `0x10190f10`,
 `0x10190ff0`, `0x101910b0`, `0x10191110` and `0x101911f0` (constants at `0x104506f0`-`0x10450870` and immediates). In
-PD2 monstats ids, then the port's (`tools/pd2_ids.py` `monstats_ids`):
+PD2 monstats ids, then the port's (`tools/pd2_port.py` `monstats_ids`):
 
 | Set | PD2 ids | Monsters |
 |---|---|---|

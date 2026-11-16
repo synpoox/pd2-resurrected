@@ -11,7 +11,7 @@
 // and three fog objects; once used, the rooms send shadow waves until the progress passes 90, which kills them. Void /
 // Tomb opens a portal pair to the Bitter Depths with a marker. The invaders (MS10) are rolled and logged but spawn
 // nothing yet. Horazon's death is event_portals.cpp's. The altars' use is PD2's operate 79 (0x103aa460) in D2R's free
-// operate slot 35 (pd2_ids.FUNCS), written into D2R's operate table as map_open.cpp writes slot 60.
+// operate slot 35 (pd2_port.FUNCS), written into D2R's operate table as map_open.cpp writes slot 60.
 //
 // Each spawn sends the event's notify string to every player as a red chat line (#336; PD2 0x1037dbc0, packet 0x26
 // type 4, colour 1). The SDK's localization service gives the text; no SDK service sends a chat line, so it goes

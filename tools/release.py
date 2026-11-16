@@ -24,7 +24,7 @@ import tomllib
 from pathlib import Path
 from typing import Callable
 
-import pd2_ids
+import pd2_table
 import pd2_merge
 from companions import ROOT, fill_tables, overlay
 
@@ -196,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
             conf.parent.mkdir(parents=True, exist_ok=True)
             conf.write_text(with_loader(
                 (ROOT / "release.toml").read_text("utf-8"), a.game / "D2RLoader.exe"), "utf-8")
-            r = subprocess.run([sys.executable, str((a.toolkit or pd2_ids.toolkit(ROOT)) / "release" / "package_release.py"), "--mod-dir", str(mod),
+            r = subprocess.run([sys.executable, str((a.toolkit or pd2_table.toolkit(ROOT)) / "release" / "package_release.py"), "--mod-dir", str(mod),
                                 "--version", version, "--config", str(conf), "--out", str(a.out),
                                 "--game-exe", str(a.game / "D2R.exe")])  # release.toml's [catalog] (schema 3) needs it
             code = r.returncode

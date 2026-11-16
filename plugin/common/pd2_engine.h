@@ -100,7 +100,7 @@ inline constexpr uint64_t AlmanacUseSlotOriginal = 0x580f10;  // D2R's stub in t
 
 // --- core-events: tier-0 re-entry portals and the area rules on entry (UB2, #346; D2Game\src\Objects\ObjMode.cpp) ----
 inline constexpr int ObjectOperatePortal = 60;
-// PD2's map-event altar operate 79 takes slot 35 (MS8, pd2_ids.FUNCS): D2R's null slot of the 1.09 Steeg Stone (337),
+// PD2's map-event altar operate 79 takes slot 35 (MS8, pd2_port.FUNCS): D2R's null slot of the 1.09 Steeg Stone (337),
 // an object no level places
 inline constexpr int ObjectOperateAltar = 35;
 inline constexpr uint64_t RoomAt = 0x38dfb0;          // (room, x, y) -> the room near `room` holding x/y, or null

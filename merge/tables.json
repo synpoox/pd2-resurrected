@@ -16,7 +16,7 @@
   "d2r_columns": [
    "HireDesc"
   ],
-  "pd2_only_rows": "leave out",
+  "source_only_rows": "leave out",
   "rows": [
    "Version",
    "Id",
@@ -72,7 +72,7 @@
  "montype": {},
  "monumod": {},
  "npc": {
-  "pd2_only_rows": "leave out"
+  "source_only_rows": "leave out"
  },
  "objmode": {},
  "overlay": {

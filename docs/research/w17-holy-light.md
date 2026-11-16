@@ -79,7 +79,7 @@ They differ:
 - D2R also sets the unit as the missile's target and passes UnitStateKey of the delay missile (`+0x68`); core-rules
   keeps D2R's key (1.13c's parameter block has no such field) and leaves the target unset, as 1.13c does.
 
-So core-rules builds 1.13c's function in clthit 71 (`tools/pd2_ids.py` FUNCS moves 26 there) with no limit
+So core-rules builds 1.13c's function in clthit 71 (`tools/pd2_port.py` FUNCS moves 26 there) with no limit
 (approximated, on the deviation list).
 
 ## Checks

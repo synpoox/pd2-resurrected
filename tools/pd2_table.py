@@ -1,10 +1,12 @@
-"""The D2R/PD2 table reader, on its own so a rule that only reads tables does not take pd2_ids (the id lists, their
-constants and the merge) into its cache key (#808): a change to pd2_ids rebuilt the presets rule, which reads only these."""
+"""The toolkit's table reader (shared/classic_import ids) for the tools, and the one place that finds the toolkit, sets its
+environment names and D2R's data root. A rule that only reads tables imports this, not pd2_port (the mod's data), so a
+change to that data does not rebuild it (#808)."""
 from __future__ import annotations
 
 import functools
 import importlib.util
 import os
+import sys
 from pathlib import Path
 
 
@@ -39,39 +41,25 @@ def toolkit(root: Path) -> Path:
     raise ValueError(f"d2rAI-toolkit not found from {root}: set D2R_TOOLKIT or put d2rAI-toolkit beside the project")
 
 
-KEY = {"itemtypes": "Code", "weapons": "code", "armor": "code", "misc": "code", "gamble": "code",
-       "qualityitems": "mod1code"}  # when not the first (PD2's qualityitems starts with nummods)
+try:
+    import shared.classic_import  # noqa: F401  (PYTHONPATH has the toolkit)
+except ImportError:
+    sys.path.insert(0, str(toolkit(HERE.parent)))
+# static, so a rule's cache key follows the toolkit module it reads (cache.toolkit_sources)
+from shared.classic_import import cache  # noqa: E402
+from shared.classic_import.ids import KEY, IdError, Table, excel, ident, load, read_list, write  # noqa: E402,F401
 
+# The toolkit's cache reads MODKIT_*; this project's PD2R_* names (agents' and the runner's settings) map onto them, and
+# the machine-wide folder is the default cache root, as it was before the toolkit's cache.
+for _new, _old in (("MODKIT_SHARED_CACHE", "PD2R_CACHE"), ("MODKIT_CI_SCOPE", "PD2R_CI_SCOPE"),
+                   ("MODKIT_MERGE_SLOTS", "PD2R_MERGE_SLOTS"), ("MODKIT_CI_RESERVED", "PD2R_CI_RESERVED"),
+                   ("MODKIT_CACHE_GB", "PD2R_CACHE_GB")):
+    if _old in os.environ:
+        os.environ.setdefault(_new, os.environ[_old])
+if Path(r"C:\pd2r-cache").is_dir():
+    os.environ.setdefault("MODKIT_SHARED_CACHE", r"C:\pd2r-cache")
+# what a rule reads that is not its code: the extract and the tools folder's other files are not in a rule's key
+cache.NOT_TRACED = ("pd2-data", "tools")
 
-class IdError(Exception):
-    pass
-
-
-class Table:
-    def __init__(self, path: Path, key: str | None = None):
-        text = path.read_bytes().decode("latin-1")  # keeps CRLF, which read_text would turn into LF
-        self.newline = "\r\n" if "\r\n" in text else "\n"
-        lines = text.split(self.newline)
-        while lines and not lines[-1]:
-            lines.pop()
-        self.header = lines[0].split("\t")
-        self.rows = [(line.split("\t") + [""] * len(self.header))[:len(self.header)] for line in lines[1:]]
-        self.key = self.header.index(key) if key else 0
-
-    def records(self) -> list[int]:
-        """Row positions of the records, numbered as the game numbers them: an `Expansion` row (first column) is not one."""
-        return [i for i, r in enumerate(self.rows) if r[0] != "Expansion"]
-
-    def names(self) -> list[str]:
-        return [self.rows[i][self.key] for i in self.records()]
-
-    def text(self) -> str:
-        return self.newline.join("\t".join(r) for r in [self.header, *self.rows]) + self.newline
-
-
-def excel(root: Path) -> Path:
-    return root / "global" / "excel"
-
-
-def load(data: Path, table: str) -> Table:
-    return Table(excel(data) / f"{table}.txt", KEY.get(table))
+# the build the port targets, in modkit's cache (MODKIT_CACHE, as modkit reads it)
+D2R_DATA = Path(os.environ.get("MODKIT_CACHE") or toolkit(HERE.parent) / "d2r-data") / "93847" / "data"

@@ -15,7 +15,7 @@ import io
 import wave
 from pathlib import Path
 
-from pd2_ids import Table, excel
+from pd2_table import Table, excel
 
 SFX = Path("global") / "sfx"
 HD_SFX = Path("hd") / "global" / "sfx"
