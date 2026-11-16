@@ -14,7 +14,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 
 ## Features and data
 
-### Cut (31)
+### Cut
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -50,7 +50,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | PD2's AutoMap.txt rows: D2R's table is kept | cut | PD2's map areas are retired ([#942](https://github.com/synpoox/pd2-resurrected/issues/942), [#965](https://github.com/synpoox/pd2-resurrected/issues/965)): no area draws PD2's own automap cels, so the merge keeps D2R's AutoMap.txt and writes one inert row (type 99, no cels) to core-ui's table so the engine's non-empty check passes (types 36+ draw nothing) | [#965](https://github.com/synpoox/pd2-resurrected/issues/965) |
 | PD2's level types, their DT1 files and the PD2-only presets' Dt1Mask: D2R's lvltypes are kept | cut | the DS1/DT1 conversion is retired ([#965](https://github.com/synpoox/pd2-resurrected/issues/965)): the merge ships no PD2 DS1 or DT1 and no HD preset for them, so lvltypes is D2R's own. The PD2-only levels and presets stay as inert id rows (append-only, ADR 0003) and are never entered: Rathma refuses until its new native arenas ([#961](https://github.com/synpoox/pd2-resurrected/issues/961), [#947](https://github.com/synpoox/pd2-resurrected/issues/947)); Dclone, Lucion, the Temple and Bitter Depths are Cartographer arenas ([#958](https://github.com/synpoox/pd2-resurrected/issues/958), [#962](https://github.com/synpoox/pd2-resurrected/issues/962), [#960](https://github.com/synpoox/pd2-resurrected/issues/960)) | [#965](https://github.com/synpoox/pd2-resurrected/issues/965) |
 
-### Not yet (19)
+### Not yet
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -74,7 +74,7 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 | Guilds | not yet | cut in spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41) with the online layer; the cut is reversed and guilds come with multiplayer ([#339](https://github.com/synpoox/pd2-resurrected/issues/339)) | [#339](https://github.com/synpoox/pd2-resurrected/issues/339), beta |
 | Controller: PD2's own screens and binds | not yet | D2R's native controller support stands in; PD2's extra screens and binds were cut in spec [#41](https://github.com/synpoox/pd2-resurrected/issues/41), and the cut is reversed ([#340](https://github.com/synpoox/pd2-resurrected/issues/340)) | [#340](https://github.com/synpoox/pd2-resurrected/issues/340), beta |
 
-### Approximated (68)
+### Approximated
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -155,7 +155,7 @@ or missile that would point at PD2's function number uses a D2R function that pl
 keep PD2's number, which already holds a D2R function (a `verify` row: it may be the same rule). "D2R's own behaviour"
 rows have no table hook: D2R does what it does.
 
-### Cut (4)
+### Cut
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -164,7 +164,7 @@ rows have no table hook: D2R does what it does.
 | Corrupted zones | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): D2R's Terror Zones stay in their place |  |
 | Level life regen cap (30, `bloodwarp` lifts it) | cut | PD2 caps it only in the PvP arenas (levels 157, 159, 166), and PvP is cut ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)) ([ms3-map-stats](research/ms3-map-stats.md)) |  |
 
-### Not yet (17)
+### Not yet
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
@@ -186,7 +186,7 @@ rows have no table hook: D2R does what it does.
 | State remove function 12 (`skilldelay`) | not yet | stand-in: D2R's own behaviour | [W38](https://github.com/synpoox/pd2-resurrected/issues/246) |
 | Horazon opens no portal on native maps ([#1028](https://github.com/synpoox/pd2-resurrected/issues/1028)) | not yet | his fight and his six native map drops stay; the portal to a second map needs a destination that is not a fixed D2R level (d2r-tools#485), so after the fight no portal opens and the log says so | [#1028](https://github.com/synpoox/pd2-resurrected/issues/1028) |
 
-### Approximated (86)
+### Approximated
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
