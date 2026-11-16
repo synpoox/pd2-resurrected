@@ -126,6 +126,12 @@ struct SpotRecord {
 Pending g_pending[PendingSlots] {};
 SpotRecord g_spots[SpotSlots] {};
 size_t g_nextSpot = 0;
+// The event's boss (game id, unit id): its death drops the shards, whatever state it carries then
+struct BossRecord {
+	uint32_t gameId;
+	uint32_t unitId;  // 0: none
+};
+BossRecord g_boss {};
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::ThreadService* g_threads = nullptr;
 std::atomic<uint32_t> g_leaves {0};
@@ -240,6 +246,8 @@ void SpawnBoss(Game* game, const Pending& p) noexcept {
 		Unit* boss = d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(
 			d2r::sig::SpawnMonsterAt)(game, found, id, xy[0], xy[1], 1, 0);
 		if (boss != nullptr) {
+			g_boss = {static_cast<uint32_t>(At<uint16_t>(game, GameIdField)),
+			          static_cast<uint32_t>(d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(d2r::sig::UnitId)(boss, __FILE__, __LINE__))};
 			Buff(game, boss, poolA, id, p.unitId, attempt, frame);
 			return;
 		}
@@ -375,10 +383,14 @@ void OnShardDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::Mon
 		return;
 	}
 	Unit* monster = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit)(game, 1, event->monster.id);
+	const bool recorded = g_boss.unitId != 0 && g_boss.unitId == event->monster.id && g_boss.gameId == event->gameId;
 	if (monster == nullptr ||
-	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(monster, BossState) == 0 ||
+	    (!recorded && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(monster, BossState) == 0) ||
 	    (At<uint32_t>(monster, UnitMainFlags) & UnitNoTreasure) != 0) {
 		return;
+	}
+	if (recorded) {
+		g_boss = {};
 	}
 	const auto count = static_cast<int32_t>(
 		d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(monster), ShardSpread)) + ShardMin;
