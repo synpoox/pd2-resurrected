@@ -141,9 +141,14 @@ FORMULAS = {
 # levels DrawEdges, a column both games have, overrides PD2's value: D2R's client gives only acts 1-3 an edge tile
 # (0x327090), so in act 5 (Act 4) it draws a null one and crashes (FUN_14021d090, #258) near the drawn floor's end;
 # PD2-only areas in act 5 draw none. D2R's own act 5 rows (134, 136) keep PD2's value, the same as D2R's.
+# LevelType: the mod ships no lvltypes.txt (#965), so a type past D2R's last (36) has no row and D2R reads a null one
+# at startup (FUN_140a13860); PD2-only levels (inert ids) take type 0, "None".
+D2R_LAST_LVLTYPE = 36  # D2R's lvltypes.txt ends at id 36
 DERIVED = {"skills": {"rightskill": lambda pd2: "0" if pd2.get("passive") == "1" else "1"},
            "levels": {"DrawEdges": lambda pd2: "0" if pd2.get("Act") == "4"
-                      and int(pd2.get("Id") or 0) >= VANILLA["levels"] else pd2.get("DrawEdges", "")},
+                      and int(pd2.get("Id") or 0) >= VANILLA["levels"] else pd2.get("DrawEdges", ""),
+                      "LevelType": lambda pd2: "0" if int(pd2.get("LevelType") or 0) > D2R_LAST_LVLTYPE
+                      and int(pd2.get("Id") or 0) >= VANILLA["levels"] else pd2.get("LevelType", "")},
            "setitems": {"spawnable": lambda pd2: "1"},
            "itemtypes": {"MaxSocketsLevelThreshold1": lambda pd2: "25", "MaxSocketsLevelThreshold2": lambda pd2: "40"}}
 # itemstatcost display (#67): D2R's stat strings carry the value's format code ("%+d to Strength"), where PD2's descfunc
