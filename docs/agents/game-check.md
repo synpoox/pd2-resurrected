@@ -33,7 +33,7 @@ map item; the log shows `rolled event <n> ..., console event`. A forced event sk
 
 ## Killing a boss
 
-Never click a boss down (adds soak the clicks, bosses hide, `cheat killmonster` skips the normal death). Use core-events' console commands, with `cheat god 1` on: `core-events kill <class>` (or `kill unit <id>`) kills the nearest living monster of that merged monstats class in your level through the normal death path, so death listeners run and its treasure class rolls, with you as the killer; the log (`core-maps.log`) gets one `test aid: kill: class .. unit ..` line. `core-events life <pct> unit <id>` sets any monster's life (`life <pct> <class>` still covers ported bosses only). The unit id is in the `cheat mspawn` or spawn log lines.
+Never click a boss down (adds soak the clicks, bosses hide, `cheat killmonster` skips the normal death). Use core-events' console commands, with `cheat god 1` on: `core-events kill <class>` (or `kill unit <id>`) kills the nearest living monster of that merged monstats class in your level through the normal death path, so death listeners run and its treasure class rolls, the player gets no kill credit; the log (`core-maps.log`) gets one `test aid: kill: class .. unit ..` line. `core-events life <pct> unit <id>` sets any monster's life (`life <pct> <class>` still covers ported bosses only). The unit id is in the `cheat mspawn` or spawn log lines.
 
 ## Screenshots that settle the question
 

@@ -1,6 +1,6 @@
 // A game-check aid: kill or wound a monster the way the game does, so clicking through a boss's hiding and adds is not needed.
 // The kill is the normal death path (KillQuietly's mode block, without UnitNoDrop): death listeners run and the treasure
-// class rolls, with the local player as the killer. The console thread never writes a unit: the work runs on the game thread
+// class rolls. The console thread never writes a unit: the work runs on the game thread
 // through the SDK's ThreadService.
 // shortcut: single player only (the first game found, the local player), like the other test aids.
 #include "test_kill.h"
@@ -84,13 +84,14 @@ void Run(const D2RL::PluginContext*, void*) noexcept {
 		plog::Info("test aid: life: class %d unit %u set to %d%% (%d of %lld)", classId, id, cmd.percent, life, static_cast<long long>(max));
 		return;
 	}
-	// KillQuietly's death mode, with no UnitNoDrop (so the drop rolls) and the player as the killer
+	// KillQuietly's death mode, with no UnitNoDrop (so the drop rolls) and the monster's own target as the killer. The player as the killer
+	// crashed the game (a player in block+0x10 reaches a Game* read of 2 in the engine, 0x506d40's caller): no credit to the player
 	alignas(8) uint8_t block[0x30] = {};
 	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlags)(monster, UnitNoDrop, 0);
 	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(MonsterModeBlock)(monster, ModeDeath, block);
-	*reinterpret_cast<void**>(block + 0x10) = player;
+	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(UnitTarget)(game, monster);
 	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(SetMonsterMode)(game, block, 1);
-	plog::Info("test aid: kill: class %d unit %u killed by the player, level %d (death path, drops roll)", classId, id,
+	plog::Info("test aid: kill: class %d unit %u killed, level %d (death path, drops roll)", classId, id,
 	           ai_common::LevelOf(monster));
 }
 
