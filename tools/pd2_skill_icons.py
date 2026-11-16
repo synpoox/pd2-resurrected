@@ -17,10 +17,11 @@ Ascendant casts class skills that sheet has no frame for (#271). merge/tables.js
 
 A line `pressed <IconCel>` appends that frame of the shared sheet to it twice more, as a normal and a darker pressed
 frame (PD2's shared sheet pairs none past cel 24, so D2R drew the next skill's icon on a pressed button, #689);
-merge/tables.json points the skill's IconCel at the first (Force Move, "Move Only").
+merge/tables.json points the skill's IconCel at the first (Force Move, "Move Only"), and the rule checks it.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pd2_art
@@ -41,7 +42,11 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     art_dir = rule.parent / "art"
     lines = read_lines(rule)
     hireable = [line.split() for line in lines if line.startswith("hireable ")]
-    pressed = [int(line.split()[1]) for line in lines if line.startswith("pressed ")]
+    pressed_lines = [line.split() for line in lines if line.startswith("pressed ")]
+    bad_pressed = [" ".join(p) for p in pressed_lines if len(p) != 2 or not p[1].isdigit()]
+    if bad_pressed:
+        raise SkillIconError(f"not `pressed <IconCel>`: {'; '.join(bad_pressed)}")
+    pressed = [int(p[1]) for p in pressed_lines]
     classes = [line for line in lines if not line.startswith(("hireable ", "pressed "))]
     bad = [" ".join(h) for h in hireable if len(h) != 3 or h[1] not in hd.CLASSES or not h[2].isdigit()]
     if bad:
@@ -77,6 +82,18 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             n -= 1
         n = max(n, n_hd)  # D2R's HD frames past PD2's sheet stay
         extra = pressed if c == "shared" else []
+        if extra:  # each pressed pair must sit on this sheet, and merge/tables.json must point Force Move at it
+            bad = [k for k in extra if k >= min(n, len(pd2))]
+            if bad:
+                raise SkillIconError(f"pressed {bad[0]}: the shared sheet has {min(n, len(pd2))} frames")
+            tables = rule.parent / "tables.json"  # absent in the synthetic tests
+            if tables.is_file():
+                cells = json.loads(tables.read_text("utf-8")).get("skilldesc", {}).get("cells", {})
+                icons = {str(v.get("IconCel")) for v in cells.values()}
+                for i, k in enumerate(extra):
+                    if str(n + 2 * i) not in icons:
+                        raise SkillIconError(f"pressed {k}: its frames are cels {n + 2 * i} and {n + 2 * i + 1}; "
+                                             f"point the skill's IconCel in merge/tables.json at {n + 2 * i}")
         keep = [k >= len(pd2) or k < n_hd and k < len(d2r) and pd2[k] == d2r[k] for k in range(n)]
         styles = {}
 

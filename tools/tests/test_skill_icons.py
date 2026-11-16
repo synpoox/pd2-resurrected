@@ -94,13 +94,17 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual([pixel(k * 132 + 5, 5) for k in range(3)], [200, 70, 220])
         self.assertEqual(pixel(132 + 30, 30), 0)  # the dot keeps its size: 10 classic px -> 27 HD px
 
-    def test_pressed_line_appends_a_normal_and_a_darker_frame_to_the_shared_sheet(self):
+    def shared(self):
+        """PD2's shared sheet has 2 frames and D2R's HD strip 2, so a pressed line may take cel 0 or 1."""
         self.sheets(d2r=[10], hd=[200], pd2=[10])
         dc6.write(self.d2r / SPELLS / "skillicon.dc6", [frame(10)])
         hd_dir = self.d2r / "hd" / SPELLS / "submenu"
         images.write_sprite(hd_dir / "skillicon.sprite", strip([200, 210]), 130, 2, lowend=False)
         images.write_sprite(hd_dir / "skillicon.lowend.sprite", strip([100, 110], 65), 65, 2, lowend=False)
         dc6.write(self.pd2 / SPELLS / "skillicon.dc6", [frame(10), frame(20)])
+
+    def test_pressed_line_appends_a_normal_and_a_darker_frame_to_the_shared_sheet(self):
+        self.shared()
         self.rule.write_text("sor\npressed 1\n", "utf-8")
         S.apply(self.rule, self.pd2, self.d2r, self.out)
         self.assertEqual(len(dc6.read(self.out / SPELLS / "skillicon.dc6")), 4)
@@ -108,6 +112,29 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(frames, 4)
         pixel = lambda k: img[2][(65 * img[0] + k * 132 + 65) * 4]  # noqa: E731  middle, red channel
         self.assertEqual((pixel(2), pixel(3)), (pixel(1), pixel(1) * 3 // 4))
+
+    def test_pressed_line_must_be_one_cel_number(self):
+        self.shared()
+        for line in ["pressed x", "pressed 1 2"]:
+            self.rule.write_text(f"sor\n{line}\n", "utf-8")
+            with self.assertRaisesRegex(S.SkillIconError, f"not `pressed <IconCel>`: {line}"):
+                S.apply(self.rule, self.pd2, self.d2r, self.out)
+
+    def test_pressed_cel_past_the_shared_sheet_is_refused(self):
+        self.shared()
+        self.rule.write_text("sor\npressed 9\n", "utf-8")
+        with self.assertRaisesRegex(S.SkillIconError, "pressed 9"):
+            S.apply(self.rule, self.pd2, self.d2r, self.out)
+
+    def test_pressed_pair_must_be_the_icon_cel_in_tables_json(self):
+        self.shared()
+        self.rule.write_text("sor\npressed 1\n", "utf-8")
+        tables = self.tmp / "tables.json"  # merge/tables.json, next to the rule in a merge
+        tables.write_text(json.dumps({"skilldesc": {"cells": {"force move": {"IconCel": "3"}}}}), "utf-8")
+        with self.assertRaisesRegex(S.SkillIconError, "IconCel"):
+            S.apply(self.rule, self.pd2, self.d2r, self.out)
+        tables.write_text(json.dumps({"skilldesc": {"cells": {"force move": {"IconCel": "2"}}}}), "utf-8")
+        S.apply(self.rule, self.pd2, self.d2r, self.out)
 
     def test_force_move_has_its_own_pressed_pair(self):
         root = Path(__file__).resolve().parents[2]
