@@ -17,7 +17,6 @@
 #include "sig.h"
 
 #include <D2RLPlugin/lifecycle_events.h>
-#include <D2RLPlugin/threads.h>
 
 #include <atomic>
 #include <cstdio>
@@ -47,8 +46,9 @@ struct Count {
 };
 Count g_counts[Slots];  // the game thread runs both the think and the death listener
 uint32_t g_seq = 0;
-const D2RL::PluginContext* g_context = nullptr;
-const D2RL::ThreadService* g_threads = nullptr;
+const Game* g_game = nullptr;  // the game the slots belong to
+uint16_t g_gameId = 0;
+int32_t g_frame = 0;
 std::atomic<uint32_t> g_hitDrops {0}, g_deathDrops {0};
 
 auto CountOf(uint16_t gameId, uint32_t unitId, bool add) noexcept -> Count* {
@@ -81,21 +81,31 @@ auto Drop(Game* game, Unit* unit, Unit* killer) noexcept -> bool {
 	return true;
 }
 
-// Game ids are reused and unit ids restart, so a fallen alive when a game ends must not leave its count behind.
-void __cdecl ClearCounts(const D2RL::PluginContext*, void*) noexcept {
+// Game ids are reused and unit ids restart, so a fallen alive when a game ends must not leave its count behind. D2RLoader
+// drops queued game-thread callbacks when the session changes, so the think itself spots a new game: another Game, another
+// id, or a frame counter that went back. shortcut: a new game at the same address and id whose frame is still past the
+// last think's is missed; upgrade when the SDK has a per-game value.
+void ClearCounts() noexcept {
 	for (Count& c : g_counts) {
 		c = {};
 	}
+	plog::Info("treasure fallen: counts cleared for new game");
 }
 
-void __cdecl OnGameEdge(const D2RL::PluginContext*, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {  // UI thread
-	if (g_threads != nullptr) {
-		g_threads->runOnGameThread(g_context, ClearCounts, nullptr);
+void CheckGame(Game* game) noexcept {
+	const auto id = At<uint16_t>(game, d2r::rva::GameIdField);
+	const auto frame = At<int32_t>(game, d2r::rva::GameFrame);
+	if (game != g_game || id != g_gameId || frame < g_frame) {
+		ClearCounts();
+		g_game = game;
+		g_gameId = id;
 	}
+	g_frame = frame;
 }
 
 void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	using namespace d2r::rva;
+	CheckGame(game);
 	const auto life = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(unit, StatLife, 0);
 	const int64_t max = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::UnitMaxLife)(unit);
 	if (max > 0) {
@@ -179,18 +189,6 @@ auto InstallTreasureFallen(const D2RL::PluginContext* context, char* report, siz
 	if (lifecycle->registerMonsterDeathListener(context, &listener, &handle) != D2RL::Lifecycle::Result::Success) {
 		std::snprintf(report, reportSize, "off: monster-death listener refused");
 		return 0;
-	}
-	g_context = context;
-	if (context->QueryService(&g_threads) == D2RL::ServiceQueryResult::Success &&
-	    D2RL::HasThreadServiceField(g_threads, D2RL::ThreadServiceRequiredSize)) {
-		for (const auto kind : {D2RL::Lifecycle::GameplayEventKind::GameJoined, D2RL::Lifecycle::GameplayEventKind::GameLeft}) {
-			const D2RL::Lifecycle::GameplayEventListener edge {
-				.structSize = D2RL::Lifecycle::GameplayEventListenerSize, .kind = kind, .callback = OnGameEdge};
-			D2RL::Lifecycle::ListenerHandle h = D2RL::Lifecycle::InvalidHandle;
-			lifecycle->registerGameplayEventListener(context, &edge, &h);
-		}
-	} else {
-		g_threads = nullptr;
 	}
 	std::snprintf(report, reportSize, "Treasure Fallen: a drop per 10%% of life lost, the rest on death (monai %d think)", FallenRow);
 	return 1;
