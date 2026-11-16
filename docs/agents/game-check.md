@@ -11,7 +11,7 @@ in-game". Slot details are in `docs/agents/game-slots.md`.
 4. **Start the game** in HD on a character that meets the AGENTS.md test rules:
    `python <toolkit>/testing/game_ctl.py --slot <N> start`.
 5. **Set the cheats** `cheat nogethit 1`, `cheat speedup 300`, `cheat god 1`, each through
-   `game_ctl.py --slot <N> console "<cmd>"`.
+   `game_ctl.py --slot <N> console "<cmd>"`. God mode also kills any unit the character damages in one hit, so never judge a boss's life, stages or immunity from the character's hits; lower its life with the plugin's test commands instead.
    Before any spawn whose item must survive a Save and Exit, also run `cheat savecheatitems 1`: cheat-spawned items are
    dropped from the save otherwise (any item, not only maps). The flag applies at spawn time: items spawned before it
    are still dropped.
