@@ -53,6 +53,7 @@ class ToolkitTests(unittest.TestCase):
     def test_a_wrong_pin_warns_and_strict_refuses(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ):
             os.environ.pop("D2R_TOOLKIT", None)
+            os.environ.pop("D2R_TOOLKIT_STRICT", None)  # CI exports it
             base = Path(d).resolve()
             self.fake(base)
             repo = base / "repo"

@@ -176,7 +176,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         text, fragments = pending_fragments(ROOT, version)
         section = notes_section(text, version)  # checked before anything is written or deleted
-        from modkit.base import Base  # the sibling d2rAI-toolkit on PYTHONPATH
+        from modkit.base import Base  # the pinned toolkit, on PYTHONPATH
         if not a.cartographer:
             raise ReleaseError("no cartographer.dll: build it from d2r-tools main and pass --cartographer or set CARTOGRAPHER_DLL")
         section += "\n\n" + cartographer_note(a.cartographer, a.cartographer_commit)
