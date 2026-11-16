@@ -102,10 +102,10 @@ item tables the loot filter needs when the build doesn't ship them. The tool tes
 
 Only when PD2 releases a version; the PD2 install in `pd2-baseline.json` is needed. A PD2 frame with no HD art in
 `merge/art/` needs [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN/releases) (`realesrgan-ncnn-vulkan`) in the
-sibling `..ealesrgan-ncnn-vulkan` or named by `REALESRGAN`, and numpy and Pillow for skill icons.
+sibling `..\realesrgan-ncnn-vulkan` or named by `REALESRGAN`, and numpy and Pillow for skill icons.
 
 1. Update `pd2-baseline.json`.
-2. In a worktree of the kept `pd2-import` branch, run `python tools/pd2_import.py --out <that worktree>` and commit it.
+2. From the ticket-branch checkout (the `pd2-import` branch has no `tools/`), run `python tools/pd2_import.py --out <a worktree of the kept pd2-import branch>`, and commit it there. New `merge/art/` PNGs the run writes are committed on the ticket branch.
 3. On a ticket branch from main, run `git diff --binary pd2-import~1 pd2-import | git apply --3way`.
 4. Resolve the conflicts and run the gate. The PR diff is the import.
 

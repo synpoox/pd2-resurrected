@@ -19,8 +19,7 @@ Run:
   later work items), so the fixture cannot build on them. The merged P2 tables were checked on Slot4 (#45): state
   270, attackrate 100 -> 110 -> 100 over one buff, ten casts with no crash.
 
-W10 checks (tag core-rules-w10) run on the merged data, which has PD2's rows and states:
-  py -3 tools/pd2_merge.py
+W10 checks (tag core-rules-w10) run on the committed data, which has PD2's rows and states:
   powershell -File tools/install.ps1 -Game C:/D2RTestSlots/SlotN -Data .
   a Barbarian with Bash, Find Potion and Frenzy (two one-handed weapons for Frenzy)
   py testing/game_checks.py run core-rules-w10 --slot N --path <repo>/tests/game --module core_rules_checks

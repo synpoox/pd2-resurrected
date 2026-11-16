@@ -8,7 +8,7 @@ file at that path in the repo at that commit; for an entry with `url` and no `re
 release's download link; a release asset that is not a .zip is one file too), refuses one whose SHA-256 differs from the manifest, and unpacks only
 the files the manifest lists into git-ignored generated/companions/ (laid out as the installed mod
 folder), plus our companions/filter.json and the plugin settings in companions/config/ (over the zip's own). No
-companion binary is ever committed. Run it after pd2_merge.py, which rebuilds generated/.
+companion binary is ever committed.
 
 install runs `modkit install` and then copies generated/companions/ over <game>/mods/<Name>/, and turns on
 `[d2rcore.items] item_stat_ranges` for Item Roll Ranges. It overwrites filter.json; other loader settings are kept.
