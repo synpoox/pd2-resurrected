@@ -33,7 +33,9 @@ def test_every_level_is_a_real_or_reserved_id_and_private_targets_are_new():
     ids = level_ids()
     for enc, (level, target, source, _f) in bindings.items():
         assert level in ids and target in ids, enc
-        if source == "Existing":
+        if source == "Frozen":
+            assert target == level and not ids[target], enc  # the PD2 area, kept at its own level
+        elif source == "Existing":
             assert target >= 209 and ids[target], enc  # a reserved private id, a `+` line
         else:
             assert not ids[target], enc  # D2R's own area
@@ -42,7 +44,8 @@ def test_every_level_is_a_real_or_reserved_id_and_private_targets_are_new():
 def test_private_levels_are_reserved_once():
     bindings, _ = parse()
     private = [t for (_l, t, s, _f) in bindings.values() if s == "Existing"]
-    assert len(private) == len(set(private)) == 7 and sorted(private) == list(range(209, 216))
+    # 209 and 213 stay reserved but unused: Dclone's and Lucion's boxes are frozen at their PD2 levels (#1027)
+    assert len(private) == len(set(private)) == 5 and sorted(private + [209, 213]) == list(range(209, 216))
 
 
 def test_every_consumer_lookup_has_a_placement():

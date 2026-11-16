@@ -67,9 +67,9 @@ Reserved levels (appended in `merge/ids-levels.tsv`, so no later PR appends ther
 
 | Level | Encounter (binding) | Lane / ticket | Replaces |
 |---|---|---|---|
-| 209 | `dclone` | D #958 | 138 |
+| 209 | `dclone` | D #958 | 138 (unused: the box is frozen at 138, #1027) |
 | 210, 211, 212 | `rathma1`, `rathma2`, `rathma3` | D #961 | 160, 161, 162 |
-| 213 | `lucion` | D #962 | 184 |
+| 213 | `lucion` | D #962 | 184 (unused: the box is frozen at 184, #1027) |
 | 214 | `temple` | D #962 | 185 |
 | 215 | `bitterdepths` | C #960 | 198 |
 

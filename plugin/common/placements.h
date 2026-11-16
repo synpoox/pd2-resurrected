@@ -12,8 +12,9 @@ namespace placements {
 
 // Where an encounter's level comes from. Existing: the PD2 area the port has now; a private author flips `level` to
 // `target` (a reserved private id) when the new area is ready. Vanilla and D2RTristram are D2R's own areas and are
-// never replaced (no arena is reserved for them).
-enum class Source : uint8_t { Vanilla, D2RTristram, Existing, Private };
+// never replaced (no arena is reserved for them). Frozen: the PD2 area at its current level, shipped as static content
+// in files/ (#1027), so it needs no converter output.
+enum class Source : uint8_t { Vanilla, D2RTristram, Existing, Private, Frozen };
 
 struct Binding {
 	const char* encounter;

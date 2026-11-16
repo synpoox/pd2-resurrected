@@ -51,5 +51,11 @@ def norm(path: str) -> str:
     return path.replace("\\", "/").lower()
 
 
+def frozen(merge_dir, rel: str) -> bool:
+    """Whether the repo ships `rel` (a path under data/) as frozen content in files/ (#1027): the merge then does not
+    write its own copy, which modkit would layer over the frozen one."""
+    return (merge_dir.parent / "files" / "data" / rel).is_file()
+
+
 def col(t: Table, name: str) -> int:
     return t.header.index(name)

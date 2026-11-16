@@ -11,7 +11,7 @@ import pd2_cache
 import pd2_dt1_copies as dt1_copies
 import pd2_painter as painter
 import pd2_terrain as terrain_ground
-from pd2_ds1 import SLOTS, col, norm
+from pd2_ds1 import SLOTS, col, frozen, norm
 from pd2_table import Table, excel, load
 
 from .build import build
@@ -203,7 +203,10 @@ def plan(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> Plan | N
     if not (d2r_data / PRESETS).is_dir() or not any(tiles_dir.rglob("*.dt1")):
         print(f"  presets-hd: skipped, no D2R presets or DT1 under {d2r_data} (dev builds run without; `{FETCH}`)")
         return None
-    presets = pd2_only_presets(out_data, len(load(d2r_data, "lvlprest").records()))
+    # #1027: a DS1 whose preset files/ ships as frozen content is left out: nothing here reads or builds it, and a
+    # generated copy would layer over the frozen one
+    presets = [(*p[:3], [d for d in p[3] if not frozen(rule.parent, (PRESETS / Path(d).with_suffix(".json")).as_posix())])
+               for p in pd2_only_presets(out_data, len(load(d2r_data, "lvlprest").records()))]
     # a preset on PD2 tiles is built once every PD2 DT1 it loads has a stand-in line (LP4/LP5); the others wait
     on_d2r = [p for p in presets if all(f in standins for f in p[2] if f.startswith("pd2assets/"))]
     if unruled := sorted({s for _, s, _, _ in on_d2r if s.lower() not in sets}):

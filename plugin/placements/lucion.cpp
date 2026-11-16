@@ -5,9 +5,10 @@
 
 namespace {
 using placements::Source;
-// Lucion's arena (PD2 188) and the Temple of the Triune (PD2 189). Lane D (#962) flips both levels to their targets.
+// Lucion's arena (PD2 188) is frozen static content in files/ (#1027): `level` stays 184, the reserved 213 stays
+// unused. The Temple of the Triune (PD2 189) is still the converted area: lane D (#962) flips it to its target.
 const placements::Binding bindings[] = {
-	{"lucion", 184, 213, Source::Existing, true, false},
+	{"lucion", 184, 184, Source::Frozen, true, false},
 	{"temple", 185, 214, Source::Existing, false, false},
 };
 const placements::Place places[] = {

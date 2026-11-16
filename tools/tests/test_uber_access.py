@@ -36,8 +36,8 @@ def test_stock_areas_are_not_ubers_and_tristram_is_the_d2r_uber():
 def test_every_uber_level_is_a_known_destination():
     for enc, (level, target, src, uber, _nw) in bindings().items():
         if uber:
-            assert src in ("Existing", "D2RTristram"), enc
-            assert target >= 209 or src == "D2RTristram", enc
+            assert src in ("Existing", "D2RTristram", "Frozen"), enc
+            assert target >= 209 or src in ("D2RTristram", "Frozen"), enc
 
 
 def test_tristram_binding_is_d2r_136():

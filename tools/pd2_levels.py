@@ -30,7 +30,7 @@ from pathlib import Path
 
 import pd2_automap
 import pd2_ids
-from pd2_ds1 import SLOTS, col, ds1_header, norm, object_list  # noqa: F401  (re-exported, #808)
+from pd2_ds1 import SLOTS, col, ds1_header, frozen, norm, object_list  # noqa: F401  (re-exported, #808)
 from pd2_ids import IdError, Table, excel, ident, load, read_list
 
 MONPRESET_VANILLA = {"1": 47, "2": 59, "3": 39, "4": 28, "5": 51}
@@ -444,9 +444,12 @@ def apply_files(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> N
         src = pd2_data / "global" / "tiles" / ds1
         if not src.is_file():
             raise ValueError(f"lvlprest names {ds1}, which pd2maps.mpq does not hold")
+        data = rewrite_ds1(src.read_bytes(), fix_for(ds1))  # always run: it adds the objpreset and monpreset rows
+        if frozen(merge_dir, f"global/tiles/{ds1}"):  # #1027: files/ holds this DS1, already rewritten
+            continue
         dest = out_data / "global" / "tiles" / ds1
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(rewrite_ds1(src.read_bytes(), fix_for(ds1)))
+        dest.write_bytes(data)
     if unused := [k for k, used in drops.items() if not used]:
         raise ValueError(f"level-files.tsv lines no DS1 object matches: {unused}")
     for a, i, c in added:
