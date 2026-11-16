@@ -211,15 +211,15 @@ constexpr int32_t NativeFirst = 202, NativeLast = 208;
 bool g_roomsOverride = false;
 Tiered NativeTier = {0, 200};
 
-// The rooms of the room's level, counted down its drlg room list (level +0x10, next +0x48, D2R 93847; the same
-// list DrlgRoomAt walks). The room's +0x18 is its drlg room, whose +0x90 is the level.
+// The rooms of the room's level, counted down its drlg room list (D2R 93847; the same
+// list DrlgRoomAt walks).
 auto RealRooms(void* room) noexcept -> int32_t {
 	constexpr int Cap = 32767;
-	void* drlgRoom = At<void*>(room, 0x18);
-	void* level = drlgRoom != nullptr ? At<void*>(drlgRoom, 0x90) : nullptr;
+	void* drlgRoom = At<void*>(room, d2r::rva::RoomDrlg);
+	void* level = drlgRoom != nullptr ? At<void*>(drlgRoom, d2r::rva::DrlgRoomLevel) : nullptr;
 	int32_t n = 0;
 	for (void* r = level != nullptr ? At<void*>(level, d2r::rva::DrlgLevelRooms) : nullptr; r != nullptr && n < Cap;
-	     r = At<void*>(r, 0x48)) {
+	     r = At<void*>(r, d2r::rva::DrlgRoomNext)) {
 		++n;
 	}
 	return n;
