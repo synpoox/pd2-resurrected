@@ -1,15 +1,19 @@
-"""Frozen Orb casts with the Sorceress's plain cast motion (#690): PD2's SQ sequence 12 plays no cast animation in D2R."""
+"""Frozen Orb plays its cast pose (#690): D2R's HD renderer picks a sequence skill's body clip by skill ID."""
+import json
 import unittest
+from pathlib import Path
 
-import data_tables as d
+SM = Path(__file__).resolve().parents[2] / "files/data/hd/character/player/sorceress/sorceress_state_machine.json"
 
 
 class FrozenOrbCast(unittest.TestCase):
-    def test_player_row_uses_cast_mode(self):
-        d.need(self)
-        row = next(r for r in d.rows("skills") if r["skill"] == "Frozen Orb")
-        self.assertEqual((row["anim"], row["seqtrans"], row["monanim"]), ("SC", "SC", "xx"))
-        self.assertIn(row["seqnum"], ("", "0"))
+    def test_sequence_state_for_skill_64(self):
+        sm = json.loads(SM.read_text("utf-8"))
+        state = next(s for s in sm["states"] if s["modeId"] == 18 and s["skillIndex"] == 64)
+        ids = [s["stateId"] for s in sm["states"]]
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertIn(state["stateId"], [g["from"] for g in sm["transitions"]])
+        self.assertTrue(state["animationBindings"])
 
 
 if __name__ == "__main__":
