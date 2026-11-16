@@ -615,7 +615,7 @@ def property_kinds(properties: Table) -> dict[str, str]:
 
 
 PROPS = {"uniqueitems", "setitems", "sets", "runes", "magicprefix", "magicsuffix", "automagic", "cubemain", "gems",
-         "qualityitems"}  # tables with item properties (fix_props)
+         "qualityitems", "monprop"}  # tables with item properties (fix_props)
 
 
 def write(table: str, merged: Table, dropped: list[str], out_data: Path) -> None:

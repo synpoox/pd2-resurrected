@@ -16,9 +16,9 @@ druidbear	hit-skill	100	430	100	1																										hit-skill	100	430	100
 claygolem	hit-skill	100	430	100	1	crush	100		20	20																					hit-skill	100	430	100	1	crush	100		20	20																					hit-skill	100	430	100	1	crush	100		20	20																					
 fenris	hit-skill	100	465	100	1		100		-20	-20																					hit-skill	100	465	100	1		100		-60	-60																					hit-skill	100	465	100	1		100		-60	-60																					
 necroskeleton	hit-skill	100	465	100	1																										hit-skill	100	465	100	1																										hit-skill	100	465	100	1																										
-willowispboss	aura	100	395	1	1																										aura	100	395	1	1																										aura	100	395	1	1																										
-willowispminion	aura	100	396	1	1																										aura	100	396	1	1																										aura	100	396	1	1																										
-willowisptotem	aura	100	123	22	22																										aura	100	123	5	5																										aura	100	439	1	1																										
+willowispboss	aura	100	467	1	1																										aura	100	467	1	1																										aura	100	467	1	1																										
+willowispminion	aura	100	468	1	1																										aura	100	468	1	1																										aura	100	468	1	1																										
+willowisptotem	aura	100	123	22	22																										aura	100	123	5	5																										aura	100	509	1	1																										
 fingermageboss	hit-skill	100	430	100	1																										hit-skill	100	430	100	1																										swing1	100		-40	-40	hit-skill	100	430	100	1																					
 unravelerboss																																																													hit-skill	100	478	100	1																										
 unravelerbossskeleton																																																													hit-skill	100	479	100	1																										
@@ -35,29 +35,29 @@ rathma	cast2	100		30	30	swing2	100		30	30	death-skill	100	554	100	1													
 mendeln	cast2	100		30	30	swing2	100		30	30	death-skill	100	556	100	1																cast2	100		30	30	swing2	100		30	30	death-skill	100	556	100	1																cast2	100		30	30	swing2	100		30	30	death-skill	100	556	100	1	curse-res	100		95	95	res-pois-len	100		30	30						
 rathma_golem	aura	100	99	22	22																										aura	100	99	22	22																										aura	100	99	22	22																										
 nihlathakmap	death-skill	100	556	100	1																										death-skill	100	556	100	1																										death-skill	100	556	100	1																										
-butchermapprop	aura	100	495	22	22	att-skill	100	461	100	1																					aura	100	495	22	22	att-skill	100	461	100	1																					aura	100	495	22	22	att-skill	100	461	100	1																					
+butchermapprop	aura	100	564	22	22	att-skill	100	461	100	1																					aura	100	564	22	22	att-skill	100	461	100	1																					aura	100	564	22	22	att-skill	100	461	100	1																					
 treasurefallenprop	state	100	175	1	1																										state	100	175	1	1																										state	100	175	1	1																										
 bloodgolemow	openwounds	100	62	100	100	hit-skill	100	430	100	1																					openwounds	100	62	100	100	hit-skill	100	430	100	1																					openwounds	100	62	100	100	hit-skill	100	430	100	1																					
 rathmaminion																																																													curse-res	100		100	100	res-pois-len	100		25	25																					
 mendelnbloodgolem																																																													curse-res	100		100	100																										
-ubertalic	aura	100	479	22	22																										aura	100	479	22	22																										aura	100	479	22	22																										
-uberkorlic	leapspeed	100		20	20	aura	100	532	1	1																					leapspeed	100		20	20	aura	100	532	1	1																					leapspeed	100		20	20	aura	100	532	1	1																					
-shadowmonprop	state	100	220	1	1	move1			20	20																					state	100	220	1	1	move1			20	20																					state	100	220	1	1	move1			20	20																					
+ubertalic	aura	100	548	22	22																										aura	100	548	22	22																										aura	100	548	22	22																										
+uberkorlic	leapspeed	100		20	20	aura	100	601	1	1																					leapspeed	100		20	20	aura	100	601	1	1																					leapspeed	100		20	20	aura	100	601	1	1																					
+shadowmonprop	state	100	266	1	1	move1			20	20																					state	100	266	1	1	move1			20	20																					state	100	266	1	1	move1			20	20																					
 libraryboss	aura	100	99	15	15	hit-skill	100	430	100	1																					aura	100	99	15	15	hit-skill	100	430	100	1																					aura	100	99	15	15	hit-skill	100	430	100	1																					
 cursereduction																																																													curse-res	100		75	75																										
 targetdummyprop																																																																																											
-sanctuaryboss																																																													aura	100	534	22	22																										
+sanctuaryboss																																																													aura	100	603	22	22																										
 howlattack	hit-skill	100	130	100	1																										hit-skill	100	130	100	1																										hit-skill	100	130	90	5	curse-res	100		75	75																					
 blunderboreDungeon																															crush			25	25	knock			1	1																					crush			100	100	curse-res	100		75	75																					
 stygianDungeon	death-skill	100	435	100	1																										death-skill	100	435	100	2																										death-skill	100	435	100	10	curse-res	100		75	75																					
 zharminibossbaboonprop	aura	100	108	15	15	move1			20	20																					aura	100	108	15	15	move1			20	20																					aura	100	108	15	15	move1			20	20																					
 warlordminibossdefilerprop	aura	100	122	8	8	cast2	100		30	30	swing2	100		30	30																aura	100	122	8	8	cast2	100		30	30	swing2	100		30	30																aura	100	122	8	8	cast2	100		30	30	swing2	100		30	30																
 zharminibossbighead	aura	100	115	15	15	hit-skill	100	430	100	1																					aura	100	115	15	15	hit-skill	100	430	100	1																					aura	100	115	15	15	hit-skill	100	430	100	1																					
-BastionBoss	aura	100	115	15	15	hit-skill	100	430	100	1																					aura	100	115	15	15	hit-skill	100	430	100	1																					aura	100	416	3	3	hit-skill	100	430	100	1																					
+BastionBoss	aura	100	115	15	15	hit-skill	100	430	100	1																					aura	100	115	15	15	hit-skill	100	430	100	1																					aura	100	365	3	3	hit-skill	100	430	100	1																					
 mapbosssplash	hit-skill	100	430	100	1																										hit-skill	100	430	100	1																										hit-skill	100	430	100	1																										
 LesserSplash	hit-skill	100	430	100	3																										hit-skill	100	430	100	3																										hit-skill	100	430	100	3																										
 Lucion	curse-res	100		95	95	res-pois-len	100		50	50	death-skill	100	649	100	1	death-skill	100	650	100	1	death-skill	100	652	100	1	death-skill	100	651	100	1	curse-res	100		95	95	res-pois-len	100		50	50	death-skill	100	649	100	1	death-skill	100	650	100	1	death-skill	100	652	100	1	death-skill	100	651	100	1	curse-res	100		95	95	res-pois-len	100		30	30	death-skill	100	649	100	1	death-skill	100	650	100	1	death-skill	100	652	100	1	death-skill	100	651	100	1	
-ImperialBoss																															extra-fire			40	40	aura	100	396	1	1																					extra-fire			100	100	aura	100	124	1	1																					
+ImperialBoss																															extra-fire			40	40	aura	100	468	1	1																					extra-fire			100	100	aura	100	124	1	1																					
 ImperialMiniBoss	aura	100	109	15	15																										aura	100	109	15	15																										aura	100	109	15	15																										
 InvaderDruid																																																													cast2	100		200	200																										
 firegolem	hit-skill	100	430	100	1		100		-20	-20																					hit-skill	100	430	100	1		100		-20	-20																					hit-skill	100	430	100	1		100		-20	-20																					
