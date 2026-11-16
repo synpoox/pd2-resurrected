@@ -396,8 +396,8 @@ def valkyrie_power_strike(ctx):
     powerstrikenova1valk client missiles show up."""
     row = _rows("missiles").index("powerstrikenova1valk")
     ctx.ensure_running()
-    game = unit_probe.UnitProbe.for_slot(ctx.cfg, ctx.slot)
-    sizes = unit_probe.bursts(game, row, 30)
+    with unit_probe.UnitProbe.for_slot(ctx.cfg, ctx.slot, owner=ctx.game.owner) as game:
+        sizes = unit_probe.bursts(game, row, 30)
     if not sizes:
         ctx.skip("no Valkyrie strike in 30 s (summon her next to monsters, then run again)")
     return f"{len(sizes)} Valkyrie strike(s) drawn, {sizes[0]} missile(s) in the first"
@@ -654,14 +654,14 @@ def golem_count(ctx):
     golems = {rows.index(n) for n in ("claygolem", "bloodgolem", "firegolem")}
     limit = 1 + GOLEM_MASTERY_LEVEL // 5
     ctx.ensure_running()
-    game = unit_probe.UnitProbe.for_slot(ctx.cfg, ctx.slot)
-    seen, most = set(), 0
-    end = time.monotonic() + 30
-    while time.monotonic() < end:
-        alive = {g for g, row in game.units(unit_probe.MONSTER).items() if row in golems}
-        seen |= alive
-        most = max(most, len(alive))
-        time.sleep(0.05)
+    with unit_probe.UnitProbe.for_slot(ctx.cfg, ctx.slot, owner=ctx.game.owner) as game:
+        seen, most = set(), 0
+        end = time.monotonic() + 30
+        while time.monotonic() < end:
+            alive = {g for g, row in game.units(unit_probe.MONSTER).items() if row in golems}
+            seen |= alive
+            most = max(most, len(alive))
+            time.sleep(0.05)
     if len(seen) <= limit:
         ctx.skip(f"{len(seen)} golems summoned in 30 s, need {limit + 1} (summon Clay Golem while this runs)")
     assert most == limit, f"{most} golems at once after {len(seen)} summons, PD2 keeps {limit}"

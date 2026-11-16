@@ -42,9 +42,9 @@ def _one_per_cast(ctx, skill: str) -> str:
     missile = pd2_missile(skill)
     row = [r[0] for r in _table("missiles", FIXTURE)[1:]].index(missile)
     ctx.ensure_running()
-    game = unit_probe.UnitProbe.for_slot(ctx.cfg, ctx.slot)
-    ctx.game.click(0.6, 0.45, "right")
-    sizes = unit_probe.bursts(game, row, 3)
+    with unit_probe.UnitProbe.for_slot(ctx.cfg, ctx.slot, owner=ctx.game.owner) as game:
+        ctx.game.click(0.6, 0.45, "right")
+        sizes = unit_probe.bursts(game, row, 3)
     if not sizes:
         ctx.skip(f"no {missile} in 3 s (javelins in hand, {skill} on the right button)")
     assert sizes == [1], f"one cast made {sizes} {missile}, PD2 makes 1"

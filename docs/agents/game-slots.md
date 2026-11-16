@@ -2,7 +2,7 @@
 
 A **game slot** is a separate copy of the D2R install for one test run, with its own plugins, mod data and saves.
 "Set up a slot" means: lock one, install a build into it, and hand it over. d2rAI-toolkit's `testing/` folder holds the
-tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its [`testing/README.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/testing/README.md), which also describes the fixture pattern our
+tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its [`testing/README.md`](https://github.com/synpoox/d2rAI-toolkit/blob/732a7146e71402a48d8fd379887b75977a971ad1/testing/README.md), which also describes the fixture pattern our
 `tests/game/fixtures/*` follow: one tiny mod per check).
 
 ## This machine
@@ -25,8 +25,8 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its [`testing/README.md
 
 The per-check recipe (cheats, shots, images, unlock) is `docs/agents/game-check.md`; these are the slot basics.
 
-1. `python <toolkit>/testing/game_slots.py status` and pick a free slot your registry entry allows (here 2-5).
-2. `python <toolkit>/testing/game_slots.py lock <N> <owner>`. For a slot the owner tests by hand, use an owner name
+1. `MODKIT_PROJECT=pd2-resurrected MODKIT_TESTING_CONFIG=C:\D2RTestSlots\modkit-testing-pd2.toml python <toolkit>/testing/game_slots.py status` and pick a free slot your registry entry allows (here 2-5).
+2. `MODKIT_PROJECT=pd2-resurrected MODKIT_TESTING_CONFIG=C:\D2RTestSlots\modkit-testing-pd2.toml MODKIT_RUN=<owner> python <toolkit>/testing/game_slots.py lock <N> <owner>`. For a slot the owner tests by hand, use an owner name
    such as `owner-<work item>`: a manual lock lasts until `unlock`.
 3. Build and install: `plugin\build.ps1`, then, with `MODKIT_RUN` set to the lock's owner,
    `tools\install.ps1 -Game C:\D2RTestSlots\Slot<N> -Data . -NoValidate` (it copies the committed `files/data`; no extract
@@ -40,7 +40,7 @@ The per-check recipe (cheats, shots, images, unlock) is `docs/agents/game-check.
    `companions/cartographer/signatures.txt` into the mod's `excel/d2rloader/cartographer/` (core-rules' cube hook needs it).
 4. Check the installed data holds the change (the table row in `out/data`).
 5. For a hand test, write the slot, its lock owner and the unlock command into the game-check issue.
-6. With `MODKIT_RUN=<owner>` set, `python <toolkit>/testing/game_slots.py unlock <N> <owner>` once the test is done.
+6. `MODKIT_PROJECT=pd2-resurrected MODKIT_TESTING_CONFIG=C:\D2RTestSlots\modkit-testing-pd2.toml MODKIT_RUN=<owner> python <toolkit>/testing/game_slots.py unlock <N> <owner>` once the test is done.
 
 ## Shared cache
 

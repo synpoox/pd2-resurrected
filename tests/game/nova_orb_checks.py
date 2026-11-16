@@ -43,9 +43,9 @@ def thunder_storm_nova(ctx):
     nova = rows.index(NOVA)
 
     ctx.ensure_running()
-    game = unit_probe.UnitProbe.for_slot(ctx.cfg, ctx.slot)
-    ctx.game.click(0.5, 0.45, "right")
-    sizes = unit_probe.bursts(game, nova, 20)
+    with unit_probe.UnitProbe.for_slot(ctx.cfg, ctx.slot, owner=ctx.game.owner) as game:
+        ctx.game.click(0.5, 0.45, "right")
+        sizes = unit_probe.bursts(game, nova, 20)
     if not sizes:
         ctx.skip("no Thunder Storm strike in 20 s (stand next to monsters, Thunder Storm on the right button)")
     assert all(n == expected for n in sizes), f"nova rings {sizes}, PD2 makes {expected} per strike"
