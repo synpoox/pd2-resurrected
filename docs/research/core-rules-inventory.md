@@ -31,10 +31,10 @@ PD2 or Blizzard file content is in this repo; skill, missile, stat and recipe na
 
 | Source | Used for |
 |---|---|
-| `d2rAI-toolkit/pd2-data/s14-alliance/data/global/excel/*.txt` | PD2 tables. [#2](https://github.com/synpoox/pd2-resurrected/issues/2) showed they are byte-identical to `pd2data.mpq` in the install, so they stand for the PD2 baseline |
-| `d2rAI-toolkit/d2r-data/93847/data/global/excel/*.txt` and `base/*.txt` | D2R 3.3 build 93847 tables, RotW bank and base bank |
-| `d2rAI-toolkit/d2r-data/93847/data/global/dataguide/data/files/*.js` | Blizzard's data guide shipped with D2R: the meaning of each cube op, `descfunc` and `pSpell` value |
-| `d2rAI-toolkit/knowledge/engine-limits.md`, `d2r-93847-addresses.md`, `porting-classic-mods.md` | D2R table addresses, bounds, free slots and known D2R functions |
+| `pd2-data/s14-alliance/data/global/excel/*.txt` (a sibling folder of the repos, outside the toolkit) | PD2 tables. [#2](https://github.com/synpoox/pd2-resurrected/issues/2) showed they are byte-identical to `pd2data.mpq` in the install, so they stand for the PD2 baseline |
+| `data/global/excel/*.txt` and `base/*.txt` in the `modkit fetch` cache for build 93847 | D2R 3.3 build 93847 tables, RotW bank and base bank |
+| `data/global/dataguide/data/files/*.js` in the `modkit fetch` cache | Blizzard's data guide shipped with D2R: the meaning of each cube op, `descfunc` and `pSpell` value |
+| [`knowledge/engine-limits.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/engine-limits.md), [`knowledge/d2r-93847-addresses.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/d2r-93847-addresses.md), [`knowledge/porting-classic-mods.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/porting-classic-mods.md) | D2R table addresses, bounds, free slots and known D2R functions |
 | `C:\Games\PD2\ProjectD2\ProjectDiablo.dll` | Printable strings only (source file names, chat commands, game fields) |
 | `C:\Program Files\Diablo II Resurrected\D2R.exe` (3.3.93847) | PE section layout only |
 | Branches `research/pd2-data-inventory`, `research/pd2-engine-dll-triage`, `spike/srvdofunc-split-throw` | [#2](https://github.com/synpoox/pd2-resurrected/issues/2), [#3](https://github.com/synpoox/pd2-resurrected/issues/3) and [#13](https://github.com/synpoox/pd2-resurrected/issues/13) findings |

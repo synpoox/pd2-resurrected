@@ -247,9 +247,9 @@ Vault: the gold portal leads to level 207, "The Bitter Depths", whose treasure c
 ## 5. A red portal from a D2R plugin
 
 D2R's portal maker `0x432ce0` (game, unit, room, x, y, destLevel, &object, objectId, 0, 1), from the toolkit's
-[address notes](https://github.com/synpoox/d2rAI-toolkit/blob/main/knowledge/d2r-93847-addresses.md), is the
+[address notes](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/d2r-93847-addresses.md), is the
 counterpart of PD2's `0x38a300`: it places the portal object, sets its destination and places the return portal.
-Object 60 is the red portal. D2R's limits that apply (toolkit `engine-limits.md`):
+Object 60 is the red portal. D2R's limits that apply ([toolkit `engine-limits.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/engine-limits.md)):
 
 - Portals link levels **within one act**. Harrogath and all map areas are Act V.
 - The destination setter `0x34e9d0` keeps one byte. The port's map-area level ids (about 139-212) are below 256.

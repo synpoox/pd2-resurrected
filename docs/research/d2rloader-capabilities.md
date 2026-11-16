@@ -9,13 +9,13 @@ Use this to check PD2 features: find the system in the matrix, read the verdict,
 |---|---|---|
 | SDK | PluginSDK README, https://github.com/D2RLoader/PluginSDK (SDK 0.4.0, plugin ABI 4; loader accepts ABI 2 and 3) | Primary, official |
 | ORG | https://github.com/D2RLoader (repos: Installer, PluginSDK, localization, D2RL-Plugins, wiki; site d2rloader.net) | Primary, official |
-| KB-loader | `d2rAI-toolkit/knowledge/d2rloader.md` | Local, observed on 1.3.1 / 93847 |
-| KB-sys | `d2rAI-toolkit/knowledge/new-game-systems.md` | Local, design guidance |
-| KB-lim | `d2rAI-toolkit/knowledge/engine-limits.md` | Local, observed on 93847 |
-| KB-addr | `d2rAI-toolkit/knowledge/d2r-93847-addresses.md` | Local, RVAs for 93847 only |
-| KB-save | `d2rAI-toolkit/knowledge/saves.md` | Local, observed |
-| TPL | `d2rAI-toolkit/plugin-template/` (README, `src/`) | Local, working template |
-| TEST | `d2rAI-toolkit/docs/testing.md`, `testing/` | Local |
+| KB-loader | [`knowledge/d2rloader.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/d2rloader.md) | Toolkit, observed on 1.3.1 / 93847 |
+| KB-sys | [`knowledge/new-game-systems.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/new-game-systems.md) | Toolkit, design guidance |
+| KB-lim | [`knowledge/engine-limits.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/engine-limits.md) | Toolkit, observed on 93847 |
+| KB-addr | [`knowledge/d2r-93847-addresses.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/d2r-93847-addresses.md) | Toolkit, RVAs for 93847 only |
+| KB-save | [`knowledge/saves.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/saves.md) | Toolkit, observed |
+| TPL | [`plugin-template/`](https://github.com/synpoox/d2rAI-toolkit/tree/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/plugin-template) (README, `src/`) | Toolkit, working template |
+| TEST | [`docs/testing.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/docs/testing.md), [`testing/`](https://github.com/synpoox/d2rAI-toolkit/tree/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/testing) | Toolkit |
 
 Caveats: the SDK README describes SDK 0.4.0, while KB-loader reports loader 1.3.1-beta is older than the SDK, so some
 service fields are missing (marked below). Local facts were observed on 93847 and not re-verified here. Only the SDK

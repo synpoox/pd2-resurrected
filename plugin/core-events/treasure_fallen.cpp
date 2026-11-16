@@ -138,6 +138,7 @@ void OnDeath(const D2RL::PluginContext*, const D2RL::Lifecycle::MonsterDeathEven
 	if (game == nullptr || At<uint16_t>(game, GameIdField) != id) {
 		return;
 	}
+	CheckGame(game);  // a death before any think in a new game must not match a leftover slot
 	const auto find = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit);
 	Unit* monster = find(game, 1, event->monster.id);
 	Count* c = CountOf(id, event->monster.id, false);
