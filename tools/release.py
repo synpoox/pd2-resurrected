@@ -83,7 +83,22 @@ def notes_section(changelog: str, version: str) -> str:
     return m.group(1).strip()
 
 
-def stage(root: Path, out: Path, read: Callable[[str], bytes]) -> Path:
+def pinned_cartographer(root: Path, dll: Path | None) -> Path | None:
+    """The cartographer.dll to ship, checked against companions/cartographer/pin.json's SHA-256 (#966). Cartographer has
+    no release to download yet, so the build comes from a path (--cartographer or CARTOGRAPHER_DLL). No pin file: none."""
+    pin = root / "companions" / "cartographer" / "pin.json"
+    if not pin.is_file():
+        return None
+    want = json.loads(pin.read_text("utf-8"))["sha256"]
+    if dll is None or not dll.is_file():
+        raise ReleaseError(f"cartographer.dll missing: pass --cartographer or set CARTOGRAPHER_DLL (pinned {want[:12]})")
+    got = hashlib.sha256(dll.read_bytes()).hexdigest()
+    if got != want:
+        raise ReleaseError(f"{dll}: SHA-256 {got} differs from companions/cartographer/pin.json ({want})")
+    return dll
+
+
+def stage(root: Path, out: Path, read: Callable[[str], bytes], cartographer: Path | None = None) -> Path:
     """Lay out the installed mod folder in out/<name>/ (emptied first), as modkit install and companions install do."""
     mod = json.loads((root / "mod.json").read_text("utf-8"))
     name = mod["name"]
@@ -91,6 +106,7 @@ def stage(root: Path, out: Path, read: Callable[[str], bytes]) -> Path:
     for p in (root / "out" / "data", root / "generated" / "companions", *dlls):
         if not p.exists():
             raise ReleaseError(f"{p} missing: run the build in README.md first")
+    dlls += [d for d in [pinned_cartographer(root, cartographer)] if d]
     dest = out / name
     if dest.exists():
         shutil.rmtree(dest)
@@ -133,6 +149,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--game", type=Path, required=True, help="D2R folder (the loot filter's vanilla tables)")
     ap.add_argument("--version", help="release version (default: mod.json's)")
     ap.add_argument("--out", type=Path, default=ROOT / "dist")
+    ap.add_argument("--cartographer", type=Path, default=os.environ.get("CARTOGRAPHER_DLL"),
+                    help="the pinned cartographer.dll (default: CARTOGRAPHER_DLL)")
     ap.add_argument("--toolkit", type=Path, default=Path(os.environ.get("D2R_TOOLKIT", pd2_ids.toolkit(ROOT))))
     a = ap.parse_args(argv)
     mod_json = json.loads((ROOT / "mod.json").read_text("utf-8"))
@@ -143,7 +161,7 @@ def main(argv: list[str] | None = None) -> int:
         text, fragments = pending_fragments(ROOT, version)
         section = notes_section(text, version)  # checked before anything is written or deleted
         from modkit.base import Base  # the sibling d2rAI-toolkit on PYTHONPATH
-        mod = stage(ROOT, a.out / "mod", Base(a.game).bytes)
+        mod = stage(ROOT, a.out / "mod", Base(a.game).bytes, a.cartographer)
     except ReleaseError as e:
         print(f"release: {e}", file=sys.stderr)
         return 1
@@ -154,8 +172,13 @@ def main(argv: list[str] | None = None) -> int:
     done = False
     try:
         try:
+            # the catalog pins the official loader by hash: point loader_files at DIR's D2RLoader.exe (a machine path)
+            conf = a.out / "release.toml"
+            conf.parent.mkdir(parents=True, exist_ok=True)
+            conf.write_text((ROOT / "release.toml").read_text("utf-8").replace(
+                "[catalog]\n", f'[catalog]\nloader_files = [{{path = "{(a.game / "D2RLoader.exe").as_posix()}"}}]\n', 1), "utf-8")
             r = subprocess.run([sys.executable, str(a.toolkit / "release" / "package_release.py"), "--mod-dir", str(mod),
-                                "--version", version, "--config", str(ROOT / "release.toml"), "--out", str(a.out),
+                                "--version", version, "--config", str(conf), "--out", str(a.out),
                                 "--game-exe", str(a.game / "D2R.exe")])  # release.toml's [catalog] (schema 3) needs it
             code = r.returncode
             if not code:

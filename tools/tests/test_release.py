@@ -204,6 +204,22 @@ class StageTests(unittest.TestCase):
             plugins = sorted(p.name for p in (mod / "d2rloader/plugins").iterdir())
             self.assertEqual(plugins, sorted([f"{n}.dll" for n in release.PLUGINS] + ["x.dll"]))
 
+    def test_ships_the_pinned_cartographer_and_refuses_another_build(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.project(Path(tmp) / "p")
+            dll = Path(tmp) / "cartographer.dll"
+            dll.write_bytes(b"cartographer")
+            pin = root / "companions/cartographer/pin.json"
+            pin.parent.mkdir(parents=True)
+            pin.write_text(json.dumps({"sha256": hashlib.sha256(b"cartographer").hexdigest()}))
+            mod = release.stage(root, Path(tmp) / "stage", lambda rel: b"", dll)
+            self.assertEqual((mod / "d2rloader/plugins/cartographer.dll").read_bytes(), b"cartographer")
+            dll.write_bytes(b"another build")
+            with self.assertRaises(release.ReleaseError):
+                release.stage(root, Path(tmp) / "stage", lambda rel: b"", dll)
+            with self.assertRaises(release.ReleaseError):
+                release.stage(root, Path(tmp) / "stage", lambda rel: b"")
+
     def test_refuses_a_missing_plugin(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = self.project(Path(tmp) / "p")
