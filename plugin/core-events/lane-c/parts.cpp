@@ -5,10 +5,23 @@
 #include "guardian_ai.h"
 #include "horazon.h"
 #include "map_events.h"
+#include "pd2_engine.h"
+#include "wanderer.h"
 
 #include <cstdio>
 
 namespace {
+
+// The signature entries the Dark Wanderer part reads (wanderer.cpp, ai_hooks.cpp): it installs on any image where they all
+// resolved. Fixed rva values it still reads through PlayLevelSound (level_fx.cpp) are a known gap, see the PR.
+sigscan::Entry* const WandererUses[] = {
+	&d2r::sig::AiDarkWanderer, &d2r::sig::AiTable, &d2r::sig::GameKey, &d2r::sig::GameById, &d2r::sig::UnitStat,
+	&d2r::sig::SetUnitStat, &d2r::sig::UnitId, &d2r::sig::NewStatList, &d2r::sig::SetListState, &d2r::sig::SetListStat,
+	&d2r::sig::AttachStatList, &d2r::sig::SetStateBit, &d2r::sig::SetStateGfxFlag, &d2r::sig::QueueUnitUpdate,
+	&d2r::sig::FindUnit, &d2r::sig::UnitRoom, &d2r::sig::RoomAtXY, &d2r::sig::FindFreeSpot, &d2r::sig::DataTables,
+	&d2r::sig::SpawnMonsterAt, &d2r::sig::SetUnitFlags, &d2r::sig::AiSetModeXY, &d2r::sig::AiIdle, &d2r::sig::WalkToSpot,
+	&d2r::sig::SpotDistance, &d2r::sig::AiStepBeforeWalk,
+};
 
 void InstallMapeventsPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
@@ -30,9 +43,17 @@ void InstallGuardianaiPart(const D2RL::PluginContext* context, char* report, siz
 
 PartReg r40(40, "mapevents", InstallMapeventsPart);
 PartReg r110(110, "events", InstallEventsPart);
+void InstallWandererPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallWanderer(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
+}
+
 PartReg r160(160, "guardianai", InstallGuardianaiPart);
+PartReg r170(170, "wanderer", InstallWandererPart, WandererUses);
 CountersReg c40(40, MapEventsCounters);
 CountersReg c120(120, EventPortalsCounters);
 CountersReg c200(200, GuardianAiCounters);
+CountersReg c210(210, WandererCounters);
 
 }  // namespace
