@@ -216,6 +216,15 @@
    "set": {
     "calc3": "0"
    }
+  },
+  {
+   "op": "set",
+   "table": "skills",
+   "bank": "excel",
+   "key": "ArcherBossCageShot",
+   "set": {
+    "calc3": "0"
+   }
   }
  ]
 }
