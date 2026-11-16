@@ -455,6 +455,8 @@ auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept
 	// The console command `core-events event` (#998): one shot, for the next map rolled
 	const int32_t forcedEvent = g_forceNext.exchange(0);
 	event = forcedEvent != 0 ? forcedEvent : event;
+	// The Bitter Depths is not built (#965): the Tomb opens no portal to it, whichever way it was rolled
+	event = event == Tomb && !placements::Finished(BitterDepths()) ? NoEvent : event;
 	Set(game, EventKey, event);
 	Set(game, SpawnsKey, 0);
 	++g_rolled[event - NoEvent];
