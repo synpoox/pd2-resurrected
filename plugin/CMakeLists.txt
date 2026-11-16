@@ -56,6 +56,7 @@ add_library(core_rules SHARED
 	core-rules/cube_rules.cpp
 	core-rules/cube_stacks.cpp
 	core-rules/almanac.cpp
+	core-rules/shrine_rules.cpp
 	core-rules/loot_rules.cpp
 	core-events/arena_spots.cpp  # Royal Fire's ring centre reads the arena's centre spot (#962)
 	core-rules/plugin.rc  # ABI manifest resource: D2RLoader rejects a plugin DLL without it
@@ -161,6 +162,12 @@ add_executable(test_cmd_check EXCLUDE_FROM_ALL tests/test_cmd_check.cpp)
 target_include_directories(test_cmd_check PRIVATE common)
 target_compile_features(test_cmd_check PRIVATE cxx_std_20)
 core_options(test_cmd_check)
+
+# Shrine rules (#1143): plugin/common/shrine_math.h has no engine types.
+add_executable(shrine_rules_check EXCLUDE_FROM_ALL tests/shrine_rules_check.cpp)
+target_include_directories(shrine_rules_check PRIVATE common)
+target_compile_features(shrine_rules_check PRIVATE cxx_std_20)
+core_options(shrine_rules_check)
 # core-events' parts with `uses` (#1081): the gate that installs them on any image their signature entries resolved on.
 add_executable(parts_uses_check EXCLUDE_FROM_ALL tests/parts_uses_check.cpp core-events/parts.cpp)
 target_include_directories(parts_uses_check PRIVATE core-events)

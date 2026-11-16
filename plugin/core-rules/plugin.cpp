@@ -8,6 +8,7 @@
 
 #include "../core-events/arena_spots.h"  // the "arena" part: Royal Fire reads the arena centre (#962)
 #include "almanac.h"
+#include "shrine_rules.h"
 #include "crash_guard.h"
 #include "cube_rules.h"
 #include "cube_stacks.h"
@@ -82,6 +83,12 @@ void InstallAlmanacPart(const D2RL::PluginContext* context, char* report, size_t
 	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
 }
 
+void InstallShrinesPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[300] = "";
+	const int installed = InstallShrines(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
+}
+
 void InstallStacks(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
 	const int installed = InstallCubeStacks(context, rules, sizeof(rules));
@@ -118,6 +125,7 @@ Part g_parts[] = {
 	{"cube", InstallCube, ""},
 	{"stacks", InstallStacks, ""},
 	{"almanac", InstallAlmanacPart, ""},
+	{"shrines", InstallShrinesPart, ""},
 	{"loot", InstallLoot, ""},
 	{"sockets", InstallSockets, ""},
 };
@@ -173,6 +181,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	AlmanacCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	ShrineCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	LootRuleCounters(line, sizeof(line));
