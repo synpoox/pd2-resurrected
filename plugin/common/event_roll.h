@@ -9,7 +9,8 @@ inline constexpr int32_t NoEvent = 10, Altar = 19, Tomb = 21;
 enum : int32_t { QualityNormal = 2, QualityMagic = 4 };  // D2R item qualities; anything else is rare or better
 
 // PD2's draw (rand() % 12) -> event; 0 draws again (1.13c ids Mendeln 11 ... Tomb 21)
-inline constexpr int32_t Draws[12] = {0, 11, 12, 0, 14, 15, 16, 0, 18, 19, 20, 21};
+// Slot 10 was PD2's Invaders (20), which spawn nothing until MS10: it draws again, so its weight goes to the other events.
+inline constexpr int32_t Draws[12] = {0, 11, 12, 0, 14, 15, 16, 0, 18, 19, 0, 21};
 
 // The percent chance a map of `quality` carries an event
 constexpr auto Chance(int32_t quality) noexcept -> int32_t { return quality == QualityNormal ? 11 : quality == QualityMagic ? 17 : 34; }

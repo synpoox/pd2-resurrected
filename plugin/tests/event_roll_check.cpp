@@ -38,6 +38,7 @@ int main() {
 	};
 	CHECK("Tomb (draw 11) is drawn while the Bitter Depths is built", run(6, false, {0, 11}) == er::Tomb);
 	CHECK("Tomb redraws while the Bitter Depths is not built", noTomb() == 15);
+	CHECK("Invaders (20) is never rolled: its draw slot draws again", run(6, false, {0, 10, 5}) == 15 && [&] { for (int d = 0; d < 12; ++d) if (er::Draws[d] == 20) return false; return true; }());
 	std::printf("%d passed, %d failed\n", g_pass, g_fail);
 	return g_fail == 0 ? 0 : 1;
 }
