@@ -1,0 +1,6 @@
+Name	Base
+King Leoric	leoricMapBoss
+The Guardian	doomknight3LibraryBoss
+Nathkill The Numb	IceBoss
+The Great Worm	torajanBoss
+Shattered Soul	CanyonBoss

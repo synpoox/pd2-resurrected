@@ -1,6 +1,6 @@
-Name	Tileset	Shape	Item	Size	Level	MinCharLevel
-Tunneling Depths	Cave	Loop	m01	Medium	85	1
-Bone Vaults	Crypt	Branching	m02	Medium	85	1
-Frozen Hollows	Ice	Winding	m03	Medium	85	1
-Overgrown Reach	Jungle	Winding	m04	Medium	85	1
-Frostbitten Fields	Snow		m05	Medium	85	1
+Name	Tileset	Shape	Item	Size	Level	MinCharLevel	Boss
+Tunneling Depths	Cave	Loop	m01	Medium	85	1	King Leoric
+Bone Vaults	Crypt	Branching	m02	Medium	85	1	The Guardian
+Frozen Hollows	Ice	Winding	m03	Medium	85	1	Nathkill The Numb
+Overgrown Reach	Jungle	Winding	m04	Medium	85	1	The Great Worm
+Frostbitten Fields	Snow		m05	Medium	85	1	Shattered Soul
