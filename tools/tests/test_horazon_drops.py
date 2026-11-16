@@ -15,8 +15,11 @@ class HorazonDrops(unittest.TestCase):
         for old in ("Map Tier", "ApplyMapArea", "DropUniqueMap", "OpenPortal", "map_stats.h"):
             self.assertNotIn(old, TEXT)
 
-    def test_portal_deferred(self):
-        self.assertIn("shortcut: no second map until #1028", TEXT)
+    def test_portal_uses_open_extra_service(self):
+        self.assertIn('#include "cartographer_open_extra_v1.h"', TEXT)
+        self.assertIn("carto::OpenExtraServiceName", TEXT)
+        self.assertIn("openExtra(", TEXT)
+        self.assertIn("result.structSize = sizeof(result);", TEXT)
 
 
 if __name__ == "__main__":

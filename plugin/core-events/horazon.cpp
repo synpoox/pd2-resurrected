@@ -29,7 +29,7 @@ constexpr int32_t HorazonEvent = 12;
 constexpr int32_t StatLevel = 12;
 constexpr const char* MapPool = "Cartographer Maps";
 constexpr int32_t MapDrops = 6;
-// Once per game: Horazon's drop runs on the first death only (no portal opens, #1028); the counter marks it done
+// Once per game: Horazon's drops and portal run on the first death only; the counter marks it done
 constexpr uint32_t HorazonKey = 0x48525a4e;  // 'HRZN'
 
 std::atomic<uint32_t> g_deaths {0};
