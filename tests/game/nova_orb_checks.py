@@ -1,9 +1,11 @@
 """W7 game check: nova and orb hits (missiles pSrvHitFunc 5, pCltHitFunc 4) spawn PD2's sub-missile ring.
 
 No plugin: D2R's own hit functions 5/4 match PD2's (docs/research/nova-orb-hits.md), so the check counts the client
-missiles one Thunder Storm bolt leaves behind, read from game memory (missile_probe.py).
+missiles one Thunder Storm bolt leaves behind, read from game memory (testing/unit_probe.py).
 
-Setup (Slot4-8, game closed): build and install the mod's data (install.ps1 puts the savepaths back)
+Environment for every command here (docs/agents/game-slots.md): MODKIT_PROJECT=pd2-resurrected, MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml, MODKIT_RUN=<lock owner>; the toolkit refuses to run without a config.
+
+Setup (Slot2-5 per the toolkit's slot registry, game closed): build and install the mod's data (install.ps1 puts the savepaths back)
   powershell -File tools/install.ps1 -Game C:/D2RTestSlots/SlotN -Data .
   a Sorceress with Thunder Storm (class skill slot 21) and mana to spare, e.g.
   modkit save-set <save> level=30 maxmana=800 mana=800 --skill 21=20 --project .
@@ -15,7 +17,7 @@ import os
 import time
 
 from game_checks import check
-import missile_probe
+import unit_probe
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BOLT, NOVA = "thunderstorm1", "thunderstormnova"
@@ -41,9 +43,9 @@ def thunder_storm_nova(ctx):
     nova = rows.index(NOVA)
 
     ctx.ensure_running()
-    game = missile_probe.Game(ctx.game.pids()[0])
-    ctx.game.click(0.5, 0.45, "right")
-    sizes = missile_probe.bursts(game, nova, 20)
+    with unit_probe.UnitProbe.for_slot(ctx.cfg, ctx.slot, owner=ctx.game.owner) as game:
+        ctx.game.click(0.5, 0.45, "right")
+        sizes = unit_probe.bursts(game, nova, 20)
     if not sizes:
         ctx.skip("no Thunder Storm strike in 20 s (stand next to monsters, Thunder Storm on the right button)")
     assert all(n == expected for n in sizes), f"nova rings {sizes}, PD2 makes {expected} per strike"

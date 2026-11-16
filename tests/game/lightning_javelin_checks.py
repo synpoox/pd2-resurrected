@@ -2,9 +2,11 @@
 
 No plugin: PD2's 188/117 only create srvmissilea / cltmissilea, which D2R's do dispatcher creates from srvmissile /
 cltmissile after any do function, so the merge moves the missile there (docs/research/lightning-javelins.md). The check
-counts the client missiles one cast makes, read from game memory (missile_probe.py).
+counts the client missiles one cast makes, read from game memory (testing/unit_probe.py).
 
-Setup (Slot4-8, game closed): install the fixture, the merged rows' function and missile columns on D2R's own tables,
+Environment for every command here (docs/agents/game-slots.md): MODKIT_PROJECT=pd2-resurrected, MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml, MODKIT_RUN=<lock owner>; the toolkit refuses to run without a config.
+
+Setup (Slot2-5 per the toolkit's slot registry, game closed): install the fixture, the merged rows' function and missile columns on D2R's own tables,
 cast in town allowed (the full merged data does not pass modkit validation yet); install.ps1 puts the savepaths back
   powershell -File tools/install.ps1 -Game C:/D2RTestSlots/SlotN -Data tests/game/fixtures/lightning-javelin
   an Amazon holding javelins with Lightning Bolt (class skill slot 14) and Lightning Fury (slot 29), e.g.
@@ -17,7 +19,7 @@ import csv
 import os
 
 from game_checks import check
-import missile_probe
+import unit_probe
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FIXTURE = os.path.join("tests", "game", "fixtures", "lightning-javelin", "out")
@@ -40,9 +42,9 @@ def _one_per_cast(ctx, skill: str) -> str:
     missile = pd2_missile(skill)
     row = [r[0] for r in _table("missiles", FIXTURE)[1:]].index(missile)
     ctx.ensure_running()
-    game = missile_probe.Game(ctx.game.pids()[0])
-    ctx.game.click(0.6, 0.45, "right")
-    sizes = missile_probe.bursts(game, row, 3)
+    with unit_probe.UnitProbe.for_slot(ctx.cfg, ctx.slot, owner=ctx.game.owner) as game:
+        ctx.game.click(0.6, 0.45, "right")
+        sizes = unit_probe.bursts(game, row, 3)
     if not sizes:
         ctx.skip(f"no {missile} in 3 s (javelins in hand, {skill} on the right button)")
     assert sizes == [1], f"one cast made {sizes} {missile}, PD2 makes 1"

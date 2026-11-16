@@ -2,7 +2,9 @@
 
 Each check reads the plugin log, <slot>/d2rloader/logs/core-rules.log; expected values come from PD2's data.
 
-Setup (Slot4-8, game closed):
+Environment for every command here (docs/agents/game-slots.md): MODKIT_PROJECT=pd2-resurrected, MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml, MODKIT_RUN=<lock owner>; the toolkit refuses to run without a config.
+
+Setup (Slot2-5 per the toolkit's slot registry, game closed):
   powershell -File tools/install.ps1 -Game C:/D2RTestSlots/Slot4 -Data tests/game/fixtures/split-throw
   (or -Data tests/game/fixtures/leap and a Barbarian with Leap and Leap Attack, for the leap checks: cast both in
   town, then Leap Attack into monsters out of town)
@@ -173,7 +175,8 @@ import time
 
 from game_checks import check
 import game_ctl
-import missile_probe
+import unit_probe
+from check_helpers import plugin_log
 
 PLUGIN = "core-rules"
 SKILL_SOURCE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
@@ -217,13 +220,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 
 def _log(ctx) -> str:
-    path = os.path.join(ctx.cfg.slot_dir(ctx.slot), "d2rloader", "logs", f"{PLUGIN}.log")
-    if not os.path.isfile(path):
-        ctx.skip(f"no plugin log yet: {path}")
-    with open(path, encoding="utf-8", errors="replace") as f:
-        text = f.read()
-    starts = [m.start() for m in re.finditer(rf"{PLUGIN}: \S+ loaded \(", text)]
-    return text[starts[-1]:] if starts else ""
+    return plugin_log(ctx, PLUGIN, scope="game", skip_if_missing=True)
 
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
@@ -399,8 +396,8 @@ def valkyrie_power_strike(ctx):
     powerstrikenova1valk client missiles show up."""
     row = _rows("missiles").index("powerstrikenova1valk")
     ctx.ensure_running()
-    game = missile_probe.Game(ctx.game.pids()[0])
-    sizes = missile_probe.bursts(game, row, 30)
+    with unit_probe.UnitProbe.for_slot(ctx.cfg, ctx.slot, owner=ctx.game.owner) as game:
+        sizes = unit_probe.bursts(game, row, 30)
     if not sizes:
         ctx.skip("no Valkyrie strike in 30 s (summon her next to monsters, then run again)")
     return f"{len(sizes)} Valkyrie strike(s) drawn, {sizes[0]} missile(s) in the first"
@@ -657,14 +654,14 @@ def golem_count(ctx):
     golems = {rows.index(n) for n in ("claygolem", "bloodgolem", "firegolem")}
     limit = 1 + GOLEM_MASTERY_LEVEL // 5
     ctx.ensure_running()
-    game = missile_probe.Game(ctx.game.pids()[0])
-    seen, most = set(), 0
-    end = time.monotonic() + 30
-    while time.monotonic() < end:
-        alive = {g for g, row in game.units(missile_probe.MONSTER).items() if row in golems}
-        seen |= alive
-        most = max(most, len(alive))
-        time.sleep(0.05)
+    with unit_probe.UnitProbe.for_slot(ctx.cfg, ctx.slot, owner=ctx.game.owner) as game:
+        seen, most = set(), 0
+        end = time.monotonic() + 30
+        while time.monotonic() < end:
+            alive = {g for g, row in game.units(unit_probe.MONSTER).items() if row in golems}
+            seen |= alive
+            most = max(most, len(alive))
+            time.sleep(0.05)
     if len(seen) <= limit:
         ctx.skip(f"{len(seen)} golems summoned in 30 s, need {limit + 1} (summon Clay Golem while this runs)")
     assert most == limit, f"{most} golems at once after {len(seen)} summons, PD2 keeps {limit}"
