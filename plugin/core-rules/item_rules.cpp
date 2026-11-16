@@ -211,11 +211,24 @@ auto MissileStrike(Unit* unit, Unit* weapon) noexcept -> uint64_t {
 using MissileRollFn = uint64_t (*)(Unit*, Unit*) noexcept;
 MissileRollFn g_missileRollOriginal = nullptr;  // not called: PD2's roll replaces D2R's
 
-// WeaponCritBlock's new bytes: mov rcx,rsi / mov rdx,rdi / mov r8d,r14d / mov rax,WeaponStrike / call rax /
-// jmp WeaponCritBlockEnd / nop nop. The block's own volatile registers are set again after 0x44c3d9.
-auto WeaponCritPatch(uint8_t (&out)[28]) noexcept -> void {
-	using namespace d2r::rva;
-	static_assert(sizeof(WeaponCritBlockBytes) == 28);
+// WeaponDamage's roll block, found by signature (93847: 0x44c2b4 / 0x44c320 / 0x44c3d9). Cast Triggers byte-checks
+// 0x44c2a4..0x44c2b8 (its measurement site), so the head is left stock but for the two bytes at +5: a short jump (EB 65)
+// to the stub, which sits over the a5 != 0 path's first 28 bytes (the block's `jne` lands there). Both paths now run
+// WeaponStrike (#385).
+sigscan::Entry CritHead {"WeaponCritHead", "crit", sigscan::Kind::Code, 0, 0,
+                         "45 85 f6 75 67 48 8b ce e8 ?? ?? ?? ?? 48 85 c0 74 5a 45 8d 4e 02 45 33 c0 48 8b d0"};
+sigscan::Entry CritStub {"WeaponCritStub", "crit", sigscan::Kind::Code, 0, 0,
+                         "45 33 c0 ba 51 01 00 00 48 8b ce e8 ?? ?? ?? ?? 8b d8 85 c0 7e 3e 48 8b ce e8"};
+sigscan::Entry CritEnd {"WeaponCritEnd", "crit", sigscan::Kind::Code, 0, 0, "8b 6f 20 45 33 c0 48 8b ce 41 8d 50 31"};
+sigscan::Entry* const CritOwn[] = {&CritHead, &CritStub, &CritEnd};
+constexpr uint8_t CritHeadJoin[] = {0x48, 0x8b};  // mov rcx,rsi's first two bytes, at CritHead + 5
+constexpr int CritHeadJoinAt = 5;
+constexpr uint8_t CritStubStock[28] = {0x45, 0x33, 0xc0, 0xba, 0x51, 0x01, 0x00, 0x00, 0x48, 0x8b, 0xce, 0xe8, 0xf0, 0x8c,
+                                       0xea, 0xff, 0x8b, 0xd8, 0x85, 0xc0, 0x7e, 0x3e, 0x48, 0x8b, 0xce, 0xe8, 0xa2, 0xde};
+
+// The stub: mov rcx,rsi / mov rdx,rdi / mov r8d,r14d / mov rax,WeaponStrike / call rax / jmp CritEnd / nop nop.
+// The block's own volatile registers are set again after CritEnd.
+auto WeaponCritPatch(uint8_t (&out)[28], uint64_t stub, uint64_t end) noexcept -> void {
 	const uint8_t head[] = {0x48, 0x8b, 0xce, 0x48, 0x8b, 0xd7, 0x45, 0x8b, 0xc6, 0x48, 0xb8};
 	std::memcpy(out, head, sizeof(head));
 	const uint64_t target = reinterpret_cast<uint64_t>(&WeaponStrike);
@@ -223,10 +236,30 @@ auto WeaponCritPatch(uint8_t (&out)[28]) noexcept -> void {
 	out[19] = 0xff;
 	out[20] = 0xd0;
 	out[21] = 0xe9;
-	const int32_t rel = static_cast<int32_t>(WeaponCritBlockEnd - (WeaponCritBlock + 26));
+	const int32_t rel = static_cast<int32_t>(end - (stub + 26));
 	std::memcpy(out + 22, &rel, 4);
 	out[26] = 0x90;
 	out[27] = 0x90;
+}
+
+// The two writes: the jump at CritHead + 5, then the stub. False (nothing written) when a signature is off, the three
+// are not the layout the jump encodes (stub = head + 0x6c), or either site's bytes differ.
+auto PatchWeaponCrit(const D2RL::PluginContext* context) noexcept -> bool {
+	sigscan::Resolve(CritOwn, std::size(CritOwn), context->exeBase, nullptr, 0);
+	for (const sigscan::Entry* e : CritOwn) {
+		if (e->state != sigscan::State::Ok) {
+			return false;
+		}
+	}
+	constexpr uint8_t Jump[] = {0xeb, 0x65};  // 0x44c2b9 + 2 + 0x65 = 0x44c320
+	if (CritStub.rva != CritHead.rva + 0x6c || CritEnd.rva != CritHead.rva + 0x125) {
+		return false;
+	}
+	uint8_t stub[28];
+	WeaponCritPatch(stub, CritStub.rva, CritEnd.rva);
+	// the stub first: alone it is harmless (the a5 != 0 path), and the jump is the only way into it for a5 == 0
+	return context->PatchBytes(CritStub.rva, CritStubStock, sizeof(CritStubStock), stub, sizeof(stub)) &&
+	       context->PatchBytes(CritHead.rva + CritHeadJoinAt, CritHeadJoin, sizeof(CritHeadJoin), Jump, sizeof(Jump));
 }
 
 // --- Op bases (IR3): PD2's 0x102fa640 computes two stats no one sets, for ops 4 / 5 (item_dmgpercent_pereth,
@@ -1534,10 +1567,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	                      context->PatchWriteU64(PropertyFuncTable + static_cast<uint64_t>(PropertySlot) * 8, Empty,
 	                                             sizeof(Empty),
 	                                             reinterpret_cast<uint64_t>(static_cast<PropertyFn>(PropSorcSkillRandCtc)));
-	uint8_t critPatch[28];
-	WeaponCritPatch(critPatch);
-	const bool weaponStrike = context->PatchBytes(WeaponCritBlock, WeaponCritBlockBytes, sizeof(WeaponCritBlockBytes),
-	                                              critPatch, sizeof(critPatch));
+	const bool weaponStrike = PatchWeaponCrit(context);
 	const bool missileStrike = context->InstallInlineHook(MissileCritRoll, MissileCritRollEntry,
 	                                                      sizeof(MissileCritRollEntry), MissileStrike, &g_missileRollOriginal);
 	// D2RCore's event dispatcher is in the slot; the wrapper calls it
