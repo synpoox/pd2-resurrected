@@ -13,7 +13,7 @@ import json
 import struct
 from pathlib import Path
 
-from pd2_skilltrees import Image, read_sprite
+from pd2_skilltrees import HEAD, Image, read_sprite
 
 
 def widen(img: Image, grid: list[int], cell: int, size: list[int], border: int) -> None:
@@ -28,12 +28,30 @@ def widen(img: Image, grid: list[int], cell: int, size: list[int], border: int) 
         img.paste(part, x, top)
 
 
-def dc6_panel(data: bytes) -> tuple[list[tuple], Image]:
-    """The frame headers (DC6 frames 0-3) and the 2 x 2 tiled panel as palette indices: pixel byte 0 is the index,
-    byte 3 is 255 where the pixel is drawn."""
+def lengthen(img: Image, grid_y: int, cell: int, rows: int) -> Image:
+    """Insert `rows` cell-high strips (full width) after the grid's first row, so the grid's lines keep their rhythm and
+    everything below the grid moves down by rows * cell (the inventory, #358: D2R's 10 x 4 grid to PD2's 10 x 8)."""
+    cut = grid_y + cell
+    out = Image(img.w, img.h + rows * cell)
+    out.paste(img.crop(0, 0, img.w, cut), 0, 0)
+    for k in range(rows):
+        out.paste(img.crop(0, cut, img.w, cell), 0, cut + k * cell)
+    out.paste(img.crop(0, cut, img.w, img.h - cut), 0, cut + rows * cell)
+    return out
+
+
+def sprite_bytes(head: bytes, img: Image) -> bytes:
+    """A sprite file for img under head, whose height and pixel byte count follow the image."""
+    magic, ver, fw, w, _h, z, frames, a, b, _n, c = HEAD.unpack(head)
+    return HEAD.pack(magic, ver, fw, w, img.h, z, frames, a, b, len(img.px), c) + img.px
+
+
+def dc6_panel(data: bytes, first: int = 0) -> tuple[list[tuple], Image]:
+    """The frame headers (DC6 frames first..first+3) and the 2 x 2 tiled panel as palette indices: pixel byte 0 is the
+    index, byte 3 is 255 where the pixel is drawn."""
     dirs, fpd = struct.unpack_from("<2I", data, 16)
     frames = []
-    for p in struct.unpack_from(f"<{dirs * fpd}I", data, 24)[:4]:
+    for p in struct.unpack_from(f"<{dirs * fpd}I", data, 24)[first:first + 4]:
         _flip, w, h, ox, oy, _u, _n, length = struct.unpack_from("<8i", data, p)
         frames.append((w, h, ox, oy, data[p + 32:p + 32 + length]))
     img = Image(frames[0][0] + frames[1][0], frames[0][1] + frames[2][1])
@@ -81,16 +99,22 @@ def dc6_frame(img: Image, x0: int, y0: int, w: int, h: int) -> bytes:
 
 
 def redraw_dc6(data: bytes, g: dict) -> bytes:
-    frames, img = dc6_panel(data)
-    widen(img, g["grid"], g["cell"], g["size"], g["border"])
+    """Redraw the panel in frames first..first+3 (g["first"], default 0); the other frames stay as they are."""
+    first = g.get("first", 0)
+    frames, img = dc6_panel(data, first)
+    if "add_rows" in g:  # the bottom frames grow by the inserted strips
+        img = lengthen(img, g["grid"][1], g["cell"], g["add_rows"])
+        frames = frames[:2] + [(w, h + g["add_rows"] * g["cell"], ox, oy, b) for w, h, ox, oy, b in frames[2:]]
+    else:
+        widen(img, g["grid"], g["cell"], g["size"], g["border"])
     dirs, fpd = struct.unpack_from("<2I", data, 16)
     ptrs = list(struct.unpack_from(f"<{dirs * fpd}I", data, 24))
     ends = ptrs[1:] + [len(data)]
-    blobs = []
+    blobs = [data[p:e] for p, e in zip(ptrs[:first], ends[:first])]
     for k, (w, h, ox, oy, _block) in enumerate(frames):
         block = dc6_frame(img, (k % 2) * frames[0][0], (k // 2) * frames[0][1], w, h)
         blobs.append(struct.pack("<8i", 0, w, h, ox, oy, 0, 0, len(block)) + block + b"\xee\xee\xee")
-    blobs += [data[p:e] for p, e in zip(ptrs[4:], ends[4:])]  # frames past the panel (another resolution) unchanged
+    blobs += [data[p:e] for p, e in zip(ptrs[first + 4:], ends[first + 4:])]  # frames past the panel unchanged
     offset, out = 24 + 4 * len(ptrs), []
     for blob in blobs:
         out.append(offset)
@@ -110,6 +134,9 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             dest.write_bytes(redraw_dc6(src.read_bytes(), g))
         else:
             head, img, _ = read_sprite(src)
+            if "add_rows" in g:
+                dest.write_bytes(sprite_bytes(head, lengthen(img, g["grid"][1], g["cell"], g["add_rows"])))
+                continue
             widen(img, g["grid"], g["cell"], g["size"], g["border"])
             dest.write_bytes(head + img.px)
     print(f"  panel-grids: {len(json.loads(rule.read_text('utf-8')))} panels widened")

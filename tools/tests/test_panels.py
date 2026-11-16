@@ -41,6 +41,13 @@ class PanelsTests(unittest.TestCase):
         _, wide = P.dc6_panel(out)
         self.assertEqual([wide.px[(1 * 5 + x) * 4] for x in range(5)], [0, 1, 2, 2, 4])
 
+    def test_lengthen_repeats_one_cell_high_strip_after_the_first_grid_row(self):
+        img = Image(2, 6)
+        for y in range(6):
+            img.px[y * 2 * 4] = y
+        out = P.lengthen(img, grid_y=1, cell=2, rows=2)
+        self.assertEqual([out.px[y * 2 * 4] for y in range(out.h)], [0, 1, 2, 3, 4, 3, 4, 3, 4, 5])
+
 
 if __name__ == "__main__":
     unittest.main()
