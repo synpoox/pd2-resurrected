@@ -14,6 +14,10 @@ extracted sheet whose class is not listed, fails the merge.
 A line `hireable <class> <IconCel>` appends that frame of the class's sheet (as this rule built it, else D2R's) to D2R's
 merc skill sheet (spells/hireables/hrskillicon, skilldesc HireableIconCel), in line order after D2R's frames: PD2's
 Ascendant casts class skills that sheet has no frame for (#271). merge/tables.json points their HireableIconCel there.
+
+A line `pressed <IconCel>` appends that frame of the shared sheet to it twice more, as a normal and a darker pressed
+frame (PD2's shared sheet pairs none past cel 24, so D2R drew the next skill's icon on a pressed button, #689);
+merge/tables.json points the skill's IconCel at the first (Force Move, "Move Only").
 """
 from __future__ import annotations
 
@@ -37,7 +41,8 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     art_dir = rule.parent / "art"
     lines = read_lines(rule)
     hireable = [line.split() for line in lines if line.startswith("hireable ")]
-    classes = [line for line in lines if not line.startswith("hireable ")]
+    pressed = [int(line.split()[1]) for line in lines if line.startswith("pressed ")]
+    classes = [line for line in lines if not line.startswith(("hireable ", "pressed "))]
     bad = [" ".join(h) for h in hireable if len(h) != 3 or h[1] not in hd.CLASSES or not h[2].isdigit()]
     if bad:
         raise SkillIconError(f"not `hireable <class> <IconCel>`: {'; '.join(bad)}")
@@ -71,6 +76,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         while n > n_hd and n <= len(d2r) and pd2[n - 1] == d2r[n - 1]:
             n -= 1
         n = max(n, n_hd)  # D2R's HD frames past PD2's sheet stay
+        extra = pressed if c == "shared" else []
         keep = [k >= len(pd2) or k < n_hd and k < len(d2r) and pd2[k] == d2r[k] for k in range(n)]
         styles = {}
 
@@ -94,9 +100,17 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             frames = [images.crop(strip, k * stride, 0, stride, strip[1]) if keep[k] else
                       images.scale(art[f"spells/{classic.stem}/{k}"], round(pd2[k][0] * per_px),
                                    round(pd2[k][1] * per_px)) for k in range(n)]
-            images.write_sprite(out_data / sheet, images.hstack(frames, stride, strip[1]), fw, n, lowend=False)
+            for k in extra:  # a normal frame and a darker pressed one, at n + 2i and n + 2i + 1
+                w, h, px = frames[k]
+                frames += [frames[k], (w, h, bytes(v if i % 4 == 3 else v * 3 // 4 for i, v in enumerate(px)))]
+            if (n + len(extra) * 2) * stride > hd.MAX_STRIP:
+                raise SkillIconError(f"{c}: {n + len(extra) * 2} frames is past D2R's {hd.MAX_STRIP} px strip")
+            images.write_sprite(out_data / sheet, images.hstack(frames, stride, strip[1]), fw, len(frames), lowend=False)
         (out_data / classic).parent.mkdir(parents=True, exist_ok=True)
-        (out_data / classic).write_bytes((pd2_data / classic).read_bytes())
+        if extra:  # the classic sheet needs the frames too (legacy mode)
+            dc6.write(out_data / classic, (pd2 + [pd2[extra[0]]] * n)[:n] + [f for k in extra for f in (pd2[k], pd2[k])])
+        else:
+            (out_data / classic).write_bytes((pd2_data / classic).read_bytes())
         print(f"  skill-icons: {c} {n} HD frames ({keep.count(False)} from PD2)")
     if hireable:
         hire = Path("hd") / "global" / "ui" / "spells" / "hireables" / "hrskillicon.sprite"

@@ -18,3 +18,6 @@ hireable pal 46
 hireable pal 10
 hireable pal 62
 hireable pal 50
+# Force Move (Move Only) has its own normal + pressed pair at the end of the shared sheet, cels 40 and 41 (IconCel in
+# tables.json): PD2's cel 24 has no pressed frame, so D2R drew cel 25 (the Amplify Damage proc icon) on the pressed button (#689)
+pressed 24
