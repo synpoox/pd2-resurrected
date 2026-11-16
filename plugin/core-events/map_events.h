@@ -17,6 +17,8 @@ auto AltarGuardianDied(d2r::Game* game, d2r::Unit* guardian) noexcept -> void;
 auto FindEventSpot(void*& room, int32_t xy[2], int32_t size, uint16_t mask, int32_t reach, bool shift) noexcept -> bool;
 // Installs the room activation hook that spawns the events; `report` gets one entry. Returns 1 when installed.
 auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
+// Drops the room-populate subscription (plugin unload).
+auto UnsubscribeRoomPopulate() noexcept -> void;
 // Live counters for the status command.
 auto MapEventsCounters(char* out, size_t size) noexcept -> void;
 // Test aid (#998): the next map event rolled is `name` (wanderer, mendeln, treasure, gheed; off clears it). False for an unknown name.

@@ -74,8 +74,7 @@ Screenshots: `issue-assets/966/b-main-map.png`, `c-cand-upgrade-map.png`, `d-rol
 
 ## Seen, not caused here
 
-- `core-maps` (now `core-events`, #967) logged a hook failure at `0x50ACF0` during this rehearsal (the `0x494A60` one is fixed, #1032) when it loaded next to Cartographer. Current code no longer hooks `0x50ACF0`; Cartographer owns it (see `docs/deviations.md`) (the Cartographer log
-  says the two cannot be used together). The retained events still install (`mapevents 1/1`).
+- `core-maps` (now `core-events`, #967) logged a hook failure at `0x50ACF0` during this rehearsal when it loaded next to Cartographer. Fixed (#1032): core-events no longer hooks `0x50ACF0` beside Cartographer and uses its room-populate service.
 - Item Durability and Mass Identify fail to load, on main and the candidate alike.
 
 ## Deferred

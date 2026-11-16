@@ -30,11 +30,13 @@
 #include "map_open.h"
 #include "rathma.h"
 
+#include "cartographer_room_populate_v1.h"
 #include "event_link.h"
 #include "event_roll.h"
 
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/localization.h>
+#include <D2RLPlugin/plugin_communication.h>
 
 #include <intrin.h>
 
@@ -548,8 +550,54 @@ auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 	}
 }
 
+// Cartographer's room-populate service (d2r-tools docs/cartographer/room-populate-service.md) runs these for every room
+// instead of OnRoomPopulate, which cannot hook RoomPopulate beside Cartographer.
+D2RL::PluginCommunication::ServiceLease<carto::RoomPopulateServiceV1> g_populateLease;
+uint32_t g_subscription = 0;
+std::atomic<bool> g_subscribed {false};
+bool g_subscribeTried = false;
+
+auto __cdecl ServiceBefore(void* game, void* room, int32_t level, void*) noexcept -> uint32_t {
+	const Tiered* tier = Tier(level);
+	BeforeRoom(static_cast<Game*>(game), room, level, tier);
+	return RathmaRoom(static_cast<Game*>(game), room, level) ? carto::RoomPopulateSkipNative : 0;  // PD2 0x1036fef0
+}
+
+auto __cdecl ServiceAfter(void* game, void*, int32_t level, bool, void*) noexcept -> void {
+	if (const Tiered* tier = Tier(level); tier != nullptr) {
+		AfterRoom(static_cast<Game*>(game), level, tier);
+	}
+}
+
+// Once, at the first room activation (never at load: Cartographer may load after core-events). A miss keeps OnRoomActivate's own events.
+auto SubscribeRoomPopulate() noexcept -> void {
+	g_subscribeTried = true;  // the game thread only
+	const D2RL::PluginCommunicationService* communication = nullptr;
+	static const carto::RoomPopulateCallbacksV1 Callbacks = {sizeof(carto::RoomPopulateCallbacksV1), ServiceBefore, ServiceAfter};
+	if (g_context != nullptr && g_context->QueryService(&communication) == D2RL::ServiceQueryResult::Success &&
+	    D2RL::HasPluginCommunicationServiceField(communication, D2RL::PluginCommunicationServiceRequiredSize) &&
+	    D2RL::PluginCommunication::Acquire(g_context, communication, carto::RoomPopulateServiceProvider,
+	                                       carto::RoomPopulateServiceName, carto::RoomPopulateServiceVersion,
+	                                       sizeof(carto::RoomPopulateServiceV1), &g_populateLease) ==
+	        D2RL::PluginCommunication::Result::Success &&
+	    g_populateLease->subscribe("core-maps", &Callbacks, nullptr, &g_subscription)) {
+		g_subscribed = true;
+		plog::Info("map events: subscribed to %s (handle %u)", carto::RoomPopulateServiceName, g_subscription);
+		return;
+	}
+	plog::Warn("map events: %s not available: map events run from the room activation, the Rathma arena-room skip is off",
+	           carto::RoomPopulateServiceName);
+}
+
 // The first step of a room's first activation, hooked only while Cartographer holds RoomPopulate
 auto OnRoomActivate(Game* game, void* room) noexcept -> void {
+	if (!g_subscribeTried) {
+		SubscribeRoomPopulate();
+	}
+	if (g_subscribed) {
+		g_activateOriginal(game, room);
+		return;
+	}
 	const int32_t level = game != nullptr && room != nullptr
 		? d2r::Engine<int32_t (*)(void*) noexcept>(d2r::rva::RoomLevelId)(room)
 		: -1;
@@ -674,12 +722,16 @@ auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t r
 	    !D2RL::HasLocalizationServiceField(g_strings, D2RL::LocalizationServiceRequiredSize)) {
 		g_strings = nullptr;  // the events still spawn, without their chat line
 	}
-	const bool rooms = context->InstallInlineHook(RoomPopulate, RoomPopulateEntry, sizeof(RoomPopulateEntry), OnRoomPopulate,
-	                                        &g_populateOriginal);
+	// Cartographer's hook changes the entry bytes: skip the install then, as its failed attempt is what the loader logs.
+	const bool held = d2r::imageBase != 0 && std::memcmp(d2r::Engine<const void*>(RoomPopulate), RoomPopulateEntry,
+	                                                     sizeof(RoomPopulateEntry)) != 0;
+	const bool rooms = !held && context->InstallInlineHook(RoomPopulate, RoomPopulateEntry, sizeof(RoomPopulateEntry),
+	                                                       OnRoomPopulate, &g_populateOriginal);
 	bool activate = false;
 	if (!rooms) {
 		// Cartographer hooks RoomPopulate's entry too (its own events) and loads first; the loader's hook engine cannot
-		// hook one address twice. Hook the call both of RoomPopulate's callers make just before it (rva 0x48f190): native rooms get their events there. The Rathma arena rooms need RoomPopulate to skip its monsters and stay unserved while Cartographer holds it.
+		// hook one address twice. Hook the call both of RoomPopulate's callers make just before it (rva 0x48f190): its first run
+		// subscribes to Cartographer's room-populate service, which then gives every room (and the Rathma arena-room skip).
 		activate = context->InstallInlineHook(RoomActivate, RoomActivateEntry, sizeof(RoomActivateEntry), OnRoomActivate,
 		                                      &g_activateOriginal);
 	}
@@ -690,7 +742,7 @@ auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t r
 	                                           sizeof(Empty), reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperateAltar)));
 	std::snprintf(report, reportSize, "room activation%s, map use %s, altar operate %d%s%s",
 	              rooms      ? ""
-	              : activate ? " (through 0x48f190: Cartographer holds RoomPopulate)"
+	              : activate ? " (through 0x48f190 until Cartographer's room-populate service is found)"
 	                         : " FAILED (bytes differ)",
 	              uses ? "on" : "FAILED (native maps roll as normal)", ObjectOperateAltar, altars ? "" : " FAILED (slot not empty)",
 	              g_strings != nullptr ? "" : ", no notify (no localization service)");
@@ -705,6 +757,12 @@ auto MapEventsCounters(char* out, size_t size) noexcept -> void {
 	if (n > 0 && static_cast<size_t>(n) < size) {
 		std::snprintf(out + n, size - n, "), %u rooms activated, %u spawned, %u without a spot, %u notified", g_rooms.load(),
 		              g_spawned.load(), g_noSpot.load(), g_notified.load());
+	}
+}
+
+auto UnsubscribeRoomPopulate() noexcept -> void {
+	if (g_subscribed.exchange(false) && g_populateLease) {
+		g_populateLease->unsubscribe(g_subscription);
 	}
 }
 
