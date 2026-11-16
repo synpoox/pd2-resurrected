@@ -26,6 +26,7 @@ inline constexpr int SrvStVanillaCharge = 31, SrvDoVanillaCharge = 67;
 // 1 (0x3b75c0, D2R's Firestorm, srvdo 117 / cltdo 67): frames capped at 77, seed from the arg, a type 10 path; it is
 // PD2's maker callback 0x1036f220 but for the seed (DiabWall's 7 also skips the path 20% of the time)
 inline constexpr int MissileCallbackMaker = 1;
+inline constexpr int MissileCallbackDamagePercent = 4;  // 0x3b7c70: adds callbackArg to the missile's stat 25
 inline constexpr int AuraEventRevive = 32;
 
 inline constexpr uint16_t CollisionMissile = 0x806;  // PD2's fragment tests this mask

@@ -18,6 +18,7 @@
 #include "item_rules.h"
 #include "log.h"
 #include "missile_functions.h"
+#include "line_spread.h"
 
 #include <algorithm>
 #include <atomic>
@@ -42,40 +43,7 @@ using CltDoFn = int32_t (*)(Unit* unit, int32_t skillId, int32_t level) noexcept
 
 std::atomic<uint32_t> g_splitThrowCasts {0};
 std::atomic<uint32_t> g_splitThrowClientCasts {0};
-
-// Multiple Shot's missile layout (D2R srvdo 8 at 0x557840, cltdo 17 at 0x2af010): `count` missiles fly from the
-// caster to points one small step apart on a line through the target, at right angles to the aim. The middle
-// `triggered` ones (0 = all) trigger hits; the rest carry NotTriggering. The two vector steps are D2Common's
-// 0x3376d0 (scale a short vector up) and 0x337750 (turn it 90 degrees and shrink it to length^2 <= 3).
-template <typename Create>
-auto LineSpread(int32_t ux, int32_t uy, int32_t tx, int32_t ty, int32_t count, int32_t triggered, Create create)
-	noexcept -> int32_t {
-	int32_t dx = tx - ux, dy = ty - uy;
-	if (dx * dx + dy * dy < 4) {
-		dx *= 4;
-		dy *= 4;
-	}
-	if (dx * dx + dy * dy < 16) {
-		dx *= 2;
-		dy *= 2;
-	}
-	int32_t sx = dy, sy = -dx;
-	while (sx * sx + sy * sy > 3) {
-		sx /= 2;
-		sy /= 2;
-	}
-	tx -= sx * count / 2;
-	ty -= sy * count / 2;
-	if (triggered <= 0 || triggered > count) {
-		triggered = count;
-	}
-	const int32_t outer = (count - triggered) / 2;
-	int32_t created = 0;
-	for (int32_t i = 0; i < count; ++i, tx += sx, ty += sy) {
-		created += create(tx, ty, i < outer || i >= outer + triggered) ? 1 : 0;
-	}
-	return created;
-}
+std::atomic<uint32_t> g_multipleShotCasts {0};
 
 // Which of the skill's missile columns a/b/c (0-2) the caster's weapon picks; the server and client use the same one.
 auto MissileColumn(Unit* unit, int32_t skillId, const uint8_t* skill) noexcept -> int {
@@ -131,7 +99,8 @@ auto SrvDoSplitThrow(Game* game, Unit* unit, int32_t skillId, int32_t level) noe
 	params.skillLevel = level;
 	params.activation = d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc2, skillId, level);
 	const int32_t triggered = d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc3, skillId, level);
-	const int32_t created = LineSpread(ux, uy, tx, ty, count, triggered, [&](int32_t x, int32_t y, bool outer) {
+	const int32_t created = pd2::line_spread::Spread(ux, uy, tx, ty, count, triggered <= 0 ? count : triggered,
+	                                                 [&](int32_t x, int32_t y, bool outer) {
 		params.flags = d2r::rva::MissileFromOrigin | (outer ? d2r::rva::MissileNotTriggering : 0);
 		params.targetX = x;
 		params.targetY = y;
@@ -140,6 +109,63 @@ auto SrvDoSplitThrow(Game* game, Unit* unit, int32_t skillId, int32_t level) noe
 	if (plog::Sample(g_splitThrowCasts)) {
 		plog::Info("split throw: skill %d level %d: %d of %d missiles (row %d), cast %u", skillId, level, created, count,
 		           missile, g_splitThrowCasts.load());
+	}
+	return 1;
+}
+
+// Multiple Shot (PD2 srvdofunc 8, #1056): Split Throw's line with PD2's rules. calc1 missiles, calc2 activation frame,
+// calc3 triggering missiles (at most calc1; 0 = none, so Multiple Shot Proc's arrows trigger nothing). calc4 is the
+// missiles' damage % (stat 25). D2R's srvdo 8 reads calc5 for that, so calc4 rides on create callback 4 instead.
+auto SrvDoMultipleShot(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	d2r::api.setUnitSkillFlag(unit, 1);
+
+	int32_t tx = 0, ty = 0, ux = 0, uy = 0;
+	if (d2r::api.skillTargetXY(game, unit, &tx, &ty) == 0) {
+		return 1;  // no target point: the cast happened, nothing to create
+	}
+	if (!d2r::UnitXY(unit, &ux, &uy)) {
+		return 0;
+	}
+	const int column = MissileColumn(unit, skillId, skill);
+	const int32_t missile = At<int16_t>(skill, d2r::rva::SkSrvMissileA + column * 2);
+	if (!d2r::ValidMissile(dataFlag, missile)) {
+		plog::Warn("multiple shot: skill %d has no valid srvmissile column %d (row %d)", skillId, column, missile);
+		return 0;
+	}
+	const int32_t count = ClampCount(d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc1, skillId, level));
+	const int32_t triggered = std::clamp(d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc3, skillId, level), 0, count);
+	const int32_t bonus = d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc4, skillId, level);
+
+	d2r::MissileParams params;
+	std::memset(&params, 0, sizeof(params));
+	params.owner = unit;
+	params.origin = unit;
+	params.missile = missile;
+	params.skill = skillId;
+	params.skillLevel = level;
+	params.activation = d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc2, skillId, level);
+	if (bonus != 0) {
+		params.callback = d2r::rva::MissileCallbackDamagePercent;
+		params.callbackArg = bonus;
+	}
+	const int32_t created = pd2::line_spread::Spread(ux, uy, tx, ty, count, triggered,
+	                                                 [&](int32_t x, int32_t y, bool outer) {
+		params.flags = d2r::rva::MissileFromOrigin | (outer ? d2r::rva::MissileNotTriggering : 0);
+		params.targetX = x;
+		params.targetY = y;
+		return d2r::api.createMissile(game, &params) != nullptr;
+	});
+	if (plog::Sample(g_multipleShotCasts)) {
+		plog::Info("multiple shot: skill %d level %d: %d of %d missiles, %d triggering, damage +%d%%", skillId, level,
+		           created, count, triggered, bonus);
 	}
 	return 1;
 }
@@ -179,7 +205,7 @@ auto CltDoSplitThrow(Unit* unit, int32_t skillId, int32_t level) noexcept -> int
 	params.skill = skillId;
 	params.skillLevel = level;
 	params.activation = d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, d2r::rva::SkCalc2), skillId, level);
-	const int32_t created = LineSpread(ux, uy, tx, ty, count, 0, [&](int32_t x, int32_t y, bool) {
+	const int32_t created = pd2::line_spread::Spread(ux, uy, tx, ty, count, count, [&](int32_t x, int32_t y, bool) {
 		params.targetX = x;
 		params.targetY = y;
 		return d2r::api.clientCreateMissile(&params, 0) != nullptr;
@@ -3036,6 +3062,7 @@ auto SrvDoStaticField(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 	return 1;
 }
 
+constexpr int32_t MultipleShot = 12, MultipleShotProc = 675, TraitorBossStunSpear = 537;  // merged ids (#1056)
 constexpr int32_t TorajanBossNest = 631;  // merged id
 auto SrvDoTorajanNest(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t;  // W36, below
 // Lucion's kit (#487), below
@@ -3111,6 +3138,10 @@ auto SrvDoRouter(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	case FingermageBossDiabWall:
 	case KanemithFirestorm:
 		return SrvDoWall(game, unit, skillId, level);
+	case MultipleShot:
+	case MultipleShotProc:
+	case TraitorBossStunSpear:
+		return SrvDoMultipleShot(game, unit, skillId, level);
 	case TorajanBossNest:
 		return SrvDoTorajanNest(game, unit, skillId, level);
 	case LucionNova:

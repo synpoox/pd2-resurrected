@@ -3,6 +3,9 @@
  "ops": [
   {"op": "set", "table": "skills", "bank": "excel", "key": "Bash", "set": {"srvdofunc": "190"}},
   {"op": "set", "table": "skills", "bank": "excel", "key": "UberTalicBash", "set": {"srvdofunc": "190"}},
+  {"op": "set", "table": "skills", "bank": "excel", "key": "Multiple Shot", "set": {"srvdofunc": "190"}},
+  {"op": "set", "table": "skills", "bank": "excel", "key": "Multiple Shot Proc", "set": {"srvdofunc": "190"}},
+  {"op": "set", "table": "skills", "bank": "excel", "key": "TraitorBossStunSpear", "set": {"srvdofunc": "190"}},
   {"op": "set", "table": "skills", "bank": "excel", "key": "Find Potion",
    "set": {"srvstfunc": "82", "cltstfunc": "62", "srvdofunc": "69", "cltdofunc": "38"}},
   {"op": "set", "table": "skills", "bank": "excel", "key": "Find Item",

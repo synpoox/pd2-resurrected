@@ -143,3 +143,8 @@ add_executable(event_roll_check EXCLUDE_FROM_ALL tests/event_roll_check.cpp)
 target_include_directories(event_roll_check PRIVATE common)
 target_compile_features(event_roll_check PRIVATE cxx_std_20)
 core_options(event_roll_check)
+# Multiple Shot's missile line (#1056), same pattern: plugin/common/line_spread.h has no engine types.
+add_executable(line_spread_check EXCLUDE_FROM_ALL tests/line_spread_check.cpp)
+target_include_directories(line_spread_check PRIVATE common)
+target_compile_features(line_spread_check PRIVATE cxx_std_20)
+core_options(line_spread_check)
