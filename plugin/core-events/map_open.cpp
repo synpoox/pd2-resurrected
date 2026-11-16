@@ -112,7 +112,7 @@ auto OnPresetSpawn(d2r::Game* game, void* room, const uint8_t* preset) noexcept 
 // PD2's monster spawn hook 0x1038af90 ran the uber tier scaling for every monster spawning in a PD2 level; the map stats it
 // also ran are cut (#964). No SDK service reports or changes a spawning monster, so this hooks D2R. Not MonsterSpawned
 // (0x494a60): Cartographer hooks it first and the loader cannot hook one address twice (#1032). Its only caller, the
-// spawn core 0x493cc0 (params), is free and returns the monster it made (null when it made none), so the scaling runs
+// spawn core 0x493cc0 (params), is free and returns the monster it made (null when it made none, 1 on the 0x49427c path), so the scaling runs
 // as the core returns: after the whole spawn, where PD2's hook ran it right after the class setup.
 constexpr uint64_t SpawnCore = 0x493cc0;  // mov [rsp+0x10],rbx / mov [rsp+0x18],rsi
 constexpr uint8_t SpawnCoreEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18};
@@ -122,7 +122,8 @@ SpawnCoreFn g_coreOriginal = nullptr;
 auto OnSpawnCore(void* params) noexcept -> d2r::Unit* {
 	d2r::Unit* monster = g_coreOriginal(params);
 	d2r::Game* game = params != nullptr ? *static_cast<d2r::Game**>(params) : nullptr;  // params +0: the game
-	if (game != nullptr && monster != nullptr && d2r::At<int32_t>(monster, d2r::rva::UnitType) == d2r::rva::UnitMonster &&
+	// The core returns 1, not a monster, when bit 0 of params+0x30 is set (0x49427c; spawns nothing, #1050): null and 1 are no unit.
+	if (game != nullptr && reinterpret_cast<uintptr_t>(monster) > 1 && d2r::At<int32_t>(monster, d2r::rva::UnitType) == d2r::rva::UnitMonster &&
 	    IsUberLevel(ai_common::LevelOf(monster))) {
 		ScaleUberMonster(game, monster);
 	}
