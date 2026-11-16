@@ -111,6 +111,8 @@ class FoldTests(unittest.TestCase):
         (root / "CHANGELOG.md").write_text(self.LOG, "utf-8")
         (root / "mod.json").write_text('{"name": "M", "version": "0.2.0"}', "utf-8")
         (root / "changelog.d" / "1-a.md").write_text("#### Items\n- X.\n", "utf-8")
+        (root / "cartographer.dll").write_bytes(b"c")
+        (root / "release.toml").write_text('[d2rloader]\nversion = "1"\n\n[catalog]\nx = 1\n', "utf-8")
 
         def go():
             with mock.patch.object(release, "ROOT", root), \
@@ -118,7 +120,8 @@ class FoldTests(unittest.TestCase):
                     mock.patch.object(release, "stage", return_value=root / "mod"), \
                     mock.patch.dict(sys.modules, {"modkit": mock.MagicMock(), "modkit.base": mock.MagicMock()}), \
                     mock.patch.object(release.subprocess, "run", side_effect=run):
-                return release.main(["--game", str(root), "--out", str(root / "dist"), "--toolkit", str(root)])
+                return release.main(["--game", str(root), "--out", str(root / "dist"), "--toolkit", str(root),
+                                     "--cartographer", str(root / "cartographer.dll")])
         return root, go
 
     def _assert_restored(self, root):
@@ -138,6 +141,17 @@ class FoldTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             go()
         self._assert_restored(root)
+
+
+class LoaderTests(unittest.TestCase):
+    def test_pins_the_loader_at_the_d2rloader_version_and_refuses_a_bad_catalog(self):
+        toml = '[d2rloader]\nversion = "1.3"\n\n[catalog]\nx = 1\n'
+        out = release.with_loader(toml, Path("D:/g/D2RLoader.exe"))
+        self.assertIn('loader_files = [{path = "D:/g/D2RLoader.exe", version = "1.3"}]', out)
+        for bad in (toml.replace("[catalog]", "[catalog]\nloader_files = []"), '[d2rloader]\nversion = "1"\n',
+                    "[catalog]\nx = 1\n"):
+            with self.assertRaises(release.ReleaseError):
+                release.with_loader(bad, Path("x"))
 
 
 class NotesTests(unittest.TestCase):
@@ -203,6 +217,20 @@ class StageTests(unittest.TestCase):
             self.assertIn("item_stat_ranges = true", toml)
             plugins = sorted(p.name for p in (mod / "d2rloader/plugins").iterdir())
             self.assertEqual(plugins, sorted([f"{n}.dll" for n in release.PLUGINS] + ["x.dll"]))
+
+    def test_ships_the_given_cartographer_and_fails_when_it_is_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self.project(Path(tmp) / "p")
+            dll = Path(tmp) / "cartographer.dll"
+            dll.write_bytes(b"cartographer")
+            mod = release.stage(root, Path(tmp) / "stage", lambda rel: b"", dll)
+            self.assertEqual((mod / "d2rloader/plugins/cartographer.dll").read_bytes(), b"cartographer")
+            self.assertEqual(release.cartographer_note(dll, "abc123"),
+                             f"Cartographer: d2r-tools abc123, sha256 {hashlib.sha256(b'cartographer').hexdigest()}")
+            self.assertTrue(release.cartographer_note(dll, None).startswith("Cartographer: sha256 "))
+            dll.unlink()
+            with self.assertRaises(release.ReleaseError):
+                release.stage(root, Path(tmp) / "stage", lambda rel: b"", dll)
 
     def test_refuses_a_missing_plugin(self):
         with tempfile.TemporaryDirectory() as tmp:

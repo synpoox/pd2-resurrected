@@ -20,6 +20,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import Callable
 
@@ -83,7 +84,30 @@ def notes_section(changelog: str, version: str) -> str:
     return m.group(1).strip()
 
 
-def stage(root: Path, out: Path, read: Callable[[str], bytes]) -> Path:
+def cartographer_note(dll: Path, commit: str | None) -> str:
+    """The line that records which Cartographer build a release ships (#966): the d2r-tools commit, if given, and the
+    dll's SHA-256. Releases ship the latest build, unpinned; this keeps them traceable."""
+    if not dll.is_file():
+        raise ReleaseError(f"cartographer.dll missing: build it from d2r-tools main and pass --cartographer or set CARTOGRAPHER_DLL")
+    where = f"d2r-tools {commit}, " if commit else ""
+    return f"Cartographer: {where}sha256 {hashlib.sha256(dll.read_bytes()).hexdigest()}"
+
+
+def with_loader(text: str, exe: Path) -> str:
+    """release.toml's text with catalog.loader_files pointing at `exe` (--game's official D2RLoader.exe, a machine path),
+    pinned at [d2rloader] version. Fails when [catalog] is missing or already sets loader_files (one source of truth)."""
+    conf = tomllib.loads(text)
+    if "catalog" not in conf or "[catalog]\n" not in text:
+        raise ReleaseError("release.toml has no [catalog] table")
+    if "loader_files" in conf["catalog"]:
+        raise ReleaseError("release.toml sets catalog.loader_files: release.py adds it from --game, remove it")
+    version = conf.get("d2rloader", {}).get("version")
+    if not version:
+        raise ReleaseError("release.toml has no [d2rloader] version to pin the loader at")
+    return text.replace("[catalog]\n", f'[catalog]\nloader_files = [{{path = "{exe.as_posix()}", version = "{version}"}}]\n', 1)
+
+
+def stage(root: Path, out: Path, read: Callable[[str], bytes], cartographer: Path | None = None) -> Path:
     """Lay out the installed mod folder in out/<name>/ (emptied first), as modkit install and companions install do."""
     mod = json.loads((root / "mod.json").read_text("utf-8"))
     name = mod["name"]
@@ -91,6 +115,9 @@ def stage(root: Path, out: Path, read: Callable[[str], bytes]) -> Path:
     for p in (root / "out" / "data", root / "generated" / "companions", *dlls):
         if not p.exists():
             raise ReleaseError(f"{p} missing: run the build in README.md first")
+    if cartographer:
+        cartographer_note(cartographer, None)  # fails when the file is missing
+        dlls.append(cartographer)
     dest = out / name
     if dest.exists():
         shutil.rmtree(dest)
@@ -133,6 +160,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--game", type=Path, required=True, help="D2R folder (the loot filter's vanilla tables)")
     ap.add_argument("--version", help="release version (default: mod.json's)")
     ap.add_argument("--out", type=Path, default=ROOT / "dist")
+    ap.add_argument("--cartographer", type=Path, default=os.environ.get("CARTOGRAPHER_DLL"),
+                    help="the cartographer.dll to ship, built from d2r-tools main (default: CARTOGRAPHER_DLL)")
+    ap.add_argument("--cartographer-commit", default=os.environ.get("CARTOGRAPHER_COMMIT"),
+                    help="the d2r-tools commit it was built from, recorded in the notes (default: CARTOGRAPHER_COMMIT)")
     ap.add_argument("--toolkit", type=Path, default=Path(os.environ.get("D2R_TOOLKIT", pd2_ids.toolkit(ROOT))))
     a = ap.parse_args(argv)
     mod_json = json.loads((ROOT / "mod.json").read_text("utf-8"))
@@ -143,7 +174,10 @@ def main(argv: list[str] | None = None) -> int:
         text, fragments = pending_fragments(ROOT, version)
         section = notes_section(text, version)  # checked before anything is written or deleted
         from modkit.base import Base  # the sibling d2rAI-toolkit on PYTHONPATH
-        mod = stage(ROOT, a.out / "mod", Base(a.game).bytes)
+        if not a.cartographer:
+            raise ReleaseError("no cartographer.dll: build it from d2r-tools main and pass --cartographer or set CARTOGRAPHER_DLL")
+        section += "\n\n" + cartographer_note(a.cartographer, a.cartographer_commit)
+        mod = stage(ROOT, a.out / "mod", Base(a.game).bytes, a.cartographer)
     except ReleaseError as e:
         print(f"release: {e}", file=sys.stderr)
         return 1
@@ -154,8 +188,13 @@ def main(argv: list[str] | None = None) -> int:
     done = False
     try:
         try:
+            # the catalog pins the official loader by hash: point loader_files at DIR's D2RLoader.exe (a machine path)
+            conf = a.out / "release.toml"
+            conf.parent.mkdir(parents=True, exist_ok=True)
+            conf.write_text(with_loader(
+                (ROOT / "release.toml").read_text("utf-8"), a.game / "D2RLoader.exe"), "utf-8")
             r = subprocess.run([sys.executable, str(a.toolkit / "release" / "package_release.py"), "--mod-dir", str(mod),
-                                "--version", version, "--config", str(ROOT / "release.toml"), "--out", str(a.out),
+                                "--version", version, "--config", str(conf), "--out", str(a.out),
                                 "--game-exe", str(a.game / "D2R.exe")])  # release.toml's [catalog] (schema 3) needs it
             code = r.returncode
             if not code:
