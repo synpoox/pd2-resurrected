@@ -111,6 +111,7 @@ class FoldTests(unittest.TestCase):
         (root / "CHANGELOG.md").write_text(self.LOG, "utf-8")
         (root / "mod.json").write_text('{"name": "M", "version": "0.2.0"}', "utf-8")
         (root / "changelog.d" / "1-a.md").write_text("#### Items\n- X.\n", "utf-8")
+        (root / "release.toml").write_text("[catalog]\nx = 1\n", "utf-8")
 
         def go():
             with mock.patch.object(release, "ROOT", root), \
