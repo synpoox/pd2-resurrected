@@ -1810,5 +1810,8 @@
  },
  "bossblocker_y_warp": {
   "asset_path": "doors"
+ },
+ "sacrifice_altar": {
+  "asset_path": "shrines_healthmana"
  }
 }
