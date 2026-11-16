@@ -1,0 +1,17 @@
+# PD2 map item types, cut by tools/pd2_cutmaps.py (#964). Native Cartographer maps are type cmap; the uber keys are type ubr: neither is cut.
+type	map
+type	t1m
+type	t2m
+type	t3m
+type	t4m
+type	t5m
+type	t1me
+type	t2me
+type	t3me
+type	t4me
+type	t5me
+type	upmp
+type	fort
+type	pvpm
+type	pvpd
+type	ubmp

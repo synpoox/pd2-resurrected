@@ -7,10 +7,7 @@
 
 #include <cstddef>
 
-// PD2's event roll for a map just opened to `level`: sets this game's event. Call before the map item is freed.
-auto RollMapEvent(d2r::Game* game, d2r::Unit* item, int32_t level) noexcept -> void;
-// This game's map event (PD2's game +0x1df4): 0 no map open, 9 a dungeon, 10 no event, 11-21 an event, 0x1e-0x24 a
-// unique map.
+// This game's map event (PD2's game +0x1df4): 0 no map open, 10 no event, 11-21 an event.
 auto MapEvent(d2r::Game* game) noexcept -> int32_t;
 // PD2 0x10378080: the Altar of the Catalyst's guardian died; the altar's next use gives the shards, and the clones in
 // the rooms around `guardian` die.

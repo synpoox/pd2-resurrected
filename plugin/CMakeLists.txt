@@ -71,7 +71,6 @@ add_library(core_maps SHARED
 	core-maps/plugin.cpp
 	core-maps/cube_ops.cpp
 	core-maps/map_open.cpp
-	core-maps/map_stats.cpp
 	core-maps/map_events.cpp
 	core-maps/entity_pool.cpp
 	core-maps/key_drops.cpp
@@ -80,14 +79,10 @@ add_library(core_maps SHARED
 	core-maps/lucion_chests.cpp
 	core-maps/rathma.cpp
 	core-maps/uber_tristram.cpp
-	core-maps/unique_maps.cpp
-	core-maps/zhar.cpp
-	core-maps/map_bosses.cpp
 	core-maps/lucion_ai.cpp
 	core-maps/level_fx.cpp
 	core-maps/rathma_ai.cpp
 	core-maps/guardian_ai.cpp
-	core-maps/map_boss_ai.cpp
 	core-maps/rathma_life.cpp
 	core-maps/dclone_ai.cpp
 	core-maps/ai_hooks.cpp
@@ -99,12 +94,10 @@ add_library(core_maps SHARED
 	core-maps/uber_scaling.cpp
 	core-maps/uber_drops.cpp
 	core-maps/corruption_roll.cpp
-	core-maps/map_deaths.cpp
 	core-maps/open_gate.cpp
 	core-maps/tc_roll.cpp
 	core-maps/uber_deaths.cpp
 	core-maps/uber_entry.cpp
-	core-maps/unique_map_drops.cpp
 	core-maps/plugin.rc
 )
 # Each lane registers its parts from its own folder (core-maps/lane-a .. lane-d, #943): new files there need no edit here.

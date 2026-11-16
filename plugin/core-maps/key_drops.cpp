@@ -1,8 +1,7 @@
 // PD2's key drop rule (ProjectDiablo.dll 0x103799d0; docs/research/pd2-uber-bosses-dll.md, section 7). On every
 // monster death PD2 rolls odds-only TCs: a TC's Unique x max(Set, 1) is a 1-in-N chance, Unique scaled down by the
 // player count, and a hit drops the TC's item by the monster. PD2's corrupted-zone rolls (the Talisman and the
-// Worldstone Shard) roll in an active Terror Zone instead (docs/deviations.md). In a map area it also rolls the unique
-// map drop (0x10381510; docs/research/ms4-area-map-stats.md).
+// Worldstone Shard) roll in an active Terror Zone instead (docs/deviations.md).
 //
 // The trigger is the SDK's monster-death listener, which runs on the server thread after D2R's own drop. It hands over
 // ids only, so the game, the monster, the Terror Zone test, the TC rows and the drop are engine calls. No SDK service
@@ -13,8 +12,6 @@
 #include "log.h"
 #include "death_steps.h"
 #include "tc_roll.h"
-#include "unique_maps.h"
-#include "unique_map_drops.h"
 
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle_events.h>
@@ -91,21 +88,18 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	}
 	g_deaths.fetch_add(1, std::memory_order_relaxed);
 	UberDeathEarly(game, monster);
-	MapDeathEarly(game, monster);
 	const uint32_t difficulty = event->difficulty < 3 ? event->difficulty : 2;
 	const int32_t players = d2r::Engine<int32_t (*)(Game*) noexcept>(PlayerCount)(game);
-	const int64_t mult = MapDeathMultiplier(monster);  // 1 for a map boss (0x103760a0's +0x48 sets)
 	auto* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(monster);
-	const DeathContext death {game, monster, event, players, mult, seed};
+	const DeathContext death {game, monster, event, players, seed};
 	UberDeathLate(death);
-	MapDeathLate(death);
 	for (int i = 0; i < RollCount; ++i) {
 		const KeyRoll& r = Rolls[i];
 		if (!Applies(r.where, game, monstats, event->levelId)) {
 			continue;
 		}
 		const int64_t odds = TcOdds(dataFlag, r.tc[difficulty], players);
-		if (odds <= 0 || odds > 0xffffffffLL || d2r::RandomBelow(seed, static_cast<uint32_t>(odds)) >= mult) {
+		if (odds <= 0 || odds > 0xffffffffLL || d2r::RandomBelow(seed, static_cast<uint32_t>(odds)) != 0) {
 			continue;
 		}
 		const int32_t row = d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(dataFlag, r.code);
@@ -118,8 +112,8 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 		d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(DropItemAt)(
 			game, monster, row, QualityNormal, 0, 0);
 		const uint32_t hits = g_hits[i].fetch_add(1, std::memory_order_relaxed) + 1;
-		plog::Info("key drops: %.4s from monster %d in level %d, TC \"%s\" 1 in %lld x%lld, %d players (%u so far)",
-		           reinterpret_cast<const char*>(&r.code), At<int32_t>(monster, UnitClassId), event->levelId, r.tc[difficulty], odds, mult, players,
+		plog::Info("key drops: %.4s from monster %d in level %d, TC \"%s\" 1 in %lld, %d players (%u so far)",
+		           reinterpret_cast<const char*>(&r.code), At<int32_t>(monster, UnitClassId), event->levelId, r.tc[difficulty], odds, players,
 		           hits);
 	}
 }
@@ -144,14 +138,12 @@ auto InstallKeyDrops(const D2RL::PluginContext* context, char* report, size_t re
 		std::snprintf(report, reportSize, "off: monster-death listener refused");
 		return 0;
 	}
-	std::snprintf(report, reportSize, "%d rolls and the uber boss drops on every monster death%s", RollCount,
-	              InstallUniqueMaps(context) ? "" : " (no random uniques: a table service is missing)");
+	std::snprintf(report, reportSize, "%d rolls and the uber boss drops on every monster death", RollCount);
 	return 1;
 }
 
 auto KeyDropsCounters(char* out, size_t size) noexcept -> void {
-	int n = std::snprintf(out, size, "key drops: %u deaths, unique maps %u of %u rolls", g_deaths.load(),
-	                      UniqueMapsDropped(), UniqueMapRolls());
+	int n = std::snprintf(out, size, "key drops: %u deaths", g_deaths.load());
 	for (int i = 0; i < RollCount && n > 0 && static_cast<size_t>(n) < size; ++i) {
 		n += std::snprintf(out + n, size - n, ", %.4s %u", reinterpret_cast<const char*>(&Rolls[i].code),
 		                   g_hits[i].load());

@@ -1,4 +1,4 @@
-// General roll helpers split out of map_stats.cpp (#943), unchanged: the CRT roll and PD2's corruption / Desecration
+// General roll helpers (#943): the CRT roll and PD2's corruption / Desecration
 // roll over cubemain's corruption rows. Retained by core-rules' lane (corruption, Demonic Cube, Desecration); the
 // map-drop and brick callers only borrow them.
 #include "corruption_roll.h"

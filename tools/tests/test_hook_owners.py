@@ -3,7 +3,7 @@
 Cartographer (d2r-tools, not modified) installs inline hooks on the cube executor and on both item spell dispatchers.
 Two plugins cannot own one entry (d2rAI-toolkit knowledge/engine-re.md), so PD2's plugins keep off those entries:
 core-rules owns the cube executor and Cartographer's optional stamping part is turned off by a signatures.txt row;
-Cartographer owns the item spell dispatchers and core-maps leaves them when it sits beside; the Almanac writes use slot 14 of the item spell
+Cartographer owns the item spell dispatchers and core-maps hooks neither (#964); the Almanac writes use slot 14 of the item spell
 handler table (no hook, no listener). CARTOGRAPHER_SRC (a d2r-tools plugins/cartographer/src checkout) adds a check against Cartographer's own
 signatures; without it that test is skipped.
 """
@@ -56,19 +56,13 @@ class HookOwners(unittest.TestCase):
         self.assertEqual(installs()["CubeRecipeSearch"], ["core-maps/cube_ops.cpp"])
         self.assertIn("Desecrate(game, player)", (PLUGIN / "core-maps" / "cube_ops.cpp").read_text(encoding="utf-8"))
 
-    def test_item_spell_hooks_yield_to_cartographer(self):
+    def test_core_maps_leaves_the_item_spell_dispatchers_to_cartographer(self):
+        # PD2's map item spell is cut (#964): no PD2 plugin hooks either dispatcher, so Cartographer owns both
         spells = installs()
-        self.assertEqual(spells["ItemSpellUse"], ["core-maps/map_open.cpp"])
-        self.assertEqual(spells["ItemSpellCheck"], ["core-maps/map_open.cpp"])
-        text = (PLUGIN / "core-maps" / "map_open.cpp").read_text(encoding="utf-8")
-        self.assertIn("!g_yielded && context->InstallInlineHook(ItemSpellUse", text)
-        self.assertIn("cartographer.dll", text)
-
-    def test_yield_test_splits_the_path_on_a_backslash(self):
-        # L"\/" is not an escape: MSVC reads it as "/" and a Windows plugin path never matched (the yield then
-        # depended on load order)
-        text = (PLUGIN / "core-maps" / "map_open.cpp").read_text(encoding="utf-8")
-        self.assertIn('find_last_of(L"\\\\/")', text)
+        self.assertNotIn("ItemSpellUse", spells)
+        self.assertNotIn("ItemSpellCheck", spells)
+        for path, text in sources().items():
+            self.assertNotIn("cartographer.dll", text, path.name)
 
     def test_almanac_is_a_use_slot_write_not_a_hook_or_a_listener(self):
         # A right-click raises no ItemInteraction event (Slot4, #975) and Cartographer owns both dispatchers, so the

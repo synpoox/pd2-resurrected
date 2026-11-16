@@ -1,4 +1,5 @@
-// PD2's map events (ProjectDiablo.dll; docs/research/pd2-map-system-dll.md, section 4). Opening a tiered map rolls
+// PD2's map events (ProjectDiablo.dll; docs/research/pd2-map-system-dll.md, section 4), kept for the native Cartographer
+// maps (PD2's own tiered and unique maps are cut, #964). The first room of a native map rolls
 // one event for the game (0x10383060): rare and better 34%, magic 17%, normal 11%, always with `map_force_event`
 // (a Catalyst Shard); then up to 40 draws of 12, the first naming an event wins (Altar of the Catalyst never when
 // forced). The event spawns as the map's rooms activate (0x1036fef0), once the level's progress, rooms activated x
@@ -94,43 +95,6 @@ struct Tiered {
 	int16_t level;  // port level id
 	int16_t rooms;  // PD2's 0x1038b1d0: the level's room count for the progress, 200 when it names none
 };
-// The tiered maps, which alone roll an event: PD2's Horazon lists (0x10377ca0), which match the misc `len` tiers,
-// in port level ids (merge/ids-levels.tsv)
-constexpr Tiered TieredLevels[] = {
-	{144, 200}, {146, 270}, {147, 180}, {149, 240}, {152, 170}, {156, 160}, {158, 120}, {165, 220}, {166, 200},
-	{199, 200},  // tier 1
-	{142, 210}, {143, 220}, {151, 190}, {157, 170}, {159, 240}, {170, 210}, {171, 230}, {189, 280}, {200, 200},
-	{201, 200},  // tier 2
-	{140, 240}, {145, 220}, {148, 210}, {150, 180}, {155, 190}, {167, 210}, {186, 180}, {187, 260}, {197, 270},  // tier 3
-};
-static_assert(std::size(TieredLevels) == 29);
-// PD2's unique map values (0x1e-0x24) by entry level, and its dungeon set 0x105df228, in port level ids
-struct UniqueValue {
-	int16_t level;
-	int16_t value;
-};
-constexpr UniqueValue UniqueValues[] = {
-	{172, 0x1e},  // Zhar's Sanctum (PD2 176)
-	{177, 0x1f},  // Warlord of Blood (181)
-	{179, 0x20},  // Fallen Gardens (183)
-	{176, 0x21},  // Outer Void (180)
-	{188, 0x22},  // Imperial Palace (192)
-	{191, 0x23},  // City of Ureh (195)
-	{193, 0x24},  // Djinn's Domain (197)
-};
-constexpr int32_t Dungeons[] = {163, 168, 182};  // Plains of Torment, Sanctuary of Sin, Steppes (PD2 164, 171, 186)
-constexpr int32_t DungeonEvent = 9;
-// PD2 0x1036fef0: with the Warlord of Blood's value, a room of the Hellcave Fortress (port 178, PD2 182) that overlaps
-// this box (subtiles) gets no monsters, the Warlord's arena
-constexpr int32_t WarlordEvent = 0x1f, Fortress = 178;
-constexpr int32_t ArenaX0 = 0x5a10, ArenaX1 = 0x5a88, ArenaY0 = 0x25c2, ArenaY1 = 0x263a;
-// PD2's 0x1037d900 per axis: [lo, hi] meets the room's [start, start + size)
-constexpr auto Overlaps(int32_t lo, int32_t hi, int32_t start, int32_t size) noexcept -> bool {
-	return lo < start + size && hi >= start;
-}
-static_assert(Overlaps(10, 20, 20, 5) && !Overlaps(10, 20, 21, 5) && Overlaps(10, 20, 0, 11) && !Overlaps(10, 20, 0, 10));
-std::atomic<uint32_t> g_arenaRooms {0};
-
 using PopulateFn = void (*)(Game* game, void* room) noexcept;
 PopulateFn g_populateOriginal = nullptr;
 PopulateFn g_activateOriginal = nullptr;
@@ -225,16 +189,9 @@ auto RealRooms(void* room) noexcept -> int32_t {
 	return n;
 }
 
+// Only the native maps roll an event and count rooms (PD2's tiered and unique maps are cut, #964)
 auto Tier(int32_t level) noexcept -> const Tiered* {
-	if (level >= NativeFirst && level <= NativeLast) {
-		return &NativeTier;
-	}
-	for (const Tiered& t : TieredLevels) {
-		if (t.level == level) {
-			return &t;
-		}
-	}
-	return nullptr;
+	return level >= NativeFirst && level <= NativeLast ? &NativeTier : nullptr;
 }
 
 // PD2 rolls with the CRT's rand(), whose state is per thread and starts at seed 1: seed each thread once
@@ -583,14 +540,6 @@ auto OnRoomPopulate(Game* game, void* room) noexcept -> void {
 	if (RathmaRoom(game, room, level)) {
 		return;  // PD2 0x1036fef0: an arena room spawns none of its own monsters
 	}
-	using namespace d2r::rva;
-	if (level == Fortress && Get(game, EventKey) == WarlordEvent &&
-	    Overlaps(ArenaX0, ArenaX1, At<int32_t>(room, RoomX), At<int32_t>(room, RoomWidth)) &&
-	    Overlaps(ArenaY0, ArenaY1, At<int32_t>(room, RoomY), At<int32_t>(room, RoomHeight))) {
-		plog::Info("map events: Warlord arena room at (%d, %d) left empty (%u)", At<int32_t>(room, RoomX),
-		           At<int32_t>(room, RoomY), ++g_arenaRooms);
-		return;
-	}
 	g_populateOriginal(game, room);
 	if (tier != nullptr) {
 		AfterRoom(game, level, tier);
@@ -664,29 +613,6 @@ auto MapEvent(Game* game) noexcept -> int32_t {
 	return game != nullptr ? Get(game, EventKey) : 0;
 }
 
-auto RollMapEvent(Game* game, Unit* item, int32_t level) noexcept -> void {
-	using namespace d2r::rva;
-	if (game == nullptr || item == nullptr) {
-		return;
-	}
-	// PD2 0x10383060: a unique map's own value, 9 for a dungeon, 10 for any other untiered map; tiered maps roll
-	int32_t fixed = Tier(level) == nullptr ? NoEvent : 0;
-	for (const UniqueValue& u : UniqueValues) {
-		fixed = u.level == level ? u.value : fixed;
-	}
-	for (const int32_t d : Dungeons) {
-		fixed = d == level ? DungeonEvent : fixed;
-	}
-	if (fixed != 0) {
-		Set(game, EventKey, fixed);
-		Set(game, SpawnsKey, 0);
-		plog::Info("map events: level %d set event 0x%x (no roll)", level, fixed);
-		return;
-	}
-	const bool forced = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatForceEvent, pd2::event_link::MarkerLayer) > 0;
-	RollEvent(game, level, d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item), forced);
-}
-
 // PD2 0x10378080, in state 2 of the Altar event: with the guardian in a room, a sound on the guardian to every player
 // in game, state 3, and every clone in the guardian's room and its neighbours (1.13c's near-room list) dies without a
 // drop (0x10356e00). Picked first, so no kill runs while the room lists are walked.
@@ -751,8 +677,7 @@ auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t r
 	bool activate = false;
 	if (!rooms) {
 		// Cartographer hooks RoomPopulate's entry too (its own events) and loads first; the loader's hook engine cannot
-		// hook one address twice. Hook the call both of RoomPopulate's callers make just before it (rva 0x48f190): native rooms get their events there. PD2's arena rooms (Rathma,
-		// Warlord) need RoomPopulate to skip its monsters and stay unserved while Cartographer holds it.
+		// hook one address twice. Hook the call both of RoomPopulate's callers make just before it (rva 0x48f190): native rooms get their events there. The Rathma arena rooms need RoomPopulate to skip its monsters and stay unserved while Cartographer holds it.
 		activate = context->InstallInlineHook(RoomActivate, RoomActivateEntry, sizeof(RoomActivateEntry), OnRoomActivate,
 		                                      &g_activateOriginal);
 	}
