@@ -1,9 +1,11 @@
-"""Merge the extracted PD2 data into git-ignored generated/data/ by the committed rules in merge/ (ADR 0002).
+"""Merge the extracted PD2 data into git-ignored generated/data/ by the committed rules in merge/ (ADR 0007).
 
-    python tools/pd2_extract.py && python tools/pd2_merge.py && modkit build .
+Only tools/pd2_import.py runs this, when PD2 releases a version; the mod's data is the committed files/data/.
+
+    python tools/pd2_import.py --out DIR     the only caller: extract, merge, snapshot
     python tools/pd2_merge.py --seed-ids     append id-list lines for PD2 rows that have none (see pd2_ids)
 
-`modkit build` layers generated/data/ after files/ and before patches/. Every run rebuilds generated/ from scratch.
+Every run rebuilds generated/ from scratch.
 d2rAI-toolkit's shared/classic_import merge driver applies each merge/ file by the rule kind its name maps to in RULES
 (`*.md` files are notes); a file with no rule kind fails the run, so a rule is never silently skipped. Refuses a
 pd2-data/ extracted from another baseline. A failed run leaves no generated/, so a build never picks up half a merge.

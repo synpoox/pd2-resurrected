@@ -1,4 +1,4 @@
-"""Extract the PD2 baseline's data files into git-ignored pd2-data/ (ADR 0002).
+"""Extract the PD2 baseline's data files into git-ignored pd2-data/ (ADR 0007: the gate and tools/pd2_import.py read it).
 
     python tools/pd2_extract.py [--install DIR]
 

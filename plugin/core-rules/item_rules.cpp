@@ -3,7 +3,7 @@
 // - properties func 25 (`sorc-skill-rand-ctc`, ProjectDiablo.dll 0x103a12a0) in D2R's free property slot 26: one
 //   random skill of PD2's sorceress list gets +param, and the item casts that skill on cast (item_skilloncast) at
 //   chance min and level max, both adjusted by the skill as PD2 does.
-//   The Cast Triggers companion fires item_skilloncast (IR2, patches/030-cast-triggers.json).
+//   The Cast Triggers companion fires item_skilloncast (IR2, the stat's event in itemstatcost.txt).
 // - curses (docs/research/ir4-curses.md): max curses (a target holds up to the caster's max_curses + 1 curses) and
 //   curse resistance (curse_effectiveness on the target scales the curse's stats), around D2R's ApplyCurse; PD2's
 //   gate (#264): resisted-to-0 cancels, stat 109 cuts the duration (cap 75 on a player), attract no longer refuses.
@@ -310,7 +310,7 @@ auto RecomputeOp(Unit* unit, uint32_t opStat) noexcept -> int32_t {
 // PD2's 0x102fa640 computes equipped_eth and missing_hp where an op base is read. D2RCore's stat code reads op bases
 // itself and never calls D2R's read (0x2f9b10), so core-rules keeps both as the unit's real base stats instead, and
 // D2RCore's op 4 reads them: equipped_eth when the unit's summed durability changes (an item worn or taken off:
-// patches/060-op-base-callbacks.json gives durability and hitpoints fCallback), missing_hp when life or max life does.
+// itemstatcost.txt gives durability and hitpoints fCallback), missing_hp when life or max life does.
 // The server never sends either to the client, so a player's values are mirrored onto its client unit for tooltips.
 // PD2's third case, inc_splash_radius + missing_hp x inc_splash_radius_permissinghp (at most 40), is only reached
 // with inc_splash_radius as an op base, which no stat has: not ported (docs/research/ir3-combat-stats.md).

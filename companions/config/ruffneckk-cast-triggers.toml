@@ -51,7 +51,7 @@ open_wounds_stat_id = 0
 [on_block]
 # Map your block-proc stat. Example item: 100% level 1 Frost Nova (44).
 # Requires an actual shield block or Weapon Block, not simply casting a skill.
-# PD2 Resurrected: item_skillonblock, merged id 379 (patches/030-cast-triggers.json sets it to doactive / 20)
+# PD2 Resurrected: item_skillonblock, merged id 379 (itemstatcost.txt sets its event to doactive / 20)
 stat_id = 379
 
 [diagnostics]

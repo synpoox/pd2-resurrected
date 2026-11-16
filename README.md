@@ -63,7 +63,7 @@ First check the [deviation list](docs/deviations.md): what is on it is known and
 - Terms: [`GLOSSARY.md`](GLOSSARY.md)
 - Research notes: [`docs/research/`](docs/research/)
 
-No Blizzard files, PD2 archives or extracted PD2 data are committed here ([ADR 0002](docs/adr/0002-pd2-data-generated-not-committed.md)).
+No Blizzard files or PD2 archives are committed here; the mod's data is, in `files/data/` ([ADR 0007](docs/adr/0007-mod-data-committed-tables-are-the-source.md)).
 
 ## Contributing
 
@@ -74,20 +74,8 @@ humans work here: [AGENTS.md](AGENTS.md).
 
 ## Build
 
-Needs the PD2 install named in `pd2-baseline.json` and the sibling `..\d2rAI-toolkit` at commit `4cb428c` or later
-(modkit's `generated/data/` layer, and `shared/classic_import`'s extract and merge driver).
-
-```bash
-python tools/pd2_extract.py
-```
-
-```bash
-python -m modkit fetch --prefix data/global/animdata.d2 --prefix data/hd/model_lod_desc.bin
-```
-
-```bash
-python tools/pd2_merge.py
-```
+Needs D2R and the sibling `..\d2rAI-toolkit` at commit `4cb428c` or later. The mod's data is committed in `files/data/`:
+no extract or merge runs per build.
 
 ```bash
 python tools/companions.py fetch
@@ -101,16 +89,26 @@ python -m modkit build .
 python tools/companions.py install --game DIR
 ```
 
-Run the `modkit` fetch and the last two with `..\d2rAI-toolkit` on `PYTHONPATH`. The fetch (once per D2R build) caches D2R's tables and animdata for the merge.
+Run `modkit` and the last command with `..\d2rAI-toolkit` on `PYTHONPATH`.
 `companions.py fetch` downloads the pinned companion plugins in
 `companions/manifest.json` (checked by SHA-256, never committed; an entry pins a GitHub release asset (`repo`, `tag`),
-a file at a repo commit (`commit`), or a direct download link (`url`, e.g. a D2RLoader Hub release)) and must run after `pd2_merge.py`, which wipes
-`generated/`. `install` is `modkit install` plus the companions, our `companions/filter.json`, plugin settings
+a file at a repo commit (`commit`), or a direct download link (`url`, e.g. a D2RLoader Hub release)). `install` is
+`modkit install` plus the companions, our `companions/filter.json`, plugin settings
 (`companions/config/`), and the vanilla
-item tables the loot filter needs when the build doesn't ship them. The merge and the tool tests find modkit in
-`..\d2rAI-toolkit` (or on `PYTHONPATH`). The HD art upscaled from PD2's (`merge/art/`) is committed; a PD2 frame
-with none needs [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN/releases) (`realesrgan-ncnn-vulkan`) in the
-sibling `..\realesrgan-ncnn-vulkan` or named by `REALESRGAN`, and numpy and Pillow for skill icons.
+item tables the loot filter needs when the build doesn't ship them. The tool tests find modkit in
+`..\d2rAI-toolkit` (or on `PYTHONPATH`).
+
+### Importing a new PD2 version
+
+Only when PD2 releases a version; the PD2 install in `pd2-baseline.json` is needed. A PD2 frame with no HD art in
+`merge/art/` needs [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN/releases) (`realesrgan-ncnn-vulkan`) in the
+sibling `..ealesrgan-ncnn-vulkan` or named by `REALESRGAN`, and numpy and Pillow for skill icons.
+
+1. Update `pd2-baseline.json`.
+2. In a worktree of the kept `pd2-import` branch, run `python tools/pd2_import.py --out <that worktree>` and commit it.
+3. On a ticket branch from main, run `git diff --binary pd2-import~1 pd2-import | git apply --3way`.
+4. Resolve the conflicts and run the gate. The PR diff is the import.
+
 Tool tests (no PD2 data needed):
 
 ```bash

@@ -58,7 +58,7 @@ grimoires need their corruption outcomes and class-item crafting. Annihilus roll
 
 What [WL1](https://github.com/synpoox/pd2-resurrected/issues/233) found and did ([#233](https://github.com/synpoox/pd2-resurrected/issues/233)):
 
-- Hellfire Torch and Spirit Ward roll classes 0-7 (`patches/030-warlock-item-rules.json`), as D2R's own Torch does.
+- Hellfire Torch and Spirit Ward roll classes 0-7 (the committed `itemtypes.txt`), as D2R's own Torch does.
 - Corruption and crafting already reach grimoires: PD2's rows name item types (`shld,nos`, `shld,mag,noe`), and a
   grimoire is a `shld`.
 - PD2 made class affixes ten times as common (frequency 1, 2, 4 -> 10, 20, 40); D2R's Warlock affixes take the same

@@ -61,7 +61,7 @@ constexpr int32_t PetTypes = 31, KeptPetType = 3;
 
 
 // The uber keys' own item spell (#951): Cartographer owns the item spell dispatchers and the map spell 16, and a key
-// that took 16 reached no handler, so the keys (misc pSpell 19, patches/080-uber-access.json) use D2R's free entry 19
+// that took 16 reached no handler, so the keys (misc pSpell 19 in misc.txt) use D2R's free entry 19
 // {check 0, use 0, keep 0}. Both of its handler indexes are slot 0, D2R's `mov al,1; ret` stub in the check table and
 // the use table; the slots are written here (no hook), and every other item that reaches slot 0 passes (it did before).
 constexpr int32_t UberKeySpell = 19, RiteOfPassage = 39;

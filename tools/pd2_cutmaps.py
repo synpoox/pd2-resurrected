@@ -10,7 +10,7 @@ What it does to the merged tables in generated/data/global/excel:
   treasureclassex   the map items leave every class, their weight going to NoDrop (pd2_items.block_drops, exact for one
                 player); a class holding only map entries empties; an emptied class no table names is deleted.
   cubemain      every recipe that names a cut item, a cut property, or a map heading is deleted.
-  properties    every `map*` property on a `map_*` stat is deleted. The Catalyst's `map-force-event-l` is patch 072's.
+  properties    every `map*` property on a `map_*` stat is deleted. The Catalyst's `map-force-event-l` is in the committed properties.txt.
   magicprefix, magicsuffix, uniqueitems   a row that uses a cut property is neutralised, never deleted: a save stores
                 the row number (ADR 0003). Its affix never spawns and a unique never drops.
 Rows of itemstatcost, itemtypes and levels stay: their ids are saved or reserved (ADR 0003), and nothing names them now.
@@ -29,7 +29,7 @@ from pd2_table import IdError, Table, excel
 
 # A unique whose code was a cut map item keeps a code that exists (the row is neutral; a save may name its number).
 NEUTRAL_CODE = "jew"
-# The Act 1-5 (H) Good classes' Item9 held PD2's `Map Tier 1`; patches/070 and 071 set Item9 to the native pool and rely on
+# The Act 1-5 (H) Good classes' Item9 held PD2's `Map Tier 1`; the committed treasureclassex.txt sets Item9 to the native pool and relies on
 # the Prob9 PD2 gave it, so the cut empties Item9 only.
 POOL_SLOT = "Item9"
 POOL_ROWS = [f"Act {n} (H) Good" for n in range(1, 6)]
@@ -223,7 +223,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     for r in tc.rows:
         if r[0] in pool:
             r[:] = pool[r[0]]
-            r[th[POOL_SLOT]] = ""  # Prob9 and NoDrop stay: patches/070 fills Item9 for the weight PD2 gave the maps
+            r[th[POOL_SLOT]] = ""  # Prob9 and NoDrop stay: the committed treasureclassex.txt fills Item9 for the weight PD2 gave the maps
     empty = {r[0] for r in tc.rows if not any(r[i] for i in item_slots)}
     # cut: held only cut entries (had some, none now), or was an empty class PD2 named for maps
     cut_classes = {n for n in empty - set(POOL_ROWS) if n in had or re.search(r"map", n, re.I)}

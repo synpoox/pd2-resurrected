@@ -1,6 +1,6 @@
 """Panel grids (#299): D2R's own panel art redrawn one cell column wider, for a grid PD2 makes wider (the cube's 3 x 4
 to PD2's 4 x 4). Stand-in art, no PD2 art: the framed grid is cut at its second column, that column is drawn twice,
-and the frame's two halves move apart by half a cell each. The layouts' grid rects move with it (patches/).
+and the frame's two halves move apart by half a cell each. The layouts' grid rects move with it (the committed layout JSONs).
 
 merge/panel-grids.json, measured on build 93847:
     {"<D2R art path under data/>": {"grid": [left x, top y of the first cell], "cell": px, "size": [columns, rows],

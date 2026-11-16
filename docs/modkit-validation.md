@@ -1,6 +1,6 @@
 # modkit validation errors
 
-Every error that modkit's validation (`python -m modkit build .`) reports on a fresh `pd2_merge.py`, with its cause and status. `modkit build` prints only the first 15 to the console. `out/validation.md` groups them and shows 3 examples per kind. This list has every row.
+Every error that modkit's validation (`python -m modkit build .`) reports on the committed `files/data`, with its cause and status. `modkit build` prints only the first 15 to the console. `out/validation.md` groups them and shows 3 examples per kind. This list has every row.
 
 **Rule:** a PR that fixes any of these is not merged until an in-game test shows the fix works and breaks nothing else (Hell, a level 90+ character). Tool tests, the diff gate and CI don't show what D2R does with the data.
 
