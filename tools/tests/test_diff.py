@@ -84,12 +84,17 @@ class GateTests(unittest.TestCase):
         self.assertIn("1 table cells on the deviation list", text)
         self.assertIn("Deviation list: 2 not yet, 1 approximated, 0 cut entries", text)
 
-    def test_a_committed_table_not_on_the_import_list_is_d2rs_and_may_keep_a_whole_table_pattern(self):
-        self.deviations("| Own table | approximated | `lvlmaze.*` | P4 |\n")
-        self.write("pd2", "lvlmaze", table("Name | MonLvl", "Blood Moor | 2"))
-        self.write("own", "lvlmaze", table("Name | MonLvl", "Blood Moor | 5"))
+    def test_an_edit_to_a_d2r_table_committed_in_files_data_is_open_and_refuses_a_whole_table_pattern(self):
+        self.write("pd2", "automap", table("Name | Cel1", "1 Town | 0"))
+        self.write("d2r", "automap", table("Name | Cel1", "1 Town | 0"))
+        self.write("own", "automap", table("Name | Cel1", "1 Town | 99"))
         res = self.gate().results[0]
-        self.assertEqual((res.source, res.covered, res.open), ("D2R", 1, []))
+        self.assertEqual((res.source, res.open), ("D2R", [("automap.1 Town.Cel1", "0", "99")]))
+        self.deviations("| Own | approximated | `automap.*` | P4 |\n")
+        with self.assertRaisesRegex(pd2_diff.GateError, "automap.*files/data"):
+            self.gate()
+        self.deviations("| Own | approximated | `automap.1 town.cel1` | P4 |\n")
+        self.assertEqual(self.gate().open(), [])
 
     def test_a_missing_import_list_is_an_error(self):
         (self.root / "pd2-import.txt").unlink()
@@ -178,7 +183,7 @@ class GateTests(unittest.TestCase):
         self.write("d2r", "lvlmaze", table("Name | MonLvl", "Blood Moor | 1"))
         self.assertEqual(self.gate().results[0].covered, 1)
         self.write("mod", "lvlmaze", table("Name | MonLvl", "Blood Moor | 1"))
-        with self.assertRaisesRegex(pd2_diff.GateError, "lvlmaze.*imported"):
+        with self.assertRaisesRegex(pd2_diff.GateError, "lvlmaze.*files/data"):
             self.gate()
 
     def test_a_whole_table_pattern_with_any_wildcard_segments_is_refused_for_a_merged_table(self):
@@ -188,7 +193,7 @@ class GateTests(unittest.TestCase):
         for pat in ("lvlmaze.*", "lvlmaze.*.*", "lvlmaze.**.*", "lvlmaze.?*", "lvlmaze.*?", "lvlm*",
                     "lvlmaz[e].*", "*.*.*"):
             self.deviations(f"| Whole table | not yet | `{pat}` | P4 |\n")
-            with self.assertRaisesRegex(pd2_diff.GateError, "imported", msg=pat):
+            with self.assertRaisesRegex(pd2_diff.GateError, "files/data", msg=pat):
                 self.gate()
         # one write, so every row is in the file gate() reads
         self.deviations("| Narrow | not yet | `lvlmaze.*.monlvl` `lvlmaze.blood moor.*` | P4 |\n"
