@@ -26,7 +26,7 @@ a build of a stale local merge commit (the load check on d2r-tools d78952d passe
 
 Update (#967): this table is the 0.3.0-rc.1 rehearsal as run. Since #967 the plugin is `core-events` (`core-maps` was renamed
 and its map code removed), so a current candidate ships `core-rules`, `core-events`, `core-ui` and Cartographer, and
-the `core-maps` rows and log lines below are historical.
+the `core-maps` rows and log lines below are historical. The DLL was renamed, but the plugin id stayed `core-maps` (#1044), so current logs may still say `core-maps`.
 
 `--game` must hold the official `D2RLoader.exe`: `release.py` writes a temporary `release.toml` that adds
 `catalog.loader_files` for it, pinned at `[d2rloader] version` (the toolkit's schema 3 refuses a catalog without it;
@@ -74,7 +74,7 @@ Screenshots: `issue-assets/966/b-main-map.png`, `c-cand-upgrade-map.png`, `d-rol
 
 ## Seen, not caused here
 
-- `core-maps` (now `core-events`, #967) logs a hook failure at `0x50ACF0` (the `0x494A60` one is fixed, #1032) when it loads next to Cartographer (the Cartographer log
+- `core-maps` (now `core-events`, #967) logged a hook failure at `0x50ACF0` during this rehearsal (the `0x494A60` one is fixed, #1032) when it loaded next to Cartographer. Current code no longer hooks `0x50ACF0`; Cartographer owns it (see `docs/deviations.md`) (the Cartographer log
   says the two cannot be used together). The retained events still install (`mapevents 1/1`).
 - Item Durability and Mass Identify fail to load, on main and the candidate alike.
 

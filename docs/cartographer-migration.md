@@ -45,7 +45,7 @@ Baseline port: c2b6af8c7fa095ead030d1ffdc6b03c7449255f5; Cartographer: c79ef1047
 
 Do not delete mixed modules wholesale:
 - [Cube search](../plugin/core-events/cube_ops.cpp) invokes Desecration before recipe-block scanning; retained non-map op-30 rules exist.
-- Map-stat code (`map_stats.cpp`, since removed; its generic corruption/Desecration roll helpers now live in [corruption_roll.cpp](../plugin/core-events/corruption_roll.cpp)) contained extra drops in retained uber arenas.
+- Removed since this inspection: `map_stats.cpp`. Its generic corruption/Desecration roll helpers now live in [corruption_roll.cpp](../plugin/core-events/corruption_roll.cpp). Its extra drops in retained uber arenas were part of the same module, and their new home is not recorded here.
 - [Key/death dispatch](../plugin/core-events/key_drops.cpp) mixes obsolete map rolls with preserved uber/key sources and rewards.
 - Dclone code also contains the Mendeln/Nihlathak map-event AI. Preserve it and one shared AI registry/level-effects implementation.
 
