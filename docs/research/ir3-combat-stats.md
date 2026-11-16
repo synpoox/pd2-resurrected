@@ -191,7 +191,7 @@ pass; `items 7/7`).
   `cheat stat` adds no item event listener, and the boots' durability icon showed red, so this does not yet show
   whether D2R's event 16 runs on a player's hit. Cause ([#446](https://github.com/synpoox/pd2-resurrected/issues/446)):
   D2RCore's event dispatcher (`0x5881e0` = `jmp [0x3e2a420]`) runs the item event nodes (unit `+0xe0`) through its
-  own event copy and applies D2R's quarter-life blow silently. core-rules wraps that slot, hides the crushing-blow nodes
+  own event copy and applies D2R's quarter-life blow silently. core-rules wrapped that slot (since [#385](https://github.com/synpoox/pd2-resurrected/issues/385) it relays the two calls in HitEvents `0x44ce80` that raise events 5 and 6, `0x44cfc5` and `0x44cfe4`, to a wrapper around `0x44d570`, and leaves the slot to Cast Triggers), hides the crushing-blow nodes
   on events 5 and 6 and rolls the chance itself. Slot 11, Hell, The Cranium Basher (75%): rolls at chance 75, blows at
   divisor 8 less 7% resist (life 1557248 -> 1376217), life unchanged inside D2RCore's dispatch.
 - Enhanced damage per ethereal item ([#446](https://github.com/synpoox/pd2-resurrected/issues/446), Slot 11, Hell):
