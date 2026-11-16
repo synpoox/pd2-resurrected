@@ -94,6 +94,28 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual([pixel(k * 132 + 5, 5) for k in range(3)], [200, 70, 220])
         self.assertEqual(pixel(132 + 30, 30), 0)  # the dot keeps its size: 10 classic px -> 27 HD px
 
+    def test_pressed_line_appends_a_normal_and_a_darker_frame_to_the_shared_sheet(self):
+        self.sheets(d2r=[10], hd=[200], pd2=[10])
+        dc6.write(self.d2r / SPELLS / "skillicon.dc6", [frame(10)])
+        hd_dir = self.d2r / "hd" / SPELLS / "submenu"
+        images.write_sprite(hd_dir / "skillicon.sprite", strip([200, 210]), 130, 2, lowend=False)
+        images.write_sprite(hd_dir / "skillicon.lowend.sprite", strip([100, 110], 65), 65, 2, lowend=False)
+        dc6.write(self.pd2 / SPELLS / "skillicon.dc6", [frame(10), frame(20)])
+        self.rule.write_text("sor\npressed 1\n", "utf-8")
+        S.apply(self.rule, self.pd2, self.d2r, self.out)
+        self.assertEqual(len(dc6.read(self.out / SPELLS / "skillicon.dc6")), 4)
+        img, fw, frames = images.read_sprite(self.out / "hd" / SPELLS / "submenu" / "skillicon.sprite")
+        self.assertEqual(frames, 4)
+        pixel = lambda k: img[2][(65 * img[0] + k * 132 + 65) * 4]  # noqa: E731  middle, red channel
+        self.assertEqual((pixel(2), pixel(3)), (pixel(1), pixel(1) * 3 // 4))
+
+    def test_force_move_has_its_own_pressed_pair(self):
+        root = Path(__file__).resolve().parents[2]
+        lines = S.read_lines(root / "merge" / "skill-icons.txt")
+        cel = json.loads((root / "merge" / "tables.json").read_text("utf-8"))["skilldesc"]["cells"]["force move"]["IconCel"]
+        self.assertIn("pressed 24", lines)
+        self.assertEqual(int(cel), 40)  # D2R's HD strip of the shared sheet has 40 frames
+
     def test_appends_hireable_frames_from_the_built_class_sheet(self):
         # the Ascendant's class skills have no frame on D2R's merc sheet (#271)
         self.sheets(d2r=[10, 20], hd=[200, 210], pd2=[10, 20])
@@ -116,6 +138,7 @@ class ApplyTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         lines = [x for x in S.read_lines(root / "merge" / "skill-icons.txt") if x.startswith("hireable ")]
         cells = json.loads((root / "merge" / "tables.json").read_text("utf-8"))["skilldesc"]["cells"]
+        cells = {k: v for k, v in cells.items() if "HireableIconCel" in v}
         self.assertEqual(sorted(int(v["HireableIconCel"]) for v in cells.values()),
                          list(range(29, 29 + len(lines))))  # D2R's merc sheet has 29 frames
         # line i is the skill whose cell is 29 + i: its class and IconCel are that skill's (PD2's skilldesc and skills)
