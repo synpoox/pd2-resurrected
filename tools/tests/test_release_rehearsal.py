@@ -25,7 +25,7 @@ class RehearsalTests(unittest.TestCase):
             t = Path(tmp)
             mod, glob = t / "game/mods/Mod", t / "game/d2rloader/plugins"
             glob.mkdir(parents=True)
-            old = package(t / "old", {"d2rloader/plugins/core-maps.dll": ("old maps", "managed"),
+            old = package(t / "old", {"d2rloader/plugins/core-events.dll": ("old maps", "managed"),
                                       "d2rloader/config/d2rloader.toml": ("default", "shipped_default"),
                                       "Mod.mpq/modinfo.json": ("{}", "managed"), "modinfo.json": ("{}", "managed")})
             new = package(t / "new", {"d2rloader/plugins/cartographer.dll": ("carto", "managed"),
@@ -34,7 +34,7 @@ class RehearsalTests(unittest.TestCase):
             rr.apply(t / "old", mod, old, {}, glob, "Mod-Slot5/")
             (mod / "d2rloader/config/d2rloader.toml").write_text("player edit")
             (mod / "d2rloader/plugins/user.dll").write_text("unrelated")
-            (glob / "core-maps.dll").write_text("stray global copy")
+            (glob / "core-events.dll").write_text("stray global copy")
             n = rr.apply(t / "new", mod, new, old, glob, "Mod-Slot5/")
             self.assertEqual((n["deleted"], n["other_scope_removed"]), (1, 1))
             self.assertEqual(rr.verify(mod, new, old, glob), [])

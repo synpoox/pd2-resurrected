@@ -3,7 +3,7 @@ import re
 import unittest
 from pathlib import Path
 
-SRC = Path(__file__).resolve().parents[2] / "plugin" / "core-maps"
+SRC = Path(__file__).resolve().parents[2] / "plugin" / "core-events"
 
 
 class AltarGuardian(unittest.TestCase):

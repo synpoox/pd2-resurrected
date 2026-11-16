@@ -83,7 +83,7 @@ def merge_cube(pd2: I.Table, d2r: I.Table, ctx: I.Context) -> I.Table:
 
 def count_each_input(cube: I.Table) -> None:
     """PD2's numinputs counts stacks ("t1me,qty=3" is 1); D2R's recipe search wants numinputs == items in the cube
-    (#261), so loose inputs matched no row. Each row gets the sum of its inputs' qty, except op-30 rows (core-maps
+    (#261), so loose inputs matched no row. Each row gets the sum of its inputs' qty, except op-30 rows (core-events
     matches them without the count, as PD2 does). core-rules counts a stack as its quantity (#315), so the x50 rows'
     150 is met by stacks."""
     h = {c: j for j, c in enumerate(cube.header)}

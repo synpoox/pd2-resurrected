@@ -1,11 +1,10 @@
-// core-maps: PD2's map system for PD2 Resurrected (docs/map-system.md): so far cube op 30 (the map recipes' block),
-// opening a map (item spell 16) and its monster, player and area stats, its event, the uber key drop rule,
-// Horazon's portal, Lucion's death and the Temple's chests.
+// core-events: PD2's map events and uber fights for PD2 Resurrected (maps are Cartographer's): cube op 30, the map events, the
+// uber keys' opening and drop rule, tier scaling, AI and drops, Horazon's portal, Lucion's death and the Temple's chests.
 // Shared (host and client must match) and NativeHooks; a game-wide plugin in <game>\d2rloader\plugins (ADR 0004).
 // On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
 //
-// Parts: registered by the lanes (parts.h); each has a one-word name for the log, the status command and core-maps-off.txt
-// (<game>\d2rloader\config\core-maps-off.txt), which leaves listed parts out to bisect a crash.
+// Parts: registered by the lanes (parts.h); each has a one-word name for the log, the status command and core-events-off.txt
+// (<game>\d2rloader\config\core-events-off.txt), which leaves listed parts out to bisect a crash.
 #include <D2RLPlugin/api.h>
 
 #include "ai_hooks.h"
@@ -23,7 +22,7 @@
 #include <cstring>
 
 #ifndef CORE_PLUGIN_NAME
-#define CORE_PLUGIN_NAME "core-maps"
+#define CORE_PLUGIN_NAME "core-events"
 #endif
 #ifndef CORE_PLUGIN_VERSION
 #define CORE_PLUGIN_VERSION "0.2.0"
@@ -42,10 +41,10 @@ constexpr D2RL::PluginInfo Info {
 	.infoSize    = D2RL::PluginInfoSize,
 	.abiVersion  = D2RL_PLUGIN_ABI_VERSION,
 	.id          = CORE_PLUGIN_NAME,
-	.name        = "PD2 Resurrected Core Maps",
+	.name        = "PD2 Resurrected Core Events",
 	.version     = CORE_PLUGIN_VERSION,
 	.author      = "Synpoo",
-	.description = "Project Diablo II map system (cube op 30, opening maps, map stats, map events, the key drop rule, Horazon's portal) for PD2 Resurrected.",
+	.description = "Project Diablo II map events and uber fights (cube op 30, map events, uber keys, scaling and drops, Horazon's portal) for PD2 Resurrected.",
 	.flags       = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
 };
 
@@ -164,7 +163,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	g_imageKnown = d2r::Bind(context->exeBase);
 	InstallParts(context);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand,
-	                                       "PD2 Resurrected Core Maps: every part and its counters; `life <percent> <class>` sets a ported boss's life (test aid).");
+	                                       "PD2 Resurrected Core Events: every part and its counters; `life <percent> <class>` sets a ported boss's life (test aid).");
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {

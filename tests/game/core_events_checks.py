@@ -1,16 +1,16 @@
-"""core-maps game checks for d2rAI-toolkit's testing/ framework (game_checks.py).
+"""core-events game checks for d2rAI-toolkit's testing/ framework (game_checks.py).
 
-uber-scaling (#347, docs/research/pd2-uber-bosses-dll.md section 4) reads <slot>/d2rloader/logs/core-maps.log.
+uber-scaling (#347, docs/research/pd2-uber-bosses-dll.md section 4) reads <slot>/d2rloader/logs/core-events.log.
 Setup: tools/install.ps1 on the merged data, a level 90+ character in Hell. In game: `debug_mode`, `cheat goto 138`
 (tier 0: no key opened, so the counters read 0; for tiers 1-2, `cheat spawn dcma,inv 0`, cube the key alone once per
 tier, and right-click it at the fountain, `cheat goto 109,5074,5114`),
 then `cheat mspawn uberdiablonew`, `cheat mspawn dcloneskele,3` and a monster outside the fight set, `cheat mspawn
 zombie1`. Then:
-  py testing/game_checks.py --path <repo>/tests/game --module core_maps_checks run core-maps-ub2 --slot N
+  py testing/game_checks.py --path <repo>/tests/game --module core_events_checks run core-events-ub2 --slot N
 Passed on Slot5 (#347, level 95 Amazon, Hell): 14 monsters x1.5 at full life, Dclone 1053000 -> 1579500, the zombie
 not scaled.
 
-Extra boss area stat checks (MS4c, #289). Each reads <slot>/d2rloader/logs/core-maps.log.
+Extra boss area stat checks (MS4c, #289). Each reads <slot>/d2rloader/logs/core-events.log.
 
 Setup (Slot4-8, game closed): merge, build and install (docs/agents/game-slots.md)
   py -3 tools/pd2_merge.py
@@ -20,7 +20,7 @@ In game, Hell, a level 90+ character in Harrogath: `debug_mode`, `cheat god 1`, 
 Duplicated prefix (map_glob_extra_boss): `cheat spawn t25,typ m,pre 843,inv 0`, `cheat idall`, right-click the map,
 enter the red portal and go to the Sewer Boss (SewerBoss; sewermap1-3.ds1 place it at subtile 399,311, 419,109 or
 54,334 of the level). Then:
-  py testing/game_checks.py run core-maps --slot N --path <repo>/tests/game --module core_maps_checks
+  py testing/game_checks.py run core-events --slot N --path <repo>/tests/game --module core_events_checks
 
 Multi-level area stats (MS7, #221): the same setup, then a rare dungeon (`cheat spawn t42,typ r,inv 0`, `cheat idall`)
 right-clicked in Harrogath, and the same run (multi-level-area).
@@ -34,7 +34,7 @@ import re
 
 from game_checks import check
 
-PLUGIN = "core-maps"
+PLUGIN = "core-events"
 BOSSES = {806, 950, 951, 952, 953, 1129}
 FIGHT = BOSSES | set(range(807, 812)) | set(range(903, 909)) | set(range(954, 957)) | {983, 985, 986, 1123, 1124,
                                                                                       1130, 1131, 1132, 1157, 1158}
@@ -59,7 +59,7 @@ def expected_maxhp(maxhp: int, tier: int, boss: bool) -> int:
     return p + tier * (p * 20 // 100)
 
 
-@check("uber-scaling", tags=["core-maps-ub2"])
+@check("uber-scaling", tags=["core-events-ub2"])
 def uber_scaling(ctx):
     """Each scaled fight monster has PD2's maxhp and +skills for its tier, a boss its absorbs, none scaled twice."""
     # unit ids repeat across games, and a tier-0 re-entry remakes the minions with their rooms: one scaling per entry
@@ -81,9 +81,9 @@ def uber_scaling(ctx):
     return f"{len(rows)} monsters scaled: " + ", ".join(f"{r[0]} t{r[3]} {r[5]}->{r[6]}" for r in rows[:6])
 
 
-@check("extra-boss-hook", tags=["core-maps", "game"])
+@check("extra-boss-hook", tags=["core-events", "game"])
 def extra_boss_hook(ctx):
-    """core-maps installed the preset spawn hook behind map_glob_extra_boss."""
+    """core-events installed the preset spawn hook behind map_glob_extra_boss."""
     line = re.search(rf"{PLUGIN}: stats [^\n]*", _log(ctx))
     if not line:
         ctx.skip("no stats line in the log yet (start the game)")
@@ -91,7 +91,7 @@ def extra_boss_hook(ctx):
     return line.group(0)
 
 
-@check("extra-boss-spawn", tags=["core-maps"])
+@check("extra-boss-spawn", tags=["core-events"])
 def extra_boss_spawn(ctx):
     """A map with map_glob_extra_boss (area slot 5) spawned a map boss preset a second time."""
     log = _log(ctx)
@@ -111,7 +111,7 @@ MULTI_LEVELS = {163: [164], 168: [169], 182: [183], 172: [173, 174, 175], 177: [
 AREA = re.compile(r"map area: level (\d+) (before|after): density (\d+)")
 
 
-@check("multi-level-area", tags=["core-maps"])
+@check("multi-level-area", tags=["core-events"])
 def multi_level_area(ctx):
     """Opening a dungeon or unique map rewrote the monster region of each of its levels, after the entry level."""
     rows = [(int(m.group(1)), m.group(2), int(m.group(3))) for m in AREA.finditer(_log(ctx))]
@@ -126,7 +126,7 @@ def multi_level_area(ctx):
     return f"map {entry}: levels {want} rewritten, densities " + ", ".join(str(d) for _, _, d in rows[i:i + 2 * len(want)])
 
 
-@check("added-group-spawn", tags=["core-maps"])
+@check("added-group-spawn", tags=["core-events"])
 def added_group_spawn(ctx):
     """A map with map_glob_add_mon_* (area slot 3) spawned a monster of the added group."""
     log = _log(ctx)

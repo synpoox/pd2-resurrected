@@ -452,7 +452,7 @@ auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept
 		return e > NoEvent && e <= Tomb && NotifyKey(e) != nullptr ? e : 0;
 	}();
 	event = testEvent != 0 ? testEvent : event;
-	// The console command `core-maps event` (#998): one shot, for the next map rolled
+	// The console command `core-events event` (#998): one shot, for the next map rolled
 	const int32_t forcedEvent = g_forceNext.exchange(0);
 	event = forcedEvent != 0 ? forcedEvent : event;
 	Set(game, EventKey, event);

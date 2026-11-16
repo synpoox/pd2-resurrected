@@ -33,7 +33,7 @@ if (Get-Process D2R, D2RLoader -ErrorAction SilentlyContinue | Where-Object { $_
 
 $plugins = Join-Path $Game "d2rloader\plugins"
 New-Item -ItemType Directory -Force $plugins | Out-Null
-foreach ($name in @("core-rules", "core-maps", "core-ui")) {
+foreach ($name in @("core-rules", "core-events", "core-ui")) {
     $dll = Join-Path $PSScriptRoot "..\plugin\build\Release\$name.dll"
     if (-not (Test-Path $dll)) { throw "$dll missing: run plugin\build.ps1 first" }
     Copy-Item $dll $plugins -Force
@@ -42,7 +42,7 @@ foreach ($name in @("core-rules", "core-maps", "core-ui")) {
 
 # Strays (third-party plugins, D2RLoader companions) would make the test run on an unclean install: move, never delete.
 # cartographer.dll is the required native-map plugin on this branch: install.ps1 does not copy it, the slot must already hold it (d2r-tools build).
-$ours = @("core-rules.dll", "core-maps.dll", "core-ui.dll", "cartographer.dll", "test-harness.dll", "d2r-testharness-console.txt")
+$ours = @("core-rules.dll", "core-events.dll", "core-ui.dll", "cartographer.dll", "test-harness.dll", "d2r-testharness-console.txt")
 $strays = @(Get-ChildItem $plugins -Force | Where-Object { $ours -notcontains $_.Name })
 if ($strays -and -not $KeepExtras) {
     $backup = Join-Path "C:\D2RTestSlots\backups\stray-plugins-$(Get-Date -Format yyyy-MM-dd)" (Split-Path $Game -Leaf)

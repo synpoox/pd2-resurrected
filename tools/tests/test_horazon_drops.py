@@ -3,7 +3,7 @@ import re
 import unittest
 from pathlib import Path
 
-TEXT = (Path(__file__).resolve().parents[2] / "plugin" / "core-maps" / "horazon.cpp").read_text(encoding="utf-8")
+TEXT = (Path(__file__).resolve().parents[2] / "plugin" / "core-events" / "horazon.cpp").read_text(encoding="utf-8")
 
 
 class HorazonDrops(unittest.TestCase):

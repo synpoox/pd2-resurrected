@@ -56,7 +56,7 @@ inline constexpr int NpcMenuTyrael = 0x15;  // Tyrael's record (monster 367, tyr
 inline constexpr int NpcTableTyrael = 30;
 inline constexpr uint16_t MonTyrael2 = 0x16f;
 
-// --- Cube (D2Game\src\Player\PlrTrade.cpp; core-maps' op 30) --------------------------------------------------------
+// --- Cube (D2Game\src\Player\PlrTrade.cpp; core-events' op 30) --------------------------------------------------------
 
 inline constexpr uint8_t CubeNumInputsJumpD2R[] = {0x0f, 0x85, 0xbd, 0x06, 0x00, 0x00};
 inline constexpr uint8_t CubeNumInputsJumpOff[] = {0x66, 0x0f, 0x1f, 0x44, 0x00, 0x00};  // 6-byte nop
@@ -81,37 +81,37 @@ inline constexpr uint8_t SpawnCheatKeyFull[] = {0x41, 0x8b, 0x00, 0xb9, 0x20, 0x
                                                0x90, 0x90, 0x90, 0x90, 0x90};
 static_assert(sizeof(SpawnCheatKeyD2R) == sizeof(SpawnCheatKeyFull));
 
-// --- core-maps: opening a map (MS2, #217; D2Game\src\Skills\SkillItem.cpp) ----------------------------------------
+// --- core-events: opening a map (MS2, #217; D2Game\src\Skills\SkillItem.cpp) ----------------------------------------
 
 // The unlimited books' item spells (IR5, #240; the merge's misc pSpell for rtp and rid): the Navigator's entry 17 runs
-// D2R's Town Portal; the Almanac's entry 18 is {0, 0, keep 1}, and core-maps' item spell hooks identify every inventory
+// D2R's Town Portal; the Almanac's entry 18 is {0, 0, keep 1}, and core-events' item spell hooks identify every inventory
 // and Cube item (PD2: "Identifies all items at once"), as D2R's use function 1 (0x57ec30) identifies one. keep is also
 // read by the client (0x161f20 allows a use only from inputs passing bit (keep != 0) + 1; right-click does, as for
 // the Cube), not by the use-item handler 0x4f40c0.
 inline constexpr int32_t UnlimitedPortalSpell = 17, UnlimitedIdentifySpell = 18;
 // The item spell USE handler table (.data, 16 pointers of bool fn(game, player, item) noexcept, indexed by an entry's
-// use index; the dispatcher 0x581680 calls it for every spell but core-maps' 16, so a slot write needs no hook on the
+// use index; the dispatcher 0x581680 calls it for every spell but core-events' 16, so a slot write needs no hook on the
 // dispatchers Cartographer owns). Slot 14 is D2R's unused spell 14 (no D2R or PD2 misc row has pSpell 14); the Almanac
 // takes it, and core-rules writes its entry 18 as {0, 14, keep 1}.
 inline constexpr uint64_t ItemSpellUseTable = 0x1d3ea90;
 inline constexpr int32_t AlmanacUseSlot = 14;
 inline constexpr uint64_t AlmanacUseSlotOriginal = 0x580f10;  // D2R's stub in that slot (calls 0x5d9710, returns 1)
 
-// --- core-maps: tier-0 re-entry portals and the area rules on entry (UB2, #346; D2Game\src\Objects\ObjMode.cpp) ----
+// --- core-events: tier-0 re-entry portals and the area rules on entry (UB2, #346; D2Game\src\Objects\ObjMode.cpp) ----
 inline constexpr int ObjectOperatePortal = 60;
 // PD2's map-event altar operate 79 takes slot 35 (MS8, pd2_ids.FUNCS): D2R's null slot of the 1.09 Steeg Stone (337),
 // an object no level places
 inline constexpr int ObjectOperateAltar = 35;
 inline constexpr uint64_t RoomAt = 0x38dfb0;          // (room, x, y) -> the room near `room` holding x/y, or null
 
-// --- core-maps: the key drop rule (UB2, #348) ----------------------------------------------------------------------
+// --- core-events: the key drop rule (UB2, #348) ----------------------------------------------------------------------
 inline constexpr uint64_t DataTablesOf = 0x300a90;  // (dataFlag) -> DataTables
 
-// --- core-maps: the Uber Tristram primes' drop (UB3, #228; D2Game\src\Quests\QuestsFX.cpp) --------------------------
+// --- core-events: the Uber Tristram primes' drop (UB3, #228; D2Game\src\Quests\QuestsFX.cpp) --------------------------
 inline constexpr uint8_t PrimesDropD2R[] = {0x48, 0x89, 0x5c, 0x24, 0x20};  // mov [rsp+20],rbx
 inline constexpr uint8_t PrimesDropOff[] = {0xc3, 0x90, 0x90, 0x90, 0x90};  // ret
 static_assert(sizeof(PrimesDropD2R) == sizeof(PrimesDropOff));
-// --- core-maps: Lucion's death (UB6, #231; D2Game\src\Skills\Skills.cpp, D2Game\src\Player\PlayerPets.cpp) --------
+// --- core-events: Lucion's death (UB6, #231; D2Game\src\Skills\Skills.cpp, D2Game\src\Player\PlayerPets.cpp) --------
 // Decompiled for #231 (Ghidra, D2R.gpr). Called, not hooked.
 // The portal maker is rva::PortalMaker (MS9's block below; #231 found the same 0x432ce0): with arg 9 0 it finds a free
 // spot near (x, y) in room; the portal opens on event 1, and 0x435dd0 makes its linked return portal in the level.
@@ -123,14 +123,14 @@ inline constexpr uint64_t MonsterModeBlock = 0x4471e0;
 inline constexpr uint64_t UnitTarget = 0x490300;
 inline constexpr uint64_t SetMonsterMode = 0x4475c0;
 
-// --- core-maps: the Temple's chests (UB6, #438; D2Game\src\Objects\ObjMode.cpp) ------------------------------------
+// --- core-events: the Temple's chests (UB6, #438; D2Game\src\Objects\ObjMode.cpp) ------------------------------------
 inline constexpr int ObjectOperateChest = 4;
 
 // --- core-rules: the ethereal bonus (IR8, #243) --------------------------------------------------------------------
 
 inline constexpr uint8_t WeaponDurabilityPd2[] = {2, 5};
 
-// --- core-maps: Rathma's stage spawns (UB5, #525; D2Common Drlg, D2Game\src\Game\Clients.cpp) -----------------------
+// --- core-events: Rathma's stage spawns (UB5, #525; D2Common Drlg, D2Game\src\Game\Clients.cpp) -----------------------
 // Decompiled for #525 (Ghidra, D2R.gpr). Called, not hooked. How ActSpawnSpot's 0x3da650 finds and builds a room
 // anywhere in a level, as PD2's 0x10389f00 does through 1.13c D2Common:
 // (dataFlag, drlg act (act +0x70), level) -> the act's drlg level, made if missing; its room list at +0x10 is empty

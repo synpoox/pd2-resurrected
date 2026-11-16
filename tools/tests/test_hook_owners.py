@@ -3,7 +3,7 @@
 Cartographer (d2r-tools, not modified) installs inline hooks on the cube executor and on both item spell dispatchers.
 Two plugins cannot own one entry (d2rAI-toolkit knowledge/engine-re.md), so PD2's plugins keep off those entries:
 core-rules owns the cube executor and Cartographer's optional stamping part is turned off by a signatures.txt row;
-Cartographer owns the item spell dispatchers and core-maps hooks neither (#964); the Almanac writes use slot 14 of the item spell
+Cartographer owns the item spell dispatchers and core-events hooks neither (#964); the Almanac writes use slot 14 of the item spell
 handler table (no hook, no listener). CARTOGRAPHER_SRC (a d2r-tools plugins/cartographer/src checkout) adds a check against Cartographer's own
 signatures; without it that test is skipped.
 """
@@ -26,7 +26,7 @@ ENGINE = (PLUGIN / "common" / "pd2_engine.h").read_text(encoding="utf-8") + "".j
 
 
 def sources():
-    return {p: p.read_text(encoding="utf-8") for d in ("core-rules", "core-maps", "core-ui") for p in (PLUGIN / d).rglob("*.cpp")}
+    return {p: p.read_text(encoding="utf-8") for d in ("core-rules", "core-events", "core-ui") for p in (PLUGIN / d).rglob("*.cpp")}
 
 
 def installs():
@@ -53,10 +53,10 @@ class HookOwners(unittest.TestCase):
         self.assertEqual(installs()["CubeExecutor"], ["core-rules/cube_rules.cpp"])
 
     def test_cube_search_keeps_the_desecration_trigger(self):
-        self.assertEqual(installs()["CubeRecipeSearch"], ["core-maps/cube_ops.cpp"])
-        self.assertIn("Desecrate(game, player)", (PLUGIN / "core-maps" / "cube_ops.cpp").read_text(encoding="utf-8"))
+        self.assertEqual(installs()["CubeRecipeSearch"], ["core-events/cube_ops.cpp"])
+        self.assertIn("Desecrate(game, player)", (PLUGIN / "core-events" / "cube_ops.cpp").read_text(encoding="utf-8"))
 
-    def test_core_maps_leaves_the_item_spell_dispatchers_to_cartographer(self):
+    def test_core_events_leaves_the_item_spell_dispatchers_to_cartographer(self):
         # PD2's map item spell is cut (#964): no PD2 plugin hooks either dispatcher, so Cartographer owns both
         spells = installs()
         self.assertNotIn("ItemSpellUse", spells)
@@ -67,13 +67,13 @@ class HookOwners(unittest.TestCase):
     def test_almanac_is_a_use_slot_write_not_a_hook_or_a_listener(self):
         # A right-click raises no ItemInteraction event (Slot4, #975) and Cartographer owns both dispatchers, so the
         # Almanac is a write of item spell use slot 14, which entry 18 names (item_rules.cpp)
-        self.assertFalse((PLUGIN / "core-maps" / "almanac.cpp").exists())
+        self.assertFalse((PLUGIN / "core-events" / "almanac.cpp").exists())
         text = (PLUGIN / "core-rules" / "almanac.cpp").read_text(encoding="utf-8")
         self.assertIn("PatchWriteU64(ItemSpellUseTable", text)
         self.assertNotIn("InstallInlineHook", text)
         self.assertNotIn("registerListener", text)
         self.assertNotIn("almanac-diag", text)
-        self.assertNotIn("UnlimitedIdentifySpell", (PLUGIN / "core-maps" / "map_open.cpp").read_text(encoding="utf-8"))
+        self.assertNotIn("UnlimitedIdentifySpell", (PLUGIN / "core-events" / "map_open.cpp").read_text(encoding="utf-8"))
 
     def test_almanac_use_slot_matches_entry_18_and_stays_in_inventory_only(self):
         engine = (PLUGIN / "common" / "pd2_engine.h").read_text(encoding="utf-8")

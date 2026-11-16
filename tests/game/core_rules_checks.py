@@ -132,7 +132,7 @@ owner's life or mana is below the maximum, and god mode keeps both full: `cheat 
 corpses (D2R names them Carrion Vine and Solar Creeper), then `cheat depletehealth 10` and `cheat depletemana 10`.
 Mana regenerates in seconds, so repeat `cheat depletemana 10` every second or two until a VineCycler (325) line shows.
 Then `cheat god 1`, `cheat mspawn torajanBoss,1` (his nest lays eggs that nova and hatch) and
-`cheat mspawn GuardianOfFate,1` (core-maps' guardian AI, #609, casts GuardianOfFateSummon within seconds; its missile
+`cheat mspawn GuardianOfFate,1` (core-events' guardian AI, #609, casts GuardianOfFateSummon within seconds; its missile
 raises a GuardianOfFateClone where it lands), let them cast a while, and run the same command with core-rules-w36.
 Leoric, the Siege Beast, Sharptooth and Iskatu do not cast their summon skills yet: PD2 gives them its own thinks
 (ProjectDiablo.dll 0x10361150 fills monai rows 114, 115, 120 and 53), which the port has not ported (#624), so they run

@@ -32,7 +32,7 @@ Out:
   after a check on the PD2 install.
 - **Opening:** an uber key is used at the Blood Fountain in Harrogath (misc `pSpell` 12 -> 16), as maps are. PD2's
   one map or uber area per game is a single gate shared with the map system.
-- **Plugin:** the uber bosses' code goes in `core-maps` (Shared): the opening, the area rules, the tier scaling, the
+- **Plugin:** the uber bosses' code goes in `core-events` (Shared): the opening, the area rules, the tier scaling, the
   phase scripts, the guaranteed drops and rolls, the key drop rule and Desecration
   ([ADR 0004](adr/0004-plugins-split-by-multiplayer-scope.md), amended). The boss skill functions already on
   core-rules rows (UberDiabSummon/Run, RathmaSummon, the Lucion kit, the death novas, the bone spear, the uber
@@ -51,12 +51,12 @@ Out:
 | # | Work item | Plugin | Blocked by |
 |---|---|---|---|
 | [UB1](https://github.com/synpoox/pd2-resurrected/issues/226) | Investigation, Ghidra on `ProjectDiablo.dll`: the fountain opening, the area rules, the tier scaling (`uberscaling`), the phase scripts, the guaranteed drops and rolls, the key drop odds (the odds-only TCs), Desecration; the wiki-only numbers checked on the PD2 install | none | [#185](https://github.com/synpoox/pd2-resurrected/issues/185) |
-| [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) | Opening: uber keys used at the Blood Fountain, the uber tiers and their scaling, the area rules (buffs stripped, mercenary killed, tier-0 portals), the one-per-game gate shared with maps; uber keys drop again; the key drop rule | core-maps | [UB1](https://github.com/synpoox/pd2-resurrected/issues/226), [MS2](https://github.com/synpoox/pd2-resurrected/issues/217), the level pipeline for the uber areas |
-| [UB3](https://github.com/synpoox/pd2-resurrected/issues/228) | Pandemonium and Uber Tristram: the keys' portal to levels 133-135, the mini-ubers, Horn, Eye and Brain, `ubtm`, level 185 and the fight, the Black Soulstone and Hellfire Torch drops | core-maps | [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) |
-| [UB4](https://github.com/synpoox/pd2-resurrected/issues/229) | Diablo Clone: the phases, UberDiabSummon/Run, the adds and trapped souls, Annihilus, the 1-in-200 uniques | core-maps, core-rules (skills) | [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) |
-| [UB5](https://github.com/synpoox/pd2-resurrected/issues/230) | Rathma and Mendeln: the six stages, shared life, RathmaSummon, the bone spear, the death nova, the cold missiles (srvdo 139, data), the Tainted Worldstone Shard and the other rolls | core-maps, core-rules (skills) | [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) |
-| [UB6](https://github.com/synpoox/pd2-resurrected/issues/231) | Lucion: the kit, Royal Fire (srvdo 143, cltdo 83; Radament's too), the portal phases, the death novas, the Temple and its chests, the Demonic Cube roll, the Talisman's Terror Zone source | core-maps, core-rules (skills) | [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) |
-| [UB7](https://github.com/synpoox/pd2-resurrected/issues/232) | Desecration in the cube (above), stats 206/207 | core-maps | [UB6](https://github.com/synpoox/pd2-resurrected/issues/231) |
+| [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) | Opening: uber keys used at the Blood Fountain, the uber tiers and their scaling, the area rules (buffs stripped, mercenary killed, tier-0 portals), the one-per-game gate shared with maps; uber keys drop again; the key drop rule | core-events | [UB1](https://github.com/synpoox/pd2-resurrected/issues/226), [MS2](https://github.com/synpoox/pd2-resurrected/issues/217), the level pipeline for the uber areas |
+| [UB3](https://github.com/synpoox/pd2-resurrected/issues/228) | Pandemonium and Uber Tristram: the keys' portal to levels 133-135, the mini-ubers, Horn, Eye and Brain, `ubtm`, level 185 and the fight, the Black Soulstone and Hellfire Torch drops | core-events | [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) |
+| [UB4](https://github.com/synpoox/pd2-resurrected/issues/229) | Diablo Clone: the phases, UberDiabSummon/Run, the adds and trapped souls, Annihilus, the 1-in-200 uniques | core-events, core-rules (skills) | [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) |
+| [UB5](https://github.com/synpoox/pd2-resurrected/issues/230) | Rathma and Mendeln: the six stages, shared life, RathmaSummon, the bone spear, the death nova, the cold missiles (srvdo 139, data), the Tainted Worldstone Shard and the other rolls | core-events, core-rules (skills) | [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) |
+| [UB6](https://github.com/synpoox/pd2-resurrected/issues/231) | Lucion: the kit, Royal Fire (srvdo 143, cltdo 83; Radament's too), the portal phases, the death novas, the Temple and its chests, the Demonic Cube roll, the Talisman's Terror Zone source | core-events, core-rules (skills) | [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) |
+| [UB7](https://github.com/synpoox/pd2-resurrected/issues/232) | Desecration in the cube (above), stats 206/207 | core-events | [UB6](https://github.com/synpoox/pd2-resurrected/issues/231) |
 
 ## Game check
 

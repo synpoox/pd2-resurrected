@@ -32,7 +32,7 @@ using d2r::Game;
 using d2r::Unit;
 namespace items = D2RL::Items;
 
-constexpr uint8_t OpBlock = 30;  // core-maps: matched without the input count, as PD2 does
+constexpr uint8_t OpBlock = 30;  // core-events: matched without the input count, as PD2 does
 constexpr int Inputs = 7;
 constexpr int Slots = d2r::rva::CubeMatchUsedSlots;
 

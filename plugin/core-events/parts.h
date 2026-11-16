@@ -1,6 +1,6 @@
 // The parts registry (#943): each lane registers its parts and status counters from its own folder (lane-a .. lane-d,
 // parts_shared.cpp) with a PartReg / CountersReg object; plugin.cpp installs them sorted by order, which is the install
-// sequence the log shows. Orders are one global sequence (docs/core-maps-lanes.md): a new part takes an unused number.
+// sequence the log shows. Orders are one global sequence (docs/core-events-lanes.md): a new part takes an unused number.
 #pragma once
 
 #include <D2RLPlugin/api.h>
@@ -17,7 +17,7 @@ struct Part {
 	int order;
 };
 
-// A part: `word` is its one-word name for the log, the status command and core-maps-off.txt.
+// A part: `word` is its one-word name for the log, the status command and core-events-off.txt.
 struct PartReg {
 	PartReg(int order, const char* word, InstallFn install) noexcept;
 };

@@ -83,7 +83,7 @@ enabled and `isSpawn` with `MinGrp`/`MaxGrp` set and no `spawn` swap. In D2R's s
   `ApplyArea` rewrote.
 
 So in a Sewers map (8 groups, rarity sum 9) one pack in 10 should be wraiths of the added group. `ApplyArea` now logs
-`map area: level L adds monster M as group G`, and the `added-group-spawn` check in `tests/game/core_maps_checks.py`
+`map area: level L adds monster M as group G`, and the `added-group-spawn` check in `tests/game/core_events_checks.py`
 looks for that monster among the spawned kinds.
 
 ## [MS4b](https://github.com/synpoox/pd2-resurrected/issues/286): the drop chances ([#286](https://github.com/synpoox/pd2-resurrected/issues/286))

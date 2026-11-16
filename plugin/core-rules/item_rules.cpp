@@ -641,7 +641,7 @@ auto OwnedByPlayer(Game* game, Unit* unit) noexcept -> bool {
 //   stack; at 3 it only refreshes the time (NewStateList keeps an older list of the same skill and level).
 // shortcut: PD2 keys the list by attacker (0x102fc880), so two attackers stack apart; D2R keeps one open wounds list
 // per unit, which all attackers share. Not ported: no damage to a player inside PD2's levels 157, 159, 166 (not in
-// the merged data), Rathma's two clones splitting it (core-maps' rathma_life.cpp owns the pair) and PD2's damage
+// the merged data), Rathma's two clones splitting it (core-events' rathma_life.cpp owns the pair) and PD2's damage
 // meter.
 auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept -> void {
 	using namespace d2r::rva;
@@ -1533,7 +1533,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	                       context->InstallInlineHook(ReplenishEvent, ReplenishEventEntry, sizeof(ReplenishEventEntry),
 	                                                  ChargesReplenishEvent, &g_replenishEventOriginal);
 	// Unlimited books (IR5): D2R's item spell table is data; its free entry 17 gets the Town Portal handlers and 18
-	// none (core-maps' hooks identify all), both with keep 1, so the book stays after its use
+	// none (core-events' hooks identify all), both with keep 1, so the book stays after its use
 	const bool unlimited = PatchUnlimitedBooks(context);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "

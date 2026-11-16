@@ -1,7 +1,7 @@
-# core-maps lane allowlist (#943)
+# core-events lane allowlist (#943)
 
-Exact file allowlist of `plugin/core-maps/` per lane of the cartographer migration (`docs/cartographer-migration.md`).
-A ticket in a lane edits only its lane's files. `tools/tests/test_core_maps_lanes.py` fails when a source file is in no
+Exact file allowlist of `plugin/core-events/` per lane of the cartographer migration (`docs/cartographer-migration.md`).
+A ticket in a lane edits only its lane's files. `tools/tests/test_core_events_lanes.py` fails when a source file is in no
 lane, in two, or listed here but missing. Lane **S** is Shared: any edit there is a checkpoint reported in the PR.
 
 Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` generic rules, `C` map events,
@@ -59,7 +59,7 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 Each part and each status counters line is one object in a lane folder: `PartReg r<order>(<order>, "<word>", <install>)`
 and `CountersReg c<order>(<order>, <counters>)` (`parts.h`). `plugin.cpp` sorts them by order and installs them, so the
 order is the install sequence and the log line order. Orders are one global sequence in steps of 10; a new part takes an
-unused number (the test fails on a duplicate). `plugin/CMakeLists.txt` globs `core-maps/lane-*/*.cpp`, so a lane adds
+unused number (the test fails on a duplicate). `plugin/CMakeLists.txt` globs `core-events/lane-*/*.cpp`, so a lane adds
 files in its own folder and edits neither `plugin.cpp`, `CMakeLists.txt` nor this file; only a file outside the lane
 folders (lane S, or a lane's older flat files) needs a row above and a CMake line.
 

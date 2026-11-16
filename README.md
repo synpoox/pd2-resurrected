@@ -19,7 +19,7 @@ graphics. Offline single-player for now; private multiplayer comes later.
    `default_mod = "PD2Resurrected"` in `<D2R folder>\d2rloader\config\d2rloader.toml`.
 4. Start `D2RLoader.exe`. Characters are saved in `Saved Games\Diablo II Resurrected\mods\PD2Resurrected\`.
 
-To update, delete `mods\PD2Resurrected\PD2Resurrected.mpq\data` first, then unpack the new release the same way.
+To update, delete `mods\PD2Resurrected\PD2Resurrected.mpq\data` first, also delete `mods\PD2Resurrected\d2rloader\plugins\core-maps.dll` if it is there (the old name of `core-events.dll`; both loaded together would hook the game twice), then unpack the new release the same way.
 
 ## Loot Filters
 
@@ -156,7 +156,7 @@ workflow to run on this runner. Read a fork PR's workflow changes before approvi
 
 ## Plugins
 
-`plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules, `core-maps` PD2's map system. Shared code (log, guards, the `d2r::api` binding and engine addresses other projects use) comes from d2rAI-toolkit's `shared/plugin-common`, found the way `tools/install.ps1` finds the toolkit (or `-DD2R_TOOLKIT=<checkout>`); the addresses only PD2 uses live in `plugin/common/pd2_engine.h`.
+`plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules, `core-events` PD2's map events and uber fights (maps are Cartographer's). Shared code (log, guards, the `d2r::api` binding and engine addresses other projects use) comes from d2rAI-toolkit's `shared/plugin-common`, found the way `tools/install.ps1` finds the toolkit (or `-DD2R_TOOLKIT=<checkout>`); the addresses only PD2 uses live in `plugin/common/pd2_engine.h`.
 
 ```powershell
 git submodule update --init
