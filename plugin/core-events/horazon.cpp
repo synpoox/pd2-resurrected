@@ -1,18 +1,19 @@
 // Horazon, split out of event_portals.cpp (#943). PD2's map event Horazon (ProjectDiablo.dll 0x10377ca0): when `summonerMap`
 // dies while the game's event is Horazon's, once per game, it drops six native map items rolled from the
 // `Cartographer Maps` pool (#959; the PD2 tier pools, map-stat propagation and unique-map roll are gone here).
-// shortcut: no second map until #1028, so no portal opens (the old red portal went to a PD2 tiered map);
-// upgrade once synpoox/d2r-tools#485 lands a destination that is not a fixed D2R level.
+// The red portal to the second map is Cartographer's cartographer.open-extra.v1 service (#1028, d2r-tools#485).
 // The trigger is the SDK's monster-death listener; the TC drop is an engine call, as no SDK service rolls a TC. The
 // listener also hands the Altar of the Catalyst's guardian to map_events.cpp.
 #include "horazon.h"
 
 #include "event_portals.h"
 
+#include "cartographer_open_extra_v1.h"
 #include "log.h"
 #include "map_events.h"
 
 #include <D2RLPlugin/lifecycle_events.h>
+#include <D2RLPlugin/plugin_communication.h>
 
 #include <atomic>
 #include <cstdio>
@@ -33,6 +34,23 @@ constexpr uint32_t HorazonKey = 0x48525a4e;  // 'HRZN'
 
 std::atomic<uint32_t> g_deaths {0};
 std::atomic<uint32_t> g_drops {0};
+const D2RL::PluginContext* g_context = nullptr;
+D2RL::PluginCommunication::ServiceLease<carto::OpenExtraServiceV1> g_openLease;
+
+// Leased lazily on the death, never at load (Cartographer may load after core-events); a miss is retried next time.
+auto OpenExtra() noexcept -> const carto::OpenExtraServiceV1* {
+	if (!g_openLease && g_context != nullptr) {
+		const D2RL::PluginCommunicationService* communication = nullptr;
+		if (g_context->QueryService(&communication) != D2RL::ServiceQueryResult::Success ||
+		    !D2RL::HasPluginCommunicationServiceField(communication, D2RL::PluginCommunicationServiceRequiredSize)) {
+			return nullptr;
+		}
+		D2RL::PluginCommunication::Acquire(g_context, communication, carto::OpenExtraServiceProvider,
+		                                   carto::OpenExtraServiceName, carto::OpenExtraServiceVersion,
+		                                   sizeof(carto::OpenExtraServiceV1), &g_openLease);
+	}
+	return g_openLease.Get();
+}
 
 // Six rolls of the native map pool. `player` is the quality roll's player (its magic find).
 auto DropMaps(Game* game, Unit* monster, Unit* player) noexcept -> int32_t {
@@ -105,7 +123,18 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	}
 	++g_deaths;
 	*opened() += 1;
-	plog::Info("horazon: died in level %d, no portal (#1028)", event->levelId);
+	// The portal beside Horazon's body: `killer` is the player the portal opens for, `monster` the unit it opens beside.
+	if (const carto::OpenExtraServiceV1* service = OpenExtra(); service == nullptr) {
+		plog::Warn("horazon: no open-extra service, no portal");
+	} else {
+		carto::OpenExtraResultV1 result {};
+		result.structSize = sizeof(result);
+		if (service->openExtra(game, killer, monster, static_cast<int32_t>(event->levelId), &result)) {
+			plog::Info("horazon: portal to level %d (monster level %d)", result.level, result.monsterLevel);
+		} else {
+			plog::Info("horazon: no portal: %s", result.why);
+		}
+	}
 	const int32_t dropped = DropMaps(game, monster, killer);
 	g_drops += static_cast<uint32_t>(dropped);
 	plog::Info("horazon: %d map picks dropped", dropped);
@@ -131,7 +160,8 @@ auto InstallEventPortals(const D2RL::PluginContext* context, char* report, size_
 		std::snprintf(report, reportSize, "off: monster-death listener refused");
 		return 0;
 	}
-	std::snprintf(report, reportSize, "Horazon's map drops on summonerMap's death");
+	g_context = context;
+	std::snprintf(report, reportSize, "Horazon's map drops and portal on summonerMap's death");
 	return 1;
 }
 

@@ -1,7 +1,7 @@
 # Event link: PD2 events beside a standalone Cartographer (#944)
 
 Part of the Cartographer migration ([#942](https://github.com/synpoox/pd2-resurrected/issues/942), [plan](cartographer-migration.md)).
-Code: `plugin/common/event_link.h`. Check: `plugin/tests/event_link_check.cpp`.
+Code: `plugin/common/event_link.h`. Check: `plugin/tests/event_link_check.cpp`. Horazon is the first open-extra consumer (`cartographer.open-extra.v1`, #1028).
 
 ## Rule
 
