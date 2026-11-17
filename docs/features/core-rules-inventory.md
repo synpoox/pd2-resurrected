@@ -204,8 +204,9 @@ Two notes that support the first pass's open questions:
   and the Royal Fire bosses (srvdo 143, cltdo 83, param "radius of jump to next target") reuse its second-charge chain. Both are
   then likely data, still to verify in game.
 - **Charm rule.** D2R groups carry-one uniques through uniqueitems `carry1` (Gheed's Fortune 1001, Annihilus 1002, Hellfire Torch
-  1003, the crafted Rupture charms 1004). PD2 leaves `carry1` empty on every row and enforces the rule in ProjectDiablo.dll
-  (`CharmOnlySingleUniqueDesc`). Its unique charms (Gheed's, Annihilus, Torch, the Dclone, Maxlevel and Rathma trophies, Dev
-  Charm) can probably get `carry1` groups in data; the row moves to bucket (a), verify which charms and groups PD2 uses.
+  1003, the crafted Rupture charms 1004). PD2 leaves `carry1` empty on every row and enforces its charm rules in ProjectDiablo.dll.
+  Built ([#358](https://github.com/synpoox/pd2-resurrected/issues/358), [#1288](https://github.com/synpoox/pd2-resurrected/issues/1288)):
+  `carry1` is emptied on every unique charm row, so a second copy can be carried, and core-rules switches off both copies of a
+  same-name unique charm while both sit in rows 5-8.
 
 Source for both: the same PD2 and D2R tables as section 1.
