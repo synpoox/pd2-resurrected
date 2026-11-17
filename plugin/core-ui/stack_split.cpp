@@ -202,7 +202,7 @@ void Watch(const D2RL::PluginContext*, void*) noexcept {
 		}
 		return;
 	}
-	const bool ctrl = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 && (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;  // Ctrl+Shift+click
+	const bool ctrl = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
 	if (g_held.quantity > 1) {
 		++g_putDowns;
 		g_ctrlPutDowns += ctrl ? 1 : 0;

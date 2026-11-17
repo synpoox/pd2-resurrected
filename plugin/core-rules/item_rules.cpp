@@ -1754,19 +1754,17 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	if (!merge) {
 		++g_mapStackRefused;
 	}
-	// One log line per pair per second: the inventory scans call this once per map held
-	static std::atomic<uint64_t> lastKey {0}, lastTick {0};
-	const uint64_t key = (reinterpret_cast<uint64_t>(a) << 1) ^ reinterpret_cast<uint64_t>(b);
+	// At most one log line a second, whatever the pair: the inventory scans call this once per map held
+	static std::atomic<uint64_t> lastTick {0};
 	const uint64_t now = GetTickCount64();
-	if (key != lastKey.load() || now - lastTick.load() >= 1000) {
-		lastKey = key;
+	if (now - lastTick.load() >= 1000) {
 		lastTick = now;
 		char tail[16] {};
 		if (stat >= 0) {
 			std::snprintf(tail, sizeof(tail), " %d", stat);
 		}
 		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStat);
-		plog::Info("map stack: %u q%d/%d quality %d/%d -> %s (%s%s)", d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a),
+		plog::Info("map stack: %08x q%d/%d quality %d/%d -> %s (%s%s)", d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a),
 		           unitStat(a, StatQuantity, 0), unitStat(b, StatQuantity, 0), quality(a), quality(b),
 		           merge ? "merge" : "refused", reason, tail);
 	}

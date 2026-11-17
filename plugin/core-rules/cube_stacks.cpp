@@ -169,7 +169,8 @@ auto MapProperties(Unit* item, Leftover& left) noexcept -> bool {
 	const auto entries = d2r::Engine<int32_t (*)(Unit*, uint32_t, Entry*, int32_t) noexcept>(UnitStatEntries);
 	for (int32_t stat = 0; stat < ItemStatCostRows; ++stat) {
 		Entry e[16] {};
-		const int32_t n = stat == StatQuantity ? 0 : entries(item, static_cast<uint32_t>(stat), e, 16);
+		int32_t n = stat == StatQuantity ? 0 : entries(item, static_cast<uint32_t>(stat), e, 16);
+		n = n > 16 ? 16 : n;
 		for (int32_t i = 0; i < n; ++i) {
 			const bool level = stat == StatMapLevel, event = stat == StatMapForceEvent;
 			if ((!level && !event) || left.propCount >= MaxMapProps) {

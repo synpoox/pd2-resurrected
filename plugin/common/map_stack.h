@@ -23,7 +23,9 @@ auto FirstDifference(Unit* a, Unit* b, int32_t statCount, int32_t quantityStat, 
 		Entry ea[64] {}, eb[64] {};
 		const int32_t na = entries(a, static_cast<uint32_t>(stat), ea, 64);
 		const int32_t nb = entries(b, static_cast<uint32_t>(stat), eb, 64);
-		if (na != nb || (na > 0 && std::memcmp(ea, eb, static_cast<size_t>(na) * sizeof(Entry)) != 0)) {
+		// A count past the buffer is clamped before it is read (the engine fills at most 64)
+		const int32_t k = na > 64 ? 64 : na;
+		if (na != nb || (k > 0 && std::memcmp(ea, eb, static_cast<size_t>(k) * sizeof(Entry)) != 0)) {
 			return stat;
 		}
 	}
@@ -42,7 +44,8 @@ auto Collect(Unit* src, int32_t statCount, int32_t quantityStat, Entries entries
 	saved.count = 0;
 	for (int32_t stat = 0; stat < statCount; ++stat) {
 		Entry e[64] {};
-		const int32_t n = stat == quantityStat ? 0 : entries(src, static_cast<uint32_t>(stat), e, 64);
+		int32_t n = stat == quantityStat ? 0 : entries(src, static_cast<uint32_t>(stat), e, 64);
+		n = n > 64 ? 64 : n;
 		for (int32_t i = 0; i < n && saved.count < 64; ++i) {
 			saved.entry[saved.count++] = e[i];
 		}
