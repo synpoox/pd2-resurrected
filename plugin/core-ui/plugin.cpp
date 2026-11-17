@@ -3,14 +3,12 @@
 // (ADR 0004). On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
 //
 // Parts, by their word for the log, the status command and core-ui-off.txt (<game>\d2rloader\config\core-ui-off.txt):
-//   automap   the automap for PD2's level types 36+ (LP2)
 //   pictures  HD pictures of PD2's 4-character item codes (#310, #298), and `cheat spawn` of them (#323)
 //   split     PD2's stack split: Ctrl+left-click with a stack held puts one item down (#316)
 //   quantity  PD2's Show Item Quantity: each stack in an open grid shows its quantity on its picture (#359)
 //   palette   legacy graphics: a level entered without a load screen draws in its own palette (#296)
 #include <D2RLPlugin/api.h>
 
-#include "automap.h"
 #include "crash_guard.h"
 #include "pd2_engine.h"
 #include "item_pictures.h"
@@ -42,7 +40,6 @@ char g_selfPath[520] = "?";
 // pictures, quantity and palette are native hooks (the SDK cannot place or draw them on D2RLoader 1.3.1, #359): they need
 // the known image. split is SDK only (no RVA), so it runs on any game image.
 parts::Part g_parts[] = {
-	{"automap", true, automap::Install},
 	{"pictures", true, item_pictures::Install},
 	{"split", false, stack_split::Install},
 	{"quantity", true, item_quantity::Install},
@@ -56,7 +53,7 @@ constexpr D2RL::PluginInfo Info {
 	.name        = "PD2 Resurrected Core UI",
 	.version     = MODKIT_PLUGIN_VERSION,
 	.author      = "Synpoo",
-	.description = "Project Diablo II client features (the automap of PD2's new level types, HD pictures of its 4-character item codes, its stack split, its item quantity display, legacy level palettes) for PD2 Resurrected.",
+	.description = "Project Diablo II client features (HD pictures of its 4-character item codes, its stack split, its item quantity display, legacy level palettes) for PD2 Resurrected.",
 	.flags       = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
 };
 
@@ -78,9 +75,6 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 		command->plugin->WriteConsoleMessage(line);
 	}
 	parts::WriteStatus(g_parts, std::size(g_parts), command);
-	automap::Counters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
 	stack_split::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);

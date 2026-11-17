@@ -31,11 +31,6 @@ class NoConverterTests(unittest.TestCase):
         patterns = [p for v in extract.values() for p in v]
         self.assertEqual([p for p in patterns if p.endswith((".dt1", ".ds1")) or "maximap" in p], [])
 
-    def test_core_ui_automap_table_keeps_a_row(self):
-        # a header-only table: D2R asserts "file" and crashes at startup (#965 game check); the row is inert (type 99)
-        table = Path(__file__).resolve().parents[2] / "files/data/global/excel/d2rloader/core-ui/automap.txt"
-        self.assertGreaterEqual(len(table.read_text("utf-8").splitlines()), 2)
-
     def test_legacy_output_is_named(self):
         with tempfile.TemporaryDirectory() as tmp:
             data = Path(tmp)

@@ -113,7 +113,7 @@ auto MissileSkillRecord(Game* game, Unit* missile, int32_t* skillId, int32_t* le
 // missile has bounces left, throw the same missile from it at the nearest other target within sHitPar1 or the skill's
 // aurarangecalc (no minimum of 1, unlike srvhit 12), with one bounce less, and set damagepercent = calc1 on the
 // missile that hit (PD2 sets it there, not on the new one).
-// shortcut: PD2 also never bounces while the owner is in a PvP map (levels 157, 159, 166); those maps are cut.
+// shortcut: PD2 also never bounces while the owner is in PD2's PvP maps, cut.
 auto SrvHitBounce(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr || hit == nullptr) {

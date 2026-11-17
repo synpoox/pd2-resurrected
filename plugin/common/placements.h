@@ -10,10 +10,9 @@
 
 namespace placements {
 
-// Where an encounter's level comes from. Existing: the PD2 area the port has now; a private author flips `level` to
-// `target` (a reserved private id) when the new area is ready. Vanilla and D2RTristram are D2R's own areas and are
-// never replaced (no arena is reserved for them).
-enum class Source : uint8_t { Vanilla, D2RTristram, Existing, Private };
+// Where an encounter's level comes from. Vanilla and D2RTristram are D2R's own areas and are never replaced (no arena
+// is reserved for them).
+enum class Source : uint8_t { Vanilla, D2RTristram, Private };
 
 struct Binding {
 	const char* encounter;
@@ -98,15 +97,9 @@ inline auto BindingAt(int32_t level) noexcept -> const Binding* {
 	}
 	return nullptr;
 }
-// An Existing source is PD2's own level, whose DS1 and DT1 files the build no longer carries (#965): not finished, so
-// a key for it is refused instead of opening a level with no preset (a crash in the open path).
-inline auto Finished(int32_t level) noexcept -> bool {
-	const Binding* b = BindingAt(level);
-	return b != nullptr && b->source != Source::Existing;
-}
 inline auto IsUberLevel(int32_t level) noexcept -> bool {
 	const Binding* b = BindingAt(level);
-	return b != nullptr && b->uber && b->source != Source::Existing;
+	return b != nullptr && b->uber;
 }
 inline auto NoWaypointLevel(int32_t level) noexcept -> bool {
 	const Binding* b = BindingAt(level);

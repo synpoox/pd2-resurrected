@@ -116,7 +116,6 @@ target_link_libraries(plugin_core_events PRIVATE core_common)
 set(CORE_UI_VERSION "0.2.0" CACHE STRING "core-ui PluginInfo::version")
 modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/plugin.cpp
-	core-ui/automap.cpp
 	core-ui/item_pictures.cpp
 	core-ui/item_quantity.cpp
 	core-ui/stack_split.cpp

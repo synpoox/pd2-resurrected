@@ -1,2 +1,0 @@
-LevelType	TileType	Style	StartSequence	EndSequence	CelCount	Cel1	Cel2	Cel3	Cel4
-99	0	255	0	0	0	0	0	0	0

@@ -813,7 +813,7 @@ auto ApplyWounds(Game* game, Unit* unit, Unit* target, int32_t damage, int32_t* 
 // - hpregen on the target's open wounds list (125 frames). Below 3 stacks the hit adds to the list's damage and a
 //   stack; at 3 it only refreshes the time (NewStateList keeps an older list of the same skill and level).
 // shortcut: PD2 keys the list by attacker (0x102fc880), so two attackers stack apart; D2R keeps one open wounds list
-// per unit, which all attackers share. Not ported: no damage to a player inside PD2's levels 157, 159, 166 (not in
+// per unit, which all attackers share. Not ported: no damage to a player inside PD2's PvP maps, cut (not in
 // the merged data) and PD2's damage meter.
 auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept -> void {
 	using namespace d2r::rva;
@@ -1503,7 +1503,7 @@ auto EquipAuraTick(Game* game, Unit* unit, int32_t key, int32_t skill, int32_t s
 // the charge step, which schedules the next run whatever is pending (D2R frees the firing event only after its handler
 // returns, so a pending check there always sees it). The port matches: D2R's step first, then the charges only when
 // durability and quantity are unchanged. No merged item has both stats.
-// cut: PD2 halves the delay in the PvP maps (levels 157, 159, 166), which are cut.
+// cut: PD2 halves the delay in PD2's PvP maps, cut.
 constexpr uint32_t StatReplenishCharges = 475;  // item_replenish_charges (PD2's 422)
 constexpr uint32_t StatChargedSkill = 204;      // item_charged_skill: charges | max << 8
 constexpr int32_t ReplenishFrames = 2500;
