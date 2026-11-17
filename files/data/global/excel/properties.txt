@@ -384,3 +384,67 @@ mon-poison-res	380	1	1	cartographer_mon_poison_res																												mo
 mon-speed	381	1	1	cartographer_mon_speed																												monster speed #					
 map-density	382	1	1	cartographer_map_density																												map density #					
 map-force-event-l	383	1	24	map_force_event																																	
+mon-tohit	384	1	1	cartographer_mon_tohit																												monster Attack Rating #					
+mon-tohit-pct	385	1	1	cartographer_mon_tohit_pct																												monster Attack Rating #					
+mon-armor-pct	386	1	1	cartographer_mon_armor_pct																												monster Defense #					
+mon-dmg-fire-min	387	1	1	cartographer_mon_dmg_fire_min																												monster Fire Damage (minimum) #					
+mon-dmg-fire-max	388	1	1	cartographer_mon_dmg_fire_max																												monster Fire Damage (maximum) #					
+mon-dmg-ltng-min	389	1	1	cartographer_mon_dmg_ltng_min																												monster Lightning Damage (minimum) #					
+mon-dmg-ltng-max	390	1	1	cartographer_mon_dmg_ltng_max																												monster Lightning Damage (maximum) #					
+mon-dmg-cold-min	391	1	1	cartographer_mon_dmg_cold_min																												monster Cold Damage (minimum) #					
+mon-dmg-cold-max	392	1	1	cartographer_mon_dmg_cold_max																												monster Cold Damage (maximum) #					
+mon-dmg-cold-len	393	1	1	cartographer_mon_dmg_cold_len																												monster Cold Damage Length (frames) #					
+mon-dmg-mag-min	394	1	1	cartographer_mon_dmg_mag_min																												monster Magic Damage (minimum) #					
+mon-dmg-mag-max	395	1	1	cartographer_mon_dmg_mag_max																												monster Magic Damage (maximum) #					
+mon-dmg-pois-min	396	1	1	cartographer_mon_dmg_pois_min																												monster Poison Damage (minimum) #					
+mon-dmg-pois-max	397	1	1	cartographer_mon_dmg_pois_max																												monster Poison Damage (maximum) #					
+mon-dmg-pois-len	398	1	1	cartographer_mon_dmg_pois_len																												monster Poison Damage Length (frames) #					
+mon-mastery-fire	399	1	1	cartographer_mon_mastery_fire																												monster Fire Damage Mastery #					
+mon-mastery-ltng	400	1	1	cartographer_mon_mastery_ltng																												monster Lightning Damage Mastery #					
+mon-mastery-cold	401	1	1	cartographer_mon_mastery_cold																												monster Cold Damage Mastery #					
+mon-mastery-pois	402	1	1	cartographer_mon_mastery_pois																												monster Poison Damage Mastery #					
+mon-mastery-mag	403	1	1	cartographer_mon_mastery_mag																												monster Magic Damage Mastery #					
+mon-pierce-fire	404	1	1	cartographer_mon_pierce_fire																												monster Pierces Fire Resistance #					
+mon-pierce-ltng	405	1	1	cartographer_mon_pierce_ltng																												monster Pierces Lightning Resistance #					
+mon-pierce-cold	406	1	1	cartographer_mon_pierce_cold																												monster Pierces Cold Resistance #					
+mon-pierce-pois	407	1	1	cartographer_mon_pierce_pois																												monster Pierces Poison Resistance #					
+mon-absorb-fire	408	1	1	cartographer_mon_absorb_fire																												monster Fire Absorb #					
+mon-absorb-fire-pct	409	1	1	cartographer_mon_absorb_fire_pct																												monster Fire Absorb #					
+mon-absorb-ltng	410	1	1	cartographer_mon_absorb_ltng																												monster Lightning Absorb #					
+mon-absorb-ltng-pct	411	1	1	cartographer_mon_absorb_ltng_pct																												monster Lightning Absorb #					
+mon-absorb-cold	412	1	1	cartographer_mon_absorb_cold																												monster Cold Absorb #					
+mon-absorb-cold-pct	413	1	1	cartographer_mon_absorb_cold_pct																												monster Cold Absorb #					
+mon-absorb-mag	414	1	1	cartographer_mon_absorb_mag																												monster Magic Absorb #					
+mon-absorb-mag-pct	415	1	1	cartographer_mon_absorb_mag_pct																												monster Magic Absorb #					
+mon-dr	416	1	1	cartographer_mon_dr																												monster Physical Damage Reduction #					
+mon-mdr	417	1	1	cartographer_mon_mdr																												monster Magic Damage Reduction #					
+mon-dr-pct	418	1	1	cartographer_mon_dr_pct																												monster Physical Damage Reduction #					
+mon-mag-res	419	1	1	cartographer_mon_mag_res																												monster Magic Damage Reduction #					
+mon-deadly	420	1	1	cartographer_mon_deadly																												monster Deadly Strike #					
+mon-crush	421	1	1	cartographer_mon_crush																												monster Crushing Blow #					
+mon-openwounds	422	1	1	cartographer_mon_openwounds																												monster Chance of Open Wounds #					
+mon-thorns	423	1	1	cartographer_mon_thorns																												monster Attackers Take Damage #					
+mon-attackrate	424	1	1	cartographer_mon_attackrate																												monster Attack Speed #					
+mon-far	425	1	1	cartographer_mon_far																												monster Faster Attack Rate #					
+mon-fcr	426	1	1	cartographer_mon_fcr																												monster Faster Cast Rate #					
+mon-fhr	427	1	1	cartographer_mon_fhr																												monster Faster Hit Recovery #					
+mon-fbr	428	1	1	cartographer_mon_fbr																												monster Faster Block Rate #					
+mon-regen	429	1	1	cartographer_mon_regen																												monster Life Regeneration #					
+mon-cannotfreeze	430	1	1	cartographer_mon_cannotfreeze																												monster Cannot Be Frozen #					
+mon-halffreeze	431	1	1	cartographer_mon_halffreeze																												monster Half Freeze Duration #					
+mon-curse-res	432	1	1	cartographer_mon_curse_res																												monster Curse Resistance #					
+mon-missile-pierce	433	1	1	cartographer_mon_missile_pierce																												monster Missile Pierce #					
+map-area-level	434	1	1	cartographer_map_area_level																												to Area Level #					
+map-uniques	435	1	1	cartographer_map_uniques																												unique Monsters #					
+map-extra-groups	436	1	1	cartographer_map_extra_groups																												extra Monster Groups #					
+map-extra-boss	437	1	1	cartographer_map_extra_boss																												extra Boss #					
+map-drop-tc	438	1	1	cartographer_map_drop_tc																												chance of a Bonus Drop #					
+map-drop-ethereal	439	1	1	cartographer_map_drop_ethereal																												ethereal Drops #					
+map-drop-socketed	440	1	1	cartographer_map_drop_socketed																												socketed Drops #					
+map-drop-bonus	441	1	1	cartographer_map_drop_bonus																												extra Drops #					
+mon-lifesteal-pct	442	1	1	cartographer_mon_lifesteal_pct																												monster Life Stolen per Hit #					
+mon-phys-as-fire	443	1	1	cartographer_mon_phys_as_fire																												monster Physical Damage as Fire #					
+mon-phys-as-cold	444	1	1	cartographer_mon_phys_as_cold																												monster Physical Damage as Cold #					
+mon-phys-as-ltng	445	1	1	cartographer_mon_phys_as_ltng																												monster Physical Damage as Lightning #					
+mon-phys-as-pois	446	1	1	cartographer_mon_phys_as_pois																												monster Physical Damage as Poison #					
+mon-phys-as-mag	447	1	1	cartographer_mon_phys_as_mag																												monster Physical Damage as Magic #					
