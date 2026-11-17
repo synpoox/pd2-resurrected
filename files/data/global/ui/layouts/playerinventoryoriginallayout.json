@@ -1,14 +1,14 @@
 ﻿{
     "type": "PlayerInventoryPanel", "name": "PlayerInventoryOriginalLayout",
     "fields": {
-        "rect": { "x": 0, "y": -240, "width": 320, "height": 432 },
+        "rect": { "x": 0, "y": -240, "width": 320, "height": 492 },
         "anchor": "$RightPanelAnchor",
     },
     "children": [
         {
             "type": "ClickCatcherWidget", "name": "click_catcher",
             "fields": {
-                "rect": { "width": 320, "height": 432 }
+                "rect": { "width": 320, "height": 492 }
             },
         },
         {
@@ -23,7 +23,7 @@
         {
             "type": "TextBoxWidget", "name": "gold_amount",
             "fields": {
-                "rect": { "x": 108, "y": 392 },
+                "rect": { "x": 108, "y": 217 },
                 "style": {
                     "fontColor": { "r": 255, "g": 255, "b": 255, "a": 255 }
                 }
@@ -32,7 +32,7 @@
         {
             "type": "ButtonWidget", "name": "gold_button",
             "fields": {
-                "rect": { "x": 84, "y": 391 },
+                "rect": { "x": 84, "y": 216 },
                 "filename": "PANEL\\goldcoinbtn",
                 "tooltipString": "@strGoldDrop",
                 "onClickMessage": "PlayerInventoryPanelMessage:DropGold",
@@ -41,7 +41,7 @@
         {
             "type": "ButtonWidget", "name": "close",
             "fields": {
-                "rect": { "x": 18, "y": 384 },
+                "rect": { "x": 214, "y": 214 },
                 "filename": "PANEL\\buysellbtn",
                 "normalFrame": 10,
                 "pressedFrame": 11,
