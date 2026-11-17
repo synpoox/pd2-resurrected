@@ -4351,102 +4351,102 @@
  },
  {
   "m06": {
-   "asset": "pd2/cartomap06"
+   "asset": "pd2/cartoicon_white_01"
   }
  },
  {
   "m07": {
-   "asset": "pd2/cartomap07"
+   "asset": "pd2/cartoicon_gold_21"
   }
  },
  {
   "m08": {
-   "asset": "pd2/cartomap08"
+   "asset": "pd2/cartoicon_gold_22"
   }
  },
  {
   "m09": {
-   "asset": "pd2/cartomap09"
+   "asset": "pd2/cartoicon_red_41"
   }
  },
  {
   "m10": {
-   "asset": "pd2/cartomap10"
+   "asset": "pd2/cartoicon_gold_23"
   }
  },
  {
   "m11": {
-   "asset": "pd2/cartomap11"
+   "asset": "pd2/cartoicon_red_42"
   }
  },
  {
   "m12": {
-   "asset": "pd2/cartomap12"
+   "asset": "pd2/cartoicon_white_02"
   }
  },
  {
   "m13": {
-   "asset": "pd2/cartomap13"
+   "asset": "pd2/cartoicon_white_03"
   }
  },
  {
   "m14": {
-   "asset": "pd2/cartomap14"
+   "asset": "pd2/cartoicon_gold_24"
   }
  },
  {
   "m15": {
-   "asset": "pd2/cartomap15"
+   "asset": "pd2/cartoicon_gold_25"
   }
  },
  {
   "m16": {
-   "asset": "pd2/cartomap16"
+   "asset": "pd2/cartoicon_white_04"
   }
  },
  {
   "m17": {
-   "asset": "pd2/cartomap17"
+   "asset": "pd2/cartoicon_white_05"
   }
  },
  {
   "m18": {
-   "asset": "pd2/cartomap18"
+   "asset": "pd2/cartoicon_red_43"
   }
  },
  {
   "m19": {
-   "asset": "pd2/cartomap19"
+   "asset": "pd2/cartoicon_red_44"
   }
  },
  {
   "m20": {
-   "asset": "pd2/cartomap20"
+   "asset": "pd2/cartoicon_white_06"
   }
  },
  {
   "m21": {
-   "asset": "pd2/cartomap21"
+   "asset": "pd2/cartoicon_gold_26"
   }
  },
  {
   "m22": {
-   "asset": "pd2/cartomap22"
+   "asset": "pd2/cartoicon_red_45"
   }
  },
  {
   "m23": {
-   "asset": "pd2/cartomap23"
+   "asset": "pd2/cartoicon_white_07"
   }
  },
  {
   "m24": {
-   "asset": "pd2/cartomap24"
+   "asset": "pd2/cartoicon_white_08"
   }
  },
  {
   "m25": {
-   "asset": "pd2/cartomap25"
+   "asset": "pd2/cartoicon_gold_27"
   }
  }
 ]
