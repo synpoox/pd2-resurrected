@@ -1100,68 +1100,68 @@ Act 5 - WorldStone	1087	Act 5 - WorldStone
 Act 5 - Temple Entrance	1088	Act 5 - Temple Entrance
 Act 5 - Baal Entrance	1089	Act 5 - Baal Entrance
 Act 5 - Pandemonium Finale	1090	Act 5 - Pandemonium Finale
-UberDiabloLvl	1092	UberDiabloLvl
-Mesa	1093	Mesa
-Siege Map	1094	Siege Map
-Palace	1095	Palace
-Sewers	1096	Sewers
-Arcane	1097	Arcane
-Kurast	1098	Kurast
-River Of Blood	1099	River Of Blood
-Lava	1100	Lava
-Ice Map	1101	Ice Map
-Desert Map	1102	Desert Map
-Jungle Map	1103	Jungle Map
-Fortress Map	1104	Fortress Map
-Throne Map	1105	Throne Map
-Tomb Map	1106	Tomb Map
-Monastery Map	1107	Monastery Map
-Monastery Map Basement	1108	Monastery Map Basement
-Graveyard Map	1109	Graveyard Map
-Caldeum Map	1110	Caldeum Map
-Pandemonium Map	1111	Pandemonium Map
-Spider Map	1112	Spider Map
-Frozen Forest Map	1113	Frozen Forest Map
-Necropolis Jungle	1114	Necropolis Jungle
-Necropolis Swamp	1115	Necropolis Swamp
-Necropolis Void	1116	Necropolis Void
-Realm Of Torment	1117	Realm Of Torment
-Pit Of Despair	1118	Pit Of Despair
-Library Map	1119	Library Map
-Westmarch Map	1120	Westmarch Map
-Crypts Map	1121	Crypts Map
-Sanctuary of Sin Map	1122	Sanctuary of Sin Map
-Black Abyss Map	1123	Black Abyss Map
-Ruined Cistern Map	1124	Ruined Cistern Map
-Ashen Plains Map	1125	Ashen Plains Map
-Zhar Main	1126	Zhar Main
-Zhar 1 - Rivers	1127	Zhar 1 - Rivers
-Zhar 2 - Ice	1128	Zhar 2 - Ice
-Zhar 3 - Kurast	1129	Zhar 3 - Kurast
-Void Event Map	1130	Void Event Map
-Unused	1131	Unused
-Hellcaves	1132	Hellcaves
-HellcaveFortress	1133	HellcaveFortress
-FallenGardens	1134	FallenGardens
-DiamondGates	1135	DiamondGates
-PD2 - Pandemonium Finale	1136	PD2 - Pandemonium Finale
-Kanemith Outside	1137	Kanemith Outside
-Kanemith Dungeon	1138	Kanemith Dungeon
-LucionArena	1139	LucionArena
-LucionVault	1140	LucionVault
-Skovos Stronghold Map	1141	Skovos Stronghold Map
-Demon Road Map	1142	Demon Road Map
-Imperial Palace	1143	Imperial Palace
-Halls of Torture Map	1144	Halls of Torture Map
-Imperial Palace Boss Room	1145	Imperial Palace Boss Room
-Ureh City Map	1146	Ureh City Map
-Nemyr Monastery	1147	Nemyr Monastery
-Djinns Domain Map	1148	Djinns Domain Map
-Djinns Domain Red Map	1149	Djinns Domain Red Map
-Djinns Domain Boss Map	1150	Djinns Domain Boss Map
-Na-Krul's Abyss Map	1151	Na-Krul's Abyss Map
-Kyovoshad Map	1152	Kyovoshad Map
-TombEventMap	1153	TombEventMap
-Poisoned Well Map	1154	Poisoned Well Map
-Dark Temple Map	1155	Dark Temple Map
-Descent Map	1156	Descent Map
+UberDiabloLvl	-	cut: PD2's map and uber levels (#1231)
+Mesa	-	cut: PD2's map and uber levels (#1231)
+Siege Map	-	cut: PD2's map and uber levels (#1231)
+Palace	-	cut: PD2's map and uber levels (#1231)
+Sewers	-	cut: PD2's map and uber levels (#1231)
+Arcane	-	cut: PD2's map and uber levels (#1231)
+Kurast	-	cut: PD2's map and uber levels (#1231)
+River Of Blood	-	cut: PD2's map and uber levels (#1231)
+Lava	-	cut: PD2's map and uber levels (#1231)
+Ice Map	-	cut: PD2's map and uber levels (#1231)
+Desert Map	-	cut: PD2's map and uber levels (#1231)
+Jungle Map	-	cut: PD2's map and uber levels (#1231)
+Fortress Map	-	cut: PD2's map and uber levels (#1231)
+Throne Map	-	cut: PD2's map and uber levels (#1231)
+Tomb Map	-	cut: PD2's map and uber levels (#1231)
+Monastery Map	-	cut: PD2's map and uber levels (#1231)
+Monastery Map Basement	-	cut: PD2's map and uber levels (#1231)
+Graveyard Map	-	cut: PD2's map and uber levels (#1231)
+Caldeum Map	-	cut: PD2's map and uber levels (#1231)
+Pandemonium Map	-	cut: PD2's map and uber levels (#1231)
+Spider Map	-	cut: PD2's map and uber levels (#1231)
+Frozen Forest Map	-	cut: PD2's map and uber levels (#1231)
+Necropolis Jungle	-	cut: PD2's map and uber levels (#1231)
+Necropolis Swamp	-	cut: PD2's map and uber levels (#1231)
+Necropolis Void	-	cut: PD2's map and uber levels (#1231)
+Realm Of Torment	-	cut: PD2's map and uber levels (#1231)
+Pit Of Despair	-	cut: PD2's map and uber levels (#1231)
+Library Map	-	cut: PD2's map and uber levels (#1231)
+Westmarch Map	-	cut: PD2's map and uber levels (#1231)
+Crypts Map	-	cut: PD2's map and uber levels (#1231)
+Sanctuary of Sin Map	-	cut: PD2's map and uber levels (#1231)
+Black Abyss Map	-	cut: PD2's map and uber levels (#1231)
+Ruined Cistern Map	-	cut: PD2's map and uber levels (#1231)
+Ashen Plains Map	-	cut: PD2's map and uber levels (#1231)
+Zhar Main	-	cut: PD2's map and uber levels (#1231)
+Zhar 1 - Rivers	-	cut: PD2's map and uber levels (#1231)
+Zhar 2 - Ice	-	cut: PD2's map and uber levels (#1231)
+Zhar 3 - Kurast	-	cut: PD2's map and uber levels (#1231)
+Void Event Map	-	cut: PD2's map and uber levels (#1231)
+Unused	1092	Unused
+Hellcaves	-	cut: PD2's map and uber levels (#1231)
+HellcaveFortress	-	cut: PD2's map and uber levels (#1231)
+FallenGardens	-	cut: PD2's map and uber levels (#1231)
+DiamondGates	-	cut: PD2's map and uber levels (#1231)
+PD2 - Pandemonium Finale	-	cut: PD2's map and uber levels (#1231)
+Kanemith Outside	-	cut: PD2's map and uber levels (#1231)
+Kanemith Dungeon	-	cut: PD2's map and uber levels (#1231)
+LucionArena	-	cut: PD2's map and uber levels (#1231)
+LucionVault	-	cut: PD2's map and uber levels (#1231)
+Skovos Stronghold Map	-	cut: PD2's map and uber levels (#1231)
+Demon Road Map	-	cut: PD2's map and uber levels (#1231)
+Imperial Palace	-	cut: PD2's map and uber levels (#1231)
+Halls of Torture Map	-	cut: PD2's map and uber levels (#1231)
+Imperial Palace Boss Room	-	cut: PD2's map and uber levels (#1231)
+Ureh City Map	-	cut: PD2's map and uber levels (#1231)
+Nemyr Monastery	-	cut: PD2's map and uber levels (#1231)
+Djinns Domain Map	-	cut: PD2's map and uber levels (#1231)
+Djinns Domain Red Map	-	cut: PD2's map and uber levels (#1231)
+Djinns Domain Boss Map	-	cut: PD2's map and uber levels (#1231)
+Na-Krul's Abyss Map	-	cut: PD2's map and uber levels (#1231)
+Kyovoshad Map	-	cut: PD2's map and uber levels (#1231)
+TombEventMap	-	cut: PD2's map and uber levels (#1231)
+Poisoned Well Map	-	cut: PD2's map and uber levels (#1231)
+Dark Temple Map	-	cut: PD2's map and uber levels (#1231)
+Descent Map	-	cut: PD2's map and uber levels (#1231)

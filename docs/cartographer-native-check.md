@@ -7,8 +7,8 @@ Game check of the five native Cartographer maps (m01-m05), 2026-11-15, Slot4, He
 |---|---|
 | Item reads (name, area level, native property text) | Pass: "Hastened Bone Vaults Map / Area Level: 85 / +16% Monster Speed" |
 | Acquisition by `cheat spawn m01..m05` and opening in Harrogath (Hell) | Pass for all five (red portal, "Entering <name>") |
-| Tunneling Depths (Cave, slot 202), Bone Vaults (Crypt, 203), Frozen Hollows (Ice, 205), Overgrown Reach (Jungle, 206), Frostbitten Fields (Snow, 207) | Pass: each log says "built as planned" (Tunneling Depths 12 rooms; Bone Vaults 13 rooms; Frozen Hollows 12 rooms; Overgrown Reach 15 stamps, 336 void of 576 cells, 240 rooms; Frostbitten Fields 48 stamps, 0 void, 192 cells); arrival and area text seen |
-| Entrance to boss room | Bone Vaults, Tunneling Depths (`cheat goto 202,17802,422`, walked) and Overgrown Reach (plan cell (0,0), Berserker Slayer boss present, walked): loaded and populated. Frozen Hollows, Frostbitten Fields: skipped: owner scope cut 2026-11-15 |
+| Tunneling Depths (Cave, slot 202; now 138), Bone Vaults (Crypt, 203; now 139), Frozen Hollows (Ice, 205; now 141), Overgrown Reach (Jungle, 206; now 142), Frostbitten Fields (Snow, 207; now 143) | Pass: each log says "built as planned" (Tunneling Depths 12 rooms; Bone Vaults 13 rooms; Frozen Hollows 12 rooms; Overgrown Reach 15 stamps, 336 void of 576 cells, 240 rooms; Frostbitten Fields 48 stamps, 0 void, 192 cells); arrival and area text seen |
+| Entrance to boss room | Bone Vaults, Tunneling Depths (`cheat goto 202,17802,422`, now level 138, walked) and Overgrown Reach (plan cell (0,0), Berserker Slayer boss present, walked): loaded and populated. Frozen Hollows, Frostbitten Fields: skipped: owner scope cut 2026-11-15 |
 | Return path | Pass for Frozen Hollows: the arrival portal leads back to Harrogath |
 | HD / legacy (`g`) | Pass on Bone Vaults (name, monster level and property text show in both) |
 | Panel / name text | Pass: map name and "Monster level 85 / Monsters have ..." text on the automap panel |

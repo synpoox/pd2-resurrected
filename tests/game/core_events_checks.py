@@ -3,9 +3,10 @@
 uber-scaling (#347, docs/research/pd2-uber-bosses-dll.md section 4) reads <slot>/d2rloader/logs/core-maps.log.
 Environment for every command here (docs/agents/game-slots.md): MODKIT_PROJECT=pd2-resurrected, MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml, MODKIT_RUN=<lock owner>; the toolkit refuses to run without a config.
 
-Setup: tools/install.ps1 on the merged data, a level 90+ character in Hell. In game: `debug_mode`, `cheat goto 138`
-(tier 0: no key opened, so the counters read 0; for tiers 1-2, `cheat spawn dcma,inv 0`, cube the key alone once per
-tier, and right-click it at the fountain, `cheat goto 109,5074,5114`),
+Setup: tools/install.ps1 on the merged data, a level 90+ character in Hell. In game: `debug_mode`, then `cheat goto 109,5074,5114` (the Blood
+Fountain), `cheat spawn dcma,inv 0` and right-click the key there: it opens Diablo Clone's arena (level 145, Cartographer's
+arena; PD2's level 138 is gone, #1231). Tier 0 is that first open, so the counters read 0; for tiers 1-2 cube the key alone
+once per tier before each right-click),
 then `cheat mspawn uberdiablonew`, `cheat mspawn dcloneskele,3` and a monster outside the fight set, `cheat mspawn
 zombie1`. Then:
   py testing/game_checks.py --path <repo>/tests/game --module core_events_checks run core-events-ub2 --slot N

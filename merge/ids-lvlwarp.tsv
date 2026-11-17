@@ -89,9 +89,9 @@ Act 5 Baal Temple Down	86	Act 5 Baal Temple Down L
 Act 5 Baal Temple Down#2	87	Act 5 Baal Temple Down R
 Act 4 Mesa to Hellcaves	88	Act 4 Mesa to Hellcaves
 Act 4 Hellcaves to Mesa	89	Act 4 Hellcaves to Mesa
-Act 5 Barricade Down Wall Block	90	Act 5 Barricade Down Wall Block
-Act 5 Barricade Down Wall Block#2	91	Act 5 Barricade Down Wall Block
-UrehCityToNemyrMonastery	92	UrehCityToNemyrMonastery
-NemyrMonasteryToUrehCity	93	NemyrMonasteryToUrehCity
-DjinnsDomainLeftDoorBig	94	DjinnsDomainLeftDoorBig
-DjinnsDomainPalaceLeftDoor	95	DjinnsDomainPalaceLeftDoor
+Act 5 Barricade Down Wall Block	-	cut: PD2's map and uber levels (#1231)
+Act 5 Barricade Down Wall Block#2	-	cut: PD2's map and uber levels (#1231)
+UrehCityToNemyrMonastery	-	cut: PD2's map and uber levels (#1231)
+NemyrMonasteryToUrehCity	-	cut: PD2's map and uber levels (#1231)
+DjinnsDomainLeftDoorBig	-	cut: PD2's map and uber levels (#1231)
+DjinnsDomainPalaceLeftDoor	-	cut: PD2's map and uber levels (#1231)
