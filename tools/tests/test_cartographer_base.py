@@ -30,7 +30,7 @@ class CartographerBaseTests(unittest.TestCase):
         data_tables.need(self)
 
     def test_every_map_names_a_cmap_misc_item(self):
-        items = {r["code"] for r in data_tables.rows("misc") if r["type"] == "cmap"}
+        items = {r["code"] for r in data_tables.rows("misc") if r["type"] in ("t1m", "t2m", "t3m")}
         for m in table("maps.txt"):
             assert m["Item"] in items, m["Name"]
 
