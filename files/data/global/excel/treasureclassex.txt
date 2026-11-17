@@ -116,6 +116,12 @@ Cartographer Maps D			1						m22	1	m23	1	m24	1	m25	1																						0
 Cartographer Maps C			1						m14	1	m15	1	m16	1	m17	1	m18	1	m19	1	m20	1	m21	1	Cartographer Maps D	4												0
 Cartographer Maps B			1						m06	1	m07	1	m08	1	m09	1	m10	1	m11	1	m12	1	m13	1	Cartographer Maps C	12												0
 Cartographer Maps			1						m01	1	m02	1	m03	1	m04	1	m05	1	Cartographer Maps B	20																		0
+Map Tier 1			1			400	800		m01	1	m04	1	m05	1	m06	1	m12	1	m20	1	m23	1	m24	1														0
+Map Tier 2			1			400	800		m02	1	m03	1	m08	1	m10	1	m13	1	m15	1	m16	1	m21	1														0
+Map Tier 3			1			400	800		m07	1	m09	1	m11	1	m14	1	m17	1	m18	1	m19	1	m22	1	m25	1												0
+T1 Map Drop			1						Map Tier 1	66	Map Tier 2	33																										0
+T2 Map Drop			1						Map Tier 1	39	Map Tier 2	40	Map Tier 3	20																								0
+T3 Map Drop			1						Map Tier 1	32	Map Tier 2	33	Map Tier 3	33																								0
 Act 1 Melee B	2	5	1						mele3	3	armo3	3	mele6	7	armo6	7																						0
 Act 1 Melee C	2	9	1						mele3	2	armo3	1	mele6	6	armo6	3	mele9	14	armo9	7	mele12	2	armo12	1														0
 Act 2 Melee A	2	12	1						mele6	2	armo6	1	mele9	6	armo9	3	mele12	14	armo12	7	mele15	2	armo15	1	Act 1 Melee C	30			36	66	0.4545							0
@@ -233,14 +239,14 @@ Act 2 (N) Good	5	42	1						Jewelry C	60	Chipped Gem	2	Flawed Gem	10	Normal Gem	1
 Act 3 (N) Good	5	46	1						Jewelry C	60	Chipped Gem	2	Flawed Gem	10	Normal Gem	14	Flawless Gem	28	wss	2	Runes 10	14																0
 Act 4 (N) Good	5	51	1						Jewelry C	60	Chipped Gem	2	Flawed Gem	10	Normal Gem	14	Flawless Gem	28	wss	2	Runes 11	14																0
 Act 5 (N) Good	5	57	1						Jewelry C	60	Chipped Gem	2	Flawed Gem	10	Normal Gem	14	Flawless Gem	28	wss	2	Runes 12 equiv	14																0
-Act 1 (H) Good	5	66	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	50	Perfect Gem	6	Runes 13 equiv	28	wss	4	Cartographer Maps	1												0
-Act 2 (H) Good	5	72	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	50	Perfect Gem	6	Runes 14 equiv	28	wss	4	Cartographer Maps	1												0
-Act 3 (H) Good	5	78	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	50	Perfect Gem	6	Runes 15 equiv	28	wss	4	Cartographer Maps	1												0
-Act 4 (H) Good	5	82	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	50	Perfect Gem	6	Runes 16 equiv	28	wss	4	Cartographer Maps	1												0
-Act 5 (H) Good	5	85	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	50	Perfect Gem	6	Runes 17 equiv	28	wss	4	Cartographer Maps	1												0
-Map Good t1	20	85	1					8	Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	48	Perfect Gem	6	Runes 17 equiv	28	wss	4														
-Map Good t2	20	86	1					8	Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	48	Perfect Gem	6	Runes 17 equiv	28	wss	4														
-Map Good t3	20	87	1					8	Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	48	Perfect Gem	6	Runes 17 equiv	28	wss	4														
+Act 1 (H) Good	5	66	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	50	Perfect Gem	6	Runes 13 equiv	28	wss	4	Map Tier 1	1												0
+Act 2 (H) Good	5	72	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	50	Perfect Gem	6	Runes 14 equiv	28	wss	4	Map Tier 1	1												0
+Act 3 (H) Good	5	78	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	50	Perfect Gem	6	Runes 15 equiv	28	wss	4	Map Tier 1	1												0
+Act 4 (H) Good	5	82	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	50	Perfect Gem	6	Runes 16 equiv	28	wss	4	Map Tier 1	1												0
+Act 5 (H) Good	5	85	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	50	Perfect Gem	6	Runes 17 equiv	28	wss	4	Map Tier 1	1												0
+Map Good t1	20	85	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	48	Perfect Gem	6	Runes 17 equiv	28	wss	4	T1 Map Drop	8												
+Map Good t2	20	86	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	48	Perfect Gem	6	Runes 17 equiv	28	wss	4	T2 Map Drop	8												
+Map Good t3	20	87	1						Jewelry C	120	Chipped Gem	7	Flawed Gem	20	Normal Gem	28	Flawless Gem	48	Perfect Gem	6	Runes 17 equiv	28	wss	4	T3 Map Drop	8												
 Act 1 Chest A	6	0	4					173	gld	295	Act 1 Junk	295	Act 1 Equip A	196	Act 1 Good	39																						0
 Act 1 Chest B	6	5	4					173	gld	295	Act 1 Junk	295	Act 1 Equip B	196	Act 1 Good	39																						0
 Act 1 Chest C	6	9	4					145	gld	272	Act 1 Junk	218	Act 2 Junk	54	Act 1 Equip C	272	Act 1 Good	36																				0
@@ -878,10 +884,10 @@ Act 4 (H) Super Cx	18	87	-4	512	654	972	1024	0	Act 4 (H) Uitem B	2	Act 4 (H) Cpo
 Act 5 (H) Super Ax	18	90	-4	512	654	972	1024	0	Act 5 (H) Uitem A	2	Act 5 (H) Cpot A	2																										0
 Act 5 (H) Super Bx	18	93	-4	512	654	972	1024	0	Act 5 (H) Uitem B	2	Act 5 (H) Cpot B	2																										0
 Act 5 (H) Super Cx	18	96	-4	512	654	972	1024	0	Act 5 (H) Uitem C	2	Act 5 (H) Cpot C	2																										0
-Map Boss T1		85	5	983	983	983	1024	3	Act 5 (H) Equip C	58	Act 5 (H) Good	4																										
-Map Boss T2		85	5	983	983	983	1024	3	Act 5 (H) Equip C	58	Act 5 (H) Good	4																										
-Map Boss T3		85	5	983	983	983	1024	3	Act 5 (H) Equip C	58	Act 5 (H) Good	4																										
-Map Boss T4		85	5	983	983	983	1024	3	Act 5 (H) Equip C	58	Act 5 (H) Good	4																										
+Map Boss T1		85	5	983	983	983	1024		Act 5 (H) Equip C	58	Act 5 (H) Good	4	T1 Map Drop	3																								
+Map Boss T2		85	5	983	983	983	1024		Act 5 (H) Equip C	58	Act 5 (H) Good	4	T2 Map Drop	3																								
+Map Boss T3		85	5	983	983	983	1024		Act 5 (H) Equip C	58	Act 5 (H) Good	4	T3 Map Drop	3																								
+Map Boss T4		85	5	983	983	983	1024		Act 5 (H) Equip C	58	Act 5 (H) Good	4	T3 Map Drop	3																								
 Map Blood Drop			1					8	dcbl	1																												
 Map Boss T1 Blood		85	-2						Map Boss T1	1	Map Blood Drop	1																										
 Map Boss T2 Blood		85	-2						Map Boss T2	1	Map Blood Drop	1																										
@@ -912,7 +918,7 @@ Uber Duriel			-4	512	654	972	1024	0	Act 5 (H) Uitem C	2	Act 5 (H) Cpot C	2						
 Uber Izual			-4	512	654	972	1024	0	Act 5 (H) Uitem C	2	Act 5 (H) Cpot C	2																										0
 Bloodwitch (H)			5	800	800	972	1024	3	gld,mul=2048	340	Act 2 (H) Equip B	461	Act 2 (H) Junk	121	Act 2 (H) Good	121	pk2	26																				
 Treasure Fallen Gem H			2					10	Perfect Gem	4	Flawless Gem	1																										
-Treasure Fallen Map			2					16	irma	1	irra	2	rrra	2	urma	1	scou	1																				
+Treasure Fallen Map			2					12	T3 Map Drop	4	irma	1	irra	2	rrra	2	urma	1	scou	1																		
 Treasure Fallen Rune H			2					12	Runes 17	7																												
 Treasure Fallen Craft H			1					12	crfb	1	crfc	1	crfs	1	crfh	1	crfv	1	crfu	1	crfp	1																
 Map Void			1					400	mp5	5	yps	10	rvl	40																								
@@ -949,7 +955,7 @@ BR Arena Bodies H		90	1	1000	850	1400	800	0	Act 5 (H) Equip C	48	BR Arena misc	5
 BR Arena Zomb N		30	3	9000	9000	1	1	0	Act 5 Uitem C	30	BR Arena jewerly	8																										
 BR Arena Zomb NM		60	3	9000	9000	1	1	0	Act 5 (N) Uitem C	30	BR Arena jewerly	8																										
 BR Arena Zomb H		90	3	9000	9000	1	1	0	Act 5 (H) Uitem C	30	BR Arena jewerly	8																										
-UberAncients		90	6	950	960	990	1024	30	Act 5 (H) Equip C	800	Jewelry C	100	Runes 17 equiv	30	wss	25	scrb	3																				
+UberAncients		90	6	950	960	990	1024		Act 5 (H) Equip C	800	Jewelry C	100	Runes 17 equiv	30	wss	25	T3 Map Drop	10	T2 Map Drop	10	T1 Map Drop	10	scrb	3														
 ShadowOfMendeln		90	6	950	960	990	1024	0	Act 5 (H) Equip C	787	Act 5 (H) Good	45	Act 5 (H) Junk	75	Runes 17 equiv	10	wss	15	Jewelry C	30	scrb	2																
 Act 1 (H) Weap A	1	68	1						weap54	2	armo54	0	weap57	6	armo57	0	weap60	14	armo60	0	weap63	6	armo63	3	Act 5 (N) Weap C	1785												
 Act 1 (H) Weap B	1	70	1						weap57	2	armo57	0	weap60	6	armo60	0	weap63	14	armo63	0	weap66	2	armo66	1	Act 1 (H) Weap A	1530												
@@ -1032,8 +1038,8 @@ lucc				4000
 lucdN				0	100																																	
 lucdNM				0	10																																	
 lucdH				2600	10																																	
-T4MidMapBoss		90	6	950	960	990	1024	30	Act 5 (H) Equip C	800	Jewelry C	100	Runes 17 equiv	30	wss	25	scrb	3																				
-T4FinalMapBoss		90	6	950	960	990	1024	30	Act 5 (H) Equip C	800	Jewelry C	100	Runes 17 equiv	30	wss	25	scrb	3																				
+T4MidMapBoss		90	6	950	960	990	1024		Act 5 (H) Equip C	800	Jewelry C	100	Runes 17 equiv	30	wss	25	T3 Map Drop	10	T2 Map Drop	10	T1 Map Drop	10	scrb	3														
+T4FinalMapBoss		90	6	950	960	990	1024		Act 5 (H) Equip C	800	Jewelry C	100	Runes 17 equiv	30	wss	25	T3 Map Drop	10	T2 Map Drop	10	T1 Map Drop	10	scrb	3														
 LucionChestLow		90	6	800	900	990	1024	0	Act 5 (H) Equip C	200	Act 5 (H) Good	100	Runes 15 equiv	30	wss	25																						
 LucionChestHigh		90	6	950	960	990	1024	0	Act 5 (H) Equip C	800	Jewelry C	100	Runes 17 equiv	30	scrb	3																						
 Demonic Cube N				20000	1000																																	

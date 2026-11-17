@@ -27,7 +27,14 @@ work items are placed on [roadmap.md](../roadmap.md) by [#210](https://github.co
 | T2 | 88 | `t2m` | m02 Bone Vaults (Crypt), m03 Frozen Hollows (Ice), m08 Horazon's Memory (Arcane), m10 Howling Plateau (**Mesa**), m13 Ruins of Corvus (**Kurast**), m15 Cursed Hold (Jail), m16 Khazra Den (Lair), m21 Ruined Cistern (Sewer) |
 | T3 | 89 | `t3m` | m07 Battlefields of Eternity (Durance), m09 Arreat Battlefield (**Siege**), m11 Kehjistan Marketplace (**Desert**), m14 Leoric's Passage (Dungeon), m17 Cellar of the Damned (KurastSewer), m18 Bastion Keep (Barracks), m19 Imperial Palace (Harem), m22 Royal Crypts (Catacombs), m25 Dark Temple (Temple) |
 
-Not done here (other children of #1303): the map affixes and their tier bands (no affix table names `t1m`/`t2m`/`t3m` yet; [#1305](https://github.com/synpoox/pd2-resurrected/issues/1305)), recipes, drops.
+## Drops and stacking ([#1307](https://github.com/synpoox/pd2-resurrected/issues/1307))
+
+- **Treasure classes** are PD2's, over m01-m25 by tier: `Map Tier 1-3` list the maps of each tier (Rare 400, Magic 800 as PD2; a natural magic roll becomes normal), `T1 Map Drop`, `T2 Map Drop` and `T3 Map Drop` pick a tier (T1: 66/33 of T1/T2, T2: 39/40/20, T3: 32/33/33). The `Act 1-5 (H) Good` pools name `Map Tier 1`, so Hell drops outside maps are a T1 pool. `Map Good t1-t3`, `Map Boss T1-T4`, `Treasure Fallen Map`, `UberAncients` and the two `T4*MapBoss` classes call the tier drop again (their P3 no-drop lines are gone). The tierless `Cartographer Maps` class stays for the Horazon drops.
+- **Stacking:** the 25 maps are `stackable` 1, `minstack` 1, `maxstack` 50, `spawnstack` 1 in `misc.txt`, like PD2's other stackables. Rare and unique maps do not stack.
+- **Anya** already sells the five orbs in `misc.txt` (`imma`, `imra`, `rera`, `scou`, `upma`). `upmp` and `fort` come with the recipes PR ([#1306](https://github.com/synpoox/pd2-resurrected/issues/1306)); add their `AnyaMin`/`AnyaMax` 1 then.
+- **Not done (needs code):** monsters inside a map. Cartographer's slot levels use the Act 5 monsters' own rows, which also spawn outside maps, and one slot serves maps of several tiers, so no table gives them the map's tier. It waits for Cartographer's `map_drop_tc` behaviour ([d2r-tools#538](https://github.com/synpoox/d2r-tools/issues/538)). Anya's quest reward (a map instead of her scroll) is game code too.
+
+Not done here (other children of #1303): the map affixes and their tier bands (no affix table names `t1m`/`t2m`/`t3m` yet; [#1305](https://github.com/synpoox/pd2-resurrected/issues/1305)), recipes.
 
 ## Scope
 
