@@ -170,7 +170,9 @@ auto MapProperties(Unit* item, Leftover& left) noexcept -> bool {
 	for (int32_t stat = 0; stat < ItemStatCostRows; ++stat) {
 		Entry e[16] {};
 		int32_t n = stat == StatQuantity ? 0 : entries(item, static_cast<uint32_t>(stat), e, 16);
-		n = n > 16 ? 16 : n;
+		if (n > 16) {
+			return false;  // more layers than the buffer: refuse rather than drop some
+		}
 		for (int32_t i = 0; i < n; ++i) {
 			const bool level = stat == StatMapLevel, event = stat == StatMapForceEvent;
 			if ((!level && !event) || left.propCount >= MaxMapProps) {
