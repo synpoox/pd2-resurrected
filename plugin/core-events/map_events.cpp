@@ -1,4 +1,4 @@
-// PD2's map events (ProjectDiablo.dll; docs/research/pd2-map-system-dll.md, section 4), kept for the native Cartographer
+// PD2's map events (ProjectDiablo.dll; docs/pd2/map-system-dll.md, section 4), kept for the native Cartographer
 // maps (PD2's own tiered and unique maps are cut, #964). The first room of a native map rolls
 // one event for the game (0x10383060): rare and better 34%, magic 17%, normal 11%, always with `map_force_event`
 // (a Catalyst Shard); then up to 40 draws of 12, the first naming an event wins (Altar of the Catalyst never when
@@ -118,7 +118,7 @@ std::atomic<uint32_t> g_notified {0};
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::LocalizationService* g_strings = nullptr;
 
-// PD2's notify string by event (docs/research/pd2-map-system-dll.md, section 4)
+// PD2's notify string by event (docs/pd2/map-system-dll.md, section 4)
 auto NotifyKey(int32_t event) noexcept -> const char* {
 	switch (event) {
 	case Mendeln: return "d2r:MapEventNotifyMendeln";
@@ -174,7 +174,7 @@ auto Set(Game* game, uint32_t key, int32_t value) noexcept -> void {
 	}
 }
 
-// The Cartographer slots (docs/cartographer-contracts.md, merge/ids-levels.tsv): every native map is one of these levels
+// The Cartographer slots (docs/cartographer/contracts.md, merge/ids-levels.tsv): every native map is one of these levels
 constexpr int32_t NativeFirst = 138, NativeLast = 144;
 // Cartographer publishes no room count (event-link RoomProgress), so a native map's progress divides by the room
 // count of its built level (RealRooms); NativeTier.rooms (PD2's default 200) serves until it is read.
@@ -478,7 +478,7 @@ auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept
 // item interaction listener never fired for a right-click (almanac.cpp), so the use-item handler's entry keeps the
 // item's quality and forcing marker (0x4f40c0 (game, player, packet): the packet holds the item's id at +10, the same
 // message Cartographer's spell 16 answers). Without a map use (a map opened another way) it rolls as a normal map.
-// A native map is any item of the Cartographer map type cmap (merge/ids-itemtypes.tsv, docs/cartographer-contracts.md)
+// A native map is any item of the Cartographer map type cmap (merge/ids-itemtypes.tsv, docs/cartographer/contracts.md)
 constexpr int32_t MapItemType = 245;
 std::atomic<int32_t> g_usedQuality {0};  // 0 none; else the D2R quality of the map item used last
 std::atomic<bool> g_usedForced {false};

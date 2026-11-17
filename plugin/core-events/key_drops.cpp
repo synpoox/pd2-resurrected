@@ -1,4 +1,4 @@
-// PD2's key drop rule (ProjectDiablo.dll 0x103799d0; docs/research/pd2-uber-bosses-dll.md, section 7). On every
+// PD2's key drop rule (ProjectDiablo.dll 0x103799d0; docs/pd2/uber-bosses-dll.md, section 7). On every
 // monster death PD2 rolls odds-only TCs: a TC's Unique x max(Set, 1) is a 1-in-N chance, Unique scaled down by the
 // player count, and a hit drops the TC's item by the monster. PD2's corrupted-zone rolls (the Talisman and the
 // Worldstone Shard) roll in an active Terror Zone instead (docs/deviations.md).

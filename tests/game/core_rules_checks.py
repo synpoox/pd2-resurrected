@@ -275,7 +275,7 @@ def split_throw_client_cast(ctx):
 @check("split-throw-temp-buff", tags=["core-rules"])
 def split_throw_temp_buff(ctx):
     """srvstfunc 79 put the skill's aurastate on the caster at the start frame with PD2's aurastat1 attackrate =
-    aurastatcalc1 par4 (Param4 10). The length is approximated (docs/core-rules.md)."""
+    aurastatcalc1 par4 (Param4 10). The length is approximated (docs/features/core-rules.md)."""
     buffs = re.findall(r"temp buff: skill \d+ level (\d+) state (\d+) for (\d+) frames, stat (\d+) \+(-?\d+)", _log(ctx))
     if not buffs:
         ctx.skip("no temp buff in the log yet (cast Split Throw, then run again)")
@@ -540,7 +540,7 @@ def blade_fury_refused(ctx):
     """PD2's gate A: a Blade Fury (srvdofunc 48) is not cut short by another Blade Fury; another skill is allowed. The
     held Blade Fury's own re-request goes to D2R's gate: with D2R's seqinput 12 (merge/standins.tsv) it comes at the
     input frame, after the throw, and D2R allows it (0), which throws the next blade. With PD2's seqinput 3 it came
-    back 4 and the Assassin stayed in the channel without throwing (docs/research/w32-blade-fury.md)."""
+    back 4 and the Assassin stayed in the channel without throwing (docs/research/skills/w32-blade-fury.md)."""
     rows = [r for r in _take_overs(ctx) if r[1] == 48]
     held = [h for h in _held(ctx) if h[1] == 48]
     if not held:
@@ -1405,7 +1405,7 @@ def psychic_hammer_falloff(ctx):
     return f"{len(found)} hits logged, {cuts} cut"
 
 
-# W36: merged ids (docs/research/w36-monster-kits.md)
+# W36: merged ids (docs/research/skills/w36-monster-kits.md)
 CORPSE_CYCLER, VINE_CYCLER, POISON_EGG_SPAWN, MAGGOT_EGG, TORAJAN_NEST = 307, 325, 522, 159, 631
 TORAJAN_EGG = 897  # monstats torajanBossPoisonEgg
 NO_LOOT_NO_XP = 0x4020000  # unit flags 0x20000 and 0x4000000, PD2's sHitPar3 / Nest's

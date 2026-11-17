@@ -1,7 +1,7 @@
 // The optional link between PD2's retained map events/ubers (core-events) and a generated-map provider such as
 // Cartographer (#944, epic #942). Pure C++ with no engine or SDK headers, so a host check exercises it (plugin/tests).
 //
-// Contract (docs/event-link.md): the provider is optional and PD2-neutral. A consumer asks it for capabilities through
+// Contract (docs/features/event-link.md): the provider is optional and PD2-neutral. A consumer asks it for capabilities through
 // D2RLoader's PluginCommunicationService and refuses before it consumes anything when one is missing. Cartographer
 // publishes nothing yet, so today every Check says NoProvider and every consumer runs observe-only, from the SDK's own
 // LifecycleService (LevelChanged, MonsterDeath). No Cartographer change is needed or made.

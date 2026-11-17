@@ -3,7 +3,7 @@
 // stack of N > 1 leaves it with Ctrl down, a game-thread job finds that same stack, whole, in a stored grid and
 // splitStack takes N-1 of it back to the cursor. D2R itself chose the cell and the panel (inventory, cube, stash), and
 // splitStack moves quantity between the stack and a new cursor stack in one step, so nothing is lost or made twice.
-// PD2 instead sends its own packet 0x22 and makes a new 1-quantity item at the cell (docs/research/stack-split.md);
+// PD2 instead sends its own packet 0x22 and makes a new 1-quantity item at the cell (docs/research/items/stack-split.md);
 // the result is the same, but the one item left down here is the original and the cursor stack is the new one.
 // In core-ui (client-only, ADR 0004) though it changes items: the result is what a put-down and a pick-up would give.
 //

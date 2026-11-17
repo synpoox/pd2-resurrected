@@ -10,4 +10,4 @@ PD2 is a Lord of Destruction mod, but the port targets D2R's Reign of the Warloc
 ## Consequences
 
 - PD2 rows are merged around D2R's RotW rows; D2R-only rows (e.g. itemtypes `warl` at 67) stay at D2R's numbers.
-- D2R-only content stays on unless turned off item by item by approval in `docs/d2r-only-content.md`.
+- D2R-only content stays on unless turned off item by item by approval in `docs/features/d2r-only-content.md`.

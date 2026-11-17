@@ -1,4 +1,4 @@
-// PD2's uber boss deaths (ProjectDiablo.dll 0x10378d80; docs/research/pd2-uber-bosses-dll.md, section 6). So far
+// PD2's uber boss deaths (ProjectDiablo.dll 0x10378d80; docs/pd2/uber-bosses-dll.md, section 6). So far
 // Diablo Clone's (0x103763d0): Annihilus, and at tiers 1-2 a 1-in-200 roll for one of five uniques; and the
 // mini-ubers' organs (0x10377800, 0x10377830, 0x10377860), one each at item level 130. D2R drops the organs from its
 // `Uber Izual`, `Uber Andariel` and `Uber Duriel` TCs, which PD2's merged rows replace with items and potions (#484).

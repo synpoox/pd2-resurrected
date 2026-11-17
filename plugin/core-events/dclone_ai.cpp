@@ -1,4 +1,4 @@
-// PD2's Dclone AI (ProjectDiablo.dll 0x1035b3f0; docs/research/pd2-uber-bosses-dll.md, section 5) for uberdiablonew:
+// PD2's Dclone AI (ProjectDiablo.dll 0x1035b3f0; docs/pd2/uber-bosses-dll.md, section 5) for uberdiablonew:
 // the heal when a player leaves, the immunity while his adds live, the three cold-nova phases at the arena centre, the
 // three skeleton waves (UberDiabSummon, srvdo 177) and his attack picks. Every other Trap-Melee monster keeps D2R's think.
 // The trapped souls' AI (0x1035bc60, monai row 99, #472) is here too: they cast while Dclone lives and die with him.

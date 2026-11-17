@@ -1,16 +1,16 @@
-// PD2's item rules for Ormus' Robes (docs/research/p12-ormus-robes.md):
+// PD2's item rules for Ormus' Robes (docs/research/items/p12-ormus-robes.md):
 //
 // - properties func 25 (`sorc-skill-rand-ctc`, ProjectDiablo.dll 0x103a12a0) in D2R's free property slot 26: one
 //   random skill of PD2's sorceress list gets +param, and the item casts that skill on cast (item_skilloncast) at
 //   chance min and level max, both adjusted by the skill as PD2 does.
 //   The Cast Triggers companion fires item_skilloncast (IR2, the stat's event in itemstatcost.txt).
-// - curses (docs/research/ir4-curses.md): max curses (a target holds up to the caster's max_curses + 1 curses) and
+// - curses (docs/research/items/ir4-curses.md): max curses (a target holds up to the caster's max_curses + 1 curses) and
 //   curse resistance (curse_effectiveness on the target scales the curse's stats), around D2R's ApplyCurse; PD2's
 //   gate (#264): resisted-to-0 cancels, stat 109 cuts the duration (cap 75 on a player), attract no longer refuses.
 //   Dark Pact (#265) consumes a curse and explodes around the target, scaled by the curses it held.
-// - skill while equipped and phasing (docs/research/ir7-equipped-items.md): item_skillonequip runs its skill as an
+// - skill while equipped and phasing (docs/research/items/ir7-equipped-items.md): item_skillonequip runs its skill as an
 //   item aura (D2R's item_aura case and tick, fed stat 375), and Phasing SelfAura drops the unit collision bits.
-// - critical and deadly strike (IR3, docs/research/ir3-combat-stats.md): PD2's roll and multipliers in place of
+// - critical and deadly strike (IR3, docs/research/items/ir3-combat-stats.md): PD2's roll and multipliers in place of
 //   D2R's, in WeaponDamage's roll block (a byte patch calling WeaponStrike) and D2R's missile roll.
 // - op bases, life steal cap and crushing blow (IR3): equipped_eth / missing_hp kept as base stats from the stat
 //   callback, lifedrain_percentcap on D2R's add-life, PD2's blow in CrushingBlowApply's jump slot, and its roll on
@@ -108,7 +108,7 @@ auto PropSorcSkillRandCtc(uint8_t dataFlag, uint32_t a1, uint64_t a2, Unit* item
 	return result;
 }
 
-// --- Critical and deadly strike (IR3, docs/research/ir3-combat-stats.md) ---
+// --- Critical and deadly strike (IR3, docs/research/items/ir3-combat-stats.md) ---
 // Merged stat ids (merge/ids-itemstatcost.tsv; PD2's 337, 141, 256, 257, 258, 210)
 constexpr uint32_t StatPassiveCrit = 337;     // passive_critical_strike
 constexpr uint32_t StatDeadlyStrike = 141;    // item_deadlystrike
@@ -201,7 +201,7 @@ auto WeaponStrike(Unit* attacker, uint8_t* damage, int32_t a5) noexcept -> void 
 
 // D2R's missile roll (MissileCritRoll) with PD2's chances; the hit doubles, as in PD2, whose live missile fill
 // (0x102fe730) rolls the same way and whose multiplier for missiles (0x103045a0) nothing calls
-// (docs/research/ir3-combat-stats.md)
+// (docs/research/items/ir3-combat-stats.md)
 auto MissileStrike(Unit* unit, Unit* weapon) noexcept -> uint64_t {
 	if (unit == nullptr) {
 		return 0;
@@ -351,7 +351,7 @@ auto RecomputeOp(Unit* unit, uint32_t opStat) noexcept -> int32_t {
 // itemstatcost.txt gives durability and hitpoints fCallback), missing_hp when life or max life does.
 // The server never sends either to the client, so a player's values are mirrored onto its client unit for tooltips.
 // PD2's third case, inc_splash_radius + missing_hp x inc_splash_radius_permissinghp (at most 40), is only reached
-// with inc_splash_radius as an op base, which no stat has: not ported (docs/research/ir3-combat-stats.md).
+// with inc_splash_radius as an op base, which no stat has: not ported (docs/research/items/ir3-combat-stats.md).
 // shortcut: an ethereal item without durability (a throwing stack) raises no callback; the count follows at the next
 // item change. Upgrade with an equip hook if one is found.
 auto RefreshOpBase(Unit* unit, uint32_t stat) noexcept -> void {
@@ -882,7 +882,7 @@ auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept ->
 	}
 }
 
-// --- Curses: curse resistance and max curses (docs/research/ir4-curses.md) ---------------------------------------
+// --- Curses: curse resistance and max curses (docs/research/items/ir4-curses.md) ---------------------------------------
 constexpr int32_t StatCurseSlots = 374;          // curse_slots, merged id (PD2 190): the slot count a curse was cast with
 constexpr int32_t StatMaxCurses = 421;           // max_curses (PD2 368)
 constexpr int32_t StatCurseResistance = 557;     // curse_effectiveness, shown as Curse Resistance (PD2 504)
@@ -1090,7 +1090,7 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 	return applied;
 }
 
-// --- Dark Pact (#265, docs/research/ir4-curses.md): PD2's state list creator 0x1036d7d0, state 196 ----------------
+// --- Dark Pact (#265, docs/research/items/ir4-curses.md): PD2's state list creator 0x1036d7d0, state 196 ----------------
 // PD2 refuses a monster D2R's NewStateList also refuses (below), then consumes the first curse in the target's chain
 // that is not the oldest timed one (so a lone timed curse stays), then
 // hits every unit within calc1 + curses - 1 of the target with the skill's magic damage times 1 + 1.1 * (curses - 1)
@@ -1320,7 +1320,7 @@ auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
 	return applied;
 }
 
-// --- Skill while equipped and phasing (docs/research/ir7-equipped-items.md) -------------------------------------
+// --- Skill while equipped and phasing (docs/research/items/ir7-equipped-items.md) -------------------------------------
 // PD2 copies D2's item aura for item_skillonequip (0x1036f640, 0x10345cc0): the skill runs as an item aura at the
 // stat's level. D2R's stat callback has no case for stat 375, so core-rules hands it item_aura's case, and the aura's
 // tick reads item_skillonequip where it reads item_aura.

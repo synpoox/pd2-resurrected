@@ -16,4 +16,4 @@ Edit the "Label in our tracker" column to match whatever vocabulary you actually
 
 ## Other labels
 
-- `pd2-origin`: the bug exists in PD2 itself and we fixed it in the port. Use with `bug`; each one gets a row in [pd2-origin-bugs.md](../pd2-origin-bugs.md).
+- `pd2-origin`: the bug exists in PD2 itself and we fixed it in the port. Use with `bug`; each one gets a row in [pd2-origin-bugs.md](../pd2/origin-bugs.md).

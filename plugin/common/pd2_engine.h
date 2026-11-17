@@ -5,7 +5,7 @@
 //
 // Every value was found in the Ghidra analysis of the dumped 93847 image; the comment beside each says where (the
 // Split Throw spike's FINDINGS.md on branch research/split-throw, or the D2R function it was read from) and the game
-// check that uses it. core-rules' names match the RVA column of docs/core-rules.md; another plugin's values sit in a
+// check that uses it. core-rules' names match the RVA column of docs/features/core-rules.md; another plugin's values sit in a
 // section headed by that plugin and the work item that found them (core-ui: LP2, #212).
 #pragma once
 

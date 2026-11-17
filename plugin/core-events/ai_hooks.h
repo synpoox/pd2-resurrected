@@ -12,7 +12,7 @@
 // `classId` first sets its life to `percent` of its max, for the life events of a boss that blinks away from clicks.
 // One request, used once; dropped if no such boss thinks within 10 seconds.
 auto RequestBossLife(int32_t percent, int32_t classId) noexcept -> void;
-// PD2's idle window for a boss left alone (game+0x26fe; docs/research/pd2-uber-bosses-dll.md, section 5): the
+// PD2's idle window for a boss left alone (game+0x26fe; docs/pd2/uber-bosses-dll.md, section 5): the
 // room-release hook (map_open.cpp's KeepBossRoom, PD2 0x102fc6c0) marks a boss whose room has had no player for 10+
 // ticks; the boss's next think starts the game's 15-tick window when none runs.
 auto MarkBossAlone(d2r::Unit* boss) noexcept -> void;

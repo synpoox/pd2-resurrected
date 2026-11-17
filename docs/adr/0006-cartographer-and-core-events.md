@@ -14,4 +14,4 @@ Retire this port's PD2 DT1 import/painter/HD generator-converter only after all 
 
 This revises ADR 0005's converted-level policy, ADR 0004's old ownership/no-calls boundary and requires revision of upstream Cartographer's interface restriction. Alpha saves keep their path without conversion or compatibility guarantees; stable saved IDs remain append-only. Verification is single-player only. Four-agent implementation uses disjoint edit ownership and serial shared checkpoints, not a separate core-ubers DLL.
 
-See [the revised migration plan](../cartographer-migration.md) and [specification](../cartographer-migration-spec.md). This record describes the agreed architecture; its required integration contract still needs implementation proof.
+See [the revised migration plan](../cartographer/migration.md) and [specification](../cartographer/migration-spec.md). This record describes the agreed architecture; its required integration contract still needs implementation proof.

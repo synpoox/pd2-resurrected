@@ -1,4 +1,4 @@
-// The Rathma fight's stages outside the AI (docs/research/pd2-uber-bosses-dll.md, sections 5 and 6).
+// The Rathma fight's stages outside the AI (docs/pd2/uber-bosses-dll.md, sections 5 and 6).
 //
 // Room activation (ProjectDiablo.dll 0x1036fef0): the first room to activate in each Rathma level sets the stage
 // (0 -> 1 in the first level, 2 -> 3 in the second, 4 -> 5 in the third) and spawns that stage's bosses (Mendeln,

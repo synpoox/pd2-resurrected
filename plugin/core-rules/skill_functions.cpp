@@ -11,7 +11,7 @@
 // PD2's channel take-over is an inline hook on D2R's mode gate for a busy player (BusyModeGate), which also logs the
 // Run/Concentration answers W19's game checks read. Each slot is written with PatchWriteU64 and an expected value of
 // eight zero bytes (D2R's own function for the slots it wraps: aura events 32 and 16, srvdo 58), so a slot D2R or
-// another plugin already uses is refused and logged, never overwritten. Slots keep PD2's own numbers where free (docs/core-rules.md).
+// another plugin already uses is refused and logged, never overwritten. Slots keep PD2's own numbers where free (docs/features/core-rules.md).
 #include "skill_functions.h"
 
 #include "pd2_engine.h"
@@ -382,7 +382,7 @@ auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 	return 1;
 }
 
-// --- W10 Barbarian group (docs/research/w10-barbarian.md) ----------------------------------------------------------
+// --- W10 Barbarian group (docs/research/skills/w10-barbarian.md) ----------------------------------------------------------
 std::atomic<uint32_t> g_finds {0};
 std::atomic<uint32_t> g_findsRefused {0};
 std::atomic<uint32_t> g_bashHits {0};
@@ -404,7 +404,7 @@ auto OwnedByPlayer(Unit* target) noexcept -> bool {
 	return At<int32_t>(target, d2r::rva::UnitOwnerType) == 0 && id != 0 && id != UINT32_MAX;
 }
 
-// PD2's 46 bosses whose corpses can't be searched (map, uber and PD2-only-area bosses; docs/research/w10-barbarian.md),
+// PD2's 46 bosses whose corpses can't be searched (map, uber and PD2-only-area bosses; docs/research/skills/w10-barbarian.md),
 // as merged monstats ids.
 constexpr int32_t Unsearchable[] = {760,  763,  764,  767,  772,  817,  826,  843,  878,  887,  896,  899,
                                     900,  901,  910,  911,  932,  980,  981,  1013, 1014, 1015, 1017, 1042,
@@ -561,7 +561,7 @@ auto ServerRing(Game* game, Unit* unit, int32_t missile, int32_t x, int32_t y, i
 	});
 }
 
-// --- Teleport (PD2 srvdofunc 155 -> router 190; docs/research/sorceress-w26.md) -----------------------------------
+// --- Teleport (PD2 srvdofunc 155 -> router 190; docs/research/skills/sorceress-w26.md) -----------------------------------
 // Read from ProjectDiablo.dll: srvdo 155 at 0x103b16d0, its teleport core at 0x1036cd20 (shared with Blood Warp).
 std::atomic<uint32_t> g_teleports {0};
 std::atomic<uint32_t> g_teleportsRefused {0};
@@ -641,7 +641,7 @@ auto SrvDoPd2Teleport(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 
 // --- Blood Warp (PD2 srvdofunc 157 -> router 190, srvstfunc 66 -> 80, cltstfunc 56 -> 63) --------------------------
 // Read from ProjectDiablo.dll: srvdo 157 at 0x103b1aa0, srvst 66 at 0x103b6460, cltst 56 at 0x103acda0
-// (docs/research/w12-blood-warp.md). The cast costs life and never kills; the cost comes back as hpregen.
+// (docs/research/skills/w12-blood-warp.md). The cast costs life and never kills; the cost comes back as hpregen.
 std::atomic<uint32_t> g_bloodWarps {0};
 std::atomic<uint32_t> g_bloodWarpsRefused {0};
 constexpr int32_t BloodWarp = 439;  // merged id (PD2 367)
@@ -735,7 +735,7 @@ auto SrvDoBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 }
 
 // --- Desecrate (PD2 srvdofunc 161 -> router 190, cltdofunc 101 -> 121) -------------------------------------------
-// Read from ProjectDiablo.dll: srvdo 161 at 0x103b1fa0, cltdo 101 at 0x103ab630 (docs/research/necromancer-w13.md).
+// Read from ProjectDiablo.dll: srvdo 161 at 0x103b1fa0, cltdo 101 at 0x103ab630 (docs/research/skills/necromancer-w13.md).
 std::atomic<uint32_t> g_desecrates {0};
 std::atomic<uint32_t> g_desecrateClients {0};
 std::atomic<uint32_t> g_desecrateHidden {0};
@@ -912,7 +912,7 @@ auto CltDoDesecrate(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 
 // --- Melee splash (PD2 srvdofunc 163 -> router 190) ---------------------------------------------------------------
 // Read from ProjectDiablo.dll: srvdo 163 at 0x103b2340, its per-unit callback 0x10303190; Revive's aura event 32
-// (0x10347370) calls the do function itself (docs/research/w33-melee-splash.md). Every unit within calc3 of the struck
+// (0x10347370) calls the do function itself (docs/research/skills/w33-melee-splash.md). Every unit within calc3 of the struck
 // unit, the struck unit aside, takes a hit with no to-hit roll: a player's current skill's damage (W35) and the
 // attacker's weapon damage at that skill's SrcDam, with half the life leech, through D2R's area search with PD2's unit
 // mask. The radius is calc3 + the inc_splash_radius held by the weapon's item types / 20, 1 less on a normal-tier base.
@@ -1169,7 +1169,7 @@ auto SrvDoSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 
 // --- Holy Light (PD2 srvdofunc 176) ---------------------------------------------------------------------------------
 // Read from ProjectDiablo.dll: srvdo 176 at 0x103b3cc0, its per-unit callback 0x103043b0
-// (docs/research/w17-holy-light.md). Every unit within aurarangecalc of the target, the caster aside: an ally heals
+// (docs/research/skills/w17-holy-light.md). Every unit within aurarangecalc of the target, the caster aside: an ally heals
 // cltcalc2-cltcalc3 life, an enemy takes the skill's magic damage; whichever side the target is not on gets half.
 std::atomic<uint32_t> g_holyLights {0};
 std::atomic<uint32_t> g_holyLightUnitCasts {0};  // the first cast with units in range is logged too
@@ -1296,7 +1296,7 @@ auto SrvDoHolyLight(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 
 // --- Vengeance (PD2 srvdofunc 174) and Joust (PD2 srvdofunc 162 -> router 190) ------------------------------------
 // Read from ProjectDiablo.dll: srvdo 174 at 0x103b3570 with its per-unit callback 0x103041f0 and chain hit 0x10303cd0,
-// srvdo 162 at 0x103b21e0 (docs/research/w18-vengeance-joust.md).
+// srvdo 162 at 0x103b21e0 (docs/research/skills/w18-vengeance-joust.md).
 std::atomic<uint32_t> g_vengeances {0};
 std::atomic<uint32_t> g_vengeanceLinks {0};
 std::atomic<uint32_t> g_vengeanceLinkedCasts {0};  // the first cast that links is logged too
@@ -1620,7 +1620,7 @@ auto SrvDoJoust(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 	return 1;
 }
 
-// --- Dragon Flight (PD2 srvdofunc 178; docs/research/w31-dragon-flight-psychic-hammer.md) -------------------------
+// --- Dragon Flight (PD2 srvdofunc 178; docs/research/skills/w31-dragon-flight-psychic-hammer.md) -------------------------
 // Read from ProjectDiablo.dll: srvdo 178 at 0x103b4180.
 std::atomic<uint32_t> g_dragonFlights {0};
 std::atomic<uint32_t> g_dragonFlightHits {0};
@@ -1683,7 +1683,7 @@ auto SrvDoDragonFlight(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 
 constexpr int32_t Bash = 126, UberTalicBash = 580;
 
-// --- Poison Dagger (PD2 srvdofunc 164 -> router 190, cltdofunc 102 -> 122; docs/research/necromancer-w11.md) ---------
+// --- Poison Dagger (PD2 srvdofunc 164 -> router 190, cltdofunc 102 -> 122; docs/research/skills/necromancer-w11.md) ---------
 // PD2's srvstfunc 68 only calls slot 32, D2R's melee start, so the merge points it there (pd2_port.FUNCS).
 std::atomic<uint32_t> g_poisonDaggers {0};
 std::atomic<uint32_t> g_poisonDaggerClients {0};
@@ -1784,7 +1784,7 @@ auto CltDoPoisonDagger(Unit* unit, int32_t skillId, int32_t level) noexcept -> i
 	return 1;
 }
 
-// --- Gust, Hunger (PD2 srvdofunc 156 and 165 -> router 190; docs/research/druid-w23.md) --------------------------
+// --- Gust, Hunger (PD2 srvdofunc 156 and 165 -> router 190; docs/research/skills/druid-w23.md) --------------------------
 std::atomic<uint32_t> g_gusts {0};
 std::atomic<uint32_t> g_hungers {0};
 constexpr int32_t Gust = 442, Hunger = 242;  // merged ids (PD2 370, 242)
@@ -1876,7 +1876,7 @@ auto SrvDoHunger(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 }
 
 // --- Assassin charge-up finishers (PD2 srvdofunc 170 -> router 190, srvprg 171 -> 184, 172 -> 185, 39 -> 186,
-// 139 -> 181; docs/research/w29-assassin-finishers.md) ---------------------------------------------------------------
+// 139 -> 181; docs/research/skills/w29-assassin-finishers.md) ---------------------------------------------------------------
 // Tiger Strike, Fists of Fire, Cobra Strike, Claws of Thunder, Blades of Ice, Royal Strike, RakanothStrike (merged ids)
 constexpr int32_t TigerStrike = 254, FistsOfFire = 259, CobraStrike = 265, ClawsOfThunder = 269, BladesOfIce = 274,
                   RoyalStrike = 280, RakanothStrike = 630;
@@ -2199,7 +2199,7 @@ auto SrvPrgCold(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 	return 1;
 }
 
-// --- The finishers' client prg functions (PD2 cltprg 106 -> 127, 107 -> 128; docs/research/w30-assassin-finishers.md)
+// --- The finishers' client prg functions (PD2 cltprg 106 -> 127, 107 -> 128; docs/research/skills/w30-assassin-finishers.md)
 // D2R's charge/release packet handler (0x216380) sets the list's charge before each cltprgfunc call, as 1.13c's does.
 FinisherCounters g_clientSpreads {};
 FinisherCounters g_clientRings {};
@@ -2286,7 +2286,7 @@ auto CltPrgRing(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t 
 
 // --- Firestorm and the wall makers (PD2 srvdofunc 166 -> router 190, cltdofunc 119) ------------------------------
 // Read from ProjectDiablo.dll: srvdo 166 at 0x103b29d0, cltdo 119 at 0x103acb70, their maker callback 0x1036f220
-// (docs/research/druid-w22.md). calc1 makers of srvmissilea (the client reads it too), all from the caster to the
+// (docs/research/skills/druid-w22.md). calc1 makers of srvmissilea (the client reads it too), all from the caster to the
 // target, each with the maker callback; D2R's Firestorm (srvdo 117) sends its first maker without it and DiabWall's
 // (srvdo 102) skips the path one time in five.
 std::atomic<uint32_t> g_walls {0};
@@ -2378,7 +2378,7 @@ auto CltDoWall(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	return 1;
 }
 
-// --- Fire Claws (PD2 srvdofunc 175, cltdofunc 110; docs/research/druid-w24.md) ------------------------------------
+// --- Fire Claws (PD2 srvdofunc 175, cltdofunc 110; docs/research/skills/druid-w24.md) ------------------------------------
 // Read from ProjectDiablo.dll: srvdo 175 at 0x103b3ad0, cltdo 110 at 0x103abbd0. A claw hit on the skill's target
 // unit, then calc2 makers of srvmissilea (the client: cltmissilea, aimed at the target unit) with Firestorm's maker
 // callback. The hit is D2R's Fire Claws hit: its start (srvst 58, kept as data) rolls and queues it with the skill's
@@ -2460,7 +2460,7 @@ auto CltDoFireClaws(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 	return 1;
 }
 
-// --- Spirit Wolf and Fenris start (PD2 srvstfunc 77; docs/research/druid-w24.md) ----------------------------------
+// --- Spirit Wolf and Fenris start (PD2 srvstfunc 77; docs/research/skills/druid-w24.md) ----------------------------------
 // Read from ProjectDiablo.dll: srvst 77 at 0x103b6c80, its rule 0x103747b0. A player only; pet types 11 and 12 only.
 // Once the type has a stored max: while the player has wolves of the type and their count is not under petmax, the
 // first one dies; with none left, petmax 0 refuses. D2R's do (srvdo 119) summons at least one even at petmax 0.
@@ -2522,7 +2522,7 @@ auto SrvStWolves(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 
 // --- Combustion and the boss novas (PD2 srvdofunc 159 -> router 190, cltdofunc 100 -> 120) ----------------------------
 // Read from ProjectDiablo.dll: srvdo 159 at 0x103b1d00, cltdo 100 at 0x103ab580
-// (docs/research/w27-static-field-combustion.md). A ring of calc2 missiles of the skill's missile a around the caster.
+// (docs/research/skills/w27-static-field-combustion.md). A ring of calc2 missiles of the skill's missile a around the caster.
 std::atomic<uint32_t> g_novas {0};
 std::atomic<uint32_t> g_novaClients {0};
 constexpr int32_t Combustion = 448, FingermageBossNova = 472, RathmaTeethNova = 561, RathmaOuterNova = 567,
@@ -2783,7 +2783,7 @@ auto CltDoDeathNova(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 
 // --- Static Field (PD2 srvdofunc 160 -> router 190) ------------------------------------------------------------------
 // Read from ProjectDiablo.dll: srvdo 160 at 0x103b1dc0, per-unit damage 0x10302830, per-unit debuff 0x1036c920
-// (docs/research/w27-static-field-combustion.md). Two passes over the units within aurarangecalc that aurafilter
+// (docs/research/skills/w27-static-field-combustion.md). Two passes over the units within aurarangecalc that aurafilter
 // takes: lightning damage from current life (StaticFieldDamage), then auratargetstate with aurastat1-6 for
 // auralencalc frames.
 std::atomic<uint32_t> g_staticFields {0};
@@ -2966,7 +2966,7 @@ auto SrvDoLucionNova(Game* game, Unit* unit, int32_t skillId, int32_t level) noe
 auto SrvDoLucionDash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t;
 auto SrvDoLucionPunish(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t;
 
-// srvdofunc 190 serves the PD2 do functions that have no free slot of their own, by skill id (docs/core-rules.md). The
+// srvdofunc 190 serves the PD2 do functions that have no free slot of their own, by skill id (docs/features/core-rules.md). The
 // dispatcher is the toolkit's skill_router (a missing id logs a sampled warning there); this lists our routes.
 void AddSkillRoutes() noexcept {
 	const struct {
@@ -3078,7 +3078,7 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 }
 
 // --- Leap, Leap Attack, Leap Attack Korlic (PD2 srvdofunc 153 -> 172, cltdofunc 97 -> 115) ------------------------------
-// Read from ProjectDiablo.dll: srvdo 153 at 0x103b1300, cltdo 97 at 0x103ab280 (docs/core-rules.md). PD2's leap path is
+// Read from ProjectDiablo.dll: srvdo 153 at 0x103b1300, cltdo 97 at 0x103ab280 (docs/features/core-rules.md). PD2's leap path is
 // D2R's (path type 9 to the skill's point); PD2 sets its own speed and, on landing, hits every unit within calc3.
 std::atomic<uint32_t> g_leaps {0};
 std::atomic<uint32_t> g_leapClients {0};
@@ -3229,7 +3229,7 @@ auto CltDoLeap(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 }
 
 // --- Inferno, Arctic Blast (PD2 srvdofunc 182, cltdofunc 111) ----------------------------------------------------
-// Read from ProjectDiablo.dll: srvdo 182 at 0x103b4e40, cltdo 111 at 0x103abce0 (docs/research/druid-w21.md). A player
+// Read from ProjectDiablo.dll: srvdo 182 at 0x103b4e40, cltdo 111 at 0x103abce0 (docs/research/skills/druid-w21.md). A player
 // sends calc3 flames of range calc1 in a line across the aim; a monster keeps D2R's Inferno (srvdo 19).
 std::atomic<uint32_t> g_channels {0};
 std::atomic<uint32_t> g_channelClients {0};
@@ -3393,7 +3393,7 @@ auto CltDoChannel(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_
 	return 1;
 }
 
-// --- The channel take-over (PD2's gate A, ProjectDiablo.dll 0x10373290; docs/research/druid-w21.md) ---------------
+// --- The channel take-over (PD2's gate A, ProjectDiablo.dll 0x10373290; docs/research/skills/druid-w21.md) ---------------
 // PD2 keys two rules on the busy player's current skill: Inferno / Arctic Blast (srvdofunc 182) give way at once to
 // any request that carries a skill; Blade Fury (48) gives way to any other skill and refuses another Blade Fury, so its
 // channel goes on. Everything else is D2R's own gate.
@@ -3450,7 +3450,7 @@ auto BusyModeGate(Game* game, Unit* unit, int32_t mode, void* request, int32_t f
 			return refused ? 1 : 0;
 		}
 	}
-	// PD2's run and Concentration rules are D2R's own here (docs/research/w19-holy-sword-smite.md); the log shows them
+	// PD2's run and Concentration rules are D2R's own here (docs/research/skills/w19-holy-sword-smite.md); the log shows them
 	const bool player = unit != nullptr && At<int32_t>(unit, UnitType) == 0;  // a player
 	const int32_t from = player ? At<int32_t>(unit, UnitMode) : -1;  // before D2R's gate, which may change it
 	const int64_t result = g_gateOriginal(game, unit, mode, request, flag);
@@ -3467,7 +3467,7 @@ auto BusyModeGate(Game* game, Unit* unit, int32_t mode, void* request, int32_t f
 	return result;
 }
 
-// --- Get-hit / block end window (PD2's gate B, ProjectDiablo.dll 0x1037bb20; docs/research/w34-gate-b.md) ----------
+// --- Get-hit / block end window (PD2's gate B, ProjectDiablo.dll 0x1037bb20; docs/research/skills/w34-gate-b.md) ----------
 // PD2 lets a player in get-hit or block take a new mode once game frame + 2 >= the mode-end event; D2R waits for + 1.
 // The install patches D2R's two tests from 1 to 2; this hook only logs what the window gave, per frames left.
 std::atomic<uint32_t> g_hitWindows[4] {};  // frames left 0, 1, 2, 3 or more
@@ -3492,7 +3492,7 @@ auto HitRecoveryGate(Game* game, Unit* unit, int32_t mode, uint8_t flag) noexcep
 
 // --- Charge (PD2 srvstfunc 72, srvdofunc 180; cltstfunc 57 -> 25, cltdofunc 112 -> 37) -------------------------------
 // Read from ProjectDiablo.dll: srvst 72 at 0x103b67e0, srvdo 180 at 0x103b4870, cltst 57 at 0x103ace50, cltdo 112 at
-// 0x103abfb0 (docs/research/w16-charge.md). PD2's charge is vanilla's with two changes on the server: the start's speed
+// 0x103abfb0 (docs/research/skills/w16-charge.md). PD2's charge is vanilla's with two changes on the server: the start's speed
 // adds Param1, and the hit puts calc'd splash on the caster from how far it charged. D2R's client halves (cltst 25,
 // cltdo 37) already add Param1, so the merge points the client columns there.
 std::atomic<uint32_t> g_charges {0};
@@ -3696,7 +3696,7 @@ auto SrvDoRevive(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 
 // --- Holy Sword and Smite starts (PD2 srvstfunc 73, 75), Smite's crushing blow (srvdo 150) -------------------------
 // Read from ProjectDiablo.dll: srvst 73 at 0x103b6990, srvst 75 at 0x103b6a20, event 16 at 0x103469a0
-// (docs/research/w19-holy-sword-smite.md).
+// (docs/research/skills/w19-holy-sword-smite.md).
 std::atomic<uint32_t> g_holySwordStarts {0};
 std::atomic<uint32_t> g_smiteStarts {0};
 std::atomic<uint32_t> g_smiteEvents {0};
@@ -3790,7 +3790,7 @@ auto SrvDoSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 	return result;
 }
 
-// --- Monster kits (W36; docs/research/w36-monster-kits.md) ---------------------------------------------------------
+// --- Monster kits (W36; docs/research/skills/w36-monster-kits.md) ---------------------------------------------------------
 // Read from ProjectDiablo.dll: srvdo 173 at 0x103b3520, cltdo 109 at 0x103abba0, srvdo 181 at 0x103b4cf0, srvst 67 at
 // 0x103b6520 with its per-unit callback 0x1036d5a0.
 std::atomic<uint32_t> g_eggSpawns {0};
@@ -4190,7 +4190,7 @@ auto SrvStUberDiabRun(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 
 // --- Lucion's kit (PD2 srvdofunc 184 Nova, 185 Dash, 186 Punish -> router 190; Dash's srvstfunc 76 -> 40) ------------
 // Read from ProjectDiablo.dll: srvdo 184 at 0x103b5110, 185 at 0x103b52b0, 186 at 0x103b56d0, srvst 76 at 0x103b6aa0
-// (docs/research/pd2-uber-bosses-dll.md, section 5). PD2 reads Lucion's AI params and the fight's sub-step (game
+// (docs/pd2/uber-bosses-dll.md, section 5). PD2 reads Lucion's AI params and the fight's sub-step (game
 // +0x262b); core-events' lucion_ai.cpp keeps them in D2R's per-game counters, read here by the same keys.
 std::atomic<uint32_t> g_lucionNovas {0};
 std::atomic<uint32_t> g_lucionPunishes {0};

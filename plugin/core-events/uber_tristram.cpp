@@ -1,4 +1,4 @@
-// The Uber Tristram primes' drop (ProjectDiablo.dll 0x10377710; docs/research/pd2-uber-bosses-dll.md, section 6): each
+// The Uber Tristram primes' drop (ProjectDiablo.dll 0x10377710; docs/pd2/uber-bosses-dll.md, section 6): each
 // death of Uber Mephisto, Diablo or Baal sets a bit in the game; once all three are set PD2 drops the Hellfire Torch
 // and the Black Soulstone at item level 130 and opens a permanent town portal (object 60) to Harrogath at the body.
 // The port opens PD2's red portal (xactportal_red, operate 60) instead: D2R's town-portal operate (15) on object 60

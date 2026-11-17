@@ -1,6 +1,6 @@
 """W7 game check: nova and orb hits (missiles pSrvHitFunc 5, pCltHitFunc 4) spawn PD2's sub-missile ring.
 
-No plugin: D2R's own hit functions 5/4 match PD2's (docs/research/nova-orb-hits.md), so the check counts the client
+No plugin: D2R's own hit functions 5/4 match PD2's (docs/research/skills/nova-orb-hits.md), so the check counts the client
 missiles one Thunder Storm bolt leaves behind, read from game memory (testing/unit_probe.py).
 
 Environment for every command here (docs/agents/game-slots.md): MODKIT_PROJECT=pd2-resurrected, MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml, MODKIT_RUN=<lock owner>; the toolkit refuses to run without a config.

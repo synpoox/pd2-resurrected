@@ -1,4 +1,4 @@
-// PD2's cube op 30 (ProjectDiablo.dll 0x365fe0 and 0x366f40; docs/research/pd2-map-system-dll.md, section 3): when
+// PD2's cube op 30 (ProjectDiablo.dll 0x365fe0 and 0x366f40; docs/pd2/map-system-dll.md, section 3): when
 // an op-30 row's inputs all match the cube's contents, the transmute stops and nothing is made. The row shadows the
 // rows after it: the map recipes use it to refuse normal maps (heroic, corrupt, fortify, Catalyst, ears) and unique
 // maps (ears), and to stop the generic gem and skull rerolls from duplicating stacked maps.

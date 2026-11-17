@@ -1,4 +1,4 @@
-"""docs/core-events-lanes.md lists every plugin/core-events source exactly once, and CMake builds the same files (#943)."""
+"""docs/cartographer/core-events-lanes.md lists every plugin/core-events source exactly once, and CMake builds the same files (#943)."""
 import re
 import unittest
 from pathlib import Path
@@ -9,7 +9,7 @@ SRC = ROOT / "plugin" / "core-events"
 
 def allowlisted():
     seen = []
-    for line in (ROOT / "docs" / "core-events-lanes.md").read_text(encoding="utf-8").splitlines():
+    for line in (ROOT / "docs" / "cartographer" / "core-events-lanes.md").read_text(encoding="utf-8").splitlines():
         m = re.match(r"\| ([^|]+) \| ([ABCDS]) \|", line)
         if m:
             seen += [f.strip() for f in m.group(1).split(",")]

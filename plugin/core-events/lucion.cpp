@@ -1,4 +1,4 @@
-// Lucion's death (ProjectDiablo.dll 0x10376560; docs/research/pd2-uber-bosses-dll.md, sections 5 and 6). When Lucion
+// Lucion's death (ProjectDiablo.dll 0x10376560; docs/pd2/uber-bosses-dll.md, sections 5 and 6). When Lucion
 // dies PD2 opens a dark grey portal (object 622, the port's 625) at (0x6221, 0x17df) in his arena to the Temple of the
 // Triune, with its return portal in the Temple; at tiers 1-2 it drops a Demonic Cube (`imrn`) at 1 in (4 - tier) x 25;
 // it sets the fight's stage to 8, which the Temple's altar needs (UB7); and it kills the adds left in the arena
@@ -306,7 +306,7 @@ auto Query(const D2RL::PluginContext* context, const Service*& service, bool (*h
 
 }  // namespace
 
-// UB7a, Desecration (PD2's altar handler 0x103961b0 and roll 0x103729e0; docs/research/pd2-uber-bosses-dll.md, section 8)
+// UB7a, Desecration (PD2's altar handler 0x103961b0 and roll 0x103729e0; docs/pd2/uber-bosses-dll.md, section 8)
 // at the Sacrifice Altar's panel (altar_panel.cpp). `item` is a corrupted amulet that is not desecrated or mirrored,
 // and Lucion is dead (stage 8): the attempt sets the stage to 9, then succeeds at 50% (60% at tiers 1-2) with one of
 // rows 682-689 as desecrate/desecratenum. Native: the SDK cannot add a mod to an existing item. Failed means the roll

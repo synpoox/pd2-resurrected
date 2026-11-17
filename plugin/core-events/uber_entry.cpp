@@ -1,6 +1,6 @@
 // PD2's uber entry split out of map_open.cpp (#943), unchanged: opening an uber area at the Blood Fountain, the portal
 // entry's area rules (heal, pets, buffs), the grey re-entry portals, the boss rooms kept and the uber levels' missing
-// waypoints. The ubers lane's (docs/uber-bosses.md); map_open.cpp keeps the item spell hooks and calls these.
+// waypoints. The ubers lane's (docs/features/uber-bosses.md); map_open.cpp keeps the item spell hooks and calls these.
 #include "uber_entry.h"
 
 #include "ai_hooks.h"

@@ -1,4 +1,4 @@
-// PD2's corruption in one press (ProjectDiablo.dll 0x366f40; docs/research/ir6-cube-rules.md). A corruption takes two
+// PD2's corruption in one press (ProjectDiablo.dll 0x366f40; docs/research/items/ir6-cube-rules.md). A corruption takes two
 // rows: a roll row gives the item a hidden `corruptor` value and hands the Worldstone Shard back, then an outcome row
 // (op 16 on that value) applies the corruption and takes the shard. PD2 runs the cube again right after a roll row,
 // so both fire in one press. D2R runs one row per press; this hook on the executor runs the search and the executor

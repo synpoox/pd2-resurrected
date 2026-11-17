@@ -7,7 +7,7 @@ PD2 Resurrected is a Diablo II: Resurrected mod; players: see the [README](READM
 - Plan and open decisions: [map issue #143](https://github.com/synpoox/pd2-resurrected/issues/143)
 - Decisions: [`docs/adr/`](docs/adr/)
 - Terms: [`GLOSSARY.md`](GLOSSARY.md)
-- Research notes: [`docs/research/`](docs/research/)
+- Docs index and research notes: [`docs/README.md`](docs/README.md)
 
 No Blizzard files or PD2 archives are committed here; the mod's data is, in `files/data/` ([ADR 0007](docs/adr/0007-mod-data-committed-tables-are-the-source.md)).
 

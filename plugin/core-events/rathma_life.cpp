@@ -1,4 +1,4 @@
-// The final pair's shared life (docs/research/pd2-uber-bosses-dll.md, section 5, read again for #475).
+// The final pair's shared life (docs/pd2/uber-bosses-dll.md, section 5, read again for #475).
 //
 // PD2's damage-type step (ProjectDiablo.dll 0x10302ca0, in place of 1.13c's 0x6fcfbd00): after the resists, when a
 // clone (rathmaBoneClone or rathmaPoisonClone) takes a flagged type and both boss slots (game +0x2600 / +0x2604) are

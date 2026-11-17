@@ -1,4 +1,4 @@
-// PD2's Summoner AI (ProjectDiablo.dll 0x10358510; docs/research/pd2-uber-bosses-dll.md, section 5) for rathmaBone,
+// PD2's Summoner AI (ProjectDiablo.dll 0x10358510; docs/pd2/uber-bosses-dll.md, section 5) for rathmaBone,
 // rathmaPoison and their two clones: the life events every 10% (stat 446 the event index, life held at each mark),
 // the retreat below 15% through a ghostly portal to the next level, the immunity rules, the stage-6 RathmaDeath buff
 // and the attack picks by the aip numbers. Every other Summoner monster keeps D2R's think.

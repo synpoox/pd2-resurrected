@@ -1,6 +1,6 @@
 """core-events game checks for d2rAI-toolkit's testing/ framework (game_checks.py).
 
-uber-scaling (#347, docs/research/pd2-uber-bosses-dll.md section 4) reads <slot>/d2rloader/logs/core-maps.log.
+uber-scaling (#347, docs/pd2/uber-bosses-dll.md section 4) reads <slot>/d2rloader/logs/core-maps.log.
 Environment for every command here (docs/agents/game-slots.md): MODKIT_PROJECT=pd2-resurrected, MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml, MODKIT_RUN=<lock owner>; the toolkit refuses to run without a config.
 
 Setup: tools/install.ps1 on the merged data, a level 90+ character in Hell. In game: `debug_mode`, then `cheat goto 109,5074,5114` (the Blood

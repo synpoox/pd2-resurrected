@@ -56,7 +56,7 @@ NUM_REFS = {"levels": {**{f"Vis{i}": "levels" for i in range(8)}, **{f"ObjGrp{i}
             # a thrown weapon's missile (PD2's throwing potions, 912-947, are the mod's 970-1005; IR5)
             "weapons": {"missiletype": "missiles"}}
 # A misc row with PD2's map spell opens the level its `len` names (ProjectDiablo.dll evaluates the calc as the level id,
-# docs/research/pd2-map-system-dll.md): it takes the mod's id, blank for a left-out level (PvP, PD2's Uber Ancients).
+# docs/pd2/map-system-dll.md): it takes the mod's id, blank for a left-out level (PvP, PD2's Uber Ancients).
 # Every other row's len is a duration.
 MAP_SPELL = "12"
 LEFT_OUT_LEVELS = "levels left out"  # an ids key: the PD2 level ids the port leaves out
@@ -84,19 +84,19 @@ DERIVED = {"skills": {"rightskill": lambda pd2: "0" if pd2.get("passive") == "1"
 # srvdo 190 router, and Desecrate's cltdo 101; Fist of the Heavens' chit 26, where D2R's differs from PD2's 1.13c
 # one; Blade Fury's fragment: shit 34, D2R's echoingstrike, and chit 6, below D2R's free range): moved to the free slots core-rules installs them in
 # (plugin/core-rules/skill_functions.cpp Functions[]). Charge's cltdo 112 / cltst 57 go to D2R's Charge client
-# functions (37, 25), which do what PD2's do (docs/research/w16-charge.md). Combustion's srvdo 159 and Static Field's
-# 160 join the router too, Combustion's cltdo 100 takes 120 (docs/research/w27-static-field-combustion.md).
+# functions (37, 25), which do what PD2's do (docs/research/skills/w16-charge.md). Combustion's srvdo 159 and Static Field's
+# 160 join the router too, Combustion's cltdo 100 takes 120 (docs/research/skills/w27-static-field-combustion.md).
 # The death novas' srvdo 169 joins the router and their cltdo 105 (D2R's) takes 125 (#480).
 # shortcut: remaps by value on every PD2 row; key it by row if a PD2 row ever means D2R's own function there
-# Blessed Hammer's sdo 40 / cdo 72 are D2R's too and take 47 / 80 (docs/research/w20-blessed-hammer.md).
-# The monster kits (W36, docs/research/w36-monster-kits.md): PoisonEggSpawn's cltdo 109 takes 126, TorajanBossNest's
+# Blessed Hammer's sdo 40 / cdo 72 are D2R's too and take 47 / 80 (docs/research/skills/w20-blessed-hammer.md).
+# The monster kits (W36, docs/research/skills/w36-monster-kits.md): PoisonEggSpawn's cltdo 109 takes 126, TorajanBossNest's
 # srvdo 181 (the finishers' prg there) joins the router, the Cyclers' srvst 67 (D2R's Frenzy start) takes 83 and the
 # summon-on-hit shit 6 (D2R's leaves out PD2's flags) takes 67.
 # Royal Fire's srvdo 143 / cltdo 83 (PD2's boss branch in vanilla slots D2R keeps) join the router and take 123 (UB6).
 # Lucion's srvdo 184-186 (D2R's slots hold the finishers' prg) join the router; LucionDash's start, srvst 76, picks a
 # leap's spot, so it takes D2R's Leap start, 40 (#487).
 # Ormus' Robes' property func 25 (D2R's 25 is affix-rand) takes the free property slot 26 (P12,
-# docs/research/p12-ormus-robes.md).
+# docs/research/items/p12-ormus-robes.md).
 # levels' Teleport 3 (PD2's path search, research/sorceress-w26.md) is not a D2R value; 1 (allowed) stands in until MS7.
 # Map items' pSpell 12 (D2R's 12 is the Resist Scroll) takes the free item spell 16 core-events installs (MS2).
 # PD2's portal operate 77 (the xactportals) takes D2R's free operate slot 60, which core-events fills (UB2). Its map-event
@@ -137,7 +137,7 @@ HIT_PARAMS = {"61": {"sHitPar1": "states", "sHitPar3": "itemstatcost", "cHitPar2
               "67": {"sHitPar1": "monstats"}, "68": {"sHitPar3": "monstats"}}
 # PD2's srvdo 188 / cltdo 117 (Lightning Bolt, Lightning Fury) only create srvmissile, else srvmissilea (cltmissile,
 # else cltmissilea), with the arguments D2R's do dispatcher passes for srvmissile / cltmissile after any do function
-# (docs/research/lightning-javelins.md). So the merge moves that missile into srvmissile / cltmissile and drops the
+# (docs/research/skills/lightning-javelins.md). So the merge moves that missile into srvmissile / cltmissile and drops the
 # function number: (function column, PD2 number, missile column, fallback column).
 MISSILE_FUNCS = {"skills": [("srvdofunc", "188", "srvmissile", "srvmissilea"),
                             ("cltdofunc", "117", "cltmissile", "cltmissilea")]}
@@ -146,7 +146,7 @@ MISSILE_FUNCS = {"skills": [("srvdofunc", "188", "srvmissile", "srvmissilea"),
 # 1.13c finds no row for them (D2Common's loaders read these columns as lookups; a missing string key reads as 5382,
 # "An evil force"), so most keep PD2's behaviour: Deep-Wounds is deep-wounds (lookups ignore case), alternategfx is a
 # 4-byte code (1.13c keeps the first 4 letters), and a skill, stat, sound, overlay or property no table has is no
-# reference. PD2 bugs we fix (docs/pd2-origin-bugs.md): dblue, amu, and the two potions' "An evil force" description.
+# reference. PD2 bugs we fix (docs/pd2/origin-bugs.md): dblue, amu, and the two potions' "An evil force" description.
 _EVIL = {"spelldesc": "", "spelldescstr": ""}  # D2R's own Antidote and Thawing Potion rows have no description
 # Map stats (#383): descfunc 6-9 print the value, then descstr2. PD2's map stats name vanilla keys there, plain text in
 # 1.13c but printf text in D2R ("%+d%% Deadly Strike"), so each points at a copy without the codes (pd2_strings builds

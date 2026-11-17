@@ -2,7 +2,7 @@
 // <name>return rows. D2R fills sdo 38 and cdo 70, so ours sit in sdo 46 / cdo 78 and the data points there.
 //
 // W6 adds Exploding Arrow's spread (shit 63) and Multiple Shot's pierce falloff (PD2 dmg 17, here 20), both read from
-// ProjectDiablo.dll (docs/research/amazon-w6.md).
+// ProjectDiablo.dll (docs/research/skills/amazon-w6.md).
 //
 // The server calls missile srvdo as int64_t fn(Game*, Unit* missile) every frame, srvhit as
 // int32_t fn(Game*, Unit* missile, Unit* hit) on a collision, srvdmg as void fn(Game*, Unit* missile, Unit* target,
@@ -200,7 +200,7 @@ void SrvDmgFirstHit(Game* game, Unit* missile, Unit* hit, d2r::Damage* damageBlo
 	}
 }
 
-// --- Psychic Hammer (PD2 pSrvDmgFunc 15 -> 22; docs/research/w31-dragon-flight-psychic-hammer.md) -----------------
+// --- Psychic Hammer (PD2 pSrvDmgFunc 15 -> 22; docs/research/skills/w31-dragon-flight-psychic-hammer.md) -----------------
 namespace {
 
 std::atomic<uint32_t> g_chainFalloffs {0};
@@ -472,7 +472,7 @@ auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	return damage;
 }
 
-// --- Bolt splash (PD2 shit 62, W28, docs/research/w28-sorceress-bolts.md) -------------------------------------------
+// --- Bolt splash (PD2 shit 62, W28, docs/research/skills/w28-sorceress-bolts.md) -------------------------------------------
 namespace {
 
 std::atomic<uint32_t> g_boltHits {0};
@@ -625,7 +625,7 @@ auto SrvHitUberImmolation(Game* game, Unit* missile, Unit* hit) noexcept -> int3
 	return 1;
 }
 
-// --- Client hits around the hit point (W17, docs/research/w17-holy-light.md) ---------------------------------------
+// --- Client hits around the hit point (W17, docs/research/skills/w17-holy-light.md) ---------------------------------------
 namespace {
 
 std::atomic<uint32_t> g_holyLightHits {0};
@@ -759,7 +759,7 @@ auto CltHitFistDelay(Unit* missile, Unit* hit) noexcept -> int32_t {
 	return 1;
 }
 
-// --- Assassin charge-up finishers' client missiles (W30, docs/research/w30-assassin-finishers.md) ------------------
+// --- Assassin charge-up finishers' client missiles (W30, docs/research/skills/w30-assassin-finishers.md) ------------------
 namespace {
 
 std::atomic<uint32_t> g_chargeExplodes {0};
@@ -844,7 +844,7 @@ auto CltHitChargeBolt(Unit* missile, Unit* hit) noexcept -> int32_t {
 	return 1;
 }
 
-// --- Blade Fury's fragment (PD2 shit 34 -> 69, chit 6 -> 68, dmg 19; W32, docs/research/w32-blade-fury.md) ----------
+// --- Blade Fury's fragment (PD2 shit 34 -> 69, chit 6 -> 68, dmg 19; W32, docs/research/skills/w32-blade-fury.md) ----------
 namespace {
 
 std::atomic<uint32_t> g_fragmentWalls {0};
@@ -857,7 +857,7 @@ constexpr uint16_t ResultFlag20 = 0x20;   // PD2's dmg 19 sets this result bit; 
 constexpr double DirectionsPerRadian = 64.0 / (2.0 * 3.14159265358979323846);  // PD2's 0x1044fbd0
 
 // D2's 64 directions wrap. PD2 takes a signed % 64, so a negative index reads before its direction tables
-// (docs/pd2-origin-bugs.md).
+// (docs/pd2/origin-bugs.md).
 constexpr auto Direction64(int32_t d) noexcept -> int32_t {
 	return ((d % 64) + 64) % 64;
 }
@@ -952,7 +952,7 @@ auto FragmentParams(Unit* owner, Unit* missile, int32_t sub) noexcept -> d2r::Mi
 
 }  // namespace
 
-// --- Blessed Hammer (W20, docs/research/w20-blessed-hammer.md) ------------------------------------------------------
+// --- Blessed Hammer (W20, docs/research/skills/w20-blessed-hammer.md) ------------------------------------------------------
 namespace {
 
 std::atomic<uint32_t> g_hammerFrames {0};
@@ -1169,7 +1169,7 @@ void CltDoBlessedHammer(Unit* missile, float partFrame) noexcept {
 	}
 }
 
-// --- Summon-on-hit missiles (PD2 pSrvHitFunc 6, here 67; docs/research/w36-monster-kits.md) -------------------------
+// --- Summon-on-hit missiles (PD2 pSrvHitFunc 6, here 67; docs/research/skills/w36-monster-kits.md) -------------------------
 // Read from ProjectDiablo.dll: shit 6 at 0x103a7750. D2R's own srvhit 6 (0x45ce90) spawns the same monster the same
 // way but leaves out the flags, so the spawns would drop loot and give experience.
 namespace {

@@ -60,7 +60,7 @@ def make_talisman(cube: I.Table) -> None:
 
 
 def close_finale_portal(cube: I.Table) -> None:
-    """D2R's organ portal to its Uber Tristram (level 136) is off (docs/d2r-only-content.md, #153): PD2's organs make
+    """D2R's organ portal to its Uber Tristram (level 136) is off (docs/features/d2r-only-content.md, #153): PD2's organs make
     the Pandemonium Talisman (`ubtm`, level 185) instead. Every row with output `Pandemonium Finale Portal` is disabled,
     D2R's appended one too, so the organs reach only PD2's Talisman row (#485)."""
     h = {c: j for j, c in enumerate(cube.header)}

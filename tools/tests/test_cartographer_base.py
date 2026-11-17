@@ -1,4 +1,4 @@
-"""The #946 native-map data base: maps.txt names real items and slots, the ids are gapless (docs/cartographer-contracts.md)."""
+"""The #946 native-map data base: maps.txt names real items and slots, the ids are gapless (docs/cartographer/contracts.md)."""
 import unittest
 import csv
 from pathlib import Path

@@ -1,4 +1,4 @@
-// PD2's Overseer AI (ProjectDiablo.dll 0x1035dca0; docs/research/pd2-uber-bosses-dll.md, section 5) for Lucion (PD2
+// PD2's Overseer AI (ProjectDiablo.dll 0x1035dca0; docs/pd2/uber-bosses-dll.md, section 5) for Lucion (PD2
 // 1112), LucionControl (1113) and LucionSpawner (1141): Lucion's stages and state machine, the portal phase, the
 // controller's spawner waves and Royal Fire, the spawner's adds. Every other Overseer monster keeps D2R's think.
 //

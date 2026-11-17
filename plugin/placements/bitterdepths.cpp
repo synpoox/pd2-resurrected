@@ -1,4 +1,4 @@
-// Placements of one encounter (#947): a private author edits this file only (docs/cartographer-contracts.md).
+// Placements of one encounter (#947): a private author edits this file only (docs/cartographer/contracts.md).
 #include "placements.h"
 
 #include <iterator>

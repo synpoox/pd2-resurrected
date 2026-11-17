@@ -15,7 +15,7 @@ from shared.classic_import import standins
 from shared.classic_import.standins import nums
 
 # Function numbers PD2 rows must not keep: D2R's slot is empty, past the table's end, or holds a different function
-# (core-rules hook list; table sizes from docs/research/skill-function-tables.md). Not listed: numbers equal to D2R's
+# (core-rules hook list; table sizes from docs/research/skills/skill-function-tables.md). Not listed: numbers equal to D2R's
 # (srvdo 41/143, cltdo 15/83), built rules (srvdo 189, W1; srvdo 188 and cltdo 117 become the missile columns,
 # pd2_port.MISSILE_FUNCS, W5; shit 63, cltdo 22 patched, W6; shit 61, W11; srvdo 182 / cltdo 111, W21; srvdo 176,
 # chit 66, W17; cltdo 119, W22; srvdo 174 and 162, W18; chit 67, W30; srvdo 175, cltdo 110, srvst 77, W24; shit 62,
