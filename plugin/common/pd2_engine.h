@@ -26,7 +26,7 @@ inline constexpr uint16_t CollisionMissile = 0x806;
 
 inline constexpr int32_t ItemTypeMap = 245;   // itemtypes row cmap
 inline constexpr int32_t StatMapForceEvent = 553, StatMapLevel = 564;
-inline constexpr int32_t ItemStatCostRows = 573;  // itemstatcost.txt rows in files/data (ids 0..572)
+inline constexpr int32_t ItemStatCostRows = 637;  // itemstatcost.txt rows in files/data (ids 0..636)
 
 // Tyrael's menu record (monster 367, tyrael2), as NpcMenuOpen picks it; the toolkit has no per-NPC records.
 inline constexpr int NpcMenuTyrael = 0x15;
