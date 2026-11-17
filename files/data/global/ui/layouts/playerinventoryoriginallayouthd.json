@@ -1,14 +1,14 @@
 ﻿{
     "type": "PlayerInventoryPanel", "name": "PlayerInventoryOriginalLayout",
     "fields": {
-        "rect": { "x": -1394, "y": -840, "width": 1162, "height": 1899 },
+        "rect": { "x": -1394, "y": -840, "width": 1162, "height": 1853 },
         "anchor": "$RightPanelAnchor",
     },
     "children": [
         {
             "type": "ClickCatcherWidget", "name": "click_catcher",
             "fields": {
-                "rect": { "x": 0, "y": 0, "width": 1162, "height": 1899 }
+                "rect": { "x": 0, "y": 0, "width": 1162, "height": 1853 }
             },
         },
         {
@@ -20,7 +20,7 @@
         {
             "type": "ImageWidget", "name": "RightHinge",
             "fields": {
-                "rect": { "x": 1076, "y": 826 },
+                "rect": { "x": 1076, "y": 803 },
                 "filename": "$RightHingeSprite"
             },
         },
@@ -35,7 +35,7 @@
         {
             "type": "TextBoxWidget", "name": "gold_amount",
             "fields": {
-                "rect": { "x": 487, "y": 1774, "width": 249, "height": 48 },
+                "rect": { "x": 487, "y": 1716, "width": 249, "height": 48 },
                 "style": "$StyleGoldAmount",
             },
             "children": [
@@ -51,7 +51,7 @@
         {
             "type": "ButtonWidget", "name": "gold_button",
             "fields": {
-                "rect": { "x": 429, "y": 1775 },
+                "rect": { "x": 429, "y": 1717 },
                 "filename": "PANEL\\GoldButton",
                 "hoveredFrame": 3,
                 "tooltipString": "@strGoldDrop",
