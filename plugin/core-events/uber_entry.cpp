@@ -205,13 +205,13 @@ auto KeepBossRoom(void* act, void* room) noexcept -> int32_t {
 }
 
 // D2R's warp lands a player at the level's default spawn, which in the Diablo Clone, Lucion and Rathma arenas is by
-// the boss (#1260): the arena's `arrival` spot (arenaspots.txt) moves them clear of it. No spot or no room: left as is.
+// the boss (#1260): the arena's `arrival` spot (Rathma's `marker`, where its arena portal lands) moves them clear of it. No spot or no room: left as is.
 auto PlaceAtArrival(Game* game, Unit* player, int32_t level) noexcept -> void {
 	using namespace d2r::rva;
 	const placements::Binding* bound = placements::BindingAt(level);
 	placements::Spot at{0, 0};
 	void* near = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(player);
-	if (bound == nullptr || near == nullptr || !ArenaSpotOf(bound->encounter, "arrival", &at)) {
+	if (bound == nullptr || near == nullptr || !(ArenaSpotOf(bound->encounter, "arrival", &at) || ArenaSpotOf(bound->encounter, "marker", &at))) {
 		return;
 	}
 	int32_t before[2] = {};
