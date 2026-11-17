@@ -11,7 +11,7 @@
 // and three fog objects; once used, the rooms send shadow waves until the progress passes 90, which kills them. Void /
 // Tomb opens a portal pair to the Bitter Depths with a marker. The invaders (MS10) place up to three portals; the
 // portal's think and the invaders' drops are lane-c/invaders.cpp's. Horazon's death is event_portals.cpp's. The altars' use is PD2's operate 79 (0x103aa460) in D2R's free
-// operate slot 35 (pd2_port.FUNCS), written into D2R's operate table as map_open.cpp writes slot 60.
+// operate slot 35 (pd2_port.FUNCS), which also serves the Temple's Sacrifice Altar (Lucion's Desecration), written into D2R's operate table as map_open.cpp writes slot 60.
 //
 // Each spawn sends the event's notify string to every player as a red chat line (#336; PD2 0x1037dbc0, packet 0x26
 // type 4, colour 1). The SDK's localization service gives the text; no SDK service sends a chat line, so it goes
@@ -80,6 +80,7 @@ constexpr int32_t GheedMonster = 147, HorazonMonster = 936;  // PD2 919 summoner
 constexpr int32_t EventMarker = 597;  // PD2 object 594 empty_eventmarker: invisible, AutoMap 1499
 constexpr int32_t ShardAltar = 614;   // PD2 611 ForceShardAltar
 const uint32_t ShardCode = D2RL::Items::MakeItemCode("iwss");  // the Catalyst Shard
+constexpr int32_t SacrificeAltar = 624;  // PD2 621
 constexpr int32_t SpireAltar = 596;   // PD2 593 TaintedSunMapEventAltar
 constexpr int32_t Fog = 374;          // PD2 374, D2R's Fog (the same row)
 // PD2's waves: 993-995 shadowofhate, shadowofterror, shadowofdestruction
@@ -379,6 +380,9 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t pr
 // is only known to work by a unit that carries a level stat
 auto OperateAltar(ObjectOperate* args) noexcept -> int32_t {
 	using namespace d2r::rva;
+	if (args->classId == SacrificeAltar) {
+		return OperateSacrificeAltar(args->game, args->player);
+	}
 	Game* game = args->game;
 	Unit* altar = args->object;
 	if (game == nullptr || altar == nullptr || (args->classId != SpireAltar && args->classId != ShardAltar)) {
