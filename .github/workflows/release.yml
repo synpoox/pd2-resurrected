@@ -3,19 +3,41 @@ name: release
 # which never goes to GitHub (ADR 0007). Run it by hand (Actions > release > Run
 # workflow). A green build publishes a GitHub release v<mod.json version>, marked Latest so the repo page shows it, with
 # the 7z and SHA256SUMS, and keeps them as a workflow artifact too. Runner setup: README.md.
+# Two jobs, as the toolkit's template: "build" has a read-only token; only "publish" (needs build) may write.
 on:
   workflow_dispatch:
 
+# Least privilege by default; only the publish job may write (to create the release).
+permissions:
+  contents: read
+
+# One release at a time.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  release:
+  build:
+    # the toolkit template's guard: a release is made from the default branch only
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: [self-hosted, windows, pd2r]
     permissions:
-      contents: write
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     env:
       MODKIT_CACHE: ${{ vars.D2R_TOOLKIT }}\d2r-data
       MODKIT_GAME: ${{ vars.D2R_GAME }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Version
+        id: version
+        run: |
+          $v = (Get-Content mod.json -Raw | ConvertFrom-Json).version
+          if (-not $v) { throw "no version in mod.json" }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
       - name: Pin the toolkit
         # the commit toolkit.version names, in its own worktree (tools/ci_toolkit.ps1): the runner's shared checkout is never moved
         run: powershell -ExecutionPolicy Bypass -File tools\ci_toolkit.ps1 -Main "${{ vars.D2R_TOOLKIT }}"
@@ -27,13 +49,18 @@ jobs:
         run: powershell -ExecutionPolicy Bypass -File plugin\build.ps1
       - name: Companions and build
         run: |
-          py -3 tools/companions.py fetch; if ($LASTEXITCODE) { throw "companions fetch failed" }
+          py -3 "$env:D2R_TOOLKIT\release\companions.py" fetch; if ($LASTEXITCODE) { throw "companions fetch failed" }
           py -3 -m modkit build . --no-validate; if ($LASTEXITCODE) { throw "modkit build failed" }
       - name: Validation (known errors, #171; does not block the release)
         continue-on-error: true
         run: py -3 -m modkit validate .
       - name: Package
-        run: py -3 tools/release.py --game "$env:MODKIT_GAME"
+        run: |
+          py -3 tools/release_precheck.py; if ($LASTEXITCODE) { throw "out/data holds retired converter output" }
+          if (-not $env:CARTOGRAPHER_DLL -or -not $env:CARTOGRAPHER_COMMIT) { throw "CARTOGRAPHER_DLL and CARTOGRAPHER_COMMIT must be set on the runner" }
+          # the notes line reads "<dll name>: d2r-tools <commit>, sha256 ...": the toolkit labels it with the DLL's file name
+          py -3 "$env:D2R_TOOLKIT\release\stage.py" --game "$env:MODKIT_GAME" --extra-plugin "$env:CARTOGRAPHER_DLL@d2r-tools $env:CARTOGRAPHER_COMMIT"
+          if ($LASTEXITCODE) { throw "stage.py failed" }
       - uses: actions/upload-artifact@v4
         with:
           name: release
@@ -44,12 +71,35 @@ jobs:
             dist/SHA256SUMS
             out/validation.md
           retention-days: 14
+
+  publish:
+    needs: build
+    runs-on: [self-hosted, windows, pd2r]
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: release-files
       - name: GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          $v = (Get-Content mod.json -Raw | ConvertFrom-Json).version
-          $files = @((Get-ChildItem dist\*.7z).FullName) + "dist\SHA256SUMS"
-          # fails if the tag already has a release: bump mod.json's version to publish again
-          gh release create "v$v" @files --target $env:GITHUB_SHA --title "PD2 Resurrected $v" --notes-file "dist\RELEASE_NOTES-$v.md" --latest
+          $v = $env:VERSION
+          # the tag must be new: gh would attach a release to an existing bare tag, maybe on another commit
+          # Windows PowerShell 5.1 ends the step on a native command's stderr under 'Stop', and a new tag answers "Not Found"
+          $ErrorActionPreference = 'Continue'
+          gh api "repos/$env:GITHUB_REPOSITORY/git/ref/tags/v$v" --silent 2>$null
+          $code = $LASTEXITCODE
+          $ErrorActionPreference = 'Stop'
+          if ($code -eq 0) { throw "tag v$v already exists: bump mod.json's version to publish again" }
+          $sums = Get-ChildItem release-files -Recurse -Filter SHA256SUMS | Select-Object -First 1
+          if (-not $sums) { throw "no SHA256SUMS in the build artifact" }
+          $d = $sums.DirectoryName
+          # the release assets are the 7z and SHA256SUMS, as before (SHA256SUMS lists the manifest and feed too, as before)
+          $files = @((Get-ChildItem $d -Filter *.7z).FullName) + $sums.FullName
+          if ($files.Count -ne 2) { throw "expected one 7z and SHA256SUMS in $d, found: $($files -join ', ')" }
+          gh release create "v$v" @files --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "PD2 Resurrected $v" --notes-file (Join-Path $d "RELEASE_NOTES-$v.md") --latest
           if ($LASTEXITCODE) { throw "gh release create failed" }

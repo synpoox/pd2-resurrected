@@ -55,7 +55,7 @@ Bolt, Ice Blast, Fire Ball, Lightning, Glacial Spike, Frozen Orb, ...) and 183/1
 ## Game check
 
 `tests/game/lightning_javelin_checks.py` (`lightning-bolt`, `lightning-fury`) casts once and counts the client missiles
-of PD2's `cltmissilea` row, read from game memory by `tests/game/missile_probe.py`. It runs on the fixture
+of PD2's `cltmissilea` row, read from game memory by the toolkit's `testing/unit_probe.py`. It runs on the fixture
 `tests/game/fixtures/lightning-javelin` (the merged rows' function and missile columns on D2R's tables, castable in
 town), because the full merged data does not pass modkit validation yet.
 

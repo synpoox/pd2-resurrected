@@ -88,8 +88,8 @@ auto InstallTristram(const D2RL::PluginContext* context, char* report, size_t si
 	}
 	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
 	                                              .rva = PrimesDrop,
-	                                              .expected = PrimesDropD2R,
-	                                              .expectedSize = sizeof(PrimesDropD2R),
+	                                              .expected = PrimesDropOrig,
+	                                              .expectedSize = sizeof(PrimesDropOrig),
 	                                              .bytes = PrimesDropOff,
 	                                              .size = sizeof(PrimesDropOff)};
 	D2RL::Mutations::OperationHandle operation = 0;

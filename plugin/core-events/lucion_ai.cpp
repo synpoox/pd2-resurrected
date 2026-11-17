@@ -579,7 +579,7 @@ template <auto Port>
 void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	Mon m {};
 	if (!MonOf(tick, &m)) {
-		VanillaAiThink(OverseerRow)(game, unit, tick);
+		ai_registry::Vanilla(OverseerRow)(game, unit, tick);
 		return;
 	}
 	Port(game, unit, tick, m);
@@ -594,9 +594,9 @@ void SpawnerThink(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept 
 
 auto InstallLucionAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	const uint64_t overseer = d2r::sig::AiOverseer.address;
-	const bool ok = RegisterAiThink(context, OverseerRow, overseer, Lucion, &Think<ThinkLucion>) &&
-	                RegisterAiThink(context, OverseerRow, overseer, LucionControl, &Think<ThinkControl>) &&
-	                RegisterAiThink(context, OverseerRow, overseer, LucionSpawner, &Think<SpawnerThink>);
+	const bool ok = ai_registry::RegisterAt(context, OverseerRow, overseer, Lucion, &Think<ThinkLucion>) &&
+	                ai_registry::RegisterAt(context, OverseerRow, overseer, LucionControl, &Think<ThinkControl>) &&
+	                ai_registry::RegisterAt(context, OverseerRow, overseer, LucionSpawner, &Think<SpawnerThink>);
 	std::snprintf(report, reportSize, ok ? "monai %d (Overseer) think: Lucion, LucionControl, LucionSpawner"
 	                                     : "off: monai %d think not swapped",
 	              OverseerRow);

@@ -1,30 +1,17 @@
-// Monster AI replacement for PD2's AI overrides (ai_hooks.cpp): a registry of think functions by monai row and
-// monstats class. The Uber Tristram primes (#483) and Lucion (#437) use it; Dclone (#470) and Rathma (#474) should.
+// PD2's boss helpers around the toolkit's AI registry (plugin-common ai_registry.h, which holds the think registry and its
+// dispatch: ai_registry::RegisterAt and ai_registry::Vanilla): the test aid for a boss's life, the idle window and the
+// state half of the boss immunity.
 #pragma once
 
+#include "ai_registry.h"
 #include "pd2_engine.h"
-
-#include <D2RLPlugin/api.h>
 
 #include <cstdint>
 
-// A think function, D2R's signature: (game, unit, tick). The tick's fields are rva::AiTick*.
-using AiThinkFn = void (*)(d2r::Game* game, d2r::Unit* unit, uint8_t* tick) noexcept;
-
-// Runs `think` instead of D2R's think of monai row `monaiRow` for monsters of monstats class `classId` (merged id);
-// other classes on the row keep D2R's think. `d2rThinkAddress` is the resolved address of D2R's think in that row
-// (d2r::sig::AiMephisto.address, ...; 0 when unresolved): the first registration on a row writes the row's slot in
-// d2r::sig::AiTable through the SDK's PatchWriteU64 with it as the expected value. Call from a part's install. False when the
-// row is out of range, the address is 0, the slot is not `d2rThinkAddress`, or the registry is full.
-auto RegisterAiThink(const D2RL::PluginContext* context, int32_t monaiRow, uint64_t d2rThinkAddress, int32_t classId,
-                     AiThinkFn think) noexcept -> bool;
 // A game-check aid (`core-events life <percent> <class>`): the next think of a ported boss of merged monstats class
 // `classId` first sets its life to `percent` of its max, for the life events of a boss that blinks away from clicks.
 // One request, used once; dropped if no such boss thinks within 10 seconds.
 auto RequestBossLife(int32_t percent, int32_t classId) noexcept -> void;
-// D2R's own think of a registered row (null for any other): a port calls it for what it leaves to vanilla.
-auto VanillaAiThink(int32_t monaiRow) noexcept -> AiThinkFn;
-
 // PD2's idle window for a boss left alone (game+0x26fe; docs/research/pd2-uber-bosses-dll.md, section 5): the
 // room-release hook (map_open.cpp's KeepBossRoom, PD2 0x102fc6c0) marks a boss whose room has had no player for 10+
 // ticks; the boss's next think starts the game's 15-tick window when none runs.

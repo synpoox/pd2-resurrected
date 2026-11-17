@@ -47,7 +47,7 @@ auto Find(Game* game, Unit* player, const pd2::test_cmd::Cmd& cmd, bool* ownedBy
 				continue;
 			}
 			// A player's pet (merc, golem, summon): its owner is a player, the input that crashed the engine's death path
-			Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(UnitTarget)(game, unit);
+			Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, unit);
 			if (owner != nullptr && At<int32_t>(owner, UnitType) == 0) {
 				*ownedByPlayer = true;
 				continue;
@@ -114,9 +114,9 @@ void Run(const D2RL::PluginContext*, void* user) noexcept {
 	// A player there crashed the game (a Game* read of 2 in the engine), so pets of players are skipped in Find: no credit to the player
 	alignas(8) uint8_t block[0x30] = {};
 	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlags)(monster, UnitNoDrop, 0);
-	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(MonsterModeBlock)(monster, ModeDeath, block);
-	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(UnitTarget)(game, monster);
-	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(SetMonsterMode)(game, block, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(ModeCmdInit)(monster, ModeDeath, block);
+	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, monster);
+	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(ModeCmdRun)(game, block, 1);
 	plog::Info("test aid: kill: class %d unit %u killed, level %d (death path, drops roll)", classId, id,
 	           ai_common::LevelOf(monster));
 }

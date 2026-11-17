@@ -253,8 +253,8 @@ auto PatchNumInputs(const D2RL::PluginContext* context) noexcept -> bool {
 	}
 	const D2RL::Mutations::BytePatchRequest patch {.structSize = D2RL::Mutations::BytePatchRequestSize,
 	                                               .rva = CubeNumInputsJump,
-	                                               .expected = CubeNumInputsJumpD2R,
-	                                               .expectedSize = sizeof(CubeNumInputsJumpD2R),
+	                                               .expected = CubeNumInputsJumpOrig,
+	                                               .expectedSize = sizeof(CubeNumInputsJumpOrig),
 	                                               .bytes = CubeNumInputsJumpOff,
 	                                               .size = sizeof(CubeNumInputsJumpOff)};
 	D2RL::Mutations::OperationHandle operation = 0;

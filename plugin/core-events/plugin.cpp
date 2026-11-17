@@ -13,7 +13,7 @@
 #include "log.h"
 #include "map_events.h"
 #include "off_switch.h"
-#include "parts.h"
+#include "part_registry.h"
 #include "pd2_engine.h"
 #include "test_kill.h"
 
@@ -22,17 +22,17 @@
 #include <cstdlib>
 #include <cstring>
 
-#ifndef CORE_PLUGIN_NAME
-#define CORE_PLUGIN_NAME "core-events"
+#ifndef MODKIT_PLUGIN_NAME
+#define MODKIT_PLUGIN_NAME "core-events"
 #endif
-#ifndef CORE_PLUGIN_VERSION
-#define CORE_PLUGIN_VERSION "0.2.0"
+#ifndef MODKIT_PLUGIN_VERSION
+#define MODKIT_PLUGIN_VERSION "0.2.0"
 #endif
 
 namespace {
 
-constexpr const char* PluginName = CORE_PLUGIN_NAME;
-constexpr const char* PluginVersion = CORE_PLUGIN_VERSION;
+constexpr const char* PluginName = MODKIT_PLUGIN_NAME;
+constexpr const char* PluginVersion = MODKIT_PLUGIN_VERSION;
 
 const D2RL::PluginContext* g_context = nullptr;
 char g_selfPath[520] = "?";
@@ -43,7 +43,7 @@ constexpr D2RL::PluginInfo Info {
 	.abiVersion  = D2RL_PLUGIN_ABI_VERSION,
 	.id          = "core-maps", // saved characters record plugin ids; keep the pre-#1040 id so they load (#1044)
 	.name        = "PD2 Resurrected Core Events",
-	.version     = CORE_PLUGIN_VERSION,
+	.version     = MODKIT_PLUGIN_VERSION,
 	.author      = "Synpoo",
 	.description = "Project Diablo II map events and uber fights (cube op 30, map events, uber keys, scaling and drops, Horazon's portal) for PD2 Resurrected.",
 	.flags       = D2RL::PluginFlags::Shared | D2RL::PluginFlags::NativeHooks,
@@ -51,27 +51,11 @@ constexpr D2RL::PluginInfo Info {
 
 void InstallParts(const D2RL::PluginContext* context) noexcept {
 	size_t count = 0;
-	Part* parts = Parts(&count);
+	parts::Part* list = Parts(&count);
 	if (RegistryOverflowed()) {
 		plog::Warn("parts registry full: some parts or counters are not registered");
 	}
-	for (size_t i = 0; i < count; ++i) {
-		Part& p = parts[i];
-		if (!p.uses.empty()) {
-			// Reads only signature entries: no build-93847 gate, the entries are the gate (parts.h)
-			if (!UsesSkipReason(p, PluginName, p.report, sizeof(p.report))) {
-				p.install(context, p.report, sizeof(p.report));
-			}
-		} else if (!g_imageKnown) {
-			std::snprintf(p.report, sizeof(p.report), "off: unknown game image 0x%08x (expects 0x%08x)",
-			              build_guard::ImageStamp(static_cast<uintptr_t>(context->exeBase)), d2r::rva::ImageStamp);
-		} else if (off_switch::Off(p.word)) {
-			std::snprintf(p.report, sizeof(p.report), "off: left out by %s-off.txt", PluginName);
-		} else {
-			p.install(context, p.report, sizeof(p.report));
-		}
-		plog::Info("%s %s", p.word, p.report);
-	}
+	parts::InstallAll(list, count, context, PluginName, g_imageKnown);
 }
 
 auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext* command, void* userData) noexcept
@@ -140,12 +124,8 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 		command->plugin->WriteConsoleMessage(line);
 	}
 	size_t count = 0;
-	const Part* parts = Parts(&count);
-	for (size_t i = 0; i < count; ++i) {
-		const Part& p = parts[i];
-		std::snprintf(line, sizeof(line), "%s %s", p.word, p.report);
-		command->plugin->WriteConsoleMessage(line);
-	}
+	const parts::Part* list = Parts(&count);
+	parts::WriteStatus(list, count, command);
 	std::snprintf(line, sizeof(line), "pool now %s", EntityPoolState());
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);

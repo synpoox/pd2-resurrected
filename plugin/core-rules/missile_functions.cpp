@@ -5,8 +5,9 @@
 // ProjectDiablo.dll (docs/research/amazon-w6.md).
 //
 // The server calls missile srvdo as int64_t fn(Game*, Unit* missile) every frame, srvhit as
-// void fn(Game*, Unit* missile, Unit* hit) on a collision, srvdmg as void fn(Game*, Unit* missile, Unit* target,
-// uint8_t* damage) before a hit's damage is applied, and the client missile cltdo as void fn(Unit* missile, int32_t).
+// int32_t fn(Game*, Unit* missile, Unit* hit) on a collision, srvdmg as void fn(Game*, Unit* missile, Unit* target,
+// Damage*) before a hit's damage is applied, and the client missile cltdo as void fn(Unit* missile, float) (the
+// toolkit's skill_router.h types).
 #include "missile_functions.h"
 
 #include "log.h"
@@ -83,13 +84,13 @@ auto SrvDoReturn(Game* game, Unit* missile) noexcept -> int64_t {
 }
 
 // cdo 78 (PD2 cdo 70): the client's copy steers the same way; the server ends it.
-void CltDoReturn(Unit* missile, int32_t a2) noexcept {
+void CltDoReturn(Unit* missile, float partFrame) noexcept {
 	using namespace d2r::rva;
 	Unit* owner = d2r::Engine<Unit* (*)(Unit*) noexcept>(ClientMissileOwner)(missile);
 	if (owner != nullptr) {
 		SteerHome(missile, owner, d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileCltFrames)(missile));
 	}
-	d2r::Engine<MissileCltDoFn>(MissileCltDoDefault)(missile, a2);
+	d2r::Engine<MissileCltDoFn>(MissileCltDoDefault)(missile, partFrame);
 }
 
 // --- Double Throw's missiles (PD2 pSrvHitFunc 30 -> 66, pSrvDmgFunc 16 -> 21) ------------------------------------
@@ -173,7 +174,8 @@ auto SrvHitBounce(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 // fire, lightning, magic, cold and poison damage by calc3 percent. PD2's rows have calc3 = par4 = 0, so it adds nothing.
 // shortcut: the fire to poison offsets assume 1.13c's +0x10 shift seen on phys and poison length (rvas_93847.h);
 // read a D2R srvdmg function that writes them when a row gives calc3 a value.
-void SrvDmgFirstHit(Game* game, Unit* missile, Unit* hit, uint8_t* damage) noexcept {
+void SrvDmgFirstHit(Game* game, Unit* missile, Unit* hit, d2r::Damage* damageBlock) noexcept {
+	auto* damage = reinterpret_cast<uint8_t*>(damageBlock);  // the block is opaque in the toolkit; its fields are read by offset
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr || hit == nullptr || damage == nullptr) {
 		return;
@@ -220,7 +222,8 @@ static_assert(ChainFalloffMagic(999, 2, 1, 20) == 799);    // truncated
 // dmg 22 (PD2 15, ProjectDiablo.dll 0x103a6c90, Psychic Hammer): each unit the chain hits after the first takes calc2
 // percent less magic damage per earlier hit, counted as calc1 (the skill's hits) - the missile's bounces left (D2Common
 // #11018, D2R's MissileBounces). D2R's collision (0x4639a0) calls it when srvhit 12 returns 3 (bit 2: deal the damage).
-void SrvDmgChainFalloff(Game* game, Unit* missile, Unit* target, uint8_t* damage) noexcept {
+void SrvDmgChainFalloff(Game* game, Unit* missile, Unit* target, d2r::Damage* damageBlock) noexcept {
+	auto* damage = reinterpret_cast<uint8_t*>(damageBlock);  // the block is opaque in the toolkit; its fields are read by offset
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr || target == nullptr || damage == nullptr) {
 		return;
@@ -368,7 +371,8 @@ auto SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept -> int32
 // less damage, down to dParam1 percent. Scales physical, the elements and the leeches.
 // shortcut: PD2 counts pierces in its own pierce hook; this counts hits on the missile's pierce_count stat, so the last
 // (not piercing) hit takes one step less than PD2's. Upgrade if the pierce hook is ported.
-void SrvDmgPierceFalloff(Game* game, Unit* missile, Unit* target, uint8_t* damage) noexcept {
+void SrvDmgPierceFalloff(Game* game, Unit* missile, Unit* target, d2r::Damage* damageBlock) noexcept {
+	auto* damage = reinterpret_cast<uint8_t*>(damageBlock);  // the block is opaque in the toolkit; its fields are read by offset
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr || damage == nullptr) {
 		return;
@@ -502,7 +506,7 @@ auto BoltSplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(d2r::rva::AreaApply)(static_cast<Game*>(area->game),
 	                                                                               area->unit, victim, &damage);
 	b->victims += (damage.resultFlags & d2r::rva::ResultHit) != 0 ? 1 : 0;
-	ReleaseDamageRva(damage);
+	ReleaseDamage(damage);
 	return 1;
 }
 
@@ -540,7 +544,7 @@ auto SrvHitBoltSplash(Game* game, Unit* missile, Unit* /*hit*/) noexcept -> int3
 		           "hit %u", At<int32_t>(missile, UnitClassId), skillId, level, radius, At<int32_t>(&rolled, DmgFire),
 		           At<int32_t>(&rolled, DmgCold), static_cast<long long>(b.victims), g_boltHits.load());
 	}
-	ReleaseDamageRva(rolled);
+	ReleaseDamage(rolled);
 	return 1;
 }
 
@@ -611,7 +615,7 @@ auto SrvHitUberImmolation(Game* game, Unit* missile, Unit* hit) noexcept -> int3
 		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, d2r::LeapKnockback*, int32_t, void*) noexcept>(
 			AreaKnockback)(game, owner, x, y, radius, &damage, 0, scratch);
 		setKey(owner, ownerKey);
-		ReleaseDamageRva(damage);
+		ReleaseDamage(damage);
 	}
 	if (plog::Sample(g_uberImmolationHits)) {
 		plog::Info("uber immolation hit: missile row %d skill %d level %d: fire row %d in radius %d for %d frames, "
@@ -767,12 +771,12 @@ std::atomic<uint32_t> g_chargeBoltHits {0};
 // D2Client 0xb17c0 first, D2R's cltdo 1), then on its first frame CltSubMissile1 (fistsoffirefirewall,
 // bladesoficeexplode) placed at its position (flags 3, no aim), with its skill and level; none without an owner,
 // as in PD2.
-void CltDoChargeExplode(Unit* missile, int32_t a2) noexcept {
+void CltDoChargeExplode(Unit* missile, float partFrame) noexcept {
 	using namespace d2r::rva;
 	if (missile == nullptr) {
 		return;
 	}
-	d2r::Engine<MissileCltDoFn>(MissileCltDoDefault)(missile, a2);
+	d2r::Engine<MissileCltDoFn>(MissileCltDoDefault)(missile, partFrame);
 	if (d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileCltFrames)(missile) != 1) {
 		return;
 	}
@@ -1052,7 +1056,8 @@ auto SrvHitBladeFragment(Game* game, Unit* missile, Unit* hit) noexcept -> int32
 // leech.
 // shortcut: the roll is the fragment's seed, where PD2 calls the C runtime's rand(); the odds are the same. Upgrade
 // only if a check needs PD2's exact sequence.
-void SrvDmgBladeFragment(Game* game, Unit* missile, Unit* target, uint8_t* damage) noexcept {
+void SrvDmgBladeFragment(Game* game, Unit* missile, Unit* target, d2r::Damage* damageBlock) noexcept {
+	auto* damage = reinterpret_cast<uint8_t*>(damageBlock);  // the block is opaque in the toolkit; its fields are read by offset
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr || target == nullptr || damage == nullptr) {
 		return;
@@ -1151,12 +1156,12 @@ auto SrvDoBlessedHammer(Game* game, Unit* missile) noexcept -> int64_t {
 }
 
 // cdo 80 (PD2 72, ProjectDiablo.dll 0x103a6300): the client's copy flies the same path: cltdo 1 with the same mask.
-void CltDoBlessedHammer(Unit* missile, int32_t a2) noexcept {
+void CltDoBlessedHammer(Unit* missile, float partFrame) noexcept {
 	uint8_t* path = HammerPath(missile);
 	if (path == nullptr) {
 		return;
 	}
-	d2r::Engine<MissileCltDoFn>(d2r::rva::MissileCltDoDefault)(missile, a2);
+	d2r::Engine<MissileCltDoFn>(d2r::rva::MissileCltDoDefault)(missile, partFrame);
 	if (plog::Sample(g_hammerClientFrames)) {
 		plog::Info("blessed hammer client: missile row %d at %u,%u mask %#x, frame %u",
 		           At<int32_t>(missile, d2r::rva::UnitClassId), At<uint16_t>(path, 0x2), At<uint16_t>(path, 0x6),
@@ -1226,7 +1231,8 @@ std::atomic<uint32_t> g_spearHits {0};
 // one, and D2R's block keeps the hit's x/y there (0x13c, 0x140, read by DealDamage), so the port leaves it out.
 constexpr uint32_t HitNoRoll = 0x1000;  // 1.13c's hit flag the spear's block carries (no to-hit roll)
 
-void SrvDmgRathmaSpear(Game* game, Unit* missile, Unit* target, uint8_t* damage) noexcept {
+void SrvDmgRathmaSpear(Game* game, Unit* missile, Unit* target, d2r::Damage* damageBlock) noexcept {
+	auto* damage = reinterpret_cast<uint8_t*>(damageBlock);  // the block is opaque in the toolkit; its fields are read by offset
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr || target == nullptr || damage == nullptr) {
 		return;
@@ -1261,7 +1267,7 @@ void SrvDmgRathmaSpear(Game* game, Unit* missile, Unit* target, uint8_t* damage)
 	// area 0, as PD2: D2R's HitEvents then skips DamageEffects (the resists and the total), as 1.13c skips its step
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t, void*) noexcept>(HitEvents)(game, owner, target, 0, &hit);
 	d2r::Engine<HitFn>(DealDamage)(game, owner, target, &hit);
-	d2r::ReleaseDamageRva(hit);
+	d2r::ReleaseDamage(hit);
 	if (plog::Sample(g_spearHits)) {
 		plog::Info("rathma bone spear damage: missile row %d on unit type %d: DmgCalc1 %d%% of max life %u = magic %u, "
 		           "total %u (life %u -> %d), hit %u", At<int32_t>(missile, UnitClassId), At<int32_t>(target, UnitType),

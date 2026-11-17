@@ -1,9 +1,7 @@
-// The parts registry (parts.h). Function-local statics: registration runs in static initialisers, in no fixed order.
-#include "parts.h"
+// The parts registry (part_registry.h). Function-local statics: registration runs in static initialisers, in no fixed order.
+#include "part_registry.h"
 
-#include "off_switch.h"
-
-#include <cstdio>
+#include <utility>
 
 namespace {
 
@@ -15,7 +13,8 @@ struct Counter {
 };
 
 struct Registry {
-	Part parts[Capacity] = {};
+	parts::Part parts[Capacity] = {};
+	int partOrder[Capacity] = {};
 	size_t partCount = 0;
 	Counter counters[Capacity] = {};
 	size_t counterCount = 0;
@@ -35,10 +34,9 @@ void Sort() noexcept {
 		return;
 	}
 	for (size_t i = 1; i < r.partCount; ++i) {  // insertion sort: stable, tiny
-		for (size_t j = i; j > 0 && r.parts[j - 1].order > r.parts[j].order; --j) {
-			const Part t = r.parts[j];
-			r.parts[j] = r.parts[j - 1];
-			r.parts[j - 1] = t;
+		for (size_t j = i; j > 0 && r.partOrder[j - 1] > r.partOrder[j]; --j) {
+			std::swap(r.parts[j], r.parts[j - 1]);
+			std::swap(r.partOrder[j], r.partOrder[j - 1]);
 		}
 	}
 	for (size_t i = 1; i < r.counterCount; ++i) {
@@ -56,30 +54,15 @@ void Sort() noexcept {
 
 }  // namespace
 
-PartReg::PartReg(int order, const char* word, InstallFn install, std::span<sigscan::Entry* const> uses) noexcept {
+PartReg::PartReg(int order, const char* word, parts::InstallFn install, std::span<sigscan::Entry* const> uses) noexcept {
 	Registry& r = Reg();
 	if (r.partCount == Capacity) {
 		r.overflow = true;
 		return;
 	}
-	r.parts[r.partCount++] = Part {word, install, "", order, uses};
-}
-
-// The same rule as plugin-common's parts::SkipReason (its parts.h cannot be included here: the name clashes with this
-// file's parts.h): the off word, then every entry of `uses` must have resolved.
-auto UsesSkipReason(const Part& part, const char* pluginName, char* out, size_t size) noexcept -> bool {
-	if (off_switch::Off(part.word)) {
-		std::snprintf(out, size, "off: left out by %s-off.txt", pluginName);
-		return true;
-	}
-	for (const sigscan::Entry* e : part.uses) {
-		if (e == nullptr || e->state != sigscan::State::Ok) {
-			std::snprintf(out, size, "off: engine address %s %s on this game image", e != nullptr ? e->name : "(null)",
-			              sigscan::StateText(e != nullptr ? e->state : sigscan::State::Unresolved));
-			return true;
-		}
-	}
-	return false;
+	// engine: every part reads game addresses; with `uses` the entries gate it, without it the image does
+	r.partOrder[r.partCount] = order;
+	r.parts[r.partCount++] = parts::Part {word, true, install, nullptr, uses};
 }
 
 CountersReg::CountersReg(int order, CountersFn fn) noexcept {
@@ -91,7 +74,7 @@ CountersReg::CountersReg(int order, CountersFn fn) noexcept {
 	r.counters[r.counterCount++] = Counter {order, fn};
 }
 
-auto Parts(size_t* count) noexcept -> Part* {
+auto Parts(size_t* count) noexcept -> parts::Part* {
 	Sort();
 	*count = Reg().partCount;
 	return Reg().parts;

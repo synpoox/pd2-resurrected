@@ -55,7 +55,7 @@ auto DropMendelnLoot(Game* game, Unit* unit) noexcept -> void {
 	using namespace d2r::rva;
 	const bool soul = DropUniqueAt(game, unit, D2RL::Items::MakeItemCode("rtmv"), -1, SoulItemLevel, 2);
 	const uint8_t dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
-	const uint8_t* tables = d2r::Engine<const uint8_t* (*)(uint8_t) noexcept>(DataTablesOf)(dataFlag);
+	const uint8_t* tables = d2r::Engine<const uint8_t* (*)(uint8_t) noexcept>(DataTables)(dataFlag);
 	const int32_t index = tables != nullptr ? d2r::Engine<int32_t (*)(void*, const char*, int32_t) noexcept>(TcIndexByName)(
 												  At<void*>(tables, TablesTcNames), MendelnTc, 0)
 	                                        : 0;
@@ -107,7 +107,7 @@ auto SpawnWaveMonster(Game* game, Unit* unit, int32_t ux, int32_t uy, uint32_t* 
 	int32_t xy[2] = {ux - 10 + static_cast<int32_t>(d2r::RandomBelow(seed, 20)),
 	                 uy - 10 + static_cast<int32_t>(d2r::RandomBelow(seed, 20))};
 	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit);
-	room = room != nullptr ? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAt)(room, xy[0], xy[1]) : nullptr;
+	room = room != nullptr ? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(room, xy[0], xy[1]) : nullptr;
 	void* found = nullptr;
 	if (room != nullptr) {
 		d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(
@@ -158,7 +158,7 @@ auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	using namespace d2r::rva;
 	Mon m {tick != nullptr ? At<const uint8_t*>(tick, AiTickMonStats) : nullptr};
 	if (m.rec == nullptr) {
-		VanillaAiThink(TrappedSoulRow)(game, unit, tick);
+		ai_registry::Vanilla(TrappedSoulRow)(game, unit, tick);
 		return;
 	}
 	const int32_t stage = Counter(game, StageKey);
@@ -255,7 +255,7 @@ auto RegisterNihlathakAi(const D2RL::PluginContext* context) noexcept -> bool {
 		}
 	}
 	plog::Info("nihlathakMap: champion and unique makers %s", g_makers ? "resolved" : "off");
-	return RegisterAiThink(context, TrappedSoulRow, d2r::sig::AiTrappedSoul.address, NihlathakMap, &ThinkNihlathak);
+	return ai_registry::RegisterAt(context, TrappedSoulRow, d2r::sig::AiTrappedSoul.address, NihlathakMap, &ThinkNihlathak);
 }
 
 auto NihlathakAiCounts(uint32_t out[5]) noexcept -> void {

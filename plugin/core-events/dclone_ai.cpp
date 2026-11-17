@@ -187,7 +187,7 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	Unit* target = At<Unit*>(tick, d2r::rva::AiTickTarget);
 	if (target == nullptr) {
 		if (nearest == nullptr) {
-			VanillaAiThink(TrapMeleeRow)(game, unit, tick);  // PD2 0x103187c0, as for a row with no Hell aip3
+			ai_registry::Vanilla(TrapMeleeRow)(game, unit, tick);  // PD2 0x103187c0, as for a row with no Hell aip3
 			SetImmune(game, unit, true);
 			return;
 		}
@@ -334,7 +334,7 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	const int32_t level = LevelOf(unit);
 	Unit* dclone = m.rec != nullptr ? FindDclone(game, level) : nullptr;
 	if (dclone == nullptr) {
-		VanillaAiThink(TrappedSoulRow)(game, unit, tick);
+		ai_registry::Vanilla(TrappedSoulRow)(game, unit, tick);
 		return;
 	}
 	const int32_t dMode = At<int32_t>(dclone, UnitMode);
@@ -417,7 +417,7 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	Mon m {tick != nullptr ? At<const uint8_t*>(tick, d2r::rva::AiTickMonStats) : nullptr};
 	// PD2 hands a monstats row with no Hell aip3 to 0x103187c0 (a D2Game thunk); the port to D2R's Trap-Melee think
 	if (m.rec == nullptr || m.Aip(3) == 0) {
-		VanillaAiThink(TrapMeleeRow)(game, unit, tick);
+		ai_registry::Vanilla(TrapMeleeRow)(game, unit, tick);
 		return;
 	}
 	ThinkDclone(game, unit, tick, m);
@@ -426,10 +426,10 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 }  // namespace
 
 auto InstallDcloneAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
-	const bool ok = RegisterAiThink(context, TrapMeleeRow, d2r::sig::AiTrapMelee.address, Dclone, &Think);
+	const bool ok = ai_registry::RegisterAt(context, TrapMeleeRow, d2r::sig::AiTrapMelee.address, Dclone, &Think);
 	int souls = 0;
 	for (int32_t id = FirstSoul; id <= LastSoul; ++id) {
-		souls += RegisterAiThink(context, TrappedSoulRow, d2r::sig::AiTrappedSoul.address, id, &ThinkSoul) ? 1 : 0;
+		souls += ai_registry::RegisterAt(context, TrappedSoulRow, d2r::sig::AiTrappedSoul.address, id, &ThinkSoul) ? 1 : 0;
 	}
 	const bool nihl = RegisterNihlathakAi(context);
 	std::snprintf(report, reportSize,

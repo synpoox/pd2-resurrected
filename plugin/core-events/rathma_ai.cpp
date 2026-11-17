@@ -135,9 +135,9 @@ auto KillQuietly(Game* game, Unit* monster) noexcept -> void {
 	using namespace d2r::rva;
 	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlags)(monster, UnitNoDrop, 1);
 	alignas(8) uint8_t block[0x30] = {};
-	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(MonsterModeBlock)(monster, ModeDeath, block);
-	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(UnitTarget)(game, monster);
-	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(SetMonsterMode)(game, block, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(ModeCmdInit)(monster, ModeDeath, block);
+	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, monster);
+	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(ModeCmdRun)(game, block, 1);
 }
 
 // PD2 0x10380770: on sets the six resists to 200, removes the poison and open wounds lists and, with `setState`,
@@ -399,7 +399,7 @@ auto Run(Tick& t) noexcept -> void {
 		t.sub = 0;
 		return;
 	case 4:
-		VanillaAiThink(SummonerRow)(t.game, t.unit, t.tick);  // PD2 0x103188b0: D2Game's Summoner think
+		ai_registry::Vanilla(SummonerRow)(t.game, t.unit, t.tick);  // PD2 0x103188b0: D2Game's Summoner think
 		t.sub = 0;
 		return;
 	case 5:
@@ -604,7 +604,7 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	Tick t {};
 	t.m.rec = tick != nullptr ? At<const uint8_t*>(tick, AiTickMonStats) : nullptr;
 	if (t.m.rec == nullptr) {
-		VanillaAiThink(SummonerRow)(game, unit, tick);
+		ai_registry::Vanilla(SummonerRow)(game, unit, tick);
 		return;
 	}
 	t.game = game;
@@ -746,7 +746,7 @@ auto BuffRathmaSurvivor(Game* game, Unit* dead) noexcept -> void {
 auto InstallRathmaAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	bool ok = true;
 	for (const int32_t c : {RathmaBone, RathmaPoison, BoneClone, PoisonClone}) {
-		ok = ok && RegisterAiThink(context, SummonerRow, d2r::imageBase + AiSummoner, c, &Think);
+		ok = ok && ai_registry::RegisterAt(context, SummonerRow, d2r::imageBase + AiSummoner, c, &Think);
 	}
 	std::snprintf(report, reportSize,
 	              ok ? "monai %d (Summoner) think: rathmaBone, rathmaPoison and the clones"

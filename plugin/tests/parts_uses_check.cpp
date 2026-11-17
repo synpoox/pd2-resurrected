@@ -1,7 +1,7 @@
-// Host self-check of core-events' parts with `uses` (#1081): a part installs when every signature entry it lists
-// resolved, and stays off with the entry's name otherwise. No game. Parts without `uses` are gated in plugin.cpp.
+// Host self-check of core-events' registry with parts that have `uses` (#1081): the registration keeps the part, and
+// plugin-common's parts::SkipReason (the rule the toolkit tests) installs it when every entry resolved. No game.
 //   cmake -S plugin -B plugin/build-checks -A x64 && cmake --build plugin/build-checks --config Release --target parts_uses_check
-#include "parts.h"
+#include "part_registry.h"
 
 #include <cstdio>
 #include <cstring>
@@ -32,22 +32,22 @@ PartReg g_probe(900, "usesprobe", InstallProbe, ResolvedUses);
 
 int main() {
 	size_t count = 0;
-	Part* parts = Parts(&count);
-	Check(count == 1 && std::strcmp(parts[0].word, "usesprobe") == 0, "the registration keeps its word");
-	Check(count == 1 && parts[0].uses.size() == 1 && parts[0].uses[0] == &g_resolved, "the registration keeps its uses");
+	parts::Part* list = Parts(&count);
+	Check(count == 1 && std::strcmp(list[0].word, "usesprobe") == 0, "the registration keeps its word");
+	Check(count == 1 && list[0].uses.size() == 1 && list[0].uses[0] == &g_resolved, "the registration keeps its uses");
 
 	g_resolved.state = sigscan::State::Ok;
 	g_missing.state = sigscan::State::NotFound;
 
-	Part& p = parts[0];
-	Check(!UsesSkipReason(p, "core-events", p.report, sizeof(p.report)), "a part whose entries resolved is not skipped");
-	if (!UsesSkipReason(p, "core-events", p.report, sizeof(p.report))) {
+	parts::Part& p = list[0];
+	Check(!parts::SkipReason(p, false, "core-events", p.report, sizeof(p.report)), "a part whose entries resolved is not skipped");
+	if (!parts::SkipReason(p, false, "core-events", p.report, sizeof(p.report))) {
 		p.install(nullptr, p.report, sizeof(p.report));
 	}
 	Check(g_installs == 1 && std::strcmp(p.report, "on") == 0, "the install runs once for it");
 
-	Part mixed {"usesmiss", InstallProbe, {}, 901, MixedUses};
-	Check(UsesSkipReason(mixed, "core-events", mixed.report, sizeof(mixed.report)), "one unresolved entry skips the part");
+	parts::Part mixed {"usesmiss", true, InstallProbe, nullptr, MixedUses};
+	Check(parts::SkipReason(mixed, false, "core-events", mixed.report, sizeof(mixed.report)), "one unresolved entry skips the part");
 	Check(std::strstr(mixed.report, "ProbeMissing") != nullptr && std::strncmp(mixed.report, "off:", 4) == 0,
 	      "the skip report names the entry");
 	Check(g_installs == 1, "a skipped part is not installed");

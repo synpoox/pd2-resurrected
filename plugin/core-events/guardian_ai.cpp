@@ -82,7 +82,7 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	Unit* target = tick != nullptr ? At<Unit*>(tick, AiTickTarget) : nullptr;
 	if (control == nullptr || rec == nullptr || target == nullptr) {
 		++g_vanilla;
-		VanillaAiThink(RegurgitatorRow)(game, unit, tick);
+		ai_registry::Vanilla(RegurgitatorRow)(game, unit, tick);
 		return;
 	}
 	++g_thinks;
@@ -131,8 +131,8 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 
 auto InstallGuardianAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
-	const bool guardian = RegisterAiThink(context, RegurgitatorRow, d2r::sig::AiRegurgitator.address, Guardian, Think);
-	const bool clone = guardian && RegisterAiThink(context, RegurgitatorRow, d2r::sig::AiRegurgitator.address, Clone, Think);
+	const bool guardian = ai_registry::RegisterAt(context, RegurgitatorRow, d2r::sig::AiRegurgitator.address, Guardian, Think);
+	const bool clone = guardian && ai_registry::RegisterAt(context, RegurgitatorRow, d2r::sig::AiRegurgitator.address, Clone, Think);
 	std::snprintf(report, reportSize, "monai %d think (classes %d, %d)%s", RegurgitatorRow, Guardian, Clone,
 	              guardian && clone ? "" : " FAILED (the slot is not D2R's think)");
 	return guardian && clone ? 1 : 0;

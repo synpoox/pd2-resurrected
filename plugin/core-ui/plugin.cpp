@@ -18,36 +18,43 @@
 #include "level_palette.h"
 #include "log.h"
 #include "off_switch.h"
+#include "parts.h"
 #include "stack_split.h"
 
 #include <cstdio>
+#include <iterator>
 
-#ifndef CORE_PLUGIN_NAME
-#define CORE_PLUGIN_NAME "core-ui"
+#ifndef MODKIT_PLUGIN_NAME
+#define MODKIT_PLUGIN_NAME "core-ui"
 #endif
-#ifndef CORE_PLUGIN_VERSION
-#define CORE_PLUGIN_VERSION "0.2.0"
+#ifndef MODKIT_PLUGIN_VERSION
+#define MODKIT_PLUGIN_VERSION "0.2.0"
 #endif
 
 namespace {
 
-constexpr const char* PluginName = CORE_PLUGIN_NAME;
-constexpr const char* PluginVersion = CORE_PLUGIN_VERSION;
+constexpr const char* PluginName = MODKIT_PLUGIN_NAME;
+constexpr const char* PluginVersion = MODKIT_PLUGIN_VERSION;
 
 const D2RL::PluginContext* g_context = nullptr;
 char g_selfPath[520] = "?";
-char g_automap[300] = "";
-char g_pictures[200] = "";
-char g_split[200] = "";
-char g_quantity[200] = "";
-char g_palette[200] = "";
+
+// pictures, quantity and palette are native hooks (the SDK cannot place or draw them on D2RLoader 1.3.1, #359): they need
+// the known image. split is SDK only (no RVA), so it runs on any game image.
+parts::Part g_parts[] = {
+	{"automap", true, automap::Install},
+	{"pictures", true, item_pictures::Install},
+	{"split", false, stack_split::Install},
+	{"quantity", true, item_quantity::Install},
+	{"palette", true, level_palette::Install},
+};
 
 constexpr D2RL::PluginInfo Info {
 	.infoSize    = D2RL::PluginInfoSize,
 	.abiVersion  = D2RL_PLUGIN_ABI_VERSION,
-	.id          = CORE_PLUGIN_NAME,
+	.id          = MODKIT_PLUGIN_NAME,
 	.name        = "PD2 Resurrected Core UI",
-	.version     = CORE_PLUGIN_VERSION,
+	.version     = MODKIT_PLUGIN_VERSION,
 	.author      = "Synpoo",
 	.description = "Project Diablo II client features (the automap of PD2's new level types, HD pictures of its 4-character item codes, its stack split, its item quantity display, legacy level palettes) for PD2 Resurrected.",
 	.flags       = D2RL::PluginFlags::Client | D2RL::PluginFlags::NativeHooks,
@@ -70,16 +77,7 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 		std::snprintf(line, sizeof(line), "off-file: %s", off_switch::Words());
 		command->plugin->WriteConsoleMessage(line);
 	}
-	std::snprintf(line, sizeof(line), "automap %s", g_automap);
-	command->plugin->WriteConsoleMessage(line);
-	std::snprintf(line, sizeof(line), "pictures %s", g_pictures);
-	command->plugin->WriteConsoleMessage(line);
-	std::snprintf(line, sizeof(line), "split %s", g_split);
-	command->plugin->WriteConsoleMessage(line);
-	std::snprintf(line, sizeof(line), "quantity %s", g_quantity);
-	command->plugin->WriteConsoleMessage(line);
-	std::snprintf(line, sizeof(line), "palette %s", g_palette);
-	command->plugin->WriteConsoleMessage(line);
+	parts::WriteStatus(g_parts, std::size(g_parts), command);
 	automap::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
@@ -119,47 +117,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	if (off_switch::Words()[0] != '\0') {
 		plog::Info("%s-off.txt leaves out: %s", PluginName, off_switch::Words());
 	}
-	const bool bound = d2r::Bind(context->exeBase);
-	if (!bound) {
-		std::snprintf(g_automap, sizeof(g_automap), "off: unknown game image 0x%08x (expects 0x%08x)",
-		              build_guard::ImageStamp(static_cast<uintptr_t>(context->exeBase)), d2r::rva::ImageStamp);
-		std::snprintf(g_pictures, sizeof(g_pictures), "%s", g_automap);
-	} else if (off_switch::Off("automap")) {
-		std::snprintf(g_automap, sizeof(g_automap), "off: left out by %s-off.txt", PluginName);
-	} else {
-		automap::Install(context, g_automap, sizeof(g_automap));
-	}
-	plog::Info("automap %s", g_automap);
-	if (bound && off_switch::Off("pictures")) {
-		std::snprintf(g_pictures, sizeof(g_pictures), "off: left out by %s-off.txt", PluginName);
-	} else if (bound) {
-		item_pictures::Install(context, g_pictures, sizeof(g_pictures));
-	}
-	plog::Info("pictures %s", g_pictures);
-	// SDK only (no RVA), so it runs on any game image
-	if (off_switch::Off("split")) {
-		std::snprintf(g_split, sizeof(g_split), "off: left out by %s-off.txt", PluginName);
-	} else {
-		stack_split::Install(context, g_split, sizeof(g_split));
-	}
-	plog::Info("split %s", g_split);
-	// a native hook (the SDK cannot place or draw it on D2RLoader 1.3.1, #359), so it needs the known image
-	if (!bound) {
-		std::snprintf(g_quantity, sizeof(g_quantity), "%s", g_pictures);
-	} else if (off_switch::Off("quantity")) {
-		std::snprintf(g_quantity, sizeof(g_quantity), "off: left out by %s-off.txt", PluginName);
-	} else {
-		item_quantity::Install(context, g_quantity, sizeof(g_quantity));
-	}
-	plog::Info("quantity %s", g_quantity);
-	if (!bound) {
-		std::snprintf(g_palette, sizeof(g_palette), "%s", g_pictures);
-	} else if (off_switch::Off("palette")) {
-		std::snprintf(g_palette, sizeof(g_palette), "off: left out by %s-off.txt", PluginName);
-	} else {
-		level_palette::Install(context, g_palette, sizeof(g_palette));
-	}
-	plog::Info("palette %s", g_palette);
+	parts::InstallAll(g_parts, std::size(g_parts), context, PluginName, d2r::Bind(context->exeBase));
 	return context->RegisterConsoleCommand(PluginName, StatusCommand, "PD2 Resurrected Core UI: its parts and counters.");
 }
 

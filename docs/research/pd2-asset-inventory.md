@@ -23,11 +23,11 @@ asset is copied into this repo.
 - "New vs vanilla" compares each PD2 path against the file list of a retail D2R install's CASC storage (names only,
   35,003 files under `data/global`, read through the toolkit's `modkit/casc.py`). A PD2 path absent from D2R's legacy
   tree is called **new**; a path present is an **override** (PD2 changed a vanilla file). Monster, item, missile,
-  overlay and object checks also use the table snapshot in `d2rAI-toolkit/pd2-data/s14-alliance` against D2R's tables.
+  overlay and object checks also use the table snapshot in `pd2-data/s14-alliance` (a sibling folder of the repos, outside the toolkit) against D2R's tables.
 - Caveat: the s14 table snapshot is the toolkit's older snapshot. Archive sizes in `s14-alliance` equal the live
   archives, but its MonStats has no row for code `87` while the live `pd2assets.mpq` ships 129 files for it, so table
   based "new" counts are lower bounds. Path based counts come from the live archives and are exact.
-- Conversion rules come from `d2rAI-toolkit/knowledge/hd-graphics.md`.
+- Conversion rules come from [`knowledge/hd-graphics.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/hd-graphics.md).
 
 ## Archives
 
