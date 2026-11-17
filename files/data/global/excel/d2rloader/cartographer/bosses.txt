@@ -4,3 +4,23 @@ The Guardian	doomknight3LibraryBoss
 Nathkill The Numb	IceBoss
 The Great Worm	torajanBoss
 Shattered Soul	CanyonBoss
+Lieutenant of Sin	megademonboss
+The Mad Philosopher	SewerBoss
+Deathmaiden Madinsane	ArcaneBoss
+Armorsmith of Equality	SiegeBoss
+Johnathan The Damned	BastionBoss
+Toadflax the Tainted	TombBoss
+The Cow Queen	CowBoss
+Indio The Insane	ThroneBoss
+Bloodlord of the Pit	PoisonedWellBoss
+Gaoler Kanemith	KanemithBoss
+Sharptooth the Broodmother	SharpToothBoss
+Radament the Rotting	RadamentBoss
+Captain Skovos	SkovosBoss
+Jerhyn the Jaded	ImperialPalaceBossJerhyn
+Keeper of Ureh	CityofUrehBoss
+Nakrul the Fetid	NaKrulBoss
+The Ashen Revenant	AshenBoss
+Dark Priest of Amun	DarkTempleBoss
+The Silken Queen	spiderboss
+Nihlathak the Hollow	nihlathakboss

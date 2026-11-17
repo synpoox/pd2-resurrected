@@ -112,7 +112,10 @@ Act 4 (H) Equip C	1	82	1						weap72	2	armo72	1	weap75	6	armo75	3	weap78	14	armo
 Act 5 (H) Equip A	1	83	1						weap75	2	armo75	1	weap78	6	armo78	3	weap81	14	armo81	7	weap84	2	armo84	1	Act 4 (H) Equip B	1530			36	1566	0.9770							0
 Act 5 (H) Equip B	1	84	1						weap78	2	armo78	1	weap81	6	armo81	3	weap84	14	armo84	7	weap87	2	armo87	1	Act 5 (H) Equip A	1530			36	1566	0.9770							0
 Act 5 (H) Equip C	1	85	1						weap81	2	armo81	1	weap84	6	armo84	3	weap87	14	armo87	7	weap87	1	armo87	1	Act 5 (H) Equip B	1530			35	1565	0.9776							0
-Cartographer Maps			1						m01	1	m02	1	m03	1	m04	1	m05	1																				0
+Cartographer Maps D			1						m22	1	m23	1	m24	1	m25	1																						0
+Cartographer Maps C			1						m14	1	m15	1	m16	1	m17	1	m18	1	m19	1	m20	1	m21	1	Cartographer Maps D	4												0
+Cartographer Maps B			1						m06	1	m07	1	m08	1	m09	1	m10	1	m11	1	m12	1	m13	1	Cartographer Maps C	12												0
+Cartographer Maps			1						m01	1	m02	1	m03	1	m04	1	m05	1	Cartographer Maps B	20																		0
 Act 1 Melee B	2	5	1						mele3	3	armo3	3	mele6	7	armo6	7																						0
 Act 1 Melee C	2	9	1						mele3	2	armo3	1	mele6	6	armo6	3	mele9	14	armo9	7	mele12	2	armo12	1														0
 Act 2 Melee A	2	12	1						mele6	2	armo6	1	mele9	6	armo9	3	mele12	14	armo12	7	mele15	2	armo15	1	Act 1 Melee C	30			36	66	0.4545							0
