@@ -50,8 +50,8 @@ jobs:
         run: powershell -ExecutionPolicy Bypass -File tools\ci_toolkit.ps1 -Main "${{ vars.D2R_TOOLKIT }}"
       - name: PD2 baseline
         run: |
-          # one folder per baseline: the toolkit's extract() rmtrees its out folder when the stamp differs, which deleted files under a concurrent run on another baseline (#1237)
-          $root = "C:\pd2r-cache\pd2-data"
+          # one folder per baseline: extract() rmtrees a stale out (#1237)
+          $root = "C:\pd2r-cache\pd2-extract"
           $hash = (Get-FileHash -Algorithm SHA256 pd2-baseline.json).Hash.Substring(0, 16).ToLower()
           $cache = "$root\$hash"
           New-Item -ItemType Directory -Force $cache | Out-Null
