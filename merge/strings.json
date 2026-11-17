@@ -71,6 +71,9 @@
     "Ascendant": "Ascendant",
     "t99": "Mesa Map",
     "MapTierValue": "Tier: %d",
+    "MapTier1": "Tier: 1",
+    "MapTier2": "Tier: 2",
+    "MapTier3": "Tier: 3",
     "m01": "Tunneling Depths Map",
     "Teeming": "Teeming",
     "Hastened": "Hastened",
@@ -1709,6 +1712,9 @@
     "m24": [51538, "item-names.json"],
     "m25": [51539, "item-names.json"],
     "Large": [51540, "item-nameaffixes.json"],
-    "of the Adventurer": [51541, "item-nameaffixes.json"]
+    "of the Adventurer": [51541, "item-nameaffixes.json"],
+    "MapTier1": [51542, "item-modifiers.json"],
+    "MapTier2": [51543, "item-modifiers.json"],
+    "MapTier3": [51544, "item-modifiers.json"]
   }
 }
