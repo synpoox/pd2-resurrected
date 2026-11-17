@@ -50,8 +50,13 @@ jobs:
         run: powershell -ExecutionPolicy Bypass -File tools\ci_toolkit.ps1 -Main "${{ vars.D2R_TOOLKIT }}"
       - name: PD2 baseline
         run: |
-          $cache = "C:\pd2r-cache\pd2-data"
+          # one folder per baseline: extract() rmtrees a stale out (#1237)
+          $root = "C:\pd2r-cache\pd2-extract"
+          $hash = (Get-FileHash -Algorithm SHA256 pd2-baseline.json).Hash.Substring(0, 16).ToLower()
+          $cache = "$root\$hash"
           New-Item -ItemType Directory -Force $cache | Out-Null
+          (Get-Item $cache).LastWriteTime = Get-Date
+          try { Get-ChildItem $root -Directory | Where-Object { $_.Name -match '^[0-9a-f]{16}$' -and $_.Name -ne $hash -and $_.LastWriteTime -lt (Get-Date).AddDays(-7) } | Remove-Item -Recurse -Force -ErrorAction Stop } catch { Write-Host "prune skipped: $_" }
           New-Item -ItemType Junction -Path pd2-data -Target $cache | Out-Null
           py -3 tools/pd2_extract.py --out $cache; if ($LASTEXITCODE) { throw "pd2_extract failed" }
           py -3 -m modkit fetch --prefix data/global/animdata.d2 --prefix data/hd/model_lod_desc.bin; if ($LASTEXITCODE) { throw "modkit fetch failed" }

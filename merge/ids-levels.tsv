@@ -146,81 +146,81 @@ Act 5 - Pandemonium 1	133	Act 5 - Pandemonium 1
 Act 5 - Pandemonium 2	134	Act 5 - Pandemonium 2
 Act 5 - Pandemonium 3	135	Act 5 - Pandemonium 3
 Act 5 - Pandemonium Finale	136	Act 5 - Pandemonium Finale
-UberDiabloLvl	138	UberDiabloLvl
-Mesa	139	Mesa
-Siege Map	140	Siege Map
-Palace	141	Palace
-Sewers	142	Sewers
-Arcane	143	Arcane
-Kurast	144	Kurast
-River Of Blood	145	River Of Blood
-Lava	146	Lava
-Ice Map	147	Ice Map
-Desert Map	148	Desert Map
-Jungle Map	149	Jungle Map
-Fortress Map	150	Fortress Map
-Throne Map	151	Throne Map
-Tomb Map	152	Tomb Map
-Monastery Map	153	Monastery Map
-Monastery Map Basement	154	Monastery Map Basement
-Graveyard Map	155	Graveyard Map
-Caldeum Map	156	Caldeum Map
-Pandemonium Map	157	Pandemonium Map
-Spider Map	158	Spider Map
-Frozen Forest Map	159	Frozen Forest Map
-Necropolis Jungle	160	Necropolis Jungle
-Necropolis Swamp	161	Necropolis Swamp
-Necropolis Void	162	Necropolis Void
-Realm of Terror	163	Realm of Terror
-Hole of Terror	164	Hole of Terror
-Library Map	165	Library Map
-Westmarch Map	166	Westmarch Map
-Crypts Map	167	Crypts Map
-Sanctuary Of Sin Map	168	Sanctuary Of Sin Map
-Black Abyss Map	169	Black Abyss Map
-Ruined Cistern Map	170	Ruined Cistern Map
-Ashen Plains Map	171	Ashen Plains Map
-Zhar Library	172	Zhar Library
-Zhar Rivers	173	Zhar Rivers
-Zhar Ice	174	Zhar Ice
-Zhar Kurast	175	Zhar Kurast
-Outer Void Map	176	Outer Void Map
-Hellcaves	177	Hellcaves
-Hellcave Fortress	178	Hellcave Fortress
-Fallen Gardens	179	Fallen Gardens
-Diamond Gate	180	Diamond Gate
-PD2 Pandemonium Finale	181	PD2 Pandemonium Finale
-Kanemith Outside	182	Kanemith Outside
-Kanemith Dungeon	183	Kanemith Dungeon
-Lucion Arena	184	Lucion Arena
-Lucion Vault	185	Lucion Vault
-Skovos Stronghold Map	186	Skovos Stronghold Map
-Demon Road Map	187	Demon Road Map
-Imperial Palace Map	188	Imperial Palace Map
-Halls of Torture Map	189	Halls of Torture Map
-Imperial Boss Map	190	Imperial Boss Map
-Ureh City Map	191	Ureh City Map
-Nemyr Monastery Map	192	Nemyr Monastery Map
-Djinns Domain Map	193	Djinns Domain Map
-Djinns Domain Red Map	194	Djinns Domain Red Map
-Djinns Domain Boss Map	195	Djinns Domain Boss Map
-Na-Krul's Abyss Map	196	Na-Krul's Abyss Map
-Kyovoshad Map	197	Kyovoshad Map
-Tomb Event Map	198	Tomb Event Map
-Poisoned Well Map	199	Poisoned Well Map
-Dark Temple Map	200	Dark Temple Map
-Descent Map	201	Descent Map
-+9 Act=4 SizeX=360 SizeY=360 SizeX(N)=360 SizeY(N)=360 SizeX(H)=360 SizeY(H)=360 OffsetX=3500 OffsetY=0 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Warp4=-1 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	202	Cartographer Maze
-+18 Act=4 SizeX=360 SizeY=360 SizeX(N)=360 SizeY(N)=360 SizeX(H)=360 SizeY(H)=360 OffsetX=3000 OffsetY=0 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	203	Cartographer Crypt
-+107 Act=4 SizeX=360 SizeY=360 SizeX(N)=360 SizeY(N)=360 SizeX(H)=360 SizeY(H)=360 OffsetX=2500 OffsetY=0 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	204	Cartographer Lava
-+113 SizeX=360 SizeY=360 SizeX(N)=360 SizeY(N)=360 SizeX(H)=360 SizeY(H)=360 OffsetY=0 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Warp1=-1 Warp2=-1 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	205	Cartographer Ice Caves
-+111 SizeX=384 SizeY=384 SizeX(N)=384 SizeY(N)=384 SizeX(H)=384 SizeY(H)=384 OffsetX=6000 OffsetY=3000 Depend=0 LevelType=21 SubType=-1 SubTheme=-1 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	206	Cartographer Outdoor
-+117 SizeX=192 SizeY=192 SizeX(N)=192 SizeY(N)=192 SizeX(H)=192 SizeY(H)=192 OffsetX=1500 OffsetY=0 Depend=0 SubType=-1 SubTheme=-1 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Warp2=-1 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	207	Cartographer Snow
-+110 OffsetX=6000 OffsetY=3900 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	208	Cartographer Siege
-+110 OffsetX=6000 OffsetY=4200 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	209	Dclone Arena
-+110 OffsetX=6000 OffsetY=4500 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	210	Rathma Stage 1
-+110 OffsetX=6000 OffsetY=4800 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	211	Rathma Stage 2
-+110 OffsetX=6000 OffsetY=5100 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	212	Rathma Stage 3
-+110 OffsetX=6000 OffsetY=5400 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	213	Lucion Arena New
-+110 OffsetX=6000 OffsetY=5700 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	214	Temple of the Triune New
-+110 OffsetX=6000 OffsetY=6000 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	215	Bitter Depths New
+UberDiabloLvl	-	cut: PD2's map and uber levels (#1231)
+Mesa	-	cut: PD2's map and uber levels (#1231)
+Siege Map	-	cut: PD2's map and uber levels (#1231)
+Palace	-	cut: PD2's map and uber levels (#1231)
+Sewers	-	cut: PD2's map and uber levels (#1231)
+Arcane	-	cut: PD2's map and uber levels (#1231)
+Kurast	-	cut: PD2's map and uber levels (#1231)
+River Of Blood	-	cut: PD2's map and uber levels (#1231)
+Lava	-	cut: PD2's map and uber levels (#1231)
+Ice Map	-	cut: PD2's map and uber levels (#1231)
+Desert Map	-	cut: PD2's map and uber levels (#1231)
+Jungle Map	-	cut: PD2's map and uber levels (#1231)
+Fortress Map	-	cut: PD2's map and uber levels (#1231)
+Throne Map	-	cut: PD2's map and uber levels (#1231)
+Tomb Map	-	cut: PD2's map and uber levels (#1231)
+Monastery Map	-	cut: PD2's map and uber levels (#1231)
+Monastery Map Basement	-	cut: PD2's map and uber levels (#1231)
+Graveyard Map	-	cut: PD2's map and uber levels (#1231)
+Caldeum Map	-	cut: PD2's map and uber levels (#1231)
+Pandemonium Map	-	cut: PD2's map and uber levels (#1231)
+Spider Map	-	cut: PD2's map and uber levels (#1231)
+Frozen Forest Map	-	cut: PD2's map and uber levels (#1231)
+Necropolis Jungle	-	cut: PD2's map and uber levels (#1231)
+Necropolis Swamp	-	cut: PD2's map and uber levels (#1231)
+Necropolis Void	-	cut: PD2's map and uber levels (#1231)
+Realm of Terror	-	cut: PD2's map and uber levels (#1231)
+Hole of Terror	-	cut: PD2's map and uber levels (#1231)
+Library Map	-	cut: PD2's map and uber levels (#1231)
+Westmarch Map	-	cut: PD2's map and uber levels (#1231)
+Crypts Map	-	cut: PD2's map and uber levels (#1231)
+Sanctuary Of Sin Map	-	cut: PD2's map and uber levels (#1231)
+Black Abyss Map	-	cut: PD2's map and uber levels (#1231)
+Ruined Cistern Map	-	cut: PD2's map and uber levels (#1231)
+Ashen Plains Map	-	cut: PD2's map and uber levels (#1231)
+Zhar Library	-	cut: PD2's map and uber levels (#1231)
+Zhar Rivers	-	cut: PD2's map and uber levels (#1231)
+Zhar Ice	-	cut: PD2's map and uber levels (#1231)
+Zhar Kurast	-	cut: PD2's map and uber levels (#1231)
+Outer Void Map	-	cut: PD2's map and uber levels (#1231)
+Hellcaves	-	cut: PD2's map and uber levels (#1231)
+Hellcave Fortress	-	cut: PD2's map and uber levels (#1231)
+Fallen Gardens	-	cut: PD2's map and uber levels (#1231)
+Diamond Gate	-	cut: PD2's map and uber levels (#1231)
+PD2 Pandemonium Finale	-	cut: PD2's map and uber levels (#1231)
+Kanemith Outside	-	cut: PD2's map and uber levels (#1231)
+Kanemith Dungeon	-	cut: PD2's map and uber levels (#1231)
+Lucion Arena	-	cut: PD2's map and uber levels (#1231)
+Lucion Vault	-	cut: PD2's map and uber levels (#1231)
+Skovos Stronghold Map	-	cut: PD2's map and uber levels (#1231)
+Demon Road Map	-	cut: PD2's map and uber levels (#1231)
+Imperial Palace Map	-	cut: PD2's map and uber levels (#1231)
+Halls of Torture Map	-	cut: PD2's map and uber levels (#1231)
+Imperial Boss Map	-	cut: PD2's map and uber levels (#1231)
+Ureh City Map	-	cut: PD2's map and uber levels (#1231)
+Nemyr Monastery Map	-	cut: PD2's map and uber levels (#1231)
+Djinns Domain Map	-	cut: PD2's map and uber levels (#1231)
+Djinns Domain Red Map	-	cut: PD2's map and uber levels (#1231)
+Djinns Domain Boss Map	-	cut: PD2's map and uber levels (#1231)
+Na-Krul's Abyss Map	-	cut: PD2's map and uber levels (#1231)
+Kyovoshad Map	-	cut: PD2's map and uber levels (#1231)
+Tomb Event Map	-	cut: PD2's map and uber levels (#1231)
+Poisoned Well Map	-	cut: PD2's map and uber levels (#1231)
+Dark Temple Map	-	cut: PD2's map and uber levels (#1231)
+Descent Map	-	cut: PD2's map and uber levels (#1231)
++9 Act=4 SizeX=360 SizeY=360 SizeX(N)=360 SizeY(N)=360 SizeX(H)=360 SizeY(H)=360 OffsetX=3500 OffsetY=0 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Warp4=-1 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	138	Cartographer Maze
++18 Act=4 SizeX=360 SizeY=360 SizeX(N)=360 SizeY(N)=360 SizeX(H)=360 SizeY(H)=360 OffsetX=3000 OffsetY=0 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	139	Cartographer Crypt
++107 Act=4 SizeX=360 SizeY=360 SizeX(N)=360 SizeY(N)=360 SizeX(H)=360 SizeY(H)=360 OffsetX=2500 OffsetY=0 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	140	Cartographer Lava
++113 SizeX=360 SizeY=360 SizeX(N)=360 SizeY(N)=360 SizeX(H)=360 SizeY(H)=360 OffsetY=0 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Warp1=-1 Warp2=-1 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	141	Cartographer Ice Caves
++111 SizeX=384 SizeY=384 SizeX(N)=384 SizeY(N)=384 SizeX(H)=384 SizeY(H)=384 OffsetX=6000 OffsetY=3000 Depend=0 LevelType=21 SubType=-1 SubTheme=-1 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	142	Cartographer Outdoor
++117 SizeX=192 SizeY=192 SizeX(N)=192 SizeY(N)=192 SizeX(H)=192 SizeY(H)=192 OffsetX=1500 OffsetY=0 Depend=0 SubType=-1 SubTheme=-1 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Warp0=-1 Warp2=-1 Position=0 Quest=0 Waypoint=255 LevelWarp= LevelEntry= LevelGroup=Null	143	Cartographer Snow
++110 OffsetX=6000 OffsetY=3900 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	144	Cartographer Siege
++110 OffsetX=6000 OffsetY=4200 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	145	Dclone Arena
++110 OffsetX=6000 OffsetY=4500 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	146	Rathma Stage 1
++110 OffsetX=6000 OffsetY=4800 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	147	Rathma Stage 2
++110 OffsetX=6000 OffsetY=5100 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	148	Rathma Stage 3
++110 OffsetX=6000 OffsetY=5400 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	149	Lucion Arena New
++110 OffsetX=6000 OffsetY=5700 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	150	Temple of the Triune New
++110 OffsetX=6000 OffsetY=6000 Depend=0 Vis0=0 Vis1=0 Vis2=0 Vis3=0 Vis4=0 Vis5=0 Vis6=0 Vis7=0 Position=0 Quest=0 LevelWarp= LevelEntry= LevelGroup=Null	151	Bitter Depths New

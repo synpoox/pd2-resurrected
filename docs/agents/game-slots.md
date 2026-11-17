@@ -31,7 +31,7 @@ The per-check recipe (cheats, shots, images, unlock) is `docs/agents/game-check.
 3. Build and install: `plugin\build.ps1`, then, with `MODKIT_RUN` set to the lock's owner,
    `tools\install.ps1 -Game C:\D2RTestSlots\Slot<N> -Data . -NoValidate` (it copies the committed `files/data`; no extract
    or merge; main still has known validation errors). modkit install refuses a slot, so `install.ps1` installs a slot's data through
-   the toolkit's `testing/slot_install.py`, which keeps the slot's own savepath and needs the lock held by `MODKIT_RUN`.
+   the toolkit's `testing/slot_install.py`, which keeps the slot's own savepath and needs the lock held by `MODKIT_RUN`. `install.ps1` checks the lock first (`game_slots.py check <N> $MODKIT_RUN`) and writes nothing, failing, when `MODKIT_RUN` is unset or does not hold it (#1241).
    `install.ps1` leaves only our plugins in `<slot>\d2rloader\plugins` (`core-rules.dll`, `core-events.dll`, `core-ui.dll`, `cartographer.dll`,
    `test-harness.dll`, `d2r-testharness-console.txt`): it moves anything else to
    `C:\D2RTestSlots\backups\stray-plugins-<date>\Slot<N>\` and lists it. Install always overwrites the slot's `cartographer.dll` with d2r-tools' `dist\cartographer` build, so testing a cartographer branch build needs `-Cartographer <path>`. It copies the latest `cartographer.dll` (`-Cartographer`, `CARTOGRAPHER_DLL`, else d2r-tools' `dist\cartographer`; it refuses one older than d2r-tools HEAD, or when d2r-tools is not a git repo, and checks this before touching the folder), and outside a test slot fetches and installs the companions. Pass `-KeepExtras` to keep other extras.

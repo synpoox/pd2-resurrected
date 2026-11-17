@@ -25,6 +25,6 @@ class CartographerCatalogueRowsTests(unittest.TestCase):
 
     def test_every_tileset_family_has_a_slot_level(self):
         """Each map tileset (Cave, Crypt, Ice, Jungle, Snow) must name a Slot whose Level is the game level it opens in."""
-        # game check 2026-11-15: Cave 202, Crypt 203, Ice 205, Jungle 206, Snow 207 opened and were built as planned.
+        # game check 2026-11-15: Cave 138, Crypt 139, Ice 141, Jungle 142, Snow 143 (202-207 before #1231) opened and were built as planned.
         levels = {s["Slot"]: int(s["Level"]) for s in rows("slots.txt")}
-        assert [levels[k] for k in ("Maze", "MazeCrypt", "MazeIce", "Outdoor", "OutdoorSnow")] == [202, 203, 205, 206, 207]
+        assert [levels[k] for k in ("Maze", "MazeCrypt", "MazeIce", "Outdoor", "OutdoorSnow")] == [138, 139, 141, 142, 143]

@@ -81,7 +81,7 @@ Act 5 - Baal 1	130	9	9	9	16	16	500
 Act 5 - Baal 1	132	9	9	9	16	16	500
 Act 5 - Pandemonium Run 1	133	12	24	36	8	8	500
 Act 5 - Pandemonium Run 3	135	3	3	3	24	24	500
-Cartographer Maze	202	4	4	4	24	24	500
-Cartographer Crypt	203	4	4	4	24	24	500
-Cartographer Lava	204	4	4	4	24	24	500
-Cartographer Ice Caves	205	4	4	4	24	24	500
+Cartographer Maze	138	4	4	4	24	24	500
+Cartographer Crypt	139	4	4	4	24	24	500
+Cartographer Lava	140	4	4	4	24	24	500
+Cartographer Ice Caves	141	4	4	4	24	24	500

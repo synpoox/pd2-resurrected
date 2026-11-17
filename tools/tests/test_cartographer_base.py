@@ -41,7 +41,8 @@ class CartographerBaseTests(unittest.TestCase):
             assert int(s["Level"]) in levels, s["Slot"]
         for t in ("levels", "itemstatcost", "itemtypes", "magicprefix", "magicsuffix", "rareprefix", "raresuffix"):
             added = ids(t, plus=True)
-            assert added == list(range(max(ids(t, plus=False)) + 1, max(ids(t, plus=False)) + 1 + len(added))), t
+            first = 138 if t == "levels" else max(ids(t, plus=False)) + 1  # levels: D2R's own rows end at 137, which the list does not name (#1231)
+            assert added == list(range(first, first + len(added))), t
 
 
 

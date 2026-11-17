@@ -175,7 +175,7 @@ auto Set(Game* game, uint32_t key, int32_t value) noexcept -> void {
 }
 
 // The Cartographer slots (docs/cartographer-contracts.md, merge/ids-levels.tsv): every native map is one of these levels
-constexpr int32_t NativeFirst = 202, NativeLast = 208;
+constexpr int32_t NativeFirst = 138, NativeLast = 144;
 // Cartographer publishes no room count (event-link RoomProgress), so a native map's progress divides by the room
 // count of its built level (RealRooms); NativeTier.rooms (PD2's default 200) serves until it is read.
 // For game checks only: PD2R_MAP_ROOMS=<n> in the game's environment replaces the count.

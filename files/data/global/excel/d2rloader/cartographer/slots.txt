@@ -1,8 +1,8 @@
 Slot	Level
-Maze	202
-MazeCrypt	203
-MazeLava	204
-MazeIce	205
-Outdoor	206
-OutdoorSnow	207
-OutdoorSiege	208
+Maze	138
+MazeCrypt	139
+MazeLava	140
+MazeIce	141
+Outdoor	142
+OutdoorSnow	143
+OutdoorSiege	144
