@@ -18,6 +18,7 @@
 #include "stack_split.h"
 
 #include "log.h"
+#include "map_stack.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -177,12 +178,15 @@ void Watch(const D2RL::PluginContext*, void*) noexcept {
 		}
 		return;
 	}
-	const bool ctrl = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+	const bool ctrl = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 && (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;  // Ctrl+Shift+click
 	if (g_held.quantity > 1) {
 		++g_putDowns;
 		g_ctrlPutDowns += ctrl ? 1 : 0;
 	}
-	if (ctrl && g_held.quantity > 1 && !g_busy.exchange(true)) {
+	// shortcut: maps never split (splitStack's new piece may lose the Area Level), until a game check shows it keeps the stats
+	if (ctrl && g_held.quantity > 1 && pd2::mapstack::IsMapCode(g_held.code)) {
+		plog::Info("split: refused for a map (code %08x)", g_held.code);
+	} else if (ctrl && g_held.quantity > 1 && !g_busy.exchange(true)) {
 		g_job = {player, g_held.code, g_held.runtimeId, g_held.quantity, g_stored};
 		if (const auto queued = g_threads->runOnGameThread(g_context, SplitNow, nullptr); queued != D2RL::Threads::Result::Success) {
 			g_busy = false;

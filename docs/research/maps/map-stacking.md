@@ -12,5 +12,5 @@ the vendor UI), place-at-cell `0x38d0d0`, the client cursor `0x2c81d0`. Not used
 
 **Rule:** original says yes and both items are `cmap` (itemtypes 245): yes only if both are quality normal (2) and every stat id 0..572 except 70 has the same `UnitStatEntries` list (layer and value) on both.
 
-**Split and cube leftovers:** the source of a Ctrl+click split keeps its stats; the new cursor piece is D2RLoader `splitStack` code (see the game check on the PR). Cube leftovers are remade by `createItem`
+**Split and cube leftovers:** the split is Ctrl+Shift+left click (Ctrl alone is Drop in this build). The source keeps its stats, but nothing shows that D2RLoader's `splitStack` gives the new cursor piece the same ones, so core-ui refuses the split for `cmap` codes (`split: refused for a map` in core-ui.log); lift it after a game check reads Area Level 87 on the piece. Cube leftovers are remade by `createItem`
 in `cube_stacks.cpp`: for a `cmap` source its stats 564 and 553 are passed as properties 374 (`map-level`) and 383 (`map-force-event-l`, param = layer); a map with any other non-70 stat is refused as a partial take.

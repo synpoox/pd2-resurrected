@@ -20,6 +20,8 @@
 #define NOMINMAX
 #include <windows.h>
 
+#include "map_stack.h"
+#include "sig_hook.h"
 #include "pd2_engine.h"
 #include "rathma_pair.h"
 #include "rathma_split.h"
@@ -1725,13 +1727,8 @@ auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
 // Maps (cmap) stack only when both are normal quality and every stat but the quantity matches, layer by layer (#1326).
 // Hooks D2Common's stack-equal check (no SDK service covers it): the drop-onto merge, ground pickup, vendor buys and
 // the client's cursor guess all call it.
-// shortcut: these two constants belong in the toolkit's rvas_93847/items.h (ItemsCanMerge, ItemsCanMergeEntry, as damage.h
-// holds AddLife); a docs lane adds them there. Move them and drop these copies once the toolkit pin has them.
-// D2Common Items.cpp #11102: (target, other) -> 1 when two items may stack; entry matches once in the 93847 dump
+// D2Common Items.cpp #11102: (target, other) -> 1 when two items may stack; found at load by its signature
 // (docs/research/maps/map-stacking.md).
-constexpr uint64_t ItemsCanMerge = 0x375960;
-constexpr uint8_t ItemsCanMergeEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x74, 0x24, 0x10, 0x55,
-                                          0x57, 0x41, 0x56, 0x48, 0x8b, 0xec, 0x48, 0x83, 0xec, 0x20};
 using StackEqualFn = int32_t (*)(Unit*, Unit*) noexcept;
 StackEqualFn g_stackEqualOriginal = nullptr;
 std::atomic<uint32_t> g_mapStackRefused {0};
@@ -1744,25 +1741,36 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 		return same;
 	}
 	const auto quality = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality);
-	bool equal = quality(a) == QualityNormal && quality(b) == QualityNormal;
-	struct Entry {
-		uint16_t layer, stat;
-		int32_t value;
-	};
-	const auto entries = d2r::Engine<int32_t (*)(Unit*, uint32_t, Entry*, int32_t) noexcept>(UnitStatEntries);
-	for (int32_t stat = 0; equal && stat < ItemStatCostRows; ++stat) {
-		if (stat == StatQuantity) {
-			continue;
-		}
-		Entry ea[64] {}, eb[64] {};
-		const int32_t na = entries(a, static_cast<uint32_t>(stat), ea, 64);
-		const int32_t nb = entries(b, static_cast<uint32_t>(stat), eb, 64);
-		equal = na == nb && (na <= 0 || std::memcmp(ea, eb, static_cast<size_t>(na) * sizeof(Entry)) == 0);
+	const char* reason = "equal";
+	int32_t stat = -1;
+	if (quality(a) != QualityNormal || quality(b) != QualityNormal) {
+		reason = "quality";
+	} else if ((stat = pd2::mapstack::FirstDifference(
+	                a, b, ItemStatCostRows, StatQuantity,
+	                d2r::Engine<int32_t (*)(Unit*, uint32_t, pd2::mapstack::Entry*, int32_t) noexcept>(UnitStatEntries))) >= 0) {
+		reason = "stat differs";
 	}
-	if (!equal) {
+	const bool merge = reason[0] == 'e';
+	if (!merge) {
 		++g_mapStackRefused;
 	}
-	return equal ? 1 : 0;
+	// One log line per pair per second: the inventory scans call this once per map held
+	static std::atomic<uint64_t> lastKey {0}, lastTick {0};
+	const uint64_t key = (reinterpret_cast<uint64_t>(a) << 1) ^ reinterpret_cast<uint64_t>(b);
+	const uint64_t now = GetTickCount64();
+	if (key != lastKey.load() || now - lastTick.load() >= 1000) {
+		lastKey = key;
+		lastTick = now;
+		char tail[16] {};
+		if (stat >= 0) {
+			std::snprintf(tail, sizeof(tail), " %d", stat);
+		}
+		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStat);
+		plog::Info("map stack: %u q%d/%d quality %d/%d -> %s (%s%s)", d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a),
+		           unitStat(a, StatQuantity, 0), unitStat(b, StatQuantity, 0), quality(a), quality(b),
+		           merge ? "merge" : "refused", reason, tail);
+	}
+	return merge ? 1 : 0;
 }
 
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
@@ -1808,8 +1816,9 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	// none (core-events' hooks identify all), both with keep 1, so the book stays after its use
 	const bool unlimited = PatchUnlimitedBooks(context);
 	const bool charms = InstallCharmRows(context);
-	const bool mapStack = context->InstallInlineHook(ItemsCanMerge, ItemsCanMergeEntry, sizeof(ItemsCanMergeEntry),
-	                                                 MapStackEqual, &g_stackEqualOriginal);
+	const bool mapStack = sigscan::HookBySignature(
+	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
+	    d2r::rva::ItemsCanMergeEntry, sizeof(d2r::rva::ItemsCanMergeEntry), MapStackEqual, &g_stackEqualOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
 	              "replenish charges%s; unlimited books%s; charm rows%s; map stacking%s",
