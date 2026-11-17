@@ -2,8 +2,7 @@
 //
 // Room activation (ProjectDiablo.dll 0x1036fef0): the first room to activate in each Rathma level sets the stage
 // (0 -> 1 in the first level, 2 -> 3 in the second, 4 -> 5 in the third) and spawns that stage's bosses (Mendeln,
-// then Rathma, then both clones) at fixed spots, with a ghostly portal that takes the group into the arena (PD2 links
-// it to an `empty` marker by the bosses). No room of the arena (80 x 80 subtiles about the bosses' spot) spawns its
+// then Rathma, then both clones) at fixed spots. The port opens no portal in a stage's first level until the boss dies (#1262). No room of the arena (80 x 80 subtiles about the bosses' spot) spawns its
 // own monsters. It rides map_events' room activation hook: no SDK service reports a room activating.
 //
 // Deaths, on key_drops' monster-death listener (the SDK's): Mendeln (0x10376760) and Rathma (0x103767d0), when killed
@@ -204,29 +203,6 @@ auto SpawnBoss(Game* game, void* near, int32_t level, const Boss& boss) noexcept
 	return true;
 }
 
-// The stage's ghostly portal: PD2 makes it, then links it to the marker in the same level (0x1038a510); the port's
-// portal leads to its own level, which RathmaArenaPortal reads as "to the marker".
-// shortcut: PD2's marker object (`empty`) and its waypoint removal by the marker are not made; the waypoints go on
-// arrival (map_open.cpp), as from any portal
-auto OpenArenaPortal(Game* game, void* near, const Stage& s) noexcept -> bool {
-	const int32_t pick = s.picks > 1 ? static_cast<int32_t>(__rdtsc() % static_cast<uint64_t>(s.picks)) : 0;
-	Spot tries[4] = {s.portals[pick]};
-	int n = 1;
-	for (int i = 0; s.picks > 1 && i < s.picks; ++i) {
-		tries[n++] = {s.portals[i].x - 3, s.portals[i].y - 3};
-	}
-	for (int i = 0; i < n; ++i) {
-		void* room = RoomHolding(game, near, s.level, tries[i]);
-		if (room != nullptr && OpenPortalAt(game, room, GhostlyPortal, tries[i].x, tries[i].y, s.level) != nullptr) {
-			++g_portals;
-			plog::Info("rathma: arena portal at (0x%x, 0x%x) in level %d, to (0x%x, 0x%x)", tries[i].x, tries[i].y,
-			           s.level, s.marker.x, s.marker.y);
-			return true;
-		}
-	}
-	return false;
-}
-
 // The next level's portal, at the stage's `next` spot (the `arena` spot, the bosses', has a gate pillar over it)
 auto OpenNextLevelPortal(Game* game, Unit* monster, Spot at, int32_t level) noexcept -> void {
 	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(d2r::rva::UnitRoom)(monster);
@@ -313,13 +289,12 @@ auto RathmaRoom(Game* game, void* room, int32_t level) noexcept -> bool {
 		stage = s->from + 1;
 		++g_stages;
 		plog::Info("rathma: stage %d -> %d (level %d's first room)", s->from, stage, level);
-		const bool portal = OpenArenaPortal(game, room, *s);
 		int spawned = 0;
 		for (int i = 0; i < s->bossCount; ++i) {
 			spawned += SpawnBoss(game, room, level, s->bosses[i]) ? 1 : 0;
 		}
-		plog::Info("rathma: level %d, %d of %d bosses spawned, arena portal %s", level, spawned, s->bossCount,
-		           portal ? "open" : "FAILED");
+		plog::Info("rathma: level %d, %d of %d bosses spawned, no portal until the boss dies", level, spawned,
+		           s->bossCount);
 	}
 	const int32_t x = At<int32_t>(room, RoomX), y = At<int32_t>(room, RoomY);
 	const bool arena = Meets(s->arena.x - ArenaHalf, s->arena.x + ArenaHalf, x, x + At<int32_t>(room, RoomWidth)) &&
