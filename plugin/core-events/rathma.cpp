@@ -202,7 +202,10 @@ auto OpenArenaPortal(Game* game, void* near, const Stage& s) noexcept -> bool {
 	return false;
 }
 
-auto OpenNextLevelPortal(Game* game, Unit* monster, Spot at, int32_t level) noexcept -> void {
+// The arena's centre sits behind a gate pillar in the Mesa arenas (the portal was there but unreachable), so the next
+// level's portal opens 8 subtiles left of it and 10 below, in the open
+auto OpenNextLevelPortal(Game* game, Unit* monster, Spot arena, int32_t level) noexcept -> void {
+	const Spot at = {arena.x - 8, arena.y + 10};
 	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(d2r::rva::UnitRoom)(monster);
 	if (OpenPortalAt(game, room, GhostlyPortal, at.x, at.y, level) != nullptr) {
 		++g_portals;
