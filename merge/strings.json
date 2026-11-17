@@ -145,7 +145,8 @@
     "EnteringTombEventMap": "TombEventMap",
     "EnteringPoisonedWellMap": "PoisonedWellMap",
     "EnteringDarkTempleMap": "DarkTempleMap",
-    "EnteringDescentMap": "DescentMap"
+    "EnteringDescentMap": "DescentMap",
+    "EnteringDcloneArenaMap": "DcloneArenaMap"
   },
   "ids": {
     "Runeword171PD2": [50000, "item-runes.json"],
@@ -1662,6 +1663,8 @@
     "MapEventNotifyInvadersDruid": [51514, "ui.json"],
     "MapEventNotifyInvadersNecromancer": [51515, "ui.json"],
     "MapEventNotifyInvadersPaladin": [51516, "ui.json"],
-    "MapEventNotifyInvadersSorceress": [51517, "ui.json"]
+    "MapEventNotifyInvadersSorceress": [51517, "ui.json"],
+    "DcloneArenaMap": [51518, "levels.json"],
+    "EnteringDcloneArenaMap": [51519, "levels.json"]
   }
 }
