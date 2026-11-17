@@ -25,7 +25,7 @@ class MapMonsters(unittest.TestCase):
                 self.assertIsNotNone(r, f"{m['Name']}: {i} is not a monstats Id")
                 self.assertEqual((r["enabled"], r["isSpawn"]), ("1", "1"), i)
                 self.assertNotEqual(r["Rarity"], "0", i)
-                self.assertTrue(i.endswith("map"), i)
+                self.assertTrue(i.lower().endswith(("map", "map2")), i)
                 for col in ("TreasureClass(H)", "TreasureClassChamp(H)", "TreasureClassUnique(H)"):
                     self.assertIn(r[col], tcs, f"{i} {col}")
                     self.assertTrue(r[col].startswith("Map "), f"{i} {col}")
