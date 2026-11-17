@@ -7,6 +7,13 @@ import data_tables
 MAP_TYPES = {"cmap", "t1m", "t2m", "t3m"}
 TABLES = ("magicprefix", "magicsuffix", "rareprefix", "raresuffix")
 
+EXPECTED_ROLLING = {("magicprefix", n) for n in (
+    "Large Huge Colossal Strong Mighty Formidable Unhealthy Sickly Diseased".split())} | {
+    ("magicsuffix", "of " + n) for n in (
+        "Swiftness Quickness Velocity Health Vitality Vim Imbalance Inequality Uneveness "
+        "Hindrance Aversion Permeability Cracking Crumbling Disintegration "
+        "Fumbling Bumbling Blundering".split())}
+
 
 def map_rows(table):
     """Rows with a map item type among itype1-7 (cmap, or a PD2 tier type t<n>m)."""
@@ -39,6 +46,16 @@ class MapAffixes(unittest.TestCase):
         self.assertTrue(suffix)
         for _, types in suffix:
             self.assertEqual(types, {"t3m"})
+
+    def test_rolling_set_is_the_expected_27(self):
+        """spawnable 1, rare 1, frequency > 0: a dead pool (e.g. a lost `rare` flag) fails here."""
+        rolling = {
+            (t, r["Name"])
+            for t in ("magicprefix", "magicsuffix")
+            for r, _ in map_rows(t)
+            if r["spawnable"] == "1" and r["rare"] == "1" and int(r.get("frequency") or 0) > 0
+        }
+        self.assertEqual(rolling, EXPECTED_ROLLING)
 
 
 if __name__ == "__main__":
