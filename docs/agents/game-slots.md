@@ -23,7 +23,7 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its [`testing/README.md
 
 ## Steps
 
-The per-check recipe (cheats, shots, images, unlock) is `docs/agents/game-check.md`; these are the slot basics.
+The per-check recipe (cheats, shots, unlock) is `docs/agents/game-check.md`; these are the slot basics.
 
 1. `MODKIT_PROJECT=pd2-resurrected MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml python <toolkit>/testing/game_slots.py status` and pick a free slot your registry entry allows (here 2-5).
 2. `MODKIT_PROJECT=pd2-resurrected MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml MODKIT_RUN=<owner> python <toolkit>/testing/game_slots.py lock <N> <owner>`. For a slot the owner tests by hand, use an owner name

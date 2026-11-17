@@ -12,7 +12,8 @@ is MERGEABLE (rerun after resolving a merge from main). Only when the runners ar
 locally and paste the report for the final commit (its first line names the commit; untracked files count as
 uncommitted changes). The CI table-diff report's first line names GitHub's merge commit, not the PR head.
 
-**PR order.** Push, open the PR, then run the game check while CI runs, attaching images to the PR. Never merge an
+**PR order.** Push, open the PR, then run the game check while CI runs and post its results to the PR in words and log lines. Never commit or
+push a screenshot, to any branch (`issue-assets` included): it stays in the slot's run folder. Never merge an
 unchecked PR.
 
 Each CHANGELOG entry is one short line (one sentence, under ~100 chars), unless it is a huge feature.
