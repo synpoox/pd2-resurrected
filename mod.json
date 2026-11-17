@@ -5,5 +5,6 @@
   "version": "0.2.0-alpha",
   "extendedSaves": true,
   "plugins": [],
-  "description": "Alpha 0.2.0 of Project Diablo II for Diablo II: Resurrected, offline single-player: every Project Diablo II class is complete, with maps and the uber bosses; the Warlock redesign comes in a later alpha."
+  "description": "Alpha 0.2.0 of Project Diablo II for Diablo II: Resurrected, offline single-player: every Project Diablo II class is complete, with maps and the uber bosses; the Warlock redesign comes in a later alpha.",
+  "gameCopies": {"data/global/chars/am/": "data/global/monsters/am/", "data/global/chars/ai/": "data/global/monsters/ai/", "data/global/chars/ba/": "data/global/monsters/ba/", "data/global/chars/dz/": "data/global/monsters/dz/", "data/global/chars/ne/": "data/global/monsters/ne/", "data/global/chars/pa/": "data/global/monsters/pa/", "data/global/chars/so/": "data/global/monsters/so/"}
 }
