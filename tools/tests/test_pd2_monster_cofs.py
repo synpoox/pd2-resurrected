@@ -7,7 +7,7 @@ DATA = Path(__file__).resolve().parents[2] / "files" / "data"
 
 class MonsterCofTests(unittest.TestCase):
     def test_cof_exists(self):
-        for code in ("$1", "$3", "$4", "$7", "$8"):
+        for code in ("$1", "$2", "$3", "$4", "$7", "$8"):
             with self.subTest(code=code):
                 self.assertTrue(list((DATA / "global/monsters" / code / "cof").glob(f"{code}*hth.cof")))
 

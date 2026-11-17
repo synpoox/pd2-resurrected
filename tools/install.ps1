@@ -32,8 +32,14 @@ if (-not $Toolkit) {
     . (Join-Path $boot "tools\ToolkitPath.ps1")
     $Toolkit = Find-D2rToolkit -From $PSScriptRoot
 }
-$Game = (Resolve-Path $Game).Path
+$Game = (Resolve-Path $Game).Path.TrimEnd('\')
 if (-not (Test-Path (Join-Path $Game "D2R.exe"))) { throw "$Game is not a D2R folder" }
+# A test slot belongs to one run: refuse before writing anything unless MODKIT_RUN holds its lock (#1241)
+if ($Game -match '^[A-Z]:\\D2RTestSlots\\Slot(\d+)\\?$') {
+    if (-not $env:MODKIT_RUN) { throw "$Game is a test slot: set MODKIT_RUN to the owner of its lock (testing\game_slots.py lock $($Matches[1]) <owner>)" }
+    py -3 (Join-Path $Toolkit "testing\game_slots.py") check $Matches[1] $env:MODKIT_RUN
+    if ($LASTEXITCODE -ne 0) { throw "run $env:MODKIT_RUN does not hold the lock of ${Game}: nothing written" }
+}
 if (Get-Process D2R, D2RLoader -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($Game, 'OrdinalIgnoreCase') }) {
     throw "the game is running from ${Game}: close it first"
 }
