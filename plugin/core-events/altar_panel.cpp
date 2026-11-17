@@ -254,23 +254,24 @@ auto InstallAltarPanel(const D2RL::PluginContext* context, char* report, size_t 
 	                                                 .callback = OnFrame};
 	D2RL::SharedEvents::ListenerHandle listenerHandle = D2RL::SharedEvents::InvalidHandle;
 	D2RL::Overlay::CallbackHandle frameHandle = D2RL::Overlay::InvalidCallbackHandle;
-	const bool ok = g_inventory->registerPlayerPage(context, &registration, &page) == inv::Result::Success &&
-	                g_inventory->configurePlayerPage(context, page, &size) == inv::Result::Success &&
-	                g_panels->registerPanel(context, &panel, &g_panel) == D2RL::Panels::Result::Success;
+	const auto fail = [&](const char* step, int code) {
+		g_threads = nullptr;
+		std::snprintf(report, reportSize, "off: %s was refused (result %d)", step, code);
+		return 0;
+	};
+	if (const auto r = g_inventory->registerPlayerPage(context, &registration, &page); r != inv::Result::Success) return fail("registerPlayerPage", int(r));
+	if (const auto r = g_inventory->configurePlayerPage(context, page, &size); r != inv::Result::Success) return fail("configurePlayerPage", int(r));
+	if (const auto r = g_panels->registerPanel(context, &panel, &g_panel); r != D2RL::Panels::Result::Success) return fail("registerPanel", int(r));
 	const inv::PlayerPageItemPolicy policy {
 		.structSize = inv::PlayerPageItemPolicySize, .page = page, .callback = OnItemPolicy};
 	const D2RL::Panels::PlayerPageGridBinding binding {.structSize = D2RL::Panels::PlayerPageGridBindingSize,
 	                                                   .panel = g_panel,
 	                                                   .page = page,
 	                                                   .childName = SlotName};
-	if (!ok || g_inventory->configurePlayerPageItemPolicy(context, &policy) != inv::Result::Success ||
-	    g_panels->bindPlayerPageGrid(context, &binding) != D2RL::Panels::Result::Success ||
-	    events->registerUiMessageListener(context, &listener, &listenerHandle) != D2RL::SharedEvents::Result::Success ||
-	    overlay->registerFrameCallback(context, &frame, &frameHandle) != D2RL::Overlay::Result::Success) {
-		g_threads = nullptr;
-		std::snprintf(report, reportSize, "off: the page, panel, binding, listener or frame callback was refused");
-		return 0;
-	}
+	if (const auto r = g_inventory->configurePlayerPageItemPolicy(context, &policy); r != inv::Result::Success) return fail("configurePlayerPageItemPolicy", int(r));
+	if (const auto r = g_panels->bindPlayerPageGrid(context, &binding); r != D2RL::Panels::Result::Success) return fail("bindPlayerPageGrid", int(r));
+	if (const auto r = events->registerUiMessageListener(context, &listener, &listenerHandle); r != D2RL::SharedEvents::Result::Success) return fail("registerUiMessageListener", int(r));
+	if (const auto r = overlay->registerFrameCallback(context, &frame, &frameHandle); r != D2RL::Overlay::Result::Success) return fail("registerFrameCallback", int(r));
 	std::snprintf(report, reportSize, "Sacrifice Altar panel: page %s, panel core-maps/%s, slot %s", PageId, PanelId, SlotName);
 	return 1;
 }
