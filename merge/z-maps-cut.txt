@@ -11,8 +11,6 @@ type	t2me
 type	t3me
 type	t4me
 type	t5me
-type	upmp
-type	fort
 type	pvpm
 type	pvpd
 type	ubmp
