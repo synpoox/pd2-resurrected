@@ -1676,6 +1676,33 @@ CharmActiveFn g_charmActiveOriginal = nullptr;
 std::atomic<uint32_t> g_charmChecks {0};
 std::atomic<uint32_t> g_charmOffChecks {0};
 
+// A unique charm of the same name in the active rows too (#1288): D2R's (item) -> unique row + 1, the cube executor's read.
+constexpr uint64_t ItemUniqueRow = 0x36ce70;
+constexpr int32_t QualityUnique = 7;
+
+auto HasActiveTwin(Unit* item, Unit* player) noexcept -> bool {
+	using namespace d2r::rva;
+	if (player == nullptr || d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item) != QualityUnique) {
+		return false;
+	}
+	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory)(player, __FILE__, __LINE__);
+	if (inventory == nullptr) {
+		return false;
+	}
+	const auto uniqueRow = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemUniqueRow);
+	const auto next = d2r::Engine<Unit* (*)(Unit*) noexcept>(InventoryNextItem);
+	const int32_t mine = uniqueRow(item);
+	for (Unit* other = d2r::Engine<Unit* (*)(void*) noexcept>(InventoryFirstItem)(inventory); other != nullptr;
+	     other = next(other)) {
+		if (other != item && At<int32_t>(other, UnitType) == 4 && d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(other) == 0 &&
+		    (d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitPackedXY)(other) >> 16) >= CharmFirstActiveRow &&
+		    d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(other) == QualityUnique && uniqueRow(other) == mine) {
+			return true;
+		}
+	}
+	return false;
+}
+
 auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 	const int32_t active = g_charmActiveOriginal(item, player);
 	if (active == 0 || item == nullptr) {
@@ -1684,7 +1711,8 @@ auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 	const uint8_t page = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::rva::ItemPage)(item);
 	const uint32_t xy = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitPackedXY)(item);
 	const uint32_t row = xy >> 16;
-	const bool off = page == 0 && row < CharmFirstActiveRow;  // a custom page is never judged by its grid row
+	// a custom page is never judged by its grid row; a same-name unique in the active rows switches both off
+	const bool off = page == 0 && (row < CharmFirstActiveRow || HasActiveTwin(item, player));
 	const uint32_t n = off ? ++g_charmOffChecks : ++g_charmChecks;  // own cap, so a top-row charm cannot hide kept lines or flood
 	if (n <= 40 || n % 500 == 0) {
 		plog::Info("charm rows: item %p at x %u y %u, page %u, active in D2R, %s, %u so far", static_cast<void*>(item),

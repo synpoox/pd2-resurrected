@@ -359,7 +359,7 @@ Wolfhowl	355	100		1					1		85	79	bac	fury visor		3	5000	cred	cred						ac%		120	
 Spirit Ward	356	100		1					1		76	68	uts	ward		3	5000	dblu	dblu		invgtsu				ac%		130	180	abs-cold		6	11	res-all		20	30	block		20	30	block2		25	25	gethit-skill	Lesser Fade	35	10	randclassskill2		0	7																						0
 Kira's Guardian	357	100		1					1		85	77	ci2	tiara		3	5000	blac	blac						ac		50	120	res-all		25	40	half-freeze		1	1	balance2		20	20	pierce-ltng		10	15	pierce-cold		10	15	pierce-fire		10	15																						0
 Ormus' Robes	358	100		1					1		83	75	uui	dusk shroud		3	5000	blac	blac						ac		100	200	cast2		30	30	extra-fire		10	15	extra-cold		10	15	extra-ltng		10	15	regen-mana		20	30	sorc-skill-rand-ctc	2	12	26																						0
-Gheed's Fortune	359	100		1					1		70	62	cm3	charm	1001	3	5000	lgld							mag%		20	40	gold%		80	160	cheap		10	15																																						0
+Gheed's Fortune	359	100		1					1		70	62	cm3	charm		3	5000	lgld							mag%		20	40	gold%		80	160	cheap		10	15																																						0
 Stormlash	360	100		1					1		86	82	7fl	scourge		3	5000	dgry	dgry						dmg%		300	340	swing2		30	30	hit-skill	Static Field Proc	20	25	hit-skill	Tornado	35	30	dmg-ltng		1	600	light-thorns		200	360	crush		33	33	abs-ltng		3	9													splash	430	100	1		0
 Halaberd's Reign	361	100		1					1		85	77	bae	conqueror crown		3	5000	blac							ac%		140	170	bar		2	2	balance2		20	20	red-dmg%		10	15	skill	Battle Orders	2	3	skill	Battle Cry	2	3	att/lvl	6																								0
 Warriv's Warder	362	100		1	1				1		49	41	uuc			3	5000	dred			invwarrivwarder				ac		100	150	oskill	dodge	6	8	regen-stam		75	75	move2		20	30	block		-100	-100	res-all		35	35	crush		20	20	abs-ltng		5	5																		0
@@ -381,7 +381,7 @@ Sigurd's Staunch	377	100		1	1				1		80	72	uhc			5	5000				invcolossus				ac%		30
 Carrion Wind	378	100		1					3		68	60	rin	ring		3	5000								ac-miss		100	160	lifesteal		6	9	res-pois		40	55	thorns		180	300	charged	Plague Poppy	35	11	hit-skill	Twister	8	30	move2		20	20																						0
 Giantskull	379	100		1					1		73	65	uh9	bone visage		3	5000	lgry	lgry		invbhm				ac		250	320	str		25	35	crush		25	25	pierce		25	35	knock		1	1	dmg%		60	80																										0
 Ironward	380	100		1					1		68	60	7ws	caduceus		3	5000	blac	blac						dmg%		240	290	slow		25	25	att%		150	200	swing2		40	40	dmg-mag		160	480	red-dmg		4	7	dmg		100	125	skilltab	9	3	4	crush		33	33									splash	430	100	1		0
-Annihilus	381	100		1					0		130	70	cm1	charm	1002	3	5000			flpmss	invmss	item_gem	12	item_gem	allskills		1	1	vit		30	60	enr		10	20	res-all		10	20	addxp		5	10																														0
+Annihilus	381	100		1					0		130	70	cm1	charm		3	5000			flpmss	invmss	item_gem	12	item_gem	allskills		1	1	vit		30	60	enr		10	20	res-all		10	20	addxp		5	10																														0
 Arioc's Needle	382	100		1					1		85	81	7sr	hyperion spear		3	5000								dmg%		240	290	deep-wounds		750	750	deadly		50	50	ignore-ac		1	1	allskills		4	5	swing2		30	30	openwounds		20	20																	splash	430	100	1		0
 Cranebeak	383	100		1					1		71	63	7mp	war spike		3	5000	dgry			invmpiu				dmg%		240	300	dmg-ltng		1	305	swing2		40	40	reduce-ac		75	75	mag%		30	60	skill	221	4	6																					splash	430	100	1		0
 Nord's Tenderizer	384	100		1					1		76	68	7cl	truncheon		3	5000				invclbu				dmg%		270	330	freeze		2	4	swing2		25	25	hit-skill	Blizzard	18	32	att%		150	180	abs-cold%		5	15	dmg-cold	125	205	455																	splash	430	100	1		0
@@ -400,13 +400,13 @@ Rainbow Facet	396	100		1					1		85	49	jew	jewel		3	5000								dmg-ltng		1	74	pi
 Rainbow Facet	397	100		1					1		85	49	jew	jewel		3	5000								dmg-cold	3	24	38	pierce-cold		3	5	extra-cold		3	5	levelup-skill	Frost Nova	100	43																																		0
 Rainbow Facet	398	100		1					1		85	49	jew	jewel		3	5000								dmg-fire		17	45	pierce-fire		3	5	extra-fire		3	5	levelup-skill	Blaze	100	29																																		0
 Rainbow Facet	399	100		1					1		85	49	jew	jewel		3	5000								dmg-pois	50	187	187	pierce-pois		3	5	extra-pois		3	5	levelup-skill	Venom	100	23																																		0
-Hellfire Torch	400	100		1					0		120	75	cm2	charm	1003	3	5000			flptrch	invtrch	item_gem	12	item_gem	randclassskill1		0	7	vit		30	60	enr		10	20	res-all		10	20	light		4	8																														0
-Cold Rupture	401	100			1		2	2	1		69	75	cm3	charm	1005	3	5000	lblu	lblu						pierce-immunity-cold		300	300	res-cold		-90	-70																																										0
-Flame Rift	402	100			1		2	2	1		69	75	cm3	charm	1006	3	5000	lred	lred						pierce-immunity-fire		300	300	res-fire		-90	-70																																										0
-Crack of the Heavens	403	100			1		2	2	1		69	75	cm3	charm	1007	3	5000	lyel	lyel						pierce-immunity-light		300	300	res-ltng		-90	-70																																										0
-Rotting Fissure	404	100			1		2	2	1		69	75	cm3	charm	1008	3	5000	lgrn	lgrn						pierce-immunity-poison		300	300	res-pois		-90	-70																																										0
-Bone Break	405	100			1		2	2	1		69	75	cm3	charm	1009	3	5000	whit	whit						pierce-immunity-damage		300	300	red-dmg%		-20	-10																																										0
-Black Cleft	406	100			1		2	2	1		69	75	cm3	charm	1010	3	5000	lgry	lgry						pierce-immunity-magic		300	300	res-mag		-65	-45																																										0
+Hellfire Torch	400	100		1					0		120	75	cm2	charm		3	5000			flptrch	invtrch	item_gem	12	item_gem	randclassskill1		0	7	vit		30	60	enr		10	20	res-all		10	20	light		4	8																														0
+Cold Rupture	401	100			1		2	2	1		69	75	cm3	charm		3	5000	lblu	lblu						pierce-immunity-cold		300	300	res-cold		-90	-70																																										0
+Flame Rift	402	100			1		2	2	1		69	75	cm3	charm		3	5000	lred	lred						pierce-immunity-fire		300	300	res-fire		-90	-70																																										0
+Crack of the Heavens	403	100			1		2	2	1		69	75	cm3	charm		3	5000	lyel	lyel						pierce-immunity-light		300	300	res-ltng		-90	-70																																										0
+Rotting Fissure	404	100			1		2	2	1		69	75	cm3	charm		3	5000	lgrn	lgrn						pierce-immunity-poison		300	300	res-pois		-90	-70																																										0
+Bone Break	405	100			1		2	2	1		69	75	cm3	charm		3	5000	whit	whit						pierce-immunity-damage		300	300	red-dmg%		-20	-10																																										0
+Black Cleft	406	100			1		2	2	1		69	75	cm3	charm		3	5000	lgry	lgry						pierce-immunity-magic		300	300	res-mag		-65	-45																																										0
 Warlock Class Pack																																																																										0
 Ars Al'Diablolos	408	100		1					1		85	80	waf	blasphemous grimoire		5	5000	cred	cred		invbbb				skilltab	23	2	2	gethit-skill	Terror	15	1	cast1		25	25	ac%		170	200	extra-fire		15	25	light		5	10	mana-kill		5	10	res-fire		20	30	skill	Apocalypse	3	5														0
 Ars Tor'Baalos	409	100		1					1		85	73	wae	blasphemous compendium		5	5000				invbbb				skilltab	21	2	2	gethit-skill	Decrepify	15	1	skill	Demonic Mastery	2	3	skill	Blood Boil	2	4	skill	Engorge	2	3	skill	Consume	2	3	ac%	 	120	150	hp/lvl	12			red-dmg%		5	10														0
@@ -450,16 +450,16 @@ Sankekur's Fall	446	100		1					1		29	29	pa3			3	5000	lgld			Sankekur				dmg-cold
 Mage Slayer	447	100		1					1		32	27	9ar			3	5000	lgld			mageslayer				dmg%/lvl	20			skill	275	2	2	balance2		20	20	dmg-norm		10	25	str		10	15	light		6	6	red-dmg%		10	15	ass		1	1													splash	430	100	1		0
 Kalans Legacy	448	100		1					1		30	26	ne6			3	5000	cgrn			kalans				nec		1	1	ac		40	75	block2		20	20	block		20	20	sock		1	2	aura	115	4	6																										0
 Tempest	449	100		1					1		28	25	ob6			3	5000	dgld			sorcorb				allskills		1	2	gethit-skill	44	8	12	mana		100	145	cast2		30	30	regen-mana		20	30	mana%		20	20	equipped-skill	Energy Shield SelfAura	16	16	es-efficiency		16	16																		0
-Dclone Trophy	450	100		0					0		130	1	cm1		1011	3	5000			flpflag	invflag	item_charm	12	item_charm	hp		20	20	state	dcloneset	1	1	dclone-clout		1	1																																						0
-Maxlevel Trophy	451	100		0					0		130	1	cm1		1012	3	5000			flpflag	invflag	item_charm	12	item_charm	hp		20	20	state	maxlevelset	1	1	maxlevel-clout		1	1																																						0
-Dev Charm	452	100		0					0		130	1	cm1		1013	3	5000			flpcap	devcharm	item_cap	12	item_cap	hp		20	20	state	devaura	1	1	dev-clout		1	1																																						0
+Dclone Trophy	450	100		0					0		130	1	cm1			3	5000			flpflag	invflag	item_charm	12	item_charm	hp		20	20	state	dcloneset	1	1	dclone-clout		1	1																																						0
+Maxlevel Trophy	451	100		0					0		130	1	cm1			3	5000			flpflag	invflag	item_charm	12	item_charm	hp		20	20	state	maxlevelset	1	1	maxlevel-clout		1	1																																						0
+Dev Charm	452	100		0					0		130	1	cm1			3	5000			flpcap	devcharm	item_cap	12	item_cap	hp		20	20	state	devaura	1	1	dev-clout		1	1																																						0
 Band of Skulls	453	100		1					0		131	90	rbe			5	5000				invbsk				ac%		100	150	gethit-skill	Bone Armor	6	28	mag%		25	30	red-dmg%		10	10	sock		1	1	light		-4	-4																										0
 Cage of the Unsullied	454	100		1					0		131	90	rar			5	5000	lgry			invuns				ac%		200	300	res-all		15	20	light		-4	-8	sock		6	6																																		0
 The Third Eye	455	100		1					0		131	90	ram			5	5000	oran	oran		invamu				allskills		1	1	cast2		20	20	nofreeze		1	1	light		-4	-4	cast-skill	FingermageBossNova	12	25	enr		40	50	sock		1	1	socketed-text		1	1																		0
 Magefist	456	0		0					1		23	23	tgl			5	5000	lgry	lgry						cast3		20	20	regen-mana		10	25	poisskill		1	1	dmg-pois	75	204	204	ac		10	10	ac%		20	30																										0
 Magefist	457	0		0					1		23	23	tgl			5	5000	lgry	lgry						cast3		20	20	regen-mana		10	25	ltngskill		1	1	dmg-ltng		1	45	ac		10	10	ac%		20	30																										0
 Magefist	458	0		0					1		23	23	tgl			5	5000	lgry	lgry						cast3		20	20	regen-mana		10	25	coldskill		1	1	dmg-cold		10	18	ac		10	10	ac%		20	30																										0
-Rathma Trophy	459	100		0					0		130	1	cm1		1014	3	5000			flpflag	invflag	item_charm	12	item_charm	hp		20	20	state	rathmaset	1	1	rathma-clout		1	1	state	devaura	1	1																																		0
+Rathma Trophy	459	100		0					0		130	1	cm1			3	5000			flpflag	invflag	item_charm	12	item_charm	hp		20	20	state	rathmaset	1	1	rathma-clout		1	1	state	devaura	1	1																																		0
 Zeraes Resolve	460	100		1					1		87	76	ame			5	5000	dyel			zeraeresolve				ama		3	4	joust-reduction-zeraes		38	38	dmg%		270	315	swing2		20	20	oskill	joust	5	5	res-ltng		40	60	red-mag		14	14	skilltab	1	3	3													splash	430	100	1		0
 Occultist	461	100		1					1		87	70	utg			5	5000				occultist				stupidity		1	1	curse-res		25	35	mana%		25	35	cast2		20	20	ac%		80	100																														0
 Brimstone Rain	462	100		1					1		87	80	6bs			5	5000	dred			brimstonerain				cast2		75	75	res-fire		50	75	allskills		3	4	hp		50	100	skill	56	3	3	cast-skill	56	18	35	skill	61	3	3	pierce-phys		10	10													splash	430	100	1		0

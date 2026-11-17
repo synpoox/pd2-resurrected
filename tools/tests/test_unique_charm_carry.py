@@ -1,4 +1,5 @@
-"""#358: PD2's one-unique-charm rule is data: every unique charm row has its own carry1 group (a second copy is refused)."""
+"""#1288: a second unique charm of the same name may be picked up, so no unique charm row has a carry1 group (as in PD2).
+The rows 5-8 rule (two same-name copies both off, one moved out restores the other, different names both on) is core-rules' charm hook, checked in game."""
 import sys
 import unittest
 from pathlib import Path
@@ -15,17 +16,9 @@ class UniqueCharmCarry(unittest.TestCase):
         D.need(self)
         self.charms = [r for r in D.rows("uniqueitems") if r.get("code") in CHARMS and not r["index"].startswith(PRECRAFTED)]
 
-    def test_every_unique_charm_has_a_group(self):
+    def test_no_unique_charm_has_a_carry_group(self):
         self.assertTrue(self.charms)
-        self.assertEqual([r["index"] for r in self.charms if not r["carry1"].strip()], [])
-
-    def test_groups_are_one_per_row(self):
-        groups = [r["carry1"] for r in self.charms]
-        self.assertEqual(len(groups), len(set(groups)))
-
-    def test_d2r_groups_kept(self):
-        by = {r["index"]: r["carry1"] for r in self.charms}
-        self.assertEqual((by["Gheed's Fortune"], by["Annihilus"], by["Hellfire Torch"]), ("1001", "1002", "1003"))
+        self.assertEqual([r["index"] for r in self.charms if r["carry1"].strip()], [])
 
 
 if __name__ == "__main__":
