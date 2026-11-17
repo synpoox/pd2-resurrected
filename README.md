@@ -71,6 +71,11 @@ Pull requests are welcome. Every PR links its issue: the body opens with `Closes
 issue first if there is none. Run the tool tests before you push, and add a `changelog.d/<issue>-<slug>.md` fragment (see AGENTS.md) for anything a
 player would notice. Changes that alter gameplay need an in-game check (Hell, a level 90+ character). How agents and
 humans work here: [AGENTS.md](AGENTS.md).
+Contributions are under the MIT license (see [License](#license)).
+
+## License
+
+MIT for our own work: see [LICENSE](LICENSE). It does not cover Blizzard's game data, Project Diablo 2's content or the bundled companion plugins; see [NOTICE.md](NOTICE.md).
 
 ## Build
 
