@@ -747,21 +747,21 @@ Opulent	1	0	0	1		1				20	156																											0
 Fast	1	0	0	1		1				20	305																											0
 Speedy	1	0	0	1		1				20	305																											0
 Ludicrous	1	0	0	1		1				20	305																											0
-Large	1	0	0	1		1				10	311																											0
-Huge	1	0	0	1		1				10	311																											0
-Colossal	1	0	0	1		1				10	311																											0
-Strong	1	0	0	1		1				20	158																											0
-Mighty	1	0	0	1		1				20	158																											0
-Formidable	1	0	0	1		1				20	158																											0
+Large	1	1	1	1		1				10	311	mon-life		5	10	map-density		15	20	addxp		6	8		t1m	t2m												0
+Huge	1	1	1	1		1				10	311	mon-life		10	15	map-density		20	25	addxp		8	10		t2m	t3m												0
+Colossal	1	1	1	1		1				10	311	mon-life		15	20	map-density		25	30	addxp		10	12		t3m													0
+Strong	1	1	1	1		1				20	158	mon-damage		10	15	addxp		4	5	mag%		10	15		t1m	t2m												0
+Mighty	1	1	1	1		1				20	158	mon-damage		15	20	addxp		5	6	mag%		25	30		t2m	t3m												0
+Formidable	1	1	1	1		1				20	158	mon-damage		20	25	addxp		6	7	mag%		40	45		t3m													0
 Splashing	1	0	0	1		1				20	157																											0
 Splashing	1	0	0	1		1				20	157																											0
 Splashing	1	0	0	1		1				20	157																											0
 Bloody	1	0	0	1		1				20	312																											0
 Gory	1	0	0	1		1				20	312																											0
 Sanguinary	1	0	0	1		1				20	312																											0
-Unhealthy	1	0	0	1		1				20	315																											0
-Sickly	1	0	0	1		1				20	315																											0
-Diseased	1	0	0	1		1				20	315																											0
+Unhealthy	1	1	1	1		1				20	315	regen		-40	-30	addxp		3	4	mag%		5	10		t1m	t2m												0
+Sickly	1	1	1	1		1				20	315	regen		-60	-50	addxp		4	5	mag%		20	25		t2m	t3m												0
+Diseased	1	1	1	1		1				20	315	regen		-80	-70	addxp		5	6	mag%		35	40		t3m													0
 Crushing	1	0	0	1		1				20	163																											0
 Smashing	1	0	0	1		1				20	163																											0
 Obliterating	1	0	0	1		1				20	163																											0
@@ -915,21 +915,21 @@ Opulent	1	0	0	1		1				120	156																											0
 Fast	1	0	0	1		1				120	305																											0
 Speedy	1	0	0	1		1				120	305																											0
 Ludicrous	1	0	0	1		1				120	305																											0
-Large	1	0	0	1		1				60	311																											0
-Huge	1	0	0	1		1				60	311																											0
-Colossal	1	0	0	1		1				60	311																											0
-Strong	1	0	0	1		1				120	158																											0
-Mighty	1	0	0	1		1				120	158																											0
-Formidable	1	0	0	1		1				120	158																											0
+Large	1	1		1		1				60	311	mon-life		10	20	map-density		30	40	addxp		12	16		t1m	t2m												0
+Huge	1	1		1		1				60	311	mon-life		20	30	map-density		40	50	addxp		16	20		t2m	t3m												0
+Colossal	1	1		1		1				60	311	mon-life		30	40	map-density		50	60	addxp		20	24		t3m													0
+Strong	1	1		1		1				120	158	mon-damage		15	23	addxp		8	10	mag%		20	30		t1m	t2m												0
+Mighty	1	1		1		1				120	158	mon-damage		23	30	addxp		10	12	mag%		50	60		t2m	t3m												0
+Formidable	1	1		1		1				120	158	mon-damage		30	38	addxp		12	14	mag%		80	90		t3m													0
 Splashing	1	0	0	1		1				120	157																											0
 Splashing	1	0	0	1		1				120	157																											0
 Splashing	1	0	0	1		1				120	157																											0
 Bloody	1	0	0	1		1				120	312																											0
 Gory	1	0	0	1		1				120	312																											0
 Sanguinary	1	0	0	1		1				120	312																											0
-Unhealthy	1	0	0	1		1				120	315																											0
-Sickly	1	0	0	1		1				120	315																											0
-Diseased	1	0	0	1		1				120	315																											0
+Unhealthy	1	1		1		1				120	315	regen		-60	-45	addxp		6	8	mag%		10	20		t1m	t2m												0
+Sickly	1	1		1		1				120	315	regen		-90	-75	addxp		8	10	mag%		40	50		t2m	t3m												0
+Diseased	1	1		1		1				120	315	regen		-120	-105	addxp		10	12	mag%		70	80		t3m													0
 Crushing	1	0	0	1		1				120	163																											0
 Smashing	1	0	0	1		1				120	163																											0
 Obliterating	1	0	0	1		1				120	163																											0

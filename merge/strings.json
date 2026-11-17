@@ -101,7 +101,9 @@
     "m22": "Royal Crypts Map",
     "m23": "Tomb of Zoltun Kulle Map",
     "m24": "Lost Temple Map",
-    "m25": "Dark Temple Map"
+    "m25": "Dark Temple Map",
+    "Large": "Large",
+    "of the Adventurer": "of the Adventurer"
   },
   "entries": {
     "EnteringMesa": "Mesa",
@@ -1705,6 +1707,8 @@
     "m22": [51536, "item-names.json"],
     "m23": [51537, "item-names.json"],
     "m24": [51538, "item-names.json"],
-    "m25": [51539, "item-names.json"]
+    "m25": [51539, "item-names.json"],
+    "Large": [51540, "item-nameaffixes.json"],
+    "of the Adventurer": [51541, "item-nameaffixes.json"]
   }
 }
