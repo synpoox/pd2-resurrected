@@ -112,3 +112,8 @@ The map system is done when all of the following pass, on a level 90+ character 
   monsters, the players and the area.
 - Every event in scope can be forced with a Catalyst Shard (`map_force_event`).
 - One recipe from each recipe group in the inventory works.
+
+### Game check (#1307, Slot4, Hell, level 99)
+
+- Stacking: three spawned maps (m01, m01, m02) were three inventory items; clicking one m01 onto the other left two items, so same-code maps merge (the stamped Area Level did not block it). The stack count is not drawn on the icon and no tooltip was read, so the 50 cap and splitting were not seen in game; they rest on `maxstack=50` in misc.txt.
+- Drops: `testtreasure` on `cantorboss` (Map Boss T2) gave one map stamped Area Level 87; most runs gave none, so this shows maps drop, not the rates. Anya's shop and her quest reward were not opened in game.
