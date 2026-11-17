@@ -15,7 +15,7 @@ nowhere; `HOTKEY_ItemQuantity` is the display toggle ([ir6-cube-rules](ir6-cube-
 ## 1. Client: PD2's own WndProc, packet 0x22
 
 - `0x102eb900`: PD2's subclassed game WndProc. On WM_LBUTTONDOWN it calls the click handler, then `CallWindowProcA`.
-- `0x102bff00` [`0x102bfef0`]: ../the left-click handler. It takes the split path when an item is on the cursor
+- `0x102bff00` [`0x102bfef0`]: the left-click handler. It takes the split path when an item is on the cursor
   (`0x10324f80`, D2Client's cursor-item getter), the message's key flags hold MK_CONTROL (`& 8`), the item is not a
   tome (`tbk `, `ibk `), and it passes a stack check (`0x1037def0`: item type 0x14 or 0x4a, or quantity >= 2 and
   `0x1037dea0`).
@@ -29,7 +29,7 @@ nowhere; `HOTKEY_ItemQuantity` is the display toggle ([ir6-cube-rules](ir6-cube-
 
 - PD2 replaces D2Game's client packet table entry for 0x22 (table at D2Game 0x6fd1a078, slot RVA 0xfa188) through its
   patch-record table (record `0x1049e784`).
-- `0x10394f60` [`0x10394ef0`]: ../the 0x22 handler. It validates (`0x103a2bd0` -> D2Game+0xcce20), finds the item by id,
+- `0x10394f60` [`0x10394ef0`]: the 0x22 handler. It validates (`0x103a2bd0` -> D2Game+0xcce20), finds the item by id,
   reads its quantity (stat 70), maps the page to a grid (4 -> 0xc, 3 -> 9, else 0) and checks the cell is free.
 - Free cell, quantity > 1: it makes a new item of the same base through D2Game+0x11490 (1.13c item creation from
   parameters: class, item level, seed, quality, difficulty), places it at x, y on that page, adds it to the game, sets

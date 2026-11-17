@@ -5,7 +5,7 @@ Research for [#1064](https://github.com/synpoox/pd2-resurrected/issues/1064). It
 reading only: the game was not run. Addresses are PD2's: `ProjectDiablo.dll` addresses from its `0x10000000` base,
 `D2Game.dll` RVAs from its `0x6fc20000` base. Monster ids are PD2's unless marked "port".
 
-Builds on [pd2-map-system-dll.md](../pd2/map-system-dll.md) (section 4, the event roll and spawns) and the #1006 research
+Builds on [pd2-map-system-dll.md](map-system-dll.md) (section 4, the event roll and spawns) and the #1006 research
 comment (the boss).
 
 ## Answer in brief
@@ -23,7 +23,7 @@ hover); see [Open questions](#open-questions).
 
 ## 1. The trigger and the 3 spawns
 
-From [pd2-map-system-dll.md](../pd2/map-system-dll.md) section 4, checked again in `0x1036fef0` (room activation):
+From [pd2-map-system-dll.md](map-system-dll.md) section 4, checked again in `0x1036fef0` (room activation):
 
 - The map roll picks event 14 (`game+0x1df4 == 0xe`) for 1 in 9 rolled tiered maps.
 - The n-th Wanderer (n = 1..3, count at `game+0x2628`, `puVar2[0x98a]`) spawns when `n x 25 < progress` and

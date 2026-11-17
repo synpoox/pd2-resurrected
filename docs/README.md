@@ -23,7 +23,6 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [features/core-rules-inventory.md](features/core-rules-inventory.md) — Inventory of core-rules engine rules
 - [features/core-rules.md](features/core-rules.md) — core-rules hook list
 - [features/d2r-only-content.md](features/d2r-only-content.md) — D2R-only content ledger
-- [features/dark-wanderer-event.md](features/dark-wanderer-event.md) — The Dark Wanderer map event
 - [features/event-link.md](features/event-link.md) — Event link: PD2 events beside a standalone Cartographer (#944)
 - [features/item-rules.md](features/item-rules.md) — PD2's remaining item rules in the port
 - [features/map-system.md](features/map-system.md) — PD2's map system in the port
@@ -33,6 +32,7 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 ## PD2 reference: what PD2 does and what was found in it
 
 - [pd2/asset-inventory.md](pd2/asset-inventory.md) — PD2 art, audio and map asset inventory
+- [pd2/dark-wanderer-event.md](pd2/dark-wanderer-event.md) — The Dark Wanderer map event
 - [pd2/data-inventory.md](pd2/data-inventory.md) — Inventory of PD2's data against D2R 3.3
 - [pd2/engine-dll-triage.md](pd2/engine-dll-triage.md) — Triage of PD2's engine DLLs
 - [pd2/map-system-dll.md](pd2/map-system-dll.md) — PD2's map system in ProjectDiablo.dll
