@@ -1701,7 +1701,9 @@ auto UnlinkIfAttached(Unit* item, Unit* player) noexcept -> bool {
 }
 
 // Same-name unique charms stored (mode 0, so never the cursor) with their top row in rows 5-8, item excluded; each linked one is
-// unlinked (counted in unlinked). Returns how many there are.
+// unlinked (counted in unlinked). Returns how many there are, 0 when item is not in the player's item list: the client's remove
+// handler 0x1c60a0 asks about the leaving copy after 0x389820 took it out (mode and cell unchanged) and unlinks it and refreshes
+// 0x1c9610 only on a yes, so a leaving copy gets D2RCore's answer. A twin D2RCore refuses (unidentified, requirements) still counts.
 auto UnlinkTwins(Unit* item, Unit* player, uint32_t* unlinked) noexcept -> uint32_t {
 	using namespace d2r::rva;
 	if (player == nullptr || d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item) != QualityUnique) {
@@ -1714,9 +1716,16 @@ auto UnlinkTwins(Unit* item, Unit* player, uint32_t* unlinked) noexcept -> uint3
 	const auto uniqueRow = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemUniqueRow);
 	const auto next = d2r::Engine<Unit* (*)(Unit*) noexcept>(InventoryNextItem);
 	const int32_t mine = uniqueRow(item);
+	Unit* const first = d2r::Engine<Unit* (*)(void*) noexcept>(InventoryFirstItem)(inventory);
+	Unit* listed = first;
+	while (listed != nullptr && listed != item) {
+		listed = next(listed);
+	}
+	if (listed == nullptr) {
+		return 0;
+	}
 	uint32_t found = 0;
-	for (Unit* other = d2r::Engine<Unit* (*)(void*) noexcept>(InventoryFirstItem)(inventory); other != nullptr;
-	     other = next(other)) {
+	for (Unit* other = first; other != nullptr; other = next(other)) {
 		if (other != item && At<int32_t>(other, UnitType) == 4 &&
 		    d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitModeOf)(other) == 0 &&
 		    d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(other) == 0 &&
