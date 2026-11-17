@@ -1,5 +1,7 @@
 # [MS4](https://github.com/synpoox/pd2-resurrected/issues/219): area map stats in D2R
 
+> Historical: `plugin/core-maps/map_stats.cpp` was removed in the Cartographer migration ([#942](https://github.com/synpoox/pd2-resurrected/issues/942)); maps are Cartographer's now. Kept for what PD2 does.
+
 Part of [MS4](https://github.com/synpoox/pd2-resurrected/issues/219) ([#219](https://github.com/synpoox/pd2-resurrected/issues/219)); the drop chances are
 [#286](https://github.com/synpoox/pd2-resurrected/issues/286) and the extra boss [#289](https://github.com/synpoox/pd2-resurrected/issues/289). PD2's side is
 [pd2-map-system-dll.md](pd2-map-system-dll.md), section 2 (the area slots). D2R addresses are RVAs in the 93847 dump,
@@ -218,7 +220,7 @@ item level 131, by the unit. The eight (PD2 unique id, the port's runtime `uniqu
 
 Horazon's handler `0x10377ca0` also calls it, after the portal opens, when CRT `rand() % 10 < 1`.
 
-**The port.** `RollUniqueMap` (`plugin/core-maps/key_drops.cpp`) rolls the TC by name on every map-area death (levels
+**The port.** `RollUniqueMap` (`plugin/core-events/key_drops.cpp`) rolls the TC by name on every map-area death (levels
 138-201), with key drops' skirmish mult (1 for the TC 1021 bosses); `DropUniqueMap` draws one of the eight by the
 monster's seed and drops it through `DropUniqueAt` (`uber_drops.cpp`, D2R's monster drop with the unique row forced, at
 item level 131). Horazon's portal calls `DropUniqueMap` on a 1 in 10 of the monster's seed. D2R's unique roll `0x443910`

@@ -36,7 +36,7 @@ None of it reads PD2 map items, affixes or recipes. PD2's map rows, code and hoo
 | B general rules | cube, Almanac, Catalyst recipe: `plugin/core-events/lane-b/`, its own patch files |
 | C map events | `plugin/core-events/lane-c/`, `mapevents.txt` |
 | D ubers | `plugin/core-events/lane-d/` and uber data patches |
-| Shared (serial) | `merge/ids-*.tsv` ids, the committed `misc.txt`, `lvlmaze.txt`, `cartographer.txt`, `plugin/core-events/parts` registration, this file |
+| Shared (serial) | `merge/ids-*.tsv` ids, the committed `misc.txt`, `lvlmaze.txt`, `cartographer.txt`, `plugin/core-events/part_registry.cpp` registration, this file |
 
 `tools/tests/test_core_events_lanes.py` enforces the plugin allowlist.
 

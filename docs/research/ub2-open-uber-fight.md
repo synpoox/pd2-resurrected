@@ -14,7 +14,7 @@ in `ProjectDiablo.dll` (`PD2.gpr`).
 - `ubtm` (Uber Tristram, [UB3](https://github.com/synpoox/pd2-resurrected/issues/228)) keeps both, and `uba` (PD2's
   Uber Ancients) is cut.
 
-## The opening (core-maps, `plugin/core-maps/map_open.cpp`)
+## The opening (core-maps, `plugin/core-events/map_open.cpp`)
 
 The map spell's check and use hooks handle the keys too. A key's `len` in the uber levels takes this path:
 

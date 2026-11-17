@@ -4,7 +4,7 @@ PD2 Resurrected is a Diablo II: Resurrected mod; players: see the [README](READM
 
 ## For developers
 
-- Plan and open decisions: [map issue #1](https://github.com/synpoox/pd2-resurrected/issues/1)
+- Plan and open decisions: [map issue #143](https://github.com/synpoox/pd2-resurrected/issues/143)
 - Decisions: [`docs/adr/`](docs/adr/)
 - Terms: [`GLOSSARY.md`](GLOSSARY.md)
 - Research notes: [`docs/research/`](docs/research/)
@@ -94,7 +94,7 @@ workflow to run on this runner. Read a fork PR's workflow changes before approvi
 
 ## Plugins
 
-`plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules, `core-events` PD2's map events and uber fights (maps are Cartographer's). Shared code (log, guards, the `d2r::api` binding and engine addresses other projects use) comes from d2rAI-toolkit's `shared/plugin-common`, found by the toolkit finder (`D2R_TOOLKIT` or `-DD2R_TOOLKIT=<checkout>`, else a walk up), together with the PluginSDK in its `third_party/PluginSDK` (this repo has no PluginSDK copy of its own); the addresses only PD2 uses live in `plugin/common/pd2_engine.h`.
+`plugin/` builds the D2RLoader plugins (ADR 0004); `core-rules` holds PD2's engine rules, `core-events` PD2's map events and uber fights (maps are Cartographer's), `core-ui` the item pictures, quantity and stack-split screens. Shared code (log, guards, the `d2r::api` binding and engine addresses other projects use) comes from d2rAI-toolkit's `shared/plugin-common`, found by the toolkit finder (`D2R_TOOLKIT` or `-DD2R_TOOLKIT=<checkout>`, else a walk up), together with the PluginSDK in its `third_party/PluginSDK` (this repo has no PluginSDK copy of its own); the addresses only PD2 uses live in `plugin/common/pd2_engine.h`.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File plugin\build.ps1

@@ -1,6 +1,6 @@
 # Cartographer migration plan — revised scope
 
-Status: revised scope settled on 2026-11-15; no runtime implementation started. This replaces the earlier PD2-map-parity plan. [Spec #942](https://github.com/synpoox/pd2-resurrected/issues/942) is the published implementation specification; [the local spec](cartographer-migration-spec.md) has the same scope.
+Status: done. The revised scope settled on 2026-11-15 was built and merged in [#1058](https://github.com/synpoox/pd2-resurrected/pull/1058) (closes [#942](https://github.com/synpoox/pd2-resurrected/issues/942)); the plan below is kept as written. This replaces the earlier PD2-map-parity plan. [Spec #942](https://github.com/synpoox/pd2-resurrected/issues/942) is the published implementation specification; [the local spec](cartographer-migration-spec.md) has the same scope.
 
 ## Agreed result
 

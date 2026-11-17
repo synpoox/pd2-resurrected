@@ -1,5 +1,7 @@
 # [MS3](https://github.com/synpoox/pd2-resurrected/issues/218): monster and player map stats in D2R
 
+> Historical: `plugin/core-maps/map_stats.cpp` was removed in the Cartographer migration ([#942](https://github.com/synpoox/pd2-resurrected/issues/942)); maps are Cartographer's now. Kept for what PD2 does.
+
 Resolves [MS3](https://github.com/synpoox/pd2-resurrected/issues/218) ([#218](https://github.com/synpoox/pd2-resurrected/issues/218)). PD2's side is
 [pd2-map-system-dll.md](pd2-map-system-dll.md), section 2. D2R addresses are RVAs in the 93847 dump
 (`ImageStamp 0x6ab3782c`), read in Ghidra (`D2R.gpr`). PD2's are VAs in `ProjectDiablo.dll` (`PD2.gpr`).

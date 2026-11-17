@@ -8,6 +8,8 @@ How the port rebuilds PD2's map system, decided in [#152](https://github.com/syn
 ([#145](https://github.com/synpoox/pd2-resurrected/issues/145)). Terms (map item, map tier, map area, map stat, map event, invader) are in [GLOSSARY.md](../GLOSSARY.md). The
 work items are placed on [roadmap.md](roadmap.md) by [#210](https://github.com/synpoox/pd2-resurrected/issues/210); MS6 was folded into [IR6](https://github.com/synpoox/pd2-resurrected/issues/241) there.
 
+> **Superseded in scope.** [#942](https://github.com/synpoox/pd2-resurrected/issues/942) (merged in [#1058](https://github.com/synpoox/pd2-resurrected/pull/1058)) cut PD2's map items, map stats, tiers and the generated PD2-only map areas: maps are native Cartographer maps, and `core-events` keeps the map events and uber fights ([ADR 0006](adr/0006-cartographer-and-core-events.md), [cartographer-migration.md](cartographer-migration.md)). What follows is the design as decided before that; read it for what PD2 does.
+
 ## Scope
 
 In: the tiered maps (map tiers 1-3), dungeons and unique maps; their affixes and uniques; the map recipes; the map stats

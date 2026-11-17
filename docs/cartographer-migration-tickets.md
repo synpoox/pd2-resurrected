@@ -1,6 +1,6 @@
 # Work items for #942 — corrected vanilla arena reuse
 
-Status: 25-work-item draft awaiting breakdown approval; no child issues published. Draft IDs are not GitHub numbers. Publication is in dependency order, not numerical order.
+Status: done. The child issues of [#942](https://github.com/synpoox/pd2-resurrected/issues/942) were published and merged in [#1058](https://github.com/synpoox/pd2-resurrected/pull/1058); the draft below keeps its own IDs, which are not GitHub numbers. Publication is in dependency order, not numerical order.
 
 ## Owner clarification and scope
 
