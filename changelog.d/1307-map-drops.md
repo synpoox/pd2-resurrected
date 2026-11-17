@@ -1,1 +1,1 @@
-- Maps drop in Hell as a T1 pool and stack to 50; map drop tables are PD2's.
+- Maps drop in Hell as a T1 pool; map drop tables are PD2's.
