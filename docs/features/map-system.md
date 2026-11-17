@@ -27,6 +27,40 @@ work items are placed on [roadmap.md](../roadmap.md) by [#210](https://github.co
 | T2 | 88 | `t2m` | m02 Bone Vaults (Crypt), m03 Frozen Hollows (Ice), m08 Horazon's Memory (Arcane), m10 Howling Plateau (**Mesa**), m13 Ruins of Corvus (**Kurast**), m15 Cursed Hold (Jail), m16 Khazra Den (Lair), m21 Ruined Cistern (Sewer) |
 | T3 | 89 | `t3m` | m07 Battlefields of Eternity (Durance), m09 Arreat Battlefield (**Siege**), m11 Kehjistan Marketplace (**Desert**), m14 Leoric's Passage (Dungeon), m17 Cellar of the Damned (KurastSewer), m18 Bastion Keep (Barracks), m19 Imperial Palace (Harem), m22 Royal Crypts (Catacombs), m25 Dark Temple (Temple) |
 
+### Map monsters ([#1322](https://github.com/synpoox/pd2-resurrected/issues/1322))
+
+`maps.txt` `Monsters` (up to 10 monstats Ids, the column Cartographer writes into the map's level) lists only the `*map` variants restored in #1253. PD2 gave each map area its own per-area monster copies (`zombieSiege`, `mummyIce`, ...); the port has one `*map` row per base class, and its `TreasureClass(H)`, `Champ` and `Unique` cells are PD2's own `Map H2H`/`Map Cast`/`Map Miss`/`Map Swarm` `t1` or `t3` classes (rows unchanged). So a map's list is: the monsters of the PD2 area it is paired with (levels.txt `mon1`-`mon10`, the area's entry level from the misc `len` column, [map-system-dll.md](../pd2/map-system-dll.md)), reduced to the base classes that have a `*map` row, and topped up from the closest-themed area when that left fewer than 4. Excluded: `baalminionmap` (Rarity 0), the event and boss rows (`summonerMap`, `griswoldmap`, ...) and the Void `*UniqueMap` rows. Every listed row is enabled, `isSpawn` 1 and Rarity above 0 (unit test `test_map_monsters.py`).
+
+Tier limit: no `*map` row uses a `t2` class (PD2's `t2` classes live on its per-area copies, which the port does not have), so a T2 map's drops come from its `t1`/`t3` members, and T1 and T3 lists lean `t1` and `t3`. The classes differ only in the `Map Good` area level (85/86/87), so the loot is the same; the difference is for #1307's tier pools. A listed monster whose class is tiered differently from its map is marked in the table.
+
+| Map | PD2 area (code, tier) | Monsters | Why |
+|---|---|---|---|
+| m01 Tunneling Depths (T1) | Ancestral Trial (t34, T1) | minion, pantherwoman, fallen, slinger, siegebeast, bloodlord, councilmember, reanimatedhorde, fallenshaman | its whole list has `*map` rows; all `t1` |
+| m04 Overgrown Reach (T1) | Torajan Jungle (t22, T1) + the jungle level | mosquito, unraveler, cr_archer + sandleaper, thornhulk, councilmember | Torajan Jungle has 3 variants; jungle level fills; all `t1` |
+| m05 Frostbitten Fields (T1) | Zhar Ice (T2, nearest snow list) + Frozen Forest | fallenshaman, fallen, reanimatedhorde, siegebeast, sandleaper | no T1 snow area; all `t1` |
+| m06 Phlegethon (T1) | Phlegethon (t21, T1) | doomknight, vilemother, zealot, deathmauler, sk_archer, regurgitator, councilmember | same map; PD2's own list is `t3` classes (`baalminion` dropped, Rarity 0) |
+| m12 Shadows of Westmarch (T1) | Shadows of Westmarch (t26, T1) | reanimatedhorde, pantherwoman, bloodlord, bighead, siegebeast | same map, all its variants |
+| m20 Sanatorium (T1) | Sanatorium (t14, T1) + Blood Moon | sk_archer, bighead + reanimatedhorde, pantherwoman, bloodlord | Sanatorium has 2; the monastery basement level (same theme) fills |
+| m23 Tomb of Zoltun Kulle (T1) | Tomb of Zoltun Kulle (t24, T1) | cr_lancer, cr_archer + unraveler, pantherwoman | 2 variants; Act 2 desert classes fill |
+| m24 Lost Temple (T1) | Lost Temple (t33, T1) | minion, mosquito, unraveler, arach | same map; all `t1` |
+| m02 Bone Vaults (T2) | PD2 Crypts level (nearest crypt) + Zhar Ice (T2) | sk_archer, bighead, fallenshaman, reanimatedhorde, fallen | no T2 crypt; undead fill from the T2 ice area |
+| m03 Frozen Hollows (T2) | Zhar Ice (T2) + Ice level | arach, fallenshaman, fallen, reanimatedhorde, siegebeast | ice theme in the same tier |
+| m08 Horazon's Memory (T2) | Horazon's Memory (t12, T2) + Arcane level | fetish, minion, mosquito, zealot, cantor, doomknight | same map plus the arcane list; mixed `t1`/`t3` |
+| m10 Howling Plateau (T2) | Fortress of Aranoch (t29, T2; outdoor) | minion, deathmauler, sk_archer, bighead | outdoor, same tier |
+| m13 Ruins of Corvus (T2) | Ashen Plains (t3a, T2) + Kurast level | unraveler, cr_lancer, goatman, cr_archer, cantor, thornhulk, sandleaper, mosquito | Ashen Plains has 1; Kurast list fills; all `t1` |
+| m15 Cursed Hold (T2) | Halls of Torture (t17, T2) | cr_lancer, succubuswitch, sk_archer, zealot, councilmember, regurgitator | jail theme; its level and the torture-halls list |
+| m16 Khazra Den (T2) | Throne of Insanity (t32, T2) | goatman, fallen, fallenshaman, siegebeast | Khazra are goatmen; same tier |
+| m21 Ruined Cistern (T2) | Horazon's sewer level + Ruined Cistern (T2) | minion, mosquito, fetish, siegebeast, fallenshaman | sewer theme, same tier |
+| m07 Battlefields of Eternity (T3) | Kyovashad (t3b, T3) | minion, vilemother, cantor + doomknight, oblivionknight, regurgitator | Act 4 classes for Durance |
+| m09 Arreat Battlefield (T3) | Arreat Battlefield (t23, T3) + Siege level | goatman, bighead, reanimatedhorde, thornhulk, mosquito, deathmauler | its own level lists 1 variant; Siege level fills |
+| m11 Kehjistan Marketplace (T3) | Kehjistan Marketplace (t39, T3) + Desert level | mosquito, cr_archer, unraveler, arach, sandleaper | same map and desert list |
+| m14 Leoric's Passage (T3) | Blood Moon (t35, T3; dungeon) | reanimatedhorde, pantherwoman, bloodlord, bighead, siegebeast | dungeon theme, same tier |
+| m17 Cellar of the Damned (T3) | River of Blood (t31, T3; Kurast level) | cr_lancer, goatman, cr_archer, bighead, cantor, unraveler, arach, thornhulk, sandleaper, mosquito | 10 of 10, Kurast sewer; all `t1` |
+| m18 Bastion Keep (T3) | Bastion Keep (t13, T3) + Fortress level | goatman, fallen, fallenshaman, siegebeast, sandleaper, deathmauler, councilmember | same map plus the fortress list |
+| m19 Imperial Palace (T3) | Skovos Stronghold (t28, T3; Imperial level) | fetish, succubuswitch, cantor, zealot | palace list (`baalminion` dropped) |
+| m22 Royal Crypts (T3) | Royal Crypts (t15, T3) + Crypts level | cr_archer, sk_archer, bighead, zealot, bloodlord | same map plus the crypt list |
+| m25 Dark Temple (T3) | PD2 Dark Temple level | zealot, siegebeast, councilmember, doomknight | same theme |
+
 Not done here (other children of #1303): the map affixes and their tier bands (no affix table names `t1m`/`t2m`/`t3m` yet; [#1305](https://github.com/synpoox/pd2-resurrected/issues/1305)), recipes, drops.
 
 ## Scope

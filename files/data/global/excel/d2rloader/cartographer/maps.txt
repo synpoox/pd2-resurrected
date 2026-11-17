@@ -1,26 +1,26 @@
-Name	Tileset	Shape	Item	Size	Level	MinCharLevel	Boss
-Tunneling Depths	Cave	Loop	m01	Medium	87	1	King Leoric
-Bone Vaults	Crypt	Branching	m02	Medium	88	1	The Guardian
-Frozen Hollows	Ice	Winding	m03	Medium	88	1	Nathkill The Numb
-Overgrown Reach	Jungle	Winding	m04	Medium	87	1	The Great Worm
-Frostbitten Fields	Snow		m05	Medium	87	1	Shattered Soul
-Phlegethon	Lava	Sprawl	m06	Medium	87	1	Lieutenant of Sin
-Battlefields of Eternity	Durance	Branching	m07	Medium	89	1	The Mad Philosopher
-Horazon's Memory	Arcane	Loop	m08	Medium	88	1	Deathmaiden Madinsane
-Arreat Battlefield	Siege		m09	Medium	89	1	Armorsmith of Equality
-Howling Plateau	Mesa		m10	Medium	88	1	Johnathan The Damned
-Kehjistan Marketplace	Desert		m11	Medium	89	1	Toadflax the Tainted
-Shadows of Westmarch	Wilderness		m12	Medium	87	1	The Cow Queen
-Ruins of Corvus	Kurast		m13	Medium	88	1	Indio The Insane
-Leoric's Passage	Dungeon	Winding	m14	Medium	89	1	Bloodlord of the Pit
-Cursed Hold	Jail	Branching	m15	Medium	88	1	Gaoler Kanemith
-Khazra Den	Lair	Sprawl	m16	Medium	88	1	Sharptooth the Broodmother
-Cellar of the Damned	KurastSewer	Loop	m17	Medium	89	1	Bloodlord of the Pit
-Bastion Keep	Barracks	Branching	m18	Medium	89	1	Gaoler Kanemith
-Imperial Palace	Harem		m19	Medium	89	1	Deathmaiden Madinsane
-Sanatorium	Basement		m20	Medium	87	1	The Guardian
-Ruined Cistern	Sewer	Winding	m21	Medium	88	1	The Mad Philosopher
-Royal Crypts	Catacombs	Loop	m22	Medium	89	1	King Leoric
-Tomb of Zoltun Kulle	Tombs	Branching	m23	Medium	87	1	Toadflax the Tainted
-Lost Temple	Spider		m24	Medium	87	1	Sharptooth the Broodmother
-Dark Temple	Temple		m25	Medium	89	1	Shattered Soul
+Name	Tileset	Shape	Item	Size	Level	MinCharLevel	Boss	Monsters
+Tunneling Depths	Cave	Loop	m01	Medium	87	1	King Leoric	minionmap,pantherwomanmap,fallenmap,slingermap,siegebeastmap,bloodlordmap,councilmembermap,reanimatedhordemap,fallenshamanmap
+Bone Vaults	Crypt	Branching	m02	Medium	88	1	The Guardian	sk_archermap,bigheadmap,fallenshamanmap,reanimatedhordemap,fallenmap
+Frozen Hollows	Ice	Winding	m03	Medium	88	1	Nathkill The Numb	arachmap,fallenshamanmap,fallenmap,reanimatedhordemap,siegebeastmap
+Overgrown Reach	Jungle	Winding	m04	Medium	87	1	The Great Worm	mosquitomap,unravelermap,cr_archermap,sandleapermap,thornhulkmap,councilmembermap
+Frostbitten Fields	Snow		m05	Medium	87	1	Shattered Soul	fallenshamanmap,fallenmap,reanimatedhordemap,siegebeastmap,sandleapermap
+Phlegethon	Lava	Sprawl	m06	Medium	87	1	Lieutenant of Sin	doomknightmap,vilemothermap,zealotmap,deathmaulermap,sk_archermap,regurgitatormap,councilmembermap
+Battlefields of Eternity	Durance	Branching	m07	Medium	89	1	The Mad Philosopher	minionmap,vilemothermap,cantormap,doomknightmap,oblivionknightmap,regurgitatormap
+Horazon's Memory	Arcane	Loop	m08	Medium	88	1	Deathmaiden Madinsane	zealotmap,cantormap,doomknightmap,fetishmap,minionmap,mosquitomap
+Arreat Battlefield	Siege		m09	Medium	89	1	Armorsmith of Equality	goatmanmap,bigheadmap,reanimatedhordemap,thornhulkmap,mosquitomap,deathmaulermap
+Howling Plateau	Mesa		m10	Medium	88	1	Johnathan The Damned	minionmap,deathmaulermap,sk_archermap,bigheadmap
+Kehjistan Marketplace	Desert		m11	Medium	89	1	Toadflax the Tainted	mosquitomap,cr_archermap,unravelermap,arachmap,sandleapermap
+Shadows of Westmarch	Wilderness		m12	Medium	87	1	The Cow Queen	reanimatedhordemap,pantherwomanmap,bloodlordmap,bigheadmap,siegebeastmap
+Ruins of Corvus	Kurast		m13	Medium	88	1	Indio The Insane	unravelermap,cr_lancermap,goatmanmap,cr_archermap,cantormap,thornhulkmap,sandleapermap,mosquitomap
+Leoric's Passage	Dungeon	Winding	m14	Medium	89	1	Bloodlord of the Pit	reanimatedhordemap,pantherwomanmap,bloodlordmap,bigheadmap,siegebeastmap
+Cursed Hold	Jail	Branching	m15	Medium	88	1	Gaoler Kanemith	cr_lancermap,succubuswitchmap,sk_archermap,zealotmap,councilmembermap,regurgitatormap
+Khazra Den	Lair	Sprawl	m16	Medium	88	1	Sharptooth the Broodmother	goatmanmap,fallenmap,fallenshamanmap,siegebeastmap
+Cellar of the Damned	KurastSewer	Loop	m17	Medium	89	1	Bloodlord of the Pit	cr_lancermap,goatmanmap,cr_archermap,bigheadmap,cantormap,unravelermap,arachmap,thornhulkmap,sandleapermap,mosquitomap
+Bastion Keep	Barracks	Branching	m18	Medium	89	1	Gaoler Kanemith	goatmanmap,fallenmap,fallenshamanmap,siegebeastmap,sandleapermap,deathmaulermap,councilmembermap
+Imperial Palace	Harem		m19	Medium	89	1	Deathmaiden Madinsane	fetishmap,succubuswitchmap,cantormap,zealotmap
+Sanatorium	Basement		m20	Medium	87	1	The Guardian	sk_archermap,bigheadmap,reanimatedhordemap,pantherwomanmap,bloodlordmap
+Ruined Cistern	Sewer	Winding	m21	Medium	88	1	The Mad Philosopher	minionmap,mosquitomap,fetishmap,siegebeastmap,fallenshamanmap
+Royal Crypts	Catacombs	Loop	m22	Medium	89	1	King Leoric	cr_archermap,sk_archermap,bigheadmap,zealotmap,bloodlordmap
+Tomb of Zoltun Kulle	Tombs	Branching	m23	Medium	87	1	Toadflax the Tainted	cr_lancermap,cr_archermap,unravelermap,pantherwomanmap
+Lost Temple	Spider		m24	Medium	87	1	Sharptooth the Broodmother	minionmap,mosquitomap,unravelermap,arachmap
+Dark Temple	Temple		m25	Medium	89	1	Shattered Soul	zealotmap,siegebeastmap,councilmembermap,doomknightmap
