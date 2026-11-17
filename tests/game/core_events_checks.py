@@ -24,6 +24,8 @@ LOG = "core-maps"  # log file: core-events keeps plugin id core-maps (#1044)
 BOSSES = {806, 950, 951, 952, 953, 1129}
 FIGHT = BOSSES | set(range(807, 812)) | set(range(903, 909)) | set(range(954, 957)) | {983, 985, 986, 1123, 1124,
                                                                                       1130, 1131, 1132, 1157, 1158}
+# uber_entry.cpp: "uber: level %d (%s, source %d) open at tier %d, ..."
+UBER_OPEN = r"uber: level \d+ .*?open at tier"
 SCALED = re.compile(r"uber scaling: monster (\d+) \(unit (\d+)\) in level (\d+), tier (\d+), entries (\d+)(?: \(boss\))?: "
                     r"maxhp (\d+) -> (\d+), life (\d+) -> (\d+), skills \+(\d+), absorbs (-?\d+)/(-?\d+), dr (-?\d+), "
                     r"plr (-?\d+)")
@@ -43,7 +45,7 @@ def expected_maxhp(maxhp: int, tier: int, boss: bool) -> int:
 def uber_scaling(ctx):
     """Each scaled fight monster has PD2's maxhp and +skills for its tier, a boss its absorbs, none scaled twice."""
     # unit ids repeat across games, and a tier-0 re-entry remakes the minions with their rooms: one scaling per entry
-    games = re.split(r"uber: level \d+ open at tier", _log(ctx))
+    games = re.split(UBER_OPEN, _log(ctx))
     rows = [(g,) + tuple(int(v) for v in m.groups()) for g, text in enumerate(games) for m in SCALED.finditer(text)]
     if not rows:
         ctx.skip("no 'uber scaling:' line yet (open an uber area and spawn a fight monster)")
