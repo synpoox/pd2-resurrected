@@ -67,7 +67,7 @@ Tier limit: no `*map` row uses a `t2` class (PD2's `t2` classes live on its per-
 - **Map counts:** each tier holds 8/8/9 maps against PD2's 10/10/9, so each map drops slightly more often.
 - **Stacking** is not done: only normal maps with no extra stats may stack (owner rule), which needs a core-rules merge hook (separate issue).
 - **Anya** already sells the five orbs in `misc.txt` (`imma`, `imra`, `rera`, `scou`, `upma`). `upmp` and `fort` come with the recipes PR ([#1306](https://github.com/synpoox/pd2-resurrected/issues/1306)); add their `AnyaMin`/`AnyaMax` 1 then.
-- **Not done (needs code):** monsters inside a map. Cartographer's slot levels use the Act 5 monsters' own rows, which also spawn outside maps, and one slot serves maps of several tiers, so no table gives them the map's tier. It waits for Cartographer's `map_drop_tc` behaviour ([d2r-tools#538](https://github.com/synpoox/d2r-tools/issues/538)). Anya's quest reward (a map instead of her scroll) is game code too.
+- **Map monsters** are the `*map` variants listed in `maps.txt` `Monsters` (section above, #1322); their TCs are the `Map ... t1/t3` classes. Not done (needs code): Anya's quest reward (a map instead of her scroll) is game code too.
 
 Not done here (other children of #1303): the map affixes and their tier bands (no affix table names `t1m`/`t2m`/`t3m` yet; [#1305](https://github.com/synpoox/pd2-resurrected/issues/1305)), recipes.
 
