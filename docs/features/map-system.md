@@ -61,7 +61,15 @@ Tier limit: no `*map` row uses a `t2` class (PD2's `t2` classes live on its per-
 | m22 Royal Crypts (T3) | Royal Crypts (t15, T3) + Crypts level | cr_archer, sk_archer, bighead, zealot, bloodlord | same map plus the crypt list |
 | m25 Dark Temple (T3) | PD2 Dark Temple level | zealot, siegebeast, councilmember, doomknight | same theme |
 
-Not done here (other children of #1303): the map affixes and their tier bands (no affix table names `t1m`/`t2m`/`t3m` yet; [#1305](https://github.com/synpoox/pd2-resurrected/issues/1305)), recipes, drops.
+## Drops ([#1307](https://github.com/synpoox/pd2-resurrected/issues/1307))
+
+- **Treasure classes** are PD2's, over m01-m25 by tier: `Map Tier 1-3` list the maps of each tier (Rare 400, Magic 800 as PD2; a natural magic roll becomes normal), `T1 Map Drop`, `T2 Map Drop` and `T3 Map Drop` pick a tier (T1: 66/33 of T1/T2, T2: 39/40/20, T3: 32/33/33). The `Act 1-5 (H) Good` pools name `Map Tier 1`, so Hell drops outside maps are a T1 pool. `Map Good t1-t3`, `Map Boss T1-T4`, `Treasure Fallen Map`, `UberAncients` and the two `T4*MapBoss` classes call the tier drop again (their P3 no-drop lines are gone). The tierless `Cartographer Maps` class stays for the Horazon drops.
+- **Map counts:** each tier holds 8/8/9 maps against PD2's 10/10/9, so each map drops slightly more often.
+- **Stacking** is not done: only normal maps with no extra stats may stack (owner rule), which needs a core-rules merge hook (separate issue).
+- **Anya** already sells the five orbs in `misc.txt` (`imma`, `imra`, `rera`, `scou`, `upma`). `upmp` and `fort` come with the recipes PR ([#1306](https://github.com/synpoox/pd2-resurrected/issues/1306)); add their `AnyaMin`/`AnyaMax` 1 then.
+- **Not done (needs code):** monsters inside a map. Cartographer's slot levels use the Act 5 monsters' own rows, which also spawn outside maps, and one slot serves maps of several tiers, so no table gives them the map's tier. It waits for Cartographer's `map_drop_tc` behaviour ([d2r-tools#538](https://github.com/synpoox/d2r-tools/issues/538)). Anya's quest reward (a map instead of her scroll) is game code too.
+
+Not done here (other children of #1303): the map affixes and their tier bands (no affix table names `t1m`/`t2m`/`t3m` yet; [#1305](https://github.com/synpoox/pd2-resurrected/issues/1305)), recipes.
 
 ## Scope
 
@@ -139,3 +147,7 @@ The map system is done when all of the following pass, on a level 90+ character 
   monsters, the players and the area.
 - Every event in scope can be forced with a Catalyst Shard (`map_force_event`).
 - One recipe from each recipe group in the inventory works.
+
+### Game check (#1307, Slot4, Hell, level 99)
+
+- Drops: `testtreasure` on `cantorboss` (Map Boss T2) gave one map stamped Area Level 87; most runs gave none, so this shows maps drop, not the rates. Anya's shop and her quest reward were not opened in game.

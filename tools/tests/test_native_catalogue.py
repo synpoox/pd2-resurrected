@@ -71,8 +71,7 @@ class NativeCatalogueTests(unittest.TestCase):
             return out
         assert flat(POOL) == [m["Item"] for m in rows("maps.txt")]
         good = tcs
-        assert all(good[f"Act {a} (H) Good"]["Item9"] == POOL for a in range(1, 6))
-        assert not any("Map Tier" in v for r in good.values() for v in r.values())
+        assert all(good[f"Act {a} (H) Good"]["Item9"] == "Map Tier 1" for a in range(1, 6))  # #1307: Hell drops are the T1 pool; the tierless pool is the Horazon one
 
 
     def test_native_properties_exist(self):
