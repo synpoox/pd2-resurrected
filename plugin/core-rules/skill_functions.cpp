@@ -4549,7 +4549,9 @@ auto CltDoLucionDash(Unit* unit, int32_t skillId, int32_t level) noexcept -> int
 		return 0;
 	}
 	const uint32_t flags = Flags(uskill);
-	const int32_t ran = d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::rva::CltDoLeap)(unit, skillId);
+	// D2R's leap client (CltDoLeap) lifts the unit on a jump arc PD2's flat dash lacks (#1205): the model rose off
+	// screen while the server's unit stayed at the player. The path follows the server, so the call is skipped.
+	const int32_t ran = 1;
 	int32_t x = 0, y = 0;
 	if (!d2r::UnitXY(unit, &x, &y)) {
 		return ran;
