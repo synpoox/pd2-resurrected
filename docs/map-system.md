@@ -42,6 +42,7 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
 - **Stacking:** normal maps stack to 50 and split as in PD2 (Ctrl+left-click with the stack held). Every PD2 stackable
   shares this, so it is built once in [#316](https://github.com/synpoox/pd2-resurrected/issues/316), not in a map item ([#210](https://github.com/synpoox/pd2-resurrected/issues/210)).
 - **Invaders** run their table AIs (the vanilla `BloodRaven`, `Summoner` and so on). That is an approximated deviation.
+  The portal's think and the invaders' ears and drops are PD2's (MS10, `plugin/core-events/lane-c/invaders.cpp`).
   PD2's own invader brain (`AiThink4.cpp`) replaces them in [MS11](https://github.com/synpoox/pd2-resurrected/issues/225).
 - **Plugins:** `core-events` (Shared) holds the code that belongs only to the map system: opening maps, map stats, cube
   op 30, map events and invaders. It is a plugin of its own because the map system is large enough to be used outside

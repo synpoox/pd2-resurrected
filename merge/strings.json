@@ -1655,6 +1655,13 @@
     "m02": [51507, "item-names.json"],
     "m03": [51508, "item-names.json"],
     "m04": [51509, "item-names.json"],
-    "m05": [51510, "item-names.json"]
+    "m05": [51510, "item-names.json"],
+    "MapEventNotifyInvadersAmazon": [51511, "ui.json"],
+    "MapEventNotifyInvadersAssassin": [51512, "ui.json"],
+    "MapEventNotifyInvadersBarbarian": [51513, "ui.json"],
+    "MapEventNotifyInvadersDruid": [51514, "ui.json"],
+    "MapEventNotifyInvadersNecromancer": [51515, "ui.json"],
+    "MapEventNotifyInvadersPaladin": [51516, "ui.json"],
+    "MapEventNotifyInvadersSorceress": [51517, "ui.json"]
   }
 }
