@@ -27,13 +27,47 @@ work items are placed on [roadmap.md](../roadmap.md) by [#210](https://github.co
 | T2 | 88 | `t2m` | m02 Bone Vaults (Crypt), m03 Frozen Hollows (Ice), m08 Horazon's Memory (Arcane), m10 Howling Plateau (**Mesa**), m13 Ruins of Corvus (**Kurast**), m15 Cursed Hold (Jail), m16 Khazra Den (Lair), m21 Ruined Cistern (Sewer) |
 | T3 | 89 | `t3m` | m07 Battlefields of Eternity (Durance), m09 Arreat Battlefield (**Siege**), m11 Kehjistan Marketplace (**Desert**), m14 Leoric's Passage (Dungeon), m17 Cellar of the Damned (KurastSewer), m18 Bastion Keep (Barracks), m19 Imperial Palace (Harem), m22 Royal Crypts (Catacombs), m25 Dark Temple (Temple) |
 
+### Map monsters ([#1322](https://github.com/synpoox/pd2-resurrected/issues/1322))
+
+`maps.txt` `Monsters` (up to 10 monstats Ids, the column Cartographer writes into the map's level) lists the `*map` variants restored in #1253 and the `*map2` rows below. PD2 gave each map area its own per-area monster copies (`zombieSiege`, `mummyIce`, ...); the port has one `*map` row per base class, with PD2's `Map H2H`/`Map Cast`/`Map Miss`/`Map Swarm` `t1` or `t3` classes in `TreasureClass(H)`, `Champ(H)` and `Unique(H)`. A map's list is the monsters of the PD2 area paired with it (levels.txt row whose `Id` is the PD2 map's misc `len`, [map-system-dll.md](../pd2/map-system-dll.md); `mon1`-`mon10`), reduced to the base classes (monstats `BaseId`) that have a `*map` row, and topped up from the closest-themed area when that left fewer than 4 (marked "fill"). Excluded: `baalminionmap` (Rarity 0), the event and boss rows (`summonerMap`, `griswoldmap`, ...) and the Void `*UniqueMap` rows. Every listed row is enabled, `isSpawn` 1 and Rarity above 0 (unit test `test_map_monsters.py`).
+
+Drop tier follows PD2's area, not the map's tier: PD2's per-area copies use `Map ... t1`, `t2` or `t3` by area. The `*map` rows only cover t1 and t3, so `monstats.txt` has 21 `<base>map2` rows (copies of the `*map` rows whose three `(H)` TC cells point at the existing `Map ... t2` classes, appended at the end so no class id moves). A list uses `map2` where PD2's area is t2. Where an area's tier is t1 or t3 and the base's only row is the other one, the existing row is used (the two differ only in the `Map Good` area level 85/86/87); those are marked "tier differs".
+
+| Map | PD2 area (levels.txt Id, area tier) | Monsters (`map` suffix; `2` = `map2`) | Why |
+|---|---|---|---|
+| m01 Tunneling Depths (T1) | Ancestral Trial (146, t1) | arach + fill: minion, mosquito, unraveler | only `arach` has a row; fill from Lost Temple's (158, t1) cave list |
+| m02 Bone Vaults (T2) | Crypts (170, t3) + Zhar Ice (178, t3) | sk_archer, bighead, fallenshaman, reanimatedhorde, fallen | unchanged; area tier t3 and the rows are t1/t3 (tier differs for the t1 rows) |
+| m03 Frozen Hollows (T2) | Zhar Ice (178, t3) | arach (fill), fallenshaman, fallen, reanimatedhorde, siegebeast | unchanged; tier differs |
+| m04 Overgrown Reach (T1) | Jungle Map (148, t1) | sandleaper, deathmauler, councilmember + fill: thornhulk, mosquito | fill from Ruins of Viz-Jun (143, t1, Kurast); `deathmaulermap` is t3 (tier differs) |
+| m05 Frostbitten Fields (T1) | Zhar Ice (178, t3) | fallenshaman, fallen, reanimatedhorde, siegebeast, sandleaper (fill) | unchanged; no T1 snow area; tier differs |
+| m06 Phlegethon (T1) | Lava Map (145, t1) | minion, pantherwoman, fallen, slinger, siegebeast, bloodlord, councilmember, reanimatedhorde, fallenshaman, fetish | the area's list is the `*map` rows themselves; `fetishmap` is t3 (tier differs) |
+| m07 Battlefields of Eternity (T3) | Kyovashad (201, t3) | reanimatedhorde, zealot, bloodlord, vilemother, deathmauler | `reanimatedhordemap` and `bloodlordmap` are t1 (tier differs) |
+| m08 Horazon's Memory (T2) | Arcane (142, t2) | zealot2, cantor2, oblivionknight2 + fill: minion2 | `doomknightArcane` is `BaseId` doomknight3 = oblivionknight; fill from Descent (210, t2) |
+| m09 Arreat Battlefield (T3) | Siege Map (139, t3) | goatman, bighead, reanimatedhorde, thornhulk, mosquito | all five rows are t1 (tier differs) |
+| m10 Howling Plateau (T2) | Dark Temple Map (209, t2) | zealot2, siegebeast2, councilmember2, oblivionknight2 | all t2 |
+| m11 Kehjistan Marketplace (T3) | Desert Map (147, t3) | mosquito, cr_archer, unraveler + fill: sandleaper | the three rows are t1 (tier differs); fill from the desert list |
+| m12 Shadows of Westmarch (T1) | Westmarch Map (169, t1) | minion, goatman, slinger, siegebeast | all t1 |
+| m13 Ruins of Corvus (T2) | Ashen Plains Map (175, t2) | thornhulk2, pantherwoman2, fetish2, slinger2, deathmauler2 | all t2 |
+| m14 Leoric's Passage (T3) | Graveyard Map (154, t3; the cow level) | hellbovineMap | the area lists only `hellbovineMap`; kept as one |
+| m15 Cursed Hold (T2) | Halls of Torture Map (193, t2) | sandleaper2, zealot2, sk_archer2, councilmember2, regurgitator2 | all t2 |
+| m16 Khazra Den (T2) | Throne Map (150, t2) | cr_archer2, cr_lancer2 + fill: goatman2, fallen2 | fill from Fortress Map (149, t2); Khazra are goatmen |
+| m17 Cellar of the Damned (T3) | River Of Blood (144, t3) | doomknight, vilemother, zealot, oblivionknight, deathmauler, sk_archer, regurgitator, councilmember | the area's `*map` rows; `councilmemberBlood` is t3 but `councilmembermap` is t1 (tier differs) |
+| m18 Bastion Keep (T3) | Fortress Map (149, t2) | fallen2, goatman2, fallenshaman2, siegebeast2 | PD2's area tier is t2, below the map's T3 |
+| m19 Imperial Palace (T3) | Skovos Stronghold Map (190, t3) | cr_archer, cr_lancer, deathmauler, bighead, thornhulk | cr_archer, cr_lancer, bighead and thornhulk rows are t1 (tier differs) |
+| m20 Sanatorium (T1) | Library Map (167, t2) | cr_archer2, cr_lancer2, deathmauler2, bloodlord2 | PD2's area tier is t2, above the map's T1 |
+| m21 Ruined Cistern (T2) | Ruined Cistern Map (174, t2) + Sewers (141, t2) | cr_archer2, fetish2, minion2, mosquito2 | Cistern has only `cr_archer`; the sewer list fills |
+| m22 Royal Crypts (T3) | Crypts Map (170, t3) | sk_archer, bighead + fill: reanimatedhorde, zealot | fill from Kyovashad (201, t3); `bigheadmap` and `reanimatedhordemap` are t1 (tier differs) |
+| m23 Tomb of Zoltun Kulle (T1) | Tomb Map (151, t1) | arach + fill: sandleaper, unraveler, cr_lancer | only `arach` has a row; fill from Ruins of Viz-Jun (143, t1) |
+| m24 Lost Temple (T1) | Spider Map (158, t1) | minion, mosquito, unraveler, arach | all t1 |
+| m25 Dark Temple (T3) | no PD2 map area (kept from the first pass) | zealot, siegebeast, councilmember, doomknight | unchanged |
+
 ## Drops ([#1307](https://github.com/synpoox/pd2-resurrected/issues/1307))
 
 - **Treasure classes** are PD2's, over m01-m25 by tier: `Map Tier 1-3` list the maps of each tier (Rare 400, Magic 800 as PD2; a natural magic roll becomes normal), `T1 Map Drop`, `T2 Map Drop` and `T3 Map Drop` pick a tier (T1: 66/33 of T1/T2, T2: 39/40/20, T3: 32/33/33). The `Act 1-5 (H) Good` pools name `Map Tier 1`, so Hell drops outside maps are a T1 pool. `Map Good t1-t3`, `Map Boss T1-T4`, `Treasure Fallen Map`, `UberAncients` and the two `T4*MapBoss` classes call the tier drop again (their P3 no-drop lines are gone). The tierless `Cartographer Maps` class stays for the Horazon drops.
 - **Map counts:** each tier holds 8/8/9 maps against PD2's 10/10/9, so each map drops slightly more often.
 - **Stacking** ([#1326](https://github.com/synpoox/pd2-resurrected/issues/1326)): m01-m25 stack to 50, but only normal maps with equal stats merge (a core-rules hook on D2Common's stack-equal check, `0x375960`). A rare map, or one with another Area Level or a forced event, stays its own item. A Ctrl+click split and a cube recipe's leftover maps keep the source's stats.
 - **Anya** already sells the five orbs in `misc.txt` (`imma`, `imra`, `rera`, `scou`, `upma`). `upmp` and `fort` come with the recipes PR ([#1306](https://github.com/synpoox/pd2-resurrected/issues/1306)); add their `AnyaMin`/`AnyaMax` 1 then.
-- **Not done (needs code):** monsters inside a map. Cartographer's slot levels use the Act 5 monsters' own rows, which also spawn outside maps, and one slot serves maps of several tiers, so no table gives them the map's tier. It waits for Cartographer's `map_drop_tc` behaviour ([d2r-tools#538](https://github.com/synpoox/d2r-tools/issues/538)). Anya's quest reward (a map instead of her scroll) is game code too.
+- **Map monsters** are the `*map` variants listed in `maps.txt` `Monsters` (section above, #1322); their TCs are the `Map ... t1/t3` classes. Not done (needs code): Anya's quest reward (a map instead of her scroll) is game code too.
 
 Not done here (other children of #1303): the map affixes and their tier bands (no affix table names `t1m`/`t2m`/`t3m` yet; [#1305](https://github.com/synpoox/pd2-resurrected/issues/1305)), recipes.
 
