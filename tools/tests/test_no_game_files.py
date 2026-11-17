@@ -10,7 +10,7 @@ EXT = {".mpq", ".casc", ".idx", ".exe", ".dll", ".pdb", ".dmp", ".mdmp", ".d2s",
        ".ma0", ".ma1", ".ma2", ".ma3"}
 CASC = re.compile(r"(^|/)(data\.\d{3}|\.build\.info|shmem)$", re.I)
 TOP = {".claude", ".github", ".gitignore", ".gitattributes", "AGENTS.md", "CHANGELOG.md", "GLOSSARY.md",
-       "README.md", "changelog.d", "companions", "docs", "files", "merge", "mod.json", "pd2-baseline.json",
+       "README.md", "CONTRIBUTING.md", "changelog.d", "companions", "docs", "files", "merge", "mod.json", "pd2-baseline.json",
        "pd2-import.txt", "plugin", "release.toml", "tests", "toolkit.version", "tools", "check_public.allow", "ruff.toml"}
 
 

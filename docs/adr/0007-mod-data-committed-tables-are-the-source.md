@@ -23,6 +23,6 @@ refuses them and any path outside the allowed ones. Supersedes ADR 0002.
 - `.gitattributes` keeps `files/data/` bytes as committed (`-text`): the tables are CRLF.
 - A leftover `generated/data` would override the committed tables in a build: `install.ps1` refuses it.
 - JSON keys D2R reads stay case-sensitive in a direct edit (AGENTS.md, HD data).
-- A PD2 version change is a re-baseline: `pd2-baseline.json`, a new `pd2-import` commit, and its three-way merge (`tools/pd2_import.py`; the README's "Importing a new PD2 version").
+- A PD2 version change is a re-baseline: `pd2-baseline.json`, a new `pd2-import` commit, and its three-way merge (`tools/pd2_import.py`; CONTRIBUTING.md's "Importing a new PD2 version").
 - Every worktree checks out about 365 MB more.
 - `check_public.allow` lists the generic false positives in the committed data (Blizzard support addresses in UI strings).
