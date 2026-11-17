@@ -15,12 +15,3 @@ Indio The Insane	ThroneBoss
 Bloodlord of the Pit	PoisonedWellBoss
 Gaoler Kanemith	KanemithBoss
 Sharptooth the Broodmother	SharpToothBoss
-Radament the Rotting	RadamentBoss
-Captain Skovos	SkovosBoss
-Jerhyn the Jaded	ImperialPalaceBossJerhyn
-Keeper of Ureh	CityofUrehBoss
-Nakrul the Fetid	NaKrulBoss
-The Ashen Revenant	AshenBoss
-Dark Priest of Amun	DarkTempleBoss
-The Silken Queen	spiderboss
-Nihlathak the Hollow	nihlathakboss

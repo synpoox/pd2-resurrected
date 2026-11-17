@@ -15,12 +15,12 @@ Ruined Quarter	Kurast		m13	Medium	85	1	Indio The Insane
 Sodden Oubliette	Dungeon	Winding	m14	Medium	85	1	Bloodlord of the Pit
 Rusted Cells	Jail	Branching	m15	Medium	85	1	Gaoler Kanemith
 Brood Warren	Lair	Sprawl	m16	Medium	85	1	Sharptooth the Broodmother
-Flooded Culverts	KurastSewer	Loop	m17	Medium	85	1	Radament the Rotting
-Fallen Garrison	Barracks	Branching	m18	Medium	85	1	Captain Skovos
-Gilded Seraglio	Harem		m19	Medium	85	1	Jerhyn the Jaded
-Forgotten Vaults	Basement		m20	Medium	85	1	Keeper of Ureh
-Rotted Drains	Sewer	Winding	m21	Medium	85	1	Nakrul the Fetid
-Whispering Catacombs	Catacombs	Loop	m22	Medium	85	1	The Ashen Revenant
-Sandsealed Tombs	Tombs		m23	Medium	85	1	Dark Priest of Amun
-Webbed Hollow	Spider		m24	Medium	85	1	The Silken Queen
-Halls of Sorrow	Temple		m25	Medium	85	1	Nihlathak the Hollow
+Flooded Culverts	KurastSewer	Loop	m17	Medium	85	1	Bloodlord of the Pit
+Fallen Garrison	Barracks	Branching	m18	Medium	85	1	Gaoler Kanemith
+Gilded Seraglio	Harem		m19	Medium	85	1	Deathmaiden Madinsane
+Forgotten Vaults	Basement		m20	Medium	85	1	The Guardian
+Rotted Drains	Sewer	Winding	m21	Medium	85	1	The Mad Philosopher
+Whispering Catacombs	Catacombs	Loop	m22	Medium	85	1	King Leoric
+Sandsealed Tombs	Tombs	Branching	m23	Medium	85	1	Toadflax the Tainted
+Webbed Hollow	Spider		m24	Medium	85	1	Sharptooth the Broodmother
+Halls of Sorrow	Temple		m25	Medium	85	1	Shattered Soul
