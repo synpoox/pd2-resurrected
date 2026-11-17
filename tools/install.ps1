@@ -14,6 +14,7 @@
 param(
     [Parameter(Mandatory)] [string]$Game,
     [string]$Data = "",
+    [string]$Cartographer = "",  # cartographer.dll (default: CARTOGRAPHER_DLL, else d2r-tools\dist\cartographer beside the toolkit)
     [string]$Toolkit = "",  # d2rAI-toolkit checkout (default: the toolkit's finder: D2R_TOOLKIT, else a walk up, so worktrees find it)
     [switch]$NoValidate,
     [switch]$KeepExtras  # keep files other than our plugins in d2rloader\plugins (a slot set up on purpose)
@@ -45,9 +46,21 @@ foreach ($name in @("core-rules", "core-events", "core-ui")) {
     Copy-Item $dll $plugins -Force
     Write-Output "installed $name.dll -> $plugins"
 }
+# cartographer.dll (d2r-tools) is mandatory to play; release.yml ships it with --extra-plugin (#1188).
+if (-not $Cartographer) { $Cartographer = $env:CARTOGRAPHER_DLL }
+if (-not $Cartographer) {
+    $tools = Join-Path (Split-Path $Toolkit -Parent) "d2r-tools"
+    $Cartographer = Join-Path $tools "dist\cartographer\cartographer.dll"
+    if (Test-Path $Cartographer) {
+        $head = [DateTimeOffset]::FromUnixTimeSeconds([long](git -C $tools log -1 --format=%ct)).LocalDateTime
+        if ((Get-Item $Cartographer).LastWriteTime -lt $head) { throw "$Cartographer is older than d2r-tools HEAD: run tools\build.ps1 -Plugin cartographer in $tools" }
+    }
+}
+if (-not (Test-Path $Cartographer)) { throw "$Cartographer missing: build it in d2r-tools (tools\build.ps1 -Plugin cartographer) or pass -Cartographer" }
+Copy-Item $Cartographer $plugins -Force
+Write-Output "installed cartographer.dll -> $plugins"
 
 # Strays (third-party plugins, D2RLoader companions) would make the test run on an unclean install: move, never delete.
-# cartographer.dll is the required native-map plugin on this branch: install.ps1 does not copy it, the slot must already hold it (d2r-tools build).
 $ours = @("core-rules.dll", "core-events.dll", "core-ui.dll", "cartographer.dll", "test-harness.dll", "d2r-testharness-console.txt")
 $strays = @(Get-ChildItem $plugins -Force | Where-Object { $ours -notcontains $_.Name })
 if ($strays -and -not $KeepExtras) {
@@ -100,6 +113,16 @@ if ($Data) {
         } else {
             py -3 -m modkit --game $Game install $Data
             if ($LASTEXITCODE -ne 0) { throw "modkit install failed ($LASTEXITCODE)" }
+            # The companion plugins are mandatory to play (#1188); a test slot stays clean of them.
+            if (Test-Path (Join-Path $Data "companions\manifest.json")) {
+                Push-Location $Data
+                try {
+                    py -3 (Join-Path $Toolkit "release\companions.py") fetch
+                    if ($LASTEXITCODE -ne 0) { throw "companions fetch failed ($LASTEXITCODE)" }
+                    py -3 (Join-Path $Toolkit "release\companions.py") install --game $Game
+                    if ($LASTEXITCODE -ne 0) { throw "companions install failed ($LASTEXITCODE)" }
+                } finally { Pop-Location }
+            }
         }
     } finally { Pop-Location }
     # Cartographer's cube signatures beside its tables keep the cube executor with core-rules (#987); the toolkit's release/companions.py overlay() does the same.
