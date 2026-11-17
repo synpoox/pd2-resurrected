@@ -1,0 +1,14 @@
+Stat	Target	Apply	Value	Param
+cartographer_map_drop_weapons	Behaviour	drop_tc		MapStat DropWeapons
+cartographer_map_drop_armor	Behaviour	drop_tc		MapStat DropArmor
+cartographer_map_drop_crafting	Behaviour	drop_tc		MapStat DropCrafting
+cartographer_map_drop_jewelry	Behaviour	drop_tc		MapStat DropJewelry
+cartographer_map_extra_doll	Behaviour	extra_groups		bonefetish6
+cartographer_map_extra_succ	Behaviour	extra_groups		succubusMod
+cartographer_map_extra_vamp	Behaviour	extra_groups		vampire8MapMod
+cartographer_map_extra_cow	Behaviour	extra_groups		hellbovine
+cartographer_map_extra_horde	Behaviour	extra_groups		reanimatedhorde6
+cartographer_map_extra_ghost	Behaviour	extra_groups		wraithMapMod
+cartographer_map_extra_souls	Behaviour	extra_groups		willowisp1MapMod
+cartographer_map_extra_fetish	Behaviour	extra_groups		fetishmap
+cartographer_map_extra_shriek	Behaviour	extra_groups		baalminion3MapMod

@@ -636,3 +636,16 @@ cartographer_mon_phys_as_cold	633		1	11														10	512	10	512														
 cartographer_mon_phys_as_ltng	634		1	11														10	512	10	512																250	19		cartographer:mon_phys_as_ltng	cartographer:mon_phys_as_ltng										0
 cartographer_mon_phys_as_pois	635		1	11														10	512	10	512																250	19		cartographer:mon_phys_as_pois	cartographer:mon_phys_as_pois										0
 cartographer_mon_phys_as_mag	636		1	11														10	512	10	512																250	19		cartographer:mon_phys_as_mag	cartographer:mon_phys_as_mag										0
+cartographer_map_drop_weapons	637		1	11														10	512	10	512																250	19		cartographer:map_drop_tc	cartographer:map_drop_tc										0
+cartographer_map_drop_armor	638		1	11														10	512	10	512																250	19		cartographer:map_drop_tc	cartographer:map_drop_tc										0
+cartographer_map_drop_crafting	639		1	11														10	512	10	512																250	19		cartographer:map_drop_tc	cartographer:map_drop_tc										0
+cartographer_map_drop_jewelry	640		1	11														10	512	10	512																250	19		cartographer:map_drop_tc	cartographer:map_drop_tc										0
+cartographer_map_extra_doll	641		1	11														10	512	10	512																250	19		cartographer:map_extra_groups	cartographer:map_extra_groups										0
+cartographer_map_extra_succ	642		1	11														10	512	10	512																250	19		cartographer:map_extra_groups	cartographer:map_extra_groups										0
+cartographer_map_extra_vamp	643		1	11														10	512	10	512																250	19		cartographer:map_extra_groups	cartographer:map_extra_groups										0
+cartographer_map_extra_cow	644		1	11														10	512	10	512																250	19		cartographer:map_extra_groups	cartographer:map_extra_groups										0
+cartographer_map_extra_horde	645		1	11														10	512	10	512																250	19		cartographer:map_extra_groups	cartographer:map_extra_groups										0
+cartographer_map_extra_ghost	646		1	11														10	512	10	512																250	19		cartographer:map_extra_groups	cartographer:map_extra_groups										0
+cartographer_map_extra_souls	647		1	11														10	512	10	512																250	19		cartographer:map_extra_groups	cartographer:map_extra_groups										0
+cartographer_map_extra_fetish	648		1	11														10	512	10	512																250	19		cartographer:map_extra_groups	cartographer:map_extra_groups										0
+cartographer_map_extra_shriek	649		1	11														10	512	10	512																250	19		cartographer:map_extra_groups	cartographer:map_extra_groups										0

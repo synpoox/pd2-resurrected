@@ -69,7 +69,7 @@ Drop tier follows PD2's area, not the map's tier: PD2's per-area copies use `Map
 - **Anya** already sells the five orbs in `misc.txt` (`imma`, `imra`, `rera`, `scou`, `upma`). `upmp` and `fort` come with the recipes PR ([#1306](https://github.com/synpoox/pd2-resurrected/issues/1306)); add their `AnyaMin`/`AnyaMax` 1 then.
 - **Map monsters** are the `*map` variants listed in `maps.txt` `Monsters` (section above, #1322); their TCs are the `Map ... t1/t3` classes. Not done (needs code): Anya's quest reward (a map instead of her scroll) is game code too.
 
-Not done here (other children of #1303): the map affixes and their tier bands (no affix table names `t1m`/`t2m`/`t3m` yet; [#1305](https://github.com/synpoox/pd2-resurrected/issues/1305)), recipes.
+Map affixes are PD2's rows in `magicprefix.txt` and `magicsuffix.txt`, in PD2's tier bands ([#1305](https://github.com/synpoox/pd2-resurrected/issues/1305), [#1309-#1313](https://github.com/synpoox/pd2-resurrected/issues/1309); `docs/features/map-affixes.md`); only the Splashing rows stay neutral. The recipes are in `docs/features/map-recipes.md`.
 
 ## Scope
 

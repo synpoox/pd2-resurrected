@@ -786,45 +786,45 @@ of Rancor	100	1	1	36		36		war	12	1	44	charged	396	-20	-4										shld										
 of Apocalypse	100	1	1	36		36		war	30	1	44	charged	401	-60	-3										staf	knif	head										0	0
 of Apocalypse	100	1	1	72		72		war	30	1	44	charged	401	-20	-1										glov												0	0
 										0																												0
-of Sturdiness	1	0	0	1		1				40	157																											0
-of Stability	1	0	0	1		1				40	157																											0
-of Vigor	1	0	0	1		1				40	157																											0
-of Crimson	1	0	0	1		1				40	158																											0
-of Crimson	1	0	0	1		1				40	158																											0
-of Crimson	1	0	0	1		1				40	158																											0
-of Tangerine	1	0	0	1		1				40	159																											0
-of Tangerine	1	0	0	1		1				40	159																											0
-of Tangerine	1	0	0	1		1				40	159																											0
-of Opal	1	0	0	1		1				40	160																											0
-of Opal	1	0	0	1		1				40	160																											0
-of Opal	1	0	0	1		1				40	160																											0
-of Azure	1	0	0	1		1				40	161																											0
-of Azure	1	0	0	1		1				40	161																											0
-of Azure	1	0	0	1		1				40	161																											0
-of Protection	1	0	0	1		1				40	306																											0
-of Security	1	0	0	1		1				40	306																											0
-of Safety	1	0	0	1		1				40	306																											0
+of Sturdiness	1	1	1	1		1				40	157	mon-armor-pct		50	100	addxp		3	4	mag%		10	15		t1m	t2m												0
+of Stability	1	1	1	1		1				40	157	mon-armor-pct		100	150	addxp		4	5	mag%		25	30		t2m	t3m												0
+of Vigor	1	1	1	1		1				40	157	mon-armor-pct		150	200	addxp		5	6	mag%		40	45		t3m													0
+of Crimson	1	1	1	1		1				40	158	mon-absorb-fire-pct		4	6	map-density		13	18	addxp		3	4		t1m	t2m												0
+of Crimson	1	1	1	1		1				40	158	mon-absorb-fire-pct		6	8	map-density		18	23	addxp		4	5		t2m	t3m												0
+of Crimson	1	1	1	1		1				40	158	mon-absorb-fire-pct		8	10	map-density		23	25	addxp		5	6		t3m													0
+of Tangerine	1	1	1	1		1				40	159	mon-absorb-ltng-pct		4	6	map-density		13	18	addxp		3	4		t1m	t2m												0
+of Tangerine	1	1	1	1		1				40	159	mon-absorb-ltng-pct		6	8	map-density		18	23	addxp		4	5		t2m	t3m												0
+of Tangerine	1	1	1	1		1				40	159	mon-absorb-ltng-pct		8	10	map-density		20	25	addxp		5	6		t3m													0
+of Opal	1	1	1	1		1				40	160	mon-absorb-mag-pct		4	6	map-density		13	18	addxp		3	4		t1m	t2m												0
+of Opal	1	1	1	1		1				40	160	mon-absorb-mag-pct		6	8	map-density		18	23	addxp		4	5		t2m	t3m												0
+of Opal	1	1	1	1		1				40	160	mon-absorb-mag-pct		8	10	map-density		20	25	addxp		5	6		t3m													0
+of Azure	1	1	1	1		1				40	161	mon-absorb-cold-pct		4	6	map-density		13	18	addxp		3	4		t1m	t2m												0
+of Azure	1	1	1	1		1				40	161	mon-absorb-cold-pct		6	8	map-density		18	23	addxp		4	5		t2m	t3m												0
+of Azure	1	1	1	1		1				40	161	mon-absorb-cold-pct		8	10	map-density		18	25	addxp		5	6		t3m													0
+of Protection	1	1	1	1		1				40	306	mon-dr		100	200	map-density		13	15	mag%		15	20		t1m	t2m												0
+of Security	1	1	1	1		1				40	306	mon-dr		300	400	map-density		15	18	mag%		30	35		t2m	t3m												0
+of Safety	1	1	1	1		1				40	306	mon-dr		500	600	map-density		18	23	mag%		45	50		t3m													0
 of Swiftness	1	1	1	1		1				40	307	mon-speed		20	30	map-density		15	20	addxp		3	4		t1m	t2m												0
 of Quickness	1	1	1	1		1				40	307	mon-speed		30	40	map-density		20	25	addxp		4	5		t2m	t3m												0
 of Velocity	1	1	1	1		1				40	307	mon-speed		40	50	map-density		25	30	addxp		5	6		t3m													0
-of Regeneration	1	0	0	1		1				40	308																											0
-of Renewal	1	0	0	1		1				40	308																											0
-of Rebirth	1	0	0	1		1				40	308																											0
-of the Leech	1	0	0	1		1				40	309																											0
-of the Parasite	1	0	0	1		1				40	309																											0
-of the Bloodsucker	1	0	0	1		1				40	309																											0
-of Resilience	1	0	0	1		1				40	310																											0
-of Hardiness	1	0	0	1		1				40	310																											0
-of Fortitude	1	0	0	1		1				40	310																											0
+of Regeneration	1	1	1	1		1				40	308	mon-regen		1024	1560	addxp		3	4	mag%		20	25		t1m	t2m												0
+of Renewal	1	1	1	1		1				40	308	mon-regen		1560	2048	addxp		4	5	mag%		35	40		t2m	t3m												0
+of Rebirth	1	1	1	1		1				40	308	mon-regen		2048	2560	addxp		5	6	mag%		50	55		t3m													0
+of the Leech	1	1	1	1		1				40	309	mon-lifesteal-hp		4	8	map-density		13	15	addxp		5	6		t1m	t2m												0
+of the Parasite	1	1	1	1		1				40	309	mon-lifesteal-hp		8	12	map-density		15	20	addxp		6	7		t2m	t3m												0
+of the Bloodsucker	1	1	1	1		1				40	309	mon-lifesteal-hp		12	16	map-density		18	20	addxp		7	8		t3m													0
+of Resilience	1	1	1	1		1				40	310	mon-fhr		40	60	map-density		15	20	mag%		10	15		t1m	t2m												0
+of Hardiness	1	1	1	1		1				40	310	mon-fhr		60	80	map-density		20	25	mag%		25	30		t2m	t3m												0
+of Fortitude	1	1	1	1		1				40	310	mon-fhr		80	100	map-density		25	30	mag%		40	45		t3m													0
 of Health	1	1	1	1		1				20	316	mon-life		5	10	map-density		15	20	addxp		6	8		t1m	t2m												0
 of Vitality	1	1	1	1		1				20	316	mon-life		10	15	map-density		20	25	addxp		8	10		t2m	t3m												0
 of Vim	1	1	1	1		1				20	316	mon-life		15	20	map-density		25	30	addxp		10	12		t3m													0
 of Imbalance	1	1	1	1		1				40	313	balance1		-20	-10	map-density		15	20	addxp		3	4		t1m	t2m												0
 of Inequality	1	1	1	1		1				40	313	balance1		-30	-20	map-density		20	25	addxp		4	5		t2m	t3m												0
 of Uneveness	1	1	1	1		1				40	313	balance1		-40	-30	map-density		25	30	addxp		5	6		t3m													0
-of Warding	1	0	0	1		1				40	164																											0
-of Guarding	1	0	0	1		1				40	164																											0
-of Preservation	1	0	0	1		1				40	164																											0
+of Warding	1	1	1	1		1				40	164	mon-curse-res		20	40	addxp		5	6	mag%		20	25		t1m	t2m												0
+of Guarding	1	1	1	1		1				40	164	mon-curse-res		40	60	addxp		6	7	mag%		35	40		t2m	t3m												0
+of Preservation	1	1	1	1		1				40	164	mon-curse-res		60	80	addxp		7	8	mag%		50	55		t3m													0
 of Hindrance	1	1	1	1		1				40	166	res-all		-15	-10	addxp		4	5	mag%		15	20		t1m	t2m												0
 of Aversion	1	1	1	1		1				40	166	res-all		-20	-15	addxp		5	6	mag%		30	35		t2m	t3m												0
 of Permeability	1	1	1	1		1				40	166	res-all		-25	-20	addxp		6	7	mag%		50	55		t3m													0
@@ -874,18 +874,18 @@ Maxlevel Clout	100	0								0														dgrn														0
 of the Bear	1	1	1	30		24				20	24	knock		1	1										misl													0
 of the Lamprey	101	1		55		43				70	27	lifesteal		6	9									cred	misl							orb						0
 of the Vampire	100	1		56		48				70	28	manasteal		6	9									cred	misl													0
-of the Jeweler		0	0	1		1				50	318																											0
-of the Jeweler		0	0	1		1				50	318																											0
-of the Jeweler		0	0	1		1				50	318																											0
-of the Smith	1	0	0	1		1				90	318																											0
-of the Smith	1	0	0	1		1				90	318																											0
-of the Smith	1	0	0	1		1				90	318																											0
-of the Armorer	1	0	0	1		1				90	318																											0
-of the Armorer	1	0	0	1		1				90	318																											0
-of the Armorer	1	0	0	1		1				90	318																											0
-of the Crafter	1	0	0	1		1				50	318																											0
-of the Crafter	1	0	0	1		1				50	318																											0
-of the Crafter	1	0	0	1		1				50	318																											0
+of the Jeweler				1		1				50	318	map-drop-jewelry		1	2										t1m	t2m												0
+of the Jeweler				1		1				50	318	map-drop-jewelry		2	3										t2m	t3m												0
+of the Jeweler				1		1				50	318	map-drop-jewelry		3	4										t3m													0
+of the Smith	1	1	1	1		1				90	318	map-drop-weapons		3	4										t1m	t2m												0
+of the Smith	1	1	1	1		1				90	318	map-drop-weapons		4	5										t2m	t3m												0
+of the Smith	1	1	1	1		1				90	318	map-drop-weapons		5	6										t3m													0
+of the Armorer	1	1	1	1		1				90	318	map-drop-armor		2	3										t1m	t2m												0
+of the Armorer	1	1	1	1		1				90	318	map-drop-armor		4	5										t2m	t3m												0
+of the Armorer	1	1	1	1		1				90	318	map-drop-armor		6	7										t3m													0
+of the Crafter	1	1	1	1		1				50	318	map-drop-crafting		2	3										t1m	t2m												0
+of the Crafter	1	1	1	1		1				50	318	map-drop-crafting		3	4										t2m	t3m												0
+of the Crafter	1	1	1	1		1				50	318	map-drop-crafting		4	5										t3m													0
 of the Adventurer			1	1		1				0	320	map-level		1	1										t1m	t2m	t3m											0
 of Radiance	1	1	1	15	55	11				10	25	light		3	3	att		30	60						rod	miss	helm	tors	misl			wand	staf					0
 of the Fox	1	1	1	17		13				30	26	hp		6	10										ring													0
@@ -958,45 +958,45 @@ of Life	100	1	1	1		14				10	26	hp		10	10										schp													0
 of Life	100	1	1	9		17				40	26	hp		15	15										schp	lchp	mchp											0
 of Life	100	1	1	9		39				40	26	hp		20	20										schp													0
 of Balance	100	1	1	37		29				40	18	balance1		5	5										schp													0
-of Sturdiness	1	0	0	1		1				180	157																											0
-of Stability	1	0	0	1		1				180	157																											0
-of Vigor	1	0	0	1		1				180	157																											0
-of Crimson	1	0	0	1		1				180	158																											0
-of Crimson	1	0	0	1		1				180	158																											0
-of Crimson	1	0	0	1		1				180	158																											0
-of Tangerine	1	0	0	1		1				180	159																											0
-of Tangerine	1	0	0	1		1				180	159																											0
-of Tangerine	1	0	0	1		1				180	159																											0
-of Opal	1	0	0	1		1				180	160																											0
-of Opal	1	0	0	1		1				180	160																											0
-of Opal	1	0	0	1		1				180	160																											0
-of Azure	1	0	0	1		1				180	161																											0
-of Azure	1	0	0	1		1				180	161																											0
-of Azure	1	0	0	1		1				180	161																											0
-of Protection	1	0	0	1		1				180	306																											0
-of Security	1	0	0	1		1				180	306																											0
-of Safety	1	0	0	1		1				180	306																											0
+of Sturdiness	1	1		1		1				180	157	mon-armor-pct		75	150	addxp		6	8	mag%		20	30		t1m	t2m												0
+of Stability	1	1		1		1				180	157	mon-armor-pct		150	225	addxp		8	10	mag%		50	60		t2m	t3m												0
+of Vigor	1	1		1		1				180	157	mon-armor-pct		225	300	addxp		10	12	mag%		80	90		t3m													0
+of Crimson	1	1		1		1				180	158	mon-absorb-fire-pct		6	9	map-density		26	36	addxp		6	8		t1m	t2m												0
+of Crimson	1	1		1		1				180	158	mon-absorb-fire-pct		9	12	map-density		36	46	addxp		8	10		t2m	t3m												0
+of Crimson	1	1		1		1				180	158	mon-absorb-fire-pct		12	15	map-density		46	50	addxp		10	12		t3m													0
+of Tangerine	1	1		1		1				180	159	mon-absorb-ltng-pct		6	9	map-density		26	36	addxp		6	8		t1m	t2m												0
+of Tangerine	1	1		1		1				180	159	mon-absorb-ltng-pct		9	12	map-density		36	46	addxp		8	10		t2m	t3m												0
+of Tangerine	1	1		1		1				180	159	mon-absorb-ltng-pct		12	15	map-density		40	50	addxp		10	12		t3m													0
+of Opal	1	1		1		1				180	160	mon-absorb-mag-pct		6	9	map-density		26	36	addxp		6	8		t1m	t2m												0
+of Opal	1	1		1		1				180	160	mon-absorb-mag-pct		9	12	map-density		36	46	addxp		8	10		t2m	t3m												0
+of Opal	1	1		1		1				180	160	mon-absorb-mag-pct		12	15	map-density		40	50	addxp		10	12		t3m													0
+of Azure	1	1		1		1				180	161	mon-absorb-cold-pct		6	9	map-density		26	36	addxp		6	8		t1m	t2m												0
+of Azure	1	1		1		1				180	161	mon-absorb-cold-pct		9	12	map-density		36	46	addxp		8	10		t2m	t3m												0
+of Azure	1	1		1		1				180	161	mon-absorb-cold-pct		12	15	map-density		36	50	addxp		10	12		t3m													0
+of Protection	1	1		1		1				180	306	mon-dr		150	300	map-density		26	30	mag%		30	40		t1m	t2m												0
+of Security	1	1		1		1				180	306	mon-dr		450	600	map-density		30	36	mag%		60	70		t2m	t3m												0
+of Safety	1	1		1		1				180	306	mon-dr		750	900	map-density		36	46	mag%		90	100		t3m													0
 of Swiftness	1	1		1		1				180	307	mon-speed		30	45	map-density		30	40	addxp		6	8		t1m	t2m												0
 of Quickness	1	1		1		1				180	307	mon-speed		45	60	map-density		40	50	addxp		8	10		t2m	t3m												0
 of Velocity	1	1		1		1				180	307	mon-speed		60	75	map-density		50	60	addxp		10	12		t3m													0
-of Regeneration	1	0	0	1		1				180	308																											0
-of Renewal	1	0	0	1		1				180	308																											0
-of Rebirth	1	0	0	1		1				180	308																											0
-of the Leech	1	0	0	1		1				180	309																											0
-of the Parasite	1	0	0	1		1				180	309																											0
-of the Bloodsucker	1	0	0	1		1				180	309																											0
-of Resilience	1	0	0	1		1				180	310																											0
-of Hardiness	1	0	0	1		1				180	310																											0
-of Fortitude	1	0	0	1		1				180	310																											0
+of Regeneration	1	1		1		1				180	308	mon-regen		1536	2340	addxp		6	8	mag%		40	50		t1m	t2m												0
+of Renewal	1	1		1		1				180	308	mon-regen		2340	3072	addxp		8	10	mag%		70	80		t2m	t3m												0
+of Rebirth	1	1		1		1				180	308	mon-regen		3072	3840	addxp		10	12	mag%		100	110		t3m													0
+of the Leech	1	1		1		1				180	309	mon-lifesteal-hp		8	16	map-density		26	30	addxp		10	12		t1m	t2m												0
+of the Parasite	1	1		1		1				180	309	mon-lifesteal-hp		16	24	map-density		30	40	addxp		12	14		t2m	t3m												0
+of the Bloodsucker	1	1		1		1				180	309	mon-lifesteal-hp		24	32	map-density		36	40	addxp		14	16		t3m													0
+of Resilience	1	1		1		1				180	310	mon-fhr		60	90	map-density		30	40	mag%		20	30		t1m	t2m												0
+of Hardiness	1	1		1		1				180	310	mon-fhr		90	120	map-density		40	50	mag%		50	60		t2m	t3m												0
+of Fortitude	1	1		1		1				180	310	mon-fhr		120	150	map-density		50	60	mag%		80	90		t3m													0
 of Health	1	1		1		1				90	316	mon-life		10	20	map-density		30	40	addxp		12	16		t1m	t2m												0
 of Vitality	1	1		1		1				90	316	mon-life		20	30	map-density		40	50	addxp		16	20		t2m	t3m												0
 of Vim	1	1		1		1				90	316	mon-life		30	40	map-density		50	60	addxp		20	24		t3m													0
 of Imbalance	1	1		1		1				180	313	balance1		-30	-15	map-density		30	40	addxp		6	8		t1m	t2m												0
 of Inequality	1	1		1		1				180	313	balance1		-45	-30	map-density		40	50	addxp		8	10		t2m	t3m												0
 of Uneveness	1	1		1		1				180	313	balance1		-60	-45	map-density		50	60	addxp		10	12		t3m													0
-of Warding	1	0	0	1		1				180	164																											0
-of Guarding	1	0	0	1		1				180	164																											0
-of Preservation	1	0	0	1		1				180	164																											0
+of Warding	1	1		1		1				180	164	mon-curse-res		30	60	addxp		10	12	mag%		40	50		t1m	t2m												0
+of Guarding	1	1		1		1				180	164	mon-curse-res		60	90	addxp		12	14	mag%		70	80		t2m	t3m												0
+of Preservation	1	1		1		1				180	164	mon-curse-res		90	120	addxp		14	16	mag%		100	110		t3m													0
 of Hindrance	1	1		1		1				180	166	res-all		-23	-15	addxp		8	10	mag%		30	40		t1m	t2m												0
 of Aversion	1	1		1		1				180	166	res-all		-30	-23	addxp		10	12	mag%		60	70		t2m	t3m												0
 of Permeability	1	1		1		1				180	166	res-all		-38	-30	addxp		12	14	mag%		100	110		t3m													0
@@ -1006,15 +1006,15 @@ of Disintegration	1	1		1		1				180	165	ac%		-75	-60	map-density		36	40	mag%		90	
 of Fumbling	1	1		1		1				180	314	block		-30	-15	map-density		26	36	mag%		30	40		t1m	t2m												0
 of Bumbling	1	1		1		1				180	314	block		-45	-30	map-density		36	46	mag%		60	70		t2m	t3m												0
 of Blundering	1	1		1		1				180	314	block		-60	-45	map-density		46	50	mag%		80	100		t3m													0
-of the Smith	1	0	0	1		1				180	318																											0
-of the Smith	1	0	0	1		1				180	318																											0
-of the Smith	1	0	0	1		1				180	318																											0
-of the Armorer	1	0	0	1		1				180	318																											0
-of the Armorer	1	0	0	1		1				180	318																											0
-of the Armorer	1	0	0	1		1				180	318																											0
-of the Crafter	1	0	0	1		1				180	318																											0
-of the Crafter	1	0	0	1		1				180	318																											0
-of the Crafter	1	0	0	1		1				180	318																											0
+of the Smith	1	1		1		1				180	318	map-drop-weapons		4	5										t1m	t2m												0
+of the Smith	1	1		1		1				180	318	map-drop-weapons		6	7										t2m	t3m												0
+of the Smith	1	1		1		1				180	318	map-drop-weapons		8	10										t3m													0
+of the Armorer	1	1		1		1				180	318	map-drop-armor		4	5										t1m	t2m												0
+of the Armorer	1	1		1		1				180	318	map-drop-armor		6	7										t2m	t3m												0
+of the Armorer	1	1		1		1				180	318	map-drop-armor		8	10										t3m													0
+of the Crafter	1	1		1		1				180	318	map-drop-crafting		3	4										t1m	t2m												0
+of the Crafter	1	1		1		1				180	318	map-drop-crafting		4	5										t2m	t3m												0
+of the Crafter	1	1		1		1				180	318	map-drop-crafting		6	7										t3m													0
 of the Archmage	101	1	1	49		41				20	9	cast3		30	30										rod	orb	club					staf						0
 of Life Everlasting	102	1	1	45		37				40	1	red-dmg		10	25										shld	tors												0
 of Fortification	100	1		61		53				30	2	red-mag		12	16										tors	shld												0
@@ -1055,9 +1055,9 @@ of the Apprentice	1	1	1	5	36	3				60	9	cast1		10	10										rod	orb	club							
 of Pacing	1	1	1	12		8				30	35	move1		10	10										circ													0
 of Haste	1	1	1	22		16				40	35	move2		20	20										circ													0
 of Speed	1	1	1	37		29				40	35	move3		30	30										circ													0
-of the Jeweler		0	0	1		1				50	318																											0
-of the Jeweler		0	0	1		1				50	318																											0
-of the Jeweler		0	0	1		1				50	318																											0
+of the Jeweler				1		1				50	318	map-drop-jewelry		2	3										t1m	t2m												0
+of the Jeweler				1		1				50	318	map-drop-jewelry		4	5										t2m	t3m												0
+of the Jeweler				1		1				50	318	map-drop-jewelry		6	7										t3m													0
 of Insight	100	1	1	14		14				40	320	regen-mana		5	10										orb	wand												0
 of Focus	100	1	1	30		28				40	320	regen-mana		10	20										orb	wand												0
 of Tranquility	100	1	1	52		47				20	320	regen-mana		20	30										orb	wand												0
