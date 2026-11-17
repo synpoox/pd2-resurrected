@@ -12,7 +12,7 @@ PD2's blessedhammer is the only row that uses them (vanilla's has sdo 1 / cdo 1)
 
 D2R fills both slots: sdo 40 `0x455450` and cdo 72 `0x1b4ea0` create the row's sub-missile once (flag 4), then run
 the default frame. So core-rules takes the next free slots, sdo 47 and cdo 80, and the merge points the row there
-(`tools/pd2_ids.py` FUNCS).
+(`tools/pd2_port.py` FUNCS).
 
 ## sdo 40 (`0x103a7410`)
 
@@ -54,7 +54,7 @@ written by `0x3bd580` in the collision for LastCollide rows, which blessedhammer
 - `tests/game/core_rules_checks.py`, tag `core-rules-w20`: `blessed-hammer` (merged sdo/cdo 47/80, every logged path
   mask `0x180`, the hammer moved, a monster hit, the client half ran) and the two slots in `core-rules-loads`. The
   log counts a hit only when the struck unit differs from the last one, so a repeat hit on the same unit is not logged.
-- `tools/tests/test_ids.py`: the merge moves 40 / 72 to 47 / 80.
+- the toolkit's classic_import tests: the merge moves 40 / 72 to 47 / 80.
 
 Run on Slot6 (2026-11-04), the level 90 Paladin with Blessed Hammer at 20, Hell, god mode, 8 zombies by the Den of
 Evil cave in the Blood Moor: both checks pass. The path mask reads `0x180` on server and client, a hammer hit a zombie

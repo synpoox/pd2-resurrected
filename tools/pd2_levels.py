@@ -2,14 +2,14 @@
 
 merge/ids-monpreset.tsv: monpreset's append-only list (ADR 0003), one line per PD2 row, `<act>/<Place> <tab> index
 <tab> Place`: the row's index within its act. Below VANILLA the index is the same row in both games (D2R's act 5 rows
-51+ are D2R's own); higher PD2 rows append to their act. Runs after pd2_ids has merged the other id lists.
+51+ are D2R's own); higher PD2 rows append to their act. Runs after pd2_port's ids rules have merged the other id lists.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
-import pd2_ids
-from pd2_ids import IdError, Table, ident, load, read_list
+import pd2_table
+from pd2_table import IdError, Table, ident, load, read_list
 
 MONPRESET_VANILLA = {"1": 47, "2": 59, "3": 39, "4": 28, "5": 51}
 
@@ -81,8 +81,8 @@ def monpreset_lines(merge_dir: Path, pd2_data: Path, d2r_data: Path) -> list[tup
 
 def apply_monpreset(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/ids-monpreset.tsv."""
-    pd2_ids.write("monpreset", merge_monpreset(load(d2r_data, "monpreset"), monpreset_lines(rule.parent, pd2_data, d2r_data)),
-                  [], out_data)
+    pd2_table.write("monpreset", merge_monpreset(load(d2r_data, "monpreset"), monpreset_lines(rule.parent, pd2_data, d2r_data)),
+                    out_data, [], "PD2")
 
 
 def seed_list(merge_dir: Path, pd2_data: Path, d2r_data: Path) -> int:

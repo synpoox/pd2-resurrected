@@ -9,9 +9,9 @@
 // up to three times. The Altar of the Catalyst places its altar once: the first use calls its guardian, whose death
 // (event_portals.cpp's listener) lets the second use drop 2-3 Catalyst Shards. The Spire of Darkness places its altar
 // and three fog objects; once used, the rooms send shadow waves until the progress passes 90, which kills them. Void /
-// Tomb opens a portal pair to the Bitter Depths with a marker. The invaders (MS10) are rolled and logged but spawn
-// nothing yet. Horazon's death is event_portals.cpp's. The altars' use is PD2's operate 79 (0x103aa460) in D2R's free
-// operate slot 35 (pd2_ids.FUNCS), written into D2R's operate table as map_open.cpp writes slot 60.
+// Tomb opens a portal pair to the Bitter Depths with a marker. The invaders (MS10) place up to three portals; the
+// portal's think and the invaders' drops are lane-c/invaders.cpp's. Horazon's death is event_portals.cpp's. The altars' use is PD2's operate 79 (0x103aa460) in D2R's free
+// operate slot 35 (pd2_port.FUNCS), which also serves the Temple's Sacrifice Altar (Lucion's Desecration), written into D2R's operate table as map_open.cpp writes slot 60.
 //
 // Each spawn sends the event's notify string to every player as a red chat line (#336; PD2 0x1037dbc0, packet 0x26
 // type 4, colour 1). The SDK's localization service gives the text; no SDK service sends a chat line, so it goes
@@ -75,10 +75,12 @@ enum : int32_t {
 };
 // The events' monsters, PD2 922 nihlathakMap, 921 darkwandererMap and 945 treasurefallenMap in port monstats ids
 constexpr int32_t MendelnMonster = 939, DarkWandererMonster = 938, TreasureFallenMonster = 962;
+constexpr int32_t InvaderPortalMonster = 1199;  // monstats InvaderPortal (monai Overseer): the invaders' portal (lane-c/invaders.cpp)
 constexpr int32_t GheedMonster = 147, HorazonMonster = 936;  // PD2 919 summonerMap
 constexpr int32_t EventMarker = 597;  // PD2 object 594 empty_eventmarker: invisible, AutoMap 1499
 constexpr int32_t ShardAltar = 614;   // PD2 611 ForceShardAltar
 const uint32_t ShardCode = D2RL::Items::MakeItemCode("iwss");  // the Catalyst Shard
+constexpr int32_t SacrificeAltar = 624;  // PD2 621
 constexpr int32_t SpireAltar = 596;   // PD2 593 TaintedSunMapEventAltar
 constexpr int32_t Fog = 374;          // PD2 374, D2R's Fog (the same row)
 // PD2's waves: 993-995 shadowofhate, shadowofterror, shadowofdestruction
@@ -133,8 +135,7 @@ auto NotifyKey(int32_t event) noexcept -> const char* {
 }
 
 // Every spawn sends it, as PD2's does (Dark Wanderer and Treasure Fallen up to three times)
-auto Notify(Game* game, int32_t event) noexcept -> void {
-	const char* key = NotifyKey(event);
+auto NotifyKeyText(Game* game, int32_t event, const char* key) noexcept -> void {
 	char text[256] {};
 	uint32_t need = 0;
 	if (key == nullptr || g_strings == nullptr ||
@@ -150,6 +151,10 @@ auto Notify(Game* game, int32_t event) noexcept -> void {
 	std::memcpy(packet + 0x47, text, sizeof(text) - 1);
 	d2r::Engine<void (*)(void*, uint8_t*) noexcept>(d2r::rva::SendChat)(At<void*>(game, d2r::rva::GameClients), packet);
 	plog::Info("map events: event %d notified \"%s\" (%u)", event, text, ++g_notified);
+}
+
+auto Notify(Game* game, int32_t event) noexcept -> void {
+	NotifyKeyText(game, event, NotifyKey(event));
 }
 
 auto Counter(Game* game, uint32_t key) noexcept -> int32_t* {
@@ -332,9 +337,9 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t pr
 	    roll + progress > 140) {
 		id = event == Mendeln ? MendelnMonster : event == Horazon ? HorazonMonster : event == Gheed ? GheedMonster
 			: event == Altar ? ShardAltar : RedPortal;
-	} else if ((event == DarkWanderer || event == TreasureFallen) && spawns < 3 && (spawns + 1) * 25 < progress &&
-	           roll < 25) {
-		id = event == DarkWanderer ? DarkWandererMonster : TreasureFallenMonster;
+	} else if ((event == DarkWanderer || event == TreasureFallen || event == Invaders) && spawns < 3 &&
+	           (event == Invaders ? 25 + spawns * 20 : (spawns + 1) * 25) < progress && roll < 25) {
+		id = event == DarkWanderer ? DarkWandererMonster : event == Invaders ? InvaderPortalMonster : TreasureFallenMonster;
 	}
 	if (id < 0) {
 		return;
@@ -375,6 +380,9 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t pr
 // is only known to work by a unit that carries a level stat
 auto OperateAltar(ObjectOperate* args) noexcept -> int32_t {
 	using namespace d2r::rva;
+	if (args->classId == SacrificeAltar) {
+		return OperateSacrificeAltar(args->game, args->player);
+	}
 	Game* game = args->game;
 	Unit* altar = args->object;
 	if (game == nullptr || altar == nullptr || (args->classId != SpireAltar && args->classId != ShardAltar)) {
@@ -662,6 +670,14 @@ auto MapEvent(Game* game) noexcept -> int32_t {
 	return game != nullptr ? Get(game, EventKey) : 0;
 }
 
+auto MapEventSpawns(Game* game) noexcept -> int32_t {
+	return game != nullptr ? Get(game, SpawnsKey) : 0;
+}
+
+auto MapEventNotify(Game* game, int32_t event, const char* key) noexcept -> void {
+	NotifyKeyText(game, event, key);
+}
+
 // PD2 0x10378080, in state 2 of the Altar event: with the guardian in a room, a sound on the guardian to every player
 // in game, state 3, and every clone in the guardian's room and its neighbours (1.13c's near-room list) dies without a
 // drop (0x10356e00). Picked first, so no kill runs while the room lists are walked.
@@ -767,7 +783,7 @@ auto UnsubscribeRoomPopulate() noexcept -> void {
 
 auto ForceNextMapEvent(const char* name) noexcept -> bool {
 	static constexpr struct { const char* word; int32_t event; } Names[] = {
-		{"off", 0}, {"wanderer", DarkWanderer}, {"mendeln", Mendeln}, {"treasure", TreasureFallen}, {"horazon", Horazon}, {"gheed", Gheed}, {"altar", Altar}, {"spire", Spire}, {"tomb", Tomb},
+		{"off", 0}, {"wanderer", DarkWanderer}, {"mendeln", Mendeln}, {"treasure", TreasureFallen}, {"horazon", Horazon}, {"gheed", Gheed}, {"altar", Altar}, {"spire", Spire}, {"tomb", Tomb}, {"invaders", Invaders},
 	};
 	for (const auto& n : Names) {
 		if (std::strcmp(name, n.word) == 0) {

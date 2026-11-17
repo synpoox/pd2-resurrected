@@ -15,7 +15,7 @@ import json
 import re
 from pathlib import Path
 
-from pd2_ids import Table, excel
+from pd2_table import Table, excel
 
 HD = Path("hd") / "overlays"
 

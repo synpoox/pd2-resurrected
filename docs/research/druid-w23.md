@@ -5,7 +5,7 @@ Answers work item [W23](https://github.com/synpoox/pd2-resurrected/issues/98) ([
 
 PD2's table fill (`0x1036ba20`) writes srvdo 156 = `0x103b1980` (`+0x270`) and srvdo 165 = `0x103b27c0` (`+0x294`).
 D2R fills both slots (the free range starts at 172) and its srvdo table ends at 190, so both join the srvdo 190
-router (`tools/pd2_ids.py` FUNCS), by merged skill id: Gust 442 (PD2 370), Hunger 242 (D2R's own row).
+router (`tools/pd2_port.py` FUNCS), by merged skill id: Gust 442 (PD2 370), Hunger 242 (D2R's own row).
 
 ProjectDiablo.dll reaches 1.13c code through lazy thunks: `0x103a5f20(dll index, entry)` with the entry from a
 per-version table (index 0 is 1.13c; a positive value is an offset in the DLL, a negative one an ordinal; DLL indexes

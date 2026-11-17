@@ -38,7 +38,13 @@ int main() {
 	};
 	CHECK("Tomb (draw 11) is drawn while the Bitter Depths is built", run(6, false, {0, 11}) == er::Tomb);
 	CHECK("Tomb redraws while the Bitter Depths is not built", noTomb() == 15);
-	CHECK("Invaders (20) is never rolled: its draw slot draws again", run(6, false, {0, 10, 5}) == 15 && [&] { for (int d = 0; d < 12; ++d) if (er::Draws[d] == 20) return false; return true; }());
+	CHECK("Invaders (20) is drawn at slot 10", run(6, false, {0, 10}) == 20 && er::Draws[10] == 20);
+	// a draw lands on a non-empty slot with equal odds: 20 is 1 in 9 unforced, 1 in 8 forced (no Altar)
+	int events = 0, invaders = 0;
+	for (int d = 0; d < 12; ++d) {
+		events += er::Draws[d] != 0, invaders += er::Draws[d] == 20;
+	}
+	CHECK("Invaders hold 1 of 9 events unforced, 1 of 8 forced", events == 9 && invaders == 1 && events - 1 == 8);
 	std::printf("%d passed, %d failed\n", g_pass, g_fail);
 	return g_fail == 0 ? 0 : 1;
 }

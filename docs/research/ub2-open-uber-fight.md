@@ -46,7 +46,7 @@ The map spell's check and use hooks handle the keys too. A key's `len` in the ub
   port's 598) at (5076, 5119), (5068, 5108) and (5079, 5110), each leading to the uber level. If nobody arrives they
   are removed again. Tiers 1 and 2 make none.
 - **PD2's portal operate:** PD2 gives its `xactportal` objects operate function 77. The merge moves it to D2R's operate
-  slot 60, which is empty (`pd2_ids.FUNCS`), and core-maps writes its function there. That function runs the area
+  slot 60, which is empty (`pd2_port.FUNCS`), and core-maps writes its function there. That function runs the area
   rules when the portal leads into an uber level: the entry count (`UBRE`) goes up by one, the fight's bosses heal 20%
   of their max life, pets are removed and the 37 states stripped. Then the player is warped in, and a grey portal is
   removed. The other `xactportal` objects (the fights' own portals, later parts) take the same function, without

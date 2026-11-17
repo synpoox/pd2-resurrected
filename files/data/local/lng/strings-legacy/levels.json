@@ -6071,5 +6071,39 @@
     "ptBR": "Entering The Descent from Mount Arreat",
     "ruRU": "Entering The Descent from Mount Arreat",
     "zhCN": "Entering The Descent from Mount Arreat"
+  },
+  {
+    "id": 51518,
+    "Key": "DcloneArenaMap",
+    "enUS": "Diablo Clone Arena",
+    "zhTW": "Diablo Clone Arena",
+    "deDE": "Diablo Clone Arena",
+    "esES": "Diablo Clone Arena",
+    "frFR": "Diablo Clone Arena",
+    "itIT": "Diablo Clone Arena",
+    "koKR": "Diablo Clone Arena",
+    "plPL": "Diablo Clone Arena",
+    "esMX": "Diablo Clone Arena",
+    "jaJP": "Diablo Clone Arena",
+    "ptBR": "Diablo Clone Arena",
+    "ruRU": "Diablo Clone Arena",
+    "zhCN": "Diablo Clone Arena"
+  },
+  {
+    "id": 51519,
+    "Key": "EnteringDcloneArenaMap",
+    "enUS": "Entering Diablo Clone Arena",
+    "zhTW": "Entering Diablo Clone Arena",
+    "deDE": "Entering Diablo Clone Arena",
+    "esES": "Entering Diablo Clone Arena",
+    "frFR": "Entering Diablo Clone Arena",
+    "itIT": "Entering Diablo Clone Arena",
+    "koKR": "Entering Diablo Clone Arena",
+    "plPL": "Entering Diablo Clone Arena",
+    "esMX": "Entering Diablo Clone Arena",
+    "jaJP": "Entering Diablo Clone Arena",
+    "ptBR": "Entering Diablo Clone Arena",
+    "ruRU": "Entering Diablo Clone Arena",
+    "zhCN": "Entering Diablo Clone Arena"
   }
 ]

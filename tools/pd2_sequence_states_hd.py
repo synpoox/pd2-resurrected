@@ -17,14 +17,14 @@ import json
 import os
 from pathlib import Path
 
-import pd2_ids
+import pd2_table
 
 ROOT = Path(__file__).resolve().parent.parent
 
 def hd(cls: str) -> Path:
     return Path("hd") / "character" / "player" / cls / f"{cls}_state_machine.json"
 
-D2R_DATA = Path(os.environ.get("MODKIT_CACHE") or pd2_ids.toolkit(ROOT) / "d2r-data") / "93847" / "data"
+D2R_DATA = Path(os.environ.get("MODKIT_CACHE") or pd2_table.toolkit(ROOT) / "d2r-data") / "93847" / "data"
 SEQUENCE_MODE = 18
 # class -> (new skill id, source skill id, state name, transition-name suffix)
 STATES = {

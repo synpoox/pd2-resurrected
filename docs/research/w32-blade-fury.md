@@ -6,7 +6,7 @@ Answers work item [W32](https://github.com/synpoox/pd2-resurrected/issues/107) (
 
 PD2's missile installs write srvhit 34 = `0x103a7c70` (`0x103a9170`, table `+0x88`), clthit 6 = `0x103a6530`
 (`0x103a6c50`, `+0x18`) and srvdmg 19 = `0x103a7130` (`0x103a7220`, `+0x4c`). D2R fills srvhit 34 (echoingstrike);
-clthit 6 is below D2R's free range (66 on), so the merge moves them to 69 and 68 (`tools/pd2_ids.py` FUNCS). dmg 19
+clthit 6 is below D2R's free range (66 on), so the merge moves them to 69 and 68 (`tools/pd2_port.py` FUNCS). dmg 19
 is free.
 
 Row bladefragment1 (Blade Fury's HitSubMissile1, and its own): Param1 50, sHitPar1-3 3 / 5 / 2, cHitPar1-3 10 / 5 /

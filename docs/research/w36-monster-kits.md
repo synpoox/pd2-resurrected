@@ -83,7 +83,7 @@ D2R's 6 would let these spawns drop loot and give experience. Ours takes slot 67
 
 `sHitPar1` is a monstats id, and the mod's monstats has D2R's rows first (17 more than 1.13c's) and PD2's after them, so
 PD2's 999 (leoricGuards) is the mod's 1016. Before [W36](https://github.com/synpoox/pd2-resurrected/issues/244) the merge kept 999, which is a different monster in the mod.
-`pd2_ids.HIT_PARAMS` now names `sHitPar1` of srvhit 67 a monstats id, and `pd2_ids.monstats_ids` maps PD2's ids the way
+`pd2_port.HIT_PARAMS` now names `sHitPar1` of srvhit 67 a monstats id, and `shared/classic_import ids.monstats_ids` maps PD2's ids the way
 `merge/tables.json` merges monstats (by name, D2R's rows keep their ids).
 
 ## chit 11 (desertfireball), cdo 12 (siege beast stomp)

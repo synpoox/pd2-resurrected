@@ -13,7 +13,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from pd2_ids import Table, excel
+from pd2_table import Table, excel
 
 HD = Path("hd") / "missiles" / "missiles.json"
 

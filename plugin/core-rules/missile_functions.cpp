@@ -458,7 +458,7 @@ auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	const int32_t stats[2][2] = {{At<int32_t>(row, MsHitPar3), At<int32_t>(row, MsCltHitPar1)},
 	                             {At<int32_t>(row, MsCltHitPar2), At<int32_t>(row, MsCltHitPar3)}};
 	for (const auto& [stat, value] : stats) {
-		if (stat >= 0) {  // the merge gives these the mod's itemstatcost ids (pd2_ids.HIT_PARAMS)
+		if (stat >= 0) {  // the merge gives these the mod's itemstatcost ids (pd2_port.HIT_PARAMS)
 			setStat(dataFlag, list, stat, value, 0);
 		}
 	}

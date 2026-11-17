@@ -68,10 +68,10 @@ Reserved levels (appended in `merge/ids-levels.tsv`, so no later PR appends ther
 
 | Level | Encounter (binding) | Lane / ticket | Replaces |
 |---|---|---|---|
-| 209 | `dclone` | D #958 | 138 (built: Cartographer's Mesa arena from `arenas.txt`, #958; its spots are `arenaspots.txt` rows read through `cartographer.arena.v1`, `plugin/core-events/arena_spots.cpp`, not `plugin/placements/`) |
+| 209 | `dclone` | D #958 | 138 (built: Cartographer's 1x1 Wilderness (Swamp) arena from `arenas.txt`, #958; its spots are `arenaspots.txt` rows read through `cartographer.arena.v1`, `plugin/core-events/arena_spots.cpp`, not `plugin/placements/`) |
 | 210, 211, 212 | `rathma1`, `rathma2`, `rathma3` | D #961 | 160, 161, 162 (built: Cartographer's Mesa arenas from `arenas.txt`, #961; places in `plugin/placements/rathma.cpp` follow the `arenaspots.txt` spots) |
-| 213 | `lucion` | D #962 | 184 (built: Cartographer's Mesa arena from `arenas.txt`, #962; its spots are `arenaspots.txt` rows read through `cartographer.arena.v1`) |
-| 214 | `temple` | D #962 | 185 (built: Cartographer's Mesa Temple from `arenas.txt`, #962; the altar and chests are `arenaspots.txt` `Object` rows) |
+| 213 | `lucion` | D #962 | 184 (built: Cartographer's 1x1 Desert arena from `arenas.txt`, #962; its spots are `arenaspots.txt` rows read through `cartographer.arena.v1`) |
+| 214 | `temple` | D #962 | 185 (built: Cartographer's 1x1 Desert Temple from `arenas.txt`, #962; the altar and chests are `arenaspots.txt` `Object` rows) |
 | 215 | `bitterdepths` | C #960 | 215 (built: Cartographer's Mesa arena from `arenas.txt`, #960; its monsters are the row's `mon*` columns from PD2's Tomb Event Map 198, no spots) |
 
 No bridge is justified (Horazon's #959 needs a second Cartographer map, which a fixed D2R level cannot be: d2r-tools#485; next free id 216). Frozen without a replacement arena: `miniuber1-3` = D2R levels 133-135 (vanilla, `miniubers.cpp`, bindings only), and `tristram` = D2R's Uber Tristram arena 136 with PD2's bosses (`Source::D2RTristram`, target 136; Tristram is now level 136 with no places (#957)). `harrogath` (109) holds the Blood Fountain and the three grey re-entry portals.

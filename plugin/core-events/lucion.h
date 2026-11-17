@@ -21,5 +21,7 @@ auto InstallLucion(const D2RL::PluginContext* context, char* report, size_t repo
 // UB7a: a transmute in the Temple with one corrupted amulet after Lucion's death is a Desecration attempt. Returns true
 // when it ran (the caller then blocks the recipe).
 auto Desecrate(d2r::Game* game, d2r::Unit* player) noexcept -> bool;
+// The Sacrifice Altar's use: Desecrate on the cube's amulet, logging why when it does not run. Returns 1 (used).
+auto OperateSacrificeAltar(d2r::Game* game, d2r::Unit* player) noexcept -> int32_t;
 // Live counters for the status command.
 auto LucionCounters(char* out, size_t size) noexcept -> void;

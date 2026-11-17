@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_monsters_hd as H  # noqa: E402
-from pd2_ids import Table  # noqa: E402
+from pd2_table import Table  # noqa: E402
 
 
 def table(text: str) -> Table:

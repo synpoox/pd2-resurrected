@@ -44,10 +44,10 @@ The per-check recipe (cheats, shots, images, unlock) is `docs/agents/game-check.
 
 ## Shared cache
 
-`C:\pd2r-cache` (or `PD2R_CACHE`) holds what every worktree would otherwise rebuild (`tools/pd2_cache.py`, #440):
+`C:\pd2r-cache` (or `PD2R_CACHE`) holds what every worktree would otherwise rebuild (d2rAI-toolkit's `shared/classic_import/cache.py`, #440; the toolkit is found as `toolkit_path.py` prints it):
 
 - `pd2_extract.py` (no `--out`; only the gate and `pd2_import.py` run it) extracts once per extract stamp into `extract\<key>\` and makes the worktree's
-  `pd2-data` a junction to it. A lock lets one extract run at a time; the others wait, then skip. A worktree whose
+  `pd2-data` a junction to it. A lock (`extract.lock`) lets one extract run at a time; the others wait, then skip. A worktree whose
   `pd2-data` is still a real folder keeps using it: delete that folder to share the cache.
 - `install.ps1` (modkit install) writes only the `out\data` files that differ from the slot's and touches nothing outside
   `<slot>\mods\PD2Resurrected`, so moving a slot between builds is quick.

@@ -16,11 +16,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 PLUGIN = ROOT / "plugin"
 sys.path.insert(0, str(ROOT / "tools"))
-import pd2_ids  # noqa: E402
+import pd2_table  # noqa: E402
 
 # Engine facts live in our header and (the shared ones, e.g. CubeExecutorEntry) in the toolkit's rvas_93847 headers (#976).
 try:
-    TOOLKIT_RVAS = pd2_ids.toolkit(ROOT) / "shared" / "plugin-common" / "src" / "rvas_93847"
+    TOOLKIT_RVAS = pd2_table.toolkit(ROOT) / "shared" / "plugin-common" / "src" / "rvas_93847"
 except ValueError:  # no toolkit: the tests that read it skip
     TOOLKIT_RVAS = ROOT / "no-toolkit"
 ENGINE = (PLUGIN / "common" / "pd2_engine.h").read_text(encoding="utf-8") + "".join(

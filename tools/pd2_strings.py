@@ -9,11 +9,11 @@ generated/data/local/lng/. merge/strings.json holds key names and numbers only, 
   renames    our key -> the PD2 key whose text it carries (Runeword171 means another runeword in D2R)
   ids        key -> [string ID, D2R file], append-only. New keys copy PD2's English into all 13 languages; a
              hiredesc_<code> key takes the description in PD2's hiredesc table (PD2 has no string for it).
-  entries    key -> LevelName key, for the LevelEntry keys pd2_ids.fix_levels gives PD2-only levels: "Entering " and that
+  entries    key -> LevelName key, for the LevelEntry keys shared/classic_import ids.fix_levels gives PD2-only levels: "Entering " and that
              name, PD2's text (else D2R's), in all 13 languages; --assign adds them from the merged levels.txt
   texts      key -> English the mod writes itself, for listed keys PD2 has no text for (skilldesc lines in D2R's
              format, #73); written into all 13 languages like PD2's
-A key in pd2_ids.PLAIN_STRINGS' values takes its source key's text without printf codes (#383). The rule fails if a
+A key in pd2_port.PLAIN_STRINGS' values takes its source key's text without printf codes (#383). The rule fails if a
 descfunc 6-9 stat's descstr2 text has a printf code.
 Text going into skills.json has its lines flipped (D2R stacks multi-line skill text top-down). A trailing `ÿc/` (a PD2
 colour D2R lacks) is dropped. The rule fails if D2R
@@ -30,7 +30,9 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-import pd2_ids
+import pd2_port
+import pd2_table
+from shared.classic_import import tables
 
 ROOT = Path(__file__).resolve().parent.parent
 TBL = "local/lng/eng/patchstring.tbl"  # under PD2's data root
@@ -57,7 +59,7 @@ def modkit():
     try:
         from modkit import base, strings
     except ImportError:
-        sys.path.insert(0, str(pd2_ids.toolkit(ROOT)))
+        sys.path.insert(0, str(pd2_table.toolkit(ROOT)))
         from modkit import base, strings
     return base, strings
 
@@ -101,7 +103,7 @@ def build(cfg: dict, pd2: dict[str, str], s, out_root: Path) -> list[str]:
                 raise ValueError(f"override {key!r} changes D2R's placeholders (crash risk)")
             e["enUS"] = new
             s.changed.add(rel)
-    plain_src = {v: k for k, v in pd2_ids.PLAIN_STRINGS.items()}
+    plain_src = {v: k for k, v in pd2_port.PLAIN_STRINGS.items()}
     entries = cfg.get("entries", {})
     seen: set[int] = set()
     for key, (sid, file) in sorted(cfg["ids"].items(), key=lambda kv: kv[1][0]):
@@ -138,9 +140,8 @@ def plain(text: str) -> str:
 
 
 def pd2_texts(pd2_data: Path) -> dict[str, str]:
-    """PD2's strings by key, and hiredesc_<code> for the descriptions the moved hireling rows name (pd2_tables)."""
-    import pd2_tables
-    return {**{f"hiredesc_{c}": d for c, d in pd2_tables.hire_descs(pd2_data).items()}, **read_tbl((pd2_data / TBL).read_bytes())}
+    """PD2's strings by key, and hiredesc_<code> for the descriptions the moved hireling rows name (shared/classic_import tables)."""
+    return {**{f"hiredesc_{c}": d for c, d in tables.hire_descs(pd2_data).items()}, **read_tbl((pd2_data / TBL).read_bytes())}
 
 
 def check_stat_strings(excel: Path, lng: Path, d2r_lng: Path) -> None:
@@ -188,7 +189,7 @@ def referenced(excel: Path) -> dict[str, set[tuple[str, str]]]:
 def assign(cfg: dict, pd2: dict[str, str], excel: Path, s, levels: Path | None = None) -> list[str]:
     """Appends to cfg["ids"] each renamed key and each PD2 key a table names that D2R lacks (exact case), with the
     D2R file the column's other keys mostly sit in, numbered from FIRST_ID skipping D2R's low-16 values. With the
-    merged levels.txt, each LevelEntry key neither game has (pd2_ids.entry_key) also goes to cfg["entries"], naming
+    merged levels.txt, each LevelEntry key neither game has (shared/classic_import ids.entry_key) also goes to cfg["entries"], naming
     its row's LevelName key."""
     index = s.index()
     d2r = {e["Key"]: rel.rsplit("/", 1)[1] for hits in index.values() for rel, e in hits if "-legacy" not in rel}
@@ -244,11 +245,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--root", type=Path, default=ROOT)
     ap.add_argument("--d2r", type=Path, help="D2R data root (default: pd2_merge's)")
     a = ap.parse_args(argv)
-    import pd2_merge
     pd2_data = a.root / "pd2-data" / "data"
     cfg_file = a.root / "merge" / "strings.json"
     cfg = json.loads(cfg_file.read_text("utf-8"))
-    strings = modkit()[1].Strings(DataRoot(a.d2r or pd2_merge.D2R_DATA))
+    strings = modkit()[1].Strings(DataRoot(a.d2r or pd2_table.D2R_DATA))
     levels = a.root / "generated" / "data" / "global" / "excel" / "levels.txt"  # pd2_merge's
     if not levels.is_file():
         print(f"warning: no {levels}: run tools/pd2_merge.py first, or the levels' LevelEntry keys get no IDs",

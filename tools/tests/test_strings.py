@@ -118,9 +118,9 @@ class StringsTests(unittest.TestCase):
         self.assertEqual(pd2_strings.plain("%+d%% Deadly Strike"), "Deadly Strike")
         self.assertEqual(pd2_strings.plain("Cold Absorb %+d%%"), "Cold Absorb")
         self.assertEqual(pd2_strings.plain("+%d magic damage"), "magic damage")
-        pd2_strings.pd2_ids.PLAIN_STRINGS["ModStr"] = "ModStrMap"  # D2R's "%d%% Strike"; PD2 has its own text
-        pd2_strings.pd2_ids.PLAIN_STRINGS["skillld1"] = "skillld1Map"
-        self.addCleanup(lambda: [pd2_strings.pd2_ids.PLAIN_STRINGS.pop(k) for k in ("ModStr", "skillld1")])
+        pd2_strings.pd2_port.PLAIN_STRINGS["ModStr"] = "ModStrMap"  # D2R's "%d%% Strike"; PD2 has its own text
+        pd2_strings.pd2_port.PLAIN_STRINGS["skillld1"] = "skillld1Map"
+        self.addCleanup(lambda: [pd2_strings.pd2_port.PLAIN_STRINGS.pop(k) for k in ("ModStr", "skillld1")])
         pd2 = {k: v for k, v in self.pd2.items() if k != "ModStr"}
         cfg = {"overrides": [], "ids": {"ModStrMap": [50000, "item-modifiers.json"]}}
         pd2_strings.build(cfg, pd2, self.strings(), self.root / "out")

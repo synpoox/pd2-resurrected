@@ -67,7 +67,7 @@ class PlacementsTests(unittest.TestCase):
         pl = {(e, i): (int(x), int(y)) for e, i, x, y in
               re.findall(r'\{"(rathma\d)", "(\w+)", (\d+), (\d+), ', text)}
         for n in (1, 2, 3):
-            assert f"Rathma {n}\t{209 + n}\tMesa\t12\t12\tMesa1" in (cart / "arenas.txt").read_text(encoding="utf-8")
+            assert f"Rathma {n}\t{209 + n}\tMesa\t1\t1\tMesa1" in (cart / "arenas.txt").read_text(encoding="utf-8")
             for (arena, name), (tx, ty) in spots.items():
                 if arena == f"Rathma {n}":
                     assert pl[(f"rathma{n}", name)] == ((6000 + 8 + tx) * 5 + 2, (offy[n] + 8 + ty) * 5 + 2), (n, name)
