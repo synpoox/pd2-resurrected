@@ -1,4 +1,4 @@
-"""#1267: Dclone's soul pillars are selectable, attackable and killable, so missiles hit them."""
+"""#1267: Dclone's soul pillars are selectable and attackable, and never killable, so missiles hit them."""
 import unittest
 
 import data_tables
@@ -9,7 +9,7 @@ class SoulPillarTests(unittest.TestCase):
         data_tables.need(self)
         stats = {r["Id"]: r for r in data_tables.rows("monstats")}
         for n in range(1, 5):
-            assert stats[f"ubertrappedsoul{n}"]["killable"] == "1"
+            assert stats[f"ubertrappedsoul{n}"]["killable"] == ""
         ex = {r["Id"]: r for r in data_tables.rows("monstats2")}["UberTrappedSoul"]
         assert ex["isSel"] == "1" and ex["isAtt"] == "1"
 
