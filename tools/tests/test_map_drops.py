@@ -1,4 +1,4 @@
-"""Map drops (#1307): PD2's Map Tier / T1-T3 Map Drop treasure classes over m01-m25; maps do not stack (owner rule: only normal maps with no extra stats may, needs a core-rules hook)."""
+"""Map drops (#1307): PD2's Map Tier / T1-T3 Map Drop treasure classes over m01-m25; maps stack to 50 (a core-rules hook merges only normal maps with equal stats, #1326)."""
 import unittest
 
 import data_tables
@@ -36,11 +36,11 @@ class MapDrops(unittest.TestCase):
         for name, d in (("Map Boss T1", DROPS[0]), ("Map Boss T2", DROPS[1]), ("Map Boss T3", DROPS[2]), ("Map Boss T4", DROPS[2])):
             assert d in [self.tc[name][f"Item{n}"] for n in range(1, 11)], name
 
-    def test_maps_do_not_stack(self):
+    def test_maps_stack_to_50(self):
         maps = [r for r in data_tables.rows("misc") if r["type"] in TIERS]
         assert len(maps) == 25
         for r in maps:
-            assert (r["stackable"], r["minstack"], r["maxstack"], r["spawnstack"]) == ("0", "0", "0", "0"), r["code"]
+            assert (r["stackable"], r["minstack"], r["maxstack"], r["spawnstack"]) == ("1", "1", "50", "1"), r["code"]
 
 
 if __name__ == "__main__":

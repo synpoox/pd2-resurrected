@@ -1,0 +1,70 @@
+// The map stack rule's stat compare (#1326), with no engine types so tests/map_stack_check.cpp builds it on the host.
+// `entries(unit, stat, out, max)` is UnitStatEntries; returns the first stat id that differs between a and b (the
+// quantity, stat 70, is skipped before anything is read), or -1 when every other stat matches layer by layer.
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+
+namespace pd2::mapstack {
+
+struct Entry {
+	uint16_t layer, stat;
+	int32_t value;
+};
+
+template <class Unit, class Entries>
+auto FirstDifference(Unit* a, Unit* b, int32_t statCount, int32_t quantityStat, Entries entries) noexcept -> int32_t {
+	for (int32_t stat = 0; stat < statCount; ++stat) {
+		if (stat == quantityStat) {
+			continue;
+		}
+		Entry ea[64] {}, eb[64] {};
+		const int32_t na = entries(a, static_cast<uint32_t>(stat), ea, 64);
+		const int32_t nb = entries(b, static_cast<uint32_t>(stat), eb, 64);
+		// A count past the buffer is clamped before it is read (the engine fills at most 64)
+		const int32_t k = na > 64 ? 64 : na;
+		if (na != nb || (k > 0 && std::memcmp(ea, eb, static_cast<size_t>(k) * sizeof(Entry)) != 0)) {
+			return stat;
+		}
+	}
+	return -1;
+}
+
+// The non-quantity stats of one map, read off the source before they are written onto the split's new piece (two
+// native-item callbacks, so the two units are never open at once). shortcut: 64 entries, a map has a handful.
+struct Saved {
+	Entry entry[64];
+	int32_t count = 0;
+};
+
+template <class Unit, class Entries>
+auto Collect(Unit* src, int32_t statCount, int32_t quantityStat, Entries entries, Saved& saved) noexcept -> void {
+	saved.count = 0;
+	for (int32_t stat = 0; stat < statCount; ++stat) {
+		Entry e[64] {};
+		int32_t n = stat == quantityStat ? 0 : entries(src, static_cast<uint32_t>(stat), e, 64);
+		n = n > 64 ? 64 : n;
+		for (int32_t i = 0; i < n && saved.count < 64; ++i) {
+			saved.entry[saved.count++] = e[i];
+		}
+	}
+}
+
+// Sets each saved (stat, layer) to its value on dst: an overwrite, so it ends the same whether the piece already had them
+template <class Unit, class SetStat>
+auto Apply(Unit* dst, const Saved& saved, SetStat set) noexcept -> int32_t {
+	for (int32_t i = 0; i < saved.count; ++i) {
+		set(dst, saved.entry[i].stat, saved.entry[i].value, saved.entry[i].layer);
+	}
+	return saved.count;
+}
+
+// A map's item code (m01..m25, little-endian "m01 ")
+constexpr auto IsMapCode(uint32_t code) noexcept -> bool {
+	const auto ch = [code](int i) { return static_cast<char>((code >> (8 * i)) & 0xff); };
+	return ch(0) == 'm' && ch(1) >= '0' && ch(1) <= '2' && ch(2) >= '0' && ch(2) <= '9' && (ch(3) == ' ' || ch(3) == 0);
+}
+
+}  // namespace pd2::mapstack
