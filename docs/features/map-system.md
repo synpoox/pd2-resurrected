@@ -16,7 +16,7 @@ work items are placed on [roadmap.md](../roadmap.md) by [#210](https://github.co
 
 - Every map has one tier, like PD2: T1 opens at area level 87, T2 at 88, T3 at 89 (`maps.txt` `Level`; Cartographer stamps it on each new map as `cartographer_map_level`, shown as `Area Level: N`). A map that already exists keeps the level it was made with (alpha: no conversion).
 - A map's misc `type` is its tier type, `t1m`, `t2m` or `t3m`. Each is a direct child of `cmap` (`Equiv1 cmap`, no chain between tiers, so a T3 map is not a `t2m`). The PD2 rows were reused and repointed, so no code is new. `Magic`/`Rare`/`Normal` match `cmap`.
-- The tier line is PD2's `MapTierValue` string (`Tier: %d`): misc `spelldesc 2`, `spelldescstr MapTierValue`, `spelldesccalc` = the tier.
+- The tier line is PD2's `MapTierValue` string (`Tier: %d`): misc `spelldesc 2`, `spelldescstr MapTierValue`, `spelldesccalc` = the tier. The game reads the tier from a stat calc, so each map also carries `stat1 hpregen`, `calc1` = the tier (without it the line showed "Tier: 0"; hpregen is a harmless stat on a map).
 - No map rolls magic naturally. `cmap` and the tier types read Magic 0, Rare 1, Normal 0; Cartographer's hook turns a natural magic roll into normal (`Magic` 1 would mean always magic). A magic map made by a cheat stays magic.
 - `levelreq` is unchanged. The Catalyst recipe (`cmap` + `iwss`) still matches every map, since each tier type is a child of `cmap`.
 - Tier assignment, about 8 per tier, with outdoor and indoor tilesets in each (PD2's own tier where the map has a PD2 namesake: Phlegethon, Tomb of Zoltun Kulle, Shadows of Westmarch, Lost Temple, Sanatorium T1; Horazon's Memory, Ruined Cistern T2; Bastion Keep, Royal Crypts, Arreat Battlefield, Kehjistan Marketplace T3):

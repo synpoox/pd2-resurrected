@@ -31,6 +31,8 @@ class CartographerCatalogueRowsTests(unittest.TestCase):
             n = s["type"][1]
             assert s["type"] in ("t1m", "t2m", "t3m") and m["Level"] == str(86 + int(n)), m["Name"]
             assert (s["spelldesc"], s["spelldescstr"], s["spelldesccalc"]) == ("2", "MapTierValue", n), m["Name"]
+            # the tooltip reads the tier from a stat calc: spelldesccalc alone showed "Tier: 0" in game
+            assert (s["stat1"], s["calc1"]) == ("hpregen", n), m["Name"]
             counts[n] = counts.get(n, 0) + 1
         assert sorted(counts.values()) == [8, 8, 9], counts
 
