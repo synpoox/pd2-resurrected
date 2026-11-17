@@ -25,6 +25,7 @@
 #include <intrin.h>
 
 #include <array>
+#include <iterator>
 #include <atomic>
 #include <cstdio>
 
@@ -162,7 +163,12 @@ auto SpawnBoss(Game* game, void* near, int32_t level, const Boss& boss) noexcept
 	using namespace d2r::rva;
 	// The search and the spawn are retried a few subtiles off: D2R refused the second clone at its own spot, 6 subtiles
 	// from the first (#1208)
-	constexpr int32_t Nudge[][2] = {{0, 0}, {4, 0}, {-4, 0}, {0, 4}, {0, -4}, {8, 8}, {-8, 8}, {8, -8}, {-8, -8}};
+	static constexpr int32_t Nudge[][2] = {{0, 0}, {4, 0}, {-4, 0}, {0, 4}, {8, 4}, {-8, 4}};
+	// The bosses stand on tile row 1 (7 subtiles below the interior's top edge), col 4 and up: no nudge leaves rows 0-7
+	constexpr int32_t RowMargin = 7, ColMargin = 18;
+	constexpr auto inside = [](int32_t dx, int32_t dy) { return dy >= -RowMargin && dx >= -ColMargin && dx <= ColMargin; };
+	static_assert(inside(Nudge[0][0], Nudge[0][1]) && inside(Nudge[1][0], Nudge[1][1]) && inside(Nudge[2][0], Nudge[2][1]) &&
+	              inside(Nudge[3][0], Nudge[3][1]) && inside(Nudge[4][0], Nudge[4][1]) && inside(Nudge[5][0], Nudge[5][1]));
 	Unit* unit = nullptr;
 	for (const auto& n : Nudge) {
 		const Spot at = {boss.at.x + n[0], boss.at.y + n[1]};
@@ -179,6 +185,9 @@ auto SpawnBoss(Game* game, void* near, int32_t level, const Boss& boss) noexcept
 			: nullptr;
 		if (unit != nullptr) {
 			break;
+		}
+		if (&n == std::end(Nudge) - 1) {
+			continue;
 		}
 		plog::Info("rathma: monster %d refused at (0x%x, 0x%x), spot (0x%x, 0x%x), nudging", boss.classId, at.x, at.y,
 		           xy[0], xy[1]);
