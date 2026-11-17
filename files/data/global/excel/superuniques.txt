@@ -72,3 +72,14 @@ cartoboss:The_20Guardian	LibraryBoss	doomknight3LibraryBoss	68		0	0	0	0	0	1	0		1
 cartoboss:Nathkill_20The_20Numb	IceBoss	IceBoss	69		0	0	0	0	0	1	0		11	11	11	Map Boss T1		Map Boss T1		Map Boss T1 Blood	Map Boss T1	0
 cartoboss:The_20Great_20Worm	torajanBoss	torajanBoss	70		0	0	0	0	0	1	0		11	11	11	Map Boss T1		Map Boss T1		Map Boss T1 Blood	Map Boss T1	0
 cartoboss:Shattered_20Soul	CanyonBoss	CanyonBoss	71		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2 Blood	Map Boss T2	0
+cartoboss:Lieutenant_20of_20Sin	Megademon Boss	megademonboss	72		0	0	0	0	0	1	0		11	11	11	Map Boss T3		Map Boss T3		Map Boss T3 Blood	Map Boss T3	0
+cartoboss:The_20Mad_20Philosopher	SewerBoss	SewerBoss	73		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2 Blood	Map Boss T2	0
+cartoboss:Deathmaiden_20Madinsane	ArcaneBoss	ArcaneBoss	74		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2 Blood	Map Boss T2	0
+cartoboss:Armorsmith_20of_20Equality	SiegeBoss	SiegeBoss	75		0	0	0	0	0	1	0		11	11	11	Map Boss T3		Map Boss T3		Map Boss T3 Blood	Map Boss T3	0
+cartoboss:Johnathan_20The_20Damned	BastionBoss	BastionBoss	76		0	0	0	0	0	1	0		11	11	11	Map Boss T1		Map Boss T1		Map Boss T1 Blood	Map Boss T1	0
+cartoboss:Toadflax_20the_20Tainted	TombBoss	TombBoss	77		0	0	0	0	0	1	0		11	11	11	Map Boss T1		Map Boss T1		Map Boss T1 Blood	Map Boss T1	0
+cartoboss:The_20Cow_20Queen	CowBoss	CowBoss	78		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2 Blood	Map Boss T2	0
+cartoboss:Indio_20The_20Insane	ThroneBoss	ThroneBoss	79		0	0	0	0	0	1	0		11	11	11	Map Boss T3		Map Boss T3		Map Boss T3 Blood	Map Boss T3	0
+cartoboss:Bloodlord_20of_20the_20Pit	PoisonedWellBoss	PoisonedWellBoss	80		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2 Blood	Map Boss T2	0
+cartoboss:Gaoler_20Kanemith	KanemithBoss	KanemithBoss	81		0	0	0	0	0	1	0		11	11	11	Map Boss T1		Map Boss T1		Map Boss T1 Blood	Map Boss T1	0
+cartoboss:Sharptooth_20the_20Broodmother	SharpToothBoss	SharpToothBoss	82		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2 Blood	Map Boss T2	0

@@ -1,4 +1,4 @@
-"""#952: the native catalogue is m01-m05, one map per tileset, each on a slot the game check opened and returned from."""
+"""#952, #1287: the native catalogue is m01-m25, one map per Cartographer tileset, each on a slot the game check opened."""
 import unittest
 import csv
 from pathlib import Path
@@ -12,9 +12,9 @@ def rows(name):
 
 
 class CartographerCatalogueRowsTests(unittest.TestCase):
-    def test_five_maps_one_per_tileset_on_distinct_items(self):
+    def test_25_maps_one_per_tileset_on_distinct_items(self):
         maps = rows("maps.txt")
-        assert [m["Item"] for m in maps] == ["m01", "m02", "m03", "m04", "m05"]
+        assert [m["Item"] for m in maps] == [f"m{i:02d}" for i in range(1, 26)]
         assert len({m["Tileset"] for m in maps}) == len(maps) == len({m["Name"] for m in maps})
 
 
@@ -28,3 +28,5 @@ class CartographerCatalogueRowsTests(unittest.TestCase):
         # game check 2026-11-15: Cave 138, Crypt 139, Ice 141, Jungle 142, Snow 143 (202-207 before #1231) opened and were built as planned.
         levels = {s["Slot"]: int(s["Level"]) for s in rows("slots.txt")}
         assert [levels[k] for k in ("Maze", "MazeCrypt", "MazeIce", "Outdoor", "OutdoorSnow")] == [138, 139, 141, 142, 143]
+        # #1287: the other 20 tilesets, each with a map of its own (Lava 140, Siege 144, then the ids the installer gave the new levels)
+        assert [levels[k] for k in ("MazeLava", "OutdoorSiege", "MazeDurance", "MazeArcane", "OutdoorMesa", "OutdoorDesert", "OutdoorWilderness", "OutdoorKurast") + tuple("Maze" + n for n in ("Dungeon", "Jail", "Lair", "KurastSewer", "Barracks", "Harem", "Basement", "Sewer", "Catacombs", "Tombs", "Spider", "Temple"))] == [140, 144, 152, 153, 154, 155, 156, 157, *range(158, 170)]

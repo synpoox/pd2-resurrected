@@ -4,3 +4,23 @@ Bone Vaults	Crypt	Branching	m02	Medium	85	1	The Guardian
 Frozen Hollows	Ice	Winding	m03	Medium	85	1	Nathkill The Numb
 Overgrown Reach	Jungle	Winding	m04	Medium	85	1	The Great Worm
 Frostbitten Fields	Snow		m05	Medium	85	1	Shattered Soul
+Phlegethon	Lava	Sprawl	m06	Medium	85	1	Lieutenant of Sin
+Battlefields of Eternity	Durance	Branching	m07	Medium	85	1	The Mad Philosopher
+Horazon's Memory	Arcane	Loop	m08	Medium	85	1	Deathmaiden Madinsane
+Arreat Battlefield	Siege		m09	Medium	85	1	Armorsmith of Equality
+Howling Plateau	Mesa		m10	Medium	85	1	Johnathan The Damned
+Kehjistan Marketplace	Desert		m11	Medium	85	1	Toadflax the Tainted
+Shadows of Westmarch	Wilderness		m12	Medium	85	1	The Cow Queen
+Ruins of Corvus	Kurast		m13	Medium	85	1	Indio The Insane
+Leoric's Passage	Dungeon	Winding	m14	Medium	85	1	Bloodlord of the Pit
+Cursed Hold	Jail	Branching	m15	Medium	85	1	Gaoler Kanemith
+Khazra Den	Lair	Sprawl	m16	Medium	85	1	Sharptooth the Broodmother
+Cellar of the Damned	KurastSewer	Loop	m17	Medium	85	1	Bloodlord of the Pit
+Bastion Keep	Barracks	Branching	m18	Medium	85	1	Gaoler Kanemith
+Imperial Palace	Harem		m19	Medium	85	1	Deathmaiden Madinsane
+Sanatorium	Basement		m20	Medium	85	1	The Guardian
+Ruined Cistern	Sewer	Winding	m21	Medium	85	1	The Mad Philosopher
+Royal Crypts	Catacombs	Loop	m22	Medium	85	1	King Leoric
+Tomb of Zoltun Kulle	Tombs	Branching	m23	Medium	85	1	Toadflax the Tainted
+Lost Temple	Spider		m24	Medium	85	1	Sharptooth the Broodmother
+Dark Temple	Temple		m25	Medium	85	1	Shattered Soul

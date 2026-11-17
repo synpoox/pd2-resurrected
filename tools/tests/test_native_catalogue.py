@@ -8,10 +8,15 @@ import data_tables
 
 ROOT = Path(__file__).resolve().parents[2]
 CART = ROOT / "files/data/global/excel/d2rloader/cartographer"
-# Tilesets seen opening, reaching the boss and returning in game (d2r-tools docs/cartographer/testing.md). Lava and
-# Siege are deferred: Lava's edges and boss were not settled, Siege was not run in game.
-VERIFIED = {"Cave": 138, "Crypt": 139, "Ice": 141, "Jungle": 142, "Snow": 143}
-SLOT = {"Cave": "Maze", "Crypt": "MazeCrypt", "Ice": "MazeIce", "Jungle": "Outdoor", "Snow": "OutdoorSnow"}
+# Every tileset Cartographer supports (d2r-tools plugins/cartographer README, OutdoorTilesets and MazeTilesets), with the
+# level its slot opens. #1287 added Lava, Durance, Arcane, Siege, Mesa, Desert, Wilderness and Kurast.
+VERIFIED = {"Cave": 138, "Crypt": 139, "Ice": 141, "Jungle": 142, "Snow": 143, "Lava": 140, "Siege": 144,
+            "Durance": 152, "Arcane": 153, "Mesa": 154, "Desert": 155, "Wilderness": 156, "Kurast": 157,
+            "Dungeon": 158, "Jail": 159, "Lair": 160, "KurastSewer": 161, "Barracks": 162, "Harem": 163, "Basement": 164, "Sewer": 165, "Catacombs": 166, "Tombs": 167, "Spider": 168, "Temple": 169}
+SLOT = {"Cave": "Maze", "Crypt": "MazeCrypt", "Ice": "MazeIce", "Jungle": "Outdoor", "Snow": "OutdoorSnow",
+        "Lava": "MazeLava", "Siege": "OutdoorSiege", "Durance": "MazeDurance", "Arcane": "MazeArcane",
+        "Mesa": "OutdoorMesa", "Desert": "OutdoorDesert", "Wilderness": "OutdoorWilderness", "Kurast": "OutdoorKurast",
+        "Dungeon": "MazeDungeon", "Jail": "MazeJail", "Lair": "MazeLair", "KurastSewer": "MazeKurastSewer", "Barracks": "MazeBarracks", "Harem": "MazeHarem", "Basement": "MazeBasement", "Sewer": "MazeSewer", "Catacombs": "MazeCatacombs", "Tombs": "MazeTombs", "Spider": "MazeSpider", "Temple": "MazeTemple"}
 POOL = "Cartographer Maps"
 
 
@@ -27,7 +32,7 @@ class NativeCatalogueTests(unittest.TestCase):
     def setUp(self):
         data_tables.need(self)
 
-    def test_one_map_per_verified_tileset_and_none_other(self):
+    def test_one_map_per_tileset_and_none_other(self):
         maps = rows("maps.txt")
         assert sorted(m["Tileset"] for m in maps) == sorted(VERIFIED)
         slots = {s["Slot"]: int(s["Level"]) for s in rows("slots.txt")}
@@ -49,11 +54,23 @@ class NativeCatalogueTests(unittest.TestCase):
 
 
     def test_pool_is_one_tierless_row_shared_by_every_normal_source(self):
-        (s,) = [r for r in data_tables.rows("treasureclassex") if r["Treasure Class"] == POOL]
-        items = [s[f"Item{i}"] for i in range(1, 11) if s[f"Item{i}"]]
-        assert items == [m["Item"] for m in rows("maps.txt")]
-        assert all(s[f"Prob{i}"] == "1" for i in range(1, len(items) + 1)) and s["Picks"] == "1"
-        good = {r["Treasure Class"]: r for r in data_tables.rows("treasureclassex")}
+        tcs = {r["Treasure Class"]: r for r in data_tables.rows("treasureclassex")}
+
+        def flat(name):  # (item, weight): a TC row holds 10 items, so the pool nests "Cartographer Maps B" at the weight of its maps
+            r = tcs[name]
+            assert r["Picks"] == "1"
+            out = []
+            for i in range(1, 11):
+                if r[f"Item{i}"] in tcs:
+                    sub = flat(r[f"Item{i}"])
+                    assert int(r[f"Prob{i}"]) == len(sub)
+                    out += sub
+                elif r[f"Item{i}"]:
+                    assert r[f"Prob{i}"] == "1"
+                    out.append(r[f"Item{i}"])
+            return out
+        assert flat(POOL) == [m["Item"] for m in rows("maps.txt")]
+        good = tcs
         assert all(good[f"Act {a} (H) Good"]["Item9"] == POOL for a in range(1, 6))
         assert not any("Map Tier" in v for r in good.values() for v in r.values())
 
