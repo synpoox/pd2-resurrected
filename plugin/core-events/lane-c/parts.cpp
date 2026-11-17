@@ -74,7 +74,7 @@ void InstallAnyamapsPart(const D2RL::PluginContext* context, char* report, size_
 	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
 }
 
-sigscan::Entry* const AnyamapsUses[] = {&d2r::sig::FindUnit};
+sigscan::Entry* const AnyamapsUses[] = {&d2r::sig::FindUnit, &d2r::sig::ItemRecord};
 
 PartReg r240(240, "anyamaps", InstallAnyamapsPart, AnyamapsUses);
 CountersReg c240(240, AnyaMapsCounters);

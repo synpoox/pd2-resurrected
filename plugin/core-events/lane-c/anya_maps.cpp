@@ -25,8 +25,6 @@ using d2r::Unit;
 // The deferred event's closure: +8 player guid, +0x10 game (D2R's A5Q3AnyaGiftExecute)
 constexpr int ClosureGuid = 0x08;
 constexpr int ClosureGame = 0x10;
-constexpr int RecordCode = 0x80;      // items record: the item code (a dword)
-constexpr int RecordType = 0x12e;     // items record: int16 itemtypes row (ItemIsType 0x373890 reads it)
 constexpr int MapCount = 3;
 constexpr int MapItemLevel = 99;
 constexpr int QualityNormal = 2;
@@ -70,12 +68,12 @@ auto T1MapCodes(Game* game, uint32_t* codes) noexcept -> int {
 	if (tables->getTable(g_context, bank, D2RL::DataTables::TableId::Items, &items) != D2RL::DataTables::Result::Success) {
 		return 0;
 	}
-	const auto itemRecord = d2r::Engine<ItemRecordFn>(d2r::rva::ItemRecord);
+	const auto itemRecord = d2r::Engine<ItemRecordFn>(d2r::sig::ItemRecord);
 	int count = 0;
 	for (uint32_t i = 0; i < items.rowCount && count < MaxCandidates; ++i) {
 		const uint8_t* record = itemRecord(d2r::DataFlag(game), static_cast<int32_t>(i));
-		if (record != nullptr && At<int16_t>(record, RecordType) == static_cast<int16_t>(type.rowIndex)) {
-			codes[count++] = At<uint32_t>(record, RecordCode);
+		if (record != nullptr && At<int16_t>(record, d2r::rva::ItType) == static_cast<int16_t>(type.rowIndex)) {
+			codes[count++] = At<uint32_t>(record, d2r::rva::ItCode);
 		}
 	}
 	return count;
@@ -113,7 +111,7 @@ auto AnyaGift(void* closure, void* arg) noexcept -> uint64_t {
 auto InstallAnyaMaps(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	g_context = context;
 	uint64_t questItem = 0;
-	const bool found = d2r::sig::FindUnit.state == sigscan::State::Ok &&
+	const bool found = d2r::sig::FindUnit.state == sigscan::State::Ok && d2r::sig::ItemRecord.state == sigscan::State::Ok &&
 	                   sigscan::ScanUnique(context->exeBase, QuestItemPattern, 0, &questItem) == 1;
 	bool on = false;
 	if (found) {
