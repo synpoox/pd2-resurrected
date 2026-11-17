@@ -1712,11 +1712,14 @@ auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 	const uint32_t xy = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitPackedXY)(item);
 	const uint32_t row = xy >> 16;
 	// a custom page is never judged by its grid row; a same-name unique in the active rows switches both off
-	const bool off = page == 0 && (row < CharmFirstActiveRow || HasActiveTwin(item, player));
+	const bool twin = page == 0 && row >= CharmFirstActiveRow && HasActiveTwin(item, player);
+	const bool off = page == 0 && (row < CharmFirstActiveRow || twin);
 	const uint32_t n = off ? ++g_charmOffChecks : ++g_charmChecks;  // own cap, so a top-row charm cannot hide kept lines or flood
-	if (n <= 40 || n % 500 == 0) {
-		plog::Info("charm rows: item %p at x %u y %u, page %u, active in D2R, %s, %u so far", static_cast<void*>(item),
-		           xy & 0xffff, row, page, off ? "switched off" : "kept", n);
+	const int32_t quality = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemQuality)(item);
+	if (n <= 40 || n % 500 == 0 || quality == QualityUnique) {  // a unique charm is always logged: it is the #1288 case
+		plog::Info("charm rows: item %p at x %u y %u, page %u, quality %d, unique row+1 %d, same-name twin in rows 5-8 %s, active in D2R, %s, %u so far",
+		           static_cast<void*>(item), xy & 0xffff, row, page,
+		           quality, d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemUniqueRow)(item), twin ? "yes" : "no", off ? "switched off" : "kept", n);
 	}
 	return off ? 0 : active;
 }
