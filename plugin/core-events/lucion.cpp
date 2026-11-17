@@ -430,7 +430,7 @@ auto Desecrate(Game* game, Unit* player) noexcept -> bool {
 // D2R has none, so the altar runs the same Desecration as the transmute, on the one corrupted amulet in the cube.
 // shortcut: the altar stays in mode 0 (PD2 sets mode 1 after an attempt), the HD altar may have no mode-1 art; upgrade once checked
 auto OperateSacrificeAltar(Game* game, Unit* player) noexcept -> int32_t {
-	if (player == nullptr) {
+	if (game == nullptr || player == nullptr) {
 		return 0;
 	}
 	if (!Desecrate(game, player)) {
