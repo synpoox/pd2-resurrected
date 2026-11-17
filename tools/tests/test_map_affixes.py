@@ -52,7 +52,8 @@ class MapAffixes(unittest.TestCase):
         rolling = {
             (t, r["Name"])
             for t in ("magicprefix", "magicsuffix")
-            for r, _ in map_rows(t)
+            for r, types in map_rows(t)
+            if types != {"cmap"}  # the tierless Cartographer placeholders roll too
             if r["spawnable"] == "1" and r["rare"] == "1" and int(r.get("frequency") or 0) > 0
         }
         self.assertEqual(rolling, EXPECTED_ROLLING)
