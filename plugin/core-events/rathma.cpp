@@ -43,6 +43,7 @@ constexpr int32_t GoldPortal = 589;     // xactportal_gold (PD2 586)
 constexpr int32_t GhostlyPortal = 588;  // xactportal_ghostly (PD2 585)
 constexpr int32_t ModeNeutral = 1;
 constexpr int32_t ArenaHalf = 0x28;  // PD2's arena rects are the bosses' spot +-0x28
+// 0x28 now covers the whole 1x1 arena (8x8 tiles): intended.
 constexpr int32_t QualityUnique = 7;
 constexpr uint32_t Shard = D2RL::Items::MakeItemCode("cwss");
 constexpr uint32_t Tomes[] = {D2RL::Items::MakeItemCode("rid"), D2RL::Items::MakeItemCode("rtp"),
