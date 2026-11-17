@@ -25,6 +25,8 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <memory>
+#include <new>
 
 namespace {
 
@@ -51,7 +53,8 @@ const uint32_t AmuletCode = items::MakeItemCode('a', 'm', 'u');
 d2r::Game* g_game = nullptr;  // the game and player that used the altar, for the Desecration
 d2r::Unit* g_unit = nullptr;
 std::atomic<bool> g_returning {false};
-bool g_returnFailLogged = false;
+std::atomic<bool> g_returnFailLogged {false};
+std::atomic<uint32_t> g_acceptedId {0};  // the local player's unit id, set by PickPlayer
 uint32_t g_frames = 0;
 std::atomic<uint32_t> g_opened {0}, g_confirmed {0}, g_returned {0};
 
@@ -125,7 +128,9 @@ void ConfirmAltar(const D2RL::PluginContext*, void* user) noexcept {
 	const D2RL::ItemHandle amulet = SlotAmulet(player);
 	if (amulet == D2RL::InvalidItemHandle) {
 		plog::Info("altar: confirm with an empty slot");
-	} else if (g_game != nullptr && g_unit != nullptr && MoveToInventory(player, amulet)) {
+	} else if (g_game == nullptr || g_unit == nullptr || At<uint32_t>(g_unit, d2r::rva::UnitIdField) != g_acceptedId.load()) {
+		plog::Info("altar: confirm refused, the stored player is not the local one; the amulet stays for the watcher");
+	} else if (MoveToInventory(player, amulet)) {
 		Roll roll;
 		const items::Result edited = g_items->editNativeItem(g_context, amulet, RollNative, &roll);
 		if (edited != items::Result::Success) {
@@ -146,7 +151,7 @@ void ReturnAltarItem(const D2RL::PluginContext*, void* user) noexcept {
 			plog::Info("altar: amulet %llu returned to the inventory", static_cast<unsigned long long>(amulet));
 			++g_returned;
 		} else {
-			g_returnFailLogged = true;  // one log per streak: no retry until the panel opens again
+			g_returnFailLogged.store(true);  // one log per streak: no retry until the panel opens again
 		}
 	}
 	g_returning.store(false, std::memory_order_release);
@@ -170,7 +175,7 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 
 // UI thread, every WatchFrames frames: a closed panel with an amulet still on the page returns it
 void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noexcept {
-	if (++g_frames % WatchFrames != 0 || g_returning.load(std::memory_order_acquire) || g_returnFailLogged) {
+	if (++g_frames % WatchFrames != 0 || g_returning.load(std::memory_order_acquire) || g_returnFailLogged.load()) {
 		return;
 	}
 	D2RL::Panels::PanelInfo info {.structSize = D2RL::Panels::PanelInfoSize};
@@ -186,19 +191,30 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 	}
 }
 
+struct Use {
+	d2r::Game* game;
+	d2r::Unit* unit;
+	uint32_t id;
+};
+
 // UI thread: the SDK names the local player only here; opens the panel for the player who used the altar
 void PickPlayer(const D2RL::PluginContext*, void* user) noexcept {
 	using namespace d2r::rva;
-	const auto usedBy = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(user));
+	const std::unique_ptr<Use> use {static_cast<Use*>(user)};
+	const uint32_t usedBy = use->id;
+	g_returning.store(false, std::memory_order_release);  // a lost ReturnAltarItem must not stop the watcher for good
 	d2r::Unit* local = d2r::Engine<d2r::Unit* (*)(uint32_t) noexcept>(ClientPlayer)(d2r::Engine<uint32_t (*)() noexcept>(LocalPlayerSlot)());
 	if (local == nullptr || At<uint32_t>(local, UnitIdField) != usedBy) {
 		plog::Info("altar: used by another player than this game's own, no panel");
 		return;
 	}
+	g_game = use->game;  // only the local player's pair is kept: a remote click must not swap it
+	g_unit = use->unit;
+	g_acceptedId.store(usedBy);
 	const auto status = g_panels->openPanel(g_context, g_panel);
 	plog::Info("altar: panel %s (%u)", status == D2RL::Panels::Result::Success ? "opened" : "NOT opened",
 	           static_cast<uint32_t>(status));
-	g_returnFailLogged = false;
+	g_returnFailLogged.store(false);
 	if (status == D2RL::Panels::Result::Success) {
 		++g_opened;
 	}
@@ -217,11 +233,12 @@ auto OpenAltarPanel(d2r::Game* game, d2r::Unit* player) noexcept -> void {
 		plog::Info("altar: used, no panel (the SDK panel services are off)");
 		return;
 	}
-	g_game = game;
-	g_unit = player;
-	const uint32_t id = At<uint32_t>(player, d2r::rva::UnitIdField);
-	if (g_threads->runOnUiThread(g_context, PickPlayer, reinterpret_cast<void*>(static_cast<uintptr_t>(id))) !=
-	    D2RL::Threads::Result::Success) {
+	auto* use = new (std::nothrow) Use {game, player, At<uint32_t>(player, d2r::rva::UnitIdField)};
+	if (use == nullptr) {
+		return;
+	}
+	if (g_threads->runOnUiThread(g_context, PickPlayer, use) != D2RL::Threads::Result::Success) {
+		delete use;
 		plog::Info("altar: the panel could not be queued");
 	}
 }
