@@ -49,14 +49,9 @@ if (-not $Cartographer) { $Cartographer = $env:CARTOGRAPHER_DLL }
 if (-not $Cartographer) {
     $tools = Join-Path (Split-Path $Toolkit -Parent) "d2r-tools"
     $Cartographer = Join-Path $tools "dist\cartographer\cartographer.dll"
-    if (Test-Path $Cartographer) {
-        $ct = git -C $tools log -1 --format=%ct
-        if ($LASTEXITCODE -ne 0 -or -not $ct) { throw "cannot read the d2r-tools HEAD time in ${tools} (not a git repo?): pass -Cartographer" }
-        $head = [DateTimeOffset]::FromUnixTimeSeconds([long]$ct).LocalDateTime
-        if ((Get-Item $Cartographer).LastWriteTime -lt $head) { throw "$Cartographer is older than d2r-tools HEAD: run tools\build.ps1 -Plugin cartographer in $tools" }
-    }
 }
 if (-not (Test-Path $Cartographer)) { throw "$Cartographer missing: build it in d2r-tools (tools\build.ps1 -Plugin cartographer) or pass -Cartographer" }
+& (Join-Path $PSScriptRoot "check_cartographer.ps1") -Dll $Cartographer  # refuses a DLL older than tools\cartographer.pin (#1300)
 
 $plugins = Join-Path $Game "d2rloader\plugins"
 New-Item -ItemType Directory -Force $plugins | Out-Null
