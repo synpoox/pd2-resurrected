@@ -8,7 +8,26 @@ How the port rebuilds PD2's map system, decided in [#152](https://github.com/syn
 ([#145](https://github.com/synpoox/pd2-resurrected/issues/145)). Terms (map item, map tier, map area, map stat, map event, invader) are in [GLOSSARY.md](../../GLOSSARY.md). The
 work items are placed on [roadmap.md](../roadmap.md) by [#210](https://github.com/synpoox/pd2-resurrected/issues/210); MS6 was folded into [IR6](https://github.com/synpoox/pd2-resurrected/issues/241) there.
 
-> **Superseded in scope.** [#942](https://github.com/synpoox/pd2-resurrected/issues/942) (merged in [#1058](https://github.com/synpoox/pd2-resurrected/pull/1058)) cut PD2's map items, map stats, tiers and the generated PD2-only map areas: maps are native Cartographer maps, and `core-events` keeps the map events and uber fights ([ADR 0006](../adr/0006-cartographer-and-core-events.md), [cartographer-migration.md](../cartographer/migration.md)). What follows is the design as decided before that; read it for what PD2 does.
+## The design now (#1303)
+
+[#942](https://github.com/synpoox/pd2-resurrected/issues/942) (merged in [#1058](https://github.com/synpoox/pd2-resurrected/pull/1058)) cut PD2's map items, map stats, tiers and the generated PD2-only map areas: maps are native Cartographer maps (`m01`-`m25`), and `core-events` keeps the map events and uber fights ([ADR 0006](../adr/0006-cartographer-and-core-events.md), [cartographer-migration.md](../cartographer/migration.md)). The owner reversed part of that cut on 2026-11-17 ([#1303](https://github.com/synpoox/pd2-resurrected/issues/1303)): the Cartographer maps get PD2's map progression back, with table edits wherever tables can express it. The sections below `## Scope` describe the older PD2-parity plan; read them for what PD2 does, not for what the port builds.
+
+### Tiers ([#1304](https://github.com/synpoox/pd2-resurrected/issues/1304))
+
+- Every map has one tier, like PD2: T1 opens at area level 87, T2 at 88, T3 at 89 (`maps.txt` `Level`; Cartographer stamps it on each new map as `cartographer_map_level`, shown as `Area Level: N`). A map that already exists keeps the level it was made with (alpha: no conversion).
+- A map's misc `type` is its tier type, `t1m`, `t2m` or `t3m`. Each is a direct child of `cmap` (`Equiv1 cmap`, no chain between tiers, so a T3 map is not a `t2m`). The PD2 rows were reused and repointed, so no code is new. `Magic`/`Rare`/`Normal` match `cmap`.
+- The tier line is PD2's `MapTierValue` string (`Tier: %d`): misc `spelldesc 2`, `spelldescstr MapTierValue`, `spelldesccalc` = the tier. The line reads its number from the item's `stat1`/`calc1` (the use-effect fields, read only by an item spell), not from the map's spell 16, so each map carries `stat1 hpregen`, `calc1` = the tier as a carrier; without it the line showed "Tier: 0". The stat is never on the item: the map-open log reads `0 item stat(s)`.
+- No map rolls magic naturally. `cmap` and the tier types read Magic 0, Rare 1, Normal 0; Cartographer's hook turns a natural magic roll into normal (`Magic` 1 would mean always magic). A magic map made by a cheat stays magic.
+- `levelreq` is unchanged. The Catalyst recipe (`cmap` + `iwss`) still matches every map, since each tier type is a child of `cmap`.
+- Tier assignment, about 8 per tier, with outdoor and indoor tilesets in each (PD2's own tier where the map has a PD2 namesake: Phlegethon, Tomb of Zoltun Kulle, Shadows of Westmarch, Lost Temple, Sanatorium T1; Horazon's Memory, Ruined Cistern T2; Bastion Keep, Royal Crypts, Arreat Battlefield, Kehjistan Marketplace T3):
+
+| Tier | Area level | Type | Maps (item, tileset; outdoor in bold) |
+|---|---|---|---|
+| T1 | 87 | `t1m` | m01 Tunneling Depths (Cave), m04 Overgrown Reach (**Jungle**), m05 Frostbitten Fields (**Snow**), m06 Phlegethon (Lava), m12 Shadows of Westmarch (**Wilderness**), m20 Sanatorium (Basement), m23 Tomb of Zoltun Kulle (Tombs), m24 Lost Temple (Spider) |
+| T2 | 88 | `t2m` | m02 Bone Vaults (Crypt), m03 Frozen Hollows (Ice), m08 Horazon's Memory (Arcane), m10 Howling Plateau (**Mesa**), m13 Ruins of Corvus (**Kurast**), m15 Cursed Hold (Jail), m16 Khazra Den (Lair), m21 Ruined Cistern (Sewer) |
+| T3 | 89 | `t3m` | m07 Battlefields of Eternity (Durance), m09 Arreat Battlefield (**Siege**), m11 Kehjistan Marketplace (**Desert**), m14 Leoric's Passage (Dungeon), m17 Cellar of the Damned (KurastSewer), m18 Bastion Keep (Barracks), m19 Imperial Palace (Harem), m22 Royal Crypts (Catacombs), m25 Dark Temple (Temple) |
+
+Not done here (other children of #1303): the map affixes and their tier bands (no affix table names `t1m`/`t2m`/`t3m` yet; [#1305](https://github.com/synpoox/pd2-resurrected/issues/1305)), recipes, drops.
 
 ## Scope
 
