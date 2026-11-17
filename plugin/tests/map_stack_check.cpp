@@ -42,5 +42,18 @@ int main() {
 	check("a forced event differs", diff(single, event) == 553 && diff(event, single) == 553);
 	check("m01 and m25 are map codes", pd2::mapstack::IsMapCode(0x2031306D) && pd2::mapstack::IsMapCode(0x2035326D));
 	check("a rune is not", !pd2::mapstack::IsMapCode(0x20373272 /* r27 */ + 0) && !pd2::mapstack::IsMapCode(0x20657a67 /* gze */));
+	// The split's copy: a piece with no stats, and one that kept the Area Level, both end equal to the source
+	Fake src = Map(3, 87), bare, kept = Map(1, 87);
+	src.stats[553] = {1, 553, 63};
+	const auto set = [](Fake* u, int32_t stat, int32_t value, int32_t layer) {
+		u->stats[stat] = {static_cast<uint16_t>(layer), static_cast<uint16_t>(stat), value};
+	};
+	pd2::mapstack::Saved saved;
+	pd2::mapstack::Collect(&src, 600, 70, Read, saved);
+	check("collect skips the quantity", saved.count == 2);
+	check("apply sets both stats", pd2::mapstack::Apply(&bare, saved, set) == 2 && diff(src, bare) == 70 - 70 - 1);
+	pd2::mapstack::Apply(&kept, saved, set);
+	pd2::mapstack::Apply(&kept, saved, set);
+	check("apply twice, or over kept stats, is the same", diff(src, kept) == -1);
 	return fail;
 }

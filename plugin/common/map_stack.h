@@ -30,8 +30,35 @@ auto FirstDifference(Unit* a, Unit* b, int32_t statCount, int32_t quantityStat, 
 	return -1;
 }
 
-// A map's item code (m01..m25, little-endian "m01 "). The split refuses these: splitStack's new piece is not known to
-// keep the source's stats, and a map without its Area Level is worse than no split.
+// The non-quantity stats of one map, read off the source before they are written onto the split's new piece (two
+// native-item callbacks, so the two units are never open at once). shortcut: 64 entries, a map has a handful.
+struct Saved {
+	Entry entry[64];
+	int32_t count = 0;
+};
+
+template <class Unit, class Entries>
+auto Collect(Unit* src, int32_t statCount, int32_t quantityStat, Entries entries, Saved& saved) noexcept -> void {
+	saved.count = 0;
+	for (int32_t stat = 0; stat < statCount; ++stat) {
+		Entry e[64] {};
+		const int32_t n = stat == quantityStat ? 0 : entries(src, static_cast<uint32_t>(stat), e, 64);
+		for (int32_t i = 0; i < n && saved.count < 64; ++i) {
+			saved.entry[saved.count++] = e[i];
+		}
+	}
+}
+
+// Sets each saved (stat, layer) to its value on dst: an overwrite, so it ends the same whether the piece already had them
+template <class Unit, class SetStat>
+auto Apply(Unit* dst, const Saved& saved, SetStat set) noexcept -> int32_t {
+	for (int32_t i = 0; i < saved.count; ++i) {
+		set(dst, saved.entry[i].stat, saved.entry[i].value, saved.entry[i].layer);
+	}
+	return saved.count;
+}
+
+// A map's item code (m01..m25, little-endian "m01 ")
 constexpr auto IsMapCode(uint32_t code) noexcept -> bool {
 	const auto ch = [code](int i) { return static_cast<char>((code >> (8 * i)) & 0xff); };
 	return ch(0) == 'm' && ch(1) >= '0' && ch(1) <= '2' && ch(2) >= '0' && ch(2) <= '9' && (ch(3) == ' ' || ch(3) == 0);
