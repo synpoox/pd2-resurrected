@@ -1,3 +1,3 @@
 #### Changes
 
-- The legacy inventory now draws all 8 rows of cells, using PD2's own panel art.
+- The legacy inventory now shows PD2's whole panel: helm slot, I/II tabs, 8 rows, gold and close strip.
