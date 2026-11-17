@@ -1,8 +1,8 @@
 Name	Level	Tileset	Width	Height	Fill	Entry
-Diablo Clone	209	Desert	3	3	Desert	1,2
-Lucion	213	Kurast	3	3	Burbs	1,2
-Temple of the Triune	214	Mesa	2	2	Mesa1	1,1
-Bitter Depths	215	Mesa	8	8	Mesa1	
-Rathma 1	210	Mesa	12	12	Mesa1	
-Rathma 2	211	Mesa	12	12	Mesa1	
-Rathma 3	212	Mesa	12	12	Mesa1	
+Diablo Clone	209	Wilderness	1	1	Swamp	0,0
+Lucion	213	Desert	1	1	Desert	0,0
+Temple of the Triune	214	Desert	1	1	Desert	0,0
+Bitter Depths	215	Mesa	2	2	Mesa1	
+Rathma 1	210	Mesa	1	1	Mesa1	0,0
+Rathma 2	211	Mesa	1	1	Mesa1	0,0
+Rathma 3	212	Mesa	1	1	Mesa1	0,0
