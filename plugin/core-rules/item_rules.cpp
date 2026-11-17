@@ -1685,7 +1685,7 @@ auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 	const uint32_t row = xy >> 16;
 	const bool off = page == 0 && row < CharmFirstActiveRow;  // a custom page is never judged by its grid row
 	const uint32_t n = ++g_charmChecks;
-	if (n <= 40 || n % 500 == 0) {
+	if (off || n <= 40 || n % 500 == 0) {
 		plog::Info("charm rows: item %p at x %u y %u, page %u, active in D2R, %s, %u so far", static_cast<void*>(item),
 		           xy & 0xffff, row, page, off ? "switched off" : "kept", n);
 	}
