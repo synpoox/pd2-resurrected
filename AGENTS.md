@@ -65,5 +65,6 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 
 Use Ghidra, as [`knowledge/engine-re.md`](https://github.com/synpoox/d2rAI-toolkit/blob/ce0a3174ec1ca7c08a1d27d54e63ab1aa9e844d3/knowledge/engine-re.md) describes. Use capstone only for quick byte checks in scripts (a hook's entry bytes).
 
+- **New hooks** resolve their address by a unique byte signature (toolkit `shared/plugin-common` scanner), never a fixed RVA; existing fixed-RVA hooks migrate later (d2rAI-toolkit#296).
 - **D2R:** project `C:\ghidra-work\project\D2R.gpr` (the 93847 dump). Query it with the toolkit's `tools/ghidra_query.ps1 <Script.java> <args>`.
 - **PD2:** project `C:\ghidra-work\pd2-project\PD2.gpr`, holding `ProjectDiablo.dll` and the 1.13c `D2Game.dll`, `D2Client.dll` and `D2Common.dll` from the PD2 install. Query it with `tools/ghidra_query.ps1 <Script.java> -Project PD2 [-Program D2Game.dll] <args>` (toolkit [PR 3](https://github.com/synpoox/d2rAI-toolkit/pull/3) or later).
