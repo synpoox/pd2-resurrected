@@ -4,7 +4,8 @@
 // (0 -> 1 in the first level, 2 -> 3 in the second, 4 -> 5 in the third) and spawns that stage's bosses (Mendeln,
 // then Rathma, then both clones) at fixed spots, with a ghostly portal that takes the group into the arena (PD2 links
 // it to an `empty` marker by the bosses; the port opens none at the start of stage 1, #1262). No room of the arena
-// (80 x 80 subtiles about the bosses' spot) spawns its own monsters. It rides map_events' room activation hook: no SDK service reports a room activating.
+// (80 x 80 subtiles about the bosses' spot) spawns its own monsters. It rides map_events' room activation hook: no
+// SDK service reports a room activating.
 //
 // Deaths, on key_drops' monster-death listener (the SDK's): Mendeln (0x10376760) and Rathma (0x103767d0), when killed
 // before their retreat, set the stage to 2 or 4 and open a ghostly portal at their spot to the next level. The first
