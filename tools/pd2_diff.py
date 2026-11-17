@@ -67,7 +67,7 @@ def gate(root: Path, d2r: Path, scope: str) -> D.Report:
                   root / "docs" / "deviations.md", STATUSES, SCOPES[scope], lists,
                   json.loads(tables.read_text("utf-8")) if tables.is_file() else {}, None, compare_args, "PD2",
                   "run `python tools/pd2_extract.py` (the merge's first step) or pass --root a checkout that has them",
-                  lambda name: f"data/global/excel/{name}" in imported, "committed")
+                  lambda name: f"data/global/excel/{name}" in imported, "committed", strict_whole_table=True)
 
 
 def main(argv: list[str] | None = None) -> int:
