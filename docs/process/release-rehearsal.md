@@ -41,6 +41,10 @@ toolkit's schema 3 refuses a catalog without it). It fails when `[catalog]` or t
 2. `python <toolkit>/release/stage.py ... --extra-plugin "<build>/Release/cartographer.dll@d2r-tools <full sha>"`.
 3. Start the game once in a slot with the dll and check `cartographer.log` loads it.
 
+## The pinned minimum (#1300)
+
+`tools/cartographer.pin` holds the oldest d2r-tools commit whose Cartographer may ship or install (d78d3bc1: knows all 25 tilesets; older builds skip 12 of them and those map items refuse to open). `tools/check_cartographer.ps1` enforces it for `install.ps1` and the `Package` step of `release.yml`. The DLL has no build stamp, so the check looks inside it for tileset names (`KurastSewer`, `Catacombs`, `Tombs`, `MazeTemple`, the last added at f4964090): they prove all 25 tilesets, not the exact commit; in the release it also checks `CARTOGRAPHER_COMMIT` descends from the pin when a `d2r-tools` checkout sits beside the toolkit. A refused DLL: `git -C <d2r-tools> pull`, `powershell tools\build.ps1 -Plugin cartographer`, then reinstall. Raise the pin when a Cartographer change is required.
+
 ## Arena status
 
 Vanilla mini-ubers and D2R Tristram (136) work on native maps. Dclone, Rathma, Lucion/Temple and Bitter Depths are

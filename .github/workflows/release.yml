@@ -57,7 +57,9 @@ jobs:
       - name: Package
         run: |
           py -3 tools/release_precheck.py; if ($LASTEXITCODE) { throw "out/data holds retired converter output" }
-          if (-not $env:CARTOGRAPHER_DLL -or -not $env:CARTOGRAPHER_COMMIT) { throw "CARTOGRAPHER_DLL and CARTOGRAPHER_COMMIT must be set on the runner" }
+          if (-not $env:CARTOGRAPHER_DLL -or -not $env:CARTOGRAPHER_COMMIT) { throw "CARTOGRAPHER_DLL and CARTOGRAPHER_COMMIT must be set on the runner (docs/process/release-rehearsal.md)" }
+          # tools\cartographer.pin is the minimum d2r-tools commit (#1300): fail before staging when the runner's DLL is older
+          powershell -ExecutionPolicy Bypass -File tools\check_cartographer.ps1 -Dll "$env:CARTOGRAPHER_DLL" -Commit "$env:CARTOGRAPHER_COMMIT" -Repo (Join-Path (Split-Path "$env:D2R_TOOLKIT" -Parent) "d2r-tools"); if ($LASTEXITCODE) { throw "cartographer.dll older than tools\cartographer.pin" }
           # the notes line reads "<dll name>: d2r-tools <commit>, sha256 ...": the toolkit labels it with the DLL's file name
           py -3 "$env:D2R_TOOLKIT\release\stage.py" --game "$env:MODKIT_GAME" --extra-plugin "$env:CARTOGRAPHER_DLL@d2r-tools $env:CARTOGRAPHER_COMMIT"
           if ($LASTEXITCODE) { throw "stage.py failed" }
