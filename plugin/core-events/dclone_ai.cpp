@@ -18,6 +18,7 @@
 #include "placements.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <iterator>
 
@@ -330,6 +331,19 @@ auto FindDclone(Game* game, int32_t level) noexcept -> Unit* {
 
 auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	using namespace d2r::rva;
+	// #1271: the pillars are invulnerable, so any damage (sunder included) is undone on the next think
+	if (const int32_t soul = At<int32_t>(unit, UnitClassId) - FirstSoul; soul >= 0 && soul <= LastSoul - FirstSoul) {
+		const int32_t max = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitMaxLife)(unit);
+		if (const int32_t life = Stat(unit, StatLife); max > 0 && life < max) {
+			SetStat(unit, StatLife, max);
+			static std::atomic<int64_t> lastLog[LastSoul - FirstSoul + 1] {};
+			const int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
+			                        std::chrono::steady_clock::now().time_since_epoch()).count();
+			if (int64_t prev = lastLog[soul].load(); now - prev >= 1000 && lastLog[soul].compare_exchange_strong(prev, now)) {
+				plog::Info("dclone: soul %d life restored from %d to %d", soul + 1, life, max);
+			}
+		}
+	}
 	Mon m {tick != nullptr ? At<const uint8_t*>(tick, AiTickMonStats) : nullptr};
 	const int32_t level = LevelOf(unit);
 	Unit* dclone = m.rec != nullptr ? FindDclone(game, level) : nullptr;
