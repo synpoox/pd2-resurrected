@@ -4535,7 +4535,7 @@ auto CltDoLucionBlink(Unit* unit, int32_t skillId, int32_t level) noexcept -> in
 // shortcut: 8 dashers at once; upgrade if more than 8 dash on one screen.
 Unit* g_dashers[8] {};
 
-// PD2 cltdo 114 (LucionDash): D2R's leap client (cltdo 43, as CltDoLeap) at PD2's speed (monstats Run << 9, a player's
+// PD2 cltdo 114 (LucionDash): PD2's flat dash client (not D2R's CltDoLeap, whose jump arc lifts the unit) at PD2's speed (monstats Run << 9, a player's
 // 0xb00 + calc2 * 0x50), a ring of cltcalc1 cltmissilea on the start frame, and a ring of cltcalc2 cltmissileb within
 // 2 subtiles of the path's target.
 // shortcut: PD2's in-flight cltmissilec trail (a D2Client call, 0x103a1530) is not ported; the server's srvmissilec
