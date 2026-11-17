@@ -24,9 +24,9 @@ config the toolkit refuses to run; without the project the registry refuses the 
    then `key g` legacy pair only when the change is visual in legacy. Look at each screenshot for a held cursor item
    before the next click.
 8. **Never upload.** Shots stay in the slot's run folder. Never commit or push one, to any branch: `issue-assets`
-   keeps old links only, nothing is added to it. If the owner must see a picture, give its path on disk.
+   keeps old links only, nothing is added to it.
 9. **Close out** right after the check: `MODKIT_PROJECT=pd2-resurrected MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml MODKIT_RUN=<owner> game_ctl.py --slot <N> stop`, then, with the same three set, `game_slots.py unlock <N> <owner>`.
-10. **Report** what you saw per spot in words and log lines, plus the on-disk path of any shot the owner should see.
+10. **Report** what you saw per spot in words and log lines.
 
 ## Forcing a map event
 
