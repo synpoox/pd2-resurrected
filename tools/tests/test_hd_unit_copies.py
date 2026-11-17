@@ -26,9 +26,9 @@ def d2r():
         from modkit import base
         b = base.Base()
         b.text(ENEMY + "diablo.json")
-        return b
-    except Exception as e:  # no game, no toolkit or no CascLib: nothing to compare with
-        raise unittest.SkipTest(f"no D2R files: {e}")
+    except (ValueError, ImportError, OSError) as e:  # no toolkit, no CascLib, no game: nothing to compare with
+        raise unittest.SkipTest(f"no D2R files: {e}")  # anything else (an API break) fails
+    return b
 
 
 def load(b, rel):
@@ -52,8 +52,8 @@ class HdUnitCopyTests(unittest.TestCase):
         for name, (_, sm_o, sm_c, edits, added) in COPIES.items():
             with self.subTest(name):
                 a, c = load(b, sm_o), mine(sm_c)
-                self.assertEqual({k: v for k, v in c.items() if k not in ("states", "transitions", "dependencies", "name")},
-                                 {k: v for k, v in a.items() if k not in ("states", "transitions", "dependencies", "name")})
+                self.assertEqual({k: v for k, v in c.items() if k not in ("states", "transitions")},
+                                 {k: v for k, v in a.items() if k not in ("states", "transitions")})
                 states = {s["stateId"]: s for s in c["states"]}
                 self.assertEqual(set(states) - set(added), {s["stateId"] for s in a["states"]})
                 for s in a["states"]:
