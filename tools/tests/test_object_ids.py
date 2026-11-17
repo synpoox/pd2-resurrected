@@ -29,10 +29,8 @@ class ObjectIds(unittest.TestCase):
 
     def test_id_is_row_index(self):  # D2R reads the row position; the Expansion line is no row
         rows = [r for r in self.rows() if r["Class"] != "Expansion"]
-        # rows 573-586 keep D2R's own, shuffled *ID; every other row (the ones the plugin names, 587 on) is its position
         for i, r in enumerate(rows):
-            if not 573 <= i <= 586:
-                self.assertEqual(r["*ID"], str(i), r["Class"])
+            self.assertEqual(r["*ID"], str(i), r["Class"])
 
     def test_constants_match_rows(self):
         ids = {r["Class"]: r["*ID"] for r in self.rows()}
