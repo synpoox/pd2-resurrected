@@ -4,23 +4,23 @@ Bone Vaults	Crypt	Branching	m02	Medium	85	1	The Guardian
 Frozen Hollows	Ice	Winding	m03	Medium	85	1	Nathkill The Numb
 Overgrown Reach	Jungle	Winding	m04	Medium	85	1	The Great Worm
 Frostbitten Fields	Snow		m05	Medium	85	1	Shattered Soul
-Ashen Furnace	Lava	Sprawl	m06	Medium	85	1	Lieutenant of Sin
-Sunken Reliquary	Durance	Branching	m07	Medium	85	1	The Mad Philosopher
-Veiled Sanctum	Arcane	Loop	m08	Medium	85	1	Deathmaiden Madinsane
-Bloodied Bastion	Siege		m09	Medium	85	1	Armorsmith of Equality
-Windswept Mesa	Mesa		m10	Medium	85	1	Johnathan The Damned
-Scorched Dunes	Desert		m11	Medium	85	1	Toadflax the Tainted
-Trampled Pastures	Wilderness		m12	Medium	85	1	The Cow Queen
-Ruined Quarter	Kurast		m13	Medium	85	1	Indio The Insane
-Sodden Oubliette	Dungeon	Winding	m14	Medium	85	1	Bloodlord of the Pit
-Rusted Cells	Jail	Branching	m15	Medium	85	1	Gaoler Kanemith
-Brood Warren	Lair	Sprawl	m16	Medium	85	1	Sharptooth the Broodmother
-Flooded Culverts	KurastSewer	Loop	m17	Medium	85	1	Bloodlord of the Pit
-Fallen Garrison	Barracks	Branching	m18	Medium	85	1	Gaoler Kanemith
-Gilded Seraglio	Harem		m19	Medium	85	1	Deathmaiden Madinsane
-Forgotten Vaults	Basement		m20	Medium	85	1	The Guardian
-Rotted Drains	Sewer	Winding	m21	Medium	85	1	The Mad Philosopher
-Whispering Catacombs	Catacombs	Loop	m22	Medium	85	1	King Leoric
-Sandsealed Tombs	Tombs	Branching	m23	Medium	85	1	Toadflax the Tainted
-Webbed Hollow	Spider		m24	Medium	85	1	Sharptooth the Broodmother
-Halls of Sorrow	Temple		m25	Medium	85	1	Shattered Soul
+Phlegeton	Lava	Sprawl	m06	Medium	85	1	Lieutenant of Sin
+Durance of Hate	Durance	Branching	m07	Medium	85	1	The Mad Philosopher
+Horazon's Memory	Arcane	Loop	m08	Medium	85	1	Deathmaiden Madinsane
+Arreat Battlefield	Siege		m09	Medium	85	1	Armorsmith of Equality
+Dry Steppes	Mesa		m10	Medium	85	1	Johnathan The Damned
+Kehjistan Marketplace	Desert		m11	Medium	85	1	Toadflax the Tainted
+Shadows of Westmarch	Wilderness		m12	Medium	85	1	The Cow Queen
+Ruins of VizJun	Kurast		m13	Medium	85	1	Indio The Insane
+Halls of Torture	Dungeon	Winding	m14	Medium	85	1	Bloodlord of the Pit
+Halls of Agony	Jail	Branching	m15	Medium	85	1	Gaoler Kanemith
+Maggot Lair	Lair	Sprawl	m16	Medium	85	1	Sharptooth the Broodmother
+Kurast Sewers	KurastSewer	Loop	m17	Medium	85	1	Bloodlord of the Pit
+Bastion Keep	Barracks	Branching	m18	Medium	85	1	Gaoler Kanemith
+Imperial Palace	Harem		m19	Medium	85	1	Deathmaiden Madinsane
+Sanatorium	Basement		m20	Medium	85	1	The Guardian
+Ruined Cistern	Sewer	Winding	m21	Medium	85	1	The Mad Philosopher
+Royal Crypts	Catacombs	Loop	m22	Medium	85	1	King Leoric
+Tomb of Zoltun Kulle	Tombs	Branching	m23	Medium	85	1	Toadflax the Tainted
+Lost Temple	Spider		m24	Medium	85	1	Sharptooth the Broodmother
+Dark Temple	Temple		m25	Medium	85	1	Shattered Soul

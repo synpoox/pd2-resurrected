@@ -1,3 +1,3 @@
 #### Maps
 
-- 20 new maps, one for each Cartographer tileset that had none: Ashen Furnace, Sunken Reliquary, Veiled Sanctum, Bloodied Bastion, Windswept Mesa, Scorched Dunes, Trampled Pastures, Ruined Quarter, Sodden Oubliette, Rusted Cells, Brood Warren, Flooded Culverts, Fallen Garrison, Gilded Seraglio, Forgotten Vaults, Rotted Drains, Whispering Catacombs, Sandsealed Tombs, Webbed Hollow and Halls of Sorrow.
+- 20 new maps, one for each Cartographer tileset that had none: Phlegeton, Durance of Hate, Horazon's Memory, Arreat Battlefield, Dry Steppes, Kehjistan Marketplace, Shadows of Westmarch, Ruins of VizJun, Halls of Torture, Halls of Agony, Maggot Lair, Kurast Sewers, Bastion Keep, Imperial Palace, Sanatorium, Ruined Cistern, Royal Crypts, Tomb of Zoltun Kulle, Lost Temple and Dark Temple.
