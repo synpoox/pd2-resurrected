@@ -18,10 +18,12 @@ const placements::Binding bindings[] = {
 const placements::Place places[] = {
 	{"rathma1", "portal0", 30047, 22557, 0, 0, 0},
 	{"rathma1", "marker", 30062, 22572, 0, 0, 0},
+	{"rathma1", "next", 30052, 22557, 0, 0, 0},
 	{"rathma1", "boss0", 30062, 22547, 0, 0, 951},
 	{"rathma1", "arena", 30062, 22547, 0, 0, 0},
 	{"rathma2", "portal0", 30072, 24057, 0, 0, 0},
 	{"rathma2", "marker", 30062, 24072, 0, 0, 0},
+	{"rathma2", "next", 30052, 24057, 0, 0, 0},
 	{"rathma2", "boss0", 30062, 24047, 0, 0, 950},
 	{"rathma2", "arena", 30062, 24047, 0, 0, 0},
 	{"rathma3", "portal0", 30047, 25557, 0, 0, 0},

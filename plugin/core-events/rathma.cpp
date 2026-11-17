@@ -68,6 +68,7 @@ struct Stage {
 	int32_t level, from;  // the stage it moves on from (to from + 1)
 	Spot portals[4];      // the in-level ghostly portal; the third level's picks one of three, then tries 1-3 less 3
 	int32_t picks;
+	Spot next;    // the portal to the next level (levels 210 and 211 only), clear of the gate pillars at the bosses' spot
 	Spot marker;  // where the portal takes the group (PD2's `empty` object 587), PD2's tier-0 re-entry spot too
 	Boss bosses[2];
 	int32_t bossCount;
@@ -91,6 +92,9 @@ auto Stages() noexcept -> const std::array<Stage, 3>& {
 				}
 			}
 			s.marker = placements::SpotOf(e, "marker");
+			if (placements::Find(e, "next") != nullptr) {
+				s.next = placements::SpotOf(e, "next");
+			}
 			for (const char* id : bossIds) {
 				if (const auto* p = placements::Find(e, id)) {
 					s.bosses[s.bossCount++] = {p->arg, {p->x, p->y}};
@@ -223,10 +227,8 @@ auto OpenArenaPortal(Game* game, void* near, const Stage& s) noexcept -> bool {
 	return false;
 }
 
-// The arena's centre sits behind a gate pillar in the Mesa arenas (the portal was there but unreachable), so the next
-// level's portal opens 8 subtiles left of it and 10 below, in the open
-auto OpenNextLevelPortal(Game* game, Unit* monster, Spot arena, int32_t level) noexcept -> void {
-	const Spot at = {arena.x - 8, arena.y + 10};
+// The next level's portal, at the stage's `next` spot (the `arena` spot, the bosses', has a gate pillar over it)
+auto OpenNextLevelPortal(Game* game, Unit* monster, Spot at, int32_t level) noexcept -> void {
 	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(d2r::rva::UnitRoom)(monster);
 	if (OpenPortalAt(game, room, GhostlyPortal, at.x, at.y, level) != nullptr) {
 		++g_portals;
@@ -280,10 +282,10 @@ auto RathmaDeath(Game* game, Unit* monster) noexcept -> void {
 	const int32_t before = stage;
 	if (classId == RathmaPoison && stage < 2) {
 		stage = 2;
-		OpenNextLevelPortal(game, monster, Stages()[0].arena, Stages()[1].level);
+		OpenNextLevelPortal(game, monster, Stages()[0].next, Stages()[1].level);
 	} else if (classId == RathmaBone && stage < 4) {
 		stage = 4;
-		OpenNextLevelPortal(game, monster, Stages()[1].arena, Stages()[2].level);
+		OpenNextLevelPortal(game, monster, Stages()[1].next, Stages()[2].level);
 	} else if ((classId == BoneClone || classId == PoisonClone) && (stage == 5 || stage == 6)) {
 		stage = stage + 1;
 	}
