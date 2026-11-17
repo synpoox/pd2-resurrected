@@ -866,9 +866,9 @@ of Pacing	1	1	1	12		8				40	35	move1		10	10										amaz	misl												0
 of Haste	1	1	1	22		16				40	35	move2		20	20										amaz	misl												0
 of Evisceration	103	1	1	45		37				30	14	dmg-max		41	63									blac	miss													0
 of Carnage	102	1	1	71		58				20	14	dmg-max		11	14										ring	amul	circ	helm										0
-of Darkness	1			1		1				0	317	light		-100	-80	map-density		5	8	mag%		15	20		t1m	t2m												0
-of Darkness	1			1		1				0	317	light		-140	-100	map-density		8	10	mag%		25	30		t2m	t3m												0
-of Darkness	1			1		1				0	317	light		-180	-140	map-density		10	13	mag%		35	40		t3m													0
+of Darkness	1			1		1				0	317	light		-100	-80	map-density		5	8	map-mag-gold		15	20		t1m	t2m												0
+of Darkness	1			1		1				0	317	light		-140	-100	map-density		8	10	map-mag-gold		25	30		t2m	t3m												0
+of Darkness	1			1		1				0	317	light		-180	-140	map-density		10	13	map-mag-gold		35	40		t3m													0
 Dclone Clout	100	0								0														dred														0
 Maxlevel Clout	100	0								0														dgrn														0
 of the Bear	1	1	1	30		24				20	24	knock		1	1										misl													0

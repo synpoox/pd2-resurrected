@@ -19,7 +19,7 @@ Bands: PD2's `t1m,t2m` stays `t1m,t2m`, `t2m,t3m` stays, and `t3m,t4m` becomes `
 | `map_play_ac%` | `ac%` | of Cracking, Crumbling, Disintegration |
 | `map_play_block` | `block` | of Fumbling, Bumbling, Blundering |
 | `map_play_balance1` | `balance1` | of Imbalance, Inequality, Uneveness |
-| `map_play_lightradius` | `light` | of Darkness (PD2 frequency 0) |
+| `map_play_lightradius` | `light` | of Darkness (PD2 frequency 0); its filler `map_play_mag_gold%` is the combo `map-mag-gold` (magic find and gold find, one roll) |
 | filler `map_glob_density` | `map-density` | |
 | filler `map_play_addxp` | `addxp` | |
 | filler `map_play_mag_gold%` | `mag%` | magic find only: the third slot holds one mod, so gold find is not rolled (approximated) |
@@ -64,7 +64,7 @@ PD2 names the groups by monstats number; the port names the Id, which is what `e
 ## Still neutral
 
 - Splashing (6 rows, [#1310](https://github.com/synpoox/pd2-resurrected/issues/1310)): Cartographer has no splash stat.
-- Approximated: `map_play_mag_gold%` carries magic find only (the third slot holds one mod); `map_mon_curseresist_hp%` carries curse resistance only; PD2's own `abs` stat names are element-swapped, so the port maps by each property's name. The meaning of `mon-att-pierce` (Cartographer's `mon-tohit` and `mon-missile-pierce`) is not checked in game.
+- Approximated: `map_play_mag_gold%` carries magic find only, except on `of Darkness` (combo `map-mag-gold`); `map_mon_curseresist_hp%` carries curse resistance only; the phys-as cold and poison lengths (PD2 params 25 and 125) become Cartographer's fixed 50 and 100 frames; PD2's own `abs` stat names cross-wire the elements (`map_mon_abs_fire%` points at cold, and so on), so the port maps by each property's name (Crimson = fire), an owner-approved deviation (docs/deviations.md). The meaning of `mon-att-pierce` (Cartographer's `mon-tohit` and `mon-missile-pierce`) is not checked in game.
 
 ## Placeholders and rare names
 

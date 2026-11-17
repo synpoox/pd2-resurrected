@@ -466,3 +466,6 @@ mon-cast-speed	462	1	1	cartographer_mon_far			3	cartographer_mon_fcr												
 mon-lifesteal-hp	463	1	1	cartographer_mon_lifesteal_pct			3	cartographer_mon_life																								monster Life Steal and Life #					
 mon-nofreeze-hp	464	1	1	cartographer_mon_cannotfreeze			3	cartographer_mon_life																								monster Cannot Be Frozen and Life #					
 map-xp-drop	465	1	1	item_addexperience			3	cartographer_map_drop_bonus																								Experience Gained and Bonus Drops #					
+map-swing-cast	466	1	1	item_fasterattackrate			3	item_fastercastrate																								+#% Increased Attack and Cast Speed					
+map-speed-all	467	1	1	item_fasterattackrate			3	item_fastercastrate			3	item_fastermovevelocity																				+#% Increased Attack, Cast and Run/Walk Speed					
+map-mag-gold	468	1	1	item_magicbonus			3	item_goldbonus																								#% Better Chance of Getting Magic Items and Extra Gold from Monsters					
