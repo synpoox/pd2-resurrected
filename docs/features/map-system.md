@@ -23,8 +23,8 @@ work items are placed on [roadmap.md](../roadmap.md) by [#210](https://github.co
 
 | Tier | Area level | Type | Maps (item, tileset; outdoor in bold) |
 |---|---|---|---|
-| T1 | 87 | `t1m` | m01 Tunneling Depths (Cave), m04 Overgrown Reach (**Jungle**), m05 Frostbitten Fields (**Snow**), m06 Phlegethon (Lava), m12 Shadows of Westmarch (**Wilderness**), m20 Sanatorium (Basement), m23 Tomb of Zoltun Kulle (Tombs), m24 Lost Temple (Spider) |
-| T2 | 88 | `t2m` | m02 Bone Vaults (Crypt), m03 Frozen Hollows (Ice), m08 Horazon's Memory (Arcane), m10 Howling Plateau (**Mesa**), m13 Ruins of Corvus (**Kurast**), m15 Cursed Hold (Jail), m16 Khazra Den (Lair), m21 Ruined Cistern (Sewer) |
+| T1 | 87 | `t1m` | m01 Tunneling Depths (Cave), m04 Torajan Jungle (**Jungle**), m05 Canyon of Sescheron (**Snow**), m06 Phlegethon (Lava), m12 Shadows of Westmarch (**Wilderness**), m20 Sanatorium (Basement), m23 Tomb of Zoltun Kulle (Tombs), m24 Lost Temple (Spider) |
+| T2 | 88 | `t2m` | m02 Cathedral of Light (Crypt), m03 Ancestral Trial (Ice), m08 Horazon's Memory (Arcane), m10 Howling Plateau (**Mesa**), m13 Ruins of Corvus (**Kurast**), m15 Cursed Hold (Jail), m16 Khazra Den (Lair), m21 Ruined Cistern (Sewer) |
 | T3 | 89 | `t3m` | m07 Battlefields of Eternity (Durance), m09 Arreat Battlefield (**Siege**), m11 Kehjistan Marketplace (**Desert**), m14 Leoric's Passage (Dungeon), m17 Cellar of the Damned (KurastSewer), m18 Bastion Keep (Barracks), m19 Imperial Palace (Harem), m22 Royal Crypts (Catacombs), m25 Dark Temple (Temple) |
 
 ### Map monsters ([#1322](https://github.com/synpoox/pd2-resurrected/issues/1322))
@@ -35,11 +35,11 @@ Drop tier follows PD2's area, not the map's tier: PD2's per-area copies use `Map
 
 | Map | PD2 area (levels.txt Id, area tier) | Monsters (`map` suffix; `2` = `map2`) | Why |
 |---|---|---|---|
-| m01 Tunneling Depths (T1) | Ancestral Trial (146, t1) | arach + fill: minion, mosquito, unraveler | only `arach` has a row; fill from Lost Temple's (158, t1) cave list |
-| m02 Bone Vaults (T2) | Crypts (170, t3) + Zhar Ice (178, t3) | sk_archer, bighead, fallenshaman, reanimatedhorde, fallen | unchanged; area tier t3 and the rows are t1/t3 (tier differs for the t1 rows) |
-| m03 Frozen Hollows (T2) | Zhar Ice (178, t3) | arach (fill), fallenshaman, fallen, reanimatedhorde, siegebeast | unchanged; tier differs |
-| m04 Overgrown Reach (T1) | Jungle Map (148, t1) | sandleaper, deathmauler, councilmember + fill: thornhulk, mosquito | fill from Ruins of Viz-Jun (143, t1, Kurast); `deathmaulermap` is t3 (tier differs) |
-| m05 Frostbitten Fields (T1) | Zhar Ice (178, t3) | fallenshaman, fallen, reanimatedhorde, siegebeast, sandleaper (fill) | unchanged; no T1 snow area; tier differs |
+| m01 Tunneling Depths (T1) | Lost Temple (Spider Map 158, t1) | arach + fill: minion, mosquito, unraveler | name unchanged (Cave's only PD2 area is Crypts, taken by m22); only `arach` has a row; the list is Lost Temple's cave list |
+| m02 Cathedral of Light (T2) | Cathedral of Light (Monastery Map 152, PD2 `t41`, Crypt tileset) | reanimatedhorde, pantherwoman, bloodlord, bighead, siegebeast | PD2's area tier is not in the table; `reanimatedhordemap`, `pantherwomanmap`, `bloodlordmap`, `bigheadmap` and `siegebeastmap` are t1 rows (tier differs) |
+| m03 Ancestral Trial (T2) | Ancestral Trial (Ice Map 146, Ice Caves tileset); arach + fill from Zhar Ice (178, same Ice Caves tileset) | arach (fill), fallenshaman, fallen, reanimatedhorde, siegebeast | unchanged list; Zhar Ice is t3, tier differs |
+| m04 Torajan Jungle (T1) | Jungle Map (148, t1) | sandleaper, deathmauler, councilmember + fill: thornhulk, mosquito | fill from Ruins of Viz-Jun (143, t1, Kurast); `deathmaulermap` is t3 (tier differs) |
+| m05 Canyon of Sescheron (T1) | Frozen Forest Map (160, t2, Barricade snow tileset) | sandleaper2, doomknight, oblivionknight2, fetish2 | `sandleaper2`, `oblivionknight2` and `fetish2` are t2; `doomknightmap` is t1 (tier differs from t2) |
 | m06 Phlegethon (T1) | Lava Map (145, t1) | minion, pantherwoman, fallen, slinger, siegebeast, bloodlord, councilmember, reanimatedhorde, fallenshaman, fetish | the area's list is the `*map` rows themselves; `fetishmap` is t3 (tier differs) |
 | m07 Battlefields of Eternity (T3) | Kyovashad (201, t3) | reanimatedhorde, zealot, bloodlord, vilemother, deathmauler | `reanimatedhordemap` and `bloodlordmap` are t1 (tier differs) |
 | m08 Horazon's Memory (T2) | Arcane (142, t2) | zealot2, cantor2, oblivionknight2 + fill: minion2 | `doomknightArcane` is `BaseId` doomknight3 = oblivionknight; fill from Descent (210, t2) |
