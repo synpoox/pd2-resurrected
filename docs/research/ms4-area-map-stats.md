@@ -220,7 +220,7 @@ item level 131, by the unit. The eight (PD2 unique id, the port's runtime `uniqu
 
 Horazon's handler `0x10377ca0` also calls it, after the portal opens, when CRT `rand() % 10 < 1`.
 
-**The port.** `RollUniqueMap` (`plugin/core-events/key_drops.cpp`) rolls the TC by name on every map-area death (levels
+**The port.** `RollUniqueMap` (removed with the unique-map roll, which was cut) rolled the TC by name on every map-area death (levels
 138-201), with key drops' skirmish mult (1 for the TC 1021 bosses); `DropUniqueMap` draws one of the eight by the
 monster's seed and drops it through `DropUniqueAt` (`uber_drops.cpp`, D2R's monster drop with the unique row forced, at
 item level 131). Horazon's portal calls `DropUniqueMap` on a 1 in 10 of the monster's seed. D2R's unique roll `0x443910`
