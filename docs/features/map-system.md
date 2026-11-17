@@ -16,7 +16,7 @@ work items are placed on [roadmap.md](../roadmap.md) by [#210](https://github.co
 
 - Every map has one tier, like PD2: T1 opens at area level 87, T2 at 88, T3 at 89 (`maps.txt` `Level`; Cartographer stamps it on each new map as `cartographer_map_level`, shown as `Area Level: N`). A map that already exists keeps the level it was made with (alpha: no conversion).
 - A map's misc `type` is its tier type, `t1m`, `t2m` or `t3m`. Each is a direct child of `cmap` (`Equiv1 cmap`, no chain between tiers, so a T3 map is not a `t2m`). The PD2 rows were reused and repointed, so no code is new. `Magic`/`Rare`/`Normal` match `cmap`.
-- The tier line is PD2's `MapTierValue` string (`Tier: %d`): misc `spelldesc 2`, `spelldescstr MapTierValue`, `spelldesccalc` = the tier. The game reads the tier from a stat calc, so each map also carries `stat1 hpregen`, `calc1` = the tier (without it the line showed "Tier: 0"; hpregen is a harmless stat on a map).
+- The tier line is PD2's `MapTierValue` string (`Tier: %d`): misc `spelldesc 2`, `spelldescstr MapTierValue`, `spelldesccalc` = the tier. The line reads its number from the item's `stat1`/`calc1` (the use-effect fields, read only by an item spell), not from the map's spell 16, so each map carries `stat1 hpregen`, `calc1` = the tier as a carrier; without it the line showed "Tier: 0". The stat is never on the item: the map-open log reads `0 item stat(s)`.
 - No map rolls magic naturally. `cmap` and the tier types read Magic 0, Rare 1, Normal 0; Cartographer's hook turns a natural magic roll into normal (`Magic` 1 would mean always magic). A magic map made by a cheat stays magic.
 - `levelreq` is unchanged. The Catalyst recipe (`cmap` + `iwss`) still matches every map, since each tier type is a child of `cmap`.
 - Tier assignment, about 8 per tier, with outdoor and indoor tilesets in each (PD2's own tier where the map has a PD2 namesake: Phlegethon, Tomb of Zoltun Kulle, Shadows of Westmarch, Lost Temple, Sanatorium T1; Horazon's Memory, Ruined Cistern T2; Bastion Keep, Royal Crypts, Arreat Battlefield, Kehjistan Marketplace T3):
@@ -27,7 +27,7 @@ work items are placed on [roadmap.md](../roadmap.md) by [#210](https://github.co
 | T2 | 88 | `t2m` | m02 Bone Vaults (Crypt), m03 Frozen Hollows (Ice), m08 Horazon's Memory (Arcane), m10 Howling Plateau (**Mesa**), m13 Ruins of Corvus (**Kurast**), m15 Cursed Hold (Jail), m16 Khazra Den (Lair), m21 Ruined Cistern (Sewer) |
 | T3 | 89 | `t3m` | m07 Battlefields of Eternity (Durance), m09 Arreat Battlefield (**Siege**), m11 Kehjistan Marketplace (**Desert**), m14 Leoric's Passage (Dungeon), m17 Cellar of the Damned (KurastSewer), m18 Bastion Keep (Barracks), m19 Imperial Palace (Harem), m22 Royal Crypts (Catacombs), m25 Dark Temple (Temple) |
 
-Not done here (other children of #1303): the map affixes and their tier bands (the `t1m`/`t2m`/`t3m` `itype` pairs of PD2's affixes read `cmap` children only after [#1305](https://github.com/synpoox/pd2-resurrected/issues/1305)), recipes, drops.
+Not done here (other children of #1303): the map affixes and their tier bands (no affix table names `t1m`/`t2m`/`t3m` yet; [#1305](https://github.com/synpoox/pd2-resurrected/issues/1305)), recipes, drops.
 
 ## Scope
 

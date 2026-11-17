@@ -47,9 +47,9 @@ class NativeCatalogueTests(unittest.TestCase):
         hd = {k for e in json.loads(data_tables.text("hd/items/items.json")) for k in e}
         codes = [m["Item"] for m in rows("maps.txt")]
         assert len(set(codes)) == len(codes) == len(misc)
-        for c in codes:  # the contracts' frozen consumer item: cmap, pSpell 16, useable, no belt
+        for c in codes:  # the contracts' frozen consumer item: a cmap child (t1m-t3m), pSpell 16, useable, no belt
             s = misc[c]
-            assert (s["type"], s["pSpell"], s["useable"], s["belt"], s["compactsave"]) == (s["type"], "16", "1", "0", "0")
+            assert s["type"] in ("t1m", "t2m", "t3m") and (s["pSpell"], s["useable"], s["belt"], s["compactsave"]) == ("16", "1", "0", "0")
             assert c in names and c in hd
 
 
