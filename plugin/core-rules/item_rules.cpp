@@ -1662,13 +1662,13 @@ static auto PatchUnlimitedBooks(const D2RL::PluginContext* context) noexcept -> 
 
 // --- Charm rows (#358) ---------------------------------------------------------------------------------------------
 // PD2's inventory is 10x8 and a charm works only in its lower four rows (the grid's y 4 to 7, by the charm's top row).
-// D2R decides whether a charm's stats apply in one function, (item, player) -> 1 when active (type charm, unit mode 4,
-// page 0, requirements met); it is only reached through a function-pointer table, so no SDK service or data column
-// covers it (PlayerPageCharmPolicy is for custom pages, not the stock inventory) and an entry hook it is.
-// 93847: 0x36ae00
-sigscan::Entry CharmActive {"ItemCharmActive", "charms", sigscan::Kind::Code, 0, 0,
-                            "48 89 5c 24 08 57 48 83 ec 40 48 8b fa 48 8b d9 e8 ?? ?? ?? ?? 85 c0 74 69 ba 0d 00 00 00 48 8b cb e8 ?? ?? ?? ?? 85 c0 74 58 48 85 db 74 0d 48 8b cb e8 ?? ?? ?? ?? 83 f8 04 74 19"};
-constexpr uint8_t CharmActiveEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x57, 0x48, 0x83, 0xec, 0x40, 0x48, 0x8b, 0xfa, 0x48, 0x8b, 0xd9};
+// D2R's own charm-active body (93847: 0x36ae00) is not called: D2RLoader rewrote its callers to a thunk in its .maho
+// section whose `jmp [slot]` reaches D2RCore's charm policy (stock inventory, custom page or both). No SDK service
+// covers a cell range in the stock inventory, so the slot is swapped for a wrapper (as for crushing blow), found
+// from D2Game's add-to-inventory call site, never by a fixed address.
+sigscan::Entry CharmCallSite {"ItemCharmActiveCall", "charms", sigscan::Kind::Code, 0, 0,
+                              "48 8b cb e8 ?? ?? ?? ?? 83 f8 01 74 ?? 48 8b cb e8 ?? ?? ?? ?? 85 c0 75 ?? 48 8b d7 48 8b cb e8 ?? ?? ?? ?? 85 c0 74 ?? 0f b6 8e 06 01 00 00 41 b9 01 00 00 00"};
+constexpr uint32_t CharmCallOffset = 31;  // the E8 of the charm check in that signature
 constexpr uint32_t CharmFirstActiveRow = 4;  // zero-based: rows 5 to 8
 
 using CharmActiveFn = int32_t (*)(Unit* item, Unit* player) noexcept;
@@ -1680,23 +1680,45 @@ auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 	if (active == 0 || item == nullptr) {
 		return active;
 	}
+	const uint8_t page = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::rva::ItemPage)(item);
 	const uint32_t xy = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitPackedXY)(item);
 	const uint32_t row = xy >> 16;
+	const bool off = page == 0 && row < CharmFirstActiveRow;  // a custom page is never judged by its grid row
 	const uint32_t n = ++g_charmChecks;
 	if (n <= 40 || n % 500 == 0) {
 		plog::Info("charm rows: item %p at x %u y %u, page %u, active in D2R, %s, %u so far", static_cast<void*>(item),
-		           xy & 0xffff, row, d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::rva::ItemPage)(item),
-		           row >= CharmFirstActiveRow ? "kept" : "switched off", n);
+		           xy & 0xffff, row, page, off ? "switched off" : "kept", n);
 	}
-	return row >= CharmFirstActiveRow ? active : 0;
+	return off ? 0 : active;
 }
 
 auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
-	sigscan::Entry* const own[] = {&CharmActive};
+	sigscan::Entry* const own[] = {&CharmCallSite};
 	sigscan::Resolve(own, 1, context->exeBase, nullptr, 0);
-	return CharmActive.state == sigscan::State::Ok &&
-	       context->InstallInlineHook(CharmActive.rva, CharmActiveEntry, sizeof(CharmActiveEntry), CharmActiveInRow,
-	                                  &g_charmActiveOriginal);
+	if (CharmCallSite.state != sigscan::State::Ok) {
+		return false;
+	}
+	const auto* const call = reinterpret_cast<const uint8_t*>(d2r::imageBase + CharmCallSite.rva + CharmCallOffset);
+	if (call[0] != 0xe8) {
+		return false;
+	}
+	const uint8_t* const thunk = call + 5 + *reinterpret_cast<const int32_t*>(call + 1);
+	if (thunk[0] != 0xff || thunk[1] != 0x25) {  // jmp [rip+disp32]; anything else is not D2RLoader's thunk
+		return false;
+	}
+	const uint8_t* const slot = thunk + 6 + *reinterpret_cast<const int32_t*>(thunk + 2);
+	const uint64_t slotRva = reinterpret_cast<uint64_t>(slot) - d2r::imageBase;
+	const uint64_t original = *reinterpret_cast<const uint64_t*>(slot);
+	if (original == 0) {
+		return false;
+	}
+	g_charmActiveOriginal = reinterpret_cast<CharmActiveFn>(original);
+	if (!context->PatchWriteU64(slotRva, &original, sizeof(original),
+	                            reinterpret_cast<uint64_t>(static_cast<CharmActiveFn>(CharmActiveInRow)))) {
+		return false;
+	}
+	plog::Info("charm rows: charm policy slot at image +0x%llx swapped", static_cast<unsigned long long>(slotRva));
+	return true;
 }
 
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {

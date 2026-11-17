@@ -82,9 +82,9 @@ if ($strays -and -not $KeepExtras) {
     }
 }
 
-# Plugins are game-wide: our plugin DLLs (core-*, cartographer; companions stay) left in <Game>\mods\<mod>\d2rloader\plugins shadows the fresh install (#970): move it too.
+# Plugins are game-wide: our plugin DLLs (core-*, cartographer, the removed Charm Inventory d2rl-charm-inv.*; other companions stay) left in <Game>\mods\<mod>\d2rloader\plugins shadows the fresh install (#970): move it too.
 $repoMod = (Get-Content (Join-Path $PSScriptRoot "..\mod.json") -Raw | ConvertFrom-Json).name
-$stale = @(Get-ChildItem (Join-Path $Game "mods\$repoMod\d2rloader\plugins") -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "core-*.dll" -or $_.Name -eq "cartographer.dll" })
+$stale = @(Get-ChildItem (Join-Path $Game "mods\$repoMod\d2rloader\plugins") -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "core-*.dll" -or $_.Name -eq "cartographer.dll" -or $_.Name -like "d2rl-charm-inv.*" })
 if ($stale) {
     $backup = Join-Path "C:\D2RTestSlots\backups\stale-mod-plugins-$(Get-Date -Format yyyy-MM-dd-HHmmss)" (Split-Path $Game -Leaf)
     New-Item -ItemType Directory -Force $backup | Out-Null
