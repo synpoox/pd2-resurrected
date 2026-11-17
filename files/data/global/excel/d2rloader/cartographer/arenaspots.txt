@@ -1,14 +1,9 @@
 Arena	Spot	X	Y	Monster	Object
 Diablo Clone	centre	4	4	uberdiablonew	
-Diablo Clone	soul1	5	3	ubertrappedsoul1	
-Diablo Clone	soul2a	3	5	ubertrappedsoul2	
-Diablo Clone	soul2b	2	2	ubertrappedsoul2	
-Diablo Clone	soul2c	6	2	ubertrappedsoul2	
-Diablo Clone	soul2d	2	6	ubertrappedsoul2	
-Diablo Clone	soul2e	6	6	ubertrappedsoul2	
-Diablo Clone	soul3	3	3	ubertrappedsoul3	
-Diablo Clone	soul4	5	5	ubertrappedsoul4	
-Diablo Clone	soul5	3	4	ubertrappedsoul5	
+Diablo Clone	soulN	2	2	ubertrappedsoul1	
+Diablo Clone	soulE	6	2	ubertrappedsoul2	
+Diablo Clone	soulS	6	6	ubertrappedsoul4	
+Diablo Clone	soulW	2	6	ubertrappedsoul3	
 Lucion	centre	4	4	Lucion	
 Lucion	control	4	4	LucionControl	
 Lucion	temple-portal	3	3		
