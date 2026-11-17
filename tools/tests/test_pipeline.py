@@ -11,17 +11,16 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import pd2_cache  # noqa: E402
-import pd2_extract  # noqa: E402
-import pd2_ids  # noqa: E402
 import pd2_merge  # noqa: E402
+import pd2_table  # noqa: E402  (first of the toolkit's imports: puts it on sys.path)
+from shared.classic_import import cache, extract  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def toolkit_or_skip(test: unittest.TestCase):
     try:
-        return pd2_extract.classic("extract")
+        return extract
     except ValueError as e:  # no d2rAI-toolkit found (a machine without the private toolkit)
         test.skipTest(str(e))
 
@@ -76,7 +75,7 @@ class MergeTests(unittest.TestCase):
                 self.assertEqual(seen, [("ids.json", "data", "data")])
 
                 def bad_id(rule, pd2, d2r, out):
-                    raise pd2_ids.IdError("skills: id 400 taken twice")
+                    raise pd2_table.IdError("skills: id 400 taken twice")
                 pd2_merge.RULES["ids.json"] = bad_id
                 with self.assertRaisesRegex(pd2_merge.MergeError, "^skills: id 400 taken twice$"):
                     pd2_merge.merge(root, root / "d2r")
@@ -92,7 +91,7 @@ class MergeTests(unittest.TestCase):
             got = threading.Event()
 
             def other():
-                with redirect_stdout(io.StringIO()), pd2_cache.lock(root / "pd2_merge.lock", poll=0.05):
+                with redirect_stdout(io.StringIO()), cache.lock(root / "merge.lock", poll=0.05):
                     got.set()
             t = threading.Thread(target=other)
 

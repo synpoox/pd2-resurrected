@@ -21,3 +21,14 @@ def rows(table):
     lines = text(f"global/excel/{table}.txt").split("\n")
     head = lines[0].rstrip("\r").split("\t")
     return [dict(zip(head, ln.rstrip("\r").split("\t"))) for ln in lines[1:] if ln.strip()]
+
+
+def table(text: str, key: str | None = None):
+    """A Table from `|`-separated text, for tests on synthetic tables."""
+    import tempfile
+
+    import pd2_table
+    with tempfile.TemporaryDirectory() as tmp:
+        p = Path(tmp) / "t.txt"
+        p.write_bytes(text.replace("|", "\t").encode("latin-1"))
+        return pd2_table.Table(p, key)

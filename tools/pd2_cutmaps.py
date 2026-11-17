@@ -7,7 +7,7 @@ cut reads monstats and superuniques, which tables.json merges). One line kind:
 
 What it does to the merged tables in generated/data/global/excel:
   misc          every row of a cut type is deleted (keys, type `ubr`, and the native `cmap` items are not cut types).
-  treasureclassex   the map items leave every class, their weight going to NoDrop (pd2_items.block_drops, exact for one
+  treasureclassex   the map items leave every class, their weight going to NoDrop (items.block_drops, exact for one
                 player); a class holding only map entries empties; an emptied class no table names is deleted.
   cubemain      every recipe that names a cut item, a cut property, or a map heading is deleted.
   properties    every `map*` property on a `map_*` stat is deleted. The Catalyst's `map-force-event-l` is in the committed properties.txt.
@@ -22,10 +22,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pd2_ids
-import pd2_items
 import pd2_table
 from pd2_table import IdError, Table, excel
+from shared.classic_import import items
 
 # A unique whose code was a cut map item keeps a code that exists (the row is neutral; a save may name its number).
 NEUTRAL_CODE = "jew"
@@ -185,7 +184,7 @@ def gate_patterns(rule: Path, pd2_data: Path) -> list[str]:
             n = glob(r[0])
             out += [f"treasureclassex.{n}.item*", f"treasureclassex.{n}.prob*", f"treasureclassex.{n}.nodrop"]
     cube = load("cubemain")
-    labels = pd2_ids.ident(cube.names())
+    labels = pd2_table.ident(cube.names())
     gone = cube_doomed(cube, codes | {t.lower() for t in types}, gone_props)
     out += [f"cubemain.{glob(lab)}.*" for lab, i in zip(labels, cube.records()) if gone[i]]
     for name, slot in AFFIXES.items():
@@ -195,7 +194,7 @@ def gate_patterns(rule: Path, pd2_data: Path) -> list[str]:
         t = load(name)
         h = {c: i for i, c in enumerate(t.header)}
         cols = [h[c] for c in (slot.format(n=k) for k in range(1, 13)) if c in h]
-        out += [f"{name}.{glob(lab)}.*" for lab, i in zip(pd2_ids.ident(t.names()), t.records())
+        out += [f"{name}.{glob(lab)}.*" for lab, i in zip(pd2_table.ident(t.names()), t.records())
                 if any(t.rows[i][c].lower() in gone_props for c in cols)]
     return out + ["properties.map-*.*", "properties.mapdefense.*"]
 
@@ -219,7 +218,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
         raise IdError(f"{rule.name}: {', '.join(POOL_ROWS)} no longer hold `Map Tier 1` in {POOL_SLOT}")
     undefined_maps(tc, item_slots, th)
     had = {r[0] for r in tc.rows if any(r[i] for i in item_slots)}
-    pd2_items.block_drops(tc, {"misc": misc}, itemtypes, types)
+    items.block_drops(tc, {"misc": misc}, itemtypes, types)
     for r in tc.rows:
         if r[0] in pool:
             r[:] = pool[r[0]]

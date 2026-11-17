@@ -9,9 +9,9 @@
 // up to three times. The Altar of the Catalyst places its altar once: the first use calls its guardian, whose death
 // (event_portals.cpp's listener) lets the second use drop 2-3 Catalyst Shards. The Spire of Darkness places its altar
 // and three fog objects; once used, the rooms send shadow waves until the progress passes 90, which kills them. Void /
-// Tomb opens a portal pair to the Bitter Depths with a marker. The invaders (MS10) place up to three portals like the
-// Wanderer's spawns; the portal's think and the invaders' drops are lane-c/invaders.cpp's. Horazon's death is event_portals.cpp's. The altars' use is PD2's operate 79 (0x103aa460) in D2R's free
-// operate slot 35 (pd2_ids.FUNCS), written into D2R's operate table as map_open.cpp writes slot 60.
+// Tomb opens a portal pair to the Bitter Depths with a marker. The invaders (MS10) place up to three portals; the
+// portal's think and the invaders' drops are lane-c/invaders.cpp's. Horazon's death is event_portals.cpp's. The altars' use is PD2's operate 79 (0x103aa460) in D2R's free
+// operate slot 35 (pd2_port.FUNCS), written into D2R's operate table as map_open.cpp writes slot 60.
 //
 // Each spawn sends the event's notify string to every player as a red chat line (#336; PD2 0x1037dbc0, packet 0x26
 // type 4, colour 1). The SDK's localization service gives the text; no SDK service sends a chat line, so it goes
@@ -337,7 +337,7 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t pr
 		id = event == Mendeln ? MendelnMonster : event == Horazon ? HorazonMonster : event == Gheed ? GheedMonster
 			: event == Altar ? ShardAltar : RedPortal;
 	} else if ((event == DarkWanderer || event == TreasureFallen || event == Invaders) && spawns < 3 &&
-	           (spawns + 1) * 25 < progress && roll < 25) {
+	           (event == Invaders ? 25 + spawns * 20 : (spawns + 1) * 25) < progress && roll < 25) {
 		id = event == DarkWanderer ? DarkWandererMonster : event == Invaders ? InvaderPortalMonster : TreasureFallenMonster;
 	}
 	if (id < 0) {
@@ -366,9 +366,7 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t pr
 		plog::Info("map events: event %d object %d at (%d, %d)%s", event, EventMarker, xy[0], xy[1],
 		           marked ? "" : " FAILED");
 	}
-	if (event != Invaders) {  // the invaders' notify is sent per invader (invaders.cpp), not when the portal opens
-		Notify(game, event);
-	}
+	Notify(game, event);
 }
 
 // PD2's operate 79 (0x103aa460) for both event altars, in D2R's operate slot 35. The Spire's first use starts the

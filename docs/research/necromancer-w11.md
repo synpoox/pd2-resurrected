@@ -8,7 +8,7 @@ RVAs unless they start with `0x10`.
 
 Bounds-checks the skill id, then calls PD2's srvst table slot 32, the generic melee start (vanilla, not replaced by
 PD2). D2R's 68 (`0x569b20`) is Cleave's start and differs from its 32 (`0x5695d0`), so the merge maps 68 -> 32
-(`pd2_ids.FUNCS`) for Poison Dagger and BaalMinionBossBerserk. D2R's melee start fills the queued hit with the skill's
+(`pd2_port.FUNCS`) for Poison Dagger and BaalMinionBossBerserk. D2R's melee start fills the queued hit with the skill's
 elemental damage (`0x567070` calls `0x437d00`), so the melee hit carries Poison Dagger's poison.
 
 ## srvdo 164 (`0x103b25c0`): router 190
@@ -47,7 +47,7 @@ the missile's damage (`0x465420`, `0x462e40`) only when the result has bit 2. A 
 no damage, so core-rules returns PD2's value.
 
 Its sHitPar1 / sHitPar3 / cHitPar2 are PD2 state and stat ids: the merge gives them the mod's ids
-(`pd2_ids.HIT_PARAMS`; poison_strike 236 -> 282, the throwing potions' 229-232 -> 275-278).
+(`pd2_port.HIT_PARAMS`; poison_strike 236 -> 282, the throwing potions' 229-232 -> 275-278).
 
 `0x1036c920` also: halves a negative resist (stats 36-45, `0x1036df10`) on a non-player unit already over 99 in it;
 handles states 16, 87 and 188 specially. No shit 61 row uses those states; the halving touches the throwing potions'

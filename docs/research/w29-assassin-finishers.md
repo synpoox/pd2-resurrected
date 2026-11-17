@@ -83,6 +83,6 @@ All four read the charge with PD2's `0x1037ddf0` rule (the list's aurastat1 valu
 
 ## Merge
 
-`tools/pd2_ids.py` FUNCS: srvdofunc 170 -> 190; srvprgfunc1-3 171 -> 184, 172 -> 185, 39 -> 186, 139 -> 181 (only
+`tools/pd2_port.py` FUNCS: srvdofunc 170 -> 190; srvprgfunc1-3 171 -> 184, 172 -> 185, 39 -> 186, 139 -> 181 (only
 the finishers use those values there). The stand-ins (`merge/standins.tsv`) keep only the client columns
 (cltprgfunc1-3) for [W30](https://github.com/synpoox/pd2-resurrected/issues/105).

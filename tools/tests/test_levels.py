@@ -4,9 +4,10 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import pd2_ids as I  # noqa: E402
 import pd2_levels as L  # noqa: E402
-from tests.test_ids import table  # noqa: E402
+from shared.classic_import import ids as I  # noqa: E402
+from tests.data_tables import table  # noqa: E402
+
 
 
 class MonPresetTests(unittest.TestCase):

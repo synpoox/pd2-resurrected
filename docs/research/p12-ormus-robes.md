@@ -16,7 +16,7 @@ skill at +2, and a chance to cast that skill when the wearer casts a spell. The 
 - Level = max - (reqlevel - 6) / 6, C truncation (Ice Bolt 26, Lightning 25, Blizzard 23, Hydra 22).
 - Sets `item_skilloncast` with layer = skill << shift | level (the data tables' skill-layer split) and value = chance.
 
-D2R's property slot 25 is `affix-rand`, so the rule takes the free slot 26 (`tools/pd2_ids.py` FUNCS, by value on
+D2R's property slot 25 is `affix-rand`, so the rule takes the free slot 26 (`tools/pd2_port.py` FUNCS, by value on
 every properties funcN). D2R 93847: table `0x2386ab0`, 37 slots, 26-35 null; set-stat `0x3d5940`
 (dataFlag, a1, a2, item, Property*, set, stat, layer, value, a8, a9, a10); item random `0x3d5860` (item, min, max).
 

@@ -113,12 +113,14 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	// D2R's spawn refuses a blocked subtile (the portal's own), so it tries the portal's spot, then a ring around it.
 	constexpr int32_t Ring[][2] = {{0, 0}, {2, 0}, {-2, 0}, {0, 2}, {0, -2}, {3, 3}, {-3, -3}, {3, -3}, {-3, 3}};
 	Unit* invader = nullptr;
+	int32_t usedX = x, usedY = y;
 	for (const auto& step : Ring) {
 		if (room == nullptr || invader != nullptr) {
 			break;
 		}
 		invader = d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
 			SpawnMonster)(game, room, x + step[0], y + step[1], FirstInvader + which, ModeNeutral, -1, 0x42);
+		usedX = x + step[0], usedY = y + step[1];
 	}
 	if (invader == nullptr) {
 		plog::Warn("invaders: no %s at the portal (%d, %d)", ClassNames[which], x, y);
@@ -130,7 +132,7 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	MapEventNotify(game, InvadersEvent, NotifyKeys[which]);
 	const int32_t finished = Counter(game, FinishedKey);
 	plog::Info("invaders: %s (class %d) at (%d, %d), invader %d, portals closed %d, %u spawned", ClassNames[which],
-	           FirstInvader + which, x, y, n, finished, g_spawned.load());
+	           FirstInvader + which, usedX, usedY, n, finished, g_spawned.load());
 	const bool close = finished == 0 ? n != 0 : finished == 1 ? n > 2 : n >= 5;
 	if (close) {
 		++Counter(game, FinishedKey);

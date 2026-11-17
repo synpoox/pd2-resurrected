@@ -69,7 +69,7 @@ PD2's Vengeance row: calc1-3 `ln12 + (Holy Fire + Holy Freeze + Holy Shock blvl)
   apply `0x44b2b0`. The burst builds a D2R block (fire `+0x20`, cold `+0x34`, lightning `+0x2c`, cold length `+0x118`,
   as ElementalDamage fills them) and calls AreaApply per unit, as Holy Light does. A link waits on its `justhit`
   marker: the marker's expiry runs the next burst, then removes the state.
-- **Joust** joins the router (D2R fills 162; `tools/pd2_ids.py` FUNCS). TeleportCore (D2R's srvdo 27), then D2R's Leap
+- **Joust** joins the router (D2R fills 162; `tools/pd2_port.py` FUNCS). TeleportCore (D2R's srvdo 27), then D2R's Leap
   Attack hit (`SkillMeleeHit`), which does step 2 (to-hit, damage% calc1, SrcDam), with the critical strike stat
   raised around it, then `TimedStatList` for the aurastate. D2R's hit also gives the aurastate on a hit (`0x566bc0`);
   the list core-rules makes next extends that one.

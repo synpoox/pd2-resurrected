@@ -1800,7 +1800,7 @@ auto SrvDoDragonFlight(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 constexpr int32_t Bash = 126, UberTalicBash = 580;
 
 // --- Poison Dagger (PD2 srvdofunc 164 -> router 190, cltdofunc 102 -> 122; docs/research/necromancer-w11.md) ---------
-// PD2's srvstfunc 68 only calls slot 32, D2R's melee start, so the merge points it there (pd2_ids.FUNCS).
+// PD2's srvstfunc 68 only calls slot 32, D2R's melee start, so the merge points it there (pd2_port.FUNCS).
 std::atomic<uint32_t> g_poisonDaggers {0};
 std::atomic<uint32_t> g_poisonDaggerClients {0};
 constexpr int32_t PoisonDagger = 73, PoisonDaggerSpiderBoss = 550;

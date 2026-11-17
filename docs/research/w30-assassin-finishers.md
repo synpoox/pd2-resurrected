@@ -55,7 +55,7 @@ by id is not read.
 
 ## Slots and merge
 
-`tools/pd2_ids.py` FUNCS: cltprgfunc1-3 106 -> 127, 107 -> 128 (only the finishers use those values there; D2R's
+`tools/pd2_port.py` FUNCS: cltprgfunc1-3 106 -> 127, 107 -> 128 (only the finishers use those values there; D2R's
 cltdo 106 is Bind Demon's), missiles pCltDoFunc 69 -> 79 (D2R's 69 is corpseexplosion's; only fistsoffireexplode and
 bladesoficecubes use it in PD2). chit 67 is free in D2R and keeps its number. The stand-ins and the deviation list's
 "not yet" client half row are gone.
