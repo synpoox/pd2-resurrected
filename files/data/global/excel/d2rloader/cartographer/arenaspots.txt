@@ -17,6 +17,8 @@ Temple of the Triune	chest1	1	3		LucionChest
 Temple of the Triune	chest2	6	3		LucionChest
 Temple of the Triune	chest3	1	5		LucionChest
 Temple of the Triune	chest4	6	5		LucionChest
+Temple of the Triune	chest5	1	4		LucionChest
+Temple of the Triune	chest6	6	4		LucionChest
 Rathma 1	arena	4	1		
 Rathma 1	marker	4	6		
 Rathma 1	portal0	1	3		
