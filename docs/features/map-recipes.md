@@ -31,7 +31,7 @@ Rare map plus `std`: gated on `heroic` 511 equal to 0 (op 18), so a second `std`
 Per tier, a roll row (map + `wss`, `corruptor` 0) adds a random `corruptnum` 1-1889 and returns the shard; the outcome rows (op 16, thresholds rising to 1890) then set the `corrupt` mark and add 2200 to `corruptor`. PD2 adds 3001, but the stat has 12 save bits (4095): 1889 + 2200 stays under it and above every threshold, so a corrupted map never matches a roll or outcome row again. Ported outcomes: swing-cast, damageresist, speed-all, mag-gold, density, arealevel, res-all-max, each with PD2's per-tier ranges. Changes: monster rarity was dropped from five outcomes (swing-cast, damageresist, density, arealevel, res-all-max; Cartographer has no such stat), and swing-cast and speed-all are split into separate mods (`swing1`, `cast1`, `move2`). Not ported (need code, see #1318): deadlystrike, nofreeze-hp, monster rarity, dropjewelry, and the unique-map outcomes.
 
 ## Fortify (PD2 rows 1917-1922)
-Rare map plus `fort`: +100% monster life, +20% monster damage, -50% density, +100% experience, +30% monster speed. Not ported: the extra item drop chance (skirmish effect, needs code, #1317).
+Rare map plus `fort`: +100% monster life, +20% monster damage, -50% density, +100% experience, +30% faster run/walk for the player (PD2: player velocity 30). Not ported: the extra item drop chance (skirmish effect, needs code, #1317).
 
 ## Not ported
 Dungeon and unique map rows, ear rows, the `isc` and gem drop-test rows, and PD2's disabled rows (no `enabled` value). Listed in `docs/deviations.md`.
