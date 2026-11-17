@@ -1,3 +1,3 @@
 #### Maps
 
-- 20 new maps, one for each Cartographer tileset that had none: Phlegeton, Durance of Hate, Horazon's Memory, Arreat Battlefield, Dry Steppes, Kehjistan Marketplace, Shadows of Westmarch, Ruins of VizJun, Halls of Torture, Halls of Agony, Maggot Lair, Kurast Sewers, Bastion Keep, Imperial Palace, Sanatorium, Ruined Cistern, Royal Crypts, Tomb of Zoltun Kulle, Lost Temple and Dark Temple.
+- 20 new maps, one for each Cartographer tileset that had none: Phlegeton, Battlefields of Eternity, Horazon's Memory, Arreat Battlefield, Canyon of Secheron, Kehjistan Marketplace, Shadows of Westmarch, Ruins of Viz-Jun, Halls of Torture, Cursed Hold, Khazra Den, Cellar of the Damned, Bastion Keep, Imperial Palace, Sanatorium, Ruined Cistern, Royal Crypts, Tomb of Zoltun Kulle, Lost Temple and Dark Temple.
