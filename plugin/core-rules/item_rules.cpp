@@ -33,6 +33,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iterator>
+#include <intrin.h>
 
 namespace {
 
@@ -1680,46 +1681,99 @@ std::atomic<uint32_t> g_charmOffChecks {0};
 constexpr uint64_t ItemUniqueRow = 0x36ce70;
 constexpr int32_t QualityUnique = 7;
 
-auto HasActiveTwin(Unit* item, Unit* player) noexcept -> bool {
+// Charm stats are attached by the engine only when it asks this policy about the item that moves (add 0x475090 attaches via
+// 0x475140(flag, item, player, 1); the remove paths 0x46ea70 / 0x46e8e0 detach via 0x475140(..., 0) only on yes, then refresh 0x470ca0, which
+// attaches every approved charm whose stats are not attached (0x2f8120(item, 0) == 0) and never detaches). To keep attached == rule:
+// placing a twin detaches the attached copy; an attached item that leaves answers yes (the engine detaches it); an unattached twin that
+// leaves refreshes here, with itself ignored, so the hidden copy comes on. Return addresses of the engine's callers pick the case.
+constexpr uint64_t ItemStatsAttached = 0x2f8120;  // (item, int* out) -> the item's stat list, 0 when none is attached
+constexpr uint64_t ItemModsApply = 0x475140;      // (Game flag byte, item, player, attach 1 / detach 0)
+constexpr uint64_t CharmRefresh = 0x470ca0;       // (Game*, player, 0)
+constexpr uint64_t RetAdd = 0x475107, RetRefresh = 0x470d9f, RetRemoveA = 0x46eab0, RetRemoveB = 0x46e936;
+constexpr uint32_t CharmTwinLogCap = 200;
+thread_local Unit* g_leaving = nullptr;  // the item mid-removal: not a twin for anyone until the engine's refresh is done
+std::atomic<uint32_t> g_charmTwinLogs {0};
+
+auto StatsAttached(Unit* item) noexcept -> bool {
+	return d2r::Engine<uint64_t (*)(Unit*, int32_t*) noexcept>(ItemStatsAttached)(item, nullptr) != 0;
+}
+
+// A same-name unique charm stored (mode 0, so never the cursor) with its top row in rows 5-8; attachedOnly narrows to one whose stats are on.
+auto FindTwin(Unit* item, Unit* player, bool attachedOnly) noexcept -> Unit* {
 	using namespace d2r::rva;
 	if (player == nullptr || d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item) != QualityUnique) {
-		return false;
+		return nullptr;
 	}
 	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(UnitInventory)(player, __FILE__, __LINE__);
 	if (inventory == nullptr) {
-		return false;
+		return nullptr;
 	}
 	const auto uniqueRow = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemUniqueRow);
 	const auto next = d2r::Engine<Unit* (*)(Unit*) noexcept>(InventoryNextItem);
 	const int32_t mine = uniqueRow(item);
 	for (Unit* other = d2r::Engine<Unit* (*)(void*) noexcept>(InventoryFirstItem)(inventory); other != nullptr;
 	     other = next(other)) {
-		if (other != item && At<int32_t>(other, UnitType) == 4 && d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(other) == 0 &&
+		if (other != item && other != g_leaving && At<int32_t>(other, UnitType) == 4 &&
+		    d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitModeOf)(other) == 0 &&
+		    d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(other) == 0 &&
 		    (d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitPackedXY)(other) >> 16) >= CharmFirstActiveRow &&
-		    d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(other) == QualityUnique && uniqueRow(other) == mine) {
-			return true;
+		    d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(other) == QualityUnique && uniqueRow(other) == mine &&
+		    (!attachedOnly || StatsAttached(other))) {
+			return other;
 		}
 	}
-	return false;
+	return nullptr;
 }
 
 auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
+	const uint64_t ret = reinterpret_cast<uint64_t>(_ReturnAddress()) - d2r::imageBase;
+	const bool removing = ret == RetRemoveA || ret == RetRemoveB;
+	if (g_leaving != nullptr && !removing && ret != RetRefresh) {
+		g_leaving = nullptr;  // shortcut: the engine's own refresh after a remove is the only caller the exclusion is for
+	}
 	const int32_t active = g_charmActiveOriginal(item, player);
 	if (active == 0 || item == nullptr) {
 		return active;
+	}
+	if (item == g_leaving && !removing) {
+		return 0;  // the leaving item is detached already; the refresh must not re-attach it or hide anyone for it
 	}
 	const uint8_t page = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::rva::ItemPage)(item);
 	const uint32_t xy = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitPackedXY)(item);
 	const uint32_t row = xy >> 16;
 	// a custom page is never judged by its grid row; a same-name unique in the active rows switches both off
-	const bool twin = page == 0 && row >= CharmFirstActiveRow && HasActiveTwin(item, player);
-	const bool off = page == 0 && (row < CharmFirstActiveRow || twin);
+	const bool twin = page == 0 && row >= CharmFirstActiveRow && FindTwin(item, player, false) != nullptr;
+	bool off = page == 0 && (row < CharmFirstActiveRow || twin);
+	const char* action = "";
+	if (twin) {
+		void* const game = At<void*>(player, d2r::rva::UnitGame);
+		if (removing) {
+			g_leaving = item;
+			if (StatsAttached(item)) {
+				off = false;  // yes: the engine detaches it, then refreshes with g_leaving still set
+				action = ", leaving with stats on: detached by the engine, copy re-evaluated";
+			} else {
+				d2r::Engine<void (*)(void*, Unit*, int32_t) noexcept>(CharmRefresh)(game, player, 0);
+				g_leaving = nullptr;
+				action = ", leaving: copy re-evaluated";
+			}
+		} else if (ret == RetAdd || ret == RetRefresh) {
+			for (int guard = 0; guard < 8; ++guard) {
+				Unit* const on = FindTwin(item, player, true);
+				if (on == nullptr) {
+					break;
+				}
+				d2r::Engine<void (*)(uint8_t, Unit*, Unit*, int32_t) noexcept>(ItemModsApply)(At<uint8_t>(game, d2r::rva::GameDataFlag), on, player, 0);
+				action = ", other copy's stats detached";
+			}
+		}
+	}
 	const uint32_t n = off ? ++g_charmOffChecks : ++g_charmChecks;  // own cap, so a top-row charm cannot hide kept lines or flood
-	const int32_t quality = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemQuality)(item);
-	if (n <= 40 || n % 500 == 0 || quality == QualityUnique) {  // a unique charm is always logged: it is the #1288 case
-		plog::Info("charm rows: item %p at x %u y %u, page %u, quality %d, unique row+1 %d, same-name twin in rows 5-8 %s, active in D2R, %s, %u so far",
+	if (n <= 40 || n % 500 == 0 || (twin && ++g_charmTwinLogs <= CharmTwinLogCap)) {  // a twin answer of yes is the #1288 case
+		plog::Info("charm rows: item %p at x %u y %u, page %u, quality %d, unique row+1 %d, same-name twin in rows 5-8 %s%s, active in D2R, %s, %u so far",
 		           static_cast<void*>(item), xy & 0xffff, row, page,
-		           quality, d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemUniqueRow)(item), twin ? "yes" : "no", off ? "switched off" : "kept", n);
+		           d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemQuality)(item),
+		           d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemUniqueRow)(item), twin ? "yes" : "no", action, off ? "switched off" : "kept", n);
 	}
 	return off ? 0 : active;
 }
