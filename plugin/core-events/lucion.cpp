@@ -426,6 +426,19 @@ auto Desecrate(Game* game, Unit* player) noexcept -> bool {
 	return true;
 }
 
+// The Sacrifice Altar (class 624, operate slot 35, map_events.cpp): PD2 takes the amulet on the cursor through its panel,
+// D2R has none, so the altar runs the same Desecration as the transmute, on the one corrupted amulet in the cube.
+// shortcut: the altar stays in mode 0 (PD2 sets mode 1 after an attempt), the HD altar may have no mode-1 art; upgrade once checked
+auto OperateSacrificeAltar(Game* game, Unit* player) noexcept -> int32_t {
+	if (player == nullptr) {
+		return 0;
+	}
+	if (!Desecrate(game, player)) {
+		plog::Info("desecration: altar used, no attempt (the cube must hold one corrupted amulet; stage %d)", *CounterOf(game, LucionStageKey));
+	}
+	return 1;
+}
+
 auto InstallLucion(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	const D2RL::LifecycleService* lifecycle = nullptr;
 	if (context->QueryService(&lifecycle) != D2RL::ServiceQueryResult::Success ||

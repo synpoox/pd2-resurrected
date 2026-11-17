@@ -25,6 +25,7 @@
 #include <intrin.h>
 
 #include <array>
+#include <iterator>
 #include <atomic>
 #include <cstdio>
 
@@ -160,17 +161,37 @@ auto RoomHolding(Game* game, void* near, int32_t level, Spot at) noexcept -> voi
 // shortcut: PD2 also sets the spawn's 1.13c flags 0x3000000; set them if a boss ever acts differently from PD2's
 auto SpawnBoss(Game* game, void* near, int32_t level, const Boss& boss) noexcept -> bool {
 	using namespace d2r::rva;
-	void* room = RoomHolding(game, near, level, boss.at);
-	int32_t xy[2] = {boss.at.x, boss.at.y};
-	void* found = nullptr;
-	if (room != nullptr) {
-		d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(
-			FindFreeSpot)(game, room, xy, 3, 0x400, &found, 5, 100);
+	// The search and the spawn are retried a few subtiles off: D2R refused the second clone at its own spot, 6 subtiles
+	// from the first (#1208)
+	static constexpr int32_t Nudge[][2] = {{0, 0}, {4, 0}, {-4, 0}, {0, 4}, {8, 4}, {-8, 4}};
+	// The bosses stand on tile row 1 (7 subtiles below the interior's top edge), col 4 and up: no nudge leaves rows 0-7
+	constexpr int32_t RowMargin = 7, ColMargin = 18;
+	constexpr auto inside = [](int32_t dx, int32_t dy) { return dy >= -RowMargin && dx >= -ColMargin && dx <= ColMargin; };
+	static_assert(inside(Nudge[0][0], Nudge[0][1]) && inside(Nudge[1][0], Nudge[1][1]) && inside(Nudge[2][0], Nudge[2][1]) &&
+	              inside(Nudge[3][0], Nudge[3][1]) && inside(Nudge[4][0], Nudge[4][1]) && inside(Nudge[5][0], Nudge[5][1]));
+	Unit* unit = nullptr;
+	for (const auto& n : Nudge) {
+		const Spot at = {boss.at.x + n[0], boss.at.y + n[1]};
+		void* room = RoomHolding(game, near, level, at);
+		int32_t xy[2] = {at.x, at.y};
+		void* found = nullptr;
+		if (room != nullptr) {
+			d2r::Engine<void (*)(Game*, void*, int32_t*, uint32_t, uint32_t, void**, uint64_t, int32_t) noexcept>(
+				FindFreeSpot)(game, room, xy, 3, 0x400, &found, 5, 100);
+		}
+		unit = found != nullptr
+			? d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
+				  SpawnMonster)(game, found, xy[0], xy[1], boss.classId, ModeNeutral, -1, 0x42)
+			: nullptr;
+		if (unit != nullptr) {
+			break;
+		}
+		if (&n == std::end(Nudge) - 1) {
+			continue;
+		}
+		plog::Info("rathma: monster %d refused at (0x%x, 0x%x), spot (0x%x, 0x%x), nudging", boss.classId, at.x, at.y,
+		           xy[0], xy[1]);
 	}
-	Unit* unit = found != nullptr
-		? d2r::Engine<Unit* (*)(Game*, void*, int32_t, int32_t, int32_t, int32_t, int32_t, int16_t) noexcept>(
-			  SpawnMonster)(game, found, xy[0], xy[1], boss.classId, ModeNeutral, -1, 0x42)
-		: nullptr;
 	if (unit == nullptr) {
 		plog::Warn("rathma: no monster %d at (0x%x, 0x%x) in level %d", boss.classId, boss.at.x, boss.at.y, level);
 		return false;

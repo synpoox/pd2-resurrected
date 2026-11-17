@@ -35,36 +35,36 @@ Skull		2	sku	manasteal	0	2	2	lifesteal	0	3	3					regen	0	3	3	regen-mana	0	12	12	
 Flawless Skull		2	skl	manasteal	0	3	3	lifesteal	0	3	3					regen	0	4	4	regen-mana	0	12	12		0	0	0	thorns	0	16	16		0	0	0		0	0	0
 Perfect Skull		3	skz	manasteal	0	3	3	lifesteal	0	4	4					regen	0	5	5	regen-mana	0	19	19		0	0	0	thorns	0	20	20		0	0	0		0	0	0
 Expansion																																							
-El Rune	El	18	r01	light		1	1	att		50	50					light		1	1	ac		15	15					light		1	1	ac		15	15				0
-Eld Rune	Eld	18	r02	att-undead		50	50	dmg-undead		75	75					stamdrain		15	15									block		7	7								0
-Tir Rune	Tir	18	r03	mana-kill		2	2									mana-kill		2	2									mana-kill		2	2								0
-Nef Rune	Nef	18	r04	knock		1	1									ac-miss		30	30									ac-miss		50	50								0
-Eth Rune	Eth	18	r05	reduce-ac		25	25									regen-mana		20	20									regen-mana		20	20								0
-Ith Rune	Ith	18	r06	dmg-max		9	9									dmg-to-mana		15	15									dmg-to-mana		15	15								0
-Tal Rune	Tal	18	r07	dmg-pois	125	154	154									res-pois		30	30									res-pois		35	35								0
-Ral Rune	Ral	18	r08	dmg-fire		5	30									res-fire		30	30									res-fire		35	35								0
-Ort Rune	Ort	18	r09	dmg-ltng		1	50									res-ltng		30	30									res-ltng		35	35								0
-Thul Rune	Thul	18	r10	dmg-cold	75	3	14									res-cold		30	30									res-cold		35	35								0
-Amn Rune	Amn	18	r11	lifesteal		7	7									thorns		20	20									thorns		24	24								0
-Sol Rune	Sol	18	r12	dmg-min		9	9									red-dmg		7	7									red-dmg		9	9								0
-Shael Rune	Shael	18	r13	swing2		20	20									balance2		20	20									block2		20	20								0
-Dol Rune	Dol	18	r14	dmg%		20	20									regen		20	20									regen		30	30								0
-Hel Rune	Hel	18	r15	ease		-20	-20									ease		-15	-15									ease		-15	-15								0
-Io Rune	Io	18	r16	vit		10	10									vit		10	10									vit		10	10								0
-Lum Rune	Lum	18	r17	enr		10	10									enr		10	10									enr		10	10								0
-Ko Rune	Ko	18	r18	dex		10	10									dex		10	10									dex		10	10								0
-Fal Rune	Fal	18	r19	str		10	10									str		10	10									str		10	10								0
-Lem Rune	Lem	18	r20	gold%		75	75									gold%		50	50									gold%		50	50								0
-Pul Rune	Pul	18	r21	att-demon		100	100	dmg-demon		75	75					ac%		75	75									ac%		75	75								0
-Um Rune	Um	18	r22	openwounds		10	10	deep-wounds		120	120					res-all		15	15									res-all		22	22								0
-Mal Rune	Mal	18	r23	noheal		1	1									red-mag		7	7									red-mag		9	9								0
-Ist Rune	Ist	18	r24	mag%		30	30									mag%		30	30									mag%		30	30								0
-Gul Rune	Gul	18	r25	att%		50	50									res-pois-max		5	5									res-pois-max		5	5								0
-Vex Rune	Vex	18	r26	manasteal		7	7									res-fire-max		5	5									res-fire-max		5	5								0
-Ohm Rune	Ohm	18	r27	dmg%		45	45									res-cold-max		5	5									res-cold-max		5	5								0
-Lo Rune	Lo	18	r28	deadly		20	20									res-ltng-max		5	5									res-ltng-max		5	5								0
-Sur Rune	Sur	18	r29	heal-kill		4	4									mana%		5	5									mana		75	75								0
-Ber Rune	Ber	18	r30	crush		20	20									red-dmg%		6	6									red-dmg%		6	6								0
-Jah Rune	Jah	18	r31	ignore-ac		1	1									hp%		5	5									hp		75	75								0
-Cham Rune	Cham	18	r32	freeze		3	3									nofreeze		1	1									nofreeze		1	1								0
-Zod Rune	Zod	18	r33	indestruct		1	1									indestruct		1	1									indestruct		1	1								0
+El Rune	r01L	18	r01	light		1	1	att		50	50					light		1	1	ac		15	15					light		1	1	ac		15	15				0
+Eld Rune	r02L	18	r02	att-undead		50	50	dmg-undead		75	75					stamdrain		15	15									block		7	7								0
+Tir Rune	r03L	18	r03	mana-kill		2	2									mana-kill		2	2									mana-kill		2	2								0
+Nef Rune	r04L	18	r04	knock		1	1									ac-miss		30	30									ac-miss		50	50								0
+Eth Rune	r05L	18	r05	reduce-ac		25	25									regen-mana		20	20									regen-mana		20	20								0
+Ith Rune	r06L	18	r06	dmg-max		9	9									dmg-to-mana		15	15									dmg-to-mana		15	15								0
+Tal Rune	r07L	18	r07	dmg-pois	125	154	154									res-pois		30	30									res-pois		35	35								0
+Ral Rune	r08L	18	r08	dmg-fire		5	30									res-fire		30	30									res-fire		35	35								0
+Ort Rune	r09L	18	r09	dmg-ltng		1	50									res-ltng		30	30									res-ltng		35	35								0
+Thul Rune	r10L	18	r10	dmg-cold	75	3	14									res-cold		30	30									res-cold		35	35								0
+Amn Rune	r11L	18	r11	lifesteal		7	7									thorns		20	20									thorns		24	24								0
+Sol Rune	r12L	18	r12	dmg-min		9	9									red-dmg		7	7									red-dmg		9	9								0
+Shael Rune	r13L	18	r13	swing2		20	20									balance2		20	20									block2		20	20								0
+Dol Rune	r14L	18	r14	dmg%		20	20									regen		20	20									regen		30	30								0
+Hel Rune	r15L	18	r15	ease		-20	-20									ease		-15	-15									ease		-15	-15								0
+Io Rune	r16L	18	r16	vit		10	10									vit		10	10									vit		10	10								0
+Lum Rune	r17L	18	r17	enr		10	10									enr		10	10									enr		10	10								0
+Ko Rune	r18L	18	r18	dex		10	10									dex		10	10									dex		10	10								0
+Fal Rune	r19L	18	r19	str		10	10									str		10	10									str		10	10								0
+Lem Rune	r20L	18	r20	gold%		75	75									gold%		50	50									gold%		50	50								0
+Pul Rune	r21L	18	r21	att-demon		100	100	dmg-demon		75	75					ac%		75	75									ac%		75	75								0
+Um Rune	r22L	18	r22	openwounds		10	10	deep-wounds		120	120					res-all		15	15									res-all		22	22								0
+Mal Rune	r23L	18	r23	noheal		1	1									red-mag		7	7									red-mag		9	9								0
+Ist Rune	r24L	18	r24	mag%		30	30									mag%		30	30									mag%		30	30								0
+Gul Rune	r25L	18	r25	att%		50	50									res-pois-max		5	5									res-pois-max		5	5								0
+Vex Rune	r26L	18	r26	manasteal		7	7									res-fire-max		5	5									res-fire-max		5	5								0
+Ohm Rune	r27L	18	r27	dmg%		45	45									res-cold-max		5	5									res-cold-max		5	5								0
+Lo Rune	r28L	18	r28	deadly		20	20									res-ltng-max		5	5									res-ltng-max		5	5								0
+Sur Rune	r29L	18	r29	heal-kill		4	4									mana%		5	5									mana		75	75								0
+Ber Rune	r30L	18	r30	crush		20	20									red-dmg%		6	6									red-dmg%		6	6								0
+Jah Rune	r31L	18	r31	ignore-ac		1	1									hp%		5	5									hp		75	75								0
+Cham Rune	r32L	18	r32	freeze		3	3									nofreeze		1	1									nofreeze		1	1								0
+Zod Rune	r33L	18	r33	indestruct		1	1									indestruct		1	1									indestruct		1	1								0
