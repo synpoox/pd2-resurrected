@@ -2,7 +2,7 @@ name: release
 # The full build and the release 7z (issue #109). Runs only on the owner's self-hosted runner: it needs a D2R install,
 # which never goes to GitHub (ADR 0007). Run it by hand (Actions > release > Run
 # workflow). A green build publishes a GitHub release v<mod.json version>, marked Latest so the repo page shows it, with
-# the 7z and SHA256SUMS, and keeps them as a workflow artifact too. Runner setup: README.md.
+# the 7z and SHA256SUMS, and keeps them as a workflow artifact too. Runner setup: CONTRIBUTING.md.
 # Two jobs, as the toolkit's template: "build" has a read-only token; only "publish" (needs build) may write.
 on:
   workflow_dispatch:

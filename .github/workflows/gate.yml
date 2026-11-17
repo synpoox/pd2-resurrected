@@ -1,7 +1,7 @@
 name: gate
 
 # The table-diff gate (tools/pd2_diff.py, #352) on every PR and push to main. It needs the PD2 install (its baseline tables)
-# and D2R's tables, which never go to GitHub (ADR 0007; the mod's tables are the committed files/data), so it runs on the owner's self-hosted runner, as the release does; README.md has
+# and D2R's tables, which never go to GitHub (ADR 0007; the mod's tables are the committed files/data), so it runs on the owner's self-hosted runner, as the release does; CONTRIBUTING.md has
 # the runner setup. PRs from forks never reach the runner (it only builds this repository's own branches): their
 # table-diff job runs on a hosted runner and fails at once (#901), because a skipped check counts as passing.
 # Docs-only changes start no run (paths:), except the gate inputs docs/deviations.md.
