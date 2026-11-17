@@ -175,7 +175,7 @@ auto Set(Game* game, uint32_t key, int32_t value) noexcept -> void {
 }
 
 // The Cartographer slots (docs/cartographer-contracts.md, merge/ids-levels.tsv): every native map is one of these levels
-constexpr int32_t NativeFirst = 202, NativeLast = 208;
+constexpr int32_t NativeFirst = 138, NativeLast = 144;
 // Cartographer publishes no room count (event-link RoomProgress), so a native map's progress divides by the room
 // count of its built level (RealRooms); NativeTier.rooms (PD2's default 200) serves until it is read.
 // For game checks only: PD2R_MAP_ROOMS=<n> in the game's environment replaces the count.
@@ -316,16 +316,15 @@ auto SpawnSpire(Game* game, void* room, int32_t (&xy)[2], int32_t level, int32_t
 }
 
 // PD2's 0x1036fef0, before the room's own monsters: one roll of 100 per room, against the event's rule. The spot
-// search runs from the room's centre with size 12 (8 in Arcane and River of Blood).
+// search runs from the room's centre with size 12.
 // shortcut: PD2 also skips a room its 0x103a2e90 (an engine call through a pointer, not read) refuses, and marks
 // Mendeln's monster (+0xd0 = 11); read both if an event spawns where PD2's would not, or Mendeln acts differently
 auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t progress) noexcept -> void {
 	using namespace d2r::rva;
-	constexpr int32_t Arcane = 143, RiverOfBlood = 145;  // PD2 0x8e and 0x90 in port level ids
 	const int32_t event = Get(game, EventKey);
 	const int32_t spawns = Get(game, SpawnsKey);
 	const int32_t roll = Rand() % 100;
-	const int32_t size = level == Arcane || level == RiverOfBlood ? 8 : 12;
+	constexpr int32_t size = 12;
 	int32_t xy[2] = {At<int32_t>(room, RoomX) + At<int32_t>(room, RoomWidth) / 2,
 	                 At<int32_t>(room, RoomY) + At<int32_t>(room, RoomHeight) / 2};
 	if (event == Spire) {

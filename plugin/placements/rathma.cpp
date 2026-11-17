@@ -5,15 +5,15 @@
 
 namespace {
 using placements::Source;
-// Rathma's three levels (210-212): Cartographer's 1x1 Mesa arenas (arenas.txt, #961). Per level: portal0.. (the
+// Rathma's three levels (146-148): Cartographer's 1x1 Mesa arenas (arenas.txt, #961). Per level: portal0.. (the
 // in-level ghostly portal; the third level picks one of its three), marker (where it takes the group; the tier-0 re-entry
 // spot), boss0/boss1 (arg: merged monstats class, 950 RathmaBone, 951 RathmaPoison, 952 BoneClone, 953 PoisonClone) and
 // arena (the 80 x 80 subtiles about it). Places are the arenaspots.txt spots of the same names in subtiles:
 // x = (OffsetX + 8 + tx) * 5 + 2, y = (OffsetY + 8 + ty) * 5 + 2 (OffsetX 6000, OffsetY 4500/4800/5100); a test checks them.
 const placements::Binding bindings[] = {
-	{"rathma1", 210, 210, Source::Private, true, true},
-	{"rathma2", 211, 211, Source::Private, false, true},
-	{"rathma3", 212, 212, Source::Private, false, true},
+	{"rathma1", 146, 146, Source::Private, true, true},
+	{"rathma2", 147, 147, Source::Private, false, true},
+	{"rathma3", 148, 148, Source::Private, false, true},
 };
 const placements::Place places[] = {
 	{"rathma1", "portal0", 30047, 22557, 0, 0, 0},

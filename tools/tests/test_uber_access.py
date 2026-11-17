@@ -24,9 +24,9 @@ class UberAccessTests(unittest.TestCase):
         keys = {n: misc[n] for n in ("Uber Map", "Rathma Map", "Lucion Map", "Uber Trist Map")}
         assert all(r["pSpell"] == "19" for r in keys.values())
         assert keys["Uber Trist Map"]["len"] == "136"  # D2R's Uber Tristram arena (#957)
-        assert keys["Uber Map"]["len"] == "209"  # Diablo Clone's arena 209 (#958)
-        assert keys["Rathma Map"]["len"] == "210"  # Rathma's first stage 210 (#961)
-        assert keys["Lucion Map"]["len"] == "213"  # Lucion's arena 213 (#962)
+        assert keys["Uber Map"]["len"] == "145"  # Diablo Clone's arena 145 (#958)
+        assert keys["Rathma Map"]["len"] == "146"  # Rathma's first stage 146 (#961)
+        assert keys["Lucion Map"]["len"] == "149"  # Lucion's arena 149 (#962)
         src = (ROOT / "plugin/core-events/uber_entry.cpp").read_text(encoding="utf-8")
         assert "UberKeySpell = 19" in src and "IsUberLevel" in src
 
@@ -42,7 +42,7 @@ class UberAccessTests(unittest.TestCase):
         for enc, (level, target, src, uber, _nw) in bindings().items():
             if uber:
                 assert src in ("Existing", "Private", "D2RTristram"), enc
-                assert target >= 209 or src == "D2RTristram", enc
+                assert target >= 145 or src == "D2RTristram", enc
 
 
     def test_tristram_binding_is_d2r_136(self):

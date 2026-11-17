@@ -36,7 +36,7 @@ class PlacementsTests(unittest.TestCase):
         for enc, (level, target, source, _f) in bindings.items():
             assert level in ids and target in ids, enc
             if source in ("Existing", "Private"):
-                assert target >= 209 and ids[target], enc  # a reserved private id, a `+` line
+                assert target >= 145 and ids[target], enc  # a reserved private id, a `+` line
             else:
                 assert not ids[target], enc  # D2R's own area
 
@@ -44,7 +44,7 @@ class PlacementsTests(unittest.TestCase):
     def test_private_levels_are_reserved_once(self):
         bindings, _ = parse()
         private = [t for (_l, t, s, _f) in bindings.values() if s in ("Existing", "Private")]
-        assert len(private) == len(set(private)) == 7 and sorted(private) == list(range(209, 216))
+        assert len(private) == len(set(private)) == 7 and sorted(private) == list(range(145, 152))
 
 
     def test_every_consumer_lookup_has_a_placement(self):
@@ -67,7 +67,7 @@ class PlacementsTests(unittest.TestCase):
         pl = {(e, i): (int(x), int(y)) for e, i, x, y in
               re.findall(r'\{"(rathma\d)", "(\w+)", (\d+), (\d+), ', text)}
         for n in (1, 2, 3):
-            assert f"Rathma {n}\t{209 + n}\tMesa\t1\t1\tMesa1" in (cart / "arenas.txt").read_text(encoding="utf-8")
+            assert f"Rathma {n}\t{145 + n}\tMesa\t1\t1\tMesa1" in (cart / "arenas.txt").read_text(encoding="utf-8")
             for (arena, name), (tx, ty) in spots.items():
                 if arena == f"Rathma {n}":
                     assert pl[(f"rathma{n}", name)] == ((6000 + 8 + tx) * 5 + 2, (offy[n] + 8 + ty) * 5 + 2), (n, name)
@@ -79,14 +79,16 @@ class PlacementsTests(unittest.TestCase):
 
 
     def test_no_consumer_hard_codes_a_bound_level_id(self):
-        """A bound level number (133-138, 160-162, 181, 184, 185, 198, 213, 214) in code that is not a placements lookup fails."""
-        bound = {133, 134, 135, 136, 138, 160, 161, 162, 181, 184, 185, 198, 213, 214}
+        """A bound level number (133-136, 145-151) in code that is not a placements lookup fails."""
+        bound = {133, 134, 135, 136, 145, 146, 147, 148, 149, 150, 151}
         # Lines naming these numbers for another reason: table data keyed by other ids, comments, stat/skill/AI rows.
         allowed = {("map_bosses.cpp", "{159, PlaceholderA"), ("map_events.cpp", "{144, 200}"), ("map_stats.cpp", "{460, Route"),
                    ("map_stats.cpp", "{177, {178}}"), ("map_stats.cpp", "{179, {180}}"), ("map_stats.cpp", "MapState = 244"),
                    ("map_stats.cpp", "FirstMapLevel = 138"), ("map_stats.cpp", "fixed[] ="), ("unique_map_drops.cpp", "FirstMapLevel = 138"),
                    ("prime_minions.cpp", "AiRows"), ("prime_minions.cpp", "AI rows"), ("uber_entry.cpp", "StatUberTier"),
-                   ("uber_entry.cpp", "133, 134, 135, 136, 137, 176")}
+                   ("uber_entry.cpp", "133, 134, 135, 136, 137, 176"),
+                   ("lucion_ai.cpp", "StateInvis = 146"), ("map_events.cpp", "GheedMonster = 147"),
+                   ("uber_entry.cpp", "14,  151, 158"), ("uber_scaling.cpp", "AllSkills = 127")}
         bad = []
         for f in (PLUGIN / "core-events").rglob("*.cpp"):
             for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):

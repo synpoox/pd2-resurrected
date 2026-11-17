@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CART = ROOT / "files/data/global/excel/d2rloader/cartographer"
 # Tilesets seen opening, reaching the boss and returning in game (d2r-tools docs/cartographer/testing.md). Lava and
 # Siege are deferred: Lava's edges and boss were not settled, Siege was not run in game.
-VERIFIED = {"Cave": 202, "Crypt": 203, "Ice": 205, "Jungle": 206, "Snow": 207}
+VERIFIED = {"Cave": 138, "Crypt": 139, "Ice": 141, "Jungle": 142, "Snow": 143}
 SLOT = {"Cave": "Maze", "Crypt": "MazeCrypt", "Ice": "MazeIce", "Jungle": "Outdoor", "Snow": "OutdoorSnow"}
 POOL = "Cartographer Maps"
 

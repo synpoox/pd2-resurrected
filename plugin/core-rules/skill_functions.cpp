@@ -4531,13 +4531,19 @@ auto CltDoLucionBlink(Unit* unit, int32_t skillId, int32_t level) noexcept -> in
 }
 
 // The dashing units whose landing ring is still due: each start arms one landing, which fires when the unit reaches
-// the path's target.
+// the path's target. The entry holds that target: a call with another target is a new dash (the last was cut short, or
+// the unit died and its address came back), and with no free slot the oldest entry is taken over.
 // shortcut: 8 dashers at once; upgrade if more than 8 dash on one screen.
-Unit* g_dashers[8] {};
+struct Dasher {
+	Unit* unit;
+	uint16_t targetX, targetY;
+};
+Dasher g_dashers[8] {};
+size_t g_dasherOldest = 0;
 
 // PD2 cltdo 114 (LucionDash): PD2's flat dash client (not D2R's CltDoLeap, whose jump arc lifts the unit) at PD2's
-// speed (monstats Run << 9, a player's 0xb00 + calc2 * 0x50), a ring of cltcalc1 cltmissilea on the start frame, and a ring of cltcalc2 cltmissileb within
-// 2 subtiles of the path's target.
+// speed (monstats Run << 9, a player's 0xb00 + calc2 * 0x50), a ring of cltcalc1 cltmissilea on the start frame, and a
+// ring of cltcalc2 cltmissileb within 2 subtiles of the path's target.
 // shortcut: PD2's in-flight cltmissilec trail (a D2Client call, 0x103a1530) is not ported; the server's srvmissilec
 // trail shows in its place. Upgrade if luciondashtrail looks missing in play.
 auto CltDoLucionDash(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
@@ -4556,9 +4562,11 @@ auto CltDoLucionDash(Unit* unit, int32_t skillId, int32_t level) noexcept -> int
 	if (!d2r::UnitXY(unit, &x, &y)) {
 		return ran;
 	}
-	Unit** const armed = std::find(std::begin(g_dashers), std::end(g_dashers), unit);
+	void* path = At<void*>(unit, UnitPath);
+	const uint16_t targetX = path != nullptr ? At<uint16_t>(path, 0x10) : 0, targetY = path != nullptr ? At<uint16_t>(path, 0x12) : 0;
+	Dasher* const armed = std::find_if(std::begin(g_dashers), std::end(g_dashers), [&](const Dasher& d) { return d.unit == unit; });
 	// The leap client set flag 0x100 after its first call; without it the start frame is the first call per dash.
-	if ((flags & 0x80) != 0 && armed == std::end(g_dashers)) {
+	if ((flags & 0x80) != 0 && (armed == std::end(g_dashers) || armed->targetX != targetX || armed->targetY != targetY)) {
 		int32_t velocity = 0;
 		if (At<int32_t>(unit, UnitType) == UnitMonster) {
 			const uint8_t* mon =
@@ -4570,27 +4578,26 @@ auto CltDoLucionDash(Unit* unit, int32_t skillId, int32_t level) noexcept -> int
 		}
 		SetSkillVelocity(unit, uskill, velocity);
 		const int32_t created = ClientRing(unit, skill, SkCltMissileA, SkCltCalc1, x, y, skillId, level);
-		Unit** slot = std::find(std::begin(g_dashers), std::end(g_dashers), unit);
+		Dasher* slot = armed;
 		if (slot == std::end(g_dashers)) {
-			slot = std::find(std::begin(g_dashers), std::end(g_dashers), nullptr);
+			slot = std::find_if(std::begin(g_dashers), std::end(g_dashers), [](const Dasher& d) { return d.unit == nullptr; });
 		}
-		if (slot != std::end(g_dashers)) {
-			*slot = unit;
+		if (slot == std::end(g_dashers)) {
+			slot = &g_dashers[g_dasherOldest++ % std::size(g_dashers)];
 		}
+		*slot = {unit, targetX, targetY};
 		if (plog::Sample(g_lucionDashClients)) {
 			plog::Info("lucion dash client: skill %d level %d start at %d,%d: velocity %d, %d missiles, dash %u", skillId,
 			           level, x, y, velocity, created, g_lucionDashClients.load());
 		}
 		return ran;
 	}
-	Unit** slot = armed;
-	void* path = At<void*>(unit, UnitPath);
-	if (slot == std::end(g_dashers) || path == nullptr) {
+	if (armed == std::end(g_dashers) || path == nullptr) {
 		return ran;
 	}
-	const int32_t dx = x - At<uint16_t>(path, 0x10), dy = y - At<uint16_t>(path, 0x12);  // the path's target point
+	const int32_t dx = x - targetX, dy = y - targetY;  // the path's target point
 	if (dx * dx + dy * dy <= 4) {
-		*slot = nullptr;
+		*armed = {};
 		const int32_t created = ClientRing(unit, skill, SkCltMissileA + 2, SkCltCalc2, x, y, skillId, level);
 		plog::Info("lucion dash client: skill %d level %d landed at %d,%d: %d missiles", skillId, level, x, y, created);
 	}
