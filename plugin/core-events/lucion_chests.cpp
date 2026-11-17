@@ -1,5 +1,5 @@
 // The Temple of the Triune's chests (ProjectDiablo.dll 0x103a94b0, read for #438). PD2 wraps the chest operate
-// (OperateFn 4): for its LucionChest (PD2 object 623, the port's 626) in mode 0 it plays the chest sound, sets mode 1,
+// (OperateFn 4): for its LucionChest (object 623) in mode 0 it plays the chest sound, sets mode 1,
 // drops LucionChestLow (at most 3 items) and LucionChestHigh (at most 2 + tier: 2, 3 or 4) at the item level of the
 // player's area, and opens on event 1 after the open frames. D2R's own chest roll never runs for it. Any other chest
 // goes to the original.
@@ -23,7 +23,7 @@ using d2r::At;
 using d2r::Game;
 using d2r::Unit;
 
-constexpr int32_t LucionChest = 626;      // PD2 623
+constexpr int32_t LucionChest = 623;      // objects.txt row (pinned by test_object_ids)
 constexpr uint32_t TierKey = 0x55425254;  // 'UBRT', as map_open.cpp
 constexpr int LowMax = 3;
 

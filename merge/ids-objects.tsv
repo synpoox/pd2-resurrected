@@ -612,21 +612,21 @@ preset_placeholder_I	612	preset_placeholder_I
 preset_placeholder_J	613	preset_placeholder_J
 ForceShardAltar	614	ForceShardAltar
 gidbinn altar on	615	gidbinn altar on
-blocker_teleport_xy	616	blocker_teleport_xy
-blocker_teleport_x	617	blocker_teleport_x
-blocker_teleport_y	618	blocker_teleport_y
-bossblocker_x	619	bossblocker_x
-bossblocker_y	620	bossblocker_y
-bossblocker_x_warp	621	bossblocker_x_warp
-bossblocker_y_warp	622	bossblocker_y_warp
-PVPTome1	623	PVPTome1
-Sacrifice Altar	624	Sacrifice Altar
-xactdarkportal_grey	625	xactdarkportal_grey
-LucionChest	626	LucionChest
-PVPTome2	627	PVPTome2
-InactiveStoneDesertShrine	628	InactiveStoneDesertShrine
-InactiveGidbinn	629	InactiveGidbinn
-GreenBrazier	630	GreenBrazier
-automap_door_L	631	automap_door_L
-automap_door_R	632	automap_door_R
-Trophy Case#2	633	Trophy Case
+bossblocker_x	616	bossblocker_x
+bossblocker_y	617	bossblocker_y
+bossblocker_x_warp	618	bossblocker_x_warp
+bossblocker_y_warp	619	bossblocker_y_warp
+PVPTome1	620	PVPTome1
+Sacrifice Altar	621	Sacrifice Altar
+xactdarkportal_grey	622	xactdarkportal_grey
+LucionChest	623	LucionChest
+PVPTome2	624	PVPTome2
+InactiveStoneDesertShrine	625	InactiveStoneDesertShrine
+InactiveGidbinn	626	InactiveGidbinn
+GreenBrazier	627	GreenBrazier
+automap_door_L	628	automap_door_L
+automap_door_R	629	automap_door_R
+Trophy Case#2	630	Trophy Case
+blocker_teleport_xy	-	cut: PD2's map and uber levels (#1249)
+blocker_teleport_x	-	cut: PD2's map and uber levels (#1249)
+blocker_teleport_y	-	cut: PD2's map and uber levels (#1249)

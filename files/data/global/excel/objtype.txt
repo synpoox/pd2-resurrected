@@ -616,9 +616,6 @@ preset_placeholder_I	ZZ
 preset_placeholder_J	ZZ
 ForceShardAltar	xo
 gidbinn altar on	ga
-blocker_teleport_xy	ss
-blocker_teleport_x	ss
-blocker_teleport_y	ss
 bossblocker_x	#c
 bossblocker_y	#b
 bossblocker_x_warp	#c

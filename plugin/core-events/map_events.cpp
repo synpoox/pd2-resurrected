@@ -80,7 +80,7 @@ constexpr int32_t GheedMonster = 147, HorazonMonster = 936;  // PD2 919 summoner
 constexpr int32_t EventMarker = 597;  // PD2 object 594 empty_eventmarker: invisible, AutoMap 1499
 constexpr int32_t ShardAltar = 614;   // PD2 611 ForceShardAltar
 const uint32_t ShardCode = D2RL::Items::MakeItemCode("iwss");  // the Catalyst Shard
-constexpr int32_t SacrificeAltar = 624;  // PD2 621
+constexpr int32_t SacrificeAltar = 621;  // objects.txt row (pinned by test_object_ids)
 constexpr int32_t SpireAltar = 596;   // PD2 593 TaintedSunMapEventAltar
 constexpr int32_t Fog = 374;          // PD2 374, D2R's Fog (the same row)
 // PD2's waves: 993-995 shadowofhate, shadowofterror, shadowofdestruction

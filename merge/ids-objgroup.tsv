@@ -132,13 +132,13 @@ everywhere	129	everywhere
 dummy#19	130	dummy
 dummy#20	131	dummy
 dummy#21	132	dummy
-evilurns	133	evilurns
-pandemoniummap	134	pandemoniummap
-sparklychests	135	sparklychests
-butcher_other	136	butcher_other
-djinns_domain_chests	137	djinns_domain_chests
-djinns_domain_dead_guards	138	djinns_domain_dead_guards
-Poisoned Well clickables	139	Poisoned Well clickables
-Descent bodies 1	140	Descent bodies 1
-Descent bodies 2	141	Descent bodies 2
-Descent bodies 3	142	Descent bodies 3
+sparklychests	133	sparklychests
+butcher_other	134	butcher_other
+evilurns	-	cut: PD2's map and uber levels (#1249)
+pandemoniummap	-	cut: PD2's map and uber levels (#1249)
+djinns_domain_chests	-	cut: PD2's map and uber levels (#1233)
+djinns_domain_dead_guards	-	cut: PD2's map and uber levels (#1233)
+Poisoned Well clickables	-	cut: PD2's map and uber levels (#1233)
+Descent bodies 1	-	cut: PD2's map and uber levels (#1233)
+Descent bodies 2	-	cut: PD2's map and uber levels (#1233)
+Descent bodies 3	-	cut: PD2's map and uber levels (#1233)

@@ -44,7 +44,7 @@ constexpr int32_t Adds[] = {1131, 1132, 1157, 1158};
 // PD2's levels 188 and 189; the levels are bound in placements/lucion.cpp
 const auto Arena() noexcept { return placements::LevelOf("lucion"); }
 const auto Temple() noexcept { return placements::LevelOf("temple"); }
-constexpr int32_t DarkPortal = 625;           // xactdarkportal_grey (PD2 622)
+constexpr int32_t DarkPortal = 622;           // xactdarkportal_grey (objects.txt row, pinned by test_object_ids)
 constexpr int32_t Harrogath = 109, HarrogathSpot = 1, HarrogathAct = 4;  // PD2's 0x6d, spot 1; act V
 constexpr int32_t PortalSize = 3;  // the unit size PD2 0x1038a000 passes the spot search
 constexpr uint32_t TierKey = 0x55425254;  // 'UBRT', as map_open.cpp
@@ -426,7 +426,7 @@ auto Desecrate(Game* game, Unit* player) noexcept -> bool {
 	return true;
 }
 
-// The Sacrifice Altar (class 624, operate slot 35, map_events.cpp): PD2 takes the amulet on the cursor through its panel,
+// The Sacrifice Altar (class 621, operate slot 35, map_events.cpp): PD2 takes the amulet on the cursor through its panel,
 // D2R has none, so the altar runs the same Desecration as the transmute, on the one corrupted amulet in the cube.
 // shortcut: the altar stays in mode 0 (PD2 sets mode 1 after an attempt), the HD altar may have no mode-1 art; upgrade once checked
 auto OperateSacrificeAltar(Game* game, Unit* player) noexcept -> int32_t {

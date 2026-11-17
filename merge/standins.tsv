@@ -62,7 +62,6 @@ missiles	royalstrikechainlightning	=	pSrvHitFunc,pCltHitFunc	`*12` server hit
 missiles	sharptootharmageddoncontrol	armageddoncontrol	pSrvHitFunc,pCltHitFunc	Sharptooth's Armageddon
 missiles	sharptootharmageddonrock	armageddonrock	pSrvHitFunc,pCltHitFunc	Sharptooth's Armageddon
 missiles	boichaosice	-	pSrvHitFunc,pCltHitFunc	`*12` server hit
-misc	Monastery Map	-	pSpell	Map items
 misc	Pvp Map	-	pSpell	Map items
 misc	Pvp Map 2	-	pSpell	Map items
 misc	Uber Ancients Map	-	pSpell	Map items
