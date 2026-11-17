@@ -7,7 +7,7 @@ Shared choices:
 - No recipe outputs a magic map. Maps never roll magic, so PD2's magic rows (upgrade magic to rare, imbue magic, scour magic, reroll magic, `irma`) are not ported. The orb strings no longer mention magic maps.
 - PD2's stat ids are +53 here: `corruptor` 361 is 414, heroic 458 is 511.
 - Refusal rows (op 30) stand directly before the first real row of their group and stop a normal map from taking a heroic, corrupt or fortify ingredient, as the Catalyst row does.
-- Maps do not stack. A recipe takes several maps of one kind with one line and `qty=N` (for example `t1m,nor,qty=3`); separate `qty=1` lines of the same type do not match.
+- Normal maps with equal stats stack to 50 (#1328); rare maps never stack. A recipe takes several maps of one kind with one line and `qty=N` (for example `t1m,nor,qty=3`), and `numinputs` is the summed qty, as in the rune and gem recipes. core-rules counts a stack as its quantity, so one stack of 3 or more, or separate maps, match; the unused leftover is remade by `cube_stacks` and keeps its Area Level. Separate `qty=1` lines of the same type do not match.
 
 ## Orbs (PD2 rows 3-20, 1965-1976, 2161-2163)
 Per tier, each plain orb row is followed by its imbued row (`urma`, `rrra`, `irra`, PD2 1965-1968; PD2's `irma` rows are skipped, no magic maps):
@@ -19,10 +19,10 @@ Per tier, each plain orb row is followed by its imbued row (`urma`, `rrra`, `irr
 Changed: every orb row refuses a corrupted map (op 18, `corruptor` 414 equal to 0), as in PD2.
 
 ## Tier upgrade (PD2 rows 21-34)
-Three same-tier normal maps plus `upmp` give one next-tier normal map, for T1 to T2 and T2 to T3. PD2 lists seven input shapes per tier; the stack shapes cannot match here (maps do not stack), so one row per tier with three single maps.
+Three same-tier normal maps plus `upmp` give one next-tier normal map, for T1 to T2 and T2 to T3. PD2 lists seven input shapes per tier for its stack layouts; one row per tier with `qty=3` covers them, because a stack of 3 or more matches (#1324).
 
 ## 3 to 1 (PD2 rows 2125-2139)
-Three normal maps of a tier give one normal map; three rare give one rare. Changed: PD2's T1 normal row has an input with no `nor` quality (a bug); the port's rows name `nor` for all three tiers. PD2's disabled duplicate rows are not ported.
+Three normal maps of a tier (one stack of 3 or more works) give one normal map; three rare (separate items) give one rare. Changed: PD2's T1 normal row has an input with no `nor` quality (a bug); the port's rows name `nor` for all three tiers. PD2's disabled duplicate rows are not ported.
 
 ## Heroic (PD2 rows 202, 204)
 Rare map plus `std`: gated on `heroic` 511 equal to 0 (op 18), so a second `std` is refused; adds the `heroed` flag, +20% magic find, +20% gold, +20% density, +10% experience (PD2's values). Refusal row for normal maps first.
@@ -32,6 +32,9 @@ Per tier, a roll row (map + `wss`, `corruptor` 0) adds a random `corruptnum` 1-1
 
 ## Fortify (PD2 rows 1917-1922)
 Rare map plus `fort`: +100% monster life, +20% monster damage, -50% density, +100% experience, +100% chance to drop additional items ([#1317](https://github.com/synpoox/pd2-resurrected/issues/1317): `map_drop_bonus`), +30% faster run/walk for the player (PD2: player velocity 30). The experience and the drop bonus are one combined property, `map-xp-drop`, because the output holds 5 mods.
+
+## Anya (#1324)
+Anya sells `upmp` and `fort` as PD2's Drehya does: `AnyaMin`/`AnyaMax` 1, no magic columns, price 200000 (`upmp`) and 15000 (`fort`). The vendor columns already equal PD2's `misc.txt`, so no table row changed.
 
 ## Not ported
 Dungeon and unique map rows, ear rows, the `isc` and gem drop-test rows, and PD2's disabled rows (no `enabled` value). Listed in `docs/deviations.md`.

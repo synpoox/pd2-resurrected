@@ -83,6 +83,19 @@ class MapRecipeShapeTests(MapRecipeTests):
             want = sum(int(m.group(1)) if (m := re.search(r"qty=(\d+)", i)) else 1 for i in ins)
             assert int(r["numinputs"]) == want, r["description"]
 
+    def test_normal_map_inputs_use_qty_so_a_stack_matches(self):
+        for r in self.rows:
+            for k in range(1, 8):
+                i = r.get(f"input {k}", "").strip('"')
+                if re.match(r"t\dm,nor", i) and r["op"] != "30":
+                    assert "qty=" in i, r["description"]
+
+    def test_anya_sells_upmp_and_fort_like_pd2(self):
+        misc = {r["code"]: r for r in data_tables.rows("misc")}
+        for code, price in (("upmp", "200000"), ("fort", "15000")):
+            r = misc[code]
+            assert (r["AnyaMin"], r["AnyaMax"], r["cost"], r["spawnable"]) == ("1", "1", price, "1"), code
+
     def test_kept_maps_use_the_mod_qualifier(self):
         for part in ("heroic map", "corrupt", "fortified"):
             for r in self.desc(part):
