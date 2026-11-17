@@ -11,8 +11,8 @@ Arreat Battlefield	Siege		m09	Medium	85	1	Armorsmith of Equality
 Canyon of Secheron	Mesa		m10	Medium	85	1	Johnathan The Damned
 Kehjistan Marketplace	Desert		m11	Medium	85	1	Toadflax the Tainted
 Shadows of Westmarch	Wilderness		m12	Medium	85	1	The Cow Queen
-Ruins of Viz-Jun	Kurast		m13	Medium	85	1	Indio The Insane
-Halls of Torture	Dungeon	Winding	m14	Medium	85	1	Bloodlord of the Pit
+Ruins of Corvus	Kurast		m13	Medium	85	1	Indio The Insane
+Leoric's Passage	Dungeon	Winding	m14	Medium	85	1	Bloodlord of the Pit
 Cursed Hold	Jail	Branching	m15	Medium	85	1	Gaoler Kanemith
 Khazra Den	Lair	Sprawl	m16	Medium	85	1	Sharptooth the Broodmother
 Cellar of the Damned	KurastSewer	Loop	m17	Medium	85	1	Bloodlord of the Pit
