@@ -1660,6 +1660,37 @@ static auto PatchUnlimitedBooks(const D2RL::PluginContext* context) noexcept -> 
 	return true;
 }
 
+// --- Charm rows (#358) ---------------------------------------------------------------------------------------------
+// PD2's inventory is 10x8 and a charm works only in its lower four rows (the grid's y 4 to 7, by the charm's top row).
+// D2R decides whether a charm's stats apply in one function, (item, player) -> 1 when active (type charm, unit mode 4,
+// page 0, requirements met); it is only reached through a function-pointer table, so no SDK service or data column
+// covers it (PlayerPageCharmPolicy is for custom pages, not the stock inventory) and an entry hook it is.
+// 93847: 0x36ae00
+sigscan::Entry CharmActive {"ItemCharmActive", "charms", sigscan::Kind::Code, 0, 0,
+                            "48 89 5c 24 08 57 48 83 ec 40 48 8b fa 48 8b d9 e8 ?? ?? ?? ?? 85 c0 74 69 ba 0d 00 00 00 48 8b cb e8 ?? ?? ?? ?? 85 c0 74 58 48 85 db 74 0d 48 8b cb e8 ?? ?? ?? ?? 83 f8 04 74 19"};
+constexpr uint8_t CharmActiveEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x57, 0x48, 0x83, 0xec, 0x40, 0x48, 0x8b, 0xfa, 0x48, 0x8b, 0xd9};
+constexpr uint32_t CharmFirstActiveRow = 4;  // zero-based: rows 5 to 8
+
+using CharmActiveFn = int32_t (*)(Unit* item, Unit* player) noexcept;
+CharmActiveFn g_charmActiveOriginal = nullptr;
+
+auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
+	const int32_t active = g_charmActiveOriginal(item, player);
+	if (active == 0 || item == nullptr) {
+		return active;
+	}
+	const uint32_t row = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitPackedXY)(item) >> 16;
+	return row >= CharmFirstActiveRow ? active : 0;
+}
+
+auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
+	sigscan::Entry* const own[] = {&CharmActive};
+	sigscan::Resolve(own, 1, context->exeBase, nullptr, 0);
+	return CharmActive.state == sigscan::State::Ok &&
+	       context->InstallInlineHook(CharmActive.rva, CharmActiveEntry, sizeof(CharmActiveEntry), CharmActiveInRow,
+	                                  &g_charmActiveOriginal);
+}
+
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
 	g_context = context;
@@ -1702,22 +1733,24 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	// Unlimited books (IR5): D2R's item spell table is data; its free entry 17 gets the Town Portal handlers and 18
 	// none (core-events' hooks identify all), both with keep 1, so the book stays after its use
 	const bool unlimited = PatchUnlimitedBooks(context);
+	const bool charms = InstallCharmRows(context);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
 	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
 	              equip ? "" : " FAILED (bytes differ)", replenish ? "" : " FAILED (bytes differ)",
-	              unlimited ? "" : " FAILED (entries not empty, or no mutation service)");
+	              unlimited ? "" : " FAILED (entries not empty, or no mutation service)",
+	              charms ? "" : " FAILED (signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
-	       (unlimited ? 1 : 0);
+	       (unlimited ? 1 : 0) + (charms ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 10;
+	return 11;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
