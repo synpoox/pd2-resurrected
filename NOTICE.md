@@ -10,8 +10,8 @@ scripts (`tools/`, `tests/`), documentation, and our own changes to game data as
 It does **not** cover, and grants no rights to:
 
 - **Diablo II and Diablo II: Resurrected** game assets and data (Blizzard Entertainment). `files/data/` holds data derived
-  from the game, modified for this mod; it remains Blizzard's.
-- **Project Diablo 2**: its content, design and data, which this project recreates or builds on. All credit for them goes to
+  from the game, modified for this mod; it remains Blizzard's and, where recreated from Project Diablo 2, the PD2 team's.
+- **Project Diablo 2**: its content, design and data, which this project recreates or builds on. This includes the upscaled PD2 item pictures in `merge/art/`. All credit for them goes to
   the Project Diablo 2 team and its contributors.
 - **The bundled companion plugins** below. Each belongs to its author and is under its own license; the release package
   only redistributes the builds pinned in [`companions/manifest.json`](companions/manifest.json).
