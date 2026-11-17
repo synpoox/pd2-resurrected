@@ -37,9 +37,9 @@ Drop tier follows PD2's area, not the map's tier: PD2's per-area copies use `Map
 |---|---|---|---|
 | m01 Tunneling Depths (T1) | Ancestral Trial (146, t1) | arach + fill: minion, mosquito, unraveler | only `arach` has a row; fill from Lost Temple's (158, t1) cave list |
 | m02 Bone Vaults (T2) | Crypts (170, t3) + Zhar Ice (178, t3) | sk_archer, bighead, fallenshaman, reanimatedhorde, fallen | unchanged; area tier t3 and the rows are t1/t3 (tier differs for the t1 rows) |
-| m03 Frozen Hollows (T2) | Zhar Ice (178, t3) | arach, fallenshaman, fallen, reanimatedhorde, siegebeast | unchanged; tier differs |
+| m03 Frozen Hollows (T2) | Zhar Ice (178, t3) | arach (fill), fallenshaman, fallen, reanimatedhorde, siegebeast | unchanged; tier differs |
 | m04 Overgrown Reach (T1) | Jungle Map (148, t1) | sandleaper, deathmauler, councilmember + fill: thornhulk, mosquito | fill from Ruins of Viz-Jun (143, t1, Kurast); `deathmaulermap` is t3 (tier differs) |
-| m05 Frostbitten Fields (T1) | Zhar Ice (178, t3) | fallenshaman, fallen, reanimatedhorde, siegebeast, sandleaper | unchanged; no T1 snow area; tier differs |
+| m05 Frostbitten Fields (T1) | Zhar Ice (178, t3) | fallenshaman, fallen, reanimatedhorde, siegebeast, sandleaper (fill) | unchanged; no T1 snow area; tier differs |
 | m06 Phlegethon (T1) | Lava Map (145, t1) | minion, pantherwoman, fallen, slinger, siegebeast, bloodlord, councilmember, reanimatedhorde, fallenshaman, fetish | the area's list is the `*map` rows themselves; `fetishmap` is t3 (tier differs) |
 | m07 Battlefields of Eternity (T3) | Kyovashad (201, t3) | reanimatedhorde, zealot, bloodlord, vilemother, deathmauler | `reanimatedhordemap` and `bloodlordmap` are t1 (tier differs) |
 | m08 Horazon's Memory (T2) | Arcane (142, t2) | zealot2, cantor2, oblivionknight2 + fill: minion2 | `doomknightArcane` is `BaseId` doomknight3 = oblivionknight; fill from Descent (210, t2) |
