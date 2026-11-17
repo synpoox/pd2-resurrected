@@ -93,7 +93,7 @@ and the charge-up skill's id, and sends the release packet (`0x5396d0`). The cli
 | chit 67 | clawsofthunderbolt | empty | 67 |
 | srvst 23, 78 | all; Tiger Strike | vanilla; built ([W10](https://github.com/synpoox/pd2-resurrected/issues/51)) | data; done |
 
-The router is the router slot (glossary): srvdofunc 190 holds core-rules' `SrvDoRouter`
+The router is the router slot (glossary): srvdofunc 190 holds the toolkit's `skill_router::Dispatch`
 (`plugin/core-rules/skill_functions.cpp`), which calls a PD2 do function by skill id. It is ours, not D2RLoader's.
 The prg functions can't share it with srvdo 170. The release dispatcher calls them with the charge-up skill's
 own id, which the router already maps to the 170 port. So they need real slots. D2R's free 172-190 are all used or

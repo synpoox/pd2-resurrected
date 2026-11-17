@@ -102,7 +102,7 @@ if ($Data) {
             if ($LASTEXITCODE -ne 0) { throw "modkit install failed ($LASTEXITCODE)" }
         }
     } finally { Pop-Location }
-    # Cartographer's cube signatures beside its tables keep the cube executor with core-rules (#987); companions.py overlay() does the same.
+    # Cartographer's cube signatures beside its tables keep the cube executor with core-rules (#987); the toolkit's release/companions.py overlay() does the same.
     $sig = Join-Path $PSScriptRoot "..\companions\cartographer\signatures.txt"
     if (Test-Path $sig) {
         $tables = Join-Path $root "$mod.mpq\data\global\excel\d2rloader\cartographer"

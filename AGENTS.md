@@ -16,8 +16,8 @@ uncommitted changes). The CI table-diff report's first line names GitHub's merge
 unchecked PR.
 
 Each CHANGELOG entry is one short line (one sentence, under ~100 chars), unless it is a huge feature.
-Never edit `CHANGELOG.md` in a PR: add `changelog.d/<issue>-<slug>.md` holding `#### <Category>` and then the `- ` line;
-`tools/release.py` folds the fragments in at release.
+Never edit `CHANGELOG.md` in a PR: add `changelog.d/<issue>-<slug>.md` (format and rules: the toolkit's
+`templates/changelog.d/README.md` and its `d2r-release` skill); the toolkit's `release/stage.py` folds the fragments in at release.
 
 After a PR merges, delete its branch, on the remote and locally.
 
@@ -36,8 +36,8 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 
 ## Testing in-game
 
-- Game slots (separate game copies for a test, Slot2-5 here) and how to set one up: `docs/agents/game-slots.md`.
-- The game-check recipe (lock, install, cheats, screenshots, unlock, worktree hygiene): `docs/agents/game-check.md`. Remove a worktree only with `tools/worktree_remove.ps1` (never `git worktree remove` or `rm -r`: they follow the `pd2-data` junction).
+- Game slots (separate game copies for a test) and how to set one up: `docs/agents/game-slots.md`. Which slots this repo may lock is the toolkit's slot registry (`~/.d2r-modkit/slots.toml`, machine config, enforced by `game_slots lock`; Slot2-5 on this machine). Name the slot every time; never `lock any`.
+- The game-check recipe (lock, install, cheats, screenshots, unlock, worktree hygiene): `docs/agents/game-check.md`. Remove a worktree only with the toolkit's `tools/worktree_remove.ps1` (never `git worktree remove` or `rm -r`: they follow the `pd2-data` junction).
 - The mod data is committed in `files/data/` and its tables are the source (ADR 0007): a data change edits the table
   or JSON there directly; never add a JSON patch. `install.ps1 -Data .` installs it with no extract or merge. Don't
   keep a `generated/` folder in a worktree (install refuses it); `pd2-data` is the only junction.

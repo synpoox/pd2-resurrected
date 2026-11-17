@@ -5,12 +5,11 @@ level 95+ characters). Nothing was tagged, uploaded or released.
 
 ## The candidate
 
-`python tools/release.py --game <D2R> --version 0.3.0-rc.1 --out <dir> --cartographer <cartographer.dll>
-[--cartographer-commit <sha>]` stages the mod folder and hands it to the toolkit's `package_release.py`. Cartographer is
-not pinned: a release ships the latest build, passed with `--cartographer` (or `CARTOGRAPHER_DLL`). `release.py` fails
-only when no dll is given or the file is missing, and records `Cartographer: d2r-tools <commit>, sha256 <hash>` at the
-end of the release notes (the commit comes from `--cartographer-commit` or `CARTOGRAPHER_COMMIT`, and is left out when
-not given).
+`python <toolkit>/release/stage.py --game <D2R> --version 0.3.0-rc.1 --out <dir> --extra-plugin
+"<cartographer.dll>@d2r-tools <sha>"` stages the mod folder and hands it to the toolkit's `package_release.py`
+(`<toolkit>` is the d2rAI-toolkit checkout, found with its `tools/toolkit_path.py`). Cartographer is not pinned: a
+release ships the latest build, passed with `--extra-plugin`. The stager fails only when the file is missing, and records
+`cartographer: d2r-tools <sha>, sha256 <hash>` at the end of the release notes (the source after `@` is optional).
 
 | | main (0.2.0-alpha) | candidate (0.3.0-rc.1) |
 |---|---|---|
@@ -28,18 +27,18 @@ Update (#967): this table is the 0.3.0-rc.1 rehearsal as run. Since #967 the plu
 and its map code removed), so a current candidate ships `core-rules`, `core-events`, `core-ui` and Cartographer, and
 the `core-maps` rows and log lines below are historical. The DLL was renamed, but the plugin id stayed `core-maps` (#1044), so current logs may still say `core-maps`.
 
-`--game` must hold the official `D2RLoader.exe`: `release.py` writes a temporary `release.toml` that adds
-`catalog.loader_files` for it, pinned at `[d2rloader] version` (the toolkit's schema 3 refuses a catalog without it;
-the same failure was already in `main`). It fails when `[catalog]` or that version is missing, or when `release.toml`
-sets `loader_files` itself.
+`--game` must hold the official `D2RLoader.exe`: with `stage.loader_from_game = true` in `release.toml` the stager
+writes a temporary `release.toml` that adds `catalog.loader_files` for it, pinned at `[d2rloader] version` (the
+toolkit's schema 3 refuses a catalog without it). It fails when `[catalog]` or that version is missing, or when
+`release.toml` sets `loader_files` itself.
 
-## Build latest Cartographer from d2r-tools main and pass it to release.py
+## Build latest Cartographer from d2r-tools main and pass it to the stager
 
 1. Build from a d2r-tools `origin/main` commit in a scratch clone (never the owner's worktrees):
    `git clone https://github.com/synpoox/d2r-tools <dir>`, `git submodule update --init third_party/PluginSDK`, then
    `cmake -S <dir>/plugins/cartographer -B <build> -A x64` and `cmake --build <build> --config Release`
    (the dll is `<build>/Release/cartographer.dll`; build outside the system temp folder if MSBuild warns).
-2. `python tools/release.py ... --cartographer <build>/Release/cartographer.dll --cartographer-commit <full sha>`.
+2. `python <toolkit>/release/stage.py ... --extra-plugin "<build>/Release/cartographer.dll@d2r-tools <full sha>"`.
 3. Start the game once in a slot with the dll and check `cartographer.log` loads it.
 
 ## Arena status

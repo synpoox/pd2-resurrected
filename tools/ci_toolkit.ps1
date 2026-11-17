@@ -8,8 +8,9 @@ $pin = @(Get-Content (Join-Path $PSScriptRoot "..\toolkit.version") | ForEach-Ob
 if ($pin -notmatch '^[0-9a-fA-F]{7,40}$') { throw "toolkit.version: the first non-comment line must be a commit SHA" }
 # The runner's jobs run at once on one machine: one at a time may fetch in the shared checkout and make the worktree.
 $mutex = [System.Threading.Mutex]::new($false, 'Global\pd2r-ci-toolkit')
-[void]$mutex.WaitOne()
 try {
+    # a job killed while holding the mutex abandons it: the next waiter gets it with this exception
+    try { [void]$mutex.WaitOne() } catch [System.Threading.AbandonedMutexException] {}
     git -C $Main cat-file -e "$pin^{commit}" 2>$null
     if ($LASTEXITCODE -ne 0) {
         git -C $Main fetch -q origin

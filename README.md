@@ -78,7 +78,7 @@ Needs D2R and the d2rAI-toolkit at the commit in `toolkit.version`. The tools, `
 no extract or merge runs per build.
 
 ```bash
-python tools/companions.py fetch
+python <toolkit>/release/companions.py fetch
 ```
 
 ```bash
@@ -86,16 +86,16 @@ python -m modkit build .
 ```
 
 ```bash
-python tools/companions.py install --game DIR
+python <toolkit>/release/companions.py install --game DIR
 ```
 
-Run `modkit` and the last command with the toolkit on `PYTHONPATH`.
+`<toolkit>` is the d2rAI-toolkit checkout the finder returns. Run `modkit` and the last command with it on `PYTHONPATH`.
 `companions.py fetch` downloads the pinned companion plugins in
 `companions/manifest.json` (checked by SHA-256, never committed; an entry pins a GitHub release asset (`repo`, `tag`),
 a file at a repo commit (`commit`), or a direct download link (`url`, e.g. a D2RLoader Hub release)). `install` is
 `modkit install` plus the companions, our `companions/filter.json`, plugin settings
-(`companions/config/`), and the vanilla
-item tables the loot filter needs when the build doesn't ship them. The tool tests find modkit through the same finder (or on `PYTHONPATH`).
+(`companions/config/`), Cartographer's `signatures.txt` (manifest `project_files`), and the vanilla
+item tables the loot filter needs when the build doesn't ship them (manifest `filter_tables`). The tool tests find modkit through the same finder (or on `PYTHONPATH`).
 
 ### Importing a new PD2 version
 
@@ -125,13 +125,14 @@ python tools/pd2_diff.py --scope P2
 
 ## Release
 
-`tools/release.py` packages the built mod (the whole build above, plus the plugins below) with d2rAI-toolkit's
+The toolkit's `release/stage.py` packages the built mod (the whole build above, plus the plugins below) with
 `release/package_release.py` and `release.toml`: `dist/PD2Resurrected-<version>.7z`, release notes with the changelog
 section and the deviation list, and `SHA256SUMS`. It needs 7-Zip, and a `### <version> (<date>)` section in
 `CHANGELOG.md` for mod.json's version: rename `### Unreleased` on release day.
 
 ```bash
-python tools/release.py --game DIR
+python tools/release_precheck.py   # refuses an out/data with the retired converter's output
+python <toolkit>/release/stage.py --game DIR --extra-plugin "<cartographer.dll>@d2r-tools <commit>"
 ```
 
 The `release` workflow (Actions > release > Run workflow) runs the whole build and this script, then publishes a GitHub
