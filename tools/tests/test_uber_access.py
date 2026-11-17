@@ -41,7 +41,7 @@ class UberAccessTests(unittest.TestCase):
     def test_every_uber_level_is_a_known_destination(self):
         for enc, (level, target, src, uber, _nw) in bindings().items():
             if uber:
-                assert src in ("Existing", "Private", "D2RTristram"), enc
+                assert src in ("Private", "D2RTristram"), enc
                 assert target >= 209 or src == "D2RTristram", enc
 
 
