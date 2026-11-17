@@ -40,6 +40,7 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 | uber_scaling.cpp, uber_scaling.h | D | |
 | uber_tristram.cpp, uber_tristram.h | D | |
 | prime_minions.cpp, prime_minions.h | D | |
+| altar_panel.cpp, altar_panel.h | D | |
 | lucion.cpp, lucion.h | D | |
 | lucion_ai.cpp, lucion_ai.h | D | |
 | lucion_chests.cpp, lucion_chests.h | D | |

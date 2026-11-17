@@ -4,6 +4,7 @@
 #include "pd2_engine.h"
 
 #include <D2RLPlugin/api.h>
+#include <D2RLPlugin/handles.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -18,10 +19,12 @@ inline constexpr int32_t LucionDeadStage = 8;
 
 // Registers the monster-death listener; `report` gets one entry. Returns 1 when it is on.
 auto InstallLucion(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
-// UB7a: a transmute in the Temple with one corrupted amulet after Lucion's death is a Desecration attempt. Returns true
-// when it ran (the caller then blocks the recipe).
-auto Desecrate(d2r::Game* game, d2r::Unit* player) noexcept -> bool;
-// The Sacrifice Altar's use: Desecrate on the cube's amulet, logging why when it does not run. Returns 1 (used).
+// UB7a: Desecration on `item` (a native item in the player's inventory), at the altar's confirm (altar_panel.cpp).
+enum class DesecrateResult { Refused, Failed, Desecrated };
+auto Desecrate(d2r::Game* game, d2r::Unit* player, d2r::Unit* item) noexcept -> DesecrateResult;
+// UB7b, after a Failed roll (game thread): swaps the inventory amulet `old` for the brick. False when it did not run.
+auto BrickAmulet(d2r::Game* game, d2r::Unit* playerUnit, D2RL::PlayerHandle player, D2RL::ItemHandle old) noexcept -> bool;
+// The Sacrifice Altar's use: opens the altar panel. Returns 1 (used).
 auto OperateSacrificeAltar(d2r::Game* game, d2r::Unit* player) noexcept -> int32_t;
 // Live counters for the status command.
 auto LucionCounters(char* out, size_t size) noexcept -> void;

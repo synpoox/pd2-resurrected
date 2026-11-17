@@ -1,0 +1,85 @@
+{
+    "type": "Panel", "name": "core-maps/SacrificeAltar",
+    "fields": {
+        "priority": 10,
+        "rect": "$LeftPanelRect",
+        "anchor": "$LeftPanelAnchor"
+    },
+    "children": [
+        {
+            "type": "ClickCatcherWidget", "name": "click_catcher",
+            "fields": {
+                "rect": "$PanelClickCatcherRect"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "background",
+            "fields": {
+                "filename": "PANEL\\Horadric_Cube\\HoradricCube_BG"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "LeftHinge",
+            "fields": {
+                "rect": "$LeftHingeRect",
+                "filename": "$LeftHingeSprite"
+            }
+        },
+        {
+            "type": "TextBoxWidget", "name": "title",
+            "fields": {
+                "rect": "$InGamePanelTitleRect",
+                "style": "$StyleTitleBlock",
+                "text": "Sacrifice Altar"
+            }
+        },
+        {
+            "type": "TextBoxWidget", "name": "prompt",
+            "fields": {
+                "rect": { "x": 140, "y": 300, "width": 800, "height": 160 },
+                "style": "$StyleModalDialogDescription",
+                "text": "Place a corrupted amulet into the blood altar"
+            }
+        },
+        {
+            "type": "InventoryGridWidget", "name": "core-maps/AltarSlot",
+            "fields": {
+                "rect": { "x": 529, "y": 681 },
+                "cellCount": { "x": 1, "y": 1 },
+                "cellSize": "$ItemCellSize",
+                "gemSocketFilename": "PANEL\\gemsocket"
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "confirm",
+            "fields": {
+                "rect": { "x": 420, "y": 969 },
+                "filename": "PANEL\\Horadric_Cube\\TransmuteButton",
+                "hoveredFrame": 2,
+                "onClickMessage": "PanelManager:OpenPanel:core-maps/AltarConfirm"
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "cancel",
+            "fields": {
+                "rect": { "x": 700, "y": 969 },
+                "filename": "PANEL\\closebtn_4x",
+                "hoveredFrame": 3,
+                "tooltipString": "@strClose",
+                "sound": "cursor_close_window_hd",
+                "onClickMessage": "PanelManager:TogglePanel:core-maps/SacrificeAltar"
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "close",
+            "fields": {
+                "rect": { "x": 1075, "y": 9 },
+                "filename": "PANEL\\closebtn_4x",
+                "hoveredFrame": 3,
+                "tooltipString": "@strClose",
+                "sound": "cursor_close_window_hd",
+                "onClickMessage": "PanelManager:TogglePanel:core-maps/SacrificeAltar"
+            }
+        }
+    ]
+}

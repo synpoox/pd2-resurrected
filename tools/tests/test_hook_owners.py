@@ -55,9 +55,9 @@ class HookOwners(unittest.TestCase):
     def test_cube_executor_is_core_rules(self):
         self.assertEqual(installs()["CubeExecutor"], ["core-rules/cube_rules.cpp"])
 
-    def test_cube_search_keeps_the_desecration_trigger(self):
+    def test_cube_search_has_no_desecration_trigger(self):
         self.assertEqual(installs()["CubeRecipeSearch"], ["core-events/cube_ops.cpp"])
-        self.assertIn("Desecrate(game, player)", (PLUGIN / "core-events" / "cube_ops.cpp").read_text(encoding="utf-8"))
+        self.assertNotIn("Desecrate", (PLUGIN / "core-events" / "cube_ops.cpp").read_text(encoding="utf-8"))
 
     def test_core_events_leaves_the_item_spell_dispatchers_to_cartographer(self):
         # PD2's map item spell is cut (#964): no PD2 plugin hooks either dispatcher, so Cartographer owns both

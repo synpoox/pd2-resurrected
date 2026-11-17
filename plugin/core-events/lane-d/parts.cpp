@@ -2,6 +2,7 @@
 // A lane adds its parts here, in its own folder, and never edits plugin.cpp. Orders are one global sequence.
 #include "part_registry.h"
 
+#include "altar_panel.h"
 #include "arena_spots.h"
 #include "dclone_ai.h"
 #include "lucion.h"
@@ -61,6 +62,12 @@ void InstallDcloneaiPart(const D2RL::PluginContext* context, char* report, size_
 	std::snprintf(report, size, "%d/%d installed: %s", installed, 2, rules);
 }
 
+void InstallAltarPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallAltarPanel(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
+}
+
 void InstallArenaPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	InstallArenaSpots(context, report, size);
 }
@@ -73,6 +80,7 @@ PartReg r70(70, "trist", InstallTristram);
 PartReg r156(156, "uberkey", InstallUberkeyPart);
 PartReg r57(57, "arena", InstallArenaPart);
 PartReg r80(80, "lucion", InstallLucionPart);
+PartReg r81(81, "altar", InstallAltarPart);
 PartReg r90(90, "primes", InstallPrimesPart);
 PartReg r100(100, "temple", InstallTemplePart);
 PartReg r120(120, "lucionai", InstallLucionaiPart);
@@ -80,6 +88,7 @@ PartReg r130(130, "rathmaai", InstallRathmaaiPart);
 PartReg r140(140, "rathmalife", InstallRathmalifePart);
 PartReg r150(150, "dcloneai", InstallDcloneaiPart);
 CountersReg c60(60, LucionCounters);
+CountersReg c65(65, AltarCounters);
 CountersReg c70(70, PrimeMinionsCounters);
 CountersReg c80(80, LucionChestsCounters);
 CountersReg c90(90, UberDropsCounters);
