@@ -29,3 +29,14 @@ class MapMonsters(unittest.TestCase):
                 for col in ("TreasureClass(H)", "TreasureClassChamp(H)", "TreasureClassUnique(H)"):
                     self.assertIn(r[col], tcs, f"{i} {col}")
                     self.assertTrue(r[col].startswith("Map "), f"{i} {col}")
+
+    def test_minions_share_the_map_tier(self):
+        mon = {r["Id"]: r for r in data_tables.rows("monstats")}
+        for i, r in mon.items():
+            if not i.endswith(("map", "map2")):
+                continue
+            for col in ("minion1", "minion2"):
+                m = r[col]
+                if m.endswith(("map", "map2")):
+                    self.assertIn(m, mon, f"{i} {col} {m}")
+                    self.assertEqual(m.endswith("map2"), i.endswith("map2"), f"{i} {col} {m}")
