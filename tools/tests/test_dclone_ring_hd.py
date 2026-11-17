@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 # JSON keys are case-sensitive; the value is the D2R model the key must keep
-RING = {"uberdiabfire": "ground_fire_big", "ubernova": "expansion_baalsummonmissile",
+RING = {"uberdiabfire": "ground_fire_big", "ubernova": "expansion_firenova",
         "uberwallmaker": "ground_fire_medium", "uberwall": "ground_fire_medium"}
 
 
