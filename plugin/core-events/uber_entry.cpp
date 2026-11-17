@@ -204,6 +204,32 @@ auto KeepBossRoom(void* act, void* room) noexcept -> int32_t {
 	return g_releasableOriginal(act, room);
 }
 
+// D2R's warp lands a player at the level's default spawn, which in the Diablo Clone, Lucion and Rathma arenas is by
+// the boss (#1260): the arena's `arrival` spot moves them clear of it. No spot or no room: left as is.
+auto PlaceAtArrival(Game* game, Unit* player, int32_t level) noexcept -> void {
+	using namespace d2r::rva;
+	const placements::Binding* bound = ArenaReady(level) ? placements::BindingAt(level) : nullptr;
+	placements::Spot at{0, 0};
+	void* near = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(player);
+	if (bound == nullptr || near == nullptr || !ArenaSpotOf(bound->encounter, "arrival", &at)) {
+		return;
+	}
+	int32_t before[2] = {};
+	d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(UnitCoords)(player, before);
+	void* room = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(near, at.x, at.y);
+	if (room == nullptr) {
+		plog::Warn("uber: no room at %s's arrival (%d, %d), player left at (%d, %d)", bound->encounter, at.x, at.y,
+		           before[0], before[1]);
+		return;
+	}
+	d2r::Engine<void (*)(Game*, Unit*, void*, int32_t, int32_t, int32_t, int32_t) noexcept>(TeleportUnit)(
+		game, player, room, at.x, at.y, 0, 0);
+	int32_t after[2] = {};
+	d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(UnitCoords)(player, after);
+	plog::Info("uber: %s arrival moved from (%d, %d) to (%d, %d)", bound->encounter, before[0], before[1], after[0],
+	           after[1]);
+}
+
 // PD2 0x1038a680: the user, then every other player in Harrogath at level 80+ within reach of the fountain, loses
 // pets and buffs and is warped in. As in PD2, nobody else goes when the user does not arrive. Returns how many
 // arrived.
@@ -216,6 +242,9 @@ auto WarpGroup(Game* game, Unit* user, int32_t level) noexcept -> int32_t {
 		const int32_t pets = RemovePets(game, player);
 		const int32_t states = StripStates(game, player);
 		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t) noexcept>(WarpToLevel)(game, player, level, 0);
+		if (PlayerLevelId(player) == level) {
+			PlaceAtArrival(game, player, level);
+		}
 		const int32_t now = PlayerLevelId(player);
 		plog::Info("uber: player warped to level %d (now in %d), %d pets removed, %d states stripped", level, now,
 		           pets, states);

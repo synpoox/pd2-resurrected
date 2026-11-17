@@ -4,8 +4,10 @@ Diablo Clone	soulN	2	2	ubertrappedsoul1
 Diablo Clone	soulE	6	2	ubertrappedsoul2	
 Diablo Clone	soulS	6	6	ubertrappedsoul4	
 Diablo Clone	soulW	2	6	ubertrappedsoul3	
+Diablo Clone	arrival	4	7		
 Lucion	centre	4	4	Lucion	
 Lucion	control	4	4	LucionControl	
+Lucion	arrival	4	7		
 Lucion	temple-portal	3	3		
 Temple of the Triune	altar	4	1		Sacrifice Altar
 Temple of the Triune	chest1	1	3		LucionChest
@@ -15,6 +17,7 @@ Temple of the Triune	chest4	6	5		LucionChest
 Temple of the Triune	chest5	1	4		LucionChest
 Temple of the Triune	chest6	6	4		LucionChest
 Rathma 1	arena	4	1		
+Rathma 1	arrival	4	6		
 Rathma 1	marker	4	6		
 Rathma 1	next	2	3		
 Rathma 1	portal0	1	3		

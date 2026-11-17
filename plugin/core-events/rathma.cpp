@@ -3,8 +3,9 @@
 // Room activation (ProjectDiablo.dll 0x1036fef0): the first room to activate in each Rathma level sets the stage
 // (0 -> 1 in the first level, 2 -> 3 in the second, 4 -> 5 in the third) and spawns that stage's bosses (Mendeln,
 // then Rathma, then both clones) at fixed spots, with a ghostly portal that takes the group into the arena (PD2 links
-// it to an `empty` marker by the bosses). No room of the arena (80 x 80 subtiles about the bosses' spot) spawns its
-// own monsters. It rides map_events' room activation hook: no SDK service reports a room activating.
+// it to an `empty` marker by the bosses; the port opens none at the start of stage 1, #1262). No room of the arena
+// (80 x 80 subtiles about the bosses' spot) spawns its own monsters. It rides map_events' room activation hook: no
+// SDK service reports a room activating.
 //
 // Deaths, on key_drops' monster-death listener (the SDK's): Mendeln (0x10376760) and Rathma (0x103767d0), when killed
 // before their retreat, set the stage to 2 or 4 and open a ghostly portal at their spot to the next level. The first
@@ -313,13 +314,13 @@ auto RathmaRoom(Game* game, void* room, int32_t level) noexcept -> bool {
 		stage = s->from + 1;
 		++g_stages;
 		plog::Info("rathma: stage %d -> %d (level %d's first room)", s->from, stage, level);
-		const bool portal = OpenArenaPortal(game, room, *s);
+		const bool portal = s->from != 0 && OpenArenaPortal(game, room, *s);
 		int spawned = 0;
 		for (int i = 0; i < s->bossCount; ++i) {
 			spawned += SpawnBoss(game, room, level, s->bosses[i]) ? 1 : 0;
 		}
 		plog::Info("rathma: level %d, %d of %d bosses spawned, arena portal %s", level, spawned, s->bossCount,
-		           portal ? "open" : "FAILED");
+		           s->from == 0 ? "none (stage 1, #1262)" : portal ? "open" : "FAILED");
 	}
 	const int32_t x = At<int32_t>(room, RoomX), y = At<int32_t>(room, RoomY);
 	const bool arena = Meets(s->arena.x - ArenaHalf, s->arena.x + ArenaHalf, x, x + At<int32_t>(room, RoomWidth)) &&
