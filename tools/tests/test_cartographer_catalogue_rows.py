@@ -30,9 +30,9 @@ class CartographerCatalogueRowsTests(unittest.TestCase):
             s = misc[m["Item"]]
             n = s["type"][1]
             assert s["type"] in ("t1m", "t2m", "t3m") and m["Level"] == str(86 + int(n)), m["Name"]
-            assert (s["spelldesc"], s["spelldescstr"], s["spelldesccalc"]) == ("2", "MapTierValue", n), m["Name"]
-            # the tooltip reads the tier from a stat calc: spelldesccalc alone showed "Tier: 0" in game
-            assert (s["stat1"], s["calc1"]) == ("hpregen", n), m["Name"]
+            assert (s["spelldesc"], s["spelldescstr"], s["spelldesccalc"]) == ("1", f"MapTier{n}", ""), m["Name"]
+            # a plain string per tier: spelldesc 2 scaled the value by class (potion scaling) when stat1 was hpregen
+            assert (s["stat1"], s["calc1"]) == ("", ""), m["Name"]
             counts[n] = counts.get(n, 0) + 1
         assert sorted(counts.values()) == [8, 8, 9], counts
 
