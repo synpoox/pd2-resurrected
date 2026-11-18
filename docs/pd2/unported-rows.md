@@ -26,7 +26,7 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
   set (ids 36-38) move to new hireling ids from 39, with `WType` (D2R's monstats arm item types, [#270](https://github.com/synpoox/pd2-resurrected/issues/270)), the `hiredesc` strings and the `$2`
   monster's HD model. [UR3](https://github.com/synpoox/pd2-resurrected/issues/201) first proves ids 39+ load, hire and survive a save and load; if they don't, the Ascendant
   becomes a cut row.
-- **PD2's 30 voice and effect WAVs are converted ([UR8](https://github.com/synpoox/pd2-resurrected/issues/206))**, all in one item, after a one-file WAV-as-FLAC test under
+- **PD2's voice and effect WAVs are converted, 27 of the 30 as FLAC (see docs/deviations.md for the other 3) ([UR8](https://github.com/synpoox/pd2-resurrected/issues/206))**, all in one item, after a one-file WAV-as-FLAC test under
   `data/global/sfx`. The 16 drop sounds stay with the Pyre-Flies filter ([P7](https://github.com/synpoox/pd2-resurrected/issues/44)).
 - **Item art is scripted ([UR7](https://github.com/synpoox/pd2-resurrected/issues/205)).** PD2's 219 item pictures are upscaled with [P11](https://github.com/synpoox/pd2-resurrected/issues/79)'s pipeline (`.sprite` and
   `.lowend.sprite`, plus the `items.json`, `uniques.json` and `sets.json` entries); the row becomes approximated

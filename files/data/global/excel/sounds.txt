@@ -11912,7 +11912,33 @@ Warlock_Skill_Miasma_Chain_Impact_01	11909		sfx/player-skills_hd	skill\Warlock\W
 Warlock_Skill_Seal_DeSpawn_03	11910		sfx/player-skills_hd	skill\Warlock\Warlock_Skill_Seal_DeSpawn_03.flac	0	0	0	0	0	31	63	80	95	3	0	0	0	6	0	0	0	4	1	25	90	100	0	0	1	0	0	0	-1	-1	0	0	
 Warlock_Skill_Seal_DeSpawn_01	11911		sfx/player-skills_hd	skill\Warlock\Warlock_Skill_Seal_DeSpawn_01.flac	0	0	0	0	0	31	63	80	95	0	0	0	0	6	0	0	0	4	1	25	90	100	0	0	1	0	0	0	-1	-1	0	0	
 Warlock_Skill_Seal_DeSpawn_02	11912		sfx/player-skills_hd	skill\Warlock\Warlock_Skill_Seal_DeSpawn_02.flac	0	0	0	0	0	31	63	80	95	0	0	0	0	6	0	0	0	4	1	25	90	100	0	0	1	0	0	0	-1	-1	0	0	
-zhar_attack1	11913		sfx/monster_hd	pd2\zhar\zhar_attack1.flac	0	0	0	0	0	255	255	90	100	0	0	0	0	0	1	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+butcher_freshmeat	11913		vo/eax/boss-dialog_hd	act1\monster\butcher.flac	1	0	0	0	0	225	225	100	100	0	0	0	0	0	1	0	0	0	1	25	60	80	0	0	1	0	0	-1	-1	-1	0	0	
+leoric_taunt	11914		vo/eax/boss-dialog_hd	pd2\leoric\leoric_remaster.flac	1	0	0	0	0	255	255	100	100	0	0	0	0	0	1	0	0	0	1	25	60	80	0	0	1	0	0	-1	-1	-1	0	0	
+leoric_death	11915		sfx/monster_hd	pd2\leoric\golumded_remaster.flac	0	0	0	0	0	200	200	90	100	0	0	0	0	0	1	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+leoric_swing	11916		sfx/monster_hd	pd2\leoric\swing_remaster.flac	0	0	0	0	0	190	190	90	100	0	0	0	0	0	1	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+zhar_intro1	11917		vo/eax/boss-dialog_hd	pd2\zhar\zharquest_troubleMeNoMore.flac	1	0	0	0	0	255	255	100	100	0	0	0	0	0	1	0	0	0	1	25	60	80	0	0	1	0	0	-1	-1	-1	0	0	
+zhar_intro2	11918		vo/eax/boss-dialog_hd	pd2\zhar\zharquest_allTheseInterruptions.flac	1	0	0	0	0	255	255	100	100	0	0	0	0	0	1	0	0	0	1	25	60	80	0	0	1	0	0	-1	-1	-1	0	0	
+zhar_intro3	11919		vo/eax/boss-dialog_hd	pd2\zhar\zharquest_deathOfYou.flac	1	0	0	0	0	255	255	100	100	0	0	0	0	0	1	0	0	0	1	25	60	80	0	0	1	0	0	-1	-1	-1	0	0	
+zhar_book	11920		vo/eax/boss-dialog_hd	pd2\zhar\zharquest_readbook.flac	1	0	0	0	0	255	255	100	100	0	0	0	0	0	1	0	0	0	1	25	60	80	0	0	1	0	0	-1	-1	-1	0	0	
+zhar_taunt	11921		vo/eax/boss-dialog_hd	pd2\zhar\zharquest_whyAreYouHere.flac	1	0	0	0	0	255	255	100	100	0	0	0	0	0	1	0	0	0	1	25	60	80	0	0	1	0	0	-1	-1	-1	0	0	
+zhar_death	11922		sfx/monster_hd	pd2\zhar\zhar_death1.flac	0	0	0	0	0	255	255	90	100	0	0	0	0	0	1	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+zhar_attack1	11923		sfx/monster_hd	pd2\zhar\zhar_attack1.flac	0	0	0	0	0	255	255	90	100	0	0	0	0	0	1	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+zhar_cast1	11924		sfx/monster_hd	pd2\zhar\zhar_cast1.flac	0	0	0	0	0	255	255	90	100	0	0	0	0	0	1	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+zhar_gethit1	11925		sfx/monster_hd	pd2\zhar\zhar_gethit1.flac	0	0	0	0	0	255	255	90	100	0	0	0	0	0	1	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+parry	11926		sfx/eax/player-skills_shouts	pd2\holysword\parry.flac	0	0	0	0	0	110	110	98	102	0	0	0	0	0	1	0	0	0	1	25	100	80	0	0	1	0	0	-1	-1	-1	0	0	
+nakrul_attack_1	11927		sfx/monster_hd	pd2\nakrul\NaKrul_attack1.flac	0	0	0	0	0	200	200	90	100	2	0	0	0	0	0	1	0	8	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+nakrul_attack_2	11928		sfx/monster_hd	pd2\nakrul\NaKrul_attack2.flac	0	0	0	0	0	200	200	90	100	0	0	0	0	0	0	1	0	8	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+nakrul_death_1	11929		sfx/monster_hd	pd2\nakrul\NaKrul_death1.flac	0	0	0	0	0	200	200	90	100	2	0	0	0	0	1	0	0	0	1	0	90	100	0	0	1	0	0	-1	-1	-1	0	0	
+nakrul_death_2	11930		sfx/monster_hd	pd2\nakrul\NaKrul_death2.flac	0	0	0	0	0	200	200	90	100	0	0	0	0	0	1	0	0	0	1	0	90	100	0	0	1	0	0	-1	-1	-1	0	0	
+nakrul_taunt	11931		vo/eax/boss-dialog_hd	pd2\nakrul\NaKrul.flac	1	0	0	0	0	120	120	100	100	0	0	0	0	0	1	0	0	0	1	25	60	255	0	0	1	0	0	-1	-1	-1	0	0	
+d1r_j6_attack_1	11932		sfx/monster_hd	D1Roster\J6\a1.flac	0	0	0	0	0	200	200	90	100	2	0	0	0	0	0	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+d1r_j6_attack_2	11933		sfx/monster_hd	D1Roster\J6\a2.flac	0	0	0	0	0	200	200	90	100	0	0	0	0	0	0	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+d1r_j6_hit_1	11934		sfx/monster_hd	D1Roster\J6\h1.flac	0	0	0	0	0	200	200	90	100	2	0	0	0	0	0	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+d1r_j6_hit_2	11935		sfx/monster_hd	D1Roster\J6\h2.flac	0	0	0	0	0	200	200	90	100	0	0	0	0	0	0	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+d1r_j6_death_1	11936		sfx/monster_hd	D1Roster\J6\d1.flac	0	0	0	0	0	200	200	90	100	2	0	0	0	0	0	0	0	0	1	0	90	100	0	0	1	0	0	-1	-1	-1	0	0	
+d1r_j6_death_2	11937		sfx/monster_hd	D1Roster\J6\d2.flac	0	0	0	0	0	200	200	90	100	0	0	0	0	0	0	0	0	0	1	0	90	100	0	0	1	0	0	-1	-1	-1	0	0	
+d1r_j6_special_1	11938		sfx/monster_hd	D1Roster\J6\s1.flac	0	0	0	0	0	200	200	90	100	2	0	0	0	0	0	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
+d1r_j6_special_2	11939		sfx/monster_hd	D1Roster\J6\s2.flac	0	0	0	0	0	200	200	90	100	0	0	0	0	0	0	0	0	0	1	0	90	80	0	0	1	0	0	-1	-1	-1	0	0	
 Filter01			sfx/items_hd	item\Filter01.flac	0	0	0	0	0	200	255	100	100	0	0	0	0	0	0	1	0	0	1	0	120	254	0	0	0	0	0	-1	-1	-1	0	0	
 Filter02			sfx/items_hd	item\Filter02.flac	0	0	0	0	0	200	255	100	100	0	0	0	0	0	0	1	0	0	1	0	120	252	0	0	0	0	0	-1	-1	-1	0	0	
 Filter03			sfx/items_hd	item\Filter03.flac	0	0	0	0	0	200	255	100	100	0	0	0	0	0	0	1	0	0	1	0	120	251	0	0	0	0	0	-1	-1	-1	0	0	

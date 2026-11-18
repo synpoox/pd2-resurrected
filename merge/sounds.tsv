@@ -1,2 +1,28 @@
-# sound	like: one PD2 sound for the one-file test (#206)
+# sound	like: PD2's 28 sounds with a WAV (#206); the 16 drop sounds stay with the Pyre-Flies filter
+butcher_freshmeat	monster_andariel_taunt_hd1
+leoric_taunt	monster_andariel_taunt_hd1
+leoric_death	izual_attack_hd1
+leoric_swing	izual_attack_hd1
+zhar_intro1	monster_andariel_taunt_hd1
+zhar_intro2	monster_andariel_taunt_hd1
+zhar_intro3	monster_andariel_taunt_hd1
+zhar_book	monster_andariel_taunt_hd1
+zhar_taunt	monster_andariel_taunt_hd1
+zhar_death	izual_attack_hd1
 zhar_attack1	izual_attack_hd1
+zhar_cast1	izual_attack_hd1
+zhar_gethit1	izual_attack_hd1
+parry	barbarian_leap_land_hd
+nakrul_attack_1	izual_attack_hd1
+nakrul_attack_2	izual_attack_hd1
+nakrul_death_1	izual_attack_hd1
+nakrul_death_2	izual_attack_hd1
+nakrul_taunt	monster_andariel_taunt_hd1
+d1r_j6_attack_1	izual_attack_hd1
+d1r_j6_attack_2	izual_attack_hd1
+d1r_j6_hit_1	izual_attack_hd1
+d1r_j6_hit_2	izual_attack_hd1
+d1r_j6_death_1	izual_attack_hd1
+d1r_j6_death_2	izual_attack_hd1
+d1r_j6_special_1	izual_attack_hd1
+d1r_j6_special_2	izual_attack_hd1
