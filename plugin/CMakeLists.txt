@@ -177,6 +177,11 @@ target_include_directories(pad_modifier_check PRIVATE common)
 target_compile_features(pad_modifier_check PRIVATE cxx_std_20)
 core_options(pad_modifier_check)
 
+# Holy Sword parry roll (#1466): plugin/common/parry_roll.h has no engine types.
+add_executable(parry_roll_check EXCLUDE_FROM_ALL tests/parry_roll_check.cpp)
+target_include_directories(parry_roll_check PRIVATE common)
+target_compile_features(parry_roll_check PRIVATE cxx_std_20)
+core_options(parry_roll_check)
 # Shrine rules (#1143): plugin/common/shrine_math.h has no engine types.
 add_executable(shrine_rules_check EXCLUDE_FROM_ALL tests/shrine_rules_check.cpp)
 target_include_directories(shrine_rules_check PRIVATE common)

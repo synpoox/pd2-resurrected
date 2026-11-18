@@ -54,6 +54,7 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [research/skills/amazon-w6.md](research/skills/amazon-w6.md) — Amazon group (W6): shit 63, dmg 17, cltdo 22, chit 12
 - [research/skills/druid-w21.md](research/skills/druid-w21.md) — Inferno and Arctic Blast (W21): srvdo 182, cltdo 111, the channel take-over
 - [research/skills/druid-w22.md](research/skills/druid-w22.md) — Firestorm and the wall makers (W22): srvdo 166, cltdo 119
+- [research/skills/holy-sword-parry.md](research/skills/holy-sword-parry.md) — Holy Sword parry (#1466): PD2 avoid roll `0x103035f0`, class 5, cap 75, D2R hook `0x44ef70`
 - [research/skills/druid-w23.md](research/skills/druid-w23.md) — Gust and Hunger (W23): srvdo 156 and 165
 - [research/skills/druid-w24.md](research/skills/druid-w24.md) — Fire Claws and the Spirit Wolf start (W24): srvdo 175, cltdo 110, srvst 77
 - [research/skills/lightning-javelins.md](research/skills/lightning-javelins.md) — Lightning javelins (srvdo 188, cltdo 117)
