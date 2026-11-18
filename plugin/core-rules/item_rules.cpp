@@ -15,6 +15,7 @@
 // - op bases, life steal cap and crushing blow (IR3): equipped_eth / missing_hp kept as base stats from the stat
 //   callback, lifedrain_percentcap on D2R's add-life, PD2's blow in CrushingBlowApply's jump slot, and its roll on
 //   HitEvents' event 5/6 calls, where PD2's open wounds and deep wounds (event 15) run too.
+#include <intrin.h>
 #include "item_rules.h"
 
 #define NOMINMAX
@@ -1736,6 +1737,21 @@ std::atomic<uint32_t> g_mapStackRefused {0};
 auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	using namespace d2r::rva;
 	const int32_t same = g_stackEqualOriginal(a, b);
+	static std::atomic<uint32_t> noLogs {0};
+	if (same == 0 && a && b && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(a, ItemTypeMap) != 0 &&
+	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(b, ItemTypeMap) != 0 && ++noLogs <= 12) {  // #1340 diagnostic: the native check refusing is the case the logs below could not see before
+		plog::Info("map stack: native check says no, caller +0x%llx %p %p", static_cast<unsigned long long>(reinterpret_cast<uint64_t>(_ReturnAddress()) - d2r::imageBase), static_cast<void*>(a), static_cast<void*>(b));
+		const auto* da = d2r::Engine<const uint8_t* (*)(Unit*) noexcept>(UnitItemData)(a);
+		const auto* db = d2r::Engine<const uint8_t* (*)(Unit*) noexcept>(UnitItemData)(b);
+		for (int i = 0; i < 0x100 && da && db; ++i) {
+			if (da[i] != db[i]) {
+				plog::Info("map stack:   item data +0x%x a %02x b %02x", i, da[i], db[i]);
+			}
+		}
+		plog::Info("map stack:   quality %d/%d code %08x/%08x", d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(a),
+		           d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(b),
+		           d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a), d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(b));
+	}
 	if (same == 0 || a == nullptr || b == nullptr ||
 	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(a, ItemTypeMap) == 0) {
 		return same;
@@ -1754,19 +1770,41 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	if (!merge) {
 		++g_mapStackRefused;
 	}
-	// At most one log line a second, whatever the pair: the inventory scans call this once per map held
-	static std::atomic<uint64_t> lastTick {0};
-	const uint64_t now = GetTickCount64();
-	if (now - lastTick.load() >= 1000) {
-		lastTick = now;
-		char tail[16] {};
-		if (stat >= 0) {
-			std::snprintf(tail, sizeof(tail), " %d", stat);
+	// Each (a, b, caller) logs its first 3 verdicts only (#1340): the inventory scans call this once per map held, and the
+	// server's call (caller image +0x4f2b3a) must not hide behind the client's
+	static struct { Unit* a; Unit* b; uint64_t caller; uint32_t n; } seen[32];
+	static uint32_t next = 0;
+	const uint64_t caller = reinterpret_cast<uint64_t>(_ReturnAddress()) - d2r::imageBase;
+	auto* slot = &seen[0];
+	for (auto& s : seen) {
+		if (s.a == a && s.b == b && s.caller == caller) {
+			slot = &s;
+			break;
 		}
+		slot = &seen[next % 32];
+	}
+	if (slot->a != a || slot->b != b || slot->caller != caller) {
+		*slot = {a, b, caller, 0};
+		++next;
+	}
+	if (++slot->n <= 3) {
 		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStat);
-		plog::Info("map stack: %08x q%d/%d quality %d/%d -> %s (%s%s)", d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a),
-		           unitStat(a, StatQuantity, 0), unitStat(b, StatQuantity, 0), quality(a), quality(b),
-		           merge ? "merge" : "refused", reason, tail);
+		plog::Info("map stack: caller +0x%llx %08x q%d/%d quality %d/%d -> %s (%s %d)", static_cast<unsigned long long>(caller),
+		           d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a), unitStat(a, StatQuantity, 0),
+		           unitStat(b, StatQuantity, 0), quality(a), quality(b), merge ? "merge" : "refused", reason, stat);
+		if (stat >= 0) {
+			const auto entries = d2r::Engine<int32_t (*)(Unit*, uint32_t, pd2::mapstack::Entry*, int32_t) noexcept>(UnitStatEntries);
+			for (Unit* u : {a, b}) {
+				pd2::mapstack::Entry e[64] {};
+				const int32_t n = entries(u, static_cast<uint32_t>(stat), e, 64);
+				for (int32_t i = 0; i < n && i < 64; ++i) {
+					plog::Info("map stack:   %s stat %d entry %d layer %u value %d", u == a ? "a" : "b", stat, i, e[i].layer, e[i].value);
+				}
+				if (n <= 0) {
+					plog::Info("map stack:   %s stat %d no entries", u == a ? "a" : "b", stat);
+				}
+			}
+		}
 	}
 	return merge ? 1 : 0;
 }
