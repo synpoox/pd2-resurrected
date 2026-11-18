@@ -139,20 +139,17 @@ class StringsTests(unittest.TestCase):
         self.assertEqual(self.built("strings/item-modifiers.json")["ModStrMap"]["deDE"], "Chance of Strike")
 
     def test_cut_keys_are_skipped_and_checked(self):
-        cfg = {"overrides": [], "texts": {"Gone": "x"}, "cut": ["Gone"], "ids": {"Gone": [50000, "skills.json"]}}
+        cfg = {"overrides": [], "texts": {"Gone": "x", "Kept": "y"}, "cut": ["Gone"],
+               "ids": {"Gone": [50000, "skills.json"], "Kept": [50001, "skills.json"]}}
         pd2_strings.build(cfg, self.pd2, self.strings(), self.root / "out")
-        self.assertNotIn("Gone", self.built("strings/skills.json"))
+        self.assertEqual(sorted(set(self.built("strings/skills.json")) & {"Gone", "Kept"}), ["Kept"])
         excel = self.root / "excel"
         excel.mkdir()
-        (excel / "levels.txt").write_bytes(b"Name	LevelName
-A	Other
-")
+        (excel / "levels.txt").write_bytes(b"Name\tLevelName\r\nA\tOther\r\n")
         pd2_strings.check_cut(cfg, excel)
         with self.assertRaisesRegex(ValueError, "not in ids"):
             pd2_strings.check_cut({**cfg, "cut": ["Typo"]}, excel)
-        (excel / "levels.txt").write_bytes(b"Name	LevelName
-A	Gone
-")
+        (excel / "levels.txt").write_bytes(b"Name\tLevelName\r\nA\tGone\r\n")
         with self.assertRaisesRegex(ValueError, "a table names"):
             pd2_strings.check_cut(cfg, excel)
 

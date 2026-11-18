@@ -22,6 +22,7 @@ rule cache is pruned to PD2R_CACHE_GB (default 20) GB.
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -102,6 +103,13 @@ def merge(root: Path, d2r: Path = D2R_DATA, rule_cache: Path | None = None, slot
     if old := legacy_output(root / "generated" / "data"):
         shutil.rmtree(root / "generated")  # a failed run leaves no generated/
         raise MergeError(f"generated/data holds the retired converter's output {old}: a rule still writes it")
+    cfg = root / "merge" / "strings.json"
+    try:
+        if cfg.is_file():
+            pd2_strings.check_cut(json.loads(cfg.read_text("utf-8")), root / "generated" / "data" / "global" / "excel")
+    except ValueError as e:
+        shutil.rmtree(root / "generated")
+        raise MergeError(f"merge/strings.json: {e}") from e
     return applied
 
 
