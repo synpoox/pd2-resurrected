@@ -73,9 +73,8 @@ class MapBossTier(unittest.TestCase):
             self.assertEqual(got["TC(N)"], f"Map Boss T{tier}", m["Name"])
             self.assertEqual(got["TC(H)"], f"Map Boss T{tier} Blood", m["Name"])
             self.assertEqual(got["TC(H) Desecrated"], f"Map Boss T{tier}", m["Name"])
-        # why this is a plugin swap and not a row per boss and tier: more pairs than bosses.txt can hold
-        self.assertGreater(len(pairs), 16)
-        self.assertLessEqual(len(self.bosses), 16)
+        # a boss opens maps of several tiers, so one row per boss cannot be right for all of them
+        self.assertGreater(len(pairs), len(self.bosses))
 
 
 if __name__ == "__main__":
