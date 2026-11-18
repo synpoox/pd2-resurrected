@@ -24,6 +24,7 @@ int main() {
 	pp::AvoidWindow w;  // no-avoid window (#1482): an avoid at frame 100 blocks 101-103, frame 104 may avoid again
 	CHECK("fresh player is not blocked", !w.Blocked(7, 100));
 	w.Set(7, 100);
+	CHECK("the avoid's own frame is refused too", w.Blocked(7, 100));
 	CHECK("frames 101-103 are blocked", w.Blocked(7, 101) && w.Blocked(7, 103));
 	CHECK("frame 104 is free (4 frames passed)", !w.Blocked(7, 104));
 	CHECK("another player is not blocked", !w.Blocked(8, 101));

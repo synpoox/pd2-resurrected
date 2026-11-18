@@ -31,7 +31,7 @@ inline constexpr uint32_t AvoidMask = 0x1e;
 
 class AvoidWindow {
 public:
-	static constexpr int Slots = 16;  // a game holds 8 players at most; a full table drops the oldest slot
+	static constexpr int Slots = 16;  // a game holds 8 players at most; a full table overwrites round-robin (next_ % 16), which 8 players never reach
 	constexpr auto Blocked(uint32_t id, int32_t frame) const noexcept -> bool {
 		for (const auto& e : slots_) {
 			if (e.id == id && Live(e.until, frame)) {
