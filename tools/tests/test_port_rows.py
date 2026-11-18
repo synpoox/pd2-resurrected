@@ -20,7 +20,7 @@ def port_lines(path):
     """(new row id, {col: value}) of each port line, parsed by the toolkit's own ids.port_row."""
     for ln in path.read_text("utf-8").splitlines():
         if ln.startswith("+"):
-            first, new_id, _name = ln.split("	")
+            first, new_id, _name = ln.split("\t")
             yield int(new_id), ids.port_row(first)[1]
 
 
