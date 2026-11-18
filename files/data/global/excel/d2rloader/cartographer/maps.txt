@@ -11,7 +11,7 @@ Arreat Battlefield	Siege		m09	Medium	89	80	Armorsmith of Equality	goatmanmap,big
 Howling Plateau	Mesa		m10	Medium	88	80	Borq the Consumed	zealotmap2,siegebeastmap2,councilmembermap2,oblivionknightmap2	150	100	100
 Kehjistan Marketplace	Desert		m11	Medium	89	80	Toadflax the Tainted	mosquitomap,cr_archermap,unravelermap,sandleapermap	150	100	100
 Shadows of Westmarch	Wilderness		m12	Medium	87	80	The Cow Queen	minionmap,goatmanmap,slingermap,siegebeastmap	150	100	100
-Ruins of Corvus	Kurast		m13	Medium	88	80	Toadflax the Tainted	thornhulkmap2,pantherwomanmap2,fetishmap2,slingermap2,deathmaulermap2	150	100	100
+Ruins of Viz'jun	Kurast		m13	Medium	88	80	Toadflax the Tainted	cr_lancermap,goatmanmap,cr_archermap,bigheadmap,cantormap,unravelermap,arachmap,thornhulkmap,sandleapermap,mosquitomap	150	100	100
 Leoric's Passage	Dungeon	Winding	m14	Medium	89	80	King Leoric	hellbovineMap	150	100	100
 Cursed Hold	Jail	Branching	m15	Medium	88	80	Gaoler Kanemith	sandleapermap2,zealotmap2,sk_archermap2,councilmembermap2,regurgitatormap2	150	100	100
 Khazra Den	Lair	Sprawl	m16	Medium	88	80	Sharptooth the Broodmother	cr_archermap2,cr_lancermap2,goatmanmap2,fallenmap2	150	100	100
