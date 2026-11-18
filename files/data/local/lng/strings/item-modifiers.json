@@ -11796,5 +11796,22 @@
     "ptBR": "%+d Extra Monster Group: Minions of Destruction",
     "ruRU": "%+d Extra Monster Group: Minions of Destruction",
     "zhCN": "%+d Extra Monster Group: Minions of Destruction"
+  },
+  {
+    "id": 51562,
+    "Key": "MapMonSplash2",
+    "enUS": "Melee Attacks Deal Splash Damage",
+    "zhTW": "Melee Attacks Deal Splash Damage",
+    "deDE": "Melee Attacks Deal Splash Damage",
+    "esES": "Melee Attacks Deal Splash Damage",
+    "frFR": "Melee Attacks Deal Splash Damage",
+    "itIT": "Melee Attacks Deal Splash Damage",
+    "koKR": "Melee Attacks Deal Splash Damage",
+    "plPL": "Melee Attacks Deal Splash Damage",
+    "esMX": "Melee Attacks Deal Splash Damage",
+    "jaJP": "Melee Attacks Deal Splash Damage",
+    "ptBR": "Melee Attacks Deal Splash Damage",
+    "ruRU": "Melee Attacks Deal Splash Damage",
+    "zhCN": "Melee Attacks Deal Splash Damage"
   }
 ]

@@ -13,5 +13,6 @@ cartographer_map_extra_souls	Behaviour	extra_groups		willowisp1MapMod
 cartographer_map_extra_fetish	Behaviour	extra_groups		fetishmap
 cartographer_map_extra_shriek	Behaviour	extra_groups		baalminion3MapMod
 cartographer_map_mon_splash	Monster	item_splashonhit		27521
+cartographer_map_mon_splash2	Monster	item_splashonhit		27522
 corrupted	None			
 corruptor	None			

@@ -41,7 +41,7 @@ The rows of #1309-#1313 now carry PD2's mods, through Cartographer's catalogue p
 | #1309 | `map_mon_extra_fire/ltng/cold/pois/mag` | `mon-mastery-*` | 54 (with the phys-as-extra lines) |
 | #1309 | `map_mon_phys_as_extra_*` | `mon-phys-as-*` | |
 | #1310 | `map_mon_att_pierce` | `mon-att-pierce` (attack rating and missile pierce, one roll) | 36 of 36 |
-| #1310 | `map_mon_splash` | `mon-splash` (see Splashing below) | Splashing x6 |
+| #1310 | `map_mon_splash` | `mon-splash`, `mon-splash2` (see Splashing below) | Splashing x6 |
 | #1310 | `map_mon_crush`, `map_mon_openwounds` | `mon-crush`, `mon-openwounds` | |
 | #1310 | `map_mon_lifesteal_hp%` | `mon-lifesteal-hp` (life steal and monster life, one roll) | |
 | #1310 | `map_mon_att_cast_speed` | `mon-cast-speed` (attack and cast speed, one roll) | |
@@ -64,9 +64,9 @@ PD2 names the groups by monstats number; the port names the Id, which is what `e
 
 ### Splashing
 
-`item_splashonhit` needs a skill and level in its layer, which a map property cannot give. So `mon-splash` (property 469) sets the mod stat `cartographer_map_mon_splash` (itemstatcost 650, tooltip "Melee Attacks Deal Splash Damage") to the chance, and `statroutes.txt` routes it: `Monster`, `Apply` `item_splashonhit`, `Param` 27521 = (430 << 6) | 1, `proc_SplashDamage` at level 1. Each monster of the map gets that stat and core-rules' splash (event 20, srvdo 190) fires on its melee hits. The route's `Param` needs a Cartographer with monster route layers ([d2r-tools#551](https://github.com/synpoox/d2r-tools/pull/551)).
+`item_splashonhit` needs a skill and level in its layer, which a map property cannot give. So `mon-splash` (property 469) sets the mod stat `cartographer_map_mon_splash` (itemstatcost 650, tooltip "Melee Attacks Deal Splash Damage") to the chance, and `statroutes.txt` routes it: `Monster`, `Apply` `item_splashonhit`, `Param` 27521 = (430 << 6) | 1, `proc_SplashDamage` at level 1. The second set has its own pair, `mon-splash2` (property 470) and `cartographer_map_mon_splash2` (itemstatcost 651), routed with `Param` 27522, level 2. Each monster of the map gets that stat and core-rules' splash (event 20, srvdo 190) fires on its melee hits. The route's `Param` needs a Cartographer with monster route layers ([d2r-tools#551](https://github.com/synpoox/d2r-tools/pull/551)).
 
-PD2's first set rolls chance 100 and level 1, its magic-only second set (`rare` blank) chance 150 and level 2. The port uses level 1 for both (splash damage has no skill level scaling), see `docs/deviations.md`.
+PD2's first set rolls chance 100 and level 1, its magic-only second set (`rare` blank) chance 150 and level 2. The level matters: the splash radius is `max(6 - level + inc_splash_radius/20, 0)`, so 5 at level 1 and 4 at level 2.
 
 ## Still neutral
 

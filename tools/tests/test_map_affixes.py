@@ -61,19 +61,29 @@ class MapAffixes(unittest.TestCase):
         self.assertEqual(len(rolling), 103)  # 27 from #1305 + 75 from #1309-#1313 + Splashing (#1310)
         self.assertLessEqual(EXPECTED_ROLLING, rolling)
 
-    def test_splashing_rows_use_the_splash_mod(self):
-        """#1310: the six Splashing rows roll mon-splash, which routes to item_splashonhit at proc_SplashDamage's layer."""
+    def test_splashing_rows_use_the_splash_mods(self):
+        """#1310: the six Splashing rows roll mon-splash (level 1) or mon-splash2 (level 2), each routed to item_splashonhit at proc_SplashDamage's layer."""
         rows = [r for t in ("magicprefix", "magicsuffix") for r in data_tables.rows(t) if r["Name"] == "Splashing"]
-        self.assertEqual(len(rows), 6)
-        for r in rows:
-            self.assertEqual((r["spawnable"], r["mod1code"]), ("1", "mon-splash"))
-        self.assertEqual(sorted({r["mod1min"] for r in rows}), ["100", "150"])
-        prop = next(r for r in data_tables.rows("properties") if r["code"] == "mon-splash")
-        self.assertEqual(prop["stat1"], "cartographer_map_mon_splash")
-        route = next(r for r in data_tables.rows("d2rloader/cartographer/statroutes") if r["Stat"] == prop["stat1"])
-        self.assertEqual((route["Target"], route["Apply"]), ("Monster", "item_splashonhit"))
+        got = sorted(
+            (r["mod1code"], r["mod1min"], r["mod1max"], r["mod2code"], r["mod2min"], r["mod2max"],
+             r["mod3code"], r["mod3min"], r["mod3max"], r["itype1"], r["itype2"], r["itype3"], r["spawnable"], r["rare"], r["frequency"])
+            for r in rows
+        )
+        want = sorted([
+            ("mon-splash", "100", "100", "map-density", "8", "13", "mag%", "5", "10", "t1m", "t2m", "", "1", "1", "20"),
+            ("mon-splash", "100", "100", "map-density", "18", "23", "mag%", "20", "25", "t2m", "t3m", "", "1", "1", "20"),
+            ("mon-splash", "100", "100", "map-density", "23", "25", "mag%", "35", "40", "t3m", "", "", "1", "1", "20"),
+            ("mon-splash2", "150", "150", "map-density", "16", "26", "mag%", "10", "20", "t1m", "t2m", "", "1", "", "120"),
+            ("mon-splash2", "150", "150", "map-density", "36", "46", "mag%", "40", "50", "t2m", "t3m", "", "1", "", "120"),
+            ("mon-splash2", "150", "150", "map-density", "46", "50", "mag%", "70", "80", "t3m", "", "", "1", "", "120"),
+        ])
+        self.assertEqual(got, want)
         skill = next(r for r in data_tables.rows("skills") if r["skill"] == "proc_SplashDamage")
-        self.assertEqual(int(route["Param"]), (int(skill["*Id"]) << 6) | 1)  # item_splashonhit's layer: skill << 6 | level
+        for level, code in ((1, "mon-splash"), (2, "mon-splash2")):
+            prop = next(r for r in data_tables.rows("properties") if r["code"] == code)
+            route = next(r for r in data_tables.rows("d2rloader/cartographer/statroutes") if r["Stat"] == prop["stat1"])
+            self.assertEqual((route["Target"], route["Apply"]), ("Monster", "item_splashonhit"))
+            self.assertEqual(int(route["Param"]), (int(skill["*Id"]) << 6) | level)  # item_splashonhit's layer: skill << 6 | level
 
     def test_statroutes_name_real_stats_tcs_and_monsters(self):
         """Each Param-needing mod stat (#1309-#1313) has one route naming a real stat and a real TC or monstats Id."""

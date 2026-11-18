@@ -921,9 +921,9 @@ Colossal	1	1		1		1				60	311	mon-life		30	40	map-density		50	60	addxp		20	24		t3
 Strong	1	1		1		1				120	158	mon-damage		15	23	addxp		8	10	mag%		20	30		t1m	t2m												0
 Mighty	1	1		1		1				120	158	mon-damage		23	30	addxp		10	12	mag%		50	60		t2m	t3m												0
 Formidable	1	1		1		1				120	158	mon-damage		30	38	addxp		12	14	mag%		80	90		t3m													0
-Splashing	1	1		1		1				120	157	mon-splash		150	150	map-density		16	26	mag%		10	20		t1m	t2m												0
-Splashing	1	1		1		1				120	157	mon-splash		150	150	map-density		36	46	mag%		40	50		t2m	t3m												0
-Splashing	1	1		1		1				120	157	mon-splash		150	150	map-density		46	50	mag%		70	80		t3m													0
+Splashing	1	1		1		1				120	157	mon-splash2		150	150	map-density		16	26	mag%		10	20		t1m	t2m												0
+Splashing	1	1		1		1				120	157	mon-splash2		150	150	map-density		36	46	mag%		40	50		t2m	t3m												0
+Splashing	1	1		1		1				120	157	mon-splash2		150	150	map-density		46	50	mag%		70	80		t3m													0
 Bloody	1	1		1		1				120	312	mon-openwounds		8	15	addxp		8	10	mag%		10	20		t1m	t2m												0
 Gory	1	1		1		1				120	312	mon-openwounds		15	23	addxp		10	12	mag%		40	50		t2m	t3m												0
 Sanguinary	1	1		1		1				120	312	mon-openwounds		23	30	addxp		12	14	mag%		70	80		t3m													0

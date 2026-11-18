@@ -470,3 +470,4 @@ map-swing-cast	466	1	1	item_fasterattackrate			3	item_fastercastrate												
 map-speed-all	467	1	1	item_fasterattackrate			3	item_fastercastrate			3	item_fastermovevelocity																				+#% Increased Attack, Cast and Run/Walk Speed					
 map-mag-gold	468	1	1	item_magicbonus			3	item_goldbonus																								#% Better Chance of Getting Magic Items and Extra Gold from Monsters					
 mon-splash	469	1	1	cartographer_map_mon_splash																												monster Melee Attacks Deal Splash Damage #					
+mon-splash2	470	1	1	cartographer_map_mon_splash2																												monster Melee Attacks Deal Splash Damage #					

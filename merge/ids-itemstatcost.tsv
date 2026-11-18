@@ -597,3 +597,4 @@ no_wolves	563	no_wolves
 +647 descstrpos=MapExtraGroupFetish descstrneg=MapExtraGroupFetish	648	cartographer_map_extra_fetish
 +648 descstrpos=MapExtraGroupShriek descstrneg=MapExtraGroupShriek	649	cartographer_map_extra_shriek
 +649 descstrpos=MapMonSplash descstrneg=MapMonSplash	650	cartographer_map_mon_splash
++650 descstrpos=MapMonSplash2 descstrneg=MapMonSplash2	651	cartographer_map_mon_splash2

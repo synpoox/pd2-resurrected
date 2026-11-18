@@ -93,6 +93,7 @@
     "MapExtraGroupSouls": "%+d Extra Monster Group: Burning Souls",
     "MapExtraGroupFetish": "%+d Extra Monster Group: Fetishes",
     "MapExtraGroupShriek": "%+d Extra Monster Group: Minions of Destruction",
+    "MapMonSplash2": "Melee Attacks Deal Splash Damage",
     "m01": "Tunneling Depths Map",
     "Teeming": "Teeming",
     "Hastened": "Hastened",
@@ -1896,6 +1897,7 @@
     "LargeMap": [51558, "item-nameaffixes.json"],
     "Souless": [51559, "item-nameaffixes.json"],
     "Shamanic": [51560, "item-nameaffixes.json"],
-    "Duplicated": [51561, "item-nameaffixes.json"]
+    "Duplicated": [51561, "item-nameaffixes.json"],
+    "MapMonSplash2": [51562, "item-modifiers.json"]
   }
 }
