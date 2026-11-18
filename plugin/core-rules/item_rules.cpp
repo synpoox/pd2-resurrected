@@ -1925,33 +1925,6 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	return merge ? 1 : 0;
 }
 
-// Using one map of a stack (#1397). The use handler 0x4f40c0 frees a used-up item (item spell 16's keep is 0) with 0x43ec10, the whole
-// stack: D2R's own use dispatcher, which takes one off a stack (0x46f090), is replaced by Cartographer for maps. So at that one call
-// site a stack of maps loses one instead; a single map and every other caller (cube, sell, drop) go on to the original.
-// 0x43ec10 is generic, so the call site is told by its return address (shortcut: a fixed RVA, checked in the hook; migrate with #296).
-using ItemFreeFn = void (*)(Game*, Unit*) noexcept;
-ItemFreeFn g_itemFreeOriginal = nullptr;
-constexpr uint64_t UseHandlerFreeReturn = 0x4f5a16;  // after `call 0x43ec10` at 0x4f5a11 in 0x4f40c0
-constexpr uint64_t TakeQuantity = 0x46f090;          // (game, player, item, delta): stat 70 += delta, tells the client
-std::atomic<uint32_t> g_mapUses {0};
-
-auto ItemFree(Game* game, Unit* item) noexcept -> void {
-	using namespace d2r::rva;
-	if (game != nullptr && item != nullptr && reinterpret_cast<uint64_t>(_ReturnAddress()) - d2r::imageBase == UseHandlerFreeReturn &&
-	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, ItemTypeMap) != 0 && Stat(item, StatQuantity) > 1) {
-		const int32_t ownerId = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemOwnerId)(item);
-		Unit* owner = ownerId != -1 ? d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, 0, ownerId)
-		                            : nullptr;
-		if (owner != nullptr) {
-			const int32_t before = Stat(item, StatQuantity);
-			d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t) noexcept>(TakeQuantity)(game, owner, item, -1);
-			plog::Info("map use: stack of %d now %d (%u so far)", before, Stat(item, StatQuantity), ++g_mapUses);
-			return;
-		}
-	}
-	g_itemFreeOriginal(game, item);
-}
-
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
 	g_context = context;
@@ -1998,32 +1971,23 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool mapStack = sigscan::HookBySignature(
 	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
 	    d2r::rva::ItemsCanMergeEntry, sizeof(d2r::rva::ItemsCanMergeEntry), MapStackEqual, &g_stackEqualOriginal);
-	const uint8_t itemFreeEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x57, 0x48, 0x83, 0xec, 0x20,
-	                                 0x48, 0x8b, 0xf9, 0x48, 0x8b, 0xda, 0x48, 0x8b, 0xca};
-	// 0x43ec10's first 20 bytes match twice (0x48be20 too): the second check and call tell them apart
-	const bool mapUse = sigscan::HookBySignature(
-	    context, "ItemFree",
-	    "48 89 5C 24 08 57 48 83 EC 20 48 8B F9 48 8B DA 48 8B CA E8 ?? ?? ?? ?? 48 85 C0 74 14 48 8D 4C 24 40 C6 44 24 40 00 E8 "
-	    "?? ?? ?? ?? 84 C0 74 01 CC 48 8B CB E8 ?? ?? ?? ?? 48 85 C0 74 14",
-	    0, itemFreeEntry, sizeof(itemFreeEntry), ItemFree, &g_itemFreeOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; map stacking%s; map use%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; map stacking%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
 	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
 	              equip ? "" : " FAILED (bytes differ)", replenish ? "" : " FAILED (bytes differ)",
 	              unlimited ? "" : " FAILED (entries not empty, or no mutation service)",
-	              charms ? "" : " FAILED (signature or bytes differ)", mapStack ? "" : " FAILED (bytes differ)",
-	              mapUse ? "" : " FAILED (signature or bytes differ)");
+	              charms ? "" : " FAILED (signature or bytes differ)", mapStack ? "" : " FAILED (bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
-	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (mapStack ? 1 : 0) + (mapUse ? 1 : 0);
+	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (mapStack ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 13;
+	return 12;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
@@ -2031,9 +1995,9 @@ auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
 	              "ormus rolls %u, strike rolls %u, crits %u, "
 	              "deadly strikes %u, equipped_eth changes %u, life steal cap checks %u (blocked %u), crushing blow rolls %u, "
 	              "crushing blows %u, curses %u, resisted %u, gated %u, skill on equip changes %u, ticks %u, phasing %u, "
-	              "charges replenished %u, map stacks refused %u, map uses taken from a stack %u",
+	              "charges replenished %u, map stacks refused %u",
 	              g_rolls.load(), g_strikeRolls.load(), g_crits.load(), g_deadlyStrikes.load(), g_ethReads.load(),
 	              g_capChecks.load(), g_capBlocks.load(), g_blowRolls.load(), g_blows.load(),
 	              g_curses.load(), g_curseResisted.load(), g_curseGate.load(), g_equipCallbacks.load(), g_equipTicks.load(), g_phasing.load(),
-	              g_chargesReplenished.load(), g_mapStackRefused.load(), g_mapUses.load());
+	              g_chargesReplenished.load(), g_mapStackRefused.load());
 }

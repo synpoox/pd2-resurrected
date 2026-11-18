@@ -29,6 +29,7 @@
 #include "lucion.h"
 #include "map_open.h"
 #include "rathma.h"
+#include "sig_hook.h"
 
 #include "cartographer_room_populate_v1.h"
 #include "event_link.h"
@@ -482,6 +483,7 @@ auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept
 constexpr int32_t MapItemType = 245;
 std::atomic<int32_t> g_usedQuality {0};  // 0 none; else the D2R quality of the map item used last
 std::atomic<bool> g_usedForced {false};
+thread_local Unit* g_usePlayer = nullptr;  // the player of the use handler running now
 using UseItemFn = void (*)(Game*, Unit*, uint8_t*, char) noexcept;
 UseItemFn g_useOriginal = nullptr;
 constexpr uint64_t UseItem = 0x4f40c0;
@@ -498,7 +500,35 @@ auto OnUseItem(Game* game, Unit* player, uint8_t* packet, char flag) noexcept ->
 		g_usedForced = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatForceEvent,
 		                                                                                     pd2::event_link::MarkerLayer) > 0;
 	}
+	Unit* const saved = g_usePlayer;
+	g_usePlayer = player;
 	g_useOriginal(game, player, packet, flag);
+	g_usePlayer = saved;
+}
+
+// Using one map of a stack (#1397). The use handler above frees a used-up item (item spell 16's keep is 0) with 0x43ec10, the whole
+// stack: D2R's own use dispatcher, which takes one off a stack (0x46f090), is replaced by Cartographer for maps. So at that one call
+// site a stack of maps loses one instead; a single map and every other caller (cube, sell, drop) go on to the original.
+// 0x43ec10 is generic, so the call site is told by its return address (shortcut: a fixed RVA, checked in the hook; migrate with #296).
+// Here, not in core-rules: the item has no owner id inside the handler, and the loader hooks the handler once, so its player comes from OnUseItem.
+using ItemFreeFn = void (*)(Game*, Unit*) noexcept;
+ItemFreeFn g_itemFreeOriginal = nullptr;
+constexpr uint64_t UseHandlerFreeReturn = 0x4f5a16;  // after `call 0x43ec10` at 0x4f5a11 in 0x4f40c0
+constexpr uint64_t TakeQuantity = 0x46f090;          // (game, player, item, delta): stat 70 += delta, tells the client
+std::atomic<uint32_t> g_mapUses {0};
+
+auto ItemFree(Game* game, Unit* item) noexcept -> void {
+	using namespace d2r::rva;
+	auto stat = [](Unit* u, int32_t id) { return d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStat)(u, id, 0); };
+	if (game != nullptr && item != nullptr && g_usePlayer != nullptr &&
+	    reinterpret_cast<uint64_t>(_ReturnAddress()) - d2r::imageBase == UseHandlerFreeReturn &&
+	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, MapItemType) != 0 && stat(item, StatQuantity) > 1) {
+		const int32_t before = stat(item, StatQuantity);
+		d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t) noexcept>(TakeQuantity)(game, g_usePlayer, item, -1);
+		plog::Info("map use: stack of %d now %d (%u so far)", before, stat(item, StatQuantity), ++g_mapUses);
+		return;
+	}
+	g_itemFreeOriginal(game, item);
 }
 
 auto RollNative(Game* game, int32_t level) noexcept -> void {
@@ -750,15 +780,23 @@ auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t r
 		                                      &g_activateOriginal);
 	}
 	const bool uses = context->InstallInlineHook(UseItem, UseItemEntry, sizeof(UseItemEntry), OnUseItem, &g_useOriginal);
+	const uint8_t itemFreeEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x57, 0x48, 0x83, 0xec, 0x20,
+	                                 0x48, 0x8b, 0xf9, 0x48, 0x8b, 0xda, 0x48, 0x8b, 0xca};
+	// 0x43ec10's first 20 bytes match twice (0x48be20 too): the second check and call tell them apart
+	const bool mapUse = sigscan::HookBySignature(
+	    context, "ItemFree",
+	    "48 89 5C 24 08 57 48 83 EC 20 48 8B F9 48 8B DA 48 8B CA E8 ?? ?? ?? ?? 48 85 C0 74 14 48 8D 4C 24 40 C6 44 24 40 00 E8 "
+	    "?? ?? ?? ?? 84 C0 74 01 CC 48 8B CB E8 ?? ?? ?? ?? 48 85 C0 74 14",
+	    0, itemFreeEntry, sizeof(itemFreeEntry), ItemFree, &g_itemFreeOriginal);
 	static constexpr uint8_t Empty[8] = {};
 	using OperateFn = int32_t (*)(ObjectOperate*) noexcept;
 	const bool altars = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperateFree35) * 8, Empty,
 	                                           sizeof(Empty), reinterpret_cast<uint64_t>(static_cast<OperateFn>(OperateAltar)));
-	std::snprintf(report, reportSize, "room activation%s, map use %s, altar operate %d%s%s",
+	std::snprintf(report, reportSize, "room activation%s, map use %s%s, altar operate %d%s%s",
 	              rooms      ? ""
 	              : activate ? " (through 0x48f190 until Cartographer's room-populate service is found)"
 	                         : " FAILED (bytes differ)",
-	              uses ? "on" : "FAILED (native maps roll as normal)", ObjectOperateFree35, altars ? "" : " FAILED (slot not empty)",
+	              uses ? "on" : "FAILED (native maps roll as normal)", mapUse ? ", map stack use" : ", map stack use FAILED (signature or bytes differ)", ObjectOperateFree35, altars ? "" : " FAILED (slot not empty)",
 	              g_strings != nullptr ? "" : ", no notify (no localization service)");
 	return rooms || activate ? 1 : 0;
 }
@@ -769,8 +807,8 @@ auto MapEventsCounters(char* out, size_t size) noexcept -> void {
 		n += n > 0 && static_cast<size_t>(n) < size ? std::snprintf(out + n, size - n, " %u", r.load()) : 0;
 	}
 	if (n > 0 && static_cast<size_t>(n) < size) {
-		std::snprintf(out + n, size - n, "), %u rooms activated, %u spawned, %u without a spot, %u notified", g_rooms.load(),
-		              g_spawned.load(), g_noSpot.load(), g_notified.load());
+		std::snprintf(out + n, size - n, "), %u rooms activated, %u spawned, %u without a spot, %u notified, %u map uses taken from a stack",
+		              g_rooms.load(), g_spawned.load(), g_noSpot.load(), g_notified.load(), g_mapUses.load());
 	}
 }
 
