@@ -1,0 +1,109 @@
+{
+    "type": "Panel",
+    "name": "core-maps/SacrificeAltar",
+    "fields": {
+        "rect": "$ConsoleLeftPanelRect",
+        "anchor": "$LeftPanelAnchor",
+        "defaultWidget": "core-maps/AltarSlot"
+    },
+    "children": [
+        {
+            "type": "ClickCatcherWidget",
+            "name": "click_catcher",
+            "fields": {
+                "rect": "$PanelClickCatcherRect"
+            }
+        },
+        {
+            "type": "ImageWidget",
+            "name": "background",
+            "fields": {
+                "filename": "PANEL\\pd2r\\altar_bg"
+            }
+        },
+        {
+            "type": "TextBoxWidget",
+            "name": "title",
+            "fields": {
+                "rect": "$InGamePanelTitleRect",
+                "style": "$StyleTitleBlock",
+                "text": "Sacrifice Altar"
+            }
+        },
+        {
+            "type": "TextBoxWidget",
+            "name": "prompt",
+            "fields": {
+                "rect": {
+                    "x": 0,
+                    "y": 300,
+                    "width": 1162,
+                    "height": 160
+                },
+                "style": "$StyleModalDialogDescription",
+                "text": "Place a corrupted amulet into the blood altar"
+            }
+        },
+        {
+            "type": "ImageWidget",
+            "name": "slot_bg",
+            "fields": {
+                "rect": {
+                    "x": 529,
+                    "y": 683
+                },
+                "filename": "PANEL\\Inventory\\Inventory_Paperdoll_Amulet"
+            }
+        },
+        {
+            "type": "InventoryGridWidget",
+            "name": "core-maps/AltarSlot",
+            "fields": {
+                "rect": {
+                    "x": 529,
+                    "y": 683
+                },
+                "cellCount": {
+                    "x": 1,
+                    "y": 1
+                },
+                "cellSize": "$ItemCellSize",
+                "gemSocketFilename": "PANEL\\gemsocket",
+                "navigation": {
+                    "right": {
+                        "panelBoundary": true
+                    },
+                    "down": {
+                        "name": "confirm"
+                    }
+                }
+            }
+        },
+        {
+            "type": "ButtonWidget",
+            "name": "confirm",
+            "fields": {
+                "rect": {
+                    "x": 520,
+                    "y": 969
+                },
+                "filename": "PANEL\\Horadric_Cube\\TransmuteButton",
+                "hoveredFrame": 2,
+                "onClickMessage": "PanelManager:OpenPanel:core-maps/AltarConfirm",
+                "focusIndicatorFilename": "Controller/HoverImages/Transmute_Hover",
+                "focusIndicatorOffset": {
+                    "x": 0,
+                    "y": 0
+                },
+                "navigation": {
+                    "right": {
+                        "panelBoundary": true
+                    },
+                    "up": {
+                        "name": "core-maps/AltarSlot"
+                    }
+                }
+            }
+        }
+    ]
+}
