@@ -124,7 +124,7 @@ modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/stack_split.cpp
 	core-ui/plugin.rc
 )
-target_link_libraries(plugin_core_ui PRIVATE core_common)
+target_link_libraries(plugin_core_ui PRIVATE core_common xinput)
 
 # Host self-check of common/event_link.h (#944): not shipped, not in `all`. With CARTOGRAPHER_SRC (a d2r-tools
 # plugins/cartographer/src checkout, read-only) it also checks Cartographer's own stat code.
