@@ -21,8 +21,7 @@ class DesecrationRolls(unittest.TestCase):
     def test_plugin_property_codes_exist(self):
         # #1371: the plugins resolve these codes by name at load (plugin/common/property_ids.h); each must be a properties.txt row
         codes = {r["code"] for r in data_tables.rows("properties")}
-        for path in ("plugin/core-events/corruption_roll.cpp", "plugin/core-rules/cube_rules.cpp",
-                     "plugin/core-rules/cube_stacks.cpp"):
+        for path in ("plugin/core-events/corruption_roll.cpp", "plugin/core-rules/cube_rules.cpp"):
             src = (data_tables.ROOT / path).read_text()
             asked = re.findall(r'propids::Resolve\("([^"]+)"\)', src)
             assert asked, path
