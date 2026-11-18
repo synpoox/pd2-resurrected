@@ -104,6 +104,7 @@ modkit_add_plugin(core-events VERSION "${CORE_EVENTS_VERSION}" SOURCES
 	core-events/uber_entry.cpp
 	core-events/arena_spots.cpp
 	core-events/test_kill.cpp
+	core-events/test_item.cpp
 	core-events/plugin.rc
 )
 # Each lane registers its parts from its own folder (core-events/lane-a .. lane-d, #943): new files there need no edit here.

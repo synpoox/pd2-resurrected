@@ -16,8 +16,8 @@ using d2r::Game;
 using d2r::Unit;
 
 constexpr int32_t StatCorrupted = 413, StatCorruptor = 414;  // PD2 360 and 361
-// merged properties.txt *Id corrupt, corruptnum, desecrate, desecratenum (PD2 271, 272, 426, 427 by row)
-constexpr int32_t PropCorrupt = 288, PropCorruptNum = 289, PropDesecrate = 443, PropDesecrateNum = 444;
+// properties.txt corrupt, corruptnum, desecrate, desecratenum: D2R numbers them by row past the "Expansion" row, not by *Id (tools/tests/test_desecration_rolls.py pins them)
+constexpr int32_t PropCorrupt = 287, PropCorruptNum = 288, PropDesecrate = 349, PropDesecrateNum = 350;
 constexpr int32_t DesecrateFloor = 851;  // PD2's Desecration roll, 851-999
 
 }  // namespace

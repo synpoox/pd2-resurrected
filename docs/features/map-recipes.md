@@ -36,5 +36,19 @@ Rare map plus `fort`: +100% monster life, +20% monster damage, -50% density, +10
 ## Anya (#1324)
 Anya sells `upmp` and `fort` as PD2's Drehya does: `AnyaMin`/`AnyaMax` 1, no magic columns, price 200000 (`upmp`) and 15000 (`fort`). The vendor columns already equal PD2's `misc.txt`, so no table row changed.
 
+## Class ear + map (PD2 rows 2186-2206, #1347)
+A rare map plus one invader ear (`ivez` Amazon, `ivea` Assassin, `iveb` Barbarian, `ived` Druid, `iven` Necromancer, `ives` Sorceress, `ivep` Paladin) gives the same map with the ear's mods, kept on top of its own (`usetype,rar,mod`). The recipe is gated on `treacherous` (stat 402, PD2 276) equal to 0, so a map takes one ear. A refusal row per ear stops a normal map. PD2 has no "corrupted ear" condition: the only gate is `treacherous`. core-events already reads `treacherous` and the ear-drop stats on a map ([ms4-area-map-stats](../research/maps/ms4-area-map-stats.md)), so this is table-only.
+
+Every row adds the class ear drop (10), +50% drop bonus (`map-drop-bonus`) and `treacherous` = 1 Amazon, 2 Sorceress, 3 Necromancer, 4 Paladin, 5 Barbarian, 6 Druid, 7 Assassin, then two more mods:
+- Amazon: monster attack and cast speed +50 (`mon-cast-speed`), monster move speed +25 (`mon-speed`).
+- Assassin: monster deadly strike +10, faster hit recovery +120 (`mon-deadly`, `mon-fhr`).
+- Barbarian: monster damage +25%, crushing blow +20 (`mon-damage`, `mon-crush`).
+- Druid: monster physical as fire +25 (`mon-phys-as-fire`), player max resists -5 (`res-all-max`).
+- Necromancer: player life regen -100 (`regen`), monster physical as poison +50 (`mon-phys-as-pois`).
+- Sorceress: monster physical as lightning +50 (`mon-phys-as-ltng`), player all resist -25 (`res-all`).
+- Paladin: player damage reduction -5% (`red-dmg%`), monster attack rating +50% (`mon-tohit-pct`).
+
+Changes: one row per ear takes `cmap,rar` (any tier), where PD2's `map` is any map; PD2's refusal row for unique maps is not ported (no unique maps). PD2's stat names map to the Cartographer catalogue as in [map-affixes](map-affixes.md); `map_mon_att` (to-hit) is `mon-tohit-pct`.
+
 ## Not ported
-Dungeon and unique map rows, ear rows, the `isc` and gem drop-test rows, and PD2's disabled rows (no `enabled` value). Listed in `docs/deviations.md`.
+Dungeon and unique map rows, the `isc` and gem drop-test rows, and PD2's disabled rows (no `enabled` value). Listed in `docs/deviations.md`.
