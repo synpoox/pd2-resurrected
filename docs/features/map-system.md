@@ -19,13 +19,13 @@ work items are placed on [roadmap.md](../roadmap.md) by [#210](https://github.co
 - The tier line is one string per tier: misc `spelldesc 1`, `spelldescstr` `MapTier1`/`MapTier2`/`MapTier3` ("Tier: 1" ...), with `spelldesccalc`, `stat1` and `calc1` empty. A `spelldesc 2` line with `stat1 hpregen` (#1304's carrier) scaled the number like a healing potion, so the tier read 1/3/4 or 2/4/6 depending on the class ([#1316](https://github.com/synpoox/pd2-resurrected/issues/1316)). The map-open log reads `0 item stat(s)`.
 - No map rolls magic naturally. `cmap` and the tier types read Magic 0, Rare 1, Normal 0; Cartographer's hook turns a natural magic roll into normal (`Magic` 1 would mean always magic). A magic map made by a cheat stays magic.
 - `levelreq` is unchanged. The Catalyst recipe (`cmap` + `iwss`) still matches every map, since each tier type is a child of `cmap`.
-- Tier assignment, about 8 per tier, with outdoor and indoor tilesets in each (PD2's own tier where the map has a PD2 namesake: Phlegethon, Tomb of Zoltun Kulle, Shadows of Westmarch, Lost Temple, Sanatorium T1; Horazon's Memory, Ruined Cistern T2; Bastion Keep, Royal Crypts, Arreat Battlefield, Kehjistan Marketplace T3):
+- Tier assignment, about 8 per tier, with outdoor and indoor tilesets in each (PD2's own tier where the map has a PD2 namesake: Phlegethon, Tomb of Zoltun Kulle, Blood Moon, Lost Temple, Sanatorium T1; Horazon's Memory, Ruined Cistern T2; Bastion Keep, Royal Crypts, Arreat Battlefield, Kehjistan Marketplace T3):
 
 | Tier | Area level | Type | Maps (item, tileset; outdoor in bold) |
 |---|---|---|---|
-| T1 | 87 | `t1m` | m01 Tunneling Depths (Cave), m04 Torajan Jungle (**Jungle**), m05 Canyon of Sescheron (**Snow**), m06 Phlegethon (Lava), m12 Shadows of Westmarch (**Wilderness**), m20 Sanatorium (Basement), m23 Tomb of Zoltun Kulle (Tombs), m24 Lost Temple (Spider) |
-| T2 | 88 | `t2m` | m02 Cathedral of Light (Crypt), m03 Ancestral Trial (Ice), m08 Horazon's Memory (Arcane), m10 Howling Plateau (**Mesa**), m13 Ruins of Corvus (**Kurast**), m15 Cursed Hold (Jail), m16 Khazra Den (Lair), m21 Ruined Cistern (Sewer) |
-| T3 | 89 | `t3m` | m07 Battlefields of Eternity (Durance), m09 Arreat Battlefield (**Siege**), m11 Kehjistan Marketplace (**Desert**), m14 Leoric's Passage (Dungeon), m17 Cellar of the Damned (KurastSewer), m18 Bastion Keep (Barracks), m19 Imperial Palace (Harem), m22 Royal Crypts (Catacombs), m25 Dark Temple (Temple) |
+| T1 | 87 | `t1m` | m01 Tunneling Depths (Cave), m04 Torajan Jungle (**Jungle**), m05 Canyon of Sescheron (**Snow**), m06 Phlegethon (Lava), m12 Blood Moon (**Wilderness**), m20 Sanatorium (Basement), m23 Tomb of Zoltun Kulle (Tombs), m24 Lost Temple (Spider) |
+| T2 | 88 | `t2m` | m02 Cathedral of Light (Crypt), m03 Ancestral Trial (Ice), m08 Horazon's Memory (Arcane), m10 Ashen Plains (**Mesa**), m13 Ruins of Viz'jun (**Kurast**), m15 Cursed Hold (Jail), m16 Khazra Den (Lair), m21 Ruined Cistern (Sewer) |
+| T3 | 89 | `t3m` | m07 River of Blood (Durance), m09 Arreat Battlefield (**Siege**), m11 Kehjistan Marketplace (**Desert**), m14 Leoric's Passage (Dungeon), m17 Sewers of Harrogath (KurastSewer), m18 Bastion Keep (Barracks), m19 Imperial Palace (Harem), m22 Royal Crypts (Catacombs), m25 Halls of Torture (Temple) |
 
 ### Anya's maps ([#1323](https://github.com/synpoox/pd2-resurrected/issues/1323))
 
@@ -45,17 +45,17 @@ Drop tier follows PD2's area, not the map's tier: PD2's per-area copies use `Map
 | m04 Torajan Jungle (T1) | Jungle Map (148, t1) | sandleaper, deathmauler, councilmember + fill: thornhulk, mosquito | fill from Ruins of Viz-Jun (143, t1, Kurast); `deathmaulermap` is t3 (tier differs) |
 | m05 Canyon of Sescheron (T1) | Frozen Forest Map (160, t2, Barricade snow tileset) | sandleaper2, doomknight, oblivionknight2, fetish2 | `sandleaper2`, `oblivionknight2` and `fetish2` are t2; `doomknightmap` is t1 (tier differs from t2) |
 | m06 Phlegethon (T1) | Lava Map (145, t1) | minion, pantherwoman, fallen, slinger, siegebeast, bloodlord, councilmember, reanimatedhorde, fallenshaman, fetish | the area's list is the `*map` rows themselves; `fetishmap` is t3 (tier differs) |
-| m07 Battlefields of Eternity (T3) | Kyovashad (201, t3) | reanimatedhorde, zealot, bloodlord, vilemother, deathmauler | `reanimatedhordemap` and `bloodlordmap` are t1 (tier differs) |
+| m07 River of Blood (T3) | River Of Blood (144, t3) | doomknight, vilemother, zealot, oblivionknight, deathmauler, sk_archer, regurgitator, councilmember | #1419: PD2's list less `baalminionmap` (Rarity 0); `councilmemberBlood` is t3 but `councilmembermap` is t1 (tier differs) |
 | m08 Horazon's Memory (T2) | Arcane (142, t2) | zealot2, cantor2, oblivionknight2 + fill: minion2 | `doomknightArcane` is `BaseId` doomknight3 = oblivionknight; fill from Descent (210, t2) |
 | m09 Arreat Battlefield (T3) | Siege Map (139, t3) | goatman, bighead, reanimatedhorde, thornhulk, mosquito | all five rows are t1 (tier differs) |
-| m10 Howling Plateau (T2) | Dark Temple Map (209, t2) | zealot2, siegebeast2, councilmember2, oblivionknight2 | all t2 |
+| m10 Ashen Plains (T2) | Ashen Plains Map (175, t2) | sandleaper2, thornhulk2, pantherwoman2, mosquito2, fetish2, slinger2, deathmauler2, cantor2 | #1419: `baboon` has no map row (sandleaper2), `foulcrow` none (mosquito2, a flier), `willowisp` none (cantor2, a caster) |
 | m11 Kehjistan Marketplace (T3) | Desert Map (147, t3) | mosquito, cr_archer, unraveler + fill: sandleaper | the three rows are t1 (tier differs); fill from the desert list |
-| m12 Shadows of Westmarch (T1) | Westmarch Map (169, t1) | minion, goatman, slinger, siegebeast | all t1 |
-| m13 Ruins of Corvus (T2) | Ashen Plains Map (175, t2) | thornhulk2, pantherwoman2, fetish2, slinger2, deathmauler2 | all t2 |
+| m12 Blood Moon (T1) | Graveyard Map (154, t3; the cow level) | hellbovineMap | #1419: cows only, as PD2's list; no maps.txt or Cartographer column sets the outdoor fill, so the Wilderness trees stay |
+| m13 Ruins of Viz'jun (T2) | Kurast (143, t1) | cr_lancer, goatman, cr_archer, bighead, cantor, unraveler, arach, thornhulk, sandleaper, mosquito | #1419: PD2's 11th row `fetishshamanmap` is cut (a map takes 10); some are t1 rows under a T2 map |
 | m14 Leoric's Passage (T3) | Graveyard Map (154, t3; the cow level) | hellbovineMap | the area lists only `hellbovineMap`; kept as one |
 | m15 Cursed Hold (T2) | Halls of Torture Map (193, t2) | sandleaper2, zealot2, sk_archer2, councilmember2, regurgitator2 | all t2 |
 | m16 Khazra Den (T2) | Throne Map (150, t2) | cr_archer2, cr_lancer2 + fill: goatman2, fallen2 | fill from Fortress Map (149, t2); Khazra are goatmen |
-| m17 Cellar of the Damned (T3) | River Of Blood (144, t3) | doomknight, vilemother, zealot, oblivionknight, deathmauler, sk_archer, regurgitator, councilmember | the area's `*map` rows; `councilmemberBlood` is t3 but `councilmembermap` is t1 (tier differs) |
+| m17 Sewers of Harrogath (T3) | Sewers (141, t2) | fetish2, minion2, vilemother, fetishshaman, bloodlord2, mosquito2, sandleaper2, arach | #1419: `vilechild` has no row (vilemother, its parent), `fetishblow` none (fetishshaman), `vampire` none (bloodlord2), `sandraider` none (sandleaper2), `sandmaggot` none (arach) |
 | m18 Bastion Keep (T3) | Fortress Map (149, t2) | fallen2, goatman2, fallenshaman2, siegebeast2 | PD2's area tier is t2, below the map's T3 |
 | m19 Imperial Palace (T3) | Skovos Stronghold Map (190, t3) | cr_archer, cr_lancer, deathmauler, bighead, thornhulk | cr_archer, cr_lancer, bighead and thornhulk rows are t1 (tier differs) |
 | m20 Sanatorium (T1) | Library Map (167, t2) | cr_archer2, cr_lancer2, deathmauler2, bloodlord2 | PD2's area tier is t2, above the map's T1 |
@@ -63,7 +63,9 @@ Drop tier follows PD2's area, not the map's tier: PD2's per-area copies use `Map
 | m22 Royal Crypts (T3) | Crypts Map (170, t3) | sk_archer, bighead + fill: reanimatedhorde, zealot | fill from Kyovashad (201, t3); `bigheadmap` and `reanimatedhordemap` are t1 (tier differs) |
 | m23 Tomb of Zoltun Kulle (T1) | Tomb Map (151, t1) | arach + fill: sandleaper, unraveler, cr_lancer | only `arach` has a row; fill from Ruins of Viz-Jun (143, t1) |
 | m24 Lost Temple (T1) | Spider Map (158, t1) | minion, mosquito, unraveler, arach | all t1 |
-| m25 Dark Temple (T3) | no PD2 map area (kept from the first pass) | zealot, siegebeast, councilmember, doomknight | unchanged |
+| m25 Halls of Torture (T3) | Halls of Torture Map (193, t2) | sandleaper2, zealot2, sk_archer2, siegebeast2, bloodlord2, councilmember2, regurgitator2 | #1419: `blunderbore` has no row (siegebeast2), `vampire` none (bloodlord2) |
+
+Map bosses and columns ([#1419](https://github.com/synpoox/pd2-resurrected/issues/1419)): every map has `Density` 150, `Champions` 100 (read, never applied), `Uniques` 100 and `MinCharLevel` 80. Bosses follow PD2's level-to-boss swap (`0x1038b990`): Ashen Plains `AshenBoss`, Halls of Torture `TortureHallsBoss`, Ruined Cistern `lernaeanhydra2` (own bosses.txt entries), Sewers of Harrogath `SewerBoss`, Blood Moon `CowBoss`. Ruins of Viz'jun (`unravelerboss`) and River of Blood (`baalminionboss`) have no slot in the 16-entry bosses.txt and use Toadflax the Tainted and The Mad Philosopher; Leoric's Passage takes King Leoric.
 
 ## Drops ([#1307](https://github.com/synpoox/pd2-resurrected/issues/1307))
 
@@ -155,3 +157,4 @@ The map system is done when all of the following pass, on a level 90+ character 
 ### Game check (#1307, Slot4, Hell, level 99)
 
 - Drops: `testtreasure` on `cantorboss` (Map Boss T2) gave one map stamped Area Level 87; most runs gave none, so this shows maps drop, not the rates. Anya's shop and her quest reward were not opened in game.
+
