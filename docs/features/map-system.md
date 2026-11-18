@@ -2,9 +2,9 @@
 
 How the port rebuilds PD2's map system, decided in [#152](https://github.com/synpoox/pd2-resurrected/issues/152)
 (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)). What PD2's system does is in the
-[inventory](https://github.com/synpoox/pd2-resurrected/blob/research/pd2-map-system/docs/research/pd2-map-system.md)
+[inventory](../research/maps/pd2-map-system.md)
 ([#144](https://github.com/synpoox/pd2-resurrected/issues/144)). How D2R Reimagined built its own is in their
-[study](https://github.com/synpoox/pd2-resurrected/blob/research/reimagined-map-system/docs/research/reimagined-map-system.md)
+[study](../research/maps/reimagined-map-system.md)
 ([#145](https://github.com/synpoox/pd2-resurrected/issues/145)). Terms (map item, map tier, map area, map stat, map event, invader) are in [GLOSSARY.md](../../GLOSSARY.md). The
 work items are placed on [roadmap.md](../roadmap.md) by [#210](https://github.com/synpoox/pd2-resurrected/issues/210); MS6 was folded into [IR6](https://github.com/synpoox/pd2-resurrected/issues/241) there.
 

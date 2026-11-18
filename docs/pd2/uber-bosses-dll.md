@@ -3,7 +3,7 @@
 Resolves [UB1](https://github.com/synpoox/pd2-resurrected/issues/226) ([#226](https://github.com/synpoox/pd2-resurrected/issues/226)) in [uber-bosses.md](../features/uber-bosses.md) ([#153](https://github.com/synpoox/pd2-resurrected/issues/153)). It reads, with Ghidra, the parts of PD2's uber bosses that
 the tables do not hold: the fountain opening, the area rules, the tier scaling, the phase scripts, the guaranteed drops and
 rolls, the key drop odds and Desecration. The table side is in the inventories
-([#147](https://github.com/synpoox/pd2-resurrected/blob/research/pd2-uber-bosses/docs/research/pd2-uber-bosses.md),
+([#147](../research/maps/pd2-uber-bosses.md),
 [#185](pandemonium-uber-tristram.md)). Findings only: no PD2 or Blizzard file content is in this repo.
 
 ## Answer in brief

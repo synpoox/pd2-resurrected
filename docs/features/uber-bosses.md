@@ -3,7 +3,7 @@
 How the port rebuilds PD2's uber bosses, decided in [#153](https://github.com/synpoox/pd2-resurrected/issues/153)
 (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)). What PD2's Diablo Clone, Rathma, Lucion and
 Desecration do is in the
-[inventory](https://github.com/synpoox/pd2-resurrected/blob/research/pd2-uber-bosses/docs/research/pd2-uber-bosses.md)
+[inventory](../research/maps/pd2-uber-bosses.md)
 ([#147](https://github.com/synpoox/pd2-resurrected/issues/147)). PD2's Pandemonium and Uber Tristram are inventoried in
 [#185](https://github.com/synpoox/pd2-resurrected/issues/185). What `ProjectDiablo.dll` does for each fight ([UB1](https://github.com/synpoox/pd2-resurrected/issues/226)) is in
 [pd2-uber-bosses-dll.md](../pd2/uber-bosses-dll.md). Terms (uber boss, uber key, uber tier, Desecration,

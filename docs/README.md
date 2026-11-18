@@ -91,6 +91,9 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [research/items/ir7-equipped-items.md](research/items/ir7-equipped-items.md) — IR7: skill while equipped and phasing in ProjectDiablo.dll
 - [research/items/p12-ormus-robes.md](research/items/p12-ormus-robes.md) — P12: Ormus' Robes and skill on cast
 - [research/items/stack-split.md](research/items/stack-split.md) — #316: PD2's stack split
+- [research/items/pd2-remaining-items.md](research/items/pd2-remaining-items.md) — The remaining PD2 items and item rules
+- [research/items/split-throw.md](research/items/split-throw.md) — Spike: PD2 Split Throw in a free srvdofunc slot
+- [research/items/suite-companions.md](research/items/suite-companions.md) — RuffnecKk's suite plugins as item-rule companions
 
 ## Research: map opening and uber fights (MS, UB notes)
 
@@ -98,3 +101,29 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [research/maps/ms3-map-stats.md](research/maps/ms3-map-stats.md) — MS3: monster and player map stats in D2R
 - [research/maps/ms4-area-map-stats.md](research/maps/ms4-area-map-stats.md) — MS4: area map stats in D2R
 - [research/maps/ub2-open-uber-fight.md](research/maps/ub2-open-uber-fight.md) — UB2: opening an uber fight in D2R
+- [research/maps/anya-maps.md](research/maps/anya-maps.md) — Anya's Hell maps (#1323)
+- [research/maps/lp3-border-painter.md](research/maps/lp3-border-painter.md) — LP3 spike: Jungle Map HD presets with a border painter (#213)
+- [research/maps/lp3-tile-table.md](research/maps/lp3-tile-table.md) — LP3: a classic tile -> HD piece table learned from D2R
+- [research/maps/map-events-audit.md](research/maps/map-events-audit.md) — Map events audit: PD2 against core-events
+- [research/maps/map-stacking.md](research/maps/map-stacking.md) — Map stacking (#1326)
+- [research/maps/pd2-map-system.md](research/maps/pd2-map-system.md) — PD2's map system
+- [research/maps/pd2-only-levels.md](research/maps/pd2-only-levels.md) — PD2-only levels and their tiles
+- [research/maps/pd2-uber-bosses.md](research/maps/pd2-uber-bosses.md) — Inventory of PD2's uber bosses
+- [research/maps/reimagined-map-system.md](research/maps/reimagined-map-system.md) — D2R Reimagined's map system
+- [research/maps/uber-arenas.md](research/maps/uber-arenas.md) — Uber and event areas after the converter: how to build them
+
+## Research: PD2 server rules and unported rows
+
+- [research/pd2/remaining-unported-rows.md](research/pd2/remaining-unported-rows.md) — The remaining unported rows
+- [research/pd2/w37-server-rules.md](research/pd2/w37-server-rules.md) — PD2's unidentified server rules (W37)
+
+## Research: HD maps and name plates
+
+- [research/hd/hd-hover-nameplates.md](research/hd/hd-hover-nameplates.md) — HD hover name plates for PD2-only monster codes (#1092)
+- [research/hd/hd-parity-priority.md](research/hd/hd-parity-priority.md) — HD parity tuning order on main 9665a1e
+- [research/hd/hd-parity-strategy.md](research/hd/hd-parity-strategy.md) — HD:legacy map parity: a strategy for one week
+
+## Research: process and tooling
+
+- [research/process/documentation-audit-2026-11-09.md](research/process/documentation-audit-2026-11-09.md) — PD2 Resurrected documentation audit
+- [research/process/pd2-merge-speed.md](research/process/pd2-merge-speed.md) — pd2_merge speed (#803)

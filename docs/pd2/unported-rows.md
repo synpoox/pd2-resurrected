@@ -2,7 +2,7 @@
 
 How the port closes the deviation-list rows that had no work item yet. Decided in
 [#198](https://github.com/synpoox/pd2-resurrected/issues/198) (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)),
-from the [inventory](https://github.com/synpoox/pd2-resurrected/blob/research/remaining-unported-rows/docs/research/remaining-unported-rows.md)
+from the [inventory](../research/pd2/remaining-unported-rows.md)
 ([#196](https://github.com/synpoox/pd2-resurrected/issues/196)). Each row stays on [deviations.md](../deviations.md) until its work item lands. The work items are placed on
 [roadmap.md](../roadmap.md) by [#210](https://github.com/synpoox/pd2-resurrected/issues/210).
 
