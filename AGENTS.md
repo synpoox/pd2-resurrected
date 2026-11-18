@@ -22,8 +22,8 @@ Never edit `CHANGELOG.md` in a PR: add `changelog.d/<issue>-<slug>.md` (format a
 
 After a PR merges, delete its branch, on the remote and locally.
 
-`research/*` branches hold `/wayfinder` research findings. Their notes are folded into `docs/research/` on main (scripts,
-pictures and spike code stay on the branch); the branches are never deleted: issue comments link to them. `pd2-import` is an orphan branch of raw PD2 imports (ADR 0007): never merged, never deleted.
+`research/*` branches hold `/wayfinder` research findings. Research findings are folded into `docs/research` on main;
+the `research/*` branch is deleted after its content merges. `pd2-import` is an orphan branch of raw PD2 imports (ADR 0007): never merged, never deleted.
 
 ### Triage labels
 
