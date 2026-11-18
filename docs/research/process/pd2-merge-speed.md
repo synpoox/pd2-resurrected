@@ -123,7 +123,7 @@ Subset (7 DS1), no profiler:
 | the 7 builds | 194.0 s | 69.7 s |
 | total | 260.7 s | 109.1 s (2.4x) |
 
-All seven preset files are byte-identical to the original code's (SHA-256). The prototype diff is `pd2-merge-speed-prototype.diff` on branch `research/pd2-merge-speed`. It is a measurement aid, not
+All seven preset files are byte-identical to the original code's (SHA-256). The prototype diff is `pd2-merge-speed-prototype.diff` on tag `archive/research/pd2-merge-speed`. It is a measurement aid, not
 mergeable code: `_BY_CLASS` and `_HARVESTED` are module-level caches with no reset.
 
 **Full run (all 135 DS1, no profiler, no other merge running): the presets rule took 515 s with the prototype, against

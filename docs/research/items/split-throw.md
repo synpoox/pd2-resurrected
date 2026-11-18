@@ -1,8 +1,8 @@
 # Spike: PD2 Split Throw in a free srvdofunc slot
 
-Throwaway. Answers "Spike a PD2 skill function in a free srvdofunc slot"; kept on branch `research/split-throw`; folded here as a note.
+Throwaway. Answers "Spike a PD2 skill function in a free srvdofunc slot"; kept on tag `archive/research/split-throw`; folded here as a note.
 
-The plugin and mod files stay on branch `research/split-throw`; paths below are on that branch.
+The plugin and mod files stay on tag `archive/research/split-throw`; paths below are on that tag.
 
 ## What was built
 

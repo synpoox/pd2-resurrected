@@ -152,7 +152,7 @@ string keys the DLL names (`0x44ca3c`-`0x44e544`); the event list:
 **Invaders.** `InvaderPortal` (AI `Overseer`), seven `Invader<Class>` monsters level 90 (AIs reused from vanilla: Amazon `BloodRaven`,
 Assassin, Barbarian, Paladin `Duriel`, Druid, Necromancer, Sorceress `Summoner`), and two Necromancer pets. The table AIs are
 placeholders: the DLL's `..\Source\D2Game\Ai\AiThink4.cpp` (`0x44ca9c`, next to the invader notify keys) is a rebuilt 1.13c AI file,
-so the invader brain is DLL code. Their art is the classic player DCC in `pd2monchars.mpq` ([pd2-asset-inventory](../../pd2/asset-inventory.md)).
+so the invader brain is DLL code. Their art is the classic player DCC in `pd2monchars.mpq` ([asset-inventory.md](../../pd2/asset-inventory.md)).
 The "Map-event notifications" row on `docs/unported.md` is already cut; the events themselves are not.
 
 ## 6. Tables versus ProjectDiablo.dll
