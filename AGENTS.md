@@ -22,6 +22,8 @@ Never edit `CHANGELOG.md` in a PR: add `changelog.d/<issue>-<slug>.md` (format a
 
 After a PR merges, delete its branch, on the remote and locally.
 
+Controller PRs update `docs/controller.md`.
+
 `research/*` branches hold `/wayfinder` research findings. Research findings are folded into `docs/research` on main;
 the `research/*` branch is deleted after its content merges. A branch whose non-doc files stay off main is tagged
 `archive/research/<name>` first. `pd2-import` is an orphan branch of raw PD2 imports (ADR 0007): never merged, never deleted.

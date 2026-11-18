@@ -7,6 +7,8 @@ Slot3 on a level 99 Assassin (Hell, Harrogath) driven by a virtual XInput pad (t
 [d2r-test-harness#2](https://github.com/synpoox/d2r-test-harness/pull/2)). Screenshots stay in the slot's run folder;
 the evidence below is the word description of each one and the string and layout files named.
 
+The controls the mod ships, with source and status, are in [docs/controller.md](../../controller.md).
+
 ## 1. What D2R already does of PD2's layer
 
 PD2's layer, as `docs/pd2/engine-dll-triage.md` lists it (from `ProjectDiablo.dll`: the `XINPUT1_4.dll` import, the

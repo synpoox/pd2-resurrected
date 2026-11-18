@@ -34,6 +34,8 @@ A new release overwrites `filter.json`; keep a copy of yours.
 
 ## Controller
 
+Every controller control the mod ships, with its source and status: [docs/controller.md](docs/controller.md).
+
 The mod ships the Controller QOL Updates plugin (PyreFly), which changes some of D2R's controller buttons:
 
 - RT changes the main menu page and RB changes the skill tab. This is the reverse of normal D2R. The config file can't switch it back; the console command `qol menu on/off` does.
