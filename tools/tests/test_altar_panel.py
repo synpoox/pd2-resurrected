@@ -1,7 +1,6 @@
 """The Sacrifice Altar's panel layout (#1192) matches the names in plugin/core-events/altar_panel.cpp."""
 import json
 import re
-import struct
 import unittest
 from pathlib import Path
 
