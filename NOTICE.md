@@ -25,8 +25,8 @@ It does **not** cover, and grants no rights to:
 | Ethereal Item Rules, Item Durability, Progressive Affixes, Mass Identify | [RuffDood/RuffnecKk-D2RLoader-Suite](https://github.com/RuffDood/RuffnecKk-D2RLoader-Suite) | RuffnecKk | MIT |
 | Cast Triggers | [d2rloader.net hub](https://d2rloader.net/) | RuffnecKk | No license stated |
 | Mercenary Drop On Hire | [yinyin333333/D2RL-yin-Junk-Room](https://github.com/yinyin333333/D2RL-yin-Junk-Room) | yinyin333333 | No license stated |
-| DPS Counter | [synpoox/d2r-tools](https://github.com/synpoox/d2r-tools) | synpoox | No license stated (our own plugin) |
-| Potion Counter | [synpoox/d2r-tools](https://github.com/synpoox/d2r-tools) | synpoox | No license stated (our own plugin) |
+| DPS Counter | [synpoox/d2r-tools](https://github.com/synpoox/d2r-tools) | synpoox | MIT (our own plugin) |
+| Potion Counter | [synpoox/d2r-tools](https://github.com/synpoox/d2r-tools) | synpoox | MIT (our own plugin) |
 
 ## No affiliation
 

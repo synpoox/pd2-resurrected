@@ -131,7 +131,7 @@ items" ([#210](https://github.com/synpoox/pd2-resurrected/issues/210)).
 | [UR3](https://github.com/synpoox/pd2-resurrected/issues/201), [UR9](https://github.com/synpoox/pd2-resurrected/issues/207) | The Ascendant, the DPS counter | none | E | [#273](https://github.com/synpoox/pd2-resurrected/pull/273), [#665](https://github.com/synpoox/pd2-resurrected/pull/665) |
 | [UR11](https://github.com/synpoox/pd2-resurrected/issues/338) | Buying back a unique charm sold by mistake | none | E | [#395](https://github.com/synpoox/pd2-resurrected/pull/395) |
 | [UR10](https://github.com/synpoox/pd2-resurrected/issues/208) | Potion counter companion, done (bundled from `d2r-tools`) | none | E | [#1464](https://github.com/synpoox/pd2-resurrected/pull/1464) |
-| [P15](https://github.com/synpoox/pd2-resurrected/issues/247) | Alpha release: local 7z and release notes | [P13](https://github.com/synpoox/pd2-resurrected/issues/109) and every item above but [UR10](https://github.com/synpoox/pd2-resurrected/issues/208) | A | [#247](https://github.com/synpoox/pd2-resurrected/issues/247) |
+| [P15](https://github.com/synpoox/pd2-resurrected/issues/247) | Alpha release: local 7z and release notes | [P13](https://github.com/synpoox/pd2-resurrected/issues/109) and every item above | A | [#247](https://github.com/synpoox/pd2-resurrected/issues/247) |
 
 **Order.** The order level pipeline -> map system -> Warlock -> uber bosses -> items -> unported rows sets lane priority,
 not blockers. The only chains are [LP1](https://github.com/synpoox/pd2-resurrected/issues/211) -> [MS2](https://github.com/synpoox/pd2-resurrected/issues/217) -> [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) -> [UB3](https://github.com/synpoox/pd2-resurrected/issues/228)-[UB6](https://github.com/synpoox/pd2-resurrected/issues/231) -> [UB7](https://github.com/synpoox/pd2-resurrected/issues/232), [MS1](https://github.com/synpoox/pd2-resurrected/issues/216) -> [MS2](https://github.com/synpoox/pd2-resurrected/issues/217) and [MS5](https://github.com/synpoox/pd2-resurrected/issues/220), [WL1](https://github.com/synpoox/pd2-resurrected/issues/233) -> [WL2](https://github.com/synpoox/pd2-resurrected/issues/234) -> [WL3](https://github.com/synpoox/pd2-resurrected/issues/235) and [WL4](https://github.com/synpoox/pd2-resurrected/issues/236),
@@ -150,7 +150,7 @@ code and the shared gate), [IR2](https://github.com/synpoox/pd2-resurrected/issu
 **Alpha exit bar:** the alpha 0.1.0 bar holds; the map-system, uber-boss, IR and UR game checks pass; each Warlock tree's
 endgame build meets its target; all 64 in-scope PD2-only areas load with a generated HD preset and Jungle Map runs within
 10% of a same-size D2R area's frame rate; the table-diff gate is green for the alpha scope; the deviation list's "not yet"
-rows are only those the beta owns (online play, guilds and guild halls, controller screens, the Warlock's three new skills, league rewards, [UR10](https://github.com/synpoox/pd2-resurrected/issues/208) if it moved); every
+rows are only those the beta owns (online play, guilds and guild halls, controller screens, the Warlock's three new skills, league rewards); every
 companion arms on Slot4; the owner tests the local 7z alone.
 
 Multiplayer comes after the alpha, in the beta: run 1 over TCP/IP, run 2 on hosted servers with a short beta league,
