@@ -12,7 +12,7 @@ def bad_rows(text: str) -> list[str]:
         if not line.startswith("|"):
             width = None
             continue
-        cells = len(line.strip().strip("|").replace("\|", "").split("|"))
+        cells = len(line.strip().strip("|").replace("\\|", "").split("|"))
         if width is None:
             width = cells
         elif cells != width:
