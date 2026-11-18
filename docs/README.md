@@ -127,3 +127,7 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 
 - [research/process/documentation-audit-2026-11-09.md](research/process/documentation-audit-2026-11-09.md) — PD2 Resurrected documentation audit
 - [research/process/pd2-merge-speed.md](research/process/pd2-merge-speed.md) — pd2_merge speed (#803)
+
+## Research: multiplayer
+
+- [research/multiplayer/multiplayer-options.md](research/multiplayer/multiplayer-options.md) — TCP/IP over D2RLoader, hosted servers, and how Reimagined runs its ladder
