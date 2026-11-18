@@ -1679,30 +1679,59 @@ CharmActiveFn g_charmActiveOriginal = nullptr;
 std::atomic<uint32_t> g_charmChecks {0};
 std::atomic<uint32_t> g_charmOffChecks {0};
 
+// True when D2R counts the charm as active but it sits in a top grid row: PD2 switches it off.
+auto CharmSwitchedOff(Unit* item, Unit* player, uint32_t& xy, uint8_t& page) noexcept -> bool {
+	if (item == nullptr || g_charmActiveOriginal(item, player) == 0) {
+		return false;
+	}
+	page = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::rva::ItemPage)(item);
+	xy = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitPackedXY)(item);
+	return page == 0 && (xy >> 16) < CharmFirstActiveRow;  // a custom page is never judged by its grid row
+}
+
 auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 	const int32_t active = g_charmActiveOriginal(item, player);
 	if (active == 0 || item == nullptr) {
 		return active;
 	}
-	const uint8_t page = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::rva::ItemPage)(item);
-	const uint32_t xy = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitPackedXY)(item);
-	const uint32_t row = xy >> 16;
-	const bool off = page == 0 && row < CharmFirstActiveRow;  // a custom page is never judged by its grid row
+	uint32_t xy = 0;
+	uint8_t page = 0;
+	const bool off = CharmSwitchedOff(item, player, xy, page);
 	const uint32_t n = off ? ++g_charmOffChecks : ++g_charmChecks;  // own cap, so a top-row charm cannot hide kept lines or flood
 	if (n <= 40 || n % 500 == 0) {
 		plog::Info("charm rows: item %p at x %u y %u, page %u, active in D2R, %s, %u so far", static_cast<void*>(item),
-		           xy & 0xffff, row, page, off ? "switched off" : "kept", n);
+		           xy & 0xffff, xy >> 16, page, off ? "switched off" : "kept", n);
 	}
 	return off ? 0 : active;
 }
 
-auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
-	sigscan::Entry* const own[] = {&CharmCallSite};
-	sigscan::Resolve(own, 1, context->exeBase, nullptr, 0);
-	if (CharmCallSite.state != sigscan::State::Ok) {
+// The inventory widget's draw (93847: 0x2c3570) asks D2RCore's "requirements met for display" check for each stored
+// item (a .maho thunk, its slot swapped like the charm policy's) and draws the item's cell in D2R's red unusable tint
+// when it says no. A top-row charm gives no stats, so PD2 tints it red like any inactive item (#1358): the check says
+// no for it. The draw is that call's only caller, so no rule sees the answer. The arguments are the call site's
+// (item, player, four zero words, the last a dword on the stack), passed on as given.
+sigscan::Entry ReqDisplaySite {"ItemReqDisplayCall", "charms", sigscan::Kind::Code, 0, 0,
+                               "33 c0 45 33 c9 89 44 24 30 45 33 c0 48 89 44 24 28 49 8b d4 48 8b cf 48 89 44 24 20 e8 ?? ?? ?? ?? 85 c0 0f 84 ?? ?? ?? ?? 84 db 0f 85"};
+constexpr uint32_t ReqDisplayCallOffset = 28;  // the E8 of the check in that signature
+
+using ReqDisplayFn = int32_t (*)(Unit* item, Unit* player, uint64_t a3, uint64_t a4, uint64_t a5, uint64_t a6, uint64_t a7) noexcept;
+ReqDisplayFn g_reqDisplayOriginal = nullptr;
+
+auto ReqDisplayInRow(Unit* item, Unit* player, uint64_t a3, uint64_t a4, uint64_t a5, uint64_t a6, uint64_t a7) noexcept -> int32_t {
+	const int32_t ok = g_reqDisplayOriginal(item, player, a3, a4, a5, a6, a7);
+	uint32_t xy = 0;
+	uint8_t page = 0;
+	return ok != 0 && CharmSwitchedOff(item, player, xy, page) ? 0 : ok;
+}
+
+// Swaps the .maho thunk slot behind the E8 call at `entry` + `callOffset` for `wrapper`; the slot's old target goes to
+// `original` first, so the wrapper never runs without it.
+auto SwapThunkSlot(const D2RL::PluginContext* context, const sigscan::Entry& entry, uint32_t callOffset, uint64_t wrapper,
+                   uint64_t* original) noexcept -> bool {
+	if (entry.state != sigscan::State::Ok) {
 		return false;
 	}
-	const auto* const call = reinterpret_cast<const uint8_t*>(d2r::imageBase + CharmCallSite.rva + CharmCallOffset);
+	const auto* const call = reinterpret_cast<const uint8_t*>(d2r::imageBase + entry.rva + callOffset);
 	if (call[0] != 0xe8) {
 		return false;
 	}
@@ -1712,16 +1741,32 @@ auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
 	}
 	const uint8_t* const slot = thunk + 6 + *reinterpret_cast<const int32_t*>(thunk + 2);
 	const uint64_t slotRva = reinterpret_cast<uint64_t>(slot) - d2r::imageBase;
-	const uint64_t original = *reinterpret_cast<const uint64_t*>(slot);
-	if (original == 0) {
+	const uint64_t old = *reinterpret_cast<const uint64_t*>(slot);
+	if (old == 0) {
 		return false;
 	}
-	g_charmActiveOriginal = reinterpret_cast<CharmActiveFn>(original);
-	if (!context->PatchWriteU64(slotRva, &original, sizeof(original),
-	                            reinterpret_cast<uint64_t>(static_cast<CharmActiveFn>(CharmActiveInRow)))) {
+	*original = old;
+	if (!context->PatchWriteU64(slotRva, &old, sizeof(old), wrapper)) {
 		return false;
 	}
-	plog::Info("charm rows: charm policy slot at image +0x%llx swapped", static_cast<unsigned long long>(slotRva));
+	plog::Info("charm rows: %s slot at image +0x%llx swapped", entry.name, static_cast<unsigned long long>(slotRva));
+	return true;
+}
+
+auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
+	sigscan::Entry* const own[] = {&CharmCallSite, &ReqDisplaySite};
+	sigscan::Resolve(own, 2, context->exeBase, nullptr, 0);
+	if (!SwapThunkSlot(context, CharmCallSite, CharmCallOffset,
+	                   reinterpret_cast<uint64_t>(static_cast<CharmActiveFn>(CharmActiveInRow)),
+	                   reinterpret_cast<uint64_t*>(&g_charmActiveOriginal))) {
+		return false;
+	}
+	// The tint is cosmetic and the rows work without it, so a miss is only logged.
+	if (!SwapThunkSlot(context, ReqDisplaySite, ReqDisplayCallOffset,
+	                   reinterpret_cast<uint64_t>(static_cast<ReqDisplayFn>(ReqDisplayInRow)),
+	                   reinterpret_cast<uint64_t*>(&g_reqDisplayOriginal))) {
+		plog::Warn("charm rows: the red tint hook was not installed (signature or bytes differ)");
+	}
 	return true;
 }
 
