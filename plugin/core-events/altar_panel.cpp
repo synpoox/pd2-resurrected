@@ -3,6 +3,10 @@
 // (PanelService, layout files/data/global/ui/layouts/core-maps/SacrificeAltarhd.json), the buttons caught as UI messages
 // (SharedEventService), and the item work as item transactions (ItemService). No hook, no address.
 //
+// Pad focus (#1456): a world open skips D2R's controller steps, so after the open the frame callback repeats what the
+// stash panel does when it opens in pad mode (BankPanel open handler, 93847 0x23cc40): reset the held input
+// (0x8d540), open the ControllerOverlay panel, focus the panel (0x858050). docs/research/controller/altar-world-focus.md.
+//
 // Flow: the altar's operate (lucion.cpp) opens the panel. Confirm moves the amulet from the page to the inventory, runs
 // Desecrate on it there (lucion.cpp; a failed roll makes the brick) and closes every panel. The X and Escape just
 // close the panel: a frame watcher returns any amulet left on the page, which also covers a save-and-exit with the
@@ -13,6 +17,7 @@
 #include "pd2_engine.h"
 #include "log.h"
 #include "lucion.h"
+#include "sig.h"
 
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
@@ -25,6 +30,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <iterator>
 #include <memory>
 #include <new>
 
@@ -40,6 +46,26 @@ constexpr char PanelId[] = "SacrificeAltar";
 constexpr char SlotName[] = "core-maps/AltarSlot";
 constexpr char ConfirmText[] = "core-maps/AltarConfirm";
 constexpr uint32_t WatchFrames = 30;
+
+constexpr char FullPanelName[] = "core-maps/SacrificeAltar";
+constexpr uint32_t FocusWaitFrames = 120;
+
+// D2R's own pieces of the stash's pad open, found by signature (93847 RVAs for reference only). Any miss leaves the
+// panel without pad focus, as before.
+// 93847: 0x858050, void (panel): the focus manager takes the open panel
+sigscan::Entry FocusPanel {"PanelFocus", "altar", sigscan::Kind::Code, 0, 0,
+                           "40 53 48 83 ec 20 48 8b d9 e8 ?? ?? ?? ?? 48 8b d3 48 8b c8 48 83 c4 20 5b e9 ?? ?? ?? ??"};
+// 93847: 0x846170, void* (name): PanelManager::FetchPanel
+sigscan::Entry FetchPanel {"PanelFetch", "altar", sigscan::Kind::Code, 0, 0, "48 8b d1 48 8b 0d ?? ?? ?? ?? 48 85 c9 0f 85 ?? ?? ?? ??"};
+// 93847: 0x8d540, void (): clears the held movement and button state
+sigscan::Entry ResetInput {"InputReset", "altar", sigscan::Kind::Code, 0, 0,
+                           "8b 0d ?? ?? ?? ?? 33 c0 89 05 ?? ?? ?? ?? 89 05 ?? ?? ?? ?? 88 05 ?? ?? ?? ?? 89 05 ?? ?? ?? ?? 89 05 ?? ?? ?? ?? 88 05 ?? ?? ?? ?? c7 05"};
+// 93847: 0x77e10, bool (): the pad is the input in use
+sigscan::Entry PadMode {"PadMode", "altar", sigscan::Kind::Code, 0, 0, "48 83 ec 28 e8 ?? ?? ?? ?? 80 b8 c8 0d 00 00 00 75 10"};
+sigscan::Entry* const FocusSigs[] = {&FocusPanel, &FetchPanel, &ResetInput, &PadMode};
+bool g_focusSigs = false;
+bool g_focusPending = false;  // UI thread only
+uint32_t g_focusWait = 0;
 
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::PanelService* g_panels = nullptr;
@@ -173,8 +199,32 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 	return Action::Consume;
 }
 
+// UI thread, each frame while a pad open waits: the stash's pad steps once the panel is active
+void FocusAltarPanel() noexcept {
+	void* panel = reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(FullPanelName);
+	if (panel == nullptr || At<uint8_t>(panel, 0x51) == 0) {
+		if (++g_focusWait > FocusWaitFrames) {
+			g_focusPending = false;
+			plog::Info("altar: pad focus gave up, the panel never became active");
+		}
+		return;
+	}
+	g_focusPending = false;
+	reinterpret_cast<void (*)() noexcept>(ResetInput.address)();
+	const D2RL::Widgets::UiAction overlay {.structSize = D2RL::Widgets::UiActionSize,
+	                                       .target = "PanelManager",
+	                                       .command = "OpenPanel",
+	                                       .text = "ControllerOverlay"};
+	const auto status = g_widgets->dispatchUiAction(g_context, &overlay);
+	reinterpret_cast<void (*)(void*) noexcept>(FocusPanel.address)(panel);
+	plog::Info("altar: pad focus set %u frames after the open (overlay message %u)", g_focusWait, static_cast<uint32_t>(status));
+}
+
 // UI thread, every WatchFrames frames: a closed panel with an amulet still on the page returns it
 void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noexcept {
+	if (g_focusPending) {
+		FocusAltarPanel();
+	}
 	if (++g_frames % WatchFrames != 0 || g_returning.load(std::memory_order_acquire) || g_returnFailLogged.load()) {
 		return;
 	}
@@ -217,6 +267,12 @@ void PickPlayer(const D2RL::PluginContext*, void* user) noexcept {
 	g_returnFailLogged.store(false);
 	if (status == D2RL::Panels::Result::Success) {
 		++g_opened;
+		const bool pad = g_focusSigs && reinterpret_cast<bool (*)() noexcept>(PadMode.address)();
+		plog::Info("altar: pad mode %d, focus signatures %s", pad ? 1 : 0, g_focusSigs ? "ok" : "off");
+		if (pad) {
+			g_focusPending = true;
+			g_focusWait = 0;
+		}
 	}
 }
 
@@ -258,6 +314,14 @@ auto InstallAltarPanel(const D2RL::PluginContext* context, char* report, size_t 
 		return 0;
 	}
 	g_context = context;
+	sigscan::Resolve(FocusSigs, std::size(FocusSigs), context->exeBase, nullptr, 0);
+	g_focusSigs = true;
+	for (const sigscan::Entry* e : FocusSigs) {
+		if (e->state != sigscan::State::Ok) {
+			g_focusSigs = false;
+			plog::Info("altar: signature %s %s, no pad focus", e->name, sigscan::StateText(e->state));
+		}
+	}
 	inv::PageRegistrationHandle page = inv::InvalidHandle;
 	const inv::PlayerPageRegistration registration {.structSize = inv::PlayerPageRegistrationSize, .flags = 0, .logicalId = PageId};
 	const inv::PlayerPageConfiguration size {.structSize = inv::PlayerPageConfigurationSize, .flags = 0, .width = 1, .height = 1};
