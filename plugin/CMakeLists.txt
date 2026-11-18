@@ -122,6 +122,7 @@ modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/item_pictures.cpp
 	core-ui/item_quantity.cpp
 	core-ui/stack_split.cpp
+	core-ui/controller_split.cpp
 	core-ui/plugin.rc
 )
 target_link_libraries(plugin_core_ui PRIVATE core_common xinput)
@@ -169,6 +170,12 @@ add_executable(test_cmd_check EXCLUDE_FROM_ALL tests/test_cmd_check.cpp)
 target_include_directories(test_cmd_check PRIVATE common)
 target_compile_features(test_cmd_check PRIVATE cxx_std_20)
 core_options(test_cmd_check)
+
+# Controller QoL modifier setting (#1442): plugin/common/pad_modifier.h has no engine types.
+add_executable(pad_modifier_check EXCLUDE_FROM_ALL tests/pad_modifier_check.cpp)
+target_include_directories(pad_modifier_check PRIVATE common)
+target_compile_features(pad_modifier_check PRIVATE cxx_std_20)
+core_options(pad_modifier_check)
 
 # Shrine rules (#1143): plugin/common/shrine_math.h has no engine types.
 add_executable(shrine_rules_check EXCLUDE_FROM_ALL tests/shrine_rules_check.cpp)
