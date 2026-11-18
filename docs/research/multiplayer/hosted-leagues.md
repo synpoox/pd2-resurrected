@@ -10,8 +10,9 @@ default branches that day (`reimagined-launcher` at `7fb009b`). Nothing here was
 
 - A hosted league is five things: a **headless game server** (D2R plus a D2RLoader plugin), a **lobby** that puts
   games on those servers, **server-owned characters**, **one account** across launcher and website, and a **signed
-  release** the server can require. Reimagined built all five in about two weeks of public history (its Ladder wiki
-  page was created 2026-11-04, `wiki-content/Ladder.md` line 8) on top of a website and API that existed before.
+  release** the server can require. Reimagined appears to have built all five in about two weeks (our inference from
+  the Ladder wiki page's creation date, 2026-11-04, `wiki-content/Ladder.md` line 8; build dates are not public) on top
+  of a website and API that existed before.
 - **Nothing headless is available to us.** D2RLoader's docs and changelog never mention a dedicated mode
   (https://d2rloader.net/docs.html, https://d2rloader.net/changelog.html). Reimagined's `d2rl-d2rds.dll` lives in a
   private repo (`d2rl-plugins` returns 404), and none of its repos carries a license (GitHub API `license: null` for
@@ -177,8 +178,9 @@ Worked example: Reimagined's ladder. Their API is a separate, non-public service
   loopback PKCE code (`src/lib/launcher-auth.ts` lines 1-39; README line 146). The launcher writes the access token
   into `server-saves.toml`, so the plugin authenticates its own requests (README line 78). Per-account bans:
   trade, leaderboard, lobby host, global chat (`src/lib/auth.ts` lines 15-18).
-- **Ours:** the launcher contract (section 1.2) already fixes the shape. Discord OAuth or Steam OpenID can be the login
-  provider behind the website; no vendor is chosen (issue #7 resolution).
+- **Ours:** the launcher contract (section 1.2) already fixes the shape. Discord OAuth or email can be the login
+  behind the website; no vendor is chosen, and issue #7 keeps the project account separate from Steam and Battle.net
+  identity (issue #7 resolution).
 
 ### 2.6 Anti-cheat, signing, allowlists
 
@@ -257,12 +259,12 @@ Worked example: Reimagined's ladder. Their API is a separate, non-public service
 
 | Host | Box | Price | Windows | DDoS | Traffic | Regions |
 |---|---|---|---|---|---|---|
-| OVHcloud Game (Eco) | SYS-GAME-1, Ryzen 5 3600X | $47.01/mo first year, $55.30 after; setup $55.30 | Installable; license price not listed | Anti-DDoS Game included | 1 Gbit/s, unmetered except APAC (billed) | Worldwide (https://www.ovhcloud.com/en/lp/baremetal/game/) |
+| OVHcloud Game (Eco) | SYS-GAME-1, Ryzen 5 3600X | $55.30/mo regular; $47.01/mo first year is a Black Friday promo; setup $55.30 | Installable; license price not listed | Anti-DDoS Game included | 1 Gbit/s, unmetered except APAC (billed) | Worldwide (https://www.ovhcloud.com/en/lp/baremetal/game/) |
 | OVHcloud Game (Eco) | Rise-Game-1, Ryzen 5 5600X 6c/12t | $72/mo, setup $72 | same | same | same | same page |
 | OVHcloud Game (Eco) | Rise-Game-2, Ryzen 7 5800X | $100/mo, setup $100 | same | same | same | same page |
 | OVHcloud Game (US) | GAME-1, Ryzen 7 9800X3D 8c/16t, 64 GB | $357/mo, setup $357 | not listed | included | 1 Gbit/s unmetered | Hillsboro, Vint Hill; Beauharnois, Toronto; Gravelines, Paris, Roubaix, Strasbourg, Frankfurt, Warsaw, London; Sydney, Mumbai, Singapore (https://us.ovhcloud.com/bare-metal/game/) |
 | OVHcloud Game (US) | GAME-2, Ryzen 9 9950X3D 16c/32t, 64 GB | $401/mo, setup $401 | not listed | included | same | same |
-| Hetzner dedicated | AX41, Ryzen 5 3600 6c, 64 GB | from EUR 59/mo, no setup | Standard 8 cores EUR 27.90/mo | DDoS protection (no detail on page) | Unlimited, 1 Gbit/s | Germany, Finland (**unconfirmed**: page names no site) (https://www.hetzner.com/dedicated-rootserver/matrix-ax/) |
+| Hetzner dedicated | AX41, Ryzen 5 3600 6c, 64 GB | from EUR 59/mo, no setup | Standard 8 cores EUR 27.90/mo | DDoS protection (no detail on page) | Unlimited, 1 Gbit/s | Data centers in Nuremberg, Falkenstein and Helsinki; the page ties no model to a location (https://www.hetzner.com/dedicated-rootserver/matrix-ax/) |
 | Hetzner dedicated | AX42, Ryzen 7 PRO 8700GE 8c, 64 GB | EUR 79-99/mo, setup EUR 49 | Standard 8 cores EUR 27.90/mo | same | same | same |
 | Hetzner dedicated | AX102, Ryzen 9 7950X3D 16c, 128 GB | EUR 159-259/mo, setup EUR 129 | Standard 16 cores EUR 55.90/mo | same | same | same |
 | Hetzner Cloud | Shared or dedicated vCPU | from EUR 5.49 / EUR 36.99 per month | Linux only on the page | n/a | n/a | Germany, Finland, Singapore, Ashburn, Hillsboro (https://www.hetzner.com/cloud/) |
@@ -309,7 +311,7 @@ Effort is **estimate** in person-weeks for one experienced developer with agents
 | Lobby plugin + lobby API | Build | 3-5 | Host/list/join on our boxes, region choice, drain |
 | Server-saves plugin + save API | Build | 4-6 | Pull/push/reconcile, `.d2s` + `.d2rl` pairs, versioned object storage for rollback |
 | Save review and anti-dupe | Build, grow over time | 4-8 | Start with item ids and legality against our tables; journal later |
-| Accounts and login | Buy the provider (Discord OAuth, Steam OpenID), build the account service | 2-3 | Contract fixed by launcher issue #7 |
+| Accounts and login | Buy the provider (Discord OAuth or email), build the account service; issue #7 keeps the account separate from Steam/Battle.net | 2-3 | Contract fixed by launcher issue #7 |
 | Signed packages and allowlist | Build on the toolkit's release manifest | 1-2 | ECDSA signing key handling and launcher checks |
 | Launcher hosted mode | Build in `resurrected-launcher` | 3-4 | Sign-in, join grant, locked settings, separate savepath |
 | Admin panel, bans, telemetry | Build; buy log/metric hosting | 3-5 | Reimagined's admin pages are the checklist (section 2.7) |
@@ -345,13 +347,14 @@ Total to a first hosted league without chat and trade: roughly **26-45 person-we
 1. Is the EULA exposure (1.B.ii, 1.C.viii) acceptable, and must the league stay strictly non-commercial (no cosmetics,
    no donations tied to perks)?
 2. Ask D2RLoader's authors for a dedicated mode, ask Reimagined to license `d2rds`, or build our own?
-3. Login provider: Discord, Steam, email, or several?
+3. Login provider: Discord, email, or both? (Issue #7 keeps the project account separate from Steam and Battle.net
+   identity, so those stay out unless that decision is reopened.)
 4. Regions for run 2 and league 1 (NA only, NA + EU, or include Asia)?
 5. League length and what happens at the end (PD2 moves characters to non-ladder and drops shared-stash items)?
 6. Who is on call during league start and patch days?
 7. Budget ceiling per month, and whether players fund it.
 
 Unconfirmed items to resolve: TCP/IP and `d2rds` player cap; whether D2R runs headless without a GPU; Wine stability
-for a server; per-player CPU, RAM and bandwidth; OVH and Vultr Windows license prices; AWS egress rate; Hetzner
-dedicated locations; whether a directly started D2R needs online authentication; whether the engine treats a hosted
+for a server; per-player CPU, RAM and bandwidth; OVH and Vultr Windows license prices; AWS egress rate;
+whether a directly started D2R needs online authentication; whether the engine treats a hosted
 game as ladder; Reimagined's end-of-ladder handling and server-side backups; PD2's hosting provider.
