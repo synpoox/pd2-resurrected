@@ -27,8 +27,10 @@ class MonsterHdError(ValueError):
     pass
 
 
-def entries(pd2: Table, d2r: Table, models: dict, likes: dict[str, str]) -> dict[str, str]:
-    """monsters.json key -> model for every PD2 row not in D2R's table. likes: monster (lower case) -> D2R monster."""
+def entries(pd2: Table, d2r: Table, models: dict, likes: dict[str, str],
+            own: Path | None = None) -> dict[str, str]:
+    """monsters.json key -> model for every PD2 row not in D2R's table. likes: monster (lower case) -> D2R monster.
+    own: the mod's data/hd/character/enemy folder; a like `=model` needs <model>.json in it."""
     code_col, base_col, dc = pd2.header.index("Code"), pd2.header.index("BaseId"), d2r.header.index("Code")
     by_code: dict[str, Counter] = {}
     code_of = {}
@@ -53,7 +55,11 @@ def entries(pd2: Table, d2r: Table, models: dict, likes: dict[str, str]) -> dict
             auto = top[0][0]
         else:  # no model, or a tie that only D2R's row order would break
             auto = None
-        if like is not None:
+        if like is not None and like.startswith("="):
+            if own is None or not like[1:] or not (own / f"{like[1:]}.json").is_file():
+                raise MonsterHdError(f"'{name}': '{like}' names no model file the mod ships in hd/character/enemy")
+            out[name] = like[1:]  # a model the mod ships itself, not a D2R monster's
+        elif like is not None:
             if like.lower() not in models:
                 raise MonsterHdError(f"'{name}': '{like}' has no monsters.json entry")
             if models[like.lower()] == auto:
@@ -87,7 +93,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     (merge/tables.json writes that later and keeps every Id), so the rule needs no place in the run order."""
     models = json.loads((d2r_data / HD).read_text("utf-8-sig"))
     new = entries(Table(excel(pd2_data) / "monstats.txt"), Table(excel(d2r_data) / "monstats.txt"), models,
-                  read_lines(rule))
+                  read_lines(rule), rule.parent.parent / "files" / "data" / "hd" / "character" / "enemy")
     (out_data / HD).parent.mkdir(parents=True, exist_ok=True)
     (out_data / HD).write_text(json.dumps(models | new, separators=(",", ":")), "utf-8")
     print(f"  monsters-hd: {len(new)} new monsters mapped")

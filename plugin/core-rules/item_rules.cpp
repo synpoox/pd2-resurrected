@@ -15,11 +15,14 @@
 // - op bases, life steal cap and crushing blow (IR3): equipped_eth / missing_hp kept as base stats from the stat
 //   callback, lifedrain_percentcap on D2R's add-life, PD2's blow in CrushingBlowApply's jump slot, and its roll on
 //   HitEvents' event 5/6 calls, where PD2's open wounds and deep wounds (event 15) run too.
+#include <intrin.h>
 #include "item_rules.h"
 
 #define NOMINMAX
 #include <windows.h>
 
+#include "map_stack.h"
+#include "sig_hook.h"
 #include "pd2_engine.h"
 #include "rathma_pair.h"
 #include "rathma_split.h"
@@ -1738,22 +1741,33 @@ auto UnlinkTwins(Unit* item, Unit* player, uint32_t* unlinked) noexcept -> uint3
 	return found;
 }
 
+// True when D2R counts the charm as active but it sits in a top grid row: PD2 switches it off.
+auto CharmSwitchedOff(Unit* item, Unit* player, uint32_t& xy, uint8_t& page) noexcept -> bool {
+	if (item == nullptr || g_charmActiveOriginal(item, player) == 0) {
+		return false;
+	}
+	page = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::rva::ItemPage)(item);
+	xy = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitPackedXY)(item);
+	return page == 0 && (xy >> 16) < CharmFirstActiveRow;  // a custom page is never judged by its grid row
+}
+
 auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 	const int32_t active = g_charmActiveOriginal(item, player);
 	if (active == 0 || item == nullptr) {
 		return active;
 	}
-	const uint8_t page = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::rva::ItemPage)(item);
-	const uint32_t xy = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitPackedXY)(item);
-	const uint32_t row = xy >> 16;
-	// a custom page is never judged by its grid row; a same-name unique in the active rows switches both off
+	uint32_t xy = 0;
+	uint8_t page = 0;
+	// a same-name unique in the active rows switches both off (#1288); a cursor-held copy (mode 4) never counts
 	uint32_t unlinked = 0;
-	const bool twin = page == 0 && row >= CharmFirstActiveRow && d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitModeOf)(item) == 0 &&
-	                  UnlinkTwins(item, player, &unlinked) != 0;  // a cursor-held copy (mode 4) never counts
+	bool off = CharmSwitchedOff(item, player, xy, page);
+	const uint32_t row = xy >> 16;
+	const bool twin = !off && page == 0 && row >= CharmFirstActiveRow &&
+	                  d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitModeOf)(item) == 0 && UnlinkTwins(item, player, &unlinked) != 0;
 	if (twin) {
 		unlinked += UnlinkIfAttached(item, player) ? 1 : 0;
+		off = true;
 	}
-	const bool off = page == 0 && (row < CharmFirstActiveRow || twin);
 	const uint32_t n = off ? ++g_charmOffChecks : ++g_charmChecks;  // own cap, so a top-row charm cannot hide kept lines or flood
 	if (n <= 40 || n % 500 == 0 || (twin && ++g_charmTwinLogs <= CharmTwinLogCap)) {  // a twin answer is the #1288 case
 		plog::Info("charm rows: item %p at x %u y %u, page %u, quality %d, unique row+1 %d, same-name twin in rows 5-8 %s, %u stat lists unlinked, active in D2R, %s, %u so far",
@@ -1764,13 +1778,33 @@ auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 	return off ? 0 : active;
 }
 
-auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
-	sigscan::Entry* const own[] = {&CharmCallSite};
-	sigscan::Resolve(own, 1, context->exeBase, nullptr, 0);
-	if (CharmCallSite.state != sigscan::State::Ok) {
+// The inventory widget's draw (93847: 0x2c3570) asks D2RCore's "requirements met for display" check for each stored
+// item (a .maho thunk, its slot swapped like the charm policy's) and draws the item's cell in D2R's red unusable tint
+// when it says no. A top-row charm gives no stats, so PD2 tints it red like any inactive item (#1358): the check says
+// no for it. The draw is that call's only caller, so no rule sees the answer. The arguments are the call site's
+// (item, player, four zero words, the last a dword on the stack), passed on as given.
+sigscan::Entry ReqDisplaySite {"ItemReqDisplayCall", "charms", sigscan::Kind::Code, 0, 0,
+                               "33 c0 45 33 c9 89 44 24 30 45 33 c0 48 89 44 24 28 49 8b d4 48 8b cf 48 89 44 24 20 e8 ?? ?? ?? ?? 85 c0 0f 84 ?? ?? ?? ?? 84 db 0f 85"};
+constexpr uint32_t ReqDisplayCallOffset = 28;  // the E8 of the check in that signature
+
+using ReqDisplayFn = int32_t (*)(Unit* item, Unit* player, uint64_t a3, uint64_t a4, uint64_t a5, uint64_t a6, uint64_t a7) noexcept;
+ReqDisplayFn g_reqDisplayOriginal = nullptr;
+
+auto ReqDisplayInRow(Unit* item, Unit* player, uint64_t a3, uint64_t a4, uint64_t a5, uint64_t a6, uint64_t a7) noexcept -> int32_t {
+	const int32_t ok = g_reqDisplayOriginal(item, player, a3, a4, a5, a6, a7);
+	uint32_t xy = 0;
+	uint8_t page = 0;
+	return ok != 0 && CharmSwitchedOff(item, player, xy, page) ? 0 : ok;
+}
+
+// Swaps the .maho thunk slot behind the E8 call at `entry` + `callOffset` for `wrapper`; the slot's old target goes to
+// `original` first, so the wrapper never runs without it.
+auto SwapThunkSlot(const D2RL::PluginContext* context, const sigscan::Entry& entry, uint32_t callOffset, uint64_t wrapper,
+                   uint64_t* original) noexcept -> bool {
+	if (entry.state != sigscan::State::Ok) {
 		return false;
 	}
-	const auto* const call = reinterpret_cast<const uint8_t*>(d2r::imageBase + CharmCallSite.rva + CharmCallOffset);
+	const auto* const call = reinterpret_cast<const uint8_t*>(d2r::imageBase + entry.rva + callOffset);
 	if (call[0] != 0xe8) {
 		return false;
 	}
@@ -1780,17 +1814,106 @@ auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
 	}
 	const uint8_t* const slot = thunk + 6 + *reinterpret_cast<const int32_t*>(thunk + 2);
 	const uint64_t slotRva = reinterpret_cast<uint64_t>(slot) - d2r::imageBase;
-	const uint64_t original = *reinterpret_cast<const uint64_t*>(slot);
-	if (original == 0) {
+	const uint64_t old = *reinterpret_cast<const uint64_t*>(slot);
+	if (old == 0) {
 		return false;
 	}
-	g_charmActiveOriginal = reinterpret_cast<CharmActiveFn>(original);
-	if (!context->PatchWriteU64(slotRva, &original, sizeof(original),
-	                            reinterpret_cast<uint64_t>(static_cast<CharmActiveFn>(CharmActiveInRow)))) {
+	*original = old;
+	if (!context->PatchWriteU64(slotRva, &old, sizeof(old), wrapper)) {
 		return false;
 	}
-	plog::Info("charm rows: charm policy slot at image +0x%llx swapped", static_cast<unsigned long long>(slotRva));
+	plog::Info("charm rows: %s slot at image +0x%llx swapped", entry.name, static_cast<unsigned long long>(slotRva));
 	return true;
+}
+
+auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
+	sigscan::Entry* const own[] = {&CharmCallSite, &ReqDisplaySite};
+	sigscan::Resolve(own, 2, context->exeBase, nullptr, 0);
+	if (!SwapThunkSlot(context, CharmCallSite, CharmCallOffset,
+	                   reinterpret_cast<uint64_t>(static_cast<CharmActiveFn>(CharmActiveInRow)),
+	                   reinterpret_cast<uint64_t*>(&g_charmActiveOriginal))) {
+		return false;
+	}
+	// The tint is cosmetic and the rows work without it, so a miss is only logged.
+	if (!SwapThunkSlot(context, ReqDisplaySite, ReqDisplayCallOffset,
+	                   reinterpret_cast<uint64_t>(static_cast<ReqDisplayFn>(ReqDisplayInRow)),
+	                   reinterpret_cast<uint64_t*>(&g_reqDisplayOriginal))) {
+		plog::Warn("charm rows: the red tint hook was not installed (signature or bytes differ)");
+	}
+	return true;
+}
+
+// Maps (cmap) stack only when both are normal quality and every stat but the quantity matches, layer by layer (#1326).
+// Hooks D2Common's stack-equal check (no SDK service covers it): the drop-onto merge, ground pickup, vendor buys and
+// the client's cursor guess all call it.
+// D2Common Items.cpp #11102: (target, other) -> 1 when two items may stack; found at load by its signature
+// (docs/research/maps/map-stacking.md).
+using StackEqualFn = int32_t (*)(Unit*, Unit*) noexcept;
+StackEqualFn g_stackEqualOriginal = nullptr;
+std::atomic<uint32_t> g_mapStackRefused {0};
+
+auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
+	using namespace d2r::rva;
+	const auto isMap = [](Unit* u) {
+		return u != nullptr && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(u, ItemTypeMap) != 0 &&
+		       d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(u) == QualityNormal;
+	};
+	if (isMap(a) && isMap(b)) {
+		// Create writes -1 at item data +0x34 (the unique/set row) for a normal item but the save decoder does not, and the native
+		// compare reads it: a fresh map would not stack with a loaded one (#1340). Not saved for normal items.
+		const auto data = d2r::Engine<uint8_t* (*)(Unit*) noexcept>(UnitItemData);
+		auto* const ra = reinterpret_cast<int32_t*>(data(a) + 0x34);
+		auto* const rb = reinterpret_cast<int32_t*>(data(b) + 0x34);
+		*ra = -1;
+		*rb = -1;
+	}
+	const int32_t same = g_stackEqualOriginal(a, b);
+	if (same == 0 || a == nullptr || b == nullptr ||
+	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(a, ItemTypeMap) == 0) {
+		return same;
+	}
+	const auto quality = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality);
+	const char* reason = "equal";
+	int32_t stat = -1;
+	if (quality(a) != QualityNormal || quality(b) != QualityNormal) {
+		reason = "quality";
+	} else if ((stat = pd2::mapstack::FirstDifference(
+	                a, b, ItemStatCostRows, StatQuantity,
+	                d2r::Engine<int32_t (*)(Unit*, uint32_t, pd2::mapstack::Entry*, int32_t) noexcept>(UnitStatEntries))) >= 0) {
+		reason = "stat differs";
+	}
+	const bool merge = reason[0] == 'e';
+	if (!merge) {
+		++g_mapStackRefused;
+	}
+	// Each (a, b, caller) logs its first verdict only (#1340): the inventory scans call this once per map held, and the
+	// server's call (caller image +0x4f2b3a) must not hide behind the client's
+	static struct { Unit* a; Unit* b; uint64_t caller; uint32_t n; } seen[32];
+	static uint32_t next = 0;
+	const uint64_t caller = reinterpret_cast<uint64_t>(_ReturnAddress()) - d2r::imageBase;
+	auto* slot = &seen[0];
+	for (auto& s : seen) {
+		if (s.a == a && s.b == b && s.caller == caller) {
+			slot = &s;
+			break;
+		}
+		slot = &seen[next % 32];
+	}
+	if (slot->a != a || slot->b != b || slot->caller != caller) {
+		*slot = {a, b, caller, 0};
+		++next;
+	}
+	// Outer cap: at most one line a second, so a full inventory scanned by two callers stays quiet whatever the ring holds
+	static std::atomic<uint64_t> lastTick {0};
+	const uint64_t now = GetTickCount64();
+	if (++slot->n <= 1 && now - lastTick.load() >= 1000) {
+		lastTick = now;
+		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStat);
+		plog::Info("map stack: caller +0x%llx %08x q%d/%d quality %d/%d -> %s (%s %d)", static_cast<unsigned long long>(caller),
+		           d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a), unitStat(a, StatQuantity, 0),
+		           unitStat(b, StatQuantity, 0), quality(a), quality(b), merge ? "merge" : "refused", reason, stat);
+	}
+	return merge ? 1 : 0;
 }
 
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
@@ -1836,23 +1959,26 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	// none (core-events' hooks identify all), both with keep 1, so the book stays after its use
 	const bool unlimited = PatchUnlimitedBooks(context);
 	const bool charms = InstallCharmRows(context);
+	const bool mapStack = sigscan::HookBySignature(
+	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
+	    d2r::rva::ItemsCanMergeEntry, sizeof(d2r::rva::ItemsCanMergeEntry), MapStackEqual, &g_stackEqualOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; map stacking%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
 	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
 	              equip ? "" : " FAILED (bytes differ)", replenish ? "" : " FAILED (bytes differ)",
 	              unlimited ? "" : " FAILED (entries not empty, or no mutation service)",
-	              charms ? "" : " FAILED (signature or bytes differ)");
+	              charms ? "" : " FAILED (signature or bytes differ)", mapStack ? "" : " FAILED (bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
-	       (unlimited ? 1 : 0) + (charms ? 1 : 0);
+	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (mapStack ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 11;
+	return 12;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
@@ -1860,9 +1986,9 @@ auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
 	              "ormus rolls %u, strike rolls %u, crits %u, "
 	              "deadly strikes %u, equipped_eth changes %u, life steal cap checks %u (blocked %u), crushing blow rolls %u, "
 	              "crushing blows %u, curses %u, resisted %u, gated %u, skill on equip changes %u, ticks %u, phasing %u, "
-	              "charges replenished %u",
+	              "charges replenished %u, map stacks refused %u",
 	              g_rolls.load(), g_strikeRolls.load(), g_crits.load(), g_deadlyStrikes.load(), g_ethReads.load(),
 	              g_capChecks.load(), g_capBlocks.load(), g_blowRolls.load(), g_blows.load(),
 	              g_curses.load(), g_curseResisted.load(), g_curseGate.load(), g_equipCallbacks.load(), g_equipTicks.load(), g_phasing.load(),
-	              g_chargesReplenished.load());
+	              g_chargesReplenished.load(), g_mapStackRefused.load());
 }

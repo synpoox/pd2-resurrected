@@ -1,2 +1,2 @@
-# Minimum d2r-tools commit for cartographer.dll (knows all 25 tilesets, #1300). Bump on purpose; install.ps1 and release.yml read it via check_cartographer.ps1.
-d78d3bc1a265b5940496420fc07275c7a0ae1fd1
+# Minimum d2r-tools commit for cartographer.dll (registers the cartographer:* stat strings #1333 needs; first pinned for the 25 tilesets, #1300). Bump on purpose; install.ps1 and release.yml read it via check_cartographer.ps1.
+721a05ec1d478e9feb8a2e8258158f2c6a378821

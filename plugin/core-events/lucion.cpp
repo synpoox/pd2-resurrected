@@ -350,9 +350,12 @@ auto Desecrate(Game* game, Unit* player, Unit* item) noexcept -> DesecrateResult
 
 // The Sacrifice Altar (class 621, operate slot 35, map_events.cpp): PD2 takes the amulet on the cursor through its
 // panel; here the altar opens the plugin panel with one amulet slot (altar_panel.cpp) and confirm runs Desecrate.
+// One use per game (#1357): PD2's roll sets the stage to 9 and the altar then does nothing, so no panel opens at stage 9.
 // shortcut: the altar stays in mode 0 (PD2 sets mode 1 after an attempt), the HD altar may have no mode-1 art; upgrade once checked
 auto OperateSacrificeAltar(Game* game, Unit* player) noexcept -> int32_t {
-	if (game != nullptr && player != nullptr) {
+	if (game != nullptr && player != nullptr && *CounterOf(game, LucionStageKey) == AttemptedStage) {
+		plog::Info("altar: already used in this game, no panel");
+	} else if (game != nullptr && player != nullptr) {
 		OpenAltarPanel(game, player);
 	}
 	return 1;

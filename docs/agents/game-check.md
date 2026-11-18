@@ -38,6 +38,8 @@ map item; the log shows `rolled event <n> ..., console event`. A forced event sk
 
 Never click a boss down (adds soak the clicks, bosses hide, `cheat killmonster` skips the normal death). Use core-events' console commands, with `cheat god 1` on: `core-events kill <class>` (or `kill unit <id>`) kills the nearest living monster of that merged monstats class in your level through the normal death path, so death listeners run and its treasure class rolls, the player gets no kill credit; the log (`core-maps.log`) gets one `test aid: kill: class .. unit ..` line. `core-events life <pct> unit <id>` sets the life of a monster in your level (`life <pct> <class>` still covers ported bosses only). Both skip a player's merc, golem and summons. Spawn a superunique with `cheat monster super:<row>` (`cheat mspawn <name>` does not spawn one); the unit id is in the kill or life log line.
 
+Corrupt and desecrate an item without the cube or the altar panel: put an item on the cursor (or leave it at inventory cell (0,0); the cursor wins), then `core-events corrupt` runs the normal Corruption roll on it (the cube's code; log line `corruption: ... by cubemain row N`), and `core-events desecrate` runs the altar's Desecration on a corrupted amulet: it sets Lucion's stage to 8 first, the roll sets it to 9, and the log gets the normal `desecration:` lines (the roll can fail at 50-60%: run it again, nothing is bricked). Both log `test aid: ...` lines, and a clear one when there is no item.
+
 ## Screenshots that settle the question
 
 One shot should answer the question. Before each shot:

@@ -2,6 +2,7 @@
 // A lane adds its parts here, in its own folder, and never edits plugin.cpp. Orders are one global sequence.
 #include "part_registry.h"
 
+#include "anya_maps.h"
 #include "guardian_ai.h"
 #include "horazon.h"
 #include "invaders.h"
@@ -67,6 +68,16 @@ void InstallInvadersPart(const D2RL::PluginContext* context, char* report, size_
 	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
 }
 
+void InstallAnyamapsPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallAnyaMaps(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
+}
+
+sigscan::Entry* const AnyamapsUses[] = {&d2r::sig::FindUnit, &d2r::sig::ItemRecord};
+
+PartReg r240(240, "anyamaps", InstallAnyamapsPart, AnyamapsUses);
+CountersReg c240(240, AnyaMapsCounters);
 PartReg r160(160, "guardianai", InstallGuardianaiPart);
 PartReg r170(170, "wanderer", InstallWandererPart, WandererUses);
 PartReg r180(180, "treasurefallen", InstallTreasureFallenPart);

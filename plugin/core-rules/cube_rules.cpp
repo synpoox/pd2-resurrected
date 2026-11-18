@@ -40,7 +40,7 @@ using d2r::At;
 using d2r::Game;
 using d2r::Unit;
 
-constexpr int32_t PropCorruptNum = 289;  // merged properties.txt corruptnum (D2R skips the "Expansion" row)
+constexpr int32_t PropCorruptNum = 288;  // properties.txt corruptnum by row, past the "Expansion" row (tools/tests/test_desecration_rolls.py)
 constexpr int32_t StatCorrupted = 413;   // merged itemstatcost corrupted (PD2's 360)
 constexpr uint32_t CodeShard = 0x20737377, CodeCubeShard = 0x73737763;  // 'wss ', 'cwss'
 constexpr uint8_t OpReroll = 31;

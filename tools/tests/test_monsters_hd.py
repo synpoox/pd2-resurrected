@@ -34,6 +34,15 @@ class EntriesTests(unittest.TestCase):
             "skeletonIce": "skeleton1", "necroarcher": "sk_archer1", "shadow": "baal", "ZharTheMad": "baal",
             "Iskatu": "skeleton1", "bonemage": "skeleton1"})  # D2R's lookup is case-sensitive: PD2's own spelling
 
+    def test_equals_names_a_model_the_mod_ships(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "ascendant.json").write_text("{}")
+            likes = LIKES | {"skeletonice": "=ascendant"}
+            self.assertEqual(H.entries(table(MOD), table(D2R), MODELS, likes, Path(tmp))["skeletonIce"], "ascendant")
+            for bad in ("=gone", "="):  # no such file, no name: refused, never skipped
+                with self.subTest(bad), self.assertRaisesRegex(H.MonsterHdError, "names no model file"):
+                    H.entries(table(MOD), table(D2R), MODELS, LIKES | {"skeletonice": bad}, Path(tmp))
+
     def test_refusals(self):
         cases = [
             ({"zharthemad": "baalclone", "bonemage": "skeleton1"}, r"no HD model for 1 new monsters.*Iskatu \(!8\)"),

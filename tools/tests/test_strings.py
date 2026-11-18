@@ -102,6 +102,14 @@ class StringsTests(unittest.TestCase):
             pd2_strings.build({**cfg, "entries": {"EnteringNewAffix": "Gone", "EnteringRal": "r08"}}, pd2,
                               self.strings(), self.root / "out")
 
+    def test_level_entry_falls_back_to_the_mods_own_text(self):
+        # a level the mod adds: neither game has the LevelName key, the merge's own text does
+        cfg = {"overrides": [], "texts": {"NewLevel": "New Level"}, "entries": {"EnteringNewLevel": "NewLevel"},
+               "ids": {"NewLevel": [50000, "item-runes.json"], "EnteringNewLevel": [50001, "item-runes.json"]}}
+        pd2_strings.build(cfg, self.pd2, self.strings(), self.root / "out")
+        self.assertEqual({self.built("strings/item-runes.json")["EnteringNewLevel"][la] for la in mkstrings.LANGS},
+                         {"Entering New Level"})
+
     def test_build_refuses_unsafe_data(self):
         base = {"overrides": [], "ids": {}}
         for change, msg in [({"ids": {"r08": [50000, "ui.json"]}}, "D2R now has key"),

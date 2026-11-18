@@ -104,6 +104,7 @@ modkit_add_plugin(core-events VERSION "${CORE_EVENTS_VERSION}" SOURCES
 	core-events/uber_entry.cpp
 	core-events/arena_spots.cpp
 	core-events/test_kill.cpp
+	core-events/test_item.cpp
 	core-events/plugin.rc
 )
 # Each lane registers its parts from its own folder (core-events/lane-a .. lane-d, #943): new files there need no edit here.
@@ -150,6 +151,12 @@ add_executable(rathma_split_check EXCLUDE_FROM_ALL tests/rathma_split_check.cpp)
 target_include_directories(rathma_split_check PRIVATE common)
 target_compile_features(rathma_split_check PRIVATE cxx_std_20)
 core_options(rathma_split_check)
+
+# Map stacking's stat compare (#1326): plugin/common/map_stack.h has no engine types.
+add_executable(map_stack_check EXCLUDE_FROM_ALL tests/map_stack_check.cpp)
+target_include_directories(map_stack_check PRIVATE common)
+target_compile_features(map_stack_check PRIVATE cxx_std_20)
+core_options(map_stack_check)
 
 add_executable(test_cmd_check EXCLUDE_FROM_ALL tests/test_cmd_check.cpp)
 target_include_directories(test_cmd_check PRIVATE common)

@@ -115,11 +115,12 @@ def build(cfg: dict, pd2: dict[str, str], s, out_root: Path) -> list[str]:
         src = plain_src.get(key, entries.get(key))
         if src is not None:  # PD2's text of the source key, else D2R's in each language
             d2r = next((e for rel, e in index.get(src.lower(), []) if e["Key"] == src), None)
-            if d2r is None and src not in pd2:
+            own = cfg.get("texts", {})  # a level the mod adds names its own LevelName text
+            if d2r is None and src not in pd2 and src not in own:
                 raise ValueError(f"{key!r}: neither game has key {src!r}")
             # a plain copy drops the format codes; a PD2-only level's area banner reads "Entering " and its name
             make = plain if key in plain_src else lambda t: ENTERING + t
-            texts = {la: make(pd2[src] if src in pd2 else d2r[la]) for la in mk.LANGS}
+            texts = {la: make(pd2[src] if src in pd2 else own[src] if src in own else d2r[la]) for la in mk.LANGS}
         else:
             own = cfg.get("texts", {}).get(key)
             if own is None and from_key[key] not in pd2:
