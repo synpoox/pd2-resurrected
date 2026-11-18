@@ -149,6 +149,7 @@ auto InputMatch(Game* game, void* inventory, const uint8_t* row, int32_t input, 
 struct Leftover {
 	uint32_t code;
 	uint32_t quantity;
+	uint32_t original;  // the stack's quantity before the row ran
 	uint32_t itemLevel;
 	uint32_t sourceId;  // the stack's unit id: the executor must have taken it before it comes back
 	items::PropertySpec props[MaxMapProps];  // a map's non-quantity stats (#1326), made again as properties
@@ -192,14 +193,16 @@ int g_pendingCount = 0;
 std::atomic<bool> g_busy {false};  // a batch is queued; game thread sets it, the game-thread callback clears it
 
 struct SourceScan {
-	bool left[Slots] = {};  // that leftover's stack is still in the cube
+	int32_t now[Slots] = {};  // that leftover's stack quantity if it is still in the cube (0: gone)
 };
 
 auto ScanSources(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept
 	-> D2RL::Inventory::IterationAction {
 	auto* scan = static_cast<SourceScan*>(user);
 	for (int i = 0; i < g_pendingCount; ++i) {
-		scan->left[i] |= g_pending[i].sourceId == item->runtimeId;
+		if (g_pending[i].sourceId == item->runtimeId) {
+			scan->now[i] = item->quantity > 0 ? item->quantity : 1;
+		}
 	}
 	return D2RL::Inventory::IterationAction::Continue;
 }
@@ -231,10 +234,16 @@ void MakeLeftovers(const D2RL::PluginContext*, void* user) noexcept {
 	                                          .containerMask = items::ContainerBit(items::ItemContainer::Cube)};
 	const auto listed = g_inventory->forEachInventoryItem(g_context, player, &filter, ScanSources, &scan);
 	for (int i = 0; i < g_pendingCount; ++i) {
-		const Leftover& left = g_pending[i];
-		// A stack the row kept (useitem: the rune upgrades' key) stays whole; an unread cube makes nothing
-		if (listed != D2RL::Inventory::Result::Success || scan.left[i]) {
-			plog::Info("stacks: leftover %.4s x%u not made: its stack is still in the cube (read %u)",
+		Leftover left = g_pending[i];
+		// A stack the row kept: useitem leaves it whole (the rune upgrades' key); usetype,..,mod makes the kept unit the
+		// output with quantity 1 (a fortified map from a stack, #1400), so what it lost comes back. An unread cube makes nothing
+		if (scan.now[i] != 0 && left.original > static_cast<uint32_t>(scan.now[i])) {
+			left.quantity = left.original - static_cast<uint32_t>(scan.now[i]);
+		} else if (scan.now[i] != 0) {
+			left.quantity = 0;
+		}
+		if (listed != D2RL::Inventory::Result::Success || left.quantity == 0) {
+			plog::Info("stacks: leftover %.4s x%u not made: its stack is whole in the cube (read %u)",
 			           reinterpret_cast<const char*>(&left.code), left.quantity, static_cast<uint32_t>(listed));
 			continue;
 		}
@@ -348,7 +357,7 @@ auto KeepCubeLeftovers(Game* game, Unit* player, const uint8_t* record) noexcept
 				return false;  // createItem would remake it without its affixes
 			}
 			found[count] = {d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(item), static_cast<uint32_t>(quantity - use),
-			                d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemLevel)(item), At<uint32_t>(item, UnitIdField), {}, 0};
+			                static_cast<uint32_t>(quantity), d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemLevel)(item), At<uint32_t>(item, UnitIdField), {}, 0};
 			if (!MapProperties(item, found[count])) {
 				plog::Info("stacks: refused, a map stack the row leaves units of has a stat that cannot be remade");
 				return false;
