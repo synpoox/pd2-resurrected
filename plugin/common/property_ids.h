@@ -16,9 +16,12 @@
 
 namespace propids {
 
-// The row number of each code in the tab-separated text; "" cells and the Expansion row are not counted.
+// The row number of each code in the tab-separated text; blank lines are skipped; a row with an empty code is counted (it is a row to the game); the Expansion row is not.
 inline auto Parse(std::string_view text) -> std::map<std::string, int, std::less<>> {
 	std::map<std::string, int, std::less<>> ids;
+	if (text.substr(0, 3) == "\xEF\xBB\xBF") {
+		text.remove_prefix(3);  // a UTF-8 BOM
+	}
 	int codeColumn = -1, ordinal = 0;
 	bool header = true;
 	while (!text.empty()) {

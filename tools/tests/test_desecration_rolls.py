@@ -31,6 +31,7 @@ class DesecrationRolls(unittest.TestCase):
 
     def test_row_numbers_skip_expansion(self):
         # the numbers the plugins resolve (the game log must show them): rows past the Expansion row, not *Id
+        # the pins are intentional: a properties.txt edit that moves these rows fails here so a person reviews it
         codes = [r["code"] for r in data_tables.rows("properties") if r["code"] != "Expansion"]
         for code, row in (("corrupt", 287), ("corruptnum", 288), ("desecrate", 349), ("desecratenum", 350),
                           ("map-level", 374), ("map-force-event-l", 383)):
