@@ -1093,3 +1093,5 @@ Act 5 - Baal Entrance	1089	120	1	0	0	0	1	1	0	0	0	1	0	0	1	Expansion/mountaintop/M
 Act 5 - Pandemonium Finale	1090	136	1	0	1	0	0	1	0	0	0	1	0	0	1	Act1/Tristram/Tri_Town4.ds1	0	0	0	0	0	63
 Act 5 - Colossal Summit	1091	137	1	0	0	0	1	1	0	0	0	1	0	0	1	Garden/ColossalSummit/ColossalSummit.ds1	0	0	0	0	0	29360148
 Unused	1092	0	1	1	1	0	1	1	0	0	0	1	0	-4	1	Expansion/Map/hellcaves_palette.ds1	0	0	0	0	0	32767
+Cartographer Siege Border West	1093	0	1	0	1	0	1	1	16	16	0	0	0	0	3	Expansion/Siege/Brdr02c.ds1	Expansion/Siege/Brdr02c1.ds1	Expansion/Siege/Brdr02c2.ds1	0	0	0	64765
+Cartographer Siege Border East	1094	0	1	0	1	0	1	1	16	16	0	0	0	0	3	Expansion/Siege/Brdr04r.ds1	Expansion/Siege/Brdr04r1.ds1	Expansion/Siege/Brdr04r2.ds1	0	0	0	64765
