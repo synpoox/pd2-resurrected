@@ -72,7 +72,7 @@ The five Cartographer affixes (ids 9201-9205: Teeming, Savage, Hastened, of the 
 
 ## Strings
 
-`Large` and `of the Adventurer` had no affix string; ids 51540 and 51541 in `item-nameaffixes.json`.
+`of the Adventurer` had no affix string: id 51541 in `item-nameaffixes.json`. `Large` uses D2R's own `Large` key (`ui.json`).
 
 ## Test
 
