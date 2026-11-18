@@ -19,6 +19,10 @@
 //   the maximum (max / 2 + 1) after ApplyEthereal (0x44350c-0x443553); PD2 turns the `jz` that skips that block on an
 //   item with no durability into a `jmp` (one byte, 0x74 -> 0xeb, 1.13c D2Game +0xec4f), so the block never runs.
 //   Found by byte signature, patched through the MutationService. See docs/research/items/item-durability.md.
+// - throwing quantity (#1489): a throwing stack keeps its quantity when its durability runs out. D2R's weapon durability
+//   loss (0x441b10) takes one off the stack (`lea ebx,[rax-1]` at 0x441cb9) before it refills durability; PD2 NOPs the
+//   `dec ebp` at 1.13c D2Game +0x13033 in the same branch (+0x12ee0). Found by byte signature, patched through the
+//   MutationService.
 // - staffmods (#663): PD2's roll of class skills on a new class item (ProjectDiablo.dll 0x1036f470 on disk, 0x1036f400
 //   in PD2.gpr) replaces 1.13c's (D2Game +0x13320 and +0x135e0) for every item version: a count from rand%100 + bonus,
 //   each skill drawn from a fixed per-class list (knives their own) with a required-level test in place of 1.13c's
@@ -257,6 +261,46 @@ auto PatchEtherealDurability(const D2RL::PluginContext* context) noexcept -> boo
 	return true;
 }
 
+// A throwing stack keeps its quantity when its durability runs out: in D2R's weapon durability loss (0x441b10), the
+// stat 70 branch reads the quantity and writes quantity - 1 back (`lea ebx,[rax-1]`, 8d 58 ff); `mov ebx,eax; nop`
+// (89 c3 90) writes it unchanged, as PD2's NOP of `dec ebp` does. The pattern runs from the branch's `jle` through
+// the stat 0x46 write set-up; the offset points at the `lea`.
+constexpr const char* ThrowingQuantityPattern = "7E 57 33 F6 8D 58 FF E8 ?? ?? ?? ?? 48 8B D0 90 89 74 24 28 44 8D 4E 46";
+constexpr int ThrowingQuantityOffset = 4;
+constexpr uint8_t ThrowingLea[3] = {0x8d, 0x58, 0xff};
+constexpr uint8_t ThrowingMov[3] = {0x89, 0xc3, 0x90};
+
+auto PatchThrowingQuantity(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t rva = 0;
+	const int matches = sigscan::ScanUnique(context->exeBase, ThrowingQuantityPattern, ThrowingQuantityOffset, &rva);
+	if (matches != 1) {
+		plog::Warn("skipped throwing quantity: %d matches", matches);
+		return false;
+	}
+	plog::Info("found throwing quantity lea at 0x%llx", static_cast<unsigned long long>(rva));
+	const D2RL::MutationService* mutations = nullptr;
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize) ||
+	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		return false;
+	}
+	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
+	                                              .rva = rva,
+	                                              .expected = ThrowingLea,
+	                                              .expectedSize = sizeof(ThrowingLea),
+	                                              .bytes = ThrowingMov,
+	                                              .size = sizeof(ThrowingMov)};
+	D2RL::Mutations::OperationHandle operation = 0;
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	if (mutations->stageBytePatch(context, transaction, &patch, &operation) != D2RL::Mutations::Result::Success ||
+	    mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		return false;
+	}
+	return true;
+}
+
 // --- Staffmods ------------------------------------------------------------------------------------------------------
 
 constexpr int32_t StatSingleSkill = 107;  // item_singleskill, layer = skill
@@ -427,21 +471,23 @@ auto InstallLootRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                             &RareAffixAllowed, &g_affixAllowedOriginal);
 	const bool durability = PatchWeaponDurability(context);
 	const bool etherealDurability = PatchEtherealDurability(context);
+	const bool throwing = PatchThrowingQuantity(context);
 	const bool staffMods = context->InstallInlineHook(ItemStaffMods, ItemStaffModsEntry, sizeof(ItemStaffModsEntry),
 	                                                  &StaffMods, &g_staffModsOriginal);
 	const bool seals = context->InstallInlineHook(ModeCmdInit, ModeCmdInitEntry, sizeof(ModeCmdInitEntry),
 	                                              &SealSweepModeCmd, &g_modeCmdInitOriginal);
 	std::snprintf(report, reportSize,
-	              "ethereal bonus%s; affix rare%s; weapon durability 1/2%s; ethereal durability%s; staffmods%s; seal kills drop nothing%s",
+	              "ethereal bonus%s; affix rare%s; weapon durability 1/2%s; ethereal durability%s; throwing quantity%s; staffmods%s; seal kills drop nothing%s",
 	              !decoder ? " FAILED (decoder bytes differ)" : ethereal ? "" : " FAILED (bytes differ)",
 	              rare ? "" : " FAILED (bytes differ)", durability ? "" : " FAILED (bytes differ)",
 	              etherealDurability ? "" : " FAILED (signature or bytes differ)",
+	              throwing ? "" : " FAILED (signature or bytes differ)",
 	              staffMods ? "" : " FAILED (bytes differ)", seals ? "" : " FAILED (bytes differ)");
-	return (ethereal ? 1 : 0) + (rare ? 1 : 0) + (durability ? 1 : 0) + (etherealDurability ? 1 : 0) + (staffMods ? 1 : 0) + (seals ? 1 : 0);
+	return (ethereal ? 1 : 0) + (rare ? 1 : 0) + (durability ? 1 : 0) + (etherealDurability ? 1 : 0) + (throwing ? 1 : 0) + (staffMods ? 1 : 0) + (seals ? 1 : 0);
 }
 
 auto LootRuleCount() noexcept -> int {
-	return 6;
+	return 7;
 }
 
 auto LootRuleCounters(char* out, size_t size) noexcept -> void {

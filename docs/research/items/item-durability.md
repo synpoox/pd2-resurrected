@@ -16,7 +16,7 @@ has these records in 1.13c D2Game's durability code. Nothing else in the table t
 | 1 | D2Game `+0xec4f`, 1 byte `0x74` -> `0xeb` (`jz` -> `jmp`) in the ethereal step of item generation (`+0xebb0`) | 1.13c: after ApplyEthereal, an item with durability gets `maxdurability = max / 2 + 1` and `durability = maxdurability`. PD2 jumps over both: an ethereal item keeps its base's full maximum | the same block in the item maker, `jz 0x443558` at `0x44350e` (`max / 2 + 1` at `0x44351f`-`0x443532`) | **built** (#1478): `jz` -> `jmp` by signature |
 | 2 | D2Game `+0x12f16` (4 -> 2) and `+0x12f36` (10 -> 5) | a weapon's chance in percent to lose durability on a hit (armor unchanged) | `mov ebx,imm32` at `0x441b83` and `0x441ba6` | built (IR8, [#243](https://github.com/synpoox/pd2-resurrected/issues/243)) |
 | 3 | D2Game `+0x12f88`, call rewritten to PD2's `0x103a17b0`, and `+0xeb81`, same target | 1.13c `+0xea70` schedules the replenish event for `item_replenish_durability` (stat 252). PD2's replacement (`0x10345130`) schedules it the same way (`2500 / stat` frames) and also runs the charges step `0x103450b0` | not located here (not `0x441b10`, which is the weapon durability-loss function); the charges part is built | built with Replenish charges ([#148](https://github.com/synpoox/pd2-resurrected/issues/148)); no durability difference |
-| 4 | D2Game `+0x13033`, 1 byte NOP (`0x90`, was `dec ebp`) in the durability-loss function `+0x12ee0` | the branch for an item that has a quantity (stat 70): 1.13c took one off it when its durability ran out (the branch runs only when durability would reach 0: `dec ebp; jle +0x12fd8`), and put durability back to maximum. With the `dec` gone, the item keeps its stack when its durability runs out, and durability goes back to maximum: a hit never uses up a throwing weapon's stack | not located yet | **not built**: [#1489](https://github.com/synpoox/pd2-resurrected/issues/1489) |
+| 4 | D2Game `+0x13033`, 1 byte NOP (`0x90`, was `dec ebp`) in the durability-loss function `+0x12ee0` | the branch for an item that has a quantity (stat 70): 1.13c took one off it when its durability ran out (the branch runs only when durability would reach 0: `dec ebp; jle +0x12fd8`), and put durability back to maximum. With the `dec` gone, the item keeps its stack when its durability runs out, and durability goes back to maximum: a hit never uses up a throwing weapon's stack | the same branch in `0x441b10`: `lea ebx,[rax-1]` (`8d 58 ff`) at `0x441cb9` takes one off stat 70 (0x46); the stat 72 refill follows | **built** ([#1489](https://github.com/synpoox/pd2-resurrected/issues/1489)): `mov ebx,eax; nop` by signature |
 
 Other findings:
 
@@ -28,6 +28,19 @@ Other findings:
   has no loss resistance and no bow durability, so neither is ported.
 - **Items already made.** An ethereal item saved while the companion was gone (or before this build) keeps its halved
   maximum; the patch only affects new items (`docs/deviations.md`).
+
+## Port, row 4
+
+Confirmed in the 1.13c `D2Game.dll` on disk: `+0x13033` is `4d dec ebp`, in the branch after `+0x12fd8` (an item whose
+durability would reach 0, `dec ebp; jle +0x12fd8` at `+0x12f6f`). It reads stat 70 (`+0x13021`), and when it is above 1
+(`cmp ebp,1; jle +0x130b4`) the `dec ebp` is followed by `SetStat(70, ebp)` (`+0x13038`) and
+`SetStat(72, GetMaxDurability)` (`+0x13065`-`+0x13073`). At quantity 1 the `jle` goes to `+0x130b4`, which zeroes both
+stats and removes the item. So the NOP keeps the stack and refills durability; a stack of 1 is still used up.
+
+core-rules `loot_rules.cpp` (`PatchThrowingQuantity`): D2R's `lea ebx,[rax-1]` at `0x441cb9` becomes `mov ebx,eax; nop`
+(`8d 58 ff` -> `89 c3 90`); `ebx` is the value written back to stat 70 (`call 0x43eb30` with `r9d` 0x46). The signature
+`7E 57 33 F6 8D 58 FF E8 ?? ?? ?? ?? 48 8B D0 90 89 74 24 28 44 8D 4E 46` with offset 4 matches once in 93847
+(count 1, at RVA `0x441cb9`).
 
 ## Port, row 1
 
