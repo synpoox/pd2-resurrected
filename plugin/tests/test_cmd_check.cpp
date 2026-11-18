@@ -22,6 +22,8 @@ int main() {
 	      Parse("kill -3").kind == Cmd::Kind::None && Parse("kill 7 x").kind == Cmd::Kind::None);
 	CHECK("life percent is 0-100", Parse("life 101 unit 3").kind == Cmd::Kind::None && Parse("life 0 unit 3").kind == Cmd::Kind::LifeUnit);
 	CHECK("null and status text are none", Parse(nullptr).kind == Cmd::Kind::None && Parse("").kind == Cmd::Kind::None);
+	CHECK("corrupt and desecrate take no arguments", Parse("corrupt").kind == Cmd::Kind::Corrupt &&
+	      Parse(" desecrate").kind == Cmd::Kind::Desecrate && Parse("corrupt 5").kind == Cmd::Kind::None);
 	std::printf("%d passed, %d failed\n", g_pass, g_fail);
 	return g_fail == 0 ? 0 : 1;
 }
