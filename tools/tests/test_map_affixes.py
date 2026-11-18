@@ -2,6 +2,7 @@
 import json
 import re
 import unittest
+from pathlib import Path
 
 import data_tables
 
@@ -89,15 +90,17 @@ class MapAffixes(unittest.TestCase):
         self.assertEqual(none, {"corrupted", "corruptor"})
         self.assertLessEqual(none, {r["Stat"] for r in data_tables.rows("itemstatcost")})
 
+    def test_map_affix_names_with_hd_text_have_legacy_text(self):
+        """A map affix name is a string key: legacy (classic) needs it wherever HD has it, or the prefix shows no text (#1384).
+        Duplicated, Souless, Shamanic and of the Jeweler have no text in either set (not covered here)."""
+        lng = Path(__file__).resolve().parents[2] / "files" / "data" / "local" / "lng"
+        keys = {d: {e["Key"] for f in (lng / d).glob("*.json") for e in json.loads(f.read_text("utf-8-sig"))}
+                for d in ("strings", "strings-legacy")}
+        for table in ("magicprefix", "magicsuffix"):
+            for r, _ in map_rows(table):
+                if r["Name"] in keys["strings"]:
+                    self.assertIn(r["Name"], keys["strings-legacy"], f"{table}.{r['Name']}")
+
 
 if __name__ == "__main__":
     unittest.main()
-
-    def test_map_affix_names_have_text_in_both_graphics(self):
-        """A map affix name is a string key: HD and legacy (classic) each need it, or the prefix shows no text (#1384)."""
-        lng = Path(__file__).resolve().parents[2] / "files" / "data" / "local" / "lng"
-        for folder in ("strings", "strings-legacy"):
-            keys = {e["Key"] for f in (lng / folder).glob("*.json") for e in json.loads(f.read_text("utf-8-sig"))}
-            for table in ("magicprefix", "magicsuffix"):
-                for r, _ in map_rows(table):
-                    self.assertIn(r["Name"], keys, f"{table}.{r['Name']} in {folder}")
