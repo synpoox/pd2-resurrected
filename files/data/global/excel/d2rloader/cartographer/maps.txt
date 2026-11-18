@@ -5,7 +5,7 @@ Ancestral Trial	Ice	Winding	m03	Medium	88	80	Nathkill The Numb	arachmap,fallensh
 Torajan Jungle	Jungle	Winding	m04	Medium	87	80	The Great Worm	sandleapermap,deathmaulermap,councilmembermap,thornhulkmap,mosquitomap	150	100	100
 Canyon of Sescheron	Snow		m05	Medium	87	80	Shattered Soul	sandleapermap2,doomknightmap,oblivionknightmap2,fetishmap2	150	100	100
 Phlegethon	Lava	Sprawl	m06	Medium	87	80	Lieutenant of Sin	minionmap,pantherwomanmap,fallenmap,slingermap,siegebeastmap,bloodlordmap,councilmembermap,reanimatedhordemap,fallenshamanmap,fetishmap	150	100	100
-Battlefields of Eternity	Durance	Branching	m07	Medium	89	80	The Mad Philosopher	reanimatedhordemap,zealotmap,bloodlordmap,vilemothermap,deathmaulermap	150	100	100
+River of Blood	Durance	Branching	m07	Medium	89	80	The Mad Philosopher	doomknightmap,vilemothermap,zealotmap,oblivionknightmap,deathmaulermap,sk_archermap,regurgitatormap,councilmembermap	150	100	100
 Horazon's Memory	Arcane	Loop	m08	Medium	88	80	Deathmaiden Madinsane	zealotmap2,cantormap2,oblivionknightmap2,minionmap2	150	100	100
 Arreat Battlefield	Siege		m09	Medium	89	80	Armorsmith of Equality	goatmanmap,bigheadmap,reanimatedhordemap,thornhulkmap,mosquitomap	150	100	100
 Howling Plateau	Mesa		m10	Medium	88	80	Borq the Consumed	zealotmap2,siegebeastmap2,councilmembermap2,oblivionknightmap2	150	100	100
