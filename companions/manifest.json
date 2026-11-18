@@ -153,6 +153,16 @@
       "files": {
         "dps-counter.dll": "d2rloader/plugins/dps-counter.dll"
       }
+    },
+    {
+      "name": "Potion Counter",
+      "repo": "synpoox/d2r-tools",
+      "tag": "release-2026.11.18.1",
+      "asset": "potion-counter-1.0.0.zip",
+      "sha256": "a8bc5d81b03ce7adcd93d562f3da5b7feac08b1df800d708923cd8af166f0059",
+      "files": {
+        "potion-counter.dll": "d2rloader/plugins/potion-counter.dll"
+      }
     }
   ]
 }
