@@ -1,1 +1,1 @@
-﻿Unique, rare and crafted quivers can be upgraded to their next tier in the cube again.
+Unique, rare and crafted quivers can now be upgraded to their next tier in the cube.

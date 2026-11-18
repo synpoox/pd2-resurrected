@@ -350,7 +350,7 @@ void LinkQuiverTiers() noexcept {
 	const D2RL::DataTableService* tables = nullptr;
 	if (g_context->QueryService(&tables) != D2RL::ServiceQueryResult::Success ||
 	    !D2RL::HasDataTableServiceField(tables, D2RL::DataTableServiceRequiredSize)) {
-		plog::Info("quiver tiers: no data table service");
+		plog::Warn("quiver tiers: no data table service");
 		return;
 	}
 	int linked = 0;
@@ -372,15 +372,19 @@ void LinkQuiverTiers() noexcept {
 						*reinterpret_cast<uint32_t*>(row + ItNormCode) = items::MakeItemCode(tier[0][0], tier[0][1], tier[0][2]);
 						*reinterpret_cast<uint32_t*>(row + ItUberCode) = items::MakeItemCode(tier[1][0], tier[1][1], tier[1][2], tier[1][3]);
 						*reinterpret_cast<uint32_t*>(row + ItUltraCode) = items::MakeItemCode(tier[2][0], tier[2][1], tier[2][2], tier[2][3]);
-						plog::Info("quiver tiers: bank %u row %u %s linked", flag, i, code);
 						++linked;
 					}
 				}
 			}
 		}
 	}
-	plog::Info("quiver tiers: %d records linked", linked);
+	if (linked < 10) {
+		plog::Warn("quiver tiers: only %d of 10 records linked", linked);
+	} else {
+		plog::Info("quiver tiers: %d records linked", linked);
+	}
 }
+
 // Switches the op-31 rows on after each table load (top of file). Native: the SDK's table views are read-only.
 void __cdecl EnableRerollRows(const D2RL::PluginContext*, const D2RL::Lifecycle::DataTablesLoadedEvent*, void*) noexcept {
 	using namespace d2r::rva;
