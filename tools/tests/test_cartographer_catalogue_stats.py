@@ -105,7 +105,6 @@ class CartographerCatalogueStatsTests(unittest.TestCase):
         seen = {}
         for r in data_tables.rows("itemstatcost"):
             key = r["descstrpos"]
-            # The extra_* monster-group stats share one line on purpose (not part of #1360).
-            if r["Stat"].startswith("cartographer_map_") and key and key != "cartographer:map_extra_groups":
+            if r["Stat"].startswith("cartographer_map_") and key:
                 assert key not in seen, f"{r['Stat']} and {seen[key]} both print {key}"
                 seen[key] = r["Stat"]

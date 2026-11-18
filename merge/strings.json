@@ -75,6 +75,15 @@
     "MapTier1": "Tier: 1",
     "MapTier2": "Tier: 2",
     "MapTier3": "Tier: 3",
+    "MapExtraGroupDoll": "%+d Extra Monster Group: Undead Stygian Dolls",
+    "MapExtraGroupSucc": "%+d Extra Monster Group: Hell Temptresses",
+    "MapExtraGroupVamp": "%+d Extra Monster Group: Dark Lords",
+    "MapExtraGroupCow": "%+d Extra Monster Group: Hell Bovines",
+    "MapExtraGroupHorde": "%+d Extra Monster Group: Unholy Corpses",
+    "MapExtraGroupGhost": "%+d Extra Monster Group: Ghosts",
+    "MapExtraGroupSouls": "%+d Extra Monster Group: Burning Souls",
+    "MapExtraGroupFetish": "%+d Extra Monster Group: Fetishes",
+    "MapExtraGroupShriek": "%+d Extra Monster Group: Minions of Destruction",
     "m01": "Tunneling Depths Map",
     "Teeming": "Teeming",
     "Hastened": "Hastened",
@@ -1720,6 +1729,15 @@
     "MapDropWeapon": [51545, "item-modifiers.json"],
     "MapDropArmor": [51546, "item-modifiers.json"],
     "MapDropCrafting": [51547, "item-modifiers.json"],
-    "MapDropJewelry": [51548, "item-modifiers.json"]
+    "MapDropJewelry": [51548, "item-modifiers.json"],
+    "MapExtraGroupDoll": [51549, "item-modifiers.json"],
+    "MapExtraGroupSucc": [51550, "item-modifiers.json"],
+    "MapExtraGroupVamp": [51551, "item-modifiers.json"],
+    "MapExtraGroupCow": [51552, "item-modifiers.json"],
+    "MapExtraGroupHorde": [51553, "item-modifiers.json"],
+    "MapExtraGroupGhost": [51554, "item-modifiers.json"],
+    "MapExtraGroupSouls": [51555, "item-modifiers.json"],
+    "MapExtraGroupFetish": [51556, "item-modifiers.json"],
+    "MapExtraGroupShriek": [51557, "item-modifiers.json"]
   }
 }

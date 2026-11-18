@@ -59,7 +59,7 @@ Cartographer's drop class and extra group stats take a Param (a treasure class, 
 - itemstatcost 637-640 `cartographer_map_drop_weapons/armor/crafting/jewelry` (`drop_tc`, TC `MapStat DropWeapons` and so on, PD2's classes), properties 448-451;
 - itemstatcost 641-649 `cartographer_map_extra_doll/succ/vamp/cow/horde/ghost/souls/fetish/shriek` (`extra_groups`, monstats Id `bonefetish6`, `succubusMod`, `vampire8MapMod`, `hellbovine`, `reanimatedhorde6`, `wraithMapMod`, `willowisp1MapMod`, `fetishmap`, `baalminion3MapMod`), properties 452-460.
 
-PD2 names the groups by monstats number; the port names the Id, which is what `extra_groups` reads.
+PD2 names the groups by monstats number; the port names the Id, which is what `extra_groups` reads. Each stat has its own tooltip string (`MapExtraGroupDoll` to `MapExtraGroupShriek` in `item-modifiers.json`), so the line names the group: "+1 Extra Monster Group: Hell Temptresses".
 
 ## Still neutral
 
