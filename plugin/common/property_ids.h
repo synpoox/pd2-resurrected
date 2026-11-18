@@ -69,7 +69,7 @@ inline void Init(const D2RL::PluginContext* context) {
 		plog::Info("property ids: no mod folder, properties.txt not read");
 		return;
 	}
-	const std::wstring tail = L"\data\global\excel\properties.txt";
+	const std::wstring tail = L"\\data\\global\\excel\\properties.txt";
 	const std::wstring dir = context->modDirectory;
 	std::wstring mod;
 	for (const char* c = context->activeMod; *c != '\0'; ++c) {
@@ -90,7 +90,7 @@ inline void Init(const D2RL::PluginContext* context) {
 		plog::Info("property ids: %zu codes read from properties.txt", g_ids.size());
 		return;
 	}
-	plog::Info("property ids: properties.txt not found under the mod folder");
+	plog::Info("property ids: properties.txt not found under the mod folder %ls (mod %s)", context->modDirectory, context->activeMod);
 }
 
 // The property number of `code`, or -1 (logged as an error) when properties.txt has no such row.
