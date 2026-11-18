@@ -19,6 +19,18 @@ constexpr auto Chance(int32_t raw, bool lucion) noexcept -> int32_t {
 	return raw <= 0 ? 0 : (lucion ? std::min(raw, Cap) / 3 : std::min(raw, Cap));
 }
 
+// D2R's avoid (0x44ef70) sends a walking or running defender straight to the evade roll and never blocks: player modes 2
+// (walk) and 3 (run) (plrmode.txt), monster modes 2 (walk) and 0xf (run) (monmode.txt). PD2 blocks with claws in every
+// mode (#1483), so the port rolls the class 13 block itself in exactly these modes; in the others D2R's own block runs.
+constexpr auto D2RSkipsBlock(int32_t unitType, int32_t mode) noexcept -> bool {
+	return unitType == 0 ? (mode == 2 || mode == 3) : (mode == 2 || mode == 0xf);
+}
+
+// Which weapon classes the port rolls PD2's block for: 5 always, 13 only where D2R would skip it
+constexpr auto RollsPd2Block(int32_t weaponClass, int32_t unitType, int32_t mode) noexcept -> bool {
+	return weaponClass == WeaponClass2HS || (weaponClass == WeaponClassHT2 && D2RSkipsBlock(unitType, mode));
+}
+
 // `roll` is the unit's seed roll; PD2 and D2R both test roll % 100 < chance
 constexpr auto Parries(int32_t chance, uint32_t roll) noexcept -> bool { return roll % 100 < static_cast<uint32_t>(chance); }
 

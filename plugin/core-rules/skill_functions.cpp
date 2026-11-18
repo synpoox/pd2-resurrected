@@ -3740,7 +3740,7 @@ auto SrvStSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 // as well as 13 (ht2, claws), with the block chance (passive_weaponblock, which Holy Sword's aura sets) capped at 75, and
 // answers 0x10, the result a block gives. D2R's avoid (0x44ef70, (attacker, defender, ranged flag)) only blocks for 13, so
 // this wraps it: a player in class 5 rolls PD2's parry first (PD2 rolls the block before the evade, dodge and avoid
-// rolls), and anything else, class 13's block included, is D2R's own code. PD2's 4-frame no-avoid window after any
+// rolls), and class 13 (claws) rolls it too in the modes D2R skips (walk, run: #1483); everything else is D2R's own code. PD2's 4-frame no-avoid window after any
 // avoid is kept per player id (AvoidWindow, parry_roll.h). Not ported: its half chance in the PvP arenas (levels 157, 159, 166: cut), and sound 4713 (ignored by decision).
 // Block chance (0x450070 (unit)), composit weapon class (0x3b6e00 (unit, unit data, int* out, -1, 1)) and the unit
 // data (UnitInventory) are what 0x44ef70 itself calls. Found by signature: the prologue and the first calls, calls masked.
@@ -3789,7 +3789,8 @@ auto AvoidRolled(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> uin
 		int32_t weaponClass = -1;
 		d2r::Engine<int64_t (*)(Unit*, void*, int32_t*, int32_t, int32_t) noexcept>(CompositClassD2R)(defender, data,
 		                                                                                              &weaponClass, -1, 1);
-		const int32_t raw = weaponClass == pd2::parry::WeaponClass2HS
+		const int32_t unitType = At<int32_t>(defender, d2r::rva::UnitType), mode = At<int32_t>(defender, d2r::rva::UnitMode);
+		const int32_t raw = pd2::parry::RollsPd2Block(weaponClass, unitType, mode)
 		                        ? d2r::Engine<int32_t (*)(Unit*) noexcept>(BlockChanceD2R)(defender)
 		                        : 0;
 		const bool lucion = attacker != nullptr && At<int32_t>(attacker, d2r::rva::UnitType) == 1 &&
@@ -3801,7 +3802,7 @@ auto AvoidRolled(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> uin
 			const bool parried = pd2::parry::Parries(chance, static_cast<uint32_t>(roll));
 			const uint32_t parries = parried ? ++g_parries : g_parries.load();
 			if (plog::Sample(g_parryRolls)) {  // counts the roll too: 1st, 100th, 10,000th
-				plog::Info("parry: class %d, block chance %d (rolled with %d), roll %d: %s; %u rolls, %u parries", weaponClass,
+				plog::Info("parry: class %d, unit type %d mode %d, block chance %d (rolled with %d), roll %d: %s; %u rolls, %u parries", weaponClass, unitType, mode,
 				           raw, chance, roll, parried ? "parried" : "no parry", g_parryRolls.load(), parries);
 			}
 			if (parried) {

@@ -21,6 +21,9 @@ int main() {
 	int hits = 0;
 	for (uint32_t r = 0; r < 100; ++r) hits += pp::Parries(pp::Chance(200, false), r) ? 1 : 0;
 	CHECK("capped chance parries 75 of 100 rolls", hits == 75);
+	CHECK("claws: player walk and run are D2R's skipped modes", pp::D2RSkipsBlock(0, 2) && pp::D2RSkipsBlock(0, 3) && !pp::D2RSkipsBlock(0, 1) && !pp::D2RSkipsBlock(0, 0xf));
+	CHECK("claws: monster walk and run (0xf) are skipped", pp::D2RSkipsBlock(1, 2) && pp::D2RSkipsBlock(1, 0xf) && !pp::D2RSkipsBlock(1, 3));
+	CHECK("class 5 rolls in any mode, class 13 only where D2R skips", pp::RollsPd2Block(5, 0, 1) && pp::RollsPd2Block(13, 0, 3) && !pp::RollsPd2Block(13, 0, 1) && !pp::RollsPd2Block(2, 0, 3));
 	pp::AvoidWindow w;  // no-avoid window (#1482): an avoid at frame 100 blocks 101-103, frame 104 may avoid again
 	CHECK("fresh player is not blocked", !w.Blocked(7, 100));
 	w.Set(7, 100);
