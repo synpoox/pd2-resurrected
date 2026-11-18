@@ -12,3 +12,5 @@ cartographer_map_extra_ghost	Behaviour	extra_groups		wraithMapMod
 cartographer_map_extra_souls	Behaviour	extra_groups		willowisp1MapMod
 cartographer_map_extra_fetish	Behaviour	extra_groups		fetishmap
 cartographer_map_extra_shriek	Behaviour	extra_groups		baalminion3MapMod
+corrupted	None			
+corruptor	None			

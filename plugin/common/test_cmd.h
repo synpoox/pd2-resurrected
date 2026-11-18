@@ -9,7 +9,7 @@
 namespace pd2::test_cmd {
 
 struct Cmd {
-	enum class Kind { None, Kill, LifeUnit } kind = Kind::None;
+	enum class Kind { None, Kill, LifeUnit, Corrupt, Desecrate } kind = Kind::None;
 	int32_t percent = 100;  // LifeUnit
 	int32_t classId = 0;    // Kill by class; 0 when by unit
 	uint32_t unitId = 0;    // Kill or LifeUnit by unit id; 0 when by class
@@ -51,7 +51,9 @@ inline auto Parse(const char* args) noexcept -> Cmd {
 	while (*p == ' ') {
 		++p;
 	}
-	if (std::strncmp(p, "kill ", 5) == 0) {
+	if (std::strcmp(p, "corrupt") == 0 || std::strcmp(p, "desecrate") == 0) {  // no arguments: the cursor item or inventory (0,0)
+		out.kind = p[0] == 'c' ? Cmd::Kind::Corrupt : Cmd::Kind::Desecrate;
+	} else if (std::strncmp(p, "kill ", 5) == 0) {
 		p += 5;
 		const bool byUnit = UnitWord(&p);
 		const long n = Number(&p);

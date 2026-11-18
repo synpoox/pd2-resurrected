@@ -62,6 +62,18 @@ class MapRecipeShapeTests(MapRecipeTests):
         for r in self.desc("corrupt roll") + self.desc(" Orb)"):
             assert (r["op"], r["param"], r["value"]) == ("18", "414", "0"), r["description"]  # corruptor
 
+    def test_ear_recipes_gate_on_treacherous_and_keep_the_map(self):
+        ears = self.desc("-> treacherous map")
+        assert len(ears) == 7
+        for r in ears:
+            assert (r["op"], r["param"], r["value"]) == ("18", "402", "0"), r["description"]  # treacherous
+            assert r["input 1"] == '"cmap,rar"' and r["output"] == "usetype,rar,mod", r["description"]
+            assert re.fullmatch(r'"ive[a-z],qty=1"', r["input 2"]), r["description"]
+            assert r["mod 3"] == "treacherous" and r["mod 3 min"] == r["mod 3 max"], r["description"]
+        # one treacherous value per class, 1-7
+        assert sorted(r["mod 3 min"] for r in ears) == list("1234567")
+        assert len([r for r in self.rows if "map + ear" in r["description"] and r["op"] == "30"]) == 7
+
     def test_each_refusal_comes_directly_before_its_real_row(self):
         for i, r in enumerate(self.rows):
             if r["op"] == "30":

@@ -19,6 +19,8 @@ using d2r::Unit;
 
 const D2RL::ThreadService* g_threads = nullptr;
 
+}  // namespace
+
 auto FirstGame() noexcept -> Game* {
 	using namespace d2r::rva;
 	for (uint32_t id = 1; id <= 0xffff; ++id) {
@@ -30,6 +32,8 @@ auto FirstGame() noexcept -> Game* {
 	}
 	return nullptr;
 }
+
+namespace {
 
 // The living monster in the player's level that matches (class or unit id), nearest to the player
 auto Find(Game* game, Unit* player, const pd2::test_cmd::Cmd& cmd, bool* ownedByPlayer) noexcept -> Unit* {
@@ -124,6 +128,9 @@ void Run(const D2RL::PluginContext*, void* user) noexcept {
 }  // namespace
 
 auto QueueTestCommand(const D2RL::PluginContext* context, const pd2::test_cmd::Cmd& cmd, char* why, size_t whySize) noexcept -> bool {
+	if (cmd.kind == pd2::test_cmd::Cmd::Kind::Corrupt || cmd.kind == pd2::test_cmd::Cmd::Kind::Desecrate) {
+		return QueueItemCommand(context, cmd.kind, why, whySize);
+	}
 	if (g_threads == nullptr && (context->QueryService(&g_threads) != D2RL::ServiceQueryResult::Success ||
 	                             !D2RL::HasThreadServiceField(g_threads, D2RL::ThreadServiceRequiredSize))) {
 		g_threads = nullptr;

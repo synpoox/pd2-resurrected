@@ -4356,7 +4356,7 @@
  },
  {
   "m07": {
-   "asset": "pd2/cartoicon_gold_21"
+   "asset": "pd2/cartoicon_red_46"
   }
  },
  {
@@ -4386,12 +4386,12 @@
  },
  {
   "m13": {
-   "asset": "pd2/cartoicon_white_03"
+   "asset": "pd2/cartoicon_gold_21"
   }
  },
  {
   "m14": {
-   "asset": "pd2/cartoicon_gold_24"
+   "asset": "pd2/cartoicon_red_47"
   }
  },
  {
@@ -4401,12 +4401,12 @@
  },
  {
   "m16": {
-   "asset": "pd2/cartoicon_white_04"
+   "asset": "pd2/cartoicon_gold_24"
   }
  },
  {
   "m17": {
-   "asset": "pd2/cartoicon_white_05"
+   "asset": "pd2/cartoicon_red_48"
   }
  },
  {
@@ -4446,7 +4446,7 @@
  },
  {
   "m25": {
-   "asset": "pd2/cartoicon_gold_27"
+   "asset": "pd2/cartoicon_red_49"
   }
  }
 ]

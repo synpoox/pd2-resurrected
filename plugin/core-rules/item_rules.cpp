@@ -15,6 +15,7 @@
 // - op bases, life steal cap and crushing blow (IR3): equipped_eth / missing_hp kept as base stats from the stat
 //   callback, lifedrain_percentcap on D2R's add-life, PD2's blow in CrushingBlowApply's jump slot, and its roll on
 //   HitEvents' event 5/6 calls, where PD2's open wounds and deep wounds (event 15) run too.
+#include <intrin.h>
 #include "item_rules.h"
 
 #define NOMINMAX
@@ -1735,6 +1736,19 @@ std::atomic<uint32_t> g_mapStackRefused {0};
 
 auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	using namespace d2r::rva;
+	const auto isMap = [](Unit* u) {
+		return u != nullptr && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(u, ItemTypeMap) != 0 &&
+		       d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(u) == QualityNormal;
+	};
+	if (isMap(a) && isMap(b)) {
+		// Create writes -1 at item data +0x34 (the unique/set row) for a normal item but the save decoder does not, and the native
+		// compare reads it: a fresh map would not stack with a loaded one (#1340). Not saved for normal items.
+		const auto data = d2r::Engine<uint8_t* (*)(Unit*) noexcept>(UnitItemData);
+		auto* const ra = reinterpret_cast<int32_t*>(data(a) + 0x34);
+		auto* const rb = reinterpret_cast<int32_t*>(data(b) + 0x34);
+		*ra = -1;
+		*rb = -1;
+	}
 	const int32_t same = g_stackEqualOriginal(a, b);
 	if (same == 0 || a == nullptr || b == nullptr ||
 	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(a, ItemTypeMap) == 0) {
@@ -1754,19 +1768,32 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	if (!merge) {
 		++g_mapStackRefused;
 	}
-	// At most one log line a second, whatever the pair: the inventory scans call this once per map held
+	// Each (a, b, caller) logs its first verdict only (#1340): the inventory scans call this once per map held, and the
+	// server's call (caller image +0x4f2b3a) must not hide behind the client's
+	static struct { Unit* a; Unit* b; uint64_t caller; uint32_t n; } seen[32];
+	static uint32_t next = 0;
+	const uint64_t caller = reinterpret_cast<uint64_t>(_ReturnAddress()) - d2r::imageBase;
+	auto* slot = &seen[0];
+	for (auto& s : seen) {
+		if (s.a == a && s.b == b && s.caller == caller) {
+			slot = &s;
+			break;
+		}
+		slot = &seen[next % 32];
+	}
+	if (slot->a != a || slot->b != b || slot->caller != caller) {
+		*slot = {a, b, caller, 0};
+		++next;
+	}
+	// Outer cap: at most one line a second, so a full inventory scanned by two callers stays quiet whatever the ring holds
 	static std::atomic<uint64_t> lastTick {0};
 	const uint64_t now = GetTickCount64();
-	if (now - lastTick.load() >= 1000) {
+	if (++slot->n <= 1 && now - lastTick.load() >= 1000) {
 		lastTick = now;
-		char tail[16] {};
-		if (stat >= 0) {
-			std::snprintf(tail, sizeof(tail), " %d", stat);
-		}
 		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStat);
-		plog::Info("map stack: %08x q%d/%d quality %d/%d -> %s (%s%s)", d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a),
-		           unitStat(a, StatQuantity, 0), unitStat(b, StatQuantity, 0), quality(a), quality(b),
-		           merge ? "merge" : "refused", reason, tail);
+		plog::Info("map stack: caller +0x%llx %08x q%d/%d quality %d/%d -> %s (%s %d)", static_cast<unsigned long long>(caller),
+		           d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a), unitStat(a, StatQuantity, 0),
+		           unitStat(b, StatQuantity, 0), quality(a), quality(b), merge ? "merge" : "refused", reason, stat);
 	}
 	return merge ? 1 : 0;
 }

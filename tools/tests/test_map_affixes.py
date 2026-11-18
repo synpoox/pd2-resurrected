@@ -71,7 +71,7 @@ class MapAffixes(unittest.TestCase):
         stats = {r["Stat"]: int(r["*ID"]) for r in data_tables.rows("itemstatcost")}
         tcs = {r["Treasure Class"] for r in data_tables.rows("treasureclassex")}
         mons = {r["Id"] for r in data_tables.rows("monstats")}
-        routes = data_tables.rows("d2rloader/cartographer/statroutes")
+        routes = [r for r in data_tables.rows("d2rloader/cartographer/statroutes") if r["Target"] == "Behaviour"]
         self.assertEqual(len({r["Stat"] for r in routes}), 13)
         for r in routes:
             self.assertIn(r["Stat"], stats)
@@ -81,6 +81,12 @@ class MapAffixes(unittest.TestCase):
                 self.assertEqual(r["Apply"], "extra_groups")
                 self.assertIn(r["Param"], mons)
         self.assertEqual(sorted(stats[r["Stat"]] for r in routes), list(range(637, 650)))
+
+    def test_corruption_stats_hidden_from_panel(self):
+        """The corrupted and corruptor marks route to None so the map panel's Players have list skips them (#1349)."""
+        none = {r["Stat"] for r in data_tables.rows("d2rloader/cartographer/statroutes") if r["Target"] == "None"}
+        self.assertEqual(none, {"corrupted", "corruptor"})
+        self.assertLessEqual(none, {r["Stat"] for r in data_tables.rows("itemstatcost")})
 
 
 if __name__ == "__main__":
