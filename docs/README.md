@@ -98,3 +98,7 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [research/maps/ms3-map-stats.md](research/maps/ms3-map-stats.md) — MS3: monster and player map stats in D2R
 - [research/maps/ms4-area-map-stats.md](research/maps/ms4-area-map-stats.md) — MS4: area map stats in D2R
 - [research/maps/ub2-open-uber-fight.md](research/maps/ub2-open-uber-fight.md) — UB2: opening an uber fight in D2R
+
+## Research: multiplayer
+
+- [research/multiplayer/multiplayer-options.md](research/multiplayer/multiplayer-options.md) — TCP/IP over D2RLoader, hosted servers, and how Reimagined runs its ladder
