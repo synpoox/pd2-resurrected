@@ -10,7 +10,7 @@ Counts, 2026-11-16 (main at 80cd1575, then [#171](https://github.com/synpoox/pd2
 |---|---|
 | On `main` | 76 |
 | Fixed by direct edits of `files/data` (in-game test pending) | 22 |
-| Left alone | 54 |
+| Left alone | 50 |
 
 ## Fixed
 
@@ -32,7 +32,7 @@ Blank where PD2 names a row no table defines (1.13c finds no row, so the game be
 | skills | RathmaBoneSpear | castoverlay | `sorceress_cast_cold` |
 | uniqueitems | Skullder's Ire | prop7, prop8 | `*vit`, `*enr` (commented-out codes) |
 
-## Left alone (54)
+## Left alone (50)
 
 | Errors | Where | Why |
 |---|---|---|
