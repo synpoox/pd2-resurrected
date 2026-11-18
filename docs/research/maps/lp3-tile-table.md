@@ -2,7 +2,7 @@
 
 Feasibility study for #213/#293 (2026-11-08, D2R build 93847). Scripts here run from the repo root after
 
-The scripts and pictures stay on branch `research/lp3-tile-table`; script paths below are on that branch.
+The scripts and pictures stay on tag `archive/research/lp3-tile-table`; script paths below are on that tag.
 `pd2_merge.py` and `modkit fetch --prefix data/global/tiles/ --prefix data/hd/env/preset/ --prefix data/hd/model_lod_desc.bin`.
 
 ## The table

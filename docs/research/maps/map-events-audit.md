@@ -6,8 +6,8 @@ PR [#1131](https://github.com/synpoox/pd2-resurrected/pull/1131) and PR [#1132](
 (head a1f111d3). No game was run. Addresses are PD2's (`0x10000000` base); monster ids PD2's unless marked "port".
 TC rows are zero-based data rows of PD2's `treasureclassex.txt` (the same count that puts `Map Tier 1` at 54).
 
-Builds on [pd2-map-system-dll.md](../../pd2/map-system-dll.md) (section 4: the roll, the spawns, the altars, Horazon),
-[pd2-uber-bosses-dll.md](../../pd2/uber-bosses-dll.md) (section 5: the nihlathakMap AI, #538) and the Dark Wanderer note on
+Builds on [map-system-dll.md](../../pd2/map-system-dll.md) (section 4: the roll, the spawns, the altars, Horazon),
+[uber-bosses-dll.md](../../pd2/uber-bosses-dll.md) (section 5: the nihlathakMap AI, #538) and the Dark Wanderer note on
 branch `research/dark-wanderer-event` (#1064).
 
 ## Answer in brief

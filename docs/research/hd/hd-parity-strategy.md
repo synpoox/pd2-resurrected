@@ -1,7 +1,7 @@
 # HD:legacy map parity: a strategy for one week
 
 Research notes: this note and its tuning order ([hd-parity-priority.md](hd-parity-priority.md)) are folded into main. The
-scripts, TSV, patch and overlay pictures stay on branch `research/hd-parity-strategy`,
+scripts, TSV, patch and overlay pictures stay on tag `archive/research/hd-parity-strategy`,
 under `docs/research/hd-parity-strategy/`.
 
 **The goal:** each PD2-specific map (64 maps; the Palace is out) looks like legacy. Its floors and edges should match

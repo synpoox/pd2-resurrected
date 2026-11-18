@@ -32,7 +32,7 @@ in a follow-up grilling ticket, the way #148 fed #158.
   simply win. Item pictures follow the same upscale-and-sprite pattern as P11.
 - **Audio: the cut holds.** Of PD2's 46 WAV, the 16 drop sounds serve the loot filter, and the Pyre-Flies filter ships
   its own 16 (P7; not compared one by one). The other 30 are boss and NPC voice lines and a few effects for areas and
-  bosses not ported yet (counts from [pd2-asset-inventory.md](../../pd2/asset-inventory.md)). They can be cut with the sounds
+  bosses not ported yet (counts from [asset-inventory.md](../../pd2/asset-inventory.md)). They can be cut with the sounds
   row, or converted later, one FLAC per file (open question from #5).
 - **Rows to fix on the list itself:** the Gheed event row belongs to MS8. The "other classes" row is stale, since the
   pre-alpha now builds those classes as W11-W35. The level-pipeline rows wait only for #151's work items. The missile
@@ -42,7 +42,7 @@ in a follow-up grilling ticket, the way #148 fed #158.
 
 ## Scope
 
-Every "not yet" row on [docs/unported.md](../../pd2/unported-rows.md) (at `4c8f3e3`) that names no open work item, plus the
+Every "not yet" row on [unported-rows.md](../../pd2/unported-rows.md) (at `4c8f3e3`) that names no open work item, plus the
 approximated art and hireling rows the ticket names. Rows whose P item is closed (P3, P4, P11) are in scope: the
 closed item no longer owns them, as #148 found for P3. Left out:
 
@@ -64,7 +64,7 @@ the DLL reads the ticket asks for "where needed" are named per row and left to t
 | `generated/data/global/excel/*.txt` (the local merge output) | What the merge ships today |
 | `C:\Games\PD2\ProjectD2\pd2assets.mpq` (listfile and DC6 headers, through `tools/mpq.py`) | PD2's UI art and icon sheet frame counts |
 | PD2's `D2Common.dll`, `D2Game.dll`, `D2Client.dll`, `ProjectDiablo.dll` (byte search for column and table names) | Whether a column is a 1.13c loader column or a PD2 addition (weak evidence: see below) |
-| `d2rAI-toolkit/knowledge/hd-graphics.md`, [pd2-asset-inventory.md](../../pd2/asset-inventory.md), [pd2-engine-dll-triage.md](../../pd2/engine-dll-triage.md), [docs/roadmap.md](../../roadmap.md), [docs/map-system.md](../../features/map-system.md) | HD rules, art counts, UI features, work items |
+| `d2rAI-toolkit/knowledge/hd-graphics.md`, [asset-inventory.md](../../pd2/asset-inventory.md), [engine-dll-triage.md](../../pd2/engine-dll-triage.md), [roadmap.md](../../roadmap.md), [docs/map-system.md](../../features/map-system.md) | HD rules, art counts, UI features, work items |
 
 Method (throwaway scripts in the session scratchpad, not committed):
 

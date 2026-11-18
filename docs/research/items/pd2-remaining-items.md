@@ -35,7 +35,7 @@ Blizzard file content is copied (counts, row keys and stat names only).
 | `d2rAI-toolkit/d2r-data/93847/data/global/excel/*.txt` | D2R's stats, properties and item-event functions |
 | `generated/data/global/excel/misc.txt` (the local merge output) | What the merge ships today (stack sizes, `pSpell`) |
 | PD2's `patchstring.tbl`, read with `tools/pd2_strings.read_tbl` | What a stat or rule's tooltip says it does |
-| [docs/core-rules.md](../../features/core-rules.md), [docs/unported.md](../../pd2/unported-rows.md), [docs/roadmap.md](../../roadmap.md), `merge/standins.tsv`, `merge/item-tables.txt` | What has a row or a work item |
+| [core-rules.md](../../features/core-rules.md), [unported-rows.md](../../pd2/unported-rows.md), [roadmap.md](../../roadmap.md), `merge/standins.tsv`, `merge/item-tables.txt` | What has a row or a work item |
 | PD2 wiki: [General Changes](https://wiki.projectdiablo2.com/wiki/General_Changes), [New Items](https://wiki.projectdiablo2.com/wiki/New_Items), [Game Mechanics](https://wiki.projectdiablo2.com/wiki/Game_Mechanics) | Rules no table holds |
 
 Method (throwaway scripts in the session scratchpad, not committed):
