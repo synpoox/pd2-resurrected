@@ -1852,6 +1852,45 @@ auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
 	return true;
 }
 
+// Maps (cmap) are never magic (#1415, owner rule #1304): normal, rare or unique. The map TCs lean magic (Map Tier 1-3 Magic 800,
+// champion and boss parents 1024) and itemtypes cannot refuse magic, so a magic map is stopped where it is made. D2R's item maker
+// (0x442d60) sends quality 4 to the magic affix maker (0x442c60), and the magic fallback of a failed set, rare or unique roll
+// ends there too. Refusing for a map (return 0 = "failed") makes the maker fall through to its own superior and normal makers,
+// whatever rolled the quality: a forced quality, any call site, or Cartographer's roll hook being absent. Cartographer hooks
+// the quality roll and the magic fallback instead (other addresses, so both hooks install); this one is the backstop.
+// No PluginSDK service runs inside item creation. The maker is hooked as well, only to log each map's final quality.
+using MagicMakerFn = uint64_t (*)(Unit**, void*) noexcept;
+using ItemMakerFn = uint64_t (*)(void*, Unit**, void*) noexcept;
+MagicMakerFn g_magicMakerOriginal = nullptr;
+ItemMakerFn g_itemMakerOriginal = nullptr;
+std::atomic<uint32_t> g_mapMagicRefused {0};
+std::atomic<uint32_t> g_mapMade[10];
+
+auto IsMapUnit(Unit* item) noexcept -> bool {
+	return item != nullptr &&
+	       d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::rva::ItemIsType)(item, d2r::rva::ItemTypeMap) != 0;
+}
+
+auto MapMagicMaker(Unit** item, void* request) noexcept -> uint64_t {
+	if (item != nullptr && IsMapUnit(*item)) {
+		if (plog::Sample(g_mapMagicRefused)) {
+			plog::Info("map quality: a map was going to be magic, refused (%u so far)", g_mapMagicRefused.load());
+		}
+		return 0;
+	}
+	return g_magicMakerOriginal(item, request);
+}
+
+auto MapItemMaker(void* game, Unit** item, void* request) noexcept -> uint64_t {
+	const uint64_t made = g_itemMakerOriginal(game, item, request);
+	if (made != 0 && item != nullptr && IsMapUnit(*item)) {
+		const int32_t quality = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemQuality)(*item);
+		const uint32_t n = ++g_mapMade[quality >= 0 && quality < 10 ? quality : 0];
+		plog::Info("map quality: item maker made a map, quality %d (%u of that quality)", quality, n);
+	}
+	return made;
+}
+
 // Maps (cmap) stack only when both are normal quality and every stat but the quantity matches, layer by layer (#1326).
 // Hooks D2Common's stack-equal check (no SDK service covers it): the drop-onto merge, ground pickup, vendor buys and
 // the client's cursor guess all call it.
@@ -1971,23 +2010,34 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool mapStack = sigscan::HookBySignature(
 	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
 	    d2r::rva::ItemsCanMergeEntry, sizeof(d2r::rva::ItemsCanMergeEntry), MapStackEqual, &g_stackEqualOriginal);
+	// 0x442c60 and 0x442d60 by signature (calls are masked); the entries are whole instructions
+	static constexpr uint8_t MagicMakerEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18, 0x57};
+	static constexpr uint8_t ItemMakerEntry[] = {0x40, 0x53, 0x55, 0x41, 0x56, 0x48, 0x83, 0xec, 0x50, 0x4c, 0x8b, 0xf1, 0x49, 0x8b, 0xe8, 0x48, 0x8b, 0x0a};
+	const bool noMagicMaps = sigscan::HookBySignature(
+	    context, "MagicAffixMaker",
+	    "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 56 41 57 48 83 EC 30 8B 82 A8 00 00 00 45 33 FF 48 8B F2 48 8B F9", 0,
+	    MagicMakerEntry, sizeof(MagicMakerEntry), MapMagicMaker, &g_magicMakerOriginal);
+	const bool mapMakerLog = sigscan::HookBySignature(
+	    context, "ItemMaker", "40 53 55 41 56 48 83 EC 50 4C 8B F1 49 8B E8 48 8B 0A 48 8B DA 48 85 C9 74 0A E8 ?? ?? ?? ?? 83 F8 04 74 14", 0,
+	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; map stacking%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; map stacking%s; no magic maps%s; map maker log%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
 	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
 	              equip ? "" : " FAILED (bytes differ)", replenish ? "" : " FAILED (bytes differ)",
 	              unlimited ? "" : " FAILED (entries not empty, or no mutation service)",
-	              charms ? "" : " FAILED (signature or bytes differ)", mapStack ? "" : " FAILED (bytes differ)");
+	              charms ? "" : " FAILED (signature or bytes differ)", mapStack ? "" : " FAILED (bytes differ)",
+	              noMagicMaps ? "" : " FAILED (signature or bytes differ)", mapMakerLog ? "" : " FAILED (signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
-	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (mapStack ? 1 : 0);
+	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 12;
+	return 14;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
@@ -1995,9 +2045,9 @@ auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
 	              "ormus rolls %u, strike rolls %u, crits %u, "
 	              "deadly strikes %u, equipped_eth changes %u, life steal cap checks %u (blocked %u), crushing blow rolls %u, "
 	              "crushing blows %u, curses %u, resisted %u, gated %u, skill on equip changes %u, ticks %u, phasing %u, "
-	              "charges replenished %u, map stacks refused %u",
+	              "charges replenished %u, map stacks refused %u, magic maps refused %u",
 	              g_rolls.load(), g_strikeRolls.load(), g_crits.load(), g_deadlyStrikes.load(), g_ethReads.load(),
 	              g_capChecks.load(), g_capBlocks.load(), g_blowRolls.load(), g_blows.load(),
 	              g_curses.load(), g_curseResisted.load(), g_curseGate.load(), g_equipCallbacks.load(), g_equipTicks.load(), g_phasing.load(),
-	              g_chargesReplenished.load(), g_mapStackRefused.load());
+	              g_chargesReplenished.load(), g_mapStackRefused.load(), g_mapMagicRefused.load());
 }
