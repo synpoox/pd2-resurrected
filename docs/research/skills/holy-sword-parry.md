@@ -27,3 +27,5 @@ Not ported: the level 157/159/166 halving (those levels are cut), sound 4713, PD
 ## Slot check
 
 Slot 2, level 99 Paladin, two-handed swords, `cheat stat passive_weaponblock,50` (the aura was not cast from the skill list), zombies: log `parry: class 5, block chance 50 ... 20 rolls, 8 parries`.
+
+Window check (#1482), slot 2, Hell Blood Moor, level 99 Paladin, two-handed sword, `passive_weaponblock` 50, `cheat god 1`, 8 `fallen1`: 24 logged avoids (`avoid: player 1 result 0x10 at frame N, no avoid until frame N+4`), smallest gap between two avoids 4 frames, none inside the window; two rolls refused at frames 3396 (avoid at 3395) and 3451 (avoid at 3448).
