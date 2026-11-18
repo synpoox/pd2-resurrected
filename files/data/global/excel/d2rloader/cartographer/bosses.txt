@@ -8,10 +8,10 @@ Lieutenant of Sin	megademonboss
 The Mad Philosopher	SewerBoss
 Deathmaiden Madinsane	ArcaneBoss
 Armorsmith of Equality	SiegeBoss
-Johnathan The Damned	BastionBoss
+Borq the Consumed	AshenBoss
 Toadflax the Tainted	TombBoss
 The Cow Queen	CowBoss
-Indio The Insane	ThroneBoss
-Bloodlord of the Pit	PoisonedWellBoss
+Gimli the Summoned One	TortureHallsBoss
+Ancient Cistern Hydra	lernaeanhydra2
 Gaoler Kanemith	KanemithBoss
 Sharptooth the Broodmother	SharpToothBoss
