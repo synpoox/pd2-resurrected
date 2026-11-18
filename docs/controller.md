@@ -36,7 +36,7 @@ No control is a PD2 mirror yet; see [PD2 binds](#pd2-binds) for each PD2 bind's 
 | Modifier (LB) + A | Splits a stack on the cursor, as Ctrl-click does | inventory | Our own (the modifier is Controller QoL's setting) | works (#1459) |
 | START, then LB/RB to the altar tab | Opens the altar panel beside the inventory with focus | altar | Our own | works (#1454); tab label shows "Missing string" (#1457) |
 | D-pad up / down | Moves focus between the amulet slot and the confirm button | altar | Our own | works (#1454); amulet pickup and place not proven |
-| A on the altar | Opens the altar panel without pad focus | world | D2R native | gap (#1456) |
+| A on the altar | Opens the altar panel without pad focus | world | D2R native | gap (#1456; focusing the open panel does not move the pad, see `docs/research/controller/altar-world-focus.md`) |
 | A, X, B, Y, RB, RT | Skill slots 1 to 6 | world | D2R native | from strings (`ControllerHelpSkill1..6`), not tested |
 | LT | Swaps the skill bar (Skills Bar and Skills Back Bar) | world | D2R native | from strings (`ControllerHelpSkillsBar`, `ControllerHelpSkillsBackBar`), not tested |
 | L3 | Run / walk toggle | world | D2R native | from strings (`ControllerHelpRun`), not tested |
