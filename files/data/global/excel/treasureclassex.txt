@@ -957,7 +957,7 @@ BR Arena Zomb NM		60	3	9000	9000	1	1	0	Act 5 (N) Uitem C	30	BR Arena jewerly	8
 BR Arena Zomb H		90	3	9000	9000	1	1	0	Act 5 (H) Uitem C	30	BR Arena jewerly	8																										
 UberAncients		90	6	950	960	990	1024		Act 5 (H) Equip C	800	Jewelry C	100	Runes 17 equiv	30	wss	25	T3 Map Drop	10	T2 Map Drop	10	T1 Map Drop	10	scrb	3														
 ShadowOfMendeln		90	6	950	960	990	1024	0	Act 5 (H) Equip C	787	Act 5 (H) Good	45	Act 5 (H) Junk	75	Runes 17 equiv	10	wss	15	Jewelry C	30	scrb	2																
-Act 1 (H) Weap A	1	68	1					1785	weap54	2	armo54	0	weap57	6	armo57	0	weap60	14	armo60	0	weap63	6	armo63	3														
+Act 1 (H) Weap A	1	68	1						weap54	2	armo54	0	weap57	6	armo57	0	weap60	14	armo60	0	weap63	6	armo63	3														
 Act 1 (H) Weap B	1	70	1						weap57	2	armo57	0	weap60	6	armo60	0	weap63	14	armo63	0	weap66	2	armo66	1	Act 1 (H) Weap A	1530												
 Act 1 (H) Weap C	1	71	1						weap57	2	armo57	0	weap60	6	armo60	0	weap63	14	armo63	0	weap66	6	armo66	3	Act 1 (H) Weap A	1785												
 Act 2 (H) Weap A	1	73	1						weap60	2	armo60	0	weap63	6	armo63	0	weap66	14	armo66	0	weap69	2	armo69	1	Act 1 (H) Weap B	1530												
@@ -972,7 +972,7 @@ Act 4 (H) Weap C	1	82	1						weap72	2	armo72	0	weap75	6	armo75	0	weap78	14	armo7
 Act 5 (H) Weap A	1	83	1						weap75	2	armo75	0	weap78	6	armo78	0	weap81	14	armo81	0	weap84	2	armo84	0	Act 4 (H) Weap B	1530												
 Act 5 (H) Weap B	1	84	1						weap78	2	armo78	0	weap81	6	armo81	0	weap84	14	armo84	0	weap87	2	armo87	0	Act 5 (H) Weap A	1530												
 Act 5 (H) Weap C	1	85	1						weap81	2	armo81	0	weap84	6	armo84	0	weap87	14	armo87	0	weap87	1	armo87	0	Act 5 (H) Weap B	1530												
-Act 1 (H) Armo A	1	68	1					1785	weap54	0	armo54	1	weap57	0	armo57	3	weap60	0	armo60	7	weap63	0	armo63	3														
+Act 1 (H) Armo A	1	68	1						weap54	0	armo54	1	weap57	0	armo57	3	weap60	0	armo60	7	weap63	0	armo63	3														
 Act 1 (H) Armo B	1	70	1						weap57	0	armo57	1	weap60	0	armo60	3	weap63	0	armo63	7	weap66	0	armo66	1	Act 1 (H) Armo A	1530												
 Act 1 (H) Armo C	1	71	1						weap57	0	armo57	1	weap60	0	armo60	3	weap63	0	armo63	7	weap66	0	armo66	3	Act 1 (H) Armo A	1785												
 Act 2 (H) Armo A	1	73	1						weap60	0	armo60	1	weap63	0	armo63	3	weap66	0	armo66	7	weap69	0	armo69	1	Act 1 (H) Armo B	1530												

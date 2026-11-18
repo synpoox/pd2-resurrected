@@ -1,3 +1,3 @@
 #### Fixes
 
-- Dark Pact damage now counts every curse synergy, including Weaken.
+- Dark Pact's damage synergies from curses work again.
