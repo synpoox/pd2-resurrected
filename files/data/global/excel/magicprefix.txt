@@ -747,7 +747,7 @@ Opulent	1	1	1	1		1				20	156	mon-att-pierce		70	90	map-density		18	20	mag%		45	5
 Fast	1	1	1	1		1				20	305	mon-cast-speed		40	60	map-density		15	20	addxp		3	4		t1m	t2m												0
 Speedy	1	1	1	1		1				20	305	mon-cast-speed		60	80	map-density		20	25	addxp		4	5		t2m	t3m												0
 Ludicrous	1	1	1	1		1				20	305	mon-cast-speed		80	100	map-density		25	30	addxp		5	6		t3m													0
-Large	1	1	1	1		1				10	311	mon-life		5	10	map-density		15	20	addxp		6	8		t1m	t2m												0
+LargeMap	1	1	1	1		1				10	311	mon-life		5	10	map-density		15	20	addxp		6	8		t1m	t2m												0
 Huge	1	1	1	1		1				10	311	mon-life		10	15	map-density		20	25	addxp		8	10		t2m	t3m												0
 Colossal	1	1	1	1		1				10	311	mon-life		15	20	map-density		25	30	addxp		10	12		t3m													0
 Strong	1	1	1	1		1				20	158	mon-damage		10	15	addxp		4	5	mag%		10	15		t1m	t2m												0
@@ -915,7 +915,7 @@ Opulent	1	1		1		1				120	156	mon-att-pierce		105	135	map-density		36	40	mag%		90
 Fast	1	1		1		1				120	305	mon-cast-speed		60	90	map-density		30	40	addxp		6	8		t1m	t2m												0
 Speedy	1	1		1		1				120	305	mon-cast-speed		90	120	map-density		40	50	addxp		8	10		t2m	t3m												0
 Ludicrous	1	1		1		1				120	305	mon-cast-speed		120	150	map-density		50	60	addxp		10	12		t3m													0
-Large	1	1		1		1				60	311	mon-life		10	20	map-density		30	40	addxp		12	16		t1m	t2m												0
+LargeMap	1	1		1		1				60	311	mon-life		10	20	map-density		30	40	addxp		12	16		t1m	t2m												0
 Huge	1	1		1		1				60	311	mon-life		20	30	map-density		40	50	addxp		16	20		t2m	t3m												0
 Colossal	1	1		1		1				60	311	mon-life		30	40	map-density		50	60	addxp		20	24		t3m													0
 Strong	1	1		1		1				120	158	mon-damage		15	23	addxp		8	10	mag%		20	30		t1m	t2m												0

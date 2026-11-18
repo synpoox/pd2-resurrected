@@ -69,6 +69,7 @@
     "PartyOpenWoundsDamagePerSecond": "Party Open Wounds Damage: %d per second",
     "ThornsOpenWoundsDamagePerSecond": "Your Open Wounds Damage: %d per second",
     "Ascendant": "Ascendant",
+    "LargeMap": "Large",
     "t99": "Mesa Map",
     "MapTierValue": "Tier: %d",
     "StrCorrupted": "ÿc1Corruptedÿc3",
@@ -1888,6 +1889,7 @@
     "MapExtraGroupGhost": [51554, "item-modifiers.json"],
     "MapExtraGroupSouls": [51555, "item-modifiers.json"],
     "MapExtraGroupFetish": [51556, "item-modifiers.json"],
-    "MapExtraGroupShriek": [51557, "item-modifiers.json"]
+    "MapExtraGroupShriek": [51557, "item-modifiers.json"],
+    "LargeMap": [51558, "item-nameaffixes.json"]
   }
 }

@@ -15361,5 +15361,22 @@
     "ptBR": "of the Adventurer",
     "ruRU": "of the Adventurer",
     "zhCN": "of the Adventurer"
+  },
+  {
+    "id": 51558,
+    "Key": "LargeMap",
+    "enUS": "Large",
+    "zhTW": "Large",
+    "deDE": "Large",
+    "esES": "Large",
+    "frFR": "Large",
+    "itIT": "Large",
+    "koKR": "Large",
+    "plPL": "Large",
+    "esMX": "Large",
+    "jaJP": "Large",
+    "ptBR": "Large",
+    "ruRU": "Large",
+    "zhCN": "Large"
   }
 ]

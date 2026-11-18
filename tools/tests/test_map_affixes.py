@@ -1,4 +1,5 @@
 """Map affixes (#1305): every cmap-family affix row names only properties that exist and only the map item types."""
+import json
 import re
 import unittest
 
@@ -8,7 +9,7 @@ MAP_TYPES = {"cmap", "t1m", "t2m", "t3m"}
 TABLES = ("magicprefix", "magicsuffix", "rareprefix", "raresuffix")
 
 EXPECTED_ROLLING = {("magicprefix", n) for n in (
-    "Large Huge Colossal Strong Mighty Formidable Unhealthy Sickly Diseased".split())} | {
+    "LargeMap Huge Colossal Strong Mighty Formidable Unhealthy Sickly Diseased".split())} | {
     ("magicsuffix", "of " + n) for n in (
         "Swiftness Quickness Velocity Health Vitality Vim Imbalance Inequality Uneveness "
         "Hindrance Aversion Permeability Cracking Crumbling Disintegration "
@@ -91,3 +92,12 @@ class MapAffixes(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_map_affix_names_have_text_in_both_graphics(self):
+        """A map affix name is a string key: HD and legacy (classic) each need it, or the prefix shows no text (#1384)."""
+        lng = Path(__file__).resolve().parents[2] / "files" / "data" / "local" / "lng"
+        for folder in ("strings", "strings-legacy"):
+            keys = {e["Key"] for f in (lng / folder).glob("*.json") for e in json.loads(f.read_text("utf-8-sig"))}
+            for table in ("magicprefix", "magicsuffix"):
+                for r, _ in map_rows(table):
+                    self.assertIn(r["Name"], keys, f"{table}.{r['Name']} in {folder}")
