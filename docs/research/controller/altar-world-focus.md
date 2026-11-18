@@ -37,3 +37,9 @@ active flag is at +0x51 (`FUN_1408682b0` asserts, an int3, on a null or inactive
    code did not run (log: `altar: signature PanelFocus found more than once, no pad focus`). The open itself worked
    (panel shown, inventory beside it). The pad result is therefore still unknown. Next: lengthen both patterns
    until unique (or anchor on a neighbouring unique call), then rerun the pad check.
+   Update (same day, slot 5, pad): the lengthened PanelFocus and InputReset patterns are now unique in the 93847 dump
+   (each matches once; PanelFetch and PadMode also once), and the focus ran: log `altar: pad mode 1, focus signatures ok`,
+   `altar: pad focus set 0 frames after the open`. PadMode (`0x77e10`) returns 1 when the pad is active. Result: the pad
+   frame and the help bar now show and the D-pad drives the panel instead of the character (DOWN then gave "Hold to
+   Sort", a grid focus; LEFT then lit the confirm button). It is not the route's result: the first DOWN did not land on
+   the confirm button. Not closed.
