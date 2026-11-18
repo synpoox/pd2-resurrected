@@ -1,3 +1,3 @@
 #### Features
 
-- Normal arrows and bolts upgrade to the higher quiver tiers in the Horadric Cube.
+- Upgrade a normal quiver with Ral + Ort + a perfect amethyst, then Ist + Pul + a perfect amethyst.
