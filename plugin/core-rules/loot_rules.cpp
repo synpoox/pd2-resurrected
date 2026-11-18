@@ -225,8 +225,6 @@ constexpr const char* EtherealDurabilityPattern =
 constexpr int EtherealDurabilityOffset = 2;
 constexpr uint8_t EtherealJz[2] = {0x74, 0x48};
 constexpr uint8_t EtherealJmp[2] = {0xeb, 0x48};
-// same displacement, the opcode only: short jz (0x74) -> short jmp (0xeb)
-static_assert(EtherealJz[0] == 0x74 && EtherealJmp[0] == 0xeb && EtherealJz[1] == EtherealJmp[1]);
 
 auto PatchEtherealDurability(const D2RL::PluginContext* context) noexcept -> bool {
 	uint64_t rva = 0;

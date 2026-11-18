@@ -43,7 +43,7 @@ Out:
 - **The dye stat** (`transform_dye`) tints the output of 35 PD2 cube rows (the Annihilus corruptions and the magic-item
   "added mod" rows). The recipes work in the port without the tint: an approximated row. How D2R Reimagined tints
   items is researched for a later patch ([#190](https://github.com/synpoox/pd2-resurrected/issues/190)).
-- **Wiki-only rules** get a core-rules row with status `verify`: the open wounds rework, ethereal durability and set
+- **Wiki-only rules** get a core-rules row with status `verify`: the open wounds rework, set
   items rolling ethereal, loot from flying monsters landing on walkable tiles, and monsters killed by Chaos Sanctuary
   seals dropping nothing. Potions going to the belt and items that can't be sold are data checks. A rule the DLL does
   not have is dropped.

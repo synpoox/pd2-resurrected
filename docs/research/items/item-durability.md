@@ -1,7 +1,7 @@
 # PD2's item durability rules
 
 Work item [#1478](https://github.com/synpoox/pd2-resurrected/issues/1478). The third-party Item Durability companion was
-dropped in [#1479](https://github.com/synpoox/pd2-resurrected/issues/1479); core-rules builds what PD2 itself does. Static
+dropped by [#1467](https://github.com/synpoox/pd2-resurrected/issues/1467) (PR [#1479](https://github.com/synpoox/pd2-resurrected/issues/1479)); core-rules builds what PD2 itself does. Static
 disassembly of the PD2 baseline install (`ProjectDiablo.dll` and its 1.13c `D2Game.dll`, Ghidra project `PD2.gpr`), the D2R
 93847 dump for the matching code. D2Game addresses are RVAs, `ProjectDiablo.dll` ones are RVAs too.
 
@@ -15,8 +15,8 @@ has these records in 1.13c D2Game's durability code. Nothing else in the table t
 |---|---|---|---|---|
 | 1 | D2Game `+0xec4f`, 1 byte `0x74` -> `0xeb` (`jz` -> `jmp`) in the ethereal step of item generation (`+0xebb0`) | 1.13c: after ApplyEthereal, an item with durability gets `maxdurability = max / 2 + 1` and `durability = maxdurability`. PD2 jumps over both: an ethereal item keeps its base's full maximum | the same block in the item maker, `jz 0x443558` at `0x44350e` (`max / 2 + 1` at `0x44351f`-`0x443532`) | **built** (#1478): `jz` -> `jmp` by signature |
 | 2 | D2Game `+0x12f16` (4 -> 2) and `+0x12f36` (10 -> 5) | a weapon's chance in percent to lose durability on a hit (armor unchanged) | `mov ebx,imm32` at `0x441b83` and `0x441ba6` | built (IR8, [#243](https://github.com/synpoox/pd2-resurrected/issues/243)) |
-| 3 | D2Game `+0x12f88`, call rewritten to PD2's `0x103a17b0`, and `+0xeb81`, same target | 1.13c `+0x2ea70` schedules the replenish event for `item_replenish_durability` (stat 252). PD2's replacement (`0x10345130`) schedules it the same way (`2500 / stat` frames) and also runs the charges step `0x103450b0` | D2R's own scheduler `0x441b10` family; the charges part is built | built with Replenish charges ([#148](https://github.com/synpoox/pd2-resurrected/issues/148)); no durability difference |
-| 4 | D2Game `+0x13033`, 1 byte NOP (`0x90`, was `dec ebp`) in the durability-loss function `+0x12ee0` | the branch for an item that has a quantity (stat 70): 1.13c took one off it on each durability loss and put durability back to maximum. With the `dec` gone the quantity stays and durability still resets: a hit never uses up a throwing weapon's stack | not located yet | **not built**: [#1489](https://github.com/synpoox/pd2-resurrected/issues/1489) |
+| 3 | D2Game `+0x12f88`, call rewritten to PD2's `0x103a17b0`, and `+0xeb81`, same target | 1.13c `+0xea70` schedules the replenish event for `item_replenish_durability` (stat 252). PD2's replacement (`0x10345130`) schedules it the same way (`2500 / stat` frames) and also runs the charges step `0x103450b0` | not located here (not `0x441b10`, which is the weapon durability-loss function); the charges part is built | built with Replenish charges ([#148](https://github.com/synpoox/pd2-resurrected/issues/148)); no durability difference |
+| 4 | D2Game `+0x13033`, 1 byte NOP (`0x90`, was `dec ebp`) in the durability-loss function `+0x12ee0` | the branch for an item that has a quantity (stat 70): 1.13c took one off it when its durability ran out (the branch runs only when durability would reach 0: `dec ebp; jle +0x12fd8`), and put durability back to maximum. With the `dec` gone, the item keeps its stack when its durability runs out, and durability goes back to maximum: a hit never uses up a throwing weapon's stack | not located yet | **not built**: [#1489](https://github.com/synpoox/pd2-resurrected/issues/1489) |
 
 Other findings:
 
