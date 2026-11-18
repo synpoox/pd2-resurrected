@@ -46,7 +46,7 @@ int main() {
 	Fake src = Map(3, 87), bare, kept = Map(1, 87);
 	src.stats[553] = {1, 553, 63};
 	const auto set = [](Fake* u, int32_t stat, int32_t value, int32_t layer) {
-		u->stats[stat] = {static_cast<uint16_t>(layer), static_cast<uint16_t>(stat), value};
+		u->stats[stat] = {layer, stat, value};
 	};
 	pd2::mapstack::Saved saved;
 	pd2::mapstack::Collect(&src, 600, 70, Read, saved);

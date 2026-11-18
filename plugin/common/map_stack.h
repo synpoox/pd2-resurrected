@@ -9,10 +9,11 @@
 
 namespace pd2::mapstack {
 
+// UnitStatEntries (0x2f84b0) writes 12 bytes per entry: a Slot3 dump of a map's stat 564 read 00000000 00000234 00000057
 struct Entry {
-	uint16_t layer, stat;
-	int32_t value;
+	int32_t layer, stat, value;
 };
+static_assert(sizeof(Entry) == 12);
 
 template <class Unit, class Entries>
 auto FirstDifference(Unit* a, Unit* b, int32_t statCount, int32_t quantityStat, Entries entries) noexcept -> int32_t {
