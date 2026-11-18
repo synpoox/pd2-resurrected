@@ -36,8 +36,8 @@ No control is a PD2 mirror yet; see [PD2 binds](#pd2-binds) for each PD2 bind's 
 | LB + R3 | Fills the belt with potions from the inventory | inventory | Controller QoL | untested |
 | LB + L3 or LB + R3 | Fills the merchant with potions and tomes | shop | Controller QoL | untested |
 | Modifier (LB) + A | Splits a stack on the cursor, as Ctrl-click does | inventory | Our own (the modifier is Controller QoL's setting) | works (#1459) |
-| START, then LB/RB to the altar tab | Opens the altar panel beside the inventory with focus | altar | Our own | works (#1454); tab label shows "Missing string" (#1457) |
-| D-pad up / down | Moves focus between the amulet slot and the confirm button | altar | Our own | works (#1454); amulet pickup and place not proven |
+| START, then LB/RB to the altar tab | Removed (#1480): the altar opens only from the altar object in the Temple, so there is no altar tab | altar | Our own | cut (#1480) |
+| D-pad up / down | Moves focus between the amulet slot and the confirm button | altar | Our own | gap, no route to reach the panel (#1480, #1456); amulet pickup and place not proven |
 | A on the altar | Opens the altar panel without pad focus | world | D2R native | gap (#1456; focusing the open panel does not move the pad, see `docs/research/controller/altar-world-focus.md`) |
 | A, X, B, Y, RB, RT | Skill slots 1 to 6 | world | D2R native | from strings (`ControllerHelpSkill1..6`), not tested |
 | LT | Swaps the skill bar (Skills Bar and Skills Back Bar) | world | D2R native | from strings (`ControllerHelpSkillsBar`, `ControllerHelpSkillsBackBar`), not tested |
@@ -70,8 +70,8 @@ One line per PD2 pad bind, with its status.
 ## Known gaps
 
 - #1444: Cube focus starts on the wrong widget (the belt slot, not the grid).
-- #1456: altar opened in the world gets no pad focus.
-- #1457: altar route tab shows "Missing string".
+- #1456: altar opened in the world gets no pad focus. With the tab route removed (#1480) this is the only way the pad reaches the panel, so the altar D-pad rows depend on it.
+- #1457: closed by #1480 (the altar tab is gone, so no "Missing string" tab).
 - #1463: stack split with modifier + A onto an occupied cell, and without Controller QoL. The slot 4 check (2026-11-18) reached neither case: the harness pad moved no inventory focus (#1449) and the free pad cursor would not land on a spawned item. From the code, `ModifierHeld()` falls back to LB when Controller QoL is absent, so LB + A on a held stack would split there too. Not proven in game.
 - #1466: Holy Sword parry is missing (PD2's class-5 parry roll).
 - #1468: Item Roll Ranges shows no ranges with the pad (RT is Controller QoL's page button).

@@ -12,7 +12,6 @@
 
 #include "pd2_engine.h"
 #include "log.h"
-#include "controller_panel.h"
 #include "lucion.h"
 
 #include <D2RLPlugin/inventory.h>
@@ -280,7 +279,6 @@ auto InstallAltarPanel(const D2RL::PluginContext* context, char* report, size_t 
 	if (const auto r = g_inventory->registerPlayerPage(context, &registration, &page); r != inv::Result::Success) return fail("registerPlayerPage", int(r));
 	if (const auto r = g_inventory->configurePlayerPage(context, page, &size); r != inv::Result::Success) return fail("configurePlayerPage", int(r));
 	if (const auto r = g_panels->registerPanel(context, &panel, &g_panel); r != D2RL::Panels::Result::Success) return fail("registerPanel", int(r));
-	RegisterPanelControllerRoute(context, g_panels, g_panel, "@Altar");
 	const inv::PlayerPageItemPolicy policy {
 		.structSize = inv::PlayerPageItemPolicySize, .page = page, .callback = OnItemPolicy};
 	const D2RL::Panels::PlayerPageGridBinding binding {.structSize = D2RL::Panels::PlayerPageGridBindingSize,
