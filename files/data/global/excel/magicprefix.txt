@@ -753,9 +753,9 @@ Colossal	1	1	1	1		1				10	311	mon-life		15	20	map-density		25	30	addxp		10	12		t
 Strong	1	1	1	1		1				20	158	mon-damage		10	15	addxp		4	5	mag%		10	15		t1m	t2m												0
 Mighty	1	1	1	1		1				20	158	mon-damage		15	20	addxp		5	6	mag%		25	30		t2m	t3m												0
 Formidable	1	1	1	1		1				20	158	mon-damage		20	25	addxp		6	7	mag%		40	45		t3m													0
-Splashing	1	0	0	1		1				20	157																											0
-Splashing	1	0	0	1		1				20	157																											0
-Splashing	1	0	0	1		1				20	157																											0
+Splashing	1	1	1	1		1				20	157	mon-splash		100	100	map-density		8	13	mag%		5	10		t1m	t2m												0
+Splashing	1	1	1	1		1				20	157	mon-splash		100	100	map-density		18	23	mag%		20	25		t2m	t3m												0
+Splashing	1	1	1	1		1				20	157	mon-splash		100	100	map-density		23	25	mag%		35	40		t3m													0
 Bloody	1	1	1	1		1				20	312	mon-openwounds		5	10	addxp		4	5	mag%		5	10		t1m	t2m												0
 Gory	1	1	1	1		1				20	312	mon-openwounds		10	15	addxp		5	6	mag%		20	25		t2m	t3m												0
 Sanguinary	1	1	1	1		1				20	312	mon-openwounds		15	20	addxp		6	7	mag%		35	40		t3m													0
@@ -921,9 +921,9 @@ Colossal	1	1		1		1				60	311	mon-life		30	40	map-density		50	60	addxp		20	24		t3
 Strong	1	1		1		1				120	158	mon-damage		15	23	addxp		8	10	mag%		20	30		t1m	t2m												0
 Mighty	1	1		1		1				120	158	mon-damage		23	30	addxp		10	12	mag%		50	60		t2m	t3m												0
 Formidable	1	1		1		1				120	158	mon-damage		30	38	addxp		12	14	mag%		80	90		t3m													0
-Splashing	1	0	0	1		1				120	157																											0
-Splashing	1	0	0	1		1				120	157																											0
-Splashing	1	0	0	1		1				120	157																											0
+Splashing	1	1		1		1				120	157	mon-splash		150	150	map-density		16	26	mag%		10	20		t1m	t2m												0
+Splashing	1	1		1		1				120	157	mon-splash		150	150	map-density		36	46	mag%		40	50		t2m	t3m												0
+Splashing	1	1		1		1				120	157	mon-splash		150	150	map-density		46	50	mag%		70	80		t3m													0
 Bloody	1	1		1		1				120	312	mon-openwounds		8	15	addxp		8	10	mag%		10	20		t1m	t2m												0
 Gory	1	1		1		1				120	312	mon-openwounds		15	23	addxp		10	12	mag%		40	50		t2m	t3m												0
 Sanguinary	1	1		1		1				120	312	mon-openwounds		23	30	addxp		12	14	mag%		70	80		t3m													0

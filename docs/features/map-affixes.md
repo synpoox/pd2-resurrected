@@ -4,7 +4,7 @@ Rare Cartographer maps roll PD2's map affixes in PD2's tier bands. Tables only: 
 
 ## What ported
 
-236 of PD2's 242 map affix rows (112 prefixes, 124 suffixes); 58 came with #1305 and 178 with #1309-#1313. Each keeps PD2's name, group, frequency, level and ranges. The row keeps its PD2 row number (a save stores it), so the port edits the neutral row `tools/pd2_cutmaps.py` left (#964) instead of adding one. No new affix ids, so `merge/ids-*.tsv` are unchanged (it adds two string ids, see Strings). A PD2 re-import would neutralise the rows again; the committed tables are the source (ADR 0007).
+All 242 of PD2's map affix rows (112 prefixes, 124 suffixes) are ported; 58 came with #1305, 178 with #1309-#1313 and the last 6 (Splashing) with #1310. Each keeps PD2's name, group, frequency, level and ranges. The row keeps its PD2 row number (a save stores it), so the port edits the neutral row `tools/pd2_cutmaps.py` left (#964) instead of adding one. No new affix ids, so `merge/ids-*.tsv` are unchanged (it adds two string ids, see Strings). A PD2 re-import would neutralise the rows again; the committed tables are the source (ADR 0007).
 
 Bands: PD2's `t1m,t2m` stays `t1m,t2m`, `t2m,t3m` stays, and `t3m,t4m` becomes `t3m` (T4 is cut). `of the Adventurer` (`t1m..t4m`) becomes `t1m,t2m,t3m`.
 
@@ -24,7 +24,7 @@ Bands: PD2's `t1m,t2m` stays `t1m,t2m`, `t2m,t3m` stays, and `t3m,t4m` becomes `
 | filler `map_play_addxp` | `addxp` | |
 | filler `map_play_mag_gold%` | `mag%` | magic find only: the third slot holds one mod, so gold find is not rolled (approximated) |
 
-Which rows roll: 102 of the 236 (spawnable 1, rare 1, frequency above 0). The rest are PD2's second (high-frequency) set, which have `rare` blank (magic-only, kept for parity with PD2), or frequency 0 (`of Darkness` x3, `of the Adventurer`, as in PD2).
+Which rows roll: 105 of the 242 (spawnable 1, rare 1, frequency above 0). The rest are PD2's second (high-frequency) set, which have `rare` blank (magic-only, kept for parity with PD2), or frequency 0 (`of Darkness` x3, `of the Adventurer`, as in PD2).
 
 The player stats are the player's while in the map (Cartographer's rule).
 
@@ -40,7 +40,8 @@ The rows of #1309-#1313 now carry PD2's mods, through Cartographer's catalogue p
 |---|---|---|---|
 | #1309 | `map_mon_extra_fire/ltng/cold/pois/mag` | `mon-mastery-*` | 54 (with the phys-as-extra lines) |
 | #1309 | `map_mon_phys_as_extra_*` | `mon-phys-as-*` | |
-| #1310 | `map_mon_att_pierce` | `mon-att-pierce` (attack rating and missile pierce, one roll) | 30 of 36 |
+| #1310 | `map_mon_att_pierce` | `mon-att-pierce` (attack rating and missile pierce, one roll) | 36 of 36 |
+| #1310 | `map_mon_splash` | `mon-splash` (see Splashing below) | Splashing x6 |
 | #1310 | `map_mon_crush`, `map_mon_openwounds` | `mon-crush`, `mon-openwounds` | |
 | #1310 | `map_mon_lifesteal_hp%` | `mon-lifesteal-hp` (life steal and monster life, one roll) | |
 | #1310 | `map_mon_att_cast_speed` | `mon-cast-speed` (attack and cast speed, one roll) | |
@@ -61,9 +62,14 @@ Cartographer's drop class and extra group stats take a Param (a treasure class, 
 
 PD2 names the groups by monstats number; the port names the Id, which is what `extra_groups` reads. Each stat has its own tooltip string (`MapExtraGroupDoll` to `MapExtraGroupShriek` in `item-modifiers.json`), so the line names the group: "+1 Extra Monster Group: Hell Temptresses".
 
+### Splashing
+
+`item_splashonhit` needs a skill and level in its layer, which a map property cannot give. So `mon-splash` (property 469) sets the mod stat `cartographer_map_mon_splash` (itemstatcost 650, tooltip "Melee Attacks Deal Splash Damage") to the chance, and `statroutes.txt` routes it: `Monster`, `Apply` `item_splashonhit`, `Param` 27521 = (430 << 6) | 1, `proc_SplashDamage` at level 1. Each monster of the map gets that stat and core-rules' splash (event 20, srvdo 190) fires on its melee hits. The route's `Param` needs a Cartographer with monster route layers ([d2r-tools#551](https://github.com/synpoox/d2r-tools/pull/551)).
+
+PD2's first set rolls chance 100 and level 1, its magic-only second set (`rare` blank) chance 150 and level 2. The port uses level 1 for both (splash damage has no skill level scaling), see `docs/deviations.md`.
+
 ## Still neutral
 
-- Splashing (6 rows, [#1310](https://github.com/synpoox/pd2-resurrected/issues/1310)): Cartographer has no splash stat.
 - Approximated: `map_play_mag_gold%` carries magic find only, except on `of Darkness` (combo `map-mag-gold`); `map_mon_curseresist_hp%` carries curse resistance only; the phys-as cold and poison lengths (PD2 params 25 and 125) become Cartographer's fixed 50 and 100 frames; PD2's own `abs` stat names cross-wire the elements (`map_mon_abs_fire%` points at cold, and so on), so the port maps by each property's name (Crimson = fire), an owner-approved deviation (docs/deviations.md). The meaning of `mon-att-pierce` (Cartographer's `mon-tohit` and `mon-missile-pierce`) is not checked in game.
 
 ## Placeholders and rare names
@@ -76,4 +82,4 @@ The five Cartographer affixes (ids 9201-9205: Teeming, Savage, Hastened, of the 
 
 ## Test
 
-`tools/tests/test_map_affixes.py`: every affix row with a `cmap`/`t1m`..`t3m` type names only real properties and only those types, and the rolling set (spawnable 1, rare 1, frequency above 0) is the 102 rows and holds the 27 of #1305, so a dead pool fails. The Splashing rows stay neutral, every `statroutes.txt` row names a real stat, treasure class or monstats Id, and `corrupted`/`corruptor` route to `None` so the map panel skips them (#1349).
+`tools/tests/test_map_affixes.py`: every affix row with a `cmap`/`t1m`..`t3m` type names only real properties and only those types, and the rolling set (spawnable 1, rare 1, frequency above 0) is 105 rows (103 by name and table) and holds the 27 of #1305, so a dead pool fails. The six Splashing rows point at `mon-splash` and its route, every `statroutes.txt` row names a real stat, treasure class or monstats Id, and `corrupted`/`corruptor` route to `None` so the map panel skips them (#1349).

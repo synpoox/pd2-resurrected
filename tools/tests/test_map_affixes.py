@@ -49,7 +49,7 @@ class MapAffixes(unittest.TestCase):
         for _, types in suffix:
             self.assertEqual(types, {"t3m"})
 
-    def test_rolling_set_is_the_expected_102(self):
+    def test_rolling_set_is_the_expected_103(self):
         """spawnable 1, rare 1, frequency > 0: a dead pool (e.g. a lost `rare` flag) fails here."""
         rolling = {
             (t, r["Name"])
@@ -58,15 +58,22 @@ class MapAffixes(unittest.TestCase):
             if types != {"cmap"}  # the tierless Cartographer placeholders roll too
             if r["spawnable"] == "1" and r["rare"] == "1" and int(r.get("frequency") or 0) > 0
         }
-        self.assertEqual(len(rolling), 102)  # 27 from #1305 + 75 from #1309-#1313
+        self.assertEqual(len(rolling), 103)  # 27 from #1305 + 75 from #1309-#1313 + Splashing (#1310)
         self.assertLessEqual(EXPECTED_ROLLING, rolling)
 
-    def test_splashing_stays_neutral(self):
-        """No catalogue stat for map_mon_splash (#1310): the six Splashing rows keep no mods and never spawn."""
+    def test_splashing_rows_use_the_splash_mod(self):
+        """#1310: the six Splashing rows roll mon-splash, which routes to item_splashonhit at proc_SplashDamage's layer."""
         rows = [r for t in ("magicprefix", "magicsuffix") for r in data_tables.rows(t) if r["Name"] == "Splashing"]
         self.assertEqual(len(rows), 6)
         for r in rows:
-            self.assertEqual((r["spawnable"], r["mod1code"]), ("0", ""))
+            self.assertEqual((r["spawnable"], r["mod1code"]), ("1", "mon-splash"))
+        self.assertEqual(sorted({r["mod1min"] for r in rows}), ["100", "150"])
+        prop = next(r for r in data_tables.rows("properties") if r["code"] == "mon-splash")
+        self.assertEqual(prop["stat1"], "cartographer_map_mon_splash")
+        route = next(r for r in data_tables.rows("d2rloader/cartographer/statroutes") if r["Stat"] == prop["stat1"])
+        self.assertEqual((route["Target"], route["Apply"]), ("Monster", "item_splashonhit"))
+        skill = next(r for r in data_tables.rows("skills") if r["skill"] == "proc_SplashDamage")
+        self.assertEqual(int(route["Param"]), (int(skill["*Id"]) << 6) | 1)  # item_splashonhit's layer: skill << 6 | level
 
     def test_statroutes_name_real_stats_tcs_and_monsters(self):
         """Each Param-needing mod stat (#1309-#1313) has one route naming a real stat and a real TC or monstats Id."""
