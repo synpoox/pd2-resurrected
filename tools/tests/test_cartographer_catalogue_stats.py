@@ -99,3 +99,13 @@ class CartographerCatalogueStatsTests(unittest.TestCase):
                 pinned[name] = int(n)
         for stat, _, sid in CATALOGUE:
             assert pinned[stat] == sid, stat
+
+    def test_no_two_map_stats_share_a_description(self):
+        # Two stats with one string print as two identical lines on a map tooltip (#1360).
+        seen = {}
+        for r in data_tables.rows("itemstatcost"):
+            key = r["descstrpos"]
+            # The extra_* monster-group stats share one line on purpose (not part of #1360).
+            if r["Stat"].startswith("cartographer_map_") and key and key != "cartographer:map_extra_groups":
+                assert key not in seen, f"{r['Stat']} and {seen[key]} both print {key}"
+                seen[key] = r["Stat"]
