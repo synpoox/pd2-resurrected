@@ -24,20 +24,21 @@ class AltarPanel(unittest.TestCase):
         self.assertEqual(grid["type"], "InventoryGridWidget")
         self.assertEqual(grid["fields"]["cellCount"], {"x": 1, "y": 1})
         self.assertEqual(kids["confirm"]["fields"]["onClickMessage"], "PanelManager:OpenPanel:" + constant("ConfirmText"))
-        for name in ("cancel", "close"):
+        for name in ("close",):
             self.assertEqual(kids[name]["fields"]["onClickMessage"], "PanelManager:TogglePanel:" + root["name"])
 
-    def test_blank_slot_and_big_cancel(self):  # #1356: no 4x4 cube art, own slot square, X as big as the transmute button
+    def test_amulet_frame_centered_no_x(self):  # #1398: inventory's amulet frame, no inner X, everything centered on the panel
         kids = {c["name"]: c for c in json.loads(LAYOUT.read_text("utf-8"))["children"]}
-        self.assertEqual(kids["background"]["fields"]["filename"], "PANEL\\panel_bg")
+        self.assertNotIn("cancel", kids)
+        self.assertEqual(kids["background"]["fields"]["filename"], r"PANEL\panel_bg")
+        self.assertEqual(kids["slot_bg"]["fields"]["filename"], r"PANEL\Inventory\Inventory_Paperdoll_Amulet")
         self.assertEqual(kids["slot_bg"]["fields"]["rect"], kids[constant("SlotName")]["fields"]["rect"])
-        art = ROOT / "files/data/hd/global/ui/panel/pd2r"
-        for key, name in (("slot_bg", "altar_slot"), ("cancel", "altar_close")):
-            self.assertEqual(kids[key]["fields"]["filename"], "PANEL\\pd2r\\" + name)
-            for suffix in (".sprite", ".lowend.sprite"):
-                self.assertTrue((art / (name + suffix)).is_file())
-        frame_w = struct.unpack_from("<H", (art / "altar_close.sprite").read_bytes(), 6)[0]
-        self.assertEqual(frame_w, 133)  # the X art is cut tight, so it needs a frame bigger than TransmuteButton's 117 to look as large
+        centre = 1162 / 2  # $LeftPanelRect width, _profilehd.json
+        cell, button = 98, 117  # $ItemCellSize, TransmuteButton frame
+        self.assertEqual(kids["slot_bg"]["fields"]["rect"]["x"] + cell / 2, centre)
+        self.assertAlmostEqual(kids["confirm"]["fields"]["rect"]["x"] + button / 2, centre, delta=0.5)  # 117 is odd
+        prompt = kids["prompt"]["fields"]["rect"]
+        self.assertEqual(prompt["x"] + prompt["width"] / 2, centre)
 
     def test_no_cube_desecration(self):
         self.assertNotIn("Desecrate", (ROOT / "plugin/core-events/cube_ops.cpp").read_text("utf-8"))
