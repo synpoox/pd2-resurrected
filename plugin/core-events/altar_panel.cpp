@@ -81,8 +81,14 @@ sigscan::Entry FocusWidget {"WidgetFocus", "altar", sigscan::Kind::Code, 0, 0,
 // 93847: 0x855c90, void* (widget, name): the named child widget, searched down the tree
 sigscan::Entry FindChild {"WidgetFind", "altar", sigscan::Kind::Code, 0, 0,
                           "40 53 55 56 57 41 54 48 83 ec 20 4c 89 7c 24 68 48 8b f2 48 8b f9 e8 ?? ?? ?? ?? 44 0f b6 80 18 01 00 00"};
-sigscan::Entry* const FocusSigs[] = {&FocusPanel, &FetchPanel, &ResetInput, &PadMode, &ClearFocus, &FocusManager,
-                                     &OverlayA,   &OverlayB,   &OverlayC,   &FocusWidget, &FindChild};
+// 93847: 0x8460d0, bool (): the message being dispatched is already handled
+sigscan::Entry MessageHandled {"MessageHandled", "altar", sigscan::Kind::Code, 0, 0,
+                               "48 8b 05 ?? ?? ?? ?? 48 85 c0 74 08 0f b6 80 b8 00 00 00 c3 c3"};
+// 93847: 0x843fc0, void (): marks the message being dispatched handled
+sigscan::Entry MarkHandled {"MessageMarkHandled", "altar", sigscan::Kind::Code, 0, 0,
+                            "48 8b 05 ?? ?? ?? ?? 48 85 c0 74 07 c6 80 b8 00 00 00 01 c3"};
+sigscan::Entry* const FocusSigs[] = {&FocusPanel, &FetchPanel,  &ResetInput,  &PadMode,        &ClearFocus,  &FocusManager, &OverlayA,
+                                     &OverlayB,   &OverlayC,    &FocusWidget, &FindChild,      &MessageHandled, &MarkHandled};
 bool g_focusSigs = false;
 bool g_focusPending = false;  // UI thread only
 uint32_t g_focusWait = 0;
@@ -90,6 +96,7 @@ uint32_t g_focusReady = 0;  // frames both panels have been active
 uint32_t g_focusStage = 0;  // 0: overlay not asked for yet, 1: waiting for it
 void* g_focusedPanel = nullptr;
 uint32_t g_focusCheck = 0;  // frames left before the focus manager is read back
+bool g_padOpen = false;     // UI thread: a pad open asked for the ControllerOverlay, so a close must undo it
 
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::PanelService* g_panels = nullptr;
@@ -152,6 +159,24 @@ auto MoveToInventory(D2RL::PlayerHandle player, D2RL::ItemHandle item) noexcept 
 	return status == items::Result::Success;
 }
 
+// UI thread, after a pad open: what the stash's close does in pad mode (0x23c2e0), the panel's focus cleared and the
+// ControllerOverlay closed, whichever way the altar closed (confirm, B, X or Escape)
+void PadCleanup() noexcept {
+	if (!g_padOpen) {
+		return;
+	}
+	g_padOpen = false;
+	if (void* panel = reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(FullPanelName)) {
+		reinterpret_cast<void (*)(void*) noexcept>(ClearFocus.address)(panel);
+	}
+	const D2RL::Widgets::UiAction close {.structSize = D2RL::Widgets::UiActionSize,
+	                                     .target = "PanelManager",
+	                                     .command = "ClosePanel",
+	                                     .text = "ControllerOverlay"};
+	g_widgets->dispatchUiAction(g_context, &close);
+	plog::Info("altar: pad close: focus cleared, controller overlay closed");
+}
+
 // UI thread: every panel closed (the altar's, and an inventory that was open before it)
 void CloseAll(const D2RL::PluginContext*, void*) noexcept {
 	g_panels->closePanel(g_context, g_panel);
@@ -161,6 +186,7 @@ void CloseAll(const D2RL::PluginContext*, void*) noexcept {
 	                                     .text = ""};
 	const auto status = g_widgets->dispatchUiAction(g_context, &close);
 	plog::Info("altar: panels closed (inventory close message %u)", static_cast<uint32_t>(status));
+	PadCleanup();
 }
 
 struct Roll {
@@ -242,8 +268,10 @@ void AltarOnMessage(void* panel, const uint64_t* message) noexcept {
 	if (message != nullptr && message[0] == InputMessageHash && message[0x11] == ControllerActionBeginHash) {
 		const auto* action = reinterpret_cast<const uint8_t*>(message[0x22]);
 		if (action != nullptr && At<int>(action, 0x10) == BackAction && action[0x18] == 0 &&
+		    !reinterpret_cast<bool (*)() noexcept>(MessageHandled.address)() &&
 		    reinterpret_cast<bool (*)() noexcept>(PadMode.address)()) {
 			g_padClose.store(true);  // closed on the next frame, not inside the panel's own message
+			reinterpret_cast<void (*)() noexcept>(MarkHandled.address)();  // as BankPanel does after its close
 		}
 	}
 }
@@ -283,13 +311,8 @@ void WrapOnMessage(void* panel) noexcept {
 
 // UI thread: B pressed while the altar panel was open
 void PadClose() noexcept {
-	CloseAll(g_context, nullptr);
-	const D2RL::Widgets::UiAction close {.structSize = D2RL::Widgets::UiActionSize,
-	                                     .target = "PanelManager",
-	                                     .command = "ClosePanel",
-	                                     .text = "ControllerOverlay"};
-	g_widgets->dispatchUiAction(g_context, &close);  // the stash's close handler (0x23c2e0) closes it too
 	plog::Info("altar: closed by B");
+	CloseAll(g_context, nullptr);
 }
 
 void LogFocus(const char* when) noexcept {
@@ -328,6 +351,7 @@ void FocusAltarPanel() noexcept {
 	void* overlay = fetch("ControllerOverlay");
 	if (g_focusStage == 0) {
 		g_focusStage = 1;
+		g_padOpen = true;
 		reinterpret_cast<void (*)() noexcept>(ResetInput.address)();
 		if (!active(overlay)) {  // the stash sends it unconditionally; skipped when up so a second open adds nothing
 			const D2RL::Widgets::UiAction open {.structSize = D2RL::Widgets::UiActionSize,
@@ -355,7 +379,7 @@ void FocusAltarPanel() noexcept {
 	WrapOnMessage(panel);
 	void* manager = reinterpret_cast<void* (*)() noexcept>(FocusManager.address)();
 	void* slot = reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address)(panel, SlotName);
-	if (manager != nullptr && slot != nullptr && At<void*>(slot, 0x550) == panel &&
+	if (manager != nullptr && slot != nullptr && At<void*>(slot, 0x550) == panel &&  // +0x550: a widget's panel
 	    (At<void*>(manager, 0x188) != panel || At<void*>(manager, 0x190) == nullptr)) {
 		reinterpret_cast<void (*)(void*, void*) noexcept>(FocusWidget.address)(manager, slot);
 		LogFocus("after the slot focus");
@@ -377,6 +401,13 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 		if (g_panels->getPanelInfo(g_context, g_panel, &open) == D2RL::Panels::Result::Success &&
 		    open.presentationState != D2RL::Panels::PresentationState::Closed) {
 			PadClose();
+		}
+	}
+	if (g_padOpen && !g_focusPending) {  // X or Escape after a pad open
+		D2RL::Panels::PanelInfo shown {.structSize = D2RL::Panels::PanelInfoSize};
+		if (g_panels->getPanelInfo(g_context, g_panel, &shown) == D2RL::Panels::Result::Success &&
+		    shown.presentationState == D2RL::Panels::PresentationState::Closed) {
+			PadCleanup();
 		}
 	}
 	if (g_focusPending) {

@@ -84,3 +84,10 @@ two-panel frame and one help bar ("Hold to Sort / B Close Menu"), the slot frame
 (Transmute hover art) and the bar reads "B Close Menu"; B closes every panel (log `closed by B`); the left stick walks after.
 Earlier builds of this lane: 4 more opens; one DOWN press showed no move, and before the remembered widget was cleared a
 reopen started on the confirm button. A mouse open logs `pad mode 0` and runs none of the pad steps.
+
+Review cycle: every close after a pad open now does what the stash's close does in pad mode (`0x23c2e0`): clears the altar
+panel's focus (`0x857c00`) and sends `PanelManager:ClosePanel:ControllerOverlay` (`PadCleanup`, from `CloseAll` on confirm
+and B, and from the frame watcher for X or Escape). B is skipped when the message is already handled (`0x8460d0`) and marked
+handled after (`0x843fc0`), as BankPanel does. Slot 4 check: pad pickup and place of an amulet, DOWN, A on confirm (an
+uncorrupted amulet: `desecration: refused`, amulet back in the inventory), B, and Escape then the pad; each time the log reads
+`pad close: focus cleared, controller overlay closed`, the frame and help bar are gone and the left stick walks.
