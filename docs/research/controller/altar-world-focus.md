@@ -25,21 +25,21 @@ active flag is at +0x51 (`FUN_1408682b0` asserts, an int3, on a null or inactive
    focuses and the world open does not, so the difference is outside the layout.
 4. `WidgetService::focusWidget`: crashes on the installed loader (given); not used.
 
-5. **Copy what the stash world open does** (lane 1456b, 2026-11-18, slot 3, not proven). Stash path: Bank object
-   OperateFn 32 -> `0x528270` -> `FUN_140480650(client, 0x10)` sends packet 0x77 -> the client opens UI 0x10 -> the
-   BankPanel open handler `FUN_14023cc40`. In pad mode (`FUN_140077e10`) that handler does three things the plugin
-   open does not: resets the input state (`FUN_14008d540`), opens the ControllerOverlay panel (help bar and legends,
-   `FUN_1401f6e50`, `1f5d60`, `1f5a80(overlay, legendId)`), and focuses the panel (`FUN_140858050`). Route 2 did only
-   the last. `altar_panel.cpp` now does all three one frame after `openPanel`, once the panel's +0x51 is set, resolving
-   them by byte signature (PanelFocus, PanelFetch, InputReset, PadMode). Not done: the legend calls, and the stash's
-   own `UIOpen(1)` inventory open (the stash also opens the inventory beside it).
-   Check: PanelFocus and InputReset each matched more than once in the exe, so the scanner refused them and the focus
-   code did not run (log: `altar: signature PanelFocus found more than once, no pad focus`). The open itself worked
-   (panel shown, inventory beside it). The pad result is therefore still unknown. Next: lengthen both patterns
-   until unique (or anchor on a neighbouring unique call), then rerun the pad check.
-   Update (same day, slot 5, pad): the lengthened PanelFocus and InputReset patterns are now unique in the 93847 dump
-   (each matches once; PanelFetch and PadMode also once), and the focus ran: log `altar: pad mode 1, focus signatures ok`,
-   `altar: pad focus set 0 frames after the open`. PadMode (`0x77e10`) returns 1 when the pad is active. Result: the pad
-   frame and the help bar now show and the D-pad drives the panel instead of the character (DOWN then gave "Hold to
-   Sort", a grid focus; LEFT then lit the confirm button). It is not the route's result: the first DOWN did not land on
-   the confirm button. Not closed.
+5. **Copy what the stash world open does** (lane 1456b, 2026-11-18, slot 5). Stash path: Bank object OperateFn 32 ->
+   `0x528270` -> `FUN_140480650(client, 0x10)` sends packet 0x77 -> the client opens UI 0x10 -> the BankPanel open
+   handler `FUN_14023cc40`. In pad mode (`FUN_140077e10`) that handler resets the input state (`FUN_14008d540`),
+   fetches the existing ControllerOverlay panel and, only if it is attached, refreshes it (`0x1f6e50(ov, int ov+0x438)`,
+   `0x1f5d60(ov)`, `0x1f5a80(ov, 0x18)`, `0x1f5a80(ov, 1)`), then focuses the panel (`FUN_140858050`). Route 2 did only
+   the last. `altar_panel.cpp` now does the same one frame after the altar and the inventory beside it are both active
+   (panel +0x51), clearing the inventory's focus first (`0x857c00`, as the switcher does), by byte signature; each
+   signature matches once in the 93847 dump. It logs the focus manager's +0x198 (`FUN_140846020()`) a few frames later
+   against the altar panel.
+   Result of the first version (it dispatched `OpenPanel:ControllerOverlay` and focused straight after the open): the pad
+   frame and help bar showed and the D-pad drove the panel, but the first DOWN gave "Hold to Sort" (a grid focus), not the
+   confirm button; LEFT then lit it. Cause guessed: the inventory opens after the focus and takes it.
+   Second version (slot 3, 2026-11-18): the altar and the inventory are waited for, the inventory's focus is cleared, the
+   overlay is only refreshed when attached, never opened. The focus manager's +0x198 held the altar panel three frames
+   after the focus (log "same"), yet the pad frame and help bar did not show (the overlay was not up), DOWN highlighted
+   nothing, and B did not close the panel. The stash's decompile (0x23cc40) does build an OpenPanel message for
+   "ControllerOverlay" in pad mode, so the code now opens it when it is not up and refreshes it otherwise; that variant is
+   untested. Slot 5 was taken by another lane, so no second try ran.

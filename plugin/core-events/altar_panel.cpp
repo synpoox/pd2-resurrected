@@ -5,7 +5,8 @@
 //
 // Pad focus (#1456): a world open skips D2R's controller steps, so after the open the frame callback repeats what the
 // stash panel does when it opens in pad mode (BankPanel open handler, 93847 0x23cc40): reset the held input
-// (0x8d540), open the ControllerOverlay panel, focus the panel (0x858050). docs/research/controller/altar-world-focus.md.
+// (0x8d540), open the ControllerOverlay if it is not up, else refresh it, focus the panel (0x858050), once the
+// inventory panel beside it is up too. docs/research/controller/altar-world-focus.md.
 //
 // Flow: the altar's operate (lucion.cpp) opens the panel. Confirm moves the amulet from the page to the inventory, runs
 // Desecrate on it there (lucion.cpp; a failed roll makes the brick) and closes every panel. The X and Escape just
@@ -62,10 +63,24 @@ sigscan::Entry ResetInput {"InputReset", "altar", sigscan::Kind::Code, 0, 0,
                            "8b 0d ?? ?? ?? ?? 33 c0 89 05 ?? ?? ?? ?? 89 05 ?? ?? ?? ?? 88 05 ?? ?? ?? ?? 89 05 ?? ?? ?? ?? 89 05 ?? ?? ?? ?? 88 05 ?? ?? ?? ?? c7 05 ?? ?? ?? ?? 10 00 00 00 c7 05 ?? ?? ?? ?? 10 00 00 00 e9 ?? ?? ?? ??"};
 // 93847: 0x77e10, bool (): the pad is the input in use
 sigscan::Entry PadMode {"PadMode", "altar", sigscan::Kind::Code, 0, 0, "48 83 ec 28 e8 ?? ?? ?? ?? 80 b8 c8 0d 00 00 00 75 10"};
-sigscan::Entry* const FocusSigs[] = {&FocusPanel, &FetchPanel, &ResetInput, &PadMode};
+// 93847: 0x857c00, void (panel): clears the panel's focus (the UI switcher does it to the old panel)
+sigscan::Entry ClearFocus {"PanelFocusClear", "altar", sigscan::Kind::Code, 0, 0,
+                           "40 53 48 83 ec 20 48 8b d9 e8 ?? ?? ?? ?? 48 8b d3 48 8b c8 48 83 c4 20 5b e9 ?? ?? ?? ?? cc cc 48 89 5c 24 08 48 89 74 24 10 57 48 83 ec 20 49 8b f8"};
+// 93847: 0x846020, void* (): the focus manager; its +0x198 is the focused panel
+sigscan::Entry FocusManager {"FocusManager", "altar", sigscan::Kind::Code, 0, 0,
+                             "48 83 ec 28 48 8b 05 ?? ?? ?? ?? 48 85 c0 75 1a 48 8d 4c 24 30 88 44 24 30 e8 ?? ?? ?? ?? 84 c0 74 01 cc 48 8b 05 ?? ?? ?? ?? 48 8b 80 d0 00 00 00"};
+// 93847: 0x1f6e50 (overlay, int), 0x1f5d60 (overlay), 0x1f5a80 (overlay, legend): the ControllerOverlay's refresh calls
+sigscan::Entry OverlayA {"OverlayA", "altar", sigscan::Kind::Code, 0, 0, "48 89 74 24 10 57 48 83 ec 20 8b f2 48 8d 15 ?? ?? ?? ??"};
+sigscan::Entry OverlayB {"OverlayB", "altar", sigscan::Kind::Code, 0, 0, "40 56 57 41 57 48 83 ec 20 48 8b f1"};
+sigscan::Entry OverlayC {"OverlayC", "altar", sigscan::Kind::Code, 0, 0,
+                         "40 55 57 41 56 48 8b ec 48 81 ec 80 00 00 00 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 45 f8"};
+sigscan::Entry* const FocusSigs[] = {&FocusPanel, &FetchPanel, &ResetInput, &PadMode, &ClearFocus, &FocusManager, &OverlayA, &OverlayB, &OverlayC};
 bool g_focusSigs = false;
 bool g_focusPending = false;  // UI thread only
 uint32_t g_focusWait = 0;
+uint32_t g_focusReady = 0;  // frames both panels have been active
+void* g_focusedPanel = nullptr;
+uint32_t g_focusCheck = 0;  // frames left before the focus manager is read back
 
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::PanelService* g_panels = nullptr;
@@ -199,31 +214,71 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 	return Action::Consume;
 }
 
-// UI thread, each frame while a pad open waits: the stash's pad steps once the panel is active
+// UI thread, each frame while a pad open waits: the stash's pad steps once the altar and the inventory beside it are active
 void FocusAltarPanel() noexcept {
-	void* panel = reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(FullPanelName);
-	if (panel == nullptr || At<uint8_t>(panel, 0x51) == 0) {
+	auto fetch = reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address);
+	auto active = [](void* p) { return p != nullptr && At<uint8_t>(p, 0x51) != 0; };
+	void* panel = fetch(FullPanelName);
+	void* inventory = fetch("PlayerInventoryExpansionLayout");
+	if (!active(inventory)) {
+		inventory = fetch("PlayerInventoryOriginalLayout");
+	}
+	if (!active(panel) || !active(inventory)) {
+		g_focusReady = 0;
 		if (++g_focusWait > FocusWaitFrames) {
 			g_focusPending = false;
-			plog::Info("altar: pad focus gave up, the panel never became active");
+			plog::Info("altar: pad focus gave up, the panel or the inventory never became active");
 		}
 		return;
 	}
+	if (++g_focusReady < 2) {  // one more frame, so the inventory's own open has finished
+		return;
+	}
 	g_focusPending = false;
+	if (!reinterpret_cast<bool (*)() noexcept>(PadMode.address)()) {
+		return;
+	}
 	reinterpret_cast<void (*)() noexcept>(ResetInput.address)();
-	const D2RL::Widgets::UiAction overlay {.structSize = D2RL::Widgets::UiActionSize,
-	                                       .target = "PanelManager",
-	                                       .command = "OpenPanel",
-	                                       .text = "ControllerOverlay"};
-	const auto status = g_widgets->dispatchUiAction(g_context, &overlay);
+	void* overlay = fetch("ControllerOverlay");  // the stash only refreshes it, and only if it is up
+	if (!active(overlay)) {
+		// The stash's decompile builds an OpenPanel message for "ControllerOverlay" in pad mode (0x23cc40); a slot check with
+		// neither the open nor an attached overlay showed no pad frame and no help bar.
+		const D2RL::Widgets::UiAction open {.structSize = D2RL::Widgets::UiActionSize,
+		                                    .target = "PanelManager",
+		                                    .command = "OpenPanel",
+		                                    .text = "ControllerOverlay"};
+		g_widgets->dispatchUiAction(g_context, &open);
+	} else {
+		reinterpret_cast<void (*)(void*, int) noexcept>(OverlayA.address)(overlay, At<int>(overlay, 0x438));
+		reinterpret_cast<void (*)(void*) noexcept>(OverlayB.address)(overlay);
+		reinterpret_cast<void (*)(void*, int) noexcept>(OverlayC.address)(overlay, 0x18);
+		reinterpret_cast<void (*)(void*, int) noexcept>(OverlayC.address)(overlay, 1);
+	}
+	reinterpret_cast<void (*)(void*) noexcept>(ClearFocus.address)(inventory);
 	reinterpret_cast<void (*)(void*) noexcept>(FocusPanel.address)(panel);
-	plog::Info("altar: pad focus set %u frames after the open (overlay message %u)", g_focusWait, static_cast<uint32_t>(status));
+	g_focusedPanel = panel;
+	g_focusCheck = 5;
+	plog::Info("altar: pad focus set %u frames after the open (overlay %s)", g_focusWait, active(overlay) ? "refreshed" : "not up");
+}
+
+// UI thread: a few frames after the focus, who holds it
+void CheckFocus() noexcept {
+	if (--g_focusCheck != 0) {
+		return;
+	}
+	void* manager = reinterpret_cast<void* (*)() noexcept>(FocusManager.address)();
+	void* held = manager != nullptr ? At<void*>(manager, 0x198) : nullptr;
+	plog::Info("altar: focus manager holds %p, the altar panel is %p (%s)", held, g_focusedPanel,
+	           held == g_focusedPanel ? "same" : "different");
 }
 
 // UI thread, every WatchFrames frames: a closed panel with an amulet still on the page returns it
 void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noexcept {
 	if (g_focusPending) {
 		FocusAltarPanel();
+	}
+	if (g_focusCheck != 0) {
+		CheckFocus();
 	}
 	if (++g_frames % WatchFrames != 0 || g_returning.load(std::memory_order_acquire) || g_returnFailLogged.load()) {
 		return;
@@ -272,6 +327,7 @@ void PickPlayer(const D2RL::PluginContext*, void* user) noexcept {
 		if (pad) {
 			g_focusPending = true;
 			g_focusWait = 0;
+			g_focusReady = 0;
 		}
 	}
 }
