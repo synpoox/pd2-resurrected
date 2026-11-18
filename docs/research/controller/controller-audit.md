@@ -71,22 +71,22 @@ Measured 2026-11-18 on build 93847 in a test slot (virtual XInput pad, level 99 
 | Dead zone | `controller_deadzone`, default 20 (percent); option with `Deadzone.dc6` art. | No option. Measured: the left stick is a radial threshold; 0.315 of full tilt does not move the character, 0.316 does (raw about 10340 of 32767). Not scaled by tilt. Step run 0.25 to 0.5 in 0.05, then 0.315 and 0.316. | A setting would need a hook on the stick read (XInput export or the game's input code). PD2's default (20) is below D2R's fixed 31.6, so D2R's is already the larger of the two. | Medium (hook plus an option row), low value |
 | Button style | `controller_button_style`, default 0, options Auto, Xbox, PlayStation. Confirmed: it selects a glyph set, the `Controls_Xbox_10/20.dc6` or `Controls_Dualshock_10/20.dc6` sheets (16 frames, 10 and 20 px). Not a layout or colour theme. | No option. The glyphs follow the detected pad: Xbox glyphs shown with the XInput pad; `_ps4`, `_ps5`, `_switch` string variants and `controllerbuttons/ps4`, `ps5` sprites exist in the data. | Nothing to port as art. A manual override would need a hook on the device-type check; auto detection already covers real PlayStation pads. | Small to medium, low value |
 
-Recommendations: aim assist, approximate (D2R has no setting; decide after an in-game test with a monster that stays alive, ready-for-human); dead zone, cut (D2R's fixed 0.316 is larger than PD2's default 0.20, no option to port); button style, cut (D2R already picks Xbox or PlayStation glyphs from the device).
+Recommendations: aim assist, ready-for-human (owner: "i'll test first"; D2R has no setting; what to watch for: D2R's native soft lock-on in the facing direction, i.e. whether an attack with a stick direction already snaps to a nearby monster); dead zone, cut (owner, 2026-11-18; D2R's fixed 0.316 is larger than PD2's default 0.20); button style, cut (owner, 2026-11-18; D2R already picks Xbox or PlayStation glyphs from the device). The PD2 defaults above are the install's values (`ProjectDiablo.json`). Whether movement speed changes past the dead-zone threshold was not checked (only moved or not).
 
 ## 5. Pyre-Flies "Controller QOL" plugin
 
 Source: the author's public repo (Pyre-Flies/D2R-Mods, `plugins/controller-qol`, clone at 8dab5f83) and its release `Controller-QOL-Updates-1.3.1+rev.100-PyreFly.zip`. The release was read, never run, and not installed in a slot. Not in `companions/manifest.json` today (the other Pyre-Flies plugins are).
 
-- Licence: all rights reserved (`LICENSE`). Bundling or redistributing needs the author's written permission. Pinning a download link is the only thing the manifest model allows without it, and a pin is only safe if the licence lets users fetch it, which it does not state.
-- Scope: global D2RLoader plugin (works with any mod); requires Windows x64, D2RLoader 1.3.1 and a qualified D2RCore.dll hash, so it breaks on a D2R update until the author re-qualifies.
+- Licence: all rights reserved (`LICENSE`). The owner has approved use of Pyre-Flies' plugins (as with the Loot Filter and Stash Search already pinned); credit as for the others.
+- Scope: global D2RLoader plugin (works with any mod). Requires Windows x64 and D2RLoader 1.3.1. `COMPATIBILITY.txt` qualifies it only for D2R 3.3.93787, checked by a D2RCore.dll SHA-256, and it falls back to native behaviour otherwise. On our build 93847 its native paths would not run today; it needs the author's qualification of 93847 first.
 - XInput: it hooks the XInput exports (see the plugin's XInput hardening note). The test harness and any future core-ui pad hook do the same; two hooks on the same export chain only if both follow the author's `PLUGIN-COEXISTENCE.md`.
 
 | Gap | Covered by Controller QOL? |
 |---|---|
-| Aim assist | No. It adds right-stick cursor aiming (own right-stick dead zone 0.22), not target picking. |
+| Aim assist | Partly: right-stick snap targeting picks an enemy near the cursor (with leading); not a left-stick or attack-direction assist. README @8dab5f83 "Controller aiming": `[aim]` `snapping_enabled` (default true), `snap_radius` 6.0, `switch_advantage`, per-skill `[aim.targeting]` "snap", projectile leading. Right-stick dead zone 0.22. |
 | Dead zone (left stick) | No. Only the right-stick zone. |
 | Button style | No option. |
-| #1440 10x8 inventory | No (not a PD2 layout; it routes Cube and stash focus only). |
+| #1440 10x8 inventory | No (it routes Cube and stash focus only). |
 | #1441 Sacrifice Altar panel | No. |
 | #1442 stack split | No. |
 | #1443 companion input | No. |
@@ -94,4 +94,6 @@ Source: the author's public repo (Pyre-Flies/D2R-Mods, `plugins/controller-qol`,
 
 Conflicts: both own the Cube and stash controller focus (our core-ui panels would compete with its routing); both hook XInput; its right-stick cursor mode changes the stick behaviour our slot tests assume.
 
-Recommendation: do not pin it as a companion for these gaps (it covers none of the five open sub-issues, the licence forbids bundling, and it is tied to one D2RCore.dll hash). Build the #1440 to #1444 pieces as our own core-ui work. Ask the author for permission only if the owner wants right-stick cursor aiming as an opt-in extra.
+Other features it ships (no gap of ours): LB+face-button ground loot; identify, transfer, to-Cube, belt fill and vendor-sell shortcuts; Cube tap-open and transmute; LB/RB and LT/RT tab paging.
+
+Recommendation: it can be pinned as a companion (owner-approved, credit as for the others) once it supports build 93847; today the build check blocks it. Overlap with #1440 to #1444 is none to partial, so we still build those in core-ui. Before pinning, check the conflicts above: both it and the test-harness pad hook XInput, and Cube and stash focus.
