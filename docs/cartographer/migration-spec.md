@@ -91,7 +91,7 @@ The previously confirmed primary seam remains the built, installed mod through t
 
 Good tests observe player behavior, public contract results and generated/installed artifacts. They do not mirror implementation loops, source layout or private call counts. Use fresh run evidence; a skipped check or old log is not a pass.
 
-- **Environment:** single-player, Hell, level 90+, locked approved test slot and copied saves. Read the cheat-command guide first and follow the repo's ten-minute no-progress handoff rule.
+- **Environment:** single-player, Hell, level 90+, locked approved test slot and copied saves. Read the cheat-command guide first and follow the repo's five-minute no-progress handoff rule.
 - **Public contract/coexistence:** test standalone Cartographer plus the optional consumer, one owner per entry point, refusal without consumption, missing service/version behavior, teardown, native property behavior and safe additional destinations. Verify Catalyst metadata is not a native stat buff.
 - **Native maps:** verify each item/catalogue route for the small verified-tileset set, normal acquisition, native properties/text/rarity, entrance-to-boss collision, return travel, maximum size and deterministic room rebuild. No PD2 map identity/tier/affix parity is required.
 - **Catalyst:** verify the adapted recipe's valid/invalid inputs, original eligibility and ingredient consumption, persisted forcing marker, guaranteed event and Altar exclusion. Native properties must otherwise remain intact.

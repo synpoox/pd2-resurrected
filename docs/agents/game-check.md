@@ -1,7 +1,7 @@
 # Game check
 
 An ordered checklist, run after the PR is open (order: `AGENTS.md`, "PR order"). A brief says "game check per `docs/agents/game-check.md`". Each rule lives in one home; this
-file links to it. Test rules (Hell, level 90+, the 10-minute limit, cheat-commands) are in `AGENTS.md`, "Testing
+file links to it. Test rules (Hell, level 90+, the 5-minute limit, cheat-commands) are in `AGENTS.md`, "Testing
 in-game". Slot details are in `docs/agents/game-slots.md`.
 
 Every toolkit command below runs with `MODKIT_PROJECT=pd2-resurrected` and `MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml` set in the shell, and with
