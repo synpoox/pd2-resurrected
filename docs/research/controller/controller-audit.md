@@ -79,7 +79,7 @@ Source: the author's public repo (Pyre-Flies/D2R-Mods, `plugins/controller-qol`,
 
 - Licence: all rights reserved (`LICENSE`). Bundling or redistributing needs the author's written permission. Pinning a download link is the only thing the manifest model allows without it, and a pin is only safe if the licence lets users fetch it, which it does not state.
 - Scope: global D2RLoader plugin (works with any mod); requires Windows x64, D2RLoader 1.3.1 and a qualified D2RCore.dll hash, so it breaks on a D2R update until the author re-qualifies.
-- XInput: it hooks the XInput exports (`its XInput hardening note`). The test harness and any future core-ui pad hook do the same; two hooks on the same export chain only if both follow the author's `PLUGIN-COEXISTENCE.md`.
+- XInput: it hooks the XInput exports (see the plugin's XInput hardening note). The test harness and any future core-ui pad hook do the same; two hooks on the same export chain only if both follow the author's `PLUGIN-COEXISTENCE.md`.
 
 | Gap | Covered by Controller QOL? |
 |---|---|
