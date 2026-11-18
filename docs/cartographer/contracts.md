@@ -22,7 +22,7 @@ None of it reads PD2 map items, affixes or recipes. PD2's map rows, code and hoo
 
 ## Frozen consumer contracts
 
-- **Map icons**: the 60 owner-supplied icons are in `files/data/hd/global/ui/items/misc/pd2/cartoicon_<white|gold|red>_NN(.lowend).sprite` (white 01-20, gold 21-40, red 41-60; 98x98 HD, 49x49 lowend) and as legacy graphics `files/data/global/items/cartoicon_<colour>_NN.dc6` (28x28, units palette, as `icemap.dc6`). A map's misc `invfile` is `cartoicon_<colour>_NN`. A map's `items.json` asset is `pd2/cartoicon_<colour>_NN`, and it needs a copy of `hd/items/misc/pd2/icemap.json` under the same name for its ground model. Maps m06-m25 use 20 of them; the rest are for future maps.
+- **Map icons**: the 60 owner-supplied icons are in `files/data/hd/global/ui/items/misc/pd2/cartoicon_<white|gold|red>_NN(.lowend).sprite` (white 01-20, gold 21-40, red 41-60; 98x98 HD, 49x49 lowend) and as legacy graphics `files/data/global/items/cartoicon_<colour>_NN.dc6` (28x28, units palette, as `icemap.dc6`). A map's misc `invfile` is `cartoicon_<colour>_NN`. A map's `items.json` asset is `pd2/cartoicon_<colour>_NN`, and it needs a copy of `hd/items/misc/pd2/icemap.json` under the same name for its ground model. Maps m01-m25 use 25 of them; the rest are for future maps.
 - **Map item**: misc type `t1m`/`t2m`/`t3m` (children of `cmap`), `pSpell 16`, `belt 0`, `useable 1`, `spellicon -1`, `compactsave 0`. A lane adds a map by adding a `maps.txt` row and a misc row (clone `m01`).
 - **Opening**: Harrogath, Hell, red portal, one map per game (Cartographer's rule). No lane changes it.
 - **Event link**: [event-link.md](../features/event-link.md) (#944). Metadata on layered stats only.
