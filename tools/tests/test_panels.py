@@ -1,11 +1,16 @@
 import struct
+import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_panels as P  # noqa: E402
 from pd2_skilltrees import Image  # noqa: E402
+import pd2_table  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def ramp(w: int, h: int) -> Image:
@@ -40,6 +45,19 @@ class PanelsTests(unittest.TestCase):
         self.assertTrue(out.endswith(b"extra frame"))
         _, wide = P.dc6_panel(out)
         self.assertEqual([wide.px[(1 * 5 + x) * 4] for x in range(5)], [0, 1, 2, 2, 4])
+
+    @unittest.skipUnless((pd2_table.D2R_DATA / "hd/global/ui/panel/inventory/classic_background.sprite").is_file(),
+                         "D2R art not fetched: `modkit fetch`")
+    def test_altar_art_rebuilds_byte_for_byte(self):  # #1413
+        with tempfile.TemporaryDirectory() as tmp:
+            art = [P.HD_ALTAR, P.HD_ALTAR.replace(".sprite", ".lowend.sprite"), P.SD_ALTAR]
+            for rel in (*art, "files/data/hd/global/ui/panel/horadric_cube/horadriccube_bg.sprite",
+                        "files/data/global/ui/panel/supertransmogrifier.dc6", "files/data/global/ui/panel/pd2_invchar6.dc6"):
+                (Path(tmp) / rel).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(ROOT / rel, Path(tmp) / rel)
+            P.build_altar(Path(tmp))
+            for rel in art:
+                self.assertEqual((Path(tmp) / rel).read_bytes(), (ROOT / rel).read_bytes(), rel)
 
 
 if __name__ == "__main__":

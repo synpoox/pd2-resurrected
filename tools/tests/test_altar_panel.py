@@ -36,6 +36,7 @@ class AltarPanel(unittest.TestCase):
         self.assertNotIn("cancel", kids)
         self.assertEqual(kids["background"]["fields"]["filename"], r"PANEL\pd2r\altar_bg")
         self.assertTrue((ROOT / "files/data/hd/global/ui/panel/pd2r/altar_bg.lowend.sprite").is_file())
+        self.assertTrue((ROOT / "files/data/global/ui/panel/pd2r_altar.dc6").is_file())  # #1413: the legacy panel art
         self.assertEqual(kids["slot_bg"]["fields"]["filename"], r"PANEL\Inventory\Inventory_Paperdoll_Amulet")
         self.assertEqual(kids["slot_bg"]["fields"]["rect"], kids[constant("SlotName")]["fields"]["rect"])
         cell, button = 98, 117  # $ItemCellSize, TransmuteButton frame

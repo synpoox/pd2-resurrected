@@ -13,7 +13,11 @@ import json
 import struct
 from pathlib import Path
 
+import pd2_art
+import pd2_table
 from pd2_skilltrees import Image, read_sprite
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def widen(img: Image, grid: list[int], cell: int, size: list[int], border: int) -> None:
@@ -113,3 +117,113 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
             widen(img, g["grid"], g["cell"], g["size"], g["border"])
             dest.write_bytes(head + img.px)
     print(f"  panel-grids: {len(json.loads(rule.read_text('utf-8')))} panels widened")
+
+
+# The Sacrifice Altar's panel art (#1398, #1413): the Horadric Cube's panel with its 4 x 4 opening filled with the
+# inventory's stone and the inventory's amulet-slot frame set in the middle. The inputs are the repo's committed cube
+# art and D2R's pristine inventory art (modkit's cache, as pd2_table.D2R_DATA finds it).
+HD_ALTAR = "files/data/hd/global/ui/panel/pd2r/altar_bg.sprite"  # + the .lowend.sprite twin
+SD_ALTAR = "files/data/global/ui/panel/pd2r_altar.dc6"
+
+
+def altar_hd(cube, inv):
+    """The HD panel from the cube art and D2R's inventory classic_background (modkit images, (w, h, rgba))."""
+    _, _, im = pd2_art.modkit()
+    iw, _ih, ic = inv
+    ox, oy, n = 385, 540, 385  # the cube's 4x4 opening inside the gold frame
+    sx, sy, sw = 322, 160, 143  # clean stone strip of the inventory, left of the torso slot
+    ov, offs = 22, [0, 190, 95]
+    starts = [k * (sw - ov) for k in range(3)]
+    fill = bytearray(n * n * 4)
+    for y in range(n):
+        for x in range(n):
+            acc, tw = [0.0, 0.0, 0.0], 0.0
+            for k, s in enumerate(starts):
+                lx = x - s
+                if 0 <= lx < sw:
+                    wgt = 1.0
+                    if k > 0 and lx < ov:
+                        wgt = (lx + 0.5) / ov
+                    if k < 2 and lx >= sw - ov and x >= starts[k + 1]:
+                        wgt = 1 - (lx - (sw - ov) + 0.5) / ov
+                    o = ((sy + offs[k] + y) * iw + sx + lx) * 4
+                    for i in range(3):
+                        acc[i] += ic[o + i] * wgt
+                    tw += wgt
+            d = min(x, y, n - 1 - x, n - 1 - y)  # recessed edge: the stone sits under the gold frame
+            shade = 0.55 + 0.45 * min(d, 10) / 10
+            o = (y * n + x) * 4
+            fill[o:o + 4] = bytes([min(255, round(a / tw * shade)) for a in acc] + [255])
+    img = im.paste(cube, (n, n, bytes(fill)), ox, oy)
+    fx, fy, fw, fh = 703, 336, 130, 135  # the inventory's amulet slot frame; its slot cell is at inventory (718, 353)
+    frame = im.crop(inv, fx, fy, fw, fh)[2]
+    px0, py0 = 529 - (718 - fx), 683 - (353 - fy)  # the layout rect of slot_bg / AltarSlot: centred in the opening
+    w, h, base = img
+    out = bytearray(base)
+    for y in range(fh):
+        for x in range(fw):
+            a = min(min(x, y, fw - 1 - x, fh - 1 - y) + 1, 4) / 4  # feather the outer 3 px into the stone
+            so, do = (y * fw + x) * 4, ((py0 + y) * w + px0 + x) * 4
+            for i in range(3):
+                out[do + i] = round(frame[so + i] * a + out[do + i] * (1 - a))
+    return w, h, bytes(out)
+
+
+def altar_sd(root: Path, d2r_data: Path) -> bytes:
+    """The legacy panel (a DC6 of 4 frames, 2 x 2) from the committed supertransmogrifier.dc6 and pd2_invchar6.dc6."""
+    dc6, _, im = pd2_art.modkit()
+    pal = dc6.palette((d2r_data / "global/palette/act1/pal.dat").read_bytes())
+    panel = root / "files/data/global/ui/panel"
+
+    def compose(path, first):
+        fr = [dc6.decode(f, pal) for f in dc6.read(path)[first:first + 4]]
+        out = im.blank(320, fr[0][1] + fr[2][1])
+        for i, f in enumerate(fr):
+            out = im.paste(out, f, 256 * (i % 2), fr[0][1] * (i // 2))
+        return out
+
+    cube = compose(panel / "supertransmogrifier.dc6", 0)
+    stats = compose(panel / "pd2_invchar6.dc6", 0)  # the character panel: the inventory's stone, with a clean patch
+    inv = compose(panel / "pd2_invchar6.dc6", 4)
+    ox, oy, n = 104, 139, 115  # the cube's 4x4 opening inside its gold frame
+    src = im.crop(stats, 4, 328, 116, 100)
+    greys = sorted({src[2][i:i + 3] for i in range(0, len(src[2]), 4)})  # only the stone's own colours
+    sc = bytearray()
+    for y in range(n):  # nearest-neighbour stretch keeps the DC6 colours exact
+        for x in range(n):
+            o = ((y * 100 // n) * 116 + x * 116 // n) * 4
+            sc += src[2][o:o + 4]
+    for y in range(n):
+        for x in range(n):
+            k = 0.55 + 0.45 * min(min(x, y, n - 1 - x, n - 1 - y), 3) / 3
+            o = (y * n + x) * 4
+            v = [sc[o + i] * k for i in range(3)]
+            sc[o:o + 3] = min(greys, key=lambda g: sum((g[i] - v[i]) ** 2 for i in range(3)))
+    img = im.paste(cube, (n, n, bytes(sc)), ox, oy)
+    # the inventory's neck frame (gold box x 197-229, y 37-70 around slot rect (202, 43)); the slot rect maps to (150, 185)
+    img = im.paste(img, im.crop(inv, 195, 35, 37, 38), 195 + 150 - 202, 35 + 185 - 43)
+    parts = [im.crop(img, 0, 0, 256, 256), im.crop(img, 256, 0, 64, 256), im.crop(img, 0, 256, 256, 176),
+             im.crop(img, 256, 256, 64, 176)]
+    return _dc6_bytes(dc6, [dc6.encode(p, pal) for p in parts])
+
+
+def _dc6_bytes(dc6, frames) -> bytes:
+    """dc6.write only writes a path: write to a temp file and read it back."""
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        dc6.write(Path(tmp) / "a.dc6", frames)
+        return (Path(tmp) / "a.dc6").read_bytes()
+
+
+def build_altar(root: Path = ROOT, d2r_data: Path = pd2_table.D2R_DATA) -> None:
+    """Rebuild the altar panel's three art files under root from root's cube art and D2R's inventory art."""
+    _, _, im = pd2_art.modkit()
+    cube = im.read_sprite(root / "files/data/hd/global/ui/panel/horadric_cube/horadriccube_bg.sprite")[0]
+    inv = im.read_sprite(d2r_data / "hd/global/ui/panel/inventory/classic_background.sprite")[0]
+    im.write_sprite(root / HD_ALTAR, altar_hd(cube, inv))
+    (root / SD_ALTAR).write_bytes(altar_sd(root, d2r_data))
+
+
+if __name__ == "__main__":
+    build_altar()
+    print("altar panel art rebuilt")
