@@ -1,8 +1,10 @@
-"""#1355: Desecration put "Monster Physical Damage as Fire" on every amulet because properties.txt *Id 443 (desecrate) was
-shared with a Cartographer row; the engine finds a property by *Id, so the later row won. *Ids must be unique, and the
-851-999 roll over the amulet corruption rows must reach PD2's eight outcomes with PD2's ranges."""
+"""#1355: Desecration put "Monster Physical Damage as Fire" on every amulet. D2R numbers properties by row (past the
+Expansion row), but corruption_roll.cpp used the *Id column, so corruptnum's 1001 landed on row 443, a Cartographer stat.
+The plugin's property numbers must equal the rows, and the 851-999 roll over the amulet corruption rows must reach PD2's
+eight outcomes with PD2's ranges."""
 import collections
 import random
+import re
 import unittest
 
 import data_tables
@@ -16,13 +18,14 @@ class DesecrationRolls(unittest.TestCase):
     def setUp(self):
         data_tables.need(self)
 
-    def test_property_ids_are_unique(self):
-        ids = collections.Counter(r["*Id"] for r in data_tables.rows("properties") if r["*Id"])
-        assert [i for i, n in ids.items() if n > 1] == []
-
-    def test_desecrate_ids_belong_to_desecrate(self):
-        ids = {r["*Id"]: r["code"] for r in data_tables.rows("properties")}
-        assert ids["443"] == "desecrate" and ids["444"] == "desecratenum"
+    def test_plugin_property_numbers_are_rows_past_expansion(self):
+        codes = [r["code"] for r in data_tables.rows("properties") if r["code"] != "Expansion"]
+        src = (data_tables.ROOT / "plugin/core-events/corruption_roll.cpp").read_text()
+        for name, code in (("PropCorrupt", "corrupt"), ("PropCorruptNum", "corruptnum"), ("PropDesecrate", "desecrate"),
+                           ("PropDesecrateNum", "desecratenum")):
+            assert int(re.search(name + r"\s*=\s*(\d+)", src).group(1)) == codes.index(code), name
+        cube = (data_tables.ROOT / "plugin/core-rules/cube_rules.cpp").read_text()
+        assert int(re.search(r"PropCorruptNum\s*=\s*(\d+)", cube).group(1)) == codes.index("corruptnum")
 
     def test_many_rolls_reach_all_eight_pd2_outcomes(self):
         # corruption_roll.cpp: roll 851-999, the first row (file order) whose value beats the roll

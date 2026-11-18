@@ -1,3 +1,3 @@
 #### Fixes
 
-- Desecration gives its real outcomes again, not "Monster Physical Damage as Fire" every time.
+- Desecration and the corruption roll write the right properties, not a map stat.
