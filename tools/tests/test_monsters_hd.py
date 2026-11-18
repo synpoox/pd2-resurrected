@@ -34,6 +34,10 @@ class EntriesTests(unittest.TestCase):
             "skeletonIce": "skeleton1", "necroarcher": "sk_archer1", "shadow": "baal", "ZharTheMad": "baal",
             "Iskatu": "skeleton1", "bonemage": "skeleton1"})  # D2R's lookup is case-sensitive: PD2's own spelling
 
+    def test_equals_names_a_model_the_mod_ships(self):
+        self.assertEqual(H.entries(table(MOD), table(D2R), MODELS, LIKES | {"skeletonice": "=ascendant"})["skeletonIce"],
+                         "ascendant")
+
     def test_refusals(self):
         cases = [
             ({"zharthemad": "baalclone", "bonemage": "skeleton1"}, r"no HD model for 1 new monsters.*Iskatu \(!8\)"),

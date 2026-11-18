@@ -53,7 +53,9 @@ def entries(pd2: Table, d2r: Table, models: dict, likes: dict[str, str]) -> dict
             auto = top[0][0]
         else:  # no model, or a tie that only D2R's row order would break
             auto = None
-        if like is not None:
+        if like is not None and like.startswith("="):
+            out[name] = like[1:]  # a model the mod ships itself, not a D2R monster's
+        elif like is not None:
             if like.lower() not in models:
                 raise MonsterHdError(f"'{name}': '{like}' has no monsters.json entry")
             if models[like.lower()] == auto:

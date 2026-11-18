@@ -75,6 +75,11 @@
     "MapTier1": "Tier: 1",
     "MapTier2": "Tier: 2",
     "MapTier3": "Tier: 3",
+    "DcloneArenaMap": "Diablo Clone Arena",
+    "MapDropWeapon": "%+d%% Chance of a Bonus Weapon Drop",
+    "MapDropArmor": "%+d%% Chance of a Bonus Armor Drop",
+    "MapDropCrafting": "%+d%% Chance of a Bonus Crafting Drop",
+    "MapDropJewelry": "%+d%% Chance of a Bonus Jewelry Drop",
     "MapExtraGroupDoll": "%+d Extra Monster Group: Undead Stygian Dolls",
     "MapExtraGroupSucc": "%+d Extra Monster Group: Hell Temptresses",
     "MapExtraGroupVamp": "%+d Extra Monster Group: Dark Lords",
@@ -115,7 +120,6 @@
     "m23": "Tomb of Zoltun Kulle Map",
     "m24": "Lost Temple Map",
     "m25": "Dark Temple Map",
-    "Large": "Large",
     "of the Adventurer": "of the Adventurer"
   },
   "entries": {
@@ -1721,7 +1725,6 @@
     "m23": [51537, "item-names.json"],
     "m24": [51538, "item-names.json"],
     "m25": [51539, "item-names.json"],
-    "Large": [51540, "item-nameaffixes.json"],
     "of the Adventurer": [51541, "item-nameaffixes.json"],
     "MapTier1": [51542, "item-modifiers.json"],
     "MapTier2": [51543, "item-modifiers.json"],
