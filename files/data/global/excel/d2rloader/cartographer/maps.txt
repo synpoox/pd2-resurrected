@@ -8,7 +8,7 @@ Phlegethon	Lava	Sprawl	m06	Medium	87	80	Lieutenant of Sin	minionmap,pantherwoman
 River of Blood	Durance	Branching	m07	Medium	89	80	The Mad Philosopher	doomknightmap,vilemothermap,zealotmap,oblivionknightmap,deathmaulermap,sk_archermap,regurgitatormap,councilmembermap	150	100	100
 Horazon's Memory	Arcane	Loop	m08	Medium	88	80	Deathmaiden Madinsane	zealotmap2,cantormap2,oblivionknightmap2,minionmap2	150	100	100
 Arreat Battlefield	Siege		m09	Medium	89	80	Armorsmith of Equality	goatmanmap,bigheadmap,reanimatedhordemap,thornhulkmap,mosquitomap	150	100	100
-Howling Plateau	Mesa		m10	Medium	88	80	Borq the Consumed	zealotmap2,siegebeastmap2,councilmembermap2,oblivionknightmap2	150	100	100
+Ashen Plains	Mesa		m10	Medium	88	80	Borq the Consumed	sandleapermap2,thornhulkmap2,pantherwomanmap2,mosquitomap2,fetishmap2,slingermap2,deathmaulermap2,cantormap2	150	100	100
 Kehjistan Marketplace	Desert		m11	Medium	89	80	Toadflax the Tainted	mosquitomap,cr_archermap,unravelermap,sandleapermap	150	100	100
 Shadows of Westmarch	Wilderness		m12	Medium	87	80	The Cow Queen	minionmap,goatmanmap,slingermap,siegebeastmap	150	100	100
 Ruins of Viz'jun	Kurast		m13	Medium	88	80	Toadflax the Tainted	cr_lancermap,goatmanmap,cr_archermap,bigheadmap,cantormap,unravelermap,arachmap,thornhulkmap,sandleapermap,mosquitomap	150	100	100
