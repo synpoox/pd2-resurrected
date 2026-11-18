@@ -1704,10 +1704,10 @@ auto UnlinkIfAttached(Unit* item, Unit* player) noexcept -> bool {
 }
 
 // Same-name unique charms stored (mode 0, so never the cursor) with their top row in rows 5-8, item excluded; each linked one is
-// unlinked (counted in unlinked). Returns how many there are, 0 when item is not in the player's item list: the client's remove
+// unlinked (counted in unlinked; pass nullptr to only count, as the draw path must). Returns how many there are, 0 when item is not in the player's item list: the client's remove
 // handler 0x1c60a0 asks about the leaving copy after 0x389820 took it out (mode and cell unchanged) and unlinks it and refreshes
 // 0x1c9610 only on a yes, so a leaving copy gets D2RCore's answer. A twin D2RCore refuses (unidentified, requirements) still counts.
-auto UnlinkTwins(Unit* item, Unit* player, uint32_t* unlinked) noexcept -> uint32_t {
+auto CountTwins(Unit* item, Unit* player, uint32_t* unlinked) noexcept -> uint32_t {
 	using namespace d2r::rva;
 	if (player == nullptr || d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item) != QualityUnique) {
 		return 0;
@@ -1735,7 +1735,9 @@ auto UnlinkTwins(Unit* item, Unit* player, uint32_t* unlinked) noexcept -> uint3
 		    (d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitPackedXY)(other) >> 16) >= CharmFirstActiveRow &&
 		    d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(other) == QualityUnique && uniqueRow(other) == mine) {
 			++found;
-			*unlinked += UnlinkIfAttached(other, player) ? 1 : 0;
+			if (unlinked != nullptr) {
+				*unlinked += UnlinkIfAttached(other, player) ? 1 : 0;
+			}
 		}
 	}
 	return found;
@@ -1751,6 +1753,13 @@ auto CharmSwitchedOff(Unit* item, Unit* player, uint32_t& xy, uint8_t& page) noe
 	return page == 0 && (xy >> 16) < CharmFirstActiveRow;  // a custom page is never judged by its grid row
 }
 
+// True for a same-name unique charm stored in rows 5-8 with a twin there (#1288): both go inactive. Only counts unless
+// `unlinked` is given, so the draw path (#1377) shares it without changing state.
+auto CharmTwinOff(Unit* item, Unit* player, uint32_t xy, uint8_t page, uint32_t* unlinked) noexcept -> bool {
+	return page == 0 && (xy >> 16) >= CharmFirstActiveRow &&
+	       d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitModeOf)(item) == 0 && CountTwins(item, player, unlinked) != 0;
+}
+
 auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 	const int32_t active = g_charmActiveOriginal(item, player);
 	if (active == 0 || item == nullptr) {
@@ -1762,8 +1771,7 @@ auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 	uint32_t unlinked = 0;
 	bool off = CharmSwitchedOff(item, player, xy, page);
 	const uint32_t row = xy >> 16;
-	const bool twin = !off && page == 0 && row >= CharmFirstActiveRow &&
-	                  d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::rva::UnitModeOf)(item) == 0 && UnlinkTwins(item, player, &unlinked) != 0;
+	const bool twin = !off && CharmTwinOff(item, player, xy, page, &unlinked);
 	if (twin) {
 		unlinked += UnlinkIfAttached(item, player) ? 1 : 0;
 		off = true;
@@ -1794,7 +1802,8 @@ auto ReqDisplayInRow(Unit* item, Unit* player, uint64_t a3, uint64_t a4, uint64_
 	const int32_t ok = g_reqDisplayOriginal(item, player, a3, a4, a5, a6, a7);
 	uint32_t xy = 0;
 	uint8_t page = 0;
-	return ok != 0 && CharmSwitchedOff(item, player, xy, page) ? 0 : ok;
+	// a same-name twin in rows 5-8 is switched off too (#1377); counted only, the draw never unlinks
+	return ok != 0 && (CharmSwitchedOff(item, player, xy, page) || (g_charmActiveOriginal(item, player) != 0 && CharmTwinOff(item, player, xy, page, nullptr))) ? 0 : ok;
 }
 
 // Swaps the .maho thunk slot behind the E8 call at `entry` + `callOffset` for `wrapper`; the slot's old target goes to
