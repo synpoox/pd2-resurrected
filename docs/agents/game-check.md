@@ -50,6 +50,21 @@ One shot should answer the question. Before each shot:
 - **Water under canopy:** `cheat-commands.md` lists no canopy or tree toggle. Warp to where the canopy is thin, or
   say in the report that the canopy hid it.
 
+## Driving the pad
+
+Three lanes ran out of the 5-minute limit before they got pad focus. These steps are what they lacked.
+
+- Build d2r-test-harness from its origin/main in a scratch detached worktree. Never use the main harness checkout; it holds someone else's work.
+- Press buttons with `tools/pad.py --slot N press <BTN>` (its README documents it). Use 150 ms presses.
+- The game follows the last device used. Once the pad check starts, do not click or move the mouse through `game_ctl`.
+- Close every panel first. START opens the inventory only when no panel is open. Pressed while a panel is open, it closes that panel.
+- After a panel opens, no grid has focus until the first D-pad press. The help bar shows "Hold to Sort" once a grid has focus.
+- Focus shows as a green cell highlight, plus a tooltip on an occupied cell.
+- LT and RT page the main menu tabs. LB and RB page the skill tabs. With Controller QoL, LB is the item modifier by default.
+- The right stick moves a free cursor at a speed that is not linear, so you cannot land it on one cell. Use the D-pad for cell focus.
+- Spawned items can show stand-in art. Tell them apart by their tooltip after focusing, not by their icon.
+- If focus still does not show within the 5-minute limit, stop and hand off. Do not try workarounds.
+
 ## Worktree hygiene
 
 Remove a worktree with the toolkit's `tools/worktree_remove.ps1 -Path <worktree> [-DeleteBranch]`: it unlinks every junction first and
