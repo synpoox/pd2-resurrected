@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = (ROOT / "plugin/core-events/altar_panel.cpp").read_text("utf-8")
 LAYOUT = ROOT / "files/data/global/ui/layouts/core-maps/SacrificeAltarhd.json"
+LEGACY = LAYOUT.with_name("SacrificeAltar.json")  # #1410: legacy (G key) loads the non-hd layout; without it the panel fails to open
 
 
 def constant(name):
@@ -15,7 +16,11 @@ def constant(name):
 
 class AltarPanel(unittest.TestCase):
     def test_layout_matches_plugin(self):
-        root = json.loads(LAYOUT.read_text("utf-8"))  # strict: a plugin layout allows no trailing commas
+        for layout in (LAYOUT, LEGACY):
+            with self.subTest(layout.name):
+                self.check_layout(json.loads(layout.read_text("utf-8")))  # strict: a plugin layout allows no trailing commas
+
+    def check_layout(self, root):
         self.assertEqual(root["type"], "Panel")
         self.assertEqual(root["name"], "core-maps/" + constant("PanelId"))
         kids = {c["name"]: c for c in root["children"]}
