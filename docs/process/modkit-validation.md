@@ -48,9 +48,7 @@ Blank where PD2 names a row no table defines (1.13c finds no row, so the game be
 | 2 | skills EType `magic` (IskatuMagicOrb, SharptoothUnholyOrb) | an empty EType means physical, which may not match 1.13c's "no row" |
 | 2 | skills aurastatcalc1/2 Cyclone ArmorMon | formula has an unmatched `)`; what 1.13c computes is unchecked |
 | 1 | skills calc2 Bone Wall `par34 in par34` | skills have no parameter 34; unchecked |
-| 2 | skills DmgSymPerCalc and EDmgSymPerCalc MegademonArmaBoss | names skill `Fissure`, which PD2 lacks |
 | 1 | skills EDmgSymPerCalc Dark Pact | formula over D2R's 255-byte limit; needs a shorter equal formula or a plugin |
-| 2 | treasureclassex MapStat DropCrafting Item2, InvaderBarbarian1h Item4 | TC defined further down; fixing means moving rows (ids, order) |
 | 2 | treasureclassex Act 1 (H) Weap A / Armo A Item9 | names `Act 5 (N) Weap C` / `Armo C`, which no table defines; a drop-list change |
 
 The 258 "need a plugin" findings (function numbers above D2R's, free slots, extended saves) are not errors; the plugins provide them.
