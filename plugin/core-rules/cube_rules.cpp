@@ -28,6 +28,7 @@
 
 #include <D2RLPlugin/game_rules.h>
 #include <D2RLPlugin/inventory.h>
+#include <D2RLPlugin/data_tables.h>
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle.h>
 #include <D2RLPlugin/threads.h>
@@ -337,6 +338,49 @@ auto Reroll(Game* game, Unit* player) noexcept -> uint64_t {
 	return 0;
 }
 
+// PD2's quiver tiers (#1438): D2R's misc table has no normcode/ubercode/ultracode columns, so the cube's bas/exc/eli tests and
+// "useitem,mod,exc|eli" see no tier for a quiver. The items record holds them for every item (normcode +0x84, ubercode +0x88,
+// ultracode +0x8c, as weapons and armor); misc rows leave them 0, so this writes PD2's links after each table load.
+// Native: the SDK's table views are read-only.
+constexpr int ItUberCode = 0x88, ItUltraCode = 0x8c;
+constexpr const char* QuiverTiers[2][3] = {{"aqv", "aqv2", "aqv3"}, {"cqv", "cqv2", "cqv3"}};
+
+void LinkQuiverTiers() noexcept {
+	using namespace d2r::rva;
+	const D2RL::DataTableService* tables = nullptr;
+	if (g_context->QueryService(&tables) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasDataTableServiceField(tables, D2RL::DataTableServiceRequiredSize)) {
+		plog::Info("quiver tiers: no data table service");
+		return;
+	}
+	int linked = 0;
+	for (uint32_t flag = 0; flag < DataFlags; ++flag) {
+		D2RL::DataTables::TableView view {.structSize = D2RL::DataTables::TableViewSize};
+		if (d2r::Engine<void* (*)(uint32_t) noexcept>(DataTables)(flag) == nullptr ||
+		    tables->getTable(g_context, static_cast<D2RL::DataTables::Bank>(flag), D2RL::DataTables::TableId::Items, &view) !=
+		        D2RL::DataTables::Result::Success) {
+			continue;
+		}
+		for (uint32_t i = 0; i < view.rowCount; ++i) {
+			auto* row = const_cast<uint8_t*>(d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ItemRecord)(flag, static_cast<int32_t>(i)));
+			if (row == nullptr) {
+				continue;
+			}
+			for (const auto& tier : QuiverTiers) {
+				for (const char* code : tier) {
+					if (At<uint32_t>(row, ItCode) == items::MakeItemCode(code[0], code[1], code[2], code[3] != 0 ? code[3] : ' ')) {
+						*reinterpret_cast<uint32_t*>(row + ItNormCode) = items::MakeItemCode(tier[0][0], tier[0][1], tier[0][2]);
+						*reinterpret_cast<uint32_t*>(row + ItUberCode) = items::MakeItemCode(tier[1][0], tier[1][1], tier[1][2], tier[1][3]);
+						*reinterpret_cast<uint32_t*>(row + ItUltraCode) = items::MakeItemCode(tier[2][0], tier[2][1], tier[2][2], tier[2][3]);
+						plog::Info("quiver tiers: bank %u row %u %s linked", flag, i, code);
+						++linked;
+					}
+				}
+			}
+		}
+	}
+	plog::Info("quiver tiers: %d records linked", linked);
+}
 // Switches the op-31 rows on after each table load (top of file). Native: the SDK's table views are read-only.
 void __cdecl EnableRerollRows(const D2RL::PluginContext*, const D2RL::Lifecycle::DataTablesLoadedEvent*, void*) noexcept {
 	using namespace d2r::rva;
@@ -355,6 +399,7 @@ void __cdecl EnableRerollRows(const D2RL::PluginContext*, const D2RL::Lifecycle:
 		}
 	}
 	plog::Info("reroll: %d demonic cube rows switched on", enabled);
+	LinkQuiverTiers();
 }
 
 template <class Service>
