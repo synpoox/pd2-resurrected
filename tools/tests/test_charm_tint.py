@@ -17,7 +17,7 @@ class CharmTint(unittest.TestCase):
     def test_layouts_place_it(self):
         base = (DATA / "global/ui/layouts/playerinventoryoriginallayouthd.json").read_text("utf-8-sig")
         self.assertIn('"rect": { "x": 93, "y": 1289 }', base)  # grid y 897 + 4 rows x 98
-        self.assertIn("inventory_charm_tint", base)
+        self.assertIn('"PANEL\\\\pd2r\\\\inventory_charm_tint"', base)  # JSON-escaped backslashes
         exp = (DATA / "global/ui/layouts/playerinventoryexpansionlayouthd.json").read_text("utf-8-sig")
         self.assertIn('"name": "charm_tint"', exp)
 

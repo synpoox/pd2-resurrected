@@ -21,7 +21,7 @@
             "type": "ImageWidget", "name": "charm_tint",
             "fields": {
                 "rect": { "x": 93, "y": 1289 },
-                "filename": "PANEL\pd2r\inventory_charm_tint"
+                "filename": "PANEL\\pd2r\\inventory_charm_tint"
             },
         },
         {
