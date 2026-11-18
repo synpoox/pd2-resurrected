@@ -3,6 +3,7 @@
 #include "map_stack.h"
 
 #include <cstdio>
+#include <cstring>
 #include <map>
 
 namespace {
@@ -19,9 +20,9 @@ int32_t Read(Fake* u, uint32_t stat, pd2::mapstack::Entry* out, int32_t) {
 }
 Fake Map(int quantity, int level) {  // a single has no quantity entry, a stack has stat 70
 	Fake f;
-	f.stats[564] = {0, 564, level};
+	f.stats[564] = {0, 564, level, 0};
 	if (quantity > 1) {
-		f.stats[70] = {0, 70, quantity};
+		f.stats[70] = {0, 70, quantity, 0};
 	}
 	return f;
 }
@@ -38,15 +39,15 @@ int main() {
 	check("stack of 3 onto a stack of 2", diff(triple, pair) == -1);
 	check("another Area Level differs", diff(single, other) == 564);
 	Fake event = Map(1, 87);
-	event.stats[553] = {1, 553, 63};
+	event.stats[553] = {1, 553, 63, 0};
 	check("a forced event differs", diff(single, event) == 553 && diff(event, single) == 553);
 	check("m01 and m25 are map codes", pd2::mapstack::IsMapCode(0x2031306D) && pd2::mapstack::IsMapCode(0x2035326D));
 	check("a rune is not", !pd2::mapstack::IsMapCode(0x20373272 /* r27 */ + 0) && !pd2::mapstack::IsMapCode(0x20657a67 /* gze */));
 	// The split's copy: a piece with no stats, and one that kept the Area Level, both end equal to the source
 	Fake src = Map(3, 87), bare, kept = Map(1, 87);
-	src.stats[553] = {1, 553, 63};
+	src.stats[553] = {1, 553, 63, 0};
 	const auto set = [](Fake* u, int32_t stat, int32_t value, int32_t layer) {
-		u->stats[stat] = {layer, stat, value};
+		u->stats[stat] = {layer, stat, value, 0};
 	};
 	pd2::mapstack::Saved saved;
 	pd2::mapstack::Collect(&src, 600, 70, Read, saved);
@@ -55,5 +56,22 @@ int main() {
 	pd2::mapstack::Apply(&kept, saved, set);
 	pd2::mapstack::Apply(&kept, saved, set);
 	check("apply twice, or over kept stats, is the same", diff(src, kept) == -1);
+	// The 16-byte layout: the unknown fourth dword is ignored, and entries past the 12-byte stride are compared
+	Fake a = Map(1, 87), b = Map(1, 87);
+	a.stats[564].unknown = 7;
+	check("the unknown dword is not compared", diff(a, b) == -1);
+	static_assert(sizeof(pd2::mapstack::Entry) == 16);
+	struct Many { pd2::mapstack::Entry e[64]; };
+	Many ma {}, mb {};
+	for (int i = 0; i < 64; ++i) { ma.e[i] = mb.e[i] = {i, 600, i, 0}; }
+	mb.e[63].value = 1;
+	const auto many = [](Many* u, uint32_t stat, pd2::mapstack::Entry* out, int32_t max) {
+		if (stat != 600) {
+			return 0;
+		}
+		std::memcpy(out, u->e, sizeof(pd2::mapstack::Entry) * static_cast<size_t>(max));
+		return max;
+	};
+	check("a difference in the 64th entry is found", pd2::mapstack::FirstDifference(&ma, &mb, 601, 70, many) == 600);
 	return fail;
 }

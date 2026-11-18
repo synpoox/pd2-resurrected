@@ -5,15 +5,17 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 
 namespace pd2::mapstack {
 
-// UnitStatEntries (0x2f84b0) writes 12 bytes per entry: a Slot3 dump of a map's stat 564 read 00000000 00000234 00000057
+// UnitStatEntries (0x2f84b0 -> 0x2fa060 -> D2RCore+0x832940) writes 16 bytes per entry (movups copy, `add r8,0x10`):
+// layer, stat, value, and a fourth dword nobody knows (so it is never compared or copied on purpose). A Slot3 dump of a
+// map's stat 564 read 00000000 00000234 00000057. The toolkit's older 8-byte note ({u16 layer, u16 stat, i32}) is the
+// original body, not D2RCore's.
 struct Entry {
-	int32_t layer, stat, value;
+	int32_t layer, stat, value, unknown;
 };
-static_assert(sizeof(Entry) == 12);
+static_assert(sizeof(Entry) == 16);
 
 template <class Unit, class Entries>
 auto FirstDifference(Unit* a, Unit* b, int32_t statCount, int32_t quantityStat, Entries entries) noexcept -> int32_t {
@@ -26,8 +28,13 @@ auto FirstDifference(Unit* a, Unit* b, int32_t statCount, int32_t quantityStat, 
 		const int32_t nb = entries(b, static_cast<uint32_t>(stat), eb, 64);
 		// A count past the buffer is clamped before it is read (the engine fills at most 64)
 		const int32_t k = na > 64 ? 64 : na;
-		if (na != nb || (k > 0 && std::memcmp(ea, eb, static_cast<size_t>(k) * sizeof(Entry)) != 0)) {
+		if (na != nb) {
 			return stat;
+		}
+		for (int32_t i = 0; i < k; ++i) {
+			if (ea[i].layer != eb[i].layer || ea[i].stat != eb[i].stat || ea[i].value != eb[i].value) {
+				return stat;
+			}
 		}
 	}
 	return -1;

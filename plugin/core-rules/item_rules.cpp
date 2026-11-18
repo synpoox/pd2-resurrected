@@ -1543,10 +1543,7 @@ auto ReplenishSchedule(Game* game, Unit* item) noexcept -> void {
 // stats, the same entry unless a socketed item adds a charged skill. Upgrade if one does.
 void AddCharge(Game* game, Unit* item) noexcept {
 	using namespace d2r::rva;
-	struct Entry {
-		uint16_t layer, stat;
-		int32_t value;
-	};
+	using Entry = pd2::mapstack::Entry;  // 16 bytes under D2RCore (map_stack.h)
 	Entry entries[64] {};
 	const int32_t count = d2r::Engine<int32_t (*)(Unit*, uint32_t, Entry*, int32_t) noexcept>(UnitStatEntries)(
 		item, StatChargedSkill, entries, 64);
@@ -1554,7 +1551,7 @@ void AddCharge(Game* game, Unit* item) noexcept {
 	if (count <= 0 || DataTables(dataFlag) == nullptr) {
 		return;
 	}
-	const uint32_t layer = entries[0].layer;
+	const uint32_t layer = static_cast<uint32_t>(entries[0].layer);
 	const int32_t skill = static_cast<int32_t>(layer >> LayerShift(dataFlag));
 	const int32_t level = static_cast<int32_t>(layer & LayerMask(dataFlag));
 	int32_t charges = 0;
