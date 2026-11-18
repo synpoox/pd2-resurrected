@@ -15,18 +15,17 @@ PD2's layer, as `docs/pd2/engine-dll-triage.md` lists it (from `ProjectDiablo.dl
 | PD2 feature | D2R 93847 | Evidence | Verdict |
 |---|---|---|---|
 | Movement with the left stick | Yes | the virtual pad's stick moved the character in Harrogath; `ControllerHelpRun`: "Move (PRESS) Run / Walk Toggle" | covered |
-| Aim assist | Not found | no aim, target or assist string in `ui.json`, `ui-controller.json` or `keybinds.json`; the game may have it unnamed | unknown |
-| Dead zone | Not found | no string or option; XInput applies no dead zone, so the game applies its own. Test: a stick pushed to 0.1 and 0.25 did not move the character, 0.5 and 1.0 did, so it sits between 0.25 and 0.5 | unknown |
+| Aim assist | Not found | no aim, target or assist string in `ui.json`, `ui-controller.json` or `keybinds.json`; PD2 has `controller_aim_assist` (default 2); in-game check not possible (no monster spawned in town), see section 4 | open, section 4 |
+| Dead zone | Not found | no string or option; XInput applies no dead zone, so the game applies its own. Test: a stick pushed to 0.1 and 0.25 did not move the character, 0.5 and 1.0 did, so it sits between 0.25 and 0.5; finer steps: 0.315 no move, 0.316 move (radial, no option) | cut, section 4 |
 | Cursor sensitivity | Yes | `ControllerCursorSpeedSetting` "Cursor Sensitivity" (the UI cursor; not a stick speed for movement) | covered for menus |
-| Button styles | Partly | the HUD and help bars draw Xbox glyphs for XInput; the strings name DualShock and DualSense hardware only; no style option | covered as glyph sets, no choice |
+| Button styles | Partly | the HUD and help bars draw Xbox glyphs for XInput; the strings name DualShock and DualSense hardware only; no style option; PD2's option only picks the Xbox or DualShock glyph sheet | covered by device detection, section 4 |
 | Per-screen navigation help | Yes | a help bar sits under each controller screen: the menu shows "Open Cube", "Close Menu"; the cube shows "Transmute", "Hold to Populate Belt", "Close Menu"; the `ControllerHelp*` and `ControllerPrompt*` strings | covered |
 | 13 skill-select binds | 12 plus 2 | six skill slots (`ControllerHelpSkill1..6`) and six more with `ControllerWeaponSwapSeparateBindingsSetting` ("Weapon Swap Separate Skill Buttons"), plus Interact and Loot as skills (`SkillNameInteract`, `SkillNameLoot`); the HUD shows A, X, B, Y, RB, RT on the six slots, LT swaps the bar | covered, in a different shape (6 + 6) |
 | Multi-button loot | Yes | `SkillNameLoot` "Pick up Items, weapons, and armor"; `ControllerHelpHighItems` "Show item labels"; `WideItemDropEnabledTooltip` "item spacing assists with controller play" | covered |
 | Crosshair | Replaced | no crosshair; a world object under the character gets its name and an A glyph (the altar showed "Sacrificial Altar" with A) | covered by the interact prompt |
 | PD2's `controllerhelp` and `controllermenu` art | Not needed | D2R draws its own help bars and menu | covered |
 
-Open from this table: whether aim assist and the dead zone exist at all in D2R, and whether PD2's players use them
-enough to ask. The virtual pad does send partial values; the game's own dead zone is the 0.25 to 0.5 band measured below.
+Open from this table: aim assist (section 4). The dead zone is measured (0.316) and button style is glyph selection only.
 
 ## 2. Screens and plugins the port adds
 
@@ -60,5 +59,39 @@ Short work items, each a sub-issue of #340:
 4. A pad check of each companion plugin's input, with a note per plugin.
 5. Confirm where the Cube's controller focus starts.
 
-Left out on purpose: aim assist and the dead zone (aim assist not found in D2R; the dead zone is the game's own, no data that anyone misses it), button styles,
-and PD2's 13 binds (D2R's 6 + 6 stand in). Add them only if the owner or the players ask.
+Left out on purpose: PD2's 13 binds (D2R's 6 + 6 stand in). Aim assist, dead zone and button style: see section 4.
+
+## 4. The three items the first audit left out (aim assist, dead zone, button style)
+
+Measured 2026-11-18 on build 93847 in a test slot (virtual XInput pad, level 99 character, Rogue Encampment, god mode on).
+
+| | PD2 | D2R 93847 | Gap and what it takes | Size |
+|---|---|---|---|---|
+| Aim assist | `controller_aim_assist` in `ProjectDiablo.json`, default 2; drawn in the DLL's own options menu with `AimAssist.dc6` art. The DLL range was not read (not decompiled for this audit). | No string or option in `ui.json`, `ui-controller.json` or `keybinds.json`. **Not tested in game:** `mspawn zombie1` and `monster zombie1` in the town returned "handled" but no monster showed on screen (one attempt, no retry), so whether D2R picks the nearest monster with a stick direction is unknown. | If D2R has none: a native hook that picks the nearest monster for the attack direction (core-ui or a new input plugin, needs RE of the attack target code). Not possible with tables. | Large (RE and a hook) |
+| Dead zone | `controller_deadzone`, default 20 (percent); option with `Deadzone.dc6` art. | No option. Measured: the left stick is a radial threshold; 0.315 of full tilt does not move the character, 0.316 does (raw about 10340 of 32767). Not scaled by tilt. Step run 0.25 to 0.5 in 0.05, then 0.315 and 0.316. | A setting would need a hook on the stick read (XInput export or the game's input code). PD2's default (20) is below D2R's fixed 31.6, so D2R's is already the larger of the two. | Medium (hook plus an option row), low value |
+| Button style | `controller_button_style`, default 0, options Auto, Xbox, PlayStation. Confirmed: it selects a glyph set, the `Controls_Xbox_10/20.dc6` or `Controls_Dualshock_10/20.dc6` sheets (16 frames, 10 and 20 px). Not a layout or colour theme. | No option. The glyphs follow the detected pad: Xbox glyphs shown with the XInput pad; `_ps4`, `_ps5`, `_switch` string variants and `controllerbuttons/ps4`, `ps5` sprites exist in the data. | Nothing to port as art. A manual override would need a hook on the device-type check; auto detection already covers real PlayStation pads. | Small to medium, low value |
+
+Recommendations: aim assist, approximate (D2R has no setting; decide after an in-game test with a monster that stays alive, ready-for-human); dead zone, cut (D2R's fixed 0.316 is larger than PD2's default 0.20, no option to port); button style, cut (D2R already picks Xbox or PlayStation glyphs from the device).
+
+## 5. Pyre-Flies "Controller QOL" plugin
+
+Source: the author's public repo (Pyre-Flies/D2R-Mods, `plugins/controller-qol`, clone at 8dab5f83) and its release `Controller-QOL-Updates-1.3.1+rev.100-PyreFly.zip`. The release was read, never run, and not installed in a slot. Not in `companions/manifest.json` today (the other Pyre-Flies plugins are).
+
+- Licence: all rights reserved (`LICENSE`). Bundling or redistributing needs the author's written permission. Pinning a download link is the only thing the manifest model allows without it, and a pin is only safe if the licence lets users fetch it, which it does not state.
+- Scope: global D2RLoader plugin (works with any mod); requires Windows x64, D2RLoader 1.3.1 and a qualified D2RCore.dll hash, so it breaks on a D2R update until the author re-qualifies.
+- XInput: it hooks the XInput exports (`its XInput hardening note`). The test harness and any future core-ui pad hook do the same; two hooks on the same export chain only if both follow the author's `PLUGIN-COEXISTENCE.md`.
+
+| Gap | Covered by Controller QOL? |
+|---|---|
+| Aim assist | No. It adds right-stick cursor aiming (own right-stick dead zone 0.22), not target picking. |
+| Dead zone (left stick) | No. Only the right-stick zone. |
+| Button style | No option. |
+| #1440 10x8 inventory | No (not a PD2 layout; it routes Cube and stash focus only). |
+| #1441 Sacrifice Altar panel | No. |
+| #1442 stack split | No. |
+| #1443 companion input | No. |
+| #1444 Cube focus start | Partly: its Cube routing may change where focus starts; not run, so not confirmed. |
+
+Conflicts: both own the Cube and stash controller focus (our core-ui panels would compete with its routing); both hook XInput; its right-stick cursor mode changes the stick behaviour our slot tests assume.
+
+Recommendation: do not pin it as a companion for these gaps (it covers none of the five open sub-issues, the licence forbids bundling, and it is tied to one D2RCore.dll hash). Build the #1440 to #1444 pieces as our own core-ui work. Ask the author for permission only if the owner wants right-stick cursor aiming as an opt-in extra.
