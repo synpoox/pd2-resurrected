@@ -78,7 +78,6 @@ modkit_add_plugin(core-events VERSION "${CORE_EVENTS_VERSION}" SOURCES
 	core-events/key_drops.cpp
 	core-events/lucion.cpp
 	core-events/altar_panel.cpp
-	core-events/controller_panel.cpp
 	core-events/prime_minions.cpp
 	core-events/lucion_chests.cpp
 	core-events/rathma.cpp
