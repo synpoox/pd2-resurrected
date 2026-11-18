@@ -123,6 +123,10 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [research/hd/hd-parity-priority.md](research/hd/hd-parity-priority.md) — HD parity tuning order on main 9665a1e
 - [research/hd/hd-parity-strategy.md](research/hd/hd-parity-strategy.md) — HD:legacy map parity: a strategy for one week
 
+## Research: controller
+
+- [research/controller/controller-audit.md](research/controller/controller-audit.md) — Controller support audit (#340): what D2R covers, what the port's screens miss
+
 ## Research: process and tooling
 
 - [research/process/documentation-audit-2026-11-09.md](research/process/documentation-audit-2026-11-09.md) — PD2 Resurrected documentation audit
