@@ -102,3 +102,4 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 ## Research: multiplayer
 
 - [research/multiplayer/multiplayer-options.md](research/multiplayer/multiplayer-options.md) — TCP/IP over D2RLoader, hosted servers, and how Reimagined runs its ladder
+- [research/multiplayer/hosted-leagues.md](research/multiplayer/hosted-leagues.md) — hosted leagues end to end: headless servers, saves, accounts, server needs, providers and monthly cost

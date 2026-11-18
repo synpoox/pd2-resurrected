@@ -153,7 +153,8 @@ was read.
 
 ## What this means for pd2-resurrected
 
-Ranked by what we can ship soonest with the least of our own code.
+Ranked by what we can ship soonest with the least of our own code. Work items per step, server needs, providers and
+cost: [hosted-leagues.md](hosted-leagues.md).
 
 1. **D2RLoader TCP/IP, player-hosted (beta run 1).** Works today. Needs from us: keep every gameplay hook in the
    `Shared` plugins and bump their version every release (already the rule); list gameplay config in each Shared
@@ -163,12 +164,15 @@ Ranked by what we can ship soonest with the least of our own code.
    pins one loader version and every companion.
 2. **Same, plus a small launcher or install check.** Reimagined's experience shows the real pain is version drift. A
    launcher (or `install.ps1` step) that fetches our release, checks the loader version and turns on the TCP/IP
-   button removes most "cannot join" reports. Needs: a release manifest with hashes; no server.
+   button removes most "cannot join" reports. Needs: a release manifest with hashes; no server. The owner's
+   `resurrected-launcher` already exists and its accepted contracts fix the account and hosted-join shape
+   ([hosted-leagues.md](hosted-leagues.md) section 1.2).
 3. **Hosted league (beta run 2).** Needs, as Reimagined built it: a headless-server plugin on D2RLoader, a lobby
    plugin and listing service, a server-saves plugin and web API owning characters, signed release packages with a
    plugin allowlist, hosting boxes, accounts, and moderation. That is a separate project of its own; the EULA clause
    on unauthorized servers is a risk the owner must weigh first. Before building, ask whether D2RLoader's authors will
-   offer a dedicated mode or the `d2rds` approach as a shared component.
+   offer a dedicated mode or the `d2rds` approach as a shared component. Reimagined's repos carry no license, so
+   their code is reference only; the EULA's matchmaking clause (1.C.viii) applies too.
 4. **Battle.net.** Not an option.
 
 Open questions: TCP/IP player cap; whether `d2rds` or any headless mode is public; whether Blizzard has said anything
