@@ -3745,7 +3745,7 @@ auto SrvStSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 // Block chance (0x450070 (unit)), composit weapon class (0x3b6e00 (unit, unit data, int* out, -1, 1)) and the unit
 // data (UnitInventory) are what 0x44ef70 itself calls. Found by signature: the prologue and the first calls, calls masked.
 std::atomic<uint32_t> g_parryRolls {0};
-std::atomic<uint32_t> g_parries {0};
+std::atomic<uint32_t> g_parries {0}, g_clawRolls {0};
 constexpr uint8_t AvoidD2REntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10,
                                      0x56, 0x57, 0x41, 0x56, 0x48, 0x83, 0xec, 0x30};
 constexpr uint64_t BlockChanceD2R = 0x450070, CompositClassD2R = 0x3b6e00;
@@ -3801,7 +3801,7 @@ auto AvoidRolled(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> uin
 				d2r::Roll(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(d2r::rva::UnitSeed)(defender)) % 100);
 			const bool parried = pd2::parry::Parries(chance, static_cast<uint32_t>(roll));
 			const uint32_t parries = parried ? ++g_parries : g_parries.load();
-			if (plog::Sample(g_parryRolls)) {  // counts the roll too: 1st, 100th, 10,000th
+			if (plog::Sample(g_parryRolls) || (weaponClass == pd2::parry::WeaponClassHT2 && First(g_clawRolls, 30))) {  // 1st, 100th, 10,000th roll; the first 30 claw rolls too (#1483)
 				plog::Info("parry: class %d, unit type %d mode %d, block chance %d (rolled with %d), roll %d: %s; %u rolls, %u parries", weaponClass, unitType, mode,
 				           raw, chance, roll, parried ? "parried" : "no parry", g_parryRolls.load(), parries);
 			}
