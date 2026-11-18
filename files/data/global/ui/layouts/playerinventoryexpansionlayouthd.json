@@ -16,6 +16,9 @@
             },
         },
         {
+            "type": "ImageWidget", "name": "charm_tint",
+        },
+        {
             "type": "ImageWidget", "name": "RightHinge",
         },
         {
