@@ -510,89 +510,89 @@ es_efficiency	560	es_efficiency
 map_glob_sundermonsters	561	map_glob_sundermonsters
 extra_grizzly	562	extra_grizzly
 no_wolves	563	no_wolves
-+76 descstrpos=cartographer:map_level_stat	564	cartographer_map_level
-+76 descstrpos=cartographer:mon_life	565	cartographer_mon_life
-+76 descstrpos=cartographer:mon_damage	566	cartographer_mon_damage
-+76 descstrpos=cartographer:mon_fire_res	567	cartographer_mon_fire_res
-+76 descstrpos=cartographer:mon_cold_res	568	cartographer_mon_cold_res
-+76 descstrpos=cartographer:mon_light_res	569	cartographer_mon_light_res
-+76 descstrpos=cartographer:mon_poison_res	570	cartographer_mon_poison_res
-+76 descstrpos=cartographer:mon_speed	571	cartographer_mon_speed
-+76 descstrpos=cartographer:map_density	572	cartographer_map_density
-+76 descstrpos=cartographer:mon_tohit	573	cartographer_mon_tohit
-+76 descstrpos=cartographer:mon_tohit_pct	574	cartographer_mon_tohit_pct
-+76 descstrpos=cartographer:mon_armor_pct	575	cartographer_mon_armor_pct
-+76 descstrpos=cartographer:mon_dmg_fire_min	576	cartographer_mon_dmg_fire_min
-+76 descstrpos=cartographer:mon_dmg_fire_max	577	cartographer_mon_dmg_fire_max
-+76 descstrpos=cartographer:mon_dmg_ltng_min	578	cartographer_mon_dmg_ltng_min
-+76 descstrpos=cartographer:mon_dmg_ltng_max	579	cartographer_mon_dmg_ltng_max
-+76 descstrpos=cartographer:mon_dmg_cold_min	580	cartographer_mon_dmg_cold_min
-+76 descstrpos=cartographer:mon_dmg_cold_max	581	cartographer_mon_dmg_cold_max
-+76 descstrpos=cartographer:mon_dmg_cold_len	582	cartographer_mon_dmg_cold_len
-+76 descstrpos=cartographer:mon_dmg_mag_min	583	cartographer_mon_dmg_mag_min
-+76 descstrpos=cartographer:mon_dmg_mag_max	584	cartographer_mon_dmg_mag_max
-+76 descstrpos=cartographer:mon_dmg_pois_min	585	cartographer_mon_dmg_pois_min
-+76 descstrpos=cartographer:mon_dmg_pois_max	586	cartographer_mon_dmg_pois_max
-+76 descstrpos=cartographer:mon_dmg_pois_len	587	cartographer_mon_dmg_pois_len
-+76 descstrpos=cartographer:mon_mastery_fire	588	cartographer_mon_mastery_fire
-+76 descstrpos=cartographer:mon_mastery_ltng	589	cartographer_mon_mastery_ltng
-+76 descstrpos=cartographer:mon_mastery_cold	590	cartographer_mon_mastery_cold
-+76 descstrpos=cartographer:mon_mastery_pois	591	cartographer_mon_mastery_pois
-+76 descstrpos=cartographer:mon_mastery_mag	592	cartographer_mon_mastery_mag
-+76 descstrpos=cartographer:mon_pierce_fire	593	cartographer_mon_pierce_fire
-+76 descstrpos=cartographer:mon_pierce_ltng	594	cartographer_mon_pierce_ltng
-+76 descstrpos=cartographer:mon_pierce_cold	595	cartographer_mon_pierce_cold
-+76 descstrpos=cartographer:mon_pierce_pois	596	cartographer_mon_pierce_pois
-+76 descstrpos=cartographer:mon_absorb_fire	597	cartographer_mon_absorb_fire
-+76 descstrpos=cartographer:mon_absorb_fire_pct	598	cartographer_mon_absorb_fire_pct
-+76 descstrpos=cartographer:mon_absorb_ltng	599	cartographer_mon_absorb_ltng
-+76 descstrpos=cartographer:mon_absorb_ltng_pct	600	cartographer_mon_absorb_ltng_pct
-+76 descstrpos=cartographer:mon_absorb_cold	601	cartographer_mon_absorb_cold
-+76 descstrpos=cartographer:mon_absorb_cold_pct	602	cartographer_mon_absorb_cold_pct
-+76 descstrpos=cartographer:mon_absorb_mag	603	cartographer_mon_absorb_mag
-+76 descstrpos=cartographer:mon_absorb_mag_pct	604	cartographer_mon_absorb_mag_pct
-+76 descstrpos=cartographer:mon_dr	605	cartographer_mon_dr
-+76 descstrpos=cartographer:mon_mdr	606	cartographer_mon_mdr
-+76 descstrpos=cartographer:mon_dr_pct	607	cartographer_mon_dr_pct
-+76 descstrpos=cartographer:mon_mag_res	608	cartographer_mon_mag_res
-+76 descstrpos=cartographer:mon_deadly	609	cartographer_mon_deadly
-+76 descstrpos=cartographer:mon_crush	610	cartographer_mon_crush
-+76 descstrpos=cartographer:mon_openwounds	611	cartographer_mon_openwounds
-+76 descstrpos=cartographer:mon_thorns	612	cartographer_mon_thorns
-+76 descstrpos=cartographer:mon_attackrate	613	cartographer_mon_attackrate
-+76 descstrpos=cartographer:mon_far	614	cartographer_mon_far
-+76 descstrpos=cartographer:mon_fcr	615	cartographer_mon_fcr
-+76 descstrpos=cartographer:mon_fhr	616	cartographer_mon_fhr
-+76 descstrpos=cartographer:mon_fbr	617	cartographer_mon_fbr
-+76 descstrpos=cartographer:mon_regen	618	cartographer_mon_regen
-+76 descstrpos=cartographer:mon_cannotfreeze	619	cartographer_mon_cannotfreeze
-+76 descstrpos=cartographer:mon_halffreeze	620	cartographer_mon_halffreeze
-+76 descstrpos=cartographer:mon_curse_res	621	cartographer_mon_curse_res
-+76 descstrpos=cartographer:mon_missile_pierce	622	cartographer_mon_missile_pierce
-+76 descstrpos=cartographer:map_area_level	623	cartographer_map_area_level
-+76 descstrpos=cartographer:map_uniques	624	cartographer_map_uniques
-+76 descstrpos=cartographer:map_extra_groups	625	cartographer_map_extra_groups
-+76 descstrpos=cartographer:map_extra_boss	626	cartographer_map_extra_boss
-+76 descstrpos=cartographer:map_drop_tc	627	cartographer_map_drop_tc
-+76 descstrpos=cartographer:map_drop_ethereal	628	cartographer_map_drop_ethereal
-+76 descstrpos=cartographer:map_drop_socketed	629	cartographer_map_drop_socketed
-+76 descstrpos=cartographer:map_drop_bonus	630	cartographer_map_drop_bonus
-+76 descstrpos=cartographer:mon_lifesteal_pct	631	cartographer_mon_lifesteal_pct
-+76 descstrpos=cartographer:mon_phys_as_fire	632	cartographer_mon_phys_as_fire
-+76 descstrpos=cartographer:mon_phys_as_cold	633	cartographer_mon_phys_as_cold
-+76 descstrpos=cartographer:mon_phys_as_ltng	634	cartographer_mon_phys_as_ltng
-+76 descstrpos=cartographer:mon_phys_as_pois	635	cartographer_mon_phys_as_pois
-+76 descstrpos=cartographer:mon_phys_as_mag	636	cartographer_mon_phys_as_mag
-+76 descstrpos=MapDropWeapon	637	cartographer_map_drop_weapons
-+76 descstrpos=MapDropArmor	638	cartographer_map_drop_armor
-+76 descstrpos=MapDropCrafting	639	cartographer_map_drop_crafting
-+76 descstrpos=MapDropJewelry	640	cartographer_map_drop_jewelry
-+76 descstrpos=MapExtraGroupDoll	641	cartographer_map_extra_doll
-+76 descstrpos=MapExtraGroupSucc	642	cartographer_map_extra_succ
-+76 descstrpos=MapExtraGroupVamp	643	cartographer_map_extra_vamp
-+76 descstrpos=MapExtraGroupCow	644	cartographer_map_extra_cow
-+76 descstrpos=MapExtraGroupHorde	645	cartographer_map_extra_horde
-+76 descstrpos=MapExtraGroupGhost	646	cartographer_map_extra_ghost
-+76 descstrpos=MapExtraGroupSouls	647	cartographer_map_extra_souls
-+76 descstrpos=MapExtraGroupFetish	648	cartographer_map_extra_fetish
-+76 descstrpos=MapExtraGroupShriek	649	cartographer_map_extra_shriek
++76 Signed= "Send Bits=9" Add= Multiply= "1.09-Save Bits=9" "1.09-Save Add=" "Save Bits=9" "Save Add=" op= "op stat1=" descpriority=254 descstrpos=cartographer:map_level_stat descstrneg=cartographer:map_level_stat	564	cartographer_map_level
++564 Signed=1 "Send Bits=11" "1.09-Save Bits=10" "1.09-Save Add=512" "Save Bits=10" "Save Add=512" descpriority=250 descstrpos=cartographer:mon_life descstrneg=cartographer:mon_life	565	cartographer_mon_life
++565 descstrpos=cartographer:mon_damage descstrneg=cartographer:mon_damage	566	cartographer_mon_damage
++566 descstrpos=cartographer:mon_fire_res descstrneg=cartographer:mon_fire_res	567	cartographer_mon_fire_res
++567 descstrpos=cartographer:mon_cold_res descstrneg=cartographer:mon_cold_res	568	cartographer_mon_cold_res
++568 descstrpos=cartographer:mon_light_res descstrneg=cartographer:mon_light_res	569	cartographer_mon_light_res
++569 descstrpos=cartographer:mon_poison_res descstrneg=cartographer:mon_poison_res	570	cartographer_mon_poison_res
++570 descstrpos=cartographer:mon_speed descstrneg=cartographer:mon_speed	571	cartographer_mon_speed
++571 "Send Bits=20" "1.09-Save Bits=20" "1.09-Save Add=524288" "Save Bits=20" "Save Add=524288" descpriority=253 descstrpos=cartographer:map_density descstrneg=cartographer:map_density	572	cartographer_map_density
++571 "Send Bits=15" "1.09-Save Bits=14" "1.09-Save Add=8192" "Save Bits=14" "Save Add=8192" descstrpos=cartographer:mon_tohit descstrneg=cartographer:mon_tohit	573	cartographer_mon_tohit
++571 descstrpos=cartographer:mon_tohit_pct descstrneg=cartographer:mon_tohit_pct	574	cartographer_mon_tohit_pct
++574 descstrpos=cartographer:mon_armor_pct descstrneg=cartographer:mon_armor_pct	575	cartographer_mon_armor_pct
++573 descstrpos=cartographer:mon_dmg_fire_min descstrneg=cartographer:mon_dmg_fire_min	576	cartographer_mon_dmg_fire_min
++576 descstrpos=cartographer:mon_dmg_fire_max descstrneg=cartographer:mon_dmg_fire_max	577	cartographer_mon_dmg_fire_max
++577 descstrpos=cartographer:mon_dmg_ltng_min descstrneg=cartographer:mon_dmg_ltng_min	578	cartographer_mon_dmg_ltng_min
++578 descstrpos=cartographer:mon_dmg_ltng_max descstrneg=cartographer:mon_dmg_ltng_max	579	cartographer_mon_dmg_ltng_max
++579 descstrpos=cartographer:mon_dmg_cold_min descstrneg=cartographer:mon_dmg_cold_min	580	cartographer_mon_dmg_cold_min
++580 descstrpos=cartographer:mon_dmg_cold_max descstrneg=cartographer:mon_dmg_cold_max	581	cartographer_mon_dmg_cold_max
++575 descstrpos=cartographer:mon_dmg_cold_len descstrneg=cartographer:mon_dmg_cold_len	582	cartographer_mon_dmg_cold_len
++581 descstrpos=cartographer:mon_dmg_mag_min descstrneg=cartographer:mon_dmg_mag_min	583	cartographer_mon_dmg_mag_min
++583 descstrpos=cartographer:mon_dmg_mag_max descstrneg=cartographer:mon_dmg_mag_max	584	cartographer_mon_dmg_mag_max
++584 descstrpos=cartographer:mon_dmg_pois_min descstrneg=cartographer:mon_dmg_pois_min	585	cartographer_mon_dmg_pois_min
++585 descstrpos=cartographer:mon_dmg_pois_max descstrneg=cartographer:mon_dmg_pois_max	586	cartographer_mon_dmg_pois_max
++582 descstrpos=cartographer:mon_dmg_pois_len descstrneg=cartographer:mon_dmg_pois_len	587	cartographer_mon_dmg_pois_len
++587 descstrpos=cartographer:mon_mastery_fire descstrneg=cartographer:mon_mastery_fire	588	cartographer_mon_mastery_fire
++588 descstrpos=cartographer:mon_mastery_ltng descstrneg=cartographer:mon_mastery_ltng	589	cartographer_mon_mastery_ltng
++589 descstrpos=cartographer:mon_mastery_cold descstrneg=cartographer:mon_mastery_cold	590	cartographer_mon_mastery_cold
++590 descstrpos=cartographer:mon_mastery_pois descstrneg=cartographer:mon_mastery_pois	591	cartographer_mon_mastery_pois
++591 descstrpos=cartographer:mon_mastery_mag descstrneg=cartographer:mon_mastery_mag	592	cartographer_mon_mastery_mag
++592 descstrpos=cartographer:mon_pierce_fire descstrneg=cartographer:mon_pierce_fire	593	cartographer_mon_pierce_fire
++593 descstrpos=cartographer:mon_pierce_ltng descstrneg=cartographer:mon_pierce_ltng	594	cartographer_mon_pierce_ltng
++594 descstrpos=cartographer:mon_pierce_cold descstrneg=cartographer:mon_pierce_cold	595	cartographer_mon_pierce_cold
++595 descstrpos=cartographer:mon_pierce_pois descstrneg=cartographer:mon_pierce_pois	596	cartographer_mon_pierce_pois
++586 descstrpos=cartographer:mon_absorb_fire descstrneg=cartographer:mon_absorb_fire	597	cartographer_mon_absorb_fire
++596 descstrpos=cartographer:mon_absorb_fire_pct descstrneg=cartographer:mon_absorb_fire_pct	598	cartographer_mon_absorb_fire_pct
++597 descstrpos=cartographer:mon_absorb_ltng descstrneg=cartographer:mon_absorb_ltng	599	cartographer_mon_absorb_ltng
++598 descstrpos=cartographer:mon_absorb_ltng_pct descstrneg=cartographer:mon_absorb_ltng_pct	600	cartographer_mon_absorb_ltng_pct
++599 descstrpos=cartographer:mon_absorb_cold descstrneg=cartographer:mon_absorb_cold	601	cartographer_mon_absorb_cold
++600 descstrpos=cartographer:mon_absorb_cold_pct descstrneg=cartographer:mon_absorb_cold_pct	602	cartographer_mon_absorb_cold_pct
++601 descstrpos=cartographer:mon_absorb_mag descstrneg=cartographer:mon_absorb_mag	603	cartographer_mon_absorb_mag
++602 descstrpos=cartographer:mon_absorb_mag_pct descstrneg=cartographer:mon_absorb_mag_pct	604	cartographer_mon_absorb_mag_pct
++603 descstrpos=cartographer:mon_dr descstrneg=cartographer:mon_dr	605	cartographer_mon_dr
++605 descstrpos=cartographer:mon_mdr descstrneg=cartographer:mon_mdr	606	cartographer_mon_mdr
++604 descstrpos=cartographer:mon_dr_pct descstrneg=cartographer:mon_dr_pct	607	cartographer_mon_dr_pct
++607 descstrpos=cartographer:mon_mag_res descstrneg=cartographer:mon_mag_res	608	cartographer_mon_mag_res
++608 descstrpos=cartographer:mon_deadly descstrneg=cartographer:mon_deadly	609	cartographer_mon_deadly
++609 descstrpos=cartographer:mon_crush descstrneg=cartographer:mon_crush	610	cartographer_mon_crush
++610 descstrpos=cartographer:mon_openwounds descstrneg=cartographer:mon_openwounds	611	cartographer_mon_openwounds
++606 descstrpos=cartographer:mon_thorns descstrneg=cartographer:mon_thorns	612	cartographer_mon_thorns
++611 descstrpos=cartographer:mon_attackrate descstrneg=cartographer:mon_attackrate	613	cartographer_mon_attackrate
++613 descstrpos=cartographer:mon_far descstrneg=cartographer:mon_far	614	cartographer_mon_far
++614 descstrpos=cartographer:mon_fcr descstrneg=cartographer:mon_fcr	615	cartographer_mon_fcr
++615 descstrpos=cartographer:mon_fhr descstrneg=cartographer:mon_fhr	616	cartographer_mon_fhr
++616 descstrpos=cartographer:mon_fbr descstrneg=cartographer:mon_fbr	617	cartographer_mon_fbr
++612 descstrpos=cartographer:mon_regen descstrneg=cartographer:mon_regen	618	cartographer_mon_regen
++617 descstrpos=cartographer:mon_cannotfreeze descstrneg=cartographer:mon_cannotfreeze	619	cartographer_mon_cannotfreeze
++619 descstrpos=cartographer:mon_halffreeze descstrneg=cartographer:mon_halffreeze	620	cartographer_mon_halffreeze
++620 descstrpos=cartographer:mon_curse_res descstrneg=cartographer:mon_curse_res	621	cartographer_mon_curse_res
++621 descstrpos=cartographer:mon_missile_pierce descstrneg=cartographer:mon_missile_pierce	622	cartographer_mon_missile_pierce
++622 descstrpos=cartographer:map_area_level descstrneg=cartographer:map_area_level	623	cartographer_map_area_level
++618 descstrpos=cartographer:map_uniques descstrneg=cartographer:map_uniques	624	cartographer_map_uniques
++623 descstrpos=cartographer:map_extra_groups descstrneg=cartographer:map_extra_groups	625	cartographer_map_extra_groups
++625 descstrpos=cartographer:map_extra_boss descstrneg=cartographer:map_extra_boss	626	cartographer_map_extra_boss
++626 descstrpos=cartographer:map_drop_tc descstrneg=cartographer:map_drop_tc	627	cartographer_map_drop_tc
++627 descstrpos=cartographer:map_drop_ethereal descstrneg=cartographer:map_drop_ethereal	628	cartographer_map_drop_ethereal
++628 descstrpos=cartographer:map_drop_socketed descstrneg=cartographer:map_drop_socketed	629	cartographer_map_drop_socketed
++624 descstrpos=cartographer:map_drop_bonus descstrneg=cartographer:map_drop_bonus	630	cartographer_map_drop_bonus
++629 descstrpos=cartographer:mon_lifesteal_pct descstrneg=cartographer:mon_lifesteal_pct	631	cartographer_mon_lifesteal_pct
++631 descstrpos=cartographer:mon_phys_as_fire descstrneg=cartographer:mon_phys_as_fire	632	cartographer_mon_phys_as_fire
++632 descstrpos=cartographer:mon_phys_as_cold descstrneg=cartographer:mon_phys_as_cold	633	cartographer_mon_phys_as_cold
++633 descstrpos=cartographer:mon_phys_as_ltng descstrneg=cartographer:mon_phys_as_ltng	634	cartographer_mon_phys_as_ltng
++634 descstrpos=cartographer:mon_phys_as_pois descstrneg=cartographer:mon_phys_as_pois	635	cartographer_mon_phys_as_pois
++635 descstrpos=cartographer:mon_phys_as_mag descstrneg=cartographer:mon_phys_as_mag	636	cartographer_mon_phys_as_mag
++636 descstrpos=MapDropWeapon descstrneg=MapDropWeapon	637	cartographer_map_drop_weapons
++637 descstrpos=MapDropArmor descstrneg=MapDropArmor	638	cartographer_map_drop_armor
++638 descstrpos=MapDropCrafting descstrneg=MapDropCrafting	639	cartographer_map_drop_crafting
++639 descstrpos=MapDropJewelry descstrneg=MapDropJewelry	640	cartographer_map_drop_jewelry
++640 descstrpos=MapExtraGroupDoll descstrneg=MapExtraGroupDoll	641	cartographer_map_extra_doll
++641 descstrpos=MapExtraGroupSucc descstrneg=MapExtraGroupSucc	642	cartographer_map_extra_succ
++642 descstrpos=MapExtraGroupVamp descstrneg=MapExtraGroupVamp	643	cartographer_map_extra_vamp
++643 descstrpos=MapExtraGroupCow descstrneg=MapExtraGroupCow	644	cartographer_map_extra_cow
++644 descstrpos=MapExtraGroupHorde descstrneg=MapExtraGroupHorde	645	cartographer_map_extra_horde
++645 descstrpos=MapExtraGroupGhost descstrneg=MapExtraGroupGhost	646	cartographer_map_extra_ghost
++646 descstrpos=MapExtraGroupSouls descstrneg=MapExtraGroupSouls	647	cartographer_map_extra_souls
++647 descstrpos=MapExtraGroupFetish descstrneg=MapExtraGroupFetish	648	cartographer_map_extra_fetish
++648 descstrpos=MapExtraGroupShriek descstrneg=MapExtraGroupShriek	649	cartographer_map_extra_shriek
