@@ -158,6 +158,12 @@ target_include_directories(map_stack_check PRIVATE common)
 target_compile_features(map_stack_check PRIVATE cxx_std_20)
 core_options(map_stack_check)
 
+# Map boss loot by map tier (#1423): plugin/common/map_boss_tier.h has no engine types.
+add_executable(map_boss_tier_check EXCLUDE_FROM_ALL tests/map_boss_tier_check.cpp)
+target_include_directories(map_boss_tier_check PRIVATE common)
+target_compile_features(map_boss_tier_check PRIVATE cxx_std_20)
+core_options(map_boss_tier_check)
+
 add_executable(test_cmd_check EXCLUDE_FROM_ALL tests/test_cmd_check.cpp)
 target_include_directories(test_cmd_check PRIVATE common)
 target_compile_features(test_cmd_check PRIVATE cxx_std_20)

@@ -488,6 +488,10 @@ auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept
 constexpr int32_t MapItemType = 245;
 std::atomic<int32_t> g_usedQuality {0};  // 0 none; else the D2R quality of the map item used last
 std::atomic<bool> g_usedForced {false};
+// The tier (1-3) of the map item used last: its tier type t1m-t3m (items: itemtypes rows 112-114, each a child of cmap)
+constexpr int32_t TierMapType = 112;
+constexpr uint32_t MapTierKey = 0x4d544952;  // 'MTIR': the open map's tier, 0 when none is known (#1423)
+std::atomic<int32_t> g_usedTier {0};
 using UseItemFn = void (*)(Game*, Unit*, uint8_t*, char) noexcept;
 UseItemFn g_useOriginal = nullptr;
 constexpr uint64_t UseItem = 0x4f40c0;
@@ -634,6 +638,11 @@ auto OnUseItem(Game* game, Unit* player, uint8_t* packet, char flag) noexcept ->
 	if (item != nullptr && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, MapItemType) != 0) {
 		g_usedQuality = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item);
 		// the isolated forcing marker is stat 553 on layer 1 only (event_link.h); a layer-0 553 is a player buff
+		int32_t tier = 0;
+		for (int32_t t = 0; t < 3 && tier == 0; ++t) {
+			tier = d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, TierMapType + t) != 0 ? t + 1 : 0;
+		}
+		g_usedTier = tier;
 		g_usedForced = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatForceEvent,
 		                                                                                     pd2::event_link::MarkerLayer) > 0;
 		const int32_t quantity = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatQuantity, 0);
@@ -657,7 +666,9 @@ auto OnUseItem(Game* game, Unit* player, uint8_t* packet, char flag) noexcept ->
 auto RollNative(Game* game, int32_t level) noexcept -> void {
 	const int32_t quality = g_usedQuality.exchange(0);
 	const bool forced = g_usedForced.exchange(false);
-	plog::Info("map events: native map %s, quality %d%s", quality != 0 ? "item used" : "item not seen", quality,
+	const int32_t tier = g_usedTier.exchange(0);
+	Set(game, MapTierKey, tier);
+	plog::Info("map events: native map %s, quality %d, tier %d%s", quality != 0 ? "item used" : "item not seen", quality, tier,
 	           forced ? ", forced" : "");
 	RollEvent(game, level, quality != 0 ? quality : d2r::rva::QualityNormal, forced);
 }
@@ -820,6 +831,10 @@ auto FindEventSpot(void*& room, int32_t xy[2], int32_t size, uint16_t mask, int3
 
 auto MapEvent(Game* game) noexcept -> int32_t {
 	return game != nullptr ? Get(game, EventKey) : 0;
+}
+
+auto MapTier(Game* game) noexcept -> int32_t {
+	return game != nullptr ? Get(game, MapTierKey) : 0;
 }
 
 auto MapEventSpawns(Game* game) noexcept -> int32_t {

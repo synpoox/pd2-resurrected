@@ -9,6 +9,8 @@
 
 // This game's map event (PD2's game +0x1df4): 0 no map open, 10 no event, 11-21 an event.
 auto MapEvent(d2r::Game* game) noexcept -> int32_t;
+// The open native map's tier (1-3: its map item's type t1m-t3m), 0 when no map is open or the map was not opened with an item (#1423).
+auto MapTier(d2r::Game* game) noexcept -> int32_t;
 // The event's spawns so far this game (PD2's game +0x2628).
 auto MapEventSpawns(d2r::Game* game) noexcept -> int32_t;
 // Sends the localization string `key` (e.g. "d2r:MapEventNotifyInvadersAmazon") to every player as the event's red chat

@@ -6,6 +6,7 @@
 #include "guardian_ai.h"
 #include "horazon.h"
 #include "invaders.h"
+#include "map_boss_tc.h"
 #include "map_events.h"
 #include "pd2_engine.h"
 #include "treasure_fallen.h"
@@ -74,6 +75,15 @@ void InstallAnyamapsPart(const D2RL::PluginContext* context, char* report, size_
 	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
 }
 
+// Map boss loot by map tier (#1423): the TC drop it wraps and the TC lookups it makes
+void InstallMapBossTcPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallMapBossTc(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
+}
+
+sigscan::Entry* const MapBossTcUses[] = {&d2r::sig::TcDrop, &d2r::sig::TcIndexByName, &d2r::sig::TcRecord, &d2r::sig::DataTables};
+
 sigscan::Entry* const AnyamapsUses[] = {&d2r::sig::FindUnit, &d2r::sig::ItemRecord};
 
 PartReg r240(240, "anyamaps", InstallAnyamapsPart, AnyamapsUses);
@@ -82,11 +92,13 @@ PartReg r160(160, "guardianai", InstallGuardianaiPart);
 PartReg r170(170, "wanderer", InstallWandererPart, WandererUses);
 PartReg r180(180, "treasurefallen", InstallTreasureFallenPart);
 PartReg r190(190, "invaders", InstallInvadersPart);
+PartReg r250(250, "mapbosstc", InstallMapBossTcPart, MapBossTcUses);
 CountersReg c40(40, MapEventsCounters);
 CountersReg c120(120, EventPortalsCounters);
 CountersReg c200(200, GuardianAiCounters);
 CountersReg c210(210, WandererCounters);
 CountersReg c220(220, TreasureFallenCounters);
 CountersReg c230(230, InvadersCounters);
+CountersReg c250(250, MapBossTcCounters);
 
 }  // namespace
