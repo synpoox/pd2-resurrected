@@ -37,7 +37,7 @@ class AltarPanel(unittest.TestCase):
             for suffix in (".sprite", ".lowend.sprite"):
                 self.assertTrue((art / (name + suffix)).is_file())
         frame_w = struct.unpack_from("<H", (art / "altar_close.sprite").read_bytes(), 6)[0]
-        self.assertEqual(frame_w, 117)  # stock TransmuteButton frame width
+        self.assertEqual(frame_w, 133)  # the X art is cut tight, so it needs a frame bigger than TransmuteButton's 117 to look as large
 
     def test_no_cube_desecration(self):
         self.assertNotIn("Desecrate", (ROOT / "plugin/core-events/cube_ops.cpp").read_text("utf-8"))

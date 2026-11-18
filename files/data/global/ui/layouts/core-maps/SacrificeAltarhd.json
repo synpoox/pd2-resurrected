@@ -69,7 +69,7 @@
         {
             "type": "ButtonWidget", "name": "cancel",
             "fields": {
-                "rect": { "x": 700, "y": 969 },
+                "rect": { "x": 692, "y": 961 },
                 "filename": "PANEL\\pd2r\\altar_close",
                 "hoveredFrame": 3,
                 "tooltipString": "@strClose",
