@@ -1,6 +1,7 @@
 """The Sacrifice Altar's panel layout (#1192) matches the names in plugin/core-events/altar_panel.cpp."""
 import json
 import re
+import struct
 import unittest
 from pathlib import Path
 
@@ -25,6 +26,18 @@ class AltarPanel(unittest.TestCase):
         self.assertEqual(kids["confirm"]["fields"]["onClickMessage"], "PanelManager:OpenPanel:" + constant("ConfirmText"))
         for name in ("cancel", "close"):
             self.assertEqual(kids[name]["fields"]["onClickMessage"], "PanelManager:TogglePanel:" + root["name"])
+
+    def test_blank_slot_and_big_cancel(self):  # #1356: no 4x4 cube art, own slot square, X as big as the transmute button
+        kids = {c["name"]: c for c in json.loads(LAYOUT.read_text("utf-8"))["children"]}
+        self.assertEqual(kids["background"]["fields"]["filename"], "PANEL\panel_bg")
+        self.assertEqual(kids["slot_bg"]["fields"]["rect"], kids[constant("SlotName")]["fields"]["rect"])
+        art = ROOT / "files/data/hd/global/ui/panel/pd2r"
+        for key, name in (("slot_bg", "altar_slot"), ("cancel", "altar_close")):
+            self.assertEqual(kids[key]["fields"]["filename"], "PANEL\pd2r\\" + name)
+            for suffix in (".sprite", ".lowend.sprite"):
+                self.assertTrue((art / (name + suffix)).is_file())
+        frame_w = struct.unpack_from("<H", (art / "altar_close.sprite").read_bytes(), 6)[0]
+        self.assertEqual(frame_w, 117)  # stock TransmuteButton frame width
 
     def test_no_cube_desecration(self):
         self.assertNotIn("Desecrate", (ROOT / "plugin/core-events/cube_ops.cpp").read_text("utf-8"))

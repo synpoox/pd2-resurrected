@@ -15,7 +15,7 @@
         {
             "type": "ImageWidget", "name": "background",
             "fields": {
-                "filename": "PANEL\\Horadric_Cube\\HoradricCube_BG"
+                "filename": "PANEL\\panel_bg"
             }
         },
         {
@@ -42,6 +42,13 @@
             }
         },
         {
+            "type": "ImageWidget", "name": "slot_bg",
+            "fields": {
+                "rect": { "x": 529, "y": 681 },
+                "filename": "PANEL\\pd2r\\altar_slot"
+            }
+        },
+        {
             "type": "InventoryGridWidget", "name": "core-maps/AltarSlot",
             "fields": {
                 "rect": { "x": 529, "y": 681 },
@@ -63,7 +70,7 @@
             "type": "ButtonWidget", "name": "cancel",
             "fields": {
                 "rect": { "x": 700, "y": 969 },
-                "filename": "PANEL\\closebtn_4x",
+                "filename": "PANEL\\pd2r\\altar_close",
                 "hoveredFrame": 3,
                 "tooltipString": "@strClose",
                 "sound": "cursor_close_window_hd",
