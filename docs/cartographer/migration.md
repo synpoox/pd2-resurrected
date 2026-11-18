@@ -97,7 +97,7 @@ Test Catalyst eligibility, ingredient safety, persistent forcing metadata, guara
 
 Verify removed PD2 maps/tiers/affixes/recipes no longer drop/roll/craft/apply except the isolated Catalyst adaptation, with no dangling retained output/destination reference. Verify stable IDs, correct table bank, package hashes, exactly one backend and stale-owned-DLL cleanup in both scopes. Keep unrelated user files. Compare matched load/frame-time/memory evidence and investigate repeatable frame-time regressions above 10%.
 
-Read the cheat-command guide first, use approved locked slots in Hell/level 90+, and follow the five-minute no-progress handoff rule. Test slots use copies of saves; player savepath remains unchanged. No TCP/IP checks or compatibility claims.
+Read the cheat-command guide first, use approved locked slots in Hell/level 90+, and follow the handoff rule: stop only after 5 minutes stuck with no progress (not a time limit). Test slots use copies of saves; player savepath remains unchanged. No TCP/IP checks or compatibility claims.
 
 Back up the known-good matched package/config/hash set and save snapshots. Rollback with game/loader closed restores the whole DLL/table/content/config set, checks both plugin scopes and deliberately restores baseline saves if needed while preserving newer candidate copies. Rehearse upgrade and rollback; no live hook swapping or promised downgrade compatibility.
 

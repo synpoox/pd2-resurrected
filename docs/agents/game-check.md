@@ -1,7 +1,7 @@
 # Game check
 
 An ordered checklist, run after the PR is open (order: `AGENTS.md`, "PR order"). A brief says "game check per `docs/agents/game-check.md`". Each rule lives in one home; this
-file links to it. Test rules (Hell, level 90+, the 5-minute limit, cheat-commands) are in `AGENTS.md`, "Testing
+file links to it. Test rules (Hell, level 90+, the 5-minute stuck rule, which is not a time limit, cheat-commands) are in `AGENTS.md`, "Testing
 in-game". Slot details are in `docs/agents/game-slots.md`.
 
 Every toolkit command below runs with `MODKIT_PROJECT=pd2-resurrected` and `MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml` set in the shell, and with
@@ -52,7 +52,7 @@ One shot should answer the question. Before each shot:
 
 ## Driving the pad
 
-Three lanes ran out of the 5-minute limit before they got pad focus. These steps are what they lacked.
+Three lanes spent 5 minutes stuck without pad focus before they got it. These steps are what they lacked.
 
 - Build d2r-test-harness from its origin/main in a scratch detached worktree. Never use the main harness checkout; it holds someone else's work.
 - Press buttons with `tools/pad.py --slot N press <BTN>` (its README documents it). Use 150 ms presses.
@@ -63,7 +63,7 @@ Three lanes ran out of the 5-minute limit before they got pad focus. These steps
 - LT and RT page the main menu tabs. LB and RB page the skill tabs. With Controller QoL, LB is the item modifier by default.
 - The right stick moves a free cursor at a speed that is not linear, so you cannot land it on one cell. Use the D-pad for cell focus.
 - Spawned items can show stand-in art. Tell them apart by their tooltip after focusing, not by their icon.
-- If focus still does not show within the 5-minute limit, stop and hand off. Do not try workarounds.
+- If focus is still stuck after 5 minutes with no progress, stop and hand off. Do not try workarounds.
 
 ## Worktree hygiene
 
