@@ -32,6 +32,14 @@ plugin with a default `filter.json`.
 
 A new release overwrites `filter.json`; keep a copy of yours.
 
+## Controller
+
+The mod ships the Controller QOL Updates plugin (PyreFly), which changes some of D2R's controller buttons:
+
+- RT changes the main menu page and RB changes the skill tab. This is the reverse of normal D2R (LB and RB change pages, LT and RT change skill tabs). The config file can't switch it back; the console command `qol menu on/off` does.
+- Hold LB to label the items on the ground with X, A and Y. Then LB+X, LB+A or LB+Y picks that item up. Potions go to the belt.
+- The right stick moves the aim cursor. It snaps to monsters near the cursor.
+
 ## Cut features
 
 These PD2 features are left out on purpose. Every deviation from PD2, cut or not, is listed in
