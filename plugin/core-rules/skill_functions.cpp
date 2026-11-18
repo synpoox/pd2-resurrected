@@ -4116,7 +4116,8 @@ auto SrvDoRathmaSummon(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 // UberDiabSummon (PD2 srvdofunc 177, ProjectDiablo.dll 0x103b3e10): Dclone's skeleton waves around his arena's centre.
 // Each wave whose threshold (Param4-6) is above the caster's life percent spawns calc1-3 monsters: the skill's summon,
 // then summon + 1, then summon + 2 + rand % 4. Dclone's AI casts it at phases 1, 3 and 5 (#470).
-constexpr int32_t DcloneArenaX = 0x3b19, DcloneArenaY = 0x1994;  // (15129, 6548)
+// The square is PD2's 50x50 around its fixed arena centre (15129, 6548); ours follows the `centre` spot of Cartographer's
+// Dclone arena (#958), as the AI's does, since the arena is not at PD2's coordinates (#1386).
 constexpr int32_t WaveTries = 40;  // PD2 gives up a wave after 40 spots with no spawn
 
 auto SrvDoUberDiabSummon(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
@@ -4124,9 +4125,13 @@ auto SrvDoUberDiabSummon(Game* game, Unit* unit, int32_t skillId, int32_t level)
 	const uint8_t* skill = game != nullptr && unit != nullptr ? d2r::api.getSkillRecord(d2r::DataFlag(game), skillId)
 	                                                          : nullptr;
 	const int32_t summon = skill != nullptr ? At<int16_t>(skill, SkSummon) : -1;
-	void* room = skill != nullptr ? d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(
-		d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit), DcloneArenaX, DcloneArenaY) : nullptr;
-	if (summon < 0 || room == nullptr) {
+	placements::Spot centre{};
+	if (summon < 0 || !ArenaSpotOf("dclone", "centre", &centre)) {
+		return 0;  // no arena, nothing is invented
+	}
+	void* room = d2r::Engine<void* (*)(void*, int32_t, int32_t) noexcept>(RoomAtXY)(
+		d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit), centre.x, centre.y);
+	if (room == nullptr) {
 		return 0;
 	}
 	d2r::api.setUnitSkillFlag(unit, 1);
@@ -4141,8 +4146,8 @@ auto SrvDoUberDiabSummon(Game* game, Unit* unit, int32_t skillId, int32_t level)
 	for (int wave = 0; wave < 3; ++wave) {
 		for (int32_t failed = 0; life < below[wave] && spawned[wave] < counts[wave] && failed < WaveTries;) {
 			// PD2's spot: rand % 50 + 0x3b00 by rand % 50 + 0x197b, then its free-spot search
-			const int32_t sx = DcloneArenaX - 25 + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
-			const int32_t sy = DcloneArenaY - 25 + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
+			const int32_t sx = centre.x - 25 + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
+			const int32_t sy = centre.y - 25 + static_cast<int32_t>(d2r::RandomBelow(seed, 50));
 			const int32_t mon = wave < 2 ? summon + wave : summon + 2 + static_cast<int32_t>(d2r::RandomBelow(seed, 4));
 			SummonAt(game, room, sx, sy, mon) == nullptr ? ++failed : ++spawned[wave];
 		}
