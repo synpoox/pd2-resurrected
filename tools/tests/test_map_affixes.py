@@ -90,16 +90,15 @@ class MapAffixes(unittest.TestCase):
         self.assertEqual(none, {"corrupted", "corruptor"})
         self.assertLessEqual(none, {r["Stat"] for r in data_tables.rows("itemstatcost")})
 
-    def test_map_affix_names_with_hd_text_have_legacy_text(self):
-        """A map affix name is a string key: legacy (classic) needs it wherever HD has it, or the prefix shows no text (#1384).
-        Duplicated, Souless, Shamanic and of the Jeweler have no text in either set (not covered here)."""
+    def test_spawnable_affix_names_have_text_in_hd_and_legacy(self):
+        """A magic affix that can spawn (spawnable 1) needs its Name key with text in both string sets (#1384, #1395), or its name shows empty."""
         lng = Path(__file__).resolve().parents[2] / "files" / "data" / "local" / "lng"
-        keys = {d: {e["Key"] for f in (lng / d).glob("*.json") for e in json.loads(f.read_text("utf-8-sig"))}
+        keys = {d: {e["Key"] for f in (lng / d).glob("*.json") for e in json.loads(f.read_text("utf-8-sig")) if e["enUS"]}
                 for d in ("strings", "strings-legacy")}
-        for table in ("magicprefix", "magicsuffix"):
-            for r, _ in map_rows(table):
-                if r["Name"] in keys["strings"]:
-                    self.assertIn(r["Name"], keys["strings-legacy"], f"{table}.{r['Name']}")
+        missing = sorted({f"{table}.{r['Name']} in {d}" for table in ("magicprefix", "magicsuffix")
+                          for r in data_tables.rows(table) if r["Name"] and r["spawnable"] == "1"
+                          for d, k in keys.items() if r["Name"] not in k})
+        self.assertEqual(missing, [])
 
 
 if __name__ == "__main__":
