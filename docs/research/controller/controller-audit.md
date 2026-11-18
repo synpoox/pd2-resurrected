@@ -41,8 +41,24 @@ Cube, RB and LB switch tabs, LT and RT switch the skill tree's tabs, B and START
 | Stack split (core-ui, `plugin/core-ui/stack_split.cpp`, `controller_split.cpp`) | yes (#1442) | **Works with a pad: modifier (LB by default) + A, like Controller QoL's item shortcuts.** D2R has no controller split of its own (Slot3, 2026-11-18, stack of 12 keys: A picks the whole stack up, the footer offers only Place, Drop, Show Ranges and Close Menu, Y and a held A do nothing, A places all 12). The mod's Ctrl test now also reads the pad with `XInputGetState`: Controller QoL's `modifier` setting (`[qol]` in `d2rloader/config/controller-qol-updates.toml`; `bumper`, `lb` and `l1` = LB, the default; `rb` and `r1` = RB; `lt`, `l2`, `trigger` and an empty value = LT; `rt` and `r2` = RT; `l3`; `r3`; `any` = LB or LT, as its own parser reads them; LB when the file or key is missing) held when a stack leaves the cursor. Clash check (Slot2, 2026-11-18, level 99 Necromancer, Controller QoL rev.100 from the sha-verified zip, default config, keys): with 4 keys on the cursor, LB held and A pressed logged `split: ... 4 held onto 0: result 0, 1 left down, 3 on the cursor` and nothing else happened (no identify, no cube move); plain A put the 4 down whole, with no split line; LB+A with an empty cursor picked the stack up like plain A (keys have nothing to identify). Not checked: LB+A with an empty cursor on an unidentified item (the slot's inventory was full and `cheat spawn` could not place one), a real pad, DualShock through Steam Input. A plugin's own XInput import sees the harness pad (it swaps the import tables of the plugin folder's DLLs). |
 | Item quantity on stacks (core-ui `item_quantity`) | yes | Works: the counts draw on the stacks in the controller grid (a "2" on a stack of two). |
 | HD pictures for PD2 item codes (core-ui `item_pictures`) | yes | Drawn in the controller grid like any item. |
-| Companion plugins (Pyre Loot Filter, Pyre Stash Search, Item Roll Ranges, Buff HUD, Left Click Auras, the RuffnecKk rule plugins, Mass Identify, Mercenary Drop On Hire, DPS Counter) | not checked | Loot filter, rule plugins and the HUD plugins add no screen. Stash Search takes typed text, Left Click Auras acts on a mouse click, Mass Identify has a config file, Item Roll Ranges adds tooltip text: how each works with a pad was not tested. |
+| Companion plugins | per plugin | One line per plugin in "Companion plugins with the virtual pad" below (#1443). |
 | Map items and events (Cartographer, core-events `map_open`) | not checked | Opening a map is the item's use; the map device and portals use the native A prompt like any object. Not tested with the pad. |
+
+### Companion plugins with the virtual pad (#1443)
+
+Checked in slot 2 on build 93847 (Hell, Rogue Encampment, level 99 Necromancer), pad only, with Controller QOL Updates rev.100 loaded. Town only: no fight.
+
+- Controller QOL Updates: works. Pad focus shows a green cell and a tooltip; LB+A identified an unidentified ring; the footer help bar shows "RT Show Ranges".
+- Pyre Loot Filter: the ground label showed under the pad HUD. Its rule tabs and LB reorder were not tried.
+- Pyre Stash Search: needs keyboard (typed text). Not exercised in game; Pyre's notes say the controller stash layout has no search box.
+- Item Roll Ranges: fails with the pad. RT is taken by Controller QoL's menu page change, and RB (its README key for that case) showed no ranges on an identified ring. Not checked without Controller QoL. Issue #1468.
+- Left Click Auras: not verified. It logs "controller aura activation on", but the test class is a Necromancer and no aura could be put on the left skill; needs a Paladin-type character.
+- Buff HUD: loaded (0 entries); no buff was active, so not verified.
+- Mass Identify: does not load on 93847 (stat compatibility admission failed), pad or not. Issue #1467.
+- DPS Counter: loaded; needs damage, which is not testable in town. Not verified.
+- Potion Counter: fails under the controller HUD. The belt shows no counts, and the plugin only found the mouse HUD belt. Issue #1469.
+- Mercenary Drop On Hire, Cast Triggers, Ethereal Item Rules, Progressive Affixes: loaded; no screen or input of their own, not exercised.
+
 
 What the test could not do: judge stick feel on a real stick (partial values were tested: 0.1 and 0.25 did not move the character, 0.5 and 1.0 did), try a DualShock layout, or play a fight.
 The 4-row inventory art and the altar panel were seen directly; the rest is read from the layout files.
@@ -56,7 +72,7 @@ Short work items, each a sub-issue of #340:
 2. A controller layout for the Sacrifice Altar panel: focus on the amulet slot and the confirm button, B to close, a
    help bar.
 3. A controller way to split a stack, or a check that D2R already has one.
-4. A pad check of each companion plugin's input, with a note per plugin.
+4. Done in #1443: a pad check of each companion plugin, see "Companion plugins with the virtual pad".
 5. Confirm where the Cube's controller focus starts.
 
 Left out on purpose: PD2's 13 binds (D2R's 6 + 6 stand in). Aim assist, dead zone and button style: see section 4.
@@ -89,7 +105,7 @@ Source: the author's public repo (Pyre-Flies/D2R-Mods, `plugins/controller-qol`,
 | #1440 10x8 inventory | No (it routes Cube and stash focus only). |
 | #1441 Sacrifice Altar panel | No. |
 | #1442 stack split | No. |
-| #1443 companion input | No. |
+| #1443 companion input | Yes, see "Companion plugins with the virtual pad". |
 | #1444 Cube focus start | Partly: its Cube routing may change where focus starts; not run, so not confirmed. |
 
 Conflicts: both own the Cube and stash controller focus (our core-ui panels would compete with its routing); both hook XInput; its right-stick cursor mode changes the stick behaviour our slot tests assume.
@@ -170,7 +186,7 @@ error in our plugins' logs), 0 failed, 5 skipped (snap aim, item shortcuts, belt
 | #1440 10 x 8 inventory | Not covered (layout and art; its pickup even fills the hidden rows) | Yes: mod data, lane 1440 |
 | #1441 Sacrifice Altar panel | Not covered (it routes stock panels only) | Yes: layout plus focus, lane 1441 |
 | #1442 stack split on pad | Not covered (it moves whole items: LB+X, LB+Y) | Done: modifier (LB by default) + A (core-ui) |
-| #1443 companions with a pad | Partly: it has interop for Pyre Loot Filter (labels, LB/RB rule tabs, LB+Up/Down reorder), Item Roll Ranges (RB shows roll ranges) and Pyre Stash Search | The rest: Left Click Auras, Mass Identify, the RuffnecKk plugins, DPS Counter, Buff HUD, Cartographer |
+| #1443 companions with a pad | Checked: see "Companion plugins with the virtual pad". Controller QoL works; Item Roll Ranges and Potion Counter fail, Mass Identify does not load | Left Click Auras, Buff HUD, DPS Counter and Stash Search typing: not verified |
 | #1444 Cube focus start | Not covered (tap-open and transmute, not focus) | Yes: data (`defaultWidget`) or a focus call |
 | #1448 aim assist | Covered: right-stick cursor with snap targeting (`[aim] snapping_enabled`, `snap_radius` 6.0), per-skill profiles | No, unless the owner's fight test rejects it |
 
@@ -236,7 +252,7 @@ Lanes in flight:
    chords). Mod code, since the split is a PD2 rule.
 4. #1444: data first (`defaultWidget` of `controller/horadriccubelayouthd.json`); a `FocusPanelWidgetSoon` call only if the
    game ignores it.
-5. #1443: pin Controller QoL first (recommendation A), then check the companions it does not cover with a pad.
+5. #1443 is done (checked with Controller QoL loaded); the failures are #1467, #1468 and #1469.
 6. Later, when a second project needs it: move the focus helper into the toolkit's `plugin-common` (a toolkit issue).
 
 ## 8. Recommendations
