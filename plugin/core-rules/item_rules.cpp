@@ -1736,22 +1736,20 @@ std::atomic<uint32_t> g_mapStackRefused {0};
 
 auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	using namespace d2r::rva;
-	const int32_t same = g_stackEqualOriginal(a, b);
-	static std::atomic<uint32_t> noLogs {0};
-	if (same == 0 && a && b && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(a, ItemTypeMap) != 0 &&
-	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(b, ItemTypeMap) != 0 && ++noLogs <= 12) {  // #1340 diagnostic: the native check refusing is the case the logs below could not see before
-		plog::Info("map stack: native check says no, caller +0x%llx %p %p", static_cast<unsigned long long>(reinterpret_cast<uint64_t>(_ReturnAddress()) - d2r::imageBase), static_cast<void*>(a), static_cast<void*>(b));
-		const auto* da = d2r::Engine<const uint8_t* (*)(Unit*) noexcept>(UnitItemData)(a);
-		const auto* db = d2r::Engine<const uint8_t* (*)(Unit*) noexcept>(UnitItemData)(b);
-		for (int i = 0; i < 0x100 && da && db; ++i) {
-			if (da[i] != db[i]) {
-				plog::Info("map stack:   item data +0x%x a %02x b %02x", i, da[i], db[i]);
-			}
-		}
-		plog::Info("map stack:   quality %d/%d code %08x/%08x", d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(a),
-		           d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(b),
-		           d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a), d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(b));
+	const auto isMap = [](Unit* u) {
+		return u != nullptr && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(u, ItemTypeMap) != 0 &&
+		       d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(u) == QualityNormal;
+	};
+	if (isMap(a) && isMap(b)) {
+		// Create writes -1 at item data +0x34 (the unique/set row) for a normal item but the save decoder does not, and the native
+		// compare reads it: a fresh map would not stack with a loaded one (#1340). Not saved for normal items.
+		const auto data = d2r::Engine<uint8_t* (*)(Unit*) noexcept>(UnitItemData);
+		auto* const ra = reinterpret_cast<int32_t*>(data(a) + 0x34);
+		auto* const rb = reinterpret_cast<int32_t*>(data(b) + 0x34);
+		*ra = -1;
+		*rb = -1;
 	}
+	const int32_t same = g_stackEqualOriginal(a, b);
 	if (same == 0 || a == nullptr || b == nullptr ||
 	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(a, ItemTypeMap) == 0) {
 		return same;
@@ -1770,7 +1768,7 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	if (!merge) {
 		++g_mapStackRefused;
 	}
-	// Each (a, b, caller) logs its first 3 verdicts only (#1340): the inventory scans call this once per map held, and the
+	// Each (a, b, caller) logs its first verdict only (#1340): the inventory scans call this once per map held, and the
 	// server's call (caller image +0x4f2b3a) must not hide behind the client's
 	static struct { Unit* a; Unit* b; uint64_t caller; uint32_t n; } seen[32];
 	static uint32_t next = 0;
@@ -1787,7 +1785,7 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 		*slot = {a, b, caller, 0};
 		++next;
 	}
-	if (++slot->n <= 3) {
+	if (++slot->n <= 1) {
 		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStat);
 		plog::Info("map stack: caller +0x%llx %08x q%d/%d quality %d/%d -> %s (%s %d)", static_cast<unsigned long long>(caller),
 		           d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a), unitStat(a, StatQuantity, 0),

@@ -1,3 +1,3 @@
 #### Fixes
 
-- Diagnostic log for maps that do not stack (#1340).
+- A new map dropped onto a stack of maps you saved earlier now merges with it (#1340).
