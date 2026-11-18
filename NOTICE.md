@@ -22,7 +22,7 @@ It does **not** cover, and grants no rights to:
 | Pyre Loot Filter, Pyre Stash Search, Item Roll Ranges, Controller QOL Updates | [Pyre-Flies/D2R-Mods](https://github.com/Pyre-Flies/D2R-Mods) | PyreFly | [PyreFly's license](https://github.com/Pyre-Flies/D2R-Mods/blob/main/LICENSE) (proprietary) |
 | Buff HUD | [Pyre-Flies/d2rl-buff-hud](https://github.com/Pyre-Flies/d2rl-buff-hud) | PyreFly | [MIT](https://github.com/Pyre-Flies/d2rl-buff-hud/blob/main/LICENSE) |
 | Left Click Auras | [CelestialRayOne/d2rloader_plugins](https://github.com/CelestialRayOne/d2rloader_plugins) | CelestialRayOne | MIT |
-| Ethereal Item Rules, Item Durability, Progressive Affixes, Mass Identify | [RuffDood/RuffnecKk-D2RLoader-Suite](https://github.com/RuffDood/RuffnecKk-D2RLoader-Suite) | RuffnecKk | MIT |
+| Ethereal Item Rules, Progressive Affixes | [RuffDood/RuffnecKk-D2RLoader-Suite](https://github.com/RuffDood/RuffnecKk-D2RLoader-Suite) | RuffnecKk | MIT |
 | Cast Triggers | [d2rloader.net hub](https://d2rloader.net/) | RuffnecKk | No license stated |
 | Mercenary Drop On Hire | [yinyin333333/D2RL-yin-Junk-Room](https://github.com/yinyin333333/D2RL-yin-Junk-Room) | yinyin333333 | No license stated |
 | DPS Counter | [synpoox/d2r-tools](https://github.com/synpoox/d2r-tools) | synpoox | MIT (our own plugin) |

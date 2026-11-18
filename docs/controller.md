@@ -74,7 +74,6 @@ One line per PD2 pad bind, with its status.
 - #1457: altar route tab shows "Missing string".
 - #1463: stack split with modifier + A onto an occupied cell, and without Controller QoL. The slot 4 check (2026-11-18) reached neither case: the harness pad moved no inventory focus (#1449) and the free pad cursor would not land on a spawned item. From the code, `ModifierHeld()` falls back to LB when Controller QoL is absent, so LB + A on a held stack would split there too. Not proven in game.
 - #1466: Holy Sword parry is missing (PD2's class-5 parry roll).
-- #1467: Mass Identify does not load on 93847.
 - #1468: Item Roll Ranges shows no ranges with the pad (RT is Controller QoL's page button).
 - #1469: Potion Counter shows no counts under the controller HUD.
 - #1472: PD2 pad bind gaps (belt potion to mercenary, multi-buy, stack-tab transfer, whole stack to the Cube).

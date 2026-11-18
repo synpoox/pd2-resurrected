@@ -104,16 +104,6 @@
       }
     },
     {
-      "name": "Item Durability",
-      "repo": "RuffDood/RuffnecKk-D2RLoader-Suite",
-      "tag": "v1.4.2",
-      "asset": "RuffnecKk-item-durability-v1.2.5.zip",
-      "sha256": "4e59a3a6c713f89e2a488c85a325d58fd6e93e691baaa88d5248846f58e654be",
-      "files": {
-        "plugins/d2rl-ruffneckk-item-durability.dll": "d2rloader/plugins/d2rl-ruffneckk-item-durability.dll"
-      }
-    },
-    {
       "name": "Progressive Affixes",
       "repo": "RuffDood/RuffnecKk-D2RLoader-Suite",
       "tag": "v1.4.2",
@@ -121,17 +111,6 @@
       "sha256": "d3229d384abe3d199a714ec2893070267f5f0dfc0909060b6317ce45dfbe8157",
       "files": {
         "plugins/d2rl-ruffneckk-progressive-affixes.dll": "d2rloader/plugins/d2rl-ruffneckk-progressive-affixes.dll"
-      }
-    },
-    {
-      "name": "Mass Identify",
-      "repo": "RuffDood/RuffnecKk-D2RLoader-Suite",
-      "tag": "v1.4.2",
-      "asset": "RuffnecKk-mass-identify-v2.1.1.zip",
-      "sha256": "c726b218f7b30f602d95155b2da5bb94ecce6b525b05270e8f9d3c68d72b358e",
-      "files": {
-        "plugins/d2rl-ruffneckk-mass-identify.dll": "d2rloader/plugins/d2rl-ruffneckk-mass-identify.dll",
-        "config/ruffneckk-mass-identify.toml": "d2rloader/config/ruffneckk-mass-identify.toml"
       }
     },
     {
