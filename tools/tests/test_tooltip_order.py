@@ -18,6 +18,13 @@ class TooltipOrder(unittest.TestCase):
             if s.startswith("cartographer_") and s not in ORDER:
                 self.assertLess(p, pri["item_addexperience"], s)
 
+    def test_nothing_ties_or_beats_corrupted(self):
+        data_tables.need(self)
+        rows = data_tables.rows("itemstatcost")  # a stat with no descstrpos shows nothing (item_shiny_appearance)
+        pri = {r["Stat"]: int(r["descpriority"] or 0) for r in rows if r["descstrpos"]}
+        self.assertEqual(pri["corrupted"], 255)
+        self.assertEqual([s for s, p in pri.items() if p >= 255 and s != "corrupted"], [])
+
     def test_corrupted_resets_colour(self):
         data_tables.need(self)
         for d in ("strings", "strings-legacy"):
