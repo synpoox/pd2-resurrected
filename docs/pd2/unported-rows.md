@@ -27,7 +27,7 @@ Out: rows owned by an open W, MS, UB, IR or WL item; the core-rules rows after t
   monster's HD model. [UR3](https://github.com/synpoox/pd2-resurrected/issues/201) first proves ids 39+ load, hire and survive a save and load; if they don't, the Ascendant
   becomes a cut row.
 - **PD2's voice and effect WAVs are converted, 27 of the 30 as FLAC (see docs/deviations.md for the other 3) ([UR8](https://github.com/synpoox/pd2-resurrected/issues/206))**, all in one item, after a one-file WAV-as-FLAC test under
-  `data/global/sfx`. The 16 drop sounds stay with the Pyre-Flies filter ([P7](https://github.com/synpoox/pd2-resurrected/issues/44)).
+  `data/hd/global/sfx`. The 16 drop sounds stay with the Pyre-Flies filter ([P7](https://github.com/synpoox/pd2-resurrected/issues/44)).
 - **Item art is scripted ([UR7](https://github.com/synpoox/pd2-resurrected/issues/205)).** PD2's 219 item pictures are upscaled with [P11](https://github.com/synpoox/pd2-resurrected/issues/79)'s pipeline (`.sprite` and
   `.lowend.sprite`, plus the `items.json`, `uniques.json` and `sets.json` entries); the row becomes approximated
   ("upscaled from classic art"). The shared skill icon sheet takes PD2's frames on cels 0-60, with D2R's HD frame kept
