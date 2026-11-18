@@ -18,11 +18,11 @@ The avoid roll is `0x103035f0(defender, attacker, ranged)`.
 
 ## Port
 
-`core-rules` wraps `0x44ef70` (found by a masked 76-byte signature, one match on 93847) (`AvoidWithParry`, `skill_functions.cpp`). For a defender with class 5 it rolls PD2's parry (`plugin/common/parry_roll.h`, checked by `plugin/tests/parry_roll_check.cpp`); a parry returns `0x10`, otherwise the original runs, so D2R's own class 13 block is untouched. #1483: class 13 also rolls PD2's block (cap 75, Lucion third) in the modes D2R skips (`D2RSkipsBlock`), so claws block while walking and running; in the other modes D2R's block runs once (rolling both would double the chance). D2R's claw block there has no cap 75 or Lucion third: kept.
+`core-rules` wraps `0x44ef70` (found by a masked 76-byte signature, one match on 93847) (`AvoidWithParry`, `skill_functions.cpp`). For a defender with class 5 it rolls PD2's parry (`plugin/common/parry_roll.h`, checked by `plugin/tests/parry_roll_check.cpp`); a parry returns `0x10`, otherwise the original runs, so D2R's own class 13 block is untouched. #1483: class 13 also rolls PD2's block (cap 75, Lucion third) in the modes D2R skips (`D2RSkipsBlock`), so claws block while walking and running; in the other modes D2R's block runs once (rolling both would double the chance). The known difference there is Lucion's third, which D2R's claw block lacks: kept. D2R's block chance function `0x450070` has its body behind a jump into the protected section, not in the dump, so whether it caps at 75 is unknown.
 
 The window: D2R's frame counter is `Game+0x170` (`rva::GameFrame`), the game is `Unit+0xd8`. D2R has no playerdata field to spare and a unit stat is not allowed, so `pd2::parry::AvoidWindow` (`parry_roll.h`) keeps a 16-slot table of (player id, until frame) beside the hook, server thread only. An entry is live only while `0 < until - frame <= 4`, so a new game (frame counter restarted) or a passed window frees its slot at no cost, and a full table overwrites round-robin (`next_ % 16`), which cannot happen with 8 players. The wrapper refuses (returns 0) while live and sets it when the result has a bit of 0x1e, so D2R's own block, evade, dodge and avoid are covered. Checked by `plugin/tests/parry_roll_check.cpp`.
 
-Not ported: the level 157/159/166 halving (those levels are cut), sound 4713, the class 13 cap and Lucion third outside walk and run. The class 5 parry rolls before the original, so it works in every mode.
+Not ported: the level 157/159/166 halving (those levels are cut), sound 4713, Lucion's third for the class 13 block outside walk and run. The class 5 parry rolls before the original, so it works in every mode.
 
 ## Slot check
 
