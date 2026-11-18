@@ -46,6 +46,7 @@ auto OnTcDrop(Game* game, Unit* dropper, Unit* killer, const uint8_t* tc, int32_
 	using namespace d2r::rva;
 	const int32_t tier = game != nullptr && dropper != nullptr && At<int32_t>(dropper, UnitType) == UnitMonster ? MapTier(game) : 0;
 	const auto* data = tier != 0 ? At<const uint8_t*>(dropper, UnitData) : nullptr;
+	// shortcut: the dropper's level is not checked, as only the cartoboss: rows name Map Boss T1-T3; check it if a non-map monster ever uses them
 	if (data != nullptr && (data[MonDataTypeFlags] & MonTypeSuperUnique) != 0) {
 		for (const auto& family : pd2::mapboss::TcName) {
 			for (const char* name : family) {

@@ -532,6 +532,16 @@ auto FindById(const D2RL::PluginContext*, const items::ItemInfo* item, void* use
 }
 
 // The stack's use, on one piece split off it; false when nothing was split (the use is then refused, see the caller)
+// 1-3 from the map item's type t1m-t3m, 0 for any other item
+auto MapItemTier(Unit* item) noexcept -> int32_t {
+	for (int32_t t = 0; t < 3; ++t) {
+		if (d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::rva::ItemIsType)(item, TierMapType + t) != 0) {
+			return t + 1;
+		}
+	}
+	return 0;
+}
+
 auto UseOneOfStack(Game* game, Unit* player, Unit* stack, uint8_t* packet, char flag, int32_t quantity) noexcept -> bool {
 	using namespace d2r::rva;
 	const D2RL::PlayerHandle owner = g_localPlayer;
@@ -585,6 +595,7 @@ auto UseOneOfStack(Game* game, Unit* player, Unit* stack, uint8_t* packet, char 
 	use[0x11] = static_cast<uint8_t>(piece.y);
 	g_useOriginal(game, player, use, flag);
 	if (d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, UnitItem, static_cast<int32_t>(piece.runtimeId)) == nullptr) {
+		Set(game, MapTierKey, MapItemTier(stack));
 		plog::Info("map use: one map of a stack of %d used (from cell %d,%d), %d left in the stack at %d,%d (%u so far)", quantity, piece.x,
 		           piece.y, quantity - 1, source.x, source.y, ++g_stackUses);
 		return true;
@@ -637,12 +648,6 @@ auto OnUseItem(Game* game, Unit* player, uint8_t* packet, char flag) noexcept ->
 	if (item != nullptr && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, MapItemType) != 0) {
 		g_usedQuality = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item);
 		// the isolated forcing marker is stat 553 on layer 1 only (event_link.h); a layer-0 553 is a player buff
-		int32_t tier = 0;
-		for (int32_t t = 0; t < 3 && tier == 0; ++t) {
-			tier = d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, TierMapType + t) != 0 ? t + 1 : 0;
-		}
-		Set(game, MapTierKey, tier);  // at the use, not at the event roll: only the native levels roll one, and Cartographer's maps are not those
-		plog::Info("map use: the map item is tier %d", tier);
 		g_usedForced = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatForceEvent,
 		                                                                                     pd2::event_link::MarkerLayer) > 0;
 		const int32_t quantity = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatQuantity, 0);
@@ -660,7 +665,14 @@ auto OnUseItem(Game* game, Unit* player, uint8_t* packet, char flag) noexcept ->
 			return;
 		}
 	}
+	const int32_t itemId = item != nullptr ? At<int32_t>(packet, 10) : 0;
+	const int32_t tier = item != nullptr ? MapItemTier(item) : 0;
 	g_useOriginal(game, player, packet, flag);
+	// the map is consumed only when it opened: a refused use (second map, wrong town or difficulty) leaves the tier alone
+	if (tier != 0 && d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, UnitItem, itemId) == nullptr) {
+		Set(game, MapTierKey, tier);
+		plog::Info("map use: the map opened, tier %d", tier);
+	}
 }
 
 auto RollNative(Game* game, int32_t level) noexcept -> void {
