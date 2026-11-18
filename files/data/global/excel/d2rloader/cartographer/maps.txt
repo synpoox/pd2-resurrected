@@ -23,4 +23,4 @@ Ruined Cistern	Sewer	Winding	m21	Medium	88	80	Ancient Cistern Hydra	cr_archermap
 Royal Crypts	Catacombs	Loop	m22	Medium	89	80	King Leoric	sk_archermap,bigheadmap,reanimatedhordemap,zealotmap	150	100	100
 Tomb of Zoltun Kulle	Tombs	Branching	m23	Medium	87	80	Toadflax the Tainted	arachmap,sandleapermap,unravelermap,cr_lancermap	150	100	100
 Lost Temple	Spider		m24	Medium	87	80	Sharptooth the Broodmother	minionmap,mosquitomap,unravelermap,arachmap	150	100	100
-Dark Temple	Temple		m25	Medium	89	80	Gimli the Summoned One	zealotmap,siegebeastmap,councilmembermap,doomknightmap	150	100	100
+Halls of Torture	Temple		m25	Medium	89	80	Gimli the Summoned One	sandleapermap2,zealotmap2,sk_archermap2,siegebeastmap2,bloodlordmap2,councilmembermap2,regurgitatormap2	150	100	100
