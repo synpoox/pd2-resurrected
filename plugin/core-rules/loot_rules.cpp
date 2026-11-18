@@ -15,6 +15,10 @@
 //   (0x3d4220), which both pickers call, is wrapped: it refuses 2 and 3 where PD2 does, then runs D2R's.
 // - weapon durability: a weapon's chance to lose durability on a hit is halved (4% -> 2%, 10% -> 5%), as PD2's two
 //   bytes over 1.13c's D2Game +0x12f16 / +0x12f36.
+// - ethereal durability (#1478): a new ethereal item keeps its base's full maximum durability. D2R's item maker halves
+//   the maximum (max / 2 + 1) after ApplyEthereal (0x44350c-0x443553); PD2 turns the `jz` that skips that block on an
+//   item with no durability into a `jmp` (one byte, 0x74 -> 0xeb, 1.13c D2Game +0xec4f), so the block never runs.
+//   Found by byte signature, patched through the MutationService. See docs/research/items/item-durability.md.
 // - staffmods (#663): PD2's roll of class skills on a new class item (ProjectDiablo.dll 0x1036f470 on disk, 0x1036f400
 //   in PD2.gpr) replaces 1.13c's (D2Game +0x13320 and +0x135e0) for every item version: a count from rand%100 + bonus,
 //   each skill drawn from a fixed per-class list (knives their own) with a required-level test in place of 1.13c's
@@ -31,6 +35,7 @@
 
 #include "pd2_engine.h"
 #include "log.h"
+#include "sig.h"
 
 #include <D2RLPlugin/mutations.h>
 
@@ -212,6 +217,48 @@ auto PatchWeaponDurability(const D2RL::PluginContext* context) noexcept -> bool 
 	return true;
 }
 
+// Ethereal items keep full maximum durability: the `jz` (74 48) after D2R's "has durability" test in the item maker's
+// ethereal block becomes `jmp` (eb 48), as PD2's 0x74 -> 0xeb at 1.13c D2Game +0xec4f. The pattern runs from the test's
+// `test eax,eax` through the maximum halving (`sar eax,1; lea r8d,[rax+1]`); the offset points at the `jz`.
+constexpr const char* EtherealDurabilityPattern =
+	"85 C0 74 48 45 33 C0 48 8B CF 41 8D 50 49 E8 ?? ?? ?? ?? 99 45 33 C9 2B C2 48 8B CF D1 F8 41 8D 51 49 44 8D 40 01";
+constexpr int EtherealDurabilityOffset = 2;
+constexpr uint8_t EtherealJz[2] = {0x74, 0x48};
+constexpr uint8_t EtherealJmp[2] = {0xeb, 0x48};
+// same displacement, the opcode only: short jz (0x74) -> short jmp (0xeb)
+static_assert(EtherealJz[0] == 0x74 && EtherealJmp[0] == 0xeb && EtherealJz[1] == EtherealJmp[1]);
+
+auto PatchEtherealDurability(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t rva = 0;
+	const int matches = sigscan::ScanUnique(context->exeBase, EtherealDurabilityPattern, EtherealDurabilityOffset, &rva);
+	if (matches != 1) {
+		plog::Warn("skipped ethereal durability: %d matches", matches);
+		return false;
+	}
+	plog::Info("found ethereal durability jz at 0x%llx", static_cast<unsigned long long>(rva));
+	const D2RL::MutationService* mutations = nullptr;
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize) ||
+	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		return false;
+	}
+	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
+	                                              .rva = rva,
+	                                              .expected = EtherealJz,
+	                                              .expectedSize = sizeof(EtherealJz),
+	                                              .bytes = EtherealJmp,
+	                                              .size = sizeof(EtherealJmp)};
+	D2RL::Mutations::OperationHandle operation = 0;
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	if (mutations->stageBytePatch(context, transaction, &patch, &operation) != D2RL::Mutations::Result::Success ||
+	    mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		return false;
+	}
+	return true;
+}
+
 // --- Staffmods ------------------------------------------------------------------------------------------------------
 
 constexpr int32_t StatSingleSkill = 107;  // item_singleskill, layer = skill
@@ -381,20 +428,22 @@ auto InstallLootRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool rare = context->InstallInlineHook(AffixAllowed, AffixAllowedEntry, sizeof(AffixAllowedEntry),
 	                                             &RareAffixAllowed, &g_affixAllowedOriginal);
 	const bool durability = PatchWeaponDurability(context);
+	const bool etherealDurability = PatchEtherealDurability(context);
 	const bool staffMods = context->InstallInlineHook(ItemStaffMods, ItemStaffModsEntry, sizeof(ItemStaffModsEntry),
 	                                                  &StaffMods, &g_staffModsOriginal);
 	const bool seals = context->InstallInlineHook(ModeCmdInit, ModeCmdInitEntry, sizeof(ModeCmdInitEntry),
 	                                              &SealSweepModeCmd, &g_modeCmdInitOriginal);
 	std::snprintf(report, reportSize,
-	              "ethereal bonus%s; affix rare%s; weapon durability 1/2%s; staffmods%s; seal kills drop nothing%s",
+	              "ethereal bonus%s; affix rare%s; weapon durability 1/2%s; ethereal durability%s; staffmods%s; seal kills drop nothing%s",
 	              !decoder ? " FAILED (decoder bytes differ)" : ethereal ? "" : " FAILED (bytes differ)",
 	              rare ? "" : " FAILED (bytes differ)", durability ? "" : " FAILED (bytes differ)",
+	              etherealDurability ? "" : " FAILED (signature or bytes differ)",
 	              staffMods ? "" : " FAILED (bytes differ)", seals ? "" : " FAILED (bytes differ)");
-	return (ethereal ? 1 : 0) + (rare ? 1 : 0) + (durability ? 1 : 0) + (staffMods ? 1 : 0) + (seals ? 1 : 0);
+	return (ethereal ? 1 : 0) + (rare ? 1 : 0) + (durability ? 1 : 0) + (etherealDurability ? 1 : 0) + (staffMods ? 1 : 0) + (seals ? 1 : 0);
 }
 
 auto LootRuleCount() noexcept -> int {
-	return 5;
+	return 6;
 }
 
 auto LootRuleCounters(char* out, size_t size) noexcept -> void {

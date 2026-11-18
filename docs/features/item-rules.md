@@ -37,7 +37,7 @@ Out:
   - Cast Triggers takes skill on block and skill on cast. [P12](https://github.com/synpoox/pd2-resurrected/issues/108)'s listener walk is removed once it passes; Ormus' Robes
     (func 25 -> 26) stays in core-rules. If it clashes with core-rules' hooks (`0x43acb0`, event slot 16), it is forked
     into core-rules instead.
-  - Ethereal Item Rules gives set items rolling ethereal, and Progressive Affixes the rare affix minimum. The Item Durability and Mass Identify companions were removed ([#1467](https://github.com/synpoox/pd2-resurrected/issues/1467)); the Almanac stays [IR5](https://github.com/synpoox/pd2-resurrected/issues/240)'s ([#189](https://github.com/synpoox/pd2-resurrected/issues/189)).
+  - Ethereal Item Rules gives set items rolling ethereal, and Progressive Affixes the rare affix minimum. The Item Durability and Mass Identify companions were removed ([#1467](https://github.com/synpoox/pd2-resurrected/issues/1467)); core-rules builds PD2's ethereal durability ([#1478](https://github.com/synpoox/pd2-resurrected/issues/1478)); the Almanac stays [IR5](https://github.com/synpoox/pd2-resurrected/issues/240)'s ([#189](https://github.com/synpoox/pd2-resurrected/issues/189)).
   - Mercenary drop on hire (yinyin333333, closed source) gives a mercenary's gear back when another is hired.
   A plugin that matches PD2 closes its row; one that only comes close makes its row approximated.
 - **The dye stat** (`transform_dye`) tints the output of 35 PD2 cube rows (the Annihilus corruptions and the magic-item
