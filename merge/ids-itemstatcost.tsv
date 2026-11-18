@@ -583,10 +583,10 @@ no_wolves	563	no_wolves
 +76 descstrpos=cartographer:mon_phys_as_ltng	634	cartographer_mon_phys_as_ltng
 +76 descstrpos=cartographer:mon_phys_as_pois	635	cartographer_mon_phys_as_pois
 +76 descstrpos=cartographer:mon_phys_as_mag	636	cartographer_mon_phys_as_mag
-+76 descstrpos=cartographer:map_drop_tc	637	cartographer_map_drop_weapons
-+76 descstrpos=cartographer:map_drop_tc	638	cartographer_map_drop_armor
-+76 descstrpos=cartographer:map_drop_tc	639	cartographer_map_drop_crafting
-+76 descstrpos=cartographer:map_drop_tc	640	cartographer_map_drop_jewelry
++76 descstrpos=MapDropWeapon	637	cartographer_map_drop_weapons
++76 descstrpos=MapDropArmor	638	cartographer_map_drop_armor
++76 descstrpos=MapDropCrafting	639	cartographer_map_drop_crafting
++76 descstrpos=MapDropJewelry	640	cartographer_map_drop_jewelry
 +76 descstrpos=cartographer:map_extra_groups	641	cartographer_map_extra_doll
 +76 descstrpos=cartographer:map_extra_groups	642	cartographer_map_extra_succ
 +76 descstrpos=cartographer:map_extra_groups	643	cartographer_map_extra_vamp
