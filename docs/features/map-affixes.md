@@ -76,4 +76,4 @@ The five Cartographer affixes (ids 9201-9205: Teeming, Savage, Hastened, of the 
 
 ## Test
 
-`tools/tests/test_map_affixes.py`: every affix row with a `cmap`/`t1m`..`t3m` type names only real properties and only those types, and the rolling set (spawnable 1, rare 1, frequency above 0) is the 102 rows and holds the 27 of #1305, so a dead pool fails. The Splashing rows stay neutral, and every `statroutes.txt` row names a real stat, treasure class or monstats Id.
+`tools/tests/test_map_affixes.py`: every affix row with a `cmap`/`t1m`..`t3m` type names only real properties and only those types, and the rolling set (spawnable 1, rare 1, frequency above 0) is the 102 rows and holds the 27 of #1305, so a dead pool fails. The Splashing rows stay neutral, every `statroutes.txt` row names a real stat, treasure class or monstats Id, and `corrupted`/`corruptor` route to `None` so the map panel skips them (#1349).

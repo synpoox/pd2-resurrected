@@ -86,6 +86,7 @@ class MapAffixes(unittest.TestCase):
         """The corrupted and corruptor marks route to None so the map panel's Players have list skips them (#1349)."""
         none = {r["Stat"] for r in data_tables.rows("d2rloader/cartographer/statroutes") if r["Target"] == "None"}
         self.assertEqual(none, {"corrupted", "corruptor"})
+        self.assertLessEqual(none, {r["Stat"] for r in data_tables.rows("itemstatcost")})
 
 
 if __name__ == "__main__":
