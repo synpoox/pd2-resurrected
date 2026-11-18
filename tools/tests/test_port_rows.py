@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # tools/, for pd2_table
 import data_tables  # noqa: E402
 import pd2_table  # noqa: E402,F401  (puts the toolkit on sys.path)
 from shared.classic_import import ids  # noqa: E402
