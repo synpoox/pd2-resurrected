@@ -2010,12 +2010,12 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool mapStack = sigscan::HookBySignature(
 	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
 	    d2r::rva::ItemsCanMergeEntry, sizeof(d2r::rva::ItemsCanMergeEntry), MapStackEqual, &g_stackEqualOriginal);
-	// 0x442c60 and 0x442d60 by signature (calls are masked); the entries are whole instructions
+	// 0x442c60 and 0x442d60 by signature (calls are masked; the loader patches the +0x18 load of 0x442c60 into a call, so those 6 bytes are masked); the entries are whole instructions
 	static constexpr uint8_t MagicMakerEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18, 0x57};
 	static constexpr uint8_t ItemMakerEntry[] = {0x40, 0x53, 0x55, 0x41, 0x56, 0x48, 0x83, 0xec, 0x50, 0x4c, 0x8b, 0xf1, 0x49, 0x8b, 0xe8, 0x48, 0x8b, 0x0a};
 	const bool noMagicMaps = sigscan::HookBySignature(
 	    context, "MagicAffixMaker",
-	    "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 56 41 57 48 83 EC 30 8B 82 A8 00 00 00 45 33 FF 48 8B F2 48 8B F9", 0,
+	    "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 56 41 57 48 83 EC 30 ?? ?? ?? ?? ?? ?? 45 33 FF 48 8B F2 48 8B F9", 0,
 	    MagicMakerEntry, sizeof(MagicMakerEntry), MapMagicMaker, &g_magicMakerOriginal);
 	const bool mapMakerLog = sigscan::HookBySignature(
 	    context, "ItemMaker", "40 53 55 41 56 48 83 EC 50 4C 8B F1 49 8B E8 48 8B 0A 48 8B DA 48 85 C9 74 0A E8 ?? ?? ?? ?? 83 F8 04 74 14", 0,
