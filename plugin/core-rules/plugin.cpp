@@ -10,6 +10,7 @@
 #include "almanac.h"
 #include "shrine_rules.h"
 #include "crash_guard.h"
+#include "property_ids.h"
 #include "cube_rules.h"
 #include "cube_stacks.h"
 #include "pd2_engine.h"
@@ -196,6 +197,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	if (off_switch::Words()[0] != '\0') {
 		plog::Info("%s-off.txt leaves out: %s", PluginName, off_switch::Words());
 	}
+	propids::Init(context);
 	g_imageKnown = d2r::Bind(context->exeBase);
 	parts::InstallAll(g_parts, std::size(g_parts), context, PluginName, g_imageKnown);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand,

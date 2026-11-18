@@ -1,6 +1,6 @@
 """#1355: Desecration put "Monster Physical Damage as Fire" on every amulet. D2R numbers properties by row (past the
 Expansion row), but corruption_roll.cpp used the *Id column, so corruptnum's 1001 landed on row 443, a Cartographer stat.
-The plugin's property numbers must equal the rows, and the 851-999 roll over the amulet corruption rows must reach PD2's
+The plugins resolve property numbers by code, and the 851-999 roll over the amulet corruption rows must reach PD2's
 eight outcomes with PD2's ranges."""
 import collections
 import random
@@ -18,14 +18,23 @@ class DesecrationRolls(unittest.TestCase):
     def setUp(self):
         data_tables.need(self)
 
-    def test_plugin_property_numbers_are_rows_past_expansion(self):
+    def test_plugin_property_codes_exist(self):
+        # #1371: the plugins resolve these codes by name at load (plugin/common/property_ids.h); each must be a properties.txt row
+        codes = {r["code"] for r in data_tables.rows("properties")}
+        for path in ("plugin/core-events/corruption_roll.cpp", "plugin/core-rules/cube_rules.cpp",
+                     "plugin/core-rules/cube_stacks.cpp"):
+            src = (data_tables.ROOT / path).read_text()
+            asked = re.findall(r'propids::Resolve\("([^"]+)"\)', src)
+            assert asked, path
+            for code in asked:
+                assert code in codes, (path, code)
+
+    def test_row_numbers_skip_expansion(self):
+        # the numbers the plugins resolve (the game log must show them): rows past the Expansion row, not *Id
         codes = [r["code"] for r in data_tables.rows("properties") if r["code"] != "Expansion"]
-        src = (data_tables.ROOT / "plugin/core-events/corruption_roll.cpp").read_text()
-        for name, code in (("PropCorrupt", "corrupt"), ("PropCorruptNum", "corruptnum"), ("PropDesecrate", "desecrate"),
-                           ("PropDesecrateNum", "desecratenum")):
-            assert int(re.search(name + r"\s*=\s*(\d+)", src).group(1)) == codes.index(code), name
-        cube = (data_tables.ROOT / "plugin/core-rules/cube_rules.cpp").read_text()
-        assert int(re.search(r"PropCorruptNum\s*=\s*(\d+)", cube).group(1)) == codes.index("corruptnum")
+        for code, row in (("corrupt", 287), ("corruptnum", 288), ("desecrate", 349), ("desecratenum", 350),
+                          ("map-level", 374), ("map-force-event-l", 383)):
+            assert codes.index(code) == row, code
 
     def test_many_rolls_reach_all_eight_pd2_outcomes(self):
         # corruption_roll.cpp: roll 851-999, the first row (file order) whose value beats the roll

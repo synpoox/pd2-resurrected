@@ -9,6 +9,7 @@
 
 #include "ai_hooks.h"
 #include "crash_guard.h"
+#include "property_ids.h"
 #include "entity_pool.h"
 #include "log.h"
 #include "map_events.h"
@@ -163,6 +164,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	if (off_switch::Words()[0] != '\0') {
 		plog::Info("%s-off.txt leaves out: %s", PluginName, off_switch::Words());
 	}
+	propids::Init(context);
 	g_imageKnown = d2r::Bind(context->exeBase);
 	InstallParts(context);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand,

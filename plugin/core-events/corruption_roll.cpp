@@ -4,6 +4,7 @@
 #include "corruption_roll.h"
 
 #include "log.h"
+#include "property_ids.h"
 
 #include <intrin.h>
 
@@ -16,8 +17,12 @@ using d2r::Game;
 using d2r::Unit;
 
 constexpr int32_t StatCorrupted = 413, StatCorruptor = 414;  // PD2 360 and 361
-// properties.txt corrupt, corruptnum, desecrate, desecratenum: D2R numbers them by row past the "Expansion" row, not by *Id (tools/tests/test_desecration_rolls.py pins them)
-constexpr int32_t PropCorrupt = 287, PropCorruptNum = 288, PropDesecrate = 349, PropDesecrateNum = 350;
+// properties.txt corrupt, corruptnum, desecrate, desecratenum by code (#1371); -1 when a code is missing: corruption is then off
+struct CorruptProps {
+	int32_t corrupt = propids::Resolve("corrupt"), corruptNum = propids::Resolve("corruptnum"),
+	        desecrate = propids::Resolve("desecrate"), desecrateNum = propids::Resolve("desecratenum");
+	bool ok() const noexcept { return corrupt >= 0 && corruptNum >= 0 && desecrate >= 0 && desecrateNum >= 0; }
+};
 constexpr int32_t DesecrateFloor = 851;  // PD2's Desecration roll, 851-999
 
 }  // namespace
@@ -38,6 +43,10 @@ auto RollRand() noexcept -> int32_t {
 // row's corrupt/corruptnum go on as desecrate/desecratenum; the caller checks the item.
 auto CorruptItem(Game* game, Unit* item, bool desecrate, const char* label) noexcept -> bool {
 	using namespace d2r::rva;
+	static const CorruptProps props;  // resolved on first use, after the plugin loaded (propids::Init)
+	if (!props.ok()) {
+		return false;
+	}
 	const uint32_t dataFlag = d2r::DataFlag(game);
 	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
 	if (!desecrate && stat(item, StatCorrupted, 0) != 0) {
@@ -86,7 +95,7 @@ auto CorruptItem(Game* game, Unit* item, bool desecrate, const char* label) noex
 			}
 			int32_t prop = At<int32_t>(mod, 0);
 			if (desecrate) {
-				prop = prop == PropCorrupt ? PropDesecrate : prop == PropCorruptNum ? PropDesecrateNum : prop;
+				prop = prop == props.corrupt ? props.desecrate : prop == props.corruptNum ? props.desecrateNum : prop;
 			}
 			int32_t property[4] = {prop, At<int16_t>(mod, 4), At<int16_t>(mod, 6), At<int16_t>(mod, 8)};
 			d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(ApplyCubeMod)(item, property);

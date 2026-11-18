@@ -15,6 +15,7 @@
 #include "cube_stacks.h"
 
 #include "log.h"
+#include "property_ids.h"
 
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
@@ -37,7 +38,6 @@ constexpr int Inputs = 7;
 constexpr int Slots = d2r::rva::CubeMatchUsedSlots;
 
 constexpr int MaxMapProps = 4;
-constexpr uint32_t PropMapLevel = 374, PropForceEvent = 383;  // properties.txt map-level, map-force-event-l (param = layer)
 
 struct MatchOut {
 	uint64_t words[6];
@@ -175,10 +175,12 @@ auto MapProperties(Unit* item, Leftover& left) noexcept -> bool {
 		}
 		for (int32_t i = 0; i < n; ++i) {
 			const bool level = stat == StatMapLevel, event = stat == StatMapForceEvent;
-			if ((!level && !event) || left.propCount >= MaxMapProps) {
+			// properties.txt map-level, map-force-event-l (param = layer) by code (#1371); a missing code refuses the stack
+			static const int32_t propMapLevel = propids::Resolve("map-level"), propForceEvent = propids::Resolve("map-force-event-l");
+			if ((!level && !event) || left.propCount >= MaxMapProps || propMapLevel < 0 || propForceEvent < 0) {
 				return false;
 			}
-			left.props[left.propCount++] = items::MakeExactProperty(level ? PropMapLevel : PropForceEvent, e[i].value,
+			left.props[left.propCount++] = items::MakeExactProperty(static_cast<uint32_t>(level ? propMapLevel : propForceEvent), e[i].value,
 			                                                        level ? 0 : e[i].layer);
 		}
 	}

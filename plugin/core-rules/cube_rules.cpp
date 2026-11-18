@@ -24,6 +24,7 @@
 #include "pd2_engine.h"
 #include "socket_rules.h"
 #include "log.h"
+#include "property_ids.h"
 
 #include <D2RLPlugin/game_rules.h>
 #include <D2RLPlugin/inventory.h>
@@ -40,7 +41,6 @@ using d2r::At;
 using d2r::Game;
 using d2r::Unit;
 
-constexpr int32_t PropCorruptNum = 288;  // properties.txt corruptnum by row, past the "Expansion" row (tools/tests/test_desecration_rolls.py)
 constexpr int32_t StatCorrupted = 413;   // merged itemstatcost corrupted (PD2's 360)
 constexpr uint32_t CodeShard = 0x20737377, CodeCubeShard = 0x73737763;  // 'wss ', 'cwss'
 constexpr uint8_t OpReroll = 31;
@@ -98,7 +98,8 @@ auto IsRollRow(const uint8_t* record) noexcept -> bool {
 		if (prop == -1) {
 			return false;
 		}
-		if (prop == PropCorruptNum && At<int16_t>(mod, 6) != At<int16_t>(mod, 8)) {
+		static const int32_t propCorruptNum = propids::Resolve("corruptnum");  // by code (#1371); -1 never matches here
+		if (prop == propCorruptNum && At<int16_t>(mod, 6) != At<int16_t>(mod, 8)) {
 			return true;
 		}
 	}
