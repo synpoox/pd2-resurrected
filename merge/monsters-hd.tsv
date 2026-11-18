@@ -1,5 +1,5 @@
 # monster	like: the D2R monster whose HD model a new monster with PD2-only art (no D2R Code with a model) takes; tools/pd2_monsters_hd.py
-# Stand-ins: the monster's BaseId where D2R has it, else a D2R monster of the same kind (AI, look); the Invaders take a hireling or Dopplezon, as D2R has no monster model of a player class
+# Stand-ins: the monster's BaseId where D2R has it, else a D2R monster of the same kind (AI, look); the Invaders take a D2R monster that looks like their class (D2R has no player-class monster model); `=model` is a model the mod ships in hd/character/enemy
 rathmaBone	nihlathakboss
 rathmaBoneClone	nihlathakboss
 butcherMap	smith
@@ -10,17 +10,17 @@ demonpillar	trappedsoul1
 ZharTheMad	summoner
 WarlordOfBlood	doomknight1
 Iskatu	summoner
-Lucion	mephisto
+Lucion	=lucion
 LucionSpawner	invisospawner
 clawviper3ImperialPalaceBoss	clawviper1
-InvaderPortal	invisospawner
-InvaderAmazon	dopplezon
-InvaderAssassin	roguehire
-InvaderBarbarian	act5hire1
-InvaderDruid	act5barb1
-InvaderNecromancer	necromage
-InvaderPaladin	act2hire
-InvaderSorceress	act3hire
+InvaderPortal	=invaderportal
+InvaderAmazon	cr_archer1
+InvaderAssassin	act3hire
+InvaderBarbarian	ancientbarb1
+InvaderDruid	ancientbarb3
+InvaderNecromancer	summoner
+InvaderPaladin	zealot1
+InvaderSorceress	roguehire
 NaKrulBoss	duriel
 PoisonedWellBoss	overseer1
 # A Code D2R draws with several models, where the most common is the wrong one
@@ -38,3 +38,4 @@ ancientbarbboss3	ancientbarb3
 uberancientbarb1	ancientbarb1
 uberancientbarb2	ancientbarb2
 uberancientbarb3	ancientbarb3
+uberdiablonew	=uberdiablonew

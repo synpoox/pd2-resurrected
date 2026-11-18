@@ -247,7 +247,13 @@ def apply_ids(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> Non
     merged, dropped = I.merge_table(table, I.load(pd2_data, table), d2r, lists[table], ctx.ren, ctx.ids,
                                     finish=finish_of(table, ctx, d2r), **merge_args(table))
     if table == "levels":
+        # A port line that sets LevelEntry= blank keeps it blank (the Cartographer levels, #1379): fix_levels would derive one.
+        blank = {str(i) for name, i, _ in lists[table] if (pr := I.port_row(name)) and pr[1].get("LevelEntry") == ""}
         I.fix_levels(merged, len(d2r.records()), len(I.load(d2r_data, "lvltypes").records()) - 1)
+        idc, ent = merged.header.index("Id"), merged.header.index("LevelEntry")
+        for k in merged.records():
+            if merged.rows[k][idc] in blank:
+                merged.rows[k][ent] = ""
     I.write(table, merged, out_data, dropped, "PD2")
     if table in I.FOLLOWERS:
         f = I.FOLLOWERS[table]
