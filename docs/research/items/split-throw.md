@@ -2,7 +2,7 @@
 
 Throwaway. Answers "Spike a PD2 skill function in a free srvdofunc slot"; kept on branch `research/split-throw`; folded here as a note.
 
-The plugin and mod files stay on branch `research/split-throw` (never deleted); paths below are on that branch.
+The plugin and mod files stay on branch `research/split-throw`; paths below are on that branch.
 
 ## What was built
 

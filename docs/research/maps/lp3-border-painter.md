@@ -2,7 +2,7 @@
 
 A prototype, not repo code. It builds the three Jungle Map presets (`expansion/map/jungle1-3.ds1`) in four layers and
 
-The code, scripts and pictures stay on branch `research/lp3-border-painter` (never deleted).
+The code, scripts and pictures stay on branch `research/lp3-border-painter`.
 was judged "passable for alpha 0.1.0" in game. Porting it into `tools/pd2_presets.py` is the follow-up issue.
 
 ```bash
