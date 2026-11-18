@@ -13,13 +13,13 @@ It does **not** cover, and grants no rights to:
   from the game, modified for this mod; it remains Blizzard's and, where recreated from Project Diablo 2, the PD2 team's.
 - **Project Diablo 2**: its content, design and data, which this project recreates or builds on. This includes the upscaled PD2 item pictures in `merge/art/`. All credit for them goes to
   the Project Diablo 2 team and its contributors.
-- **The bundled companion plugins** below. Each belongs to its author and is under its own license (the three Pyre-Flies/D2R-Mods plugins remain under PyreFly's proprietary license; all rights stay with PyreFly); the release package
+- **The bundled companion plugins** below. Each belongs to its author and is under its own license (the four Pyre-Flies/D2R-Mods plugins remain under PyreFly's proprietary license; all rights stay with PyreFly); the release package
   only redistributes the builds pinned in [`companions/manifest.json`](companions/manifest.json).
 - **D2RLoader** and its PluginSDK (MIT, D2RLoader contributors), which plugins here are built with.
 
 | Companion | Source | Author | License |
 |---|---|---|---|
-| Pyre Loot Filter, Pyre Stash Search, Item Roll Ranges | [Pyre-Flies/D2R-Mods](https://github.com/Pyre-Flies/D2R-Mods) | PyreFly | [PyreFly's license](https://github.com/Pyre-Flies/D2R-Mods/blob/main/LICENSE) (proprietary) |
+| Pyre Loot Filter, Pyre Stash Search, Item Roll Ranges, Controller QOL Updates | [Pyre-Flies/D2R-Mods](https://github.com/Pyre-Flies/D2R-Mods) | PyreFly | [PyreFly's license](https://github.com/Pyre-Flies/D2R-Mods/blob/main/LICENSE) (proprietary) |
 | Buff HUD | [Pyre-Flies/d2rl-buff-hud](https://github.com/Pyre-Flies/d2rl-buff-hud) | PyreFly | [MIT](https://github.com/Pyre-Flies/d2rl-buff-hud/blob/main/LICENSE) |
 | Left Click Auras | [CelestialRayOne/d2rloader_plugins](https://github.com/CelestialRayOne/d2rloader_plugins) | CelestialRayOne | MIT |
 | Ethereal Item Rules, Item Durability, Progressive Affixes, Mass Identify | [RuffDood/RuffnecKk-D2RLoader-Suite](https://github.com/RuffDood/RuffnecKk-D2RLoader-Suite) | RuffnecKk | MIT |
