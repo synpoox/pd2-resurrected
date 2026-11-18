@@ -25,16 +25,16 @@ constexpr auto Is(std::string_view a, std::string_view lower) noexcept -> bool {
 	return true;
 }
 
-// The buttons the config's value names; LB for an unknown value (Controller QoL's default is "bumper")
+// The buttons the config's value names, as Controller QoL's own parser reads them (IsControllerModifierActive in its
+// src/controller_input.cpp @8dab5f83); LB for an unknown value
 constexpr auto Mask(std::string_view value) noexcept -> uint32_t {
-	if (Is(value, "rb")) return RB;
-	if (Is(value, "lt")) return LT;
-	if (Is(value, "rt")) return RT;
+	if (value.empty() || Is(value, "trigger") || Is(value, "l2") || Is(value, "lt")) return LT;
+	if (Is(value, "rb") || Is(value, "r1")) return RB;
+	if (Is(value, "rt") || Is(value, "r2")) return RT;
 	if (Is(value, "l3")) return L3;
 	if (Is(value, "r3")) return R3;
-	if (Is(value, "trigger")) return LT | RT;
-	if (Is(value, "any")) return LB | RB | L3 | R3 | LT | RT;
-	return LB;  // "bumper", "lb", and anything else
+	if (Is(value, "any")) return LB | LT;
+	return LB;  // "bumper", "lb", "l1", and anything else
 }
 
 // The mask for the `modifier = "x"` line of the config text (a line that starts with `modifier`, so `require_modifier`

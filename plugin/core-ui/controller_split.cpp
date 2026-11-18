@@ -67,6 +67,9 @@ auto ModifierHeld() noexcept -> bool {
 	uint32_t held = state.Gamepad.wButtons & (LB | RB | L3 | R3);
 	held |= state.Gamepad.bLeftTrigger > TriggerThreshold ? LT : 0;
 	held |= state.Gamepad.bRightTrigger > TriggerThreshold ? RT : 0;
+	if (held == 0) {
+		return false;  // no candidate button down: skip the config read
+	}
 	return (held & ModifierMask()) != 0;
 }
 
