@@ -11,10 +11,10 @@ STRINGS = Path(__file__).resolve().parents[2] / "files/data/local/lng"
 
 # item -> (name, monsters, boss, PD2 source row); monsters follow the PD2 area's list, substitutions in the PR
 THEMED = {
-    "m07": ("River of Blood", "doomknightmap,vilemothermap,zealotmap,oblivionknightmap,deathmaulermap,sk_archermap,regurgitatormap,councilmembermap", "The Mad Philosopher"),
+    "m07": ("River of Blood", "doomknightmap,vilemothermap,zealotmap,oblivionknightmap,deathmaulermap,sk_archermap,regurgitatormap,councilmembermap", "Belial Lord of Lies"),
     "m10": ("Ashen Plains", "sandleapermap2,thornhulkmap2,pantherwomanmap2,mosquitomap2,fetishmap2,slingermap2,deathmaulermap2,cantormap2", "Borq the Consumed"),
     "m12": ("Blood Moon", "hellbovineMap", "The Cow Queen"),
-    "m13": ("Ruins of Viz'jun", "cr_lancermap,goatmanmap,cr_archermap,bigheadmap,cantormap,unravelermap,arachmap,thornhulkmap,sandleapermap,mosquitomap", "Toadflax the Tainted"),
+    "m13": ("Ruins of Viz'jun", "cr_lancermap,goatmanmap,cr_archermap,bigheadmap,cantormap,unravelermap,arachmap,thornhulkmap,sandleapermap,mosquitomap", "Karvarousku the Cartographer"),
     "m17": ("Sewers of Harrogath", "fetishmap2,minionmap2,vilemothermap,fetishshamanmap,bloodlordmap2,mosquitomap2,sandleapermap2,arachmap", "The Mad Philosopher"),
     "m21": ("Ruined Cistern", "cr_archermap2,fetishmap2,minionmap2,mosquitomap2", "Ancient Cistern Hydra"),
     "m25": ("Halls of Torture", "sandleapermap2,zealotmap2,sk_archermap2,siegebeastmap2,bloodlordmap2,councilmembermap2,regurgitatormap2", "Gimli the Summoned One"),
@@ -39,10 +39,10 @@ class MapPd2Themes(unittest.TestCase):
         for code, (name, monsters, boss) in THEMED.items():
             self.assertEqual((by[code]["Name"], by[code]["Monsters"], by[code]["Boss"]), (name, monsters, boss), code)
 
-    def test_every_boss_is_an_entry_with_a_superunique_row_and_the_cap_holds(self):
+    def test_every_boss_is_an_entry_with_a_superunique_row(self):
         data_tables.need(self)
         bosses = {b["Name"]: b["Base"] for b in table("bosses.txt")}
-        self.assertLessEqual(len(bosses), 16)  # Cartographer MaxBosses
+        self.assertEqual(len(bosses), 21)  # past the old 16-entry cap (d2r-tools #552)
         supers = {r["Superunique"]: r for r in data_tables.rows("superuniques")}
         for m in table("maps.txt"):
             self.assertIn(m["Boss"], bosses, m["Name"])

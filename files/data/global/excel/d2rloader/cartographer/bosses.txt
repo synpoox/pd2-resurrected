@@ -15,3 +15,8 @@ Gimli the Summoned One	TortureHallsBoss
 Ancient Cistern Hydra	lernaeanhydra2
 Gaoler Kanemith	KanemithBoss
 Sharptooth the Broodmother	SharpToothBoss
+Johnathan The Damned	BastionBoss
+Indio The Insane	ThroneBoss
+Rotting Horror	PoisonedWellBoss
+Karvarousku the Cartographer	unravelerboss
+Belial Lord of Lies	baalminionboss

@@ -41,7 +41,7 @@ class UberDrops(unittest.TestCase):
     def test_dcbl_on_map_bosses(self):
         self.assertAlmostEqual(1 / chance(self.t["Map Blood Drop"], "dcbl"), 9)
         bosses = [r for r in dt.rows("superuniques") if r["Superunique"].startswith("cartoboss:")]
-        self.assertEqual(len(bosses), 16)
+        self.assertEqual(len(bosses), 21)
         for b in bosses:
             wrap = self.t[b["TC(H)"]]
             base = b["TC"]

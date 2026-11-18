@@ -83,3 +83,8 @@ cartoboss:Gimli_20the_20Summoned_20One	TortureHallsBoss	TortureHallsBoss	79		0	0
 cartoboss:Ancient_20Cistern_20Hydra	CisternBoss	lernaeanhydra2	80		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2 Blood	Map Boss T2	0
 cartoboss:Gaoler_20Kanemith	KanemithBoss	KanemithBoss	81		0	0	0	0	0	1	0		11	11	11	Map Boss T1		Map Boss T1		Map Boss T1 Blood	Map Boss T1	0
 cartoboss:Sharptooth_20the_20Broodmother	SharpToothBoss	SharpToothBoss	82		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2 Blood	Map Boss T2	0
+cartoboss:Johnathan_20The_20Damned	BastionBoss	BastionBoss	83		0	0	0	0	0	1	0		11	11	11	Map Boss T1		Map Boss T1		Map Boss T1 Blood	Map Boss T1	0
+cartoboss:Indio_20The_20Insane	ThroneBoss	ThroneBoss	84		0	0	0	0	0	1	0		11	11	11	Map Boss T3		Map Boss T3		Map Boss T3 Blood	Map Boss T3	0
+cartoboss:Rotting_20Horror	PoisonedWellBoss	PoisonedWellBoss	85		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2 Blood	Map Boss T2	0
+cartoboss:Karvarousku_20the_20Cartographer	Unraveler Boss	unravelerboss	86		0	0	0	0	0	1	0		11	11	11	Map Boss T2		Map Boss T2		Map Boss T2 Blood	Map Boss T2	0
+cartoboss:Belial_20Lord_20of_20Lies	StrBelial	baalminionboss	87		0	0	0	0	0	1	0		11	11	11	Map Boss T3		Map Boss T3		Map Boss T3 Blood	Map Boss T3	0
