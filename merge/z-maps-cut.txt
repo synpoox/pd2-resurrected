@@ -14,3 +14,4 @@ type	t5me
 type	pvpm
 type	pvpd
 type	ubmp
+code	t41	Monastery Map, cut by hand in #1249

@@ -4,6 +4,7 @@ A pd2_merge rule. Its anchor is merge/z-maps-cut.txt, named to sort LAST (the dr
 cut reads monstats and superuniques, which tables.json merges). One line kind:
 
     type <tab> <item type> [<tab> why]    items of this type (or its descendants) are PD2 map items and are cut
+    code <tab> <misc code> [<tab> why]    one misc row cut by its code (the Monastery Map `t41`: type `ubr` stays)
 
 What it does to the merged tables in generated/data/global/excel:
   misc          every row of a cut type is deleted (keys, type `ubr`, and the native `cmap` items are not cut types).
@@ -38,15 +39,17 @@ CUBE_ITEM_COLS = re.compile(r"^(input \d|output( b| c)?)$")
 CUBE_MOD_COLS = re.compile(r"(^| )mod \d$")
 
 
-def read_rule(path: Path) -> set[str]:
+def read_rule(path: Path, kind: str = "type") -> set[str]:
+    """The second column of the rule's `kind` lines."""
     types = set()
     for n, line in enumerate(path.read_text("utf-8").splitlines(), 1):
         if not line or line.startswith("#"):
             continue
         parts = line.split("\t")
-        if parts[0] != "type" or len(parts) < 2:
-            raise IdError(f"{path.name} line {n}: want 'type<tab>item type'")
-        types.add(parts[1])
+        if parts[0] not in ("type", "code") or len(parts) < 2:
+            raise IdError(f"{path.name} line {n}: want 'type<tab>item type' or 'code<tab>misc code'")
+        if parts[0] == kind:
+            types.add(parts[1])
     return types
 
 
@@ -172,7 +175,7 @@ def gate_patterns(rule: Path, pd2_data: Path) -> list[str]:
     types = read_rule(rule)
     load = lambda n: pd2_table.load(pd2_data, n)  # noqa: E731
     misc, itemtypes, props = load("misc"), load("itemtypes"), load("properties")
-    codes, gone_props = cut_codes(types, misc, itemtypes), cut_properties(props)
+    codes, gone_props = cut_codes(types, misc, itemtypes) | {c.lower() for c in read_rule(rule, "code")}, cut_properties(props)
     out = [f"misc.{glob(c)}.*" for c in sorted(codes)]
     tc = load("treasureclassex")
     th = {c: i for i, c in enumerate(tc.header)}
@@ -208,7 +211,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     types = read_rule(rule)
     itemtypes = read(out_data, "itemtypes", "Code")
     misc, tc = read(out_data, "misc", "code"), read(out_data, "treasureclassex")
-    codes = cut_codes(types, misc, itemtypes)
+    codes = cut_codes(types, misc, itemtypes) | {c.lower() for c in read_rule(rule, "code")}
 
     # treasure classes: the cascade reuses the never-drop code, which also marks the items unspawnable
     th = {c: i for i, c in enumerate(tc.header)}
