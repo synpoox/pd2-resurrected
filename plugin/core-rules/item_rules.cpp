@@ -1785,24 +1785,15 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 		*slot = {a, b, caller, 0};
 		++next;
 	}
-	if (++slot->n <= 1) {
+	// Outer cap: at most one line a second, so a full inventory scanned by two callers stays quiet whatever the ring holds
+	static std::atomic<uint64_t> lastTick {0};
+	const uint64_t now = GetTickCount64();
+	if (++slot->n <= 1 && now - lastTick.load() >= 1000) {
+		lastTick = now;
 		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStat);
 		plog::Info("map stack: caller +0x%llx %08x q%d/%d quality %d/%d -> %s (%s %d)", static_cast<unsigned long long>(caller),
 		           d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a), unitStat(a, StatQuantity, 0),
 		           unitStat(b, StatQuantity, 0), quality(a), quality(b), merge ? "merge" : "refused", reason, stat);
-		if (stat >= 0) {
-			const auto entries = d2r::Engine<int32_t (*)(Unit*, uint32_t, pd2::mapstack::Entry*, int32_t) noexcept>(UnitStatEntries);
-			for (Unit* u : {a, b}) {
-				pd2::mapstack::Entry e[64] {};
-				const int32_t n = entries(u, static_cast<uint32_t>(stat), e, 64);
-				for (int32_t i = 0; i < n && i < 64; ++i) {
-					plog::Info("map stack:   %s stat %d entry %d layer %u value %d", u == a ? "a" : "b", stat, i, e[i].layer, e[i].value);
-				}
-				if (n <= 0) {
-					plog::Info("map stack:   %s stat %d no entries", u == a ? "a" : "b", stat);
-				}
-			}
-		}
 	}
 	return merge ? 1 : 0;
 }

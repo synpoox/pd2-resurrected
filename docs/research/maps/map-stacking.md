@@ -23,4 +23,4 @@ So a map dropped this session onto a stack loaded from a save was refused by the
 stat compare never ran. Seen in slot 2: `item data +0x34 a 0 b -1` (loaded target, fresh cursor) and `a -1 b 0` (the reverse).
 
 Fix: `MapStackEqual` sets +0x34 to -1 on both items when both are normal-quality maps, before calling the native check. Game check after the fix (slot 2): a fresh map dropped onto a loaded map made a 2-stack; after a save and reload, the loaded 2-stack held on the cursor and dropped onto a fresh map made a 3-stack. Both directions log `merge (equal -1)` from both callers.
-The log is once per (item, item, caller).
+The log is one summary line (no stat entry dump): the first verdict per (item, item, caller) in a 32-entry ring, and at most one line a second overall.
