@@ -1,6 +1,6 @@
 # Altar opened in the world: pad focus (#1456)
 
-Build 93847. Findings so far; the issue stays open.
+Build 93847. Fixed by lane 1456c (section "The fix"); routes 1-5 are the earlier tries.
 
 ## Root cause
 A on the altar runs `openPanel` (`PanelManager:OpenPanel:<panel>`), which skips the controller UI switcher. D2R's switcher
@@ -52,3 +52,35 @@ Third version (2cca9eee: open the overlay if absent, else refresh; wait for the 
 - A again: not run (step 3 failed).
 
 Reading: the focus manager points at the altar, but the pad's input does not reach it, and the overlay open does not take (it still reads "not up" and no frame appears). The first version, which focused right after the open message, did show the frame. The open-if-absent timing (focusing 0 frames after the open) looks too early for the overlay. Stopped here per the last cycle's rule.
+
+## The fix (lane 1456c, slot 4, 2026-11-18)
+
+Three causes, each found in Ghidra and then checked in game:
+
+1. **No pad frame.** `FUN_1401f60c0` is the ControllerOverlayPanel type descriptor, not an "attached" test: the stash's loop over
+   `vtable+0x58` is a type check, so the stash always refreshes the overlay it just asked for. v2 and v3 refreshed only when
+   the overlay's +0x51 was set, which it was not yet. The frame is the overlay's `Background` widget, set to the two-panel frame
+   by `0x1f6e50(ov, ov+0x438)`.
+2. **DOWN going to the inventory.** The focus manager (`FUN_140846020()`) keeps the focused panel at +0x188, its widget at +0x190
+   and the last panel at +0x198; its input handler `FUN_140866eb0` sends a D-pad direction to the +0x190 widget's
+   `vtable+0x68`. With no widget there it moves to a neighbouring panel (`FUN_140868470`), which is the inventory. `0x8682b0`
+   takes the panel's remembered widget (+0x160) or the first focusable one (`FUN_140857d70`). Focusing once the overlay is up
+   gives the amulet slot (log `widget` non-null), and DOWN then follows the layout's `navigation.down` to `confirm`. The
+   remembered widget is cleared before each focus so every open starts on the slot.
+3. **B doing nothing.** D2R's panels close themselves on controller action 0x17 ("back") in their own OnMessage: BankPanel
+   `FUN_14023caa0` (`*(int*)(msg[0x22]+0x10) == 0x17` -> `FUN_1400c7d30(0x18)`), UISwitcher `FUN_14027df80`. The message is
+   InputMessage (field 0 hash `0x4ae067c6248b6042`) with ControllerActionBegin (field 0x11 hash `0x1e439768f7dd4594`). The SDK
+   panel is a plain Panel whose OnMessage (Widget's, `FUN_140856b00`) only passes messages to its children. The SDK has no pad
+   input service, so the altar panel object alone gets a copy of its vtable (17 methods) with OnMessage (slot 4) wrapped: on
+   back in pad mode it closes the altar, the inventory and the overlay on the next frame. No game code is patched.
+
+Order in `altar_panel.cpp`: both panels active for 2 frames, input reset, `OpenPanel:ControllerOverlay` when it is not up (so a
+second open adds no second help bar), the next frame with the overlay up: refresh, clear the inventory's focus, focus the
+altar, wrap OnMessage. New signatures `WidgetFocus` (0x868230) and `WidgetFind` (0x855c90) match once in the dump; the slot
+fallback they serve did not fire in the check (the panel focus already picked the slot).
+
+Pad check with the final build, 3 opens in one session (Barbarian level 99, town, `cheat ospawn 621`): A opens with the
+two-panel frame and one help bar ("Hold to Sort / B Close Menu"), the slot frame lit; the first DOWN lights the confirm button
+(Transmute hover art) and the bar reads "B Close Menu"; B closes every panel (log `closed by B`); the left stick walks after.
+Earlier builds of this lane: 4 more opens; one DOWN press showed no move, and before the remembered widget was cleared a
+reopen started on the confirm button. A mouse open logs `pad mode 0` and runs none of the pad steps.
