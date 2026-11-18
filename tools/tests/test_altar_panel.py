@@ -26,16 +26,18 @@ class AltarPanel(unittest.TestCase):
         for name in ("close",):
             self.assertEqual(kids[name]["fields"]["onClickMessage"], "PanelManager:TogglePanel:" + root["name"])
 
-    def test_amulet_frame_centered_no_x(self):  # #1398: inventory's amulet frame, no inner X, everything centered on the panel
+    def test_amulet_slot_in_cube_square(self):  # #1398: cube panel, stone square (art), bordered amulet slot centred in it, no inner X
         kids = {c["name"]: c for c in json.loads(LAYOUT.read_text("utf-8"))["children"]}
         self.assertNotIn("cancel", kids)
-        self.assertEqual(kids["background"]["fields"]["filename"], r"PANEL\panel_bg")
+        self.assertEqual(kids["background"]["fields"]["filename"], r"PANEL\pd2r\altar_bg")
+        self.assertTrue((ROOT / "files/data/hd/global/ui/panel/pd2r/altar_bg.lowend.sprite").is_file())
         self.assertEqual(kids["slot_bg"]["fields"]["filename"], r"PANEL\Inventory\Inventory_Paperdoll_Amulet")
         self.assertEqual(kids["slot_bg"]["fields"]["rect"], kids[constant("SlotName")]["fields"]["rect"])
-        centre = 1162 / 2  # $LeftPanelRect width, _profilehd.json
         cell, button = 98, 117  # $ItemCellSize, TransmuteButton frame
-        self.assertEqual(kids["slot_bg"]["fields"]["rect"]["x"] + cell / 2, centre)
-        self.assertAlmostEqual(kids["confirm"]["fields"]["rect"]["x"] + button / 2, centre, delta=0.5)  # 117 is odd
+        # altar_bg's slot frame is baked around the cell at (529, 683): the square's opening is x 385-769, y 540-924
+        self.assertEqual(kids["slot_bg"]["fields"]["rect"], {"x": 529, "y": 683})
+        self.assertAlmostEqual(kids["confirm"]["fields"]["rect"]["x"] + button / 2, 529 + cell / 2, delta=0.5)  # 117 is odd
+        centre = 1162 / 2  # $LeftPanelRect width, _profilehd.json
         prompt = kids["prompt"]["fields"]["rect"]
         self.assertEqual(prompt["x"] + prompt["width"] / 2, centre)
 
