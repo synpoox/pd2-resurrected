@@ -15,7 +15,7 @@
         {
             "type": "ImageWidget", "name": "background",
             "fields": {
-                "filename": "PANEL\\panel_bg"
+                "filename": "PANEL\\pd2r\\altar_bg"
             }
         },
         {
@@ -36,7 +36,7 @@
         {
             "type": "TextBoxWidget", "name": "prompt",
             "fields": {
-                "rect": { "x": 140, "y": 300, "width": 800, "height": 160 },
+                "rect": { "x": 0, "y": 300, "width": 1162, "height": 160 },
                 "style": "$StyleModalDialogDescription",
                 "text": "Place a corrupted amulet into the blood altar"
             }
@@ -44,14 +44,14 @@
         {
             "type": "ImageWidget", "name": "slot_bg",
             "fields": {
-                "rect": { "x": 529, "y": 681 },
-                "filename": "PANEL\\pd2r\\altar_slot"
+                "rect": { "x": 529, "y": 683 },
+                "filename": "PANEL\\Inventory\\Inventory_Paperdoll_Amulet"
             }
         },
         {
             "type": "InventoryGridWidget", "name": "core-maps/AltarSlot",
             "fields": {
-                "rect": { "x": 529, "y": 681 },
+                "rect": { "x": 529, "y": 683 },
                 "cellCount": { "x": 1, "y": 1 },
                 "cellSize": "$ItemCellSize",
                 "gemSocketFilename": "PANEL\\gemsocket"
@@ -60,21 +60,10 @@
         {
             "type": "ButtonWidget", "name": "confirm",
             "fields": {
-                "rect": { "x": 420, "y": 969 },
+                "rect": { "x": 520, "y": 969 },
                 "filename": "PANEL\\Horadric_Cube\\TransmuteButton",
                 "hoveredFrame": 2,
                 "onClickMessage": "PanelManager:OpenPanel:core-maps/AltarConfirm"
-            }
-        },
-        {
-            "type": "ButtonWidget", "name": "cancel",
-            "fields": {
-                "rect": { "x": 692, "y": 961 },
-                "filename": "PANEL\\pd2r\\altar_close",
-                "hoveredFrame": 3,
-                "tooltipString": "@strClose",
-                "sound": "cursor_close_window_hd",
-                "onClickMessage": "PanelManager:TogglePanel:core-maps/SacrificeAltar"
             }
         },
         {

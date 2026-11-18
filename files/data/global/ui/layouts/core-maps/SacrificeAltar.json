@@ -1,0 +1,73 @@
+{
+    "type": "Panel", "name": "core-maps/SacrificeAltar",
+    "fields": {
+        "priority": 10,
+        "rect": { "x": -320, "y": -240, "width": 320, "height": 432 },
+        "anchor": "$LeftPanelAnchor"
+    },
+    "children": [
+        {
+            "type": "ClickCatcherWidget", "name": "click_catcher",
+            "fields": {
+                "rect": { "width": 320, "height": 432 }
+            }
+        },
+        {
+            "type": "GridImageWidget", "name": "background",
+            "fields": {
+                "filename": "PANEL\\pd2r_altar",
+                "frames": 4,
+                "rows": 2
+            }
+        },
+        {
+            "type": "TextBoxWidget", "name": "prompt",
+            "fields": {
+                "rect": { "x": 0, "y": 102, "width": 320, "height": 20 },
+                "fontType": "8pt",
+                "style": {
+                    "fontColor": { "r": 255, "g": 255, "b": 255, "a": 255 },
+                    "alignment": { "h": "center", "v": "center" }
+                },
+                "text": "Place a corrupted amulet into the blood altar"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "slot_bg",
+            "fields": {
+                "rect": { "x": 150, "y": 184 },
+                "filename": "PANEL\\inv_ring_amulet"
+            }
+        },
+        {
+            "type": "InventoryGridWidget", "name": "core-maps/AltarSlot",
+            "fields": {
+                "rect": { "x": 147, "y": 182 },
+                "cellCount": { "x": 1, "y": 1 },
+                "cellSize": "$ItemCellSize",
+                "gemSocketFilename": "PANEL\\gemsocket"
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "confirm",
+            "fields": {
+                "rect": { "x": 144, "y": 260 },
+                "filename": "PANEL\\miniconvert",
+                "tooltipOffset": { "x": 0, "y": -3 },
+                "onClickMessage": "PanelManager:OpenPanel:core-maps/AltarConfirm"
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "close",
+            "fields": {
+                "rect": { "x": 275, "y": 383 },
+                "filename": "PANEL\\buysellbtn",
+                "normalFrame": 10,
+                "pressedFrame": 11,
+                "tooltipString": "@strClose",
+                "tooltipOffset": { "x": 0, "y": -3 },
+                "onClickMessage": "PanelManager:TogglePanel:core-maps/SacrificeAltar"
+            }
+        }
+    ]
+}

@@ -4,7 +4,7 @@
 // (SharedEventService), and the item work as item transactions (ItemService). No hook, no address.
 //
 // Flow: the altar's operate (lucion.cpp) opens the panel. Confirm moves the amulet from the page to the inventory, runs
-// Desecrate on it there (lucion.cpp; a failed roll makes the brick) and closes every panel. Cancel, the X and Escape just
+// Desecrate on it there (lucion.cpp; a failed roll makes the brick) and closes every panel. The X and Escape just
 // close the panel: a frame watcher returns any amulet left on the page, which also covers a save-and-exit with the
 // slot filled.
 // shortcut: host only (the SDK names the local player on the UI thread only), as the brick was; a remote use is refused in the log.
@@ -142,7 +142,7 @@ void ConfirmAltar(const D2RL::PluginContext*, void* user) noexcept {
 	g_threads->runOnUiThread(g_context, CloseAll, nullptr);
 }
 
-// Game thread: cancel, X, Escape, a replaced panel or a rejoin left the amulet on the page
+// Game thread: X, Escape, a replaced panel or a rejoin left the amulet on the page
 void ReturnAltarItem(const D2RL::PluginContext*, void* user) noexcept {
 	const auto player = reinterpret_cast<D2RL::PlayerHandle>(user);
 	const D2RL::ItemHandle amulet = SlotAmulet(player);
