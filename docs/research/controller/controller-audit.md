@@ -77,7 +77,7 @@ Short work items, each a sub-issue of #340:
 4. Done in #1443: a pad check of each companion plugin, see "Companion plugins with the virtual pad".
 5. Confirm where the Cube's controller focus starts.
 
-Left out on purpose: PD2's 13 binds (D2R's 6 + 6 stand in). Aim assist, dead zone and button style: see section 4.
+PD2 pad binds, one line each with its status: [docs/controller.md](../../controller.md#pd2-binds). Aim assist, dead zone and button style: see section 4.
 
 ## 4. The three items the first audit left out (aim assist, dead zone, button style)
 
