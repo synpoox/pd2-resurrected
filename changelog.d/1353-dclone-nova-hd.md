@@ -1,0 +1,1 @@
+- Dclone's fire nova draws its flame pillars in HD.

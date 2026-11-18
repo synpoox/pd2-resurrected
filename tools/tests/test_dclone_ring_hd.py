@@ -4,9 +4,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-# #1352: the fire nova model (#1265) drew nothing; the nova keeps baal's summon model until #1353 finds a working one
+# #1352: the fire nova model (#1265) drew nothing and the summon model (#1361) drew no pillars (#1353); the nova uses the fire pillar model
 # JSON keys are case-sensitive; the value is the D2R model the key must keep
-RING = {"uberdiabfire": "ground_fire_big", "ubernova": "expansion_baalsummonmissile",
+RING = {"uberdiabfire": "ground_fire_big", "ubernova": "ground_fire_big",
         "uberwallmaker": "ground_fire_medium", "uberwall": "ground_fire_medium"}
 
 
