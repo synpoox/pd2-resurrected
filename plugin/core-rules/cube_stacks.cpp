@@ -15,6 +15,7 @@
 #include "cube_stacks.h"
 
 #include "log.h"
+#include "map_stack.h"
 
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
@@ -35,8 +36,6 @@ namespace items = D2RL::Items;
 constexpr uint8_t OpBlock = 30;  // core-events: matched without the input count, as PD2 does
 constexpr int Inputs = 7;
 constexpr int Slots = d2r::rva::CubeMatchUsedSlots;
-
-constexpr int MaxMapStats = 4;
 
 struct MatchOut {
 	uint64_t words[6];
@@ -151,11 +150,7 @@ struct Leftover {
 	uint32_t original;  // the stack's quantity before the row ran
 	uint32_t itemLevel;
 	uint32_t sourceId;  // the stack's unit id: the executor must have taken it before it comes back
-	struct Stat {
-		int32_t stat, layer, value;
-	};
-	Stat stats[MaxMapStats];  // a map's non-quantity stats (#1326), set again on the made unit
-	uint32_t statCount;
+	pd2::mapstack::Saved saved;  // a map's non-quantity stats (#1326), set again on the made unit
 };
 
 // A map's non-quantity stats, to set on the remade unit: only the two the mod puts on maps (Area Level, forced event);
@@ -165,22 +160,11 @@ auto MapProperties(Unit* item, Leftover& left) noexcept -> bool {
 	if (d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, ItemTypeMap) == 0) {
 		return true;
 	}
-	struct Entry {
-		int32_t layer, stat, value;  // the engine writes 12 bytes per entry, not 8
-	};
-	const auto entries = d2r::Engine<int32_t (*)(Unit*, uint32_t, Entry*, int32_t) noexcept>(UnitStatEntries);
-	for (int32_t stat = 0; stat < ItemStatCostRows; ++stat) {
-		Entry e[16] {};
-		int32_t n = stat == StatQuantity ? 0 : entries(item, static_cast<uint32_t>(stat), e, 16);
-		if (n > 16) {
-			return false;  // more layers than the buffer: refuse rather than drop some
-		}
-		for (int32_t i = 0; i < n; ++i) {
-			const bool level = stat == StatMapLevel, event = stat == StatMapForceEvent;
-			if ((!level && !event) || left.statCount >= MaxMapStats) {
-				return false;
-			}
-			left.stats[left.statCount++] = {stat, e[i].layer, e[i].value};
+	pd2::mapstack::Collect(item, ItemStatCostRows, StatQuantity,
+	                       d2r::Engine<int32_t (*)(Unit*, uint32_t, pd2::mapstack::Entry*, int32_t) noexcept>(UnitStatEntries), left.saved);
+	for (int32_t i = 0; i < left.saved.count; ++i) {
+		if (left.saved.entry[i].stat != StatMapLevel && left.saved.entry[i].stat != StatMapForceEvent) {
+			return false;
 		}
 	}
 	return true;
@@ -206,11 +190,10 @@ auto ScanSources(const D2RL::PluginContext*, const items::ItemInfo* item, void* 
 }
 
 void SetStats(const D2RL::PluginContext*, void* native, void* user) noexcept {
-	const auto* left = static_cast<const Leftover*>(user);
-	for (uint32_t i = 0; i < left->statCount; ++i) {
-		d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(d2r::rva::SetUnitStat)(
-			static_cast<Unit*>(native), left->stats[i].stat, left->stats[i].value, left->stats[i].layer);
-	}
+	pd2::mapstack::Apply(static_cast<Unit*>(native), static_cast<const Leftover*>(user)->saved,
+	                     [](Unit* unit, int32_t stat, int32_t value, int32_t layer) noexcept {
+		                     d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(d2r::rva::SetUnitStat)(unit, stat, value, layer);
+	                     });
 }
 
 auto Create(D2RL::PlayerHandle player, const Leftover& left, items::ItemContainer container) noexcept -> items::Result {
@@ -228,7 +211,7 @@ auto Create(D2RL::PlayerHandle player, const Leftover& left, items::ItemContaine
 	                                                  .placement = items::Placement::Automatic}};
 	D2RL::ItemHandle made = D2RL::InvalidItemHandle;
 	const items::Result result = g_items->createItem(g_context, player, &spec, &made);
-	if (result == items::Result::Success && left.statCount != 0) {
+	if (result == items::Result::Success && left.saved.count != 0) {
 		// A property would add to the map's own Area Level (cartographer's cube hook), so the stats are set as they were (#1400)
 		g_items->editNativeItem(g_context, made, SetStats, const_cast<Leftover*>(&left));
 	}
@@ -251,9 +234,13 @@ void MakeLeftovers(const D2RL::PluginContext*, void* user) noexcept {
 		} else if (scan.now[i] != 0) {
 			left.quantity = 0;
 		}
-		if (listed != D2RL::Inventory::Result::Success || left.quantity == 0) {
-			plog::Info("stacks: leftover %.4s x%u not made: its stack is whole in the cube (read %u)",
-			           reinterpret_cast<const char*>(&left.code), left.quantity, static_cast<uint32_t>(listed));
+		if (listed != D2RL::Inventory::Result::Success) {
+			plog::Info("stacks: leftover %.4s not made: the cube could not be read (%u)", reinterpret_cast<const char*>(&left.code),
+			           static_cast<uint32_t>(listed));
+			continue;
+		}
+		if (left.quantity == 0) {
+			plog::Info("stacks: leftover %.4s not made: its stack is whole in the cube", reinterpret_cast<const char*>(&left.code));
 			continue;
 		}
 		items::Result made = Create(player, left, items::ItemContainer::Cube);
@@ -366,7 +353,7 @@ auto KeepCubeLeftovers(Game* game, Unit* player, const uint8_t* record) noexcept
 				return false;  // createItem would remake it without its affixes
 			}
 			found[count] = {d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(item), static_cast<uint32_t>(quantity - use),
-			                static_cast<uint32_t>(quantity), d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemLevel)(item), At<uint32_t>(item, UnitIdField), {}, 0};
+			                static_cast<uint32_t>(quantity), d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemLevel)(item), At<uint32_t>(item, UnitIdField), {}};
 			if (!MapProperties(item, found[count])) {
 				plog::Info("stacks: refused, a map stack the row leaves units of has a stat that cannot be remade");
 				return false;
