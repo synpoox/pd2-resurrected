@@ -23,7 +23,7 @@ class MapIconTiers(unittest.TestCase):
         ice = (PD2 / "icemap.json").read_bytes()
         self.assertEqual(set(misc), set(tier))
         for m, c in tier.items():
-            self.assertRegex(misc[m], f"^cartoicon_{c}_\d\d$", m)
+            self.assertRegex(misc[m], rf"^cartoicon_{c}_\d\d$", m)
             self.assertEqual(items[m], "pd2/" + misc[m], m)
             self.assertEqual((PD2 / (misc[m] + ".json")).read_bytes(), ice, m)
         self.assertEqual(len(set(misc.values())), len(misc), "icons must be unique")
