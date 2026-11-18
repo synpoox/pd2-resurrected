@@ -29,6 +29,12 @@ class AltarPanel(unittest.TestCase):
     def test_no_cube_desecration(self):
         self.assertNotIn("Desecrate", (ROOT / "plugin/core-events/cube_ops.cpp").read_text("utf-8"))
 
+    def test_altar_once_per_game(self):  # #1357: stage 9 (set by the attempt) keeps the panel shut
+        lucion = (ROOT / "plugin/core-events/lucion.cpp").read_text("utf-8")
+        body = lucion.split("auto OperateSacrificeAltar", 1)[1].split("auto InstallLucion", 1)[0]
+        self.assertRegex(body, r"LucionStageKey\) == AttemptedStage")
+        self.assertLess(body.index("AttemptedStage"), body.index("OpenAltarPanel"))
+
 
 if __name__ == "__main__":
     unittest.main()
