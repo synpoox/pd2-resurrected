@@ -1,12 +1,14 @@
 """PD2's map system is cut with nothing dangling (#964): the data rule's pieces, and the plugin's sources and includes."""
 import re
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 import pd2_cutmaps  # noqa: E402
+from pd2_table import IdError  # noqa: E402
 
 CORE_EVENTS = ROOT / "plugin" / "core-events"
 REMOVED = ["map_stats", "map_deaths", "unique_maps", "unique_map_drops", "zhar", "map_bosses", "map_boss_ai"]
@@ -39,6 +41,23 @@ class DataCut(unittest.TestCase):
         tc = Fake(header, [["Map Miniboss t3", "5", "Map Uitem", "3", "gld", "2"]])
         pd2_cutmaps.undefined_maps(tc, [2, 4], {h: i for i, h in enumerate(header)})
         self.assertEqual(tc.rows[0], ["Map Miniboss t3", "8", "gld", "2", "", ""])
+
+    def test_read_rule_reads_each_line_kind(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "rule.txt"
+            p.write_text("# comment\ntype\tubmp\ncode\tt41\twhy\n", "utf-8")
+            self.assertEqual(pd2_cutmaps.read_rule(p), {"ubmp"})
+            self.assertEqual(pd2_cutmaps.read_rule(p, "code"), {"t41"})
+            p.write_text("foo\tx\n", "utf-8")
+            with self.assertRaises(IdError):
+                pd2_cutmaps.read_rule(p)
+
+    def test_code_line_naming_no_misc_row_fails(self):
+        misc = Fake(["code"], [["T41"], ["jew"]])
+        misc.key = 0
+        self.assertEqual(pd2_cutmaps.named_codes({"t41"}, misc), {"t41"})
+        with self.assertRaises(IdError):
+            pd2_cutmaps.named_codes({"t4l"}, misc)
 
     def test_rule_file_names_real_types(self):
         types = pd2_cutmaps.read_rule(ROOT / "merge" / "z-maps-cut.txt")

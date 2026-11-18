@@ -1,7 +1,7 @@
 """PD2's map system, cut from the merged tables (#964, epic #942): the Cartographer plugin makes maps now.
 
 A pd2_merge rule. Its anchor is merge/z-maps-cut.txt, named to sort LAST (the driver runs rule files in name order, and the
-cut reads monstats and superuniques, which tables.json merges). One line kind:
+cut reads monstats and superuniques, which tables.json merges). Two line kinds:
 
     type <tab> <item type> [<tab> why]    items of this type (or its descendants) are PD2 map items and are cut
     code <tab> <misc code> [<tab> why]    one misc row cut by its code (the Monastery Map `t41`: type `ubr` stays)
@@ -162,6 +162,14 @@ def cut_codes(types: set[str], misc: Table, itemtypes: Table) -> set[str]:
     return {r[misc.key].lower() for r in misc.rows if of_cut_type(r[ty])}
 
 
+def named_codes(names: set[str], misc: Table) -> set[str]:
+    """The `code` lines of the rule, lower case; a code misc does not have is a typo."""
+    have = {r[misc.key].lower() for r in misc.rows}
+    if missing := sorted(c for c in names if c.lower() not in have):
+        raise IdError(f"no misc code {', '.join(missing)}")
+    return {c.lower() for c in names}
+
+
 def glob(label: str) -> str:
     """A row label as an fnmatch pattern part, lower case, `[` escaped."""
     if re.search(r"[|`]", label):
@@ -211,7 +219,7 @@ def apply(rule: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     types = read_rule(rule)
     itemtypes = read(out_data, "itemtypes", "Code")
     misc, tc = read(out_data, "misc", "code"), read(out_data, "treasureclassex")
-    codes = cut_codes(types, misc, itemtypes) | {c.lower() for c in read_rule(rule, "code")}
+    codes = cut_codes(types, misc, itemtypes) | named_codes(read_rule(rule, "code"), misc)
 
     # treasure classes: the cascade reuses the never-drop code, which also marks the items unspawnable
     th = {c: i for i, c in enumerate(tc.header)}
