@@ -108,6 +108,12 @@ class MapRecipeShapeTests(MapRecipeTests):
             r = misc[code]
             assert (r["AnyaMin"], r["AnyaMax"], r["cost"], r["spawnable"]) == ("1", "1", price, "1"), code
 
+    def test_fortify_takes_one_map_of_any_quality(self):
+        rows = self.desc("map + fort")
+        assert len(rows) == 3 and not [r for r in rows if r["op"] == "30"]
+        for r in rows:
+            assert r["input 1"] in ('"t1m,qty=1"', '"t2m,qty=1"', '"t3m,qty=1"'), r["description"]  # a stack gives up one
+
     def test_kept_maps_use_the_mod_qualifier(self):
         for part in ("heroic map", "corrupt", "fortified"):
             for r in self.desc(part):
