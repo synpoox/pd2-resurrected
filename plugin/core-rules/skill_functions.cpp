@@ -20,6 +20,7 @@
 #include "missile_functions.h"
 #include "skill_router.h"
 #include "line_spread.h"
+#include "sig_hook.h"
 #include "parry_roll.h"
 #include "../core-events/arena_spots.h"  // Lucion's arena centre (#962): core-rules reads the same arena service
 
@@ -3741,21 +3742,24 @@ auto SrvStSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 // this wraps it: a player in class 5 rolls PD2's parry first (PD2 rolls the block before the evade, dodge and avoid
 // rolls), and anything else, class 13's block included, is D2R's own code. Not ported: PD2's 4-frame no-avoid window
 // after an avoid, its half chance in the PvP arenas (levels 157, 159, 166: cut), and sound 4713 (ignored by decision).
-// Block chance (0x450070 (unit)), composit weapon class (0x3b6e00 (unit, unit data, int* out, -1, 1)) and unit data
-// (0x34a360 (unit)) are what 0x44ef70 itself calls.
+// Block chance (0x450070 (unit)), composit weapon class (0x3b6e00 (unit, unit data, int* out, -1, 1)) and the unit
+// data (UnitInventory) are what 0x44ef70 itself calls. Found by signature: the prologue and the first calls, calls masked.
 std::atomic<uint32_t> g_parryRolls {0};
 std::atomic<uint32_t> g_parries {0};
-constexpr uint64_t AvoidD2R = 0x44ef70;
 constexpr uint8_t AvoidD2REntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10,
                                      0x56, 0x57, 0x41, 0x56, 0x48, 0x83, 0xec, 0x30};
-constexpr uint64_t BlockChanceD2R = 0x450070, CompositClassD2R = 0x3b6e00, UnitDataD2R = 0x34a360;
+constexpr uint64_t BlockChanceD2R = 0x450070, CompositClassD2R = 0x3b6e00;
+constexpr const char* AvoidPattern =
+    "48 89 5C 24 08 48 89 6C 24 10 56 57 41 56 48 83 EC 30 48 8B F1 45 8B F0 48 8B CA 48 8B FA 33 ED E8 ?? ?? ?? ?? "
+    "48 8B CF 85 C0 0F 85 ?? ?? ?? ?? E8 ?? ?? ?? ?? 83 C0 FE 48 8B CF 83 F8 01 0F 86 ?? ?? ?? ?? E8 ?? ?? ?? ??";
 using AvoidFn = uint32_t (*)(Unit* attacker, Unit* defender, int32_t ranged) noexcept;
 AvoidFn g_avoidOriginal = nullptr;
 
 auto AvoidWithParry(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> uint32_t {
-	if (defender != nullptr && At<int32_t>(defender, d2r::rva::UnitType) == 0) {
+	void* data = defender == nullptr ? nullptr
+	             : d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(d2r::rva::UnitInventory)(defender, __FILE__, __LINE__);
+	if (data != nullptr) {  // PD2 rolls for any defender
 		int32_t weaponClass = -1;
-		void* data = d2r::Engine<void* (*)(Unit*) noexcept>(UnitDataD2R)(defender);
 		d2r::Engine<int64_t (*)(Unit*, void*, int32_t*, int32_t, int32_t) noexcept>(CompositClassD2R)(defender, data,
 		                                                                                              &weaponClass, -1, 1);
 		const int32_t raw = weaponClass == pd2::parry::WeaponClass2HS
@@ -3768,10 +3772,10 @@ auto AvoidWithParry(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> 
 			const int32_t roll = static_cast<int32_t>(
 				d2r::Roll(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(d2r::rva::UnitSeed)(defender)) % 100);
 			const bool parried = pd2::parry::Parries(chance, static_cast<uint32_t>(roll));
-			const uint32_t rolls = ++g_parryRolls, parries = parried ? ++g_parries : g_parries.load();
-			if (rolls <= 20 || rolls % 100 == 0) {
+			const uint32_t parries = parried ? ++g_parries : g_parries.load();
+			if (plog::Sample(g_parryRolls)) {  // counts the roll too: 1st, 100th, 10,000th
 				plog::Info("parry: class %d, block chance %d (rolled with %d), roll %d: %s; %u rolls, %u parries", weaponClass,
-				           raw, chance, roll, parried ? "parried" : "no parry", rolls, parries);
+				           raw, chance, roll, parried ? "parried" : "no parry", g_parryRolls.load(), parries);
 			}
 			if (parried) {
 				return pd2::parry::ResultBlock;
@@ -4755,13 +4759,13 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		std::snprintf(report + used, reportSize - used, "; mode gate busy take-over%s",
 		              gate ? "" : " FAILED (bytes differ)");
 	}
-	const bool parry = context->InstallInlineHook(AvoidD2R, AvoidD2REntry, sizeof(AvoidD2REntry),
-	                                              reinterpret_cast<void*>(&AvoidWithParry),
-	                                              reinterpret_cast<void**>(&g_avoidOriginal));
+	const bool parry = sigscan::HookBySignature(context, "AvoidRoll", AvoidPattern, 0, AvoidD2REntry, sizeof(AvoidD2REntry),
+	                                               reinterpret_cast<void*>(&AvoidWithParry),
+	                                               reinterpret_cast<void**>(&g_avoidOriginal));
 	installed += parry ? 1 : 0;
 	used = std::strlen(report);
 	if (used < reportSize) {
-		std::snprintf(report + used, reportSize - used, "; holy sword parry%s", parry ? "" : " FAILED (bytes differ)");
+		std::snprintf(report + used, reportSize - used, "; holy sword parry%s", parry ? "" : " FAILED (signature)");
 	}
 	// PD2's get-hit / block window: both "frames left > 1" tests become "> 2", then a logging hook
 	static constexpr uint8_t D2RWindow[1] = {0x01};

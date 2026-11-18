@@ -14,13 +14,13 @@ The avoid roll is `0x103035f0(defender, attacker, ranged)`.
 ## D2R (build 93847)
 
 - Avoid: `0x44ef70(attacker, defender, ranged) -> uint32`, called from `0x44b930`. Results: `0x10` block, 8 evade, 4 dodge, 2 avoid. Entry bytes `48 89 5c 24 08 48 89 6c 24 10 56 57 41 56 48 83 ec 30`.
-- Block chance: `0x450070(defender)`. Class: `0x3b6e00(defender, 0x34a360(defender), &out, -1, 1)`. D2R blocks only for class 13, only in modes other than 2 and 3.
+- Block chance: `0x450070(defender)`. Class: `0x3b6e00(defender, 0x34a360(defender), &out, -1, 1)`. D2R blocks only for class 13; its player branch skips modes 2 and 3 (walk, run), its monster branch modes 2 and 0xf.
 
 ## Port
 
-`core-rules` wraps `0x44ef70` (`AvoidWithParry`, `skill_functions.cpp`). For a player defender with class 5 it rolls PD2's parry (`plugin/common/parry_roll.h`, checked by `plugin/tests/parry_roll_check.cpp`); a parry returns `0x10`, otherwise the original runs, so D2R's own class 13 block is untouched.
+`core-rules` wraps `0x44ef70` (found by a masked 76-byte signature, one match on 93847) (`AvoidWithParry`, `skill_functions.cpp`). For a defender with class 5 it rolls PD2's parry (`plugin/common/parry_roll.h`, checked by `plugin/tests/parry_roll_check.cpp`); a parry returns `0x10`, otherwise the original runs, so D2R's own class 13 block is untouched.
 
-Not ported: the 4-frame window, the level 157/159/166 halving (those levels are cut), sound 4713, PD2's roll in every mode (D2R's own block skips modes 2 and 3).
+Not ported: the 4-frame window, the level 157/159/166 halving (those levels are cut), sound 4713, PD2's class 13 (claw) block while walking or running (D2R's own skips it). The class 5 parry rolls before the original, so it works in every mode.
 
 ## Slot check
 
