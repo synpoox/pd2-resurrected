@@ -1,2 +1,2 @@
 # Minimum d2r-tools commit for cartographer.dll (registers the cartographer:* stat strings #1333 needs; first pinned for the 25 tilesets, #1300). Bump on purpose; install.ps1 and release.yml read it via check_cartographer.ps1.
-4c04add74f0118190458917c8d25803b9c296242
+05226fefaa40f8aa4dacd4dfaed1ed43972a3e16
