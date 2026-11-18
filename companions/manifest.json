@@ -136,9 +136,9 @@
     {
       "name": "Potion Counter",
       "repo": "synpoox/d2r-tools",
-      "tag": "release-2026.11.18.1",
-      "asset": "potion-counter-1.0.0.zip",
-      "sha256": "a8bc5d81b03ce7adcd93d562f3da5b7feac08b1df800d708923cd8af166f0059",
+      "tag": "release-2026.11.18.2",
+      "asset": "potion-counter-1.0.1.zip",
+      "sha256": "cddcf117c03836fcae533cd216bc746f0d4f0643e30c6d7690b317ca2a42b124",
       "files": {
         "potion-counter.dll": "d2rloader/plugins/potion-counter.dll"
       }
