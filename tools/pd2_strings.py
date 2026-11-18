@@ -167,11 +167,22 @@ def check_stat_strings(excel: Path, lng: Path, d2r_lng: Path) -> None:
         raise ValueError(f"descstr2 text with printf codes, printed raw after the value: {', '.join(bad)}")
 
 
+def check_cut(cfg: dict, excel: Path) -> None:
+    """Fails when a cut key is not an ids key (a typo) or a merged table still names it (its text would go missing)."""
+    cut = set(cfg.get("cut", []))
+    if cut - set(cfg["ids"]):
+        raise ValueError(f"cut keys not in ids: {sorted(cut - set(cfg['ids']))}")
+    used = cut & set(referenced(excel))
+    if used:
+        raise ValueError(f"cut keys a table names: {sorted(used)}")
+
+
 def rule(rule_file: Path, pd2_data: Path, d2r_data: Path, out_data: Path) -> None:
     """pd2_merge rule kind for merge/strings.json."""
     if not (d2r_data / "local" / "lng" / "strings").is_dir():
         raise ValueError(f"no D2R strings under {d2r_data}: run `modkit fetch` or pass --d2r")
     cfg = json.loads(rule_file.read_text("utf-8"))
+    check_cut(cfg, out_data / "global" / "excel")
     build(cfg, pd2_texts(pd2_data), modkit()[1].Strings(DataRoot(d2r_data)), out_data.parent)
     excel = out_data / "global" / "excel"
     if (excel / "itemstatcost.txt").is_file():  # merged by ids-itemstatcost.tsv, which runs first
