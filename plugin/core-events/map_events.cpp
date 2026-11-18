@@ -29,13 +29,16 @@
 #include "lucion.h"
 #include "map_open.h"
 #include "rathma.h"
-#include "sig_hook.h"
 
 #include "cartographer_room_populate_v1.h"
 #include "event_link.h"
 #include "event_roll.h"
 
+#include "map_stack.h"
+
+#include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
+#include <D2RLPlugin/lifecycle_events.h>
 #include <D2RLPlugin/localization.h>
 #include <D2RLPlugin/plugin_communication.h>
 
@@ -483,11 +486,96 @@ auto RollEvent(Game* game, int32_t level, int32_t quality, bool forced) noexcept
 constexpr int32_t MapItemType = 245;
 std::atomic<int32_t> g_usedQuality {0};  // 0 none; else the D2R quality of the map item used last
 std::atomic<bool> g_usedForced {false};
-thread_local Unit* g_usePlayer = nullptr;  // the player of the use handler running now
 using UseItemFn = void (*)(Game*, Unit*, uint8_t*, char) noexcept;
 UseItemFn g_useOriginal = nullptr;
 constexpr uint64_t UseItem = 0x4f40c0;
 constexpr uint8_t UseItemEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41, 0x56};
+
+// Using one map of a stack (#1397). Item spell 16 is a used-up spell (its table byte, read by 0x308e80), so the handler
+// takes the used item whole: a stack of maps lost every map. So a stack of N > 1 gives one map to the cursor first
+// (splitStack: the stack keeps N-1, its cell and its identity) and the handler uses that piece, from the cursor (packet
+// location 4, which the handler accepts when the cursor holds the item it uses). A refused use leaves the piece on the
+// cursor, so it goes back onto the stack. The SDK names the local player on the UI thread only, so its handle is kept
+// from LocalPlayerReady and used here, on the game thread.
+// shortcut: local player only; another player's stack use in a hosted game is refused (no SDK handle for them), so no
+// map is lost; upgrade with a plugin message if hosted map stacks matter.
+namespace items = D2RL::Items;
+const D2RL::ItemService* g_items = nullptr;
+const D2RL::InventoryService* g_inventory = nullptr;
+std::atomic<D2RL::PlayerHandle> g_localPlayer {D2RL::InvalidPlayerHandle};
+std::atomic<uint32_t> g_stackUses {0}, g_stackRefused {0};
+constexpr size_t UsePacketSize = 0x24;  // the handler reads up to +0x23 (+0x12..+0x23: three 6-byte item entries)
+constexpr uint8_t PacketCursor = 4;     // +0xe location: the cursor, with +0xf 0xff and +0x10/+0x11 (x, y) 0
+
+void KeepLocalPlayer(const D2RL::PluginContext* context, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {
+	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+	g_localPlayer = g_inventory->getLocalPlayer(context, &player) == D2RL::Inventory::Result::Success ? player
+	                                                                                                   : D2RL::InvalidPlayerHandle;
+}
+
+auto FindById(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept -> D2RL::Inventory::IterationAction {
+	auto* found = static_cast<items::ItemInfo*>(user);
+	if (item->runtimeId != found->runtimeId) {
+		return D2RL::Inventory::IterationAction::Continue;
+	}
+	*found = *item;
+	return D2RL::Inventory::IterationAction::Stop;
+}
+
+// The stack's use, on one piece split off it; false when nothing was split (the use is then refused, see the caller)
+auto UseOneOfStack(Game* game, Unit* player, Unit* stack, uint8_t* packet, char flag, int32_t quantity) noexcept -> bool {
+	using namespace d2r::rva;
+	const D2RL::PlayerHandle owner = g_localPlayer;
+	items::ItemInfo source {.runtimeId = At<uint32_t>(packet, 10)};
+	const D2RL::Inventory::ItemFilter filter {.structSize = D2RL::Inventory::ItemFilterSize,
+	                                          .containerMask = items::ContainerBit(items::ItemContainer::Inventory)};
+	if (g_items == nullptr || owner == D2RL::InvalidPlayerHandle ||
+	    g_inventory->forEachInventoryItem(g_context, owner, &filter, FindById, &source) != D2RL::Inventory::Result::Success ||
+	    source.handle == D2RL::InvalidItemHandle) {
+		plog::Info("map use: a stack of %d not split (%s), so the use is refused", quantity,
+		           g_items == nullptr ? "no SDK item services" : "not in the local player's inventory");
+		return false;
+	}
+	// The piece is made after the split, without the map's own stats (map level, affixes, the forcing marker): copy them on
+	pd2::mapstack::Saved saved;
+	pd2::mapstack::Collect(stack, ItemStatCostRows, StatQuantity,
+	                       d2r::Engine<int32_t (*)(Unit*, uint32_t, pd2::mapstack::Entry*, int32_t) noexcept>(UnitStatEntries), saved);
+	const items::SplitStackRequest request {.structSize = items::SplitStackRequestSize, .player = owner, .sourceItem = source.handle, .quantity = 1};
+	items::SplitStackResult split {.structSize = items::SplitStackResultSize};
+	items::ItemInfo piece {.structSize = items::ItemInfoSize};
+	const items::Result status = g_items->splitStack(g_context, &request, &split);
+	Unit* unit = status == items::Result::Success && g_items->getItemInfo(g_context, split.cursorItem, &piece) == items::Result::Success
+	                 ? d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, UnitItem, static_cast<int32_t>(piece.runtimeId))
+	                 : nullptr;
+	if (unit == nullptr) {
+		plog::Info("map use: a stack of %d not split (result %u, cursor busy?), so the use is refused", quantity, static_cast<uint32_t>(status));
+		return false;
+	}
+	pd2::mapstack::Apply(unit, saved, [](Unit* u, int32_t stat, int32_t value, int32_t layer) noexcept {
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(u, stat, value, layer);
+	});
+	uint8_t use[UsePacketSize];
+	std::memcpy(use, packet, sizeof(use));
+	std::memcpy(use + 10, &piece.runtimeId, sizeof(piece.runtimeId));
+	use[0xe] = PacketCursor;
+	use[0xf] = 0xff;
+	use[0x10] = use[0x11] = 0;
+	g_useOriginal(game, player, use, flag);
+	if (d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, UnitItem, static_cast<int32_t>(piece.runtimeId)) == nullptr) {
+		plog::Info("map use: one map of a stack of %d used, %u left in the stack (%u so far)", quantity, split.remainingQuantity, ++g_stackUses);
+		return true;
+	}
+	// Refused (a gate, a slot): the piece goes back, the quantity first so a failed destroy can only leave one map too many
+	const items::ItemEdit back {.structSize = items::ItemEditSize, .fields = items::EditFieldBit(items::EditField::Quantity),
+	                            .quantity = static_cast<uint32_t>(quantity)};
+	const items::Result edited = g_items->editItem(g_context, owner, source.handle, &back);
+	const items::Result destroyed = edited == items::Result::Success
+	                                    ? g_items->destroyItem(g_context, owner, split.cursorItem, items::SocketedItemPolicy::RejectIfNotEmpty)
+	                                    : edited;
+	plog::Info("map use: the use was refused, the map went back onto the stack of %d (edit %u, destroy %u; %u refused so far)", quantity,
+	           static_cast<uint32_t>(edited), static_cast<uint32_t>(destroyed), ++g_stackRefused);
+	return true;
+}
 
 auto OnUseItem(Game* game, Unit* player, uint8_t* packet, char flag) noexcept -> void {
 	using namespace d2r::rva;
@@ -499,36 +587,15 @@ auto OnUseItem(Game* game, Unit* player, uint8_t* packet, char flag) noexcept ->
 		// the isolated forcing marker is stat 553 on layer 1 only (event_link.h); a layer-0 553 is a player buff
 		g_usedForced = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatForceEvent,
 		                                                                                     pd2::event_link::MarkerLayer) > 0;
+		const int32_t quantity = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatQuantity, 0);
+		if (quantity > 1 && packet[0xe] != PacketCursor) {
+			if (!UseOneOfStack(game, player, item, packet, flag, quantity)) {
+				++g_stackRefused;  // no map is lost: the stack stays as it was
+			}
+			return;
+		}
 	}
-	Unit* const saved = g_usePlayer;
-	g_usePlayer = player;
 	g_useOriginal(game, player, packet, flag);
-	g_usePlayer = saved;
-}
-
-// Using one map of a stack (#1397). The use handler above frees a used-up item (item spell 16's keep is 0) with 0x43ec10, the whole
-// stack: D2R's own use dispatcher, which takes one off a stack (0x46f090), is replaced by Cartographer for maps. So at that one call
-// site a stack of maps loses one instead; a single map and every other caller (cube, sell, drop) go on to the original.
-// 0x43ec10 is generic, so the call site is told by its return address (shortcut: a fixed RVA, checked in the hook; migrate with #296).
-// Here, not in core-rules: the item has no owner id inside the handler, and the loader hooks the handler once, so its player comes from OnUseItem.
-using ItemFreeFn = void (*)(Game*, Unit*) noexcept;
-ItemFreeFn g_itemFreeOriginal = nullptr;
-constexpr uint64_t UseHandlerFreeReturn = 0x4f5a16;  // after `call 0x43ec10` at 0x4f5a11 in 0x4f40c0
-constexpr uint64_t TakeQuantity = 0x46f090;          // (game, player, item, delta): stat 70 += delta, tells the client
-std::atomic<uint32_t> g_mapUses {0};
-
-auto ItemFree(Game* game, Unit* item) noexcept -> void {
-	using namespace d2r::rva;
-	auto stat = [](Unit* u, int32_t id) { return d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStat)(u, id, 0); };
-	if (game != nullptr && item != nullptr && g_usePlayer != nullptr &&
-	    reinterpret_cast<uint64_t>(_ReturnAddress()) - d2r::imageBase == UseHandlerFreeReturn &&
-	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, MapItemType) != 0 && stat(item, StatQuantity) > 1) {
-		const int32_t before = stat(item, StatQuantity);
-		d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t) noexcept>(TakeQuantity)(game, g_usePlayer, item, -1);
-		plog::Info("map use: stack of %d now %d (%u so far)", before, stat(item, StatQuantity), ++g_mapUses);
-		return;
-	}
-	g_itemFreeOriginal(game, item);
 }
 
 auto RollNative(Game* game, int32_t level) noexcept -> void {
@@ -780,14 +847,21 @@ auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t r
 		                                      &g_activateOriginal);
 	}
 	const bool uses = context->InstallInlineHook(UseItem, UseItemEntry, sizeof(UseItemEntry), OnUseItem, &g_useOriginal);
-	const uint8_t itemFreeEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x57, 0x48, 0x83, 0xec, 0x20,
-	                                 0x48, 0x8b, 0xf9, 0x48, 0x8b, 0xda, 0x48, 0x8b, 0xca};
-	// 0x43ec10's first 20 bytes match twice (0x48be20 too): the second check and call tell them apart
-	const bool mapUse = sigscan::HookBySignature(
-	    context, "ItemFree",
-	    "48 89 5C 24 08 57 48 83 EC 20 48 8B F9 48 8B DA 48 8B CA E8 ?? ?? ?? ?? 48 85 C0 74 14 48 8D 4C 24 40 C6 44 24 40 00 E8 "
-	    "?? ?? ?? ?? 84 C0 74 01 CC 48 8B CB E8 ?? ?? ?? ?? 48 85 C0 74 14",
-	    0, itemFreeEntry, sizeof(itemFreeEntry), ItemFree, &g_itemFreeOriginal);
+	const D2RL::LifecycleService* lifecycle = nullptr;
+	const D2RL::Lifecycle::GameplayEventListener ready {.structSize = D2RL::Lifecycle::GameplayEventListenerSize,
+	                                                    .kind = D2RL::Lifecycle::GameplayEventKind::LocalPlayerReady,
+	                                                    .callback = KeepLocalPlayer};
+	D2RL::Lifecycle::ListenerHandle readyHandle = D2RL::Lifecycle::InvalidHandle;
+	const bool stacks = context->QueryService(&g_items) == D2RL::ServiceQueryResult::Success &&
+	                    D2RL::HasItemServiceField(g_items, D2RL::ItemServiceSplitStackFieldEnd) &&
+	                    context->QueryService(&g_inventory) == D2RL::ServiceQueryResult::Success &&
+	                    D2RL::HasInventoryServiceField(g_inventory, D2RL::InventoryServiceRequiredSize) &&
+	                    context->QueryService(&lifecycle) == D2RL::ServiceQueryResult::Success &&
+	                    D2RL::HasLifecycleServiceField(lifecycle, D2RL::LifecycleServiceRequiredSize) &&
+	                    lifecycle->registerGameplayEventListener(context, &ready, &readyHandle) == D2RL::Lifecycle::Result::Success;
+	if (!stacks) {
+		g_items = nullptr;  // a map stack's use is then refused (UseOneOfStack), never taken whole
+	}
 	static constexpr uint8_t Empty[8] = {};
 	using OperateFn = int32_t (*)(ObjectOperate*) noexcept;
 	const bool altars = context->PatchWriteU64(ObjectOperateTable + static_cast<uint64_t>(ObjectOperateFree35) * 8, Empty,
@@ -796,7 +870,8 @@ auto InstallMapEvents(const D2RL::PluginContext* context, char* report, size_t r
 	              rooms      ? ""
 	              : activate ? " (through 0x48f190 until Cartographer's room-populate service is found)"
 	                         : " FAILED (bytes differ)",
-	              uses ? "on" : "FAILED (native maps roll as normal)", mapUse ? ", map stack use" : ", map stack use FAILED (signature or bytes differ)", ObjectOperateFree35, altars ? "" : " FAILED (slot not empty)",
+	              uses ? "on" : "FAILED (native maps roll as normal)",
+	              stacks ? " (one map of a stack)" : " (map stacks refused: an SDK item, inventory or lifecycle service is missing)", ObjectOperateFree35, altars ? "" : " FAILED (slot not empty)",
 	              g_strings != nullptr ? "" : ", no notify (no localization service)");
 	return rooms || activate ? 1 : 0;
 }
@@ -807,8 +882,8 @@ auto MapEventsCounters(char* out, size_t size) noexcept -> void {
 		n += n > 0 && static_cast<size_t>(n) < size ? std::snprintf(out + n, size - n, " %u", r.load()) : 0;
 	}
 	if (n > 0 && static_cast<size_t>(n) < size) {
-		std::snprintf(out + n, size - n, "), %u rooms activated, %u spawned, %u without a spot, %u notified, %u map uses taken from a stack",
-		              g_rooms.load(), g_spawned.load(), g_noSpot.load(), g_notified.load(), g_mapUses.load());
+		std::snprintf(out + n, size - n, "), %u rooms activated, %u spawned, %u without a spot, %u notified, %u map stack uses (%u refused)",
+		              g_rooms.load(), g_spawned.load(), g_noSpot.load(), g_notified.load(), g_stackUses.load(), g_stackRefused.load());
 	}
 }
 
