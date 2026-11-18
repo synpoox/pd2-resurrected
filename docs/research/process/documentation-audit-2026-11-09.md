@@ -1,5 +1,7 @@
 # PD2 Resurrected documentation audit
 
+Historical: findings 1 and 8 were fixed in #1284; the uber, Terror Zone drop and roadmap rows were fixed in the 2026-11-18 audit. Check the tracker before acting on the rest.
+
 Audited 2026-11-09 against main 326b039323a34d8fe4b21a61d27ef857fa1b3195. Read top-level documentation, agent guides, ADRs and relevant research; scanned all Markdown documentation for pending/completion claims and local links. Cross-referenced 729 GitHub issue/PR records and relevant implementation code. No repository or tracker changes made. This is a documentation audit, not a new game validation pass.
 
 ## Confirmed findings
