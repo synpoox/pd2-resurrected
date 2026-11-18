@@ -21,6 +21,17 @@ int main() {
 	int hits = 0;
 	for (uint32_t r = 0; r < 100; ++r) hits += pp::Parries(pp::Chance(200, false), r) ? 1 : 0;
 	CHECK("capped chance parries 75 of 100 rolls", hits == 75);
+	pp::AvoidWindow w;  // no-avoid window (#1482): an avoid at frame 100 blocks 101-103, frame 104 may avoid again
+	CHECK("fresh player is not blocked", !w.Blocked(7, 100));
+	w.Set(7, 100);
+	CHECK("frames 101-103 are blocked", w.Blocked(7, 101) && w.Blocked(7, 103));
+	CHECK("frame 104 is free (4 frames passed)", !w.Blocked(7, 104));
+	CHECK("another player is not blocked", !w.Blocked(8, 101));
+	CHECK("an entry from a longer game is stale in a new one", !w.Blocked(7, 3));
+	w.Set(7, 103);
+	CHECK("a new avoid moves the window", w.Blocked(7, 106) && !w.Blocked(7, 107));
+	for (uint32_t i = 1; i <= 40; ++i) w.Set(i, 500);  // more players than slots: still bounded, newest kept
+	CHECK("full table keeps the newest", w.Blocked(40, 501));
 	std::printf("%d passed, %d failed\n", g_pass, g_fail);
 	return g_fail == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

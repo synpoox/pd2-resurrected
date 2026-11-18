@@ -3740,8 +3740,8 @@ auto SrvStSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 // as well as 13 (ht2, claws), with the block chance (passive_weaponblock, which Holy Sword's aura sets) capped at 75, and
 // answers 0x10, the result a block gives. D2R's avoid (0x44ef70, (attacker, defender, ranged flag)) only blocks for 13, so
 // this wraps it: a player in class 5 rolls PD2's parry first (PD2 rolls the block before the evade, dodge and avoid
-// rolls), and anything else, class 13's block included, is D2R's own code. Not ported: PD2's 4-frame no-avoid window
-// after an avoid, its half chance in the PvP arenas (levels 157, 159, 166: cut), and sound 4713 (ignored by decision).
+// rolls), and anything else, class 13's block included, is D2R's own code. PD2's 4-frame no-avoid window after any
+// avoid is kept per player id (AvoidWindow, parry_roll.h). Not ported: its half chance in the PvP arenas (levels 157, 159, 166: cut), and sound 4713 (ignored by decision).
 // Block chance (0x450070 (unit)), composit weapon class (0x3b6e00 (unit, unit data, int* out, -1, 1)) and the unit
 // data (UnitInventory) are what 0x44ef70 itself calls. Found by signature: the prologue and the first calls, calls masked.
 std::atomic<uint32_t> g_parryRolls {0};
@@ -3754,8 +3754,35 @@ constexpr const char* AvoidPattern =
     "48 8B CF 85 C0 0F 85 ?? ?? ?? ?? E8 ?? ?? ?? ?? 83 C0 FE 48 8B CF 83 F8 01 0F 86 ?? ?? ?? ?? E8 ?? ?? ?? ??";
 using AvoidFn = uint32_t (*)(Unit* attacker, Unit* defender, int32_t ranged) noexcept;
 AvoidFn g_avoidOriginal = nullptr;
+auto AvoidRolled(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> uint32_t;
+
+pd2::parry::AvoidWindow g_avoidWindow;  // server game thread only, like the roll
+std::atomic<uint32_t> g_avoids {0}, g_avoidBlocked {0};
 
 auto AvoidWithParry(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> uint32_t {
+	// PD2 keeps the no-avoid window for players only (#1482); the frame is the defender's game's
+	const bool player = defender != nullptr && At<int32_t>(defender, d2r::rva::UnitType) == 0;
+	Game* game = player ? At<Game*>(defender, d2r::rva::UnitGame) : nullptr;
+	const int32_t frame = game != nullptr ? At<int32_t>(game, d2r::rva::GameFrame) : 0;
+	const uint32_t id = player ? At<uint32_t>(defender, d2r::rva::UnitIdField) : 0;
+	if (game != nullptr && g_avoidWindow.Blocked(id, frame)) {
+		if (First(g_avoidBlocked, 100)) {
+			plog::Info("avoid window: player %u, frame %d, avoid refused; %u refused", id, frame, g_avoidBlocked.load());
+		}
+		return 0;
+	}
+	const uint32_t result = AvoidRolled(attacker, defender, ranged);
+	if (game != nullptr && (result & pd2::parry::AvoidMask) != 0) {
+		g_avoidWindow.Set(id, frame);
+		if (First(g_avoids, 200)) {
+			plog::Info("avoid: player %u result 0x%x at frame %d, no avoid until frame %d; %u avoids", id, result, frame,
+			           frame + pd2::parry::WindowFrames, g_avoids.load());
+		}
+	}
+	return result;
+}
+
+auto AvoidRolled(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> uint32_t {
 	void* data = defender == nullptr ? nullptr
 	             : d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(d2r::rva::UnitInventory)(defender, __FILE__, __LINE__);
 	if (data != nullptr) {  // PD2 rolls for any defender

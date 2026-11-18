@@ -22,4 +22,51 @@ constexpr auto Chance(int32_t raw, bool lucion) noexcept -> int32_t {
 // `roll` is the unit's seed roll; PD2 and D2R both test roll % 100 < chance
 constexpr auto Parries(int32_t chance, uint32_t roll) noexcept -> bool { return roll % 100 < static_cast<uint32_t>(chance); }
 
+// PD2's no-avoid window (#1482): any avoid (block, evade, dodge, avoid: 0x1e) sets playerdata+0x1c0 = frame + 4, and while
+// frame < that the player's avoid roll returns 0 at once (PD2 0x103035f0, players only). D2R has no such field, so the port
+// keeps (unit id, until frame) here. A window never reaches more than 4 frames ahead, so an entry further ahead (a new game
+// restarted the frame counter) or already passed is stale and its slot is free.
+inline constexpr int32_t WindowFrames = 4;
+inline constexpr uint32_t AvoidMask = 0x1e;
+
+class AvoidWindow {
+public:
+	static constexpr int Slots = 16;  // a game holds 8 players at most; a full table drops the oldest slot
+	constexpr auto Blocked(uint32_t id, int32_t frame) const noexcept -> bool {
+		for (const auto& e : slots_) {
+			if (e.id == id && Live(e.until, frame)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	constexpr void Set(uint32_t id, int32_t frame) noexcept {
+		Entry* pick = nullptr;
+		for (auto& e : slots_) {
+			if (e.id == id) {
+				pick = &e;
+				break;
+			}
+			if (pick == nullptr && !Live(e.until, frame)) {
+				pick = &e;
+			}
+		}
+		if (pick == nullptr) {
+			pick = &slots_[next_++ % Slots];
+		}
+		*pick = {id, frame + WindowFrames};
+	}
+
+private:
+	struct Entry {
+		uint32_t id = 0;
+		int32_t until = 0;
+	};
+	static constexpr auto Live(int32_t until, int32_t frame) noexcept -> bool {
+		return until > frame && until - frame <= WindowFrames;
+	}
+	Entry slots_[Slots] {};
+	uint32_t next_ = 0;
+};
+
 }  // namespace pd2::parry
