@@ -43,3 +43,12 @@ active flag is at +0x51 (`FUN_1408682b0` asserts, an int3, on a null or inactive
    nothing, and B did not close the panel. The stash's decompile (0x23cc40) does build an OpenPanel message for
    "ControllerOverlay" in pad mode, so the code now opens it when it is not up and refreshes it otherwise; that variant is
    untested. Slot 5 was taken by another lane, so no second try ran.
+
+Third version (2cca9eee: open the overlay if absent, else refresh; wait for the inventory; clear its focus; focus the altar), slot 4, pad check:
+
+- A: the panel opens and the bottom bar shows "B Close Menu". No pad frame is drawn. Log: `pad focus set 0 frames after the open (overlay not up)`, `focus manager holds ... (same)`. The focus manager does hold the altar panel.
+- DOWN: nothing visible moves, no green highlight on the confirm button. The bar changes to "Hold to Sort / B Close Menu", which is the inventory bar.
+- B: the panel stays open (FAILED). The left stick was not tried while it was open.
+- A again: not run (step 3 failed).
+
+Reading: the focus manager points at the altar, but the pad's input does not reach it, and the overlay open does not take (it still reads "not up" and no frame appears). The first version, which focused right after the open message, did show the frame. The open-if-absent timing (focusing 0 frames after the open) looks too early for the overlay. Stopped here per the last cycle's rule.
