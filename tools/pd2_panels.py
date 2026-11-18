@@ -32,6 +32,13 @@ def widen(img: Image, grid: list[int], cell: int, size: list[int], border: int) 
         img.paste(part, x, top)
 
 
+def taller(img: Image, at: int, cell: int, rows: int) -> Image:
+    """A copy with `rows` more cell rows: the cell-high strip at row `at` (inside the frame's repeating grid) is tiled."""
+    strip = img.px[at * img.w * 4:(at + cell) * img.w * 4]
+    cut = at * img.w * 4
+    return Image(img.w, img.h + rows * cell, bytearray(img.px[:cut] + strip * rows + img.px[cut:]))
+
+
 def dc6_panel(data: bytes) -> tuple[list[tuple], Image]:
     """The frame headers (DC6 frames 0-3) and the 2 x 2 tiled panel as palette indices: pixel byte 0 is the index,
     byte 3 is 255 where the pixel is drawn."""
@@ -224,6 +231,30 @@ def build_altar(root: Path = ROOT, d2r_data: Path = pd2_table.D2R_DATA) -> None:
     (root / SD_ALTAR).write_bytes(altar_sd(root, d2r_data))
 
 
+# The controller inventory's taller panel (#1440): D2R's pristine controller inventory background with 4 more grid rows
+# (vanilla's 4 x 10 grid becomes 8 x 10), so the gold frame under the grid moves down 4 cells. Each file is built from its
+# own vanilla twin (the lowend ones from the lowend art), by tiling the frame's cell-high strip at row `at`.
+CONTROLLER_INV = "hd/global/ui/controller/panel/inventorypanel/v2"
+CONTROLLER_INV_OUT = "files/data/hd/global/ui/controller/panel/pd2r"
+CONTROLLER_INV_ROWS = 4
+CONTROLLER_INV_ART = {"inventorybg.sprite": (948, 98), "inventorybg_classic.sprite": (948, 98),
+                      "inventorybg.lowend.sprite": (474, 49), "inventorybg_classic.lowend.sprite": (474, 49)}
+
+
+def build_controller_inventory(root: Path = ROOT, d2r_data: Path = pd2_table.D2R_DATA) -> None:
+    """Rebuild the four taller controller inventory sprites under root from D2R's pristine ones."""
+    for name, (at, cell) in CONTROLLER_INV_ART.items():
+        head, img, _ = read_sprite(d2r_data / CONTROLLER_INV / name)
+        tall = taller(img, at, cell, CONTROLLER_INV_ROWS)
+        head = bytearray(head)
+        struct.pack_into("<I", head, 12, tall.h)  # SpA1 height
+        struct.pack_into("<I", head, 32, len(tall.px))  # SpA1 pixel byte count
+        dest = root / CONTROLLER_INV_OUT / name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(bytes(head) + tall.px)
+
+
 if __name__ == "__main__":
     build_altar()
-    print("altar panel art rebuilt")
+    build_controller_inventory()
+    print("altar and controller inventory panel art rebuilt")

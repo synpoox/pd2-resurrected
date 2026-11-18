@@ -59,6 +59,22 @@ class PanelsTests(unittest.TestCase):
             for rel in art:
                 self.assertEqual((Path(tmp) / rel).read_bytes(), (ROOT / rel).read_bytes(), rel)
 
+    def test_taller_tiles_the_strip_at_the_row(self):
+        img = Image(1, 5)
+        for y in range(5):
+            img.px[y * 4] = y
+        out = P.taller(img, at=1, cell=2, rows=2)
+        self.assertEqual([out.px[y * 4] for y in range(out.h)], [0, 1, 2, 1, 2, 1, 2, 3, 4])
+
+    @unittest.skipUnless((pd2_table.D2R_DATA / P.CONTROLLER_INV / "inventorybg.sprite").is_file(),
+                         "D2R art not fetched: `modkit fetch`")
+    def test_controller_inventory_art_rebuilds_byte_for_byte(self):  # #1440
+        with tempfile.TemporaryDirectory() as tmp:
+            P.build_controller_inventory(Path(tmp))
+            for name in P.CONTROLLER_INV_ART:
+                rel = f"{P.CONTROLLER_INV_OUT}/{name}"
+                self.assertEqual((Path(tmp) / rel).read_bytes(), (ROOT / rel).read_bytes(), rel)
+
 
 if __name__ == "__main__":
     unittest.main()
