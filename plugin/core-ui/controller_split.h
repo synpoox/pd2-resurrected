@@ -7,4 +7,7 @@ namespace controller_split {
 // left the cursor, so it is rare), so an edit applies at once; no config or key means LB.
 auto ModifierHeld() noexcept -> bool;
 
+// True when RB is down as well as the modifier (#1472's whole stack to the Cube). With modifier = "rb" it is never true.
+auto ModifierAndRbHeld() noexcept -> bool;
+
 }  // namespace controller_split

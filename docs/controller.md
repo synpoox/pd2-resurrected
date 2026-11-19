@@ -36,6 +36,7 @@ No control is a PD2 mirror yet; see [PD2 binds](#pd2-binds) for each PD2 bind's 
 | LB + R3 | Fills the belt with potions from the inventory | inventory | Controller QoL | untested |
 | LB + L3 or LB + R3 | Fills the merchant with potions and tomes | shop | Controller QoL | untested |
 | Modifier (LB) + A | Splits a stack on the cursor, as Ctrl-click does | inventory | Our own (the modifier is Controller QoL's setting) | works (#1459) |
+| Modifier (LB) + RB + A | Sends the whole stack under the pad focus (stash or stack tab) to the Cube. The SDK has no focused-item read, so the chord is held with A on the focused item (#1472) | stash, stack tab | Our own (the modifier is Controller QoL's setting) | built, in-game result below |
 | START, then LB/RB to the altar tab | Removed (#1480): the altar opens only from the altar object in the Temple, so there is no altar tab | altar | Our own | cut (#1480) |
 | D-pad up / down | Moves focus between the amulet slot and the confirm button | altar | Our own | works (#1456: the first DOWN lights the confirm button); amulet pickup and place not proven |
 | A on the altar | Opens the altar panel with the pad frame, the help bar and focus on the amulet slot; B closes it | world | D2R native | works (#1456, `docs/research/controller/altar-world-focus.md`) |
@@ -56,15 +57,17 @@ One line per PD2 pad bind, with its status.
 - RT attack with the right skill: covered by D2R.
 - LB show loot: covered by D2R and QoL.
 - Always show loot: covered by D2R's Show Items.
-- Belt potion to mercenary: gap (#1472).
+- Belt potion to mercenary: gap (#1472). Chosen chord LB + D-pad (slots 1-4), not built: the SDK has no mercenary or belt-to-merc call, so it needs a native hook on the client's give-to-merc code.
 - Run/walk: covered by D2R (L3).
 - Resync: cut, since D2R has no resync.
 - Per-skill auto-aim: covered by QoL (R3 in the skill tree).
 - Inventory LT/RT as Shift/Ctrl: replaced by QoL's LB modifier.
 - Identify, transfer, drop, Cube transfer and sell: covered by QoL LB chords and D2R prompts.
-- Multi-buy: gap (#1472). QoL's LB+R3 fills potions and tomes only.
-- Stack-tab "transfer 5": unverified, possible gap (#1472).
-- Whole stack-tab stack to the Cube: gap (#1472).
+- Multi-buy: gap (#1472). Chosen chord LB + Y on a shop item, not built: the SDK emits no shop event and has no buy call. QoL's LB+R3 fills potions and tomes only.
+- Stack-tab "transfer 5": gap (#1472). Chosen chord RB + A (no LB, so it never meets LB + D-pad), not built: D2R's "Move 5" is a mouse right-click inside its own widget, with no SDK event.
+- Whole stack-tab stack to the Cube: built as LB + RB + A (#1472), see the table.
+
+PD2's own combos can't be mirrored: its LT + X multi-buy clashes with Controller QoL's LT/RT page change, and its other three are keyboard-only in PD2.
 - Gamble Refresh and Repair All: unverified.
 
 ## Known gaps

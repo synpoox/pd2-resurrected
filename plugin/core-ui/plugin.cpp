@@ -5,6 +5,7 @@
 // Parts, by their word for the log, the status command and core-ui-off.txt (<game>\d2rloader\config\core-ui-off.txt):
 //   pictures  HD pictures of PD2's 4-character item codes (#310, #298), and `cheat spawn` of them (#323)
 //   split     PD2's stack split: Ctrl+left-click with a stack held puts one item down (#316)
+//   padbinds  pad chords on an item: LB + RB + A sends a whole stack to the Cube (#1472)
 //   quantity  PD2's Show Item Quantity: each stack in an open grid shows its quantity on its picture (#359)
 //   palette   legacy graphics: a level entered without a load screen draws in its own palette (#296)
 #include <D2RLPlugin/api.h>
@@ -15,6 +16,7 @@
 #include "item_quantity.h"
 #include "level_palette.h"
 #include "log.h"
+#include "pad_binds.h"
 #include "off_switch.h"
 #include "parts.h"
 #include "stack_split.h"
@@ -42,6 +44,7 @@ char g_selfPath[520] = "?";
 parts::Part g_parts[] = {
 	{"pictures", true, item_pictures::Install},
 	{"split", false, stack_split::Install},
+	{"padbinds", false, pad_binds::Install},
 	{"quantity", true, item_quantity::Install},
 	{"palette", true, level_palette::Install},
 };
