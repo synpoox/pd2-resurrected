@@ -35,10 +35,11 @@ notes = "docs/release-notes/{version}.md"   # condensed player notes (toolkit #3
 [package]
 preserve = ["d2rloader/config/d2rloader.toml", "d2rloader/config/filter.json"]
 
-# Schema 3 release-manifest.json + feed.json for the Resurrected launcher (pass the tested D2R.exe with --game-exe).
+# Schema 3 release-manifest.json for the Resurrected launcher; each release is merged into the shared feed below (pass the tested D2R.exe with --game-exe).
 [catalog]
 product_id = "pd2r"
-feed_url = "https://github.com/synpoox/resurrected-launcher/releases/download/catalog/feed.json"   # the launcher reads this shared feed
+# The launcher reads this shared feed (the catalog release of the launcher repo).
+feed_url = "https://github.com/synpoox/resurrected-launcher/releases/download/catalog/feed.json"
 feed_repo = "synpoox/resurrected-launcher"
 feed_tag = "catalog"
 min_launcher_version = "0.1.0"
