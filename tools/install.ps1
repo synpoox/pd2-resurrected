@@ -53,8 +53,8 @@ if (-not $Cartographer) {
 if (-not (Test-Path $Cartographer)) { throw "$Cartographer missing: build it in d2r-tools (tools\build.ps1 -Plugin cartographer) or pass -Cartographer" }
 & (Join-Path $PSScriptRoot "check_cartographer.ps1") -Dll $Cartographer  # refuses a DLL older than tools\cartographer.pin (#1300)
 
-# Our plugins are mod-scoped (#1180): <Game>\mods\<mod>\d2rloader\plugins, where the loader runs them in file-name
-# order, so core-rules' table listener runs before Cast Triggers' (d2rl-ruffneckk-cast-triggers.dll).
+# Our plugins are mod-scoped (#1180): <Game>\mods\<mod>\d2rloader\plugins, beside the companions. The companion
+# overlay's load_order runs Progressive Affixes first and Cast Triggers last (companions/manifest.json).
 $repoMod = (Get-Content (Join-Path $PSScriptRoot "..\mod.json") -Raw | ConvertFrom-Json).name
 $plugins = Join-Path $Game "mods\$repoMod\d2rloader\plugins"
 New-Item -ItemType Directory -Force $plugins | Out-Null
