@@ -1,1 +1,0 @@
-- Maps drop in Hell as a T1 pool; map drop tables are PD2's.
