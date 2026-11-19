@@ -28,6 +28,10 @@ Project Diablo II rebuilt as a Diablo II: Resurrected mod.
 
 To update, delete `mods\PD2Resurrected\PD2Resurrected.mpq\data` first, also delete `mods\PD2Resurrected\d2rloader\plugins\core-maps.dll` if it is there (the old name of `core-events.dll`; both loaded together would hook the game twice), then unpack the new release the same way.
 
+### Linux
+
+Runs under Wine/Proton with the manual install: [docs/linux.md](docs/linux.md).
+
 ## Loot Filters
 
 The mod ships the [Pyre Loot Filter](https://github.com/Pyre-Flies/D2R-Mods/blob/main/plugins/pyre-lootfilter/README.md)
