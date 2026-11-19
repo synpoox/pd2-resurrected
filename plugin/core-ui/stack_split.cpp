@@ -20,6 +20,8 @@
 
 #include "controller_split.h"
 #include "log.h"
+#include "map_stack.h"
+#include "pd2_engine.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -123,6 +125,28 @@ auto FindPlaced(const D2RL::PluginContext*, const items::ItemInfo* item, void* u
 	return D2RL::Inventory::IterationAction::Continue;
 }
 
+// A map's forced event (stat 553), the one stat splitStack does not carry onto the new piece (Area Level it does: the piece
+// is made with it); read off the source before the split, set on the piece after (two callbacks, never both units at once)
+void CollectForcedEvent(const D2RL::PluginContext*, void* native, void* user) noexcept {
+	auto& saved = *static_cast<pd2::mapstack::Saved*>(user);
+	pd2::mapstack::Collect(static_cast<d2r::Unit*>(native), d2r::rva::ItemStatCostRows, d2r::rva::StatQuantity,
+	                       d2r::Engine<int32_t (*)(d2r::Unit*, uint32_t, pd2::mapstack::Entry*, int32_t) noexcept>(d2r::rva::UnitStatEntries), saved);
+	int32_t kept = 0;
+	for (int32_t i = 0; i < saved.count; ++i) {
+		if (saved.entry[i].stat == d2r::rva::StatMapForceEvent) {
+			saved.entry[kept++] = saved.entry[i];
+		}
+	}
+	saved.count = kept;
+}
+
+void ApplyNative(const D2RL::PluginContext*, void* native, void* user) noexcept {
+	pd2::mapstack::Apply(static_cast<d2r::Unit*>(native), *static_cast<const pd2::mapstack::Saved*>(user),
+	                     [](d2r::Unit* unit, int32_t stat, int32_t value, int32_t layer) noexcept {
+		                     d2r::Engine<void (*)(d2r::Unit*, int32_t, int32_t, int32_t) noexcept>(d2r::rva::SetUnitStat)(unit, stat, value, layer);
+	                     });
+}
+
 void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 	const Job& job = g_job;  // stays put until g_busy clears below
 	// The UI thread's handle is to the client's unit, stale on the game thread and without seeds, so find the server's
@@ -140,8 +164,13 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 		           placed.quantity, static_cast<uint32_t>(placed.container));
 		return;
 	}
-	// splitStack gives the new piece the source's stats (a map's Area Level too); setting them again on top doubled
-	// Area Level on the server (87 -> 174), so the piece would not stack until a reload (#1499)
+	// Only the forced event is set again: the piece already has its Area Level, and setting that on top doubled it on the
+	// server (87 -> 174), so the piece would not stack until a reload (#1499)
+	const bool isMap = pd2::mapstack::IsMapCode(placed.code);
+	pd2::mapstack::Saved saved;
+	if (isMap) {
+		g_items->editNativeItem(g_context, placed.handle, CollectForcedEvent, &saved);
+	}
 	const items::SplitStackRequest request {.structSize = items::SplitStackRequestSize,
 	                                        .player = player,
 	                                        .sourceItem = placed.handle,
@@ -152,6 +181,10 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 		++g_splits;
 	} else {
 		++g_failed;
+	}
+	if (isMap && saved.count > 0 && status == items::Result::Success) {
+		const auto applied = g_items->editNativeItem(g_context, result.cursorItem, ApplyNative, &saved);
+		plog::Info("split: set the forced event (%d entries) on the new map piece (%u)", saved.count, static_cast<uint32_t>(applied));
 	}
 	plog::Info("split: code %08x container %u cell %d,%d, %d held onto %d: result %u, %u left down, %u on the cursor",
 	           placed.code, static_cast<uint32_t>(placed.container), placed.x, placed.y, held, found.before,
