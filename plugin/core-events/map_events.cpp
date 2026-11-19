@@ -499,7 +499,7 @@ constexpr uint8_t UseItemEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x
 // Using one map of a stack (#1397). Item spell 16 is a used-up spell (its table byte, read by 0x308e80), so the handler
 // takes the used item whole: a stack of maps lost every map. So a stack of N > 1 gives one map to a free inventory cell
 // first (one executeTransaction: the stack is debited 1 in place, keeping N-1, its cell and its identity, and a single
-// map of the same code is made, with the stack's stats copied on) and the handler uses that map, at its own cell (the
+// map of the same code is made, with the stack's stats copied on, except Area Level) and the handler uses that map, at its own cell (the
 // packet's item id and x, y; the handler takes only inventory or belt locations for a use on the player, and a split
 // to the cursor was refused for that). A refused use puts the map back onto the stack. The SDK names the local player
 // on the UI thread only, so its handle is kept from LocalPlayerReady; and it answers Busy to an item change from inside

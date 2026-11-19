@@ -60,7 +60,7 @@ auto Collect(Unit* src, int32_t statCount, int32_t quantityStat, Entries entries
 	}
 }
 
-// Sets each saved (stat, layer) to its value on dst: an overwrite, so it ends the same whether the piece already had them
+// Sets each saved (stat, layer) on dst; SetUnitStat adds to a stat the piece already has, so callers skip 564 (#1499, #1504)
 template <class Unit, class SetStat>
 auto Apply(Unit* dst, const Saved& saved, SetStat set) noexcept -> int32_t {
 	for (int32_t i = 0; i < saved.count; ++i) {
