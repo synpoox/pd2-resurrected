@@ -3745,7 +3745,11 @@ auto SrvStSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 // Block chance (0x450070 (unit)), composit weapon class (0x3b6e00 (unit, unit data, int* out, -1, 1)) and the unit
 // data (UnitInventory) are what 0x44ef70 itself calls. Found by signature: the prologue and the first calls, calls masked.
 std::atomic<uint32_t> g_parryRolls {0};
-std::atomic<uint32_t> g_parries {0}, g_clawRolls {0};
+std::atomic<uint32_t> g_parries {0}, g_clawRolls {0}, g_moveDodgeRolls {0};
+constexpr int32_t StatEvade = 0x154, StatDodge = 0x152, StatAvoid = 0x153;
+auto StatOf(Unit* unit, int32_t stat) noexcept -> int32_t {
+	return d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(unit, stat, 0);
+}
 constexpr uint8_t AvoidD2REntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10,
                                      0x56, 0x57, 0x41, 0x56, 0x48, 0x83, 0xec, 0x30};
 constexpr uint64_t BlockChanceD2R = 0x450070, CompositClassD2R = 0x3b6e00;
@@ -3810,7 +3814,28 @@ auto AvoidRolled(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> uin
 			}
 		}
 	}
-	return g_avoidOriginal(attacker, defender, ranged);
+	const uint32_t result = g_avoidOriginal(attacker, defender, ranged);
+	// #1496: in walk and run D2R's avoid ends at the evade roll (stat 0x154: 8, or 0 on a miss); PD2 goes on to the dodge
+	// (0x152, melee) or avoid (0x153, ranged) roll when evade is above 0 and its roll failed (evade 0: 0, as here).
+	if (result == 0 && defender != nullptr &&
+	    pd2::parry::D2RSkipsBlock(At<int32_t>(defender, d2r::rva::UnitType), At<int32_t>(defender, d2r::rva::UnitMode)) &&
+	    StatOf(defender, StatEvade) > 0) {
+		const int32_t chance = StatOf(defender, ranged == 0 ? StatDodge : StatAvoid);
+		if (chance > 0) {
+			const int32_t roll = static_cast<int32_t>(
+				d2r::Roll(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(d2r::rva::UnitSeed)(defender)) % 100);
+			const bool hit = roll < chance;
+			if (First(g_moveDodgeRolls, 30)) {
+				plog::Info("move dodge: unit type %d mode %d, %s chance %d, roll %d: %s; %u rolls",
+				           At<int32_t>(defender, d2r::rva::UnitType), At<int32_t>(defender, d2r::rva::UnitMode),
+				           ranged == 0 ? "dodge" : "avoid", chance, roll, hit ? "yes" : "no", g_moveDodgeRolls.load());
+			}
+			if (hit) {
+				return ranged == 0 ? 4 : 2;
+			}
+		}
+	}
+	return result;
 }
 
 // Set while D2R's Smite do (srvdo 150) runs for the Smite row: that do queues its one hit (QueueHit) and applies it.
