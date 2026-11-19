@@ -12,7 +12,7 @@ the vendor UI), place-at-cell `0x38d0d0`, the client cursor `0x2c81d0`. Not used
 
 **Rule:** original says yes and both items are `cmap` (itemtypes 245): yes only if both are quality normal (2) and every stat id 0..649 except 70 has the same `UnitStatEntries` list (layer and value) on both.
 
-**Split and cube leftovers:** the split is Ctrl+left click with the stack held. The source keeps its stats and `splitStack` gives the new piece the same ones (Area Level 564 read 87 on both, Slot3, #1499); core-ui sets nothing on top (see #1499 below). Cube leftovers are remade by `createItem`
+**Split and cube leftovers:** the split is Ctrl+left click with the stack held. The source keeps its stats; `splitStack` copies none. The new piece gets its own Area Level (564) when it is made, and core-ui sets only the forced event (553) on it (see #1499 below). Cube leftovers are remade by `createItem`
 in `cube_stacks.cpp`: for a `cmap` source its forced event (stat 553) is passed to `createItem` as property 383 `map-force-event-l` (param = layer, value as it was); Area Level (564) is not passed, since cartographer's hook adds property 374 onto the map's base level (174 instead of 87), and createItem gives a normal map its own level. A `SetUnitStat` on the made unit (through `editNativeItem`) reached neither the client tooltip nor the save (Slot3, #1400). `UnitStatEntries` entries are 16 bytes under D2RCore (`int32 layer, stat, value`, then a dword of unknown use; `D2RCore+0x832940` copies with `movups` and `add r8,0x10`; a dump of a map's stat 564 read `00000000 00000234 00000057`; the stat compare checks layer, stat and value one by one), the `pd2::mapstack::Entry` of `plugin/common/map_stack.h` read with `pd2::mapstack::Collect`, as the split does; a map with any other non-70 stat is refused as a partial take (the log names the stat).
 
 ## #1340: a fresh map would not stack with a loaded one
@@ -27,9 +27,9 @@ The log is one summary line (no stat entry dump): the first verdict per (item, i
 
 ## #1499: a split-off map would not stack until a new game
 
-Cause: after `splitStack`, core-ui wrote the source's stats onto the new piece with `SetUnitStat`. The piece already had them: its Area Level read 87 before the write
+Cause: after `splitStack`, core-ui wrote the source's stats onto the new piece with `SetUnitStat`. The piece already had its own Area Level from creation: it read 87 before the write
 and 174 after (`UnitStatEntries`, server unit), while the client's copy and the save kept 87. So the client's cursor guess (+0x2c8391) said merge and the server's
 check (+0x4f2b3a) refused it (`stat differs 564`: a 87, b 174), in both directions. A save and reload wrote and read 87, so it stacked again in the next game.
 
-Fix: the split sets no stats; `splitStack` alone gives the piece the source's stats. Note the server refusal was hidden by the one-line-a-second log cap,
+Fix: the split never sets Area Level again; it copies only the forced event (553), which `splitStack` drops (Slot4: the piece lost 553/1=3 without it). Note the server refusal was hidden by the one-line-a-second log cap,
 since the client's line comes first in the same second.
