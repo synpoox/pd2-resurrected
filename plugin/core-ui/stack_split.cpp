@@ -125,8 +125,8 @@ auto FindPlaced(const D2RL::PluginContext*, const items::ItemInfo* item, void* u
 	return D2RL::Inventory::IterationAction::Continue;
 }
 
-// A map's forced event (stat 553), the one stat splitStack does not carry onto the new piece (Area Level it does: the piece
-// is made with it); read off the source before the split, set on the piece after (two callbacks, never both units at once)
+// splitStack copies no stats; the piece is made with its own Area Level, so only the forced event (stat 553) is set again:
+// read off the source before the split, set on the piece after (two callbacks, never both units at once)
 void CollectForcedEvent(const D2RL::PluginContext*, void* native, void* user) noexcept {
 	auto& saved = *static_cast<pd2::mapstack::Saved*>(user);
 	pd2::mapstack::Collect(static_cast<d2r::Unit*>(native), d2r::rva::ItemStatCostRows, d2r::rva::StatQuantity,
