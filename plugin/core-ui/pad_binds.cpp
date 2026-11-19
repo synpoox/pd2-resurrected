@@ -1,5 +1,5 @@
 // LB + RB + A on a stack in a stash or stack tab sends the whole stack to the Cube (#1472). The pad's A activates the focused
-// item (ItemInteractionService, UI thread, before D2R acts); the move is a game-thread transaction, as the altar's.
+// item (ItemInteractionService, UI thread, before D2R acts); the move is a game-thread transaction on the server unit, found by code and id as in stack_split.
 // shortcut: the SDK emits no shop, merc or "Move 5" event, so those three PD2 binds are not here (docs/controller.md).
 #include "pad_binds.h"
 
