@@ -18,6 +18,22 @@ hireable pal 46
 hireable pal 10
 hireable pal 62
 hireable pal 50
+# Merc skills that had no frame (#1501), cels 38-51: vigor, meditation, cleansing, holy shock, meteor, blizzard,
+# concentrate, battle orders, whirlwind, slow movement, magic arrow, strafe, dodge, evade
+hireable pal 26
+hireable pal 48
+hireable pal 38
+hireable pal 44
+hireable sor 40
+hireable sor 46
+hireable bar 36
+hireable bar 46
+hireable bar 50
+hireable ama 22
+hireable ama 0
+hireable ama 40
+hireable ama 14
+hireable ama 46
 # Force Move (Move Only) has its own normal + pressed pair at the end of the shared sheet, cels 40 and 41 (IconCel in
 # tables.json): PD2's cel 24 has no pressed frame, so D2R drew cel 25 (the Amplify Damage proc icon) on the pressed button (#689)
 pressed 24
