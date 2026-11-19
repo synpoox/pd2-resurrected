@@ -1,9 +1,9 @@
 // core-rules: PD2's engine rules (skill and hit functions, cube ops, item rules, server hooks) for PD2 Resurrected.
-// Shared (host and client must match) and NativeHooks; a game-wide plugin in <game>\d2rloader\plugins (ADR 0004).
+// Shared (host and client must match) and NativeHooks; a mod-scoped plugin in <game>\mods\<mod>\d2rloader\plugins (ADR 0004, #1180).
 // On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
 //
 // Parts: each has a one-word name for the log, the status command and core-rules-off.txt
-// (<game>\d2rloader\config\core-rules-off.txt), which leaves listed parts out to bisect a crash.
+// (<game>\mods\<mod>\d2rloader\config\core-rules-off.txt), which leaves listed parts out to bisect a crash.
 #include <D2RLPlugin/api.h>
 #include <D2RLPlugin/lifecycle.h>
 
@@ -130,7 +130,8 @@ parts::Part g_parts[] = {
 
 // Cast Triggers allocates its 5 relay pages upward from the image (within +0x70000000) when tables load, and D2R's
 // render-context init can fill that window first (#1180). Hold the first 16 free 64 KB blocks from plugin load and
-// free them in a table listener that runs before Cast Triggers' (load_order puts it last). Not a part: the off file
+// free them in a table listener that runs before Cast Triggers' (mod-folder plugins load in file-name order,
+// core-rules.dll before d2rl-ruffneckk-cast-triggers.dll). Not a part: the off file
 // cannot drop it.
 void* g_reserved[16] = {};
 

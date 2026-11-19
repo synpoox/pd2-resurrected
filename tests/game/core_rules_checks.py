@@ -1,6 +1,6 @@
 """core-rules game checks for d2rAI-toolkit's testing/ framework (game_checks.py).
 
-Each check reads the plugin log, <slot>/d2rloader/logs/core-rules.log; expected values come from PD2's data.
+Each check reads the plugin log, <slot>/mods/<mod>/d2rloader/logs/core-rules.log; expected values come from PD2's data.
 
 Environment for every command here (docs/agents/game-slots.md): MODKIT_PROJECT=pd2-resurrected, MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml, MODKIT_RUN=<lock owner>; the toolkit refuses to run without a config.
 
@@ -221,7 +221,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 
 def _log(ctx) -> str:
-    return plugin_log(ctx, PLUGIN, scope="game", skip_if_missing=True)
+    return plugin_log(ctx, PLUGIN, scope="mod", skip_if_missing=True)
 
 
 @check("core-rules-loads", tags=["core-rules", "core-rules-w10", "core-rules-w6", "core-rules-w11", "core-rules-w12",
@@ -231,7 +231,7 @@ def _log(ctx) -> str:
                                  "core-rules-w18", "core-rules-w19", "core-rules-w20", "core-rules-w31", "core-rules-w32",
                                  "core-rules-w34", "core-rules-w36", "core-rules-w35", "core-rules-death-novas", "game"])
 def core_rules_loads(ctx):
-    """core-rules loads game-wide and fills every do-table slot it owns."""
+    """core-rules loads from the mod folder and fills every do-table slot it owns."""
     ctx.ensure_running()
     try:
         game_ctl.wait_for(lambda: re.search(rf"{PLUGIN}: skills ", _log(ctx)), 90, 2.0, "the skills part line")

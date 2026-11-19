@@ -32,11 +32,11 @@ The per-check recipe (cheats, shots, unlock) is `docs/agents/game-check.md`; the
    `tools\install.ps1 -Game C:\D2RTestSlots\Slot<N> -Data . -NoValidate` (it copies the committed `files/data`; no extract
    or merge; main still has known validation errors). modkit install refuses a slot, so `install.ps1` installs a slot's data through
    the toolkit's `testing/slot_install.py`, which keeps the slot's own savepath and needs the lock held by `MODKIT_RUN`. `install.ps1` checks the lock first (`game_slots.py check <N> $MODKIT_RUN`) and writes nothing, failing, when `MODKIT_RUN` is unset or does not hold it (#1241).
-   `install.ps1` leaves only our plugins in `<slot>\d2rloader\plugins` (`core-rules.dll`, `core-events.dll`, `core-ui.dll`, `cartographer.dll`,
-   `test-harness.dll`, `d2r-testharness-console.txt`): it moves anything else to
-   `C:\D2RTestSlots\backups\stray-plugins-<date>\Slot<N>\` and lists it. Install always overwrites the slot's `cartographer.dll` with d2r-tools' `dist\cartographer` build, so testing a cartographer branch build needs `-Cartographer <path>`. It copies the latest `cartographer.dll` (`-Cartographer`, `CARTOGRAPHER_DLL`, else d2r-tools' `dist\cartographer`; it refuses one older than the d2r-tools commit pinned in `tools/cartographer.pin` (#1300), checking before touching the folder), and outside a test slot fetches and installs the companions. Pass `-KeepExtras` to keep other extras.
-   It also moves our own `core-*.dll` and `cartographer.dll` found in `<slot>\mods\PD2Resurrected\d2rloader\plugins` (they shadow the game-wide install) to
-   `C:\D2RTestSlots\backups\stale-mod-plugins-<date-time>\Slot<N>\`; companion DLLs there stay. With `-Data` it also copies
+   `install.ps1` installs our plugins (`core-rules.dll`, `core-events.dll`, `core-ui.dll`, `cartographer.dll`) mod-scoped, in
+   `<slot>\mods\PD2Resurrected\d2rloader\plugins`, beside the companions (#1180). It leaves only the test harness
+   (`test-harness.dll`, `d2r-testharness-console.txt`) in the game-wide `<slot>\d2rloader\plugins`: it moves anything else there,
+   our old game-wide copies included, to `C:\D2RTestSlots\backups\stray-plugins-<date>\Slot<N>\` and lists it. Install always overwrites the slot's `cartographer.dll` with d2r-tools' `dist\cartographer` build, so testing a cartographer branch build needs `-Cartographer <path>`. It copies the latest `cartographer.dll` (`-Cartographer`, `CARTOGRAPHER_DLL`, else d2r-tools' `dist\cartographer`; it refuses one older than the d2r-tools commit pinned in `tools/cartographer.pin` (#1300), checking before touching the folder), and outside a test slot fetches and installs the companions. Pass `-KeepExtras` to keep third-party plugins in the game-wide folder (our old copies still go).
+   Our plugin logs and `<plugin>-off.txt` files are now in the mod's `d2rloader\logs` and `d2rloader\config`. With `-Data` it also copies
    `companions/cartographer/signatures.txt` into the mod's `excel/d2rloader/cartographer/` (core-rules' cube hook needs it).
 4. Check the installed data holds the change (the table row in `out/data`).
 5. For a hand test, write the slot, its lock owner and the unlock command into the game-check issue.

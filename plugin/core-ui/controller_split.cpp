@@ -18,7 +18,7 @@ constexpr BYTE TriggerThreshold = 30;
 
 auto ModifierMask() noexcept -> uint32_t;
 
-// <game>/d2rloader/config/controller-qol-updates.toml, beside our own d2rloader/plugins folder
+// <mod>/d2rloader/config/controller-qol-updates.toml, beside our own d2rloader/plugins folder
 auto ConfigText() noexcept -> std::string {
 	HMODULE self = nullptr;
 	if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,

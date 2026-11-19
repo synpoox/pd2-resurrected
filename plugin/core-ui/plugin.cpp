@@ -1,8 +1,8 @@
 // core-ui: PD2's client-side engine features no companion covers, for PD2 Resurrected. Client-only (not Shared: a UI
-// change must never force host and client to match) and NativeHooks; a game-wide plugin in <game>\d2rloader\plugins
-// (ADR 0004). On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
+// change must never force host and client to match) and NativeHooks; a mod-scoped plugin in <game>\mods\<mod>\d2rloader\plugins
+// (ADR 0004, #1180). On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
 //
-// Parts, by their word for the log, the status command and core-ui-off.txt (<game>\d2rloader\config\core-ui-off.txt):
+// Parts, by their word for the log, the status command and core-ui-off.txt (<game>\mods\<mod>\d2rloader\config\core-ui-off.txt):
 //   pictures  HD pictures of PD2's 4-character item codes (#310, #298), and `cheat spawn` of them (#323)
 //   split     PD2's stack split: Ctrl+left-click with a stack held puts one item down (#316)
 //   quantity  PD2's Show Item Quantity: each stack in an open grid shows its quantity on its picture (#359)

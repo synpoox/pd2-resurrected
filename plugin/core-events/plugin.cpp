@@ -1,10 +1,10 @@
 // core-events: PD2's map events and uber fights for PD2 Resurrected (maps are Cartographer's): cube op 30, the map events, the
 // uber keys' opening and drop rule, tier scaling, AI and drops, Horazon's portal, Lucion's death and the Temple's chests.
-// Shared (host and client must match) and NativeHooks; a game-wide plugin in <game>\d2rloader\plugins (ADR 0004).
+// Shared (host and client must match) and NativeHooks; a mod-scoped plugin in <game>\mods\<mod>\d2rloader\plugins (ADR 0004, #1180).
 // On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
 //
 // Parts: registered by the lanes (parts.h); each has a one-word name for the log, the status command and core-events-off.txt
-// (<game>\d2rloader\config\core-events-off.txt), which leaves listed parts out to bisect a crash.
+// (<game>\mods\<mod>\d2rloader\config\core-events-off.txt), which leaves listed parts out to bisect a crash.
 #include <D2RLPlugin/api.h>
 
 #include "ai_hooks.h"
