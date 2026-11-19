@@ -708,9 +708,13 @@ auto PatchHitEvents(const D2RL::PluginContext* context) noexcept -> bool {
 		D2RL::Mutations::OperationHandle operation = 0;
 		ok = mutations->stageBytePatch(context, transaction, &patch, &operation) == D2RL::Mutations::Result::Success;
 	}
+	const bool staged = ok;
 	if (!ok || mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
 		mutations->cancelTransaction(context, transaction);
-		VirtualFree(relay, 0, MEM_RELEASE);
+		// A failed commit that did not restore the stock bytes may leave a call aimed at the relay: keep the page then.
+		if (!staged || D2RL::Mutations::HasFlag(result.flags, D2RL::Mutations::CommitFlags::OriginalStateRestored)) {
+			VirtualFree(relay, 0, MEM_RELEASE);
+		}
 		return false;
 	}
 	return true;

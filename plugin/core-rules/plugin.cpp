@@ -5,6 +5,7 @@
 // Parts: each has a one-word name for the log, the status command and core-rules-off.txt
 // (<game>\d2rloader\config\core-rules-off.txt), which leaves listed parts out to bisect a crash.
 #include <D2RLPlugin/api.h>
+#include <D2RLPlugin/lifecycle.h>
 
 #include "../core-events/arena_spots.h"  // the "arena" part: Royal Fire reads the arena centre (#962)
 #include "almanac.h"
@@ -22,6 +23,8 @@
 #include "off_switch.h"
 #include "parts.h"
 #include "skill_functions.h"
+
+#include <windows.h>
 
 #include <cstdint>
 #include <cstdio>
@@ -125,6 +128,57 @@ parts::Part g_parts[] = {
 	{"sockets", true, InstallSockets},
 };
 
+// Cast Triggers allocates its 5 relay pages upward from the image (within +0x70000000) when tables load, and D2R's
+// render-context init can fill that window first (#1180). Hold the first 16 free 64 KB blocks from plugin load and
+// free them in a table listener that runs before Cast Triggers' (load_order puts it last). Not a part: the off file
+// cannot drop it.
+void* g_reserved[16] = {};
+
+void ReserveNearImage(uint64_t image) noexcept {
+	const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(image);
+	const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(image + dos->e_lfanew);
+	const uint64_t step = 0x10000;
+	const uint64_t end = image + 0x70000000ull;
+	int held = 0;
+	for (uint64_t at = (image + nt->OptionalHeader.SizeOfImage + step - 1) & ~(step - 1); at < end && held < 16; at += step) {
+		if (void* p = VirtualAlloc(reinterpret_cast<void*>(at), step, MEM_RESERVE, PAGE_NOACCESS)) {
+			g_reserved[held++] = p;
+		}
+	}
+	plog::Info("relay reserve: %d blocks held above the image, first %p, last %p", held, g_reserved[0],
+	           held > 0 ? g_reserved[held - 1] : nullptr);
+}
+
+void __cdecl ReleaseReserve(const D2RL::PluginContext*, const D2RL::Lifecycle::DataTablesLoadedEvent*, void*) noexcept {
+	int freed = 0;
+	for (void*& p : g_reserved) {
+		if (p != nullptr && VirtualFree(p, 0, MEM_RELEASE)) {
+			p = nullptr;
+			++freed;
+		}
+	}
+	if (freed > 0) {
+		plog::Info("relay reserve: %d blocks released for Cast Triggers", freed);
+	}
+}
+
+void HoldRelayReserve(const D2RL::PluginContext* context) noexcept {
+	const D2RL::LifecycleService* lifecycle = nullptr;
+	if (context->QueryService(&lifecycle) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasLifecycleServiceField(lifecycle, D2RL::LifecycleServiceRequiredSize)) {
+		plog::Warn("relay reserve: no lifecycle service, nothing held");
+		return;
+	}
+	const D2RL::Lifecycle::DataTablesLoadedListener listener {.structSize = D2RL::Lifecycle::DataTablesLoadedListenerSize,
+	                                                          .callback = ReleaseReserve};
+	D2RL::Lifecycle::ListenerHandle handle = D2RL::Lifecycle::InvalidHandle;
+	if (lifecycle->registerDataTablesLoadedListener(context, &listener, &handle) != D2RL::Lifecycle::Result::Success) {
+		plog::Warn("relay reserve: table listener refused, nothing held");
+		return;
+	}
+	ReserveNearImage(context->exeBase);  // only once the listener that frees it is in place
+}
+
 auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext* command, void* userData) noexcept
 	-> D2RL::ConsoleCommandResult {
 	(void)client;
@@ -197,6 +251,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	if (off_switch::Words()[0] != '\0') {
 		plog::Info("%s-off.txt leaves out: %s", PluginName, off_switch::Words());
 	}
+	HoldRelayReserve(context);  // first, before any part allocates near the image
 	propids::Init(context);
 	g_imageKnown = d2r::Bind(context->exeBase);
 	parts::InstallAll(g_parts, std::size(g_parts), context, PluginName, g_imageKnown);
