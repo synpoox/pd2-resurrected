@@ -30,7 +30,7 @@ relies on it.
 | Minimum plugin | Embedded manifest resource (RCDATA id 1001 = ABI DWORD), exports `D2RLoaderGetPluginInfo`, `D2RLoaderLoadPlugin`, optional `D2RLoaderUnloadPlugin`. Without the resource the loader rejects the DLL as an "old alpha plugin" | SDK, KB-loader |
 | Roles / flags | Exactly one of `Client`, `Server`, `Shared`; optional `ModScopedOnly`, `NativeHooks` (needed for inline hooks) | SDK |
 | Where it loads | `<game>/mods/<mod>/d2rloader/plugins/` (mod-scoped, loaded first, replaces a same-id global copy) or `<game>/d2rloader/plugins/` (global, loads with every mod) | SDK, KB-loader |
-| Which mod runs | `d2rloader.toml` `default_mod` (game-wide); a mod's own toml only overrides `[d2rcore.*]` | KB-loader |
+| Which mod runs | `d2rloader.toml` `default_mod` (game-wide); a mod's own toml overrides `[d2rcore.*]` and `[d2rloader.plugins] load_order` (seen in Slot 5, #1180) | KB-loader |
 | Config | One embedded default TOML (non-empty, <= 1 MiB); user config created once, never overwritten | SDK |
 | Tables | The loader compiles the mod's `.txt` tables itself (no `-txt`); a shipped `.bin` becomes a "custom BIN set" that must be complete | KB-loader |
 | First start | First start after install/update builds a compiler snapshot and loads only D2R's own sounds table; mod sounds resolve to -1 (silent, can crash). Needs a second start; guard via `DataTablesLoaded` | KB-loader |

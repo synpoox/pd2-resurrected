@@ -1969,6 +1969,7 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 // Progressive Affixes checks the magic affix maker's bytes when it loads and refuses if they changed. Our plugins load
 // from the mod folder, core-rules.dll before d2rl-ruffneckk-progressive-affixes.dll (#1180), so this hook waits for
 // the first table load, after every plugin's load-time hooks, whatever the load order.
+// Runs after ReleaseReserve: its trampoline may take one freed block; 15+ stay for Cast Triggers' 5 relay pages (#1180)
 void __cdecl HookMagicMaker(const D2RL::PluginContext* context, const D2RL::Lifecycle::DataTablesLoadedEvent*, void*) noexcept {
 	static bool tried = false;
 	if (tried) {
