@@ -33,3 +33,7 @@ check (+0x4f2b3a) refused it (`stat differs 564`: a 87, b 174), in both directio
 
 Fix: the split never sets Area Level again; it copies only the forced event (553), which `splitStack` drops (Slot4: the piece lost 553/1=3 without it). Note the server refusal was hidden by the one-line-a-second log cap,
 since the client's line comes first in the same second.
+
+## #1504: using one map of a stack opened it at double the Area Level
+
+`UseOneOfStack` made the piece with `executeTransaction`, then set the stack's stats on it with `SetUnitStat`. Slot3 log: the new piece read Area Level (564) 87 before the write and 174 after (the stack saved only that one entry). Same cause as #1499. Fix: the use skips 564 and sets the rest (a fresh piece lacks them, as it lacks 553).

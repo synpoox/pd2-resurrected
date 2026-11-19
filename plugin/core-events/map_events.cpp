@@ -555,7 +555,7 @@ auto UseOneOfStack(Game* game, Unit* player, Unit* stack, uint8_t* packet, char 
 		           g_items == nullptr ? "no SDK item services" : "not in the local player's inventory");
 		return false;
 	}
-	// One map off the stack into a free cell, then the stack's own stats (map level, affixes, the forcing marker) onto it
+	// One map off the stack into a free cell, then the stack's own stats (affixes, the forcing marker; not the map level) onto it
 	pd2::mapstack::Saved saved;
 	pd2::mapstack::Collect(stack, ItemStatCostRows, StatQuantity,
 	                       d2r::Engine<int32_t (*)(Unit*, uint32_t, pd2::mapstack::Entry*, int32_t) noexcept>(UnitStatEntries), saved);
@@ -585,8 +585,11 @@ auto UseOneOfStack(Game* game, Unit* player, Unit* stack, uint8_t* packet, char 
 		plog::Info("map use: a stack of %d not split (result %u, inventory full?), so the use is refused", quantity, static_cast<uint32_t>(status));
 		return false;
 	}
+	// The piece already has its own Area Level (564); setting it again doubled it (87 -> 174, #1504, as #1499), so skip it
 	pd2::mapstack::Apply(unit, saved, [](Unit* u, int32_t stat, int32_t value, int32_t layer) noexcept {
-		d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(u, stat, value, layer);
+		if (stat != StatMapLevel) {
+			d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(u, stat, value, layer);
+		}
 	});
 	uint8_t use[UsePacketSize];
 	std::memcpy(use, packet, sizeof(use));
