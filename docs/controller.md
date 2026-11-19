@@ -3,6 +3,7 @@
 Every controller control the mod ships: D2R's own binds, Controller QoL's (PyreFly's plugin, pinned in #1453) and ours.
 Status is from the [controller audit](research/controller/controller-audit.md) and the merged controller PRs.
 "Untested" means no in-game check yet. Parent issue: [#340](https://github.com/synpoox/pd2-resurrected/issues/340).
+Controller QoL ships with `[aim] cast_observer_enabled = false` (`companions/config/controller-qol-updates.toml`) so Cast Triggers can hook the cast input (#1517); aim, snapping and reticles are unaffected.
 To drive the pad in a game slot, see [Driving the pad](agents/game-check.md#driving-the-pad).
 
 

@@ -59,7 +59,8 @@
       "asset": "Controller-QOL-Updates-1.3.1+rev.100-PyreFly.zip",
       "sha256": "2c7eac5e8397dd7894ba9d09156622eaf7559deba8be5c956cc08ded94348d06",
       "files": {
-        "d2rloader/plugins/Controller QOL Updates.dll": "d2rloader/plugins/Controller QOL Updates.dll"
+        "d2rloader/plugins/Controller QOL Updates.dll": "d2rloader/plugins/Controller QOL Updates.dll",
+        "config/controller-qol-updates.toml": "d2rloader/config/controller-qol-updates.toml"
       }
     },
     {

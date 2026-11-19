@@ -1,0 +1,81 @@
+# Controller QOL shared settings: item shortcuts, cursor movement and appearance.
+# Skill enable/disable, targeting and leading belong in a separate profile:
+#   d2rloader/config/controller-qol-skills/<scope>.overrides.toml
+# Open the profile whose # Mod line matches your active pack, or Vanilla.
+# R3 saves there immediately. Rev.82 reloads active files automatically after save,
+# or use /qol reload in the loader console. No extra configuration file is needed.
+# Invalid edits retain the last valid settings. Release held controls to apply.
+# Hook switches, bindings, Cube controls and portal priority radius/diagnostics require restart.
+# The matching .catalog.toml is generated reference data, NOT your active settings.
+# Existing skill sections from older configs are migrated with backups; do not
+# copy skill sections back here. See docs/SKILL-DISCOVERY-CONFIG.md for recovery.
+# Release files under defaults/ are references; never copy them over your settings.
+
+[qol]
+enabled = true
+quick_identify = true
+identify_all = true
+# Compatibility option: native hold-A sequence instead of faster SDK edits.
+# No automatic native retry after a failed SDK mutation.
+native_identify = false
+quick_move = true
+# Controller Cube: tap A opens, hold A picks up; modifier+B transmutes while highlighted or open.
+cube_tap_open = true
+cube_transmute_shortcut = true
+quick_deposit = true
+require_tome_or_scroll = true
+consume_tome_or_scroll = true
+require_modifier = true
+modifier = "bumper"
+trigger_threshold = 30 # integer 1..255; applies to LT/RT activation
+ground_pickup = true
+ground_pickup_button = "bumper"
+ground_pickup_distance = 14
+debug_logging = false
+# Controller UI only; gold is exempt and mouse/keyboard pickup is unaffected.
+block_filtered_pickup = true
+prioritize_portals = true
+prioritize_stash_boxes = true
+prioritize_waypoints = true
+prioritize_shrines = true
+prioritize_chests = true
+portal_priority_distance = 10
+# Targeted, throttled portal selection diagnostics; separate from general debug.
+portal_diagnostics = false
+
+[aim]
+# Controller cursor/snapping enabled by default; requires restart.
+enabled = true
+# Detailed aim diagnostics (file logging); keep false for normal play/handhelds.
+# Warnings remain visible. Independent of debug_overlay; reloads after save.
+verbose = false
+# Radial dead zone, fraction of full stick travel (0.0..0.9).
+deadzone = 0.22
+# Speeds in world tiles/second at full stick tilt (0.1..100).
+# Light tilt slows movement further with a squared response curve.
+initial_speed = 8.0
+maximum_speed = 48
+# Time to reach maximum speed while held (0.0..5.0).
+# Higher = gentler acceleration. Zero = immediate maximum speed.
+acceleration_seconds = 0.35
+
+# Tuning/appearance edits reload after save; R3 changes apply immediately.
+# Disabling the overlay does not disable aiming.
+snapping_enabled = true
+snap_radius = 6.0 # world tiles, 0.5..15
+switch_advantage = 1.5 # closer by this many tiles to steal the target, 0..15
+overlay_enabled = true
+# Reticle colors: quoted #RRGGBB or #RRGGBBAA (optional opacity).
+ground_reticle_color = "#8FE8FF"
+lock_reticle_color = "#FFD166"
+reticle_thickness = 2.0 # colored line-width multiplier, 0.5..4; dark border stays narrow
+reticle_size_percent = 100 # overall reticle size percentage, 50..250
+debug_overlay = false # verbose HUD, outer range circle, ticks and LAST CAST
+# Optional cast diagnostics and Teleport measurements.
+# true keeps full functionality when available; conflicts auto-skip only this hook.
+# Changing cast_observer_enabled or skill_tree_toggle_enabled requires restart.
+cast_observer_enabled = false
+# R3 on a supported class/General Skills button toggles aim in the active skill profile.
+skill_tree_toggle_enabled = true
+projection_hz = 60.0 # ground projection sampling, 10..120; actual rate <= UI rate
+overlay_smoothing_ms = 60.0 # screen-motion smoothing, 0..150; zero disables; stick adjustments stay direct
