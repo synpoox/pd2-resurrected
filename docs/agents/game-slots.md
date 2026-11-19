@@ -21,6 +21,25 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its [`testing/README.md
 - A slot's saves are in `Saved Games\Diablo II Resurrected\mods\PD2Resurrected-Slot<N>`. Test characters follow
   AGENTS.md's testing rules.
 
+## Game version (3.4 and 3.3)
+
+One build of the mod runs on D2R 3.4 (build 95032) and 3.3 (93847): D2RLoader 1.3.1 runs its own engine image
+(`0x6ab3782c`, 93847's code) with the installed game's data, so every plugin signature and address is the same on both
+(#1509). The tables and strings the mod ships replace the game's; of the files 3.4 changed, only `propertygroups.txt`
+(one new row) and the `ui-controller` and `vo` strings reach the game from 3.4.
+
+- Slot 1, the config's `install_dir`, is the owner's 3.4 game, `C:\Games\Diablo II Resurrected`: read only, never
+  written, launched or locked. Slots 2-5 are made from it and run 3.4.
+- After a D2R patch, sync each slot, one at a time, with the lock held: `game_slots.py lock <N> <owner>`,
+  `game_slots.py setup <N>`, `unlock`. Under `Data` the sync mirrors slot 1 and removes the CASC files the patch dropped
+  (a stale `.idx` fails with "needs repair"). It hard-links on the same drive and copies (about 30 GB) to a slot on F:.
+- A 3.3 slot: `C:\Games\Diablo II Resurrected Infernal Edition` is a 3.3 copy (also read only). Copy the config, set
+  its `install_dir` to that folder, and run `setup <N>` with `MODKIT_TESTING_CONFIG` pointing at the copy; run `setup`
+  with the normal config to bring the slot back to 3.4.
+- Which version a slot runs: `Version` in `<slot>\.build.info`, or the loader log's `[BUILD] D2R version` line. Our
+  plugins log it too, with the image check: `core-rules: 0.2.0 loaded (mod PD2Resurrected, D2R 3.4.0, image 0x6ab3782c
+  (expects 0x6ab3782c, match), ...)`.
+
 ## Steps
 
 The per-check recipe (cheats, shots, unlock) is `docs/agents/game-check.md`; these are the slot basics.

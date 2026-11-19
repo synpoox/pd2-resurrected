@@ -26,7 +26,7 @@ Columns:
 Ordered by "Order and slice core-rules into work items" ([#25](https://github.com/synpoox/pd2-resurrected/issues/25)); placed into milestones, next to the P items, by [roadmap.md](../roadmap.md). A work item is about one agent session. A `verify` check is
 the first step of the item that builds its row; when D2R already matches, the item shrinks to data. Each build PR merges
 when its game check, the table-diff gate and a code-review agent pass; the owner reviews P1, W1, [W2](https://github.com/synpoox/pd2-resurrected/issues/45) and the alpha 0.1.0 release.
-Target: D2R 3.3 build 93847 + D2RLoader 1.3.1 (a frozen install copy); 3.4 is its own item once D2RLoader supports it.
+Target: D2RLoader 1.3.1, whose own engine image (`0x6ab3782c`, build 93847's code) runs with D2R 3.4 (95032) or 3.3 (93847) data; addresses are the image's, so one build serves both ([#1509](https://github.com/synpoox/pd2-resurrected/issues/1509)).
 
 ### M2: Amazon and Barbarian complete, the other classes on stand-ins
 
