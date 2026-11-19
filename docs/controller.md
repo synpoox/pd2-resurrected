@@ -57,18 +57,18 @@ One line per PD2 pad bind, with its status.
 - RT attack with the right skill: covered by D2R.
 - LB show loot: covered by D2R and QoL.
 - Always show loot: covered by D2R's Show Items.
-- Belt potion to mercenary: gap (#1472). Chosen chord LB + D-pad (slots 1-4), not built: the SDK has no mercenary or belt-to-merc call, so it needs a native hook on the client's give-to-merc code.
+- Belt potion to mercenary: gap (#1513). Chosen chord LB + D-pad (slots 1-4), not built: the SDK has no mercenary or belt-to-merc call, so it needs a native hook on the client's give-to-merc code.
 - Run/walk: covered by D2R (L3).
 - Resync: cut, since D2R has no resync.
 - Per-skill auto-aim: covered by QoL (R3 in the skill tree).
 - Inventory LT/RT as Shift/Ctrl: replaced by QoL's LB modifier.
 - Identify, transfer, drop, Cube transfer and sell: covered by QoL LB chords and D2R prompts.
-- Multi-buy: gap (#1472). Chosen chord LB + Y on a shop item, not built: the SDK emits no shop event and has no buy call. QoL's LB+R3 fills potions and tomes only.
-- Stack-tab "transfer 5": gap (#1472). Chosen chord RB + A (no LB, so it never meets LB + D-pad), not built: D2R's "Move 5" is a mouse right-click inside its own widget, with no SDK event.
+- Multi-buy: gap (#1514). Chosen chord LB + Y on a shop item, not built: the SDK emits no shop event and has no buy call. QoL's LB+R3 fills potions and tomes only.
+- Stack-tab "transfer 5": gap (#1515). Chosen chord RB + A (no LB, so it never meets LB + D-pad), not built: D2R's "Move 5" is a mouse right-click inside its own widget, with no SDK event.
 - Whole stack-tab stack to the Cube: built as LB + RB + A (#1472), see the table.
+- Gamble Refresh and Repair All: unverified.
 
 PD2's own combos can't be mirrored: its LT + X multi-buy clashes with Controller QoL's LT/RT page change, and its other three are keyboard-only in PD2.
-- Gamble Refresh and Repair All: unverified.
 
 ## Known gaps
 
@@ -78,7 +78,7 @@ PD2's own combos can't be mirrored: its LT + X multi-buy clashes with Controller
 - #1466: Holy Sword parry is missing (PD2's class-5 parry roll).
 - #1468: Item Roll Ranges shows no ranges with the pad (RT is Controller QoL's page button).
 - #1469: Potion Counter shows no counts under the controller HUD.
-- #1472: PD2 pad bind gaps (belt potion to mercenary, multi-buy, stack-tab transfer, whole stack to the Cube).
+- #1513, #1514, #1515: PD2 pad bind gaps (belt potion to mercenary, multi-buy, stack-tab transfer); #1516: owner pad check of the Cube chord.
 - #1448: aim assist. Owner test of D2R's aim behaviour; Controller QoL's snap is untested.
 
 ## Rule
