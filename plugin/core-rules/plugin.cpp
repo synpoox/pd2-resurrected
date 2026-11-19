@@ -130,7 +130,8 @@ parts::Part g_parts[] = {
 
 // Cast Triggers allocates its 5 relay pages upward from the image (within +0x70000000) when tables load, and D2R's
 // render-context init can fill that window first (#1180). Hold the first 16 free 64 KB blocks from plugin load and
-// free them in a table listener that runs before Cast Triggers' (the companion load_order puts it last).
+// free them in a table listener that runs before Cast Triggers' (mod-folder plugins load in file-name
+// order: core-rules.dll before d2rl-ruffneckk-cast-triggers.dll).
 // Not a part: the off file cannot drop it.
 void* g_reserved[16] = {};
 

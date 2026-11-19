@@ -20,6 +20,7 @@
 
 #define NOMINMAX
 #include <windows.h>
+#include <D2RLPlugin/lifecycle.h>
 
 #include "map_stack.h"
 #include "sig_hook.h"
@@ -1965,6 +1966,28 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	return merge ? 1 : 0;
 }
 
+// Progressive Affixes checks the magic affix maker's bytes when it loads and refuses if they changed. Our plugins load
+// from the mod folder, core-rules.dll before d2rl-ruffneckk-progressive-affixes.dll (#1180), so this hook waits for
+// the first table load, after every plugin's load-time hooks, whatever the load order.
+void __cdecl HookMagicMaker(const D2RL::PluginContext* context, const D2RL::Lifecycle::DataTablesLoadedEvent*, void*) noexcept {
+	static bool tried = false;
+	if (tried) {
+		return;
+	}
+	tried = true;
+	// 0x442c60 by signature (the loader patches its +0x18 load into a call, so those 6 bytes are masked); a whole-instruction entry
+	static constexpr uint8_t MagicMakerEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18, 0x57};
+	const bool ok = sigscan::HookBySignature(
+	    context, "MagicAffixMaker",
+	    "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 56 41 57 48 83 EC 30 ?? ?? ?? ?? ?? ?? 45 33 FF 48 8B F2 48 8B F9", 0,
+	    MagicMakerEntry, sizeof(MagicMakerEntry), MapMagicMaker, &g_magicMakerOriginal);
+	if (ok) {
+		plog::Info("no magic maps: magic affix maker hooked after the first table load");
+	} else {
+		plog::Warn("no magic maps: magic affix maker hook FAILED (signature or bytes differ)");
+	}
+}
+
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
 	g_context = context;
@@ -2011,13 +2034,16 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool mapStack = sigscan::HookBySignature(
 	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
 	    d2r::rva::ItemsCanMergeEntry, sizeof(d2r::rva::ItemsCanMergeEntry), MapStackEqual, &g_stackEqualOriginal);
-	// 0x442c60 and 0x442d60 by signature (calls are masked; the loader patches the +0x18 load of 0x442c60 into a call, so those 6 bytes are masked); the entries are whole instructions
-	static constexpr uint8_t MagicMakerEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18, 0x57};
+	// 0x442d60 by signature (calls are masked); the entry is whole instructions. 0x442c60 waits for the tables (HookMagicMaker).
 	static constexpr uint8_t ItemMakerEntry[] = {0x40, 0x53, 0x55, 0x41, 0x56, 0x48, 0x83, 0xec, 0x50, 0x4c, 0x8b, 0xf1, 0x49, 0x8b, 0xe8, 0x48, 0x8b, 0x0a};
-	const bool noMagicMaps = sigscan::HookBySignature(
-	    context, "MagicAffixMaker",
-	    "48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 41 56 41 57 48 83 EC 30 ?? ?? ?? ?? ?? ?? 45 33 FF 48 8B F2 48 8B F9", 0,
-	    MagicMakerEntry, sizeof(MagicMakerEntry), MapMagicMaker, &g_magicMakerOriginal);
+	const D2RL::LifecycleService* lifecycle = nullptr;
+	const D2RL::Lifecycle::DataTablesLoadedListener magicListener {.structSize = D2RL::Lifecycle::DataTablesLoadedListenerSize,
+	                                                               .callback = HookMagicMaker};
+	D2RL::Lifecycle::ListenerHandle magicHandle = D2RL::Lifecycle::InvalidHandle;
+	const bool noMagicMaps = context->QueryService(&lifecycle) == D2RL::ServiceQueryResult::Success &&
+	                         D2RL::HasLifecycleServiceField(lifecycle, D2RL::LifecycleServiceRequiredSize) &&
+	                         lifecycle->registerDataTablesLoadedListener(context, &magicListener, &magicHandle) ==
+	                             D2RL::Lifecycle::Result::Success;
 	const bool mapMakerLog = sigscan::HookBySignature(
 	    context, "ItemMaker", "40 53 55 41 56 48 83 EC 50 4C 8B F1 49 8B E8 48 8B 0A 48 8B DA 48 85 C9 74 0A E8 ?? ?? ?? ?? 83 F8 04 74 14", 0,
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
@@ -2031,7 +2057,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              equip ? "" : " FAILED (bytes differ)", replenish ? "" : " FAILED (bytes differ)",
 	              unlimited ? "" : " FAILED (entries not empty, or no mutation service)",
 	              charms ? "" : " FAILED (signature or bytes differ)", mapStack ? "" : " FAILED (bytes differ)",
-	              noMagicMaps ? "" : " FAILED (signature or bytes differ)", mapMakerLog ? "" : " FAILED (signature or bytes differ)");
+	              noMagicMaps ? " (hooked when tables load)" : " FAILED (no table listener)", mapMakerLog ? "" : " FAILED (signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
 	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0);

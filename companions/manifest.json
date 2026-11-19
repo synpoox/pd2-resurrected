@@ -91,11 +91,6 @@
       "files": {
         "plugins/d2rl-ruffneckk-cast-triggers.dll": "d2rloader/plugins/d2rl-ruffneckk-cast-triggers.dll",
         "config/ruffneckk-cast-triggers.toml": "d2rloader/config/ruffneckk-cast-triggers.toml"
-      },
-      "loader_settings": {
-        "d2rloader.plugins": {
-          "load_order": ["ruffneckk-progressive-affixes", "*", "ruffneckk-cast-triggers"]
-        }
       }
     },
     {
