@@ -354,6 +354,11 @@ auto KeepCubeLeftovers(Game* game, Unit* player, const uint8_t* record) noexcept
 				continue;
 			}
 			if (d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item) != QualityNormal) {
+				// shortcut: on a useitem/usetype row a non-normal stack is taken as the item the row keeps whole (a unique quiver
+				// upgraded in place, #1438), though a non-normal stack another input consumes would lose its units; upgrade if one exists
+				if (record[CubeOutType] == 0xfe || record[CubeOutType] == 0xff) {
+					continue;
+				}
 				plog::Info("stacks: refused, a stack the row leaves units of is not normal quality");
 				return false;  // createItem would remake it without its affixes
 			}
