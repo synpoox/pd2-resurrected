@@ -38,7 +38,7 @@ One build of the mod runs on D2R 3.4 (build 95032) and 3.3 (93847): D2RLoader 1.
   with the normal config to bring the slot back to 3.4.
 - Which version a slot runs: `Version` in `<slot>\.build.info`, or the loader log's `[BUILD] D2R version` line. Our
   plugins log it too, with the image check: `core-rules: 0.2.0 loaded (mod PD2Resurrected, D2R 3.4.0, image 0x6ab3782c
-  (expects 0x6ab3782c, match), ...)`.
+  (expects 0x6ab3782c, match), ...)`. The loader's `mod build 93847` comes from the mod's dataversion, not the game: it is no mismatch on 3.4.
 
 ## Steps
 
