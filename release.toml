@@ -29,6 +29,7 @@ plugins = ["core-rules", "core-events", "core-ui"]
 companions = true
 item_type_check = false   # not checked before the toolkit either: a mod table's item type ids are its own
 loader_from_game = true   # pin --game's official D2RLoader.exe in the catalog
+notes = "docs/release-notes/{version}.md"   # condensed player notes (toolkit #311)
 
 # Files players may edit: shipped_default in the launcher manifest, kept on Update and Repair.
 [package]
