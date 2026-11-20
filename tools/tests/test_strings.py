@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import data_tables
 import pd2_strings  # noqa: E402
 
 try:
@@ -101,6 +102,16 @@ class StringsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "neither game has key 'Gone'"):
             pd2_strings.build({**cfg, "entries": {"EnteringNewAffix": "Gone", "EnteringRal": "r08"}}, pd2,
                               self.strings(), self.root / "out")
+
+    def test_palace_cellar_waypoint_resolves_in_both_string_sets(self):
+        data_tables.need(self)
+        waypoint = next(row for row in data_tables.rows("levels") if row["Waypoint"] == "15")
+        self.assertEqual(waypoint["Id"], "52")
+        for directory in ("strings", "strings-legacy"):
+            with self.subTest(directory=directory):
+                path = data_tables.DATA / "local/lng" / directory / "levels.json"
+                strings = {row["Key"]: row["enUS"] for row in json.loads(path.read_text("utf-8-sig"))}
+                self.assertEqual(strings[waypoint["LevelName"]], "Palace Cellar Level 1")
 
     def test_level_entry_falls_back_to_the_mods_own_text(self):
         # a level the mod adds: neither game has the LevelName key, the merge's own text does
