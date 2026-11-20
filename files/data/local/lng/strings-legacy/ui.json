@@ -11324,5 +11324,22 @@
     "ptBR": "Corrupted Sorceress has expressed hostility towards you.",
     "ruRU": "Corrupted Sorceress has expressed hostility towards you.",
     "zhCN": "Corrupted Sorceress has expressed hostility towards you."
+  },
+  {
+    "id": 51563,
+    "Key": "SacrificeAltarAction",
+    "enUS": "Sacrifice",
+    "zhTW": "獻祭",
+    "deDE": "Opfern",
+    "esES": "Sacrificar",
+    "frFR": "Sacrifier",
+    "itIT": "Sacrifica",
+    "koKR": "희생",
+    "plPL": "Złóż w ofierze",
+    "esMX": "Sacrificar",
+    "jaJP": "生贄にする",
+    "ptBR": "Sacrificar",
+    "ruRU": "Принести в жертву",
+    "zhCN": "献祭"
   }
 ]
