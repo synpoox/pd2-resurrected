@@ -122,6 +122,7 @@ modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/item_pictures.cpp
 	core-ui/item_quantity.cpp
 	core-ui/stack_split.cpp
+	core-ui/immunity_tooltip.cpp
 	core-ui/controller_split.cpp
 	core-ui/plugin.rc
 )
@@ -198,3 +199,9 @@ add_executable(parts_uses_check EXCLUDE_FROM_ALL tests/parts_uses_check.cpp core
 target_include_directories(parts_uses_check PRIVATE core-events)
 target_link_libraries(parts_uses_check PRIVATE core_common)
 core_options(parts_uses_check)
+
+# Map immunities tooltip line (#1552): plugin/common/map_immunities.h has no engine types.
+add_executable(map_immunities_check EXCLUDE_FROM_ALL tests/map_immunities_check.cpp)
+target_include_directories(map_immunities_check PRIVATE common)
+target_compile_features(map_immunities_check PRIVATE cxx_std_20)
+core_options(map_immunities_check)
