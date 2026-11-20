@@ -1,8 +1,8 @@
 Stat	*ID	Send Other	Signed	Send Bits	Send Param Bits	UpdateAnimRate	Saved	CSvSigned	CSvBits	CSvParam	fCallback	fMin	MinAccr	Encode	Add	Multiply	ValShift	1.09-Save Bits	1.09-Save Add	Save Bits	Save Add	Save Param Bits	keepzero	op	op param	op base	op stat1	op stat2	op stat3	direct	maxstat	damagerelated	itemevent1	itemeventfunc1	itemevent2	itemeventfunc2	descpriority	descfunc	descval	descstrpos	descstrneg	descstr2	dgrp	dgrpfunc	dgrpval	dgrpstrpos	dgrpstrneg	dgrpstr2	stuff	advdisplay	*eol
-strength	0	1		11			1	0	10			1	1		125	55		7	32	8	100																67	19		ModStr1a	ModStr1a		1	1	1	Moditem2allattrib	Moditem2allattrib		6		0
-energy	1			11			1	0	10			1	1		100	55		7	32	8	100			8			maxmana										61	19		ModStr1d	ModStr1d		1	1	1	Moditem2allattrib	Moditem2allattrib				0
-dexterity	2	1		11			1	0	10			1	1		125	55		7	32	8	100																65	19		ModStr1b	ModStr1b		1	1	1	Moditem2allattrib	Moditem2allattrib				0
-vitality	3			11			1	0	10			1	1		100	55		7	32	8	100			9			maxhp	maxstamina									63	19		ModStr1c	ModStr1c		1	1	1	Moditem2allattrib	Moditem2allattrib				0
+strength	0	1		11			1	0	10			1	1		125	55		7	32	8	100																67	19		ModStr1a	ModStr1a		1	19		Moditem2allattrib	Moditem2allattrib		6		0
+energy	1			11			1	0	10			1	1		100	55		7	32	8	100			8			maxmana										61	19		ModStr1d	ModStr1d		1	19		Moditem2allattrib	Moditem2allattrib				0
+dexterity	2	1		11			1	0	10			1	1		125	55		7	32	8	100																65	19		ModStr1b	ModStr1b		1	19		Moditem2allattrib	Moditem2allattrib				0
+vitality	3			11			1	0	10			1	1		100	55		7	32	8	100			9			maxhp	maxstamina									63	19		ModStr1c	ModStr1c		1	19		Moditem2allattrib	Moditem2allattrib				0
 statpts	4			9			1	0	10																																										0
 newskills	5			9			1	0	8																																										0
 hitpoints	6			32			1	0	21		1						8													1	maxhp																				0
