@@ -94,6 +94,16 @@
       }
     },
     {
+      "name": "Bind and Summon",
+      "url": "https://d2rloader.net/api/v1/hub/releases/c21911af-ccd3-4ee2-be31-a79a8325cb46/download",
+      "asset": "bindandsummon.zip",
+      "sha256": "a5ee55ba69015d958774d4e6a03ef13a425d67a651cd462f1819686011cd7940",
+      "files": {
+        "plugins/BindAndSummon.dll": "d2rloader/plugins/BindAndSummon.dll",
+        "config/bindandsummon.toml": "d2rloader/config/bindandsummon.toml"
+      }
+    },
+    {
       "name": "Ethereal Item Rules",
       "repo": "RuffDood/RuffnecKk-D2RLoader-Suite",
       "tag": "v1.4.2",
