@@ -89,14 +89,20 @@ auto Add(void* proxy, uint64_t itemClass, Unit* rbx, uint8_t* rbp) noexcept -> U
 	const int32_t units = Units(Quantity(rbx));
 	void* const game = *reinterpret_cast<void**>(rbp - 0x78);
 	const auto at = [rbp](int32_t off) { return *reinterpret_cast<uint32_t*>(rbp + off); };
-	for (int32_t i = 1; i < units; ++i) {
+	int32_t added = 1;
+	for (; added < units; ++added) {
 		// the update for the item just added, as the caller sends it after the last
 		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetItemSending)(slot, 1);
 		d2r::Engine<SendFn>(SendItem)(game, proxy, slot, 0x2000, 2, at(-0x50), at(-0x4c), at(-0x44), at(-0x48));
 		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetItemSending)(slot, 0);
-		g_add(proxy, itemClass);
+		if (g_add(proxy, itemClass) == nullptr) {
+			plog::Warn("stash tabs: add %d of %d for class %d failed, slot count %u", added + 1, units,
+			           static_cast<int32_t>(itemClass), SlotCount(slot));
+			break;
+		}
 	}
-	plog::Info("stash tabs: deposit of class %d added %d, slot count %u", static_cast<int32_t>(itemClass), units, SlotCount(slot));
+	plog::Info("stash tabs: deposit of class %d added %d of %d, slot count %u", static_cast<int32_t>(itemClass), added, units,
+	           SlotCount(slot));
 	g_deposits.fetch_add(1);
 	return slot;
 }
@@ -114,11 +120,15 @@ auto MakeStub(const void* target) noexcept -> uint64_t {
 	}
 	uint8_t* stub = page + used;
 	DWORD old = 0;
-	VirtualProtect(page, 4096, PAGE_READWRITE, &old);
+	if (!VirtualProtect(page, 4096, PAGE_READWRITE, &old)) {
+		return 0;
+	}
 	std::memcpy(stub, Head, sizeof(Head));
 	std::memcpy(stub + sizeof(Head), &target, sizeof(target));
 	used += 32;
-	VirtualProtect(page, 4096, PAGE_EXECUTE_READ, &old);
+	if (!VirtualProtect(page, 4096, PAGE_EXECUTE_READ, &old)) {
+		return 0;
+	}
 	FlushInstructionCache(GetCurrentProcess(), stub, 32);
 	return reinterpret_cast<uint64_t>(stub);
 }
