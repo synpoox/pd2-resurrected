@@ -118,6 +118,7 @@ constexpr uint32_t StatPassiveCrit = 337;     // passive_critical_strike
 constexpr uint32_t StatDeadlyStrike = 141;    // item_deadlystrike
 constexpr uint32_t StatCritMultiplier = 390;  // item_crit_multiplier
 constexpr uint32_t StatDsMultiplier = 391;    // item_ds_multiplier
+constexpr uint32_t StatDye = 530;            // transform_dye
 constexpr uint32_t StatCritChance = 392;      // item_crit_chance
 constexpr uint32_t StatMaxDeadly = 386;       // item_maxdeadlystrike
 constexpr int32_t StrikeCap = 75;
@@ -1802,6 +1803,10 @@ ReqDisplayFn g_reqDisplayOriginal = nullptr;
 
 auto ReqDisplayInRow(Unit* item, Unit* player, uint64_t a3, uint64_t a4, uint64_t a5, uint64_t a6, uint64_t a7) noexcept -> int32_t {
 	const int32_t ok = g_reqDisplayOriginal(item, player, a3, a4, a5, a6, a7);
+	// PD2's dye stat (transform_dye, 530) is set by the corruption recipes (value 10 = red): the cell takes the same red tint (#1529)
+	if (ok != 0 && Stat(item, StatDye) != 0) {
+		return 0;
+	}
 	uint32_t xy = 0;
 	uint8_t page = 0;
 	// a same-name twin in rows 5-8 is switched off too (#1377); counted only, the draw never unlinks
