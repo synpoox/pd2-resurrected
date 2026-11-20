@@ -1808,24 +1808,29 @@ auto ReqDisplayInRow(Unit* item, Unit* player, uint64_t a3, uint64_t a4, uint64_
 	return ok != 0 && (CharmSwitchedOff(item, player, xy, page) || (g_charmActiveOriginal(item, player) != 0 && CharmTwinOff(item, player, xy, page, nullptr))) ? 0 : ok;
 }
 
-// Swaps the .maho thunk slot behind the E8 call at `entry` + `callOffset` for `wrapper`; the slot's old target goes to
-// `original` first, so the wrapper never runs without it.
-auto SwapThunkSlot(const D2RL::PluginContext* context, const sigscan::Entry& entry, uint32_t callOffset, uint64_t wrapper,
-                   uint64_t* original) noexcept -> bool {
+auto ThunkSlotRva(const sigscan::Entry& entry, uint32_t callOffset) noexcept -> uint64_t {
 	if (entry.state != sigscan::State::Ok) {
-		return false;
+		return 0;
 	}
 	const auto* const call = reinterpret_cast<const uint8_t*>(d2r::imageBase + entry.rva + callOffset);
 	if (call[0] != 0xe8) {
-		return false;
+		return 0;
 	}
 	const uint8_t* const thunk = call + 5 + *reinterpret_cast<const int32_t*>(call + 1);
 	if (thunk[0] != 0xff || thunk[1] != 0x25) {  // jmp [rip+disp32]; anything else is not D2RLoader's thunk
-		return false;
+		return 0;
 	}
 	const uint8_t* const slot = thunk + 6 + *reinterpret_cast<const int32_t*>(thunk + 2);
-	const uint64_t slotRva = reinterpret_cast<uint64_t>(slot) - d2r::imageBase;
-	const uint64_t old = *reinterpret_cast<const uint64_t*>(slot);
+	return reinterpret_cast<uint64_t>(slot) - d2r::imageBase;
+}
+
+auto SwapThunkSlot(const D2RL::PluginContext* context, const sigscan::Entry& entry, uint32_t callOffset, uint64_t wrapper,
+                   uint64_t* original) noexcept -> bool {
+	const uint64_t slotRva = ThunkSlotRva(entry, callOffset);
+	if (slotRva == 0) {
+		return false;
+	}
+	const uint64_t old = *reinterpret_cast<const uint64_t*>(d2r::imageBase + slotRva);
 	if (old == 0) {
 		return false;
 	}
@@ -1833,7 +1838,7 @@ auto SwapThunkSlot(const D2RL::PluginContext* context, const sigscan::Entry& ent
 	if (!context->PatchWriteU64(slotRva, &old, sizeof(old), wrapper)) {
 		return false;
 	}
-	plog::Info("charm rows: %s slot at image +0x%llx swapped", entry.name, static_cast<unsigned long long>(slotRva));
+	plog::Info("%s: %s slot at image +0x%llx swapped", entry.area, entry.name, static_cast<unsigned long long>(slotRva));
 	return true;
 }
 

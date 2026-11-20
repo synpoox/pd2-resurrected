@@ -55,6 +55,7 @@ modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/socket_rules.cpp
 	core-rules/cube_rules.cpp
 	core-rules/cube_stacks.cpp
+	core-rules/stash_stacks.cpp
 	core-rules/almanac.cpp
 	core-rules/shrine_rules.cpp
 	core-rules/loot_rules.cpp
@@ -175,6 +176,12 @@ add_executable(pad_modifier_check EXCLUDE_FROM_ALL tests/pad_modifier_check.cpp)
 target_include_directories(pad_modifier_check PRIVATE common)
 target_compile_features(pad_modifier_check PRIVATE cxx_std_20)
 core_options(pad_modifier_check)
+
+# RotW stash tabs take PD2 stacks whole (#1537): plugin/common/stash_stack.h has no engine types.
+add_executable(stash_stack_check EXCLUDE_FROM_ALL tests/stash_stack_check.cpp)
+target_include_directories(stash_stack_check PRIVATE common)
+target_compile_features(stash_stack_check PRIVATE cxx_std_20)
+core_options(stash_stack_check)
 
 # Holy Sword parry roll (#1466): plugin/common/parry_roll.h has no engine types.
 add_executable(parry_roll_check EXCLUDE_FROM_ALL tests/parry_roll_check.cpp)
