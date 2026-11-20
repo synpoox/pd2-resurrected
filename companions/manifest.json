@@ -11,9 +11,9 @@
     {
       "name": "Pyre Loot Filter",
       "repo": "Pyre-Flies/D2R-Mods",
-      "tag": "pyre-lootfilter-1.3.1+rev.3",
-      "asset": "Pyre-Loot-Filter-1.3.1+rev.3-PyreFly.zip",
-      "sha256": "da186c3b14f914657c503c24b895d3c4f4d4cb114fdb6e47321c620e5eec610d",
+      "tag": "release-2026.11.16.2",
+      "asset": "Pyre-Loot-Filter-1.3.1+rev.7-PyreFly.zip",
+      "sha256": "acc735aa7f379c48cf8fce208815f82d8c276b8a6b127f3dafddd568ef066afc",
       "files": {
         "d2rloader/plugins/pyre-lootfilter.dll": "d2rloader/plugins/pyre-lootfilter.dll",
         "Reimagined.mpq/data/hd/global/sfx/item/": "PD2Resurrected.mpq/data/hd/global/sfx/item/"
