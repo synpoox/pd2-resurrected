@@ -1,1 +1,1 @@
-- Corrupted Annihilus and other dyed items now show a red tint in the inventory. (#1529)
+- Corrupted Annihilus and other dyed items now show a red-tinted picture in the inventory. (#1529)

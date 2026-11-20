@@ -1,4 +1,4 @@
-"""The inventory red tint for a dyed item (#1529): core-rules' StatDye is itemstatcost's transform_dye, sent to the client."""
+"""The red sprite tint for a dyed item (#1529): core-rules' StatDye is itemstatcost's transform_dye, sent to the client."""
 import re
 import unittest
 from pathlib import Path

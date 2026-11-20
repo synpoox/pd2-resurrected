@@ -1803,10 +1803,6 @@ ReqDisplayFn g_reqDisplayOriginal = nullptr;
 
 auto ReqDisplayInRow(Unit* item, Unit* player, uint64_t a3, uint64_t a4, uint64_t a5, uint64_t a6, uint64_t a7) noexcept -> int32_t {
 	const int32_t ok = g_reqDisplayOriginal(item, player, a3, a4, a5, a6, a7);
-	// PD2's dye stat (transform_dye, 530) is set by the corruption recipes (value 10 = red): the cell takes the same red tint (#1529)
-	if (ok != 0 && Stat(item, StatDye) != 0) {
-		return 0;
-	}
 	uint32_t xy = 0;
 	uint8_t page = 0;
 	// a same-name twin in rows 5-8 is switched off too (#1377); counted only, the draw never unlinks
@@ -1845,6 +1841,45 @@ auto SwapThunkSlot(const D2RL::PluginContext* context, const sigscan::Entry& ent
 	}
 	plog::Info("%s: %s slot at image +0x%llx swapped", entry.area, entry.name, static_cast<unsigned long long>(slotRva));
 	return true;
+}
+
+// PD2's dye (transform_dye, set by the corruption recipes) recolours the item sprite, never its cell (#1529). D2R picks an
+// item's colour in one function (93847: 0x3710d0, D2Common Items.cpp): (player, item, out packed index, 0 body / 1
+// inventory) -> the 256-byte palette shift of (items.txt Transform +0x151 or InvTrans +0x152, colors.txt row), or null;
+// its unique and set branches read invtransform the same way. A dyed item takes that path with the dye's colour.
+// PD2 stores the colors.txt row + 1 (0 = none; the Annihilus corruptions' 10 is cred). No PluginSDK service draws items.
+using ItemColorFn = const uint8_t* (*)(Unit* player, Unit* item, uint8_t* index, int32_t inventory) noexcept;
+using PaletteShiftFn = const uint8_t* (*)(int32_t type, int32_t color) noexcept;
+ItemColorFn g_itemColorOriginal = nullptr;
+PaletteShiftFn g_paletteShift = nullptr;
+
+auto DyedItemColor(Unit* player, Unit* item, uint8_t* index, int32_t inventory) noexcept -> const uint8_t* {
+	const int32_t color = item != nullptr ? Stat(item, StatDye) - 1 : -1;
+	const auto* row = color >= 0 && color < 21
+	                      ? d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(d2r::rva::ItemRecord)(
+	                            d2r::api.unitDataFlag(item), At<int32_t>(item, d2r::rva::UnitClassId))
+	                      : nullptr;
+	if (row == nullptr) {
+		return g_itemColorOriginal(player, item, index, inventory);
+	}
+	const uint8_t body = row[0x151];
+	*index = body >= 1 && body <= 8 ? static_cast<uint8_t>(body << 5 | color) : 0;  // as the unique branch packs it
+	return g_paletteShift(inventory != 0 ? row[0x152] : body, color);
+}
+
+auto InstallDyeTint(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t shift = 0;
+	if (sigscan::ScanUnique(context->exeBase, "48 89 5c 24 10 57 48 83 ec 20 48 63 d9 48 63 fa 83 fb 09 7d 05 83 ff 15 7c 1e", 0, &shift) != 1) {
+		plog::Warn("dye tint: palette shift (0x145dfb0) not found");
+		return false;
+	}
+	g_paletteShift = reinterpret_cast<PaletteShiftFn>(context->exeBase + shift);
+	static constexpr uint8_t Entry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x44, 0x89, 0x4c, 0x24, 0x20, 0x55, 0x56, 0x57,
+	                                    0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57};
+	return sigscan::HookBySignature(
+	    context, "ItemColor",
+	    "48 89 5c 24 08 44 89 4c 24 20 55 56 57 41 54 41 55 41 56 41 57 48 8b ec 48 83 ec 30 45 8b e1 4d 8b e8 48 8b fa 4c 8b f9 48 85 d2 0f 84",
+	    0, Entry, sizeof(Entry), DyedItemColor, &g_itemColorOriginal);
 }
 
 auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
@@ -2042,6 +2077,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	// none (core-events' hooks identify all), both with keep 1, so the book stays after its use
 	const bool unlimited = PatchUnlimitedBooks(context);
 	const bool charms = InstallCharmRows(context);
+	const bool dye = InstallDyeTint(context);
 	const bool mapStack = sigscan::HookBySignature(
 	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
 	    d2r::rva::ItemsCanMergeEntry, sizeof(d2r::rva::ItemsCanMergeEntry), MapStackEqual, &g_stackEqualOriginal);
@@ -2060,22 +2096,22 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; map stacking%s; no magic maps%s; map maker log%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
 	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
 	              equip ? "" : " FAILED (bytes differ)", replenish ? "" : " FAILED (bytes differ)",
 	              unlimited ? "" : " FAILED (entries not empty, or no mutation service)",
-	              charms ? "" : " FAILED (signature or bytes differ)", mapStack ? "" : " FAILED (bytes differ)",
+	              charms ? "" : " FAILED (signature or bytes differ)", dye ? "" : " FAILED (signature or bytes differ)", mapStack ? "" : " FAILED (bytes differ)",
 	              noMagicMaps ? " (hooked when tables load)" : " FAILED (no table listener)", mapMakerLog ? "" : " FAILED (signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
-	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0);
+	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 14;
+	return 15;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
