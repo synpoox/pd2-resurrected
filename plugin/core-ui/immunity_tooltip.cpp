@@ -57,12 +57,15 @@ void __cdecl OnTooltip(const D2RL::PluginContext*, D2RL::SharedEvents::ItemToolt
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	g_context = context;
 	const D2RL::SharedEventService* events = nullptr;
-	if (context->QueryService(&g_items) != D2RL::ServiceQueryResult::Success ||
-	    !D2RL::HasItemServiceField(g_items, D2RL::ItemServiceDetailsFieldEnd) ||
-	    context->QueryService(&events) != D2RL::ServiceQueryResult::Success ||
+	if (context->QueryService(&g_items) != D2RL::ServiceQueryResult::Success || !D2RL::HasItemServiceField(g_items, D2RL::ItemServiceDetailsFieldEnd)) {
+		g_items = nullptr;
+		std::snprintf(report, size, "FAILED (no item details service)");
+		return;
+	}
+	if (context->QueryService(&events) != D2RL::ServiceQueryResult::Success ||
 	    !D2RL::HasSharedEventServiceField(events, D2RL::SharedEventServiceRequiredSize)) {
 		g_items = nullptr;
-		std::snprintf(report, size, "FAILED (an item details or shared event service is missing)");
+		std::snprintf(report, size, "FAILED (no shared event service)");
 		return;
 	}
 	const D2RL::SharedEvents::ItemTooltipListener listener {
@@ -74,9 +77,10 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		.callback = OnTooltip,
 	};
 	D2RL::SharedEvents::ListenerHandle handle = D2RL::SharedEvents::InvalidHandle;
-	if (events->registerItemTooltipListener(context, &listener, &handle) != D2RL::SharedEvents::Result::Success) {
+	const auto rc = events->registerItemTooltipListener(context, &listener, &handle);
+	if (rc != D2RL::SharedEvents::Result::Success) {
 		g_items = nullptr;
-		std::snprintf(report, size, "FAILED (no tooltip listener)");
+		std::snprintf(report, size, "FAILED (no tooltip listener, result %d: loader event service is %u bytes)", static_cast<int>(rc), events->serviceSize);
 		return;
 	}
 	std::snprintf(report, size, "a map's tooltip lists the monster resists of 100 or more as Immunities: C130, F125");
