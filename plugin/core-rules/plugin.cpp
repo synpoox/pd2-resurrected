@@ -14,6 +14,7 @@
 #include "property_ids.h"
 #include "cube_rules.h"
 #include "cube_stacks.h"
+#include "item_prices.h"
 #include "stash_stacks.h"
 #include "pd2_engine.h"
 #include "item_rules.h"
@@ -94,6 +95,10 @@ void InstallStacks(const D2RL::PluginContext* context, char* report, size_t size
 	std::snprintf(report, size, "%d/2 installed: %s, %s", installed, rules, stash);
 }
 
+void InstallPrices(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	InstallItemPrices(context, report, size);
+}
+
 void InstallMercs(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
 	const int installed = InstallMercRules(context, rules, sizeof(rules));
@@ -123,6 +128,7 @@ parts::Part g_parts[] = {
 	{"mercs", true, InstallMercs},
 	{"cube", true, InstallCube},
 	{"stacks", true, InstallStacks},
+	{"prices", true, InstallPrices},
 	{"almanac", true, InstallAlmanacPart},
 	{"shrines", true, InstallShrinesPart},
 	{"loot", true, InstallLoot},
@@ -215,6 +221,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	StashStackCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	ItemPriceCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	AlmanacCounters(line, sizeof(line));

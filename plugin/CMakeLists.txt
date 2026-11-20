@@ -56,6 +56,7 @@ modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/cube_rules.cpp
 	core-rules/cube_stacks.cpp
 	core-rules/stash_stacks.cpp
+	core-rules/item_prices.cpp
 	core-rules/almanac.cpp
 	core-rules/shrine_rules.cpp
 	core-rules/loot_rules.cpp
@@ -182,6 +183,12 @@ add_executable(stash_stack_check EXCLUDE_FROM_ALL tests/stash_stack_check.cpp)
 target_include_directories(stash_stack_check PRIVATE common)
 target_compile_features(stash_stack_check PRIVATE cxx_std_20)
 core_options(stash_stack_check)
+
+# Vendor and gamble prices as PD2 (#1539): plugin/common/item_price.h has no engine types.
+add_executable(item_price_check EXCLUDE_FROM_ALL tests/item_price_check.cpp)
+target_include_directories(item_price_check PRIVATE common)
+target_compile_features(item_price_check PRIVATE cxx_std_20)
+core_options(item_price_check)
 
 # Holy Sword parry roll (#1466): plugin/common/parry_roll.h has no engine types.
 add_executable(parry_roll_check EXCLUDE_FROM_ALL tests/parry_roll_check.cpp)
