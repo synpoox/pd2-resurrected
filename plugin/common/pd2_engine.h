@@ -59,12 +59,11 @@ static_assert(sizeof(SpawnCheatKeyD2R) == sizeof(SpawnCheatKeyFull));
 // (0x161f20 allows a use only from inputs passing bit (keep != 0) + 1), not by the use-item handler 0x4f40c0.
 inline constexpr int32_t UnlimitedPortalSpell = 17, UnlimitedIdentifySpell = 18;
 // The item spell USE handler table (.data, 16 pointers of bool fn(game, player, item) noexcept, indexed by an entry's
-// use index; the dispatcher 0x581680 calls it for every spell but core-events' 16). Slot 14 is D2R's unused spell 14;
-// the Almanac takes it, and core-rules writes its entry 18 as {0, 14, keep 1}. The toolkit holds only the 20-entry
-// spell table (ItemSpellTable), not this handler table.
+// use index; the dispatcher 0x581680 calls it for every spell but core-events' 16). Slot 14 reads the deciphered
+// Scroll of Inifuss. Core-rules writes Almanac entry 18 as {0, 14, keep 1} and preserves the stock handler for the scroll.
 inline constexpr uint64_t ItemSpellUseTable = 0x1d3ea90;
 inline constexpr int32_t AlmanacUseSlot = 14;
-inline constexpr uint64_t AlmanacUseSlotOriginal = 0x580f10;  // D2R's stub in that slot (calls 0x5d9710, returns 1)
+inline constexpr uint64_t AlmanacUseSlotOriginal = 0x580f10;  // Sends the Cairn Stone order via 0x5d9710, returns 1.
 
 // --- core-events: the Uber Tristram primes' drop (UB3, #228): our patch over the toolkit's PrimesDropOrig ---------------
 inline constexpr uint8_t PrimesDropOff[] = {0xc3, 0x90, 0x90, 0x90, 0x90};  // ret
