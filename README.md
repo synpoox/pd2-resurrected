@@ -12,6 +12,9 @@ Project Diablo II rebuilt as a Diablo II: Resurrected mod.
   release runs on both: D2RLoader runs its own 3.3 engine image with the installed game's data.
 - [D2RLoader](https://d2rloader.net/) 1.3.1-beta.
 
+Classic and Lord of Destruction characters use the mod's inventory layout with their native class and act rules.
+Choose Reign of the Warlock at character creation for the PD2 gameplay port.
+
 ## Install
 
 ### Launcher

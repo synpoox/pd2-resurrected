@@ -14,10 +14,10 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its [`testing/README.md
 - Every toolkit command here sets `MODKIT_PROJECT=pd2-resurrected` (who is asking the registry) and
   `MODKIT_TESTING_CONFIG=C:\D2RTestSlots\modkit-testing-pd2.toml` (or `--config`). With no config the toolkit refuses to
   touch a slot instead of using its default config.
-- Test characters must be Reign of the Warlock characters (character creation's Game Version, the default). A Classic or
-  LoD character plays D2R's vanilla `excel/base/` tables, which the mod never writes (ADR 0001): vanilla skill tree,
-  no PD2 skills, and `cheat sklvl` of a PD2 skill does nothing (#442). On character select an LoD character's banner
-  shows an X badge. `cheat expansion 2` does not convert one: it crashed the game.
+- Use Reign of the Warlock characters for PD2 gameplay checks. For a native-mode inventory check, create a
+  fresh character with **Classic** or **Lord of Destruction** selected under Game Version. LoD characters
+  have an X badge on character select. Both modes read `excel/base/` and share the mod's inventory geometry.
+  Use a fresh character for each mode. Changing a character's mode with the console has crashed the game (#442).
 - A slot's saves are in `Saved Games\Diablo II Resurrected\mods\PD2Resurrected-Slot<N>`. Test characters follow
   AGENTS.md's testing rules.
 
