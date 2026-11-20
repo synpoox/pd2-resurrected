@@ -11815,7 +11815,7 @@
     "zhCN": "Melee Attacks Deal Splash Damage"
   },
   {
-    "id": 51563,
+    "id": 51564,
     "Key": "MapTierm02",
     "enUS": "Tier: 2\nImmunities: ÿc1F120ÿc0, ÿc2P120ÿc0",
     "zhTW": "Tier: 2\nImmunities: ÿc1F120ÿc0, ÿc2P120ÿc0",
@@ -11832,7 +11832,7 @@
     "zhCN": "Tier: 2\nImmunities: ÿc1F120ÿc0, ÿc2P120ÿc0"
   },
   {
-    "id": 51564,
+    "id": 51565,
     "Key": "MapTierm03",
     "enUS": "Tier: 2\nImmunities: ÿc1F120ÿc0, ÿc2P120ÿc0",
     "zhTW": "Tier: 2\nImmunities: ÿc1F120ÿc0, ÿc2P120ÿc0",
@@ -11849,7 +11849,7 @@
     "zhCN": "Tier: 2\nImmunities: ÿc1F120ÿc0, ÿc2P120ÿc0"
   },
   {
-    "id": 51565,
+    "id": 51566,
     "Key": "MapTierm04",
     "enUS": "Tier: 1\nImmunities: ÿc9L120ÿc0",
     "zhTW": "Tier: 1\nImmunities: ÿc9L120ÿc0",
@@ -11866,7 +11866,7 @@
     "zhCN": "Tier: 1\nImmunities: ÿc9L120ÿc0"
   },
   {
-    "id": 51566,
+    "id": 51567,
     "Key": "MapTierm06",
     "enUS": "Tier: 1\nImmunities: ÿc1F120ÿc0, ÿc2P120ÿc0",
     "zhTW": "Tier: 1\nImmunities: ÿc1F120ÿc0, ÿc2P120ÿc0",
@@ -11883,7 +11883,7 @@
     "zhCN": "Tier: 1\nImmunities: ÿc1F120ÿc0, ÿc2P120ÿc0"
   },
   {
-    "id": 51567,
+    "id": 51568,
     "Key": "MapTierm07",
     "enUS": "Tier: 3\nImmunities: ÿc9L120ÿc0, ÿc2P120ÿc0",
     "zhTW": "Tier: 3\nImmunities: ÿc9L120ÿc0, ÿc2P120ÿc0",
@@ -11900,7 +11900,7 @@
     "zhCN": "Tier: 3\nImmunities: ÿc9L120ÿc0, ÿc2P120ÿc0"
   },
   {
-    "id": 51568,
+    "id": 51569,
     "Key": "MapTierm09",
     "enUS": "Tier: 3\nImmunities: ÿc2P120ÿc0",
     "zhTW": "Tier: 3\nImmunities: ÿc2P120ÿc0",
@@ -11917,7 +11917,7 @@
     "zhCN": "Tier: 3\nImmunities: ÿc2P120ÿc0"
   },
   {
-    "id": 51569,
+    "id": 51570,
     "Key": "MapTierm10",
     "enUS": "Tier: 2\nImmunities: ÿc9L120ÿc0",
     "zhTW": "Tier: 2\nImmunities: ÿc9L120ÿc0",
@@ -11934,7 +11934,7 @@
     "zhCN": "Tier: 2\nImmunities: ÿc9L120ÿc0"
   },
   {
-    "id": 51570,
+    "id": 51571,
     "Key": "MapTierm11",
     "enUS": "Tier: 3\nImmunities: ÿc3C120ÿc0",
     "zhTW": "Tier: 3\nImmunities: ÿc3C120ÿc0",
@@ -11951,7 +11951,7 @@
     "zhCN": "Tier: 3\nImmunities: ÿc3C120ÿc0"
   },
   {
-    "id": 51571,
+    "id": 51572,
     "Key": "MapTierm13",
     "enUS": "Tier: 2\nImmunities: ÿc3C120ÿc0",
     "zhTW": "Tier: 2\nImmunities: ÿc3C120ÿc0",
@@ -11968,7 +11968,7 @@
     "zhCN": "Tier: 2\nImmunities: ÿc3C120ÿc0"
   },
   {
-    "id": 51572,
+    "id": 51573,
     "Key": "MapTierm15",
     "enUS": "Tier: 2\nImmunities: ÿc2P120ÿc0",
     "zhTW": "Tier: 2\nImmunities: ÿc2P120ÿc0",
@@ -11985,7 +11985,7 @@
     "zhCN": "Tier: 2\nImmunities: ÿc2P120ÿc0"
   },
   {
-    "id": 51573,
+    "id": 51574,
     "Key": "MapTierm16",
     "enUS": "Tier: 2\nImmunities: ÿc3C120ÿc0",
     "zhTW": "Tier: 2\nImmunities: ÿc3C120ÿc0",
@@ -12002,7 +12002,7 @@
     "zhCN": "Tier: 2\nImmunities: ÿc3C120ÿc0"
   },
   {
-    "id": 51574,
+    "id": 51575,
     "Key": "MapTierm18",
     "enUS": "Tier: 3\nImmunities: ÿc1F120ÿc0",
     "zhTW": "Tier: 3\nImmunities: ÿc1F120ÿc0",
@@ -12019,7 +12019,7 @@
     "zhCN": "Tier: 3\nImmunities: ÿc1F120ÿc0"
   },
   {
-    "id": 51575,
+    "id": 51576,
     "Key": "MapTierm19",
     "enUS": "Tier: 3\nImmunities: ÿc3C120ÿc0, ÿc9L120ÿc0",
     "zhTW": "Tier: 3\nImmunities: ÿc3C120ÿc0, ÿc9L120ÿc0",
@@ -12036,7 +12036,7 @@
     "zhCN": "Tier: 3\nImmunities: ÿc3C120ÿc0, ÿc9L120ÿc0"
   },
   {
-    "id": 51576,
+    "id": 51577,
     "Key": "MapTierm20",
     "enUS": "Tier: 1\nImmunities: ÿc3C120ÿc0, ÿc9L120ÿc0",
     "zhTW": "Tier: 1\nImmunities: ÿc3C120ÿc0, ÿc9L120ÿc0",
@@ -12053,7 +12053,7 @@
     "zhCN": "Tier: 1\nImmunities: ÿc3C120ÿc0, ÿc9L120ÿc0"
   },
   {
-    "id": 51577,
+    "id": 51578,
     "Key": "MapTierm21",
     "enUS": "Tier: 2\nImmunities: ÿc3C120ÿc0",
     "zhTW": "Tier: 2\nImmunities: ÿc3C120ÿc0",
@@ -12070,7 +12070,7 @@
     "zhCN": "Tier: 2\nImmunities: ÿc3C120ÿc0"
   },
   {
-    "id": 51578,
+    "id": 51579,
     "Key": "MapTierm22",
     "enUS": "Tier: 3\nImmunities: ÿc2P120ÿc0",
     "zhTW": "Tier: 3\nImmunities: ÿc2P120ÿc0",
@@ -12087,7 +12087,7 @@
     "zhCN": "Tier: 3\nImmunities: ÿc2P120ÿc0"
   },
   {
-    "id": 51579,
+    "id": 51580,
     "Key": "MapTierm25",
     "enUS": "Tier: 3\nImmunities: ÿc1F120ÿc0, ÿc2P120ÿc0",
     "zhTW": "Tier: 3\nImmunities: ÿc1F120ÿc0, ÿc2P120ÿc0",

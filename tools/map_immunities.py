@@ -1,9 +1,9 @@
-"""Map immunities (#1552): each map's tooltip names the immunities its monsters have, like "Immunities: C130, F125".
+"""Map immunities (#1552): each map's tooltip names the immunities its monsters have, like "Immunities: C120, F120".
 
     python tools/map_immunities.py            rewrite the committed map rows and strings
     python tools/map_immunities.py --check    exit 1 when they are out of date (the test runs this)
 
-A map's monsters are the maps.txt Monsters column; the value of an element is the highest of their Hell resists
+A map's monsters are the maps.txt Monsters column plus its Boss (via superuniques.txt); the value of an element is the highest of their Hell resists
 (monstats ResCo(H), ResFi(H), ResLi(H), ResPo(H); every map monster's treasure classes are the (H) ones) and an element
 shows when that is 100 or more. The line is static text: the map's misc.txt spelldescstr points at its own string
 MapTier<code>, "Tier: N" plus the line (D2R's strings take "\\n"), in strings/ and its strings-legacy/ twin, with its
@@ -22,7 +22,7 @@ EXCEL = DATA / "global/excel"
 # letter, monstats column, D2R colour (cold blue, fire red, lightning yellow, poison green); \xff is the colour byte
 ELEMENTS = (("C", "ResCo(H)", "3"), ("F", "ResFi(H)", "1"), ("L", "ResLi(H)", "9"), ("P", "ResPo(H)", "2"))
 MINIMUM = 100
-FIRST_ID = 51563  # after merge/strings.json's highest ID; keys are append-only like every ID
+FIRST_ID = 51564  # after merge/strings.json's highest ID and open PR #1556's 51563; keys are append-only like every ID
 STRING_FILES = [DATA / f"local/lng/{d}/item-modifiers.json" for d in ("strings", "strings-legacy")]
 
 
@@ -45,9 +45,11 @@ def expected() -> dict[str, tuple[str, str]]:
     """Map item code -> (its tooltip string key, its text) for the maps that have a line."""
     monstats = {r["Id"]: r for r in _rows(EXCEL / "monstats.txt")}
     misc = {r["code"]: r for r in _rows(EXCEL / "misc.txt")}
+    boss = {r["Superunique"]: r["Class"] for r in _rows(EXCEL / "superuniques.txt")}
     out = {}
     for m in _rows(EXCEL / "d2rloader/cartographer/maps.txt"):
-        text = line(m["Monsters"], monstats)
+        # the Boss column is a name; its superuniques row is cartoboss:<name with _20 for spaces>
+        text = line(m["Monsters"] + "," + boss["cartoboss:" + m["Boss"].replace(" ", "_20")], monstats)
         if text:
             tier = misc[m["Item"]]["type"][1]  # t1m..t3m
             out[m["Item"]] = (f"MapTier{m['Item']}", f"Tier: {tier}\n{text}")
