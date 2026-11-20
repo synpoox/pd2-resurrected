@@ -1,3 +1,3 @@
-#### Docs
+#### Getting started
 
-- Linux guide: install and play under Wine/Proton with Lutris ([docs/linux.md](docs/linux.md)).
+- See the [Linux setup guide](docs/linux.md) to play with Wine or Proton (#1541).
