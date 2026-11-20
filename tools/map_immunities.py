@@ -75,7 +75,7 @@ def build() -> dict[Path, bytes]:
     path = EXCEL / "misc.txt"
     lines = path.read_bytes().decode("latin-1").split("\n")
     head = lines[0].rstrip("\r").split("\t")
-    code_at, str_at, type_at = head.index("code"), head.index("spelldescstr"), head.index("type")
+    code_at, str_at = head.index("code"), head.index("spelldescstr")
     for i, ln in enumerate(lines[1:], 1):
         cells = ln.rstrip("\r").split("\t")
         if len(cells) > code_at and cells[code_at] in want:
