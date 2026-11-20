@@ -124,6 +124,16 @@
       }
     },
     {
+      "name": "More Merc Items",
+      "url": "https://d2rloader.net/api/v1/hub/releases/fb400857-3f82-4705-80d9-497274880f9f/download",
+      "asset": "MercEquip-Native-0.1.6.zip",
+      "sha256": "9dcd63f37f90625757fc8b5e52495cc0e79c5e9a22c145d7c460430a09a984a3",
+      "files": {
+        "d2rloader/plugins/d2rl-merc-equip.dll": "d2rloader/plugins/d2rl-merc-equip.dll",
+        "d2rloader/plugins/d2rl-merc-equip.mpq/": "d2rloader/plugins/d2rl-merc-equip.mpq/"
+      }
+    },
+    {
       "name": "DPS Counter",
       "repo": "synpoox/d2r-tools",
       "tag": "release-2026.11.08.1",

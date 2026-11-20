@@ -25,6 +25,7 @@ It does **not** cover, and grants no rights to:
 | Ethereal Item Rules, Progressive Affixes | [RuffDood/RuffnecKk-D2RLoader-Suite](https://github.com/RuffDood/RuffnecKk-D2RLoader-Suite) | RuffnecKk | MIT |
 | Cast Triggers | [d2rloader.net hub](https://d2rloader.net/) | RuffnecKk | No license stated |
 | Mercenary Drop On Hire | [yinyin333333/D2RL-yin-Junk-Room](https://github.com/yinyin333333/D2RL-yin-Junk-Room) | yinyin333333 | No license stated |
+| More Merc Items | [d2rloader.net hub](https://d2rloader.net/hub/plugins/more-merc-items) | mic (based on MercEquip by qhu91it) | No license stated |
 | DPS Counter | [synpoox/d2r-tools](https://github.com/synpoox/d2r-tools) | synpoox | MIT (our own plugin) |
 | Potion Counter | [synpoox/d2r-tools](https://github.com/synpoox/d2r-tools) | synpoox | MIT (our own plugin) |
 
