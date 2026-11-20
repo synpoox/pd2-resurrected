@@ -30,7 +30,7 @@ class CartographerCatalogueRowsTests(unittest.TestCase):
             s = misc[m["Item"]]
             n = s["type"][1]
             assert s["type"] in ("t1m", "t2m", "t3m") and m["Level"] == str(86 + int(n)), m["Name"]
-            assert (s["spelldesc"], s["spelldescstr"], s["spelldesccalc"]) == ("1", f"MapTier{n}", ""), m["Name"]
+            assert (s["spelldesc"], s["spelldescstr"], s["spelldesccalc"]) in (("1", f"MapTier{n}", ""), ("1", f"MapTier{m['Item']}", "")), m["Name"]  # the second has its immunities line (#1552)
             # a plain string per tier: spelldesc 2 scaled the value by class (potion scaling) when stat1 was hpregen
             assert (s["stat1"], s["calc1"]) == ("", ""), m["Name"]
             counts[n] = counts.get(n, 0) + 1

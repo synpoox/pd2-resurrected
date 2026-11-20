@@ -6,13 +6,11 @@
 //   pictures  HD pictures of PD2's 4-character item codes (#310, #298), and `cheat spawn` of them (#323)
 //   split     PD2's stack split: Ctrl+left-click with a stack held puts one item down (#316)
 //   quantity  PD2's Show Item Quantity: each stack in an open grid shows its quantity on its picture (#359)
-//   immunities  a map's tooltip line of monster resists of 100 or more, "Immunities: C130, F125" (#1552)
 //   palette   legacy graphics: a level entered without a load screen draws in its own palette (#296)
 #include <D2RLPlugin/api.h>
 
 #include "crash_guard.h"
 #include "pd2_engine.h"
-#include "immunity_tooltip.h"
 #include "item_pictures.h"
 #include "item_quantity.h"
 #include "level_palette.h"
@@ -45,7 +43,6 @@ parts::Part g_parts[] = {
 	{"pictures", true, item_pictures::Install},
 	{"split", false, stack_split::Install},
 	{"quantity", true, item_quantity::Install},
-	{"immunities", false, immunity_tooltip::Install},
 	{"palette", true, level_palette::Install},
 };
 
@@ -82,9 +79,6 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	item_quantity::Counters(line, sizeof(line));
-	command->plugin->WriteConsoleMessage(line);
-	plog::Info("%s", line);
-	immunity_tooltip::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	level_palette::Counters(line, sizeof(line));
