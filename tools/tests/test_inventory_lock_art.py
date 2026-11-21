@@ -1,4 +1,4 @@
-"""The inventory padlock sprites (tools/make_inventory_lock.py): 4 frames at 72 px HD and 36 px lowend, none empty."""
+"""The inventory padlock sprites (tools/make_inventory_lock.py): 4 frames at 96 px HD and 48 px lowend, none empty."""
 import struct
 import unittest
 from pathlib import Path
@@ -9,7 +9,7 @@ HEAD = struct.Struct("<4sHHIIIIIIII")  # D2R .sprite version 31 (modkit images.p
 
 class InventoryLockArt(unittest.TestCase):
     def test_frames(self):
-        for name, size in (("inventory_lock.sprite", 72), ("inventory_lock.lowend.sprite", 36)):
+        for name, size in (("inventory_lock.sprite", 96), ("inventory_lock.lowend.sprite", 48)):
             data = (PANEL / name).read_bytes()
             magic, version, fw, width, height, _, frames, _, _, length, _ = HEAD.unpack_from(data)
             self.assertEqual((magic, version, fw, width, height, frames), (b"SpA1", 31, size, size * 4, size, 4), name)
