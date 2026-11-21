@@ -4,10 +4,19 @@
 //   and Cancel, with no Hire, so before his menu opens Hire goes in after Talk, with the Hire handler Kashya's menu
 //   uses. NpcMenuOpen then puts Resurrect before it when the merc is dead, as for Kashya. The server's NPC table
 //   marks which NPCs hire; Tyrael's mark is set, so his hire list (hireling rows whose Seller is tyrael2) is sent.
+// - Expanded merc inventory (#1627): every hireling wears an amulet, two rings, gloves, a belt and boots. D2R's "can a
+//   hireling equip this" checks, the server's (D2Game ItemMode.cpp, 0x472b10, which the save load and the equip message
+//   both reach) and the client's (0x159e60, the panel's), let a hireling wear any body armor (itemtypes row 3, tors)
+//   or helm (37) and only the hireling's own weapon types otherwise. No SDK service covers this check, so the `mov
+//   edx,3` of both armor tests becomes itemtypes row merc, a parent type of tors, ring, amul, glov, boot and belt
+//   (files/data itemtypes Equiv2). The rest of each check (identified, not broken, class items) is D2R's own.
 #include "merc_rules.h"
 
 #include "pd2_engine.h"
 #include "log.h"
+#include "sig.h"
+
+#include <D2RLPlugin/mutations.h>
 
 #include <atomic>
 #include <cstdint>
@@ -65,6 +74,54 @@ auto MenuOpen(int32_t record, int32_t resurrect) noexcept -> uint64_t {
 	return g_menuOpenOriginal(record, resurrect);
 }
 
+// The armor test of each check: mov edx,3 / mov rcx,rdi / call ItemIsType / test eax,eax / jnz / lea edx,[rax+0x25]
+// (the helm test). The entry points at the mov; the bytes before it pin the function (one match each on 93847).
+sigscan::Entry ServerArmorTest {"MercEquipServer", "mercs", sigscan::Kind::Code, 10, 0,
+                                "45 84 f6 4c 8b 74 24 50 74 31 ba 03 00 00 00 48 8b cf e8 ?? ?? ?? ?? 85 c0 75 0f 8d 50 25 48 8b cf e8"};
+sigscan::Entry ClientArmorTest {"MercEquipClient", "mercs", sigscan::Kind::Code, 10, 0,
+                                "3b c3 74 04 32 db eb 02 b3 01 ba 03 00 00 00 48 8b cf e8 ?? ?? ?? ?? 85 c0 0f 85 ?? ?? ?? ?? 8d 50 25 48 8b cf e8"};
+constexpr uint8_t ArmorTest[] = {0xba, 0x03, 0x00, 0x00, 0x00};  // mov edx,3
+constexpr uint8_t MercGearTest[] = {0xba, static_cast<uint8_t>(d2r::rva::ItemTypeMercGear), 0x00, 0x00, 0x00};
+static_assert(d2r::rva::ItemTypeMercGear > 0 && d2r::rva::ItemTypeMercGear < 256);
+
+// Both sites or neither (one MutationService transaction): a client that lets the drop through to a server that
+// refuses it, or the reverse, would only confuse.
+auto PatchMercGear(const D2RL::PluginContext* context) noexcept -> bool {
+	sigscan::Entry* const own[] = {&ServerArmorTest, &ClientArmorTest};
+	sigscan::Resolve(own, 2, context->exeBase, nullptr, 0);
+	for (const sigscan::Entry* entry : own) {
+		if (entry->state != sigscan::State::Ok) {
+			plog::Warn("skipped %s: %s", entry->name, sigscan::StateText(entry->state));
+			return false;
+		}
+		plog::Info("found %s at 0x%llx", entry->name, static_cast<unsigned long long>(entry->rva));
+	}
+	const D2RL::MutationService* mutations = nullptr;
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize) ||
+	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		return false;
+	}
+	bool staged = true;
+	for (const sigscan::Entry* entry : own) {
+		const D2RL::Mutations::BytePatchRequest patch {.structSize = D2RL::Mutations::BytePatchRequestSize,
+		                                               .rva = entry->rva,
+		                                               .expected = ArmorTest,
+		                                               .expectedSize = sizeof(ArmorTest),
+		                                               .bytes = MercGearTest,
+		                                               .size = sizeof(MercGearTest)};
+		D2RL::Mutations::OperationHandle operation = 0;
+		staged = staged && mutations->stageBytePatch(context, transaction, &patch, &operation) == D2RL::Mutations::Result::Success;
+	}
+	D2RL::Mutations::CommitResult result {.structSize = D2RL::Mutations::CommitResultSize};
+	if (!staged || mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		return false;
+	}
+	return true;
+}
+
 }  // namespace
 
 auto InstallMercRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
@@ -76,14 +133,16 @@ auto InstallMercRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool hook = table && context->InstallInlineHook(NpcMenuOpen, NpcMenuOpenEntry, sizeof(NpcMenuOpenEntry),
 	                                                      MenuOpen, &g_menuOpenOriginal);
 	const bool seller = hook && context->PatchWriteU8(tyrael + NpcTableHires, NotHiring, sizeof(NotHiring), 1);
-	std::snprintf(report, reportSize, "tyrael hire%s",
+	const bool gear = PatchMercGear(context);
+	std::snprintf(report, reportSize, "tyrael hire%s; merc gear%s",
 	              !table ? " FAILED (npc table differs)" : !hook ? " FAILED (bytes differ)"
-	                                                     : seller ? "" : " FAILED (npc table write)");
-	return seller ? 1 : 0;
+	                                                     : seller ? "" : " FAILED (npc table write)",
+	              gear ? "" : " FAILED (no unique match or patch refused)");
+	return (seller ? 1 : 0) + (gear ? 1 : 0);
 }
 
 auto MercRuleCount() noexcept -> int {
-	return 1;
+	return 2;
 }
 
 auto MercRuleCounters(char* out, size_t size) noexcept -> void {

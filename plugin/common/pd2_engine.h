@@ -25,6 +25,7 @@ inline constexpr int MissileCallbackDamagePercent = 4;
 inline constexpr uint16_t CollisionMissile = 0x806;
 
 inline constexpr int32_t ItemTypeMap = 245;   // itemtypes row cmap
+inline constexpr int32_t ItemTypeMercGear = 247;  // itemtypes row merc: what a hireling wears outside its weapon slots (#1627)
 inline constexpr int32_t StatMapForceEvent = 553, StatMapLevel = 564;
 inline constexpr int32_t StatItemQuantity = 652;  // itemstatcost item_quantity (#1596)
 inline constexpr int32_t ItemStatCostRows = 653;  // itemstatcost.txt rows in files/data (ids 0..652)
