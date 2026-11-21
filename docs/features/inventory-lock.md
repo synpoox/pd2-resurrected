@@ -6,7 +6,7 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 
 ## How it works
 
-- **Button.** Two `ButtonWidget`s at one spot in `playerinventoryoriginallayouthd.json` (the expansion layout lists them), x 980,
+- **Button.** Two `ButtonWidget`s at one spot in `playerinventoryoriginallayouthd.json` (the expansion layout lists them), x 1001,
   y 1702 beside the gold field: `InventoryLock` (unlocked art) and `InventoryLockOn` (locked art). A frame watch shows only the
   one matching the lock; the loader's widget service cannot set a toggle button's state, but it can show and hide widgets. Art:
   `PANEL\pd2r\inventory_lock` (`files/data/hd/global/ui/panel/pd2r/`, HD 72 px and lowend), PD2's padlock
