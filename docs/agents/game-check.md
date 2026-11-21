@@ -31,7 +31,9 @@ config the toolkit refuses to run; without the project the registry refuses the 
 
 ## Forcing a map event
 
-Console command (core-events, #998), one shot for the next map opened: `core-events event wanderer|mendeln|treasure|horazon|gheed|altar|spire|tomb`
+Every plugin console command with its syntax: `docs/console-commands.md`.
+
+Console command (core-events, #998), one shot for the next map opened: `core-events event wanderer|mendeln|treasure|horazon|gheed|altar|spire|tomb|invaders`
 (`core-events event off` clears it). Run it through `game_ctl.py --slot <N> console "core-events event gheed"` before using the
 map item; the log shows `rolled event <n> ..., console event`. A forced event skips the quality roll (the event is the one named, whatever the map's quality). A map is any item of type `cmap` (item type 245).
 
