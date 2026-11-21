@@ -64,7 +64,7 @@ One line per PD2 pad bind, with its status.
 - Per-skill auto-aim: covered by QoL (R3 in the skill tree).
 - Inventory LT/RT as Shift/Ctrl: replaced by QoL's LB modifier.
 - Identify, transfer, drop, Cube transfer and sell: covered by QoL LB chords and D2R prompts.
-- Multi-buy: gap (#1472). QoL's LB+R3 fills potions and tomes only.
+- Multi-buy: arrows and bolts set `multibuy` in misc.txt (#1514) so D2R's built-in hold-to-buy-in-bulk applies; weapons.txt has no `multibuy` column, so throwing weapons keep single buys. Not yet proven with the pad.
 - Stack-tab "transfer 5": unverified, possible gap (#1472).
 - Whole stack-tab stack to the Cube: gap (#1472).
 - Gamble Refresh and Repair All: unverified.
