@@ -3,6 +3,7 @@
 Every controller control the mod ships: D2R's own binds, Controller QoL's (PyreFly's plugin, pinned in #1453) and ours.
 Status is from the [controller audit](research/controller/controller-audit.md) and the merged controller PRs.
 "Untested" means no in-game check yet. Parent issue: [#340](https://github.com/synpoox/pd2-resurrected/issues/340).
+Controller QoL ships with `[aim] cast_observer_enabled = false` (`companions/config/controller-qol-updates.toml`) so Cast Triggers can hook the cast input (#1517); aim, snapping and reticles are unaffected.
 To drive the pad in a game slot, see [Driving the pad](agents/game-check.md#driving-the-pad).
 
 
@@ -40,6 +41,7 @@ No control is a PD2 mirror yet; see [PD2 binds](#pd2-binds) for each PD2 bind's 
 | START, then LB/RB to the altar tab | Removed (#1480): the altar opens only from the altar object in the Temple, so there is no altar tab | altar | Our own | cut (#1480) |
 | D-pad up / down | Moves focus between the amulet slot and the confirm button | altar | Our own | works (#1456: the first DOWN lights the confirm button); amulet pickup and place not proven |
 | A on the altar | Opens the altar panel with the pad frame, the help bar and focus on the amulet slot; B closes it | world | D2R native | works (#1456, `docs/research/controller/altar-world-focus.md`) |
+| D-pad | Moves focus over the mercenary's six new slots: gloves, belt and right ring left of the torso; boots, amulet and left ring right of it (`controller/hirelinginventorypanelhd.json`, #1627) | mercenary | Our own | untested |
 | A, X, B, Y, RB, RT | Skill slots 1 to 6 | world | D2R native | from strings (`ControllerHelpSkill1..6`), not tested |
 | LT | Swaps the skill bar (Skills Bar and Skills Back Bar) | world | D2R native | from strings (`ControllerHelpSkillsBar`, `ControllerHelpSkillsBackBar`), not tested |
 | L3 | Run / walk toggle | world | D2R native | from strings (`ControllerHelpRun`), not tested |

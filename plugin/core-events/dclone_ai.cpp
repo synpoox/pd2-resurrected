@@ -15,6 +15,7 @@
 #include "arena_spots.h"
 #include "nihlathak_ai.h"
 #include "log.h"
+#include "hot_log.h"
 #include "placements.h"
 
 #include <atomic>
@@ -197,7 +198,7 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 
 	int32_t phase = Stat(unit, StatPhase);
 	const int32_t life = LifePercent(unit);
-	if (plog::Sample(g_thinks)) {
+	if (pd2::HotSample(g_thinks)) {
 		plog::Info("dclone: thinks (%u so far), phase %d, life %d%%, %d players, adds %d", g_thinks.load(), phase, life,
 		           players, adds ? 1 : 0);
 	}
@@ -419,7 +420,7 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	++g_soulCasts;
 	// Sampled per soul and tier, so each soul's first cast at each tier is logged
 	if (const int32_t soul = At<int32_t>(unit, UnitClassId) - FirstSoul; tier >= 0 && tier < 3 &&
-	                                                                       plog::Sample(g_soulCastsBy[soul][tier])) {
+	                                                                       pd2::HotSample(g_soulCastsBy[soul][tier])) {
 		plog::Info("trapped soul %d: tier %d, meteor at (%d, %d), target (%d, %d) spread %d, delay %d (aidel %d), skip "
 		           "%d%%, Dclone %d%% (%u so far)", At<int32_t>(unit, UnitClassId), tier, x, y, tx, ty, spread, wait,
 		           m.AiDel(), skip, dLife, g_soulCasts.load());

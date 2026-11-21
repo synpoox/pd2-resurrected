@@ -21,6 +21,7 @@ Lane column: `A` native maps (PD2 map code, obsolete with the native maps), `B` 
 | ai_common.h | S | Helpers the Dclone AI (D) and the event Nihlathak AI (C) share: counters, idle, cast, kill, nearest player. Frozen. |
 | death_steps.h | S | Seam of the monster-death listener: frozen. Call order in key_drops.cpp is part of the RNG stream. |
 | key_drops.cpp, key_drops.h | S | The listener and the key rolls (run on every death). Calls the lane steps in a fixed order. |
+| quantity_drops.cpp, quantity_drops.h | S | Item Quantity (#1596): extra rolls of the monster's own TC from the killer's `item_quantity`; key_drops.cpp calls it after the uber steps, and parts_shared.cpp registers its counters (56). |
 | tc_roll.cpp, tc_roll.h | B | Odds-only TC roll, shared by the key rolls and the map rolls. |
 | corruption_roll.cpp, corruption_roll.h | B | CRT roll and corruption/Desecration roll; map drops and bricks borrow them. |
 | cube_ops.cpp, cube_ops.h | B | Cube op 30 (map recipes use it, the op is generic) and the Desecration search trigger: the one owner of the cube recipe search hook. |

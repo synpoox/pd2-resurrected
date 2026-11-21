@@ -17,6 +17,7 @@
 #include "ai_common.h"
 #include "ai_hooks.h"
 #include "corruption_roll.h"
+#include "invader_look.h"
 #include "log.h"
 #include "map_events.h"
 
@@ -169,19 +170,17 @@ auto DropTc(Game* game, Unit* monster, Unit* killer, const char* name) noexcept 
 }
 
 // The class's TC list, in PD2's order (its branch for each class, ProjectDiablo.dll 0x10378250). `drop` is one TC; the
-// Barbarian's, Sorceress's and Amazon's pick a weapon set by a roll.
+// Barbarian's 1h / 2h set follows the weapon it shows, the Amazon's and Sorceress's sets are the bow and the staff they show (`parts`: its part bytes, invader_look.h has the mapping for every class), `set` gets the chosen set's name.
 template <class Drop>
-void ClassDrops(int32_t which, Drop&& drop) noexcept {
+void ClassDrops(int32_t which, const uint8_t* parts, const char** set, Drop&& drop) noexcept {
 	switch (which) {
 	case 0:  // Amazon
 		drop("InvaderCirclets");
 		drop("InvaderBodyAll");
-		switch (RollRand() & 3) {
-		case 0: drop("InvaderAmazonBow"); drop("InvaderAmazonQuiver"); break;
-		case 1: drop("InvaderAmazonCrossbow"); drop("InvaderAmazonBolt"); break;
-		case 2: drop("InvaderAmazon1hJavelin"); drop("InvaderGenericShield"); break;
-		default: drop("InvaderAmazon2hSpear"); break;
-		}
+		// every Amazon shows a bow
+		*set = "bow (look)";
+		drop("InvaderAmazonBow");
+		drop("InvaderAmazonQuiver");
 		break;
 	case 1:  // Assassin
 		drop("InvaderGenericHelm");
@@ -189,13 +188,16 @@ void ClassDrops(int32_t which, Drop&& drop) noexcept {
 		drop("InvaderAssassinWeapon");
 		drop("InvaderAssassinWeapon");
 		break;
-	case 2:  // Barbarian: one 2-hander, two throwing weapons or two 1-handers
+	case 2:  // Barbarian: the weapon shown, one 2-hander or two 1-handers
 		drop("InvaderBarbarianHelm");
 		drop("InvaderBodyMedHeavy");
-		switch (RollRand() % 3) {
-		case 0: drop("InvaderBarbarian2h"); break;
-		case 1: drop("InvaderBarbarianThrow"); drop("InvaderBarbarianThrow"); break;
-		default: drop("InvaderBarbarian1h"); drop("InvaderBarbarian1h"); break;
+		if (pd2::invader_look::Barbarian(parts) == pd2::invader_look::Weapon::TwoHand) {
+			*set = "2h (look)";
+			drop("InvaderBarbarian2h");
+		} else {
+			*set = "1h x2 (look)";
+			drop("InvaderBarbarian1h");
+			drop("InvaderBarbarian1h");
 		}
 		break;
 	case 3:  // Druid
@@ -216,15 +218,11 @@ void ClassDrops(int32_t which, Drop&& drop) noexcept {
 		drop("InvaderPaladinWeapon");
 		drop("InvaderPaladinShield");
 		break;
-	default:  // Sorceress: a 2-hander, or a 1-hander and a shield
+	default:  // Sorceress
 		drop("InvaderCirclets");
 		drop("InvaderBodyLightMed");
-		if ((RollRand() & 1) == 0) {
-			drop("InvaderSorc2hWeapon");
-		} else {
-			drop("InvaderSorc1hWeapon");
-			drop("InvaderGenericShield");
-		}
+		*set = "staff (look)";
+		drop("InvaderSorc2hWeapon");  // every Sorceress shows a staff
 		break;
 	}
 }
@@ -268,7 +266,11 @@ void OnInvaderDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	drop("InvaderRing");
 	drop("InvaderRing");
 	drop("InvaderAmulet");
-	ClassDrops(which, drop);
+	// the part bytes (UnitData +0x08, 16 of them): logged whole so one kill shows the offset is right
+	const uint8_t* data = At<const uint8_t*>(monster, UnitData);
+	const uint8_t* parts = data != nullptr ? data + 0x08 : nullptr;
+	const char* set = "no look to choose (the class's roll or single set)";
+	ClassDrops(which, parts, &set, drop);
 	// the ear: a normal item of the class's code
 	const auto dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
 	const int32_t row = d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(dataFlag, Ears[which]);
@@ -278,6 +280,12 @@ void OnInvaderDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 			game, monster, row, QualityNormal, 0, 0) != nullptr;
 	}
 	g_drops.fetch_add(static_cast<uint32_t>(tcs));
+	char hex[3 * pd2::invader_look::PartBytes + 1] = "";
+	for (int i = 0; parts != nullptr && i < pd2::invader_look::PartBytes; ++i) {
+		std::snprintf(hex + 3 * i, sizeof(hex) - 3 * i, "%02x ", parts[i]);
+	}
+	plog::Info("invaders: %s (class %d) parts HD TR LG RA LA RH LH SH S1-S8 = %s; weapon drop set: %s", ClassNames[which],
+	           event->monster.classId, hex, set);
 	plog::Info("invaders: %s (class %d) died, ear %.4s %s, %d TC drops%s", ClassNames[which], event->monster.classId,
 	           reinterpret_cast<const char*>(&Ears[which]), ear ? "dropped" : "NOT dropped", tcs,
 	           missing != 0 ? ", some TCs missing" : "");

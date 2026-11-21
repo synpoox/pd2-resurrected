@@ -45,7 +45,7 @@ target_include_directories(core_common INTERFACE common)
 target_link_libraries(core_common INTERFACE plugin_common)
 
 # Bump with every release: Shared plugins must match between host and client.
-set(CORE_RULES_VERSION "0.2.0" CACHE STRING "core-rules PluginInfo::version")
+set(CORE_RULES_VERSION "0.2.1" CACHE STRING "core-rules PluginInfo::version")
 modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/plugin.cpp
 	core-rules/skill_functions.cpp
@@ -55,6 +55,8 @@ modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/socket_rules.cpp
 	core-rules/cube_rules.cpp
 	core-rules/cube_stacks.cpp
+	core-rules/stash_stacks.cpp
+	core-rules/item_prices.cpp
 	core-rules/almanac.cpp
 	core-rules/shrine_rules.cpp
 	core-rules/loot_rules.cpp
@@ -68,7 +70,7 @@ target_sources(plugin_core_rules PRIVATE ${CORE_PLACEMENT_SOURCES})
 target_include_directories(plugin_core_rules PRIVATE "${D2R_TOOLKIT_DIR}/plugin-template/src")
 target_link_libraries(plugin_core_rules PRIVATE core_common)
 
-set(CORE_EVENTS_VERSION "0.2.0" CACHE STRING "core-events PluginInfo::version")
+set(CORE_EVENTS_VERSION "0.2.1" CACHE STRING "core-events PluginInfo::version")
 modkit_add_plugin(core-events VERSION "${CORE_EVENTS_VERSION}" SOURCES
 	core-events/plugin.cpp
 	core-events/cube_ops.cpp
@@ -101,6 +103,7 @@ modkit_add_plugin(core-events VERSION "${CORE_EVENTS_VERSION}" SOURCES
 	core-events/tc_roll.cpp
 	core-events/treasure_fallen.cpp
 	core-events/uber_deaths.cpp
+	core-events/quantity_drops.cpp
 	core-events/uber_entry.cpp
 	core-events/arena_spots.cpp
 	core-events/test_kill.cpp
@@ -115,7 +118,7 @@ target_include_directories(plugin_core_events PRIVATE core-events)
 target_link_libraries(plugin_core_events PRIVATE core_common)
 
 # Client-only: not Shared, so its version need not match between host and client.
-set(CORE_UI_VERSION "0.2.0" CACHE STRING "core-ui PluginInfo::version")
+set(CORE_UI_VERSION "0.2.1" CACHE STRING "core-ui PluginInfo::version")
 modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/plugin.cpp
 	core-ui/item_pictures.cpp
@@ -123,6 +126,9 @@ modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/stack_split.cpp
 	core-ui/controller_split.cpp
 	core-ui/pad_binds.cpp
+	core-ui/inventory_lock.cpp
+	core-ui/stash_affinity.cpp
+	core-ui/stash_tabs.cpp
 	core-ui/plugin.rc
 )
 target_link_libraries(plugin_core_ui PRIVATE core_common xinput)
@@ -166,6 +172,12 @@ target_include_directories(map_boss_tier_check PRIVATE common)
 target_compile_features(map_boss_tier_check PRIVATE cxx_std_20)
 core_options(map_boss_tier_check)
 
+# Invaders' legacy art path redirect (#1215): plugin/common/invader_art_path.h has no engine types.
+add_executable(invader_art_check EXCLUDE_FROM_ALL tests/invader_art_check.cpp)
+target_include_directories(invader_art_check PRIVATE common)
+target_compile_features(invader_art_check PRIVATE cxx_std_20)
+core_options(invader_art_check)
+
 add_executable(test_cmd_check EXCLUDE_FROM_ALL tests/test_cmd_check.cpp)
 target_include_directories(test_cmd_check PRIVATE common)
 target_compile_features(test_cmd_check PRIVATE cxx_std_20)
@@ -176,6 +188,18 @@ add_executable(pad_modifier_check EXCLUDE_FROM_ALL tests/pad_modifier_check.cpp)
 target_include_directories(pad_modifier_check PRIVATE common)
 target_compile_features(pad_modifier_check PRIVATE cxx_std_20)
 core_options(pad_modifier_check)
+
+# RotW stash tabs take PD2 stacks whole (#1537): plugin/common/stash_stack.h has no engine types.
+add_executable(stash_stack_check EXCLUDE_FROM_ALL tests/stash_stack_check.cpp)
+target_include_directories(stash_stack_check PRIVATE common)
+target_compile_features(stash_stack_check PRIVATE cxx_std_20)
+core_options(stash_stack_check)
+
+# Vendor and gamble prices as PD2 (#1539): plugin/common/item_price.h has no engine types.
+add_executable(item_price_check EXCLUDE_FROM_ALL tests/item_price_check.cpp)
+target_include_directories(item_price_check PRIVATE common)
+target_compile_features(item_price_check PRIVATE cxx_std_20)
+core_options(item_price_check)
 
 # Holy Sword parry roll (#1466): plugin/common/parry_roll.h has no engine types.
 add_executable(parry_roll_check EXCLUDE_FROM_ALL tests/parry_roll_check.cpp)

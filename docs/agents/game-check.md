@@ -19,6 +19,7 @@ config the toolkit refuses to run; without the project the registry refuses the 
    Before any spawn whose item must survive a Save and Exit, also run `cheat savecheatitems 1`: cheat-spawned items are
    dropped from the save otherwise (any item, not only maps). The flag applies at spawn time: items spawned before it
    are still dropped.
+   Hot-path log lines (per hit, arrow, missile, kill, drop: `multiple shot:`, `crit:`, missile-hit lines) stay silent unless the game starts with `PD2R_HOT_LOGS=1` in its environment (`debug_mode` and cheats do not turn them on); set it before `start` when the check reads one (#1609).
 6. **Warp** to each spot with `cheat goto <level>,<x>,<y>` (formula: `cheat-commands.md`).
 7. **Shoot** only what settles the question (`MODKIT_PROJECT=pd2-resurrected MODKIT_TESTING_CONFIG=C:/D2RTestSlots/modkit-testing-pd2.toml MODKIT_RUN=<owner> game_ctl.py --slot <N> shot`); log lines are the preferred proof. Take an HD,
    then `key g` legacy pair only when the change is visual in legacy. Look at each screenshot for a held cursor item

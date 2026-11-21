@@ -14,12 +14,31 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its [`testing/README.md
 - Every toolkit command here sets `MODKIT_PROJECT=pd2-resurrected` (who is asking the registry) and
   `MODKIT_TESTING_CONFIG=C:\D2RTestSlots\modkit-testing-pd2.toml` (or `--config`). With no config the toolkit refuses to
   touch a slot instead of using its default config.
-- Test characters must be Reign of the Warlock characters (character creation's Game Version, the default). A Classic or
-  LoD character plays D2R's vanilla `excel/base/` tables, which the mod never writes (ADR 0001): vanilla skill tree,
-  no PD2 skills, and `cheat sklvl` of a PD2 skill does nothing (#442). On character select an LoD character's banner
-  shows an X badge. `cheat expansion 2` does not convert one: it crashed the game.
+- Use Reign of the Warlock characters for PD2 gameplay checks. For a native-mode inventory check, create a
+  fresh character with **Classic** or **Lord of Destruction** selected under Game Version. LoD characters
+  have an X badge on character select. Both modes read `excel/base/` and share the mod's inventory geometry.
+  Use a fresh character for each mode. Changing a character's mode with the console has crashed the game (#442).
 - A slot's saves are in `Saved Games\Diablo II Resurrected\mods\PD2Resurrected-Slot<N>`. Test characters follow
   AGENTS.md's testing rules.
+
+## Game version (3.4 and 3.3)
+
+One build of the mod runs on D2R 3.4 (build 95032) and 3.3 (93847): D2RLoader 1.3.1 runs its own engine image
+(`0x6ab3782c`, 93847's code) with the installed game's data, so every plugin signature and address is the same on both
+(#1509). The tables and strings the mod ships replace the game's; of the files 3.4 changed, only `propertygroups.txt`
+(one new row) and the `ui-controller` and `vo` strings reach the game from 3.4.
+
+- Slot 1, the config's `install_dir`, is the owner's 3.4 game, `C:\Games\Diablo II Resurrected`: read only, never
+  written, launched or locked. Slots 2-5 are made from it and run 3.4.
+- After a D2R patch, sync each slot, one at a time, with the lock held: `game_slots.py lock <N> <owner>`,
+  `game_slots.py setup <N>`, `unlock`. Under `Data` the sync mirrors slot 1 and removes the CASC files the patch dropped
+  (a stale `.idx` fails with "needs repair"). It hard-links on the same drive and copies (about 30 GB) to a slot on F:.
+- A 3.3 slot: `C:\Games\Diablo II Resurrected Infernal Edition` is a 3.3 copy (also read only). Copy the config, set
+  its `install_dir` to that folder, and run `setup <N>` with `MODKIT_TESTING_CONFIG` pointing at the copy; run `setup`
+  with the normal config to bring the slot back to 3.4.
+- Which version a slot runs: `Version` in `<slot>\.build.info`, or the loader log's `[BUILD] D2R version` line. Our
+  plugins log it too, with the image check: `core-rules: 0.2.0 loaded (mod PD2Resurrected, D2R 3.4.0, image 0x6ab3782c
+  (expects 0x6ab3782c, match), ...)`. The loader's `mod build 93847` comes from the mod's dataversion, not the game: it is no mismatch on 3.4.
 
 ## Steps
 
@@ -32,11 +51,11 @@ The per-check recipe (cheats, shots, unlock) is `docs/agents/game-check.md`; the
    `tools\install.ps1 -Game C:\D2RTestSlots\Slot<N> -Data . -NoValidate` (it copies the committed `files/data`; no extract
    or merge; main still has known validation errors). modkit install refuses a slot, so `install.ps1` installs a slot's data through
    the toolkit's `testing/slot_install.py`, which keeps the slot's own savepath and needs the lock held by `MODKIT_RUN`. `install.ps1` checks the lock first (`game_slots.py check <N> $MODKIT_RUN`) and writes nothing, failing, when `MODKIT_RUN` is unset or does not hold it (#1241).
-   `install.ps1` leaves only our plugins in `<slot>\d2rloader\plugins` (`core-rules.dll`, `core-events.dll`, `core-ui.dll`, `cartographer.dll`,
-   `test-harness.dll`, `d2r-testharness-console.txt`): it moves anything else to
-   `C:\D2RTestSlots\backups\stray-plugins-<date>\Slot<N>\` and lists it. Install always overwrites the slot's `cartographer.dll` with d2r-tools' `dist\cartographer` build, so testing a cartographer branch build needs `-Cartographer <path>`. It copies the latest `cartographer.dll` (`-Cartographer`, `CARTOGRAPHER_DLL`, else d2r-tools' `dist\cartographer`; it refuses one older than the d2r-tools commit pinned in `tools/cartographer.pin` (#1300), checking before touching the folder), and outside a test slot fetches and installs the companions. Pass `-KeepExtras` to keep other extras.
-   It also moves our own `core-*.dll` and `cartographer.dll` found in `<slot>\mods\PD2Resurrected\d2rloader\plugins` (they shadow the game-wide install) to
-   `C:\D2RTestSlots\backups\stale-mod-plugins-<date-time>\Slot<N>\`; companion DLLs there stay. With `-Data` it also copies
+   `install.ps1` installs our plugins (`core-rules.dll`, `core-events.dll`, `core-ui.dll`, `cartographer.dll`) mod-scoped, in
+   `<slot>\mods\PD2Resurrected\d2rloader\plugins`, beside the companions (#1180). It leaves only the test harness
+   (`test-harness.dll`, `d2r-testharness-console.txt`) in the game-wide `<slot>\d2rloader\plugins`: it moves anything else there,
+   our old game-wide copies included, to `C:\D2RTestSlots\backups\stray-plugins-<date>\Slot<N>\` and lists it. Install always overwrites the slot's `cartographer.dll` with d2r-tools' `dist\cartographer` build, so testing a cartographer branch build needs `-Cartographer <path>`. It copies the latest `cartographer.dll` (`-Cartographer`, `CARTOGRAPHER_DLL`, else d2r-tools' `dist\cartographer`; it refuses one older than the d2r-tools commit pinned in `tools/cartographer.pin` (#1300), checking before touching the folder), and outside a test slot fetches and installs the companions. Pass `-KeepExtras` to keep third-party plugins in the game-wide folder (our old copies still go).
+   Our plugin logs and `<plugin>-off.txt` files are now in the mod's `d2rloader\logs` and `d2rloader\config`. With `-Data` it also copies
    `companions/cartographer/signatures.txt` into the mod's `excel/d2rloader/cartographer/` (core-rules' cube hook needs it).
 4. Check the installed data holds the change (the table row in `out/data`).
 5. For a hand test, write the slot, its lock owner and the unlock command into the game-check issue.

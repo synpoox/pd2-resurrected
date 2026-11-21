@@ -1,25 +1,39 @@
-# PD2 Resurrected
+# Project Diablo II: Resurrected
 
-Project Diablo II rebuilt as a Diablo II: Resurrected mod: PD2's items, skills, monsters and rules, in D2R's
-graphics. Offline single-player for now; private multiplayer comes later.
+Project Diablo II rebuilt as a Diablo II: Resurrected mod.
 
-**Status: alpha 0.2.0** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [how it differs from PD2](docs/deviations.md)).
+[Discord](https://discord.com/invite/KWGqVxmpDR) | [Launcher](https://github.com/synpoox/resurrected-launcher)
+
+**Status: alpha 0.2.1** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [how it differs from PD2](docs/deviations.md)).
 
 ## Requirements
 
-- Windows and Diablo II: Resurrected 3.3.0 (build 93847) with Reign of the Warlock.
-- [D2RLoader](https://d2rloader.net/) 1.3.1-beta. Characters load only through it.
+- Windows and Diablo II: Resurrected 3.4.0 or 3.3.0 with Reign of the Warlock. One
+  release runs on both: D2RLoader runs its own 3.3 engine image with the installed game's data.
+- [D2RLoader](https://d2rloader.net/) 1.3.1-beta.
+
+Classic and Lord of Destruction characters use the mod's inventory layout with their native class and act rules.
+Choose Reign of the Warlock at character creation for the PD2 gameplay port.
 
 ## Install
 
-1. Close the game.
-2. Unpack `PD2Resurrected-<version>.7z` into `<D2R folder>\mods\`, so that
+### Launcher
+1. Download and install the latest launcher: https://github.com/synpoox/resurrected-launcher
+2. Go to `Settings` and select your D2R directory.
+3. Click `Install` from the main screen. 
+
+### Manual
+1. Unpack `PD2Resurrected-<version>.7z` into `<D2R folder>\mods\`, so that
    `mods\PD2Resurrected\PD2Resurrected.mpq\modinfo.json` exists.
-3. Make `PD2Resurrected` D2RLoader's default mod (once): in D2RLoader's settings, or with
+2. Make `PD2Resurrected` D2RLoader's default mod (once): in D2RLoader's settings, or with
    `default_mod = "PD2Resurrected"` in `<D2R folder>\d2rloader\config\d2rloader.toml`.
-4. Start `D2RLoader.exe`. Characters are saved in `Saved Games\Diablo II Resurrected\mods\PD2Resurrected\`.
+3. Start `D2RLoader.exe`. Characters are saved in `Saved Games\Diablo II Resurrected\mods\PD2Resurrected\`.
 
 To update, delete `mods\PD2Resurrected\PD2Resurrected.mpq\data` first, also delete `mods\PD2Resurrected\d2rloader\plugins\core-maps.dll` if it is there (the old name of `core-events.dll`; both loaded together would hook the game twice), then unpack the new release the same way.
+
+### Linux
+
+Runs under Wine/Proton with the manual install: [docs/linux.md](docs/linux.md).
 
 ## Loot Filters
 
@@ -47,14 +61,11 @@ The mod ships the Controller QOL Updates plugin (PyreFly), which changes some of
 These PD2 features are left out on purpose. Every deviation from PD2, cut or not, is listed in
 [docs/deviations.md](docs/deviations.md).
 
-- PD2's 10x8 inventory and stash pages, with the maps stash tab: D2R's layouts stay. The cube has PD2's 4x4 grid.
+- PD2's stash pages: D2R's stash stays for now.
 - PvP: the PvP maps, the BR Arena and every PvP rule, including the arenas' life regen cap.
 - Corrupted zones: D2R's Terror Zones stand in.
-- PD2's sound tables: D2R's sounds stay.
 - PD2's Uber Ancients: D2R's own Uber Ancients stays.
-- The Butcher's Lair map event (PD2 has it turned off).
 - Chat commands: `.kills`, `.deaths`, `.played`, `.age`, `.allstats`, `.accountstats` and `.noexp`.
-- The advanced stats panel, the grail panel and PD2's display.
 
 ## Bug reports
 

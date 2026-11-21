@@ -265,8 +265,8 @@ Lanes in flight:
 #1444, and none of them overlap its features, so there is nothing of its to switch off (option c): keep its defaults.
 Pinning means: a `companions/manifest.json` entry (repo `Pyre-Flies/D2R-Mods`, tag `release-2026.11.16.2`, asset
 `Controller-QOL-Updates-1.3.1+rev.100-PyreFly.zip`, its SHA-256, file `d2rloader/plugins/Controller QOL Updates.dll`),
-a row in `NOTICE.md` with the other Pyre-Flies plugins (PyreFly's proprietary licence, owner-approved), and no
-`companions/config/` file (it writes its own config on first start). Risks:
+a row in `NOTICE.md` with the other Pyre-Flies plugins (PyreFly's proprietary licence, owner-approved), and
+`companions/config/controller-qol-updates.toml` (its default with `cast_observer_enabled = false`, #1517). Risks:
 
 - Update cadence: rev.97 to rev.100 in two days, and each release qualifies one `D2RCore.dll` hash; a D2RLoader
   update leaves its native paths off until the author re-qualifies. Bump it one PR at a time, after a coexistence run.

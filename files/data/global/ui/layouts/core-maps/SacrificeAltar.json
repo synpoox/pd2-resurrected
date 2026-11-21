@@ -53,6 +53,7 @@
             "fields": {
                 "rect": { "x": 144, "y": 260 },
                 "filename": "PANEL\\miniconvert",
+                "tooltipString": "@SacrificeAltarAction",
                 "tooltipOffset": { "x": 0, "y": -3 },
                 "onClickMessage": "PanelManager:OpenPanel:core-maps/AltarConfirm"
             }

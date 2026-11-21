@@ -1,1 +1,0 @@
-- Dclone's ring of fire draws its tall flame pillars in HD, and his fire wall uses Diablo's HD flames.

@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pd2_panels as P  # noqa: E402
 from pd2_skilltrees import Image  # noqa: E402
 import pd2_table  # noqa: E402
+from data_tables import need, rows  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -58,6 +59,31 @@ class PanelsTests(unittest.TestCase):
             P.build_altar(Path(tmp))
             for rel in art:
                 self.assertEqual((Path(tmp) / rel).read_bytes(), (ROOT / rel).read_bytes(), rel)
+
+    def test_classic_and_expansion_use_the_shared_inventory_geometry(self):
+        need(self)
+        rotw = rows("inventory")
+        base = rows("base/inventory")
+        self.assertEqual(base, rotw)
+        player_classes = {row["Player Class"] for row in rows("playerclass")} - {"Expansion"}
+        for suffix in ("", "2"):
+            for player_class in player_classes:
+                row = next(row for row in base if row["class"] == player_class + suffix)
+                self.assertEqual((row["gridX"], row["gridY"]), ("10", "8"), row["class"])
+
+    def test_native_item_ordinals_match_the_rotw_client(self):
+        need(self)
+        for table, reserved in (("weapons", 13), ("armor", 2)):
+            with self.subTest(table=table):
+                base = rows(f"base/{table}")
+                rotw = rows(table)
+                self.assertEqual([row["code"] for row in base], [row["code"] for row in rotw])
+                self.assertTrue(all(not row["name"].startswith("Reserved RotW item") for row in base[:-reserved]))
+                for row in base[-reserved:]:
+                    self.assertEqual(row["name"], f"Reserved RotW item ({row['code']})")
+                    self.assertEqual((row["version"], row["spawnable"]), ("100", "0"))
+                    self.assertTrue(all(not value for field, value in row.items()
+                                        if field not in {"name", "code", "version", "spawnable"}))
 
     def test_taller_tiles_the_strip_at_the_row(self):
         img = Image(1, 5)

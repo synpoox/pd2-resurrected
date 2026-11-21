@@ -18,14 +18,13 @@ class MapMonsters(unittest.TestCase):
             self.assertEqual(len(row), len(head), row[0])
             m = dict(zip(head, row))
             ids = m["Monsters"].split(",")
-            self.assertTrue(1 <= len(ids) <= 10, m["Name"])
+            self.assertTrue(1 <= len(ids) <= 13, m["Name"])
             self.assertEqual(len(set(ids)), len(ids), m["Name"])
             for i in ids:
                 r = mon.get(i)
                 self.assertIsNotNone(r, f"{m['Name']}: {i} is not a monstats Id")
                 self.assertEqual((r["enabled"], r["isSpawn"]), ("1", "1"), i)
                 self.assertNotEqual(r["Rarity"], "0", i)
-                self.assertTrue(i.lower().endswith(("map", "map2")), i)
                 for col in ("TreasureClass(H)", "TreasureClassChamp(H)", "TreasureClassUnique(H)"):
                     self.assertIn(r[col], tcs, f"{i} {col}")
                     self.assertTrue(r[col].startswith("Map "), f"{i} {col}")

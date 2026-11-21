@@ -1,0 +1,1 @@
+- Invaders now wear their real player-class art in legacy and HD, and drop the weapon they carry. (#1215)

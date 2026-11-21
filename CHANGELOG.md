@@ -2,7 +2,7 @@
 
 Player-facing changes, newest first. Entries follow PD2 unless noted. Until multiplayer, a build may break characters (ADR 0003).
 
-### Unreleased
+### 0.2.1-alpha (2026-11-18)
 
 #### Maps
 
@@ -10,6 +10,39 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Ten more PD2-only areas draw walls and props in HD, among them Ruined Cistern, Ureh City and Black Abyss.
 - Mesa, Lava and Fortress maps draw ground beside copied D2R rooms instead of black gaps.
 - Demon Road, Bitter Depths and Dark Temple draw walls and props in HD.
+- Dark Wanderer bosses drop 4-6 Worldstone Shards.
+- Each native map has its PD2 map boss: King Leoric, The Guardian, Nathkill The Numb, The Great Worm, Shattered Soul.
+- The Shadow of Mendeln drops its loot again when it fades.
+- The Treasure Fallen drops its loot as it is hit and on death, ten times in all.
+- The Diablo Clone arena now holds four trapped souls, N/E/S/W around him.
+- The Temple of the Triune now holds six chests.
+- 20 new maps, one for each Cartographer tileset, each with its own icon.
+- Four Cartographer maps now carry PD2 map names: Cathedral of Light, Ancestral Trial, Torajan Jungle and Canyon of Sescheron.
+- Splashing map affix rolls on maps (monsters splash on melee hits).
+- Each Cartographer map now spawns monsters from the matching PD2 map area, using the map monster variants.
+- Map recipes take stacked normal maps: one stack of 3 or more upgrades or merges, and the leftovers keep their Area Level.
+- The five original maps now have their own icons instead of the shared scroll picture.
+- Every map's icon colour now matches its tier: T1 white, T2 gold, T3 red.
+- The map line "Extra Monster Groups" now names the group it adds, for example "+1 Extra Monster Group: Hell Temptresses".
+- A map with Smith, Armorer, Crafter or Jeweler affixes now says which kind of bonus drop each gives, instead of identical "Chance of a Bonus Drop" lines.
+- Using a stack of maps opens one map and leaves the rest of the stack.
+- Ruins of Viz'jun and River of Blood get their PD2 bosses; Johnathan, Indio and Rotting Horror return.
+- Maps have more monsters and uniques; six maps are now PD2 maps with their monsters and bosses.
+- The invaders event is back: its portals open and corrupted invaders step out, dropping their class ears and gear.
+- Siege maps (Arreat Battlefield) end in a cliff and a ravine instead of a black field at their west and east ends.
+- A native Tunneling Depths Map opens a Cartographer area in Hell, with its own native properties.
+- Native maps for the Crypt, Ice caves, Jungle and Snow tilesets drop beside Tunneling Depths from one shared pool.
+- Wanderer, Mendeln, Treasure Fallen and Gheed events run on native maps.
+- Uber keys open their areas again with Cartographer installed; unfinished uber areas refuse without using the key.
+- A Catalyst Shard cubed with a native map forces its event again.
+- The Void/Tomb map event opens its portal to the Bitter Depths again, a square arena built by Cartographer.
+- PD2's map items, affixes, recipes and drops are removed; Cartographer's maps replace them (old map items are not converted).
+- Altar of the Catalyst stays PD2's own event beside Cartographer, so its Catalyst drops differ from Cartographer's.
+- `core-maps` is now `core-events` (events and the uber fights); maps are Cartographer's.
+- Updating by hand: delete `mods\PD2Resurrected\d2rloader\plugins\core-maps.dll`, it is now `core-events.dll`.
+- Native map items now use the codes m01 to m05 (was cmc, cmr, cmi, cmj, cms).
+- Map events fire on every Cartographer map, and `core-events event <name>` forces the next one for tests.
+- Lucion spawns in his arena again (the key opens it, and he and his controller appear).
 
 #### Getting started
 
@@ -26,6 +59,7 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 - Class items roll skill bonuses from the whole class tree, gated by each skill's required level.
 - Monsters cleared from Chaos Sanctuary when Diablo arrives drop nothing.
 - Nova item casts (on striking, charges) burst around the target, and no longer misfire.
+- The Horadric Almanac identifies again on right-click, beside Cartographer, through item spell use slot 14.
 
 #### Maps
 
@@ -46,6 +80,185 @@ Player-facing changes, newest first. Entries follow PD2 unless noted. Until mult
 #### Uber bosses
 
 - Dclone's trapped-soul boulders hurt only through the fire they leave, not on impact.
+- Uber fight monsters are tier-scaled again with Cartographer loaded.
+- Desecration works again in the new Temple of the Triune after a Lucion kill.
+- Diablo Clone fights in a desert arena of his own.
+- Lucion fights in a Kurast arena of his own.
+- Dclone's summon waves spawn around his arena's centre and come at you.
+- Open wounds on one of Rathma's clones now splits to the other clone, like PD2.
+- Rathma's key opens his three stages again, in new square arenas.
+- Lucion's key opens a new square arena, and his Temple has its chests and altar again.
+- Uber ingredients drop again from Hell Mephisto, Diablo and Baal (also in Desecrated) and from map bosses (map bosses about 1 in 9 with one player).
+
+#### Fixes
+
+- PD2 misc items (maps, stacks, essences) no longer show a potion on the ground.
+- Lucion now shows his nameplate when hovered.
+- Rune and gem stacks show their own rune or gem on the ground, not El or a chipped gem.
+- Installing into a test slot keeps `cartographer.dll` instead of moving it away.
+- Rathma's arena rooms spawn none of their own monsters again next to Cartographer.
+- Characters saved on the earlier alpha load again with no "Character environment mismatch".
+- Fixed a crash entering the Cow Level and other levels, in the uber monster scaling.
+- Multiple Shot's missile damage bonus is back, and Demon Machine's proc arrows trigger nothing.
+- The Sacrifice Altar shows in HD.
+- Rathma's bone form, the Demon Pillar, Zhar and Lucion show in legacy view and can be hovered.
+- The Diablo Clone, Lucion and Temple arenas no longer hold stray Act IV monsters.
+- Dire Wolf, Fire Golem and other summons and bosses now cast their intended hit and death skills.
+- Shrines work as in Project Diablo 2: a gem shrine upgrades one gem off a stack, nearby players share boost shrines, and resist shrines add +10 to the max resist.
+- Shadow of Mendeln's wave champions and uniques now spawn as champions and uniques.
+- Telekinesis, Confuse, Blessed Hammer and the monster hydras work again.
+- Berserk and Blade Dance now play their body motion in HD.
+- Treasure Fallen no longer mixes up its drop count with an earlier game when it dies right away.
+- Cast Triggers (skill on cast and on block) now starts on every launch (#1180).
+- Our plugins now load from the mod folder; updating moves the old game-wide copies out (#1180).
+- Runes inside runewords show their names instead of Missing String.
+- The Sacrifice Altar opens a panel: place a corrupted amulet and confirm to Desecrate it.
+- Using the Sacrifice Altar after Lucion's death now runs Desecration on the amulet in the cube.
+- Rathma's stage portals to the next level now open where they can be reached, not behind a pillar.
+- Entering an arena shows its own name instead of Missing String.
+- No more random shrines, wells, chests or barrels in the arenas.
+- Invaders are visible and animate in both graphics modes.
+- The Invader portal shows as a red portal in HD.
+- Dclone now plays his run animation in HD.
+- Lucion now plays cast and run animations in HD.
+- Lucion no longer rises off screen when he dashes.
+- Both of Rathma's clones now spawn in the last stage.
+- The Sacrifice Altar no longer risks a crash with no game.
+- Lucion's dash no longer misbehaves after an earlier dash was cut short.
+- tools/install.ps1 refuses a test slot the run has not locked.
+- Dark Pact's damage synergies from curses work again.
+- Arriving in the Diablo Clone, Lucion and Rathma arenas no longer puts you on top of the boss.
+- Diablo Clone's fire nova now draws as a fire nova in HD.
+- Rathma's first stage no longer opens a portal until the boss dies.
+- Diablo Clone's soul pillars can be targeted and block missiles.
+- Diablo Clone's soul pillars can no longer be killed.
+- The map tooltip shows Tier 1, 2 or 3 correctly on every class.
+- A new map dropped onto a stack of maps you saved earlier now merges with it (#1340).
+- Corrupted, Area Level, density, magic find and experience list first; Corrupted no longer recolours lines after it.
+- The map info panel no longer lists the Corrupted and Corruptor marks under "Players have".
+- Desecration and the corruption roll write the right properties, not a map stat.
+- The Sacrifice Altar panel shows one blank slot and a bigger close button.
+- The Sacrifice Altar can be used once per game, as in PD2.
+- Charms in inventory rows 1-4 are tinted red, like PD2.
+- Two same-name unique charms in the lower charm rows now both show red, as they give no stats.
+- Legacy: the "of the Adventurer" map affix now has its name, and the Fortified, Imbued, Scouring and Upgrade-map orb descriptions match the HD text.
+- The Large map prefix now shows its name in legacy graphics.
+- Magic item prefixes and suffixes that showed no name in legacy graphics now show it.
+- Monsters in Horazon's Memory and other native maps now draw in HD.
+- Orb of Fortification works on a normal map or a stack of normal maps, and leaves the rest of the stack.
+- Maps no longer drop as magic from monsters.
+- A map boss now drops the loot of the map's tier (T1, T2 or T3), not one fixed tier per boss.
+- The Sacrifice Altar can be opened and closed with a controller from the START menu.
+- With a controller, the Sacrifice Altar panel now takes the D-pad and closes with B.
+- Holy Sword with a two-handed sword now parries attacks like it does in Project Diablo 2.
+- Mass Identify and Item Durability are no longer bundled.
+- The Potion Counter now shows each belt potion picture above its belt slot on the controller HUD.
+- Ethereal items now keep their full maximum durability instead of half.
+- The Sacrifice Altar panel opens only from the altar in the Temple. The controller inventory tab bar no longer shows an altar tab.
+- Assassin claws now block while walking and running, as in Project Diablo 2.
+- Throwing weapons keep their stack when their durability runs out, and repair to full.
+- Dodge and avoid now roll while walking and running, after a failed evade, as in Project Diablo 2.
+- The Horadric Cube in the stash's Gems, Materials and Runes tabs shows its full 4x4 grid.
+- A map split off a stack stacks again right away, without a new game.
+- Mercenary skills with no icon (Vigor, Meditation, Meteor, Blizzard, Whirlwind, Strafe and more) now show HD icons.
+- A map used from a stack opens at its real Area Level, not double.
+- Cast Triggers now loads alongside Controller QoL (QoL's cast observer is off).
+- The Ascendant mercenary shows its own legacy sprites and a Zakarum Council HD model.
+- Skill-on-cast and skill-on-block procs (Ormus' Robes, Dragonscale) work again.
+- Socketed gems and runes no longer apply their bonuses twice.
+- Bone Spear, Teeth and other multi-missile skills no longer hit monsters off the visible missiles.
+- Move Only keeps its own icon on the skill button instead of another skill's.
+- Frozen Orb plays its cast animation again.
+- Hydra and Lesser Hydra last their full duration again.
+- The Warlock can now use Move Only like the other classes.
+- The Scroll of Inifuss can be right-clicked and read again.
+- The gate no longer leaves a skipped `table-diff` check on a PR when a label is added or the PR closes (#897)
+- The Altar guardian's death is now heard on native maps, so its clones clear and the shards unlock.
+- Map events (Spire, Gheed, Mendeln and the rest) now finish on native maps.
+- The Almanac identifies Cube items; use it from the inventory, since D2R can't use items in the Cube.
+- Restore PD2 item names ("an evil force") on the Cartographer build.
+
+#### Features
+
+- The Dark Wanderer map event spawns a buffed boss a few seconds after the Wanderer dies.
+- Horazon's death opens a red portal to a second map at the source map's level.
+Local install now includes Cartographer and the companion plugins.
+- The download now includes the license and notice files.
+- Maps now come in Tier 1, 2 and 3 (area level 87-89) and never roll magic.
+- Rare maps roll 27 of PD2's map affixes (9 prefixes, 18 suffixes) in their tier bands: monster life, damage and speed, player stats, density and exp.
+- Rare maps now roll many more of the map modifiers: monster elemental damage, attack and defence modifiers, extra monster groups and an extra boss, more monster rarity, and bonus item drops (weapons, armor, crafting items, jewelry). Only the Splashing modifier is still missing.
+- Fortified maps now also give +100% chance for monsters to drop extra items.
+- Corrupting a map can now also give deadly strike, cannot-be-frozen, more monster rarity, or bonus jewelry drops.
+- Anya in Hell also gives you 3 random Tier 1 maps (item level 99) with her reward.
+- Normal maps with the same stats now stack up to 50; rare maps and maps with a different Area Level or event do not.
+- Cube a rare map with a class invader ear: +50% chance for monsters to drop extra items, that class's ear drops, and two class modifiers (some weaken the player). One ear per map (#1347).
+- The charm area (inventory rows 5-8) has a slight tint in HD.
+- Controller QOL Updates (PyreFly) now comes with the mod, for smoother controller play.
+- After a block, parry, dodge or evade a player cannot avoid again for 4 frames, as in PD2.
+- Zhar, Leoric, Na-Krul and the Butcher use PD2's own voice and combat sounds.
+
+#### Changes
+
+- The uber arenas are now small enclosed rooms; Diablo Clone fights in a swamp.
+- The legacy inventory now shows PD2's whole panel: helm slot, I/II tabs, 8 rows, gold and close strip.
+- The legacy inventory's equipment slots and grid now sit exactly inside the frames PD2's art draws.
+- You can carry a second unique charm of the same name; two of them in inventory rows 5-8 both give no stats until one is moved out.
+- The HD inventory's 10x8 grid now has full-size cells and fills the panel width.
+Cartographer maps get PD2's map cube recipes, and the Cartographer's and Fortify orbs are back.
+- Maps drop in Hell as a T1 pool; map drop tables are PD2's.
+- Diablo Clone's nova-phase missiles show in HD again.
+- Dclone's ring of fire draws its tall flame pillars in HD, and his fire wall uses Diablo's HD flames.
+The Sacrifice Altar panel uses the inventory's amulet slot art, drops its inner X button and centers its contents.
+Cubing a unique, rare or crafted quiver with PD2's tier recipe upgrades it and keeps its affixes.
+Unique, rare and crafted quivers can now be upgraded to their next tier in the cube.
+- With a controller, all 8 rows of the inventory can now be seen and used.
+- With a controller, hold LB (or your Controller QoL modifier) and press A to put down one item of a held stack.
+Includes a Potion Counter that shows PD2-style potion pictures above the belt.
+- Runs on D2R 3.4 (build 95032) as well as 3.3 (#1509).
+- Charms work only in inventory rows 5-8, as in PD2. The launcher removes the old Charm Inventory plugin; a hand install must delete d2rl-charm-inv.dll and .mpq.
+- The inventory is now 10x8 as in PD2, and the Charm Inventory is gone: empty it into your inventory or stash before updating.
+- The Uber Tristram key opens D2R's Tristram arena, fought with PD2's primes, minions and drops.
+- Horazon drops six native maps and opens no portal for now (#959, portal in #1028).
+
+#### Tools
+
+- install.ps1 -Data installs into a test slot again, through the toolkit's slot_install.py.
+- pd2_merge waits for one of 4 machine-wide slots (PD2R_MERGE_SLOTS) to cap RAM use.
+- Add an orchestrator skill and a game-check recipe doc for agents.
+- `tools/worktree_remove.ps1` removes a worktree without deleting through its cache junctions.
+- A merge rule's cache key now covers only the d2rAI-toolkit modules it imports, so a toolkit commit rebuilds fewer rules.
+- Add screenshot rules to the game-check recipe.
+- Orchestrator skill: stop finished workers; workers do not wait on CI.
+- The CI gate replays unchanged merge rules from the shared rule cache; PRs keep only in a per-PR scratch folder.
+- Two merges that miss one rule key run it once; the second waits and replays (single-flight).
+- The gate skips docs-only changes and cancels the run of a merged or closed PR.
+- Merge slots: the last PD2R_CI_RESERVED (2) are the CI gate's; agent merges can't take them.
+- plugin\build.ps1 initialises an empty PluginSDK submodule itself in a fresh worktree.
+- Gate: fork PRs fail table-diff, and label events rerun only the open PR's current head.
+- CI cancels a superseded push-to-main gate run, so only the newest main commit gates.
+
+#### Docs
+
+- One gate rule in AGENTS.md; agent worktree and merge safety notes; stale doc facts fixed.
+- Orchestrator merges without `--delete-branch`, which removed worktrees through the `pd2-data` junction.
+
+#### Fixed
+
+- Diablo Clone's key opens his arena again, a square arena built by Cartographer.
+
+#### Changed
+
+- The build drops PD2's converted level files and HD presets; Dclone, Rathma, Lucion, the Temple and Bitter Depths stay refused.
+- CI gate drops the HD preset checks and artifacts, now covered by Cartographer.
+
+#### Notes
+
+- Alpha: characters saved with PD2's old maps may lose map items; start fresh characters for this build.
+- Multiplayer is not verified with Cartographer maps and the new events plugin; test in single player.
+
+#### Removed
+
+- PD2's old map items, map affixes, map recipes and map-opening code are gone; Cartographer maps replace them.
 
 ### 0.2.0-alpha (2026-11-08)
 

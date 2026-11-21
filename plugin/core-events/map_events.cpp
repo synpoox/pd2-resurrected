@@ -24,6 +24,7 @@
 
 #include "event_portals.h"
 #include "level_fx.h"
+#include "hot_log.h"
 #include "log.h"
 #include "placements.h"
 #include "lucion.h"
@@ -599,8 +600,11 @@ auto UseOneOfStack(Game* game, Unit* player, Unit* stack, uint8_t* packet, char 
 	g_useOriginal(game, player, use, flag);
 	if (d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, UnitItem, static_cast<int32_t>(piece.runtimeId)) == nullptr) {
 		Set(game, MapTierKey, MapItemTier(stack));
-		plog::Info("map use: one map of a stack of %d used (from cell %d,%d), %d left in the stack at %d,%d (%u so far)", quantity, piece.x,
-		           piece.y, quantity - 1, source.x, source.y, ++g_stackUses);
+		++g_stackUses;
+		if (pd2::HotLogsOn()) {
+			plog::Info("map use: one map of a stack of %d used (from cell %d,%d), %d left in the stack at %d,%d (%u so far)", quantity,
+			           piece.x, piece.y, quantity - 1, source.x, source.y, g_stackUses.load());
+		}
 		return true;
 	}
 	// Refused (a gate, a slot): the piece goes back, the quantity first so a failed destroy can only leave one map too many
@@ -674,15 +678,19 @@ auto OnUseItem(Game* game, Unit* player, uint8_t* packet, char flag) noexcept ->
 	// the map is consumed only when it opened: a refused use (second map, wrong town or difficulty) leaves the tier alone
 	if (tier != 0 && d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, UnitItem, itemId) == nullptr) {
 		Set(game, MapTierKey, tier);
-		plog::Info("map use: the map opened, tier %d", tier);
+		if (pd2::HotLogsOn()) {
+			plog::Info("map use: the map opened, tier %d", tier);
+		}
 	}
 }
 
 auto RollNative(Game* game, int32_t level) noexcept -> void {
 	const int32_t quality = g_usedQuality.exchange(0);
 	const bool forced = g_usedForced.exchange(false);
-	plog::Info("map events: native map %s, quality %d%s", quality != 0 ? "item used" : "item not seen", quality,
-	           forced ? ", forced" : "");
+	if (pd2::HotLogsOn()) {  // the roll line below is the one line a map open writes (#1593)
+		plog::Info("map events: native map %s, quality %d%s", quality != 0 ? "item used" : "item not seen", quality,
+		           forced ? ", forced" : "");
+	}
 	RollEvent(game, level, quality != 0 ? quality : d2r::rva::QualityNormal, forced);
 }
 
@@ -693,7 +701,7 @@ auto Divisor(Game* game, int32_t level, const Tiered* tier) noexcept -> int32_t 
 
 // Before the room's own monsters: a native map's event roll, then PD2's event spawn
 auto BeforeRoom(Game* game, void* room, int32_t level, const Tiered* tier) noexcept -> void {
-	if (plog::Sample(g_rooms)) {
+	if (pd2::HotSample(g_rooms)) {
 		plog::Info("map events: room activated in level %d (%u so far)", level, g_rooms.load());
 	}
 	if (tier == &NativeTier && Get(game, EventKey) == 0) {
@@ -702,7 +710,9 @@ auto BeforeRoom(Game* game, void* room, int32_t level, const Tiered* tier) noexc
 	if (tier == &NativeTier && !g_roomsOverride && Get(game, TotalKey(level)) == 0) {
 		const int32_t total = RealRooms(room);
 		Set(game, TotalKey(level), total);
-		plog::Info("map events: level %d has %d rooms, progress divides by that", level, total);
+		if (pd2::HotLogsOn()) {
+			plog::Info("map events: level %d has %d rooms, progress divides by that", level, total);
+		}
 	}
 	if (tier != nullptr) {
 		const int32_t rooms = Get(game, RoomsKey(level));
@@ -713,7 +723,7 @@ auto BeforeRoom(Game* game, void* room, int32_t level, const Tiered* tier) noexc
 auto AfterRoom(Game* game, int32_t level, const Tiered* tier) noexcept -> void {
 	const int32_t rooms = Get(game, RoomsKey(level)) + 1;
 	Set(game, RoomsKey(level), rooms);
-	if (rooms % 5 == 0) {  // for the game check
+	if (rooms % 5 == 0 && pd2::HotLogsOn()) {  // for the game check
 		plog::Info("map events: level %d, %d rooms activated (progress %d), event %d, %d spawned", level, rooms,
 		           rooms * 100 / Divisor(game, level, tier), Get(game, EventKey), Get(game, SpawnsKey));
 	}
@@ -856,6 +866,49 @@ auto MapEventSpawns(Game* game) noexcept -> int32_t {
 
 auto MapEventNotify(Game* game, int32_t event, const char* key) noexcept -> void {
 	NotifyKeyText(game, event, key);
+}
+
+// PD2 0x10378170, the death step of the Spire's shadows (993-995 in PD2) while the event is in state 2-49: a roll of
+// rand % 2400 < 1000 / (MinGrp + MaxGrp) drops a Pandemonium key by the shadow (Hate pk2, Terror pk1, Destruction pk3)
+// and counts one; with 6 keys dropped the Spire ends (the same end as past progress 90). No SDK service drops an item
+// at a dead monster, so it is key_drops' engine call (DropItemAt).
+auto SpireShadowDied(Game* game, Unit* monster, int32_t level, uint32_t* seed) noexcept -> void {
+	using namespace d2r::rva;
+	const int32_t spawns = Get(game, SpawnsKey);
+	if (MapEvent(game) != Spire || spawns < 2 || spawns >= SpireOver) {
+		return;
+	}
+	const int32_t classId = At<int32_t>(monster, UnitClassId);
+	const auto* shadow = std::find(std::begin(Shadows), std::end(Shadows), classId);
+	if (shadow == std::end(Shadows)) {
+		return;
+	}
+	constexpr char Keys[3] = {'2', '1', '3'};
+	const uint8_t dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
+	const auto* rec = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(dataFlag, classId);
+	const uint32_t group = rec != nullptr ? At<uint8_t>(rec, MonMinGrp) + At<uint8_t>(rec, MonMaxGrp) : 0;
+	const char key[4] = {'p', 'k', Keys[shadow - std::begin(Shadows)], 0};
+	if (d2r::RandomBelow(seed, 0x960) >= 1000 / (group != 0 ? group : 1)) {
+		return;
+	}
+	const int32_t row = d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(
+		dataFlag, D2RL::Items::MakeItemCode(key[0], key[1], key[2], ' '));
+	if (row < 0) {
+		plog::Warn("map events: event %d shadow %d died, no item \"%s\"", Spire, classId, key);
+		return;
+	}
+	// shortcut: the roll uses the monster's seed and the key drops at the monster, not through PD2's spot search
+	// (0x1036ebc0); only a drop that worked counts, as in PD2
+	if (d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(DropItemAt)(
+			game, monster, row, QualityNormal, 0, 0) == nullptr) {
+		plog::Warn("map events: event %d shadow %d: the %s drop failed in level %d", Spire, classId, key, level);
+		return;
+	}
+	Set(game, SpawnsKey, spawns + 1);
+	plog::Info("map events: event %d shadow %d dropped %s in level %d, %d of 6", Spire, classId, key, level, spawns - 1);
+	if (spawns + 1 - 2 > 5) {
+		EndSpire(game, level);
+	}
 }
 
 // PD2 0x10378080, in state 2 of the Altar event: with the guardian in a room, a sound on the guardian to every player

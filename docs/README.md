@@ -9,6 +9,10 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [adr/](adr/) — architecture decision records
 - [agents/](agents/) — agent conventions (issue tracker, triage, domain docs)
 
+## Player guides
+
+- [linux.md](linux.md) — playing on Linux with Wine/Proton and Lutris
+
 ## Cartographer migration (this mod onto the cartographer plugin)
 
 - [cartographer/contracts.md](cartographer/contracts.md) — Cartographer candidate: frozen contracts (#946, epic #942)

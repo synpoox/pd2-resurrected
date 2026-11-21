@@ -1,5 +1,5 @@
 # monster	like: the D2R monster whose HD model a new monster with PD2-only art (no D2R Code with a model) takes; tools/pd2_monsters_hd.py
-# Stand-ins: the monster's BaseId where D2R has it, else a D2R monster of the same kind (AI, look); the Invaders take a D2R monster that looks like their class (D2R has no player-class monster model); `=model` is a model the mod ships in hd/character/enemy
+# Stand-ins: the monster's BaseId where D2R has it, else a D2R monster of the same kind (AI, look); the Invaders take their own units on the player-class models (`tools/pd2_invaders_hd.py`, #1215); `=model` is a model the mod ships in hd/character/enemy
 rathmaBone	nihlathakboss
 rathmaBoneClone	nihlathakboss
 butcherMap	smith
@@ -14,13 +14,13 @@ Lucion	=lucion
 LucionSpawner	invisospawner
 clawviper3ImperialPalaceBoss	clawviper1
 InvaderPortal	=invaderportal
-InvaderAmazon	cr_archer1
-InvaderAssassin	act3hire
-InvaderBarbarian	ancientbarb1
-InvaderDruid	ancientbarb3
-InvaderNecromancer	summoner
-InvaderPaladin	zealot1
-InvaderSorceress	roguehire
+InvaderAmazon	=invaderamazon
+InvaderAssassin	=invaderassassin
+InvaderBarbarian	=invaderbarbarian
+InvaderDruid	=invaderdruid
+InvaderNecromancer	=invadernecromancer
+InvaderPaladin	=invaderpaladin
+InvaderSorceress	=invadersorceress
 NaKrulBoss	duriel
 PoisonedWellBoss	overseer1
 # A Code D2R draws with several models, where the most common is the wrong one

@@ -12,16 +12,15 @@ Terror Zone) are in [GLOSSARY.md](../../GLOSSARY.md). The work items are placed 
 
 ## Scope
 
-In: PD2's Pandemonium chain (keys `pk1`-`pk3`, the mini-ubers in D2R's levels 133-135, Horn, Eye and Brain, `ubtm`)
-through Uber Tristram (level 185); Diablo Clone (`dcma`); Rathma and Mendeln (`rtma`); Lucion (`luca`) with the Temple of the Triune
+In: PD2's Pandemonium chain (keys `pk1`-`pk3`, the mini-ubers in D2R's levels 133-135, Horn, Eye and Brain)
+through Uber Tristram (level 136); Diablo Clone (`dcma`); Rathma and Mendeln (`rtma`); Lucion (`luca`) with the Temple of the Triune
 and Desecration. That covers their uber keys and tiers, areas, area rules, monsters and phase scripts, and drops.
 
 Out:
 
 - PD2's Uber Ancients (`uba`, level 168) is cut. D2R has its own Uber Ancients, which stays.
-- D2R's Uber Tristram (the organ portal and level 136) and its world-event Diablo Clone (`diabloclone`) are turned
-  off, because PD2's fights replace them ([d2r-only-content.md](d2r-only-content.md)). D2R's keys and mini-uber levels
-  133-135 stay: PD2 uses them almost unchanged ([#185](https://github.com/synpoox/pd2-resurrected/issues/185)).
+- D2R's organ portal opens Uber Tristram at level 136. The PD2 `ubtm` key is retired (#1585). D2R's keys and
+  mini-uber levels 133-135 remain available. The PD2 Diablo Clone encounter replaces D2R's world event.
 - The season trophies and "of Clout" uniques wait for beta run 2, since they reward a league. The uber bosses'
   `.kills` counters are cut, as the map counters were.
 

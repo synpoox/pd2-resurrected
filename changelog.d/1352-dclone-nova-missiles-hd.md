@@ -1,1 +1,0 @@
-- Diablo Clone's nova-phase missiles show in HD again.

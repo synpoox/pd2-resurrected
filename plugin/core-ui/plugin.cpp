@@ -1,16 +1,20 @@
 // core-ui: PD2's client-side engine features no companion covers, for PD2 Resurrected. Client-only (not Shared: a UI
-// change must never force host and client to match) and NativeHooks; a game-wide plugin in <game>\d2rloader\plugins
-// (ADR 0004). On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
+// change must never force host and client to match) and NativeHooks; a mod-scoped plugin in <game>\mods\<mod>\d2rloader\plugins
+// (ADR 0004, #1180). On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
 //
-// Parts, by their word for the log, the status command and core-ui-off.txt (<game>\d2rloader\config\core-ui-off.txt):
+// Parts, by their word for the log, the status command and core-ui-off.txt (<game>\mods\<mod>\d2rloader\config\core-ui-off.txt):
 //   pictures  HD pictures of PD2's 4-character item codes (#310, #298), and `cheat spawn` of them (#323)
 //   split     PD2's stack split: Ctrl+left-click with a stack held puts one item down (#316)
 //   padbinds  pad chords on an item: LB + RB + A sends a whole stack to the Cube (#1472)
 //   quantity  PD2's Show Item Quantity: each stack in an open grid shows its quantity on its picture (#359)
 //   palette   legacy graphics: a level entered without a load screen draws in its own palette (#296)
+//   lock      PD2's Lock Inventory: the inventory padlock locks the player's and the mercenary's body slots (#1578)
+//   affinity  stash affinity: quick-moved maps, bossing and map materials go to their reserved shared stash pages (#1553)
+//   tabs      stash tabs: a second tab row with the Maps tab (tiers, bases, the cube) and the Bossing tab (#1553)
 #include <D2RLPlugin/api.h>
 
 #include "crash_guard.h"
+#include "inventory_lock.h"
 #include "pd2_engine.h"
 #include "item_pictures.h"
 #include "item_quantity.h"
@@ -20,6 +24,8 @@
 #include "off_switch.h"
 #include "parts.h"
 #include "stack_split.h"
+#include "stash_affinity.h"
+#include "stash_tabs.h"
 
 #include <cstdio>
 #include <iterator>
@@ -28,7 +34,7 @@
 #define MODKIT_PLUGIN_NAME "core-ui"
 #endif
 #ifndef MODKIT_PLUGIN_VERSION
-#define MODKIT_PLUGIN_VERSION "0.2.0"
+#define MODKIT_PLUGIN_VERSION "0.2.1"
 #endif
 
 namespace {
@@ -47,6 +53,9 @@ parts::Part g_parts[] = {
 	{"padbinds", false, pad_binds::Install},
 	{"quantity", true, item_quantity::Install},
 	{"palette", true, level_palette::Install},
+	{"lock", false, inventory_lock::Install},
+	{"affinity", false, stash_affinity::Install},
+	{"tabs", false, stash_tabs::Install},
 };
 
 constexpr D2RL::PluginInfo Info {
@@ -85,6 +94,15 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	level_palette::Counters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	inventory_lock::Counters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	stash_affinity::Counters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	stash_tabs::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;

@@ -1,10 +1,11 @@
 // core-rules: PD2's engine rules (skill and hit functions, cube ops, item rules, server hooks) for PD2 Resurrected.
-// Shared (host and client must match) and NativeHooks; a game-wide plugin in <game>\d2rloader\plugins (ADR 0004).
+// Shared (host and client must match) and NativeHooks; a mod-scoped plugin in <game>\mods\<mod>\d2rloader\plugins (ADR 0004, #1180).
 // On a game image other than the one in rvas_*.h it loads, logs the stamp and leaves every part off.
 //
 // Parts: each has a one-word name for the log, the status command and core-rules-off.txt
-// (<game>\d2rloader\config\core-rules-off.txt), which leaves listed parts out to bisect a crash.
+// (<game>\mods\<mod>\d2rloader\config\core-rules-off.txt), which leaves listed parts out to bisect a crash.
 #include <D2RLPlugin/api.h>
+#include <D2RLPlugin/lifecycle.h>
 
 #include "../core-events/arena_spots.h"  // the "arena" part: Royal Fire reads the arena centre (#962)
 #include "almanac.h"
@@ -13,6 +14,8 @@
 #include "property_ids.h"
 #include "cube_rules.h"
 #include "cube_stacks.h"
+#include "item_prices.h"
+#include "stash_stacks.h"
 #include "pd2_engine.h"
 #include "item_rules.h"
 #include "log.h"
@@ -23,6 +26,8 @@
 #include "parts.h"
 #include "skill_functions.h"
 
+#include <windows.h>
+
 #include <cstdint>
 #include <cstdio>
 #include <iterator>
@@ -31,7 +36,7 @@
 #define MODKIT_PLUGIN_NAME "core-rules"
 #endif
 #ifndef MODKIT_PLUGIN_VERSION
-#define MODKIT_PLUGIN_VERSION "0.2.0"
+#define MODKIT_PLUGIN_VERSION "0.2.1"
 #endif
 
 namespace {
@@ -85,9 +90,13 @@ void InstallShrinesPart(const D2RL::PluginContext* context, char* report, size_t
 }
 
 void InstallStacks(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
-	const int installed = InstallCubeStacks(context, rules, sizeof(rules));
-	std::snprintf(report, size, "%d/1 installed: %s", installed, rules);
+	char rules[200] = "", stash[100] = "";
+	const int installed = InstallCubeStacks(context, rules, sizeof(rules)) + (InstallStashStacks(context, stash, sizeof(stash)) ? 1 : 0);
+	std::snprintf(report, size, "%d/2 installed: %s, %s", installed, rules, stash);
+}
+
+void InstallPrices(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	InstallItemPrices(context, report, size);
 }
 
 void InstallMercs(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
@@ -119,11 +128,64 @@ parts::Part g_parts[] = {
 	{"mercs", true, InstallMercs},
 	{"cube", true, InstallCube},
 	{"stacks", true, InstallStacks},
+	{"prices", true, InstallPrices},
 	{"almanac", true, InstallAlmanacPart},
 	{"shrines", true, InstallShrinesPart},
 	{"loot", true, InstallLoot},
 	{"sockets", true, InstallSockets},
 };
+
+// Cast Triggers allocates its 5 relay pages upward from the image (within +0x70000000) when tables load, and D2R's
+// render-context init can fill that window first (#1180). Hold the first 16 free 64 KB blocks from plugin load and
+// free them in a table listener that runs before Cast Triggers' (mod-folder plugins load in file-name
+// order: core-rules.dll before d2rl-ruffneckk-cast-triggers.dll).
+// Not a part: the off file cannot drop it.
+void* g_reserved[16] = {};
+
+void ReserveNearImage(uint64_t image) noexcept {
+	const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(image);
+	const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(image + dos->e_lfanew);
+	const uint64_t step = 0x10000;
+	const uint64_t end = image + 0x70000000ull;
+	int held = 0;
+	for (uint64_t at = (image + nt->OptionalHeader.SizeOfImage + step - 1) & ~(step - 1); at < end && held < 16; at += step) {
+		if (void* p = VirtualAlloc(reinterpret_cast<void*>(at), step, MEM_RESERVE, PAGE_NOACCESS)) {
+			g_reserved[held++] = p;
+		}
+	}
+	plog::Info("relay reserve: %d blocks held above the image, first %p, last %p", held, g_reserved[0],
+	           held > 0 ? g_reserved[held - 1] : nullptr);
+}
+
+void __cdecl ReleaseReserve(const D2RL::PluginContext*, const D2RL::Lifecycle::DataTablesLoadedEvent*, void*) noexcept {
+	int freed = 0;
+	for (void*& p : g_reserved) {
+		if (p != nullptr && VirtualFree(p, 0, MEM_RELEASE)) {
+			p = nullptr;
+			++freed;
+		}
+	}
+	if (freed > 0) {
+		plog::Info("relay reserve: %d blocks released for Cast Triggers", freed);
+	}
+}
+
+void HoldRelayReserve(const D2RL::PluginContext* context) noexcept {
+	const D2RL::LifecycleService* lifecycle = nullptr;
+	if (context->QueryService(&lifecycle) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasLifecycleServiceField(lifecycle, D2RL::LifecycleServiceRequiredSize)) {
+		plog::Warn("relay reserve: no lifecycle service, nothing held");
+		return;
+	}
+	const D2RL::Lifecycle::DataTablesLoadedListener listener {.structSize = D2RL::Lifecycle::DataTablesLoadedListenerSize,
+	                                                          .callback = ReleaseReserve};
+	D2RL::Lifecycle::ListenerHandle handle = D2RL::Lifecycle::InvalidHandle;
+	if (lifecycle->registerDataTablesLoadedListener(context, &listener, &handle) != D2RL::Lifecycle::Result::Success) {
+		plog::Warn("relay reserve: table listener refused, nothing held");
+		return;
+	}
+	ReserveNearImage(context->exeBase);  // only once the listener that frees it is in place
+}
 
 auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext* command, void* userData) noexcept
 	-> D2RL::ConsoleCommandResult {
@@ -156,6 +218,12 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	CubeStackCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	StashStackCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	ItemPriceCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	AlmanacCounters(line, sizeof(line));
@@ -197,6 +265,8 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	if (off_switch::Words()[0] != '\0') {
 		plog::Info("%s-off.txt leaves out: %s", PluginName, off_switch::Words());
 	}
+	HoldRelayReserve(context);  // first, before any part allocates near the image
+	InstallMercGear(context);   // not a part: the off file cannot drop it, or saves would lose merc items (#1627)
 	propids::Init(context);
 	g_imageKnown = d2r::Bind(context->exeBase);
 	parts::InstallAll(g_parts, std::size(g_parts), context, PluginName, g_imageKnown);

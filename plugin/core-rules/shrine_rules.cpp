@@ -2,6 +2,7 @@
 // - Shared boosters: shrine codes 6-15 run D2R's own effect on the user, then on every other player within a squared
 //   distance of 450 of the user (PD2 0x1037d840), through D2R's player iterator.
 // - Resist shrines (codes 8-11) add +10 to the matching max resist on the shrine's state list, as PD2 does.
+// - Stamina shrine (code 14) adds +35% velocity to the same timed state that grants unlimited stamina.
 // - Gem shrine (code 18): a stack of gems loses one gem and one upgraded gem is made; D2R's upgrade function replaces
 //   the whole stack with the one upgraded gem. The no-gem path (a random chipped gem) is D2R's own. The Perfect Gem
 //   Shrine announcement is cut (owner).
@@ -70,9 +71,10 @@ auto IdOf(Unit* unit) noexcept -> int32_t {
 	return d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(d2r::sig::UnitId)(unit, __FILE__, __LINE__);
 }
 
-// +10 on the shrine state's list: the state is the table row's, the list the one the booster just made on the unit
-auto RaiseMaxResist(uint32_t flag, Unit* unit, int code) noexcept -> void {
-	const int32_t stat = sh::MaxResistStat(code);
+// Use the list the booster just made so the extra stat shares the shrine's lifetime.
+auto ApplyBoosterBonus(uint32_t flag, Unit* unit, int code) noexcept -> void {
+	const bool stamina = code == sh::StaminaShrine;
+	const int32_t stat = stamina ? d2r::rva::StatVelocityPercent : sh::MaxResistStat(code);
 	if (stat == 0) {
 		return;
 	}
@@ -80,11 +82,11 @@ auto RaiseMaxResist(uint32_t flag, Unit* unit, int code) noexcept -> void {
 	std::memcpy(&state, TableRow(code) + RowState, sizeof(state));
 	void* list = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(d2r::sig::UnitStateList)(unit, state);
 	if (list == nullptr) {
-		plog::Warn("shrines: code %d left no list of state %d on unit %d, max resist not raised", code, state, IdOf(unit));
+		plog::Warn("shrines: code %d left no list of state %d on unit %d, bonus skipped", code, state, IdOf(unit));
 		return;
 	}
 	d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(d2r::sig::SetListStat)(
-		flag, list, stat, sh::MaxResistBonus, 0);
+		flag, list, stat, stamina ? sh::StaminaVelocityBonus : sh::MaxResistBonus, 0);
 }
 
 struct Reach {
@@ -112,7 +114,7 @@ void ReachPlayer(Game*, Unit* player, void* arg) noexcept {
 	std::memcpy(copy, r->ctx, sizeof(copy));
 	copy[2] = player;
 	r->fn(r->flag, copy, r->data);
-	RaiseMaxResist(r->flag, player, r->code);
+	ApplyBoosterBonus(r->flag, player, r->code);
 	++r->reached;
 	plog::Info("shrines: code %d reached unit %d at (%d,%d)", r->code, IdOf(player), xy[0], xy[1]);
 }
@@ -132,7 +134,7 @@ void Shrine(uint32_t flag, void** ctx, const uint8_t* data) noexcept {
 	auto* game = static_cast<Game*>(ctx[0]);
 	auto* user = static_cast<Unit*>(ctx[2]);
 	fn(flag, ctx, data);
-	RaiseMaxResist(flag, user, code);
+	ApplyBoosterBonus(flag, user, code);
 	Reach r {fn, flag, ctx, data, user, 0, 0, code, 0};
 	int32_t xy[2] = {0, 0};
 	d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(d2r::sig::UnitCoords)(user, xy);
@@ -229,7 +231,7 @@ auto InstallShrines(const D2RL::PluginContext* context, char* report, size_t rep
 			return 0;
 		}
 	}
-	std::snprintf(report, reportSize, "shrine slots %d/%d (shared 6-15, +10 max resist 8-11, gem stack 18)%s", live, total,
+	std::snprintf(report, reportSize, "shrine slots %d/%d (shared 6-15, +10 max resist 8-11, +35 velocity 14, gem stack 18)%s", live, total,
 	              hook ? "" : " (gem hook FAILED)");
 	return live == total ? 1 : 0;
 }

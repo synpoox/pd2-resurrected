@@ -12,6 +12,7 @@
 
 #include "ai_hooks.h"
 #include "log.h"
+#include "hot_log.h"
 #include "placements.h"
 #include "map_open.h"
 
@@ -123,7 +124,7 @@ auto Cast(Game* game, Unit* unit, int32_t skill, int32_t mode, Unit* target, int
 	}
 	const int32_t ok = d2r::Engine<int32_t (*)(Game*, Unit*, uint8_t, int32_t, Unit*, int32_t, int32_t, uint8_t) noexcept>(
 		d2r::rva::AiUseSkill)(game, unit, static_cast<uint8_t>(mode), skill, target, x, y, 0);
-	if (plog::Sample(g_casts)) {
+	if (pd2::HotSample(g_casts)) {
 		plog::Info("rathma ai: class %d cast skill %d mode %d at (%d, %d)%s -> %d (%u so far)",
 		           At<int32_t>(unit, d2r::rva::UnitClassId), skill, mode, x, y, target != nullptr ? " on target" : "", ok,
 		           g_casts.load());
@@ -631,7 +632,7 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	t.sub = Counter(game, UnitKey(Sub, id));
 	t.last = Counter(game, UnitKey(Last, id));
 	t.next = 1;
-	if (plog::Sample(g_thinks)) {
+	if (pd2::HotSample(g_thinks)) {
 		plog::Info("rathma: class %d unit %u thinks (%u so far), state %d.%d, stage %d, life %d%%", t.classId, id,
 		           g_thinks.load(), t.cur, t.sub, stage, t.life);
 	}

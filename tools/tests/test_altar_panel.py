@@ -47,6 +47,16 @@ class AltarPanel(unittest.TestCase):
         prompt = kids["prompt"]["fields"]["rect"]
         self.assertEqual(prompt["x"] + prompt["width"] / 2, centre)
 
+    def test_sacrifice_tooltip(self):
+        for layout, folder in ((LAYOUT, "strings"), (LEGACY, "strings-legacy")):
+            with self.subTest(layout.name):
+                panel = json.loads(layout.read_text("utf-8"))
+                button = next(child for child in panel["children"] if child["name"] == "confirm")
+                tooltip = button["fields"]["tooltipString"]
+                strings = ROOT / "files/data/local/lng" / folder / "ui.json"
+                labels = {f'@{row["Key"]}': row["enUS"] for row in json.loads(strings.read_text("utf-8-sig"))}
+                self.assertEqual(labels[tooltip], "Sacrifice")
+
     def test_no_cube_desecration(self):
         self.assertNotIn("Desecrate", (ROOT / "plugin/core-events/cube_ops.cpp").read_text("utf-8"))
 

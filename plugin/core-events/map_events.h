@@ -19,6 +19,8 @@ auto MapEventNotify(d2r::Game* game, int32_t event, const char* key) noexcept ->
 // PD2 0x10378080: the Altar of the Catalyst's guardian died; the altar's next use gives the shards, and the clones in
 // the rooms around `guardian` die.
 auto AltarGuardianDied(d2r::Game* game, d2r::Unit* guardian) noexcept -> void;
+// PD2 0x10378170: a Spire shadow died; it may drop a Pandemonium key (rolled on `seed`), and the Spire ends after 6.
+auto SpireShadowDied(d2r::Game* game, d2r::Unit* monster, int32_t level, uint32_t* seed) noexcept -> void;
 // PD2's spot search 0x10389c20 from xy in `room`: a size x size box free of `mask`, cells up to `reach` (at most 10)
 // from xy; `shift` moves the spot found by -2, -2. True with `room` and `xy` set to it.
 auto FindEventSpot(void*& room, int32_t xy[2], int32_t size, uint16_t mask, int32_t reach, bool shift) noexcept -> bool;

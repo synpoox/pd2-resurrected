@@ -3,10 +3,9 @@
 //
 // Trigger: D2R's own item spell path. A right-click sends the use message, the server's use-item handler 0x4f40c0 runs
 // the item's spell entry, and the dispatcher 0x581680 calls the use handler its entry names. Entry 18 (item_rules.cpp)
-// names use slot 14, D2R's unused stub, and this file writes that slot of the use handler table. So there is no hook on
-// the dispatchers 0x581680 / 0x5817f0, which Cartographer owns beside us (one owner per hook site), and no SDK event (the
-// ItemInteractionService raised none for a right-click, Slot4 2026-11-15). It runs on the game thread for any player,
-// so a TCP/IP client's use works too.
+// shares use slot 14 with the deciphered Scroll of Inifuss. The table patch keeps Cartographer's dispatchers intact.
+// The SDK's ItemInteractionService raised no event for this right-click (Slot4 2026-11-15). This handler runs on the
+// game thread for any player, including TCP/IP clients.
 // PD2's skill 513 handler (ProjectDiablo.dll 0x10383ea0) walks the player's inventory list the same way; this identifies
 // with D2R's identify (use function 1, 0x57ec30: sets the flag and sends the item to the client).
 #include "almanac.h"
@@ -53,10 +52,15 @@ void IdentifyAll(Game* game, Unit* player) noexcept {
 	plog::Info("almanac: use handler ran, %d items identified, %d elsewhere left, %u uses", identified, left, ++g_uses);
 }
 
-// The use handler (game, player, item) -> bool; the item is the Almanac itself (rid's spellicon is -1). Only one in the
-// inventory is used: D2R does not use any item from the Cube panel (#989), and this refuses the stash.
+// The stock handler sends the current game's Cairn Stone order to the reader (#1538).
 auto UseAlmanac(Game* game, Unit* player, Unit* item) noexcept -> uint8_t {
-	const uint8_t where = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::rva::ItemPage)(item);
+	using namespace d2r::rva;
+	const auto itemCode = d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode);
+	if (item == nullptr || itemCode(item) != D2RL::Items::MakeItemCode("rid")) {
+		return d2r::Engine<uint8_t (*)(Game*, Unit*, Unit*) noexcept>(AlmanacUseSlotOriginal)(game, player, item);
+	}
+
+	const uint8_t where = d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(item);
 	if (where == 0) {
 		IdentifyAll(game, player);
 	} else {

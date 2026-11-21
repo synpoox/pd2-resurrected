@@ -4,7 +4,7 @@
 #   powershell -ExecutionPolicy Bypass -File tools\install.ps1 -Game C:\D2RTestSlots\Slot4 -Data tests\game\fixtures\split-throw
 #   powershell -ExecutionPolicy Bypass -File tools\install.ps1 -Game C:\D2RTestSlots\Slot4 -Data . -NoValidate
 #
-# Plugins are game-wide (ADR 0004): <Game>\d2rloader\plugins\. -Data runs `modkit build` and `modkit install` and then
+# Plugins are mod-scoped (#1180): <Game>\mods\<mod>\d2rloader\plugins\. -Data runs `modkit build` and `modkit install` and then
 # puts back each modinfo.json savepath, because modkit install resets it (a slot would otherwise play other saves).
 # A test slot of the testing config installs through the toolkit's testing\slot_install.py instead (modkit install
 # refuses slots): set MODKIT_TESTING_CONFIG, and MODKIT_RUN to the slot lock's owner.
@@ -17,7 +17,7 @@ param(
     [string]$Cartographer = "",  # cartographer.dll (default: CARTOGRAPHER_DLL, else d2r-tools\dist\cartographer beside the toolkit)
     [string]$Toolkit = "",  # d2rAI-toolkit checkout (default: the toolkit's finder: D2R_TOOLKIT, else a walk up, so worktrees find it)
     [switch]$NoValidate,
-    [switch]$KeepExtras  # keep files other than our plugins in d2rloader\plugins (a slot set up on purpose)
+    [switch]$KeepExtras  # keep third-party plugins in <Game>\d2rloader\plugins (a slot set up on purpose)
 )
 $ErrorActionPreference = 'Stop'
 if (-not $Toolkit) {
@@ -53,7 +53,10 @@ if (-not $Cartographer) {
 if (-not (Test-Path $Cartographer)) { throw "$Cartographer missing: build it in d2r-tools (tools\build.ps1 -Plugin cartographer) or pass -Cartographer" }
 & (Join-Path $PSScriptRoot "check_cartographer.ps1") -Dll $Cartographer  # refuses a DLL older than tools\cartographer.pin (#1300)
 
-$plugins = Join-Path $Game "d2rloader\plugins"
+# Our plugins are mod-scoped (#1180): <Game>\mods\<mod>\d2rloader\plugins, beside the companions. File-name order
+# runs core-rules before Cast Triggers (d2rl-ruffneckk-cast-triggers.dll) with no load_order.
+$repoMod = (Get-Content (Join-Path $PSScriptRoot "..\mod.json") -Raw | ConvertFrom-Json).name
+$plugins = Join-Path $Game "mods\$repoMod\d2rloader\plugins"
 New-Item -ItemType Directory -Force $plugins | Out-Null
 foreach ($name in @("core-rules", "core-events", "core-ui")) {
     $dll = Join-Path $PSScriptRoot "..\plugin\build\Release\$name.dll"
@@ -63,29 +66,23 @@ foreach ($name in @("core-rules", "core-events", "core-ui")) {
 }
 Copy-Item $Cartographer $plugins -Force
 Write-Output "installed cartographer.dll -> $plugins"
-# Strays (third-party plugins, D2RLoader companions) would make the test run on an unclean install: move, never delete.
-$ours = @("core-rules.dll", "core-events.dll", "core-ui.dll", "cartographer.dll", "test-harness.dll", "d2r-testharness-console.txt")
-$strays = @(Get-ChildItem $plugins -Force | Where-Object { $ours -notcontains $_.Name })
-if ($strays -and -not $KeepExtras) {
+# The game-wide folder: our old copies there (core-*, cartographer, the removed Charm Inventory) would load a second
+# copy, so they always go; other strays (third-party plugins) would make the test run on an unclean install unless
+# -KeepExtras. The removed Charm Inventory also goes from the mod folder. Move, never delete.
+$gamePlugins = Join-Path $Game "d2rloader\plugins"
+$harness = @("test-harness.dll", "d2r-testharness-console.txt")  # the toolkit's test harness stays game-wide
+$isOurs = { param($n) $n -like "core-*.dll" -or $n -eq "cartographer.dll" -or $n -like "d2rl-charm-inv.*" }
+$moved = @(Get-ChildItem $gamePlugins -Force -ErrorAction SilentlyContinue | Where-Object {
+    $harness -notcontains $_.Name -and ((& $isOurs $_.Name) -or -not $KeepExtras) })
+$moved += @(Get-ChildItem $plugins -Filter "d2rl-charm-inv.*" -Force)
+if ($moved) {
     $backup = Join-Path "C:\D2RTestSlots\backups\stray-plugins-$(Get-Date -Format yyyy-MM-dd)" (Split-Path $Game -Leaf)
     New-Item -ItemType Directory -Force $backup | Out-Null
-    foreach ($f in $strays) {
+    foreach ($f in $moved) {
         $dest = Join-Path $backup $f.Name
         if (Test-Path $dest) { $dest = Join-Path $backup "$($f.BaseName)-$(Get-Date -Format HHmmss)$($f.Extension)" }
         Move-Item -LiteralPath $f.FullName $dest
-        Write-Output "moved stray $($f.Name) -> $dest"
-    }
-}
-
-# Plugins are game-wide: our plugin DLLs (core-*, cartographer, the removed Charm Inventory d2rl-charm-inv.*; other companions stay) left in <Game>\mods\<mod>\d2rloader\plugins shadows the fresh install (#970): move it too.
-$repoMod = (Get-Content (Join-Path $PSScriptRoot "..\mod.json") -Raw | ConvertFrom-Json).name
-$stale = @(Get-ChildItem (Join-Path $Game "mods\$repoMod\d2rloader\plugins") -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "core-*.dll" -or $_.Name -eq "cartographer.dll" -or $_.Name -like "d2rl-charm-inv.*" })
-if ($stale) {
-    $backup = Join-Path "C:\D2RTestSlots\backups\stale-mod-plugins-$(Get-Date -Format yyyy-MM-dd-HHmmss)" (Split-Path $Game -Leaf)
-    New-Item -ItemType Directory -Force $backup | Out-Null
-    foreach ($f in $stale) {
-        Move-Item -LiteralPath $f.FullName (Join-Path $backup $f.Name) -Force
-        Write-Output "moved stale mod plugin $($f.Name) -> $backup"
+        Write-Output "moved $(if (& $isOurs $f.Name) { 'old' } else { 'stray' }) $($f.Name) -> $dest"
     }
 }
 

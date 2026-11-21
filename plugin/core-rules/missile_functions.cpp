@@ -11,6 +11,7 @@
 #include "missile_functions.h"
 
 #include "log.h"
+#include "hot_log.h"
 
 #include <algorithm>
 #include <atomic>
@@ -57,7 +58,7 @@ auto SrvHitSpawnReturn(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t
 		return 1;
 	}
 	const int32_t result = d2r::Engine<MissileSrvHitFn>(d2r::rva::SrvHitSubMissiles)(game, missile, hit);
-	if (plog::Sample(g_returnSpawns)) {
+	if (pd2::HotSample(g_returnSpawns)) {
 		plog::Info("return missile: spawned on hit, result %d, hit %u", result, g_returnSpawns.load());
 	}
 	return result;
@@ -74,7 +75,7 @@ auto SrvDoReturn(Game* game, Unit* missile) noexcept -> int64_t {
 		return fallback(game, missile);
 	}
 	if (d2r::Engine<int32_t (*)(Unit*, Unit*) noexcept>(UnitDistance)(missile, owner) <= ReturnCatchDistance) {
-		if (plog::Sample(g_returnsCaught)) {
+		if (pd2::HotSample(g_returnsCaught)) {
 			plog::Info("return missile: caught by the thrower, catch %u", g_returnsCaught.load());
 		}
 		return d2r::Engine<int64_t (*)(Game*, Unit*, Unit*, int32_t) noexcept>(MissileSrvEnd)(game, missile, nullptr, 1);
@@ -163,7 +164,7 @@ auto SrvHitBounce(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	const int32_t damage = d2r::EvalCalc(game, owner, skill, SkCalc1, skillId, level);
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(missile, StatDamagePercent, damage, 0);
 	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetMissileBounces)(next, bounces - 1);
-	if (plog::Sample(g_bounces)) {
+	if (pd2::HotSample(g_bounces)) {
 		plog::Info("double throw bounce: missile %d range %d, bounces %d -> %d, damage%% %d, bounce %u",
 		           params.missile, range, bounces, bounces - 1, damage, g_bounces.load());
 	}
@@ -195,7 +196,7 @@ void SrvDmgFirstHit(Game* game, Unit* missile, Unit* hit, d2r::Damage* damageBlo
 		auto* value = reinterpret_cast<uint32_t*>(damage + field);
 		*value = *value * static_cast<uint32_t>(bonus + 100) / 100;  // PD2's unsigned multiply and divide
 	}
-	if (plog::Sample(g_firstHits)) {
+	if (pd2::HotSample(g_firstHits)) {
 		plog::Info("double throw first hit: +%d%%, hit %u", bonus, g_firstHits.load());
 	}
 }
@@ -240,8 +241,8 @@ void SrvDmgChainFalloff(Game* game, Unit* missile, Unit* target, d2r::Damage* da
 	auto* magic = reinterpret_cast<int32_t*>(damage + DmgMagic);
 	const int32_t before = *magic;
 	*magic = ChainFalloffMagic(before, hits, bounces, step);
-	const bool sampleHit = plog::Sample(g_chainFalloffs);
-	if ((*magic != before && plog::Sample(g_chainFalloffCuts)) || sampleHit) {
+	const bool sampleHit = pd2::HotSample(g_chainFalloffs);
+	if ((*magic != before && pd2::HotSample(g_chainFalloffCuts)) || sampleHit) {
 		plog::Info("chain falloff: skill %d level %d: calc1 %d, bounces %d, calc2 %d: magic %d -> %d, hit %u", skillId,
 		           level, hits, bounces, step, before, *magic, g_chainFalloffs.load());
 	}
@@ -360,7 +361,7 @@ auto SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept -> int32
 		}
 	}
 	g_spreadExplosions.fetch_add(static_cast<uint32_t>(created));
-	if (plog::Sample(g_spreadHits)) {
+	if (pd2::HotSample(g_spreadHits)) {
 		plog::Info("explode spread: skill %d level %d: %d of %d explosions from frame %d, result %d, hit %u",
 		           skillId, level, created, count, start, result, g_spreadHits.load());
 	}
@@ -399,7 +400,7 @@ void SrvDmgPierceFalloff(Game* game, Unit* missile, Unit* target, d2r::Damage* d
 		const int64_t scaled = static_cast<int64_t>(*value) * percent / 100;
 		*value = scaled > INT32_MAX ? INT32_MAX : static_cast<int32_t>(scaled);
 	}
-	if (plog::Sample(g_falloffHits)) {
+	if (pd2::HotSample(g_falloffHits)) {
 		plog::Info("pierce falloff: missile row %d target type %d, hit %d: %d%% damage, hit %u",
 		           At<int32_t>(missile, UnitClassId), target == nullptr ? -1 : At<int32_t>(target, UnitType), n, percent,
 		           g_falloffHits.load());
@@ -463,7 +464,7 @@ auto SrvHitState(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 		}
 	}
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(hit, state, 1);
-	if (plog::Sample(g_stateHits)) {
+	if (pd2::HotSample(g_stateHits)) {
 		plog::Info("state hit: missile row %d skill %d level %d: state %d for %d frames on unit type %d, stat %d %+d, "
 		           "stat %d %+d, result %d, hit %u", At<int32_t>(missile, UnitClassId), skillId, level, state, frames,
 		           At<int32_t>(hit, UnitType), stats[0][0], stats[0][1], stats[1][0], stats[1][1], damage,
@@ -480,7 +481,7 @@ std::atomic<uint32_t> g_boltHits {0};
 std::atomic<uint64_t> g_boltRowsLogged[32] {};
 
 auto FirstUnitHit(int32_t row) noexcept -> bool {
-	if (row < 0 || row >= 32 * 64) {
+	if (!pd2::HotLogsOn() || row < 0 || row >= 32 * 64) {
 		return false;
 	}
 	const uint64_t bit = 1ull << (row % 64);
@@ -539,7 +540,7 @@ auto SrvHitBoltSplash(Game* game, Unit* missile, Unit* /*hit*/) noexcept -> int3
 	BoltSplash b {&rolled, At<uint32_t>(row, MsHitFlags), At<uint16_t>(row, MsResultFlags) | uint32_t {ResultHit}, 0};
 	d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(missile), x, y};
 	d2r::Engine<AreaFn>(AreaUnits)(game, owner, &center, radius, AreaUnitMask, BoltSplashOne, &b, 0);
-	if (plog::Sample(g_boltHits) || (b.victims > 0 && FirstUnitHit(At<int32_t>(missile, UnitClassId)))) {
+	if (pd2::HotSample(g_boltHits) || (b.victims > 0 && FirstUnitHit(At<int32_t>(missile, UnitClassId)))) {
 		plog::Info("bolt hit: missile row %d skill %d level %d radius %d: fire %d cold %d (1/256), units hit %lld, "
 		           "hit %u", At<int32_t>(missile, UnitClassId), skillId, level, radius, At<int32_t>(&rolled, DmgFire),
 		           At<int32_t>(&rolled, DmgCold), static_cast<long long>(b.victims), g_boltHits.load());
@@ -617,7 +618,7 @@ auto SrvHitUberImmolation(Game* game, Unit* missile, Unit* hit) noexcept -> int3
 		setKey(owner, ownerKey);
 		ReleaseDamage(damage);
 	}
-	if (plog::Sample(g_uberImmolationHits)) {
+	if (pd2::HotSample(g_uberImmolationHits)) {
 		plog::Info("uber immolation hit: missile row %d skill %d level %d: fire row %d in radius %d for %d frames, "
 		           "damage radius %d%s, hit %u", At<int32_t>(missile, UnitClassId), skillId, level, sub, discRadius,
 		           frames, radius, radius >= 1 ? "" : " (none)", g_uberImmolationHits.load());
@@ -707,7 +708,7 @@ auto CltHitHolyLight(Unit* missile, Unit* hit) noexcept -> int32_t {
 	if (burst) {
 		d2r::Engine<ClientAreaFn>(ClientAreaUnits)(owner, x, y, radius, 0, HolyLightClientOne, &b, 0);
 	}
-	if (plog::Sample(g_holyLightHits)) {
+	if (pd2::HotSample(g_holyLightHits)) {
 		plog::Info("holy light client hit: missile row %d skill %d level %d: radius %d, sub-missile %d, %d created%s, "
 		           "hit %u", At<int32_t>(missile, UnitClassId), b.skillId, b.level, radius, b.sub, b.created,
 		           burst ? "" : " (no sub-missile or owner)", g_holyLightHits.load());
@@ -752,7 +753,7 @@ auto CltHitFistDelay(Unit* missile, Unit* hit) noexcept -> int32_t {
 		d2r::Engine<ClientAreaFn>(ClientAreaUnits)(owner, x, y, radius, At<int32_t>(skill, SkAuraFilter) != 0 ? 0xa683 : 0,
 		                                           FistBoltOne, &b, 0);
 	}
-	if (plog::Sample(g_fistDelayHits)) {
+	if (pd2::HotSample(g_fistDelayHits)) {
 		plog::Info("fist delay client hit: skill %d level %d: radius %d, sub-missile %d, %d bolts%s, hit %u", skillId,
 		           level, radius, b.sub, b.created, burst ? "" : " (no sub-missile)", g_fistDelayHits.load());
 	}
@@ -795,7 +796,7 @@ void CltDoChargeExplode(Unit* missile, float partFrame) noexcept {
 	params.skill = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileSkill)(missile);
 	params.skillLevel = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileLevel)(missile);
 	const bool created = d2r::api.clientCreateMissile(&params, 0) != nullptr;
-	if (plog::Sample(g_chargeExplodes)) {
+	if (pd2::HotSample(g_chargeExplodes)) {
 		plog::Info("charge explode client: missile row %d skill %d level %d: sub-missile %d at %d,%d%s, explode %u",
 		           At<int32_t>(missile, UnitClassId), params.skill, params.skillLevel, sub, params.x, params.y,
 		           created ? "" : " (not created)", g_chargeExplodes.load());
@@ -835,7 +836,7 @@ auto CltHitChargeBolt(Unit* missile, Unit* hit) noexcept -> int32_t {
 		d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t, int32_t) noexcept>(SetMissileMotion)(
 			bolt, At<int32_t>(row, MsCltHitPar1), At<int32_t>(row, MsCltHitPar2), At<int32_t>(row, MsCltHitPar3), 0);
 	}
-	if (plog::Sample(g_chargeBoltHits)) {
+	if (pd2::HotSample(g_chargeBoltHits)) {
 		plog::Info("charge bolt client hit: missile row %d skill %d level %d: sub-missile %d at %d,%d, height %d, "
 		           "motion %d,%d,%d%s, hit %u", At<int32_t>(missile, UnitClassId), params.skill, params.skillLevel,
 		           params.missile, params.x, params.y, z, At<int32_t>(row, MsCltHitPar1), At<int32_t>(row, MsCltHitPar2),
@@ -1018,7 +1019,7 @@ auto SrvHitBladeFragment(Game* game, Unit* missile, Unit* hit) noexcept -> int32
 	};
 	if (hit == nullptr) {
 		const int32_t created = WallBounce(missile, owner, row, generation, create);
-		if (created >= 0 && plog::Sample(g_fragmentWalls)) {
+		if (created >= 0 && pd2::HotSample(g_fragmentWalls)) {
 			plog::Info("blade fragment wall: missile row %d skill %d level %d generation %d -> %d: %d of %d fragments, "
 			           "wall %u", At<int32_t>(missile, UnitClassId), params.skill, params.skillLevel, generation,
 			           generation + 1, created, AtLeast1(At<int32_t>(row, MsHitPar1)), g_fragmentWalls.load());
@@ -1042,7 +1043,7 @@ auto SrvHitBladeFragment(Game* game, Unit* missile, Unit* hit) noexcept -> int32
 			++created;
 		}
 	}
-	if (plog::Sample(g_fragmentSplits)) {
+	if (pd2::HotSample(g_fragmentSplits)) {
 		plog::Info("blade fragment hit: missile row %d skill %d level %d generation %d on unit type %d: chance %d%%, "
 		           "%d of %d fragments with %d frames, hit %u", At<int32_t>(missile, UnitClassId), params.skill,
 		           params.skillLevel, generation, At<int32_t>(hit, UnitType), chance, created, split ? count : 0, frames,
@@ -1083,7 +1084,7 @@ void SrvDmgBladeFragment(Game* game, Unit* missile, Unit* target, d2r::Damage* d
 			}
 		}
 	}
-	if (plog::Sample(g_fragmentDamage)) {
+	if (pd2::HotSample(g_fragmentDamage)) {
 		plog::Info("blade fragment damage: missile row %d generation %d on unit type %d: physical %d (1/256), leech "
 		           "kept %u%% (life %u), roll %d over %d: %s, hit %u", At<int32_t>(missile, UnitClassId), generation,
 		           At<int32_t>(target, UnitType), At<int32_t>(damage, DmgPhys), keep,
@@ -1113,7 +1114,7 @@ auto CltHitBladeFragment(Unit* missile, Unit* hit) noexcept -> int32_t {
 		params.targetY = dy;
 		return d2r::api.clientCreateMissile(&params, 0);
 	});
-	if (created >= 0 && plog::Sample(g_fragmentClientWalls)) {
+	if (created >= 0 && pd2::HotSample(g_fragmentClientWalls)) {
 		plog::Info("blade fragment client wall: missile row %d skill %d level %d generation %d -> %d: %d of %d "
 		           "fragments, wall %u", At<int32_t>(missile, UnitClassId), params.skill, params.skillLevel, generation,
 		           generation + 1, created, AtLeast1(At<int32_t>(row, MsHitPar1)), g_fragmentClientWalls.load());
@@ -1136,17 +1137,17 @@ auto SrvDoBlessedHammer(Game* game, Unit* missile) noexcept -> int64_t {
 	const int32_t framesLeft = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileSrvFrames)(missile);
 	if (result == 2 && framesLeft > 0) {
 		result = 1;
-		if (plog::Sample(g_hammerKept)) {
+		if (pd2::HotSample(g_hammerKept)) {
 			plog::Info("blessed hammer: collision kept flying, %d frames left, kept %u", framesLeft, g_hammerKept.load());
 		}
 	}
 	const uint32_t hitAfter = LastHitId(missile);
-	if (hitAfter != hitBefore && hitAfter != 0xffffffffu && plog::Sample(g_hammerHits)) {
+	if (hitAfter != hitBefore && hitAfter != 0xffffffffu && pd2::HotSample(g_hammerHits)) {
 		plog::Info("blessed hammer: hit unit type %d id %u at %u,%u, %d frames left, hit %u",
 		           At<int32_t>(At<uint8_t*>(missile, UnitData), MdLastHitType), hitAfter, At<uint16_t>(path, 0x2),
 		           At<uint16_t>(path, 0x6), framesLeft, g_hammerHits.load());
 	}
-	if (plog::Sample(g_hammerFrames)) {
+	if (pd2::HotSample(g_hammerFrames)) {
 		plog::Info("blessed hammer: missile row %d at %u,%u mask %#x, %d frames left, result %lld, frame %u",
 		           At<int32_t>(missile, UnitClassId), At<uint16_t>(path, 0x2), At<uint16_t>(path, 0x6),
 		           At<uint32_t>(path, PathCollisionMask), framesLeft, static_cast<long long>(result),
@@ -1162,7 +1163,7 @@ void CltDoBlessedHammer(Unit* missile, float partFrame) noexcept {
 		return;
 	}
 	d2r::Engine<MissileCltDoFn>(d2r::rva::MissileCltDoDefault)(missile, partFrame);
-	if (plog::Sample(g_hammerClientFrames)) {
+	if (pd2::HotSample(g_hammerClientFrames)) {
 		plog::Info("blessed hammer client: missile row %d at %u,%u mask %#x, frame %u",
 		           At<int32_t>(missile, d2r::rva::UnitClassId), At<uint16_t>(path, 0x2), At<uint16_t>(path, 0x6),
 		           At<uint32_t>(path, d2r::rva::PathCollisionMask), g_hammerClientFrames.load());
@@ -1205,7 +1206,7 @@ auto SrvHitSummon(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 	if (spawn != nullptr && flags <= 0x7fffffff) {  // PD2 adds nothing for a negative sHitPar3
 		*reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(spawn) + UnitMainFlags) |= flags;
 	}
-	if (plog::Sample(g_summonHits)) {
+	if (pd2::HotSample(g_summonHits)) {
 		plog::Info("summon hit: missile %d: monster %d mode %d %s, flags 0x%x, hit %u", At<int32_t>(missile, UnitClassId),
 		           mon, mode, spawn != nullptr ? "spawned" : "not spawned",
 		           spawn != nullptr ? At<uint32_t>(spawn, UnitMainFlags) : 0u, g_summonHits.load());
@@ -1268,7 +1269,7 @@ void SrvDmgRathmaSpear(Game* game, Unit* missile, Unit* target, d2r::Damage* dam
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t, void*) noexcept>(HitEvents)(game, owner, target, 0, &hit);
 	d2r::Engine<HitFn>(DealDamage)(game, owner, target, &hit);
 	d2r::ReleaseDamage(hit);
-	if (plog::Sample(g_spearHits)) {
+	if (pd2::HotSample(g_spearHits)) {
 		plog::Info("rathma bone spear damage: missile row %d on unit type %d: DmgCalc1 %d%% of max life %u = magic %u, "
 		           "total %u (life %u -> %d), hit %u", At<int32_t>(missile, UnitClassId), At<int32_t>(target, UnitType),
 		           percent, maxLife >> 8, magic >> 8, total >> 8, life >> 8, unitStat(target, StatLife, 0) >> 8, g_spearHits.load());
@@ -1372,7 +1373,7 @@ auto SrvHitThrowPotion(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t
 			*reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(spawn) + UnitMainFlags) |= PotionSpawnFlags;
 		}
 	}
-	if (plog::Sample(g_potionHits)) {
+	if (pd2::HotSample(g_potionHits)) {
 		plog::Info("throw potion hit: missile %d skill %d level %d: burst %d, ring %d of %d (row %d)%s, %s, hit %u",
 		           At<int32_t>(missile, UnitClassId), skill, level, burst, ring, RingCount(At<int32_t>(row, MsHitPar1)),
 		           nova, spawn != nullptr ? ", spawned" : "", hit != nullptr ? "unit" : "ground", g_potionHits.load());
@@ -1411,7 +1412,7 @@ auto CltHitThrowPotion(Unit* missile, Unit* /*hit*/) noexcept -> int32_t {
 		ring = PotionRing(ringParams, At<int32_t>(row, MsCltHitPar1),
 		                  [](d2r::MissileParams* p) { return d2r::api.clientCreateMissile(p, 0) != nullptr; });
 	}
-	if (plog::Sample(g_potionClientHits)) {
+	if (pd2::HotSample(g_potionClientHits)) {
 		plog::Info("throw potion client hit: missile %d skill %d level %d: burst %d, ring %d (row %d), hit %u",
 		           At<int32_t>(missile, UnitClassId), skill, level, burst, ring, nova, g_potionClientHits.load());
 	}

@@ -62,6 +62,7 @@
             "fields": {
                 "rect": { "x": 520, "y": 969 },
                 "filename": "PANEL\\Horadric_Cube\\TransmuteButton",
+                "tooltipString": "@SacrificeAltarAction",
                 "hoveredFrame": 2,
                 "onClickMessage": "PanelManager:OpenPanel:core-maps/AltarConfirm"
             }

@@ -26,6 +26,20 @@
             "type": "ImageWidget", "name": "LeftHinge"
         },
         {
+            "type": "ImageWidget", "name": "pd2rMapsBackground",
+            "fields": {
+                "filename": "PANEL\\pd2r\\stash_maps_background",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBossingBackground",
+            "fields": {
+                "filename": "PANEL\\pd2r\\stash_bossing_background",
+                "visible": false
+            }
+        },
+        {
             "type": "TextBoxWidget", "name": "title"
         },
 		{
@@ -894,6 +908,943 @@
                     }
                 }
 			]
-		}
+		},
+        // PD2R stash tabs (#1553, core-ui/stash_tabs.cpp): drawn over the grid, all hidden until core-ui shows them
+        {
+            "type": "TabBarWidget", "name": "pd2rBossingTabs",
+            "fields": {
+                "rect": { "x": -3918, "y": 74 },
+                "tabCount": 2,
+                "filename": "PANEL\\stash\\MKB_Tabs_195_TGA",
+                "inactiveFrames": [ -1, 0 ],
+                "activeFrames": [ -1, 0 ],
+                "disabledFrames": [ -1, 0 ],
+                "textStrings": [ "", "@StashTabBossing" ],
+                "textStyle": { "pointSize": "$SmallPanelFontSize" },
+                "activeTextColor": "$TabsInactiveTextColor",
+                "inactiveTextColor": "$TabsInactiveTextColor",
+                "tabSize": { "x": 195, "y": 72 },
+                "tabPadding": { "x": 4000, "y": 0 },
+                "onSwitchTabMessage": "BankPanelMessage:SelectTab",
+                "tabMessages": [ "", "PanelManager:OpenPanel:core-ui/StashTabBossing" ]
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBossingTabsOn",
+            "fields": {
+                "rect": { "x": 277, "y": 74 },
+                "filename": "PANEL\\stash\\MKB_Tabs_195_TGA",
+                "frame": 1,
+                "visible": false
+            }
+        },
+        {
+            "type": "TextBoxWidget", "name": "pd2rBossingTabsOnText",
+            "fields": {
+                "rect": { "x": 277, "y": 74, "width": 195, "height": 72 },
+                "text": "@StashTabBossing",
+                "visible": false,
+                "style": { "fontColor": "$TabsActiveTextColor", "pointSize": "$SmallPanelFontSize", "alignment": { "v": "center", "h": "center" } }
+            }
+        },
+        {
+            "type": "TabBarWidget", "name": "pd2rMapsTabs",
+            "fields": {
+                "rect": { "x": -4113, "y": 74 },
+                "tabCount": 2,
+                "filename": "PANEL\\stash\\MKB_Tabs_195_TGA",
+                "inactiveFrames": [ -1, 0 ],
+                "activeFrames": [ -1, 0 ],
+                "disabledFrames": [ -1, 0 ],
+                "textStrings": [ "", "@StashTabMaps" ],
+                "textStyle": { "pointSize": "$SmallPanelFontSize" },
+                "activeTextColor": "$TabsInactiveTextColor",
+                "inactiveTextColor": "$TabsInactiveTextColor",
+                "tabSize": { "x": 195, "y": 72 },
+                "tabPadding": { "x": 4000, "y": 0 },
+                "onSwitchTabMessage": "BankPanelMessage:SelectTab",
+                "tabMessages": [ "", "PanelManager:OpenPanel:core-ui/StashTabMaps" ]
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rMapsTabsOn",
+            "fields": {
+                "rect": { "x": 82, "y": 74 },
+                "filename": "PANEL\\stash\\MKB_Tabs_195_TGA",
+                "frame": 1,
+                "visible": false
+            }
+        },
+        {
+            "type": "TextBoxWidget", "name": "pd2rMapsTabsOnText",
+            "fields": {
+                "rect": { "x": 82, "y": 74, "width": 195, "height": 72 },
+                "text": "@StashTabMaps",
+                "visible": false,
+                "style": { "fontColor": "$TabsActiveTextColor", "pointSize": "$SmallPanelFontSize", "alignment": { "v": "center", "h": "center" } }
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rSharedOff",
+            "fields": {
+                "rect": { "x": 277, "y": 146 },
+                "filename": "PANEL\\stash\\MKB_Tabs_195_TGA",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "textString": "@shared",
+                "pointSize": "$SmallPanelFontSize",
+                "textColor": "$TabsInactiveTextColor",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashShared"
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rTier1",
+            "fields": {
+                "rect": { "x": 437, "y": 224 },
+                "filename": "PANEL\\pd2r\\stash_tier_button",
+                "normalFrame": 0,
+                "pressedFrame": 2,
+                "hoveredFrame": 1,
+                "disabledFrame": 0,
+                "visible": false,
+                "textString": "@StashMapTier1",
+                "pointSize": "$MediumFontSize",
+                "textColor": "$TabsInactiveTextColor",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashTier1"
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rTier1On",
+            "fields": {
+                "rect": { "x": 437, "y": 224 },
+                "filename": "PANEL\\pd2r\\stash_tier_button",
+                "normalFrame": 2,
+                "pressedFrame": 2,
+                "hoveredFrame": 2,
+                "disabledFrame": 2,
+                "visible": false,
+                "textString": "@StashMapTier1",
+                "pointSize": "$MediumFontSize",
+                "textColor": "$TabsActiveTextColor",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashTier1"
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rTier2",
+            "fields": {
+                "rect": { "x": 535, "y": 224 },
+                "filename": "PANEL\\pd2r\\stash_tier_button",
+                "normalFrame": 0,
+                "pressedFrame": 2,
+                "hoveredFrame": 1,
+                "disabledFrame": 0,
+                "visible": false,
+                "textString": "@StashMapTier2",
+                "pointSize": "$MediumFontSize",
+                "textColor": "$TabsInactiveTextColor",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashTier2"
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rTier2On",
+            "fields": {
+                "rect": { "x": 535, "y": 224 },
+                "filename": "PANEL\\pd2r\\stash_tier_button",
+                "normalFrame": 2,
+                "pressedFrame": 2,
+                "hoveredFrame": 2,
+                "disabledFrame": 2,
+                "visible": false,
+                "textString": "@StashMapTier2",
+                "pointSize": "$MediumFontSize",
+                "textColor": "$TabsActiveTextColor",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashTier2"
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rTier3",
+            "fields": {
+                "rect": { "x": 633, "y": 224 },
+                "filename": "PANEL\\pd2r\\stash_tier_button",
+                "normalFrame": 0,
+                "pressedFrame": 2,
+                "hoveredFrame": 1,
+                "disabledFrame": 0,
+                "visible": false,
+                "textString": "@StashMapTier3",
+                "pointSize": "$MediumFontSize",
+                "textColor": "$TabsInactiveTextColor",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashTier3"
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rTier3On",
+            "fields": {
+                "rect": { "x": 633, "y": 224 },
+                "filename": "PANEL\\pd2r\\stash_tier_button",
+                "normalFrame": 2,
+                "pressedFrame": 2,
+                "hoveredFrame": 2,
+                "disabledFrame": 2,
+                "visible": false,
+                "textString": "@StashMapTier3",
+                "pointSize": "$MediumFontSize",
+                "textColor": "$TabsActiveTextColor",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashTier3"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox1_0",
+            "fields": {
+                "rect": { "x": 168, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel1_0",
+            "fields": {
+                "rect": { "x": 168, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase1_0",
+            "fields": {
+                "rect": { "x": 176, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_white_09",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m01",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase1_0"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox1_1",
+            "fields": {
+                "rect": { "x": 272, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel1_1",
+            "fields": {
+                "rect": { "x": 272, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase1_1",
+            "fields": {
+                "rect": { "x": 280, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_white_10",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m04",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase1_1"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox1_2",
+            "fields": {
+                "rect": { "x": 376, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel1_2",
+            "fields": {
+                "rect": { "x": 376, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase1_2",
+            "fields": {
+                "rect": { "x": 384, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_white_11",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m05",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase1_2"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox1_3",
+            "fields": {
+                "rect": { "x": 480, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel1_3",
+            "fields": {
+                "rect": { "x": 480, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase1_3",
+            "fields": {
+                "rect": { "x": 488, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_white_01",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m06",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase1_3"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox1_4",
+            "fields": {
+                "rect": { "x": 584, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel1_4",
+            "fields": {
+                "rect": { "x": 584, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase1_4",
+            "fields": {
+                "rect": { "x": 592, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_white_02",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m12",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase1_4"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox1_5",
+            "fields": {
+                "rect": { "x": 688, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel1_5",
+            "fields": {
+                "rect": { "x": 688, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase1_5",
+            "fields": {
+                "rect": { "x": 696, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_white_06",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m20",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase1_5"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox1_6",
+            "fields": {
+                "rect": { "x": 792, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel1_6",
+            "fields": {
+                "rect": { "x": 792, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase1_6",
+            "fields": {
+                "rect": { "x": 800, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_white_07",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m23",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase1_6"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox1_7",
+            "fields": {
+                "rect": { "x": 896, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel1_7",
+            "fields": {
+                "rect": { "x": 896, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase1_7",
+            "fields": {
+                "rect": { "x": 904, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_white_08",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m24",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase1_7"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox2_0",
+            "fields": {
+                "rect": { "x": 168, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel2_0",
+            "fields": {
+                "rect": { "x": 168, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase2_0",
+            "fields": {
+                "rect": { "x": 176, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_gold_28",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m02",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase2_0"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox2_1",
+            "fields": {
+                "rect": { "x": 272, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel2_1",
+            "fields": {
+                "rect": { "x": 272, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase2_1",
+            "fields": {
+                "rect": { "x": 280, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_gold_29",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m03",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase2_1"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox2_2",
+            "fields": {
+                "rect": { "x": 376, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel2_2",
+            "fields": {
+                "rect": { "x": 376, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase2_2",
+            "fields": {
+                "rect": { "x": 384, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_gold_22",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m08",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase2_2"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox2_3",
+            "fields": {
+                "rect": { "x": 480, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel2_3",
+            "fields": {
+                "rect": { "x": 480, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase2_3",
+            "fields": {
+                "rect": { "x": 488, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_gold_23",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m10",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase2_3"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox2_4",
+            "fields": {
+                "rect": { "x": 584, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel2_4",
+            "fields": {
+                "rect": { "x": 584, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase2_4",
+            "fields": {
+                "rect": { "x": 592, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_gold_21",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m13",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase2_4"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox2_5",
+            "fields": {
+                "rect": { "x": 688, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel2_5",
+            "fields": {
+                "rect": { "x": 688, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase2_5",
+            "fields": {
+                "rect": { "x": 696, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_gold_25",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m15",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase2_5"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox2_6",
+            "fields": {
+                "rect": { "x": 792, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel2_6",
+            "fields": {
+                "rect": { "x": 792, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase2_6",
+            "fields": {
+                "rect": { "x": 800, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_gold_24",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m16",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase2_6"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox2_7",
+            "fields": {
+                "rect": { "x": 896, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel2_7",
+            "fields": {
+                "rect": { "x": 896, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase2_7",
+            "fields": {
+                "rect": { "x": 904, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_gold_26",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m21",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase2_7"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox3_0",
+            "fields": {
+                "rect": { "x": 116, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel3_0",
+            "fields": {
+                "rect": { "x": 116, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase3_0",
+            "fields": {
+                "rect": { "x": 124, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_red_46",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m07",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_0"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox3_1",
+            "fields": {
+                "rect": { "x": 220, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel3_1",
+            "fields": {
+                "rect": { "x": 220, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase3_1",
+            "fields": {
+                "rect": { "x": 228, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_red_41",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m09",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_1"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox3_2",
+            "fields": {
+                "rect": { "x": 324, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel3_2",
+            "fields": {
+                "rect": { "x": 324, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase3_2",
+            "fields": {
+                "rect": { "x": 332, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_red_42",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m11",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_2"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox3_3",
+            "fields": {
+                "rect": { "x": 428, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel3_3",
+            "fields": {
+                "rect": { "x": 428, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase3_3",
+            "fields": {
+                "rect": { "x": 436, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_red_47",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m14",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_3"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox3_4",
+            "fields": {
+                "rect": { "x": 532, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel3_4",
+            "fields": {
+                "rect": { "x": 532, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase3_4",
+            "fields": {
+                "rect": { "x": 540, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_red_48",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m17",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_4"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox3_5",
+            "fields": {
+                "rect": { "x": 636, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel3_5",
+            "fields": {
+                "rect": { "x": 636, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase3_5",
+            "fields": {
+                "rect": { "x": 644, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_red_43",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m18",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_5"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox3_6",
+            "fields": {
+                "rect": { "x": 740, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel3_6",
+            "fields": {
+                "rect": { "x": 740, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase3_6",
+            "fields": {
+                "rect": { "x": 748, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_red_44",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m19",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_6"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox3_7",
+            "fields": {
+                "rect": { "x": 844, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel3_7",
+            "fields": {
+                "rect": { "x": 844, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase3_7",
+            "fields": {
+                "rect": { "x": 852, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_red_45",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m22",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_7"
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseBox3_8",
+            "fields": {
+                "rect": { "x": 948, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_slot",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBaseSel3_8",
+            "fields": {
+                "rect": { "x": 948, "y": 319 },
+                "filename": "PANEL\\pd2r\\stash_base_select",
+                "visible": false
+            }
+        },
+        {
+            "type": "ButtonWidget", "name": "pd2rBase3_8",
+            "fields": {
+                "rect": { "x": 956, "y": 327, "scale": 0.8 },
+                "filename": "ITEMS\\misc\\pd2\\cartoicon_red_49",
+                "normalFrame": 0,
+                "pressedFrame": 0,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "visible": false,
+                "tooltipString": "@m25",
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_8"
+            }
+        }
     ]
 }
