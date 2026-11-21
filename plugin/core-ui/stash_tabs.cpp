@@ -319,6 +319,7 @@ auto PadTab(bool right) noexcept -> bool {
 // vtable with OnMessage (slot 4) wrapped; no game code is patched and every other panel keeps D2R's.
 constexpr uint64_t InputMessageHash = 0x4ae067c6248b6042;           // "InputMessage", the message's first field
 constexpr uint64_t ControllerActionBeginHash = 0x1e439768f7dd4594;  // "ControllerActionBegin", field 0x11
+constexpr uint64_t ControllerActionEndHash = 0x4d833cc71f08b3c0;    // "ControllerActionEnd"
 enum PadAction : int { TabLeft = 7, TabRight = 8, CycleLeft = 0x13, CycleRight = 0x14 };
 constexpr size_t VtableMax = 256;
 void* g_vtable[VtableMax + 1] = {};  // [0] the RTTI slot before the table
@@ -326,11 +327,18 @@ void** g_panelVtable = nullptr;      // the panel's own vtable, copied into g_vt
 using OnMessageFn = void (*)(void*, const uint64_t*) noexcept;
 OnMessageFn g_onMessage = nullptr;
 
+// UI thread: cycleLeft (LB) is held. D2R sends the LB+LT/RT chord as plain tabLeft/tabRight (the modifier is in the pad
+// state, not the message), so the held cycleLeft is what tells a Shared page step from a tab step.
+bool g_cycleHeld = false;
+
 // One switch on the action id; true: done here, the press is consumed. A new pad action of the stash is a new case.
 auto OnPadAction(int32_t id) noexcept -> bool {
 	switch (id) {
 	case TabLeft:
 	case TabRight:
+		if (g_cycleHeld) {  // LB + LT/RT: a Shared page step
+			return g_view != View::None || (g_tab == 1 && !PlayerPage(id == TabRight, "pad page right"));
+		}
 		return PadTab(id == TabRight);
 	case CycleLeft:
 	case CycleRight:
@@ -344,13 +352,19 @@ auto OnPadAction(int32_t id) noexcept -> bool {
 }
 
 void StashOnMessage(void* panel, const uint64_t* message) noexcept {
-	if (message != nullptr && message[0] == InputMessageHash && message[0x11] == ControllerActionBeginHash) {
+	if (message != nullptr && message[0] == InputMessageHash && message[0x11] == ControllerActionEndHash) {
+		const auto* action = reinterpret_cast<const uint8_t*>(message[0x22]);
+		if (action != nullptr && *reinterpret_cast<const int32_t*>(action + 0x10) == CycleLeft) {
+			g_cycleHeld = false;
+		}
+	} else if (message != nullptr && message[0] == InputMessageHash && message[0x11] == ControllerActionBeginHash) {
 		const auto* action = reinterpret_cast<const uint8_t*>(message[0x22]);
 		if (action != nullptr && action[0x18] == 0 && !reinterpret_cast<bool (*)() noexcept>(MessageHandled.address)()) {
 			const int32_t id = *reinterpret_cast<const int32_t*>(action + 0x10);
 			if (id == TabLeft || id == TabRight || id == CycleLeft || id == CycleRight) {
 				plog::Info("stash tabs: pad action %d (view %u, tab %d)", id, static_cast<uint32_t>(g_view), g_tab);
 			}
+			g_cycleHeld = id == CycleLeft ? true : g_cycleHeld;
 			if (g_stashOpen && OnPadAction(id)) {
 				reinterpret_cast<void (*)() noexcept>(MarkHandled.address)();
 				return;
@@ -428,6 +442,7 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 	// would read the panel's visibility, but D2RLoader 1.3.1's widget service has no such field: calling it crashes.
 	if (std::strcmp(text, Panel) == 0) {
 		g_stashOpen = std::strcmp(event->command, "OpenPanel") == 0 || (g_stashOpen && std::strcmp(event->command, "ClosePanel") != 0);
+		g_cycleHeld = g_stashOpen && g_cycleHeld;  // a close with LB down sends no release
 		return Action::Continue;
 	}
 	if (std::strcmp(event->command, "OpenPanel") != 0 || std::strncmp(text, Prefix, sizeof Prefix - 1) != 0) {
