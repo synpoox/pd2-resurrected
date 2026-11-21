@@ -3826,7 +3826,7 @@
  },
  {
   "ubtm": {
-   "asset": "pd2/uberammy"
+   "asset": "amulet/amulet"
   }
  },
  {
@@ -3847,11 +3847,6 @@
  {
   "dcso": {
    "asset": "pd2/invdiabsoul"
-  }
- },
- {
-  "t11": {
-   "asset": "pd2/invmpgr"
   }
  },
  {
@@ -3880,18 +3875,8 @@
   }
  },
  {
-  "t24": {
-   "asset": "pd2/invmplb"
-  }
- },
- {
   "t25": {
    "asset": "pd2/sewermap"
-  }
- },
- {
-  "t31": {
-   "asset": "pd2/invmpbd"
   }
  },
  {
@@ -3996,7 +3981,7 @@
  },
  {
   "rtmf": {
-   "asset": "pd2/bonechips"
+   "asset": "body_part/brain"
   }
  },
  {
@@ -4006,7 +3991,7 @@
  },
  {
   "uba": {
-   "asset": "pd2/invuba"
+   "asset": "key/skeleton_key"
   }
  },
  {
@@ -4021,17 +4006,17 @@
  },
  {
   "ubaa": {
-   "asset": "pd2/invubaa"
+   "asset": "key/skeleton_key"
   }
  },
  {
   "ubab": {
-   "asset": "pd2/invubab"
+   "asset": "key/skeleton_key"
   }
  },
  {
   "ubac": {
-   "asset": "pd2/invubac"
+   "asset": "key/skeleton_key"
   }
  },
  {
@@ -4085,23 +4070,8 @@
   }
  },
  {
-  "t51": {
-   "asset": "pd2/invmprd"
-  }
- },
- {
-  "t52": {
-   "asset": "pd2/invmprd"
-  }
- },
- {
   "cm2f": {
    "asset": "pd2/invcm2f"
-  }
- },
- {
-  "t53": {
-   "asset": "pd2/invmprd"
   }
  },
  {
@@ -4215,18 +4185,8 @@
   }
  },
  {
-  "t54": {
-   "asset": "pd2/invmprd"
-  }
- },
- {
   "t17": {
    "asset": "pd2/invmap_torturehalls"
-  }
- },
- {
-  "t55": {
-   "asset": "pd2/invmprd"
   }
  },
  {
@@ -4252,21 +4212,6 @@
  {
   "cqv3": {
    "asset": "quiver/bolts"
-  }
- },
- {
-  "t56": {
-   "asset": "pd2/invmprd"
-  }
- },
- {
-  "t57": {
-   "asset": "pd2/invmprd"
-  }
- },
- {
-  "t58": {
-   "asset": "pd2/invmprd"
   }
  },
  {

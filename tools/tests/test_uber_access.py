@@ -21,14 +21,27 @@ class UberAccessTests(unittest.TestCase):
     def test_keys_use_the_core_events_item_spell(self):
         data_tables.need(self)
         misc = {r["name"]: r for r in data_tables.rows("misc")}
-        keys = {n: misc[n] for n in ("Uber Map", "Rathma Map", "Lucion Map", "Uber Trist Map")}
+        keys = {n: misc[n] for n in ("Uber Map", "Rathma Map", "Lucion Map")}
         assert all(r["pSpell"] == "19" for r in keys.values())
-        assert keys["Uber Trist Map"]["len"] == "136"  # D2R's Uber Tristram arena (#957)
         assert keys["Uber Map"]["len"] == "145"  # Diablo Clone's arena 145 (#958)
         assert keys["Rathma Map"]["len"] == "146"  # Rathma's first stage 146 (#961)
         assert keys["Lucion Map"]["len"] == "149"  # Lucion's arena 149 (#962)
         src = (ROOT / "plugin/core-events/uber_entry.cpp").read_text(encoding="utf-8")
         assert "UberKeySpell = 19" in src and "IsUberLevel" in src
+
+    def test_organs_open_stock_tristram_portal(self):
+        data_tables.need(self)
+        misc = {r["code"]: r for r in data_tables.rows("misc")}
+        for code in ("rtmf", "uba", "ubaa", "ubab", "ubac", "ubtm"):
+            assert misc[code]["spawnable"] == misc[code]["useable"] == "0"
+            assert not misc[code]["pSpell"]
+        recipes = [r for r in data_tables.rows("cubemain") if r["enabled"] == "1"]
+        portals = [r for r in recipes if r["output"] == "Pandemonium Finale Portal"]
+        assert len(portals) == 1
+        portal = portals[0]
+        assert portal["op"] == "28"
+        assert [portal[f"input {i}"] for i in (1, 2, 3)] == ["dhn", "bey", "mbr"]
+        assert not any(r["output"].split(",")[0] == "ubtm" for r in recipes)
 
 
     def test_stock_areas_are_not_ubers_and_tristram_is_the_d2r_uber(self):
