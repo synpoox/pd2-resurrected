@@ -21,7 +21,7 @@ HOT = {
                                          "CltHitBladeFragment", "SrvHitSummon", "SrvHitThrowPotion",
                                          "CltHitThrowPotion"],
     # per map open (#1593): all but the one `rolled event` line sit under HotLogsOn / HotSample
-    "core-events/map_events.cpp": ["RollNative", "BeforeRoom", "AfterRoom"],
+    "core-events/map_events.cpp": ["RollNative", "BeforeRoom", "AfterRoom", "UseOneOfStack", "OnUseItem"],
     "core-events/uber_scaling.cpp": ["ScaleUberMonster"],
     "core-events/rathma_life.cpp": ["SharedStep", "SharedPoison"],
 }
@@ -76,7 +76,7 @@ class HotPathLogging(unittest.TestCase):
             text = (PLUGIN / rel).read_text(encoding="utf-8")
             self.assertNotRegex(text, r"HotSample\([^)]*\)\s*\|\|(?![^{;]*(?:HotSample|First|HotLogsOn|\w+First))",
                                 f"{rel}: an `|| ...` after a sampler bypasses the flag")
-        for rel in ["core-rules/missile_functions.cpp", "core-rules/skill_functions.cpp"]:
+        for rel in ["core-rules/missile_functions.cpp", "core-rules/skill_functions.cpp", "core-events/map_events.cpp"]:
             self.assertNotIn("plog::Sample(", (PLUGIN / rel).read_text(encoding="utf-8"), f"{rel}: use pd2::HotSample")
 
     def test_hot_functions_sample_every_log_call(self):
@@ -91,7 +91,7 @@ class HotPathLogging(unittest.TestCase):
                     gate = re.compile("|".join([SAMPLER.pattern] + [rf"\b{f}\b" for f in flags]))
                     lines = body.split("\n")
                     for i, line in enumerate(lines):
-                        if re.search(r"plog::(Info|Warn)\(", line) and "has no valid" not in line:  # a bad row, not a hit
+                        if re.search(r"plog::(Info|Warn)\(", line) and "has no valid" not in line and not re.search(r"refused|dropped|not used", line):  # a bad row or a refused use, not a hit
                             # an `if (!sampled) return;` ahead of the line counts too
                             early = [p for p in lines[:i] if re.match(r"\s*if \(.*!", p) and gate.search(p)]
                             cond = enclosing_if(lines, i)

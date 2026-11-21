@@ -600,8 +600,11 @@ auto UseOneOfStack(Game* game, Unit* player, Unit* stack, uint8_t* packet, char 
 	g_useOriginal(game, player, use, flag);
 	if (d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, UnitItem, static_cast<int32_t>(piece.runtimeId)) == nullptr) {
 		Set(game, MapTierKey, MapItemTier(stack));
-		plog::Info("map use: one map of a stack of %d used (from cell %d,%d), %d left in the stack at %d,%d (%u so far)", quantity, piece.x,
-		           piece.y, quantity - 1, source.x, source.y, ++g_stackUses);
+		++g_stackUses;
+		if (pd2::HotLogsOn()) {
+			plog::Info("map use: one map of a stack of %d used (from cell %d,%d), %d left in the stack at %d,%d (%u so far)", quantity,
+			           piece.x, piece.y, quantity - 1, source.x, source.y, g_stackUses.load());
+		}
 		return true;
 	}
 	// Refused (a gate, a slot): the piece goes back, the quantity first so a failed destroy can only leave one map too many
