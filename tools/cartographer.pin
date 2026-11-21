@@ -1,2 +1,2 @@
-# Minimum d2r-tools commit for local Cartographer installs, and exact source for release builds. Includes the map portal fix (#1579).
-c986474653afea2ec57c0a51dd2dc4019639f02a
+# Minimum d2r-tools commit for local Cartographer installs, and exact source for release builds. Includes the Cartographer log fix (d2r-tools#571).
+0ffeb6d849bfa04ea79e61861458b4d89ab8d720
