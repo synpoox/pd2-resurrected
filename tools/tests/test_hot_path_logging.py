@@ -4,11 +4,15 @@ import unittest
 from pathlib import Path
 
 PLUGIN = Path(__file__).resolve().parent.parent.parent / "plugin"
-SAMPLER = re.compile(r"HotSample|plog::Sample|First\(|FinisherSample|Logged\(")
+SAMPLER = re.compile(r"HotSample|plog::Sample|First\(|FinisherSample|Logged\(|GateLog\(")
+# A gate that logs a unit kind every time before it samples: `if (type == 0 || pd2::HotSample(n))`
+BYPASS = re.compile(r"\|\|\s*[\w:]*?(?:" + SAMPLER.pattern + ")")
 # Functions that run per hit, kill, drop, missile or curse: every log call in them sits under a sampler
 HOT = {
-    "core-rules/item_rules.cpp": ["LogStrike", "CappedAddLife", "CrushingBlow", "OpenWounds", "RefreshOpBase",
-                                  "MakeRoom", "ResistCurse", "CurseApply", "ApplyDarkPact", "EquipAuraTick", "AddCharge"],
+    "core-rules/item_rules.cpp": ["LogStrike", "HitEvent", "CappedAddLife", "CrushingBlow", "OpenWounds",
+                                  "RefreshOpBase", "MakeRoom", "ResistCurse", "CurseGate", "ApplyUngated", "CurseApply",
+                                  "ApplyDarkPact", "SetPhasing", "EquipStatCallback", "EquipAuraTick", "AddCharge",
+                                  "MapItemMaker"],
     "core-rules/loot_rules.cpp": ["ApplyEthereal", "RollStaffMods"],
     "core-events/uber_scaling.cpp": ["ScaleUberMonster"],
     "core-events/rathma_life.cpp": ["SharedStep", "SharedPoison"],
@@ -47,6 +51,10 @@ class HotPathLogging(unittest.TestCase):
             for m in re.finditer(r"<= \d+ \|\| \w+ % (\d+) == 0", f.read_text(encoding="utf-8")):
                 self.assertGreaterEqual(int(m.group(1)), 500, f"{f.name}: {m.group(0)}")
 
+    def test_bypass_pattern(self):
+        self.assertRegex("if (type == 0 || pd2::HotSample(n)) {", BYPASS)
+        self.assertNotRegex("if (pd2::HotSample(n)) {", BYPASS)
+
     def test_hot_functions_sample_every_log_call(self):
         for rel, names in HOT.items():
             text = (PLUGIN / rel).read_text(encoding="utf-8")
@@ -62,8 +70,10 @@ class HotPathLogging(unittest.TestCase):
                         if re.search(r"plog::(Info|Warn)\(", line):
                             # an `if (!sampled) return;` ahead of the line counts too
                             early = [p for p in lines[:i] if re.match(r"\s*if \(.*!", p) and gate.search(p)]
-                            self.assertRegex(enclosing_if(lines, i) + "".join(early), gate,
-                                             f"{rel} {name}: unsampled `{line.strip()[:80]}`")
+                            cond = enclosing_if(lines, i)
+                            where = f"{rel} {name}: `{line.strip()[:80]}`"
+                            self.assertRegex(cond + "".join(early), gate, f"unsampled {where}")
+                            self.assertNotRegex(cond, BYPASS, f"logged past the sampler {where}")
 
 
 if __name__ == "__main__":

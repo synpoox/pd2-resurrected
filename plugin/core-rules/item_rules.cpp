@@ -166,7 +166,7 @@ auto RollStrike(Unit* unit, Unit* weapon) noexcept -> Strike {
 	return s;
 }
 
-// Every roll of a player (the game check's attacker) is logged; other units' a sample
+// A sample of every unit's rolls, players' too: Multiple Shot rolls once per arrow (#1609)
 auto LogStrike(const char* where, Unit* unit, const Strike& s, uint32_t before, uint32_t after, int32_t multiplier) noexcept
 	-> void {
 	const uint32_t n = ++g_strikeRolls;
@@ -904,6 +904,7 @@ constexpr int MaxCurseLists = 64;  // a unit holds a handful; more only stops a 
 std::atomic<uint32_t> g_curses {0};
 std::atomic<uint32_t> g_curseResisted {0};
 std::atomic<uint32_t> g_curseGate {0};
+std::atomic<uint32_t> g_gateFallbacks {0};  // ApplyUngated's "did not clear" lines, per cursed target
 
 // PD2's 0x1037c4c0 as its curse code calls it: value * (100 - resistance) / 100, truncated
 auto Resisted(int32_t value, int32_t resistance) noexcept -> int32_t {
@@ -1061,7 +1062,9 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 		zeroed = StatOf(target, StatCurseDuration) == 0;
 		if (!zeroed) {  // stat 109 not where it was looked for: D2R's own rule applies, on the uncut duration
 			setStat(target, StatCurseDuration, base, 0);
-			plog::Info("curse gate: stat 109 %d did not clear (base %d), D2R's duration rule applies", duration, base);
+			if (pd2::HotSample(++g_gateFallbacks)) {
+				plog::Info("curse gate: stat 109 %d did not clear (base %d), D2R's duration rule applies", duration, base);
+			}
 		}
 	}
 	// The bit UnitHasState reads (SetStateGfxFlag writes another array)
@@ -1073,7 +1076,7 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 	const bool attracted = word != nullptr && hasState(target, StateAttract) != 0;
 	if (attracted) {
 		*word &= ~bit;
-		if (hasState(target, StateAttract) != 0) {
+		if (hasState(target, StateAttract) != 0 && pd2::HotSample(++g_gateFallbacks)) {
 			plog::Info("curse gate: the attract bit did not clear");
 		}
 	}
@@ -1083,7 +1086,7 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 	params->frames = asked;
 	if (zeroed) {
 		setStat(target, StatCurseDuration, base, 0);
-		if (const int32_t back = StatOf(target, StatCurseDuration); back != duration) {
+		if (const int32_t back = StatOf(target, StatCurseDuration); back != duration && pd2::HotSample(++g_gateFallbacks)) {
 			plog::Info("curse gate: stat 109 came back %d, not %d (base %d)", back, duration, base);
 		}
 	}
@@ -1362,8 +1365,10 @@ auto SetPhasing(Unit* unit, bool on) noexcept -> void {
 		return;
 	}
 	d2r::Engine<void (*)(uint8_t*, uint32_t) noexcept>(PathSetCollisionMask)(path, want);
-	plog::Info("phasing: %s, unit type %d, collision mask 0x%x -> 0x%x, %u so far", on ? "on" : "off", type, mask,
-	           want, ++g_phasing);
+	if (const uint32_t n = ++g_phasing; pd2::HotSample(n)) {
+		plog::Info("phasing: %s, unit type %d, collision mask 0x%x -> 0x%x, %u so far", on ? "on" : "off", type, mask,
+		           want, n);
+	}
 }
 
 // The game the last durability callback came from; a session change discards the queued recounts with it
@@ -2077,7 +2082,9 @@ auto MapItemMaker(void* game, Unit** item, void* request) noexcept -> uint64_t {
 	if (made != 0 && item != nullptr && IsMapUnit(*item)) {
 		const int32_t quality = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemQuality)(*item);
 		const uint32_t n = ++g_mapMade[quality >= 0 && quality < 10 ? quality : 0];
-		plog::Info("map quality: item maker made a map, quality %d (%u of that quality)", quality, n);
+		if (pd2::HotSample(n)) {
+			plog::Info("map quality: item maker made a map, quality %d (%u of that quality)", quality, n);
+		}
 	}
 	return made;
 }
