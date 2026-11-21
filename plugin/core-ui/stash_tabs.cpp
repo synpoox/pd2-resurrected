@@ -18,8 +18,9 @@
 // The stock Shared tab never pages onto the reserved pages (#1653): no SDK service reads the stash page and this
 // loader's widget service has no getText for its label, so the page is counted from the arrows (ours and the player's),
 // and a player's Right arrow that would reach a reserved page is consumed; leaving our tab pages the stash back to page 1.
-// The pad (#1661) does the same: its LB+RT page right is counted and consumed at page 15, and its LT/RT tab switch
-// past Runes or Personal opens our tabs (the controller layout's pd2rPadTabs bar shows them lit; BankTabs stays on Shared, drawn unlit).
+// The pad (#1661, #1671) does the same, caught as its actions in the stash's OnMessage (any binding, pad or pad type): its
+// page right (LB+RT) is counted and consumed at page 15, and its tab switch past Runes or Personal opens our tabs (the
+// controller layout's pd2rPadTabs bar shows them lit; BankTabs stays on Shared, drawn unlit).
 #include "stash_tabs.h"
 
 #include "log.h"
@@ -35,12 +36,12 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <xinput.h>
 
 #include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <iterator>
+#include <utility>
 
 namespace stash_tabs {
 
@@ -83,7 +84,13 @@ sigscan::Entry FindChild {"WidgetFind", "stash", sigscan::Kind::Code, 0, 0,
 // index; read from its call in the bar's set-tab-enabled (0x8790d0), as another plugin may detour its entry
 sigscan::Entry SelectTab {"TabBarSelect", "stash", sigscan::Kind::Rip, 15, 19,
                           "eb 03 45 8b ca 45 33 c0 41 8b d1 48 8b cb e8 ?? ?? ?? ?? 48 8b 5c 24 40 48 83 c4 20 5f c3"};
-sigscan::Entry* const Sigs[] = {&FetchPanel, &FindChild, &SelectTab};
+// 93847: 0x8460d0, bool (): the message being dispatched is already handled (as altar_panel.cpp)
+sigscan::Entry MessageHandled {"MessageHandled", "stash", sigscan::Kind::Code, 0, 0,
+                               "48 8b 05 ?? ?? ?? ?? 48 85 c0 74 08 0f b6 80 b8 00 00 00 c3 c3"};
+// 93847: 0x843fc0, void (): marks the message being dispatched handled (as altar_panel.cpp)
+sigscan::Entry MarkHandled {"MessageMarkHandled", "stash", sigscan::Kind::Code, 0, 0,
+                            "48 8b 05 ?? ?? ?? ?? 48 85 c0 74 07 c6 80 b8 00 00 00 01 c3"};
+sigscan::Entry* const Sigs[] = {&FetchPanel, &FindChild, &SelectTab, &MessageHandled, &MarkHandled};
 bool g_select = false;
 // UI thread: the shared page on show (0-based), counted from the arrows; a new game starts on page 0.
 // shortcut: a page change that sends no arrow (another plugin's jump) is not counted, and the general pages after the
@@ -97,29 +104,7 @@ bool g_wantShared = false;  // UI thread: our tab was clicked; the next frame se
 // UI thread: the stock tab named by the pad bar's SelectTab (0-4; the mouse's bar names none: -1), our pad tab (5 or 6)
 int32_t g_tab = 0, g_padTab = 0;
 bool g_stashOpen = false;           // UI thread
-bool g_lt = false, g_rt = false;    // UI thread: the pad's triggers at its last press or release
 constexpr const char* TabNames[] = {"Personal", "Shared", "Gems", "Materials", "Runes"};
-
-enum class Pad : uint8_t { None, PageLeft, PageRight, TabLeft, TabRight };
-
-// The pad's trigger press (D2R's stash binds: LT/RT a tab, with LB held a Shared page): neither sends a message of its
-// own (the layout's ButtonLegendWidgets only show them), only InputMessage's, so the pad is read on that.
-// shortcut: XInput pad 0, D2R's default binds and XInput's trigger threshold; a pad the game reads through another API,
-// or a rebound action, is not seen. Upgrade if the SDK gains a pad action event.
-auto PadPress() noexcept -> Pad {
-	XINPUT_STATE state {};
-	if (XInputGetState(0, &state) != ERROR_SUCCESS) {
-		g_lt = g_rt = false;
-		return Pad::None;
-	}
-	const bool lb = (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0;
-	const bool lt = state.Gamepad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
-	const bool rt = state.Gamepad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
-	const Pad press = rt && !g_rt ? (lb ? Pad::PageRight : Pad::TabRight) : lt && !g_lt ? (lb ? Pad::PageLeft : Pad::TabLeft) : Pad::None;
-	g_lt = lt;
-	g_rt = rt;
-	return press;
-}
 
 // The player's page step on the stock Shared tab (`how` names a right step); false: it would reach a reserved page
 auto PlayerPage(bool right, const char* how) noexcept -> bool {
@@ -329,6 +314,109 @@ auto PadTab(bool right) noexcept -> bool {
 	return true;
 }
 
+// The pad's actions reach the stash as InputMessage/ControllerActionBegin in its OnMessage, whatever the binding, pad
+// index or pad type (XInput, DS4, Steam Input): field 0x22 points to an action struct whose id at +0x10 is the bound
+// action. No SDK event carries it, so, as altar_panel.cpp does for B, the stash panel object alone gets a copy of its
+// vtable with OnMessage (slot 4) wrapped; no game code is patched and every other panel keeps D2R's.
+constexpr uint64_t InputMessageHash = 0x4ae067c6248b6042;           // "InputMessage", the message's first field
+constexpr uint64_t ControllerActionBeginHash = 0x1e439768f7dd4594;  // "ControllerActionBegin", field 0x11
+constexpr uint64_t ControllerActionEndHash = 0x4d833cc71f08b3c0;    // "ControllerActionEnd"
+enum PadAction : int { TabLeft = 7, TabRight = 8, CycleLeft = 0x13, CycleRight = 0x14 };
+constexpr size_t VtableMax = 256;
+void* g_vtable[VtableMax + 1] = {};  // [0] the RTTI slot before the table
+void** g_panelVtable = nullptr;      // the panel's own vtable, copied into g_vtable
+using OnMessageFn = void (*)(void*, const uint64_t*) noexcept;
+OnMessageFn g_onMessage = nullptr;
+
+// UI thread: cycleLeft (LB) is held. D2R sends the LB+LT/RT chord as plain tabLeft/tabRight (the modifier is in the pad
+// state, not the message), so the held cycleLeft is what tells a Shared page step from a tab step.
+bool g_cycleHeld = false;
+
+// One switch on the action id; true: done here, the press is consumed. A new pad action of the stash is a new case.
+auto OnPadAction(int32_t id) noexcept -> bool {
+	switch (id) {
+	case TabLeft:
+	case TabRight:
+		if (g_cycleHeld) {  // LB + LT/RT: a Shared page step
+			return g_view != View::None || (g_tab == 1 && !PlayerPage(id == TabRight, "pad page right"));
+		}
+		return PadTab(id == TabRight);
+	case CycleLeft:
+	case CycleRight:
+		if (g_view != View::None) {
+			return true;  // our tab's page stays ours (the mouse's arrows are hidden there)
+		}
+		return g_tab == 1 && !PlayerPage(id == CycleRight, "pad page right");
+	default:
+		return false;
+	}
+}
+
+void StashOnMessage(void* panel, const uint64_t* message) noexcept {
+	if (message != nullptr && message[0] == InputMessageHash && message[0x11] == ControllerActionEndHash) {
+		const auto* action = reinterpret_cast<const uint8_t*>(message[0x22]);
+		if (action != nullptr && *reinterpret_cast<const int32_t*>(action + 0x10) == CycleLeft) {
+			g_cycleHeld = false;
+		}
+	} else if (message != nullptr && message[0] == InputMessageHash && message[0x11] == ControllerActionBeginHash) {
+		const auto* action = reinterpret_cast<const uint8_t*>(message[0x22]);
+		if (action != nullptr && action[0x18] == 0 && !reinterpret_cast<bool (*)() noexcept>(MessageHandled.address)()) {
+			const int32_t id = *reinterpret_cast<const int32_t*>(action + 0x10);
+			if (id == TabLeft || id == TabRight || id == CycleLeft || id == CycleRight) {
+				plog::Info("stash tabs: pad action %d (view %u, tab %d)", id, static_cast<uint32_t>(g_view), g_tab);
+			}
+			g_cycleHeld = id == CycleLeft ? true : g_cycleHeld;
+			if (g_stashOpen && OnPadAction(id)) {
+				reinterpret_cast<void (*)() noexcept>(MarkHandled.address)();
+				return;
+			}
+		}
+	}
+	g_onMessage(panel, message);
+}
+
+auto Executable(void* p) noexcept -> bool {
+	MEMORY_BASIC_INFORMATION info {};
+	return p != nullptr && VirtualQuery(p, &info, sizeof info) == sizeof info && info.State == MEM_COMMIT &&
+	       (info.Protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)) != 0;
+}
+
+// UI thread: gives the stash panel object the vtable copy (once per panel object)
+void WrapOnMessage() noexcept {
+	void* panel = reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(Panel);
+	if (panel == nullptr) {
+		return;
+	}
+	void**& vtable = *static_cast<void***>(panel);
+	if (vtable == g_vtable + 1) {
+		return;
+	}
+	if (g_panelVtable != nullptr && g_panelVtable != vtable) {
+		static bool logged = false;
+		if (!std::exchange(logged, true)) {
+			plog::Info("stash tabs: panel vtable changed, pad tabs not handled");
+		}
+		return;
+	}
+	size_t n = 0;
+	while (n < VtableMax && Executable(vtable[n])) {
+		++n;
+	}
+	if (n <= 4) {
+		plog::Info("stash tabs: panel vtable has %zu methods, pad tabs not handled", n);
+		return;
+	}
+	if (g_panelVtable == nullptr) {
+		plog::Info("stash tabs: panel vtable[4] %p wrapped (%zu methods)", vtable[4], n);
+	}
+	g_panelVtable = vtable;
+	g_vtable[0] = vtable[-1];
+	std::memcpy(g_vtable + 1, vtable, n * sizeof(void*));
+	g_onMessage = reinterpret_cast<OnMessageFn>(vtable[4]);
+	g_vtable[1 + 4] = reinterpret_cast<void*>(&StashOnMessage);
+	vtable = g_vtable + 1;
+}
+
 auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessageEvent* event, void*) noexcept
 	-> D2RL::SharedEvents::UiMessageAction {
 	using Action = D2RL::SharedEvents::UiMessageAction;
@@ -336,20 +424,6 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 		return Action::Continue;
 	}
 	const char* text = event->text != nullptr ? event->text : "";
-	if (std::strcmp(event->target, "InputMessage") == 0) {  // a pad press or release
-		const bool begin = std::strcmp(event->command, "ControllerActionBegin") == 0;
-		const Pad press = begin || std::strcmp(event->command, "ControllerActionEnd") == 0 ? PadPress() : Pad::None;
-		if (!begin || !g_stashOpen || press == Pad::None) {
-			return Action::Continue;
-		}
-		if (press == Pad::TabLeft || press == Pad::TabRight) {
-			return PadTab(press == Pad::TabRight) ? Action::Consume : Action::Continue;
-		}
-		if (g_view != View::None) {
-			return Action::Consume;  // our tab's page stays ours (the mouse's arrows are hidden there)
-		}
-		return g_tab != 1 || PlayerPage(press == Pad::PageRight, "pad page right") ? Action::Continue : Action::Consume;
-	}
 	if (std::strcmp(event->target, "BankPanelMessage") == 0) {
 		const bool right = std::strcmp(event->command, "SharedStashRight") == 0;
 		if (!g_dispatching && g_view == View::None && (right || std::strcmp(event->command, "SharedStashLeft") == 0)) {
@@ -373,9 +447,10 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 		return Action::Continue;
 	}
 	// Every close sends ClosePanel:BankExpansionLayout (seen for Esc, its X, I, pad B and pad Start). getWidgetState
-	// would read the panel's visibility, but D2RLoader 1.3.1's widget service has no such field: calling it crashes.
+	// would read the panel's visibility, but D2RLoader 1.3.1's widget service ends before that field.
 	if (std::strcmp(text, Panel) == 0) {
 		g_stashOpen = std::strcmp(event->command, "OpenPanel") == 0 || (g_stashOpen && std::strcmp(event->command, "ClosePanel") != 0);
+		g_cycleHeld = g_stashOpen && g_cycleHeld;  // a close with LB down sends no release
 		return Action::Continue;
 	}
 	if (std::strcmp(event->command, "OpenPanel") != 0 || std::strncmp(text, Prefix, sizeof Prefix - 1) != 0) {
@@ -407,12 +482,16 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 		g_head = g_tail = g_page = 0;
 		g_tab = g_padTab = 0;  // a new game opens the stash on Personal
 		g_stashOpen = false;
+		g_cycleHeld = false;
 		stash_affinity::ShowBase(0);
 		stash_affinity::SetTabOpen(false);
 	}
 	if (g_panel == D2RL::Widgets::InvalidHandle && g_widgets->findPanel(g_context, Panel, &g_panel) != Result::Success) {
 		g_panel = D2RL::Widgets::InvalidHandle;
 		return;
+	}
+	if (g_select && g_stashOpen) {
+		WrapOnMessage();
 	}
 	if (g_wantShared) {
 		g_wantShared = false;
