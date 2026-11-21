@@ -34,6 +34,10 @@ class StashAffinity(unittest.TestCase):
         for code in codes:
             self.assertIn(code, self.misc)
 
+    def test_map_currency_stacks_to_fifty(self):
+        for code in self.lists["MapMaterials"]:  # stash_affinity.cpp MaxStack merges up to this
+            self.assertEqual(self.misc[code]["maxstack"], "50", code)
+
     def test_bossing_leaves_the_rotw_materials_tab_alone(self):
         for code in self.lists["MapMaterials"] + self.lists["Bossing"]:
             self.assertIn(self.misc[code]["AdvancedStashStackable"], ("", "0"), code)

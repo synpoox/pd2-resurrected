@@ -9,6 +9,7 @@
 //   palette   legacy graphics: a level entered without a load screen draws in its own palette (#296)
 //   lock      PD2's Lock Inventory: the inventory padlock locks the player's and the mercenary's body slots (#1578)
 //   affinity  stash affinity: quick-moved maps, bossing and map materials go to their reserved shared stash pages (#1553)
+//   tabs      stash tabs: a second tab row with the Maps tab (tiers, bases, the cube) and the Bossing tab (#1553)
 #include <D2RLPlugin/api.h>
 
 #include "crash_guard.h"
@@ -22,6 +23,7 @@
 #include "parts.h"
 #include "stack_split.h"
 #include "stash_affinity.h"
+#include "stash_tabs.h"
 
 #include <cstdio>
 #include <iterator>
@@ -50,6 +52,7 @@ parts::Part g_parts[] = {
 	{"palette", true, level_palette::Install},
 	{"lock", false, inventory_lock::Install},
 	{"affinity", false, stash_affinity::Install},
+	{"tabs", false, stash_tabs::Install},
 };
 
 constexpr D2RL::PluginInfo Info {
@@ -94,6 +97,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	stash_affinity::Counters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	stash_tabs::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
