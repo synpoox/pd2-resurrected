@@ -1,10 +1,12 @@
 // LB + RB + A on a stack in a stash or stack tab sends the whole stack to the Cube (#1472). The pad's A activates the focused
 // item (ItemInteractionService, UI thread, before D2R acts); the move is a game-thread transaction on the server unit, found by code and id as in stack_split.
-// shortcut: the SDK emits no shop, merc or "Move 5" event, so those three PD2 binds are not here (docs/controller.md).
+// shortcut: the SDK emits no shop or "Move 5" event, so those PD2 binds are not here (docs/controller.md).
 #include "pad_binds.h"
 
 #include "controller_split.h"
+#include "d2r.h"
 #include "log.h"
+#include "sig.h"
 
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item_interactions.h>
@@ -12,6 +14,8 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cstring>
+#include <iterator>
 
 namespace pad_binds {
 
@@ -87,6 +91,50 @@ auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions
 	return Decision::Consume;
 }
 
+// LB + D-pad on a belt potion gives it to the mercenary (#1513): D2R's own belt use with its "to merc" flag (shift-click),
+// called by signature because the SDK has no use-item or give-to-merc service (checked in #1513's RE comment).
+// 93847: 0x229440, void (belt widget, slot, toMerc): BeltUseSlot; sends client message 0x26 aimed at the merc
+sigscan::Entry BeltUse {"BeltUseSlot", "belt", sigscan::Kind::Code, 0, 0,
+                        "40 53 56 41 56 41 57 48 81 ec b8 00 00 00 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 84 24 90 00 00 00 45 0f b6 f8 8b da"};
+// 93847: 0x13abc0, int32 (player, petType, includeDead): the pet's unit id or -1 (merc = type 7)
+sigscan::Entry PetId {"PetId", "belt", sigscan::Kind::Code, 0, 0, "48 89 5c 24 08 48 89 74 24 10 57 48 83 ec 20 41 8b f8 8b f2 48 85"};
+sigscan::Entry* const BeltSigs[] = {&BeltUse, &PetId};
+
+constexpr size_t WidgetSize = 0x5d0;
+constexpr size_t WidgetOwnerId = 0x5c4, WidgetOwnerType = 0x5c8;  // what BeltUseSlot reads of its widget (0x2a7810)
+
+auto __cdecl OnBeltActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions::ItemInteractionEvent* event, void*) noexcept
+	-> D2RL::ItemInteractions::Decision {
+	using D2RL::ItemInteractions::Decision;
+	if (event->inputSource == D2RL::ItemInteractions::InputSource::Controller) {
+		plog::Info("padbinds: belt event slot %d,%d action %u modifiers %u pad modifier %d", event->cellX, event->cellY, static_cast<uint32_t>(event->action), event->modifiers,
+		           controller_split::ModifierHeld() ? 1 : 0);
+	}
+	if (event->inputSource != D2RL::ItemInteractions::InputSource::Controller || !controller_split::ModifierHeld() ||
+	    controller_split::ModifierAndRbHeld() || event->container != items::ItemContainer::Belt) {
+		return Decision::Continue;
+	}
+	items::ItemInfo info {.structSize = items::ItemInfoSize};
+	if (g_items->getItemInfo(g_context, event->item, &info) != items::Result::Success) {  // an empty slot has no item
+		return Decision::Continue;
+	}
+	void* player = d2r::Engine<void* (*)(uint32_t) noexcept>(d2r::sig::ClientPlayer)(d2r::Engine<uint32_t (*)() noexcept>(d2r::sig::LocalPlayerSlot)());
+	if (player == nullptr) {
+		return Decision::Continue;
+	}
+	if (d2r::Engine<int32_t (*)(void*, int32_t, int32_t) noexcept>(PetId)(player, 7, 0) == -1) {  // no live merc: D2R would send target -1
+		plog::Info("padbinds: belt to merc skipped: no mercenary");
+		return Decision::Continue;
+	}
+	// BeltUseSlot only reads the owner id and type from its widget on a filled slot (0x2a7810), so a zeroed block holding the player is enough
+	alignas(16) uint8_t widget[WidgetSize] {};
+	const uint32_t ownerId = *reinterpret_cast<const uint32_t*>(static_cast<const uint8_t*>(player) + 0x08);  // UnitIdField
+	std::memcpy(widget + WidgetOwnerId, &ownerId, sizeof(ownerId));
+	d2r::Engine<void (*)(void*, uint32_t, uint8_t) noexcept>(BeltUse)(widget, static_cast<uint32_t>(event->cellY * 4 + event->cellX), 1);
+	plog::Info("padbinds: belt slot %d,%d (%s) given to the mercenary", event->cellX, event->cellY, info.code != 0 ? "potion" : "item");
+	return Decision::Consume;
+}
+
 }  // namespace
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
@@ -117,7 +165,17 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (no item interaction listener)");
 		return;
 	}
-	std::snprintf(report, size, "LB + RB + A sends the whole stack under the pad focus to the Cube");
+	sigscan::Resolve(BeltSigs, std::size(BeltSigs), context->exeBase, nullptr, 0);
+	const bool belt = BeltUse.state == sigscan::State::Ok && PetId.state == sigscan::State::Ok &&
+	                  d2r::sig::ClientPlayer.state == sigscan::State::Ok && d2r::sig::LocalPlayerSlot.state == sigscan::State::Ok;
+	const D2RL::ItemInteractions::ItemInteractionListener beltListener {
+		.structSize = D2RL::ItemInteractions::ItemInteractionListenerSize,
+		.priority = 100,
+		.callback = OnBeltActivate,
+		.containerMask = items::ContainerBit(items::ItemContainer::Belt)};
+	const bool beltOn = belt && interactions->registerListener(context, &beltListener, &handle) == D2RL::ItemInteractions::Result::Success;
+	std::snprintf(report, size, "LB + RB + A sends the whole stack under the pad focus to the Cube; LB + D-pad gives a belt potion to the mercenary (%s)",
+	              beltOn ? "on" : "off: a signature did not resolve");
 }
 
 }  // namespace pad_binds
