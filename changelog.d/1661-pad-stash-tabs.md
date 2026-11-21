@@ -1,0 +1,1 @@
+- Pad players get the Maps and Bossing stash tabs, and pad paging on Shared stops at page 15. (#1661)

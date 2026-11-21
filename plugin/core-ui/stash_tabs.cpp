@@ -18,6 +18,8 @@
 // The stock Shared tab never pages onto the reserved pages (#1653): no SDK service reads the stash page and this
 // loader's widget service has no getText for its label, so the page is counted from the arrows (ours and the player's),
 // and a player's Right arrow that would reach a reserved page is consumed; leaving our tab pages the stash back to page 1.
+// The pad (#1661) does the same: its LB+RT page right is counted and consumed at page 15, and its LT/RT tab switch
+// past Runes or Personal opens our tabs (the controller layout's pd2rPadTabs bar shows them lit; BankTabs stays on Shared, drawn unlit).
 #include "stash_tabs.h"
 
 #include "log.h"
@@ -30,6 +32,10 @@
 #include <D2RLPlugin/overlay.h>
 #include <D2RLPlugin/shared_events.h>
 #include <D2RLPlugin/widgets.h>
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <xinput.h>
 
 #include <atomic>
 #include <cstdio>
@@ -84,23 +90,76 @@ bool g_select = false;
 // reserved ones (add_shared_tabs above 15) are out of the Shared tab's reach; read the page if the SDK gains a read.
 uint32_t g_page = 0;
 bool g_wantShared = false;  // UI thread: our tab was clicked; the next frame selects the stock Shared tab
+// Pad layout (#1661): the stock BankTabs has our Maps and Bossing tabs after its five, but the stash reads its tab from
+// that bar's index wherever it refreshes and asserts, then crashes, past its five; so the bar never stays on ours. LT/RT
+// onto ours is caught (below) and opens it as a mouse click does, with the bar on Shared, and pd2rPadTabs (our two tabs,
+// a bar the stash does not read) is shown over it on our tab.
+// UI thread: the stock tab named by the pad bar's SelectTab (0-4; the mouse's bar names none: -1), our pad tab (5 or 6)
+int32_t g_tab = 0, g_padTab = 0;
+bool g_stashOpen = false;           // UI thread
+bool g_lt = false, g_rt = false;    // UI thread: the pad's triggers at its last press or release
+constexpr const char* TabNames[] = {"Personal", "Shared", "Gems", "Materials", "Runes"};
 
-// The stock BankTabs to Shared (index 1), as a click on it: the stash gets its SelectTab and shows the Shared tab
-void SelectShared() noexcept {
+enum class Pad : uint8_t { None, PageLeft, PageRight, TabLeft, TabRight };
+
+// The pad's trigger press (D2R's stash binds: LT/RT a tab, with LB held a Shared page): neither sends a message of its
+// own (the layout's ButtonLegendWidgets only show them), only InputMessage's, so the pad is read on that.
+// shortcut: XInput pad 0, D2R's default binds and XInput's trigger threshold; a pad the game reads through another API,
+// or a rebound action, is not seen. Upgrade if the SDK gains a pad action event.
+auto PadPress() noexcept -> Pad {
+	XINPUT_STATE state {};
+	if (XInputGetState(0, &state) != ERROR_SUCCESS) {
+		g_lt = g_rt = false;
+		return Pad::None;
+	}
+	const bool lb = (state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0;
+	const bool lt = state.Gamepad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
+	const bool rt = state.Gamepad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
+	const Pad press = rt && !g_rt ? (lb ? Pad::PageRight : Pad::TabRight) : lt && !g_lt ? (lb ? Pad::PageLeft : Pad::TabLeft) : Pad::None;
+	g_lt = lt;
+	g_rt = rt;
+	return press;
+}
+
+// The player's page step on the stock Shared tab (`how` names a right step); false: it would reach a reserved page
+auto PlayerPage(bool right, const char* how) noexcept -> bool {
+	if (!right) {
+		g_page -= g_page > 0 ? 1 : 0;
+		return true;
+	}
+	if (g_page + 1 >= aff::FirstReservedPage) {  // the reserved pages are the Maps and Bossing tabs'
+		plog::Info("stash tabs: Shared %s at page %u stops (pages %u-%u are reserved)", how, g_page + 1, aff::FirstReservedPage + 1,
+		           aff::LastReservedPage + 1);
+		return false;
+	}
+	++g_page;
+	return true;
+}
+
+// The stock BankTabs to `tab`, as a click on it: the stash gets its SelectTab and shows that tab
+void SelectStock(int32_t tab) noexcept {
 	void* panel = reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(Panel);
-	void* bar = panel != nullptr ? reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address)(panel, "BankTabs") : nullptr;
+	const auto find = reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address);
+	void* bar = panel != nullptr ? find(panel, "BankTabs") : nullptr;
 	if (bar == nullptr) {
-		plog::Info("stash tabs: no BankTabs to select Shared on (panel %p)", panel);
+		plog::Info("stash tabs: no BankTabs to select tab %d on (panel %p)", tab, panel);
 		return;
 	}
-	g_opened = g_frames;
 	const auto select = reinterpret_cast<void (*)(void*, int32_t, bool) noexcept>(SelectTab.address);
-	select(bar, 1, false);
+	select(bar, tab, false);
 	for (const char* ours : {"pd2rMapsTabs", "pd2rBossingTabs"}) {  // back to the hidden tab: a bar ignores a click on its active tab
-		if (void* own = reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address)(panel, ours); own != nullptr) {
+		if (void* own = find(panel, ours); own != nullptr) {
 			select(own, 0, false);
 		}
 	}
+	if (void* own = g_padTab != 0 ? find(panel, "pd2rPadTabs") : nullptr; own != nullptr) {  // the pad's copy on our tab
+		select(own, g_padTab - 5, false);
+	}
+}
+
+void SelectShared() noexcept {
+	g_opened = g_frames;
+	SelectStock(1);
 }
 
 // The stash, already on its Shared tab, to shared page `page` (0-based)
@@ -200,7 +259,7 @@ void ShowButton(Named& w, bool visible) noexcept {
 
 Named g_background {"pd2rMapsBackground"}, g_bossingBackground {"pd2rBossingBackground"}, g_navigation {"StashNavigation"}, g_cube {"advancedstash_horadriccube"},
 	g_cubeWithdraw {"withdraw_button"}, g_sharedOff {"pd2rSharedOff"}, g_mapsOn {"pd2rMapsTabsOn"}, g_mapsOnText {"pd2rMapsTabsOnText"},
-	g_bossingOn {"pd2rBossingTabsOn"}, g_bossingOnText {"pd2rBossingTabsOnText"};
+	g_bossingOn {"pd2rBossingTabsOn"}, g_bossingOnText {"pd2rBossingTabsOnText"}, g_padTabs {"pd2rPadTabs"};
 Named g_tiers[3][2] = {{{"pd2rTier1"}, {"pd2rTier1On"}}, {{"pd2rTier2"}, {"pd2rTier2On"}}, {{"pd2rTier3"}, {"pd2rTier3On"}}};
 struct BaseWidgets {
 	char names[3][24];
@@ -226,6 +285,7 @@ void InitNames() noexcept {
 // handling of the message then hides the ones its tab does not use
 void Leave() noexcept {
 	g_view = View::None;
+	g_padTab = 0;
 	OpenPage(0);  // the stash is still on Shared under ours: page 1 now, so a stock Shared tab never opens on a reserved page
 	while (g_head < g_tail) {
 		Send();
@@ -235,6 +295,40 @@ void Leave() noexcept {
 	Show(g_cube, false);
 }
 
+// The pad on our tab (5 Maps, 6 Bossing) as a mouse click on it opens it, the stock bar going to Shared next frame
+void OpenPad(View view) noexcept {
+	g_padTab = view == View::Maps ? 5 : 6;
+	if (view != g_view) {
+		Open(view);
+	}
+	g_opened = g_frames;
+	g_wantShared = g_select;
+}
+
+// The pad's LT/RT along Personal..Runes, Maps, Bossing (round from either end); true: done here, the press is consumed
+auto PadTab(bool right) noexcept -> bool {
+	if (!g_select) {
+		return false;  // no Shared select: our tabs are the mouse's only
+	}
+	if (g_view == View::None) {
+		if (g_tab != (right ? 4 : 0)) {
+			return false;  // the stock bar's own step
+		}
+		OpenPad(right ? View::Maps : View::Bossing);
+	} else if (g_view == View::Maps && !right) {
+		Leave();
+		Log("Runes");
+		SelectStock(4);
+	} else if (g_view == View::Bossing && right) {
+		Leave();
+		Log("Personal");
+		SelectStock(0);
+	} else {
+		OpenPad(right ? View::Bossing : View::Maps);
+	}
+	return true;
+}
+
 auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessageEvent* event, void*) noexcept
 	-> D2RL::SharedEvents::UiMessageAction {
 	using Action = D2RL::SharedEvents::UiMessageAction;
@@ -242,22 +336,32 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 		return Action::Continue;
 	}
 	const char* text = event->text != nullptr ? event->text : "";
-	if (std::strcmp(event->target, "BankPanelMessage") == 0) {
-		if (!g_dispatching && g_view == View::None && std::strcmp(event->command, "SharedStashRight") == 0) {
-			if (g_page + 1 >= aff::FirstReservedPage) {  // the reserved pages are the Maps and Bossing tabs'
-				plog::Info("stash tabs: Shared right arrow at page %u stops (pages %u-%u are reserved)", g_page + 1,
-				           aff::FirstReservedPage + 1, aff::LastReservedPage + 1);
-				return Action::Consume;
-			}
-			++g_page;
+	if (std::strcmp(event->target, "InputMessage") == 0) {  // a pad press or release
+		const bool begin = std::strcmp(event->command, "ControllerActionBegin") == 0;
+		const Pad press = begin || std::strcmp(event->command, "ControllerActionEnd") == 0 ? PadPress() : Pad::None;
+		if (!begin || !g_stashOpen || press == Pad::None) {
 			return Action::Continue;
 		}
-		if (!g_dispatching && g_view == View::None && std::strcmp(event->command, "SharedStashLeft") == 0) {
-			g_page -= g_page > 0 ? 1 : 0;
-			return Action::Continue;
+		if (press == Pad::TabLeft || press == Pad::TabRight) {
+			return PadTab(press == Pad::TabRight) ? Action::Consume : Action::Continue;
+		}
+		if (g_view != View::None) {
+			return Action::Consume;  // our tab's page stays ours (the mouse's arrows are hidden there)
+		}
+		return g_tab != 1 || PlayerPage(press == Pad::PageRight, "pad page right") ? Action::Continue : Action::Consume;
+	}
+	if (std::strcmp(event->target, "BankPanelMessage") == 0) {
+		const bool right = std::strcmp(event->command, "SharedStashRight") == 0;
+		if (!g_dispatching && g_view == View::None && (right || std::strcmp(event->command, "SharedStashLeft") == 0)) {
+			g_tab = 1;  // the arrows are the Shared tab's
+			return PlayerPage(right, "right arrow") ? Action::Continue : Action::Consume;
 		}
 		if (g_dispatching || std::strcmp(event->command, "SelectTab") != 0) {
 			return Action::Continue;
+		}
+		g_tab = -1;  // the pad's bar names the tab; the mouse's names none
+		for (int32_t i = 0; i < 5; ++i) {
+			g_tab = std::strcmp(text, TabNames[i]) == 0 ? i : g_tab;
 		}
 		if (g_view != View::None && g_frames - g_opened > OursFrames) {  // not our tab's own SelectTab, nor our select's
 			Leave();
@@ -265,8 +369,16 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 		}
 		return Action::Continue;  // the stash selects the tab (ours: Shared)
 	}
-	if (std::strcmp(event->target, "PanelManager") != 0 || std::strcmp(event->command, "OpenPanel") != 0 ||
-	    std::strncmp(text, Prefix, sizeof Prefix - 1) != 0) {
+	if (std::strcmp(event->target, "PanelManager") != 0) {
+		return Action::Continue;
+	}
+	// Every close sends ClosePanel:BankExpansionLayout (seen for Esc, its X, I, pad B and pad Start). getWidgetState
+	// would read the panel's visibility, but D2RLoader 1.3.1's widget service has no such field: calling it crashes.
+	if (std::strcmp(text, Panel) == 0) {
+		g_stashOpen = std::strcmp(event->command, "OpenPanel") == 0 || (g_stashOpen && std::strcmp(event->command, "ClosePanel") != 0);
+		return Action::Continue;
+	}
+	if (std::strcmp(event->command, "OpenPanel") != 0 || std::strncmp(text, Prefix, sizeof Prefix - 1) != 0) {
 		return Action::Continue;
 	}
 	const char* what = text + sizeof Prefix - 1;
@@ -274,8 +386,12 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 		Open(what[3] == 'M' ? View::Maps : View::Bossing);
 		g_opened = g_frames;
 		g_wantShared = g_select;
+	} else if (std::strcmp(what, "PadMaps") == 0 || std::strcmp(what, "PadBossing") == 0) {
+		// the pad's bar on our tab, a press PadTab did not catch: the next frame puts it back on Shared
+		OpenPad(what[3] == 'M' ? View::Maps : View::Bossing);
 	} else if (std::strcmp(what, "Shared") == 0) {  // the stock Shared tab, already selected under ours: its first page
 		Leave();
+		g_tab = 1;
 		Log("Shared");
 	} else if (std::strcmp(what, "Hidden") != 0) {  // Hidden: our bars' off-screen tab 0 (an empty message asserts, #1649)
 		Click(what);
@@ -289,6 +405,8 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 	if (g_reset.exchange(false)) {
 		g_view = View::None;
 		g_head = g_tail = g_page = 0;
+		g_tab = g_padTab = 0;  // a new game opens the stash on Personal
+		g_stashOpen = false;
 		stash_affinity::ShowBase(0);
 		stash_affinity::SetTabOpen(false);
 	}
@@ -311,10 +429,9 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 	Show(g_background, maps);
 	Show(g_bossingBackground, g_view == View::Bossing);
 	ShowButton(g_sharedOff, ours);  // the stock Shared tab, lit under ours, drawn unlit: one tab looks selected
+	ShowButton(g_padTabs, ours);   // the pad layout's Maps and Bossing tabs, ours lit
 	if (ours) {
 		Show(g_navigation, false);  // the page stays ours
-	}
-	if (ours) {
 		Show(g_cube, true);
 		Show(g_cubeWithdraw, false);  // the RotW tabs' Withdraw, not ours
 	}
