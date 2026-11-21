@@ -65,7 +65,7 @@ One line per PD2 pad bind, with its status.
 - Per-skill auto-aim: covered by QoL (R3 in the skill tree).
 - Inventory LT/RT as Shift/Ctrl: replaced by QoL's LB modifier.
 - Identify, transfer, drop, Cube transfer and sell: covered by QoL LB chords and D2R prompts.
-- Multi-buy: gap (#1514). Chosen chord LB + Y on a shop item, not built: the SDK emits no shop event and has no buy call. QoL's LB+R3 fills potions and tomes only.
+- Multi-buy: covered by D2R (#1514). The pad's native hold-X bulk buy fills quivers (`multibuy=1`), so no LB + Y bind is needed. QoL's LB+R3 fills potions and tomes only.
 - Stack-tab "transfer 5": gap (#1515). Chosen chord RB + A (no LB, so it never meets LB + D-pad), not built: D2R's "Move 5" is a mouse right-click inside its own widget, with no SDK event.
 - Whole stack-tab stack to the Cube: built as LB + RB + A (#1472), see the table.
 - Gamble Refresh and Repair All: unverified.
