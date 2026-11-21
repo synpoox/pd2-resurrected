@@ -1,6 +1,7 @@
 // Lock Inventory (#1578). The padlock is two ButtonWidgets at one spot in the HD and legacy inventory layouts, InventoryLock
 // (unlocked art) and InventoryLockOn (locked); a frame watch shows only the one matching the lock, because this loader's
-// widget service cannot set a toggle button's state. Their click message (PanelManager:OpenPanel:core-ui/InventoryLock,
+// widget service cannot set a toggle button's state (the controller layout keeps one button, for the pad focus, under a
+// locked-art image the watch shows, #1675). Their click message (PanelManager:OpenPanel:core-ui/InventoryLock,
 // caught and consumed like the altar's confirm) flips the lock. The lock stays across games and is saved per character
 // (config/inventory-lock-<name>.locked exists while locked; inventory-lock.locked holds the last lock, which the
 // padlock shows on entry until the character is read), as PD2 keeps it in its settings and sends it
@@ -71,7 +72,7 @@ static_assert(!ChangesEquipment(UseItem, sizeof UseItem) && !ChangesEquipment(In
 static_assert(!ChangesEquipment(nullptr, 9) && !ChangesEquipment(Equip, 0));
 
 constexpr char Command[] = "core-ui/InventoryLock";
-constexpr char Unlocked[] = "InventoryLock", Locked[] = "InventoryLockOn";
+constexpr char Unlocked[] = "InventoryLock", Locked[] = "InventoryLockOn", LockedArt[] = "InventoryLockOnArt";
 constexpr const char* Panels[] = {"PlayerInventoryExpansionLayout", "PlayerInventoryOriginalLayout"};
 constexpr uint32_t WatchFrames = 10;
 
@@ -219,9 +220,14 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 	const bool locked = g_locked.load();
 	for (const char* name : Panels) {
 		D2RL::Widgets::WidgetHandle panel {}, off {}, on {};
-		if (g_widgets->findPanel(g_context, name, &panel) == D2RL::Widgets::Result::Success &&
-		    g_widgets->findWidget(g_context, panel, Unlocked, &off) == D2RL::Widgets::Result::Success &&
-		    g_widgets->findWidget(g_context, panel, Locked, &on) == D2RL::Widgets::Result::Success) {
+		if (g_widgets->findPanel(g_context, name, &panel) != D2RL::Widgets::Result::Success) {
+			continue;
+		}
+		// controller layout (#1675): one button keeps the pad focus; only the locked art over it is shown or hidden
+		if (g_widgets->findWidget(g_context, panel, LockedArt, &on) == D2RL::Widgets::Result::Success) {
+			g_widgets->setWidgetVisible(g_context, on, locked);
+		} else if (g_widgets->findWidget(g_context, panel, Unlocked, &off) == D2RL::Widgets::Result::Success &&
+		           g_widgets->findWidget(g_context, panel, Locked, &on) == D2RL::Widgets::Result::Success) {
 			g_widgets->setWidgetVisible(g_context, off, !locked);
 			g_widgets->setWidgetVisible(g_context, on, locked);
 			// a hidden button still takes the hover and hides the other's tooltip: disable it too

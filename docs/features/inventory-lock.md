@@ -29,9 +29,11 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 - **PD2.** `ProjectDiablo.dll` keeps `equipment_lock` in its settings and sends it to the server (packet 0x5c); its wrappers of
   the 1.13c body-slot handlers refuse while it is on, and also refuse picking up magic or better charms from the inventory.
 
-- **Controller.** `controller/playerinventoryoriginallayouthd.json` (the expansion layout is based on it) holds the same two buttons
-  at the grid's bottom right, under its last column (x 1100, y 1690, 96 px, the grid's right edge 1196). D-pad right from the gold button
-  focuses it, A toggles it (same click message). The mercenary tab shows the inventory panel too, so the padlock is on both tabs
+- **Controller.** `controller/playerinventoryoriginallayouthd.json` (the expansion layout is based on it) holds one button,
+  `InventoryLock`, at the grid's bottom right, under its last column (x 1100, y 1690, 96 px, the grid's right edge 1196), and an
+  `ImageWidget` `InventoryLockOnArt` (locked art) over it that the frame watch shows while locked: hiding the focused button
+  dropped the pad focus (#1675). D-pad right from the gold button focuses it, A toggles it (same click message) and focus
+  stays, so A again toggles back. The help bar says Toggle: one button cannot name both actions; its focus tooltip, inherited from the mouse layout, says Lock Inventory in both states. The mercenary tab shows the inventory panel too, so the padlock is on both tabs
   ([#1660](https://github.com/synpoox/pd2-resurrected/issues/1660)).
 
 ## Differences

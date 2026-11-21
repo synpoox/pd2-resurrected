@@ -388,7 +388,7 @@ void StashOnMessage(void* panel, const uint64_t* message) noexcept {
 		const auto* action = reinterpret_cast<const uint8_t*>(message[0x22]);
 		if (action != nullptr && action[0x18] == 0 && !reinterpret_cast<bool (*)() noexcept>(MessageHandled.address)()) {
 			const int32_t id = *reinterpret_cast<const int32_t*>(action + 0x10);
-			if (id == TabLeft || id == TabRight || id == CycleLeft || id == CycleRight || g_view != View::None) {
+			if (id == TabLeft || id == TabRight || id == CycleLeft || id == CycleRight || id == Option3) {
 				plog::Info("stash tabs: pad action %d (view %u, tab %d)", id, static_cast<uint32_t>(g_view), g_tab);
 			}
 			g_cycleHeld = id == CycleLeft ? true : g_cycleHeld;

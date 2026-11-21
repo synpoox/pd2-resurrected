@@ -1,3 +1,3 @@
-#### Fixes
+#### Features
 
-- Controller: the Maps stash tab has tier and base buttons and art; LB/RB pick the base and a left stick click the tier.
+- Controller: on the Maps stash tab, LB/RB pick the base and the left stick click the tier (#1669).

@@ -55,7 +55,8 @@
                 "disabledFrame": 0,
                 "onClickMessage": "PanelManager:OpenPanel:core-ui/InventoryLock",
                 "buttonLegendAction": "select",
-                "buttonLegendString": "@InventoryLockTooltip",
+                // PD2R #1675: one button for both states keeps the pad focus, so its legend names neither
+                "buttonLegendString": "@ItemDisplayToggle",
                 "navigation": {
                     "left": { "name": "gold_button" },
                     "up": { "name": "grid" },
@@ -63,23 +64,13 @@
             },
         },
         {
-            "type": "ButtonWidget", "name": "InventoryLockOn",
+            // PD2R #1675: the locked art drawn over the button, shown while locked (not focusable)
+            "type": "ImageWidget", "name": "InventoryLockOnArt",
             "fields": {
-                // PD2R #1660: bottom right under the grid, right edges aligned
                 "rect": { "x": 1100, "y": 1690 },
                 "filename": "PANEL/pd2r/inventory_lock",
-                "normalFrame": 2,
-                "pressedFrame": 3,
-                "hoveredFrame": 2,
-                "disabledFrame": 2,
+                "frame": 2,
                 "visible": false,
-                "onClickMessage": "PanelManager:OpenPanel:core-ui/InventoryLock",
-                "buttonLegendAction": "select",
-                "buttonLegendString": "@InventoryUnlockTooltip",
-                "navigation": {
-                    "left": { "name": "gold_button" },
-                    "up": { "name": "grid" },
-                },
             },
         },
         {
