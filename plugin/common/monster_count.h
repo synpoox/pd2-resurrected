@@ -44,9 +44,16 @@ constexpr auto Remaining(Ledger l) noexcept -> int32_t {
 	return l.spawned > l.killed ? l.spawned - l.killed : 0;
 }
 
-// A level that counted no monster (a town, an empty area) shows nothing; a cleared one shows 0.
+// A level that counted no monster (an empty area) shows nothing; a cleared one shows 0. Towns are IsTown's: their
+// ledger is not empty (the Rogue Encampment read spawned 24).
 constexpr auto Shown(Ledger l) noexcept -> bool {
 	return l.spawned > 0;
+}
+
+// The five town levels, the list PD2 hard-codes (ProjectDiablo.dll, docs/research/monsters-remaining.md): D2R's levels.txt
+// has no town column and the SDK no town query. MonDen 0 would also hide the Ancients, Baal's chamber and Uber Tristram.
+constexpr auto IsTown(int32_t level) noexcept -> bool {
+	return level == 1 || level == 40 || level == 75 || level == 103 || level == 109;
 }
 
 // The owner's rule (#1656): over Cap reads "25+", up to Cap the plain number (no "+", though rooms not yet met can

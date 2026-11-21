@@ -6,8 +6,8 @@
 // (*(game + 0x1d0)[level] -> +0x2cc and +0x2d0; monstats neverCount and non-hostile units are left out by D2R itself).
 // remaining = spawned - killed. D2R makes a room's monsters when the player first comes near the room, so the count
 // covers the rooms met so far; nothing is forced to populate (PD2 forces nothing either). The owner's text rule
-// (mc::Text): over 25 reads "25+", 25 or less the plain number. A level whose ledger counted no monster (a town) shows
-// no line.
+// (mc::Text): over 25 reads "25+", 25 or less the plain number. A town (mc::IsTown, PD2's own five ids) or a level whose
+// ledger counted no monster shows no line.
 //
 // Native, once: no SDK service gives a plugin the game region array (LifecycleService has the death event but no
 // counts), so one hook on the ledger "spawned" call (build 93847 0x509520 (regions, room, unit, skip), found by
@@ -50,9 +50,6 @@ namespace {
 namespace mc = pd2::monstercount;
 
 constexpr size_t RegionSpawned = 0x2cc, RegionKilled = 0x2d0;  // MonsterRegion: counted hostile monsters spawned, killed
-// MonsterRegion +0x2b8: the level's MonDen for this difficulty (levels.txt). 0 = a level that spawns no monsters (a
-// town): no line, whatever the ledger holds.
-constexpr size_t RegionDensity = 0x2b8;
 constexpr uint64_t RefreshMs = 250;
 
 const D2RL::PluginContext* g_context = nullptr;
@@ -105,18 +102,16 @@ void __cdecl Refresh(const D2RL::PluginContext* context, void*) noexcept {
 	const auto* regions = g_regions.load(std::memory_order_relaxed);
 	mc::Ledger ledger;
 	bool read = false;
-	uint32_t density = 0;
 	__try {
 		read = regions != nullptr && mc::Read(regions, level, LevelCount(context), RegionSpawned, RegionKilled, &ledger);
-		density = read ? Field<uint32_t>(regions[level], RegionDensity) : 0;
 	} __except (EXCEPTION_EXECUTE_HANDLER) {
 	}
 	if (pd2::HotSample(g_changes) && level != g_lastLevel) {
-		plog::Info("monsters remaining: level %d region %p MonDen %u spawned %d killed %d", level, read ? regions[level] : nullptr, density,
-		           ledger.spawned, ledger.killed);
+		plog::Info("monsters remaining: level %d region %p town %d spawned %d killed %d", level, read ? regions[level] : nullptr,
+		           mc::IsTown(level) ? 1 : 0, ledger.spawned, ledger.killed);
 	}
 	g_lastLevel = level;
-	if (!read || density == 0 || !mc::Shown(ledger)) {
+	if (!read || mc::IsTown(level) || !mc::Shown(ledger)) {
 		g_text.store(0);
 		g_lastRemaining = -1;
 		return;

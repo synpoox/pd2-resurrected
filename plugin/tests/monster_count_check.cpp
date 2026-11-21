@@ -14,6 +14,7 @@ int main() {
 	check("more kills than spawns never goes negative", Remaining({3, 4}) == 0);
 	check("nothing spawned: hidden", !Shown({0, 0}));
 	check("one spawned: shown", Shown({1, 0}));
+	check("towns hidden, boss areas not", IsTown(1) && IsTown(40) && IsTown(75) && IsTown(103) && IsTown(109) && !IsTown(120) && !IsTown(132) && !IsTown(136));
 
 	uint8_t region[0x300] = {};
 	const int32_t spawned = 20, killed = 8;
