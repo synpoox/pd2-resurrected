@@ -8,6 +8,7 @@
 //   quantity  PD2's Show Item Quantity: each stack in an open grid shows its quantity on its picture (#359)
 //   palette   legacy graphics: a level entered without a load screen draws in its own palette (#296)
 //   lock      PD2's Lock Inventory: the inventory padlock locks the player's and the mercenary's body slots (#1578)
+//   affinity  stash affinity: quick-moved maps, bossing and map materials go to their reserved shared stash pages (#1553)
 #include <D2RLPlugin/api.h>
 
 #include "crash_guard.h"
@@ -20,6 +21,7 @@
 #include "off_switch.h"
 #include "parts.h"
 #include "stack_split.h"
+#include "stash_affinity.h"
 
 #include <cstdio>
 #include <iterator>
@@ -47,6 +49,7 @@ parts::Part g_parts[] = {
 	{"quantity", true, item_quantity::Install},
 	{"palette", true, level_palette::Install},
 	{"lock", false, inventory_lock::Install},
+	{"affinity", false, stash_affinity::Install},
 };
 
 constexpr D2RL::PluginInfo Info {
@@ -88,6 +91,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	inventory_lock::Counters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	stash_affinity::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;

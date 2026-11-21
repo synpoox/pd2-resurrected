@@ -124,6 +124,7 @@ modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/stack_split.cpp
 	core-ui/controller_split.cpp
 	core-ui/inventory_lock.cpp
+	core-ui/stash_affinity.cpp
 	core-ui/plugin.rc
 )
 target_link_libraries(plugin_core_ui PRIVATE core_common xinput)
