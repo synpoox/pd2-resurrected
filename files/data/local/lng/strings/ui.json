@@ -36854,5 +36854,39 @@
     "ptBR": "Next Tier",
     "ruRU": "Next Tier",
     "zhCN": "Next Tier"
+  },
+  {
+    "id": 51593,
+    "Key": "InvPadSplitPlus",
+    "enUS": "+",
+    "zhTW": "+",
+    "deDE": "+",
+    "esES": "+",
+    "frFR": "+",
+    "itIT": "+",
+    "koKR": "+",
+    "plPL": "+",
+    "esMX": "+",
+    "jaJP": "+",
+    "ptBR": "+",
+    "ruRU": "+",
+    "zhCN": "+"
+  },
+  {
+    "id": 51594,
+    "Key": "InvPadSplitStack",
+    "enUS": "Split Stack",
+    "zhTW": "Split Stack",
+    "deDE": "Split Stack",
+    "esES": "Split Stack",
+    "frFR": "Split Stack",
+    "itIT": "Split Stack",
+    "koKR": "Split Stack",
+    "plPL": "Split Stack",
+    "esMX": "Split Stack",
+    "jaJP": "Split Stack",
+    "ptBR": "Split Stack",
+    "ruRU": "Split Stack",
+    "zhCN": "Split Stack"
   }
 ]
