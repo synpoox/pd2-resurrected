@@ -3,7 +3,7 @@
     "type": "HirelingInventoryPanel", "name": "HirelingInventoryPanel",
     "fields": {
         // PD2R #1657: grown by 220 to hold the inventory's gear layout; scaled to stay on screen
-        "rect": { "x": -1584, "y": -618, "width": 1305, "height": 1641, "scale": 1.04 },
+        "rect": { "x": -1584, "y": -618, "width": 1305, "height": 1641, "scale": 1.0 },
         "defaultWidget": "slot_right_arm",
     },
     "children": [
