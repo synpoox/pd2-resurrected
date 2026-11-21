@@ -45,7 +45,7 @@ No control is a PD2 mirror yet; see [PD2 binds](#pd2-binds) for each PD2 bind's 
 | A on the altar | Opens the altar panel with the pad frame, the help bar and focus on the amulet slot; B closes it | world | D2R native | works (#1456, `docs/research/controller/altar-world-focus.md`) |
 | D-pad | Moves focus over the mercenary's gear, laid out like the inventory's (gloves, belt and right ring below the torso row; boots, amulet and left ring on the right; taller panel, `controller/hirelinginventorypanelhd.json`, #1627, #1657) | mercenary | Our own | untested |
 | D-pad right from the gold button, then A | Focuses the inventory padlock (bottom right under the grid) and toggles Lock Inventory (`controller/playerinventoryoriginallayouthd.json`, #1660) | inventory, mercenary | Our own | inventory tab verified in game (focus, A lock and unlock, help bar names the action, locked item move refused); mercenary tab untested |
-| LT / RT | Switches stash tabs; past Runes RT opens Maps, then Bossing, then wraps to Personal (LT the other way). Core-ui catches the press: the stash's own tab bar stays on Shared under our tabs, as an index past 4 (5 or more) crashes the stash (`controller/bankexpansionlayouthd.json`, #1661) | stash | Our own (stock bar extended) | works (#1661): Runes RT Maps (page 16), RT Bossing (page 20), RT Personal; LT back the same way, no assert. The Maps tab has no tier or base buttons on the pad yet (#1669) |
+| LT / RT | Switches stash tabs; past Runes RT opens Maps, then Bossing, then wraps to Personal (LT the other way). Core-ui catches the press: the stash's own tab bar stays on Shared under our tabs, as an index past 4 (5 or more) crashes the stash (`controller/bankexpansionlayouthd.json`, #1661) | stash | Our own (stock bar extended) | works (#1661): Runes RT Maps (page 16), RT Bossing (page 20), RT Personal; LT back the same way, no assert. The Maps tab shows the tier 1-3 and base buttons and the Maps and Bossing backgrounds, as the mouse layout does; the D-pad does not reach the buttons yet (#1669) |
 | LB + LT / RT | Pages the Shared tab; page right stops at page 15, as pages 16-20 are the Maps and Bossing pages. Counted with the mouse arrows, so mixed paging stops there too (#1661) | stash | D2R native, stop is our own | works (#1661): stops at `Page 15 / 20` with `Shared pad page right at page 15 stops`; pad to 12, then mouse, then pad still stop at 15 |
 | A, X, B, Y, RB, RT | Skill slots 1 to 6 | world | D2R native | from strings (`ControllerHelpSkill1..6`), not tested |
 | LT | Swaps the skill bar (Skills Bar and Skills Back Bar) | world | D2R native | from strings (`ControllerHelpSkillsBar`, `ControllerHelpSkillsBackBar`), not tested |
@@ -85,7 +85,6 @@ PD2's own combos can't be mirrored: its LT + X multi-buy clashes with Controller
 - #1466: Holy Sword parry is missing (PD2's class-5 parry roll).
 - #1468: Item Roll Ranges shows no ranges with the pad (RT is Controller QoL's page button).
 - #1469: Potion Counter shows no counts under the controller HUD.
-- #1669: the pad's Maps stash tab has no tier or base buttons and no background.
 - #1513, #1514, #1515: PD2 pad bind gaps (belt potion to mercenary, multi-buy, stack-tab transfer); #1516: owner pad check of the Cube chord.
 - #1448: aim assist. Owner test of D2R's aim behaviour; Controller QoL's snap is untested.
 
