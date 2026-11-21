@@ -126,6 +126,7 @@ modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/stack_split.cpp
 	core-ui/controller_split.cpp
 	core-ui/pad_binds.cpp
+	core-ui/hotkeys.cpp
 	core-ui/inventory_lock.cpp
 	core-ui/stash_affinity.cpp
 	core-ui/stash_tabs.cpp

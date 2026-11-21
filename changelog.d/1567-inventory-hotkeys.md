@@ -1,0 +1,1 @@
+- Inventory hotkeys as in PD2: Ctrl+right click drops, Shift+right click stashes, Ctrl+Shift+right click to the Cube, Shift+left click identifies; configurable. (#1567)

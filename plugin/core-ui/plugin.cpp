@@ -12,6 +12,7 @@
 //   affinity  stash affinity: quick-moved maps, bossing and map materials go to their reserved shared stash pages (#1553)
 //   tabs      stash tabs: a second tab row with the Maps tab (tiers, bases, the cube) and the Bossing tab (#1553)
 //   monsters  PD2 Monsters Remaining: the level hostile monsters left, in the zone info (#1534)
+//   hotkeys   PD2 inventory hotkeys: Ctrl, Shift and Ctrl+Shift right click drop, stash and Cube, Shift+left click identifies; configurable (#1567)
 #include <D2RLPlugin/api.h>
 
 #include "crash_guard.h"
@@ -22,6 +23,7 @@
 #include "level_palette.h"
 #include "log.h"
 #include "pad_binds.h"
+#include "hotkeys.h"
 #include "monsters_remaining.h"
 #include "off_switch.h"
 #include "parts.h"
@@ -53,6 +55,7 @@ parts::Part g_parts[] = {
 	{"pictures", true, item_pictures::Install},
 	{"split", false, stack_split::Install},
 	{"padbinds", false, pad_binds::Install},
+	{"hotkeys", false, hotkeys::Install},
 	{"quantity", true, item_quantity::Install},
 	{"palette", true, level_palette::Install},
 	{"lock", false, inventory_lock::Install},
