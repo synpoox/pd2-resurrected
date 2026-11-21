@@ -1,2 +1,2 @@
-# Minimum d2r-tools commit for cartographer.dll (registers the cartographer:* stat strings #1333 needs; first pinned for the 25 tilesets, #1300). Bump on purpose; install.ps1 and release.yml read it via check_cartographer.ps1.
-faef54d0eb9d4766cebf6a19daf5091637c34fd1
+# Minimum d2r-tools commit for local Cartographer installs, and exact source for release builds. Includes the map portal fix (#1579).
+c986474653afea2ec57c0a51dd2dc4019639f02a
