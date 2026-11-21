@@ -61,3 +61,10 @@ the text. The loader adds the mod name row after the builder returns, so a row a
 core-ui hooks the builder only to learn the panel. It hooks SetText to add the row to that box's text, before the
 block's trailing newline (the gap above the terror-zone lines). D2R draws the row as part of the block: same font and
 alignment, TAB hides it with the automap, and it follows the column at 21:9.
+
+## Legacy view (#1634)
+
+The legacy view (key g) draws the same zone info panel and text box, so the SetText hook adds the row there with
+no extra code (same loader lines, `found TextBoxSetText`, in both views). Checked in game: `25+` on entry to the
+Burial Grounds, `2` at 29 of 30 rooms, no row in the Rogue Encampment, TAB hides and shows it with the block, and
+`g` back to HD keeps it.
