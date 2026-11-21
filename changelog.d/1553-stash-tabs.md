@@ -1,1 +1,1 @@
-- The stash's tab row pages to Maps and Bossing tabs; Maps sorts maps by tier and base around the cube. (#1553)
+- The stash gets Maps and Bossing tabs: maps sort by tier and base, boss items by boss, round the cube. (#1553)

@@ -51,7 +51,7 @@ constexpr D2RL::Inventory::ItemFilter InventoryOnly {.structSize = D2RL::Invento
 constexpr D2RL::Inventory::ItemFilter StashOnly {.structSize = D2RL::Inventory::ItemFilterSize, .containerMask = Stashes};
 constexpr uint32_t ReservedPages = aff::LastReservedPage + 1 - aff::FirstReservedPage;
 constexpr int32_t MaxStack = 50;  // misc.txt maxstack of every MapMaterials code (tools/tests/test_stash_affinity.py)
-constexpr uint32_t CountEvery = 25;  // updates between map counts while the Maps tab is open
+constexpr uint32_t TidyEvery = 25;  // updates between tidies while a reserved tab is open
 
 // The routed items in the inventory at the last update (game thread only). An inventory holds at most 10 x 8 items.
 struct Noted {
@@ -75,7 +75,7 @@ struct Pass {
 	uint32_t reservedCount = 0;
 	items::ItemInfo reserved[MaxReserved];
 	uint32_t used[ReservedPages][aff::PageWidth] {};  // reserved page -> row -> a bit per used column
-	int32_t at[aff::PageWidth][aff::PageWidth] {};    // Maps page row, column -> index in reserved; -1 empty, -2 used
+	int32_t at[2][aff::PageWidth][aff::PageWidth] {};  // Maps, Bossing page: row, column -> index in reserved; -1 empty, -2 used
 };
 Pass g_pass;
 
@@ -84,7 +84,6 @@ uintptr_t g_seen = 0;  // the watch generation g_noted belongs to (game thread o
 uint32_t g_shown = 0;  // the base whose maps are on the Maps page (game thread only)
 std::atomic<uint32_t> g_want {0};
 std::atomic<bool> g_open {false};
-std::atomic<uint32_t> g_count[3][aff::PageWidth] {};
 std::atomic<bool> g_hinted {false}, g_stopped {false};
 std::atomic<uint32_t> g_routed {0}, g_merged {0}, g_swapped {0}, g_returned {0}, g_failed {0}, g_updates {0};
 
@@ -95,6 +94,11 @@ auto InCell(int32_t x, int32_t y) noexcept -> bool {
 auto Reserved(const items::ItemInfo& item) noexcept -> bool {
 	return item.container == C::SharedStash && item.sharedStashPage != UINT32_MAX &&
 	       item.sharedStashPage >= aff::FirstReservedPage && item.sharedStashPage <= aff::LastReservedPage;
+}
+
+// A fixed-cell page's (Maps, Bossing) cell, in the pass's map of items
+auto At(uint32_t page, int32_t row, int32_t column) noexcept -> int32_t& {
+	return g_pass.at[page == aff::BossingPage ? 1 : 0][row][column];
 }
 
 auto Used(uint32_t page, int32_t x, int32_t y) noexcept -> bool {
@@ -118,8 +122,8 @@ auto ReadStash(const D2RL::PluginContext*, const items::ItemInfo* item, void* us
 	auto* pass = static_cast<Pass*>(user);
 	if (Reserved(*item) && InCell(item->x, item->y) && pass->reservedCount < MaxReserved) {
 		Use(item->sharedStashPage, item->x, item->y, true);
-		if (item->sharedStashPage == aff::MapsPage) {
-			pass->at[item->y][item->x] = static_cast<int32_t>(pass->reservedCount);
+		if ((item->sharedStashPage == aff::MapsPage || item->sharedStashPage == aff::BossingPage) && InCell(item->x, item->y)) {
+			At(item->sharedStashPage, item->y, item->x) = static_cast<int32_t>(pass->reservedCount);
 		}
 		pass->reserved[pass->reservedCount++] = *item;
 	}
@@ -160,6 +164,9 @@ auto MoveTo(D2RL::PlayerHandle player, items::ItemInfo& item, uint32_t page, int
 	}
 	if (Reserved(item) && InCell(item.x, item.y)) {
 		Use(item.sharedStashPage, item.x, item.y, false);
+		if (item.sharedStashPage == aff::MapsPage || item.sharedStashPage == aff::BossingPage) {
+			At(item.sharedStashPage, item.y, item.x) = -1;  // free for an item later in this pass
+		}
 	}
 	if (x >= 0) {
 		Use(page, x, y, true);
@@ -183,6 +190,16 @@ auto FreeMapCell() noexcept -> aff::Cell {
 	return {};
 }
 
+// The first free spare cell of the Bossing page; {-1, -1} when they are all used
+auto FreeSpareCell() noexcept -> aff::Cell {
+	for (int32_t i = 0; i < aff::SpareCells; ++i) {
+		if (const aff::Cell c = aff::SpareCell(i); !Used(aff::BossingPage, c.x, c.y)) {
+			return c;
+		}
+	}
+	return {};
+}
+
 // A map to its base's row on its tier's storage page, or anywhere on that page when the row is full
 auto ToStorage(D2RL::PlayerHandle player, items::ItemInfo& item) noexcept -> items::Result {
 	const aff::Home home = aff::HomeOf(item.code);
@@ -190,27 +207,36 @@ auto ToStorage(D2RL::PlayerHandle player, items::ItemInfo& item) noexcept -> ite
 	return MoveTo(player, item, home.page, column, column >= 0 ? home.row : -1);
 }
 
-// Into the same currency's stack on its cell; Conflict when the sum passes a stack
-auto Merge(D2RL::PlayerHandle player, const items::ItemInfo& item, items::ItemInfo& stack) noexcept -> items::Result {
+// Into the same currency's stack on its cell; Conflict when the sum passes a stack. editItem refuses a shared-stash
+// item on this loader (Unsupported, Slot2), so the incoming item, still in the tab D2R put it in, takes the sum, the
+// old stack goes and the incoming item moves onto the cell. Each step's failure leaves the sum on one item at most.
+auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& stack) noexcept -> items::Result {
 	const int32_t have = stack.quantity < 1 ? 1 : stack.quantity, add = item.quantity < 1 ? 1 : item.quantity;
 	if (have + add > MaxStack) {
 		return items::Result::Conflict;
 	}
 	items::ItemEdit edit {.structSize = items::ItemEditSize, .fields = items::EditFieldBit(items::EditField::Quantity),
 	                      .quantity = static_cast<uint32_t>(have + add)};
-	if (const auto edited = g_items->editItem(g_context, player, stack.handle, &edit); edited != items::Result::Success) {
+	if (const auto edited = g_items->editItem(g_context, player, item.handle, &edit); edited != items::Result::Success) {
 		return edited;
 	}
-	if (const auto destroyed = g_items->destroyItem(g_context, player, item.handle, items::SocketedItemPolicy::RejectIfNotEmpty);
+	if (const auto destroyed = g_items->destroyItem(g_context, player, stack.handle, items::SocketedItemPolicy::RejectIfNotEmpty);
 	    destroyed != items::Result::Success) {
-		edit.quantity = static_cast<uint32_t>(have);  // undo, so nothing is made from nothing
-		g_items->editItem(g_context, player, stack.handle, &edit);
+		edit.quantity = static_cast<uint32_t>(add);  // undo, so nothing is made from nothing
+		g_items->editItem(g_context, player, item.handle, &edit);
 		return destroyed;
 	}
-	stack.quantity = have + add;
+	Use(stack.sharedStashPage, stack.x, stack.y, false);
+	const uint32_t page = stack.sharedStashPage;
+	const int32_t x = stack.x, y = stack.y;
+	stack.code = 0;  // gone: no later step of this pass reads it
+	item.quantity = have + add;
+	if (const auto moved = MoveTo(player, item, page, x, y); moved != items::Result::Success) {
+		return moved;  // the sum is on the incoming item; Route sends it back to the inventory
+	}
 	++g_merged;
-	plog::Info("affinity: %08x x%d merged into the stack on page %u cell %d,%d (now %d)", item.code, add,
-	           stack.sharedStashPage, stack.x, stack.y, have + add);
+	plog::Info("affinity: %08x x%d merged with the stack on page %u cell %d,%d (now %d)", item.code, add, page, x, y,
+	           have + add);
 	return items::Result::Success;
 }
 
@@ -224,18 +250,21 @@ void Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept {
 		const bool shown = g_shown != 0 && aff::Normal(item.code) == aff::Normal(g_shown);
 		const aff::Cell cell = shown ? FreeMapCell() : aff::Cell {};
 		moved = cell.x >= 0 ? MoveTo(player, item, aff::MapsPage, cell.x, cell.y) : ToStorage(player, item);
-	} else if (home.category == aff::Category::MapMaterials) {
-		int32_t& on = g_pass.at[home.row][home.column];
+	} else {  // a fixed cell: Map Materials, Bossing
+		int32_t& on = At(home.page, home.row, home.column);
 		if (on == -1) {
 			moved = MoveTo(player, item, home.page, home.column, home.row);
 			if (moved == items::Result::Success) {
 				on = -2;  // used by an item this pass did not read
 			}
-		} else if (on >= 0 && aff::Normal(g_pass.reserved[on].code) == aff::Normal(item.code)) {
+		} else if (on >= 0 && aff::Stacks(item.code) && aff::Normal(g_pass.reserved[on].code) == aff::Normal(item.code)) {
 			moved = Merge(player, item, g_pass.reserved[on]);
 		}
-	} else {
-		moved = MoveTo(player, item, home.page, -1, -1);
+		if (moved != items::Result::Success && home.category == aff::Category::Bossing) {
+			if (const aff::Cell spare = FreeSpareCell(); spare.x >= 0) {
+				moved = MoveTo(player, item, home.page, spare.x, spare.y);
+			}
+		}
 	}
 	if (moved == items::Result::Success) {
 		++g_routed;
@@ -285,18 +314,41 @@ void Swap(D2RL::PlayerHandle player, uint32_t want) noexcept {
 	plog::Info("affinity: the Maps tab shows %08x: %u maps stored, %u shown", want, off, on);
 }
 
-void Count() noexcept {
-	uint32_t count[3][aff::PageWidth] {};
+// While a reserved tab is up: an item on the Maps or Bossing page off its place (one put straight onto the page on show,
+// or left under the buttons or the cube) goes where Route sends it; an item no rule takes goes back to the inventory
+void Tidy(D2RL::PlayerHandle player) noexcept {
 	for (uint32_t i = 0; i < g_pass.reservedCount; ++i) {
 		const items::ItemInfo& item = g_pass.reserved[i];
-		if (const aff::Base base = aff::BaseOf(item.code); base.tier >= 0 && item.sharedStashPage < aff::BossingPage) {
-			count[base.tier][base.index] += item.quantity < 1 ? 1U : static_cast<uint32_t>(item.quantity);
+		if (item.code == 0 || (item.sharedStashPage != aff::MapsPage && item.sharedStashPage != aff::BossingPage) ||
+		    !InCell(item.x, item.y)) {
+			continue;
 		}
-	}
-	for (int t = 0; t < 3; ++t) {
-		for (int i = 0; i < aff::PageWidth; ++i) {
-			g_count[t][i].store(count[t][i]);
+		const aff::Home home = aff::HomeOf(item.code);
+		if (aff::AtHome(home, item.code, g_shown, true, item.sharedStashPage, item.x, item.y)) {
+			if (home.category == aff::Category::Bossing && aff::InSpare(item.x, item.y) && At(home.page, home.row, home.column) == -1) {
+				items::ItemInfo copy = item;  // a spare one, its own cell now free: onto it
+				if (MoveTo(player, copy, home.page, home.column, home.row) == items::Result::Success) {
+					At(home.page, home.row, home.column) = -2;
+				}
+			}
+			continue;
 		}
+		bool found = false;  // Route has it already, from its own copy
+		for (uint32_t j = 0; j < g_pass.foundCount && !found; ++j) {
+			found = g_pass.found[j].runtimeId == item.runtimeId;
+		}
+		if (found) {
+			continue;
+		}
+		if (home.category != aff::Category::None) {
+			Route(player, item);
+			continue;
+		}
+		const items::ItemDestination back {.structSize = items::ItemDestinationSize, .container = C::Inventory,
+		                                   .placement = items::Placement::Automatic};
+		const items::Result moved = Move(player, item.handle, back);
+		plog::Info("affinity: %08x on page %u at %d,%d belongs to no reserved tab: back to the inventory (result %u)",
+		           item.code, item.sharedStashPage, item.x, item.y, static_cast<uint32_t>(moved));
 	}
 }
 
@@ -338,8 +390,8 @@ void Update(const D2RL::PluginContext*, void* user) noexcept {
 	}
 	g_noted = now;
 	const uint32_t want = g_want.load();
-	const bool swap = want != g_shown, count = g_open.load() && update % CountEvery == 0;
-	if (g_pass.gone.count == 0 && !swap && !count) {
+	const bool swap = want != g_shown, tidy = g_open.load() && update % TidyEvery == 0;
+	if (g_pass.gone.count == 0 && !swap && !tidy) {
 		return;
 	}
 	g_pass.foundCount = 0;
@@ -349,9 +401,11 @@ void Update(const D2RL::PluginContext*, void* user) noexcept {
 			row = 0;
 		}
 	}
-	for (auto& row : g_pass.at) {
-		for (int32_t& cell : row) {
-			cell = -1;
+	for (auto& page : g_pass.at) {
+		for (auto& row : page) {
+			for (int32_t& cell : row) {
+				cell = -1;
+			}
 		}
 	}
 	if (g_inventory->forEachInventoryItem(g_context, player, &StashOnly, ReadStash, &g_pass) != D2RL::Inventory::Result::Success) {
@@ -363,7 +417,9 @@ void Update(const D2RL::PluginContext*, void* user) noexcept {
 	for (uint32_t i = 0; i < g_pass.foundCount; ++i) {
 		Route(player, g_pass.found[i]);
 	}
-	Count();  // from the pass before its routing: a quick-moved map shows in the next count
+	if (tidy) {
+		Tidy(player);
+	}
 }
 
 void __cdecl StartWatch(const D2RL::PluginContext* context, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {
@@ -389,12 +445,8 @@ void ShowBase(uint32_t code) noexcept {
 	g_want.store(code);
 }
 
-void SetMapsOpen(bool open) noexcept {
+void SetTabOpen(bool open) noexcept {
 	g_open.store(open);
-}
-
-auto MapCount(int32_t tier, int32_t index) noexcept -> uint32_t {
-	return tier >= 0 && tier < 3 && index >= 0 && index < aff::PageWidth ? g_count[tier][index].load() : 0;
 }
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {

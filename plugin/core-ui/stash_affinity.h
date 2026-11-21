@@ -20,10 +20,7 @@ void Counters(char* out, size_t size) noexcept;
 // back to their tier's page and this one's onto the Maps page.
 void ShowBase(uint32_t code) noexcept;
 
-// Any thread: whether the Maps tab is on screen, so the game thread counts the maps per base.
-void SetMapsOpen(bool open) noexcept;
-
-// Any thread: the maps of a tier's base (tier 0-2, its place in the tier's list) on the reserved pages, as last counted.
-auto MapCount(int32_t tier, int32_t index) noexcept -> uint32_t;
+// Any thread: whether the Maps or Bossing tab is on screen, so the game thread tidies their pages.
+void SetTabOpen(bool open) noexcept;
 
 }  // namespace stash_affinity

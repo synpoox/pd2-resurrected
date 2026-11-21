@@ -1,19 +1,24 @@
-// Stash tabs (#1553): a second page of stash tabs (Maps, Bossing) behind arrows at both ends of the tab row, and the
-// Maps tab laid out like Path of Exile's map tab round the Horadric Cube (common/stash_home.h has the page plan).
-// The widgets are in bankexpansionlayouthd.json, all hidden; a frame watch shows the ones the state wants, because
-// this loader's widget service only shows, hides and enables. Their clicks (PanelManager:OpenPanel:core-ui/Stash...,
-// caught and consumed like the padlock's) change the state; a tab or tier opens its shared page with the stash's own
-// messages (BankPanelMessage:SelectTab to the Shared tab, then SharedStashLeft to page 1, which clamps there, and
-// SharedStashRight to the page), and a base button asks stash_affinity to swap that base's maps onto the Maps page.
-// The Maps tab shows the stock cube (advancedstash_horadriccube, which the stash shows itself on its RotW tabs) at its
-// RotW spot, and hides the stock page arrows while one of our tabs is up, so its page cannot change under it.
+// Stash tabs (#1553): Maps and Bossing tabs on a row above the stash's own tabs, the Maps tab laid out like Path of
+// Exile's map tab and the Bossing tab like the RotW Materials tab, both round the Horadric Cube (common/stash_home.h has
+// the page plan; the art is PANEL\pd2r\stash_maps_background and stash_bossing_background, after the RotW tabs').
 //
-// shortcut: the base buttons show their map counts only with a widget service that has setText (D2RLoader 1.4.0);
-// 1.3.1 shows the icons and the base's name on hover.
-// shortcut: the stash panel's open is not seen; the state stays from the last open in the same game.
+// Each of our tabs is a TabBarWidget of two tabs whose first is hidden (off screen), so a click on it sends its
+// tabMessages entry (PanelManager:OpenPanel:core-ui/StashTabMaps, ...), which names it, and a SelectTab the stash
+// ignores: the stash takes its tab from its own BankTabs bar. So the frame after, the stock BankTabs is set to Shared
+// through D2R's own tab-bar select (found by signature; no SDK service selects a tab, and the SDK's dispatchUiAction
+// cannot carry the tab index the stash's SelectTab reads), which sends the stash's SelectTab as a click on Shared does.
+// Then the stash's own page arrows (SharedStashLeft to page 1, where it stops, then SharedStashRight) open the tab's
+// page. The other widgets are in bankexpansionlayouthd.json, all hidden; a frame watch shows the ones the state wants,
+// because this loader's widget service only shows, hides and enables. Hidden buttons still take clicks on this loader
+// (Slot2), so a hidden button is disabled too. Tier and base buttons (PanelManager:OpenPanel:core-ui/Stash..., caught
+// and consumed like the padlock's) pick what the Maps tab shows: a base asks stash_affinity to swap its maps onto the
+// Maps page. Both tabs show the stock cube (advancedstash_horadriccube, which the stash shows itself on its RotW
+// tabs) at its RotW spot, and hides the stock page arrows while one of our tabs is up, so its page cannot change.
+// D2R keeps the tab and page on show across a stash close, so the state stays until a stock tab or a new game.
 #include "stash_tabs.h"
 
 #include "log.h"
+#include "sig.h"
 #include "stash_affinity.h"
 #include "stash_home.h"
 
@@ -40,67 +45,73 @@ enum class View : uint8_t { None, Maps, Bossing };
 
 constexpr char Panel[] = "BankExpansionLayout";
 constexpr char Prefix[] = "core-ui/Stash";
-constexpr int32_t SharedTab = 1;     // BankTabs: personal, shared, gems, materials, runes
-constexpr int32_t LeftPresses = 19;  // from any page to page 1 (the left arrow stops there)
-constexpr uint32_t PerFrame = 8;     // queued stash messages sent each frame
-constexpr uint32_t CountFrames = 30;
+constexpr int32_t LeftPresses = 60;  // from any page to page 1 (the left arrow stops there); covers 55 extra tabs
+constexpr uint32_t PerFrame = 10;    // queued page arrows sent each frame
 
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::WidgetService* g_widgets = nullptr;
-bool g_setText = false;
+const D2RL::OverlayService* g_overlay = nullptr;
 
 // UI thread only
-int32_t g_row = 0;  // 0: the stock tabs, 1: ours
 View g_view = View::None;
 int32_t g_tier = 0;
 int32_t g_base[3] = {0, 0, 0};  // the selected base of each tier
 bool g_dispatching = false;
-uint32_t g_frames = 0;
-std::atomic<bool> g_reset {false};
-std::atomic<uint32_t> g_clicks {0}, g_logged {0};
-
-struct Message {
-	const char* command;
-	char text[8];
-};
-Message g_queue[64];
+uint32_t g_frames = 0, g_opened = 0;  // the frame our tab was clicked or Shared selected for it
+constexpr uint32_t OursFrames = 2;      // a SelectTab this soon after is that click's or that select's
+const char* g_queue[LeftPresses + aff::LastReservedPage + 1];
 uint32_t g_head = 0, g_tail = 0;
+std::atomic<bool> g_reset {false};
+std::atomic<uint32_t> g_clicks {0};
 
-void Queue(const char* command, const char* text = "") noexcept {
-	if (g_tail >= std::size(g_queue)) {
+// D2R's tab bar and panel calls (93847 RVAs for reference only); any miss leaves the tabs working from Shared only
+// 93847: 0x846170, void* (name): PanelManager::FetchPanel (as altar_panel.cpp)
+sigscan::Entry FetchPanel {"PanelFetch", "stash", sigscan::Kind::Code, 0, 0, "48 8b d1 48 8b 0d ?? ?? ?? ?? 48 85 c9 0f 85 ?? ?? ?? ??"};
+// 93847: 0x855c90, void* (widget, name): the named child widget, searched down the tree (as altar_panel.cpp)
+sigscan::Entry FindChild {"WidgetFind", "stash", sigscan::Kind::Code, 0, 0,
+                          "40 53 55 56 57 41 54 48 83 ec 20 4c 89 7c 24 68 48 8b f2 48 8b f9 e8 ?? ?? ?? ?? 44 0f b6 80 18 01 00 00"};
+// 93847: 0x878fb0, void (tab bar, index, sound): TabBarWidget's select, which sends its onSwitchTabMessage with the
+// index; read from its call in the bar's set-tab-enabled (0x8790d0), as another plugin may detour its entry
+sigscan::Entry SelectTab {"TabBarSelect", "stash", sigscan::Kind::Rip, 15, 19,
+                          "eb 03 45 8b ca 45 33 c0 41 8b d1 48 8b cb e8 ?? ?? ?? ?? 48 8b 5c 24 40 48 83 c4 20 5f c3"};
+sigscan::Entry* const Sigs[] = {&FetchPanel, &FindChild, &SelectTab};
+bool g_select = false;
+bool g_wantShared = false;  // UI thread: our tab was clicked; the next frame selects the stock Shared tab
+
+// The stock BankTabs to Shared (index 1), as a click on it: the stash gets its SelectTab and shows the Shared tab
+void SelectShared() noexcept {
+	void* panel = reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(Panel);
+	void* bar = panel != nullptr ? reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address)(panel, "BankTabs") : nullptr;
+	if (bar == nullptr) {
+		plog::Info("stash tabs: no BankTabs to select Shared on (panel %p)", panel);
 		return;
 	}
-	Message& m = g_queue[g_tail++];
-	m.command = command;
-	std::snprintf(m.text, sizeof m.text, "%s", text);
+	g_opened = g_frames;
+	reinterpret_cast<void (*)(void*, int32_t, bool) noexcept>(SelectTab.address)(bar, 1, false);
 }
 
-// The stash on shared page `page` (0-based)
+// The stash, already on its Shared tab, to shared page `page` (0-based)
 void OpenPage(uint32_t page) noexcept {
 	g_head = g_tail = 0;
-	char tab[8];
-	std::snprintf(tab, sizeof tab, "%d", SharedTab);
-	Queue("SelectTab", tab);
 	for (int32_t i = 0; i < LeftPresses; ++i) {
-		Queue("SharedStashLeft");
+		g_queue[g_tail++] = "SharedStashLeft";
 	}
 	for (uint32_t i = 0; i < page; ++i) {
-		Queue("SharedStashRight");
+		g_queue[g_tail++] = "SharedStashRight";
 	}
 }
 
 void Send() noexcept {
 	for (uint32_t n = 0; n < PerFrame && g_head < g_tail; ++n) {
-		const Message& m = g_queue[g_head++];
 		const D2RL::Widgets::UiAction action {.structSize = D2RL::Widgets::UiActionSize,
 		                                      .target = "BankPanelMessage",
-		                                      .command = m.command,
-		                                      .text = m.text};
+		                                      .command = g_queue[g_head++],
+		                                      .text = ""};
 		g_dispatching = true;
 		const Result sent = g_widgets->dispatchUiAction(g_context, &action);
 		g_dispatching = false;
 		if (sent != Result::Success) {
-			plog::Info("stash tabs: BankPanelMessage:%s:%s not sent (%u)", m.command, m.text, static_cast<uint32_t>(sent));
+			plog::Info("stash tabs: BankPanelMessage:%s not sent (%u)", action.command, static_cast<uint32_t>(sent));
 			g_head = g_tail = 0;
 			return;
 		}
@@ -112,21 +123,27 @@ void ShowTier(int32_t tier) noexcept {
 	stash_affinity::ShowBase(aff::BaseCode(tier, g_base[tier]));
 }
 
+void Log(const char* what) noexcept {
+	plog::Info("stash tabs: %s (view %u, tier %d, base %d)", what, static_cast<uint32_t>(g_view), g_tier + 1, g_base[g_tier]);
+}
+
+void Open(View view) noexcept {
+	g_view = view;
+	OpenPage(view == View::Maps ? aff::MapsPage : aff::BossingPage);
+	if (view == View::Maps) {
+		ShowTier(g_tier);
+	}
+	stash_affinity::SetTabOpen(true);
+	Log(view == View::Maps ? "Maps" : "Bossing");
+}
+
 void Click(const char* what) noexcept {
 	++g_clicks;
 	int32_t t = 0, i = 0;
-	if (std::strcmp(what, "TabsPrev") == 0) {
-		g_row = 0;
-	} else if (std::strcmp(what, "TabsNext") == 0) {
-		g_row = 1;
-	} else if (std::strcmp(what, "Maps") == 0) {
-		g_view = View::Maps;
-		OpenPage(aff::MapsPage);
-		ShowTier(g_tier);
-	} else if (std::strcmp(what, "Bossing") == 0) {
-		g_view = View::Bossing;
-		OpenPage(aff::BossingPage);
-	} else if (sscanf_s(what, "Tier%d", &t) == 1 && t >= 1 && t <= 3) {
+	if (g_view != View::Maps) {
+		return;  // a tier or base button of a hidden Maps tab
+	}
+	if (sscanf_s(what, "Tier%d", &t) == 1 && t >= 1 && t <= 3) {
 		ShowTier(t - 1);
 	} else if (sscanf_s(what, "Base%d_%d", &t, &i) == 2 && t >= 1 && t <= 3 && aff::BaseCode(t - 1, i) != 0) {
 		g_base[t - 1] = i;
@@ -135,35 +152,7 @@ void Click(const char* what) noexcept {
 		plog::Info("stash tabs: unknown command %s", what);
 		return;
 	}
-	stash_affinity::SetMapsOpen(g_view == View::Maps);
-	plog::Info("stash tabs: %s (row %d, view %u, tier %d, base %d)", what, g_row, static_cast<uint32_t>(g_view), g_tier + 1,
-	           g_base[g_tier]);
-}
-
-auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessageEvent* event, void*) noexcept
-	-> D2RL::SharedEvents::UiMessageAction {
-	using Action = D2RL::SharedEvents::UiMessageAction;
-	if (event == nullptr || event->target == nullptr || event->command == nullptr) {
-		return Action::Continue;
-	}
-	const char* text = event->text != nullptr ? event->text : "";
-	if (std::strcmp(event->target, "BankPanelMessage") == 0) {
-		if (g_logged.fetch_add(1) < 40) {
-			plog::Info("stash tabs: saw BankPanelMessage:%s:%s%s", event->command, text, g_dispatching ? " (ours)" : "");
-		}
-		if (!g_dispatching && std::strcmp(event->command, "SelectTab") == 0 && g_view != View::None) {
-			g_view = View::None;  // a stock tab: the stash shows its own widgets for it after this message
-			g_head = g_tail = 0;
-			stash_affinity::SetMapsOpen(false);
-		}
-		return Action::Continue;
-	}
-	if (std::strcmp(event->target, "PanelManager") != 0 || std::strcmp(event->command, "OpenPanel") != 0 ||
-	    std::strncmp(text, Prefix, sizeof Prefix - 1) != 0) {
-		return Action::Continue;
-	}
-	Click(text + sizeof Prefix - 1);
-	return Action::Consume;
+	Log(what);
 }
 
 // The layout's widgets by name, found once: handles are paths the loader resolves on each call
@@ -174,7 +163,7 @@ struct Named {
 WidgetHandle g_panel = D2RL::Widgets::InvalidHandle;
 
 auto Find(Named& w) noexcept -> WidgetHandle {
-	if (w.handle == D2RL::Widgets::InvalidHandle &&
+	if (g_panel != D2RL::Widgets::InvalidHandle && w.handle == D2RL::Widgets::InvalidHandle &&
 	    g_widgets->findWidget(g_context, g_panel, w.name, &w.handle) != Result::Success) {
 		w.handle = D2RL::Widgets::InvalidHandle;
 	}
@@ -187,16 +176,23 @@ void Show(Named& w, bool visible) noexcept {
 	}
 }
 
-Named g_bankTabs {"BankTabs"}, g_navigation {"StashNavigation"}, g_cube {"advancedstash_horadriccube"},
-	g_cubeWithdraw {"withdraw_button"}, g_left {"pd2rTabsLeft"}, g_right {"pd2rTabsRight"}, g_maps {"pd2rTabMaps"},
-	g_mapsOn {"pd2rTabMapsOn"}, g_bossing {"pd2rTabBossing"}, g_bossingOn {"pd2rTabBossingOn"};
+// A button: hidden ones are disabled too, as they still take clicks
+void ShowButton(Named& w, bool visible) noexcept {
+	if (const WidgetHandle h = Find(w); h != D2RL::Widgets::InvalidHandle) {
+		g_widgets->setWidgetVisible(g_context, h, visible);
+		g_widgets->setWidgetEnabled(g_context, h, visible);
+	}
+}
+
+Named g_background {"pd2rMapsBackground"}, g_bossingBackground {"pd2rBossingBackground"}, g_navigation {"StashNavigation"}, g_cube {"advancedstash_horadriccube"},
+	g_cubeWithdraw {"withdraw_button"}, g_sharedOff {"pd2rSharedOff"}, g_mapsOn {"pd2rMapsTabsOn"}, g_mapsOnText {"pd2rMapsTabsOnText"},
+	g_bossingOn {"pd2rBossingTabsOn"}, g_bossingOnText {"pd2rBossingTabsOnText"};
 Named g_tiers[3][2] = {{{"pd2rTier1"}, {"pd2rTier1On"}}, {{"pd2rTier2"}, {"pd2rTier2On"}}, {{"pd2rTier3"}, {"pd2rTier3On"}}};
 struct BaseWidgets {
 	char names[3][24];
-	Named button, frame, count;
+	Named button, frame, box;
 };
 BaseWidgets g_bases[3][aff::PageWidth];
-View g_drawn = View::None;  // the view the last frame drew
 
 void InitNames() noexcept {
 	for (int t = 0; t < 3; ++t) {
@@ -204,77 +200,109 @@ void InitNames() noexcept {
 			BaseWidgets& b = g_bases[t][i];
 			std::snprintf(b.names[0], sizeof b.names[0], "pd2rBase%d_%d", t + 1, i);
 			std::snprintf(b.names[1], sizeof b.names[1], "pd2rBaseSel%d_%d", t + 1, i);
-			std::snprintf(b.names[2], sizeof b.names[2], "pd2rBaseCount%d_%d", t + 1, i);
+			std::snprintf(b.names[2], sizeof b.names[2], "pd2rBaseBox%d_%d", t + 1, i);
 			b.button.name = b.names[0];
 			b.frame.name = b.names[1];
-			b.count.name = b.names[2];
+			b.box.name = b.names[2];
 		}
 	}
+}
+
+// Back to a stock tab, before the stash handles its SelectTab: the stock widgets ours hid are shown, and the stash's own
+// handling of the message then hides the ones its tab does not use
+void Leave() noexcept {
+	g_view = View::None;
+	g_head = g_tail = 0;
+	stash_affinity::SetTabOpen(false);
+	Show(g_navigation, true);
+	Show(g_cube, false);
+}
+
+auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessageEvent* event, void*) noexcept
+	-> D2RL::SharedEvents::UiMessageAction {
+	using Action = D2RL::SharedEvents::UiMessageAction;
+	if (event == nullptr || event->target == nullptr || event->command == nullptr) {
+		return Action::Continue;
+	}
+	const char* text = event->text != nullptr ? event->text : "";
+	if (std::strcmp(event->target, "BankPanelMessage") == 0) {
+		if (g_dispatching || std::strcmp(event->command, "SelectTab") != 0) {
+			return Action::Continue;
+		}
+		if (g_view != View::None && g_frames - g_opened > OursFrames) {  // not our tab's own SelectTab, nor our select's
+			Leave();
+			Log("stock tab");
+		}
+		return Action::Continue;  // the stash selects the tab (ours: Shared)
+	}
+	if (std::strcmp(event->target, "PanelManager") != 0 || std::strcmp(event->command, "OpenPanel") != 0 ||
+	    std::strncmp(text, Prefix, sizeof Prefix - 1) != 0) {
+		return Action::Continue;
+	}
+	const char* what = text + sizeof Prefix - 1;
+	if (std::strcmp(what, "TabMaps") == 0 || std::strcmp(what, "TabBossing") == 0) {
+		Open(what[3] == 'M' ? View::Maps : View::Bossing);
+		g_opened = g_frames;
+		g_wantShared = g_select;
+	} else if (std::strcmp(what, "Shared") == 0) {  // the stock Shared tab, already selected under ours: its first page
+		Leave();
+		OpenPage(0);
+		Log("Shared");
+	} else {
+		Click(what);
+	}
+	return Action::Consume;
 }
 
 // UI thread
 void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noexcept {
 	++g_frames;
 	if (g_reset.exchange(false)) {
-		g_row = 0;
-		g_view = g_drawn = View::None;
+		g_view = View::None;
 		g_head = g_tail = 0;
 		stash_affinity::ShowBase(0);
-		stash_affinity::SetMapsOpen(false);
+		stash_affinity::SetTabOpen(false);
 	}
 	if (g_panel == D2RL::Widgets::InvalidHandle && g_widgets->findPanel(g_context, Panel, &g_panel) != Result::Success) {
 		g_panel = D2RL::Widgets::InvalidHandle;
 		return;
 	}
-	Send();
+	if (g_wantShared) {
+		g_wantShared = false;
+		SelectShared();
+	}
+	if (g_frames - g_opened > OursFrames) {
+		Send();  // the page arrows, once the stash is on its Shared tab (it reads them there only)
+	}
 	const bool ours = g_view != View::None, maps = g_view == View::Maps;
-	Show(g_bankTabs, g_row == 0);
-	if (const WidgetHandle h = Find(g_left); h != D2RL::Widgets::InvalidHandle) {
-		g_widgets->setWidgetVisible(g_context, h, true);
-		g_widgets->setWidgetEnabled(g_context, h, g_row == 1);
-	}
-	if (const WidgetHandle h = Find(g_right); h != D2RL::Widgets::InvalidHandle) {
-		g_widgets->setWidgetVisible(g_context, h, true);
-		g_widgets->setWidgetEnabled(g_context, h, g_row == 0);
-	}
-	Show(g_maps, g_row == 1 && !maps);
-	Show(g_mapsOn, g_row == 1 && maps);
-	Show(g_bossing, g_row == 1 && g_view != View::Bossing);
-	Show(g_bossingOn, g_row == 1 && g_view == View::Bossing);
+	Show(g_mapsOn, maps);
+	Show(g_mapsOnText, maps);
+	Show(g_bossingOn, g_view == View::Bossing);
+	Show(g_bossingOnText, g_view == View::Bossing);
+	Show(g_background, maps);
+	Show(g_bossingBackground, g_view == View::Bossing);
+	ShowButton(g_sharedOff, ours);  // the stock Shared tab, lit under ours, drawn unlit: one tab looks selected
 	if (ours) {
 		Show(g_navigation, false);  // the page stays ours
-	} else if (g_drawn != View::None) {
-		Show(g_navigation, true);  // back to a stock tab: the stash's own SelectTab handling hides it again where it should
 	}
-	if (maps) {
+	if (ours) {
 		Show(g_cube, true);
 		Show(g_cubeWithdraw, false);  // the RotW tabs' Withdraw, not ours
-	} else if (g_drawn == View::Maps && g_view == View::Bossing) {
-		Show(g_cube, false);
 	}
-	const bool count = g_setText && g_frames % CountFrames == 0;
 	for (int t = 0; t < 3; ++t) {
-		Show(g_tiers[t][0], maps && g_tier != t);
-		Show(g_tiers[t][1], maps && g_tier == t);
+		ShowButton(g_tiers[t][0], maps && g_tier != t);
+		ShowButton(g_tiers[t][1], maps && g_tier == t);
 		for (int i = 0; i < aff::PageWidth; ++i) {
 			if (aff::BaseCode(t, i) == 0) {
 				continue;
 			}
 			BaseWidgets& b = g_bases[t][i];
 			const bool shown = maps && g_tier == t;
-			Show(b.button, shown);
+			Show(b.box, shown);
+			ShowButton(b.button, shown);
 			Show(b.frame, shown && g_base[t] == i);
-			Show(b.count, shown && g_setText);
-			if (shown && count) {
-				char text[16];
-				std::snprintf(text, sizeof text, "%u", stash_affinity::MapCount(t, i));
-				if (const WidgetHandle h = Find(b.count); h != D2RL::Widgets::InvalidHandle) {
-					g_widgets->setText(g_context, h, text);
-				}
-			}
 		}
 	}
-	g_drawn = g_view;
 }
 
 void OnPlayerReady(const D2RL::PluginContext*, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {
@@ -293,18 +321,24 @@ auto Query(const Service*& service, bool (*has)(const Service*, uint32_t), uint3
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	g_context = context;
+	sigscan::Resolve(Sigs, std::size(Sigs), context->exeBase, nullptr, 0);
+	g_select = true;
+	for (const sigscan::Entry* e : Sigs) {
+		if (e->state != sigscan::State::Ok) {
+			g_select = false;
+			plog::Info("stash tabs: signature %s %s", e->name, sigscan::StateText(e->state));
+		}
+	}
 	InitNames();
 	const D2RL::LifecycleService* lifecycle = nullptr;
 	const D2RL::SharedEventService* events = nullptr;
-	const D2RL::OverlayService* overlay = nullptr;
 	if (!(Query(g_widgets, D2RL::HasWidgetServiceField, D2RL::WidgetServiceRequiredSize) &
 	      Query(lifecycle, D2RL::HasLifecycleServiceField, D2RL::LifecycleServiceRequiredSize) &
 	      Query(events, D2RL::HasSharedEventServiceField, D2RL::SharedEventServiceRequiredSize) &
-	      Query(overlay, D2RL::HasOverlayServiceField, D2RL::OverlayServiceRequiredSize))) {
+	      Query(g_overlay, D2RL::HasOverlayServiceField, D2RL::OverlayServiceRequiredSize))) {
 		std::snprintf(report, size, "FAILED (a widget, lifecycle, event or overlay service is missing)");
 		return;
 	}
-	g_setText = g_widgets->serviceSize >= D2RL::WidgetServiceSetTextFieldEnd && g_widgets->setText != nullptr;
 	const D2RL::Lifecycle::GameplayEventListener ready {.structSize = D2RL::Lifecycle::GameplayEventListenerSize,
 	                                                    .kind = D2RL::Lifecycle::GameplayEventKind::LocalPlayerReady,
 	                                                    .callback = OnPlayerReady};
@@ -318,17 +352,17 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	D2RL::Overlay::CallbackHandle frameHandle = D2RL::Overlay::InvalidCallbackHandle;
 	if (lifecycle->registerGameplayEventListener(context, &ready, &readyHandle) != D2RL::Lifecycle::Result::Success ||
 	    events->registerUiMessageListener(context, &listener, &listenerHandle) != D2RL::SharedEvents::Result::Success ||
-	    overlay->registerFrameCallback(context, &frame, &frameHandle) != D2RL::Overlay::Result::Success) {
+	    g_overlay->registerFrameCallback(context, &frame, &frameHandle) != D2RL::Overlay::Result::Success) {
 		std::snprintf(report, size, "FAILED (a listener was refused)");
 		return;
 	}
-	std::snprintf(report, size, "a second stash tab row with Maps (tiers, bases, the cube) and Bossing; map counts %s",
-	              g_setText ? "on" : "off (no setText in this loader)");
+	std::snprintf(report, size, "Maps and Bossing stash tabs on a row above the stock tabs; Shared tab select %s",
+	              g_select ? "by signature" : "off (signature not found: the tabs work from the Shared tab only)");
 }
 
 void Counters(char* out, size_t size) noexcept {
-	std::snprintf(out, size, "stash tabs: row %d, view %u, tier %d, %u clicks", g_row, static_cast<uint32_t>(g_view),
-	              g_tier + 1, g_clicks.load());
+	std::snprintf(out, size, "stash tabs: view %u, tier %d, %u clicks", static_cast<uint32_t>(g_view), g_tier + 1,
+	              g_clicks.load());
 }
 
 }  // namespace stash_tabs

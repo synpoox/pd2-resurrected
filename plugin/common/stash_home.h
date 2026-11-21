@@ -5,7 +5,7 @@
 // indices, so add_shared_tabs must be at least 15. A slider set higher adds general tabs after them.
 // Page 15 is the Maps tab, laid out round the Horadric Cube the stash shows at the RotW tabs' spot (grid columns 3-6,
 // rows 6-9): row 0 under the tier buttons and row 1 under the base buttons stay empty, the selected base's maps sit
-// above the cube (MapView), the map currency in fixed cells left and right of it. Pages 16-18 store each tier's maps,
+// above the cube (MapView), the map currency in fixed cells in two columns each side of it (CurrencyCell). Pages 16-18 store each tier's maps,
 // a row per base; the Maps tab swaps the selected base's maps in and out. Page 19 is the Bossing tab.
 // Precedence: Maps, then Map Materials, then Bossing; an item the RotW Materials tab takes (AdvancedStashStackable:
 // Pandemonium keys, organs, essences) stays there, so no Bossing code is one of those.
@@ -73,29 +73,45 @@ struct Cell {
 	int32_t y = -1;
 };
 
-// The Maps tab's cells for the selected base's maps: rows 2-4, and row 5 beside the cube's top edge
-inline constexpr int32_t MapViewCells = 36;
+// The Maps tab's cells for the selected base's maps: rows 2-3; row 4 between the currency columns is stone
+inline constexpr int32_t MapViewCells = 20;
 constexpr auto MapView(int32_t i) noexcept -> Cell {
 	if (i < 0 || i >= MapViewCells) {
 		return {};
 	}
-	if (i < 30) {
-		return {i % PageWidth, 2 + i / PageWidth};
-	}
-	const int32_t j = i - 30;  // 0-5: columns 0-2 and 7-9
-	return {j < 3 ? j : j + 4, 5};
+	return {i % PageWidth, 2 + i / PageWidth};
 }
 constexpr auto InMapView(int32_t x, int32_t y) noexcept -> bool {
-	return (y >= 2 && y <= 4 && x >= 0 && x < PageWidth) || (y == 5 && ((x >= 0 && x <= 2) || (x >= 7 && x <= 9)));
+	return (y == 2 || y == 3) && x >= 0 && x < PageWidth;
 }
 
-// A map currency's cell, by its place in MapMaterials: 12 left of the cube (columns 0-2), the rest right (7-9)
+// A map currency's cell, by its place in MapMaterials: two columns each side of the cube, rows 4-9, 12 left (columns
+// 0-1) and the rest right (8-9), so stone shows between them and the cube
+inline constexpr int32_t CurrencyCells = 24;
 constexpr auto CurrencyCell(int32_t i) noexcept -> Cell {
-	if (i < 0 || i >= 24) {
+	if (i < 0 || i >= CurrencyCells) {
 		return {};
 	}
 	const int32_t j = i % 12;
-	return {(i < 12 ? 0 : 7) + j % 3, 6 + j / 3};
+	return {(i < 12 ? 0 : 8) + j % 2, 4 + j / 2};
+}
+
+// The Bossing tab, laid out like the RotW Materials tab round the cube: a block per boss (its map, then its parts) in
+// rows 0 and 2 with stone between the blocks, the Tristram map and torch fragments over the cube, by place in Bossing
+inline constexpr Cell BossingCell[] = {{4, 4}, {0, 0}, {1, 0}, {2, 0}, {3, 0}, {6, 0}, {7, 0}, {8, 0}, {9, 0},
+                                       {0, 2}, {1, 2}, {2, 2}, {3, 2}, {6, 2}, {7, 2}, {8, 2}, {9, 2}, {5, 4}};
+// The boss maps do not stack: a second one, or a part past a full stack, takes a spare cell beside the cube
+inline constexpr const char* BossingMaps[] = {"ubtm", "dcma", "rtma", "uba", "luca"};
+inline constexpr int32_t SpareCells = 20;
+constexpr auto SpareCell(int32_t i) noexcept -> Cell {
+	if (i < 0 || i >= SpareCells) {
+		return {};
+	}
+	const int32_t j = i % 10;
+	return {(i < 10 ? 0 : 8) + j % 2, 5 + j / 2};
+}
+constexpr auto InSpare(int32_t x, int32_t y) noexcept -> bool {
+	return y >= 5 && y < PageWidth && (x <= 1 || x >= 8) && x >= 0 && x < PageWidth;
 }
 
 // The tier (0-2) and the place in its list of a map code; {-1, -1} for the rest
@@ -146,6 +162,11 @@ constexpr auto BaseCode(int32_t tier, int32_t index) noexcept -> uint32_t {
 	return tier == 0 ? in(Tier1) : tier == 1 ? in(Tier2) : tier == 2 ? in(Tier3) : 0;
 }
 
+// Whether two of an item merge into one stack: all but the boss maps (map currency and boss parts stack to 50)
+constexpr auto Stacks(uint32_t code) noexcept -> bool {
+	return IndexIn(BossingMaps, Normal(code)) < 0;
+}
+
 constexpr auto HomeOf(uint32_t raw) noexcept -> Home {
 	const uint32_t code = Normal(raw);
 	if (const Base b = BaseOf(code); b.tier >= 0) {
@@ -155,8 +176,8 @@ constexpr auto HomeOf(uint32_t raw) noexcept -> Home {
 		const Cell c = CurrencyCell(i);
 		return {Category::MapMaterials, MapsPage, c.y, c.x};
 	}
-	if (IndexIn(Bossing, code) >= 0) {
-		return {Category::Bossing, BossingPage, -1};
+	if (const int32_t i = IndexIn(Bossing, code); i >= 0) {
+		return {Category::Bossing, BossingPage, BossingCell[i].y, BossingCell[i].x};
 	}
 	return {};
 }
@@ -170,6 +191,9 @@ constexpr auto AtHome(const Home& home, uint32_t code, uint32_t shown, bool shar
 	}
 	if (home.category == Category::Maps && shown != 0 && Normal(code) == Normal(shown) && page == MapsPage &&
 	    InMapView(x, y)) {
+		return true;
+	}
+	if (home.category == Category::Bossing && page == BossingPage && InSpare(x, y)) {
 		return true;
 	}
 	return page == home.page && (home.row < 0 || y == home.row) && (home.column < 0 || x == home.column);
@@ -186,7 +210,7 @@ constexpr auto FreeColumn(uint32_t occupied) noexcept -> int32_t {
 }
 
 static_assert(RequiredExtraTabs == 15);
-static_assert(std::size(MapMaterials) <= 24);  // one cell each beside the cube
+static_assert(std::size(MapMaterials) <= CurrencyCells);  // one cell each beside the cube
 static_assert(Code("m01") == ('m' | ('0' << 8) | ('1' << 16) | (' ' << 24)));
 static_assert(HomeOf(Code("m01")).page == 16 && HomeOf(Code("m01")).row == 0);
 static_assert(HomeOf(Code("m24")).page == 16 && HomeOf(Code("m24")).row == 7);
@@ -194,22 +218,48 @@ static_assert(HomeOf(Code("m02")).page == 17 && HomeOf(Code("m21")).row == 7);
 static_assert(HomeOf(Code("m25")).page == 18 && HomeOf(Code("m25")).row == 8);
 static_assert(HomeOf('m' | ('0' << 8) | ('7' << 16)).page == 18);  // zero-padded code
 static_assert(BaseCode(2, 8) == Code("m25") && BaseCode(0, 8) == 0 && BaseCode(3, 0) == 0);
-static_assert(HomeOf(Code("imma")).page == 15 && HomeOf(Code("imma")).column == 0 && HomeOf(Code("imma")).row == 6);
+static_assert(HomeOf(Code("imma")).page == 15 && HomeOf(Code("imma")).column == 0 && HomeOf(Code("imma")).row == 4);
 static_assert(HomeOf(Code("ivea")).category == Category::MapMaterials);  // ear: Map Materials before Bossing
-static_assert(HomeOf(Code("ivea")).column == 7 && HomeOf(Code("ivea")).row == 7);  // index 15: the right block
+static_assert(HomeOf(Code("ivea")).column == 9 && HomeOf(Code("ivea")).row == 5);  // index 15: the right block
 static_assert(HomeOf(Code("dcma")).category == Category::Bossing && HomeOf(Code("dcma")).page == 19);
 static_assert(HomeOf(Code("pk1")).category == Category::None);  // the RotW Materials tab keeps the keys
 static_assert(HomeOf(Code("r01")).category == Category::None);
-static_assert(CurrencyCell(11).x == 2 && CurrencyCell(11).y == 9 && CurrencyCell(12).x == 7 && CurrencyCell(12).y == 6);
-static_assert(MapView(0).y == 2 && MapView(29).x == 9 && MapView(29).y == 4 && MapView(33).x == 7 && MapView(35).x == 9);
-static_assert(MapView(36).x == -1 && InMapView(5, 3) && !InMapView(4, 5) && InMapView(8, 5) && !InMapView(0, 6));
+static_assert(CurrencyCell(11).x == 1 && CurrencyCell(11).y == 9 && CurrencyCell(12).x == 8 && CurrencyCell(12).y == 4);
+static_assert(MapView(0).y == 2 && MapView(19).x == 9 && MapView(19).y == 3 && MapView(20).x == -1);
+static_assert(InMapView(5, 3) && !InMapView(5, 4) && !InMapView(1, 4) && !InMapView(4, 5));
+static_assert([] {  // no map cell is a currency cell
+	for (int32_t i = 0; i < CurrencyCells; ++i) {
+		if (InMapView(CurrencyCell(i).x, CurrencyCell(i).y)) {
+			return false;
+		}
+	}
+	return true;
+}());
 static_assert(AtHome(HomeOf(Code("m04")), Code("m04"), 0, true, 16, 3, 1));
 static_assert(!AtHome(HomeOf(Code("m04")), Code("m04"), 0, true, 16, 3, 2));
 static_assert(AtHome(HomeOf(Code("m04")), Code("m04"), Code("m04"), true, 15, 3, 2));
 static_assert(!AtHome(HomeOf(Code("m04")), Code("m04"), Code("m05"), true, 15, 3, 2));
-static_assert(AtHome(HomeOf(Code("imma")), Code("imma"), 0, true, 15, 0, 6));
-static_assert(!AtHome(HomeOf(Code("imma")), Code("imma"), 0, true, 15, 1, 6));
-static_assert(AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 19, 4, 4));
+static_assert(AtHome(HomeOf(Code("imma")), Code("imma"), 0, true, 15, 0, 4));
+static_assert(!AtHome(HomeOf(Code("imma")), Code("imma"), 0, true, 15, 1, 4));
+static_assert(AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 19, 0, 0));
+static_assert(!AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 19, 4, 4));
+static_assert(AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 19, 9, 9));  // a spare cell
+static_assert(HomeOf(Code("cm2f")).column == 5 && HomeOf(Code("cm2f")).row == 4 && HomeOf(Code("lucd")).column == 9);
+static_assert(std::size(BossingCell) == std::size(Bossing));
+static_assert(!Stacks(Code("dcma")) && Stacks(Code("dcbl")) && Stacks(Code("imma")));
+static_assert([] {  // no two bossing items share a cell, and none is a spare cell
+	for (size_t i = 0; i < std::size(BossingCell); ++i) {
+		for (size_t j = i + 1; j < std::size(BossingCell); ++j) {
+			if (BossingCell[i].x == BossingCell[j].x && BossingCell[i].y == BossingCell[j].y) {
+				return false;
+			}
+		}
+		if (InSpare(BossingCell[i].x, BossingCell[i].y)) {
+			return false;
+		}
+	}
+	return SpareCell(9).x == 1 && SpareCell(9).y == 9 && SpareCell(10).x == 8 && SpareCell(10).y == 5;
+}());
 static_assert(!AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, false, 19, 4, 4));
 static_assert(FreeColumn(0) == 0 && FreeColumn(0b111) == 3 && FreeColumn(0x3ff) == -1);
 
