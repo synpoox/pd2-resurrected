@@ -1,3 +1,3 @@
 #### Fixes
 
-- Monsters Remaining is now a zone info row (hides with TAB, not in towns) and reads 25+ above 25.
+- Monsters Remaining is a zone info row (hides with TAB, not in towns); 25+ above 25 or under 90% explored.

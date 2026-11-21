@@ -32,16 +32,23 @@ no population and reads no preset or spawn table. It shows `100+` until 90% of t
 
 ## Text (owner's rule)
 
-A count over 25 reads `Monsters Remaining: 25+`. A count of 25 or less reads the plain `Monsters Remaining: N`, with
-no `+`. That number can still grow while rooms of the level are unvisited. PD2 hides this with its `100+` until 90% of
-the rooms have activated; the owner's rule does not.
+PD2's rule, with `25+` for PD2's `100+`: while rooms made x 100 / rooms < 90 (integer division), the row reads
+`Monsters Remaining: 25+`. From 90% on, a count over 25 reads `25+` and 25 or less the plain number, with no `+`.
+
+PD2 reads the two room counts from its region (+0x04 rooms activated, +0x0c rooms; PD2 maps use a hard-coded total,
+`FUN_1038b1d0`). core-ui does not read D2R's region for them (those offsets were not verified in 93847). It walks the
+built level's room list instead (DrlgLevel +0x10 first room, DrlgRoom +0x48 next): rooms is the list length, and a
+room counts as made once its game room has populated (DrlgRoom +0x58 room, room flags +0x54 bit 0). D2R frees a
+room's game room once the player leaves, so a room seen populated is remembered per level until the next game. The
+Cartographer maps (138-151) are built levels too, so they get the same count; it is the room count core-events'
+`RealRooms` reads for native maps, not PD2's hard-coded totals.
 
 ## Towns
 
 D2R's ledger is not empty in town: the Rogue Encampment's region read `spawned 24` in game. So the ledger alone cannot
-hide the row there. The row is hidden when the level's region has MonDen 0 for the difficulty (region +0x2b8, from
-levels.txt). Every town has MonDen 0, and so do preset-only areas such as boss lairs. No town data flag was found in
-93847: D2R has no `{1, 40, 75, 103, 109}` table, and no function compares a level against those ids.
+hide the row there. The row is hidden in PD2's five towns (levels 1, 40, 75, 103, 109), the same hard-coded list
+PD2 uses; D2R 93847 has no town flag or table. MonDen 0 was tried first and dropped: it also hid the Ancients (120),
+the Worldstone Chamber (132) and Uber Tristram (136).
 
 ## Placement (D2R 93847)
 
