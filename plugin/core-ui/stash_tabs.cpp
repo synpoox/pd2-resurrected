@@ -372,6 +372,8 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 	if (std::strcmp(event->target, "PanelManager") != 0) {
 		return Action::Continue;
 	}
+	// Every close sends ClosePanel:BankExpansionLayout (seen for Esc, its X, I, pad B and pad Start). getWidgetState
+	// would read the panel's visibility, but D2RLoader 1.3.1's widget service has no such field: calling it crashes.
 	if (std::strcmp(text, Panel) == 0) {
 		g_stashOpen = std::strcmp(event->command, "OpenPanel") == 0 || (g_stashOpen && std::strcmp(event->command, "ClosePanel") != 0);
 		return Action::Continue;
