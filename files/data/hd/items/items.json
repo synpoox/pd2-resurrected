@@ -3850,86 +3850,6 @@
   }
  },
  {
-  "t12": {
-   "asset": "pd2/arcanemap"
-  }
- },
- {
-  "t13": {
-   "asset": "pd2/bastionmap"
-  }
- },
- {
-  "t21": {
-   "asset": "pd2/lavamap"
-  }
- },
- {
-  "t22": {
-   "asset": "pd2/junglemap"
-  }
- },
- {
-  "t23": {
-   "asset": "pd2/siegemap"
-  }
- },
- {
-  "t25": {
-   "asset": "pd2/sewermap"
-  }
- },
- {
-  "t32": {
-   "asset": "pd2/thronemap"
-  }
- },
- {
-  "t33": {
-   "asset": "pd2/spidermap"
-  }
- },
- {
-  "t34": {
-   "asset": "pd2/icemap"
-  }
- },
- {
-  "t35": {
-   "asset": "pd2/gravemap"
-  }
- },
- {
-  "t36": {
-   "asset": "pd2/caldeummap"
-  }
- },
- {
-  "t37": {
-   "asset": "pd2/pandemmap"
-  }
- },
- {
-  "t99": {
-   "asset": "pd2/hellholemap"
-  }
- },
- {
-  "t39": {
-   "asset": "pd2/marketmap"
-  }
- },
- {
-  "t61": {
-   "asset": "pd2/invmappvpdesert"
-  }
- },
- {
-  "t62": {
-   "asset": "pd2/invmappvpmoor"
-  }
- },
- {
   "rtma": {
    "asset": "pd2/invvoidstone"
   }
@@ -3937,11 +3857,6 @@
  {
   "cwss": {
    "asset": "pd2/invcwss"
-  }
- },
- {
-  "t38": {
-   "asset": "pd2/secheronmap"
   }
  },
  {
@@ -3970,11 +3885,6 @@
   }
  },
  {
-  "t42": {
-   "asset": "pd2/hellholemap"
-  }
- },
- {
   "rtmv": {
    "asset": "pd2/invvoidsplinter"
   }
@@ -3982,11 +3892,6 @@
  {
   "rtmf": {
    "asset": "body_part/brain"
-  }
- },
- {
-  "t14": {
-   "asset": "pd2/librarymap"
   }
  },
  {
@@ -4020,21 +3925,6 @@
   }
  },
  {
-  "t26": {
-   "asset": "pd2/westmarchmap"
-  }
- },
- {
-  "t15": {
-   "asset": "pd2/cryptsmap"
-  }
- },
- {
-  "t43": {
-   "asset": "pd2/sanctuaryofsinmap"
-  }
- },
- {
   "lpp": {
    "asset": "pd2/invlpp"
   }
@@ -4042,16 +3932,6 @@
  {
   "rkey": {
    "asset": "pd2/invskelkey"
-  }
- },
- {
-  "t16": {
-   "asset": "pd2/a2sewersmap"
-  }
- },
- {
-  "t3a": {
-   "asset": "pd2/ashesmap"
   }
  },
  {
@@ -4135,11 +4015,6 @@
   }
  },
  {
-  "t44": {
-   "asset": "pd2/invmap_dakenshar"
-  }
- },
- {
   "cm1p": {
    "asset": "charm/charm_small"
   }
@@ -4152,11 +4027,6 @@
  {
   "cm3p": {
    "asset": "charm/charm_large"
-  }
- },
- {
-  "t28": {
-   "asset": "pd2/invmap_skovoshold"
   }
  },
  {
@@ -4180,21 +4050,6 @@
   }
  },
  {
-  "t27": {
-   "asset": "pd2/invmap_demonroad"
-  }
- },
- {
-  "t17": {
-   "asset": "pd2/invmap_torturehalls"
-  }
- },
- {
-  "t69": {
-   "asset": "pd2/a2sewersmap"
-  }
- },
- {
   "aqv2": {
    "asset": "quiver/arrows"
   }
@@ -4212,11 +4067,6 @@
  {
   "cqv3": {
    "asset": "quiver/bolts"
-  }
- },
- {
-  "t3b": {
-   "asset": "pd2/invmap_kyovashad"
   }
  },
  {
@@ -4252,21 +4102,6 @@
  {
   "ives": {
    "asset": "pd2/inv_ear_sorceress"
-  }
- },
- {
-  "t29": {
-   "asset": "pd2/invmap_darktemple"
-  }
- },
- {
-  "t18": {
-   "asset": "pd2/invmap_poisonedwell"
-  }
- },
- {
-  "t2a": {
-   "asset": "pd2/invmap_descent"
   }
  },
  {
@@ -4333,7 +4168,7 @@
   "m13": {
    "asset": "pd2/cartoicon_gold_21"
   }
- },
+ },
  {
   "m14": {
    "asset": "pd2/cartoicon_red_47"

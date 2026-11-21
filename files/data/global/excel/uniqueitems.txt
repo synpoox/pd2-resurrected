@@ -469,11 +469,11 @@ Stalkers Cull	465	100		1					1		87	65	7tw			5	5000	dgry			invclw				dmg%		230	28
 Purgatory	466	100		1					1		87	75	utp			3	5000	cred			invltp				block		20	20	block2		20	20	red-mag		16	24	dmg%/eth		60	60	mag%		40	65	rep-dur	25			ac%		220	260																						0
 Raekors Virtue	467	100		1					1		87	78	baf			5	5000	lgld			invba5				bar		2	2	skill	Double Throw	2	3	ac%		140	180	skill	133	2	3	manasteal		5	8	dex		20	30	maxcurse		1	1	curse-effectiveness		25	25	dmg%		40	60														0
 Nightmares Feast	468	100		1					1		85	66	drf			5	5000	cred			invdr5				noheal		1	1	skilltab	16	2	4	ac%		130	160	balance2		40	40	hp%		30	35	regen		-30	-30	splash%/missinghp%		2	2	lifesteal-cap		25	25																		0
-Zhar the Mad Map	469	100	1	0					0		80	80	jew			5	5000				invmapzhar																																																					0
-Warlord of Blood Map	470	100	1	0					0		80	80	jew			5	5000				invmaphellcaves																																																					0
+Zhar the Mad Map	469	100	1	0					0		80	80	jew			5	5000																																																									0
+Warlord of Blood Map	470	100	1	0					0		80	80	jew			5	5000																																																									0
 Akarats Devotion	471	100		1					1		87	74	7qs			5	5000	whit			invgsc				pal		2	2	dmg%		240	270	swing2		40	40	skill	112	3	4	mag%		25	25	regen		10	15	hit-skill	112	28	35																	splash	430	100	1		0
 Cyclopean Roar	472	100		1					1		34	28	ba6			3	5000	lgld			invba1				ac%		90	145	leapspeed		20	20	move2		20	20	cast-skill	Battle Cry	8	6	skilltab	14	2	3	crush		20	20																										0
-Fallen Gardens Map	473	100	1	0					0		80	80	jew			5	5000				invmapfallengardens																																																					0
+Fallen Gardens Map	473	100	1	0					0		80	80	jew			5	5000																																																									0
 Uldyssian's Awakening	474	100		1					1		80	74	7st			5	5000	dgry			invspt				dmg%		230	270	mindmg/energy		8	8	equipped-skill	Energy Shield SelfAura	30	30	swing2		40	40	manasteal		10	14	mana/lvl		60	60	mana%		30	30	light		8	8	es-efficiency		20	20	allskills		3	4					splash	430	100	1		0
 Leoric's Mithril Blade	475	100		1					1		78	68	7cm			5	5000	dgry			invclm				pal		3	4	dmg%		260	320	swing2		20	20	joust-reduction-leorics		19	19	crush		33	33	reanimate	440	8	8	lifesteal		6	10	dmg-und/lvl	20															splash	430	100	1		0
 Mirror Shield	476	100		1					1		56	48	urg			5	5000	dgld			invlrg				block-skill	Cloak of Shadows	6	14	curse-effectiveness		20	30	curse-res		20	30	res-ltng		35	35	ac%		140	180	block		20	20	pierce-phys		10	10																						0
@@ -489,8 +489,8 @@ Achilles Strike	485	100		1					1		59	51	9b8			5	5000	blac			invbal				dmg-min		4
 Wildspeaker	486	100		1					1		52	44	ba7			3	5000	cred			invba2				ac%		160	240	bar		1	2	mana%		25	25	cast2		20	20	regen-mana		33	33	skill	shout	2	3	skill	grim ward	2	3	res-fire		50	50	vit		10	20														0
 Fenris	487	100		1					1		48	40	dr6			3	5000	lgry			invdr1				ac		160	220	dru		1	2	extra-spiritwolf		2	2	skill	Summon Spirit Wolf	2	2	skill	Heart of Wolverine	2	2	reduce-ac		25	25	pierce-phys		5	8	dex		20	30																		0
 Sacred Totem	488	100		1					1		72	64	neg			5	5000	lblu			invne2				nec		2	3	ac%		150	175	skill	Amplify Damage	2	2	gethit-skill	charged bolt	66	50	res-ltng		45	45	extra-revives		4	4	reanimate	19	4	6	reanimate	58	2	3	skill	Lower Resist	2	2														0
-Imperial Palace Map	489	100	1	0					0		80	80	jew			5	5000				invmap_imppalace																																																					0
-Outer Void Map	490	100	1	0					0		80	80	jew			5	5000				invmap_outervoid																																																					0
+Imperial Palace Map	489	100	1	0					0		80	80	jew			5	5000				cartoicon_red_44																																																					0
+Outer Void Map	490	100	1	0					0		80	80	jew			5	5000																																																									0
 Balefire	491	100		1					1		14	14	aqv			3	5000		dred						pierce-fire		5	8	lifesteal		2	3	mag%		18	32	ac-miss		20	45	fire-min		6	6	fire-max		10	10																					dmg-max		2	2		0
 Swiftwind Needle	492	100		1					4		32	32	aqv2			3	5000								move2		20	40	dmg-ac		-20	-30	dex		25	35	res-cold		50	50	res-ltng		-25	-25	dmg-min		12	12																					dmg-max		14	14		0
 Tombsong	493	100		1					3		36	36	aqv2			3	5000		blac						pierce		20	40	dmg-undead		50	100	att-undead		125	175	oskill	Summon Resist	12	12	curse-effectiveness		20	20	extra-skele-archer		4	4																					dmg-max		10	10		0
@@ -509,15 +509,15 @@ unused	505	100		0					0							3	5000																																												
 unused	506	100		0					0							3	5000																																																									0
 unused	507	100		0					0							3	5000																																																									0
 Crackleshot	508	100		1					1		87	72	6hb			5	5000		lyel		invhbw				hit-skill	lightning bolt	15	25	hit-skill	lightning fury	2	28	dmg-ltng		100	600	mana-kill		5	5	swing2		20	20	dmg%		260	330	skill	valkyrie	2	3	skill	critical strike	2	3																		0
-Ureh City Map	509	100	1	0					0		80	80	jew			5	5000				invmap_urehcity																																																					0
+Ureh City Map	509	100	1	0					0		80	80	jew			5	5000																																																									0
 Arm of King Leoric	510	100		1					1		44	36	9bw			5	5000				invbwnu				nec		2	2	mana/lvl	10			regen		24	32	cast1		20	20	extra-skele-archer		2	2	skill	89	2	3	skill	69	2	3	skill	70	2	3																		0
 Nethercrux	511	100		1					1		60	52	7yw			5	5000	dgry			invywn				move2		20	20	extra-skele-mage		2	2	skill	Raise Skeletal Mage	2	3	skill	Revive	3	4	skill	Skeleton Mastery	3	4	res-pois		40	50	res-pois-len		75	75	nec		2	2																		
 Embersworn	512	100		1							74	66	obd			5	5000	cred			invob3				fireskill		4	4	cast2		20	20	skill	fire ball	2	2	skill	Warmth	2	3	skill	Energy Shield	4	5	mana%		20	30	nofreeze		1	1	res-cold		45	45																		0
 Skyfall	513	100		1					1		76	68	obe			5	5000	lyel			invob4				ltngskill		3	3	cast2		20	20	skill	static field	2	3	pierce-ltng		10	20	equipped-skill	Thunder Storm SelfAura	25	25	gold%		30	50	dex		15	25																						0
 Sage's Defiance	514	100		1					1		66	58	uhl			5	5000	dyel			invfhl				cast2		20	20	red-dmg%		15	25	ac%		125	175	heal-kill		3	5	dmg-to-mana		45	45	light		-6	-6																										0
-Djinns Domain Map	515	100	1	0					0		80	80	jew			5	5000				invmap_djinnsdomain																																																					0
+Djinns Domain Map	515	100	1	0					0		80	80	jew			5	5000																																																									0
 Giant Maimer	516	100		1					1		87	75	7vo			3	5000	dred			invvou				dmg%		175	225	dmg-min		120	160	crush		20	20	crush-efficiency		40	50	skill	Battle Cry	3	4	bar		4	4	hit-skill	war cry	25	32	ease		35	35													splash	430	100	1		0
 Ephemeral	517	100		1					1		85	72	pab			5	5000	oran			invpa1				ac%		150	250	block		40	40	skilltab	9	3	4	skill	Holy Shield	2	2	half-freeze		1	1	all-stats		12	18	block-skill	Slow Missiles	12	16	cast2		20	20																		0
 Crackleshot	518	100		0					1		87	72	6sb			5	5000	dgrn	dgrn						hit-skill	poison javelin	15	25	slow		20	40	dmg%		260	330	reanimate	126	6	6	dmg-pois	50	1538	1793	lifesteal		5	8	regen-stam		50	50	mag%		50	50																		0
-Na-Krul's Abyss Map	519	100	1	0					0		80	80	jew			5	5000				invmap_nakrul																																																					0
+Na-Krul's Abyss Map	519	100	1	0					0		80	80	jew			5	5000																																																									0
 Spectral Plate	520	100		1					1		87	65	urs			3	5000	cred			invbrs				allskills		1	1	equipped-skill	Phasing Selfaura	1	1	red-dmg%		8	12	ethereal		1	1	indestruct		1	1	enr		24	38	res-ltng		40	50																						0

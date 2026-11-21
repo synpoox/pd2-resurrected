@@ -3080,27 +3080,6 @@
   }
  },
  {
-  "zhar_the_mad_map": {
-   "normal": "pd2/invmapzhar",
-   "uber": "pd2/invmapzhar",
-   "ultra": "pd2/invmapzhar"
-  }
- },
- {
-  "warlord_of_blood_map": {
-   "normal": "pd2/invmaphellcaves",
-   "uber": "pd2/invmaphellcaves",
-   "ultra": "pd2/invmaphellcaves"
-  }
- },
- {
-  "fallen_gardens_map": {
-   "normal": "pd2/invmapfallengardens",
-   "uber": "pd2/invmapfallengardens",
-   "ultra": "pd2/invmapfallengardens"
-  }
- },
- {
   "uldyssians_awakening": {
    "normal": "spear/spetum",
    "uber": "spear/spetum",
@@ -3206,20 +3185,6 @@
   }
  },
  {
-  "imperial_palace_map": {
-   "normal": "pd2/invmap_imppalace",
-   "uber": "pd2/invmap_imppalace",
-   "ultra": "pd2/invmap_imppalace"
-  }
- },
- {
-  "outer_void_map": {
-   "normal": "pd2/invmap_outervoid",
-   "uber": "pd2/invmap_outervoid",
-   "ultra": "pd2/invmap_outervoid"
-  }
- },
- {
   "balefire": {
    "normal": "quiver/arrows",
    "uber": "quiver/arrows",
@@ -3311,13 +3276,6 @@
   }
  },
  {
-  "ureh_city_map": {
-   "normal": "pd2/invmap_urehcity",
-   "uber": "pd2/invmap_urehcity",
-   "ultra": "pd2/invmap_urehcity"
-  }
- },
- {
   "nethercrux": {
    "normal": "wand/yew_wand",
    "uber": "wand/yew_wand",
@@ -3346,13 +3304,6 @@
   }
  },
  {
-  "djinns_domain_map": {
-   "normal": "pd2/invmap_djinnsdomain",
-   "uber": "pd2/invmap_djinnsdomain",
-   "ultra": "pd2/invmap_djinnsdomain"
-  }
- },
- {
   "giant_maimer": {
    "normal": "polearm/voulge",
    "uber": "polearm/voulge",
@@ -3367,17 +3318,17 @@
   }
  },
  {
-  "na_kruls_abyss_map": {
-   "normal": "pd2/invmap_nakrul",
-   "uber": "pd2/invmap_nakrul",
-   "ultra": "pd2/invmap_nakrul"
-  }
- },
- {
   "spectral_plate": {
    "normal": "armor/breast_plate",
    "uber": "armor/breast_plate",
    "ultra": "armor/breast_plate"
+  }
+ },
+ {
+  "imperial_palace_map": {
+   "normal": "pd2/cartoicon_red_44",
+   "uber": "pd2/cartoicon_red_44",
+   "ultra": "pd2/cartoicon_red_44"
   }
  }
 ]
