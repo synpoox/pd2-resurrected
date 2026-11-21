@@ -1,4 +1,4 @@
-"""Each map's icon colour matches its tier (#1344): Level 87 white, 88 gold, 89 red; icons unique, with an cartoicon_white_01 copy."""
+"""Each map's icon colour matches its tier (#1344): Level 87 white, 88 gold, 89 red; icons unique, with a cartoicon_white_01 copy."""
 import csv
 import json
 import unittest
