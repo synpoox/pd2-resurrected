@@ -1,0 +1,1 @@
+- Item Roll Ranges updated to 1.3.1+rev.61: faster hover tooltips and more range breakdowns. (#1692)

@@ -45,9 +45,9 @@
     {
       "name": "Item Roll Ranges",
       "repo": "Pyre-Flies/D2R-Mods",
-      "tag": "release-2026.10.29.1",
-      "asset": "Item-Roll-Ranges-1.3.1+rev.56-PyreFly.zip",
-      "sha256": "8a6bb4612d83fe6c0c7253f42809702ff4521a4bf5b01d47645e31ffb3ed59e1",
+      "tag": "release-2026.11.16.2",
+      "asset": "Item-Roll-Ranges-1.3.1+rev.61-PyreFly.zip",
+      "sha256": "88dee5a9772f6ae0cbb1642fad74502f6c53a84375f2ead32fe3e2303353242f",
       "files": {
         "d2rloader/plugins/Item Roll Ranges.dll": "d2rloader/plugins/Item Roll Ranges.dll"
       },
