@@ -77,6 +77,21 @@
             },
         },
         {
+            "type": "ToggleButtonWidget", "name": "InventoryLock",
+            "fields": {
+                "rect": { "x": 980, "y": 1702 },
+                "filename": "PANEL\\pd2r\\inventory_lock",
+                "untoggledFrame": 0,
+                "untoggledPressedFrame": 1,
+                "untoggledHoveredFrame": 0,
+                "untoggledDisabledFrame": 0,
+                "toggledFrame": 2,
+                "toggledPressedFrame": 3,
+                "toggledHoveredFrame": 2,
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/InventoryLock",
+            },
+        },
+        {
             "type": "InventoryGridWidget", "name": "grid",
             "fields": {
                 "rect": { "x": 93, "y": 897 },
