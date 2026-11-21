@@ -1,3 +1,3 @@
 #### Features
 
-- The HD mercenary panel lays out its gear like the inventory, in a taller panel (#1651).
+- The mercenary panel lays out its gear like the inventory, HD and legacy, in a taller panel (#1651).
