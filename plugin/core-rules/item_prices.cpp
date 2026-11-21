@@ -82,9 +82,13 @@ constexpr const char* PricePattern =
 using PriceFn = uint64_t (*)(void* player, Unit* item, int32_t difficulty, uint64_t quest, uint32_t vendor, int32_t type) noexcept;
 PriceFn g_price = nullptr;
 std::atomic<uint32_t> g_repairCaps {0};
+std::atomic<int32_t> g_repairMax {0};  // the highest repair quote seen before the cap, for the console counters
 
 auto PriceHook(void* player, Unit* item, int32_t difficulty, uint64_t quest, uint32_t vendor, int32_t type) noexcept -> uint64_t {
 	uint64_t result = g_price(player, item, difficulty, quest, vendor, type);
+	if (type == 3 && static_cast<int32_t>(result) > g_repairMax.load()) {
+		g_repairMax.store(static_cast<int32_t>(result));
+	}
 	if (type == 3 && static_cast<int32_t>(result) != CapRepair(static_cast<int32_t>(result))) {
 		g_repairCaps.fetch_add(1);
 		result = RepairCap;
@@ -143,6 +147,6 @@ auto InstallItemPrices(const D2RL::PluginContext* context, char* report, size_t 
 }
 
 auto ItemPriceCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "item prices: %u prices without the stack quantity, %u repair quotes capped", g_weaponSkips.load(),
-	              g_repairCaps.load());
+	std::snprintf(out, size, "item prices: %u prices without the stack quantity, %u repair quotes capped, highest repair quote %d", g_weaponSkips.load(),
+	              g_repairCaps.load(), g_repairMax.load());
 }
