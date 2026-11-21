@@ -196,6 +196,9 @@ void __cdecl Refresh(const D2RL::PluginContext* context, void*) noexcept {
 
 void Forget(const D2RL::PluginContext*, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {
 	g_regions.store(nullptr);
+	for (auto& level : g_drlgLevel) {  // a new game frees the old levels
+		level.store(nullptr, std::memory_order_relaxed);
+	}
 	g_epoch.fetch_add(1);
 	g_text.store(0);
 }
