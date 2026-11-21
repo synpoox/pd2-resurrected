@@ -45,6 +45,5 @@ feed_tag = "catalog"
 min_launcher_version = "0.1.0"
 loader_versions = ["1.3.1-beta"]
 required_settings = [{file = "d2rloader/config/d2rloader.toml", key = "d2rcore.save_format.mode", value = "extended"}]
-save_breaking = true   # 0.2.1-alpha: the launcher shows this notice with a confirm before updating (#1511)
-incompatibility_notice = "Move every item out of your Charm Inventory before updating, or your character may be bricked."
+save_breaking = false
 upcoming = ["project-09", "project-forever"]
