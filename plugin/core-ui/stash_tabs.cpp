@@ -41,6 +41,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iterator>
+#include <utility>
 
 namespace stash_tabs {
 
@@ -387,7 +388,14 @@ void WrapOnMessage() noexcept {
 		return;
 	}
 	void**& vtable = *static_cast<void***>(panel);
-	if (vtable == g_vtable + 1 || (g_panelVtable != nullptr && g_panelVtable != vtable)) {
+	if (vtable == g_vtable + 1) {
+		return;
+	}
+	if (g_panelVtable != nullptr && g_panelVtable != vtable) {
+		static bool logged = false;
+		if (!std::exchange(logged, true)) {
+			plog::Info("stash tabs: panel vtable changed, pad tabs not handled");
+		}
 		return;
 	}
 	size_t n = 0;
@@ -439,7 +447,7 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 		return Action::Continue;
 	}
 	// Every close sends ClosePanel:BankExpansionLayout (seen for Esc, its X, I, pad B and pad Start). getWidgetState
-	// would read the panel's visibility, but D2RLoader 1.3.1's widget service has no such field: calling it crashes.
+	// would read the panel's visibility, but D2RLoader 1.3.1's widget service ends before that field.
 	if (std::strcmp(text, Panel) == 0) {
 		g_stashOpen = std::strcmp(event->command, "OpenPanel") == 0 || (g_stashOpen && std::strcmp(event->command, "ClosePanel") != 0);
 		g_cycleHeld = g_stashOpen && g_cycleHeld;  // a close with LB down sends no release
@@ -474,6 +482,7 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 		g_head = g_tail = g_page = 0;
 		g_tab = g_padTab = 0;  // a new game opens the stash on Personal
 		g_stashOpen = false;
+		g_cycleHeld = false;
 		stash_affinity::ShowBase(0);
 		stash_affinity::SetTabOpen(false);
 	}
