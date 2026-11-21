@@ -40,7 +40,7 @@ Drop tier follows PD2's area, not the map's tier: PD2's per-area copies use `Map
 | Map | PD2 area (levels.txt Id, area tier) | Monsters (`map` suffix; `2` = `map2`) | Why |
 |---|---|---|---|
 | m01 Tunneling Depths (T1) | Lost Temple (Spider Map 158, t1) | arach + fill: minion, mosquito, unraveler | name unchanged (Cave's only PD2 area is Crypts, taken by m22); only `arach` has a row; the list is Lost Temple's cave list |
-| m02 Cathedral of Light (T2) | Cathedral of Light (Monastery Map 152, PD2 `t41`, Crypt tileset) | reanimatedhorde, pantherwoman, bloodlord, bighead, siegebeast | PD2's area tier is not in the table; `reanimatedhordemap`, `pantherwomanmap`, `bloodlordmap`, `bigheadmap` and `siegebeastmap` are t1 rows (tier differs) |
+| m02 Necropolis (T2; was Cathedral of Light, #1599) | Cathedral of Light (Monastery Map 152, PD2 `t41`, Crypt tileset) | reanimatedhorde, pantherwoman, bloodlord, bighead, siegebeast | PD2's area tier is not in the table; `reanimatedhordemap`, `pantherwomanmap`, `bloodlordmap`, `bigheadmap` and `siegebeastmap` are t1 rows (tier differs) |
 | m03 Ancestral Trial (T2) | Ancestral Trial (Ice Map 146, Ice Caves tileset); arach + fill from Zhar Ice (178, same Ice Caves tileset) | arach (fill), fallenshaman, fallen, reanimatedhorde, siegebeast | unchanged list; Zhar Ice is t3, tier differs |
 | m04 Torajan Jungle (T1) | Jungle Map (148, t1) | sandleaper, deathmauler, councilmember + fill: thornhulk, mosquito | fill from Ruins of Viz-Jun (143, t1, Kurast); `deathmaulermap` is t3 (tier differs) |
 | m05 Canyon of Sescheron (T1) | Frozen Forest Map (160, t2, Barricade snow tileset) | sandleaper2, doomknight, oblivionknight2, fetish2 | `sandleaper2`, `oblivionknight2` and `fetish2` are t2; `doomknightmap` is t1 (tier differs from t2) |
@@ -49,7 +49,7 @@ Drop tier follows PD2's area, not the map's tier: PD2's per-area copies use `Map
 | m08 Horazon's Memory (T2) | Arcane (142, t2) | zealot2, cantor2, oblivionknight2 + fill: minion2 | `doomknightArcane` is `BaseId` doomknight3 = oblivionknight; fill from Descent (210, t2) |
 | m09 Arreat Battlefield (T3) | Siege Map (139, t3) | goatman, bighead, reanimatedhorde, thornhulk, mosquito | all five rows are t1 (tier differs) |
 | m10 Ashen Plains (T2) | Ashen Plains Map (175, t2) | sandleaper2, thornhulk2, pantherwoman2, mosquito2, fetish2, slinger2, deathmauler2, cantor2 | #1419: `baboon` has no map row (sandleaper2), `foulcrow` none (mosquito2, a flier), `willowisp` none (cantor2, a caster) |
-| m11 Kehjistan Marketplace (T3) | Desert Map (147, t3) | mosquito, cr_archer, unraveler + fill: sandleaper | the three rows are t1 (tier differs); fill from the desert list |
+| m11 Kehjistan Wasteland (T3; was Kehjistan Marketplace, #1599) | Desert Map (147, t3) | PD2 own list: sandraider3Market, flyingscimitarMarket, corruptrogue2Market, mosquito2Market, firetowerMarket, vampire1Market, cr_archer2Market, unraveler3Market | #1599: PD2 original monsters |
 | m12 Blood Moon (T1) | Graveyard Map (154, t3; the cow level) | hellbovineMap | #1419: cows only, as PD2's list; no maps.txt or Cartographer column sets the outdoor fill, so the Wilderness trees stay |
 | m13 Ruins of Viz'jun (T2) | Kurast (143, t1) | cr_lancer, goatman, cr_archer, bighead, cantor, unraveler, arach, thornhulk, sandleaper, mosquito | #1419: PD2's 11th row `fetishshamanmap` is cut (a map takes 10); some are t1 rows under a T2 map |
 | m14 Leoric's Passage (T3) | Graveyard Map (154, t3; the cow level) | hellbovineMap | the area lists only `hellbovineMap`; kept as one |

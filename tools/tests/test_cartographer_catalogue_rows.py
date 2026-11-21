@@ -26,7 +26,7 @@ class CartographerCatalogueRowsTests(unittest.TestCase):
         misc = {r["code"]: r for r in data_tables.rows("misc")}
         counts = {}
         for m in rows("maps.txt"):
-            assert m["Size"] == "Medium" and m["MinCharLevel"] == "80", m["Name"]
+            assert m["Size"] in ("Small", "Medium", "Large") and m["MinCharLevel"] == "80", m["Name"]
             s = misc[m["Item"]]
             n = s["type"][1]
             assert s["type"] in ("t1m", "t2m", "t3m") and m["Level"] == str(86 + int(n)), m["Name"]

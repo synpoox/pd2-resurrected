@@ -14,7 +14,7 @@ THEMED = {
     "m07": ("River of Blood", "doomknightmap,vilemothermap,zealotmap,oblivionknightmap,deathmaulermap,sk_archermap,regurgitatormap,councilmembermap", "Belial Lord of Lies"),
     "m10": ("Ashen Plains", "sandleapermap2,thornhulkmap2,pantherwomanmap2,mosquitomap2,fetishmap2,slingermap2,deathmaulermap2,cantormap2", "Borq the Consumed"),
     "m12": ("Blood Moon", "hellbovineMap", "The Cow Queen"),
-    "m13": ("Ruins of Viz'jun", "cr_lancermap,goatmanmap,cr_archermap,bigheadmap,cantormap,unravelermap,arachmap,thornhulkmap,sandleapermap,mosquitomap", "Karvarousku the Cartographer"),
+    "m13": ("Ruins of Viz'jun", "cr_lancermap,goatmanmap,cr_archermap,bigheadmap,cantormap,unravelermap,arachmap,thornhulkmap,sandleapermap,mosquitomap,fetishshamanmap", "Karvarousku the Cartographer"),
     "m14": ("Leoric's Passage", "hellbovineMap", "Rotting Horror"),
     "m16": ("Khazra Den", "cr_archermap2,cr_lancermap2,goatmanmap2,fallenmap2", "Indio The Insane"),
     "m18": ("Bastion Keep", "fallenmap2,goatmanmap2,fallenshamanmap2,siegebeastmap2", "Johnathan The Damned"),
@@ -22,6 +22,8 @@ THEMED = {
     "m21": ("Ruined Cistern", "cr_archermap2,fetishmap2,minionmap2,mosquitomap2", "Ancient Cistern Hydra"),
     "m25": ("Halls of Torture", "sandleapermap2,zealotmap2,sk_archermap2,siegebeastmap2,bloodlordmap2,councilmembermap2,regurgitatormap2", "Gimli the Summoned One"),
 }
+# #1599: the owner's density tuning of the 150 base, by map item
+DENSITY = {"m02": "300", "m03": "120", "m04": "210", "m07": "300", "m09": "225", "m10": "225", "m11": "210", "m13": "195", "m15": "450", "m22": "300", "m25": "195"}
 OLD_NAMES = ("Ruins of Corvus", "Cellar of the Damned", "Dark Temple", "Battlefields of Eternity", "Howling Plateau", "Shadows of Westmarch")
 
 
@@ -35,7 +37,7 @@ class MapPd2Themes(unittest.TestCase):
         maps = table("maps.txt")
         self.assertEqual(len(maps), 25)
         for m in maps:
-            self.assertEqual((m["Density"], m["Champions"], m["Uniques"], m["MinCharLevel"]), ("150", "100", "100", "80"), m["Name"])
+            self.assertEqual((m["Density"], m["Champions"], m["Uniques"], m["MinCharLevel"]), (DENSITY.get(m["Item"], "150"), "100", "100", "80"), m["Name"])
 
     def test_themed_maps(self):
         by = {m["Item"]: m for m in table("maps.txt")}

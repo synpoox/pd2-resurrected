@@ -1,26 +1,26 @@
 Name	Tileset	Shape	Item	Size	Level	MinCharLevel	Boss	Monsters	Density	Champions	Uniques
 Tunneling Depths	Cave	Loop	m01	Medium	87	80	King Leoric	arachmap,minionmap,mosquitomap,unravelermap	150	100	100
-Cathedral of Light	Crypt	Branching	m02	Medium	88	80	The Guardian	reanimatedhordemap,pantherwomanmap,bloodlordmap,bigheadmap,siegebeastmap	150	100	100
-Ancestral Trial	Ice	Winding	m03	Medium	88	80	Nathkill The Numb	arachmap,fallenshamanmap,fallenmap,reanimatedhordemap,siegebeastmap	150	100	100
-Torajan Jungle	Jungle	Winding	m04	Medium	87	80	The Great Worm	sandleapermap,deathmaulermap,councilmembermap,thornhulkmap,mosquitomap	150	100	100
+Necropolis	Crypt	Winding	m02	Large	88	80	The Guardian	reanimatedhordemap,pantherwomanmap,bloodlordmap,bigheadmap,siegebeastmap	300	100	100
+Ancestral Trial	Ice	Loop	m03	Medium	88	80	Nathkill The Numb	arachmap,fallenshamanmap,fallenmap,reanimatedhordemap,siegebeastmap	120	100	100
+Torajan Jungle	Jungle	Loop	m04	Small	87	80	The Great Worm	sandleapermap,deathmaulermap,councilmembermap,thornhulkmap,mosquitomap,scarabJungle	210	100	100
 Canyon of Sescheron	Snow		m05	Medium	87	80	Shattered Soul	sandleapermap2,doomknightmap,oblivionknightmap2,fetishmap2	150	100	100
-Phlegethon	Lava	Sprawl	m06	Medium	87	80	Lieutenant of Sin	minionmap,pantherwomanmap,fallenmap,slingermap,siegebeastmap,bloodlordmap,councilmembermap,reanimatedhordemap,fallenshamanmap,fetishmap	150	100	100
-River of Blood	Durance	Branching	m07	Medium	89	80	Belial Lord of Lies	doomknightmap,vilemothermap,zealotmap,oblivionknightmap,deathmaulermap,sk_archermap,regurgitatormap,councilmembermap	150	100	100
+Phlegethon	Lava	Winding	m06	Medium	87	80	Lieutenant of Sin	minionmap,pantherwomanmap,fallenmap,slingermap,siegebeastmap,bloodlordmap,councilmembermap,reanimatedhordemap,fallenshamanmap,fetishmap	150	100	100
+River of Blood	Durance	Loop	m07	Large	89	80	Belial Lord of Lies	doomknightmap,vilemothermap,zealotmap,oblivionknightmap,deathmaulermap,sk_archermap,regurgitatormap,councilmembermap	300	100	100
 Horazon's Memory	Arcane	Loop	m08	Medium	88	80	Deathmaiden Madinsane	zealotmap2,cantormap2,oblivionknightmap2,minionmap2	150	100	100
-Arreat Battlefield	Siege		m09	Medium	89	80	Armorsmith of Equality	goatmanmap,bigheadmap,reanimatedhordemap,thornhulkmap,mosquitomap	150	100	100
-Ashen Plains	Mesa		m10	Medium	88	80	Borq the Consumed	sandleapermap2,thornhulkmap2,pantherwomanmap2,mosquitomap2,fetishmap2,slingermap2,deathmaulermap2,cantormap2	150	100	100
-Kehjistan Marketplace	Desert		m11	Medium	89	80	Toadflax the Tainted	mosquitomap,cr_archermap,unravelermap,sandleapermap	150	100	100
+Arreat Battlefield	Siege		m09	Medium	89	80	Armorsmith of Equality	goatmanmap,bigheadmap,reanimatedhordemap,thornhulkmap,mosquitomap	225	100	100
+Ashen Plains	Mesa		m10	Medium	88	80	Borq the Consumed	sandleapermap2,thornhulkmap2,pantherwomanmap2,mosquitomap2,fetishmap2,slingermap2,deathmaulermap2,cantormap2	225	100	100
+Kehjistan Wasteland	Desert		m11	Medium	89	80	Toadflax the Tainted	sandraider3Market,flyingscimitarMarket,corruptrogue2Market,mosquito2Market,firetowerMarket,vampire1Market,cr_archer2Market,unraveler3Market	210	100	100
 Blood Moon	Wilderness		m12	Medium	87	80	The Cow Queen	hellbovineMap	150	100	100
-Ruins of Viz'jun	Kurast		m13	Medium	88	80	Karvarousku the Cartographer	cr_lancermap,goatmanmap,cr_archermap,bigheadmap,cantormap,unravelermap,arachmap,thornhulkmap,sandleapermap,mosquitomap	150	100	100
+Ruins of Viz'jun	Kurast		m13	Medium	88	80	Karvarousku the Cartographer	cr_lancermap,goatmanmap,cr_archermap,bigheadmap,cantormap,unravelermap,arachmap,thornhulkmap,sandleapermap,mosquitomap,fetishshamanmap	195	100	100
 Leoric's Passage	Dungeon	Winding	m14	Medium	89	80	Rotting Horror	hellbovineMap	150	100	100
-Cursed Hold	Jail	Branching	m15	Medium	88	80	Gaoler Kanemith	sandleapermap2,zealotmap2,sk_archermap2,councilmembermap2,regurgitatormap2	150	100	100
+Cursed Hold	Jail	Branching	m15	Medium	88	80	Gaoler Kanemith	sandleapermap2,zealotmap2,sk_archermap2,councilmembermap2,regurgitatormap2	450	100	100
 Khazra Den	Lair	Sprawl	m16	Medium	88	80	Indio The Insane	cr_archermap2,cr_lancermap2,goatmanmap2,fallenmap2	150	100	100
-Sewers of Harrogath	KurastSewer	Loop	m17	Medium	89	80	The Mad Philosopher	fetishmap2,minionmap2,vilemothermap,fetishshamanmap,bloodlordmap2,mosquitomap2,sandleapermap2,arachmap	150	100	100
+Sewers of Harrogath	KurastSewer	Loop	m17	Large	89	80	The Mad Philosopher	fetishmap2,minionmap2,vilemothermap,fetishshamanmap,bloodlordmap2,mosquitomap2,sandleapermap2,arachmap	150	100	100
 Bastion Keep	Barracks	Branching	m18	Medium	89	80	Johnathan The Damned	fallenmap2,goatmanmap2,fallenshamanmap2,siegebeastmap2	150	100	100
 Imperial Palace	Harem		m19	Medium	89	80	Deathmaiden Madinsane	cr_archermap,cr_lancermap,deathmaulermap,bigheadmap,thornhulkmap	150	100	100
 Sanatorium	Basement		m20	Medium	87	80	The Guardian	cr_archermap2,cr_lancermap2,deathmaulermap2,bloodlordmap2	150	100	100
-Ruined Cistern	Sewer	Winding	m21	Medium	88	80	Ancient Cistern Hydra	cr_archermap2,fetishmap2,minionmap2,mosquitomap2	150	100	100
-Royal Crypts	Catacombs	Loop	m22	Medium	89	80	King Leoric	sk_archermap,bigheadmap,reanimatedhordemap,zealotmap	150	100	100
-Tomb of Zoltun Kulle	Tombs	Branching	m23	Medium	87	80	Toadflax the Tainted	arachmap,sandleapermap,unravelermap,cr_lancermap	150	100	100
-Lost Temple	Spider		m24	Medium	87	80	Sharptooth the Broodmother	minionmap,mosquitomap,unravelermap,arachmap	150	100	100
-Halls of Torture	Temple		m25	Medium	89	80	Gimli the Summoned One	sandleapermap2,zealotmap2,sk_archermap2,siegebeastmap2,bloodlordmap2,councilmembermap2,regurgitatormap2	150	100	100
+Ruined Cistern	Sewer	Winding	m21	Large	88	80	Ancient Cistern Hydra	cr_archermap2,fetishmap2,minionmap2,mosquitomap2	150	100	100
+Royal Crypts	Catacombs	Loop	m22	Large	89	80	King Leoric	sk_archermap,bigheadmap,reanimatedhordemap,zealotmap	300	100	100
+Tomb of Zoltun Kulle	Tombs	Loop	m23	Medium	87	80	Toadflax the Tainted	arachmap,sandleapermap,unravelermap,cr_lancermap	150	100	100
+Lost Temple	Spider		m24	Large	87	80	Sharptooth the Broodmother	minionmap,mosquitomap,unravelermap,arachmap	150	100	100
+Halls of Torture	Temple		m25	Small	89	80	Gimli the Summoned One	sandleapermap2,zealotmap2,sk_archermap2,siegebeastmap2,bloodlordmap2,councilmembermap2,regurgitatormap2	195	100	100
