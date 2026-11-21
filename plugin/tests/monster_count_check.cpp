@@ -14,6 +14,7 @@ int main() {
 	check("more kills than spawns never goes negative", Remaining({3, 4}) == 0);
 	check("nothing spawned: hidden", !Shown({0, 0}));
 	check("one spawned: shown", Shown({1, 0}));
+	check("towns hidden, boss areas not", IsTown(1) && IsTown(40) && IsTown(75) && IsTown(103) && IsTown(109) && !IsTown(120) && !IsTown(132) && !IsTown(136));
 
 	uint8_t region[0x300] = {};
 	const int32_t spawned = 20, killed = 8;
@@ -35,39 +36,39 @@ int main() {
 
 	check("a level past the table's row count is refused", !Read(regions, 3, 3, 0x2cc, 0x2d0, &l));
 
-	// room list: {populated, next} per room, a pointer chain
+	char text[64];
+	const auto says = [&](int32_t n, Rooms rooms, const char* want) {
+		Text(n, Explored(rooms), text, sizeof text);
+		return std::strcmp(text, want) == 0;
+	};
+	const Rooms all {10, 10}, half {10, 5}, most {20, 19}, nine {10, 9}, under {100, 89};
+	check("explored, 12: the number, no plus", says(12, all, "Monsters Remaining: 12"));
+	check("explored, 25: the number, no plus", says(25, all, "Monsters Remaining: 25"));
+	check("explored, 26 is 25+", says(26, all, "Monsters Remaining: 25+"));
+	check("explored, 300 is 25+", says(300, all, "Monsters Remaining: 25+"));
+	check("explored, 0", says(0, all, "Monsters Remaining: 0"));
+	check("50% explored, 10 left: 25+", says(10, half, "Monsters Remaining: 25+"));
+	check("95% explored, 10 left: 10", says(10, most, "Monsters Remaining: 10"));
+	check("exactly 90%: explored", says(3, nine, "Monsters Remaining: 3"));
+	check("89%: not explored", says(3, under, "Monsters Remaining: 25+"));
+	check("no rooms: not explored", !Explored({}));
+
+	// room walk: {next, populated} per room
 	struct Room {
 		const Room* next;
 		bool populated;
 	};
-	const Room c {nullptr, true}, b {&c, true}, a {&b, true};
+	const Room c {nullptr, false}, b {&c, true}, a {&b, true};
 	const auto pop = [](const uint8_t* r) { return reinterpret_cast<const Room*>(r)->populated; };
-	check("every room populated: exact", AllPopulated(reinterpret_cast<const uint8_t*>(&a), 0, pop));
-	const Room d {nullptr, false}, e {&d, true};
-	check("an unpopulated room: not exact", !AllPopulated(reinterpret_cast<const uint8_t*>(&e), 0, pop));
-	check("no room list: not exact", !AllPopulated(nullptr, 0, pop));
-	int visited = 0;
-	const Room g {nullptr, true}, f {&g, false};
-	AllPopulated(reinterpret_cast<const uint8_t*>(&f), 0, [&](const uint8_t* r) { ++visited; return pop(r); });
-	check("every room is visited even after an unpopulated one", visited == 2);
+	const Rooms walked = CountRooms(reinterpret_cast<const uint8_t*>(&a), 0, pop);
+	check("walk: 3 rooms, 2 made", walked.total == 3 && walked.made == 2);
 	Room loop1 {nullptr, true}, loop2 {&loop1, true};
 	loop1.next = &loop2;
-	check("a looping list is not exact", !AllPopulated(reinterpret_cast<const uint8_t*>(&loop1), 0, pop));
-
-	// level A fully seen, a trip to town and back: A still reads exact
+	check("walk: a looping list is no rooms", CountRooms(reinterpret_cast<const uint8_t*>(&loop1), 0, pop).total == 0);
 	SeenRooms seen;
-	const auto seenPop = [&](int32_t lv) { return [&seen, lv](const uint8_t* r) { return seen.Has(lv, r); }; };
-	seen.Add(8, &a); seen.Add(8, &b); seen.Add(8, &c);
-	seen.Add(1, &d);
-	check("level seen fully: exact", AllPopulated(reinterpret_cast<const uint8_t*>(&a), 0, seenPop(8)));
-	check("another level's rooms do not count", !AllPopulated(reinterpret_cast<const uint8_t*>(&a), 0, seenPop(1)));
-	check("after town and back, still exact", AllPopulated(reinterpret_cast<const uint8_t*>(&a), 0, seenPop(8)) && seen.Count(8) == 3);
+	seen.Add(3, &c);
+	check("seen rooms are kept per level", seen.Has(3, &c) && !seen.Has(4, &c));
 
-	char text[64];
-	Text(12, true, text, sizeof text);
-	check("text, exact", std::strcmp(text, "Monsters remaining: 12") == 0);
-	Text(12, false, text, sizeof text);
-	check("text, rooms unmet: plus", std::strcmp(text, "Monsters remaining: 12+") == 0);
 	std::printf(fail == 0 ? "all passed\n" : "%d failed\n", fail);
 	return fail == 0 ? 0 : 1;
 }
