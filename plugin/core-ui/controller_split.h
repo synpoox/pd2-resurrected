@@ -10,4 +10,7 @@ auto ModifierHeld() noexcept -> bool;
 // True when RB is down as well as the modifier (#1472's whole stack to the Cube). With modifier = "rb" it is never true.
 auto ModifierAndRbHeld() noexcept -> bool;
 
+// True when RB is down and the modifier is not (#1515's 5 from a stack tab). With modifier = "rb" it is never true.
+auto RbAloneHeld() noexcept -> bool;
+
 }  // namespace controller_split

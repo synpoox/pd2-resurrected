@@ -38,6 +38,7 @@ No control is a PD2 mirror yet; see [PD2 binds](#pd2-binds) for each PD2 bind's 
 | LB + L3 or LB + R3 | Fills the merchant with potions and tomes | shop | Controller QoL | untested |
 | Modifier (LB) + A | Splits a stack on the cursor, as Ctrl-click does | inventory | Our own (the modifier is Controller QoL's setting) | works (#1459) |
 | Modifier (LB) + RB + A | Sends the whole stack under the pad focus (stash or stack tab) to the Cube. The SDK has no focused-item read, so the chord is held with A on the focused item (#1472) | stash, stack tab | Our own (the modifier is Controller QoL's setting) | proven from the Personal stash tab only (the Runes or stack tab is unchecked): with a real LB + RB on the virtual pad and the 40-rune stack focused, LB+RB+A logged `chord on container 7 page 4 cell 0,0` and `stack of 40 to the Cube moved`, and the stash cell emptied (#1516) |
+| RB + A | On a stack-tab cell (Runes, Gems), moves 5 to the inventory; LB + RB + A there moves the whole stack to the Cube. Hooks D2R's stack-cell activate by signature and calls D2R's own bulk move (#1515) | stack tab | Our own | untested |
 | START, then LB/RB to the altar tab | Removed (#1480): the altar opens only from the altar object in the Temple, so there is no altar tab | altar | Our own | cut (#1480) |
 | D-pad up / down | Moves focus between the amulet slot and the confirm button | altar | Our own | works (#1456: the first DOWN lights the confirm button); amulet pickup and place not proven |
 | A on the altar | Opens the altar panel with the pad frame, the help bar and focus on the amulet slot; B closes it | world | D2R native | works (#1456, `docs/research/controller/altar-world-focus.md`) |
@@ -66,7 +67,7 @@ One line per PD2 pad bind, with its status.
 - Inventory LT/RT as Shift/Ctrl: replaced by QoL's LB modifier.
 - Identify, transfer, drop, Cube transfer and sell: covered by QoL LB chords and D2R prompts.
 - Multi-buy: gap (#1514). Chosen chord LB + Y on a shop item, not built: the SDK emits no shop event and has no buy call. QoL's LB+R3 fills potions and tomes only.
-- Stack-tab "transfer 5": gap (#1515). Chosen chord RB + A (no LB, so it never meets LB + D-pad), not built: D2R's "Move 5" is a mouse right-click inside its own widget, with no SDK event.
+- Stack-tab "transfer 5": built as RB + A on a stack-tab cell (#1515), see the table.
 - Whole stack-tab stack to the Cube: built as LB + RB + A (#1472), see the table.
 - Gamble Refresh and Repair All: unverified.
 

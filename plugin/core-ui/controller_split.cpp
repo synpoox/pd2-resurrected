@@ -79,4 +79,10 @@ auto ModifierAndRbHeld() noexcept -> bool {
 	       (ModifierMask() & pd2::pad_modifier::RB) == 0 && ModifierHeld();
 }
 
+auto RbAloneHeld() noexcept -> bool {
+	XINPUT_STATE state {};
+	return XInputGetState(0, &state) == ERROR_SUCCESS && (state.Gamepad.wButtons & pd2::pad_modifier::RB) != 0 &&
+	       (ModifierMask() & pd2::pad_modifier::RB) == 0 && !ModifierHeld();
+}
+
 }  // namespace controller_split

@@ -5,6 +5,8 @@
 
 #include "controller_split.h"
 #include "log.h"
+#include "sig.h"
+#include "sig_hook.h"
 
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item_interactions.h>
@@ -87,6 +89,35 @@ auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions
 	return Decision::Consume;
 }
 
+// A on a Runes, Gems or other stack-tab cell never reaches the item interaction events: D2R's AdvancedStashSlotWidget::Activate
+// (93847 0x2cf760, widget, focus) moves the item itself. No SDK service covers it, so it is hooked by signature here (#1515).
+using ActivateFn = void (*)(void*, uint64_t) noexcept;
+ActivateFn g_activate = nullptr;
+constexpr uint8_t ActivateEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x48, 0x89, 0x54, 0x24, 0x10, 0x55, 0x56, 0x57, 0x41, 0x56, 0x41, 0x57};
+// 93847 0x2cf590 (widget, unused, mode 0 = inventory, 3 = Cube, count): the bulk move D2R's hold-Y calls
+using BulkFn = void (*)(void*, void*, uint8_t, uint8_t) noexcept;
+BulkFn g_bulk = nullptr;
+constexpr size_t WidgetItem = 0x608;
+
+void OnActivateCell(void* widget, uint64_t focus) noexcept {
+	if (g_bulk != nullptr && *reinterpret_cast<void**>(static_cast<char*>(widget) + WidgetItem) != nullptr) {
+		const bool whole = controller_split::ModifierAndRbHeld();
+		if (whole || controller_split::RbAloneHeld()) {
+			D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+			D2RL::ItemHandle cursor = D2RL::InvalidItemHandle;
+			// With an item on the cursor A places it: stock path. Not knowing is also stock.
+			if (g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
+			    g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::Success &&
+			    cursor == D2RL::InvalidItemHandle) {
+				plog::Info("padbinds: stack tab %s", whole ? "whole stack to the Cube" : "5 to the inventory");
+				g_bulk(widget, nullptr, whole ? 3 : 0, whole ? 99 : 5);
+				return;
+			}
+		}
+	}
+	g_activate(widget, focus);
+}
+
 }  // namespace
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
@@ -116,6 +147,17 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	if (interactions->registerListener(context, &listener, &handle) != D2RL::ItemInteractions::Result::Success) {
 		std::snprintf(report, size, "FAILED (no item interaction listener)");
 		return;
+	}
+	uint64_t bulk = 0;
+	const bool hooked =
+	    sigscan::ScanUnique(context->exeBase,
+	                        "48 89 5c 24 10 48 89 6c 24 18 48 89 74 24 20 57 48 83 ec 30 48 8b b1 08 06 00 00", 0, &bulk) == 1 &&
+	    sigscan::HookBySignature(context, "StackTabActivate", "48 89 5c 24 18 48 89 54 24 10 55 56 57 41 56 41 57", 0, ActivateEntry,
+	                             sizeof ActivateEntry, OnActivateCell, &g_activate);
+	if (hooked) {
+		g_bulk = reinterpret_cast<BulkFn>(context->exeBase + bulk);
+	} else {
+		plog::Warn("padbinds: stack tab RB + A is off (signature not found)");
 	}
 	std::snprintf(report, size, "LB + RB + A sends the whole stack under the pad focus to the Cube");
 }
