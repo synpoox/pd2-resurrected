@@ -1,1 +1,1 @@
-Fixed map portals failing to open on some D2R 3.4 setups.
+- Fixed map portals failing to open on some D2R 3.4 setups.
