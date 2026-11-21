@@ -1,7 +1,7 @@
 // D2R's text-draw font block (D2WinFont, 0xa4 bytes): the defaults its builder 0x86d1b0 writes, then the fields set
 // here (offsets from the style reflection at 0x8bd030: pointSize +4, fontColor +8 (r, g, b, a ints), alignment +0x28
 // (h, v; left 0, center 1, right 2, from 0x8ba810), dropShadow offset +0x70 and colour +0x78). Last int: the font
-// preset, 0xe for none. Shared by the item quantity and the monsters-remaining line.
+// preset, 0xe for none. Used by the item quantity.
 #pragma once
 
 #include <cstdint>

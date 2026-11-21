@@ -69,22 +69,28 @@ struct SeenRooms {
 
 // D2R makes a room's monsters when the room first activates, so the ledger only knows the rooms met so far. Walk the level's
 // room list (`first`, next room pointer at `nextAt`); `populated(room)` says whether that room has made its monsters.
-// True only when the list is real (not empty, under MaxRooms) and every room is populated: then the count is exact.
+// True when the list is real (not empty, under MaxRooms) and at least ExploredPercent of its rooms are populated: PD2's
+// rule (ProjectDiablo.dll 0x103453f0 sends the count only once rooms activated x 100 / the level's rooms >= 90).
 // Every room is visited (no early exit) so a caller's populated() can remember rooms as it goes.
+constexpr int32_t ExploredPercent = 90;
 template <class Populated>
-inline auto AllPopulated(const uint8_t* first, size_t nextAt, Populated&& populated) noexcept -> bool {
-	int32_t rooms = 0;
-	bool all = true;
+inline auto Explored(const uint8_t* first, size_t nextAt, Populated&& populated) noexcept -> bool {
+	int32_t rooms = 0, made = 0;
 	for (const uint8_t* r = first; r != nullptr && rooms < MaxRooms; ++rooms) {
-		all = populated(r) && all;
+		made += populated(r) ? 1 : 0;
 		std::memcpy(&r, r + nextAt, sizeof r);
 	}
-	return rooms > 0 && rooms < MaxRooms && all;
+	return rooms > 0 && rooms < MaxRooms && made * 100 >= rooms * ExploredPercent;
 }
 
-// "Monsters remaining: 7+" while rooms are still unmet (the count can grow), "7" once every room has made its monsters
-inline auto Text(int32_t remaining, bool complete, char* out, size_t size) noexcept -> int {
-	return std::snprintf(out, size, "Monsters remaining: %d%s", remaining, complete ? "" : "+");
+// The owner's rule (#1656): over Cap reads "25+"; up to Cap the number, with "+" while the level is not explored (the
+// count can still grow as rooms make their monsters).
+constexpr int32_t Cap = 25;
+inline auto Text(int32_t remaining, bool explored, char* out, size_t size) noexcept -> int {
+	if (remaining > Cap) {
+		return std::snprintf(out, size, "Monsters Remaining: %d+", Cap);
+	}
+	return std::snprintf(out, size, "Monsters Remaining: %d%s", remaining, explored ? "" : "+");
 }
 
 }  // namespace pd2::monstercount
