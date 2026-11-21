@@ -58,6 +58,7 @@ Three lanes spent 5 minutes stuck without pad focus before they got it. These st
 - Build d2r-test-harness from its origin/main in a scratch detached worktree. Never use the main harness checkout; it holds someone else's work.
 - Press buttons with `tools/pad.py --slot N press <BTN>` (its README documents it). Use 150 ms presses.
 - The game follows the last device used. Once the pad check starts, do not click or move the mouse through `game_ctl`.
+- Run `game_ctl.py --slot N release` before the first pad press: with the harness active the pad gets no grid focus ([d2r-test-harness#4](https://github.com/synpoox/d2r-test-harness/issues/4)).
 - Close every panel first. START opens the inventory only when no panel is open. Pressed while a panel is open, it closes that panel.
 - After a panel opens, no grid has focus until the first D-pad press. The help bar shows "Hold to Sort" once a grid has focus.
 - Focus shows as a green cell highlight, plus a tooltip on an occupied cell.

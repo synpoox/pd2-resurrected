@@ -37,7 +37,7 @@ No control is a PD2 mirror yet; see [PD2 binds](#pd2-binds) for each PD2 bind's 
 | LB + R3 | Fills the belt with potions from the inventory | inventory | Controller QoL | untested |
 | LB + L3 or LB + R3 | Fills the merchant with potions and tomes | shop | Controller QoL | untested |
 | Modifier (LB) + A | Splits a stack on the cursor, as Ctrl-click does | inventory | Our own (the modifier is Controller QoL's setting) | works (#1459) |
-| Modifier (LB) + RB + A | Sends the whole stack under the pad focus (stash or stack tab) to the Cube. The SDK has no focused-item read, so the chord is held with A on the focused item (#1472) | stash, stack tab | Our own (the modifier is Controller QoL's setting) | built, not proven in game (no grid focus in the harness pad run, #1449) |
+| Modifier (LB) + RB + A | Sends the whole stack under the pad focus (stash or stack tab) to the Cube. The SDK has no focused-item read, so the chord is held with A on the focused item (#1472) | stash, stack tab | Our own (the modifier is Controller QoL's setting) | not working in game: with the stack focused in the Runes tab, A and LB+RB+A raised no item event (nothing logged), so the Cube move never ran (#1516) |
 | START, then LB/RB to the altar tab | Removed (#1480): the altar opens only from the altar object in the Temple, so there is no altar tab | altar | Our own | cut (#1480) |
 | D-pad up / down | Moves focus between the amulet slot and the confirm button | altar | Our own | works (#1456: the first DOWN lights the confirm button); amulet pickup and place not proven |
 | A on the altar | Opens the altar panel with the pad frame, the help bar and focus on the amulet slot; B closes it | world | D2R native | works (#1456, `docs/research/controller/altar-world-focus.md`) |
