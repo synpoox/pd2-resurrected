@@ -91,7 +91,8 @@ class HotPathLogging(unittest.TestCase):
                     gate = re.compile("|".join([SAMPLER.pattern] + [rf"\b{f}\b" for f in flags]))
                     lines = body.split("\n")
                     for i, line in enumerate(lines):
-                        if re.search(r"plog::(Info|Warn)\(", line) and "has no valid" not in line and not re.search(r"refused|dropped|not used", line):  # a bad row or a refused use, not a hit
+                        if re.search(r"plog::(Info|Warn)\(", line) and "has no valid" not in line and not (rel == "core-events/map_events.cpp" and name in ("UseOneOfStack", "OnUseItem")
+                                                           and re.search(r"refused|dropped|not used", line)):  # a bad row or a refused use, not a hit
                             # an `if (!sampled) return;` ahead of the line counts too
                             early = [p for p in lines[:i] if re.match(r"\s*if \(.*!", p) and gate.search(p)]
                             cond = enclosing_if(lines, i)
