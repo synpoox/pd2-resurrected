@@ -39,7 +39,7 @@
                 "visible": false
             }
         },
-        // PD2R (#1687, core-ui/stash_tabs.cpp): the Maps base actions' legend, in the spot of the page arrows the Maps tab hides;
+        // PD2R (#1687, core-ui/stash_tabs.cpp): the Maps pad actions' legend, in the spot of the page arrows the Maps tab hides;
         // the stash never has a focused widget on Maps, so the help bar can't name them
         {
             "type": "ButtonLegendWidget", "name": "pd2rMapsLegend",
@@ -49,7 +49,8 @@
                 "text": { "style": "$StyleButtonLegend" },
                 "presets": [
                     { "action": "cycleLeft", "description": "@StashPadBasePrev" },
-                    { "action": "cycleRight", "description": "@StashPadBaseNext" }
+                    { "action": "cycleRight", "description": "@StashPadBaseNext" },
+                    { "action": "option3", "description": "@StashPadTierNext" }
                 ]
             }
         },

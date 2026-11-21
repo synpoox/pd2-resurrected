@@ -36837,5 +36837,22 @@
     "ptBR": "Next Base",
     "ruRU": "Next Base",
     "zhCN": "Next Base"
+  },
+  {
+    "id": 51592,
+    "Key": "StashPadTierNext",
+    "enUS": "Next Tier",
+    "zhTW": "Next Tier",
+    "deDE": "Next Tier",
+    "esES": "Next Tier",
+    "frFR": "Next Tier",
+    "itIT": "Next Tier",
+    "koKR": "Next Tier",
+    "plPL": "Next Tier",
+    "esMX": "Next Tier",
+    "jaJP": "Next Tier",
+    "ptBR": "Next Tier",
+    "ruRU": "Next Tier",
+    "zhCN": "Next Tier"
   }
 ]
