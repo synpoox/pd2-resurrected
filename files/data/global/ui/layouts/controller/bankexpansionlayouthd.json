@@ -22,7 +22,7 @@
             }
         },
         // PD2R (#1669, core-ui/stash_tabs.cpp): the Maps and Bossing art (the Mats art with our cells, tools/make_pad_stash_art.py, at the stock background's spot, #1686) and the Maps tier and base buttons of the mouse layout,
-        // moved by the pad grid's offset from the mouse grid (+67, -80); all hidden until core-ui shows them
+        // the buttons only (not the backgrounds) moved by the pad grid's offset from the mouse grid (+67, -80); all hidden until core-ui shows them
         {
             "type": "ImageWidget", "name": "pd2rMapsBackground",
             "fields": {
