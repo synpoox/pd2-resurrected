@@ -1,0 +1,1 @@
+- Controller: pad focus stays on the Lock Inventory padlock after A toggles it.

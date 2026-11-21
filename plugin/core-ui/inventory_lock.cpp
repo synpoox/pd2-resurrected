@@ -222,11 +222,20 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 		if (g_widgets->findPanel(g_context, name, &panel) == D2RL::Widgets::Result::Success &&
 		    g_widgets->findWidget(g_context, panel, Unlocked, &off) == D2RL::Widgets::Result::Success &&
 		    g_widgets->findWidget(g_context, panel, Locked, &on) == D2RL::Widgets::Result::Success) {
+			// pad focus sits on the button about to be hidden: carry it to the one shown (#1675); the fields are optional
+			D2RL::Widgets::State was {};
+			const bool carry = D2RL::HasWidgetServiceField(g_widgets, D2RL::WidgetServiceGetWidgetStateFieldEnd) &&
+			                   D2RL::HasWidgetServiceField(g_widgets, D2RL::WidgetServiceFocusWidgetFieldEnd) &&
+			                   g_widgets->getWidgetState(g_context, locked ? off : on, &was) == D2RL::Widgets::Result::Success &&
+			                   was.visible && was.focused;
 			g_widgets->setWidgetVisible(g_context, off, !locked);
 			g_widgets->setWidgetVisible(g_context, on, locked);
 			// a hidden button still takes the hover and hides the other's tooltip: disable it too
 			g_widgets->setWidgetEnabled(g_context, off, !locked);
 			g_widgets->setWidgetEnabled(g_context, on, locked);
+			if (carry) {
+				g_widgets->focusWidget(g_context, locked ? on : off);
+			}
 		}
 	}
 }
