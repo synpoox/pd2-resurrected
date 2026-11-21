@@ -49,12 +49,12 @@ boss of class <c> sets its life to <p>%`; log: `ai hooks: test aid: class <c> un
 `ai hooks: test aid: the request for class <c> expired unused`. Example: `core-events life 5 1100`.
 
 `core-events corrupt` : corrupts the item on the cursor, else the inventory item at cell (0,0), with the normal
-corruption roll (no cube). Needs an item there that is not already corrupted. Log: `test aid: corrupt: item <id> corrupted
+corruption roll (no cube). Needs an item there that is not already corrupted. Log: `test aid: corrupt: item <class> corrupted
 (the normal roll)`, `... NOT corrupted (already corrupted, or no row matches)`, or `test aid: corrupt: no item on the
 cursor and none at inventory (0,0)`. Example: `core-events corrupt`.
 
 `core-events desecrate` : the altar's desecration roll on the cursor item, else the inventory item at (0,0); it sets
-Lucion's dead stage itself. Log: `test aid: desecrate: item <id> desecrated`, `roll failed (no brick here)`, or
+Lucion's dead stage itself. Log: `test aid: desecrate: item <class> desecrated`, `roll failed (no brick here)`, or
 `refused, see the line above`; no item: `test aid: desecrate: no item on the cursor and none at inventory (0,0)`.
 Example: `core-events desecrate`.
 

@@ -168,7 +168,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	g_imageKnown = d2r::Bind(context->exeBase);
 	InstallParts(context);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand,
-	                                       "PD2 Resurrected Core Events: every part and its counters; `life <percent> <class>` sets a ported boss's life, `life <percent> unit <id>` a monster's in the player's level, `kill <class>` or `kill unit <id>` kills one through the death path (test aids).");
+	                                       "PD2 Resurrected Core Events: every part and its counters; `life <percent> <class>` sets a ported boss's life, `life <percent> unit <id>` a monster's in the player's level, `kill <class>` or `kill unit <id>` kills one through the death path, `corrupt` / `desecrate` roll the held item, `event <word>` forces the next map's event (test aids; docs/console-commands.md).");
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {
