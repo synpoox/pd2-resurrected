@@ -25,6 +25,12 @@ class DyeTint(unittest.TestCase):
         n = sum(1 for r in rows("cubemain.txt") if "Annihilus" in r.get("input 1", "") and "dye" in r.values())
         self.assertGreater(n, 0)
 
+    def test_hd_tint_table_follows_colors_txt(self):
+        src = (ROOT / "plugin/core-rules/item_rules.cpp").read_text("utf-8")
+        table = re.search(r"DyeRgb\[21\]\[3\] = \{(.*?)\n\};", src, re.S).group(1)
+        codes = re.findall(r"// (\w{4})", table)
+        self.assertEqual(codes, [r["Code"] for r in rows("colors.txt")])
+
 
 if __name__ == "__main__":
     unittest.main()
