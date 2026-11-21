@@ -651,3 +651,4 @@ cartographer_map_extra_fetish	648		1	11														10	512	10	512														
 cartographer_map_extra_shriek	649		1	11														10	512	10	512																250	19		MapExtraGroupShriek	MapExtraGroupShriek										0
 cartographer_map_mon_splash	650		1	11														10	512	10	512																250	19		MapMonSplash	MapMonSplash										0
 cartographer_map_mon_splash2	651		1	11														10	512	10	512																250	19		MapMonSplash2	MapMonSplash2										0
+item_quantity	652		1	9											577	102		8	100	9	100																251	19		ModItemQuantity	ModItemQuantity									2	0

@@ -11815,6 +11815,23 @@
     "zhCN": "Melee Attacks Deal Splash Damage"
   },
   {
+    "id": 51583,
+    "Key": "ModItemQuantity",
+    "enUS": "Item Quantity %+d%%",
+    "zhTW": "Item Quantity %+d%%",
+    "deDE": "Item Quantity %+d%%",
+    "esES": "Item Quantity %+d%%",
+    "frFR": "Item Quantity %+d%%",
+    "itIT": "Item Quantity %+d%%",
+    "koKR": "Item Quantity %+d%%",
+    "plPL": "Item Quantity %+d%%",
+    "esMX": "Item Quantity %+d%%",
+    "jaJP": "Item Quantity %+d%%",
+    "ptBR": "Item Quantity %+d%%",
+    "ruRU": "Item Quantity %+d%%",
+    "zhCN": "Item Quantity %+d%%"
+  },
+  {
     "id": 51564,
     "Key": "MapTierm02",
     "enUS": "Tier: 2\nImmunities: ÿc1F120ÿc0, ÿc2P120ÿc0",

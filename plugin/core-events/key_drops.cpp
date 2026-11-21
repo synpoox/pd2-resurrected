@@ -11,6 +11,7 @@
 
 #include "log.h"
 #include "map_events.h"
+#include "quantity_drops.h"
 #include "death_steps.h"
 #include "tc_roll.h"
 
@@ -102,6 +103,7 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	auto* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(monster);
 	const DeathContext death {game, monster, event, players, seed};
 	UberDeathLate(death);
+	QuantityDrops(death);
 	SpireShadowDied(game, monster, event->levelId, seed);
 	for (int i = 0; i < RollCount; ++i) {
 		const KeyRoll& r = Rolls[i];

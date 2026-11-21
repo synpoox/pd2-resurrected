@@ -102,6 +102,7 @@ modkit_add_plugin(core-events VERSION "${CORE_EVENTS_VERSION}" SOURCES
 	core-events/tc_roll.cpp
 	core-events/treasure_fallen.cpp
 	core-events/uber_deaths.cpp
+	core-events/quantity_drops.cpp
 	core-events/uber_entry.cpp
 	core-events/arena_spots.cpp
 	core-events/test_kill.cpp
