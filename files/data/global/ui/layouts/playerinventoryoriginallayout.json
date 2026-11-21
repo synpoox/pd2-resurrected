@@ -54,7 +54,7 @@
         {
             "type": "ButtonWidget", "name": "InventoryLock",
             "fields": {
-                "rect": { "x": 276, "y": 464 },
+                "rect": { "x": 277, "y": 462 },
                 "filename": "PANEL\\pd2r_inventory_lock",
                 "normalFrame": 0,
                 "pressedFrame": 1,
@@ -68,7 +68,7 @@
         {
             "type": "ButtonWidget", "name": "InventoryLockOn",
             "fields": {
-                "rect": { "x": 276, "y": 464 },
+                "rect": { "x": 277, "y": 462 },
                 "filename": "PANEL\\pd2r_inventory_lock",
                 "normalFrame": 2,
                 "pressedFrame": 3,

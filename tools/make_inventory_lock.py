@@ -4,7 +4,7 @@ Source: PD2's buysellbtn.dc6 frames 24-27 (pd2assets.mpq: unlocked, unlocked pre
 upscaled 4x with Real-ESRGAN by pd2_art.upscale and committed as merge/art/ui/lock<frame>-<hash>.png.
 Changes: the bright metal is warmed to D2R's gold and bronze, the shackle stands a little taller, and the face gets a soft
 bevel (light top-left, shade bottom-right). Frames go to the InventoryLock (0-1) and InventoryLockOn (2-3) ButtonWidgets.
-The legacy view gets the same four frames as a 26 px DC6 (#1659), on the act 1 palette.
+The legacy view gets the same four frames as a 28 px DC6 (#1659), on the act 1 palette.
 Needs Pillow and numpy. Run: py -3 tools/make_inventory_lock.py
 """
 from pathlib import Path
@@ -18,9 +18,9 @@ import pd2_table
 ROOT = Path(__file__).resolve().parents[1]
 ART = ROOT / "merge/art/ui"
 OUT = ROOT / "files/data/hd/global/ui/panel/pd2r/inventory_lock.sprite"
-SIZE = 72  # HD frame; write_sprite makes the 36 px lowend twin
+SIZE = 96  # HD frame, just under the 98 unit inventory cell (#1675); write_sprite makes the 48 px lowend twin
 OUT_SD = ROOT / "files/data/global/ui/panel/pd2r_inventory_lock.dc6"
-SD_SIZE = 26  # legacy frame (#1659)
+SD_SIZE = 28  # legacy frame (#1659), just under the 29 px cell (#1675)
 GOLD = np.array([226, 182, 104], float)  # D2R's UI gold, for the lit metal
 BRONZE = np.array([120, 92, 60], float)  # and its bronze, for the mid tones
 SHACKLE = (0.24, 0.74, 0.21, 0.48)  # x0, x1, y0, y1 of the shackle band, as fractions of the frame

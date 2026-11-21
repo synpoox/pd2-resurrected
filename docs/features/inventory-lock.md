@@ -6,15 +6,15 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 
 ## How it works
 
-- **Button.** Two `ButtonWidget`s at one spot in `playerinventoryoriginallayouthd.json` (the expansion layout lists them), x 1001,
-  y 1702 beside the gold field: `InventoryLock` (unlocked art) and `InventoryLockOn` (locked art). A frame watch shows only the
+- **Button.** Two `ButtonWidget`s at one spot in `playerinventoryoriginallayouthd.json` (the expansion layout lists them), x 977,
+  y 1690 beside the gold field: `InventoryLock` (unlocked art) and `InventoryLockOn` (locked art). A frame watch shows only the
   one matching the lock (shown and enabled: a hidden button still takes the hover and hid the other's tooltip, #1659); the
   loader's widget service cannot set a toggle button's state, but it can show and hide widgets. Art:
-  `PANEL\pd2r\inventory_lock` (`files/data/hd/global/ui/panel/pd2r/`, HD 72 px and lowend), PD2's padlock
+  `PANEL\pd2r\inventory_lock` (`files/data/hd/global/ui/panel/pd2r/`, HD 96 px, just under the 98 px cell, and lowend), PD2's padlock
   (`buysellbtn.dc6` frames 24-27, upscaled in `merge/art/ui/`) altered by `tools/make_inventory_lock.py`: gold and bronze metal,
   a taller shackle, a soft bevel (frames: unlocked, pressed, locked, pressed; rerun it to redraw).
-- **Legacy.** `playerinventoryoriginallayout.json` (the expansion layout lists them) holds the same two buttons at x 276, y 464 in
-  the bottom strip, art `PANEL\pd2r_inventory_lock` (`files/data/global/ui/panel/pd2r_inventory_lock.dc6`, 26 px, the HD frames
+- **Legacy.** `playerinventoryoriginallayout.json` (the expansion layout lists them) holds the same two buttons at x 277, y 462 in
+  the bottom strip, art `PANEL\pd2r_inventory_lock` (`files/data/global/ui/panel/pd2r_inventory_lock.dc6`, 28 px, just under the 29 px cell, the HD frames
   scaled by `tools/make_inventory_lock.py`).
 - **Toggle.** The click sends `PanelManager:OpenPanel:core-ui/InventoryLock`; core-ui's `lock` part catches it, flips the lock and
   consumes it. The lock carries over to the next game and is saved per character, as PD2 saves it: while locked,
@@ -30,7 +30,7 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
   the 1.13c body-slot handlers refuse while it is on, and also refuse picking up magic or better charms from the inventory.
 
 - **Controller.** `controller/playerinventoryoriginallayouthd.json` (the expansion layout is based on it) holds the same two buttons
-  at the grid's bottom right, under its last column (x 1124, y 1690, the grid's right edge 1196). D-pad right from the gold button
+  at the grid's bottom right, under its last column (x 1100, y 1690, 96 px, the grid's right edge 1196). D-pad right from the gold button
   focuses it, A toggles it (same click message). The mercenary tab shows the inventory panel too, so the padlock is on both tabs
   ([#1660](https://github.com/synpoox/pd2-resurrected/issues/1660)).
 
