@@ -213,6 +213,10 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](../res
 | Shift-click a Tome of Identify identifies the inventory | PD2 wiki only | c | none: the Mass Identify companion was removed ([#1467](https://github.com/synpoox/pd2-resurrected/issues/1467)), one charge per item in PD2 | none | Exact | S | open: no companion since [#1467](https://github.com/synpoox/pd2-resurrected/issues/1467) (2.1.1 refused to load on 93847) | shift-right-click on a Tome of Identify identifies every item in the inventory | [IR2](https://github.com/synpoox/pd2-resurrected/issues/237) |
 | Antidote, thawing and stamina potions go to the belt; special items that can't be sold | PD2 wiki only | a | itemtypes `beltable`, misc / itemtypes sell flags ? | none | Exact | S | data | the merged rows match PD2's | [IR8](https://github.com/synpoox/pd2-resurrected/issues/243) |
 
+## Hot-path log lines (#1609)
+
+A log line per hit, arrow, missile, kill or drop stalls the game thread (D2RLoader flushes each line to disk, about 5 ms), so those lines write **nothing in normal play**. `pd2::HotSample` (`plugin/common/hot_log.h`) lets a line through only while D2RLoader's debug mode is on (`IsDebugModeEnabled`, the state `debug_mode` sets); then it logs the first 20 calls and one in 500 after. A game check that reads a hot-path line (`multiple shot:`, `crit:`, `curse:`, `charge ...`, the missile-hit lines, `uber scaling:` minions and the like) types `debug_mode` in the console first; that is the same command that turns cheats on, so a check that uses cheats already has it. Boss phase lines, load lines and error warnings are not hot and log always. `tools/tests/test_hot_path_logging.py` fails a sampler that skips the flag.
+
 ## Cube ops
 
 | Rule | PD2 source | Bucket | D2R slot | RVAs | Tier | Size | Status | Test | Work item |

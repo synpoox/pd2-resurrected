@@ -43,7 +43,7 @@ std::atomic<uint32_t> g_shared {0};
 std::atomic<uint32_t> g_poisons {0};
 
 // The first 20, then every 500th: enough to read both lives in a game check
-constexpr auto Logged(uint32_t n) noexcept -> bool {
+inline auto Logged(uint32_t n) noexcept -> bool {
 	return pd2::HotSample(n);
 }
 

@@ -1786,7 +1786,7 @@ auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 		off = true;
 	}
 	const uint32_t n = off ? ++g_charmOffChecks : ++g_charmChecks;  // own cap, so a top-row charm cannot hide kept lines or flood
-	if (n <= 40 || n % 500 == 0 || (twin && ++g_charmTwinLogs <= CharmTwinLogCap)) {  // a twin answer is the #1288 case
+	if (pd2::DebugOn() && (n <= 40 || n % 500 == 0 || (twin && ++g_charmTwinLogs <= CharmTwinLogCap))) {  // a twin answer is the #1288 case
 		plog::Info("charm rows: item %p at x %u y %u, page %u, quality %d, unique row+1 %d, same-name twin in rows 5-8 %s, %u stat lists unlinked, active in D2R, %s, %u so far",
 		           static_cast<void*>(item), xy & 0xffff, row, page,
 		           d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemQuality)(item),
@@ -2152,7 +2152,7 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	// Outer cap: at most one line a second, so a full inventory scanned by two callers stays quiet whatever the ring holds
 	static std::atomic<uint64_t> lastTick {0};
 	const uint64_t now = GetTickCount64();
-	if (++slot->n <= 1 && now - lastTick.load() >= 1000) {
+	if (++slot->n <= 1 && pd2::DebugOn() && now - lastTick.load() >= 1000) {
 		lastTick = now;
 		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStat);
 		plog::Info("map stack: caller +0x%llx %08x q%d/%d quality %d/%d -> %s (%s %d)", static_cast<unsigned long long>(caller),

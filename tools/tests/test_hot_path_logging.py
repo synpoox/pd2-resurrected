@@ -4,17 +4,22 @@ import unittest
 from pathlib import Path
 
 PLUGIN = Path(__file__).resolve().parent.parent.parent / "plugin"
-SAMPLER = re.compile(r"HotSample|plog::Sample|First\(|FinisherSample|Logged\(|GateLog\(")
+SAMPLER = re.compile(r"HotSample|plog::Sample|First\(|FirstUnitHit|FinisherSample|Logged\(|GateLog\(|DebugOn\(")
 # A gate that logs a unit kind every time before it samples: `if (type == 0 || pd2::HotSample(n))`
 BYPASS = re.compile(r"\|\|\s*[\w:]*?(?:" + SAMPLER.pattern + ")")
 # Functions that run per hit, kill, drop, missile or curse: every log call in them sits under a sampler
 HOT = {
-    "core-rules/item_rules.cpp": ["LogStrike", "HitEvent", "CappedAddLife", "CrushingBlow", "OpenWounds",
+    "core-rules/item_rules.cpp": ["LogStrike", "MissileStrike", "HitEvent", "CappedAddLife", "CrushingBlow", "OpenWounds",
                                   "RefreshOpBase", "MakeRoom", "ResistCurse", "CurseGate", "ApplyUngated", "CurseApply",
                                   "ApplyDarkPact", "SetPhasing", "EquipStatCallback", "EquipAuraTick", "AddCharge",
                                   "MapItemMaker"],
     "core-rules/loot_rules.cpp": ["ApplyEthereal", "RollStaffMods"],
-    "core-rules/skill_functions.cpp": ["AvoidWithParry"],
+    "core-rules/skill_functions.cpp": ["AvoidWithParry", "SrvDoMultipleShot", "MeleeHit", "LeapHitOne", "QueueHitHook"],
+    "core-rules/missile_functions.cpp": ["SrvHitSpawnReturn", "SrvHitBounce", "SrvDmgFirstHit", "SrvHitExplodeSpread",
+                                         "SrvHitState", "SrvHitBoltSplash", "SrvHitUberImmolation", "CltHitHolyLight",
+                                         "CltHitFistDelay", "CltHitChargeBolt", "SrvHitBladeFragment",
+                                         "CltHitBladeFragment", "SrvHitSummon", "SrvHitThrowPotion",
+                                         "CltHitThrowPotion"],
     "core-events/uber_scaling.cpp": ["ScaleUberMonster"],
     "core-events/rathma_life.cpp": ["SharedStep", "SharedPoison"],
 }
@@ -56,6 +61,22 @@ class HotPathLogging(unittest.TestCase):
         self.assertRegex("if (type == 0 || pd2::HotSample(n)) {", BYPASS)
         self.assertNotRegex("if (pd2::HotSample(n)) {", BYPASS)
 
+    def test_every_sampler_checks_the_debug_flag(self):
+        """Hot-path lines write nothing in normal play (#1609): each sampler needs `debug_mode` (pd2::DebugOn)."""
+        hot = (PLUGIN / "common/hot_log.h").read_text(encoding="utf-8")
+        self.assertEqual(len(re.findall(r"HotSample\(.*\{", hot)), 2)
+        self.assertRegex(hot.split("auto HotSample(uint32_t")[1].split("}")[0], r"&& DebugOn\(\)")
+        self.assertRegex(hot.split("auto HotSample(std::atomic")[1].split("}")[0], r"return HotSample\(\+\+counter\)")
+        for rel, helper in [("core-rules/skill_functions.cpp", "First"), ("core-rules/missile_functions.cpp", "FirstUnitHit")]:
+            body = bodies((PLUGIN / rel).read_text(encoding="utf-8"), helper)
+            self.assertTrue(body and "DebugOn()" in body[0], f"{rel}: {helper} skips the debug flag")
+        for rel in HOT:
+            text = (PLUGIN / rel).read_text(encoding="utf-8")
+            self.assertNotRegex(text, r"HotSample\([^)]*\)\s*\|\|(?![^{;]*(?:HotSample|First|DebugOn|\w+First))",
+                                f"{rel}: an `|| ...` after a sampler bypasses the flag")
+        for rel in ["core-rules/missile_functions.cpp", "core-rules/skill_functions.cpp"]:
+            self.assertNotIn("plog::Sample(", (PLUGIN / rel).read_text(encoding="utf-8"), f"{rel}: use pd2::HotSample")
+
     def test_hot_functions_sample_every_log_call(self):
         for rel, names in HOT.items():
             text = (PLUGIN / rel).read_text(encoding="utf-8")
@@ -68,7 +89,7 @@ class HotPathLogging(unittest.TestCase):
                     gate = re.compile("|".join([SAMPLER.pattern] + [rf"\b{f}\b" for f in flags]))
                     lines = body.split("\n")
                     for i, line in enumerate(lines):
-                        if re.search(r"plog::(Info|Warn)\(", line):
+                        if re.search(r"plog::(Info|Warn)\(", line) and "has no valid" not in line:  # a bad row, not a hit
                             # an `if (!sampled) return;` ahead of the line counts too
                             early = [p for p in lines[:i] if re.match(r"\s*if \(.*!", p) and gate.search(p)]
                             cond = enclosing_if(lines, i)

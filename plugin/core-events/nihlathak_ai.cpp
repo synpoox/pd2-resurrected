@@ -5,6 +5,7 @@
 #include "ai_common.h"
 #include "ai_hooks.h"
 #include "log.h"
+#include "hot_log.h"
 #include "uber_drops.h"
 
 #include <D2RLPlugin/item.h>
@@ -174,7 +175,7 @@ auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	d2r::UnitXY(unit, &ux, &uy);
 	const int32_t a0 = m.Aip(1, 0), a1 = m.Aip(1, 1), a2 = m.Aip(1, 2);
 	const int32_t last = a0 + a1 + a2 + 1, i = stage - 1;
-	if (plog::Sample(g_nihlStages)) {
+	if (pd2::HotSample(g_nihlStages)) {
 		plog::Info("nihlathakMap: stage %d of %d (%u thinks)", stage, last + 3, g_nihlStages.load());
 	}
 	// PD2 casts these with no target at (0, 0); the port casts at the caster, where srvdo 169 puts the nova anyway
