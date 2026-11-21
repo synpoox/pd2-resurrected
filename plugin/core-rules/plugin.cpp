@@ -266,6 +266,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 		plog::Info("%s-off.txt leaves out: %s", PluginName, off_switch::Words());
 	}
 	HoldRelayReserve(context);  // first, before any part allocates near the image
+	InstallMercGear(context);   // not a part: the off file cannot drop it, or saves would lose merc items (#1627)
 	propids::Init(context);
 	g_imageKnown = d2r::Bind(context->exeBase);
 	parts::InstallAll(g_parts, std::size(g_parts), context, PluginName, g_imageKnown);

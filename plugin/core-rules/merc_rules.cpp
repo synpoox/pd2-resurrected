@@ -137,6 +137,13 @@ auto InstallMercRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool hook = table && context->InstallInlineHook(NpcMenuOpen, NpcMenuOpenEntry, sizeof(NpcMenuOpenEntry),
 	                                                      MenuOpen, &g_menuOpenOriginal);
 	const bool seller = hook && context->PatchWriteU8(tyrael + NpcTableHires, NotHiring, sizeof(NotHiring), 1);
+	std::snprintf(report, reportSize, "tyrael hire%s",
+	              !table ? " FAILED (npc table differs)" : !hook ? " FAILED (bytes differ)"
+	                                                     : seller ? "" : " FAILED (npc table write)");
+	return seller ? 1 : 0;
+}
+
+auto InstallMercGear(const D2RL::PluginContext* context) noexcept -> void {
 	const bool gear = PatchMercGear(context);
 	if (!gear) {
 		// Without the patch D2R's load check deletes every ring, amulet, glove, belt and boot a merc wears (#1627
@@ -149,15 +156,11 @@ auto InstallMercRules(const D2RL::PluginContext* context, char* report, size_t r
 		            "PD2 Resurrected", MB_OK | MB_ICONERROR | MB_TOPMOST);
 		TerminateProcess(GetCurrentProcess(), 1);  // not ExitProcess: no DLL detach code runs while plugins load
 	}
-	std::snprintf(report, reportSize, "tyrael hire%s; merc gear%s",
-	              !table ? " FAILED (npc table differs)" : !hook ? " FAILED (bytes differ)"
-	                                                     : seller ? "" : " FAILED (npc table write)",
-	              gear ? "" : " FAILED (no unique match or patch refused)");
-	return (seller ? 1 : 0) + (gear ? 1 : 0);
+	plog::Info("merc gear installed");
 }
 
 auto MercRuleCount() noexcept -> int {
-	return 2;
+	return 1;
 }
 
 auto MercRuleCounters(char* out, size_t size) noexcept -> void {
