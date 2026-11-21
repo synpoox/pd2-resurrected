@@ -170,20 +170,17 @@ auto DropTc(Game* game, Unit* monster, Unit* killer, const char* name) noexcept 
 }
 
 // The class's TC list, in PD2's order (its branch for each class, ProjectDiablo.dll 0x10378250). `drop` is one TC; the
-// Barbarian's, Sorceress's and Amazon's pick a weapon set by a roll; the Barbarian's 1h / 2h branch follows the weapon
-// it shows (`parts`: its part bytes, invader_look.h has the mapping for every class), `set` gets the chosen set's name.
+// Barbarian's 1h / 2h set follows the weapon it shows, the Amazon's and Sorceress's sets are the bow and the staff they show (`parts`: its part bytes, invader_look.h has the mapping for every class), `set` gets the chosen set's name.
 template <class Drop>
 void ClassDrops(int32_t which, const uint8_t* parts, const char** set, Drop&& drop) noexcept {
 	switch (which) {
 	case 0:  // Amazon
 		drop("InvaderCirclets");
 		drop("InvaderBodyAll");
-		switch (RollRand() & 3) {
-		case 0: drop("InvaderAmazonBow"); drop("InvaderAmazonQuiver"); break;
-		case 1: drop("InvaderAmazonCrossbow"); drop("InvaderAmazonBolt"); break;
-		case 2: drop("InvaderAmazon1hJavelin"); drop("InvaderGenericShield"); break;
-		default: drop("InvaderAmazon2hSpear"); break;
-		}
+		// every Amazon shows a bow
+		*set = "bow (look)";
+		drop("InvaderAmazonBow");
+		drop("InvaderAmazonQuiver");
 		break;
 	case 1:  // Assassin
 		drop("InvaderGenericHelm");
@@ -191,26 +188,16 @@ void ClassDrops(int32_t which, const uint8_t* parts, const char** set, Drop&& dr
 		drop("InvaderAssassinWeapon");
 		drop("InvaderAssassinWeapon");
 		break;
-	case 2:  // Barbarian: one 2-hander, two throwing weapons or two 1-handers
+	case 2:  // Barbarian: the weapon shown, one 2-hander or two 1-handers
 		drop("InvaderBarbarianHelm");
 		drop("InvaderBodyMedHeavy");
-		{
-			const int32_t roll = RollRand() % 3;
-			const auto look = pd2::invader_look::Barbarian(parts);
-			// the throwing set has no look: it keeps its 1 in 3; the other two follow the weapon shown
-			const bool twoHand = look == pd2::invader_look::Weapon::Unknown ? roll == 0 : look == pd2::invader_look::Weapon::TwoHand;
-			if (roll == 1) {
-				*set = "throwing x2 (no look)";
-				drop("InvaderBarbarianThrow");
-				drop("InvaderBarbarianThrow");
-			} else if (twoHand) {
-				*set = "2h (look)";
-				drop("InvaderBarbarian2h");
-			} else {
-				*set = "1h x2 (look)";
-				drop("InvaderBarbarian1h");
-				drop("InvaderBarbarian1h");
-			}
+		if (pd2::invader_look::Barbarian(parts) == pd2::invader_look::Weapon::TwoHand) {
+			*set = "2h (look)";
+			drop("InvaderBarbarian2h");
+		} else {
+			*set = "1h x2 (look)";
+			drop("InvaderBarbarian1h");
+			drop("InvaderBarbarian1h");
 		}
 		break;
 	case 3:  // Druid
@@ -231,15 +218,11 @@ void ClassDrops(int32_t which, const uint8_t* parts, const char** set, Drop&& dr
 		drop("InvaderPaladinWeapon");
 		drop("InvaderPaladinShield");
 		break;
-	default:  // Sorceress: a 2-hander, or a 1-hander and a shield
+	default:  // Sorceress
 		drop("InvaderCirclets");
 		drop("InvaderBodyLightMed");
-		if ((RollRand() & 1) == 0) {
-			drop("InvaderSorc2hWeapon");
-		} else {
-			drop("InvaderSorc1hWeapon");
-			drop("InvaderGenericShield");
-		}
+		*set = "staff (look)";
+		drop("InvaderSorc2hWeapon");  // every Sorceress shows a staff
 		break;
 	}
 }

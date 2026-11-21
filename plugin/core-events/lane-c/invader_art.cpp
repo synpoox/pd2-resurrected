@@ -82,6 +82,9 @@ auto InstallInvaderArt(const D2RL::PluginContext* context, char* report, size_t 
 		return 0;
 	}
 	std::snprintf(report, reportSize, "%d/3 art path builders hooked: monsters/<tok> -> chars/<tok> for AM AI BA DZ NE PA SO", on);
+	if (on < 3) {
+		plog::Warn("invader art: only %d/3 path builders installed, some Invader art may stay monster art", on);
+	}
 	plog::Info("invader art: redirect installed (%d/3 path builders)", on);
 	return 1;
 }
