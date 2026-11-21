@@ -233,7 +233,7 @@
        /* {
             "type": "TextBoxWidget", "name": "NextLevelXP",
             "fields": {
-                "rect": { "x": 789, "y": 1038, "width": 250, "height": 50 },
+                "rect": { "x": 789, "y": 912, "width": 250, "height": 50 },
                 "style": {
                     "fontColor": { "r": 255, "g": 255, "b": 255, "a": 255 },
                     "pointSize": "$MediumPanelFontSize",
@@ -244,7 +244,7 @@
         {
             "type": "TextBoxWidget", "name": "ConnectorWord",
             "fields": {
-                "rect": { "x": 748, "y": 1038, "height": 50 },
+                "rect": { "x": 748, "y": 912, "height": 50 },
                 "text": "@ItemStats1j",
                 "style": {
                     "fontColor": { "r": 255, "g": 255, "b": 255, "a": 255 },
@@ -256,7 +256,7 @@
         {
             "type": "TextBoxWidget", "name": "CurrentXP",
             "fields": {
-                "rect": { "x": 467, "y": 1038, "width": 250, "height": 50 },
+                "rect": { "x": 467, "y": 912, "width": 250, "height": 50 },
                 "style": {
                     "fontColor": { "r": 255, "g": 255, "b": 255, "a": 255 },
                     "pointSize": "$MediumPanelFontSize",
