@@ -1,0 +1,1 @@
+- Pyre Stash Search updated to 1.3.1+rev.7: controller tab flyout, item hover cards and a duplicates filter. (#1691)
