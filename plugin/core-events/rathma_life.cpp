@@ -13,6 +13,7 @@
 #include "rathma_life.h"
 
 #include "log.h"
+#include "hot_log.h"
 #include "pd2_engine.h"
 #include "rathma_pair.h"
 #include "rathma_split.h"
@@ -43,7 +44,7 @@ std::atomic<uint32_t> g_poisons {0};
 
 // The first 20, then every 100th: enough to read both lives in a game check
 constexpr auto Logged(uint32_t n) noexcept -> bool {
-	return n <= 20 || n % 100 == 0;
+	return pd2::HotSample(n);
 }
 
 auto Life(Unit* unit) noexcept -> int32_t {

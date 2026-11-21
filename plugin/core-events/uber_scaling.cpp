@@ -6,12 +6,16 @@
 #include "uber_scaling.h"
 
 #include "log.h"
+#include "hot_log.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
 #include <iterator>
 
 namespace {
+
+std::atomic<uint32_t> g_scaled {0};  // a line per spawning uber-fight monster, sampled (#1609)
 
 using d2r::At;
 using d2r::Game;
@@ -99,11 +103,15 @@ auto ScaleUberMonster(Game* game, Unit* monster) noexcept -> void {
 	d2r::Engine<void (*)(Unit*, void*, int32_t) noexcept>(AttachStatList)(monster, list, 1);
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(monster, ScalingState, 1);  // AttachStatList does not (#630)
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(monster, ScalingState, 1);
+	const uint32_t n = ++g_scaled;
+	if (!boss && !pd2::HotSample(n)) {  // a boss is one per fight: always logged
+		return;
+	}
 	plog::Info("uber scaling: monster %d (unit %d) in level %d, tier %d, entries %d%s: maxhp %d -> %d, life %d -> %d, "
-	           "skills +%d, absorbs %d/%d, dr %d, plr %d",
+	           "skills +%d, absorbs %d/%d, dr %d, plr %d, %u so far",
 	           classId, id, d2r::Engine<int32_t (*)(void*) noexcept>(RoomLevelId)(
 	               d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(monster)),
 	           tier, entries, boss ? " (boss)" : "", maxhp >> 8, stat(monster, StatMaxLife, 0) >> 8, life >> 8,
 	           stat(monster, StatLife, 0) >> 8, stat(monster, AllSkills, 0), stat(monster, FireAbsorb, 0),
-	           stat(monster, MagicAbsorb, 0), stat(monster, DamageResist, 0), stat(monster, PoisonLengthResist, 0));
+	           stat(monster, MagicAbsorb, 0), stat(monster, DamageResist, 0), stat(monster, PoisonLengthResist, 0), n);
 }

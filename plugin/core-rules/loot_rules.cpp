@@ -42,6 +42,7 @@
 
 #include "pd2_engine.h"
 #include "log.h"
+#include "hot_log.h"
 #include "sig.h"
 
 #include <D2RLPlugin/mutations.h>
@@ -137,7 +138,7 @@ auto ApplyEthereal(Unit* item) noexcept -> void {
 		Scale(item, StatArmorClass);
 	}
 	const uint32_t n = ++g_ethereal;
-	if (n <= 20 || n % 100 == 0) {
+	if (pd2::HotSample(n)) {
 		plog::Info("ethereal: %s %d -> %d (5/4), %u so far", weapon ? "max damage" : "armor class", before,
 		           Bonus(before), n);
 	}
@@ -444,7 +445,7 @@ auto RollStaffMods(Unit* item, uint32_t list, int32_t ilvl, int32_t bonus) noexc
 			++set;
 		}
 	}
-	if (total <= 20 || total % 100 == 0) {
+	if (pd2::HotSample(total)) {
 		plog::Info("staffmods: list %u ilvl %d bonus %d: %d of %d skills (%d %d %d), %u so far", list, ilvl, bonus,
 		           set, count, picked[0], picked[1], picked[2], total);
 	}

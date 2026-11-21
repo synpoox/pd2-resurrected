@@ -28,6 +28,7 @@
 #include "rathma_pair.h"
 #include "rathma_split.h"
 #include "log.h"
+#include "hot_log.h"
 
 #include <D2RLPlugin/mutations.h>
 #include <D2RLPlugin/threads.h>
@@ -175,7 +176,7 @@ auto LogStrike(const char* where, Unit* unit, const Strike& s, uint32_t before, 
 		++g_deadlyStrikes;
 	}
 	const int32_t type = At<int32_t>(unit, d2r::rva::UnitType);
-	if (type == 0 || n <= 20 || n % 500 == 0) {
+	if (pd2::HotSample(n)) {  // players too: Multiple Shot rolls per arrow (#1609)
 		plog::Info("strike: %s unit type %d kind %d, crit %d roll %d, deadly %d (cap %d) roll %d, physical %u -> %u (x%d%%), %u so far",
 		           where, type, s.kind, s.critChance, s.critRoll, s.dsChance, s.dsCap, s.dsRoll, before, after, multiplier, n);
 	}
@@ -385,13 +386,13 @@ auto RefreshOpBase(Unit* unit, uint32_t stat) noexcept -> void {
 	}
 	if (stat == StatEquippedEth) {
 		const uint32_t n = ++g_ethReads;
-		if (n <= 20 || n % 200 == 0) {
+		if (pd2::HotSample(n)) {
 			plog::Info("equipped_eth: unit type %d wears %d ethereal, %d op lists recomputed, item_maxdamage_percent %d "
 			           "-> %d, %u changes so far", type, value, lists, edBefore, edAfter, n);
 		}
 	} else if (lists != 0 && type == 0) {
 		const uint32_t n = ++g_missingHpRefreshes;
-		if (n <= 20 || n % 200 == 0) {
+		if (pd2::HotSample(n)) {
 			plog::Info("missing_hp: player at %d%%, %d op lists recomputed, item_maxdamage_percent %d -> %d, %u so far",
 			           value, lists, edBefore, edAfter, n);
 		}
@@ -422,7 +423,7 @@ auto CappedAddLife(Unit* unit, int32_t amount) noexcept -> int32_t {
 	const bool allowed = static_cast<double>(after) / maxLife < limit || static_cast<double>(life) / maxLife < limit;
 	const uint32_t n = ++g_capChecks;
 	g_capBlocks += allowed ? 0 : 1;
-	if (n <= 20 || n % 200 == 0) {
+	if (pd2::HotSample(n)) {
 		plog::Info("life steal cap: unit type %d cap %d%%, life %lld -> %lld of %lld (1/256): %s, %u blocked of %u",
 		           At<int32_t>(unit, d2r::rva::UnitType), cap, static_cast<long long>(life), static_cast<long long>(after),
 		           static_cast<long long>(maxLife), allowed ? "added" : "blocked", g_capBlocks.load(), n);
@@ -515,7 +516,7 @@ auto CrushingBlow(Game* game, Unit* unit, Unit* target, d2r::CrushingBlowArgs* a
 		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetOverlay)(target, OverlayCrushingBlow, 0);
 	}
 	const uint32_t n = ++g_blows;
-	if (n <= 20 || n % 200 == 0) {
+	if (pd2::HotSample(n)) {
 		plog::Info("crushing blow: unit type %d on unit type %d class %d%s: divisor %.2f, efficiency %d, "
 		           "effectiveness %.2f, resist %d, life %.0f -> %d (1/256), %u so far", At<int32_t>(unit, UnitType),
 		           At<int32_t>(target, UnitType), At<int32_t>(target, UnitClassId), args->missile != 0 ? " (missile)" : "",
@@ -608,7 +609,7 @@ auto HitEvent(Game* game, int32_t event, Unit* unit, Unit* target, void* damage)
 	}
 	const int32_t roll = static_cast<int32_t>(d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit), 100));
 	const uint32_t n = ++g_blowRolls;
-	if (At<int32_t>(unit, UnitType) == 0 || n <= 20) {
+	if (pd2::HotSample(n)) {  // players too (#1609)
 		plog::Info("crushing blow roll: unit type %d event %d, chance %d roll %d, %d item nodes hidden, %u so far",
 		           At<int32_t>(unit, UnitType), event, chance, roll, count, n);
 	}
@@ -875,14 +876,14 @@ auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept ->
 		if (otherList) {
 			ApplyWounds(game, unit, other, damage, &otherStacks);
 		}
-		if (const uint32_t m = ++g_splits; m <= 20 || m % 100 == 0) {
+		if (const uint32_t m = ++g_splits; pd2::HotSample(m)) {
 			plog::Info("open wounds split: class %d takes %d/256 per frame (halved), class %d list %s, stack %d (%u so far)",
 			           At<int32_t>(target, UnitClassId), damage, At<int32_t>(other, UnitClassId), otherList ? "yes" : "no",
 			           otherStacks, m);
 		}
 	}
 	const uint32_t n = ++g_wounds;
-	if (At<int32_t>(unit, UnitType) == 0 || n <= 20) {
+	if (pd2::HotSample(n)) {  // players too (#1609)
 		plog::Info("open wounds: unit type %d on unit type %d class %d, chance %d roll %d, level part %d, deep %d, "
 		           "resist %d, %d/256 per frame, stack %d%s, %u so far", At<int32_t>(unit, UnitType),
 		           At<int32_t>(target, UnitType), At<int32_t>(target, UnitClassId), chance, roll, base, deep, r,
@@ -962,7 +963,7 @@ auto MakeRoom(uint32_t dataFlag, Unit* caster, Unit* target, int32_t state, uint
 		}
 	}
 	const uint32_t n = ++g_curses;
-	if (n <= 20 || n % 100 == 0) {
+	if (pd2::HotSample(n)) {
 		plog::Info("curse: state %d, %d curse(s) on the target, %d slot(s) (caster %d), %s, %u so far", state, count,
 		           slots, own, same != nullptr ? "same state" : seen != nullptr ? "replaces the oldest" : "added", n);
 	}
@@ -995,7 +996,7 @@ auto ResistCurse(uint32_t dataFlag, Unit* target, const d2r::CurseParams* params
 		const int32_t resisted = Resisted(base, used);
 		setStat(dataFlag, list, stat, resisted, 0);
 		const uint32_t n = ++g_curseResisted;
-		if (n <= 20 || n % 100 == 0) {
+		if (pd2::HotSample(n)) {
 			plog::Info("curse resistance %d (used %d) on %s: aurastat%d stat %d %d -> %d, %u so far", resistance, used,
 			           player ? "player" : "monster", i + 1, stat, base, resisted, n);
 		}
@@ -1003,7 +1004,7 @@ auto ResistCurse(uint32_t dataFlag, Unit* target, const d2r::CurseParams* params
 }
 
 auto GateLog(uint32_t n) noexcept -> bool {
-	return n <= 20 || n % 100 == 0;
+	return pd2::HotSample(n);
 }
 
 // PD2's curse gate (0x1036d7d0) ahead of D2R's: a curse whose aurastat1 resists to 0 is cancelled, and stat 109 cuts
@@ -1178,7 +1179,7 @@ auto ApplyDarkPact(Unit* target, d2r::CurseParams* params, uint32_t dataFlag) no
 		return 0;
 	}
 	if (StateRefused(dataFlag, target)) {
-		if (const uint32_t n = ++g_darkPacts; n <= 20 || n % 100 == 0) {
+		if (const uint32_t n = ++g_darkPacts; pd2::HotSample(n)) {
 			plog::Info("dark pact: monster class %d refused (npc or not revivable), nothing happens, %u so far",
 			           At<int32_t>(target, UnitClassId), n);
 		}
@@ -1223,7 +1224,7 @@ auto ApplyDarkPact(Unit* target, d2r::CurseParams* params, uint32_t dataFlag) no
 		}
 	}
 	const uint32_t n = ++g_darkPacts;
-	const bool log = n <= 20 || n % 100 == 0;
+	const bool log = pd2::HotSample(n);
 	if (count < 1) {
 		if (log) {
 			plog::Info("dark pact: no curse on the target, nothing happens, %u so far", n);
@@ -1316,7 +1317,7 @@ auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
 	}
 	ResistCurse(dataFlag, target, params, list, fresh);
 	const uint32_t n = g_curses.load();
-	if (n <= 20 || n % 100 == 0) {
+	if (pd2::HotSample(n)) {
 		int held = 0;  // read back from the target, so the game check sees what D2R kept
 		const uint8_t* owner = At<const uint8_t*>(target, UnitListOwner);
 		int guard = 0;
@@ -1417,7 +1418,7 @@ auto EquipStatCallback(Game* game, Unit* unit, Unit* item, uint64_t statLayer, i
 			SetPhasing(unit, newValue > 0);  // item_aura's case starts the aura at newValue (0x4705f6)
 		}
 		const uint32_t n = ++g_equipCallbacks;
-		if (n <= 20 || n % 100 == 0) {
+		if (pd2::HotSample(n)) {
 			plog::Info("skill on equip: unit type %d, skill %u, %d -> %d, level now %d, %u so far",
 			           At<int32_t>(unit, d2r::rva::UnitType), layer, oldValue, newValue,
 			           StatOf(unit, StatSkillOnEquip, static_cast<int32_t>(layer)), n);
@@ -1497,7 +1498,7 @@ auto EquipAuraTick(Game* game, Unit* unit, int32_t key, int32_t skill, int32_t s
 		SetPhasing(unit, true);
 	}
 	const uint32_t n = ++g_equipTicks;
-	if (n <= 20 || n % 100 == 0) {
+	if (pd2::HotSample(n)) {
 		plog::Info("skill on equip tick: skill %d level %d, state %d, next frame %d, %s, %u so far", skill, level, state,
 		           next, cast ? "cast" : "held", n);
 	}
@@ -1574,7 +1575,7 @@ void AddCharge(Game* game, Unit* item) noexcept {
 	d2r::Engine<void (*)(uint32_t, void*, uint32_t, int32_t, uint32_t, Unit*) noexcept>(SetListStatOf)(
 		dataFlag, list, StatChargedSkill, value + 1, layer, item);
 	const uint32_t n = ++g_chargesReplenished;
-	if (n <= 20 || n % 100 == 0) {
+	if (pd2::HotSample(n)) {
 		plog::Info("replenish charges: skill %d level %d, %d -> %d of %d, %u so far", skill, level, value & 0xff,
 		           (value & 0xff) + 1, value >> 8, n);
 	}
