@@ -171,6 +171,12 @@ target_include_directories(map_boss_tier_check PRIVATE common)
 target_compile_features(map_boss_tier_check PRIVATE cxx_std_20)
 core_options(map_boss_tier_check)
 
+# Invaders' legacy art path redirect (#1215): plugin/common/invader_art_path.h has no engine types.
+add_executable(invader_art_check EXCLUDE_FROM_ALL tests/invader_art_check.cpp)
+target_include_directories(invader_art_check PRIVATE common)
+target_compile_features(invader_art_check PRIVATE cxx_std_20)
+core_options(invader_art_check)
+
 add_executable(test_cmd_check EXCLUDE_FROM_ALL tests/test_cmd_check.cpp)
 target_include_directories(test_cmd_check PRIVATE common)
 target_compile_features(test_cmd_check PRIVATE cxx_std_20)

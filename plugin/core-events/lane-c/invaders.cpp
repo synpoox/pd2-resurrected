@@ -17,6 +17,7 @@
 #include "ai_common.h"
 #include "ai_hooks.h"
 #include "corruption_roll.h"
+#include "invader_look.h"
 #include "log.h"
 #include "map_events.h"
 
@@ -169,9 +170,10 @@ auto DropTc(Game* game, Unit* monster, Unit* killer, const char* name) noexcept 
 }
 
 // The class's TC list, in PD2's order (its branch for each class, ProjectDiablo.dll 0x10378250). `drop` is one TC; the
-// Barbarian's, Sorceress's and Amazon's pick a weapon set by a roll.
+// Barbarian's, Sorceress's and Amazon's pick a weapon set by a roll; the Barbarian's 1h / 2h branch follows the weapon
+// it shows (`parts`: its part bytes, invader_look.h has the mapping for every class), `set` gets the chosen set's name.
 template <class Drop>
-void ClassDrops(int32_t which, Drop&& drop) noexcept {
+void ClassDrops(int32_t which, const uint8_t* parts, const char** set, Drop&& drop) noexcept {
 	switch (which) {
 	case 0:  // Amazon
 		drop("InvaderCirclets");
@@ -192,10 +194,23 @@ void ClassDrops(int32_t which, Drop&& drop) noexcept {
 	case 2:  // Barbarian: one 2-hander, two throwing weapons or two 1-handers
 		drop("InvaderBarbarianHelm");
 		drop("InvaderBodyMedHeavy");
-		switch (RollRand() % 3) {
-		case 0: drop("InvaderBarbarian2h"); break;
-		case 1: drop("InvaderBarbarianThrow"); drop("InvaderBarbarianThrow"); break;
-		default: drop("InvaderBarbarian1h"); drop("InvaderBarbarian1h"); break;
+		{
+			const int32_t roll = RollRand() % 3;
+			const auto look = pd2::invader_look::Barbarian(parts);
+			// the throwing set has no look: it keeps its 1 in 3; the other two follow the weapon shown
+			const bool twoHand = look == pd2::invader_look::Weapon::Unknown ? roll == 0 : look == pd2::invader_look::Weapon::TwoHand;
+			if (roll == 1) {
+				*set = "throwing x2 (no look)";
+				drop("InvaderBarbarianThrow");
+				drop("InvaderBarbarianThrow");
+			} else if (twoHand) {
+				*set = "2h (look)";
+				drop("InvaderBarbarian2h");
+			} else {
+				*set = "1h x2 (look)";
+				drop("InvaderBarbarian1h");
+				drop("InvaderBarbarian1h");
+			}
 		}
 		break;
 	case 3:  // Druid
@@ -268,7 +283,11 @@ void OnInvaderDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	drop("InvaderRing");
 	drop("InvaderRing");
 	drop("InvaderAmulet");
-	ClassDrops(which, drop);
+	// the part bytes (UnitData +0x08, 16 of them): logged whole so one kill shows the offset is right
+	const uint8_t* data = At<const uint8_t*>(monster, UnitData);
+	const uint8_t* parts = data != nullptr ? data + 0x08 : nullptr;
+	const char* set = "no look to choose (the class's roll or single set)";
+	ClassDrops(which, parts, &set, drop);
 	// the ear: a normal item of the class's code
 	const auto dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
 	const int32_t row = d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(dataFlag, Ears[which]);
@@ -278,6 +297,12 @@ void OnInvaderDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 			game, monster, row, QualityNormal, 0, 0) != nullptr;
 	}
 	g_drops.fetch_add(static_cast<uint32_t>(tcs));
+	char hex[3 * pd2::invader_look::PartBytes + 1] = "";
+	for (int i = 0; parts != nullptr && i < pd2::invader_look::PartBytes; ++i) {
+		std::snprintf(hex + 3 * i, sizeof(hex) - 3 * i, "%02x ", parts[i]);
+	}
+	plog::Info("invaders: %s (class %d) parts HD TR LG RA LA RH LH SH S1-S8 = %s; weapon drop set: %s", ClassNames[which],
+	           event->monster.classId, hex, set);
 	plog::Info("invaders: %s (class %d) died, ear %.4s %s, %d TC drops%s", ClassNames[which], event->monster.classId,
 	           reinterpret_cast<const char*>(&Ears[which]), ear ? "dropped" : "NOT dropped", tcs,
 	           missing != 0 ? ", some TCs missing" : "");
