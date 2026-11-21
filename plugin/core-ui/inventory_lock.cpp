@@ -81,7 +81,6 @@ std::atomic<bool> g_locked {false};
 std::atomic<uint32_t> g_localId {0xffffffffU};
 std::atomic<uint32_t> g_refused {0}, g_toggles {0};
 uint32_t g_frames = 0;
-bool g_shownLocked = false, g_padlockFocused = false;  // UI thread: the lock the buttons show, and whether the pad was on the shown one
 std::atomic<bool> g_named {false};  // this game's character name is read (server thread, first local message)
 std::mutex g_nameLock;  // guards g_name and g_dirty: the UI thread toggles, the server thread loads
 std::string g_name;  // this game's character, for its saved lock; empty until read, or if unreadable
@@ -223,28 +222,11 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 		if (g_widgets->findPanel(g_context, name, &panel) == D2RL::Widgets::Result::Success &&
 		    g_widgets->findWidget(g_context, panel, Unlocked, &off) == D2RL::Widgets::Result::Success &&
 		    g_widgets->findWidget(g_context, panel, Locked, &on) == D2RL::Widgets::Result::Success) {
-			// pad focus sits on the shown button, which the toggle hides: carry it to the other one (#1675). The click may
-			// drop the focus before this watch runs, so keep what the last tick saw; the fields are optional
-			const bool canFocus = D2RL::HasWidgetServiceField(g_widgets, D2RL::WidgetServiceGetWidgetStateFieldEnd) &&
-			                      D2RL::HasWidgetServiceField(g_widgets, D2RL::WidgetServiceFocusWidgetFieldEnd);
-			D2RL::Widgets::State was {};
-			const bool changed = locked != g_shownLocked;
-			const bool carry = canFocus && changed && g_padlockFocused;
-			if (canFocus && !changed) {
-				g_padlockFocused = g_widgets->getWidgetState(g_context, locked ? on : off, &was) == D2RL::Widgets::Result::Success &&
-				                   was.visible && was.focused;
-			}
-			g_shownLocked = locked;
 			g_widgets->setWidgetVisible(g_context, off, !locked);
 			g_widgets->setWidgetVisible(g_context, on, locked);
 			// a hidden button still takes the hover and hides the other's tooltip: disable it too
 			g_widgets->setWidgetEnabled(g_context, off, !locked);
 			g_widgets->setWidgetEnabled(g_context, on, locked);
-			if (carry) {
-				const auto r = g_widgets->focusWidget(g_context, locked ? on : off);
-				plog::Info("inventory lock: focus carried to the %s padlock (result %d)", locked ? "locked" : "unlocked", static_cast<int>(r));
-				g_padlockFocused = false;
-			}
 		}
 	}
 }
