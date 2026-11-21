@@ -3,20 +3,25 @@
 //
 // The count is the one D2R keeps: MonsterRegion.cpp holds, per level, the counted hostile monsters spawned and killed
 // (*(game + 0x1d0)[level] -> +0x2cc and +0x2d0; monstats neverCount and non-hostile units are left out by D2R itself).
-// remaining = spawned - killed. D2R fills a room when the player first comes near it, so the number is the monsters
-// created so far and grows while the level is explored.
+// remaining = spawned - killed. D2R makes a room's monsters when the room first activates (room +0x54 bit 0, after the
+// populator), so the count is only exact once every room of the level has: until then the line reads "N+" (the number
+// can still grow), after it plain "N". The rooms are the level's drlg room list (level +0x10, next +0x48); a room
+// counts as populated when its room (+0x58, made once the room is near) has +0x54 bit 0, and is remembered, as D2R
+// frees rooms the player left. Nothing is forced to populate.
 //
 // Native, once: no SDK service gives a plugin the game region array (LifecycleService has the death event but no
 // counts), so one hook on the ledger "spawned" call (build 93847 0x509520 (regions, room, unit, skip), found by
-// signature) copies `regions`, which every spawn passes. The hook calls the original untouched. The UI thread reads the
-// ledger with a guarded read; GameLeft and GameJoined forget the pointer (a new game has a new array).
+// signature) copies `regions` and the spawning room's drlg level, which every spawn passes. The hook calls the original
+// untouched. The ledger and the rooms are server data: they are read on the game thread (ThreadService::runOnGameThread,
+// about every 250 ms) and published in one atomic the overlay frame reads. A TCP/IP client has no game thread: it shows
+// nothing. GameLeft and GameJoined forget the region pointer (a new game has a new array).
 // Drawing: the SDK OverlayService gives the per-frame callback (AfterGameUi), but on loader 1.3.1 its drawText draws
 // nothing (checked in game), so the line is drawn with D2R's own text draw (text, int32 rect[4] screen px, font block,
-// scale; the call TextBoxWidget::Draw makes), found by signature, from that callback. The font block is the item
-// quantity's (item_quantity.cpp): D2R's defaults plus size and alignment. When the loader's overlay text works, swap.
+// scale; the call TextBoxWidget::Draw makes), found by signature, from that callback. The font block is the shared
+// text_font.h. When the loader's overlay text works, swap.
 //
 // shortcut: HD view only (legacy, key g, draws no HD UI text: no line there; add a legacy draw when wanted); single
-// player and the host only (a TCP/IP client has no local server and shows nothing); the line is always drawn at a fixed height under the native lines, not tied to the automap.
+// player and the host only; the line is always drawn at a fixed height under the native lines, not tied to the automap.
 #include "monsters_remaining.h"
 
 #include "hot_log.h"
@@ -25,13 +30,18 @@
 #include "monster_count.h"  // common/: the ledger read and its text
 #include "sig.h"
 #include "sig_hook.h"
+#include "text_font.h"
 
+#include <D2RLPlugin/data_tables.h>
 #include <D2RLPlugin/lifecycle.h>
 #include <D2RLPlugin/lifecycle_events.h>
 #include <D2RLPlugin/overlay.h>
+#include <D2RLPlugin/threads.h>
 
 #include <atomic>
 #include <cstdio>
+#include <cstring>
+#include <unordered_set>
 
 #include <windows.h>
 
@@ -42,12 +52,29 @@ namespace {
 namespace mc = pd2::monstercount;
 
 constexpr size_t RegionSpawned = 0x2cc, RegionKilled = 0x2d0;  // MonsterRegion: counted hostile monsters spawned, killed
+// Room layout, build 93847 (the same offsets core-events/map_events.cpp reads): room +0x18 drlg room, drlg room +0x90
+// its level, level +0x1f8 id and +0x10 first drlg room, drlg room +0x48 next, +0x58 the room made for it (+0x50 flag
+// 0x100000 once made), room +0x54 bit 0 set after the populator ran.
+constexpr size_t RoomDrlg = 0x18, DrlgLevel = 0x90, LevelId = 0x1f8, LevelFirstRoom = 0x10, DrlgNext = 0x48, DrlgFlags = 0x50,
+                 DrlgRoom = 0x58, RoomFlags = 0x54;
+constexpr uint32_t DrlgRoomMade = 0x100000;
+constexpr uint64_t RefreshMs = 250;
 
 const D2RL::OverlayService* g_overlay = nullptr;
-std::atomic<const uint8_t* const*> g_regions {nullptr};  // *(game + 0x1d0): MonsterRegion*[level id]
+const D2RL::ThreadService* g_threads = nullptr;
+const D2RL::DataTableService* g_tables = nullptr;
+std::atomic<const uint8_t* const*> g_regions {nullptr};    // *(game + 0x1d0): MonsterRegion*[level id]
+std::atomic<const uint8_t*> g_drlgLevel[mc::MaxLevel] {};  // by level id: the drlg level a spawn came from
 std::atomic<int32_t> g_level {-1};
+std::atomic<uint32_t> g_epoch {0};  // bumped by GameLeft / GameJoined: the game thread drops what it remembers
 std::atomic<uint32_t> g_spawns {0}, g_changes {0};
-std::atomic<int32_t> g_last {-1};  // the remaining count last drawn (-1: none)
+std::atomic<uint64_t> g_text {0};         // published: see Pack
+uint64_t g_lastQueued = 0;                // UI thread only
+
+// The published line: valid | complete | level | remaining, one word so the overlay never reads half an update
+constexpr auto Pack(int32_t level, int32_t remaining, bool complete) noexcept -> uint64_t {
+	return 1ull << 63 | (complete ? 1ull << 62 : 0) | static_cast<uint64_t>(level & 0xffff) << 32 | static_cast<uint32_t>(remaining);
+}
 
 // (regions, room, unit, skip): ++spawned unless skip. The first 15 bytes: push rbx / sub rsp,0x20 / mov rax,r8 /
 // mov rbx,rcx / test r9d,r9d.
@@ -55,62 +82,120 @@ using SpawnedFn = void (*)(const uint8_t* const*, void*, void*, int) noexcept;
 SpawnedFn g_spawned = nullptr;
 constexpr uint8_t SpawnedEntry[] = {0x40, 0x53, 0x48, 0x83, 0xec, 0x20, 0x49, 0x8b, 0xc0, 0x48, 0x8b, 0xd9, 0x45, 0x85, 0xc9};
 
+template <class T>
+auto Field(const void* base, size_t offset) noexcept -> T {
+	T value;
+	std::memcpy(&value, static_cast<const uint8_t*>(base) + offset, sizeof value);
+	return value;
+}
+
+// The spawning room's drlg level, kept by its level id: the game thread walks that level's rooms later
+void RememberLevel(const void* room) noexcept {
+	__try {
+		const auto* drlg = Field<const uint8_t*>(room, RoomDrlg);
+		const auto* level = drlg != nullptr ? Field<const uint8_t*>(drlg, DrlgLevel) : nullptr;
+		const int32_t id = level != nullptr ? Field<int32_t>(level, LevelId) : -1;
+		if (id >= 0 && id < mc::MaxLevel) {
+			g_drlgLevel[id].store(level, std::memory_order_relaxed);
+		}
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+	}
+}
+
 void OnSpawned(const uint8_t* const* regions, void* room, void* unit, int skip) noexcept {
 	g_regions.store(regions, std::memory_order_relaxed);
+	if (room != nullptr) {
+		RememberLevel(room);
+	}
 	++g_spawns;
 	g_spawned(regions, room, unit, skip);
 }
 
-// UI thread. The array belongs to the server game: a read can meet a freed one, so it is guarded.
-auto ReadLedger(const uint8_t* const* regions, int32_t level, mc::Ledger* out) noexcept -> bool {
-	__try {
-		return mc::Read(regions, level, RegionSpawned, RegionKilled, out);
-	} __except (EXCEPTION_EXECUTE_HANDLER) {
-		return false;
+// Game thread only. The drlg rooms already seen populated (D2R frees rooms the player left), for the level g_seenLevel.
+std::unordered_set<const void*> g_seen;
+int32_t g_seenLevel = -1;
+uint32_t g_seenEpoch = 0;
+int32_t g_lastRemaining = -1;
+
+auto Populated(const uint8_t* drlgRoom) noexcept -> bool {
+	if (g_seen.count(drlgRoom) != 0) {
+		return true;
 	}
+	bool done = false;
+	__try {
+		const auto* room = Field<const uint8_t*>(drlgRoom, DrlgRoom);
+		done = (Field<uint32_t>(drlgRoom, DrlgFlags) & DrlgRoomMade) != 0 && room != nullptr &&
+		       (Field<uint32_t>(room, RoomFlags) & 1) != 0;
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+	}
+	if (done) {
+		g_seen.insert(drlgRoom);
+	}
+	return done;
+}
+
+auto LevelCount(const D2RL::PluginContext* context) noexcept -> int32_t {
+	D2RL::DataTables::TableView view {.structSize = D2RL::DataTables::TableViewSize};
+	// the bank only picks the compiled copy; every bank has the same levels
+	if (g_tables->getTable(context, D2RL::DataTables::Bank::Rotw, D2RL::DataTables::TableId::Levels, &view) !=
+	    D2RL::DataTables::Result::Success) {
+		return 0;
+	}
+	return static_cast<int32_t>(view.rowCount);
+}
+
+// On the game thread: read the ledger and the level's rooms, publish the line
+void __cdecl Refresh(const D2RL::PluginContext* context, void*) noexcept {
+	const int32_t level = g_level.load();
+	const auto* regions = g_regions.load(std::memory_order_relaxed);
+	if (const uint32_t epoch = g_epoch.load(); epoch != g_seenEpoch || level != g_seenLevel) {
+		g_seen.clear();
+		g_seenEpoch = epoch;
+		g_seenLevel = level;
+		g_lastRemaining = -1;
+	}
+	mc::Ledger ledger;
+	bool read = false;
+	__try {
+		read = regions != nullptr && mc::Read(regions, level, LevelCount(context), RegionSpawned, RegionKilled, &ledger);
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+	}
+	if (!read || !mc::Shown(ledger)) {
+		g_text.store(0);
+		return;
+	}
+	const uint8_t* drlg = g_drlgLevel[level].load(std::memory_order_relaxed);
+	bool complete = false;
+	__try {
+		complete = drlg != nullptr && mc::AllPopulated(Field<const uint8_t*>(drlg, LevelFirstRoom), DrlgNext, Populated);
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+	}
+	const int32_t remaining = mc::Remaining(ledger);
+	g_text.store(Pack(level, remaining, complete));
+	if (g_lastRemaining != remaining && pd2::HotSample(g_changes)) {
+		plog::Info("monsters remaining: level %d spawned %d killed %d, %zu rooms seen populated, %s -> %d%s", level, ledger.spawned,
+		           ledger.killed, g_seen.size(), complete ? "all rooms populated" : "rooms still unmet", remaining, complete ? "" : "+");
+	}
+	g_lastRemaining = remaining;
 }
 
 void Forget(const D2RL::PluginContext*, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {
 	g_regions.store(nullptr);
-	g_level.store(-1);
-	g_last.store(-1);
+	g_epoch.fetch_add(1);
+	g_text.store(0);
 }
 
 void OnLevel(const D2RL::PluginContext*, const D2RL::Lifecycle::GameplayEvent* event, void*) noexcept {
 	if (event != nullptr) {
 		g_level.store(event->currentValue);
-		g_last.store(-1);
+		g_text.store(0);
 	}
 }
 
-
-// D2WinFont, 0xa4 bytes (see item_quantity.cpp for the field offsets): white, point size 24, right-aligned, top
-struct Font {
-	int32_t v[0x29];
-};
-constexpr auto MakeFont() noexcept -> Font {
-	Font f {};
-	f.v[1] = 24;
-	for (int i = 2; i <= 9; ++i) {
-		f.v[i] = 0xff;
-	}
-	f.v[0xa] = 2;  // h: right
-	f.v[0xb] = 0;  // v: top
-	f.v[0xc] = 0x3f800000;
-	f.v[0xd] = 0x3f800000;
-	f.v[0x10] = -1;
-	f.v[0x11] = 0x100;
-	f.v[0x1c] = 3;  // drop shadow offset
-	f.v[0x1d] = 3;
-	f.v[0x21] = 200;
-	f.v[0x25] = 0xff;
-	f.v[0x28] = 0xe;
-	return f;
-}
-constexpr Font LineFont = MakeFont();
+constexpr textfont::Font LineFont = textfont::Make(24, 2, 0);  // right-aligned from the top
 
 uint64_t g_drawText = 0;  // rva of D2R's text draw, by signature (0: the line is off)
-using DrawTextFn = void (*)(const char*, const int32_t*, const Font*, float) noexcept;
+using DrawTextFn = void (*)(const char*, const int32_t*, const textfont::Font*, float) noexcept;
 
 void NativeDraw(const char* text, const D2RL::Overlay::Frame* frame) noexcept {
 	const int32_t w = static_cast<int32_t>(frame->screenWidth * 0.4f);
@@ -123,23 +208,25 @@ void NativeDraw(const char* text, const D2RL::Overlay::Frame* frame) noexcept {
 	}
 }
 
-void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void*) noexcept {
-	mc::Ledger ledger;
-	const int32_t level = g_level.load();
-	const auto* regions = g_regions.load(std::memory_order_relaxed);
-	if (frame == nullptr || g_drawText == 0 || regions == nullptr || !ReadLedger(regions, level, &ledger) || !mc::Shown(ledger)) {
-		g_last.store(-1);
+void OnFrame(const D2RL::PluginContext* context, const D2RL::Overlay::Frame* frame, void*) noexcept {
+	if (frame == nullptr || g_drawText == 0) {
+		return;
+	}
+	const uint64_t now = GetTickCount64();
+	if (now - g_lastQueued >= RefreshMs) {
+		g_lastQueued = now;
+		const auto queued = g_threads->runOnGameThread(context, Refresh, nullptr);
+		if (queued == D2RL::Threads::Result::Unavailable) {
+			// no game thread (a TCP/IP client, or no game yet): nothing to read, nothing shown; asked again next time
+			g_text.store(0);
+		}
+	}
+	const uint64_t word = g_text.load();
+	if ((word >> 63) == 0 || static_cast<int32_t>(word >> 32 & 0xffff) != (g_level.load() & 0xffff)) {
 		return;
 	}
 	char text[48];
-	const int length = mc::Text(ledger, text, sizeof text);
-	if (length <= 0) {
-		return;
-	}
-	const int32_t remaining = mc::Remaining(ledger);
-	if (g_last.exchange(remaining) != remaining && pd2::HotSample(g_changes)) {
-		plog::Info("monsters remaining: level %d spawned %d killed %d -> %d", level, ledger.spawned, ledger.killed, remaining);
-	}
+	mc::Text(static_cast<int32_t>(static_cast<uint32_t>(word)), (word >> 62 & 1) != 0, text, sizeof text);
 	NativeDraw(text, frame);
 }
 
@@ -150,15 +237,12 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	if (context->QueryService(&lifecycle) != D2RL::ServiceQueryResult::Success ||
 	    !D2RL::HasLifecycleServiceField(lifecycle, D2RL::LifecycleServiceRequiredSize) ||
 	    context->QueryService(&g_overlay) != D2RL::ServiceQueryResult::Success ||
-	    !D2RL::HasOverlayServiceField(g_overlay, D2RL::OverlayServiceRequiredSize)) {
-		std::snprintf(report, size, "FAILED (lifecycle or overlay service missing)");
-		return;
-	}
-	if (!sigscan::HookBySignature(context, "MonsterRegionSpawned",
-	                              "40 53 48 83 ec 20 49 8b c0 48 8b d9 45 85 c9 74 16 ba 02 00 00 00 48 8b c8 44 8d 42 ff "
-	                              "48 83 c4 20 5b e9 ?? ?? ?? ?? 48 8b ca e8 ?? ?? ?? ?? 48 63 c8 48 8b 04 cb ff 80 cc 02 00 00",
-	                              0, SpawnedEntry, sizeof SpawnedEntry, OnSpawned, &g_spawned)) {
-		std::snprintf(report, size, "FAILED (the monster ledger spawn call: signature or bytes differ)");
+	    !D2RL::HasOverlayServiceField(g_overlay, D2RL::OverlayServiceRequiredSize) ||
+	    context->QueryService(&g_threads) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasThreadServiceField(g_threads, D2RL::ThreadServiceRequiredSize) ||
+	    context->QueryService(&g_tables) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasDataTableServiceField(g_tables, D2RL::DataTableServiceRequiredSize)) {
+		std::snprintf(report, size, "FAILED (lifecycle, overlay, thread or data table service missing)");
 		return;
 	}
 	if (sigscan::ScanUnique(context->exeBase,
@@ -167,6 +251,13 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	                        0, &g_drawText) != 1) {
 		g_drawText = 0;
 		std::snprintf(report, size, "FAILED (D2R's text draw: signature not found)");
+		return;
+	}
+	if (!sigscan::HookBySignature(context, "MonsterRegionSpawned",
+	                              "40 53 48 83 ec 20 49 8b c0 48 8b d9 45 85 c9 74 16 ba 02 00 00 00 48 8b c8 44 8d 42 ff "
+	                              "48 83 c4 20 5b e9 ?? ?? ?? ?? 48 8b ca e8 ?? ?? ?? ?? 48 63 c8 48 8b 04 cb ff 80 cc 02 00 00",
+	                              0, SpawnedEntry, sizeof SpawnedEntry, OnSpawned, &g_spawned)) {
+		std::snprintf(report, size, "FAILED (the monster ledger spawn call: signature or bytes differ)");
 		return;
 	}
 	using Kind = D2RL::Lifecycle::GameplayEventKind;
@@ -190,12 +281,13 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (the frame callback was refused)");
 		return;
 	}
-	std::snprintf(report, size, "the zone info shows Monsters remaining: N (hostile monsters spawned minus killed in the level)");
+	std::snprintf(report, size, "the zone info shows Monsters remaining: N (N+ until every room of the level has made its monsters)");
 }
 
 void Counters(char* out, size_t size) noexcept {
-	std::snprintf(out, size, "monsters remaining: level %d, %u ledger spawns seen, showing %d", g_level.load(), g_spawns.load(),
-	              g_last.load());
+	const uint64_t word = g_text.load();
+	std::snprintf(out, size, "monsters remaining: level %d, %u ledger spawns seen, showing %s%u%s", g_level.load(), g_spawns.load(),
+	              (word >> 63) != 0 ? "" : "nothing (", static_cast<uint32_t>(word), (word >> 63) != 0 ? ((word >> 62 & 1) != 0 ? "" : "+") : ")");
 }
 
 }  // namespace monsters_remaining

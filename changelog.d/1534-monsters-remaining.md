@@ -1,3 +1,3 @@
 #### Features
 
-- The zone info now shows Monsters remaining: N, the hostile monsters left in the level. (#1534)
+- The zone info now shows Monsters remaining: N (N+ until every room is visited). (#1534)
