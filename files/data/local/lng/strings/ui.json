@@ -36684,5 +36684,39 @@
     "ptBR": "Sacrificar",
     "ruRU": "Принести в жертву",
     "zhCN": "献祭"
+  },
+  {
+    "id": 51581,
+    "Key": "InventoryLockTooltip",
+    "enUS": "Lock Inventory",
+    "zhTW": "鎖定物品欄",
+    "deDE": "Inventar sperren",
+    "esES": "Bloquear inventario",
+    "frFR": "Verrouiller l'inventaire",
+    "itIT": "Blocca inventario",
+    "koKR": "소지품 잠금",
+    "plPL": "Zablokuj ekwipunek",
+    "esMX": "Bloquear inventario",
+    "jaJP": "インベントリをロック",
+    "ptBR": "Bloquear inventário",
+    "ruRU": "Заблокировать инвентарь",
+    "zhCN": "锁定物品栏"
+  },
+  {
+    "id": 51582,
+    "Key": "InventoryUnlockTooltip",
+    "enUS": "Unlock Inventory",
+    "zhTW": "解鎖物品欄",
+    "deDE": "Inventar entsperren",
+    "esES": "Desbloquear inventario",
+    "frFR": "Déverrouiller l'inventaire",
+    "itIT": "Sblocca inventario",
+    "koKR": "소지품 잠금 해제",
+    "plPL": "Odblokuj ekwipunek",
+    "esMX": "Desbloquear inventario",
+    "jaJP": "インベントリのロックを解除",
+    "ptBR": "Desbloquear inventário",
+    "ruRU": "Разблокировать инвентарь",
+    "zhCN": "解锁物品栏"
   }
 ]

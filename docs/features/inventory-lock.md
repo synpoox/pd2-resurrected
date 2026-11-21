@@ -28,4 +28,4 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 ## Differences
 
 Listed in [deviations](../deviations.md) (Lock Inventory): no charm lock, single player and host
-only, no sound, no tooltip, no legacy-graphics or controller-layout button.
+only, no sound, no legacy-graphics or controller-layout button.
