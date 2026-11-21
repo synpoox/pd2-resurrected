@@ -10,6 +10,7 @@
 //   lock      PD2's Lock Inventory: the inventory padlock locks the player's and the mercenary's body slots (#1578)
 //   affinity  stash affinity: quick-moved maps, bossing and map materials go to their reserved shared stash pages (#1553)
 //   tabs      stash tabs: a second tab row with the Maps tab (tiers, bases, the cube) and the Bossing tab (#1553)
+//   monsters  PD2 Monsters Remaining: the level hostile monsters left, in the zone info (#1534)
 #include <D2RLPlugin/api.h>
 
 #include "crash_guard.h"
@@ -19,6 +20,7 @@
 #include "item_quantity.h"
 #include "level_palette.h"
 #include "log.h"
+#include "monsters_remaining.h"
 #include "off_switch.h"
 #include "parts.h"
 #include "stack_split.h"
@@ -53,6 +55,7 @@ parts::Part g_parts[] = {
 	{"lock", false, inventory_lock::Install},
 	{"affinity", false, stash_affinity::Install},
 	{"tabs", false, stash_tabs::Install},
+	{"monsters", false, monsters_remaining::Install},
 };
 
 constexpr D2RL::PluginInfo Info {
@@ -100,6 +103,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	stash_tabs::Counters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	monsters_remaining::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
