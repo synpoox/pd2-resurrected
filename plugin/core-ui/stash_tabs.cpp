@@ -15,6 +15,8 @@
 // Maps page. Both tabs show the stock cube (advancedstash_horadriccube, which the stash shows itself on its RotW
 // tabs) at its RotW spot, and hides the stock page arrows while one of our tabs is up, so its page cannot change.
 // D2R keeps the tab and page on show across a stash close, so the state stays until a stock tab or a new game.
+// The stock Shared tab never shows the reserved pages (#1653): its arrows skip them (read from the page label, as no SDK
+// service reads the stash page), and a frame watch pages it back off one reached any other way (pad, another plugin).
 #include "stash_tabs.h"
 
 #include "log.h"
@@ -76,6 +78,7 @@ sigscan::Entry SelectTab {"TabBarSelect", "stash", sigscan::Kind::Rip, 15, 19,
                           "eb 03 45 8b ca 45 33 c0 41 8b d1 48 8b cb e8 ?? ?? ?? ?? 48 8b 5c 24 40 48 83 c4 20 5f c3"};
 sigscan::Entry* const Sigs[] = {&FetchPanel, &FindChild, &SelectTab};
 bool g_select = false;
+bool g_pageText = false;  // the widget service reads a label (getText): the Shared tab's reserved-page guard is on
 bool g_wantShared = false;  // UI thread: our tab was clicked; the next frame selects the stock Shared tab
 
 // The stock BankTabs to Shared (index 1), as a click on it: the stash gets its SelectTab and shows the Shared tab
@@ -104,6 +107,13 @@ void OpenPage(uint32_t page) noexcept {
 	}
 	for (uint32_t i = 0; i < page; ++i) {
 		g_queue[g_tail++] = "SharedStashRight";
+	}
+}
+
+void Queue(const char* arrow, uint32_t n) noexcept {
+	g_head = g_tail = 0;
+	for (uint32_t i = 0; i < n; ++i) {
+		g_queue[g_tail++] = arrow;
 	}
 }
 
@@ -190,6 +200,59 @@ void ShowButton(Named& w, bool visible) noexcept {
 	}
 }
 
+Named g_pageLabel {"CurrentSharedStashText"}, g_sharedContainer {"SharedStashTabContainer"};
+
+auto Visible(Named& w) noexcept -> bool {
+	D2RL::Widgets::State state {};
+	const WidgetHandle h = g_pageText ? Find(w) : D2RL::Widgets::InvalidHandle;
+	return h != D2RL::Widgets::InvalidHandle && g_widgets->getWidgetState(g_context, h, &state) == Result::Success && state.visible;
+}
+
+// The shown shared page (0-based) and the page count, from the stash's label (SharedStashPage, "Page %u / %u" in every
+// language: the page comes first)
+auto ReadPage(uint32_t& page, uint32_t& total) noexcept -> bool {
+	char text[64] = {};
+	const WidgetHandle h = g_pageText ? Find(g_pageLabel) : D2RL::Widgets::InvalidHandle;
+	if (h == D2RL::Widgets::InvalidHandle || g_widgets->getText(g_context, h, text, sizeof text, nullptr) != Result::Success) {
+		return false;
+	}
+	uint32_t n[2] = {0, 0};
+	int found = 0;
+	for (const char* c = text; *c != 0 && found < 2; ++c) {
+		if (*c >= '0' && *c <= '9') {
+			n[found] = n[found] * 10 + static_cast<uint32_t>(*c - '0');
+			if (c[1] < '0' || c[1] > '9') {
+				++found;
+			}
+		}
+	}
+	if (found < 2 || n[0] == 0) {
+		return false;
+	}
+	page = n[0] - 1;
+	total = n[1];
+	return true;
+}
+
+auto Reserved(uint32_t page) noexcept -> bool {
+	return page >= aff::FirstReservedPage && page <= aff::LastReservedPage;
+}
+
+// A Shared tab arrow the player sent: true when it would land on a reserved page, so it is consumed and the arrows
+// queued instead jump over the reserved pages (Right only when general pages follow them)
+auto SkipReserved(bool right) noexcept -> bool {
+	uint32_t page = 0, total = 0;
+	if (!ReadPage(page, total) || !Reserved(right ? page + 1 : page - 1)) {
+		return false;
+	}
+	constexpr uint32_t Jump = aff::LastReservedPage - aff::FirstReservedPage + 2;
+	if (!right || total > aff::LastReservedPage + 1) {
+		Queue(right ? "SharedStashRight" : "SharedStashLeft", Jump);
+	}
+	plog::Info("stash tabs: Shared %s from page %u of %u skips the reserved pages", right ? "right" : "left", page + 1, total);
+	return true;
+}
+
 Named g_background {"pd2rMapsBackground"}, g_bossingBackground {"pd2rBossingBackground"}, g_navigation {"StashNavigation"}, g_cube {"advancedstash_horadriccube"},
 	g_cubeWithdraw {"withdraw_button"}, g_sharedOff {"pd2rSharedOff"}, g_mapsOn {"pd2rMapsTabsOn"}, g_mapsOnText {"pd2rMapsTabsOnText"},
 	g_bossingOn {"pd2rBossingTabsOn"}, g_bossingOnText {"pd2rBossingTabsOnText"};
@@ -232,6 +295,10 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 	}
 	const char* text = event->text != nullptr ? event->text : "";
 	if (std::strcmp(event->target, "BankPanelMessage") == 0) {
+		const bool right = std::strcmp(event->command, "SharedStashRight") == 0;
+		if (!g_dispatching && g_view == View::None && (right || std::strcmp(event->command, "SharedStashLeft") == 0)) {
+			return SkipReserved(right) ? Action::Consume : Action::Continue;
+		}
 		if (g_dispatching || std::strcmp(event->command, "SelectTab") != 0) {
 			return Action::Continue;
 		}
@@ -281,6 +348,12 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 		Send();  // the page arrows, once the stash is on its Shared tab (it reads them there only)
 	}
 	const bool ours = g_view != View::None, maps = g_view == View::Maps;
+	uint32_t page = 0, total = 0;
+	if (!ours && g_head == g_tail && Visible(g_sharedContainer) && Visible(g_navigation) && ReadPage(page, total) &&
+	    Reserved(page)) {  // the Shared tab on a reserved page: back to the page before them
+		Queue("SharedStashLeft", page - aff::FirstReservedPage + 1);
+		plog::Info("stash tabs: Shared tab on reserved page %u; back to page %u", page + 1, aff::FirstReservedPage);
+	}
 	Show(g_mapsOn, maps);
 	Show(g_mapsOnText, maps);
 	Show(g_bossingOn, g_view == View::Bossing);
@@ -345,6 +418,7 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (a widget, lifecycle, event or overlay service is missing)");
 		return;
 	}
+	g_pageText = D2RL::HasWidgetServiceField(g_widgets, D2RL::WidgetServiceGetTextFieldEnd);  // getWidgetState comes before it
 	const D2RL::Lifecycle::GameplayEventListener ready {.structSize = D2RL::Lifecycle::GameplayEventListenerSize,
 	                                                    .kind = D2RL::Lifecycle::GameplayEventKind::LocalPlayerReady,
 	                                                    .callback = OnPlayerReady};
@@ -362,8 +436,9 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (a listener was refused)");
 		return;
 	}
-	std::snprintf(report, size, "Maps and Bossing stash tabs on a row above the stock tabs; Shared tab select %s",
-	              g_select ? "by signature" : "off (signature not found: the tabs work from the Shared tab only)");
+	std::snprintf(report, size, "Maps and Bossing stash tabs on a row above the stock tabs; Shared tab select %s; Shared tab reserved-page guard %s",
+	              g_select ? "by signature" : "off (signature not found: the tabs work from the Shared tab only)",
+	              g_pageText ? "on" : "off (no widget getText)");
 }
 
 void Counters(char* out, size_t size) noexcept {

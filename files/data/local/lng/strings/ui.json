@@ -36686,7 +36686,7 @@
     "zhCN": "献祭"
   },
   {
-    "id": 51581,
+    "id": 51589,
     "Key": "InventoryLockTooltip",
     "enUS": "Lock Inventory",
     "zhTW": "鎖定物品欄",
@@ -36720,7 +36720,7 @@
     "zhCN": "解锁物品栏"
   },
   {
-    "id": 51583,
+    "id": 51588,
     "Key": "StashTabMaps",
     "enUS": "Maps",
     "zhTW": "地圖",
