@@ -9,8 +9,9 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 - **Button.** Two `ButtonWidget`s at one spot in `playerinventoryoriginallayouthd.json` (the expansion layout lists them), x 980,
   y 1702 beside the gold field: `InventoryLock` (unlocked art) and `InventoryLockOn` (locked art). A frame watch shows only the
   one matching the lock; the loader's widget service cannot set a toggle button's state, but it can show and hide widgets. Art:
-  `PANEL\pd2r\inventory_lock` (`files/data/hd/global/ui/panel/pd2r/`, HD 72 px and lowend), our own padlock drawn by
-  `tools/make_inventory_lock.py` (frames: unlocked, pressed, locked, pressed; rerun it to redraw).
+  `PANEL\pd2r\inventory_lock` (`files/data/hd/global/ui/panel/pd2r/`, HD 72 px and lowend), PD2's padlock
+  (`buysellbtn.dc6` frames 24-27, upscaled in `merge/art/ui/`) altered by `tools/make_inventory_lock.py`: gold and bronze metal,
+  a taller shackle, a soft bevel (frames: unlocked, pressed, locked, pressed; rerun it to redraw).
 - **Toggle.** The click sends `PanelManager:OpenPanel:core-ui/InventoryLock`; core-ui's `lock` part catches it, flips the lock and
   consumes it. The lock carries over to the next game and is saved per character, as PD2 saves it: while locked,
   `<mod>/d2rloader/config/inventory-lock-<name>.locked` exists, and `inventory-lock.locked` holds the last lock in use, which the

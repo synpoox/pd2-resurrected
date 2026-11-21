@@ -1,58 +1,55 @@
-"""Draws the inventory padlock button (#1578) from scratch and writes its HD and lowend sprites.
+﻿"""The inventory padlock buttons (#1578), from PD2's own padlock, slightly altered toward D2R's UI.
 
-Frames, as the InventoryLock ToggleButtonWidget reads them: 0 unlocked, 1 unlocked pressed, 2 locked, 3 locked pressed.
-A dark stone face with a bevel and a gold padlock; the unlocked shackle is raised and open on the right.
-Needs Pillow. Run: py -3 tools/make_inventory_lock.py
+Source: PD2's buysellbtn.dc6 frames 24-27 (pd2assets.mpq: unlocked, unlocked pressed, locked, locked pressed),
+upscaled 4x with Real-ESRGAN by pd2_art.upscale and committed as merge/art/ui/lock<frame>-<hash>.png.
+Changes: the bright metal is warmed to D2R's gold and bronze, the shackle stands a little taller, and the face gets a soft
+bevel (light top-left, shade bottom-right). Frames go to the InventoryLock (0-1) and InventoryLockOn (2-3) ButtonWidgets.
+Needs Pillow and numpy. Run: py -3 tools/make_inventory_lock.py
 """
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+import numpy as np
+from PIL import Image
 
 import pd2_art
 
+ROOT = Path(__file__).resolve().parents[1]
+ART = ROOT / "merge/art/ui"
+OUT = ROOT / "files/data/hd/global/ui/panel/pd2r/inventory_lock.sprite"
 SIZE = 72  # HD frame; write_sprite makes the 36 px lowend twin
-SS = 4  # drawn at 4x, then downsampled for smooth edges
-OUT = Path(__file__).resolve().parents[1] / "files/data/hd/global/ui/panel/pd2r/inventory_lock.sprite"
+GOLD = np.array([226, 182, 104], float)  # D2R's UI gold, for the lit metal
+BRONZE = np.array([120, 92, 60], float)  # and its bronze, for the mid tones
+SHACKLE = (0.24, 0.74, 0.21, 0.48)  # x0, x1, y0, y1 of the shackle band, as fractions of the frame
+LIFT = 0.10  # the shackle band is drawn this much taller, growing upward
 
-GOLD, GOLD_DARK, GOLD_LIGHT, OUTLINE = (176, 138, 62), (112, 84, 34), (222, 196, 128), (34, 24, 10)
-SHACKLE = (186, 176, 150)  # grey-gold steel
 
-
-def frame(locked: bool, pressed: bool) -> Image.Image:
-    n = SIZE * SS
-    img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    s = lambda v: v * SS  # noqa: E731
-    # stone face: dark rim, bevel (light top-left, dark bottom-right, swapped when pressed), face
-    d.rounded_rectangle((s(2), s(2), s(70), s(70)), s(8), fill=(12, 11, 10, 255))
-    light, dark = ((28, 26, 24), (92, 84, 74)) if pressed else ((92, 84, 74), (28, 26, 24))
-    d.rounded_rectangle((s(4), s(4), s(68), s(68)), s(7), fill=dark + (255,))
-    d.rounded_rectangle((s(4), s(4), s(66), s(66)), s(7), fill=light + (255,))
-    d.rounded_rectangle((s(6), s(6), s(66), s(66)), s(6), fill=(38, 35, 31, 255) if pressed else (50, 46, 41, 255))
-    off = s(1) if pressed else 0
-    # shackle: a U of steel; open = raised 8 px with the right leg stopping short of the body
-    lift = 0 if locked else s(8)
-    w = s(6)
-    x0, x1, top = s(25), s(47), s(14) - lift
-    for col, width in ((OUTLINE, w + s(2)), (SHACKLE, w)):
-        d.arc((x0, top + off, x1, top + s(22) + off), 180, 360, fill=col + (255,), width=width)
-        left = x0 + w // 2
-        d.line((left, top + s(11) + off, left, s(34) + off), fill=col + (255,), width=width)
-        right_end = s(34) if locked else s(24) - lift
-        d.line((x1 - w // 2, top + s(11) + off, x1 - w // 2, right_end + off), fill=col + (255,), width=width)
-    # body: gold with outline, a light top edge and a keyhole
-    d.rounded_rectangle((s(18), s(32) + off, s(54), s(60) + off), s(4), fill=OUTLINE + (255,))
-    d.rounded_rectangle((s(20), s(34) + off, s(52), s(58) + off), s(3), fill=GOLD + (255,))
-    d.rectangle((s(21), s(35) + off, s(51), s(37) + off), fill=GOLD_LIGHT + (255,))
-    d.rectangle((s(21), s(54) + off, s(51), s(57) + off), fill=GOLD_DARK + (255,))
-    d.ellipse((s(33), s(40) + off, s(39), s(46) + off), fill=OUTLINE + (255,))
-    d.polygon([(s(34), s(44) + off), (s(38), s(44) + off), (s(39), s(52) + off), (s(33), s(52) + off)],
-              fill=OUTLINE + (255,))
-    return img.resize((SIZE, SIZE), Image.LANCZOS)
+def alter(img: Image.Image) -> Image.Image:
+    a = np.asarray(img.convert("RGBA"), float)
+    h, w = a.shape[:2]
+    # taller shackle: stretch the band upward, its bottom row fixed
+    x0, x1, y0, y1 = (int(SHACKLE[0] * w), int(SHACKLE[1] * w), int(SHACKLE[2] * h), int(SHACKLE[3] * h))
+    top = max(0, int(y0 - LIFT * (y1 - y0)))
+    rows = np.linspace(y0, y1 - 1, y1 - top).round().astype(int)
+    a[top:y1, x0:x1] = a[rows, x0:x1]
+    # gold and bronze: bright greys toward gold, mid greys toward bronze, by luminance; dark stone stays
+    rgb = a[..., :3]
+    lum = rgb.mean(axis=2, keepdims=True) / 255.0
+    warm = np.clip((lum - 0.25) / 0.5, 0, 1)
+    tone = BRONZE + (GOLD - BRONZE) * np.clip((lum - 0.45) / 0.4, 0, 1)
+    rgb[:] = rgb * (1 - 0.55 * warm) + tone * lum * 1.15 * (0.55 * warm)
+    # bevel: light from the top-left, shade toward the bottom-right edges
+    yy, xx = np.mgrid[0:h, 0:w] / (h - 1)
+    edge = np.clip(1 - np.minimum.reduce([xx, yy, 1 - xx, 1 - yy]) / 0.12, 0, 1)
+    rgb *= (1 + 0.18 * edge * (1 - (xx + yy)))[..., None]
+    a[..., :3] = np.clip(rgb, 0, 255)
+    return Image.fromarray(a.astype(np.uint8), "RGBA").resize((SIZE, SIZE), Image.LANCZOS)
 
 
 def main() -> None:
-    frames = [frame(locked, pressed) for locked in (False, True) for pressed in (False, True)]
+    sources = [sorted(ART.glob(f"lock{n}-*.png")) for n in (24, 25, 26, 27)]
+    if not all(len(s) == 1 for s in sources):
+        raise SystemExit(f"need one merge/art/ui/lock<24-27>-*.png each, found {sources}")
+    frames = [alter(Image.open(s[0])) for s in sources]
     strip = Image.new("RGBA", (SIZE * len(frames), SIZE))
     for i, f in enumerate(frames):
         strip.paste(f, (i * SIZE, 0))
