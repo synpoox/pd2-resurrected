@@ -1,19 +1,19 @@
-// PD2's vendor and gamble prices (#1539, docs/research/items/item-prices.md). D2R's price function (93847: 0x36f0c0,
-// Items.cpp) multiplies a price by the stack's quantity unless the item is a book (or a quiver); PD2 skips it for every
-// weapon too, so a stack of throwing knives prices as one knife, buying and selling. D2R's gamble price (0x376b10) uses
-// the stack midpoint (min + max) / 2 of the base item as a cost factor; PD2 uses 1. Native: no PluginSDK service reaches
-// either computation. Both fail safe: a signature that does not match exactly once leaves that rule out.
+// PD2's vendor and gamble prices (#1539, #1625, docs/research/items/item-prices.md). D2R's price function (93847: 0x36f0c0,
+// Items.cpp) differs from PD2's in four ways. Native: no PluginSDK service reaches any of these computations. Every rule
+// fails safe: a signature that does not match exactly once leaves that rule out.
 //
 // 1. The quantity step starts at `ItemIsType(item, 0x12)` (0x37069f; the type number is built in r12 + 0x12): non-zero
 //    skips it. ItemIsType (0x373890) is hooked, and its answer is changed only for the call whose return address is that
-//    site, so every other caller sees D2R's own answer. A book still skips, as before.
+//    site, so every other caller sees D2R's own answer. A book still skips, as before; PD2 skips every weapon too, so a
+//    stack of throwing knives prices as one knife, buying and selling.
+// 2. The gamble price (0x376b10) uses the stack midpoint (min + max) / 2 of the base item as a cost factor; PD2 uses 1.
+//    The midpoint is `imul ebp,[rbx+0xe8]` after `max(mid, 1)` (0x376c4d); `mov ebp,[rbx+0xe8]` + nop is mid = 1.
 // 3. Superior items skip the stat term: the price switch on quality sends 3 (superior) and 9 (tempered) to one label that
 //    calls the bonus-stat pricer (0x37c390, a D2RLoader thunk, so the call site is the place). The switch table (0x3709dc,
 //    RVAs) entry for 3 is moved past that call (+27); 9 keeps it. The code after the call reads the three price slots in
 //    place, so skipping it adds nothing, as PD2's `if (quality != 3)`.
 // 4. A repair quote (type 3) is capped at 250000, as PD2's final `min(price, 250000)`: the price function is hooked and its
 //    result clamped for type 3.
-// 2. The gamble midpoint is `imul ebp,[rbx+0xe8]` after `max(mid, 1)` (0x376c4d); `mov ebp,[rbx+0xe8]` + nop is mid = 1.
 #include "item_prices.h"
 
 #include "item_price.h"
@@ -21,6 +21,8 @@
 #include "pd2_engine.h"
 #include "sig.h"
 #include "sig_hook.h"
+
+#include <windows.h>
 
 #include <intrin.h>
 
@@ -86,8 +88,11 @@ std::atomic<int32_t> g_repairMax {0};  // the highest repair quote seen before t
 
 auto PriceHook(void* player, Unit* item, int32_t difficulty, uint64_t quest, uint32_t vendor, int32_t type) noexcept -> uint64_t {
 	uint64_t result = g_price(player, item, difficulty, quest, vendor, type);
-	if (type == 3 && static_cast<int32_t>(result) > g_repairMax.load()) {
-		g_repairMax.store(static_cast<int32_t>(result));
+	if (type == 3) {
+		const int32_t quote = static_cast<int32_t>(result);
+		int32_t seen = g_repairMax.load();
+		while (quote > seen && !g_repairMax.compare_exchange_weak(seen, quote)) {
+		}
 	}
 	if (type == 3 && static_cast<int32_t>(result) != CapRepair(static_cast<int32_t>(result))) {
 		g_repairCaps.fetch_add(1);
@@ -106,8 +111,18 @@ auto InstallSuperiorStats(const D2RL::PluginContext* context) noexcept -> bool {
 	}
 	int32_t table = 0;
 	std::memcpy(&table, reinterpret_cast<const uint8_t*>(context->exeBase + rva + TableDisp), sizeof(table));
+	const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(context->exeBase + reinterpret_cast<const IMAGE_DOS_HEADER*>(context->exeBase)->e_lfanew);
+	const uint64_t imageSize = nt->OptionalHeader.SizeOfImage;
+	if (table < 0 || static_cast<uint64_t>(table) + sizeof(int32_t) * 9 > imageSize) {
+		plog::Warn("skipped superior stat term: switch table outside the image");
+		return false;
+	}
 	int32_t entries[9];
 	std::memcpy(entries, reinterpret_cast<const uint8_t*>(context->exeBase + table), sizeof(entries));
+	if (entries[2] < 0 || static_cast<uint64_t>(entries[2]) + StatSkip + sizeof(AfterCall) > imageSize) {
+		plog::Warn("skipped superior stat term: label outside the image");
+		return false;
+	}
 	const auto label = reinterpret_cast<const uint8_t*>(context->exeBase + entries[2]);
 	if (entries[2] != entries[8] || std::memcmp(label, StatLabel, sizeof(StatLabel)) != 0 ||
 	    std::memcmp(label + StatSkip, AfterCall, sizeof(AfterCall)) != 0) {
