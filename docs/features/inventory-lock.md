@@ -6,21 +6,24 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 
 ## How it works
 
-- **Button.** `InventoryLock`, a `ToggleButtonWidget` in `playerinventoryoriginallayouthd.json` (the expansion layout lists it),
-  at x 980, y 1702 beside the gold field. Art: `PANEL\pd2r\inventory_lock` (`files/data/hd/global/ui/panel/pd2r/`, HD 72 px and
-  lowend), our own padlock drawn by `tools/make_inventory_lock.py` (frames: unlocked, pressed, locked, pressed; rerun it to
-  redraw).
+- **Button.** Two `ButtonWidget`s at one spot in `playerinventoryoriginallayouthd.json` (the expansion layout lists them), x 980,
+  y 1702 beside the gold field: `InventoryLock` (unlocked art) and `InventoryLockOn` (locked art). A frame watch shows only the
+  one matching the lock; the loader's widget service cannot set a toggle button's state, but it can show and hide widgets. Art:
+  `PANEL\pd2r\inventory_lock` (`files/data/hd/global/ui/panel/pd2r/`, HD 72 px and lowend), our own padlock drawn by
+  `tools/make_inventory_lock.py` (frames: unlocked, pressed, locked, pressed; rerun it to redraw).
 - **Toggle.** The click sends `PanelManager:OpenPanel:core-ui/InventoryLock`; core-ui's `lock` part catches it, flips the lock and
-  consumes it. The button flips its own frame on a click; a frame watch sets it to the lock state only when the SDK has a
-  toggle setter (the loader's does not yet).
+  consumes it. The lock carries over to the next game and is saved per character, as PD2 saves it: while locked,
+  `<mod>/d2rloader/config/inventory-lock-<name>.locked` exists. The first message from the local player in a game reads the
+  character's name and loads its lock (the log says `inventory lock: <name> is locked|unlocked`).
 - **Block.** core-ui hooks the server's client-message dispatch (93847 `0x4f2fa0`, by signature) and drops, from the local player
-  while locked, every message that changes a body slot (`ChangesEquipment` in `plugin/core-ui/inventory_lock.h`: 0x1a-0x1e and
-  0x21 for the player, 0x56-0x5a for the mercenary, and the list forms 0x22 and 0x60 when they name a worn item). The log says
+  while locked, every message that changes a body slot (`ChangesEquipment` in `plugin/core-ui/inventory_lock.h`): 0x1a-0x1e,
+  0x21 and their player-id forms 0x56-0x5a (0x58 is Shift+click unequip); 0x51 and 0x5b for the mercenary's slots; 0x5c (drop to
+  the ground) only from a body slot; and the list forms 0x22 and 0x60 when they name a worn item. The log says
   `inventory lock: refused message 0x..`. No SDK service sees these moves, so it is a native hook.
 - **PD2.** `ProjectDiablo.dll` keeps `equipment_lock` in its settings and sends it to the server (packet 0x5c); its wrappers of
   the 1.13c body-slot handlers refuse while it is on, and also refuse picking up magic or better charms from the inventory.
 
 ## Differences
 
-Listed in [deviations](../deviations.md) (Lock Inventory): no charm lock, the lock lasts for the run only, single player and host
+Listed in [deviations](../deviations.md) (Lock Inventory): no charm lock, single player and host
 only, no sound, no tooltip, no legacy-graphics or controller-layout button.

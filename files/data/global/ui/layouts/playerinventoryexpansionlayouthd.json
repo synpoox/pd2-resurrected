@@ -39,7 +39,10 @@
             "type": "ButtonWidget", "name": "close",
         },
         {
-            "type": "ToggleButtonWidget", "name": "InventoryLock",
+            "type": "ButtonWidget", "name": "InventoryLock",
+        },
+        {
+            "type": "ButtonWidget", "name": "InventoryLockOn",
         },
         {
             "type": "InventoryGridWidget", "name": "grid",

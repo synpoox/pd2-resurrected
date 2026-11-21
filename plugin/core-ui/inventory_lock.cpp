@@ -1,6 +1,8 @@
-// Lock Inventory (#1578). The padlock is a ToggleButtonWidget in both HD inventory layouts; its click message
-// (PanelManager:OpenPanel:core-ui/InventoryLock, caught and consumed like the altar's confirm) flips the lock, and a frame
-// watch keeps the button drawn as the lock is, across panels and games. PD2 keeps the lock in its settings and sends it
+// Lock Inventory (#1578). The padlock is two ButtonWidgets at one spot in both HD inventory layouts, InventoryLock
+// (unlocked art) and InventoryLockOn (locked); a frame watch shows only the one matching the lock, because this loader's
+// widget service cannot set a toggle button's state. Their click message (PanelManager:OpenPanel:core-ui/InventoryLock,
+// caught and consumed like the altar's confirm) flips the lock. The lock stays across games and is saved per character
+// (config/inventory-lock-<name>.locked exists while locked), as PD2 keeps it in its settings and sends it
 // to the server (ProjectDiablo.dll 0x102d15c0, packet 0x5c), whose wrappers of the body-slot handlers refuse while it is
 // on (0x10394bd0 and others) and play the "I can't" sound.
 //
@@ -10,8 +12,6 @@
 // (ChangesEquipment) from the local player while locked; clicks, Ctrl/Shift clicks and the pad all send those. The
 // client marks the item pending and its timer clears it, as for any refused move.
 //
-// shortcut: the lock lives in memory for this run of the game (all characters), not in a setting; upgrade if players
-// want it kept across restarts.
 // shortcut: single player and the host only (a TCP/IP client runs no server here, so its padlock does nothing);
 // upgrade with a plugin message to the host if online play needs it.
 // shortcut: no "I can't" sound on a refused move, and PD2's lock of magic+ charms in the inventory is not ported.
@@ -30,13 +30,21 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <mutex>
+#include <string>
+
+#include <windows.h>
 
 namespace inventory_lock {
 
 namespace {
 
 constexpr uint8_t Equip[] = {0x1a, 0, 0, 0, 0, 4, 0, 0, 0};
-constexpr uint8_t Merc[] = {0x58, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+constexpr uint8_t ShiftUnequip[] = {0x58, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+constexpr uint8_t MercSwap[] = {0x51, 1, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0};
+constexpr uint8_t MercToGrid[] = {0x5b, 1, 0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+constexpr uint8_t DropWorn[] = {0x5c, 1, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 1, 0, 0, 0};
+constexpr uint8_t DropFromGrid[] = {0x5c, 1, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 7, 0, 0, 0};
 constexpr uint8_t GridList[] = {0x22, 0xff, 0xff, 0xff, 0xff, 7, 0, 0, 0, 0};
 constexpr uint8_t BodyList[] = {0x22, 7, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 0};
 constexpr auto ListOf(uint8_t mode) noexcept {
@@ -48,7 +56,11 @@ constexpr auto ListOf(uint8_t mode) noexcept {
 constexpr uint8_t UseItem[] = {0x26, 0, 0, 0, 0};
 constexpr uint8_t Insert[] = {0x18, 0, 0, 0, 0};
 static_assert(ChangesEquipment(Equip, sizeof Equip));
-static_assert(ChangesEquipment(Merc, sizeof Merc));
+static_assert(ChangesEquipment(ShiftUnequip, sizeof ShiftUnequip));
+static_assert(ChangesEquipment(MercSwap, sizeof MercSwap) && ChangesEquipment(MercToGrid, sizeof MercToGrid));
+static_assert(ChangesEquipment(DropWorn, sizeof DropWorn));
+static_assert(!ChangesEquipment(DropFromGrid, sizeof DropFromGrid));  // a drop from a page is not a body slot
+static_assert(!ChangesEquipment(DropWorn, 0x0c));  // too short to hold the page
 static_assert(!ChangesEquipment(GridList, sizeof GridList));  // a grid's list move: not a body slot
 static_assert(ChangesEquipment(BodyList, sizeof BodyList));
 static_assert(ChangesEquipment(ListOf(1).b, 0x20) && ChangesEquipment(ListOf(2).b, 0x20));
@@ -58,7 +70,7 @@ static_assert(!ChangesEquipment(UseItem, sizeof UseItem) && !ChangesEquipment(In
 static_assert(!ChangesEquipment(nullptr, 9) && !ChangesEquipment(Equip, 0));
 
 constexpr char Command[] = "core-ui/InventoryLock";
-constexpr char Button[] = "InventoryLock";
+constexpr char Unlocked[] = "InventoryLock", Locked[] = "InventoryLockOn";
 constexpr const char* Panels[] = {"PlayerInventoryExpansionLayout", "PlayerInventoryOriginalLayout"};
 constexpr uint32_t WatchFrames = 10;
 
@@ -68,7 +80,84 @@ std::atomic<bool> g_locked {false};
 std::atomic<uint32_t> g_localId {0xffffffffU};
 std::atomic<uint32_t> g_refused {0}, g_toggles {0};
 uint32_t g_frames = 0;
-bool g_toggleSync = false;  // the SDK has the toggle getter and setter (newer than the widget service's first fields)
+std::atomic<bool> g_named {false};  // this game's character name is read (server thread, first local message)
+std::mutex g_nameLock;
+std::string g_name;  // the local character, for its saved lock; empty if unreadable
+
+// D2R's PlayerData starts with the character name (16 bytes); the server's player unit holds it at UnitData
+auto NameOf(void* player) noexcept -> std::string {
+	const auto* data = d2r::At<const char*>(player, d2r::rva::UnitData);
+	if (data == nullptr) {
+		return {};
+	}
+	std::string name;
+	for (size_t i = 0; i < 16 && data[i] != 0; ++i) {
+		const char c = data[i];
+		if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) {
+			return {};  // not a character name: keep the lock in memory only
+		}
+		name += c;
+	}
+	return name.size() >= 2 ? name : std::string {};
+}
+
+// <mod>/d2rloader/config/inventory-lock-<name>.locked, beside our d2rloader/plugins folder
+auto SavePath(const std::string& name) noexcept -> std::string {
+	HMODULE self = nullptr;
+	char path[MAX_PATH];
+	if (name.empty() ||
+	    !GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+	                        reinterpret_cast<LPCSTR>(&SavePath), &self)) {
+		return {};
+	}
+	const DWORD n = GetModuleFileNameA(self, path, MAX_PATH);
+	if (n == 0 || n >= MAX_PATH) {
+		return {};
+	}
+	std::string file(path, n);
+	for (int i = 0; i < 2; ++i) {  // drop core-ui.dll, then plugins
+		const size_t slash = file.find_last_of("\\/");
+		if (slash == std::string::npos) {
+			return {};
+		}
+		file.resize(slash);
+	}
+	file += "\\config";
+	CreateDirectoryA(file.c_str(), nullptr);
+	return file + "\\inventory-lock-" + name + ".locked";
+}
+
+void Save(bool locked) noexcept {
+	std::string name;
+	{
+		const std::lock_guard guard(g_nameLock);
+		name = g_name;
+	}
+	const std::string file = SavePath(name);
+	if (file.empty()) {
+		return;
+	}
+	if (!locked) {
+		DeleteFileA(file.c_str());
+		return;
+	}
+	const HANDLE h = CreateFileA(file.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
+	if (h != INVALID_HANDLE_VALUE) {
+		CloseHandle(h);
+	}
+}
+
+// server thread, first message from the local player in a game: take the character's saved lock
+void Load(void* player) noexcept {
+	std::string name = NameOf(player);
+	const std::string file = SavePath(name);
+	if (!file.empty()) {
+		g_locked.store(GetFileAttributesA(file.c_str()) != INVALID_FILE_ATTRIBUTES);
+	}
+	plog::Info("inventory lock: %s is %s", name.empty() ? "(unnamed)" : name.c_str(), g_locked.load() ? "locked" : "unlocked");
+	const std::lock_guard guard(g_nameLock);
+	g_name = std::move(name);
+}
 
 // 93847 0x4f2fa0, int (game, player, message, size): the server's client-message dispatch (PlrMsg handler table by id)
 using DispatchFn = int (*)(void*, void*, const uint8_t*, int) noexcept;
@@ -76,9 +165,11 @@ DispatchFn g_dispatch = nullptr;
 constexpr uint8_t DispatchEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x20};
 
 auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexcept -> int {
-	if (g_locked.load(std::memory_order_relaxed) && player != nullptr && size > 0 &&
-	    d2r::At<uint32_t>(player, d2r::rva::UnitIdField) == g_localId.load(std::memory_order_relaxed) &&
-	    ChangesEquipment(message, static_cast<size_t>(size))) {
+	const bool local = player != nullptr && d2r::At<uint32_t>(player, d2r::rva::UnitIdField) == g_localId.load();
+	if (local && !g_named.exchange(true)) {
+		Load(player);
+	}
+	if (local && g_locked.load(std::memory_order_relaxed) && size > 0 && ChangesEquipment(message, static_cast<size_t>(size))) {
 		++g_refused;
 		plog::Info("inventory lock: refused message 0x%02x (%d bytes)", message[0], size);
 		return 0;
@@ -95,24 +186,25 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 	}
 	const bool locked = !g_locked.load();
 	g_locked.store(locked);
+	Save(locked);
 	++g_toggles;
 	plog::Info("inventory lock: %s (player %u)", locked ? "locked" : "unlocked", g_localId.load());
 	return D2RL::SharedEvents::UiMessageAction::Consume;
 }
 
-// UI thread: the button shows the lock (a new game's panel starts unlocked)
+// UI thread: only the button that matches the lock is shown
 void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noexcept {
-	if (!g_toggleSync || ++g_frames % WatchFrames != 0) {
+	if (++g_frames % WatchFrames != 0) {
 		return;
 	}
 	const bool locked = g_locked.load();
 	for (const char* name : Panels) {
-		D2RL::Widgets::WidgetHandle panel {}, button {};
-		bool shown = false;
+		D2RL::Widgets::WidgetHandle panel {}, off {}, on {};
 		if (g_widgets->findPanel(g_context, name, &panel) == D2RL::Widgets::Result::Success &&
-		    g_widgets->findWidget(g_context, panel, Button, &button) == D2RL::Widgets::Result::Success &&
-		    g_widgets->getToggleState(g_context, button, &shown) == D2RL::Widgets::Result::Success && shown != locked) {
-			g_widgets->setToggleState(g_context, button, locked);
+		    g_widgets->findWidget(g_context, panel, Unlocked, &off) == D2RL::Widgets::Result::Success &&
+		    g_widgets->findWidget(g_context, panel, Locked, &on) == D2RL::Widgets::Result::Success) {
+			g_widgets->setWidgetVisible(g_context, off, !locked);
+			g_widgets->setWidgetVisible(g_context, on, locked);
 		}
 	}
 }
@@ -121,6 +213,7 @@ void OnPlayerReady(const D2RL::PluginContext*, const D2RL::Lifecycle::GameplayEv
 	if (event != nullptr) {
 		g_localId.store(event->playerId);
 	}
+	g_named.store(false);  // the next local message reads this game's character
 }
 
 template <class Service>
@@ -139,7 +232,6 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	const D2RL::SharedEventService* events = nullptr;
 	const D2RL::OverlayService* overlay = nullptr;
 	const bool widgets = Query(g_widgets, D2RL::HasWidgetServiceField, D2RL::WidgetServiceRequiredSize);
-	g_toggleSync = widgets && D2RL::HasWidgetServiceField(g_widgets, D2RL::WidgetServiceSetToggleStateFieldEnd);
 	const bool life = Query(lifecycle, D2RL::HasLifecycleServiceField, D2RL::LifecycleServiceRequiredSize);
 	const bool shared = Query(events, D2RL::HasSharedEventServiceField, D2RL::SharedEventServiceRequiredSize);
 	const bool frames = Query(overlay, D2RL::HasOverlayServiceField, D2RL::OverlayServiceRequiredSize);
@@ -172,8 +264,7 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (a listener was refused; the hook passes everything while unlocked)");
 		return;
 	}
-	std::snprintf(report, size, "the inventory padlock locks the player's and the mercenary's body slots (button sync %s)",
-	              g_toggleSync ? "on" : "off: no toggle setter in this SDK");
+	std::snprintf(report, size, "the inventory padlock locks the player's and the mercenary's body slots");
 }
 
 void Counters(char* out, size_t size) noexcept {
