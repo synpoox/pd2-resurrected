@@ -263,11 +263,15 @@ using PanelFn = uint8_t (*)(int) noexcept;  // D2R's "is panel N open" (93847 0x
 PanelFn g_panel = nullptr;
 // panel ids, read in game: inventory 1, stash 24 (0x18), Cube 25 (0x19); D2R's own Drop label needs 0x16, 0xd, 0xb shut too (vendor panels)
 constexpr int PanelInventory = 1, PanelStash = 0x18, PanelCube = 0x19;
-constexpr int DropBlockers[] = {0x18, 0x19, 0x16, 0xd, 0xb};  // the panels D2R's own Drop label needs shut (stash, Cube, vendor panels)
+constexpr int AlwaysOpen[] = {0, 20, 28, 29, 32};  // open with only the inventory up (read in game; 28 only in town): HUD panels, no NPC, stash or Cube panel
 auto PanelOpen(int id) noexcept -> bool { return g_panel != nullptr && g_panel(id) != 0; }
-auto DropPanelsOk() noexcept -> bool {
+auto DropPanelsOk() noexcept -> bool {  // allow-list: the inventory is the only panel open (hire, vendor, stash, Cube and the rest all block)
 	if (!PanelOpen(PanelInventory)) return false;
-	for (const int id : DropBlockers) if (PanelOpen(id)) return false;
+	for (int id = 0; id < 40; ++id) {
+		bool allowed = id == PanelInventory;
+		for (const int open : AlwaysOpen) allowed = allowed || id == open;
+		if (PanelOpen(id) && !allowed) return false;
+	}
 	return true;
 }
 using AtFn = void* (*)(void*, uint64_t*) noexcept;
