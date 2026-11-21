@@ -36,7 +36,7 @@ No control is a PD2 mirror yet; see [PD2 binds](#pd2-binds) for each PD2 bind's 
 | LB + Y | Sends the focused item to the Cube | inventory | Controller QoL | untested |
 | LB + R3 | Fills the belt with potions from the inventory | inventory | Controller QoL | untested |
 | LB + L3 or LB + R3 | Fills the merchant with potions and tomes | shop | Controller QoL | untested |
-| LB + D-pad | Gives the belt potion in that slot to the mercenary (nothing happens, and you drink it, with no live mercenary) | world | Our own (the modifier is Controller QoL's setting) | works with Shift in place of LB (#1513); real LB not run |
+| LB + D-pad | Gives the belt potion in that slot to the mercenary (nothing happens, and you drink it, with no live mercenary) | world | Our own (the modifier is Controller QoL's setting) | NOT working with a real LB (#1513): in the world a D-pad press drinks the potion with no item event, and in the inventory LB switches the menu tab before the belt event; works only with Shift in place of LB |
 | Modifier (LB) + A | Splits a stack on the cursor, as Ctrl-click does | inventory | Our own (the modifier is Controller QoL's setting) | works (#1459) |
 | Modifier (LB) + RB + A | Sends the whole stack under the pad focus (stash or stack tab) to the Cube. The SDK has no focused-item read, so the chord is held with A on the focused item (#1472) | stash, stack tab | Our own (the modifier is Controller QoL's setting) | not working in game: with the stack focused in the Runes tab, A and LB+RB+A raised no item event (nothing logged), so the Cube move never ran (#1516) |
 | START, then LB/RB to the altar tab | Removed (#1480): the altar opens only from the altar object in the Temple, so there is no altar tab | altar | Our own | cut (#1480) |
@@ -60,7 +60,7 @@ One line per PD2 pad bind, with its status.
 - RT attack with the right skill: covered by D2R.
 - LB show loot: covered by D2R and QoL.
 - Always show loot: covered by D2R's Show Items.
-- Belt potion to mercenary: built as LB + D-pad (slots 1-4) with D2R's own belt use called by signature (#1513). Proven in game with Shift standing in for LB (the harness pad is not seen by the plugin's XInput read); not yet run with a real LB.
+- Belt potion to mercenary: built as LB + D-pad (slots 1-4) with D2R's own belt use called by signature (#1513). Proven in game only with Shift standing in for LB. Run with a real LB (harness pad, XInput seen): LB + D-pad in the world drank nothing and raised no event, plain D-pad drinks with no event, and LB + A on a belt slot in the inventory switched the menu tab. The listener never fires with a real LB; it needs a redesign.
 - Run/walk: covered by D2R (L3).
 - Resync: cut, since D2R has no resync.
 - Per-skill auto-aim: covered by QoL (R3 in the skill tree).
