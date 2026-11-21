@@ -887,8 +887,13 @@ auto SpireShadowDied(Game* game, Unit* monster, int32_t level, uint32_t* seed) n
 		plog::Warn("map events: event %d shadow %d died, no item \"%s\"", Spire, classId, key);
 		return;
 	}
-	d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(DropItemAt)(
-		game, monster, row, QualityNormal, 0, 0);
+	// shortcut: the roll uses the monster's seed and the key drops at the monster, not through PD2's spot search
+	// (0x1036ebc0); only a drop that worked counts, as in PD2
+	if (d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(DropItemAt)(
+			game, monster, row, QualityNormal, 0, 0) == nullptr) {
+		plog::Warn("map events: event %d shadow %d: the %s drop failed in level %d", Spire, classId, key, level);
+		return;
+	}
 	Set(game, SpawnsKey, spawns + 1);
 	plog::Info("map events: event %d shadow %d dropped %s in level %d, %d of 6", Spire, classId, key, level, spawns - 1);
 	if (spawns + 1 - 2 > 5) {
