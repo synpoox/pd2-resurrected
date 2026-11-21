@@ -19,6 +19,9 @@
 
 #include <D2RLPlugin/mutations.h>
 
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
@@ -135,6 +138,17 @@ auto InstallMercRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                                      MenuOpen, &g_menuOpenOriginal);
 	const bool seller = hook && context->PatchWriteU8(tyrael + NpcTableHires, NotHiring, sizeof(NotHiring), 1);
 	const bool gear = PatchMercGear(context);
+	if (!gear) {
+		// Without the patch D2R's load check deletes every ring, amulet, glove, belt and boot a merc wears (#1627
+		// game check), and the next save makes that permanent. Stop before any character loads instead.
+		plog::Error("merc gear patch missing: the game is closed so no save loses its mercenary's items");
+		MessageBoxA(nullptr,
+		            "PD2 Resurrected could not enable mercenary rings, amulets, gloves, belts and boots on this D2R "
+		            "version.\n\nLoading a character now would delete those items from your mercenary, so the game "
+		            "will close. Update PD2 Resurrected, or report this D2R version.",
+		            "PD2 Resurrected", MB_OK | MB_ICONERROR | MB_TOPMOST);
+		TerminateProcess(GetCurrentProcess(), 1);  // not ExitProcess: no DLL detach code runs while plugins load
+	}
 	std::snprintf(report, reportSize, "tyrael hire%s; merc gear%s",
 	              !table ? " FAILED (npc table differs)" : !hook ? " FAILED (bytes differ)"
 	                                                     : seller ? "" : " FAILED (npc table write)",
