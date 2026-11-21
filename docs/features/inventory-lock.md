@@ -8,10 +8,11 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 
 - **Button.** `InventoryLock`, a `ToggleButtonWidget` in `playerinventoryoriginallayouthd.json` (the expansion layout lists it),
   at x 980, y 1702 beside the gold field. Art: `PANEL\pd2r\inventory_lock` (`files/data/hd/global/ui/panel/pd2r/`, HD 72 px and
-  lowend), PD2's own padlock (`buysellbtn.dc6` frames 24-27 in `pd2assets.mpq`: unlocked, pressed, locked, pressed) upscaled with
-  Real-ESRGAN as `tools/pd2_art.py` does.
+  lowend), our own padlock drawn by `tools/make_inventory_lock.py` (frames: unlocked, pressed, locked, pressed; rerun it to
+  redraw).
 - **Toggle.** The click sends `PanelManager:OpenPanel:core-ui/InventoryLock`; core-ui's `lock` part catches it, flips the lock and
-  consumes it. A frame watch sets the button to the lock state, so a new game's panel shows it too.
+  consumes it. The button flips its own frame on a click; a frame watch sets it to the lock state only when the SDK has a
+  toggle setter (the loader's does not yet).
 - **Block.** core-ui hooks the server's client-message dispatch (93847 `0x4f2fa0`, by signature) and drops, from the local player
   while locked, every message that changes a body slot (`ChangesEquipment` in `plugin/core-ui/inventory_lock.h`: 0x1a-0x1e and
   0x21 for the player, 0x56-0x5a for the mercenary, and the list forms 0x22 and 0x60 when they name a worn item). The log says
