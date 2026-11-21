@@ -33,14 +33,15 @@ auto QuantityDrops(const DeathContext& death) noexcept -> void {
 	using namespace d2r::rva;
 	using D2RL::Lifecycle::UnitType;
 	const auto* event = death.event;
-	// shortcut: a mercenary's or summon's kill gets no bonus (only a player carries the stat); upgrade to the owner's stat if asked
-	if ((event->killer.type != UnitType::Player && event->killer.type != UnitType::Missile) || !Ready() ||
-	    (At<uint32_t>(death.monster, UnitMainFlags) & UnitNoTreasure) != 0) {
+	if (event->killer.type == UnitType::Invalid || !Ready() || (At<uint32_t>(death.monster, UnitMainFlags) & UnitNoTreasure) != 0) {
 		return;
 	}
 	Unit* killer = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit)(
 		death.game, static_cast<int32_t>(event->killer.type), event->killer.id);
-	if (killer != nullptr && event->killer.type == UnitType::Missile) {
+	// Only a player carries the stat: a missile, mercenary or summon's kill counts for its owner. The game's owner lookup
+	// (MissileOwner, 0x490300) reads any unit's owner type and id (+0xe8, +0xec) when the unit has flag 0x400, not only
+	// a missile's; two steps cover a summon's missile (Hydra's bolt -> Hydra -> player).
+	for (int step = 0; step < 2 && killer != nullptr && At<int32_t>(killer, d2r::rva::UnitType) != 0; ++step) {
 		killer = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(d2r::sig::MissileOwner)(death.game, killer);
 	}
 	if (killer == nullptr || At<int32_t>(killer, d2r::rva::UnitType) != 0) {
