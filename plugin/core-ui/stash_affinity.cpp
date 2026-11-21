@@ -67,6 +67,8 @@ struct Left {
 Left g_left;
 
 std::atomic<uintptr_t> g_generation {0};
+uintptr_t g_seen = 0;  // the watch generation g_noted belongs to (game thread only)
+std::atomic<bool> g_hinted {false}, g_stopped {false};
 std::atomic<uint32_t> g_routed {0}, g_returned {0}, g_failed {0}, g_updates {0};
 
 auto NoteInventory(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept -> D2RL::Inventory::IterationAction {
@@ -139,7 +141,7 @@ void Route(D2RL::PlayerHandle player, const items::ItemInfo& item) noexcept {
 	plog::Info("affinity: %08x could not go to page %u row %d (result %u%s); back to the inventory: result %u", item.code,
 	           home.page, home.row, static_cast<uint32_t>(moved), column < 0 ? ", row full" : "",
 	           static_cast<uint32_t>(returned));
-	if (moved != items::Result::Conflict && g_failed.load() + g_returned.load() == 1) {
+	if (!g_hinted.exchange(true)) {
 		plog::Info("affinity: the reserved pages are shared tabs %u-%u; set [d2rcore.stash] add_shared_tabs to at least %u",
 		           aff::FirstReservedPage, aff::MapMaterialsPage, aff::RequiredExtraTabs);
 	}
@@ -150,8 +152,15 @@ void Update(const D2RL::PluginContext*, void* user) noexcept {
 	if (generation != g_generation.load()) {
 		return;  // a newer game started its own watch
 	}
-	if (g_threads->runOnGameThread(g_context, Update, user) != D2RL::Threads::Result::Success) {
+	if (const auto queued = g_threads->runOnGameThread(g_context, Update, user); queued != D2RL::Threads::Result::Success) {
+		if (!g_stopped.exchange(true)) {
+			plog::Info("affinity: the watch stopped (%u) until the next game", static_cast<uint32_t>(queued));
+		}
 		return;
+	}
+	if (generation != g_seen) {  // a new game: runtime ids from the last one mean nothing here
+		g_seen = generation;
+		g_noted.count = 0;
 	}
 	++g_updates;
 	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
@@ -193,6 +202,7 @@ void Update(const D2RL::PluginContext*, void* user) noexcept {
 
 void __cdecl StartWatch(const D2RL::PluginContext* context, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {
 	const uintptr_t generation = ++g_generation;
+	g_stopped = false;
 	if (const auto queued = g_threads->runOnGameThread(context, Update, reinterpret_cast<void*>(generation));
 	    queued != D2RL::Threads::Result::Success) {
 		plog::Info("affinity: no game thread (%u): routing runs in single player and on the host only", static_cast<uint32_t>(queued));

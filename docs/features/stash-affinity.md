@@ -29,5 +29,11 @@ the inventory and in a stash on the next update was quick-moved, and `executeExi
 missing page (fewer extra tabs) moves it back to the inventory; the log says why. Status: `core-ui` console command,
 `affinity:` counters.
 
+Limits: tabs 15-19 are taken as they are, so items a player already keeps there stay and share the space (a migration
+for saves with more extra tabs is a later slice); a reserved page's free cells are found from item corners only, so a bigger
+hand-placed item there can send a map back to the inventory. A hand move whose pick-up and put-down land in one game update
+(a lag spike), or another plugin's inventory-to-stash move, is routed like a quick-move. `getLocalPlayer` works on the game
+thread here (Slot2, 2026-11-21).
+
 Not yet: the Maps view (tier and base selectors with counts, after the PoE map stash), tab names, a chat line when a page is
 full, TCP/IP clients (routing runs in single player and on the host).
