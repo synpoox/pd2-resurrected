@@ -68,6 +68,7 @@ std::atomic<bool> g_locked {false};
 std::atomic<uint32_t> g_localId {0xffffffffU};
 std::atomic<uint32_t> g_refused {0}, g_toggles {0};
 uint32_t g_frames = 0;
+bool g_toggleSync = false;  // the SDK has the toggle getter and setter (newer than the widget service's first fields)
 
 // 93847 0x4f2fa0, int (game, player, message, size): the server's client-message dispatch (PlrMsg handler table by id)
 using DispatchFn = int (*)(void*, void*, const uint8_t*, int) noexcept;
@@ -101,7 +102,7 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 
 // UI thread: the button shows the lock (a new game's panel starts unlocked)
 void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noexcept {
-	if (++g_frames % WatchFrames != 0) {
+	if (!g_toggleSync || ++g_frames % WatchFrames != 0) {
 		return;
 	}
 	const bool locked = g_locked.load();
@@ -137,11 +138,14 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	const D2RL::LifecycleService* lifecycle = nullptr;
 	const D2RL::SharedEventService* events = nullptr;
 	const D2RL::OverlayService* overlay = nullptr;
-	if (!(Query(g_widgets, D2RL::HasWidgetServiceField, D2RL::WidgetServiceSetToggleStateFieldEnd) &
-	      Query(lifecycle, D2RL::HasLifecycleServiceField, D2RL::LifecycleServiceRequiredSize) &
-	      Query(events, D2RL::HasSharedEventServiceField, D2RL::SharedEventServiceRequiredSize) &
-	      Query(overlay, D2RL::HasOverlayServiceField, D2RL::OverlayServiceRequiredSize))) {
-		std::snprintf(report, size, "FAILED (a widget, lifecycle, event or overlay service is missing)");
+	const bool widgets = Query(g_widgets, D2RL::HasWidgetServiceField, D2RL::WidgetServiceRequiredSize);
+	g_toggleSync = widgets && D2RL::HasWidgetServiceField(g_widgets, D2RL::WidgetServiceSetToggleStateFieldEnd);
+	const bool life = Query(lifecycle, D2RL::HasLifecycleServiceField, D2RL::LifecycleServiceRequiredSize);
+	const bool shared = Query(events, D2RL::HasSharedEventServiceField, D2RL::SharedEventServiceRequiredSize);
+	const bool frames = Query(overlay, D2RL::HasOverlayServiceField, D2RL::OverlayServiceRequiredSize);
+	if (!(widgets && life && shared && frames)) {
+		std::snprintf(report, size, "FAILED (service missing: widget %d, lifecycle %d, event %d, overlay %d)", widgets, life,
+		              shared, frames);
 		return;
 	}
 	if (!sigscan::HookBySignature(context, "PlrMsgDispatch",
@@ -168,7 +172,8 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (a listener was refused; the hook passes everything while unlocked)");
 		return;
 	}
-	std::snprintf(report, size, "the inventory padlock locks the player's and the mercenary's body slots");
+	std::snprintf(report, size, "the inventory padlock locks the player's and the mercenary's body slots (button sync %s)",
+	              g_toggleSync ? "on" : "off: no toggle setter in this SDK");
 }
 
 void Counters(char* out, size_t size) noexcept {
