@@ -926,7 +926,7 @@
                 "tabSize": { "x": 195, "y": 72 },
                 "tabPadding": { "x": 4000, "y": 0 },
                 "onSwitchTabMessage": "BankPanelMessage:SelectTab",
-                "tabMessages": [ "", "PanelManager:OpenPanel:core-ui/StashTabBossing" ]
+                "tabMessages": [ "PanelManager:OpenPanel:core-ui/StashHidden", "PanelManager:OpenPanel:core-ui/StashTabBossing" ]
             }
         },
         {
@@ -963,7 +963,7 @@
                 "tabSize": { "x": 195, "y": 72 },
                 "tabPadding": { "x": 4000, "y": 0 },
                 "onSwitchTabMessage": "BankPanelMessage:SelectTab",
-                "tabMessages": [ "", "PanelManager:OpenPanel:core-ui/StashTabMaps" ]
+                "tabMessages": [ "PanelManager:OpenPanel:core-ui/StashHidden", "PanelManager:OpenPanel:core-ui/StashTabMaps" ]
             }
         },
         {

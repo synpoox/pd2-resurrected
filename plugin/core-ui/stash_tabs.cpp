@@ -254,7 +254,7 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 		Leave();
 		OpenPage(0);
 		Log("Shared");
-	} else {
+	} else if (std::strcmp(what, "Hidden") != 0) {  // Hidden: our bars' off-screen tab 0 (an empty message asserts, #1649)
 		Click(what);
 	}
 	return Action::Consume;
