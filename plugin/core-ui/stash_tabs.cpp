@@ -18,6 +18,7 @@
 // The stock Shared tab never pages onto the reserved pages (#1653): no SDK service reads the stash page and this
 // loader's widget service has no getText for its label, so the page is counted from the arrows (ours and the player's),
 // and a player's Right arrow that would reach a reserved page is consumed; leaving our tab pages the stash back to page 1.
+// On the Maps tab the pad's LB/RB step the base and its left stick click the tier (#1669), as the buttons' clicks do.
 // The pad (#1661, #1671) does the same, caught as its actions in the stash's OnMessage (any binding, pad or pad type): its
 // page right (LB+RT) is counted and consumed at page 15, and its tab switch past Runes or Personal opens our tabs (the
 // controller layout's pd2rPadTabs bar shows them lit; BankTabs stays on Shared, drawn unlit).
@@ -213,6 +214,22 @@ void Click(const char* what) noexcept {
 	Log(what);
 }
 
+// The pad's steps on the Maps tab: the same ShowTier the buttons' clicks call
+void StepTier() noexcept {
+	ShowTier((g_tier + 1) % 3);
+	Log("pad tier");
+}
+
+void StepBase(int32_t by) noexcept {
+	int32_t i = g_base[g_tier];
+	do {
+		i = (i + by + aff::PageWidth) % aff::PageWidth;
+	} while (aff::BaseCode(g_tier, i) == 0);  // the tier has at least the base on show
+	g_base[g_tier] = i;
+	ShowTier(g_tier);
+	Log("pad base");
+}
+
 // The layout's widgets by name, found once: handles are paths the loader resolves on each call
 struct Named {
 	const char* name;
@@ -321,7 +338,7 @@ auto PadTab(bool right) noexcept -> bool {
 constexpr uint64_t InputMessageHash = 0x4ae067c6248b6042;           // "InputMessage", the message's first field
 constexpr uint64_t ControllerActionBeginHash = 0x1e439768f7dd4594;  // "ControllerActionBegin", field 0x11
 constexpr uint64_t ControllerActionEndHash = 0x4d833cc71f08b3c0;    // "ControllerActionEnd"
-enum PadAction : int { TabLeft = 7, TabRight = 8, CycleLeft = 0x13, CycleRight = 0x14 };
+enum PadAction : int { TabLeft = 7, TabRight = 8, CycleLeft = 0x13, CycleRight = 0x14, Option3 = 3 };
 constexpr size_t VtableMax = 256;
 void* g_vtable[VtableMax + 1] = {};  // [0] the RTTI slot before the table
 void** g_panelVtable = nullptr;      // the panel's own vtable, copied into g_vtable
@@ -343,10 +360,19 @@ auto OnPadAction(int32_t id) noexcept -> bool {
 		return PadTab(id == TabRight);
 	case CycleLeft:
 	case CycleRight:
+		if (g_view == View::Maps) {
+			StepBase(id == CycleRight ? 1 : -1);  // LB / RB: the tier's previous / next base, as a click on its button
+		}
 		if (g_view != View::None) {
 			return true;  // our tab's page stays ours (the mouse's arrows are hidden there)
 		}
 		return g_tab == 1 && !PlayerPage(id == CycleRight, "pad page right");
+	case Option3:  // the left stick's click: nothing in the stash uses it (the right stick's is Hold to Sort, option4)
+		if (g_view != View::Maps) {
+			return false;
+		}
+		StepTier();  // the next tier, as a click on its button
+		return true;
 	default:
 		return false;
 	}
@@ -362,7 +388,7 @@ void StashOnMessage(void* panel, const uint64_t* message) noexcept {
 		const auto* action = reinterpret_cast<const uint8_t*>(message[0x22]);
 		if (action != nullptr && action[0x18] == 0 && !reinterpret_cast<bool (*)() noexcept>(MessageHandled.address)()) {
 			const int32_t id = *reinterpret_cast<const int32_t*>(action + 0x10);
-			if (id == TabLeft || id == TabRight || id == CycleLeft || id == CycleRight) {
+			if (id == TabLeft || id == TabRight || id == CycleLeft || id == CycleRight || g_view != View::None) {
 				plog::Info("stash tabs: pad action %d (view %u, tab %d)", id, static_cast<uint32_t>(g_view), g_tab);
 			}
 			g_cycleHeld = id == CycleLeft ? true : g_cycleHeld;
