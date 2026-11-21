@@ -14,6 +14,7 @@ HOT = {
                                   "ApplyDarkPact", "SetPhasing", "EquipStatCallback", "EquipAuraTick", "AddCharge",
                                   "MapItemMaker"],
     "core-rules/loot_rules.cpp": ["ApplyEthereal", "RollStaffMods"],
+    "core-rules/skill_functions.cpp": ["AvoidWithParry"],
     "core-events/uber_scaling.cpp": ["ScaleUberMonster"],
     "core-events/rathma_life.cpp": ["SharedStep", "SharedPoison"],
 }

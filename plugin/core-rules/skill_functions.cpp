@@ -17,6 +17,7 @@
 #include "pd2_engine.h"
 #include "item_rules.h"
 #include "log.h"
+#include "hot_log.h"
 #include "missile_functions.h"
 #include "skill_router.h"
 #include "line_spread.h"
@@ -3770,7 +3771,7 @@ auto AvoidWithParry(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> 
 	const int32_t frame = game != nullptr ? At<int32_t>(game, d2r::rva::GameFrame) : 0;
 	const uint32_t id = player ? At<uint32_t>(defender, d2r::rva::UnitIdField) : 0;
 	if (game != nullptr && g_avoidWindow.Blocked(id, frame)) {
-		if (First(g_avoidBlocked, 100)) {
+		if (pd2::HotSample(++g_avoidBlocked)) {  // per monster hit on a player: sampled (#1609)
 			plog::Info("avoid window: player %u, frame %d, avoid refused; %u refused", id, frame, g_avoidBlocked.load());
 		}
 		return 0;
@@ -3778,7 +3779,7 @@ auto AvoidWithParry(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> 
 	const uint32_t result = AvoidRolled(attacker, defender, ranged);
 	if (game != nullptr && (result & pd2::parry::AvoidMask) != 0) {
 		g_avoidWindow.Set(id, frame);
-		if (First(g_avoids, 200)) {
+		if (pd2::HotSample(++g_avoids)) {
 			plog::Info("avoid: player %u result 0x%x at frame %d, no avoid until frame %d; %u avoids", id, result, frame,
 			           frame + pd2::parry::WindowFrames, g_avoids.load());
 		}
