@@ -41,7 +41,6 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
-#include <unordered_set>
 
 #include <windows.h>
 
@@ -111,14 +110,14 @@ void OnSpawned(const uint8_t* const* regions, void* room, void* unit, int skip) 
 	g_spawned(regions, room, unit, skip);
 }
 
-// Game thread only. The drlg rooms already seen populated (D2R frees rooms the player left), for the level g_seenLevel.
-std::unordered_set<const void*> g_seen;
+// Game thread only. The drlg rooms already seen populated, per level (D2R frees rooms the player left).
+mc::SeenRooms g_seen;
 int32_t g_seenLevel = -1;
 uint32_t g_seenEpoch = 0;
 int32_t g_lastRemaining = -1;
 
 auto Populated(const uint8_t* drlgRoom) noexcept -> bool {
-	if (g_seen.count(drlgRoom) != 0) {
+	if (g_seen.Has(g_seenLevel, drlgRoom)) {
 		return true;
 	}
 	bool done = false;
@@ -129,7 +128,7 @@ auto Populated(const uint8_t* drlgRoom) noexcept -> bool {
 	} __except (EXCEPTION_EXECUTE_HANDLER) {
 	}
 	if (done) {
-		g_seen.insert(drlgRoom);
+		g_seen.Add(g_seenLevel, drlgRoom);
 	}
 	return done;
 }
@@ -148,8 +147,11 @@ auto LevelCount(const D2RL::PluginContext* context) noexcept -> int32_t {
 void __cdecl Refresh(const D2RL::PluginContext* context, void*) noexcept {
 	const int32_t level = g_level.load();
 	const auto* regions = g_regions.load(std::memory_order_relaxed);
-	if (const uint32_t epoch = g_epoch.load(); epoch != g_seenEpoch || level != g_seenLevel) {
-		g_seen.clear();
+	const uint32_t epoch = g_epoch.load();
+	if (epoch != g_seenEpoch) {
+		g_seen.byLevel.clear(); // a new game; a level change keeps its rooms
+	}
+	if (epoch != g_seenEpoch || level != g_seenLevel) {
 		g_seenEpoch = epoch;
 		g_seenLevel = level;
 		g_lastRemaining = -1;
@@ -174,7 +176,7 @@ void __cdecl Refresh(const D2RL::PluginContext* context, void*) noexcept {
 	g_text.store(Pack(level, remaining, complete));
 	if (g_lastRemaining != remaining && pd2::HotSample(g_changes)) {
 		plog::Info("monsters remaining: level %d spawned %d killed %d, %zu rooms seen populated, %s -> %d%s", level, ledger.spawned,
-		           ledger.killed, g_seen.size(), complete ? "all rooms populated" : "rooms still unmet", remaining, complete ? "" : "+");
+		           ledger.killed, g_seen.Count(level), complete ? "all rooms populated" : "rooms still unmet", remaining, complete ? "" : "+");
 	}
 	g_lastRemaining = remaining;
 }

@@ -54,6 +54,15 @@ int main() {
 	loop1.next = &loop2;
 	check("a looping list is not exact", !AllPopulated(reinterpret_cast<const uint8_t*>(&loop1), 0, pop));
 
+	// level A fully seen, a trip to town and back: A still reads exact
+	SeenRooms seen;
+	const auto seenPop = [&](int32_t lv) { return [&seen, lv](const uint8_t* r) { return seen.Has(lv, r); }; };
+	seen.Add(8, &a); seen.Add(8, &b); seen.Add(8, &c);
+	seen.Add(1, &d);
+	check("level seen fully: exact", AllPopulated(reinterpret_cast<const uint8_t*>(&a), 0, seenPop(8)));
+	check("another level's rooms do not count", !AllPopulated(reinterpret_cast<const uint8_t*>(&a), 0, seenPop(1)));
+	check("after town and back, still exact", AllPopulated(reinterpret_cast<const uint8_t*>(&a), 0, seenPop(8)) && seen.Count(8) == 3);
+
 	char text[64];
 	Text(12, true, text, sizeof text);
 	check("text, exact", std::strcmp(text, "Monsters remaining: 12") == 0);

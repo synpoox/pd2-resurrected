@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace pd2::monstercount {
 
@@ -49,6 +51,21 @@ constexpr auto Remaining(Ledger l) noexcept -> int32_t {
 constexpr auto Shown(Ledger l) noexcept -> bool {
 	return l.spawned > 0;
 }
+
+// Rooms seen populated, one set per level id: D2R frees a room's data once the player leaves, so a level
+// left and re-entered (a town portal) must keep what it had. Cleared only on a new game.
+struct SeenRooms {
+	std::unordered_map<int32_t, std::unordered_set<const void*>> byLevel;
+	auto Has(int32_t level, const void* room) const -> bool {
+		const auto it = byLevel.find(level);
+		return it != byLevel.end() && it->second.count(room) != 0;
+	}
+	void Add(int32_t level, const void* room) { byLevel[level].insert(room); }
+	auto Count(int32_t level) const -> size_t {
+		const auto it = byLevel.find(level);
+		return it == byLevel.end() ? 0 : it->second.size();
+	}
+};
 
 // D2R makes a room's monsters when the room first activates, so the ledger only knows the rooms met so far. Walk the level's
 // room list (`first`, next room pointer at `nextAt`); `populated(room)` says whether that room has made its monsters.
