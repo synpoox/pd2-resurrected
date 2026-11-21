@@ -4,12 +4,12 @@ core-ui's `hotkeys` part gives the inventory, stash and Cube PD2's mouse binds (
 
 | Action | Default | What it does |
 |---|---|---|
-| `drop` | Ctrl + right click | Drops the item (D2R's own drop path) |
-| `stash` | Shift + right click | Moves the item to the stash, or back to the inventory when it is in the stash or Cube |
-| `cube` | Ctrl + Shift + right click | Moves the item to the Cube (back to the inventory from the Cube) |
+| `drop` | Ctrl + right click | Drops the item (D2R's own drop path), only from the inventory with no other panel open |
+| `stash` | Shift + right click | Moves the item to the stash, or back to the inventory; only with the stash panel open |
+| `cube` | Ctrl + Shift + right click | Moves the item to the Cube (back from the Cube); only with the Cube open |
 | `identify` | Shift + left click | Identifies the item with one charge of an Identify tome in the inventory |
 
-A move that has no room leaves the item where it was. Shift + left click no longer equips (see `docs/deviations.md`).
+A move that has no room leaves the item where it was. With a panel closed that a bind needs, the click does nothing (no remote stash, no Cube move from afar, no drop while a stash, Cube or vendor panel is open). Shift + left click on an identified item is still D2R's own equip. Host and single player only.
 
 ## Rebinding
 

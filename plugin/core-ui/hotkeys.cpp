@@ -74,9 +74,10 @@ auto Parse(const std::string& value, Bind* bind) noexcept -> bool {
 		else return false;
 		at = end + 1;
 	}
-	b.on = button;
-	if (button) *bind = b;
-	return button;
+	if (!button || b.mods == 0) return false;  // a bare click would take over every click
+	b.on = true;
+	*bind = b;
+	return true;
 }
 
 void LoadConfig(const wchar_t* configPath) noexcept {
@@ -113,6 +114,13 @@ void LoadConfig(const wchar_t* configPath) noexcept {
 				}
 			}
 			std::fclose(file);
+		}
+	}
+	for (int i = 0; i < static_cast<int>(Act::Count); ++i) {
+		for (int j = i + 1; j < static_cast<int>(Act::Count); ++j) {
+			if (g_binds[i].on && g_binds[j].on && g_binds[i].mods == g_binds[j].mods && g_binds[i].right == g_binds[j].right) {
+				plog::Warn("hotkeys: %s and %s share one bind; the first wins", ActName[i], ActName[j]);
+			}
 		}
 	}
 	Bind& drop = g_binds[static_cast<int>(Act::Drop)];
@@ -220,7 +228,7 @@ constexpr uint32_t Ours = items::ContainerBit(items::ItemContainer::Inventory) |
 auto Queue(Act act, D2RL::PlayerHandle player, const items::ItemInfo& info) noexcept -> bool {
 	// Equipment, belt and the like are not ours: let D2R act
 	if ((items::ContainerBit(info.container) & Ours) == 0) return false;
-	if (act == Act::Identify && (info.stateFlags & items::ItemStateIdentified) != 0) return true;  // nothing to identify, and no equip either
+	if (act == Act::Identify && (info.stateFlags & items::ItemStateIdentified) != 0) return false;  // nothing to identify: D2R's own Shift + left click equips
 	if (g_busy.exchange(true)) return true;
 	g_job = {act, player, info.code, info.runtimeId, info.container};
 	if (g_threads->runOnGameThread(g_context, GameThreadJob, nullptr) != D2RL::Threads::Result::Success) {
@@ -251,6 +259,17 @@ using KeyFn = int (*)(int) noexcept;  // D2R's "is this virtual key down" wrappe
 KeyFn g_key = nullptr;
 using RightFn = void (*)(void*, uint64_t) noexcept;
 RightFn g_right = nullptr;
+using PanelFn = uint8_t (*)(int) noexcept;  // D2R's "is panel N open" (93847 0xce500)
+PanelFn g_panel = nullptr;
+// panel ids, read in game: inventory 1, stash 24 (0x18), Cube 25 (0x19); D2R's own Drop label needs 0x16, 0xd, 0xb shut too (vendor panels)
+constexpr int PanelInventory = 1, PanelStash = 0x18, PanelCube = 0x19;
+constexpr int DropBlockers[] = {0x18, 0x19, 0x16, 0xd, 0xb};  // the panels D2R's own Drop label needs shut (stash, Cube, vendor panels)
+auto PanelOpen(int id) noexcept -> bool { return g_panel != nullptr && g_panel(id) != 0; }
+auto DropPanelsOk() noexcept -> bool {
+	if (!PanelOpen(PanelInventory)) return false;
+	for (const int id : DropBlockers) if (PanelOpen(id)) return false;
+	return true;
+}
 using AtFn = void* (*)(void*, uint64_t*) noexcept;
 constexpr size_t SlotItemAt = 0xc8, SlotLeftClick = 0x100;  // the grid widget's vtable (0x1cf3800): item at cell, left click
 constexpr uint8_t RightEntry[] = {0x48, 0x89, 0x54, 0x24, 0x10, 0x53, 0x48, 0x83, 0xec, 0x20};
@@ -270,13 +289,20 @@ void OnRightClick(void* widget, uint64_t cell) noexcept {
 		// Only with an empty cursor and an item under the mouse; any doubt is D2R's own click
 		if (unit != nullptr && g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
 		    g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::NotFound) {
-			if (static_cast<Act>(act) == Act::Drop) {
-				reinterpret_cast<RightFn>(vtable[SlotLeftClick / sizeof(void*)])(widget, cell);  // Ctrl is down: D2R's Ctrl + left click
-				return;
-			}
 			// the SDK's handle is not the client unit: find the item by the unit id the two share
 			Find find {0, d2r::At<uint32_t>(unit, d2r::rva::UnitIdField)};
-			if (find.runtimeId != 0 && Look(player, Ours, &find) && Queue(static_cast<Act>(act), player, find.info)) return;
+			const Act what = static_cast<Act>(act);
+			if (what == Act::Drop) {
+				// only the player's own inventory with no panel open; with any panel open the click does nothing
+				if (find.runtimeId != 0 && DropPanelsOk() &&
+				    Look(player, items::ContainerBit(items::ItemContainer::Inventory), &find)) {
+					reinterpret_cast<RightFn>(vtable[SlotLeftClick / sizeof(void*)])(widget, cell);  // Ctrl is down: D2R's Ctrl + left click
+				}
+				return;
+			}
+			// stash and Cube moves need their own panel open: no remote stash, no Cube move from afar
+			if (what != Act::Identify && !PanelOpen(what == Act::Stash ? PanelStash : PanelCube)) return;
+			if (find.runtimeId != 0 && Look(player, Ours, &find) && Queue(what, player, find.info)) return;
 		}
 	}
 	g_right(widget, cell);
@@ -314,6 +340,8 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	                   sigscan::HookBySignature(context, "InventoryRightClick",
 	                                            "48 89 54 24 10 53 48 83 ec 20 48 8b d9 e8 ?? ?? ?? ?? 84 c0 74 5c 48 8b 03 48 8d 54 24 38 48 8b cb", 0,
 	                                            RightEntry, sizeof RightEntry, OnRightClick, &g_right);
+	uint64_t panel = 0;
+	if (sigscan::ScanUnique(context->exeBase, "48 63 c1 48 8d 0d ?? ?? ?? ?? 0f b6 04 08 c3 cc 48 8b c4 48 89 50 10 4c 89 40 18", 0, &panel) == 1) g_panel = reinterpret_cast<PanelFn>(context->exeBase + panel);
 	if (right) {
 		g_key = reinterpret_cast<KeyFn>(context->exeBase + key);
 	} else {
