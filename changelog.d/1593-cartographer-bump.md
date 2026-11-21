@@ -1,0 +1,1 @@
+- Fixed map-open log spam, the unidentified map bonus panel, and missiles stopping at the void in Horazon's Memory.

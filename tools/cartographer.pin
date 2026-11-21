@@ -1,2 +1,2 @@
-# Minimum d2r-tools commit for local Cartographer installs, and exact source for release builds. Includes the Cartographer log fix (d2r-tools#571).
-0ffeb6d849bfa04ea79e61861458b4d89ab8d720
+# Minimum d2r-tools commit for local Cartographer installs, and exact source for release builds. Includes the Cartographer debug-log, unidentified map bonus and void missile fixes (d2r-tools#574, #575, #576).
+1c0afab7ecd590fc57a5b5c2d3aeed8cc148cca2
