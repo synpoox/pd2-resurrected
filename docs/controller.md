@@ -1,4 +1,4 @@
-﻿# Controller controls
+# Controller controls
 
 Every controller control the mod ships: D2R's own binds, Controller QoL's (PyreFly's plugin, pinned in #1453) and ours.
 Status is from the [controller audit](research/controller/controller-audit.md) and the merged controller PRs.
