@@ -17,6 +17,10 @@ int main() {
 	check("a book skips the quantity step", SkipsQuantity(true, false));
 	check("a weapon skips it too", SkipsQuantity(false, true));
 	check("anything else keeps it", !SkipsQuantity(false, false));
+	check("superior skips the stat term", SkipsStatTerm(3));
+	check("tempered and magic keep it", !SkipsStatTerm(9) && !SkipsStatTerm(4));
+	check("repair 250001 caps to 250000", CapRepair(250001) == 250000);
+	check("repair 1234 stays", CapRepair(1234) == 1234);
 	std::printf(fail == 0 ? "all passed\n" : "%d failed\n", fail);
 	return fail == 0 ? 0 : 1;
 }

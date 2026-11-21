@@ -7,6 +7,12 @@
 // 1. The quantity step starts at `ItemIsType(item, 0x12)` (0x37069f; the type number is built in r12 + 0x12): non-zero
 //    skips it. ItemIsType (0x373890) is hooked, and its answer is changed only for the call whose return address is that
 //    site, so every other caller sees D2R's own answer. A book still skips, as before.
+// 3. Superior items skip the stat term: the price switch on quality sends 3 (superior) and 9 (tempered) to one label that
+//    calls the bonus-stat pricer (0x37c390, a D2RLoader thunk, so the call site is the place). The switch table (0x3709dc,
+//    RVAs) entry for 3 is moved past that call (+27); 9 keeps it. The code after the call reads the three price slots in
+//    place, so skipping it adds nothing, as PD2's `if (quality != 3)`.
+// 4. A repair quote (type 3) is capped at 250000, as PD2's final `min(price, 250000)`: the price function is hooked and its
+//    result clamped for type 3.
 // 2. The gamble midpoint is `imul ebp,[rbx+0xe8]` after `max(mid, 1)` (0x376c4d); `mov ebp,[rbx+0xe8]` + nop is mid = 1.
 #include "item_prices.h"
 
@@ -57,6 +63,57 @@ auto IsTypeHook(Unit* item, int32_t type) noexcept -> int32_t {
 	return result;
 }
 
+// mov eax,[rbp-0x2d] / dec eax / cmp eax,8 / ja / lea rdx,[image base] / cdqe / mov ecx,[rdx+rax*4+TABLE] / add rcx,rdx / jmp rcx:
+// the table's RVA is the disp32 at +26
+constexpr const char* QualityDispatch =
+    "8b 45 d3 ff c8 83 f8 08 0f 87 ?? ?? ?? ?? 48 8d 15 ?? ?? ?? ?? 48 98 8b 8c 82 ?? ?? ?? ?? 48 03 ca ff e1";
+constexpr uint64_t TableDisp = 26;
+// the label for superior and tempered: mov eax,[rbp-0x25] / lea r9,.. / lea r8,.. / mov [rsp+20h],eax / lea rdx,.. / mov rcx,rdi /
+// call (+22) ; the code after the call starts `mov eax,[rbp-0x35]` (+27)
+constexpr uint8_t StatLabel[] = {0x8b, 0x45, 0xdb, 0x4c, 0x8d, 0x4d, 0xd7, 0x4c, 0x8d, 0x45, 0xcb, 0x89, 0x44, 0x24, 0x20,
+                                 0x48, 0x8d, 0x55, 0xcf, 0x48, 0x8b, 0xcf, 0xe8};
+constexpr uint64_t StatSkip = 27;
+constexpr uint8_t AfterCall[] = {0x8b, 0x45, 0xcb};
+
+// 0x36f0c0 (player, item, difficulty, quest flags, vendor, type): type 0 buy, 1 sell, 2 gamble, 3 repair
+constexpr uint8_t PriceEntry[] = {0x4c, 0x89, 0x4c, 0x24, 0x20, 0x44, 0x89, 0x44, 0x24, 0x18, 0x48, 0x89, 0x54, 0x24, 0x10, 0x48, 0x89, 0x4c, 0x24, 0x08};
+constexpr const char* PricePattern =
+    "4c 89 4c 24 20 44 89 44 24 18 48 89 54 24 10 48 89 4c 24 08 55 57 41 55 48 8d 6c 24 c9 48 81 ec b0 00 00 00 48 8b fa 4c 8b e9";
+using PriceFn = uint64_t (*)(void* player, Unit* item, int32_t difficulty, uint64_t quest, uint32_t vendor, int32_t type) noexcept;
+PriceFn g_price = nullptr;
+std::atomic<uint32_t> g_repairCaps {0};
+
+auto PriceHook(void* player, Unit* item, int32_t difficulty, uint64_t quest, uint32_t vendor, int32_t type) noexcept -> uint64_t {
+	uint64_t result = g_price(player, item, difficulty, quest, vendor, type);
+	if (type == 3 && static_cast<int32_t>(result) != CapRepair(static_cast<int32_t>(result))) {
+		g_repairCaps.fetch_add(1);
+		result = RepairCap;
+	}
+	return result;
+}
+
+// Moves the switch table's entry for superior (3) past the stat call. Fails safe: one match, the two entries equal, and the
+// label's bytes exactly as read.
+auto InstallSuperiorStats(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t rva = 0;
+	if (sigscan::ScanUnique(context->exeBase, QualityDispatch, 0, &rva) != 1) {
+		plog::Warn("skipped superior stat term: dispatch not found exactly once");
+		return false;
+	}
+	int32_t table = 0;
+	std::memcpy(&table, reinterpret_cast<const uint8_t*>(context->exeBase + rva + TableDisp), sizeof(table));
+	int32_t entries[9];
+	std::memcpy(entries, reinterpret_cast<const uint8_t*>(context->exeBase + table), sizeof(entries));
+	const auto label = reinterpret_cast<const uint8_t*>(context->exeBase + entries[2]);
+	if (entries[2] != entries[8] || std::memcmp(label, StatLabel, sizeof(StatLabel)) != 0 ||
+	    std::memcmp(label + StatSkip, AfterCall, sizeof(AfterCall)) != 0) {
+		plog::Warn("skipped superior stat term: switch table or label differs");
+		return false;
+	}
+	const int32_t skip = entries[2] + static_cast<int32_t>(StatSkip);
+	return context->PatchBytes(static_cast<uint64_t>(table) + 2 * sizeof(int32_t), &entries[2], sizeof(int32_t), &skip, sizeof(skip));
+}
+
 }  // namespace
 
 auto InstallItemPrices(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
@@ -78,10 +135,14 @@ auto InstallItemPrices(const D2RL::PluginContext* context, char* report, size_t 
 	if (GambleMid.state == sigscan::State::Ok) {
 		gamble = context->PatchBytes(GambleMid.rva + MidImul, MidImulStock, sizeof(MidImulStock), MidOne, sizeof(MidOne));
 	}
-	std::snprintf(report, reportSize, "weapon prices %s, gamble midpoint %s", quantity ? "in" : "FAILED", gamble ? "in" : "FAILED");
-	return quantity && gamble;
+	const bool superior = InstallSuperiorStats(context);
+	const bool repair = sigscan::HookBySignature(context, "ItemPrice", PricePattern, 0, PriceEntry, sizeof(PriceEntry), PriceHook, &g_price);
+	std::snprintf(report, reportSize, "weapon prices %s, gamble midpoint %s, superior stat skip %s, repair cap %s", quantity ? "in" : "FAILED",
+	              gamble ? "in" : "FAILED", superior ? "in" : "FAILED", repair ? "in" : "FAILED");
+	return quantity && gamble && superior && repair;
 }
 
 auto ItemPriceCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "item prices: %u prices without the stack quantity", g_weaponSkips.load());
+	std::snprintf(out, size, "item prices: %u prices without the stack quantity, %u repair quotes capped", g_weaponSkips.load(),
+	              g_repairCaps.load());
 }

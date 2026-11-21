@@ -10,6 +10,19 @@ namespace pd2::itemprice {
 inline constexpr int32_t TypeBook = 0x12;
 inline constexpr int32_t TypeWeapon = 45;  // itemtypes "weap": throwing knives, axes and javelins are under it
 
+inline constexpr int32_t QualitySuperior = 3;
+inline constexpr int32_t RepairCap = 250000;
+
+// D2R's stat term (bonus stat prices) runs for superior items; PD2 runs it for tempered (9) but not superior (3)
+constexpr auto SkipsStatTerm(int32_t quality) noexcept -> bool {
+	return quality == QualitySuperior;
+}
+
+// PD2 caps a repair quote (price type 3) at 250000 after the reduced-prices cut and the minimum of 1; D2R has no cap
+constexpr auto CapRepair(int32_t price) noexcept -> int32_t {
+	return std::min(price, RepairCap);
+}
+
 // D2R skips the quantity step of a price for books; PD2 also skips it for every weapon (buy and sell)
 constexpr auto SkipsQuantity(bool isBook, bool isWeapon) noexcept -> bool {
 	return isBook || isWeapon;

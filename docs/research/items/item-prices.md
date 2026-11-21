@@ -49,8 +49,8 @@ quivers: cost × quantity / 1024; other stackables keep `cost` and divide the st
 1. **Weapons ignore quantity** (in `0x102e7ca0`'s quantity block `ITEMS_CheckItemTypeId(item, 45)` joins the book and quiver checks).
    Throwing weapons price as one item whatever the stack size, buying and selling.
 2. **Gamble has no stack midpoint** (m = 1 for every item, `0x102e6f52`-`0x102e6f7e`).
-3. Superior items skip the stat term (only tempered of the two calls it, `0x102e81e1`).
-4. Repair costs are capped at 250000.
+3. Superior items skip the stat term (only tempered of the two calls it, `0x102e81e1`). Ported (#1625).
+4. Repair costs are capped at 250000. Ported (#1625).
 
 Staff mods, affixes, npc multipliers, max buy and the club / dagger gamble price are computed the same. D2RLoader's two
 replacements do not change the numbers.
@@ -76,4 +76,4 @@ any cost works for one quantity only, and the gamble midpoint differs per item. 
 - In `0x36f0c0`, skip the quantity block for items of type 45 (weap), as PD2 does: the guard there is
   `ItemIsType(item, 0x12)` (book); add `|| ItemIsType(item, 45)` (a detour at the guard, the book check must stay).
 - In the gamble function `0x376b10`, force the stack midpoint to 1 (the `(min + max) / 2` before `if (< 1) = 1`).
-- Optional, for exact parity: the superior skip and the 250000 repair cap.
+- Superior skip (switch-table entry past the stat call, `0x3709dc`) and 250000 repair cap (hook on `0x36f0c0`, type 3): ported in #1625. PD2 reading: the PD2.gpr build has the function at `0x102e7c90` (not the installed DLL's `0x102e7ca0`) with the same `quality != 3` stat call and `min(price, 250000)` at the end of the repair path.
