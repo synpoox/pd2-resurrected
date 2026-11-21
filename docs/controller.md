@@ -60,7 +60,7 @@ One line per PD2 pad bind, with its status.
 - RT attack with the right skill: covered by D2R.
 - LB show loot: covered by D2R and QoL.
 - Always show loot: covered by D2R's Show Items.
-- Belt potion to mercenary: gap (#1513). Chosen chord LB + D-pad (slots 1-4), not built: the SDK has no mercenary or belt-to-merc call, so it needs a native hook on the client's give-to-merc code.
+- Belt potion to mercenary: covered natively by D2R's LT + D-pad left/right, proven in game 2026-11-21, no plugin bind (#1513).
 - Run/walk: covered by D2R (L3).
 - Resync: cut, since D2R has no resync.
 - Per-skill auto-aim: covered by QoL (R3 in the skill tree).
