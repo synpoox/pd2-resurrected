@@ -10,15 +10,20 @@
 // counts), so one hook on the ledger "spawned" call (build 93847 0x509520 (regions, room, unit, skip), found by
 // signature) copies `regions`, which every spawn passes. The hook calls the original untouched. The UI thread reads the
 // ledger with a guarded read; GameLeft and GameJoined forget the pointer (a new game has a new array).
-// Drawing is the SDK OverlayService: AfterGameUi text, placed from Frame::screenWidth and measureText.
+// Drawing: the SDK OverlayService gives the per-frame callback (AfterGameUi), but on loader 1.3.1 its drawText draws
+// nothing (checked in game), so the line is drawn with D2R's own text draw (text, int32 rect[4] screen px, font block,
+// scale; the call TextBoxWidget::Draw makes), found by signature, from that callback. The font block is the item
+// quantity's (item_quantity.cpp): D2R's defaults plus size and alignment. When the loader's overlay text works, swap.
 //
-// shortcut: single player and the host only (a TCP/IP client has no local server and shows nothing); the line is always
-// drawn at a fixed height under the native lines, not tied to the automap.
+// shortcut: HD view only (legacy, key g, draws no HD UI text: no line there; add a legacy draw when wanted); single
+// player and the host only (a TCP/IP client has no local server and shows nothing); the line is always drawn at a fixed height under the native lines, not tied to the automap.
 #include "monsters_remaining.h"
 
 #include "hot_log.h"
 #include "log.h"
+#include "pd2_engine.h"
 #include "monster_count.h"  // common/: the ledger read and its text
+#include "sig.h"
 #include "sig_hook.h"
 
 #include <D2RLPlugin/lifecycle.h>
@@ -78,11 +83,51 @@ void OnLevel(const D2RL::PluginContext*, const D2RL::Lifecycle::GameplayEvent* e
 	}
 }
 
-void OnFrame(const D2RL::PluginContext* context, const D2RL::Overlay::Frame* frame, void*) noexcept {
+
+// D2WinFont, 0xa4 bytes (see item_quantity.cpp for the field offsets): white, point size 24, right-aligned, top
+struct Font {
+	int32_t v[0x29];
+};
+constexpr auto MakeFont() noexcept -> Font {
+	Font f {};
+	f.v[1] = 24;
+	for (int i = 2; i <= 9; ++i) {
+		f.v[i] = 0xff;
+	}
+	f.v[0xa] = 2;  // h: right
+	f.v[0xb] = 0;  // v: top
+	f.v[0xc] = 0x3f800000;
+	f.v[0xd] = 0x3f800000;
+	f.v[0x10] = -1;
+	f.v[0x11] = 0x100;
+	f.v[0x1c] = 3;  // drop shadow offset
+	f.v[0x1d] = 3;
+	f.v[0x21] = 200;
+	f.v[0x25] = 0xff;
+	f.v[0x28] = 0xe;
+	return f;
+}
+constexpr Font LineFont = MakeFont();
+
+uint64_t g_drawText = 0;  // rva of D2R's text draw, by signature (0: the line is off)
+using DrawTextFn = void (*)(const char*, const int32_t*, const Font*, float) noexcept;
+
+void NativeDraw(const char* text, const D2RL::Overlay::Frame* frame) noexcept {
+	const int32_t w = static_cast<int32_t>(frame->screenWidth * 0.4f);
+	const int32_t rect[4] = {static_cast<int32_t>(frame->screenWidth * 0.97f) - w, static_cast<int32_t>(frame->screenHeight * 0.12f), w,
+	                         static_cast<int32_t>(frame->screenHeight * 0.04f)};
+	__try {
+		d2r::Engine<DrawTextFn>(g_drawText)(text, rect, &LineFont, 1.0f);
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+		g_drawText = 0;  // fail safe: no line after a fault
+	}
+}
+
+void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void*) noexcept {
 	mc::Ledger ledger;
 	const int32_t level = g_level.load();
 	const auto* regions = g_regions.load(std::memory_order_relaxed);
-	if (frame == nullptr || regions == nullptr || !ReadLedger(regions, level, &ledger) || !mc::Shown(ledger)) {
+	if (frame == nullptr || g_drawText == 0 || regions == nullptr || !ReadLedger(regions, level, &ledger) || !mc::Shown(ledger)) {
 		g_last.store(-1);
 		return;
 	}
@@ -95,22 +140,7 @@ void OnFrame(const D2RL::PluginContext* context, const D2RL::Overlay::Frame* fra
 	if (g_last.exchange(remaining) != remaining && pd2::HotSample(g_changes)) {
 		plog::Info("monsters remaining: level %d spawned %d killed %d -> %d", level, ledger.spawned, ledger.killed, remaining);
 	}
-	D2RL::Overlay::TextMetrics size {.structSize = D2RL::Overlay::TextMetricsSize};
-	const D2RL::Overlay::MeasureTextRequest measure {.structSize = D2RL::Overlay::MeasureTextRequestSize,
-	                                                 .canvas = frame->canvas,
-	                                                 .text = text,
-	                                                 .textLength = static_cast<uint32_t>(length)};
-	if (g_overlay->measureText(context, &measure, &size) != D2RL::Overlay::Result::Success) {
-		size.width = 0;
-	}
-	const D2RL::Overlay::TextRequest draw {.structSize = D2RL::Overlay::TextRequestSize,
-	                                       .canvas = frame->canvas,
-	                                       .position = {frame->screenWidth - size.width - 0.03f * frame->screenWidth,
-	                                                    0.12f * frame->screenHeight},
-	                                       .color = {1.0f, 1.0f, 1.0f, 1.0f},
-	                                       .text = text,
-	                                       .textLength = static_cast<uint32_t>(length)};
-	g_overlay->drawText(context, &draw);
+	NativeDraw(text, frame);
 }
 
 }  // namespace
@@ -129,6 +159,14 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	                              "48 83 c4 20 5b e9 ?? ?? ?? ?? 48 8b ca e8 ?? ?? ?? ?? 48 63 c8 48 8b 04 cb ff 80 cc 02 00 00",
 	                              0, SpawnedEntry, sizeof SpawnedEntry, OnSpawned, &g_spawned)) {
 		std::snprintf(report, size, "FAILED (the monster ledger spawn call: signature or bytes differ)");
+		return;
+	}
+	if (sigscan::ScanUnique(context->exeBase,
+	                        "48 89 5c 24 08 48 89 74 24 10 57 48 83 ec 70 0f 29 74 24 60 49 8b f0 0f 28 f3 48 8b fa 48 8b d9 e8 ?? ?? ?? ?? 84 c0 "
+	                        "74 16 0f 28 de 4c 8b c6 48 8b d7 48 8b cb e8 ?? ?? ?? ?? e9 ?? ?? ?? ??",
+	                        0, &g_drawText) != 1) {
+		g_drawText = 0;
+		std::snprintf(report, size, "FAILED (D2R's text draw: signature not found)");
 		return;
 	}
 	using Kind = D2RL::Lifecycle::GameplayEventKind;
