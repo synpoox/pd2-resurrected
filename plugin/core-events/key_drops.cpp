@@ -40,6 +40,14 @@ constexpr KeyRoll Rolls[] = {
 	{D2RL::Items::MakeItemCode("lucc"), Where::TerrorZone, {"lucc", "lucc", "lucc"}},
 	{D2RL::Items::MakeItemCode("wss"), Where::TerrorZone, {"Corrupted Zone", "Corrupted Zone", "Corrupted Zone"}},
 	{D2RL::Items::MakeItemCode("imrn"), Where::Any, {"Demonic Cube N", "Demonic Cube NM", "Demonic Cube H"}},
+	// The rest of PD2's rolls (0x103799d0) have no condition either: any monster, any area (#1600)
+	{D2RL::Items::MakeItemCode("lbox"), Where::Any, {"Larzuk Puzzlebox N", "Larzuk Puzzlebox NM", "Larzuk Puzzlebox H"}},
+	{D2RL::Items::MakeItemCode("lpp"), Where::Any, {"Larzuk Puzzlepiece N", "Larzuk Puzzlepiece NM", "Larzuk Puzzlepiece H"}},
+	{D2RL::Items::MakeItemCode("rkey"), Where::Any, {"SkeletonKey N", "SkeletonKey NM", "SkeletonKey H"}},
+	{D2RL::Items::MakeItemCode("rtp"), Where::Any, {"Horadric TP Book N", "Horadric TP Book NM", "Horadric TP Book H"}},
+	{D2RL::Items::MakeItemCode("rid"), Where::Any, {"Horadric ID Book N", "Horadric ID Book NM", "Horadric ID Book H"}},
+	{D2RL::Items::MakeItemCode("llmr"), Where::Any, {"Lillith Mirror N", "Lillith Mirror NM", "Lillith Mirror H"}},
+	{D2RL::Items::MakeItemCode("lsvl"), Where::Any, {"Vial of Lightsong N", "Vial of Lightsong NM", "Vial of Lightsong H"}},
 };
 constexpr int RollCount = static_cast<int>(sizeof(Rolls) / sizeof(Rolls[0]));
 
