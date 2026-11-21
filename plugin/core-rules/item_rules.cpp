@@ -1853,6 +1853,8 @@ auto SwapThunkSlot(const D2RL::PluginContext* context, const sigscan::Entry& ent
 //   most HD art keeps its colour. The HD item draw (0xc7020: item, sprite, packed xy, scale, alpha; inventory and cursor)
 //   fills a draw record and passes it to the UI sprite draw (0x858510: sprite, xy, record, scale). For a dyed item the
 //   record drops the transform (+0x1d) and takes the dye as its RGBA multiplier (+0x00, weight +0x0c = 1), as in game.
+//   Only that one call (0xc71f3) is redirected, not 0x858510's entry, which other plugins hook (better-automap). Both
+//   callers of 0xc7020 run it only in HD (they test 0x846210 first and draw legacy items elsewhere), so no mode test here.
 using ItemColorFn = const uint8_t* (*)(Unit* player, Unit* item, uint8_t* index, int32_t inventory) noexcept;
 using PaletteShiftFn = const uint8_t* (*)(int32_t type, int32_t color) noexcept;
 using ItemDrawFn = void (*)(Unit* item, void* sprite, uint64_t xy, float scale, void* alpha) noexcept;
@@ -1938,36 +1940,89 @@ auto DyedSpriteDraw(void* sprite, int32_t* xy, float* record, float scale) noexc
 	g_spriteDrawOriginal(sprite, xy, copy, scale);
 }
 
-auto InstallDyeTint(const D2RL::PluginContext* context) noexcept -> bool {
-	uint64_t shift = 0;
-	if (sigscan::ScanUnique(context->exeBase, "48 89 5c 24 10 57 48 83 ec 20 48 63 d9 48 63 fa 83 fb 09 7d 05 83 ff 15 7c 1e", 0, &shift) != 1) {
-		plog::Warn("dye tint: palette shift (0x145dfb0) not found");
+// The HD item draw's one call of the UI sprite draw (93847: 0xc71f3, `E8 rel32` at +22 of this match) is pointed at a
+// relay page that jumps to DyedSpriteDraw, by a MutationService byte patch with the stock call as expected bytes.
+auto PatchItemSpriteCall(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t match = 0;
+	if (sigscan::ScanUnique(context->exeBase,
+	                        "f3 0f 11 44 24 70 0f 28 de 4c 8d 44 24 60 48 8d 54 24 28 49 8b cf e8 ?? ?? ?? ?? c6 47 04 00", 0,
+	                        &match) != 1) {
 		return false;
 	}
-	g_paletteShift = reinterpret_cast<PaletteShiftFn>(context->exeBase + shift);
+	const uint64_t site = context->exeBase + match + 22;
+	uint8_t stock[5];
+	std::memcpy(stock, reinterpret_cast<const void*>(site), 5);
+	int32_t rel = 0;
+	std::memcpy(&rel, stock + 1, 4);
+	const D2RL::MutationService* mutations = nullptr;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize)) {
+		return false;
+	}
+	uint8_t* relay = AllocateRelay(context->exeBase);
+	if (relay == nullptr) {
+		return false;
+	}
+	const uint64_t entry = reinterpret_cast<uint64_t>(&DyedSpriteDraw);
+	const uint8_t jump[6] = {0xff, 0x25, 0, 0, 0, 0};  // jmp [rip+0]; &DyedSpriteDraw
+	std::memcpy(relay, jump, sizeof(jump));
+	std::memcpy(relay + sizeof(jump), &entry, 8);
+	const int64_t reach = static_cast<int64_t>(reinterpret_cast<uint64_t>(relay)) - static_cast<int64_t>(site + 5);
+	const int32_t rel32 = static_cast<int32_t>(reach);
+	uint8_t call[5] = {0xe8};
+	std::memcpy(call + 1, &rel32, 4);
+	DWORD old;
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (reach != rel32 || VirtualProtect(relay, 0x1000, PAGE_EXECUTE_READ, &old) == 0 ||
+	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		VirtualFree(relay, 0, MEM_RELEASE);
+		return false;
+	}
+	g_spriteDrawOriginal = reinterpret_cast<SpriteDrawFn>(site + 5 + static_cast<int64_t>(rel));  // before the call can land
+	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
+	                                              .rva = site - context->exeBase,
+	                                              .expected = stock,
+	                                              .expectedSize = 5,
+	                                              .bytes = call,
+	                                              .size = 5};
+	D2RL::Mutations::OperationHandle operation = 0;
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	const bool staged = mutations->stageBytePatch(context, transaction, &patch, &operation) == D2RL::Mutations::Result::Success;
+	if (!staged || mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		// a failed commit that did not restore the stock call may still aim at the relay: keep the page then
+		if (!staged || D2RL::Mutations::HasFlag(result.flags, D2RL::Mutations::CommitFlags::OriginalStateRestored)) {
+			VirtualFree(relay, 0, MEM_RELEASE);
+		}
+		return false;
+	}
+	return true;
+}
+
+// "" when both parts are in, else which part failed (for the install report).
+auto InstallDyeTint(const D2RL::PluginContext* context) noexcept -> const char* {
+	uint64_t shift = 0;
 	static constexpr uint8_t ColorEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x44, 0x89, 0x4c, 0x24, 0x20, 0x55, 0x56, 0x57,
 	                                         0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57};
 	// mov r11,rsp / push rbp / push rdi / push r15 / lea rbp,[r11-0xb8]
 	static constexpr uint8_t DrawEntry[] = {0x4c, 0x8b, 0xdc, 0x55, 0x57, 0x41, 0x57, 0x49, 0x8d, 0xab, 0x48, 0xff, 0xff, 0xff};
-	// push rbp / push rbx / push rdi / push r14 / lea rbp,[rsp-0x28] / sub rsp,0x128
-	static constexpr uint8_t SpriteEntry[] = {0x40, 0x55, 0x53, 0x57, 0x41, 0x56, 0x48, 0x8d, 0x6c, 0x24, 0xd8,
-	                                          0x48, 0x81, 0xec, 0x28, 0x01, 0x00, 0x00};
-	const bool legacy = sigscan::HookBySignature(
-	    context, "ItemColor",
-	    "48 89 5c 24 08 44 89 4c 24 20 55 56 57 41 54 41 55 41 56 41 57 48 8b ec 48 83 ec 30 45 8b e1 4d 8b e8 48 8b fa 4c 8b f9 48 85 d2 0f 84",
-	    0, ColorEntry, sizeof(ColorEntry), DyedItemColor, &g_itemColorOriginal);
-	// the sprite hook first: the item draw hook only marks the draw the sprite hook tints
-	const bool hd = sigscan::HookBySignature(
-	                    context, "UiSpriteDraw",
-	                    "40 55 53 57 41 56 48 8d 6c 24 d8 48 81 ec 28 01 00 00 0f 29 b4 24 10 01 00 00 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 45 00 0f 28 f3 49 8b f8 4c 8b",
-	                    0, SpriteEntry, sizeof(SpriteEntry), DyedSpriteDraw, &g_spriteDrawOriginal) &&
+	if (sigscan::ScanUnique(context->exeBase, "48 89 5c 24 10 57 48 83 ec 20 48 63 d9 48 63 fa 83 fb 09 7d 05 83 ff 15 7c 1e", 0, &shift) == 1) {
+		g_paletteShift = reinterpret_cast<PaletteShiftFn>(context->exeBase + shift);
+	}
+	const bool legacy = g_paletteShift != nullptr &&
+	                    sigscan::HookBySignature(
+	                        context, "ItemColor",
+	                        "48 89 5c 24 08 44 89 4c 24 20 55 56 57 41 54 41 55 41 56 41 57 48 8b ec 48 83 ec 30 45 8b e1 4d 8b e8 48 8b fa 4c 8b f9 48 85 d2 0f 84",
+	                        0, ColorEntry, sizeof(ColorEntry), DyedItemColor, &g_itemColorOriginal);
+	// the call first: the item draw hook only marks the draw the redirected call tints
+	const bool hd = PatchItemSpriteCall(context) &&
 	                sigscan::HookBySignature(context, "HdItemDraw",
 	                                         "4c 8b dc 55 57 41 57 49 8d ab 48 ff ff ff 48 81 ec a0 01 00 00 41 0f 29 73 b8", 0,
 	                                         DrawEntry, sizeof(DrawEntry), DyedItemDraw, &g_itemDrawOriginal);
-	if (!hd) {
-		plog::Warn("dye tint: the HD sprite hooks were not installed (signature or bytes differ)");
-	}
-	return legacy && hd;
+	return legacy && hd ? ""
+	       : hd         ? " FAILED (legacy colour: signature or bytes differ)"
+	       : legacy     ? " FAILED (HD sprite: signature, bytes or relay)"
+	                    : " FAILED (legacy colour and HD sprite)";
 }
 
 auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
@@ -2165,7 +2220,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	// none (core-events' hooks identify all), both with keep 1, so the book stays after its use
 	const bool unlimited = PatchUnlimitedBooks(context);
 	const bool charms = InstallCharmRows(context);
-	const bool dye = InstallDyeTint(context);
+	const char* const dye = InstallDyeTint(context);
 	const bool mapStack = sigscan::HookBySignature(
 	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
 	    d2r::rva::ItemsCanMergeEntry, sizeof(d2r::rva::ItemsCanMergeEntry), MapStackEqual, &g_stackEqualOriginal);
@@ -2191,11 +2246,11 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
 	              equip ? "" : " FAILED (bytes differ)", replenish ? "" : " FAILED (bytes differ)",
 	              unlimited ? "" : " FAILED (entries not empty, or no mutation service)",
-	              charms ? "" : " FAILED (signature or bytes differ)", dye ? "" : " FAILED (signature or bytes differ)", mapStack ? "" : " FAILED (bytes differ)",
+	              charms ? "" : " FAILED (signature or bytes differ)", dye, mapStack ? "" : " FAILED (bytes differ)",
 	              noMagicMaps ? " (hooked when tables load)" : " FAILED (no table listener)", mapMakerLog ? "" : " FAILED (signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
-	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0);
+	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
