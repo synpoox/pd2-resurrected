@@ -87,7 +87,13 @@ void SelectShared() noexcept {
 		return;
 	}
 	g_opened = g_frames;
-	reinterpret_cast<void (*)(void*, int32_t, bool) noexcept>(SelectTab.address)(bar, 1, false);
+	const auto select = reinterpret_cast<void (*)(void*, int32_t, bool) noexcept>(SelectTab.address);
+	select(bar, 1, false);
+	for (const char* ours : {"pd2rMapsTabs", "pd2rBossingTabs"}) {  // back to the hidden tab: a bar ignores a click on its active tab
+		if (void* own = reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address)(panel, ours); own != nullptr) {
+			select(own, 0, false);
+		}
+	}
 }
 
 // The stash, already on its Shared tab, to shared page `page` (0-based)

@@ -84,6 +84,7 @@ uintptr_t g_seen = 0;  // the watch generation g_noted belongs to (game thread o
 uint32_t g_shown = 0;  // the base whose maps are on the Maps page (game thread only)
 std::atomic<uint32_t> g_want {0};
 std::atomic<bool> g_open {false};
+std::atomic<bool> g_tidyFailed {false};
 std::atomic<bool> g_hinted {false}, g_stopped {false};
 std::atomic<uint32_t> g_routed {0}, g_merged {0}, g_swapped {0}, g_returned {0}, g_failed {0}, g_updates {0};
 
@@ -207,37 +208,55 @@ auto ToStorage(D2RL::PlayerHandle player, items::ItemInfo& item) noexcept -> ite
 	return MoveTo(player, item, home.page, column, column >= 0 ? home.row : -1);
 }
 
-// Into the same currency's stack on its cell; Conflict when the sum passes a stack. editItem refuses a shared-stash
-// item on this loader (Unsupported, Slot2), so the incoming item, still in the tab D2R put it in, takes the sum, the
-// old stack goes and the incoming item moves onto the cell. Each step's failure leaves the sum on one item at most.
+// Into the same currency's stack on its cell; Conflict when the sum passes a stack. editItem and destroyItem refuse a
+// shared-stash item on this loader (Unsupported, Slot2), so both go to the inventory, the stack takes the sum there, the
+// incoming item goes and the stack moves back onto its cell. A failed step puts things back; the sum is never doubled.
 auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& stack) noexcept -> items::Result {
 	const int32_t have = stack.quantity < 1 ? 1 : stack.quantity, add = item.quantity < 1 ? 1 : item.quantity;
 	if (have + add > MaxStack) {
 		return items::Result::Conflict;
 	}
-	items::ItemEdit edit {.structSize = items::ItemEditSize, .fields = items::EditFieldBit(items::EditField::Quantity),
-	                      .quantity = static_cast<uint32_t>(have + add)};
-	if (const auto edited = g_items->editItem(g_context, player, item.handle, &edit); edited != items::Result::Success) {
-		return edited;
-	}
-	if (const auto destroyed = g_items->destroyItem(g_context, player, stack.handle, items::SocketedItemPolicy::RejectIfNotEmpty);
-	    destroyed != items::Result::Success) {
-		edit.quantity = static_cast<uint32_t>(add);  // undo, so nothing is made from nothing
-		g_items->editItem(g_context, player, item.handle, &edit);
-		return destroyed;
-	}
-	Use(stack.sharedStashPage, stack.x, stack.y, false);
+	const items::ItemDestination bag {.structSize = items::ItemDestinationSize, .container = C::Inventory,
+	                                  .placement = items::Placement::Automatic};
 	const uint32_t page = stack.sharedStashPage;
 	const int32_t x = stack.x, y = stack.y;
-	stack.code = 0;  // gone: no later step of this pass reads it
-	item.quantity = have + add;
-	if (const auto moved = MoveTo(player, item, page, x, y); moved != items::Result::Success) {
-		return moved;  // the sum is on the incoming item; Route sends it back to the inventory
+	if (const auto out = Move(player, stack.handle, bag); out != items::Result::Success) {
+		return out;
 	}
+	stack.container = C::Inventory;  // so the move back keeps the cell noted as this stack's
+	items::ItemEdit edit {.structSize = items::ItemEditSize, .fields = items::EditFieldBit(items::EditField::Quantity),
+	                      .quantity = static_cast<uint32_t>(have + add)};
+	const char* step = "edit";
+	auto result = g_items->editItem(g_context, player, stack.handle, &edit);
+	if (result == items::Result::Success && item.container == C::SharedStash) {
+		step = "take";
+		if (result = Move(player, item.handle, bag); result == items::Result::Success) {
+			if (Reserved(item) && InCell(item.x, item.y)) {
+				Use(item.sharedStashPage, item.x, item.y, false);
+			}
+			item.container = C::Inventory;
+		}
+	}
+	if (result == items::Result::Success) {
+		step = "destroy";
+		result = g_items->destroyItem(g_context, player, item.handle, items::SocketedItemPolicy::RejectIfNotEmpty);
+		if (result != items::Result::Success) {
+			edit.quantity = static_cast<uint32_t>(have);  // undo, so nothing is made from nothing
+			g_items->editItem(g_context, player, stack.handle, &edit);
+		}
+	}
+	const auto back = MoveTo(player, stack, page, x, y);  // MoveTo notes the cell used again
+	if (result != items::Result::Success) {
+		plog::Info("affinity: %08x merge failed at %s (result %u); the stack went back: result %u", item.code, step,
+		           static_cast<uint32_t>(result), static_cast<uint32_t>(back));
+		return result;  // Route sends the incoming item back to the inventory
+	}
+	item.code = 0;  // gone: no later step of this pass reads it
+	stack.quantity = have + add;
 	++g_merged;
-	plog::Info("affinity: %08x x%d merged with the stack on page %u cell %d,%d (now %d)", item.code, add, page, x, y,
-	           have + add);
-	return items::Result::Success;
+	plog::Info("affinity: %08x x%d merged with the stack on page %u cell %d,%d (now %d; back on its cell: result %u)",
+	           stack.code, add, page, x, y, have + add, static_cast<uint32_t>(back));
+	return items::Result::Success;  // a failed move back leaves the whole stack in the inventory: nothing lost
 }
 
 void Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept {
@@ -347,8 +366,10 @@ void Tidy(D2RL::PlayerHandle player) noexcept {
 		const items::ItemDestination back {.structSize = items::ItemDestinationSize, .container = C::Inventory,
 		                                   .placement = items::Placement::Automatic};
 		const items::Result moved = Move(player, item.handle, back);
-		plog::Info("affinity: %08x on page %u at %d,%d belongs to no reserved tab: back to the inventory (result %u)",
-		           item.code, item.sharedStashPage, item.x, item.y, static_cast<uint32_t>(moved));
+		if (moved == items::Result::Success || !g_tidyFailed.exchange(true)) {  // a full inventory logs once, not every pass
+			plog::Info("affinity: %08x on page %u at %d,%d belongs to no reserved tab: back to the inventory (result %u)",
+			           item.code, item.sharedStashPage, item.x, item.y, static_cast<uint32_t>(moved));
+		}
 	}
 }
 

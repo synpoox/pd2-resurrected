@@ -41,12 +41,14 @@ currency, Bossing; items the RotW Materials tab takes (Pandemonium keys, organs,
 core-ui's `affinity` part, SDK only: a game-thread watch notes those items in the inventory each update; one that is gone from
 the inventory and in a stash on the next update was quick-moved (Ctrl+click or the pad), and `executeExistingItemTransaction`
 moves the item itself (rolls, sockets and quantity stay): a map to the Maps tab if its base is shown, else to its base's row
-(or anywhere on its tier's storage page when the row is full); a currency to its cell, merged into the stack there; a bossing
-item to the Bossing page. A full cell or page, or a missing page (fewer extra tabs), moves it back to the inventory; the log
+(or anywhere on its tier's storage page when the row is full); a currency to its cell, merged into the stack there (the
+merge runs in the inventory: the loader refuses to edit or destroy a shared-stash item); a bossing item to its cell. While
+Maps or Bossing is up, a tidy pass (every 25 updates) also routes items put onto those two pages by hand, and moves an item
+no rule takes off them to the inventory. A full cell or page, or a missing page (fewer extra tabs), moves it back to the inventory; the log
 says why. Status: `core-ui` console command, `affinity:` and `stash tabs:` counters.
 
-Limits: tabs 15-19 are taken as they are, so items a player already keeps there stay and share the space (a migration
-for saves with more extra tabs is a later slice); a reserved page's free cells are found from item corners only, so a bigger
+Limits: tabs 15-19 are taken as they are. Items a player already keeps on 16-18 stay and share the space; on 15 and 19 the
+tidy pass moves them to the inventory (a migration for saves with more extra tabs is a later slice); a reserved page's free cells are found from item corners only, so a bigger
 hand-placed item there can send a map back. A hand move whose pick-up and put-down land in one game update (a lag spike), or
 another plugin's inventory-to-stash move, is routed like a quick-move. The base boxes show no map count: that needs a loader
 widget service with `setText` (D2RLoader 1.4.0).
