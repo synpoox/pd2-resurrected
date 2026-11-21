@@ -25,24 +25,73 @@
             "type": "TabBarWidget", "name": "BankTabs",
             "fields": {
                 "rect": { "x": 109, "y": -1 },
-                "tabCount": 5,
+                "tabCount": 7,
                 "filename": "Controller/Panel/Stash/V2/AdditionalStash/CTRL_Tabs_215_TGA",
-				"inactiveFrames": [ 0, 0, 0, 0, 0 ],
-				"activeFrames": [ 1, 1, 1, 1, 1 ],
-				"disabledFrames": [-1, 0, 0, 0, 0 ],
-				"textStrings": [ "@personal", "@shared", "@gems", "@materials", "@runes" ],
+				"inactiveFrames": [ 0, 0, 0, 0, 0, 0, 0 ],
+				"activeFrames": [ 1, 1, 1, 1, 1, 1, 1 ],
+				"disabledFrames": [-1, 0, 0, 0, 0, 0, 0 ],
+				"textStrings": [ "@personal", "@shared", "@gems", "@materials", "@runes", "@StashTabMaps", "@StashTabBossing" ],
+				// PD2R (#1661, core-ui/stash_tabs.cpp): the pad's Maps and Bossing tabs after the stock five, reached with LT/RT
+				// (core-ui catches those presses). No onSwitchTabMessage: each stock tab sends the stash its SelectTab, named for
+				// core-ui, and ours send none (the stash has 5 tabs). tabSize 140 keeps all 7 left of Pyre Stash Search's box.
+				"tabMessages": [ "BankPanelMessage:SelectTab:Personal", "BankPanelMessage:SelectTab:Shared", "BankPanelMessage:SelectTab:Gems",
+				                 "BankPanelMessage:SelectTab:Materials", "BankPanelMessage:SelectTab:Runes",
+				                 "PanelManager:OpenPanel:core-ui/StashPadMaps", "PanelManager:OpenPanel:core-ui/StashPadBossing" ],
                 "textStyle": { "pointSize": "$MediumFontSize" },                
                 "activeTextColor": "$TabsActiveTextColor",
                 "inactiveTextColor": "$TabsInactiveTextColor",
-                "tabSize": { "x": 215, "y": 120 },
+                "tabSize": { "x": 140, "y": 120 },
                 "tabPadding": "$PanelTabPadding",
-                "onSwitchTabMessage": "BankPanelMessage:SelectTab",
                 "tabLeftIndicatorPosition": "$HalfPanelLeftTabButtonPromptPosition",
                 "tabRightIndicatorPosition": "$HalfPanelRightTabButtonPromptPosition",
                 "focusOnMouseOver": true,
                 "notificationIconTemplate": {
                     "filename": "Controller/Panel/Stash/V2/AdditionalStash/StashNotification"
                 }
+            }
+        },
+        // PD2R (#1661, core-ui/stash_tabs.cpp): on our Maps or Bossing tab BankTabs stays on Shared (the stash reads its
+        // index), so two bars the stash does not read cover it, at BankTabs' own tab spots (x 109 + 140 per tab): the stock
+        // five all unlit, and then Maps and Bossing with ours lit (it covers the first bar's last tab, drawn wider).
+        {
+            "type": "TabBarWidget", "name": "pd2rSharedOff",
+            "fields": {
+                "rect": { "x": 109, "y": -1 },
+                "tabCount": 5,
+                "filename": "Controller/Panel/Stash/V2/AdditionalStash/CTRL_Tabs_215_TGA",
+                "inactiveFrames": [ 0, 0, 0, 0, 0 ],
+                "activeFrames": [ 0, 0, 0, 0, 0 ],
+                // the short labels the stash gives BankTabs
+                "textStrings": [ "@personalAbbrev", "@shared", "@gems", "@materialsAbbrev", "@runes" ],
+                "tabMessages": [ "PanelManager:OpenPanel:core-ui/StashHidden", "PanelManager:OpenPanel:core-ui/StashHidden", "PanelManager:OpenPanel:core-ui/StashHidden", "PanelManager:OpenPanel:core-ui/StashHidden", "PanelManager:OpenPanel:core-ui/StashHidden" ],
+                "textStyle": { "pointSize": "$MediumFontSize" },
+                "activeTextColor": "$TabsInactiveTextColor",
+                "inactiveTextColor": "$TabsInactiveTextColor",
+                "tabSize": { "x": 140, "y": 120 },
+                "tabPadding": "$PanelTabPadding",
+                "tabLeftIndicatorPosition": { "x": -9999, "y": 0 },
+                "tabRightIndicatorPosition": { "x": -9999, "y": 0 },
+                "visible": false
+            }
+        },
+        {
+            "type": "TabBarWidget", "name": "pd2rPadTabs",
+            "fields": {
+                "rect": { "x": 809, "y": -1 },
+                "tabCount": 2,
+                "filename": "Controller/Panel/Stash/V2/AdditionalStash/CTRL_Tabs_215_TGA",
+                "inactiveFrames": [ 0, 0 ],
+                "activeFrames": [ 1, 1 ],
+                "textStrings": [ "@StashTabMaps", "@StashTabBossing" ],
+                "tabMessages": [ "PanelManager:OpenPanel:core-ui/StashHidden", "PanelManager:OpenPanel:core-ui/StashHidden" ],
+                "textStyle": { "pointSize": "$MediumFontSize" },
+                "activeTextColor": "$TabsActiveTextColor",
+                "inactiveTextColor": "$TabsInactiveTextColor",
+                "tabSize": { "x": 140, "y": 120 },
+                "tabPadding": "$PanelTabPadding",
+                "tabLeftIndicatorPosition": { "x": -9999, "y": 0 },
+                "tabRightIndicatorPosition": { "x": -9999, "y": 0 },
+                "visible": false
             }
         },
         {
