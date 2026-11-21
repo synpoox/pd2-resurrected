@@ -55,6 +55,7 @@
                 "disabledFrame": 0,
                 "onClickMessage": "PanelManager:OpenPanel:core-ui/InventoryLock",
                 "buttonLegendAction": "select",
+                "buttonLegendString": "@InventoryLockTooltip",
                 "navigation": {
                     "left": { "name": "gold_button" },
                     "up": { "name": "grid" },
@@ -74,6 +75,7 @@
                 "visible": false,
                 "onClickMessage": "PanelManager:OpenPanel:core-ui/InventoryLock",
                 "buttonLegendAction": "select",
+                "buttonLegendString": "@InventoryUnlockTooltip",
                 "navigation": {
                     "left": { "name": "gold_button" },
                     "up": { "name": "grid" },
