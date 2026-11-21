@@ -94,7 +94,7 @@
             "type": "ButtonWidget", "name": "InventoryLock",
         },
         {
-            "type": "ButtonWidget", "name": "InventoryLockOn",
+            "type": "ImageWidget", "name": "InventoryLockOnArt",
         },
         {
             "type": "InventoryGridWidget", "name": "grid",
