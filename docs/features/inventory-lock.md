@@ -8,10 +8,14 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 
 - **Button.** Two `ButtonWidget`s at one spot in `playerinventoryoriginallayouthd.json` (the expansion layout lists them), x 1001,
   y 1702 beside the gold field: `InventoryLock` (unlocked art) and `InventoryLockOn` (locked art). A frame watch shows only the
-  one matching the lock; the loader's widget service cannot set a toggle button's state, but it can show and hide widgets. Art:
+  one matching the lock (shown and enabled: a hidden button still takes the hover and hid the other's tooltip, #1659); the
+  loader's widget service cannot set a toggle button's state, but it can show and hide widgets. Art:
   `PANEL\pd2r\inventory_lock` (`files/data/hd/global/ui/panel/pd2r/`, HD 72 px and lowend), PD2's padlock
   (`buysellbtn.dc6` frames 24-27, upscaled in `merge/art/ui/`) altered by `tools/make_inventory_lock.py`: gold and bronze metal,
   a taller shackle, a soft bevel (frames: unlocked, pressed, locked, pressed; rerun it to redraw).
+- **Legacy.** `playerinventoryoriginallayout.json` (the expansion layout lists them) holds the same two buttons at x 276, y 464 in
+  the bottom strip, art `PANEL\pd2r_inventory_lock` (`files/data/global/ui/panel/pd2r_inventory_lock.dc6`, 26 px, the HD frames
+  scaled by `tools/make_inventory_lock.py`).
 - **Toggle.** The click sends `PanelManager:OpenPanel:core-ui/InventoryLock`; core-ui's `lock` part catches it, flips the lock and
   consumes it. The lock carries over to the next game and is saved per character, as PD2 saves it: while locked,
   `<mod>/d2rloader/config/inventory-lock-<name>.locked` exists, and `inventory-lock.locked` holds the last lock in use, which the
@@ -28,4 +32,4 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 ## Differences
 
 Listed in [deviations](../deviations.md) (Lock Inventory): no charm lock, single player and host
-only, no sound, no legacy-graphics or controller-layout button.
+only, no sound, no controller-layout button.

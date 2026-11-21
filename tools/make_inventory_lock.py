@@ -56,6 +56,12 @@ def main() -> None:
     _, _, images = pd2_art.modkit()
     images.write_sprite(OUT, (strip.width, strip.height, strip.tobytes()), SIZE, len(frames))
     print(f"wrote {OUT} and its lowend twin ({len(frames)} frames)")
+    dc6, _, _ = pd2_art.modkit()
+    import pd2_table
+    pal = dc6.palette((pd2_table.D2R_DATA / "global/palette/act1/pal.dat").read_bytes())
+    sd = [f.resize((SD_SIZE, SD_SIZE), Image.LANCZOS) for f in frames]
+    dc6.write(OUT_SD, [dc6.encode((SD_SIZE, SD_SIZE, f.tobytes()), pal) for f in sd])
+    print(f"wrote {OUT_SD}")
 
 
 if __name__ == "__main__":

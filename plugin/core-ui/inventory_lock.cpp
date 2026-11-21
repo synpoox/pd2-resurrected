@@ -224,6 +224,9 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 		    g_widgets->findWidget(g_context, panel, Locked, &on) == D2RL::Widgets::Result::Success) {
 			g_widgets->setWidgetVisible(g_context, off, !locked);
 			g_widgets->setWidgetVisible(g_context, on, locked);
+			// a hidden button still takes the hover and hides the other's tooltip: disable it too
+			g_widgets->setWidgetEnabled(g_context, off, !locked);
+			g_widgets->setWidgetEnabled(g_context, on, locked);
 		}
 	}
 }
