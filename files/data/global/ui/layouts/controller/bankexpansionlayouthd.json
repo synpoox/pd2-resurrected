@@ -21,21 +21,21 @@
                 "filename": "Controller/Panel/Stash/V2/StashPanelBG"
             }
         },
-        // PD2R (#1669, core-ui/stash_tabs.cpp): the Maps and Bossing art and the Maps tier and base buttons of the mouse layout,
+        // PD2R (#1669, core-ui/stash_tabs.cpp): the Maps and Bossing art (narrowed to the pad panel, #1686) and the Maps tier and base buttons of the mouse layout,
         // moved by the pad grid's offset from the mouse grid (+67, -80); all hidden until core-ui shows them
         {
             "type": "ImageWidget", "name": "pd2rMapsBackground",
             "fields": {
-                "rect": { "x": 67, "y": -80 },
-                "filename": "PANEL\\pd2r\\stash_maps_background",
+                "rect": { "x": 109, "y": -80 },
+                "filename": "PANEL\\pd2r\\stash_maps_pad_background",
                 "visible": false
             }
         },
         {
             "type": "ImageWidget", "name": "pd2rBossingBackground",
             "fields": {
-                "rect": { "x": 67, "y": -80 },
-                "filename": "PANEL\\pd2r\\stash_bossing_background",
+                "rect": { "x": 109, "y": -80 },
+                "filename": "PANEL\\pd2r\\stash_bossing_pad_background",
                 "visible": false
             }
         },
