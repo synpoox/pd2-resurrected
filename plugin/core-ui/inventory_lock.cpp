@@ -2,7 +2,8 @@
 // (unlocked art) and InventoryLockOn (locked); a frame watch shows only the one matching the lock, because this loader's
 // widget service cannot set a toggle button's state. Their click message (PanelManager:OpenPanel:core-ui/InventoryLock,
 // caught and consumed like the altar's confirm) flips the lock. The lock stays across games and is saved per character
-// (config/inventory-lock-<name>.locked exists while locked), as PD2 keeps it in its settings and sends it
+// (config/inventory-lock-<name>.locked exists while locked; inventory-lock.locked holds the last lock, which the
+// padlock shows on entry until the character is read), as PD2 keeps it in its settings and sends it
 // to the server (ProjectDiablo.dll 0x102d15c0, packet 0x5c), whose wrappers of the body-slot handlers refuse while it is
 // on (0x10394bd0 and others) and play the "I can't" sound.
 //
@@ -81,8 +82,9 @@ std::atomic<uint32_t> g_localId {0xffffffffU};
 std::atomic<uint32_t> g_refused {0}, g_toggles {0};
 uint32_t g_frames = 0;
 std::atomic<bool> g_named {false};  // this game's character name is read (server thread, first local message)
-std::mutex g_nameLock;
-std::string g_name;  // the local character, for its saved lock; empty if unreadable
+std::mutex g_nameLock;  // guards g_name and g_dirty: the UI thread toggles, the server thread loads
+std::string g_name;  // this game's character, for its saved lock; empty until read, or if unreadable
+bool g_dirty = false;  // toggled this game before the name was read: save then instead of loading
 
 // D2R's PlayerData starts with the character name (16 bytes); the server's player unit holds it at UnitData
 auto NameOf(void* player) noexcept -> std::string {
@@ -101,12 +103,12 @@ auto NameOf(void* player) noexcept -> std::string {
 	return name.size() >= 2 ? name : std::string {};
 }
 
-// <mod>/d2rloader/config/inventory-lock-<name>.locked, beside our d2rloader/plugins folder
-auto SavePath(const std::string& name) noexcept -> std::string {
+// <mod>/d2rloader/config/inventory-lock<suffix>.locked, beside our d2rloader/plugins folder: suffix -<name> is a
+// character's lock, an empty one the last lock in use (what the padlock shows on entry, before the name is read)
+auto SavePath(const std::string& suffix) noexcept -> std::string {
 	HMODULE self = nullptr;
 	char path[MAX_PATH];
-	if (name.empty() ||
-	    !GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+	if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
 	                        reinterpret_cast<LPCSTR>(&SavePath), &self)) {
 		return {};
 	}
@@ -124,16 +126,10 @@ auto SavePath(const std::string& name) noexcept -> std::string {
 	}
 	file += "\\config";
 	CreateDirectoryA(file.c_str(), nullptr);
-	return file + "\\inventory-lock-" + name + ".locked";
+	return file + "\\inventory-lock" + suffix + ".locked";
 }
 
-void Save(bool locked) noexcept {
-	std::string name;
-	{
-		const std::lock_guard guard(g_nameLock);
-		name = g_name;
-	}
-	const std::string file = SavePath(name);
+void Mark(const std::string& file, bool locked) noexcept {
 	if (file.empty()) {
 		return;
 	}
@@ -147,16 +143,32 @@ void Save(bool locked) noexcept {
 	}
 }
 
+auto Marked(const std::string& file) noexcept -> bool {
+	return !file.empty() && GetFileAttributesA(file.c_str()) != INVALID_FILE_ATTRIBUTES;
+}
+
+// under g_nameLock; an unreadable name keeps only the last lock
+void Save(const std::string& name, bool locked) noexcept {
+	if (!name.empty()) {
+		Mark(SavePath("-" + name), locked);
+	}
+	Mark(SavePath(""), locked);
+}
+
 // server thread, first message from the local player in a game: take the character's saved lock
 void Load(void* player) noexcept {
-	std::string name = NameOf(player);
-	const std::string file = SavePath(name);
-	if (!file.empty()) {
-		g_locked.store(GetFileAttributesA(file.c_str()) != INVALID_FILE_ATTRIBUTES);
-	}
-	plog::Info("inventory lock: %s is %s", name.empty() ? "(unnamed)" : name.c_str(), g_locked.load() ? "locked" : "unlocked");
 	const std::lock_guard guard(g_nameLock);
-	g_name = std::move(name);
+	if (g_named.load()) {
+		return;
+	}
+	g_named.store(true);
+	g_name = NameOf(player);
+	if (!g_dirty && !g_name.empty()) {
+		g_locked.store(Marked(SavePath("-" + g_name)));
+	}
+	Save(g_name, g_locked.load());
+	g_dirty = false;
+	plog::Info("inventory lock: %s is %s", g_name.empty() ? "(unnamed)" : g_name.c_str(), g_locked.load() ? "locked" : "unlocked");
 }
 
 // 93847 0x4f2fa0, int (game, player, message, size): the server's client-message dispatch (PlrMsg handler table by id)
@@ -166,7 +178,7 @@ constexpr uint8_t DispatchEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0
 
 auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexcept -> int {
 	const bool local = player != nullptr && d2r::At<uint32_t>(player, d2r::rva::UnitIdField) == g_localId.load();
-	if (local && !g_named.exchange(true)) {
+	if (local && !g_named.load()) {
 		Load(player);
 	}
 	if (local && g_locked.load(std::memory_order_relaxed) && size > 0 && ChangesEquipment(message, static_cast<size_t>(size))) {
@@ -186,7 +198,14 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 	}
 	const bool locked = !g_locked.load();
 	g_locked.store(locked);
-	Save(locked);
+	{
+		const std::lock_guard guard(g_nameLock);
+		if (g_named.load()) {
+			Save(g_name, locked);
+		} else {
+			g_dirty = true;
+		}
+	}
 	++g_toggles;
 	plog::Info("inventory lock: %s (player %u)", locked ? "locked" : "unlocked", g_localId.load());
 	return D2RL::SharedEvents::UiMessageAction::Consume;
@@ -213,7 +232,10 @@ void OnPlayerReady(const D2RL::PluginContext*, const D2RL::Lifecycle::GameplayEv
 	if (event != nullptr) {
 		g_localId.store(event->playerId);
 	}
+	const std::lock_guard guard(g_nameLock);
 	g_named.store(false);  // the next local message reads this game's character
+	g_name.clear();
+	g_dirty = false;
 }
 
 template <class Service>
@@ -228,6 +250,7 @@ auto Query(const Service*& service, bool (*has)(const Service*, uint32_t), uint3
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	g_context = context;
+	g_locked.store(Marked(SavePath("")));  // the padlock shows the last lock until this game's character is read
 	const D2RL::LifecycleService* lifecycle = nullptr;
 	const D2RL::SharedEventService* events = nullptr;
 	const D2RL::OverlayService* overlay = nullptr;

@@ -13,8 +13,9 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
   `tools/make_inventory_lock.py` (frames: unlocked, pressed, locked, pressed; rerun it to redraw).
 - **Toggle.** The click sends `PanelManager:OpenPanel:core-ui/InventoryLock`; core-ui's `lock` part catches it, flips the lock and
   consumes it. The lock carries over to the next game and is saved per character, as PD2 saves it: while locked,
-  `<mod>/d2rloader/config/inventory-lock-<name>.locked` exists. The first message from the local player in a game reads the
-  character's name and loads its lock (the log says `inventory lock: <name> is locked|unlocked`).
+  `<mod>/d2rloader/config/inventory-lock-<name>.locked` exists, and `inventory-lock.locked` holds the last lock in use, which the
+  padlock shows on entry. The first message from the local player in a game reads the character's name and loads its lock
+  (the log says `inventory lock: <name> is locked|unlocked`).
 - **Block.** core-ui hooks the server's client-message dispatch (93847 `0x4f2fa0`, by signature) and drops, from the local player
   while locked, every message that changes a body slot (`ChangesEquipment` in `plugin/core-ui/inventory_lock.h`): 0x1a-0x1e,
   0x21 and their player-id forms 0x56-0x5a (0x58 is Shift+click unequip); 0x51 and 0x5b for the mercenary's slots; 0x5c (drop to
