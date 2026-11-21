@@ -2,8 +2,8 @@
     "basedOn": "HirelingInventoryPanelHD.json",
     "type": "HirelingInventoryPanel", "name": "HirelingInventoryPanel",
     "fields": {
-        // PD2R #1657: grown by 220 to hold the inventory's gear layout; scaled to stay on screen
-        "rect": { "x": -1584, "y": -618, "width": 1305, "height": 1641, "scale": 1.0 },
+        // PD2R #1657: grown by 220 to hold the controller inventory gear layout, scaled and raised so its bottom ends where the stock panel did (above the help bar)
+        "rect": { "x": -1584, "y": -642, "width": 1305, "height": 1641, "scale": 0.9 },
         "defaultWidget": "slot_right_arm",
     },
     "children": [
@@ -13,7 +13,7 @@
                 "filename": "PANEL/pd2r/hireling_controller_background",
             },
         },
-        // PD2R #1651: the PC panel grew; keep stock values here
+        // PD2R #1651: the PC panel grew; pin stock values here. PD2R #1657: the controller panel grows its own way
         {
             "type": "ClickCatcherWidget",
             "fields": {
