@@ -23,7 +23,7 @@ class MapImmunities(unittest.TestCase):
     def test_maps_with_an_immune_monster_name_it_and_the_others_keep_the_shared_tier(self):
         misc = {r["code"]: r for r in data_tables.rows("misc")}
         want = map_immunities.expected()
-        self.assertIn("m02", want)  # Cathedral of Light: Hell fire and poison 120
+        self.assertIn("m02", want)  # Necropolis: Hell fire and poison 120
         self.assertEqual(misc["m02"]["spelldescstr"], "MapTierm02")
         self.assertEqual(want["m02"][1], "Tier: 2\nImmunities: \xffc1F120\xffc0, \xffc2P120\xffc0")
         self.assertNotIn("m01", want)  # Tunneling Depths: nothing reaches 100
