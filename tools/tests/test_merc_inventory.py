@@ -19,7 +19,8 @@ class MercInventory(unittest.TestCase):
         data_tables.need(self)
         header = (ROOT / "plugin/common/pd2_engine.h").read_text(encoding="utf-8")
         row = int(re.search(r"ItemTypeMercGear\s*=\s*(\d+)", header).group(1))
-        types = data_tables.rows("itemtypes")
+        # the game's type number skips the "Expansion" divider row
+        types = [t for t in data_tables.rows("itemtypes") if t["ItemType"] != "Expansion"]
         self.assertEqual(types[row]["Code"], "merc")
         # the helm test (row 37) stays D2R's; merc replaces the tors test (row 3), so tors must sit under merc
         self.assertEqual((types[3]["Code"], types[37]["Code"]), ("tors", "helm"))
@@ -28,6 +29,14 @@ class MercInventory(unittest.TestCase):
         for table in ("weapons", "armor", "misc"):
             for item in data_tables.rows(table):
                 self.assertNotIn("merc", (item.get("type"), item.get("type2")), item.get("code"))
+
+    def test_hireling_rows_have_the_new_rects(self):
+        # the server refuses a body slot whose rect is -1 (#1627)
+        data_tables.need(self)
+        for row in data_tables.rows("inventory"):
+            if row["class"] in ("Hireling", "Hireling2"):
+                for loc in ("neck", "rHand", "lHand", "belt", "feet", "gloves"):
+                    self.assertNotEqual(row[f"{loc}Left"], "-1", (row["class"], loc))
 
     def test_panels_have_the_new_slots(self):
         for name in ("hirelinginventorypanelhd.json", "hirelinginventorypanel.json", "controller/hirelinginventorypanelhd.json"):

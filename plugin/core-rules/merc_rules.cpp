@@ -9,7 +9,8 @@
 //   both reach) and the client's (0x159e60, the panel's), let a hireling wear any body armor (itemtypes row 3, tors)
 //   or helm (37) and only the hireling's own weapon types otherwise. No SDK service covers this check, so the `mov
 //   edx,3` of both armor tests becomes itemtypes row merc, a parent type of tors, ring, amul, glov, boot and belt
-//   (files/data itemtypes Equiv2). The rest of each check (identified, not broken, class items) is D2R's own.
+//   (files/data itemtypes Equiv2). The rest of each check (identified, not broken, class items) is D2R's own. The
+//   server also refuses a body slot whose inventory.txt rect is -1, so the Hireling rows carry the players' rects.
 #include "merc_rules.h"
 
 #include "pd2_engine.h"
