@@ -1,4 +1,4 @@
-// Monsters remaining (#1534): the numbers behind the zone info line, with no engine types so a host check can run them.
+// Monsters remaining (#1534, #1656): the numbers behind the zone info line, with no engine types so a host check can run them.
 // D2R keeps a ledger per level (MonsterRegion.cpp, the one its Den of Evil check reads): counted hostile monsters
 // spawned and killed. Pets, summons, mercenaries, NPCs and monstats rows flagged neverCount never enter it.
 #pragma once
@@ -6,8 +6,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <unordered_map>
-#include <unordered_set>
 
 namespace pd2::monstercount {
 
@@ -17,7 +15,6 @@ struct Ledger {
 };
 
 constexpr int32_t MaxLevel = 1024;  // upper bound for any caller's own cap; Read takes the levels table's row count
-constexpr int32_t MaxRooms = 32767;  // a room list longer than this is not a list (a loop or a wrong pointer)
 constexpr int32_t MaxCount = 100000;  // a larger value is not a ledger (a stale or wrong pointer)
 
 // region[level] -> ledger. `regions` is D2R's pointer array indexed by level id; `spawnedAt` / `killedAt` are the byte
@@ -52,45 +49,12 @@ constexpr auto Shown(Ledger l) noexcept -> bool {
 	return l.spawned > 0;
 }
 
-// Rooms seen populated, one set per level id: D2R frees a room's data once the player leaves, so a level
-// left and re-entered (a town portal) must keep what it had. Cleared only on a new game.
-struct SeenRooms {
-	std::unordered_map<int32_t, std::unordered_set<const void*>> byLevel;
-	auto Has(int32_t level, const void* room) const -> bool {
-		const auto it = byLevel.find(level);
-		return it != byLevel.end() && it->second.count(room) != 0;
-	}
-	void Add(int32_t level, const void* room) { byLevel[level].insert(room); }
-	auto Count(int32_t level) const -> size_t {
-		const auto it = byLevel.find(level);
-		return it == byLevel.end() ? 0 : it->second.size();
-	}
-};
-
-// D2R makes a room's monsters when the room first activates, so the ledger only knows the rooms met so far. Walk the level's
-// room list (`first`, next room pointer at `nextAt`); `populated(room)` says whether that room has made its monsters.
-// True when the list is real (not empty, under MaxRooms) and at least ExploredPercent of its rooms are populated: PD2's
-// rule (ProjectDiablo.dll 0x103453f0 sends the count only once rooms activated x 100 / the level's rooms >= 90).
-// Every room is visited (no early exit) so a caller's populated() can remember rooms as it goes.
-constexpr int32_t ExploredPercent = 90;
-template <class Populated>
-inline auto Explored(const uint8_t* first, size_t nextAt, Populated&& populated) noexcept -> bool {
-	int32_t rooms = 0, made = 0;
-	for (const uint8_t* r = first; r != nullptr && rooms < MaxRooms; ++rooms) {
-		made += populated(r) ? 1 : 0;
-		std::memcpy(&r, r + nextAt, sizeof r);
-	}
-	return rooms > 0 && rooms < MaxRooms && made * 100 >= rooms * ExploredPercent;
-}
-
-// The owner's rule (#1656): over Cap reads "25+"; up to Cap the number, with "+" while the level is not explored (the
-// count can still grow as rooms make their monsters).
+// The owner's rule (#1656): over Cap reads "25+", up to Cap the plain number (no "+", though rooms not yet met can
+// still add monsters: D2R makes a room's monsters when the player first comes near it).
 constexpr int32_t Cap = 25;
-inline auto Text(int32_t remaining, bool explored, char* out, size_t size) noexcept -> int {
-	if (remaining > Cap) {
-		return std::snprintf(out, size, "Monsters Remaining: %d+", Cap);
-	}
-	return std::snprintf(out, size, "Monsters Remaining: %d%s", remaining, explored ? "" : "+");
+inline auto Text(int32_t remaining, char* out, size_t size) noexcept -> int {
+	return remaining > Cap ? std::snprintf(out, size, "Monsters Remaining: %d+", Cap)
+	                       : std::snprintf(out, size, "Monsters Remaining: %d", remaining);
 }
 
 }  // namespace pd2::monstercount

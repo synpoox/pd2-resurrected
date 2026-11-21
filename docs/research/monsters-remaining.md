@@ -28,18 +28,29 @@ no population and reads no preset or spawn table. It shows `100+` until 90% of t
   memory). It would also change spawns for everyone in a multiplayer game, and PD2 does not do it.
 - **Predicting the total** (levels.txt MonDen, room sizes, presets). Rejected. Density rolls are random per room, so
   this gives an estimate, not a count.
-- **Kept: the ledger, with PD2's rule.** The count is taken as final once 90% of the level's drlg rooms have made their
-  monsters (`mc::Explored`). Before that, the number gets a `+`.
+- **Kept: the ledger.** It counts the monsters of the rooms met so far, the same as PD2.
 
 ## Text (owner's rule)
 
-A count over 25 reads `Monsters Remaining: 25+`, whether or not the level is explored. A count of 25 or less reads
-`Monsters Remaining: N` once the level is explored, and `Monsters Remaining: N+` before that, because the count can
-still grow.
+A count over 25 reads `Monsters Remaining: 25+`. A count of 25 or less reads the plain `Monsters Remaining: N`, with
+no `+`. That number can still grow while rooms of the level are unvisited. PD2 hides this with its `100+` until 90% of
+the rooms have activated; the owner's rule does not.
+
+## Towns
+
+D2R's ledger is not empty in town: the Rogue Encampment's region read `spawned 24` in game. So the ledger alone cannot
+hide the row there. The row is hidden when the level's region has MonDen 0 for the difficulty (region +0x2b8, from
+levels.txt). Every town has MonDen 0, and so do preset-only areas such as boss lairs. No town data flag was found in
+93847: D2R has no `{1, 40, 75, 103, 109}` table, and no function compares a level against those ids.
 
 ## Placement (D2R 93847)
 
 The zone info is one newline-separated text block that D2R rebuilds in `0x14751e0` (panel). It holds area, difficulty,
-game type and the other rows at panel +0x198, and the terror-zone lines at +0x1e8. core-ui hooks it by signature.
-After the original runs, it appends the row with D2R's string append `0x1732d0` (string, text, length). D2R then draws
-the row as part of the block: same font and alignment, and TAB hides it with the automap.
+game type and the other rows at panel +0x198, and the terror-zone lines at +0x1e8. The panel update `0x1476290` passes
+the block to the panel's text box (+0x170) through TextBox::SetText `0x86dd50` (box, {text, length}*), which copies
+the text. The loader adds the mod name row after the builder returns, so a row appended inside the builder lands above
+`PD2Resurrected`; that was checked in game.
+
+core-ui hooks the builder only to learn the panel. It hooks SetText to add the row to that box's text, before the
+block's trailing newline (the gap above the terror-zone lines). D2R draws the row as part of the block: same font and
+alignment, TAB hides it with the automap, and it follows the column at 21:9.
