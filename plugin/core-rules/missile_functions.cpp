@@ -481,7 +481,7 @@ std::atomic<uint32_t> g_boltHits {0};
 std::atomic<uint64_t> g_boltRowsLogged[32] {};
 
 auto FirstUnitHit(int32_t row) noexcept -> bool {
-	if (!pd2::DebugOn() || row < 0 || row >= 32 * 64) {
+	if (!pd2::HotLogsOn() || row < 0 || row >= 32 * 64) {
 		return false;
 	}
 	const uint64_t bit = 1ull << (row % 64);

@@ -2514,7 +2514,7 @@ auto SrvStWolves(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	// shortcut: a refusal is silent; PD2 also has the player say "I can't" (1.13c event sound 0x13), upgrade when
 	// D2R's unit event sound is found
 	std::atomic<uint32_t>& counter = accepted ? g_wolfStarts : g_wolfRefusals;
-	if (pd2::HotSample(counter) || (killed > 0 && pd2::DebugOn())) {  // a kill is one per cast at petmax
+	if (pd2::HotSample(counter) || (killed > 0 && pd2::HotLogsOn())) {  // a kill is one per cast at petmax
 		plog::Info("wolf start: skill %d level %d pet type %d: petmax %d, %d before, %d killed, %s (%u started, %u "
 		           "refused)",
 		           skillId, level, type, limit, before, killed, accepted ? "accepted" : "refused", g_wolfStarts.load(),
@@ -3409,9 +3409,9 @@ constexpr int32_t StateConcentration = 42, PlrModeRun = 3;
 constexpr uint32_t GateLogLines = 400;
 std::atomic<uint32_t> g_gateLogs {0};
 
-// The first `n` calls while debug_mode is on, for logs a game check needs several lines of
+// The first `n` calls while PD2R_HOT_LOGS=1, for logs a game check needs several lines of
 auto First(std::atomic<uint32_t>& counter, uint32_t n) noexcept -> bool {
-	return pd2::DebugOn() && ++counter <= n;
+	return pd2::HotLogsOn() && ++counter <= n;
 }
 using GateFn = int64_t (*)(Game* game, Unit* unit, int32_t mode, void* request, int32_t flag) noexcept;
 GateFn g_gateOriginal = nullptr;

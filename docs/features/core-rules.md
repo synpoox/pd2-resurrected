@@ -215,7 +215,7 @@ and listed. Slot sizes and free ranges per table: [skill-function-tables](../res
 
 ## Hot-path log lines (#1609)
 
-A log line per hit, arrow, missile, kill or drop stalls the game thread (D2RLoader flushes each line to disk, about 5 ms), so those lines write **nothing in normal play**. `pd2::HotSample` (`plugin/common/hot_log.h`) lets a line through only while D2RLoader's debug mode is on (`IsDebugModeEnabled`, the state `debug_mode` sets); then it logs the first 20 calls and one in 500 after. A game check that reads a hot-path line (`multiple shot:`, `crit:`, `curse:`, `charge ...`, the missile-hit lines, `uber scaling:` minions and the like) types `debug_mode` in the console first; that is the same command that turns cheats on, so a check that uses cheats already has it. Boss phase lines, load lines and error warnings are not hot and log always. `tools/tests/test_hot_path_logging.py` fails a sampler that skips the flag.
+A log line per hit, arrow, missile, kill or drop stalls the game thread (D2RLoader flushes each line to disk, about 5 ms), so those lines write **nothing in normal play**. `pd2::HotSample` (`plugin/common/hot_log.h`) lets a line through only when the game process has the environment variable `PD2R_HOT_LOGS=1` (read once at load; not `debug_mode`, which every cheat test turns on); then it logs the first 20 calls and one in 500 after. A game check that reads a hot-path line (`multiple shot:`, the missile-hit lines, `uber scaling:` minions and the like) sets it before starting the game: `$env:PD2R_HOT_LOGS = '1'` in the shell that runs `game_ctl.py ... start`. Boss phase lines, load lines and error warnings are not hot and log always. `tools/tests/test_hot_path_logging.py` fails a sampler that skips the flag.
 
 ## Cube ops
 

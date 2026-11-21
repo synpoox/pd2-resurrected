@@ -1,36 +1,30 @@
 // Log lines in hot paths (per hit, kill, drop, missile, arrow or frame) write nothing in normal play. D2RLoader writes
 // each plugin line on the calling thread and flushes it to disk (~5 ms), so even a first-20 burst stalls a Multiple
-// Shot volley (#1609). `debug_mode` (the console command that turns cheats on, D2RCore's IsDebugModeEnabled) turns
-// the lines on for a game check: then the first 20, and one in 500 after.
+// Shot volley (#1609). The environment variable PD2R_HOT_LOGS=1, set before the game starts, turns the lines on for a
+// game check (not `debug_mode`: cheats turn that on): then the first 20, and one in 500 after.
 #pragma once
 
 #include <atomic>
 #include <cstdint>
 
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#undef near  // windows.h's 16-bit leftovers: the plugins name variables near and far
-#undef far
-#include <D2RLPlugin/core_exports.h>
+#include <cstdlib>
 
 namespace pd2 {
 
-// True while the loader's debug mode is on. The export is looked up once; false when D2RCore or the export is missing.
-inline auto DebugOn() noexcept -> bool {
-	static const auto fn = [] {
-		const HMODULE core = GetModuleHandleA(D2RL::CoreExports::CoreDllName);
-		return core ? reinterpret_cast<D2RL::CoreExports::IsDebugModeEnabledFn>(reinterpret_cast<void*>(
-		                  GetProcAddress(core, D2RL::CoreExports::IsDebugModeEnabledInfo.name)))
-		            : nullptr;
+// True when the game was started with PD2R_HOT_LOGS=1 (read once). Not `debug_mode`: cheats turn that on, and a cheat test
+// (zombies by `cheat mspawn`) must run without the log stalls.
+inline auto HotLogsOn() noexcept -> bool {
+	static const bool on = [] {
+		char v[8] = {};
+		size_t n = 0;
+		return getenv_s(&n, v, sizeof(v), "PD2R_HOT_LOGS") == 0 && n > 0 && v[0] == '1';
 	}();
-	return fn != nullptr && fn();
+	return on;
 }
 
-// Debug mode on, and the first 20 calls (the lines a game check reads), then one in 500.
+// PD2R_HOT_LOGS=1, and the first 20 calls (the lines a game check reads), then one in 500.
 inline auto HotSample(uint32_t n) noexcept -> bool {
-	return (n <= 20 || n % 500 == 0) && DebugOn();
+	return (n <= 20 || n % 500 == 0) && HotLogsOn();
 }
 
 // Counts the call, then as above: the hot-path stand-in for plog::Sample(counter).

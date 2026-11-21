@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN = Path(__file__).resolve().parent.parent.parent / "plugin"
-SAMPLER = re.compile(r"HotSample|plog::Sample|First\(|FirstUnitHit|FinisherSample|Logged\(|GateLog\(|DebugOn\(")
+SAMPLER = re.compile(r"HotSample|plog::Sample|First\(|FirstUnitHit|FinisherSample|Logged\(|GateLog\(|HotLogsOn\(")
 # A gate that logs a unit kind every time before it samples: `if (type == 0 || pd2::HotSample(n))`
 BYPASS = re.compile(r"\|\|\s*[\w:]*?(?:" + SAMPLER.pattern + ")")
 # Functions that run per hit, kill, drop, missile or curse: every log call in them sits under a sampler
@@ -62,17 +62,17 @@ class HotPathLogging(unittest.TestCase):
         self.assertNotRegex("if (pd2::HotSample(n)) {", BYPASS)
 
     def test_every_sampler_checks_the_debug_flag(self):
-        """Hot-path lines write nothing in normal play (#1609): each sampler needs `debug_mode` (pd2::DebugOn)."""
+        """Hot-path lines write nothing in normal play (#1609): each sampler needs `PD2R_HOT_LOGS` (pd2::HotLogsOn)."""
         hot = (PLUGIN / "common/hot_log.h").read_text(encoding="utf-8")
         self.assertEqual(len(re.findall(r"HotSample\(.*\{", hot)), 2)
-        self.assertRegex(hot.split("auto HotSample(uint32_t")[1].split("}")[0], r"&& DebugOn\(\)")
+        self.assertRegex(hot.split("auto HotSample(uint32_t")[1].split("}")[0], r"&& HotLogsOn\(\)")
         self.assertRegex(hot.split("auto HotSample(std::atomic")[1].split("}")[0], r"return HotSample\(\+\+counter\)")
         for rel, helper in [("core-rules/skill_functions.cpp", "First"), ("core-rules/missile_functions.cpp", "FirstUnitHit")]:
             body = bodies((PLUGIN / rel).read_text(encoding="utf-8"), helper)
-            self.assertTrue(body and "DebugOn()" in body[0], f"{rel}: {helper} skips the debug flag")
+            self.assertTrue(body and "HotLogsOn()" in body[0], f"{rel}: {helper} skips the debug flag")
         for rel in HOT:
             text = (PLUGIN / rel).read_text(encoding="utf-8")
-            self.assertNotRegex(text, r"HotSample\([^)]*\)\s*\|\|(?![^{;]*(?:HotSample|First|DebugOn|\w+First))",
+            self.assertNotRegex(text, r"HotSample\([^)]*\)\s*\|\|(?![^{;]*(?:HotSample|First|HotLogsOn|\w+First))",
                                 f"{rel}: an `|| ...` after a sampler bypasses the flag")
         for rel in ["core-rules/missile_functions.cpp", "core-rules/skill_functions.cpp"]:
             self.assertNotIn("plog::Sample(", (PLUGIN / rel).read_text(encoding="utf-8"), f"{rel}: use pd2::HotSample")
