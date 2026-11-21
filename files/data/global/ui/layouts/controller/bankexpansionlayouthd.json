@@ -39,6 +39,21 @@
                 "visible": false
             }
         },
+        // PD2R (#1687, core-ui/stash_tabs.cpp): the Maps pad actions' legend, in the spot of the page arrows the Maps tab hides;
+        // the stash never has a focused widget on Maps, so the help bar can't name them
+        {
+            "type": "ButtonLegendWidget", "name": "pd2rMapsLegend",
+            "fields": {
+                "rect": { "x": 390, "y": 1146, "width": 507, "height": 93 },
+                "visible": false,
+                "text": { "style": "$StyleButtonLegend" },
+                "presets": [
+                    { "action": "cycleLeft", "description": "@StashPadBasePrev" },
+                    { "action": "cycleRight", "description": "@StashPadBaseNext" },
+                    { "action": "option3", "description": "@StashPadTierNext" }
+                ]
+            }
+        },
         // PD2R (#1684): Pyre Stash Search puts its box at this widget's x; far off-screen it hides on the pad (where it does not work and covers the stash).
         {
             "type": "Widget", "name": "StashSearchAnchor",

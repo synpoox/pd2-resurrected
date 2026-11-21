@@ -261,7 +261,7 @@ void ShowButton(Named& w, bool visible) noexcept {
 
 Named g_background {"pd2rMapsBackground"}, g_bossingBackground {"pd2rBossingBackground"}, g_navigation {"StashNavigation"}, g_cube {"advancedstash_horadriccube"},
 	g_cubeWithdraw {"withdraw_button"}, g_sharedOff {"pd2rSharedOff"}, g_mapsOn {"pd2rMapsTabsOn"}, g_mapsOnText {"pd2rMapsTabsOnText"},
-	g_bossingOn {"pd2rBossingTabsOn"}, g_bossingOnText {"pd2rBossingTabsOnText"}, g_padTabs {"pd2rPadTabs"};
+	g_bossingOn {"pd2rBossingTabsOn"}, g_bossingOnText {"pd2rBossingTabsOnText"}, g_padTabs {"pd2rPadTabs"}, g_mapsLegend {"pd2rMapsLegend"};
 Named g_tiers[3][2] = {{{"pd2rTier1"}, {"pd2rTier1On"}}, {{"pd2rTier2"}, {"pd2rTier2On"}}, {{"pd2rTier3"}, {"pd2rTier3On"}}};
 struct BaseWidgets {
 	char names[3][24];
@@ -532,6 +532,7 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 	Show(g_bossingOn, g_view == View::Bossing);
 	Show(g_bossingOnText, g_view == View::Bossing);
 	Show(g_background, maps);
+	Show(g_mapsLegend, maps);
 	Show(g_bossingBackground, g_view == View::Bossing);
 	ShowButton(g_sharedOff, ours);  // the stock Shared tab, lit under ours, drawn unlit: one tab looks selected
 	ShowButton(g_padTabs, ours);   // the pad layout's Maps and Bossing tabs, ours lit
