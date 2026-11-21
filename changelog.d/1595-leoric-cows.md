@@ -1,0 +1,1 @@
+- Leoric's Passage maps spawn undead again instead of packs of cows (#1595).

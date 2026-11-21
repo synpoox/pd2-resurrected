@@ -12,7 +12,7 @@ Ashen Plains	Mesa		m10	Medium	88	80	Borq the Consumed	sandleapermap2,thornhulkma
 Kehjistan Wasteland	Desert		m11	Medium	89	80	Toadflax the Tainted	sandraider3Market,flyingscimitarMarket,corruptrogue2Market,mosquito2Market,firetowerMarket,vampire1Market,cr_archer2Market,unraveler3Market	210	100	100
 Blood Moon	Wilderness		m12	Medium	87	80	The Cow Queen	hellbovineMap	150	100	100
 Ruins of Viz'jun	Kurast		m13	Medium	88	80	Karvarousku the Cartographer	cr_lancermap,goatmanmap,cr_archermap,bigheadmap,cantormap,unravelermap,arachmap,thornhulkmap,sandleapermap,mosquitomap,fetishshamanmap	195	100	100
-Leoric's Passage	Dungeon	Winding	m14	Medium	89	80	Rotting Horror	hellbovineMap	150	100	100
+Leoric's Passage	Dungeon	Winding	m14	Medium	89	80	Rotting Horror	reanimatedhordemap,bloodlordmap,sk_archermap,zealotmap	150	100	100
 Cursed Hold	Jail	Branching	m15	Medium	88	80	Gaoler Kanemith	sandleapermap2,zealotmap2,sk_archermap2,councilmembermap2,regurgitatormap2	450	100	100
 Khazra Den	Lair	Sprawl	m16	Medium	88	80	Indio The Insane	cr_archermap2,cr_lancermap2,goatmanmap2,fallenmap2	150	100	100
 Sewers of Harrogath	KurastSewer	Loop	m17	Large	89	80	The Mad Philosopher	fetishmap2,minionmap2,vilemothermap,fetishshamanmap,bloodlordmap2,mosquitomap2,sandleapermap2,arachmap	150	100	100

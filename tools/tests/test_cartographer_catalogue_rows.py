@@ -20,6 +20,12 @@ class CartographerCatalogueRowsTests(unittest.TestCase):
         assert len({m["Tileset"] for m in maps}) == len(maps) == len({m["Name"] for m in maps})
 
 
+    def test_leorics_passage_has_no_cows(self):
+        """#1595: Leoric's Passage spawned only cows; only Blood Moon (the cow level) keeps hellbovineMap."""
+        by = {m["Name"]: m["Monsters"].split(",") for m in rows("maps.txt")}
+        assert by["Leoric's Passage"] == ["reanimatedhordemap", "bloodlordmap", "sk_archermap", "zealotmap"]
+        assert [n for n, ms in by.items() if "hellbovineMap" in ms] == ["Blood Moon"]
+
     def test_maps_are_medium_and_each_in_one_tier(self):
         """#1304: a map's tier type (t1m..t3m) sets its Level (87..89) and its tooltip's tier line; about 8 per tier."""
         data_tables.need(self)
