@@ -36,5 +36,25 @@ class KeyDropRolls(unittest.TestCase):
                 self.assertIn(name, tcs)
 
 
+class SpireShadowKeys(unittest.TestCase):
+    """The Spire's shadows drop PD2's keys (0x10378170, #1582): monster 993/994/995 drops pk2/pk1/pk3."""
+
+    def test_shadow_to_key(self):
+        text = (ROOT / "plugin" / "core-events" / "map_events.cpp").read_text(encoding="utf-8")
+        self.assertIn("Keys[3] = {'2', '1', '3'}", text)
+        self.assertIn("Shadows[3] = {1010, 1011, 1012}", text)
+        self.assertIn("SpireShadowDied(game, monster, event->levelId, seed)", TEXT)
+
+    def test_keys_and_shadows_exist(self):
+        excel = ROOT / "files" / "data" / "global" / "excel"
+        if not (excel / "monstats.txt").exists():
+            self.skipTest("no files/data")
+        codes = {ln.split("\t")[15] for ln in (excel / "misc.txt").read_text(encoding="latin-1").split("\n") if ln.count("\t") > 15}
+        self.assertTrue({"pk1", "pk2", "pk3"} <= codes)
+        ids = [ln.split("\t")[0] for ln in (excel / "monstats.txt").read_text(encoding="latin-1").split("\n")]
+        first = ids.index("shadowofhate")
+        self.assertEqual(ids[first:first + 3], ["shadowofhate", "shadowofterror", "shadowofdestruction"])
+
+
 if __name__ == "__main__":
     unittest.main()

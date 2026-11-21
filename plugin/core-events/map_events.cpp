@@ -858,6 +858,44 @@ auto MapEventNotify(Game* game, int32_t event, const char* key) noexcept -> void
 	NotifyKeyText(game, event, key);
 }
 
+// PD2 0x10378170, the death step of the Spire's shadows (993-995 in PD2) while the event is in state 2-49: a roll of
+// rand % 2400 < 1000 / (MinGrp + MaxGrp) drops a Pandemonium key by the shadow (Hate pk2, Terror pk1, Destruction pk3)
+// and counts one; with 6 keys dropped the Spire ends (the same end as past progress 90). No SDK service drops an item
+// at a dead monster, so it is key_drops' engine call (DropItemAt).
+auto SpireShadowDied(Game* game, Unit* monster, int32_t level, uint32_t* seed) noexcept -> void {
+	using namespace d2r::rva;
+	const int32_t spawns = Get(game, SpawnsKey);
+	if (MapEvent(game) != Spire || spawns < 2 || spawns >= SpireOver) {
+		return;
+	}
+	const int32_t classId = At<int32_t>(monster, UnitClassId);
+	const auto* shadow = std::find(std::begin(Shadows), std::end(Shadows), classId);
+	if (shadow == std::end(Shadows)) {
+		return;
+	}
+	constexpr char Keys[3] = {'2', '1', '3'};
+	const uint8_t dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
+	const auto* rec = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(dataFlag, classId);
+	const uint32_t group = rec != nullptr ? At<uint8_t>(rec, MonMinGrp) + At<uint8_t>(rec, MonMaxGrp) : 0;
+	const char key[4] = {'p', 'k', Keys[shadow - std::begin(Shadows)], 0};
+	if (d2r::RandomBelow(seed, 0x960) >= 1000 / (group != 0 ? group : 1)) {
+		return;
+	}
+	const int32_t row = d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(
+		dataFlag, D2RL::Items::MakeItemCode(key[0], key[1], key[2], ' '));
+	if (row < 0) {
+		plog::Warn("map events: event %d shadow %d died, no item \"%s\"", Spire, classId, key);
+		return;
+	}
+	d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(DropItemAt)(
+		game, monster, row, QualityNormal, 0, 0);
+	Set(game, SpawnsKey, spawns + 1);
+	plog::Info("map events: event %d shadow %d dropped %s in level %d, %d of 6", Spire, classId, key, level, spawns - 1);
+	if (spawns + 1 - 2 > 5) {
+		EndSpire(game, level);
+	}
+}
+
 // PD2 0x10378080, in state 2 of the Altar event: with the guardian in a room, a sound on the guardian to every player
 // in game, state 3, and every clone in the guardian's room and its neighbours (1.13c's near-room list) dies without a
 // drop (0x10356e00). Picked first, so no kill runs while the room lists are walked.
