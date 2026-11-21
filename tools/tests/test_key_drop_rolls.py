@@ -11,7 +11,16 @@ PD2 = {"rtmo": "Undead", "lucd": "Demon", "lucb": "RedPortal", "lucc": "TerrorZo
        "lbox": "Any", "lpp": "Any", "rkey": "Any", "rtp": "Any", "rid": "Any", "llmr": "Any", "lsvl": "Any"}
 
 
+BASE = {"lbox": "Larzuk Puzzlebox", "lpp": "Larzuk Puzzlepiece", "rkey": "SkeletonKey", "rtp": "Horadric TP Book",
+        "rid": "Horadric ID Book", "llmr": "Lillith Mirror", "lsvl": "Vial of Lightsong"}
+
+
 class KeyDropRolls(unittest.TestCase):
+    def test_code_to_tc(self):
+        for code, _, *names in ROLLS:
+            if code in BASE:
+                self.assertEqual(names, [f"{BASE[code]} {d}" for d in ("N", "NM", "H")], code)
+
     def test_rule_table(self):
         self.assertEqual({code: where for code, where, *_ in ROLLS}, PD2)
 
