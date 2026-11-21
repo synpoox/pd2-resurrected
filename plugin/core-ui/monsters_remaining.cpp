@@ -70,7 +70,7 @@ std::atomic<int32_t> g_level {-1};
 std::atomic<uint32_t> g_epoch {0};  // bumped by GameLeft / GameJoined: the game thread drops the rooms it remembers
 std::atomic<uint32_t> g_spawns {0}, g_changes {0}, g_builds {0}, g_appended {0};
 std::atomic<uint64_t> g_text {0};  // published: see Pack
-uint64_t g_lastQueued = 0;         // UI thread only
+std::atomic<uint64_t> g_lastQueued {0};  // the builder (UI thread) and spawns (game thread)
 
 // The published line: valid | explored | level | remaining, one word so the text box hook never reads half an update
 constexpr auto Pack(int32_t level, int32_t remaining, bool explored) noexcept -> uint64_t {
@@ -103,6 +103,8 @@ void RememberLevel(const void* room) noexcept {
 	}
 }
 
+void QueueRefresh() noexcept;
+
 void OnSpawned(const uint8_t* const* regions, void* room, void* unit, int skip) noexcept {
 	g_regions.store(regions, std::memory_order_relaxed);
 	if (room != nullptr) {
@@ -110,6 +112,9 @@ void OnSpawned(const uint8_t* const* regions, void* room, void* unit, int skip) 
 	}
 	++g_spawns;
 	g_spawned(regions, room, unit, skip);
+	// shortcut: rooms are remembered while TAB hides the zone info only when a spawn queues the walk; a room left before
+	// any nearby spawn is missed. Upgrade to a game-thread tick if levels stay under 90% (an overlay frame did not fire).
+	QueueRefresh();
 }
 
 // Game thread only. The drlg rooms already seen populated, per level (D2R frees rooms the player left).
@@ -222,8 +227,8 @@ constexpr size_t MaxBlock = 2048;  // a longer block is passed on untouched
 
 void QueueRefresh() noexcept {
 	const uint64_t now = GetTickCount64();
-	if (now - g_lastQueued >= RefreshMs) {
-		g_lastQueued = now;
+	uint64_t last = g_lastQueued.load();
+	if (now - last >= RefreshMs && g_lastQueued.compare_exchange_strong(last, now)) {
 		const auto queued = g_threads->runOnGameThread(g_context, Refresh, nullptr);
 		if (queued == D2RL::Threads::Result::Unavailable) {
 			// no game thread (a TCP/IP client, or no game yet): nothing to read, nothing shown; asked again next time
