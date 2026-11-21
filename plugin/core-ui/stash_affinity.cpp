@@ -212,7 +212,10 @@ auto ToStorage(D2RL::PlayerHandle player, items::ItemInfo& item) noexcept -> ite
 // shared-stash item on this loader (Unsupported, Slot2), so both go to the inventory, the stack takes the sum there, the
 // incoming item goes and the stack moves back onto its cell. A failed step puts things back; the sum is never doubled.
 auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& stack) noexcept -> items::Result {
-	const int32_t have = stack.quantity < 1 ? 1 : stack.quantity, add = item.quantity < 1 ? 1 : item.quantity;
+	const int32_t have = stack.quantity, add = item.quantity;
+	if (have < 1 || add < 1) {
+		return items::Result::Unsupported;  // loader 1.3.1 reads 0 for a PD2 stack (Slot2): the edit would overwrite the count
+	}
 	if (have + add > MaxStack) {
 		return items::Result::Conflict;
 	}
@@ -224,25 +227,32 @@ auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& st
 		return out;
 	}
 	stack.container = C::Inventory;  // so the move back keeps the cell noted as this stack's
-	items::ItemEdit edit {.structSize = items::ItemEditSize, .fields = items::EditFieldBit(items::EditField::Quantity),
-	                      .quantity = static_cast<uint32_t>(have + add)};
-	const char* step = "edit";
-	auto result = g_items->editItem(g_context, player, stack.handle, &edit);
-	if (result == items::Result::Success && item.container == C::SharedStash) {
-		step = "take";
+	// The incoming item out first: with a full inventory the take fails before any quantity changed
+	const char* step = "take";
+	auto result = items::Result::Success;
+	if (item.container == C::SharedStash) {
 		if (result = Move(player, item.handle, bag); result == items::Result::Success) {
 			if (Reserved(item) && InCell(item.x, item.y)) {
 				Use(item.sharedStashPage, item.x, item.y, false);
+				if (item.sharedStashPage == aff::MapsPage || item.sharedStashPage == aff::BossingPage) {
+					At(item.sharedStashPage, item.y, item.x) = -1;
+				}
 			}
 			item.container = C::Inventory;
 		}
 	}
+	items::ItemEdit edit {.structSize = items::ItemEditSize, .fields = items::EditFieldBit(items::EditField::Quantity),
+	                      .quantity = static_cast<uint32_t>(have + add)};
 	if (result == items::Result::Success) {
-		step = "destroy";
-		result = g_items->destroyItem(g_context, player, item.handle, items::SocketedItemPolicy::RejectIfNotEmpty);
-		if (result != items::Result::Success) {
-			edit.quantity = static_cast<uint32_t>(have);  // undo, so nothing is made from nothing
-			g_items->editItem(g_context, player, stack.handle, &edit);
+		step = "edit";
+		result = g_items->editItem(g_context, player, stack.handle, &edit);
+		if (result == items::Result::Success) {
+			step = "destroy";
+			result = g_items->destroyItem(g_context, player, item.handle, items::SocketedItemPolicy::RejectIfNotEmpty);
+			if (result != items::Result::Success) {
+				edit.quantity = static_cast<uint32_t>(have);  // undo, so nothing is made from nothing
+				g_items->editItem(g_context, player, stack.handle, &edit);
+			}
 		}
 	}
 	const auto back = MoveTo(player, stack, page, x, y);  // MoveTo notes the cell used again
@@ -296,7 +306,7 @@ void Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept {
 	(returned == items::Result::Success ? g_returned : g_failed)++;
 	plog::Info("affinity: %08x could not go to page %u (result %u); back to the inventory: result %u", item.code, home.page,
 	           static_cast<uint32_t>(moved), static_cast<uint32_t>(returned));
-	if (!g_hinted.exchange(true)) {
+	if (moved != items::Result::Unsupported && !g_hinted.exchange(true)) {  // Unsupported: a merge the loader cannot do
 		plog::Info("affinity: the reserved pages are shared tabs %u-%u; set [d2rcore.stash] add_shared_tabs to at least %u",
 		           aff::FirstReservedPage, aff::LastReservedPage, aff::RequiredExtraTabs);
 	}
