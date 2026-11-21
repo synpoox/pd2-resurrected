@@ -12,6 +12,7 @@
 #include "arena_spots.h"
 #include "level_fx.h"
 #include "log.h"
+#include "hot_log.h"
 #include "placements.h"
 
 #include <atomic>
@@ -113,7 +114,7 @@ auto Cast(Game* game, Unit* unit, int32_t skill, int32_t mode, Unit* target, int
 	}
 	const int32_t ok = d2r::Engine<int32_t (*)(Game*, Unit*, uint8_t, int32_t, Unit*, int32_t, int32_t, uint8_t) noexcept>(
 		d2r::rva::AiUseSkill)(game, unit, static_cast<uint8_t>(mode), skill, target, x, y, 0);
-	if (plog::Sample(g_casts)) {
+	if (pd2::HotSample(g_casts)) {
 		plog::Info("lucion ai: class %d cast skill %d mode %d at (%d, %d)%s -> %d (%u so far)",
 		           At<int32_t>(unit, d2r::rva::UnitClassId), skill, mode, x, y, target != nullptr ? " on target" : "", ok,
 		           g_casts.load());
@@ -249,7 +250,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	const int32_t state = stateRef;
 	const int32_t param = paramRef;
 	const int32_t last = Counter(game, LastKey);
-	if (plog::Sample(g_thinks)) {
+	if (pd2::HotSample(g_thinks)) {
 		plog::Info("lucion: unit %u thinks (%u so far), state %d, stage %d, life %d%%", At<uint32_t>(unit, d2r::rva::UnitIdField),
 		           g_thinks.load(), state, stage, LifePercent(unit));
 	}

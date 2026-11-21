@@ -5,6 +5,7 @@
 
 #include "key_drops.h"
 #include "placements.h"
+#include "quantity_drops.h"
 
 #include <cstdio>
 
@@ -43,5 +44,6 @@ PartReg r50(50, "pool", InstallPoolPart);
 PartReg r60(60, "keys", InstallKeysPart);
 CountersReg c50(50, KeyDropsCounters);
 CountersReg c55(55, PlacementsCounters);
+CountersReg c56(56, QuantityDropsCounters);
 
 }  // namespace

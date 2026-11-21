@@ -1,4 +1,4 @@
-"""Each map's icon colour matches its tier (#1344): Level 87 white, 88 gold, 89 red; icons unique, with an icemap copy."""
+"""Each map's icon colour matches its tier (#1344): Level 87 white, 88 gold, 89 red; icons unique, with a cartoicon_white_01 copy."""
 import csv
 import json
 import unittest
@@ -20,7 +20,7 @@ class MapIconTiers(unittest.TestCase):
         tier = {r["Item"]: COLOUR[r["Level"]] for r in rows(EXCEL / "d2rloader/cartographer/maps.txt")}
         misc = {r["code"]: r["invfile"] for r in rows(EXCEL / "misc.txt") if r["code"] in tier}
         items = {k: v["asset"] for e in json.loads((ROOT / "files/data/hd/items/items.json").read_text("utf-8")) for k, v in e.items() if k in tier}
-        ice = (PD2 / "icemap.json").read_bytes()
+        ice = (PD2 / "cartoicon_white_01.json").read_bytes()
         self.assertEqual(set(misc), set(tier))
         for m, c in tier.items():
             self.assertRegex(misc[m], rf"^cartoicon_{c}_\d\d$", m)

@@ -77,6 +77,35 @@
             },
         },
         {
+            "type": "ButtonWidget", "name": "InventoryLock",
+            "fields": {
+                "rect": { "x": 1001, "y": 1702 },
+                "filename": "PANEL\\pd2r\\inventory_lock",
+                "normalFrame": 0,
+                "pressedFrame": 1,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "tooltipString": "@InventoryLockTooltip",
+                "tooltipOffset": { "x": 0, "y": -3 },
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/InventoryLock",
+            },
+        },
+        {
+            "type": "ButtonWidget", "name": "InventoryLockOn",
+            "fields": {
+                "rect": { "x": 1001, "y": 1702 },
+                "filename": "PANEL\\pd2r\\inventory_lock",
+                "normalFrame": 2,
+                "pressedFrame": 3,
+                "hoveredFrame": 2,
+                "disabledFrame": 2,
+                "visible": false,
+                "tooltipString": "@InventoryUnlockTooltip",
+                "tooltipOffset": { "x": 0, "y": -3 },
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/InventoryLock",
+            },
+        },
+        {
             "type": "InventoryGridWidget", "name": "grid",
             "fields": {
                 "rect": { "x": 93, "y": 897 },

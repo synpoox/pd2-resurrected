@@ -17,6 +17,7 @@
 #include "pd2_engine.h"
 #include "item_rules.h"
 #include "log.h"
+#include "hot_log.h"
 #include "missile_functions.h"
 #include "skill_router.h"
 #include "line_spread.h"
@@ -109,7 +110,7 @@ auto SrvDoSplitThrow(Game* game, Unit* unit, int32_t skillId, int32_t level) noe
 		params.targetY = y;
 		return d2r::api.createMissile(game, &params) != nullptr;
 	});
-	if (plog::Sample(g_splitThrowCasts)) {
+	if (pd2::HotSample(g_splitThrowCasts)) {
 		plog::Info("split throw: skill %d level %d: %d of %d missiles (row %d), cast %u", skillId, level, created, count,
 		           missile, g_splitThrowCasts.load());
 	}
@@ -166,7 +167,7 @@ auto SrvDoMultipleShot(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 		params.targetY = y;
 		return d2r::api.createMissile(game, &params) != nullptr;
 	});
-	if (plog::Sample(g_multipleShotCasts)) {
+	if (pd2::HotSample(g_multipleShotCasts)) {
 		plog::Info("multiple shot: skill %d level %d: %d of %d missiles, %d triggering, damage +%d%%", skillId, level,
 		           created, count, triggered, bonus);
 	}
@@ -213,7 +214,7 @@ auto CltDoSplitThrow(Unit* unit, int32_t skillId, int32_t level) noexcept -> int
 		params.targetY = y;
 		return d2r::api.clientCreateMissile(&params, 0) != nullptr;
 	});
-	if (plog::Sample(g_splitThrowClientCasts)) {
+	if (pd2::HotSample(g_splitThrowClientCasts)) {
 		plog::Info("split throw client: skill %d level %d: %d of %d missiles (row %d), cast %u", skillId, level, created,
 		           count, missile, g_splitThrowClientCasts.load());
 	}
@@ -271,7 +272,7 @@ auto SrvDoDoubleThrow(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 	const int32_t bounces = d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level);
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(thrown, StatDamagePercent, damage, 0);
 	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetMissileBounces)(thrown, bounces);
-	if (plog::Sample(g_doubleThrowCasts)) {
+	if (pd2::HotSample(g_doubleThrowCasts)) {
 		plog::Info("double throw: skill %d level %d: missile %d (column %d), damage%% %d, bounces %d, cast %u", skillId,
 		           level, missile, column, damage, bounces, g_doubleThrowCasts.load());
 	}
@@ -311,7 +312,7 @@ auto CltDoDoubleThrow(Unit* unit, int32_t skillId, int32_t level) noexcept -> in
 	}
 	const int32_t bounces = d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, SkCalc2), skillId, level);
 	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetMissileBounces)(thrown, bounces);
-	if (plog::Sample(g_doubleThrowClientCasts)) {
+	if (pd2::HotSample(g_doubleThrowClientCasts)) {
 		plog::Info("double throw client: skill %d level %d: missile %d, bounces %d, cast %u", skillId, level, missile,
 		           bounces, g_doubleThrowClientCasts.load());
 	}
@@ -375,7 +376,7 @@ auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 	d2r::Engine<SendFn>(SendSkillState)(game, unit, skillId, level, key, 1, state, skill + SkSendStateA,
 	                                    skill + SkSendStateB, 4);
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, state, 1);
-	if (plog::Sample(g_tempBuffs)) {
+	if (pd2::HotSample(g_tempBuffs)) {
 		// aurastat1 and its calc value as the skill computes them, so the check can compare them with PD2's par4
 		plog::Info("temp buff: skill %d level %d state %d for %d frames, stat %d +%d, cast %u", skillId, level, state,
 		           TempBuffFrames, At<int16_t>(skill, SkAuraStat1),
@@ -431,7 +432,7 @@ auto SrvStFind(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 		g_findsRefused.fetch_add(1);
 		return 0;
 	}
-	if (plog::Sample(g_finds)) {
+	if (pd2::HotSample(g_finds)) {
 		plog::Info("find: skill %d on unit type %d owner %d/%u, cast %u", skillId,
 		           At<int32_t>(target, d2r::rva::UnitType), At<int32_t>(target, d2r::rva::UnitOwnerType),
 		           At<uint32_t>(target, d2r::rva::UnitOwnerId), g_finds.load());
@@ -631,7 +632,7 @@ auto SrvDoPd2Teleport(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 		                     {{Masteries[0], debuff[0]}, {Masteries[1], debuff[1]}, {Masteries[2], debuff[2]},
 		                      {Masteries[3], debuff[3]}});
 	}
-	if (plog::Sample(g_teleports)) {
+	if (pd2::HotSample(g_teleports)) {
 		plog::Info("teleport: skill %d level %d: at %d,%d, %d missiles (row %d, calc2 %d), state %d for %d frames "
 		           "(list %s), reduction %d: fire %d/%d cold %d/%d ltng %d/%d pois %d/%d, cast %u, refused %u",
 		           skillId, level, x, y, created, missile, count, state, frames, list, reduction, debuff[0], mastery[0],
@@ -728,7 +729,7 @@ auto SrvDoBloodWarp(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 		regen = c.cost / frames + 1;
 		list = TimedStatList(dataFlag, unit, unit, skillId, level, frames, state, {{stat, regen}});
 	}
-	if (plog::Sample(g_bloodWarps)) {
+	if (pd2::HotSample(g_bloodWarps)) {
 		plog::Info("blood warp: skill %d level %d: life %d, cost %d, regen %d for %d frames (stat %d, state %d, list %s), "
 		           "cast %u",
 		           skillId, level, c.life, c.cost, regen, frames, stat, state, list, g_bloodWarps.load());
@@ -874,7 +875,7 @@ auto SrvDoDesecrate(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 		cloud = d2r::ValidMissile(dataFlag, params.missile) && d2r::api.createMissile(game, &params) != nullptr;
 		d2r::api.setUnitSkillFlag(unit, 1);
 	}
-	if (plog::Sample(g_desecrates)) {
+	if (pd2::HotSample(g_desecrates)) {
 		plog::Info("desecrate: skill %d level %d: %d of %d corpses in level %d, cloud %d, cast %u", skillId, level,
 		           created, count, levelId, cloud ? 1 : 0, g_desecrates.load());
 	}
@@ -905,7 +906,7 @@ auto CltDoDesecrate(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 		params.missile = At<int16_t>(skill, d2r::rva::SkCltMissileA + column * 2);
 		created += d2r::ValidMissile(dataFlag, params.missile) && d2r::api.clientCreateMissile(&params, 0) ? 1 : 0;
 	}
-	if (plog::Sample(g_desecrateClients)) {
+	if (pd2::HotSample(g_desecrateClients)) {
 		plog::Info("desecrate client: skill %d level %d: %d missiles, cast %u", skillId, level, created,
 		           g_desecrateClients.load());
 	}
@@ -1057,7 +1058,7 @@ auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	if (leech != 0) {
 		leech = std::max(leech / 2, 1u);
 	}
-	if (plog::Sample(g_splashVictims)) {
+	if (pd2::HotSample(g_splashVictims)) {
 		const auto field = [block](int offset) { return *reinterpret_cast<const int32_t*>(block + offset); };
 		plog::Info("splash hit: current skill %d: phys %d fire %d light %d magic %d cold %d poison %d (1/256), "
 		           "damage%% %d, kick %d, hit %u", hit->skillId, field(DmgPhys), field(DmgFire), field(DmgLight),
@@ -1147,7 +1148,7 @@ auto Splash(Game* game, Unit* unit, Unit* struck, int32_t skillId, int32_t level
 		d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, AreaUnitMask, SplashOne, &hit, 0);
 		t_splashing = false;
 	}
-	if (plog::Sample(g_splashes) || (hit.victims > 0 && plog::Sample(g_splashUnitCasts))) {
+	if (pd2::HotSample(g_splashes) || (hit.victims > 0 && pd2::HotSample(g_splashUnitCasts))) {
 		plog::Info("splash: skill %d level %d from unit type %d at unit type %d: radius %d (calc3 %d, inc_splash_radius "
 		           "%d, weapon types %d, normal base %d), current skill %d level %d damage%% %d srcdam %u, units hit %lld, "
 		           "splash %u", skillId, level, At<int32_t>(unit, UnitType), At<int32_t>(struck, UnitType), radius, calc3,
@@ -1287,7 +1288,7 @@ auto SrvDoHolyLight(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 		                               0);
 	}
 	PutOverlay(target, At<int16_t>(skill, SkSrvOverlay));
-	if (plog::Sample(g_holyLights) || (hl.healed + hl.hit > 0 && plog::Sample(g_holyLightUnitCasts))) {
+	if (pd2::HotSample(g_holyLights) || (hl.healed + hl.hit > 0 && pd2::HotSample(g_holyLightUnitCasts))) {
 		plog::Info("holy light: skill %d level %d on an %s: heal %d-%d%s, damage%s, radius %d: healed %lld, hit %lld, "
 		           "cast %u", skillId, level, enemyTarget ? "enemy" : "ally", hl.healMin >> 8, hl.healMax >> 8,
 		           hl.halfHeal ? " halved" : "", hl.halfDamage ? " halved" : "", radius,
@@ -1466,7 +1467,7 @@ void VengeanceLinkDue(void* game, Unit* unit, int32_t state) noexcept {
 		if (skill != nullptr && path != nullptr) {
 			const VengeanceBurst b = Burst(due.game, caster, unit, At<Unit*>(path, PathTargetUnit), skill, due.skillId,
 			                               due.level, due.link);
-			if (plog::Sample(g_vengeanceLinks)) {
+			if (pd2::HotSample(g_vengeanceLinks)) {
 				plog::Info("vengeance link: skill %d level %d link %d: fire %d cold %d light %d, cold length %d, hit %lld, "
 				           "linked %lld, link %u", due.skillId, due.level, due.link, b.damage.dmg[0] >> 8,
 				           b.damage.dmg[1] >> 8, b.damage.dmg[2] >> 8, b.damage.coldLength,
@@ -1572,7 +1573,7 @@ auto SrvDoVengeance(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 	if (hit) {
 		b = Burst(game, unit, target, target, skill, skillId, level, 0);
 	}
-	if (plog::Sample(g_vengeances) || (b.linked > 0 && plog::Sample(g_vengeanceLinkedCasts))) {
+	if (pd2::HotSample(g_vengeances) || (b.linked > 0 && pd2::HotSample(g_vengeanceLinkedCasts))) {
 		plog::Info("vengeance: skill %d level %d melee %s: fire%% %d cold%% %d light%% %d, base %d, fire %d cold %d "
 		           "light %d, cold length %d, chain %d%% every %d frames within %d: hit %lld, linked %lld, cast %u",
 		           skillId, level, hit ? "hit" : "missed", b.damage.pct[0], b.damage.pct[1], b.damage.pct[2],
@@ -1614,7 +1615,7 @@ auto SrvDoJoust(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 	    frames > 0 && stat >= 0) {
 		list = TimedStatList(dataFlag, unit, unit, skillId, level, frames, state, {{stat, value}});
 	}
-	if (plog::Sample(g_jousts)) {
+	if (pd2::HotSample(g_jousts)) {
 		plog::Info("joust: skill %d level %d: damage%% %d, critical strike %d -> %d, state %d for %d frames with stat %d "
 		           "= %d (list %s), cast %u", skillId, level, d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level),
 		           crit, raised, state, frames, stat, value, list, g_jousts.load());
@@ -1674,8 +1675,8 @@ auto SrvDoDragonFlight(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 	}
 	const uint32_t resultFlags = damage.resultFlags;
 	ReleaseDamage(damage);
-	const bool sampleCast = plog::Sample(g_dragonFlights);
-	if ((hit && plog::Sample(g_dragonFlightHits)) || sampleCast) {
+	const bool sampleCast = pd2::HotSample(g_dragonFlights);
+	if ((hit && pd2::HotSample(g_dragonFlightHits)) || sampleCast) {
 		plog::Info("dragon flight: skill %d level %d at unit type %d: to-hit %d (progressive %d), result 0x%x, "
 		           "damage%% %d, cast %u, hits %u", skillId, level, At<int32_t>(target, UnitType), toHit, progressive,
 		           resultFlags, percent, g_dragonFlights.load(), g_dragonFlightHits.load());
@@ -1748,7 +1749,7 @@ auto SrvDoPoisonDagger(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 		}
 		return cloud != nullptr;
 	});
-	if (plog::Sample(g_poisonDaggers)) {
+	if (pd2::HotSample(g_poisonDaggers)) {
 		plog::Info("poison dagger: skill %d level %d: %d clouds (row %d, Param3 %d) at %d,%d, poison %d length %d, "
 		           "cast %u", skillId, level, created, missile, count, tx, ty, cloudPoison, cloudLength,
 		           g_poisonDaggers.load());
@@ -1779,7 +1780,7 @@ auto CltDoPoisonDagger(Unit* unit, int32_t skillId, int32_t level) noexcept -> i
 		params.targetY = dy;
 		return d2r::api.clientCreateMissile(&params, 0) != nullptr;
 	});
-	if (plog::Sample(g_poisonDaggerClients)) {
+	if (pd2::HotSample(g_poisonDaggerClients)) {
 		plog::Info("poison dagger client: skill %d level %d: %d clouds (row %d), cast %u", skillId, level, created, missile,
 		           g_poisonDaggerClients.load());
 	}
@@ -1823,7 +1824,7 @@ auto SrvDoGust(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, d2r::LeapKnockback*, int32_t, void*) noexcept>(
 			AreaKnockback)(game, unit, 0, 0, radius, &hit, 0, scratch);
 	}
-	if (plog::Sample(g_gusts)) {
+	if (pd2::HotSample(g_gusts)) {
 		plog::Info("gust: skill %d level %d: missile %d %s, radius %d (calc3), cold length %d (calc1), hit flags %u, "
 		           "result flags %u, hit class %d, cast %u, refused %u", skillId, level, missile,
 		           thrown ? "thrown" : "not thrown", radius, chill, hit.hitFlags, hit.resultFlags,
@@ -1869,7 +1870,7 @@ auto SrvDoHunger(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	if (count > 0 && state > 0 && frames > 0) {  // PD2's state helper refuses a length under 1
 		list = TimedStatList(dataFlag, unit, unit, skillId, level, frames, state, stats, stats + count);
 	}
-	if (plog::Sample(g_hungers)) {
+	if (pd2::HotSample(g_hungers)) {
 		plog::Info("hunger: skill %d level %d: corpse eaten, state %d for %d frames (list %s), stats %d=%d %d=%d %d=%d "
 		           "%d=%d, cast %u", skillId, level, state, frames, list, stats[0].stat, stats[0].value, stats[1].stat,
 		           stats[1].value, stats[2].stat, stats[2].value, stats[3].stat, stats[3].value, g_hungers.load());
@@ -1899,7 +1900,7 @@ std::atomic<uint32_t> g_chargeHits {0};
 auto FinisherSample(FinisherCounters& counters, int32_t skillId) noexcept -> bool {
 	const auto* it = std::find(std::begin(ChargeUpSkills), std::end(ChargeUpSkills), skillId);
 	auto& counter = counters[it - std::begin(ChargeUpSkills)];
-	return plog::Sample(counter) || counter.load() <= 10;
+	return pd2::HotSample(counter);
 }
 
 auto ListStat(uint32_t dataFlag, void* list, int32_t stat) noexcept -> int32_t {
@@ -2345,7 +2346,7 @@ auto SrvDoWall(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	const int32_t created = Walls(unit, missile, count, skillId, level, tx, ty, [&](d2r::MissileParams* p) {
 		return d2r::api.createMissile(game, p) != nullptr;
 	});
-	if (plog::Sample(g_walls)) {
+	if (pd2::HotSample(g_walls)) {
 		plog::Info("wall: skill %d level %d: %d of %d makers (row %d), cast %u", skillId, level, created, count, missile,
 		           g_walls.load());
 	}
@@ -2373,7 +2374,7 @@ auto CltDoWall(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	const int32_t created = Walls(unit, missile, count, skillId, level, tx, ty, [](d2r::MissileParams* p) {
 		return d2r::api.clientCreateMissile(p, 0) != nullptr;
 	});
-	if (plog::Sample(g_wallClients)) {
+	if (pd2::HotSample(g_wallClients)) {
 		plog::Info("wall client: skill %d level %d: %d of %d makers, cast %u", skillId, level, created, count,
 		           g_wallClients.load());
 	}
@@ -2407,7 +2408,7 @@ auto SrvDoFireClaws(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 		return 0;
 	}
 	if (target == nullptr) {
-		if (plog::Sample(g_fireClaws)) {
+		if (pd2::HotSample(g_fireClaws)) {
 			plog::Info("fire claws: skill %d level %d: no target, cast %u", skillId, level, g_fireClaws.load());
 		}
 		return 0;
@@ -2419,8 +2420,8 @@ auto SrvDoFireClaws(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 	const int32_t created = Walls(unit, missile, count, skillId, level, tx, ty, [&](d2r::MissileParams* p) {
 		return d2r::api.createMissile(game, p) != nullptr;
 	});
-	const bool sampled = plog::Sample(g_fireClaws);
-	const bool firstHits = result >= 0 && (result & 1) != 0 && plog::Sample(g_fireClawHits);  // a miss may come first
+	const bool sampled = pd2::HotSample(g_fireClaws);
+	const bool firstHits = result >= 0 && (result & 1) != 0 && pd2::HotSample(g_fireClawHits);  // a miss may come first
 	if (sampled || firstHits) {
 		plog::Info("fire claws: skill %d level %d: hit result %d fire %d, %d of %d makers (row %d), cast %u", skillId,
 		           level, result, fire, created, count, missile, g_fireClaws.load());
@@ -2440,7 +2441,7 @@ auto CltDoFireClaws(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 	Unit* target = d2r::Engine<Unit* (*)(Unit*) noexcept>(d2r::rva::ClientSkillTargetUnit)(unit);
 	int32_t tx = 0, ty = 0;
 	if (target == nullptr || !d2r::UnitXY(target, &tx, &ty)) {
-		if (plog::Sample(g_fireClawClients)) {
+		if (pd2::HotSample(g_fireClawClients)) {
 			plog::Info("fire claws client: skill %d level %d: no target, cast %u", skillId, level,
 			           g_fireClawClients.load());
 		}
@@ -2455,7 +2456,7 @@ auto CltDoFireClaws(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 	const int32_t created = Walls(unit, missile, count, skillId, level, tx, ty, [](d2r::MissileParams* p) {
 		return d2r::api.clientCreateMissile(p, 0) != nullptr;
 	});
-	if (plog::Sample(g_fireClawClients)) {
+	if (pd2::HotSample(g_fireClawClients)) {
 		plog::Info("fire claws client: skill %d level %d: %d of %d makers, cast %u", skillId, level, created, count,
 		           g_fireClawClients.load());
 	}
@@ -2513,7 +2514,7 @@ auto SrvStWolves(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	// shortcut: a refusal is silent; PD2 also has the player say "I can't" (1.13c event sound 0x13), upgrade when
 	// D2R's unit event sound is found
 	std::atomic<uint32_t>& counter = accepted ? g_wolfStarts : g_wolfRefusals;
-	if (plog::Sample(counter) || killed > 0) {  // a kill is one per cast at petmax
+	if (pd2::HotSample(counter) || (killed > 0 && pd2::HotLogsOn())) {  // a kill is one per cast at petmax
 		plog::Info("wolf start: skill %d level %d pet type %d: petmax %d, %d before, %d killed, %s (%u started, %u "
 		           "refused)",
 		           skillId, level, type, limit, before, killed, accepted ? "accepted" : "refused", g_wolfStarts.load(),
@@ -2545,7 +2546,7 @@ auto SrvDoNova(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	}
 	const int32_t count = d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level);
 	const int32_t created = ServerRing(game, unit, missile, x, y, count, skillId, level);
-	if (plog::Sample(g_novas)) {
+	if (pd2::HotSample(g_novas)) {
 		plog::Info("nova: skill %d level %d: %d missiles (row %d, calc2 %d) at %d,%d, cast %u", skillId, level, created,
 		           missile, count, x, y, g_novas.load());
 	}
@@ -2576,7 +2577,7 @@ auto CltDoNova(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 		params.targetY = dy;
 		return d2r::api.clientCreateMissile(&params, 0) != nullptr;
 	});
-	if (plog::Sample(g_novaClients)) {
+	if (pd2::HotSample(g_novaClients)) {
 		plog::Info("nova client: skill %d level %d: %d missiles (row %d, calc2 %d), cast %u", skillId, level, created,
 		           missile, count, g_novaClients.load());
 	}
@@ -2613,7 +2614,7 @@ auto SrvDoItemNova(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 		return 1;
 	}
 	const int32_t created = d2r::ValidMissile(dataFlag, missile) ? ServerRing(game, unit, missile, x, y, 64, skillId, level) : 0;
-	if (plog::Sample(g_itemNovas)) {
+	if (pd2::HotSample(g_itemNovas)) {
 		plog::Info("item nova: skill %d level %d: %d missiles (row %d) at %d,%d (%s), cast %u", skillId, level, created,
 		           missile, x, y, target != nullptr ? "target" : "caster", g_itemNovas.load());
 	}
@@ -2693,7 +2694,7 @@ auto SrvDoRoyalFire(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 		params.targetY = dy;
 		return d2r::api.createMissile(game, &params) != nullptr;
 	});
-	if (plog::Sample(g_royalFires)) {
+	if (pd2::HotSample(g_royalFires)) {
 		plog::Info("royal fire: skill %d level %d: %d missiles (row %d, calc1 %d) at %d,%d, cast %u", skillId, level,
 		           created, missile, step, x, y, g_royalFires.load());
 	}
@@ -2726,7 +2727,7 @@ auto CltDoRoyalFire(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 		params.targetY = dy;
 		return d2r::api.clientCreateMissile(&params, 0) != nullptr;
 	});
-	if (plog::Sample(g_royalFireClients)) {
+	if (pd2::HotSample(g_royalFireClients)) {
 		plog::Info("royal fire client: skill %d level %d: %d missiles (row %d, calc1 %d) at %d,%d, cast %u", skillId,
 		           level, created, missile, step, x, y, g_royalFireClients.load());
 	}
@@ -2754,7 +2755,7 @@ auto SrvDoDeathNova(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 	d2r::MissileParams params = SkillMissileParams(unit, MissileAtXY, At<int16_t>(skill, SkSrvMissileA), x, y, skillId,
 	                                               level);
 	const bool created = d2r::api.createMissile(game, &params) != nullptr;
-	if (plog::Sample(g_deathNovas)) {
+	if (pd2::HotSample(g_deathNovas)) {
 		plog::Info("death nova: skill %d level %d: missile row %d at %d,%d %s, cast %u", skillId, level, params.missile, x,
 		           y, created ? "created" : "failed", g_deathNovas.load());
 	}
@@ -2776,7 +2777,7 @@ auto CltDoDeathNova(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 	d2r::MissileParams params = SkillMissileParams(unit, MissileAtXY, At<int16_t>(skill, SkSrvMissileA), x, y, skillId,
 	                                               level);
 	const bool created = d2r::api.clientCreateMissile(&params, 0) != nullptr;
-	if (plog::Sample(g_deathNovaClients)) {
+	if (pd2::HotSample(g_deathNovaClients)) {
 		plog::Info("death nova client: skill %d level %d: missile row %d %s, cast %u", skillId, level, params.missile,
 		           created ? "created" : "failed", g_deathNovaClients.load());
 	}
@@ -2948,7 +2949,7 @@ auto SrvDoStaticField(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 		debuff.stats[debuff.count++] = {stat, calc(SkAuraStatCalc1 + i * 4)};
 	}
 	area(game, unit, &center, radius, mask, StaticFieldDebuffOne, &debuff, 1);
-	if (plog::Sample(g_staticFields) || (hit.hits > 0 && plog::Sample(g_staticFieldHits))) {
+	if (pd2::HotSample(g_staticFields) || (hit.hits > 0 && pd2::HotSample(g_staticFieldHits))) {
 		plog::Info("static field: skill %d level %d: radius %d, calc1 %d, calc2 %d, min %d; units hit %d, first: life "
 		           "%d of %d, lightresist %d, damage %d; state %d for %d frames, stat %d %d, new lists %d (first %d), "
 		           "cast %u",
@@ -3072,7 +3073,7 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	DropStateList(dataFlag, unit, TempSkillBuff);  // always a new list
 	const char* made =
 		TimedStatList(dataFlag, unit, unit, skillId, level, SplashFrames, TempSkillBuff, {{IncSplashRadius, value}});
-	if (plog::Sample(g_splashStarts)) {
+	if (pd2::HotSample(g_splashStarts)) {
 		plog::Info("splash start: skill %d level %d charges %d calc2 %d: splash radius %d, list %s, start %u", skillId,
 		           level, charges, calc2, value, made, g_splashStarts.load());
 	}
@@ -3197,9 +3198,9 @@ auto SrvDoLeap(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t) noexcept>(RemoveUnitEvent)(game, unit, 1, 0);
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
 		game, unit, 1, At<int32_t>(game, GameFrame) + 4, 0, 0, 0);
-	const bool kindFirst = plog::Sample(g_leapKinds[skillId == SkillLeap ? 0 : 1]);
-	const bool unitsFirst = skillId != SkillLeap && hits > 0 && plog::Sample(g_leapUnitLandings);
-	if (plog::Sample(g_leaps) || kindFirst || unitsFirst) {
+	const bool kindFirst = pd2::HotSample(g_leapKinds[skillId == SkillLeap ? 0 : 1]);
+	const bool unitsFirst = skillId != SkillLeap && hits > 0 && pd2::HotSample(g_leapUnitLandings);
+	if (pd2::HotSample(g_leaps) || kindFirst || unitsFirst) {
 		plog::Info("leap: skill %d level %d landed: radius %d, %s %lld, velocity %d, cast %u", skillId, level, radius,
 		           skillId == SkillLeap ? "knockback" : "units in range", static_cast<long long>(hits),
 		           LeapVelocity(unit, skill, skillId, level), g_leaps.load());
@@ -3222,8 +3223,8 @@ auto CltDoLeap(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	if ((flags & 0x2) == 0 && (flags & 0x80) != 0) {
 		const int32_t velocity = LeapVelocity(unit, skill, skillId, level);
 		SetSkillVelocity(unit, uskill, velocity);
-		const bool kindFirst = plog::Sample(g_leapClientKinds[skillId == SkillLeap ? 0 : 1]);
-		if (plog::Sample(g_leapClients) || kindFirst) {
+		const bool kindFirst = pd2::HotSample(g_leapClientKinds[skillId == SkillLeap ? 0 : 1]);
+		if (pd2::HotSample(g_leapClients) || kindFirst) {
 			plog::Info("leap client: skill %d level %d: velocity %d, cast %u", skillId, level, velocity, g_leapClients.load());
 		}
 	}
@@ -3312,7 +3313,7 @@ auto SrvDoChannel(Game* game, Unit* unit, int32_t skillId, int32_t level) noexce
 		params.targetY = line.y + i * line.stepY;
 		created += d2r::api.createMissile(game, &params) != nullptr ? 1 : 0;
 	}
-	if (plog::Sample(g_channels)) {
+	if (pd2::HotSample(g_channels)) {
 		plog::Info("channel: skill %d level %d: %d of %d missiles (row %d), range %d, cast %u", skillId, level, created,
 		           count, params.missile, range, g_channels.load());
 	}
@@ -3388,7 +3389,7 @@ auto CltDoChannel(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_
 			d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitAnimSpeed)(unit, 5);
 		}
 	}
-	if (plog::Sample(g_channelClients)) {
+	if (pd2::HotSample(g_channelClients)) {
 		plog::Info("channel client: skill %d level %d: %d of %d flames drawn, range %d, cast %u", skillId, level, drawn,
 		           count, range, g_channelClients.load());
 	}
@@ -3408,9 +3409,9 @@ constexpr int32_t StateConcentration = 42, PlrModeRun = 3;
 constexpr uint32_t GateLogLines = 400;
 std::atomic<uint32_t> g_gateLogs {0};
 
-// The first `n` calls, for logs a game check needs several lines of (plog::Sample gives one in a hundred)
+// The first `n` calls while PD2R_HOT_LOGS=1, for logs a game check needs several lines of
 auto First(std::atomic<uint32_t>& counter, uint32_t n) noexcept -> bool {
-	return ++counter <= n;
+	return pd2::HotLogsOn() && ++counter <= n;
 }
 using GateFn = int64_t (*)(Game* game, Unit* unit, int32_t mode, void* request, int32_t flag) noexcept;
 GateFn g_gateOriginal = nullptr;
@@ -3434,7 +3435,7 @@ auto BusyModeGate(Game* game, Unit* unit, int32_t mode, void* request, int32_t f
 		if (nextId == nowId) {
 			// D2R re-sends a held skill every frame (PD2's client does not mid-mode); D2R's gate keeps the channel going
 			const int64_t result = g_gateOriginal(game, unit, mode, request, flag);
-			if (plog::Sample(g_heldRequests)) {
+			if (pd2::HotSample(g_heldRequests)) {
 				plog::Info("held: skill %d (srvdo %d) mode %d to D2R's gate: %lld, %u so far", nowId, func, mode,
 				           static_cast<long long>(result), g_heldRequests.load());
 			}
@@ -3445,7 +3446,7 @@ auto BusyModeGate(Game* game, Unit* unit, int32_t mode, void* request, int32_t f
 			const int32_t nextFunc = At<uint16_t>(next, SkSrvDoFunc);
 			const bool refused = func == SrvDoBladeFury && nextFunc == SrvDoBladeFury;
 			auto& counter = refused ? g_bladeFuryRefusals : g_takeOvers;
-			if (plog::Sample(counter)) {
+			if (pd2::HotSample(counter)) {
 				plog::Info("take-over: skill %d (srvdo %d) mid-channel, mode %d request skill %d (srvdo %d): %s, %u so far",
 				           nowId, func, mode, nextId, nextFunc, refused ? "refused" : "allowed", counter.load());
 			}
@@ -3484,7 +3485,7 @@ auto HitRecoveryGate(Game* game, Unit* unit, int32_t mode, uint8_t flag) noexcep
 			game, unit, 1, 0);
 		const int32_t left = end - At<int32_t>(game, GameFrame);
 		auto& counter = g_hitWindows[left < 0 ? 0 : left > 3 ? 3 : left];
-		if (plog::Sample(counter)) {
+		if (pd2::HotSample(counter)) {
 			plog::Info("hit window: mode %d request %d, %d frames left: %lld, %u so far", At<int32_t>(unit, UnitMode),
 			           mode, left, static_cast<long long>(result), counter.load());
 		}
@@ -3575,7 +3576,7 @@ auto SrvStCharge(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	ChargeParam(uskill) = d2r::UnitXY(unit, &ux, &uy) && d2r::api.skillTargetXY(game, unit, &tx, &ty) != 0
 	                          ? ChargeDistance(tx - ux, ty - uy)
 	                          : 0;
-	if (plog::Sample(g_charges)) {
+	if (pd2::HotSample(g_charges)) {
 		plog::Info("charge: skill %d level %d start: velocity %d (base %d, velocitypercent %d, param1 %d), distance %d, "
 		           "start %u",
 		           skillId, level, velocity, base, percent, At<int32_t>(skill, SkParam1), ChargeParam(uskill),
@@ -3626,7 +3627,7 @@ auto SrvDoCharge(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 				                     {{IncSplashRadius, splash}});
 			}
 			ChargeParam(uskill) = 0;
-			if (plog::Sample(g_chargeHitFrames)) {
+			if (pd2::HotSample(g_chargeHitFrames)) {
 				plog::Info("charge: skill %d level %d hit frame: damage%% %d, distance %d, splash radius %d (list %s), "
 				           "hit %u",
 				           skillId, level, d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level), distance, splash,
@@ -3650,7 +3651,7 @@ auto AuraEventReviveSplash(Game* game, int32_t event, Unit* unit, Unit* target, 
 	if (t_splashing) {
 		return 0;  // PD2 skips this handler for a splash's own hits
 	}
-	const bool sample = plog::Sample(g_reviveEvents);
+	const bool sample = pd2::HotSample(g_reviveEvents);
 	if (game == nullptr || unit == nullptr || target == nullptr) {
 		if (sample) {
 			plog::Info("revive event: event %d skill %d level %d without a %s, event %u", event, skillId, level,
@@ -3689,7 +3690,7 @@ auto SrvDoRevive(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		return result;
 	}
 	d2r::Engine<SrvDoFn>(d2r::rva::RegisterSkillEvents)(game, target, skillId, level);
-	if (plog::Sample(g_revives)) {
+	if (pd2::HotSample(g_revives)) {
 		plog::Info("revive: skill %d level %d events on unit class %d, revive %u", skillId, level,
 		           At<int32_t>(target, d2r::rva::UnitClassId), g_revives.load());
 	}
@@ -3728,7 +3729,7 @@ auto SrvStSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 	if (game == nullptr || unit == nullptr) {
 		return 0;
 	}
-	if (plog::Sample(g_smiteStarts)) {
+	if (pd2::HotSample(g_smiteStarts)) {
 		plog::Info("smite start: skill %d level %d on unit type %d: start accepted, %u so far", skillId, level,
 		           At<int32_t>(unit, d2r::rva::UnitType), g_smiteStarts.load());
 	}
@@ -3770,7 +3771,7 @@ auto AvoidWithParry(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> 
 	const int32_t frame = game != nullptr ? At<int32_t>(game, d2r::rva::GameFrame) : 0;
 	const uint32_t id = player ? At<uint32_t>(defender, d2r::rva::UnitIdField) : 0;
 	if (game != nullptr && g_avoidWindow.Blocked(id, frame)) {
-		if (First(g_avoidBlocked, 100)) {
+		if (pd2::HotSample(++g_avoidBlocked)) {  // per monster hit on a player: sampled (#1609)
 			plog::Info("avoid window: player %u, frame %d, avoid refused; %u refused", id, frame, g_avoidBlocked.load());
 		}
 		return 0;
@@ -3778,7 +3779,7 @@ auto AvoidWithParry(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> 
 	const uint32_t result = AvoidRolled(attacker, defender, ranged);
 	if (game != nullptr && (result & pd2::parry::AvoidMask) != 0) {
 		g_avoidWindow.Set(id, frame);
-		if (First(g_avoids, 200)) {
+		if (pd2::HotSample(++g_avoids)) {
 			plog::Info("avoid: player %u result 0x%x at frame %d, no avoid until frame %d; %u avoids", id, result, frame,
 			           frame + pd2::parry::WindowFrames, g_avoids.load());
 		}
@@ -3805,7 +3806,7 @@ auto AvoidRolled(Unit* attacker, Unit* defender, int32_t ranged) noexcept -> uin
 				d2r::Roll(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(d2r::rva::UnitSeed)(defender)) % 100);
 			const bool parried = pd2::parry::Parries(chance, static_cast<uint32_t>(roll));
 			const uint32_t parries = parried ? ++g_parries : g_parries.load();
-			if (plog::Sample(g_parryRolls) || (weaponClass == pd2::parry::WeaponClassHT2 && First(g_clawRolls, 30))) {  // 1st, 100th, 10,000th roll; the first 30 claw rolls too (#1483)
+			if (pd2::HotSample(g_parryRolls) || (weaponClass == pd2::parry::WeaponClassHT2 && First(g_clawRolls, 30))) {  // 1st, 100th, 10,000th roll; the first 30 claw rolls too (#1483)
 				plog::Info("parry: class %d, unit type %d mode %d, block chance %d (rolled with %d), roll %d: %s; %u rolls, %u parries", weaponClass, unitType, mode,
 				           raw, chance, roll, parried ? "parried" : "no parry", g_parryRolls.load(), parries);
 			}
@@ -3915,7 +3916,7 @@ auto SrvDoPoisonEggSpawn(Game* game, Unit* unit, int32_t skillId, int32_t level)
 	}
 	const int64_t nova = VanillaSlot<SrvDoFn>(SrvDoTable, d2r::rva::SrvDoNova)(game, unit, skillId, level);
 	const int64_t eggs = VanillaSlot<SrvDoFn>(SrvDoTable, SrvDoMaggotEgg)(game, unit, MaggotEgg, level);
-	if (plog::Sample(g_eggSpawns)) {
+	if (pd2::HotSample(g_eggSpawns)) {
 		plog::Info("poison egg spawn: skill %d level %d: nova %lld, then skill %d spawn %lld, cast %u", skillId, level,
 		           static_cast<long long>(nova), MaggotEgg, static_cast<long long>(eggs), g_eggSpawns.load());
 	}
@@ -3929,7 +3930,7 @@ auto CltDoPoisonEggSpawn(Unit* unit, int32_t skillId, int32_t level) noexcept ->
 		return 0;
 	}
 	VanillaSlot<CltDoFn>(CltDoTable, d2r::rva::CltDoNova)(unit, skillId, level);
-	if (plog::Sample(g_eggSpawnClients)) {
+	if (pd2::HotSample(g_eggSpawnClients)) {
 		plog::Info("poison egg spawn client: skill %d level %d: nova, then skill %d, cast %u", skillId, level, MaggotEgg,
 		           g_eggSpawnClients.load());
 	}
@@ -3971,7 +3972,7 @@ auto SrvDoTorajanNest(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 	nest.frame = frame;
 	uint32_t& count = nest.count;
 	if (count >= cap) {
-		if (plog::Sample(g_nestFull)) {
+		if (pd2::HotSample(g_nestFull)) {
 			plog::Info("torajan nest: skill %d: %u of %u spawned, no more (%u so far)", skillId, count, cap,
 			           g_nestFull.load());
 		}
@@ -3994,7 +3995,7 @@ auto SrvDoTorajanNest(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 	++count;
 	*reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(spawn) + UnitMainFlags) |= UnitNoTreasure | UnitNoExperience;
 	PutOverlay(spawn, At<int16_t>(skill, SkSumOverlay));
-	if (plog::Sample(g_nestSpawns)) {
+	if (pd2::HotSample(g_nestSpawns)) {
 		plog::Info("torajan nest: skill %d level %d: monster %d mode %d, %u of %u, flags 0x%x, cast %u", skillId, level,
 		           mon, mode, count, cap, At<uint32_t>(spawn, UnitMainFlags), g_nestSpawns.load());
 	}
@@ -4056,7 +4057,7 @@ auto SrvStCycler(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, At<uint32_t>(skill, SkAuraFilter), CyclerHealOne, &c, 0);
 	d2r::Engine<void (*)(Unit*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(SendChargePacket)(
 		unit, corpse, skillId, 1, 0, 0, 0);  // PD2 and D2R's srvst 63 both end with this packet
-	if (plog::Sample(g_cyclerStarts)) {
+	if (pd2::HotSample(g_cyclerStarts)) {
 		plog::Info("cycler start: skill %d level %d: heal %d (calc1 %d, calc2 %d) of stat %d, radius %d, units %d, "
 		           "player %d -> %d of %d, cast %u", skillId, level, c.heal, low, high, c.stat, radius, c.healed,
 		           c.before, c.after, c.max, g_cyclerStarts.load());
@@ -4211,7 +4212,7 @@ auto SrvDoRathmaSummon(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 	default:
 		return 0;  // PD2 too
 	}
-	if (plog::Sample(g_rathmaSummons)) {
+	if (pd2::HotSample(g_rathmaSummons)) {
 		plog::Info("rathma summon: skill %d level %d: pick %d, life %d%%: spawned %d of %d (%d failed spots), cast %u",
 		           skillId, level, pick, life, spawned, wanted, failed, g_rathmaSummons.load());
 	}
@@ -4290,7 +4291,7 @@ auto SrvStUberDiabRun(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 		x = At<uint16_t>(path, 0x10);  // the point already set (PathSetTargetXY)
 		y = At<uint16_t>(path, 0x12);
 	}
-	if (plog::Sample(g_uberDiabRuns)) {
+	if (pd2::HotSample(g_uberDiabRuns)) {
 		plog::Info("uberdiabrun start: skill %d level %d, class %d: %s, path to (%d, %d) (%u so far)", skillId, level,
 		           At<int32_t>(unit, UnitClassId), target != nullptr && target != unit ? "at its target" : "no target unit",
 		           x, y, g_uberDiabRuns.load());
@@ -4369,7 +4370,7 @@ auto SrvDoLucionNova(Game* game, Unit* unit, int32_t skillId, int32_t level) noe
 			created += d2r::api.createMissile(game, &params) != nullptr ? 1 : 0;
 		}
 	}
-	if (plog::Sample(g_lucionNovas)) {
+	if (pd2::HotSample(g_lucionNovas)) {
 		plog::Info("lucion nova: skill %d level %d: %d of %d missiles (row %d, %s) at %d,%d, cast %u", skillId, level,
 		           created, std::popcount(fired), missile, second ? "second" : "first", x, y, g_lucionNovas.load());
 	}
@@ -4404,7 +4405,7 @@ auto SrvDoLucionPunish(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 		params.y = static_cast<int32_t>(std::sin(angle) * radius) + ty;
 		created += d2r::api.createMissile(game, &params) != nullptr ? 1 : 0;
 	}
-	if (plog::Sample(g_lucionPunishes)) {
+	if (pd2::HotSample(g_lucionPunishes)) {
 		plog::Info("lucion punish: skill %d level %d: %d of %d missiles (row %d), radius %d, sub-step %d, at %d,%d, cast %u",
 		           skillId, level, created, count, missile, radius, sub, tx, ty, g_lucionPunishes.load());
 	}
@@ -4457,7 +4458,7 @@ auto SrvDoLucionDash(Game* game, Unit* unit, int32_t skillId, int32_t level) noe
 		SetSkillVelocity(unit, uskill, velocity);
 		d2r::Engine<int32_t (*)(void*, Unit*, int32_t, int32_t) noexcept>(PathSteer)(At<void*>(unit, UnitPath), unit, 0, 1);
 		const int32_t created = ring(SkSrvMissileA, SkCalc1);
-		if (plog::Sample(g_lucionDashes)) {
+		if (pd2::HotSample(g_lucionDashes)) {
 			plog::Info("lucion dash: skill %d level %d start at %d,%d: velocity %d, %d missiles on leaving, dash %u",
 			           skillId, level, x, y, velocity, created, g_lucionDashes.load());
 		}
@@ -4468,7 +4469,7 @@ auto SrvDoLucionDash(Game* game, Unit* unit, int32_t skillId, int32_t level) noe
 		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t) noexcept>(RemoveUnitEvent)(game, unit, 1, 0);
 		d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept>(AddUnitEvent)(
 			game, unit, 1, At<int32_t>(game, GameFrame) + 1, 0, 0, 0);
-		if (plog::Sample(g_lucionLandings)) {
+		if (pd2::HotSample(g_lucionLandings)) {
 			plog::Info("lucion dash: skill %d level %d landed at %d,%d: %d missiles, landing %u", skillId, level, x, y,
 			           created, g_lucionLandings.load());
 		}
@@ -4517,7 +4518,7 @@ auto CltDoLucionBlink(Unit* unit, int32_t skillId, int32_t level) noexcept -> in
 		return 0;
 	}
 	const int32_t created = ClientRing(unit, skill, SkCltMissileA, SkCltCalc1, x, y, skillId, level);
-	if (plog::Sample(g_lucionBlinkClients)) {
+	if (pd2::HotSample(g_lucionBlinkClients)) {
 		plog::Info("lucion blink client: skill %d level %d: %d missiles at %d,%d, cast %u", skillId, level, created, x,
 		           y, g_lucionBlinkClients.load());
 	}
@@ -4580,7 +4581,7 @@ auto CltDoLucionDash(Unit* unit, int32_t skillId, int32_t level) noexcept -> int
 			slot = &g_dashers[g_dasherOldest++ % std::size(g_dashers)];
 		}
 		*slot = {unit, targetX, targetY};
-		if (plog::Sample(g_lucionDashClients)) {
+		if (pd2::HotSample(g_lucionDashClients)) {
 			plog::Info("lucion dash client: skill %d level %d start at %d,%d: velocity %d, %d missiles, dash %u", skillId,
 			           level, x, y, velocity, created, g_lucionDashClients.load());
 		}

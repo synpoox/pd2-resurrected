@@ -28,6 +28,7 @@
 #include "rathma_pair.h"
 #include "rathma_split.h"
 #include "log.h"
+#include "hot_log.h"
 
 #include <D2RLPlugin/mutations.h>
 #include <D2RLPlugin/threads.h>
@@ -118,6 +119,7 @@ constexpr uint32_t StatPassiveCrit = 337;     // passive_critical_strike
 constexpr uint32_t StatDeadlyStrike = 141;    // item_deadlystrike
 constexpr uint32_t StatCritMultiplier = 390;  // item_crit_multiplier
 constexpr uint32_t StatDsMultiplier = 391;    // item_ds_multiplier
+constexpr uint32_t StatDye = 530;            // transform_dye
 constexpr uint32_t StatCritChance = 392;      // item_crit_chance
 constexpr uint32_t StatMaxDeadly = 386;       // item_maxdeadlystrike
 constexpr int32_t StrikeCap = 75;
@@ -164,7 +166,7 @@ auto RollStrike(Unit* unit, Unit* weapon) noexcept -> Strike {
 	return s;
 }
 
-// Every roll of a player (the game check's attacker) is logged; other units' a sample
+// A sample of every unit's rolls, players' too: Multiple Shot rolls once per arrow (#1609)
 auto LogStrike(const char* where, Unit* unit, const Strike& s, uint32_t before, uint32_t after, int32_t multiplier) noexcept
 	-> void {
 	const uint32_t n = ++g_strikeRolls;
@@ -174,7 +176,7 @@ auto LogStrike(const char* where, Unit* unit, const Strike& s, uint32_t before, 
 		++g_deadlyStrikes;
 	}
 	const int32_t type = At<int32_t>(unit, d2r::rva::UnitType);
-	if (type == 0 || n <= 20 || n % 500 == 0) {
+	if (pd2::HotSample(n)) {  // players too: Multiple Shot rolls per arrow (#1609)
 		plog::Info("strike: %s unit type %d kind %d, crit %d roll %d, deadly %d (cap %d) roll %d, physical %u -> %u (x%d%%), %u so far",
 		           where, type, s.kind, s.critChance, s.critRoll, s.dsChance, s.dsCap, s.dsRoll, before, after, multiplier, n);
 	}
@@ -384,13 +386,13 @@ auto RefreshOpBase(Unit* unit, uint32_t stat) noexcept -> void {
 	}
 	if (stat == StatEquippedEth) {
 		const uint32_t n = ++g_ethReads;
-		if (n <= 20 || n % 200 == 0) {
+		if (pd2::HotSample(n)) {
 			plog::Info("equipped_eth: unit type %d wears %d ethereal, %d op lists recomputed, item_maxdamage_percent %d "
 			           "-> %d, %u changes so far", type, value, lists, edBefore, edAfter, n);
 		}
 	} else if (lists != 0 && type == 0) {
 		const uint32_t n = ++g_missingHpRefreshes;
-		if (n <= 20 || n % 200 == 0) {
+		if (pd2::HotSample(n)) {
 			plog::Info("missing_hp: player at %d%%, %d op lists recomputed, item_maxdamage_percent %d -> %d, %u so far",
 			           value, lists, edBefore, edAfter, n);
 		}
@@ -421,7 +423,7 @@ auto CappedAddLife(Unit* unit, int32_t amount) noexcept -> int32_t {
 	const bool allowed = static_cast<double>(after) / maxLife < limit || static_cast<double>(life) / maxLife < limit;
 	const uint32_t n = ++g_capChecks;
 	g_capBlocks += allowed ? 0 : 1;
-	if (n <= 20 || n % 200 == 0) {
+	if (pd2::HotSample(n)) {
 		plog::Info("life steal cap: unit type %d cap %d%%, life %lld -> %lld of %lld (1/256): %s, %u blocked of %u",
 		           At<int32_t>(unit, d2r::rva::UnitType), cap, static_cast<long long>(life), static_cast<long long>(after),
 		           static_cast<long long>(maxLife), allowed ? "added" : "blocked", g_capBlocks.load(), n);
@@ -514,7 +516,7 @@ auto CrushingBlow(Game* game, Unit* unit, Unit* target, d2r::CrushingBlowArgs* a
 		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetOverlay)(target, OverlayCrushingBlow, 0);
 	}
 	const uint32_t n = ++g_blows;
-	if (n <= 20 || n % 200 == 0) {
+	if (pd2::HotSample(n)) {
 		plog::Info("crushing blow: unit type %d on unit type %d class %d%s: divisor %.2f, efficiency %d, "
 		           "effectiveness %.2f, resist %d, life %.0f -> %d (1/256), %u so far", At<int32_t>(unit, UnitType),
 		           At<int32_t>(target, UnitType), At<int32_t>(target, UnitClassId), args->missile != 0 ? " (missile)" : "",
@@ -607,7 +609,7 @@ auto HitEvent(Game* game, int32_t event, Unit* unit, Unit* target, void* damage)
 	}
 	const int32_t roll = static_cast<int32_t>(d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit), 100));
 	const uint32_t n = ++g_blowRolls;
-	if (At<int32_t>(unit, UnitType) == 0 || n <= 20) {
+	if (pd2::HotSample(n)) {  // players too (#1609)
 		plog::Info("crushing blow roll: unit type %d event %d, chance %d roll %d, %d item nodes hidden, %u so far",
 		           At<int32_t>(unit, UnitType), event, chance, roll, count, n);
 	}
@@ -874,14 +876,14 @@ auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept ->
 		if (otherList) {
 			ApplyWounds(game, unit, other, damage, &otherStacks);
 		}
-		if (const uint32_t m = ++g_splits; m <= 20 || m % 100 == 0) {
+		if (const uint32_t m = ++g_splits; pd2::HotSample(m)) {
 			plog::Info("open wounds split: class %d takes %d/256 per frame (halved), class %d list %s, stack %d (%u so far)",
 			           At<int32_t>(target, UnitClassId), damage, At<int32_t>(other, UnitClassId), otherList ? "yes" : "no",
 			           otherStacks, m);
 		}
 	}
 	const uint32_t n = ++g_wounds;
-	if (At<int32_t>(unit, UnitType) == 0 || n <= 20) {
+	if (pd2::HotSample(n)) {  // players too (#1609)
 		plog::Info("open wounds: unit type %d on unit type %d class %d, chance %d roll %d, level part %d, deep %d, "
 		           "resist %d, %d/256 per frame, stack %d%s, %u so far", At<int32_t>(unit, UnitType),
 		           At<int32_t>(target, UnitType), At<int32_t>(target, UnitClassId), chance, roll, base, deep, r,
@@ -902,6 +904,7 @@ constexpr int MaxCurseLists = 64;  // a unit holds a handful; more only stops a 
 std::atomic<uint32_t> g_curses {0};
 std::atomic<uint32_t> g_curseResisted {0};
 std::atomic<uint32_t> g_curseGate {0};
+std::atomic<uint32_t> g_gateFallbacks {0};  // ApplyUngated's "did not clear" lines, per cursed target
 
 // PD2's 0x1037c4c0 as its curse code calls it: value * (100 - resistance) / 100, truncated
 auto Resisted(int32_t value, int32_t resistance) noexcept -> int32_t {
@@ -961,7 +964,7 @@ auto MakeRoom(uint32_t dataFlag, Unit* caster, Unit* target, int32_t state, uint
 		}
 	}
 	const uint32_t n = ++g_curses;
-	if (n <= 20 || n % 100 == 0) {
+	if (pd2::HotSample(n)) {
 		plog::Info("curse: state %d, %d curse(s) on the target, %d slot(s) (caster %d), %s, %u so far", state, count,
 		           slots, own, same != nullptr ? "same state" : seen != nullptr ? "replaces the oldest" : "added", n);
 	}
@@ -994,7 +997,7 @@ auto ResistCurse(uint32_t dataFlag, Unit* target, const d2r::CurseParams* params
 		const int32_t resisted = Resisted(base, used);
 		setStat(dataFlag, list, stat, resisted, 0);
 		const uint32_t n = ++g_curseResisted;
-		if (n <= 20 || n % 100 == 0) {
+		if (pd2::HotSample(n)) {
 			plog::Info("curse resistance %d (used %d) on %s: aurastat%d stat %d %d -> %d, %u so far", resistance, used,
 			           player ? "player" : "monster", i + 1, stat, base, resisted, n);
 		}
@@ -1002,7 +1005,7 @@ auto ResistCurse(uint32_t dataFlag, Unit* target, const d2r::CurseParams* params
 }
 
 auto GateLog(uint32_t n) noexcept -> bool {
-	return n <= 20 || n % 100 == 0;
+	return pd2::HotSample(n);
 }
 
 // PD2's curse gate (0x1036d7d0) ahead of D2R's: a curse whose aurastat1 resists to 0 is cancelled, and stat 109 cuts
@@ -1059,7 +1062,9 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 		zeroed = StatOf(target, StatCurseDuration) == 0;
 		if (!zeroed) {  // stat 109 not where it was looked for: D2R's own rule applies, on the uncut duration
 			setStat(target, StatCurseDuration, base, 0);
-			plog::Info("curse gate: stat 109 %d did not clear (base %d), D2R's duration rule applies", duration, base);
+			if (pd2::HotSample(++g_gateFallbacks)) {
+				plog::Info("curse gate: stat 109 %d did not clear (base %d), D2R's duration rule applies", duration, base);
+			}
 		}
 	}
 	// The bit UnitHasState reads (SetStateGfxFlag writes another array)
@@ -1071,7 +1076,7 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 	const bool attracted = word != nullptr && hasState(target, StateAttract) != 0;
 	if (attracted) {
 		*word &= ~bit;
-		if (hasState(target, StateAttract) != 0) {
+		if (hasState(target, StateAttract) != 0 && pd2::HotSample(++g_gateFallbacks)) {
 			plog::Info("curse gate: the attract bit did not clear");
 		}
 	}
@@ -1081,7 +1086,7 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 	params->frames = asked;
 	if (zeroed) {
 		setStat(target, StatCurseDuration, base, 0);
-		if (const int32_t back = StatOf(target, StatCurseDuration); back != duration) {
+		if (const int32_t back = StatOf(target, StatCurseDuration); back != duration && pd2::HotSample(++g_gateFallbacks)) {
 			plog::Info("curse gate: stat 109 came back %d, not %d (base %d)", back, duration, base);
 		}
 	}
@@ -1177,7 +1182,7 @@ auto ApplyDarkPact(Unit* target, d2r::CurseParams* params, uint32_t dataFlag) no
 		return 0;
 	}
 	if (StateRefused(dataFlag, target)) {
-		if (const uint32_t n = ++g_darkPacts; n <= 20 || n % 100 == 0) {
+		if (const uint32_t n = ++g_darkPacts; pd2::HotSample(n)) {
 			plog::Info("dark pact: monster class %d refused (npc or not revivable), nothing happens, %u so far",
 			           At<int32_t>(target, UnitClassId), n);
 		}
@@ -1222,7 +1227,7 @@ auto ApplyDarkPact(Unit* target, d2r::CurseParams* params, uint32_t dataFlag) no
 		}
 	}
 	const uint32_t n = ++g_darkPacts;
-	const bool log = n <= 20 || n % 100 == 0;
+	const bool log = pd2::HotSample(n);
 	if (count < 1) {
 		if (log) {
 			plog::Info("dark pact: no curse on the target, nothing happens, %u so far", n);
@@ -1315,7 +1320,7 @@ auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
 	}
 	ResistCurse(dataFlag, target, params, list, fresh);
 	const uint32_t n = g_curses.load();
-	if (n <= 20 || n % 100 == 0) {
+	if (pd2::HotSample(n)) {
 		int held = 0;  // read back from the target, so the game check sees what D2R kept
 		const uint8_t* owner = At<const uint8_t*>(target, UnitListOwner);
 		int guard = 0;
@@ -1360,8 +1365,10 @@ auto SetPhasing(Unit* unit, bool on) noexcept -> void {
 		return;
 	}
 	d2r::Engine<void (*)(uint8_t*, uint32_t) noexcept>(PathSetCollisionMask)(path, want);
-	plog::Info("phasing: %s, unit type %d, collision mask 0x%x -> 0x%x, %u so far", on ? "on" : "off", type, mask,
-	           want, ++g_phasing);
+	if (const uint32_t n = ++g_phasing; pd2::HotSample(n)) {
+		plog::Info("phasing: %s, unit type %d, collision mask 0x%x -> 0x%x, %u so far", on ? "on" : "off", type, mask,
+		           want, n);
+	}
 }
 
 // The game the last durability callback came from; a session change discards the queued recounts with it
@@ -1416,7 +1423,7 @@ auto EquipStatCallback(Game* game, Unit* unit, Unit* item, uint64_t statLayer, i
 			SetPhasing(unit, newValue > 0);  // item_aura's case starts the aura at newValue (0x4705f6)
 		}
 		const uint32_t n = ++g_equipCallbacks;
-		if (n <= 20 || n % 100 == 0) {
+		if (pd2::HotSample(n)) {
 			plog::Info("skill on equip: unit type %d, skill %u, %d -> %d, level now %d, %u so far",
 			           At<int32_t>(unit, d2r::rva::UnitType), layer, oldValue, newValue,
 			           StatOf(unit, StatSkillOnEquip, static_cast<int32_t>(layer)), n);
@@ -1496,7 +1503,7 @@ auto EquipAuraTick(Game* game, Unit* unit, int32_t key, int32_t skill, int32_t s
 		SetPhasing(unit, true);
 	}
 	const uint32_t n = ++g_equipTicks;
-	if (n <= 20 || n % 100 == 0) {
+	if (pd2::HotSample(n)) {
 		plog::Info("skill on equip tick: skill %d level %d, state %d, next frame %d, %s, %u so far", skill, level, state,
 		           next, cast ? "cast" : "held", n);
 	}
@@ -1573,7 +1580,7 @@ void AddCharge(Game* game, Unit* item) noexcept {
 	d2r::Engine<void (*)(uint32_t, void*, uint32_t, int32_t, uint32_t, Unit*) noexcept>(SetListStatOf)(
 		dataFlag, list, StatChargedSkill, value + 1, layer, item);
 	const uint32_t n = ++g_chargesReplenished;
-	if (n <= 20 || n % 100 == 0) {
+	if (pd2::HotSample(n)) {
 		plog::Info("replenish charges: skill %d level %d, %d -> %d of %d, %u so far", skill, level, value & 0xff,
 		           (value & 0xff) + 1, value >> 8, n);
 	}
@@ -1779,7 +1786,7 @@ auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 		off = true;
 	}
 	const uint32_t n = off ? ++g_charmOffChecks : ++g_charmChecks;  // own cap, so a top-row charm cannot hide kept lines or flood
-	if (n <= 40 || n % 500 == 0 || (twin && ++g_charmTwinLogs <= CharmTwinLogCap)) {  // a twin answer is the #1288 case
+	if (pd2::HotLogsOn() && (n <= 40 || n % 500 == 0 || (twin && ++g_charmTwinLogs <= CharmTwinLogCap))) {  // a twin answer is the #1288 case
 		plog::Info("charm rows: item %p at x %u y %u, page %u, quality %d, unique row+1 %d, same-name twin in rows 5-8 %s, %u stat lists unlinked, active in D2R, %s, %u so far",
 		           static_cast<void*>(item), xy & 0xffff, row, page,
 		           d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemQuality)(item),
@@ -1842,6 +1849,188 @@ auto SwapThunkSlot(const D2RL::PluginContext* context, const sigscan::Entry& ent
 	return true;
 }
 
+// PD2's dye (transform_dye, set by the corruption recipes) recolours the item sprite, never its cell (#1529). PD2 stores the
+// colors.txt row + 1 (0 = none; the Annihilus corruptions' 10 is cred). No PluginSDK service draws items, so two draw paths
+// are hooked, each by a unique signature:
+// - Legacy: D2R picks an item's colour in one function (93847: 0x3710d0, D2Common Items.cpp): (player, item, out packed
+//   index, 0 body / 1 inventory) -> the 256-byte palette shift of (items.txt Transform +0x151 or InvTrans +0x152, colors.txt
+//   row), or null; its unique and set branches read invtransform the same way. A dyed item takes that path with the dye.
+// - HD: the shift above becomes a colour transform class (itemtransforms.json) that recolours only the hues it targets, so
+//   most HD art keeps its colour. The HD item draw (0xc7020: item, sprite, packed xy, scale, alpha; inventory and cursor)
+//   fills a draw record and passes it to the UI sprite draw (0x858510: sprite, xy, record, scale). For a dyed item the
+//   record drops the transform (+0x1d) and takes the dye as its RGBA multiplier (+0x00, weight +0x0c = 1), as in game.
+//   Only that one call (0xc71f3) is redirected, not 0x858510's entry, which other plugins hook (better-automap). Both
+//   callers of 0xc7020 run it only in HD (they test 0x846210 first and draw legacy items elsewhere), so no mode test here.
+using ItemColorFn = const uint8_t* (*)(Unit* player, Unit* item, uint8_t* index, int32_t inventory) noexcept;
+using PaletteShiftFn = const uint8_t* (*)(int32_t type, int32_t color) noexcept;
+using ItemDrawFn = void (*)(Unit* item, void* sprite, uint64_t xy, float scale, void* alpha) noexcept;
+using SpriteDrawFn = void (*)(void* sprite, int32_t* xy, float* record, float scale) noexcept;
+ItemColorFn g_itemColorOriginal = nullptr;
+PaletteShiftFn g_paletteShift = nullptr;
+ItemDrawFn g_itemDrawOriginal = nullptr;
+SpriteDrawFn g_spriteDrawOriginal = nullptr;
+thread_local int32_t g_drawDye = -1;  // the dye of the item whose HD draw is running, -1 none
+std::atomic<uint32_t> g_dyeColors {0};
+std::atomic<uint32_t> g_dyeDraws {0};
+
+// RGB multiplier per colors.txt row, in its order (the test checks the codes).
+constexpr float DyeRgb[21][3] = {
+    {1.0f, 1.0f, 1.0f},     // whit
+    {0.8f, 0.8f, 0.8f},     // lgry
+    {0.5f, 0.5f, 0.5f},     // dgry
+    {0.25f, 0.25f, 0.25f},  // blac
+    {0.5f, 0.7f, 1.0f},     // lblu
+    {0.3f, 0.4f, 0.8f},     // dblu
+    {0.3f, 0.6f, 1.0f},     // cblu
+    {1.0f, 0.5f, 0.5f},     // lred
+    {0.6f, 0.15f, 0.15f},   // dred
+    {1.0f, 0.2f, 0.2f},     // cred
+    {0.5f, 1.0f, 0.5f},     // lgrn
+    {0.2f, 0.55f, 0.2f},    // dgrn
+    {0.3f, 1.0f, 0.4f},     // cgrn
+    {1.0f, 1.0f, 0.55f},    // lyel
+    {0.75f, 0.7f, 0.2f},    // dyel
+    {1.0f, 0.85f, 0.45f},   // lgld
+    {0.75f, 0.6f, 0.25f},   // dgld
+    {0.8f, 0.5f, 1.0f},     // lpur
+    {0.5f, 0.25f, 0.7f},    // dpur
+    {1.0f, 0.6f, 0.2f},     // oran
+    {1.0f, 1.0f, 1.0f},     // bwht
+};
+
+auto DyeOf(Unit* item) noexcept -> int32_t {
+	const int32_t color = item != nullptr ? Stat(item, StatDye) - 1 : -1;
+	return color >= 0 && color < 21 ? color : -1;
+}
+
+auto DyedItemColor(Unit* player, Unit* item, uint8_t* index, int32_t inventory) noexcept -> const uint8_t* {
+	const int32_t color = DyeOf(item);
+	const auto* row = color >= 0 ? d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(d2r::rva::ItemRecord)(
+	                                   d2r::api.unitDataFlag(item), At<int32_t>(item, d2r::rva::UnitClassId))
+	                             : nullptr;
+	if (row == nullptr) {
+		return g_itemColorOriginal(player, item, index, inventory);
+	}
+	// The unique branch packs the body type, which charms lack (Transform 0), so a type-0 item packs its InvTrans.
+	const uint8_t type = inventory != 0 ? row[0x152] : row[0x151];
+	const uint8_t packed = row[0x151] != 0 ? row[0x151] : type;
+	*index = packed >= 1 && packed <= 8 ? static_cast<uint8_t>(packed << 5 | color) : 0;
+	if (plog::Sample(g_dyeColors)) {
+		plog::Info("dye tint: item %p colour %d, %s, type %u (%u so far)", static_cast<void*>(item), color,
+		           inventory != 0 ? "inventory" : "body", type, g_dyeColors.load());
+	}
+	return g_paletteShift(type, color);
+}
+
+auto DyedItemDraw(Unit* item, void* sprite, uint64_t xy, float scale, void* alpha) noexcept -> void {
+	g_drawDye = DyeOf(item);
+	g_itemDrawOriginal(item, sprite, xy, scale, alpha);
+	g_drawDye = -1;
+}
+
+auto DyedSpriteDraw(void* sprite, int32_t* xy, float* record, float scale) noexcept -> void {
+	const int32_t color = g_drawDye;
+	if (color < 0 || record == nullptr) {
+		return g_spriteDrawOriginal(sprite, xy, record, scale);
+	}
+	g_drawDye = -1;  // the item draw's one sprite: nothing it draws later is tinted
+	alignas(16) float copy[0x2a];  // the record (0xa8 bytes, the item draw's local); D2R's stays as it was
+	std::memcpy(copy, record, sizeof(copy));
+	std::memcpy(copy, DyeRgb[color], sizeof(DyeRgb[color]));
+	copy[3] = 1.0f;
+	reinterpret_cast<uint8_t*>(copy)[0x1d] = 0;
+	if (plog::Sample(g_dyeDraws)) {
+		plog::Info("dye tint: HD sprite colour %d, rgb %.2f %.2f %.2f (%u so far)", color, copy[0], copy[1], copy[2],
+		           g_dyeDraws.load());
+	}
+	g_spriteDrawOriginal(sprite, xy, copy, scale);
+}
+
+// The HD item draw's one call of the UI sprite draw (93847: 0xc71f3, `E8 rel32` at +22 of this match) is pointed at a
+// relay page that jumps to DyedSpriteDraw, by a MutationService byte patch with the stock call as expected bytes.
+auto PatchItemSpriteCall(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t match = 0;
+	if (sigscan::ScanUnique(context->exeBase,
+	                        "f3 0f 11 44 24 70 0f 28 de 4c 8d 44 24 60 48 8d 54 24 28 49 8b cf e8 ?? ?? ?? ?? c6 47 04 00", 0,
+	                        &match) != 1) {
+		return false;
+	}
+	const uint64_t site = context->exeBase + match + 22;
+	uint8_t stock[5];
+	std::memcpy(stock, reinterpret_cast<const void*>(site), 5);
+	int32_t rel = 0;
+	std::memcpy(&rel, stock + 1, 4);
+	const D2RL::MutationService* mutations = nullptr;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize)) {
+		return false;
+	}
+	uint8_t* relay = AllocateRelay(context->exeBase);
+	if (relay == nullptr) {
+		return false;
+	}
+	const uint64_t entry = reinterpret_cast<uint64_t>(&DyedSpriteDraw);
+	const uint8_t jump[6] = {0xff, 0x25, 0, 0, 0, 0};  // jmp [rip+0]; &DyedSpriteDraw
+	std::memcpy(relay, jump, sizeof(jump));
+	std::memcpy(relay + sizeof(jump), &entry, 8);
+	const int64_t reach = static_cast<int64_t>(reinterpret_cast<uint64_t>(relay)) - static_cast<int64_t>(site + 5);
+	const int32_t rel32 = static_cast<int32_t>(reach);
+	uint8_t call[5] = {0xe8};
+	std::memcpy(call + 1, &rel32, 4);
+	DWORD old;
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (reach != rel32 || VirtualProtect(relay, 0x1000, PAGE_EXECUTE_READ, &old) == 0 ||
+	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		VirtualFree(relay, 0, MEM_RELEASE);
+		return false;
+	}
+	g_spriteDrawOriginal = reinterpret_cast<SpriteDrawFn>(site + 5 + static_cast<int64_t>(rel));  // before the call can land
+	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
+	                                              .rva = site - context->exeBase,
+	                                              .expected = stock,
+	                                              .expectedSize = 5,
+	                                              .bytes = call,
+	                                              .size = 5};
+	D2RL::Mutations::OperationHandle operation = 0;
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	const bool staged = mutations->stageBytePatch(context, transaction, &patch, &operation) == D2RL::Mutations::Result::Success;
+	if (!staged || mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		// a failed commit that did not restore the stock call may still aim at the relay: keep the page then
+		if (!staged || D2RL::Mutations::HasFlag(result.flags, D2RL::Mutations::CommitFlags::OriginalStateRestored)) {
+			VirtualFree(relay, 0, MEM_RELEASE);
+		}
+		return false;
+	}
+	return true;
+}
+
+// "" when both parts are in, else which part failed (for the install report).
+auto InstallDyeTint(const D2RL::PluginContext* context) noexcept -> const char* {
+	uint64_t shift = 0;
+	static constexpr uint8_t ColorEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x44, 0x89, 0x4c, 0x24, 0x20, 0x55, 0x56, 0x57,
+	                                         0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57};
+	// mov r11,rsp / push rbp / push rdi / push r15 / lea rbp,[r11-0xb8]
+	static constexpr uint8_t DrawEntry[] = {0x4c, 0x8b, 0xdc, 0x55, 0x57, 0x41, 0x57, 0x49, 0x8d, 0xab, 0x48, 0xff, 0xff, 0xff};
+	if (sigscan::ScanUnique(context->exeBase, "48 89 5c 24 10 57 48 83 ec 20 48 63 d9 48 63 fa 83 fb 09 7d 05 83 ff 15 7c 1e", 0, &shift) == 1) {
+		g_paletteShift = reinterpret_cast<PaletteShiftFn>(context->exeBase + shift);
+	}
+	const bool legacy = g_paletteShift != nullptr &&
+	                    sigscan::HookBySignature(
+	                        context, "ItemColor",
+	                        "48 89 5c 24 08 44 89 4c 24 20 55 56 57 41 54 41 55 41 56 41 57 48 8b ec 48 83 ec 30 45 8b e1 4d 8b e8 48 8b fa 4c 8b f9 48 85 d2 0f 84",
+	                        0, ColorEntry, sizeof(ColorEntry), DyedItemColor, &g_itemColorOriginal);
+	// the call first: the item draw hook only marks the draw the redirected call tints
+	const bool hd = PatchItemSpriteCall(context) &&
+	                sigscan::HookBySignature(context, "HdItemDraw",
+	                                         "4c 8b dc 55 57 41 57 49 8d ab 48 ff ff ff 48 81 ec a0 01 00 00 41 0f 29 73 b8", 0,
+	                                         DrawEntry, sizeof(DrawEntry), DyedItemDraw, &g_itemDrawOriginal);
+	return legacy && hd ? ""
+	       : hd         ? " FAILED (legacy colour: signature or bytes differ)"
+	       : legacy     ? " FAILED (HD sprite: signature, bytes or relay)"
+	                    : " FAILED (legacy colour and HD sprite)";
+}
+
 auto InstallCharmRows(const D2RL::PluginContext* context) noexcept -> bool {
 	sigscan::Entry* const own[] = {&CharmCallSite, &ReqDisplaySite};
 	sigscan::Resolve(own, 2, context->exeBase, nullptr, 0);
@@ -1880,7 +2069,7 @@ auto IsMapUnit(Unit* item) noexcept -> bool {
 
 auto MapMagicMaker(Unit** item, void* request) noexcept -> uint64_t {
 	if (item != nullptr && IsMapUnit(*item)) {
-		if (plog::Sample(g_mapMagicRefused)) {
+		if (pd2::HotSample(g_mapMagicRefused)) {
 			plog::Info("map quality: a map was going to be magic, refused (%u so far)", g_mapMagicRefused.load());
 		}
 		return 0;
@@ -1893,7 +2082,9 @@ auto MapItemMaker(void* game, Unit** item, void* request) noexcept -> uint64_t {
 	if (made != 0 && item != nullptr && IsMapUnit(*item)) {
 		const int32_t quality = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemQuality)(*item);
 		const uint32_t n = ++g_mapMade[quality >= 0 && quality < 10 ? quality : 0];
-		plog::Info("map quality: item maker made a map, quality %d (%u of that quality)", quality, n);
+		if (pd2::HotSample(n)) {
+			plog::Info("map quality: item maker made a map, quality %d (%u of that quality)", quality, n);
+		}
 	}
 	return made;
 }
@@ -1961,7 +2152,7 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	// Outer cap: at most one line a second, so a full inventory scanned by two callers stays quiet whatever the ring holds
 	static std::atomic<uint64_t> lastTick {0};
 	const uint64_t now = GetTickCount64();
-	if (++slot->n <= 1 && now - lastTick.load() >= 1000) {
+	if (++slot->n <= 1 && pd2::HotLogsOn() && now - lastTick.load() >= 1000) {
 		lastTick = now;
 		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStat);
 		plog::Info("map stack: caller +0x%llx %08x q%d/%d quality %d/%d -> %s (%s %d)", static_cast<unsigned long long>(caller),
@@ -2037,6 +2228,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	// none (core-events' hooks identify all), both with keep 1, so the book stays after its use
 	const bool unlimited = PatchUnlimitedBooks(context);
 	const bool charms = InstallCharmRows(context);
+	const char* const dye = InstallDyeTint(context);
 	const bool mapStack = sigscan::HookBySignature(
 	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
 	    d2r::rva::ItemsCanMergeEntry, sizeof(d2r::rva::ItemsCanMergeEntry), MapStackEqual, &g_stackEqualOriginal);
@@ -2055,22 +2247,22 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; map stacking%s; no magic maps%s; map maker log%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
 	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
 	              equip ? "" : " FAILED (bytes differ)", replenish ? "" : " FAILED (bytes differ)",
 	              unlimited ? "" : " FAILED (entries not empty, or no mutation service)",
-	              charms ? "" : " FAILED (signature or bytes differ)", mapStack ? "" : " FAILED (bytes differ)",
+	              charms ? "" : " FAILED (signature or bytes differ)", dye, mapStack ? "" : " FAILED (bytes differ)",
 	              noMagicMaps ? " (hooked when tables load)" : " FAILED (no table listener)", mapMakerLog ? "" : " FAILED (signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
-	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0);
+	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 14;
+	return 15;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {

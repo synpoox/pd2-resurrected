@@ -1,0 +1,1 @@
+- Added +35% movement speed to Stamina Shrines (#1572).

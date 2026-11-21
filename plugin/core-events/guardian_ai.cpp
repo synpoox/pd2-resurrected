@@ -13,6 +13,7 @@
 
 #include "ai_hooks.h"
 #include "log.h"
+#include "hot_log.h"
 #include "map_events.h"
 
 #include <intrin.h>
@@ -68,7 +69,7 @@ auto Blink(Game* game, Unit* unit, const uint8_t* rec, void* room) noexcept -> b
 		return false;
 	}
 	const int32_t ok = Cast(game, unit, rec, 1, nullptr, xy[0], xy[1]);
-	if (plog::Sample(g_blinks)) {
+	if (pd2::HotSample(g_blinks)) {
 		plog::Info("guardian ai: class %d blinks to (%d, %d) -> %d (%u so far)", At<int32_t>(unit, d2r::rva::UnitClassId),
 		           xy[0], xy[1], ok, g_blinks.load());
 	}
@@ -114,7 +115,7 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	}
 	if (roll < 80) {
 		Cast(game, unit, rec, 2, target, 0, 0);
-		if (plog::Sample(g_bolts)) {
+		if (pd2::HotSample(g_bolts)) {
 			plog::Info("guardian ai: class %d casts skill 2 (%u so far)", At<int32_t>(unit, UnitClassId), g_bolts.load());
 		}
 		return;

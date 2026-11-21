@@ -43,6 +43,8 @@ toolkit's schema 3 refuses a catalog without it). It fails when `[catalog]` or t
 
 ## The pinned minimum (#1300)
 
+The release workflow builds the exact d2r-tools revision in tools/cartographer.pin with its PluginSDK and records the revision and DLL hash in the package.
+
 `tools/cartographer.pin` holds the oldest d2r-tools commit whose Cartographer may ship or install (d78d3bc1: knows all 25 tilesets; older builds skip 12 of them and those map items refuse to open). `tools/check_cartographer.ps1` enforces it for `install.ps1` and the `Package` step of `release.yml`. The DLL has no build stamp, so the check looks inside it for tileset names (`KurastSewer`, `Catacombs`, `Tombs`, `MazeTemple`, the last added at f4964090): they prove all 25 tilesets, not the exact commit; in the release it also checks `CARTOGRAPHER_COMMIT` descends from the pin when a `d2r-tools` checkout sits beside the toolkit. A refused DLL: `git -C <d2r-tools> pull`, `powershell tools\build.ps1 -Plugin cartographer`, then reinstall. Raise the pin when a Cartographer change is required.
 
 ## Arena status

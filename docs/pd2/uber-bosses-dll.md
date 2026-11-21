@@ -344,8 +344,11 @@ With more than one player (`game+0x90`, where values above 8 count as 1), Unique
 | Worldstone Shard `wss` | in PD2's corrupted zone | Corrupted Zone 1019 | 1 in 200 |
 | Demonic Cube `imrn` | any monster | Demonic Cube 1039-1041 | 1 in 1,000,000 |
 
-The same function rolls the other odds-only TCs: lbox, lpp, rkey, rtp, rid, llmr, lsvl, the Uber Ancients keys, map drops
-in PD2 levels, the map-stat item drops and corrupted-zone maps. Those belong to the map system and the items.
+The same function also rolls, on any monster in any area: Larzuk's Puzzlebox `lbox` (TC `Larzuk Puzzlebox`), Puzzlepiece `lpp`
+(`Larzuk Puzzlepiece`), Skeleton Key `rkey` (`SkeletonKey`), TP Book `rtp` (`Horadric TP Book`), ID Book `rid` (`Horadric ID Book`),
+Lilith's Mirror `llmr` (`Lillith Mirror`) and Vial of Lightsong `lsvl` (`Vial of Lightsong`), each as N/NM/H rows (zero-based data rows of the port's treasureclassex.txt, N first: lbox 1004, lpp 1007, rkey 1010, rid 1013, rtp 1016, llmr 1019, lsvl 1022; the indices in the table above are PD2's own file's); the port rolls
+them in key_drops ([#1600](https://github.com/synpoox/pd2-resurrected/issues/1600)). It also rolls the Uber Ancients keys `uba*`
+(cut), the map drops in PD2 levels, the map-stat item drops and corrupted-zone maps: those belong to the map system.
 
 For the port, the Talisman's and the Worldstone Shard's corrupted-zone condition becomes "in an active Terror Zone" at
 the same TC ([#153](https://github.com/synpoox/pd2-resurrected/issues/153), [#348](https://github.com/synpoox/pd2-resurrected/issues/348)).

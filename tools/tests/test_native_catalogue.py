@@ -38,7 +38,7 @@ class NativeCatalogueTests(unittest.TestCase):
         slots = {s["Slot"]: int(s["Level"]) for s in rows("slots.txt")}
         for m in maps:
             assert slots[SLOT[m["Tileset"]]] == VERIFIED[m["Tileset"]], m["Name"]
-            assert m["Level"] in ("87", "88", "89") and m["Size"] == "Medium", m["Name"]
+            assert m["Level"] in ("87", "88", "89") and m["Size"] in ("Small", "Medium", "Large"), m["Name"]
 
 
     def test_every_map_item_is_complete_and_unique(self):

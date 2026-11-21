@@ -211,7 +211,11 @@ the event's state:
   (`0x37dc70`: packet 0x53, D2's Tainted Sun) and plays sounds 0xa78 and 0x24 to the user's level (`0x37f240`), state 2.
   While the state is 2-49 each room activation draws `rand() % 6`: 1, 2 or 3 spawn a group of 993, 994 or 995 (MinGrp to
   MaxGrp read from the monstats record, +0x2f and +0x30: 3-6, 8-14, 1) at the room's centre +- 5 (spot size 10).
-  `0x36eb30`, past progress 90: state 50, the darkness lifted (`0x37dc70` with 0), sound 0x26d for the level's players
+  A shadow's death step (`0x378170`, class 993-995, state 2-49) rolls `rand % 0x960 < 1000 / (MinGrp + MaxGrp)` and
+  drops a Pandemonium key by it (`0x36ebc0`): 993 Hate `pk2`, 994 Terror `pk1`, 995 Destruction `pk3`. Only a drop that
+  worked counts (state + 1); past 6 counted drops (state - 2 > 5) it runs `0x36eb30`. The port rolls on the monster's
+  seed and drops at the monster, not through PD2's spot search ([#1582](https://github.com/synpoox/pd2-resurrected/issues/1582)).
+  `0x36eb30`, past progress 90 or those 6 keys: state 50, the darkness lifted (`0x37dc70` with 0), sound 0x26d for the level's players
   (`0x37f240`, packet 0x2c), and every 993-995 in the game killed without drops (`0x356e00`; it reads only the first
   monster of each of the 128 lists at `game+0x1320`).
 

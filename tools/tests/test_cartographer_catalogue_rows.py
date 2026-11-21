@@ -20,17 +20,23 @@ class CartographerCatalogueRowsTests(unittest.TestCase):
         assert len({m["Tileset"] for m in maps}) == len(maps) == len({m["Name"] for m in maps})
 
 
+    def test_leorics_passage_has_no_cows(self):
+        """#1595: Leoric's Passage spawned only cows; only Blood Moon (the cow level) keeps hellbovineMap."""
+        by = {m["Name"]: m["Monsters"].split(",") for m in rows("maps.txt")}
+        assert by["Leoric's Passage"] == ["sk_archermap", "zealotmap", "doomknightmap", "oblivionknightmap"]
+        assert [n for n, ms in by.items() if "hellbovineMap" in ms] == ["Blood Moon"]
+
     def test_maps_are_medium_and_each_in_one_tier(self):
         """#1304: a map's tier type (t1m..t3m) sets its Level (87..89) and its tooltip's tier line; about 8 per tier."""
         data_tables.need(self)
         misc = {r["code"]: r for r in data_tables.rows("misc")}
         counts = {}
         for m in rows("maps.txt"):
-            assert m["Size"] == "Medium" and m["MinCharLevel"] == "80", m["Name"]
+            assert m["Size"] in ("Small", "Medium", "Large") and m["MinCharLevel"] == "80", m["Name"]
             s = misc[m["Item"]]
             n = s["type"][1]
             assert s["type"] in ("t1m", "t2m", "t3m") and m["Level"] == str(86 + int(n)), m["Name"]
-            assert (s["spelldesc"], s["spelldescstr"], s["spelldesccalc"]) == ("1", f"MapTier{n}", ""), m["Name"]
+            assert (s["spelldesc"], s["spelldescstr"], s["spelldesccalc"]) in (("1", f"MapTier{n}", ""), ("1", f"MapTier{m['Item']}", "")), m["Name"]  # the second has its immunities line (#1552)
             # a plain string per tier: spelldesc 2 scaled the value by class (potion scaling) when stat1 was hpregen
             assert (s["stat1"], s["calc1"]) == ("", ""), m["Name"]
             counts[n] = counts.get(n, 0) + 1

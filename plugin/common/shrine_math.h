@@ -9,8 +9,9 @@
 namespace pd2::shrines {
 
 inline constexpr int32_t ShareDistanceSq = 450;
-inline constexpr int FirstBooster = 6, LastBooster = 15, GemShrine = 18;
+inline constexpr int FirstBooster = 6, StaminaShrine = 14, LastBooster = 15, GemShrine = 18;
 inline constexpr int32_t MaxResistBonus = 10;
+inline constexpr int32_t StaminaVelocityBonus = 35;
 
 inline constexpr auto IsBooster(int code) noexcept -> bool { return code >= FirstBooster && code <= LastBooster; }
 

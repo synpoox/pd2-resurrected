@@ -44,8 +44,17 @@ constexpr uint32_t CountCheckCall = 12;
 sigscan::Entry ServerAddSite {"StashTabServerAdd", "stash tabs", sigscan::Kind::Code, 0, 0,
                               "41 8b d7 48 8b cf e8 ?? ?? ?? ?? 4c 8b f8 48 85 c0 0f 85"};
 constexpr uint32_t ServerAddCall = 6;
-constexpr uint64_t SendItem = 0x535f60;      // (game, owner, item, flags, mode, 4 position dwords): item update to clients
-constexpr uint64_t SetItemSending = 0x34e410;  // (item, on): the caller brackets its 0x2000 send with it
+// The caller's own update send, which also checks the frame: `mov edx,1 / mov rcx,r15 / call SetItemSending / mov eax,[rbp-0x48]
+// / mov r9d,0x2000 / ... / the position dwords at rbp-0x50, -0x4c, -0x44, -0x48 / mov [rsp+0x20],2 / call SendItem / xor edx,edx
+// / mov rcx,r15 / call SetItemSending` (93847: 0x4f9eac). The three calls give the engine functions, so nothing is a fixed RVA:
+//   SendItem (game, owner, item, flags, mode, 4 position dwords): item update to clients
+//   SetItemSending (item, on): the caller brackets its 0x2000 send with it
+constexpr const char* SendPattern =
+    "ba 01 00 00 00 49 8b cf e8 ?? ?? ?? ?? 8b 45 b8 41 b9 00 20 00 00 48 8b 4d 88 4d 8b c7 89 44 24 40 48 8b d7 8b 45 bc 89 44 "
+    "24 38 8b 45 b4 89 44 24 30 8b 45 b0 89 44 24 28 c7 44 24 20 02 00 00 00 e8 ?? ?? ?? ?? 33 d2 49 8b cf e8 ?? ?? ?? ??";
+sigscan::Entry SetSendingOnCall {"StashTabSetSendingOn", "stash tabs", sigscan::Kind::Rip, 9, 13, SendPattern};
+sigscan::Entry SendItemCall {"StashTabSendItem", "stash tabs", sigscan::Kind::Rip, 66, 70, SendPattern};
+sigscan::Entry SetSendingOffCall {"StashTabSetSendingOff", "stash tabs", sigscan::Kind::Rip, 76, 80, SendPattern};
 constexpr int32_t StatQuantity = 70;
 constexpr int32_t CountByte = 0x9c;  // item data
 
@@ -92,9 +101,9 @@ auto Add(void* proxy, uint64_t itemClass, Unit* rbx, uint8_t* rbp) noexcept -> U
 	int32_t added = 1;
 	for (; added < units; ++added) {
 		// the update for the item just added, as the caller sends it after the last
-		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetItemSending)(slot, 1);
-		d2r::Engine<SendFn>(SendItem)(game, proxy, slot, 0x2000, 2, at(-0x50), at(-0x4c), at(-0x44), at(-0x48));
-		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetItemSending)(slot, 0);
+		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetSendingOnCall.rva)(slot, 1);
+		d2r::Engine<SendFn>(SendItemCall.rva)(game, proxy, slot, 0x2000, 2, at(-0x50), at(-0x4c), at(-0x44), at(-0x48));
+		d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetSendingOffCall.rva)(slot, 0);
 		if (g_add(proxy, itemClass) == nullptr) {
 			plog::Warn("stash tabs: add %d of %d for class %d failed, slot count %u", added + 1, units,
 			           static_cast<int32_t>(itemClass), SlotCount(slot));
@@ -136,8 +145,16 @@ auto MakeStub(const void* target) noexcept -> uint64_t {
 }  // namespace
 
 auto InstallStashStacks(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
-	sigscan::Entry* const own[] = {&CountCheckSite, &ServerAddSite};
-	sigscan::Resolve(own, 2, context->exeBase, nullptr, 0);
+	sigscan::Entry* const own[] = {&CountCheckSite, &ServerAddSite, &SetSendingOnCall, &SendItemCall, &SetSendingOffCall};
+	sigscan::Resolve(own, 5, context->exeBase, nullptr, 0);
+	for (const sigscan::Entry* e : own) {
+		plog::Info("stash tabs: %s %s (rva 0x%llx)", e->name, sigscan::StateText(e->state), static_cast<unsigned long long>(e->rva));
+	}
+	if (SetSendingOnCall.rva == 0 || SendItemCall.rva == 0 || SetSendingOffCall.rva == 0 ||
+	    SetSendingOnCall.rva != SetSendingOffCall.rva) {
+		std::snprintf(report, reportSize, "stash tabs FAILED (send functions not found)");
+		return false;
+	}
 	if (ThunkSlotRva(ServerAddSite, ServerAddCall) == 0 || ThunkSlotRva(CountCheckSite, CountCheckCall) == 0) {
 		std::snprintf(report, reportSize, "stash tabs FAILED (call sites or thunks differ)");
 		return false;

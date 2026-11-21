@@ -981,9 +981,9 @@
  },
  {
   "infernal_spire": {
-   "normal": "pd2/invdgrgull",
-   "uber": "pd2/invdgrgull",
-   "ultra": "pd2/invdgrgull"
+   "normal": "knife/dagger",
+   "uber": "knife/dagger",
+   "ultra": "knife/dagger"
   }
  },
  {

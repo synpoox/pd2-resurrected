@@ -24,6 +24,7 @@ It does **not** cover, and grants no rights to:
 | Left Click Auras | [CelestialRayOne/d2rloader_plugins](https://github.com/CelestialRayOne/d2rloader_plugins) | CelestialRayOne | MIT |
 | Ethereal Item Rules, Progressive Affixes | [RuffDood/RuffnecKk-D2RLoader-Suite](https://github.com/RuffDood/RuffnecKk-D2RLoader-Suite) | RuffnecKk | MIT |
 | Cast Triggers | [d2rloader.net hub](https://d2rloader.net/) | RuffnecKk | No license stated |
+| Bind and Summon | [d2rloader.net hub](https://d2rloader.net/hub/plugins/bind-and-summon) | yinyin333333 | No license stated |
 | Mercenary Drop On Hire | [yinyin333333/D2RL-yin-Junk-Room](https://github.com/yinyin333333/D2RL-yin-Junk-Room) | yinyin333333 | No license stated |
 | DPS Counter | [synpoox/d2r-tools](https://github.com/synpoox/d2r-tools) | synpoox | MIT (our own plugin) |
 | Potion Counter | [synpoox/d2r-tools](https://github.com/synpoox/d2r-tools) | synpoox | MIT (our own plugin) |
