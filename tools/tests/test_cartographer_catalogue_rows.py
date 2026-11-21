@@ -23,7 +23,7 @@ class CartographerCatalogueRowsTests(unittest.TestCase):
     def test_leorics_passage_has_no_cows(self):
         """#1595: Leoric's Passage spawned only cows; only Blood Moon (the cow level) keeps hellbovineMap."""
         by = {m["Name"]: m["Monsters"].split(",") for m in rows("maps.txt")}
-        assert by["Leoric's Passage"] == ["reanimatedhordemap", "bloodlordmap", "sk_archermap", "zealotmap"]
+        assert by["Leoric's Passage"] == ["sk_archermap", "zealotmap", "doomknightmap", "oblivionknightmap"]
         assert [n for n, ms in by.items() if "hellbovineMap" in ms] == ["Blood Moon"]
 
     def test_maps_are_medium_and_each_in_one_tier(self):

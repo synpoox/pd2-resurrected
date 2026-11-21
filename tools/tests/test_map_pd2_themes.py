@@ -15,7 +15,7 @@ THEMED = {
     "m10": ("Ashen Plains", "sandleapermap2,thornhulkmap2,pantherwomanmap2,mosquitomap2,fetishmap2,slingermap2,deathmaulermap2,cantormap2", "Borq the Consumed"),
     "m12": ("Blood Moon", "hellbovineMap", "The Cow Queen"),
     "m13": ("Ruins of Viz'jun", "cr_lancermap,goatmanmap,cr_archermap,bigheadmap,cantormap,unravelermap,arachmap,thornhulkmap,sandleapermap,mosquitomap,fetishshamanmap", "Karvarousku the Cartographer"),
-    "m14": ("Leoric's Passage", "hellbovineMap", "Rotting Horror"),
+    "m14": ("Leoric's Passage", "sk_archermap,zealotmap,doomknightmap,oblivionknightmap", "Rotting Horror"),
     "m16": ("Khazra Den", "cr_archermap2,cr_lancermap2,goatmanmap2,fallenmap2", "Indio The Insane"),
     "m18": ("Bastion Keep", "fallenmap2,goatmanmap2,fallenshamanmap2,siegebeastmap2", "Johnathan The Damned"),
     "m17": ("Sewers of Harrogath", "fetishmap2,minionmap2,vilemothermap,fetishshamanmap,bloodlordmap2,mosquitomap2,sandleapermap2,arachmap", "The Mad Philosopher"),
