@@ -25,7 +25,12 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 - **PD2.** `ProjectDiablo.dll` keeps `equipment_lock` in its settings and sends it to the server (packet 0x5c); its wrappers of
   the 1.13c body-slot handlers refuse while it is on, and also refuse picking up magic or better charms from the inventory.
 
+- **Controller.** `controller/playerinventoryoriginallayouthd.json` (the expansion layout is based on it) holds the same two buttons
+  at the grid's bottom right, under its last column (x 1124, y 1690, the grid's right edge 1196). D-pad right from the gold button
+  focuses it, A toggles it (same click message). The mercenary tab shows the inventory panel too, so the padlock is on both tabs
+  ([#1660](https://github.com/synpoox/pd2-resurrected/issues/1660)).
+
 ## Differences
 
 Listed in [deviations](../deviations.md) (Lock Inventory): no charm lock, single player and host
-only, no sound, no legacy-graphics or controller-layout button.
+only, no sound, no legacy-graphics button.

@@ -37,9 +37,47 @@
                 "navigation": {
                     "left": { "panelBoundary": true },
                     "up": { "name": "grid" },
+                    "right": { "name": "InventoryLock" },
                 },
                 "buttonLegendAction": "select",
                 "buttonLegendString": "@strGoldDrop"
+            },
+        },
+        {
+            "type": "ButtonWidget", "name": "InventoryLock",
+            "fields": {
+                // PD2R #1660: bottom right under the grid, right edges aligned
+                "rect": { "x": 1124, "y": 1690 },
+                "filename": "PANEL/pd2r/inventory_lock",
+                "normalFrame": 0,
+                "pressedFrame": 1,
+                "hoveredFrame": 0,
+                "disabledFrame": 0,
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/InventoryLock",
+                "buttonLegendAction": "select",
+                "navigation": {
+                    "left": { "name": "gold_button" },
+                    "up": { "name": "grid" },
+                },
+            },
+        },
+        {
+            "type": "ButtonWidget", "name": "InventoryLockOn",
+            "fields": {
+                // PD2R #1660: bottom right under the grid, right edges aligned
+                "rect": { "x": 1124, "y": 1690 },
+                "filename": "PANEL/pd2r/inventory_lock",
+                "normalFrame": 2,
+                "pressedFrame": 3,
+                "hoveredFrame": 2,
+                "disabledFrame": 2,
+                "visible": false,
+                "onClickMessage": "PanelManager:OpenPanel:core-ui/InventoryLock",
+                "buttonLegendAction": "select",
+                "navigation": {
+                    "left": { "name": "gold_button" },
+                    "up": { "name": "grid" },
+                },
             },
         },
         {

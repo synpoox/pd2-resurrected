@@ -44,6 +44,7 @@ No control is a PD2 mirror yet; see [PD2 binds](#pd2-binds) for each PD2 bind's 
 | D-pad up / down | Moves focus between the amulet slot and the confirm button | altar | Our own | works (#1456: the first DOWN lights the confirm button); amulet pickup and place not proven |
 | A on the altar | Opens the altar panel with the pad frame, the help bar and focus on the amulet slot; B closes it | world | D2R native | works (#1456, `docs/research/controller/altar-world-focus.md`) |
 | D-pad | Moves focus over the mercenary's gear, laid out like the inventory's (gloves, belt and right ring below the torso row; boots, amulet and left ring on the right; taller panel, `controller/hirelinginventorypanelhd.json`, #1627, #1657) | mercenary | Our own | untested |
+| D-pad right from the gold button, then A | Focuses the inventory padlock (bottom right under the grid) and toggles Lock Inventory (`controller/playerinventoryoriginallayouthd.json`, #1660) | inventory, mercenary | Our own | untested |
 | A, X, B, Y, RB, RT | Skill slots 1 to 6 | world | D2R native | from strings (`ControllerHelpSkill1..6`), not tested |
 | LT | Swaps the skill bar (Skills Bar and Skills Back Bar) | world | D2R native | from strings (`ControllerHelpSkillsBar`, `ControllerHelpSkillsBackBar`), not tested |
 | L3 | Run / walk toggle | world | D2R native | from strings (`ControllerHelpRun`), not tested |
