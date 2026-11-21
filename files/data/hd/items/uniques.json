@@ -1723,9 +1723,9 @@
  },
  {
   "veil_of_steel": {
-   "normal": "pd2/invvos",
-   "uber": "pd2/invvos",
-   "ultra": "pd2/invvos"
+   "normal": "helmet/great_helm",
+   "uber": "helmet/great_helm",
+   "ultra": "helmet/great_helm"
   }
  },
  {
@@ -1737,9 +1737,9 @@
  },
  {
   "arkaines_valor": {
-   "normal": "pd2/arkaines",
-   "uber": "pd2/arkaines",
-   "ultra": "pd2/arkaines"
+   "normal": "armor/splint_mail",
+   "uber": "armor/splint_mail",
+   "ultra": "armor/splint_mail"
   }
  },
  {
@@ -2255,9 +2255,9 @@
  },
  {
   "bloodravens_charge": {
-   "normal": "pd2/bravenbow",
-   "uber": "pd2/bravenbow",
-   "ultra": "pd2/bravenbow"
+   "normal": "bow/stag_bow",
+   "uber": "bow/stag_bow",
+   "ultra": "bow/stag_bow"
   }
  },
  {
@@ -2850,16 +2850,9 @@
  },
  {
   "odium": {
-   "normal": "pd2/odium",
-   "uber": "pd2/odium",
-   "ultra": "pd2/odium"
-  }
- },
- {
-  "armageddon_blade": {
-   "normal": "pd2/invarmageddonblade",
-   "uber": "pd2/invarmageddonblade",
-   "ultra": "pd2/invarmageddonblade"
+   "normal": "sword/flamberge",
+   "uber": "sword/flamberge",
+   "ultra": "sword/flamberge"
   }
  },
  {
@@ -2871,107 +2864,107 @@
  },
  {
   "warrivs_warder": {
-   "normal": "pd2/invwarrivwarder",
-   "uber": "pd2/invwarrivwarder",
-   "ultra": "pd2/invwarrivwarder"
+   "normal": "shield/buckler",
+   "uber": "shield/buckler",
+   "ultra": "shield/buckler"
   }
  },
  {
   "mermans_speed": {
-   "normal": "pd2/mermansprockets",
-   "uber": "pd2/mermansprockets",
-   "ultra": "pd2/mermansprockets"
+   "normal": "boot/leather_boots",
+   "uber": "boot/leather_boots",
+   "ultra": "boot/leather_boots"
   }
  },
  {
   "sigurds_staunch": {
-   "normal": "pd2/invcolossus",
-   "uber": "pd2/invcolossus",
-   "ultra": "pd2/invcolossus"
+   "normal": "belt/girdle_h",
+   "uber": "belt/girdle_h",
+   "ultra": "belt/girdle_h"
   }
  },
  {
   "itheraels_path": {
-   "normal": "pd2/dcloneboots",
-   "uber": "pd2/dcloneboots",
-   "ultra": "pd2/dcloneboots"
+   "normal": "boot/light_plate_boots",
+   "uber": "boot/light_plate_boots",
+   "ultra": "boot/light_plate_boots"
   }
  },
  {
   "overlords_helm": {
-   "normal": "pd2/dclonehelm",
-   "uber": "pd2/dclonehelm",
-   "ultra": "pd2/dclonehelm"
+   "normal": "helmet/bone_helm",
+   "uber": "helmet/bone_helm",
+   "ultra": "helmet/bone_helm"
   }
  },
  {
   "dark_abyss": {
-   "normal": "pd2/dclonearmor",
-   "uber": "pd2/dclonearmor",
-   "ultra": "pd2/dclonearmor"
+   "normal": "armor/gothic_plate",
+   "uber": "armor/gothic_plate",
+   "ultra": "armor/gothic_plate"
   }
  },
  {
   "aidans_scar": {
-   "normal": "pd2/dcloneclaw",
-   "uber": "pd2/dcloneclaw",
-   "ultra": "pd2/dcloneclaw"
+   "normal": "h2h/scissors_katar",
+   "uber": "h2h/scissors_katar",
+   "ultra": "h2h/scissors_katar"
   }
  },
  {
   "hadriels_hand": {
-   "normal": "pd2/dclonesword",
-   "uber": "pd2/dclonesword",
-   "ultra": "pd2/dclonesword"
+   "normal": "sword/broad_sword",
+   "uber": "sword/broad_sword",
+   "ultra": "sword/broad_sword"
   }
  },
  {
   "true_silver": {
-   "normal": "pd2/truesilver",
-   "uber": "pd2/truesilver",
-   "ultra": "pd2/truesilver"
+   "normal": "javelin/maiden_javelin",
+   "uber": "javelin/maiden_javelin",
+   "ultra": "javelin/maiden_javelin"
   }
  },
  {
   "quetzalcoatl": {
-   "normal": "pd2/quetzalcoatl",
-   "uber": "pd2/quetzalcoatl",
-   "ultra": "pd2/quetzalcoatl"
+   "normal": "pelt/hawk_helm",
+   "uber": "pelt/hawk_helm",
+   "ultra": "pelt/hawk_helm"
   }
  },
  {
   "cyclopean_roar": {
-   "normal": "pd2/cyclopean",
-   "uber": "pd2/cyclopean",
-   "ultra": "pd2/cyclopean"
+   "normal": "helmet/jawbone_cap",
+   "uber": "helmet/jawbone_cap",
+   "ultra": "helmet/jawbone_cap"
   }
  },
  {
   "sankekurs_fall": {
-   "normal": "pd2/sankekur",
-   "uber": "pd2/sankekur",
-   "ultra": "pd2/sankekur"
+   "normal": "shield/heraldic_shield",
+   "uber": "shield/heraldic_shield",
+   "ultra": "shield/heraldic_shield"
   }
  },
  {
   "mage_slayer": {
-   "normal": "pd2/mageslayer",
-   "uber": "pd2/mageslayer",
-   "ultra": "pd2/mageslayer"
+   "normal": "h2h/katar",
+   "uber": "h2h/katar",
+   "ultra": "h2h/katar"
   }
  },
  {
   "kalans_legacy": {
-   "normal": "pd2/kalans",
-   "uber": "pd2/kalans",
-   "ultra": "pd2/kalans"
+   "normal": "voodoo_head/preserved_head",
+   "uber": "voodoo_head/preserved_head",
+   "ultra": "voodoo_head/preserved_head"
   }
  },
  {
   "tempest": {
-   "normal": "pd2/sorcorb",
-   "uber": "pd2/sorcorb",
-   "ultra": "pd2/sorcorb"
+   "normal": "orb/eagle_orb",
+   "uber": "orb/eagle_orb",
+   "ultra": "orb/eagle_orb"
   }
  },
  {
@@ -2990,23 +2983,23 @@
  },
  {
   "dev_charm": {
-   "normal": "pd2/devcharm",
-   "uber": "pd2/devcharm",
-   "ultra": "pd2/devcharm"
+   "normal": "charm/charm_small",
+   "uber": "charm/charm_small",
+   "ultra": "charm/charm_small"
   }
  },
  {
   "band_of_skulls": {
-   "normal": "pd2/invbsk",
-   "uber": "pd2/invbsk",
-   "ultra": "pd2/invbsk"
+   "normal": "belt/heavy_belt",
+   "uber": "belt/heavy_belt",
+   "ultra": "belt/heavy_belt"
   }
  },
  {
   "cage_of_the_unsullied": {
-   "normal": "pd2/invuns",
-   "uber": "pd2/invuns",
-   "ultra": "pd2/invuns"
+   "normal": "armor/chain_mail",
+   "uber": "armor/chain_mail",
+   "ultra": "armor/chain_mail"
   }
  },
  {
@@ -3025,65 +3018,65 @@
  },
  {
   "zeraes_resolve": {
-   "normal": "pd2/zeraeresolve",
-   "uber": "pd2/zeraeresolve",
-   "ultra": "pd2/zeraeresolve"
+   "normal": "spear/maiden_pike",
+   "uber": "spear/maiden_pike",
+   "ultra": "spear/maiden_pike"
   }
  },
  {
   "occultist": {
-   "normal": "pd2/occultist",
-   "uber": "pd2/occultist",
-   "ultra": "pd2/occultist"
+   "normal": "glove/light_gauntlets",
+   "uber": "glove/light_gauntlets",
+   "ultra": "glove/light_gauntlets"
   }
  },
  {
   "brimstone_rain": {
-   "normal": "pd2/brimstonerain",
-   "uber": "pd2/brimstonerain",
-   "ultra": "pd2/brimstonerain"
+   "normal": "staff/battle_staff",
+   "uber": "staff/battle_staff",
+   "ultra": "staff/battle_staff"
   }
  },
  {
   "akarats_devotion": {
-   "normal": "pd2/akaratdevotion",
-   "uber": "pd2/akaratdevotion",
-   "ultra": "pd2/akaratdevotion"
+   "normal": "scepter/grand_scepter",
+   "uber": "scepter/grand_scepter",
+   "ultra": "scepter/grand_scepter"
   }
  },
  {
   "martyr": {
-   "normal": "pd2/martyrdom",
-   "uber": "pd2/martyrdom",
-   "ultra": "pd2/martyrdom"
+   "normal": "voodoo_head/unraveller_head",
+   "uber": "voodoo_head/unraveller_head",
+   "ultra": "voodoo_head/unraveller_head"
   }
  },
  {
   "stalkers_cull": {
-   "normal": "pd2/stalkerscull",
-   "uber": "pd2/stalkerscull",
-   "ultra": "pd2/stalkerscull"
+   "normal": "h2h/claws",
+   "uber": "h2h/claws",
+   "ultra": "h2h/claws"
   }
  },
  {
   "purgatory": {
-   "normal": "pd2/purgatory",
-   "uber": "pd2/purgatory",
-   "ultra": "pd2/purgatory"
+   "normal": "armor/light_plate",
+   "uber": "armor/light_plate",
+   "ultra": "armor/light_plate"
   }
  },
  {
   "raekors_virtue": {
-   "normal": "pd2/raekorsvirtue",
-   "uber": "pd2/raekorsvirtue",
-   "ultra": "pd2/raekorsvirtue"
+   "normal": "helmet/avenger_guard",
+   "uber": "helmet/avenger_guard",
+   "ultra": "helmet/avenger_guard"
   }
  },
  {
   "nightmares_feast": {
-   "normal": "pd2/nightmarefeast",
-   "uber": "pd2/nightmarefeast",
-   "ultra": "pd2/nightmarefeast"
+   "normal": "pelt/spirit_mask",
+   "uber": "pelt/spirit_mask",
+   "ultra": "pelt/spirit_mask"
   }
  },
  {
@@ -3109,107 +3102,107 @@
  },
  {
   "uldyssians_awakening": {
-   "normal": "pd2/invuldyssian",
-   "uber": "pd2/invuldyssian",
-   "ultra": "pd2/invuldyssian"
+   "normal": "spear/spetum",
+   "uber": "spear/spetum",
+   "ultra": "spear/spetum"
   }
  },
  {
   "leorics_mithril_blade": {
-   "normal": "pd2/invhighlander",
-   "uber": "pd2/invhighlander",
-   "ultra": "pd2/invhighlander"
+   "normal": "sword/claymore",
+   "uber": "sword/claymore",
+   "ultra": "sword/claymore"
   }
  },
  {
   "mirror_shield": {
-   "normal": "pd2/invmirrorshield",
-   "uber": "pd2/invmirrorshield",
-   "ultra": "pd2/invmirrorshield"
+   "normal": "shield/large_shield",
+   "uber": "shield/large_shield",
+   "ultra": "shield/large_shield"
   }
  },
  {
   "wraithskin": {
-   "normal": "pd2/invdiamondmail",
-   "uber": "pd2/invdiamondmail",
-   "ultra": "pd2/invdiamondmail"
+   "normal": "armor/ring_mail",
+   "uber": "armor/ring_mail",
+   "ultra": "armor/ring_mail"
   }
  },
  {
   "titangrip": {
-   "normal": "pd2/invbramble",
-   "uber": "pd2/invbramble",
-   "ultra": "pd2/invbramble"
+   "normal": "glove/gloves_l",
+   "uber": "glove/gloves_l",
+   "ultra": "glove/gloves_l"
   }
  },
  {
   "shatterblade": {
-   "normal": "pd2/invshatterblade",
-   "uber": "pd2/invshatterblade",
-   "ultra": "pd2/invshatterblade"
+   "normal": "knife/dirk",
+   "uber": "knife/dirk",
+   "ultra": "knife/dirk"
   }
  },
  {
   "denmother": {
-   "normal": "pd2/invdenmother",
-   "uber": "pd2/invdenmother",
-   "ultra": "pd2/invdenmother"
+   "normal": "pelt/hawk_helm",
+   "uber": "pelt/hawk_helm",
+   "ultra": "pelt/hawk_helm"
   }
  },
  {
   "ebonbane": {
-   "normal": "pd2/invebonbane",
-   "uber": "pd2/invebonbane",
-   "ultra": "pd2/invebonbane"
+   "normal": "bow/reflex_bow",
+   "uber": "bow/reflex_bow",
+   "ultra": "bow/reflex_bow"
   }
  },
  {
   "whispering_mirage": {
-   "normal": "pd2/invshadowfist",
-   "uber": "pd2/invshadowfist",
-   "ultra": "pd2/invshadowfist"
+   "normal": "h2h/hatchet_hands",
+   "uber": "h2h/hatchet_hands",
+   "ultra": "h2h/hatchet_hands"
   }
  },
  {
   "skywarden": {
-   "normal": "pd2/invsunshield",
-   "uber": "pd2/invsunshield",
-   "ultra": "pd2/invsunshield"
+   "normal": "shield/crown_shield",
+   "uber": "shield/crown_shield",
+   "ultra": "shield/crown_shield"
   }
  },
  {
   "skorn": {
-   "normal": "pd2/invorbmelee",
-   "uber": "pd2/invorbmelee",
-   "ultra": "pd2/invorbmelee"
+   "normal": "orb/sacred_globe",
+   "uber": "orb/sacred_globe",
+   "ultra": "orb/sacred_globe"
   }
  },
  {
   "achilles_strike": {
-   "normal": "pd2/invhellrunicaxe",
-   "uber": "pd2/invhellrunicaxe",
-   "ultra": "pd2/invhellrunicaxe"
+   "normal": "axe/balanced_axe",
+   "uber": "axe/balanced_axe",
+   "ultra": "axe/balanced_axe"
   }
  },
  {
   "wildspeaker": {
-   "normal": "pd2/invbarbcast",
-   "uber": "pd2/invbarbcast",
-   "ultra": "pd2/invbarbcast"
+   "normal": "helmet/fanged_helm",
+   "uber": "helmet/fanged_helm",
+   "ultra": "helmet/fanged_helm"
   }
  },
  {
   "fenris": {
-   "normal": "pd2/invwolfboss",
-   "uber": "pd2/invwolfboss",
-   "ultra": "pd2/invwolfboss"
+   "normal": "pelt/wolf_head",
+   "uber": "pelt/wolf_head",
+   "ultra": "pelt/wolf_head"
   }
  },
  {
   "sacred_totem": {
-   "normal": "pd2/invgoblinhead",
-   "uber": "pd2/invgoblinhead",
-   "ultra": "pd2/invgoblinhead"
+   "normal": "voodoo_head/zombie_head",
+   "uber": "voodoo_head/zombie_head",
+   "ultra": "voodoo_head/zombie_head"
   }
  },
  {
@@ -3312,9 +3305,9 @@
  },
  {
   "crackleshot": {
-   "normal": "pd2/invlightningbow",
-   "uber": "pd2/invlightningbow",
-   "ultra": "pd2/invlightningbow"
+   "normal": "bow/hunters_bow",
+   "uber": "bow/hunters_bow",
+   "ultra": "bow/hunters_bow"
   }
  },
  {
@@ -3326,30 +3319,30 @@
  },
  {
   "nethercrux": {
-   "normal": "pd2/inv_nethercrux",
-   "uber": "pd2/inv_nethercrux",
-   "ultra": "pd2/inv_nethercrux"
+   "normal": "wand/yew_wand",
+   "uber": "wand/yew_wand",
+   "ultra": "wand/yew_wand"
   }
  },
  {
   "embersworn": {
-   "normal": "pd2/inv_embersworn",
-   "uber": "pd2/inv_embersworn",
-   "ultra": "pd2/inv_embersworn"
+   "normal": "orb/smoked_sphere",
+   "uber": "orb/smoked_sphere",
+   "ultra": "orb/smoked_sphere"
   }
  },
  {
   "skyfall": {
-   "normal": "pd2/inv_skyfall",
-   "uber": "pd2/inv_skyfall",
-   "ultra": "pd2/inv_skyfall"
+   "normal": "orb/clasped_orb",
+   "uber": "orb/clasped_orb",
+   "ultra": "orb/clasped_orb"
   }
  },
  {
   "sages_defiance": {
-   "normal": "pd2/inv_sagedefiance",
-   "uber": "pd2/inv_sagedefiance",
-   "ultra": "pd2/inv_sagedefiance"
+   "normal": "helmet/full_helm",
+   "uber": "helmet/full_helm",
+   "ultra": "helmet/full_helm"
   }
  },
  {
@@ -3361,16 +3354,16 @@
  },
  {
   "giant_maimer": {
-   "normal": "pd2/inv_giantmaimer",
-   "uber": "pd2/inv_giantmaimer",
-   "ultra": "pd2/inv_giantmaimer"
+   "normal": "polearm/voulge",
+   "uber": "polearm/voulge",
+   "ultra": "polearm/voulge"
   }
  },
  {
   "ephemeral": {
-   "normal": "pd2/invephemeral",
-   "uber": "pd2/invephemeral",
-   "ultra": "pd2/invephemeral"
+   "normal": "shield/targe",
+   "uber": "shield/targe",
+   "ultra": "shield/targe"
   }
  },
  {
@@ -3382,9 +3375,9 @@
  },
  {
   "spectral_plate": {
-   "normal": "pd2/invspectralplate",
-   "uber": "pd2/invspectralplate",
-   "ultra": "pd2/invspectralplate"
+   "normal": "armor/breast_plate",
+   "uber": "armor/breast_plate",
+   "ultra": "armor/breast_plate"
   }
  }
 ]
