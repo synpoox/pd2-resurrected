@@ -24,6 +24,7 @@
 
 #include "event_portals.h"
 #include "level_fx.h"
+#include "hot_log.h"
 #include "log.h"
 #include "placements.h"
 #include "lucion.h"
@@ -674,15 +675,19 @@ auto OnUseItem(Game* game, Unit* player, uint8_t* packet, char flag) noexcept ->
 	// the map is consumed only when it opened: a refused use (second map, wrong town or difficulty) leaves the tier alone
 	if (tier != 0 && d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, UnitItem, itemId) == nullptr) {
 		Set(game, MapTierKey, tier);
-		plog::Info("map use: the map opened, tier %d", tier);
+		if (pd2::HotLogsOn()) {
+			plog::Info("map use: the map opened, tier %d", tier);
+		}
 	}
 }
 
 auto RollNative(Game* game, int32_t level) noexcept -> void {
 	const int32_t quality = g_usedQuality.exchange(0);
 	const bool forced = g_usedForced.exchange(false);
-	plog::Info("map events: native map %s, quality %d%s", quality != 0 ? "item used" : "item not seen", quality,
-	           forced ? ", forced" : "");
+	if (pd2::HotLogsOn()) {  // the roll line below is the one line a map open writes (#1593)
+		plog::Info("map events: native map %s, quality %d%s", quality != 0 ? "item used" : "item not seen", quality,
+		           forced ? ", forced" : "");
+	}
 	RollEvent(game, level, quality != 0 ? quality : d2r::rva::QualityNormal, forced);
 }
 
@@ -693,7 +698,7 @@ auto Divisor(Game* game, int32_t level, const Tiered* tier) noexcept -> int32_t 
 
 // Before the room's own monsters: a native map's event roll, then PD2's event spawn
 auto BeforeRoom(Game* game, void* room, int32_t level, const Tiered* tier) noexcept -> void {
-	if (plog::Sample(g_rooms)) {
+	if (pd2::HotSample(g_rooms)) {
 		plog::Info("map events: room activated in level %d (%u so far)", level, g_rooms.load());
 	}
 	if (tier == &NativeTier && Get(game, EventKey) == 0) {
@@ -702,7 +707,9 @@ auto BeforeRoom(Game* game, void* room, int32_t level, const Tiered* tier) noexc
 	if (tier == &NativeTier && !g_roomsOverride && Get(game, TotalKey(level)) == 0) {
 		const int32_t total = RealRooms(room);
 		Set(game, TotalKey(level), total);
-		plog::Info("map events: level %d has %d rooms, progress divides by that", level, total);
+		if (pd2::HotLogsOn()) {
+			plog::Info("map events: level %d has %d rooms, progress divides by that", level, total);
+		}
 	}
 	if (tier != nullptr) {
 		const int32_t rooms = Get(game, RoomsKey(level));
@@ -713,7 +720,7 @@ auto BeforeRoom(Game* game, void* room, int32_t level, const Tiered* tier) noexc
 auto AfterRoom(Game* game, int32_t level, const Tiered* tier) noexcept -> void {
 	const int32_t rooms = Get(game, RoomsKey(level)) + 1;
 	Set(game, RoomsKey(level), rooms);
-	if (rooms % 5 == 0) {  // for the game check
+	if (rooms % 5 == 0 && pd2::HotLogsOn()) {  // for the game check
 		plog::Info("map events: level %d, %d rooms activated (progress %d), event %d, %d spawned", level, rooms,
 		           rooms * 100 / Divisor(game, level, tier), Get(game, EventKey), Get(game, SpawnsKey));
 	}

@@ -2069,7 +2069,7 @@ auto IsMapUnit(Unit* item) noexcept -> bool {
 
 auto MapMagicMaker(Unit** item, void* request) noexcept -> uint64_t {
 	if (item != nullptr && IsMapUnit(*item)) {
-		if (plog::Sample(g_mapMagicRefused)) {
+		if (pd2::HotSample(g_mapMagicRefused)) {
 			plog::Info("map quality: a map was going to be magic, refused (%u so far)", g_mapMagicRefused.load());
 		}
 		return 0;

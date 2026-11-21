@@ -20,6 +20,8 @@ HOT = {
                                          "CltHitFistDelay", "CltHitChargeBolt", "SrvHitBladeFragment",
                                          "CltHitBladeFragment", "SrvHitSummon", "SrvHitThrowPotion",
                                          "CltHitThrowPotion"],
+    # per map open (#1593): all but the one `rolled event` line sit under HotLogsOn / HotSample
+    "core-events/map_events.cpp": ["RollNative", "BeforeRoom", "AfterRoom"],
     "core-events/uber_scaling.cpp": ["ScaleUberMonster"],
     "core-events/rathma_life.cpp": ["SharedStep", "SharedPoison"],
 }
