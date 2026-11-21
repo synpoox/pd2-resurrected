@@ -20,6 +20,7 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cstring>
 
 namespace {
 
@@ -62,10 +63,17 @@ auto InstallItemPrices(const D2RL::PluginContext* context, char* report, size_t 
 	sigscan::Entry* const own[] = {&QuantityGuard, &GambleMid};
 	sigscan::Resolve(own, 2, context->exeBase, nullptr, 0);
 	bool quantity = false, gamble = false;
-	if (QuantityGuard.state == sigscan::State::Ok) {
-		g_guardReturn = d2r::imageBase + QuantityGuard.rva + GuardCall + 5;
-		quantity = sigscan::HookBySignature(context, "ItemIsType", IsTypePattern, 0, IsTypeEntry, sizeof(IsTypeEntry), IsTypeHook,
-		                                    &g_isType);
+	uint64_t isTypeRva = 0;
+	if (QuantityGuard.state == sigscan::State::Ok && sigscan::ScanUnique(context->exeBase, IsTypePattern, 0, &isTypeRva) == 1) {
+		// The call at guard+8 must be the hooked ItemIsType, else the return-address test would never match.
+		const auto call = reinterpret_cast<const uint8_t*>(QuantityGuard.address + GuardCall);
+		int32_t rel = 0;
+		std::memcpy(&rel, call + 1, sizeof(rel));
+		if (QuantityGuard.address + GuardCall + 5 + rel == context->exeBase + isTypeRva) {
+			g_guardReturn = QuantityGuard.address + GuardCall + 5;
+			quantity = sigscan::HookBySignature(context, "ItemIsType", IsTypePattern, 0, IsTypeEntry, sizeof(IsTypeEntry), IsTypeHook,
+			                                    &g_isType);
+		}
 	}
 	if (GambleMid.state == sigscan::State::Ok) {
 		gamble = context->PatchBytes(GambleMid.rva + MidImul, MidImulStock, sizeof(MidImulStock), MidOne, sizeof(MidOne));
