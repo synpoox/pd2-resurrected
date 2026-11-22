@@ -78,7 +78,9 @@ const char* g_queue[LeftPresses + aff::LastReservedPage + 1];
 uint32_t g_head = 0, g_tail = 0;
 uint32_t g_sendFails = 0;     // consecutive frames the queue's next arrow was not sent
 bool g_pending = false;       // our tab is up but its page arrows have not all been sent: the shown page is unknown
+std::atomic<bool> g_inGame {false};  // a player is in a game: the notice counts down from there, not on the menu
 const char* g_notice = nullptr;  // an in-game line about the stash tabs (#1808), set at install
+bool g_noticeLogged = false;
 float g_noticeLeft = 40.0f;      // seconds it still shows
 uint32_t g_pages = UINT32_MAX;  // shared pages the stash has (5 + add_shared_tabs), from d2rloader.toml; unknown: no limit
 constexpr uint32_t MaxSendFails = 30;
@@ -671,7 +673,7 @@ void RunRequest() noexcept {
 // UI thread
 void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void*) noexcept {
 	++g_frames;
-	if (g_notice != nullptr && g_noticeLeft > 0.0f) {
+	if (g_notice != nullptr && g_inGame.load() && g_noticeLeft > 0.0f) {
 		g_noticeLeft -= frame->deltaTimeSeconds;
 		const D2RL::Overlay::TextRequest text {.structSize = D2RL::Overlay::TextRequestSize,
 		                                       .canvas = frame->canvas,
@@ -679,7 +681,10 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 		                                       .color = {1.0f, 0.35f, 0.3f, 1.0f},
 		                                       .text = g_notice,
 		                                       .textLength = static_cast<uint32_t>(std::strlen(g_notice))};
-		g_overlay->drawText(g_context, &text);
+		const D2RL::Overlay::Result drawn = g_overlay->drawText(g_context, &text);
+		if (!std::exchange(g_noticeLogged, true)) {
+			plog::Info("stash tabs: the on-screen notice is up (draw result %u)", static_cast<uint32_t>(drawn));
+		}
 	}
 	if (g_reset.exchange(false)) {
 		g_view = View::None;
@@ -751,6 +756,7 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 }
 
 void OnPlayerReady(const D2RL::PluginContext*, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {
+	g_inGame.store(true);
 	g_reset.store(true);  // the UI thread starts the new game on the stock tabs
 }
 
