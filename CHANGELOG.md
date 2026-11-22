@@ -2,6 +2,13 @@
 
 Player-facing changes, newest first. Entries follow PD2 unless noted. Until multiplayer, a build may break characters (ADR 0003).
 
+### 0.2.4-alpha (2026-11-22)
+
+#### Bug Fixes
+
+- Throwing weapons, throwing potions, arrows and bolts no longer split with Ctrl+click, as in PD2 (#1789).
+- The launcher now gets each release and accepts both D2R 3.3 and 3.4 builds (#1791, #1796).
+
 ### 0.2.3-alpha (2026-11-22)
 
 #### Bug Fixes
