@@ -251,9 +251,10 @@ void Run(const Job& job) noexcept {
 		ops[0].move.destination = {.structSize = items::ItemDestinationSize, .container = to, .placement = items::Placement::Automatic};
 		// stash affinity (#1724): a map, map currency or bossing item goes to its home tab, as a quick-move does; Automatic on that page
 		// puts it down anywhere there and the affinity watch then sets its cell
-		if (job.act == Act::Stash && from == items::ItemContainer::Inventory && pd2::affinity::HomeOf(find.info.code).category != pd2::affinity::Category::None) {
+		const auto home = pd2::affinity::HomeOf(find.info.code);
+		if (job.act == Act::Stash && from == items::ItemContainer::Inventory && home.category != pd2::affinity::Category::None) {
 			ops[0].move.destination.container = items::ItemContainer::SharedStash;
-			ops[0].move.destination.sharedStashPage = pd2::affinity::HomeOf(find.info.code).page;
+			ops[0].move.destination.sharedStashPage = home.page;
 			wasHomed = true;
 		}
 	}
@@ -261,7 +262,7 @@ void Run(const Job& job) noexcept {
 		.structSize = items::ExistingItemTransactionSize, .player = job.player, .operationCount = count, .operations = ops};
 	items::ExistingItemTransactionResult result {.structSize = items::ExistingItemTransactionResultSize};
 	items::Result status = g_items->executeExistingItemTransaction(g_context, &transaction, &result);
-	if (wasHomed && status != items::Result::Success) {  // its page is full or missing (add_shared_tabs): the personal stash, as before
+	if (wasHomed && status != items::Result::Success) {  // its page is full or missing (add_shared_tabs): the personal stash; the watch then fails to route it there and sends it back to the inventory, as a quick-move ends
 		ops[0].move.destination.container = items::ItemContainer::PersonalStash;
 		ops[0].move.destination.sharedStashPage = 0;
 		status = g_items->executeExistingItemTransaction(g_context, &transaction, &result);
