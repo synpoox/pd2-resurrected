@@ -1,3 +1,3 @@
 #### Changes
 
-- Classic and Lord of Destruction characters now play the full mod; existing ones may not load (#1853).
+- Classic and LoD characters now play the full mod; old ones and their shared stash file may not load (#1853).

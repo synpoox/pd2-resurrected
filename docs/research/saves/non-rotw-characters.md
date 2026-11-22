@@ -37,6 +37,12 @@ wins: only `inventory.txt` stays there, the Classic/LoD panel geometry (#1548). 
 With that, every id a plugin writes (stats past 367, states past 231, PD2 skills, monsters, levels) is in every bank,
 and #1855's write guards are not needed; `InBank` stays as a safety net.
 
+Save break, seen on Slot5: the Classic/LoD shared stash (`SharedStashSoftCoreV2.d2i`; Hardcore has its own) written
+under the old tables made every new LoD character fail its first save (`Game error screen: reason=32
+(D2RExtraSaveFailure)`, a 403-byte `.d2s`). With that file moved aside, a fresh LoD character saved and reloaded. Old
+Classic/LoD characters log `Offline character disk refresh failed ... result=record-add-failed` at character select.
+Players must start Classic/LoD characters fresh and move that stash file out of the save folder.
+
 What a Classic or LoD character still can't have:
 
 | RotW-only | Why | Handling |
