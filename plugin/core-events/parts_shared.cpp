@@ -4,6 +4,7 @@
 #include "part_registry.h"
 
 #include "key_drops.h"
+#include "max_level_aura.h"
 #include "placements.h"
 #include "quantity_drops.h"
 
@@ -19,6 +20,12 @@ void InstallPoolPart(const D2RL::PluginContext* context, char* report, size_t si
 void InstallKeysPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
 	const int installed = InstallKeyDrops(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
+}
+
+void InstallMaxLevelPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallMaxLevelAura(context, rules, sizeof(rules));
 	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
 }
 
@@ -42,6 +49,7 @@ void PlacementsCounters(char* out, size_t size) noexcept {
 PartReg r55(55, "placements", InstallPlacementsPart);
 PartReg r50(50, "pool", InstallPoolPart);
 PartReg r60(60, "keys", InstallKeysPart);
+PartReg r61(61, "maxlevel", InstallMaxLevelPart);
 CountersReg c50(50, KeyDropsCounters);
 CountersReg c55(55, PlacementsCounters);
 CountersReg c56(56, QuantityDropsCounters);

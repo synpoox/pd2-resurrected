@@ -79,6 +79,7 @@ modkit_add_plugin(core-events VERSION "${CORE_EVENTS_VERSION}" SOURCES
 	core-events/map_events.cpp
 	core-events/entity_pool.cpp
 	core-events/key_drops.cpp
+	core-events/max_level_aura.cpp
 	core-events/lucion.cpp
 	core-events/altar_panel.cpp
 	core-events/prime_minions.cpp

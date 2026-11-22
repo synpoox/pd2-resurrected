@@ -2,7 +2,10 @@
 # PD2 Resurrected (#189, #243): rare jewels always roll 4 affixes; other rares roll PD2's
 # count (ProjectDiablo.dll 0x10384080, 0x10384010 in PD2.gpr, over 1.13c D2Game +0x152bf):
 # a minimum of 3, 4 at ilvl 45, 5 at 65, 6 at 85, then an even roll from the minimum up
-# to 6. No magic item is forced to two affixes. [crafted] is D2R's own roll:
+# to 6. Magic weapons and armor are forced to two affixes at ilvl 65+ (85+ rings,
+# amulets, jewels; 90+ charms): PD2 sets the force flag of the 1.13c D2Game +0x103c0
+# affix pick at ilvl > 64 / > 84 / > 89. Quivers and other types keep the vanilla roll
+# (#1829). [crafted] is D2R's own roll:
 # max(rand 0-4, 1/2/3/4 from ilvl 1/31/51/71).
 # Increases the number of affixes generated as an item's hidden item level
 # (ilvl) rises. It does not change which affixes are eligible to roll.
@@ -16,9 +19,9 @@ enabled = true
 # At or above each ilvl, Magic items in that group are forced to roll both one
 # prefix and one suffix. Below the threshold, D2R keeps its vanilla roll.
 # Valid ilvl values are 1 to 255.
-weapons_and_armor = 255
-jewels_rings_and_amulets = 255
-charms = 255
+weapons_and_armor = 65
+jewels_rings_and_amulets = 85
+charms = 90
 
 [rare_jewels]
 # Each row starts at the ilvl written in its name and remains active until the

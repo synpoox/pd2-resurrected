@@ -88,6 +88,37 @@ The apply passes flag 0, so the walker gets the handler set `0x105dc628` (built 
   The walker (`0x5881e0`) jumps outside the dump, so whether it also drops other domeleedamage handlers on splashed
   units (crushing blow, open wounds, which PD2 fires) is not known.
 
+## Whirlwind and Blade Dance ([#1812](https://github.com/synpoox/pd2-resurrected/issues/1812))
+
+- Both are srvstfunc 38 / srvdofunc 76. D2R's start (srvst 38, `0x56a420`) calls `0x48e820(unit, 1)`, which sets
+  state 54 (uninterruptable) for the spin.
+- D2R's item event 20 (skill on hit, `0x583b30`) rolls `UnitStat(unit, param >> 16, param & 0xffff)` below 100 on
+  `UnitSeed`, then casts through `0x5896e0`, which refuses an attacker in state 54. So item_splashonhit (412) and
+  map_mon_splash (480) never cast on a spin hit. 1.13c refuses the same way (D2Game `0x6fd117e0`, state `0x36`; its
+  Whirlwind start `0x6fc48290` sets it through `0x6fd02240`).
+- PD2 removes the refusal for every attacker: its byte patch list (`0x1049c640`, entry {1, D2Game, `+0xf181d`,
+  `0x33`}) turns the `TEST EAX,EAX` after `0x6fd117e0`'s state 54 check (`PUSH 0x36` at `+0xf1815`) into
+  `XOR EAX,EAX`. Its skill-on-hit (`0x103473a0`, `ItemEventTable` slot `+0x84`) casts through `0x6fd117e0` (via
+  `0x103a4990`, pointer from the per-version table `0x104a9a3c` = `0xf17e0`) for skills whose ItemTarget (`+0x120`)
+  is not 5; proc_SplashDamage's is 0. No owner check: mercs and monsters (MonWhirlwind 495, UberTalicWhirlwind 579)
+  splash too.
+- Damage%: PD2's splash (`0x103b2340`) uses the current skill only for players (unit type 0), then `0x10305eb0`
+  gives calc1 for Whirlwind (151) and Blade Dance (PD2 380, merged 452). Skills not in the table get 0, not a refusal.
+  Mercs and monsters splash as Attack (SrcDam 128, damage% 0), as `SplashSkill` already does.
+- D2R never calls `0x583b30` here: D2RCore dispatches item events itself (the walker `0x5881e0` jumps to it). Seen
+  in game: a wrapper in `AuraEventTable` slot 20 (read back as installed) and an inline hook on `0x583b30` both stayed
+  silent while item_splashonhit splashed on plain attacks. D2RCore refuses spin hits the same way: no splash came on a
+  Whirlwind hit.
+- core-rules adds the splash in item_rules' `HitEvent`, its existing relay of D2R's event 5 and 6 calls (no new hook).
+  After D2R's dispatch, when the attacker (any unit type) is in state 54, each event-5 node with stat
+  412 or 480 rolls `UnitStat(unit, stat, layer)` below 100 on `UnitSeed`, as `0x583b30` does. On a hit it calls the
+  splash on the struck unit. The node's stat is the int32 at +0xc and its layer the uint16 at +0x10 (seen in game:
+  412, 0x6b81 = skill 430 level 1). Other skills on hit keep D2R's refusal; PD2 casts them too (#1889).
+- Game check (Slot4, Hell, no mercenary, The Gnasher): Whirlwind hits log `current skill 151 level 20 damage% 115`
+  splashes, Blade Dance `current skill 452 level 20 damage% 106`, and a plain Attack still splashes once per hit. On
+  main's code neither spin splashed. An Act 5 merc (Battle Orders / Battle Cry / MonWhirlwind) with Rixot's Keen splashed
+  its own hits at `current skill 0 ... damage% 0 srcdam 128`, but used no Whirlwind in 150 s, so its spin was not seen.
+
 ## Deviations (approximated, on the deviation list)
 
 - Smite's splash takes Smite's own skill damage. PD2 deals its shield damage and adds a state 224 list with
