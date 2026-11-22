@@ -21,7 +21,7 @@ shows them. A tab click switches the stash to Shared through D2R's tab-bar selec
 it), then the stash's page arrows open the page.
 The tab's page is published to the drop filter (`ViewPage`) only once every arrow was sent (log `stash tabs: shared page <n> on show`);
 an arrow that fails is retried for 30 frames, then the page stays unknown (no filter) and a warning is logged. The stash's page count
-is read from `add_shared_tabs` in the mod's `d2rloader.toml` (5 + n): with fewer than 20 pages the Bossing tab is hidden (fewer than 16: Maps too) and the log says so.
+is read from `add_shared_tabs` in `[d2rcore.stash]` of the mod's `d2rloader.toml`, else of the game-wide `<game>/d2rloader/config/d2rloader.toml`, else the loader default 0 (5 + n; only when no file can be read is there no limit): with fewer than 20 pages the Bossing tab is hidden (fewer than 16: Maps too) and the log says so.
 The SDK has no read of the shown page, so a page change that sends no arrow is still not seen.
 
 ## Pages

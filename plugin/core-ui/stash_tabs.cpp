@@ -77,7 +77,7 @@ const char* g_queue[LeftPresses + aff::LastReservedPage + 1];
 uint32_t g_head = 0, g_tail = 0;
 uint32_t g_sendFails = 0;     // consecutive frames the queue's next arrow was not sent
 bool g_pending = false;       // our tab is up but its page arrows have not all been sent: the shown page is unknown
-uint32_t g_pages = UINT32_MAX;  // shared pages the stash has (5 + add_shared_tabs), from the mod's d2rloader.toml; unknown: no limit
+uint32_t g_pages = UINT32_MAX;  // shared pages the stash has (5 + add_shared_tabs), from d2rloader.toml; unknown: no limit
 constexpr uint32_t MaxSendFails = 30;
 std::atomic<bool> g_reset {false};
 std::atomic<uint32_t> g_clicks {0};
@@ -162,27 +162,78 @@ static_assert(ExtraTabsOf("  add_shared_tabs=0 # none") == 0);
 static_assert(ExtraTabsOf("# add_shared_tabs = 15") == -1);
 static_assert(ExtraTabsOf("set_materials_limit = 99") == -1);
 
-// The stash's shared pages: 5 + the mod's add_shared_tabs (d2rloader.toml, beside the plugin's own config); unknown: no limit
-auto ReadPages(const wchar_t* configPath) noexcept -> uint32_t {
-	if (configPath == nullptr) {
-		return UINT32_MAX;
+// 1 for the `[d2rcore.stash]` header, 0 for any other `[section]` header, -1 for any other line
+constexpr auto SectionOf(const char* line) noexcept -> int32_t {
+	constexpr char Name[] = "[d2rcore.stash]";
+	size_t i = 0;
+	while (line[i] == ' ' || line[i] == '	') {
+		++i;
 	}
-	std::wstring path = configPath;
-	const size_t slash = path.find_last_of(L"\\/");
-	path = (slash == std::wstring::npos ? L"" : path.substr(0, slash + 1)) + L"d2rloader.toml";
+	if (line[i] != '[') {
+		return -1;
+	}
+	for (const char c : Name) {
+		if (c == '\0') {
+			return 1;
+		}
+		if (line[i++] != c) {
+			return 0;
+		}
+	}
+	return 1;
+}
+static_assert(SectionOf("[d2rcore.stash]") == 1);
+static_assert(SectionOf("  [d2rcore.stash] # x") == 1);
+static_assert(SectionOf("[d2rcore.other]") == 0);
+static_assert(SectionOf("add_shared_tabs = 3") == -1);
+
+// The `add_shared_tabs` of the `[d2rcore.stash]` section of `path`: -1 when the file has no live key, -2 when it cannot be read
+auto ReadExtraTabs(const std::wstring& path) noexcept -> int32_t {
 	FILE* file = nullptr;
 	if (_wfopen_s(&file, path.c_str(), L"rb") != 0 || file == nullptr) {
-		return UINT32_MAX;
+		return -2;
 	}
-	uint32_t pages = UINT32_MAX;
+	int32_t extra = -1;
+	bool inStash = false;
 	char line[256];
 	while (std::fgets(line, sizeof line, file) != nullptr) {
-		if (const int32_t n = ExtraTabsOf(line); n >= 0) {
-			pages = aff::VanillaSharedPages + static_cast<uint32_t>(n);
+		if (const int32_t section = SectionOf(line); section >= 0) {
+			inStash = section == 1;
+		} else if (const int32_t n = ExtraTabsOf(line); inStash && n >= 0) {
+			extra = n;
 		}
 	}
 	std::fclose(file);
-	return pages;
+	return extra;
+}
+
+// The stash's shared pages: 5 + add_shared_tabs of the mod's d2rloader.toml (beside the plugin's own config), else of the game-wide
+// <game>/d2rloader/config/d2rloader.toml (the mod's value wins); neither set: the loader default 0; no file readable: no limit
+auto ReadPages(const wchar_t* configPath) noexcept -> uint32_t {
+	if (configPath == nullptr) {
+		plog::Info("stash tabs: no config path: the stash page count is unknown, no tab limit");
+		return UINT32_MAX;
+	}
+	std::wstring dir = configPath;
+	const size_t slash = dir.find_last_of(L"\\/");
+	dir = slash == std::wstring::npos ? L"" : dir.substr(0, slash + 1);
+	std::wstring game = dir;  // <game>/mods/<mod>/d2rloader/config/ up four folders: <game>/
+	for (int i = 0; i < 4 && !game.empty(); ++i) {
+		game.pop_back();
+		const size_t cut = game.find_last_of(L"\\/");
+		game = cut == std::wstring::npos ? L"" : game.substr(0, cut + 1);
+	}
+	const std::wstring modToml = dir + L"d2rloader.toml";
+	const std::wstring gameToml = game + L"d2rloader/config/d2rloader.toml";
+	const int32_t mod = ReadExtraTabs(modToml);
+	const int32_t all = mod >= 0 ? -1 : ReadExtraTabs(gameToml);
+	if (mod == -2 && all == -2) {
+		plog::Info("stash tabs: neither d2rloader.toml could be read: the stash page count is unknown, no tab limit");
+		return UINT32_MAX;
+	}
+	const int32_t extra = mod >= 0 ? mod : all >= 0 ? all : 0;
+	plog::Info("stash tabs: add_shared_tabs = %d from %s", extra, mod >= 0 ? "the mod's d2rloader.toml" : all >= 0 ? "the game-wide d2rloader.toml" : "the loader default (no live key)");
+	return aff::VanillaSharedPages + static_cast<uint32_t>(extra);
 }
 
 // The stock BankTabs to `tab`, as a click on it: the stash gets its SelectTab and shows that tab
