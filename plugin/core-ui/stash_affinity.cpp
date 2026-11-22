@@ -19,8 +19,8 @@
 // single player and on the host only; upgrade with a plugin message to the host if online play needs it.
 // shortcut: no chat line when a page is full (the item just comes back to the inventory, and the log says why); add
 // one with a string if players miss it.
-// shortcut: a quick-moved currency that would pass its cell's stack of MaxStack comes back whole instead of topping the
-// stack up (a hand drop tops it up, #1758).
+// A quick-moved currency or boss part tops its cell's stack up to its cap, as a hand drop does (#1758, #1771); the rest
+// comes back to the inventory. A map's stack still takes only a whole stack that fits (MapRefusal).
 #include "stash_affinity.h"
 
 #include "log.h"
@@ -292,7 +292,7 @@ auto StackAllowed(const items::ItemInfo& a, const items::ItemInfo& b) noexcept -
 // Into the same currency's stack on its cell; Conflict when the sum passes a stack. editItem and destroyItem refuse a
 // shared-stash item on this loader (Unsupported, Slot2), so both go to the inventory, the counts are read there, the
 // stack takes the sum, the incoming item goes and the stack moves back onto its cell. A failed step puts things back;
-// the sum is never doubled. topUp (a hand drop, #1758): the stack takes what fits up to MaxStack and the rest stays on the
+// the sum is never doubled. topUp (a hand drop #1758, a fixed cell's Route #1771): the stack takes what fits up to MaxStack and the rest stays on the
 // cursor item, as D2R's own stack message does (0x4c1940). The counts are checked before anything moves: a full stack
 // refuses with no change (D2R refuses that message silently too), since the stack's round trip with nothing sent for the
 // cursor item left it invisible on the client (#1758).
@@ -480,8 +480,8 @@ void SyncReserved(const items::ItemInfo& item) noexcept {
 }
 
 // True when the item is home (or merged there); false when it went back to the inventory
-// topUp: a fixed cell's stack takes what fits and the rest stays on the item (Withdraw, #1763)
-auto Route(D2RL::PlayerHandle player, items::ItemInfo item, bool topUp = false) noexcept -> bool {
+// A fixed cell's stack tops up to its cap and the rest stays on the item, in the inventory (Withdraw #1763, quick-move #1771)
+auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 	const aff::Home home = aff::HomeOf(item.code);
 	if (aff::AtHome(home, item.code, g_shown, item.container == C::SharedStash, item.sharedStashPage, item.x, item.y)) {
 		return true;
@@ -514,7 +514,7 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item, bool topUp = false) 
 				on = -2;  // used by an item this pass did not read
 			}
 		} else if (on >= 0 && aff::Stacks(item.code) && aff::Normal(g_pass.reserved[on].code) == aff::Normal(item.code)) {
-			moved = Merge(player, item, g_pass.reserved[on], topUp);
+			moved = Merge(player, item, g_pass.reserved[on], true);
 		}
 	}
 	if (moved == items::Result::Success) {
@@ -594,7 +594,14 @@ void Withdraw(D2RL::PlayerHandle player, const Noted& noted) noexcept {
 			split = split == items::Result::Success ? items::Result::Conflict : split;
 		}
 	}
-	const bool home = (split == items::Result::Success || busy) && Route(player, item, true);
+	const bool home = (split == items::Result::Success || busy) && Route(player, item);
+	// #1772: the source's move home made it the client's cursor item and put it down (ResendCursor), so the piece (or a
+	// busy cursor's item) was held but not drawn; send the cursor item again after that last move
+	items::ItemInfo cursor {.structSize = items::ItemInfoSize};
+	if (g_inventory->getCursorItem(g_context, player, &held) == D2RL::Inventory::Result::Success &&
+	    g_items->getItemInfo(g_context, held, &cursor) == items::Result::Success) {
+		ResendCursor(player, cursor.runtimeId);
+	}
 	plog::Info("affinity: %08x x%d taken out of the stash: %d to the cursor (split result %u, counts %s), the rest %s", item.code,
 	           had, split == items::Result::Success ? aff::WithdrawMax : 0, static_cast<uint32_t>(split),
 	           busy ? "untouched" : sums ? "add up" : "DO NOT add up", home ? "back home" : "kept in the inventory");
@@ -820,6 +827,29 @@ auto Resend(uint32_t itemId) noexcept -> bool {
 		if (g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success) {
 			ResendCursor(player, static_cast<uint32_t>(reinterpret_cast<uintptr_t>(user)));
 		}
+	};
+	return g_threads->runOnGameThread(g_context, now, reinterpret_cast<void*>(static_cast<uintptr_t>(itemId))) ==
+	       D2RL::Threads::Result::Success;
+}
+
+auto TakeOut(uint32_t itemId) noexcept -> bool {
+	if (g_threads == nullptr || g_inventory == nullptr || g_items == nullptr) {
+		return false;
+	}
+	const auto now = [](const D2RL::PluginContext*, void* user) noexcept {
+		D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+		Find stack {.id = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(user))};
+		if (g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success ||
+		    (g_inventory->forEachInventoryItem(g_context, player, &StashOnly, FindStored, &stack), stack.info.runtimeId != stack.id)) {
+			plog::Info("affinity: take of item %u: it is gone from the stash; nothing moved", stack.id);
+			return;
+		}
+		// shortcut: a full inventory leaves the stack in its cell (logged); upgrade with a chat line if players miss it
+		const items::ItemDestination bag {.structSize = items::ItemDestinationSize, .container = C::Inventory,
+		                                  .placement = items::Placement::Automatic};
+		const auto moved = Move(player, stack.info.handle, bag);
+		plog::Info("affinity: %08x x%d taken from page %u cell %d,%d to the inventory for the split: result %u", stack.info.code,
+		           Quantity(stack.info.handle), stack.info.sharedStashPage, stack.info.x, stack.info.y, static_cast<uint32_t>(moved));
 	};
 	return g_threads->runOnGameThread(g_context, now, reinterpret_cast<void*>(static_cast<uintptr_t>(itemId))) ==
 	       D2RL::Threads::Result::Success;

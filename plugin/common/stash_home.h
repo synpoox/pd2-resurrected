@@ -293,6 +293,10 @@ static_assert(ToppedUp(50, 1, 50).stack == 0 && ToppedUp(0, 1, 50).stack == 0 &&
 static_assert(ToppedUp(1, 50, 50).stack + ToppedUp(1, 50, 50).rest == 51);  // nothing made or lost
 static_assert(MergedCount(50, 1, StashMax) == 51 && MergedCount(205, 50, StashMax) == 255 && MergedCount(206, 50, StashMax) == 0);
 static_assert(ToppedUp(230, 50, StashMax).stack == 255 && ToppedUp(230, 50, StashMax).rest == 25);  // #1763
+static_assert(ToppedUp(212, 50, StashMax).stack == StashMax && ToppedUp(212, 50, StashMax).rest == 7);  // #1771
+static_assert(ToppedUp(205, 50, StashMax).stack == StashMax && ToppedUp(205, 50, StashMax).rest == 0);
+static_assert(ToppedUp(StashMax, 50, StashMax).stack == 0 && ToppedUp(254, 1, StashMax).stack == StashMax);  // full: no change
+static_assert(StashMax - WithdrawMax == 205);  // #1772: a take out of a full stack leaves 205 in the cell
 static_assert(FreeColumn(0) == 0 && FreeColumn(0b111) == 3 && FreeColumn(0x3ff) == -1);
 
 }  // namespace pd2::affinity
