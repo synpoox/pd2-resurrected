@@ -60,9 +60,8 @@ auto Collect(Unit* src, int32_t statCount, int32_t quantityStat, Entries entries
 	}
 }
 
-// Two maps' collected stats match entry by entry (layer, stat, value; the unknown dword is ignored), as FirstDifference
-// compares them: the hand stack's guard (stash_affinity.cpp StackAllowed, #1758) reads each map in its own callback
-inline auto Same(const Saved& a, const Saved& b) noexcept -> bool {
+// Whether two collected stat lists match entry by entry (layer, stat, value; the unknown dword is ignored)
+inline auto SameStats(const Saved& a, const Saved& b) noexcept -> bool {
 	if (a.count != b.count) {
 		return false;
 	}

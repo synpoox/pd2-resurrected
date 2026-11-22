@@ -46,7 +46,7 @@ currency, Bossing; items the RotW Materials tab takes (Pandemonium keys, organs,
 
 core-ui's `affinity` part, SDK only: a game-thread watch notes those items in the inventory each update; one that is gone from
 the inventory and in a stash on the next update was quick-moved (Ctrl+click or the pad), and `executeExistingItemTransaction`
-moves the item itself (rolls, sockets and quantity stay; the Shift+Right Click stash hotkey sends a homed item straight to its page, #1724): a map to the Maps tab if its base is shown, else to its base's row
+moves the item itself (rolls, sockets and quantity stay; the Shift+Right Click stash hotkey sends a homed item straight to its page, #1724): a map merges into a stack below 50 on its page first when both are normal quality with equal stats (#1759, the #1326 rule), else goes to the Maps tab if its base is shown, else to its base's row
 (or anywhere on its tier's storage page when the row is full); a currency to its cell, merged into the stack there (the
 merge runs in the inventory: the loader refuses to edit or destroy a shared-stash item; loader 1.3.1 reads quantity 0 for
 PD2's stacks, so the counts are stat 70 read off the native items, #1744); a bossing item to its cell, merged the same way. A
@@ -74,7 +74,7 @@ stack went to the inventory and back first, and the cursor item was left invisib
 held it (`Insert overlaps with item id .. mode: 4` on the next pick-up). The client sends 0x21 whenever its stack test
 (0x375960) passes, full or not (+9 is 1 when the sum fits), and marks the cursor item pending (0x1c6ac0, state 0x36),
 cleared by an item packet (0x1c6a40). Maps stack only when both are normal quality with equal non-quantity stats
-(`StackAllowed`, shared with the tidy pass; `map_stack.h` `Same`), so a rare map is never merged into a normal stack. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
+(`StackAllowed`, which shares `MapStatsRefusal` with the tidy pass's `MapRefusal`), so a rare map is never merged into a normal stack. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
 refused message 0x.., not the item's own cell`.
 
 Shared pages ([#1749](https://github.com/synpoox/pd2-resurrected/issues/1749)): the Maps and Bossing tabs are shared pages,
