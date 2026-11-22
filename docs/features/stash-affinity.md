@@ -59,6 +59,12 @@ another's cell, stays on the cursor. The message holds no shared page number, so
 it. The stack message 0x21 (cursor item onto a stored one, handler 0x4c1940) is not filtered; it logs `stash tabs: stack message 0x21 onto page .. cell x,y`. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
 refused message 0x.., not the item's own cell`.
 
+Red cells ([#1745](https://github.com/synpoox/pd2-resurrected/issues/1745)): the client asks the same rule first. Two
+D2Common cell tests are hooked by signature (`inventory_lock.cpp`): 93847 `0x38a250` (the cursor item's cells are free: green
+tint, the click sends 0x18) and `0x38a5d0` (the one stored item under it: the swap highlight, the click sends 0x1f). While the
+Maps or Bossing tab is open, both answer "no" for the cursor item over a stash cell that is not its own, so the cell shows red
+and the click sends nothing. The message filter above stays as the net. Status: `red cell tests` in the inventory lock counters.
+
 Limits: tabs 15-19 are taken as they are. Items a player already keeps on 16-18 stay and share the space; on 15 and 19 the
 tidy pass moves them to the inventory (a migration for saves with more extra tabs is a later slice); a reserved page's free cells are found from item corners only, so a bigger
 hand-placed item there can send a map back. A hand move whose pick-up and put-down land in one game update (a lag spike), or
