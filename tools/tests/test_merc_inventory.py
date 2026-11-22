@@ -42,7 +42,7 @@ class MercInventory(unittest.TestCase):
         # roguehire wore only "bow" (left "none"); "miss" covers bow and xbow (#1779)
         data_tables.need(self)
         rogue = next(m for m in data_tables.rows("monstats") if m["Id"] == "roguehire")
-        self.assertEqual((rogue["rightArmItemType"], rogue["leftArmItemType"]), ("miss", "bowq"))
+        self.assertEqual((rogue["rightArmItemType"], rogue["leftArmItemType"]), ("miss", "misl"))
 
     def test_hireling_rows_have_the_new_rects(self):
         # the server refuses a body slot whose rect is -1 (#1627)
