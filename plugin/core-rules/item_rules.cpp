@@ -1703,6 +1703,46 @@ static auto PatchUnlimitedBooks(const D2RL::PluginContext* context) noexcept -> 
 	return true;
 }
 
+// --- Telekinesis skips arrows and bolts (#1833) --------------------------------------------------------------------
+// PD2's Telekinesis item test (0x102fb340) keeps types 4, 9, 22, 38, 41; D2R's (93847: 0x33f170, called only by
+// Telekinesis: srvdo 21 0x554880, client 0x18dde0 and 0x1923b0) also tests 56 (missile). No SDK service covers the
+// skill's item filter, so a byte patch jumps over the `lea edx,[rax+0x38]; mov rcx,rbx; call; test; jnz` test.
+constexpr const char* TelekinesisMissileTest =
+    "8d 50 26 48 8b cb e8 ?? ?? ?? ?? 85 c0 75 ?? 8d 50 38 48 8b cb e8 ?? ?? ?? ?? 85 c0 75 ?? 8d 50 09";
+constexpr int TelekinesisMissileAt = 15;  // the `lea edx,[rax+0x38]` inside the match
+
+static auto PatchTelekinesisArrows(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t rva = 0;
+	if (sigscan::ScanUnique(context->exeBase, TelekinesisMissileTest, TelekinesisMissileAt, &rva) != 1) {
+		return false;
+	}
+	const D2RL::MutationService* mutations = nullptr;
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize) ||
+	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		return false;
+	}
+	static constexpr uint8_t Stock[] = {0x8d, 0x50};
+	static constexpr uint8_t Skip[] = {0xeb, 0x0d};  // jmp to the type 9 test, 15 bytes on
+	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
+	                                              .rva = rva,
+	                                              .expected = Stock,
+	                                              .expectedSize = sizeof(Stock),
+	                                              .bytes = Skip,
+	                                              .size = sizeof(Skip)};
+	D2RL::Mutations::OperationHandle operation = 0;
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	if (mutations->stageBytePatch(context, transaction, &patch, &operation) != D2RL::Mutations::Result::Success ||
+	    mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		return false;
+	}
+	plog::Info("telekinesis: missile test skipped at 0x%llx, arrows and bolts stay on the ground",
+	           static_cast<unsigned long long>(rva));
+	return true;
+}
+
 // --- Charm rows (#358) ---------------------------------------------------------------------------------------------
 // PD2's inventory is 10x8 and a charm works only in its lower four rows (the grid's y 4 to 7, by the charm's top row).
 // D2R's own charm-active body (93847: 0x36ae00) is not called: D2RLoader rewrote its callers to a thunk in its .maho
@@ -2264,6 +2304,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	// none (core-events' hooks identify all), both with keep 1, so the book stays after its use
 	const bool unlimited = PatchUnlimitedBooks(context);
 	const bool charms = InstallCharmRows(context);
+	const bool telekinesis = PatchTelekinesisArrows(context);
 	const char* const dye = InstallDyeTint(context);
 	const bool mapStack = sigscan::HookBySignature(
 	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
@@ -2283,7 +2324,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
@@ -2291,14 +2332,16 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              equip ? "" : " FAILED (bytes differ)", replenish ? "" : " FAILED (bytes differ)",
 	              unlimited ? "" : " FAILED (entries not empty, or no mutation service)",
 	              charms ? "" : " FAILED (signature or bytes differ)", dye, mapStack ? "" : " FAILED (bytes differ)",
-	              noMagicMaps ? " (hooked when tables load)" : " FAILED (no table listener)", mapMakerLog ? "" : " FAILED (signature or bytes differ)");
+	              noMagicMaps ? " (hooked when tables load)" : " FAILED (no table listener)", mapMakerLog ? "" : " FAILED (signature or bytes differ)",
+	              telekinesis ? "" : " FAILED (signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
-	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0);
+	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0) +
+	       (telekinesis ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 15;
+	return 16;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
