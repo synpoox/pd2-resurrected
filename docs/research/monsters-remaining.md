@@ -40,6 +40,10 @@ PD2 reads the two room counts from its region (+0x04 rooms activated, +0x0c room
 until counted), and core-ui reads them the same way (#1729). Read in game: Blood Moor +0x04 9, 12, 15, 18 as rooms
 populated (kept across a trip out and back), +0x0c 47; Cold Plains 70; Den of Evil 26.
 
+Cartographer maps (levels 138-151) need no fallback total (#1736): in Tunneling Depths (level 138, Hell, slot run 2026-11-22) the region
+read `rooms 9 of 90 made (10%)`, so D2R sets +0x0c on map levels and the row reads `50+` only until 90% of the rooms are made. Not
+observed: the plain number past 90% (the check explored 10% of the map).
+
 The first version walked the built level's drlg room list instead (DrlgLevel +0x10, next +0x48). That list holds every
 room of the level: Blood Moor 84, Cold Plains 96, Den of Evil 27. In a dungeon the two totals nearly agree, but an
 outdoor level lists many rooms that never make monsters, so 90% of the list was never reached and outdoor levels
