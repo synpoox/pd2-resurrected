@@ -19,6 +19,10 @@ int main() {
 	check("a single onto 254 fits", is(TopUpOf(254, 1, 255), 1, 0));
 	check("a single onto 255 is refused", is(TopUpOf(255, 1, 255), 0, 1));
 	check("a limit past 255 is clamped", is(TopUpOf(250, 50, 999), 5, 45));
+	check("local: 50 onto 250 is taken", Takes(250, 50, 255, true));
+	check("not local: 50 onto 250 is refused", !Takes(250, 50, 255, false));
+	check("not local: 5 onto 250 is taken", Takes(250, 5, 255, false));
+	check("local: 10 onto 255 is refused", !Takes(255, 10, 255, true));
 	std::printf(fail == 0 ? "all passed\n" : "%d failed\n", fail);
 	return fail == 0 ? 0 : 1;
 }

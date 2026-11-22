@@ -30,4 +30,11 @@ constexpr auto TopUpOf(uint8_t count, int32_t quantity, int32_t limit) noexcept 
 	return {added, units - added};
 }
 
+// Whether a deposit is taken at all: the local player's tops up (anything that fits), another player's only when the whole stack fits,
+// since the rest of a top-up is made again for the local player only (#1816)
+constexpr auto Takes(uint8_t count, int32_t quantity, int32_t limit, bool local) noexcept -> bool {
+	const TopUp t = TopUpOf(count, quantity, limit);
+	return t.added > 0 && (local || t.left == 0);
+}
+
 }  // namespace pd2::stashstack

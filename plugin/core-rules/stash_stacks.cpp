@@ -77,9 +77,11 @@ std::atomic<uint32_t> g_deposits {0}, g_refused {0};
 int32_t g_limit = DefaultLimit;  // D2RCore's set_materials_limit, read at install
 
 // The rest of a stack that did not fit (#1816), made again on the game thread after the deposit. shortcut: the local player
-// only, as the cube's leftovers (cube_stacks.cpp; the SDK names the player on the UI thread); upgrade for a hosted game.
+// only, as the cube's leftovers (cube_stacks.cpp; the SDK names the player on the UI thread). A remote player's deposit
+// stays all-or-nothing (Takes), so a rest is never made for one; upgrade for a hosted game. Known loss window: leaving
+// the game before the queued job runs (one game update) loses the rest.
 struct Rest {
-	uint32_t code, quantity, itemLevel;
+	uint32_t code, quantity, itemLevel, depositor;  // depositor: the unit id of the player who deposited
 };
 constexpr int MaxRests = 16;
 Rest g_rests[MaxRests];
@@ -128,9 +130,28 @@ void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
 	}
 }
 
-// UI thread: the SDK names the local player only here
+auto LocalPlayerId() noexcept -> uint32_t {
+	using namespace d2r::rva;
+	Unit* local = d2r::Engine<Unit* (*)(uint32_t) noexcept>(ClientPlayer)(d2r::Engine<uint32_t (*)() noexcept>(LocalPlayerSlot)());
+	return local != nullptr ? d2r::At<uint32_t>(local, UnitIdField) : 0xffffffffu;
+}
+
+// UI thread: the SDK names the local player only here; a rest whose depositor is another player is dropped
 void PickPlayer(const D2RL::PluginContext*, void*) noexcept {
 	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+	{
+		const uint32_t local = LocalPlayerId();
+		std::lock_guard<std::mutex> lock(g_restLock);
+		int kept = 0;
+		for (int i = 0; i < g_restCount; ++i) {
+			if (g_rests[i].depositor == local) {
+				g_rests[kept++] = g_rests[i];
+			} else {
+				plog::Warn("stash tabs: a rest of %u items was for another player; dropped", g_rests[i].quantity);
+			}
+		}
+		g_restCount = kept;
+	}
 	if (g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success ||
 	    g_threads->runOnGameThread(g_context, MakeRests, reinterpret_cast<void*>(player)) != D2RL::Threads::Result::Success) {
 		plog::Warn("stash tabs: could not queue the rest of a stack; it is lost");
@@ -139,18 +160,18 @@ void PickPlayer(const D2RL::PluginContext*, void*) noexcept {
 	}
 }
 
-void QueueRest(Unit* item, int32_t left) noexcept {
+void QueueRest(Unit* item, int32_t left, uint32_t depositor) noexcept {
 	using namespace d2r::rva;
 	bool first = false;
 	{
 		std::lock_guard<std::mutex> lock(g_restLock);
 		if (g_restCount >= MaxRests) {
-			plog::Warn("stash tabs: too many rests queued; %d lost", left);
+			plog::Warn("stash tabs: too many rests queued; %d items lost", left);
 			return;
 		}
 		first = g_restCount == 0;
 		g_rests[g_restCount++] = {d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(item), static_cast<uint32_t>(left),
-		                          d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemLevel)(item)};
+		                          d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemLevel)(item), depositor};
 	}
 	if (first && g_threads->runOnUiThread(g_context, PickPlayer, nullptr) != D2RL::Threads::Result::Success) {
 		plog::Warn("stash tabs: could not queue the rest of a stack; it is lost");
@@ -168,7 +189,16 @@ auto SlotCount(Unit* slot) noexcept -> uint8_t {
 	return data != nullptr ? d2r::At<uint8_t>(data, CountByte) : 0;
 }
 
-auto Count(Unit* slotItem, uint64_t, Unit* rbx, uint8_t*) noexcept -> uint8_t {
+// Whether the deposit is the local player's. The depositing player is the deposit function's own second argument, which it
+// keeps in its frame at rbp-0x98 (the game is at rbp-0x78 and the player's slot sits 0x20 below it, as in the decompile);
+// the item's own owner id reads -1 by then. Only the local player's rest can be made again.
+auto DepositorIsLocal(const uint8_t* rbp, uint32_t* id) noexcept -> bool {
+	Unit* player = rbp != nullptr ? *reinterpret_cast<Unit* const*>(rbp - 0x98) : nullptr;
+	*id = player != nullptr ? d2r::At<uint32_t>(player, d2r::rva::UnitIdField) : 0xffffffffu;
+	return player != nullptr && *id == LocalPlayerId();
+}
+
+auto Count(Unit* slotItem, uint64_t, Unit* rbx, uint8_t* rbp) noexcept -> uint8_t {
 	if (reinterpret_cast<uint64_t>(_ReturnAddress()) != g_countCheckReturn) {
 		return g_count(slotItem);
 	}
@@ -176,8 +206,9 @@ auto Count(Unit* slotItem, uint64_t, Unit* rbx, uint8_t*) noexcept -> uint8_t {
 	const uint8_t count = SlotCount(slotItem);
 	// D2R compares the returned byte with a fixed 99 (`cmp al,0x63; jb`), whatever set_materials_limit says, so answer 0
 	// while the slot has room under the limit read from the toml and 255 when it has none (#1767); Add takes what fits (#1816)
-	if (TopUpOf(count, Quantity(rbx), g_limit).added == 0) {
-		plog::Info("stash tabs: refused a stack of %d onto a slot of %u (max %d)", Units(Quantity(rbx)), count, g_limit);
+	uint32_t depositor = 0;
+	if (!Takes(count, Quantity(rbx), g_limit, DepositorIsLocal(rbp, &depositor))) {
+		plog::Info("stash tabs: refused a stack of %d onto a slot of %u (max %d); depositor %u, local %u", Units(Quantity(rbx)), count, g_limit, depositor, LocalPlayerId());
 		g_refused.fetch_add(1);
 		return 255;
 	}
@@ -189,6 +220,8 @@ auto Add(void* proxy, uint64_t itemClass, Unit* rbx, uint8_t* rbp) noexcept -> U
 	if (reinterpret_cast<uint64_t>(_ReturnAddress()) != g_serverAddReturn || slot == nullptr) {
 		return slot;
 	}
+	uint32_t depositor = 0;
+	const bool local = DepositorIsLocal(rbp, &depositor);
 	const int32_t wanted = Units(Quantity(rbx));
 	const uint8_t first = SlotCount(slot);  // the add above is in already
 	const int32_t units = wanted - TopUpOf(first > 0 ? first - 1 : 0, wanted, g_limit).left;
@@ -206,10 +239,10 @@ auto Add(void* proxy, uint64_t itemClass, Unit* rbx, uint8_t* rbp) noexcept -> U
 			break;
 		}
 	}
-	plog::Info("stash tabs: deposit of class %d added %d of %d, %d left, slot count %u", static_cast<int32_t>(itemClass), added, wanted,
-	           wanted - added, SlotCount(slot));
-	if (units < wanted) {
-		QueueRest(rbx, wanted - units);
+	plog::Info("stash tabs: deposit of class %d added %d of %d, %d left, slot count %u, depositor %u (%s)", static_cast<int32_t>(itemClass),
+	           added, wanted, wanted - added, SlotCount(slot), depositor, local ? "local" : "not local");
+	if (units < wanted && local) {
+		QueueRest(rbx, wanted - units, depositor);
 	}
 	g_deposits.fetch_add(1);
 	return slot;
