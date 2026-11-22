@@ -137,6 +137,20 @@ constexpr auto TabStack(const uint8_t* packet, size_t size, uint32_t viewPage) n
 	return packet != nullptr && size >= 0x15 && viewPage != 0 && packet[0] == 0x21 && ReadU32(packet + 0x0d) == 4;
 }
 
+// #1772: a take off a shared page is 0x46 (0x0d bytes: the item +1, the page's owner unit id +5; client 0x2c7080 via
+// 0xec780, server 0x4c6480); 0x19 is the other grids' take. The client marks the item pending (0x1c6ac0). A Maps or Bossing
+// stack past aff::WithdrawMax (up to StashMax, #1763) came onto the cursor whole and was not drawn. pageOf(owner) is the
+// owner's page as for MessagePage (0 neither Maps nor Bossing, UINT32_MAX not found); big(id) says the item is such a stash
+// stack. That take is the plugin's (stash_affinity::TakeOut), whose moves send the item again.
+template <class PageOf, class Big>
+constexpr auto BigTake(const uint8_t* packet, size_t size, PageOf pageOf, Big big) noexcept -> bool {
+	if (packet == nullptr || size < 0x0d || packet[0] != 0x46) {
+		return false;
+	}
+	const uint32_t page = pageOf(ReadU32(packet + 5));
+	return page != 0 && page != UINT32_MAX && big(ReadU32(packet + 1));
+}
+
 // True while the padlock is on (hotkeys.cpp refuses its own moves from the charm rows then).
 auto IsLocked() noexcept -> bool;
 
