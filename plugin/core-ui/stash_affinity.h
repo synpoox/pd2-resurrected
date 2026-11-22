@@ -27,6 +27,11 @@ void SetTabOpen(bool open, uint32_t page = 0) noexcept;
 // Any thread: the shared page of the open Maps or Bossing tab, 0 when neither is open.
 auto ViewPage() noexcept -> uint32_t;
 
+// Any thread (#1744): queues a hand drop's stack of the cursor item (runtime id) onto a stored stack (runtime id) for
+// the game thread, which merges them through Merge when the stack sits on its own cell of the open tab's page and both
+// are the same stackable item; otherwise the cursor item stays. False when nothing could be queued.
+auto StackOnto(uint32_t cursorId, uint32_t targetId) noexcept -> bool;
+
 // Any thread: the base the Maps tab shows (0 for none).
 auto WantedBase() noexcept -> uint32_t;
 

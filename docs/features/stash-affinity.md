@@ -50,7 +50,7 @@ moves the item itself (rolls, sockets and quantity stay; the Shift+Right Click s
 (or anywhere on its tier's storage page when the row is full); a currency to its cell, merged into the stack there (the
 merge runs in the inventory: the loader refuses to edit or destroy a shared-stash item; loader 1.3.1 reads quantity 0 for
 PD2's stacks, so the counts are stat 70 read off the native items, #1744); a bossing item to its cell, merged the same way. A
-sum past 50 goes back to the inventory whole. A hand drop onto the cell's stack is D2R's own stack (0x21) or a swap (0x1f) that D2R's handler stacks; see Hand drops. While
+sum past 50 goes back to the inventory whole. A hand drop onto the cell's stack is merged the same way; see Hand drops. While
 Maps or Bossing is up, a tidy pass (every 25 updates) also routes items put onto those two pages by hand, and moves an item
 no rule takes off them to the inventory. A full cell or page, or a missing page (fewer extra tabs), moves it back to the inventory; the log
 says why. Status: `core-ui` console command, `affinity:` and `stash tabs:` counters.
@@ -60,7 +60,14 @@ inventory padlock's message hook (`inventory_lock.cpp`, by signature) refuses th
 stash cell, page field 4) and 0x1f (swap it with a stored item on the stash, page field 4; the cursor item goes to the clicked cell at +0x11, packed `y << 16 | x` like the stored item's cell at +0x0d; read as two plain ints until #1744, which refused a same-item drop on its own cell) unless `stash_home.h`'s `AtHome` says the
 item belongs on that page and cell (a map of the shown base also in the map cells). Any other item, or a currency or boss item in
 another's cell, stays on the cursor. The message holds no shared page number, so the open tab (`stash_affinity::ViewPage`) names
-it. The stack message 0x21 (cursor item onto a stored one, handler 0x4c1940) is not filtered; it logs `stash tabs: stack message 0x21 onto page .. cell x,y`. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
+it. The stack message 0x21 (cursor item onto a stored one; ids +1 and +5, grid +0x0d, packed cell +0x11; the client
+sends it whenever the two items stack, 0x375960) does not work natively on these pages: D2R's handler 0x4c1940 looks the
+target up by cell (0x472590, 0x474220) in the player's current inventory (0x34a360), which does not hold the Maps or
+Bossing page's stack, and logs `No item found at page: 4` (#1744). So while either tab is open the hook consumes a 0x21
+onto the stash (grid 4) and queues it for the game thread, which merges the cursor item into the stack through the same
+SDK merge when it is the same stackable item on its own cell of the open page. Log: `stash tabs: stack message 0x21 onto
+page .. cell x,y: the plugin stacks it`, then `affinity: .. merged with the stack ..`. Otherwise, or when a step fails (a
+full inventory, a sum past 50), the item stays on the cursor: it is destroyed only after the stack holds the sum. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
 refused message 0x.., not the item's own cell`.
 
 Red cells ([#1745](https://github.com/synpoox/pd2-resurrected/issues/1745)): the client asks the same rule first. Two

@@ -90,6 +90,7 @@ std::atomic<bool> g_open {false};
 std::atomic<uint32_t> g_viewPage {0};
 std::atomic<bool> g_tidyFailed {false};
 std::atomic<bool> g_hinted {false}, g_stopped {false};
+std::atomic<uint32_t> g_handStacked {0};
 std::atomic<uint32_t> g_routed {0}, g_merged {0}, g_swapped {0}, g_returned {0}, g_failed {0}, g_updates {0};
 
 auto InCell(int32_t x, int32_t y) noexcept -> bool {
@@ -288,6 +289,50 @@ auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& st
 	plog::Info("affinity: %08x x%d merged with the stack on page %u cell %d,%d (now %d; back on its cell: result %u)",
 	           stack.code, add, page, x, y, sum, static_cast<uint32_t>(back));
 	return items::Result::Success;  // a failed move back leaves the whole stack in the inventory: nothing lost
+}
+
+struct Find {
+	uint32_t id;
+	items::ItemInfo info {};
+};
+auto FindStored(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept -> D2RL::Inventory::IterationAction {
+	auto* find = static_cast<Find*>(user);
+	if (item->runtimeId != find->id) {
+		return D2RL::Inventory::IterationAction::Continue;
+	}
+	find->info = *item;
+	return D2RL::Inventory::IterationAction::Stop;
+}
+
+// Game thread (#1744): a hand drop's 0x21, which D2R cannot resolve on a Maps or Bossing page. The cursor item is
+// destroyed only by Merge's last step after the stack holds the sum, so a failure anywhere leaves it on the cursor.
+static_assert(sizeof(void*) == 8, "StackOnto packs both runtime ids into the callback's pointer");
+void StackNow(const D2RL::PluginContext*, void* user) noexcept {
+	const auto ids = reinterpret_cast<uintptr_t>(user);
+	const uint32_t cursorId = static_cast<uint32_t>(ids >> 32);
+	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+	D2RL::ItemHandle held {};
+	items::ItemInfo item {.structSize = items::ItemInfoSize};
+	Find stack {.id = static_cast<uint32_t>(ids)};
+	if (g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success ||
+	    g_inventory->getCursorItem(g_context, player, &held) != D2RL::Inventory::Result::Success ||
+	    g_items->getItemInfo(g_context, held, &item) != items::Result::Success || item.runtimeId != cursorId ||
+	    (g_inventory->forEachInventoryItem(g_context, player, &StashOnly, FindStored, &stack), stack.info.runtimeId != stack.id)) {
+		plog::Info("affinity: hand stack of item %u onto %u: the cursor item or the stack is gone; nothing changed", cursorId, stack.id);
+		return;
+	}
+	const items::ItemInfo& on = stack.info;
+	const uint32_t page = g_viewPage.load();
+	if (on.container != C::SharedStash || on.sharedStashPage != page || !aff::Stacks(item.code) ||
+	    aff::Normal(item.code) != aff::Normal(on.code) ||
+	    !aff::AtHome(aff::HomeOf(on.code), on.code, g_want.load(), true, on.sharedStashPage, on.x, on.y)) {
+		plog::Info("affinity: hand stack of %08x onto %08x (page %u cell %d,%d): not its own stack on page %u; it stays on the cursor",
+		           item.code, on.code, on.sharedStashPage, on.x, on.y, page);
+		return;
+	}
+	if (Merge(player, item, stack.info) == items::Result::Success) {
+		++g_handStacked;
+	}  // Merge logs a failure; the cursor item is kept then
 }
 
 void Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept {
@@ -495,6 +540,14 @@ auto ViewPage() noexcept -> uint32_t {
 	return g_viewPage.load();
 }
 
+auto StackOnto(uint32_t cursorId, uint32_t targetId) noexcept -> bool {
+	if (g_threads == nullptr || g_inventory == nullptr || g_items == nullptr) {
+		return false;
+	}
+	void* ids = reinterpret_cast<void*>(static_cast<uintptr_t>(cursorId) << 32 | targetId);
+	return g_threads->runOnGameThread(g_context, StackNow, ids) == D2RL::Threads::Result::Success;
+}
+
 auto WantedBase() noexcept -> uint32_t {
 	return g_want.load();
 }
@@ -528,8 +581,8 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 
 void Counters(char* out, size_t size) noexcept {
 	std::snprintf(out, size,
-	              "affinity: %u routed (%u merged), %u base swaps, %u sent back to the inventory, %u stuck in the stash; %u updates",
-	              g_routed.load(), g_merged.load(), g_swapped.load(), g_returned.load(), g_failed.load(), g_updates.load());
+	              "affinity: %u routed (%u merged, %u hand stacks), %u base swaps, %u sent back to the inventory, %u stuck in the stash; %u updates",
+	              g_routed.load(), g_merged.load(), g_handStacked.load(), g_swapped.load(), g_returned.load(), g_failed.load(), g_updates.load());
 }
 
 }  // namespace stash_affinity

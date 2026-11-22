@@ -92,6 +92,15 @@ constexpr auto MisplacedOnTab(const uint8_t* packet, size_t size, uint32_t viewP
 	}
 }
 
+// #1744: 0x21 (0x15 bytes, handler 0x4c1940, sent by the client's click 0x2c81d0 when the items stack) stacks the cursor
+// item (id +1) onto a stored one (id +5); +9 says the whole cursor stack fits, +0x0d is the target's grid (4 the stash,
+// clamped below 5) and +0x11 its cell, packed y << 16 | x. D2R looks the target up by cell (0x472590 -> 0x474220) in the
+// player's current inventory (0x34a360), which does not hold the Maps or Bossing page's stack: it logs "No item found
+// at page: 4" and stacks nothing. So while one of those tabs is open, a stash 0x21 is the plugin's (StackOnto).
+constexpr auto TabStack(const uint8_t* packet, size_t size, uint32_t viewPage) noexcept -> bool {
+	return packet != nullptr && size >= 0x15 && viewPage != 0 && packet[0] == 0x21 && ReadU32(packet + 0x0d) == 4;
+}
+
 // True while the padlock is on (hotkeys.cpp refuses its own moves from the charm rows then).
 auto IsLocked() noexcept -> bool;
 

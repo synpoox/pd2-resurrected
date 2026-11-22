@@ -122,7 +122,7 @@ static_assert(!CellRefused(StashGrid, aff::MapsPage, 0, aff::Code("gcv"), 0, 3, 
 static_assert(CellRefused(StashGrid, aff::MapsPage, 4, 0, 0, 3, 2));                                   // unknown code, as PutOk
 constexpr auto Nop = [](uint32_t, uint32_t, int32_t, int32_t) { return true; };
 constexpr auto Never = [](uint32_t, uint32_t, int32_t, int32_t) { return false; };
-constexpr uint8_t SwapStash[] = {0x1f, 9, 0, 0, 0, 7, 0, 0, 0, 4, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0};
+constexpr uint8_t SwapStash[] = {0x1f, 9, 0, 0, 0, 7, 0, 0, 0, 4, 0, 0, 0, 2, 0, 2, 0, 2, 0, 2, 0};  // a stash swap at cell 2,2
 constexpr uint8_t PutGem[] = {0x18, 7, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0};
 constexpr uint8_t PutBoss[] = {0x18, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0};
 constexpr uint8_t PutInv[] = {0x18, 7, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0};
@@ -145,6 +145,18 @@ static_assert(!MisplacedOnTab(SwapOwnCell, sizeof SwapOwnCell, aff::MapsPage, Ge
                               [](uint32_t, uint32_t, int32_t x, int32_t y) { return Own(aff::Code("imma"), 0, aff::MapsPage, x, y); }));
 static_assert(MisplacedOnTab(SwapOwnCell, sizeof SwapOwnCell, aff::MapsPage, GemPut,
                              [](uint32_t, uint32_t, int32_t x, int32_t y) { return Own(aff::Code("imma"), 0, aff::MapsPage, x + 1, y); }));
+// the stored item's cell +0x0d (1,4) and the clicked cell +0x11 (0,4) differ: only +0x11 counts
+constexpr uint8_t SwapOntoOwn[] = {0x1f, 9, 0, 0, 0, 7, 0, 0, 0, 4, 0, 0, 0, 1, 0, 4, 0, 0, 0, 4, 0};
+constexpr uint8_t SwapOffOwn[] = {0x1f, 9, 0, 0, 0, 7, 0, 0, 0, 4, 0, 0, 0, 0, 0, 4, 0, 1, 0, 4, 0};
+constexpr auto ImmaSwap = [](uint32_t, uint32_t, int32_t x, int32_t y) { return Own(aff::Code("imma"), 0, aff::MapsPage, x, y); };
+static_assert(!MisplacedOnTab(SwapOntoOwn, sizeof SwapOntoOwn, aff::MapsPage, GemPut, ImmaSwap));
+static_assert(MisplacedOnTab(SwapOffOwn, sizeof SwapOffOwn, aff::MapsPage, GemPut, ImmaSwap));
+// #1744: a stash 0x21 (grid +0x0d 4) on an open Maps or Bossing tab is the plugin's; the inventory's, or with no tab, D2R's
+constexpr uint8_t StackStash[] = {0x21, 9, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 4, 0, 0, 0, 0, 0, 4, 0};
+constexpr uint8_t StackInv[] = {0x21, 9, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 9, 0, 6, 0};
+static_assert(TabStack(StackStash, sizeof StackStash, aff::MapsPage) && TabStack(StackStash, sizeof StackStash, aff::BossingPage));
+static_assert(!TabStack(StackInv, sizeof StackInv, aff::MapsPage) && !TabStack(StackStash, sizeof StackStash, 0));
+static_assert(!TabStack(StackStash, 0x14, aff::MapsPage) && !TabStack(SwapOwnCell, sizeof SwapOwnCell, aff::MapsPage));
 static_assert(!ChangesEquipment(nullptr, 9) && !ChangesEquipment(Equip, 0));
 
 constexpr char Command[] = "core-ui/InventoryLock";
@@ -377,11 +389,15 @@ auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexc
 		plog::Info("stash tabs: refused message 0x%02x, not the item's own cell (page %u)", message[0], page);
 		return 0;
 	}
-	if (const uint32_t page = stash_affinity::ViewPage(); local && page != 0 && size >= 0x15 && message[0] == 0x21) {
-		// D2R's stack-onto message (handler 0x4c1940) is not filtered; one line per drop says it was sent (#1744)
-		uint32_t cell = 0;
-		std::memcpy(&cell, message + 0x11, sizeof cell);
-		plog::Info("stash tabs: stack message 0x21 onto page %u cell %u,%u", page, cell & 0xffff, cell >> 16);
+	if (const uint32_t page = stash_affinity::ViewPage(); local && size > 0 && TabStack(message, static_cast<size_t>(size), page)) {
+		const uint32_t cell = ReadU32(message + 0x11);
+		// consumed only once the plugin's stack is queued: the cursor item then stacks or stays on the cursor
+		const bool queued = stash_affinity::StackOnto(ReadU32(message + 1), ReadU32(message + 5));
+		plog::Info("stash tabs: stack message 0x21 onto page %u cell %u,%u: %s", page, cell & 0xffff, cell >> 16,
+		           queued ? "the plugin stacks it" : "not queued, left to D2R");
+		if (queued) {
+			return 0;
+		}
 	}
 	return g_dispatch(game, player, message, size);
 }
