@@ -28,8 +28,8 @@ Status is one of four:
 |---|---|---|
 | ported | 122 | 69 |
 | deviation | 330 | 83 |
-| missing | 186 | 116 |
-| not needed | 477 | 253 |
+| missing | 168 | 108 |
+| not needed | 495 | 261 |
 | **total** | **1115** | **521** |
 
 By module: D2Game 615 records, D2Client 410, D2Common 86, D2Lang 3, D2Win 1. A few features account for most of the records:
@@ -38,39 +38,42 @@ By module: D2Game 615 records, D2Client 410, D2Common 86, D2Lang 3, D2Win 1. A f
 - The 1.13c object class limit (`0x23d`): a deviation, under the row for PD2's blank `<reserved>` objects rows 573-583.
 
 The installer writes (section [Installer table writes](#installer-table-writes)) number 257:
-- 99 are named by our code;
+- 99 are named by our code, and 23 more skill entries are ported or documented by function number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage);
 - 38 are named only by a doc, whose verdict stands;
-- 120 are named nowhere and are tracked in [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849).
+- 6 are real gaps with their own issues ([#1869](https://github.com/synpoox/pd2-resurrected/issues/1869), [#1870](https://github.com/synpoox/pd2-resurrected/issues/1870), [#1871](https://github.com/synpoox/pd2-resurrected/issues/1871), [#1872](https://github.com/synpoox/pd2-resurrected/issues/1872), [#1873](https://github.com/synpoox/pd2-resurrected/issues/1873));
+- 91 are still unchecked, tracked in [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849).
 
-That set includes 14 monster AI think replacements, the same kind of gap as the pets.
+The unchecked set still holds 11 monster AI think replacements, the same kind of gap as the pets.
 
 ## Missing features and their issues
 
-Filed by this audit, each a sub-issue of [#1817](https://github.com/synpoox/pd2-resurrected/issues/1817):
+Filed by this audit, each a sub-issue of [#1817](https://github.com/synpoox/pd2-resurrected/issues/1817) (verdicts from the triage on PR [#1850](https://github.com/synpoox/pd2-resurrected/issues/1850)):
 - [#1828](https://github.com/synpoox/pd2-resurrected/issues/1828): item sockets also roll on set items, and only for non-stackables, throwing weapons and quivers.
-- [#1829](https://github.com/synpoox/pd2-resurrected/issues/1829): magic items get both affixes at high item level.
+- [#1829](https://github.com/synpoox/pd2-resurrected/issues/1829): magic items get both affixes at high item level. Data fix: the Progressive Affixes companion's `[magic]` 255 to 65/85/90.
 - [#1830](https://github.com/synpoox/pd2-resurrected/issues/1830): aura-enchanted bosses take their aura from PD2's list at level mlvl/7.
 - [#1831](https://github.com/synpoox/pd2-resurrected/issues/1831): Frenzy stacks in the srvdo 9 helper.
 - [#1832](https://github.com/synpoox/pd2-resurrected/issues/1832): new characters' starting item creator.
 - [#1833](https://github.com/synpoox/pd2-resurrected/issues/1833): Telekinesis no longer picks up arrows and bolts.
-- [#1834](https://github.com/synpoox/pd2-resurrected/issues/1834): skill start gate, frame+5 event and cooldown packets.
+- [#1834](https://github.com/synpoox/pd2-resurrected/issues/1834): skill start gate, frame+5 event and cooldown packets. Unclear: the gate's class list and scope.
 - [#1835](https://github.com/synpoox/pd2-resurrected/issues/1835): summons' first think delay and the Revive path.
-- [#1836](https://github.com/synpoox/pd2-resurrected/issues/1836): Talic's Fire Pierce stacks.
 - [#1837](https://github.com/synpoox/pd2-resurrected/issues/1837): curses keep full duration on monsters in Nightmare and Hell.
 - [#1838](https://github.com/synpoox/pd2-resurrected/issues/1838): max level (99) marker states.
 - [#1839](https://github.com/synpoox/pd2-resurrected/issues/1839): missile pierce rolled at creation and capped (`pierce_idx`).
-- [#1840](https://github.com/synpoox/pd2-resurrected/issues/1840): frame advance and frame-event scheduler.
-- [#1841](https://github.com/synpoox/pd2-resurrected/issues/1841): monster 991's leap hold.
 - [#1842](https://github.com/synpoox/pd2-resurrected/issues/1842): NPC vendors in map levels (Gheed's map store).
 - [#1843](https://github.com/synpoox/pd2-resurrected/issues/1843): 2H Phase Blade roll.
-- [#1844](https://github.com/synpoox/pd2-resurrected/issues/1844): stun shortened on hit; monster get-hit end event.
-- [#1845](https://github.com/synpoox/pd2-resurrected/issues/1845): 5 or 20 stat and skill points per click.
-- [#1846](https://github.com/synpoox/pd2-resurrected/issues/1846): per-level ambient light for levels 109-137.
-- [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847): decode the remaining D2Game patches.
-- [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848): decode the remaining D2Common patches.
-- [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849): check the installer table writes no doc names.
+- [#1844](https://github.com/synpoox/pd2-resurrected/issues/1844): stun shortened on hit; monster get-hit end event. Unclear: the stun part is PvP only; the get-hit end event is open.
+- [#1846](https://github.com/synpoox/pd2-resurrected/issues/1846): per-level ambient light for levels 109-137. Unclear: the byte is levels.txt `Intensity`; whether D2R's HD renderer uses it is unknown.
+- [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847): decode the remaining D2Game patches. Decoded into [#1861](https://github.com/synpoox/pd2-resurrected/issues/1861) (Chill also lowers cast rate), [#1862](https://github.com/synpoox/pd2-resurrected/issues/1862) (Dragon Talon kick damage), [#1863](https://github.com/synpoox/pd2-resurrected/issues/1863) (pick up from up to 6 away), [#1864](https://github.com/synpoox/pd2-resurrected/issues/1864) (half freeze duration), [#1865](https://github.com/synpoox/pd2-resurrected/issues/1865) (stun length rules).
+- [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848): decode the remaining D2Common patches. Decoded into [#1866](https://github.com/synpoox/pd2-resurrected/issues/1866) (crafted item requirements), [#1867](https://github.com/synpoox/pd2-resurrected/issues/1867) (dual wield attack speed), [#1868](https://github.com/synpoox/pd2-resurrected/issues/1868) (elemental mastery on missiles).
+- [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849): check the installer table writes no doc names. Decoded into [#1869](https://github.com/synpoox/pd2-resurrected/issues/1869) (Blade Sentinel), [#1870](https://github.com/synpoox/pd2-resurrected/issues/1870) (Frozen Armor and Enchant on allies), [#1871](https://github.com/synpoox/pd2-resurrected/issues/1871) (Lieutenant of Sin), [#1872](https://github.com/synpoox/pd2-resurrected/issues/1872) (Rathma's spire), [#1873](https://github.com/synpoox/pd2-resurrected/issues/1873) (Unsummon drops the Iron Golem's item).
 - [#1851](https://github.com/synpoox/pd2-resurrected/issues/1851): Exploding and Poison shrines drop throwing potions (`tpgs`, `tpfs`).
-- [#1852](https://github.com/synpoox/pd2-resurrected/issues/1852): blank-rarity unique rows weigh 0 (Embersworn drops for us).
+- [#1852](https://github.com/synpoox/pd2-resurrected/issues/1852): blank-rarity unique rows weigh 0 (Embersworn drops for us). Data fix: Embersworn `spawnable` 1 to 0.
+
+Closed by triage as close enough (now not needed):
+- [#1836](https://github.com/synpoox/pd2-resurrected/issues/1836): Talic's Fire Pierce stacks. Close enough: the state comes only from the cut Uber Ancients' aura.
+- [#1840](https://github.com/synpoox/pd2-resurrected/issues/1840): frame advance and frame-event scheduler. Close enough: the 0x90 cap and event 4 are vanilla's; D2R `0x491240` runs the same loop.
+- [#1841](https://github.com/synpoox/pd2-resurrected/issues/1841): monster 991's leap hold. Close enough: monster 991 is `uberancientbarb3`, cut content.
+- [#1845](https://github.com/synpoox/pd2-resurrected/issues/1845): 5 or 20 stat and skill points per click. Close enough: D2R already has bulk stat assignment; only the 5/20 steps differ.
 
 Already tracked, not refiled:
 - [#1803](https://github.com/synpoox/pd2-resurrected/issues/1803): the mercenary think.
@@ -81,7 +84,8 @@ The other pet issues, [#1801](https://github.com/synpoox/pd2-resurrected/issues/
 
 ## Open questions
 
-- [item-durability](../research/items/item-durability.md) cites patch records at D2Game `+0xec4f`, `+0x13033` and `+0xa16be`, outside this table range. Either a second table exists or the table runs past `0x4a0744`. Not checked.
+- PD2 builds more patch records past the end of the table parsed here ([#1874](https://github.com/synpoox/pd2-resurrected/issues/1874)): likely [#1834](https://github.com/synpoox/pd2-resurrected/issues/1834)'s cooldown records and the records [item-durability](../research/items/item-durability.md) cites. This audit does not cover them yet.
+- [item-durability](../research/items/item-durability.md) cites patch records at D2Game `+0xec4f`, `+0x13033` and `+0xa16be`, outside this table range; [#1874](https://github.com/synpoox/pd2-resurrected/issues/1874) likely answers this.
 - [ir3-combat-stats](../research/items/ir3-combat-stats.md) calls `0x103046a0` dead code, but D2Common's missile fill (`+0x6bd1a`, `+0x6bf87`) is routed to it here.
 - The table-base globals the installers use (`0x105ddeb0` and the others) are filled at run time through `0x103a5f20(module, offset)`. The table names below come from w37's reads and from which of our docs name the functions, not from those offsets.
 
@@ -99,7 +103,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 4: D2Client call `+0x138d6` (to `0xc5a4` D2Common#10731) -> PD2 `0x102eeb30`<br>D2Client call `+0x52f44`, `+0xa9cfe`, `+0xa9d68` (to `0xa9a20`) -> PD2 `0x102eea60` | `+0x138c0`, `+0x52f10`, `+0xa9c90` | For levels 109-137 PD2 replaces the level light value (D2Common #10731) and the ambient light colour (D2Client 0xa9a20) with a per-level byte (+0x88 of PD2's level record) or 0x80 | missing | [#1846](https://github.com/synpoox/pd2-resurrected/issues/1846) | - |
+| 4: D2Client call `+0x138d6` (to `0xc5a4` D2Common#10731) -> PD2 `0x102eeb30`<br>D2Client call `+0x52f44`, `+0xa9cfe`, `+0xa9d68` (to `0xa9a20`) -> PD2 `0x102eea60` | `+0x138c0`, `+0x52f10`, `+0xa9c90` | For levels 109-137 PD2 replaces the level light value (D2Common #10731) and the ambient light colour (D2Client 0xa9a20) with a per-level byte (+0x88 of PD2's level record) or 0x80 | missing | [#1846](https://github.com/synpoox/pd2-resurrected/issues/1846); unclear (triage): the byte is levels.txt Intensity; whether D2R's HD renderer uses it is unknown | - |
 
 ### Object class limit
 
@@ -134,7 +138,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 2: D2Client call `+0x79675` (to `0x14a10`) -> PD2 `0x10398450`<br>D2Client call `+0xbdf43` (to `0x143e0`) -> PD2 `0x10398370` | `+0x78fc0`, `+0xbdca0` | Shift or ctrl (or a controller button) on the stat or skill tree button spends 5 or 20 points at once instead of 1 | missing | [#1845](https://github.com/synpoox/pd2-resurrected/issues/1845) | - |
+| 2: D2Client call `+0x79675` (to `0x14a10`) -> PD2 `0x10398450`<br>D2Client call `+0xbdf43` (to `0x143e0`) -> PD2 `0x10398370` | `+0x78fc0`, `+0xbdca0` | Shift or ctrl (or a controller button) on the stat or skill tree button spends 5 or 20 points at once instead of 1 | not needed | close enough ([#1845](https://github.com/synpoox/pd2-resurrected/issues/1845) triage): D2R already has bulk stat assignment; only the 5/20 steps differ | D2R's own bulk assign |
 
 ### PvP
 
@@ -249,7 +253,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 1: D2Game `+0xf5ce`: `7d` -> `eb` | `+0xf370` | +0xf5ce jge to jmp: a unique row with blank or 0 rarity weighs 0 (vanilla and D2R weigh it 1) | missing | [#1852](https://github.com/synpoox/pd2-resurrected/issues/1852); Embersworn (lvl 74, blank rarity) can drop for us | D2R 0x443910 sets weight 1 for rarity < 1 |
+| 1: D2Game `+0xf5ce`: `7d` -> `eb` | `+0xf370` | +0xf5ce jge to jmp: a unique row with blank or 0 rarity weighs 0 (vanilla and D2R weigh it 1) | missing | [#1852](https://github.com/synpoox/pd2-resurrected/issues/1852); Embersworn (lvl 74, blank rarity) can drop for us; data fix: Embersworn spawnable 1 to 0 | D2R 0x443910 sets weight 1 for rarity < 1 |
 
 ### Item and save serialisation buffers
 
@@ -267,7 +271,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 2: D2Game call `+0x1040c`, `+0x1047c` (to `0x144d0`) -> PD2 `0x103855d0` | `+0x103c0` | the magic affix roll (+0x103c0, calls +0x1040b and +0x1047b to 103855d0) forces a prefix and a suffix at ilvl 65+ (85+ rings amulets jewels, 90+ charms, always type 105) | missing | [#1829](https://github.com/synpoox/pd2-resurrected/issues/1829); companions/config/ruffneckk-progressive-affixes.toml [magic] is all 255 and its header says no magic item is forced; likely a config fix | D2R's magic affix roll |
+| 2: D2Game call `+0x1040c`, `+0x1047c` (to `0x144d0`) -> PD2 `0x103855d0` | `+0x103c0` | the magic affix roll (+0x103c0, calls +0x1040b and +0x1047b to 103855d0) forces a prefix and a suffix at ilvl 65+ (85+ rings amulets jewels, 90+ charms, always type 105) | missing | [#1829](https://github.com/synpoox/pd2-resurrected/issues/1829); companions/config/ruffneckk-progressive-affixes.toml [magic] is all 255 and its header says no magic item is forced; likely a config fix; data fix: Progressive Affixes companion [magic] 255 to 65/85/90 | D2R's magic affix roll |
 
 ### Forced unique and set id
 
@@ -423,7 +427,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 10: D2Game call `+0x4b7cb`, `+0xa1db9`, `+0xa1f0a`, `+0xa2012`, `+0xa209b`, `+0xa3840`, `+0xadbe4`, `+0xf16b4` (to `0xa19a0` Skills.cpp) -> PD2 `0x1036fa60`<br>D2Game call `+0x4fa53`, `+0xd94f8` (to `0x370e0`) -> PD2 `0x1036eb60` | `+0x4b500`, `+0x4f970`, `+0xa1d10`, `+0xa2060`, `+0xa37d0`, `+0xadb30`, `+0xd9470`, `+0xf14f0` | skill start (+0xa19a0 to 1036fa60, 8 sites) gates per player, schedules event 0xe at frame+5 for listed skills, sends packet 0x83 for skills 249 250 593; event lookup (1036eb60) re-registers skill_cooldown events | missing | [#1834](https://github.com/synpoox/pd2-resurrected/issues/1834); low confidence | D2R's skill start |
+| 10: D2Game call `+0x4b7cb`, `+0xa1db9`, `+0xa1f0a`, `+0xa2012`, `+0xa209b`, `+0xa3840`, `+0xadbe4`, `+0xf16b4` (to `0xa19a0` Skills.cpp) -> PD2 `0x1036fa60`<br>D2Game call `+0x4fa53`, `+0xd94f8` (to `0x370e0`) -> PD2 `0x1036eb60` | `+0x4b500`, `+0x4f970`, `+0xa1d10`, `+0xa2060`, `+0xa37d0`, `+0xadb30`, `+0xd9470`, `+0xf14f0` | skill start (+0xa19a0 to 1036fa60, 8 sites) gates per player, schedules event 0xe at frame+5 for listed skills, sends packet 0x83 for skills 249 250 593; event lookup (1036eb60) re-registers skill_cooldown events | missing | [#1834](https://github.com/synpoox/pd2-resurrected/issues/1834); low confidence; unclear (triage): the cooldown gate's class list and scope | D2R's skill start |
 
 ### Summon first think delay and revive path
 
@@ -435,7 +439,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 1: D2Game call `+0x4dc46` (to `0xded30`) -> PD2 `0x10303a60` | - | Fend, Zeal and Fury (srvdo 13) hits add 20 passive_phys_pierce (478) to the attacker's state 224 (talicfirepierce) stat list before the melee hit (+0xded30 at +0x4dc46 to 10303a60) | missing | [#1836](https://github.com/synpoox/pd2-resurrected/issues/1836); no port found; low confidence on which unit holds the state | D2R's srvdo 13 |
+| 1: D2Game call `+0x4dc46` (to `0xded30`) -> PD2 `0x10303a60` | - | Fend, Zeal and Fury (srvdo 13) hits add 20 passive_phys_pierce (478) to the attacker's state 224 (talicfirepierce) stat list before the melee hit (+0xded30 at +0x4dc46 to 10303a60) | not needed | close enough ([#1836](https://github.com/synpoox/pd2-resurrected/issues/1836) triage): state 224 comes only from the aura on colossal1, the cut Uber Ancients | D2R srvdo 13 0x5568e0 |
 
 ### Life drain cap
 
@@ -549,7 +553,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 12: D2Game call `+0x759be`, `+0x75a0a`, `+0x75d46`, `+0x75d5c`, `+0x75d8b`, `+0x76a1e` (to `0xb08a` D2Common#10853) -> PD2 `0x1037aaf0`<br>D2Game call `+0x76016`, `+0x781a5`, `+0x78215`, `+0x78818`, `+0x78885`, `+0x79f20` (to `0xdf7b0`) -> PD2 `0x1037a540` | `+0x75ce0`, `+0x75e10`, `+0x79e40` | PD2's frame advance (D2Common #10853 to 1037aaf0, 6 sites) and frame event scheduler (+0xdf7b0 to 1037a540) read the anim rate unsigned, cap frames at 0x90 and count event 4 | missing | [#1840](https://github.com/synpoox/pd2-resurrected/issues/1840); low confidence; check D2R's own frame code first, it may already match | D2R's frame advance |
+| 12: D2Game call `+0x759be`, `+0x75a0a`, `+0x75d46`, `+0x75d5c`, `+0x75d8b`, `+0x76a1e` (to `0xb08a` D2Common#10853) -> PD2 `0x1037aaf0`<br>D2Game call `+0x76016`, `+0x781a5`, `+0x78215`, `+0x78818`, `+0x78885`, `+0x79f20` (to `0xdf7b0`) -> PD2 `0x1037a540` | `+0x75ce0`, `+0x75e10`, `+0x79e40` | PD2's frame advance (D2Common #10853 to 1037aaf0, 6 sites) and frame event scheduler (+0xdf7b0 to 1037a540) read the anim rate unsigned, cap frames at 0x90 and count event 4 | not needed | close enough ([#1840](https://github.com/synpoox/pd2-resurrected/issues/1840) triage): the 0x90 cap and event 4 are vanilla's | D2R 0x491240 runs the same loop |
 
 ### Monster mode assert
 
@@ -561,7 +565,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 2: D2Game call `+0x76f28` (to `0xb084` D2Common#10426) -> PD2 `0x102fbd50`<br>D2Game call `+0x76fc4` (to `0xb08a` D2Common#10853) -> PD2 `0x102fbdb0` | `+0x76f43` | for monster 991 using skill 143 with flag 0x100, the anim never ends (#10426 to 102fbd50) and freezes at frame 8 (#10853 to 102fbdb0) | missing | [#1841](https://github.com/synpoox/pd2-resurrected/issues/1841); no port found; low confidence | D2R's frame advance |
+| 2: D2Game call `+0x76f28` (to `0xb084` D2Common#10426) -> PD2 `0x102fbd50`<br>D2Game call `+0x76fc4` (to `0xb08a` D2Common#10853) -> PD2 `0x102fbdb0` | `+0x76f43` | for monster 991 using skill 143 with flag 0x100, the anim never ends (#10426 to 102fbd50) and freezes at frame 8 (#10853 to 102fbdb0) | not needed | close enough ([#1841](https://github.com/synpoox/pd2-resurrected/issues/1841) triage): monster 991 is uberancientbarb3, cut content | D2R's frame advance |
 
 ### Crash guard
 
@@ -610,7 +614,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
 | 3: D2Game call `+0x91de4` (to `0xabb6` D2Common#11111) -> PD2 `0x1036ee20`<br>D2Game `+0x91de9`..`+0x91dee`: `57e8bb8df7ff` -> `909090909090`<br>D2Game call `+0x91e0d` (to `0xafa0` D2Common#10993) -> PD2 `0x1036ee90` | `+0x91b70` | +0x91b70: two D2Common calls (#11111, #10993) skipped when a state list check fails (0x1036ee20, 0x1036ee90), one call NOPed at +0x91de9 | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
-| 4: D2Game `+0x92c19`: `0c` -> `04`<br>D2Game `+0x92c5a`: `8b` -> `e8`<br>D2Game call `+0x92c5a(8b)` (to `0xa7517`) -> PD2 `0x103a1d00`<br>D2Game `+0x92c5f`..`+0x92c6b`: `008d4aff0faf884c01000003..` -> `909090909090909090909090..` | `+0x92bb0` | +0x92bb0 (a hit builder): a damage flag 0xc becomes 0x4, and the skill attack bonus ToHit + (lvl-1) x LevToHit is replaced by a skills.txt calc (0x103022a0 -> 0x1030ad70) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
+| 4: D2Game `+0x92c19`: `0c` -> `04`<br>D2Game `+0x92c5a`: `8b` -> `e8`<br>D2Game call `+0x92c5a(8b)` (to `0xa7517`) -> PD2 `0x103a1d00`<br>D2Game `+0x92c5f`..`+0x92c6b`: `008d4aff0faf884c01000003..` -> `909090909090909090909090..` | `+0x92bb0` | +0x92bb0 (a hit builder): a damage flag 0xc becomes 0x4, and the skill attack bonus ToHit + (lvl-1) x LevToHit is replaced by a skills.txt calc (0x103022a0 -> 0x1030ad70) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read); [#1862](https://github.com/synpoox/pd2-resurrected/issues/1862) | - |
 | 1: D2Game `+0x934f9`: `85` -> `33` | `+0x934a0` | +0x934f9: the result of call +0x91240 is forced to 0 (test eax,eax -> xor eax,eax) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 | 1: D2Game call `+0x986d8` (to `0xaf52` D2Common#10501) -> PD2 `0x102fb290` | `+0x98680` | +0x986d8: D2Common #10501 returns 0 for a unit with +0x98 set and +0x94 clear (0x102fb290) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 | 1: D2Game call `+0x9a397` (to `0xa59e` D2Common#10819) -> PD2 `0x102fc860` | `+0x9a1a0` | +0x9a397 (SkilPal.cpp): D2Common #10819 skipped while the unit has state 18 (0x102fc860) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
@@ -627,12 +631,12 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 | 3: D2Game `+0xcfc58`..`+0xcfc59`: `751f` -> `9090`<br>D2Game call `+0xcfc61` (to `0xa430` D2Common#10744) -> PD2 `0x102fb2f0`<br>D2Game call `+0xcfdef` (to `0xd51a0` ItemMode.cpp) -> PD2 `0x103734e0` | `+0xcfbc0` | +0xcfbc0: a jne NOPed, D2Common #10744 through 0x102fb2f0, and after ItemMode +0xd51a0 a monster gets 0x103a4240 (0x103734e0) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 | 3: D2Game `+0xd0655`..`+0xd0656`: `7405` -> `9090`<br>D2Game call `+0xd070e` (to `0xa934` D2Common#10244) -> PD2 `0x1036e620` | - | +0xd0655 je NOPed; +0xd070e D2Common #10244 (an item type test) through PD2's list (0x1036e620) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 | 2: D2Game `+0xd9a41`..`+0xd9a42`: `7e2a` -> `9090`<br>D2Game call `+0xd9a5e` (to `0xaa12` D2Common#10029) -> PD2 `0x1036f940` | `+0xd9470` | ItemMode +0xd9a41 jle NOPed; D2Common #10029 called with its last argument 0 (0x1036f940) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
-| 1: D2Game call `+0xdc477` (to `0xda7b0`) -> PD2 `0x10304dc0` | `+0xdc0b0` | +0xdc477: with item_halffreezeduration and no item_cannotbefrozen, PD2 halves the cold length fields too (0x10304dc0) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
+| 1: D2Game call `+0xdc477` (to `0xda7b0`) -> PD2 `0x10304dc0` | `+0xdc0b0` | +0xdc477: with item_halffreezeduration and no item_cannotbefrozen, PD2 halves the cold length fields too (0x10304dc0) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read); [#1864](https://github.com/synpoox/pd2-resurrected/issues/1864) | - |
 | 1: D2Game call `+0xdc88d` (to `0xa76c` D2Common#10261) -> PD2 `0x1036e510` | `+0xdc780` | SUnitDmg.cpp +0xdc88d: a stat add also adds stat 423 x3 and clamps stat 105 (0x1036e510) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 | 1: D2Game call `+0xde287` (to `0xdcc20`) -> PD2 `0x10302a30` | `+0xde0c0` | +0xde287: +0xdcc20 replaced by 0x10302a30 (a state 273 special) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 | 1: D2Game call `+0xe1e8d` (to `0xa5e0` D2Common#10874) -> PD2 `0x102fa5c0` | `+0xe1d90` | +0xe1e8d: D2Common #10874 through 0x102fa5c0 | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 | 1: D2Game call `+0xe97d7` (to `0x36470` QUESTS.CPP) -> PD2 `0x103721c0` | `+0xe9600` | +0xe97d7: QUESTS.CPP +0x36470 through 0x103721c0 | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
-| 1: D2Game `+0xfa128`..`+0xfa12b`: ptr PD2 `0x103943e0` | - | client message 0x16 (pick up): gold and item types 76-78 are picked up from up to 6 away; after a pickup 0x10374850 runs on the item (0x103943e0) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
+| 1: D2Game `+0xfa128`..`+0xfa12b`: ptr PD2 `0x103943e0` | - | client message 0x16 (pick up): gold and item types 76-78 are picked up from up to 6 away; after a pickup 0x10374850 runs on the item (0x103943e0) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read); [#1863](https://github.com/synpoox/pd2-resurrected/issues/1863) | - |
 | 6: D2Game, 6 byte writes at `+0xfa228`, `+0xfa240`, `+0xfa280`, `+0xfa288`, `+0xfa290`, `+0xfa388` | - | client messages 0x36 and 0x62 gated by 0x103971e0; 0x39 made a no-op; 0x41 (resurrect) recompiled with an arena branch; 0x42 takes 7 bytes (0x10395b50); 0x43 validated and never run | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 | 1: D2Game `+0xfbb94`..`+0xfbb97`: ptr PD2 `0x10345a40` | - | callback table +0xfbb94: +0xa1e80 replaced by 0x10345a40, which restarts an aura skill (skills.txt flag 0x20) of the left skill | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 
@@ -748,7 +752,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 2: D2Game call `+0xdd41a` (to `0x78550`) -> PD2 `0x10302c10`<br>D2Game `+0xfa4a8`..`+0xfa4ab`: ptr PD2 `0x1037bac0` | `+0xdcf20` | a hit on a stunned player shortens the stun (state 21) by 2 frames (0x10302c10); the monster get-hit mode (+0xfa4a8, 1.13c +0x74e60) schedules its end event only when none is pending (0x1037bac0) | missing | [#1844](https://github.com/synpoox/pd2-resurrected/issues/1844) | - |
+| 2: D2Game call `+0xdd41a` (to `0x78550`) -> PD2 `0x10302c10`<br>D2Game `+0xfa4a8`..`+0xfa4ab`: ptr PD2 `0x1037bac0` | `+0xdcf20` | a hit on a stunned player shortens the stun (state 21) by 2 frames (0x10302c10); the monster get-hit mode (+0xfa4a8, 1.13c +0x74e60) schedules its end event only when none is pending (0x1037bac0) | missing | [#1844](https://github.com/synpoox/pd2-resurrected/issues/1844); unclear (triage): the stun part is PvP only, the get-hit end event is open | - |
 
 ### Uber bosses
 
@@ -800,7 +804,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 1: D2Game `+0xfa250`..`+0xfa253`: ptr PD2 `0x103956b0` | - | client message 0x3b (add skill) takes an optional count byte and spends that many points at once, capped by the skill's max level and the character level (0x103956b0) | missing | [#1845](https://github.com/synpoox/pd2-resurrected/issues/1845) | - |
+| 1: D2Game `+0xfa250`..`+0xfa253`: ptr PD2 `0x103956b0` | - | client message 0x3b (add skill) takes an optional count byte and spends that many points at once, capped by the skill's max level and the character level (0x103956b0) | not needed | close enough ([#1845](https://github.com/synpoox/pd2-resurrected/issues/1845) triage): D2R already has bulk point assignment; only the 5/20 steps differ | D2R's own bulk assign |
 
 ### Desecration
 
@@ -845,7 +849,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 | 3: D2Common `+0x334ac`..`+0x334cc`: `6a006a4456e8ba5600006a00..` -> `909090909090909090909090..`<br>D2Common `+0x334ac`: `6a` -> `e8`<br>D2Common call `+0x334ac(6a)` (to `0x56479eb1`) -> PD2 `0x103a37a0` | `+0x33110` | Units.cpp +0x334ac: two D2Common calls with 0x44 NOPed and replaced by 0x102fc0e0 | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
 | 8: D2Common call `+0x378eb`, `+0x379e6`, `+0x379fb`, `+0x37abb`, `+0x37b5f`, `+0x37c80`, `+0x37d00`, `+0x37d15` (to `0x376f0`) -> PD2 `0x102fbe10` | `+0x37840`, `+0x37920`, `+0x37a20`, `+0x37af0`, `+0x37c20`, `+0x37ca0` | +0x376f0 (8 sites) through 0x102fbe10: for a level above 136 a value is set from 0x1037f1a0 | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read; levels past 136 are PD2's maps) | - |
 | 3: D2Common `+0x3a74f`..`+0x3a750`: `4e5c` -> `ce90`<br>D2Common call `+0x3a75a` (to `0x3a280`) -> PD2 `0x102fae50` | `+0x3a740` | +0x3a740: a register change and a stat add moved to the unit at +0x5c (0x102fae50) | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
-| 19: D2Common call `+0x6ac1f`, `+0x6ac6a`, `+0x6acb5`, `+0x6ad00`, `+0x6ad4b`, `+0x6ad96`, `+0x6ade1`, `+0x6ae2c`, `+0x6ae77`, `+0x6aebc`, `+0x6af01`, `+0x6af3b`, `+0x6af77`, `+0x6afbf`, `+0x6afff`, `+0x6b044`, `+0x6b08c`, `+0x6b0d4`, `+0x6b122` (to `0x38a80`) -> PD2 `0x102fa820` | `+0x6abe0` | +0x6abe0 (19 sites): elemental min/max damage stats get their skill mastery (stats 329, 330, 357, 331, 332) added (0x102fa820) | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
+| 19: D2Common call `+0x6ac1f`, `+0x6ac6a`, `+0x6acb5`, `+0x6ad00`, `+0x6ad4b`, `+0x6ad96`, `+0x6ade1`, `+0x6ae2c`, `+0x6ae77`, `+0x6aebc`, `+0x6af01`, `+0x6af3b`, `+0x6af77`, `+0x6afbf`, `+0x6afff`, `+0x6b044`, `+0x6b08c`, `+0x6b0d4`, `+0x6b122` (to `0x38a80`) -> PD2 `0x102fa820` | `+0x6abe0` | +0x6abe0 (19 sites): elemental min/max damage stats get their skill mastery (stats 329, 330, 357, 331, 332) added (0x102fa820) | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read); [#1868](https://github.com/synpoox/pd2-resurrected/issues/1868) | - |
 
 ### Charm "only one unique" rule
 
@@ -880,7 +884,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 ## Installer table writes
 
-PD2's start-up routine `0x10344580` runs installers that write PD2 functions into 1.13c tables ([w37](../research/pd2/w37-server-rules.md)). PD2 addresses here are PD2.gpr's. Status: **ported** (our code names the function), **documented** (a doc names it; its verdict stands), **unchecked** (named nowhere; [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849)). The D2Client server-message table writes (`0x1036be80`) are PD2's own packets and go with the features above.
+PD2's start-up routine `0x10344580` runs installers that write PD2 functions into 1.13c tables ([w37](../research/pd2/w37-server-rules.md)). PD2 addresses here are PD2.gpr's. Status: **ported** (our code names the function), **documented** (a doc names it; its verdict stands), **missing** (a real gap with its own issue, from the [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage), **unchecked** (named nowhere; [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849)). The D2Client server-message table writes (`0x1036be80`) are PD2's own packets and go with the features above.
 
 | Installer | Table | Entry | PD2 function (PD2.gpr) | Status | Ours / evidence |
 |---|---|---|---|---|---|
@@ -901,10 +905,10 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 72 DoomKnight think | `0x1035a930` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 74 OblivionKnight think | `0x1035b0a0` | documented | [uber-bosses-dll](uber-bosses-dll.md) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 87 Trap-Melee think | `0x1035b3f0` | ported | `plugin/core-events/dclone_ai.cpp` |
-| `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 89 Megademon think | `0x10357710` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 93 ArcaneTower think | `0x1035cb30` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 89 Megademon think | `0x10357710` | missing | [#1871](https://github.com/synpoox/pd2-resurrected/issues/1871) |
+| `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 93 ArcaneTower think | `0x1035cb30` | missing | [#1872](https://github.com/synpoox/pd2-resurrected/issues/1872) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 99 TrappedSoul think | `0x1035bc60` | ported | `plugin/core-events/dclone_ai.cpp`, `plugin/core-events/nihlathak_ai.cpp`, `plugin/core-events/nihlathak_ai.h` |
-| `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 102 BladeCreeper think | `0x1035fd10` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 102 BladeCreeper think | `0x1035fd10` | missing | [#1869](https://github.com/synpoox/pd2-resurrected/issues/1869) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 105 ShadowWarrior init | `0x10360a10` | documented | [summon-ai](summon-ai.md) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 105 ShadowWarrior think | `0x10360240` | documented | [summon-ai](summon-ai.md) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 106 ShadowMaster init | `0x10360af0` | documented | [summon-ai](summon-ai.md) |
@@ -957,8 +961,8 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | cltdofunc | 100 | `0x103ab580` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | cltdofunc | 101 | `0x103ab630` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | cltdofunc | 102 | `0x103ab760` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x1036ba20` | cltdofunc | 103 | `0x103ab7f0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | cltdofunc | 104 | `0x103ab800` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | cltdofunc | 103 | `0x103ab7f0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): aura client, cut: Left Click Auras companion |
+| `0x1036ba20` | cltdofunc | 104 | `0x103ab800` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Find Potion/Item, Lightning Bolt/Fury, Split Throw) |
 | `0x1036ba20` | cltdofunc | 105 | `0x103ab880` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | cltdofunc | 106 | `0x103ab920` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | cltdofunc | 107 | `0x103aba80` | ported | `plugin/core-rules/skill_functions.cpp` |
@@ -969,29 +973,29 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | cltdofunc | 112 | `0x103abfb0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | cltdofunc | 113 | `0x103ac1e0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | cltdofunc | 114 | `0x103ac270` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x1036ba20` | cltdofunc | 115 | `0x103ac600` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | cltdofunc | 116 | `0x103ac7b0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | cltdofunc | 117 | `0x103ac8b0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | cltdofunc | 118 | `0x103ac910` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | cltdofunc | 115 | `0x103ac600` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): the Leap deviation |
+| `0x1036ba20` | cltdofunc | 116 | `0x103ac7b0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): lightning-javelins.md |
+| `0x1036ba20` | cltdofunc | 117 | `0x103ac8b0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Find Potion/Item, Lightning Bolt/Fury, Split Throw) |
+| `0x1036ba20` | cltdofunc | 118 | `0x103ac910` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Find Potion/Item, Lightning Bolt/Fury, Split Throw) |
 | `0x1036ba20` | cltdofunc | 119 | `0x103acb70` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x1036ba20` | srvdofunc | 4 | `0x103ae650` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvdofunc | 4 | `0x103ae650` | missing | [#1873](https://github.com/synpoox/pd2-resurrected/issues/1873) |
 | `0x1036ba20` | srvdofunc | 6 | `0x103ae7c0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | srvdofunc | 8 | `0x103ae930` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvdofunc | 8 | `0x103ae930` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules router (Multiple Shot, Multiple Shot Proc, TraitorBossStunSpear) |
 | `0x1036ba20` | srvdofunc | 23 | `0x103aebf0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | srvdofunc | 25 | `0x103aec40` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvdofunc | 25 | `0x103aec40` | missing | [#1870](https://github.com/synpoox/pd2-resurrected/issues/1870) |
 | `0x1036ba20` | srvdofunc | 39 | `0x103aee00` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x1036ba20` | srvdofunc | 44 | `0x103aee30` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvdofunc | 44 | `0x103aee30` | missing | [#1869](https://github.com/synpoox/pd2-resurrected/issues/1869) |
 | `0x1036ba20` | srvdofunc | 45 | `0x103af080` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 46 | `0x103af1a0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 47 | `0x103af270` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | srvdofunc | 48 | `0x103af2f0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvdofunc | 48 | `0x103af2f0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W21 gate A (w32-blade-fury.md) |
 | `0x1036ba20` | srvdofunc | 49 | `0x103af450` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 50 | `0x103af640` | documented | [w29-assassin-finishers](../research/skills/w29-assassin-finishers.md) |
 | `0x1036ba20` | srvdofunc | 51 | `0x103af800` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 54 | `0x103afac0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 55 | `0x103afb40` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | srvdofunc | 56 | `0x103afea0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | srvdofunc | 57 | `0x103afee0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvdofunc | 56 | `0x103afea0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W14's golem count rule, the Golem start deviation |
+| `0x1036ba20` | srvdofunc | 57 | `0x103afee0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W14's golem count rule, the Golem start deviation |
 | `0x1036ba20` | srvdofunc | 64 | `0x103aff30` | documented | [ir3-combat-stats](../research/items/ir3-combat-stats.md) |
 | `0x1036ba20` | srvdofunc | 71 | `0x103b0080` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 104 | `0x103b0210` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
@@ -1000,11 +1004,11 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvdofunc | 114 | `0x103b06c0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 115 | `0x103b0930` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 118 | `0x103b0a50` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | srvdofunc | 119 | `0x103b0b90` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvdofunc | 119 | `0x103b0b90` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): druid-w24.md, skill_functions.cpp |
 | `0x1036ba20` | srvdofunc | 139 | `0x103b0cf0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 143 | `0x103b0df0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 148 | `0x103b0f00` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | srvdofunc | 150 | `0x103b1030` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvdofunc | 150 | `0x103b1030` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W19 and the Smite deviation |
 | `0x1036ba20` | srvdofunc | 153 | `0x103b1300` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 154 | `0x103b1590` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 155 | `0x103b16d0` | ported | `plugin/core-rules/skill_functions.cpp` |
@@ -1019,8 +1023,8 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvdofunc | 164 | `0x103b25c0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 165 | `0x103b27c0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 166 | `0x103b29d0` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x1036ba20` | srvdofunc | 167 | `0x103b2b20` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | srvdofunc | 168 | `0x103b2b30` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvdofunc | 167 | `0x103b2b20` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Force Move, Find Potion/Item, Lightning Bolt/Fury, Split Throw) |
+| `0x1036ba20` | srvdofunc | 168 | `0x103b2b30` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Force Move, Find Potion/Item, Lightning Bolt/Fury, Split Throw) |
 | `0x1036ba20` | srvdofunc | 169 | `0x103b2bc0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 170 | `0x103b2c60` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 171 | `0x103b30a0` | ported | `plugin/core-rules/skill_functions.cpp` |
@@ -1039,9 +1043,9 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvdofunc | 184 | `0x103b5110` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 185 | `0x103b52b0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 186 | `0x103b56d0` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x1036ba20` | srvdofunc | 187 | `0x103b58b0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | srvdofunc | 188 | `0x103b59c0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | srvdofunc | 189 | `0x103b5a30` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvdofunc | 187 | `0x103b58b0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): lightning-javelins.md |
+| `0x1036ba20` | srvdofunc | 188 | `0x103b59c0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Force Move, Find Potion/Item, Lightning Bolt/Fury, Split Throw) |
+| `0x1036ba20` | srvdofunc | 189 | `0x103b5a30` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Force Move, Find Potion/Item, Lightning Bolt/Fury, Split Throw) |
 | `0x1036ba20` | srvstfunc | 10 | `0x103b5dd0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvstfunc | 27 | `0x103b5ed0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvstfunc | 28 | `0x103b6020` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
@@ -1050,8 +1054,8 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvstfunc | 66 | `0x103b6460` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvstfunc | 67 | `0x103b6520` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvstfunc | 68 | `0x103b6690` | documented | [necromancer-w11](../research/skills/necromancer-w11.md) |
-| `0x1036ba20` | srvstfunc | 69 | `0x103b2b20` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x1036ba20` | srvstfunc | 70 | `0x103b66d0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvstfunc | 69 | `0x103b2b20` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Force Move, Find Potion/Item, Split Throw) |
+| `0x1036ba20` | srvstfunc | 70 | `0x103b66d0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Force Move, Find Potion/Item, Split Throw) |
 | `0x1036ba20` | srvstfunc | 71 | `0x103b6760` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvstfunc | 72 | `0x103b67e0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvstfunc | 73 | `0x103b6990` | ported | `plugin/core-rules/skill_functions.cpp` |
@@ -1060,13 +1064,13 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvstfunc | 76 | `0x103b6aa0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvstfunc | 77 | `0x103b6c80` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvstfunc | 78 | `0x103b6cf0` | documented | [necromancer-w14](../research/skills/necromancer-w14.md), [w10-barbarian](../research/skills/w10-barbarian.md) |
-| `0x1036ba20` | srvstfunc | 79 | `0x103b6eb0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x103ad290` | cltstfunc (D2Client `+0xde928`) | 9 | `0x103accc0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
-| `0x103ad290` | cltstfunc (D2Client `+0xde928`) | 54 | `0x103acd00` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvstfunc | 79 | `0x103b6eb0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Force Move, Find Potion/Item, Split Throw) |
+| `0x103ad290` | cltstfunc (D2Client `+0xde928`) | 9 | `0x103accc0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): D2R's own |
+| `0x103ad290` | cltstfunc (D2Client `+0xde928`) | 54 | `0x103acd00` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): aura client, cut: Left Click Auras companion |
 | `0x103ad290` | cltstfunc (D2Client `+0xde928`) | 55 | `0x103acd30` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x103ad290` | cltstfunc (D2Client `+0xde928`) | 56 | `0x103acda0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x103ad290` | cltstfunc (D2Client `+0xde928`) | 57 | `0x103ace50` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x103ad290` | cltstfunc (D2Client `+0xde928`) | 58 | `0x103ad040` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x103ad290` | cltstfunc (D2Client `+0xde928`) | 58 | `0x103ad040` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md (Lucion kit) |
 | `0x103ae5d0` | D2Client function table (not identified) | 11 | `0x103ad2e0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x103ae5d0` | D2Client function table (not identified) | 13 | `0x103ad6b0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x103ae5d0` | D2Client function table (not identified) | 15 | `0x103ad7b0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
