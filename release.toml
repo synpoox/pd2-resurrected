@@ -45,5 +45,6 @@ feed_tag = "catalog"
 min_launcher_version = "0.1.0"
 loader_versions = ["1.3.1-beta"]
 required_settings = [{file = "d2rloader/config/d2rloader.toml", key = "d2rcore.save_format.mode", value = "extended"}]
-save_breaking = false
+save_breaking = true  # #1853: Classic/LoD characters read the mod's tables now
+incompatibility_notice = "Classic and Lord of Destruction characters from earlier versions may not load. Before making a new Classic or LoD character, move SharedStashSoftCoreV2.d2i out of the save folder, or the new character fails to save."
 upcoming = ["project-09", "project-forever"]

@@ -18,6 +18,9 @@ core-ui's `split` part: with a stack held, Ctrl + left click puts one item down 
 potions) and ammo (arrows, bolts) never split (#1789): the stack goes down whole, and the log reads `split: refused`.
 PD2 prices a throwing weapon as one item whatever its stack size, buying and selling (#1539,
 [item-prices](../research/items/item-prices.md)), so a split would turn one bought stack into many full-price sales.
+On a Shared stash tab (#1820) the SDK reads the stack's count as 0 and refuses `splitStack`, so the split goes through the
+inventory: the stack moves there, splits, and the item left down moves back to its page and cell. With no free inventory
+cell the stack stays down whole and the log reads `split: refused, no room in the inventory`.
 
 ## Rebinding
 

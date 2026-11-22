@@ -114,6 +114,9 @@ if ($Data) {
         }
         if ($NoValidate) { py -3 -m modkit build $Data --no-validate } else { py -3 -m modkit build $Data }
         if ($LASTEXITCODE -ne 0) { throw "modkit build failed ($LASTEXITCODE)" }
+        # Classic and LoD read excel/base/: give them our tables too (#1853)
+        py -3 (Join-Path $PSScriptRoot "mirror_base_bank.py") --root $Data
+        if ($LASTEXITCODE -ne 0) { throw "mirror_base_bank failed ($LASTEXITCODE)" }
         if ($slot) {
             if (-not $env:MODKIT_RUN) { throw "$Game is test slot ${slot}: set MODKIT_RUN to the owner of its lock (testing\game_slots.py lock $slot <owner>)" }
             py -3 testing\slot_install.py --slot $slot $Data

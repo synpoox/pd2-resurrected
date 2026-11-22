@@ -1,5 +1,6 @@
 // Host self-check of plugin/common/stash_toml.h (#1808): the add_shared_tabs rewrite.
 //   cmake -S plugin -B plugin/build-checks -A x64 && cmake --build plugin/build-checks --config Release --target stash_toml_check
+#include "stash_home.h"
 #include "stash_toml.h"
 
 #include <cstdio>
@@ -11,6 +12,9 @@ static int g_pass = 0, g_fail = 0;
 #define CHECK(name, cond) do { if (cond) { ++g_pass; std::printf("PASS  %s\n", name); } else { ++g_fail; std::printf("FAIL  %s\n", name); } } while (0)
 
 int main() {
+	// #1854: the extra tabs the self-heal writes reach every reserved page in every game mode (3 stock pages Classic/LoD, 5 RotW)
+	CHECK("Classic/LoD reach Bossing", pd2::affinity::MinStockSharedPages + pd2::affinity::RequiredExtraTabs > pd2::affinity::BossingPage);
+	CHECK("RotW reaches Bossing", pd2::affinity::VanillaSharedPages + pd2::affinity::RequiredExtraTabs > pd2::affinity::BossingPage);
 	CHECK("commented key goes live", WithExtraTabs("[a]\nx = 1\n[d2rcore.stash]\n# add_shared_tabs = 0\nset_materials_limit = 9\n[b]\n",
 	                                                15) == "[a]\nx = 1\n[d2rcore.stash]\nadd_shared_tabs = 15\nset_materials_limit = 9\n[b]\n");
 	CHECK("live key gets the value", WithExtraTabs("[d2rcore.stash]\nadd_shared_tabs = 0\n", 15) == "[d2rcore.stash]\nadd_shared_tabs = 15\n");

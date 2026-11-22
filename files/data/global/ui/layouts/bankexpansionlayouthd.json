@@ -690,6 +690,13 @@
                         "rect": { "width": 98, "height": 98, "x": 206, "y": 998 },
 						"itemCode": "lpp"
                     }
+                },
+                {
+                    "type": "AdvancedStashSlotWidget", "name": "jewf",
+                    "fields": {
+                        "rect": { "width": 98, "height": 98, "x": 206, "y": 894 },
+						"itemCode": "jewf"
+                    }
                 }																
             ]
         },

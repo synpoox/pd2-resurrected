@@ -51,6 +51,7 @@ jobs:
         run: |
           py -3 "$env:D2R_TOOLKIT\release\companions.py" fetch; if ($LASTEXITCODE) { throw "companions fetch failed" }
           py -3 -m modkit build . --no-validate; if ($LASTEXITCODE) { throw "modkit build failed" }
+          py -3 tools/mirror_base_bank.py; if ($LASTEXITCODE) { throw "mirror_base_bank failed" }
       - name: Validation (known errors, #171; does not block the release)
         continue-on-error: true
         run: py -3 -m modkit validate .

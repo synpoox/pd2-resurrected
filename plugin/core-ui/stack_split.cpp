@@ -16,6 +16,10 @@
 // Pad: Controller QoL's item modifier (LB by default) held with A is the Ctrl of a pad (controller_split.cpp).
 // shortcut: the job runs on the next game update and looks once; a server that has not placed the item by then skips
 // the split (logged), fine on a local game, upgrade with a retry if hosted games miss splits.
+// Shared stash (#1820): Loader 1.3.1 reads its stacks' quantity as 0 and refuses splitStack there (Unsupported), so the
+// job reads the count off the native item (stat 70, UnitStat by signature) and splits through the inventory: the stack
+// moves there (executeExistingItemTransaction, SharedStashWrite), splitStack takes N-1 to the cursor, and the rest moves
+// back to its page and cell. No room in the inventory: no split, the stack stays down whole.
 #include "stack_split.h"
 
 #include "controller_split.h"
@@ -87,10 +91,13 @@ struct Job {
 	uint32_t code;
 	uint32_t runtimeId;
 	int32_t held;
-	Stacks stored;
 };
 Job g_job {};
-Stacks g_stored {};  // UI thread only: noted for g_held
+// The stored stacks noted for a held stack: the UI thread sets the request, a game job notes them (the shared stash's
+// count is read natively, a game-thread call), and the split job, queued after it, reads them
+std::atomic<D2RL::PlayerHandle> g_notePlayer {D2RL::InvalidPlayerHandle};
+std::atomic<uint32_t> g_noteCode {0};
+Stacks g_stored {};  // game thread only
 std::atomic<bool> g_busy {false};
 bool g_watching = false;  // the UI-thread watch is queued (UI thread only)
 std::atomic<uint32_t> g_splits {0}, g_failed {0};
@@ -98,37 +105,89 @@ uint32_t g_ticks = 0, g_putDowns = 0, g_ctrlPutDowns = 0;  // UI thread only; th
 
 constexpr D2RL::Inventory::ItemFilter StoredFilter {.structSize = D2RL::Inventory::ItemFilterSize, .containerMask = StoredGrids};
 
-auto NoteStack(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept -> D2RL::Inventory::IterationAction {
-	auto* stored = static_cast<Stacks*>(user);
-	if (item->code == stored->code && stored->count < MaxStacks) {
-		stored->stack[stored->count++] = {item->runtimeId, item->quantity};
+// The stored stacks with one code, as the SDK lists them (game thread)
+struct Listed {
+	uint32_t code;
+	uint32_t count;
+	items::ItemInfo item[MaxStacks];
+};
+
+auto ListCode(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept -> D2RL::Inventory::IterationAction {
+	auto* listed = static_cast<Listed*>(user);
+	if (item->code == listed->code && listed->count < MaxStacks) {
+		listed->item[listed->count++] = *item;
 	}
 	return D2RL::Inventory::IterationAction::Continue;
+}
+
+void ReadQuantity(const D2RL::PluginContext*, void* native, void* user) noexcept {
+	*static_cast<int32_t*>(user) = d2r::Engine<int32_t (*)(d2r::Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(
+	    static_cast<d2r::Unit*>(native), d2r::rva::StatQuantity, 0);
+}
+
+// A stack's count; the SDK reads 0 for a shared stash stack (#1820), so that one is read off the native item (game
+// thread). 0 when neither read works.
+auto Quantity(const items::ItemInfo& item) noexcept -> int32_t {
+	int32_t count = item.quantity;
+	if (count == 0 && d2r::sig::UnitStat.state == sigscan::State::Ok &&
+	    g_items->editNativeItem(g_context, item.handle, ReadQuantity, &count) != items::Result::Success) {
+		count = 0;
+	}
+	return count;
+}
+
+// Game thread: the stored stacks of the held code, before any put-down can merge it
+void NoteNow(const D2RL::PluginContext*, void*) noexcept {
+	static Listed listed;
+	listed = {.code = g_noteCode.load()};
+	g_stored = {.code = listed.code};
+	g_inventory->forEachInventoryItem(g_context, g_notePlayer.load(), &StoredFilter, ListCode, &listed);
+	for (uint32_t i = 0; i < listed.count; ++i) {
+		g_stored.stack[g_stored.count++] = {listed.item[i].runtimeId, Quantity(listed.item[i])};
+	}
 }
 
 // What the job found: the held stack itself, whole, or the noted stack it merged into
 struct Placed {
 	items::ItemInfo item;
 	int32_t before;
+	int32_t quantity;
 };
 
-auto FindPlaced(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept -> D2RL::Inventory::IterationAction {
-	auto* found = static_cast<Placed*>(user);
-	if (item->code != g_job.code) {
-		return D2RL::Inventory::IterationAction::Continue;
-	}
-	if (item->runtimeId == g_job.runtimeId) {
-		*found = {*item, 0};
-		return D2RL::Inventory::IterationAction::Stop;
-	}
-	for (uint32_t i = 0; i < g_job.stored.count; ++i) {
-		const Stack& s = g_job.stored.stack[i];
-		if (s.runtimeId == item->runtimeId && item->quantity == s.quantity + g_job.held) {
-			*found = {*item, s.quantity};
-			return D2RL::Inventory::IterationAction::Stop;
+// The counts are read after the listing: the native read is a second SDK call, kept out of the iteration callback
+auto FindPlaced(const Listed& listed) noexcept -> Placed {
+	for (uint32_t i = 0; i < listed.count; ++i) {
+		const items::ItemInfo& item = listed.item[i];
+		if (item.runtimeId == g_job.runtimeId) {
+			return {item, 0, Quantity(item)};
+		}
+		for (uint32_t j = 0; j < g_stored.count; ++j) {
+			const Stack& s = g_stored.stack[j];
+			if (s.runtimeId == item.runtimeId && g_stored.code == g_job.code) {
+				if (const int32_t now = Quantity(item); now == s.quantity + g_job.held) {
+					return {item, s.quantity, now};
+				}
+			}
 		}
 	}
-	return D2RL::Inventory::IterationAction::Continue;
+	return {};
+}
+
+auto Move(D2RL::PlayerHandle player, D2RL::ItemHandle item, const items::ItemDestination& to) noexcept -> items::Result {
+	items::ExistingItemOperation op {.structSize = items::ExistingItemOperationSize, .kind = items::ExistingItemOperationKind::Move, .item = item};
+	op.move.destination = to;
+	const items::ExistingItemTransaction transaction {
+		.structSize = items::ExistingItemTransactionSize, .player = player, .operationCount = 1, .operations = &op};
+	items::ExistingItemTransactionResult result {.structSize = items::ExistingItemTransactionResultSize};
+	return g_items->executeExistingItemTransaction(g_context, &transaction, &result);
+}
+
+constexpr items::ItemDestination ToInventory {
+	.structSize = items::ItemDestinationSize, .container = C::Inventory, .placement = items::Placement::Automatic};
+
+auto BackTo(const items::ItemInfo& at) noexcept -> items::ItemDestination {
+	return {.structSize = items::ItemDestinationSize, .container = C::SharedStash, .placement = items::Placement::Exact,
+	        .x = static_cast<uint32_t>(at.x), .y = static_cast<uint32_t>(at.y), .sharedStashPage = at.sharedStashPage};
 }
 
 // splitStack copies no stats; the piece is made with its own Area Level, so only the forced event (stat 553) is set again:
@@ -163,25 +222,42 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 	const Job& job = g_job;  // stays put until g_busy clears below
 	// The UI thread's handle is to the client's unit, stale on the game thread and without seeds, so find the server's
 	// unit by its code and unit id, which the two share
-	Placed found {};
-	const auto listed = g_inventory->forEachInventoryItem(g_context, job.player, &StoredFilter, FindPlaced, &found);
-	const items::ItemInfo placed = found.item;
-	const uint32_t back = SplitOff(job.code, job.held, true, found.before, placed.quantity, placed.container);
+	static Listed stacks;
+	stacks = {.code = job.code};
+	const auto listed = g_inventory->forEachInventoryItem(g_context, job.player, &StoredFilter, ListCode, &stacks);
+	const Placed found = FindPlaced(stacks);
+	items::ItemInfo placed = found.item;
+	const uint32_t back = SplitOff(job.code, job.held, true, found.before, found.quantity, placed.container);
 	const D2RL::PlayerHandle player = job.player;
 	const int32_t held = job.held;
 	g_busy = false;
 	if (listed != D2RL::Inventory::Result::Success || back == 0) {
 		// Not found (dropped, merged into a stack not noted) or not split (a tome)
 		plog::Info("split: none, list %u, %d held, %d found in container %u", static_cast<uint32_t>(listed), held,
-		           placed.quantity, static_cast<uint32_t>(placed.container));
+		           found.quantity, static_cast<uint32_t>(placed.container));
 		return;
 	}
+	const bool shared = placed.container == C::SharedStash;
+	const items::ItemInfo home = placed;
 	bool refused = true;  // stays true (no split) if the item cannot be read
 	g_items->editNativeItem(g_context, placed.handle, CheckRefused, &refused);
 	if (refused) {
 		plog::Info("split: refused, code %08x is a throwable or ammo (PD2 never splits those), %d stays whole", placed.code,
-		           placed.quantity);
+		           found.quantity);
 		return;
+	}
+	// splitStack refuses the shared stash (#1820): the stack goes to the inventory first, the same item and handle
+	if (shared) {
+		const items::Result out = D2RL::HasItemServiceCapability(g_items, items::ItemServiceCapability::SharedStashWrite)
+		                              ? Move(player, placed.handle, ToInventory)
+		                              : items::Result::Unsupported;
+		if (out != items::Result::Success) {
+			++g_failed;
+			plog::Info("split: refused, no room in the inventory for the shared stash split (%u), %d stays whole on page %u cell %d,%d",
+			           static_cast<uint32_t>(out), found.quantity, home.sharedStashPage, home.x, home.y);
+			return;
+		}
+		placed.container = C::Inventory;
 	}
 	// Only the forced event is set again: the piece already has its Area Level, and setting that on top doubled it on the
 	// server (87 -> 174), so the piece would not stack until a reload (#1499)
@@ -200,6 +276,12 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 		++g_splits;
 	} else {
 		++g_failed;
+	}
+	if (shared) {
+		// What stays down goes home: the one item, or the whole stack when the split failed
+		const items::Result returned = Move(player, placed.handle, BackTo(home));
+		plog::Info("split: shared stash page %u cell %d,%d via the inventory, back home %u%s", home.sharedStashPage, home.x,
+		           home.y, static_cast<uint32_t>(returned), returned == items::Result::Success ? "" : " (left in the inventory)");
 	}
 	if (isMap && saved.count > 0 && status == items::Result::Success) {
 		const auto applied = g_items->editNativeItem(g_context, result.cursorItem, ApplyNative, &saved);
@@ -263,8 +345,9 @@ void Watch(const D2RL::PluginContext*, void*) noexcept {
 		}
 		// Noted once per held stack, before any put-down can merge it
 		if (g_held.quantity > 1 && (g_held.runtimeId != was.runtimeId || g_held.quantity != was.quantity)) {
-			g_stored = {.code = g_held.code};
-			g_inventory->forEachInventoryItem(g_context, player, &StoredFilter, NoteStack, &g_stored);
+			g_notePlayer = player;
+			g_noteCode = g_held.code;
+			g_threads->runOnGameThread(g_context, NoteNow, nullptr);  // queued before any split job of this stack
 		}
 		UpdateLegend(Splittable(g_held.code, g_held.quantity));
 		return;
@@ -276,7 +359,7 @@ void Watch(const D2RL::PluginContext*, void*) noexcept {
 		g_ctrlPutDowns += ctrl ? 1 : 0;
 	}
 	if (ctrl && !g_busy.exchange(true)) {
-		g_job = {player, g_held.code, g_held.runtimeId, g_held.quantity, g_stored};
+		g_job = {player, g_held.code, g_held.runtimeId, g_held.quantity};
 		if (const auto queued = g_threads->runOnGameThread(g_context, SplitNow, nullptr); queued != D2RL::Threads::Result::Success) {
 			g_busy = false;
 			plog::Info("split: could not queue it (%u)", static_cast<uint32_t>(queued));
