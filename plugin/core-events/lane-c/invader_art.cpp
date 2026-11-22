@@ -38,7 +38,6 @@ DccFn g_dcc = nullptr;
 CofFn g_cof = nullptr;
 CofUnitFn g_cofUnit = nullptr;
 std::atomic<uint32_t> g_redirected[3] {};
-std::atomic<uint32_t> g_nearest {0};  // DCC paths whose item token was swapped for the nearest legacy art (#1708)
 
 void Note(int which, const char* path) noexcept {
 	if (g_redirected[which].fetch_add(1, std::memory_order_relaxed) == 0) {
@@ -51,9 +50,6 @@ auto DccHook(void* art, char* out, uint64_t size, char* name) noexcept -> uint64
 	const uint64_t r = g_dcc(art, out, size, name);
 	if (pd2::invader_art::Redirect(out)) {
 		Note(0, out);
-		if (pd2::invader_art::NearestArt(out) && g_nearest.fetch_add(1, std::memory_order_relaxed) == 0) {
-			plog::Info("invader art: first item with no legacy art in the pose drawn as the nearest: %s", out);
-		}
 	}
 	return r;
 }
@@ -94,6 +90,6 @@ auto InstallInvaderArt(const D2RL::PluginContext* context, char* report, size_t 
 }
 
 auto InvaderArtCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "invader art: %u dcc, %u cof, %u cof (unit) paths redirected, %u items drawn as the nearest",
-	              g_redirected[0].load(), g_redirected[1].load(), g_redirected[2].load(), g_nearest.load());
+	std::snprintf(out, size, "invader art: %u dcc, %u cof, %u cof (unit) paths redirected", g_redirected[0].load(), g_redirected[1].load(),
+	              g_redirected[2].load());
 }

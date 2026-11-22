@@ -79,6 +79,35 @@ std::atomic<uint32_t> g_noTc {0};
 std::atomic<uint32_t> g_held {0};      // items rolled at spawn and held
 std::atomic<uint32_t> g_released {0};  // held items put on the floor at death
 std::atomic<uint32_t> g_lost {0};      // held items with no unit or no floor spot at death
+int32_t g_forcedSet = -1;              // the weapon set PD2R_INVADERS picked for the spawn being rolled, -1: PD2's roll
+
+// For game checks only: PD2R_INVADERS=<class>:<set>,... in the game's environment picks the n-th spawn's class (0-6,
+// ClassNames order) and weapon set (ClassDrops' case), cycling. False (and nothing set) without it.
+auto ForcedInvader(uint32_t n, int32_t* which, int32_t* set) noexcept -> bool {
+	char env[128] = {};
+	size_t len = 0;
+	if (getenv_s(&len, env, sizeof(env), "PD2R_INVADERS") != 0 || len == 0) {
+		return false;
+	}
+	int32_t pairs[16][2] = {};
+	int count = 0;
+	for (const char* p = env; *p != '\0' && count < 16;) {
+		char* end = nullptr;
+		pairs[count][0] = static_cast<int32_t>(std::strtol(p, &end, 10));
+		if (end != p && *end == ':' && pairs[count][0] >= 0 && pairs[count][0] < InvaderCount) {
+			pairs[count][1] = static_cast<int32_t>(std::strtol(end + 1, nullptr, 10));
+			++count;
+		}
+		const char* comma = std::strchr(p, ',');
+		p = comma != nullptr ? comma + 1 : p + std::strlen(p);
+	}
+	if (count == 0) {
+		return false;
+	}
+	*which = pairs[n % count][0];
+	*set = pairs[n % count][1];
+	return true;
+}
 
 // D2R build 93847, found by entry bytes, never an RVA (the SDK places no existing item on the ground):
 // FUN_14043de10 (game, room, xy*, out xy*, 1) -> room or null: the free floor spot by a unit, as the cursor drop asks
@@ -172,7 +201,10 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 		Idle(game, unit, aidel);
 		return;
 	}
-	const int32_t which = RollRand() % InvaderCount;
+	int32_t which = RollRand() % InvaderCount, forcedSet = -1;
+	if (ForcedInvader(g_spawned.load(), &which, &forcedSet)) {
+		plog::Info("invaders: PD2R_INVADERS picks %s, weapon set %d", ClassNames[which], forcedSet);
+	}
 	int32_t x = 0, y = 0;
 	d2r::UnitXY(unit, &x, &y);
 	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit);
@@ -195,7 +227,9 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	}
 	++g_spawned;
 	if (g_gearOn) {
+		g_forcedSet = forcedSet;
 		RollGear(game, invader, const_cast<Unit*>(target), which);  // the player the portal saw stands in for PD2's killer
+		g_forcedSet = -1;
 	}
 	const int32_t n = ++Counter(game, InvadersKey);
 	MapEventNotify(game, InvadersEvent, NotifyKeys[which]);
@@ -244,7 +278,7 @@ auto DropTc(Game* game, Unit* monster, Unit* killer, const char* name, Unit** it
 // Invader* rows). `drop` is one TC, `set` gets the weapon set's name.
 template <class Drop>
 void ClassDrops(int32_t which, const char** set, Drop&& drop) noexcept {
-	const auto roll = [](int n) noexcept { return RollRand() % n; };
+	const auto roll = [](int n) noexcept { return (g_forcedSet >= 0 ? g_forcedSet : RollRand()) % n; };
 	// the common set first: gloves, belt, boots, two rings, an amulet
 	drop("InvaderGloves");
 	drop("InvaderBelt");

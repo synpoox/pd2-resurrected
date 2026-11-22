@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 EXCEL = ROOT / "files/data/global/excel"
 HEADER = (ROOT / "plugin/common/invader_dress.h").read_text("utf-8")
-ART = (ROOT / "plugin/common/invader_art_path.h").read_text("utf-8")
+ART = HEADER  # Nearest lives in invader_dress.h
 TOKENS = ["am", "ai", "ba", "dz", "ne", "pa", "so"]  # the player art folders, in CLASSES order
 MODES = ["dt", "nu", "wl", "gh", "a1", "a2", "bl", "sc", "s1", "s2", "s3", "s4", "dd", "kb", "sq", "rn"]  # monster modes
 PARTS = ["hd", "tr", "lg", "ra", "la", "rh", "lh", "sh", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"]
@@ -126,7 +126,7 @@ class InvaderDressTests(unittest.TestCase):
                 self.assertIn("nil", ",".join(got[i][1:4]).split(","))
 
     def test_every_listed_token_has_legacy_art_or_a_nearest(self):
-        """Each list token (through invader_art_path.h's Nearest) has a DCC in every COF of the class's BaseW that has
+        """Each list token (through invader_dress.h's Nearest) has a DCC in every COF of the class's BaseW that has
         that layer: a missing legacy DCC crashes classic mode."""
         b = d2r()
         got = header_classes()

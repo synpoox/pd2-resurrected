@@ -5,8 +5,7 @@
 //   body armor              -> TR LG RA LA S1 S2, by its Torso Legs rArm lArm rSPad lSPad levels (those lists are lit,med,hvy)
 //   a weapon                -> the class's weapon hand (the Amazon's bow LH, her spear RH), a second weapon -> LH
 //   a shield -> SH, a Necromancer head -> S3 (the player Necromancer's head layer); quivers, rings and the rest show nothing
-// Every token is the item's own, so HD shows every base. The legacy art is the class's player art in its one monstats2
-// weapon class (BaseW): a token with no legacy art there is drawn as the nearest one (invader_art_path.h).
+// Every token is the item's own, except a base with no art in the class's one pose: it shows as the nearest (Nearest).
 // Items and Classes must match the tables: tools/tests/test_invader_dress.py checks them.
 #pragma once
 
@@ -241,6 +240,35 @@ struct Result {
 
 // Sets the part bytes of class `cls` from the base items it rolled, in roll order: the hands and the shield start empty
 // (nil), each item then shows its own token. An item whose part has no list is counted as not shown.
+// D2R draws an Invader in its player art in the class's one monstats2 weapon class (BaseW), and when that pose has no
+// legacy DCC for a token it draws the hand empty, in HD and legacy alike (Slot4, #1708). Such a token is set as the
+// nearest token that has one. tools/tests/test_invader_dress.py checks every listed token has legacy art or a row here.
+struct Near {
+	const char* cls;
+	const char* from;
+	const char* to;
+};
+constexpr Near Nearest[] = {
+	{"AM", "lxb", "lbw"}, {"AM", "hxb", "lbw"},  // a crossbow in the bow pose: the long bow
+	{"AI", "dgr", "ktr"}, {"AI", "dir", "ktr"},  // a dagger in the claw pose: the katar
+	{"BA", "lax", "axe"}, {"BA", "btx", "axe"}, {"BA", "gix", "axe"}, {"BA", "hal", "axe"}, {"BA", "pax", "axe"}, {"BA", "scy", "axe"},
+	{"BA", "mau", "whm"}, {"BA", "dgr", "ssd"},
+	{"BA", "spr", "lsd"}, {"BA", "tri", "lsd"}, {"BA", "brn", "lsd"}, {"BA", "pik", "lsd"}, {"BA", "jav", "lsd"}, {"BA", "pil", "lsd"},
+	{"BA", "glv", "lsd"},  // two-handers, spears, javelins and knives in the dual-wield pose
+	{"SO", "ob1", "sst"}, {"SO", "ob3", "sst"}, {"SO", "ob4", "sst"},  // an orb in the staff pose: the short staff
+};
+
+constexpr const char* Codes[7] = {"AM", "AI", "BA", "DZ", "NE", "PA", "SO"};  // monstats Code, ClassNames order
+
+inline const char* NearestOf(int cls, const char* tok) noexcept {
+	for (const Near& n : Nearest) {
+		if (std::strcmp(n.cls, Codes[cls]) == 0 && std::strcmp(n.from, tok) == 0) {
+			return n.to;
+		}
+	}
+	return tok;
+}
+
 inline Result Dress(int cls, const uint32_t* codes, int n, uint8_t* parts) noexcept {
 	Result r;
 	if (cls < 0 || cls >= 7 || parts == nullptr) {
@@ -257,6 +285,7 @@ inline Result Dress(int cls, const uint32_t* codes, int n, uint8_t* parts) noexc
 		}
 	}
 	const auto set = [&](Part p, const char* tok) noexcept {
+		tok = NearestOf(cls, tok);
 		const int i = list[p] != nullptr ? IndexOf(list[p], tok) : -1;
 		if (i >= 0) {
 			parts[p] = static_cast<uint8_t>(i);

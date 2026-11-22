@@ -48,6 +48,9 @@ int main() {
 		expect("paladin helm crn", p[dr::HD] == 0);
 		expect("paladin body 2,2,1,2 / 2,0", p[dr::TR] == 2 && p[dr::LG] == 2 && p[dr::RA] == 1 && p[dr::LA] == 2 && p[dr::S1] == 2 && p[dr::S2] == 0);
 		expect("paladin crs in RH", p[dr::RH] == 1);
+		const uint32_t x[] = {code("7ax")};
+		dr::Dress(5, x, 1, p);
+		expect("paladin axe in RH", p[dr::RH] == 10);
 		expect("paladin pa3 in SH", p[dr::SH] == 0);
 		expect("paladin all shown", r.shown == 4 && r.unshown == 0);
 	}
@@ -56,10 +59,13 @@ int main() {
 		p[dr::LH] = 3;
 		const uint32_t c[] = {code("bae"), code("7gm")};
 		const auto r = dr::Dress(2, c, 2, p);
-		expect("barbarian ba5, mau, empty left", p[dr::HD] == 0 && p[dr::RH] == 16 && p[dr::LH] == 28 && r.shown == 2);
+		expect("barbarian ba5, mau as whm, empty left", p[dr::HD] == 0 && p[dr::RH] == 4 && p[dr::LH] == 28 && r.shown == 2);
 		const uint32_t t[] = {code("7ta"), code("7tk")};
 		dr::Dress(2, t, 2, p);
-		expect("barbarian throwing axe and knife", p[dr::RH] == 5 && p[dr::LH] == 24);
+		expect("barbarian throwing axe, knife as ssd", p[dr::RH] == 5 && p[dr::LH] == 8);
+		const uint32_t l[] = {code("7la")};
+		dr::Dress(2, l, 1, p);
+		expect("barbarian large axe as axe", p[dr::RH] == 0);
 	}
 	{  // Amazon: a bow in LH, a spear in RH, a javelin and shield; the other hand and the shield empty
 		uint8_t p[dr::PartBytes] = {};
@@ -75,7 +81,7 @@ int main() {
 		expect("amazon javelin RH, monarch SH", p[dr::RH] == 6 && p[dr::SH] == 4 && p[dr::LH] == 8 && r.shown == 2);
 		const uint32_t x[] = {code("6hx")};
 		dr::Dress(0, x, 1, p);
-		expect("amazon crossbow in LH", p[dr::LH] == 7 && p[dr::RH] == 0);
+		expect("amazon crossbow as lbw in LH", p[dr::LH] == 3 && p[dr::RH] == 0);
 	}
 	{  // Necromancer: the head in S3; Sorceress: orb and shield, then a staff with no shield
 		uint8_t p[dr::PartBytes] = {};
@@ -84,22 +90,12 @@ int main() {
 		expect("necromancer ne3 in S3", p[dr::S3] == 2);
 		const uint32_t o[] = {code("obd"), code("uit")};
 		dr::Dress(6, o, 2, p);
-		expect("sorceress ob3 RH, kit SH", p[dr::RH] == 5 && p[dr::SH] == 4);
+		expect("sorceress ob3 as sst RH, kit SH", p[dr::RH] == 2 && p[dr::SH] == 4);
 		const uint32_t s[] = {code("6ws")};
 		dr::Dress(6, s, 1, p);
 		expect("sorceress lst RH, SH empty", p[dr::RH] == 1 && p[dr::SH] == 0);
 	}
 	expect("no part bytes", dr::Dress(1, nullptr, 0, nullptr).shown == 0);
-	{  // legacy: a token with no art in the pose is drawn as the nearest, only for that class
-		std::string s = Win("data/global/CHARS/BA/RH/BARHlaxNU1hs.dcc");
-		expect("BA lax -> axe", pd2::invader_art::NearestArt(s.data()) && s == Win("data/global/CHARS/BA/RH/BARHaxeNU1hs.dcc"));
-		s = Win("data/global/CHARS/PA/RH/PARHlaxNU1hs.dcc");
-		expect("PA lax kept", !pd2::invader_art::NearestArt(s.data()));
-		s = Win("data/global/CHARS/AM/LH/AMLHhxbA1bow.dcc");
-		expect("AM hxb -> lbw", pd2::invader_art::NearestArt(s.data()) && s == Win("data/global/CHARS/AM/LH/AMLHlbwA1bow.dcc"));
-		s = Win("data/global/monsters/BA/RH/BARHlaxNU1hs.dcc");
-		expect("not a CHARS path", !pd2::invader_art::NearestArt(s.data()));
-	}
 	std::printf(g_fail == 0 ? "all passed\n" : "FAILED\n");
 	return g_fail == 0 ? 0 : 1;
 }
