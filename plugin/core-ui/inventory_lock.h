@@ -78,8 +78,9 @@ constexpr auto TouchesCharmRows(const uint8_t* packet, size_t size, RowOf rowOf)
 // 0x4b4de0): 0x15 bytes, ids +1 (the cursor item) and +5, the page's owner unit id +9, the cells +0x0d and +0x11 as in 0x1f, the
 // stash grid implied. Unfiltered, D2R swapped the stored item onto the cursor, where the client never drew it. A put there is
 // 0x45, not 0x18 (client 0x15f8b0, server 0x4c5570): 0x0d bytes, the cursor item's id +1, the owner's id +5, the cell +9 packed.
-// A refusal sends nothing back, as D2R's own failure branches of 0x18, 0x1f and 0x14 do (telemetry only): the client moved
-// nothing before the server's answer (it only marks the cursor item pending, 0x1c6ac0), so it stays in sync.
+// The client moves nothing before the server answers, but it marks the cursor item pending (0x2c81d0 calls 0x1c6ac0, state
+// 0x36) and ignores stack and swap clicks with it until an item packet for it arrives (0x1c6a40). D2R's own failure branches
+// send none (telemetry only), so a refusal queues stash_affinity::Resend, which sends the item again (#1766).
 template <class Put, class Swap>
 constexpr auto MisplacedOnTab(const uint8_t* packet, size_t size, uint32_t viewPage, Put put, Swap swap) noexcept -> bool {
 	if (packet == nullptr || size == 0 || viewPage == 0) {
@@ -100,6 +101,31 @@ constexpr auto MisplacedOnTab(const uint8_t* packet, size_t size, uint32_t viewP
 	default:
 		return false;
 	}
+}
+
+// #1756: the shared page a message names. 0x14 (+9), 0x45 (+5) and 0x55 (+5) carry the page owner's unit id; pageOf(owner) is
+// its page (0 a page that is neither Maps nor Bossing, UINT32_MAX unknown), else the open tab says (viewPage), as it does for
+// 0x18 and 0x1f, which name no owner. So a tab switch between the click and the server's tick cannot split the two checks.
+template <class PageOf>
+constexpr auto MessagePage(const uint8_t* packet, size_t size, uint32_t viewPage, PageOf pageOf) noexcept -> uint32_t {
+	if (packet == nullptr || size == 0) {
+		return viewPage;
+	}
+	const size_t at = packet[0] == 0x14 ? 9 : (packet[0] == 0x45 || packet[0] == 0x55) ? 5 : 0;
+	const uint32_t page = at != 0 && size >= at + 4 ? pageOf(ReadU32(packet + at)) : UINT32_MAX;
+	return page != UINT32_MAX ? page : viewPage;
+}
+
+// #1757: 0x55 (0x1d bytes, client 0x15f8b0 on a Ctrl+click or the pad's quick-move, server 0x4c7690) moves a stored item (id
+// +1) with an empty cursor between the player and a shared page's owner (+5): from grid +9 cell +0x0d to grid +0x11 cell
+// +0x15 (packed y << 16 | x); +0x19 is 0 into the owner's grid, 1 out of it (the client sends 1 when the source grid is 4).
+// The client picks the first free cell (0x3865b0, not the cell tests the red cells hook), so a homed item lands anywhere and
+// the affinity watch routes it, as for any quick-move; only an item with no home (homeless(id)) is refused, the one the tidy
+// pass would move back to the inventory (#1737's flicker).
+template <class Homeless>
+constexpr auto QuickMoveOnTab(const uint8_t* packet, size_t size, uint32_t page, Homeless homeless) noexcept -> bool {
+	return packet != nullptr && size >= 0x1d && page != 0 && packet[0] == 0x55 && ReadU32(packet + 0x19) == 0 &&
+	       ReadU32(packet + 0x11) == 4 && homeless(ReadU32(packet + 1));
 }
 
 // #1744: 0x21 (0x15 bytes, handler 0x4c1940, sent by the client's click 0x2c81d0 when the items stack) stacks the cursor
