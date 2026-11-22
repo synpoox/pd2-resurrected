@@ -73,7 +73,7 @@ handler refuses that message (0x4f2a80 returns 2 only below the item's maxstack;
 stack went to the inventory and back first, and the cursor item was left invisible on the client while the server still
 held it (`Insert overlaps with item id .. mode: 4` on the next pick-up). The client sends 0x21 whenever its stack test
 (0x375960) passes, full or not (+9 is 1 when the sum fits), and marks the cursor item pending (0x1c6ac0, state 0x36),
-cleared by an item packet (0x1c6a40). Maps stack only when both are normal quality with equal non-quantity stats
+cleared by an item packet (0x1c6a40); while pending, the client ignores clicks with it (0x2c81d0 returns on 0x1c7360). A merge's stack move also takes over the client's cursor: the stack's 0x9d action 5 (0x1c60a0) makes it the cursor item (0x389990), so after a top-up the rest was not drawn until a click in the inventory ([#1762](https://github.com/synpoox/pd2-resurrected/issues/1762)). So every consumed 0x21 ends, after the last move, with `ResendCursor`: an `editItem` of the cursor item to its own count, which sends it again (0x9d action 0x15, 0x1c6540: the client rebuilds it as the cursor item). Log: `affinity: cursor item .. sent to the client again: result 0`. Maps stack only when both are normal quality with equal non-quantity stats
 (`StackAllowed`, which shares `MapStatsRefusal` with the tidy pass's `MapRefusal`), so a rare map is never merged into a normal stack. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
 refused message 0x.., not the item's own cell`.
 

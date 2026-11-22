@@ -382,9 +382,34 @@ auto FindStored(const D2RL::PluginContext*, const items::ItemInfo* item, void* u
 	return D2RL::Inventory::IterationAction::Stop;
 }
 
+// The client's copy of the cursor item after a consumed 0x21 (#1762). Sending 0x21 marks it pending (0x1c6ac0, state
+// 0x36), and the client then ignores clicks with it (0x2c81d0 returns on 0x1c7360) until an item packet for it arrives
+// (0x1c6a40). A merge's stack move also redraws the client's cursor: the stack's 0x9d action 5 (remove from container,
+// 0x1c60a0) makes the stack the client's cursor item (0x389990) and action 4 puts it down, so the rest left on the
+// cursor was not drawn though the server held it. An editItem of the cursor item to its own count, after the last move,
+// sends the cursor item again (0x9d action 0x15, 0x1c6540: the client rebuilds it and makes it the cursor item) without
+// changing it. No-op when the cursor item is gone (a whole merge destroyed it).
+void ResendCursor(D2RL::PlayerHandle player, uint32_t cursorId) noexcept {
+	D2RL::ItemHandle held {};
+	items::ItemInfo item {.structSize = items::ItemInfoSize};
+	if (g_inventory->getCursorItem(g_context, player, &held) != D2RL::Inventory::Result::Success ||
+	    g_items->getItemInfo(g_context, held, &item) != items::Result::Success || item.runtimeId != cursorId) {
+		return;
+	}
+	const int32_t count = Quantity(held);
+	const items::ItemEdit same {.structSize = items::ItemEditSize, .fields = items::EditFieldBit(items::EditField::Quantity),
+	                            .quantity = static_cast<uint32_t>(count)};
+	const auto sent = count > 0 ? g_items->editItem(g_context, player, held, &same) : items::Result::Unsupported;
+	// self-check: the resend changes nothing on the server
+	const bool kept = Quantity(held) == count;
+	(sent == items::Result::Success && kept ? plog::Info : plog::Warn)(
+	    "affinity: cursor item %08x x%d sent to the client again: result %u%s", item.code, count, static_cast<uint32_t>(sent),
+	    kept ? "" : ", COUNT CHANGED");
+}
+
 // Game thread (#1744): a hand drop's 0x21, which D2R cannot resolve on a Maps or Bossing page. The cursor item is
 // destroyed (or, past a full stack, cut to the rest) only by Merge's last step after the stack holds the sum, so a failure
-// anywhere leaves it on the cursor.
+// anywhere leaves it on the cursor. Every path past the cursor check ends in ResendCursor (#1762).
 static_assert(sizeof(void*) == 8, "StackOnto packs both runtime ids into the callback's pointer");
 void StackNow(const D2RL::PluginContext*, void* user) noexcept {
 	const auto ids = reinterpret_cast<uintptr_t>(user);
@@ -398,6 +423,9 @@ void StackNow(const D2RL::PluginContext*, void* user) noexcept {
 	    g_items->getItemInfo(g_context, held, &item) != items::Result::Success || item.runtimeId != cursorId ||
 	    (g_inventory->forEachInventoryItem(g_context, player, &StashOnly, FindStored, &stack), stack.info.runtimeId != stack.id)) {
 		plog::Info("affinity: hand stack of item %u onto %u: the cursor item or the stack is gone; nothing changed", cursorId, stack.id);
+		if (player != D2RL::InvalidPlayerHandle) {
+			ResendCursor(player, cursorId);  // a stack gone with the cursor item still held
+		}
 		return;
 	}
 	const items::ItemInfo& on = stack.info;
@@ -407,11 +435,10 @@ void StackNow(const D2RL::PluginContext*, void* user) noexcept {
 	    !aff::AtHome(aff::HomeOf(on.code), on.code, g_want.load(), true, on.sharedStashPage, on.x, on.y) || !StackAllowed(item, on)) {
 		plog::Info("affinity: hand stack of %08x onto %08x (page %u cell %d,%d): not its own stack on page %u, or maps that do not stack; it stays on the cursor",
 		           item.code, on.code, on.sharedStashPage, on.x, on.y, page);
-		return;
-	}
-	if (Merge(player, item, stack.info, true) == items::Result::Success) {
+	} else if (Merge(player, item, stack.info, true) == items::Result::Success) {
 		++g_handStacked;
 	}  // Merge logs a failure; the cursor item is kept then
+	ResendCursor(player, cursorId);
 }
 
 // The pass's own copy of a routed item follows its move or merge, so a later item of the pass sees the new place (#1759)
