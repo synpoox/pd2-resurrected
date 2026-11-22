@@ -11,7 +11,9 @@
 // Drop has no SDK route: D2R's own Ctrl + left click drops (or quick-moves with a panel open), so a drop bind calls the
 // widget's left-click handler, and needs Ctrl as its only modifier. It blanks the panel-open table around that call so
 // D2R sees the inventory alone. Every action plays its game sound (identify: sounds.txt 13; moves: the item's drop sound).
-// shortcut: identify never spends a tome's last charge (SDK limit); no stash-tab pick (the SDK's Automatic placement).
+// The stash move sends Gems/Materials/Runes tab items to their tab through D2R's own Ctrl+click deposit (#1774), and maps,
+// map currency and bossing items to their reserved shared page (stash affinity).
+// shortcut: identify never spends a tome's last charge (SDK limit); other items go to the personal stash (no tab pick).
 #include "hotkeys.h"
 
 #include "inventory_lock.h"
@@ -20,6 +22,7 @@
 #include "pd2_engine.h"
 #include "sig.h"
 #include "sig_hook.h"
+#include "stash_affinity.h"
 #include "stash_home.h"
 
 #include <D2RLPlugin/inventory.h>
@@ -193,6 +196,15 @@ void PlayUi(int id) noexcept {
 		plog::Info("hotkeys: sound %d", id);
 	}
 }
+// A map whose base the Maps tab shows (shown: its code, 0 none) is sent onto the Maps page, the rest to their home page
+constexpr auto ToMapsPage(pd2::affinity::Category category, uint32_t code, uint32_t shown) noexcept -> bool {
+	return category == pd2::affinity::Category::Maps && shown != 0 && pd2::affinity::Normal(code) == pd2::affinity::Normal(shown);
+}
+static_assert(ToMapsPage(pd2::affinity::HomeOf(pd2::affinity::Code("m01")).category, pd2::affinity::Code("m01"), pd2::affinity::Code("m01")));
+static_assert(!ToMapsPage(pd2::affinity::HomeOf(pd2::affinity::Code("m01")).category, pd2::affinity::Code("m01"), pd2::affinity::Code("m04")));
+static_assert(!ToMapsPage(pd2::affinity::HomeOf(pd2::affinity::Code("m01")).category, pd2::affinity::Code("m01"), 0));
+static_assert(!ToMapsPage(pd2::affinity::HomeOf(pd2::affinity::Code("imma")).category, pd2::affinity::Code("imma"), pd2::affinity::Code("m01")));
+
 void Run(const Job& job) noexcept {
 	Find find {job.code, job.runtimeId};
 	if (!Look(job.player, items::ContainerBit(job.container), &find)) {
@@ -254,7 +266,9 @@ void Run(const Job& job) noexcept {
 		const auto home = pd2::affinity::HomeOf(find.info.code);
 		if (job.act == Act::Stash && from == items::ItemContainer::Inventory && home.category != pd2::affinity::Category::None) {
 			ops[0].move.destination.container = items::ItemContainer::SharedStash;
-			ops[0].move.destination.sharedStashPage = home.page;
+			// #1773: a map of the base the Maps tab shows goes to the Maps page, as a quick-move from that tab does; on its storage
+			// row it was home already, so the watch left it off the Maps view until a tier switch swapped it in
+			ops[0].move.destination.sharedStashPage = ToMapsPage(home.category, find.info.code, stash_affinity::WantedBase()) ? pd2::affinity::MapsPage : home.page;
 			wasHomed = true;
 		}
 	}
@@ -337,6 +351,15 @@ uint8_t* g_panelTable = nullptr;  // the byte-per-panel "is open" table behind g
 using AtFn = void* (*)(void*, uint64_t*) noexcept;
 constexpr size_t SlotItemAt = 0xc8, SlotLeftClick = 0x100;  // the grid widget's vtable (0x1cf3800): item at cell, left click
 constexpr uint8_t RightEntry[] = {0x48, 0x89, 0x54, 0x24, 0x10, 0x53, 0x48, 0x83, 0xec, 0x20};
+// #1774: an inventory item of the RotW stash tabs (Gems, Materials, Runes: misc.txt AdvancedStashStackable) goes to its tab
+// cell, as Ctrl+click puts it. No SDK service reaches those tabs (stash_stacks.cpp), so D2R's own Ctrl+click branch runs: the
+// grid's left click (93847 0x2c7540, stash up, Shift up) asks 0x15a0b0 (client item: stash panel open, RotW on, the item's
+// class in the tabs' table) and then calls 0x2aaaa0 (grid widget, &cell), which sends the tab deposit (0x63, through
+// 0x15f8b0) and plays the sounds. The server's deposit (0x4f92f0) is the one stash_stacks.cpp counts whole stacks in.
+using ToTabsFn = uint8_t (*)(void*) noexcept;
+ToTabsFn g_toTabs = nullptr;
+using DepositFn = void (*)(void*, uint64_t*) noexcept;
+DepositFn g_deposit = nullptr;
 
 void OnRightClick(void* widget, uint64_t cell) noexcept {
 	uint32_t mods = 0;
@@ -376,8 +399,22 @@ void OnRightClick(void* widget, uint64_t cell) noexcept {
 			}
 			// a stash move needs the stash panel open (no remote stash); a Cube move works with the Cube shut and any panel up
 			if (what == Act::Stash && !PanelOpen(PanelStash)) return;
-			if (find.runtimeId != 0 && Look(player, Ours, &find) &&
-			    Queue(what, player, find.info, what == Act::Identify ? SoundIdentify : g_itemSound != nullptr ? g_itemSound(unit) : 0)) {
+			if (find.runtimeId == 0 || !Look(player, Ours, &find)) {
+				g_right(widget, cell);
+				return;
+			}
+			if (what == Act::Stash && find.info.container == items::ItemContainer::Inventory && g_deposit != nullptr &&
+			    g_toTabs != nullptr && g_toTabs(unit) != 0) {
+				if (find.info.y >= d2r::CharmFirstRow && inventory_lock::IsLocked()) {
+					plog::Info("hotkeys: stash refused: inventory lock, charm row %d", find.info.y + 1);
+					return;
+				}
+				uint64_t spot = cell;
+				g_deposit(widget, &spot);
+				plog::Info("hotkeys: stash %08x to its Gems/Materials/Runes tab (D2R's deposit)", find.info.code);
+				return;
+			}
+			if (Queue(what, player, find.info, what == Act::Identify ? SoundIdentify : g_itemSound != nullptr ? g_itemSound(unit) : 0)) {
 				return;
 			}
 		}
@@ -427,6 +464,9 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		const uint8_t* lea = reinterpret_cast<const uint8_t*>(g_panel) + 3;
 		g_panelTable = const_cast<uint8_t*>(lea + 7 + *reinterpret_cast<const int32_t*>(lea + 3));
 	}
+	if (sigscan::ScanUnique(context->exeBase, "40 53 48 83 ec 20 48 8b d9 b9 18 00 00 00 e8 ?? ?? ?? ?? 84 c0 74 ?? e8 ?? ?? ?? ?? 0f b6 c8 ba 02 00 00 00 e8 ?? ?? ?? ?? 84 c0 74 ?? 41 b8 f8 04 00 00", 0, &at) == 1) g_toTabs = reinterpret_cast<ToTabsFn>(context->exeBase + at);
+	if (sigscan::ScanUnique(context->exeBase, "40 53 48 83 ec 40 48 8b 01 ff 90 c8 00 00 00 48 8b d8 48 85 c0 74 ?? 48 8b c8 e8 ?? ?? ?? ?? 85 c0 75 ?? 48 89 7c 24 50 e8 ?? ?? ?? ?? 8b c8 e8 ?? ?? ?? ?? 48 8b c8 e8", 0, &at) == 1) g_deposit = reinterpret_cast<DepositFn>(context->exeBase + at);
+	if (g_toTabs == nullptr || g_deposit == nullptr) plog::Warn("hotkeys: the stash bind sends Gems/Materials/Runes items to the personal stash (tab deposit signature not found)");
 	if (g_panelTable == nullptr) plog::Warn("hotkeys: the panel table was not found; Ctrl + right click drops only with no other panel open");
 	if (g_play == nullptr || g_itemSound == nullptr) plog::Warn("hotkeys: item sounds are off (signature not found)");
 	if (right) {
