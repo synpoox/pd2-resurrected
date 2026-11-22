@@ -26,6 +26,14 @@ int main() {
 		const std::string out = WithExtraTabs("[d2rcore.stash]\n", 15);
 		return out.find("[d2rcore.stash]") == out.rfind("[d2rcore.stash]");
 	}());
+	CHECK("a string value is replaced, no duplicate key", WithExtraTabs("[d2rcore.stash]\nadd_shared_tabs = \"3\"\n", 15) == "[d2rcore.stash]\nadd_shared_tabs = 15\n");
+	CHECK("a hex or signed value is replaced", WithExtraTabs("[d2rcore.stash]\nadd_shared_tabs=0x0F\n", 15) == "[d2rcore.stash]\nadd_shared_tabs = 15\n" &&
+	                                           WithExtraTabs("[d2rcore.stash]\nadd_shared_tabs = +15\n", 15) == "[d2rcore.stash]\nadd_shared_tabs = 15\n");
+	CHECK("a BOM stays and the section is found", WithExtraTabs("\xEF\xBB\xBF[d2rcore.stash]\n# add_shared_tabs = 0\n", 15) ==
+	                                                  "\xEF\xBB\xBF[d2rcore.stash]\nadd_shared_tabs = 15\n");
+	CHECK("a spaced header is left to the player", WithExtraTabs("[ d2rcore.stash ]\nx = 1\n", 15).empty());
+	CHECK("an inline table is left to the player", WithExtraTabs("[d2rcore]\nstash = { add_shared_tabs = 0 }\n", 15).empty());
+	CHECK("a comment mentioning stash is no block", !WithExtraTabs("# the stash\n[a]\n", 15).empty());
 	std::printf("%d passed, %d failed\n", g_pass, g_fail);
 	return g_fail == 0 ? 0 : 1;
 }

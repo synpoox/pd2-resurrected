@@ -145,10 +145,15 @@ auto ReadExtraTabs(const std::wstring& path) noexcept -> int32_t {
 	int32_t extra = -1;
 	bool inStash = false;
 	char line[256];
+	bool first = true;
 	while (std::fgets(line, sizeof line, file) != nullptr) {
-		if (const int32_t section = pd2::stash_toml::SectionOf(line); section >= 0) {
+		const char* text = line;
+		if (std::exchange(first, false) && std::strncmp(line, "\xEF\xBB\xBF", 3) == 0) {
+			text += 3;  // a UTF-8 BOM
+		}
+		if (const int32_t section = pd2::stash_toml::SectionOf(text); section >= 0) {
 			inStash = section == 1;
-		} else if (const int32_t n = pd2::stash_toml::ExtraTabsOf(line); inStash && n >= 0) {
+		} else if (const int32_t n = pd2::stash_toml::ExtraTabsOf(text); inStash && n >= 0) {
 			extra = n;
 		}
 	}
@@ -172,6 +177,9 @@ auto RestoreExtraTabs(const std::wstring& path) noexcept -> bool {
 		std::fclose(in);
 	}
 	const std::string fixed = pd2::stash_toml::WithExtraTabs(text, static_cast<int32_t>(aff::RequiredExtraTabs));
+	if (fixed.empty()) {
+		return false;  // a stash section we cannot place a key in safely: the player fixes it by hand
+	}
 	CopyFileW(path.c_str(), (path + L".bak").c_str(), TRUE);  // fails when a .bak is already there: the first one stays
 	const std::wstring temp = path + L".tmp";
 	FILE* out = nullptr;
@@ -755,6 +763,10 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 	}
 }
 
+void OnGameLeft(const D2RL::PluginContext*, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {
+	g_inGame.store(false);  // the notice is not drawn on the menu
+}
+
 void OnPlayerReady(const D2RL::PluginContext*, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {
 	g_inGame.store(true);
 	g_reset.store(true);  // the UI thread starts the new game on the stock tabs
@@ -798,6 +810,10 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	const D2RL::Lifecycle::GameplayEventListener ready {.structSize = D2RL::Lifecycle::GameplayEventListenerSize,
 	                                                    .kind = D2RL::Lifecycle::GameplayEventKind::LocalPlayerReady,
 	                                                    .callback = OnPlayerReady};
+	const D2RL::Lifecycle::GameplayEventListener left {.structSize = D2RL::Lifecycle::GameplayEventListenerSize,
+	                                                  .kind = D2RL::Lifecycle::GameplayEventKind::GameLeft,
+	                                                  .callback = OnGameLeft};
+	D2RL::Lifecycle::ListenerHandle leftHandle = D2RL::Lifecycle::InvalidHandle;
 	const D2RL::SharedEvents::UiMessageListener listener {.structSize = D2RL::SharedEvents::UiMessageListenerSize,
 	                                                      .callback = OnUiMessage};
 	const D2RL::Overlay::CallbackRegistration frame {.structSize = D2RL::Overlay::CallbackRegistrationSize,
@@ -807,6 +823,7 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	D2RL::SharedEvents::ListenerHandle listenerHandle = D2RL::SharedEvents::InvalidHandle;
 	D2RL::Overlay::CallbackHandle frameHandle = D2RL::Overlay::InvalidCallbackHandle;
 	if (lifecycle->registerGameplayEventListener(context, &ready, &readyHandle) != D2RL::Lifecycle::Result::Success ||
+	    lifecycle->registerGameplayEventListener(context, &left, &leftHandle) != D2RL::Lifecycle::Result::Success ||
 	    events->registerUiMessageListener(context, &listener, &listenerHandle) != D2RL::SharedEvents::Result::Success ||
 	    g_overlay->registerFrameCallback(context, &frame, &frameHandle) != D2RL::Overlay::Result::Success) {
 		std::snprintf(report, size, "FAILED (a listener was refused)");
