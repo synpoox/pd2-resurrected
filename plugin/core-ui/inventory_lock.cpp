@@ -99,8 +99,9 @@ namespace aff = pd2::affinity;
 constexpr auto Own = [](uint32_t code, uint32_t shown, uint32_t page, int32_t x, int32_t y) {
 	return aff::AtHome(aff::HomeOf(code), code, shown, true, page, x, y);
 };
-constexpr auto Nop = [](uint32_t, uint32_t) { return true; };
-constexpr auto Never = [](uint32_t, uint32_t) { return false; };
+constexpr auto Nop = [](uint32_t, uint32_t, int32_t, int32_t) { return true; };
+constexpr auto Never = [](uint32_t, uint32_t, int32_t, int32_t) { return false; };
+constexpr uint8_t SwapStash[] = {0x1f, 9, 0, 0, 0, 7, 0, 0, 0, 4, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0};
 constexpr uint8_t PutGem[] = {0x18, 7, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0};
 constexpr uint8_t PutBoss[] = {0x18, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0};
 constexpr uint8_t PutInv[] = {0x18, 7, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0};
@@ -114,8 +115,9 @@ static_assert(!MisplacedOnTab(PutBoss, sizeof PutBoss, aff::BossingPage, BossPut
 static_assert(MisplacedOnTab(PutBoss, sizeof PutBoss, aff::BossingPage, WrongBossPut, Nop));  // dcbl into dcma's cell: refused
 static_assert(!MisplacedOnTab(PutGem, sizeof PutGem, 0, GemPut, Nop));  // no tab open
 static_assert(!MisplacedOnTab(PutInv, sizeof PutInv, aff::MapsPage, GemPut, Nop));  // the inventory grid is not the stash
-static_assert(MisplacedOnTab(SwapIn, sizeof SwapIn, aff::MapsPage, GemPut, Never) && !MisplacedOnTab(SwapIn, sizeof SwapIn, aff::MapsPage, GemPut, Nop));
-static_assert(!MisplacedOnTab(SwapIn, 8, aff::MapsPage, GemPut, Never));  // too short
+static_assert(MisplacedOnTab(SwapStash, sizeof SwapStash, aff::MapsPage, GemPut, Never) && !MisplacedOnTab(SwapStash, sizeof SwapStash, aff::MapsPage, GemPut, Nop));
+static_assert(!MisplacedOnTab(SwapIn, sizeof SwapIn, aff::MapsPage, GemPut, Never));  // a swap on the inventory (page 0) is never filtered
+static_assert(!MisplacedOnTab(SwapStash, 0x14, aff::MapsPage, GemPut, Never));  // too short
 static_assert(!ChangesEquipment(nullptr, 9) && !ChangesEquipment(Equip, 0));
 
 constexpr char Command[] = "core-ui/InventoryLock";
@@ -258,8 +260,8 @@ auto PutOk(void* game, uint32_t id, uint32_t page, int32_t x, int32_t y) noexcep
 	return code != 0 && Own(code, stash_affinity::WantedBase(), page, x, y);
 }
 
-// 0x1f: the cursor item (mode 4) takes the stored one's cell
-auto SwapOk(void* game, uint32_t a, uint32_t b, uint32_t page) noexcept -> bool {
+// 0x1f: the cursor item (mode 4) goes to the message's cell (x, y)
+auto SwapOk(void* game, uint32_t a, uint32_t b, int32_t x, int32_t y, uint32_t page) noexcept -> bool {
 	Unit* first = UnitOf(game, a);
 	Unit* second = UnitOf(game, b);
 	if (first == nullptr || second == nullptr) {
@@ -271,9 +273,8 @@ auto SwapOk(void* game, uint32_t a, uint32_t b, uint32_t page) noexcept -> bool 
 	if (d2r::At<int32_t>(held, d2r::rva::UnitMode) != 4 || d2r::At<int32_t>(stored, d2r::rva::UnitMode) != 0) {
 		return true;
 	}
-	const uint32_t xy = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::sig::UnitPackedXY)(stored);
 	const uint32_t code = CodeOf(game, held);
-	return code != 0 && Own(code, stash_affinity::WantedBase(), page, static_cast<int32_t>(xy & 0xffff), static_cast<int32_t>(xy >> 16));
+	return code != 0 && Own(code, stash_affinity::WantedBase(), page, x, y);
 }
 
 auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexcept -> int {
@@ -296,7 +297,7 @@ auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexc
 	    MisplacedOnTab(
 	        message, static_cast<size_t>(size), page,
 	        [=](uint32_t id, int32_t x, int32_t y) noexcept { return PutOk(game, id, page, x, y); },
-	        [=](uint32_t a, uint32_t b) noexcept { return SwapOk(game, a, b, page); })) {
+	        [=](uint32_t a, uint32_t b, int32_t x, int32_t y) noexcept { return SwapOk(game, a, b, x, y, page); })) {
 		++g_refused;
 		plog::Info("stash tabs: refused message 0x%02x, not the item's own cell (page %u)", message[0], page);
 		return 0;

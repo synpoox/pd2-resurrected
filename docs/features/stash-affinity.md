@@ -52,7 +52,7 @@ says why. Status: `core-ui` console command, `affinity:` and `stash tabs:` count
 
 Hand drops ([#1726](https://github.com/synpoox/pd2-resurrected/issues/1726)): while the Maps or Bossing tab is open, the
 inventory padlock's message hook (`inventory_lock.cpp`, by signature) refuses the local player's 0x18 (put the cursor item on a
-stash cell, page field 4) and 0x1f (swap it with a stored item, taking that item's cell) unless `stash_home.h`'s `AtHome` says the
+stash cell, page field 4) and 0x1f (swap it with a stored item on the stash, page field 4; the cursor item goes to the message's cell) unless `stash_home.h`'s `AtHome` says the
 item belongs on that page and cell (a map of the shown base also in the map cells). Any other item, or a currency or boss item in
 another's cell, stays on the cursor. The message holds no shared page number, so the open tab (`stash_affinity::ViewPage`) names
 it. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
