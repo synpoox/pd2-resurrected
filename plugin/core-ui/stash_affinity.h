@@ -36,8 +36,8 @@ auto StackOnto(uint32_t cursorId, uint32_t targetId) noexcept -> bool;
 // client: the cursor item, or a quick-moved item still in the inventory or Cube. False when nothing could be queued.
 auto Resend(uint32_t itemId) noexcept -> bool;
 
-// Any thread (#1772): queues for the game thread a click's take (0x19, or 0x46 on a shared page) of a reserved-page stack past WithdrawMax: the
-// stack moves to the inventory, and the watch's next pass splits WithdrawMax of it onto the cursor and sends the rest home
+// Any thread (#1772): queues for the game thread a click's take (0x46) of a reserved-page stack past WithdrawMax: the stack
+// moves to the inventory, and the watch's next pass splits WithdrawMax of it onto the cursor and sends the rest home
 // (Withdraw). False when nothing could be queued.
 auto TakeOut(uint32_t itemId) noexcept -> bool;
 

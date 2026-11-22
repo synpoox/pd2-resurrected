@@ -375,7 +375,7 @@ auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& st
 	}
 	stack.quantity = sum;
 	++g_merged;
-	plog::Info("affinity: %08x x%d merged with the stack on page %u cell %d,%d (now %d, %d left on the cursor; back on its cell: result %u)",
+	plog::Info("affinity: %08x x%d merged with the stack on page %u cell %d,%d (now %d, %d left on the incoming item; back on its cell: result %u)",
 	           stack.code, add - rest, page, x, y, sum, rest, static_cast<uint32_t>(back));
 	return items::Result::Success;  // a failed move back leaves the whole stack in the inventory: nothing lost
 }
@@ -847,9 +847,26 @@ auto TakeOut(uint32_t itemId) noexcept -> bool {
 		// shortcut: a full inventory leaves the stack in its cell (logged); upgrade with a chat line if players miss it
 		const items::ItemDestination bag {.structSize = items::ItemDestinationSize, .container = C::Inventory,
 		                                  .placement = items::Placement::Automatic};
-		const auto moved = Move(player, stack.info.handle, bag);
-		plog::Info("affinity: %08x x%d taken from page %u cell %d,%d to the inventory for the split: result %u", stack.info.code,
-		           Quantity(stack.info.handle), stack.info.sharedStashPage, stack.info.x, stack.info.y, static_cast<uint32_t>(moved));
+		const items::ItemInfo& on = stack.info;
+		const auto moved = Move(player, on.handle, bag);
+		plog::Info("affinity: %08x x%d taken from page %u cell %d,%d to the inventory for the split: result %u", on.code,
+		           Quantity(on.handle), on.sharedStashPage, on.x, on.y, static_cast<uint32_t>(moved));
+		if (moved != items::Result::Success) {
+			// the consumed take left the stack pending on the client (0x1c6ac0) until an item packet: a move onto its own
+			// cell sends one, else anywhere on its page (the tidy pass routes it home)
+			items::ItemDestination home {.structSize = items::ItemDestinationSize, .container = C::SharedStash,
+			                             .placement = items::Placement::Exact, .sharedStashPage = on.sharedStashPage};
+			home.x = static_cast<uint32_t>(on.x);
+			home.y = static_cast<uint32_t>(on.y);
+			auto resent = Move(player, on.handle, home);
+			if (resent != items::Result::Success) {
+				home.placement = items::Placement::Automatic;
+				resent = Move(player, on.handle, home);
+			}
+			(resent == items::Result::Success ? plog::Info : plog::Warn)(
+			    "affinity: %08x stays in the stash; sent to the client again by a move on page %u: result %u", on.code,
+			    on.sharedStashPage, static_cast<uint32_t>(resent));
+		}
 	};
 	return g_threads->runOnGameThread(g_context, now, reinterpret_cast<void*>(static_cast<uintptr_t>(itemId))) ==
 	       D2RL::Threads::Result::Success;
