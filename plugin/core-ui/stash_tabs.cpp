@@ -109,7 +109,7 @@ bool g_select = false;
 // A tab's page is published to stash_affinity (ViewPage) only once every arrow was sent (g_pending); until then, and after
 // MaxSendFails failed frames, it is unknown (0: no drop filter). Our tab is refused when the stash has too few pages (g_pages).
 // shortcut: a page change that sends no arrow (another plugin's jump) is not counted, and the general pages after the
-// reserved ones (add_shared_tabs above 15) are out of the Shared tab's reach; read the page if the SDK gains a read.
+// reserved ones (add_shared_tabs above 17) are out of the Shared tab's reach; read the page if the SDK gains a read.
 uint32_t g_page = 0;
 bool g_wantShared = false;  // UI thread: our tab was clicked; the next frame selects the stock Shared tab
 // Pad layout (#1661): the stock BankTabs has our Maps and Bossing tabs after its five, but the stash reads its tab from
@@ -136,7 +136,7 @@ auto PlayerPage(bool right, const char* how) noexcept -> bool {
 	return true;
 }
 
-// #1808: the mod's d2rloader.toml lost its live add_shared_tabs (a rewritten template, a kept old file): put 15 back in it, the
+// #1808: the mod's d2rloader.toml lost its live add_shared_tabs (a rewritten template, a kept old file): put 17 back in it (#1854: 3 stock pages + 17 reach Bossing for Classic/LoD), the
 // loader reads it at game start. A .bak of the file is kept once; the write is a temp file moved over it. Never the game-wide file.
 auto RestoreExtraTabs(const std::wstring& path) noexcept -> bool {
 	std::string text;
@@ -196,11 +196,11 @@ auto ReadPages(const wchar_t* configPath) noexcept -> uint32_t {
 	const int32_t extra = mod >= 0 ? mod : all >= 0 ? all : 0;
 	if (mod != -2 && extra < static_cast<int32_t>(aff::RequiredExtraTabs)) {
 		if (RestoreExtraTabs(modToml)) {
-			g_notice = "Stash tabs restored: Maps and Bossing need add_shared_tabs = 15. Restart Diablo II: Resurrected once to see them.";
+			g_notice = "Stash tabs restored: Maps and Bossing need add_shared_tabs = 17. Restart Diablo II: Resurrected once to see them.";
 			plog::Warn("stash tabs: add_shared_tabs was %d (%s): wrote add_shared_tabs = %u to the mod's d2rloader.toml (backup .bak); restart D2R once", extra,
 			           mod >= 0 ? "the mod's file" : all >= 0 ? "the game-wide file" : "no live key", aff::RequiredExtraTabs);
 		} else {
-			g_notice = "Maps and Bossing stash tabs are hidden: set add_shared_tabs = 15 in mods/PD2Resurrected/d2rloader/config/d2rloader.toml, then restart.";
+			g_notice = "Maps and Bossing stash tabs are hidden: set add_shared_tabs = 17 in mods/PD2Resurrected/d2rloader/config/d2rloader.toml, then restart.";
 			plog::Warn("stash tabs: could not write add_shared_tabs = %u to the mod's d2rloader.toml (read-only?): set it under [d2rcore.stash] by hand and restart D2R", aff::RequiredExtraTabs);
 		}
 	}

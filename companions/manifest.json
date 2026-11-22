@@ -1,5 +1,5 @@
 {
-  "_note": "Pinned companion plugins (issue #15). sha256 from each release's SHA256SUMS (a `commit` entry: of the file at that commit, the repo has no releases). Our settings for a companion are in companions/config/, copied over the zip's. files: zip path -> path in the installed mod folder. Bump one companion per PR, after the coexistence check. Pyre Stash Search carries the mod's own add_shared_tabs (15: core-ui's reserved stash affinity pages, #1553), since loader_settings exist per entry only.",
+  "_note": "Pinned companion plugins (issue #15). sha256 from each release's SHA256SUMS (a `commit` entry: of the file at that commit, the repo has no releases). Our settings for a companion are in companions/config/, copied over the zip's. files: zip path -> path in the installed mod folder. Bump one companion per PR, after the coexistence check. Pyre Stash Search carries the mod's own add_shared_tabs (17: core-ui's reserved stash affinity pages, #1553), since loader_settings exist per entry only.",
   "config": [
     "companions/config/",
     "companions/filter.json"
@@ -38,7 +38,7 @@
       },
       "loader_settings": {
         "d2rcore.stash": {
-          "add_shared_tabs": 15,
+          "add_shared_tabs": 17,
           "set_materials_limit": 255
         }
       }

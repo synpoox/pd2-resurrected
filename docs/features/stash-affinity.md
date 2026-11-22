@@ -25,18 +25,18 @@ shows them. A tab click switches the stash to Shared through D2R's tab-bar selec
 it), then the stash's page arrows open the page.
 The tab's page is published to the drop filter (`ViewPage`) only once every arrow was sent (log `stash tabs: shared page <n> on show`);
 an arrow that fails is retried for 30 frames, then the page stays unknown (no filter) and a warning is logged. The stash's page count
-is read from `add_shared_tabs` in `[d2rcore.stash]` of the mod's `d2rloader.toml`, else of the game-wide `<game>/d2rloader/config/d2rloader.toml`, else the loader default 0 (5 + n; only when no file can be read is there no limit): with fewer than 20 pages the Bossing tab is hidden (fewer than 16: Maps too) and the log says so.
+is read from `add_shared_tabs` in `[d2rcore.stash]` of the mod's `d2rloader.toml`, else of the game-wide `<game>/d2rloader/config/d2rloader.toml`, else the loader default 0 (5 + n; only when no file can be read is there no limit): with fewer than 20 pages (5 + n) the Bossing tab is hidden (fewer than 16: Maps too) and the log says so.
 The SDK has no read of the shown page, so a page change that sends no arrow is still not seen.
 
 ## Pages
 
 Fixed indices after 10 general Loader tabs, so a bigger `add_shared_tabs` adds general tabs after them and never shifts
-them. The mod sets `[d2rcore.stash] add_shared_tabs = 15` (the Pyre Stash Search entry's `loader_settings` in
+them (Classic and LoD characters have 3 stock shared pages, RotW 5, so 17 gives each the pages up to 19; RotW has two spare general pages after Bossing, #1854). The mod sets `[d2rcore.stash] add_shared_tabs = 17` (the Pyre Stash Search entry's `loader_settings` in
 `companions/manifest.json`; a player's own value is kept).
 
 | Shared tab (zero-based) | Holds |
 |---|---|
-| 0-4 | D2R's shared tabs |
+| 0-4 | D2R's shared tabs (0-2 for a Classic or LoD character, whose general tabs start at 3) |
 | 5-14 | general Loader tabs |
 | 15 | the Maps tab: rows 0-1 under the buttons stay empty; the shown base's maps in rows 2-3; the map currency in columns 0-1 of rows 4-9 and 8-9 of rows 4-8, a fixed cell per item, stacked to 255 (#1763) |
 | 16, 17, 18 | stored maps of tier 1, 2, 3: one row per base (the order in `plugin/common/stash_home.h`) |

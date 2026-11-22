@@ -2,7 +2,9 @@
 // builds on the host. The routing (core-ui/stash_affinity.cpp) and the stash tabs (core-ui/stash_tabs.cpp) read these.
 //
 // Page plan: D2R's 5 shared tabs (0-4), then 10 general Loader extra tabs (5-14), then the reserved pages at fixed
-// indices, so add_shared_tabs must be at least 15. A slider set higher adds general tabs after them.
+// indices, so add_shared_tabs must be at least 17: a Classic/LoD character has 3 stock shared pages, not 5, and 3 + 17
+// reaches page 19 (RotW's 5 + 17 leaves 2 spare general pages after it). The indices are the same in every game mode (#1854).
+// A slider set higher adds general tabs after them.
 // Page 15 is the Maps tab, laid out round the Horadric Cube the stash shows at the RotW tabs' spot (grid columns 3-6,
 // rows 6-9): row 0 under the tier buttons and row 1 under the base buttons stay empty, the selected base's maps sit
 // above the cube (MapView), the map currency in fixed cells in two columns each side of it (CurrencyCell). Pages 16-18 store each tier's maps,
@@ -26,7 +28,9 @@ inline constexpr uint32_t MapsPage = FirstReservedPage;              // the Maps
 inline constexpr uint32_t FirstStoragePage = FirstReservedPage + 1;  // tier 1's stored maps; tiers 2 and 3 follow
 inline constexpr uint32_t BossingPage = FirstReservedPage + 4;
 inline constexpr uint32_t LastReservedPage = BossingPage;
-inline constexpr uint32_t RequiredExtraTabs = LastReservedPage + 1 - VanillaSharedPages;  // 15
+inline constexpr uint32_t MinStockSharedPages = 3;  // Classic and LoD (unitDataFlag 1, 2); RotW has VanillaSharedPages
+inline constexpr uint32_t RequiredExtraTabs = LastReservedPage + 1 - MinStockSharedPages;  // 17
+static_assert(MinStockSharedPages + RequiredExtraTabs > BossingPage && VanillaSharedPages + RequiredExtraTabs > BossingPage);
 inline constexpr int32_t PageWidth = 10;  // inventory.txt Big Bank Page: 10 x 10
 
 // The Cartographer maps by tier (misc.txt type t1m/t2m/t3m; tools/tests/test_stash_affinity.py checks them against the
@@ -232,7 +236,7 @@ constexpr auto FreeColumn(uint32_t occupied) noexcept -> int32_t {
 	return -1;
 }
 
-static_assert(RequiredExtraTabs == 15);
+static_assert(RequiredExtraTabs == 17);  // 3 stock pages (Classic/LoD) + 17 = page 19, Bossing (#1854)
 static_assert(std::size(MapMaterials) <= CurrencyCells);  // one cell each beside the cube
 static_assert(Code("m01") == ('m' | ('0' << 8) | ('1' << 16) | (' ' << 24)));
 static_assert(HomeOf(Code("m01")).page == 16 && HomeOf(Code("m01")).row == 0);
