@@ -33,7 +33,8 @@ MODES = {0: [0], 1: [1], 2: [2], 3: [4], 4: [7, 8], 5: [8, 7], 6: [9, 1], 7: [10
 PLAYER_TO_MONSTER = {p: m for m, ps in MODES.items() for p in ps[:1] if m != 14}
 # monstats2 list -> (part, the bone the attachment hangs on)
 SLOTS = {"RHv": ("rhand", "R_weapon_attach"), "LHv": ("lhand", "L_weapon_attach"),
-         "SHv": ("shield", "shield_attach"), "HDv": ("head", "helmet")}
+         "SHv": ("shield", "shield_attach"), "HDv": ("head", "helmet"),
+         "S3v": ("special3", "shield_attach")}  # the Necromancer's head (#1708): S3, the player Necromancer's head layer
 ITEM_DIRS = ("weapon", "armor/helmet", "armor/shield", "armor/pelt", "armor/voodoo_head", "armor/circlet", "misc")
 
 

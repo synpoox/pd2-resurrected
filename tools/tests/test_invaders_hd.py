@@ -54,12 +54,6 @@ class InvaderHdTests(unittest.TestCase):
                         if tok not in ("nil", "lit", "med", "hvy"):
                             self.assertIn((part, tok), have)
 
-    def test_barbarian_great_sword_is_the_third_hand_token(self):
-        """plugin/common/invader_look.h reads the part byte as an index into this list."""
-        r = gen.monstats2()["InvaderBarbarian"]
-        self.assertEqual(r["RHv"], "axe,bsd,gsd,lsd,whm")
-        self.assertEqual(r["LHv"], r["RHv"])
-
     def test_output_matches_the_generator(self):
         b = d2r()
         rows, items = gen.monstats2(), gen.item_paths(b)
