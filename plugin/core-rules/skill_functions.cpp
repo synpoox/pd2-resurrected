@@ -4945,8 +4945,9 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 }
 
 auto SkillFunctionCount() noexcept -> int {
-	// + the srvdo router, the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the busy mode gate and the hit window
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 7;
+	// + the srvdo router, the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the two first-think patches and the
+	// revive size cap, the busy mode gate and the hit window
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 10;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
