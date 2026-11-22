@@ -1823,6 +1823,62 @@ static auto PatchCurseLength(const D2RL::PluginContext* context) noexcept -> boo
 	return full && blinds;
 }
 
+// --- Missile pierce cap (#1839) -----------------------------------------------------------------------------------
+// PD2 calls 0x10374f20 (installed 0x10374f90) at 1.13c D2Game +0x6fe59 in place of +0x6f660: when a piercing
+// missile is made, chance = item_pierce + skill_pierce + 0x10381720(owner, skill_pierce) (our HandStatSum), rolled
+// rand % 100 < chance up to 10 times, 6 for a Lightning Fury missile (missile data +0xa, the skill: 1.13c D2Common
+// 0x6fdba2b0), into the missile's pierce_idx. D2R's roll (93847: 0x537ed0, Missiles.cpp) stops at 4 and its third
+// term is its weapon mastery bonus type 3 (0x33deb0, players only). No SDK service covers missile creation, so the
+// whole roll is replaced by a hook found by signature. pierce_idx stays a byte in D2R's missile copy (0x537e14).
+constexpr const char* PierceRollEntry =
+    "40 53 56 57 48 83 ec 30 49 8b d8 48 8b fa 48 8b f1 4d 85 c0 74 12 48 85 d2 74 0d 48 8b ca e8 ?? ?? ?? ?? 83 f8 03 74 26";
+constexpr uint8_t PierceRollStock[] = {0x40, 0x53, 0x56, 0x57, 0x48, 0x83, 0xec, 0x30, 0x49,
+                                       0x8b, 0xd8, 0x48, 0x8b, 0xfa, 0x48, 0x8b, 0xf1};  // whole instructions
+constexpr uint32_t StatPierceIdx = 0x148, StatSkillPierce = 0xa6, StatItemPierce = 0x9c;
+constexpr int32_t SkillLightningFury = 35;
+constexpr uint8_t MissilePierceFlag = 0x04;  // missiles.txt Pierce: D2R tests record +0x24 against its bit table's 4
+using PierceRollFn = void (*)(Game*, Unit*, Unit*) noexcept;
+static PierceRollFn g_pierceRollOriginal = nullptr;  // not called: PD2's roll replaces D2R's
+static std::atomic<uint32_t> g_pierceRolls {0};
+
+static void PierceRoll(Game* game, Unit* missile, Unit* owner) noexcept {
+	using namespace d2r::rva;
+	if (game == nullptr || missile == nullptr || owner == nullptr || At<int32_t>(missile, UnitType) != 3 ||
+	    At<int32_t>(owner, UnitType) > 1) {
+		return;
+	}
+	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
+	    d2r::DataFlag(game), At<int32_t>(missile, UnitClassId));
+	if (row == nullptr || (At<uint8_t>(row, 0x24) & MissilePierceFlag) == 0) {
+		return;
+	}
+	// signed, as D2R's compare; PD2's unsigned one would let a negative chance pierce every roll (no data gives one)
+	const int32_t chance = Stat(owner, StatSkillPierce) +
+	                       d2r::Engine<int32_t (*)(Unit*, uint32_t) noexcept>(UnitStatNoParam)(owner, StatItemPierce) +
+	                       HandStatSum(owner, StatSkillPierce);
+	if (chance == 0) {
+		return;
+	}
+	const int32_t skill = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileSkill)(missile);
+	const int32_t cap = skill == SkillLightningFury ? 6 : 10;
+	// the owner's base pierce_idx seeds a local D2 RNG {lo, 666}, as both games do (D2R 0x367110)
+	uint64_t seed = static_cast<uint32_t>(
+	                    d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitBaseStat)(owner, StatPierceIdx, 0)) |
+	                (666ull << 32);
+	int32_t count = 0;
+	while (count < cap) {
+		seed = (seed & 0xffffffff) * 0x6ac690c5 + (seed >> 32);
+		if (static_cast<int32_t>(static_cast<uint32_t>(seed) % 100) >= chance) {
+			break;
+		}
+		++count;
+	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(missile, StatPierceIdx, count, 0);
+	if (pd2::HotSample(g_pierceRolls)) {
+		plog::Info("pierce roll: skill %d chance %d cap %d -> %d", skill, chance, cap, count);
+	}
+}
+
 // --- Charm rows (#358) ---------------------------------------------------------------------------------------------
 // PD2's inventory is 10x8 and a charm works only in its lower four rows (the grid's y 4 to 7, by the charm's top row).
 // D2R's own charm-active body (93847: 0x36ae00) is not called: D2RLoader rewrote its callers to a thunk in its .maho
@@ -2386,6 +2442,11 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool charms = InstallCharmRows(context);
 	const bool telekinesis = PatchTelekinesisArrows(context);
 	const bool curseLength = PatchCurseLength(context);
+	const bool pierceCap = sigscan::HookBySignature(context, "PierceRoll", PierceRollEntry, 0, PierceRollStock,
+	                                                sizeof(PierceRollStock), PierceRoll, &g_pierceRollOriginal);
+	if (pierceCap) {
+		plog::Info("pierce cap: missile pierce roll hooked, PD2's cap 10 (6 for Lightning Fury)");
+	}
 	const char* const dye = InstallDyeTint(context);
 	const bool mapStack = sigscan::HookBySignature(
 	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
@@ -2405,7 +2466,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; pierce cap%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
@@ -2415,15 +2476,15 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              charms ? "" : " FAILED (signature or bytes differ)", dye, mapStack ? "" : " FAILED (bytes differ)",
 	              noMagicMaps ? " (hooked when tables load)" : " FAILED (no table listener)", mapMakerLog ? "" : " FAILED (signature or bytes differ)",
 	              telekinesis ? "" : " FAILED (signature or bytes differ)",
-	              curseLength ? "" : " FAILED (signature, bytes or states.txt)");
+	              curseLength ? "" : " FAILED (signature, bytes or states.txt)", pierceCap ? "" : " FAILED (signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
 	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0) +
-	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0);
+	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (pierceCap ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 17;
+	return 18;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
