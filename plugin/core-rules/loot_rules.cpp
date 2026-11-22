@@ -21,11 +21,12 @@
 //   Found by byte signature, patched through the MutationService. See docs/research/items/item-durability.md.
 // - throwing quantity (#1489): a throwing stack keeps its quantity when its durability runs out. D2R's weapon durability
 //   loss (0x441b10) takes one off the stack (`lea ebx,[rax-1]` at 0x441cb9) before it refills durability; PD2 NOPs the
-//   `dec ebp` at 1.13c D2Game +0x13033 in the same branch (+0x12ee0). Found by byte signature, patched through the
-//   MutationService.
+//   `dec ebp` at 1.13c D2Game +0x13033 in the same branch (+0x12ee0). We skip the quantity write instead (see below).
+//   Found by byte signature, patched through the MutationService.
 // - unlimited ammo (#1598): arrows, bolts and throwing weapons never use up their quantity. D2R's ammo use (0x439130)
 //   writes quantity - 1 back (`lea ebx,[rax-1]` at 0x43921d); PD2 NOPs the `dec ebp` at 1.13c D2Game +0xa16be in the
-//   same function (+0xa16a0). Found by byte signature, patched through the MutationService.
+//   same function (+0xa16a0). We skip the quantity write instead (see below). Found by byte signature, patched through
+//   the MutationService.
 // - staffmods (#663): PD2's roll of class skills on a new class item (ProjectDiablo.dll 0x1036f470 on disk, 0x1036f400
 //   in PD2.gpr) replaces 1.13c's (D2Game +0x13320 and +0x135e0) for every item version: a count from rand%100 + bonus,
 //   each skill drawn from a fixed per-class list (knives their own) with a required-level test in place of 1.13c's
@@ -298,22 +299,33 @@ auto PatchBySignature(const D2RL::PluginContext* context, const char* name, cons
 	return true;
 }
 
-// Both quantity patches write the read quantity back unchanged: `lea ebx,[rax-1]` (8d 58 ff) -> `mov ebx,eax; nop`.
-constexpr uint8_t QuantityLea[3] = {0x8d, 0x58, 0xff};
-constexpr uint8_t QuantityMov[3] = {0x89, 0xc3, 0x90};
+// Both quantity patches skip the quantity write. Both reads (0x2f5020) return the full stat 70, which counts a
+// socketed gem's own quantity 1 (gems are stackable), so writing the read back (PD2's way, 1.13c #10973 then #10887)
+// grows a socketed stack by one per use (#1828, #1887).
 
 // A throwing stack keeps its quantity when its durability runs out: in D2R's weapon durability loss (0x441b10), the
-// stat 70 branch reads the quantity and writes quantity - 1 back (`lea ebx,[rax-1]`); PD2 NOPs `dec ebp` there.
-// The pattern runs from the branch's `jle` through the stat 0x46 write set-up; the offset points at the `lea`.
-constexpr const char* ThrowingQuantityPattern = "7E 57 33 F6 8D 58 FF E8 ?? ?? ?? ?? 48 8B D0 90 89 74 24 28 44 8D 4E 46";
+// stat 70 branch reads the quantity and sends quantity - 1 (`lea ebx,[rax-1]`, then 0x43eb30 with stat 0x46). The
+// `lea` becomes a `jmp` to the durability refill (`mov rcx,rdi; call`, 0x21 bytes on), skipping the quantity write.
+// The pattern runs from the branch's `jle` through that refill; the offset points at the `lea`.
+constexpr const char* ThrowingQuantityPattern =
+    "7E 57 33 F6 8D 58 FF E8 ?? ?? ?? ?? 48 8B D0 90 89 74 24 28 44 8D 4E 46 89 5C 24 20 41 B0 01 48 8B CF "
+    "E8 ?? ?? ?? ?? 48 8B CF E8";
 constexpr int ThrowingQuantityOffset = 4;
+constexpr uint8_t ThrowingQuantityLea[3] = {0x8d, 0x58, 0xff};
+constexpr uint8_t ThrowingQuantitySkip[3] = {0xeb, 0x21, 0x90};  // jmp +0x21; nop
 
-// Arrows, bolts and throwing weapons never run out (#1598): D2R's ammo use (0x439130, called for the hand or quiver
-// item by 0x439320) reads stat 70 and writes quantity - 1 back (`lea ebx,[rax-1]` at 0x43921d), removing the item
-// below 0. PD2 NOPs the `dec ebp` in 1.13c's same function (D2Game +0xa16be, in +0xa16a0, called by +0xa1790), so
-// the quantity never drops. The pattern runs from the refill test (`test bl,bl; jnz`) through the stat 0x46 set-up.
-constexpr const char* AmmoQuantityPattern = "84 DB 0F 85 ?? ?? ?? ?? 8D 58 FF 45 8B FE 85 DB 41 8D 56 46";
+// Arrows, bolts and throwing weapons never run out (#1598): D2R's ammo use (0x439130; its only caller 0x439320 passes
+// the hand or quiver item) reads stat 70 and writes quantity - 1 back (`lea ebx,[rax-1]` at 0x43921d, set 0x2f7d10,
+// packet 0x47a190), removing the item below 0. `lea ebx,[rax-1]` and the next REX byte become `xor ebx,ebx; jmp` past
+// the set and the packet to the durability check (`mov rcx,rdi; call`, 0x42 bytes on); ebx 0 means "not used up".
+// The pattern runs from the refill test (`test bl,bl; jnz`) through that check.
+constexpr const char* AmmoQuantityPattern =
+    "84 DB 0F 85 ?? ?? ?? ?? 8D 58 FF 45 8B FE 85 DB 41 8D 56 46 48 8B CF 44 0F 49 FB 45 33 C9 45 8B C7 C1 EB 1F "
+    "E8 ?? ?? ?? ?? 48 8B CE E8 ?? ?? ?? ?? 48 8B C8 90 44 89 74 24 28 45 8D 4E 46 44 89 7C 24 20 41 B0 01 48 8B D7 "
+    "E8 ?? ?? ?? ?? 48 8B CF E8";
 constexpr int AmmoQuantityOffset = 8;
+constexpr uint8_t AmmoQuantityLea[4] = {0x8d, 0x58, 0xff, 0x45};
+constexpr uint8_t AmmoQuantitySkip[4] = {0x31, 0xdb, 0xeb, 0x42};  // xor ebx,ebx; jmp +0x42
 
 // --- Staffmods ------------------------------------------------------------------------------------------------------
 
@@ -486,9 +498,10 @@ auto InstallLootRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool durability = PatchWeaponDurability(context);
 	const bool etherealDurability = PatchEtherealDurability(context);
 	const bool throwing = PatchBySignature(context, "throwing quantity lea", ThrowingQuantityPattern,
-	                                       ThrowingQuantityOffset, QuantityLea, QuantityMov, sizeof(QuantityLea));
+	                                       ThrowingQuantityOffset, ThrowingQuantityLea, ThrowingQuantitySkip,
+	                                       sizeof(ThrowingQuantityLea));
 	const bool ammo = PatchBySignature(context, "ammo quantity lea", AmmoQuantityPattern, AmmoQuantityOffset,
-	                                   QuantityLea, QuantityMov, sizeof(QuantityLea));
+	                                   AmmoQuantityLea, AmmoQuantitySkip, sizeof(AmmoQuantityLea));
 	const bool staffMods = context->InstallInlineHook(ItemStaffMods, ItemStaffModsEntry, sizeof(ItemStaffModsEntry),
 	                                                  &StaffMods, &g_staffModsOriginal);
 	const bool seals = context->InstallInlineHook(ModeCmdInit, ModeCmdInitEntry, sizeof(ModeCmdInitEntry),

@@ -1,3 +1,3 @@
 #### Items
 
-- Throwing weapons, javelins and quivers can drop with sockets, matching PD2 (#1828).
+- Let throwing weapons, javelins and quivers drop with sockets, as in PD2 (#1828).

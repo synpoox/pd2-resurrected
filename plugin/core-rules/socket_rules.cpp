@@ -63,21 +63,23 @@ using ItemRecordFn = const uint8_t* (*)(uint32_t dataFlag, int32_t classId) noex
 StackableFn g_stackable = nullptr;
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::DataTableService* g_tables = nullptr;
-int32_t g_typeRows[Banks][std::size(SocketTypes)] = {};  // row + 1, 0 = not looked up yet (game thread only)
+int32_t g_typeRows[Banks][std::size(SocketTypes)] = {};  // row + 1, 0 = not looked up yet, -1 = not in the bank (game thread only)
 std::atomic<uint32_t> g_stackRolls {0};
 
-// The itemtypes row of SocketTypes[i] in the bank, looked up on first use (the SDK answers on the game thread only)
+// The itemtypes row of SocketTypes[i] in the bank (-1: not there), looked up on first use; only Busy (off the game
+// thread) is asked again
 auto TypeRow(uint8_t bank, size_t i) noexcept -> int32_t {
 	int32_t& row = g_typeRows[bank][i];
 	if (row == 0) {
 		D2RL::DataTables::RowView view {.structSize = D2RL::DataTables::RowViewSize};
-		if (g_tables->findRowByCode(g_context, static_cast<D2RL::DataTables::Bank>(bank), D2RL::DataTables::TableId::ItemTypes,
-		                            SocketTypes[i], &view) != D2RL::DataTables::Result::Success) {
+		const auto result = g_tables->findRowByCode(g_context, static_cast<D2RL::DataTables::Bank>(bank),
+		                                            D2RL::DataTables::TableId::ItemTypes, SocketTypes[i], &view);
+		if (result == D2RL::DataTables::Result::Busy) {
 			return -1;
 		}
-		row = static_cast<int32_t>(view.rowIndex) + 1;
+		row = result == D2RL::DataTables::Result::Success ? static_cast<int32_t>(view.rowIndex) + 1 : -1;
 	}
-	return row - 1;
+	return row < 0 ? -1 : row - 1;
 }
 
 // D2R's stackable answer, but 0 (not stackable: the socket roll goes on) for an item whose own type is one of the six
