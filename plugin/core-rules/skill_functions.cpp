@@ -3101,6 +3101,12 @@ constexpr int32_t ModifierListLevel = 351, StatAttackRate = 68, StatOtherAnimRat
 constexpr int TablesStatCount = 0x1260;  // uint64 itemstatcost row count in DataTables, as 0x574480 reads it
 using FrenzyHelperFn = int64_t (*)(Game*, Unit*, int32_t, int32_t, void*) noexcept;
 FrenzyHelperFn g_frenzyHelper = nullptr;
+// (game, unit, event +0x24, event +0x28): 93847 0x490ef0, the attack event reschedule D2R's helper ends with
+constexpr const char* AttackRescheduleEntry =
+    "48 89 5c 24 20 55 56 57 41 54 41 55 41 56 41 57 48 83 ec 60 8b a9 70 01 00 00 45 8b e1 41 8b d8 45 33 c9 45 33 c0 "
+    "48 8b f2 4c 8b f9 e8";
+using AttackRescheduleFn = void (*)(Game*, Unit*, int32_t, int32_t) noexcept;
+AttackRescheduleFn g_attackReschedule = nullptr;
 std::atomic<uint32_t> g_frenzyHits {0};
 
 auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* event) noexcept -> int64_t {
@@ -3114,13 +3120,16 @@ auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* 
 	const auto stateList = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList);
 	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);
 	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
+	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(dataFlag);
 	const int32_t state = At<int16_t>(skill, SkAuraState);
-	void* before = state >= 0 ? stateList(unit, state) : nullptr;
+	if (tables == nullptr || state < 0 || At<uint64_t>(tables, TablesStateCount) <= static_cast<uint64_t>(state)) {
+		return g_frenzyHelper(game, unit, skillId, level, event);
+	}
+	void* before = stateList(unit, state);
 	const int32_t current = before != nullptr ? listStat(dataFlag, before, SkillFrenzyStat, 0) : 0;
 	const int64_t result = g_frenzyHelper(game, unit, skillId, level, event);
-	void* list = state >= 0 ? stateList(unit, state) : nullptr;
-	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(dataFlag);
-	if (list == nullptr || tables == nullptr) {
+	void* list = stateList(unit, state);
+	if (list == nullptr) {
 		return result;
 	}
 	const int32_t stacks = std::min(current + 1, calc4);
@@ -3144,6 +3153,11 @@ auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* 
 			firstStat = stat;
 			firstValue = value;
 		}
+	}
+	// D2R's helper ends with this reschedule (0x490ef0 clears the unit's pending attack events, then queues them from
+	// the current anim rate), before the SET above; PD2's refresh (1.13c 0x47a10) runs after its final stats, so again.
+	if (g_attackReschedule != nullptr && event != nullptr) {
+		g_attackReschedule(game, unit, At<int32_t>(event, 0x24), At<int32_t>(event, 0x28));
 	}
 	if (pd2::HotSample(g_frenzyHits)) {
 		plog::Info("frenzy: skill %d level %d stacks %d/%d %d=%d", skillId, level, stacks, calc4, firstStat, firstValue);
@@ -5030,9 +5044,14 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		std::snprintf(report + used, reportSize - used, "; first think valkyrie%s revive%s, revive size cap%s",
 		              valkyrieThink ? "" : " FAILED", reviveThink ? "" : " FAILED", g_collisionRefresh != 0 ? "" : " FAILED");
 	}
-	const bool frenzy = RedirectCall(context, FrenzyHelperCall, FrenzyHelperCallAt, reinterpret_cast<uint64_t>(&FrenzyHelper),
+	uint64_t reschedule = 0;
+	if (sigscan::ScanUnique(context->exeBase, AttackRescheduleEntry, 0, &reschedule) == 1) {
+		g_attackReschedule = reinterpret_cast<AttackRescheduleFn>(context->exeBase + reschedule);
+	}
+	const bool frenzy = g_attackReschedule != nullptr &&
+	                    RedirectCall(context, FrenzyHelperCall, FrenzyHelperCallAt, reinterpret_cast<uint64_t>(&FrenzyHelper),
 	                                 reinterpret_cast<uint64_t*>(&g_frenzyHelper));
-	plog::Info("frenzy: PD2 stacks %s", frenzy ? "on" : "FAILED (srvdo 9 helper call signature or bytes)");
+	plog::Info("frenzy: PD2 stacks %s", frenzy ? "on" : "FAILED (srvdo 9 helper call or attack reschedule signature)");
 	installed += frenzy ? 1 : 0;
 	used = std::strlen(report);
 	if (used < reportSize) {
