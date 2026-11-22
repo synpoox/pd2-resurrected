@@ -440,13 +440,23 @@ MsgFn g_message = nullptr;
 ManagerFn g_manager = nullptr;
 void* g_rightTarget = nullptr;  // InventoryRightClick's address: the grids are the widgets whose vtable slot SlotRightClick holds it
 constexpr int64_t RightMessage = 0x2d5172cac7c938c;  // the message's name hash (message field +0x88)
-constexpr size_t MessageName = 0x11, MessageData = 0x22, ManagerHovered = 0x178, SlotCellAt = 0x98, SlotRightClick = 0x108;
+constexpr size_t MessageName = 0x11, MessageData = 0x22, SlotCellAt = 0x98, SlotRightClick = 0x108;
+size_t g_hoveredOffset = 0;  // read from the hover-check function at install, never assumed
+using GateFn = uint8_t (*)() noexcept;
+GateFn g_gate = nullptr;  // D2R's own "input is blocked" check: non-zero means D2R ignores the click
+// The handler compares message[0] with an id it looks up by name hash (the movabs/lea/call at its +0x47/+0x55/+0x74); we repeat that lookup.
+using IdFn = int64_t (*)(const void*, int64_t) noexcept;
+IdFn g_idLookup = nullptr;
+const void* g_idTable = nullptr;
+int64_t g_idHash = 0;
+int64_t g_inputMessage = 0;
 constexpr uint8_t MessageEntry[] = {0x40, 0x55, 0x53, 0x57, 0x41, 0x56, 0x41, 0x57, 0x48, 0x8d, 0xac, 0x24, 0xc0, 0xfd, 0xff, 0xff};
 uint64_t g_lastCubeClick = 0;
 
 void OnMessage(void* widget, int64_t* message) noexcept {
-	if (message != nullptr && message[MessageName] == RightMessage && g_manager != nullptr && g_rightTarget != nullptr && g_key != nullptr) {
-		void* hovered = *reinterpret_cast<void**>(g_manager() + ManagerHovered);
+	if (g_inputMessage == 0 && g_idLookup != nullptr) g_inputMessage = g_idLookup(g_idTable, g_idHash);
+	if (message != nullptr && g_inputMessage != 0 && message[0] == g_inputMessage && message[MessageName] == RightMessage && g_gate() == 0 && g_manager != nullptr && g_rightTarget != nullptr && g_key != nullptr) {
+		void* hovered = *reinterpret_cast<void**>(g_manager() + g_hoveredOffset);
 		const uint64_t now = GetTickCount64();
 		// the message reaches many widgets: once per click, and never when the grid under the mouse gets it itself (its own hook runs)
 		if (hovered != nullptr && hovered != widget && (*static_cast<void***>(hovered))[SlotRightClick / sizeof(void*)] == g_rightTarget && now - g_lastCubeClick > 250) {
@@ -460,6 +470,41 @@ void OnMessage(void* widget, int64_t* message) noexcept {
 		}
 	}
 	g_message(widget, message);
+}
+
+// The hook reads D2R structs by offset, so every byte it relies on is checked first; any mismatch leaves the hook off.
+bool BytesAre(uint64_t address, size_t at, std::initializer_list<uint8_t> bytes) noexcept {
+	const uint8_t* p = reinterpret_cast<const uint8_t*>(address) + at;
+	size_t i = 0;
+	for (const uint8_t b : bytes) if (p[i++] != b) return false;
+	return true;
+}
+
+bool InstallCubeMessage(const D2RL::PluginContext* context) noexcept {
+	constexpr const char* EntrySig = "40 55 53 57 41 56 41 57 48 8d ac 24 c0 fd ff ff 48 81 ec 40 03 00 00 48 8b 05 ?? ?? ?? ?? 48 33 c4";
+	uint64_t manager = 0, gate = 0, entry = 0;
+	if (sigscan::ScanUnique(context->exeBase, "48 83 ec 28 48 8b 05 ?? ?? ?? ?? 48 85 c0 75 1a 48 8d 4c 24 30 88 44 24 30 e8 ?? ?? ?? ?? 84 c0 74 01 cc 48 8b 05 ?? ?? ?? ?? 48 8b 80 d0 00 00 00 48 83 c4 28 c3", 0, &manager) != 1 ||
+	    sigscan::ScanUnique(context->exeBase, "48 8b 05 ?? ?? ?? ?? 48 85 c0 74 08 0f b6 80 b8 00 00 00 c3 c3", 0, &gate) != 1 ||
+	    sigscan::ScanUnique(context->exeBase, EntrySig, 0, &entry) != 1) return false;
+	const uint64_t entryFn = context->exeBase + entry;
+	// The hover check is the function the handler calls at +0x2b3 (several same-shaped checks exist, so it is not found by a scan of its own):
+	// it calls the manager getter (e8 at +9) and compares a manager field (disp32 at +0x11) with the widget.
+	if (!BytesAre(entryFn, 0x2b0, {0x48, 0x8b, 0xcf, 0xe8})) return false;
+	const uint64_t hoverFn = entryFn + 0x2b8 + *reinterpret_cast<const int32_t*>(entryFn + 0x2b4);
+	if (!BytesAre(hoverFn, 0, {0x40, 0x53, 0x48, 0x83, 0xec, 0x20, 0x48, 0x8b, 0xd9, 0xe8}) || !BytesAre(hoverFn, 0x0e, {0x48, 0x39, 0x98}) ||
+	    !BytesAre(hoverFn, 0x15, {0x0f, 0x94, 0xc0}) || hoverFn + 14 + *reinterpret_cast<const int32_t*>(hoverFn + 10) != context->exeBase + manager) return false;
+	// the handler's reads of the message and vtable slots, and the id lookup this hook repeats
+	if (!BytesAre(entryFn, 0x124, {0x49, 0x8b, 0x87, 0x88, 0x00, 0x00, 0x00}) || !BytesAre(entryFn, 0x135, {0x49, 0x8b, 0xb7, 0x10, 0x01, 0x00, 0x00}) ||
+	    !BytesAre(entryFn, 0x312, {0xff, 0x93, 0x98, 0x00, 0x00, 0x00}) || !BytesAre(entryFn, 0x47, {0x48, 0xba}) ||
+	    !BytesAre(entryFn, 0x55, {0x48, 0x8d, 0x0d}) || !BytesAre(entryFn, 0x74, {0xe8})) return false;
+	if (!sigscan::HookBySignature(context, "InputMessage", EntrySig, 0, MessageEntry, sizeof MessageEntry, OnMessage, &g_message)) return false;
+	g_hoveredOffset = *reinterpret_cast<const uint32_t*>(hoverFn + 0x11);
+	g_idHash = *reinterpret_cast<const int64_t*>(entryFn + 0x49);
+	g_idTable = reinterpret_cast<const void*>(entryFn + 0x5c + *reinterpret_cast<const int32_t*>(entryFn + 0x58));
+	g_idLookup = reinterpret_cast<IdFn>(entryFn + 0x79 + *reinterpret_cast<const int32_t*>(entryFn + 0x75));
+	g_manager = reinterpret_cast<ManagerFn>(context->exeBase + manager);
+	g_gate = reinterpret_cast<GateFn>(context->exeBase + gate);
+	return true;
 }
 
 }  // namespace
@@ -496,16 +541,7 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	const bool right = sigscan::ScanUnique(context->exeBase, "48 83 ec 28 ff 15 ?? ?? ?? ?? c1 e8 0f", 0, &key) == 1 &&
 	                   sigscan::HookBySignature(context, "InventoryRightClick", RightSignature, 0,
 	                                            RightEntry, sizeof RightEntry, OnRightClick, &g_right);
-	uint64_t manager = 0;
-	const int managerHits = sigscan::ScanUnique(context->exeBase, "48 83 ec 28 48 8b 05 ?? ?? ?? ?? 48 85 c0 75 1a 48 8d 4c 24 30 88 44 24 30 e8 ?? ?? ?? ?? 84 c0 74 01 cc 48 8b 05 ?? ?? ?? ?? 48 8b 80 d0 00 00 00 48 83 c4 28 c3", 0, &manager);
-	if (managerHits == 1 &&
-	    sigscan::HookBySignature(context, "InputMessage",
-	                             "40 55 53 57 41 56 41 57 48 8d ac 24 c0 fd ff ff 48 81 ec 40 03 00 00 48 8b 05 ?? ?? ?? ?? 48 33 c4", 0,
-	                             MessageEntry, sizeof MessageEntry, OnMessage, &g_message)) {
-		g_manager = reinterpret_cast<ManagerFn>(context->exeBase + manager);
-	} else {
-		plog::Warn("hotkeys: the Cube grid binds are off (message handler signature not found, manager hits %d)", managerHits);
-	}
+	if (!InstallCubeMessage(context)) plog::Warn("hotkeys: the Cube grid binds are off (message handler signature not found or changed)");
 	uint64_t panel = 0;
 	if (sigscan::ScanUnique(context->exeBase, "48 63 c1 48 8d 0d ?? ?? ?? ?? 0f b6 04 08 c3 cc 48 8b c4 48 89 50 10 4c 89 40 18", 0, &panel) == 1) g_panel = reinterpret_cast<PanelFn>(context->exeBase + panel);
 	uint64_t at = 0;
