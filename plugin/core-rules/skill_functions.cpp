@@ -3128,6 +3128,16 @@ void SetSkillVelocity(Unit* unit, UnitSkill* uskill, int32_t velocity) noexcept 
 	Flags(uskill) = flags;
 }
 
+// D2R's start function (srvst 40 / cltst 29) has already run LeapStart by the time srvdo / cltdo see the leap, with the
+// run speed scaled by calc2 as a percent (80 here), and the engine puts the run speed back a frame later. So PD2's speed
+// is held on every call while the path is the leap path (type 9), not set once on the start frame (#1788).
+void HoldLeapVelocity(Unit* unit, UnitSkill* uskill, int32_t velocity) noexcept {
+	const void* path = At<void*>(unit, d2r::rva::UnitPath);
+	if (path != nullptr && At<int32_t>(path, 0x50) == 9 && At<int32_t>(path, 0xa0) != velocity) {
+		SetSkillVelocity(unit, uskill, velocity);
+	}
+}
+
 struct LeapHit {
 	UnitSkill* uskill;
 	int32_t skillId;
@@ -3179,6 +3189,7 @@ auto SrvDoLeap(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 		return 1;
 	}
 	if (d2r::Engine<int32_t (*)(Game*, Unit*, UnitSkill*) noexcept>(LeapLanded)(game, unit, uskill) == 0) {
+		HoldLeapVelocity(unit, uskill, LeapVelocity(unit, skill, skillId, level));
 		return 1;
 	}
 	const int32_t radius = d2r::EvalCalc(game, unit, skill, SkCalc3, skillId, level);
@@ -3228,6 +3239,7 @@ auto CltDoLeap(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 			plog::Info("leap client: skill %d level %d: velocity %d, cast %u", skillId, level, velocity, g_leapClients.load());
 		}
 	}
+	HoldLeapVelocity(unit, uskill, LeapVelocity(unit, skill, skillId, level));
 	return ran;
 }
 
