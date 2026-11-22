@@ -113,9 +113,11 @@ The apply passes flag 0, so the walker gets the handler set `0x105dc628` (built 
   After D2R's dispatch, when the attacker (any unit type) is in state 54, each event-5 node with stat
   412 or 480 rolls `UnitStat(unit, stat, layer)` below 100 on `UnitSeed`, as `0x583b30` does. On a hit it calls the
   splash on the struck unit. The node's stat is the int32 at +0xc and its layer the uint16 at +0x10 (seen in game:
-  412, 0x6b81 = skill 430 level 1). Other skills on hit keep D2R's refusal; PD2 casts them too (follow-up issue).
+  412, 0x6b81 = skill 430 level 1). Other skills on hit keep D2R's refusal; PD2 casts them too (#1889).
 - Game check (Slot4, Hell, no mercenary, The Gnasher): Whirlwind hits log `current skill 151 level 20 damage% 115`
-  splashes, Blade Dance `current skill 452 level 20 damage% 106`, and a plain Attack still splashes once per hit.
+  splashes, Blade Dance `current skill 452 level 20 damage% 106`, and a plain Attack still splashes once per hit. On
+  main's code neither spin splashed. An Act 5 merc (Battle Orders / Battle Cry / MonWhirlwind) with Rixot's Keen splashed
+  its own hits at `current skill 0 ... damage% 0 srcdam 128`, but used no Whirlwind in 150 s, so its spin was not seen.
 
 ## Deviations (approximated, on the deviation list)
 

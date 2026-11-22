@@ -3700,7 +3700,7 @@ auto AuraEventReviveSplash(Game* game, int32_t event, Unit* unit, Unit* target, 
 // an attacker in state 54 each splash node rolls its chance as 0x583b30 does and the splash is called on the struck
 // unit, as Revive's event does. The damage% is PD2's (0x10305eb0, players only: Whirlwind 151, Blade Dance PD2 380 =
 // merged 452 take calc1; mercs and monsters, MonWhirlwind 495 and UberTalicWhirlwind 579 included, 0 on Attack).
-// shortcut: other skills on hit still refuse a spinning attacker (PD2 casts them too), see #1812's follow-up issue
+// shortcut: other skills on hit still refuse a spinning attacker (PD2 casts them too), #1889
 constexpr int32_t StatSplashOnHit = 412, StatMapMonSplash = 480;  // item_splashonhit, map_mon_splash (merged)
 constexpr int EventNodeLayer = 0x10;                               // the node's stat layer (seen in game: 412, 0x6b81)
 std::atomic<uint32_t> g_spinSplashes {0};
