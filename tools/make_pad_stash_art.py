@@ -27,8 +27,8 @@ CELL = 98  # grid pitch (ItemCellSize)
 X0, Y0 = 90, 214  # mouse art: top-left of grid cell (0, 0)
 # The Mats art's inside, below which its frame and the cube surround stay: (x0, y0, x1, y1) inclusive, in the pad art
 INSIDE = [(154, 32, 1139, 532), (154, 533, 424, 1021), (868, 533, 1139, 1021)]
-PATCH_L = (170, 545, 350, 925)  # clean stone of the Mats art, left of the cube surround
-PATCH_R = (905, 545, 1120, 925)  # and right of it
+PATCH_L = (170, 850, 350, 925)  # clean stone of the Mats art, left of the cube surround, below the Mats cells (#1725)
+PATCH_R = (905, 850, 1120, 925)  # and right of it
 # Clean stone of the mouse Maps art above the cube; the Bossing art has no patch as tall
 MOUSE_PATCH = (300, 616, 860, 756)
 # Cells the mouse art drew that the page plan dropped (#1699), (col, row)

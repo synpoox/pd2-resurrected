@@ -21,7 +21,7 @@ class MaterialsTab(unittest.TestCase):
         D.need(self)
         self.misc = {r["code"]: r for r in D.rows("misc") if r.get("code")}
 
-    def test_cells_are_stackable_items_once(self):
+    def test_every_itemcode_in_the_file_is_a_stackable_item_once(self):
         for name in ("bankexpansionlayouthd.json", "controller/bankexpansionlayouthd.json"):
             codes = cell_codes(LAYOUTS / name)
             self.assertEqual(len(codes), len(set(codes)), name)
