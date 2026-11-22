@@ -14,8 +14,8 @@ patch table (20-byte records at file offset `0x49b028`-`0x4a0744`, [plrmodes](pl
 |---|---|---|
 | 106 ShadowMaster (Valkyrie, Decoy `dopplezonnew`, Shadow Master) | think kept, 7 patches (below); init replaced by `0x10360af0` | think: yes (core-rules `summons`); init: no |
 | 105 ShadowWarrior | init and think replaced (`0x10360a10`, `0x10360240`) | no |
-| 110 Vines (Poison Creeper) | 30 bytes NOPed at `+0xab494`: its "target already poisoned / poison immune" skip | no |
-| 111 CycleOfLife (Carrion Vine, Solar Creeper) | one byte at `+0xab26e` (a flag stored 0 becomes 1) | no |
+| 110 Vines (Poison Creeper) | 30 bytes NOPed at `+0xab494`: its "target already poisoned / poison immune" skip | yes (core-rules `summons`, below) |
+| 111 CycleOfLife (Carrion Vine, Solar Creeper) | one byte at `+0xab26e` (a flag stored 0 becomes 1) | yes (core-rules `summons`, below) |
 | 61 Hireable (mercenaries) | think replaced (`0x1035a270`) | no |
 | 67 NecroPet, 107 Raven, 108 DruidWolf, 109 Totem, 112 DruidBear, 86 Hydra, 103 InvisoPet | none | nothing to port |
 
@@ -44,3 +44,16 @@ beyond it, warp at `0x900` and over, else walk back; with a target, nothing; els
 think in 12. core-rules' `summons` part hooks D2R's leash and applies this rule to the two think calls only (by return
 address), with D2R's mover kinds (1 walk back, 3 warp, 4 wander, 5 step aside); PD2's own walker and its
 owner-path-end distance are not ported.
+
+## The vine thinks (#1802)
+
+AI table rows 110 and 111 give D2R's thinks `0x5d0630` (Vines) and `0x5c83c0` (CycleOfLife). core-rules' `summons` part
+patches one site in each, by a unique signature, through the MutationService (status entry `vines`).
+
+| monai row | 1.13c | PD2 | D2R 93847 | Effect |
+|---|---|---|---|---|
+| 110 Vines | `+0xab494`-`+0xab4b1`: `push 2; call` (state 2, poison) `jnz`, `push 0x2d; call` (stat 45, poison resist) `cmp 0x64; jz` to "walk away" | 30 bytes NOPed | `0x5d07ad` `8d 50` (`lea edx,[rax+2]`) -> `eb 28` (`jmp 0x5d07d7`, past the same two tests) | the Poison Creeper attacks a target that is already poisoned or has 100 poison resist |
+| 111 CycleOfLife | `+0xab26a` `mov dword [esp+0x1c], 0`, reached when the owner is at full life (class 426) or mana (class 427) | the stored 0 becomes 1 | `0x5c86a0` `74 52` (`je` on `r15d`, set only when the owner is below max life or mana) -> `66 90` (nop) | Carrion Vine and Solar Creeper eat a corpse in range (their skill, on their cast timer) at full life or mana too |
+
+D2R's CycleOfLife tests the owner's life and mana through two skill fields (`+0x190`, `+0x194`) instead of 1.13c's
+class ids; skipping the flag's `je` gives PD2's "always 1" for both.

@@ -12,6 +12,9 @@
 // signature, through the MutationService (no SDK service changes an AI). The leash (0x5bd1e0) is hooked at its entry:
 // no SDK service runs inside an AI think. Only the two calls from the ShadowMaster think (their return addresses) get
 // PD2's rule; every other caller (other pets) keeps D2R's leash.
+// PD2 also patches the druid vine thinks (#1802): Vines (row 110, Poison Creeper; 1.13c +0xab494, 30 bytes NOPed) no
+// longer skips a target that has poison (state 2) or 100 poison resist; CycleOfLife (row 111, Carrion Vine, Solar
+// Creeper; +0xab26e, 0 -> 1) keeps its "owner is hurt" flag at 1, so the vine eats corpses at full life or mana too.
 #include "summon_ai.h"
 
 #include "pd2_engine.h"
@@ -128,19 +131,29 @@ constexpr const char* LeashCall2Pattern =
 constexpr const char* PathTargetCallPattern = "48 8B D7 49 8B CD E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 75 12";
 constexpr const char* IsDeadCallPattern = "48 8B C8 E8 ?? ?? ?? ?? 85 C0 75 17 4C 8B C3 48 8B D7 49 8B CC E8";
 
-// PD2's five `jmp`s, D2R's jcc in the think: pattern, offset of the jcc, its bytes
+// A 2-byte patch: pattern, offset of the patched bytes, D2R's bytes, PD2's
 struct Branch {
 	const char* name;
 	const char* pattern;
 	int offset;
 	uint8_t from[2];
+	uint8_t to[2];
 };
+// PD2's five `jmp`s, D2R's jcc in the ShadowMaster think (same displacement)
 constexpr Branch Branches[] = {
-	{"buff casts", "E8 ?? ?? ?? ?? 83 F8 01 75 41 83 7C 24 68 00 74 24", 8, {0x75, 0x41}},
-	{"no owner target", "E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 74 25 48 8B C8 E8 ?? ?? ?? ?? 85 C0 75 17 4C 8B C3", 23, {0x75, 0x17}},
-	{"no basic attack", "44 0F 4C F0 83 7C 24 68 00 74 73 48 8B CF", 9, {0x74, 0x73}},
-	{"no crowd step", "83 FA 03 7E 6E 8B 06 48 69 C8 C5 90 C6 6A", 3, {0x7e, 0x6e}},
-	{"no fallback attack", "4D 85 FF 0F 85 ?? ?? ?? ?? 4D 85 ED 74 45 45 33 C9 45 33 C0 49 8B D5 48 8B CF E8", 12, {0x74, 0x45}},
+	{"buff casts", "E8 ?? ?? ?? ?? 83 F8 01 75 41 83 7C 24 68 00 74 24", 8, {0x75, 0x41}, {0xeb, 0x41}},
+	{"no owner target", "E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 74 25 48 8B C8 E8 ?? ?? ?? ?? 85 C0 75 17 4C 8B C3", 23, {0x75, 0x17}, {0xeb, 0x17}},
+	{"no basic attack", "44 0F 4C F0 83 7C 24 68 00 74 73 48 8B CF", 9, {0x74, 0x73}, {0xeb, 0x73}},
+	{"no crowd step", "83 FA 03 7E 6E 8B 06 48 69 C8 C5 90 C6 6A", 3, {0x7e, 0x6e}, {0xeb, 0x6e}},
+	{"no fallback attack", "4D 85 FF 0F 85 ?? ?? ?? ?? 4D 85 ED 74 45 45 33 C9 45 33 C0 49 8B D5 48 8B CF E8", 12, {0x74, 0x45}, {0xeb, 0x45}},
+};
+// The vine thinks (D2R 0x5d0630, 0x5c83c0)
+constexpr Branch Vines[] = {
+	// Vines 0x5d07ad: `lea edx,[rax+2]` starts the state-2 / stat-45 == 100 test; jmp +0x28 past it to its attack
+	{"Poison Creeper", "48 85 ED 0F 84 ?? ?? ?? ?? 8D 50 02 48 8B CD E8 ?? ?? ?? ?? 85 C0 0F 85 ?? ?? ?? ?? 45 33 C0 8D 50 2D 48 8B CD E8 ?? ?? ?? ?? 83 F8 64 0F 84",
+	 9, {0x8d, 0x50}, {0xeb, 0x28}},
+	// CycleOfLife 0x5c86a0: `test r15d,r15d / je` on the "owner below max life or mana" flag; the je becomes a nop
+	{"Carrion Vine", "83 BC 24 C8 00 00 00 00 74 57 45 85 FF 74 52 4C 8B 7C 24 60", 13, {0x74, 0x52}, {0x66, 0x90}},
 };
 
 // The rva a `call rel32` at `rva` goes to
@@ -160,7 +173,8 @@ auto Scan(const D2RL::PluginContext* context, const char* name, const char* patt
 	return true;
 }
 
-auto PatchBranches(const D2RL::PluginContext* context, const uint64_t (&rvas)[std::size(Branches)]) noexcept -> bool {
+auto PatchBranches(const D2RL::PluginContext* context, const Branch* branches, const uint64_t* rvas, size_t count) noexcept
+	-> bool {
 	const D2RL::MutationService* mutations = nullptr;
 	D2RL::Mutations::TransactionHandle transaction = 0;
 	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
@@ -168,15 +182,12 @@ auto PatchBranches(const D2RL::PluginContext* context, const uint64_t (&rvas)[st
 	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
 		return false;
 	}
-	uint8_t to[std::size(Branches)][2];
-	for (size_t i = 0; i < std::size(Branches); ++i) {
-		to[i][0] = 0xeb;  // jmp rel8, same displacement
-		to[i][1] = Branches[i].from[1];
+	for (size_t i = 0; i < count; ++i) {
 		const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
 		                                              .rva = rvas[i],
-		                                              .expected = Branches[i].from,
+		                                              .expected = branches[i].from,
 		                                              .expectedSize = 2,
-		                                              .bytes = to[i],
+		                                              .bytes = branches[i].to,
 		                                              .size = 2};
 		D2RL::Mutations::OperationHandle operation = 0;
 		if (mutations->stageBytePatch(context, transaction, &patch, &operation) != D2RL::Mutations::Result::Success) {
@@ -217,16 +228,23 @@ auto InstallSummonAi(const D2RL::PluginContext* context, char* report, size_t re
 		           static_cast<unsigned long long>(leash), static_cast<unsigned long long>(CallTarget(base, mover)),
 		           static_cast<unsigned long long>(call1), static_cast<unsigned long long>(call2));
 		hooked = context->InstallInlineHook(leash, LeashEntry, sizeof(LeashEntry), &SummonLeash, &g_leashOriginal);
-		patched = PatchBranches(context, branches);
+		patched = PatchBranches(context, Branches, branches, std::size(Branches));
 	}
-	std::snprintf(report, reportSize, "ShadowMaster leash%s; ShadowMaster branches%s",
+	uint64_t vines[std::size(Vines)] = {};
+	bool vinesFound = true;
+	for (size_t i = 0; vinesFound && i < std::size(Vines); ++i) {
+		vinesFound = Scan(context, Vines[i].name, Vines[i].pattern, Vines[i].offset, &vines[i]);
+	}
+	const bool vinesPatched = vinesFound && PatchBranches(context, Vines, vines, std::size(Vines));
+	std::snprintf(report, reportSize, "ShadowMaster leash%s; ShadowMaster branches%s; vines%s",
 	              !found ? " FAILED (signature)" : hooked ? "" : " FAILED (bytes differ)",
-	              !found ? " FAILED (signature)" : patched ? "" : " FAILED (bytes differ)");
-	return (hooked ? 1 : 0) + (patched ? 1 : 0);
+	              !found ? " FAILED (signature)" : patched ? "" : " FAILED (bytes differ)",
+	              !vinesFound ? " FAILED (signature)" : vinesPatched ? "" : " FAILED (bytes differ)");
+	return (hooked ? 1 : 0) + (patched ? 1 : 0) + (vinesPatched ? 1 : 0);
 }
 
 auto SummonAiCount() noexcept -> int {
-	return 2;
+	return 3;
 }
 
 auto SummonAiCounters(char* out, size_t size) noexcept -> void {
