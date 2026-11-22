@@ -41,10 +41,10 @@ inline constexpr const char* MapMaterials[] = {"imma", "irma", "imrn", "irrn", "
                                                "upma", "urma", "scou", "upmp", "fort", "scrb", "iwss", "ivea",
                                                "ivez", "iveb", "ived", "iven", "ivep", "ives"};
 
-// PD2's uber encounter items (misc.txt type ubr) the RotW Materials tab does not take, and the Torch Fragment. PD2's
-// Uber Ancients map and keys (uba, ubaa-ubac) have no cell since #1776: they go anywhere, like any other item
+// PD2's uber encounter items (misc.txt type ubr) the RotW Materials tab does not take, the Torch Fragment and the Jewel
+// Fragment (#1811). PD2's Uber Ancients map and keys (uba, ubaa-ubac) have no cell since #1776: they go anywhere, like any other item
 inline constexpr const char* Bossing[] = {"ubtm", "dcma", "dcbl", "dcho", "dcso", "rtma", "rtmo", "rtmv", "rtmf",
-                                          "luca", "lucb", "lucc", "lucd", "cm2f"};
+                                          "luca", "lucb", "lucc", "lucd", "cm2f", "jewf"};
 
 // D2R's item code: the code's characters little-endian, a 3-character code padded with a space
 constexpr auto Code(const char* s) noexcept -> uint32_t {
@@ -101,7 +101,7 @@ constexpr auto CurrencyCell(int32_t i) noexcept -> Cell {
 // rows 0 and 2 (row 2 right only, #1776) with stone between the blocks, the Tristram map and torch fragments over the
 // cube, by place in Bossing
 inline constexpr Cell BossingCell[] = {{4, 4}, {0, 0}, {1, 0}, {2, 0}, {3, 0}, {6, 0}, {7, 0},
-                                       {8, 0}, {9, 0}, {6, 2}, {7, 2}, {8, 2}, {9, 2}, {5, 4}};
+                                       {8, 0}, {9, 0}, {6, 2}, {7, 2}, {8, 2}, {9, 2}, {5, 4}, {5, 5}};
 // The boss maps do not stack: a second one, or a part past a full stack, goes back to the inventory (the tab has no
 // spare cells, #1699)
 inline constexpr const char* BossingMaps[] = {"ubtm", "dcma", "rtma", "luca"};
@@ -277,6 +277,7 @@ static_assert(AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 19, 0, 0));
 static_assert(!AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 19, 4, 4));
 static_assert(!AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 19, 9, 9));  // no spare cell (#1699)
 static_assert(HomeOf(Code("cm2f")).column == 5 && HomeOf(Code("cm2f")).row == 4 && HomeOf(Code("lucd")).column == 9);
+static_assert(HomeOf(Code("jewf")).category == Category::Bossing && HomeOf(Code("jewf")).column == 5 && HomeOf(Code("jewf")).row == 5);  // #1811: under the torch fragments
 static_assert(std::size(BossingCell) == std::size(Bossing));
 static_assert(!Stacks(Code("dcma")) && Stacks(Code("dcbl")) && Stacks(Code("imma")));
 static_assert([] {  // no two bossing items share a cell

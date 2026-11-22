@@ -40,7 +40,7 @@ them. The mod sets `[d2rcore.stash] add_shared_tabs = 15` (the Pyre Stash Search
 | 5-14 | general Loader tabs |
 | 15 | the Maps tab: rows 0-1 under the buttons stay empty; the shown base's maps in rows 2-3; the map currency in columns 0-1 of rows 4-9 and 8-9 of rows 4-8, a fixed cell per item, stacked to 255 (#1763) |
 | 16, 17, 18 | stored maps of tier 1, 2, 3: one row per base (the order in `plugin/common/stash_home.h`) |
-| 19 | Bossing: PD2's uber maps, keys and ingredients the RotW Materials tab does not take (but the Uber Ancients ones), the Torch Fragment; a fixed cell each (`BossingCell` in `stash_home.h`), stackables merged; a second uber map goes back to the inventory |
+| 19 | Bossing: PD2's uber maps, keys and ingredients the RotW Materials tab does not take (but the Uber Ancients ones), the Torch Fragment and the Jewel Fragment (cell 5,5, #1811); a fixed cell each (`BossingCell` in `stash_home.h`), stackables merged; a second uber map goes back to the inventory |
 
 Map currency: map orbs and ready orbs, Fortify, Dungeon Scarab, Force Mapevent Shard, invader ears. Precedence: Maps, map
 currency, Bossing; items the RotW Materials tab takes (Pandemonium keys, organs, essences) stay there.
