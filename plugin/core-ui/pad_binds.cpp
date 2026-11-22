@@ -1,16 +1,22 @@
 // LB + RB + A on a stack in a stash or stack tab sends the whole stack to the Cube (#1472). The pad's A activates the focused
 // item (ItemInteractionService, UI thread, before D2R acts); the move is a game-thread transaction on the server unit, found by code and id as in stack_split.
+// Its stack-tab Activate hook also tops up an inventory stack after a mouse Ctrl+click out of a stack tab (#1775).
 // shortcut: the SDK emits no shop, merc or "Move 5" event, so those three PD2 binds are not here (docs/controller.md).
 #include "pad_binds.h"
 
 #include "controller_split.h"
 #include "log.h"
+#include "pd2_engine.h"
 #include "sig.h"
 #include "sig_hook.h"
 
 #include <D2RLPlugin/inventory.h>
+#include <D2RLPlugin/item.h>
 #include <D2RLPlugin/item_interactions.h>
 #include <D2RLPlugin/threads.h>
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 #include <atomic>
 #include <cstdio>
@@ -99,8 +105,165 @@ using BulkFn = void (*)(void*, void*, uint8_t, uint8_t) noexcept;
 BulkFn g_bulk = nullptr;
 constexpr size_t WidgetItem = 0x608;
 
+// #1775: Ctrl+click on a stack-tab cell (0x2cf760's Ctrl branch: vtable 0xd8, mode 0) takes one out as a new single into a free
+// inventory cell (stash_stacks.cpp: D2R's withdraw lowers the slot count by one) and never tops up an inventory stack. So the
+// click notes the inventory's items and the slot item's class; the next game updates merge a new item of that class onto the
+// first inventory item of it that editItem lets take it (misc.txt maxstack, 50 for every stack-tab stackable), then destroy it.
+// Only counts change: the stack takes the sum, read back natively (#1628: ItemInfo.quantity misreads PD2 stackables), before
+// the single goes; a failed destroy puts the stack's count back. The SDK sees no stack tab, so it cannot do the take itself.
+// shortcut: a click on another tab's class while one is pending drops the first's top-up (its single stays in its cell).
+using KeyFn = int (*)(int) noexcept;  // D2R's "is this virtual key down" (93847 0x120a100), as 0x2cf760 reads Ctrl and Shift
+KeyFn g_key = nullptr;
+constexpr uint32_t MaxCarried = 128;   // an inventory holds at most 10 x 8 items
+constexpr uint32_t TopUpUpdates = 50;  // game updates (25 a second) the top-up waits for the server's take
+struct TopUp {
+	bool on = false;
+	uint32_t classId = 0;
+	uint32_t updates = 0;
+	uint32_t count = 0;
+	uint32_t ids[MaxCarried] {};  // the inventory's items before the take; a merged-into or tried item joins them
+};
+TopUp g_topUp;
+SRWLOCK g_topUpLock = SRWLOCK_INIT;
+
+constexpr auto Listed(const uint32_t* ids, uint32_t count, uint32_t id) noexcept -> bool {
+	for (uint32_t i = 0; i < count; ++i) {
+		if (ids[i] == id) {
+			return true;
+		}
+	}
+	return false;
+}
+constexpr uint32_t ListedTest[] = {7, 9};
+static_assert(Listed(ListedTest, 2, 9) && !Listed(ListedTest, 2, 8) && !Listed(ListedTest, 0, 7));
+
+constexpr D2RL::Inventory::ItemFilter InventoryOnly {.structSize = D2RL::Inventory::ItemFilterSize,
+                                                     .containerMask = items::ContainerBit(items::ItemContainer::Inventory)};
+
+auto NoteId(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept -> D2RL::Inventory::IterationAction {
+	auto* snap = static_cast<TopUp*>(user);
+	if (snap->count < MaxCarried) {
+		snap->ids[snap->count++] = item->runtimeId;
+	}
+	return D2RL::Inventory::IterationAction::Continue;
+}
+
+struct Carried {
+	uint32_t classId;
+	uint32_t count = 0;
+	items::ItemInfo item[MaxCarried];
+};
+auto NoteClass(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept -> D2RL::Inventory::IterationAction {
+	auto* carried = static_cast<Carried*>(user);
+	if (item->classId == carried->classId && carried->count < MaxCarried) {
+		carried->item[carried->count++] = *item;
+	}
+	return D2RL::Inventory::IterationAction::Continue;
+}
+
+void ReadQuantity(const D2RL::PluginContext*, void* native, void* user) noexcept {
+	*static_cast<int32_t*>(user) =
+	    d2r::Engine<int32_t (*)(d2r::Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(static_cast<d2r::Unit*>(native), 70, 0);
+}
+auto Quantity(D2RL::ItemHandle item) noexcept -> int32_t {
+	int32_t count = 0;
+	return g_items->editNativeItem(g_context, item, ReadQuantity, &count) == items::Result::Success ? count : 0;
+}
+auto SetQuantity(D2RL::PlayerHandle player, D2RL::ItemHandle item, int32_t count) noexcept -> bool {
+	const items::ItemEdit edit {.structSize = items::ItemEditSize, .fields = items::EditFieldBit(items::EditField::Quantity),
+	                            .quantity = static_cast<uint32_t>(count)};
+	return g_items->editItem(g_context, player, item, &edit) == items::Result::Success && Quantity(item) == count;
+}
+
+// The single onto a stack; true when it is gone into the stack
+auto Merge(D2RL::PlayerHandle player, const items::ItemInfo& single, const items::ItemInfo& stack) noexcept -> bool {
+	const int32_t have = Quantity(stack.handle), add = Quantity(single.handle);
+	if (have < 1 || add < 1 || !SetQuantity(player, stack.handle, have + add)) {
+		if (have >= 1 && Quantity(stack.handle) != have && !SetQuantity(player, stack.handle, have)) {
+			plog::Warn("padbinds: top-up of %08x: the stack's count could not be put back to %d", stack.code, have);
+		}
+		return false;  // past maxstack (editItem refuses) or unread: the next stack, or it stays in its cell
+	}
+	const items::Result gone = g_items->destroyItem(g_context, player, single.handle, items::SocketedItemPolicy::RejectIfNotEmpty);
+	if (gone != items::Result::Success) {
+		const bool back = SetQuantity(player, stack.handle, have);
+		(back ? plog::Info : plog::Warn)("padbinds: top-up of %08x: destroy failed (%u), the stack %s %d", stack.code,
+		                                 static_cast<uint32_t>(gone), back ? "is back to" : "COULD NOT be put back to", have);
+		return false;
+	}
+	plog::Info("padbinds: %08x x%d taken out of the stack tab topped up the inventory stack at %d,%d (%d -> %d)", single.code, add,
+	           stack.x, stack.y, have, have + add);
+	return true;
+}
+
+// Game thread: each update until TopUpUpdates pass, a new item of the class merges onto a stack of it
+void TopUpNow(const D2RL::PluginContext*, void*) noexcept {
+	AcquireSRWLockExclusive(&g_topUpLock);
+	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+	static Carried carried;  // game thread only; too big for the stack
+	carried.classId = g_topUp.classId;
+	carried.count = 0;
+	if (g_topUp.on && g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
+	    g_inventory->forEachInventoryItem(g_context, player, &InventoryOnly, NoteClass, &carried) == D2RL::Inventory::Result::Success) {
+		for (uint32_t i = 0; i < carried.count; ++i) {
+			const items::ItemInfo& single = carried.item[i];
+			if (Listed(g_topUp.ids, g_topUp.count, single.runtimeId)) {
+				continue;
+			}
+			bool merged = false;
+			for (uint32_t j = 0; j < carried.count && !merged; ++j) {
+				const items::ItemInfo& stack = carried.item[j];
+				merged = j != i && Listed(g_topUp.ids, g_topUp.count, stack.runtimeId) && Merge(player, single, stack);
+			}
+			if (!merged && g_topUp.count < MaxCarried) {
+				g_topUp.ids[g_topUp.count++] = single.runtimeId;  // a stack now, for the next single
+				plog::Info("padbinds: %08x taken out of the stack tab: no inventory stack of it takes it, it keeps its cell", single.code);
+			}
+		}
+	}
+	if (g_topUp.on && ++g_topUp.updates < TopUpUpdates) {
+		g_topUp.on = g_threads->runOnGameThread(g_context, TopUpNow, nullptr) == D2RL::Threads::Result::Success;
+	} else {
+		g_topUp.on = false;
+	}
+	ReleaseSRWLockExclusive(&g_topUpLock);
+}
+
+// UI thread, before D2R's Ctrl+click take of the slot's item
+void NoteTake(D2RL::PlayerHandle player, void* slotItem) noexcept {
+	static TopUp snap;  // UI thread only
+	snap = {};
+	snap.on = true;
+	snap.classId = static_cast<uint32_t>(
+	    d2r::Engine<int32_t (*)(void*, const char*, int32_t) noexcept>(d2r::sig::UnitClassOf)(slotItem, __FILE__, __LINE__));
+	if (g_inventory->forEachInventoryItem(g_context, player, &InventoryOnly, NoteId, &snap) != D2RL::Inventory::Result::Success) {
+		return;
+	}
+	AcquireSRWLockExclusive(&g_topUpLock);
+	if (g_topUp.on && g_topUp.classId == snap.classId) {
+		g_topUp.updates = 0;  // another take of the same class: wait for it too
+	} else {
+		const bool queued = g_topUp.on;
+		g_topUp = snap;
+		if (!queued) {
+			g_topUp.on = g_threads->runOnGameThread(g_context, TopUpNow, nullptr) == D2RL::Threads::Result::Success;
+		}
+	}
+	ReleaseSRWLockExclusive(&g_topUpLock);
+}
+
 void OnActivateCell(void* widget, uint64_t focus) noexcept {
-	if (g_bulk != nullptr && *reinterpret_cast<void**>(static_cast<char*>(widget) + WidgetItem) != nullptr) {
+	void* const slotItem = *reinterpret_cast<void**>(static_cast<char*>(widget) + WidgetItem);
+	if (g_key != nullptr && slotItem != nullptr && d2r::sig::UnitClassOf.rva != 0 && d2r::sig::UnitStat.rva != 0 && g_key(0x11) != 0 &&
+	    g_key(0x10) == 0) {
+		D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+		D2RL::ItemHandle cursor = D2RL::InvalidItemHandle;
+		if (g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
+		    g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::NotFound) {
+			NoteTake(player, slotItem);
+		}
+	}
+	if (g_bulk != nullptr && slotItem != nullptr) {
 		const bool whole = controller_split::ModifierAndRbHeld();
 		if (whole || controller_split::RbAloneHeld()) {
 			D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
@@ -157,7 +320,16 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	if (hooked) {
 		g_bulk = reinterpret_cast<BulkFn>(context->exeBase + bulk);
 	} else {
-		plog::Warn("padbinds: stack tab RB + A is off (signature not found)");
+		plog::Warn("padbinds: stack tab RB + A and the Ctrl+click top-up are off (signature not found)");
+	}
+	sigscan::Entry* const sigs[] = {&d2r::sig::UnitClassOf, &d2r::sig::UnitStat};  // the top-up's class and count reads (#1775)
+	sigscan::Resolve(sigs, 2, context->exeBase, nullptr, 0);
+	uint64_t key = 0;
+	if (sigscan::ScanUnique(context->exeBase, "48 83 ec 28 ff 15 ?? ?? ?? ?? c1 e8 0f", 0, &key) == 1) {
+		g_key = reinterpret_cast<KeyFn>(context->exeBase + key);
+	}
+	if (g_key == nullptr || d2r::sig::UnitClassOf.rva == 0 || d2r::sig::UnitStat.rva == 0) {
+		plog::Warn("padbinds: Ctrl+click out of a stack tab does not top up inventory stacks (signature not found)");
 	}
 	std::snprintf(report, size, "LB + RB + A sends the whole stack under the pad focus to the Cube");
 }
