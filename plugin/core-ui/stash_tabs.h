@@ -10,6 +10,9 @@ namespace stash_tabs {
 // Registers the click listener and the frame watch. Returns the report for the log.
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept;
 
+// `core-ui stash <tab>`: queues the request for the UI thread; false (reply says why): bad word
+auto Console(const char* args, char* reply, size_t size) noexcept -> bool;
+
 // The tab state, for the status command.
 void Counters(char* out, size_t size) noexcept;
 

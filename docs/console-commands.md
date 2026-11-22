@@ -23,6 +23,11 @@ to the console and the log. No arguments, no precondition. Example: `core-rules`
 split, item quantity, level palette, inventory lock, stash affinity, stash tabs, monsters remaining). No arguments.
 Example: `core-ui`.
 
+`core-ui stash personal|materials|maps|bossing|<n>` : opens the stash (if closed) and selects a tab, so a game check
+needs no clicks. `personal` and `materials` are the stock tabs, `maps` and `bossing` ours, `<n>` is shared page `n`
+(1-20; 16 is the Maps page, 20 the Bossing page). Precondition: in a game; fails with a usage line if the stash tab signatures were not found. Log line:
+`stash tabs: console opened <Personal|Materials|Maps|Bossing|Shared> (page <n>)`. Example: `core-ui stash maps`.
+
 ## core-events
 
 `core-events` (no arguments) : version, image, mod, file, off-file words, every part and its counters, and the entity

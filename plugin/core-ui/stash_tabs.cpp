@@ -41,6 +41,7 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iterator>
 #include <utility>
@@ -501,6 +502,48 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 	return Action::Consume;
 }
 
+// Console `core-ui stash <tab>` (#1740): the request is read on the UI thread, as the console may not run there.
+// g_request: 0 none, 1-4 Personal/Materials/Maps/Bossing, 100 + n shared page n (1-based)
+std::atomic<int32_t> g_request {0};
+int32_t g_act = 0, g_actFrame = 0;  // UI thread: the request waiting for the opened stash, and the frame to act on
+
+void DispatchPanel(const char* command, const char* text) noexcept {
+	const D2RL::Widgets::UiAction action {.structSize = D2RL::Widgets::UiActionSize, .target = "PanelManager", .command = command, .text = text};
+	g_widgets->dispatchUiAction(g_context, &action);
+}
+
+void RunRequest() noexcept {
+	if (g_act == 0) {
+		g_act = g_request.exchange(0);
+		if (g_act == 0) {
+			return;
+		}
+		if (!g_stashOpen) {
+			DispatchPanel("OpenPanel", Panel);
+		}
+		g_actFrame = static_cast<int32_t>(g_frames) + 5;  // the panel needs a few frames to show
+		return;
+	}
+	if (static_cast<int32_t>(g_frames) < g_actFrame) {
+		return;
+	}
+	const int32_t what = std::exchange(g_act, 0);
+	if (what == 3 || what == 4) {
+		DispatchPanel("OpenPanel", what == 3 ? "core-ui/StashTabMaps" : "core-ui/StashTabBossing");
+	} else if (what == 1 || what == 2) {
+		Leave();
+		g_tab = what == 1 ? 0 : 3;
+		SelectStock(g_tab);
+		g_opened = g_frames;
+	} else {
+		Leave();
+		g_tab = 1;
+		SelectShared();
+		OpenPage(static_cast<uint32_t>(what - 101));
+	}
+	plog::Info("stash tabs: console opened %s (page %u)", what == 1 ? "Personal" : what == 2 ? "Materials" : what == 3 ? "Maps" : what == 4 ? "Bossing" : "Shared", g_page + 1);
+}
+
 // UI thread
 void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noexcept {
 	++g_frames;
@@ -517,6 +560,7 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 		g_panel = D2RL::Widgets::InvalidHandle;
 		return;
 	}
+	RunRequest();
 	if (g_select && g_stashOpen) {
 		WrapOnMessage();
 	}
@@ -611,6 +655,27 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	}
 	std::snprintf(report, size, "Maps and Bossing stash tabs on a row above the stock tabs; Shared tab select %s",
 	              g_select ? "by signature" : "off (signature not found: the tabs work from the Shared tab only)");
+}
+
+auto Console(const char* args, char* reply, size_t size) noexcept -> bool {
+	int32_t what = 0;
+	const char* const words[] = {"personal", "materials", "maps", "bossing"};
+	for (int32_t i = 0; i < 4; ++i) {
+		what = std::strcmp(args, words[i]) == 0 ? i + 1 : what;
+	}
+	char* end = nullptr;
+	const long page = what == 0 ? std::strtol(args, &end, 10) : 0;
+	if (what == 0 && page >= 1 && page <= static_cast<long>(aff::LastReservedPage + 1) && end != args && *end == '\0') {
+		what = 100 + static_cast<int32_t>(page);
+	}
+	if (what == 0 || g_widgets == nullptr || !g_select) {
+		std::snprintf(reply, size, "usage: core-ui stash personal|materials|maps|bossing|<shared page 1-%u>%s", aff::LastReservedPage + 1,
+		              g_select ? "" : " (off: stash tab signatures not found)");
+		return false;
+	}
+	g_request = what;
+	std::snprintf(reply, size, "core-ui stash: opening %s, see the log line 'stash tabs: console opened'", args);
+	return true;
 }
 
 void Counters(char* out, size_t size) noexcept {

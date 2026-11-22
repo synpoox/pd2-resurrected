@@ -32,6 +32,7 @@
 #include "stash_tabs.h"
 
 #include <cstdio>
+#include <cstring>
 #include <iterator>
 
 #ifndef MODKIT_PLUGIN_NAME
@@ -83,6 +84,20 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 		return D2RL::ConsoleCommandResult::Failed;
 	}
 	char line[600];
+	const char* args = command->args;
+	while (args != nullptr && *args == ' ') {
+		++args;
+	}
+	if (args != nullptr && std::strncmp(args, "stash", 5) == 0 && (args[5] == ' ' || args[5] == '\0')) {
+		args += args[5] == ' ' ? 6 : 5;
+		while (*args == ' ') {
+			++args;
+		}
+		const bool ok = stash_tabs::Console(args, line, sizeof(line));
+		command->plugin->WriteConsoleMessage(line);
+		plog::Info("%s", line);
+		return ok ? D2RL::ConsoleCommandResult::Handled : D2RL::ConsoleCommandResult::Failed;
+	}
 	char image[200];
 	build_guard::Describe(image, sizeof(image), build_guard::ImageStamp(static_cast<uintptr_t>(g_context->exeBase)), D2RL::GetBuildVersion(g_context));
 	std::snprintf(line, sizeof(line), "%s %s | %s | mod %s | file %s", PluginName, PluginVersion, image,
