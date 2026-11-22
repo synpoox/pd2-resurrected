@@ -2,7 +2,8 @@
 
 PD2's Lock Inventory ([#1578](https://github.com/synpoox/pd2-resurrected/issues/1578)): a padlock at the bottom right of the
 inventory panel. Locked, clicks, Ctrl/Shift clicks and the pad cannot put an item on, take it off or swap it on the player's or
-the mercenary's body slots. Click it again to unlock. Weapon swap (W) still works: it changes no item.
+the mercenary's body slots. Click it again to unlock. Weapon swap (W) still works: it changes no item. The lock also covers the charm rows, inventory rows 5-8
+([#1727](https://github.com/synpoox/pd2-resurrected/issues/1727)): no taking an item out of them and no putting one in.
 
 ## How it works
 
@@ -26,6 +27,9 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
   0x21 and their player-id forms 0x56-0x5a (0x58 is Shift+click unequip); 0x51 and 0x5b for the mercenary's slots; 0x5c (drop to
   the ground) only from a body slot; and the list forms 0x22 and 0x60 when they name a worn item. The log says
   `inventory lock: refused message 0x..`. No SDK service sees these moves, so it is a native hook.
+- **Charm rows.** The same hook drops 0x19 (take an item off a grid) when the item is stored in the inventory with its top row
+  in rows 5-8, and 0x18 (put the cursor item on a grid) aimed at rows 5-8 of the inventory page (`TouchesCharmRows`). The log says
+  `inventory lock: refused charm-row message 0x..`.
 - **PD2.** `ProjectDiablo.dll` keeps `equipment_lock` in its settings and sends it to the server (packet 0x5c); its wrappers of
   the 1.13c body-slot handlers refuse while it is on, and also refuse picking up magic or better charms from the inventory.
 
@@ -38,5 +42,5 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 
 ## Differences
 
-Listed in [deviations](../deviations.md) (Lock Inventory): no charm lock, single player and host
+Listed in [deviations](../deviations.md) (Lock Inventory): single player and host
 only, no sound.

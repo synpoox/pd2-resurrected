@@ -35,6 +35,29 @@ constexpr auto ChangesEquipment(const uint8_t* packet, size_t size) noexcept -> 
 	}
 }
 
+// The charm rows (#1727): the inventory's grid rows 5-8 (zero-based y 4-7, by an item's top row), where charms count (#358).
+// 0x19 takes an item (u32 +1) off a grid; 0x18 puts the cursor item (u32 +1) on a grid cell (x +5, y +9, page +13; page 0 is
+// the inventory), which also swaps the item under it. rowOf(id) is the top row of a stored inventory item, -1 when it is
+// not one. Either touching rows 5-8 changes which charms are carried.
+constexpr int CharmFirstRow = 4;
+constexpr auto ReadU32(const uint8_t* p) noexcept -> uint32_t {
+	return p[0] | p[1] << 8 | p[2] << 16 | uint32_t(p[3]) << 24;
+}
+template <class RowOf>
+constexpr auto TouchesCharmRows(const uint8_t* packet, size_t size, RowOf rowOf) noexcept -> bool {
+	if (packet == nullptr || size == 0) {
+		return false;
+	}
+	switch (packet[0]) {
+	case 0x19:
+		return size >= 5 && rowOf(ReadU32(packet + 1)) >= CharmFirstRow;
+	case 0x18:
+		return size >= 17 && ReadU32(packet + 13) == 0 && ReadU32(packet + 9) >= uint32_t(CharmFirstRow) && ReadU32(packet + 9) < 8;
+	default:
+		return false;
+	}
+}
+
 // Hooks the server's message dispatch and listens for the padlock. Returns the report for the log.
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept;
 
