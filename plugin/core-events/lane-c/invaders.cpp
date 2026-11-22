@@ -33,6 +33,7 @@
 
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle_events.h>
+#include <D2RLPlugin/threads.h>
 
 #include <atomic>
 #include <cstdio>
@@ -167,6 +168,51 @@ auto GameOf(uint32_t gameId) noexcept -> Game* {
 
 // --- The portal's think ---------------------------------------------------------------------------------------------
 
+// The closed portal leaves the game once its death anim ends (#1711). Legacy draws its corpse from an empty DD frame;
+// HD has no art per mode and drew the red portal forever. The SDK runs the removal on the game thread, outside the
+// think (RemoveUnit frees the unit at once); user = runs << 48 | game id << 32 | unit id.
+const D2RL::PluginContext* g_context = nullptr;
+const D2RL::ThreadService* g_threads = nullptr;
+constexpr uint64_t MaxRemoveRuns = 250;  // game updates to wait for the dead mode (the close anim is 15 frames)
+
+void RemoveClosedPortal(const D2RL::PluginContext*, void* user) noexcept {
+	using namespace d2r::rva;
+	const auto packed = reinterpret_cast<uint64_t>(user);
+	const auto unitId = static_cast<uint32_t>(packed);
+	Game* game = GameOf(static_cast<uint32_t>(packed >> 32) & 0xffff);
+	Unit* unit = game != nullptr ? d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit)(game, UnitMonster, unitId)
+	                             : nullptr;
+	if (unit == nullptr || At<int32_t>(unit, UnitClassId) != PortalClass) {
+		return;  // the game, the room or the unit is gone already
+	}
+	if (At<int32_t>(unit, UnitMode) != MonModeDead) {
+		const uint64_t runs = (packed >> 48) + 1;
+		if (runs > MaxRemoveRuns || g_threads->runOnGameThread(g_context, RemoveClosedPortal,
+		                                                      reinterpret_cast<void*>(runs << 48 | (packed & 0xffffffffffffULL))) !=
+		                                D2RL::Threads::Result::Success) {
+			plog::Warn("invaders: portal %u not removed (mode %d after %llu runs)", unitId, At<int32_t>(unit, UnitMode), runs);
+		}
+		return;
+	}
+	d2r::Engine<void (*)(void*, int32_t, int32_t) noexcept>(d2r::sig::RoomUnitRemoved)(
+		d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::UnitRoom)(unit), UnitMonster, static_cast<int32_t>(unitId));
+	d2r::Engine<void (*)(Game*, Unit*) noexcept>(d2r::sig::RemoveUnit)(game, unit);
+	plog::Info("invaders: portal %u removed after its close", unitId);
+}
+
+void ClosePortal(Game* game, Unit* unit) noexcept {
+	KillQuietly(game, unit);
+	if (g_threads == nullptr) {
+		return;  // no thread service: the corpse stays (drawn in HD)
+	}
+	const uint64_t packed = static_cast<uint64_t>(At<uint16_t>(game, d2r::rva::GameIdField)) << 32 |
+	                        At<uint32_t>(unit, d2r::rva::UnitIdField);
+	if (g_threads->runOnGameThread(g_context, RemoveClosedPortal, reinterpret_cast<void*>(packed)) !=
+	    D2RL::Threads::Result::Success) {
+		plog::Warn("invaders: portal %u removal not queued", At<uint32_t>(unit, d2r::rva::UnitIdField));
+	}
+}
+
 void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	using namespace d2r::rva;
 	const uint8_t* rec = tick != nullptr ? At<const uint8_t*>(tick, AiTickMonStats) : nullptr;
@@ -186,7 +232,7 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	if (Counter(game, InvadersKey) > MaxInvaders || Counter(game, FinishedKey) > MaxFinished || spawns > MaxSpawns) {
 		plog::Info("invaders: portal %u closes at once (%d invaders, %d closed, %d spawns)", At<uint32_t>(unit, UnitIdField),
 		           Counter(game, InvadersKey), Counter(game, FinishedKey), spawns);
-		KillQuietly(game, unit);
+		ClosePortal(game, unit);
 		return;
 	}
 	const Unit* target = At<Unit*>(tick, AiTickTarget);
@@ -242,7 +288,7 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 		++g_closed;
 		plog::Info("invaders: portal %u closes after invader %d (%d portals closed)", At<uint32_t>(unit, UnitIdField), n,
 		           Counter(game, FinishedKey));
-		KillQuietly(game, unit);
+		ClosePortal(game, unit);
 		return;
 	}
 	Idle(game, unit, aidel);
@@ -532,6 +578,16 @@ auto InstallInvaders(const D2RL::PluginContext* context, char* report, size_t re
 	if (!ok) {
 		std::snprintf(report, reportSize, "off: monai %d think not swapped", OverseerRow);
 		return 0;
+	}
+	const D2RL::ThreadService* threads = nullptr;
+	if (context->QueryService(&threads) == D2RL::ServiceQueryResult::Success &&
+	    D2RL::HasThreadServiceField(threads, D2RL::ThreadServiceRequiredSize) && d2r::sig::FindUnit.state == sigscan::State::Ok &&
+	    d2r::sig::UnitRoom.state == sigscan::State::Ok && d2r::sig::RoomUnitRemoved.state == sigscan::State::Ok &&
+	    d2r::sig::RemoveUnit.state == sigscan::State::Ok) {
+		g_context = context;
+		g_threads = threads;
+	} else {
+		plog::Warn("invaders: a closed portal is not removed (no thread service or entry): HD keeps drawing it");
 	}
 	const D2RL::LifecycleService* lifecycle = nullptr;
 	const D2RL::Lifecycle::MonsterDeathListener listener {

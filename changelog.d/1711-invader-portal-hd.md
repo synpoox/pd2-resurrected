@@ -1,0 +1,1 @@
+- A closed invader portal now disappears in HD, as it does in legacy. (#1711)

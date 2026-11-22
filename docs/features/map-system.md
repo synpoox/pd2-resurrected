@@ -123,6 +123,8 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
   For game checks, `PD2R_INVADERS=<class>:<set>,...` in the game's environment picks each spawn's class (0 Amazon to
   6 Sorceress) and weapon set (the `ClassDrops` case: Amazon 0 spear, 1 bow, 2 crossbow, 3 javelin; Barbarian 0 two-hander,
   1 thrown, 2 two-handed swords; Sorceress 0 staff, 1 orb), in turn.
+  A closed portal leaves the game once its close anim ends, so HD stops drawing it as legacy does (its HD unit has no
+  per-mode art, and its particles are killed with it) ([#1711](https://github.com/synpoox/pd2-resurrected/issues/1711)).
 - **Plugins:** `core-events` (Shared) holds the code that belongs only to the map system: opening maps, map stats, cube
   op 30, map events and invaders. It is a plugin of its own because the map system is large enough to be used outside
   this project ([ADR 0004](../adr/0004-plugins-split-by-multiplayer-scope.md), amended). Rules the map system shares with
