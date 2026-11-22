@@ -113,7 +113,7 @@ The apply passes flag 0, so the walker gets the handler set `0x105dc628` (built 
   After D2R's dispatch, when the attacker (any unit type) is in state 54, each event-5 node with stat
   412 or 480 rolls `UnitStat(unit, stat, layer)` below 100 on `UnitSeed`, as `0x583b30` does. On a hit it calls the
   splash on the struck unit. The node's stat is the int32 at +0xc and its layer the uint16 at +0x10 (seen in game:
-  412, 0x6b81 = skill 430 level 1). Other skills on hit keep D2R's refusal; PD2 casts them too (#1889).
+  412, 0x6b81 = skill 430 level 1). Other skills on hit now cast during a spin too, as in PD2 (#1889, below).
 - Skills on striking (item_skillonhit 198, #1889) take the same path. PD2's skill-on-hit casts a skill whose ItemTarget
   is not 5 at the struck unit through the patched `0x6fd117e0`; ItemTarget 5 goes to its aim-point branch, which keeps
   the state 54 check, so Nova and Frost Nova still refuse a spin. D2R's `0x583b30` casts an ItemTgtDo skill (skill
