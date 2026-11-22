@@ -324,6 +324,10 @@ auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions
 	using D2RL::ItemInteractions::Decision;
 	if (event->inputSource != D2RL::ItemInteractions::InputSource::KeyboardMouse) return Decision::Continue;
 	const int act = Match(event->modifiers, false);
+	// #1815: D2R's own Ctrl + Shift + left click quick-moves into the Cube and leaves a stack that no longer stacks or moves; the Cube bind
+	// is the right click, so with it on the left click does nothing
+	constexpr uint32_t CtrlShift = ModifierBit(Modifier::Control) | ModifierBit(Modifier::Shift);
+	if (act < 0 && event->modifiers == CtrlShift && g_binds[static_cast<int>(Act::Cube)].on) return Decision::Consume;
 	if (act < 0 || static_cast<Act>(act) == Act::Drop) return Decision::Continue;
 	items::ItemInfo info {.structSize = items::ItemInfoSize};
 	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
