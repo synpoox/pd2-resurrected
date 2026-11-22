@@ -23,6 +23,7 @@
 #include "stash_affinity.h"
 
 #include "log.h"
+#include "map_stack.h"
 #include "pd2_engine.h"
 #include "stash_home.h"
 
@@ -216,6 +217,24 @@ auto Quantity(D2RL::ItemHandle item) noexcept -> int32_t {
 	return g_items->editNativeItem(g_context, item, ReadQuantity, &count) == items::Result::Success ? count : 0;
 }
 
+// A map's non-quantity stats (Area Level, forced event, mods), read off the native item
+void CollectMapStats(const D2RL::PluginContext*, void* native, void* user) noexcept {
+	pd2::mapstack::Collect(static_cast<d2r::Unit*>(native), d2r::rva::ItemStatCostRows, d2r::rva::StatQuantity,
+	                       d2r::Engine<int32_t (*)(d2r::Unit*, uint32_t, pd2::mapstack::Entry*, int32_t) noexcept>(d2r::rva::UnitStatEntries),
+	                       *static_cast<pd2::mapstack::Saved*>(user));
+}
+
+// Core-rules' rule (#1326): only normal-quality maps with equal stats stack, so Route must not merge any other pair
+auto MapsStack(const items::ItemInfo& a, const items::ItemInfo& b) noexcept -> bool {
+	if (a.quality != items::Quality::Normal || b.quality != items::Quality::Normal) {
+		return false;
+	}
+	static pd2::mapstack::Saved sa, sb;  // game thread only; too big for the stack
+	return g_items->editNativeItem(g_context, a.handle, CollectMapStats, &sa) == items::Result::Success &&
+	       g_items->editNativeItem(g_context, b.handle, CollectMapStats, &sb) == items::Result::Success &&
+	       pd2::mapstack::SameStats(sa, sb);
+}
+
 // Into the same currency's stack on its cell; Conflict when the sum passes a stack. editItem and destroyItem refuse a
 // shared-stash item on this loader (Unsupported, Slot2), so both go to the inventory, the counts are read there, the
 // stack takes the sum, the incoming item goes and the stack moves back onto its cell. A failed step puts things back;
@@ -335,6 +354,15 @@ void StackNow(const D2RL::PluginContext*, void* user) noexcept {
 	}  // Merge logs a failure; the cursor item is kept then
 }
 
+// The pass's own copy of a routed item follows its move or merge, so a later item of the pass sees the new place (#1759)
+void SyncReserved(const items::ItemInfo& item) noexcept {
+	for (uint32_t i = 0; i < g_pass.reservedCount; ++i) {
+		if (g_pass.reserved[i].runtimeId == item.runtimeId) {
+			g_pass.reserved[i] = item;
+		}
+	}
+}
+
 void Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept {
 	const aff::Home home = aff::HomeOf(item.code);
 	if (aff::AtHome(home, item.code, g_shown, item.container == C::SharedStash, item.sharedStashPage, item.x, item.y)) {
@@ -349,11 +377,13 @@ void Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept {
 			items::ItemInfo& stack = g_pass.reserved[i];
 			if (stack.code != 0 && stack.runtimeId != item.runtimeId && stack.container == C::SharedStash &&
 			    stack.sharedStashPage == stackPage && InCell(stack.x, stack.y) && (!shown || aff::InMapView(stack.x, stack.y)) &&
-			    aff::Normal(stack.code) == aff::Normal(item.code) && Quantity(stack.handle) < MaxStack) {
+			    aff::Normal(stack.code) == aff::Normal(item.code) &&
+			    Quantity(stack.handle) + Quantity(item.handle) <= MaxStack && MapsStack(item, stack)) {
 				moved = Merge(player, item, stack);
 			}
 		}
 		if (moved == items::Result::Success) {
+			SyncReserved(item);
 			++g_routed;
 			return;
 		}
@@ -371,6 +401,7 @@ void Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept {
 		}
 	}
 	if (moved == items::Result::Success) {
+		SyncReserved(item);
 		++g_routed;
 		return;
 	}

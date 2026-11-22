@@ -73,5 +73,16 @@ int main() {
 		return max;
 	};
 	check("a difference in the 64th entry is found", pd2::mapstack::FirstDifference(&ma, &mb, 601, 70, many) == 600);
+	// Route's compare (#1759): equal stats stack, a rare's extra mod or another Area Level does not
+	Fake plain = Map(1, 87), plain2 = Map(3, 87), rare = Map(1, 87), higher = Map(1, 97);
+	rare.stats[100] = {0, 100, 25, 0};
+	pd2::mapstack::Saved sp, sp2, sr, sh;
+	pd2::mapstack::Collect(&plain, 600, 70, Read, sp);
+	pd2::mapstack::Collect(&plain2, 600, 70, Read, sp2);
+	pd2::mapstack::Collect(&rare, 600, 70, Read, sr);
+	pd2::mapstack::Collect(&higher, 600, 70, Read, sh);
+	check("same stats ignore the quantity", pd2::mapstack::SameStats(sp, sp2));
+	check("a rare's extra mod differs", !pd2::mapstack::SameStats(sp, sr) && !pd2::mapstack::SameStats(sr, sp));
+	check("another Area Level differs (saved)", !pd2::mapstack::SameStats(sp, sh));
 	return fail;
 }
