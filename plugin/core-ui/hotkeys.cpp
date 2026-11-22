@@ -449,13 +449,15 @@ using IdFn = int64_t (*)(const void*, int64_t) noexcept;
 IdFn g_idLookup = nullptr;
 const void* g_idTable = nullptr;
 int64_t g_idHash = 0;
-int64_t g_inputMessage = 0;
+// Looked up on the first message, not at install: an install-time lookup returned an id that never matched (the id table is not ready yet).
+std::atomic<int64_t> g_inputMessage {0};
 constexpr uint8_t MessageEntry[] = {0x40, 0x55, 0x53, 0x57, 0x41, 0x56, 0x41, 0x57, 0x48, 0x8d, 0xac, 0x24, 0xc0, 0xfd, 0xff, 0xff};
 uint64_t g_lastCubeClick = 0;
 
 void OnMessage(void* widget, int64_t* message) noexcept {
-	if (g_inputMessage == 0 && g_idLookup != nullptr) g_inputMessage = g_idLookup(g_idTable, g_idHash);
-	if (message != nullptr && g_inputMessage != 0 && message[0] == g_inputMessage && message[MessageName] == RightMessage && g_gate() == 0 && g_manager != nullptr && g_rightTarget != nullptr && g_key != nullptr) {
+	int64_t inputMessage = g_inputMessage.load(std::memory_order_relaxed);
+	if (inputMessage == 0 && g_idLookup != nullptr) g_inputMessage.store(inputMessage = g_idLookup(g_idTable, g_idHash), std::memory_order_relaxed);
+	if (message != nullptr && inputMessage != 0 && message[0] == inputMessage && message[MessageName] == RightMessage && g_gate != nullptr && g_gate() == 0 && g_manager != nullptr && g_rightTarget != nullptr && g_key != nullptr) {
 		void* hovered = *reinterpret_cast<void**>(g_manager() + g_hoveredOffset);
 		const uint64_t now = GetTickCount64();
 		// the message reaches many widgets: once per click, and never when the grid under the mouse gets it itself (its own hook runs)
@@ -497,13 +499,19 @@ bool InstallCubeMessage(const D2RL::PluginContext* context) noexcept {
 	if (!BytesAre(entryFn, 0x124, {0x49, 0x8b, 0x87, 0x88, 0x00, 0x00, 0x00}) || !BytesAre(entryFn, 0x135, {0x49, 0x8b, 0xb7, 0x10, 0x01, 0x00, 0x00}) ||
 	    !BytesAre(entryFn, 0x312, {0xff, 0x93, 0x98, 0x00, 0x00, 0x00}) || !BytesAre(entryFn, 0x47, {0x48, 0xba}) ||
 	    !BytesAre(entryFn, 0x55, {0x48, 0x8d, 0x0d}) || !BytesAre(entryFn, 0x74, {0xe8})) return false;
-	if (!sigscan::HookBySignature(context, "InputMessage", EntrySig, 0, MessageEntry, sizeof MessageEntry, OnMessage, &g_message)) return false;
-	g_hoveredOffset = *reinterpret_cast<const uint32_t*>(hoverFn + 0x11);
-	g_idHash = *reinterpret_cast<const int64_t*>(entryFn + 0x49);
-	g_idTable = reinterpret_cast<const void*>(entryFn + 0x5c + *reinterpret_cast<const int32_t*>(entryFn + 0x58));
+	// every value OnMessage reads is set before the hook can run it
 	g_idLookup = reinterpret_cast<IdFn>(entryFn + 0x79 + *reinterpret_cast<const int32_t*>(entryFn + 0x75));
+	g_idTable = reinterpret_cast<const void*>(entryFn + 0x5c + *reinterpret_cast<const int32_t*>(entryFn + 0x58));
+	g_idHash = *reinterpret_cast<const int64_t*>(entryFn + 0x49);
+	g_hoveredOffset = *reinterpret_cast<const uint32_t*>(hoverFn + 0x11);
 	g_manager = reinterpret_cast<ManagerFn>(context->exeBase + manager);
 	g_gate = reinterpret_cast<GateFn>(context->exeBase + gate);
+	if (!sigscan::HookBySignature(context, "InputMessage", EntrySig, 0, MessageEntry, sizeof MessageEntry, OnMessage, &g_message)) {
+		g_gate = nullptr;
+		g_idLookup = nullptr;
+		g_manager = nullptr;
+		return false;
+	}
 	return true;
 }
 
