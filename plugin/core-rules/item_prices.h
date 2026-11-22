@@ -1,5 +1,5 @@
 // PD2's vendor and gamble price rules D2R lacks (#1539): weapons ignore their stack size, gamble prices ignore the stack
-// midpoint (item_prices.cpp).
+// midpoint, and no vendor takes a rune (#1777) (item_prices.cpp).
 #pragma once
 
 #include <D2RLPlugin/api.h>

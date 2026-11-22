@@ -14,6 +14,11 @@
 //    place, so skipping it adds nothing, as PD2's `if (quality != 3)`.
 // 4. A repair quote (type 3) is capped at 250000, as PD2's final `min(price, 250000)`: the price function is hooked and its
 //    result clamped for type 3.
+// 5. Runes can't be sold (#1777). ItemIsSellable (0x374370, D2Common Items.cpp: not item flag 0x1000, not a quest item,
+//    not type 0x27) is hooked to answer 0 for an item of the itemtypes `rune` type (its row found by code through the
+//    SDK's DataTableService). Every caller is a sell path: the vendor panel, its tooltip and controller prompts (client),
+//    and the SUnitNpc.cpp sell handlers (server). So the client refuses as it does for a quest item and the rune stays
+//    where it was, and a host refuses a sell message too. Native: no PluginSDK service decides what a vendor takes.
 #include "item_prices.h"
 
 #include "item_price.h"
@@ -21,6 +26,8 @@
 #include "pd2_engine.h"
 #include "sig.h"
 #include "sig_hook.h"
+
+#include <D2RLPlugin/data_tables.h>
 
 #include <windows.h>
 
@@ -133,6 +140,60 @@ auto InstallSuperiorStats(const D2RL::PluginContext* context) noexcept -> bool {
 	return context->PatchBytes(static_cast<uint64_t>(table) + 2 * sizeof(int32_t), &entries[2], sizeof(int32_t), &skip, sizeof(skip));
 }
 
+// push rdi / sub rsp,20h / mov rdi,rcx / test rcx,rcx (the SDK checks them); the pattern runs to `and eax,0x1000`
+constexpr uint8_t SellableEntry[] = {0x40, 0x57, 0x48, 0x83, 0xec, 0x20, 0x48, 0x8b, 0xf9, 0x48, 0x85, 0xc9};
+constexpr const char* SellablePattern =
+    "40 57 48 83 ec 20 48 8b f9 48 85 c9 74 0a e8 ?? ?? ?? ?? 83 f8 04 74 19 48 8d 4c 24 30 c6 44 24 30 00 e8 ?? ?? ?? ?? "
+    "84 c0 74 01 cc 48 85 ff 74 39 48 8b cf e8 ?? ?? ?? ?? 83 f8 04 75 2c 48 8b cf e8 ?? ?? ?? ?? 48 85 c0 75 15 48 8d 4c "
+    "24 30 88 44 24 30 e8 ?? ?? ?? ?? 84 c0 74 0d cc eb 0a 8b 40 18 25 00 10 00 00";
+constexpr uint32_t RuneCode = 'r' | 'u' << 8 | 'n' << 16 | 'e' << 24;  // itemtypes code `rune`, as D2R keys it
+using SellableFn = int32_t (*)(Unit* item) noexcept;
+SellableFn g_sellable = nullptr;
+IsTypeFn g_typeTest = nullptr;  // ItemIsType's entry (through the hook above when it is in; it keeps these answers)
+const D2RL::PluginContext* g_context = nullptr;
+const D2RL::DataTableService* g_tables = nullptr;
+std::atomic<int32_t> g_runeType {-1};
+std::atomic<uint32_t> g_runeRefusals {0};
+
+// The `rune` row, looked up on the first sell check (the SDK answers only on the game thread, where the checks run)
+auto RuneType() noexcept -> int32_t {
+	int32_t type = g_runeType.load(std::memory_order_relaxed);
+	if (type < 0) {
+		D2RL::DataTables::RowView view {.structSize = D2RL::DataTables::RowViewSize};
+		if (g_tables->findRowByCode(g_context, D2RL::DataTables::Bank::Rotw, D2RL::DataTables::TableId::ItemTypes, RuneCode, &view) ==
+		    D2RL::DataTables::Result::Success) {
+			type = static_cast<int32_t>(view.rowIndex);
+			g_runeType.store(type);
+			plog::Info("rune sales: itemtypes rune is row %d", type);
+		}
+	}
+	return type;
+}
+
+auto SellableHook(Unit* item) noexcept -> int32_t {
+	const int32_t result = g_sellable(item);
+	if (result != 0) {
+		const int32_t rune = RuneType();
+		if (rune >= 0 && g_typeTest(item, rune) != 0) {
+			g_runeRefusals.fetch_add(1);
+			return 0;
+		}
+	}
+	return result;
+}
+
+auto InstallRuneSales(const D2RL::PluginContext* context, uint64_t isTypeRva) noexcept -> bool {
+	if (isTypeRva == 0 || context->QueryService(&g_tables) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasDataTableServiceField(g_tables, D2RL::DataTableServiceRequiredSize)) {
+		plog::Warn("skipped rune sales: no ItemIsType or no data table service");
+		return false;
+	}
+	g_context = context;
+	g_typeTest = reinterpret_cast<IsTypeFn>(context->exeBase + isTypeRva);
+	return sigscan::HookBySignature(context, "ItemIsSellable", SellablePattern, 0, SellableEntry, sizeof(SellableEntry), SellableHook,
+	                                &g_sellable);
+}
+
 }  // namespace
 
 auto InstallItemPrices(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
@@ -140,7 +201,10 @@ auto InstallItemPrices(const D2RL::PluginContext* context, char* report, size_t 
 	sigscan::Resolve(own, 2, context->exeBase, nullptr, 0);
 	bool quantity = false, gamble = false;
 	uint64_t isTypeRva = 0;
-	if (QuantityGuard.state == sigscan::State::Ok && sigscan::ScanUnique(context->exeBase, IsTypePattern, 0, &isTypeRva) == 1) {
+	if (sigscan::ScanUnique(context->exeBase, IsTypePattern, 0, &isTypeRva) != 1) {
+		isTypeRva = 0;
+	}
+	if (QuantityGuard.state == sigscan::State::Ok && isTypeRva != 0) {
 		// The call at guard+8 must be the hooked ItemIsType, else the return-address test would never match.
 		const auto call = reinterpret_cast<const uint8_t*>(QuantityGuard.address + GuardCall);
 		int32_t rel = 0;
@@ -156,12 +220,14 @@ auto InstallItemPrices(const D2RL::PluginContext* context, char* report, size_t 
 	}
 	const bool superior = InstallSuperiorStats(context);
 	const bool repair = sigscan::HookBySignature(context, "ItemPrice", PricePattern, 0, PriceEntry, sizeof(PriceEntry), PriceHook, &g_price);
-	std::snprintf(report, reportSize, "weapon prices %s, gamble midpoint %s, superior stat skip %s, repair cap %s", quantity ? "in" : "FAILED",
-	              gamble ? "in" : "FAILED", superior ? "in" : "FAILED", repair ? "in" : "FAILED");
-	return quantity && gamble && superior && repair;
+	const bool runes = InstallRuneSales(context, isTypeRva);
+	std::snprintf(report, reportSize, "weapon prices %s, gamble midpoint %s, superior stat skip %s, repair cap %s, rune sales block %s",
+	              quantity ? "in" : "FAILED", gamble ? "in" : "FAILED", superior ? "in" : "FAILED", repair ? "in" : "FAILED",
+	              runes ? "in" : "FAILED");
+	return quantity && gamble && superior && repair && runes;
 }
 
 auto ItemPriceCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "item prices: %u prices without the stack quantity, %u repair quotes capped, highest repair quote %d", g_weaponSkips.load(),
-	              g_repairCaps.load(), g_repairMax.load());
+	std::snprintf(out, size, "item prices: %u prices without the stack quantity, %u repair quotes capped, highest repair quote %d, %u rune sales refused (rune type %d)",
+	              g_weaponSkips.load(), g_repairCaps.load(), g_repairMax.load(), g_runeRefusals.load(), g_runeType.load());
 }
