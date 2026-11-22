@@ -47,7 +47,7 @@ moves the item itself (rolls, sockets and quantity stay): a map to the Maps tab 
 merge runs in the inventory: the loader refuses to edit or destroy a shared-stash item; loader 1.3.1 reads quantity 0 for
 PD2's stacks, so there a second stack goes back to the inventory instead); a bossing item to its cell. While
 Maps or Bossing is up, a tidy pass (every 25 updates) also routes items put onto those two pages by hand, and moves an item
-no rule takes off them to the inventory. A full cell or page, or a missing page (fewer extra tabs), moves it back to the inventory; the log
+no rule takes off them to the inventory. An item with a home whose page the SDK cannot read (`sharedStashPage` UINT32_MAX) counts as on the open tab's page, so the tidy pass routes it (#1723). A full cell or page, or a missing page (fewer extra tabs), moves it back to the inventory; the log
 says why. Status: `core-ui` console command, `affinity:` and `stash tabs:` counters.
 
 Limits: tabs 15-19 are taken as they are. Items a player already keeps on 16-18 stay and share the space; on 15 and 19 the

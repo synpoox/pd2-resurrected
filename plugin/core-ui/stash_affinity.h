@@ -20,7 +20,8 @@ void Counters(char* out, size_t size) noexcept;
 // back to their tier's page and this one's onto the Maps page.
 void ShowBase(uint32_t code) noexcept;
 
-// Any thread: whether the Maps or Bossing tab is on screen, so the game thread tidies their pages.
-void SetTabOpen(bool open) noexcept;
+// Any thread: whether the Maps or Bossing tab is on screen, so the game thread tidies their pages; page is the tab's
+// page (open only), where an item whose page the SDK cannot read is taken to be.
+void SetTabOpen(bool open, uint32_t page = 0) noexcept;
 
 }  // namespace stash_affinity

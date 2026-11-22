@@ -186,6 +186,12 @@ constexpr auto AtHome(const Home& home, uint32_t code, uint32_t shown, bool shar
 	return page == home.page && (home.row < 0 || y == home.row) && (home.column < 0 || x == home.column);
 }
 
+// The page an item counts on: the SDK reads UINT32_MAX for a shared stash item whose tab it does not know (item.h), and
+// the tab on show (0: none) is the only place the player could have put it by hand or quick-move
+constexpr auto PageOf(uint32_t page, uint32_t shownPage) noexcept -> uint32_t {
+	return page == UINT32_MAX ? shownPage : page;
+}
+
 // The first free column of a map's row, from a bit per occupied column; -1 when the row is full
 constexpr auto FreeColumn(uint32_t occupied) noexcept -> int32_t {
 	for (int32_t x = 0; x < PageWidth; ++x) {
@@ -246,6 +252,7 @@ static_assert([] {  // no two bossing items share a cell
 	return true;
 }());
 static_assert(!AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, false, 19, 4, 4));
+static_assert(PageOf(UINT32_MAX, 19) == 19 && PageOf(16, 19) == 16 && PageOf(UINT32_MAX, 0) == 0);
 static_assert(FreeColumn(0) == 0 && FreeColumn(0b111) == 3 && FreeColumn(0x3ff) == -1);
 
 }  // namespace pd2::affinity

@@ -193,7 +193,7 @@ void Open(View view) noexcept {
 	if (view == View::Maps) {
 		ShowTier(g_tier);
 	}
-	stash_affinity::SetTabOpen(true);
+	stash_affinity::SetTabOpen(true, view == View::Maps ? aff::MapsPage : aff::BossingPage);
 	Log(view == View::Maps ? "Maps" : "Bossing");
 }
 

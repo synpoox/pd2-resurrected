@@ -84,7 +84,9 @@ uintptr_t g_seen = 0;  // the watch generation g_noted belongs to (game thread o
 uint32_t g_shown = 0;  // the base whose maps are on the Maps page (game thread only)
 std::atomic<uint32_t> g_want {0};
 std::atomic<bool> g_open {false};
-std::atomic<bool> g_tidyFailed {false};
+std::atomic<uint32_t> g_openPage {0};  // the page of the open tab
+uint32_t g_openNow = 0;  // g_openPage as of this pass (game thread only)
+std::atomic<bool> g_tidyFailed {false}, g_unknownLogged {false};
 std::atomic<bool> g_hinted {false}, g_stopped {false};
 std::atomic<uint32_t> g_routed {0}, g_merged {0}, g_swapped {0}, g_returned {0}, g_failed {0}, g_updates {0};
 
@@ -119,8 +121,18 @@ auto NoteInventory(const D2RL::PluginContext*, const items::ItemInfo* item, void
 	return D2RL::Inventory::IterationAction::Continue;
 }
 
-auto ReadStash(const D2RL::PluginContext*, const items::ItemInfo* item, void* user) noexcept -> D2RL::Inventory::IterationAction {
+auto ReadStash(const D2RL::PluginContext*, const items::ItemInfo* in, void* user) noexcept -> D2RL::Inventory::IterationAction {
 	auto* pass = static_cast<Pass*>(user);
+	items::ItemInfo homed;  // #1723: an item with a home whose page is unknown is on the tab on show, so Tidy sees it
+	const items::ItemInfo* item = in;
+	if (in->container == C::SharedStash && in->sharedStashPage == UINT32_MAX && aff::HomeOf(in->code).category != aff::Category::None) {
+		homed = *in;
+		homed.sharedStashPage = aff::PageOf(in->sharedStashPage, g_openNow);
+		item = &homed;
+		if (g_openNow != 0 && !g_unknownLogged.exchange(true)) {
+			plog::Info("affinity: %08x in the shared stash has no page; taken to be on the open tab, page %u", in->code, g_openNow);
+		}
+	}
 	if (Reserved(*item) && InCell(item->x, item->y) && pass->reservedCount < MaxReserved) {
 		Use(item->sharedStashPage, item->x, item->y, true);
 		if ((item->sharedStashPage == aff::MapsPage || item->sharedStashPage == aff::BossingPage) && InCell(item->x, item->y)) {
@@ -404,6 +416,7 @@ void Update(const D2RL::PluginContext*, void* user) noexcept {
 	if (g_pass.gone.count == 0 && !swap && !tidy) {
 		return;
 	}
+	g_openNow = g_open.load() ? g_openPage.load() : 0;
 	g_pass.foundCount = 0;
 	g_pass.reservedCount = 0;
 	for (auto& page : g_pass.used) {
@@ -455,7 +468,8 @@ void ShowBase(uint32_t code) noexcept {
 	g_want.store(code);
 }
 
-void SetTabOpen(bool open) noexcept {
+void SetTabOpen(bool open, uint32_t page) noexcept {
+	g_openPage.store(open ? page : 0);
 	g_open.store(open);
 }
 
