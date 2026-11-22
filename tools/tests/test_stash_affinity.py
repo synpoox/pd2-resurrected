@@ -42,6 +42,11 @@ class StashAffinity(unittest.TestCase):
         for code in self.lists["MapMaterials"] + self.lists["Bossing"]:
             self.assertIn(self.misc[code]["AdvancedStashStackable"], ("", "0"), code)
 
+    def test_the_stash_hotkey_sends_an_item_home(self):  # #1724: no self-check can run the plugin, so pin the wiring
+        text = (HEADER.parents[1] / "core-ui" / "hotkeys.cpp").read_text(encoding="utf-8")
+        self.assertIn("pd2::affinity::HomeOf(find.info.code)", text)
+        self.assertIn("ItemContainer::SharedStash;", text)
+
 
 if __name__ == "__main__":
     unittest.main()

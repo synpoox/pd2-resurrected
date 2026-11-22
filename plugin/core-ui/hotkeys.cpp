@@ -20,6 +20,7 @@
 #include "pd2_engine.h"
 #include "sig.h"
 #include "sig_hook.h"
+#include "stash_home.h"
 
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item_interactions.h>
@@ -200,6 +201,7 @@ void Run(const Job& job) noexcept {
 	}
 	items::ExistingItemOperation ops[2] {};
 	uint32_t count = 1;
+	bool wasHomed = false;
 	D2RL::ItemHandle spentScroll = D2RL::InvalidItemHandle;
 	if (job.act == Act::Identify) {
 		// What identifies is in books.txt / misc.txt: Tome of Identify (ibk, pSpell 1, spends a charge), Scroll of Identify (isc,
@@ -247,11 +249,23 @@ void Run(const Job& job) noexcept {
 		ops[0].kind = items::ExistingItemOperationKind::Move;
 		ops[0].item = find.found;
 		ops[0].move.destination = {.structSize = items::ItemDestinationSize, .container = to, .placement = items::Placement::Automatic};
+		// stash affinity (#1724): a map, map currency or bossing item goes to its home tab, as a quick-move does; Automatic on that page
+		// puts it down anywhere there and the affinity watch then sets its cell
+		if (job.act == Act::Stash && from == items::ItemContainer::Inventory && pd2::affinity::HomeOf(find.info.code).category != pd2::affinity::Category::None) {
+			ops[0].move.destination.container = items::ItemContainer::SharedStash;
+			ops[0].move.destination.sharedStashPage = pd2::affinity::HomeOf(find.info.code).page;
+			wasHomed = true;
+		}
 	}
 	const items::ExistingItemTransaction transaction {
 		.structSize = items::ExistingItemTransactionSize, .player = job.player, .operationCount = count, .operations = ops};
 	items::ExistingItemTransactionResult result {.structSize = items::ExistingItemTransactionResultSize};
-	const items::Result status = g_items->executeExistingItemTransaction(g_context, &transaction, &result);
+	items::Result status = g_items->executeExistingItemTransaction(g_context, &transaction, &result);
+	if (wasHomed && status != items::Result::Success) {  // its page is full or missing (add_shared_tabs): the personal stash, as before
+		ops[0].move.destination.container = items::ItemContainer::PersonalStash;
+		ops[0].move.destination.sharedStashPage = 0;
+		status = g_items->executeExistingItemTransaction(g_context, &transaction, &result);
+	}
 	if (status == items::Result::Success && spentScroll != D2RL::InvalidItemHandle &&
 	    g_items->destroyItem(g_context, job.player, spentScroll, items::SocketedItemPolicy::RejectIfNotEmpty) != items::Result::Success) {
 		plog::Warn("hotkeys: identify worked but the scroll was not spent");
