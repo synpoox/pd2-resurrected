@@ -13,8 +13,9 @@
 // drops loot, then the class's ear. PD2 rolls the same TCs at death for the killer (docs/deviations.md). An invader with
 // nothing held (spawned another way, or the gear entries not found) rolls at death as before.
 // Why native: the SDK's ItemService makes items only for a player (createItem, transactions), rejects ground moves and
-// has no TC roll. So the TC drop runs with ItemSpawn wrapped (the picks are made stored, on no floor), and the death puts
-// them down with the two steps of D2R's own drop-from-cursor handler (PlrMsg 0x4bd8f0): a free spot, then the floor.
+// has no TC roll. So the TC drop runs as usual and each pick is at once taken off the floor with the steps of D2R's own
+// pickup (ItemMode 0x471950), and the death puts them down with the two steps of its drop-from-cursor handler (PlrMsg
+// 0x4bd8f0): a free spot, then the floor. (ItemSpawn itself is hooked by another plugin, so it cannot be wrapped.)
 //
 // The portal's think is registered through the toolkit's AI registry (no SDK service runs monster AI); the death is the
 // SDK's monster-death listener, which hands over ids only, so the game, unit and TC are engine calls as horazon.cpp's.
@@ -83,22 +84,30 @@ sigscan::Entry DropSpot {"ItemDropSpot", "invaders", sigscan::Kind::Code, 0, 0,
 // FUN_14043dd00 (game, dropper or null, item, room, x, y): puts a stored item on that floor spot and tells the clients
 sigscan::Entry DropOnFloor {"ItemDropOnFloor", "invaders", sigscan::Kind::Code, 0, 0,
                             "4d 85 c9 0f 84 ?? ?? ?? ?? 48 89 6c 24 10 48 89 74 24 18 4c 89 74 24 20 41 57 48 83 ec 20 49 8b e9"};
-sigscan::Entry* const GearEntries[] = {&DropSpot, &DropOnFloor};
-
-// ItemSpawn's drop request: +0x24 int32 item mode (3 on the floor), +0x30 the room. While a held roll runs the item is
-// made stored (mode 0) with no room: a unit of the game on no floor, which the game frees with itself.
-constexpr int RequestMode = 0x24, RequestRoom = 0x30;
-using ItemSpawnFn = Unit* (*)(Game*, uint8_t*, int32_t) noexcept;
-ItemSpawnFn g_itemSpawn = nullptr;
-thread_local bool t_hold = false;
+// The pickup's steps that take an item off the floor (ItemMode FUN_140471950, before it goes to the inventory):
+// FUN_140535d50 (game, item): tells every client that sees the item's room that it is gone
+sigscan::Entry FloorGoneClients {"ItemFloorGoneClients", "invaders", sigscan::Kind::Code, 0, 0,
+                                 "41 56 41 57 48 83 ec 38 4c 8b f2 e8 ?? ?? ?? ?? 4c 8b f8 48 85 c0 0f 84"};
+// FUN_140348b00 (item): takes the item off its floor path
+sigscan::Entry FloorPathOff {"ItemFloorPathOff", "invaders", sigscan::Kind::Code, 0, 0,
+                             "48 89 5c 24 10 48 89 6c 24 18 56 57 41 54 41 56 41 57 48 83 ec 30 48 8b d9 e8 ?? ?? ?? ?? 44 8b e0 48 85 db 75 13"};
+// FUN_14038efe0 (item): takes the item out of its room's unit list
+sigscan::Entry FloorRoomOff {"ItemFloorRoomOff", "invaders", sigscan::Kind::Code, 0, 0,
+                             "48 89 5c 24 10 48 89 74 24 18 57 48 83 ec 20 33 f6 48 8b d9 48 85 c9 75 1e"};
+sigscan::Entry* const GearEntries[] = {&DropSpot, &DropOnFloor, &FloorGoneClients, &FloorPathOff, &FloorRoomOff};
+// unit flags (+0x124) the pickup clears and the floor drop sets (FUN_14034ee20 and FUN_14034ed80)
+constexpr uint32_t FloorUnitFlags = 0x2 | 0x2000000;
+constexpr int32_t ItemModeStored = 0;  // item modes: 0 stored, 3 on the floor
 bool g_gearOn = false;
 
-auto OnItemSpawn(Game* game, uint8_t* request, int32_t a3) noexcept -> Unit* {
-	if (t_hold && request != nullptr) {
-		*reinterpret_cast<int32_t*>(request + RequestMode) = 0;
-		*reinterpret_cast<void**>(request + RequestRoom) = nullptr;
-	}
-	return g_itemSpawn(game, request, a3);
+// Takes a just-dropped item off the floor, as the pickup does: it stays a unit of the game in no room, which the game
+// frees with itself unless the death puts it back down
+void TakeOffFloor(Game* game, Unit* item) noexcept {
+	d2r::Engine<void (*)(Game*, Unit*) noexcept>(FloorGoneClients)(game, item);
+	d2r::Engine<void (*)(Unit*) noexcept>(FloorPathOff)(item);
+	d2r::Engine<void (*)(Unit*) noexcept>(FloorRoomOff)(item);
+	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetUnitFlags)(item, FloorUnitFlags, 0);
+	d2r::Engine<void (*)(Unit*, int32_t) noexcept>(d2r::sig::SetObjectMode)(item, ItemModeStored);  // the floor drop sets 3 again
 }
 
 // (game id << 32 | invader id) -> the item ids it holds. GameLeft clears it; the game frees unclaimed items itself.
@@ -223,7 +232,7 @@ auto DropTc(Game* game, Unit* monster, Unit* killer, const char* name, Unit** it
 	}
 	const int32_t ilvl = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(monster, StatLevel, 0);
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, const uint8_t*, int32_t, int32_t, int32_t, Unit**, int32_t*, int32_t) noexcept>(
-		TcDrop)(game, monster, killer, tc, 0, ilvl, 0, items, count, items != nullptr ? 6 : 1);
+		TcDrop)(game, monster, killer, tc, 0, ilvl, 0, items, count, 1);
 	return true;
 }
 
@@ -306,16 +315,16 @@ void RollGear(Game* game, Unit* invader, Unit* player, int32_t which) noexcept {
 	using namespace d2r::rva;
 	std::vector<uint32_t> held;
 	char line[1024] = "";
-	int32_t missing = 0;
+	int32_t missing = 0, onFloor = 0;
+	const auto unitRoom = d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::UnitRoom);
 	const auto roll = [&](const char* name) noexcept {
 		Unit* items[6] = {};
 		int32_t n = 0;
-		t_hold = true;
-		const bool ok = DropTc(game, invader, player, name, items, &n);
-		t_hold = false;
-		missing += ok ? 0 : 1;
+		missing += DropTc(game, invader, player, name, items, &n) ? 0 : 1;
 		for (int32_t i = 0; i < n && i < 6; ++i) {
-			if (items[i] != nullptr) {
+			if (items[i] != nullptr && unitRoom(items[i]) != nullptr) {
+				TakeOffFloor(game, items[i]);
+				onFloor += unitRoom(items[i]) != nullptr ? 1 : 0;  // must stay 0: logged as proof
 				held.push_back(At<uint32_t>(items[i], UnitIdField));
 				AppendItem(line, sizeof(line), items[i]);
 			}
@@ -326,8 +335,8 @@ void RollGear(Game* game, Unit* invader, Unit* player, int32_t which) noexcept {
 	ClassDrops(which, data != nullptr ? data + 0x08 : nullptr, &set, roll);
 	const uint32_t id = At<uint32_t>(invader, UnitIdField);
 	g_held.fetch_add(static_cast<uint32_t>(held.size()));
-	plog::Info("invaders: %s #%u holds %zu items (weapon set %s%s):%s", ClassNames[which], id, held.size(), set,
-	           missing != 0 ? ", some TCs missing" : "", line);
+	plog::Info("invaders: %s #%u holds %zu items, %d still in a room (weapon set %s%s):%s", ClassNames[which], id, held.size(),
+	           onFloor, set, missing != 0 ? ", some TCs missing" : "", line);
 	const std::lock_guard lock(g_heldLock);
 	g_heldItems[HeldKey(game, id)] = std::move(held);
 }
@@ -347,14 +356,15 @@ auto DropHeld(Game* game, Unit* monster, int32_t which) noexcept -> bool {
 	}
 	int32_t xy[2] = {};
 	d2r::UnitXY(monster, &xy[0], &xy[1]);
-	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(monster);
+	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::UnitRoom)(monster);
 	char line[1024] = "";
 	uint32_t lost = 0;
 	for (const uint32_t itemId : held) {
-		Unit* item = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(game, 4, itemId);
+		Unit* item = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit)(game, 4, itemId);
 		// only a held item: still on no floor (a reused id or a moved item is never touched)
 		int32_t at[2] = {};
-		void* spot = item != nullptr && d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(item) == nullptr && room != nullptr
+		void* spot = item != nullptr && d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::UnitRoom)(item) == nullptr &&
+				At<int32_t>(item, UnitMode) == ItemModeStored && room != nullptr
 			? d2r::Engine<void* (*)(Game*, void*, int32_t*, int32_t*, uint8_t) noexcept>(DropSpot)(game, room, xy, at, 1)
 			: nullptr;
 		if (spot == nullptr) {
@@ -449,22 +459,26 @@ auto InstallInvaders(const D2RL::PluginContext* context, char* report, size_t re
 	const bool drops = context->QueryService(&lifecycle) == D2RL::ServiceQueryResult::Success &&
 	                   D2RL::HasLifecycleServiceField(lifecycle, D2RL::LifecycleServiceRequiredSize) &&
 	                   lifecycle->registerMonsterDeathListener(context, &listener, &handle) == D2RL::Lifecycle::Result::Success;
-	// the gear held from the spawn: both floor steps found, ItemSpawn wrapped, the store cleared when the game is left
+	// the gear held from the spawn: every floor step found, the store cleared when the game is left
 	sigscan::Resolve(GearEntries, std::size(GearEntries), context->exeBase, nullptr, 0);
 	const D2RL::Lifecycle::GameplayEventListener left {.structSize = D2RL::Lifecycle::GameplayEventListenerSize,
 	                                                   .kind = D2RL::Lifecycle::GameplayEventKind::GameLeft,
 	                                                   .callback = ForgetHeld};
 	D2RL::Lifecycle::ListenerHandle leftHandle = D2RL::Lifecycle::InvalidHandle;
 	using sigscan::State;
-	g_gearOn = drops && DropSpot.state == State::Ok && DropOnFloor.state == State::Ok && d2r::sig::ItemSpawn.state == State::Ok &&
-	           d2r::sig::ItemCode.state == State::Ok && d2r::sig::ItemQuality.state == State::Ok &&
-	           lifecycle->registerGameplayEventListener(context, &left, &leftHandle) == D2RL::Lifecycle::Result::Success &&
-	           context->InstallInlineHook(d2r::sig::ItemSpawn.rva, d2r::rva::ItemSpawnEntry, sizeof(d2r::rva::ItemSpawnEntry),
-	                                      reinterpret_cast<void*>(&OnItemSpawn), reinterpret_cast<void**>(&g_itemSpawn));
+	bool found = d2r::sig::ItemCode.state == State::Ok && d2r::sig::ItemQuality.state == State::Ok &&
+	             d2r::sig::SetUnitFlags.state == State::Ok && d2r::sig::SetObjectMode.state == State::Ok &&
+	             d2r::sig::UnitRoom.state == State::Ok && d2r::sig::FindUnit.state == State::Ok;
+	for (const sigscan::Entry* e : GearEntries) {
+		if (e->state != State::Ok) {
+			found = false;
+			plog::Warn("invaders: %s %s", e->name, sigscan::StateText(e->state));
+		}
+	}
+	g_gearOn = drops && found &&
+	           lifecycle->registerGameplayEventListener(context, &left, &leftHandle) == D2RL::Lifecycle::Result::Success;
 	if (drops && !g_gearOn) {
-		plog::Warn("invaders: gear not held from the spawn (drop spot %s, floor %s, item spawn %s): invaders roll at death",
-		           sigscan::StateText(DropSpot.state), sigscan::StateText(DropOnFloor.state),
-		           sigscan::StateText(d2r::sig::ItemSpawn.state));
+		plog::Warn("invaders: gear not held from the spawn (an entry not found): invaders roll at death");
 	}
 	std::snprintf(report, reportSize, "the invader portal (monai %d think, class %d); invaders keep their table AIs%s",
 	              OverseerRow, PortalClass,
