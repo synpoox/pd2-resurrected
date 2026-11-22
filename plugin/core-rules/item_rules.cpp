@@ -2100,18 +2100,16 @@ std::atomic<uint32_t> g_mapStackRefused {0};
 
 auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	using namespace d2r::rva;
-	const auto isMap = [](Unit* u) {
-		return u != nullptr && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(u, ItemTypeMap) != 0 &&
-		       d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(u) == QualityNormal;
+	const auto data = d2r::Engine<uint8_t* (*)(Unit*) noexcept>(UnitItemData);
+	const auto isNormal = [&data](Unit* u) {
+		return u != nullptr && data(u) != nullptr && d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(u) == QualityNormal;
 	};
-	if (isMap(a) && isMap(b)) {
+	if (isNormal(a) && isNormal(b)) {
 		// Create writes -1 at item data +0x34 (the unique/set row) for a normal item but the save decoder does not, and the native
-		// compare reads it: a fresh map would not stack with a loaded one (#1340). Not saved for normal items.
-		const auto data = d2r::Engine<uint8_t* (*)(Unit*) noexcept>(UnitItemData);
-		auto* const ra = reinterpret_cast<int32_t*>(data(a) + 0x34);
-		auto* const rb = reinterpret_cast<int32_t*>(data(b) + 0x34);
-		*ra = -1;
-		*rb = -1;
+		// compare reads it: a fresh item would not stack with a loaded one, a map (#1340) or a map orb or boss part dropped
+		// onto its stash cell (#1744). Not saved for normal items, so every normal pair is evened, not maps only.
+		*reinterpret_cast<int32_t*>(data(a) + 0x34) = -1;
+		*reinterpret_cast<int32_t*>(data(b) + 0x34) = -1;
 	}
 	const int32_t same = g_stackEqualOriginal(a, b);
 	if (same == 0 || a == nullptr || b == nullptr ||
