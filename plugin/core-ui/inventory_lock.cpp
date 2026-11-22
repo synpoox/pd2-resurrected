@@ -175,6 +175,8 @@ constexpr auto Big7 = [](uint32_t id) { return id == 7; };
 static_assert(BigTake(TakeIt, sizeof TakeIt, aff::MapsPage, Big7) && !BigTake(TakeIt, sizeof TakeIt, 0, Big7));
 static_assert(!BigTake(TakeIt, 4, aff::BossingPage, Big7) && !BigTake(TakeIt, sizeof TakeIt, aff::MapsPage, [](uint32_t) { return false; }));
 static_assert(!BigTake(StackStash, sizeof StackStash, aff::MapsPage, Big7));
+constexpr uint8_t TakeShared[] = {0x46, 7, 0, 0, 0, 0x31, 0, 0, 0, 0, 0, 4, 0};  // a shared page's take
+static_assert(BigTake(TakeShared, sizeof TakeShared, aff::MapsPage, Big7));
 static_assert(!ChangesEquipment(nullptr, 9) && !ChangesEquipment(Equip, 0));
 // #1756: 0x14 (+9) and 0x45 (+5) name their page by the owner; 0x18 and 0x1f, or an owner not found, take the open tab's
 constexpr auto Owner31IsMaps = [](uint32_t owner) { return owner == 0x31 ? aff::MapsPage : UINT32_MAX; };
@@ -490,7 +492,7 @@ auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexc
 	}
 	if (local && BigTake(message, static_cast<size_t>(size), view, [game](uint32_t id) noexcept { return BigStashStack(game, id); })) {
 		const bool queued = stash_affinity::TakeOut(ReadU32(message + 1));
-		plog::Info("stash tabs: take message 0x19 of a stack past %d on page %u: %s", aff::WithdrawMax, view,
+		plog::Info("stash tabs: take message 0x%02x of a stack past %d on page %u: %s", message[0], aff::WithdrawMax, view,
 		           queued ? "the plugin takes it out" : "not queued, left to D2R");
 		if (queued) {
 			return 0;

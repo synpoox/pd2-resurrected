@@ -137,12 +137,13 @@ constexpr auto TabStack(const uint8_t* packet, size_t size, uint32_t viewPage) n
 	return packet != nullptr && size >= 0x15 && viewPage != 0 && packet[0] == 0x21 && ReadU32(packet + 0x0d) == 4;
 }
 
-// #1772: 0x19 (id +1) takes a stored item onto the cursor. A Maps or Bossing stack past aff::WithdrawMax (up to StashMax,
-// #1763) came onto the cursor whole and invisible, since the client cannot hold more than misc.txt's maxstack there. While a
-// tab is open, big(id) says the item is such a stash stack; that take is the plugin's (stash_affinity::TakeOut).
+// #1772: 0x19 (id +1) takes a stored item onto the cursor; on a shared page the client (0x2c7080) sends 0x46 instead (id
+// +1, the page's owner +5), and marks the item pending (0x1c6ac0) either way. A Maps or Bossing stack past aff::WithdrawMax
+// (up to StashMax, #1763) came onto the cursor whole and was not drawn. While a tab is open, big(id) says the item is such
+// a stash stack; that take is the plugin's (stash_affinity::TakeOut), whose moves send the item again.
 template <class Big>
 constexpr auto BigTake(const uint8_t* packet, size_t size, uint32_t viewPage, Big big) noexcept -> bool {
-	return packet != nullptr && size >= 5 && viewPage != 0 && packet[0] == 0x19 && big(ReadU32(packet + 1));
+	return packet != nullptr && size >= 5 && viewPage != 0 && (packet[0] == 0x19 || packet[0] == 0x46) && big(ReadU32(packet + 1));
 }
 
 // True while the padlock is on (hotkeys.cpp refuses its own moves from the charm rows then).
