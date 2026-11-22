@@ -7,7 +7,7 @@
 
 #include <cstddef>
 
-// Redirects the add-skill and aura-start calls of D2R's umod 30 handler; `report` gets one entry.
+// Swaps the umod 30 thunk slot and redirects D2R's handler's add-skill and aura-start calls; `report` gets one entry.
 void InstallBossAura(const D2RL::PluginContext* context, char* report, size_t size) noexcept;
 // The status line: how many bosses got PD2's aura.
 void BossAuraState(const parts::Part& part, char* out, size_t size) noexcept;
