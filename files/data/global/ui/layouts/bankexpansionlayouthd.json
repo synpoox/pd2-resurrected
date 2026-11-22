@@ -613,6 +613,69 @@
                         "rect": { "width": 98, "height": 98, "x": 958, "y": 596 },
 						"itemCode": "fed"
                     }
+                },
+                {
+                    "type": "AdvancedStashSlotWidget", "name": "wss",
+                    "fields": {
+                        "rect": { "width": 98, "height": 98, "x": 102, "y": 790 },
+						"itemCode": "wss"
+                    }
+                },
+                {
+                    "type": "AdvancedStashSlotWidget", "name": "cwss",
+                    "fields": {
+                        "rect": { "width": 98, "height": 98, "x": 206, "y": 790 },
+						"itemCode": "cwss"
+                    }
+                },
+                {
+                    "type": "AdvancedStashSlotWidget", "name": "crfp",
+                    "fields": {
+                        "rect": { "width": 98, "height": 98, "x": 102, "y": 894 },
+						"itemCode": "crfp"
+                    }
+                },
+                {
+                    "type": "AdvancedStashSlotWidget", "name": "crfb",
+                    "fields": {
+                        "rect": { "width": 98, "height": 98, "x": 858, "y": 790 },
+						"itemCode": "crfb"
+                    }
+                },
+                {
+                    "type": "AdvancedStashSlotWidget", "name": "crfc",
+                    "fields": {
+                        "rect": { "width": 98, "height": 98, "x": 962, "y": 790 },
+						"itemCode": "crfc"
+                    }
+                },
+                {
+                    "type": "AdvancedStashSlotWidget", "name": "crfs",
+                    "fields": {
+                        "rect": { "width": 98, "height": 98, "x": 858, "y": 894 },
+						"itemCode": "crfs"
+                    }
+                },
+                {
+                    "type": "AdvancedStashSlotWidget", "name": "crfh",
+                    "fields": {
+                        "rect": { "width": 98, "height": 98, "x": 962, "y": 894 },
+						"itemCode": "crfh"
+                    }
+                },
+                {
+                    "type": "AdvancedStashSlotWidget", "name": "crfv",
+                    "fields": {
+                        "rect": { "width": 98, "height": 98, "x": 858, "y": 998 },
+						"itemCode": "crfv"
+                    }
+                },
+                {
+                    "type": "AdvancedStashSlotWidget", "name": "crfu",
+                    "fields": {
+                        "rect": { "width": 98, "height": 98, "x": 962, "y": 998 },
+						"itemCode": "crfu"
+                    }
                 }																
             ]
         },
