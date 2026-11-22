@@ -2497,8 +2497,14 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool telekinesis = PatchTelekinesisArrows(context);
 	const bool shrinePotions = PatchShrinePotions(context);
 	const bool curseLength = PatchCurseLength(context);
-	// One rule, ok only with both halves: a client roll capped apart from the server's draws the missile stopping early
+	// One rule, ok only with both halves: a client roll capped apart from the server's draws the missile stopping early.
+	// Both sites are scanned before either hook goes in, so a build that moved one leaves both rolls stock.
+	// shortcut: if the loader refuses the second hook after the first went in, the first stays; undo it if that ever happens.
+	uint64_t pierceServerAt = 0;
+	uint64_t pierceClientAt = 0;
 	const bool pierceCap =
+	    sigscan::ScanUnique(context->exeBase, PierceRollEntry, 0, &pierceServerAt) == 1 &&
+	    sigscan::ScanUnique(context->exeBase, ClientPierceRollEntry, 0, &pierceClientAt) == 1 &&
 	    sigscan::HookBySignature(context, "PierceRoll", PierceRollEntry, 0, PierceRollStock, sizeof(PierceRollStock),
 	                             PierceRoll, &g_pierceRollOriginal) &&
 	    sigscan::HookBySignature(context, "ClientPierceRoll", ClientPierceRollEntry, 0, ClientPierceRollStock,
