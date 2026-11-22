@@ -192,6 +192,20 @@ constexpr auto MergedCount(int32_t have, int32_t add, int32_t max) noexcept -> i
 	return have < 1 || add < 1 || have + add > max ? 0 : have + add;
 }
 
+// A hand drop's top-up (#1758): the stack's count after it takes what fits up to max, and what stays on the cursor.
+// {0, 0} when a count is unknown (below 1) or the stack is already full: nothing changes then
+struct TopUp {
+	int32_t stack = 0;
+	int32_t rest = 0;
+};
+constexpr auto ToppedUp(int32_t have, int32_t add, int32_t max) noexcept -> TopUp {
+	if (have < 1 || add < 1 || have >= max) {
+		return {};
+	}
+	const int32_t stack = have + add > max ? max : have + add;
+	return {stack, have + add - stack};
+}
+
 // The first free column of a map's row, from a bit per occupied column; -1 when the row is full
 constexpr auto FreeColumn(uint32_t occupied) noexcept -> int32_t {
 	for (int32_t x = 0; x < PageWidth; ++x) {
@@ -260,6 +274,9 @@ static_assert(!AtHome(HomeOf(Code("m04")), Code("m04"), Code("m04"), true, 19, 3
 static_assert(!AtHome(HomeOf(Code("m04")), Code("m04"), Code("m04"), true, 15, 3, 4));  // a map outside the map cells
 static_assert(MergedCount(1, 1, 50) == 2 && MergedCount(49, 1, 50) == 50 && MergedCount(50, 1, 50) == 0);
 static_assert(MergedCount(45, 6, 50) == 0 && MergedCount(0, 1, 50) == 0 && MergedCount(3, 0, 50) == 0);
+static_assert(ToppedUp(45, 6, 50).stack == 50 && ToppedUp(45, 6, 50).rest == 1 && ToppedUp(49, 1, 50).rest == 0);
+static_assert(ToppedUp(50, 1, 50).stack == 0 && ToppedUp(0, 1, 50).stack == 0 && ToppedUp(3, 0, 50).stack == 0);
+static_assert(ToppedUp(1, 50, 50).stack + ToppedUp(1, 50, 50).rest == 51);  // nothing made or lost
 static_assert(FreeColumn(0) == 0 && FreeColumn(0b111) == 3 && FreeColumn(0x3ff) == -1);
 
 }  // namespace pd2::affinity

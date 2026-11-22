@@ -67,7 +67,14 @@ Bossing page's stack, and logs `No item found at page: 4` (#1744). So while eith
 onto the stash (grid 4) and queues it for the game thread, which merges the cursor item into the stack through the same
 SDK merge when it is the same stackable item on its own cell of the open page. Log: `stash tabs: stack message 0x21 onto
 page .. cell x,y: the plugin stacks it`, then `affinity: .. merged with the stack ..`. Otherwise, or when a step fails (a
-full inventory, a sum past 50), the item stays on the cursor: it is destroyed only after the stack holds the sum. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
+full inventory), the item stays on the cursor: it is destroyed only after the stack holds the sum. A sum past 50 tops the stack up to 50 and leaves the rest on the cursor item, as D2R's own 0x4c1940 does ([#1758](https://github.com/synpoox/pd2-resurrected/issues/1758)).
+The counts are read first (stat 70 through `editNativeItem`, which also reads a shared-stash item): a stack already at 50 refuses with no move, as D2R's
+handler refuses that message (0x4f2a80 returns 2 only below the item's maxstack; the refusal only writes telemetry). Before #1758 the
+stack went to the inventory and back first, and the cursor item was left invisible on the client while the server still
+held it (`Insert overlaps with item id .. mode: 4` on the next pick-up). The client sends 0x21 whenever its stack test
+(0x375960) passes, full or not (+9 is 1 when the sum fits), and marks the cursor item pending (0x1c6ac0, state 0x36),
+cleared by an item packet (0x1c6a40). Maps stack only when both are normal quality with equal non-quantity stats
+(`StackAllowed`, shared with the tidy pass; `map_stack.h` `Same`), so a rare map is never merged into a normal stack. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
 refused message 0x.., not the item's own cell`.
 
 Shared pages ([#1749](https://github.com/synpoox/pd2-resurrected/issues/1749)): the Maps and Bossing tabs are shared pages,

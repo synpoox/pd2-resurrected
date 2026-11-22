@@ -60,6 +60,20 @@ auto Collect(Unit* src, int32_t statCount, int32_t quantityStat, Entries entries
 	}
 }
 
+// Two maps' collected stats match entry by entry (layer, stat, value; the unknown dword is ignored), as FirstDifference
+// compares them: the hand stack's guard (stash_affinity.cpp StackAllowed, #1758) reads each map in its own callback
+inline auto Same(const Saved& a, const Saved& b) noexcept -> bool {
+	if (a.count != b.count) {
+		return false;
+	}
+	for (int32_t i = 0; i < a.count; ++i) {
+		if (a.entry[i].layer != b.entry[i].layer || a.entry[i].stat != b.entry[i].stat || a.entry[i].value != b.entry[i].value) {
+			return false;
+		}
+	}
+	return true;
+}
+
 // Sets each saved (stat, layer) on dst; SetUnitStat adds to a stat the piece already has, so callers skip 564 (#1499, #1504)
 template <class Unit, class SetStat>
 auto Apply(Unit* dst, const Saved& saved, SetStat set) noexcept -> int32_t {
