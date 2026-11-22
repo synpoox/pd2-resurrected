@@ -676,6 +676,20 @@
                         "rect": { "width": 98, "height": 98, "x": 962, "y": 998 },
 						"itemCode": "crfu"
                     }
+                },
+                {
+                    "type": "AdvancedStashSlotWidget", "name": "lbox",
+                    "fields": {
+                        "rect": { "width": 98, "height": 98, "x": 102, "y": 998 },
+						"itemCode": "lbox"
+                    }
+                },
+                {
+                    "type": "AdvancedStashSlotWidget", "name": "lpp",
+                    "fields": {
+                        "rect": { "width": 98, "height": 98, "x": 206, "y": 998 },
+						"itemCode": "lpp"
+                    }
                 }																
             ]
         },
