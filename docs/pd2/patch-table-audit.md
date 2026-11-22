@@ -27,15 +27,15 @@ Status is one of four:
 | Status | Records | Units |
 |---|---|---|
 | ported | 122 | 69 |
-| deviation | 307 | 67 |
-| missing | 177 | 113 |
-| not needed | 509 | 272 |
+| deviation | 330 | 83 |
+| missing | 186 | 116 |
+| not needed | 477 | 253 |
 | **total** | **1115** | **521** |
 
 By module: D2Game 615 records, D2Client 410, D2Common 86, D2Lang 3, D2Win 1. A few features account for most of the records:
 - PD2's client sound engine: 261 D2Client records. It is a deviation: D2R's sound tables are kept.
 - The character save and trade buffer raises (`0x2000` to `0x20000`, for PD2's bigger stash): about 150 D2Game records. Not needed: D2R saves its own stash.
-- The 1.13c object class limit (`0x23d`).
+- The 1.13c object class limit (`0x23d`): a deviation, under the row for PD2's blank `<reserved>` objects rows 573-583.
 
 The installer writes (section [Installer table writes](#installer-table-writes)) number 257:
 - 99 are named by our code;
@@ -69,6 +69,8 @@ Filed by this audit, each a sub-issue of [#1817](https://github.com/synpoox/pd2-
 - [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847): decode the remaining D2Game patches.
 - [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848): decode the remaining D2Common patches.
 - [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849): check the installer table writes no doc names.
+- [#1851](https://github.com/synpoox/pd2-resurrected/issues/1851): Exploding and Poison shrines drop throwing potions (`tpgs`, `tpfs`).
+- [#1852](https://github.com/synpoox/pd2-resurrected/issues/1852): blank-rarity unique rows weigh 0 (Embersworn drops for us).
 
 Already tracked, not refiled:
 - [#1803](https://github.com/synpoox/pd2-resurrected/issues/1803): the mercenary think.
@@ -103,15 +105,15 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 8: D2Client `+0x224fa`..`+0x224fb`: `734a` -> `7343`<br>D2Client `+0x2257a`..`+0x2257b`: `7328` -> `731d`<br>D2Client `+0x22bb5`..`+0x22bbb`: `3d3d020000721f` -> `9090909090eb43`<br>D2Client `+0x247fe`..`+0x2480e`: `83f83b740c83f83c74076860..` -> `909090909090909090909090..` | `+0x224f0`, `+0x22570`, `+0x22b20`, `+0x247a0` | Client checks that exit past object class 572 are skipped, and the class 59/60 check in the object-mode packet is NOPed, so PD2's objects past 572 work | not needed | D2R sizes object tables from objects.txt; PD2's objects are in our data | - |
-| 6: D2Game `+0x2e8d1`: `3d` -> `e8`<br>D2Game call `+0x2e8d1(3d)` (to `0x2eb13`) -> PD2 `0x103a2660`<br>D2Game `+0x2e8d6`: `7d` -> `75`<br>D2Game `+0x2f3a0`..`+0x2f3a4`: `6681ff3d02` -> `9090909090`<br>D2Game `+0x2f3af`..`+0x2f3b0`: `7207` -> `eb07` | `+0x2e8b0`, `+0x2f300` | cmp 0x23d raised for objects 573-583 (103a2660) | not needed | D2R's object table is data-sized | - |
-| 7: D2Common `+0xc59c`: `3d` -> `e8`<br>D2Common call `+0xc59c(3d)` (to `0xc7de`) -> PD2 `0x103a2660`<br>D2Common `+0xc5a1`..`+0xc5a2`: `0f8d` -> `0f85`<br>D2Common `+0x19fea`: `3d` -> `e8`<br>D2Common call `+0x19fea(3d)` (to `0x1a22c`) -> PD2 `0x103a2660`<br>D2Common `+0x19fef`: `7d` -> `75` | `+0x19fa0`, `+0xc060` | D2Common Preset.cpp +0xc59c and +0x19fea: the object class test cmp 0x23d (573) becomes PD2's range check 573-583 (0x103a2660) | not needed | D2R reads objects.txt to its row count; PD2's objects are appended (LP1) | - |
+| 8: D2Client `+0x224fa`..`+0x224fb`: `734a` -> `7343`<br>D2Client `+0x2257a`..`+0x2257b`: `7328` -> `731d`<br>D2Client `+0x22bb5`..`+0x22bbb`: `3d3d020000721f` -> `9090909090eb43`<br>D2Client `+0x247fe`..`+0x2480e`: `83f83b740c83f83c74076860..` -> `909090909090909090909090..` | `+0x224f0`, `+0x22570`, `+0x22b20`, `+0x247a0` | Client checks that exit past object class 572 are skipped, and the class 59/60 check in the object-mode packet is NOPed, so PD2's objects past 572 work | deviation | PD2's blank <reserved> objects rows 573-583: D2R's rows stand there | - |
+| 6: D2Game `+0x2e8d1`: `3d` -> `e8`<br>D2Game call `+0x2e8d1(3d)` (to `0x2eb13`) -> PD2 `0x103a2660`<br>D2Game `+0x2e8d6`: `7d` -> `75`<br>D2Game `+0x2f3a0`..`+0x2f3a4`: `6681ff3d02` -> `9090909090`<br>D2Game `+0x2f3af`..`+0x2f3b0`: `7207` -> `eb07` | `+0x2e8b0`, `+0x2f300` | cmp 0x23d raised for objects 573-583 (103a2660) | deviation | PD2's blank <reserved> objects rows 573-583: D2R's rows stand there | - |
+| 7: D2Common `+0xc59c`: `3d` -> `e8`<br>D2Common call `+0xc59c(3d)` (to `0xc7de`) -> PD2 `0x103a2660`<br>D2Common `+0xc5a1`..`+0xc5a2`: `0f8d` -> `0f85`<br>D2Common `+0x19fea`: `3d` -> `e8`<br>D2Common call `+0x19fea(3d)` (to `0x1a22c`) -> PD2 `0x103a2660`<br>D2Common `+0x19fef`: `7d` -> `75` | `+0x19fa0`, `+0xc060` | D2Common Preset.cpp +0xc59c and +0x19fea: the object class test cmp 0x23d (573) becomes PD2's range check 573-583 (0x103a2660) | deviation | PD2's blank <reserved> objects rows 573-583: D2R's rows stand there | - |
 
 ### Unlimited TP and ID books
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 2: D2Client call `+0x28c70`, `+0x3e93e` (to `0xce9e` D2Common#10353) -> PD2 `0x102fbc20` | `+0x28bc0`, `+0x3e7f0` | Client quantity read returns 99 for items 513/514 (rid, rtp) | ported | plugin/core-rules/almanac.cpp | - |
+| 2: D2Client call `+0x28c70`, `+0x3e93e` (to `0xce9e` D2Common#10353) -> PD2 `0x102fbc20` | `+0x28bc0`, `+0x3e7f0` | Client quantity read returns 99 for items 513/514 (rid, rtp) | ported | plugin/core-rules/almanac.cpp; rtp: plugin/core-rules/item_rules.cpp | - |
 | 3: D2Game call `+0xd43ed`, `+0xd3206`, `+0xd2be5` (to `0xd1aa0`) -> PD2 `0x10382b80` | `+0xd2be0`, `+0xd31d0`, `+0xd43e0` | the item skill of a book is read through 0x10382b80, which returns rid/rtp's skill | ported | plugin/core-rules/almanac.cpp (IR5) | - |
 
 ### Phasing
@@ -247,7 +249,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 1: D2Game `+0xf5ce`: `7d` -> `eb` | `+0xf370` | +0xf5ce jge to jmp gives unique rows with rarity 0 a weight of 0 | not needed | the 10 spawnable rarity-0 uniques all have lvl over 99 | - |
+| 1: D2Game `+0xf5ce`: `7d` -> `eb` | `+0xf370` | +0xf5ce jge to jmp: a unique row with blank or 0 rarity weighs 0 (vanilla and D2R weigh it 1) | missing | [#1852](https://github.com/synpoox/pd2-resurrected/issues/1852); Embersworn (lvl 74, blank rarity) can drop for us | D2R 0x443910 sets weight 1 for rarity < 1 |
 
 ### Item and save serialisation buffers
 
@@ -319,7 +321,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 2: D2Game call `+0x201d2`, `+0xe13da` (to `0xe12d0`) -> PD2 `0x10371b30` | `+0x200e0`, `+0xe13b0` | spawn unit e12d0 accepts PD2's object rows past the class limit (10371b30) | not needed | D2R's object table is data-sized | - |
+| 2: D2Game call `+0x201d2`, `+0xe13da` (to `0xe12d0`) -> PD2 `0x10371b30` | `+0x200e0`, `+0xe13b0` | spawn unit e12d0 accepts PD2's object rows past the class limit (10371b30) | deviation | PD2's blank <reserved> objects rows 573-583: D2R's rows stand there | - |
 
 ### Aura-enchanted bosses
 
@@ -487,7 +489,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 8: D2Game `+0x6c281`..`+0x6c284`: `67706d20` -> `74706773`<br>D2Game `+0x6c601`..`+0x6c604`: `6f706d20` -> `74706673` | `+0x6c200`, `+0x6c580` | shrines 21 and 22 drop 'sgpt' and 'sfpt' for 'gpm ' and 'opm ' | not needed | neither code exists in any PD2 table, so the drops are dead in PD2; low confidence | - |
+| 8: D2Game `+0x6c281`..`+0x6c284`: `67706d20` -> `74706773`<br>D2Game `+0x6c601`..`+0x6c604`: `6f706d20` -> `74706673` | `+0x6c200`, `+0x6c580` | shrines 21 and 22 (Exploding, Poison) drop 'tpgs' and 'tpfs' (PD2's small gas and fire throwing potions, weapons.txt) instead of 'gpm ' and 'opm ' | missing | [#1851](https://github.com/synpoox/pd2-resurrected/issues/1851) | D2R's shrine drops 'opm'/'gpm' |
 
 ### PvP quest entry
 
@@ -517,7 +519,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 1: D2Game call `+0x73462` (to `0x70cf0`) -> PD2 `0x10364ea0` | `+0x72fc0` | stack-aware cube matching (10364e30) | ported | plugin/core-rules/cube_stacks.cpp | - |
+| 1: D2Game call `+0x73462` (to `0x70cf0`) -> PD2 `0x10364ea0` | `+0x72fc0` | stack-aware cube matching: the call goes to the thunk 0x103a17e0 (PD2.gpr 0x103a1770), which calls the function 0x10364ea0 (PD2.gpr 0x10364e30) | ported | plugin/core-rules/cube_stacks.cpp | - |
 
 ### Cube stack executor
 
@@ -734,7 +736,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 1: D2Game call `+0xd14a2` (to `0x74200`) -> PD2 `0x103999f0` | - | +0xd14a2: gold to and from the stash through PD2's copy (0x103999f0) with a 25,000,000 cap | not needed | D2R's own stash gold | - |
+| 1: D2Game call `+0xd14a2` (to `0x74200`) -> PD2 `0x103999f0` | - | +0xd14a2: gold to and from the stash through PD2's copy (0x103999f0) with a 25,000,000 cap | not needed | D2R's own stash gold; stash gold caps go with the cut stash layouts (docs/research/items/pd2-remaining-items.md:115) | - |
 
 ### Teleport blocked
 
