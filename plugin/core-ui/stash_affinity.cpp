@@ -224,15 +224,28 @@ void CollectMapStats(const D2RL::PluginContext*, void* native, void* user) noexc
 	                       *static_cast<pd2::mapstack::Saved*>(user));
 }
 
-// Core-rules' rule (#1326): only normal-quality maps with equal stats stack, so Route must not merge any other pair
-auto MapsStack(const items::ItemInfo& a, const items::ItemInfo& b) noexcept -> bool {
-	if (a.quality != items::Quality::Normal || b.quality != items::Quality::Normal) {
-		return false;
-	}
+// Core-rules' rule (#1326): only normal-quality maps with equal stats stack, so Route must not merge any other pair.
+// nullptr when the pair stacks, else the reason it does not; one log line per candidate keeps the decision readable.
+auto MapRefusal(const items::ItemInfo& a, const items::ItemInfo& b, uint32_t stackPage, bool inView, bool shown) noexcept -> const char* {
 	static pd2::mapstack::Saved sa, sb;  // game thread only; too big for the stack
-	return g_items->editNativeItem(g_context, a.handle, CollectMapStats, &sa) == items::Result::Success &&
-	       g_items->editNativeItem(g_context, b.handle, CollectMapStats, &sb) == items::Result::Success &&
-	       pd2::mapstack::SameStats(sa, sb);
+	const char* reason = nullptr;
+	int32_t same = -1;
+	if (b.sharedStashPage != stackPage || !InCell(b.x, b.y) || (shown && !inView)) {
+		reason = "page";
+	} else if (a.quality != items::Quality::Normal || b.quality != items::Quality::Normal) {
+		reason = "quality";
+	} else if (Quantity(b.handle) + Quantity(a.handle) > MaxStack) {
+		reason = "count";
+	} else if (g_items->editNativeItem(g_context, a.handle, CollectMapStats, &sa) != items::Result::Success ||
+	           g_items->editNativeItem(g_context, b.handle, CollectMapStats, &sb) != items::Result::Success) {
+		reason = "stats unread";
+	} else if (same = pd2::mapstack::SameStats(sa, sb) ? 1 : 0; same == 0) {
+		reason = "stats";
+	}
+	plog::Info("affinity: map %08x (quality %u) onto the stack at page %u cell %d,%d (quality %u): stats equal %d, %s%s", a.code,
+	           static_cast<uint32_t>(a.quality), b.sharedStashPage, b.x, b.y, static_cast<uint32_t>(b.quality), same,
+	           reason == nullptr ? "merge" : "refused: ", reason == nullptr ? "" : reason);
+	return reason;
 }
 
 // Into the same currency's stack on its cell; Conflict when the sum passes a stack. editItem and destroyItem refuse a
@@ -376,9 +389,8 @@ void Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept {
 		for (uint32_t i = 0; i < g_pass.reservedCount && moved != items::Result::Success; ++i) {
 			items::ItemInfo& stack = g_pass.reserved[i];
 			if (stack.code != 0 && stack.runtimeId != item.runtimeId && stack.container == C::SharedStash &&
-			    stack.sharedStashPage == stackPage && InCell(stack.x, stack.y) && (!shown || aff::InMapView(stack.x, stack.y)) &&
 			    aff::Normal(stack.code) == aff::Normal(item.code) &&
-			    Quantity(stack.handle) + Quantity(item.handle) <= MaxStack && MapsStack(item, stack)) {
+			    MapRefusal(item, stack, stackPage, aff::InMapView(stack.x, stack.y), shown) == nullptr) {
 				moved = Merge(player, item, stack);
 			}
 		}
