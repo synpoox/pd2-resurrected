@@ -1,3 +1,3 @@
 #### Changes
 
-- Classic and LoD characters now play the full mod; old ones and their shared stash file may not load (#1853).
+- Classic/LoD characters play the full mod; move SharedStashSoftCoreV2.d2i out of the save folder first (#1853).
