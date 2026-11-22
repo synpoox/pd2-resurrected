@@ -59,8 +59,8 @@ Hand drops ([#1726](https://github.com/synpoox/pd2-resurrected/issues/1726)): wh
 inventory padlock's message hook (`inventory_lock.cpp`, by signature) refuses the local player's 0x18 (put the cursor item on a
 stash cell, page field 4) and 0x1f (swap it with a stored item on the stash, page field 4; the cursor item goes to the clicked cell at +0x11, packed `y << 16 | x` like the stored item's cell at +0x0d; read as two plain ints until #1744, which refused a same-item drop on its own cell) unless `stash_home.h`'s `AtHome` says the
 item belongs on that page and cell (a map of the shown base also in the map cells). Any other item, or a currency or boss item in
-another's cell, stays on the cursor. The message holds no shared page number, so the open tab (`stash_affinity::ViewPage`) names
-it. The stack message 0x21 (cursor item onto a stored one; ids +1 and +5, grid +0x0d, packed cell +0x11; the client
+another's cell, stays on the cursor. These messages hold no shared page number, so the open tab (`stash_affinity::ViewPage`) names
+it (the shared-page messages below name it themselves). The stack message 0x21 (cursor item onto a stored one; ids +1 and +5, grid +0x0d, packed cell +0x11; the client
 sends it whenever the two items stack, 0x375960) does not work natively on these pages: D2R's handler 0x4c1940 looks the
 target up by cell (0x472590, 0x474220) in the player's current inventory (0x34a360), which does not hold the Maps or
 Bossing page's stack, and logs `No item found at page: 4` (#1744). So while either tab is open the hook consumes a 0x21
@@ -83,9 +83,31 @@ whose grid belongs to another unit, so the client does not send 0x18 or 0x1f the
 0x1f) and a put is 0x45 (client `0x15f8b0`, server `0x4c5570`; 0x0d bytes: the cursor item +1, the owner +5, the cell +9
 packed). Before #1749 neither was filtered: a wrong put landed and the tidy pass moved it back, and a wrong swap put the stored
 item on the server's cursor, which the client never drew (it showed after a rejoin). The filter now refuses both by the same
-rule. A refusal sends nothing back, like D2R's own failure branches of these handlers (they only write telemetry): the client
-moves nothing before the server answers (it marks the cursor item pending, `0x1c6ac0`), so the item stays on the cursor and in
-sync. The swap test needs only the cursor item, so a stored item the lookup cannot find does not let the swap through.
+rule. The swap test needs only the cursor item, so a stored item the lookup cannot find does not let the swap through.
+
+Page from the message ([#1756](https://github.com/synpoox/pd2-resurrected/issues/1756)): 0x14 (+9), 0x45 (+5) and 0x55 (+5)
+name the page's owner unit, so the filter judges the page that unit is, not the tab open when the server handles the message
+(a tab switch or a closed stash before the tick no longer lets a wrong move through, and a reserved page reached by the stock
+arrows is filtered too). D2R keeps each shared page as a unit (state 186 `sharedstash`), listed on the player's inventory at
++0x68 in tab order (`0x385860` appends `{owner id +0, remove-only +8, active +9, advanced stash +0xa, next +0x10}`; the
+handlers find the owner with `0x388e10`). The plugin counts the nodes that are not the RotW advanced stash (state 209,
+`0x52f8d0`), the SDK's normal tab number; no SDK call maps a unit to its tab. An owner not in the list, or 0x18 and 0x1f
+(no owner), take the open tab. The refusal log names both (`page 15, open tab 15`).
+
+Quick-moves ([#1757](https://github.com/synpoox/pd2-resurrected/issues/1757)): a Ctrl+click or the pad's quick-move between
+the inventory and a shared page is 0x55 (client `0x15f8b0`, server `0x4c7690`; 0x1d bytes: the item +1, the owner +5, from
+grid +9 and packed cell +0x0d, to grid +0x11 and packed cell +0x15, +0x19 0 into the owner's grid, 1 out of it). The client
+picks the first free cell (`0x3865b0`, not the red cells' tests), so a map, currency or boss item lands anywhere and the
+watch routes it as before; only an item with no home is refused (it used to show for a moment, then the tidy pass moved it
+back, #1737). The plugin's own moves (the watch, the Shift+Right Click hotkey) are SDK transactions, not client messages, so the
+filter never sees them.
+
+Refusals resend the item ([#1766](https://github.com/synpoox/pd2-resurrected/issues/1766)): the client moves nothing before
+the server answers, but it marks the item pending (`0x2c81d0` or `0x15f8b0` call `0x1c6ac0`, state 0x36) and ignores stack
+and swap clicks with it until an item packet for it arrives (`0x1c6a40`). D2R's own failure branches send none, so every
+refusal queues `stash_affinity::Resend` for the game thread: the same `ResendCursor` as a consumed 0x21, which also finds a
+quick-moved item still in the inventory or Cube, and edits an item that does not stack to its own identified state. Log:
+`stash tabs: refused message 0x.. .. ; the item is sent again`, then `affinity: cursor item .. sent to the client again: result 0`.
 
 Red cells ([#1745](https://github.com/synpoox/pd2-resurrected/issues/1745)): the client asks the same rule first. Two
 D2Common cell tests are hooked by signature (`inventory_lock.cpp`): 93847 `0x38a250` (the cursor item's cells are free: green

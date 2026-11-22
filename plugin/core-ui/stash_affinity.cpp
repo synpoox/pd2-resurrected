@@ -388,20 +388,37 @@ auto FindStored(const D2RL::PluginContext*, const items::ItemInfo* item, void* u
 // 0x1c60a0) makes the stack the client's cursor item (0x389990) and action 4 puts it down, so the rest left on the
 // cursor was not drawn though the server held it. An editItem of the cursor item to its own count, after the last move,
 // sends the cursor item again (0x9d action 0x15, 0x1c6540: the client rebuilds it and makes it the cursor item) without
-// changing it. No-op when the cursor item is gone (a whole merge destroyed it).
+// changing it. No-op when the cursor item is gone (a whole merge destroyed it). #1766: a refused hand drop or quick-move
+// leaves its item pending the same way; a quick-move's item is still in the inventory or Cube, and an item that does not
+// stack (count 0) is edited to its own identified state instead.
+constexpr D2RL::Inventory::ItemFilter Carried {.structSize = D2RL::Inventory::ItemFilterSize,
+                                               .containerMask = items::ContainerBit(C::Inventory) | items::ContainerBit(C::Cube)};
 void ResendCursor(D2RL::PlayerHandle player, uint32_t cursorId) noexcept {
 	D2RL::ItemHandle held {};
 	items::ItemInfo item {.structSize = items::ItemInfoSize};
 	if (g_inventory->getCursorItem(g_context, player, &held) != D2RL::Inventory::Result::Success ||
 	    g_items->getItemInfo(g_context, held, &item) != items::Result::Success || item.runtimeId != cursorId) {
-		return;
+		Find stored {.id = cursorId};
+		g_inventory->forEachInventoryItem(g_context, player, &Carried, FindStored, &stored);
+		if (stored.info.runtimeId != cursorId || cursorId == 0) {
+			return;
+		}
+		item = stored.info;
+		held = item.handle;
 	}
 	const int32_t count = Quantity(held);
-	const items::ItemEdit same {.structSize = items::ItemEditSize, .fields = items::EditFieldBit(items::EditField::Quantity),
-	                            .quantity = static_cast<uint32_t>(count)};
-	const auto sent = count > 0 ? g_items->editItem(g_context, player, held, &same) : items::Result::Unsupported;
+	const uint32_t identified = item.stateFlags & items::ItemStateIdentified;
+	const items::ItemEdit same = count > 0 ? items::ItemEdit {.structSize = items::ItemEditSize,
+	                                                          .fields = items::EditFieldBit(items::EditField::Quantity),
+	                                                          .quantity = static_cast<uint32_t>(count)}
+	                                       : items::ItemEdit {.structSize = items::ItemEditSize,
+	                                                          .fields = items::EditFieldBit(items::EditField::Identified),
+	                                                          .stateFlags = identified};
+	const auto sent = g_items->editItem(g_context, player, held, &same);
 	// self-check: the resend changes nothing on the server
-	const bool kept = Quantity(held) == count;
+	items::ItemInfo after {.structSize = items::ItemInfoSize};
+	const bool kept = Quantity(held) == count && g_items->getItemInfo(g_context, held, &after) == items::Result::Success &&
+	                  (after.stateFlags & items::ItemStateIdentified) == identified;
 	(sent == items::Result::Success && kept ? plog::Info : plog::Warn)(
 	    "affinity: cursor item %08x x%d sent to the client again: result %u%s", item.code, count, static_cast<uint32_t>(sent),
 	    kept ? "" : ", COUNT CHANGED");
@@ -677,6 +694,20 @@ auto StackOnto(uint32_t cursorId, uint32_t targetId) noexcept -> bool {
 	}
 	void* ids = reinterpret_cast<void*>(static_cast<uintptr_t>(cursorId) << 32 | targetId);
 	return g_threads->runOnGameThread(g_context, StackNow, ids) == D2RL::Threads::Result::Success;
+}
+
+auto Resend(uint32_t itemId) noexcept -> bool {
+	if (g_threads == nullptr || g_inventory == nullptr || g_items == nullptr) {
+		return false;
+	}
+	const auto now = [](const D2RL::PluginContext*, void* user) noexcept {
+		D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+		if (g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success) {
+			ResendCursor(player, static_cast<uint32_t>(reinterpret_cast<uintptr_t>(user)));
+		}
+	};
+	return g_threads->runOnGameThread(g_context, now, reinterpret_cast<void*>(static_cast<uintptr_t>(itemId))) ==
+	       D2RL::Threads::Result::Success;
 }
 
 auto WantedBase() noexcept -> uint32_t {

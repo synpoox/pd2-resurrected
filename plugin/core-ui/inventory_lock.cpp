@@ -172,6 +172,29 @@ static_assert(TabStack(StackStash, sizeof StackStash, aff::MapsPage) && TabStack
 static_assert(!TabStack(StackInv, sizeof StackInv, aff::MapsPage) && !TabStack(StackStash, sizeof StackStash, 0));
 static_assert(!TabStack(StackStash, 0x14, aff::MapsPage) && !TabStack(SwapOwnCell, sizeof SwapOwnCell, aff::MapsPage));
 static_assert(!ChangesEquipment(nullptr, 9) && !ChangesEquipment(Equip, 0));
+// #1756: 0x14 (+9) and 0x45 (+5) name their page by the owner; 0x18 and 0x1f, or an owner not found, take the open tab's
+constexpr auto Owner31IsMaps = [](uint32_t owner) { return owner == 0x31 ? aff::MapsPage : UINT32_MAX; };
+constexpr auto OwnerOnPage3 = [](uint32_t) { return 0U; };
+static_assert(MessagePage(SwapShared, sizeof SwapShared, 0, Owner31IsMaps) == aff::MapsPage);  // the tab closed before the tick
+static_assert(MessagePage(PutShared, sizeof PutShared, aff::BossingPage, Owner31IsMaps) == aff::MapsPage);  // another tab open
+static_assert(MessagePage(PutShared, sizeof PutShared, aff::MapsPage, OwnerOnPage3) == 0);  // a page that is not reserved
+static_assert(MessagePage(SwapStash, sizeof SwapStash, aff::MapsPage, OwnerOnPage3) == aff::MapsPage);  // 0x1f has no owner
+static_assert(MessagePage(PutShared, 8, aff::MapsPage, OwnerOnPage3) == aff::MapsPage);  // too short to hold the owner
+static_assert(MessagePage(PutShared, sizeof PutShared, aff::MapsPage, [](uint32_t) { return UINT32_MAX; }) == aff::MapsPage);
+// #1757: 0x55, a quick-move of item 7 into owner 0x31's grid 4 at cell 2,3 (+0x19 0); out of it (+0x19 1) is never refused
+constexpr uint8_t QuickIn[] = {0x55, 7, 0, 0, 0, 0x31, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0,
+                               4, 0, 0, 0, 2, 0, 3, 0, 0, 0, 0, 0};
+constexpr uint8_t QuickOut[] = {0x55, 7, 0, 0, 0, 0x31, 0, 0, 0, 4, 0, 0, 0, 2, 0, 3, 0,
+                                0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0};
+static_assert(sizeof QuickIn == 0x1d && sizeof QuickOut == 0x1d);
+constexpr auto Homeless7 = [](uint32_t id) { return id == 7; };
+constexpr auto Homed = [](uint32_t) { return false; };
+static_assert(QuickMoveOnTab(QuickIn, sizeof QuickIn, aff::MapsPage, Homeless7));
+static_assert(!QuickMoveOnTab(QuickIn, sizeof QuickIn, aff::MapsPage, Homed));  // a homed item: the watch routes it
+static_assert(!QuickMoveOnTab(QuickOut, sizeof QuickOut, aff::MapsPage, Homeless7));  // out of the page
+static_assert(!QuickMoveOnTab(QuickIn, sizeof QuickIn, 0, Homeless7) && !QuickMoveOnTab(QuickIn, 0x1c, aff::MapsPage, Homeless7));
+static_assert(MessagePage(QuickIn, sizeof QuickIn, 0, Owner31IsMaps) == aff::MapsPage);
+static_assert(!MisplacedOnTab(QuickIn, sizeof QuickIn, aff::MapsPage, GemPut, Never));  // 0x55 is QuickMoveOnTab's
 
 constexpr char Command[] = "core-ui/InventoryLock";
 constexpr char Unlocked[] = "InventoryLock", Locked[] = "InventoryLockOn", LockedArt[] = "InventoryLockOnArt";
@@ -275,7 +298,7 @@ void Load(void* player) noexcept {
 }
 
 sigscan::Entry* const Sigs[] = {&d2r::sig::FindUnit, &d2r::sig::ItemPage, &d2r::sig::UnitPackedXY, &d2r::sig::UnitClassOf,
-                                &d2r::sig::ItemRecord, &d2r::sig::UnitDataFlag};
+                                &d2r::sig::ItemRecord, &d2r::sig::UnitDataFlag, &d2r::sig::UnitInventory};
 
 // 93847 0x4f2fa0, int (game, player, message, size): the server's client-message dispatch (PlrMsg handler table by id)
 using DispatchFn = int (*)(void*, void*, const uint8_t*, int) noexcept;
@@ -323,6 +346,49 @@ auto SwapOk(void* game, uint32_t a, uint32_t b, int32_t x, int32_t y, uint32_t p
 		item = UnitOf(game, b);
 	}
 	return !held(item) || HomeCell(CodeOf(game, item), stash_affinity::WantedBase(), page, x, y);
+}
+
+// 0x55: an item with no affinity home (or an unknown one) is refused; a homed one is routed by the watch from any cell
+auto Homeless(void* game, uint32_t id) noexcept -> bool {
+	const uint32_t code = CodeOf(game, UnitOf(game, id));
+	return code == 0 || aff::HomeOf(code).category == aff::Category::None;
+}
+
+// #1756: the shared page of the player's page owner unit `owner`: MapsPage or BossingPage, 0 another page, UINT32_MAX not
+// found. D2R keeps each shared page as a unit (state 186 sharedstash), listed on the player's inventory (+0 the inventory
+// magic 0x1020304, 0x388ba0) at +0x68 in tab order: 0x385860 appends a node {owner id +0, remove-only +8, active +9, the
+// RotW advanced stash +0xa (state 209 advancedstash, 0x52f8d0), next +0x10}; the 0x14, 0x45 and 0x55 handlers find the
+// owner there (0x388e10). The SDK's shared tab number counts the normal tabs, so the advanced stash's node is skipped. No SDK
+// call maps a unit to its tab (ItemInfo.sharedStashPage only names an item's). A misreading shows in the refusal log as a
+// page that differs from the open tab while the tab stays put.
+auto SharedPageOf(void* player, uint32_t owner) noexcept -> uint32_t {
+	const auto* inventory =
+		d2r::Engine<const uint8_t* (*)(void*, const char*, int) noexcept>(d2r::sig::UnitInventory)(player, __FILE__, __LINE__);
+	if (inventory == nullptr || d2r::At<uint32_t>(inventory, 0) != 0x1020304) {
+		return UINT32_MAX;
+	}
+	uint32_t page = 0, nodes = 0;
+	for (const auto* node = d2r::At<const uint8_t*>(inventory, 0x68); node != nullptr && nodes < 256;
+	     node = d2r::At<const uint8_t*>(node, 0x10), ++nodes) {
+		if (d2r::At<uint8_t>(node, 0x0a) != 0) {
+			continue;  // the advanced stash is not a normal tab
+		}
+		if (d2r::At<uint32_t>(node, 0) == owner) {
+			return page == aff::MapsPage || page == aff::BossingPage ? page : 0;
+		}
+		++page;
+	}
+	return UINT32_MAX;
+}
+
+// the item a refused message left pending on the client: the cursor item (+1; a 0x1f names it at +1 or +5), or 0x55's
+auto PendingItem(void* game, const uint8_t* message) noexcept -> uint32_t {
+	const uint32_t a = ReadU32(message + 1);
+	if (message[0] != 0x1f) {
+		return a;
+	}
+	Unit* item = UnitOf(game, a);
+	return item != nullptr && d2r::At<int32_t>(item, d2r::rva::UnitMode) == 4 ? a : ReadU32(message + 5);
 }
 
 // The client's cell test (#1745). D2R's inventory widget asks two D2Common functions about the cursor item over a grid
@@ -390,20 +456,27 @@ auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexc
 		plog::Info("inventory lock: refused charm-row message 0x%02x (%d bytes)", message[0], size);
 		return 0;
 	}
-	if (const uint32_t page = stash_affinity::ViewPage(); local && page != 0 && size > 0 &&
-	    MisplacedOnTab(
-	        message, static_cast<size_t>(size), page,
-	        [=](uint32_t id, int32_t x, int32_t y) noexcept { return PutOk(game, id, page, x, y); },
-	        [=](uint32_t a, uint32_t b, int32_t x, int32_t y) noexcept { return SwapOk(game, a, b, x, y, page); })) {
+	const uint32_t view = stash_affinity::ViewPage();
+	const uint32_t page = local && size > 0 ? MessagePage(message, static_cast<size_t>(size), view,
+	                                                      [=](uint32_t owner) noexcept { return SharedPageOf(player, owner); })
+	                                        : 0;
+	if (page != 0 &&
+	    (MisplacedOnTab(
+	         message, static_cast<size_t>(size), page,
+	         [=](uint32_t id, int32_t x, int32_t y) noexcept { return PutOk(game, id, page, x, y); },
+	         [=](uint32_t a, uint32_t b, int32_t x, int32_t y) noexcept { return SwapOk(game, a, b, x, y, page); }) ||
+	     QuickMoveOnTab(message, static_cast<size_t>(size), page, [=](uint32_t id) noexcept { return Homeless(game, id); }))) {
 		++g_refused;
-		plog::Info("stash tabs: refused message 0x%02x, not the item's own cell (page %u)", message[0], page);
+		const bool resent = stash_affinity::Resend(PendingItem(game, message));
+		plog::Info("stash tabs: refused message 0x%02x, not the item's own cell (page %u, open tab %u)%s", message[0], page, view,
+		           resent ? "; the item is sent again" : "; no resend queued");
 		return 0;
 	}
-	if (const uint32_t page = stash_affinity::ViewPage(); local && size > 0 && TabStack(message, static_cast<size_t>(size), page)) {
+	if (local && size > 0 && TabStack(message, static_cast<size_t>(size), view)) {
 		const uint32_t cell = ReadU32(message + 0x11);
 		// consumed only once the plugin's stack is queued: the cursor item then stacks or stays on the cursor
 		const bool queued = stash_affinity::StackOnto(ReadU32(message + 1), ReadU32(message + 5));
-		plog::Info("stash tabs: stack message 0x21 onto page %u cell %u,%u: %s", page, cell & 0xffff, cell >> 16,
+		plog::Info("stash tabs: stack message 0x21 onto page %u cell %u,%u: %s", view, cell & 0xffff, cell >> 16,
 		           queued ? "the plugin stacks it" : "not queued, left to D2R");
 		if (queued) {
 			return 0;

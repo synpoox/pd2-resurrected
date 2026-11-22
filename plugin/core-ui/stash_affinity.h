@@ -32,6 +32,10 @@ auto ViewPage() noexcept -> uint32_t;
 // are the same stackable item; otherwise the cursor item stays. False when nothing could be queued.
 auto StackOnto(uint32_t cursorId, uint32_t targetId) noexcept -> bool;
 
+// Any thread (#1766): queues for the game thread a resend of the item (runtime id) a refused move left pending on the
+// client: the cursor item, or a quick-moved item still in the inventory or Cube. False when nothing could be queued.
+auto Resend(uint32_t itemId) noexcept -> bool;
+
 // Any thread: the base the Maps tab shows (0 for none).
 auto WantedBase() noexcept -> uint32_t;
 
