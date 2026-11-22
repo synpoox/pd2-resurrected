@@ -1,1 +1,0 @@
-- Classic missile art of #1588 keeps its HD stand-in models, now checked by a test.

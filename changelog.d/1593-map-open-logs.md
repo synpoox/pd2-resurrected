@@ -1,1 +1,0 @@
-- Fix a stall when a map opens by writing its one-time log lines only with PD2R_HOT_LOGS=1. (#1593)

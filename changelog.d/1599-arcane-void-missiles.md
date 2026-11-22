@@ -1,1 +1,0 @@
-- Fixed missiles stopping at invisible walls over the void in Horazon's Memory.

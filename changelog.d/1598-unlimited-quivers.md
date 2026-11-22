@@ -1,1 +1,0 @@
-- Arrows, bolts and throwing weapons never run out, as in PD2 (#1598).

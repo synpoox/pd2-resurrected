@@ -1,1 +1,0 @@
-- Lock Inventory shows its `Lock Inventory` hover in HD and now has the padlock in legacy graphics too. (#1659)

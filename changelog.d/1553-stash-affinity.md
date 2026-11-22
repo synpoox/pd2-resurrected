@@ -1,1 +1,0 @@
-- Ctrl+clicking a map, uber item or map crafting item into the stash files it on its own shared stash tab. (#1553)

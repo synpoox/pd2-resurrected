@@ -1,1 +1,0 @@
-- Refresh miscellaneous item icons and restore the organ portal to Uber Tristram (#1585).

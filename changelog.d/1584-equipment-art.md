@@ -1,1 +1,0 @@
-- Redesign six unique quivers and use base artwork for other equipment (#1584).

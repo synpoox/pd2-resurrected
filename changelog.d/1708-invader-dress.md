@@ -1,1 +1,0 @@
-- Invaders now wear the gear they will drop, and roll their weapon set with PD2's odds. (#1708)

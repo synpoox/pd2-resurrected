@@ -1,1 +1,0 @@
-- Fixed fights freezing when Cartographer logged every kill and drop.

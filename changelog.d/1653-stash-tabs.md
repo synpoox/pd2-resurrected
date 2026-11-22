@@ -1,1 +1,0 @@
-- The Maps stash tab shows its label, and the Shared tab no longer pages into the Maps and Bossing pages. (#1653)

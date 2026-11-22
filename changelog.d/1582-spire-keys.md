@@ -1,1 +1,0 @@
-- Spire of Darkness shadows can drop Keys of Terror, Hate and Destruction again. (#1582)

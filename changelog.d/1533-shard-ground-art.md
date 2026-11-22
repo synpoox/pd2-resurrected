@@ -1,1 +1,0 @@
-- Fix dropped Worldstone Shards to look like crystals in HD. (#1533)

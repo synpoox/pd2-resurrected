@@ -2,6 +2,97 @@
 
 Player-facing changes, newest first. Entries follow PD2 unless noted. Until multiplayer, a build may break characters (ADR 0003).
 
+### 0.2.2-alpha (2026-11-21)
+
+- Invaders now wear their real player-class art in legacy and HD, and drop the weapon they carry. (#1215)
+
+#### Features
+
+- Controller: LB + RB + A sends a whole stash or stack-tab stack to the Cube.
+- Pad: RB + A on a stack-tab stack moves 5 to the inventory, LB + RB + A sends it to the Cube (#1515).
+- Corrupted Annihilus and other dyed items now show a red-tinted picture in the inventory. (#1529)
+- The zone info now shows Monsters remaining: N (N+ until every room is visited). (#1534)
+- Bind and Summon plugin included: summons and Bind Demon return after a rejoin, and skeletons rise without a corpse (#1535).
+- Map tooltips list the immunities their monsters have, like "Immunities: C120, F120" (#1552).
+- An unidentified map gives +30% Item Quantity: kills roll the monster's drops again more often (#1596).
+- Mercenaries wear an amulet, two rings, gloves, a belt and boots, and gain their stats (#1627).
+- The mercenary panel lays out its gear like the inventory, HD and legacy, in a taller panel (#1651).
+- The controller mercenary panel lays out its gear like the controller inventory, in a taller panel (#1657).
+- Controller: the Lock Inventory padlock shows at the inventory grid's bottom right and works with the pad.
+- Controller: on the Maps stash tab, LB/RB pick the base and the left stick click the tier (#1669).
+- The Lock Inventory padlock is larger, just under an inventory cell, in HD and legacy.
+- Controller: the stash Maps tab shows a legend for LB/RB (base) and the left stick click (tier).
+- Controller: a "LB + A Split Stack" legend shows in the inventory while a stack is held.
+
+#### Fixes
+
+- Show a Sacrifice tooltip when hovering over the altar button (#1530).
+- Fixed the All Attributes bonus text on item tooltips (#1531).
+- Restored the Palace Cellar Level 1 waypoint name.
+- Fix dropped Worldstone Shards to look like crystals in HD. (#1533)
+- Stacks of gems, runes and other materials keep their full count in the Gems, Materials and Runes stash tabs (#1537).
+- Restored the Cairn Stone order on the deciphered Scroll of Inifuss (#1538).
+- Throwing weapon stacks and gamble prices now cost what they do in PD2 (#1539).
+- Fix starting equipment and inventory sizing for new Classic and Expansion characters (#1543).
+- Act 1, 2 and 5 mercenaries no longer crash the game when you change area after they die.
+- Restored the original D2R inventory settings for mercenaries and the Ancients.
+- Fixed the display of Zinthros's name for the Act 3 mercenary (#1571).
+- The Horadric Navigator and Almanac can be put on the skill bar like the Tome of Town Portal (#1591).
+- Larzuk's Puzzlebox, Puzzlepiece and five other rare items now drop from monsters (#1600).
+- Map events show their cross on the minimap again (#1601).
+- Big fights no longer stutter from log writes on every hit, like Multiple Shot's arrows; those lines now need PD2R_HOT_LOGS (#1609).
+- Superior items no longer count their stats in vendor prices, and repair costs cap at 250000, as in PD2 (#1625).
+- Healers (Akara, Drognan, Fara, Ormus, Jamella, Malah) cure poison again.
+- Monsters Remaining is a zone info row (hides with TAB, not in towns); 25+ above 25 or under 90% explored.
+- Controller: the stash's Maps and Bossing tabs and page stop work with a rebound LT/RT, pads 2-4, DS4 and Steam Input.
+- Controller: the stash Personal tab reads "Personal" in full.
+- Hide the Pyre Stash Search box in the controller stash (#1684).
+- Controller stash: Maps and Bossing use the Mats tab frame, with no extra borders or shift.
+- Inventory hotkeys: drop and Cube move work with any panel open, Identify uses any ID item, all play sounds (#1698).
+- The Cube grid and Transmute now work on the Maps and Bossing stash tabs; their unused cells are gone. (#1699)
+
+#### Getting started
+
+- See the [Linux setup guide](docs/linux.md) to play with Wine or Proton (#1541).
+- Ctrl+clicking a map, uber item or map crafting item into the stash files it on its own shared stash tab. (#1553)
+- The stash gets Maps and Bossing tabs: maps sort by tier and base, boss items by boss, round the cube. (#1553)
+- PD2 inventory hotkeys: Ctrl/Shift+right click drop, stash, Cube; configurable. (#1567)
+
+#### Changes
+
+- Updated the bundled Pyre Loot Filter to 1.3.1+rev.7.
+- Added +35% movement speed to Stamina Shrines (#1572).
+- A padlock in the inventory locks your and your mercenary's equipment against clicks and hotkeys. (#1578)
+- Fixed map portals failing to open on some D2R 3.4 setups.
+- Spire of Darkness shadows can drop Keys of Terror, Hate and Destruction again. (#1582)
+- Redesign six unique quivers and use base artwork for other equipment (#1584).
+- Refresh miscellaneous item icons and restore the organ portal to Uber Tristram (#1585).
+- Removed 40 retained PD2 map-item icons; map uniques use stock or Cartographer icons (#1587).
+- Classic missile art of #1588 keeps its HD stand-in models, now checked by a test.
+- Fix a stall when a map opens by writing its one-time log lines only with PD2R_HOT_LOGS=1. (#1593)
+- Leoric's Passage maps spawn undead again instead of packs of cows (#1595).
+- Arrows, bolts and throwing weapons never run out, as in PD2 (#1598).
+- Fixed missiles stopping at invisible walls over the void in Horazon's Memory.
+- Map tuning: two renames and new sizes, shapes, densities and PD2 monster lists (#1599).
+- Fixed fights freezing when Cartographer logged every kill and drop.
+
+#### Bug fixes
+
+- Quest rewards Potion of Life, Scroll of Resistance and Book of Skill can be used again (#1643).
+- The Maps stash tab shows its label, and the Shared tab no longer pages into the Maps and Bossing pages. (#1653)
+- Lock Inventory shows its `Lock Inventory` hover in HD and now has the padlock in legacy graphics too. (#1659)
+- Pad players get the Maps and Bossing stash tabs, and pad paging on Shared stops at page 15. (#1661)
+
+#### Bug Fixes
+
+- On a controller, the Lock Inventory padlock keeps focus after A, so A again unlocks it.
+- Pyre Stash Search updated to 1.3.1+rev.7: controller tab flyout, item hover cards and a duplicates filter. (#1691)
+- Item Roll Ranges updated to 1.3.1+rev.61: faster hover tooltips and more range breakdowns. (#1692)
+- Controller inventory shows the charm-row tint on rows 5-8, as the mouse layout does. (#1701)
+- Invaders now wear the gear they will drop, and roll their weapon set with PD2's odds. (#1708)
+- Invaders roll their gear when they spawn and drop exactly that gear on death. (#1708)
+- A closed invader portal now disappears in HD, as it does in legacy. (#1711)
+
 ### 0.2.1-alpha (2026-11-18)
 
 #### Maps

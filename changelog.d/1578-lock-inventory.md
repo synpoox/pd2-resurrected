@@ -1,1 +1,0 @@
-- A padlock in the inventory locks your and your mercenary's equipment against clicks and hotkeys. (#1578)

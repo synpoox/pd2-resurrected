@@ -45,7 +45,7 @@ target_include_directories(core_common INTERFACE common)
 target_link_libraries(core_common INTERFACE plugin_common)
 
 # Bump with every release: Shared plugins must match between host and client.
-set(CORE_RULES_VERSION "0.2.1" CACHE STRING "core-rules PluginInfo::version")
+set(CORE_RULES_VERSION "0.2.2" CACHE STRING "core-rules PluginInfo::version")
 modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/plugin.cpp
 	core-rules/skill_functions.cpp
@@ -70,7 +70,7 @@ target_sources(plugin_core_rules PRIVATE ${CORE_PLACEMENT_SOURCES})
 target_include_directories(plugin_core_rules PRIVATE "${D2R_TOOLKIT_DIR}/plugin-template/src")
 target_link_libraries(plugin_core_rules PRIVATE core_common)
 
-set(CORE_EVENTS_VERSION "0.2.1" CACHE STRING "core-events PluginInfo::version")
+set(CORE_EVENTS_VERSION "0.2.2" CACHE STRING "core-events PluginInfo::version")
 modkit_add_plugin(core-events VERSION "${CORE_EVENTS_VERSION}" SOURCES
 	core-events/plugin.cpp
 	core-events/cube_ops.cpp
@@ -118,7 +118,7 @@ target_include_directories(plugin_core_events PRIVATE core-events)
 target_link_libraries(plugin_core_events PRIVATE core_common)
 
 # Client-only: not Shared, so its version need not match between host and client.
-set(CORE_UI_VERSION "0.2.1" CACHE STRING "core-ui PluginInfo::version")
+set(CORE_UI_VERSION "0.2.2" CACHE STRING "core-ui PluginInfo::version")
 modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/plugin.cpp
 	core-ui/item_pictures.cpp
