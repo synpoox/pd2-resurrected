@@ -82,7 +82,8 @@ sync. The swap test needs only the cursor item, so a stored item the lookup cann
 
 Red cells ([#1745](https://github.com/synpoox/pd2-resurrected/issues/1745)): the client asks the same rule first. Two
 D2Common cell tests are hooked by signature (`inventory_lock.cpp`): 93847 `0x38a250` (the cursor item's cells are free: green
-tint, the click sends 0x18) and `0x38a5d0` (the one stored item under it: the swap highlight, the click sends 0x1f). While the
+tint, the click sends a put: 0x18, or 0x45 on a shared page) and `0x38a5d0` (the one stored item under it: the swap
+highlight, the click sends a swap: 0x1f, or 0x14 on a shared page). While the
 Maps or Bossing tab is open, both answer "no" for the cursor item over a stash cell that is not its own, so the cell shows red
 and the click sends nothing. The message filter above stays as the net. Status: `red cell tests` in the inventory lock counters.
 

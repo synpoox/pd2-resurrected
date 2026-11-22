@@ -327,8 +327,9 @@ auto SwapOk(void* game, uint32_t a, uint32_t b, int32_t x, int32_t y, uint32_t p
 
 // The client's cell test (#1745). D2R's inventory widget asks two D2Common functions about the cursor item over a grid
 // cell: 93847 0x38a250 (inventory, item, x, y, page, &under, &count, grid) -> 1 when the item's cells are free (the green
-// tint; the click then sends 0x18), and 0x38a5d0 (inventory, item, x, y, page, &under, grid, cube) -> the one item under
-// it to swap with (*under, null for none; the click's 0x1f, the tint's swap highlight). Both 0 is the red tint, and the
+// tint; the click then sends 0x18, or 0x45 on a shared page), and 0x38a5d0 (inventory, item, x, y, page, &under, grid,
+// cube) -> the one item under it to swap with (*under, null for none; the click's 0x1f or shared-page 0x14, the tint's
+// swap highlight). Both 0 is the red tint, and the
 // click (0x2c81d0, 0x2c6070) sends nothing. Callers: the widget's draw 0x2c3570 and click 0x2c81d0 / 0x2c6070, the pad's
 // 0x1c48a0; 0x38a5d0 is also called by the shared placement helper 0x3877e0 (about 14 client and server callers); the hook only acts
 // for grid 4, a cursor item, a Maps or Bossing tab open and a cell that is not the item's home, which a server move has passed SwapOk for.
