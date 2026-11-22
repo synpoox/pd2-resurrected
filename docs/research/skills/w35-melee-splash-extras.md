@@ -113,7 +113,14 @@ The apply passes flag 0, so the walker gets the handler set `0x105dc628` (built 
   After D2R's dispatch, when the attacker (any unit type) is in state 54, each event-5 node with stat
   412 or 480 rolls `UnitStat(unit, stat, layer)` below 100 on `UnitSeed`, as `0x583b30` does. On a hit it calls the
   splash on the struck unit. The node's stat is the int32 at +0xc and its layer the uint16 at +0x10 (seen in game:
-  412, 0x6b81 = skill 430 level 1). Other skills on hit keep D2R's refusal; PD2 casts them too (#1889).
+  412, 0x6b81 = skill 430 level 1). Other skills on hit now cast during a spin too, as in PD2 (#1889, below).
+- Skills on striking (item_skillonhit 198, #1889) take the same path. PD2's skill-on-hit casts a skill whose ItemTarget
+  is not 5 at the struck unit through the patched `0x6fd117e0`; ItemTarget 5 goes to its aim-point branch, which keeps
+  the state 54 check, so Nova and Frost Nova still refuse a spin. D2R's `0x583b30` casts an ItemTgtDo skill (skill
+  `+0x27` bit `0x20`) from the struck unit, which no spin refuses, so those nodes are left to it. The others are cast
+  as `0x5896e0` does past its state check: `0x589930` (target by ItemTarget, skill `+0x178`) then `0x5390d0` (the
+  event sent to clients), with unit flag `0x10000000` on the caster around it as `0x583b30` sets it. Both found by
+  signature. Log line `spin skill on hit:` (hot).
 - Game check (Slot4, Hell, no mercenary, The Gnasher): Whirlwind hits log `current skill 151 level 20 damage% 115`
   splashes, Blade Dance `current skill 452 level 20 damage% 106`, and a plain Attack still splashes once per hit. On
   main's code neither spin splashed. An Act 5 merc (Battle Orders / Battle Cry / MonWhirlwind) with Rixot's Keen splashed

@@ -17,7 +17,7 @@ namespace d2r {
 struct Game;
 struct Unit;
 }  // namespace d2r
-// PD2's splash on a Whirlwind or Blade Dance hit, which D2R's skill-on-hit refuses (#1812): item_rules' HitEvent calls
-// it after D2R's own event dispatch.
+// PD2's splash and skills on striking on a Whirlwind or Blade Dance hit, which D2R's skill-on-hit refuses (#1812,
+// #1889): item_rules' HitEvent calls it after D2R's own event dispatch.
 auto SpinSplashes(d2r::Game* game, int32_t event, d2r::Unit* unit, d2r::Unit* target, const uint8_t* damage) noexcept
 	-> void;

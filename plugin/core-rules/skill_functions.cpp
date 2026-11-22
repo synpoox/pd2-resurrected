@@ -3086,6 +3086,85 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	return 1;
 }
 
+// Frenzy's stacks (#1831). PD2 (ProjectDiablo.dll 0x10306780 in PD2.gpr, 0x10306790 installed) replaces 1.13c's srvdo 9
+// helper (D2Game +0x28e70, called at +0x2966e and +0x296af): skill_frenzy (169) = min(current + 1, calc4), stat 351
+// = the skill level, and each aurastat SET to calc(level) * stacks / max(calc4, 1) (0x1037c4c0), attackrate's value
+// also on other_animrate. D2R's srvdo 9 (93847: 0x567e80) calls its helper (0x566d60) at 0x567fd6: stacks capped by
+// the level, aurastats ADDED by 0x574480 at the stack count as level. The redirect calls D2R's helper first (its list
+// create, timer, state event and client update stay) and then writes PD2's values over the list. Only rows with
+// calc4 > 0 (Frenzy): PD2's monster frenzies are 1.13c srvdo 109 (+0xb6790), whose call of the helper (+0xb6828) PD2
+// leaves stock, and Berserk (calc4 blank, PD2 would zero its aurastats) keeps D2R's (docs/deviations.md).
+// No SDK service runs a skill's per-hit aura stack, so this redirects the one call by signature.
+constexpr const char* FrenzyHelperCall = "45 8b cf 48 89 74 24 20 45 8b c4 48 8b d3 48 8b cd e8 ?? ?? ?? ?? b8 01 00 00 00";
+constexpr uint32_t FrenzyHelperCallAt = 17;
+constexpr int32_t ModifierListLevel = 351, StatAttackRate = 68, StatOtherAnimRate = 69;
+constexpr int TablesStatCount = 0x1260;  // uint64 itemstatcost row count in DataTables, as 0x574480 reads it
+using FrenzyHelperFn = int64_t (*)(Game*, Unit*, int32_t, int32_t, void*) noexcept;
+FrenzyHelperFn g_frenzyHelper = nullptr;
+// (game, unit, event +0x24, event +0x28): 93847 0x490ef0, the attack event reschedule D2R's helper ends with
+constexpr const char* AttackRescheduleEntry =
+    "48 89 5c 24 20 55 56 57 41 54 41 55 41 56 41 57 48 83 ec 60 8b a9 70 01 00 00 45 8b e1 41 8b d8 45 33 c9 45 33 c0 "
+    "48 8b f2 4c 8b f9 e8";
+using AttackRescheduleFn = void (*)(Game*, Unit*, int32_t, int32_t) noexcept;
+AttackRescheduleFn g_attackReschedule = nullptr;
+std::atomic<uint32_t> g_frenzyHits {0};
+
+auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* event) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = game != nullptr ? d2r::DataFlag(game) : 0;
+	const uint8_t* skill = game != nullptr ? d2r::api.getSkillRecord(dataFlag, skillId) : nullptr;
+	const int32_t calc4 = skill != nullptr ? d2r::EvalCalc(game, unit, skill, SkCalc4, skillId, level) : 0;
+	if (calc4 <= 0 || unit == nullptr) {
+		return g_frenzyHelper(game, unit, skillId, level, event);
+	}
+	const auto stateList = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList);
+	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);
+	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
+	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(dataFlag);
+	const int32_t state = At<int16_t>(skill, SkAuraState);
+	if (tables == nullptr || state < 0 || At<uint64_t>(tables, TablesStateCount) <= static_cast<uint64_t>(state)) {
+		return g_frenzyHelper(game, unit, skillId, level, event);
+	}
+	void* before = stateList(unit, state);
+	const int32_t current = before != nullptr ? listStat(dataFlag, before, SkillFrenzyStat, 0) : 0;
+	const int64_t result = g_frenzyHelper(game, unit, skillId, level, event);
+	void* list = stateList(unit, state);
+	if (list == nullptr) {
+		return result;
+	}
+	const int32_t stacks = std::min(current + 1, calc4);
+	setStat(dataFlag, list, SkillFrenzyStat, stacks, 0);
+	setStat(dataFlag, list, ModifierListLevel, level, 0);
+	const uint64_t statCount = At<uint64_t>(tables, TablesStatCount);
+	int32_t firstStat = -1, firstValue = 0;
+	for (int i = 0; i < 6; ++i) {
+		const int32_t stat = At<int16_t>(skill, SkAuraStat1 + 2 * i);
+		if (stat < 0 || static_cast<uint64_t>(stat) >= statCount) {
+			continue;
+		}
+		const double scaled = static_cast<double>(d2r::EvalCalc(game, unit, skill, SkAuraStatCalc1 + 4 * i, skillId, level)) *
+		                      stacks / calc4;
+		const int32_t value = scaled <= 2147483647.0 ? static_cast<int32_t>(scaled) : INT32_MAX;  // as 0x1037c4c0
+		setStat(dataFlag, list, stat, value, 0);
+		if (stat == StatAttackRate) {
+			setStat(dataFlag, list, StatOtherAnimRate, value, 0);
+		}
+		if (firstStat < 0) {
+			firstStat = stat;
+			firstValue = value;
+		}
+	}
+	// D2R's helper ends with this reschedule (0x490ef0 clears the unit's pending attack events, then queues them from
+	// the current anim rate), before the SET above; PD2's refresh (1.13c 0x47a10) runs after its final stats, so again.
+	if (g_attackReschedule != nullptr && event != nullptr) {
+		g_attackReschedule(game, unit, At<int32_t>(event, 0x24), At<int32_t>(event, 0x28));
+	}
+	if (pd2::HotSample(g_frenzyHits)) {
+		plog::Info("frenzy: skill %d level %d stacks %d/%d %d=%d", skillId, level, stacks, calc4, firstStat, firstValue);
+	}
+	return result;
+}
+
 // --- Leap, Leap Attack, Leap Attack Korlic (PD2 srvdofunc 153 -> 172, cltdofunc 97 -> 115) ------------------------------
 // Read from ProjectDiablo.dll: srvdo 153 at 0x103b1300, cltdo 97 at 0x103ab280 (docs/features/core-rules.md). PD2's leap path is
 // D2R's (path type 9 to the skill's point); PD2 sets its own speed and, on landing, hits every unit within calc3.
@@ -3701,13 +3780,52 @@ auto AuraEventReviveSplash(Game* game, int32_t event, Unit* unit, Unit* target, 
 // an attacker in state 54 each splash node rolls its chance as 0x583b30 does and the splash is called on the struck
 // unit, as Revive's event does. The damage% is PD2's (0x10305eb0, players only: Whirlwind 151, Blade Dance PD2 380 =
 // merged 452 take calc1; mercs and monsters, MonWhirlwind 495 and UberTalicWhirlwind 579 included, 0 on Attack).
-// shortcut: other skills on hit still refuse a spinning attacker (PD2 casts them too), #1889
+// The other skill-on-hit nodes (item_skillonhit 198, #1889) are cast as 0x583b30 casts them, through 0x5896e0's body
+// past its state check: 0x589930 picks the target (ItemTarget, skill +0x178) and 0x5390d0 sends the cast, with unit flag
+// 0x10000000 on the caster around it. Skipped: a skill with ItemTgtDo (skill +0x27 bit 0x20), which 0x583b30 casts from
+// the struck unit, so no spin refuses it; and ItemTarget 5 (Nova, Frost Nova), which PD2 casts at the caster's target
+// point through a path that keeps the state 54 refusal.
 constexpr int32_t StatSplashOnHit = 412, StatMapMonSplash = 480;  // item_splashonhit, map_mon_splash (merged)
+constexpr int32_t StatSkillOnHit = 198;                            // item_skillonhit
 constexpr int EventNodeLayer = 0x10;                               // the node's stat layer (seen in game: 412, 0x6b81)
+constexpr int SkItemTgtDo = 0x27, SkItemTarget = 0x178;            // 93847 skill record: flag byte (bit 0x20), uint8
+constexpr uint8_t ItemTgtDoBit = 0x20;
+constexpr uint8_t ItemTargetAimPoint = 5;
+constexpr int32_t UnitFlagItemEventCast = 0x10000000;
+sigscan::Entry ItemSkillTarget {"ItemSkillTarget", "spin", sigscan::Kind::Code, 0, 0,
+                                "44 89 4c 24 20 53 55 56 57 41 55 41 57"};  // 93847 0x589930
+sigscan::Entry ItemSkillSend {"ItemSkillSend", "spin", sigscan::Kind::Code, 0, 0,
+                              "48 89 5c 24 08 48 89 6c 24 10 48 89 74 24 18 48 89 7c 24 20 41 56 48 83 ec 20 4c 8b f1 "
+                              "41 8b f1 48 8d 0d ?? ?? ?? ?? 41 8b f8"};  // 93847 0x5390d0
+sigscan::Entry* const SpinOwn[] = {&ItemSkillTarget, &ItemSkillSend};
 std::atomic<uint32_t> g_spinSplashes {0};
+std::atomic<uint32_t> g_spinSkillCasts {0};
+bool g_castOnHit = false;  // both signatures found at install
 
 auto Spinning(Unit* unit) noexcept -> bool {
 	return d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::rva::UnitHasState)(unit, Uninterruptable) != 0;
+}
+
+// 0x5896e0 without its state 54 refusal (PD2's patch of 1.13c 0x6fd117e0): 1 when the skill was cast at the struck unit
+auto CastOnHit(Game* game, Unit* unit, Unit* struck, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using TargetFn = uint64_t (*)(Game*, Unit*, int32_t, int32_t, Unit*, int32_t, int32_t, int32_t*, uint32_t*, int32_t*,
+	                              int32_t*, int32_t) noexcept;
+	using SendFn = void (*)(Unit*, int32_t, int32_t, int32_t, uint32_t, int32_t) noexcept;
+	using FlagFn = void (*)(Unit*, int32_t, int32_t) noexcept;
+	int32_t type = 6, x = 0, y = 0;  // 6: no target picked, cast at the struck unit
+	uint32_t id = 0xffffffff;
+	d2r::Engine<FlagFn>(d2r::sig::SetUnitFlag)(unit, UnitFlagItemEventCast, 1);
+	const bool cast = static_cast<int32_t>(d2r::Engine<TargetFn>(ItemSkillTarget)(game, unit, skillId, level, struck, 0,
+	                                                                              0, &type, &id, &x, &y, 1)) != 0;
+	if (cast) {
+		if (type == 6) {
+			type = At<int32_t>(struck, d2r::rva::UnitType);
+			id = d2r::Engine<uint32_t (*)(Unit*, const char*, int32_t) noexcept>(d2r::sig::UnitId)(struck, __FILE__, __LINE__);
+		}
+		d2r::Engine<SendFn>(ItemSkillSend)(unit, skillId, level, type, id, 1);
+	}
+	d2r::Engine<FlagFn>(d2r::sig::SetUnitFlag)(unit, UnitFlagItemEventCast, 0);
+	return cast ? 1 : 0;
 }
 
 }  // namespace
@@ -3724,17 +3842,33 @@ auto SpinSplashes(Game* game, int32_t event, Unit* unit, Unit* target, const uin
 	const uint8_t* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(d2r::DataFlag(game));
 	for (auto* node = At<uint8_t*>(unit, UnitEventNodes); node != nullptr; node = At<uint8_t*>(node, EventNodeNext)) {
 		const int32_t stat = At<int32_t>(node, EventNodeStat);
-		if (At<uint16_t>(node, EventNodeEvent) != event || (stat != StatSplashOnHit && stat != StatMapMonSplash)) {
+		const bool splash = stat == StatSplashOnHit || stat == StatMapMonSplash;
+		if (At<uint16_t>(node, EventNodeEvent) != event || (!splash && stat != StatSkillOnHit)) {
 			continue;
 		}
 		const uint32_t layer = At<uint16_t>(node, EventNodeLayer);
+		const auto skillId = static_cast<int32_t>(layer >> (At<uint32_t>(tables, TablesSkillLayerShift) & 0x1f));
+		const auto level = static_cast<int32_t>(layer & At<uint32_t>(tables, TablesSkillLayerMask));
+		const uint8_t* skill = splash ? nullptr : d2r::api.getSkillRecord(d2r::DataFlag(game), skillId);
+		if (!splash && (skill == nullptr || !g_castOnHit ||
+		                (At<uint8_t>(skill, SkItemTgtDo) & ItemTgtDoBit) != 0)) {
+			continue;  // D2R already cast it from the struck unit, or the cast was not found
+		}
 		const int32_t chance = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(unit, stat, layer);
 		const auto roll = static_cast<int32_t>(d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit), 100));
 		if (chance < 1 || roll >= chance) {
 			continue;
 		}
-		const auto skillId = static_cast<int32_t>(layer >> (At<uint32_t>(tables, TablesSkillLayerShift) & 0x1f));
-		const auto level = static_cast<int32_t>(layer & At<uint32_t>(tables, TablesSkillLayerMask));
+		if (!splash) {
+			const uint8_t itemTarget = At<uint8_t>(skill, SkItemTarget);
+			const int64_t cast = itemTarget == ItemTargetAimPoint ? 0 : CastOnHit(game, unit, target, skillId, level);
+			if (pd2::HotSample(g_spinSkillCasts)) {
+				plog::Info("spin skill on hit: attacker type %d skill %d level %d itemtarget %u chance %d roll %d on unit "
+				           "type %d: cast %lld, %u so far", At<int32_t>(unit, UnitType), skillId, level, itemTarget, chance,
+				           roll, At<int32_t>(target, UnitType), static_cast<long long>(cast), g_spinSkillCasts.load());
+			}
+			continue;
+		}
 		const int64_t cast = Splash(game, unit, target, skillId, level);
 		if (pd2::HotSample(g_spinSplashes)) {
 			plog::Info("spin splash: attacker type %d stat %d layer %u skill %d level %d chance %d roll %d on unit type %d: "
@@ -4965,6 +5099,19 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		std::snprintf(report + used, reportSize - used, "; first think valkyrie%s revive%s, revive size cap%s",
 		              valkyrieThink ? "" : " FAILED", reviveThink ? "" : " FAILED", g_collisionRefresh != 0 ? "" : " FAILED");
 	}
+	uint64_t reschedule = 0;
+	if (sigscan::ScanUnique(context->exeBase, AttackRescheduleEntry, 0, &reschedule) == 1) {
+		g_attackReschedule = reinterpret_cast<AttackRescheduleFn>(context->exeBase + reschedule);
+	}
+	const bool frenzy = g_attackReschedule != nullptr &&
+	                    RedirectCall(context, FrenzyHelperCall, FrenzyHelperCallAt, reinterpret_cast<uint64_t>(&FrenzyHelper),
+	                                 reinterpret_cast<uint64_t*>(&g_frenzyHelper));
+	plog::Info("frenzy: PD2 stacks %s", frenzy ? "on" : "FAILED (srvdo 9 helper call or attack reschedule signature)");
+	installed += frenzy ? 1 : 0;
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; frenzy stacks%s", frenzy ? "" : " FAILED");
+	}
 	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
 	                                             sizeof(d2r::rva::BusyModeGateEntry), BusyModeGate, &g_gateOriginal);
 	installed += gate ? 1 : 0;
@@ -4972,6 +5119,13 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; mode gate busy take-over%s",
 		              gate ? "" : " FAILED (bytes differ)");
+	}
+	sigscan::Resolve(SpinOwn, std::size(SpinOwn), context->exeBase, nullptr, 0);
+	g_castOnHit = ItemSkillTarget.state == sigscan::State::Ok && ItemSkillSend.state == sigscan::State::Ok;
+	installed += g_castOnHit ? 1 : 0;
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; spin skill on hit%s", g_castOnHit ? "" : " FAILED (signature)");
 	}
 	const bool parry = sigscan::HookBySignature(context, "AvoidRoll", AvoidPattern, 0, AvoidD2REntry, sizeof(AvoidD2REntry),
 	                                               reinterpret_cast<void*>(&AvoidWithParry),
@@ -5009,8 +5163,8 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 
 auto SkillFunctionCount() noexcept -> int {
 	// + the srvdo router, the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the two first-think patches and the
-	// revive size cap, the busy mode gate, the holy sword parry and the hit window
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 11;
+	// revive size cap, Frenzy's stacks, the busy mode gate, the spin skill on hit, the holy sword parry and the hit window
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 13;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
@@ -5025,7 +5179,7 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "novas %u, client %u, item novas %u, static fields %u, vengeances %u, links %u, jousts %u, fire claws %u, hits %u, "
 	              "client %u, wolf starts %u, refused %u, dragon flights %u, hits %u, holy sword starts %u, "
 	              "smite starts %u, smite events %u, gate logs %u, poison egg spawns %u, client %u, nest spawns %u, "
-	              "nests full %u, cycler starts %u, %s",
+	              "nests full %u, cycler starts %u, frenzy hits %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
@@ -5039,5 +5193,5 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              g_fireClawClients.load(), g_wolfStarts.load(), g_wolfRefusals.load(), g_dragonFlights.load(),
 	              g_dragonFlightHits.load(), g_holySwordStarts.load(), g_smiteStarts.load(), g_smiteEvents.load(),
 	              g_gateLogs.load(), g_eggSpawns.load(), g_eggSpawnClients.load(), g_nestSpawns.load(), g_nestFull.load(),
-	              g_cyclerStarts.load(), missiles);
+	              g_cyclerStarts.load(), g_frenzyHits.load(), missiles);
 }
