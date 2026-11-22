@@ -343,6 +343,20 @@ void Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept {
 	items::Result moved = items::Result::Conflict;
 	if (home.category == aff::Category::Maps) {
 		const bool shown = g_shown != 0 && aff::Normal(item.code) == aff::Normal(g_shown);
+		// A stack of the same map below a full one takes it first (#1759); a full stack or a failed merge falls through
+		const uint32_t stackPage = shown ? aff::MapsPage : home.page;
+		for (uint32_t i = 0; i < g_pass.reservedCount && moved != items::Result::Success; ++i) {
+			items::ItemInfo& stack = g_pass.reserved[i];
+			if (stack.code != 0 && stack.runtimeId != item.runtimeId && stack.container == C::SharedStash &&
+			    stack.sharedStashPage == stackPage && InCell(stack.x, stack.y) && (!shown || aff::InMapView(stack.x, stack.y)) &&
+			    aff::Normal(stack.code) == aff::Normal(item.code) && Quantity(stack.handle) < MaxStack) {
+				moved = Merge(player, item, stack);
+			}
+		}
+		if (moved == items::Result::Success) {
+			++g_routed;
+			return;
+		}
 		const aff::Cell cell = shown ? FreeMapCell() : aff::Cell {};
 		moved = cell.x >= 0 ? MoveTo(player, item, aff::MapsPage, cell.x, cell.y) : ToStorage(player, item);
 	} else {  // a fixed cell: Map Materials, Bossing
