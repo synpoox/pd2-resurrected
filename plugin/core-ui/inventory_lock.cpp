@@ -300,7 +300,8 @@ auto SwapOk(void* game, uint32_t a, uint32_t b, int32_t x, int32_t y, uint32_t p
 // tint; the click then sends 0x18), and 0x38a5d0 (inventory, item, x, y, page, &under, grid, cube) -> the one item under
 // it to swap with (*under, null for none; the click's 0x1f, the tint's swap highlight). Both 0 is the red tint, and the
 // click (0x2c81d0, 0x2c6070) sends nothing. Callers: the widget's draw 0x2c3570 and click 0x2c81d0 / 0x2c6070, the pad's
-// 0x1c48a0; 0x38a5d0 also serves the server's body-slot swap 0x3877e0, which never passes a cursor item over the stash.
+// 0x1c48a0; 0x38a5d0 is also called by the shared placement helper 0x3877e0 (about 14 client and server callers); the hook only acts
+// for grid 4, a cursor item, a Maps or Bossing tab open and a cell that is not the item's home, which a server move has passed SwapOk for.
 // Native: no SDK service sees a cursor placement (ItemInteractionService skips cursor paths, the item policies cover
 // custom pages only).
 using FitsFn = int32_t (*)(void*, Unit*, int32_t, int32_t, uint32_t, Unit**, int32_t*, uint8_t) noexcept;
