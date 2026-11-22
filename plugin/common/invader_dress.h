@@ -3,10 +3,10 @@
 // items a spawn rolled into those bytes:
 //   a helm, circlet or pelt -> HD, by the item's alternategfx (weapons.txt / armor.txt), as a player shows it
 //   body armor              -> TR LG RA LA S1 S2, by its Torso Legs rArm lArm rSPad lSPad levels (those lists are lit,med,hvy)
-//   a weapon                -> the class's weapon hand (the Amazon's bow is in LH), a second weapon -> LH
+//   a weapon                -> the class's weapon hand (the Amazon's bow LH, her spear RH), a second weapon -> LH
 //   a shield -> SH, a Necromancer head -> S3 (the player Necromancer's head layer); quivers, rings and the rest show nothing
-// The art is the class's player art in its one monstats2 weapon class (BaseW), so a token with no art there shows the
-// nearest one that has (Nearest), and a part with no list (the Sorceress's shield, the Amazon's quiver) is not shown.
+// Every token is the item's own, so HD shows every base. The legacy art is the class's player art in its one monstats2
+// weapon class (BaseW): a token with no legacy art there is drawn as the nearest one (invader_art_path.h).
 // Items and Classes must match the tables: tools/tests/test_invader_dress.py checks them.
 #pragma once
 
@@ -182,39 +182,25 @@ constexpr Item Items[] = {
 };
 
 // each class's monstats2 lists (InvaderAmazon..InvaderSorceress, ClassNames order) for the parts Dress sets by token;
-// TR LG RA LA S1 S2 are lit,med,hvy for every class
+// TR LG RA LA S1 S2 are lit,med,hvy for every class. `nil` is the vanilla empty token (no layer, no attachment): a hand
+// or shield the roll left empty shows nothing, never the spawn's random token.
 struct Lists {
 	const char* hd;
 	const char* rh;
 	const char* lh;
 	const char* sh;
 	const char* s3;
-	Part hand;  // the first weapon's part
+	Part hand;  // the first weapon's part when its token is in both hands' lists or in neither
 };
 constexpr Lists Classes[7] = {
-	{"lit", "", "am1,am2,lbb,lbw,sbb,sbw", "", "", LH},
-	{"ghm,cap,skp,hlm,fhl,msk,bhm,crn,lit", "axf,ktr,clw,skr", "axf,ktr,clw,skr", "", "", RH},
-	{"ba5,ba1,ba3", "axe,bsd,gsd,lsd,whm,hax,mac,fla,ssd,scm,flc,crs,clm", "axe,bsd,gsd,lsd,whm,hax,mac,fla,ssd,scm,flc,crs,clm", "", "", RH},
+	{"lit", "nil,spr,tri,brn,pik,am3,pil", "am1,am2,lbb,lbw,sbb,sbw,lxb,hxb,nil", "nil,buc,lrg,spk,kit,bsh,tow", "", LH},
+	{"ghm,cap,skp,hlm,fhl,msk,bhm,crn,lit", "axf,ktr,clw,skr,dgr,dir", "axf,ktr,clw,skr,dgr,dir", "", "", RH},
+	{"ba5,ba1,ba3", "axe,bsd,gsd,lsd,whm,hax,mac,fla,ssd,scm,flc,crs,clm,lax,btx,gix,mau,hal,pax,scy,spr,tri,brn,pik,dgr,jav,pil,glv",
+	 "axe,bsd,gsd,lsd,whm,hax,mac,fla,ssd,scm,flc,crs,clm,lax,btx,gix,mau,hal,pax,scy,spr,tri,brn,pik,dgr,jav,pil,glv,nil", "", "", RH},
 	{"dr3,dr1,dr4", "clb,hax", "", "bsh,buc,lrg,spk,kit,tow", "", RH},
 	{"msk,cap,skp,hlm,fhl,bhm,ghm,crn,lit", "bwn,ywn,wnd", "", "", "ne2,ne1,ne3", RH},
 	{"crn,cap,skp,hlm,fhl,msk,bhm,ghm,lit", "fla,crs,ssd,scm,flc,bsd,lsd,mac,whm,hax,axe", "", "pa3,pa1,pa5", "", RH},
-	{"lit", "cst,lst,sst,bst", "", "", "", RH},
-};
-
-// a token with no art in the class's weapon class -> the nearest that has (the Amazon's spear and javelin have none)
-struct Near {
-	int cls;
-	const char* from;
-	const char* to;
-};
-constexpr Near Nearest[] = {
-	{0, "lxb", "lbw"}, {0, "hxb", "lbw"},  // a crossbow: the long bow
-	{1, "dgr", "ktr"}, {1, "dir", "ktr"},  // a dagger: the katar
-	{2, "lax", "axe"}, {2, "btx", "axe"}, {2, "gix", "axe"}, {2, "hal", "axe"}, {2, "pax", "axe"}, {2, "scy", "axe"},  // two-handed axes, polearms
-	{2, "mau", "whm"},  // a maul: the war hammer
-	{2, "spr", "lsd"}, {2, "tri", "lsd"}, {2, "brn", "lsd"}, {2, "pik", "lsd"}, {2, "jav", "lsd"}, {2, "pil", "lsd"}, {2, "glv", "lsd"},  // spears, javelins
-	{2, "dgr", "ssd"},  // a throwing knife: the short sword
-	{6, "ob1", "sst"}, {6, "ob3", "sst"}, {6, "ob4", "sst"},  // an orb: the short staff
+	{"lit", "cst,lst,sst,bst,ob1,ob3,ob4", "", "nil,buc,lrg,spk,kit,bsh,tow", "", RH},
 };
 
 // The index of `tok` in the comma list, -1 when it is not there
@@ -250,33 +236,33 @@ inline const Item* Find(uint32_t code) noexcept {
 }
 
 struct Result {
-	int exact = 0, nearest = 0, unshown = 0;
+	int shown = 0, unshown = 0;
 };
 
-// Sets the part bytes of class `cls` from the base items it rolled, in roll order. A part with nothing to show keeps its byte.
+// Sets the part bytes of class `cls` from the base items it rolled, in roll order: the hands and the shield start empty
+// (nil), each item then shows its own token. An item whose part has no list is counted as not shown.
 inline Result Dress(int cls, const uint32_t* codes, int n, uint8_t* parts) noexcept {
 	Result r;
 	if (cls < 0 || cls >= 7 || parts == nullptr) {
 		return r;
 	}
 	const Lists& l = Classes[cls];
-	const auto set = [&](Part part, const char* list, const char* tok) noexcept {
-		int i = IndexOf(list, tok);
-		if (i >= 0) {
-			r.exact += 1;
-		} else {
-			for (const Near& m : Nearest) {
-				if (m.cls == cls && std::strcmp(m.from, tok) == 0) {
-					i = IndexOf(list, m.to);
-				}
-			}
-			(i >= 0 ? r.nearest : r.unshown) += 1;
+	const char* list[PartBytes] = {};
+	list[HD] = l.hd, list[RH] = l.rh, list[LH] = l.lh, list[SH] = l.sh, list[S3] = l.s3;
+	constexpr Part Empty[] = {RH, LH, SH};
+	for (const Part p : Empty) {
+		const int nil = IndexOf(list[p], "nil");
+		if (nil >= 0) {
+			parts[p] = static_cast<uint8_t>(nil);
 		}
+	}
+	const auto set = [&](Part p, const char* tok) noexcept {
+		const int i = list[p] != nullptr ? IndexOf(list[p], tok) : -1;
 		if (i >= 0) {
-			parts[part] = static_cast<uint8_t>(i);
+			parts[p] = static_cast<uint8_t>(i);
 		}
+		(i >= 0 ? r.shown : r.unshown) += 1;
 	};
-	const char* firstWeapon = nullptr;
 	int weapons = 0;
 	for (int k = 0; k < n; ++k) {
 		const Item* it = Find(codes[k]);
@@ -285,42 +271,29 @@ inline Result Dress(int cls, const uint32_t* codes, int n, uint8_t* parts) noexc
 		}
 		switch (it->slot) {
 		case Slot::Head:
-			set(HD, l.hd, it->tok);
+			set(HD, it->tok);
 			break;
 		case Slot::Body:
 			for (int p = 0; p < 6; ++p) {
 				parts[p < 4 ? TR + p : S1 + (p - 4)] = it->body[p];
 			}
-			r.exact += 1;
+			r.shown += 1;
 			break;
-		case Slot::Weapon:
-			if (weapons++ == 0) {
-				firstWeapon = it->tok;
-				set(l.hand, l.hand == LH ? l.lh : l.rh, it->tok);
-			} else if (l.hand == RH && *l.lh != '\0') {
-				set(LH, l.lh, it->tok);
-			} else {
-				r.unshown += 1;
-			}
-			break;
-		case Slot::Shield:
-			if (*l.sh != '\0') {
-				set(SH, l.sh, it->tok);
-			} else {
-				r.unshown += 1;
-			}
-			break;
-		case Slot::Skull:
-			if (*l.s3 != '\0') {
-				set(S3, l.s3, it->tok);
-			} else {
-				r.unshown += 1;
-			}
+		case Slot::Weapon: {
+			const Part other = l.hand == RH ? LH : RH;
+			// the first weapon: its class's hand, or the other hand when only that list has it (the Amazon's spear);
+			// a second weapon: the left hand
+			const Part p = weapons++ > 0 ? LH : IndexOf(list[l.hand], it->tok) < 0 && IndexOf(list[other], it->tok) >= 0 ? other : l.hand;
+			set(p, it->tok);
 			break;
 		}
-	}
-	if (weapons == 1 && l.hand == RH && *l.lh != '\0') {
-		set(LH, l.lh, firstWeapon);  // one two-hander in a dual-wield pose: the same in both hands, the nearest look
+		case Slot::Shield:
+			set(SH, it->tok);
+			break;
+		case Slot::Skull:
+			set(S3, it->tok);
+			break;
+		}
 	}
 	return r;
 }

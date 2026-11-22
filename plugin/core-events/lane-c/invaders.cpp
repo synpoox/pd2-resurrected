@@ -38,7 +38,6 @@
 #include <cstdio>
 #include <cstring>
 #include <mutex>
-#include <random>
 #include <unordered_map>
 #include <vector>
 
@@ -245,8 +244,7 @@ auto DropTc(Game* game, Unit* monster, Unit* killer, const char* name, Unit** it
 // Invader* rows). `drop` is one TC, `set` gets the weapon set's name.
 template <class Drop>
 void ClassDrops(int32_t which, const char** set, Drop&& drop) noexcept {
-	static thread_local std::mt19937 rng {std::random_device {}()};
-	const auto roll = [](int n) noexcept { return std::uniform_int_distribution<int>(0, n - 1)(rng); };
+	const auto roll = [](int n) noexcept { return RollRand() % n; };
 	// the common set first: gloves, belt, boots, two rings, an amulet
 	drop("InvaderGloves");
 	drop("InvaderBelt");
@@ -260,23 +258,23 @@ void ClassDrops(int32_t which, const char** set, Drop&& drop) noexcept {
 		drop("InvaderBodyAll");
 		switch (roll(4)) {
 		case 0:
+			*set = "spear";
+			drop("InvaderAmazon2hSpear");
+			break;
+		case 1:
 			*set = "bow";
 			drop("InvaderAmazonBow");
 			drop("InvaderAmazonQuiver");
 			break;
-		case 1:
+		case 2:
 			*set = "crossbow";
 			drop("InvaderAmazonCrossbow");
 			drop("InvaderAmazonBolt");
 			break;
-		case 2:
+		default:
 			*set = "javelin";
 			drop("InvaderAmazon1hJavelin");
 			drop("InvaderGenericShield");
-			break;
-		default:
-			*set = "spear";
-			drop("InvaderAmazon2hSpear");
 			break;
 		}
 		break;
@@ -384,8 +382,8 @@ void RollGear(Game* game, Unit* invader, Unit* player, int32_t which) noexcept {
 	g_held.fetch_add(static_cast<uint32_t>(held.size()));
 	plog::Info("invaders: %s #%u holds %zu items, %d still in a room (weapon set %s%s):%s", ClassNames[which], id, held.size(),
 	           onFloor, set, missing != 0 ? ", some TCs missing" : "", line);
-	plog::Info("invaders: %s #%u dressed: %d exact, %d nearest, %d not shown; parts HD TR LG RA LA RH LH SH S1-S8 = %s",
-	           ClassNames[which], id, look.exact, look.nearest, look.unshown, hex);
+	plog::Info("invaders: %s #%u dressed: %d shown, %d not shown; parts HD TR LG RA LA RH LH SH S1-S8 = %s", ClassNames[which], id,
+	           look.shown, look.unshown, hex);
 	const std::lock_guard lock(g_heldLock);
 	g_heldItems[HeldKey(game, id)] = std::move(held);
 }

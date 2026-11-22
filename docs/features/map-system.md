@@ -118,7 +118,8 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
   then exactly those items drop, with its ear ([#1708](https://github.com/synpoox/pd2-resurrected/issues/1708)). An invader that dies
   holding nothing (spawned another way) rolls at death. The rolled gear also sets its look, so it wears what it drops
   (`plugin/common/invader_dress.h`): the helm, the body armor's light/medium/heavy parts, the weapons, the shield and the
-  Necromancer's head. A weapon its class's one pose has no art for shows the nearest one (see `docs/deviations.md`).
+  Necromancer's head, and nothing in a hand or shield the roll left empty. HD shows each base's own model; legacy
+  graphics draw a base with no art in the class's one pose as the nearest (`invader_art_path.h`, `docs/deviations.md`).
 - **Plugins:** `core-events` (Shared) holds the code that belongs only to the map system: opening maps, map stats, cube
   op 30, map events and invaders. It is a plugin of its own because the map system is large enough to be used outside
   this project ([ADR 0004](../adr/0004-plugins-split-by-multiplayer-scope.md), amended). Rules the map system shares with
