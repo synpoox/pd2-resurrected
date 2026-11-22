@@ -2,6 +2,47 @@
 
 Player-facing changes, newest first. Entries follow PD2 unless noted. Until multiplayer, a build may break characters (ADR 0003).
 
+### 0.2.3-alpha (2026-11-22)
+
+#### Bug Fixes
+
+- Stash affinity also works with the Shift+Right Click stash hotkey. (#1724)
+- Maps and Bossing tabs refuse an item dropped into a cell that is not its own (#1726).
+- Monsters Remaining now shows a number in outdoor zones once most of the zone is explored, and reads 50+ instead of 25+. (#1729)
+- Fixed the Act 2 mercenary refusing spears and polearms (#1730).
+- The Maps and Bossing stash tabs only count their page once its arrows were sent, and hide when the stash has too few pages. (#1742)
+- A map currency or boss item dropped by hand onto its own stack on the Maps and Bossing tabs now stacks. (#1744)
+- Map currency and boss parts sent to the stash stack onto their Maps and Bossing tab cells. (#1744)
+- A wrong drop onto a Maps or Bossing cell no longer leaves an invisible item on the cursor (#1749).
+- A hand drop past a full Maps or Bossing stack now tops it up to 50 and keeps the rest on the cursor. (#1758)
+- After a top-up or refused drop on a Maps or Bossing stack, the item left on the cursor shows at once. (#1762)
+- Refused Maps/Bossing drops stay clickable, and quick-moves and late tab switches are filtered too. (#1766)
+- Maps and Bossing stacks top up to 255, and a stack taken out shows its 50 on the cursor (#1771, #1772).
+- Shift+Right Click stashes like Ctrl+click; Ctrl+click out of a stash tab tops up stacks (#1773, #1774, #1775).
+- Fixed the Act 1 mercenary refusing crossbows and quivers (#1779).
+
+#### Items
+
+- The stash Materials tab has cells for Worldstone Shards and craft infusions (#1725).
+- The stash Materials tab has cells for Puzzleboxes and Puzzlepieces (#1750).
+- Paired each ready orb with its plain orb on the Maps tab and removed the Bossing key cells (#1776).
+- Vendors no longer buy runes. (#1777)
+
+#### Improvements
+
+- Lock Inventory also locks the charm rows, inventory rows 5-8 (#1727).
+- Maps and Bossing tabs show a red cell and keep the item on the cursor over a wrong cell (#1745).
+- Maps moved by Ctrl+Click or Shift+Right Click stack onto a same-map stack first (#1759).
+- Maps and Bossing tab stacks hold 255; taking one out gives 50 (#1763).
+
+#### Mercenaries
+
+- Removed the Holy Freeze Act 2 mercenary from Greiz's hire list (#1728).
+
+#### Features
+
+- Add a loot filter builder made from PD2R's item data, and a ready Regular filter. (#1769)
+
 ### 0.2.2-alpha (2026-11-21)
 
 - Invaders now wear their real player-class art in legacy and HD, and drop the weapon they carry. (#1215)

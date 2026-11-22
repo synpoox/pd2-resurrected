@@ -4,7 +4,7 @@ Project Diablo II rebuilt as a Diablo II: Resurrected mod.
 
 [Discord](https://discord.com/invite/KWGqVxmpDR) | [Launcher](https://github.com/synpoox/resurrected-launcher)
 
-**Status: alpha 0.2.2** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [how it differs from PD2](docs/deviations.md)).
+**Status: alpha 0.2.3** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [how it differs from PD2](docs/deviations.md)).
 
 ## Requirements
 
