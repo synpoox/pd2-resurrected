@@ -194,10 +194,12 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 }
 
 // The pad legend ("LB + A Split Stack", #387, controller/playerinventoryexpansionlayouthd.json) shows while a splittable stack is held.
-// Set when the held state changes, and again when the panel is opened anew (its handle changes; the layout's "visible": false is not honored).
+// The layout's "visible": false is not honored, and a layout switch or panel rebuild makes new widgets (maybe under the same panel
+// handle), so both widgets are looked up each update and set when the state or either handle differs from what was last applied.
+// A failed lookup counts as not applied and is retried next update (#1704). Sets only on a change: no per-frame set, no log.
 void UpdateLegend(bool want) noexcept {
-	static bool shown = false;
-	static D2RL::Widgets::WidgetHandle shownPanel = D2RL::Widgets::InvalidHandle;
+	static bool applied = false;
+	static D2RL::Widgets::WidgetHandle appliedWidgets[2] = {D2RL::Widgets::InvalidHandle, D2RL::Widgets::InvalidHandle};
 	if (g_widgets == nullptr) {
 		return;
 	}
@@ -209,20 +211,20 @@ void UpdateLegend(bool want) noexcept {
 		panel = D2RL::Widgets::InvalidHandle;
 	}
 	if (panel == D2RL::Widgets::InvalidHandle) {
-		shownPanel = panel;  // closed: the next open is a new panel, whose legend the layout does not hide
+		appliedWidgets[0] = appliedWidgets[1] = D2RL::Widgets::InvalidHandle;  // closed: the next open has new widgets
 		return;
 	}
-	if (want == shown && panel == shownPanel) {
-		return;
-	}
-	for (const char* name : {"pd2rSplitLegendLB", "pd2rSplitLegend"}) {
+	const char* const names[2] = {"pd2rSplitLegendLB", "pd2rSplitLegend"};
+	for (int i = 0; i < 2; ++i) {
 		D2RL::Widgets::WidgetHandle widget = D2RL::Widgets::InvalidHandle;
-		if (g_widgets->findWidget(g_context, panel, name, &widget) == D2RL::Widgets::Result::Success) {
+		if (g_widgets->findWidget(g_context, panel, names[i], &widget) != D2RL::Widgets::Result::Success) {
+			widget = D2RL::Widgets::InvalidHandle;  // not applied: retried next update
+		} else if (widget != appliedWidgets[i] || want != applied) {
 			g_widgets->setWidgetVisible(g_context, widget, want);
 		}
+		appliedWidgets[i] = widget;
 	}
-	shown = want;
-	shownPanel = panel;
+	applied = want;
 }
 
 void Watch(const D2RL::PluginContext*, void*) noexcept {
