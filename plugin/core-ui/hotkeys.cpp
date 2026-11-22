@@ -33,6 +33,7 @@
 #include <cctype>
 #include <cstdio>
 #include <cstring>
+#include <windows.h>
 #include <string>
 
 namespace hotkeys {
@@ -361,7 +362,9 @@ ToTabsFn g_toTabs = nullptr;
 using DepositFn = void (*)(void*, uint64_t*) noexcept;
 DepositFn g_deposit = nullptr;
 
-void OnRightClick(void* widget, uint64_t cell) noexcept {
+// cubeOnly: the click came from OnMessage, so D2R has no click of its own to fall back to, and only a Cube item is ours
+void Click(void* widget, uint64_t cell, bool cubeOnly) noexcept {
+	const auto native = [&] { if (!cubeOnly) g_right(widget, cell); };
 	uint32_t mods = 0;
 	if (g_key(0x10) != 0) mods |= ModifierBit(Modifier::Shift);
 	if (g_key(0x11) != 0) mods |= ModifierBit(Modifier::Control);
@@ -380,9 +383,10 @@ void OnRightClick(void* widget, uint64_t cell) noexcept {
 			Find find {0, d2r::At<uint32_t>(unit, d2r::rva::UnitIdField)};
 			const Act what = static_cast<Act>(act);
 			if (what == Act::Drop) {
-				// the player's own inventory, whatever panel is open. D2R's Ctrl + left click only drops with no other panel up (with one
+				// the player's own inventory or Cube, whatever panel is open. D2R's Ctrl + left click only drops with no other panel up (with one
 				// up it quick-moves), so the panel table reads shut for that one call; the item's own drop sound plays inside it
-				if (find.runtimeId != 0 && Look(player, items::ContainerBit(items::ItemContainer::Inventory), &find)) {
+				if (find.runtimeId != 0 && Look(player, items::ContainerBit(items::ItemContainer::Inventory) | items::ContainerBit(items::ItemContainer::Cube), &find) &&
+				    (!cubeOnly || find.info.container == items::ItemContainer::Cube)) {
 					uint8_t saved[PanelCount] = {};
 					for (int id = 0; id < PanelCount && g_panelTable != nullptr; ++id) {
 						bool keep = id == PanelInventory;
@@ -400,9 +404,10 @@ void OnRightClick(void* widget, uint64_t cell) noexcept {
 			// a stash move needs the stash panel open (no remote stash); a Cube move works with the Cube shut and any panel up
 			if (what == Act::Stash && !PanelOpen(PanelStash)) return;
 			if (find.runtimeId == 0 || !Look(player, Ours, &find)) {
-				g_right(widget, cell);
+				native();
 				return;
 			}
+			if (cubeOnly && find.info.container != items::ItemContainer::Cube) return;
 			if (what == Act::Stash && find.info.container == items::ItemContainer::Inventory && g_deposit != nullptr &&
 			    g_toTabs != nullptr && g_toTabs(unit) != 0) {
 				if (find.info.y >= d2r::CharmFirstRow && inventory_lock::IsLocked()) {
@@ -419,7 +424,42 @@ void OnRightClick(void* widget, uint64_t cell) noexcept {
 			}
 		}
 	}
-	g_right(widget, cell);
+	native();
+}
+
+void OnRightClick(void* widget, uint64_t cell) noexcept { Click(widget, cell, false); }
+
+void OnCubeClick(void* widget, uint64_t cell) noexcept { Click(widget, cell, true); }
+
+// #1821: D2R never sends the right-click message to the Cube's grid (the other grids and the root widget get it, the grid under
+// the mouse does not), so OnRightClick never runs for a Cube item. The message handler every widget shares sees the message
+// instead: when the mouse is over a grid that holds a Cube item, the bind runs for that grid and cell.
+using MsgFn = void (*)(void*, int64_t*) noexcept;
+using ManagerFn = uint8_t* (*)() noexcept;
+MsgFn g_message = nullptr;
+ManagerFn g_manager = nullptr;
+void* g_rightTarget = nullptr;  // InventoryRightClick's address: the grids are the widgets whose vtable slot SlotRightClick holds it
+constexpr int64_t RightMessage = 0x2d5172cac7c938c;  // the message's name hash (message field +0x88)
+constexpr size_t MessageName = 0x11, MessageData = 0x22, ManagerHovered = 0x178, SlotCellAt = 0x98, SlotRightClick = 0x108;
+constexpr uint8_t MessageEntry[] = {0x40, 0x55, 0x53, 0x57, 0x41, 0x56, 0x41, 0x57, 0x48, 0x8d, 0xac, 0x24, 0xc0, 0xfd, 0xff, 0xff};
+uint64_t g_lastCubeClick = 0;
+
+void OnMessage(void* widget, int64_t* message) noexcept {
+	if (message != nullptr && message[MessageName] == RightMessage && g_manager != nullptr && g_rightTarget != nullptr && g_key != nullptr) {
+		void* hovered = *reinterpret_cast<void**>(g_manager() + ManagerHovered);
+		const uint64_t now = GetTickCount64();
+		// the message reaches many widgets: once per click, and never when the grid under the mouse gets it itself (its own hook runs)
+		if (hovered != nullptr && hovered != widget && (*static_cast<void***>(hovered))[SlotRightClick / sizeof(void*)] == g_rightTarget && now - g_lastCubeClick > 250) {
+			g_lastCubeClick = now;
+			void** vtable = *static_cast<void***>(hovered);
+			uint64_t scratch[16] = {};
+			const auto at = reinterpret_cast<uint64_t* (*)(void*, void*, int64_t) noexcept>(vtable[SlotCellAt / sizeof(void*)]);
+			const int64_t where = *reinterpret_cast<int64_t*>(reinterpret_cast<uint8_t*>(message[MessageData]) + 4);
+			const uint64_t* cell = at(hovered, scratch, where);
+			if (cell != nullptr) OnCubeClick(hovered, *cell);
+		}
+	}
+	g_message(widget, message);
 }
 
 }  // namespace
@@ -450,11 +490,22 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (no item interaction listener)");
 		return;
 	}
-	uint64_t key = 0;
+	uint64_t key = 0, rightRva = 0;
+	constexpr const char* RightSignature = "48 89 54 24 10 53 48 83 ec 20 48 8b d9 e8 ?? ?? ?? ?? 84 c0 74 5c 48 8b 03 48 8d 54 24 38 48 8b cb";
+	if (sigscan::ScanUnique(context->exeBase, RightSignature, 0, &rightRva) == 1) g_rightTarget = reinterpret_cast<void*>(context->exeBase + rightRva);
 	const bool right = sigscan::ScanUnique(context->exeBase, "48 83 ec 28 ff 15 ?? ?? ?? ?? c1 e8 0f", 0, &key) == 1 &&
-	                   sigscan::HookBySignature(context, "InventoryRightClick",
-	                                            "48 89 54 24 10 53 48 83 ec 20 48 8b d9 e8 ?? ?? ?? ?? 84 c0 74 5c 48 8b 03 48 8d 54 24 38 48 8b cb", 0,
+	                   sigscan::HookBySignature(context, "InventoryRightClick", RightSignature, 0,
 	                                            RightEntry, sizeof RightEntry, OnRightClick, &g_right);
+	uint64_t manager = 0;
+	const int managerHits = sigscan::ScanUnique(context->exeBase, "48 83 ec 28 48 8b 05 ?? ?? ?? ?? 48 85 c0 75 1a 48 8d 4c 24 30 88 44 24 30 e8 ?? ?? ?? ?? 84 c0 74 01 cc 48 8b 05 ?? ?? ?? ?? 48 8b 80 d0 00 00 00 48 83 c4 28 c3", 0, &manager);
+	if (managerHits == 1 &&
+	    sigscan::HookBySignature(context, "InputMessage",
+	                             "40 55 53 57 41 56 41 57 48 8d ac 24 c0 fd ff ff 48 81 ec 40 03 00 00 48 8b 05 ?? ?? ?? ?? 48 33 c4", 0,
+	                             MessageEntry, sizeof MessageEntry, OnMessage, &g_message)) {
+		g_manager = reinterpret_cast<ManagerFn>(context->exeBase + manager);
+	} else {
+		plog::Warn("hotkeys: the Cube grid binds are off (message handler signature not found, manager hits %d)", managerHits);
+	}
 	uint64_t panel = 0;
 	if (sigscan::ScanUnique(context->exeBase, "48 63 c1 48 8d 0d ?? ?? ?? ?? 0f b6 04 08 c3 cc 48 8b c4 48 89 50 10 4c 89 40 18", 0, &panel) == 1) g_panel = reinterpret_cast<PanelFn>(context->exeBase + panel);
 	uint64_t at = 0;
