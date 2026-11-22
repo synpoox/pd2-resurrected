@@ -16,7 +16,7 @@ namespace pd2::stash_toml {
 // The value of a `<key> = N` line; -1 for any other line (a commented one included)
 constexpr auto IntOf(const char* line, const char* key) noexcept -> int32_t {
 	size_t i = 0;
-	while (line[i] == ' ' || line[i] == '	') {
+	while (line[i] == ' ' || line[i] == '\t') {
 		++i;
 	}
 	for (size_t k = 0; key[k] != '\0'; ++k) {
@@ -172,12 +172,12 @@ enum class Source { Mod, Game, None, Unreadable };
 // The mod's value, else the game-wide one. `configPath` is a file in <game>/mods/<mod>/d2rloader/config/ (the plugin's config).
 inline auto Resolve(const wchar_t* configPath, const char* key, int32_t* value) noexcept -> Source {
 	std::wstring dir = configPath != nullptr ? configPath : L"";
-	const size_t slash = dir.find_last_of(L"\/");
+	const size_t slash = dir.find_last_of(L"\\/");
 	dir = slash == std::wstring::npos ? L"" : dir.substr(0, slash + 1);
 	std::wstring game = dir;  // up four folders: <game>/
 	for (int i = 0; i < 4 && !game.empty(); ++i) {
 		game.pop_back();
-		const size_t cut = game.find_last_of(L"\/");
+		const size_t cut = game.find_last_of(L"\\/");
 		game = cut == std::wstring::npos ? L"" : game.substr(0, cut + 1);
 	}
 	const int32_t mod = ReadKey(dir + L"d2rloader.toml", key);
