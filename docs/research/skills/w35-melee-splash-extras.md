@@ -88,6 +88,21 @@ The apply passes flag 0, so the walker gets the handler set `0x105dc628` (built 
   The walker (`0x5881e0`) jumps outside the dump, so whether it also drops other domeleedamage handlers on splashed
   units (crushing blow, open wounds, which PD2 fires) is not known.
 
+## Whirlwind and Blade Dance ([#1812](https://github.com/synpoox/pd2-resurrected/issues/1812))
+
+- Both are srvstfunc 38 / srvdofunc 76. D2R's start (srvst 38, `0x56a420`) calls `0x48e820(unit, 1)`, which sets
+  state 54 (uninterruptable) for the spin.
+- D2R's item event 20 (skill on hit, `0x583b30`) rolls `UnitStat(unit, param >> 16, param & 0xffff)` below 100 on
+  `UnitSeed`, then casts through `0x5896e0`, which refuses an attacker in state 54. So item_splashonhit (412) and
+  map_mon_splash (480) never cast on a spin hit. 1.13c refuses the same way (D2Game `0x6fd117e0`, state `0x36`; its
+  Whirlwind start `0x6fc48290` sets it through `0x6fd02240`).
+- PD2 splashes these hits: its splash damage% table (`0x10305eb0`) lists Whirlwind (151) and Blade Dance (PD2 380,
+  merged 452) by calc1. Where PD2 skips the state 54 refusal is not found: its D2Game calls go through obfuscated jmp
+  thunks.
+- core-rules wraps `AuraEventTable` slot 20 (signature entry). For a splash stat while the attacker is in state 54 with
+  a srvdofunc 76 current skill, it rolls the chance as `0x583b30` does and calls the splash on the struck unit. Every
+  other call, and every other skill on hit during a spin, goes to D2R's function unchanged.
+
 ## Deviations (approximated, on the deviation list)
 
 - Smite's splash takes Smite's own skill damage. PD2 deals its shield damage and adds a state 224 list with
