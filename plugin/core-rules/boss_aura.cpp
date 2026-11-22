@@ -7,7 +7,8 @@
 //
 // In D2R the umod handler table (93847: 0x142395fe0, called from 0x4995e0) sends umod 30 through a D2RLoader thunk
 // (`jmp [slot]`) to D2RCore's ApplyAuraEnchanted (export 1091). With its aura_enchanted_selection rule on it makes
-// its own pick; with it off it calls the slot's old target, D2R's own handler 0x495cd0. The SDK's
+// its own pick; with it off it runs an inline copy of the stock logic or calls the slot's old target, D2R's own
+// handler 0x495cd0 (a global byte chooses), so a config switch cannot make the redirects live. The SDK's
 // Encounters::ModifierPolicy exists, but it can only narrow the loader's own 10 auras (AuraSkillIds), so it cannot
 // give PD2's monster auras. So the thunk slot is swapped (found from the dispatch's table lea, by signature) for
 // BossAuraUmod, which does what the loader does with the rule off: it calls D2R's handler 0x495cd0, whose add-skill
