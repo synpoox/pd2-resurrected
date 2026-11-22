@@ -189,7 +189,7 @@ constexpr auto AtHome(const Home& home, uint32_t code, uint32_t shown, bool shar
 // A stack on a reserved page holds up to StashMax; one taken out gives WithdrawMax (misc.txt maxstack of every routed
 // stackable, tools/tests/test_stash_affinity.py) and the rest stays home (#1763). D2R's GetMaxStack (93847 0x3719e0)
 // clamps to 511, the 9-bit saved quantity, so StashMax must stay below it.
-inline constexpr int32_t StashMax = 255;  // the owner's cap, matching the RotW tabs' 255 (stash_stack.h)
+inline constexpr int32_t StashMax = 255;  // the owner's cap
 inline constexpr int32_t WithdrawMax = 50;
 static_assert(StashMax <= 511 && WithdrawMax < StashMax && StashMax == 255);
 

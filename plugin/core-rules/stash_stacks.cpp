@@ -55,19 +55,6 @@ constexpr const char* SendPattern =
 sigscan::Entry SetSendingOnCall {"StashTabSetSendingOn", "stash tabs", sigscan::Kind::Rip, 9, 13, SendPattern};
 sigscan::Entry SendItemCall {"StashTabSendItem", "stash tabs", sigscan::Kind::Rip, 66, 70, SendPattern};
 sigscan::Entry SetSendingOffCall {"StashTabSetSendingOff", "stash tabs", sigscan::Kind::Rip, 76, 80, SendPattern};
-// #1763: D2R caps a slot at 99; the two checks of the count byte are raised to TabMax (255, the 8-bit saved ceiling).
-// The deposit's `cmp al,0x63` (CountCheckSite + 17) becomes `cmp al,0xff`. The slot merge in PlrMsg (93847 0x4fab20,
-// two slots of one item onto each other) sums the two bytes: `lea eax,[rcx+rdx] / cmp eax,0x63 / jbe merge / sub cl,0x63
-// / mov byte [rdi+0x9c],0x63 / add [rbx+0x9c],cl`; `cmp ah,0` (sum <= 255, jbe kept), `sub cl,0xff` and 0xff make it 255.
-// No other 99 test of +0x9c is in the image (a byte scan of every +0x9c byte load; the thunked getter and add are D2RCore's).
-constexpr uint32_t CountCheckCmp = 17;
-constexpr uint8_t CountCheckStock[] = {0x3c, 0x63}, CountCheck255[] = {0x3c, 0xff};
-sigscan::Entry SlotMergeSite {"StashTabSlotMerge", "stash tabs", sigscan::Kind::Code, 0, 0,
-                              "0f b6 8f 9c 00 00 00 0f b6 93 9c 00 00 00 48 8b 75 ?? 8d 04 11 83 f8 63 76 12 80 e9 63 c6 87 9c 00 00 00 63"};
-constexpr uint32_t SlotMergeCmp = 21;
-constexpr uint8_t SlotMergeStock[] = {0x83, 0xf8, 0x63, 0x76, 0x12, 0x80, 0xe9, 0x63, 0xc6, 0x87, 0x9c, 0, 0, 0, 0x63};
-constexpr uint8_t SlotMerge255[] = {0x80, 0xfc, 0x00, 0x76, 0x12, 0x80, 0xe9, 0xff, 0xc6, 0x87, 0x9c, 0, 0, 0, 0xff};
-static_assert(sizeof(SlotMergeStock) == sizeof(SlotMerge255) && TabMax == 0xff);
 constexpr int32_t StatQuantity = 70;
 constexpr int32_t CountByte = 0x9c;  // item data
 
@@ -158,8 +145,8 @@ auto MakeStub(const void* target) noexcept -> uint64_t {
 }  // namespace
 
 auto InstallStashStacks(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
-	sigscan::Entry* const own[] = {&CountCheckSite, &ServerAddSite, &SetSendingOnCall, &SendItemCall, &SetSendingOffCall, &SlotMergeSite};
-	sigscan::Resolve(own, 6, context->exeBase, nullptr, 0);
+	sigscan::Entry* const own[] = {&CountCheckSite, &ServerAddSite, &SetSendingOnCall, &SendItemCall, &SetSendingOffCall};
+	sigscan::Resolve(own, 5, context->exeBase, nullptr, 0);
 	for (const sigscan::Entry* e : own) {
 		plog::Info("stash tabs: %s %s (rva 0x%llx)", e->name, sigscan::StateText(e->state), static_cast<unsigned long long>(e->rva));
 	}
@@ -180,15 +167,7 @@ auto InstallStashStacks(const D2RL::PluginContext* context, char* report, size_t
 	const bool ok = countStub != 0 && addStub != 0 &&
 	                SwapThunkSlot(context, ServerAddSite, ServerAddCall, addStub, reinterpret_cast<uint64_t*>(&g_add)) &&
 	                SwapThunkSlot(context, CountCheckSite, CountCheckCall, countStub, reinterpret_cast<uint64_t*>(&g_count));
-	// the 255 cap only after the stack swap is in: a failed patch leaves D2R's 99, which the wrappers still respect
-	const bool raised = ok && CountCheckSite.rva != 0 && SlotMergeSite.rva != 0 &&
-	                    context->PatchBytes(CountCheckSite.rva + CountCheckCmp, CountCheckStock, sizeof(CountCheckStock), CountCheck255,
-	                                        sizeof(CountCheck255)) &&
-	                    context->PatchBytes(SlotMergeSite.rva + SlotMergeCmp, SlotMergeStock, sizeof(SlotMergeStock), SlotMerge255,
-	                                        sizeof(SlotMerge255));
-	plog::Info("stash tabs: slot cap %s", raised ? "raised to 255" : "left at 99 (a patch site differs)");
-	std::snprintf(report, reportSize, !ok ? "stash tabs FAILED (slot swap)" : raised ? "stash tabs take stacks whole, 255 a slot" :
-	                                                                                  "stash tabs take stacks whole (cap 99: patch FAILED)");
+	std::snprintf(report, reportSize, ok ? "stash tabs take stacks whole" : "stash tabs FAILED (slot swap)");
 	return ok;
 }
 
