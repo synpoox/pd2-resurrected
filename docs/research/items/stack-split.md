@@ -47,7 +47,10 @@ No D2R hook. The PluginSDK has no mouse event, and `ItemInteractionService` skip
    unit id. The UI thread's handle is the client's unit: on the game thread it is stale, and its seeds read 0. If the
    stack is there whole, `ItemService::splitStack` takes N-1 back to the cursor.
 
-Tomes (`tbk `, `ibk `) never split, as in PD2. D2R places the stack, so the cell and panel are D2R's own. Differences
+Tomes (`tbk `, `ibk `) never split, as in PD2. Throwables and ammo never split either (#1789): PD2's stack check
+`0x1037de30` (Ghidra VA) needs D2Common #10048 (items.txt `stackable`, ItemsTxt +0x132), not #10711 (the item type's
+itemtypes `Throwable`, ItemTypesTxt +0x10) and not type 0x38 (`misl`: arrows, bolts); gems (0x14) and runes (0x4a) pass
+before it (`0x1037de80`). The port tests ItemIsType `thro` (48) and `misl` (56) on the placed stack. D2R places the stack, so the cell and panel are D2R's own. Differences
 from PD2: the item left down is the original
 (PD2 makes a new one); a Ctrl+click on a same-type stack merges the whole held stack (D2R's put-down), where PD2 adds
 one; a TCP/IP client gets no split (no game thread).

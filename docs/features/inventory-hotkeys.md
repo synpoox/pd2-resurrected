@@ -11,6 +11,14 @@ core-ui's `hotkeys` part gives the inventory, stash and Cube PD2's mouse binds (
 
 A move that has no room leaves the item where it was. The stash move still needs the stash panel open (no remote stash). Every action plays its game sound: the item drop sound for drop and moves, the identify cursor sound for identify. Shift + left click on an identified item is still D2R's own equip. Host and single player only.
 
+## Stack split
+
+core-ui's `split` part: with a stack held, Ctrl + left click puts one item down and keeps the rest on the cursor (#316,
+[stack-split](../research/items/stack-split.md)). As in PD2, tomes, throwables (throwing knives, axes, javelins and
+potions) and ammo (arrows, bolts) never split (#1789): the stack goes down whole, and the log reads `split: refused`.
+PD2 prices a throwing weapon as one item whatever its stack size, buying and selling (#1539,
+[item-prices](../research/items/item-prices.md)), so a split would turn one bought stack into many full-price sales.
+
 ## Rebinding
 
 `<game>\mods\<mod>\d2rloader\config\core-ui-hotkeys.toml` is written on first run. Each line is `action = "modifiers+button"`

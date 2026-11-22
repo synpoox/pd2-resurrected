@@ -19,8 +19,20 @@ inline constexpr uint32_t StoredGrids =
 
 // A held stack the pad legend and a split apply to: more than one item, and not a tome (PD2 never splits tomes, whose
 // quantity is their scrolls)
+// shortcut: the pad legend still shows for a throwable or ammo (the type test needs the game thread); upgrade if pad
+// players ask.
 constexpr auto Splittable(uint32_t code, int32_t held) noexcept -> bool {
 	return held > 1 && code != D2RL::Items::MakeItemCode("tbk") && code != D2RL::Items::MakeItemCode("ibk");
+}
+
+// PD2 never splits a throwable (itemtypes `Throwable`: `thro` and the types under it, throwing knives, axes, javelins
+// and potions) or ammo (`misl`: arrows and bolts) (#1789): ProjectDiablo.dll 0x1037de30 tests D2Common #10711 and type
+// 0x38. Without it a bought stack splits into stacks of 1 that each sell at the price of the whole stack.
+inline constexpr int32_t TypeThrown = 48, TypeMissile = 56;  // itemtypes rows thro, misl (as ItemIsType numbers them)
+
+template <class IsType>
+constexpr auto RefusedByType(IsType isType) noexcept -> bool {
+	return isType(TypeThrown) || isType(TypeMissile);
 }
 
 // How many items go back to the cursor: N-1 when a stack of `held` left the cursor with Ctrl down and the stack it

@@ -22,6 +22,7 @@
 #include "log.h"
 #include "map_stack.h"
 #include "pd2_engine.h"
+#include "sig_hook.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -54,6 +55,9 @@ static_assert(SplitOff(items::MakeItemCode("tbk"), 20, true, 0, 20, C::Inventory
 static_assert(SplitOff(El, 5, true, 2, 7, C::Inventory) == 4);    // merged into a stack of 2: it keeps 3
 static_assert(SplitOff(El, 5, false, 2, 7, C::Inventory) == 0);   // plain click merges the whole stack
 static_assert(SplitOff(El, 5, true, 2, 6, C::Inventory) == 0);    // rose by less than the held stack
+static_assert(RefusedByType([](int32_t t) { return t == TypeThrown; }));   // javelins, throwing knives and potions
+static_assert(RefusedByType([](int32_t t) { return t == TypeMissile; }));  // arrows, bolts
+static_assert(!RefusedByType([](int32_t t) { return t == 75; }));          // a rune still splits
 
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::ItemService* g_items = nullptr;
@@ -149,6 +153,12 @@ void ApplyNative(const D2RL::PluginContext*, void* native, void* user) noexcept 
 	                     });
 }
 
+// Native: the SDK's ItemInfo has no item type; ItemIsType walks the type's parents as PD2's test does
+void CheckRefused(const D2RL::PluginContext*, void* native, void* user) noexcept {
+	const auto isType = d2r::Engine<int32_t (*)(d2r::Unit*, int32_t) noexcept>(d2r::sig::ItemIsType);
+	*static_cast<bool*>(user) = RefusedByType([&](int32_t type) { return isType(static_cast<d2r::Unit*>(native), type) != 0; });
+}
+
 void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 	const Job& job = g_job;  // stays put until g_busy clears below
 	// The UI thread's handle is to the client's unit, stale on the game thread and without seeds, so find the server's
@@ -164,6 +174,13 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 		// Not found (dropped, merged into a stack not noted) or not split (a tome)
 		plog::Info("split: none, list %u, %d held, %d found in container %u", static_cast<uint32_t>(listed), held,
 		           placed.quantity, static_cast<uint32_t>(placed.container));
+		return;
+	}
+	bool refused = true;  // stays true (no split) if the item cannot be read
+	g_items->editNativeItem(g_context, placed.handle, CheckRefused, &refused);
+	if (refused) {
+		plog::Info("split: refused, code %08x is a throwable or ammo (PD2 never splits those), %d stays whole", placed.code,
+		           placed.quantity);
 		return;
 	}
 	// Only the forced event is set again: the piece already has its Area Level, and setting that on top doubled it on the
@@ -288,6 +305,12 @@ auto Query(const Service*& service, bool (*has)(const Service*, uint32_t), uint3
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	g_context = context;
 	const D2RL::LifecycleService* lifecycle = nullptr;
+	sigscan::Entry* const sigs[] = {&d2r::sig::ItemIsType};
+	sigscan::Resolve(sigs, 1, context->exeBase, nullptr, 0);
+	if (d2r::sig::ItemIsType.state != sigscan::State::Ok) {
+		std::snprintf(report, size, "FAILED (signature ItemIsType %s)", sigscan::StateText(d2r::sig::ItemIsType.state));
+		return;
+	}
 	Query(g_widgets, D2RL::HasWidgetServiceField, D2RL::WidgetServiceRequiredSize);  // optional, see g_widgets
 	// `&`, not `&&`: every service is queried, so the report never blames a missing one by mistake
 	if (!(Query(g_items, D2RL::HasItemServiceField, D2RL::ItemServiceSplitStackFieldEnd) &
