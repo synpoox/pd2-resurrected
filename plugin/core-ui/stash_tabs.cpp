@@ -29,6 +29,7 @@
 #include "sig.h"
 #include "stash_affinity.h"
 #include "stash_home.h"
+#include "stash_toml.h"
 
 #include <D2RLPlugin/lifecycle.h>
 #include <D2RLPlugin/lifecycle_events.h>
@@ -77,6 +78,8 @@ const char* g_queue[LeftPresses + aff::LastReservedPage + 1];
 uint32_t g_head = 0, g_tail = 0;
 uint32_t g_sendFails = 0;     // consecutive frames the queue's next arrow was not sent
 bool g_pending = false;       // our tab is up but its page arrows have not all been sent: the shown page is unknown
+const char* g_notice = nullptr;  // an in-game line about the stash tabs (#1808), set at install
+float g_noticeLeft = 40.0f;      // seconds it still shows
 uint32_t g_pages = UINT32_MAX;  // shared pages the stash has (5 + add_shared_tabs), from d2rloader.toml; unknown: no limit
 constexpr uint32_t MaxSendFails = 30;
 std::atomic<bool> g_reset {false};
@@ -131,62 +134,6 @@ auto PlayerPage(bool right, const char* how) noexcept -> bool {
 	return true;
 }
 
-// The value of an `add_shared_tabs = N` line; -1 for any other line (a commented one included)
-constexpr auto ExtraTabsOf(const char* line) noexcept -> int32_t {
-	constexpr char Key[] = "add_shared_tabs";
-	size_t i = 0;
-	while (line[i] == ' ' || line[i] == '\t') {
-		++i;
-	}
-	for (const char c : Key) {
-		if (c == '\0') {
-			break;
-		}
-		if (line[i++] != c) {
-			return -1;
-		}
-	}
-	while (line[i] == ' ' || line[i] == '=') {
-		++i;
-	}
-	int32_t n = 0;
-	bool any = false;
-	for (; line[i] >= '0' && line[i] <= '9'; ++i) {
-		n = n * 10 + (line[i] - '0');
-		any = true;
-	}
-	return any ? n : -1;
-}
-static_assert(ExtraTabsOf("add_shared_tabs = 15") == 15);
-static_assert(ExtraTabsOf("  add_shared_tabs=0 # none") == 0);
-static_assert(ExtraTabsOf("# add_shared_tabs = 15") == -1);
-static_assert(ExtraTabsOf("set_materials_limit = 99") == -1);
-
-// 1 for the `[d2rcore.stash]` header, 0 for any other `[section]` header, -1 for any other line
-constexpr auto SectionOf(const char* line) noexcept -> int32_t {
-	constexpr char Name[] = "[d2rcore.stash]";
-	size_t i = 0;
-	while (line[i] == ' ' || line[i] == '	') {
-		++i;
-	}
-	if (line[i] != '[') {
-		return -1;
-	}
-	for (const char c : Name) {
-		if (c == '\0') {
-			return 1;
-		}
-		if (line[i++] != c) {
-			return 0;
-		}
-	}
-	return 1;
-}
-static_assert(SectionOf("[d2rcore.stash]") == 1);
-static_assert(SectionOf("  [d2rcore.stash] # x") == 1);
-static_assert(SectionOf("[d2rcore.other]") == 0);
-static_assert(SectionOf("add_shared_tabs = 3") == -1);
-
 // The `add_shared_tabs` of the `[d2rcore.stash]` section of `path`: -1 when the file has no live key, -2 when it cannot be read
 auto ReadExtraTabs(const std::wstring& path) noexcept -> int32_t {
 	FILE* file = nullptr;
@@ -197,14 +144,44 @@ auto ReadExtraTabs(const std::wstring& path) noexcept -> int32_t {
 	bool inStash = false;
 	char line[256];
 	while (std::fgets(line, sizeof line, file) != nullptr) {
-		if (const int32_t section = SectionOf(line); section >= 0) {
+		if (const int32_t section = pd2::stash_toml::SectionOf(line); section >= 0) {
 			inStash = section == 1;
-		} else if (const int32_t n = ExtraTabsOf(line); inStash && n >= 0) {
+		} else if (const int32_t n = pd2::stash_toml::ExtraTabsOf(line); inStash && n >= 0) {
 			extra = n;
 		}
 	}
 	std::fclose(file);
 	return extra;
+}
+
+// #1808: the mod's d2rloader.toml lost its live add_shared_tabs (a rewritten template, a kept old file): put 15 back in it, the
+// loader reads it at game start. A .bak of the file is kept once; the write is a temp file moved over it. Never the game-wide file.
+auto RestoreExtraTabs(const std::wstring& path) noexcept -> bool {
+	std::string text;
+	{
+		FILE* in = nullptr;
+		if (_wfopen_s(&in, path.c_str(), L"rb") != 0 || in == nullptr) {
+			return false;
+		}
+		char buf[4096];
+		for (size_t n; (n = std::fread(buf, 1, sizeof buf, in)) > 0;) {
+			text.append(buf, n);
+		}
+		std::fclose(in);
+	}
+	const std::string fixed = pd2::stash_toml::WithExtraTabs(text, static_cast<int32_t>(aff::RequiredExtraTabs));
+	CopyFileW(path.c_str(), (path + L".bak").c_str(), TRUE);  // fails when a .bak is already there: the first one stays
+	const std::wstring temp = path + L".tmp";
+	FILE* out = nullptr;
+	if (_wfopen_s(&out, temp.c_str(), L"wb") != 0 || out == nullptr) {
+		return false;
+	}
+	const bool wrote = std::fwrite(fixed.data(), 1, fixed.size(), out) == fixed.size();
+	if (std::fclose(out) != 0 || !wrote || !MoveFileExW(temp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+		DeleteFileW(temp.c_str());
+		return false;
+	}
+	return true;
 }
 
 // The stash's shared pages: 5 + add_shared_tabs of the mod's d2rloader.toml (beside the plugin's own config), else of the game-wide
@@ -232,6 +209,16 @@ auto ReadPages(const wchar_t* configPath) noexcept -> uint32_t {
 		return UINT32_MAX;
 	}
 	const int32_t extra = mod >= 0 ? mod : all >= 0 ? all : 0;
+	if (mod != -2 && extra < static_cast<int32_t>(aff::RequiredExtraTabs)) {
+		if (RestoreExtraTabs(modToml)) {
+			g_notice = "Stash tabs restored: Maps and Bossing need add_shared_tabs = 15. Restart Diablo II: Resurrected once to see them.";
+			plog::Warn("stash tabs: add_shared_tabs was %d (%s): wrote add_shared_tabs = %u to the mod's d2rloader.toml (backup .bak); restart D2R once", extra,
+			           mod >= 0 ? "the mod's file" : all >= 0 ? "the game-wide file" : "no live key", aff::RequiredExtraTabs);
+		} else {
+			g_notice = "Maps and Bossing stash tabs are hidden: set add_shared_tabs = 15 in mods/PD2Resurrected/d2rloader/config/d2rloader.toml, then restart.";
+			plog::Warn("stash tabs: could not write add_shared_tabs = %u to the mod's d2rloader.toml (read-only?): set it under [d2rcore.stash] by hand and restart D2R", aff::RequiredExtraTabs);
+		}
+	}
 	plog::Info("stash tabs: add_shared_tabs = %d from %s", extra, mod >= 0 ? "the mod's d2rloader.toml" : all >= 0 ? "the game-wide d2rloader.toml" : "the loader default (no live key)");
 	return aff::VanillaSharedPages + static_cast<uint32_t>(extra);
 }
@@ -682,8 +669,18 @@ void RunRequest() noexcept {
 }
 
 // UI thread
-void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noexcept {
+void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void*) noexcept {
 	++g_frames;
+	if (g_notice != nullptr && g_noticeLeft > 0.0f) {
+		g_noticeLeft -= frame->deltaTimeSeconds;
+		const D2RL::Overlay::TextRequest text {.structSize = D2RL::Overlay::TextRequestSize,
+		                                       .canvas = frame->canvas,
+		                                       .position = {frame->screenWidth * 0.02f, frame->screenHeight * 0.05f},
+		                                       .color = {1.0f, 0.35f, 0.3f, 1.0f},
+		                                       .text = g_notice,
+		                                       .textLength = static_cast<uint32_t>(std::strlen(g_notice))};
+		g_overlay->drawText(g_context, &text);
+	}
 	if (g_reset.exchange(false)) {
 		g_view = View::None;
 		g_head = g_tail = g_page = g_sendFails = 0;

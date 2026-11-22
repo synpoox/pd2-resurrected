@@ -157,6 +157,11 @@ add_executable(line_spread_check EXCLUDE_FROM_ALL tests/line_spread_check.cpp)
 target_include_directories(line_spread_check PRIVATE common)
 target_compile_features(line_spread_check PRIVATE cxx_std_20)
 core_options(line_spread_check)
+# The stash tabs' add_shared_tabs rewrite (#1808): plugin/common/stash_toml.h has no engine types.
+add_executable(stash_toml_check EXCLUDE_FROM_ALL tests/stash_toml_check.cpp)
+target_include_directories(stash_toml_check PRIVATE common)
+target_compile_features(stash_toml_check PRIVATE cxx_std_20)
+core_options(stash_toml_check)
 # Rathma's clone split (#645): plugin/common/rathma_split.h has no engine types.
 add_executable(rathma_split_check EXCLUDE_FROM_ALL tests/rathma_split_check.cpp)
 target_include_directories(rathma_split_check PRIVATE common)
