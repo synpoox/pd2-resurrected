@@ -27,9 +27,12 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
   0x21 and their player-id forms 0x56-0x5a (0x58 is Shift+click unequip); 0x51 and 0x5b for the mercenary's slots; 0x5c (drop to
   the ground) only from a body slot; and the list forms 0x22 and 0x60 when they name a worn item. The log says
   `inventory lock: refused message 0x..`. No SDK service sees these moves, so it is a native hook.
-- **Charm rows.** The same hook drops 0x19 (take an item off a grid) when the item is stored in the inventory with its top row
-  in rows 5-8, and 0x18 (put the cursor item on a grid) aimed at rows 5-8 of the inventory page (`TouchesCharmRows`). The log says
-  `inventory lock: refused charm-row message 0x..`.
+- **Charm rows.** The same hook drops, while locked, the messages that take an item out of inventory rows 5-8 or swap one out:
+  0x19 (take it), 0x5c (Ctrl+click drop), 0x1f (swap with the cursor item, so a tall item dropped above row 5 onto a charm is
+  refused too), and the list forms 0x22 and 0x60, each when a stored inventory item they name has its top row in rows 5-8
+  (`TouchesCharmRows`; 0x22 and 0x60 were not seen in game). It also drops 0x18 (put the cursor item on a free cell) aimed at rows 5-8.
+  Our own Shift+right-click (stash) and Ctrl+Shift+right-click (Cube) hotkeys refuse the same items (log `hotkeys: ... refused:
+  inventory lock`), as they never reach the dispatch. The log says `inventory lock: refused charm-row message 0x..`.
 - **PD2.** `ProjectDiablo.dll` keeps `equipment_lock` in its settings and sends it to the server (packet 0x5c); its wrappers of
   the 1.13c body-slot handlers refuse while it is on, and also refuse picking up magic or better charms from the inventory.
 

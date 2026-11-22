@@ -15,6 +15,10 @@
 #include <cstdint>
 #include <cstring>
 
+namespace d2r {
+inline constexpr int CharmFirstRow = 4;  // zero-based grid row where charms count: PD2's inventory is 10x8 (#358), rows 5-8
+}
+
 namespace d2r::rva {
 
 // --- Kept: values the toolkit has no entry for ----------------------------------------------------------------------

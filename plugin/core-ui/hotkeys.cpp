@@ -14,6 +14,8 @@
 // shortcut: identify never spends a tome's last charge (SDK limit); no stash-tab pick (the SDK's Automatic placement).
 #include "hotkeys.h"
 
+#include "inventory_lock.h"
+
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"
@@ -234,6 +236,11 @@ void Run(const Job& job) noexcept {
 	} else {
 		if (job.act == Act::Cube && find.info.code == items::MakeItemCode('b', 'o', 'x', ' ')) return;  // the Horadric Cube never goes into itself
 		const items::ItemContainer from = job.container;
+		// the padlock (#1727) also keeps charm-row items put: this move never reaches the hooked message dispatch
+		if (from == items::ItemContainer::Inventory && find.info.y >= d2r::CharmFirstRow && inventory_lock::IsLocked()) {
+			plog::Info("hotkeys: %s refused: inventory lock, charm row %d", ActName[static_cast<int>(job.act)], find.info.y + 1);
+			return;
+		}
 		const items::ItemContainer to = job.act == Act::Cube ? (from == items::ItemContainer::Cube ? items::ItemContainer::Inventory : items::ItemContainer::Cube)
 		                                                     : (from == items::ItemContainer::Inventory ? items::ItemContainer::PersonalStash : items::ItemContainer::Inventory);
 		ops[0].structSize = items::ExistingItemOperationSize;

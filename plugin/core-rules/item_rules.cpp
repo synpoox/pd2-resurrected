@@ -1681,7 +1681,7 @@ static auto PatchUnlimitedBooks(const D2RL::PluginContext* context) noexcept -> 
 sigscan::Entry CharmCallSite {"ItemCharmActiveCall", "charms", sigscan::Kind::Code, 0, 0,
                               "48 8b cb e8 ?? ?? ?? ?? 83 f8 01 74 ?? 48 8b cb e8 ?? ?? ?? ?? 85 c0 75 ?? 48 8b d7 48 8b cb e8 ?? ?? ?? ?? 85 c0 74 ?? 0f b6 8e 06 01 00 00 41 b9 01 00 00 00"};
 constexpr uint32_t CharmCallOffset = 31;  // the E8 of the charm check in that signature
-constexpr uint32_t CharmFirstActiveRow = 4;  // zero-based: rows 5 to 8
+constexpr uint32_t CharmFirstActiveRow = d2r::CharmFirstRow;  // zero-based: rows 5 to 8
 
 using CharmActiveFn = int32_t (*)(Unit* item, Unit* player) noexcept;
 CharmActiveFn g_charmActiveOriginal = nullptr;
