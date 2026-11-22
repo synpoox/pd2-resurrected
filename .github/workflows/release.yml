@@ -76,12 +76,15 @@ jobs:
       - name: Package
         env:
           CARTOGRAPHER_COMMIT: ${{ steps.cartographer.outputs.commit }}
+          # a second D2R.exe (another build): with two exes each manifest entry is labelled from its own .build.info, not release.toml (#1796)
+          EXTRA_GAME_EXE: ${{ vars.D2R_GAME_EXTRA_EXE }}
         run: |
+          if (-not $env:EXTRA_GAME_EXE -or -not (Test-Path $env:EXTRA_GAME_EXE)) { throw "set the D2R_GAME_EXTRA_EXE variable to another build's D2R.exe (#1796)" }
           py -3 tools/release_precheck.py; if ($LASTEXITCODE) { throw "out/data holds retired converter output" }
           $dll = Join-Path $PWD ".cartographer/build/Release/cartographer.dll"
           powershell -ExecutionPolicy Bypass -File tools\check_cartographer.ps1 -Dll "$dll" -Commit "$env:CARTOGRAPHER_COMMIT" -Repo .cartographer
           if ($LASTEXITCODE) { throw "Cartographer DLL validation failed" }
-          py -3 "$env:D2R_TOOLKIT\release\stage.py" --game "$env:MODKIT_GAME" --extra-plugin "$dll@d2r-tools $env:CARTOGRAPHER_COMMIT"
+          py -3 "$env:D2R_TOOLKIT\release\stage.py" --game "$env:MODKIT_GAME" --extra-game-exe "$env:EXTRA_GAME_EXE" --extra-plugin "$dll@d2r-tools $env:CARTOGRAPHER_COMMIT"
           if ($LASTEXITCODE) { throw "stage.py failed" }
       - uses: actions/upload-artifact@v4
         with:

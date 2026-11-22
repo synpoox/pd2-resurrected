@@ -105,3 +105,5 @@ powershell -ExecutionPolicy Bypass -File tools\install.ps1 -Game <D2R folder> [-
 Game checks for d2rAI-toolkit's `game_checks.py` are in `tests/game/` (setup and run in `core_rules_checks.py`).
 
 The release workflow also updates the shared launcher feed (synpoox/resurrected-launcher, release `catalog`): add the repository secret `LAUNCHER_FEED_TOKEN` (Settings > Secrets and variables > Actions > Secrets), a fine-grained token with Contents: read and write on this repository and on synpoox/resurrected-launcher. The release job uses it for both the release and the feed; if the feed step fails, the release is already public: rerun `github_release.py <version> --feed <dist>` (toolkit `docs/release.md`, Shared catalog feed).
+
+`D2R_GAME_EXTRA_EXE`: a D2R.exe of the other supported build (3.4 if D2R_GAME is 3.3); the launcher manifest lists both (#1796).
