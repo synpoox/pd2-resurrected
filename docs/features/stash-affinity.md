@@ -49,7 +49,8 @@ the inventory and in a stash on the next update was quick-moved (Ctrl+click or t
 moves the item itself (rolls, sockets and quantity stay; the Shift+Right Click stash hotkey sends a homed item straight to its page, #1724): a map to the Maps tab if its base is shown, else to its base's row
 (or anywhere on its tier's storage page when the row is full); a currency to its cell, merged into the stack there (the
 merge runs in the inventory: the loader refuses to edit or destroy a shared-stash item; loader 1.3.1 reads quantity 0 for
-PD2's stacks, so there a second stack goes back to the inventory instead); a bossing item to its cell. While
+PD2's stacks, so the counts are stat 70 read off the native items, #1744); a bossing item to its cell, merged the same way. A
+sum past 50 goes back to the inventory whole. A hand drop onto the cell's stack does not merge yet (open in #1744). While
 Maps or Bossing is up, a tidy pass (every 25 updates) also routes items put onto those two pages by hand, and moves an item
 no rule takes off them to the inventory. A full cell or page, or a missing page (fewer extra tabs), moves it back to the inventory; the log
 says why. Status: `core-ui` console command, `affinity:` and `stash tabs:` counters.
@@ -61,6 +62,12 @@ item belongs on that page and cell (a map of the shown base also in the map cell
 another's cell, stays on the cursor. The message holds no shared page number, so the open tab (`stash_affinity::ViewPage`) names
 it. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
 refused message 0x.., not the item's own cell`.
+
+Red cells ([#1745](https://github.com/synpoox/pd2-resurrected/issues/1745)): the client asks the same rule first. Two
+D2Common cell tests are hooked by signature (`inventory_lock.cpp`): 93847 `0x38a250` (the cursor item's cells are free: green
+tint, the click sends 0x18) and `0x38a5d0` (the one stored item under it: the swap highlight, the click sends 0x1f). While the
+Maps or Bossing tab is open, both answer "no" for the cursor item over a stash cell that is not its own, so the cell shows red
+and the click sends nothing. The message filter above stays as the net. Status: `red cell tests` in the inventory lock counters.
 
 Limits: tabs 15-19 are taken as they are. Items a player already keeps on 16-18 stay and share the space; on 15 and 19 the
 tidy pass moves them to the inventory (a migration for saves with more extra tabs is a later slice); a reserved page's free cells are found from item corners only, so a bigger

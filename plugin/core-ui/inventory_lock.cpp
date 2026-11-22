@@ -99,6 +99,27 @@ namespace aff = pd2::affinity;
 constexpr auto Own = [](uint32_t code, uint32_t shown, uint32_t page, int32_t x, int32_t y) {
 	return aff::AtHome(aff::HomeOf(code), code, shown, true, page, x, y);
 };
+// the one rule of the server filter and the client's cell test (#1745): the item (code; 0 unknown) may stand at (x, y) of page
+constexpr auto HomeCell(uint32_t code, uint32_t shown, uint32_t page, int32_t x, int32_t y) noexcept -> bool {
+	return code != 0 && Own(code, shown, page, x, y);
+}
+// the client's cell test (#1745) refuses the cursor item (mode 4) on a stash cell (grid 4) of the open tab's page that is not its own
+constexpr uint8_t StashGrid = 4;
+constexpr auto CellRefused(uint8_t grid, uint32_t page, int32_t mode, uint32_t code, uint32_t shown, int32_t x, int32_t y) noexcept
+	-> bool {
+	return grid == StashGrid && page != 0 && mode == 4 && !HomeCell(code, shown, page, x, y);
+}
+static_assert(CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("gcv"), 0, 3, 2));                   // a gem over a map cell: red
+static_assert(!CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("m04"), aff::Code("m04"), 3, 2));   // the shown base's map
+static_assert(!CellRefused(StashGrid, aff::BossingPage, 4, aff::Code("dcma"), 0, 0, 0));              // a boss item on its cell
+static_assert(!CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("imma"), 0, 0, 4));                 // a map currency on its own cell
+static_assert(!CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("fort"), aff::Code("m01"), 1, 7));  // with a base shown too
+static_assert(CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("imma"), 0, 1, 7));                  // in another currency's cell
+static_assert(CellRefused(StashGrid, aff::BossingPage, 4, aff::Code("dcbl"), 0, 0, 0));               // dcbl on dcma's cell
+static_assert(!CellRefused(StashGrid, 0, 4, aff::Code("gcv"), 0, 3, 2));                               // no tab open
+static_assert(!CellRefused(0, aff::MapsPage, 4, aff::Code("gcv"), 0, 3, 2));                          // the inventory grid
+static_assert(!CellRefused(StashGrid, aff::MapsPage, 0, aff::Code("gcv"), 0, 3, 2));                  // not the cursor item
+static_assert(CellRefused(StashGrid, aff::MapsPage, 4, 0, 0, 3, 2));                                   // unknown code, as PutOk
 constexpr auto Nop = [](uint32_t, uint32_t, int32_t, int32_t) { return true; };
 constexpr auto Never = [](uint32_t, uint32_t, int32_t, int32_t) { return false; };
 constexpr uint8_t SwapStash[] = {0x1f, 9, 0, 0, 0, 7, 0, 0, 0, 4, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0};
@@ -222,7 +243,7 @@ void Load(void* player) noexcept {
 }
 
 sigscan::Entry* const Sigs[] = {&d2r::sig::FindUnit, &d2r::sig::ItemPage, &d2r::sig::UnitPackedXY, &d2r::sig::UnitClassOf,
-                                &d2r::sig::ItemRecord};
+                                &d2r::sig::ItemRecord, &d2r::sig::UnitDataFlag};
 
 // 93847 0x4f2fa0, int (game, player, message, size): the server's client-message dispatch (PlrMsg handler table by id)
 using DispatchFn = int (*)(void*, void*, const uint8_t*, int) noexcept;
@@ -243,21 +264,22 @@ auto UnitOf(void* game, uint32_t id) noexcept -> Unit* {
 	return d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit)(static_cast<Game*>(game), 4, id);
 }
 
-// the item's code (the items record's +0x80), 0 when it is not found
-auto CodeOf(void* game, Unit* item) noexcept -> uint32_t {
+// the item's code (the items record's +0x80) in data bank `flag`, 0 when it is not found
+auto CodeOf(uint32_t flag, Unit* item) noexcept -> uint32_t {
 	if (item == nullptr) {
 		return 0;
 	}
 	const int32_t row = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(d2r::sig::UnitClassOf)(item, __FILE__, __LINE__);
-	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(d2r::sig::ItemRecord)(
-		d2r::DataFlag(static_cast<Game*>(game)), row);
+	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(d2r::sig::ItemRecord)(flag, row);
 	return record == nullptr ? 0 : d2r::At<uint32_t>(record, 0x80);
+}
+auto CodeOf(void* game, Unit* item) noexcept -> uint32_t {
+	return CodeOf(d2r::DataFlag(static_cast<Game*>(game)), item);
 }
 
 // 0x18: whether the item may stand at cell (x, y) of the open tab's page
 auto PutOk(void* game, uint32_t id, uint32_t page, int32_t x, int32_t y) noexcept -> bool {
-	const uint32_t code = CodeOf(game, UnitOf(game, id));
-	return code != 0 && Own(code, stash_affinity::WantedBase(), page, x, y);
+	return HomeCell(CodeOf(game, UnitOf(game, id)), stash_affinity::WantedBase(), page, x, y);
 }
 
 // 0x1f: the cursor item (mode 4) goes to the message's cell (x, y)
@@ -273,8 +295,55 @@ auto SwapOk(void* game, uint32_t a, uint32_t b, int32_t x, int32_t y, uint32_t p
 	if (d2r::At<int32_t>(held, d2r::rva::UnitMode) != 4 || d2r::At<int32_t>(stored, d2r::rva::UnitMode) != 0) {
 		return true;
 	}
-	const uint32_t code = CodeOf(game, held);
-	return code != 0 && Own(code, stash_affinity::WantedBase(), page, x, y);
+	return HomeCell(CodeOf(game, held), stash_affinity::WantedBase(), page, x, y);
+}
+
+// The client's cell test (#1745). D2R's inventory widget asks two D2Common functions about the cursor item over a grid
+// cell: 93847 0x38a250 (inventory, item, x, y, page, &under, &count, grid) -> 1 when the item's cells are free (the green
+// tint; the click then sends 0x18), and 0x38a5d0 (inventory, item, x, y, page, &under, grid, cube) -> the one item under
+// it to swap with (*under, null for none; the click's 0x1f, the tint's swap highlight). Both 0 is the red tint, and the
+// click (0x2c81d0, 0x2c6070) sends nothing. Callers: the widget's draw 0x2c3570 and click 0x2c81d0 / 0x2c6070, the pad's
+// 0x1c48a0; 0x38a5d0 is also called by the shared placement helper 0x3877e0 (about 14 client and server callers); the hook only acts
+// for grid 4, a cursor item, a Maps or Bossing tab open and a cell that is not the item's home, which a server move has passed SwapOk for.
+// Native: no SDK service sees a cursor placement (ItemInteractionService skips cursor paths, the item policies cover
+// custom pages only).
+using FitsFn = int32_t (*)(void*, Unit*, int32_t, int32_t, uint32_t, Unit**, int32_t*, uint8_t) noexcept;
+using SwapTargetFn = int32_t (*)(void*, Unit*, int32_t, int32_t, uint32_t, Unit**, uint8_t, int32_t) noexcept;
+FitsFn g_fits = nullptr;
+SwapTargetFn g_swapTarget = nullptr;
+std::atomic<uint32_t> g_redCells {0};
+constexpr uint8_t FitsEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x55, 0x56, 0x57, 0x41, 0x54, 0x41, 0x56, 0x48, 0x83, 0xec, 0x60};
+constexpr uint8_t SwapTargetEntry[] = {0x40, 0x53, 0x55, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55,
+                                       0x41, 0x56, 0x41, 0x57, 0x48, 0x83, 0xec, 0x78};
+
+auto ClientRefuses(Unit* item, int32_t x, int32_t y, uint8_t grid) noexcept -> bool {
+	const uint32_t page = stash_affinity::ViewPage();
+	if (item == nullptr || grid != StashGrid || page == 0) {
+		return false;
+	}
+	const uint8_t flag = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::sig::UnitDataFlag)(item);
+	return CellRefused(grid, page, d2r::At<int32_t>(item, d2r::rva::UnitMode), CodeOf(flag, item), stash_affinity::WantedBase(), x, y);
+}
+
+auto OnFits(void* inventory, Unit* item, int32_t x, int32_t y, uint32_t page, Unit** under, int32_t* count, uint8_t grid) noexcept
+	-> int32_t {
+	const int32_t fits = g_fits(inventory, item, x, y, page, under, count, grid);
+	if (fits != 0 && ClientRefuses(item, x, y, grid)) {
+		++g_redCells;
+		return 0;
+	}
+	return fits;
+}
+
+auto OnSwapTarget(void* inventory, Unit* item, int32_t x, int32_t y, uint32_t page, Unit** under, uint8_t grid,
+                  int32_t cube) noexcept -> int32_t {
+	const int32_t found = g_swapTarget(inventory, item, x, y, page, under, grid, cube);
+	if (under != nullptr && *under != nullptr && ClientRefuses(item, x, y, grid)) {
+		++g_redCells;
+		*under = nullptr;
+		return 0;
+	}
+	return found;
 }
 
 auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexcept -> int {
@@ -401,6 +470,16 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (the server message dispatch: signature or bytes differ)");
 		return;
 	}
+	// the red cell (#1745) is a nicety: without it the server filter above still refuses the drop
+	const bool cells =
+		sigscan::HookBySignature(context, "InventoryCellFits",
+	                             "48 89 5c 24 18 55 56 57 41 54 41 56 48 83 ec 60 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 44 24 50 "
+	                             "48 8b b4 24 c0 00 00 00 41 8b d9 48 8b bc 24 b8 00 00 00",
+	                             0, FitsEntry, sizeof FitsEntry, OnFits, &g_fits) &&
+		sigscan::HookBySignature(context, "InventorySwapTarget",
+	                             "40 53 55 56 57 41 54 41 55 41 56 41 57 48 83 ec 78 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 44 24 60 "
+	                             "48 8b 84 24 e8 00 00 00 45 8b e9 48 89 44 24 38",
+	                             0, SwapTargetEntry, sizeof SwapTargetEntry, OnSwapTarget, &g_swapTarget);
 	const D2RL::Lifecycle::GameplayEventListener ready {.structSize = D2RL::Lifecycle::GameplayEventListenerSize,
 	                                                    .kind = D2RL::Lifecycle::GameplayEventKind::LocalPlayerReady,
 	                                                    .callback = OnPlayerReady};
@@ -418,7 +497,8 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (a listener was refused; the hook passes everything while unlocked)");
 		return;
 	}
-	std::snprintf(report, size, "the inventory padlock locks the player's and the mercenary's body slots and the charm rows 5-8");
+	std::snprintf(report, size, "the inventory padlock locks the player's and the mercenary's body slots and the charm rows 5-8%s",
+	              cells ? "" : " (the Maps and Bossing tabs' red cells are off: a cell hook was not installed)");
 }
 
 auto IsLocked() noexcept -> bool {
@@ -426,8 +506,8 @@ auto IsLocked() noexcept -> bool {
 }
 
 void Counters(char* out, size_t size) noexcept {
-	std::snprintf(out, size, "inventory lock: %s, %u toggles, %u moves refused", g_locked.load() ? "locked" : "unlocked",
-	              g_toggles.load(), g_refused.load());
+	std::snprintf(out, size, "inventory lock: %s, %u toggles, %u moves refused, %u red cell tests",
+	              g_locked.load() ? "locked" : "unlocked", g_toggles.load(), g_refused.load(), g_redCells.load());
 }
 
 }  // namespace inventory_lock
