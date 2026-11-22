@@ -23,6 +23,7 @@
 #include "line_spread.h"
 #include "sig_hook.h"
 #include "parry_roll.h"
+#include <D2RLPlugin/mutations.h>
 #include "../core-events/arena_spots.h"  // Lucion's arena centre (#962): core-rules reads the same arena service
 
 #include <algorithm>
@@ -1166,6 +1167,11 @@ auto SrvDoSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	void* path = At<void*>(unit, d2r::rva::UnitPath);
 	if (struck == nullptr && path != nullptr && At<int32_t>(unit, d2r::rva::UnitType) <= d2r::rva::UnitMonster) {
 		struck = At<Unit*>(path, d2r::rva::PathTargetUnit);
+	}
+	if (struck == nullptr && pd2::HotSample(g_splashes)) {
+		void* current = d2r::Engine<void* (*)(Unit*) noexcept>(d2r::rva::CurrentSkill)(unit);
+		plog::Info("splash: skill %d level %d refused: no struck unit (current skill %d)", skillId, level,
+		           current != nullptr ? UnitSkillIdOf(current) : -1);
 	}
 	return Splash(game, unit, struck, skillId, level);
 }
@@ -3684,10 +3690,139 @@ auto AuraEventReviveSplash(Game* game, int32_t event, Unit* unit, Unit* target, 
 	return cast != 0 ? 1 : 0;
 }
 
+// --- Splash on Whirlwind and Blade Dance hits (#1812) ---------------------------------------------------------------
+// Whirlwind's start (srvst 38, 0x56a420 via 0x48e820) sets state uninterruptable for the whole spin, and D2R's
+// skill-on-hit casts refuse an attacker in it (0x5896e0, which D2R's item event 20, 0x583b30, casts through). D2RCore
+// dispatches item events itself and refuses there too: in game no item_splashonhit splash came on a Whirlwind hit, and
+// a hook on 0x583b30 never ran (D2RCore does not call it). 1.13c has the same refusal (D2Game 0x6fd117e0), and PD2
+// removes it: its patch list (0x1049c640: D2Game +0xf181d, 0x33) turns the TEST EAX,EAX after the state 54 check into
+// XOR EAX,EAX, for every attacker (player, merc, monster). Its skill-on-hit (0x103473a0) casts through 0x6fd117e0 for
+// skills whose ItemTarget is not 5 (splash's is 0). So on any melee hit (event 5, relayed by item_rules' HitEvent) of
+// an attacker in state 54 each splash node rolls its chance as 0x583b30 does and the splash is called on the struck
+// unit, as Revive's event does. The damage% is PD2's (0x10305eb0, players only: Whirlwind 151, Blade Dance PD2 380 =
+// merged 452 take calc1; mercs and monsters, MonWhirlwind 495 and UberTalicWhirlwind 579 included, 0 on Attack).
+// shortcut: other skills on hit still refuse a spinning attacker (PD2 casts them too), #1889
+constexpr int32_t StatSplashOnHit = 412, StatMapMonSplash = 480;  // item_splashonhit, map_mon_splash (merged)
+constexpr int EventNodeLayer = 0x10;                               // the node's stat layer (seen in game: 412, 0x6b81)
+std::atomic<uint32_t> g_spinSplashes {0};
+
+auto Spinning(Unit* unit) noexcept -> bool {
+	return d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::rva::UnitHasState)(unit, Uninterruptable) != 0;
+}
+
+}  // namespace
+
+auto SpinSplashes(Game* game, int32_t event, Unit* unit, Unit* target, const uint8_t* damage) noexcept -> void {
+	using namespace d2r::rva;
+	// The splash's own hits raise event 5 again while the spin lasts: they must not splash in turn
+	static thread_local bool t_spinSplashing = false;
+	if (t_spinSplashing || game == nullptr || unit == nullptr || target == nullptr ||
+	    (damage != nullptr && (damage[0] & 0x20) == 0) || !Spinning(unit)) {
+		return;
+	}
+	t_spinSplashing = true;
+	const uint8_t* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(d2r::DataFlag(game));
+	for (auto* node = At<uint8_t*>(unit, UnitEventNodes); node != nullptr; node = At<uint8_t*>(node, EventNodeNext)) {
+		const int32_t stat = At<int32_t>(node, EventNodeStat);
+		if (At<uint16_t>(node, EventNodeEvent) != event || (stat != StatSplashOnHit && stat != StatMapMonSplash)) {
+			continue;
+		}
+		const uint32_t layer = At<uint16_t>(node, EventNodeLayer);
+		const int32_t chance = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(unit, stat, layer);
+		const auto roll = static_cast<int32_t>(d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit), 100));
+		if (chance < 1 || roll >= chance) {
+			continue;
+		}
+		const auto skillId = static_cast<int32_t>(layer >> (At<uint32_t>(tables, TablesSkillLayerShift) & 0x1f));
+		const auto level = static_cast<int32_t>(layer & At<uint32_t>(tables, TablesSkillLayerMask));
+		const int64_t cast = Splash(game, unit, target, skillId, level);
+		if (pd2::HotSample(g_spinSplashes)) {
+			plog::Info("spin splash: attacker type %d stat %d layer %u skill %d level %d chance %d roll %d on unit type %d: "
+			           "cast %lld, %u so far",
+			           At<int32_t>(unit, UnitType), stat, layer, skillId, level, chance, roll,
+			           At<int32_t>(target, UnitType), static_cast<long long>(cast), g_spinSplashes.load());
+		}
+	}
+	t_spinSplashing = false;
+}
+
+namespace {
+
 // Revive's do (srvdofunc 58): D2R's own, then Revive's aura events go on the revived monster. D2R's Revive never
 // registers them, so without this event 32 never fires. The corpse is revived in place (seen in game: same unit,
 // result 1, mode neutral), so the target before the call is the pet after it; a refused revive leaves it dead.
 std::atomic<uint32_t> g_revives {0};
+
+// --- Summon first think and revive size (#1835) --------------------------------------------------------------------
+// PD2's patch table: 1.13c D2Game +0x4d879 `14` -> `08` (srvdo 16 Valkyrie, used by no other skill: pet AI event at
+// frame + 8, not + 20) and +0x50ad1 `0f` -> `08` (Revive's pet, srvdo 58, + 8, not + 15). D2R 93847 keeps both, in
+// 0x558000 and 0x55e7e0 (`add r9d,imm8` before the AI event queue 0x48b720, type 2). No SDK service sets a pet's first
+// think, so a MutationService byte patch changes each imm8, found by signature, expected byte checked.
+constexpr const char* ValkyrieThinkDelay = "44 8b 8e 70 01 00 00 41 b8 02 00 00 00 44 89 6c 24 30 41 83 c1 14";
+constexpr const char* ReviveThinkDelay = "44 8b 8e 70 01 00 00 33 c0 89 44 24 30 41 83 c1 0f";
+// PD2 0x102fb2b0 wraps Revive's last D2Common #10704 (collision refresh): with state 96 (revive) on, path +0x44 (unit
+// size) above 2 becomes 2, then the refresh. D2R's Revive ends with the same refresh, 0x3429b0 (reads path +0x58, writes
+// the collision class to +0x5c) and no cap; SrvDoRevive caps after it and refreshes again. No SDK service sets a size.
+constexpr const char* CollisionRefreshEntry =
+    "48 89 5c 24 08 57 48 83 ec 20 48 8b f9 e8 ?? ?? ?? ?? 48 8b d8 48 85 c0 74 ?? 48 8b cf e8 ?? ?? ?? ?? 48 8b cf "
+    "48 85 c0 74 ?? ba 01 00 00 00 e8 ?? ?? ?? ?? 8b 53 58";
+constexpr int PathUnitSize = 0x58;  // uint32 on a dynamic path (1.13c +0x44)
+constexpr int32_t StateRevive = 96;
+uint64_t g_collisionRefresh = 0;  // rva, 0 when the signature did not match once
+std::atomic<uint32_t> g_reviveCaps {0};
+
+static auto PatchThinkDelay(const D2RL::PluginContext* context, const char* pattern, int at, uint8_t stock,
+                            const char* what) noexcept -> bool {
+	uint64_t rva = 0;
+	const D2RL::MutationService* mutations = nullptr;
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (sigscan::ScanUnique(context->exeBase, pattern, at, &rva) != 1 ||
+	    context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize) ||
+	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		plog::Info("summon think: %s first think FAILED (signature or mutation service)", what);
+		return false;
+	}
+	static constexpr uint8_t PD2Delay[] = {0x08};
+	const uint8_t expected[] = {stock};
+	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
+	                                              .rva = rva,
+	                                              .expected = expected,
+	                                              .expectedSize = sizeof(expected),
+	                                              .bytes = PD2Delay,
+	                                              .size = sizeof(PD2Delay)};
+	D2RL::Mutations::OperationHandle operation = 0;
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	if (mutations->stageBytePatch(context, transaction, &patch, &operation) != D2RL::Mutations::Result::Success ||
+	    mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		plog::Info("summon think: %s first think FAILED (byte at 0x%llx is not 0x%02x)", what,
+		           static_cast<unsigned long long>(rva), stock);
+		return false;
+	}
+	plog::Info("summon think: %s first think at frame + 8 (was + %u) at 0x%llx", what, stock,
+	           static_cast<unsigned long long>(rva));
+	return true;
+}
+
+static void CapReviveSize(Unit* pet) noexcept {
+	auto* path = At<uint8_t*>(pet, d2r::rva::UnitPath);
+	if (g_collisionRefresh == 0 || path == nullptr ||
+	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::rva::UnitHasState)(pet, StateRevive) == 0) {
+		return;
+	}
+	auto* size = reinterpret_cast<uint32_t*>(path + PathUnitSize);
+	const uint32_t before = *size;
+	if (before <= 2) {
+		return;
+	}
+	*size = 2;
+	d2r::Engine<void (*)(Unit*) noexcept>(g_collisionRefresh)(pet);
+	if (pd2::HotSample(g_reviveCaps)) {
+		plog::Info("revive: unit class %d size %u -> %u, cap %u", At<int32_t>(pet, d2r::rva::UnitClassId), before,
+		           *size, g_reviveCaps.load());
+	}
+}
 
 auto SrvDoRevive(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	Unit* target = game != nullptr && unit != nullptr
@@ -3702,6 +3837,7 @@ auto SrvDoRevive(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		return result;
 	}
 	d2r::Engine<SrvDoFn>(d2r::rva::RegisterSkillEvents)(game, target, skillId, level);
+	CapReviveSize(target);
 	if (pd2::HotSample(g_revives)) {
 		plog::Info("revive: skill %d level %d events on unit class %d, revive %u", skillId, level,
 		           At<int32_t>(target, d2r::rva::UnitClassId), g_revives.load());
@@ -4817,6 +4953,18 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		                            d2r::rva::SrvDoRevive, reviveDo ? "" : " FAILED (slot is not D2R's Revive)");
 		used += n > 0 ? static_cast<size_t>(n) : 0;
 	}
+	const bool valkyrieThink = PatchThinkDelay(context, ValkyrieThinkDelay, 21, 0x14, "valkyrie");
+	const bool reviveThink = PatchThinkDelay(context, ReviveThinkDelay, 16, 0x0f, "revive");
+	if (sigscan::ScanUnique(context->exeBase, CollisionRefreshEntry, 0, &g_collisionRefresh) != 1) {
+		g_collisionRefresh = 0;
+	}
+	plog::Info("revive: size cap %s", g_collisionRefresh != 0 ? "on" : "FAILED (collision refresh signature)");
+	installed += (valkyrieThink ? 1 : 0) + (reviveThink ? 1 : 0) + (g_collisionRefresh != 0 ? 1 : 0);
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; first think valkyrie%s revive%s, revive size cap%s",
+		              valkyrieThink ? "" : " FAILED", reviveThink ? "" : " FAILED", g_collisionRefresh != 0 ? "" : " FAILED");
+	}
 	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
 	                                             sizeof(d2r::rva::BusyModeGateEntry), BusyModeGate, &g_gateOriginal);
 	installed += gate ? 1 : 0;
@@ -4860,8 +5008,9 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 }
 
 auto SkillFunctionCount() noexcept -> int {
-	// + the srvdo router, the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the busy mode gate and the hit window
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 7;
+	// + the srvdo router, the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the two first-think patches and the
+	// revive size cap, the busy mode gate, the holy sword parry and the hit window
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 11;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {

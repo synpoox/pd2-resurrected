@@ -19,6 +19,10 @@ patch table (20-byte records at file offset `0x49b028`-`0x4a0744`, [plrmodes](pl
 | 61 Hireable (mercenaries) | think replaced (`0x1035a270`) | no |
 | 67 NecroPet, 107 Raven, 108 DruidWolf, 109 Totem, 112 DruidBear, 86 Hydra, 103 InvisoPet | none | nothing to port |
 
+First think, outside the AI table (#1835, ported in core-rules): a new Valkyrie's AI event is queued at frame + 8
+(1.13c `+0x4d879` `14` -> `08`; D2R srvdo 16 `0x558000`), a revived monster's at + 8 (`+0x50ad1` `0f` -> `08`; D2R
+srvdo 58 `0x55e7e0`), and a revived monster's size is capped at 2 (`0x102fb2b0`).
+
 Every ShadowMaster, NecroPet, DruidWolf, DruidBear and vine monstats row equals PD2's column for column, so no
 table edit reproduces PD2 here.
 
