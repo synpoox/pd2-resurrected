@@ -82,7 +82,7 @@ std::atomic<bool> g_inGame {false};  // a player is in a game: the notice counts
 const char* g_notice = nullptr;  // an in-game line about the stash tabs (#1808), set at install
 bool g_noticeLogged = false;
 float g_noticeLeft = 40.0f;      // seconds it still shows
-uint32_t g_pages = UINT32_MAX;  // shared pages the stash has (5 + add_shared_tabs), from d2rloader.toml; unknown: no limit
+uint32_t g_pages = UINT32_MAX;  // shared pages the stash has (3 + add_shared_tabs: the fewest any mode has, Classic/LoD; RotW has 5), from d2rloader.toml; unknown: no limit
 constexpr uint32_t MaxSendFails = 30;
 std::atomic<bool> g_reset {false};
 std::atomic<uint32_t> g_clicks {0};
@@ -169,7 +169,7 @@ auto RestoreExtraTabs(const std::wstring& path) noexcept -> bool {
 	return true;
 }
 
-// The stash's shared pages: 5 + add_shared_tabs of the mod's d2rloader.toml (beside the plugin's own config), else of the game-wide
+// The stash's shared pages: 3 + add_shared_tabs (Classic/LoD stock, the fewest of any mode; RotW has 5) of the mod's d2rloader.toml (beside the plugin's own config), else of the game-wide
 // <game>/d2rloader/config/d2rloader.toml (the mod's value wins); neither set: the loader default 0; no file readable: no limit
 auto ReadPages(const wchar_t* configPath) noexcept -> uint32_t {
 	if (configPath == nullptr) {
@@ -205,7 +205,7 @@ auto ReadPages(const wchar_t* configPath) noexcept -> uint32_t {
 		}
 	}
 	plog::Info("stash tabs: add_shared_tabs = %d from %s", extra, mod >= 0 ? "the mod's d2rloader.toml" : all >= 0 ? "the game-wide d2rloader.toml" : "the loader default (no live key)");
-	return aff::VanillaSharedPages + static_cast<uint32_t>(extra);
+	return aff::MinStockSharedPages + static_cast<uint32_t>(extra);  // the fewest stock pages (Classic/LoD): below 17 a Bossing tab could sit on a missing page there
 }
 
 // The stock BankTabs to `tab`, as a click on it: the stash gets its SelectTab and shows that tab
