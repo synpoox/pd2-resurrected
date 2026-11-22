@@ -26,11 +26,6 @@ int main() {
 	check("no limit key is 99", LimitOf(-1) == 99);
 	check("a limit of 300 is 255", LimitOf(300) == 255);
 	check("a limit of 120 stays", LimitOf(120) == 120);
-	check("'Quantity: %d of %d' takes two ints", TwoInts("Quantity: %d of %d"));
-	check("'%d%% of %d' takes two ints", TwoInts("%d%% of %d"));
-	check("'%s: %d' is refused", !TwoInts("%s: %d"));
-	check("one int is refused", !TwoInts("Quantity: %d"));
-	check("no template is refused", !TwoInts(nullptr));
 	std::printf(fail == 0 ? "all passed\n" : "%d failed\n", fail);
 	return fail == 0 ? 0 : 1;
 }
