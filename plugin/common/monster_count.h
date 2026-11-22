@@ -79,8 +79,8 @@ constexpr auto Explored(Rooms r) noexcept -> bool {
 	return r.total > 0 && r.made * 100 / r.total >= ExploredPercent;
 }
 
-// The owner's rule (#1656): "25+" over Cap or while the level is not explored (PD2's "100+"), else the plain number
-constexpr int32_t Cap = 25;
+// The owner's rule (#1656, #1729: 50): "50+" over Cap or while the level is not explored (PD2's "100+"), else the plain number
+constexpr int32_t Cap = 50;
 inline auto Text(int32_t remaining, bool explored, char* out, size_t size) noexcept -> int {
 	return !explored || remaining > Cap ? std::snprintf(out, size, "Monsters Remaining: %d+", Cap)
 	                                    : std::snprintf(out, size, "Monsters Remaining: %d", remaining);

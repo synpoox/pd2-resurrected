@@ -32,8 +32,8 @@ no population and reads no preset or spawn table. It shows `100+` until 90% of t
 
 ## Text (owner's rule)
 
-PD2's rule, with `25+` for PD2's `100+`: while rooms made x 100 / rooms < 90 (integer division), the row reads
-`Monsters Remaining: 25+`. From 90% on, a count over 25 reads `25+` and 25 or less the plain number, with no `+`.
+PD2's rule, with `50+` for PD2's `100+` (`25+` before #1729): while rooms made x 100 / rooms < 90 (integer division), the row reads
+`Monsters Remaining: 50+`. From 90% on, a count over 50 reads `50+` and 50 or less the plain number, with no `+`.
 
 PD2 reads the two room counts from its region (+0x04 rooms activated, +0x0c rooms; PD2 maps use a hard-coded total,
 `FUN_1038b1d0`). D2R 93847 keeps both at the same offsets (the region is allocated in `0x508750`, +0x0c set to -1

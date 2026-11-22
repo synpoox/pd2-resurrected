@@ -6,8 +6,8 @@
 // (*(game + 0x1d0)[level] -> +0x2cc and +0x2d0; monstats neverCount and non-hostile units are left out by D2R itself).
 // remaining = spawned - killed. D2R makes a room's monsters when the player first comes near the room, so the count
 // covers the rooms met so far; nothing is forced to populate (PD2 forces nothing either). PD2's rule: the count is
-// final once rooms made x 100 / rooms >= 90 (mc::Explored); until then the line reads "25+" (PD2: "100+"), after it
-// the number, "25+" over 25 (mc::Text). The rooms are the region's own, as PD2 reads them: +0x04 made, +0x0c counted
+// final once rooms made x 100 / rooms >= 90 (mc::Explored); until then the line reads "50+" (PD2: "100+"), after it
+// the number, "50+" over 50 (mc::Text). The rooms are the region's own, as PD2 reads them: +0x04 made, +0x0c counted
 // (mc::ReadRooms; not the drlg room list, whose outdoor rooms never all make monsters, #1729). A town (mc::IsTown, PD2's
 // own five ids) or a level whose ledger counted no monster shows no line.
 //
@@ -130,7 +130,7 @@ void __cdecl Refresh(const D2RL::PluginContext* context, void*) noexcept {
 	if ((g_lastRemaining != remaining || g_lastMade != rooms.made) && pd2::HotLogsOn()) {
 		plog::Info("monsters remaining: level %d spawned %d killed %d, rooms %d of %d made (%d%%) -> %d%s", level, ledger.spawned,
 		           ledger.killed, rooms.made, rooms.total, rooms.total > 0 ? rooms.made * 100 / rooms.total : 0, remaining,
-		           explored ? "" : ", not explored: 25+");
+		           explored ? "" : ", not explored: 50+");
 	}
 	g_lastRemaining = remaining;
 	g_lastMade = rooms.made;
@@ -270,7 +270,7 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 			return;
 		}
 	}
-	std::snprintf(report, size, "the zone info ends with Monsters Remaining: N (25+ over 25 or under 90%% of the rooms made)");
+	std::snprintf(report, size, "the zone info ends with Monsters Remaining: N (50+ over 50 or under 90%% of the rooms made)");
 }
 
 void Counters(char* out, size_t size) noexcept {

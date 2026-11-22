@@ -43,14 +43,14 @@ int main() {
 	};
 	const Rooms all {10, 10}, half {10, 5}, most {20, 19}, nine {10, 9}, under {100, 89};
 	check("explored, 12: the number, no plus", says(12, all, "Monsters Remaining: 12"));
-	check("explored, 25: the number, no plus", says(25, all, "Monsters Remaining: 25"));
-	check("explored, 26 is 25+", says(26, all, "Monsters Remaining: 25+"));
-	check("explored, 300 is 25+", says(300, all, "Monsters Remaining: 25+"));
+	check("explored, 50: the number, no plus", says(50, all, "Monsters Remaining: 50"));
+	check("explored, 51 is 50+", says(51, all, "Monsters Remaining: 50+"));
+	check("explored, 300 is 50+", says(300, all, "Monsters Remaining: 50+"));
 	check("explored, 0", says(0, all, "Monsters Remaining: 0"));
-	check("50% explored, 10 left: 25+", says(10, half, "Monsters Remaining: 25+"));
+	check("50% explored, 10 left: 50+", says(10, half, "Monsters Remaining: 50+"));
 	check("95% explored, 10 left: 10", says(10, most, "Monsters Remaining: 10"));
 	check("exactly 90%: explored", says(3, nine, "Monsters Remaining: 3"));
-	check("89%: not explored", says(3, under, "Monsters Remaining: 25+"));
+	check("89%: not explored", says(3, under, "Monsters Remaining: 50+"));
 	check("no rooms: not explored", !Explored({}));
 
 	// the region's room counts (+0x04 made, +0x0c counted): Blood Moor read 18 made of 47 counted (#1729)
