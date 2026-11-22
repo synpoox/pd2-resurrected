@@ -93,11 +93,12 @@ struct Job {
 	int32_t held;
 };
 Job g_job {};
-// The stored stacks noted for a held stack: the UI thread sets the request, a game job notes them (the shared stash's
-// count is read natively, a game-thread call), and the split job, queued after it, reads them
+// The stored stacks noted for a held stack: the UI thread notes them first, a game job then fills the counts the UI
+// could not read (the shared stash's, a native game-thread call), and the split job, queued after it, reads them
 std::atomic<D2RL::PlayerHandle> g_notePlayer {D2RL::InvalidPlayerHandle};
 std::atomic<uint32_t> g_noteCode {0};
-Stacks g_stored {};  // game thread only
+Stacks g_stored {};  // both threads, under g_storedLock (no SDK call while it is held)
+SRWLOCK g_storedLock = SRWLOCK_INIT;
 std::atomic<bool> g_busy {false};
 bool g_watching = false;  // the UI-thread watch is queued (UI thread only)
 std::atomic<uint32_t> g_splits {0}, g_failed {0};
@@ -137,16 +138,36 @@ auto Quantity(const items::ItemInfo& item) noexcept -> int32_t {
 }
 
 // The stored stacks of the held code, before any put-down can merge it. The UI thread notes them first, with the SDK's
-// counts (0 for a shared stash stack), so a fast put-down cannot beat the note; the game job then reads the true counts.
-// shortcut: g_stored is written from both threads without a lock, the game job's write is queued right after, upgrade if it tears.
+// counts (0 for a shared stash stack), so a fast put-down cannot beat the note; the game job then fills only the counts
+// the UI read as 0, and keeps the UI's pre-merge counts.
 void NoteStored(uint32_t code, D2RL::PlayerHandle player, bool game) noexcept {
-	static Listed listed;
+	static Listed uiListed, gameListed;  // one per thread
+	Listed& listed = game ? gameListed : uiListed;
 	listed = {.code = code};
-	g_stored = {.code = code};
 	g_inventory->forEachInventoryItem(g_context, player, &StoredFilter, ListCode, &listed);
-	for (uint32_t i = 0; i < listed.count; ++i) {
-		g_stored.stack[g_stored.count++] = {listed.item[i].runtimeId, game ? Quantity(listed.item[i]) : listed.item[i].quantity};
+	Stacks old {};
+	if (game) {
+		AcquireSRWLockShared(&g_storedLock);
+		old = g_stored;
+		ReleaseSRWLockShared(&g_storedLock);
 	}
+	Stacks noted {.code = code};
+	for (uint32_t i = 0; i < listed.count && noted.count < MaxStacks; ++i) {
+		const items::ItemInfo& item = listed.item[i];
+		int32_t count = item.quantity;
+		if (game) {
+			count = Quantity(item);
+			for (uint32_t j = 0; j < old.count; ++j) {
+				if (old.code == code && old.stack[j].runtimeId == item.runtimeId && old.stack[j].quantity != 0) {
+					count = old.stack[j].quantity;
+				}
+			}
+		}
+		noted.stack[noted.count++] = {item.runtimeId, count};
+	}
+	AcquireSRWLockExclusive(&g_storedLock);
+	g_stored = noted;
+	ReleaseSRWLockExclusive(&g_storedLock);
 }
 
 void NoteNow(const D2RL::PluginContext*, void*) noexcept {
@@ -162,14 +183,17 @@ struct Placed {
 
 // The counts are read after the listing: the native read is a second SDK call, kept out of the iteration callback
 auto FindPlaced(const Listed& listed) noexcept -> Placed {
+	AcquireSRWLockShared(&g_storedLock);
+	const Stacks stored = g_stored;
+	ReleaseSRWLockShared(&g_storedLock);
 	for (uint32_t i = 0; i < listed.count; ++i) {
 		const items::ItemInfo& item = listed.item[i];
 		if (item.runtimeId == g_job.runtimeId) {
 			return {item, 0, Quantity(item)};
 		}
-		for (uint32_t j = 0; j < g_stored.count; ++j) {
-			const Stack& s = g_stored.stack[j];
-			if (s.runtimeId == item.runtimeId && g_stored.code == g_job.code) {
+		for (uint32_t j = 0; j < stored.count; ++j) {
+			const Stack& s = stored.stack[j];
+			if (s.runtimeId == item.runtimeId && stored.code == g_job.code) {
 				if (const int32_t now = Quantity(item); now == s.quantity + g_job.held) {
 					return {item, s.quantity, now};
 				}
@@ -355,8 +379,9 @@ void Watch(const D2RL::PluginContext*, void*) noexcept {
 			g_notePlayer = player;
 			g_noteCode = g_held.code;
 			NoteStored(g_noteCode, player, false);
+			// queued before any split job of this stack
 			if (const auto queued = g_threads->runOnGameThread(g_context, NoteNow, nullptr); queued != D2RL::Threads::Result::Success) {
-				plog::Info("split: could not queue the note (%u)", static_cast<uint32_t>(queued));  // queued before any split job of this stack
+				plog::Info("split: could not queue the note (%u)", static_cast<uint32_t>(queued));
 			}
 		}
 		UpdateLegend(Splittable(g_held.code, g_held.quantity));
