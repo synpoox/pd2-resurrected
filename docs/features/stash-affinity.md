@@ -43,7 +43,7 @@ them. The mod sets `[d2rcore.stash] add_shared_tabs = 15` (the Pyre Stash Search
 | 19 | Bossing: PD2's uber maps, keys and ingredients the RotW Materials tab does not take (but the Uber Ancients ones), the Torch Fragment; a fixed cell each (`BossingCell` in `stash_home.h`), stackables merged; a second uber map goes back to the inventory |
 
 Map currency: map orbs and ready orbs, Fortify, Dungeon Scarab, Force Mapevent Shard, invader ears. Precedence: Maps, map
-currency, Bossing; items the RotW Materials tab takes (Pandemonium keys, organs, essences) stay there.
+currency, Bossing; items the RotW Materials tab takes (Pandemonium keys, organs, essences, Jewel Fragments) stay there.
 `tools/tests/test_stash_affinity.py` checks the lists against `misc.txt`.
 
 ## Routing
