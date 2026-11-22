@@ -1,3 +1,3 @@
 #### Features
 
-- Controller: the inventory shows an always-on "LB + A Split Stack" legend.
+- Controller: a "LB + A Split Stack" legend shows in the inventory while a stack is held.

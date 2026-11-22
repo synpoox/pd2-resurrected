@@ -166,11 +166,12 @@
                 ],
             },
         },
-        // PD2R (#387): always-on legend for the stack split chord (stack_split.cpp), "LB + A Split Stack"; right margin beside the grid (the left one hides behind the Cube panel), clear of belt and slots.
+        // PD2R (#387): legend "LB + A Split Stack" for the stack split chord, hidden until stack_split.cpp shows it while a splittable stack is held; right margin beside the grid (the left one hides behind the Cube panel), clear of belt and slots.
         // Two widgets, as one draws its presets in a fixed order (A before LB) whatever the order here.
         {
             "type": "ButtonLegendWidget", "name": "pd2rSplitLegendLB",
             "fields": {
+                "visible": false,
                 "rect": { "x": 1180, "y": 890, "width": 130, "height": 48 },
                 "text": { "style": "$StyleButtonLegend" },
                 "presets": [
@@ -181,6 +182,7 @@
         {
             "type": "ButtonLegendWidget", "name": "pd2rSplitLegend",
             "fields": {
+                "visible": false,
                 "rect": { "x": 1320, "y": 890, "width": 300, "height": 48 },
                 "text": { "style": "$StyleButtonLegend" },
                 "presets": [

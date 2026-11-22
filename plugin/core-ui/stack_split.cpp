@@ -29,6 +29,7 @@
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/lifecycle_events.h>
 #include <D2RLPlugin/threads.h>
+#include <D2RLPlugin/widgets.h>
 
 #include <atomic>
 #include <cstdio>
@@ -58,6 +59,7 @@ const D2RL::PluginContext* g_context = nullptr;
 const D2RL::ItemService* g_items = nullptr;
 const D2RL::InventoryService* g_inventory = nullptr;
 const D2RL::ThreadService* g_threads = nullptr;
+const D2RL::WidgetService* g_widgets = nullptr;  // optional: without it the pad legend stays hidden
 
 // The cursor stack as last seen (UI thread only); quantity 0 when there is none
 items::ItemInfo g_held {};
@@ -191,6 +193,38 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 	           static_cast<uint32_t>(status), result.remainingQuantity, back);
 }
 
+// The pad legend ("LB + A Split Stack", #387, controller/playerinventoryexpansionlayouthd.json) shows while a splittable stack is held.
+// Set when the held state changes, and again when the panel is opened anew (its handle changes; the layout's "visible": false is not honored).
+void UpdateLegend(bool want) noexcept {
+	static bool shown = false;
+	static D2RL::Widgets::WidgetHandle shownPanel = D2RL::Widgets::InvalidHandle;
+	if (g_widgets == nullptr) {
+		return;
+	}
+	D2RL::Widgets::WidgetHandle panel = D2RL::Widgets::InvalidHandle;
+	for (const char* name : {"PlayerInventoryExpansionLayout", "PlayerInventoryOriginalLayout"}) {
+		if (g_widgets->findPanel(g_context, name, &panel) == D2RL::Widgets::Result::Success) {
+			break;
+		}
+		panel = D2RL::Widgets::InvalidHandle;
+	}
+	if (panel == D2RL::Widgets::InvalidHandle) {
+		shownPanel = panel;  // closed: the next open is a new panel, whose legend the layout does not hide
+		return;
+	}
+	if (want == shown && panel == shownPanel) {
+		return;
+	}
+	for (const char* name : {"pd2rSplitLegendLB", "pd2rSplitLegend"}) {
+		D2RL::Widgets::WidgetHandle widget = D2RL::Widgets::InvalidHandle;
+		if (g_widgets->findWidget(g_context, panel, name, &widget) == D2RL::Widgets::Result::Success) {
+			g_widgets->setWidgetVisible(g_context, widget, want);
+		}
+	}
+	shown = want;
+	shownPanel = panel;
+}
+
 void Watch(const D2RL::PluginContext*, void*) noexcept {
 	g_watching = g_threads->runOnUiThread(g_context, Watch, nullptr) == D2RL::Threads::Result::Success;  // again next update
 	++g_ticks;
@@ -198,6 +232,7 @@ void Watch(const D2RL::PluginContext*, void*) noexcept {
 	D2RL::ItemHandle cursor = D2RL::InvalidItemHandle;
 	if (g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success) {
 		g_held.quantity = 0;
+		UpdateLegend(false);
 		return;
 	}
 	if (g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::Success &&
@@ -212,8 +247,10 @@ void Watch(const D2RL::PluginContext*, void*) noexcept {
 			g_stored = {.code = g_held.code};
 			g_inventory->forEachInventoryItem(g_context, player, &StoredFilter, NoteStack, &g_stored);
 		}
+		UpdateLegend(Splittable(g_held.code, g_held.quantity));
 		return;
 	}
+	UpdateLegend(false);
 	const bool ctrl = g_held.quantity > 1 && ((GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 || controller_split::ModifierHeld());
 	if (g_held.quantity > 1) {
 		++g_putDowns;
@@ -249,6 +286,7 @@ auto Query(const Service*& service, bool (*has)(const Service*, uint32_t), uint3
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	g_context = context;
 	const D2RL::LifecycleService* lifecycle = nullptr;
+	Query(g_widgets, D2RL::HasWidgetServiceField, D2RL::WidgetServiceRequiredSize);  // optional, see g_widgets
 	// `&`, not `&&`: every service is queried, so the report never blames a missing one by mistake
 	if (!(Query(g_items, D2RL::HasItemServiceField, D2RL::ItemServiceSplitStackFieldEnd) &
 	      Query(g_inventory, D2RL::HasInventoryServiceField, D2RL::InventoryServiceRequiredSize) &

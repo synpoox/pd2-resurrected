@@ -17,15 +17,20 @@ inline constexpr uint32_t StoredGrids =
 	D2RL::Items::ContainerBit(D2RL::Items::ItemContainer::PersonalStash) |
 	D2RL::Items::ContainerBit(D2RL::Items::ItemContainer::SharedStash) | D2RL::Items::ContainerBit(D2RL::Items::ItemContainer::CustomPage);
 
+// A held stack the pad legend and a split apply to: more than one item, and not a tome (PD2 never splits tomes, whose
+// quantity is their scrolls)
+constexpr auto Splittable(uint32_t code, int32_t held) noexcept -> bool {
+	return held > 1 && code != D2RL::Items::MakeItemCode("tbk") && code != D2RL::Items::MakeItemCode("ibk");
+}
+
 // How many items go back to the cursor: N-1 when a stack of `held` left the cursor with Ctrl down and the stack it
 // landed in, in a stored grid, rose from `before` to `placed` by all of it: the held stack itself, whole (`before` 0),
 // or a stack of the same item it merged into (PD2 adds one to that stack). Otherwise 0 (a plain put-down, the ground,
 // the belt, a single item, a tome: PD2 never splits tomes, whose quantity is their scrolls).
 constexpr auto SplitOff(uint32_t code, int32_t held, bool ctrl, int32_t before, int32_t placed,
                         D2RL::Items::ItemContainer where) noexcept -> uint32_t {
-	const bool tome = code == D2RL::Items::MakeItemCode("tbk") || code == D2RL::Items::MakeItemCode("ibk");
 	const bool stored = (D2RL::Items::ContainerBit(where) & StoredGrids) != 0;
-	return ctrl && !tome && held > 1 && placed == before + held && stored ? static_cast<uint32_t>(held - 1) : 0;
+	return ctrl && Splittable(code, held) && placed == before + held && stored ? static_cast<uint32_t>(held - 1) : 0;
 }
 
 // Starts the cursor watch on the UI thread. Returns the report for the log.
