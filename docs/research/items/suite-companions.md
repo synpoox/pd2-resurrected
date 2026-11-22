@@ -103,7 +103,7 @@ roll. The minimums alone do not give the split above them. Its config for PD2:
 - `[rare_jewels]`: every band `[0, 100]`.
 - `[regular_rare_items]`: bands 1/45/65/85 with PD2's split (the plugin's defaults have the same minimums, but the split
   is the author's).
-- `[magic]`: thresholds 255, so no magic item is forced to two affixes (PD2 has no such rule).
+- `[magic]`: thresholds 65 / 85 (rings, amulets, jewels) / 90 (charms), PD2's rule (1.13c D2Game `+0x103c0` force flag, [#1829](https://github.com/synpoox/pd2-resurrected/issues/1829)). The simple format covers `weap`/`armo`, `jewl`/`ring`/`amul` and `char`; quivers and other types keep the vanilla roll.
 - `[crafted]`: D2R's own split. PD2's crafted rule is not checked.
 
 Staffmods with no upper item level are not covered: the plugin "does not change which affixes are eligible". That stays
