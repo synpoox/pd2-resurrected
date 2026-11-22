@@ -11,7 +11,7 @@
 // Drop has no SDK route: D2R's own Ctrl + left click drops (or quick-moves with a panel open), so a drop bind calls the
 // widget's left-click handler, and needs Ctrl as its only modifier. It blanks the panel-open table around that call so
 // D2R sees the inventory alone. Every action plays its game sound (identify: sounds.txt 13; moves: the item's drop sound).
-// shortcut: identify never spends a tome's last charge (the SDK debit must leave one); no stash-tab pick (the SDK's Automatic placement).
+// shortcut: identify never spends a tome's last charge (SDK limit); no stash-tab pick (the SDK's Automatic placement).
 #include "hotkeys.h"
 
 #include "log.h"
@@ -148,6 +148,7 @@ struct Job {
 	uint32_t code;
 	uint32_t runtimeId;
 	items::ItemContainer container;
+	int sound;  // played after the action succeeds
 };
 Job g_job {};
 std::atomic<bool> g_busy {false};
@@ -176,6 +177,19 @@ auto Look(D2RL::PlayerHandle player, uint32_t mask, Find* find) noexcept -> bool
 	return find->found != D2RL::InvalidItemHandle;
 }
 
+// D2R's client sound player (93847 0x1a0780: sound id, unit or null, 0, 0, 0): null unit is a UI sound, as the grid's own item
+// placement (0x2c7290) plays it. 0x1c3420 (client item unit) -> the item's drop sound id. The SDK has no sound service.
+using PlayFn = void (*)(int, void*, int, int, char) noexcept;
+PlayFn g_play = nullptr;
+using ItemSoundFn = int (*)(void*) noexcept;
+ItemSoundFn g_itemSound = nullptr;
+constexpr int SoundIdentify = 13;  // sounds.txt cursor_identify_item
+void PlayUi(int id) noexcept {
+	if (g_play != nullptr && id > 0) {
+		g_play(id, nullptr, 0, 0, 0);
+		plog::Info("hotkeys: sound %d", id);
+	}
+}
 void Run(const Job& job) noexcept {
 	Find find {job.code, job.runtimeId};
 	if (!Look(job.player, items::ContainerBit(job.container), &find)) {
@@ -194,7 +208,9 @@ void Run(const Job& job) noexcept {
 		Find source {};
 		bool spends = false;
 		for (const Source& candidate : sources) {
-			// A tome keeps its last charge (the SDK debit must leave one); a scroll stack of one is destroyed after the edit
+			// shortcut: a tome's last charge is not spendable here: the SDK debit and editItem both need a positive quantity and a destroy
+			// would delete the tome (D2R keeps it at 0), so a tome with one charge is skipped; upgrade when the SDK can set a stack to 0.
+			// A lone scroll is destroyed after the identify.
 			source = Find {candidate.code, 0, candidate.minQuantity};
 			if (Look(job.player, items::ContainerBit(items::ItemContainer::Inventory), &source)) { spends = candidate.spends; break; }
 		}
@@ -212,10 +228,11 @@ void Run(const Job& job) noexcept {
 			ops[1].item = source.found;
 			ops[1].debit.quantity = 1;
 			count = 2;
-		} else if (spends && source.info.code == sources[2].code) {
+		} else if (spends) {
 			spentScroll = source.found;
 		}
 	} else {
+		if (job.act == Act::Cube && find.info.code == items::MakeItemCode('b', 'o', 'x', ' ')) return;  // the Horadric Cube never goes into itself
 		const items::ItemContainer from = job.container;
 		const items::ItemContainer to = job.act == Act::Cube ? (from == items::ItemContainer::Cube ? items::ItemContainer::Inventory : items::ItemContainer::Cube)
 		                                                     : (from == items::ItemContainer::Inventory ? items::ItemContainer::PersonalStash : items::ItemContainer::Inventory);
@@ -228,11 +245,13 @@ void Run(const Job& job) noexcept {
 		.structSize = items::ExistingItemTransactionSize, .player = job.player, .operationCount = count, .operations = ops};
 	items::ExistingItemTransactionResult result {.structSize = items::ExistingItemTransactionResultSize};
 	const items::Result status = g_items->executeExistingItemTransaction(g_context, &transaction, &result);
-	if (status == items::Result::Success && spentScroll != D2RL::InvalidItemHandle) {
-		g_items->destroyItem(g_context, job.player, spentScroll, items::SocketedItemPolicy::RejectIfNotEmpty);
+	if (status == items::Result::Success && spentScroll != D2RL::InvalidItemHandle &&
+	    g_items->destroyItem(g_context, job.player, spentScroll, items::SocketedItemPolicy::RejectIfNotEmpty) != items::Result::Success) {
+		plog::Warn("hotkeys: identify worked but the scroll was not spent");
 	}
 	plog::Info("hotkeys: %s %s (%u)", ActName[static_cast<int>(job.act)], status == items::Result::Success ? "done" : "failed",
 	           static_cast<uint32_t>(status));
+	if (status == items::Result::Success) PlayUi(job.sound);
 }
 
 void GameThreadJob(const D2RL::PluginContext*, void*) noexcept {
@@ -246,12 +265,12 @@ constexpr uint32_t Ours = items::ContainerBit(items::ItemContainer::Inventory) |
                           items::ContainerBit(items::ItemContainer::CustomPage);
 
 // UI thread. True when the action was queued or deliberately swallowed (the caller then drops D2R's own click).
-auto Queue(Act act, D2RL::PlayerHandle player, const items::ItemInfo& info) noexcept -> bool {
+auto Queue(Act act, D2RL::PlayerHandle player, const items::ItemInfo& info, int sound) noexcept -> bool {
 	// Equipment, belt and the like are not ours: let D2R act
 	if ((items::ContainerBit(info.container) & Ours) == 0) return false;
 	if (act == Act::Identify && (info.stateFlags & items::ItemStateIdentified) != 0) return false;  // nothing to identify: D2R's own Shift + left click equips
 	if (g_busy.exchange(true)) return true;
-	g_job = {act, player, info.code, info.runtimeId, info.container};
+	g_job = {act, player, info.code, info.runtimeId, info.container, sound};
 	if (g_threads->runOnGameThread(g_context, GameThreadJob, nullptr) != D2RL::Threads::Result::Success) {
 		g_busy = false;
 		return false;
@@ -259,19 +278,6 @@ auto Queue(Act act, D2RL::PlayerHandle player, const items::ItemInfo& info) noex
 	return true;
 }
 
-// D2R's client sound player (93847 0x1a0780: sound id, unit or null, 0, 0, 0): null unit is a UI sound, as the grid's own item
-// placement (0x2c7290) plays it. 0x1c3420 (client item unit) -> the item's drop sound id. The SDK has no sound service.
-using PlayFn = void (*)(int, void*, int, int, char) noexcept;
-PlayFn g_play = nullptr;
-using ItemSoundFn = int (*)(void*) noexcept;
-ItemSoundFn g_itemSound = nullptr;
-constexpr int SoundIdentify = 13;  // sounds.txt cursor_identify_item
-void PlayUi(int id) noexcept {
-	if (g_play != nullptr && id > 0) {
-		g_play(id, nullptr, 0, 0, 0);
-		plog::Info("hotkeys: sound %d", id);
-	}
-}
 // ---- left click ----
 auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions::ItemInteractionEvent* event, void*) noexcept
 	-> D2RL::ItemInteractions::Decision {
@@ -285,8 +291,7 @@ auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions
 	    g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success) {
 		return Decision::Continue;
 	}
-	if (!Queue(static_cast<Act>(act), player, info)) return Decision::Continue;
-	if (static_cast<Act>(act) == Act::Identify) PlayUi(SoundIdentify);
+	if (!Queue(static_cast<Act>(act), player, info, SoundIdentify)) return Decision::Continue;
 	return Decision::Consume;
 }
 
@@ -298,8 +303,9 @@ RightFn g_right = nullptr;
 using PanelFn = uint8_t (*)(int) noexcept;  // D2R's "is panel N open" (93847 0xce500)
 PanelFn g_panel = nullptr;
 // panel ids, read in game: inventory 1, stash 24 (0x18), Cube 25 (0x19); D2R's own Drop label needs 0x16, 0xd, 0xb shut too (vendor panels)
+constexpr int PanelCount = 32;  // D2R's own loop over the table is < 0x20; the dwords after it belong to other code
 constexpr int PanelInventory = 1, PanelStash = 0x18;
-constexpr int AlwaysOpen[] = {0, 20, 28, 29, 32};  // open with only the inventory up (read in game; 28 only in town): HUD panels, no NPC, stash or Cube panel
+constexpr int AlwaysOpen[] = {0, 20, 28, 29};  // open with only the inventory up (read in game; 28 only in town): HUD panels, no NPC, stash or Cube panel
 auto PanelOpen(int id) noexcept -> bool { return g_panel != nullptr && g_panel(id) != 0; }
 uint8_t* g_panelTable = nullptr;  // the byte-per-panel "is open" table behind g_panel
 using AtFn = void* (*)(void*, uint64_t*) noexcept;
@@ -328,23 +334,24 @@ void OnRightClick(void* widget, uint64_t cell) noexcept {
 				// the player's own inventory, whatever panel is open. D2R's Ctrl + left click only drops with no other panel up (with one
 				// up it quick-moves), so the panel table reads shut for that one call; the item's own drop sound plays inside it
 				if (find.runtimeId != 0 && Look(player, items::ContainerBit(items::ItemContainer::Inventory), &find)) {
-					uint8_t saved[40] = {};
-					for (int id = 0; id < 40 && g_panelTable != nullptr; ++id) {
+					uint8_t saved[PanelCount] = {};
+					for (int id = 0; id < PanelCount && g_panelTable != nullptr; ++id) {
 						bool keep = id == PanelInventory;
 						for (const int open : AlwaysOpen) keep = keep || id == open;
 						saved[id] = g_panelTable[id];
 						if (!keep) g_panelTable[id] = 0;
 					}
 					reinterpret_cast<RightFn>(vtable[SlotLeftClick / sizeof(void*)])(widget, cell);  // Ctrl is down: D2R's Ctrl + left click
-					for (int id = 0; id < 40 && g_panelTable != nullptr; ++id) g_panelTable[id] = saved[id];
+					// the click handler runs synchronously on this thread and does not touch the table, so writing back what we read is safe
+					for (int id = 0; id < PanelCount && g_panelTable != nullptr; ++id) g_panelTable[id] = saved[id];
 					plog::Info("hotkeys: drop sent");
 				}
 				return;
 			}
 			// a stash move needs the stash panel open (no remote stash); a Cube move works with the Cube shut and any panel up
 			if (what == Act::Stash && !PanelOpen(PanelStash)) return;
-			if (find.runtimeId != 0 && Look(player, Ours, &find) && Queue(what, player, find.info)) {
-				PlayUi(what == Act::Identify ? SoundIdentify : g_itemSound != nullptr ? g_itemSound(unit) : 0);
+			if (find.runtimeId != 0 && Look(player, Ours, &find) &&
+			    Queue(what, player, find.info, what == Act::Identify ? SoundIdentify : g_itemSound != nullptr ? g_itemSound(unit) : 0)) {
 				return;
 			}
 		}
@@ -393,6 +400,7 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		const uint8_t* lea = reinterpret_cast<const uint8_t*>(g_panel) + 3;
 		g_panelTable = const_cast<uint8_t*>(lea + 7 + *reinterpret_cast<const int32_t*>(lea + 3));
 	}
+	if (g_panelTable == nullptr) plog::Warn("hotkeys: the panel table was not found; Ctrl + right click drops only with no other panel open");
 	if (g_play == nullptr || g_itemSound == nullptr) plog::Warn("hotkeys: item sounds are off (signature not found)");
 	if (right) {
 		g_key = reinterpret_cast<KeyFn>(context->exeBase + key);
