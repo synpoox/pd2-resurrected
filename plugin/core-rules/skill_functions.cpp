@@ -3086,6 +3086,71 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	return 1;
 }
 
+// Frenzy's stacks (#1831). PD2 (ProjectDiablo.dll 0x10306780 in PD2.gpr, 0x10306790 installed) replaces 1.13c's srvdo 9
+// helper (D2Game +0x28e70, called at +0x2966e and +0x296af): skill_frenzy (169) = min(current + 1, calc4), stat 351
+// = the skill level, and each aurastat SET to calc(level) * stacks / max(calc4, 1) (0x1037c4c0), attackrate's value
+// also on other_animrate. D2R's srvdo 9 (93847: 0x567e80) calls its helper (0x566d60) at 0x567fd6: stacks capped by
+// the level, aurastats ADDED by 0x574480 at the stack count as level. The redirect calls D2R's helper first (its list
+// create, timer, state event and client update stay) and then writes PD2's values over the list. Only rows with
+// calc4 > 0 (Frenzy): PD2's monster frenzies are 1.13c srvdo 109 (+0xb6790), whose call of the helper (+0xb6828) PD2
+// leaves stock, and Berserk (calc4 blank, PD2 would zero its aurastats) keeps D2R's (docs/deviations.md).
+// No SDK service runs a skill's per-hit aura stack, so this redirects the one call by signature.
+constexpr const char* FrenzyHelperCall = "45 8b cf 48 89 74 24 20 45 8b c4 48 8b d3 48 8b cd e8 ?? ?? ?? ?? b8 01 00 00 00";
+constexpr uint32_t FrenzyHelperCallAt = 17;
+constexpr int32_t ModifierListLevel = 351, StatAttackRate = 68, StatOtherAnimRate = 69;
+constexpr int TablesStatCount = 0x1260;  // uint64 itemstatcost row count in DataTables, as 0x574480 reads it
+using FrenzyHelperFn = int64_t (*)(Game*, Unit*, int32_t, int32_t, void*) noexcept;
+FrenzyHelperFn g_frenzyHelper = nullptr;
+std::atomic<uint32_t> g_frenzyHits {0};
+
+auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* event) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = game != nullptr ? d2r::DataFlag(game) : 0;
+	const uint8_t* skill = game != nullptr ? d2r::api.getSkillRecord(dataFlag, skillId) : nullptr;
+	const int32_t calc4 = skill != nullptr ? d2r::EvalCalc(game, unit, skill, SkCalc4, skillId, level) : 0;
+	if (calc4 <= 0 || unit == nullptr) {
+		return g_frenzyHelper(game, unit, skillId, level, event);
+	}
+	const auto stateList = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList);
+	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);
+	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
+	const int32_t state = At<int16_t>(skill, SkAuraState);
+	void* before = state >= 0 ? stateList(unit, state) : nullptr;
+	const int32_t current = before != nullptr ? listStat(dataFlag, before, SkillFrenzyStat, 0) : 0;
+	const int64_t result = g_frenzyHelper(game, unit, skillId, level, event);
+	void* list = state >= 0 ? stateList(unit, state) : nullptr;
+	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(dataFlag);
+	if (list == nullptr || tables == nullptr) {
+		return result;
+	}
+	const int32_t stacks = std::min(current + 1, calc4);
+	setStat(dataFlag, list, SkillFrenzyStat, stacks, 0);
+	setStat(dataFlag, list, ModifierListLevel, level, 0);
+	const uint64_t statCount = At<uint64_t>(tables, TablesStatCount);
+	int32_t firstStat = -1, firstValue = 0;
+	for (int i = 0; i < 6; ++i) {
+		const int32_t stat = At<int16_t>(skill, SkAuraStat1 + 2 * i);
+		if (stat < 0 || static_cast<uint64_t>(stat) >= statCount) {
+			continue;
+		}
+		const double scaled = static_cast<double>(d2r::EvalCalc(game, unit, skill, SkAuraStatCalc1 + 4 * i, skillId, level)) *
+		                      stacks / calc4;
+		const int32_t value = scaled <= 2147483647.0 ? static_cast<int32_t>(scaled) : INT32_MAX;  // as 0x1037c4c0
+		setStat(dataFlag, list, stat, value, 0);
+		if (stat == StatAttackRate) {
+			setStat(dataFlag, list, StatOtherAnimRate, value, 0);
+		}
+		if (firstStat < 0) {
+			firstStat = stat;
+			firstValue = value;
+		}
+	}
+	if (pd2::HotSample(g_frenzyHits)) {
+		plog::Info("frenzy: skill %d level %d stacks %d/%d %d=%d", skillId, level, stacks, calc4, firstStat, firstValue);
+	}
+	return result;
+}
+
 // --- Leap, Leap Attack, Leap Attack Korlic (PD2 srvdofunc 153 -> 172, cltdofunc 97 -> 115) ------------------------------
 // Read from ProjectDiablo.dll: srvdo 153 at 0x103b1300, cltdo 97 at 0x103ab280 (docs/features/core-rules.md). PD2's leap path is
 // D2R's (path type 9 to the skill's point); PD2 sets its own speed and, on landing, hits every unit within calc3.
@@ -4965,6 +5030,14 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		std::snprintf(report + used, reportSize - used, "; first think valkyrie%s revive%s, revive size cap%s",
 		              valkyrieThink ? "" : " FAILED", reviveThink ? "" : " FAILED", g_collisionRefresh != 0 ? "" : " FAILED");
 	}
+	const bool frenzy = RedirectCall(context, FrenzyHelperCall, FrenzyHelperCallAt, reinterpret_cast<uint64_t>(&FrenzyHelper),
+	                                 reinterpret_cast<uint64_t*>(&g_frenzyHelper));
+	plog::Info("frenzy: PD2 stacks %s", frenzy ? "on" : "FAILED (srvdo 9 helper call signature or bytes)");
+	installed += frenzy ? 1 : 0;
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; frenzy stacks%s", frenzy ? "" : " FAILED");
+	}
 	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
 	                                             sizeof(d2r::rva::BusyModeGateEntry), BusyModeGate, &g_gateOriginal);
 	installed += gate ? 1 : 0;
@@ -5009,8 +5082,8 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 
 auto SkillFunctionCount() noexcept -> int {
 	// + the srvdo router, the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the two first-think patches and the
-	// revive size cap, the busy mode gate, the holy sword parry and the hit window
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 11;
+	// revive size cap, Frenzy's stacks, the busy mode gate, the holy sword parry and the hit window
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 12;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
@@ -5025,7 +5098,7 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "novas %u, client %u, item novas %u, static fields %u, vengeances %u, links %u, jousts %u, fire claws %u, hits %u, "
 	              "client %u, wolf starts %u, refused %u, dragon flights %u, hits %u, holy sword starts %u, "
 	              "smite starts %u, smite events %u, gate logs %u, poison egg spawns %u, client %u, nest spawns %u, "
-	              "nests full %u, cycler starts %u, %s",
+	              "nests full %u, cycler starts %u, frenzy hits %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
@@ -5039,5 +5112,5 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              g_fireClawClients.load(), g_wolfStarts.load(), g_wolfRefusals.load(), g_dragonFlights.load(),
 	              g_dragonFlightHits.load(), g_holySwordStarts.load(), g_smiteStarts.load(), g_smiteEvents.load(),
 	              g_gateLogs.load(), g_eggSpawns.load(), g_eggSpawnClients.load(), g_nestSpawns.load(), g_nestFull.load(),
-	              g_cyclerStarts.load(), missiles);
+	              g_cyclerStarts.load(), g_frenzyHits.load(), missiles);
 }
