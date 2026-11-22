@@ -38,7 +38,8 @@
       },
       "loader_settings": {
         "d2rcore.stash": {
-          "add_shared_tabs": 15
+          "add_shared_tabs": 15,
+          "set_materials_limit": 255
         }
       }
     },

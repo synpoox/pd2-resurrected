@@ -1,5 +1,5 @@
 // PD2's stacks in the RotW stash tabs (Gems, Materials, Runes; #1537). A tab slot is one item with a count byte (item
-// data +0x9c, at most 99, saved as 8 bits) that D2R's deposit raises by one and its withdraw lowers by one, handing out a
+// data +0x9c, at most 255, saved as 8 bits) that D2R's deposit raises by one and its withdraw lowers by one, handing out a
 // new single. PD2 makes gems, runes and the other AdvancedStashStackable rows stackable, so a deposited stack of 12
 // counted as one and 11 were lost. Here a deposit raises the count by the stack's quantity, and the "tab full" check
 // refuses a stack that would not fit whole (the stack stays where it was, as D2R does for a full slot).
@@ -21,6 +21,7 @@
 #include "pd2_engine.h"
 #include "sig.h"
 #include "stash_stack.h"
+#include "stash_toml.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -66,6 +67,7 @@ CountFn g_count = nullptr;
 AddFn g_add = nullptr;
 uint64_t g_countCheckReturn = 0, g_serverAddReturn = 0;
 std::atomic<uint32_t> g_deposits {0}, g_refused {0};
+int32_t g_limit = DefaultLimit;  // D2RCore's set_materials_limit, read at install
 
 auto Quantity(Unit* item) noexcept -> int32_t {
 	return item == nullptr ? 0 : d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(item, StatQuantity, 0);
@@ -82,12 +84,14 @@ auto Count(Unit* slotItem, uint64_t, Unit* rbx, uint8_t*) noexcept -> uint8_t {
 	}
 	// the deposit check: the slot's own count byte (D2RCore's getter read 0 for a slot of 1 in game)
 	const uint8_t count = SlotCount(slotItem);
-	const uint8_t seen = CheckedCount(count, Quantity(rbx));
-	if (seen >= TabMax) {
-		plog::Info("stash tabs: refused a stack of %d onto a slot of %u (max %d)", Units(Quantity(rbx)), count, TabMax);
+	// D2R compares the returned byte with a fixed 99 (`cmp al,0x63; jb`), whatever set_materials_limit says, so answer 0
+	// when the whole stack fits under the limit read from the toml and 255 when it does not (#1767)
+	if (!Fits(count, Quantity(rbx), g_limit)) {
+		plog::Info("stash tabs: refused a stack of %d onto a slot of %u (max %d)", Units(Quantity(rbx)), count, g_limit);
 		g_refused.fetch_add(1);
+		return 255;
 	}
-	return seen;
+	return 0;
 }
 
 auto Add(void* proxy, uint64_t itemClass, Unit* rbx, uint8_t* rbp) noexcept -> Unit* {
@@ -159,6 +163,11 @@ auto InstallStashStacks(const D2RL::PluginContext* context, char* report, size_t
 		std::snprintf(report, reportSize, "stash tabs FAILED (call sites or thunks differ)");
 		return false;
 	}
+	int32_t limit = -1;
+	const auto source = pd2::stash_toml::Resolve(context->pluginConfigPath, "set_materials_limit", &limit);
+	g_limit = limit < 1 ? DefaultLimit : limit > TabMax ? TabMax : limit;
+	plog::Info("stash stacks: set_materials_limit = %d from %s", g_limit,
+	           source == pd2::stash_toml::Source::Mod ? "the mod's d2rloader.toml" : source == pd2::stash_toml::Source::Game ? "the game-wide d2rloader.toml" : "the default (no live key)");
 	g_countCheckReturn = d2r::imageBase + CountCheckSite.rva + CountCheckCall + 5;
 	g_serverAddReturn = d2r::imageBase + ServerAddSite.rva + ServerAddCall + 5;
 	const uint64_t countStub = MakeStub(reinterpret_cast<const void*>(&Count));

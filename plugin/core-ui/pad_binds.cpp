@@ -273,7 +273,7 @@ void OnActivateCell(void* widget, uint64_t focus) noexcept {
 			if (g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
 			    g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::NotFound) {
 				plog::Info("padbinds: stack tab %s", whole ? "whole stack to the Cube" : "5 to the inventory");
-				g_bulk(widget, nullptr, whole ? 3 : 0, whole ? 99 : 5);
+				g_bulk(widget, nullptr, whole ? 3 : 0, whole ? 255 : 5);
 				return;
 			}
 		}

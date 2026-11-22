@@ -1,26 +1,26 @@
-// The `add_shared_tabs` line of a d2rloader.toml's `[d2rcore.stash]` section (#1808), with no engine types so it builds on
-// the host: read one line, find a section header, and rewrite a file's text so the key is live with a given value.
+// The integer keys of a d2rloader.toml's `[d2rcore.stash]` section (add_shared_tabs #1808, set_materials_limit #1767), with no
+// engine types so it builds on the host: read one line or a file's key, find a section header, and rewrite a file's text so
+// add_shared_tabs is live with a given value.
 #pragma once
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cstring>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace pd2::stash_toml {
 
-// The value of an `add_shared_tabs = N` line; -1 for any other line (a commented one included)
-constexpr auto ExtraTabsOf(const char* line) noexcept -> int32_t {
-	constexpr char Key[] = "add_shared_tabs";
+// The value of a `<key> = N` line; -1 for any other line (a commented one included)
+constexpr auto IntOf(const char* line, const char* key) noexcept -> int32_t {
 	size_t i = 0;
-	while (line[i] == ' ' || line[i] == '\t') {
+	while (line[i] == ' ' || line[i] == '	') {
 		++i;
 	}
-	for (const char c : Key) {
-		if (c == '\0') {
-			break;
-		}
-		if (line[i++] != c) {
+	for (size_t k = 0; key[k] != '\0'; ++k) {
+		if (line[i++] != key[k]) {
 			return -1;
 		}
 	}
@@ -35,10 +35,11 @@ constexpr auto ExtraTabsOf(const char* line) noexcept -> int32_t {
 	}
 	return any ? n : -1;
 }
-static_assert(ExtraTabsOf("add_shared_tabs = 15") == 15);
-static_assert(ExtraTabsOf("  add_shared_tabs=0 # none") == 0);
-static_assert(ExtraTabsOf("# add_shared_tabs = 15") == -1);
-static_assert(ExtraTabsOf("set_materials_limit = 99") == -1);
+static_assert(IntOf("add_shared_tabs = 15", "add_shared_tabs") == 15);
+static_assert(IntOf("  add_shared_tabs=0 # none", "add_shared_tabs") == 0);
+static_assert(IntOf("# add_shared_tabs = 15", "add_shared_tabs") == -1);
+static_assert(IntOf("set_materials_limit = 99", "add_shared_tabs") == -1);
+static_assert(IntOf("set_materials_limit = 255", "set_materials_limit") == 255);
 
 // 1 for the `[d2rcore.stash]` header, 0 for any other `[section]` header, -1 for any other line
 constexpr auto SectionOf(const char* line) noexcept -> int32_t {
@@ -140,6 +141,55 @@ inline auto WithExtraTabs(const std::string& whole, int32_t value) -> std::strin
 		out += l + "\n";
 	}
 	return out;
+}
+
+// The `key` of the `[d2rcore.stash]` section of `path`: -1 when the file has no live key, -2 when it cannot be read
+inline auto ReadKey(const std::wstring& path, const char* key) noexcept -> int32_t {
+	FILE* file = nullptr;
+	if (_wfopen_s(&file, path.c_str(), L"rb") != 0 || file == nullptr) {
+		return -2;
+	}
+	int32_t value = -1;
+	bool inStash = false, first = true;
+	char line[256];
+	while (std::fgets(line, sizeof line, file) != nullptr) {
+		const char* text = line;
+		if (std::exchange(first, false) && std::strncmp(line, "\xEF\xBB\xBF", 3) == 0) {
+			text += 3;  // a UTF-8 BOM
+		}
+		if (const int32_t section = SectionOf(text); section >= 0) {
+			inStash = section == 1;
+		} else if (const int32_t n = IntOf(text, key); inStash && n >= 0) {
+			value = n;
+		}
+	}
+	std::fclose(file);
+	return value;
+}
+
+enum class Source { Mod, Game, None, Unreadable };
+
+// The mod's value, else the game-wide one. `configPath` is a file in <game>/mods/<mod>/d2rloader/config/ (the plugin's config).
+inline auto Resolve(const wchar_t* configPath, const char* key, int32_t* value) noexcept -> Source {
+	std::wstring dir = configPath != nullptr ? configPath : L"";
+	const size_t slash = dir.find_last_of(L"\/");
+	dir = slash == std::wstring::npos ? L"" : dir.substr(0, slash + 1);
+	std::wstring game = dir;  // up four folders: <game>/
+	for (int i = 0; i < 4 && !game.empty(); ++i) {
+		game.pop_back();
+		const size_t cut = game.find_last_of(L"\/");
+		game = cut == std::wstring::npos ? L"" : game.substr(0, cut + 1);
+	}
+	const int32_t mod = ReadKey(dir + L"d2rloader.toml", key);
+	const int32_t all = mod >= 0 ? -1 : ReadKey(game + L"d2rloader/config/d2rloader.toml", key);
+	*value = mod >= 0 ? mod : all >= 0 ? all : -1;
+	if (mod >= 0) {
+		return Source::Mod;
+	}
+	if (all >= 0) {
+		return Source::Game;
+	}
+	return mod == -2 && all == -2 ? Source::Unreadable : Source::None;
 }
 
 }  // namespace pd2::stash_toml

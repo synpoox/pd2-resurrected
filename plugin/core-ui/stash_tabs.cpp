@@ -136,31 +136,6 @@ auto PlayerPage(bool right, const char* how) noexcept -> bool {
 	return true;
 }
 
-// The `add_shared_tabs` of the `[d2rcore.stash]` section of `path`: -1 when the file has no live key, -2 when it cannot be read
-auto ReadExtraTabs(const std::wstring& path) noexcept -> int32_t {
-	FILE* file = nullptr;
-	if (_wfopen_s(&file, path.c_str(), L"rb") != 0 || file == nullptr) {
-		return -2;
-	}
-	int32_t extra = -1;
-	bool inStash = false;
-	char line[256];
-	bool first = true;
-	while (std::fgets(line, sizeof line, file) != nullptr) {
-		const char* text = line;
-		if (std::exchange(first, false) && std::strncmp(line, "\xEF\xBB\xBF", 3) == 0) {
-			text += 3;  // a UTF-8 BOM
-		}
-		if (const int32_t section = pd2::stash_toml::SectionOf(text); section >= 0) {
-			inStash = section == 1;
-		} else if (const int32_t n = pd2::stash_toml::ExtraTabsOf(text); inStash && n >= 0) {
-			extra = n;
-		}
-	}
-	std::fclose(file);
-	return extra;
-}
-
 // #1808: the mod's d2rloader.toml lost its live add_shared_tabs (a rewritten template, a kept old file): put 15 back in it, the
 // loader reads it at game start. A .bak of the file is kept once; the write is a temp file moved over it. Never the game-wide file.
 auto RestoreExtraTabs(const std::wstring& path) noexcept -> bool {
@@ -212,8 +187,8 @@ auto ReadPages(const wchar_t* configPath) noexcept -> uint32_t {
 	}
 	const std::wstring modToml = dir + L"d2rloader.toml";
 	const std::wstring gameToml = game + L"d2rloader/config/d2rloader.toml";
-	const int32_t mod = ReadExtraTabs(modToml);
-	const int32_t all = mod >= 0 ? -1 : ReadExtraTabs(gameToml);
+	const int32_t mod = pd2::stash_toml::ReadKey(modToml, "add_shared_tabs");
+	const int32_t all = mod >= 0 ? -1 : pd2::stash_toml::ReadKey(gameToml, "add_shared_tabs");
 	if (mod == -2 && all == -2) {
 		plog::Info("stash tabs: neither d2rloader.toml could be read: the stash page count is unknown, no tab limit");
 		return UINT32_MAX;
