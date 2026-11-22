@@ -44,6 +44,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iterator>
+#include <string>
 #include <utility>
 
 namespace stash_tabs {
@@ -74,6 +75,10 @@ uint32_t g_frames = 0, g_opened = 0;  // the frame our tab was clicked or Shared
 constexpr uint32_t OursFrames = 2;      // a SelectTab this soon after is that click's or that select's
 const char* g_queue[LeftPresses + aff::LastReservedPage + 1];
 uint32_t g_head = 0, g_tail = 0;
+uint32_t g_sendFails = 0;     // consecutive frames the queue's next arrow was not sent
+bool g_pending = false;       // our tab is up but its page arrows have not all been sent: the shown page is unknown
+uint32_t g_pages = UINT32_MAX;  // shared pages the stash has (5 + add_shared_tabs), from d2rloader.toml; unknown: no limit
+constexpr uint32_t MaxSendFails = 30;
 std::atomic<bool> g_reset {false};
 std::atomic<uint32_t> g_clicks {0};
 
@@ -96,6 +101,8 @@ sigscan::Entry MarkHandled {"MessageMarkHandled", "stash", sigscan::Kind::Code, 
 sigscan::Entry* const Sigs[] = {&FetchPanel, &FindChild, &SelectTab, &MessageHandled, &MarkHandled};
 bool g_select = false;
 // UI thread: the shared page on show (0-based), counted from the arrows; a new game starts on page 0.
+// A tab's page is published to stash_affinity (ViewPage) only once every arrow was sent (g_pending); until then, and after
+// MaxSendFails failed frames, it is unknown (0: no drop filter). Our tab is refused when the stash has too few pages (g_pages).
 // shortcut: a page change that sends no arrow (another plugin's jump) is not counted, and the general pages after the
 // reserved ones (add_shared_tabs above 15) are out of the Shared tab's reach; read the page if the SDK gains a read.
 uint32_t g_page = 0;
@@ -122,6 +129,111 @@ auto PlayerPage(bool right, const char* how) noexcept -> bool {
 	}
 	++g_page;
 	return true;
+}
+
+// The value of an `add_shared_tabs = N` line; -1 for any other line (a commented one included)
+constexpr auto ExtraTabsOf(const char* line) noexcept -> int32_t {
+	constexpr char Key[] = "add_shared_tabs";
+	size_t i = 0;
+	while (line[i] == ' ' || line[i] == '\t') {
+		++i;
+	}
+	for (const char c : Key) {
+		if (c == '\0') {
+			break;
+		}
+		if (line[i++] != c) {
+			return -1;
+		}
+	}
+	while (line[i] == ' ' || line[i] == '=') {
+		++i;
+	}
+	int32_t n = 0;
+	bool any = false;
+	for (; line[i] >= '0' && line[i] <= '9'; ++i) {
+		n = n * 10 + (line[i] - '0');
+		any = true;
+	}
+	return any ? n : -1;
+}
+static_assert(ExtraTabsOf("add_shared_tabs = 15") == 15);
+static_assert(ExtraTabsOf("  add_shared_tabs=0 # none") == 0);
+static_assert(ExtraTabsOf("# add_shared_tabs = 15") == -1);
+static_assert(ExtraTabsOf("set_materials_limit = 99") == -1);
+
+// 1 for the `[d2rcore.stash]` header, 0 for any other `[section]` header, -1 for any other line
+constexpr auto SectionOf(const char* line) noexcept -> int32_t {
+	constexpr char Name[] = "[d2rcore.stash]";
+	size_t i = 0;
+	while (line[i] == ' ' || line[i] == '	') {
+		++i;
+	}
+	if (line[i] != '[') {
+		return -1;
+	}
+	for (const char c : Name) {
+		if (c == '\0') {
+			return 1;
+		}
+		if (line[i++] != c) {
+			return 0;
+		}
+	}
+	return 1;
+}
+static_assert(SectionOf("[d2rcore.stash]") == 1);
+static_assert(SectionOf("  [d2rcore.stash] # x") == 1);
+static_assert(SectionOf("[d2rcore.other]") == 0);
+static_assert(SectionOf("add_shared_tabs = 3") == -1);
+
+// The `add_shared_tabs` of the `[d2rcore.stash]` section of `path`: -1 when the file has no live key, -2 when it cannot be read
+auto ReadExtraTabs(const std::wstring& path) noexcept -> int32_t {
+	FILE* file = nullptr;
+	if (_wfopen_s(&file, path.c_str(), L"rb") != 0 || file == nullptr) {
+		return -2;
+	}
+	int32_t extra = -1;
+	bool inStash = false;
+	char line[256];
+	while (std::fgets(line, sizeof line, file) != nullptr) {
+		if (const int32_t section = SectionOf(line); section >= 0) {
+			inStash = section == 1;
+		} else if (const int32_t n = ExtraTabsOf(line); inStash && n >= 0) {
+			extra = n;
+		}
+	}
+	std::fclose(file);
+	return extra;
+}
+
+// The stash's shared pages: 5 + add_shared_tabs of the mod's d2rloader.toml (beside the plugin's own config), else of the game-wide
+// <game>/d2rloader/config/d2rloader.toml (the mod's value wins); neither set: the loader default 0; no file readable: no limit
+auto ReadPages(const wchar_t* configPath) noexcept -> uint32_t {
+	if (configPath == nullptr) {
+		plog::Info("stash tabs: no config path: the stash page count is unknown, no tab limit");
+		return UINT32_MAX;
+	}
+	std::wstring dir = configPath;
+	const size_t slash = dir.find_last_of(L"\\/");
+	dir = slash == std::wstring::npos ? L"" : dir.substr(0, slash + 1);
+	std::wstring game = dir;  // <game>/mods/<mod>/d2rloader/config/ up four folders: <game>/
+	for (int i = 0; i < 4 && !game.empty(); ++i) {
+		game.pop_back();
+		const size_t cut = game.find_last_of(L"\\/");
+		game = cut == std::wstring::npos ? L"" : game.substr(0, cut + 1);
+	}
+	const std::wstring modToml = dir + L"d2rloader.toml";
+	const std::wstring gameToml = game + L"d2rloader/config/d2rloader.toml";
+	const int32_t mod = ReadExtraTabs(modToml);
+	const int32_t all = mod >= 0 ? -1 : ReadExtraTabs(gameToml);
+	if (mod == -2 && all == -2) {
+		plog::Info("stash tabs: neither d2rloader.toml could be read: the stash page count is unknown, no tab limit");
+		return UINT32_MAX;
+	}
+	const int32_t extra = mod >= 0 ? mod : all >= 0 ? all : 0;
+	plog::Info("stash tabs: add_shared_tabs = %d from %s", extra, mod >= 0 ? "the mod's d2rloader.toml" : all >= 0 ? "the game-wide d2rloader.toml" : "the loader default (no live key)");
+	return aff::VanillaSharedPages + static_cast<uint32_t>(extra);
 }
 
 // The stock BankTabs to `tab`, as a click on it: the stash gets its SelectTab and shows that tab
@@ -162,21 +274,29 @@ void OpenPage(uint32_t page) noexcept {
 	}
 }
 
-void Send() noexcept {
+// The queued arrows, PerFrame at a time; false: one was not sent and stays queued for the next frame
+auto Send() noexcept -> bool {
 	for (uint32_t n = 0; n < PerFrame && g_head < g_tail; ++n) {
 		const D2RL::Widgets::UiAction action {.structSize = D2RL::Widgets::UiActionSize,
 		                                      .target = "BankPanelMessage",
-		                                      .command = g_queue[g_head++],
+		                                      .command = g_queue[g_head],
 		                                      .text = ""};
 		g_dispatching = true;
 		const Result sent = g_widgets->dispatchUiAction(g_context, &action);
 		g_dispatching = false;
 		if (sent != Result::Success) {
-			plog::Info("stash tabs: BankPanelMessage:%s not sent (%u)", action.command, static_cast<uint32_t>(sent));
-			g_head = g_tail = 0;
-			return;
+			plog::Info("stash tabs: BankPanelMessage:%s not sent (%u), try %u", action.command, static_cast<uint32_t>(sent), g_sendFails + 1);
+			if (++g_sendFails >= MaxSendFails) {  // give up: the page stays unknown (no drop filter) rather than guessed
+				g_head = g_tail = g_sendFails = 0;
+				g_pending = false;
+				plog::Warn("stash tabs: page arrows failed %u times, the shown page is unknown", MaxSendFails);
+			}
+			return false;
 		}
+		++g_head;
+		g_sendFails = 0;
 	}
+	return true;
 }
 
 void ShowTier(int32_t tier) noexcept {
@@ -188,15 +308,22 @@ void Log(const char* what) noexcept {
 	plog::Info("stash tabs: %s (view %u, tier %d, base %d)", what, static_cast<uint32_t>(g_view), g_tier + 1, g_base[g_tier]);
 }
 
-void Open(View view) noexcept {
-	g_view = view;
+auto Open(View view) noexcept -> bool {
 	const uint32_t page = view == View::Maps ? aff::MapsPage : aff::BossingPage;
+	if (page >= g_pages) {  // the arrows would stop on the last page there is, under our tab
+		plog::Warn("stash tabs: %s needs shared page %u but the stash has %u (add_shared_tabs below %u): tab not opened",
+		           view == View::Maps ? "Maps" : "Bossing", page + 1, g_pages, aff::RequiredExtraTabs);
+		return false;
+	}
+	g_view = view;
 	OpenPage(page);
 	if (view == View::Maps) {
 		ShowTier(g_tier);
 	}
-	stash_affinity::SetTabOpen(true, page);
+	g_pending = true;  // the page is known once every arrow is sent (OnFrame)
+	stash_affinity::SetTabOpen(true, 0);
 	Log(view == View::Maps ? "Maps" : "Bossing");
+	return true;
 }
 
 void Click(const char* what) noexcept {
@@ -264,7 +391,7 @@ void ShowButton(Named& w, bool visible) noexcept {
 
 Named g_background {"pd2rMapsBackground"}, g_bossingBackground {"pd2rBossingBackground"}, g_navigation {"StashNavigation"}, g_cube {"advancedstash_horadriccube"},
 	g_cubeWithdraw {"withdraw_button"}, g_sharedOff {"pd2rSharedOff"}, g_mapsOn {"pd2rMapsTabsOn"}, g_mapsOnText {"pd2rMapsTabsOnText"},
-	g_bossingOn {"pd2rBossingTabsOn"}, g_bossingOnText {"pd2rBossingTabsOnText"}, g_padTabs {"pd2rPadTabs"}, g_mapsLegend {"pd2rMapsLegend"};
+	g_bossingOn {"pd2rBossingTabsOn"}, g_bossingOnText {"pd2rBossingTabsOnText"}, g_padTabs {"pd2rPadTabs"}, g_mapsBar {"pd2rMapsTabs"}, g_bossingBar {"pd2rBossingTabs"}, g_mapsLegend {"pd2rMapsLegend"};
 Named g_tiers[3][2] = {{{"pd2rTier1"}, {"pd2rTier1On"}}, {{"pd2rTier2"}, {"pd2rTier2On"}}, {{"pd2rTier3"}, {"pd2rTier3On"}}};
 struct BaseWidgets {
 	char names[3][24];
@@ -292,8 +419,8 @@ void Leave() noexcept {
 	g_view = View::None;
 	g_padTab = 0;
 	OpenPage(0);  // the stash is still on Shared under ours: page 1 now, so a stock Shared tab never opens on a reserved page
-	while (g_head < g_tail) {
-		Send();
+	g_pending = false;
+	while (g_head < g_tail && Send()) {
 	}
 	stash_affinity::SetTabOpen(false);
 	Show(g_navigation, true);
@@ -303,8 +430,9 @@ void Leave() noexcept {
 // The pad on our tab (5 Maps, 6 Bossing) as a mouse click on it opens it, the stock bar going to Shared next frame
 void OpenPad(View view) noexcept {
 	g_padTab = view == View::Maps ? 5 : 6;
-	if (view != g_view) {
-		Open(view);
+	if (view != g_view && !Open(view)) {
+		g_padTab = 0;
+		return;
 	}
 	g_opened = g_frames;
 	g_wantShared = g_select;
@@ -487,9 +615,10 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 	}
 	const char* what = text + sizeof Prefix - 1;
 	if (std::strcmp(what, "TabMaps") == 0 || std::strcmp(what, "TabBossing") == 0) {
-		Open(what[3] == 'M' ? View::Maps : View::Bossing);
-		g_opened = g_frames;
-		g_wantShared = g_select;
+		if (Open(what[3] == 'M' ? View::Maps : View::Bossing)) {
+			g_opened = g_frames;
+			g_wantShared = g_select;
+		}
 	} else if (std::strcmp(what, "PadMaps") == 0 || std::strcmp(what, "PadBossing") == 0) {
 		// the pad's bar on our tab, a press PadTab did not catch: the next frame puts it back on Shared
 		OpenPad(what[3] == 'M' ? View::Maps : View::Bossing);
@@ -557,7 +686,8 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 	++g_frames;
 	if (g_reset.exchange(false)) {
 		g_view = View::None;
-		g_head = g_tail = g_page = 0;
+		g_head = g_tail = g_page = g_sendFails = 0;
+		g_pending = false;
 		g_tab = g_padTab = 0;  // a new game opens the stash on Personal
 		g_stashOpen = false;
 		g_cycleHeld = false;
@@ -580,6 +710,17 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 	}
 	if (g_frames - g_opened > OursFrames) {
 		Send();  // the page arrows, once the stash is on its Shared tab (it reads them there only)
+		if (g_pending && g_view != View::None && g_head == g_tail) {  // every arrow sent: the page is the one asked for
+			g_pending = false;
+			stash_affinity::SetTabOpen(true, g_page);
+			plog::Info("stash tabs: shared page %u on show (all %u arrows sent)", g_page + 1, LeftPresses + g_page);
+		}
+	}
+	if (g_pages <= aff::BossingPage) {  // no such page: its tab is gone, not a button onto another page
+		ShowButton(g_bossingBar, false);
+		if (g_pages <= aff::MapsPage) {
+			ShowButton(g_mapsBar, false);
+		}
 	}
 	const bool ours = g_view != View::None, maps = g_view == View::Maps;
 	Show(g_mapsOn, maps);
@@ -637,6 +778,11 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		}
 	}
 	InitNames();
+	g_pages = ReadPages(context->pluginConfigPath);
+	if (g_pages <= aff::BossingPage) {
+		plog::Warn("stash tabs: the stash has %u shared pages (add_shared_tabs below %u): the %s hidden", g_pages, aff::RequiredExtraTabs,
+		           g_pages <= aff::MapsPage ? "Maps and Bossing tabs are" : "Bossing tab is");
+	}
 	const D2RL::LifecycleService* lifecycle = nullptr;
 	const D2RL::SharedEventService* events = nullptr;
 	if (!(Query(g_widgets, D2RL::HasWidgetServiceField, D2RL::WidgetServiceRequiredSize) &
