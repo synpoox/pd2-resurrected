@@ -8,7 +8,7 @@
 // above the cube (MapView), the map currency in fixed cells in two columns each side of it (CurrencyCell). Pages 16-18 store each tier's maps,
 // a row per base; the Maps tab swaps the selected base's maps in and out. Page 19 is the Bossing tab.
 // Precedence: Maps, then Map Materials, then Bossing; an item the RotW Materials tab takes (AdvancedStashStackable:
-// Pandemonium keys, organs, essences) stays there, so no Bossing code is one of those.
+// Pandemonium keys, organs, essences, Jewel Fragments) stays there, so no Bossing code is one of those.
 #pragma once
 
 #include <cstddef>

@@ -1633,7 +1633,7 @@
                 {
                     "type": "AdvancedStashSlotWidget", "name": "jewf",
                     "fields": {
-                        "rect": { "width": 98, "height": 98, "x": 376, "y": 848 },
+                        "rect": { "width": 98, "height": 98, "x": 272, "y": 744 },
 						"itemCode": "jewf"
                     }
                 }																

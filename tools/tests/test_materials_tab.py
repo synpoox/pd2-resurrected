@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import data_tables as D  # noqa: E402
 
 LAYOUTS = Path(__file__).resolve().parents[2] / "files" / "data" / "global" / "ui" / "layouts"
-NEW = ["wss", "cwss", "crfb", "crfc", "crfs", "crfh", "crfv", "crfu", "crfp", "lbox", "lpp"]
+NEW = ["wss", "cwss", "crfb", "crfc", "crfs", "crfh", "crfv", "crfu", "crfp", "lbox", "lpp", "jewf"]
 
 
 def cell_codes(path: Path) -> list[str]:
