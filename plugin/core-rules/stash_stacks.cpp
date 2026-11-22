@@ -321,7 +321,7 @@ auto InstallStashStacks(const D2RL::PluginContext* context, char* report, size_t
 	}
 	int32_t limit = -1;
 	const auto source = pd2::stash_toml::Resolve(context->pluginConfigPath, "set_materials_limit", &limit);
-	g_limit = limit < 1 ? DefaultLimit : limit > TabMax ? TabMax : limit;
+	g_limit = LimitOf(limit);
 	plog::Info("stash stacks: set_materials_limit = %d from %s", g_limit,
 	           source == pd2::stash_toml::Source::Mod ? "the mod's d2rloader.toml" : source == pd2::stash_toml::Source::Game ? "the game-wide d2rloader.toml" : "the default (no live key)");
 	g_countCheckReturn = d2r::imageBase + CountCheckSite.rva + CountCheckCall + 5;

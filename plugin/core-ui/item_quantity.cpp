@@ -17,6 +17,9 @@
 
 #include "pd2_engine.h"
 #include "log.h"
+#include "sig_hook.h"
+#include "stash_stack.h"
+#include "stash_toml.h"
 
 #include <D2RLPlugin/item.h>
 
@@ -137,7 +140,73 @@ void Draw(void* widget, Unit* item) noexcept {
 	}
 }
 
+// The Gems/Materials/Runes tab tooltip (#1827). A tab slot is one item with a count byte (item data +0x9c, the cell's
+// number); core-rules' deposit (stash_stacks.cpp) raises that count, but the slot item keeps the first stack's quantity
+// stat, and the tooltip's "Quantity: %d of %d" (D2R's ItemStats1i line, and D2RCore's own copy of it, which replaces D2R's
+// tooltip) prints stat 70 of GetMaxStack: 20 of 50 on a cell of 32. So the slot widget's draw (AdvancedStashSlotWidget,
+// 0x2ce4d0, which builds the hovered cell's tooltip) first sets the client copy's stat 70 to the count, and while it runs
+// GetMaxStack (0x3719e0) answers set_materials_limit for that one item on this thread. Client copy only: the server's
+// slot item, the save, and the deposit and withdraw are untouched. Why hooks: no SDK service reaches the tab slots, and
+// the SDK's tooltip listener only adds lines.
+constexpr uint8_t SlotDrawEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x55, 0x56, 0x57, 0x41, 0x54, 0x41, 0x57, 0x48, 0x8d, 0xac, 0x24, 0xc0, 0xfd, 0xff, 0xff};
+constexpr const char* SlotDrawPattern =
+    "48 89 5c 24 18 55 56 57 41 54 41 57 48 8d ac 24 c0 fd ff ff 48 81 ec 40 03 00 00 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 85 "
+    "20 02 00 00 48 8b b1 08 06 00 00 48 8b f9 48 8b ce e8";
+constexpr uint8_t MaxStackEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x57, 0x48, 0x83, 0xec, 0x20, 0x48, 0x8b, 0xf9};
+constexpr const char* MaxStackPattern =
+    "48 89 5c 24 10 57 48 83 ec 20 48 8b f9 48 85 c9 75 ?? 88 4c 24 30 48 8d 4c 24 30 e8 ?? ?? ?? ?? 84 c0 74 01 cc 48 8b cf "
+    "e8 ?? ?? ?? ?? 83 f8 04 74 ?? 48 8d 4c 24 30 c6 44 24 30 00 e8 ?? ?? ?? ?? 84 c0 74 01 cc 41 b8 e1 0e 00 00";
+constexpr int32_t SlotItem = 0x608;     // the slot widget's item (0x2ce4d0 reads it first)
+constexpr int32_t TabCountByte = 0x9c;  // item data (unit +0x10), as D2R's own count read (0x46d9a0)
+using SlotDrawFn = void (*)(void* widget) noexcept;
+using MaxStackFn = uint64_t (*)(Unit* item) noexcept;
+SlotDrawFn g_slotDraw = nullptr;
+MaxStackFn g_maxStack = nullptr;
+int32_t g_limit = pd2::stashstack::DefaultLimit;
+thread_local Unit* t_tabItem = nullptr;  // the slot item whose widget is drawing on this thread
+std::atomic<uint32_t> g_synced {0};
+
+auto TabCount(Unit* item) noexcept -> uint8_t {
+	if (item == nullptr || d2r::At<int32_t>(item, d2r::rva::UnitType) != 4) {
+		return 0;
+	}
+	void* data = d2r::At<void*>(item, 0x10);
+	return data != nullptr ? d2r::At<uint8_t>(data, TabCountByte) : 0;
+}
+
+void SlotDraw(void* widget) noexcept {
+	Unit* item = widget != nullptr ? d2r::At<Unit*>(widget, SlotItem) : nullptr;
+	const uint8_t count = TabCount(item);
+	if (count > 0) {
+		using StatFn = int32_t (*)(Unit*, int32_t, int32_t) noexcept;
+		if (d2r::Engine<StatFn>(d2r::sig::UnitStat.rva)(item, StatQuantity, 0) != count) {
+			d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(d2r::sig::SetUnitStat.rva)(item, StatQuantity, count, 0);
+			g_synced.fetch_add(1, std::memory_order_relaxed);
+		}
+		t_tabItem = item;
+	}
+	g_slotDraw(widget);
+	t_tabItem = nullptr;
+}
+
+auto MaxStack(Unit* item) noexcept -> uint64_t {
+	return item != nullptr && item == t_tabItem ? static_cast<uint64_t>(g_limit) : g_maxStack(item);
+}
+
 }  // namespace
+
+void InstallTabTooltip(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	int32_t raw = -1;
+	pd2::stash_toml::Resolve(context->pluginConfigPath, "set_materials_limit", &raw);
+	g_limit = pd2::stashstack::LimitOf(raw);
+	sigscan::Entry* const sigs[] = {&d2r::sig::UnitStat, &d2r::sig::SetUnitStat};
+	sigscan::Resolve(sigs, 2, context->exeBase, nullptr, 0);
+	// GetMaxStack first: a slot draw hook without it would still show the count
+	const bool ok = d2r::sig::UnitStat.rva != 0 && d2r::sig::SetUnitStat.rva != 0 &&
+	                sigscan::HookBySignature(context, "GetMaxStack", MaxStackPattern, 0, MaxStackEntry, sizeof(MaxStackEntry), MaxStack, &g_maxStack) &&
+	                sigscan::HookBySignature(context, "AdvancedStashSlotDraw", SlotDrawPattern, 0, SlotDrawEntry, sizeof(SlotDrawEntry), SlotDraw, &g_slotDraw);
+	std::snprintf(report, size, ok ? "tab tooltips show the cell count of %d" : "FAILED (a stat function or hook signature is missing)", g_limit);
+}
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	const bool hook = context->InstallInlineHook(GridItemDraw, GridItemDrawEntry, sizeof(GridItemDrawEntry), Draw);
@@ -145,8 +214,8 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 }
 
 void Counters(char* out, size_t size) noexcept {
-	std::snprintf(out, size, "quantity: %u items drawn, %u numbers, %u faults%s", g_drawn.load(), g_numbers.load(),
-	              g_faults.load(), g_on.load() ? "" : " (numbers off)");
+	std::snprintf(out, size, "quantity: %u items drawn, %u numbers, %u faults%s, %u tab counts synced", g_drawn.load(), g_numbers.load(),
+	              g_faults.load(), g_on.load() ? "" : " (numbers off)", g_synced.load());
 }
 
 }  // namespace item_quantity
