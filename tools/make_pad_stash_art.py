@@ -7,7 +7,7 @@ surround and lower panel, fills the Materials slots (inside the inner gold line,
 from a clean patch of the same art, and copies each cell recess the mouse art (stash_<name>_background) draws, translated
 into the pad art's space (pad x = mouse x + 69, y = mouse y - 180: the mouse grid is at (89, 219) and the pad grid at (156, 139),
 the pad art at (-2, 100)). The mouse art is read; only its cells the page plan dropped (#1699: the Maps tab's two
-bottom-right currency cells, the Bossing tab's spare cells beside the cube) are filled with stone from the Maps art's clean patch.
+bottom-right currency cells, the Bossing tab's spare cells beside the cube and, #1776, its Uber Ancients block) are filled with stone from the Maps art's clean patch.
 Needs the toolkit's modkit. Run: py -3 tools/make_pad_stash_art.py
 """
 from pathlib import Path
@@ -32,7 +32,10 @@ PATCH_R = (905, 850, 1120, 925)  # and right of it
 # Clean stone of the mouse Maps art above the cube; the Bossing art has no patch as tall
 MOUSE_PATCH = (300, 616, 860, 756)
 # Cells the mouse art drew that the page plan dropped (#1699), (col, row)
-DROPPED = {"maps": [(8, 9), (9, 9)], "bossing": [(c, r) for r in range(5, 10) for c in (0, 1, 8, 9)]}
+DROPPED = {"maps": [(8, 9), (9, 9)],  # and the Uber Ancients block (#1776)
+           "bossing": [(c, r) for r in range(5, 10) for c in (0, 1, 8, 9)] + [(c, 2) for c in range(4)]}
+# The Uber Ancients block's recess edge drawn just outside its cells, left and below (x0, y0, x1, y1 exclusive), stoned too
+EDGES = {"bossing": [(X0 - 2, Y0 + 2 * CELL, X0, Y0 + 3 * CELL + 3), (X0 - 2, Y0 + 3 * CELL, X0 + 4 * CELL, Y0 + 3 * CELL + 3)]}
 
 
 def load(path) -> np.ndarray:
@@ -56,7 +59,8 @@ def plan(name: str) -> list[tuple[int, int]]:
     if name == "maps":  # the shown base's two rows, and the map currency each side of the cube
         sides = [(c, r) for r in range(4, 10) for c in (0, 1, 8, 9)]
         return [(c, r) for r in (2, 3) for c in range(10)] + [s for s in sides if s not in DROPPED["maps"]]
-    return [(c, r) for r in (0, 2) for c in (0, 1, 2, 3, 6, 7, 8, 9)] + [(4, 4), (5, 4)]
+    cells = [(c, r) for r in (0, 2) for c in (0, 1, 2, 3, 6, 7, 8, 9)] + [(4, 4), (5, 4)]
+    return [c for c in cells if c not in DROPPED["bossing"]]
 
 
 def clear(name: str, mouse: np.ndarray, patch: np.ndarray) -> np.ndarray:
@@ -67,6 +71,8 @@ def clear(name: str, mouse: np.ndarray, patch: np.ndarray) -> np.ndarray:
     for c, r in DROPPED[name]:
         x, y = X0 + c * CELL, Y0 + r * CELL
         art[y:y + CELL, x:x + CELL] = fill[y:y + CELL, x:x + CELL]
+    for x0, y0, x1, y1 in EDGES.get(name, []):
+        art[y0:y1, x0:x1] = fill[y0:y1, x0:x1]
     return art
 
 def build(name: str, mouse: np.ndarray, mats: np.ndarray) -> np.ndarray:

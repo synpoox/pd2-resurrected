@@ -36,14 +36,15 @@ inline constexpr const char* Tier2[] = {"m02", "m03", "m08", "m10", "m13", "m15"
 inline constexpr const char* Tier3[] = {"m07", "m09", "m11", "m14", "m17", "m18", "m19", "m22", "m25"};
 
 // PD2's map crafting and modification items: orbs, ready orbs, Fortify, Dungeon Scarab, Force Mapevent Shard and the
-// invader ears the map + ear recipes take
-inline constexpr const char* MapMaterials[] = {"imma", "imrn", "imra", "rera", "scou", "upma", "upmp", "fort", "scrb",
-                                               "iwss", "irma", "irrn", "irra", "rrra", "urma", "ivea", "ivez", "iveb",
-                                               "ived", "iven", "ivep", "ives"};
+// invader ears the map + ear recipes take. Each plain orb is followed by its ready orb, so the two share a row (#1776)
+inline constexpr const char* MapMaterials[] = {"imma", "irma", "imrn", "irrn", "imra", "irra", "rera", "rrra",
+                                               "upma", "urma", "scou", "upmp", "fort", "scrb", "iwss", "ivea",
+                                               "ivez", "iveb", "ived", "iven", "ivep", "ives"};
 
-// PD2's uber encounter items (misc.txt type ubr) the RotW Materials tab does not take, and the Torch Fragment
-inline constexpr const char* Bossing[] = {"ubtm", "dcma", "dcbl", "dcho", "dcso", "rtma", "rtmo", "rtmv", "rtmf", "uba",
-                                          "ubaa", "ubab", "ubac", "luca", "lucb", "lucc", "lucd", "cm2f"};
+// PD2's uber encounter items (misc.txt type ubr) the RotW Materials tab does not take, and the Torch Fragment. PD2's
+// Uber Ancients map and keys (uba, ubaa-ubac) have no cell since #1776: they go anywhere, like any other item
+inline constexpr const char* Bossing[] = {"ubtm", "dcma", "dcbl", "dcho", "dcso", "rtma", "rtmo", "rtmv", "rtmf",
+                                          "luca", "lucb", "lucc", "lucd", "cm2f"};
 
 // D2R's item code: the code's characters little-endian, a 3-character code padded with a space
 constexpr auto Code(const char* s) noexcept -> uint32_t {
@@ -97,12 +98,13 @@ constexpr auto CurrencyCell(int32_t i) noexcept -> Cell {
 }
 
 // The Bossing tab, laid out like the RotW Materials tab round the cube: a block per boss (its map, then its parts) in
-// rows 0 and 2 with stone between the blocks, the Tristram map and torch fragments over the cube, by place in Bossing
-inline constexpr Cell BossingCell[] = {{4, 4}, {0, 0}, {1, 0}, {2, 0}, {3, 0}, {6, 0}, {7, 0}, {8, 0}, {9, 0},
-                                       {0, 2}, {1, 2}, {2, 2}, {3, 2}, {6, 2}, {7, 2}, {8, 2}, {9, 2}, {5, 4}};
+// rows 0 and 2 (row 2 right only, #1776) with stone between the blocks, the Tristram map and torch fragments over the
+// cube, by place in Bossing
+inline constexpr Cell BossingCell[] = {{4, 4}, {0, 0}, {1, 0}, {2, 0}, {3, 0}, {6, 0}, {7, 0},
+                                       {8, 0}, {9, 0}, {6, 2}, {7, 2}, {8, 2}, {9, 2}, {5, 4}};
 // The boss maps do not stack: a second one, or a part past a full stack, goes back to the inventory (the tab has no
 // spare cells, #1699)
-inline constexpr const char* BossingMaps[] = {"ubtm", "dcma", "rtma", "uba", "luca"};
+inline constexpr const char* BossingMaps[] = {"ubtm", "dcma", "rtma", "luca"};
 
 // The tier (0-2) and the place in its list of a map code; {-1, -1} for the rest
 struct Base {
@@ -242,6 +244,14 @@ static_assert(BaseCode(2, 8) == Code("m25") && BaseCode(0, 8) == 0 && BaseCode(3
 static_assert(HomeOf(Code("imma")).page == 15 && HomeOf(Code("imma")).column == 0 && HomeOf(Code("imma")).row == 4);
 static_assert(HomeOf(Code("ivea")).category == Category::MapMaterials);  // ear: Map Materials before Bossing
 static_assert(HomeOf(Code("ivea")).column == 9 && HomeOf(Code("ivea")).row == 5);  // index 15: the right block
+constexpr auto Paired(const char* plain, const char* ready) noexcept -> bool {  // a ready orb right of its plain orb (#1776)
+	const Home a = HomeOf(Code(plain)), b = HomeOf(Code(ready));
+	return a.row == b.row && a.column == 0 && b.column == 1;
+}
+static_assert(Paired("imma", "irma") && Paired("imrn", "irrn") && Paired("imra", "irra") && Paired("rera", "rrra") &&
+              Paired("upma", "urma"));
+static_assert(HomeOf(Code("iwss")).column == 8 && HomeOf(Code("iwss")).row == 5);  // with Fortify and the Scarab
+static_assert(HomeOf(Code("uba")).category == Category::None && HomeOf(Code("ubac")).category == Category::None);
 static_assert(HomeOf(Code("dcma")).category == Category::Bossing && HomeOf(Code("dcma")).page == 19);
 static_assert(HomeOf(Code("pk1")).category == Category::None);  // the RotW Materials tab keeps the keys
 static_assert(HomeOf(Code("r01")).category == Category::None);

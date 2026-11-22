@@ -113,7 +113,7 @@ static_assert(CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("gcv"), 0, 3, 2
 static_assert(!CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("m04"), aff::Code("m04"), 3, 2));   // the shown base's map
 static_assert(!CellRefused(StashGrid, aff::BossingPage, 4, aff::Code("dcma"), 0, 0, 0));              // a boss item on its cell
 static_assert(!CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("imma"), 0, 0, 4));                 // a map currency on its own cell
-static_assert(!CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("fort"), aff::Code("m01"), 1, 7));  // with a base shown too
+static_assert(!CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("rrra"), aff::Code("m01"), 1, 7));  // with a base shown too
 static_assert(CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("imma"), 0, 1, 7));                  // in another currency's cell
 static_assert(CellRefused(StashGrid, aff::BossingPage, 4, aff::Code("dcbl"), 0, 0, 0));               // dcbl on dcma's cell
 static_assert(!CellRefused(StashGrid, 0, 4, aff::Code("gcv"), 0, 3, 2));                               // no tab open
