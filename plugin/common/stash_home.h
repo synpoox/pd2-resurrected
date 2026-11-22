@@ -246,6 +246,12 @@ static_assert([] {  // no two bossing items share a cell
 	return true;
 }());
 static_assert(!AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, false, 19, 4, 4));
+static_assert(!AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 15, 4, 4));  // a boss item on the Maps page (#1726)
+static_assert(!AtHome(HomeOf(Code("imma")), Code("imma"), 0, true, 19, 0, 4));  // a currency on the Bossing page
+static_assert(!AtHome(HomeOf(Code("imma")), Code("imma"), 0, true, 15, 0, 5));   // a currency in another's cell
+static_assert(!AtHome(HomeOf(Code("dcbl")), Code("dcbl"), 0, true, 19, 0, 0));   // a boss part in the boss map's cell
+static_assert(!AtHome(HomeOf(Code("m04")), Code("m04"), Code("m04"), true, 19, 3, 2));  // a map on the Bossing page
+static_assert(!AtHome(HomeOf(Code("m04")), Code("m04"), Code("m04"), true, 15, 3, 4));  // a map outside the map cells
 static_assert(FreeColumn(0) == 0 && FreeColumn(0b111) == 3 && FreeColumn(0x3ff) == -1);
 
 }  // namespace pd2::affinity

@@ -51,7 +51,7 @@ constexpr D2RL::Inventory::ItemFilter InventoryOnly {.structSize = D2RL::Invento
 constexpr D2RL::Inventory::ItemFilter StashOnly {.structSize = D2RL::Inventory::ItemFilterSize, .containerMask = Stashes};
 constexpr uint32_t ReservedPages = aff::LastReservedPage + 1 - aff::FirstReservedPage;
 constexpr int32_t MaxStack = 50;  // misc.txt maxstack of every MapMaterials code (tools/tests/test_stash_affinity.py)
-constexpr uint32_t TidyEvery = 25;  // updates between tidies while a reserved tab is open
+constexpr uint32_t TidyEvery = 3;  // updates between tidies while a reserved tab is open: a wrong drop bounces at once (#1726)
 
 // The routed items in the inventory at the last update (game thread only). An inventory holds at most 10 x 8 items.
 struct Noted {
