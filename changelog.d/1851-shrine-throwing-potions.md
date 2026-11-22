@@ -1,3 +1,3 @@
 #### Bug Fixes
 
-- Fix Poison and Exploding shrines dropping the wrong potions instead of PD2's small gas and fire throwing potions (#1851)
+- Made Poison and Exploding shrines drop PD2's gas and fire throwing potions (#1851).
