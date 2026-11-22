@@ -5,13 +5,15 @@
 // the stack there; a bossing item to the Bossing page. The watch notes those items in the inventory each game update;
 // one that is gone from the inventory and in a stash on the next update was quick-moved there (a hand move passes
 // through the cursor, so it is never routed). A full or missing page moves the item back to the inventory.
-// executeExistingItemTransaction moves the item itself, so its rolls, sockets and quantity stay.
+// executeExistingItemTransaction moves the item itself, so its rolls, sockets and quantity stay. A homed stack onto its
+// cell's stack merges up to MaxStack (#1744); the counts are read off the native items (Quantity below).
 //
 // The Maps tab (stash_tabs.cpp) names the base it shows (ShowBase); the next update moves the other bases' maps off
 // the Maps page to their storage rows and the shown base's maps from its storage page onto the Maps page's map cells.
 //
 // Why not ItemInteractionService: it raised no event for an inventory click on this loader (almanac.cpp), and it does
-// not see the pad's quick-move. Why not a hook: the SDK's moves, edits and inventory reads cover it.
+// not see the pad's quick-move. Why not a hook: the SDK's moves, edits and inventory reads cover it; only the stack
+// count is read natively, through the SDK's editNativeItem.
 //
 // shortcut: a TCP/IP client has no game thread (runOnGameThread is Unavailable), so routing and the base swap run in
 // single player and on the host only; upgrade with a plugin message to the host if online play needs it.
@@ -21,6 +23,7 @@
 #include "stash_affinity.h"
 
 #include "log.h"
+#include "pd2_engine.h"
 #include "stash_home.h"
 
 #include <D2RLPlugin/inventory.h>
@@ -199,17 +202,24 @@ auto ToStorage(D2RL::PlayerHandle player, items::ItemInfo& item) noexcept -> ite
 	return MoveTo(player, item, home.page, column, column >= 0 ? home.row : -1);
 }
 
+// An item's count: stat 70, read off the native item. Loader 1.3.1's ItemInfo.quantity reads 0 for PD2's map currency
+// and boss parts (#1628: a stack the game draws as 2 read q0), and no SDK call merges two stacks (item.h: Debit, Edit,
+// Move, splitStack), so Merge sets the sum with editItem. 0 when the read fails.
+void ReadQuantity(const D2RL::PluginContext*, void* native, void* user) noexcept {
+	*static_cast<int32_t*>(user) = d2r::Engine<int32_t (*)(d2r::Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(
+	    static_cast<d2r::Unit*>(native), d2r::rva::StatQuantity, 0);
+}
+
+auto Quantity(D2RL::ItemHandle item) noexcept -> int32_t {
+	int32_t count = 0;
+	return g_items->editNativeItem(g_context, item, ReadQuantity, &count) == items::Result::Success ? count : 0;
+}
+
 // Into the same currency's stack on its cell; Conflict when the sum passes a stack. editItem and destroyItem refuse a
-// shared-stash item on this loader (Unsupported, Slot2), so both go to the inventory, the stack takes the sum there, the
-// incoming item goes and the stack moves back onto its cell. A failed step puts things back; the sum is never doubled.
+// shared-stash item on this loader (Unsupported, Slot2), so both go to the inventory, the counts are read there, the
+// stack takes the sum, the incoming item goes and the stack moves back onto its cell. A failed step puts things back;
+// the sum is never doubled.
 auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& stack) noexcept -> items::Result {
-	const int32_t have = stack.quantity, add = item.quantity;
-	if (have < 1 || add < 1) {
-		return items::Result::Unsupported;  // loader 1.3.1 reads 0 for a PD2 stack (Slot2): the edit would overwrite the count
-	}
-	if (have + add > MaxStack) {
-		return items::Result::Conflict;
-	}
 	const items::ItemDestination bag {.structSize = items::ItemDestinationSize, .container = C::Inventory,
 	                                  .placement = items::Placement::Automatic};
 	const uint32_t page = stack.sharedStashPage;
@@ -232,31 +242,51 @@ auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& st
 			item.container = C::Inventory;
 		}
 	}
+	int32_t have = 0, add = 0, sum = 0;
+	if (result == items::Result::Success) {
+		step = "count";
+		have = Quantity(stack.handle);
+		add = Quantity(item.handle);
+		sum = aff::MergedCount(have, add, MaxStack);
+		if (sum == 0) {  // a full stack (Conflict) or an unread count (Unsupported): the edit would lose items
+			result = have < 1 || add < 1 ? items::Result::Unsupported : items::Result::Conflict;
+		}
+	}
 	items::ItemEdit edit {.structSize = items::ItemEditSize, .fields = items::EditFieldBit(items::EditField::Quantity),
-	                      .quantity = static_cast<uint32_t>(have + add)};
+	                      .quantity = static_cast<uint32_t>(sum)};
 	if (result == items::Result::Success) {
 		step = "edit";
 		result = g_items->editItem(g_context, player, stack.handle, &edit);
+		if (result == items::Result::Success && Quantity(stack.handle) != sum) {
+			// the loader misreports these items' quantity (#1628): trust the stat, not the edit's result, before destroying
+			step = "verify";
+			result = items::Result::Unsupported;
+			edit.quantity = static_cast<uint32_t>(have);
+			g_items->editItem(g_context, player, stack.handle, &edit);
+		}
 		if (result == items::Result::Success) {
 			step = "destroy";
 			result = g_items->destroyItem(g_context, player, item.handle, items::SocketedItemPolicy::RejectIfNotEmpty);
 			if (result != items::Result::Success) {
 				edit.quantity = static_cast<uint32_t>(have);  // undo, so nothing is made from nothing
-				g_items->editItem(g_context, player, stack.handle, &edit);
+				if (const auto undo = g_items->editItem(g_context, player, stack.handle, &edit); undo != items::Result::Success) {
+					plog::Warn("affinity: %08x undo failed (result %u): the stack may hold %d with the item still there", item.code,
+					           static_cast<uint32_t>(undo), sum);
+				}
 			}
 		}
 	}
 	const auto back = MoveTo(player, stack, page, x, y);  // MoveTo notes the cell used again
 	if (result != items::Result::Success) {
-		plog::Info("affinity: %08x merge failed at %s (result %u); the stack went back: result %u", item.code, step,
-		           static_cast<uint32_t>(result), static_cast<uint32_t>(back));
+		plog::Info("affinity: %08x merge failed at %s (result %u, stack %d + %d); the stack went back: result %u", item.code,
+		           step, static_cast<uint32_t>(result), have, add, static_cast<uint32_t>(back));
 		return result;  // Route sends the incoming item back to the inventory
 	}
 	item.code = 0;  // gone: no later step of this pass reads it
-	stack.quantity = have + add;
+	stack.quantity = sum;
 	++g_merged;
 	plog::Info("affinity: %08x x%d merged with the stack on page %u cell %d,%d (now %d; back on its cell: result %u)",
-	           stack.code, add, page, x, y, have + add, static_cast<uint32_t>(back));
+	           stack.code, add, page, x, y, sum, static_cast<uint32_t>(back));
 	return items::Result::Success;  // a failed move back leaves the whole stack in the inventory: nothing lost
 }
 
@@ -292,7 +322,7 @@ void Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept {
 	(returned == items::Result::Success ? g_returned : g_failed)++;
 	plog::Info("affinity: %08x could not go to page %u (result %u); back to the inventory: result %u", item.code, home.page,
 	           static_cast<uint32_t>(moved), static_cast<uint32_t>(returned));
-	if (moved != items::Result::Unsupported && !g_hinted.exchange(true)) {  // Unsupported: a merge the loader cannot do
+	if (moved != items::Result::Unsupported && !g_hinted.exchange(true)) {  // Unsupported: a stack count that could not be read
 		plog::Info("affinity: the reserved pages are shared tabs %u-%u; set [d2rcore.stash] add_shared_tabs to at least %u",
 		           aff::FirstReservedPage, aff::LastReservedPage, aff::RequiredExtraTabs);
 	}

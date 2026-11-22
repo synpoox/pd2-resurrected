@@ -186,6 +186,12 @@ constexpr auto AtHome(const Home& home, uint32_t code, uint32_t shown, bool shar
 	return page == home.page && (home.row < 0 || y == home.row) && (home.column < 0 || x == home.column);
 }
 
+// The count of a stack after another of the same item merges into it; 0 when a count is unknown (below 1) or the sum
+// passes max, and the incoming item goes back whole (#1744)
+constexpr auto MergedCount(int32_t have, int32_t add, int32_t max) noexcept -> int32_t {
+	return have < 1 || add < 1 || have + add > max ? 0 : have + add;
+}
+
 // The first free column of a map's row, from a bit per occupied column; -1 when the row is full
 constexpr auto FreeColumn(uint32_t occupied) noexcept -> int32_t {
 	for (int32_t x = 0; x < PageWidth; ++x) {
@@ -252,6 +258,8 @@ static_assert(!AtHome(HomeOf(Code("imma")), Code("imma"), 0, true, 15, 0, 5));  
 static_assert(!AtHome(HomeOf(Code("dcbl")), Code("dcbl"), 0, true, 19, 0, 0));   // a boss part in the boss map's cell
 static_assert(!AtHome(HomeOf(Code("m04")), Code("m04"), Code("m04"), true, 19, 3, 2));  // a map on the Bossing page
 static_assert(!AtHome(HomeOf(Code("m04")), Code("m04"), Code("m04"), true, 15, 3, 4));  // a map outside the map cells
+static_assert(MergedCount(1, 1, 50) == 2 && MergedCount(49, 1, 50) == 50 && MergedCount(50, 1, 50) == 0);
+static_assert(MergedCount(45, 6, 50) == 0 && MergedCount(0, 1, 50) == 0 && MergedCount(3, 0, 50) == 0);
 static_assert(FreeColumn(0) == 0 && FreeColumn(0b111) == 3 && FreeColumn(0x3ff) == -1);
 
 }  // namespace pd2::affinity
