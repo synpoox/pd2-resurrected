@@ -40,9 +40,10 @@ Runs under Wine/Proton with the manual install: [docs/linux.md](docs/linux.md).
 The mod ships the [Pyre Loot Filter](https://github.com/Pyre-Flies/D2R-Mods/blob/main/plugins/pyre-lootfilter/README.md)
 plugin with a default `filter.json`.
 
-- Edit or make a filter: [D2R Reimagined loot filter editor](https://www.d2r-reimagined.com/loot-filter).
+- Edit or make a filter: [PD2R loot filter builder](https://synpoox.github.io/pd2r-lootfilter/), built from this mod's own item data. In Chrome or Edge it can save straight into the game folder.
 - Default filter: [filter.json](https://raw.githubusercontent.com/synpoox/pd2-resurrected/main/companions/filter.json).
-- Install: save it as `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter.json`. It reloads on save.
+- Regular filter, made with the builder: [pd2r-regular.json](https://raw.githubusercontent.com/synpoox/pd2-resurrected/main/companions/filters/pd2r-regular.json). It hides what you almost never pick up once you have a belt of potions; every rune, charm, jewel and high-tier item still shows. Open it in the builder to change it.
+- Install: save it as `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter.json`. It reloads on save. Or keep several in `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter\` and pick one under Options → Gameplay → Loot Filter Profile.
 
 A new release overwrites `filter.json`; keep a copy of yours.
 

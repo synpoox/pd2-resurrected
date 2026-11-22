@@ -1,0 +1,1582 @@
+{
+  "name": "PD2R Regular",
+  "version": 3,
+  "rules": [
+    {
+      "show": {
+        "ruleName": "Runes: Chase",
+        "conditions": {
+          "code": [
+            "r33",
+            "r32",
+            "r31",
+            "r30",
+            "r29",
+            "r28"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 60, 60, 1)",
+          "backgroundColor": "RGBA(90, 0, 0, 0.9)"
+        },
+        "dropSound": "Filter06",
+        "minimapIcon": {
+          "shape": "star",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 68, 68, 1)",
+          "size": 16
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runes: High Value",
+        "conditions": {
+          "code": [
+            "r27",
+            "r26",
+            "r25",
+            "r24",
+            "r23"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runes: Notable",
+        "conditions": {
+          "code": [
+            "r22",
+            "r21",
+            "r20"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runes: Good",
+        "conditions": {
+          "code": [
+            "r19",
+            "r18",
+            "r17",
+            "r16",
+            "r15"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(201, 193, 160, 1)"
+        },
+        "minimapIcon": {
+          "shape": "circle",
+          "borderColor": "RGBA(0, 0, 0, 1)",
+          "fillColor": "RGBA(230, 210, 120, 1)",
+          "size": 8
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runes: Show",
+        "conditions": {
+          "code": [
+            "r14",
+            "r13",
+            "r12",
+            "r11",
+            "r10",
+            "r09",
+            "r08",
+            "r07",
+            "r06",
+            "r05",
+            "r04",
+            "r03",
+            "r02",
+            "r01"
+          ]
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Orbs & currency: Chase",
+        "conditions": {
+          "code": [
+            "lbox",
+            "cwss"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 60, 60, 1)",
+          "backgroundColor": "RGBA(90, 0, 0, 0.9)"
+        },
+        "dropSound": "Filter06",
+        "minimapIcon": {
+          "shape": "star",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 68, 68, 1)",
+          "size": 16
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Orbs & currency: High Value",
+        "conditions": {
+          "code": [
+            "upmp",
+            "fort",
+            "scou",
+            "upma",
+            "imra",
+            "rera",
+            "imma",
+            "imrn",
+            "irma",
+            "irrn",
+            "irra",
+            "rrra",
+            "urma",
+            "wss",
+            "iwss",
+            "cm2f",
+            "lpp",
+            "scrb",
+            "rkey",
+            "toa"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Orbs & currency: Good",
+        "conditions": {
+          "code": [
+            "crfb",
+            "crfc",
+            "crfs",
+            "crfh",
+            "crfv",
+            "crfu",
+            "crfp",
+            "lmal",
+            "jewf",
+            "elx",
+            "0sc"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(201, 193, 160, 1)"
+        },
+        "minimapIcon": {
+          "shape": "circle",
+          "borderColor": "RGBA(0, 0, 0, 1)",
+          "fillColor": "RGBA(230, 210, 120, 1)",
+          "size": 8
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Ubers & bosses: Chase",
+        "conditions": {
+          "code": [
+            "dcma",
+            "dcbl",
+            "dcho",
+            "dcso",
+            "rtma",
+            "rtmo",
+            "rtmv",
+            "llmr",
+            "lsvl",
+            "rtp",
+            "rid"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 60, 60, 1)",
+          "backgroundColor": "RGBA(90, 0, 0, 0.9)"
+        },
+        "dropSound": "Filter06",
+        "minimapIcon": {
+          "shape": "star",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 68, 68, 1)",
+          "size": 16
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Ubers & bosses: High Value",
+        "conditions": {
+          "code": [
+            "ua1",
+            "ua2",
+            "ua3",
+            "ua4",
+            "ua5",
+            "luca",
+            "lucb",
+            "lucc",
+            "lucd",
+            "ivea",
+            "ivez",
+            "iveb",
+            "ived",
+            "iven",
+            "ivep",
+            "ives",
+            "pk1",
+            "pk2",
+            "pk3",
+            "dhn",
+            "bey",
+            "mbr",
+            "xa1",
+            "xa2",
+            "xa3",
+            "xa4",
+            "xa5"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Ubers & bosses: Notable",
+        "conditions": {
+          "code": [
+            "tes",
+            "ceh",
+            "bet",
+            "fed"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Ubers & bosses: Good",
+        "conditions": {
+          "code": [
+            "um1",
+            "um2",
+            "um3",
+            "um4",
+            "um5",
+            "um6",
+            "std"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(201, 193, 160, 1)"
+        },
+        "minimapIcon": {
+          "shape": "circle",
+          "borderColor": "RGBA(0, 0, 0, 1)",
+          "fillColor": "RGBA(230, 210, 120, 1)",
+          "size": 8
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Maps: High Value",
+        "conditions": {
+          "code": [
+            "m07",
+            "m09",
+            "m11",
+            "m14",
+            "m17",
+            "m18",
+            "m19",
+            "m22",
+            "m25"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Maps: Notable",
+        "conditions": {
+          "code": [
+            "m02",
+            "m03",
+            "m08",
+            "m10",
+            "m13",
+            "m15",
+            "m16",
+            "m21"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Maps: Good",
+        "conditions": {
+          "code": [
+            "m01",
+            "m04",
+            "m05",
+            "m06",
+            "m12",
+            "m20",
+            "m23",
+            "m24"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(201, 193, 160, 1)"
+        },
+        "minimapIcon": {
+          "shape": "circle",
+          "borderColor": "RGBA(0, 0, 0, 1)",
+          "fillColor": "RGBA(230, 210, 120, 1)",
+          "size": 8
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Gems: Good",
+        "conditions": {
+          "code": [
+            "gpv",
+            "gpy",
+            "gpb",
+            "gpg",
+            "gpr",
+            "gpw",
+            "skz"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(201, 193, 160, 1)"
+        },
+        "minimapIcon": {
+          "shape": "circle",
+          "borderColor": "RGBA(0, 0, 0, 1)",
+          "fillColor": "RGBA(230, 210, 120, 1)",
+          "size": 8
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Gems: Show",
+        "conditions": {
+          "code": [
+            "gzv",
+            "gly",
+            "glb",
+            "glg",
+            "glr",
+            "glw",
+            "skl",
+            "gsv",
+            "gsy",
+            "gsb",
+            "gsg",
+            "gsr",
+            "gsw",
+            "sku",
+            "gfv",
+            "gfy",
+            "gfb",
+            "gfg",
+            "gfr",
+            "gfw",
+            "skf"
+          ]
+        }
+      }
+    },
+    {
+      "hide": {
+        "ruleName": "Gems: Hide",
+        "conditions": {
+          "code": [
+            "gcv",
+            "gcy",
+            "gcb",
+            "gcg",
+            "gcr",
+            "gcw",
+            "skc"
+          ]
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Sunder charms",
+        "conditions": {
+          "code": "cs2"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 60, 60, 1)",
+          "backgroundColor": "RGBA(90, 0, 0, 0.9)"
+        },
+        "dropSound": "Filter06",
+        "minimapIcon": {
+          "shape": "star",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 68, 68, 1)",
+          "size": 16
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Unique charms",
+        "conditions": {
+          "itemType": "char",
+          "rarity": "unique"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 60, 60, 1)",
+          "backgroundColor": "RGBA(90, 0, 0, 0.9)"
+        },
+        "dropSound": "Filter06",
+        "minimapIcon": {
+          "shape": "star",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 68, 68, 1)",
+          "size": 16
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Torches",
+        "conditions": {
+          "code": "tch"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 60, 60, 1)",
+          "backgroundColor": "RGBA(90, 0, 0, 0.9)"
+        },
+        "dropSound": "Filter06",
+        "minimapIcon": {
+          "shape": "star",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 68, 68, 1)",
+          "size": 16
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Colossal jewels",
+        "conditions": {
+          "code": "cjw"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Unique rings and amulets",
+        "conditions": {
+          "itemType": [
+            "ring",
+            "amul"
+          ],
+          "rarity": "unique"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Unique jewels",
+        "conditions": {
+          "itemType": "jewl",
+          "rarity": "unique"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Set rings and amulets",
+        "conditions": {
+          "itemType": [
+            "ring",
+            "amul"
+          ],
+          "rarity": "set"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Rare and crafted rings and amulets",
+        "conditions": {
+          "itemType": [
+            "ring",
+            "amul"
+          ],
+          "rarity": [
+            "rare",
+            "crafted"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Rare and crafted jewels",
+        "conditions": {
+          "itemType": "jewl",
+          "rarity": [
+            "rare",
+            "crafted"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(201, 193, 160, 1)"
+        },
+        "minimapIcon": {
+          "shape": "circle",
+          "borderColor": "RGBA(0, 0, 0, 1)",
+          "fillColor": "RGBA(230, 210, 120, 1)",
+          "size": 8
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Rare and crafted circlets",
+        "conditions": {
+          "itemType": "circ",
+          "rarity": [
+            "rare",
+            "crafted"
+          ]
+        },
+        "tooltip": {
+          "borderColor": "RGBA(201, 193, 160, 1)"
+        },
+        "minimapIcon": {
+          "shape": "circle",
+          "borderColor": "RGBA(0, 0, 0, 1)",
+          "fillColor": "RGBA(230, 210, 120, 1)",
+          "size": 8
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Magic grand charms",
+        "conditions": {
+          "itemType": "lcha",
+          "rarity": "magic"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Magic small charms",
+        "conditions": {
+          "itemType": "scha",
+          "rarity": "magic"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(201, 193, 160, 1)"
+        },
+        "minimapIcon": {
+          "shape": "circle",
+          "borderColor": "RGBA(0, 0, 0, 1)",
+          "fillColor": "RGBA(230, 210, 120, 1)",
+          "size": 8
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Magic large charms",
+        "conditions": {
+          "itemType": "mcha",
+          "rarity": "magic"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Magic jewels",
+        "conditions": {
+          "itemType": "jewl",
+          "rarity": "magic"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Magic circlets",
+        "conditions": {
+          "itemType": "circ",
+          "rarity": "magic"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Charms, jewels & jewelry: Magic rings and amulets",
+        "conditions": {
+          "itemType": [
+            "ring",
+            "amul"
+          ],
+          "rarity": "magic"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Uniques & sets: Elite uniques",
+        "conditions": {
+          "rarity": "unique",
+          "tier": "elite"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Uniques & sets: Exceptional uniques",
+        "conditions": {
+          "rarity": "unique",
+          "tier": "exceptional"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Uniques & sets: Normal uniques",
+        "conditions": {
+          "rarity": "unique",
+          "tier": "normal"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(201, 193, 160, 1)"
+        },
+        "minimapIcon": {
+          "shape": "circle",
+          "borderColor": "RGBA(0, 0, 0, 1)",
+          "fillColor": "RGBA(230, 210, 120, 1)",
+          "size": 8
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Uniques & sets: Other uniques",
+        "conditions": {
+          "rarity": "unique"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(201, 193, 160, 1)"
+        },
+        "minimapIcon": {
+          "shape": "circle",
+          "borderColor": "RGBA(0, 0, 0, 1)",
+          "fillColor": "RGBA(230, 210, 120, 1)",
+          "size": 8
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Uniques & sets: Elite set items",
+        "conditions": {
+          "rarity": "set",
+          "tier": "elite"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Uniques & sets: Exceptional set items",
+        "conditions": {
+          "rarity": "set",
+          "tier": "exceptional"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Uniques & sets: Normal set items",
+        "conditions": {
+          "rarity": "set",
+          "tier": "normal"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Uniques & sets: Other set items",
+        "conditions": {
+          "rarity": "set"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runeword & crafting bases: Magic elite gloves, belts and boots",
+        "conditions": {
+          "itemType": [
+            "glov",
+            "belt",
+            "boot"
+          ],
+          "rarity": "magic",
+          "tier": "elite"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runeword & crafting bases: High Value",
+        "conditions": {
+          "code": [
+            "utp",
+            "uui",
+            "uea",
+            "urs",
+            "uar",
+            "uth",
+            "uld",
+            "uul",
+            "upl"
+          ],
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "sockets": {
+            "gte": 3
+          }
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runeword & crafting bases: High Value",
+        "conditions": {
+          "code": [
+            "7cr",
+            "7cr2",
+            "7wa"
+          ],
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "sockets": {
+            "gte": 5
+          }
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runeword & crafting bases: High Value",
+        "conditions": {
+          "code": [
+            "uit",
+            "uow",
+            "uts",
+            "pab",
+            "pac",
+            "pad",
+            "pae",
+            "paf",
+            "7o7",
+            "7vo",
+            "7s8",
+            "7pa",
+            "7h7",
+            "7wc"
+          ],
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "sockets": {
+            "gte": 4
+          }
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runeword & crafting bases: High Value",
+        "conditions": {
+          "code": [
+            "ci3",
+            "ci2"
+          ],
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "sockets": {
+            "gte": 2
+          }
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runeword & crafting bases: Notable",
+        "conditions": {
+          "code": [
+            "uap",
+            "ukp",
+            "ulm",
+            "uhl",
+            "uhm",
+            "urn",
+            "usk",
+            "uh9",
+            "uuc",
+            "uml",
+            "urg",
+            "ush",
+            "upk",
+            "obb",
+            "obc",
+            "obd",
+            "obe",
+            "obf",
+            "drb",
+            "drc",
+            "drd",
+            "dre",
+            "drf",
+            "bab",
+            "bac",
+            "bad",
+            "bae",
+            "baf",
+            "neb",
+            "neg",
+            "ned",
+            "nee",
+            "nef",
+            "wab",
+            "wac",
+            "wad",
+            "wae",
+            "waf",
+            "7wn",
+            "7yw",
+            "7bw",
+            "7gw",
+            "7sc",
+            "7qs",
+            "7ws",
+            "6ss",
+            "6ls",
+            "6cs",
+            "6bs",
+            "6ws"
+          ],
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "sockets": {
+            "gte": 2
+          }
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runeword & crafting bases: Notable",
+        "conditions": {
+          "code": [
+            "ula",
+            "utu",
+            "ung",
+            "ucl",
+            "uhn",
+            "ult",
+            "rar",
+            "7cl",
+            "7sp",
+            "7ma",
+            "7mt",
+            "7fl",
+            "7wh",
+            "7m7",
+            "7gm",
+            "7ar",
+            "7wb",
+            "7xf",
+            "7cs",
+            "7lw",
+            "7tw",
+            "7qr"
+          ],
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "sockets": {
+            "gte": 3
+          }
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runeword & crafting bases: Notable",
+        "conditions": {
+          "code": [
+            "7ss",
+            "7sm",
+            "7sb",
+            "7fc",
+            "7bs",
+            "7ls",
+            "7wd",
+            "72h",
+            "7cm",
+            "7gs",
+            "7b7",
+            "7fb",
+            "7gd",
+            "7ha",
+            "7ax",
+            "72a",
+            "7mp",
+            "7la",
+            "7ba",
+            "7bt",
+            "7ga",
+            "7gi",
+            "6sb",
+            "6hb",
+            "6lb",
+            "6cb",
+            "6s7",
+            "6l7",
+            "6sw",
+            "6lw",
+            "6lx",
+            "6mx",
+            "6hx",
+            "6rx",
+            "amb",
+            "amc",
+            "7sr",
+            "7tr",
+            "7br",
+            "7st",
+            "7p7",
+            "amd",
+            "ame"
+          ],
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "sockets": {
+            "gte": 4
+          }
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Runeword & crafting bases: Good",
+        "conditions": {
+          "code": [
+            "7dg",
+            "7di",
+            "7kr",
+            "7bl",
+            "7tk",
+            "7ta",
+            "7bk",
+            "7b8",
+            "7ja",
+            "7pi",
+            "7s7",
+            "7gl",
+            "7ts",
+            "amf"
+          ],
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "sockets": {
+            "gte": 2
+          }
+        },
+        "tooltip": {
+          "borderColor": "RGBA(201, 193, 160, 1)"
+        },
+        "minimapIcon": {
+          "shape": "circle",
+          "borderColor": "RGBA(0, 0, 0, 1)",
+          "fillColor": "RGBA(230, 210, 120, 1)",
+          "size": 8
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "White bases: Ethereal elite bases",
+        "conditions": {
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "tier": "elite",
+          "ethereal": true
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 145, 0, 1)",
+          "backgroundColor": "RGBA(43, 21, 0, 0.85)"
+        },
+        "dropSound": "Filter05",
+        "minimapIcon": {
+          "shape": "diamond",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 145, 0, 1)",
+          "size": 12
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "White bases: Socketed elite bases",
+        "conditions": {
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "tier": "elite",
+          "sockets": {
+            "gte": 1
+          }
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "White bases: Superior elite bases",
+        "conditions": {
+          "rarity": "superior",
+          "tier": "elite"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "White bases: Plain elite bases",
+        "conditions": {
+          "rarity": "normal",
+          "tier": "elite"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "White bases: Ethereal exceptional bases",
+        "conditions": {
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "tier": "exceptional",
+          "ethereal": true
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "White bases: Socketed exceptional bases",
+        "conditions": {
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "tier": "exceptional",
+          "sockets": {
+            "gte": 1
+          }
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "White bases: Plain exceptional bases",
+        "conditions": {
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "tier": "exceptional"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "White bases: Socketed normal bases",
+        "conditions": {
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "tier": "normal",
+          "sockets": {
+            "gte": 1
+          }
+        }
+      }
+    },
+    {
+      "hide": {
+        "ruleName": "White bases: Plain normal bases",
+        "conditions": {
+          "rarity": [
+            "normal",
+            "superior"
+          ],
+          "tier": "normal"
+        }
+      }
+    },
+    {
+      "hide": {
+        "ruleName": "White bases: Inferior items",
+        "conditions": {
+          "rarity": "inferior"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Rare, crafted & magic gear: Crafted gear",
+        "conditions": {
+          "rarity": "crafted"
+        },
+        "tooltip": {
+          "borderColor": "RGBA(255, 210, 74, 1)",
+          "backgroundColor": "RGBA(31, 26, 8, 0.85)"
+        },
+        "dropSound": "Filter07",
+        "minimapIcon": {
+          "shape": "kite",
+          "borderColor": "RGBA(255, 255, 255, 1)",
+          "fillColor": "RGBA(255, 210, 74, 1)",
+          "size": 10
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Rare, crafted & magic gear: Rare elite gear",
+        "conditions": {
+          "rarity": "rare",
+          "tier": "elite"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Rare, crafted & magic gear: Rare exceptional gear",
+        "conditions": {
+          "rarity": "rare",
+          "tier": "exceptional"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Rare, crafted & magic gear: Rare normal gear",
+        "conditions": {
+          "rarity": "rare",
+          "tier": "normal"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Rare, crafted & magic gear: Magic elite gear",
+        "conditions": {
+          "rarity": "magic",
+          "tier": "elite"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Rare, crafted & magic gear: Magic exceptional gear",
+        "conditions": {
+          "rarity": "magic",
+          "tier": "exceptional"
+        }
+      }
+    },
+    {
+      "hide": {
+        "ruleName": "Rare, crafted & magic gear: Magic normal gear",
+        "conditions": {
+          "rarity": "magic",
+          "tier": "normal"
+        }
+      }
+    },
+    {
+      "show": {
+        "ruleName": "Potions & misc: Show",
+        "conditions": {
+          "code": [
+            "rvl",
+            "rvs",
+            "hp5",
+            "mp5",
+            "hp4",
+            "mp4",
+            "tsc",
+            "isc",
+            "tbk",
+            "ibk",
+            "key",
+            "gld"
+          ]
+        }
+      }
+    },
+    {
+      "hide": {
+        "ruleName": "Potions & misc: Hide",
+        "conditions": {
+          "code": [
+            "hp1",
+            "hp2",
+            "hp3",
+            "mp1",
+            "mp2",
+            "mp3",
+            "vps",
+            "yps",
+            "wms",
+            "aqv",
+            "aqv2",
+            "aqv3",
+            "cqv",
+            "cqv2",
+            "cqv3"
+          ]
+        }
+      }
+    }
+  ],
+  "builder": {
+    "format": "pd2r-filter-builder",
+    "version": 1,
+    "settings": {
+      "name": "PD2R Regular",
+      "level": 1,
+      "overrides": {},
+      "itemOverrides": {},
+      "baseOptions": {},
+      "theme": "resurrected",
+      "styleEdits": {},
+      "rarityEdits": {},
+      "rowLooks": {},
+      "itemLooks": {},
+      "picks": [],
+      "imported": null
+    }
+  }
+}
