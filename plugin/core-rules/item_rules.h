@@ -25,6 +25,11 @@ auto ThunkSlotRva(const sigscan::Entry& entry, uint32_t callOffset) noexcept -> 
 auto SwapThunkSlot(const D2RL::PluginContext* context, const sigscan::Entry& entry, uint32_t callOffset, uint64_t wrapper,
                    uint64_t* original) noexcept -> bool;
 
+// Points the E8 call at `callAt` in the one match of `pattern` at a relay page that jumps to `entry`, by a MutationService
+// byte patch with the stock call as expected bytes; the call's old target goes to `original` first.
+auto RedirectCall(const D2RL::PluginContext* context, const char* pattern, uint32_t callAt, uint64_t entry,
+                  uint64_t* original) noexcept -> bool;
+
 // Installs the item rules; `report` gets one entry per rule. Returns how many were installed.
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
 auto ItemRuleCount() noexcept -> int;

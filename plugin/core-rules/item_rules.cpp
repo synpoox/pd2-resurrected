@@ -1977,18 +1977,18 @@ auto DyedSpriteDraw(void* sprite, int32_t* xy, float* record, float scale) noexc
 	g_spriteDrawOriginal(sprite, xy, copy, scale);
 }
 
-// The HD item draw's one call of the UI sprite draw (93847: 0xc71f3, `E8 rel32` at +22 of this match) is pointed at a
-// relay page that jumps to DyedSpriteDraw, by a MutationService byte patch with the stock call as expected bytes.
-auto PatchItemSpriteCall(const D2RL::PluginContext* context) noexcept -> bool {
+auto RedirectCall(const D2RL::PluginContext* context, const char* pattern, uint32_t callAt, uint64_t entry,
+                  uint64_t* original) noexcept -> bool {
 	uint64_t match = 0;
-	if (sigscan::ScanUnique(context->exeBase,
-	                        "f3 0f 11 44 24 70 0f 28 de 4c 8d 44 24 60 48 8d 54 24 28 49 8b cf e8 ?? ?? ?? ?? c6 47 04 00", 0,
-	                        &match) != 1) {
+	if (sigscan::ScanUnique(context->exeBase, pattern, 0, &match) != 1) {
 		return false;
 	}
-	const uint64_t site = context->exeBase + match + 22;
+	const uint64_t site = context->exeBase + match + callAt;
 	uint8_t stock[5];
 	std::memcpy(stock, reinterpret_cast<const void*>(site), 5);
+	if (stock[0] != 0xe8) {
+		return false;
+	}
 	int32_t rel = 0;
 	std::memcpy(&rel, stock + 1, 4);
 	const D2RL::MutationService* mutations = nullptr;
@@ -2000,8 +2000,7 @@ auto PatchItemSpriteCall(const D2RL::PluginContext* context) noexcept -> bool {
 	if (relay == nullptr) {
 		return false;
 	}
-	const uint64_t entry = reinterpret_cast<uint64_t>(&DyedSpriteDraw);
-	const uint8_t jump[6] = {0xff, 0x25, 0, 0, 0, 0};  // jmp [rip+0]; &DyedSpriteDraw
+	const uint8_t jump[6] = {0xff, 0x25, 0, 0, 0, 0};  // jmp [rip+0]; &entry
 	std::memcpy(relay, jump, sizeof(jump));
 	std::memcpy(relay + sizeof(jump), &entry, 8);
 	const int64_t reach = static_cast<int64_t>(reinterpret_cast<uint64_t>(relay)) - static_cast<int64_t>(site + 5);
@@ -2015,7 +2014,7 @@ auto PatchItemSpriteCall(const D2RL::PluginContext* context) noexcept -> bool {
 		VirtualFree(relay, 0, MEM_RELEASE);
 		return false;
 	}
-	g_spriteDrawOriginal = reinterpret_cast<SpriteDrawFn>(site + 5 + static_cast<int64_t>(rel));  // before the call can land
+	*original = site + 5 + static_cast<int64_t>(rel);  // before the call can land
 	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
 	                                              .rva = site - context->exeBase,
 	                                              .expected = stock,
@@ -2052,7 +2051,9 @@ auto InstallDyeTint(const D2RL::PluginContext* context) noexcept -> const char* 
 	                        "48 89 5c 24 08 44 89 4c 24 20 55 56 57 41 54 41 55 41 56 41 57 48 8b ec 48 83 ec 30 45 8b e1 4d 8b e8 48 8b fa 4c 8b f9 48 85 d2 0f 84",
 	                        0, ColorEntry, sizeof(ColorEntry), DyedItemColor, &g_itemColorOriginal);
 	// the call first: the item draw hook only marks the draw the redirected call tints
-	const bool hd = PatchItemSpriteCall(context) &&
+	// The HD item draw's one call of the UI sprite draw (93847: 0xc71f3, `E8 rel32` at +22 of this match)
+	const bool hd = RedirectCall(context, "f3 0f 11 44 24 70 0f 28 de 4c 8d 44 24 60 48 8d 54 24 28 49 8b cf e8 ?? ?? ?? ?? c6 47 04 00",
+	                             22, reinterpret_cast<uint64_t>(&DyedSpriteDraw), reinterpret_cast<uint64_t*>(&g_spriteDrawOriginal)) &&
 	                sigscan::HookBySignature(context, "HdItemDraw",
 	                                         "4c 8b dc 55 57 41 57 49 8d ab 48 ff ff ff 48 81 ec a0 01 00 00 41 0f 29 73 b8", 0,
 	                                         DrawEntry, sizeof(DrawEntry), DyedItemDraw, &g_itemDrawOriginal);
