@@ -171,6 +171,16 @@ constexpr uint8_t StackInv[] = {0x21, 9, 0, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 0, 0, 
 static_assert(TabStack(StackStash, sizeof StackStash, aff::MapsPage) && TabStack(StackStash, sizeof StackStash, aff::BossingPage));
 static_assert(!TabStack(StackInv, sizeof StackInv, aff::MapsPage) && !TabStack(StackStash, sizeof StackStash, 0));
 static_assert(!TabStack(StackStash, 0x14, aff::MapsPage) && !TabStack(SwapOwnCell, sizeof SwapOwnCell, aff::MapsPage));
+// #1772: a shared page's take, 0x46 (0x0d bytes): item 7 off owner 0x31's page; 0x19 (0x11 bytes) is the other grids'
+constexpr uint8_t TakeShared[] = {0x46, 7, 0, 0, 0, 0x31, 0, 0, 0, 0, 0, 4, 0};
+constexpr uint8_t TakeGrid[] = {0x19, 7, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+constexpr auto Big7 = [](uint32_t id) { return id == 7; };
+constexpr auto Owner31IsBossing = [](uint32_t owner) { return owner == 0x31 ? aff::BossingPage : UINT32_MAX; };
+static_assert(BigTake(TakeShared, sizeof TakeShared, Owner31IsBossing, Big7));
+static_assert(!BigTake(TakeShared, sizeof TakeShared, [](uint32_t) { return 0U; }, Big7));  // a page that is not reserved
+static_assert(!BigTake(TakeShared, sizeof TakeShared, [](uint32_t) { return UINT32_MAX; }, Big7));  // owner not found
+static_assert(!BigTake(TakeShared, sizeof TakeShared, Owner31IsBossing, [](uint32_t) { return false; }));  // not a big stack
+static_assert(!BigTake(TakeShared, 0x0c, Owner31IsBossing, Big7) && !BigTake(TakeGrid, sizeof TakeGrid, Owner31IsBossing, Big7));
 static_assert(!ChangesEquipment(nullptr, 9) && !ChangesEquipment(Equip, 0));
 // #1756: 0x14 (+9) and 0x45 (+5) name their page by the owner; 0x18 and 0x1f, or an owner not found, take the open tab's
 constexpr auto Owner31IsMaps = [](uint32_t owner) { return owner == 0x31 ? aff::MapsPage : UINT32_MAX; };
@@ -298,7 +308,7 @@ void Load(void* player) noexcept {
 }
 
 sigscan::Entry* const Sigs[] = {&d2r::sig::FindUnit, &d2r::sig::ItemPage, &d2r::sig::UnitPackedXY, &d2r::sig::UnitClassOf,
-                                &d2r::sig::ItemRecord, &d2r::sig::UnitDataFlag, &d2r::sig::UnitInventory};
+                                &d2r::sig::ItemRecord, &d2r::sig::UnitDataFlag, &d2r::sig::UnitInventory, &d2r::sig::UnitStat};
 
 // 93847 0x4f2fa0, int (game, player, message, size): the server's client-message dispatch (PlrMsg handler table by id)
 using DispatchFn = int (*)(void*, void*, const uint8_t*, int) noexcept;
@@ -349,6 +359,18 @@ auto SwapOk(void* game, uint32_t a, uint32_t b, int32_t x, int32_t y, uint32_t p
 }
 
 // 0x55: an item with no affinity home (or an unknown one) is refused; a homed one is routed by the watch from any cell
+// #1772: a stored stash item (mode 0, page 4) whose stack holds more than one take gives (aff::WithdrawMax)
+auto BigStashStack(void* game, uint32_t id) noexcept -> bool {
+	Unit* item = UnitOf(game, id);
+	if (item == nullptr || d2r::At<int32_t>(item, d2r::rva::UnitMode) != 0 ||
+	    d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::sig::ItemPage)(item) != 4) {
+		return false;
+	}
+	const uint32_t code = CodeOf(game, item);
+	return aff::Stacks(code) && aff::StackCap(code) > aff::WithdrawMax &&
+	       d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(item, d2r::rva::StatQuantity, 0) > aff::WithdrawMax;
+}
+
 auto Homeless(void* game, uint32_t id) noexcept -> bool {
 	const uint32_t code = CodeOf(game, UnitOf(game, id));
 	return code == 0 || aff::HomeOf(code).category == aff::Category::None;
@@ -471,6 +493,15 @@ auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexc
 		plog::Info("stash tabs: refused message 0x%02x, not the item's own cell (page %u, open tab %u)%s", message[0], page, view,
 		           resent ? "; the item is sent again" : "; no resend queued");
 		return 0;
+	}
+	if (local && view != 0 && BigTake(message, static_cast<size_t>(size), [=](uint32_t owner) noexcept { return SharedPageOf(player, owner); },
+	                    [game](uint32_t id) noexcept { return BigStashStack(game, id); })) {
+		const bool queued = stash_affinity::TakeOut(ReadU32(message + 1));
+		plog::Info("stash tabs: take message 0x46 of a stack past %d (open tab %u): %s", aff::WithdrawMax, view,
+		           queued ? "the plugin takes it out" : "not queued, left to D2R");
+		if (queued) {
+			return 0;
+		}
 	}
 	if (local && size > 0 && TabStack(message, static_cast<size_t>(size), view)) {
 		const uint32_t cell = ReadU32(message + 0x11);
