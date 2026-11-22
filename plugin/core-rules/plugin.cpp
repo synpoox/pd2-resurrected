@@ -9,6 +9,7 @@
 
 #include "../core-events/arena_spots.h"  // the "arena" part: Royal Fire reads the arena centre (#962)
 #include "almanac.h"
+#include "boss_aura.h"
 #include "shrine_rules.h"
 #include "crash_guard.h"
 #include "property_ids.h"
@@ -141,6 +142,7 @@ parts::Part g_parts[] = {
 	{"loot", true, InstallLoot},
 	{"sockets", true, InstallSockets},
 	{"summons", true, InstallSummons},
+	{"bosses", true, InstallBossAura, BossAuraState, BossAuraUses},
 };
 
 // Cast Triggers allocates its 5 relay pages upward from the image (within +0x70000000) when tables load, and D2R's
