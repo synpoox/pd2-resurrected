@@ -1,8 +1,8 @@
-name: release
+﻿name: release
 # The full build and the release 7z (issue #109). Runs only on the owner's self-hosted runner: it needs a D2R install,
 # which never goes to GitHub (ADR 0007). Run it by hand (Actions > release > Run
 # workflow). A green build publishes a GitHub release v<mod.json version>, marked Latest so the repo page shows it, with
-# the 7z and SHA256SUMS, and keeps them as a workflow artifact too. Runner setup: CONTRIBUTING.md.
+# the 7z, release-manifest.json and SHA256SUMS (the toolkit's github_release.py --assets), then merges it into the shared launcher feed (--feed), and keeps them as a workflow artifact too. The feed step needs the LAUNCHER_FEED_TOKEN secret. Runner setup: CONTRIBUTING.md.
 # Two jobs, as the toolkit's template: "build" has a read-only token; only "publish" (needs build) may write.
 on:
   workflow_dispatch:
@@ -103,10 +103,15 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       VERSION: ${{ needs.build.outputs.version }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: release
           path: release-files
+      - name: Pin the toolkit
+        run: powershell -ExecutionPolicy Bypass -File tools\ci_toolkit.ps1 -Main "${{ vars.D2R_TOOLKIT }}"
       - name: GitHub release
         run: |
           $v = $env:VERSION
@@ -120,8 +125,18 @@ jobs:
           $sums = Get-ChildItem release-files -Recurse -Filter SHA256SUMS | Select-Object -First 1
           if (-not $sums) { throw "no SHA256SUMS in the build artifact" }
           $d = $sums.DirectoryName
-          # the release assets are the 7z and SHA256SUMS, as before (SHA256SUMS lists the manifest and feed too, as before)
-          $files = @((Get-ChildItem $d -Filter *.7z).FullName) + $sums.FullName
-          if ($files.Count -ne 2) { throw "expected one 7z and SHA256SUMS in $d, found: $($files -join ', ')" }
-          gh release create "v$v" @files --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "PD2 Resurrected $v" --notes-file (Join-Path $d "RELEASE_NOTES-$v.md") --latest
-          if ($LASTEXITCODE) { throw "gh release create failed" }
+          # draft, upload the 7z + release-manifest.json + SHA256SUMS, verify, then public and Latest (the shared feed is not a release asset).
+          # --skip-launcher-validation: the runner has no launcher validator build ($env:RESURRECTED_VALIDATE_RELEASE); the toolkit's own checks still run.
+          # The release is made from this commit, as before.
+          py -3 "$env:D2R_TOOLKIT\release\github_release.py" $v --assets $d --commit $env:GITHUB_SHA --skip-launcher-validation
+          if ($LASTEXITCODE) { throw "github_release.py --assets failed (a failed run leaves a draft: fix it and run again)" }
+          Set-Content release-files-dir.txt $d
+      - name: Launcher feed
+        # the shared feed lives in synpoox/resurrected-launcher: github.token cannot write there, so a token with contents:write on that repo
+        env:
+          GH_TOKEN: ${{ secrets.LAUNCHER_FEED_TOKEN }}
+        run: |
+          if (-not $env:GH_TOKEN) { throw "set the LAUNCHER_FEED_TOKEN secret (contents: write on synpoox/resurrected-launcher)" }
+          $d = (Get-Content release-files-dir.txt).Trim()
+          py -3 "$env:D2R_TOOLKIT\release\github_release.py" $env:VERSION --feed $d --skip-launcher-validation
+          if ($LASTEXITCODE) { throw "github_release.py --feed failed: the release is public; rerun --feed with the same dist (docs/release.md, Shared catalog feed)" }
