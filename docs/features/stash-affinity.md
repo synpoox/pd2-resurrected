@@ -50,6 +50,14 @@ Maps or Bossing is up, a tidy pass (every 25 updates) also routes items put onto
 no rule takes off them to the inventory. A full cell or page, or a missing page (fewer extra tabs), moves it back to the inventory; the log
 says why. Status: `core-ui` console command, `affinity:` and `stash tabs:` counters.
 
+Hand drops ([#1726](https://github.com/synpoox/pd2-resurrected/issues/1726)): while the Maps or Bossing tab is open, the
+inventory padlock's message hook (`inventory_lock.cpp`, by signature) refuses the local player's 0x18 (put the cursor item on a
+stash cell, page field 4) and 0x1f (swap it with a stored item, taking that item's cell) unless `stash_home.h`'s `AtHome` says the
+item belongs on that page and cell (a map of the shown base also in the map cells). Any other item, or a currency or boss item in
+another's cell, stays on the cursor. The message holds no shared page number, so the open tab (`stash_affinity::ViewPage`) names
+it. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
+refused message 0x.., not the item's own cell`.
+
 Limits: tabs 15-19 are taken as they are. Items a player already keeps on 16-18 stay and share the space; on 15 and 19 the
 tidy pass moves them to the inventory (a migration for saves with more extra tabs is a later slice); a reserved page's free cells are found from item corners only, so a bigger
 hand-placed item there can send a map back. A hand move whose pick-up and put-down land in one game update (a lag spike), or

@@ -21,6 +21,8 @@
 
 #include "log.h"
 #include "pd2_engine.h"
+#include "stash_affinity.h"
+#include "stash_home.h"
 #include "sig_hook.h"
 
 #include <D2RLPlugin/lifecycle.h>
@@ -92,6 +94,28 @@ static_assert(TouchesCharmRows(TakeIt, sizeof TakeIt, RowIs4) && !TouchesCharmRo
 static_assert(!TouchesCharmRows(TakeIt, sizeof TakeIt, NoRow) && !TouchesCharmRows(TakeIt, 4, RowIs4));
 static_assert(TouchesCharmRows(PutLow, sizeof PutLow, NoRow) && !TouchesCharmRows(PutHigh, sizeof PutHigh, NoRow));
 static_assert(!TouchesCharmRows(PutStash, sizeof PutStash, NoRow) && !TouchesCharmRows(PutLow, 16, NoRow));
+namespace aff = pd2::affinity;
+// the Maps and Bossing tabs refuse a drop that is not the item's own cell (#1726)
+constexpr auto Own = [](uint32_t code, uint32_t shown, uint32_t page, int32_t x, int32_t y) {
+	return aff::AtHome(aff::HomeOf(code), code, shown, true, page, x, y);
+};
+constexpr auto Nop = [](uint32_t, uint32_t) { return true; };
+constexpr auto Never = [](uint32_t, uint32_t) { return false; };
+constexpr uint8_t PutGem[] = {0x18, 7, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0};
+constexpr uint8_t PutBoss[] = {0x18, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0};
+constexpr uint8_t PutInv[] = {0x18, 7, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0};
+constexpr auto GemPut = [](uint32_t, int32_t x, int32_t y) { return Own(aff::Code("gcv"), 0, aff::MapsPage, x, y); };
+constexpr auto MapPut = [](uint32_t, int32_t x, int32_t y) { return Own(aff::Code("m04"), aff::Code("m04"), aff::MapsPage, x, y); };
+constexpr auto BossPut = [](uint32_t, int32_t x, int32_t y) { return Own(aff::Code("dcma"), 0, aff::BossingPage, x, y); };
+constexpr auto WrongBossPut = [](uint32_t, int32_t x, int32_t y) { return Own(aff::Code("dcbl"), 0, aff::BossingPage, x, y); };
+static_assert(MisplacedOnTab(PutGem, sizeof PutGem, aff::MapsPage, GemPut, Nop));   // a 1x1 gem into a map cell: refused
+static_assert(!MisplacedOnTab(PutGem, sizeof PutGem, aff::MapsPage, MapPut, Nop));  // a map of the shown base into its cell
+static_assert(!MisplacedOnTab(PutBoss, sizeof PutBoss, aff::BossingPage, BossPut, Nop));  // a boss item into its own cell
+static_assert(MisplacedOnTab(PutBoss, sizeof PutBoss, aff::BossingPage, WrongBossPut, Nop));  // dcbl into dcma's cell: refused
+static_assert(!MisplacedOnTab(PutGem, sizeof PutGem, 0, GemPut, Nop));  // no tab open
+static_assert(!MisplacedOnTab(PutInv, sizeof PutInv, aff::MapsPage, GemPut, Nop));  // the inventory grid is not the stash
+static_assert(MisplacedOnTab(SwapIn, sizeof SwapIn, aff::MapsPage, GemPut, Never) && !MisplacedOnTab(SwapIn, sizeof SwapIn, aff::MapsPage, GemPut, Nop));
+static_assert(!MisplacedOnTab(SwapIn, 8, aff::MapsPage, GemPut, Never));  // too short
 static_assert(!ChangesEquipment(nullptr, 9) && !ChangesEquipment(Equip, 0));
 
 constexpr char Command[] = "core-ui/InventoryLock";
@@ -195,7 +219,8 @@ void Load(void* player) noexcept {
 	plog::Info("inventory lock: %s is %s", g_name.empty() ? "(unnamed)" : g_name.c_str(), g_locked.load() ? "locked" : "unlocked");
 }
 
-sigscan::Entry* const Sigs[] = {&d2r::sig::FindUnit, &d2r::sig::ItemPage, &d2r::sig::UnitPackedXY};
+sigscan::Entry* const Sigs[] = {&d2r::sig::FindUnit, &d2r::sig::ItemPage, &d2r::sig::UnitPackedXY, &d2r::sig::UnitClassOf,
+                                &d2r::sig::ItemRecord};
 
 // 93847 0x4f2fa0, int (game, player, message, size): the server's client-message dispatch (PlrMsg handler table by id)
 using DispatchFn = int (*)(void*, void*, const uint8_t*, int) noexcept;
@@ -212,6 +237,45 @@ auto RowOf(void* game, uint32_t id) noexcept -> int {
 	return static_cast<int>(d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::sig::UnitPackedXY)(item) >> 16);
 }
 
+auto UnitOf(void* game, uint32_t id) noexcept -> Unit* {
+	return d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit)(static_cast<Game*>(game), 4, id);
+}
+
+// the item's code (the items record's +0x80), 0 when it is not found
+auto CodeOf(void* game, Unit* item) noexcept -> uint32_t {
+	if (item == nullptr) {
+		return 0;
+	}
+	const int32_t row = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(d2r::sig::UnitClassOf)(item, __FILE__, __LINE__);
+	const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(d2r::sig::ItemRecord)(
+		d2r::DataFlag(static_cast<Game*>(game)), row);
+	return record == nullptr ? 0 : d2r::At<uint32_t>(record, 0x80);
+}
+
+// 0x18: whether the item may stand at cell (x, y) of the open tab's page
+auto PutOk(void* game, uint32_t id, uint32_t page, int32_t x, int32_t y) noexcept -> bool {
+	const uint32_t code = CodeOf(game, UnitOf(game, id));
+	return code != 0 && Own(code, stash_affinity::WantedBase(), page, x, y);
+}
+
+// 0x1f: the cursor item (mode 4) takes the stored one's cell
+auto SwapOk(void* game, uint32_t a, uint32_t b, uint32_t page) noexcept -> bool {
+	Unit* first = UnitOf(game, a);
+	Unit* second = UnitOf(game, b);
+	if (first == nullptr || second == nullptr) {
+		return true;
+	}
+	const bool firstHeld = d2r::At<int32_t>(first, d2r::rva::UnitMode) == 4;
+	Unit* held = firstHeld ? first : second;
+	Unit* stored = firstHeld ? second : first;
+	if (d2r::At<int32_t>(held, d2r::rva::UnitMode) != 4 || d2r::At<int32_t>(stored, d2r::rva::UnitMode) != 0) {
+		return true;
+	}
+	const uint32_t xy = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::sig::UnitPackedXY)(stored);
+	const uint32_t code = CodeOf(game, held);
+	return code != 0 && Own(code, stash_affinity::WantedBase(), page, static_cast<int32_t>(xy & 0xffff), static_cast<int32_t>(xy >> 16));
+}
+
 auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexcept -> int {
 	const bool local = player != nullptr && d2r::At<uint32_t>(player, d2r::rva::UnitIdField) == g_localId.load();
 	if (local && !g_named.load()) {
@@ -226,6 +290,15 @@ auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexc
 	    TouchesCharmRows(message, static_cast<size_t>(size), [game](uint32_t id) noexcept { return RowOf(game, id); })) {
 		++g_refused;
 		plog::Info("inventory lock: refused charm-row message 0x%02x (%d bytes)", message[0], size);
+		return 0;
+	}
+	if (const uint32_t page = stash_affinity::ViewPage(); local && page != 0 && size > 0 &&
+	    MisplacedOnTab(
+	        message, static_cast<size_t>(size), page,
+	        [=](uint32_t id, int32_t x, int32_t y) noexcept { return PutOk(game, id, page, x, y); },
+	        [=](uint32_t a, uint32_t b) noexcept { return SwapOk(game, a, b, page); })) {
+		++g_refused;
+		plog::Info("stash tabs: refused message 0x%02x, not the item's own cell (page %u)", message[0], page);
 		return 0;
 	}
 	return g_dispatch(game, player, message, size);

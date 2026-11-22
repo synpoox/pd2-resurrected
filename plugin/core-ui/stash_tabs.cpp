@@ -189,11 +189,12 @@ void Log(const char* what) noexcept {
 
 void Open(View view) noexcept {
 	g_view = view;
-	OpenPage(view == View::Maps ? aff::MapsPage : aff::BossingPage);
+	const uint32_t page = view == View::Maps ? aff::MapsPage : aff::BossingPage;
+	OpenPage(page);
 	if (view == View::Maps) {
 		ShowTier(g_tier);
 	}
-	stash_affinity::SetTabOpen(true);
+	stash_affinity::SetTabOpen(true, page);
 	Log(view == View::Maps ? "Maps" : "Bossing");
 }
 

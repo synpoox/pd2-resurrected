@@ -67,6 +67,27 @@ constexpr auto TouchesCharmRows(const uint8_t* packet, size_t size, RowOf rowOf)
 	}
 }
 
+// The Maps and Bossing tabs (#1726): while one is open (viewPage, its shared page; 0 none), a drop onto the stash that is not the
+// item's own cell is refused. 0x18 puts the cursor item on a free cell (page +13 is 4 for the stash: D2R's handler 0x4bff30
+// clamps it to 0-4); put(id, x, y) says whether the item may go there. 0x1f swaps the cursor item with a stored one, which takes
+// the stored one's cell; swap(a, b) is given both ids (either order). The page number of a shared tab is not in the message,
+// so the open tab says which page the stash shows.
+template <class Put, class Swap>
+constexpr auto MisplacedOnTab(const uint8_t* packet, size_t size, uint32_t viewPage, Put put, Swap swap) noexcept -> bool {
+	if (packet == nullptr || size == 0 || viewPage == 0) {
+		return false;
+	}
+	switch (packet[0]) {
+	case 0x18:
+		return size >= 17 && ReadU32(packet + 13) == 4 &&
+		       !put(ReadU32(packet + 1), static_cast<int32_t>(ReadU32(packet + 5)), static_cast<int32_t>(ReadU32(packet + 9)));
+	case 0x1f:
+		return size >= 9 && !swap(ReadU32(packet + 1), ReadU32(packet + 5));
+	default:
+		return false;
+	}
+}
+
 // True while the padlock is on (hotkeys.cpp refuses its own moves from the charm rows then).
 auto IsLocked() noexcept -> bool;
 

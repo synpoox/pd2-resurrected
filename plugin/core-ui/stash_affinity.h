@@ -20,7 +20,14 @@ void Counters(char* out, size_t size) noexcept;
 // back to their tier's page and this one's onto the Maps page.
 void ShowBase(uint32_t code) noexcept;
 
-// Any thread: whether the Maps or Bossing tab is on screen, so the game thread tidies their pages.
-void SetTabOpen(bool open) noexcept;
+// Any thread: whether the Maps or Bossing tab is on screen (and its shared page), so the game thread tidies their pages
+// and the message hook refuses a drop into a cell that is not the item's own (#1726).
+void SetTabOpen(bool open, uint32_t page = 0) noexcept;
+
+// Any thread: the shared page of the open Maps or Bossing tab, 0 when neither is open.
+auto ViewPage() noexcept -> uint32_t;
+
+// Any thread: the base the Maps tab shows (0 for none).
+auto WantedBase() noexcept -> uint32_t;
 
 }  // namespace stash_affinity

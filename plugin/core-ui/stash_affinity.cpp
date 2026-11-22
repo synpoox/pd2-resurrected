@@ -84,6 +84,7 @@ uintptr_t g_seen = 0;  // the watch generation g_noted belongs to (game thread o
 uint32_t g_shown = 0;  // the base whose maps are on the Maps page (game thread only)
 std::atomic<uint32_t> g_want {0};
 std::atomic<bool> g_open {false};
+std::atomic<uint32_t> g_viewPage {0};
 std::atomic<bool> g_tidyFailed {false};
 std::atomic<bool> g_hinted {false}, g_stopped {false};
 std::atomic<uint32_t> g_routed {0}, g_merged {0}, g_swapped {0}, g_returned {0}, g_failed {0}, g_updates {0};
@@ -455,8 +456,17 @@ void ShowBase(uint32_t code) noexcept {
 	g_want.store(code);
 }
 
-void SetTabOpen(bool open) noexcept {
+void SetTabOpen(bool open, uint32_t page) noexcept {
 	g_open.store(open);
+	g_viewPage.store(open ? page : 0);
+}
+
+auto ViewPage() noexcept -> uint32_t {
+	return g_viewPage.load();
+}
+
+auto WantedBase() noexcept -> uint32_t {
+	return g_want.load();
 }
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
