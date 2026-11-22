@@ -1,3 +1,3 @@
 #### Features
 
-- README links the PD2R loot filter builder and a ready Regular filter made with it. (#1769)
+- Add a loot filter builder made from PD2R's item data, and a ready Regular filter. (#1769)
