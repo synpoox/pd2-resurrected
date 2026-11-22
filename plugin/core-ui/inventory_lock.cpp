@@ -118,6 +118,12 @@ static_assert(!MisplacedOnTab(PutInv, sizeof PutInv, aff::MapsPage, GemPut, Nop)
 static_assert(MisplacedOnTab(SwapStash, sizeof SwapStash, aff::MapsPage, GemPut, Never) && !MisplacedOnTab(SwapStash, sizeof SwapStash, aff::MapsPage, GemPut, Nop));
 static_assert(!MisplacedOnTab(SwapIn, sizeof SwapIn, aff::MapsPage, GemPut, Never));  // a swap on the inventory (page 0) is never filtered
 static_assert(!MisplacedOnTab(SwapStash, 0x14, aff::MapsPage, GemPut, Never));  // too short
+// a currency onto its own stacked cell (0,4) as a 0x1f: the cells are packed y << 16 | x (#1744)
+constexpr uint8_t SwapOwnCell[] = {0x1f, 9, 0, 0, 0, 7, 0, 0, 0, 4, 0, 0, 0, 0, 0, 4, 0, 0, 0, 4, 0};
+static_assert(!MisplacedOnTab(SwapOwnCell, sizeof SwapOwnCell, aff::MapsPage, GemPut,
+                              [](uint32_t, uint32_t, int32_t x, int32_t y) { return Own(aff::Code("imma"), 0, aff::MapsPage, x, y); }));
+static_assert(MisplacedOnTab(SwapOwnCell, sizeof SwapOwnCell, aff::MapsPage, GemPut,
+                             [](uint32_t, uint32_t, int32_t x, int32_t y) { return Own(aff::Code("imma"), 0, aff::MapsPage, x + 1, y); }));
 static_assert(!ChangesEquipment(nullptr, 9) && !ChangesEquipment(Equip, 0));
 
 constexpr char Command[] = "core-ui/InventoryLock";
@@ -301,6 +307,12 @@ auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexc
 		++g_refused;
 		plog::Info("stash tabs: refused message 0x%02x, not the item's own cell (page %u)", message[0], page);
 		return 0;
+	}
+	if (const uint32_t page = stash_affinity::ViewPage(); local && page != 0 && size >= 0x15 && message[0] == 0x21) {
+		// D2R's stack-onto message (handler 0x4c1940) is not filtered; one line per drop says it was sent (#1744)
+		uint32_t cell = 0;
+		std::memcpy(&cell, message + 0x11, sizeof cell);
+		plog::Info("stash tabs: stack message 0x21 onto page %u cell %u,%u", page, cell & 0xffff, cell >> 16);
 	}
 	return g_dispatch(game, player, message, size);
 }

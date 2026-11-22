@@ -46,17 +46,17 @@ moves the item itself (rolls, sockets and quantity stay; the Shift+Right Click s
 (or anywhere on its tier's storage page when the row is full); a currency to its cell, merged into the stack there (the
 merge runs in the inventory: the loader refuses to edit or destroy a shared-stash item; loader 1.3.1 reads quantity 0 for
 PD2's stacks, so the counts are stat 70 read off the native items, #1744); a bossing item to its cell, merged the same way. A
-sum past 50 goes back to the inventory whole. A hand drop onto the cell's stack does not merge yet (open in #1744). While
+sum past 50 goes back to the inventory whole. A hand drop onto the cell's stack is D2R's own stack (0x21) or a swap (0x1f) that D2R's handler stacks; see Hand drops. While
 Maps or Bossing is up, a tidy pass (every 25 updates) also routes items put onto those two pages by hand, and moves an item
 no rule takes off them to the inventory. A full cell or page, or a missing page (fewer extra tabs), moves it back to the inventory; the log
 says why. Status: `core-ui` console command, `affinity:` and `stash tabs:` counters.
 
 Hand drops ([#1726](https://github.com/synpoox/pd2-resurrected/issues/1726)): while the Maps or Bossing tab is open, the
 inventory padlock's message hook (`inventory_lock.cpp`, by signature) refuses the local player's 0x18 (put the cursor item on a
-stash cell, page field 4) and 0x1f (swap it with a stored item on the stash, page field 4; the cursor item goes to the message's cell) unless `stash_home.h`'s `AtHome` says the
+stash cell, page field 4) and 0x1f (swap it with a stored item on the stash, page field 4; the cursor item goes to the clicked cell at +0x11, packed `y << 16 | x` like the stored item's cell at +0x0d; read as two plain ints until #1744, which refused a same-item drop on its own cell) unless `stash_home.h`'s `AtHome` says the
 item belongs on that page and cell (a map of the shown base also in the map cells). Any other item, or a currency or boss item in
 another's cell, stays on the cursor. The message holds no shared page number, so the open tab (`stash_affinity::ViewPage`) names
-it. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
+it. The stack message 0x21 (cursor item onto a stored one, handler 0x4c1940) is not filtered; it logs `stash tabs: stack message 0x21 onto page .. cell x,y`. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
 refused message 0x.., not the item's own cell`.
 
 Limits: tabs 15-19 are taken as they are. Items a player already keeps on 16-18 stay and share the space; on 15 and 19 the
