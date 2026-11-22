@@ -16,7 +16,7 @@
 //
 // shortcut: single player and the host only (a TCP/IP client runs no server here, so its padlock does nothing);
 // upgrade with a plugin message to the host if online play needs it.
-// shortcut: no "I can't" sound on a refused move, and PD2's lock of magic+ charms in the inventory is not ported.
+// shortcut: no "I can't" sound on a refused move. The charm rows (#1727) are locked by the 0x19 take and 0x18 put messages.
 #include "inventory_lock.h"
 
 #include "log.h"
@@ -40,6 +40,9 @@
 namespace inventory_lock {
 
 namespace {
+
+using d2r::Game;
+using d2r::Unit;
 
 constexpr uint8_t Equip[] = {0x1a, 0, 0, 0, 0, 4, 0, 0, 0};
 constexpr uint8_t ShiftUnequip[] = {0x58, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -69,6 +72,26 @@ static_assert(ChangesEquipment(ListOf(1).b, 0x20) && ChangesEquipment(ListOf(2).
 static_assert(!ChangesEquipment(ListOf(0).b, 0x20) && !ChangesEquipment(ListOf(3).b, 0x20));
 static_assert(!ChangesEquipment(ListOf(1).b, 0x15));  // too short to hold the mode
 static_assert(!ChangesEquipment(UseItem, sizeof UseItem) && !ChangesEquipment(Insert, sizeof Insert));
+constexpr uint8_t TakeIt[] = {0x19, 7, 0, 0, 0};
+constexpr uint8_t PutLow[] = {0x18, 7, 0, 0, 0, 3, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0};
+constexpr uint8_t PutHigh[] = {0x18, 7, 0, 0, 0, 3, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0};
+constexpr uint8_t PutStash[] = {0x18, 7, 0, 0, 0, 3, 0, 0, 0, 5, 0, 0, 0, 4, 0, 0, 0};
+constexpr auto RowIs3 = [](uint32_t) { return 3; };
+constexpr auto RowIs4 = [](uint32_t) { return 4; };
+constexpr auto NoRow = [](uint32_t) { return -1; };
+constexpr uint8_t SwapIn[] = {0x1f, 9, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0};
+constexpr uint8_t CtrlDrop[] = {0x5c, 7, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 9, 0, 4, 0};
+constexpr auto OnlyId7Row4 = [](uint32_t id) { return id == 7 ? 4 : -1; };
+static_assert(TouchesCharmRows(SwapIn, sizeof SwapIn, OnlyId7Row4) && !TouchesCharmRows(SwapIn, sizeof SwapIn, NoRow));
+constexpr auto GridMove = [] { auto p = ListOf(0); p.b[1] = 7; for (int i = 5; i < 9; ++i) p.b[i] = 0xff; p.b[0x0d] = 7; return p; }();
+constexpr auto PlayerIdOnly = [] { auto p = ListOf(0); p.b[1] = 7; return p; }();
+static_assert(TouchesCharmRows(GridMove.b, 0x20, OnlyId7Row4));  // 0x60 mode 0: the item at +0x0d
+static_assert(!TouchesCharmRows(PlayerIdOnly.b, 0x20, OnlyId7Row4));  // 0x60 +1 is a player id, never asked
+static_assert(TouchesCharmRows(CtrlDrop, sizeof CtrlDrop, OnlyId7Row4) && !TouchesCharmRows(CtrlDrop, 4, OnlyId7Row4));
+static_assert(TouchesCharmRows(TakeIt, sizeof TakeIt, RowIs4) && !TouchesCharmRows(TakeIt, sizeof TakeIt, RowIs3));
+static_assert(!TouchesCharmRows(TakeIt, sizeof TakeIt, NoRow) && !TouchesCharmRows(TakeIt, 4, RowIs4));
+static_assert(TouchesCharmRows(PutLow, sizeof PutLow, NoRow) && !TouchesCharmRows(PutHigh, sizeof PutHigh, NoRow));
+static_assert(!TouchesCharmRows(PutStash, sizeof PutStash, NoRow) && !TouchesCharmRows(PutLow, 16, NoRow));
 static_assert(!ChangesEquipment(nullptr, 9) && !ChangesEquipment(Equip, 0));
 
 constexpr char Command[] = "core-ui/InventoryLock";
@@ -172,10 +195,22 @@ void Load(void* player) noexcept {
 	plog::Info("inventory lock: %s is %s", g_name.empty() ? "(unnamed)" : g_name.c_str(), g_locked.load() ? "locked" : "unlocked");
 }
 
+sigscan::Entry* const Sigs[] = {&d2r::sig::FindUnit, &d2r::sig::ItemPage, &d2r::sig::UnitPackedXY};
+
 // 93847 0x4f2fa0, int (game, player, message, size): the server's client-message dispatch (PlrMsg handler table by id)
 using DispatchFn = int (*)(void*, void*, const uint8_t*, int) noexcept;
 DispatchFn g_dispatch = nullptr;
 constexpr uint8_t DispatchEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x20};
+
+// the top row of a stored inventory-grid item of the local player, -1 for anything else (a cursor, stash or cube item, none)
+auto RowOf(void* game, uint32_t id) noexcept -> int {
+	Unit* item = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit)(static_cast<Game*>(game), 4, id);
+	if (item == nullptr || d2r::At<int32_t>(item, d2r::rva::UnitMode) != 0 ||
+	    d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::sig::ItemPage)(item) != 0) {
+		return -1;
+	}
+	return static_cast<int>(d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::sig::UnitPackedXY)(item) >> 16);
+}
 
 auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexcept -> int {
 	const bool local = player != nullptr && d2r::At<uint32_t>(player, d2r::rva::UnitIdField) == g_localId.load();
@@ -185,6 +220,12 @@ auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexc
 	if (local && g_locked.load(std::memory_order_relaxed) && size > 0 && ChangesEquipment(message, static_cast<size_t>(size))) {
 		++g_refused;
 		plog::Info("inventory lock: refused message 0x%02x (%d bytes)", message[0], size);
+		return 0;
+	}
+	if (local && g_locked.load(std::memory_order_relaxed) && size > 0 &&
+	    TouchesCharmRows(message, static_cast<size_t>(size), [game](uint32_t id) noexcept { return RowOf(game, id); })) {
+		++g_refused;
+		plog::Info("inventory lock: refused charm-row message 0x%02x (%d bytes)", message[0], size);
 		return 0;
 	}
 	return g_dispatch(game, player, message, size);
@@ -259,6 +300,7 @@ auto Query(const Service*& service, bool (*has)(const Service*, uint32_t), uint3
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	g_context = context;
+	sigscan::Resolve(Sigs, std::size(Sigs), context->exeBase, nullptr, 0);
 	g_locked.store(Marked(SavePath("")));  // the padlock shows the last lock until this game's character is read
 	const D2RL::LifecycleService* lifecycle = nullptr;
 	const D2RL::SharedEventService* events = nullptr;
@@ -271,6 +313,12 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (service missing: widget %d, lifecycle %d, event %d, overlay %d)", widgets, life,
 		              shared, frames);
 		return;
+	}
+	for (const sigscan::Entry* e : Sigs) {
+		if (e->state != sigscan::State::Ok) {
+			std::snprintf(report, size, "FAILED (signature %s %s)", e->name, sigscan::StateText(e->state));
+			return;
+		}
 	}
 	if (!sigscan::HookBySignature(context, "PlrMsgDispatch",
 	                              "48 89 5c 24 08 48 89 6c 24 10 48 89 74 24 20 57 41 54 41 55 41 56 41 57 48 83 ec 20 "
@@ -296,7 +344,11 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (a listener was refused; the hook passes everything while unlocked)");
 		return;
 	}
-	std::snprintf(report, size, "the inventory padlock locks the player's and the mercenary's body slots");
+	std::snprintf(report, size, "the inventory padlock locks the player's and the mercenary's body slots and the charm rows 5-8");
+}
+
+auto IsLocked() noexcept -> bool {
+	return g_locked.load();
 }
 
 void Counters(char* out, size_t size) noexcept {

@@ -2,6 +2,8 @@
 // click or pad press moves an item onto, off or between the player's or the mercenary's body slots.
 #pragma once
 
+#include "pd2_engine.h"
+
 #include <D2RLPlugin/api.h>
 
 #include <cstddef>
@@ -34,6 +36,39 @@ constexpr auto ChangesEquipment(const uint8_t* packet, size_t size) noexcept -> 
 		return false;
 	}
 }
+
+// The charm rows (#1727): the inventory grid's rows 5-8 (zero-based y 4-7 by an item's top row, d2r::CharmFirstRow; the grid is
+// 10x8, #358), where charms count. rowOf(id) is the top row of a stored inventory-grid item, -1 when it is not one (a cursor,
+// stash or cube item, none). Messages seen in game (the ids are u32 at the offsets below):
+// 0x19 take an item off a grid (id +1); 0x5c Ctrl+click drop (id +1); 0x1f swap the cursor item with a grid item (the two ids
+// at +1 and +5, in either order: the cursor item is never a stored one, so asking both is safe); 0x18 put the cursor item on
+// a grid cell (id +1, x +5, y +9, page +13, 0 the inventory). 0x22 and 0x60, D2R's list forms: 0x22 at +1 and +5,
+// 0x60 at +5 and +0x0d (+1 is a player id; Ghidra, handler 0x4aafa0; neither seen in game). A swap names the item it takes out, so a tall cursor item dropped above row 5 onto a charm is a 0x1f.
+constexpr auto ReadU32(const uint8_t* p) noexcept -> uint32_t {
+	return p[0] | p[1] << 8 | p[2] << 16 | uint32_t(p[3]) << 24;
+}
+template <class RowOf>
+constexpr auto TouchesCharmRows(const uint8_t* packet, size_t size, RowOf rowOf) noexcept -> bool {
+	if (packet == nullptr || size == 0) {
+		return false;
+	}
+	const auto inRows = [&](size_t at) { return size >= at + 4 && rowOf(ReadU32(packet + at)) >= d2r::CharmFirstRow; };
+	switch (packet[0]) {
+	case 0x19: case 0x5c:
+		return inRows(1);
+	case 0x1f: case 0x22:
+		return inRows(1) || inRows(5);
+	case 0x60:  // +1 is a player id, not an item
+		return inRows(5) || inRows(0x0d);
+	case 0x18:
+		return size >= 17 && ReadU32(packet + 13) == 0 && ReadU32(packet + 9) >= uint32_t(d2r::CharmFirstRow) && ReadU32(packet + 9) < 8;
+	default:
+		return false;
+	}
+}
+
+// True while the padlock is on (hotkeys.cpp refuses its own moves from the charm rows then).
+auto IsLocked() noexcept -> bool;
 
 // Hooks the server's message dispatch and listens for the padlock. Returns the report for the log.
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept;

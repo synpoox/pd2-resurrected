@@ -32,16 +32,18 @@ no population and reads no preset or spawn table. It shows `100+` until 90% of t
 
 ## Text (owner's rule)
 
-PD2's rule, with `25+` for PD2's `100+`: while rooms made x 100 / rooms < 90 (integer division), the row reads
-`Monsters Remaining: 25+`. From 90% on, a count over 25 reads `25+` and 25 or less the plain number, with no `+`.
+PD2's rule, with `50+` for PD2's `100+` (`25+` before #1729): while rooms made x 100 / rooms < 90 (integer division), the row reads
+`Monsters Remaining: 50+`. From 90% on, a count over 50 reads `50+` and 50 or less the plain number, with no `+`.
 
 PD2 reads the two room counts from its region (+0x04 rooms activated, +0x0c rooms; PD2 maps use a hard-coded total,
-`FUN_1038b1d0`). core-ui does not read D2R's region for them (those offsets were not verified in 93847). It walks the
-built level's room list instead (DrlgLevel +0x10 first room, DrlgRoom +0x48 next): rooms is the list length, and a
-room counts as made once its game room has populated (DrlgRoom +0x58 room, room flags +0x54 bit 0). D2R frees a
-room's game room once the player leaves, so a room seen populated is remembered per level until the next game. The
-Cartographer maps (138-151) are built levels too, so they get the same count; it is the room count core-events'
-`RealRooms` reads for native maps, not PD2's hard-coded totals.
+`FUN_1038b1d0`). D2R 93847 keeps both at the same offsets (the region is allocated in `0x508750`, +0x0c set to -1
+until counted), and core-ui reads them the same way (#1729). Read in game: Blood Moor +0x04 9, 12, 15, 18 as rooms
+populated (kept across a trip out and back), +0x0c 47; Cold Plains 70; Den of Evil 26.
+
+The first version walked the built level's drlg room list instead (DrlgLevel +0x10, next +0x48). That list holds every
+room of the level: Blood Moor 84, Cold Plains 96, Den of Evil 27. In a dungeon the two totals nearly agree, but an
+outdoor level lists many rooms that never make monsters, so 90% of the list was never reached and outdoor levels
+read `25+` forever (#1729).
 
 ## Towns
 

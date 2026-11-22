@@ -43,31 +43,32 @@ int main() {
 	};
 	const Rooms all {10, 10}, half {10, 5}, most {20, 19}, nine {10, 9}, under {100, 89};
 	check("explored, 12: the number, no plus", says(12, all, "Monsters Remaining: 12"));
-	check("explored, 25: the number, no plus", says(25, all, "Monsters Remaining: 25"));
-	check("explored, 26 is 25+", says(26, all, "Monsters Remaining: 25+"));
-	check("explored, 300 is 25+", says(300, all, "Monsters Remaining: 25+"));
+	check("explored, 50: the number, no plus", says(50, all, "Monsters Remaining: 50"));
+	check("explored, 51 is 50+", says(51, all, "Monsters Remaining: 50+"));
+	check("explored, 300 is 50+", says(300, all, "Monsters Remaining: 50+"));
 	check("explored, 0", says(0, all, "Monsters Remaining: 0"));
-	check("50% explored, 10 left: 25+", says(10, half, "Monsters Remaining: 25+"));
+	check("50% explored, 10 left: 50+", says(10, half, "Monsters Remaining: 50+"));
 	check("95% explored, 10 left: 10", says(10, most, "Monsters Remaining: 10"));
 	check("exactly 90%: explored", says(3, nine, "Monsters Remaining: 3"));
-	check("89%: not explored", says(3, under, "Monsters Remaining: 25+"));
+	check("89%: not explored", says(3, under, "Monsters Remaining: 50+"));
 	check("no rooms: not explored", !Explored({}));
 
-	// room walk: {next, populated} per room
-	struct Room {
-		const Room* next;
-		bool populated;
-	};
-	const Room c {nullptr, false}, b {&c, true}, a {&b, true};
-	const auto pop = [](const uint8_t* r) { return reinterpret_cast<const Room*>(r)->populated; };
-	const Rooms walked = CountRooms(reinterpret_cast<const uint8_t*>(&a), 0, pop);
-	check("walk: 3 rooms, 2 made", walked.total == 3 && walked.made == 2);
-	Room loop1 {nullptr, true}, loop2 {&loop1, true};
-	loop1.next = &loop2;
-	check("walk: a looping list is no rooms", CountRooms(reinterpret_cast<const uint8_t*>(&loop1), 0, pop).total == 0);
-	SeenRooms seen;
-	seen.Add(3, &c);
-	check("seen rooms are kept per level", seen.Has(3, &c) && !seen.Has(4, &c));
+	// the region's room counts (+0x04 made, +0x0c counted): Blood Moor read 18 made of 47 counted (#1729)
+	uint8_t counts[0x10] = {};
+	const int32_t made = 18, total = 47, unset = -1;
+	std::memcpy(counts + 0x04, &made, 4);
+	std::memcpy(counts + 0x0c, &total, 4);
+	const Rooms read = ReadRooms(counts, 0x04, 0x0c);
+	check("region rooms: 18 of 47", read.made == 18 && read.total == 47 && !Explored(read));
+	std::memcpy(counts + 0x04, &total, 4);
+	check("region rooms: all 47 made is explored", Explored(ReadRooms(counts, 0x04, 0x0c)));
+	std::memcpy(counts + 0x0c, &unset, 4);
+	check("region rooms: an unset count (-1) is no rooms", ReadRooms(counts, 0x04, 0x0c).total == 0);
+	std::memcpy(counts + 0x0c, &huge, 4);
+	check("region rooms: a huge count is no rooms", ReadRooms(counts, 0x04, 0x0c).total == 0);
+	std::memcpy(counts + 0x0c, &total, 4);
+	std::memcpy(counts + 0x04, &junk, 4);
+	check("region rooms: a negative made count is no rooms", ReadRooms(counts, 0x04, 0x0c).total == 0);
 
 	std::printf(fail == 0 ? "all passed\n" : "%d failed\n", fail);
 	return fail == 0 ? 0 : 1;
