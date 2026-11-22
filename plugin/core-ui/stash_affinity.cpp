@@ -426,7 +426,8 @@ void SyncReserved(const items::ItemInfo& item) noexcept {
 }
 
 // True when the item is home (or merged there); false when it went back to the inventory
-auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
+// topUp: a fixed cell's stack takes what fits and the rest stays on the item (Withdraw, #1763)
+auto Route(D2RL::PlayerHandle player, items::ItemInfo item, bool topUp = false) noexcept -> bool {
 	const aff::Home home = aff::HomeOf(item.code);
 	if (aff::AtHome(home, item.code, g_shown, item.container == C::SharedStash, item.sharedStashPage, item.x, item.y)) {
 		return true;
@@ -459,7 +460,7 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 				on = -2;  // used by an item this pass did not read
 			}
 		} else if (on >= 0 && aff::Stacks(item.code) && aff::Normal(g_pass.reserved[on].code) == aff::Normal(item.code)) {
-			moved = Merge(player, item, g_pass.reserved[on]);
+			moved = Merge(player, item, g_pass.reserved[on], topUp);
 		}
 	}
 	if (moved == items::Result::Success) {
@@ -483,7 +484,8 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 
 // A stack past aff::WithdrawMax new in the inventory (#1763: Ctrl+click out of the stash, or a hand pick-up put down):
 // WithdrawMax of it split onto the cursor (the SDK moves no cursor item, so it stays there), the rest back home through
-// Route. A busy cursor or a failed split sends the whole stack home. Only splitStack and moves: nothing made or lost.
+// Route, topping the cell's stack up. A busy cursor sends the whole stack home; a failed split keeps it in the inventory
+// (it could never be taken out otherwise) and logs the result. Only splitStack, moves and Merge: nothing made or lost.
 void Withdraw(D2RL::PlayerHandle player, const Noted& noted) noexcept {
 	items::ItemInfo item {.structSize = items::ItemInfoSize};
 	if (g_items->getItemInfo(g_context, noted.handle, &item) != items::Result::Success) {
@@ -491,14 +493,16 @@ void Withdraw(D2RL::PlayerHandle player, const Noted& noted) noexcept {
 	}
 	const int32_t had = Quantity(item.handle);
 	D2RL::ItemHandle held = D2RL::InvalidItemHandle;
-	items::Result split = items::Result::Conflict;  // a busy cursor
+	items::Result split = items::Result::Conflict;
+	bool busy = true;
 	if (g_inventory->getCursorItem(g_context, player, &held) == D2RL::Inventory::Result::Success && held == D2RL::InvalidItemHandle) {
 		const items::SplitStackRequest request {.structSize = items::SplitStackRequestSize, .player = player,
 		                                        .sourceItem = item.handle, .quantity = static_cast<uint32_t>(aff::WithdrawMax)};
 		items::SplitStackResult result {.structSize = items::SplitStackResultSize};
+		busy = false;
 		split = g_items->splitStack(g_context, &request, &result);
 	}
-	const bool home = Route(player, item);
+	const bool home = (split == items::Result::Success || busy) && Route(player, item, true);
 	plog::Info("affinity: %08x x%d taken out of the stash: %d to the cursor (split result %u), the rest %s", item.code, had,
 	           split == items::Result::Success ? aff::WithdrawMax : 0, static_cast<uint32_t>(split),
 	           home ? "back home" : "kept in the inventory");

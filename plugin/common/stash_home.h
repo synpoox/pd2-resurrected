@@ -189,16 +189,16 @@ constexpr auto AtHome(const Home& home, uint32_t code, uint32_t shown, bool shar
 // A stack on a reserved page holds up to StashMax; one taken out gives WithdrawMax (misc.txt maxstack of every routed
 // stackable, tools/tests/test_stash_affinity.py) and the rest stays home (#1763). D2R's GetMaxStack (93847 0x3719e0)
 // clamps to 511, the 9-bit saved quantity, so StashMax must stay below it.
-inline constexpr int32_t StashMax = 500;
+inline constexpr int32_t StashMax = 255;  // the owner's cap, matching the RotW tabs' 255 (stash_stack.h)
 inline constexpr int32_t WithdrawMax = 50;
-static_assert(StashMax <= 511 && WithdrawMax < StashMax);
+static_assert(StashMax <= 511 && WithdrawMax < StashMax && StashMax == 255);
 
 // The stack cap of a routed item on its page: maps keep misc.txt's 50, since splitStack remakes a map's stats on the
 // piece it takes out (stack_split.cpp); map currency and boss parts hold StashMax
 constexpr auto StackCap(uint32_t code) noexcept -> int32_t {
 	return BaseOf(code).tier >= 0 ? WithdrawMax : StashMax;
 }
-static_assert(StackCap(Code("m01")) == 50 && StackCap(Code("imma")) == 500 && StackCap(Code("dcbl")) == 500);
+static_assert(StackCap(Code("m01")) == 50 && StackCap(Code("imma")) == 255 && StackCap(Code("dcbl")) == 255);
 
 // The count of a stack after another of the same item merges into it; 0 when a count is unknown (below 1) or the sum
 // passes max, and the incoming item goes back whole (#1744)
@@ -291,8 +291,8 @@ static_assert(MergedCount(45, 6, 50) == 0 && MergedCount(0, 1, 50) == 0 && Merge
 static_assert(ToppedUp(45, 6, 50).stack == 50 && ToppedUp(45, 6, 50).rest == 1 && ToppedUp(49, 1, 50).rest == 0);
 static_assert(ToppedUp(50, 1, 50).stack == 0 && ToppedUp(0, 1, 50).stack == 0 && ToppedUp(3, 0, 50).stack == 0);
 static_assert(ToppedUp(1, 50, 50).stack + ToppedUp(1, 50, 50).rest == 51);  // nothing made or lost
-static_assert(MergedCount(50, 1, StashMax) == 51 && MergedCount(450, 50, StashMax) == 500 && MergedCount(451, 50, StashMax) == 0);
-static_assert(ToppedUp(480, 50, StashMax).stack == 500 && ToppedUp(480, 50, StashMax).rest == 30);  // #1763
+static_assert(MergedCount(50, 1, StashMax) == 51 && MergedCount(205, 50, StashMax) == 255 && MergedCount(206, 50, StashMax) == 0);
+static_assert(ToppedUp(230, 50, StashMax).stack == 255 && ToppedUp(230, 50, StashMax).rest == 25);  // #1763
 static_assert(FreeColumn(0) == 0 && FreeColumn(0b111) == 3 && FreeColumn(0x3ff) == -1);
 
 }  // namespace pd2::affinity
