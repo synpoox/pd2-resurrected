@@ -251,7 +251,11 @@ void Run(const Job& job) noexcept {
 	}
 	plog::Info("hotkeys: %s %s (%u)", ActName[static_cast<int>(job.act)], status == items::Result::Success ? "done" : "failed",
 	           static_cast<uint32_t>(status));
-	if (status == items::Result::Success) PlayUi(job.sound);
+	// D2R's sound player belongs on the UI thread, not this authoritative game update
+	if (status == items::Result::Success && job.sound > 0) {
+		g_threads->runOnUiThread(g_context, [](const D2RL::PluginContext*, void* sound) noexcept { PlayUi(static_cast<int>(reinterpret_cast<intptr_t>(sound))); },
+		                         reinterpret_cast<void*>(static_cast<intptr_t>(job.sound)));
+	}
 }
 
 void GameThreadJob(const D2RL::PluginContext*, void*) noexcept {
@@ -369,6 +373,7 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	    context->QueryService(&g_items) != D2RL::ServiceQueryResult::Success ||
 	    !D2RL::HasItemServiceField(g_items, D2RL::ItemServiceSplitStackFieldEnd) ||
 	    context->QueryService(&g_threads) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasThreadServiceField(g_threads, D2RL::ThreadServiceRequiredSize) ||
 	    context->QueryService(&g_inventory) != D2RL::ServiceQueryResult::Success ||
 	    !D2RL::HasInventoryServiceField(g_inventory, D2RL::InventoryServiceRequiredSize)) {
 		std::snprintf(report, size, "FAILED (an item, item interaction, inventory or thread service is missing)");
