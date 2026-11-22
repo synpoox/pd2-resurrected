@@ -42,8 +42,8 @@ constexpr auto ChangesEquipment(const uint8_t* packet, size_t size) noexcept -> 
 // stash or cube item, none). Messages seen in game (the ids are u32 at the offsets below):
 // 0x19 take an item off a grid (id +1); 0x5c Ctrl+click drop (id +1); 0x1f swap the cursor item with a grid item (the two ids
 // at +1 and +5, in either order: the cursor item is never a stored one, so asking both is safe); 0x18 put the cursor item on
-// a grid cell (id +1, x +5, y +9, page +13, 0 the inventory). 0x22 and 0x60, D2R's list forms, are asked at +1 and +5 as well
-// (not seen in game). A swap names the item it takes out, so a tall cursor item dropped above row 5 onto a charm is a 0x1f.
+// a grid cell (id +1, x +5, y +9, page +13, 0 the inventory). 0x22 and 0x60, D2R's list forms: 0x22 at +1 and +5,
+// 0x60 at +5 and +0x0d (+1 is a player id; Ghidra, handler 0x4aafa0; neither seen in game). A swap names the item it takes out, so a tall cursor item dropped above row 5 onto a charm is a 0x1f.
 constexpr auto ReadU32(const uint8_t* p) noexcept -> uint32_t {
 	return p[0] | p[1] << 8 | p[2] << 16 | uint32_t(p[3]) << 24;
 }
@@ -56,8 +56,10 @@ constexpr auto TouchesCharmRows(const uint8_t* packet, size_t size, RowOf rowOf)
 	switch (packet[0]) {
 	case 0x19: case 0x5c:
 		return inRows(1);
-	case 0x1f: case 0x22: case 0x60:
+	case 0x1f: case 0x22:
 		return inRows(1) || inRows(5);
+	case 0x60:  // +1 is a player id, not an item
+		return inRows(5) || inRows(0x0d);
 	case 0x18:
 		return size >= 17 && ReadU32(packet + 13) == 0 && ReadU32(packet + 9) >= uint32_t(d2r::CharmFirstRow) && ReadU32(packet + 9) < 8;
 	default:

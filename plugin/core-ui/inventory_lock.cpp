@@ -83,6 +83,10 @@ constexpr uint8_t SwapIn[] = {0x1f, 9, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0,
 constexpr uint8_t CtrlDrop[] = {0x5c, 7, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 9, 0, 4, 0};
 constexpr auto OnlyId7Row4 = [](uint32_t id) { return id == 7 ? 4 : -1; };
 static_assert(TouchesCharmRows(SwapIn, sizeof SwapIn, OnlyId7Row4) && !TouchesCharmRows(SwapIn, sizeof SwapIn, NoRow));
+constexpr auto GridMove = [] { auto p = ListOf(0); p.b[1] = 7; for (int i = 5; i < 9; ++i) p.b[i] = 0xff; p.b[0x0d] = 7; return p; }();
+constexpr auto PlayerIdOnly = [] { auto p = ListOf(0); p.b[1] = 7; return p; }();
+static_assert(TouchesCharmRows(GridMove.b, 0x20, OnlyId7Row4));  // 0x60 mode 0: the item at +0x0d
+static_assert(!TouchesCharmRows(PlayerIdOnly.b, 0x20, OnlyId7Row4));  // 0x60 +1 is a player id, never asked
 static_assert(TouchesCharmRows(CtrlDrop, sizeof CtrlDrop, OnlyId7Row4) && !TouchesCharmRows(CtrlDrop, 4, OnlyId7Row4));
 static_assert(TouchesCharmRows(TakeIt, sizeof TakeIt, RowIs4) && !TouchesCharmRows(TakeIt, sizeof TakeIt, RowIs3));
 static_assert(!TouchesCharmRows(TakeIt, sizeof TakeIt, NoRow) && !TouchesCharmRows(TakeIt, 4, RowIs4));

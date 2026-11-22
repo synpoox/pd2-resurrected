@@ -30,7 +30,7 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 - **Charm rows.** The same hook drops, while locked, the messages that take an item out of inventory rows 5-8 or swap one out:
   0x19 (take it), 0x5c (Ctrl+click drop), 0x1f (swap with the cursor item, so a tall item dropped above row 5 onto a charm is
   refused too), and the list forms 0x22 and 0x60, each when a stored inventory item they name has its top row in rows 5-8
-  (`TouchesCharmRows`; 0x22 and 0x60 were not seen in game). It also drops 0x18 (put the cursor item on a free cell) aimed at rows 5-8.
+  (`TouchesCharmRows`; 0x22 at +1 and +5, 0x60 at +5 and +0x0d, offsets read in Ghidra; neither was seen in game). It also drops 0x18 (put the cursor item on a free cell) aimed at rows 5-8.
   Our own Shift+right-click (stash) and Ctrl+Shift+right-click (Cube) hotkeys refuse the same items (log `hotkeys: ... refused:
   inventory lock`), as they never reach the dispatch. The log says `inventory lock: refused charm-row message 0x..`.
 - **PD2.** `ProjectDiablo.dll` keeps `equipment_lock` in its settings and sends it to the server (packet 0x5c); its wrappers of
