@@ -112,6 +112,9 @@ constexpr auto CellRefused(uint8_t grid, uint32_t page, int32_t mode, uint32_t c
 static_assert(CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("gcv"), 0, 3, 2));                   // a gem over a map cell: red
 static_assert(!CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("m04"), aff::Code("m04"), 3, 2));   // the shown base's map
 static_assert(!CellRefused(StashGrid, aff::BossingPage, 4, aff::Code("dcma"), 0, 0, 0));              // a boss item on its cell
+static_assert(!CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("imma"), 0, 0, 4));                 // a map currency on its own cell
+static_assert(!CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("fort"), aff::Code("m01"), 1, 7));  // with a base shown too
+static_assert(CellRefused(StashGrid, aff::MapsPage, 4, aff::Code("imma"), 0, 1, 7));                  // in another currency's cell
 static_assert(CellRefused(StashGrid, aff::BossingPage, 4, aff::Code("dcbl"), 0, 0, 0));               // dcbl on dcma's cell
 static_assert(!CellRefused(StashGrid, 0, 4, aff::Code("gcv"), 0, 3, 2));                               // no tab open
 static_assert(!CellRefused(0, aff::MapsPage, 4, aff::Code("gcv"), 0, 3, 2));                          // the inventory grid
