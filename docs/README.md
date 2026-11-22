@@ -41,6 +41,7 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [pd2/engine-dll-triage.md](pd2/engine-dll-triage.md) — Triage of PD2's engine DLLs
 - [pd2/map-system-dll.md](pd2/map-system-dll.md) — PD2's map system in ProjectDiablo.dll
 - [pd2/origin-bugs.md](pd2/origin-bugs.md) — PD2-origin bugs
+- [pd2/patch-table-audit.md](pd2/patch-table-audit.md) — PD2's patch table and table writes against our ports
 - [pd2/pandemonium-uber-tristram.md](pd2/pandemonium-uber-tristram.md) — Inventory of PD2's Pandemonium and Uber Tristram
 - [pd2/plrmodes.md](pd2/plrmodes.md) — What PD2's PlrModes.cpp changes
 - [pd2/strings-inventory.md](pd2/strings-inventory.md) — Inventory of PD2's strings against D2R's
