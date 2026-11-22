@@ -1,8 +1,8 @@
-﻿name: release
+name: release
 # The full build and the release 7z (issue #109). Runs only on the owner's self-hosted runner: it needs a D2R install,
 # which never goes to GitHub (ADR 0007). Run it by hand (Actions > release > Run
 # workflow). A green build publishes a GitHub release v<mod.json version>, marked Latest so the repo page shows it, with
-# the 7z, release-manifest.json and SHA256SUMS (the toolkit's github_release.py --assets), then merges it into the shared launcher feed (--feed), and keeps them as a workflow artifact too. The feed step needs the LAUNCHER_FEED_TOKEN secret. Runner setup: CONTRIBUTING.md.
+# the 7z, release-manifest.json and SHA256SUMS (the toolkit's github_release.py --assets), which then merges it into the shared launcher feed, and keeps them as a workflow artifact too. The publish step needs the LAUNCHER_FEED_TOKEN secret. Runner setup: CONTRIBUTING.md.
 # Two jobs, as the toolkit's template: "build" has a read-only token; only "publish" (needs build) may write.
 on:
   workflow_dispatch:
@@ -90,6 +90,7 @@ jobs:
             dist/*.7z
             dist/RELEASE_NOTES-*.md
             dist/release-manifest.json
+            dist/feed.json
             dist/SHA256SUMS
             out/validation.md
           retention-days: 14
@@ -100,7 +101,10 @@ jobs:
     permissions:
       contents: write
     env:
-      GH_TOKEN: ${{ github.token }}
+      # --assets also merges into the shared feed in synpoox/resurrected-launcher once the release is public, so one token
+      # covers both repos: a fine-grained PAT, Contents read/write on this repo and on resurrected-launcher.
+      # If the feed merge fails after the release is public, rerun: github_release.py <v> --feed <dist>
+      GH_TOKEN: ${{ secrets.LAUNCHER_FEED_TOKEN }}
       VERSION: ${{ needs.build.outputs.version }}
     steps:
       - uses: actions/checkout@v4
@@ -115,6 +119,7 @@ jobs:
       - name: GitHub release
         run: |
           $v = $env:VERSION
+          if (-not $env:GH_TOKEN) { throw "set the LAUNCHER_FEED_TOKEN secret (contents: write on this repo and on synpoox/resurrected-launcher)" }
           # the tag must be new: gh would attach a release to an existing bare tag, maybe on another commit
           # Windows PowerShell 5.1 ends the step on a native command's stderr under 'Stop', and a new tag answers "Not Found"
           $ErrorActionPreference = 'Continue'
@@ -129,14 +134,4 @@ jobs:
           # --skip-launcher-validation: the runner has no launcher validator build ($env:RESURRECTED_VALIDATE_RELEASE); the toolkit's own checks still run.
           # The release is made from this commit, as before.
           py -3 "$env:D2R_TOOLKIT\release\github_release.py" $v --assets $d --commit $env:GITHUB_SHA --skip-launcher-validation
-          if ($LASTEXITCODE) { throw "github_release.py --assets failed (a failed run leaves a draft: fix it and run again)" }
-          Set-Content release-files-dir.txt $d
-      - name: Launcher feed
-        # the shared feed lives in synpoox/resurrected-launcher: github.token cannot write there, so a token with contents:write on that repo
-        env:
-          GH_TOKEN: ${{ secrets.LAUNCHER_FEED_TOKEN }}
-        run: |
-          if (-not $env:GH_TOKEN) { throw "set the LAUNCHER_FEED_TOKEN secret (contents: write on synpoox/resurrected-launcher)" }
-          $d = (Get-Content release-files-dir.txt).Trim()
-          py -3 "$env:D2R_TOOLKIT\release\github_release.py" $env:VERSION --feed $d --skip-launcher-validation
-          if ($LASTEXITCODE) { throw "github_release.py --feed failed: the release is public; rerun --feed with the same dist (docs/release.md, Shared catalog feed)" }
+          if ($LASTEXITCODE) { throw "github_release.py --assets failed (a failed run leaves a draft or, after public, an unmerged feed: see the GH_TOKEN comment)" }
