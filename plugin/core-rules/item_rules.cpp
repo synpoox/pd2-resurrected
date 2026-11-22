@@ -2175,7 +2175,7 @@ auto DyedItemColor(Unit* player, Unit* item, uint8_t* index, int32_t inventory) 
 	const uint8_t type = inventory != 0 ? row[0x152] : row[0x151];
 	const uint8_t packed = row[0x151] != 0 ? row[0x151] : type;
 	*index = packed >= 1 && packed <= 8 ? static_cast<uint8_t>(packed << 5 | color) : 0;
-	if (plog::Sample(g_dyeColors)) {
+	if (pd2::HotSample(g_dyeColors)) {
 		plog::Info("dye tint: item %p colour %d, %s, type %u (%u so far)", static_cast<void*>(item), color,
 		           inventory != 0 ? "inventory" : "body", type, g_dyeColors.load());
 	}
@@ -2199,7 +2199,7 @@ auto DyedSpriteDraw(void* sprite, int32_t* xy, float* record, float scale) noexc
 	std::memcpy(copy, DyeRgb[color], sizeof(DyeRgb[color]));
 	copy[3] = 1.0f;
 	reinterpret_cast<uint8_t*>(copy)[0x1d] = 0;
-	if (plog::Sample(g_dyeDraws)) {
+	if (pd2::HotSample(g_dyeDraws)) {
 		plog::Info("dye tint: HD sprite colour %d, rgb %.2f %.2f %.2f (%u so far)", color, copy[0], copy[1], copy[2],
 		           g_dyeDraws.load());
 	}

@@ -532,7 +532,10 @@ void WrapOnMessage() noexcept {
 		++n;
 	}
 	if (n <= 4) {
-		plog::Info("stash tabs: panel vtable has %zu methods, pad tabs not handled", n);
+		static bool logged = false;
+		if (!std::exchange(logged, true)) {  // every UI frame while the check fails
+			plog::Info("stash tabs: panel vtable has %zu methods, pad tabs not handled", n);
+		}
 		return;
 	}
 	if (g_panelVtable == nullptr) {

@@ -11,6 +11,7 @@
 // Dclone's (110) is raised to PD2's item level for the drop: at 110, Annihilus (lvl 130) came out magic.
 #include "uber_drops.h"
 
+#include "hot_log.h"
 #include "log.h"
 
 #include <D2RLPlugin/item.h>
@@ -58,6 +59,7 @@ std::atomic<uint32_t> g_dropped {0};
 std::atomic<uint32_t> g_failed {0};
 std::atomic<uint32_t> g_rolls {0};
 std::atomic<uint32_t> g_hits {0};
+std::atomic<uint32_t> g_uniqueLogs {0};
 
 auto Tier(Game* game) noexcept -> int32_t {
 	uint32_t key = TierKey;
@@ -88,9 +90,11 @@ auto DropUniqueAt(Game* game, Unit* monster, uint32_t code, int32_t uniqueRow, i
 	setStat(monster, StatLevel, level, 0);
 	const int32_t quality = made != nullptr ? d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(made) : -1;
 	const int32_t ilvl = made != nullptr ? d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemLevel)(made) : -1;
-	plog::Info("unique drop: %.4s unique row %d: item row %d, %s, quality %d, item level %d",
-	           reinterpret_cast<const char*>(&code), uniqueRow, row, made != nullptr ? "dropped" : "NOT dropped", quality,
-	           ilvl);
+	if (pd2::HotSample(g_uniqueLogs)) {
+		plog::Info("unique drop: %.4s unique row %d: item row %d, %s, quality %d, item level %d",
+		           reinterpret_cast<const char*>(&code), uniqueRow, row, made != nullptr ? "dropped" : "NOT dropped", quality,
+		           ilvl);
+	}
 	return quality == wanted;
 }
 

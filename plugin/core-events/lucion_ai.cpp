@@ -55,6 +55,8 @@ auto Centre() noexcept -> placements::Spot {
 constexpr int32_t OverseerRow = 120;  // monai.txt
 
 std::atomic<uint32_t> g_thinks {0};
+std::atomic<uint32_t> g_phaseLogs {0};  // the boss phase lines, sampled
+std::atomic<uint32_t> g_stateLogs {0};
 std::atomic<uint32_t> g_stages {0};
 std::atomic<uint32_t> g_casts {0};
 std::atomic<uint32_t> g_spawns {0};
@@ -144,7 +146,7 @@ auto SetImmune(Game* game, Unit* unit, bool on, bool setState) noexcept -> void 
 			SetStat(unit, s, 200);
 		}
 		const int stripped = ImmunityStates(game, unit, true, setState);
-		if (first || stripped > 0) {
+		if ((first || stripped > 0) && pd2::HotSample(g_phaseLogs)) {
 			plog::Info("lucion ai: immune, state 8 %s, %d poison/open wounds lists stripped", setState ? "set" : "not set",
 			           stripped);
 		}
@@ -199,7 +201,9 @@ auto SetShroud(Game* game, Unit* unit, bool on) noexcept -> void {
 	} else {
 		return;
 	}
-	plog::Info("lucion ai: shroud %s, light radius %d", on ? "on" : "off", Stat(unit, StatLightRadius));
+	if (pd2::HotSample(g_phaseLogs)) {
+		plog::Info("lucion ai: shroud %s, light radius %d", on ? "on" : "off", Stat(unit, StatLightRadius));
+	}
 }
 
 constexpr int32_t SoundFrenzyStart = 0xa78, SoundFrenzyEnd = 0x26d;  // sounds.txt shrine_storm, bloodraven_mist_end
@@ -255,7 +259,7 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		           g_thinks.load(), state, stage, LifePercent(unit));
 	}
 	const auto store = [&](int32_t next, int32_t p) {
-		if (next != state && (next == 4 || next == 5 || next == 6 || next == 7 || next == 9 || next == 12)) {
+		if (next != state && (next == 4 || next == 5 || next == 6 || next == 7 || next == 9 || next == 12) && pd2::HotSample(g_stateLogs)) {
 			plog::Info("lucion: state %d -> %d (stage %d)", state, next, stage);
 		}
 		stateRef = next;
@@ -415,7 +419,9 @@ auto ThinkLucion(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 			// PD2: the shroud off, the unhide (0x103a4c90; its result unread), mode 11
 			SetShroud(game, unit, false);
 			const int32_t shown = d2r::Engine<int32_t (*)(Game*, Unit*) noexcept>(d2r::rva::AiUnhide)(game, unit);
-			plog::Info("lucion ai: unhide -> %d", shown);
+			if (pd2::HotSample(g_phaseLogs)) {
+				plog::Info("lucion ai: unhide -> %d", shown);
+			}
 			SetMode(game, unit, ModeS4);
 			Delay(game, unit, 10);
 			store(6, 2);

@@ -527,8 +527,11 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 	                                   .placement = items::Placement::Automatic};
 	const items::Result returned = Move(player, item.handle, back);
 	(returned == items::Result::Success ? g_returned : g_failed)++;
-	plog::Info("affinity: %08x could not go to page %u (result %u); back to the inventory: result %u", item.code, home.page,
-	           static_cast<uint32_t>(moved), static_cast<uint32_t>(returned));
+	static std::atomic<bool> pageFailLogged {false};  // a stuck item retries about once a second
+	if (!pageFailLogged.exchange(true)) {
+		plog::Info("affinity: %08x could not go to page %u (result %u); back to the inventory: result %u", item.code, home.page,
+		           static_cast<uint32_t>(moved), static_cast<uint32_t>(returned));
+	}
 	if (moved != items::Result::Unsupported && !g_hinted.exchange(true)) {  // Unsupported: a stack count that could not be read
 		plog::Info("affinity: the reserved pages are shared tabs %u-%u; set [d2rcore.stash] add_shared_tabs to at least %u",
 		           aff::FirstReservedPage, aff::LastReservedPage, aff::RequiredExtraTabs);

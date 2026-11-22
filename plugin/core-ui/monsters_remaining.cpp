@@ -114,7 +114,7 @@ void __cdecl Refresh(const D2RL::PluginContext* context, void*) noexcept {
 		rooms = read ? mc::ReadRooms(regions[level], RegionRoomsMade, RegionRooms) : mc::Rooms {};
 	} __except (EXCEPTION_EXECUTE_HANDLER) {
 	}
-	if (pd2::HotSample(g_changes) && level != g_lastLevel) {
+	if (level != g_lastLevel && pd2::HotSample(g_changes)) {
 		plog::Info("monsters remaining: level %d region %p town %d spawned %d killed %d", level, read ? regions[level] : nullptr,
 		           mc::IsTown(level) ? 1 : 0, ledger.spawned, ledger.killed);
 	}

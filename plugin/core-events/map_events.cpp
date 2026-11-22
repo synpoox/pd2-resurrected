@@ -120,6 +120,7 @@ std::atomic<uint32_t> g_rolled[12] {};  // by event - 10
 std::atomic<uint32_t> g_rooms {0};  // rooms activated anywhere
 std::atomic<uint32_t> g_spawned {0};
 std::atomic<uint32_t> g_noSpot {0};
+std::atomic<uint32_t> g_placeFails {0}, g_noItem {0}, g_dropFails {0}, g_waveLogs {0};
 std::atomic<uint32_t> g_notified {0};
 
 const D2RL::PluginContext* g_context = nullptr;
@@ -284,7 +285,9 @@ auto SpawnSpire(Game* game, void* room, int32_t (&xy)[2], int32_t level, int32_t
 		xy[0] = At<int32_t>(room, RoomX) + Rand() % At<int32_t>(room, RoomWidth);  // PD2's 0x10389ea0
 		xy[1] = At<int32_t>(room, RoomY) + Rand() % At<int32_t>(room, RoomHeight);
 		if (!FindSpot(room, xy, size) || SpawnObjectAt(game, room, xy[0], xy[1], SpireAltar) == nullptr) {
-			plog::Warn("map events: event %d found no spot for its altar in level %d (%u)", Spire, level, ++g_noSpot);
+			if (pd2::HotSample(g_noSpot)) {
+				plog::Warn("map events: event %d found no spot for its altar in level %d (%u)", Spire, level, g_noSpot.load());
+			}
 			return;
 		}
 		const int32_t fogs[3][2] = {{xy[0] + 2, xy[1]}, {xy[0], xy[1] + 2}, {xy[0] - 1, xy[1] - 1}};
@@ -314,8 +317,10 @@ auto SpawnSpire(Game* game, void* room, int32_t (&xy)[2], int32_t level, int32_t
 			int32_t at[2] = {xy[0] - 5 + Rand() % 10, xy[1] - 5 + Rand() % 10};
 			made += SpawnMonsterNear(game, room, at, Shadows[pick - 1], 10) != nullptr ? 1 : 0;
 		}
-		plog::Info("map events: event %d wave of %d/%d monster %d in level %d at progress %d", Spire, made, count,
-		           Shadows[pick - 1], level, progress);
+		if (pd2::HotSample(g_waveLogs)) {
+			plog::Info("map events: event %d wave of %d/%d monster %d in level %d at progress %d", Spire, made, count,
+			           Shadows[pick - 1], level, progress);
+		}
 	}
 	if (progress > 90) {
 		EndSpire(game, level);
@@ -351,7 +356,9 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t pr
 		return;
 	}
 	if (!FindSpot(room, xy, size)) {
-		plog::Warn("map events: event %d found no spot for %d in level %d (%u)", event, id, level, ++g_noSpot);
+		if (pd2::HotSample(g_noSpot)) {
+			plog::Warn("map events: event %d found no spot for %d in level %d (%u)", event, id, level, g_noSpot.load());
+		}
 		return;
 	}
 	// PD2's Void/Tomb places xactportal_gold here and one in level 207, then links the two (0x1038a510); D2R's portal
@@ -360,7 +367,9 @@ auto SpawnEvent(Game* game, void* room, int32_t level, int32_t rooms, int32_t pr
 	                   : event == Altar ? SpawnObjectAt(game, room, xy[0], xy[1], ShardAltar)
 	                                    : SpawnMonsterAt(game, room, xy, id);
 	if (made == nullptr) {
-		plog::Warn("map events: event %d could not place %d at (%d, %d) in level %d", event, id, xy[0], xy[1], level);
+		if (pd2::HotSample(g_placeFails)) {
+			plog::Warn("map events: event %d could not place %d at (%d, %d) in level %d", event, id, xy[0], xy[1], level);
+		}
 		return;
 	}
 	Set(game, SpawnsKey, spawns + 1);
@@ -894,14 +903,18 @@ auto SpireShadowDied(Game* game, Unit* monster, int32_t level, uint32_t* seed) n
 	const int32_t row = d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(ItemRowByCode)(
 		dataFlag, D2RL::Items::MakeItemCode(key[0], key[1], key[2], ' '));
 	if (row < 0) {
-		plog::Warn("map events: event %d shadow %d died, no item \"%s\"", Spire, classId, key);
+		if (pd2::HotSample(g_noItem)) {
+			plog::Warn("map events: event %d shadow %d died, no item \"%s\"", Spire, classId, key);
+		}
 		return;
 	}
 	// shortcut: the roll uses the monster's seed and the key drops at the monster, not through PD2's spot search
 	// (0x1036ebc0); only a drop that worked counts, as in PD2
 	if (d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(DropItemAt)(
 			game, monster, row, QualityNormal, 0, 0) == nullptr) {
-		plog::Warn("map events: event %d shadow %d: the %s drop failed in level %d", Spire, classId, key, level);
+		if (pd2::HotSample(g_dropFails)) {
+			plog::Warn("map events: event %d shadow %d: the %s drop failed in level %d", Spire, classId, key, level);
+		}
 		return;
 	}
 	Set(game, SpawnsKey, spawns + 1);

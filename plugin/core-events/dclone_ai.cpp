@@ -69,6 +69,8 @@ std::atomic<uint32_t> g_soulCasts {0};
 std::atomic<uint32_t> g_soulCastsBy[LastSoul - FirstSoul + 1][3] {};
 std::atomic<uint32_t> g_soulDeaths {0};
 std::atomic<uint32_t> g_thinks {0};
+std::atomic<uint32_t> g_phaseLogs {0};  // the boss phase lines, sampled
+std::atomic<uint32_t> g_soulRestores {0};
 std::atomic<uint32_t> g_phases {0};
 std::atomic<uint32_t> g_novas {0};
 std::atomic<uint32_t> g_waves {0};
@@ -108,7 +110,9 @@ auto SetImmune(Game* game, Unit* unit, bool on) noexcept -> void {
 		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetStateGfxFlag)(unit, StateResistAll, 1);
 	}
 	immune = on ? 1 : 0;
-	plog::Info("dclone: immune %s", on ? "on" : "off");
+	if (pd2::HotSample(g_phaseLogs)) {
+		plog::Info("dclone: immune %s", on ? "on" : "off");
+	}
 }
 
 // The live monsters in a level: any add alive, and the ones (not Dclone) standing on the centre spot
@@ -216,7 +220,9 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	const int32_t novas = Stat(unit, StatCooldown1);
 	// PD2 aims the path at the centre (0x103331e0) before the run: UberDiabRun's start (srvst 71) keeps that point
 	const auto runToCentre = [&]() {
-		plog::Info("dclone: run to the centre, %d away (squared)", Dist2(unit, Centre().x, Centre().y));
+		if (pd2::HotSample(g_phaseLogs)) {
+			plog::Info("dclone: run to the centre, %d away (squared)", Dist2(unit, Centre().x, Centre().y));
+		}
 		d2r::Engine<void (*)(void*, int32_t, int32_t) noexcept>(d2r::rva::PathSetTargetXY)(
 			At<void*>(unit, d2r::rva::UnitPath), Centre().x, Centre().y);
 		Cast(game, unit, m.Skill(7), m.Mode(7), nullptr, Centre().x, Centre().y, 50);
@@ -241,7 +247,9 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 			for (int i = 0; i < count; ++i) {
 				KillQuietly(game, onSpot[i]);
 			}
-			plog::Info("dclone: teleport onto the centre, %d away (squared), %d on the spot killed", d, count);
+			if (pd2::HotSample(g_phaseLogs)) {
+				plog::Info("dclone: teleport onto the centre, %d away (squared), %d on the spot killed", d, count);
+			}
 			Cast(game, unit, m.Skill(8), m.Mode(8), nullptr, Centre().x, Centre().y, 50);
 			return;
 		}
@@ -250,8 +258,10 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		SetStat(unit, StatColdPierce, cold);
 		SetStat(unit, StatCooldown1, novas - 1);
 		++g_novas;
-		plog::Info("dclone: nova %d of %d (phase %d), cold mastery and pierce %d", m.Aip(5) - novas, m.Aip(5) - 1,
-		           phase, cold);
+		if (pd2::HotSample(g_phaseLogs)) {
+			plog::Info("dclone: nova %d of %d (phase %d), cold mastery and pierce %d", m.Aip(5) - novas, m.Aip(5) - 1,
+			           phase, cold);
+		}
 		Cast(game, unit, m.Skill(5), m.Mode(5), target, 0, 0, delay);
 		SetImmune(game, unit, true);
 		return;
@@ -340,7 +350,8 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 			static std::atomic<int64_t> lastLog[LastSoul - FirstSoul + 1] {};
 			const int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
 			                        std::chrono::steady_clock::now().time_since_epoch()).count();
-			if (int64_t prev = lastLog[soul].load(); now - prev >= 1000 && lastLog[soul].compare_exchange_strong(prev, now)) {
+			if (int64_t prev = lastLog[soul].load();
+			    now - prev >= 1000 && lastLog[soul].compare_exchange_strong(prev, now) && pd2::HotSample(g_soulRestores)) {
 				plog::Info("dclone: soul %d life restored from %d to %d", soul + 1, life, max);
 			}
 		}

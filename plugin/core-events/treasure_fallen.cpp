@@ -12,6 +12,7 @@
 
 #include "ai_common.h"
 #include "ai_hooks.h"
+#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"
@@ -118,7 +119,9 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 			if (Drop(game, unit, killer)) {  // no player: nothing is counted, the next tick tries again
 				++c->n;
 				g_hitDrops.fetch_add(1);
-				plog::Info("treasure fallen: hit drop %d of 9 at %d%% life (unit %u)", c->n, pct, At<uint32_t>(unit, UnitIdField));
+				if (pd2::HotSample(g_hitDrops.load())) {  // already counted above
+					plog::Info("treasure fallen: hit drop %d of 9 at %d%% life (unit %u)", c->n, pct, At<uint32_t>(unit, UnitIdField));
+				}
 			}
 		}
 	}

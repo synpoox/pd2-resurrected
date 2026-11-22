@@ -90,7 +90,9 @@ auto SrvDoSplitThrow(Game* game, Unit* unit, int32_t skillId, int32_t level) noe
 	const int column = MissileColumn(unit, skillId, skill);
 	const int32_t missile = At<int16_t>(skill, d2r::rva::SkSrvMissileA + column * 2);
 	if (!d2r::ValidMissile(dataFlag, missile)) {
-		plog::Warn("split throw: skill %d has no valid srvmissile column %d (row %d)", skillId, column, missile);
+		if (static std::atomic<bool> logged {false}; !logged.exchange(true)) {  // bad table data repeats every cast
+			plog::Warn("split throw: skill %d has no valid srvmissile column %d (row %d)", skillId, column, missile);
+		}
 		return 0;
 	}
 	const int32_t count = ClampCount(d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc1, skillId, level));
@@ -142,7 +144,9 @@ auto SrvDoMultipleShot(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 	const int column = MissileColumn(unit, skillId, skill);
 	const int32_t missile = At<int16_t>(skill, d2r::rva::SkSrvMissileA + column * 2);
 	if (!d2r::ValidMissile(dataFlag, missile)) {
-		plog::Warn("multiple shot: skill %d has no valid srvmissile column %d (row %d)", skillId, column, missile);
+		if (static std::atomic<bool> logged {false}; !logged.exchange(true)) {  // bad table data repeats every cast
+			plog::Warn("multiple shot: skill %d has no valid srvmissile column %d (row %d)", skillId, column, missile);
+		}
 		return 0;
 	}
 	const int32_t count = ClampCount(d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc1, skillId, level));
@@ -195,7 +199,9 @@ auto CltDoSplitThrow(Unit* unit, int32_t skillId, int32_t level) noexcept -> int
 	const int column = MissileColumn(unit, skillId, skill);
 	const int32_t missile = At<int16_t>(skill, d2r::rva::SkCltMissileA + column * 2);
 	if (!d2r::ValidMissile(dataFlag, missile)) {
-		plog::Warn("split throw client: skill %d has no valid cltmissile column %d (row %d)", skillId, column, missile);
+		if (static std::atomic<bool> logged {false}; !logged.exchange(true)) {  // bad table data repeats every cast
+			plog::Warn("split throw client: skill %d has no valid cltmissile column %d (row %d)", skillId, column, missile);
+		}
 		return 0;
 	}
 	const int32_t count = ClampCount(d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, d2r::rva::SkCalc1),
@@ -821,7 +827,9 @@ auto SrvDoDesecrate(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 		any = RaiseList(dataFlag, tables, FallbackLevels[d2r::RandomBelow(seed, static_cast<uint32_t>(std::size(FallbackLevels)))], normal, list);
 	}
 	if (!any) {
-		plog::Warn("desecrate: no monster to raise for level %d", levelId);
+		if (static std::atomic<bool> logged {false}; !logged.exchange(true)) {  // bad table data repeats every cast
+			plog::Warn("desecrate: no monster to raise for level %d", levelId);
+		}
 		return 0;
 	}
 	const int32_t count = ClampCount(d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level));
@@ -1735,7 +1743,9 @@ auto SrvDoPoisonDagger(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 	}
 	const int32_t missile = At<int16_t>(skill, SkSrvMissileA);
 	if (!d2r::ValidMissile(dataFlag, missile)) {
-		plog::Warn("poison dagger: skill %d has no valid srvmissilea (row %d)", skillId, missile);
+		if (static std::atomic<bool> logged {false}; !logged.exchange(true)) {  // bad table data repeats every cast
+			plog::Warn("poison dagger: skill %d has no valid srvmissilea (row %d)", skillId, missile);
+		}
 		return ran;
 	}
 	const int32_t poison = SkillPoison(unit, skillId, level);
@@ -3424,7 +3434,7 @@ std::atomic<uint32_t> g_heldRequests {0};
 constexpr int32_t SrvDoBladeFury = 48;
 constexpr int32_t Uninterruptable = 54;  // states.txt uninterruptable: PD2 refuses before its own rules
 constexpr int32_t StateConcentration = 42, PlrModeRun = 3;
-constexpr uint32_t GateLogLines = 400;
+constexpr uint32_t GateLogLines = 30;
 std::atomic<uint32_t> g_gateLogs {0};
 
 // The first `n` calls while PD2R_HOT_LOGS=1, for logs a game check needs several lines of
@@ -4068,7 +4078,7 @@ void SmiteCrushingBlow(Game* game, Unit* unit, Unit* target, uint8_t* damage, in
 		result = d2r::Engine<int32_t (*)(Game*, Unit*, Unit*, d2r::CrushingBlowArgs*) noexcept>(
 			d2r::rva::CrushingBlowApply)(game, unit, target, &args);
 	}
-	if (First(g_smiteEvents, 200)) {
+	if (First(g_smiteEvents, 30)) {
 		plog::Info("smite event: event %d skill %d level %d on unit type %d, frame %d: chance %d (crushingblow %d + "
 		           "calc3 %d), roll %d, blow %d, event %u",
 		           d2r::rva::EventDoMeleeDamage, SkillSmite, level, At<int32_t>(unit, d2r::rva::UnitType),
@@ -4692,6 +4702,7 @@ auto SrvDoLucionDash(Game* game, Unit* unit, int32_t skillId, int32_t level) noe
 // --- Lucion's client halves (PD2 cltdo 113 at 0x103ac1e0, cltdo 114 at 0x103ac270; #488) ---------------------------
 std::atomic<uint32_t> g_lucionBlinkClients {0};
 std::atomic<uint32_t> g_lucionDashClients {0};
+std::atomic<uint32_t> g_lucionLandingClients {0};
 
 // PD2's client ring call (0x1036d370): `count` of the skill's client missile `column` at x/y, for a valid row and a
 // count above 0.
@@ -4797,7 +4808,9 @@ auto CltDoLucionDash(Unit* unit, int32_t skillId, int32_t level) noexcept -> int
 	if (dx * dx + dy * dy <= 4) {
 		*armed = {};
 		const int32_t created = ClientRing(unit, skill, SkCltMissileA + 2, SkCltCalc2, x, y, skillId, level);
-		plog::Info("lucion dash client: skill %d level %d landed at %d,%d: %d missiles", skillId, level, x, y, created);
+		if (pd2::HotSample(g_lucionLandingClients)) {
+			plog::Info("lucion dash client: skill %d level %d landed at %d,%d: %d missiles", skillId, level, x, y, created);
+		}
 	}
 	return ran;
 }

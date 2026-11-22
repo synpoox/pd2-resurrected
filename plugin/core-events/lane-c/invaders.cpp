@@ -28,6 +28,7 @@
 #include "ai_hooks.h"
 #include "corruption_roll.h"
 #include "invader_dress.h"
+#include "hot_log.h"
 #include "log.h"
 #include "map_events.h"
 
@@ -77,6 +78,9 @@ std::atomic<uint32_t> g_closed {0};
 std::atomic<uint32_t> g_deaths {0};
 std::atomic<uint32_t> g_drops {0};
 std::atomic<uint32_t> g_noTc {0};
+std::atomic<uint32_t> g_noTcLogs {0};
+std::atomic<uint32_t> g_noPortalSpot {0};
+std::atomic<uint32_t> g_spawnLogs {0}, g_dressLogs {0}, g_dropLogs {0}, g_deathLogs {0};  // sampled lines
 std::atomic<uint32_t> g_held {0};      // items rolled at spawn and held
 std::atomic<uint32_t> g_released {0};  // held items put on the floor at death
 std::atomic<uint32_t> g_lost {0};      // held items with no unit or no floor spot at death
@@ -267,7 +271,9 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 		usedX = x + step[0], usedY = y + step[1];
 	}
 	if (invader == nullptr) {
-		plog::Warn("invaders: no %s at the portal (%d, %d)", ClassNames[which], x, y);
+		if (pd2::HotSample(g_noPortalSpot)) {
+			plog::Warn("invaders: no %s at the portal (%d, %d)", ClassNames[which], x, y);
+		}
 		Idle(game, unit, aidel);
 		return;
 	}
@@ -280,8 +286,10 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	const int32_t n = ++Counter(game, InvadersKey);
 	MapEventNotify(game, InvadersEvent, NotifyKeys[which]);
 	const int32_t finished = Counter(game, FinishedKey);
-	plog::Info("invaders: %s (class %d) at (%d, %d), invader %d, portals closed %d, %u spawned", ClassNames[which],
-	           FirstInvader + which, usedX, usedY, n, finished, g_spawned.load());
+	if (pd2::HotSample(g_spawnLogs)) {
+		plog::Info("invaders: %s (class %d) at (%d, %d), invader %d, portals closed %d, %u spawned", ClassNames[which],
+		           FirstInvader + which, usedX, usedY, n, finished, g_spawned.load());
+	}
 	const bool close = finished == 0 ? n != 0 : finished == 1 ? n > 2 : n >= 5;
 	if (close) {
 		++Counter(game, FinishedKey);
@@ -310,7 +318,9 @@ auto DropTc(Game* game, Unit* monster, Unit* killer, const char* name, Unit** it
 	                              : nullptr;
 	if (tc == nullptr) {
 		++g_noTc;
-		plog::Warn("invaders: no TC \"%s\"", name);
+		if (pd2::HotSample(g_noTcLogs)) {
+			plog::Warn("invaders: no TC \"%s\"", name);
+		}
 		return false;
 	}
 	const int32_t ilvl = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(monster, StatLevel, 0);
@@ -460,10 +470,12 @@ void RollGear(Game* game, Unit* invader, Unit* player, int32_t which) noexcept {
 	}
 	const uint32_t id = At<uint32_t>(invader, UnitIdField);
 	g_held.fetch_add(static_cast<uint32_t>(held.size()));
-	plog::Info("invaders: %s #%u holds %zu items, %d still in a room (weapon set %s%s):%s", ClassNames[which], id, held.size(),
-	           onFloor, set, missing != 0 ? ", some TCs missing" : "", line);
-	plog::Info("invaders: %s #%u dressed: %d shown, %d not shown; parts HD TR LG RA LA RH LH SH S1-S8 = %s", ClassNames[which], id,
-	           look.shown, look.unshown, hex);
+	if (pd2::HotSample(g_dressLogs)) {
+		plog::Info("invaders: %s #%u holds %zu items, %d still in a room (weapon set %s%s):%s", ClassNames[which], id, held.size(),
+		           onFloor, set, missing != 0 ? ", some TCs missing" : "", line);
+		plog::Info("invaders: %s #%u dressed: %d shown, %d not shown; parts HD TR LG RA LA RH LH SH S1-S8 = %s", ClassNames[which], id,
+		           look.shown, look.unshown, hex);
+	}
 	const std::lock_guard lock(g_heldLock);
 	g_heldItems[HeldKey(game, id)] = std::move(held);
 }
@@ -504,8 +516,10 @@ auto DropHeld(Game* game, Unit* monster, int32_t which) noexcept -> bool {
 	}
 	g_released.fetch_add(static_cast<uint32_t>(held.size()) - lost);
 	g_lost.fetch_add(lost);
-	plog::Info("invaders: %s #%u dropped %zu held items%s:%s", ClassNames[which], At<uint32_t>(monster, UnitIdField),
-	           held.size() - lost, lost != 0 ? " (some with no unit or spot, left to the game)" : "", line);
+	if (pd2::HotSample(g_dropLogs)) {
+		plog::Info("invaders: %s #%u dropped %zu held items%s:%s", ClassNames[which], At<uint32_t>(monster, UnitIdField),
+		           held.size() - lost, lost != 0 ? " (some with no unit or spot, left to the game)" : "", line);
+	}
 	return true;
 }
 
@@ -564,11 +578,13 @@ void OnInvaderDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	for (int i = 0; parts != nullptr && i < pd2::invader_dress::PartBytes; ++i) {
 		std::snprintf(hex + 3 * i, sizeof(hex) - 3 * i, "%02x ", parts[i]);
 	}
-	plog::Info("invaders: %s (class %d) parts HD TR LG RA LA RH LH SH S1-S8 = %s; weapon drop set: %s", ClassNames[which],
-	           event->monster.classId, hex, set);
-	plog::Info("invaders: %s (class %d) died, ear %.4s %s, %d TC drops%s", ClassNames[which], event->monster.classId,
-	           reinterpret_cast<const char*>(&Ears[which]), ear ? "dropped" : "NOT dropped", tcs,
-	           missing != 0 ? ", some TCs missing" : "");
+	if (pd2::HotSample(g_deathLogs)) {
+		plog::Info("invaders: %s (class %d) parts HD TR LG RA LA RH LH SH S1-S8 = %s; weapon drop set: %s", ClassNames[which],
+		           event->monster.classId, hex, set);
+		plog::Info("invaders: %s (class %d) died, ear %.4s %s, %d TC drops%s", ClassNames[which], event->monster.classId,
+		           reinterpret_cast<const char*>(&Ears[which]), ear ? "dropped" : "NOT dropped", tcs,
+		           missing != 0 ? ", some TCs missing" : "");
+	}
 }
 
 }  // namespace

@@ -40,6 +40,8 @@ static_assert(NihlWaveRow(2, 20, 15, 10) == 2 && NihlWaveRow(21, 20, 15, 10) == 
 
 std::atomic<uint32_t> g_nihlStages {0};
 std::atomic<uint32_t> g_nihlSpawned {0};
+std::atomic<uint32_t> g_phaseLogs {0};  // the wave line, sampled
+std::atomic<uint32_t> g_nihlSpawnLogs {0};
 std::atomic<uint32_t> g_nihlNovas {0};
 std::atomic<uint32_t> g_nihlDeaths {0};
 std::atomic<uint32_t> g_nihlDrops {0};
@@ -150,8 +152,10 @@ auto SpawnWaveMonster(Game* game, Unit* unit, int32_t ux, int32_t uy, uint32_t* 
 	if (leader == nullptr) {
 		return false;
 	}
-	plog::Info("nihlathakMap: wave %s %d at (%d, %d), %d pack mates", WaveKindName[static_cast<int>(kind)], monster, xy[0],
-	           xy[1], mates);
+	if (pd2::HotSample(g_nihlSpawnLogs)) {
+		plog::Info("nihlathakMap: wave %s %d at (%d, %d), %d pack mates", WaveKindName[static_cast<int>(kind)], monster, xy[0],
+		           xy[1], mates);
+	}
 	return true;
 }
 
@@ -232,8 +236,10 @@ auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	g_nihlSpawned += spawned;
 	// The pause: aip5's Normal column, Nightmare's past aip1's first column, Hell's past the first two
 	const int32_t delay = m.Aip(5, i > a0 + a1 + 1 ? 2 : i > a0 + 1 ? 1 : 0);
-	plog::Info("nihlathakMap: stage %d, wave of aip%d: %d normal, %d champion, %d unique, %d spawned (%u so far), "
-	           "delay %d", stage, row, normal, champions, uniques, spawned, g_nihlSpawned.load(), delay);
+	if (pd2::HotSample(g_phaseLogs)) {
+		plog::Info("nihlathakMap: stage %d, wave of aip%d: %d normal, %d champion, %d unique, %d spawned (%u so far), "
+		           "delay %d", stage, row, normal, champions, uniques, spawned, g_nihlSpawned.load(), delay);
+	}
 	Counter(game, StageKey) = stage + 1;
 	Idle(game, unit, delay);
 	const uint32_t r = d2r::RandomBelow(seed, 3);

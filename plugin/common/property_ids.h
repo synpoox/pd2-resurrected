@@ -7,6 +7,7 @@
 
 #include "log.h"
 
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <map>
@@ -100,10 +101,12 @@ inline void Init(const D2RL::PluginContext* context) {
 inline auto Resolve(const char* code) -> int {
 	const auto it = g_ids.find(std::string_view(code));
 	if (it == g_ids.end()) {
-		plog::Error("property ids: no properties.txt row for code \"%s\"; the feature that needs it is off", code);
+		static std::atomic<uint32_t> failures {0};  // a caller on a hot path can ask again for a missing code
+		if (plog::Sample(failures)) {
+			plog::Error("property ids: no properties.txt row for code \"%s\"; the feature that needs it is off", code);
+		}
 		return -1;
 	}
-	plog::Info("property ids: %s = %d", code, it->second);
 	return it->second;
 }
 
