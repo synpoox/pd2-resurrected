@@ -16,7 +16,7 @@ tools (`game_slots.py`, `game_ctl.py`, `game_checks.py`; its [`testing/README.md
   touch a slot instead of using its default config.
 - Use Reign of the Warlock characters for PD2 gameplay checks. For a native-mode inventory check, create a
   fresh character with **Classic** or **Lord of Destruction** selected under Game Version. LoD characters
-  have an X badge on character select. Both modes read `excel/base/` and share the mod's inventory geometry.
+  have an X badge on character select. Both modes read `excel/base/`, which the build fills with the mod's tables (#1853).
   Use a fresh character for each mode. Changing a character's mode with the console has crashed the game (#442).
 - A slot's saves are in `Saved Games\Diablo II Resurrected\mods\PD2Resurrected-Slot<N>`. Test characters follow
   AGENTS.md's testing rules.

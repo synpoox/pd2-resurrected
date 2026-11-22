@@ -21,11 +21,34 @@ Fix: `InBank` reads the unit's bank (`d2r::api.unitDataFlag`, the same value as 
 1 Classic, 2 LoD, 3 RotW). It counts that bank's ItemStatCost rows through the SDK's DataTableService and skips a
 stat past them. core-rules logs `op bases: data flag 2 reads 368 itemstatcost rows: no equipped_eth or missing_hp
 there` for LoD, and `data flag 3 reads 653 itemstatcost rows` for RotW, where the op bases still run.
+LoD players lose nothing from that gate today: equipped_eth and missing_hp only feed PD2 items' op stats.
 
-## Gaps between the banks
+## One set of tables for every bank (#1853)
 
-The mod ships only `armor.txt`, `weapons.txt` and `inventory.txt` in `excel/base/` (#1548). For every other table, a
-Classic or LoD character plays D2R's own base rows. Row counts (data rows; D2R 95032):
+Owner decision: Classic and LoD characters play the full mod, the same as RotW; existing Classic/LoD saves may break.
+D2R reads `data/global/excel/` for RotW and `data/global/excel/base/` for both Classic (data flag 1) and LoD (2). The
+loader has no way to point a bank at another folder (the SDK's DataTableService is read only), and forcing a unit's
+data flag to 3 would also switch on RotW-only engine rules (stash, Warlock, save layout). So the build ships our
+tables twice: `tools/mirror_base_bank.py` runs after `modkit build` (in `tools/install.ps1` and the release workflow)
+and copies every `out/data/global/excel/*.txt` into `excel/base/`. A table committed in `files/data/global/excel/base/`
+wins: only `inventory.txt` stays there, the Classic/LoD panel geometry (#1548). `armor.txt` and `weapons.txt` left
+`base/`, so both banks number items the same way.
+
+With that, every id a plugin writes (stats past 367, states past 231, PD2 skills, monsters, levels) is in every bank,
+and #1855's write guards are not needed; `InBank` stays as a safety net.
+
+What a Classic or LoD character still can't have:
+
+| RotW-only | Why | Handling |
+|---|---|---|
+| The Warlock | character creation offers it in RotW only | none; ADR 0001 |
+| RotW's shared stash pages | Classic/LoD have 3 stock shared pages | #1854 |
+| Act 5, the Druid and Assassin, and rows with `version` 100 (Classic only) | the engine filters expansion content in Classic games | none: play LoD for the expansion |
+
+## Gaps between the banks (before #1853)
+
+Before #1853 the mod shipped only `armor.txt`, `weapons.txt` and `inventory.txt` in `excel/base/` (#1548). For every
+other table, a Classic or LoD character played D2R's own base rows. Row counts (data rows; D2R 95032):
 
 | Table | D2R base | D2R RotW | Mod (RotW) | In `base/` |
 |---|---|---|---|---|
@@ -54,9 +77,9 @@ rest), but their content is D2R's, not PD2's. `itemstatcost` also differs in 148
 
 | Gap | Evidence | Issue |
 |---|---|---|
-| Base bank is vanilla D2R: no PD2 content | `cheat spawn t11` made nothing; the table above | #1853 |
+| Base bank is vanilla D2R: no PD2 content | `cheat spawn t11` made nothing; the table above | #1853 (fixed: every bank gets our tables) |
 | Stash tabs assume 5 stock shared pages; Classic/LoD have 3 (`Page 1 / 18` with `add_shared_tabs = 15`), so pages 18 and 19 don't exist | Bossing tab shown, `shared page 20 on show (all 79 arrows sent)` | #1854 |
-| Other PD2-only stat and state writes on Classic/LoD units | `BC_ASSERT: nShift >= 0 && nShift < DataTablesGetNumStates(UnitGetGameVersion(hUnit))` | #1855 |
+| Other PD2-only stat and state writes on Classic/LoD units | `BC_ASSERT: nShift >= 0 && nShift < DataTablesGetNumStates(UnitGetGameVersion(hUnit))` | #1855 (gone with #1853: every bank holds the ids) |
 | core-events looks up PD2 treasure classes | `key drops: no TC "lucdN" (100 so far)` | #1856 |
 
 Not seen as a problem: inventory, personal stash, shared stash, gold, level, quests and identified rare items all

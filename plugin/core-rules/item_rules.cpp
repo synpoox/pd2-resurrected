@@ -291,7 +291,8 @@ std::atomic<uint32_t> g_statRows[4] {};  // itemstatcost rows per data flag (the
 
 // Game thread. PD2's stats past D2R's 368 exist only in the RotW bank. A Classic or LoD character reads the base bank,
 // and a stat id past it fails its extended save ("encoding-error=yes", #1825), so such a unit never gets one.
-// shortcut: the count is read once per bank; tables reload only at game start, so it holds.
+// shortcut: the count is read once per bank and not keyed on DataTablesLoadedEvent.revision; row counts are fixed per
+// process, so it holds. Key it on the revision if a table reload ever changes a bank's row count.
 auto InBank(Unit* unit, uint32_t stat) noexcept -> bool {
 	const uint32_t flag = d2r::api.unitDataFlag(unit);
 	if (g_tables == nullptr || flag >= std::size(g_statRows)) {
@@ -302,6 +303,10 @@ auto InBank(Unit* unit, uint32_t stat) noexcept -> bool {
 		D2RL::DataTables::TableView view {.structSize = D2RL::DataTables::TableViewSize};
 		if (g_tables->getTable(g_context, static_cast<D2RL::DataTables::Bank>(flag), D2RL::DataTables::TableId::ItemStatCost,
 		                       &view) != D2RL::DataTables::Result::Success) {
+			static std::atomic<bool> warned {false};
+			if (flag != 0 && !warned.exchange(true)) {
+				plog::Warn("op bases: no itemstatcost view for data flag %u: equipped_eth and missing_hp are off there", flag);
+			}
 			return false;
 		}
 		rows = view.rowCount;

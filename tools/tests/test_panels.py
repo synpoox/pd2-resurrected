@@ -71,20 +71,6 @@ class PanelsTests(unittest.TestCase):
                 row = next(row for row in base if row["class"] == player_class + suffix)
                 self.assertEqual((row["gridX"], row["gridY"]), ("10", "8"), row["class"])
 
-    def test_native_item_ordinals_match_the_rotw_client(self):
-        need(self)
-        for table, reserved in (("weapons", 13), ("armor", 2)):
-            with self.subTest(table=table):
-                base = rows(f"base/{table}")
-                rotw = rows(table)
-                self.assertEqual([row["code"] for row in base], [row["code"] for row in rotw])
-                self.assertTrue(all(not row["name"].startswith("Reserved RotW item") for row in base[:-reserved]))
-                for row in base[-reserved:]:
-                    self.assertEqual(row["name"], f"Reserved RotW item ({row['code']})")
-                    self.assertEqual((row["version"], row["spawnable"]), ("100", "0"))
-                    self.assertTrue(all(not value for field, value in row.items()
-                                        if field not in {"name", "code", "version", "spawnable"}))
-
     def test_taller_tiles_the_strip_at_the_row(self):
         img = Image(1, 5)
         for y in range(5):

@@ -45,5 +45,5 @@ feed_tag = "catalog"
 min_launcher_version = "0.1.0"
 loader_versions = ["1.3.1-beta"]
 required_settings = [{file = "d2rloader/config/d2rloader.toml", key = "d2rcore.save_format.mode", value = "extended"}]
-save_breaking = false
+save_breaking = true  # #1853: Classic/LoD characters read the mod's tables now
 upcoming = ["project-09", "project-forever"]
