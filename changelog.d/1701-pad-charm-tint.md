@@ -1,0 +1,1 @@
+- Controller inventory shows the charm-row tint on rows 5-8, as the mouse layout does. (#1701)

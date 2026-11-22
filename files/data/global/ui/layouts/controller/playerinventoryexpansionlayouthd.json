@@ -16,6 +16,9 @@
             },
         },
         {
+            "type": "ImageWidget", "name": "charm_tint",
+        },
+        {
             "type": "ImageWidget", "name": "background_right_arm_selected",
             "fields": {
                 "rect": { "x": 215, "y": 134 },

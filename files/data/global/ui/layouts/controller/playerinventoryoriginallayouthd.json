@@ -22,6 +22,14 @@
             },
         },
         {
+            // PD2R #1701: tint over inventory rows 5-8 (the charm area), as the mouse layout; grid y + 4 * 98
+            "type": "ImageWidget", "name": "charm_tint",
+            "fields": {
+                "rect": { "x": 216, "y": 1285 },
+                "filename": "PANEL/pd2r/inventory_charm_tint"
+            },
+        },
+        {
             "type": "TextBoxWidget", "name": "gold_amount",
             "fields": {
                 "rect": { "x": 605, "y": 1726, "width": 257, "height": 48 },
