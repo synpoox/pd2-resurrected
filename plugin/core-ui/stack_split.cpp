@@ -305,8 +305,7 @@ auto Query(const Service*& service, bool (*has)(const Service*, uint32_t), uint3
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	g_context = context;
 	const D2RL::LifecycleService* lifecycle = nullptr;
-	sigscan::Entry* const sigs[] = {&d2r::sig::ItemIsType};
-	sigscan::Resolve(sigs, 1, context->exeBase, nullptr, 0);
+	// d2r::Bind resolved it (with the build cache: core-rules hooks its entry, so a fresh scan would miss it)
 	if (d2r::sig::ItemIsType.state != sigscan::State::Ok) {
 		std::snprintf(report, size, "FAILED (signature ItemIsType %s)", sigscan::StateText(d2r::sig::ItemIsType.state));
 		return;
