@@ -595,8 +595,15 @@ void Withdraw(D2RL::PlayerHandle player, const Noted& noted) noexcept {
 		}
 	}
 	// An item with no home (Uber Ancients keys, #1785) has nowhere to route to: the rest stays in the inventory
-	const bool home = (split == items::Result::Success || busy) && aff::HomeOf(item.code).category != aff::Category::None &&
-	                  Route(player, item);
+	// A busy cursor, or a second homeless stack in the same pass, stays whole and is not retried. The guard also keeps
+	// Route off At(0, -1, -1), out of bounds for a homeless code.
+	const bool homeless = aff::HomeOf(item.code).category == aff::Category::None;
+	const bool home = (split == items::Result::Success || busy) && !homeless && Route(player, item);
+	if (homeless && split == items::Result::Success) {  // publishes the rest's native count (SetQuantity); the client still draws 1
+		const items::ItemDestination back {.structSize = items::ItemDestinationSize, .container = C::Inventory,
+		                                   .placement = items::Placement::Automatic};
+		Move(player, item.handle, back);
+	}
 	// #1772: the source's move home made it the client's cursor item and put it down (ResendCursor), so the piece (or a
 	// busy cursor's item) was held but not drawn; send the cursor item again after that last move
 	items::ItemInfo cursor {.structSize = items::ItemInfoSize};
