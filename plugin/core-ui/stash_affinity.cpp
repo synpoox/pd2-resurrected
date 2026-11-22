@@ -539,7 +539,7 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item, bool topUp = false) 
 // A stack past aff::WithdrawMax new in the inventory (#1763: Ctrl+click out of the stash, or a hand pick-up put down):
 // WithdrawMax of it split onto the cursor (the SDK moves no cursor item, so it stays there), the rest back home through
 // Route, topping the cell's stack up. A busy cursor sends the whole stack home; a failed split keeps it in the inventory
-// (it could never be taken out otherwise) and logs the result. Only counts moved between the two items: nothing made or lost.
+// (it could never be taken out otherwise) and logs the result. Only counts move between the two items, checked by reading them back.
 void Withdraw(D2RL::PlayerHandle player, const Noted& noted) noexcept {
 	items::ItemInfo item {.structSize = items::ItemInfoSize};
 	if (g_items->getItemInfo(g_context, noted.handle, &item) != items::Result::Success) {
@@ -548,29 +548,56 @@ void Withdraw(D2RL::PlayerHandle player, const Noted& noted) noexcept {
 	const int32_t had = Quantity(item.handle);
 	D2RL::ItemHandle held = D2RL::InvalidItemHandle;
 	items::Result split = items::Result::Conflict;
-	bool busy = true;
+	bool busy = true, sums = true;
 	if (g_inventory->getCursorItem(g_context, player, &held) == D2RL::Inventory::Result::NotFound) {  // NotFound: an empty cursor
 		const items::SplitStackRequest request1 {.structSize = items::SplitStackRequestSize, .player = player,
 		                                         .sourceItem = item.handle, .quantity = 1};
 		items::SplitStackResult result {.structSize = items::SplitStackResultSize};
 		busy = false;
-		// splitStack refuses a source past its maxstack (Unavailable, Slot5): split 1 off a stack of 2, then set both counts
-		// the source's rest is past 50 and only the native write sets it: without SetUnitStat nothing is touched
-		split = d2r::sig::SetUnitStat.rva == 0 ? items::Result::Unsupported : SetQuantity(player, item.handle, 2);
-		if (split == items::Result::Success) {
-			split = g_items->splitStack(g_context, &request1, &result);
-			const bool cut = split == items::Result::Success;
-			if (cut) {
-				split = SetQuantity(player, result.cursorItem, aff::WithdrawMax);
+		// splitStack refuses a source past its maxstack (Unavailable, Slot5): split 1 off a stack of 2, then set both counts.
+		// The source's rest is past 50 and only the native write sets it: without SetUnitStat nothing is touched. Every
+		// failure puts the counts back from what is read, never assumed, and keeps the source in the inventory.
+		D2RL::ItemHandle piece = D2RL::InvalidItemHandle;
+		if (d2r::sig::SetUnitStat.rva == 0 || had <= aff::WithdrawMax) {
+			split = items::Result::Unsupported;
+		} else if ((split = SetQuantity(player, item.handle, 2)) != items::Result::Success) {
+			if (SetQuantity(player, item.handle, had) != items::Result::Success) {
+				plog::Warn("affinity: %08x x%d: set to 2 failed and the count could not be put back", item.code, had);
 			}
-			// the source keeps the rest: had - 50 after a full withdrawal, had - 1 when the piece stayed 1, had when no split
-			SetQuantity(player, item.handle, had - (split == items::Result::Success ? aff::WithdrawMax : cut ? 1 : 0));
+		} else if ((split = g_items->splitStack(g_context, &request1, &result)) != items::Result::Success) {
+			if (SetQuantity(player, item.handle, had) != items::Result::Success) {
+				plog::Warn("affinity: %08x x%d: split failed and the count could not be put back", item.code, had);
+			}
+		} else {
+			piece = result.cursorItem;  // source 1, piece 1
+			if ((split = SetQuantity(player, item.handle, had - aff::WithdrawMax)) != items::Result::Success) {
+				if (SetQuantity(player, item.handle, had - 1) != items::Result::Success) {
+					plog::Warn("affinity: %08x x%d: source write failed, piece 1, source %d", item.code, had, Quantity(item.handle));
+				}
+			} else if ((split = SetQuantity(player, piece, aff::WithdrawMax)) != items::Result::Success) {
+				int32_t got = Quantity(piece);  // 0: unreadable
+				if (got <= 0) {
+					const items::ItemEdit one {.structSize = items::ItemEditSize,
+					                           .fields = items::EditFieldBit(items::EditField::Quantity), .quantity = 1};
+					got = g_items->editItem(g_context, player, piece, &one) == items::Result::Success ? Quantity(piece) : 0;
+				}
+				if (got <= 0 || SetQuantity(player, item.handle, had - got) != items::Result::Success) {
+					plog::Warn("affinity: %08x x%d: piece write failed, piece %d, source %d", item.code, had, got, Quantity(item.handle));
+				}
+			}
+		}
+		// self-check, read back: the two items hold what the stack had
+		const int32_t source = Quantity(item.handle), cut = piece != D2RL::InvalidItemHandle ? Quantity(piece) : 0;
+		sums = source + cut == had;
+		if (!sums) {
+			plog::Error("affinity: %08x withdrawal does not add up: had %d, source %d + piece %d", item.code, had, source, cut);
+			split = split == items::Result::Success ? items::Result::Conflict : split;
 		}
 	}
 	const bool home = (split == items::Result::Success || busy) && Route(player, item, true);
-	plog::Info("affinity: %08x x%d taken out of the stash: %d to the cursor (split result %u), the rest %s", item.code, had,
-	           split == items::Result::Success ? aff::WithdrawMax : 0, static_cast<uint32_t>(split),
-	           home ? "back home" : "kept in the inventory");
+	plog::Info("affinity: %08x x%d taken out of the stash: %d to the cursor (split result %u, counts %s), the rest %s", item.code,
+	           had, split == items::Result::Success ? aff::WithdrawMax : 0, static_cast<uint32_t>(split),
+	           busy ? "untouched" : sums ? "add up" : "DO NOT add up", home ? "back home" : "kept in the inventory");
 	if (!home && g_kept.count < MaxNoted) {
 		g_kept.item[g_kept.count++] = noted;
 	}
