@@ -9,7 +9,7 @@ core-ui's `hotkeys` part gives the inventory, stash and Cube PD2's mouse binds (
 | `cube` | Ctrl + Shift + right click | Moves the item to the Cube (back from the Cube), even with the Cube closed and any other panel open |
 | `identify` | Shift + left click | Identifies the item with a Horadric Almanac, a Tome of Identify (one charge, never its last) or a Scroll of Identify in the inventory |
 
-Ctrl + Shift + left click does nothing while `cube` is on: D2R's own quick-move into the Cube leaves the item unable to stack or move (#1815). A move that has no room leaves the item where it was. The stash move still needs the stash panel open (no remote stash). Every action plays its game sound: the item drop sound for drop and moves, the identify cursor sound for identify. Shift + left click on an identified item is still D2R's own equip. Host and single player only.
+A move that has no room leaves the item where it was. The stash move still needs the stash panel open (no remote stash). Every action plays its game sound: the item drop sound for drop and moves, the identify cursor sound for identify. Shift + left click on an identified item is still D2R's own equip. Host and single player only.
 
 ## Stack split
 
