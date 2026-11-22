@@ -12,6 +12,30 @@ namespace pd2::stashstack {
 inline constexpr int32_t TabMax = 255;
 inline constexpr int32_t DefaultLimit = 99;
 
+// The limit in force for a `set_materials_limit` read from the toml (-1: no key)
+constexpr auto LimitOf(int32_t raw) noexcept -> int32_t {
+	return raw < 1 ? DefaultLimit : raw > TabMax ? TabMax : raw;
+}
+
+// Whether a string-table template takes exactly two ints (`%d`) and nothing else, so it can format count and limit (#1827)
+constexpr auto TwoInts(const char* text) noexcept -> bool {
+	int32_t ints = 0;
+	for (; text != nullptr && *text != '\0'; ++text) {
+		if (*text != '%') {
+			continue;
+		}
+		if (text[1] == '%') {
+			++text;
+		} else if (text[1] == 'd') {
+			++ints;
+			++text;
+		} else {
+			return false;
+		}
+	}
+	return ints == 2;
+}
+
 // How many items a stack of `quantity` is
 constexpr auto Units(int32_t quantity) noexcept -> int32_t {
 	return quantity < 1 ? 1 : quantity;

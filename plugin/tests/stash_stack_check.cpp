@@ -23,6 +23,14 @@ int main() {
 	check("not local: 50 onto 250 is refused", !Takes(250, 50, 255, false));
 	check("not local: 5 onto 250 is taken", Takes(250, 5, 255, false));
 	check("local: 10 onto 255 is refused", !Takes(255, 10, 255, true));
+	check("no limit key is 99", LimitOf(-1) == 99);
+	check("a limit of 300 is 255", LimitOf(300) == 255);
+	check("a limit of 120 stays", LimitOf(120) == 120);
+	check("'Quantity: %d of %d' takes two ints", TwoInts("Quantity: %d of %d"));
+	check("'%d%% of %d' takes two ints", TwoInts("%d%% of %d"));
+	check("'%s: %d' is refused", !TwoInts("%s: %d"));
+	check("one int is refused", !TwoInts("Quantity: %d"));
+	check("no template is refused", !TwoInts(nullptr));
 	std::printf(fail == 0 ? "all passed\n" : "%d failed\n", fail);
 	return fail == 0 ? 0 : 1;
 }

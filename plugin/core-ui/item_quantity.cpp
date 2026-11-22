@@ -17,8 +17,12 @@
 
 #include "pd2_engine.h"
 #include "log.h"
+#include "sig_hook.h"
+#include "stash_stack.h"
+#include "stash_toml.h"
 
 #include <D2RLPlugin/item.h>
+#include <D2RLPlugin/localization.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -137,7 +141,61 @@ void Draw(void* widget, Unit* item) noexcept {
 	}
 }
 
+// The Gems/Materials/Runes tab tooltip (#1827). A tab slot is one item with a count byte (item data +0x9c, the cell's
+// number); core-rules' deposit (stash_stacks.cpp) raises that count but the slot item keeps the first stack's quantity
+// stat, so D2R's "Quantity: %d of %d" line (ItemStats1i, 0x2c1e50: stat 70 of the item's maxstack) read e.g. 20 of 50 on a
+// cell of 32. For a slot item the line is written from the count and set_materials_limit instead. Display only: the
+// stat, the save, and the deposit and withdraw are untouched. Why a hook: the SDK's tooltip listener only adds lines.
+constexpr uint8_t Stats1iEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x20, 0x56, 0x48, 0x81, 0xec, 0x40, 0x01, 0x00, 0x00};
+constexpr const char* Stats1iPattern =
+    "48 89 5c 24 20 56 48 81 ec 40 01 00 00 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 84 24 30 01 00 00 45 33 c0 48 8b f2 48 8b d9 "
+    "41 8d 50 46 e8 ?? ?? ?? ?? 85 c0 7f ?? 48 8b cb e8";
+constexpr int32_t TabCountByte = 0x9c;  // item data (unit +0x10), as D2R's own count read (0x46d9a0)
+constexpr uint32_t LineSize = 0x400;    // the tooltip buffer the line is appended to (strcat_s size in 0x2c1e50)
+using Stats1iFn = void (*)(Unit* item, char* out) noexcept;
+Stats1iFn g_stats1i = nullptr;
+const D2RL::PluginContext* g_context = nullptr;
+const D2RL::LocalizationService* g_strings = nullptr;
+int32_t g_limit = pd2::stashstack::DefaultLimit;
+std::atomic<uint32_t> g_tabLines {0};
+
+auto TabCount(Unit* item) noexcept -> uint8_t {
+	if (item == nullptr || d2r::At<int32_t>(item, d2r::rva::UnitType) != 4) {
+		return 0;
+	}
+	void* data = d2r::At<void*>(item, 0x10);
+	return data != nullptr ? d2r::At<uint8_t>(data, TabCountByte) : 0;
+}
+
+void Stats1i(Unit* item, char* out) noexcept {
+	const uint8_t count = TabCount(item);
+	char format[128] {}, newline[16] {};
+	uint32_t need = 0;
+	if (count == 0 || g_strings->getStringByKey(g_context, "ItemStats1i", format, sizeof(format), &need) != D2RL::Localization::Result::Success ||
+	    !pd2::stashstack::TwoInts(format) ||
+	    g_strings->getStringByKey(g_context, "newline", newline, sizeof(newline), &need) != D2RL::Localization::Result::Success) {
+		g_stats1i(item, out);
+		return;
+	}
+	char line[192];
+	std::snprintf(line, sizeof(line), format, static_cast<int32_t>(count), g_limit);
+	strcat_s(out, LineSize, line);
+	strcat_s(out, LineSize, newline);
+	g_tabLines.fetch_add(1, std::memory_order_relaxed);
+}
+
 }  // namespace
+
+void InstallTabTooltip(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	g_context = context;
+	int32_t raw = -1;
+	pd2::stash_toml::Resolve(context->pluginConfigPath, "set_materials_limit", &raw);
+	g_limit = pd2::stashstack::LimitOf(raw);
+	const bool ok = context->QueryService(&g_strings) == D2RL::ServiceQueryResult::Success &&
+	                D2RL::HasLocalizationServiceField(g_strings, D2RL::LocalizationServiceRequiredSize) &&
+	                sigscan::HookBySignature(context, "ItemStats1i", Stats1iPattern, 0, Stats1iEntry, sizeof(Stats1iEntry), Stats1i, &g_stats1i);
+	std::snprintf(report, size, ok ? "tab tooltips show the cell count of %d" : "FAILED (no localization service or ItemStats1i signature)", g_limit);
+}
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	const bool hook = context->InstallInlineHook(GridItemDraw, GridItemDrawEntry, sizeof(GridItemDrawEntry), Draw);
@@ -145,8 +203,8 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 }
 
 void Counters(char* out, size_t size) noexcept {
-	std::snprintf(out, size, "quantity: %u items drawn, %u numbers, %u faults%s", g_drawn.load(), g_numbers.load(),
-	              g_faults.load(), g_on.load() ? "" : " (numbers off)");
+	std::snprintf(out, size, "quantity: %u items drawn, %u numbers, %u faults%s, %u tab tooltip lines", g_drawn.load(), g_numbers.load(),
+	              g_faults.load(), g_on.load() ? "" : " (numbers off)", g_tabLines.load());
 }
 
 }  // namespace item_quantity
