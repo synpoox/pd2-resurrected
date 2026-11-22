@@ -39,6 +39,8 @@
 #include <cstdio>
 #include <cstring>
 #include <iterator>
+#include <string>
+#include <string_view>
 
 namespace {
 
@@ -1359,7 +1361,8 @@ auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
 		     l != nullptr && guard < MaxCurseLists; l = At<const uint8_t*>(l, ListNext), ++guard) {
 			held += (At<uint32_t>(l, ListFlags) & ListFlagCurse) != 0 ? 1 : 0;
 		}
-		plog::Info("curse: state %d landed, the target holds %d curse(s)", state, held);
+		plog::Info("curse: state %d landed for %d frames (skill %d sent %d), the target holds %d curse(s)", state, frames,
+		           params->skill, params->frames, held);
 	}
 	return applied;
 }
@@ -1711,11 +1714,9 @@ constexpr const char* TelekinesisMissileTest =
     "8d 50 26 48 8b cb e8 ?? ?? ?? ?? 85 c0 75 ?? 8d 50 38 48 8b cb e8 ?? ?? ?? ?? 85 c0 75 ?? 8d 50 09";
 constexpr int TelekinesisMissileAt = 15;  // the `lea edx,[rax+0x38]` inside the match
 
-static auto PatchTelekinesisArrows(const D2RL::PluginContext* context) noexcept -> bool {
-	uint64_t rva = 0;
-	if (sigscan::ScanUnique(context->exeBase, TelekinesisMissileTest, TelekinesisMissileAt, &rva) != 1) {
-		return false;
-	}
+// One MutationService byte patch at `rva`, refused unless the live bytes are `expected`.
+static auto PatchBytes(const D2RL::PluginContext* context, uint64_t rva, const uint8_t* expected, const uint8_t* bytes,
+                       uint32_t size) noexcept -> bool {
 	const D2RL::MutationService* mutations = nullptr;
 	D2RL::Mutations::TransactionHandle transaction = 0;
 	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
@@ -1723,14 +1724,12 @@ static auto PatchTelekinesisArrows(const D2RL::PluginContext* context) noexcept 
 	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
 		return false;
 	}
-	static constexpr uint8_t Stock[] = {0x8d, 0x50};
-	static constexpr uint8_t Skip[] = {0xeb, 0x0d};  // jmp to the type 9 test, 15 bytes on
 	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
 	                                              .rva = rva,
-	                                              .expected = Stock,
-	                                              .expectedSize = sizeof(Stock),
-	                                              .bytes = Skip,
-	                                              .size = sizeof(Skip)};
+	                                              .expected = expected,
+	                                              .expectedSize = size,
+	                                              .bytes = bytes,
+	                                              .size = size};
 	D2RL::Mutations::OperationHandle operation = 0;
 	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
 	if (mutations->stageBytePatch(context, transaction, &patch, &operation) != D2RL::Mutations::Result::Success ||
@@ -1738,9 +1737,85 @@ static auto PatchTelekinesisArrows(const D2RL::PluginContext* context) noexcept 
 		mutations->cancelTransaction(context, transaction);
 		return false;
 	}
+	return true;
+}
+
+static auto PatchTelekinesisArrows(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t rva = 0;
+	static constexpr uint8_t Stock[] = {0x8d, 0x50};
+	static constexpr uint8_t Skip[] = {0xeb, 0x0d};  // jmp to the type 9 test, 15 bytes on
+	if (sigscan::ScanUnique(context->exeBase, TelekinesisMissileTest, TelekinesisMissileAt, &rva) != 1 ||
+	    !PatchBytes(context, rva, Stock, Skip, sizeof(Skip))) {
+		return false;
+	}
 	plog::Info("telekinesis: missile test skipped at 0x%llx, arrows and bolts stay on the ground",
 	           static_cast<unsigned long long>(rva));
 	return true;
+}
+
+// --- Dim Vision and Terror full length; hit blind takes blinddimvision (#1837) ------------------------------------
+// PD2 NOPs 1.13c srvdo 30's AiCurseDivisor call (D2Game +0x506a8), so Dim Vision and Terror (and item procs of them)
+// keep their full length in Nightmare and Hell. D2R's srvdo 30 (93847: 0x55c840) divides at 0x55ca27 only for
+// auratargetstate 23 or 56: `test esi,esi; jz` becomes `jmp`. Attract (srvdo 59) and Confuse (61) keep the divide, as
+// in PD2, so difficultylevels.txt is left alone. No SDK service covers a skill's length, hence the byte patches.
+constexpr const char* AiCurseDivide =
+    "85 f6 74 ?? 0f b6 54 24 30 0f b6 8f 06 01 00 00 e8 ?? ?? ?? ?? 48 85 c0 74 ?? 8b 48 18 85 c9 74 ?? 41 8b c6 99 f7 f9";
+// PD2's hit-blind cast (1.13c +0x50470, patch +0x505a0) puts state 216 blinddimvision, not Dim Vision's curse state;
+// D2R's (0x5598f0, from the hit-blind stat handler 0x583400) reads auratargetstate at 0x559b3b: `movsx eax,word
+// [r13+0xa2]` becomes `mov eax,<blinddimvision>; nop3`. That state is not a curse, so the blind keeps the target's curse.
+constexpr const char* HitBlindState = "41 0f bf 85 a2 00 00 00 48 8d 55 ?? 48 8b 4d ?? 89 45 ?? e8";
+
+// The row of state `name` in the mod's states.txt (D2R numbers states by row under the header), or -1.
+static auto StateRow(const D2RL::PluginContext* context, std::string_view name) noexcept -> int32_t {
+	if (context->modDirectory == nullptr || context->activeMod == nullptr) {
+		return -1;
+	}
+	const std::wstring tail = L"\\data\\global\\excel\\states.txt";
+	const std::wstring dir = context->modDirectory;
+	std::wstring mod;
+	for (const char* c = context->activeMod; *c != '\0'; ++c) {
+		mod += static_cast<wchar_t>(static_cast<unsigned char>(*c));
+	}
+	for (const std::wstring& path : {dir + L"\\" + mod + L".mpq" + tail, dir + tail}) {  // both layouts, as propids
+		FILE* f = nullptr;
+		if (_wfopen_s(&f, path.c_str(), L"rb") != 0 || f == nullptr) {
+			continue;
+		}
+		char line[512];
+		int32_t row = -1;  // the header line is row -1
+		bool start = true;  // a line longer than the buffer comes in pieces; only its first piece counts
+		while (std::fgets(line, sizeof(line), f) != nullptr) {
+			const size_t cell = std::strcspn(line, "\t\r\n");
+			if (start && row >= 0 && cell == name.size() && std::memcmp(line, name.data(), cell) == 0) {
+				std::fclose(f);
+				return row;
+			}
+			row += start && line[0] != '\n' && line[0] != '\r' ? 1 : 0;
+			start = std::strchr(line, '\n') != nullptr;
+		}
+		std::fclose(f);
+		return -1;
+	}
+	return -1;
+}
+
+static auto PatchCurseLength(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t divide = 0, blind = 0;
+	const int32_t state = StateRow(context, "blinddimvision");
+	static constexpr uint8_t TestJz[] = {0x85, 0xf6, 0x74};
+	static constexpr uint8_t TestJmp[] = {0x85, 0xf6, 0xeb};
+	static constexpr uint8_t ReadState[] = {0x41, 0x0f, 0xbf, 0x85, 0xa2, 0x00, 0x00, 0x00};
+	uint8_t blindState[] = {0xb8, 0, 0, 0, 0, 0x0f, 0x1f, 0x00};
+	std::memcpy(blindState + 1, &state, sizeof(state));
+	const bool full = sigscan::ScanUnique(context->exeBase, AiCurseDivide, 0, &divide) == 1 &&
+	                  PatchBytes(context, divide, TestJz, TestJmp, sizeof(TestJmp));
+	const bool blinds = state > 0 && sigscan::ScanUnique(context->exeBase, HitBlindState, 0, &blind) == 1 &&
+	                    PatchBytes(context, blind, ReadState, blindState, sizeof(blindState));
+	plog::Info("curse length: AiCurseDivisor divide %s at 0x%llx (Dim Vision, Terror full length); hit blind state %s "
+	           "(blinddimvision = %d) at 0x%llx",
+	           full ? "skipped" : "FAILED", static_cast<unsigned long long>(divide), blinds ? "patched" : "FAILED", state,
+	           static_cast<unsigned long long>(blind));
+	return full && blinds;
 }
 
 // --- Charm rows (#358) ---------------------------------------------------------------------------------------------
@@ -2305,6 +2380,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool unlimited = PatchUnlimitedBooks(context);
 	const bool charms = InstallCharmRows(context);
 	const bool telekinesis = PatchTelekinesisArrows(context);
+	const bool curseLength = PatchCurseLength(context);
 	const char* const dye = InstallDyeTint(context);
 	const bool mapStack = sigscan::HookBySignature(
 	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
@@ -2324,7 +2400,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
@@ -2333,15 +2409,16 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              unlimited ? "" : " FAILED (entries not empty, or no mutation service)",
 	              charms ? "" : " FAILED (signature or bytes differ)", dye, mapStack ? "" : " FAILED (bytes differ)",
 	              noMagicMaps ? " (hooked when tables load)" : " FAILED (no table listener)", mapMakerLog ? "" : " FAILED (signature or bytes differ)",
-	              telekinesis ? "" : " FAILED (signature or bytes differ)");
+	              telekinesis ? "" : " FAILED (signature or bytes differ)",
+	              curseLength ? "" : " FAILED (signature, bytes or states.txt)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
 	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0) +
-	       (telekinesis ? 1 : 0);
+	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 16;
+	return 17;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
