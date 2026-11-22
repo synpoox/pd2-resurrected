@@ -5,7 +5,8 @@
 // The SDK's gameplay events run on the UI thread and carry a player id only; the server unit is reached by hopping to the
 // game thread (ThreadService) and walking the game's clients, as test_kill.cpp. No SDK service sets a state on a unit, so
 // it is D2R's SetStateBit then SetStateGfxFlag (a bare state, as D2R's 0x56bfe0).
-// shortcut: single player only (the first live game), like the test aids; walk the game from the event when multiplayer needs it.
+// shortcut: runs on the host's own events only; a remote player's join or respawn waits for the host's next event; move to a
+// server-side join/respawn trigger when multiplayer (#153) lands.
 #include "max_level_aura.h"
 
 #include "log.h"
@@ -36,6 +37,10 @@ void __cdecl Apply(const D2RL::PluginContext*, void*) noexcept {
 	Game* game = FirstGame();
 	if (game == nullptr) {
 		return;
+	}
+	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(d2r::DataFlag(game));
+	if (tables == nullptr || At<uint64_t>(tables, TablesStateCount) <= MaxLevelState) {
+		return;  // not the merged data: the state row is not there
 	}
 	for (auto* client = At<uint8_t*>(game, GameClients); client != nullptr; client = At<uint8_t*>(client, ClientNext)) {
 		Unit* player = At<int32_t>(client, ClientState) == ClientInGame
