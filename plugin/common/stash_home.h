@@ -289,6 +289,33 @@ static_assert([] {  // no two bossing items share a cell
 	}
 	return true;
 }());
+static_assert([] {  // #1785: no cell under the cube (columns 3-6, rows 6-9); no currency cell in rows 0-1
+	const auto underCube = [](Cell c) { return c.x >= 3 && c.x <= 6 && c.y >= 6 && c.y <= 9; };
+	for (int32_t i = 0; i < CurrencyCells; ++i) {
+		if (underCube(CurrencyCell(i)) || CurrencyCell(i).y <= 1) {
+			return false;
+		}
+	}
+	for (const Cell c : BossingCell) {
+		if (underCube(c)) {
+			return false;
+		}
+	}
+	return true;
+}());
+static_assert([] {  // #1785: no duplicate code in MapMaterials or Bossing, none shared (IndexIn takes the first match)
+	for (size_t i = 0; i < std::size(MapMaterials); ++i) {
+		if (IndexIn(MapMaterials, Code(MapMaterials[i])) != static_cast<int32_t>(i) || IndexIn(Bossing, Code(MapMaterials[i])) >= 0) {
+			return false;
+		}
+	}
+	for (size_t i = 0; i < std::size(Bossing); ++i) {
+		if (IndexIn(Bossing, Code(Bossing[i])) != static_cast<int32_t>(i)) {
+			return false;
+		}
+	}
+	return true;
+}());
 static_assert(!AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, false, 19, 4, 4));
 static_assert(!AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 15, 4, 4));  // a boss item on the Maps page (#1726)
 static_assert(!AtHome(HomeOf(Code("imma")), Code("imma"), 0, true, 19, 0, 4));  // a currency on the Bossing page
