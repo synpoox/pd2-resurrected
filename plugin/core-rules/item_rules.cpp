@@ -589,10 +589,11 @@ auto HitEvent(Game* game, int32_t event, Unit* unit, Unit* target, void* damage)
 		t_hiddenEvent = event;
 	}
 	const int32_t result = g_hitEventOriginal(game, event, unit, target, damage);
-	t_hiddenEvent = outerHidden;
+	// Inside the hidden-node window, so the splashed units get open wounds as a plain splash's do
 	if (event == EventMeleeDamage) {
 		SpinSplashes(game, event, unit, target, static_cast<const uint8_t*>(damage));
 	}
+	t_hiddenEvent = outerHidden;
 	for (int i = 0; i < count; ++i) {
 		*reinterpret_cast<uint16_t*>(hidden[i] + EventNodeEvent) = static_cast<uint16_t>(event);
 	}
